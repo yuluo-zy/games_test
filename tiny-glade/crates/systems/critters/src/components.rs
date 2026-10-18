@@ -12,7 +12,7 @@
 //!   8B 双计时 @+0xe4、进度 @+0xec、冻结字节 @+0xfc、渲染尾字段 @+0xf0/+0xf4/+0xf8。
 //! - DuckState 1B 枚举：1=沿轨迹正向、2=自由游（set_duck_velocities 只处理）、3=沿轨迹反向。
 //! - Sheep 0x68：行为状态 u32@+8（==1 跟随）、目标计时 @+0xc、宠物动画 phase@+0x18 /
-//!   progress@+0x1c / target@+0x20、标志字节 @+0x30、8B 双计时 @+0x34、幅度 @+0x58
+//!   progress@+0x1c / target@+0x20、移动状态 @+0x30（含force @+0x31和计时 @+0x34/+0x38）、幅度 @+0x58
 //!   （being_petted = >0.01）、控制字节 @+0x60（sheep_pet 行证据 0x14293a350）。
 //! - Butterfly 0x18：state u32@+0、dwell @+0xc、phase @+0x10、phase_ref @+0x14
 //!   （phase_ref 是 GPU 侧 `anim_t`，写 ButterflySsbo@+0xc）。
@@ -54,26 +54,23 @@ pub struct CritterVelocityTarget {
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
 pub struct CritterVelocityMultiplier(pub f32);
 
-/// `CritterLocomotion`（8B 槽，u32@+0；值 2/3/4/6/7 与位测，见模块文档）。
-#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
+/// Locomotion's observed scalar discriminant and collision predicates.
+/// Complete original enum payload/ABI remains unresolved.
+#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct CritterLocomotion(pub u32);
 
 impl CritterLocomotion {
-    /// 掩码 `99u >> (v & 31) & 1` 选中 {0,1,5,6}：纯 WallSpatialHash 墙体避让（无 spherecast）。
-    pub fn wall_hash_only(self) -> bool {
-        (99u32 >> (self.0 & 31)) & 1 == 1
-    }
-    /// ==2：采样 terrain_rock_mask。
     pub fn samples_rock_mask(self) -> bool {
         self.0 == 2
     }
-    /// ==4：跳过水面双采样。
     pub fn skips_water_sample(self) -> bool {
         self.0 == 4
     }
-    /// ==3：跳过 PublicWalls::get。
     pub fn skips_public_walls(self) -> bool {
         self.0 == 3
+    }
+    pub fn wall_hash_only(self) -> bool {
+        (99u32 >> (self.0 & 31)) & 1 == 1
     }
 }
 
@@ -81,7 +78,6 @@ impl CritterLocomotion {
 /// 的宿主缝（见 audio 模块），非机器码布局字段。
 #[derive(Component, Debug)]
 pub struct Duck {
-
     /// +0x98：轨迹点（cap-first 原生 Vec 的语义等价；stride 0xc）。
     pub trajectory: Vec<Vec3>,
     /// +0xe0：目标活动标志字节（update_duck_goals 读写）。
@@ -102,27 +98,32 @@ pub struct Duck {
     pub audio: crate::audio::DuckAudio,
 }
 
-/// `DuckState`（1B 枚举）。B 反汇编确认：1=沿轨迹正向、2=自由游、3=沿轨迹反向（critters-extra
-/// §6）；0 语义推断（不伪造）。
+/// `DuckState`（1B 枚举）。fresh 反汇编（move_ducks 0x142312200、plan_duck 0x14230ff00）：
+/// 0=出生初态（沿轨迹正向，t>0.25 后升为 1）、1=沿轨迹正向巡航、2=自由游、3=沿轨迹反向。
+/// move_ducks 的 `lVar25 = state>1 ? state-1 : 0` 映射：0/1→正向、2→跳过、3→反向。
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum DuckState {
+    /// 0：plan 出生态（plan_duck spawn bundle 写 0；move_ducks t>0.25 时 0→1）。
     #[default]
-    FreeSwim = 2,
+    Initial = 0,
     TrajectoryForward = 1,
+    FreeSwim = 2,
     TrajectoryReverse = 3,
 }
 
 impl DuckState {
-    /// 原生字节（O：判别 1/2/3）。
+    /// 原生字节（O：判别 0/1/2/3）。
     pub fn from_byte(b: u8) -> Self {
         match b {
             1 => DuckState::TrajectoryForward,
+            2 => DuckState::FreeSwim,
             3 => DuckState::TrajectoryReverse,
-            _ => DuckState::FreeSwim,
+            _ => DuckState::Initial,
         }
     }
     pub fn to_byte(self) -> u8 {
         match self {
+            DuckState::Initial => 0,
             DuckState::TrajectoryForward => 1,
             DuckState::TrajectoryReverse => 3,
             DuckState::FreeSwim => 2,
@@ -130,33 +131,8 @@ impl DuckState {
     }
 }
 
-/// `Sheep`（stride 0x68，字段证据见模块文档）。
-#[derive(Component, Clone, Copy, Debug)]
-pub struct Sheep {
-    /// +8：行为状态 u32（==1 跟随相机/光标）。
-    pub behavior_state: u32,
-    /// +0xc：目标计时。
-    pub goal_timer: f32,
-    /// +0x18/+0x1c/+0x20：宠物动画 phase/progress/target（sheep_pet 行证据）。
-    pub pet_phase: u32,
-    pub pet_progress: f32,
-    pub pet_target: u64,
-    /// +0x30：标志字节（共享目标刷新开关）。
-    pub flag_30: u8,
-    /// +0x34：8B 双 f32 共享目标计时。
-    pub shared_timers: [f32; 2],
-    /// +0x58：幅度（being_petted = > 0.01；`Sheep::being_petted` 0x14089d4c0）。
-    pub amplitude: f32,
-    /// +0x60：控制字节。
-    pub control_flag: u8,
-}
-
-impl Sheep {
-    /// `Sheep::being_petted`（O 0x14089d4c0）：`f32@+0x58 > 0.01`。
-    pub fn being_petted(&self) -> bool {
-        self.amplitude > f32::from_bits(0x3c23d70a)
-    }
-}
+/// Shared ECS identity with core snapshot/save/freeze consumers.
+pub use country_core::resources::critters::sheep::{Sheep, SheepMoveState};
 
 /// 羊抚摸控制（pet 动画消费侧；control_flag 的宿主投影）。
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
@@ -165,20 +141,8 @@ pub struct SheepPetControl {
     pub amplitude: f32,
 }
 
-/// `Butterfly`（stride 0x18；state@+0、目标计时@+8（goals `timer@+2` 段）、dwell@+0xc、
-/// phase@+0x10、phase_ref@+0x14；phase_ref 是 GPU `anim_t`）。
-#[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
-pub struct Butterfly {
-    pub state: u32,
-    /// +8：目标计时（update_butterfly_goals 读写）。
-    pub goal_timer: f32,
-    /// +0xc：状态机 dwell 计时。
-    pub dwell: f32,
-    /// +0x10：相位。
-    pub phase: f32,
-    /// +0x14：相位参考（= GPU anim_t）。
-    pub phase_ref: f32,
-}
+// Shared by the camera and species systems; keep a single component identity.
+pub use country_core::resources::critters::Butterfly;
 
 /// `Firefly`（goal_timer f32；其余出生记录字段 U）。
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
@@ -222,21 +186,29 @@ pub struct Fish {
     pub state: u8,
 }
 
-/// 鱼群（`FishBoids`，fish.rs PDB 命名实体）：CPU 侧 boid 记录
-/// （0x18：pos+vel；`turn_timer` 为 0x38 槽随机转向计时的实体侧投影）。
-#[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
+/// 鱼群（`FishBoids`，fish.rs PDB 命名实体）。B 侧是 **Resource**（`insert_resource<
+/// FishBoids>` 符号实证 0x140f84e80；`despawn_fish(ResMut<FishBoids>,
+/// ResMut<FishSpawnLocations>)` 在 `OnExit<AppLoadingState>` 重置资源）。crate 以
+/// 每鱼实体上的 0x18 槽投影（pos+vel；`turn_timer` = 0x38 槽计时）承载，并同时
+/// derive `Resource` 以便 `despawn_fish` 重置资源侧表示。
+#[derive(Component, Resource, Clone, Copy, Debug, Default, PartialEq)]
 pub struct FishBoids {
     pub pos: Vec3,
     pub vel: Vec3,
     pub turn_timer: f32,
 }
 
-/// 小动物总开关/强度资源（update_firefly_goals 的 control 门：`*res+4 == 1` 才跑；
-/// render_loop 的 `CritterControl.intensity` 是萤火虫强度）。
+/// 小动物总开关/强度资源。
+/// - firefly 门：`*res+4 == 1` 才跑；
+/// - **wren 门**：`*res+5`（fresh sim_wren_boids 0x142326a80 `TEST byte[*in_R8+5]`）
+///   非 0 才模拟，否则清空 WrenBoids 并 despawn 全部鹪鹩；
+/// - render_loop 的 `CritterControl.intensity` 是萤火虫强度（f32@+0）。
 #[derive(Resource, Clone, Copy, Debug)]
 pub struct CritterControlState {
     /// +4 字节：control 门（==1 运行）。
     pub enabled: bool,
+    /// +5 字节：wren/bird 模拟门（!=0 运行）。
+    pub birds_enabled: bool,
     /// 萤火虫强度（f32@+0；draw_shaders 消费）。
     pub intensity: f32,
 }
@@ -245,6 +217,7 @@ impl Default for CritterControlState {
     fn default() -> Self {
         Self {
             enabled: false,
+            birds_enabled: false,
             intensity: 0.0,
         }
     }
@@ -266,24 +239,47 @@ impl Default for DuckSpawnLocations {
 }
 
 impl DuckSpawnLocations {
-    /// `DuckSpawnLocations::new`（O 0x140f8ee90）：z 十档
-    /// -52,-40.22,-28.56,-17.33,-5.78,5.78,17.33,28.56,40.22,52；x 同十档。
+    /// `DuckSpawnLocations::new`（O 0x140f8ee90，fresh decomp evidence
+    /// `work/purelogic-integration/evidence/0x140f8ee90_new.c`）：
+    /// 10×10=100 候选点，元素 12B = `(Vec2{x@0,z@4}, bool used@8)`（stride 0xc）；
+    /// 行值（外层 i=0..9）= `(i/9)*52 - (1-i/9)*52`（逐 f32：-52,-40.444443,
+    /// -28.888891,-17.333334,-5.7777786,5.7777786,17.333334,28.888891,40.444443,52），
+    /// 列值（内层 j）= 同十档常量（0xc2500000/-52.0、0xc221c71c/-40.444443、
+    /// 0xc1e71c73/-28.888891、0xc18aaaa9/-17.33333、0xc0b8e390/-5.7777786、
+    /// 0x40b8e390/5.7777786、0x418aaaac/17.333335、0x41e71c73/28.888891、
+    /// 0x4221c71c/40.444443、0x42500000/52.0）——与行公式逐位一致；
+    /// 资源尾 timer f32@+0x18 = **25.0**（0x41c80000，初始非 0）。
+    ///
+    /// 旧实现用硬编码近似 x_steps（-40.22/-28.56 等错误 lane）且 timer=0，
+    /// 已改为公式驱动（restorer-purelogic-integration 2026-10-17）。
     pub fn new() -> Self {
-        let x_steps: [f32; 10] = [
-            -52.0, -40.22, -28.56, -17.33, -5.78, 5.78, 17.33, 28.56, 40.22, 52.0,
-        ];
+        let steps = duck_spawn_steps();
         let mut candidates = Vec::with_capacity(100);
-        for &zx in &x_steps {
-            for &xz in &x_steps {
-                candidates.push(Vec3::new(zx, 0.0, xz));
+        // FIX-P2：原生外层 i 值→+0→世界 x，内层 j 值→+4→世界 z（原 `Vec3::new(col,0,row)`
+        // 行列转置，已改为 `Vec3::new(row,0,col)`）。
+        for &row in &steps {
+            for &col in &steps {
+                candidates.push(Vec3::new(row, 0.0, col));
             }
         }
         Self {
             candidates,
             used: vec![false; 100],
-            timer: 0.0,
+            // O 0x140f8ee90 尾部 `*(undefined4 *)(in_RCX + 3) = 0x41c80000` → 25.0。
+            timer: 25.0,
         }
     }
+}
+
+/// 鸭子出生网格十档值（O：0x140f8ee90 行公式 `(i/9)*52-(1-i/9)*52`，逐 i=0..9；
+/// 列常量与公式逐位一致，见 `DuckSpawnLocations::new`）。纯函数，供网格构建复用。
+pub fn duck_spawn_steps() -> [f32; 10] {
+    let mut steps = [0.0f32; 10];
+    for (i, s) in steps.iter_mut().enumerate() {
+        let t = i as f32 / 9.0;
+        *s = t * 52.0 - (1.0 - t) * 52.0;
+    }
+    steps
 }
 
 /// `FishSpawnLocations`（O 0x140f909f0）：25×25=625 点 ∈[-52,52]²。
@@ -299,13 +295,21 @@ impl Default for FishSpawnLocations {
 }
 
 impl FishSpawnLocations {
+    /// `FishSpawnLocations::new`（0x140f909f0）：外层 i=0..24、内层 j=0..24 共 625；
+    /// 原生元素 stride 0xc：+0=外层值→世界 x、+4=内层值→世界 z、+8=used(0)。
+    /// 行/列公式均为 `(k/24)*52 - (1-k/24)*52`（DIVSS 24、SUBSS 1、MULSS 52×2、SUBSS）。
+    ///
+    /// FIX-P1：① 行列转置——x=外层(i)、z=内层(j)（原 `Vec3::new(fx*52,0,fy*52)` 为
+    /// x=内层/z=外层）；② 公式改逐位等价 `t*52-(1-t)*52`（原 `(t*2-1)*52` 在 7/25 档差 1 ULP）。
     pub fn new() -> Self {
         let mut candidates = Vec::with_capacity(625);
-        for iy in 0..25 {
-            let fy = (iy as f32 / 24.0) * 2.0 - 1.0;
-            for ix in 0..25 {
-                let fx = (ix as f32 / 24.0) * 2.0 - 1.0;
-                candidates.push(Vec3::new(fx * 52.0, 0.0, fy * 52.0));
+        for i in 0..25 {
+            let ti = i as f32 / 24.0;
+            let x = ti * 52.0 - (1.0 - ti) * 52.0;
+            for j in 0..25 {
+                let tj = j as f32 / 24.0;
+                let z = tj * 52.0 - (1.0 - tj) * 52.0;
+                candidates.push(Vec3::new(x, 0.0, z));
             }
         }
         Self { candidates }
@@ -344,5 +348,24 @@ impl Default for Duck {
             f_f8: 0.0,
             audio: crate::audio::DuckAudio::default(),
         }
+    }
+}
+
+#[cfg(test)]
+mod locomotion_tests {
+    use super::*;
+    #[test]
+    fn original_locomotion_mask_selects_observed_values() {
+        let selected: Vec<u32> = (0..32)
+            .filter(|&value| CritterLocomotion(value).wall_hash_only())
+            .collect();
+        assert_eq!(selected, [0, 1, 5, 6]);
+    }
+    #[test]
+    fn original_other_branch_predicates() {
+        assert!(CritterLocomotion(2).samples_rock_mask());
+        assert!(CritterLocomotion(4).skips_water_sample());
+        assert!(CritterLocomotion(3).skips_public_walls());
+        assert!(!CritterLocomotion(7).wall_hash_only());
     }
 }

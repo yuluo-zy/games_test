@@ -1,0 +1,51 @@
+--- a/games_test/tiny-glade/crates/systems/critters/src/sheep/sheep_unstuck.rs
++++ b/games_test/tiny-glade/crates/systems/critters/src/sheep/sheep_unstuck.rs
+@@ -10,7 +10,7 @@
+ //!     → state=0；记录 = (1, ground_h)；
+ //!   - 其余状态经 cfe：记录清零。
+ //! - 门失败（岩石且 state∈{2,4,6}）→ state=0、记录清零。
+-//! - 收尾：state!=2 → 记录清零；`Sheep+0x30(flag_30)==0` → 清零 shared_timers。
++//! - 收尾：state!=2 → 记录清零；`Sheep+0x30(flag_30)==0` → 清零 Idle timeout_s。
+ //!
+ //! DIVERGE：`legacy_spherecast` ABI（shared.rs 抽象 hit/distance，非命中码 pair）；
+ //! `terrain_rock_mask` 逐点采样（本 crate 为整体 grid）；`is_corrupted` 未接线（按非坏档）；
+@@ -22,8 +22,8 @@
+ use country_core::resources::world_raster::WorldRaster;
+ use glam::Vec3;
+ 
+-use crate::components::{Sheep, Transform, Velocity};
+-use crate::shared::{legacy_spherecast, RaycastWorldHandle, TerrainRockMask};
++use crate::components::{Sheep, SheepMoveState, Transform, Velocity};
++use crate::shared::{RaycastWorldHandle, TerrainRockMask, legacy_spherecast};
+ 
+ /// Sheep 记录 +0（字节位）/+4（地面高度）——二进制位于 0x68 记录，因 components.rs 不可改分拆。
+ #[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
+@@ -95,10 +95,7 @@
+                     let h = terrain.sample_at_world_xz(pos.x, pos.z);
+                     let ground_h = if h <= 0.5 { 0.5 } else { h };
+                     let fall_rate = (ground_h - ground.h) / dt;
+-                    if (ground.flag & 1) != 0
+-                        && fall_rate.is_finite()
+-                        && 10.0 < fall_rate.abs()
+-                    {
++                    if (ground.flag & 1) != 0 && fall_rate.is_finite() && 10.0 < fall_rate.abs() {
+                         loc.0 = 0;
+                     }
+                     ground.flag = 1;
+@@ -121,10 +118,13 @@
+             loc.0 = 0;
+             ground.flag = 0;
+         }
+-        // 收尾（O L292–302）：仅 `state!=2` 时写时间戳并（flag_30==0）清零共享计时；
++        // 收尾（O L292–302）：仅 `state!=2` 时写时间戳并（flag_30==0）清零 Idle timeout_s；
+         // 地面记录**不**在此清除（旧实现的清记录已删除）。
+-        if loc.0 != 2 && sheep.flag_30 == 0 {
+-            sheep.shared_timers = [0.0, 0.0];
++        if loc.0 != 2 {
++            // B 142324d21..142324d2c clears only the active Idle timeout.
++            if let SheepMoveState::Idle { timeout_s } = &mut sheep.move_state {
++                *timeout_s = 0.0;
++            }
+         }
+     }
+ }

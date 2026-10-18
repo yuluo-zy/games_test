@@ -36,32 +36,141 @@
 use crate::asset_libraries::ssbo_library::SsboType as LibrarySsbo;
 use crate::render::pass_builder::compute_pass_builder::RecordedComputePass;
 use crate::render::pass_builder::pass_resource_access::{RgTexture, SsboType};
+use crate::render::ssbo::rhapsody_boundary::{BufferDesc, GraphicsDevice};
+use crate::render::ssbo::{InstanceBuffer, StorageElement, TypedStorageBuffer};
+use crate::resources::render::Affine3Packed;
 use crate::resources::texture_presets::TexturePreset;
 use crate::resources::water_mask::{WATER_MASK_GRID, WATER_MASK_SAMPLE_SCALE};
-use crate::typed_gap::Gap;
 
 use super::pass_kit::{PassEnv, binding_hash};
 use crate::rhapsody_types::TextureDesc;
 
-/// 水植被实例 SSBO（O 名；布局 U，compute_water 域）。
-pub struct LilypadSsbo(pub Gap);
-pub struct LilypadFlowerSsbo(pub Gap);
-pub struct ReedSsbo(pub Gap);
+/// Native allocation rows are 64 B / align16, even though original GPU
+/// LilypadXform structured-buffer accesses are dense48B Affine3Packed. The
+/// unobserved native CPU row words remain opaque; do not shrink the capacity
+/// or assign a fabricated fourth SIMD-column meaning.
+#[repr(C, align(16))]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct LilypadSsbo(pub [u32; 16]);
+#[repr(C, align(16))]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct LilypadFlowerSsbo(pub [u32; 16]);
 
+/// Original ReedXform transform,48B; native constructor alignment is4.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct ReedSsbo {
+    pub transform: Affine3Packed,
+}
+
+impl StorageElement for LilypadSsbo {
+    const NAME: &'static str = "Lilypads";
+    const BUFFER_LEN: usize = 50625;
+}
 impl SsboType for LilypadSsbo {
-    /// typed gap：原值 = `utils::name_hash("…LilypadSsbo")`。
     fn rg_buffer_hash() -> u64 {
-        0
+        0x321b_c3df_b10d_5554
     }
+}
+impl LibrarySsbo for LilypadSsbo {
+    type Storage = InstanceBuffer<Self>;
+    fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
+        let element_size = core::mem::size_of::<Self>();
+        let instance_count = initial.map_or(0, |bytes| {
+            assert_eq!(bytes.len() % element_size, 0);
+            assert_eq!((bytes.as_ptr() as usize) % 4, 0);
+            let count = bytes.len() / element_size;
+            assert!(
+                count <= Self::BUFFER_LEN,
+                "Excessive data size supplied for buffer {}",
+                core::any::type_name::<Self>()
+            );
+            count
+        });
+        // Original typed constructor: fixed capacity, no payload on None.
+        // The library owns the InstanceBuffer and publishes its actual count.
+        let desc = BufferDesc::new(Self::BUFFER_LEN * element_size, 0x22, 1).alignment(16);
+        let buffer = device
+            .create_buffer(&desc, Self::NAME, initial)
+            .expect("called `Result::unwrap()` on an `Err` value: create_buffer");
+        InstanceBuffer {
+            instance_count,
+            buffer: TypedStorageBuffer::from_created_buffer(buffer),
+        }
+    }
+}
+
+impl StorageElement for LilypadFlowerSsbo {
+    const NAME: &'static str = "Lilypad Flowers";
+    const BUFFER_LEN: usize = 50625;
 }
 impl SsboType for LilypadFlowerSsbo {
     fn rg_buffer_hash() -> u64 {
-        0
+        0xae37_cbca_fbe8_8da4
     }
+}
+impl LibrarySsbo for LilypadFlowerSsbo {
+    type Storage = InstanceBuffer<Self>;
+    fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
+        let element_size = core::mem::size_of::<Self>();
+        let instance_count = initial.map_or(0, |bytes| {
+            assert_eq!(bytes.len() % element_size, 0);
+            assert_eq!((bytes.as_ptr() as usize) % 4, 0);
+            let count = bytes.len() / element_size;
+            assert!(
+                count <= Self::BUFFER_LEN,
+                "Excessive data size supplied for buffer {}",
+                core::any::type_name::<Self>()
+            );
+            count
+        });
+        // Original typed constructor: fixed capacity, no payload on None.
+        // The library owns the InstanceBuffer and publishes its actual count.
+        let desc = BufferDesc::new(Self::BUFFER_LEN * element_size, 0x22, 1).alignment(16);
+        let buffer = device
+            .create_buffer(&desc, Self::NAME, initial)
+            .expect("called `Result::unwrap()` on an `Err` value: create_buffer");
+        InstanceBuffer {
+            instance_count,
+            buffer: TypedStorageBuffer::from_created_buffer(buffer),
+        }
+    }
+}
+
+impl StorageElement for ReedSsbo {
+    const NAME: &'static str = "Reeds";
+    const BUFFER_LEN: usize = 22500;
 }
 impl SsboType for ReedSsbo {
     fn rg_buffer_hash() -> u64 {
-        0
+        0xd6d7_2e98_9e1b_8586
+    }
+}
+impl LibrarySsbo for ReedSsbo {
+    type Storage = InstanceBuffer<Self>;
+    fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
+        let element_size = core::mem::size_of::<Self>();
+        let instance_count = initial.map_or(0, |bytes| {
+            assert_eq!(bytes.len() % element_size, 0);
+            assert_eq!((bytes.as_ptr() as usize) % 4, 0);
+            let count = bytes.len() / element_size;
+            assert!(
+                count <= Self::BUFFER_LEN,
+                "Excessive data size supplied for buffer {}",
+                core::any::type_name::<Self>()
+            );
+            count
+        });
+        // Original typed constructor: fixed capacity, no payload on None.
+        // The library owns the InstanceBuffer and publishes its actual count.
+        let desc = BufferDesc::new(Self::BUFFER_LEN * element_size, 0x22, 1).alignment(4);
+        let buffer = device
+            .create_buffer(&desc, Self::NAME, initial)
+            .expect("called `Result::unwrap()` on an `Err` value: create_buffer");
+        InstanceBuffer {
+            instance_count,
+            buffer: TypedStorageBuffer::from_created_buffer(buffer),
+        }
     }
 }
 
@@ -191,7 +300,26 @@ pub fn water_rasterize_from_cpu(
     staging.changed_tick = world_tick;
     staging.dirty = false;
     staging.staging.fill(0);
+    declare_water_blur(env)
+}
 
+/// Native mask consumer on the actual source-build ECS owner. Pending reads do
+/// not mark it changed; B140a1272e..47 changes the row then consumes +29b/bitmap
+/// before creating any texture or shader pass.
+pub fn water_rasterize_live(
+    env: &mut PassEnv<'_>,
+    raster: &mut bevy_ecs::change_detection::Mut<'_, crate::resources::world_raster_defs::WaterRaster>,
+    world_tick: u32,
+) -> Option<u32> {
+    use bevy_ecs::change_detection::DetectChangesMut;
+    if !raster.bypass_change_detection().reupload_pending() { return None; }
+    raster.set_changed();
+    raster.bypass_change_detection().consume_reupload();
+    for pass in declare_water_blur(env) { env.record(pass); }
+    Some(world_tick)
+}
+
+fn declare_water_blur(env: &mut PassEnv<'_>) -> Vec<RecordedComputePass> {
     let temp = env.create_texture(
         "water blur temp",
         TextureDesc::new_2d(
@@ -216,6 +344,12 @@ fn blur_step(env: &mut PassEnv<'_>, temp: &RgTexture, step: &BlurStep) -> Record
         pass.bind_texture(H_WATER_MASK, &PRESET_WATER_MASK, ACCESS_READ)
             .bind_texture(H_OUT_WATER_MASK, &temp, ACCESS_WRITE)
     };
+    // Original SPV: vertical always samples source.g. Step3 writes temp.b
+    // while retaining step1's temp.g for step4; preset writes also retain red.
+    // The first temp write has no live old channels and is not preserving.
+    let pass = if step.from_temp || step.output_channel == 2 {
+        pass.preserve_storage_texture_contents(H_OUT_WATER_MASK)
+    } else { pass };
     pass.uniform(H_SIGMA, step.sigma)
         .uniform(H_OUTPUT_CHANNEL, step.output_channel)
         .dispatch_2d(WATER_MASK_GRID as u32, WATER_MASK_GRID as u32)
@@ -264,7 +398,11 @@ pub fn water_spawn_vegetation<S: WaterVegetationSsbos>(
         .bind_texture(H_PATH_MASK, &PRESET_PATH_MASK, ACCESS_READ)
         .bind_texture(H_GARDEN_MASK, &PRESET_GARDEN_MASK, ACCESS_READ)
         .bind_texture(H_ANIMATION, &PRESET_ANIMATION, ACCESS_WRITE)
+        // Original SPV reads the actual previous animation texel before mix/store.
+        .preserve_storage_texture_contents(H_ANIMATION)
         .write_storage_buffer_concurrent::<S::DrawCommands>(H_DRAW_COMMANDS, DRAW_COMMANDS_GROUP)
+        // Atomic instanceCount append retains other words and command slots.
+        .preserve_storage_buffer_contents(H_DRAW_COMMANDS)
         .uniform(H_DRAW_INDIRECT_BUFFER_OFFSET, LILYPAD_DRAW_OFFSET)
         .dispatch_2d(LILYPAD_GRID[0], LILYPAD_GRID[1]);
 
@@ -286,6 +424,8 @@ pub fn water_spawn_vegetation<S: WaterVegetationSsbos>(
             ACCESS_READ,
         )
         .write_storage_buffer_concurrent::<S::DrawCommands>(H_DRAW_COMMANDS, DRAW_COMMANDS_GROUP)
+        // Atomic instanceCount append retains other words and command slots.
+        .preserve_storage_buffer_contents(H_DRAW_COMMANDS)
         .uniform(H_DRAW_INDIRECT_BUFFER_OFFSET, REED_DRAW_OFFSET)
         .dispatch_2d(REED_GRID[0], REED_GRID[1]);
     vec![lilypads, reeds]
@@ -513,6 +653,17 @@ mod tests {
         // lilypad：ctor + 2 SSBO + 5 读 + 1 写纹理 + draw_commands = 10 个绑定；reed：1 + 1 + 5 + 1 = 8。
         assert_eq!(passes[0].bindings.len(), 10);
         assert_eq!(passes[1].bindings.len(), 8);
+        // Actual shader content contracts: both command buffers are RMW;
+        // only lilypads read their previous animation texels.
+        for pass in &passes {
+            let draw = pass.builder.accesses.last().unwrap().resource;
+            assert_eq!(pass.preserving_buffers, [draw]);
+        }
+        assert_eq!(passes[0].preserving_texture_bindings.len(), 1);
+        let animation = passes[0].preserving_texture_bindings[0] as usize;
+        assert!(matches!(passes[0].bindings[animation],
+            PassBinding::ImageView { write: true, .. }));
+        assert!(passes[1].preserving_texture_bindings.is_empty());
         // draw_commands 同步组 = 1。
         assert_eq!(passes[0].builder.accesses.last().map(|a| a.group), Some(1));
         assert!(matches!(
@@ -531,5 +682,68 @@ mod tests {
         assert_eq!(e.world.backend.loads.get(), 0);
         let p = e.run(|penv| water_spawn_vegetation::<S>(penv, SeasonByte(4), false));
         assert_eq!(e.uniform_u32(&p[0], H_IS_AUTUMN), 0);
+    }
+    #[test]
+    fn native_water_vegetation_factories_keep_capacity_none_and_instance_ownership() {
+        use crate::asset_libraries::ssbo_library::AssetSsboLibrary;
+        use crate::render::ssbo::tests::MockDevice;
+        let device = MockDevice::default();
+        let library = AssetSsboLibrary::new();
+        library.add_new::<LilypadSsbo>(&device);
+        library.add_new::<LilypadFlowerSsbo>(&device);
+        library.add_new::<ReedSsbo>(&device);
+        assert_eq!(library.get::<LilypadSsbo>().unwrap().instance_count, 0);
+        assert_eq!(
+            library.get::<LilypadFlowerSsbo>().unwrap().instance_count,
+            0
+        );
+        assert_eq!(library.get::<ReedSsbo>().unwrap().instance_count, 0);
+        let rows = device.created.borrow();
+        assert_eq!(rows.len(), 3);
+        for (row, (name, size, alignment)) in rows.iter().zip([
+            ("Lilypads", 0x317040, 16),
+            ("Lilypad Flowers", 0x317040, 16),
+            ("Reeds", 0x107ac0, 4),
+        ]) {
+            assert_eq!(
+                (row.1.as_str(), row.0.size, row.0.alignment),
+                (name, size, alignment)
+            );
+            assert_eq!((row.0.usage, row.0.memory), (0x22, 1));
+            assert!(
+                row.2.is_none(),
+                "None must not upload manufactured zero rows"
+            );
+        }
+        for (actual, name) in [
+            (LilypadSsbo::rg_buffer_hash(), "Lilypads"),
+            (LilypadFlowerSsbo::rg_buffer_hash(), "Lilypad Flowers"),
+            (ReedSsbo::rg_buffer_hash(), "Reeds"),
+        ] {
+            assert_eq!(actual, utils::name_hash::NameHash::compute(name).0);
+        }
+        assert_eq!(core::mem::size_of::<LilypadSsbo>(), 64);
+        assert_eq!(core::mem::size_of::<LilypadFlowerSsbo>(), 64);
+        assert_eq!(core::mem::size_of::<ReedSsbo>(), 48);
+    }
+
+    #[test]
+    fn native_water_vegetation_some_data_publishes_real_count_and_preserves_bytes() {
+        use crate::render::ssbo::{
+            InstanceCounted, rhapsody_boundary::slice_as_bytes, tests::MockDevice,
+        };
+        fn check<T: LibrarySsbo<Storage = InstanceBuffer<T>> + Default>() {
+            let device = MockDevice::default();
+            let initial = [T::default(); 2];
+            let bytes = slice_as_bytes(&initial);
+            let storage = T::new_storage_buffer(&device, Some(bytes));
+            assert_eq!(storage.instance_count(), 2);
+            let rows = device.created.borrow();
+            assert_eq!(rows[0].2.as_deref(), Some(bytes));
+            assert_eq!(rows[0].0.size, T::BUFFER_LEN * core::mem::size_of::<T>());
+        }
+        check::<LilypadSsbo>();
+        check::<LilypadFlowerSsbo>();
+        check::<ReedSsbo>();
     }
 }

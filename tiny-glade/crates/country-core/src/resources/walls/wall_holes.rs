@@ -1,10 +1,12 @@
 //! Actual hole ownership. Geometric finalization/hash policy is shared with the
 //! native-validated game leaf; no duplicate approximation of that algorithm.
 use super::WallId;
-pub use crate::recovered_building::wall_holes::{
-    FinalizedWallHole, HoleStorageError, HoleStoragePhase, PreviousWallHoles, RawWallHole,
-    WallHoleStorage,
-};
+pub use crate::resources::walls::wall_holes::geometry::FinalizedWallHole;
+pub use crate::resources::walls::wall_holes::geometry::HoleStorageError;
+pub use crate::resources::walls::wall_holes::geometry::HoleStoragePhase;
+pub use crate::resources::walls::wall_holes::geometry::PreviousWallHoles;
+pub use crate::resources::walls::wall_holes::geometry::RawWallHole;
+pub use crate::resources::walls::wall_holes::geometry::WallHoleStorage;
 use bevy_ecs::prelude::*;
 use hashbrown::HashMap;
 
@@ -62,3 +64,7 @@ impl WallHoles {
         }
     }
 }
+
+pub mod opening_rules;
+
+pub mod geometry;

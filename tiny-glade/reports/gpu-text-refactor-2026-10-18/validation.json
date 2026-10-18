@@ -1,0 +1,117 @@
+{
+  "date": "2026-10-18",
+  "scope": "tg-gpu-selector and tg-text Rust source review/refactor; no reverse engineering",
+  "cpu": {
+    "text_tests": 17,
+    "selector_default_tests": 7,
+    "selector_native_tests": 7,
+    "combined_all_features_cpu_tests": 24,
+    "combined_matrix_gpu_entries": "2 returned SKIP without resource env; strict results below"
+  },
+  "doctest": {
+    "passed": 1
+  },
+  "clippy": {
+    "all_targets": true,
+    "all_features": true,
+    "deny_warnings": true,
+    "exit_code": 0
+  },
+  "rustfmt": {
+    "exit_code": 0
+  },
+  "consumer": {
+    "package": "toolbar",
+    "cargo_check_exit_code": 0,
+    "existing_dependency_warnings": "country-core: 14"
+  },
+  "gpu": {
+    "executable": "target/debug/deps/gpu_pipeline-9531e7685afa03dd",
+    "executable_sha256": "4e2acdda33a756fb48e32983557d0c35c0704927f1df52eb1766d9a8a025ca68",
+    "device": "Apple M3",
+    "driver": "MoltenVK 1.4.2",
+    "tests_passed": 2,
+    "frames": 9,
+    "skips": 0,
+    "validation_errors": 0,
+    "validation_warnings": 0,
+    "vuid": 0,
+    "sync_hazards": 0,
+    "validation_layer_loading_verified": true,
+    "environment": {
+      "DYLD_FALLBACK_LIBRARY_PATH": "/opt/homebrew/lib",
+      "VK_DRIVER_FILES": "/opt/homebrew/Cellar/molten-vk/1.4.2/etc/vulkan/icd.d/MoltenVK_icd.json",
+      "VK_LOADER_DEBUG": "layer",
+      "VK_INSTANCE_LAYERS": "VK_LAYER_KHRONOS_validation",
+      "VK_LAYER_VALIDATE_SYNC": "1",
+      "TG_TEXT_REQUIRE_GPU": "1",
+      "TG_TEXT_ORIGINAL_ROOT": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade",
+      "TG_TEXT_REFERENCE_PATH": "crates/rhapsody/reports/refactor/2026-10-17-v6/tg-text-dynamic-reference.rgba"
+    },
+    "command": "target/debug/deps/gpu_pipeline-9531e7685afa03dd --nocapture --test-threads=1",
+    "execution": "outside sandbox; sandbox attempts returned ERROR_INCOMPATIBLE_DRIVER",
+    "references_sha256": {
+      "crates/rhapsody/reports/refactor/2026-10-17-v6/tg-text-dynamic-reference.rgba": "fcd52dd857bb7f7d3ebfdf0f757131766d2794394497627cdad16f2f4a061c9e",
+      "crates/rhapsody/reports/refactor/2026-10-17-v6/tg-text-dynamic-reference.image.rgba": "352102fff32add445215e6fc3d2206278b083b663fa31113faa801c495a4cfa3"
+    },
+    "shader_sha256": "8b5879c3b72303c52266f597dab1a802ee92deb0b881c1532a05089ee7663c82"
+  },
+  "example": {
+    "executable_sha256": "a356685d1a1949003d56b8e7bc2052a9a9e9378be31f69c9a37be9c606da2d40",
+    "exit_code": 0,
+    "cold_upload_regions": 24,
+    "warm_upload_regions": 0,
+    "cold_transfer_buffers": 2,
+    "warm_transfer_buffers": 2,
+    "pixels_equal": true,
+    "preview_inspected": true,
+    "metadata": "example-output/text.json"
+  },
+  "published_source_sha256": {
+    "crates/tg-gpu-selector/BUSINESS_RULES.md": "c084109ccd75273a9fde49411c3e7acaf43d3dd94edba557d13e415b15dd6991",
+    "crates/tg-gpu-selector/Cargo.toml": "05876ab46da1ba858e1944df8970b5b01a0f125cbd333a50e6e5b88a96931080",
+    "crates/tg-gpu-selector/README.md": "511e27a1cf8e86229754af4cf5fa31d37f2963522f3b6d23cdfd027de1aacee7",
+    "crates/tg-gpu-selector/examples/tg_gpu_selector_native_probe.rs": "bb431b46196db9b139ad5fd94d5c342c0190200a4a754fae768c571d4ac87de3",
+    "crates/tg-gpu-selector/src/gpu_selection.rs": "601f2b172b403e9c506a4bde134e8d5491b62edf3e2b3e67856ee47447ef9299",
+    "crates/tg-gpu-selector/src/gpu_selection/advice.rs": "d2ef7302d94ba4f250a636aa312ae29229d603e661ab93e73ec75c8a34b377aa",
+    "crates/tg-gpu-selector/src/gpu_selection/controls.rs": "296825ecd78c56a77bb46f3340c7fa1cafe7407244a23bcc4105e6c12964c811",
+    "crates/tg-gpu-selector/src/gpu_selection/errors.rs": "185318215dc4e19be879fb468393483b9007e86f4a395e7df8cfdb04f0cfafa6",
+    "crates/tg-gpu-selector/src/gpu_selection/model.rs": "1d8d6f954d7f1c447e6fe500ee49fa5d07e603b418765ca01fbea6dd96f860bc",
+    "crates/tg-gpu-selector/src/gpu_selection/native.rs": "b70683ff5f300c2a7eeb5c33e80a58a6d0a22967601b0c757727babab73b90de",
+    "crates/tg-gpu-selector/src/gpu_selection/policy_tests.rs": "e60616f6f1d4e9f710dc9188243b5eb1a3221c2ce6c88d2ba8cac1802520f9e1",
+    "crates/tg-gpu-selector/src/lib.rs": "a5cde45167a3ca63e7b8e76406be72fdb075b1bcc3b564ae9e73e5ddecf89cb4",
+    "crates/tg-gpu-selector/src/vulkan_config.rs": "29b6fcdffe1b41d0d4770b6210fa0a1cd0626102c45abff7602e428237a8e9c6",
+    "crates/tg-gpu-selector/src/vulkan_config/controls.rs": "0c965354e8a736c54163d2c6007fb1ebd6f4def261eb3f5d87b6069eeb0995c9",
+    "crates/tg-gpu-selector/src/vulkan_config/model.rs": "30b73e49c3ad9037f2be021afb7fb42863d7980651496394cd282fe5b8565c5d",
+    "crates/tg-gpu-selector/src/vulkan_config/native.rs": "0b5e0ca21689f859d888604067abcc1c9e39583133f1b088b697be10408f20a3",
+    "crates/tg-text/Cargo.toml": "708f8d6e4880257ff15395e64d2ef5a0a52aa8ecca9d229d28504b4e0f8bd9d5",
+    "crates/tg-text/README.md": "8a1eac4299a770ddfa2c0be0f8277038d04b130a30ecfd002ce0e33f455beef9",
+    "crates/tg-text/examples/text_gpu.rs": "394008986a6d9df42cb5a0aaa1a8cbcee863427ddaf5ad082f39b59705ee1e9d",
+    "crates/tg-text/src/color.rs": "c007593bb617adf43eb01320db2bfd5816e53e6c7a97b06cad14deadd7128b6d",
+    "crates/tg-text/src/error.rs": "5512fb3bb6ba63e6eeb656fb81b56dcc8cc665d561fa9b6255fa16a7ab3cea2f",
+    "crates/tg-text/src/font_table.rs": "814fffd0974d9499e1266b1878b15be18dbf660ea4a002dd3753eb6ad3c8af15",
+    "crates/tg-text/src/fragment.rs": "0c24412a0f8c99cd9f5200aff7ff333aaa9cc17d13e28f8196828825f84a2056",
+    "crates/tg-text/src/gpu.rs": "eeb3a778e987b7292e318dba9d62ece20d836576fe13d103158057dda0f7e096",
+    "crates/tg-text/src/lib.rs": "9c3082db1886ae3b283292edd3e709dd34a3534986147e4efddb3393dd6fcf62",
+    "crates/tg-text/src/renderer.rs": "f76894702be1b593e4c7afb17315ec29886b43aceafbb3588d1d96fd10f3a460",
+    "crates/tg-text/src/renderer/atlas.rs": "b152226ffad3b193e3f4ca6a2e3a07d7925b4ccbb87da3a966845912e4f71b99",
+    "crates/tg-text/src/renderer/primitive.rs": "c1b82fa7f09058309bbcf852a58ffd9f2a84772600076765265c75a3f7bce590",
+    "crates/tg-text/src/shape_stream.rs": "09708a77b7fa87c868fa9fcc9515c37614ccac50b2c69ba16db18c0f78a5fdcf",
+    "crates/tg-text/src/validation.rs": "00dac02115ce60de87947c92dde3941fe34c61026036533a0415c48e86d3149f",
+    "crates/tg-text/tests/behavior.rs": "6d470c499dde80ed79a01d26153514a4b07ad423132450a78b7250d5d81a32c9",
+    "crates/tg-text/tests/fixtures/font-table.ron": "0b9b4cd55916b7c4af0dd1322ce5d5330f72cfcb5fa6be1582d60b93961d8834",
+    "crates/tg-text/tests/followup_contract.rs": "7f567995dd6a119a877c28741df07179b54abcf51d37fe31945afa29eb725304",
+    "crates/tg-text/tests/gpu_pipeline.rs": "14366ea0c3ccfc0fb86a9c249d08f581f588d9e4b6f74c08bd1a729cc32b7066",
+    "crates/tg-text/tests/text_pipeline.rs": "b6b31680c0cafc7058d8e75ed6fefa387bb0efc77318796581da0359994a8f97"
+  },
+  "consumer_font_loader_files_sha256": {
+    "crates/systems/toolbar/src/mei/config.rs": "24a00ee75da5ffbfc5a3e0a437358b8be0cb0463175e4de71b177cdd6140cde4",
+    "crates/systems/toolbar/src/mei/core.rs": "5f414b89a9fc2b82816e94543c54733623066b2fdbd9b0cabcb63076229f0d81"
+  },
+  "limitations": [
+    "Native GUI was compiled and policy-tested; no actual dialog interaction run.",
+    "No throughput benchmark or full game-window integration acceptance.",
+    "Locked block 0.1.6 has a Cargo future-incompatibility notice.",
+    "Report documentation finalized after executable builds; executable hashes identify actual GPU runs."
+  ]
+}

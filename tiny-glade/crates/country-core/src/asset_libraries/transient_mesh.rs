@@ -1,15 +1,6 @@
-//! `transient_mesh.rs` — `TransientMesh` 组件与"延迟删除网格"链（B `components::transient_mesh` +
-//! `backend::delete_dropped_transient_meshes`）。
-//!
-//! 证据（`components-geometry/ALGORITHMS.md` §4，机器码为准）：
-//! - 注册表就是 `AssetMeshLibrary.transient_meshes`（`Arc<Mutex<Vec<u64>>>`，std futex Mutex），不是独立 `Res`；
-//! - `TransientMesh = { registry: Arc<..>@+0, mesh_handle: u64@+8 }`（16 B）；
-//!   `new_with_registry`（0x140aa8200）只做 `Arc::clone`，实参序是 `(mesh_handle, &Arc)`；
-//! - `Drop`（0x140899f90）：加锁（中毒 → `unwrap` panic）后 `push(mesh_handle)`，组件本身不碰 GPU；
-//! - `drain_meshes_to_delete`（0x1412e9e70）：加锁（中毒 → panic），在**锁内**对每个句柄调用闭包，随后只把
-//!   `len` 清零（保留容量，不是 `mem::take`）；闭包依次 `AssetMeshLibrary::remove`（0x14092d750）、
-//!   `AssetVAOLibrary::remove`（0x1409247a0）；
-//! - 系统参数面只有 `(ResMut<AssetMeshLibrary>, ResMut<AssetVAOLibrary>)`，持有注册表的 `Arc` 克隆。
+//! 瞬态网格生命周期。组件析构只入队，游戏线程释放 CPU 网格和 GPU 缓冲。
+//! 原作来源见项目 evidence；当前接口、行为变化与验证范围见 README.md。
+
 use std::sync::{Arc, Mutex};
 
 use bevy_ecs::component::Component;
@@ -22,7 +13,7 @@ use crate::render::mesh::Mesh;
 /// 共享的待删除队列。
 pub type TransientMeshRegistry = Mutex<Vec<Handle<Mesh>>>;
 
-/// 随实体存活的瞬态网格；实体移除时把句柄交还给注册表。
+/// 随实体存活的回收凭据，析构仅登记删除请求。
 #[derive(Component)]
 pub struct TransientMesh {
     registry: Arc<TransientMeshRegistry>,
@@ -30,7 +21,6 @@ pub struct TransientMesh {
 }
 
 impl TransientMesh {
-    /// `new_with_registry`（0x140aa8200）：克隆 `Arc`，不碰队列。
     pub fn new_with_registry(
         mesh_handle: Handle<Mesh>,
         registry: &Arc<TransientMeshRegistry>,
@@ -47,30 +37,59 @@ impl TransientMesh {
 }
 
 impl Drop for TransientMesh {
-    /// 0x140899f90：`registry.lock().unwrap().push(mesh_handle)`。
     fn drop(&mut self) {
-        self.registry.lock().unwrap().push(self.mesh_handle);
+        self.registry
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner())
+            .push(self.mesh_handle);
     }
 }
 
-/// `drain_meshes_to_delete`（0x1412e9e70）：锁内逐个调用 `delete`，之后 `len = 0`、容量保留。
 pub fn drain_meshes_to_delete(
     registry: &TransientMeshRegistry,
     mut delete: impl FnMut(Handle<Mesh>),
 ) {
-    let mut queue = registry.lock().unwrap();
-    for handle in queue.iter().copied() {
-        delete(handle);
+    // 批次出队后释放锁，删除与析构过程中允许新请求入队。
+    // 若回调中途展开，守卫会把未完成项归还队列。
+    struct DeletionBatch<'a> {
+        registry: &'a TransientMeshRegistry,
+        handles: Vec<Handle<Mesh>>,
+        completed: usize,
     }
-    queue.clear();
+    impl Drop for DeletionBatch<'_> {
+        fn drop(&mut self) {
+            self.handles.drain(..self.completed);
+            let mut arrivals = self
+                .registry
+                .lock()
+                .unwrap_or_else(|poison| poison.into_inner());
+            self.handles.append(&mut arrivals);
+            std::mem::swap(&mut *arrivals, &mut self.handles);
+        }
+    }
+    let handles =
+        std::mem::take(&mut *registry.lock().unwrap_or_else(|poison| poison.into_inner()));
+    let mut batch = DeletionBatch {
+        registry,
+        handles,
+        completed: 0,
+    };
+    while let Some(handle) = batch.handles.get(batch.completed).copied() {
+        delete(handle);
+        batch.completed += 1;
+    }
 }
 
 /// `delete_dropped_transient_meshes`：先克隆注册表的 `Arc`，再逐个释放网格与 VAO（顺序固定：网格库、VAO 库）。
-pub fn delete_dropped_transient_meshes(meshes: &mut AssetMeshLibrary, vaos: &mut AssetVAOLibrary) {
+pub fn delete_dropped_transient_meshes(
+    device: &dyn crate::render::ssbo::rhapsody_boundary::GraphicsDevice,
+    meshes: &mut AssetMeshLibrary,
+    vaos: &mut AssetVAOLibrary,
+) {
     let registry = Arc::clone(meshes.transient_meshes());
     drain_meshes_to_delete(&registry, |handle| {
         meshes.remove(handle);
-        vaos.remove(handle);
+        vaos.remove(device, handle);
     });
 }
 
@@ -105,17 +124,14 @@ mod tests {
     }
 
     #[test]
-    fn drain_visits_every_handle_under_the_lock_and_keeps_capacity() {
+    fn drain_releases_lock_and_keeps_capacity() {
         let reg = registry();
         let hs: Vec<_> = (0..5).map(|_| Handle::<Mesh>::new()).collect();
         reg.lock().unwrap().extend(hs.iter().copied());
         let cap_before = reg.lock().unwrap().capacity();
         let mut seen = Vec::new();
         drain_meshes_to_delete(&reg, |h| {
-            assert!(
-                reg.try_lock().is_err(),
-                "closure must run with the lock held"
-            );
+            assert!(reg.try_lock().is_ok(), "回调必须在队列锁之外执行");
             seen.push(h);
         });
         assert_eq!(seen, hs);
@@ -125,7 +141,7 @@ mod tests {
     }
 
     #[test]
-    fn poisoned_registry_panics_like_the_original_unwrap() {
+    fn poisoned_registry_still_allows_reclamation() {
         let reg = registry();
         let r2 = Arc::clone(&reg);
         let _ = std::thread::spawn(move || {
@@ -134,7 +150,7 @@ mod tests {
         })
         .join();
         let result = std::panic::catch_unwind(|| drain_meshes_to_delete(&reg, |_| {}));
-        assert!(result.is_err());
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -147,13 +163,21 @@ mod tests {
         ));
         let component = TransientMesh::new_with_registry(handle, meshes.transient_meshes());
         assert!(meshes.get(handle).is_some());
-        delete_dropped_transient_meshes(&mut meshes, &mut vaos);
+        delete_dropped_transient_meshes(
+            &crate::render::test_device::TestDevice(0),
+            &mut meshes,
+            &mut vaos,
+        );
         assert!(
             meshes.get(handle).is_some(),
             "still alive while the entity exists"
         );
         drop(component);
-        delete_dropped_transient_meshes(&mut meshes, &mut vaos);
+        delete_dropped_transient_meshes(
+            &crate::render::test_device::TestDevice(0),
+            &mut meshes,
+            &mut vaos,
+        );
         assert!(meshes.get(handle).is_none());
         assert!(meshes.transient_meshes().lock().unwrap().is_empty());
     }

@@ -1,0 +1,41 @@
+NAME: user_id
+VA: 0x140ae96f0
+SIZE: 70
+SIGNATURE: void __cdecl user_id(void)
+CALLEES:
+  {'name': 'SteamAPI_ISteamUser_GetSteamID', 'address': '142923710'}
+  {'name': 'SteamAPI_SteamUser_v023', 'address': '142923730'}
+  {'name': 'drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>', 'address': '140b85350'}
+DECOMP:
+
+void __cdecl country_core::systems::steam::AppSteamIntegration::user_id(void)
+
+{
+  longlong lVar1;
+  longlong *plVar2;
+  code *pcVar3;
+  undefined8 uVar4;
+  undefined8 *in_RCX;
+  
+  uVar4 = SteamAPI_SteamUser_v023();
+  plVar2 = (longlong *)*in_RCX;
+  LOCK();
+  lVar1 = *plVar2;
+  *plVar2 = *plVar2 + 1;
+  UNLOCK();
+  if (*plVar2 != 0 && SCARRY8(lVar1,1) == *plVar2 < 0) {
+    SteamAPI_ISteamUser_GetSteamID(uVar4);
+    LOCK();
+    *plVar2 = *plVar2 + -1;
+    UNLOCK();
+    if (*plVar2 == 0) {
+      alloc::sync::Arc::drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>
+                ();
+    }
+    return;
+  }
+                    // WARNING: Does not return
+  pcVar3 = (code *)invalidInstructionException();
+  (*pcVar3)();
+}
+

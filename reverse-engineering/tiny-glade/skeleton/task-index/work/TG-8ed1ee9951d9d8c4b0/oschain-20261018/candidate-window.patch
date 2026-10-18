@@ -1,0 +1,18 @@
+--- games_test/tiny-glade/crates/country-core/src/resources/window.rs
++++ games_test/tiny-glade/crates/country-core/src/resources/window.rs
+@@ -36,7 +36,6 @@
+     pub video_modes: Vec<VideoMode>,
+     pub monitor: MonitorMatch,
+ }
+-
+ 
+ /// `WindowFocusEvent`（B `country_core::resources::window::WindowFocusEvent`，O：
+ /// switch_toolbar_category_button 0x1423427f0 / render_taffy_ui_to_widgets 0x142338990
+@@ -100,3 +99,7 @@
+         ratio
+     }
+ }
++
++/// B camera_mouse_ray@1408ef2f8 emits an EventId-only (8B) record.
++#[derive(Event, Clone, Copy, Debug, Default)]
++pub struct AudioCursorMoved;

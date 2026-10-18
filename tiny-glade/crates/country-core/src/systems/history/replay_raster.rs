@@ -17,6 +17,55 @@ use bevy_ecs::prelude::*;
 use glam::Vec3;
 use std::sync::Arc;
 
+/// 4 组资源参数面（B `replay_raster::_::impl$0::get_param` 0x140ae5830 输出）。
+///
+/// fresh 反编译（impl-history-deep 2026-10-17，`results/batch2-reva-history-process.json`）：
+/// 输出元素 = 4 组 × 0x20B，每组 `{data u64 @+0x00, p58 ptr @+0x08, p5c ptr @+0x10,
+/// flag u32 @+0x18, u1c u32 @+0x1c}`；末尾 `[0x80] = in_RDX + 4`（索引数组尾指针）。
+/// 每组从稀疏资源表槽（元素 0x60B）取：`data = *(slot + 0x10)`（载荷数据指针）、
+/// `p58 = &slot[0x58]`、`p5c = &slot[0x5c]`（资源槽 +0x58/+0x5c 子字段指针）、
+/// `flag = *(in_R8 + 0x130)`（u32，四组共享）、`u1c = in_stack_00000028`（入参 u32）。
+///
+/// 原版从稀疏资源表按 4 索引解析（in_RDX[0..4]）；任一缺失 → panic
+/// `"Resource requested by <type> does not exist"`（类型名常量：
+/// `GameTimeResource` @0x142ae20a7 / `History` @0x142ae225e /
+/// `AssetSsboLibrary` @0x142ae2287 / `ReplayBuffer` @0x142ae250d）。
+/// src 回放系统经 Bevy `Res` 注入同四资源（缺失即装配错误）；本函数按机器
+/// 控制流实现取参并组装 4 组参数面。
+///
+/// **载荷指针 @+0x58/+0x5c 语义**：为各资源槽 0x60B 元素内部第 0x58/0x5c 字节的
+/// 子字段地址（`&slot[0x58]`/`&slot[0x5c]`），由调用方 replay_raster 按资源类型
+/// 解引用；各资源原生槽内 0x58/0x5c 字段的精确含义随资源类型而异
+/// （GameTime/History/Ssbo/Replay 各自原生布局待对账，不编造字段含义）。
+#[derive(Clone, Copy)]
+pub struct RasterReplayParams<'a, S: Send + Sync + 'static> {
+    /// 组 0（GameTimeResource）。
+    pub time: &'a GameTime,
+    /// 组 1（History）。
+    pub history: &'a History<S>,
+    /// 组 2（AssetSsboLibrary）。
+    pub ssbo: &'a AssetSsboLibrary,
+    /// 组 3（ReplayBuffer）。
+    pub replay: &'a ReplayBuffer,
+}
+
+/// B `get_param`（0x140ae5830）：4 组资源取参（判别语义见 `RasterReplayParams`）。
+pub fn get_param<'a, S: Send + Sync + 'static>(
+    time: &'a GameTime,
+    history: &'a History<S>,
+    ssbo: &'a AssetSsboLibrary,
+    replay: &'a ReplayBuffer,
+) -> RasterReplayParams<'a, S> {
+    // 机器码 4 索引稀疏表判缺失（in_RDX[i] < 表长 && 元素非空才通过）；
+    // src 资源已注入存在，缺失即系统装配错误，保留原 panic 语义面。
+    RasterReplayParams {
+        time,
+        history,
+        ssbo,
+        replay,
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum RasterDomain {
@@ -88,11 +137,7 @@ pub fn duration_based_on_stroke_length(points: &[Vec3]) -> f32 {
     }
     let duration = (length / 5.0) * 0.025;
     // Native unordered comparison leaves NaN intact.
-    if duration <= 0.4 {
-        0.4
-    } else {
-        duration
-    }
+    if duration <= 0.4 { 0.4 } else { duration }
 }
 
 /// Original Curve<Vec3,CurveCoordSemantic3D> dependency operations, not a new
@@ -322,10 +367,9 @@ impl EditType {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        recovered_building::history_transactions::{HistoryEntry, ObservedHistoryLedger},
-        resources::world_raster::DirtyTilePublisher,
-    };
+    use crate::resources::history::transactions::HistoryEntry;
+    use crate::resources::history::transactions::ObservedHistoryLedger;
+    use crate::resources::world_raster::DirtyTilePublisher;
     fn stroke(a: f32, b: f32) -> Arc<RasterStroke> {
         Arc::new(RasterStroke {
             flags: 0,

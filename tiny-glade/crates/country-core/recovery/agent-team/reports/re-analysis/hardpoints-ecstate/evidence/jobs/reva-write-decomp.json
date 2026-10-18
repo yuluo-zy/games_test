@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nfrom ghidra.app.decompiler import DecompInterface\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\nfm = prog.getFunctionManager()\naddrs = [\"0x142291230\", \"0x14229a7f0\", \"0x141218e30\"]\nresults = {}\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    for a in addrs:\n        monitor.checkCancelled()\n        addr = prog.getAddressFactory().getAddress(a)\n        f = fm.getFunctionAt(addr)\n        if f is None:\n            results[a] = {\"error\": \"function absent\"}\n            continue\n        r = d.decompileFunction(f, 120, monitor)\n        entry = {\"name\": str(f.getName()), \"body\": str(f.getBody()),\n                 \"signature\": str(f.getSignature())}\n        if not r.decompileCompleted():\n            entry[\"error\"] = str(r.getErrorMessage())\n        else:\n            entry[\"decompiled\"] = r.getDecompiledFunction().getC()\n        results[a] = entry\nfinally:\n    d.dispose()\nout[\"functions\"] = results\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 300
+    },
+    "timeout_seconds": 400
+  }
+]

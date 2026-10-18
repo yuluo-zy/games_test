@@ -10,14 +10,15 @@ let p=b.intersect_segment(ray.origin,v3([1065353216,0,0]));for (a,e)in p.unwrap(
 {let b=Aabb3{min:Vec3::new(-1.0,-2.0,-3.0),max:Vec3::new(1.0,2.0,3.0)};let ray=Ray{origin:v3([3212836864,0,0]),direction:v3([1065353216,0,0])};let got=b.classify_ray_intersection(ray);
 match got{RayBoxIntersection::Hit{enter,exit}=>{eq(enter,0);eq(exit,1073741824);},_=>panic!("classification mismatch")}
 let p=b.intersect_segment(ray.origin,v3([0,0,0]));for (a,e)in p.unwrap().to_array().into_iter().zip([3212836864,0,0]){eq(a,e)}}
+// Corrected: rays parallel to a face still intersect the closed box.
 {let b=Aabb3{min:Vec3::new(-1.0,-2.0,-3.0),max:Vec3::new(1.0,2.0,3.0)};let ray=Ray{origin:v3([1065353216,0,0]),direction:v3([0,1065353216,0])};let got=b.classify_ray_intersection(ray);
-assert!(matches!(got,RayBoxIntersection::NoHit));
-let p=b.intersect_segment(ray.origin,v3([1065353216,1065353216,0]));assert!(p.is_none());}
+assert_eq!(got,RayBoxIntersection::Hit{enter:0.0,exit:2.0});
+let p=b.intersect_segment(ray.origin,v3([1065353216,1065353216,0]));assert_eq!(p,Some(ray.origin));}
 {let b=Aabb3{min:Vec3::new(-1.0,-2.0,-3.0),max:Vec3::new(1.0,2.0,3.0)};let ray=Ray{origin:v3([1077936128,0,0]),direction:v3([1065353216,0,0])};let got=b.classify_ray_intersection(ray);
 assert!(matches!(got,RayBoxIntersection::NoHit));
 let p=b.intersect_segment(ray.origin,v3([1082130432,0,0]));assert!(p.is_none());}
 {let b=Aabb3{min:Vec3::new(-1.0,-2.0,-3.0),max:Vec3::new(1.0,2.0,3.0)};let ray=Ray{origin:v3([0,0,0]),direction:v3([0,0,0])};let got=b.classify_ray_intersection(ray);
-match got{RayBoxIntersection::Inside{enter,exit}=>{eq(enter,4286578688);eq(exit,2139095040);},_=>panic!("classification mismatch")}
+assert_eq!(got,RayBoxIntersection::NoHit); // A stationary point is not a ray.
 let p=b.intersect_segment(ray.origin,v3([0,0,0]));for (a,e)in p.unwrap().to_array().into_iter().zip([0,0,0]){eq(a,e)}}
 {let b=Aabb3{min:Vec3::new(-1.0,-2.0,-3.0),max:Vec3::new(1.0,2.0,3.0)};let ray=Ray{origin:v3([1073741824,1077936128,1082130432]),direction:v3([3212836864,3212836864,3212836864])};let got=b.classify_ray_intersection(ray);
 match got{RayBoxIntersection::Hit{enter,exit}=>{eq(enter,1065353216);eq(exit,1077936128);},_=>panic!("classification mismatch")}

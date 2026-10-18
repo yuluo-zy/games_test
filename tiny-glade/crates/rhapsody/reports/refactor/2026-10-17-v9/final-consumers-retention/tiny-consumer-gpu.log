@@ -1,0 +1,159 @@
+   Compiling country-core v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core)
+warning: unused import: `AudioInstance`
+  --> crates/country-core/src/systems/audio/wall_audio_orchestrator.rs:12:45
+   |
+12 |     resources::audio_resources::{AudioCore, AudioInstance, Studio},
+   |                                             ^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `AudioInstance`
+  --> crates/country-core/src/systems/audio/wall_audio_path.rs:11:45
+   |
+11 |     resources::audio_resources::{AudioCore, AudioInstance, Studio},
+   |                                             ^^^^^^^^^^^^^
+
+warning: unused import: `SubworldColliderHandle`
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:44:54
+   |
+44 | use crate::systems::collision::world::{RaycastWorld, SubworldColliderHandle};
+   |                                                      ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `DebugColor`
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:45:31
+   |
+45 | use crate::utils::debug_viz::{DebugColor, DebugLine, DebugSphere};
+   |                               ^^^^^^^^^^
+
+warning: unused import: `glam::Vec3`
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:46:5
+   |
+46 | use glam::Vec3;
+   |     ^^^^^^^^^^
+
+warning: unused import: `DecoratorStorage`
+  --> crates/country-core/src/systems/save/snapshot.rs:29:40
+   |
+29 |                 DecoratorAddrSnapshot, DecoratorStorage, DecoratorStorageAddr,
+   |                                        ^^^^^^^^^^^^^^^^
+
+warning: unused import: `bevy_ecs::schedule::IntoScheduleConfigs`
+  --> crates/country-core/src/systems/save/mod.rs:53:5
+   |
+53 | use bevy_ecs::schedule::IntoScheduleConfigs;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused variable: `emit`
+   --> crates/country-core/src/systems/ivy/ivy_grower.rs:454:5
+    |
+454 |     emit: &mut impl FnMut(IvySegmentDoneGrowingMsg),
+    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_emit`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `kind_filtered` is never used
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:60:4
+   |
+60 | fn kind_filtered(kind: u8, gui_byte: u8) -> bool {
+   |    ^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: structure field `Wall` should have a snake case name
+   --> crates/country-core/src/systems/save/snapshot.rs:687:12
+    |
+687 |     Wall { Wall: u64 },
+    |            ^^^^ help: convert the identifier to snake case (notice the capitalization): `wall`
+    |
+    = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default
+
+warning: structure field `Stair` should have a snake case name
+   --> crates/country-core/src/systems/save/snapshot.rs:689:13
+    |
+689 |     Stair { Stair: u64 },
+    |             ^^^^^ help: convert the identifier to snake case (notice the capitalization): `stair`
+
+warning: structure field `Wall` should have a snake case name
+   --> crates/country-core/src/systems/save/snapshot.rs:721:12
+    |
+721 |     Wall { Wall: DecoratorWallDstJson },
+    |            ^^^^ help: convert the identifier to snake case (notice the capitalization): `wall`
+
+warning: structure field `Terrain` should have a snake case name
+   --> crates/country-core/src/systems/save/snapshot.rs:722:15
+    |
+722 |     Terrain { Terrain: DecoratorTerrainDstJson },
+    |               ^^^^^^^ help: convert the identifier to snake case: `terrain`
+
+   Compiling system-roof v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/roof)
+warning: unused import: `public_walls::PublicWalls`
+  --> crates/systems/roof/src/delete_roof.rs:15:21
+   |
+15 |     walls::{WallId, public_walls::PublicWalls},
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `WallId`
+  --> crates/systems/roof/src/update_roof_spatial.rs:15:13
+   |
+15 |     walls::{WallId, public_walls::{OnWallChanged, PublicWalls}},
+   |             ^^^^^^
+
+warning: `system-roof` (lib) generated 2 warnings (run `cargo fix --lib -p system-roof` to apply 2 suggestions)
+   Compiling tiny-glade v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade)
+warning: `country-core` (lib) generated 13 warnings (run `cargo fix --lib -p country-core` to apply 8 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 40.54s
+     Running unittests src/lib.rs (target/debug/deps/tiny_glade-448d736b2eeceb4b)
+
+running 2 tests
+test render_host::buffer_description_tests::buffer_description_conversion_preserves_all_memory_locations ... ok
+test render_host::buffer_description_tests::buffer_description_conversion_rejects_unknown_memory_and_truncating_alignment ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/core_raster_draw.rs (target/debug/deps/core_raster_draw-15aa9227f9e7ad5e)
+
+running 10 tests
+test consumer_resource_errors_keep_device_loss_including_cached_texture_views ... ok
+test core_buffer_handle_checks_generation_and_reports_real_description ... ok
+test core_raster_pass_chain_animates_over_frames_with_two_in_flight ... 第 0 帧（0°）三角形像素 512，不一致 0，质心误差 0.01px
+第 6 帧（90°）三角形像素 512，不一致 0，质心误差 0.01px
+第 12 帧（180°）三角形像素 512，不一致 0，质心误差 0.01px
+第 18 帧（270°）三角形像素 512，不一致 0，质心误差 0.01px
+第 24 帧（360°）三角形像素 512，不一致 0，质心误差 0.01px
+共校验 30 帧；最大在飞帧数 2；与参考光栅化最多 0 个像素不一致；质心最大误差 0.09 px
+ok
+test core_raster_pass_depth_attachment_resolves_overlap_independent_of_draw_order ... 先远后近：红 512、绿 332、重叠区红 180/180、与参考不一致 0
+先近后远：红 512、绿 332、重叠区红 180/180、与参考不一致 0
+ok
+test core_raster_pass_draws_a_triangle_into_a_core_texture_and_reads_back ... 单帧：三角形像素 509（理论 512），与参考光栅化不一致 0，质心误差 0.049px
+ok
+test draw_kinds_without_a_verified_vulkan_mapping_return_unsupported_without_submission ... ok
+test host_temporal_resources_use_session_owned_named_slots ... ok
+test indexed_draw_declares_the_actual_index_bytes_and_outlives_the_host_handle ... ok
+test owned_external_draw_resources_are_declared_before_recording_and_outlive_host_handles ... ok
+test render_pass_desc_maps_attachment_tags_to_load_ops_and_depth_access ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.37s
+
+     Running tests/render_host.rs (target/debug/deps/render_host-06342aee2f16e81d)
+
+running 14 tests
+test compute_pass_device_resolves_buffers_views_and_descs ... ok
+test core_buffer_roundtrip_through_rhapsody ... ok
+test core_compute_pass_dispatches_on_lavapipe_with_bound_storage_buffer ... ok
+test core_compute_pipeline_loads_compiled_bin_and_creates_vulkan_pipeline ... ok
+test core_passes_execute_on_lavapipe_through_the_rhapsody_session ... ok
+test core_raster_pipeline_creates_from_key_handle_and_opts_bitfield ... ok
+test core_render_graph_imports_and_exports_land_in_the_rhapsody_graph ... ok
+test core_texture_creates_through_rhapsody_with_kind_and_format_bytes ... ok
+test custom_compute_push_rebinds_parameter_storage_and_preserves_resource_leases ... ok
+test device_local_sparse_updates_use_the_bounded_queue_and_return_only_after_their_points_complete ... ok
+test external_compute_buffers_are_declared_before_recording_and_survive_host_release ... ok
+test external_compute_sampled_and_storage_images_have_declared_views_and_real_pixels ... ok
+test raster_shader_variants_append_the_depth_only_define ... ok
+test versioned_country_upload_uses_real_session_subgraph_and_result_caches ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.60s
+

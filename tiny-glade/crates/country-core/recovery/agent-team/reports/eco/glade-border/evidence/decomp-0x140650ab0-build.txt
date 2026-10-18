@@ -1,0 +1,42 @@
+=== NAME: build
+=== SIGNATURE: void __cdecl build(void)
+=== LOCALS: [{"name": "in_RDX", "type": "longlong", "storage": "RDX:8", "is_phantom": true, "in_decompiled_code": true}, {"name": "uVar1", "type": "ulonglong", "storage": "RDX:8", "is_phantom": false, "in_decompiled_code": true}, {"name": "extraout_RAX", "type": "longlong", "storage": "RAX:8", "is_phantom": true, "in_decompiled_code": true}, {"name": "extraout_RAX_00", "type": "longlong", "storage": "RAX:8", "is_phantom": true, "in_decompiled_code": true}]
+=== CALLEES: [{"name": "_ZN8bevy_ecs8schedule6config19IntoScheduleConfigs21chain_ignore_deferred17h65d9a6b6054e3432E", "address": "140ea2e70"}, {"name": "add_systems<tuple$<>,bevy_app::main_schedule::Update,enum2$<bevy_ecs::schedule::config::ScheduleConfigs<alloc::boxed::Box<dyn$<bevy_ecs::system::system::System<assoc$<In,tuple$<>_>,assoc$<Out,enum2$<core::result::Result<tuple$<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>_>_>_>", "address": "140ea41b0"}, {"name": "get_resource_id", "address": "1400dd6f0"}, {"name": "in_set_inner<alloc::boxed::Box<dyn$<bevy_ecs::system::system::System<assoc$<In,tuple$<>_>,assoc$<Out,enum2$<core::result::Result<tuple$<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>_>", "address": "140ea4120"}, {"name": "intern<dyn$<bevy_ecs::schedule::set::SystemSet>_>", "address": "140ea3260"}, {"name": "register_event<country_core::resources::glade_border::DisplayOutOfBorder>", "address": "140ea4960"}, {"name": "register_event<country_core::resources::glade_border::FeedbackInputOutOfBorder>", "address": "140ea4330"}]
+=== DECOMPILED: 
+void __cdecl system_glade_border::impl$0::build(void)
+
+{
+  longlong extraout_RAX;
+  longlong extraout_RAX_00;
+  longlong in_RDX;
+  ulonglong uVar1;
+  
+  _ZN8bevy_ecs8schedule6config19IntoScheduleConfigs21chain_ignore_deferred17h65d9a6b6054e3432E();
+  bevy_ecs::intern::Interner::intern<dyn_<bevy_ecs::schedule::set::SystemSet>_>();
+  bevy_ecs::schedule::config::ScheduleConfigs::
+  in_set_inner<alloc::boxed::Box<dyn_<bevy_ecs::system::system::System<assoc_<In,tuple_<>_>,assoc_<Out,enum2_<core::result::Result<tuple_<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>_>
+            ();
+  bevy_app::sub_app::SubApp::
+  add_systems<tuple_<>,bevy_app::main_schedule::Update,enum2_<bevy_ecs::schedule::config::ScheduleConfigs<alloc::boxed::Box<dyn_<bevy_ecs::system::system::System<assoc_<In,tuple_<>_>,assoc_<Out,enum2_<core::result::Result<tuple_<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>_>_>_>
+            ();
+  uVar1 = 0x94d3a5e9912b82a6;
+  bevy_ecs::component::Components::get_resource_id();
+  if ((((extraout_RAX == 0) || (*(ulonglong *)(in_RDX + 0x218) <= uVar1)) ||
+      (uVar1 = *(ulonglong *)(*(longlong *)(in_RDX + 0x210) + uVar1 * 8), uVar1 == 0)) ||
+     (*(longlong *)(*(longlong *)(in_RDX + 0x1e0) + 0x20 + ~uVar1 * 0x60) == 0)) {
+    bevy_ecs::event::registry::EventRegistry::
+    register_event<country_core::resources::glade_border::DisplayOutOfBorder>();
+  }
+  uVar1 = 0xbe7a01660379830b;
+  bevy_ecs::component::Components::get_resource_id();
+  if (((extraout_RAX_00 != 0) && (uVar1 < *(ulonglong *)(in_RDX + 0x218))) &&
+     ((uVar1 = *(ulonglong *)(*(longlong *)(in_RDX + 0x210) + uVar1 * 8), uVar1 != 0 &&
+      (*(longlong *)(*(longlong *)(in_RDX + 0x1e0) + 0x20 + ~uVar1 * 0x60) != 0)))) {
+    return;
+  }
+  bevy_ecs::event::registry::EventRegistry::
+  register_event<country_core::resources::glade_border::FeedbackInputOutOfBorder>();
+  return;
+}
+
+

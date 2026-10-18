@@ -8,10 +8,9 @@
 //!   WallGableChanged、PlayRoofSound ≡ RoofSound。
 //! - `wall_roof_hashmap`：原 `country_core::systems::wall::wall_state::wall_roof_hashmap`
 //!   的关联哈希表系统（RoofIsInvalid 事件的原始归属模块）。
-use country_core::recovered_building::{
-    roof_associations::{AssociationAction, association_action},
-    roof_components::prepare_resolved_roof_components,
-};
+use country_core::resources::roofs::associations::AssociationAction;
+use country_core::resources::roofs::associations::association_action;
+use country_core::resources::roofs::components::prepare_resolved_roof_components;
 use country_core::resources::{
     roofs::{
         Roof, RoofAnimation, RoofMarkedForDeletion, RoofTileSimulation, RoofTriggerVolume,

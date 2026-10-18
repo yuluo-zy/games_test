@@ -1,0 +1,352 @@
+diff --git a/games_test/tiny-glade/crates/country-core/src/resources/walls/dormers.rs b/games_test/tiny-glade/crates/country-core/src/resources/walls/dormers.rs
+new file mode 100644
+--- /dev/null
++++ b/games_test/tiny-glade/crates/country-core/src/resources/walls/dormers.rs
+@@ -0,0 +1,347 @@
++//! Canonical B dormer GPU storage. Constructors prove the row sizes and
++//! capacities; the hole record's twelve words remain uninterpreted here.
++use crate::asset_libraries::ssbo_library::SsboType as LibrarySsbo;
++use crate::render::ssbo::{
++    InstanceBuffer, StorageElement, TypedStorageBuffer, rhapsody_boundary::GraphicsDevice,
++};
++
++/// B typed constructor 0x14161a760: 48-byte rows, capacity11250.
++#[repr(transparent)]
++#[derive(Clone, Copy, Debug, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
++pub struct DormerHoleSsbo(pub [u32; 12]);
++
++/// B typed constructor 0x1416159e0: one u32 per cell, capacity225.
++#[repr(transparent)]
++#[derive(Clone, Copy, Debug, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
++pub struct DormerHoleCountPerCellSsbo(pub u32);
++
++const _: [(); 48] = [(); core::mem::size_of::<DormerHoleSsbo>()];
++const _: [(); 4] = [(); core::mem::align_of::<DormerHoleSsbo>()];
++const _: [(); 4] = [(); core::mem::size_of::<DormerHoleCountPerCellSsbo>()];
++const _: [(); 4] = [(); core::mem::align_of::<DormerHoleCountPerCellSsbo>()];
++
++impl StorageElement for DormerHoleSsbo {
++    const NAME: &'static str = "Dormer Holes";
++    const BUFFER_LEN: usize = 11250;
++}
++impl StorageElement for DormerHoleCountPerCellSsbo {
++    const NAME: &'static str = "Dormer Hole Count";
++    const BUFFER_LEN: usize = 225;
++}
++
++/// These two original InstanceBuffer wrappers publish count0 on None and do
++/// not upload zeroes. The existing fixed byte-storage constructor implements
++/// their capacity/stride/alignment checks and usage0x22/memory1/alignment4.
++fn dormer_instance_storage<T: StorageElement>(
++    device: &dyn GraphicsDevice,
++    initial: Option<&[u8]>,
++) -> InstanceBuffer<T> {
++    let buffer = TypedStorageBuffer::<T>::new_storage_buffer(device, initial);
++    let instance_count = initial.map_or(0, |bytes| bytes.len() / core::mem::size_of::<T>());
++    InstanceBuffer {
++        instance_count,
++        buffer,
++    }
++}
++
++impl LibrarySsbo for DormerHoleSsbo {
++    type Storage = InstanceBuffer<Self>;
++    fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
++        dormer_instance_storage(device, initial)
++    }
++}
++impl LibrarySsbo for DormerHoleCountPerCellSsbo {
++    type Storage = InstanceBuffer<Self>;
++    fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
++        dormer_instance_storage(device, initial)
++    }
++}
++impl crate::render::pass_builder::pass_resource_access::SsboType for DormerHoleSsbo {
++    fn rg_buffer_hash() -> u64 {
++        crate::asset_libraries::ssbo_library::SsboId::of::<Self>()
++            .0
++            .0
++    }
++}
++impl crate::render::pass_builder::pass_resource_access::SsboType for DormerHoleCountPerCellSsbo {
++    fn rg_buffer_hash() -> u64 {
++        crate::asset_libraries::ssbo_library::SsboId::of::<Self>()
++            .0
++            .0
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use crate::asset_libraries::ssbo_library::{AssetSsboLibrary, SsboGraphLease, SsboId};
++    use crate::render::ssbo::rhapsody_boundary::{BackendError, Buffer, BufferDesc};
++    use std::{cell::RefCell, rc::Rc};
++
++    #[derive(Default)]
++    struct Device(RefCell<Vec<(BufferDesc, String, Option<Vec<u8>>)>>);
++    impl GraphicsDevice for Device {
++        fn create_buffer(
++            &self,
++            desc: &BufferDesc,
++            name: &str,
++            initial: Option<&[u8]>,
++        ) -> Result<Buffer, BackendError> {
++            let mut calls = self.0.borrow_mut();
++            calls.push((*desc, name.to_owned(), initial.map(<[u8]>::to_vec)));
++            Ok(Buffer {
++                id: 700 + calls.len() as u64,
++                byte_size: desc.size as u64,
++                ..Buffer::default()
++            })
++        }
++        fn update_buffer_bytes(
++            &self,
++            _: &Buffer,
++            _: &[u8],
++            _: &[core::ops::Range<usize>],
++            _: usize,
++        ) -> Result<(), BackendError> {
++            panic!("creation must not perform a separate update")
++        }
++    }
++
++    #[test]
++    fn native_dormer_none_registers_actual_instance_storage_without_upload() {
++        use crate::systems::render_loop::draw_passes::draw_shaders::ssbo_tags::{
++            DormerHoleCountTag, DormerHoleTag,
++        };
++        assert_eq!(
++            core::any::TypeId::of::<DormerHoleTag>(),
++            core::any::TypeId::of::<DormerHoleSsbo>()
++        );
++        assert_eq!(
++            core::any::TypeId::of::<DormerHoleCountTag>(),
++            core::any::TypeId::of::<DormerHoleCountPerCellSsbo>()
++        );
++        assert_eq!(SsboId::of::<DormerHoleSsbo>().0.0, 0x13c9c799697a906c);
++        assert_eq!(
++            SsboId::of::<DormerHoleCountPerCellSsbo>().0.0,
++            0x96675839a35d7e8f
++        );
++        let device = Device::default();
++        let library = AssetSsboLibrary::new();
++        library.add_new::<DormerHoleSsbo>(&device);
++        library.add_new::<DormerHoleCountPerCellSsbo>(&device);
++        assert_eq!(library.get::<DormerHoleSsbo>().unwrap().instance_count, 0);
++        assert_eq!(
++            library
++                .get::<DormerHoleCountPerCellSsbo>()
++                .unwrap()
++                .instance_count,
++            0
++        );
++        let calls = device.0.borrow();
++        assert_eq!(calls.len(), 2);
++        for (call, size, name) in [
++            (&calls[0], 0x83d60, "Dormer Holes"),
++            (&calls[1], 0x384, "Dormer Hole Count"),
++        ] {
++            assert_eq!(call.0, BufferDesc::new(size, 0x22, 1).alignment(4));
++            assert_eq!(call.1, name);
++            assert_eq!(call.2, None);
++        }
++    }
++
++    #[test]
++    fn native_dormer_initial_rows_are_counted_and_preserved_with_fixed_capacity() {
++        let device = Device::default();
++        let library = AssetSsboLibrary::new();
++        let holes = [
++            DormerHoleSsbo([0xffffffff; 12]),
++            DormerHoleSsbo([0x80000000; 12]),
++        ];
++        let counts = [
++            DormerHoleCountPerCellSsbo(1),
++            DormerHoleCountPerCellSsbo(225),
++        ];
++        library.add_new_with_data(&device, &holes);
++        library.add_new_with_data(&device, &counts);
++        assert_eq!(library.instance_count::<DormerHoleSsbo>(), 2);
++        assert_eq!(library.instance_count::<DormerHoleCountPerCellSsbo>(), 2);
++        let calls = device.0.borrow();
++        assert_eq!(calls[0].0.size, 540000);
++        assert_eq!(calls[1].0.size, 900);
++        assert_eq!(calls[0].2.as_deref(), Some(bytemuck::cast_slice(&holes)));
++        assert_eq!(calls[1].2.as_deref(), Some(bytemuck::cast_slice(&counts)));
++    }
++
++    fn capacity_and_invalid_data<T: LibrarySsbo + bytemuck::Pod + bytemuck::Zeroable>() {
++        let device = Device::default();
++        let data = vec![T::zeroed(); T::BUFFER_LEN];
++        let _ = T::new_storage_buffer(&device, Some(bytemuck::cast_slice(&data)));
++        assert_eq!(device.0.borrow().len(), 1);
++        let too_many = vec![T::zeroed(); T::BUFFER_LEN + 1];
++        for bytes in [
++            bytemuck::cast_slice(&too_many),
++            &bytemuck::cast_slice(&data)[..core::mem::size_of::<T>() - 1],
++        ] {
++            assert!(
++                std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| T::new_storage_buffer(
++                    &device,
++                    Some(bytes)
++                )))
++                .is_err()
++            );
++        }
++        let misaligned = &bytemuck::cast_slice::<T, u8>(&data)[1..1 + core::mem::size_of::<T>()];
++        assert!(
++            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| T::new_storage_buffer(
++                &device,
++                Some(misaligned)
++            )))
++            .is_err()
++        );
++        assert_eq!(
++            device.0.borrow().len(),
++            1,
++            "invalid rows fail before device creation"
++        );
++    }
++    #[test]
++    fn native_dormer_capacity_stride_and_alignment_fail_before_upload() {
++        capacity_and_invalid_data::<DormerHoleSsbo>();
++        capacity_and_invalid_data::<DormerHoleCountPerCellSsbo>();
++    }
++
++    use crate::render::pass_builder::draw_stream::{
++        DynamicConstantsBinding, PassHost, RasterPassSubmission, RasterRenderPassDesc, RasterState,
++        ShaderReflection,
++    };
++    use crate::render::pass_builder::framebuffer_binding::AttachmentTexture;
++    use crate::render::shader::RasterShaderProgram;
++    use crate::rhapsody_contract::{Handle, ManagedHandle};
++    use crate::rhapsody_types::RenderGraph;
++
++    /// Only the two tested dormer queries use actual library leases. Existing
++    /// Rig host supplies unrelated textures, shader reflection and buffers.
++    struct LibraryHost {
++        inner: Box<dyn PassHost>,
++        leases: Vec<SsboGraphLease>,
++        graph: Rc<RefCell<RenderGraph>>,
++        requested: Rc<RefCell<Vec<&'static str>>>,
++    }
++    impl PassHost for LibraryHost {
++        fn raster_shader(
++            &self,
++            shader: &Handle<RasterShaderProgram>,
++            variant: u8,
++        ) -> Option<std::sync::Arc<ShaderReflection>> {
++            self.inner.raster_shader(shader, variant)
++        }
++        fn allocate_dynamic_constants(
++            &mut self,
++            reflection: &ShaderReflection,
++        ) -> Option<DynamicConstantsBinding> {
++            self.inner.allocate_dynamic_constants(reflection)
++        }
++        fn rg_buffer_resource(&self, hash: u64) -> Option<u32> {
++            self.inner.rg_buffer_resource(hash)
++        }
++        fn rg_buffer_resource_typed(&self, hash: u64, name: &'static str) -> Option<u32> {
++            if let Some(lease) = self.leases.iter().find(|lease| lease.id.0.0 == hash) {
++                self.requested.borrow_mut().push(name);
++                return Some(
++                    lease
++                        .get_rg_buffer(&mut self.graph.borrow_mut(), name)
++                        .resource as u32,
++                );
++            }
++            self.inner.rg_buffer_resource_typed(hash, name)
++        }
++        fn placement_buffer(&self, id: u64) -> Option<(ManagedHandle, u32)> {
++            self.inner.placement_buffer(id)
++        }
++        fn vk_buffer(&self, buffer: &ManagedHandle) -> Option<u64> {
++            self.inner.vk_buffer(buffer)
++        }
++        fn vk_image_view(&self, texture: &ManagedHandle) -> Result<u64, String> {
++            self.inner.vk_image_view(texture)
++        }
++        fn texture_by_name(&self, hash: u64) -> (ManagedHandle, AttachmentTexture) {
++            self.inner.texture_by_name(hash)
++        }
++        fn rg_texture(&self, preset: u8) -> AttachmentTexture {
++            self.inner.rg_texture(preset)
++        }
++        fn with_suffix_dims(&self, hash: u64) -> u64 {
++            self.inner.with_suffix_dims(hash)
++        }
++        fn default_raster_state(&self) -> RasterState {
++            self.inner.default_raster_state()
++        }
++        fn create_render_pass(&mut self, desc: &RasterRenderPassDesc) -> ManagedHandle {
++            self.inner.create_render_pass(desc)
++        }
++        fn render_pass_cache(
++            &mut self,
++        ) -> &mut hashbrown::HashMap<RasterRenderPassDesc, ManagedHandle> {
++            self.inner.render_pass_cache()
++        }
++        fn submit_raster_pass(&mut self, submission: RasterPassSubmission) {
++            self.inner.submit_raster_pass(submission)
++        }
++    }
++
++    #[test]
++    fn actual_roof_reader_imports_canonical_dormer_library_owners() {
++        use crate::systems::render_loop::draw_passes::draw_shaders::{
++            instanced_roof::{
++                DORMER_COUNT_BINDING, DORMER_HOLE_BINDING, RoofNaniParam,
++                draw_instanced_roof_shader_nani,
++            },
++            test_support::Rig,
++        };
++        let device = Device::default();
++        let library = AssetSsboLibrary::new();
++        library.add_new::<DormerHoleSsbo>(&device);
++        library.add_new::<DormerHoleCountPerCellSsbo>(&device);
++        let graph = Rc::new(RefCell::new(RenderGraph::default()));
++        let requested = Rc::new(RefCell::new(Vec::new()));
++        let mut rig = Rig::new(&[DORMER_HOLE_BINDING, DORMER_COUNT_BINDING], &[]);
++        let (placeholder, _) = crate::render::pass_builder::draw_stream::test_host::MockHost::new();
++        let inner = core::mem::replace(&mut rig.pass.host, Box::new(placeholder));
++        rig.pass.host = Box::new(LibraryHost {
++            inner,
++            leases: library.snapshot_graph_leases(),
++            graph: graph.clone(),
++            requested: requested.clone(),
++        });
++        draw_instanced_roof_shader_nani(
++            rig.builder(),
++            RoofNaniParam { value: 0, tag: 0 },
++            |builder, _| builder.draw(),
++        );
++        let packets = rig.finish();
++        assert_eq!(packets.len(), 1);
++        assert_eq!(
++            *requested.borrow(),
++            [
++                core::any::type_name::<DormerHoleSsbo>(),
++                core::any::type_name::<DormerHoleCountPerCellSsbo>()
++            ]
++        );
++        assert_eq!(graph.borrow().imports, [(701, 0x37), (702, 0x37)]);
++        assert_eq!(rig.pass.accesses[0].resource, 701);
++        assert_eq!(rig.pass.accesses[1].resource, 702);
++        // Canonical library and the real roof reader share import ownership.
++        assert_eq!(
++            library
++                .get_rg_buffer::<DormerHoleSsbo>(&mut graph.borrow_mut())
++                .resource,
++            701
++        );
++        assert_eq!(
++            library
++                .get_rg_buffer::<DormerHoleCountPerCellSsbo>(&mut graph.borrow_mut())
++                .resource,
++            702
++        );
++        assert_eq!(graph.borrow().imports.len(), 2);
++    }
++}

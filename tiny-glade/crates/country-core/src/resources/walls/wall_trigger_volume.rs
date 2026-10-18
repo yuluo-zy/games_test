@@ -3,7 +3,7 @@
 //! corner order is [bottom/start, bottom/end, top/start, top/end]. Freehand
 //! second faces reverse bottom/top so the two faces have opposite winding.
 use super::public_wall_state::PublicWallState;
-use crate::recovered_building::wall_pending_changed::approximate_curve_u;
+use crate::systems::wall::wall_state::pending_changed::approximate_curve_u;
 use bevy_ecs::prelude::*;
 use glam::{Vec2, Vec3};
 use utils::{curve::Curve3, geometry::intersect::Triangle};

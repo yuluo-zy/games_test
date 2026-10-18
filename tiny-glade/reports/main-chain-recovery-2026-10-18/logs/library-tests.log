@@ -1,0 +1,175 @@
+warning: unused import: `crate::resources::color_id::ColorId`
+  --> crates/country-core/src/resources/history/color_edit.rs:43:5
+   |
+43 | use crate::resources::color_id::ColorId;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `SubworldColliderHandle`
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:44:54
+   |
+44 | use crate::systems::collision::world::{RaycastWorld, SubworldColliderHandle};
+   |                                                      ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `DebugColor`
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:45:31
+   |
+45 | use crate::utils::debug_viz::{DebugColor, DebugLine, DebugSphere};
+   |                               ^^^^^^^^^^
+
+warning: unused import: `glam::Vec3`
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:46:5
+   |
+46 | use glam::Vec3;
+   |     ^^^^^^^^^^
+
+warning: unused import: `DecoratorStorage`
+  --> crates/country-core/src/systems/save/snapshot.rs:29:40
+   |
+29 |                 DecoratorAddrSnapshot, DecoratorStorage, DecoratorStorageAddr,
+   |                                        ^^^^^^^^^^^^^^^^
+
+warning: unused import: `bevy_ecs::schedule::IntoScheduleConfigs`
+  --> crates/country-core/src/systems/save/mod.rs:53:5
+   |
+53 | use bevy_ecs::schedule::IntoScheduleConfigs;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: variable does not need to be mutable
+   --> crates/country-core/src/resources/history/color_edit.rs:331:39
+    |
+331 |         let serde_json::Value::Object(mut outer) = value else {
+    |                                       ----^^^^^
+    |                                       |
+    |                                       help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `aux`
+   --> crates/country-core/src/resources/history/replay_cmd_buffer.rs:179:9
+    |
+179 |         aux: ReplayBucketAux,
+    |         ^^^ help: if this is intentional, prefix it with an underscore: `_aux`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `kind_filtered` is never used
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:60:4
+   |
+60 | fn kind_filtered(kind: u8, gui_byte: u8) -> bool {
+   |    ^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: constant `A` is never used
+   --> crates/country-core/src/systems/time_of_day.rs:237:15
+    |
+237 |     pub const A: f32 = -0.762_442_5; // 0xbf432f6f
+    |               ^
+
+warning: structure field `Wall` should have a snake case name
+   --> crates/country-core/src/systems/save/snapshot.rs:983:12
+    |
+983 |     Wall { Wall: u64 },
+    |            ^^^^ help: convert the identifier to snake case (notice the capitalization): `wall`
+    |
+    = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default
+
+warning: structure field `Stair` should have a snake case name
+   --> crates/country-core/src/systems/save/snapshot.rs:985:13
+    |
+985 |     Stair { Stair: u64 },
+    |             ^^^^^ help: convert the identifier to snake case (notice the capitalization): `stair`
+
+warning: structure field `Wall` should have a snake case name
+    --> crates/country-core/src/systems/save/snapshot.rs:1073:12
+     |
+1073 |     Wall { Wall: DecoratorWallDstJson },
+     |            ^^^^ help: convert the identifier to snake case (notice the capitalization): `wall`
+
+warning: structure field `Terrain` should have a snake case name
+    --> crates/country-core/src/systems/save/snapshot.rs:1074:15
+     |
+1074 |     Terrain { Terrain: DecoratorTerrainDstJson },
+     |               ^^^^^^^ help: convert the identifier to snake case: `terrain`
+
+warning: `country-core` (lib) generated 14 warnings (run `cargo fix --lib -p country-core` to apply 8 suggestions)
+warning: unused import: `public_walls::PublicWalls`
+  --> crates/systems/roof/src/delete_roof.rs:15:21
+   |
+15 |     walls::{WallId, public_walls::PublicWalls},
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `WallId`
+  --> crates/systems/roof/src/update_roof_spatial.rs:15:13
+   |
+15 |     walls::{WallId, public_walls::{OnWallChanged, PublicWalls}},
+   |             ^^^^^^
+
+warning: `system-roof` (lib) generated 2 warnings (run `cargo fix --lib -p system-roof` to apply 2 suggestions)
+   Compiling tiny-glade v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade)
+warning: found module declaration for main.rs
+  --> crates/tiny-glade/src/lib.rs:26:1
+   |
+26 | pub mod main;
+   | ^^^^^^^^^^^^^
+   |
+   = note: a binary crate cannot be used as library
+   = note: `#[warn(special_module_name)]` on by default
+
+warning: unused import: `Context`
+  --> crates/tiny-glade/src/screenshot.rs:28:22
+   |
+28 | use anyhow::{anyhow, Context, Result};
+   |                      ^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> crates/tiny-glade/src/screenshot.rs:280:13
+    |
+280 |         let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(
+    |             ----^^^^^^^
+    |             |
+    |             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: `tiny-glade` (lib test) generated 3 warnings (run `cargo fix --lib -p tiny-glade --tests` to apply 2 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.26s
+     Running unittests src/lib.rs (target/debug/deps/tiny_glade-e98c739c4e9e0e7b)
+
+running 27 tests
+test fps_limiter::tests::first_frame_only_records_timestamp ... ok
+test app_config::tests::input_recording_prefers_record_then_replay ... ok
+test fps_limiter::tests::nan_target_is_ignored_like_non_positive ... ok
+test fps_limiter::tests::non_positive_target_still_updates_timestamp ... ok
+test compute_frame::tests::recorded_program_must_exist_in_the_frame_library ... ok
+test compute_frame::tests::admission_retains_first_backend_failure_and_stops_later_passes ... ok
+test game_loop::frame_tests::menu_cap_preserves_normal_game_limits_and_handles_disabled_or_nan_limits ... ok
+test game_loop::frame_tests::camera_resource_presence_selects_the_native_frame_mode ... ok
+test game_loop::frame_tests::menu_cap_reads_the_current_world_resources ... ok
+test gui::gui_escape_menu::tests::urls_are_plain_utf8_https ... ok
+test load_language_library::tests::every_whitelisted_language_maps_to_a_five_byte_code ... ok
+test load_language_library::tests::whitelist_matches_recovered_bytes ... ok
+test main::tests::take_is_idempotent ... ok
+test panic_reporter::panic_screenshot::tests::reduction_matches_16_by_9 ... ok
+test panic_reporter::panic_screenshot::tests::yuy2_group_yields_two_rgb_pixels ... ok
+test raster_host::program_identity_tests::core_source_cannot_alias_or_fall_back_to_standalone_handles ... ok
+test raster_host::program_identity_tests::core_source_uses_authoritative_handles_and_sees_later_insertions ... ok
+test render_bridge::tests::raster_declaration_lease_rejects_other_graphs_and_revoked_hosts ... ok
+test render_host::buffer_description_tests::buffer_description_conversion_rejects_unknown_memory_and_truncating_alignment ... ok
+test render_host::compute_parameter_tests::callback_payload_is_bound_before_dispatch_without_a_synthetic_initial_value ... ok
+test render_host::compute_parameter_tests::dispatch_before_first_payload_is_rejected_and_a_later_push_cannot_hide_it ... ok
+test render_host::buffer_description_tests::buffer_description_conversion_preserves_all_memory_locations ... ok
+test render_host::compute_parameter_tests::invalid_callback_payload_keeps_the_binding_failure_and_suppresses_dispatch ... ok
+test winit_bevy_glue::tests::key_code_mapping_matches_b_table ... ok
+test render_host::compute_parameter_tests::zero_byte_abi_and_explicit_initial_payload_bind_immediately ... ok
+test fs_util::tests::copies_nested_tree ... ok
+test egui_backend::tests::platform_output_does_not_steal_gpu_updates_or_free_a_texture_before_its_draw ... ok
+
+test result: ok. 27 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+

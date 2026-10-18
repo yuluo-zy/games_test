@@ -1,10 +1,9 @@
 use bevy_ecs::prelude::*;
-use country_core::recovered_building::{
-    building_opening_rules::*,
-    building_roof_creation::RoofCreateRequestObserved,
-    building_roof_customization::FlatRoofRimRequest,
-    building_wall_state::{WallId, WallShapeSnapshot},
-};
+use country_core::resources::walls::wall_holes::opening_rules::*;
+use country_core::resources::roofs::creation::RoofCreateRequestObserved;
+use country_core::resources::roofs::customization::FlatRoofRimRequest;
+use country_core::resources::walls::publication_fields::WallId;
+use country_core::resources::walls::publication_fields::WallShapeSnapshot;
 use std::sync::Arc;
 use tg_building_runtime::{history::*, openings::*, *};
 fn emit<T: Event>(app: &mut bevy_app::App, event: T) {

@@ -1,0 +1,112 @@
+--- games_test/tiny-glade/crates/country-core/src/systems/backend/input/mod.rs
++++ games_test/tiny-glade/crates/country-core/src/systems/backend/input/mod.rs
+@@ -10,8 +10,8 @@
+ pub mod update_cursor_position;
+ 
+ use crate::input::{
++    action_set::{ActionSetStates, ActionSetValues},
+     ActiveInputModeTracker,
+-    action_set::{ActionSetStates, ActionSetValues},
+ };
+ use bevy_ecs::{prelude::*, schedule::common_conditions::resource_exists};
+ use input_record_replay::InputReplayCommand;
+@@ -31,15 +31,22 @@
+ }
+ 
+ /// 注册输入自身拥有的资源。窗口、相机、工具栏、菜单由宿主提供。
++fn register_event<T: Event>(world: &mut World) {
++    if !world.contains_resource::<Events<T>>() {
++        bevy_ecs::event::EventRegistry::register_event::<T>(world);
++    }
++}
++
+ pub fn register_input_events(world: &mut World) {
+-    world.init_resource::<Events<InputCursorMoved>>();
+-    world.init_resource::<Events<InputCursorDelta>>();
+-    world.init_resource::<Events<InputReplayCommand>>();
+-    world.init_resource::<Events<crate::resources::mouse_capture::CursorCaptureCmd>>();
+-    world.init_resource::<Events<crate::resources::mouse_capture::OsCursorCaptureCmd>>();
+-    world.init_resource::<Events<crate::resources::mouse_capture::OsCursorVisibilityCmd>>();
++    register_event::<InputCursorMoved>(world);
++    register_event::<InputCursorDelta>(world);
++    register_event::<InputReplayCommand>(world);
++    register_event::<crate::resources::walls::decorator::DecoratorOpEvent>(world);
++    register_event::<crate::resources::mouse_capture::CursorCaptureCmd>(world);
++    register_event::<crate::resources::mouse_capture::OsCursorCaptureCmd>(world);
++    register_event::<crate::resources::mouse_capture::OsCursorVisibilityCmd>(world);
+     world.init_resource::<crate::resources::mouse_capture::CursorCapturePolicy>();
+-    world.init_resource::<Events<crate::systems::mode_manager::AppModeChanged>>();
++    register_event::<crate::systems::mode_manager::AppModeChanged>(world);
+     if !world.contains_resource::<crate::systems::mode_manager::PreviousAppMode>() {
+         let current = world
+             .get_resource::<crate::systems::mode_manager::AppMode>()
+@@ -47,11 +54,11 @@
+             .unwrap_or_default();
+         world.insert_resource(crate::systems::mode_manager::PreviousAppMode(current));
+     }
+-    world.init_resource::<Events<calculate_input_delta::UiHistoryButtonPressed>>();
+-    world.init_resource::<Events<translate_input::MouseWheel>>();
+-    world.init_resource::<Events<crate::resources::window::CursorMovedScreenSpace>>();
+-    world.init_resource::<Events<crate::resources::session::NewSessionStartedCmd>>();
+-    world.init_resource::<Events<crate::resources::session::SessionLoadedCmd>>();
++    register_event::<calculate_input_delta::UiHistoryButtonPressed>(world);
++    register_event::<translate_input::MouseWheel>(world);
++    register_event::<crate::resources::window::CursorMovedScreenSpace>(world);
++    register_event::<crate::resources::session::NewSessionStartedCmd>(world);
++    register_event::<crate::resources::session::SessionLoadedCmd>(world);
+     world.init_resource::<ActionSetStates>();
+     world.init_resource::<ActionSetValues>();
+     world.init_resource::<bevy_time::Time>();
+@@ -64,12 +71,10 @@
+     world.init_resource::<input_record_replay::InputRecordReplayState>();
+     world.init_resource::<update_cursor_position::CursorPosition>();
+     world.init_resource::<mod_key::Modifiers>();
+-    world.init_resource::<mod_key::ModKeyConfig>();
+     world.init_resource::<button_input::KeyButtonInput>();
+     world.init_resource::<button_input::MouseButtonInput>();
+     world.init_resource::<translate_input::SteamInputActive>();
+     world.init_resource::<translate_input::DemoModeEnabled>();
+-    world.init_resource::<translate_input::BindingsTable>();
+     world.init_resource::<input_replay_for_trailers::InputReplayForTrailers>();
+ }
+ 
+@@ -129,3 +134,39 @@
+     );
+     schedule.add_systems(input_record_replay::advance_input_replay_frame.in_set(Finish));
+ }
++
++#[cfg(test)]
++mod registration_tests {
++    use super::*;
++    #[test]
++    fn original_input_events_rotate_once_per_tick_and_registration_is_idempotent() {
++        let mut world = World::new();
++        register_input_events(&mut world);
++        register_input_events(&mut world);
++        world.send_event(translate_input::MouseWheel {
++            unit: 0,
++            x: 0.0,
++            y: 1.0,
++        });
++        let update = |world: &mut World| {
++            world.resource_scope(|world, mut registry: Mut<bevy_ecs::event::EventRegistry>| {
++                registry.run_updates(world, bevy_ecs::component::Tick::new(0));
++            });
++        };
++        update(&mut world);
++        assert_eq!(
++            world
++                .resource::<Events<translate_input::MouseWheel>>()
++                .len(),
++            1,
++            "the same event type must not be registered twice"
++        );
++        update(&mut world);
++        assert!(
++            world
++                .resource::<Events<translate_input::MouseWheel>>()
++                .is_empty(),
++            "initializing Events alone does not enroll it in EventRegistry"
++        );
++    }
++}

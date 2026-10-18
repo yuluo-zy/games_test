@@ -6,12 +6,12 @@
 //!   0x1421ac4f0）。
 //! - 方向/平顶风格命令：`switch_roof_direction`、`set_flat_roof_style`、
 //!   `set_flat_roof_rim_style`。
-use country_core::recovered_building::{
-    building_history_transactions::RoofHistoryEdit,
-    roof_customization::{apply_flat_rim_resolved, apply_flat_style_resolved},
-    roof_direction::{RoofDirectionRequest, apply_resolved_direction},
-    wall_state::WallId as ObservedWallId,
-};
+use country_core::resources::history::building_transactions::RoofHistoryEdit;
+use country_core::resources::roofs::customization::apply_flat_rim_resolved;
+use country_core::resources::roofs::customization::apply_flat_style_resolved;
+use country_core::resources::roofs::direction::RoofDirectionRequest;
+use country_core::resources::roofs::direction::apply_resolved_direction;
+use country_core::resources::walls::publication_fields::WallId as ObservedWallId;
 use country_core::resources::{
     roofs::{Roof, commands::*},
     walls::{WallId, public_walls::PublicWalls},

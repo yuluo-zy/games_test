@@ -1,0 +1,122 @@
+--- a/games_test/tiny-glade/crates/systems/tree-tool/src/process_tree_cmds.rs
++++ b/games_test/tiny-glade/crates/systems/tree-tool/src/process_tree_cmds.rs
+@@ -117,31 +117,6 @@
+             log::warn!("MoveTreeCmd references a non-existing tree");
+         }
+     }
+-    // ---- Delete 分支（O：槽 stride 0x10；decomp 行 819-896）。wave3 补
+-    // `Entities::contains` 门控（行 835）。
+-    for cmd in deletes.read() {
+-        if let Some(entry) = storage.remove(TreeStorageIndex(cmd.id)) {
+-            // O：`Entities::contains(entity)` 门控（decomp 行 835）——实体仍存在
+-            // 才推入 TreeMarkedForDeletion；否则跳过（原以 Commands::entity 直接
+-            // 排队是近似，分歧 18，已判等修复）。
+-            if entities.contains(entry.entity) {
+-                commands.entity(entry.entity).insert(TreeMarkedForDeletion);
+-                // O：kind=2 + 树变换记录位置/scale（decomp 行 877-896：
+-                // inverse_lerp(0.5,0.9,scale) → kind@+8=2、value@+0xc、
+-                // position@+0x10/+0x18）。
+-                let instance = instances
+-                    .get(entry.entity)
+-                    .expect("DeleteTreeCmd live entity has no PrefabInstance placement");
+-                sounds.write(PlayTreeSoundCmd {
+-                    kind: 2,
+-                    selector: 0,
+-                    extra: 0,
+-                    value: inverse_lerp(0.5, 0.9, instance.0.scale),
+-                    position: instance.0.position,
+-                });
+-            }
+-        }
+-    }
+     // ---- Insert 分支（O：槽 stride 0x48；decomp 0x142267430 行 326-785）。
+     //
+     // 2026-10-17 consume-types：按 fresh 反编译逐语句重建。事件字段锚（element
+@@ -278,6 +253,31 @@
+             position: pos,
+         });
+     }
++    // ---- Delete 分支（O：槽 stride 0x10；decomp 行 819-896）。wave3 补
++    // `Entities::contains` 门控（行 835）。
++    for cmd in deletes.read() {
++        if let Some(entry) = storage.remove(TreeStorageIndex(cmd.id)) {
++            // O：`Entities::contains(entity)` 门控（decomp 行 835）——实体仍存在
++            // 才推入 TreeMarkedForDeletion；否则跳过（原以 Commands::entity 直接
++            // 排队是近似，分歧 18，已判等修复）。
++            if entities.contains(entry.entity) {
++                commands.entity(entry.entity).insert(TreeMarkedForDeletion);
++                // O：kind=2 + 树变换记录位置/scale（decomp 行 877-896：
++                // inverse_lerp(0.5,0.9,scale) → kind@+8=2、value@+0xc、
++                // position@+0x10/+0x18）。
++                let instance = instances
++                    .get(entry.entity)
++                    .expect("DeleteTreeCmd live entity has no PrefabInstance placement");
++                sounds.write(PlayTreeSoundCmd {
++                    kind: 2,
++                    selector: 0,
++                    extra: 0,
++                    value: inverse_lerp(0.5, 0.9, instance.0.scale),
++                    position: instance.0.position,
++                });
++            }
++        }
++    }
+ }
+ 
+ /// `despawn_trees` @0x1422686d0（O：标记树 α<0.01 回收——`DespawnPrefabCmd`）。
+@@ -387,6 +387,55 @@
+         assert_eq!(sound.value, inverse_lerp(0.5, 0.9, 0.75));
+     }
+     #[test]
++    fn same_frame_insert_then_delete_uses_new_identity_and_preserves_original_pending_query_failure()
++     {
++        let mut world = world();
++        let mut placement = PlacementDataSsbo::default();
++        placement.position = glam::Vec3::new(1.0, 2.0, 3.0);
++        placement.scale = 0.75;
++        let old = world.spawn(PrefabInstance(placement)).id();
++        world.resource_mut::<TreeStorage>().insert(
++            TreeStorageIndex(73),
++            TreeStorageEntry {
++                entity: old,
++                position: placement.position,
++            },
++        );
++        world.send_event(InsertTreeCmd {
++            id: 73,
++            position: glam::Vec3::new(8.0, 9.0, 10.0),
++            scale: 0.75,
++            rotation_degrees: 45.0,
++            variant: -17,
++            is_preplaced: true,
++            prefab_name: "Oak".into(),
++        });
++        world.send_event(DeleteTreeCmd { id: 73 });
++        let mut schedule = Schedule::default();
++        schedule.add_systems(process_tree_cmds::<()>);
++        // Native contains includes reserved entities; its following Query.get
++        // unwrap fails until the actual upper prefab owner creates placement.
++        let result =
++            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| schedule.run(&mut world)));
++        assert!(result.is_err());
++        assert!(
++            world
++                .resource::<TreeStorage>()
++                .get(TreeStorageIndex(73))
++                .is_none()
++        );
++        let spawns = world.resource::<Events<SpawnPrefabCmd>>();
++        let mut reader = spawns.get_cursor();
++        let created = reader.read(spawns).next().unwrap().entity.unwrap();
++        assert_ne!(created, old);
++        let despawns = world.resource::<Events<DespawnPrefabCmd>>();
++        let mut reader = despawns.get_cursor();
++        assert_eq!(reader.read(despawns).next().unwrap().entity, Some(old));
++        // The original queues the marker before its failing placement fetch.
++        schedule.apply_deferred(&mut world);
++        assert!(world.get::<TreeMarkedForDeletion>(created).is_some());
++    }
++    #[test]
+     #[should_panic(expected = "MoveTreeCmd entity has no PrefabInstance placement")]
+     fn live_move_entity_without_placement_preserves_original_unwrap_failure() {
+         let mut world = world();

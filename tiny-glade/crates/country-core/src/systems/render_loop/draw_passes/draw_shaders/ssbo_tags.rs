@@ -54,6 +54,19 @@ pub struct InstanceBufferView {
 pub trait SsboInstanceView {
     /// 返回 `(state.name, 实例缓冲)`；表里没有该 id → `None`。
     fn lookup(&self, ssbo_id: u64) -> Option<(&str, Option<InstanceBufferView>)>;
+
+    /// 稀疏缓冲没有普通实例计数；绘制绑定应直接查询底层句柄。
+    fn lookup_buffer(&self, ssbo_id: u64) -> Option<(&str, ManagedHandle)> {
+        let (name, view) = self.lookup(ssbo_id)?;
+        Some((name, view?.handle))
+    }
+}
+
+/// 按槽名定位并校验完整类型，避免将同名但不同元素的缓冲绑定给 shader。
+pub fn storage_buffer<T: DrawSsbo>(library: &dyn SsboInstanceView) -> Option<ManagedHandle> {
+    let (type_name, handle) = library.lookup_buffer(xxh3_64(T::SLOT_NAME.as_bytes()))?;
+    assert_eq!(type_name, T::TYPE_NAME, "存储缓冲元素类型不匹配");
+    Some(handle)
 }
 
 /// 取 `T` 的实例缓冲视图（O 的调用序列）：未注册 → `None`；名字不符 → `assert_failed<&str,&str>`
@@ -128,20 +141,20 @@ ssbo_tag!(
     "LeafParticles",
     0xda2386d830255aac
 );
-ssbo_tag!(
-    /// `resources::walls::dormers::DormerHoleCountPerCellSsbo`（0x14162bc90）。
-    DormerHoleCountTag,
-    "country_core::resources::walls::dormers::DormerHoleCountPerCellSsbo",
-    "Dormer Hole Count",
-    0x96675839a35d7e8f
-);
-ssbo_tag!(
-    /// `resources::walls::dormers::DormerHoleSsbo`（0x141631090）。
-    DormerHoleTag,
-    "country_core::resources::walls::dormers::DormerHoleSsbo",
-    "Dormer Holes",
-    0x13c9c799697a906c
-);
+// These draw names are aliases of the actual library owners, not zero-sized
+// parallel tags with matching NAME hashes.
+pub use crate::resources::walls::dormers::{
+    DormerHoleCountPerCellSsbo as DormerHoleCountTag, DormerHoleSsbo as DormerHoleTag,
+};
+impl DrawSsbo for DormerHoleCountTag {
+    const SLOT_NAME: &'static str = "Dormer Hole Count";
+    const TYPE_NAME: &'static str =
+        "country_core::resources::walls::dormers::DormerHoleCountPerCellSsbo";
+}
+impl DrawSsbo for DormerHoleTag {
+    const SLOT_NAME: &'static str = "Dormer Holes";
+    const TYPE_NAME: &'static str = "country_core::resources::walls::dormers::DormerHoleSsbo";
+}
 ssbo_tag!(
     /// `compute_passes::stairs::StairsTransformSsbo`（0x14162cb90）。
     StairsTransformTag,

@@ -1,0 +1,77 @@
+
+void __cdecl country_core::resources::history::History::current_snapshot(void)
+
+{
+  longlong lVar1;
+  int iVar2;
+  ulonglong uVar3;
+  longlong lVar4;
+  longlong *plVar5;
+  code *pcVar6;
+  int iVar7;
+  longlong in_RCX;
+  undefined8 *puVar8;
+  longlong lVar9;
+  int iVar10;
+  ulonglong uVar11;
+  
+  uVar3 = *(ulonglong *)(in_RCX + 0x28);
+  if (uVar3 != 0) {
+    iVar2 = *(int *)(in_RCX + 0x68);
+    lVar4 = *(longlong *)(in_RCX + 0x20);
+    lVar9 = 0;
+    uVar11 = uVar3;
+    if (uVar3 != 1) {
+      do {
+        lVar1 = (uVar11 >> 1) + lVar9;
+        if (*(int *)(lVar4 + 8 + lVar1 * 0x10) < iVar2) {
+          lVar9 = lVar1;
+        }
+        uVar11 = uVar11 - (uVar11 >> 1);
+      } while (1 < uVar11);
+    }
+    uVar11 = (ulonglong)(*(int *)(lVar4 + 8 + lVar9 * 0x10) < iVar2) + lVar9;
+    if (uVar11 < uVar3) {
+      puVar8 = (undefined8 *)(lVar4 + uVar11 * 0x10);
+      if (uVar11 != 0) {
+        iVar10 = -(*(int *)(puVar8 + -1) - iVar2);
+        if (iVar10 < 0) {
+          iVar10 = *(int *)(puVar8 + -1) - iVar2;
+        }
+        iVar7 = -(*(int *)(puVar8 + 1) - iVar2);
+        if (iVar7 < 0) {
+          iVar7 = *(int *)(puVar8 + 1) - iVar2;
+        }
+        puVar8 = puVar8 + (ulonglong)(iVar7 <= iVar10) * 2 + -2;
+      }
+    }
+    else {
+      puVar8 = (undefined8 *)(lVar4 + uVar3 * 0x10 + -0x10);
+    }
+    if (puVar8 != (undefined8 *)0x0) {
+      plVar5 = (longlong *)*puVar8;
+      iVar10 = *(int *)(puVar8 + 1);
+      LOCK();
+      lVar4 = *plVar5;
+      *plVar5 = *plVar5 + 1;
+      UNLOCK();
+      if (*plVar5 == 0 || SCARRY8(lVar4,1) != *plVar5 < 0) {
+                    // WARNING: Does not return
+        pcVar6 = (code *)invalidInstructionException();
+        (*pcVar6)();
+      }
+      if (iVar10 != iVar2) {
+        LOCK();
+        *plVar5 = *plVar5 + -1;
+        UNLOCK();
+        if (*plVar5 == 0) {
+          alloc::sync::Arc::
+          drop_slow<lock_api::mutex::Mutex<parking_lot::raw_mutex::RawMutex,tiny_glade::crash_pickup::crash_payload::CrashMiscInfo>,alloc::alloc::Global>
+                    ();
+        }
+      }
+    }
+  }
+  return;
+}
+

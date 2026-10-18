@@ -1,0 +1,154 @@
+    Blocking waiting for file lock on build directory
+warning: field `0` is never read
+   --> crates/rhapsody/src/raw/texture.rs:493:15
+    |
+493 |     Swapchain(Arc<super::swapchain::Swapchain>),
+    |     --------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     |
+    |     field in this variant
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+help: consider changing the field to be of unit type to suppress this warning while preserving the field numbering, or remove the field
+    |
+493 -     Swapchain(Arc<super::swapchain::Swapchain>),
+493 +     Swapchain(()),
+    |
+
+warning: `rhapsody` (lib) generated 1 warning
+   Compiling country-core v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core)
+warning: unused import: `crate::resources::color_id::ColorId`
+  --> crates/country-core/src/resources/history/color_edit.rs:43:5
+   |
+43 | use crate::resources::color_id::ColorId;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `SubworldColliderHandle`
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:44:54
+   |
+44 | use crate::systems::collision::world::{RaycastWorld, SubworldColliderHandle};
+   |                                                      ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `DebugColor`
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:45:31
+   |
+45 | use crate::utils::debug_viz::{DebugColor, DebugLine, DebugSphere};
+   |                               ^^^^^^^^^^
+
+warning: unused import: `glam::Vec3`
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:46:5
+   |
+46 | use glam::Vec3;
+   |     ^^^^^^^^^^
+
+warning: unused import: `DecoratorStorage`
+  --> crates/country-core/src/systems/save/snapshot.rs:29:40
+   |
+29 |                 DecoratorAddrSnapshot, DecoratorStorage, DecoratorStorageAddr,
+   |                                        ^^^^^^^^^^^^^^^^
+
+warning: unused import: `bevy_ecs::schedule::IntoScheduleConfigs`
+  --> crates/country-core/src/systems/save/mod.rs:53:5
+   |
+53 | use bevy_ecs::schedule::IntoScheduleConfigs;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: variable does not need to be mutable
+   --> crates/country-core/src/resources/history/color_edit.rs:331:39
+    |
+331 |         let serde_json::Value::Object(mut outer) = value else {
+    |                                       ----^^^^^
+    |                                       |
+    |                                       help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `aux`
+   --> crates/country-core/src/resources/history/replay_cmd_buffer.rs:179:9
+    |
+179 |         aux: ReplayBucketAux,
+    |         ^^^ help: if this is intentional, prefix it with an underscore: `_aux`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `kind_filtered` is never used
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:60:4
+   |
+60 | fn kind_filtered(kind: u8, gui_byte: u8) -> bool {
+   |    ^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: constant `A` is never used
+   --> crates/country-core/src/systems/time_of_day.rs:237:15
+    |
+237 |     pub const A: f32 = -0.762_442_5; // 0xbf432f6f
+    |               ^
+
+warning: structure field `Wall` should have a snake case name
+   --> crates/country-core/src/systems/save/snapshot.rs:983:12
+    |
+983 |     Wall { Wall: u64 },
+    |            ^^^^ help: convert the identifier to snake case (notice the capitalization): `wall`
+    |
+    = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default
+
+warning: structure field `Stair` should have a snake case name
+   --> crates/country-core/src/systems/save/snapshot.rs:985:13
+    |
+985 |     Stair { Stair: u64 },
+    |             ^^^^^ help: convert the identifier to snake case (notice the capitalization): `stair`
+
+warning: structure field `Wall` should have a snake case name
+    --> crates/country-core/src/systems/save/snapshot.rs:1073:12
+     |
+1073 |     Wall { Wall: DecoratorWallDstJson },
+     |            ^^^^ help: convert the identifier to snake case (notice the capitalization): `wall`
+
+warning: structure field `Terrain` should have a snake case name
+    --> crates/country-core/src/systems/save/snapshot.rs:1074:15
+     |
+1074 |     Terrain { Terrain: DecoratorTerrainDstJson },
+     |               ^^^^^^^ help: convert the identifier to snake case: `terrain`
+
+warning: `country-core` (lib) generated 14 warnings (run `cargo fix --lib -p country-core` to apply 8 suggestions)
+warning: unused import: `input_stream::InputStream`
+ --> crates/country-core/tests/input_review_probe_20261018.rs:4:42
+  |
+4 |     input::{action_set::ActionSetAction, input_stream::InputStream, InputRecordReplayMode},
+  |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `country-core` (test "input_review_probe_20261018") generated 1 warning (run `cargo fix --test "input_review_probe_20261018" -p country-core` to apply 1 suggestion)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3m 18s
+     Running tests/input_review_probe_20261018.rs (target/debug/deps/input_review_probe_20261018-269ce5682751dfe6)
+
+running 4 tests
+test gap_cpu_schedule_has_no_ordering_edges ... 
+thread 'gap_cpu_schedule_has_no_ordering_edges' (23459868) panicked at crates/country-core/tests/input_review_probe_20261018.rs:98:5:
+assertion failed: graph.systems().count() >= 11
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+FAILED
+test gap_frame_conversion_discards_packed_actions_and_cursor ... F3: nonempty packed actions became empty; runtime cursor/output were zeroed
+ok
+test gap_load_on_a_fresh_stream_cannot_seek ... 
+thread 'gap_load_on_a_fresh_stream_cannot_seek' (23459872) panicked at crates/country-core/src/systems/backend/input/input_record_replay.rs:252:9:
+No sync points found in replay state
+F2: load succeeded with zero sync points; seek panicked; second load appended
+ok
+test gap_snapshot_does_not_restore_toolbar_modes ... 
+thread 'gap_snapshot_does_not_restore_toolbar_modes' (23459873) panicked at crates/country-core/src/resources/toolbar.rs:79:28:
+index out of bounds: the len is 1 but the index is 1
+F1: restored current=1 into modes.len=1; last_selected_mode panicked
+ok
+
+failures:
+
+failures:
+    gap_cpu_schedule_has_no_ordering_edges
+
+test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+error: test failed, to rerun pass `-p country-core --test input_review_probe_20261018`

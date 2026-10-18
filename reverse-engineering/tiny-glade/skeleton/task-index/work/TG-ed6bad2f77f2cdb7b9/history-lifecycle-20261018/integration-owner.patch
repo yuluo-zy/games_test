@@ -1,0 +1,78 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/history.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/history.rs
+@@ -536,6 +536,7 @@
+             .in_set(HistoryCpuStage::Pop),
+     );
+     crate::systems::ui_clutter::registration::add_ui_clutter_cpu_systems::<S>(schedule);
++    recording::add_recording_systems::<S>(schedule);
+     schedule.add_systems(
+         (
+             recording::record_roof_history::<S>,
+--- a/games_test/tiny-glade/crates/country-core/src/resources/history/mod.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/history/mod.rs
+@@ -21,6 +21,8 @@
+ use std::sync::Arc;
+ 
+ pub use replay_cmd_buffer::{HistoryReplayError, ReplayBucket, ReplayBuffer, ReplayCommand};
++pub use crate::systems::history::recording::FinishInputRecordingCmd;
++
+ pub type History<S = ()> = HistoryTransactions<EditType, S>;
+ 
+ impl<S> HistoryTransactions<EditType, S> {
+--- a/games_test/tiny-glade/crates/country-core/src/systems/ui_clutter/registration.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/ui_clutter/registration.rs
+@@ -34,6 +34,8 @@
+     // 拾取/生成可见消费（原 add_ui 挂载面）。
+     world.init_resource::<Events<RmbAutoClutterHit>>();
+     world.init_resource::<Events<EvRightClickedAutoClutter>>();
++    world.init_resource::<Events<super::ui_autoclutter::InstaCreateDeco>>();
++    world.init_resource::<Events<super::ui_autoclutter::InstaCreateStairPoint>>();
+     world.init_resource::<Events<SpawnAutoClutter>>();
+     world.init_resource::<Events<DebugSpawnClutterCmd>>();
+     world.init_resource::<Events<DebugSpawnAllClutterCmd>>();
+@@ -70,9 +72,9 @@
+     );
+     // 原 add_ui 挂载的 6 个 clutter 系统（debug_spawn/decoclutter_show_pins/defered/
+     // rmb/ui_autoclutter/ui_focus_decoclutter；宿主提供实体机制）。
++    schedule.add_systems((ui_convert_autoclutter_to_decoclutter, handle_rmb_autoclutter::<S>)
++        .chain().before(HistoryCpuStage::Record));
+     schedule.add_systems((
+-        handle_rmb_autoclutter::<S>,
+-        ui_convert_autoclutter_to_decoclutter,
+         debug_spawn_all_clutter::<S>,
+         decoclutter_show_pins,
+         ui_focus_decoclutter,
+--- a/games_test/tiny-glade/crates/country-core/src/systems/ui_clutter/tests.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/ui_clutter/tests.rs
+@@ -188,6 +188,8 @@
+     world.insert_resource(AppMode::default());
+     // 入口 +0x18 门直达路径（跳过 probe）。
+     world.insert_resource(RmbAutoClutterDirect(Some(AutoClutterRecord {
++        clutter_id: 42,
++        destination: [0x75dd10c75433c8db, 0xe038d51dca8bf380, 0xecd9fb9341459e0e],
+         position: glam::Vec3::new(1.0, 2.0, 3.0),
+         w: 1.0,
+         x: 0.0,
+@@ -206,7 +208,7 @@
+     schedule.add_systems(handle_rmb_autoclutter::<()>);
+     schedule.run(&mut world);
+     assert_eq!(
+-        world.resource::<Events<EvRightClickedAutoClutter>>().len(),
++        world.resource::<Events<super::ui_autoclutter::InstaCreateDeco>>().len(),
+         1
+     );
+     // 原版无条件：start_input_recording → History::add(tag 0xd)；提交后入 ledger。
+@@ -258,12 +260,7 @@
+     world.insert_resource(table);
+     world
+         .resource_mut::<Events<EvRightClickedAutoClutter>>()
+-        .send(EvRightClickedAutoClutter {
+-            entity: 10,
+-            ty: ClutterMeshTy::Bench,
+-            position: glam::Vec3::ZERO,
+-            rotation: 0.0,
+-        });
++        .send(EvRightClickedAutoClutter { entity: 10 });
+     let mut schedule = Schedule::default();
+     schedule.add_systems(ui_convert_autoclutter_to_decoclutter);
+     schedule.run(&mut world);

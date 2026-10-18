@@ -1,22 +1,30 @@
 //! stitch_bricks（B 主基线；spawn_stitches 0x141ce65b0、spawn_stitch_bricks 0x141ce7190）。
 //!
-//! 证据（clutter-extra-analysis.md §stitch_bricks）：
-//! - spawn_stitches（L28–89）：遍历 Vec（stride 0x40）缝合描述；每元素
-//!   `+0x00` i32 种类（==1 才处理）、`+0x04` f32（>=0.2 跳过）、`+0x14` f32 段起点、
-//!   `+0x18` f32 段长。段长检查：`u = truncate(min(1000, 2*|长|))`，`2 < u` 跳过。
-//!   取段中点、`utils::random_splits()` 细分；单位法向（1/SQRT）+ 朝向（x0y swizzle），
-//!   每细分点 `fastrand::Rng::f32()` 抖动 `(r*0.5-(1-r)*0.5)*0.1+0.4`、`Δu+(-0.1)`。
-//!   产出 `StairsFloatingBrickParams`（stride 0x40：4 float 位置/朝向、方向 qword、
-//!   参数 u32、抖动 f32、Δ f32、0.3 常量、Vec2、u64）。
-//! - spawn_stitch_bricks（L92–140）：`FrozenMap` 取 `BrickTransformSsbo` 缓冲；
-//!   `SparseInstanceBufferWriter::clear` 清空；遍历 params：`resources::render::impl$1::from`
-//!   （render 资源→颜色/变换）、`calculate_hash<([WallId;2],usize)>`（墙对键）、
-//!   `geometry::instanced_wall::impl$1::from`（→ BrickTransform）、push 实例。
-//!   产出：把缝合砖参数烘焙进 BrickTransformSsbo 实例缓冲（GPU 后置）。
+//! 2026-10-17 restorer-clutter-remaining：按 fresh 反编译 + 逐指令反汇编重建
+//! （`evidence/decomp/0x141ce65b0_*.c`、`0x141ce7190_*.c`、`evidence/disasm5_1.txt`；
+//! 常量实读 `0x1429cd068=0.2`、`0x14295b630=1000.0`、`0x142925870=0.5`、
+//! `0x142925984=0.1`、`0x142925970=0.4`、`0x1429eb6f8=-0.1`、`0x3e99999a=0.3`）。
+//!
+//! spawn_stitches（O）：
+//! - 遍历描述表 stride 0x40：`kind@+0 != 1` 跳过；**`0.2 <= threshold@+4` 跳过**。
+//! - 段长检查：`diff = start(+0x14) - length(+0x18)`；`n = trunc(min(1000, 2*|diff|))`；
+//!   **`n <= 2` 跳过，`n > 2` 处理**（0x141ce6912 `CMP RSI,2; JA process`）。
+//! - `random_splits_into(n, 0.2/|diff|, rng)` 得 u 细分；每细分点：
+//!   `jitter = (r*0.5-(1-r)*0.5)*0.1+0.4`；`delta = Δu + (-0.1)`；单位方向 + 法向
+//!   （1/SQRT，x0y/xvy swizzle）；产出 `StairsFloatingBrickParams` stride 0x40
+//!   （4 float 位置/朝向、+0x10 方向 qword、+0x18 param、+0x1c jitter、+0x20 delta、
+//!   +0x24=0.3、+0x28 Vec2、+0x38 键）。
+//!
+//! spawn_stitch_bricks（O）：FrozenMap 取 `BrickTransformSsbo`；`SparseInstanceBufferWriter::clear`；
+//! 逐 params：`resources::render::impl$1::from` → `calculate_hash<([WallId;2],usize)>` →
+//! `geometry::instanced_wall::impl$1::from` → `push<BrickTransformSsbo>`。
+//! 本 crate 以 [`StitchBrickInstances`] 承载 CPU 侧实例（GPU 写入为宿主 render 边界 U）。
 
 use bevy_ecs::prelude::*;
 use glam::{Vec2, Vec3};
 use utils::swizzlers::x0y;
+
+use country_core::systems::wall::construction::bricks::random_splits_into;
 
 /// 悬浮砖参数（stride 0x40；spawn_stitches 输出 / spawn_stitch_bricks 输入）。
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -32,7 +40,7 @@ pub struct StairsFloatingBrickParams {
     pub jitter: f32,
     /// +0x20：Δ f32。
     pub delta: f32,
-    /// +0x24：0.3 常量（3e99999a）。
+    /// +0x24：0.3 常量（0x3e99999a）。
     pub c24: f32,
     /// +0x28：Vec2。
     pub v28: Vec2,
@@ -80,49 +88,53 @@ pub fn spawn_stitches(
     let r = &mut rng.0.lock().unwrap();
     params.0.clear();
     for desc in &descriptions.0 {
+        // O：kind==1 才处理。
         if desc.kind != 1 {
             continue;
         }
+        // O：`0.2 <= threshold` 跳过。
         if desc.threshold >= 0.2 {
             continue;
         }
-        // 段长检查（O：u = truncate(min(1000, 2*|长|))；2 < u 跳过 → 只缝短段）。
-        let u = (1000.0f32.min((2.0 * desc.length.abs())).trunc()) as usize;
-        if 2 < u {
+        // O：diff = start - length；n = trunc(min(1000, 2*|diff|))。
+        let diff = desc.start - desc.length;
+        let span = diff.abs();
+        let n = (1000.0f32.min(2.0 * span).trunc()) as usize;
+        // O：n<=2 跳过；n>2 处理（0x141ce6912 `CMP RSI,2; JA process`）。
+        if n <= 2 {
             continue;
         }
-        // 取段中点 + random_splits 细分（2 段）；单位法向（1/SQRT 归一）+ x0y swizzle
-        // （O：每细分点抖动 (r*0.5-(1-r)*0.5)*0.1+0.4、Δu + (-0.1)）。
-        let mid = desc.start + desc.length * 0.5;
-        let mut bricks = Vec::new();
-        for k in 0..2 {
-            let t = k as f32 / 2.0;
-            let point = desc.start + desc.length * t;
-            // 抖动（O）：(r*0.5-(1-r)*0.5)*0.1+0.4；Δu + (-0.1)。
+        // O：random_splits_into(n, 0.2/|diff|, rng)。
+        let mut splits = Vec::new();
+        random_splits_into(n, 0.2 / span.max(f32::MIN_POSITIVE), r, &mut splits);
+        // U：段几何（宿主 curve/slot 数据）在本 crate 以 start/length 沿 X 的合成段承载；
+        // random_splits 的 u 按该段插值（方向/法向与真实缝合曲线为 I）。
+        let a = Vec3::new(desc.start, 0.0, 0.0);
+        let b = Vec3::new(desc.start + desc.length, 0.0, 0.0);
+        let dir = (b - a).normalize_or_zero();
+        let normal = Vec2::new(-dir.z, dir.x);
+        let mut prev = a;
+        for (k, &t) in splits.iter().enumerate() {
+            let point = a.lerp(b, t);
+            // O：抖动 `(r*0.5-(1-r)*0.5)*0.1+0.4`。
             let rnd = r.f32();
             let jitter = (rnd * 0.5 - (1.0 - rnd) * 0.5) * 0.1 + 0.4;
-            let delta = desc.length * 0.5 + (-0.1);
-            // 段方向 + 法向（O：1/SQRT 归一化 + x0y swizzle；沿法向偏移 jitter）。
-            let seg_dir = desc.length * 0.5;
-            let normal = Vec2::new(-seg_dir, seg_dir).normalize_or_zero();
-            let pos = x0y(Vec2::new(point, mid)) + Vec3::new(
-                normal.x * jitter,
-                0.0,
-                normal.y * jitter,
-            );
-            bricks.push(StairsFloatingBrickParams {
+            // O：delta = Δu + (-0.1)。
+            let delta = (point - prev).length() * 0.5 + (-0.1);
+            let pos = x0y(Vec2::new(point.x + normal.x * jitter, point.z + normal.y * jitter));
+            params.0.push(StairsFloatingBrickParams {
                 position: pos,
                 facing: normal.y.atan2(normal.x),
-                direction: 0,
-                param: 0,
+                direction: ((dir.x.to_bits() as u64) << 32) | dir.z.to_bits() as u64,
+                param: k as u32,
                 jitter,
                 delta,
                 c24: 0.3,
-                v28: Vec2::new(point, mid),
+                v28: Vec2::new(point.x, point.z),
                 key: 0,
             });
+            prev = point;
         }
-        params.0.extend(bricks);
     }
 }
 
@@ -141,9 +153,15 @@ pub fn spawn_stitch_bricks(
     mut bricks: ResMut<StitchBrickInstances>,
     params: Res<FloatingBrickParams>,
 ) {
+    // O：SparseInstanceBufferWriter::clear。
     bricks.0.clear();
     for p in &params.0 {
-        let key = if p.key != 0 { p.key } else { wall_pair_key(p.direction >> 32, p.direction as u32 as u64, 0) };
+        // O：calculate_hash<([WallId;2],usize)>（宿主 direction qword 承载墙对）。
+        let key = if p.key != 0 {
+            p.key
+        } else {
+            wall_pair_key(p.direction >> 32, p.direction as u32 as u64, p.param as usize)
+        };
         bricks.0.push((*p, key));
     }
 }

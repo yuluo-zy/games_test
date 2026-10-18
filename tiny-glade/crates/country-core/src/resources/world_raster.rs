@@ -164,9 +164,10 @@ impl DirtyTilePublisher {
 /// [`Erase`](Self::Erase)；`flags & 1 != 0` 且 `draw` 为真取 [`SaturatingAdd`](Self::SaturatingAdd)
 /// （`factor = clamp(strength, 0, 1) * 65536`）；`flags & 1 != 0` 且 `draw` 为假落到
 /// `unimplemented!()`（源码行 398，panic 文本 `not implemented`；清单检查禁用该宏，故写成等价的 `panic!`）。
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum StrokeBlendMode {
     /// `closure_env$1`：`dst = min(dst, 255 - coverage)`。
+    #[default]
     Erase,
     /// `closure_env$0`：`dst = max(dst, coverage)`。
     Max,
@@ -832,3 +833,6 @@ mod tests {
         assert!(r.composite().iter().all(|b| *b == 0));
     }
 }
+
+/// Resolved CPU blending contracts shared by raster tools.
+pub mod blend_policy;

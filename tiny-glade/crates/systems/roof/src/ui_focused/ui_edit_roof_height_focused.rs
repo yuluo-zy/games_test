@@ -1,12 +1,21 @@
 //! 聚焦模式屋顶高度+脊线编辑（ui_focused/ui_edit_roof_height_focused.rs）。
 //!
-//! `ui_edit_roof_ridge_and_height_focused`（0x1421ad440）。候选参数面
-//! （skeleton 富化）：`(Local<HeightGrabParams>, Res<AppMode>, Res<PublicWalls>,
-//!  Query<&Roof>, DecoratorArchivalResources, Res<UiState>, ResMut<History>,
-//!  ResMut<RoofParamsCacheResource>, …)`。
+//! `ui_edit_roof_ridge_and_height_focused`（0x1421ad440，5393B/1164）。真逻辑
+//! （decomp O）：聚焦态（模式 1/2,<6）；`RoofRidgeDims::from/to_world_space` 求
+//! 脊中点、偏移 0.75；`CameraMatrices::eye_right`、`xz_rotation_bad`、
+//! `box_trigger_volume`；`DigitalActionState::pressed` 选 UiSounds；
+//! `format!("roof_edit")`、`WidgetParams(sounds/occlude_by_world)`、
+//! `UiState::add`；`StructureType::is_fence→into_drag_state(缩放 1.0/1.2)`；
+//! `format!("height ↓")` 指示符 + `SignifierFactory/UiSignifierStream`；
+//! switch(drag)：case1 project_cursor_onto_ray→距离差→VisualEdit 0x40 事件 +
+//! DecoratorArchivist/decorator_cull_allow_wall + InnerWalls 墙高；case2
+//! project_cursor_onto_ray→inverse_lerp→clamp 新高度、墙高 1.6 且跨 0.1→
+//! update_wall_state_height、0x40 事件；case3 字段比较→0x98 历史(tag2)+
+//! History::add+ev_height_changed。
 //!
-//! 聚焦抓取：Local `HeightGrabParams`（拖拽起点/当前值）；高度经光标
-//! 投影更新 height 01 并写 EditRoofCmd；脊线方向切换写 SwitchRoofRidgeDirCmd。
+//! ⚠️ **未实现**：本文件主函数经 reviewer FIX-3 清退发明拖拽差（`/200.0` 写
+//! EditRoofCmd）为纯签名。真逻辑依赖 CameraMatrices/box_trigger_volume/
+//! signifier/反解链（UI 工具框架批次 3 后置），待接线后按 decomp 重建。
 use country_core::resources::{
     history::History,
     roofs::{Roof, commands::EditRoofCmd},
@@ -32,50 +41,25 @@ pub struct FocusRoofGrab {
 }
 
 /// B 0x1421ad440。
+///
+/// 未实现（近似体清退，reviewer FIX-3）：真逻辑 = `CameraMatrices::eye_right`、
+/// `xz_rotation_bad`、`box_trigger_volume`、`project_cursor_onto_ray` →
+/// `inverse_lerp` → clamp 新高度、`update_wall_state_height`（1.6 跨 0.1）、
+/// `ev_height_changed`、0x98 历史(tag2)+History::add。现纯签名不写真实
+/// EditRoofCmd（发明拖拽差 `/200.0` 已清退）。
 pub fn ui_edit_roof_ridge_and_height_focused(
-    mut grab: Local<HeightGrabParams>,
+    _grab: Local<HeightGrabParams>,
     mode: Res<AppMode>,
-    walls: Res<PublicWalls>,
-    roofs: Query<&Roof>,
-    ui: Res<UiState>,
-    mut history: ResMut<History>,
-    mut cache: ResMut<crate::ui_edit_roof::RoofParamsCacheResource>,
-    mut edit: EventWriter<EditRoofCmd>,
+    _walls: Res<PublicWalls>,
+    _roofs: Query<&Roof>,
+    _ui: Res<UiState>,
+    _history: ResMut<History>,
+    _cache: ResMut<crate::ui_edit_roof::RoofParamsCacheResource>,
+    _edit: EventWriter<EditRoofCmd>,
 ) {
     use country_core::systems::mode_manager::EditSubject;
-    let AppMode::Editing(EditSubject::Roof(wall)) = *mode else {
+    let AppMode::Editing(EditSubject::Roof(_wall)) = *mode else {
         return;
     };
-    let id = country_core::resources::walls::WallId(wall);
-    let Some(entity) = walls.roof_entity(id) else {
-        return;
-    };
-    let Ok(roof) = roofs.get(entity) else {
-        return;
-    };
-    // 高度抓取：光标开始/结束之间的高度差 → height 01（观测 clamp 0.1..1）。
-    if ui.interaction().widget.0 != 0 {
-        if !grab.grabbing {
-            grab.grabbing = true;
-            grab.start_cursor = cache.cursor;
-            grab.start_height = f32::from_le_bytes(roof.observed()[0x30..0x34].try_into().unwrap());
-        }
-    } else if grab.grabbing {
-        grab.grabbing = false;
-        if let (Some(start), Some(current)) = (grab.start_cursor, cache.cursor) {
-            let delta = (current.y - start.y) / 200.0;
-            let height = (grab.start_height + delta).clamp(0.0, 1.0);
-            let mut observed = [0u8; 64];
-            observed[0x08..0x0c].copy_from_slice(&1u32.to_le_bytes());
-            observed[0x0c..0x10].copy_from_slice(&height.to_le_bytes());
-            let mut event =
-                country_core::resources::roofs::geometry::edit_rules::RoofEditEvent::from_observed(
-                    &observed,
-                );
-            event.wall_id = wall;
-            event.source_flag = 1;
-            edit.write(EditRoofCmd(event));
-            let _ = history;
-        }
-    }
+    // 未实现：不写真实 EditRoofCmd。
 }

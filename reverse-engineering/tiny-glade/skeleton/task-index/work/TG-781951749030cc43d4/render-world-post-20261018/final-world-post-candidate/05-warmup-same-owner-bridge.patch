@@ -1,0 +1,44 @@
+--- a/crates/tiny-glade/src/render_bridge.rs
++++ b/crates/tiny-glade/src/render_bridge.rs
+@@ -34,6 +34,17 @@
+ /// legacy slot values do not encode an owner namespace. Stale generations are rejected.
+ pub struct CoreRenderBridge {
+     session: Rc<RefCell<VulkanGraphSession>>,
++    tables: HostTables,
++    raster: Arc<RasterShared>,
++    shaders: Arc<AssetShaderLibrary>,
++}
++
++/// Clone only this App's existing physical namespaces and their owners.
++/// A worker constructs its current-architecture Rc session locally; it must
++/// never rebuild BufferHost/TextureHost/ShaderHost for already installed assets.
++/// Private fields prevent mixing equal-numbered handles from unrelated Apps.
++#[derive(Clone)]
++pub struct CoreRenderOwners {
+     tables: HostTables,
+     raster: Arc<RasterShared>,
+     shaders: Arc<AssetShaderLibrary>,
+@@ -68,6 +79,23 @@
+             raster,
+             shaders,
+         })
++    }
++
++    pub fn owners(&self) -> CoreRenderOwners {
++        CoreRenderOwners {
++            tables: self.tables.clone(), raster: self.raster.clone(),
++            shaders: self.shaders.clone(),
++        }
++    }
++
++    /// Same actual App tables/heap/dynamic constants and shader handles, with
++    /// one current VulkanGraphSession local to the background render thread.
++    /// No new asset owner, resource backend, allocator or shader heap is built.
++    pub fn from_owners(owners: CoreRenderOwners) -> rhapsody::Result<Self> {
++        let device = owners.tables.buffers.graphics_device().clone();
++        let session = VulkanGraphSession::new(VulkanGraphBackend::new(device, AccessTable::original())?);
++        Ok(Self { session: Rc::new(RefCell::new(session)), tables: owners.tables,
++            raster: owners.raster, shaders: owners.shaders })
+     }
+ 
+     /// 将同一设备的资产表安装到游戏世界；每帧维护由 GameFrameDriver 调度。

@@ -1,0 +1,57 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_a_views.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_a_views.rs
+@@ -10,34 +10,10 @@
+ // 视图 / stub 类型（只含被读字段；偏移为机器码观测）
+ // =====================================================================================================================
+ 
+-/// `components::drawable::AlbedoMap`（TypeId 0xed4361819ec3a729/0xc98cd7c5754ff3d7；真实类型 `(pub Gap)`）：`u64 @+0`
+-/// = `TextureFromDisk` 文件键。
+-#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
+-pub struct AlbedoMapView(pub u64);
+-
+-/// `AlphaMap`（TypeId 0x028b8ca353f65821/0x1bedc6589e5297bc）：`u64 @+0` 文件键。**I**：类型名由「含该 TypeId 的 bundle
+-/// `component_ids<DrawableMeshBundle, AlbedoMap, AlphaMap, NormalMap>` 里剔除 AlbedoMap/NormalMap」推得。
+-#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
+-pub struct AlphaMapView(pub u64);
+-
+-/// `components::NormalMap`（TypeId 0x83098c3ec284caf1/0x6530b452db618923；真实类型 `(pub Gap)`）：`u64 @+0` 文件键。
+-#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
+-pub struct NormalMapView(pub u64);
+-
+-/// `components::WallFlagCloth`（TypeId 0x0e2c5c63fb76ee91/0xc662ff3d29b2c8d6；真实类型 `(pub Gap)`）：
+-/// `i32 @+0`、`f32 @+4/+8/+0xc`、`bool @+0x10`。
+-#[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
+-pub struct WallFlagClothView {
+-    pub id: i32,
+-    pub f4: f32,
+-    pub f8: f32,
+-    pub fc: f32,
+-    pub flag: bool,
+-}
+-
+-/// `components::RoofFlagCloth`（TypeId 0x983a5c6eded1c4e5/0x929a707bdcc6a79c）：`u32 @+0`。
+-#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
+-pub struct RoofFlagClothView(pub u32);
++// One canonical ECS identity is shared with actual startup/prefab producers.
++pub use crate::components::drawable::{AlbedoMap as AlbedoMapView,
++    AlphaMap as AlphaMapView, NormalMap as NormalMapView,
++    RoofFlagCloth as RoofFlagClothView, WallFlagCloth as WallFlagClothView};
+ 
+ /// `components::WoodenGate`（TypeId 0x3b633fbe5a39b5b4/0xd54faa3a72d3ee09；真实类型 `(pub Gap)`）：
+ /// `qword @+0x18`（取低 32 位写 `i32` uniform）、`i32 @+0x30`。
+@@ -72,14 +48,7 @@
+     pub b60: u8,
+ }
+ 
+-/// `components::drawable::PrevTransform`（TypeId 0xa0da022fc84ca3d9/0xfc62e38c26a7c4c9）：`Transform` 布局
+-/// （旋转 @0、平移 @0x10、缩放 @0x1c）。
+-#[derive(Component, Clone, Copy, Debug, PartialEq)]
+-pub struct PrevTransformView {
+-    pub rotation: Quat,
+-    pub translation: Vec3,
+-    pub scale: Vec3,
+-}
++pub use crate::components::drawable::PrevTransform as PrevTransformView;
+ 
+ /// Compatibility name for the same canonical Component identity. No byte cast
+ /// or independently registered View remains on the startup -> draw path.

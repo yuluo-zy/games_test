@@ -1,14 +1,13 @@
-//! Resolved decorator-input adapter backed by real Bevy entities. Original
-//! wall-space placement and asset collision metadata are explicit inputs;
-//! these component types do not claim the original visual Bundle/renderer ABI.
+//! Owns opening entities and combines their derived holes with platform stairs.
 use crate::{BuildingReport, PublicWalls, RecalculateWallHoles, WallGableDirty};
 use bevy_ecs::{prelude::*, schedule::ApplyDeferred};
-use country_core::recovered_building::{
-    building_opening_rules::{DecoratorOpeningInput, generate_wall_opening},
-    building_wall_hole_invalidation::forward_recalculation,
-    building_wall_holes::{PreviousWallHoles, RawWallHole, WallHoleStorage},
-    building_wall_state::WallId,
-};
+use country_core::resources::walls::wall_holes::opening_rules::DecoratorOpeningInput;
+use country_core::resources::walls::wall_holes::opening_rules::generate_wall_opening;
+use country_core::systems::wall::wall_state::hole_invalidation::forward_recalculation;
+use country_core::resources::walls::wall_holes::geometry::PreviousWallHoles;
+use country_core::resources::walls::wall_holes::geometry::RawWallHole;
+use country_core::resources::walls::wall_holes::geometry::WallHoleStorage;
+use country_core::resources::walls::publication_fields::WallId;
 use std::collections::{HashMap, HashSet};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct OpeningId(pub u64);
@@ -124,7 +123,7 @@ fn rebuild_openings(
             if derived.resolved_host.is_some() {
                 derived.raw_holes.clear();
                 derived.resolved_host = None;
-                derived.generation += 1;
+                derived.generation = derived.generation.wrapping_add(1);
             }
             continue;
         };
@@ -140,7 +139,7 @@ fn rebuild_openings(
                     derived.raw_holes = raw;
                     derived.resolved_host = Some(source.wall);
                     derived.host_publication_revision = host.publication_revision;
-                    derived.generation += 1;
+                    derived.generation = derived.generation.wrapping_add(1);
                 }
                 Err(error) => {
                     derived.raw_holes.clear();
@@ -199,8 +198,7 @@ fn gather_and_finalize(
     let mut rebuilt = Vec::new();
     for (id, storage) in &mut state.storage {
         let host = &walls.walls[id];
-        // Original wall-constructor passes source length+28c and shape tag !=2.
-        // Asset lookup and wall-space placement remain explicit input boundaries.
+        // Closed curves wrap hole coordinates at the authoritative source length.
         let closed = host.source.shape.tag() != 2;
         match storage.finalize(host.source.source_curve_length, closed) {
             Ok(true) => rebuilt.push(*id),

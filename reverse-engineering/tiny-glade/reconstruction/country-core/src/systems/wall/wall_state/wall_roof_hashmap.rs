@@ -3,6 +3,14 @@
 //! PDB procedure `wall_roof_hashmap` 0x140a94cd0 (5476 bytes). FunctionSystem signature O.
 //! For each public wall with a matching `Roof` entity: store `PublicWalls::roof_entity` and
 //! `WallEntities::wall_entity`; clear both when the wall is a premade shape without a roof.
+//!
+//! AutoClutterObject dependency (fresh re-check 2026-10-17): `wall_roof_hashmap.rs`
+//! 的 dependencies 只出现 ICF 别名集合
+//! `HashMap::insert<u64, ref<AutoClutterObject>>`，与
+//! `HashMap::insert<WallId, Entity>` / `insert<TreeStorageIndex, TreeStorageEntry>`
+//! 同址（alias_set_at_0x140eec970），**不是**本函数对 AutoClutterObject 的
+//! 直接使用；不在此处伪造该依赖。AutoClutterObject 的布局锚点见
+//! `reconstruction/clutter/src/autoclutter/mod.rs`（size 0x68, key@0x40）。
 
 use bevy_ecs::entity::Entity;
 use bevy_ecs::system::{Query, Res, ResMut};

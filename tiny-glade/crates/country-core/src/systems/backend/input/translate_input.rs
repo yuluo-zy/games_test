@@ -1,41 +1,4 @@
-//! `translate_input.rs` — 输入映射主系统（B 0x1417cd0a0，O 全解）。
-//!
-//! 证据：`chapters/systems/backend/input/translate_input.rs.md`、`ui-input/DIGEST.md` §2.3、
-//! `utils-input-config/DIGEST.md` §2.3、反编译 `ui-input/decomp/decomp-0x1417cd0a0.txt`、
-//! `input/ALGORITHMS.md` §1.2、re-analyst-interaction RE-ANALYSIS2 §1。
-//!
-//! PDB 签名（O）：`(Res<GameTime>, Res<ButtonInput<KeyCode>>, Res<ButtonInput<MouseButton>>,
-//! Option<Res<SteamClientResource>>, Res<EscMenuState>, ResMut<ActionSetValues>,
-//! ResMut<ActiveInputModeTracker>, EventReader<MouseWheel>, Local<MouseMoved>,
-//! EventReader<InputCursorDelta>, EventReader<UiHistoryButtonPressed>, Res<GameProfile>)`。
-//!
-//! 行为（O，0x1417cd0a0）：
-//! 1. Steam 门（`Option<Res<SteamClientResource>>`）：有且活跃才走 Steam 输入路径（crate 无
-//!    `systems::steam` 模块，本实现以 [`SteamInputActive`] 布尔资源登记该门）。非 Deck 时
-//!    检查键盘/鼠标事件源挂起计数决定是否进入翻译。
-//! 2. 鼠标按下事件扫描 → digital 槽 0 `click`（`*(byte*)(values + 0x88) |= 按下位`）。
-//! 3. `EscMenuState` 门：tag == 2 或（tag == 10 且 flag != 1）才处理键盘/滚轮映射。
-//! 4. 键盘绑定表翻译：**40 槽 × 12 B `{key u32@0, value u64@4}`**（`0xc3` = 未绑定）。
-//!    模拟槽 0..9 → 相机 pan/height/rotate/zoom；数字槽 10..38 → 26 个数字动作
-//!    （含槽 37/38 鼠标绑定 → camera_rotate_mode/camera_pan_mode）。
-//! 5. `EventReader<MouseWheel>` → analog 槽 4 `camera_zoom`（权重 8.0/1.0）。
-//! 6. `EventReader<InputCursorDelta>` + `Local<MouseMoved>` → 右键阈值判断（`3.0`）。
-//! 7. 硬编码键（ui_cancel=0x73、screenshot 修饰 0x3d、demo 门 0x143634cd8 内 8 键）。
-//! 8. 键鼠使用 → 输入方式切到 MouseKeyboard（`ActiveInputModeTracker`）。
-//!
-//! 动作↔槽映射（O：ron serialize 字段名表 @0x140831740 与反编译逐槽读序互证）：
-//! 槽 0..3 move_forward/back/left/right → analog[2] camera_pan；槽 4..5 move_up/down →
-//! analog[3] camera_height；槽 6..7 rotate_left/right → analog[5] camera_rotate（±1800/s，
-//! 乘原始 GameTime delta）；槽 8..9 zoom_in/out → analog[4] camera_zoom（±1.5 × dt×30）。
-//! 数字槽 10..38：10 building→tool_building、11 path→tool_path、12 decorators→tool_decorator、
-//! 13 customize→tool_customize、14 eraser→tool_eraser、15 terrain→tool_terrain、
-//! 16 garden→tool_garden、17 tree→tool_tree、18 water→tool_water、19 photomode→photomode、
-//! 20 time_of_day→time_of_day、21 undo→undo、22 redo→redo、23 focus_edit→right_click、
-//! 24 disable_snapping→snapping_disable、25 screenshot→screenshot（& !0x3d 修饰）、
-//! 26 feedback→screenshot_feedback、27 hide_ui_photomode→hide_ui_photomode、
-//! 28 ui_cancel→ui_cancel（| 硬编码 0x73）、29 ui_confirm→ui_confirm、30..35
-//! ui_left/right/down/up/tab_prev/tab_next、36 → cinematic_camera_ctrls、37/38 鼠标
-//! {1,2} → camera_rotate_mode/camera_pan_mode、39 鼠标 {1} → focus_edit（右键手势）。
+//! 键鼠事件到动作槽的翻译。键位表为可配置资源，手势使用本帧光标增量。
 use bevy_ecs::prelude::*;
 use glam::Vec2;
 
@@ -57,67 +20,76 @@ use super::{
 #[derive(Clone, Copy, Debug, Default)]
 pub struct MouseMoved(pub f32);
 
-/// Steam 输入活跃门（O：RE-ANALYSIS2——translate_input 内 Arc 克隆 `SteamClientManager` →
-/// `SteamAPI_SteamUtils_v010`（0x142923570）→ `IsSteamRunningOnSteamDeck`
-/// （0x1429234f0）门控事件源）。`systems::steam` 不在本 crate（库外接线登记，controllers →
-/// InputTranslationState 实际在 `systems::steam::update_steam_inputs`，22 同构块），
-/// 本资源由宿主按该门填充；false = 走键盘/鼠标路径。
+/// Steam 输入门（O：RE-ANALYSIS2 + fresh 反编译 2026-10-17——translate_input 内 Arc 克隆
+/// `SteamClientManager` → `SteamAPI_SteamUtils_v010`（0x142923570）→
+/// `IsSteamRunningOnSteamDeck`（0x1429234f0）只参与 mode-tracker 更新门控（Deck 时仅键盘
+/// 计数）与 screenshot 修饰跳过；主体（点击扫描/门/绑定翻译/滚轮/手势/历史）**恒运行**）。
+/// `systems::steam` 不在本 crate（库外接线登记，手柄动作需要由宿主写入统一动作值，设备接线位于
+/// `systems::steam::update_steam_inputs`，22 同构块），本资源由宿主按该门填充；
+/// `present=false` = 无 Steam（走键盘/鼠标路径）。
 #[derive(Resource, Clone, Copy, Debug, Default)]
-pub struct SteamInputActive(pub bool);
+pub struct SteamInputActive {
+    /// 原生 `Option<Res<SteamClientResource>>` 是否为 Some（Steam 客户端存在）。
+    pub present: bool,
+    /// `IsSteamRunningOnSteamDeck` 结果（仅 present 时有意义）。
+    pub on_deck: bool,
+}
 
 /// Demo 门（O：全局字节 `0x143634cd8` = demo 开关；为 1 时额外启用演示模式的硬编码键）。
 #[derive(Resource, Clone, Copy, Debug, Default)]
 pub struct DemoModeEnabled(pub bool);
 
-/// 绑定表槽数（O：40 槽 × 12 B）。
+/// The retained table is a numeric projection of the loaded profile, not an
+/// independently configured resource. Slots 0..36 are keys, 37..39 are mouse.
 pub const BINDING_SLOTS: usize = 40;
-
-/// 一个动作的键/鼠绑定（O：`KeyBinding {key u32@0, value u64@4}`；`0xc3` = 未绑定；
-/// 鼠标绑定为 u16 对 @0x1bc..0x1c8）。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ActionBinding {
     pub key: u16,
-    pub mouse: u16,
+    pub mouse: Option<u16>,
 }
-
 impl ActionBinding {
     pub const UNBOUND: Self = Self {
         key: UNBOUND_KEY,
-        mouse: 0,
+        mouse: None,
     };
-
     pub fn bound_key(&self) -> bool {
         self.key != UNBOUND_KEY
     }
 }
-
-/// 绑定表（槽号 = `game_key_bindings` 动作槽，0..39）。
-#[derive(Clone, Debug)]
+#[derive(Resource, Clone, Debug)]
 pub struct BindingsTable {
     pub slots: [ActionBinding; BINDING_SLOTS],
 }
-
+impl TryFrom<&crate::game_profile::GameKeyBindings> for BindingsTable {
+    type Error = anyhow::Error;
+    fn try_from(bindings: &crate::game_profile::GameKeyBindings) -> Result<Self, Self::Error> {
+        use bevy_input::mouse::MouseButton;
+        let mut slots = [ActionBinding::UNBOUND; BINDING_SLOTS];
+        for (slot, key) in bindings.bindings.iter().copied().enumerate() {
+            if let Some(key) = key {
+                slots[slot].key = crate::game_profile::desktop_keycode_index(key)?;
+            }
+        }
+        for (slot, mouse) in bindings.mouse.iter().copied().enumerate() {
+            slots[37 + slot].mouse = match mouse {
+                None => None,
+                Some(MouseButton::Left) => Some(0),
+                Some(MouseButton::Right) => Some(1),
+                Some(MouseButton::Middle) => Some(2),
+                Some(MouseButton::Back) => Some(3),
+                Some(MouseButton::Forward) => Some(4),
+                Some(MouseButton::Other(button)) if button > 4 => Some(button),
+                Some(MouseButton::Other(button)) => anyhow::bail!(
+                    "mouse Other({button}) collides with a standard button in the desktop u16 facade"),
+            };
+        }
+        Ok(Self { slots })
+    }
+}
 impl Default for BindingsTable {
     fn default() -> Self {
-        // O（default @0x14089b110 为内联代码，逐槽 `mov dword [rcx+off], imm32` 写键码，
-        // 2026-10-16 rne-read 逐字节核对）：槽 0..35 键码 + [0x1b0]=0xc3 + u16 鼠标
-        // `{1,2,1}` @0x1bc..0x1c4。键码为 bevy 风格 KeyCode u16。
-        const KEYS: [u16; 36] = [
-            0x2a, 0x26, 0x14, 0x17, 0x18, 0x24, 0xc3, 0xc3, 0xc3, 0xc3, // 0..9 模拟
-            0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x23, // 10..19
-            0x27, 0x2d, 0x2b, 0xc3, 0x38, 0xab, 0xa5, 0x1b, 0x49, 0x3a, // 20..29
-            0x51, 0x52, 0x50, 0x53, 0x4f, 0x4e, // 30..35
-        ];
-        const MOUSE: [u16; 3] = [1, 2, 1];
-        let mut slots = [ActionBinding::UNBOUND; BINDING_SLOTS];
-        for (i, code) in KEYS.iter().enumerate() {
-            slots[i].key = *code;
-        }
-        // 槽 36（cinematic_camera_ctrls）默认 0xc3；槽 37/38/39 = 鼠标绑定。
-        for (i, button) in MOUSE.iter().enumerate() {
-            slots[37 + i].mouse = *button;
-        }
-        Self { slots }
+        Self::try_from(&crate::game_profile::GameKeyBindings::default())
+            .expect("original default bindings use supported desktop inputs")
     }
 }
 
@@ -140,30 +112,90 @@ struct AnalogTarget {
 /// `_UNK_1429258d0`=1.5、`_UNK_1429df180`=−1.5）。
 const ANALOG_TARGETS: [AnalogTarget; 10] = [
     // 槽 0..3 move_forward/back/left/right → camera_pan（analog 2）。
-    AnalogTarget { slot: 2, axis: 1, sign: -1.0, scalar: 1.0, use_raw_delta: false },
-    AnalogTarget { slot: 2, axis: 1, sign: 1.0, scalar: 1.0, use_raw_delta: false },
-    AnalogTarget { slot: 2, axis: 0, sign: -1.0, scalar: 1.0, use_raw_delta: false },
-    AnalogTarget { slot: 2, axis: 0, sign: 1.0, scalar: 1.0, use_raw_delta: false },
+    AnalogTarget {
+        slot: 2,
+        axis: 1,
+        sign: -1.0,
+        scalar: 1.0,
+        use_raw_delta: false,
+    },
+    AnalogTarget {
+        slot: 2,
+        axis: 1,
+        sign: 1.0,
+        scalar: 1.0,
+        use_raw_delta: false,
+    },
+    AnalogTarget {
+        slot: 2,
+        axis: 0,
+        sign: -1.0,
+        scalar: 1.0,
+        use_raw_delta: false,
+    },
+    AnalogTarget {
+        slot: 2,
+        axis: 0,
+        sign: 1.0,
+        scalar: 1.0,
+        use_raw_delta: false,
+    },
     // 槽 4..5 move_up/down → camera_height（analog 3）。
-    AnalogTarget { slot: 3, axis: 0, sign: 1.0, scalar: 1.0, use_raw_delta: false },
-    AnalogTarget { slot: 3, axis: 0, sign: -1.0, scalar: 1.0, use_raw_delta: false },
+    AnalogTarget {
+        slot: 3,
+        axis: 0,
+        sign: 1.0,
+        scalar: 1.0,
+        use_raw_delta: false,
+    },
+    AnalogTarget {
+        slot: 3,
+        axis: 0,
+        sign: -1.0,
+        scalar: 1.0,
+        use_raw_delta: false,
+    },
     // 槽 6..7 rotate_left/right → camera_rotate（analog 5），±1800·原始 delta。
-    AnalogTarget { slot: 5, axis: 0, sign: -1.0, scalar: 1800.0, use_raw_delta: true },
-    AnalogTarget { slot: 5, axis: 0, sign: 1.0, scalar: 1800.0, use_raw_delta: true },
+    AnalogTarget {
+        slot: 5,
+        axis: 0,
+        sign: -1.0,
+        scalar: 1800.0,
+        use_raw_delta: true,
+    },
+    AnalogTarget {
+        slot: 5,
+        axis: 0,
+        sign: 1.0,
+        scalar: 1800.0,
+        use_raw_delta: true,
+    },
     // 槽 8..9 zoom_in/out → camera_zoom（analog 4），±1.5·(delta·30)。
-    AnalogTarget { slot: 4, axis: 0, sign: 1.0, scalar: 1.5, use_raw_delta: false },
-    AnalogTarget { slot: 4, axis: 0, sign: -1.0, scalar: 1.5, use_raw_delta: false },
+    AnalogTarget {
+        slot: 4,
+        axis: 0,
+        sign: 1.0,
+        scalar: 1.5,
+        use_raw_delta: false,
+    },
+    AnalogTarget {
+        slot: 4,
+        axis: 0,
+        sign: -1.0,
+        scalar: 1.5,
+        use_raw_delta: false,
+    },
 ];
 
 /// 绑定槽 → 数字动作槽（O：0x1417cd0a0 行 476..636 逐槽写）。
 /// 前两个为 None 表示该槽映射到鼠标手势/修饰键，单独处理。
-const DIGITAL_TARGETS: [(usize, u16); 29] = [
-    (10, 4), // building → tool_building
-    (11, 5), // path → tool_path
-    (12, 6), // decorators → tool_decorator
-    (13, 7), // customize → tool_customize
-    (14, 9), // eraser → tool_eraser
-    (15, 8), // terrain → tool_terrain
+const DIGITAL_TARGETS: [(usize, u16); 28] = [
+    (10, 4),  // building → tool_building
+    (11, 5),  // path → tool_path
+    (12, 6),  // decorators → tool_decorator
+    (13, 7),  // customize → tool_customize
+    (14, 9),  // eraser → tool_eraser
+    (15, 8),  // terrain → tool_terrain
     (16, 10), // garden → tool_garden
     (17, 11), // tree → tool_tree
     (18, 12), // water → tool_water
@@ -171,12 +203,11 @@ const DIGITAL_TARGETS: [(usize, u16); 29] = [
     (20, 14), // time_of_day
     (21, 16), // undo
     (22, 17), // redo
-    (23, 1), // focus_edit → right_click
+    (23, 1),  // focus_edit → right_click
     (24, 15), // disable_snapping → snapping_disable
-    (25, 29), // screenshot（+ !0x3d 修饰）
     (26, 31), // feedback → screenshot_feedback
     (27, 32), // hide_ui_photomode
-    (28, 18), // ui_cancel（| 硬编码 0x73）
+    (28, 18), // ui_cancel
     (29, 19), // ui_confirm
     (30, 20), // ui_left
     (31, 21), // ui_right
@@ -185,8 +216,8 @@ const DIGITAL_TARGETS: [(usize, u16); 29] = [
     (34, 24), // ui_tab_prev
     (35, 25), // ui_tab_next
     (36, 33), // cinematic_camera_ctrls
-    (37, 2), // 鼠标 {1} → camera_rotate_mode
-    (38, 3), // 鼠标 {2} → camera_pan_mode
+    (37, 2),  // 鼠标 {1} → camera_rotate_mode
+    (38, 3),  // 鼠标 {2} → camera_pan_mode
 ];
 
 /// `FUN_14089aef0`（O：按键查询谓词；返回键是否按下）。
@@ -229,10 +260,10 @@ fn translate_digital(
     out: &mut [bool; DIGITAL_SLOTS],
 ) {
     for (binding_slot, digital_slot) in DIGITAL_TARGETS {
-        let binding = &bindings.slots[binding_slot as usize];
+        let binding = &bindings.slots[binding_slot];
         let pressed = if binding_slot >= 37 {
             // 鼠标绑定槽（37=Rotate、38=Move）。
-            binding.mouse != 0 && mouse.pressed(binding.mouse)
+            binding.mouse.is_some_and(|button| mouse.pressed(button))
         } else {
             binding.bound_key() && key_pressed(keyboard, binding.key)
         };
@@ -240,21 +271,27 @@ fn translate_digital(
             out[digital_slot as usize] = true;
         }
     }
-    // 硬编码 ui_cancel 键 0x73（O：行 338..341，`FUN_14089aef0(lVar28 + 0x20, 0x73)`）。
+    // 硬编码 ESC 键 0x73 → main_menu（digital[27]@+0xa3，O：0x1417ce01b `or [r14+0xa3]`）。
+    // 注意：DIGITAL_TARGETS 的 (28, 18) 是**槽 28 绑定**的 ui_cancel（+0x9a），与 0x73 不同目标。
     if key_pressed(keyboard, 0x73) {
-        out[18] = true;
+        out[27] = true;
     }
 }
 
-/// `translate_input` @0x1417cd0a0（O 全解）。
+/// `translate_input` @0x1417cd0a0（O 全解，fresh 反编译 + 机器码 2026-10-17 重建）。
 ///
 /// 相对 PDB 签名缺 `Option<Res<SteamClientResource>>`、`EventReader<MouseWheel>`、
 /// `Res<GameProfile>`：前两者用 [`SteamInputActive`] / 滚轮读取代替（Steam 全链库外登记），
-/// GameProfile 的键绑定用 [`BindingsTable`] 传入（默认序列来自 O 原字节）。
+/// GameProfile 的真实键位投影到当前数字输入适配器，不保留独立默认绑定权威。
+///
+/// A1：原生**无提前 return**——Steam 只参与 mode-tracker 更新门控（Deck 时仅键盘计数）与
+/// screenshot 修饰跳过；主体恒运行。
 #[allow(clippy::too_many_arguments)]
 pub fn translate_input(
     time: Res<GameTime>,
+    elapsed: Res<bevy_time::Time>,
     keyboard: Res<KeyButtonInput>,
+    profile: Res<crate::game_profile::GameProfile>,
     mouse: Res<MouseButtonInput>,
     menu: Res<EscMenuState>,
     mut values: ResMut<ActionSetValues>,
@@ -266,22 +303,35 @@ pub fn translate_input(
     mut cursor_delta: EventReader<InputCursorDelta>,
     mut history_buttons: EventReader<UiHistoryButtonPressed>,
 ) {
-    // Steam 门（O：`*param_4 != 0` 时走 Steam；本实现只登记 inactive 分支）。
-    if steam.0 {
-        return;
+    let bindings = BindingsTable::try_from(&profile.key_bindings)
+        .expect("loaded profile bindings must be representable by the desktop input facade");
+    // A2（O：LAB_1417cd126）mode-tracker 更新在函数**开头**，按输入事件条件：
+    // 无 Steam / 非 Deck → mouse.just_pressed || keyboard.just_pressed（+0x38 计数）；
+    // Steam + Deck → 仅 keyboard.just_pressed（0x1417cd082）。只更新
+    // `mouse_keyboard_deadline`（+0x10/+0x18 = Instant::now()），controller_deadline 不动。
+    // 使用宿主单调时间；暂停游戏不会阻止键鼠/手柄提示切换。
+    let has_mouse_events = mouse.get_just_pressed().next().is_some();
+    let has_keyboard_events = keyboard.get_just_pressed().next().is_some();
+    let update_tracker = if steam.present && steam.on_deck {
+        has_keyboard_events
+    } else {
+        has_mouse_events || has_keyboard_events
+    };
+    if update_tracker {
+        mode_tracker.mouse_keyboard_deadline = elapsed
+            .elapsed()
+            .saturating_add(crate::input::INPUT_MODE_COOLDOWN);
     }
-    let now = core::time::Duration::from_millis(0);
 
-    // 鼠标按下事件扫描 → digital 槽 0 `click`（O：行 96..180 SIMD 扫描 `param_3`
-    // `ButtonInput<MouseButton>` 按下事件位，任一按下沿即置 click）。
-    if mouse.just_pressed_any() {
+    // 鼠标按下扫描 → digital 槽 0 `click`（O：0x1417cd0a0 行 96..180 SIMD 扫描 pressed 集，
+    // 任一键值 == 0（MouseButton::Left）→ `click = pressed(Left)`，`*(values+0x88) |= 按下位`）。
+    if mouse.pressed(0) {
         values.current.digital[0] = true;
     }
 
     // EscMenuState 门（O：`tag == 2 || (tag == 10 && flag != 1)`）。
     let view = menu.view();
     let gate_open = view.tag == 2 || (view.tag == 10 && view.flag != 1);
-    let bindings = BindingsTable::default();
     if gate_open {
         let dt = time.delta;
         let mut analog = values.current.analog;
@@ -297,30 +347,42 @@ pub fn translate_input(
             values.current.analog[4].x += weight * event.y;
         }
 
-        // 右键手势（O：行 438..471）：`Local<MouseMoved>` 在右键按下沿累加游标增量长度；
-        // `right_click = (MouseMoved < 3.0) & 右键释放 | 槽 23 focus_edit 绑定 | 既有`。
-        // 阈值 3.0 = `_UNK_1429cd078`。
-        let moved_len = cursor_delta.read().fold(0.0, |acc, d| acc + d.0.length());
-        if mouse.just_pressed(1) {
-            mouse_moved.0 += moved_len;
-        }
-        if mouse.just_released(1) && mouse_moved.0 < 3.0 {
-            values.current.digital[1] = true;
+        // B @1417cd959 uses the configured mouse_focus_edit binding, including
+        // Some(Left). Just-press resets distance; held frames alone accumulate.
+        // The release frame compares the already accumulated distance (< 3).
+        let last_len = cursor_delta
+            .read()
+            .last()
+            .map_or(0.0, |delta| delta.0.length());
+        if let Some(button) = bindings.slots[39].mouse {
+            if mouse.just_pressed(button) {
+                mouse_moved.0 = 0.0;
+            } else if mouse.pressed(button) {
+                mouse_moved.0 += last_len;
+            }
+            if mouse.just_released(button) && mouse_moved.0 < 3.0 {
+                values.current.digital[1] = true;
+            }
         }
         if bindings.slots[23].bound_key() && key_pressed(&keyboard, bindings.slots[23].key) {
             values.current.digital[1] = true;
         }
 
-        // screenshot 修饰（O：行 678..693）：槽 25 按下且键 0x3d 未按下。
-        let screenshot = bindings.slots[25];
-        if screenshot.bound_key()
-            && key_pressed(&keyboard, screenshot.key)
-            && !key_pressed(&keyboard, 0x3d)
-        {
-            values.current.digital[29] = true;
+        // screenshot 修饰（O：行 678..693，A4）：槽 25 按下且键 0x3d 未按下 →
+        // digital[29]；**仅无 Steam（puVar5==0）时执行**，Steam 存在时跳过（0x1417cdffc
+        // `test r12,r12; jnz`）。
+        if !steam.present {
+            let screenshot = bindings.slots[25];
+            if screenshot.bound_key()
+                && key_pressed(&keyboard, screenshot.key)
+                && !key_pressed(&keyboard, 0x3d)
+            {
+                values.current.digital[29] = true;
+            }
         }
 
-        // Demo 门硬编码键（O：全局 0x143634cd8 != 0，行 730..776）。
+        // Demo 门硬编码键（O：全局 0x143634cd8 != 0，行 730..776；0xa6 经机器码核验
+        // `setne`——`pressed(0xab) && pressed(0x3d)`）。
         if demo.0 {
             if key_pressed(&keyboard, 0x35) && key_pressed(&keyboard, 0x3d) {
                 values.current.digital[26] = true; // clear_canvas
@@ -348,19 +410,15 @@ pub fn translate_input(
             values.current.digital[38] = true; // camera_snapshot_restore（恒启）
         }
 
-        // UiHistoryButtonPressed 消费（O：0x1417cd0a0 行 780..833）：事件载荷字节
-        // `0` = undo → digital[16]（+0x98），非零 = redo → digital[17]（+0x99）。
-        // 与 0xa7 恒启键同段；生产者（UI 历史按钮）组外待仲裁。
-        for history in history_buttons.read() {
+        // UiHistoryButtonPressed 消费（O：0x1417cd0a0 行 780..833）：**只消费最末事件**；
+        // 载荷字节 `0` = undo → digital[16]（+0x98），非零 = redo → digital[17]（+0x99）。
+        if let Some(history) = history_buttons.read().last() {
             if history.is_redo() {
                 values.current.digital[17] = true;
             } else {
                 values.current.digital[16] = true;
             }
         }
-
-        // 键鼠使用 → 输入方式切到 MouseKeyboard（O：ActiveInputModeTracker 更新）。
-        *mode_tracker = ActiveInputModeTracker::new_default_mouse_keyboard(now);
     }
 }
 
@@ -377,6 +435,48 @@ mod tests {
     use super::*;
 
     #[test]
+    fn profile_remapping_reaches_the_live_table_and_left_mouse_is_bound() {
+        use bevy_input::{keyboard::KeyCode, mouse::MouseButton};
+        let mut profile = crate::game_profile::GameKeyBindings::default();
+        profile.bindings[21] = Some(KeyCode::KeyU);
+        profile.mouse[0] = Some(MouseButton::Left);
+        profile.mouse[2] = None;
+        let table = BindingsTable::try_from(&profile).unwrap();
+        let mut keyboard = KeyButtonInput::default();
+        keyboard.press(crate::game_profile::desktop_keycode_index(KeyCode::KeyU).unwrap());
+        let mut mouse = MouseButtonInput::default();
+        mouse.press(0);
+        let mut output = [false; DIGITAL_SLOTS];
+        translate_digital(&keyboard, &mouse, &table, &mut output);
+        assert!(
+            output[16],
+            "the user's remapped undo key must reach the action set"
+        );
+        assert!(
+            output[2],
+            "a configured left button is not an unbound mouse slot"
+        );
+        assert_eq!(table.slots[39].mouse, None);
+    }
+
+    #[test]
+    fn screenshot_is_not_written_by_the_unconditional_digital_mapping() {
+        let mut keyboard = KeyButtonInput::default();
+        keyboard.press(0xab);
+        let mut output = [false; DIGITAL_SLOTS];
+        translate_digital(
+            &keyboard,
+            &MouseButtonInput::default(),
+            &BindingsTable::default(),
+            &mut output,
+        );
+        assert!(
+            !output[29],
+            "Steam/modifier gate owns the screenshot action"
+        );
+    }
+
+    #[test]
     fn default_bindings_match_the_original_sequence() {
         let b = BindingsTable::default();
         assert_eq!(b.slots[0].key, 0x2a); // move_forward
@@ -387,27 +487,37 @@ mod tests {
         assert_eq!(b.slots[15].key, 0x0c); // terrain
         assert_eq!(b.slots[28].key, 0x49); // ui_cancel
         assert_eq!(b.slots[36].key, UNBOUND_KEY); // cinematic_camera_ctrls
-        assert_eq!(b.slots[37].mouse, 1); // camera_rotate_mode
-        assert_eq!(b.slots[38].mouse, 2); // camera_pan_mode
-        assert_eq!(b.slots[39].mouse, 1); // focus_edit
+        assert_eq!(b.slots[37].mouse, Some(1)); // camera_rotate_mode
+        assert_eq!(b.slots[38].mouse, Some(2)); // camera_pan_mode
+        assert_eq!(b.slots[39].mouse, Some(1)); // focus_edit
     }
 
     #[test]
     fn analog_translation_writes_pan_height_zoom_rotate_slots() {
         let mut keyboard = KeyButtonInput::default();
-        keyboard.pressed.insert(0x2a); // move_forward → camera_pan.y-
+        keyboard.press(0x2a); // move_forward → camera_pan.y-
         let mut analog = [Vec2::ZERO; ANALOG_SLOTS];
-        translate_analog(&keyboard, &BindingsTable::default(), 1.0 / 60.0, &mut analog);
+        translate_analog(
+            &keyboard,
+            &BindingsTable::default(),
+            1.0 / 60.0,
+            &mut analog,
+        );
         assert!(analog[2].y < 0.0); // camera_pan.y 减少
         assert_eq!(analog[2].x, 0.0);
         assert_eq!(analog[3], Vec2::ZERO);
         assert_eq!(analog[4], Vec2::ZERO);
         assert_eq!(analog[5], Vec2::ZERO);
         // move_up → camera_height.x+。
-        keyboard.pressed.clear();
-        keyboard.pressed.insert(0x18);
+        keyboard.reset_all();
+        keyboard.press(0x18);
         let mut analog = [Vec2::ZERO; ANALOG_SLOTS];
-        translate_analog(&keyboard, &BindingsTable::default(), 1.0 / 60.0, &mut analog);
+        translate_analog(
+            &keyboard,
+            &BindingsTable::default(),
+            1.0 / 60.0,
+            &mut analog,
+        );
         assert!(analog[3].x > 0.0);
         // zoom_in 默认未绑定 → 无 zoom 输出。
         assert_eq!(analog[4], Vec2::ZERO);
@@ -416,10 +526,15 @@ mod tests {
     #[test]
     fn digital_translation_maps_binding_slots_to_actions() {
         let mut keyboard = KeyButtonInput::default();
-        keyboard.pressed.insert(0x07); // building
-        keyboard.pressed.insert(0x49); // ui_cancel（绑定槽 28）
+        keyboard.press(0x07); // building
+        keyboard.press(0x49); // ui_cancel（绑定槽 28）
         let mut out = [false; DIGITAL_SLOTS];
-        translate_digital(&keyboard, &MouseButtonInput::default(), &BindingsTable::default(), &mut out);
+        translate_digital(
+            &keyboard,
+            &MouseButtonInput::default(),
+            &BindingsTable::default(),
+            &mut out,
+        );
         assert!(out[4]); // tool_building
         assert!(out[18]); // ui_cancel
         assert!(!out[5]);
@@ -433,7 +548,7 @@ mod tests {
         bindings.slots[6].key = 0x1a;
         bindings.slots[7].key = 0x1b;
         let mut keyboard = KeyButtonInput::default();
-        keyboard.pressed.insert(0x1a);
+        keyboard.press(0x1a);
         let mut analog = [Vec2::ZERO; ANALOG_SLOTS];
         translate_analog(&keyboard, &bindings, 1.0 / 60.0, &mut analog);
         // rotate_left：−1800 × delta。

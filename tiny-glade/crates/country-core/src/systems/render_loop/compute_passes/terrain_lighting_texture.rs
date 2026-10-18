@@ -75,6 +75,19 @@ unsafe impl ResourceView for CameraMatrices {
 
 /// W24 系统（O 0x140a51440）。
 pub fn calc_terrain_lighting_texture(env: &mut PassEnv<'_>) {
+    calc_terrain_lighting_texture_impl(env, |env| env.resource::<CameraMatrices>().eye_position());
+}
+
+/// Current-host projection of the original MainCamera::eye_position value.
+/// The typed caller borrows the actual camera; no original-layout view is cast.
+pub fn calc_terrain_lighting_texture_with_eye(env: &mut PassEnv<'_>, eye: Vec3) {
+    calc_terrain_lighting_texture_impl(env, |_| eye);
+}
+
+fn calc_terrain_lighting_texture_impl(
+    env: &mut PassEnv<'_>,
+    eye: impl FnOnce(&PassEnv<'_>) -> Vec3,
+) {
     let preset8 = TexturePreset(OUTPUT.1);
     // 内联的纹理库查找：`get_rg_texture(8)`（缺失 / 无句柄 → panic）。
     let imported = PassResources::new_from(env.world)
@@ -85,7 +98,7 @@ pub fn calc_terrain_lighting_texture(env: &mut PassEnv<'_>) {
     let pass = env
         .pass(PASS_NAME, SHADER_URI)
         .bind_texture(OUTPUT.0, &preset8, OUTPUT.2);
-    let eye = env.resource::<CameraMatrices>().eye_position();
+    let eye = eye(env);
     let pass = pass
         .uniform(KEY_EYE_POSITION, eye)
         .bind_texture(INPUTS[0].0, &TexturePreset(INPUTS[0].1), TEX_READ)

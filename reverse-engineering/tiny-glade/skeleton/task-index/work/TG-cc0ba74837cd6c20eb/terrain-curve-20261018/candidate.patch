@@ -1,0 +1,49 @@
+--- a/games_test/tiny-glade/crates/country-core/src/resources/terrain_rock_mask.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/terrain_rock_mask.rs
+@@ -19,8 +19,9 @@
+ unsafe impl bytemuck::Pod for TerrainRockMaskSsbo {}
+ 
+ impl StorageElement for TerrainRockMaskSsbo {
+-    const NAME: &'static str = "TerrainRockMaskSsbo";
+-    const BUFFER_LEN: usize = 0x8000;
++    const NAME: &'static str = "TerrainRockMask";
++    // B constructor0x141620415 allocates0x8000 bytes, or0x2000 u32 words.
++    const BUFFER_LEN: usize = 0x2000;
+     const MAPPED_MEMORY: u8 = MAPPED_MEMORY_READBACK;
+ }
+ 
+@@ -77,3 +78,34 @@
+     );
+     (mask[word as usize] >> (index & 0x1f)) & 1
+ }
++
++
++#[cfg(test)]
++mod original_storage_contract_tests {
++    use super::*;
++    use crate::{asset_libraries::ssbo_library::AssetSsboLibrary, render::ssbo::tests::MockDevice};
++
++    #[test]
++    fn actual_library_constructor_matches_native_name_bytes_and_word_count() {
++        let device = MockDevice::default();
++        let mut library = AssetSsboLibrary::new();
++        library.add_new::<TerrainRockMaskSsbo>(&device);
++        let storage = library.get::<TerrainRockMaskSsbo>().unwrap();
++        assert_eq!(storage.mapped.len(), 0x2000);
++        assert_eq!(storage.buffer.byte_size, 0x8000);
++        {
++            let calls = device.created.borrow();
++            assert_eq!(calls.len(), 1);
++            let (desc, name, initial) = &calls[0];
++            assert_eq!(name, "TerrainRockMask");
++            assert_eq!((desc.size, desc.usage, desc.memory, desc.alignment), (0x8000, 0x22, 4, 4));
++            let initial = initial.as_ref().unwrap();
++            assert_eq!(initial.len(), 0x8000);
++            assert!(initial.iter().all(|byte| *byte == 0));
++        }
++        library.get_mut::<TerrainRockMaskSsbo>().unwrap().mapped[0x1fff].0 = 1 << 31;
++        let mask = library.get::<TerrainRockMaskSsbo>().unwrap();
++        assert_eq!(sample_at_world_xz(bytemuck::cast_slice(&mask.mapped[..]), 65.0, 65.0), 1);
++        assert_eq!(sample_at_world_xz(bytemuck::cast_slice(&mask.mapped[..]), -65.0, -65.0), 0);
++    }
++}

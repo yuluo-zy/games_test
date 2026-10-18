@@ -9,9 +9,11 @@
 //!  * 结果按内存布局写入 56 B（`[rsi+0x00..0x30]`）：`+0x00=A, +0x08=C, +0x10=D, +0x18=E, +0x20=G, +0x28=F, +0x30=B`
 //!    （编译器重排，与查找顺序不同）。
 //!  * 下游调用点确认的角色（O）：`+0x00` = `AssetShaderLibrary`（`get_compute_by_name`/`add_compute` 的 self）、
-//!    `+0x08` = `AssetTextureLibrary`（`get_rg_texture` 的 self）、`+0x10` = `AssetSsboLibrary`
-//!    （`read_access_buffer<T>` 里 `[rcx+0x10]`）、`+0x28` = `Mutex<DynamicConstants>`（I：`ComputePass::new`
-//!    对其 `lock`，把 `guard+8` 交给 `UniformBinder::new`）。`+0x18/+0x20/+0x30` 的类型 U。
+//!    `+0x08` = `AssetTextureLibrary`（`get_rg_texture` 的 self）、`+0x10` = `AssetSsboLibrary`。
+//!    2026-10-18 原 RNE 的完整 TypeId 对与具名 `App::insert_resource<T>` 交叉确认：
+//!    E = `AssetVAOLibrary`（0x14012153a/544），G = `AssetPlacementDataLibrary`（0x14012383a/844），
+//!    F = `DynamicConstantsResource`（0x14011f88a/894），可选 B = `ShaderWatch`（0x140115fe6/ff0）。
+//!    原始字节证据在 TG-727475d65610eb845f/main-chain-frame-20261018/map_resource_ids.json。
 //!
 //! 偏离：原版按**真实 TypeId** 查 bevy `Components`；TypeId 的 128 位值是原 EXE 里的常量，Rust 重建里没有同一
 //! 类型的同一 TypeId，故查找被抽成 [`ResourceLookup`] 接缝：测试/集成可提供按 TypeId 对查询的实现。
@@ -39,7 +41,7 @@ pub mod type_ids {
         lo: 0x8597ee0727b461b3,
         hi: 0x8b297ec5ae15f15c,
     };
-    /// B → `+0x30`：**可选**，类型 U。
+    /// B → `+0x30`：可选 `render::shaderwatch::inner::ShaderWatch`。
     pub const OPTIONAL_B: TypeId128 = TypeId128 {
         lo: 0xf0b963d163fe760f,
         hi: 0x7cb1ed0b9f8556a8,
@@ -54,17 +56,17 @@ pub mod type_ids {
         lo: 0x8226cc786e679355,
         hi: 0x65cfda6a55a841ac,
     };
-    /// E → `+0x18`：类型 U。
+    /// E → `+0x18`：`AssetVAOLibrary`。
     pub const RESOURCE_E: TypeId128 = TypeId128 {
         lo: 0x874b1541877dacfd,
         hi: 0x2394c835ed9c6f89,
     };
-    /// F → `+0x28`：`Mutex<DynamicConstants>`（I）。
+    /// F → `+0x28`：`render::DynamicConstantsResource`。
     pub const DYNAMIC_CONSTANTS: TypeId128 = TypeId128 {
         lo: 0x47c94cb78283a72e,
         hi: 0x8c173ded97323e9d,
     };
-    /// G → `+0x20`：类型 U。
+    /// G → `+0x20`：`AssetPlacementDataLibrary`。
     pub const RESOURCE_G: TypeId128 = TypeId128 {
         lo: 0xb65bf3141f93e938,
         hi: 0xffcf78a6ae974587,
@@ -82,13 +84,13 @@ pub struct PassResources {
     pub texture_library: *const AssetTextureLibrary,
     /// `+0x10`：`AssetSsboLibrary`。
     pub ssbo_library: *const AssetSsboLibrary,
-    /// `+0x18`：类型 U（TypeId E）。
+    /// `+0x18`：`AssetVAOLibrary`（TypeId E）。
     pub resource_e: *const (),
-    /// `+0x20`：类型 U（TypeId G）。
+    /// `+0x20`：`AssetPlacementDataLibrary`（TypeId G）。
     pub resource_g: *const (),
     /// `+0x28`：`Mutex<DynamicConstants>`（I）。
     pub dynamic_constants: *const (),
-    /// `+0x30`：可选资源（TypeId B），缺失为空指针。
+    /// `+0x30`：可选 `ShaderWatch`（TypeId B），缺失为空指针。
     pub optional_b: *const (),
 }
 

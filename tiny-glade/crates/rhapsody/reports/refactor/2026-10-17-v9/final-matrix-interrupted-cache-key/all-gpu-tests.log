@@ -1,0 +1,629 @@
+   Compiling rhapsody v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 31.45s
+     Running unittests src/lib.rs (target/debug/deps/rhapsody-bcc529fddb5b5040)
+
+running 257 tests
+test bindless::tests::slots_require_all_queues_to_complete_and_stale_generations_never_match ... ok
+test command::cpu_arena::tests::fixed_chunk_backpressure_and_parallel_owner_limits_recover_after_cpu_return ... ok
+test command::cpu_arena::tests::host_oom_is_distinct_from_local_backpressure_and_failed_allocation_is_unpublished ... ok
+test command::cpu_arena::tests::real_capacity_is_budgeted_until_last_cpu_owner_and_never_in_gpu_records ... ok
+test command::recording::tests::actual_begin_publishes_typed_metadata_only_after_backend_success ... ok
+test command::recording::tests::unknown_queue_and_exhausted_ids_do_not_wrap_to_an_initial_id ... ok
+test device::budget::tests::evict_cache_is_capped_at_current_cache_bytes ... ok
+test device::budget::tests::pressure_has_hysteresis_between_watermarks ... ok
+test device::budget::tests::reclassifying_existing_memory_preserves_pressure_hysteresis ... ok
+test device::budget::tests::record_is_infallible_even_over_limit ... ok
+test device::budget::tests::reserve_within_limit_succeeds_and_over_limit_fails ... ok
+test device::budget::tests::tick_prefers_evict_cache_then_backpressure ... ok
+test device::budget::tests::zero_limit_means_unbounded ... ok
+test device::caps::tests::caps_separate_supported_from_enabled ... ok
+test device::caps::tests::feature_bits_are_distinct_and_within_u64 ... ok
+test device::caps::tests::feature_set_operations_match_bit_semantics ... ok
+test device::caps::tests::inconsistent_caps_are_detected ... ok
+test device::caps::tests::iter_yields_exactly_the_set_bits ... ok
+test device::caps::tests::require_all_enabled_lists_missing_features ... ok
+test device::generation::tests::generation_is_monotonic_and_distinct ... ok
+test device::generation::tests::generationed_gate_accepts_only_the_matching_generation ... ok
+test device::generation::tests::invalid_generation_is_never_valid ... ok
+test device::generation::tests::uninitialized_generations_do_not_authorize_access ... ok
+test device::init::tests::config_rejects_invalid_frame_counts_and_surface_requirements ... ok
+test device::init::tests::core_array_dynamic_indexing_caps_follow_each_actual_core_bit ... ok
+test device::init::tests::explicit_device_identity_does_not_fall_back_to_another_gpu ... ok
+test device::init::tests::submission_api_defaults_to_auto_and_legacy_rejects_a_required_sync2_conflict ... ok
+test device::policy::tests::every_indexing_feature_must_be_actually_enabled ... ok
+test device::policy::tests::policy_carries_recording_and_allocation_preferences ... ok
+test device::policy::tests::unimplemented_optional_capabilities_do_not_select_another_renderer ... ok
+test device::queue_config::tests::coarse_granularity_dma_is_skipped_for_a_spare_compute_queue ... ok
+test device::queue_config::tests::compute_prefers_the_graphics_familys_second_queue_before_another_general_family ... ok
+test device::queue_config::tests::discrete_layout_uses_dedicated_compute_and_dma_families ... ok
+test device::queue_config::tests::exhausted_general_families_alias_prefer_and_reject_only_unavailable_requirements ... ok
+test device::queue_config::tests::graphics_family_must_present_when_required ... ok
+test device::queue_config::tests::graphics_only_family_cannot_back_a_compute_alias ... ok
+test device::queue_config::tests::off_never_creates_extra_queues ... ok
+test device::queue_config::tests::second_queue_of_the_graphics_family_serves_async_compute ... ok
+test device::queue_config::tests::separate_general_families_supply_independent_compute_and_transfer_queues ... ok
+test device::queue_config::tests::single_queue_device_aliases_everything_or_refuses_requirements ... ok
+test device::queue_config::tests::transfer_requirement_without_any_candidate_fails ... ok
+test device::queue_config::tests::transfer_uses_a_spare_graphics_queue_before_other_general_families ... ok
+test error::tests::descriptor_pool_exhaustion_is_distinct_from_device_memory_exhaustion ... ok
+test error::tests::invalid_usage_keeps_its_source ... ok
+test error::tests::temporal_backend_errors_preserve_driver_categories_and_shared_identity ... ok
+test error::tests::vulkan_results_map_to_actionable_categories ... ok
+test leek::tests::skips_non_ascii_and_truncates_to_16_bytes ... ok
+test log_ring::tests::global_ring_init_once_and_event_layout ... 
+thread 'log_ring::tests::global_ring_init_once_and_event_layout' (20986031) panicked at crates/rhapsody/src/log_ring.rs:126:10:
+rhapsody log not initialised
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'log_ring::tests::global_ring_init_once_and_event_layout' (20986031) panicked at crates/rhapsody/src/log_ring.rs:86:5:
+assertion failed: prev.is_none()
+ok
+test log_ring::tests::ring_semantics_match_original_layout ... 
+thread 'log_ring::tests::ring_semantics_match_original_layout' (20986032) panicked at crates/rhapsody/src/log_ring.rs:53:9:
+assertion failed: part1 <= self.data.len()
+
+thread 'log_ring::tests::ring_semantics_match_original_layout' (20986032) panicked at crates/rhapsody/src/log_ring.rs:48:9:
+attempt to calculate the remainder with a divisor of zero
+ok
+test pipeline::tests::disk_envelope_rejects_corruption_stale_identity_and_truncation ... ok
+test pipeline::tests::worker_and_memory_limits_must_be_bounded ... ok
+test raw::access_table::tests::spot_checks_against_the_exe_table ... ok
+test raw::access_table::tests::writes_are_exactly_0x28_to_0x37 ... ok
+test raw::allocator::budget_tests::allocation_budget_tracks_real_lifetime_and_rejects_overcommit_atomically ... ok
+test raw::allocator::budget_tests::pending_descriptor_pool_owners_keep_the_global_quota_charged ... ok
+test raw::allocator::native_spare_tests::failed_native_growth_preserves_the_entire_previous_ledger ... ok
+test raw::allocator::native_spare_tests::host_reservations_and_native_capacity_share_the_budget_without_sharing_gpu_totals ... ok
+test raw::allocator::native_spare_tests::native_spare_moves_to_ranges_and_back_without_double_charging ... ok
+test raw::command_buffer::ownership_tests::batch_replay_allows_use_then_release_and_acquire_then_use_but_rejects_reversed_order ... ok
+test raw::command_buffer::ownership_tests::concurrent_or_foreign_resources_and_invalid_transfer_ranges_cannot_enter_the_protocol ... ok
+test raw::command_buffer::ownership_tests::failed_release_and_acquire_preserve_the_last_real_owner_and_completion ... ok
+test raw::command_buffer::ownership_tests::first_use_release_deduplicates_owners_and_pairs_every_range_layout_and_point_field ... ok
+test raw::command_buffer::ownership_tests::partial_and_unbound_transfers_cannot_publish_a_whole_object_owner ... ok
+test raw::crash::debug_line_tests::srcname_path_and_log_line_match_the_original_pieces ... ok
+test raw::descriptor_binding::tests::sparse_keys_are_not_ordinal_positions ... ok
+test raw::descriptor_binding::tests::unsupported_resource_is_an_explicit_candidate_boundary ... ok
+test raw::descriptor_set::descriptor_pool_tests::caller_and_set_owners_delay_pool_return_then_refill_is_lifo ... ok
+test raw::descriptor_set::descriptor_pool_tests::device_and_host_oom_do_not_retry_as_pool_exhaustion ... ok
+test raw::descriptor_set::descriptor_pool_tests::exhausted_and_fragmented_pools_retry_without_reusing_sets ... ok
+test raw::descriptor_set::descriptor_pool_tests::layout_rejects_invalid_input_as_usage_error_with_details ... ok
+test raw::descriptor_set::descriptor_pool_tests::other_vulkan_error_keeps_current_pool_and_does_not_retry ... ok
+test raw::descriptor_set::descriptor_pool_tests::refill_failure_preserves_already_retired_pool_for_caller ... ok
+test raw::descriptor_set::descriptor_pool_tests::returned_pool_waits_for_gpu_completion_before_reset_and_reuse ... ok
+test raw::dynamic_constants::tests::constant_pages_support_uniform_and_bindless_storage_bindings ... ok
+test raw::dynamic_constants::tests::constant_pages_use_real_concurrent_sharing_only_for_distinct_configured_families ... ok
+test raw::dynamic_constants::tests::invalid_allocation_requests_fail_before_page_creation ... ok
+test raw::dynamic_constants::tests::page_boundary_and_device_alignment_determine_placement ... ok
+test raw::dynamic_constants::tests::production_ring_caps_actual_bytes_and_preserves_oom_or_device_loss ... ok
+test raw::dynamic_constants::tests::production_ring_pressure_trims_only_idle_pages_and_keeps_metadata_accounted ... ok
+test raw::dynamic_constants::tests::production_ring_requires_every_queue_and_cpu_or_weak_owner_before_reset ... ok
+test raw::instance::blocklist_tests::env_chain_matches_original_write_order ... ok
+test raw::instance::blocklist_tests::env_name_lengths_match_the_string_pool ... ok
+test raw::instance::blocklist_tests::set_var_failure_panics - should panic ... 
+thread 'raw::instance::blocklist_tests::set_var_failure_panics' (20986066) panicked at crates/rhapsody/src/raw/instance.rs:387:13:
+failed to set environment variable `VK_LOADER_LAYERS_DISABLE`: boom
+ok
+test raw::instance::extension_tests::defaults_first_then_requested_deduped_and_layer_settings_only_when_available ... ok
+test raw::instance::extension_tests::instance_planning_rejects_missing_requested_extensions_and_surface_dependency ... ok
+test raw::instance::extension_tests::portability_devices_are_enumerated_only_with_the_matching_extension_and_flag ... ok
+test raw::instance::extension_tests::surface_dependency_does_not_implicitly_enable_headless_wsi_maintenance ... ok
+test raw::managed::resources::tests::a_thousand_resource_batches_reuse_bounded_slot_storage ... ok
+test raw::managed::resources::tests::capacity_backpressure_and_cpu_oom_do_not_publish_a_slot ... ok
+test raw::managed::resources::tests::manager_creation_rejects_cpu_budget_exhaustion_without_a_charge ... ok
+test raw::managed::resources::tests::metadata_charges_follow_live_inners_and_cached_slot_capacity ... ok
+test raw::managed::resources::tests::only_last_arc_release_invalidates_the_generation ... ok
+test raw::managed::resources::tests::rejected_allocation_drops_payload_after_releasing_the_store_lock ... ok
+test raw::managed::resources::tests::rejected_slot_growth_preserves_the_previous_capacity_and_credit ... ok
+test raw::managed::resources::tests::store_removal_does_not_hold_the_lock_during_resource_drop ... ok
+test raw::managed::resources::tests::typed_key_retrieval_keeps_the_raw_resource_alive_until_all_owners_leave ... ok
+test raw::managed::resources::tests::typed_keys_reject_another_store_even_when_slot_bits_match ... ok
+test raw::physical_device::hysteresis_tests::eighth_window_with_unit_floor ... ok
+test raw::setup::access_code_tests::code_0_to_0x34_is_undefined_to_transfer_dst ... ok
+test raw::setup::access_code_tests::code_0x22_to_0x34_has_no_src_access ... ok
+test raw::setup::access_code_tests::code_0x34_to_0x22_is_transfer_to_shader_read ... ok
+test raw::setup::access_code_tests::first_staging_barrier_matches_the_created_optimal_image_layout ... ok
+test raw::shader::raster_opts_tests::apply_to_replicates_one_blend_state_per_color_attachment ... ok
+test raw::shader::raster_opts_tests::bit_positions_match_the_exe_decode ... ok
+test raw::shader::raster_opts_tests::dynamic_cache_signature_includes_actual_target_and_all_formats ... ok
+test raw::shader::raster_opts_tests::dynamic_formats_validate_aspects_limits_and_multiview ... ok
+test raw::shader::raster_opts_tests::invalid_raster_options_return_usage_errors_without_changing_encoded_state ... ok
+test raw::shader::raster_opts_tests::jump_table_enums_use_the_exe_ordering ... ok
+test raw::shader::raster_opts_tests::malformed_shader_and_reflection_use_public_error_categories ... ok
+test raw::shader::raster_opts_tests::map_vertex_attribute_format_follows_the_exe_table ... ok
+test raw::shader::raster_opts_tests::split_fields_round_trip ... ok
+test raw::shader_interface::tests::statically_used_resources_follow_calls_and_pointer_arguments_without_dead_functions ... ok
+test raw::suballoc::allocation_error_tests::pinned_allocator_errors_preserve_fatal_categories ... ok
+test raw::submit::tests::adapter_nested_capacity_counts_every_spilled_array_and_checks_overflow ... ok
+test raw::submit::tests::every_owned_timeline_wait_requires_a_successful_prior_submit ... ok
+test raw::submit::tests::fallible_owned_copy_keeps_common_batches_inline_and_reserves_all_queue_waits ... ok
+test raw::submit::tests::malformed_arrays_and_manual_device_timeline_signals_are_rejected ... ok
+test raw::submit::tests::submission_scratch_error_drops_partial_owners_and_returns_all_credit ... ok
+test raw::submit::tests::submission_scratch_stays_inline_and_spills_with_its_actual_owner ... ok
+test raw::swapchain::tests::acquire_suboptimal_keeps_image_usable_and_only_out_of_date_rebuilds ... ok
+test raw::swapchain::tests::generation_replacement_waits_for_every_acquisition_to_return ... ok
+test raw::swapchain::tests::live_acquire_state_publishes_nothing_on_failure_and_can_retry ... ok
+test raw::swapchain::tests::live_present_error_matrix_retains_enqueued_operations_only ... ok
+test raw::swapchain::tests::live_present_fence_timeout_preserves_serial_and_prevents_reset ... ok
+test raw::swapchain::tests::live_reclaim_poll_does_not_publish_completion_on_status_or_wait_failure ... ok
+test raw::swapchain::tests::live_shutdown_rejects_unproven_unextended_present_without_gpu_wait_shortcut ... ok
+test raw::swapchain::tests::live_shutdown_timeout_retains_pending_fence_for_a_successful_retry ... ok
+test raw::swapchain::tests::live_slot_failure_matrix_never_resets_before_the_actual_waits_complete ... ok
+test raw::swapchain::tests::present_failure_matrix_distinguishes_enqueued_waits_from_rejected_submits ... ok
+test raw::swapchain::tests::present_progress_requires_acquisition_completion_for_the_same_image ... ok
+test raw::swapchain::tests::production_policy_requires_provable_shutdown_but_acquire_only_does_not ... ok
+test raw::swapchain::tests::rapid_resize_generation_policy_applies_bounded_backpressure_until_collection ... ok
+test raw::swapchain::tests::recoverable_wsi_errors_keep_their_category_and_allow_retry ... ok
+test raw::swapchain::tests::recovery_render_submission_also_blocks_retirement_until_gpu_completion ... ok
+test raw::swapchain::tests::rejected_present_cleanup_keeps_its_submit_point_after_wait_timeout ... ok
+test raw::swapchain::tests::rejected_present_does_not_publish_a_fence_or_completion_serial ... ok
+test raw::swapchain::tests::swapchain_state_lives_in_one_rwlock_with_original_state_value ... ok
+test raw::swapchain::tests::unextended_present_completion_requires_reacquisition_proof ... ok
+test raw::swapchain::tests::wsi_device_loss_is_sticky_before_cleanup_can_submit_again ... ok
+test raw::swapchain::tests::wsi_result_policy_preserves_original_nonfatal_codes ... ok
+test raw::temp_list::tests::bounded_scratch_reuses_storage_and_error_or_panic_drops_only_cpu_values ... 
+thread 'raw::temp_list::tests::bounded_scratch_reuses_storage_and_error_or_panic_drops_only_cpu_values' (20986183) panicked at crates/rhapsody/src/raw/temp_list.rs:165:17:
+injected CPU failure
+ok
+test raw::temp_list::tests::growth_oom_keeps_original_values_and_accounted_capacity ... ok
+test raw::temp_list_pool::tests::destructible_owner_leases_reuse_capacity_and_budget_until_last_cpu_drop ... ok
+test raw::temp_list_pool::tests::local_limits_and_growth_oom_keep_previous_values_and_credit ... ok
+test resource::handle::tests::distinct_type_markers_share_indices_without_conflict ... ok
+test resource::handle::tests::ffi_round_trip_preserves_identity ... ok
+test resource::handle::tests::handle_is_a_compact_copy_key ... ok
+test resource::handle::tests::handle_is_send_and_sync_regardless_of_t ... ok
+test resource::handle::tests::insert_get_remove_round_trip ... ok
+test resource::handle::tests::iter_and_values_only_yield_live_entries ... ok
+test resource::handle::tests::removed_slot_is_reused_with_a_fresh_generation ... ok
+test resource::handle::tests::retain_keeps_only_matching_values ... ok
+test resource::sharing::tests::family_keys_are_canonical_and_invalid_lists_are_rejected ... ok
+test resource::tracked::tests::clear_resets_all_queues ... ok
+test resource::tracked::tests::concurrent_inserts_are_serialized_and_lossless ... ok
+test resource::tracked::tests::heap_merge_handles_empty_interleaved_and_repeated_worker_lists ... ok
+test resource::tracked::tests::host_reservation_prevents_new_submits_until_access_is_finished ... ok
+test resource::tracked::tests::insert_keeps_the_latest_value_per_queue ... ok
+test resource::tracked::tests::merge_applies_every_queue_dependency ... ok
+test resource::tracked::tests::normalized_commands_merge_unique_cells_before_spill_admission ... ok
+test resource::tracked::tests::reached_requires_every_registered_queue ... ok
+test resource::tracked::tests::submission_rejects_foreign_and_uninitialized_use_cells ... ok
+test rg::access_ledger::tests::conflict_preserves_prior_entries_and_group_equality_is_exact ... ok
+test rg::access_ledger::tests::duplicate_and_in_place_merge_keep_first_resource_order ... ok
+test rg::access_ledger::tests::group_counter_and_twelve_byte_ledger_projection ... ok
+test rg::access_ledger::tests::upgrade_appends_and_calculate_consumes_group_code_without_swapping ... ok
+test rg::attachments::rendering_policy_tests::auto_uses_only_enabled_feature_with_explicit_layouts ... ok
+test rg::attachments::rendering_policy_tests::bounded_cache_pressure_preserves_active_owners_and_recovers_after_completion ... ok
+test rg::attachments::rendering_policy_tests::required_dynamic_rejects_unsupported_or_implicit_transition ... ok
+test rg::cache::tests::borrowed_lookup_preserves_lru_and_errors_do_not_publish_hits ... ok
+test rg::cache::tests::byte_budget_evicts_until_within_limit ... ok
+test rg::cache::tests::clear_empties_entries_but_keeps_statistics ... ok
+test rg::cache::tests::eligible_eviction_skips_held_values_and_observes_lru_order ... ok
+test rg::cache::tests::entry_budget_evicts_least_recently_used ... ok
+test rg::cache::tests::full_key_equality_confirms_hits_even_on_hash_collision ... ok
+test rg::cache::tests::insert_get_remove_round_trip ... ok
+test rg::cache::tests::insert_replacement_returns_the_old_value ... ok
+test rg::cache::tests::oversized_entry_is_rejected_without_caching ... ok
+test rg::cache::tests::repeated_hits_keep_lru_metadata_bounded ... ok
+test rg::cache::tests::stats_accumulate_across_operations ... ok
+test rg::frame::tests::ledger_requires_a_submission_and_rejects_double_end ... ok
+test rg::frame_loop::device_loss_tests::acquire_failure_keeps_its_error_even_when_an_unsubmitted_retire_callback_panics ... 
+thread 'rg::frame_loop::device_loss_tests::acquire_failure_keeps_its_error_even_when_an_unsubmitted_retire_callback_panics' (20986234) panicked at crates/rhapsody/src/rg/frame_loop.rs:793:32:
+injected unsubmitted retirement panic
+
+thread 'rg::frame_loop::device_loss_tests::acquire_failure_keeps_its_error_even_when_an_unsubmitted_retire_callback_panics' (20986234) panicked at crates/rhapsody/src/rg/frame_loop.rs:793:32:
+injected unsubmitted retirement panic
+ok
+test rg::frame_loop::device_loss_tests::acquisition_cleanup_errors_preserve_primary_and_device_loss_is_terminal ... ok
+test rg::frame_loop::device_loss_tests::every_device_loss_stage_stops_the_next_frame_without_rescue_submission ... ok
+test rg::frame_loop::device_loss_tests::frame_status_requires_an_actual_generation_change_to_report_recreation ... ok
+test rg::frame_loop::device_loss_tests::observed_display_or_cleanup_device_loss_stops_all_queue_operations ... ok
+test rg::frame_loop::device_loss_tests::production_frame_protocol_fault_matrix_preserves_retirement_and_recovers_next_frame ... 
+thread 'rg::frame_loop::device_loss_tests::production_frame_protocol_fault_matrix_preserves_retirement_and_recovers_next_frame' (20986239) panicked at crates/rhapsody/src/rg/frame_loop.rs:625:13:
+injected display panic
+ok
+test rg::frame_loop::device_loss_tests::recoverable_display_errors_keep_the_original_error_and_allow_the_next_submit ... ok
+test rg::frame_storage::tests::quota_and_local_capacity_failures_are_unpublished_and_preserve_categories ... ok
+test rg::frame_storage::tests::real_tables_reuse_beyond_inline_sizes_and_return_only_after_cpu_lease_drop ... ok
+test rg::frame_storage::tests::shrinking_tables_and_idle_eviction_credit_only_released_capacity ... ok
+test rg::frame_throttle::tests::a_failed_wait_keeps_the_unwaited_receipts ... ok
+test rg::frame_throttle::tests::begin_frame_drains_to_the_latest_one_in_submission_order ... ok
+test rg::frame_throttle::tests::trim_waits_on_the_front_only_when_more_than_one_is_in_flight ... ok
+test rg::import_export::trait_tests::from_owned_rg_resource_checks_the_resource_kind ... ok
+test rg::import_export::trait_tests::unowned_and_owned_imports_differ_only_in_origin_tag ... ok
+test rg::pass_bindings::projection::tests::rejected_vector_growth_preserves_existing_storage_and_global_accounting ... ok
+test rg::pass_bindings::projection::tests::vector_growth_charges_real_capacity_and_releases_its_replaced_backing ... ok
+test rg::pass_entries::tests::compile_instances_have_the_original_addresses ... ok
+test rg::pass_entries::tests::world_table_has_59_call_sites_in_order ... ok
+test rg::plan::borrowed_definition_tests::borrowed_comparison_matches_the_complete_owned_definition ... ok
+test rg::plan::borrowed_definition_tests::matching_definition_still_rejects_aliased_dynamic_imports ... ok
+test rg::plan::borrowed_definition_tests::matching_import_revalidates_partial_initialization_and_read_modify_write ... ok
+test rg::profiling::tests::timestamp_wrap_and_period_are_applied_without_treating_missing_as_zero ... ok
+test rg::queue_schedule::resource_contract_tests::concurrent_full_family_lists_allow_unordered_ranges_and_missing_families_are_rejected ... ok
+test rg::queue_schedule::resource_contract_tests::final_export_batch_requires_the_actual_foreign_producer_wait_in_the_independent_checker ... ok
+test rg::queue_schedule::resource_contract_tests::unordered_exclusive_cross_family_reads_and_disjoint_writes_are_rejected_without_added_edges ... ok
+test rg::queue_schedule::tests::independent_queue_branches_have_no_cross_queue_wait_and_only_dag_join_waits ... ok
+test rg::queue_schedule::tests::physical_aliases_preserve_single_queue_batches_and_have_no_extra_waits ... ok
+test rg::receipt_storage::tests::local_receipt_capacity_backpressure_and_host_budget_errors_are_distinct ... ok
+test rg::receipt_storage::tests::retained_clones_bound_reuse_and_own_bytes_after_session_pool_drop ... ok
+test rg::resource_contracts::coverage_tests::interval_union_matches_independent_byte_cells_for_gaps_and_overlaps ... ok
+test rg::resource_contracts::coverage_tests::rectangle_union_matches_independent_aspect_mip_layer_cells ... ok
+test rg::result_cache::tests::complete_keys_include_all_provenance_and_policy_and_normalize_dependency_order ... ok
+test rg::result_cache::tests::lineage_keeps_evicted_parent_inputs_and_unknown_parent_never_becomes_cacheable ... ok
+test rg::result_cache::tests::publication_key_clones_share_the_preallocated_nested_payload ... ok
+test rg::temporal::recorder_tests::an_abandoned_temporal_request_is_released_at_the_next_frame_begin ... ok
+test rg::temporal::recorder_tests::an_unexecuted_export_does_not_promote_a_new_resource_beyond_undefined ... ok
+test rg::temporal::recorder_tests::failed_dynamic_names_and_unknown_resets_leave_no_owned_keys ... ok
+test rg::temporal::recorder_tests::fixed_descriptor_change_returns_error_without_advancing_history ... ok
+test rg::temporal::recorder_tests::fresh_pair_publishes_only_initialized_members_and_validates_their_actual_mapping ... ok
+test rg::temporal::recorder_tests::names_are_shared_by_requests_and_released_with_session_and_errors ... ok
+test rg::temporal::recorder_tests::owned_descriptor_replacement_is_transactional_on_allocation_failure ... ok
+test rg::temporal::recorder_tests::owned_temporal_propagates_real_sharing_and_recreates_when_policy_changes ... ok
+test rg::temporal::recorder_tests::pair_parity_commits_only_with_exports_and_rolls_back_failed_frames ... ok
+test rg::temporal::recorder_tests::pair_second_allocation_failure_retains_both_confirmed_owners_and_parity ... ok
+test rg::temporal::recorder_tests::partial_submission_invalidates_only_requested_history_until_a_successful_export ... ok
+test rg::temporal::recorder_tests::starting_a_new_frame_cancels_uncommitted_parity ... ok
+test rg::temporal::recorder_tests::unsubmitted_history_keeps_its_allocation_but_needs_initialization ... ok
+test rg::temporal::recorder_tests::unused_or_partially_initialized_history_is_never_confirmed_and_first_reads_are_rejected ... ok
+test rg::transient_memory::physical_tests::dedicated_types_and_allocation_flags_never_alias ... ok
+test rg::transient_memory::physical_tests::disjoint_recording_indices_without_dag_proof_never_alias ... ok
+test rg::transient_memory::physical_tests::overlapping_uses_and_missing_branch_order_never_alias ... ok
+test rg::transient_memory::physical_tests::physical_plan_checks_overflow_duplicates_and_actual_alignment ... ok
+test rg::transient_memory_check::tests::independently_rejects_bad_offsets_missing_order_types_and_duplicate_ownership ... ok
+test rg::transient_resources::tests::cached_unaliased_edges_reuse_accounted_storage_and_trim ... ok
+test rg::transient_resources::tests::unaliased_edge_growth_oom_preserves_the_existing_credit_and_plan ... ok
+test rg::vulkan::import_contract_tests::import_accepts_extra_physical_usage_but_not_missing_usage_or_wrong_kind ... ok
+test rg::vulkan::import_contract_tests::import_rejects_buffer_extent_alignment_and_memory_location_mismatches ... ok
+test rg::vulkan::import_contract_tests::import_rejects_image_shape_format_and_subresource_mismatches ... ok
+test rg::vulkan::retire_callback_tests::a_panicking_retire_callback_does_not_discard_later_cleanup ... 
+thread 'rg::vulkan::retire_callback_tests::a_panicking_retire_callback_does_not_discard_later_cleanup' (20986294) panicked at crates/rhapsody/src/rg/vulkan.rs:2862:25:
+injected cleanup failure
+ok
+test rg::vulkan::submission_capture_tests::submission_capture_is_inline_or_fallibly_budgeted_for_its_real_lifetime ... ok
+test sync::retire::tests::drain_all_releases_everything ... ok
+test sync::retire::tests::items_wait_for_every_queue_they_used ... ok
+test sync::retire::tests::unused_or_completed_items_come_back_immediately ... ok
+test sync::tests::queue_id_is_bounded ... ok
+test sync::tests::reached_requires_every_queue ... ok
+test sync::tests::sync_set_keeps_the_latest_value_per_queue ... ok
+test sync::timeline::tests::device_loss_is_sticky ... ok
+test sync::timeline::tests::device_loss_observed_by_a_query_is_sticky_too ... ok
+test sync::timeline::tests::poll_and_wait_track_each_queue_independently ... ok
+test sync::timeline::tests::poll_skips_queues_without_outstanding_work ... ok
+test sync::timeline::tests::queues_and_counts_are_validated ... ok
+test sync::timeline::tests::submits_on_different_queues_do_not_block_each_other ... ok
+test sync::timeline::tests::values_are_committed_only_after_a_successful_submit ... ok
+test sync::timeline::tests::waiting_on_an_unsubmitted_value_is_rejected_instead_of_hanging ... ok
+test transfer::tests::transfer_configuration_rejects_unbounded_or_overflowing_capacity ... ok
+
+test result: ok. 257 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.16s
+
+     Running tests/allocator.rs (target/debug/deps/allocator-09c8afddceec4bed)
+
+running 4 tests
+test lazy_peak_snapshot_matches_state_at_the_moment_of_peak ... ok
+test primitive_statistics_release_budget_and_failure_are_atomic ... ok
+test wrapper_disabled_peak_and_counter_overflow_are_explicit ... ok
+test wrapper_samples_after_error_and_retains_strict_peak_snapshot ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/async_pipeline.rs (target/debug/deps/async_pipeline-2acf78f219c70050)
+
+running 9 tests
+test an_observed_failed_request_can_immediately_retry_with_a_new_completion ... ok
+test concurrent_async_requests_merge_and_bounded_keys_do_not_accumulate ... ok
+test driver_cache_roundtrip_and_corruption_rebuild_are_explicit ... ok
+test failed_hot_reload_keeps_the_old_pipeline_and_only_frame_boundary_publishes ... ok
+test known_device_loss_stops_cached_requests_and_hot_publication_without_replacing_the_interface ... ok
+test low_priority_compilation_defers_under_resource_pressure_but_critical_work_can_progress ... ok
+test oversized_requests_apply_backpressure_without_a_pipeline_call ... ok
+test prebuilt_shader_requests_cannot_publish_a_changed_interface_under_the_same_wide_layout ... ok
+test valid_shader_edits_that_change_actual_bindings_or_push_ranges_are_rejected_before_vulkan ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.79s
+
+     Running tests/attachments.rs (target/debug/deps/attachments-c0548f9b277e7a1e)
+
+running 3 tests
+test access_lookup_uses_current_pass_first_match ... ok
+test exact_cache_key_differs_while_pipeline_compatibility_stays ... ok
+test original_attachment_defaults_and_modifiers ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/bindless.rs (target/debug/deps/bindless-c1113f435e5c401c)
+
+running 3 tests
+test a_real_pending_shader_keeps_the_bindless_slot_until_actual_completion ... ok
+test known_host_slot_storage_is_admitted_and_released_by_the_unified_budget ... 
+thread 'known_host_slot_storage_is_admitted_and_released_by_the_unified_budget' (20986723) panicked at crates/rhapsody/tests/bindless.rs:250:5:
+assertion `left == right` failed
+  left: 288
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+FAILED
+test table_capacity_bad_ranges_and_foreign_devices_are_rejected_before_update ... ok
+
+failures:
+
+failures:
+    known_host_slot_storage_is_admitted_and_released_by_the_unified_budget
+
+test result: FAILED. 2 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.44s
+
+error: test failed, to rerun pass `-p rhapsody --test bindless`
+     Running tests/bindless_shader_abi.rs (target/debug/deps/bindless_shader_abi-008e7ce72d5eb156)
+
+running 3 tests
+test hot_reload_rejects_a_changed_logical_abi_even_when_lowered_spirv_is_identical ... ok
+test lower_preserves_shared_types_and_bounds_an_independent_array_index_table ... ok
+test real_uniform_push_and_descriptor_array_execute_through_one_shared_heap_set ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.38s
+
+     Running tests/budget_snapshot.rs (target/debug/deps/budget_snapshot-1352d84c51160f58)
+
+running 2 tests
+test getter_on_a_fresh_device_refreshes_once_then_reads_the_snapshot ... ok
+test refresh_publishes_a_snapshot_that_getters_read_without_requerying ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.25s
+
+     Running tests/buffer_desc.rs (target/debug/deps/buffer_desc-8d311be913c31949)
+
+running 1 test
+test constructors_map_to_expected_memory_properties ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cpu_frame_allocations.rs (target/debug/deps/cpu_frame_allocations-21be805a32c35ea4)
+
+running 3 tests
+test fixed_graph_reports_real_build_and_cached_execution_allocations ... ignored, explicit allocation measurement; run this test binary alone
+test production_recorder_arena_matches_vec_events_and_returns_cpu_memory_after_callback_failure ... ok
+test warmed_cpu_frame_scratch_reuses_actual_storage_without_heap_allocation ... ok
+
+test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/crash.rs (target/debug/deps/crash-db28971ad4e3814e)
+
+running 3 tests
+test count_is_second_word_and_payload_is_bounded ... ok
+test only_timeout_and_device_lost_request_device_diagnostics ... ok
+test packet_tags_match_original_jump_table_and_unknown_is_retained ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/crates_domain.rs (target/debug/deps/crates_domain-69716732b1975e9f)
+
+running 11 tests
+test aftermath_identifier_error_text_matches_the_original_format ... ok
+test aftermath_registers_with_original_arguments_forwards_callbacks_and_disables_on_drop ... ok
+test aftermath_unavailable_api_reports_failure_without_crashing ... ok
+test aftermath_wait_for_status_polls_every_50ms_until_2_or_4_and_honours_timeout ... ok
+test buffer_barrier_passes_fields_through ... ok
+test dxgi_enumerate_skips_failed_getdesc_stops_at_first_enum_error_and_maps_factory_failure ... ok
+test dxgi_record_layout_and_field_mapping ... ok
+test image_barrier_layouts_and_unconditional_dst_access ... ok
+test memory_barrier_follows_original_stage_defaults_and_write_only_src_access ... ok
+test shipped_raster_defines_hashes_are_siphash13_xor_of_pair_hashes ... ok
+test table_matches_public_vk_sync_fork_except_documented_differences ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/device_api.rs (target/debug/deps/device_api-b5099f7fb8878d40)
+
+running 4 tests
+test create_buffer_uploads_initial_data_and_update_writes_ranges ... ok
+test dynamic_attachment_views_are_cached_and_reject_foreign_devices ... ok
+test gpu_only_buffer_goes_through_staging_and_foreign_handles_are_rejected ... ok
+test texture_descriptor_validation_rejects_invalid_fields_without_a_device ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.06s
+
+     Running tests/device_budget.rs (target/debug/deps/device_budget-c6bb3b8dafee3fb5)
+
+running 3 tests
+test cpu_metadata_exhaustion_rejects_resource_and_view_creation_without_native_growth ... ok
+test live_in_flight_and_retiring_memory_remains_charged_until_actual_gpu_completion ... ok
+test managed_payload_credit_follows_an_escaping_raw_owner_and_view ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.59s
+
+     Running tests/device_config.rs (target/debug/deps/device_config-94a9a59f11f72c0a)
+
+running 4 tests
+test an_independent_compute_queue_submits_while_the_graphics_queue_lock_is_held ... ok
+test configured_device_reports_actual_enabled_capabilities_and_allocation_mode ... ok
+test configured_frames_in_flight_controls_the_session ... ok
+test device_submission_rejects_future_waits_without_advancing_timeline ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.51s
+
+     Running tests/device_creation.rs (target/debug/deps/device_creation-6f790bc347c743b9)
+
+running 1 test
+test legacy_selection_uses_the_common_device_negotiation ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.48s
+
+     Running tests/device_loss_entries.rs (target/debug/deps/device_loss_entries-cbf9b064b20fc9a7)
+
+running 3 tests
+test known_loss_rejects_buffer_image_and_view_creation_without_new_allocations ... ok
+test known_loss_rejects_raw_pools_descriptors_and_host_access ... ok
+test unsupported_descriptor_layout_is_rejected_before_native_creation ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.84s
+
+     Running tests/dynamic_constants_ring.rs (target/debug/deps/dynamic_constants_ring-c72b0b1004524281)
+
+running 2 tests
+test dropped_cpu_owners_cannot_reset_a_page_until_actual_gpu_copy_completes ... ok
+test unsubmitted_constant_leases_bound_capacity_and_reuse_one_real_page ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.63s
+
+     Running tests/frame_command_pools.rs (target/debug/deps/frame_command_pools-7ad81b337a562aac)
+
+running 4 tests
+test dropped_pending_commands_do_not_allow_early_whole_pool_reset ... ok
+test production_callbacks_reuse_cpu_arenas_after_recording_completes ... ok
+test production_session_uses_bounded_frame_worker_pools_and_whole_pool_reuse ... ok
+test whole_pool_reset_requires_every_live_command_and_preserves_owners_on_failure ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.15s
+
+     Running tests/gpu_frame_allocations.rs (target/debug/deps/gpu_frame_allocations-0ddb3dd5201e6461)
+
+running 1 test
+test real_vulkan_session_reports_framework_execution_allocations ... ignored, explicit strict GPU allocation measurement; run this binary alone
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/gpu_requirement.rs (target/debug/deps/gpu_requirement-69d53924102d324c)
+
+running 2 tests
+test optional_gpu_initialization_can_skip_and_success_is_unchanged_in_both_modes ... SKIP Vulkan initialization at injected missing loader: not installed
+ok
+test required_gpu_initialization_failure_is_an_error_instead_of_a_skip ... 
+thread 'required_gpu_initialization_failure_is_an_error_instead_of_a_skip' (20988375) panicked at crates/rhapsody/tests/gpu_test_support/mod.rs:17:13:
+RHAPSODY_REQUIRE_VULKAN=1: GPU initialization failed at injected device creation: injected initialization error
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/gpu_timing.rs (target/debug/deps/gpu_timing-99fee40ade103b92)
+
+running 2 tests
+test failed_recording_cancels_unsubmitted_query_and_next_frame_can_reuse_it ... ok
+test query_slot_is_not_reset_until_actual_submission_completes_and_capacity_is_nonblocking ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.46s
+
+     Running tests/import_contract.rs (target/debug/deps/import_contract-f687f2d81873edbc)
+
+running 2 tests
+test foreign_device_imports_fail_without_replacing_bindings ... ok
+test invalid_import_is_rejected_before_recording_and_next_frame_remains_usable ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.39s
+
+     Running tests/managed.rs (target/debug/deps/managed-bd1442e07e15fb23)
+
+running 5 tests
+test concurrent_allocations_keep_each_live_typed_key_distinct ... ok
+test concurrent_churn_rejects_every_stale_generation ... ok
+test concurrent_get_and_last_drop_never_resurrects_a_disposed_handle ... ok
+test device_owned_store_has_no_strong_resource_back_edge ... ok
+test recorded_raw_owner_survives_cpu_key_reuse ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/managed_alignment.rs (target/debug/deps/managed_alignment-ef9925443957ffbe)
+
+running 3 tests
+test released_slots_reuse_formal_generations_without_losing_live_values ... ok
+test texture_view_cache_returns_the_same_view_for_equal_descriptors ... ok
+test typed_store_survives_concurrent_churn_without_duplicate_live_slots ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.49s
+
+     Running tests/managed_projection.rs (target/debug/deps/managed_projection-f64a09dcfa5ecc84)
+
+running 3 tests
+test externally_held_snapshot_is_immutable_and_capacity_recovers_after_release ... ok
+test resource_bound_failure_precedes_recording_and_a_larger_limit_recovers ... ok
+test stable_physical_resources_reuse_managed_generations_and_projection_storage ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.42s
+
+     Running tests/managed_view_cache.rs (target/debug/deps/managed_view_cache-0b4d70a5499128ca)
+
+running 2 tests
+test metadata_budget_rejects_view_before_cache_or_native_publication ... ok
+test view_cache_rejects_held_and_pending_views_then_reuses_completed_capacity ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.45s
+
+     Running tests/multi_queue_graph.rs (target/debug/deps/multi_queue_graph-9720230f5f9d139f)
+
+running 4 tests
+test concurrent_disjoint_writes_do_not_inherit_whole_object_waits ... ok
+test concurrent_temporal_image_preserves_its_real_sharing_across_frames ... ok
+test real_independent_queues_preserve_pixels_and_do_not_wait_between_branches ... ok
+test successful_acquires_survive_later_recording_failure_and_next_frame_recovers ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.81s
+
+     Running tests/p0_perf_baseline.rs (target/debug/deps/p0_perf_baseline-c243702e581e3777)
+
+running 1 test
+test representative_graph_frame_cost_baseline ... ignored, 性能基线：手动运行，打印数字不做断言
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/p0_stability.rs (target/debug/deps/p0_stability-5ad15f444f16a638)
+
+running 2 tests
+test lifecycle_metadata_stays_bounded_over_many_frames ... ok
+test session_bookkeeping_stays_bounded_over_many_frames ... warm=Bookkeeping { retirement_pending: 0, pending_frames: 2, resources: 7, commands: 2, pending_commands: 2, completed_commands: 0, recording_commands: 0, submission_captures: 1, imports_waiting_release: 3 }
+end =Bookkeeping { retirement_pending: 0, pending_frames: 2, resources: 7, commands: 2, pending_commands: 2, completed_commands: 0, recording_commands: 0, submission_captures: 1, imports_waiting_release: 3 }
+warm=Bookkeeping { retirement_pending: 0, pending_frames: 0, resources: 0, commands: 2, pending_commands: 0, completed_commands: 0, recording_commands: 0, submission_captures: 1, imports_waiting_release: 0 }
+end =Bookkeeping { retirement_pending: 0, pending_frames: 0, resources: 0, commands: 2, pending_commands: 0, completed_commands: 0, recording_commands: 0, submission_captures: 1, imports_waiting_release: 0 }
+ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.95s
+
+     Running tests/parallel_chunks.rs (target/debug/deps/parallel_chunks-560c7f6307c1ed50)
+
+running 13 tests
+test balanced_estimates_unknown_costs_from_the_known_mean_and_caps_chunks ... ok
+test balanced_respects_max_chunks_and_minimizes_the_heaviest_chunk ... ok
+test budget_is_max_clamped_between_total_over_16_and_total_over_2 ... ok
+test chunks_always_partition_the_batch_in_order ... ok
+test first_frame_without_stats_makes_every_pass_its_own_chunk ... ok
+test heavy_pass_at_the_end_swallows_everything_before_it_under_the_original_budget ... ok
+test heavy_pass_in_front_gets_its_own_chunk_under_the_original_budget ... ok
+test missing_durations_count_as_zero ... ok
+test original_greedy_closes_a_chunk_when_accumulated_reaches_budget ... ok
+test pgo_double_buffer_uses_only_the_previous_frame_and_never_accumulates ... ok
+test split_forbidden_boundaries_are_never_cut ... ok
+test stats_extend_overwrites_per_name_but_accumulates_total_and_max ... ok
+test steady_state_produces_between_two_and_sixteen_chunks ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/pass_api.rs (target/debug/deps/pass_api-20c9be3830ac4496)
+
+running 4 tests
+test dynamic_command_sequence_keeps_draw_state_and_copy_parameters ... ok
+test dynamic_rendering_dispatch_has_matching_end_and_capability_guard ... ok
+test invalid_fill_range_never_reaches_backend ... ok
+test negative_zero_height_and_existing_stencil_cache ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/pass_bindings.rs (target/debug/deps/pass_bindings-53dd613e6dd0a706)
+
+running 2 tests
+test typed_ref_rejects_wrong_kind_before_registration ... ok
+test typed_refs_register_access_and_preserve_original_upgrade_records ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/pipeline_cache.rs (target/debug/deps/pipeline_cache-5ddeede2ac829816)
+
+running 2 tests
+test concurrent_requests_for_the_same_key_create_exactly_one_pipeline ... ok
+test distinct_keys_created_in_parallel_all_succeed_and_are_cached ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.50s
+
+     Running tests/plan_checker.rs (target/debug/deps/plan_checker-c2253f8366ddaa73)
+
+running 8 tests
+test dependency_paths_accept_transitive_edges_and_reject_missing_anti_dependencies ... ok
+test exact_partial_producers_are_kept_and_dead_work_is_culled ... ok
+test executable_projection_rejects_lost_accesses_barriers_and_batch_coverage ... ok
+test illegal_image_usage_is_rejected_even_when_the_pass_would_be_dead ... ok
+test public_definitions_reject_unresolved_versions_unknown_sources_and_invalid_indices ... ok
+test randomized_partial_range_graphs_match_conservative_execution_outputs ... 

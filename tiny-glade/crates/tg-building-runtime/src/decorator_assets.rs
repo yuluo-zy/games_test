@@ -1,20 +1,24 @@
-//! Actual shipped JSON mesh input and game collision projection. This adapter
-//! owns only recovered plain wall-family assets, not the original engine IO.
+//! Loads collision mesh assets and resolves wall opening subtype placement.
+//! Asset paths and loading are explicit; renderer resources remain external.
 use bevy_ecs::prelude::Resource;
-use country_core::recovered_building::{
-    building_decorator_placement::{
-        CollisionBoundingBox, DecoratorLibKey, PlacementError, WallDecoratorPlacement,
-        WallDecoratorRequest, b_wall_collision_asset_name, mesh_collision_bbx,
-        place_wall_decorator, wall_decorator_key,
-    },
-    building_decorator_subtype::{
-        SubtypeError, WallDecoratorSubtypeContext, WallWindowKind,
-        b_wall_subtype_collision_asset_name, derive_wall_subtype, wall_opening_family,
-    },
-    building_opening_rules::OpeningFamily,
-    building_wall_state::WallShapeSnapshot,
-    surface::Curve2,
-};
+use country_core::resources::walls::decorator::placement::CollisionBoundingBox;
+use country_core::resources::walls::decorator::placement::DecoratorLibKey;
+use country_core::resources::walls::decorator::placement::PlacementError;
+use country_core::resources::walls::decorator::placement::WallDecoratorPlacement;
+use country_core::resources::walls::decorator::placement::WallDecoratorRequest;
+use country_core::resources::walls::decorator::placement::b_wall_collision_asset_name;
+use country_core::resources::walls::decorator::placement::mesh_collision_bbx;
+use country_core::resources::walls::decorator::placement::place_wall_decorator;
+use country_core::resources::walls::decorator::placement::wall_decorator_key;
+use country_core::resources::walls::decorator_subtype::placement::SubtypeError;
+use country_core::resources::walls::decorator_subtype::placement::WallDecoratorSubtypeContext;
+use country_core::resources::walls::decorator_subtype::placement::WallWindowKind;
+use country_core::resources::walls::decorator_subtype::placement::b_wall_subtype_collision_asset_name;
+use country_core::resources::walls::decorator_subtype::placement::derive_wall_subtype;
+use country_core::resources::walls::decorator_subtype::placement::wall_opening_family;
+use country_core::resources::walls::wall_holes::opening_rules::OpeningFamily;
+use country_core::resources::walls::publication_fields::WallShapeSnapshot;
+use country_core::resources::roofs::geometry::surface::Curve2;
 use serde_json::Value;
 use std::{
     collections::HashMap,
@@ -61,8 +65,8 @@ pub enum DecoratorSubtypePlacementError {
     Subtype(SubtypeError),
 }
 
-/// JSON schema confirmed in shipped meshes and Mesh::aabb_bounds: a selected
-/// Vertex_Position attribute of type float3. Serde internals are reused.
+/// Loads a collision mesh with a selected `Vertex_Position` attribute of type
+/// `float3`. Rejects missing, empty, malformed, or nonfinite vertex buffers.
 pub fn decode_collision_mesh(path: &Path) -> Result<DecoratorCollisionAsset, DecoratorAssetError> {
     let input = std::fs::read(path).map_err(|error| DecoratorAssetError::Io {
         path: path.to_owned(),
@@ -103,8 +107,8 @@ pub fn decode_collision_mesh(path: &Path) -> Result<DecoratorCollisionAsset, Dec
             return Err(schema_error());
         }
         let mut point = [0.0; 3];
-        for i in 0..3 {
-            point[i] = raw[i].as_f64().ok_or_else(schema_error)? as f32;
+        for (coordinate, value) in point.iter_mut().zip(raw) {
+            *coordinate = value.as_f64().ok_or_else(schema_error)? as f32;
         }
         vertices.push(point);
     }
@@ -117,8 +121,8 @@ pub fn decode_collision_mesh(path: &Path) -> Result<DecoratorCollisionAsset, Dec
 }
 
 impl DecoratorAssetLibrary {
-    /// B six accepted wall-opening subtypes: four plain families plus actual
-    /// cottage/gothic half-dormer keys. Gothic 7 intentionally shares mesh 6.
+    /// Loads all supported window, balcony-door, and half-dormer collision assets.
+    /// Failure leaves the existing library and revision unchanged.
     pub fn load_b_wall_opening_assets(
         &mut self,
         assets_root: &Path,
@@ -138,9 +142,8 @@ impl DecoratorAssetLibrary {
         Ok(())
     }
 
-    /// Complete CPU wall placement consumer using actual source/publication/
-    /// roof context. Family supplies window style; attachment state determines
-    /// original door/corner precedence and current half/plain subtype.
+    /// Selects an attachment subtype and places it on the authoritative curve.
+    /// Requires the plain and selected subtype collision assets for this rank.
     pub fn derive_and_place_wall(
         &self,
         request: WallDecoratorRequest,
@@ -157,13 +160,13 @@ impl DecoratorAssetLibrary {
         wall_decorator_key(request.family, request.rank)
             .map_err(DecoratorSubtypePlacementError::Placement)?;
         let coord =
-            country_core::recovered_building::building_decorator_placement::wall_coord_from_world(
+            country_core::resources::walls::decorator::placement::wall_coord_from_world(
                 context.source_curve,
                 request.world_position,
             )
             .map_err(DecoratorSubtypePlacementError::Placement)?;
         let subtype = if let Some(subtype) =
-            country_core::recovered_building::building_decorator_subtype::wall_attachment_subtype(
+            country_core::resources::walls::decorator_subtype::placement::wall_attachment_subtype(
                 kind,
                 door_attachment,
                 corner_attached,
@@ -204,9 +207,8 @@ impl DecoratorAssetLibrary {
         result.key = key;
         Ok(result)
     }
-    /// Explicit B asset-name policy, confirmed by original rank dispatch. This
-    /// loads all four requested plain families; it is not B's availability gate
-    /// or full renderer/interaction/outline library initialization.
+    /// Loads three ranks for each of the four plain opening families.
+    /// Failure leaves the existing library and revision unchanged.
     pub fn load_b_plain_wall_assets(
         &mut self,
         assets_root: &Path,

@@ -1,0 +1,59 @@
+--- a/games_test/tiny-glade/crates/systems/onboarding/src/hint_terrain_steepness.rs
++++ b/games_test/tiny-glade/crates/systems/onboarding/src/hint_terrain_steepness.rs
+@@ -1,25 +1,22 @@
+-//! hint_terrain_steepness（O 0x142283640，754）。
+-//!
+-//! 真逻辑：工具==10 且 GameProfile+0x1fa==0 且事件字节==1 且 [+1]==0 且存在实体 →
+-//! make_lbm_drag_binding_hint 写 DisplayHintRequest（+0x48 u16 = 0x0400 → id 4，flags 0）；
+-//! 事件字节!=0 且 [+1] → 写 TutorialHintComplete（tag 4）。
++//! B hint_terrain_steepness 0x142283640.
++//! Tag0 arms the prompt; nonzero completes tutorial4. Display requires hover.
+ 
+ use bevy_ecs::prelude::*;
+ 
+ /// 地形陡峭提示条件（O：hints_startup 初值 2B [0]=profile[0x1fa],[1]=profile[0x1fa]）。
+ #[derive(Resource, Clone, Copy, Debug, Default)]
+ pub struct HintTerrainSteepnessConditions {
++    /// Original first byte: tag0/release observed (existing API name).
+     pub hint_done: bool,
++    /// Original second byte: completion observed.
+     pub event_byte: u8,
+ }
+ 
+ /// hint_terrain_steepness（O 0x142283640）：遍历 NotifyHintSystemTerrainSteepness 事件；
+-/// 字节==0 → hint_done=1；字节!=0 → event_byte=1 + TutorialHintComplete(id 4)（**载荷
+-/// 字节 U**，seam 常量 0 → 完成分支不触发）；末位：AppMode==10 且 profile 0x1fa==0 且
+-/// hint_done 且 event_byte==0 且有实体 → make_lbm_drag_binding_hint 写
++/// 字节==0 → hint_done=1；字节!=0 → event_byte=1 + TutorialHintComplete(id 4)；末位：AppMode==10 且 profile 0x1fa==0 且
++/// hint_done 且 event_byte==0 且悬停 tag 非零 → make_lbm_drag_binding_hint 写
+ /// DisplayHintRequest（id 4，flags 0）。
+-/// **重建（2026-10-17，NotifyHintSystemTerrainSteepness + GameProfile 落库）**；
+-/// 分歧点：事件载荷字节 U。
++/// B 原事件首字节由真实 producer 提供；末位读取 HoveredTerrainStrokeId.tag。
+ pub fn hint_terrain_steepness(
+     profile: Res<country_core::game_profile::GameProfile>,
+     mut state: ResMut<HintTerrainSteepnessConditions>,
+@@ -27,11 +24,11 @@
+     mut events: EventReader<country_core::resources::onboarding::NotifyHintSystemTerrainSteepness>,
+     mut request: EventWriter<crate::DisplayHintRequest>,
+     mut completed: EventWriter<crate::tutorial_completion::TutorialHintComplete>,
+-    query: Query<Entity>,
++    hovered: Res<country_core::systems::terrain::terrain_hover_idx::HoveredTerrainStrokeId>,
+ ) {
+-    for _event in events.read() {
++    for event in events.read() {
+         // O：字节==0 → hint_done；!=0 → event_byte=1 + 完成。
+-        if crate::event_payload_byte_seam() == 0 {
++        if event.tag == 0 {
+             state.hint_done = true;
+         } else {
+             state.event_byte = 1;
+@@ -42,7 +39,7 @@
+         && !profile.terrain_steepness_completed
+         && state.hint_done
+         && state.event_byte == 0
+-        && !query.is_empty()
++        && hovered.tag != 0
+     {
+         let display = crate::hint_roof_shape::make_lbm_drag_binding_hint();
+         request.write(crate::DisplayHintRequest::new(

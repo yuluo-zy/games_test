@@ -1,6 +1,5 @@
-//! Live platform CPU geometry -> actual Rapier owner -> DirtyTiles/query state.
-//! This new integration is implemented but has not been compiled or validated.
-//! Original full17-subworld query filters remain outside this platform interface.
+//! Synchronizes platform stair colliders, publishes dirty masks, and serves rays.
+//! Queries cover platform geometry; callers select the downstream subscriptions.
 use crate::{
     BuildingStage, RemoveWall,
     wall_platform_stairs::{
@@ -8,15 +7,16 @@ use crate::{
     },
 };
 use bevy_ecs::prelude::*;
-use country_core::recovered_building::{
-    building_dirty_tiles::{DirtyTileRect, DirtyTiles64},
-    building_wall_platform_collision::{PlatformColliderUpdate, PlatformStairColliderWorld},
-    building_wall_platform_rapier_backend::{
-        PlatformColliderDiff, PlatformRapierBackend, PlatformRapierError, PlatformRapierHandle,
-        PlatformRayHit,
-    },
-    building_wall_state::WallId,
-};
+use country_core::utils::dirty_tiles::DirtyTileRect;
+use country_core::utils::dirty_tiles::DirtyTiles64;
+use country_core::systems::wall::construction::platform_collision::PlatformColliderUpdate;
+use country_core::systems::wall::construction::platform_collision::PlatformStairColliderWorld;
+use country_core::systems::wall::construction::platform_rapier_backend::PlatformColliderDiff;
+use country_core::systems::wall::construction::platform_rapier_backend::PlatformRapierBackend;
+use country_core::systems::wall::construction::platform_rapier_backend::PlatformRapierError;
+use country_core::systems::wall::construction::platform_rapier_backend::PlatformRapierHandle;
+use country_core::systems::wall::construction::platform_rapier_backend::PlatformRayHit;
+use country_core::resources::walls::publication_fields::WallId;
 use std::{
     collections::{HashMap, HashSet},
     sync::{Arc, Mutex},
@@ -28,7 +28,7 @@ pub struct SetPlatformCollisionDirtyTiles {
 }
 #[derive(Event, Clone, Copy)]
 pub struct ClearPlatformCollisionDirtyTiles;
-/// Exact original mask clear, retaining its known initialized owner.
+/// Clears the dirty mask while retaining initialized grid ownership.
 #[derive(Event, Clone, Copy)]
 pub struct ResetPlatformCollisionDirtyTiles;
 #[derive(Event, Clone, Debug)]
@@ -62,7 +62,7 @@ impl PlatformCollisionRasterState {
             world_rect: rect,
             cells,
         });
-        self.revision += 1;
+        self.revision = self.revision.wrapping_add(1);
         self.needs_publication = true;
     }
     fn set_rows(&mut self, rows: [u64; 64]) {
@@ -70,7 +70,7 @@ impl PlatformCollisionRasterState {
         for rect in std::mem::take(&mut self.queued_world_rects) {
             self.consume_rect(rect);
         }
-        self.revision += 1;
+        self.revision = self.revision.wrapping_add(1);
     }
 }
 #[derive(Clone, Debug)]
@@ -133,8 +133,8 @@ pub struct PlatformRayResult {
     pub request_id: u64,
     pub outcome: PlatformRayOutcome,
 }
-/// Exact subworld selection must come from the original publisher subscription
-/// owner. No all-subworld/default7 selector is invented.
+/// Selects which collision subworld publications invalidate walls.
+/// Until supplied, dirty publications remain queued.
 #[derive(Event, Clone, Copy)]
 pub struct SetPlatformCollisionWallSubscription {
     pub subworld_mask: u32,
@@ -186,11 +186,11 @@ fn configure(
             tiles.clear();
         }
         raster.needs_publication = false;
-        raster.revision += 1;
+        raster.revision = raster.revision.wrapping_add(1);
     }
     if clears.read().count() != 0 {
         raster.tiles = None;
-        raster.revision += 1;
+        raster.revision = raster.revision.wrapping_add(1);
     }
 }
 fn sync(
@@ -296,8 +296,8 @@ fn flush(
     mut changed: EventWriter<PlatformColliderChanged>,
     mut tiles_published: EventWriter<PlatformCollisionDirtyTilesPublished>,
 ) {
-    // Original dirty-subworld flush: copy/clear mask -> publish -> clear dirty
-    // marker -> dependency query update. Delayed authority is an adapter gap.
+    // Publish and clear the dirty mask before refreshing queries, so downstream
+    // consumers observe the same completed collider update.
     let dirty = collision.world.backend.dirty;
     {
         let mut raster = collision
@@ -358,8 +358,8 @@ fn queries(
     }
 }
 
-/// Feed the existing recovered wall spatial-membership/filter consumer. These
-/// are invalidation candidates, never substitutes for physics intersections.
+/// Publishes spatial invalidation candidates for subscribed subworlds.
+/// Collision intersections still come from the physics query backend.
 fn publish_wall_updates(
     mut published: EventReader<PlatformCollisionDirtyTilesPublished>,
     mut selects: EventReader<SetPlatformCollisionWallSubscription>,
@@ -391,9 +391,9 @@ fn publish_wall_updates(
     }
     if combined.rows().iter().any(|row| *row != 0) {
         wall_dirty.write(crate::TerrainDirtyTiles {
-            subscription: country_core::recovered_building::building_wall_collection::DirtyPublicationSubscription::Primary,
+            subscription: country_core::resources::walls::publication_source::DirtyPublicationSubscription::Primary,
             mask: *combined.rows(),
-            // Original primary filter does not consume this secondary-only set.
+            // Primary subscriptions do not use the secondary lazy-dirty filter.
             already_lazy_dirty: HashSet::new(),
         });
     }

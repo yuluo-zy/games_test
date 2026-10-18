@@ -1,0 +1,212 @@
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140a73840      sal dword cs:[rsi + 0x30], 1
+0x140a73844      addss xmm1, dword [0x142934674]
+0x140a7384c      jmp 0x140a73889
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140a7384e      cmp byte [rsi + 0xa], 0
+   ; likely
+0x140a73852      jne 0x140a738d2
+0x140a73854      mov rax, qword [rbx]
+0x140a73857      mov ecx, dword [rdi + 0x1c]
+0x140a7385a      mov rdx, qword [rdi + 0x10]
+; [0x142934674:4]=0x40c90fdb
+0x140a7385e      movss xmm0, dword [0x142934674]
+0x140a73866      subss xmm0, dword [rax + 0xc]
+0x140a7386b      mov dword [rdx], ecx
+0x140a7386d      movss dword [rsi + 4], xmm0
+0x140a73872      jmp 0x140a738d2
+; [0x1429edba4:4]=0x40490fdb
+0x140a73874      movss xmm2, dword [0x1429edba4]
+0x140a7387c      ucomiss xmm2, xmm1
+   ; likely
+0x140a7387f      ja 0x140a73889
+0x140a73881      addss xmm1, dword [0x142ad58ec]
+0x140a73889      mov eax, dword [rbx + 0x1c]
+0x140a7388c      mov rcx, qword [rbx + 0x10]
+0x140a73890      mov dword [rcx], eax
+; [0x142925904:4]=0x3f800000
+0x140a73892      movss xmm2, dword [0x142925904]
+0x140a7389a      subss xmm2, xmm0
+0x140a7389e      mulss xmm2, xmm1
+0x140a738a2      addss xmm2, xmm8
+0x140a738a7      movss dword [r14 + 0xc], xmm2
+0x140a738ad      subss xmm2, xmm7
+0x140a738b1      andps xmm2, xmmword [0x14292e980]
+; [0x142960674:4]=0x3c23d70a
+0x140a738b8      movss xmm0, dword [0x142960674]
+0x140a738c0      ucomiss xmm0, xmm2
+   ; unlikely
+0x140a738c3      jbe 0x140a738d2
+0x140a738c5      mov eax, dword [rdi + 0x1c]
+0x140a738c8      mov rcx, qword [rdi + 0x10]
+0x140a738cc      mov dword [rcx], eax
+0x140a738ce      mov byte [rsi + 0xc], 0
+0x140a738d2      mov r15, qword [rbp + 0x210]
+0x140a738d9      mov r13, qword [rbp + 0x208]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140a738e0      cmp byte [rsi + 0xa], 0
+   ; unlikely
+0x140a738e4      je 0x140a73940
+0x140a738e6      mov rax, qword [rbp + 0xb0]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140a738ed      cmp byte [rax], 0
+   ; unlikely
+0x140a738f0      je 0x140a7395b
+0x140a738f2      mov r14, qword [rbx]
+0x140a738f5      movss xmm6, dword [r14 + 8]
+0x140a738fb      movss xmm8, dword [rsi]
+0x140a73900      mov rax, qword [rbp + 0xb8]
+0x140a73907      mov rax, qword [rax]
+0x140a7390a      movss xmm0, dword [rax + 0x28]
+0x140a7390f      xorps xmm0, xmmword [0x1429258f0]
+   ; 0x142923ec0(0x0, 0x0, -1, -1)
+0x140a73916      call 0x142923ec0
+0x140a7391b      subss xmm8, xmm6
+; [0x14295a0e8:4]=0xbf000000
+0x140a73920      movss xmm1, dword [0x14295a0e8]
+0x140a73928      ucomiss xmm1, xmm8
+   ; unlikely
+0x140a7392c      jbe 0x140a739eb
+0x140a73932      addss xmm8, dword [0x142925904]
+0x140a7393b      jmp 0x140a73a02
+0x140a73940      mov r14, qword [rbx]
+0x140a73943      movss xmm0, dword [r14 + 8]
+0x140a73949      mov eax, dword [rdi + 0x1c]
+0x140a7394c      mov rcx, qword [rdi + 0x10]
+0x140a73950      mov dword [rcx], eax
+0x140a73952      movss dword [rsi], xmm0
+0x140a73956      jmp 0x140a73aaa
+0x140a7395b      movss xmm0, dword [rsi]
+; [0x142925904:4]=0x3f800000
+0x140a7395f      movss xmm6, dword [0x142925904]
+0x140a73967      movaps xmm1, xmm6
+   ; 0x142923f10(0x0, 0x0, -1, -1)
+0x140a7396a      call 0x142923f10
+0x140a7396f      movaps xmm1, xmm0
+0x140a73972      addss xmm1, xmm6
+0x140a73976      xorps xmm2, xmm2
+0x140a73979      movaps xmm7, xmm0
+0x140a7397c      cmpltss xmm7, xmm2
+0x140a73981      andps xmm1, xmm7
+0x140a73984      andnps xmm7, xmm0
+0x140a73987      orps xmm7, xmm1
+0x140a7398a      mov r14, qword [rbx]
+0x140a7398d      mov rax, qword [rbp + 0xb8]
+0x140a73994      mov rax, qword [rax]
+0x140a73997      movss xmm1, dword [rax + 0x28]
+0x140a7399c      mulss xmm1, dword [0x142ad58e8]
+0x140a739a4      movss xmm8, dword [r14 + 8]
+0x140a739aa      mov rax, qword [rbp + 0xa0]
+0x140a739b1      movss xmm0, dword [rax + 0x118]
+0x140a739b9      maxss xmm0, xmm6
+0x140a739bd      mulss xmm0, xmm1
+   ; 0x142923ec0(0x0, 0x0, -1, -1)
+0x140a739c1      call 0x142923ec0
+0x140a739c6      subss xmm8, xmm7
+; [0x14295a0e8:4]=0xbf000000
+0x140a739cb      movss xmm1, dword [0x14295a0e8]
+0x140a739d3      ucomiss xmm1, xmm8
+   ; unlikely
+0x140a739d7      jbe 0x140a73a79
+0x140a739dd      addss xmm8, dword [0x142925904]
+0x140a739e6      jmp 0x140a73a90
+; [0x142925870:4]=0x3f000000
+0x140a739eb      movss xmm1, dword [0x142925870]
+0x140a739f3      ucomiss xmm1, xmm8
+   ; likely
+0x140a739f7      ja 0x140a73a02
+0x140a739f9      addss xmm8, dword [0x14295a0e4]
+; [0x142925904:4]=0x3f800000
+0x140a73a02      movss xmm7, dword [0x142925904]
+0x140a73a0a      movaps xmm1, xmm7
+0x140a73a0d      subss xmm1, xmm0
+0x140a73a11      mulss xmm1, xmm8
+0x140a73a16      addss xmm6, xmm1
+0x140a73a1a      movaps xmm0, xmm6
+0x140a73a1d      movaps xmm1, xmm7
+   ; 0x142923f10(0x0, 0x0, -1, -1)
+0x140a73a20      call 0x142923f10
+0x140a73a25      addss xmm7, xmm0
+0x140a73a29      xorps xmm1, xmm1
+0x140a73a2c      movaps xmm2, xmm0
+0x140a73a2f      cmpltss xmm2, xmm1
+0x140a73a34      andps xmm7, xmm2
+0x140a73a37      andnps xmm2, xmm0
+0x140a73a3a      orps xmm2, xmm7
+0x140a73a3d      mov eax, dword [rbx + 0x1c]
+0x140a73a40      mov rcx, qword [rbx + 0x10]
+0x140a73a44      mov dword [rcx], eax
+0x140a73a46      movss dword [r14 + 8], xmm2
+0x140a73a4c      subss xmm2, dword [rsi]
+0x140a73a50      andps xmm2, xmmword [0x14292e980]
+; [0x1429cd060:4]=0x3a83126f
+0x140a73a57      movss xmm0, dword [0x1429cd060]
+0x140a73a5f      ucomiss xmm0, xmm2
+   ; unlikely
+0x140a73a62      jbe 0x140a73aaa
+0x140a73a64      mov eax, dword [rdi + 0x1c]
+0x140a73a67      mov rcx, qword [rdi + 0x10]
+0x140a73a6b      mov dword [rcx], eax
+0x140a73a6d      mov rax, qword [rbp + 0xb0]
+0x140a73a74      mov byte [rax], 0
+0x140a73a77      jmp 0x140a73aaa
+; [0x142925870:4]=0x3f000000
+0x140a73a79      movss xmm1, dword [0x142925870]
+0x140a73a81      ucomiss xmm1, xmm8
+   ; likely
+0x140a73a85      ja 0x140a73a90
+0x140a73a87      addss xmm8, dword [0x14295a0e4]
+0x140a73a90      mov eax, dword [rdi + 0x1c]
+0x140a73a93      mov rcx, qword [rdi + 0x10]
+0x140a73a97      mov dword [rcx], eax
+0x140a73a99      subss xmm6, xmm0
+0x140a73a9d      mulss xmm6, xmm8
+0x140a73aa2      addss xmm6, xmm7
+0x140a73aa6      movss dword [rsi], xmm6
+0x140a73aaa      mov rcx, qword [r13]
+0x140a73aae      mov rdx, qword [r13 + 8]
+0x140a73ab2      mov r8, qword [rcx]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140a73ab5      xor eax, eax
+0x140a73ab7      mov r9, r8
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140a73aba      sub r9, qword [rdx + 0x18]
+0x140a73abe      cmovb r9, rax
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140a73ac2      sub r8, qword [rdx + 0x38]
+0x140a73ac6      cmovb r8, rax
+0x140a73aca      mov r10, qword [rdx + 0x30]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140a73ace      sub r10, r8
+0x140a73ad1      cmovb r10, rax
+0x140a73ad5      setbe r8b
+0x140a73ad9      mov r11, qword [rdx + 0x10]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140a73add      sub r11, r9
+0x140a73ae0      cmovb r11, rax
+0x140a73ae4      mov rdx, qword [rdx + 0x40]
+0x140a73ae8      setbe dil
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140a73aec      add r11, r10
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140a73aef      and dil, r8b
+0x140a73af2      cmove r11, rax
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140a73af6      sub rdx, r11
+0x140a73af9      mov qword [rcx], rdx
+0x140a73afc      mov rcx, qword [r15]

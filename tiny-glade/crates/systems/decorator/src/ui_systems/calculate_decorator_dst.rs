@@ -24,8 +24,8 @@ pub enum RaycastDecoratorDst {
     Roof { sub: u8, payload: u64 },
     /// tag 2：地形。
     Terrain,
-    /// tag 3：楼梯顶（payload u32@+4，8B 写）。
-    StairTop(u32),
+    /// tag 3：楼梯顶（`hit+4` 起的 8 字节载荷，O）。
+    StairTop(u64),
     /// tag 4：无效/不支持。
     Invalid,
 }
@@ -49,8 +49,11 @@ impl RaycastDecoratorDst {
     }
 }
 
-/// 命中记录判别（I：hit disc 枚举；disc 0=wall / 2=roof / 0xb=terrain /
-/// 0xd=stair-top / {5,9,0xc,0xf,0x10}=碰撞体 unreachable）。
+/// 命中记录判别（O，fresh 跳表 0x142c24118，17 项）：
+/// - 0=wall、2=roof、0xb=terrain、0xd=stair-top；
+/// - 1/4/6/7/8/10/14 → 目的 tag 4（Invalid，不 panic）；
+/// - 3 → `unreachable!()`（标准消息，file 行 40）；
+/// - 5/9/0xc/0xf/0x10 → `unreachable!()`（详细消息：碰撞体必须被射线过滤）。
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum RaycastHitDisc {
     /// disc 0：墙命中（载荷 WallId@+8）。
@@ -59,21 +62,26 @@ pub enum RaycastHitDisc {
     Roof { flag: u8, sub: u8, payload: u64 },
     /// disc 0xb：地形命中。
     Terrain,
-    /// disc 0xd：楼梯顶命中（载荷 u32@+4）。
-    StairTop(u32),
-    /// disc ∈ {5,9,0xc,0xf,0x10}：碰撞体命中（unreachable）。
+    /// disc 0xd：楼梯顶命中（载荷为 `hit+4` 起的 8 字节）。
+    StairTop(u64),
+    /// disc ∈ {5,9,0xc,0xf,0x10}：碰撞体命中（unreachable，详细消息）。
     Collider,
+    /// disc 3：unreachable（标准消息）。
+    Unsupported,
+    /// disc ∈ {1,4,6,7,8,10,14}：其它命中 → 目的 tag 4。
+    Other,
 }
 
-/// B 0x14127c990（O）：命中记录 + DecoratorInfo → 目的记录。
+/// B 0x14127c990（O，fresh 跳表逐项）：命中记录 + DecoratorInfo → 目的记录。
 ///
 /// - disc 0（wall）：tag 0 + WallId@+8；
 /// - disc 2（roof）：`flag@+1 == 0 || type.can_place_on_roof()`（0x140833180）
-///   → tag 1 + sub@+1 + payload@+8；否则 tag 4；
+///   → tag 1 + sub@+2 + payload@+8；否则 tag 4；
 /// - disc 0xb（terrain）：`type.can_place_on_terrain()`（0x1408331b0）→ tag 2；
 /// - disc 0xd（stair-top）：`type.can_place_on_stair_top()`（0x140833190）
-///   → tag 3 + 载荷 u32@+4；否则 tag 4；
-/// - 其余 → unreachable（碰撞体必须被射线过滤）。
+///   → tag 3 + `hit+4` 的 8 字节载荷；否则 tag 4；
+/// - disc 3 → 标准 unreachable；disc {5,9,0xc,0xf,0x10} → 详细 unreachable；
+/// - 其余 → tag 4。
 pub fn convert_raycast_hit_to_decorator_dst(
     hit: RaycastHitDisc,
     info: &DecoratorInfo,
@@ -100,6 +108,10 @@ pub fn convert_raycast_hit_to_decorator_dst(
             } else {
                 RaycastDecoratorDst::Invalid
             }
+        }
+        RaycastHitDisc::Other => RaycastDecoratorDst::Invalid,
+        RaycastHitDisc::Unsupported => {
+            unreachable!("internal error: entered unreachable code")
         }
         RaycastHitDisc::Collider => {
             unreachable!(

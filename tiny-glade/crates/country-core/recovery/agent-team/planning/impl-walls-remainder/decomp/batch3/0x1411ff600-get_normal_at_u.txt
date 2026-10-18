@@ -1,0 +1,17 @@
+# get_normal_at_u @ 0x1411ff600
+sig: void __cdecl get_normal_at_u(void)
+callees: [{'name': 'get_normal_at_u', 'address': '140c978e0'}]
+
+void __cdecl country_core::systems::wall::valid_enclosure::ShapeParameters::get_normal_at_u(void)
+
+{
+  byte *in_RCX;
+  
+  if ((*in_RCX & 1) == 0) {
+    ::utils::geometry::circle::Circle2d::get_normal_at_u();
+    return;
+  }
+  ::utils::geometry::rectangle::Rectangle2d::_get_normal_at_u();
+  return;
+}
+

@@ -1,0 +1,90 @@
+    Checking rhapsody v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody)
+warning: type alias `Result` is never used
+ --> crates/rhapsody/examples/window_lab/fixture.rs:4:10
+  |
+4 | pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+  |          ^^^^^^
+  |
+  = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: constant `WIDTH` is never used
+ --> crates/rhapsody/examples/window_lab/fixture.rs:5:11
+  |
+5 | pub const WIDTH: u32 = 320;
+  |           ^^^^^
+
+warning: constant `HEIGHT` is never used
+ --> crates/rhapsody/examples/window_lab/fixture.rs:6:11
+  |
+6 | pub const HEIGHT: u32 = 180;
+  |           ^^^^^^
+
+warning: function `default_playlist` is never used
+ --> crates/rhapsody/examples/window_lab/fixture.rs:8:8
+  |
+8 | pub fn default_playlist() -> PathBuf {
+  |        ^^^^^^^^^^^^^^^^
+
+warning: struct `Manifest` is never constructed
+  --> crates/rhapsody/examples/window_lab/fixture.rs:21:8
+   |
+21 | struct Manifest {
+   |        ^^^^^^^^
+
+warning: struct `Clip` is never constructed
+  --> crates/rhapsody/examples/window_lab/fixture.rs:26:12
+   |
+26 | pub struct Clip {
+   |            ^^^^
+
+warning: enum `Source` is never used
+  --> crates/rhapsody/examples/window_lab/fixture.rs:36:6
+   |
+36 | enum Source {
+   |      ^^^^^^
+
+warning: struct `Playlist` is never constructed
+  --> crates/rhapsody/examples/window_lab/fixture.rs:42:12
+   |
+42 | pub struct Playlist {
+   |            ^^^^^^^^
+
+warning: struct `Ppm` is never constructed
+  --> crates/rhapsody/examples/window_lab/fixture.rs:46:12
+   |
+46 | pub struct Ppm {
+   |            ^^^
+
+warning: function `hash` is never used
+  --> crates/rhapsody/examples/window_lab/fixture.rs:52:8
+   |
+52 | pub fn hash(bytes: &[u8]) -> u64 {
+   |        ^^^^
+
+warning: associated items `load` and `render` are never used
+  --> crates/rhapsody/examples/window_lab/fixture.rs:59:12
+   |
+58 | impl Playlist {
+   | ------------- associated items in this implementation
+59 |     pub fn load(path: &Path) -> Result<Self> {
+   |            ^^^^
+...
+89 |     pub fn render(&self, index: usize, frame: u32, output: &mut [u8]) {
+   |            ^^^^^^
+
+warning: associated function `parse` is never used
+   --> crates/rhapsody/examples/window_lab/fixture.rs:160:12
+    |
+159 | impl Ppm {
+    | -------- associated function in this implementation
+160 |     pub fn parse(bytes: &[u8]) -> Result<Self> {
+    |            ^^^^^
+
+warning: function `write_ppm` is never used
+   --> crates/rhapsody/examples/window_lab/fixture.rs:229:8
+    |
+229 | pub fn write_ppm(path: &Path, rgba: &[u8]) -> Result<()> {
+    |        ^^^^^^^^^
+
+warning: `rhapsody` (example "window_lab") generated 13 warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 10.08s

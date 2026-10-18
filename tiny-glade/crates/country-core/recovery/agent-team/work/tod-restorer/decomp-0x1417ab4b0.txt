@@ -1,0 +1,44 @@
+
+void __cdecl suncalc::get_position(void)
+
+{
+  undefined8 *in_RCX;
+  longlong in_RDX;
+  double dVar1;
+  double dVar2;
+  double dVar3;
+  double dVar4;
+  double dVar5;
+  double dVar6;
+  double in_XMM2_Qa;
+  double in_XMM3_Qa;
+  
+  dVar5 = (double)in_RDX / 86400000.0 + -0.5 + 2440588.0 + -2451545.0;
+  dVar4 = (dVar5 * 0.98560028 + 357.5291) * 0.017453292519943295;
+  dVar1 = sin(dVar4);
+  dVar2 = sin(dVar4 + dVar4);
+  dVar3 = sin(dVar4 * 3.0);
+  dVar4 = (dVar3 * 0.0003 + dVar2 * 0.02 + dVar1 * 1.9148) * 0.017453292519943295 + dVar4 +
+          1.796593062783907 + 3.141592653589793;
+  dVar1 = sin(dVar4);
+  dVar2 = asin(dVar1 * 0.39778370349342274 + 0.0);
+  dVar4 = cos(dVar4);
+  dVar4 = atan2(dVar1 * 0.9174792233260962,dVar4);
+  dVar4 = ((dVar5 * 360.9856235 + 280.16) * 0.017453292519943295 + in_XMM3_Qa * 0.017453292519943295
+          ) - dVar4;
+  dVar5 = sin(dVar4);
+  dVar4 = cos(dVar4);
+  dVar1 = sin(in_XMM2_Qa * 0.017453292519943295);
+  dVar3 = tan(dVar2);
+  dVar6 = cos(in_XMM2_Qa * 0.017453292519943295);
+  dVar5 = atan2(dVar5,dVar1 * dVar4 - dVar3 * dVar6);
+  dVar3 = sin(dVar2);
+  dVar2 = cos(dVar2);
+  dVar4 = asin(dVar2 * dVar6 * dVar4 + dVar3 * dVar1);
+  in_RCX[4] = dVar5;
+  in_RCX[5] = dVar4;
+  *in_RCX = 0;
+  in_RCX[2] = 0;
+  return;
+}
+

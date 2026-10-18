@@ -1,0 +1,107 @@
+--- games_test/tiny-glade/crates/country-core/src/systems/save/save_thread.rs
++++ games_test/tiny-glade/crates/country-core/src/systems/save/save_thread.rs
+@@ -264,17 +264,15 @@
+         self.shadow_file.sync_all()
+     }
+ 
+-    /// B `CurrentSaveFile::flush_deferred_and_sync` 0x14171f7f0：应用延迟节变更。
+-    /// fresh 反编译 disasm 全 CALL 清单**无 `0x14091a230`(sync_all)/`0x1409193d0`(flush)**——
+-    /// 原生只逐槽 apply `change_section`（deferred @+0xd8 stride 0x28），**不 sync_all**
+-    /// （旧实现的末尾 `self.sync_all()` 为新增，已删）。save_thread Shutdown-flush 路径调用；
+-    /// 失败由调用方 log "Error flushing save file on game thread disconnect."。
++    /// Complete B1934B @14171f7f0. Its tail@14171fc9f calls
++    /// ShadowFile::sync_all after applying each deferred section. Earlier
++    /// decompilation omitted that tail and incorrectly returned unconditional true.
+     pub fn flush_deferred_and_sync(&mut self) -> bool {
+         let pending = std::mem::take(&mut self.deferred_sections);
+         for slot in pending.into_iter().flatten() {
+             self.change_section(slot.section, &slot.value);
+         }
+-        true
++        self.sync_all()
+     }
+ 
+     /// B execute_save_cmd case 7 BackupSave / default 8 ManualBackup：
+@@ -511,14 +509,19 @@
+                 );
+             }
+         }
+-        AsyncSaveCmd::Flush => {
+-            if let Some(file) = current.as_mut() {
+-                if !file.shadow_file.flush() {
+-                    log::error!("Error flushing changes to disk");
+-                }
++        AsyncSaveCmd::Flush { reply } => {
++            // Original execute_save_cmd tag10 panics without an active file.
++            let file = current
++                .as_mut()
++                .expect("No active save file, but a synchronous flush has been issued");
++            let result = if file.flush_deferred_and_sync() {
++                Ok(())
+             } else {
+-                log::warn!("No active save file, but AsyncSaveCmd::Flush has been issued");
+-            }
++                Err(anyhow::anyhow!("Error flushing changes to disk"))
++            };
++            // Dropping the waiting game thread does not turn a disk failure
++            // into success. Native ignores a failed reply send.
++            let _ = reply.send(result);
+         }
+         AsyncSaveCmd::Shutdown { .. } => unreachable!("Shutdown is handled by save_thread"),
+     }
+@@ -699,3 +702,55 @@
+     auto.attach_command_sender(handle.command_sender.clone());
+     commands.insert_resource(handle);
+ }
++
++#[cfg(test)]
++mod synchronous_flush_recovery_tests {
++    use super::*;
++    use crate::systems::save::save_game::{GameSaveSections, SerializedJson};
++    #[test]
++    fn native_sync_reply_follows_deferred_sections_and_actual_disk_sync() {
++        let dir = tempfile::tempdir().unwrap();
++        let values = [
++            serde_json::json!(27),
++            serde_json::json!(17u64),
++            serde_json::json!(0),
++            serde_json::json!({"before":true}),
++            serde_json::json!({}),
++            serde_json::json!([]),
++            serde_json::json!({}),
++            serde_json::json!(-1),
++            serde_json::json!(-1),
++            serde_json::json!([]),
++        ];
++        let sections = GameSaveSections {
++            values: values.map(|value| SerializedJson::new(&value).unwrap()),
++        };
++        let mut current = Some(CurrentSaveFile::create(dir.path(), sections, &[]));
++        let captured = serde_json::json!({"captured_from_live_camera":"x".repeat(300)});
++        current.as_mut().unwrap().queue_section_change(
++            SaveFileSection::Camera,
++            SerializedJson::new(&captured).unwrap(),
++        );
++        let (reply, completed) = crossbeam_channel::bounded(1);
++        execute_save_cmd(
++            &mut current,
++            AsyncSaveCmd::Flush { reply },
++            &UnsavedFileList::default(),
++        );
++        completed.recv().unwrap().unwrap();
++        let saved: serde_json::Value =
++            serde_json::from_slice(&std::fs::read(dir.path().join("history.json")).unwrap())
++                .unwrap();
++        assert_eq!(saved["Camera"], captured);
++    }
++    #[test]
++    #[should_panic(expected = "No active save file")]
++    fn native_synchronous_flush_without_active_file_is_rejected() {
++        let (reply, _completed) = crossbeam_channel::bounded(1);
++        execute_save_cmd(
++            &mut None,
++            AsyncSaveCmd::Flush { reply },
++            &UnsavedFileList::default(),
++        );
++    }
++}

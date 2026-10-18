@@ -385,7 +385,7 @@ impl MemoryBlock {
         let sub = device
             .suballocator
             .as_ref()
-            .ok_or(Error::invalid_usage("设备未启用子分配"))?;
+            .ok_or_else(|| Error::invalid_usage("设备未启用子分配"))?;
         if requirements.size == 0
             || (flags.contains(vk::MemoryAllocateFlags::DEVICE_ADDRESS)
                 && !device.capabilities.buffer_device_address)

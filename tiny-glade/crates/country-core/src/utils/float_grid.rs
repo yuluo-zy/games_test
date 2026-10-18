@@ -1,11 +1,9 @@
-//! RasterBufferRef<512> consumer of shared B bilinear sampling policy.
-//! 0x140a14df0: byte values /255, original lerp order and edge extrapolation.
-//! Branch byte 0x143638fac (pointer slot 0x14362c308) is caller state. Its producer is
-//! `load_game` (`version >= 0x1a`, 0x14146dc82..0x14146dc95); see
-//! `resources::save_file::LoadVersionGates::apply_centered_path`.
+//! 固定 512×512 栅格的共享采样接口。算法和兼容性开关都保留在 utils crate。
+//!
+//! 新代码可显式传入采样模式；读档入口负责按版本更新共享开关。
 pub use ::utils::float_grid::{
     CENTERED_PATH, DEFAULT_WORLD_EXTENT, FloatGridCells, GRID_SIDE, bilinear_sample_at_world_xz,
-    bilinear_sample_at_world_xz_130, lerp,
+    bilinear_sample_at_world_xz_130, bilinear_sample_at_world_xz_with_mode, lerp,
 };
 
 #[cfg(test)]
@@ -15,22 +13,25 @@ mod tests {
         grid: &G,
         x: f32,
         z: f32,
-        ex: f32,
-        ez: f32,
+        extent_x: f32,
+        extent_z: f32,
     ) -> f32 {
-        ::utils::float_grid::bilinear_sample_at_world_xz_with_mode(grid, x, z, ex, ez, false)
+        ::utils::float_grid::bilinear_sample_at_world_xz_with_mode(
+            grid, x, z, extent_x, extent_z, false,
+        )
     }
     fn bilinear_centered_path<G: FloatGridCells + ?Sized>(
         grid: &G,
         x: f32,
         z: f32,
-        ex: f32,
-        ez: f32,
+        extent_x: f32,
+        extent_z: f32,
     ) -> f32 {
-        ::utils::float_grid::bilinear_sample_at_world_xz_with_mode(grid, x, z, ex, ez, true)
+        ::utils::float_grid::bilinear_sample_at_world_xz_with_mode(
+            grid, x, z, extent_x, extent_z, true,
+        )
     }
 
-    /// 以 `u8/255` 为格点的 512×512 平面：值 = col（低 8 位）。
     struct Ramp;
     impl FloatGridCells for Ramp {
         fn cell(&self, index: usize) -> f32 {
@@ -80,11 +81,9 @@ mod tests {
     fn vector_path_clamps_to_510_with_frac_two_at_the_edge() {
         // 超界 → t=512，row/col 取 510，frac=2：lerp 外推
         let v = bilinear_vector_path(&Ramp, 1e9, 0.0, 130.0, 130.0);
-        let (a, b) = ((510u32 as u8) as f32 / 255.0, (511u32 as u8) as f32 / 255.0);
         // col510→254, col511→255 ; row 256 → 同值，lerp(a,b,2)
         let ca = (510u32 & 0x1ff) as u8 as f32 / 255.0;
         let cb = (511u32 & 0x1ff) as u8 as f32 / 255.0;
-        let _ = (a, b);
         assert!((v - lerp(ca, cb, 2.0)).abs() < 1e-5);
     }
 

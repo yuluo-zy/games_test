@@ -1,0 +1,123 @@
+
+void __cdecl country_core::resources::history::History::set_current_snapshot(void)
+
+{
+  longlong lVar1;
+  int iVar2;
+  longlong lVar3;
+  longlong *plVar4;
+  code *pcVar5;
+  longlong lVar6;
+  undefined8 *puVar7;
+  int iVar8;
+  longlong in_RCX;
+  ulonglong uVar9;
+  undefined8 in_RDX;
+  ulonglong uVar10;
+  int iVar11;
+  
+  iVar2 = *(int *)(in_RCX + 0x68);
+  uVar10 = *(ulonglong *)(in_RCX + 0x28);
+  if (uVar10 == 0) {
+    uVar10 = 0;
+    uVar9 = 0;
+    if (*(longlong *)(in_RCX + 0x18) != 0) goto LAB_140a848c6;
+  }
+  else {
+    lVar3 = *(longlong *)(in_RCX + 0x20);
+    lVar6 = 0;
+    uVar9 = uVar10;
+    if (uVar10 != 1) {
+      do {
+        lVar1 = (uVar9 >> 1) + lVar6;
+        if (*(int *)(lVar3 + 8 + lVar1 * 0x10) < iVar2) {
+          lVar6 = lVar1;
+        }
+        uVar9 = uVar9 - (uVar9 >> 1);
+      } while (1 < uVar9);
+    }
+    uVar9 = (ulonglong)(*(int *)(lVar3 + 8 + lVar6 * 0x10) < iVar2) + lVar6;
+    if (uVar9 < uVar10) {
+      puVar7 = (undefined8 *)(uVar9 * 0x10 + lVar3);
+      if (uVar9 != 0) {
+        iVar11 = -(*(int *)(puVar7 + -1) - iVar2);
+        if (iVar11 < 0) {
+          iVar11 = *(int *)(puVar7 + -1) - iVar2;
+        }
+        iVar8 = -(*(int *)(puVar7 + 1) - iVar2);
+        if (iVar8 < 0) {
+          iVar8 = *(int *)(puVar7 + 1) - iVar2;
+        }
+        puVar7 = puVar7 + (ulonglong)(iVar8 <= iVar11) * 2 + -2;
+      }
+    }
+    else {
+      puVar7 = (undefined8 *)(uVar10 * 0x10 + lVar3 + -0x10);
+    }
+    iVar11 = iVar2;
+    if (puVar7 != (undefined8 *)0x0) {
+      plVar4 = (longlong *)*puVar7;
+      iVar11 = *(int *)(puVar7 + 1);
+      LOCK();
+      lVar6 = *plVar4;
+      *plVar4 = *plVar4 + 1;
+      UNLOCK();
+      if (*plVar4 == 0 || SCARRY8(lVar6,1) != *plVar4 < 0) {
+                    // WARNING: Does not return
+        pcVar5 = (code *)invalidInstructionException();
+        (*pcVar5)();
+      }
+      if (iVar11 == iVar2) {
+        LOCK();
+        *plVar4 = *plVar4 + -1;
+        UNLOCK();
+        if (*plVar4 == 0) {
+          alloc::sync::Arc::
+          drop_slow<lock_api::mutex::Mutex<parking_lot::raw_mutex::RawMutex,tiny_glade::crash_pickup::crash_payload::CrashMiscInfo>,alloc::alloc::Global>
+                    ();
+        }
+                    // WARNING: Subroutine does not return
+        core::panicking::panic();
+      }
+      LOCK();
+      *plVar4 = *plVar4 + -1;
+      UNLOCK();
+      if (*plVar4 == 0) {
+        alloc::sync::Arc::
+        drop_slow<lock_api::mutex::Mutex<parking_lot::raw_mutex::RawMutex,tiny_glade::crash_pickup::crash_payload::CrashMiscInfo>,alloc::alloc::Global>
+                  ();
+      }
+      iVar11 = *(int *)(in_RCX + 0x68);
+    }
+    lVar6 = 0;
+    if (uVar10 != 1) {
+      do {
+        lVar1 = (uVar10 >> 1) + lVar6;
+        if (*(int *)(lVar3 + 8 + lVar1 * 0x10) < iVar11) {
+          lVar6 = lVar1;
+        }
+        uVar10 = uVar10 - (uVar10 >> 1);
+      } while (1 < uVar10);
+    }
+    uVar9 = (ulonglong)(*(int *)(lVar3 + 8 + lVar6 * 0x10) < iVar11) + lVar6;
+    uVar10 = *(ulonglong *)(in_RCX + 0x28);
+    if (uVar10 < uVar9) {
+                    // WARNING: Subroutine does not return
+      alloc::vec::impl$1::insert::assert_failed();
+    }
+    if (uVar10 != *(ulonglong *)(in_RCX + 0x18)) goto LAB_140a848c6;
+  }
+  alloc::raw_vec::RawVec::
+  grow_one<bevy_ecs::event::base::EventInstance<country_core::resources::window::WindowFocusEvent>,alloc::alloc::Global>
+            ();
+LAB_140a848c6:
+  puVar7 = (undefined8 *)(uVar9 * 0x10 + *(longlong *)(in_RCX + 0x20));
+  if (uVar9 <= uVar10 && uVar10 - uVar9 != 0) {
+    memmove(puVar7 + 2,puVar7,(uVar10 - uVar9) * 0x10);
+  }
+  *puVar7 = in_RDX;
+  *(int *)(puVar7 + 1) = iVar2;
+  *(ulonglong *)(in_RCX + 0x28) = uVar10 + 1;
+  return;
+}
+

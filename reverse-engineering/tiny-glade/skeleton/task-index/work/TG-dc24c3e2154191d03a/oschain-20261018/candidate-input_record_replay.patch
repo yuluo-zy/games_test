@@ -1,0 +1,48 @@
+--- games_test/tiny-glade/crates/country-core/src/systems/backend/input/input_record_replay.rs
++++ games_test/tiny-glade/crates/country-core/src/systems/backend/input/input_record_replay.rs
+@@ -1,11 +1,11 @@
+ //! 输入录制/回放控制。文件操作与队列策略分别由 input::recording、input_stream 提供。
+ use super::update_cursor_position::CursorPosition;
+-pub use crate::input::recording::{InputFrame, load_recording, save_recording};
++pub use crate::input::recording::{load_recording, save_recording, InputFrame};
+ use crate::{
+     input::{
+-        InputRecordReplayMode,
+         action_set::{ActionSetStates, ActionSetValues},
+         input_stream::{InputSnapshot, InputStream, RecordingRetention},
++        InputRecordReplayMode,
+     },
+     resources::{
+         mouse_capture::{CursorCapturePolicy, CursorCaptureState},
+@@ -131,12 +131,14 @@
+     }
+ }
+ 
+-pub(crate) fn begin_input_frame(
+-    mut replay: ResMut<InputRecordReplayState>,
+-    mut policy: ResMut<CursorCapturePolicy>,
+-) {
+-    replay.input_suppressed_this_frame = false;
+-    *policy = CursorCapturePolicy::Live;
++/// Desktop schedule adapter for the retained replay/capture policy. Exposing
++/// an exclusive world entry keeps CursorCapturePolicy private to this module's
++/// implementation while allowing the actual tiny-glade host to begin a frame.
++pub fn begin_input_frame(world: &mut World) {
++    world
++        .resource_mut::<InputRecordReplayState>()
++        .input_suppressed_this_frame = false;
++    *world.resource_mut::<CursorCapturePolicy>() = CursorCapturePolicy::Live;
+ }
+ 
+ pub fn control_input_replay(
+@@ -258,7 +260,9 @@
+     replay.release_capture_if_requested(&mut capture);
+ }
+ 
+-/// 消费者处理完当前帧以后才推进；最后一帧同样会被消费一次。
++/// A completed frame is advanced once. The original backend set1 runs this
++/// before the next frame's set5 writer; the standalone pipeline may instead
++/// call it after consumers. frame_applied preserves both entry points.
+ pub fn advance_input_replay_frame(
+     mut replay: ResMut<InputRecordReplayState>,
+     mut capture: CursorCaptureState,

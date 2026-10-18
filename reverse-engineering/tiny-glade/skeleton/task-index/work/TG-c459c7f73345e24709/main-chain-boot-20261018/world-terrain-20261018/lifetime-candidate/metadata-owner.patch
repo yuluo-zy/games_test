@@ -1,0 +1,236 @@
+--- games_test/tiny-glade/crates/country-core/src/render/pass_builder/compute_pass_builder.rs
++++ games_test/tiny-glade/crates/country-core/src/render/pass_builder/compute_pass_builder.rs
+@@ -206,6 +206,9 @@
+     /// Image binding indices whose writes retain previously produced texels.
+     pub preserving_texture_bindings: Vec<u8>,
+     pub external_bindings: Vec<ExternalBinding>,
++    /// Real immutable dynamic-page ranges read through shader device addresses.
++    /// They are declared in the enclosing graph before its callback records.
++    pub device_address_reads: Vec<rhapsody::raw::dynamic_constants::DynamicConstantsChunk>,
+     pub uniform_binder: Option<UniformBinder>,
+     pub push_constants: Vec<u8>,
+     pub program: Option<Handle<ComputeShaderProgram>>,
+@@ -373,8 +376,23 @@
+ }
+ 
+ impl RecordedComputePass {
++    /// Attach actual BDA upload allocations, never numeric lifetime tokens.
++    /// The production graph imports their physical buffers/ranges and its
++    /// existing command owner protocol retains them through GPU completion.
++    pub fn with_device_address_reads(
++        mut self,
++        chunks: Vec<rhapsody::raw::dynamic_constants::DynamicConstantsChunk>,
++    ) -> Self {
++        self.device_address_reads.extend(chunks);
++        self
++    }
++
+     /// 见 [`ComputeExecution::execute`]。
+     pub fn execute(self, exec: &mut dyn ComputeExec) {
++        assert!(
++            self.device_address_reads.is_empty(),
++            "BDA upload ranges require the production graph command owner path"
++        );
+         ComputeExecution {
+             push_constants: self.push_constants,
+             dispatch: self.dispatch,
+@@ -695,17 +713,30 @@
+     /// partial write whose previously produced regions must survive. Call only
+     /// after the actual storage write binding has been declared.
+     pub fn preserve_storage_buffer_contents(mut self, hash: u64) -> Self {
+-        let Some(binding) = self.resolve(hash) else { return self; };
+-        let range = self.access_ranges.iter().rev()
++        let Some(binding) = self.resolve(hash) else {
++            return self;
++        };
++        let range = self
++            .access_ranges
++            .iter()
++            .rev()
+             .find(|range| range.resource_index == binding)
+             .expect("preserving buffer contents requires a declared binding");
+         let resource = match self.bindings.get(range.access_index as usize) {
+             Some(PassBinding::Buffer { resource }) => *resource,
+             _ => panic!("preserving contents requires a graph buffer binding"),
+         };
+-        assert!(self.builder.accesses.iter().any(|access| access.resource == resource
+-            && matches!(access.access, ACCESS_CPU_MAPPED_WRITE | ACCESS_WRITE_CONCURRENT)),
+-            "preserving contents requires a declared buffer write");
++        assert!(
++            self.builder
++                .accesses
++                .iter()
++                .any(|access| access.resource == resource
++                    && matches!(
++                        access.access,
++                        ACCESS_CPU_MAPPED_WRITE | ACCESS_WRITE_CONCURRENT
++                    )),
++            "preserving contents requires a declared buffer write"
++        );
+         if !self.preserving_buffers.contains(&resource) {
+             self.preserving_buffers.push(resource);
+         }
+@@ -715,14 +746,26 @@
+     /// Preserve the actual previous texture contents for a confirmed partial
+     /// image write. Uses the exact bound view, never every alias of its owner.
+     pub fn preserve_storage_texture_contents(mut self, hash: u64) -> Self {
+-        let Some(binding) = self.resolve(hash) else { return self; };
+-        let range = self.access_ranges.iter().rev()
++        let Some(binding) = self.resolve(hash) else {
++            return self;
++        };
++        let range = self
++            .access_ranges
++            .iter()
++            .rev()
+             .find(|range| range.resource_index == binding)
+             .expect("preserving texture contents requires a declared binding");
+-        assert!(matches!(self.bindings.get(range.access_index as usize),
+-            Some(PassBinding::ImageView { write: true, .. })),
+-            "preserving texture contents requires a writing image binding");
+-        if !self.preserving_texture_bindings.contains(&range.access_index) {
++        assert!(
++            matches!(
++                self.bindings.get(range.access_index as usize),
++                Some(PassBinding::ImageView { write: true, .. })
++            ),
++            "preserving texture contents requires a writing image binding"
++        );
++        if !self
++            .preserving_texture_bindings
++            .contains(&range.access_index)
++        {
+             self.preserving_texture_bindings.push(range.access_index);
+         }
+         self
+@@ -831,6 +874,7 @@
+             preserving_buffers: self.preserving_buffers,
+             preserving_texture_bindings: self.preserving_texture_bindings,
+             external_bindings: self.external_bindings,
++            device_address_reads: Vec::new(),
+             uniform_binder: self.uniform_binder,
+             push_constants: self.push_constants,
+             program: self.program,
+@@ -1445,17 +1489,24 @@
+             .preserve_storage_buffer_contents(0xDEAD)
+             .dispatch_1d(1);
+         assert_eq!(recorded.preserving_buffers, [100]);
+-        assert_eq!(recorded.builder.accesses.iter()
+-            .filter(|a| a.resource == 100 || a.resource == 101)
+-            .map(|a| (a.resource, a.access)).collect::<Vec<_>>(),
+-            [(100, 0x37), (101, 0x37)]);
++        assert_eq!(
++            recorded
++                .builder
++                .accesses
++                .iter()
++                .filter(|a| a.resource == 100 || a.resource == 101)
++                .map(|a| (a.resource, a.access))
++                .collect::<Vec<_>>(),
++            [(100, 0x37), (101, 0x37)]
++        );
+     }
+ 
+     #[test]
+     #[should_panic(expected = "declared buffer write")]
+     fn content_intent_does_not_turn_a_read_into_a_write() {
+         let env = env();
+-        new_pass(&env).read_rg_storage_buffer(H_BUF_A, &rgb(100))
++        new_pass(&env)
++            .read_rg_storage_buffer(H_BUF_A, &rgb(100))
+             .preserve_storage_buffer_contents(H_BUF_A);
+     }
+ 
+--- games_test/tiny-glade/crates/tiny-glade/src/render_host.rs
++++ games_test/tiny-glade/crates/tiny-glade/src/render_host.rs
+@@ -31,7 +31,9 @@
+ }
+ 
+ impl BufferHost {
+-    pub fn graphics_device(&self) -> &Arc<Device> { &self.device }
++    pub fn graphics_device(&self) -> &Arc<Device> {
++        &self.device
++    }
+     pub fn new(device: Arc<Device>) -> Self {
+         Self {
+             device,
+@@ -2201,6 +2203,7 @@
+             preserving_buffers,
+             preserving_texture_bindings,
+             external_bindings,
++            device_address_reads,
+             uniform_binder,
+             push_constants,
+             dispatch,
+@@ -2358,6 +2361,44 @@
+             external_accesses.push((handle, range, code));
+             upsert_shader_resource(&mut external_resources, external.binding, resource)?;
+         }
++        // BDA pointers are not descriptor bindings, but their physical reads
++        // still participate in this graph's synchronization and owner program.
++        // The same import/session owns cancellation and completion retirement.
++        let mut device_address_accesses = Vec::new();
++        device_address_accesses
++            .try_reserve_exact(device_address_reads.len())
++            .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
++        for chunk in device_address_reads {
++            if chunk.size == 0
++                || chunk
++                    .offset
++                    .checked_add(chunk.size)
++                    .is_none_or(|end| end > chunk.buffer.size)
++            {
++                return Err(rhapsody::Error::invalid_usage("invalid BDA upload range"));
++            }
++            // Validate actual BDA admission even if a future caller bypasses
++            // the terrain uploader's own device_address() call.
++            chunk.device_address()?;
++            let mut session = self
++                .cache_session
++                .as_mut()
++                .map(GraphSession::borrow_mut)
++                .transpose()?
++                .ok_or_else(|| {
++                    rhapsody::Error::unsupported(
++                        "BDA upload ranges require the frame driver's session",
++                    )
++                })?;
++            let handle = session.import_frame_buffer(&mut graph, chunk.buffer.clone(), 0x1a)?;
++            device_address_accesses.push((
++                handle,
++                rhapsody::rg::resource::AccessRange::Buffer {
++                    offset: chunk.offset,
++                    size: chunk.size,
++                },
++            ));
++        }
+         for range in &access_ranges {
+             if bindings.get(range.access_index as usize).is_none() {
+                 return Err(rhapsody::Error::invalid_usage(
+@@ -2414,7 +2455,8 @@
+             } else if (*preserves_texture || preserving_buffers.contains(&a.resource))
+                 && rhapsody::raw::access_table::is_write(a.access)
+             {
+-                declared.add_preserving_resource_access_range(resource, a.access, a.group, *range)?;
++                declared
++                    .add_preserving_resource_access_range(resource, a.access, a.group, *range)?;
+             } else {
+                 declared.add_resource_access_range(resource, a.access, a.group, *range)?;
+             }
+@@ -2422,10 +2464,16 @@
+         for (resource, range, code) in external_accesses {
+             declared.add_resource_access_range(resource, code, 0, range)?;
+         }
++        for (resource, range) in device_address_accesses {
++            declared.add_resource_access_range(resource, 0x1a, 1, range)?;
++        }
+         if external_writes {
+             declared.side_effect();
+         }
+         declared.render_with_result_context(move |ctx| {
++            // executor::retain_pass_resources has already retained each BDA
++            // buffer's actual ResourceOwner into this command, just like the
++            // other declared resources. No empty track_gpu_lifetime callback.
+             let managed = ctx.managed.ok_or_else(|| {
+                 rhapsody::Error::invalid_usage("compute callback without managed resources")
+             })?;

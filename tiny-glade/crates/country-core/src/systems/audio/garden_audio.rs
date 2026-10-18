@@ -182,7 +182,7 @@ pub fn update_draw_audio_volume<E: EventInstance>(
         let _ = current.set_parameter(PATH_SIZE_PARAMETER, garden_path_size(radius));
         let _ = loop_player.start_if_not_playing();
     } else {
-        let _ = loop_player.stop(std::time::Duration::ZERO);
+        let _ = loop_player.stop_now();
     }
 }
 

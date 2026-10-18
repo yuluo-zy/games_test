@@ -1,0 +1,226 @@
+    Blocking waiting for file lock on build directory
+warning: field `0` is never read
+   --> crates/rhapsody/src/raw/texture.rs:493:15
+    |
+493 |     Swapchain(Arc<super::swapchain::Swapchain>),
+    |     --------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     |
+    |     field in this variant
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+help: consider changing the field to be of unit type to suppress this warning while preserving the field numbering, or remove the field
+    |
+493 -     Swapchain(Arc<super::swapchain::Swapchain>),
+493 +     Swapchain(()),
+    |
+
+warning: `rhapsody` (lib) generated 1 warning
+   Compiling country-core v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core)
+warning: unused import: `crate::resources::color_id::ColorId`
+  --> crates/country-core/src/resources/history/color_edit.rs:43:5
+   |
+43 | use crate::resources::color_id::ColorId;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `bevy_ecs::prelude::*`
+  --> crates/country-core/src/resources/stairs/invalidate.rs:49:9
+   |
+49 |     use bevy_ecs::prelude::*;
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `SubworldColliderHandle`
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:44:54
+   |
+44 | use crate::systems::collision::world::{RaycastWorld, SubworldColliderHandle};
+   |                                                      ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `DebugColor`
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:45:31
+   |
+45 | use crate::utils::debug_viz::{DebugColor, DebugLine, DebugSphere};
+   |                               ^^^^^^^^^^
+
+warning: unused import: `glam::Vec3`
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:46:5
+   |
+46 | use glam::Vec3;
+   |     ^^^^^^^^^^
+
+warning: unused imports: `Roof`, `WallId`, `commands::*`, `public_walls::PublicWalls`, `roof_customization::FlatRoofRimRequest`, `time::GameTime`, and `wall_state::WallId as ObservedWallId`
+  --> crates/country-core/src/systems/history/tests.rs:5:9
+   |
+ 5 |         roof_customization::FlatRoofRimRequest,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 6 |         wall_state::WallId as ObservedWallId,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+10 |         roofs::{Roof, commands::*},
+   |                 ^^^^  ^^^^^^^^^^^
+11 |         time::GameTime,
+   |         ^^^^^^^^^^^^^^
+12 |         walls::{WallId, public_walls::PublicWalls},
+   |                 ^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Decorators`
+   --> crates/country-core/src/systems/ui_edit_focus.rs:228:54
+    |
+228 |     use crate::resources::walls::decorator_storage::{Decorators, DecoratorStorage};
+    |                                                      ^^^^^^^^^^
+
+warning: unused import: `bevy_ecs::schedule::IntoScheduleConfigs`
+  --> crates/country-core/src/systems/save/mod.rs:53:5
+   |
+53 | use bevy_ecs::schedule::IntoScheduleConfigs;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `WallId`
+  --> crates/country-core/src/systems/wall/snapping/snapping_init.rs:91:17
+   |
+91 |         walls::{WallId, WallState},
+   |                 ^^^^^^
+
+warning: unused import: `super::*`
+   --> crates/country-core/src/systems/wall/snapping/telegraph_walls_are_merged.rs:109:9
+    |
+109 |     use super::*;
+    |         ^^^^^^^^
+
+warning: variable does not need to be mutable
+   --> crates/country-core/src/resources/history/color_edit.rs:331:39
+    |
+331 |         let serde_json::Value::Object(mut outer) = value else {
+    |                                       ----^^^^^
+    |                                       |
+    |                                       help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `aux`
+   --> crates/country-core/src/resources/history/replay_cmd_buffer.rs:179:9
+    |
+179 |         aux: ReplayBucketAux,
+    |         ^^^ help: if this is intentional, prefix it with an underscore: `_aux`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> crates/country-core/src/systems/wall/snapping/telegraph_walls_are_merged.rs:115:17
+    |
+115 |             let mut lo = (2.0 * e - 1.0).clamp(0.0, 1.0);
+    |                 ----^^
+    |                 |
+    |                 help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/country-core/src/systems/wall/snapping/telegraph_walls_are_merged.rs:116:17
+    |
+116 |             let mut hi = (2.0 * e).clamp(0.0, 1.0);
+    |                 ----^^
+    |                 |
+    |                 help: remove this `mut`
+
+warning: field `name` is never read
+  --> crates/country-core/src/systems/audio/music/load_glade_audio.rs:89:9
+   |
+88 |     struct Event {
+   |            ----- field in this struct
+89 |         name: String,
+   |         ^^^^
+   |
+   = note: `Event` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `kind_filtered` is never used
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:60:4
+   |
+60 | fn kind_filtered(kind: u8, gui_byte: u8) -> bool {
+   |    ^^^^^^^^^^^^^
+
+warning: constant `A` is never used
+   --> crates/country-core/src/systems/time_of_day.rs:237:15
+    |
+237 |     pub const A: f32 = -0.762_442_5; // 0xbf432f6f
+    |               ^
+
+warning: structure field `Wall` should have a snake case name
+   --> crates/country-core/src/systems/save/snapshot.rs:983:12
+    |
+983 |     Wall { Wall: u64 },
+    |            ^^^^ help: convert the identifier to snake case (notice the capitalization): `wall`
+    |
+    = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default
+
+warning: structure field `Stair` should have a snake case name
+   --> crates/country-core/src/systems/save/snapshot.rs:985:13
+    |
+985 |     Stair { Stair: u64 },
+    |             ^^^^^ help: convert the identifier to snake case (notice the capitalization): `stair`
+
+warning: structure field `Wall` should have a snake case name
+    --> crates/country-core/src/systems/save/snapshot.rs:1073:12
+     |
+1073 |     Wall { Wall: DecoratorWallDstJson },
+     |            ^^^^ help: convert the identifier to snake case (notice the capitalization): `wall`
+
+warning: structure field `Terrain` should have a snake case name
+    --> crates/country-core/src/systems/save/snapshot.rs:1074:15
+     |
+1074 |     Terrain { Terrain: DecoratorTerrainDstJson },
+     |               ^^^^^^^ help: convert the identifier to snake case: `terrain`
+
+warning: `country-core` (lib test) generated 21 warnings (run `cargo fix --lib -p country-core --tests` to apply 14 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 37.04s
+     Running unittests src/lib.rs (target/debug/deps/country_core-c7a7b5f4c4262a78)
+
+running 46 tests
+test input::action_set::tests::action_queries_check_kind_and_slot ... ok
+test input::action_set::tests::name_tables_have_the_original_counts_and_lengths ... ok
+test input::action_set::tests::digital_state_predicates_follow_the_machine_code ... ok
+test input::action_set::tests::deconstruct_orders_analog_before_digital_and_packs_nan ... ok
+test input::action_set::tests::default_set_packs_nothing ... ok
+test input::action_set::tests::records_round_trip_through_reconstruct ... ok
+test input::input_stream::tests::history_sync_records_the_current_frame_count ... ok
+test input::input_stream::tests::history_sync_without_recording_clears_then_pushes_at_zero ... ok
+test input::input_stream::tests::dropping_with_no_sync_points_empties_the_frames ... ok
+test input::input_stream::tests::the_tenth_sync_point_evicts_the_oldest ... ok
+test input::input_stream::tests::surviving_sync_points_are_rebased ... ok
+test input::input_stream::tests::recording_below_the_threshold_keeps_every_frame ... ok
+test input::action_set::tests::serde_form_reads_known_keys_and_rejects_unknown_ones ... ok
+test input::action_set::tests::serde_form_writes_only_non_default_slots_in_table_order ... ok
+test input::input_stream::tests::frames_are_not_pruned_when_not_recording ... ok
+test input::input_stream::tests::two_sync_points_make_add_frame_drop_the_oldest_segment ... ok
+test input::panic_repro_state::tests::only_a_zero_tag_is_inactive ... ok
+test input::input_stream::tests::indexing_past_the_end_panics - should panic ... ok
+test input::tests::cooldown_is_250_milliseconds ... ok
+test input::tests::default_controller_tracker_reports_controller_and_the_mirror_reports_mouse ... ok
+test input::tests::equal_deadlines_mean_mouse_keyboard_and_nanos_break_second_ties ... ok
+test input::tests::replay_modes_use_the_niche_encoding_and_display_names ... ok
+test systems::backend::input::calculate_input_delta::tests::edges_hold_release_and_repeat_preserve_original_rules ... ok
+test input::input_stream::tests::without_enough_sync_points_frames_are_kept_until_49999 ... ok
+test systems::backend::input::calculate_input_delta::tests::all_slots_feed_the_existing_runtime_owner ... ok
+test systems::backend::input::calculate_input_delta::tests::only_the_ui_nav_slots_use_auto_repeat_shape ... ok
+test systems::backend::input::calculate_input_delta::tests::ui_slots_auto_repeat_after_0_2_seconds_at_0_1_intervals ... ok
+test systems::backend::input::mod_key::tests::predicates_read_the_flag_bytes ... ok
+test systems::backend::input::input_record_replay::tests::sync_state_packs_toolbar_head_translation_and_camera_bytes ... ok
+test systems::backend::input::input_record_replay::tests::seek_to_sync_point_requires_replay_mode_and_rewinds ... ok
+test systems::backend::input::input_record_replay::tests::input_frame_serde_round_trips_the_serde_view ... ok
+test systems::backend::input::input_record_replay::tests::seek_panics_with_the_native_messages_for_empty_and_over_rewind ... ok
+test systems::backend::input::translate_input::tests::default_bindings_match_the_original_sequence ... ok
+test systems::backend::input::translate_input::tests::digital_translation_maps_binding_slots_to_actions ... ok
+test systems::backend::input::translate_input::tests::camera_rotate_uses_raw_delta_and_scales_by_1800 ... ok
+test systems::backend::input::translate_input::tests::analog_translation_writes_pan_height_zoom_rotate_slots ... ok
+test systems::backend::input::translate_input_to_cursor_moved::tests::capture_accumulates_relative_and_while_captured_events ... ok
+test systems::backend::input::translate_input_to_cursor_moved::tests::clamped_relative_then_absolute_uses_the_intermediate_cursor ... ok
+test systems::backend::input::translate_input_to_cursor_moved::tests::window_clamp_retains_native_signed_zero_and_nan_policy ... ok
+test systems::backend::input::update_cursor_position::tests::cursor_state_folds_the_input_space_delta_and_clamps ... ok
+test systems::backend::input::update_cursor_position::tests::negatives_and_nan_clamp_to_zero ... ok
+test systems::backend::input::update_cursor_position::tests::relative_accumulates_and_absolute_replaces ... ok
+test systems::backend::input::input_record_replay::tests::sync_command_only_records_in_auto_record_mode ... ok
+test systems::backend::input::reset_input_state::tests::every_frame_rotates_values_but_only_session_events_reset_held_keys ... ok
+test systems::backend::input::mod_key::tests::update_writes_flag_bytes_per_table_one ... ok
+test systems::backend::input::input_record_replay::tests::try_load_reads_a_recording_file_into_the_stream ... ok
+
+test result: ok. 46 passed; 0 failed; 0 ignored; 0 measured; 2050 filtered out; finished in 0.02s
+

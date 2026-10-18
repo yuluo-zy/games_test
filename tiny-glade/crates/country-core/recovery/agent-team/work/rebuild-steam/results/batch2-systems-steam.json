@@ -1,0 +1,777 @@
+{
+  "backend": "ghidra",
+  "worker": "shared",
+  "access": "read",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "get_metadata",
+      "requested_args": {
+        "program": "tiny-glade.exe"
+      },
+      "args": {
+        "program": "tiny-glade.exe"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program_name\":\"tiny-glade.exe\",\"executable_path\":\"/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.exe\",\"architecture\":\"x86\",\"compiler\":\"clangwindows\",\"language\":\"x86:LE:64:default\",\"endian\":\"little\",\"address_size_bits\":64,\"base_address\":\"140000000\",\"memory_blocks\":8,\"total_memory_size\":58486568,\"function_count\":131517,\"symbol_count\":991681}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "get_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x140ae9390,0x140ae9470,0x140ae9480,0x140ae94b0,0x14067dd80,0x140ae96f0,0x140aef1a0,0x140af0460,0x140945320,0x14026d580,0x14026d3c0,0x14026d080,0x140a9bbf0",
+        "fields": "signature,decompiled_code,callees",
+        "include_call_context": false
+      },
+      "args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x140ae9390,0x140ae9470,0x140ae9480,0x140ae94b0,0x14067dd80,0x140ae96f0,0x140aef1a0,0x140af0460,0x140945320,0x14026d580,0x14026d3c0,0x14026d080,0x140a9bbf0",
+        "fields": "signature,decompiled_code,callees",
+        "include_call_context": false
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program\":\"tiny-glade.exe\",\"functions\":{\"0x140ae9390\":{\"name\":\"show_floating_gamepad_text_input\",\"size\":176,\"address\":\"140ae9390\",\"signature\":\"void __cdecl show_floating_gamepad_text_input(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncountry_core::systems::steam::SteamClientResource::show_floating_gamepad_text_input(void)\\n\\n{\\n  longlong *plVar1;\\n  longlong lVar2;\\n  code *pcVar3;\\n  char cVar4;\\n  undefined8 uVar5;\\n  longlong extraout_RAX;\\n  undefined8 *in_RCX;\\n  longlong *plVar6;\\n  longlong *plVar7;\\n  undefined8 uVar8;\\n  \\n  uVar8 = 0xfffffffffffffffe;\\n  cVar4 = FLOATING_GAMEPAD_TEXT_INPUT_OPEN;\\n  if (FLOATING_GAMEPAD_TEXT_INPUT_OPEN == '\\\\0') {\\n    uVar5 = SteamAPI_SteamUtils_v010();\\n    plVar6 = (longlong *)*in_RCX;\\n    LOCK();\\n    lVar2 = *plVar6;\\n    *plVar6 = *plVar6 + 1;\\n    UNLOCK();\\n    if (*plVar6 == 0 || SCARRY8(lVar2,1) != *plVar6 < 0) {\\n                    // WARNING: Does not return\\n      pcVar3 = (code *)invalidInstructionException();\\n      (*pcVar3)();\\n    }\\n    plVar7 = plVar6;\\n    steamworks::callback::\\n    register_callback<steamworks::utils::FloatingGamepadTextInputDismissed,steamworks::utils::impl_5::show_floating_gamepad_text_input::closure_env_0<steamworks::ClientManager,country_core::systems::steam::impl_0::show_floating_gamepad_text_input::closure_env_0>,steamworks::ClientManager>\\n              ();\\n    if (extraout_RAX != -1) {\\n      LOCK();\\n      plVar1 = (longlong *)(extraout_RAX + 8);\\n      *plVar1 = *plVar1 + -1;\\n      UNLOCK();\\n      if (*plVar1 == 0) {\\n        std::alloc::__default_lib_allocator::__rust_dealloc();\\n      }\\n    }\\n    cVar4 = SteamAPI_ISteamUtils_ShowFloatingGamepadTextInput\\n                      (uVar5,1,0,0,0x500,400,plVar6,plVar7,uVar5,uVar8);\\n    LOCK();\\n    *plVar7 = *plVar7 + -1;\\n    UNLOCK();\\n    if (*plVar7 == 0) {\\n      alloc::sync::Arc::drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>\\n                ();\\n    }\\n  }\\n  FLOATING_GAMEPAD_TEXT_INPUT_OPEN = cVar4;\\n  return;\\n}\\n\\n\",\"callee_count\":5,\"callees\":[{\"name\":\"SteamAPI_ISteamUtils_ShowFloatingGamepadTextInput\",\"address\":\"142923620\"},{\"name\":\"SteamAPI_SteamUtils_v010\",\"address\":\"142923570\"},{\"name\":\"__rust_dealloc\",\"address\":\"140613c20\"},{\"name\":\"drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>\",\"address\":\"140b85350\"},{\"name\":\"register_callback<steamworks::utils::FloatingGamepadTextInputDismissed,steamworks::utils::impl$5::show_floating_gamepad_text_input::closure_env$0<steamworks::ClientManager,country_core::systems::steam::impl$0::show_floating_gamepad_text_input::closure_env$0>,steamworks::ClientManager>\",\"address\":\"14091a7e0\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140ae9470\":{\"name\":\"is_floating_gamepad_text_input_open\",\"size\":8,\"address\":\"140ae9470\",\"signature\":\"void __cdecl is_floating_gamepad_text_input_open(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncountry_core::systems::steam::SteamClientResource::is_floating_gamepad_text_input_open(void)\\n\\n{\\n  return;\\n}\\n\\n\",\"callee_count\":0,\"callees\":[],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140ae9480\":{\"name\":\"input_show_binding_panel\",\"size\":41,\"address\":\"140ae9480\",\"signature\":\"void __cdecl input_show_binding_panel(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::systems::steam::SteamClientResource::input_show_binding_panel(void)\\n\\n{\\n  longlong lVar1;\\n  undefined8 *in_RDX;\\n  \\n  lVar1 = SteamAPI_SteamInput_v006();\\n  if (lVar1 != 0) {\\n    SteamAPI_ISteamInput_ShowBindingPanel(lVar1,*in_RDX);\\n    return;\\n  }\\n  return;\\n}\\n\\n\",\"callee_count\":2,\"callees\":[{\"name\":\"SteamAPI_ISteamInput_ShowBindingPanel\",\"address\":\"142923720\"},{\"name\":\"SteamAPI_SteamInput_v006\",\"address\":\"142923700\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140ae94b0\":{\"name\":\"try_new\",\"size\":573,\"address\":\"140ae94b0\",\"signature\":\"void __cdecl try_new(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::systems::steam::AppSteamIntegration::try_new(void)\\n\\n{\\n  uint uVar1;\\n  undefined8 *extraout_RAX;\\n  longlong *in_RCX;\\n  char *pcVar2;\\n  undefined1 uVar3;\\n  ulonglong uVar4;\\n  ulonglong uVar5;\\n  ulonglong uVar6;\\n  uint uVar7;\\n  char *local_b0;\\n  ulonglong local_a8;\\n  char **local_a0;\\n  code *local_98;\\n  longlong local_90;\\n  undefined *local_88;\\n  longlong local_80;\\n  longlong lStack_78;\\n  undefined8 local_70;\\n  undefined8 uStack_68;\\n  undefined8 local_60;\\n  undefined *local_58;\\n  undefined8 local_50;\\n  undefined4 local_48;\\n  undefined4 local_44;\\n  undefined **local_40;\\n  undefined8 local_38;\\n  char ***local_30;\\n  undefined8 local_28;\\n  undefined8 local_20;\\n  \\n  pcVar2 = \\\"2198150Initializing Steam API with app id \\\";\\n  local_b0 = \\\"2198150Initializing Steam API with app id \\\";\\n  local_a8 = 7;\\n  if (2 < *(ulonglong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E) {\\n    local_a0 = &local_b0;\\n    local_98 = anyhow::context::impl$3::fmt<ref_<str_>,alloc::ffi::c_str::FromVecWithNulError>;\\n    toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();\\n    local_70 = *extraout_RAX;\\n    uStack_68 = extraout_RAX[1];\\n    local_44 = *(undefined4 *)(extraout_RAX + 2);\\n    local_60 = 3;\\n    local_58 = &DAT_142ae38a8;\\n    local_50 = 0x1c;\\n    local_40 = &PTR_s_Initializing_Steam_API_with_app_i_142ae3850;\\n    local_38 = 1;\\n    local_30 = &local_a0;\\n    local_28 = 1;\\n    local_20 = 0;\\n    local_90 = 0;\\n    local_88 = &DAT_142ae38a8;\\n    local_80 = 0x1c;\\n    lStack_78 = 0;\\n    local_48 = 1;\\n    ::log::__private_api::impl$2::log();\\n    pcVar2 = local_b0;\\n    if (local_a8 == 1) {\\n      uVar3 = 1;\\n      if ((*local_b0 != '+') && (uVar5 = 1, *local_b0 != '-')) goto LAB_140ae9619;\\n    }\\n    else if (local_a8 == 0) {\\n      uVar3 = 0;\\n    }\\n    else {\\n      if (*local_b0 == '+') {\\n        pcVar2 = local_b0 + 1;\\n        uVar5 = local_a8 - 1;\\n        if (local_a8 < 10) goto LAB_140ae9619;\\n      }\\n      else {\\n        uVar5 = local_a8;\\n        if (local_a8 < 9) goto LAB_140ae9619;\\n      }\\n      uVar6 = 0;\\n      uVar4 = 0;\\n      do {\\n        if (uVar5 == uVar6) goto LAB_140ae9642;\\n        uVar1 = (uint)(uVar4 * 10);\\n        uVar7 = (byte)pcVar2[uVar6] - 0x30;\\n        if (9 < uVar7) goto LAB_140ae96ba;\\n        uVar3 = 2;\\n        if ((int)(uVar4 * 10 >> 0x20) != 0) break;\\n        uVar6 = uVar6 + 1;\\n        uVar4 = (ulonglong)(uVar1 + uVar7);\\n      } while (!CARRY4(uVar1,uVar7));\\n    }\\nLAB_140ae96bc:\\n    local_a0 = (char **)CONCAT71(local_a0._1_7_,uVar3);\\n                    // WARNING: Subroutine does not return\\n    core::result::unwrap_failed();\\n  }\\n  uVar5 = 7;\\nLAB_140ae9619:\\n  uVar4 = 0;\\n  do {\\n    if (9 < (byte)pcVar2[uVar4] - 0x30) goto LAB_140ae96ba;\\n    uVar4 = uVar4 + 1;\\n  } while (uVar5 != uVar4);\\nLAB_140ae9642:\\n  steamworks::Client::init_app<u32>();\\n  if (local_90 != 3) {\\n    in_RCX[2] = local_80;\\n    in_RCX[3] = lStack_78;\\n  }\\n  in_RCX[1] = (longlong)local_88;\\n  *in_RCX = local_90;\\n  return;\\nLAB_140ae96ba:\\n  uVar3 = 1;\\n  goto LAB_140ae96bc;\\n}\\n\\n\",\"callee_count\":4,\"callees\":[{\"name\":\"as_inner_mut\",\"address\":\"14067dd80\"},{\"name\":\"init_app<u32>\",\"address\":\"140aff8e0\"},{\"name\":\"log\",\"address\":\"140d4a330\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9760\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x14067dd80\":{\"name\":\"as_inner_mut\",\"size\":4,\"address\":\"14067dd80\",\"signature\":\"void __cdecl as_inner_mut(void)\",\"decompiled_code\":\"\\nvoid __cdecl toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut(void)\\n\\n{\\n  return;\\n}\\n\\n\",\"callee_count\":0,\"callees\":[],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140ae96f0\":{\"name\":\"user_id\",\"size\":70,\"address\":\"140ae96f0\",\"signature\":\"void __cdecl user_id(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::systems::steam::AppSteamIntegration::user_id(void)\\n\\n{\\n  longlong lVar1;\\n  longlong *plVar2;\\n  code *pcVar3;\\n  undefined8 uVar4;\\n  undefined8 *in_RCX;\\n  \\n  uVar4 = SteamAPI_SteamUser_v023();\\n  plVar2 = (longlong *)*in_RCX;\\n  LOCK();\\n  lVar1 = *plVar2;\\n  *plVar2 = *plVar2 + 1;\\n  UNLOCK();\\n  if (*plVar2 != 0 && SCARRY8(lVar1,1) == *plVar2 < 0) {\\n    SteamAPI_ISteamUser_GetSteamID(uVar4);\\n    LOCK();\\n    *plVar2 = *plVar2 + -1;\\n    UNLOCK();\\n    if (*plVar2 == 0) {\\n      alloc::sync::Arc::drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>\\n                ();\\n    }\\n    return;\\n  }\\n                    // WARNING: Does not return\\n  pcVar3 = (code *)invalidInstructionException();\\n  (*pcVar3)();\\n}\\n\\n\",\"callee_count\":3,\"callees\":[{\"name\":\"SteamAPI_ISteamUser_GetSteamID\",\"address\":\"142923710\"},{\"name\":\"SteamAPI_SteamUser_v023\",\"address\":\"142923730\"},{\"name\":\"drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>\",\"address\":\"140b85350\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140aef1a0\":{\"name\":\"can_use_overlay\",\"size\":78,\"address\":\"140aef1a0\",\"signature\":\"void __cdecl can_use_overlay(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::systems::steam::SteamOverlayOpenResources::can_use_overlay(void)\\n\\n{\\n  longlong lVar1;\\n  undefined8 *puVar2;\\n  longlong *plVar3;\\n  code *pcVar4;\\n  undefined8 uVar5;\\n  longlong in_RCX;\\n  \\n  puVar2 = *(undefined8 **)(in_RCX + 0x20);\\n  if (puVar2 != (undefined8 *)0x0) {\\n    uVar5 = SteamAPI_SteamUtils_v010();\\n    plVar3 = (longlong *)*puVar2;\\n    LOCK();\\n    lVar1 = *plVar3;\\n    *plVar3 = *plVar3 + 1;\\n    UNLOCK();\\n    if (*plVar3 == 0 || SCARRY8(lVar1,1) != *plVar3 < 0) {\\n                    // WARNING: Does not return\\n      pcVar4 = (code *)invalidInstructionException();\\n      (*pcVar4)();\\n    }\\n    SteamAPI_ISteamUtils_IsSteamRunningOnSteamDeck(uVar5);\\n    LOCK();\\n    *plVar3 = *plVar3 + -1;\\n    UNLOCK();\\n    if (*plVar3 == 0) {\\n      alloc::sync::Arc::drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>\\n                ();\\n    }\\n  }\\n  return;\\n}\\n\\n\",\"callee_count\":3,\"callees\":[{\"name\":\"SteamAPI_ISteamUtils_IsSteamRunningOnSteamDeck\",\"address\":\"1429234f0\"},{\"name\":\"SteamAPI_SteamUtils_v010\",\"address\":\"142923570\"},{\"name\":\"drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>\",\"address\":\"140b85350\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140af0460\":{\"name\":\"init_state\",\"size\":46,\"address\":\"140af0460\",\"signature\":\"void __cdecl init_state(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::systems::steam::_::impl$0::init_state(void)\\n\\n{\\n  bevy_ecs::system::system_param::impl$9::\\n  init_state<country_core::systems::steam::SteamClientResource>();\\n  bevy_ecs::system::system_param::impl$12::\\n  init_state<bevy_ecs::event::collections::Events<enum2_<country_core::resources::window::OsWindowCmd>_>_>\\n            ();\\n  return;\\n}\\n\\n\",\"callee_count\":2,\"callees\":[{\"name\":\"init_state<bevy_ecs::event::collections::Events<enum2$<country_core::resources::window::OsWindowCmd>_>_>\",\"address\":\"14138dd00\"},{\"name\":\"init_state<country_core::systems::steam::SteamClientResource>\",\"address\":\"141361260\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140945320\":{\"name\":\"add_steam_integration\",\"size\":517,\"address\":\"140945320\",\"signature\":\"void __cdecl add_steam_integration(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::systems::steam::impl$4::add_steam_integration(void)\\n\\n{\\n  longlong *plVar1;\\n  longlong lVar2;\\n  code *pcVar3;\\n  longlong *extraout_RAX;\\n  undefined8 uVar4;\\n  longlong extraout_RAX_00;\\n  longlong *in_RDX;\\n  \\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX == (longlong *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  *extraout_RAX = 1;\\n  extraout_RAX[1] = 1;\\n  extraout_RAX[2] = 0;\\n  extraout_RAX[3] = 0;\\n  extraout_RAX[4] = 8;\\n  extraout_RAX[5] = 0;\\n  if (3 < *(ulonglong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E) {\\n    toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();\\n    ::log::__private_api::impl$2::log();\\n  }\\n  LOCK();\\n  lVar2 = *extraout_RAX;\\n  *extraout_RAX = *extraout_RAX + 1;\\n  UNLOCK();\\n  if (*extraout_RAX != 0 && SCARRY8(lVar2,1) == *extraout_RAX < 0) {\\n    uVar4 = SteamAPI_SteamScreenshots_v003();\\n    LOCK();\\n    lVar2 = *in_RDX;\\n    *in_RDX = *in_RDX + 1;\\n    UNLOCK();\\n    if (*in_RDX != 0 && SCARRY8(lVar2,1) == *in_RDX < 0) {\\n      SteamAPI_ISteamScreenshots_HookScreenshots(uVar4,1);\\n      LOCK();\\n      *in_RDX = *in_RDX + -1;\\n      UNLOCK();\\n      if (*in_RDX == 0) {\\n        alloc::sync::Arc::\\n        drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>();\\n      }\\n      steamworks::callback::\\n      register_callback<steamworks::screenshots::ScreenshotRequested,country_core::systems::steam::impl_4::add_steam_integration::closure_env_0,steamworks::ClientManager>\\n                ();\\n      if (extraout_RAX_00 != -1) {\\n        LOCK();\\n        plVar1 = (longlong *)(extraout_RAX_00 + 8);\\n        *plVar1 = *plVar1 + -1;\\n        UNLOCK();\\n        if (*plVar1 == 0) {\\n          std::alloc::__default_lib_allocator::__rust_dealloc();\\n        }\\n      }\\n      LOCK();\\n      lVar2 = *in_RDX;\\n      *in_RDX = *in_RDX + 1;\\n      UNLOCK();\\n      if (*in_RDX != 0 && SCARRY8(lVar2,1) == *in_RDX < 0) {\\n        bevy_app::app::App::insert_resource<country_core::systems::steam::SteamClientResource>();\\n        bevy_app::app::App::insert_resource<country_core::systems::steam::SteamScreenshotRequests>()\\n        ;\\n        bevy_app::sub_app::SubApp::\\n        add_systems<tuple_<bevy_ecs::schedule::config::Infallible,tuple_<bevy_ecs::system::function_system::IsFunctionSystem,void_(*)(bevy_ecs::change_detection::Res<country_core::systems::steam::SteamClientResource>,bevy_ecs::system::commands::Commands)>_>,bevy_app::main_schedule::PreStartup,void_(*)(bevy_ecs::change_detection::Res<country_core::systems::steam::SteamClientResource>,bevy_ecs::system::commands::Commands)>\\n                  ();\\n        bevy_ecs::schedule::config::IntoScheduleConfigs::\\n        in_set<void_(*)(bevy_ecs::change_detection::Res<country_core::systems::steam::SteamClientResource>,bevy_ecs::system::system_param::Local<country_core::systems::steam::PrevSteamInputState>,bevy_ecs::change_detection::ResMut<country_core::resources::steam::SteamInput>,bevy_ecs::change_detection::ResMut<country_core::input::action_set::ActionSetValues>,bevy_ecs::change_detection::ResMut<country_core::input::ActiveInputModeTracker>,bevy_ecs::event::reader::EventReader<country_core::systems::backend::input::translate_input_to_cursor_moved::InputCursorDelta>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<enum2_<country_core::resources::gui::EscMenuState>_>),alloc::boxed::Box<dyn_<bevy_ecs::system::system::System<assoc_<In,tuple_<>_>,assoc_<Out,enum2_<core::result::Result<tuple_<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>,tuple_<bevy_ecs::schedule::config::Infallible,tuple_<bevy_ecs::system::function_system::IsFunctionSystem,void_(*)(bevy_ecs::change_detection::Res<country_core::systems::steam::SteamClientResource>,bevy_ecs::system::system_param::Local<country_core::systems::steam::PrevSteamInputState>,bevy_ecs::change_detection::ResMut<country_core::resources::steam::SteamInput>,bevy_ecs::change_detection::ResMut<country_core::input::action_set::ActionSetValues>,bevy_ecs::change_detection::ResMut<country_core::input::ActiveInputModeTracker>,bevy_ecs::event::reader::EventReader<country_core::systems::backend::input::translate_input_to_cursor_moved::InputCursorDelta>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<enum2_<country_core::resources::gui::EscMenuState>_>)>_>,country_core::systems::GameSystemSet>\\n                  ();\\n        bevy_app::sub_app::SubApp::\\n        add_systems<tuple_<>,bevy_app::main_schedule::Update,enum2_<bevy_ecs::schedule::config::ScheduleConfigs<alloc::boxed::Box<dyn_<bevy_ecs::system::system::System<assoc_<In,tuple_<>_>,assoc_<Out,enum2_<core::result::Result<tuple_<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>_>_>_>\\n                  ();\\n        return;\\n      }\\n    }\\n  }\\n                    // WARNING: Does not return\\n  pcVar3 = (code *)invalidInstructionException();\\n  (*pcVar3)();\\n}\\n\\n\",\"callee_count\":14,\"callees\":[{\"name\":\"SteamAPI_ISteamScreenshots_HookScreenshots\",\"address\":\"142923630\"},{\"name\":\"SteamAPI_SteamScreenshots_v003\",\"address\":\"142923560\"},{\"name\":\"__rust_alloc\",\"address\":\"140613c10\"},{\"name\":\"__rust_dealloc\",\"address\":\"140613c20\"},{\"name\":\"add_systems<tuple$<>,bevy_app::main_schedule::Update,enum2$<bevy_ecs::schedule::config::ScheduleConfigs<alloc::boxed::Box<dyn$<bevy_ecs::system::system::System<assoc$<In,tuple$<>_>,assoc$<Out,enum2$<core::result::Result<tuple$<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>_>_>_>\",\"address\":\"140b67280\"},{\"name\":\"add_systems<tuple$<bevy_ecs::schedule::config::Infallible,tuple$<bevy_ecs::system::function_system::IsFunctionSystem,void_(*)(bevy_ecs::change_detection::Res<country_core::systems::steam::SteamClientResource>,bevy_ecs::system::commands::Commands)>_>,bevy_app::main_schedule::PreStartup,void_(*)(bevy_ecs::change_detection::Res<country_core::systems::steam::SteamClientResource>,bevy_ecs::system::commands::Commands)>\",\"address\":\"140b65d00\"},{\"name\":\"as_inner_mut\",\"address\":\"14067dd80\"},{\"name\":\"drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>\",\"address\":\"140b85350\"},{\"name\":\"handle_alloc_error\",\"address\":\"1428d9000\"},{\"name\":\"in_set<void_(*)(bevy_ecs::change_detection::Res<country_core::systems::steam::SteamClientResource>,bevy_ecs::system::system_param::Local<country_core::systems::steam::PrevSteamInputState>,bevy_ecs::change_detection::ResMut<country_core::resources::steam::SteamInput>,bevy_ecs::change_detection::ResMut<country_core::input::action_set::ActionSetValues>,bevy_ecs::change_detection::ResMut<country_core::input::ActiveInputModeTracker>,bevy_ecs::event::reader::EventReader<country_core::systems::backend::input::translate_input_to_cursor_moved::InputCursorDelta>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<enum2$<country_core::resources::gui::EscMenuState>_>),alloc::boxed::Box<dyn$<bevy_ecs::system::system::System<assoc$<In,tuple$<>_>,assoc$<Out,enum2$<core::result::Result<tuple$<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>,tuple$<bevy_ecs::schedule::config::Infallible,tuple$<bevy_ecs::system::function_system::IsFunctionSystem,void_(*)(bevy_ecs::change_detection::Res<country_core::systems::steam::SteamClientResource>,bevy_ecs::system::system_param::Local<country_core::systems::steam::PrevSteamInputState>,bevy_ecs::change_detection::ResMut<country_core::resources::steam::SteamInput>,bevy_ecs::change_detection::ResMut<country_core::input::action_set::ActionSetValues>,bevy_ecs::change_detection::ResMut<country_core::input::ActiveInputModeTracker>,bevy_ecs::event::reader::EventReader<country_core::systems::backend::input::translate_input_to_cursor_moved::InputCursorDelta>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<enum2$<country_core::resources::gui::EscMenuState>_>)>_>,country_core::systems::GameSystemSet>\",\"address\":\"140b64aa0\"},{\"name\":\"insert_resource<country_core::systems::steam::SteamClientResource>\",\"address\":\"14153b490\"},{\"name\":\"insert_resource<country_core::systems::steam::SteamScreenshotRequests>\",\"address\":\"14152f4e0\"},{\"name\":\"log\",\"address\":\"140d4a330\"},{\"name\":\"register_callback<steamworks::screenshots::ScreenshotRequested,country_core::systems::steam::impl$4::add_steam_integration::closure_env$0,steamworks::ClientManager>\",\"address\":\"14091aa30\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x14026d580\":{\"name\":\"open_overlay_or_browser_to_webpage<alloc::string::String>\",\"size\":488,\"address\":\"14026d580\",\"signature\":\"void __cdecl open_overlay_or_browser_to_webpage<alloc::string::String>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncountry_core::systems::steam::SteamOverlayOpenResources::\\nopen_overlay_or_browser_to_webpage<alloc::string::String>(void)\\n\\n{\\n  longlong lVar1;\\n  longlong *plVar2;\\n  code *pcVar3;\\n  char cVar4;\\n  undefined8 *extraout_RAX;\\n  char *pcVar5;\\n  undefined8 *extraout_RAX_00;\\n  undefined8 *extraout_RAX_01;\\n  undefined8 uVar6;\\n  longlong in_RCX;\\n  longlong *in_RDX;\\n  longlong *local_e0;\\n  code *local_d8;\\n  longlong *local_d0;\\n  char *local_c8;\\n  undefined8 local_c0;\\n  undefined8 local_b8;\\n  undefined8 local_b0;\\n  undefined8 uStack_a8;\\n  undefined8 local_a0;\\n  char *local_98;\\n  undefined8 local_90;\\n  undefined4 local_88;\\n  undefined4 local_84;\\n  undefined **local_80;\\n  undefined8 local_78;\\n  longlong **local_70;\\n  undefined8 local_68;\\n  undefined8 local_60;\\n  longlong local_50;\\n  longlong local_48;\\n  longlong *local_40;\\n  longlong *local_38;\\n  longlong local_30;\\n  undefined8 local_20;\\n  \\n  local_20 = 0xfffffffffffffffe;\\n  local_50 = in_RDX[1];\\n  local_48 = in_RDX[2];\\n  local_38 = in_RDX;\\n  local_30 = local_50;\\n  if (*(longlong *)(in_RCX + 0x20) == 0) {\\n    open_browser_to_webpage<ref_<str_>_>();\\n    if (*local_38 == 0) {\\n      return;\\n    }\\n    std::alloc::__default_lib_allocator::__rust_dealloc();\\n    return;\\n  }\\n  toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();\\n  pcVar5 = (char *)SteamAPI_SteamUtils_v010();\\n  plVar2 = (longlong *)*extraout_RAX;\\n  LOCK();\\n  lVar1 = *plVar2;\\n  *plVar2 = *plVar2 + 1;\\n  UNLOCK();\\n  if (*plVar2 != 0 && SCARRY8(lVar1,1) == *plVar2 < 0) {\\n    local_d0 = plVar2;\\n    local_c8 = pcVar5;\\n    cVar4 = SteamAPI_ISteamUtils_IsSteamRunningOnSteamDeck(pcVar5);\\n    LOCK();\\n    *plVar2 = *plVar2 + -1;\\n    UNLOCK();\\n    if (cVar4 == '\\\\0') {\\n      if (*plVar2 == 0) {\\n        alloc::sync::Arc::\\n        drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>();\\n      }\\n    }\\n    else if (*plVar2 == 0) {\\n      alloc::sync::Arc::drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>\\n                ();\\n    }\\n    if (2 < *(ulonglong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E) {\\n      local_e0 = &local_50;\\n      local_d8 = core::fmt::impl$74::fmt<str_>;\\n      toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();\\n      local_b0 = *extraout_RAX_00;\\n      uStack_a8 = extraout_RAX_00[1];\\n      local_84 = *(undefined4 *)(extraout_RAX_00 + 2);\\n      local_a0 = 3;\\n      local_98 = \\\"country_core::systems::steamFailed opening browser window: \\\";\\n      local_90 = 0x1c;\\n      local_80 = &anon_f9e01155cc7496a9b2c19d670aea4d75_11_llvm_15509636686585673137;\\n      local_78 = 2;\\n      local_70 = &local_e0;\\n      local_68 = 1;\\n      local_60 = 0;\\n      local_d0 = (longlong *)0x0;\\n      local_c8 = \\\"country_core::systems::steamFailed opening browser window: \\\";\\n      local_c0 = 0x1c;\\n      local_b8 = 0;\\n      local_88 = 1;\\n      ::log::__private_api::impl$2::log();\\n    }\\n    toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();\\n    uVar6 = SteamAPI_SteamFriends_v017();\\n    local_40 = (longlong *)*extraout_RAX_01;\\n    LOCK();\\n    lVar1 = *local_40;\\n    *local_40 = *local_40 + 1;\\n    UNLOCK();\\n    if (*local_40 != 0 && SCARRY8(lVar1,1) == *local_40 < 0) {\\n      local_d0 = local_40;\\n      local_c8 = (char *)uVar6;\\n      steamworks::friends::Friends::activate_game_overlay_to_web_page<steamworks::ClientManager>();\\n      LOCK();\\n      *local_40 = *local_40 + -1;\\n      UNLOCK();\\n      if (*local_40 == 0) {\\n        alloc::sync::Arc::\\n        drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>();\\n      }\\n      if (*local_38 == 0) {\\n        return;\\n      }\\n      std::alloc::__default_lib_allocator::__rust_dealloc();\\n      return;\\n    }\\n  }\\n                    // WARNING: Does not return\\n  pcVar3 = (code *)invalidInstructionException();\\n  (*pcVar3)();\\n}\\n\\n\",\"callee_count\":9,\"callees\":[{\"name\":\"SteamAPI_ISteamUtils_IsSteamRunningOnSteamDeck\",\"address\":\"1429234f0\"},{\"name\":\"SteamAPI_SteamFriends_v017\",\"address\":\"142923550\"},{\"name\":\"SteamAPI_SteamUtils_v010\",\"address\":\"142923570\"},{\"name\":\"__rust_dealloc\",\"address\":\"140613c20\"},{\"name\":\"activate_game_overlay_to_web_page<steamworks::ClientManager>\",\"address\":\"1400c6af0\"},{\"name\":\"as_inner_mut\",\"address\":\"14067dd80\"},{\"name\":\"drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>\",\"address\":\"140b85350\"},{\"name\":\"log\",\"address\":\"140d4a330\"},{\"name\":\"open_browser_to_webpage<ref$<str$>_>\",\"address\":\"14026d080\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x14026d3c0\":{\"name\":\"open_overlay_or_browser_to_webpage<ref$<str$>_>\",\"size\":391,\"address\":\"14026d3c0\",\"signature\":\"void __cdecl open_overlay_or_browser_to_webpage<ref$<str$>_>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncountry_core::systems::steam::SteamOverlayOpenResources::\\nopen_overlay_or_browser_to_webpage<ref_<str_>_>(void)\\n\\n{\\n  longlong lVar1;\\n  longlong *plVar2;\\n  code *pcVar3;\\n  undefined8 *extraout_RAX;\\n  undefined8 uVar4;\\n  undefined8 *extraout_RAX_00;\\n  longlong in_RCX;\\n  \\n  if (*(longlong *)(in_RCX + 0x20) == 0) {\\n    open_browser_to_webpage<ref_<str_>_>();\\n    return;\\n  }\\n  toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();\\n  uVar4 = SteamAPI_SteamUtils_v010();\\n  plVar2 = (longlong *)*extraout_RAX;\\n  LOCK();\\n  lVar1 = *plVar2;\\n  *plVar2 = *plVar2 + 1;\\n  UNLOCK();\\n  if (*plVar2 != 0 && SCARRY8(lVar1,1) == *plVar2 < 0) {\\n    SteamAPI_ISteamUtils_IsSteamRunningOnSteamDeck(uVar4);\\n    LOCK();\\n    *plVar2 = *plVar2 + -1;\\n    UNLOCK();\\n    if (*plVar2 == 0) {\\n      alloc::sync::Arc::drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>\\n                ();\\n    }\\n    if (2 < *(ulonglong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E) {\\n      toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();\\n      ::log::__private_api::impl$2::log();\\n    }\\n    toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();\\n    SteamAPI_SteamFriends_v017();\\n    plVar2 = (longlong *)*extraout_RAX_00;\\n    LOCK();\\n    lVar1 = *plVar2;\\n    *plVar2 = *plVar2 + 1;\\n    UNLOCK();\\n    if (*plVar2 != 0 && SCARRY8(lVar1,1) == *plVar2 < 0) {\\n      steamworks::friends::Friends::activate_game_overlay_to_web_page<steamworks::ClientManager>();\\n      LOCK();\\n      *plVar2 = *plVar2 + -1;\\n      UNLOCK();\\n      if (*plVar2 == 0) {\\n        alloc::sync::Arc::\\n        drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>();\\n      }\\n      return;\\n    }\\n  }\\n                    // WARNING: Does not return\\n  pcVar3 = (code *)invalidInstructionException();\\n  (*pcVar3)();\\n}\\n\\n\",\"callee_count\":8,\"callees\":[{\"name\":\"SteamAPI_ISteamUtils_IsSteamRunningOnSteamDeck\",\"address\":\"1429234f0\"},{\"name\":\"SteamAPI_SteamFriends_v017\",\"address\":\"142923550\"},{\"name\":\"SteamAPI_SteamUtils_v010\",\"address\":\"142923570\"},{\"name\":\"activate_game_overlay_to_web_page<steamworks::ClientManager>\",\"address\":\"1400c6af0\"},{\"name\":\"as_inner_mut\",\"address\":\"14067dd80\"},{\"name\":\"drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>\",\"address\":\"140b85350\"},{\"name\":\"log\",\"address\":\"140d4a330\"},{\"name\":\"open_browser_to_webpage<ref$<str$>_>\",\"address\":\"14026d080\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x14026d080\":{\"name\":\"open_browser_to_webpage<ref$<str$>_>\",\"size\":687,\"address\":\"14026d080\",\"signature\":\"void __cdecl open_browser_to_webpage<ref$<str$>_>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncountry_core::systems::steam::SteamOverlayOpenResources::open_browser_to_webpage<ref_<str_>_>(void)\\n\\n{\\n  longlong lVar1;\\n  longlong lVar2;\\n  undefined8 uVar3;\\n  undefined *puVar4;\\n  undefined8 *extraout_RAX;\\n  longlong extraout_RAX_00;\\n  undefined8 *extraout_RAX_01;\\n  longlong *in_RCX;\\n  undefined8 *local_128;\\n  code *local_120;\\n  undefined8 local_118;\\n  undefined8 local_108;\\n  undefined8 local_100;\\n  undefined1 local_f8;\\n  longlong *local_f0;\\n  code *local_e8;\\n  undefined8 local_e0;\\n  char *local_d8;\\n  undefined8 local_d0;\\n  undefined8 local_c8;\\n  undefined8 local_c0;\\n  undefined8 uStack_b8;\\n  undefined8 local_b0;\\n  char *local_a8;\\n  undefined8 local_a0;\\n  undefined4 local_98;\\n  undefined4 local_94;\\n  undefined **local_90;\\n  undefined8 local_88;\\n  undefined8 **local_80;\\n  undefined8 local_78;\\n  undefined1 **local_70;\\n  undefined8 local_68;\\n  undefined8 local_60 [2];\\n  longlong local_50;\\n  longlong local_48;\\n  undefined8 local_40;\\n  undefined8 *local_38;\\n  undefined8 local_28;\\n  \\n  puVar4 = __imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E;\\n  local_28 = 0xfffffffffffffffe;\\n  if (2 < *(ulonglong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E) {\\n    local_128 = local_60;\\n    local_120 = core::fmt::impl$74::fmt<str_>;\\n    toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();\\n    local_c0 = *extraout_RAX;\\n    uStack_b8 = extraout_RAX[1];\\n    local_94 = *(undefined4 *)(extraout_RAX + 2);\\n    local_b0 = 3;\\n    local_a8 = \\\"country_core::systems::steamFailed opening browser window: \\\";\\n    local_a0 = 0x1c;\\n    local_90 = &PTR_anon_f9e01155cc7496a9b2c19d670aea4d75_0_llvm_15509636686585673137_1429a7670;\\n    local_88 = 2;\\n    local_80 = &local_128;\\n    local_78 = 1;\\n    local_70 = (undefined1 **)0x0;\\n    local_e0 = 0;\\n    local_d8 = \\\"country_core::systems::steamFailed opening browser window: \\\";\\n    local_d0 = 0x1c;\\n    local_c8 = 0;\\n    local_98 = 1;\\n    ::log::__private_api::impl$2::log();\\n  }\\n  webbrowser::open();\\n  if (extraout_RAX_00 == 0) {\\n    *(undefined4 *)in_RCX[2] = *(undefined4 *)((longlong)in_RCX + 0x1c);\\n    lVar1 = *in_RCX;\\n    lVar2 = *(longlong *)(lVar1 + 0x30);\\n    uVar3 = *(undefined8 *)(lVar1 + 0x40);\\n    if (lVar2 == *(longlong *)(lVar1 + 0x20)) {\\n      alloc::raw_vec::RawVec::\\n      grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>\\n                ();\\n    }\\n    *(undefined8 *)(*(longlong *)(lVar1 + 0x28) + lVar2 * 8) = uVar3;\\n    *(longlong *)(lVar1 + 0x30) = lVar2 + 1;\\n    *(longlong *)(lVar1 + 0x40) = *(longlong *)(lVar1 + 0x40) + 1;\\n  }\\n  else {\\n    local_48 = extraout_RAX_00;\\n    if (1 < *(ulonglong *)puVar4) {\\n      local_f0 = &local_48;\\n      local_e8 = std::io::error::impl$0::fmt;\\n      local_128 = (longlong *)0x2;\\n      local_118 = 2;\\n      local_108 = 0;\\n      local_100 = 0x400000020;\\n      local_f8 = 3;\\n      toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();\\n      local_c0 = *extraout_RAX_01;\\n      uStack_b8 = extraout_RAX_01[1];\\n      local_94 = *(undefined4 *)(extraout_RAX_01 + 2);\\n      local_b0 = 2;\\n      local_a8 = \\\"country_core::systems::steamFailed opening browser window: \\\";\\n      local_a0 = 0x1c;\\n      local_90 = (undefined **)&DAT_1429a7748;\\n      local_88 = 1;\\n      local_80 = &local_f0;\\n      local_78 = 1;\\n      local_70 = (undefined1 **)&local_128;\\n      local_68 = 1;\\n      local_e0 = 0;\\n      local_d8 = \\\"country_core::systems::steamFailed opening browser window: \\\";\\n      local_d0 = 0x1c;\\n      local_c8 = 0;\\n      local_98 = 1;\\n      ::log::__private_api::impl$2::log();\\n    }\\n    if (((uint)local_48 & 3) == 1) {\\n      local_50 = local_48 + -1;\\n      local_40 = *(undefined8 *)(local_48 + -1);\\n      local_38 = *(undefined8 **)(local_48 + 7);\\n      if ((code *)*local_38 != (code *)0x0) {\\n        (*(code *)*local_38)(local_40);\\n      }\\n      if (local_38[1] != 0) {\\n        std::alloc::__default_lib_allocator::__rust_dealloc();\\n      }\\n      std::alloc::__default_lib_allocator::__rust_dealloc();\\n    }\\n  }\\n  return;\\n}\\n\\n\",\"callee_count\":5,\"callees\":[{\"name\":\"__rust_dealloc\",\"address\":\"140613c20\"},{\"name\":\"as_inner_mut\",\"address\":\"14067dd80\"},{\"name\":\"grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>\",\"address\":\"140562870\"},{\"name\":\"log\",\"address\":\"140d4a330\"},{\"name\":\"open\",\"address\":\"140b7f2d0\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140a9bbf0\":{\"name\":\"startup_steam\",\"size\":268,\"address\":\"140a9bbf0\",\"signature\":\"void __cdecl startup_steam(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::systems::steam::startup_steam::startup_steam(void)\\n\\n{\\n  undefined8 *puVar1;\\n  longlong *plVar2;\\n  code *pcVar3;\\n  undefined8 uVar4;\\n  byte *extraout_RAX;\\n  longlong extraout_RAX_00;\\n  longlong lVar5;\\n  undefined8 *in_RCX;\\n  undefined8 in_RDX;\\n  undefined8 uVar6;\\n  \\n  puVar1 = (undefined8 *)*in_RCX;\\n  uVar4 = SteamAPI_SteamInput_v006();\\n  plVar2 = (longlong *)*puVar1;\\n  LOCK();\\n  lVar5 = *plVar2;\\n  *plVar2 = *plVar2 + 1;\\n  UNLOCK();\\n  if (*plVar2 != 0 && SCARRY8(lVar5,1) == *plVar2 < 0) {\\n    uVar6 = CONCAT71((int7)((ulonglong)in_RDX >> 8),1);\\n    SteamAPI_ISteamInput_Init(uVar4);\\n    std::hash::random::impl$0::new::KEYS::constant$0::closure$1::VAL();\\n    if ((*extraout_RAX & 1) == 0) {\\n      std::sys::random::hashmap_random_keys();\\n      extraout_RAX[0] = 1;\\n      extraout_RAX[1] = 0;\\n      extraout_RAX[2] = 0;\\n      extraout_RAX[3] = 0;\\n      extraout_RAX[4] = 0;\\n      extraout_RAX[5] = 0;\\n      extraout_RAX[6] = 0;\\n      extraout_RAX[7] = 0;\\n      *(longlong *)(extraout_RAX + 8) = extraout_RAX_00;\\n      *(undefined8 *)(extraout_RAX + 0x10) = uVar6;\\n      lVar5 = extraout_RAX_00;\\n    }\\n    else {\\n      lVar5 = *(longlong *)(extraout_RAX + 8);\\n    }\\n    *(longlong *)(extraout_RAX + 8) = lVar5 + 1;\\n    bevy_ecs::system::commands::Commands::\\n    insert_resource<country_core::resources::steam::SteamInput>();\\n    LOCK();\\n    *plVar2 = *plVar2 + -1;\\n    UNLOCK();\\n    if (*plVar2 == 0) {\\n      alloc::sync::Arc::drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>\\n                ();\\n    }\\n    return;\\n  }\\n                    // WARNING: Does not return\\n  pcVar3 = (code *)invalidInstructionException();\\n  (*pcVar3)();\\n}\\n\\n\",\"callee_count\":6,\"callees\":[{\"name\":\"SteamAPI_ISteamInput_Init\",\"address\":\"1429236e0\"},{\"name\":\"SteamAPI_SteamInput_v006\",\"address\":\"142923700\"},{\"name\":\"VAL\",\"address\":\"140d4d740\"},{\"name\":\"drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>\",\"address\":\"140b85350\"},{\"name\":\"hashmap_random_keys\",\"address\":\"140d64e00\"},{\"name\":\"insert_resource<country_core::resources::steam::SteamInput>\",\"address\":\"1412e0660\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}}},\"count\":13,\"requested\":13}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "list_instances",
+        "title": null,
+        "description": "\nList known Ghidra instances from UDS discovery and the active TCP fallback.\n\nReturns JSON with each instance's project name, PID, open programs, and\nsocket path or TCP URL. Also shows which instance is currently connected.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "_list_instances_toolArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "connect_instance",
+        "title": null,
+        "description": "\nSwitch the MCP bridge to a different Ghidra instance by project name.\n\nIMPORTANT: Before calling this function only the static bridge tools are\nexposed (list_instances, connect_instance, tool-group management,\ndebugger proxy). After a successful connect the bridge fetches the\ninstance's /mcp/schema and registers Ghidra analysis tools dynamically.\nBy default all tool groups are loaded on connect. When started with\n--lazy, only the default groups are loaded initially and clients may need\nto call load_tool_group() for additional categories. Clients that cache\nthe initial tools/list and don't honor tools/list_changed must re-list\ntools after this call.\n\nUse list_instances() first to see available instances.\n\nArgs:\n    project: Project name (or substring) to connect to\n",
+        "inputSchema": {
+          "properties": {
+            "project": {
+              "description": "Project name (or substring) to connect to",
+              "title": "Project",
+              "type": "string"
+            }
+          },
+          "required": [
+            "project"
+          ],
+          "title": "connect_instanceArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_tool_groups",
+        "title": null,
+        "description": "\nList all available tool groups with their tool counts and loaded status.\n\nReturns each category with: tool count, loaded status, and tool names.\nUse load_tool_group(group) to load a group's tools.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "list_tool_groupsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "load_tool_group",
+        "title": null,
+        "description": "\nLoad all tools in a category. Accepts a category name or \"all\" to load everything.\n\nUse list_tool_groups() to see available categories.\n\nArgs:\n    group: Category name (e.g. \"function\", \"datatype\") or \"all\"\n",
+        "inputSchema": {
+          "properties": {
+            "group": {
+              "description": "Category name (e.g. \"function\", \"datatype\") or \"all\"",
+              "title": "Group",
+              "type": "string"
+            }
+          },
+          "required": [
+            "group"
+          ],
+          "title": "load_tool_groupArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "search_tools",
+        "title": null,
+        "description": "\nSearch the full Ghidra tool catalog by keyword \u2014 including tools whose group\nis not currently loaded. Use this to discover the right tool without paying\nthe context cost of loading all groups (run the bridge with --lazy and search\non demand). Matches against tool name, description, and category.\n\nEach result reports whether the tool is callable right now; if not, it\nincludes the exact load_tool_group(...) call needed to make it callable.\n\nArgs:\n    query: Space-separated keywords, e.g. \"rename function\" or \"xref struct\".\n    limit: Maximum number of results to return (default 15).\n",
+        "inputSchema": {
+          "properties": {
+            "query": {
+              "description": "Space-separated keywords, e.g. \"rename function\" or \"xref struct\".",
+              "title": "Query",
+              "type": "string"
+            },
+            "limit": {
+              "default": 15,
+              "description": "Maximum number of results to return (default 15).",
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "title": "search_toolsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "disassemble_function",
+        "title": null,
+        "description": "Get assembly listing of function. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution. When Ghidra's stored function body is degenerate (body_end == body_start, which would truncate the listing to a single instruction), the listing is instead bounded by the next function or the containing memory block and the response adds body_degenerate=true, bounded_by (next_function | memory_block | function_body) and a warning; do not trust this function's stored extent in that case.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "disassemble_functionArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_data_types",
+        "title": null,
+        "description": "Find data types by name or path pattern, category and kind, one record per type (name, kind, category, size, path). With categories=true, list the category paths instead. With no filter it lists every type.",
+        "inputSchema": {
+          "properties": {
+            "pattern": {
+              "default": "",
+              "description": "Case-insensitive substring of the type's name or full path; omit for no name filter.",
+              "title": "Pattern",
+              "type": "string"
+            },
+            "category": {
+              "default": "",
+              "description": "Case-insensitive substring of the category path (e.g. Windows, /MyTypes); omit for any category.",
+              "title": "Category",
+              "type": "string"
+            },
+            "kind": {
+              "default": "",
+              "description": "Only this kind: struct, union, enum, typedef, pointer, array, function or primitive. Omit for all kinds.",
+              "title": "Kind",
+              "type": "string"
+            },
+            "categories": {
+              "default": "false",
+              "description": "True lists the category paths (filtered by pattern) instead of types; category and kind do not apply.",
+              "title": "Categories",
+              "type": "boolean"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "find_data_typesArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_functions",
+        "title": null,
+        "description": "Find functions: every filter is optional, so with none it lists the whole program a page at a time. Filter by name (substring or regex=true), xref count, calling convention, whether the name is user-given, thunk or external, or by tag (tag=a,b keeps functions carrying ANY of them); each result lists its tags; sort by address, name or xref_count. Replaces list_functions, list_functions_enhanced, search_functions and search_functions_enhanced, which returned four different shapes for the same question.",
+        "inputSchema": {
+          "properties": {
+            "name_pattern": {
+              "default": "",
+              "description": "Substring to match, or a regex when regex=true. Omit to match every function.",
+              "title": "Name Pattern",
+              "type": "string"
+            },
+            "regex": {
+              "default": "false",
+              "description": "Treat name_pattern as a regular expression.",
+              "title": "Regex",
+              "type": "boolean"
+            },
+            "min_xrefs": {
+              "default": "",
+              "description": "Only functions with at least this many references to them.",
+              "title": "Min Xrefs",
+              "type": "integer"
+            },
+            "max_xrefs": {
+              "default": "",
+              "description": "Only functions with at most this many references to them.",
+              "title": "Max Xrefs",
+              "type": "integer"
+            },
+            "calling_convention": {
+              "default": "",
+              "description": "Only functions with this calling convention (e.g. __stdcall).",
+              "title": "Calling Convention",
+              "type": "string"
+            },
+            "has_custom_name": {
+              "default": "",
+              "description": "true = only functions somebody has named; false = only auto-generated names (FUN_*, thunk_*).",
+              "title": "Has Custom Name",
+              "type": "boolean"
+            },
+            "is_thunk": {
+              "default": "",
+              "description": "true = only thunks, false = exclude them, omit for both.",
+              "title": "Is Thunk",
+              "type": "boolean"
+            },
+            "is_external": {
+              "default": "",
+              "description": "true = only external functions, false = exclude them.",
+              "title": "Is External",
+              "type": "boolean"
+            },
+            "tag": {
+              "default": "",
+              "description": "Only functions carrying any of these tags: one name or a comma-separated list. A name that is not a defined tag is an error (list_function_tags shows the definitions).",
+              "title": "Tag",
+              "type": "string"
+            },
+            "sort_by": {
+              "default": "address",
+              "description": "address | name | xref_count.",
+              "title": "Sort By",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Page size. 0 means no limit, which on a large binary is a megabytes-long response \u2014 the old list_functions had no pagination at all and returned 1.7MB on a stripped `ls`.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "pattern": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Pattern"
+            },
+            "query": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Query"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            }
+          },
+          "title": "find_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_functions",
+        "title": null,
+        "description": "Everything about one or many functions in a single call. Pass functions= as a comma-separated list of names or addresses for bulk mode (up to 20); omit it and pass function=/name=/address= for one. Pass fields= as a comma-separated subset to skip work you do not need \u2014 omitted or empty returns everything. When the requested fields need no decompiled text (e.g. fields=callers,callees,signature,labels,entry_point), the target function is NOT decompiled (238 ms cold / 5\u201310 ms warm per function); only decompiled_code (and call_context when enabled) pays that cost. Decompiled text renders EOL comments (// style), so comments written with set_comment are visible in the code. Replaces get_function_by_address, get_function_variables, get_function_xrefs, decompile_function, and the former get_function_callers/callees/labels/signature tools. Completeness scoring is NOT included \u2014 call analyze_function_completeness for that.",
+        "inputSchema": {
+          "properties": {
+            "function": {
+              "default": "",
+              "description": "Single mode: function name or address (0x<hex> or <space>:<hex>). Ignored when functions= is set.",
+              "title": "Function",
+              "type": "string"
+            },
+            "functions": {
+              "default": "",
+              "description": "Bulk mode: comma-separated function references (names or addresses). When set, function= is ignored. Returns a map keyed by the reference asked for.",
+              "title": "Functions",
+              "type": "string"
+            },
+            "fields": {
+              "default": "",
+              "description": "Comma-separated subset: signature, classification, return_type, entry_point, body_start, body_end, decompiled_code, plate_comment, comments, labels, tags, parameters, locals, callers, call_context, callees, xrefs, disassembly, jump_targets, refs (the absolute addresses the function uses: data references, the values of literal-pool words, and the memory the decompiled code reads and writes, so a register reached as base + offset is listed by its own address; a pool value is written value<word; asking for refs decompiles). Omit or leave empty for the full bundle.",
+              "title": "Fields",
+              "type": "string"
+            },
+            "include_call_context": {
+              "default": "true",
+              "description": "Include each caller's decompiled call-site line. Costs one decompilation per unique caller (~43ms); set false for the cheapest possible bundle. Ignored unless call_context is requested (explicitly or via an empty fields=).",
+              "title": "Include Call Context",
+              "type": "boolean"
+            },
+            "call_context_limit": {
+              "default": "6",
+              "description": "Maximum number of UNIQUE callers to decompile for call context.",
+              "title": "Call Context Limit",
+              "type": "integer"
+            },
+            "call_context_lines": {
+              "default": "3",
+              "description": "Lines of the caller's decompilation to return per call site, centred on the call. 1 is the call line alone; the default 3 adds the line above and below, which is usually where the guard and the use of the result live. Clamped to 1-21; costs no extra decompilation.",
+              "title": "Call Context Lines",
+              "type": "integer"
+            },
+            "include_disasm": {
+              "default": "false",
+              "description": "Include the raw instruction listing. Off by default: it roughly doubles the payload and agents rarely read it.",
+              "title": "Include Disasm",
+              "type": "boolean"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Address"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "function_address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Address"
+            },
+            "function_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Name"
+            },
+            "call_context_window": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Call Context Window"
+            }
+          },
+          "title": "get_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_metadata",
+        "title": null,
+        "description": "Get program metadata",
+        "inputSchema": {
+          "properties": {
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_metadataArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_struct_layout",
+        "title": null,
+        "description": "Get structure field layout",
+        "inputSchema": {
+          "properties": {
+            "struct_name": {
+              "description": "Structure name",
+              "title": "Struct Name",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "struct_name"
+          ],
+          "title": "get_struct_layoutArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_from",
+        "title": null,
+        "description": "Get cross-references from an address. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "get_xrefs_fromArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_to",
+        "title": null,
+        "description": "Get cross-references to ONE address, or to MANY at once (addresses=comma-separated), which returns a map keyed by the address you asked for. Replaces the former get_bulk_xrefs. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "default": "",
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "addresses": {
+              "default": "",
+              "description": "Comma-separated addresses for the many-at-once form. The result is a map of address to its reference list, and an address that does not resolve gets an empty list rather than failing the whole call.",
+              "title": "Addresses",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_xrefs_toArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "read_memory",
+        "title": null,
+        "description": "Read raw memory bytes. Always pass the 'program' argument to target the correct binary \u2014 especially when multiple programs are open. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "length": {
+              "default": "16",
+              "description": "Number of bytes",
+              "title": "Length",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "read_memoryArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 1,
+  "ok": true
+}

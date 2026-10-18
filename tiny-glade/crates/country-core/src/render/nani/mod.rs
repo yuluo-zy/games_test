@@ -67,3 +67,10 @@ pub use gpu_world::{
     OwnedGpuWorldSubset,
 };
 pub use mesh_atlas::{MeshAtlas, MeshAtlasPart, NaniMeshAtlasPartInfo};
+
+/// Native `GpuDrivenDrawable` writes the same mesh, shader and transform
+/// components as this existing bundle (write_components@14200fa70). Nani's
+/// indirect behavior is selected by the raster shader's draw-list callback.
+pub type GpuDrivenDrawable = crate::components::drawable::DrawableMeshBundle;
+
+pub mod solid_vertex_color;

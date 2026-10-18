@@ -1,0 +1,37 @@
+140941110: push rsi
+140941111: push rdi
+140941112: push rbx
+140941113: sub rsp, 0x100
+14094111a: mov rsi, rcx
+14094111d: lea rdi, [rsp + 0x20]
+140941122: mov rcx, rdi
+140941125: call 0x140a97110
+14094112a: mov rcx, rsi
+14094112d: mov rdx, rdi
+140941130: call 0x140b67620
+140941135: lea rdi, [rsp + 0x20]
+14094113a: mov rcx, rdi
+14094113d: call 0x141740a20
+140941142: lea rbx, [rsp + 0x90]
+14094114a: mov rcx, rbx
+14094114d: mov rdx, rdi
+140941150: call 0x141452870
+140941155: mov rcx, rsi
+140941158: mov dl, 1
+14094115a: mov r8, rbx
+14094115d: call 0x140b66830
+140941162: lea rdi, [rsp + 0x20]
+140941167: mov rcx, rdi
+14094116a: call 0x140b3f550
+14094116f: mov rcx, rsi
+140941172: mov dl, 1
+140941174: mov r8, rdi
+140941177: call 0x140b66480
+14094117c: mov rcx, rsi
+14094117f: call 0x140b67b50
+140941184: mov rcx, rsi
+140941187: add rsp, 0x100
+14094118e: pop rbx
+14094118f: pop rdi
+140941190: pop rsi
+140941191: jmp 0x140b65bc0

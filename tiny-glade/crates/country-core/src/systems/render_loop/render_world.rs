@@ -92,7 +92,7 @@ pub struct RgTexture {
     pub desc: TextureDesc,
 }
 
-/// `get_or_create_temporal` 返回的单张历史纹理（40 B：`RgTexture` + `+0x24` 标志字节，I：标志 = 本帧新建）。
+/// `get_or_create_temporal` 返回的单张历史纹理（40 B：`RgTexture` + `+0x24` 标志字节，O：1 = 历史有效，0 = 本帧新建）。
 /// `+0x24 == 2` 是 `Result::Err` 的 niche（O：`cmp byte [rbp+0x364], 2; je err`）。
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct TemporalTexture {
@@ -101,7 +101,7 @@ pub struct TemporalTexture {
 }
 
 /// `get_or_create_temporal_pair`（0x1404f7450）的结果：当前帧 + 上一帧（各 36 B）+ 末尾标志字节
-/// （O：`+0x4c`，之后以 `& 1` 传给 `ray_trace_gi`、原样传给 deferred/透明 pass；I：`history_is_fresh`）。
+/// （O：`+0x4c`，之后以 `& 1` 传给 `ray_trace_gi`、原样传给 deferred/透明 pass；1 表示历史有效）。
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct TemporalPair {
     pub cur: RgTexture,
@@ -125,23 +125,19 @@ pub struct GBufferTargets {
     pub velocity: RgTexture,
 }
 
-/// `generate_hzb` 的 sret（44 B，内部布局 U）。
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct HzbHandles(pub [u32; 11]);
-/// `bin_lights` 的 sret（32 B，布局 U）。
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct LightBins(pub [u32; 8]);
-/// 36 B 的 pass 输出（`calculate_reprojection_map`/`calculate_ssgi`/`ray_trace_gi`/`eval_gi_screen_radiance`/
-/// `restir_sample_direct_lights`/`apply_screen_shadows`/`dof_prepare`/`calc_dof`/`calculate_taa|tgsr`），
-/// 内部字段 U；它们之间只是原样传递。
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct PassHandle(pub [u32; 9]);
+// Typed current-core outputs. These names describe real consumer values,
+// never byte arrays intended to imitate an original compiler's sret ABI.
+pub use super::compute_passes::{
+    bin_lights::LightBinning as LightBins, dof::DofPrepared as DofTargets,
+    generate_hzb::Hzb as HzbHandles, ray_trace_gi::RestirTextures as RayTracedGi,
+};
+pub type PassHandle = crate::render::pass_builder::pass_resource_access::RgTexture;
 
 /// `param_6` 指向的设置字节（O 偏移；仅读取这几项）。
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct WorldRenderSettings {
-    /// `+0x9c`：传给 `calculate_taa`/`calculate_tgsr` 的末参（语义 U）。
-    pub taa_param: u32,
+    /// VideoSettings `+0x9c`: original sharpen float bits forwarded to AA.
+    pub sharpen_amount: f32,
     /// `+0xa9`、`+0xaa`：景深开关，下标 `(dof_mode == 0x13) as usize`。
     pub dof_enabled: [bool; 2],
     /// `+0xab`：非 0 → TGSR，否则 TAA。
@@ -161,11 +157,11 @@ pub struct RenderWorldArgs {
 }
 
 /// 返回体（O：sret 0x6c B，三个 36 B 片段依次在 `+0x00/+0x24/+0x48`）。
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct RenderWorldOutputs {
     /// `+0x00`：深度纹理拷贝（`uStack_2a8`，与 `param_7` 相同）。
     pub depth: RgTexture,
-    /// `+0x24`：`dof_prepare` 的输出。
+    /// `+0x24`：`dof_prepare` 内部两张纹理中的第一张 CoC；tile 纹理仅在函数内传给 calc_dof。
     pub dof_prepare: PassHandle,
     /// `+0x48`：TAA/TGSR 的输出。
     pub taa: PassHandle,
@@ -185,8 +181,9 @@ pub mod formats {
 
 /// `TextureDesc::usage(0xc)` = sampled | storage（0x1404ec239）。
 pub const PREV_DEPTH_USAGE: u32 = 0xc;
-/// `DoF` 模式值：与 `0x13` 比较决定设置字节下标与 `calc_dof` 的 bool 末参（0x1404ecca5）。
-pub const DOF_MODE_MULTIRES: u32 = 0x13;
+/// Original AppMode::Photomode tag. It selects the photomode setting and
+/// quality byte; calc_dof reads its separate global multires switch internally.
+pub const DOF_PHOTOMODE_TAG: u32 = 0x13;
 
 /// 名字常量（O，.rdata 0x1429ebf98…0x1429ec060）。
 pub mod names {
@@ -200,9 +197,6 @@ pub mod names {
     pub const DOF_MIPS: &str = "dof_mips";
     pub const TAA_OUTPUT: &str = "taa_output";
 }
-
-/// `generate_mips` 的 mip 数参数（O：`mov [rsp+0x28], 0x8`）。
-pub const DOF_MIP_COUNT: u64 = 8;
 
 /// `upload_raster_staging_to_texture<…>` 的 6 个单态（O：`r8b` = 光栅槽，依次 1/2/3/4/0x13/0x14）。
 pub const UPLOAD_RASTER_SLOTS: [u8; 6] = [1, 2, 3, 4, 0x13, 0x14];
@@ -231,7 +225,7 @@ pub trait FramePasses {
     fn is_winter(&mut self) -> Option<bool>;
     /// 分辨率资源（TypeId 0xa4c02661e67b048b/0xeae761e6aa2a67ec）的显示尺寸（`+8` 处 u64）。
     fn display_dims(&mut self) -> Option<[u32; 2]>;
-    /// DoF 资源（TypeId 0xc2b8e941c91a6428/0x59f3c6d1d3da43a0）的首个 u32（模式值）。
+    /// Canonical AppMode native tag (TypeId c2b8e941c91a6428/59f3c6d1d3da43a0).
     fn dof_mode(&mut self) -> Option<u32>;
     /// `*0x14362c0d8` → 0x143634da0：**`freeze_occlusion_culling` 调试开关**（O，grass `B_c2.md` 已命名该地址；`.data` 指针 →
     /// 零填充区字节，加载时 0）。非 0 → 跳过 `generate_wall_draw_lists_pass2` 与 `gpu_generate_draw_lists`（`render-gap/DIGEST.md §3.4`）。
@@ -319,12 +313,12 @@ pub trait FramePasses {
         history_fresh: bool,
         reprojection: &PassHandle,
         ssgi: &PassHandle,
-    ) -> PassHandle;
+    ) -> RayTracedGi;
     fn eval_gi_screen_radiance(
         &mut self,
         half: &HalfResTargets,
         ssgi: &PassHandle,
-        rt_gi: &PassHandle,
+        rt_gi: &RayTracedGi,
         reprojection: &PassHandle,
     ) -> PassHandle;
     fn bin_lights(&mut self) -> LightBins;
@@ -348,7 +342,7 @@ pub trait FramePasses {
         history_fresh: bool,
         ssgi: &PassHandle,
         half: &HalfResTargets,
-        rt_gi: &PassHandle,
+        rt_gi: &RayTracedGi,
         gi_radiance: &PassHandle,
         shadows: &PassHandle,
         restir: &PassHandle,
@@ -394,18 +388,19 @@ pub trait FramePasses {
     );
     fn compute_shadow_mask_mean(&mut self);
     fn apply_volumetrics(&mut self, color: &RgTexture, depth: &RgTexture);
-    fn dof_prepare(&mut self, depth: &RgTexture) -> PassHandle;
+    fn dof_prepare(&mut self, depth: &RgTexture) -> DofTargets;
 
     // ---- W50-W54：DoF / TAA|TGSR / 收尾 ----
-    /// `generate_mips<WriteTexture…>(rg, world, &color.desc, &color, "dof_mips", 8)`。
-    fn generate_mips(&mut self, color: &RgTexture, name: &str, mip_count: u64);
-    /// `calc_dof(out, rg, world, &color, &depth, &dof_prepare, multires)`；返回的 36 B 即后续 TAA 的颜色输入。
+    /// Original final stack8 is `name.len()`, not a separate mip count.
+    /// Actual mip levels always come from color.desc.
+    fn generate_mips(&mut self, color: &RgTexture, name: &str);
+    /// `calc_dof(out, rg, world, &color, &depth, &dof_prepare, photomode)`；返回的 36 B 即后续 TAA 的颜色输入。
     fn calc_dof(
         &mut self,
         color: &RgTexture,
         depth: &RgTexture,
-        dof_prepare: &PassHandle,
-        multires: bool,
+        dof_prepare: &DofTargets,
+        photomode: bool,
     ) -> RgTexture;
     #[allow(clippy::too_many_arguments)]
     fn calculate_taa(
@@ -415,7 +410,7 @@ pub trait FramePasses {
         reprojection: &PassHandle,
         cur: &RgTexture,
         prev: &RgTexture,
-        param: u32,
+        sharpen_amount: f32,
     ) -> PassHandle;
     #[allow(clippy::too_many_arguments)]
     fn calculate_tgsr(
@@ -426,7 +421,7 @@ pub trait FramePasses {
         reprojection: &PassHandle,
         cur: &RgTexture,
         prev: &RgTexture,
-        param: u32,
+        sharpen_amount: f32,
     ) -> PassHandle;
     fn post_taa_transparency_pass(&mut self, taa: &PassHandle);
     fn render_shader_refactoring(&mut self, taa: &PassHandle);
@@ -602,10 +597,10 @@ pub fn render_world<P: FramePasses>(p: &mut P, args: &RenderWorldArgs) -> Render
 
     // W50/W51：DoF（设置字节下标 = 0xa9 + (mode == 0x13)）
     let dof_mode = p.dof_mode().unwrap();
-    let multires = dof_mode == DOF_MODE_MULTIRES;
-    let taa_input = if settings.dof_enabled[multires as usize] {
-        p.generate_mips(&color, names::DOF_MIPS, DOF_MIP_COUNT);
-        p.calc_dof(&color, &depth, &dof_prepare, multires)
+    let photomode = dof_mode == DOF_PHOTOMODE_TAG;
+    let taa_input = if settings.dof_enabled[photomode as usize] {
+        p.generate_mips(&color, names::DOF_MIPS);
+        p.calc_dof(&color, &depth, &dof_prepare, photomode)
     } else {
         color
     };
@@ -620,7 +615,7 @@ pub fn render_world<P: FramePasses>(p: &mut P, args: &RenderWorldArgs) -> Render
             &reprojection,
             &pair.cur,
             &pair.prev,
-            settings.taa_param,
+            settings.sharpen_amount,
         )
     } else {
         let output_dims = p.display_dims().unwrap();
@@ -633,7 +628,7 @@ pub fn render_world<P: FramePasses>(p: &mut P, args: &RenderWorldArgs) -> Render
             &reprojection,
             &pair.cur,
             &pair.prev,
-            settings.taa_param,
+            settings.sharpen_amount,
         )
     };
 
@@ -643,7 +638,7 @@ pub fn render_world<P: FramePasses>(p: &mut P, args: &RenderWorldArgs) -> Render
 
     RenderWorldOutputs {
         depth,
-        dof_prepare,
+        dof_prepare: dof_prepare.coc,
         taa,
     }
 }
@@ -678,6 +673,13 @@ mod tests {
         }
         fn p(&mut self, s: impl Into<String>) {
             self.log.push(s.into());
+        }
+    }
+
+    fn core_tex(id: u32) -> PassHandle {
+        PassHandle {
+            resource: id,
+            desc: crate::rhapsody_types::TextureDesc::new_2d([16, 16], 0x4c),
         }
     }
 
@@ -827,7 +829,10 @@ mod tests {
         }
         fn generate_hzb(&mut self, depth: &RgTexture, name: &str) -> HzbHandles {
             self.p(format!("generate_hzb depth={} name={name}", depth.id));
-            HzbHandles([9; 11])
+            HzbHandles {
+                half_extent: [8, 8],
+                texture: core_tex(9),
+            }
         }
         fn generate_wall_draw_lists_pass2(&mut self, _h: &HzbHandles) {
             self.p("generate_wall_draw_lists_pass2");
@@ -873,7 +878,7 @@ mod tests {
                 "calculate_reprojection_map vel={} prev_depth={}",
                 v.id, pd.tex.id
             ));
-            PassHandle([1; 9])
+            core_tex(1)
         }
         fn calculate_ssgi(
             &mut self,
@@ -882,7 +887,7 @@ mod tests {
             _r: &PassHandle,
         ) -> PassHandle {
             self.p(format!("calculate_ssgi a={} b={}", h.a.id, h.b.id));
-            PassHandle([2; 9])
+            core_tex(2)
         }
         fn ray_trace_gi(
             &mut self,
@@ -892,23 +897,35 @@ mod tests {
             fresh: bool,
             _r: &PassHandle,
             _s: &PassHandle,
-        ) -> PassHandle {
+        ) -> RayTracedGi {
             self.p(format!("ray_trace_gi hist={} fresh={fresh}", hist.id));
-            PassHandle([3; 9])
+            RayTracedGi {
+                radiance: core_tex(3),
+                ray_dir: core_tex(30),
+                reservoir: core_tex(31),
+            }
         }
         fn eval_gi_screen_radiance(
             &mut self,
             _h: &HalfResTargets,
             _s: &PassHandle,
-            _t: &PassHandle,
+            _t: &RayTracedGi,
             _r: &PassHandle,
         ) -> PassHandle {
+            assert_eq!(_t.radiance, core_tex(3));
+            assert_eq!(_t.ray_dir, core_tex(30));
+            assert_eq!(_t.reservoir, core_tex(31));
             self.p("eval_gi_screen_radiance");
-            PassHandle([4; 9])
+            core_tex(4)
         }
         fn bin_lights(&mut self) -> LightBins {
             self.p("bin_lights");
-            LightBins([5; 8])
+            LightBins {
+                grid: crate::render::pass_builder::compute_pass_builder::RgBuffer { resource: 5 },
+                indices: crate::render::pass_builder::compute_pass_builder::RgBuffer {
+                    resource: 6,
+                },
+            }
         }
         fn restir_sample_direct_lights(
             &mut self,
@@ -916,12 +933,14 @@ mod tests {
             _r: &PassHandle,
             _b: &LightBins,
         ) -> PassHandle {
+            assert_eq!(_b.grid.resource, 5);
+            assert_eq!(_b.indices.resource, 6);
             self.p("restir_sample_direct_lights");
-            PassHandle([6; 9])
+            core_tex(6)
         }
         fn apply_screen_shadows(&mut self, _g: &GBufferTargets, _r: &PassHandle) -> PassHandle {
             self.p("apply_screen_shadows");
-            PassHandle([7; 9])
+            core_tex(7)
         }
         fn deferred_raster(
             &mut self,
@@ -931,12 +950,15 @@ mod tests {
             _f: bool,
             _s: &PassHandle,
             _half: &HalfResTargets,
-            _t: &PassHandle,
+            _t: &RayTracedGi,
             _gi: &PassHandle,
             _sh: &PassHandle,
             _re: &PassHandle,
             _b: &LightBins,
         ) {
+            assert_eq!(_t.radiance, core_tex(3));
+            assert_eq!(_t.ray_dir, core_tex(30));
+            assert_eq!(_t.reservoir, core_tex(31));
             self.p("deferred_raster");
         }
         fn refraction_copy_pass(&mut self, r: &RgTexture, _c: &RgTexture, _d: &RgTexture) {
@@ -982,21 +1004,26 @@ mod tests {
         fn apply_volumetrics(&mut self, _c: &RgTexture, _d: &RgTexture) {
             self.p("apply_volumetrics");
         }
-        fn dof_prepare(&mut self, _d: &RgTexture) -> PassHandle {
+        fn dof_prepare(&mut self, _d: &RgTexture) -> DofTargets {
             self.p("dof_prepare");
-            PassHandle([8; 9])
+            DofTargets {
+                coc: core_tex(8),
+                coc_tiles: core_tex(80),
+            }
         }
-        fn generate_mips(&mut self, _c: &RgTexture, name: &str, n: u64) {
-            self.p(format!("generate_mips {name} {n}"));
+        fn generate_mips(&mut self, _c: &RgTexture, name: &str) {
+            self.p(format!("generate_mips {name}"));
         }
         fn calc_dof(
             &mut self,
             c: &RgTexture,
             _d: &RgTexture,
-            _p: &PassHandle,
-            multires: bool,
+            _p: &DofTargets,
+            photomode: bool,
         ) -> RgTexture {
-            self.p(format!("calc_dof multires={multires}"));
+            assert_eq!(_p.coc, core_tex(8));
+            assert_eq!(_p.coc_tiles, core_tex(80));
+            self.p(format!("calc_dof photomode={photomode}"));
             RgTexture {
                 id: c.id + 1000,
                 desc: c.desc,
@@ -1009,13 +1036,13 @@ mod tests {
             _r: &PassHandle,
             cur: &RgTexture,
             prev: &RgTexture,
-            param: u32,
+            param: f32,
         ) -> PassHandle {
             self.p(format!(
                 "calculate_taa in={} out={} cur={} prev={} param={param}",
                 c.id, o.id, cur.id, prev.id
             ));
-            PassHandle([10; 9])
+            core_tex(10)
         }
         fn calculate_tgsr(
             &mut self,
@@ -1025,19 +1052,19 @@ mod tests {
             _r: &PassHandle,
             cur: &RgTexture,
             prev: &RgTexture,
-            param: u32,
+            param: f32,
         ) -> PassHandle {
             self.p(format!(
                 "calculate_tgsr in={} out={} {:?} cur={} prev={} param={param}",
                 c.id, o.id, o.desc.extent, cur.id, prev.id
             ));
-            PassHandle([11; 9])
+            core_tex(11)
         }
         fn post_taa_transparency_pass(&mut self, t: &PassHandle) {
-            self.p(format!("post_taa_transparency_pass {}", t.0[0]));
+            self.p(format!("post_taa_transparency_pass {}", t.resource));
         }
         fn render_shader_refactoring(&mut self, t: &PassHandle) {
-            self.p(format!("render_shader_refactoring {}", t.0[0]));
+            self.p(format!("render_shader_refactoring {}", t.resource));
         }
     }
 
@@ -1045,7 +1072,7 @@ mod tests {
         RenderWorldArgs {
             world_render_dims: [1280, 720],
             settings: WorldRenderSettings {
-                taa_param: 0xabcd,
+                sharpen_amount: 0.375,
                 dof_enabled: [true, false],
                 tgsr: false,
             },
@@ -1155,8 +1182,8 @@ mod tests {
         ];
         assert_eq!(n, expected);
         assert_eq!(out.depth.id, 1);
-        assert_eq!(out.dof_prepare, PassHandle([8; 9]));
-        assert_eq!(out.taa, PassHandle([10; 9]));
+        assert_eq!(out.dof_prepare, core_tex(8));
+        assert_eq!(out.taa, core_tex(10));
     }
 
     #[test]
@@ -1200,7 +1227,7 @@ mod tests {
             p.log
                 .contains(&"pair taa_history [1280, 720] usage=0xc".to_string())
         );
-        assert!(p.log.contains(&"generate_mips dof_mips 8".to_string()));
+        assert!(p.log.contains(&"generate_mips dof_mips".to_string()));
         assert!(
             p.log
                 .iter()
@@ -1258,14 +1285,14 @@ mod tests {
     }
 
     #[test]
-    fn dof_flag_index_follows_multires_mode() {
+    fn dof_flag_index_follows_actual_photomode_tag() {
         // dof_enabled = [true, false]：mode != 0x13 → 用下标 0（开）；mode == 0x13 → 下标 1（关）
         let mut p = Rec::new();
         p.dof_mode = Some(0x12);
         render_world(&mut p, &args());
-        assert!(p.log.contains(&"calc_dof multires=false".to_string()));
+        assert!(p.log.contains(&"calc_dof photomode=false".to_string()));
         let mut p = Rec::new();
-        p.dof_mode = Some(DOF_MODE_MULTIRES);
+        p.dof_mode = Some(DOF_PHOTOMODE_TAG);
         render_world(&mut p, &args());
         assert!(
             !p.log
@@ -1274,13 +1301,13 @@ mod tests {
         );
         // 未做 DoF 时 TAA 输入 = 原颜色（id 2），而不是 calc_dof 的结果
         assert!(p.log.iter().any(|l| l.starts_with("calculate_taa in=2 ")));
-        // 打开 multires 下标
+        // 打开 photomode 下标
         let mut a = args();
         a.settings.dof_enabled = [false, true];
         let mut p = Rec::new();
-        p.dof_mode = Some(DOF_MODE_MULTIRES);
+        p.dof_mode = Some(DOF_PHOTOMODE_TAG);
         render_world(&mut p, &a);
-        assert!(p.log.contains(&"calc_dof multires=true".to_string()));
+        assert!(p.log.contains(&"calc_dof photomode=true".to_string()));
         assert!(
             p.log
                 .iter()
@@ -1309,7 +1336,7 @@ mod tests {
             .find(|l| l.starts_with("calculate_tgsr"))
             .unwrap();
         assert!(
-            tgsr.contains("[1920, 1080]") && tgsr.contains("param=43981"),
+            tgsr.contains("[1920, 1080]") && tgsr.contains("param=0.375"),
             "{tgsr}"
         );
         assert!(!p.log.iter().any(|l| l.starts_with("calculate_taa")));

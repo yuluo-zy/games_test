@@ -1,0 +1,23 @@
+NAME: input_show_binding_panel
+VA: 0x140ae9480
+SIZE: 41
+SIGNATURE: void __cdecl input_show_binding_panel(void)
+CALLEES:
+  {'name': 'SteamAPI_ISteamInput_ShowBindingPanel', 'address': '142923720'}
+  {'name': 'SteamAPI_SteamInput_v006', 'address': '142923700'}
+DECOMP:
+
+void __cdecl country_core::systems::steam::SteamClientResource::input_show_binding_panel(void)
+
+{
+  longlong lVar1;
+  undefined8 *in_RDX;
+  
+  lVar1 = SteamAPI_SteamInput_v006();
+  if (lVar1 != 0) {
+    SteamAPI_ISteamInput_ShowBindingPanel(lVar1,*in_RDX);
+    return;
+  }
+  return;
+}
+

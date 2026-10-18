@@ -4,49 +4,37 @@
 //! 木柱 + 石基（0.2/1.2/0.01/0.5/±0.2/2.1/±0.25/0.56/1.26 常量族）。
 //! `construct_crossbrick_pillar`（0x142418f50，15.9KB fresh）：十字砖柱
 //! （closure env<construct_wooden_pillar_w_stone_base>）。
+//!
+//! 2026-10-17 复核：旧实现（0.56 等分 + ±0.2 十字）为**近似体**，已移除。
+//! 真实逻辑（fresh 已取）含：高度钳 1.1、`len>1.25` 石基、0.3 斜撑、
+//! 0x18B 记录二路；`construct_brick_columns` 走 FrozenMap(0x3a)→writer→
+//! 0x40B 表；`construct_crossbrick_pillar` 的 count=`ceil((top-bottom)/
+//! (size*0.4))` + `random_splits` + 四边 + `xz_rotation_bad`。
 use glam::Vec3;
 
-/// B `construct_wooden_pillar_w_stone_base`（0x141fe2150）。
+/// B `construct_wooden_pillar_w_stone_base`（0x141fe2150）。**未实现**。
 pub fn construct_wooden_pillar_w_stone_base(
-    base: Vec3,
-    height: f32,
-    out: &mut Vec<[u8; 96]>,
+    _base: Vec3,
+    _height: f32,
+    _out: &mut Vec<[u8; 96]>,
 ) {
-    let stone_rows = (height / 0.56).ceil() as u32;
-    for row in 0..stone_rows {
-        let p = base + Vec3::new(0.0, row as f32 * 0.56, 0.0);
-        let mut record = [0u8; 96];
-        record[..12].copy_from_slice(&p.to_array().map(f32::to_le_bytes).concat());
-        out.push(record);
-    }
+    todo!("未实现: construct_wooden_pillar_w_stone_base 0x141fe2150（1.1 钳/1.25 石基/0.3 斜撑/0x18B 二路未逐语句）")
 }
 
-/// B `construct_brick_columns`（0x141fe3240）。
+/// B `construct_brick_columns`（0x141fe3240）。**未实现**。
 pub fn construct_brick_columns(
-    positions: &[Vec3],
-    height: f32,
-    out: &mut Vec<[u8; 96]>,
+    _positions: &[Vec3],
+    _height: f32,
+    _out: &mut Vec<[u8; 96]>,
 ) {
-    for &position in positions {
-        construct_wooden_pillar_w_stone_base(position, height, out);
-    }
+    todo!("未实现: construct_brick_columns 0x141fe3240（FrozenMap(0x3a)→writer→0x40B 表未逐语句）")
 }
 
-/// B `construct_crossbrick_pillar`（0x142418f50）：十字砖柱（每层 ±0.2
-/// 十字偏移）。
+/// B `construct_crossbrick_pillar`（0x142418f50）。**未实现**。
 pub fn construct_crossbrick_pillar(
-    base: Vec3,
-    height: f32,
-    out: &mut Vec<[u8; 96]>,
+    _base: Vec3,
+    _height: f32,
+    _out: &mut Vec<[u8; 96]>,
 ) {
-    const CROSS: f32 = 0.2;
-    let rows = (height / 0.56).ceil() as u32;
-    for row in 0..rows {
-        for offset in [Vec3::new(CROSS, 0.0, 0.0), Vec3::new(-CROSS, 0.0, 0.0), Vec3::new(0.0, 0.0, CROSS), Vec3::new(0.0, 0.0, -CROSS)] {
-            let p = base + offset + Vec3::new(0.0, row as f32 * 0.56, 0.0);
-            let mut record = [0u8; 96];
-            record[..12].copy_from_slice(&p.to_array().map(f32::to_le_bytes).concat());
-            out.push(record);
-        }
-    }
+    todo!("未实现: construct_crossbrick_pillar 0x142418f50（count=ceil((top-bottom)/(size*0.4))/random_splits/四边/xz_rotation_bad 未逐语句）")
 }

@@ -1,0 +1,50 @@
+{
+  "completed_at": "2026-10-18T12:10:07.360187+08:00",
+  "result": "D1-D3 implemented and scoped validation passed",
+  "source_manifest_sha256": "97f7bf4802ecd557e16114774af06a8d0a35cd31c10c9c8b2098f0a4a2be2802",
+  "source_fingerprints_stable_after_validation": true,
+  "checks": [
+    {
+      "command": "CARGO_BUILD_JOBS=1 CARGO_INCREMENTAL=0 cargo test -p country-core --test input_pipeline --offline --locked",
+      "exit_code": 0,
+      "tests_passed": 17,
+      "log": "pipeline-tests-retry.log"
+    },
+    {
+      "command": "CARGO_BUILD_JOBS=1 CARGO_INCREMENTAL=0 cargo test -p country-core --lib --offline --locked",
+      "exit_code": 0,
+      "tests_passed": 2121,
+      "log": "unit-tests.log"
+    },
+    {
+      "command": "CARGO_BUILD_JOBS=1 CARGO_INCREMENTAL=0 cargo check -p tiny-glade --lib --offline --locked",
+      "exit_code": 0,
+      "log": "host-check.log"
+    },
+    {
+      "command": "CARGO_BUILD_JOBS=1 CARGO_INCREMENTAL=0 cargo clippy -p country-core --lib --test input_pipeline --offline --locked --no-deps",
+      "exit_code": 0,
+      "country_core_warnings": 217,
+      "input_or_capture_warnings": 0,
+      "log": "clippy-retry.log"
+    },
+    {
+      "check": "rustfmt scoped core sources and git diff --check",
+      "exit_code": 0
+    }
+  ],
+  "earlier_attempts": [
+    {
+      "log": "pipeline-tests.log",
+      "exit_code": 101,
+      "reason": "5 unrelated compile errors in concurrent startup/render/save changes; later retry passed"
+    },
+    {
+      "log": "clippy.log",
+      "exit_code": 101,
+      "reason": "disk space exhaustion while creating fingerprint directory; later retry passed"
+    }
+  ],
+  "native_or_gpu_or_real_window_capture_verified": false,
+  "dependencies": "Reuses bevy_input 0.16.0 already present in workspace; adds country-core dependency and migrates wrapper callers."
+}

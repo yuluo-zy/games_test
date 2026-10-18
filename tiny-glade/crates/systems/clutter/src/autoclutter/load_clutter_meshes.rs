@@ -1,14 +1,18 @@
-//! load_clutter_meshes（B 主基线；0x1422c0760，源码 19–；closure 资产加载）。
+//! load_clutter_meshes（B 主基线；0x1422c0760，size 5383，源码 19–；closure 资产加载）。
 //!
-//! 证据（skeleton PDB 依赖注解）：Commands::insert_resource（0x141cea830）、
-//! load_clutter_meshes::closure（资产加载闭包）。语义：把自动杂物网格资产
-//! （ClutterMeshes）载入网格库——ClutterMeshTy 56 变体按资产路径匹配
-//! （chapters/resources/clutter_meshes.rs.md：`ClutterMeshTy::from(&str)` 0x1408b83d0，
-//! anvil/door_bell/door_krans/stall_bread/rack_brooms/flowerbox/birdnest/firewood/
-//! cart_w_pumpkins/cart_w_p_candles 等；未识别 panic）。
+//! 证据：
+//! - wave2 fresh 反编译（2026-10-17，--worker shared）：全函数 = **55 次内联
+//!   `load_clutter_meshes::closure_0()`（逐个资产加载，reviewer fresh 复核计数 55）** +
+//!   `from_iter<RangeInclusive<i32>, Map<RangeInclusive<i32>, closure_env_1>>`（0..56 变体
+//!   枚举转 Vec）+ `Commands::insert_resource<ClutterMeshes>`（0x141cea830）。
+//! - 语义：把自动杂物网格资产（ClutterMeshes）载入网格库——ClutterMeshTy 56 变体按
+//!   资产路径匹配（chapters/resources/clutter_meshes.rs.md：`ClutterMeshTy::from(&str)`
+//!   0x1408b83d0，anvil/door_bell/door_krans/stall_bread/rack_brooms/flowerbox/birdnest/
+//!   firewood/cart_w_pumpkins/cart_w_p_candles 等；未识别 panic）。
 //!
-//! 路径表（I：前缀 = 变体名 snake_case 的资产子路径；56 变体见 core
-//! `systems::mode_manager::types::ClutterMeshTy`）。
+//! 路径表（**I 推断，U 登记**：wave2 未取 closure_0 内联体内逐资产路径 strings
+//! （RE-ANALYSIS §1.4 "strings 清单本轮未取（成本高、价值低）"）；现按变体名 snake_case
+//! 前缀推断，已证名（anvil/door_bell/…）保留，其余不判等）。
 
 use bevy_ecs::prelude::*;
 use country_core::systems::mode_manager::ClutterMeshTy;
@@ -27,24 +31,62 @@ pub struct ClutterMeshes {
 /// 举例路径 anvil/door_bell/door_krans/stall_bread/rack_brooms/flowerbox/birdnest/
 /// firewood/cart_w_pumpkins/cart_w_p_candles 已证；其余按变体名推断 I）。
 pub const CLUTTER_MESH_PATHS: [&str; 56] = [
-    "clutter/plant_pot_v1", "clutter/ladder", "clutter/wheel", "clutter/pitchfork",
-    "clutter/shovel", "clutter/box_w_stuff", "clutter/watering_can", "clutter/firewood",
-    "clutter/bucket", "clutter/birdnest", "clutter/bench", "clutter/bench_w_basket",
-    "clutter/bench_short", "clutter/barrel_w_plantpot", "clutter/haystack",
-    "clutter/plant_pot_v2", "clutter/birdhouse", "clutter/basket",
-    "clutter/basket_w_food", "clutter/barrel_w_food_basket", "clutter/potato_sack",
-    "clutter/road_sign", "clutter/sunflower", "clutter/cart", "clutter/cart2",
-    "clutter/crates_w_tools", "clutter/crates_w_flowers", "clutter/window_flowerpot",
-    "clutter/window_shutter", "clutter/window_flowerbeds", "clutter/reed",
-    "clutter/lilypad", "clutter/fallen_leaves", "clutter/fallen_petals",
-    "clutter/olden_rock", "clutter/olden_tree_log", "clutter/olden_tree_stump",
-    "clutter/pumpkin", "clutter/pumpkin2", "clutter/pumpkin_w_face",
-    "clutter/cart_w_pumpkins", "clutter/crates_w_pumpkins",
-    "clutter/olden_tree_stump_autumn", "clutter/barrel_w_candles", "clutter/anvil",
-    "clutter/fabric_rolls", "clutter/stall_bread", "clutter/stall_veggies",
-    "clutter/crate_fish", "clutter/rack_brooms", "clutter/flowerbox",
-    "clutter/door_bell", "clutter/door_krans", "clutter/door_krans_autumn",
-    "clutter/cart_w_pumpkins_regular", "clutter/crates_w_pumpkins_regular",
+    "clutter/plant_pot_v1",
+    "clutter/ladder",
+    "clutter/wheel",
+    "clutter/pitchfork",
+    "clutter/shovel",
+    "clutter/box_w_stuff",
+    "clutter/watering_can",
+    "clutter/firewood",
+    "clutter/bucket",
+    "clutter/birdnest",
+    "clutter/bench",
+    "clutter/bench_w_basket",
+    "clutter/bench_short",
+    "clutter/barrel_w_plantpot",
+    "clutter/haystack",
+    "clutter/plant_pot_v2",
+    "clutter/birdhouse",
+    "clutter/basket",
+    "clutter/basket_w_food",
+    "clutter/barrel_w_food_basket",
+    "clutter/potato_sack",
+    "clutter/road_sign",
+    "clutter/sunflower",
+    "clutter/cart",
+    "clutter/cart2",
+    "clutter/crates_w_tools",
+    "clutter/crates_w_flowers",
+    "clutter/window_flowerpot",
+    "clutter/window_shutter",
+    "clutter/window_flowerbeds",
+    "clutter/reed",
+    "clutter/lilypad",
+    "clutter/fallen_leaves",
+    "clutter/fallen_petals",
+    "clutter/olden_rock",
+    "clutter/olden_tree_log",
+    "clutter/olden_tree_stump",
+    "clutter/pumpkin",
+    "clutter/pumpkin2",
+    "clutter/pumpkin_w_face",
+    "clutter/cart_w_pumpkins",
+    "clutter/crates_w_pumpkins",
+    "clutter/olden_tree_stump_autumn",
+    "clutter/barrel_w_candles",
+    "clutter/anvil",
+    "clutter/fabric_rolls",
+    "clutter/stall_bread",
+    "clutter/stall_veggies",
+    "clutter/crate_fish",
+    "clutter/rack_brooms",
+    "clutter/flowerbox",
+    "clutter/door_bell",
+    "clutter/door_krans",
+    "clutter/door_krans_autumn",
+    "clutter/cart_w_pumpkins_regular",
+    "clutter/crates_w_pumpkins_regular",
 ];
 
 impl ClutterMeshes {

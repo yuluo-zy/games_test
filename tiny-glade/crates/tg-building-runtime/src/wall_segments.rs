@@ -1,14 +1,14 @@
-//! Prepared path -> original mask registry and separate material-stat inputs.
+//! Segments prepared wall paths and derives platform masks and material statistics.
 use crate::{PublicWalls, WallCollectionState, wall_paths::WallPreparedPaths};
 use bevy_ecs::prelude::*;
-use country_core::recovered_building::{
-    building_wall_platform_segmentation::{WallPlatformSegmentation, split_platform_wall_masks},
-    building_wall_segmentation::{
-        WallPathMaterialStatsUpdate, WallPathSegmentationMask, WallSegmentationInput,
-        material_stats_for_update, wall_path_segmentation,
-    },
-    building_wall_state::WallId,
-};
+use country_core::systems::wall::construction::platform_segmentation::WallPlatformSegmentation;
+use country_core::systems::wall::construction::platform_segmentation::split_platform_wall_masks;
+use country_core::systems::wall::construction::segmentation::WallPathMaterialStatsUpdate;
+use country_core::systems::wall::construction::segmentation::WallPathSegmentationMask;
+use country_core::systems::wall::construction::segmentation::WallSegmentationInput;
+use country_core::systems::wall::construction::segmentation::material_stats_for_update;
+use country_core::systems::wall::construction::segmentation::wall_path_segmentation;
+use country_core::resources::walls::publication_fields::WallId;
 use std::collections::HashMap;
 #[derive(Clone, Debug)]
 pub struct WallPathMasks {

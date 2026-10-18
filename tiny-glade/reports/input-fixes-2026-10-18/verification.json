@@ -1,0 +1,136 @@
+{
+  "created_at": "2026-10-18T11:38:48.820375+08:00",
+  "result": "implemented_cpu_regressions_passed",
+  "scope": "R1-R5 Rust functional fixes; no native equivalence or full game claim",
+  "commands": [
+    {
+      "command": "CARGO_INCREMENTAL=0 cargo test -p country-core --lib --test input_pipeline --offline --locked",
+      "exit_code": 0,
+      "unit_tests_passed": 2105,
+      "input_pipeline_tests_passed": 12,
+      "log": "tests.log"
+    },
+    {
+      "command": "CARGO_INCREMENTAL=0 cargo clippy -p country-core --lib --test input_pipeline --offline --locked --no-deps",
+      "exit_code": 101,
+      "reason": "concurrent utils camera.rs used bevy_ecs without a declared dependency",
+      "log": "clippy.log"
+    },
+    {
+      "command": "CARGO_INCREMENTAL=0 cargo test -p toolbar --lib --offline --locked",
+      "exit_code": 101,
+      "reason": "utils manifest changed; Cargo.lock needs update",
+      "logs": [
+        "toolbar-tests.log",
+        "toolbar-tests-retry.log"
+      ]
+    }
+  ],
+  "note": "Snapshot describes final scoped sources. Dependency changes after the passing core tests blocked later validation; no claim that a rebuild with final workspace dependency state passed.",
+  "files": [
+    {
+      "path": "Cargo.lock",
+      "sha256": "8b1db145bba362c966f02627258743ee12d1a43c94288e9c3ae88d6712dc3e16"
+    },
+    {
+      "path": "Cargo.toml",
+      "sha256": "cd1a2ee278e61607731f9318e587b59e303e2debed2e233388e8fc4c118a5de9"
+    },
+    {
+      "path": "crates/country-core/Cargo.toml",
+      "sha256": "8b60fcc928ccf0ebecdb9597600b1b03511acfd26c7f1dde0284d8f49dd204e3"
+    },
+    {
+      "path": "crates/country-core/src/input/action_set.rs",
+      "sha256": "76a081520b2025b73cf688259c776400bb4ed0a64c4662a1e47c5fc1e2adc5a7"
+    },
+    {
+      "path": "crates/country-core/src/input/input_stream.rs",
+      "sha256": "6f69d75b4a6bc6e3674f8eceefd612e316fb7444d6770e19cd9925ca9f1d0a02"
+    },
+    {
+      "path": "crates/country-core/src/input/mod.rs",
+      "sha256": "179be4605dea555db2b25705835e9a7de3f387ca60d0a398054a70481d3993f0"
+    },
+    {
+      "path": "crates/country-core/src/input/panic_repro_state.rs",
+      "sha256": "fd381f7f0d023be65a6c78eaca13017e16baf66df2661ff77aeffe227464acaf"
+    },
+    {
+      "path": "crates/country-core/src/input/recording.rs",
+      "sha256": "79e090065ffbb9afa93466d0bc68be1646fb3f6f99605b9785329d9ae3dfbacf"
+    },
+    {
+      "path": "crates/country-core/src/resources/game_clock.rs",
+      "sha256": "aba610b3b6e172c7c4de61e1a3ac001db60422a1c67a1956571288994bbd98f4"
+    },
+    {
+      "path": "crates/country-core/src/resources/toolbar.rs",
+      "sha256": "3ec80f5e2cda1b13d1e04b57d00af1953c8ac6a21d32d225bf9a2b7d17faeaeb"
+    },
+    {
+      "path": "crates/country-core/src/systems/backend/input/button_input.rs",
+      "sha256": "aed64e4419836b65fad806a3206e3b18e005a7bb4c5e0fd2566d2aa6ec10eb7b"
+    },
+    {
+      "path": "crates/country-core/src/systems/backend/input/calculate_input_delta.rs",
+      "sha256": "8ed8ffee83902efa27971d0550256cdf8a66c9f153153acbe7ac1bdd7fd50925"
+    },
+    {
+      "path": "crates/country-core/src/systems/backend/input/input_record_replay.rs",
+      "sha256": "0418967be9d197b9356c8a72eb56ce885df74cbc3e1766c33fdb738cafaa2921"
+    },
+    {
+      "path": "crates/country-core/src/systems/backend/input/input_replay_for_trailers.rs",
+      "sha256": "e1d2c305b5d7512381c89fa271e9bdbef9bf3adba3333a5f0eae91319d686ac2"
+    },
+    {
+      "path": "crates/country-core/src/systems/backend/input/mod.rs",
+      "sha256": "255dcc91e78d6b6707f674751dd470803f65299fc9055dfe30eda93e35848aa3"
+    },
+    {
+      "path": "crates/country-core/src/systems/backend/input/mod_key.rs",
+      "sha256": "fcfd9229d339dc4979d10225b47d5431688b017ede8a6840e02392334120d902"
+    },
+    {
+      "path": "crates/country-core/src/systems/backend/input/reset_input_state.rs",
+      "sha256": "f71b4f552272cd7688141663ff60e40f5cc3b3d1cba65ae03cb04ecb055d2ee9"
+    },
+    {
+      "path": "crates/country-core/src/systems/backend/input/translate_input.rs",
+      "sha256": "990770d64469fdfa0afaddba66b829597d8570016fb5a1193fe7dbb48a1c1a3c"
+    },
+    {
+      "path": "crates/country-core/src/systems/backend/input/translate_input_to_cursor_moved.rs",
+      "sha256": "c7edebd4eef5473351ce4b3f67ca21fa781b7e4d457e6947f1bcdd1b3589ae88"
+    },
+    {
+      "path": "crates/country-core/src/systems/backend/input/update_cursor_position.rs",
+      "sha256": "0b6650ea578168ac794d20c8714c3895171ad7b96558580280ebaeb060aa27d1"
+    },
+    {
+      "path": "crates/country-core/src/systems/camera_rig/main_camera.rs",
+      "sha256": "747e9bf6e999fcd4e55e80e1a58b3082dc7c230f9b33c87b66fcdeedb0137b85"
+    },
+    {
+      "path": "crates/country-core/src/systems/mode_manager.rs",
+      "sha256": "8e40ae7185b8ec1b44ad430902ed9893223bd3a809c57f2ea871f3a0fbab47fd"
+    },
+    {
+      "path": "crates/country-core/src/systems/time_update.rs",
+      "sha256": "f1256dd3845893e656e9028495b44b6a2bd1f0728ba6a68b7afa38aac02edfc9"
+    },
+    {
+      "path": "crates/country-core/tests/input_pipeline.rs",
+      "sha256": "5acb01b5a67539b4362583becf16cca85933b9a71296c99b7f81adcde442bf73"
+    },
+    {
+      "path": "crates/utils/Cargo.toml",
+      "sha256": "88c9cfcc10c437400b40925497e225a53bbc8138ee847f29e494edd4ae9e91ea"
+    },
+    {
+      "path": "crates/utils/src/camera.rs",
+      "sha256": "265b24b100f9b2a33dbf9a774cb32a454b962b088cbea4c926f008ad1c5030f4"
+    }
+  ]
+}

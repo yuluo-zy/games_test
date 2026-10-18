@@ -1,0 +1,71 @@
+0x141d85ada      movss xmm0, dword [r13 + 4]
+0x141d85ae0      subss xmm0, xmm9
+0x141d85ae5      test byte [rbx], 1
+   ; unlikely
+0x141d85ae8      je 0x141d85b40
+0x141d85aea      movaps xmm2, xmm0
+0x141d85aed      cmpleps xmm2, xmm14
+0x141d85af2      cmpeqps xmm1, xmm14
+0x141d85af7      andps xmm1, xmm2
+0x141d85afa      movd r15d, xmm1
+   ; reloc.WS2_32.dll_bind
+   ; reloc.WS2_32.dll_bind
+0x141d85aff      add r15d, 2
+0x141d85b03      jmp 0x141d852df
+0x141d85b08      movss xmm0, dword [r14 + 0x14]
+   ; reloc.WS2_32.dll_closesocket
+0x141d85b0e      mov r15d, 3
+0x141d85b14      ucomiss xmm0, dword [0x1429258d0]
+   ; likely
+0x141d85b1b      jae 0x141d85b22
+0x141d85b1d      jmp 0x141d852df
+0x141d85b22      mov rcx, qword [rbp + 0x110]
+   ; 0x141625ae0(0x0, 0x0, 0x0, -1)
+0x141d85b29      call 0x141625ae0
+; [0x142925988:4]=0x40a00000
+0x141d85b2e      movss xmm1, dword [0x142925988]
+0x141d85b36      mulss xmm0, xmm1
+0x141d85b3a      addss xmm0, xmm1
+0x141d85b3e      jmp 0x141d85b48
+0x141d85b40      maxss xmm0, dword [0x142925988]
+   ; reloc.WS2_32.dll_bind
+0x141d85b48      mov r15d, 2
+0x141d85b4e      jmp 0x141d852df
+0x141d85b53      mov rdx, qword [rbp + 0xd8]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x141d85b5a      test rdx, rdx
+   ; unlikely
+0x141d85b5d      je 0x141d85b75
+0x141d85b5f      mov rcx, qword [rbp + 0xe0]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x141d85b66      shl rdx, 3
+   ; reloc.WS2_32.dll_connect
+0x141d85b6a      mov r8d, 4
+   ; 0x140613c20(0x0, 0x0, 0xfffffffffffffff8, -1)
+0x141d85b70      call 0x140613c20
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x141d85b75      cmp qword [rbp + 0xb8], 0
+   ; unlikely
+0x141d85b7d      je 0x141d85bca
+   ; 0x140c18130(0x0, 0x0, 0xfffffffffffffff8, -1)
+0x141d85b7f      call 0x140c18130
+0x141d85b84      mov rcx, rax
+0x141d85b87      mov rax, qword [rax]
+; reloc.WS2_32.dll_accept
+0x141d85b8a      cmp rax, 1
+   ; likely
+0x141d85b8e      jne 0x141d85c2c
+0x141d85b94      add rcx, 8
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x141d85b98      cmp qword [rcx], 0
+   ; likely
+0x141d85b9c      jne 0x141d85c6a
+0x141d85ba2      mov qword [rcx], 0xffffffffffffffff
+0x141d85ba9      mov qword [rbp + 0x118], rcx
+   ; reloc.WS2_32.dll_recv
+   ; reloc.WS2_32.dll_accept
+0x141d85bb0      add rcx, 8

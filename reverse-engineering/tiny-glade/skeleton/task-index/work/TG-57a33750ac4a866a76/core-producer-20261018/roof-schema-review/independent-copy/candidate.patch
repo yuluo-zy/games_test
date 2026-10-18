@@ -1,0 +1,424 @@
+--- a/games_test/tiny-glade/crates/country-core/src/resources/roofs/roof_shape.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/roofs/roof_shape.rs
+@@ -1,10 +1,12 @@
+ //! B Roof component and its observed 0x58-byte game fields.
+ //! Geometry is shared with the recovered system-roof crate. The byte projection
+-//! preserves appearance fields whose original Rust enum schema is not yet known.
++//! retains the existing runtime layout; Serde projects the original named fields.
+ 
+ use crate::resources::walls::WallId;
+ use bevy_ecs::component::Component;
+ use glam::Vec3;
++use serde::ser::{SerializeStruct, SerializeStructVariant};
++use serde::{Serialize, Serializer};
+ 
+ #[derive(Component, Clone, Debug)]
+ pub struct Roof(pub(crate) [u8; 88]);
+@@ -25,7 +27,9 @@
+     }
+     /// B `Roof::new`（0x1408e31c0；`new_observed` 的 8 参数面）：
+     /// {wall_id, params(0x24..0x40), shape(0x08..0x24), floor(+0x4c),
+-    ///  animation(+0x50), style_tag(+0x54), gable/flat 数据(+0x40..0x4c)}。
++    ///  color_id(+0x50), gable style(+0x54), flat style(+0x40..0x4c)}。
++    /// `animation`/`gable_data` retain the existing parameter names; the native
++    /// serializer identifies their stored fields as color_id / flat_roof_style.
+     pub fn new(
+         wall: [u8; 8],
+         params: [u8; 28],
+@@ -86,7 +90,10 @@
+             [self.float_at(0x1c), self.float_at(0x20)]
+         }
+     }
+-    pub fn shape_at(&self, coordinate: f32) -> crate::resources::roofs::geometry::surface::RoofSection {
++    pub fn shape_at(
++        &self,
++        coordinate: f32,
++    ) -> crate::resources::roofs::geometry::surface::RoofSection {
+         crate::resources::roofs::geometry::surface::section(&self.0, coordinate)
+     }
+     pub fn parameters(&self) -> crate::resources::roofs::geometry::parameters::RoofParameterBlock {
+@@ -110,8 +117,16 @@
+         bottom: f32,
+         top: f32,
+         height: f32,
+-    ) -> Result<crate::resources::roofs::geometry::surface::Curve2, crate::resources::roofs::geometry::surface::CurveError> {
+-        crate::resources::roofs::geometry::surface::world_profile_curve(self.float_at(0x2c), bottom, top, height)
++    ) -> Result<
++        crate::resources::roofs::geometry::surface::Curve2,
++        crate::resources::roofs::geometry::surface::CurveError,
++    > {
++        crate::resources::roofs::geometry::surface::world_profile_curve(
++            self.float_at(0x2c),
++            bottom,
++            top,
++            height,
++        )
+     }
+     /// `Roof::rotation_yaw_radians`（0x1408e3b10，O）：矩形→`atan2(−frame.z, frame.x)`
+     /// （frame.z 符号位翻转 0x1429258f0）；圆→`−π/2 − CircularF32(center_y).as_f32()`
+@@ -229,7 +244,10 @@
+     let smooth = (3.0 - (t + t)) * t * t;
+     let cap_base = smooth * 12.0 + (1.0 - smooth) * base;
+     assert!(cap_base >= 0.0, "original height cap assertion");
+-    sse_min(cap_base, sse_max(0.0, height_01 * 12.0 + (1.0 - height_01) * 0.4))
++    sse_min(
++        cap_base,
++        sse_max(0.0, height_01 * 12.0 + (1.0 - height_01) * 0.4),
++    )
+ }
+ 
+ /// `RoofShapeParams`（28 字节参数块；B 序列化映射 parameters.rs 已建立）。
+@@ -269,12 +287,13 @@
+     }
+ }
+ 
+-/// `GableRoofStyle`（B 风格枚举；serde 变体串 "Matching"/"Override"，8 字节）。
++/// B style byte: 0 = Stepped, 1 = Overhang. The existing Rust variant names
++/// remain API-compatible; their serialized names follow the native schema.
+ #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+ pub enum GableRoofStyle {
+-    #[serde(rename = "Matching")]
++    #[serde(rename = "Stepped")]
+     Matching,
+-    #[serde(rename = "Override")]
++    #[serde(rename = "Overhang")]
+     Override,
+ }
+ impl GableRoofStyle {
+@@ -288,7 +307,8 @@
+     }
+ }
+ 
+-/// `FlatRoofStyle` 观察投影（12B = {tag u8, pattern u8, payload}）。
++/// B FlatRoofStyle: tag byte0; Override has material byte1, ColorId u32@4,
++/// and pattern_id u32@8. Inactive payload and padding remain uninterpreted.
+ #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+ pub struct FlatRoofStyle([u8; 12]);
+ impl FlatRoofStyle {
+@@ -301,7 +321,8 @@
+     pub fn tag(&self) -> u8 {
+         self.0[0]
+     }
+-    /// `pattern_id`（内联 86，I）：风格花纹 id（匹配序列化串）= 字节 +1。
++    /// Legacy byte observer retained for source compatibility. This reads the
++    /// material byte; native serialized `pattern_id` is the independent u32@+8.
+     pub fn pattern_id(&self) -> u8 {
+         self.0[1]
+     }
+@@ -311,6 +332,88 @@
+             0 => other,
+             1 => false,
+             _ => self.0[1] != 0,
++        }
++    }
++}
++
++// B capture 0x1417a2252 -> collect_seq 0x14158faf0 -> Roof serializer
++// 0x1416ea700. This is a logical Serde projection, not a native ABI declaration.
++impl Serialize for Roof {
++    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
++        use crate::resources::color_id::ColorId;
++        use crate::systems::wall::valid_enclosure::ShapeParameters;
++
++        let mut state = serializer.serialize_struct("Roof", 7)?;
++        state.serialize_field("id", &self.wall_id().0)?;
++        state.serialize_field("params", &RoofShapeParams::from_roof(&self.0))?;
++        state.serialize_field(
++            "wall_shape",
++            &ShapeParameters::from_observed(self.0[8..0x24].try_into().unwrap()),
++        )?;
++        state.serialize_field("pivot_y", &self.floor_y())?;
++        state.serialize_field(
++            "color_id",
++            &ColorId(u32::from_le_bytes(self.0[0x50..0x54].try_into().unwrap())),
++        )?;
++        let gable_style = if self.0[0x54] == 0 {
++            GableRoofStyle::Matching
++        } else {
++            GableRoofStyle::Override
++        };
++        state.serialize_field("gable_style", &gable_style)?;
++        state.serialize_field(
++            "flat_roof_style",
++            &FlatRoofStyle::from_observed(self.0[0x40..0x4c].try_into().unwrap()),
++        )?;
++        state.end()
++    }
++}
++
++// B 0x1416eaa40: all seven fields are emitted, including the independent rim byte.
++impl Serialize for RoofShapeParams {
++    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
++        let mut state = serializer.serialize_struct("RoofShapeParams", 7)?;
++        state.serialize_field("profile_01", &self.profile_01())?;
++        state.serialize_field("height_01", &self.height_01())?;
++        state.serialize_field(
++            "tip_offset_01",
++            &glam::Vec2::new(at(&self.0, 0), at(&self.0, 4)),
++        )?;
++        state.serialize_field("ridge_length_01", &self.ridge_length_01())?;
++        let direction = if self.0[24] == 0 {
++            tg_history::RidgeDirection::Width
++        } else {
++            tg_history::RidgeDirection::Length
++        };
++        state.serialize_field("ridge_dir", &direction)?;
++        state.serialize_field("eave_length_01", &at(&self.0, 20))?;
++        let rim = if self.0[25] == 0 { "Rim" } else { "NoRim" };
++        state.serialize_field("flat_rim_style", rim)?;
++        state.end()
++    }
++}
++
++// B 0x1416e8f20. The unit variants never read inactive union payload/padding.
++impl Serialize for FlatRoofStyle {
++    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
++        match self.tag() {
++            0 => serializer.serialize_unit_variant("FlatRoofStyle", 0, "Matching"),
++            1 => serializer.serialize_unit_variant("FlatRoofStyle", 1, "MatchingStoneOnly"),
++            _ => {
++                let mut state =
++                    serializer.serialize_struct_variant("FlatRoofStyle", 2, "Override", 3)?;
++                let color = crate::resources::color_id::ColorId(u32::from_le_bytes(
++                    self.0[4..8].try_into().unwrap(),
++                ));
++                state.serialize_field("color_id", &color)?;
++                let material = if self.0[1] == 0 { "Stone" } else { "Wood" };
++                state.serialize_field("material", material)?;
++                state.serialize_field(
++                    "pattern_id",
++                    &u32::from_le_bytes(self.0[8..12].try_into().unwrap()),
++                )?;
++                state.end()
++            }
+         }
+     }
+ }
+@@ -515,6 +618,175 @@
+         Roof::from_observed(b)
+     }
+ 
++    fn snapshot_roof(shape_tag: u32, flat_tag: u8) -> Roof {
++        let mut bytes = [0xa5; 88];
++        bytes[..8].copy_from_slice(&0xfedc_ba98_7654_3210_u64.to_le_bytes());
++        bytes[8..12].copy_from_slice(&shape_tag.to_le_bytes());
++        let shape: [f32; 6] = if shape_tag == 0 {
++            [2.0, -3.0, 4.0, 0.0, 999.0, 999.0]
++        } else {
++            [0.0, 1.0, 2.0, -3.0, 4.0, 5.0]
++        };
++        for (index, number) in shape.into_iter().enumerate() {
++            bytes[12 + index * 4..16 + index * 4].copy_from_slice(&number.to_le_bytes());
++        }
++        for (index, number) in [0.25_f32, -0.5, 0.75, 0.125, 0.875, 0.5]
++            .into_iter()
++            .enumerate()
++        {
++            bytes[0x24 + index * 4..0x28 + index * 4].copy_from_slice(&number.to_le_bytes());
++        }
++        bytes[0x3c] = 0;
++        bytes[0x3d] = 1;
++        bytes[0x40] = flat_tag;
++        bytes[0x41] = 1;
++        bytes[0x44..0x48].copy_from_slice(&0xfedc_ba98_u32.to_le_bytes());
++        bytes[0x48..0x4c].copy_from_slice(&0x1234_5678_u32.to_le_bytes());
++        bytes[0x4c..0x50].copy_from_slice(&(-2.5_f32).to_le_bytes());
++        bytes[0x50..0x54].copy_from_slice(&0x8765_4321_u32.to_le_bytes());
++        bytes[0x54] = 0;
++        Roof::from_observed(bytes)
++    }
++
++    #[test]
++    fn snapshot_roof_preserves_named_fields_and_full_integer_widths() {
++        let roof = snapshot_roof(0, 2);
++        let before = *roof.observed();
++        let value = serde_json::to_value(&roof).unwrap();
++        assert_eq!(
++            value,
++            serde_json::json!({
++                "id": 0xfedc_ba98_7654_3210_u64,
++                "params": {
++                    "profile_01": 0.75, "height_01": 0.125,
++                    "tip_offset_01": [0.25, -0.5], "ridge_length_01": 0.875,
++                    "ridge_dir": "Width", "eave_length_01": 0.5,
++                    "flat_rim_style": "NoRim"
++                },
++                "wall_shape": {"Circle": {"center": [2.0, -3.0], "radius": 4.0}},
++                "pivot_y": -2.5, "color_id": 0x8765_4321_u32,
++                "gable_style": "Stepped",
++                "flat_roof_style": {"Override": {
++                    "color_id": 0xfedc_ba98_u32, "material": "Wood", "pattern_id": 0x1234_5678_u32
++                }}
++            })
++        );
++        assert_eq!(*roof.observed(), before);
++        assert_eq!(value.as_object().unwrap().len(), 7);
++    }
++
++    #[test]
++    fn snapshot_roof_reuses_shape_serde_and_distinct_style_bytes() {
++        for shape_tag in 0..=1 {
++            for gable in 0..=1 {
++                for ridge in 0..=1 {
++                    for rim in 0..=1 {
++                        for material in 0..=1 {
++                            for flat in 0..=2 {
++                                let mut roof = snapshot_roof(shape_tag, flat);
++                                roof.0[0x3c] = ridge;
++                                roof.0[0x3d] = rim;
++                                roof.0[0x41] = material;
++                                roof.0[0x54] = gable;
++                                let value = serde_json::to_value(&roof).unwrap();
++                                assert_eq!(
++                                    value["gable_style"],
++                                    if gable == 0 { "Stepped" } else { "Overhang" }
++                                );
++                                assert_eq!(
++                                    value["params"]["ridge_dir"],
++                                    if ridge == 0 { "Width" } else { "Length" }
++                                );
++                                assert_eq!(
++                                    value["params"]["flat_rim_style"],
++                                    if rim == 0 { "Rim" } else { "NoRim" }
++                                );
++                                match flat {
++                                    0 => assert_eq!(value["flat_roof_style"], "Matching"),
++                                    1 => assert_eq!(value["flat_roof_style"], "MatchingStoneOnly"),
++                                    _ => assert_eq!(
++                                        value["flat_roof_style"]["Override"]["material"],
++                                        if material == 0 { "Stone" } else { "Wood" }
++                                    ),
++                                }
++                                if shape_tag == 1 {
++                                    assert_eq!(
++                                        value["wall_shape"],
++                                        serde_json::json!({"Rectangle": {
++                                            "orientation": [0.0, 1.0], "width": 4.0, "length": 5.0, "center": [2.0, -3.0]
++                                        }})
++                                    );
++                                }
++                            }
++                        }
++                    }
++                }
++            }
++        }
++    }
++
++    #[test]
++    fn snapshot_circle_zero_rotation_and_nonfinite_values_use_dependency_serde() {
++        for rotation in [0.0_f32, -0.0, 0.75, f32::NAN] {
++            let mut roof = snapshot_roof(0, 0);
++            roof.0[0x18..0x1c].copy_from_slice(&rotation.to_le_bytes());
++            roof.0[0x2c..0x30].copy_from_slice(&f32::INFINITY.to_le_bytes());
++            let value = serde_json::to_value(roof).unwrap();
++            assert!(value["params"]["profile_01"].is_null());
++            let circle = &value["wall_shape"]["Circle"];
++            if rotation == 0.0 {
++                assert!(circle.get("rotation").is_none());
++            } else if rotation.is_nan() {
++                assert!(circle["rotation"]["val"].is_null());
++            } else {
++                assert_eq!(circle["rotation"], serde_json::json!({"val": 0.75}));
++            }
++        }
++    }
++
++    #[test]
++    fn snapshot_inactive_flat_payload_and_padding_are_not_json_fields() {
++        for tag in [0, 1] {
++            let mut first = snapshot_roof(0, tag);
++            let second = first.clone();
++            first.0[0x41..0x4c].fill(0x5a);
++            first.0[0x3e..0x40].fill(0x11);
++            first.0[0x55..0x58].fill(0xff);
++            assert_eq!(
++                serde_json::to_value(first).unwrap(),
++                serde_json::to_value(second).unwrap()
++            );
++        }
++        assert_eq!(
++            serde_json::to_value(GableRoofStyle::Matching).unwrap(),
++            "Stepped"
++        );
++        assert_eq!(
++            serde_json::from_str::<GableRoofStyle>("\"Overhang\"").unwrap(),
++            GableRoofStyle::Override
++        );
++        assert!(serde_json::from_str::<GableRoofStyle>("\"Matching\"").is_err());
++    }
++
++    #[test]
++    fn snapshot_actual_roof_query_serializes_a_roof_sequence() {
++        let mut world = bevy_ecs::world::World::new();
++        let first = snapshot_roof(0, 0);
++        let mut second = snapshot_roof(1, 1);
++        second.0[..8].copy_from_slice(&17_u64.to_le_bytes());
++        world.spawn(first);
++        world.spawn(second);
++        world.spawn_empty();
++        let mut query = world.query::<&Roof>();
++        let mut roofs: Vec<Roof> = query.iter(&world).cloned().collect();
++        roofs.sort_by_key(|roof| roof.wall_id().0);
++        let value = serde_json::to_value(&roofs).unwrap();
++        assert_eq!(value.as_array().unwrap().len(), 2);
++        assert_eq!(value[0]["id"], 17_u64);
++        assert_eq!(value[1]["id"], 0xfedc_ba98_7654_3210_u64);
++        assert!(value[0]["wall_shape"].get("Rectangle").is_some());
++    }
++
+     #[test]
+     fn gable_style_predicates() {
+         assert!(GableRoofStyle::Matching.is_stepped());
+@@ -566,21 +838,23 @@
+         assert!((0.0..=12.0).contains(&circle));
+         // rect tag=1：dim_x@+0x14=4.0(0x40800000)、dim_z@+0x18=6.0(0x40c00000)。
+         let rect = roof_height_ws_from_wall_shape(&[
+-            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x40, 0x80, 0, 0,
+-            0x40, 0xc0, 0, 0,
++            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x40, 0x80, 0, 0, 0x40,
++            0xc0, 0, 0,
+         ]);
+         assert!((0.0..=12.0).contains(&rect));
+-        assert!(roof_height_01_from_wall_shape(&[
+-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x41, 0x20, 0x00, 0x00
+-        ]) <= 1.0);
++        assert!(
++            roof_height_01_from_wall_shape(&[
++                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x41, 0x20, 0x00, 0x00
++            ]) <= 1.0
++        );
+     }
+ 
+     #[test]
+     fn shape_params_eave_and_height() {
+         let mut bytes = [0u8; 28];
+-        bytes[8..12].copy_from_slice(&f32::to_bits(0.5).to_le_bytes());   // profile
+-        bytes[20..24].copy_from_slice(&f32::to_bits(0.5).to_le_bytes());  // eave
+-        bytes[12..16].copy_from_slice(&f32::to_bits(0.5).to_le_bytes());  // height
++        bytes[8..12].copy_from_slice(&f32::to_bits(0.5).to_le_bytes()); // profile
++        bytes[20..24].copy_from_slice(&f32::to_bits(0.5).to_le_bytes()); // eave
++        bytes[12..16].copy_from_slice(&f32::to_bits(0.5).to_le_bytes()); // height
+         let params = RoofShapeParams(bytes);
+         let eave_ws = params.eave_length_ws();
+         let expected =
+@@ -736,15 +1010,9 @@
+             Ok(((0.25, 0.75), glam::Vec3::new(1.0, 2.0, 3.0)))
+         );
+         hit.discriminant = 0; // 偶数 = 无 uv
+-        assert_eq!(
+-            roof_uv_from_raycast_hit(&hit),
+-            Err(RoofUvFailure::NoUv)
+-        );
++        assert_eq!(roof_uv_from_raycast_hit(&hit), Err(RoofUvFailure::NoUv));
+         assert_eq!(RoofUvFailure::NoUv.code(), 4);
+         let miss = RaycastWorldResult::miss();
+-        assert_eq!(
+-            roof_uv_from_raycast_hit(&miss),
+-            Err(RoofUvFailure::RayMiss)
+-        );
+-    }
+-}
++        assert_eq!(roof_uv_from_raycast_hit(&miss), Err(RoofUvFailure::RayMiss));
++    }
++}

@@ -1,0 +1,81 @@
+--- a/crates/country-core/src/systems/render_loop/draw_passes/transparency_pass/surface_ice.rs
++++ b/crates/country-core/src/systems/render_loop/draw_passes/transparency_pass/surface_ice.rs
+@@ -61,12 +61,21 @@
+         .usage(RADIANCE_VIEW_USAGE)
+ }
+ 
+-/// `ice_surface_pass(rg, world, color, depth, A, B, history_valid, C, D, lists)`。
+-pub fn ice_surface_pass(
+-    ctx: &mut DrawPassCtx<'_>,
+-    env: &mut SurfaceEnv<'_>,
+-    i: &SurfaceInputs<'_>,
+-) -> rhapsody::Result<()> {
++/// Complete owned outputs of native pre-raster resource creation. The exact
++/// ray/count/history identities continue through all four compute consumers.
++pub struct IceSurfacePrepared {
++    rough: crate::render::pass_builder::pass_resource_access::RgTexture,
++    refr_hits: crate::render::pass_builder::pass_resource_access::RgTexture,
++    refr_hit_radiance: crate::render::pass_builder::pass_resource_access::RgTexture,
++    refl_count: crate::render::pass_builder::compute_pass_builder::RgBuffer,
++    rt_count: crate::render::pass_builder::compute_pass_builder::RgBuffer,
++    refl_px: crate::render::pass_builder::compute_pass_builder::RgBuffer,
++    rt_ray: crate::render::pass_builder::compute_pass_builder::RgBuffer,
++    shadows: crate::render::pass_builder::rg_resources::TemporalTexturePair,
++    trace: super::surface_support::SurfaceRasterTrace,
++}
++
++pub fn prepare_ice_surface(env: &mut SurfaceEnv<'_>, i: &SurfaceInputs<'_>) -> rhapsody::Result<IceSurfacePrepared> {
+     let color_extent = i.color.desc.extent_2d();
+     let [aw, ah] = i.half_depth.desc.extent_2d();
+     let names_ = ICE_RESOURCE_NAMES;
+@@ -93,11 +102,15 @@
+     // 3. "Ice shadows" temporal pair（`color_attachment()` 用途位在 `TextureDesc` 里无字段，U）。
+     let shadows = env.try_temporal_pair(
+         names_[11],
+-        TextureDesc::new_2d(color_extent, format::SHADOWS).sampled(),
++        TextureDesc::new_2d(color_extent, format::SHADOWS).sampled().color_attachment(),
+     )?;
++    Ok(IceSurfacePrepared { rough, refr_hits, refr_hit_radiance, refl_count, rt_count, refl_px, rt_ray, shadows, trace: env.raster_trace() })
++}
++
++pub fn raster_ice_surface(ctx: &mut DrawPassCtx<'_>, prepared: &IceSurfacePrepared, i: &SurfaceInputs<'_>) {
++    let IceSurfacePrepared { rough, refr_hits, refr_hit_radiance, refl_count, refl_px, shadows, .. } = prepared;
+     let flag_in = i.history_valid != 0;
+     let raster_history_valid = if flag_in { u32::from(shadows.fresh) } else { 0 };
+-
+     // 4-5. 栅格 pass "Ice plane"（5 个颜色附件）。
+     let colors = [
+         ColorAttachment::Texture(att(i.color)),
+@@ -116,7 +129,7 @@
+         },
+     ];
+     {
+-        let e: &SurfaceEnv<'_> = env;
++        let e = &prepared.trace;
+         run_surface_raster(
+             ctx,
+             e,
+@@ -139,6 +152,12 @@
+         );
+     }
+ 
++}
++
++pub fn finish_ice_surface(env: &mut SurfaceEnv<'_>, prepared: IceSurfacePrepared, i: &SurfaceInputs<'_>) -> rhapsody::Result<()> {
++    let IceSurfacePrepared { rough, refr_hits, refr_hit_radiance, refl_count, rt_count, refl_px, rt_ray, .. } = prepared;
++    let color_extent = i.color.desc.extent_2d();
++    let names_ = ICE_RESOURCE_NAMES;
+     // 6. 半分辨率命中纹理。
+     let half_extent = half_res(i.color.desc).extent_2d();
+     let refl_hit_radiance = env.create_texture(
+@@ -254,3 +273,10 @@
+     env.record(p);
+     Ok(())
+ }
++
++/// Compatibility entry, delegating every original call to the same phases.
++pub fn ice_surface_pass(ctx: &mut DrawPassCtx<'_>, env: &mut SurfaceEnv<'_>, i: &SurfaceInputs<'_>) -> rhapsody::Result<()> {
++    let prepared = prepare_ice_surface(env, i)?;
++    raster_ice_surface(ctx, &prepared, i);
++    finish_ice_surface(env, prepared, i)
++}

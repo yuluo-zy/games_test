@@ -110,6 +110,12 @@ pub struct CameraRotation(pub Mat3);
 #[derive(Resource, Clone, Copy, Debug)]
 pub struct CameraPosition(pub Vec3);
 
+/// O: the `+0x58` editing-speed face shared by the audio systems (trigger,
+/// roof and wall frame-end volume, water ambience). The host wires the writer
+/// (待接线); the systems fall back to their default when absent.
+#[derive(Resource, Clone, Copy, Debug, Default)]
+pub struct EditingSpeed(pub f32);
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1,71 +1,111 @@
-//! `input_stream.rs` — 输入录制环（B `input::input_stream`）。
+//! 输入录制流和拥有完整状态的历史同步点。
 //!
-//! 证据（汇编逐条核对，`input/ALGORITHMS.md` §2）：
-//! - `InputStream` 64 B = `sync_points: VecDeque`（元素 0x60 B）+ `frames: VecDeque`（元素 0xd0 B）；
-//!   `sync_point_count` 0x140949170 / `frame_count` 0x140949180 分别是两者的 `len`；
-//! - `add_frame` 0x140949190：`record` 且 `frames.len >= 9999` 时——有 `>= 2` 个同步点则 `drop_oldest_sync_point`，
-//!   否则 `frames.len >= 49999` 才弹最老帧（文档文字写 50000，汇编是 `len - 0xc34f` 回绕比较，阈值 49999）；
-//!   之后无条件在尾部追加；
-//! - `on_history_sync` 0x1409494c0：`!record` 清空两个队列；`record` 且（同步点 `>= 9` 或帧数 `>= 10000`）丢最老同步点；
-//!   两个分支之后都追加 `{state, frame_index = frames.len}`；
-//! - `drop_oldest_sync_point` 0x140949660：弹出最老同步点，目标 = 它的 `frame_index`；**没有同步点时目标取 `frames.len`**
-//!   （即弹空所有帧）；弹出 `target` 个最老帧，每个剩余同步点 `frame_index -= target`；
-//! - `index` 0x140949970：越界 panic "Out of bounds access"。
-//!
-//! 帧与同步点状态的内容未恢复，所以 [`InputStream`] 对帧类型泛型；`InputTranslationState` 只保留 11 个 qword 的原始布局。
-//! `try_load` 与整份 serde 形态（`sync_points`/`frames` 键）依赖未恢复的子结构，未做。
+//! 队列复用标准 VecDeque。快照不保存裸地址，帧索引始终表示下一帧的位置。
+use crate::{
+    resources::toolbar::Toolbar,
+    systems::{
+        camera_rig::main_camera::{CameraRigParameters, MainCamera},
+        mode_manager::AppMode,
+    },
+};
+use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 
-/// 录制时帧数达到该值开始裁剪（O：0x140949190）。
-pub const FRAME_PRUNE_THRESHOLD: usize = 9999;
-/// 没有足够同步点时的帧数硬上限（O：`len - 49999` 回绕比较）。
-pub const FRAME_HARD_CAP: usize = 49_999;
-/// 同步点数量上限（O：`len >= 9` 丢最老）。
+pub const FRAME_PRUNE_THRESHOLD: usize = 9_999;
 pub const MAX_SYNC_POINTS: usize = 9;
-/// `on_history_sync` 的帧数上限（O：`len >= 10000`）。
-pub const SYNC_FRAME_LIMIT: usize = 10_000;
+/// 均匀分段，避免触及上限时把全部近期输入一次丢空。
+pub const SYNC_POINT_INTERVAL_FRAMES: usize = FRAME_PRUNE_THRESHOLD / MAX_SYNC_POINTS;
 
-/// 输入翻译状态：11 个 qword（O：同步点 `+0x00..+0x58`）。
-///
-/// 子字段（O：0x140941a30 同步点 seek 读取；偏移相对状态块基址）：
-/// - `@+0x18` 字节 = ToolbarCategoryModes `current`（qword3 低字节）；
-/// - `@+0x20/+0x28` = 工具栏模式 Vec 头（cap-first；clone 源 FUN_1412f7fa0）；
-/// - `@+0x30..+0x58` = MainCamera 参数（`load_parameters` 源，40 B）。
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct InputTranslationState(pub [u64; 11]);
-
-impl InputTranslationState {
-    /// `@+0x18` 字节：工具栏类别当前索引（O：0x140941a30 `*(u8*)(sync + 0x18)`）。
-    pub fn toolbar_current(&self) -> u8 {
-        (self.0[3] & 0xff) as u8
-    }
-
-    /// `@+0x20/+0x28`：工具栏模式 Vec 头 {cap, ptr}（O：seek 写回工具栏资源前 16 B；
-    /// len 与相机参数区共享布局，I）。
-    pub fn toolbar_vec_cap_ptr(&self) -> (u64, u64) {
-        (self.0[4], self.0[5])
-    }
-
-    /// `@+0x30..+0x58`：相机参数（40 B，`MainCamera::load_parameters` 源；O）。
-    pub fn camera_params(&self) -> [u64; 5] {
-        [self.0[6], self.0[7], self.0[8], self.0[9], self.0[10]]
-    }
-}
-
-/// 同步点（0x60 B）：翻译状态 + 它在帧环里的位置（`+0x58`）。
+/// 最近输入用于自动复现；完整录制不自动裁掉用户选择的帧。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct InputStreamSyncPoint {
-    pub state: InputTranslationState,
-    pub frame_index: u64,
+pub enum RecordingRetention {
+    Recent,
+    All,
 }
 
-/// 录制环。
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct InputSnapshot {
+    pub toolbar: Toolbar,
+    pub app_mode: AppMode,
+    pub camera: CameraRigParameters,
+}
+impl InputSnapshot {
+    pub fn capture(toolbar: &Toolbar, app_mode: AppMode, camera: &MainCamera) -> Self {
+        Self {
+            toolbar: toolbar.clone(),
+            app_mode,
+            camera: camera.store_parameters(),
+        }
+    }
+    /// 校验成功后整体恢复实际业务资源，失败不会留下部分恢复的状态。
+    pub fn restore(
+        &self,
+        toolbar: &mut Toolbar,
+        app_mode: &mut AppMode,
+        camera: &mut MainCamera,
+    ) -> anyhow::Result<()> {
+        self.validate()?;
+        toolbar.clone_from(&self.toolbar);
+        *app_mode = self.app_mode;
+        camera.restore_input_parameters(&self.camera);
+        Ok(())
+    }
+    pub fn validate(&self) -> anyhow::Result<()> {
+        anyhow::ensure!(
+            (self.toolbar.current as usize) < self.toolbar.categories.len(),
+            "工具栏选中类别越界"
+        );
+        for category in &self.toolbar.categories {
+            anyhow::ensure!(
+                category.current < category.modes.len()
+                    || (category.modes.is_empty() && category.current == 0),
+                "工具栏类别的模式索引越界"
+            );
+        }
+        let camera = &self.camera;
+        anyhow::ensure!(
+            camera.position.is_finite()
+                && [
+                    camera.yaw,
+                    camera.pitch,
+                    camera.vertical_fov_degrees,
+                    camera.camera_rig_arm_length,
+                    camera.pitch_offset,
+                    camera.yaw_offset
+                ]
+                .iter()
+                .all(|value| value.is_finite()),
+            "相机快照包含非有限值"
+        );
+        anyhow::ensure!(
+            camera.vertical_fov_degrees > 0.0 && camera.vertical_fov_degrees < 180.0,
+            "相机视场角必须位于 0 到 180 度之间"
+        );
+        // store_parameters 尚不提供这些偏移；不接受加载后会被静默丢弃的值。
+        anyhow::ensure!(
+            camera.camera_rig_arm_length == 0.0
+                && camera.pitch_offset == 0.0
+                && camera.yaw_offset == 0.0,
+            "相机输入快照不支持额外轨道偏移"
+        );
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct InputStreamSyncPoint {
+    pub state: InputSnapshot,
+    pub frame_index: usize,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct InputStream<F> {
     sync_points: VecDeque<InputStreamSyncPoint>,
     frames: VecDeque<F>,
 }
-
 impl<F> Default for InputStream<F> {
     fn default() -> Self {
         Self {
@@ -74,207 +114,170 @@ impl<F> Default for InputStream<F> {
         }
     }
 }
-
 impl<F> InputStream<F> {
     pub fn new() -> Self {
         Self::default()
     }
-
-    /// 0x140949170。
-    pub fn sync_point_count(&self) -> usize {
-        self.sync_points.len()
-    }
-
-    /// 0x140949180。
     pub fn frame_count(&self) -> usize {
         self.frames.len()
     }
-
+    pub fn sync_point_count(&self) -> usize {
+        self.sync_points.len()
+    }
+    pub fn frames(&self) -> impl Iterator<Item = &F> {
+        self.frames.iter()
+    }
     pub fn sync_points(&self) -> &VecDeque<InputStreamSyncPoint> {
         &self.sync_points
     }
-
-    /// 0x140949480。
+    pub fn get_frame(&self, index: usize) -> Option<&F> {
+        self.frames.get(index)
+    }
+    /// 已检查索引的内部调用可使用此接口；外部回放入口使用 get_frame。
+    pub fn frame(&self, index: usize) -> &F {
+        &self.frames[index]
+    }
     pub fn last_frame_mut(&mut self) -> Option<&mut F> {
         self.frames.back_mut()
     }
-
-    /// `impl Index<usize>`（0x140949970）：越界 panic "Out of bounds access"。
-    pub fn frame(&self, index: usize) -> &F {
-        self.frames.get(index).expect("Out of bounds access")
+    pub fn clear(&mut self) {
+        self.frames.clear();
+        self.sync_points.clear();
     }
-
-    /// `add_frame`（0x140949190）。
-    pub fn add_frame(&mut self, frame: F, record: bool) {
-        if record && self.frames.len() >= FRAME_PRUNE_THRESHOLD {
-            if self.sync_points.len() >= 2 {
+    pub fn reset(&mut self, snapshot: InputSnapshot) {
+        self.clear();
+        self.push_sync_point(snapshot);
+    }
+    /// 同一帧多次打点只保留最新状态，避免无效的零长度分段。
+    pub fn push_sync_point(&mut self, snapshot: InputSnapshot) {
+        let frame_index = self.frames.len();
+        if self
+            .sync_points
+            .back()
+            .is_some_and(|point| point.frame_index == frame_index)
+        {
+            self.sync_points.back_mut().unwrap().state = snapshot;
+        } else {
+            self.sync_points.push_back(InputStreamSyncPoint {
+                state: snapshot,
+                frame_index,
+            });
+        }
+    }
+    /// 快照只在首帧和分段边界创建；普通帧没有工具栏克隆和动作 Vec 分配。
+    pub fn record_frame(
+        &mut self,
+        frame: F,
+        snapshot: impl FnOnce() -> InputSnapshot,
+        retention: RecordingRetention,
+    ) {
+        let needs_checkpoint = self.sync_points.is_empty()
+            || (retention == RecordingRetention::Recent
+                && (self.frames.len() >= FRAME_PRUNE_THRESHOLD
+                    || self.sync_points.back().is_some_and(|point| {
+                        self.frames.len().saturating_sub(point.frame_index)
+                            >= SYNC_POINT_INTERVAL_FRAMES
+                    })));
+        if needs_checkpoint {
+            self.push_sync_point(snapshot());
+        }
+        if retention == RecordingRetention::Recent {
+            while self.sync_points.len() > MAX_SYNC_POINTS
+                || (self.frames.len() >= FRAME_PRUNE_THRESHOLD && self.sync_points.len() >= 2)
+            {
                 self.drop_oldest_sync_point();
-            } else if self.frames.len() >= FRAME_HARD_CAP {
-                self.frames.pop_front();
             }
         }
         self.frames.push_back(frame);
     }
-
-    /// `on_history_sync`（0x1409494c0）。
-    pub fn on_history_sync(&mut self, state: InputTranslationState, record: bool) {
-        if record {
-            if self.sync_points.len() >= MAX_SYNC_POINTS || self.frames.len() >= SYNC_FRAME_LIMIT {
-                self.drop_oldest_sync_point();
-            }
-        } else {
-            self.frames.clear();
-            self.sync_points.clear();
-        }
-        self.sync_points.push_back(InputStreamSyncPoint {
-            state,
-            frame_index: self.frames.len() as u64,
-        });
-    }
-
-    /// `drop_oldest_sync_point`（0x140949660）。
+    /// 丢掉旧分段，新头的快照与第零帧重新对齐。
     pub fn drop_oldest_sync_point(&mut self) {
-        let target = match self.sync_points.pop_front() {
-            Some(point) => point.frame_index,
-            None => self.frames.len() as u64,
-        };
-        for _ in 0..target {
-            self.frames
-                .pop_front()
-                .expect("assertion failed: self.frames.pop_front().is_some()");
-        }
+        self.sync_points.pop_front();
+        let discarded_frames = self
+            .sync_points
+            .front()
+            .map_or(self.frames.len(), |point| point.frame_index)
+            .min(self.frames.len());
+        self.frames.drain(..discarded_frames);
         for point in &mut self.sync_points {
-            point.frame_index = point
-                .frame_index
-                .checked_sub(target)
-                .expect("called `Option::unwrap()` on a `None` value");
+            point.frame_index = point.frame_index.saturating_sub(discarded_frames);
         }
+    }
+    pub fn validate_structure(&self) -> anyhow::Result<()> {
+        anyhow::ensure!(!self.frames.is_empty(), "录制没有输入帧");
+        anyhow::ensure!(
+            self.sync_points
+                .front()
+                .is_some_and(|point| point.frame_index == 0),
+            "录制必须从第零帧的同步点开始"
+        );
+        let mut previous_index = 0;
+        for point in &self.sync_points {
+            anyhow::ensure!(
+                point.frame_index >= previous_index && point.frame_index <= self.frames.len(),
+                "同步点索引无序或越界"
+            );
+            point.state.validate()?;
+            previous_index = point.frame_index;
+        }
+        Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn state(tag: u64) -> InputTranslationState {
-        InputTranslationState([tag; 11])
+    fn snapshot() -> InputSnapshot {
+        InputSnapshot::capture(
+            &Toolbar::default(),
+            AppMode::default(),
+            &MainCamera::new(1.0),
+        )
     }
-
-    fn filled(frames: usize) -> InputStream<usize> {
-        let mut s = InputStream::new();
-        for i in 0..frames {
-            s.add_frame(i, false);
+    #[test]
+    fn recent_recording_remains_bounded_and_aligned_without_history_events() {
+        let mut stream = InputStream::new();
+        for frame in 0..FRAME_PRUNE_THRESHOLD * 3 + 3 {
+            stream.record_frame(frame, snapshot, RecordingRetention::Recent);
         }
-        s
-    }
-
-    #[test]
-    fn frames_are_not_pruned_when_not_recording() {
-        let mut s = filled(60_000);
-        s.add_frame(60_000, false);
-        assert_eq!(s.frame_count(), 60_001);
-    }
-
-    #[test]
-    fn recording_below_the_threshold_keeps_every_frame() {
-        let mut s = filled(9_998);
-        s.add_frame(0, true);
-        assert_eq!(s.frame_count(), 9_999);
-    }
-
-    #[test]
-    fn without_enough_sync_points_frames_are_kept_until_49999() {
-        let mut s = filled(49_998);
-        s.add_frame(1, true);
-        assert_eq!(s.frame_count(), 49_999);
-        s.add_frame(2, true);
-        assert_eq!(s.frame_count(), 49_999, "one popped, one pushed");
-        assert_eq!(*s.frame(0), 1);
-    }
-
-    #[test]
-    fn two_sync_points_make_add_frame_drop_the_oldest_segment() {
-        let mut s = filled(9_999);
-        s.sync_points.push_back(InputStreamSyncPoint {
-            state: state(1),
-            frame_index: 100,
-        });
-        s.sync_points.push_back(InputStreamSyncPoint {
-            state: state(2),
-            frame_index: 500,
-        });
-        s.add_frame(77, true);
-        assert_eq!(s.sync_point_count(), 1);
-        assert_eq!(s.frame_count(), 9_999 - 100 + 1);
-        assert_eq!(s.sync_points()[0].frame_index, 400);
-        assert_eq!(*s.frame(0), 100);
-    }
-
-    #[test]
-    fn history_sync_without_recording_clears_then_pushes_at_zero() {
-        let mut s = filled(10);
-        s.on_history_sync(state(1), true);
-        s.on_history_sync(state(2), false);
-        assert_eq!(s.frame_count(), 0);
-        assert_eq!(s.sync_point_count(), 1);
+        assert!(stream.frame_count() <= FRAME_PRUNE_THRESHOLD);
+        assert!(stream.frame_count() >= FRAME_PRUNE_THRESHOLD - SYNC_POINT_INTERVAL_FRAMES);
         assert_eq!(
-            s.sync_points()[0],
-            InputStreamSyncPoint {
-                state: state(2),
-                frame_index: 0
-            }
+            stream.get_frame(0),
+            Some(&(FRAME_PRUNE_THRESHOLD * 3 + 3 - stream.frame_count()))
         );
+        assert_eq!(stream.sync_points()[0].frame_index, 0);
+        stream.validate_structure().unwrap();
     }
-
     #[test]
-    fn history_sync_records_the_current_frame_count() {
-        let mut s = filled(7);
-        s.on_history_sync(state(9), true);
-        assert_eq!(s.sync_points()[0].frame_index, 7);
-        assert_eq!(s.sync_points()[0].state, state(9));
-    }
-
-    #[test]
-    fn the_tenth_sync_point_evicts_the_oldest() {
-        let mut s = filled(3);
-        for i in 0..9 {
-            s.on_history_sync(state(i), true);
+    fn all_recording_keeps_frames_and_creates_only_one_initial_snapshot() {
+        let mut captures = 0;
+        let mut stream = InputStream::new();
+        for frame in 0..FRAME_PRUNE_THRESHOLD + 5 {
+            stream.record_frame(
+                frame,
+                || {
+                    captures += 1;
+                    snapshot()
+                },
+                RecordingRetention::All,
+            );
         }
-        assert_eq!(s.sync_point_count(), 9);
-        s.on_history_sync(state(100), true);
-        assert_eq!(s.sync_point_count(), 9);
-        assert_eq!(s.sync_points()[0].state, state(1));
+        assert_eq!(captures, 1);
+        assert_eq!(stream.frame_count(), FRAME_PRUNE_THRESHOLD + 5);
     }
-
     #[test]
-    fn dropping_with_no_sync_points_empties_the_frames() {
-        let mut s = filled(12_000);
-        s.on_history_sync(state(1), true);
-        assert_eq!(
-            s.frame_count(),
-            0,
-            "frames >= 10000 and no sync point: target = frames.len"
-        );
-        assert_eq!(s.sync_points()[0].frame_index, 0);
-    }
-
-    #[test]
-    fn surviving_sync_points_are_rebased() {
-        let mut s = filled(1_000);
-        s.on_history_sync(state(1), true);
-        for i in 0..50 {
-            s.add_frame(i, true);
+    fn dropping_rebases_to_the_surviving_checkpoint() {
+        let mut stream = InputStream::new();
+        for frame in 0..10 {
+            stream.record_frame(frame, snapshot, RecordingRetention::All);
         }
-        s.on_history_sync(state(2), true);
-        s.drop_oldest_sync_point();
-        assert_eq!(s.frame_count(), 50);
-        assert_eq!(s.sync_points()[0].frame_index, 50);
-    }
-
-    #[test]
-    #[should_panic(expected = "Out of bounds access")]
-    fn indexing_past_the_end_panics() {
-        let s = filled(2);
-        let _ = s.frame(2);
+        stream.push_sync_point(snapshot());
+        for frame in 10..15 {
+            stream.record_frame(frame, snapshot, RecordingRetention::All);
+        }
+        stream.drop_oldest_sync_point();
+        assert_eq!(stream.get_frame(0), Some(&10));
+        assert_eq!(stream.sync_points()[0].frame_index, 0);
     }
 }

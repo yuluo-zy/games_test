@@ -48,12 +48,9 @@ impl StorageElement for PebblePlacementSsbo {
 impl SsboType for PebblePlacementSsbo {
     type Storage = TypedStorageBuffer<PebblePlacementSsbo>;
     fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
-        match initial {
-            None => TypedStorageBuffer::<PebblePlacementSsbo>::new(device, None),
-            Some(b) => {
-                TypedStorageBuffer::<PebblePlacementSsbo>::new_storage_buffer(device, Some(b))
-            }
-        }
+        // Original None branches directly to141610e39 with no allocation
+        // or default upload. Keep the fixed-size byte constructor's None.
+        TypedStorageBuffer::<PebblePlacementSsbo>::new_storage_buffer(device, initial)
     }
 }
 
@@ -62,6 +59,7 @@ pub fn path_pebbles_compute(env: &mut PassEnv<'_>) -> RecordedComputePass {
     env.pass(NAME, URI)
         .write_storage_buffer::<PebblePlacementSsbo>(PEBBLE_PLACEMENT_BUFFER)
         .write_storage_buffer_concurrent::<DrawIndexedIndirectBuffer>(binding::DRAW_COMMANDS, 1)
+        .preserve_storage_buffer_contents(binding::DRAW_COMMANDS)
         .uniform(binding::DRAW_INDIRECT_BUFFER_OFFSET, DRAW_INDIRECT_OFFSET)
         .uniform(PEBBLE_BUFFER_SIZE, PEBBLE_COUNT)
         .uniform(SCATTER_GRID_DIM, SCATTER_DIM)
@@ -90,6 +88,27 @@ mod tests {
         assert_eq!(PATH_MASK, 0xed50_2fff_6dc4_021f);
         assert_eq!(WATER_MASK, 0x6ad6_3ccd_18c8_f041);
         assert_eq!(binding::DRAW_COMMANDS, 0xf1c0_7a2b_8012_765a);
+    }
+
+    #[test]
+    fn native_pebble_none_stays_uninitialized_and_some_preserves_input() {
+        use crate::render::ssbo::tests::MockDevice;
+        let device = MockDevice::default();
+        let _ = <PebblePlacementSsbo as SsboType>::new_storage_buffer(&device, None);
+        let provided = [0x11223344u32; 12];
+        let bytes = bytemuck::cast_slice(&provided);
+        let _ = <PebblePlacementSsbo as SsboType>::new_storage_buffer(&device, Some(bytes));
+        let created = device.created.borrow();
+        assert_eq!(created.len(), 2);
+        for (desc, name, _) in created.iter() {
+            assert_eq!(
+                (desc.size, desc.usage, desc.memory, desc.alignment),
+                (0x6c00, 0x22, 1, 4)
+            );
+            assert_eq!(name, "PebblePlacement");
+        }
+        assert!(created[0].2.is_none(), "native None does not upload zeroes");
+        assert_eq!(created[1].2.as_deref(), Some(bytes));
     }
 
     #[test]

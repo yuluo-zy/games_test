@@ -1,0 +1,51 @@
+
+running 2 tests
+
+thread 'reprojection_first_frame_uses_false_validity_and_copies_real_depth' (23975501) panicked at crates/tiny-glade/tests/original_scene_compute_gpu.rs:381:55:
+called `Result::unwrap()` on an `Err` value: InvalidUsage { what: "graph declaration", source: Some(Contract(UninitializedRead { resource: 27, pass: 2 })) }
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/48a229ceaefd4985c50990b14116b6d856af0985/library/std/src/panicking.rs:679:5
+   1: core::panicking::panic_fmt
+             at /rustc/48a229ceaefd4985c50990b14116b6d856af0985/library/core/src/panicking.rs:80:14
+   2: core::result::unwrap_failed
+             at /rustc/48a229ceaefd4985c50990b14116b6d856af0985/library/core/src/result.rs:1870:5
+   3: unwrap<rhapsody::rg::vulkan::SessionFrameReceipt, rhapsody::error::Error>
+             at /Users/yuluo/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/result.rs:1231:23
+   4: reprojection_first_frame_uses_false_validity_and_copies_real_depth
+             at ./crates/tiny-glade/tests/original_scene_compute_gpu.rs:381:55
+   5: {closure#0}
+             at ./crates/tiny-glade/tests/original_scene_compute_gpu.rs:294:72
+   6: call_once<original_scene_compute_gpu::reprojection_first_frame_uses_false_validity_and_copies_real_depth::{closure_env#0}, ()>
+             at /Users/yuluo/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250:5
+   7: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/48a229ceaefd4985c50990b14116b6d856af0985/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+thread 'six_live_rasters_upload_actual_mapped_tiles_and_reuse_their_contents' (23975502) panicked at crates/tiny-glade/tests/original_scene_compute_gpu.rs:281:17:
+frame 0 seed 17 at 0,0: 73 != 17
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/48a229ceaefd4985c50990b14116b6d856af0985/library/std/src/panicking.rs:679:5
+   1: core::panicking::panic_fmt
+             at /rustc/48a229ceaefd4985c50990b14116b6d856af0985/library/core/src/panicking.rs:80:14
+   2: six_live_rasters_upload_actual_mapped_tiles_and_reuse_their_contents
+             at ./crates/tiny-glade/tests/original_scene_compute_gpu.rs:281:17
+   3: {closure#0}
+             at ./crates/tiny-glade/tests/original_scene_compute_gpu.rs:189:74
+   4: call_once<original_scene_compute_gpu::six_live_rasters_upload_actual_mapped_tiles_and_reuse_their_contents::{closure_env#0}, ()>
+             at /Users/yuluo/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250:5
+   5: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/48a229ceaefd4985c50990b14116b6d856af0985/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+test six_live_rasters_upload_actual_mapped_tiles_and_reuse_their_contents ... FAILED
+test reprojection_first_frame_uses_false_validity_and_copies_real_depth ... FAILED
+
+failures:
+
+failures:
+    reprojection_first_frame_uses_false_validity_and_copies_real_depth
+    six_live_rasters_upload_actual_mapped_tiles_and_reuse_their_contents
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.88s
+

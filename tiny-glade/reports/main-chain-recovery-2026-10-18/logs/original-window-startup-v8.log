@@ -1,0 +1,83 @@
+11:21:33.501 ERROR [tiny_glade::main] [frame:0] Crash reporter failed to initialize: original minidumper transport is unavailable in this host
+11:21:33.505 INFO [tiny_glade::app_config] [frame:0] Vulkan allowlist defaults have been updated.
+11:21:34.545 ERROR [tiny_glade::panic_reporter] [frame:0] Reverse backtrace:
+  35: _main
+             at /Users/yuluo/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/src/rust/library/std/src/rt.rs:205:5
+  34: lang_start<core::result::Result<(), anyhow::Error>>
+             at /rustc/48a229ceaefd4985c50990b14116b6d856af0985/library/std/src/rt.rs:171:5
+      std::rt::lang_start_internal
+             at /rustc/48a229ceaefd4985c50990b14116b6d856af0985/library/std/src/panic.rs:359:14
+      std::panic::catch_unwind::<std::rt::lang_start_internal::{closure#0}, isize>
+             at /rustc/48a229ceaefd4985c50990b14116b6d856af0985/library/std/src/panicking.rs:544:19
+      std::panicking::catch_unwind::<isize, std::rt::lang_start_internal::{closure#0}>
+             at /rustc/48a229ceaefd4985c50990b14116b6d856af0985/library/std/src/panicking.rs:576:43
+      std::panicking::catch_unwind::do_call::<std::rt::lang_start_internal::{closure#0}, isize>
+             at /rustc/48a229ceaefd4985c50990b14116b6d856af0985/library/std/src/rt.rs:175:24
+      std::rt::lang_start_internal::{closure#0}
+             at /rustc/48a229ceaefd4985c50990b14116b6d856af0985/library/std/src/panic.rs:359:14
+      std::panic::catch_unwind::<&dyn core::ops::function::Fn<(), Output = i32> + core::panic::unwind_safe::RefUnwindSafe + core::marker::Sync, i32>
+             at /rustc/48a229ceaefd4985c50990b14116b6d856af0985/library/std/src/panicking.rs:544:19
+      std::panicking::catch_unwind::<i32, &dyn core::ops::function::Fn<(), Output = i32> + core::panic::unwind_safe::RefUnwindSafe + core::marker::Sync>
+             at /rustc/48a229ceaefd4985c50990b14116b6d856af0985/library/std/src/panicking.rs:576:43
+      std::panicking::catch_unwind::do_call::<&dyn core::ops::function::Fn<(), Output = i32> + core::panic::unwind_safe::RefUnwindSafe + core::marker::Sync, i32>
+             at /rustc/48a229ceaefd4985c50990b14116b6d856af0985/library/core/src/ops/function.rs:287:21
+  33: <&dyn core::ops::function::Fn<(), Output = i32> + core::panic::unwind_safe::RefUnwindSafe + core::marker::Sync as core::ops::function::FnOnce<()>>::call_once
+             at /Users/yuluo/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/src/rust/library/std/src/rt.rs:206:18
+  32: {closure#0}<core::result::Result<(), anyhow::Error>>
+             at /Users/yuluo/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/src/rust/library/std/src/sys/backtrace.rs:166:18
+  31: __rust_begin_short_backtrace<fn() -> core::result::Result<(), anyhow::Error>, core::result::Result<(), anyhow::Error>>
+             at /Users/yuluo/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250:5
+  30: call_once<fn() -> core::result::Result<(), anyhow::Error>, ()>
+             at /Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/bin/tiny-glade-host.rs:9:5
+  29: main
+             at /Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/main.rs:108:5
+  28: standalone_main
+             at /Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/main.rs:182:5
+  27: launch
+             at /Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/run_game.rs:138:9
+  26: run_game
+             at /Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/setup.rs:232:28
+  25: setup_window
+             at /Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/setup.rs:97:31
+  24: from_winit
+             at /Users/yuluo/.cargo/git/checkouts/winit-1ef96b18fbe2a7d1/d03de0a/src/monitor.rs:126:20
+  23: position
+             at /Users/yuluo/.cargo/git/checkouts/winit-1ef96b18fbe2a7d1/d03de0a/src/platform_impl/macos/monitor.rs:208:18
+  22: position
+  21: <winit::platform_impl::platform::monitor::MonitorHandle>::scale_factor
+  20: <winit::platform_impl::platform::monitor::MonitorHandle>::ns_screen
+  19: <icrate::Foundation::additions::array::IntoIter<winit::platform_impl::platform::appkit::screen::NSScreen> as core::iter::traits::iterator::Iterator>::find::<<winit::platform_impl::platform::monitor::MonitorHandle>::ns_screen::{closure#0}>
+  18: <icrate::Foundation::additions::array::IntoIter<winit::platform_impl::platform::appkit::screen::NSScreen> as core::iter::traits::iterator::Iterator>::try_fold::<(), core::iter::traits::iterator::Iterator::find::check<objc2::rc::id::Id<winit::platform_impl::platform::appkit::screen::NSScreen>, <winit::platform_impl::platform::monitor::MonitorHandle>::ns_screen::{closure#0}>::{closure#0}, core::ops::control_flow::ControlFlow<objc2::rc::id::Id<winit::platform_impl::platform::appkit::screen::NSScreen>>>
+  17: <icrate::Foundation::additions::array::IntoIter<winit::platform_impl::platform::appkit::screen::NSScreen> as core::iter::traits::iterator::Iterator>::next
+  16: <icrate::Foundation::additions::iter::IntoIter<icrate::Foundation::fixes::generics::NSArray<winit::platform_impl::platform::appkit::screen::NSScreen>> as core::iter::traits::iterator::Iterator>::next
+  15: <icrate::Foundation::additions::iter::FastEnumeratorHelper>::next_from
+  14: <icrate::Foundation::additions::iter::FastEnumeratorHelper>::load_next_items
+  13: <objc2::runtime::protocol_object::ProtocolObject<dyn icrate::Foundation::generated::__NSEnumerator::NSFastEnumeration> as icrate::Foundation::generated::__NSEnumerator::NSFastEnumeration>::countByEnumeratingWithState_objects_count
+  12: <&objc2::runtime::protocol_object::ProtocolObject<dyn icrate::Foundation::generated::__NSEnumerator::NSFastEnumeration> as objc2::message::MessageReceiver>::send_message::<(core::ptr::non_null::NonNull<icrate::Foundation::fixes::enumerator::NSFastEnumerationState>, core::ptr::non_null::NonNull<*mut objc2::runtime::AnyObject>, usize), usize>
+  11: objc2::message::msg_send_check
+  10: objc2::message::panic_verify
+             at /rustc/48a229ceaefd4985c50990b14116b6d856af0985/library/core/src/panicking.rs:80:14
+   9: core::panicking::panic_fmt
+             at /rustc/48a229ceaefd4985c50990b14116b6d856af0985/library/std/src/panicking.rs:679:5
+   8: __rustc::rust_begin_unwind
+             at /rustc/48a229ceaefd4985c50990b14116b6d856af0985/library/std/src/sys/backtrace.rs:182:18
+   7: std::sys::backtrace::__rust_end_short_backtrace::<std::panicking::panic_handler::{closure#0}, !>
+             at /rustc/48a229ceaefd4985c50990b14116b6d856af0985/library/std/src/panicking.rs:688:13
+   6: std::panicking::panic_handler::{closure#0}
+             at /rustc/48a229ceaefd4985c50990b14116b6d856af0985/library/std/src/panicking.rs:823:13
+      std::panicking::panic_with_hook
+             at /rustc/48a229ceaefd4985c50990b14116b6d856af0985/library/alloc/src/boxed.rs:2333:9
+   5: <alloc::boxed::Box<dyn for<'a, 'b> core::ops::function::Fn<(&'a std::panic::PanicHookInfo<'b>,), Output = ()> + core::marker::Sync + core::marker::Send> as core::ops::function::Fn<(&std::panic::PanicHookInfo,)>>::call
+             at /Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/panic_reporter/mod.rs:103:25
+   4: {closure#0}
+   3: <backtrace::capture::Backtrace>::new
+   2: <backtrace::capture::Backtrace>::create
+   1: backtrace::backtrace::trace::<<backtrace::capture::Backtrace>::create::{closure#0}>
+   0: backtrace::backtrace::trace_unsynchronized::<<backtrace::capture::Backtrace>::create::{closure#0}>
+
+11:21:34.548 ERROR [tiny_glade::panic_reporter] [frame:0] PANIC: panicked at /Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/icrate-0.0.4/src/Foundation/../generated/Foundation/NSEnumerator.rs:6:1:
+invalid message send to -[_TtGCs23_ContiguousArrayStorageCSo8NSScreen_$ countByEnumeratingWithState:objects:count:]: expected return to have type code 'q', but found 'Q'
+11:21:34.548 ERROR [tiny_glade::panic_reporter] [frame:0] Error recovering screenshot: Graphics resources not available
+11:21:34.550 ERROR [tiny_glade::panic_reporter] [frame:0] Error recovering inputs: Game not yet initialized
+11:21:34.551 ERROR [tiny_glade::panic_reporter] [frame:0] Error recovering profile: 未实现-需重做: dump_profile_file 0x1403ae2f0 —— country_core::game_profile::profile_file_path 未恢复（目标 "/private/tmp/tg-original-startup-v8/Tiny Glade/Steam/0/tmp/panics/panic_2026-10-18 11-21-34"）
+11:21:34.551 ERROR [tiny_glade::panic_reporter] [frame:0] Error recovering gpu_crash_dump: Copying the GPU crash dump file: No such file or directory (os error 2)

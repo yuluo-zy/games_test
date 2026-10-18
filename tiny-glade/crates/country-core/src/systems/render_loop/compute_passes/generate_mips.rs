@@ -138,8 +138,17 @@ pub fn generate_mips<A: ComputeTexture>(
         TEX_STORAGE_WRITE,
         last_mip_view(mips),
     );
+    // Original packaged shader declares imgSrc readonly despite its legacy
+    // RW synchronization code. Preserve only the exact mip0 binding range.
+    let pass = pass.preserve_storage_texture_contents(HASH_MIP0)
+        .write_rg_storage_buffer(HASH_ATOMIC, &atomic);
+    // SPD receives (mip_levels-1). Its cross-workgroup atomic path is
+    // uniformly skipped when that push value is <=6. Above that threshold its original atomicAdd consumes existing contents;
+    // a missing actual initial atomic producer must remain a strict graph error.
+    let pass = if u32::from(mips).wrapping_sub(1) > 6 {
+        pass.preserve_storage_buffer_contents(HASH_ATOMIC)
+    } else { pass };
     let recorded = pass
-        .write_rg_storage_buffer(HASH_ATOMIC, &atomic)
         .push_constants(&spd_push_constants(u32::from(mips).wrapping_sub(1), groups))
         .dispatch_groups(groups[0], groups[1], 1);
     env.record(recorded);

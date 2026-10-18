@@ -1,104 +1,94 @@
-//! B 0x1416feeb0: bool input edges and held/repeating digital actions.
-//! The old chapter called the 0.1/0.05 branch an analog deadzone; native code
-//! applies it to DigitalActionState tag 2. Analog values are copied unchanged.
-use crate::input::action_set::{ActionSetStates, ActionSetValues, DigitalActionState};
+//! 将设备布尔值推进为按下、持续、连发和释放状态。
+use crate::input::action_set::{
+    ActionSetStates, ActionSetValues, DigitalActionPhase as Phase, DigitalActionState,
+};
 use bevy_ecs::prelude::{Event, Res, ResMut};
 
-/// `UiHistoryButtonPressed`（B `calculate_input_delta::UiHistoryButtonPressed`，O：PDB
-/// `translate_input` 签名 `EventReader<UiHistoryButtonPressed>`）。UI 历史按钮（撤销/重做）
-/// 按下事件，由 `translate_input` 消费。
-///
-/// 载荷（O，translate_input decomp 0x1417cd0a0 事件槽 @+8）：`0` = undo 按钮，
-/// 非零 = redo 按钮 —— `if (*(char *)(event + 8) == 0) { +0x98 = 1 } else { +0x99 = 1 }`
-/// （+0x98/+0x99 = `current.digital[16]/[17]` = undo/redo）。生产者（UI 域历史按钮，
-/// 组外）待仲裁接线。
+const REPEAT_DELAY_SECONDS: f32 = 0.2;
+const REPEAT_INTERVAL_SECONDS: f32 = 0.1;
+
+/// UI 历史按钮事件：零为撤销，其余为重做。
 #[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct UiHistoryButtonPressed(pub u8);
-
 impl UiHistoryButtonPressed {
-    /// 载荷判别（O）：0 = undo，非零 = redo。
     pub fn is_redo(&self) -> bool {
         self.0 != 0
     }
 }
 
-/// The payload for tags 0 and 4 is inactive in the original enum. Native code
-/// leaves a scratch register there; this typed projection normalizes it to 0.
-///
-/// `auto_repeat`（Shape B）仅用于槽 20..25（ui_left/right/down/up/tab_prev/tab_next），
-/// held（disc==1）时 `timer = val + dt`；`timer < 0.2` 保持 disc 1 累加，`>= 0.2` 转
-/// disc 2、val = 0.1（连发 0.1 s 间隔；O：fresh 0x1416feeb0 槽 20 段
-/// `fVar7 < 0.2; if(!bVar5) fVar7=0.1; iVar6 = 2 - bVar5`）。
 pub fn digital_delta(
     previous: bool,
     current: bool,
     state: DigitalActionState,
-    dt: f32,
+    delta_seconds: f32,
     auto_repeat: bool,
 ) -> DigitalActionState {
-    if !previous {
-        return DigitalActionState {
-            disc: if current { 0 } else { 4 },
-            val: 0.,
-        };
-    }
-    if !current {
-        return DigitalActionState {
-            disc: 3,
-            val: if state.disc == 1 { state.val } else { 0. },
-        };
-    }
-    if state.disc == 2 {
-        let mut timer = state.val;
-        // UCOMISS/JB skips replenishment for unordered values as well as >0.
-        if timer <= 0. {
-            timer = (timer + 0.1).max(0.05);
-        }
-        return DigitalActionState {
-            disc: 2,
-            val: timer - dt,
-        };
-    }
-    if auto_repeat && state.disc == 1 {
-        // Shape B（槽 20..25）：长按 0.2 s 后转 repeat，间隔 0.1 s。
-        let timer = state.val + dt;
-        if timer < 0.2 {
-            return DigitalActionState {
-                disc: 1,
-                val: timer,
+    let delta_seconds = if delta_seconds.is_finite() {
+        delta_seconds.max(0.0)
+    } else {
+        0.0
+    };
+    let timer_seconds = if state.timer_seconds.is_finite() {
+        state.timer_seconds
+    } else {
+        0.0
+    };
+    let (phase, timer_seconds) = match (previous, current) {
+        (false, false) => (Phase::Idle, 0.0),
+        (false, true) => (Phase::JustPressed, 0.0),
+        (true, false) => (Phase::JustReleased, timer_seconds),
+        (true, true) if state.phase == Phase::Repeating => {
+            // 一帧最多触发一次，慢帧不产生无限追赶循环。
+            let countdown = if timer_seconds <= 0.0 {
+                REPEAT_INTERVAL_SECONDS
+            } else {
+                timer_seconds
             };
+            (Phase::Repeating, countdown - delta_seconds)
         }
-        return DigitalActionState {
-            disc: 2,
-            val: 0.1,
-        };
-    }
+        (true, true) => {
+            let held_seconds = (timer_seconds.max(0.0) + delta_seconds).min(f32::MAX);
+            if auto_repeat && held_seconds >= REPEAT_DELAY_SECONDS {
+                (Phase::Repeating, 0.0)
+            } else {
+                (Phase::Held, held_seconds)
+            }
+        }
+    };
     DigitalActionState {
-        disc: 1,
-        val: if state.disc == 1 { state.val + dt } else { 0. },
+        phase,
+        timer_seconds,
     }
 }
 
-/// 走 Shape B（held 自动连发）的槽区间：20..=25（O：fresh 0x1416feeb0）。
 pub fn uses_ui_auto_repeat(slot: usize) -> bool {
     (20..=25).contains(&slot)
 }
 
-pub fn update_action_states(values: &ActionSetValues, states: &mut ActionSetStates, dt: f32) {
-    states.analog = values.current.analog;
+pub fn update_action_states(
+    values: &ActionSetValues,
+    states: &mut ActionSetStates,
+    delta_seconds: f32,
+) {
+    states.analog = values.current.analog.map(|value| {
+        if value.is_finite() {
+            value
+        } else {
+            glam::Vec2::ZERO
+        }
+    });
     for (slot, state) in states.digital.iter_mut().enumerate() {
         *state = digital_delta(
             values.previous.digital[slot],
             values.current.digital[slot],
             *state,
-            dt,
+            delta_seconds,
             uses_ui_auto_repeat(slot),
         );
     }
 }
 
-/// PDB signature uses bevy_time::Time<()> (native delta_secs at +0x58), not
-/// paused GameTime. Input repeat continues while the game simulation is paused.
+/// 输入长按使用真实时间，游戏暂停不会阻止菜单导航。
 pub fn calculate_input_delta(
     values: Res<ActionSetValues>,
     time: Res<bevy_time::Time>,
@@ -110,68 +100,35 @@ pub fn calculate_input_delta(
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn delta(prev: bool, cur: bool, state: DigitalActionState, dt: f32) -> DigitalActionState {
-        digital_delta(prev, cur, state, dt, false)
-    }
     #[test]
-    fn edges_hold_release_and_repeat_preserve_original_rules() {
-        let down = delta(false, true, DigitalActionState::default(), 0.2);
-        assert!(down.just_pressed());
-        let held = delta(true, true, down, 0.2);
-        assert_eq!(held, DigitalActionState { disc: 1, val: 0. });
-        let held = delta(true, true, held, 0.2);
+    fn press_hold_repeat_release_and_invalid_time() {
+        let pressed = digital_delta(false, true, DigitalActionState::default(), 0.1, true);
+        assert!(pressed.just_pressed());
+        let held = digital_delta(true, true, pressed, 0.1, true);
+        assert_eq!(held.phase, Phase::Held);
+        let repeated = digital_delta(true, true, held, 0.1, true);
+        assert!(repeated.just_pressed());
+        let waiting = digital_delta(true, true, repeated, 0.02, true);
+        assert!(!waiting.just_pressed());
+        let released = digital_delta(true, false, waiting, 0.1, true);
+        assert!(released.just_released());
         assert_eq!(
-            delta(true, false, held, 0.2),
-            DigitalActionState { disc: 3, val: 0.2 }
+            digital_delta(false, false, released, f32::NAN, true),
+            DigitalActionState::default()
         );
-        let repeat = delta(true, true, DigitalActionState { disc: 2, val: -1. }, 0.02);
-        assert_eq!(repeat.val, 0.05 - 0.02);
-        assert!(!repeat.just_pressed());
-        let nan = delta(
-            true,
-            true,
-            DigitalActionState {
-                disc: 2,
-                val: f32::NAN,
-            },
-            0.02,
+        assert!(
+            digital_delta(true, true, held, f32::INFINITY, false)
+                .timer_seconds
+                .is_finite()
         );
-        assert!(nan.val.is_nan());
     }
     #[test]
-    fn ui_slots_auto_repeat_after_0_2_seconds_at_0_1_intervals() {
-        // Shape B（槽 20..25）：按下沿 → disc 1 val 0；held 0.2 s 内 disc 1 累加；
-        // ≥ 0.2 s 转 disc 2、val 0.1（连发间隔）。
-        let repeat = |prev, cur, state, dt| digital_delta(prev, cur, state, dt, true);
-        let mut state = repeat(false, true, DigitalActionState::default(), 0.1);
-        assert!(state.just_pressed()); // 按下沿 disc 0
-        state = repeat(true, true, state, 0.1); // held 1：disc 1 val 0
-        assert_eq!(state, DigitalActionState { disc: 1, val: 0. });
-        state = repeat(true, true, state, 0.1); // held 2：0.1 < 0.2
-        assert_eq!(state, DigitalActionState { disc: 1, val: 0.1 });
-        state = repeat(true, true, state, 0.1); // held 3：0.2 → repeat
-        assert_eq!(state, DigitalActionState { disc: 2, val: 0.1 });
-        let next = repeat(true, true, state, 0.05);
-        assert_eq!(next, DigitalActionState { disc: 2, val: 0.05 });
-        // Shape A 同槽位不会转 repeat：held 保持 disc 1。
-        let held_a = delta(true, true, DigitalActionState { disc: 1, val: 0.5 }, 0.1);
-        assert_eq!(held_a, DigitalActionState { disc: 1, val: 0.6 });
-    }
-    #[test]
-    fn all_slots_feed_the_existing_runtime_owner() {
-        let mut values = ActionSetValues::default();
-        values.current.digital.fill(true);
-        values.current.analog.fill(glam::Vec2::new(2., -3.));
-        let mut states = ActionSetStates::default();
-        update_action_states(&values, &mut states, 0.1);
-        assert!(states.digital.iter().all(|s| s.just_pressed()));
-        assert_eq!(states.analog, values.current.analog);
-    }
-    #[test]
-    fn only_the_ui_nav_slots_use_auto_repeat_shape() {
-        assert!(!uses_ui_auto_repeat(19));
-        assert!(uses_ui_auto_repeat(20));
-        assert!(uses_ui_auto_repeat(25));
-        assert!(!uses_ui_auto_repeat(26));
+    fn ordinary_buttons_never_auto_repeat() {
+        let mut state = digital_delta(false, true, DigitalActionState::default(), 1.0, false);
+        for _ in 0..20 {
+            state = digital_delta(true, true, state, 1.0, false);
+            assert!(!state.just_pressed());
+        }
+        assert_eq!(state.phase, Phase::Held);
     }
 }

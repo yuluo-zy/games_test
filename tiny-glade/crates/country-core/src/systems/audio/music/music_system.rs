@@ -1,16 +1,16 @@
 //! B 0x140a71f20 / 0x140a72810. The PDB parameters distinguish GameTime from
 //! bevy Time<()>, and EscMenuState from AppMode.
 use super::music_player::{MusicBackend, MusicEvent, MusicInstance, MusicPlayer, StopMode};
-use crate::{
-    recovered_systems::audio::{advance_new_glade_time, snap_off_boundaries},
-    resources::{
-        gui::{DebugGui, EscMenuState, PhotomodeScreen},
-        session::{ActiveSession, GladeType},
-        time::GameTime,
-    },
-    startup::init_photomode_state::PhotomodeState,
-    systems::mode_manager::AppMode,
-};
+use crate::systems::audio::music::parameters::advance_new_glade_time;
+use crate::systems::audio::music::parameters::snap_off_boundaries;
+use crate::resources::gui::DebugGui;
+use crate::resources::gui::EscMenuState;
+use crate::resources::gui::PhotomodeScreen;
+use crate::resources::session::ActiveSession;
+use crate::resources::session::GladeType;
+use crate::resources::time::GameTime;
+use crate::startup::init_photomode_state::PhotomodeState;
+use crate::systems::mode_manager::AppMode;
 use bevy_ecs::prelude::*;
 
 #[derive(Resource)]

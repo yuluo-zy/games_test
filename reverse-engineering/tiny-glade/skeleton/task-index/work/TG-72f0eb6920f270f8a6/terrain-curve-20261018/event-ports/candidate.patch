@@ -1,0 +1,266 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/terrain/ui_edit_terrain.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/terrain/ui_edit_terrain.rs
+@@ -4,18 +4,24 @@
+ //! serde field visitor, confirmed by original matching PDB/LLVM.
+ //! The real case2 produces EditTerrainStrokeCmd, as the original FunctionSystem
+ //! signature states. Code-folded grow_one labels do not identify its event type.
+-use bevy_ecs::prelude::*;
++use bevy_ecs::{prelude::*, system::SystemParam};
+ use glam::{Vec2, Vec3};
+ 
+ use crate::{
+     resources::{
+         cursor_terrain_raycast::CursorTerrainRaycast,
++        mouse_capture::CursorCaptureCmd,
++        onboarding::{NotifyHintSystemTerrain, NotifyHintSystemTerrainSteepness},
+         terrain_editing::{StrokeId, TerrainEditingData},
++        walls::decorator_archivist::LiveDecoratorArchivist,
+         window::CursorMovedScreenSpace,
+     },
+     systems::{
++        arrow_gizmo_animation::EnableArrowGizmoStretch,
++        backend::input::mod_key::Modifiers,
++        camera_rig::main_camera::MainCameraMoved,
+         mode_manager::AppMode,
+-        terrain::RecalculateHeightMapCmd,
++        render_loop::compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd,
+         ui::resources::{
+             ui_state::UiState,
+             widget_params::{WidgetParams, WidgetVolumeShape},
+@@ -26,22 +32,14 @@
+ use super::{edit_terrain_stroke::EditTerrainStrokeCmd, terrain_hover_idx::HoveredTerrainStrokeId};
+ use tg_terrain::edit::{Adjustment, EditCommand};
+ 
+-/// crate 本地 WindowFocusEvent 承载（I：原生 `country_core::resources::window::
+-/// WindowFocusEvent`，0x10B 步长事件，载荷字节 0/1；crate 事件类型存在，
+-/// 但 terrain 域以本地类型登记载荷语义）。
++/// Deprecated host compatibility type. Original terrain editing writes the
++/// actual CursorCapture/onboarding/highlight events, not WindowFocus.
+ #[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
+ pub struct TerrainWindowFocus(pub u8);
+ 
+-/// 台阶放置数据（O：decomp `indexmap::Bucket<(DecoratorId,DecoratorId), AlignKind>`，
+-/// 0x28B 元素）——terrain→stairs/decorator 消费链的 CPU 侧接口。
+-///
+-/// 原生写偏移按生产者区分（同一泛型被当作手写记录使用，hash 槽位被复用）：
+-/// - `edit_terrain_stroke`：`+0x00` 事件计数、`+0x08` tag(0/1/2/3/4)、`+0x0c..0x14` 位置、
+-///   `+0x18/+0x1c` 值、`+0x20` 幅度；
+-/// - `ui_edit_terrain` case 2：`+0x00` 判别(2/0)、`+0x08` tag(0/2)、`+0x0c..0x18`
+-///   载荷、`+0x1c` widget id、`+0x20` 事件计数。
+-///
+-/// crate 以规范化条目承载（无宿主 consumer，字段语义按原生偏移登记）。
++/// Legacy host-only compatibility record. The former claim that terrain
++/// native queue writes were stairs records was withdrawn after matching the
++/// original FunctionSystem/consumer identities; current terrain no longer uses it.
+ #[repr(C)]
+ #[derive(Clone, Copy, Debug, Default, PartialEq)]
+ pub struct StairsPlacementEntry {
+@@ -75,15 +73,17 @@
+ /// 地形编辑历史哨兵（O：case 3 `0x8000000000000001`；区别于 deferred 的 `…0002`）。
+ pub const TERRAIN_EDIT_SENTINEL: u64 = 0x8000_0000_0000_0001;
+ 
+-/// UI 状态槽（O：case 1 写 `puVar25[0..4]`、`*(local_130+0x1e0)=1`、`*pfVar22=0.0`；
+-/// `puVar25`/`local_130`/`pfVar22` 为宿主 UI 资源，crate 以本适配资源承载）。
++/// Existing semantic capture owner: previous height/falloff, drag point and
++/// steepness accumulator. This is not a native ABI layout. The legacy active
++/// and slot_10 fields remain host compatibility only; native+0x1e0 is the real
++/// DecoratorArchivist culling policy and is written through that owner.
+ #[derive(Resource, Clone, Copy, Debug, Default)]
+ pub struct TerrainEditUiState {
+     /// case 1 写入的 hover 点/朝向（cursor 命中时 = `CursorTerrainRaycast` 位置；否则 0）。
+     pub hover: Vec3,
+-    /// `+0x10` 槽（O：stroke/host 字段写入）。
++    /// Deprecated host-only slot; not an original terrain capture field.
+     pub slot_10: f32,
+-    /// `+0x1e0` 字节置 1（O：进入拖拽状态）。
++    /// Deprecated host compatibility; original+0x1e0 is archivist.culling.allow_any.
+     pub active: u8,
+     /// 拖动累加器（O：`*pfVar22`；case 1 清 0、case 2 累加 `|dx*0.002|`）。
+     pub accum: f32,
+@@ -151,6 +151,16 @@
+     })
+ }
+ 
++#[derive(SystemParam)]
++pub struct TerrainEditEffects<'w> {
++    edits: EventWriter<'w, EditTerrainStrokeCmd>,
++    capture: EventWriter<'w, CursorCaptureCmd>,
++    arrow: EventWriter<'w, EnableArrowGizmoStretch>,
++    highlight: EventWriter<'w, AddTerrainHighlightCmd>,
++    terrain_hint: EventWriter<'w, NotifyHintSystemTerrain>,
++    steepness: EventWriter<'w, NotifyHintSystemTerrainSteepness>,
++}
++
+ /// `ui_edit_terrain` @0x140aef1f0（逐语句重建）。
+ #[allow(clippy::too_many_arguments)]
+ pub fn ui_edit_terrain(
+@@ -161,10 +171,11 @@
+     terrain: Res<TerrainEditingData>,
+     mut cursor_moved: EventReader<CursorMovedScreenSpace>,
+     mut pending: ResMut<TerrainEditHistoryPending>,
+-    mut edits: EventWriter<EditTerrainStrokeCmd>,
++    mut effects: TerrainEditEffects,
+     mut ui: ResMut<TerrainEditUiState>,
+-    mut window_focus: EventWriter<TerrainWindowFocus>,
+-    mut recalculate: EventWriter<RecalculateHeightMapCmd>,
++    modifiers: Res<Modifiers>,
++    mut camera_moved: EventReader<MainCameraMoved>,
++    mut archivist: ResMut<LiveDecoratorArchivist>,
+ ) {
+     if mode.native_tag() != 10 {
+         return;
+@@ -176,21 +187,24 @@
+     } else {
+         -1
+     };
+-    // cursor tag 门（O：`*pcVar23 == 1` → WindowFocusEvent(1)）。
++    // Original arg12 tuple@0: hovered terrain notification tag1.
+     if hovered_id != -1 && cursor.tag == 1 {
+-        window_focus.write(TerrainWindowFocus(1));
++        effects
++            .terrain_hint
++            .write(NotifyHintSystemTerrain { tag: 1 });
+     }
+     // 最后一帧 cursor-moved（O：首事件队列，取最后未读；fVar75/fVar76）。
+     let delta = last_cursor_delta(&mut cursor_moved);
++    let camera_did_move = camera_moved.read().last().is_some();
+ 
+     // 逐笔画 widget 注册 + 各自的 subtype switch（O：`do { … } while (puVar48 != 0)`；
+     // `UiState::add` 返回值即该 widget 的上下文）。
+     let stroke_ids: Vec<StrokeId> = terrain.strokes.keys().copied().collect();
+     for id in stroke_ids {
+-        let ty = if cursor.tag == 0 {
++        let ty = if !modifiers.disable_snapping() {
+             (hovered_id != id.0 as i32) as u8 * 3 + 4
+         } else {
+-            // O：默认 7（`local_1a0 = '\a'`），cursor.tag != 0 时不按 id 区分。
++            // Original modifier byte0 disables the hovered-ID edit shape.
+             7
+         };
+         let widget = ui_state.add(
+@@ -204,38 +218,35 @@
+                 [0; 2],
+             ),
+         );
++        if widget.clicked() && hovered_id != -1 && !camera_did_move {
++            effects.highlight.write(AddTerrainHighlightCmd(hovered_id));
++        }
+         let subtype = widget.dragged();
+         match terrain_drag_case(subtype) {
+             1 => {
+-                // case 1：WindowFocusEvent(0) + hover 点/朝向写入（O decomp 行 422-458）。
+-                window_focus.write(TerrainWindowFocus(0));
+-                let (pos, slot_10) = if (cursor.tag & 1) != 0 {
+-                    (cursor.pos, delta.y)
+-                } else {
+-                    (Vec3::ZERO, 0.0)
+-                };
+-                ui.hover = pos;
++                // Capture cursor, cache current parameters/point, allow decorator culling.
++                effects.capture.write(CursorCaptureCmd(false));
++                ui.hover = cursor.position();
+                 if let Some(stroke) = terrain.strokes.get(&id) {
+                     ui.previous_height_ws = stroke.height_ws;
+                     ui.previous_falloff = stroke.falloff;
+                 }
+-                ui.slot_10 = slot_10;
+-                ui.active = 1;
++                archivist.decorator_cull_allow_any();
+                 ui.accum = 0.0;
+             }
+             2 => {
+-                // Original unit notification identity is corrected with the
+-                // remaining native event ports in the next integration batch.
+-                recalculate.write(RecalculateHeightMapCmd);
++                effects.arrow.write(EnableArrowGizmoStretch);
+                 if let Some(stroke) = terrain.strokes.get(&id) {
+                     if let Some(command) =
+                         edit_command_for_drag(id, stroke.height_ws, ui.hover, delta)
+                     {
+-                        edits.write(EditTerrainStrokeCmd(command));
++                        effects.edits.write(EditTerrainStrokeCmd(command));
+                         if delta.y.abs() <= delta.x.abs() {
+                             ui.accum += (delta.x * 0.002).abs();
+                             if 0.3 < ui.accum {
+-                                window_focus.write(TerrainWindowFocus(1));
++                                effects
++                                    .steepness
++                                    .write(NotifyHintSystemTerrainSteepness { tag: 1 });
+                             }
+                         }
+                     }
+@@ -247,7 +258,10 @@
+                 }
+             }
+             3 => {
+-                window_focus.write(TerrainWindowFocus(0));
++                effects.capture.write(CursorCaptureCmd(true));
++                effects
++                    .steepness
++                    .write(NotifyHintSystemTerrainSteepness { tag: 0 });
+                 let stroke = terrain
+                     .strokes
+                     .get(&id)
+@@ -652,5 +666,60 @@
+                 .load(std::sync::atomic::Ordering::Relaxed),
+             1
+         );
+-    }
+-}
++
++        let widget = WidgetId::from_name("terrain_edit_0__canvas");
++        world
++            .resource_mut::<UiState>()
++            .replace_interaction(UiInteraction {
++                native_tag: 2,
++                native_phase: 3,
++                widget,
++            });
++        schedule.run(&mut world);
++        assert!(world.resource::<LiveDecoratorArchivist>().culling.allow_any);
++        assert_eq!(world.resource::<TerrainEditUiState>().active, 0);
++        world
++            .resource_mut::<UiState>()
++            .replace_interaction(UiInteraction {
++                native_tag: 2,
++                native_phase: 4,
++                widget,
++            });
++        world.send_event(CursorMovedScreenSpace(Vec2::new(200., 0.)));
++        schedule.run(&mut world);
++        world
++            .resource_mut::<UiState>()
++            .replace_interaction(UiInteraction {
++                native_tag: 2,
++                native_phase: 5,
++                widget,
++            });
++        schedule.run(&mut world);
++        let capture = world.resource::<Events<CursorCaptureCmd>>();
++        let mut reader = capture.get_cursor();
++        assert_eq!(
++            reader
++                .read(capture)
++                .map(|event| event.0)
++                .collect::<Vec<_>>(),
++            [false, true]
++        );
++        let steep = world.resource::<Events<NotifyHintSystemTerrainSteepness>>();
++        let mut reader = steep.get_cursor();
++        assert_eq!(
++            reader
++                .read(steep)
++                .map(|event| event.tag)
++                .collect::<Vec<_>>(),
++            [1, 0]
++        );
++        assert_eq!(world.resource::<Events<EnableArrowGizmoStretch>>().len(), 2);
++        assert!(matches!(
++            world.resource::<TerrainEditHistoryPending>().edit.as_ref(),
++            Some(tg_terrain::schema::TerrainEdit::EditTerrainStroke {
++                index: StrokeId(0),
++                ..
++            })
++        ));
++    }
++}

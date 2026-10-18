@@ -1,4 +1,12 @@
 use super::*;
+use crate::preference::replace_preference;
+use std::{
+    io::Write,
+    sync::{
+        OnceLock,
+        atomic::{AtomicU64, Ordering},
+    },
+};
 static TEST_ID: AtomicU64 = AtomicU64::new(0);
 struct Fixture(PathBuf);
 impl Fixture {
@@ -51,21 +59,29 @@ fn transactional_failure_preserves_old_snapshot_and_readers() {
 #[test]
 fn malformed_requested_pack_falls_back_but_malformed_default_returns_error() {
     let fixture = Fixture::new();
-    let service = fixture.service(true);
     fixture.pack("bad", "Common: 123");
-    service.load_locale("bad").unwrap();
-    assert_eq!(&*service.game_locale(), "en-US");
-    let snapshot = service.snapshot.load_full().unwrap();
-    assert!(Arc::ptr_eq(
-        &snapshot.primary,
-        snapshot.fallback.as_ref().unwrap()
-    ));
-    drop(snapshot);
-    fixture.pack("en-US", "Common: 123");
-    assert!(service.load_locale("bad").is_err());
-    assert_eq!(&*service.lookup("Common"), "English");
-    for locale in ["../a", "a/b", "a\\b", "", "/a"] {
-        assert!(service.load_locale(locale).is_err());
+    for fallback_enabled in [false, true] {
+        let service = fixture.service(fallback_enabled);
+        // Whole-pack replacement remains available even when key fallback is off.
+        service.load_locale("bad").unwrap();
+        assert_eq!(&*service.game_locale(), "en-US");
+        let snapshot = service.snapshot.load_full().unwrap();
+        if fallback_enabled {
+            assert!(Arc::ptr_eq(
+                &snapshot.primary,
+                snapshot.fallback.as_ref().unwrap()
+            ));
+        } else {
+            assert!(snapshot.fallback.is_none());
+        }
+        drop(snapshot);
+        fixture.pack("en-US", "Common: 123");
+        assert!(service.load_locale("bad").is_err());
+        assert_eq!(&*service.lookup("Common"), "English");
+        for locale in ["../a", "a/b", "a\\b", "", "/a"] {
+            assert!(service.load_locale(locale).is_err());
+        }
+        fixture.pack("en-US", "Common: English\nEnglishOnly: Fallback");
     }
 }
 #[test]
@@ -181,15 +197,30 @@ fn concurrent_loads_commit_complete_snapshots_and_matching_preferences() {
     );
 }
 #[test]
-fn logger_can_reenter_missing_lookup_without_recursion_or_deadlock() {
+fn logger_can_reenter_lookup_and_load_without_recursion_or_deadlock() {
     static LIBRARY: OnceLock<LanguageLibrary> = OnceLock::new();
+    static SERVICE: OnceLock<Localization> = OnceLock::new();
+    thread_local! {
+        static ACTIVE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+        static CALLS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    }
     struct ReentrantLogger;
     impl log::Log for ReentrantLogger {
         fn enabled(&self, _: &log::Metadata<'_>) -> bool {
             true
         }
         fn log(&self, _: &log::Record<'_>) {
-            let _ = LIBRARY.get().unwrap().get("logger-inner");
+            if !ACTIVE.get() {
+                return;
+            }
+            let calls = CALLS.get() + 1;
+            CALLS.set(calls);
+            // Bound the broken case so a regression fails instead of overflowing
+            // the stack. This logger deliberately invokes both service surfaces.
+            if calls < 4 {
+                let _ = LIBRARY.get().unwrap().get("logger-inner");
+                SERVICE.get().unwrap().load_locale("unavailable").unwrap();
+            }
         }
         fn flush(&self) {}
     }
@@ -197,10 +228,24 @@ fn logger_can_reenter_missing_lookup_without_recursion_or_deadlock() {
     LIBRARY
         .set(LanguageLibrary::new("logger".into(), Default::default()))
         .unwrap();
+    let fixture = Fixture::new();
+    assert!(SERVICE.set(fixture.service(true)).is_ok());
     log::set_logger(&LOGGER).unwrap();
     log::set_max_level(log::LevelFilter::Warn);
+    ACTIVE.set(true);
     assert_eq!(
         &*LIBRARY.get().unwrap().get("logger-outer"),
         "?_logger-outer"
+    );
+    assert_eq!(
+        &*SERVICE.get().unwrap().lookup("service-outer"),
+        "?_service-outer"
+    );
+    SERVICE.get().unwrap().load_locale("unavailable").unwrap();
+    ACTIVE.set(false);
+    assert_eq!(
+        CALLS.get(),
+        3,
+        "nested service diagnostics must be suppressed"
     );
 }

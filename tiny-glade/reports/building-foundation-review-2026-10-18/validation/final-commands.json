@@ -1,0 +1,91 @@
+[
+  {
+    "check": "test",
+    "command": [
+      "cargo",
+      "test",
+      "--offline",
+      "--locked",
+      "-p",
+      "tg-building-runtime",
+      "-p",
+      "tabloid",
+      "-p",
+      "tg-package-integrity",
+      "--all-targets",
+      "--target-dir",
+      "/private/tmp/tg-runtime-review-target"
+    ],
+    "environment": {
+      "CARGO_INCREMENTAL": "0"
+    },
+    "exit": 0
+  },
+  {
+    "check": "doc",
+    "command": [
+      "cargo",
+      "test",
+      "--offline",
+      "--locked",
+      "-p",
+      "tg-building-runtime",
+      "-p",
+      "tabloid",
+      "-p",
+      "tg-package-integrity",
+      "--doc",
+      "--target-dir",
+      "/private/tmp/tg-runtime-review-target"
+    ],
+    "environment": {
+      "CARGO_INCREMENTAL": "0"
+    },
+    "exit": 0
+  },
+  {
+    "check": "clippy",
+    "command": [
+      "cargo",
+      "clippy",
+      "--offline",
+      "--locked",
+      "-p",
+      "tg-building-runtime",
+      "-p",
+      "tabloid",
+      "-p",
+      "tg-package-integrity",
+      "--all-targets",
+      "--no-deps",
+      "--target-dir",
+      "/private/tmp/tg-runtime-review-target",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "environment": {
+      "CARGO_INCREMENTAL": "0"
+    },
+    "exit": 0
+  },
+  {
+    "check": "fmt",
+    "command": [
+      "cargo",
+      "fmt",
+      "-p",
+      "tg-building-runtime",
+      "-p",
+      "tabloid",
+      "-p",
+      "tg-package-integrity",
+      "--",
+      "--check"
+    ],
+    "environment": {
+      "CARGO_INCREMENTAL": "0"
+    },
+    "exit": 0
+  }
+]

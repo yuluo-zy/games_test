@@ -1,0 +1,49 @@
+--- a/crates/tiny-glade/src/render_host.rs
++++ b/crates/tiny-glade/src/render_host.rs
+@@ -2203,6 +2203,7 @@
+             bindings,
+             access_ranges,
+             inactive_texture_bindings,
++            undefined_texture_bindings,
+             preserving_buffers,
+             preserving_texture_bindings,
+             external_bindings,
+@@ -2475,10 +2476,15 @@
+                 }
+             });
+             let mut contents_unused = false;
++            let mut allow_undefined = false;
+             let mut preserves_texture = false;
+             let range = if let Some((index, view)) = view {
+                 used_image_views[index] = true;
+                 contents_unused = inactive_texture_bindings.contains(&(index as u8));
++                allow_undefined = undefined_texture_bindings.contains(&(index as u8));
++                if allow_undefined && (contents_unused || rhapsody::raw::access_table::is_write(access.access)) {
++                    return Err(rhapsody::Error::invalid_usage("undefined texture read metadata conflicts with its actual access"));
++                }
+                 preserves_texture = preserving_texture_bindings.contains(&(index as u8));
+                 let resource = graph.resource_handle(access.resource)?;
+                 compute_view_range(
+@@ -2488,7 +2494,7 @@
+             } else {
+                 rhapsody::rg::resource::AccessRange::Whole
+             };
+-            declared_accesses.push((*access, range, contents_unused, preserves_texture));
++            declared_accesses.push((*access, range, contents_unused, allow_undefined, preserves_texture));
+         }
+         if bindings.iter().enumerate().any(|(index, binding)| {
+             matches!(binding, CorePassBinding::ImageView { .. }) && !used_image_views[index]
+@@ -2499,10 +2505,12 @@
+         }
+         let mut declared = graph.add_pass(name);
+         declared.on_queue(rhapsody::device::QueueClass::Compute);
+-        for (a, range, contents_unused, preserves_texture) in &declared_accesses {
++        for (a, range, contents_unused, allow_undefined, preserves_texture) in &declared_accesses {
+             let resource = declared.resource_handle(a.resource)?;
+             if *contents_unused && !rhapsody::raw::access_table::is_write(a.access) {
+                 declared.add_inactive_resource_read_range(resource, a.access, a.group, *range)?;
++            } else if *allow_undefined && !rhapsody::raw::access_table::is_write(a.access) {
++                declared.add_undefined_content_read_range(resource, a.access, a.group, *range)?;
+             } else if (*preserves_texture || preserving_buffers.contains(&a.resource))
+                 && rhapsody::raw::access_table::is_write(a.access)
+             {

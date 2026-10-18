@@ -215,6 +215,12 @@ pub fn nani_draw_world(b: DrawBuilder<'_>, kind: GpuWorldSubsetKind, w: &World) 
 pub struct LibView<'a>(pub &'a AssetSsboLibrary);
 
 impl SsboInstanceView for LibView<'_> {
+    fn lookup_buffer(&self, ssbo_id: u64) -> Option<(&str, ManagedHandle)> {
+        self.0
+            .lookup_buffer(SsboId(NameHash(ssbo_id)))
+            .map(|(name, handle)| (name, ManagedHandle(handle.0)))
+    }
+
     fn lookup(&self, ssbo_id: u64) -> Option<(&str, Option<InstanceBufferView>)> {
         self.0
             .lookup(SsboId(NameHash(ssbo_id)))
@@ -277,6 +283,12 @@ pub fn stairs_draw_cb(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
 /// 墙砖回调（LOD0/LOD1 同形）：实体 → 代理字节；`gate` 决定 `discard`（先于任何资源读取）；再取
 /// `AssetSsboLibrary`、`WallHighlight.ty`（仅常规路径）与 `bind_brick_erase_highlight` 的四个资源。
 fn bricks_cb<const LOD: u8>(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+    if w.get_resource::<crate::geometry::runtime::WallBrickUploadStatus>()
+        .is_some_and(|status| !status.gpu_ready)
+    {
+        b.discard();
+        return;
+    }
     let px = comp::<WallBrickInstancedDrawProxyView>(w, p.entity);
     let proxy = BrickProxy {
         b0: px.b0,
@@ -688,7 +700,11 @@ pub fn env37_body<'p>(
 }
 
 pub fn env37(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
-    let a = *res::<LogoAnimationView>(w);
+    let logo = res::<crate::resources::logo_animation::LogoAnimation>(w);
+    let a = LogoAnimationView {
+        f0: logo.progress[0],
+        f10: logo.progress[4],
+    };
     env37_body(b, &a, |b| b.draw());
 }
 

@@ -1,0 +1,613 @@
+// VA 0x141234bf0 wall_audio_orchestrator
+// SIG void __cdecl wall_audio_orchestrator(void)
+
+void __cdecl country_core::systems::audio::wall_audio_orchestrator::wall_audio_orchestrator(void)
+
+{
+  char *pcVar1;
+  undefined8 *puVar2;
+  float fVar3;
+  undefined4 uVar4;
+  undefined4 uVar5;
+  float fVar6;
+  undefined4 uVar7;
+  longlong lVar8;
+  ulonglong uVar9;
+  undefined4 *puVar10;
+  undefined8 uVar11;
+  undefined8 uVar12;
+  uint uVar13;
+  uint uVar14;
+  int iVar15;
+  int iVar16;
+  int iVar17;
+  int iVar18;
+  uint extraout_EAX;
+  longlong lVar19;
+  longlong lVar20;
+  ulonglong extraout_RAX;
+  undefined8 *in_RCX;
+  ulonglong uVar21;
+  longlong *in_RDX;
+  ulonglong uVar22;
+  undefined1 uVar23;
+  longlong lVar24;
+  longlong lVar25;
+  undefined1 uVar26;
+  char cVar27;
+  ulonglong uVar28;
+  longlong lVar29;
+  longlong *in_R8;
+  longlong lVar30;
+  longlong lVar31;
+  uint uVar32;
+  longlong *in_R9;
+  ushort uVar33;
+  longlong lVar34;
+  ulonglong *puVar35;
+  byte bVar36;
+  char cVar39;
+  char cVar40;
+  char cVar41;
+  float extraout_XMM0_Da;
+  float fVar37;
+  undefined1 auVar38 [16];
+  undefined1 auVar42 [16];
+  float fVar43;
+  undefined1 auVar44 [16];
+  undefined1 unaff_XMM6_Ba;
+  undefined1 unaff_XMM6_Bb;
+  undefined1 unaff_XMM6_Bc;
+  undefined1 unaff_XMM6_Bd;
+  undefined1 unaff_XMM6_Be;
+  undefined1 unaff_XMM6_Bf;
+  undefined1 unaff_XMM6_Bg;
+  undefined1 unaff_XMM6_Bh;
+  undefined1 unaff_XMM6_Bi;
+  undefined1 unaff_XMM6_Bj;
+  undefined1 unaff_XMM6_Bk;
+  undefined1 unaff_XMM6_Bl;
+  undefined1 unaff_XMM6_Bm;
+  undefined1 unaff_XMM6_Bn;
+  undefined1 unaff_XMM6_Bo;
+  undefined1 unaff_XMM6_Bp;
+  float fVar45;
+  undefined1 local_160;
+  undefined5 uStack_15f;
+  undefined1 uStack_15a;
+  undefined1 uStack_159;
+  undefined6 uStack_158;
+  undefined1 uStack_152;
+  undefined1 uStack_151;
+  undefined2 uStack_150;
+  undefined1 uStack_14e;
+  undefined1 uStack_14d;
+  float local_14c;
+  undefined1 local_148;
+  uint local_140;
+  longlong *local_138;
+  undefined8 local_130;
+  undefined4 local_128;
+  float local_124 [4];
+  uint local_114;
+  longlong local_108;
+  ulonglong *local_100;
+  longlong local_f8;
+  longlong *local_f0;
+  
+  local_100 = (ulonglong *)*in_RCX;
+  lVar8 = in_RCX[1];
+  uVar9 = *local_100;
+  uVar28 = 0;
+  uVar22 = uVar9 - *(ulonglong *)(lVar8 + 0x18);
+  if (uVar9 < *(ulonglong *)(lVar8 + 0x18)) {
+    uVar22 = uVar28;
+  }
+  uVar21 = uVar9 - *(ulonglong *)(lVar8 + 0x38);
+  if (uVar9 < *(ulonglong *)(lVar8 + 0x38)) {
+    uVar21 = uVar28;
+  }
+  lVar24 = uVar22 * 0x20 + *(longlong *)(lVar8 + 8);
+  uVar9 = *(ulonglong *)(lVar8 + 0x10) - uVar22;
+  if (*(ulonglong *)(lVar8 + 0x10) < uVar22) {
+    lVar24 = 8;
+    uVar9 = uVar28;
+  }
+  lVar29 = uVar21 * 0x20 + *(longlong *)(lVar8 + 0x28);
+  uVar22 = *(ulonglong *)(lVar8 + 0x30) - uVar21;
+  if (*(ulonglong *)(lVar8 + 0x30) < uVar21) {
+    lVar29 = 8;
+    uVar22 = uVar28;
+  }
+  *local_100 = (*(longlong *)(lVar8 + 0x40) - uVar22) - uVar9;
+  local_f8 = uVar22 * 0x20 + lVar29;
+  local_138 = (longlong *)*in_R8;
+  local_108 = *in_R9;
+  local_f0 = local_138 + 4;
+  uVar4 = *(undefined4 *)((longlong)in_RDX + 0x1c);
+  lVar8 = *in_RDX;
+  puVar10 = (undefined4 *)in_RDX[2];
+  iVar15 = -(uint)(CONCAT13(unaff_XMM6_Bd,
+                            CONCAT12(unaff_XMM6_Bc,CONCAT11(unaff_XMM6_Bb,unaff_XMM6_Ba))) ==
+                  CONCAT13(unaff_XMM6_Bd,
+                           CONCAT12(unaff_XMM6_Bc,CONCAT11(unaff_XMM6_Bb,unaff_XMM6_Ba))));
+  iVar16 = -(uint)(CONCAT13(unaff_XMM6_Bh,
+                            CONCAT12(unaff_XMM6_Bg,CONCAT11(unaff_XMM6_Bf,unaff_XMM6_Be))) ==
+                  CONCAT13(unaff_XMM6_Bh,
+                           CONCAT12(unaff_XMM6_Bg,CONCAT11(unaff_XMM6_Bf,unaff_XMM6_Be))));
+  iVar17 = -(uint)(CONCAT13(unaff_XMM6_Bl,
+                            CONCAT12(unaff_XMM6_Bk,CONCAT11(unaff_XMM6_Bj,unaff_XMM6_Bi))) ==
+                  CONCAT13(unaff_XMM6_Bl,
+                           CONCAT12(unaff_XMM6_Bk,CONCAT11(unaff_XMM6_Bj,unaff_XMM6_Bi))));
+  iVar18 = -(uint)(CONCAT13(unaff_XMM6_Bp,
+                            CONCAT12(unaff_XMM6_Bo,CONCAT11(unaff_XMM6_Bn,unaff_XMM6_Bm))) ==
+                  CONCAT13(unaff_XMM6_Bp,
+                           CONCAT12(unaff_XMM6_Bo,CONCAT11(unaff_XMM6_Bn,unaff_XMM6_Bm))));
+  lVar25 = lVar24;
+  puVar35 = local_100;
+LAB_14123567f:
+  do {
+    if ((lVar25 == 0) || (lVar25 == uVar9 * 0x20 + lVar24)) {
+      if ((lVar29 == 0) || (lVar29 == local_f8)) {
+        return;
+      }
+      lVar19 = 0;
+      lVar20 = lVar29 + 0x20;
+      lVar31 = lVar29;
+    }
+    else {
+      lVar19 = lVar25 + 0x20;
+      lVar20 = lVar29;
+      lVar31 = lVar25;
+    }
+    lVar29 = lVar20;
+    *puVar35 = *puVar35 + 1;
+    lVar20 = *(longlong *)(lVar31 + 8);
+    local_160 = (undefined1)lVar20;
+    uStack_15f = (undefined5)((ulonglong)lVar20 >> 8);
+    uStack_15a = (undefined1)((ulonglong)lVar20 >> 0x30);
+    uStack_159 = (undefined1)((ulonglong)lVar20 >> 0x38);
+    lVar25 = lVar19;
+  } while (local_138[3] == 0);
+  core::hash::BuildHasher::
+  hash_one<std::hash::random::RandomState,ref_<country_core::systems::ui::GlobalId>_>();
+  lVar19 = *local_138;
+  bVar36 = (byte)(extraout_RAX >> 0x39);
+  auVar38 = ZEXT216(CONCAT11(bVar36,bVar36));
+  auVar38 = pshuflw(auVar38,auVar38,0);
+  lVar30 = 0;
+  uVar22 = extraout_RAX;
+  do {
+    uVar22 = local_138[1] & uVar22;
+    pcVar1 = (char *)(lVar19 + uVar22);
+    cVar27 = auVar38[0];
+    auVar44[0] = -(*pcVar1 == cVar27);
+    cVar39 = auVar38[1];
+    auVar44[1] = -(pcVar1[1] == cVar39);
+    cVar40 = auVar38[2];
+    auVar44[2] = -(pcVar1[2] == cVar40);
+    cVar41 = auVar38[3];
+    auVar44[3] = -(pcVar1[3] == cVar41);
+    auVar44[4] = -(pcVar1[4] == cVar27);
+    auVar44[5] = -(pcVar1[5] == cVar39);
+    auVar44[6] = -(pcVar1[6] == cVar40);
+    auVar44[7] = -(pcVar1[7] == cVar41);
+    auVar44[8] = -(pcVar1[8] == cVar27);
+    auVar44[9] = -(pcVar1[9] == cVar39);
+    auVar44[10] = -(pcVar1[10] == cVar40);
+    auVar44[0xb] = -(pcVar1[0xb] == cVar41);
+    auVar44[0xc] = -(pcVar1[0xc] == cVar27);
+    auVar44[0xd] = -(pcVar1[0xd] == cVar39);
+    auVar44[0xe] = -(pcVar1[0xe] == cVar40);
+    auVar44[0xf] = -(pcVar1[0xf] == cVar41);
+    uVar33 = (ushort)(SUB161(auVar44 >> 7,0) & 1) | (ushort)(SUB161(auVar44 >> 0xf,0) & 1) << 1 |
+             (ushort)(SUB161(auVar44 >> 0x17,0) & 1) << 2 |
+             (ushort)(SUB161(auVar44 >> 0x1f,0) & 1) << 3 |
+             (ushort)(SUB161(auVar44 >> 0x27,0) & 1) << 4 |
+             (ushort)(SUB161(auVar44 >> 0x2f,0) & 1) << 5 |
+             (ushort)(SUB161(auVar44 >> 0x37,0) & 1) << 6 |
+             (ushort)(SUB161(auVar44 >> 0x3f,0) & 1) << 7 |
+             (ushort)(SUB161(auVar44 >> 0x47,0) & 1) << 8 |
+             (ushort)(SUB161(auVar44 >> 0x4f,0) & 1) << 9 |
+             (ushort)(SUB161(auVar44 >> 0x57,0) & 1) << 10 |
+             (ushort)(SUB161(auVar44 >> 0x5f,0) & 1) << 0xb |
+             (ushort)(SUB161(auVar44 >> 0x67,0) & 1) << 0xc |
+             (ushort)(SUB161(auVar44 >> 0x6f,0) & 1) << 0xd |
+             (ushort)(SUB161(auVar44 >> 0x77,0) & 1) << 0xe | (ushort)(auVar44[0xf] >> 7) << 0xf;
+    uVar32 = (uint)uVar33;
+    while (uVar33 != 0) {
+      uVar13 = 0;
+      for (uVar14 = uVar32; (uVar14 & 1) == 0; uVar14 = uVar14 >> 1 | 0x80000000) {
+        uVar13 = uVar13 + 1;
+      }
+      lVar34 = (uVar13 + uVar22 & local_138[1]) * -0x2a8;
+      if (*(longlong *)(lVar19 + -0x2a8 + lVar34) == lVar20) {
+        if ((*(ulonglong *)(lVar19 + -0x290 + lVar34) < 2) ||
+           (*(float *)(lVar19 + -0x270 + lVar34) <= 0.0)) {
+                    // WARNING: Subroutine does not return
+          core::panicking::panic();
+        }
+        uVar22 = lVar19 + lVar34;
+        bVar36 = *(byte *)(lVar31 + 0x1c);
+        fVar3 = *(float *)(&__real_3eb333333f800000 + (ulonglong)((ulonglong)bVar36 == 4) * 4);
+        fVar43 = *(float *)(uVar22 - 0xe4);
+        fVar37 = *(float *)(uVar22 - 0xe8);
+        fVar6 = fVar37;
+        if (fVar37 <= fVar43) {
+          fVar6 = fVar43;
+        }
+        fVar37 = (float)(~-(uint)NAN(fVar43) & (uint)fVar6 | -(uint)NAN(fVar43) & (uint)fVar37);
+        fVar43 = *(float *)(uVar22 - 0xec);
+        fVar6 = fVar43;
+        if (fVar43 <= fVar37) {
+          fVar6 = fVar37;
+        }
+        fVar43 = (float)(-(uint)NAN(fVar37) & (uint)fVar43 | ~-(uint)NAN(fVar37) & (uint)fVar6);
+        if ((fVar43 != 0.0) || (NAN(fVar43))) {
+          if (((*(uint *)(uVar22 - 0xe4) & 0x7fffffff) != 0) ||
+             (uVar26 = 3, *(float *)(uVar22 - 0x7c) <= 0.0)) {
+            if (((*(uint *)(uVar22 - 0xec) & 0x7fffffff) != 0) || (*(float *)(uVar22 - 0x84) <= 0.0)
+               ) {
+              if (((*(uint *)(uVar22 - 0xe8) & 0x7fffffff) != 0) ||
+                 (uVar26 = 0xc, *(float *)(uVar22 - 0x80) <= 0.0)) goto LAB_141234f00;
+            }
+            else {
+              uVar26 = 8;
+            }
+          }
+LAB_141235540:
+          uVar7 = *(undefined4 *)(lVar31 + 0x18);
+          uStack_151 = (undefined1)uVar7;
+          uStack_150 = (undefined2)((uint)uVar7 >> 8);
+          uStack_14e = (undefined1)((uint)uVar7 >> 0x18);
+          uVar12 = *(undefined8 *)(lVar31 + 0x10);
+          uStack_159 = (undefined1)uVar12;
+          uStack_158 = (undefined6)((ulonglong)uVar12 >> 8);
+          uStack_152 = (undefined1)((ulonglong)uVar12 >> 0x38);
+          uVar23 = *(undefined1 *)(lVar31 + 0x1d);
+          *puVar10 = uVar4;
+          lVar19 = *(longlong *)(lVar8 + 0x30);
+          uVar12 = *(undefined8 *)(lVar8 + 0x40);
+          if (lVar19 == *(longlong *)(lVar8 + 0x20)) {
+            alloc::raw_vec::RawVec::
+            grow_one<indexmap::Bucket<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>,enum2_<country_core::resources::stairs::stairs_assembly_params::AlignKind>_>,alloc::alloc::Global>
+                      ();
+          }
+          lVar20 = *(longlong *)(lVar8 + 0x28);
+          *(undefined8 *)(lVar20 + lVar19 * 0x28) = uVar12;
+          *(undefined1 *)(lVar20 + 8 + lVar19 * 0x28) = uVar26;
+          puVar2 = (undefined8 *)(lVar20 + 9 + lVar19 * 0x28);
+          *puVar2 = CONCAT17(uStack_159,CONCAT16(uStack_15a,CONCAT51(uStack_15f,local_160)));
+          puVar2[1] = CONCAT17(uStack_151,CONCAT16(uStack_152,uStack_158));
+          *(uint *)(lVar20 + 0x18 + lVar19 * 0x28) =
+               CONCAT13(uStack_14e,CONCAT21(uStack_150,uStack_151));
+          *(float *)(lVar20 + 0x1c + lVar19 * 0x28) = fVar3;
+        }
+        else {
+LAB_141234f00:
+          if (bVar36 != 3) {
+            if (*(int *)(uVar22 - 0x6c) - *(int *)(uVar22 - 0xd4) < 1) {
+              if (-1 < *(int *)(uVar22 - 0x6c) - *(int *)(uVar22 - 0xd4)) goto LAB_141234f08;
+              fVar43 = *(float *)(uVar22 - 0x7c) - *(float *)(uVar22 - 0xe4);
+              uVar26 = 4;
+              if ((fVar43 == 0.0) && (!NAN(fVar43))) {
+                fVar43 = *(float *)(uVar22 - 0x78) - *(float *)(uVar22 - 0xe0);
+                uVar26 = 0x11;
+                if ((fVar43 == 0.0) && (!NAN(fVar43))) {
+                  fVar43 = *(float *)(uVar22 - 0x70) - *(float *)(uVar22 - 0xd8);
+                  uVar26 = 0x16;
+                  if ((fVar43 == 0.0) && (!NAN(fVar43))) {
+                    fVar43 = *(float *)(uVar22 - 0x74) - *(float *)(uVar22 - 0xdc);
+                    uVar26 = 0x13;
+                    if ((fVar43 == 0.0) && (!NAN(fVar43))) {
+                      fVar43 = *(float *)(uVar22 - 0x84) - *(float *)(uVar22 - 0xec);
+                      uVar26 = 0xb;
+                      goto joined_r0x00014123552f;
+                    }
+                  }
+                }
+              }
+            }
+            else {
+              fVar43 = *(float *)(uVar22 - 0x7c) - *(float *)(uVar22 - 0xe4);
+              uVar26 = 3;
+              if ((fVar43 == 0.0) && (!NAN(fVar43))) {
+                fVar43 = *(float *)(uVar22 - 0x78) - *(float *)(uVar22 - 0xe0);
+                uVar26 = 0x11;
+                if ((fVar43 == 0.0) && (!NAN(fVar43))) {
+                  fVar43 = *(float *)(uVar22 - 0x70) - *(float *)(uVar22 - 0xd8);
+                  uVar26 = 0x16;
+                  if ((fVar43 == 0.0) && (!NAN(fVar43))) {
+                    fVar43 = *(float *)(uVar22 - 0x74) - *(float *)(uVar22 - 0xdc);
+                    uVar26 = 0x13;
+                    if ((fVar43 == 0.0) && (!NAN(fVar43))) {
+                      fVar43 = *(float *)(uVar22 - 0x84) - *(float *)(uVar22 - 0xec);
+                      uVar26 = 8;
+joined_r0x00014123552f:
+                      if ((fVar43 == 0.0) && (!NAN(fVar43))) {
+                        fVar43 = *(float *)(uVar22 - 0x80) - *(float *)(uVar22 - 0xe8);
+                        uVar26 = 0xc;
+                        if ((fVar43 == 0.0) && (!NAN(fVar43))) goto LAB_141234f08;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            goto LAB_141235540;
+          }
+LAB_141234f08:
+          if (*(int *)(uVar22 - 100) - *(int *)(uVar22 - 0xcc) < 1) {
+LAB_141234f3a:
+            if ((0 < *(int *)(uVar22 - 0x5c) - *(int *)(uVar22 - 0xc4)) &&
+               (uVar26 = 0xe, 2.0 < *(float *)(uVar22 - 0x14))) goto LAB_141234f65;
+            if ((*(int *)(uVar22 - 100) == *(int *)(uVar22 - 0xcc)) &&
+               (2.0 < *(float *)(uVar22 - 0x14))) {
+              uVar32 = *(uint *)(uVar22 - 0x5c);
+              if (*(uint *)(uVar22 - 0x5c) < *(uint *)(uVar22 - 100)) {
+                uVar32 = *(uint *)(uVar22 - 100);
+              }
+              if (2 < uVar32) {
+                resources::walls::material_stats::MaterialStats::max_pillar_movement();
+                fVar43 = extraout_XMM0_Da * *(float *)(local_108 + 0x58);
+                if (0.03 < fVar43) {
+                  uVar7 = *(undefined4 *)(lVar31 + 0x18);
+                  uStack_150 = (undefined2)uVar7;
+                  uStack_14e = (undefined1)((uint)uVar7 >> 0x10);
+                  uStack_14d = (undefined1)((uint)uVar7 >> 0x18);
+                  uVar12 = *(undefined8 *)(lVar31 + 0x10);
+                  uStack_158 = (undefined6)uVar12;
+                  uStack_152 = (undefined1)((ulonglong)uVar12 >> 0x30);
+                  uStack_151 = (undefined1)((ulonglong)uVar12 >> 0x38);
+                  local_148 = *(undefined1 *)(lVar31 + 0x1d);
+                  fVar37 = (fVar43 + -0.03) / (*(float *)(local_108 + 0x58) * 0.2);
+                  fVar43 = 0.0;
+                  if (0.0 <= fVar37) {
+                    fVar43 = fVar37;
+                  }
+                  fVar37 = 1.0;
+                  if (fVar43 <= 1.0) {
+                    fVar37 = fVar43;
+                  }
+                  fVar37 = (3.0 - (fVar37 + fVar37)) * fVar37 * fVar37;
+                  fVar43 = 0.0;
+                  if (0.0 <= fVar37) {
+                    fVar43 = fVar37;
+                  }
+                  local_14c = fVar3;
+                  if (fVar43 <= fVar3) {
+                    local_14c = fVar43;
+                  }
+                  local_160 = 0x10;
+                  bevy_ecs::event::writer::EventWriter::
+                  write<country_core::systems::audio::wall_audio_fmod::PlayWallAudio>();
+                }
+              }
+            }
+          }
+          else {
+            uVar32 = *(uint *)(uVar22 - 0x5c);
+            if (*(uint *)(uVar22 - 0x5c) < *(uint *)(uVar22 - 100)) {
+              uVar32 = *(uint *)(uVar22 - 100);
+            }
+            uVar26 = 0xf;
+            if (uVar32 < 3) goto LAB_141234f3a;
+LAB_141234f65:
+            uVar23 = *(undefined1 *)(lVar31 + 0x1d);
+            lVar19 = (ulonglong)bVar36 - 1;
+            if (2 < (byte)(bVar36 - 2)) {
+              lVar19 = 0;
+            }
+            uVar7 = (&DAT_142c1ea48)[lVar19];
+            uVar5 = *(undefined4 *)(lVar31 + 0x18);
+            uStack_151 = (undefined1)uVar5;
+            uStack_150 = (undefined2)((uint)uVar5 >> 8);
+            uStack_14e = (undefined1)((uint)uVar5 >> 0x18);
+            uVar12 = *(undefined8 *)(lVar31 + 0x10);
+            uStack_159 = (undefined1)uVar12;
+            uStack_158 = (undefined6)((ulonglong)uVar12 >> 8);
+            uStack_152 = (undefined1)((ulonglong)uVar12 >> 0x38);
+            *puVar10 = uVar4;
+            lVar19 = *(longlong *)(lVar8 + 0x30);
+            uVar12 = *(undefined8 *)(lVar8 + 0x40);
+            if (lVar19 == *(longlong *)(lVar8 + 0x20)) {
+              alloc::raw_vec::RawVec::
+              grow_one<indexmap::Bucket<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>,enum2_<country_core::resources::stairs::stairs_assembly_params::AlignKind>_>,alloc::alloc::Global>
+                        ();
+            }
+            lVar20 = *(longlong *)(lVar8 + 0x28);
+            *(undefined8 *)(lVar20 + lVar19 * 0x28) = uVar12;
+            *(undefined1 *)(lVar20 + 8 + lVar19 * 0x28) = uVar26;
+            puVar2 = (undefined8 *)(lVar20 + 9 + lVar19 * 0x28);
+            *puVar2 = CONCAT17(uStack_159,CONCAT16(uStack_15a,CONCAT51(uStack_15f,local_160)));
+            puVar2[1] = CONCAT17(uStack_151,CONCAT16(uStack_152,uStack_158));
+            *(uint *)(lVar20 + 0x18 + lVar19 * 0x28) =
+                 CONCAT13(uStack_14e,CONCAT21(uStack_150,uStack_151));
+            *(undefined4 *)(lVar20 + 0x1c + lVar19 * 0x28) = uVar7;
+            *(undefined1 *)(lVar20 + 0x20 + lVar19 * 0x28) = uVar23;
+            *(longlong *)(lVar8 + 0x30) = lVar19 + 1;
+            *(longlong *)(lVar8 + 0x40) = *(longlong *)(lVar8 + 0x40) + 1;
+          }
+          lVar19 = (ulonglong)*(byte *)(lVar31 + 0x1c) - 1;
+          if (2 < (byte)(*(byte *)(lVar31 + 0x1c) - 2)) {
+            lVar19 = 0;
+          }
+          if (1 < lVar19 - 1U) {
+            if (lVar19 == 0) {
+              local_140 = 0;
+              local_114 = 0;
+              fVar3 = *(float *)(uVar22 - 0x88);
+              fVar37 = *(float *)(uVar22 - 0x7c);
+              fVar6 = *(float *)(uVar22 - 0x84);
+              fVar43 = *(float *)(uVar22 - 0x80);
+              fVar45 = 0.0;
+              if ((0.0 < fVar3) || (uVar28 = 0, 0.0 < fVar43)) {
+                fVar45 = fVar43;
+                if (fVar43 <= fVar3) {
+                  fVar45 = fVar3;
+                }
+                fVar45 = (float)(~-(uint)NAN(fVar3) & (uint)fVar45 |
+                                -(uint)NAN(fVar3) & (uint)fVar43);
+                local_124[0] = fVar45;
+                if (fVar45 <= 0.0) {
+                  fVar45 = 0.0;
+                }
+                local_114 = 1;
+                lVar19 = ((ulonglong)*(uint *)(uVar22 - 0x1c) << 0x20) + 1;
+                local_160 = (undefined1)lVar19;
+                uStack_15f = (undefined5)((ulonglong)lVar19 >> 8);
+                uStack_15a = (undefined1)((ulonglong)lVar19 >> 0x30);
+                uStack_159 = (undefined1)((ulonglong)lVar19 >> 0x38);
+                local_140 = 1;
+                uVar28 = 1;
+              }
+              if ((0.0 < fVar37) || (0.0 < fVar6)) {
+                fVar3 = fVar6;
+                if (fVar6 <= fVar37) {
+                  fVar3 = fVar37;
+                }
+                fVar3 = (float)(~-(uint)NAN(fVar37) & (uint)fVar3 | -(uint)NAN(fVar37) & (uint)fVar6
+                               );
+                fVar43 = fVar3;
+                if (fVar3 <= fVar45) {
+                  fVar43 = fVar45;
+                }
+                fVar45 = (float)(~-(uint)NAN(fVar45) & (uint)fVar43 |
+                                -(uint)NAN(fVar45) & (uint)fVar3);
+                local_124[uVar28] = fVar3;
+                local_114 = (int)uVar28 + 1;
+                uVar28 = (ulonglong)local_114;
+                arrayvec::arrayvec::ArrayVec::
+                push<enum2_<country_core::systems::audio::wall_audio_fmod::WallSound>,4>();
+              }
+              puVar35 = local_100;
+              if (local_140 != 0) {
+                uVar22 = (ulonglong)local_140;
+                if ((uint)uVar28 < local_140) {
+                  uVar22 = uVar28;
+                }
+                if ((uint)uVar28 != 0) {
+                  uVar28 = 0;
+                  do {
+                    fVar3 = local_124[uVar28];
+                    uVar12 = *(undefined8 *)(&local_160 + uVar28 * 8);
+                    local_128 = *(undefined4 *)(lVar31 + 0x18);
+                    local_130 = *(undefined8 *)(lVar31 + 0x10);
+                    uVar26 = *(undefined1 *)(lVar31 + 0x1d);
+                    *puVar10 = uVar4;
+                    lVar19 = *(longlong *)(lVar8 + 0x30);
+                    uVar11 = *(undefined8 *)(lVar8 + 0x40);
+                    if (lVar19 == *(longlong *)(lVar8 + 0x20)) {
+                      alloc::raw_vec::RawVec::
+                      grow_one<indexmap::Bucket<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>,enum2_<country_core::resources::stairs::stairs_assembly_params::AlignKind>_>,alloc::alloc::Global>
+                                ();
+                    }
+                    lVar20 = *(longlong *)(lVar8 + 0x28);
+                    *(undefined8 *)(lVar20 + lVar19 * 0x28) = uVar11;
+                    *(undefined8 *)(lVar20 + 8 + lVar19 * 0x28) = uVar12;
+                    *(undefined8 *)(lVar20 + 0x10 + lVar19 * 0x28) = local_130;
+                    *(undefined4 *)(lVar20 + 0x18 + lVar19 * 0x28) = local_128;
+                    *(float *)(lVar20 + 0x1c + lVar19 * 0x28) = fVar3 / fVar45;
+                    *(undefined1 *)(lVar20 + 0x20 + lVar19 * 0x28) = uVar26;
+                    *(longlong *)(lVar8 + 0x30) = lVar19 + 1;
+                    *(longlong *)(lVar8 + 0x40) = *(longlong *)(lVar8 + 0x40) + 1;
+                    uVar28 = uVar28 + 1;
+                    puVar35 = local_100;
+                  } while (uVar28 < uVar22);
+                }
+              }
+            }
+            goto LAB_14123567f;
+          }
+          resources::walls::material_stats::MaterialStats::which_material_changed_the_most();
+          cVar27 = (char)extraout_EAX;
+                    // WARNING (jumptable): Sanity check requires truncation of jumptable
+                    // WARNING: Could not find normalized switch variable to match jumptable
+          switch(extraout_EAX & 0xff) {
+          case 1:
+            uVar22 = (ulonglong)(2.7 < *(float *)(uVar22 - 0x1c));
+            cVar27 = '\n';
+            break;
+          case 2:
+            cVar27 = '\r';
+            break;
+          case 3:
+            cVar27 = (*(longlong *)(uVar22 - 0x90) == *(longlong *)(uVar22 - 0xf8)) + '\x05';
+            break;
+          case 4:
+            cVar27 = '\x12';
+            break;
+          case 5:
+            cVar27 = '\x17';
+            break;
+          case 6:
+            cVar27 = '\x14';
+            break;
+          case 7:
+            goto LAB_14123567f;
+          }
+          uVar7 = *(undefined4 *)(lVar31 + 0x18);
+          uStack_152 = (undefined1)uVar7;
+          uStack_151 = (undefined1)((uint)uVar7 >> 8);
+          uStack_150 = (undefined2)((uint)uVar7 >> 0x10);
+          uVar12 = *(undefined8 *)(lVar31 + 0x10);
+          uStack_15a = (undefined1)uVar12;
+          uStack_159 = (undefined1)((ulonglong)uVar12 >> 8);
+          uStack_158 = (undefined6)((ulonglong)uVar12 >> 0x10);
+          uVar23 = *(undefined1 *)(lVar31 + 0x1d);
+          *puVar10 = uVar4;
+          lVar19 = *(longlong *)(lVar8 + 0x30);
+          uVar12 = *(undefined8 *)(lVar8 + 0x40);
+          if (lVar19 == *(longlong *)(lVar8 + 0x20)) {
+            alloc::raw_vec::RawVec::
+            grow_one<indexmap::Bucket<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>,enum2_<country_core::resources::stairs::stairs_assembly_params::AlignKind>_>,alloc::alloc::Global>
+                      ();
+          }
+          lVar20 = *(longlong *)(lVar8 + 0x28);
+          *(undefined8 *)(lVar20 + lVar19 * 0x28) = uVar12;
+          *(char *)(lVar20 + 8 + lVar19 * 0x28) = cVar27;
+          *(char *)(lVar20 + 9 + lVar19 * 0x28) = (char)uVar22;
+          puVar2 = (undefined8 *)(lVar20 + 10 + lVar19 * 0x28);
+          *puVar2 = CONCAT17(uStack_159,CONCAT16(uStack_15a,CONCAT51(uStack_15f,local_160)));
+          puVar2[1] = CONCAT17(uStack_151,CONCAT16(uStack_152,uStack_158));
+          *(undefined2 *)(lVar20 + 0x1a + lVar19 * 0x28) = uStack_150;
+          *(undefined4 *)(lVar20 + 0x1c + lVar19 * 0x28) = 0x3f800000;
+        }
+        *(undefined1 *)(lVar20 + 0x20 + lVar19 * 0x28) = uVar23;
+        *(longlong *)(lVar8 + 0x30) = lVar19 + 1;
+        *(longlong *)(lVar8 + 0x40) = *(longlong *)(lVar8 + 0x40) + 1;
+        goto LAB_14123567f;
+      }
+      uVar33 = (ushort)(uVar32 - 1) & (ushort)uVar32;
+      uVar32 = CONCAT22((short)(uVar32 - 1 >> 0x10),uVar33);
+    }
+    auVar42[0] = -(*pcVar1 == (char)iVar15);
+    auVar42[1] = -(pcVar1[1] == (char)((uint)iVar15 >> 8));
+    auVar42[2] = -(pcVar1[2] == (char)((uint)iVar15 >> 0x10));
+    auVar42[3] = -(pcVar1[3] == (char)((uint)iVar15 >> 0x18));
+    auVar42[4] = -(pcVar1[4] == (char)iVar16);
+    auVar42[5] = -(pcVar1[5] == (char)((uint)iVar16 >> 8));
+    auVar42[6] = -(pcVar1[6] == (char)((uint)iVar16 >> 0x10));
+    auVar42[7] = -(pcVar1[7] == (char)((uint)iVar16 >> 0x18));
+    auVar42[8] = -(pcVar1[8] == (char)iVar17);
+    auVar42[9] = -(pcVar1[9] == (char)((uint)iVar17 >> 8));
+    auVar42[10] = -(pcVar1[10] == (char)((uint)iVar17 >> 0x10));
+    auVar42[0xb] = -(pcVar1[0xb] == (char)((uint)iVar17 >> 0x18));
+    auVar42[0xc] = -(pcVar1[0xc] == (char)iVar18);
+    auVar42[0xd] = -(pcVar1[0xd] == (char)((uint)iVar18 >> 8));
+    auVar42[0xe] = -(pcVar1[0xe] == (char)((uint)iVar18 >> 0x10));
+    auVar42[0xf] = -(pcVar1[0xf] == (char)((uint)iVar18 >> 0x18));
+    if ((((((((((((((((SUB161(auVar42 >> 7,0) & 1) != 0 || (SUB161(auVar42 >> 0xf,0) & 1) != 0) ||
+                    (SUB161(auVar42 >> 0x17,0) & 1) != 0) || (SUB161(auVar42 >> 0x1f,0) & 1) != 0)
+                  || (SUB161(auVar42 >> 0x27,0) & 1) != 0) || (SUB161(auVar42 >> 0x2f,0) & 1) != 0)
+                || (SUB161(auVar42 >> 0x37,0) & 1) != 0) || (SUB161(auVar42 >> 0x3f,0) & 1) != 0) ||
+              (SUB161(auVar42 >> 0x47,0) & 1) != 0) || (SUB161(auVar42 >> 0x4f,0) & 1) != 0) ||
+            (SUB161(auVar42 >> 0x57,0) & 1) != 0) || (SUB161(auVar42 >> 0x5f,0) & 1) != 0) ||
+          (SUB161(auVar42 >> 0x67,0) & 1) != 0) || (SUB161(auVar42 >> 0x6f,0) & 1) != 0) ||
+        (SUB161(auVar42 >> 0x77,0) & 1) != 0) || auVar42[0xf] < '\0') goto LAB_14123567f;
+    uVar22 = uVar22 + lVar30 + 0x10;
+    lVar30 = lVar30 + 0x10;
+  } while( true );
+}
+
+

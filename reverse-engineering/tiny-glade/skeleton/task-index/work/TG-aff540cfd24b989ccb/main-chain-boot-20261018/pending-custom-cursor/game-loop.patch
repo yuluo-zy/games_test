@@ -1,0 +1,247 @@
+--- games_test/tiny-glade/crates/tiny-glade/src/game_loop.rs
++++ games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-aff540cfd24b989ccb/main-chain-boot-20261018/pending-custom-cursor/game_loop.rs
+@@ -5,7 +5,7 @@
+ //! settings gathering 0x1404e3380. The OS contract and original jump tables are
+ //! in task-index/work/TG-40ff43c62ef8791c53/oschain-20261018/CONTRACT.md.
+ //! Source ownership here does not assert the original native GameLoop layout.
+-//! Full input-file/custom-cursor/Mei ABI branches stay explicit errors or gaps,
++//! Full input-file/Mei ABI branches stay explicit errors or gaps,
+ //! rather than silently generating substitute state.
+ 
+ use std::sync::Mutex;
+@@ -197,11 +197,18 @@
+     pub(crate) capture_needs_initial_event: bool,
+     pub(crate) capture_uses_raw_motion: bool,
+     pub(crate) visibility_suppressions: u32,
+-    pub(crate) custom_cursor: Option<u32>,
++    // OS mode and last size are independent: Standard does not reset size.
++    pub(crate) custom_cursor_mode: bool,
++    pub(crate) custom_cursor_size_px: f32,
++    // Strong actual-device lease; the Created event alone owns no memory.
++    custom_cursor_buffer: Option<rhapsody::raw::managed::buffer::ManagedBuffer>,
+     pub(crate) frame_count: u64,
+     pub(crate) suspended: bool,
+     pub(crate) shutdown_done: bool,
+     preparation: Option<crate::run_game::GameplayPreparation>,
++    custom_cursor_events: bevy_ecs::event::EventCursor<
++        country_core::resources::mouse_capture::CustomCursorSsboCreatedCmd,
++    >,
+     capture_events:
+         bevy_ecs::event::EventCursor<country_core::resources::mouse_capture::OsCursorCaptureCmd>,
+     visibility_events:
+@@ -229,6 +236,7 @@
+         use country_core::resources::{mouse_capture::*, window::*};
+         app.add_event::<OsCursorCaptureCmd>()
+             .add_event::<OsCursorVisibilityCmd>()
++            .add_event::<CustomCursorSsboCreatedCmd>()
+             .add_event::<CursorCaptureCmd>()
+             .add_event::<OsWindowCmd>()
+             .add_event::<WindowFocusEvent>()
+@@ -291,6 +299,7 @@
+             // App tuple; replacing the App must not lose their event owners.
+             app.add_event::<OsCursorCaptureCmd>()
+                 .add_event::<OsCursorVisibilityCmd>()
++                .add_event::<CustomCursorSsboCreatedCmd>()
+                 .add_event::<CursorCaptureCmd>()
+                 .add_event::<OsWindowCmd>()
+                 .add_event::<WindowFocusEvent>()
+@@ -404,11 +413,16 @@
+             capture_needs_initial_event: false,
+             capture_uses_raw_motion: false,
+             visibility_suppressions: 0,
+-            custom_cursor: None,
++            // Original run_event_loop @14026e56e/583/5cd initializes
++            // suppressions, saved size bits, and mode independently to zero.
++            custom_cursor_mode: false,
++            custom_cursor_size_px: 0.0,
++            custom_cursor_buffer: None,
+             frame_count: 0,
+             suspended: false,
+             shutdown_done: false,
+             preparation,
++            custom_cursor_events: Default::default(),
+             capture_events: Default::default(),
+             visibility_events: Default::default(),
+             window_events: Default::default(),
+@@ -468,7 +482,94 @@
+         if let Some(command) = visibility {
+             self.apply_visibility(command)?;
+         }
++        // B @1404da967 consumes visibility before Created @1404daa37.
++        // Neither receipt nor replacement initializes the mapped 16 bytes.
++        let created = self
++            .custom_cursor_events
++            .read(
++                self.driver
++                    .app
++                    .world()
++                    .resource::<bevy_ecs::event::Events<CustomCursorSsboCreatedCmd>>(),
++            )
++            .last()
++            .copied();
++        if let Some(created) = created {
++            self.install_custom_cursor_buffer(created)?;
++        }
+         Ok(())
++    }
++
++    fn install_custom_cursor_buffer(
++        &mut self,
++        created: country_core::resources::mouse_capture::CustomCursorSsboCreatedCmd,
++    ) -> anyhow::Result<()> {
++        use country_core::asset_libraries::ssbo_library::AssetSsboLibrary;
++        use country_core::systems::render_loop::draw_passes::custom_cursor_pass::CustomCursorSsbo;
++        // Retire the old writer before resolving the new owner's lease.
++        self.custom_cursor_buffer = None;
++        let core_buffer = self
++            .driver
++            .app
++            .world()
++            .resource::<AssetSsboLibrary>()
++            .get_buffer::<CustomCursorSsbo>()
++            .ok_or_else(|| {
++                anyhow::anyhow!("CustomCursor Created has no canonical buffer in its World")
++            })?;
++        let lease = self
++            .renderer
++            .bridge()
++            .hosts()
++            .buffers
++            .managed_buffer(core_buffer)
++            .ok_or_else(|| {
++                anyhow::anyhow!("CustomCursor buffer does not belong to the active BufferHost")
++            })?;
++        anyhow::ensure!(
++            lease.size == core::mem::size_of::<CustomCursorSsbo>() as u64,
++            "CustomCursor buffer has an invalid byte length"
++        );
++        let pointer = lease
++            .persistent_host_ptr()
++            .ok_or_else(|| anyhow::anyhow!("CustomCursor buffer is not persistently mapped"))?;
++        anyhow::ensure!(
++            pointer == created.0.as_ptr().cast::<u8>(),
++            "CustomCursor Created pointer does not match its canonical managed buffer"
++        );
++        self.custom_cursor_buffer = Some(lease);
++        Ok(())
++    }
++
++    /// B callback @140557e57..eb4 writes before the GameLoop confirmation
++    /// filter. Only the uncaptured absolute branch writes this mapped SSBO.
++    pub(crate) fn update_custom_cursor_absolute(
++        &mut self,
++        position: [f64; 2],
++    ) -> anyhow::Result<()> {
++        if self.capture_anchor.is_some() {
++            return Ok(());
++        }
++        if let Some(buffer) = &self.custom_cursor_buffer {
++            let data = country_core::systems::render_loop::draw_passes::custom_cursor_pass::CustomCursorSsbo {
++                pos: [position[0] as f32, position[1] as f32],
++                enabled: u32::from(self.visibility_suppressions == 0),
++                size_px: self.custom_cursor_size_px,
++            };
++            // Current Rhapsody API waits only for this buffer's actual in-flight
++            // uses, retaining its non-coherent flush and host-access tracking.
++            buffer.write_bytes(0, bytemuck::bytes_of(&data))?;
++        }
++        Ok(())
++    }
++
++    fn reset_world_event_cursors(&mut self) {
++        // EventId counters belong to each independent App's Events owner.
++        self.custom_cursor_events = Default::default();
++        self.capture_events = Default::default();
++        self.visibility_events = Default::default();
++        self.window_events = Default::default();
++        self.settings_events = Default::default();
+     }
+ 
+     fn apply_capture(
+@@ -520,35 +621,67 @@
+         use country_core::resources::mouse_capture::OsCursorVisibilityCmd;
+         match command {
+             OsCursorVisibilityCmd::Standard => {
+-                self.custom_cursor = None;
+-            }
+-            OsCursorVisibilityCmd::Custom(id) => {
+-                // B writes this ID to the custom cursor SSBO @+0xc. That actual
+-                // producer is not yet connected; hiding the OS cursor here would
+-                // leave the player with no cursor, so fail visibly instead.
+-                anyhow::bail!("Custom cursor {id} requires the original SSBO producer");
++                self.window
++                    .set_cursor_visible(self.visibility_suppressions == 0);
++                self.custom_cursor_mode = false;
++            }
++            OsCursorVisibilityCmd::Custom(size_px) => {
++                if !self.custom_cursor_mode {
++                    self.window.set_cursor_visible(false);
++                }
++                self.custom_cursor_mode = true;
++                self.custom_cursor_size_px = size_px;
++                if let Some(buffer) = &self.custom_cursor_buffer {
++                    buffer.write_bytes(12, &size_px.to_ne_bytes())?;
++                }
+             }
+             OsCursorVisibilityCmd::Suppress(origin) => {
+                 assert_ne!(origin.0, 0);
++                let previous = self.visibility_suppressions;
+                 self.visibility_suppressions |= origin.0;
++                if previous == 0 {
++                    if self.custom_cursor_mode {
++                        if let Some(buffer) = &self.custom_cursor_buffer {
++                            buffer.write_bytes(8, &0u32.to_ne_bytes())?;
++                        }
++                    } else {
++                        self.window.set_cursor_visible(false);
++                    }
++                }
+             }
+             OsCursorVisibilityCmd::Unsuppress(origin) => {
+                 assert_ne!(origin.0, 0);
++                let previous = self.visibility_suppressions;
+                 self.visibility_suppressions &= !origin.0;
+-            }
+-        }
+-        self.window
+-            .set_cursor_visible(self.custom_cursor.is_none() && self.visibility_suppressions == 0);
++                if previous != 0 && self.visibility_suppressions == 0 {
++                    if self.custom_cursor_mode {
++                        if let Some(buffer) = &self.custom_cursor_buffer {
++                            buffer.write_bytes(8, &1u32.to_ne_bytes())?;
++                        }
++                    } else {
++                        self.window.set_cursor_visible(true);
++                    }
++                }
++            }
++        }
+         Ok(())
+     }
+ 
+     /// B begin_frame → App::update → end_frame → PlatformOutput → render.
+     pub(crate) fn frame(&mut self) -> anyhow::Result<bool> {
+         if let Some(preparation) = &mut self.preparation {
++            // No OS callback can run while poll owns this thread. Withdraw the
++            // old writer before poll can swap Worlds; a failed/pending poll
++            // cannot accidentally write through another App's pointer.
++            let old_cursor_lease = self.custom_cursor_buffer.take();
+             if preparation.poll(self.driver.app_mut())? {
++                drop(old_cursor_lease);
++                self.reset_world_event_cursors();
+                 self.renderer
+                     .activate_application(self.driver.app().world())?;
+                 self.preparation = None;
++            } else {
++                self.custom_cursor_buffer = old_cursor_lease;
+             }
+         }
+         self.flush_game_requests()?;
+@@ -645,6 +778,7 @@
+             return Ok(());
+         }
+         self.shutdown_done = true;
++        self.custom_cursor_buffer = None;
+         self.window
+             .set_cursor_grab(winit::window::CursorGrabMode::None)
+             .ok();

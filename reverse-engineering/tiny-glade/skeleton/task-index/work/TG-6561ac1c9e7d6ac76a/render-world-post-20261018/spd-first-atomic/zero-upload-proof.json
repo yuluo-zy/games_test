@@ -1,0 +1,28 @@
+{
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "allocator_trampoline": {
+    "address": "0x140613c40",
+    "length": 5,
+    "bytes": "e9bb1c7500",
+    "sha256": "100e03ea3f28b1f4be6a7ce1514eab2886697267b9b8c089d5c959e533b3a6ba",
+    "jump_target": "0x140d65900"
+  },
+  "process_heap_imports": {
+    "0x143192578": {
+      "dll": "KERNEL32.dll",
+      "symbol": "GetProcessHeap"
+    },
+    "0x1431925f8": {
+      "dll": "KERNEL32.dll",
+      "symbol": "HeapAlloc"
+    }
+  },
+  "observed_chain": [
+    "1404f6457 desc.size -> RCX; 1404f6483 EDX=1 alignment; call140613c40 -> __rdl_alloc_zeroed140d65900",
+    "__rdl_alloc_zeroed passes flags8 to process_heap_alloc140d75fb0; PE IAT binds GetProcessHeap/HeapAlloc",
+    "1404f64bb stores slice.len=desc.size, 1404f64c7 stores nonnull zero-data pointer; call1405b93b0 Option<&[u8]>",
+    "byte_count140bd51a0 returns zero only for null pointer (None), otherwise slice.len; copy_to_slice140bd51b0 copies that slice",
+    "create_buffer1405b93b0 ORs TRANSFER_DST only when byte_count!=0, uploads direct mapped data or staging with_setup_cb140c04840",
+    "1404f6599 imports with initial access0; 1404f665a explicitly returns history flag0 despite actual upload"
+  ]
+}

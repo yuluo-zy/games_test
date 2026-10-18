@@ -1,0 +1,30 @@
+{
+  "result": "2351 passed; 3 fixture failures; no source drift",
+  "issues": [
+    {
+      "test": "mapped_provider_preserves_native_default_and_reads_live_index",
+      "cause": "TestDevice ignores create_buffer initial bytes and returns a new zero mapped page; production constructor already uploads native -1",
+      "resolution": "test-only recording backend now maps captured upload with16-byte alignment; assertion remains-1"
+    },
+    {
+      "test": "raster_metadata_lease_shares_the_library_cache_and_full_type_assertion",
+      "cause": "dynamic Alpha BUFFER_LEN0 was created with None, violating current validated storage contract",
+      "resolution": "test-only add_new_with_data Alpha0; production unchanged"
+    },
+    {
+      "test": "morph_premade_shape_payload_uses_wall_index_before_after_schema",
+      "cause": "stale native tag/payload JSON assertion after original named enum recovery",
+      "evidence": "original-gate-walls-b.json has Rectangle/Circle enum keys; current serializer cites original1416ec2e0/14157c4c0",
+      "resolution": "test-only asserts actual Rectangle/Circle wire objects and preserves full roundtrip equality"
+    }
+  ],
+  "passed_scope": [
+    "actual hot reload full48-byte GPU shadow +cull+RT translation",
+    "live AudioLoop clock",
+    "real terrain focus\u2192mode consumer",
+    "core startup live UiState projection preservation",
+    "Arrow original full query fixtures",
+    "rock mask actual storage boundary"
+  ],
+  "boundary": "Full crate still failed until three fixture repairs rerun. Separate external schedule/sheep tests were not run by this cargo invocation after lib failure."
+}

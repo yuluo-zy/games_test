@@ -1,0 +1,37 @@
+[
+  {
+    "tool": "get_metadata",
+    "args": {
+      "program": "tiny-glade.exe"
+    },
+    "timeout_seconds": 120
+  },
+  {
+    "tool": "get_functions",
+    "args": {
+      "program": "tiny-glade.exe",
+      "functions": "0x1408cc2e0,0x1408cc320,0x1408cc390,0x1408cc670,0x1408cc680,0x1408cc870,0x1408cec10,0x1408cd430,0x1408cdc60,0x1408cdf80,0x1408ccfc0,0x140b685e0,0x14067dd80",
+      "fields": "decompiled_code,callees",
+      "include_call_context": false
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "find_functions",
+    "args": {
+      "program": "tiny-glade.exe",
+      "name_pattern": "RaycastWorld",
+      "limit": 200
+    },
+    "timeout_seconds": 120
+  },
+  {
+    "tool": "read_memory",
+    "args": {
+      "program": "tiny-glade.exe",
+      "address": "0x14067dd80",
+      "length": 8
+    },
+    "timeout_seconds": 120
+  }
+]

@@ -510,6 +510,14 @@ impl History {
         self.pending.as_mut().expect("re-created above").edits.push(edit);
     }
 
+    /// O：`create_rectangle` 0x140a93790 内的**第二次** History::add — Color
+    /// 历史（owner = create_rectangle；原指令在颜色 id `!= 0` 时追加并写入
+    /// 该 u32）。运行时 envelope tag/records 布局 U；此入口为 typed 边界，
+    /// 待 Color 历史编码恢复后接到 `add`。
+    pub fn record_color_edit(&mut self, _edit: crate::resources::history::color_edit::ColorEdit) {
+        // U: envelope encoding not yet recovered (tag/records/count).
+    }
+
     /// O：`add_decorator_diff` 0x140a854a0（2348B）：pending 不存在 → panic
     /// “Tried writing decorator_history_diff to History when the input
     /// recording is finished”；diff 为空则直接返回；否则（含楼梯图校验，

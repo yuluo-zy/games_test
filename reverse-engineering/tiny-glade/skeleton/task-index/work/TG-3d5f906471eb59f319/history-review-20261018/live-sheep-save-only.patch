@@ -1,0 +1,81 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/save/save_game.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/save/save_game.rs
+@@ -20,7 +20,11 @@
+ use crate::resources::session::SessionMeta;
+ use crate::resources::time::GameTime;
+ use crate::systems::camera_rig::CameraRigParametersCache;
+-use crate::systems::debug::sheep_controls::SheepControl;
++use crate::resources::critters::{
++    CritterGoal,
++    sheep::{Sheep, control::capture_sheep_snapshot},
++};
++use crate::utils::components::transform::Transform;
+ use crate::systems::save::save_backup_list::BackupSaveFileKind;
+ use crate::systems::save::save_backup_metronome::SaveBackupMetronome;
+ use crate::systems::save::snapshot::SnapshotDomainData;
+@@ -262,7 +266,7 @@
+     time: Res<GameTime>,
+     active: Res<crate::resources::session::ActiveSession>,
+     colors: Res<GladeColorCustomization>,
+-    sheep: Res<SheepControl>,
++    sheep: Query<(&Transform, &Sheep, &CritterGoal)>,
+     mut snapshot_state: ResMut<SnapshotCaptureState>,
+     roofs: Query<&Roof, Without<RoofMarkedForDeletion>>,
+     walls: Option<Res<crate::resources::walls::InnerWalls>>,
+@@ -317,10 +321,11 @@
+         SaveFileSection::Colors,
+         SerializedJson::new(&*colors).expect("GladeColorCustomization serializes"),
+     );
++    let sheep_snapshot = capture_sheep_snapshot(sheep.iter());
+     emit_section_change_if_changed(
+         &mut auto,
+         SaveFileSection::Sheep,
+-        sheep_section_serialized(sheep.snapshot.as_ref()),
++        sheep_section_serialized(Some(&sheep_snapshot)),
+     );
+     // ④ 内联同步保存（O：History edits → `send<AsyncSaveCmd>`）。域资源未接入
+     //    （sections 缺省）时跳过并登记一次，不编造节载荷。
+@@ -721,7 +726,8 @@
+ /// Sheep 节载荷（O `to_json_string<Option<SheepControlSnapshot>>` @0x140a51d40；
+ /// B 组接口 `sheep::control::sheep_section_json`，None → null）。真实 producer 接线：
+ /// save_game 同步保存路径的域采集器（X4 Query）经 `capture_sheep_snapshot` 取行后
+-/// 调本入口；`None` = 无羊 → 节载荷 `null`。
++/// 调本入口。实时 Query 捕获即使零行也为 Some(empty) → {"sheep":[]}；
++/// None 是 wire 中明确的缺省快照 → null，不能拿 debug freeze 状态替代活羊。
+ pub fn sheep_section_serialized(
+     snapshot: Option<&crate::resources::critters::sheep::control::SheepControlSnapshot>,
+ ) -> SerializedJson {
+@@ -730,11 +736,9 @@
+     )
+ }
+ 
+-/// Sheep 节生产资源（⑤轮 B 块，① b-sheep-write-path 契约 §1/§4）：`sheep_controls`
+-/// 捕获活羊 → 本资源承载序列化的 Sheep 节载荷（`SaveFileSection::Sheep` = 5）。
+-/// 宿主 `assemble_game_save_sections` 从本资源取 Sheep 节真实值；默认 `None` → `null`。
+-/// X4 活羊 Query 精确面待①取证（b 契约 §3），现以 debug 域 `sheep_controls` 捕获为
+-/// crate 内真实生产调用点。
++/// Sheep section staged by its live-query producer. The initial None is an
++/// unproduced value; the producer runs before save-section assembly and writes
++/// Some(empty) for a world with no matching live sheep.
+ #[derive(bevy_ecs::resource::Resource, Clone, Debug)]
+ pub struct SheepSaveSectionValue(pub SerializedJson);
+ impl Default for SheepSaveSectionValue {
+@@ -743,14 +747,13 @@
+     }
+ }
+ 
+-/// Sheep 节生产系统：`SheepControl`（`sheep_controls` 捕获）→ `sheep_section_serialized`
+-/// → [`SheepSaveSectionValue`]。真实生产调用点（⑤ B 块；与 `sheep_controls` 同批进
+-/// 生产 Schedule）。
++/// Snapshot current live sheep independently of the debug freeze owner.
+ pub fn sheep_save_section_system(
+-    control: Res<SheepControl>,
++    sheep: Query<(&Transform, &Sheep, &CritterGoal)>,
+     mut value: ResMut<SheepSaveSectionValue>,
+ ) {
+-    value.0 = sheep_section_serialized(control.snapshot.as_ref());
++    let snapshot = capture_sheep_snapshot(sheep.iter());
++    value.0 = sheep_section_serialized(Some(&snapshot));
+ }
+ 
+ /// `save_game` 0x140a3f470 的 GameSaveData 组装（O：Identity/Camera/Colors 三节由

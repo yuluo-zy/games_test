@@ -1,0 +1,265 @@
+warning: field `0` is never read
+   --> crates/rhapsody/src/raw/texture.rs:493:15
+    |
+493 |     Swapchain(Arc<super::swapchain::Swapchain>),
+    |     --------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     |
+    |     field in this variant
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+help: consider changing the field to be of unit type to suppress this warning while preserving the field numbering, or remove the field
+    |
+493 -     Swapchain(Arc<super::swapchain::Swapchain>),
+493 +     Swapchain(()),
+    |
+
+warning: `rhapsody` (lib) generated 1 warning
+warning: unused import: `glam::*`
+ --> third_party/obvhs-a3f3b3bf/src/cwbvh/simd.rs:1:5
+  |
+1 | use glam::*;
+  |     ^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `EPSILON`, `extract_byte64`, and `ray::Ray`
+  --> third_party/obvhs-a3f3b3bf/src/cwbvh/simd.rs:9:16
+   |
+ 9 |         node::{extract_byte64, EPSILON},
+   |                ^^^^^^^^^^^^^^  ^^^^^^^
+...
+12 |     ray::Ray,
+   |     ^^^^^^^^
+
+warning: value assigned to `state` is never read
+   --> third_party/obvhs-a3f3b3bf/src/cwbvh/traverse_macro.rs:114:21
+    |
+114 |                       $state.current_group.y = 0;
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+   ::: third_party/obvhs-a3f3b3bf/src/cwbvh/mod.rs:214:9
+    |
+214 | /         crate::traverse!(
+215 | |             self,
+216 | |             node,
+217 | |             state,
+...   |
+227 | |         );
+    | |_________- in this macro invocation
+    |
+    = help: maybe it is overwritten before being read?
+    = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+    = note: this warning originates in the macro `crate::traverse` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: value assigned to `current_group` is never read
+   --> third_party/obvhs-a3f3b3bf/src/cwbvh/mod.rs:455:21
+    |
+455 |                     current_group.y = 0;
+    |                     ^^^^^^^^^^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: unnecessary transmute
+   --> third_party/obvhs-a3f3b3bf/src/cwbvh/node.rs:216:30
+    |
+216 |         let meta8 = unsafe { transmute::<[u8; 8], u64>(self.child_meta) };
+    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: there's also `from_le_bytes` and `from_be_bytes` if you expect a particular byte order
+    = note: `#[warn(unnecessary_transmutes)]` on by default
+help: replace this with
+    |
+216 -         let meta8 = unsafe { transmute::<[u8; 8], u64>(self.child_meta) };
+216 +         let meta8 = unsafe { u64::from_ne_bytes(self.child_meta) };
+    |
+
+warning: `obvhs` (lib) generated 5 warnings (run `cargo fix --lib -p obvhs` to apply 3 suggestions)
+   Compiling country-core v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core)
+error[E0425]: cannot find type `MainCameraMoved` in module `crate::systems::camera_rig`
+   --> crates/country-core/src/systems/wall/registration.rs:157:62
+    |
+157 |     world.init_resource::<Events<crate::systems::camera_rig::MainCameraMoved>>();
+    |                                                              ^^^^^^^^^^^^^^^ not found in `crate::systems::camera_rig`
+    |
+help: consider importing this struct
+    |
+  2 + use crate::systems::camera_rig::main_camera::MainCameraMoved;
+    |
+help: if you import `MainCameraMoved`, refer to it directly
+    |
+157 -     world.init_resource::<Events<crate::systems::camera_rig::MainCameraMoved>>();
+157 +     world.init_resource::<Events<MainCameraMoved>>();
+    |
+
+warning: unused import: `crate::resources::color_id::ColorId`
+  --> crates/country-core/src/resources/history/color_edit.rs:43:5
+   |
+43 | use crate::resources::color_id::ColorId;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `ssbo_carrier`
+   --> crates/country-core/src/systems/render_loop/compute_passes/pass_kit.rs:404:16
+    |
+404 | pub(crate) use ssbo_carrier;
+    |                ^^^^^^^^^^^^
+
+warning: unused import: `crate::systems::mode_manager::ClutterMeshTy`
+  --> crates/country-core/src/systems/ui_clutter/rmb_autoclutter.rs:31:5
+   |
+31 | use crate::systems::mode_manager::ClutterMeshTy;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `DecoratorStorage`
+  --> crates/country-core/src/systems/save/snapshot.rs:28:36
+   |
+28 |             DecoratorAddrSnapshot, DecoratorStorage, DecoratorStorageAddr, DecoratorStorageSnapshot,
+   |                                    ^^^^^^^^^^^^^^^^
+
+warning: unused import: `WallId`
+  --> crates/country-core/src/systems/wall/finish_wall.rs:10:29
+   |
+10 |         walls::{InnerWalls, WallId, WallState},
+   |                             ^^^^^^
+
+warning: unused import: `bevy_ecs::prelude::*`
+  --> crates/country-core/src/resources/stairs/invalidate.rs:49:9
+   |
+49 |     use bevy_ecs::prelude::*;
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `prelude::*`
+   --> crates/country-core/src/systems/history/recording.rs:290:9
+    |
+290 |         prelude::*,
+    |         ^^^^^^^^^^
+
+warning: unused import: `crate::resources::roofs::Roof`
+ --> crates/country-core/src/systems/history/tests.rs:5:5
+  |
+5 | use crate::resources::roofs::Roof;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::resources::roofs::commands::*`
+ --> crates/country-core/src/systems/history/tests.rs:6:5
+  |
+6 | use crate::resources::roofs::commands::*;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::resources::roofs::customization::FlatRoofRimRequest`
+ --> crates/country-core/src/systems/history/tests.rs:7:5
+  |
+7 | use crate::resources::roofs::customization::FlatRoofRimRequest;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::resources::time::GameTime`
+ --> crates/country-core/src/systems/history/tests.rs:8:5
+  |
+8 | use crate::resources::time::GameTime;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::resources::walls::WallId`
+ --> crates/country-core/src/systems/history/tests.rs:9:5
+  |
+9 | use crate::resources::walls::WallId;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::resources::walls::public_walls::PublicWalls`
+  --> crates/country-core/src/systems/history/tests.rs:10:5
+   |
+10 | use crate::resources::walls::public_walls::PublicWalls;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::resources::walls::publication_fields::WallId as ObservedWallId`
+  --> crates/country-core/src/systems/history/tests.rs:11:5
+   |
+11 | use crate::resources::walls::publication_fields::WallId as ObservedWallId;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `EvRightClickedAutoClutter`
+   --> crates/country-core/src/systems/ui_clutter/tests.rs:179:9
+    |
+179 |         EvRightClickedAutoClutter, RmbAutoClutterDirect, RmbAutoClutterHit,
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `ClutterMeshTy`
+   --> crates/country-core/src/systems/ui_clutter/tests.rs:242:49
+    |
+242 |     use crate::systems::mode_manager::{AppMode, ClutterMeshTy, EraserLayer};
+    |                                                 ^^^^^^^^^^^^^
+
+warning: unused import: `Decorators`
+   --> crates/country-core/src/systems/ui_edit_focus.rs:328:72
+    |
+328 |     use crate::resources::walls::decorator_storage::{DecoratorStorage, Decorators};
+    |                                                                        ^^^^^^^^^^
+
+warning: unused import: `WallId`
+  --> crates/country-core/src/systems/wall/snapping/snapping_init.rs:91:17
+   |
+91 |         walls::{WallId, WallState},
+   |                 ^^^^^^
+
+warning: unused import: `super::*`
+   --> crates/country-core/src/systems/wall/snapping/telegraph_walls_are_merged.rs:109:9
+    |
+109 |     use super::*;
+    |         ^^^^^^^^
+
+warning: variable does not need to be mutable
+   --> crates/country-core/src/resources/history/color_edit.rs:331:39
+    |
+331 |         let serde_json::Value::Object(mut outer) = value else {
+    |                                       ----^^^^^
+    |                                       |
+    |                                       help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `aux`
+   --> crates/country-core/src/resources/history/replay_cmd_buffer.rs:181:9
+    |
+181 |         aux: ReplayBucketAux,
+    |         ^^^ help: if this is intentional, prefix it with an underscore: `_aux`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+For more information about this error, try `rustc --explain E0425`.
+warning: `country-core` (lib) generated 7 warnings
+error: could not compile `country-core` (lib) due to 1 previous error; 7 warnings emitted
+warning: build failed, waiting for other jobs to finish...
+warning: variable does not need to be mutable
+   --> crates/country-core/src/systems/render_loop/compute_passes/leaf_particles.rs:351:13
+    |
+351 |         let mut library = AssetSsboLibrary::new();
+    |             ----^^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/country-core/src/systems/render_loop/compute_passes/read_bush_positions_for_cpu.rs:117:13
+    |
+117 |         let mut library = AssetSsboLibrary::default();
+    |             ----^^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/country-core/src/systems/wall/snapping/telegraph_walls_are_merged.rs:115:17
+    |
+115 |             let mut lo = (2.0 * e - 1.0).clamp(0.0, 1.0);
+    |                 ----^^
+    |                 |
+    |                 help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/country-core/src/systems/wall/snapping/telegraph_walls_are_merged.rs:116:17
+    |
+116 |             let mut hi = (2.0 * e).clamp(0.0, 1.0);
+    |                 ----^^
+    |                 |
+    |                 help: remove this `mut`
+
+warning: `country-core` (lib test) generated 23 warnings (5 duplicates)
+error: could not compile `country-core` (lib test) due to 1 previous error; 23 warnings emitted

@@ -1,0 +1,397 @@
+
+void __cdecl toolbar::toolbar_button::switch_app_mode_button(void)
+
+{
+  char cVar1;
+  undefined4 uVar2;
+  uint uVar3;
+  uint uVar4;
+  ulonglong *puVar5;
+  longlong lVar6;
+  longlong lVar7;
+  undefined4 *puVar8;
+  longlong lVar9;
+  undefined8 uVar10;
+  undefined8 uVar11;
+  undefined8 uVar12;
+  ulonglong uVar13;
+  longlong lVar14;
+  ulonglong uVar15;
+  uint *puVar16;
+  longlong *in_RCX;
+  longlong *plVar17;
+  undefined8 *in_RDX;
+  uint *puVar18;
+  longlong lVar19;
+  longlong lVar20;
+  uint *puVar21;
+  longlong lVar22;
+  longlong lVar23;
+  ulonglong uVar24;
+  longlong *in_R8;
+  uint *puVar25;
+  undefined8 *puVar26;
+  byte bVar27;
+  undefined8 *in_R9;
+  uint *puVar28;
+  ulonglong uVar29;
+  longlong lVar30;
+  byte bVar31;
+  uint *puVar32;
+  longlong lVar33;
+  uint *puVar34;
+  bool bVar35;
+  bool bVar36;
+  bool bVar37;
+  bool bVar38;
+  undefined8 *in_stack_00000028;
+  longlong in_stack_00000030;
+  longlong local_b8;
+  longlong local_a8;
+  longlong local_98;
+  longlong local_88;
+  
+  puVar5 = (ulonglong *)*in_RDX;
+  lVar6 = in_RDX[1];
+  uVar15 = *puVar5;
+  uVar24 = 0;
+  uVar13 = uVar15 - *(ulonglong *)(lVar6 + 0x18);
+  if (uVar15 < *(ulonglong *)(lVar6 + 0x18)) {
+    uVar13 = uVar24;
+  }
+  uVar29 = uVar15 - *(ulonglong *)(lVar6 + 0x38);
+  if (uVar15 < *(ulonglong *)(lVar6 + 0x38)) {
+    uVar29 = uVar24;
+  }
+  lVar22 = uVar13 * 0x10 + *(longlong *)(lVar6 + 8);
+  uVar15 = *(ulonglong *)(lVar6 + 0x10) - uVar13;
+  if (*(ulonglong *)(lVar6 + 0x10) < uVar13) {
+    lVar22 = 8;
+    uVar15 = uVar24;
+  }
+  lVar14 = uVar29 * 0x10 + *(longlong *)(lVar6 + 0x28);
+  uVar13 = *(ulonglong *)(lVar6 + 0x30) - uVar29;
+  if (*(ulonglong *)(lVar6 + 0x30) < uVar29) {
+    lVar14 = 8;
+    uVar13 = uVar24;
+  }
+  *puVar5 = (*(longlong *)(lVar6 + 0x40) - uVar13) - uVar15;
+  lVar20 = uVar13 * 0x10 + lVar14;
+  lVar6 = *in_RCX;
+  lVar7 = in_RCX[1];
+  uVar2 = *(undefined4 *)((longlong)in_R8 + 0x1c);
+  lVar30 = *in_R8;
+  puVar8 = (undefined4 *)in_R8[2];
+  lVar33 = lVar22;
+  do {
+    if ((lVar33 == 0) || (lVar33 == uVar15 * 0x10 + lVar22)) {
+      if ((lVar14 == 0) || (lVar14 == lVar20)) break;
+      lVar19 = 0;
+      lVar9 = lVar14 + 0x10;
+      lVar23 = lVar14;
+    }
+    else {
+      lVar19 = lVar33 + 0x10;
+      lVar9 = lVar14;
+      lVar23 = lVar33;
+    }
+    lVar14 = lVar9;
+    *puVar5 = *puVar5 + 1;
+    uVar13 = *(ulonglong *)(lVar23 + 8) & 0xffffffff;
+    lVar33 = lVar19;
+    if ((uVar13 < *(ulonglong *)(lVar7 + 0x10)) &&
+       (*(int *)(*(longlong *)(lVar7 + 8) + uVar13 * 0x14) ==
+        (int)(*(ulonglong *)(lVar23 + 8) >> 0x20))) {
+      lVar19 = *(longlong *)(lVar7 + 8) + uVar13 * 0x14;
+      uVar13 = (ulonglong)*(uint *)(lVar19 + 4);
+      if ((uVar13 != 0xffffffff) &&
+         ((uVar13 < *(ulonglong *)(lVar6 + 0x38) &&
+          ((*(ulonglong *)
+             (*(longlong *)(lVar6 + 0x28) + (ulonglong)(*(uint *)(lVar19 + 4) >> 6) * 8) >>
+            (uVar13 & 0x3f) & 1) != 0)))) {
+        puVar26 = (undefined8 *)
+                  (*(longlong *)
+                    (*(longlong *)
+                      (*(longlong *)(lVar7 + 0x1a8) + 0x18 +
+                      (ulonglong)*(uint *)(lVar19 + 0xc) * 0x48) + 0x10 +
+                    ~*(ulonglong *)
+                      (*(longlong *)
+                        (*(longlong *)(lVar7 + 0x1a8) + 0x38 +
+                        (ulonglong)*(uint *)(lVar19 + 0xc) * 0x48) +
+                      *(longlong *)(lVar6 + 0x110) * 8) * 0x30) +
+                  (ulonglong)*(uint *)(lVar19 + 0x10) * 0x10);
+        uVar11 = *puVar26;
+        uVar12 = puVar26[1];
+        *puVar8 = uVar2;
+        lVar19 = *(longlong *)(lVar30 + 0x30);
+        uVar10 = *(undefined8 *)(lVar30 + 0x40);
+        if (lVar19 == *(longlong *)(lVar30 + 0x20)) {
+          alloc::raw_vec::RawVec::
+          grow_one<tuple_<ref_<str_>,enum2_<country_core::resources::gui::SettingsMenuState>_>,alloc::alloc::Global>
+                    ();
+        }
+        lVar9 = *(longlong *)(lVar30 + 0x28);
+        puVar26 = (undefined8 *)(lVar9 + lVar19 * 0x18);
+        *puVar26 = uVar11;
+        puVar26[1] = uVar12;
+        *(undefined8 *)(lVar9 + 0x10 + lVar19 * 0x18) = uVar10;
+        *(longlong *)(lVar30 + 0x30) = lVar19 + 1;
+        *(longlong *)(lVar30 + 0x40) = *(longlong *)(lVar30 + 0x40) + 1;
+      }
+    }
+  } while( true );
+  lVar22 = in_stack_00000028[1];
+  uVar15 = *(ulonglong *)*in_stack_00000028;
+  puVar34 = (uint *)0x0;
+  puVar32 = (uint *)(uVar15 - *(ulonglong *)(lVar22 + 0x18));
+  if (uVar15 < *(ulonglong *)(lVar22 + 0x18)) {
+    puVar32 = puVar34;
+  }
+  puVar28 = (uint *)(uVar15 - *(ulonglong *)(lVar22 + 0x38));
+  if (uVar15 < *(ulonglong *)(lVar22 + 0x38)) {
+    puVar28 = puVar34;
+  }
+  lVar14 = (longlong)puVar32 * 0x28 + *(longlong *)(lVar22 + 8);
+  lVar30 = (longlong)puVar28 * 0x28 + *(longlong *)(lVar22 + 0x28);
+  bVar35 = *(uint **)(lVar22 + 0x10) < puVar32;
+  puVar32 = (uint *)((longlong)*(uint **)(lVar22 + 0x10) - (longlong)puVar32);
+  bVar37 = puVar32 == (uint *)0x0;
+  if (bVar35) {
+    puVar32 = puVar34;
+  }
+  lVar33 = 8;
+  if (bVar35) {
+    lVar14 = 8;
+  }
+  puVar25 = (uint *)(lVar14 + -0x28 + (longlong)puVar32 * 0x28);
+  if (bVar35 || bVar37) {
+    puVar25 = puVar34;
+  }
+  bVar36 = *(uint **)(lVar22 + 0x30) < puVar28;
+  puVar28 = (uint *)((longlong)*(uint **)(lVar22 + 0x30) - (longlong)puVar28);
+  bVar38 = puVar28 == (uint *)0x0;
+  if (bVar36) {
+    lVar30 = 8;
+    puVar28 = puVar34;
+  }
+  puVar18 = (uint *)(lVar30 + -0x28 + (longlong)puVar28 * 0x28);
+  if (bVar36 || bVar38) {
+    puVar18 = puVar25;
+  }
+  puVar32 = (uint *)((longlong)puVar28 + (longlong)puVar32);
+  if (!bVar36 && !bVar38 || !bVar35 && !bVar37) {
+    puVar32 = puVar34;
+  }
+  *(ulonglong *)*in_stack_00000028 = *(longlong *)(lVar22 + 0x40) - (longlong)puVar32;
+  puVar32 = *(uint **)(lVar6 + 0xf8);
+  plVar17 = *(longlong **)(in_stack_00000030 + 8);
+  if (plVar17 == (longlong *)0x0) {
+    plVar17 = *(longlong **)(in_stack_00000030 + 0x10);
+  }
+  uVar2 = *(undefined4 *)((longlong)in_RCX + 0x14);
+  puVar28 = puVar32 + *(longlong *)(lVar6 + 0x100);
+  cVar1 = *(char *)(lVar6 + 0x108);
+  puVar25 = (uint *)*in_R9;
+  local_b8 = 0;
+  local_88 = 8;
+  local_a8 = 0;
+  puVar21 = (uint *)0x0;
+LAB_14234234b:
+  do {
+    do {
+      if (cVar1 == '\0') {
+        if (puVar21 == puVar34) {
+          if (puVar32 == puVar28) {
+            return;
+          }
+          while( true ) {
+            puVar34 = *(uint **)(*(longlong *)(lVar7 + 0x100) + 0x58 + (ulonglong)*puVar32 * 0xa0);
+            if (puVar34 != (uint *)0x0) break;
+            puVar32 = puVar32 + 1;
+            if (puVar32 == puVar28) {
+              return;
+            }
+          }
+          lVar33 = *(longlong *)(lVar7 + 0x100) + (ulonglong)*puVar32 * 0xa0;
+          uVar15 = (ulonglong)*(uint *)(lVar33 + 0x94);
+          lVar14 = *(longlong *)(lVar7 + 0x1a8);
+          lVar22 = lVar14 + uVar15 * 0x48;
+          lVar30 = *(longlong *)(lVar14 + 0x38 + uVar15 * 0x48);
+          if (*(ulonglong *)(lVar6 + 0x110) < *(ulonglong *)(lVar14 + 0x40 + uVar15 * 0x48)) {
+            uVar15 = *(ulonglong *)(lVar30 + *(ulonglong *)(lVar6 + 0x110) * 8);
+            lVar22 = *(longlong *)(lVar22 + 0x18);
+            if (uVar15 == 0) goto LAB_1423424b2;
+            local_b8 = *(longlong *)(lVar22 + 0x10 + ~uVar15 * 0x30);
+          }
+          else {
+            lVar22 = *(longlong *)(lVar22 + 0x18);
+LAB_1423424b2:
+            local_b8 = 0;
+          }
+          puVar32 = puVar32 + 1;
+          lVar14 = ~*(ulonglong *)(lVar30 + *(longlong *)(lVar6 + 0x118) * 8) * 0x30;
+          local_a8 = *(longlong *)(lVar22 + 0x10 + lVar14);
+          local_98 = *(longlong *)(lVar22 + 0x28 + lVar14);
+          lVar33 = *(longlong *)(lVar33 + 0x50);
+          puVar21 = (uint *)0x0;
+        }
+        puVar26 = (undefined8 *)((longlong)puVar21 * 0x10 + lVar33);
+        uVar15 = (ulonglong)*(uint *)(lVar33 + 8 + (longlong)puVar21 * 0x10);
+      }
+      else {
+        if (puVar21 == puVar34) {
+          if (puVar32 == puVar28) {
+            return;
+          }
+          while( true ) {
+            puVar34 = *(uint **)(*(longlong *)(lVar7 + 0x1a8) + 0x10 + (ulonglong)*puVar32 * 0x48);
+            if (puVar34 != (uint *)0x0) break;
+            puVar32 = puVar32 + 1;
+            if (puVar32 == puVar28) {
+              return;
+            }
+          }
+          lVar22 = *(longlong *)(lVar7 + 0x1a8) + (ulonglong)*puVar32 * 0x48;
+          if (*(ulonglong *)(lVar6 + 0x110) < *(ulonglong *)(lVar22 + 0x40)) {
+            uVar15 = *(ulonglong *)
+                      (*(longlong *)(lVar22 + 0x38) + *(ulonglong *)(lVar6 + 0x110) * 8);
+            lVar14 = *(longlong *)(lVar22 + 0x18);
+            if (uVar15 == 0) goto LAB_14234245f;
+            local_b8 = *(longlong *)(lVar14 + 0x10 + ~uVar15 * 0x30);
+          }
+          else {
+            lVar14 = *(longlong *)(lVar22 + 0x18);
+LAB_14234245f:
+            local_b8 = 0;
+          }
+          puVar32 = puVar32 + 1;
+          lVar30 = ~*(ulonglong *)(*(longlong *)(lVar22 + 0x38) + *(longlong *)(lVar6 + 0x118) * 8)
+                   * 0x30;
+          local_a8 = *(longlong *)(lVar14 + 0x10 + lVar30);
+          local_98 = *(longlong *)(lVar14 + 0x28 + lVar30);
+          local_88 = *(longlong *)(lVar22 + 8);
+          puVar21 = (uint *)0x0;
+        }
+        puVar26 = (undefined8 *)(local_88 + (longlong)puVar21 * 8);
+        uVar15 = (ulonglong)puVar21 & 0xffffffff;
+      }
+      puVar8 = (undefined4 *)(local_98 + uVar15 * 4);
+      puVar16 = (uint *)(uVar15 * 0x10 + local_b8);
+      lVar22 = uVar15 * 3 + local_a8;
+      uVar10 = *puVar26;
+      uVar3 = *puVar16;
+      uVar13 = 0;
+      uVar15 = (ulonglong)uVar3 - 5;
+      if (0xe < uVar3 - 6) {
+        uVar15 = uVar13;
+      }
+      uVar4 = *puVar25;
+      uVar24 = (ulonglong)uVar4 - 5;
+      if ((ulonglong)uVar4 < 6) {
+        uVar24 = uVar13;
+      }
+      if (uVar15 == uVar24) {
+        uVar13 = 1;
+        switch(uVar15) {
+        case 0:
+          if (uVar4 < 6) {
+            if (uVar3 == uVar4) {
+                    // WARNING: Could not recover jumptable at 0x0001423425b1. Too many branches
+                    // WARNING: Treating indirect jump as call
+              (*(code *)(&DAT_14304e2b0 + *(int *)(&DAT_14304e2b0 + (ulonglong)uVar3 * 4)))
+                        (lVar22,puVar8,1,
+                         &DAT_14304e2b0 + *(int *)(&DAT_14304e2b0 + (ulonglong)uVar3 * 4));
+              return;
+            }
+LAB_142342627:
+            uVar13 = 0;
+          }
+          break;
+        case 1:
+        case 4:
+          uVar13 = (ulonglong)((char)puVar16[1] == (char)puVar25[1]);
+          break;
+        case 3:
+          uVar13 = (ulonglong)(*(longlong *)(puVar16 + 2) == *(longlong *)(puVar25 + 2));
+          break;
+        case 6:
+          bVar27 = (char)puVar16[1] - 0x38;
+          if (7 < bVar27) {
+            bVar27 = 6;
+          }
+          bVar31 = (char)puVar25[1] - 0x38;
+          if (7 < bVar31) {
+            bVar31 = 6;
+          }
+          if (bVar27 != bVar31) goto LAB_142342627;
+          uVar13 = (ulonglong)((char)puVar16[1] == (char)puVar25[1] || bVar27 != 6);
+        }
+      }
+      puVar21 = (uint *)((longlong)puVar21 + 1);
+      *puVar8 = uVar2;
+      *(char *)(lVar22 + 2) = (char)uVar13;
+    } while ((bVar36 || bVar38) && (bVar35 || bVar37));
+    uVar3 = *puVar16;
+    lVar22 = (ulonglong)uVar3 - 5;
+    if (0xe < uVar3 - 6) {
+      lVar22 = 0;
+    }
+    uVar4 = *puVar18;
+    lVar14 = (ulonglong)uVar4 - 5;
+    if ((ulonglong)uVar4 < 6) {
+      lVar14 = 0;
+    }
+  } while (lVar22 != lVar14);
+  switch(lVar22) {
+  case 0:
+    if (5 < uVar4) break;
+    if (uVar3 == uVar4) {
+                    // WARNING: Could not recover jumptable at 0x0001423426d2. Too many branches
+                    // WARNING: Treating indirect jump as call
+      (*(code *)(&DAT_14304e2e4 + *(int *)(&DAT_14304e2e4 + (ulonglong)uVar3 * 4)))
+                (&DAT_14304e2e4 + *(int *)(&DAT_14304e2e4 + (ulonglong)uVar3 * 4));
+      return;
+    }
+    goto LAB_14234234b;
+  case 1:
+  case 4:
+    if ((char)puVar16[1] != (char)puVar18[1]) goto LAB_14234234b;
+    break;
+  case 3:
+    if (*(longlong *)(puVar16 + 2) != *(longlong *)(puVar18 + 2)) goto LAB_14234234b;
+    break;
+  case 6:
+    bVar27 = (char)puVar16[1] - 0x38;
+    if (7 < bVar27) {
+      bVar27 = 6;
+    }
+    bVar31 = (char)puVar18[1] - 0x38;
+    if (7 < bVar31) {
+      bVar31 = 6;
+    }
+    if ((bVar27 != bVar31) || ((char)puVar16[1] != (char)puVar18[1] && bVar27 == 6))
+    goto LAB_14234234b;
+  }
+  lVar22 = plVar17[2];
+  if ((ulonglong)(*plVar17 - lVar22) < 0x28) {
+    alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+  }
+  lVar14 = plVar17[1];
+  *(code **)(lVar14 + lVar22) =
+       core::ops::function::FnOnce::
+       call_once<bevy_ecs::world::command_queue::impl_4::push::closure_env_0<bevy_ecs::error::command_handling::impl_0::handle_error_with::closure_env_0<bevy_ecs::error::command_handling::impl_3::with_entity::closure_env_0<bevy_ecs::system::commands::entity_command::insert::closure_env_0<toolbar::resouces_and_components::UiPlaySelectAnimation>_>,tuple_<>,enum2_<bevy_ecs::world::error::EntityMutableFetchError>_>_>,tuple_<bevy_ptr::OwningPtr<bevy_ptr::Unaligned>,enum2_<core::option::Option<core::ptr::non_null::NonNull<bevy_ecs::world::World>_>_>,ref_mut_<usize>_>_>
+  ;
+  *(code **)(lVar14 + 8 + lVar22) = bevy_ecs::error::handler::panic;
+  *(undefined8 *)(lVar14 + 0x10 + lVar22) = uVar10;
+  *(undefined8 *)(lVar14 + 0x18 + lVar22) = 0x3e4ccccd3e4ccccd;
+  *(undefined4 *)(lVar14 + 0x20 + lVar22) = 0;
+  *(undefined1 *)(lVar14 + 0x24 + lVar22) = 0;
+  plVar17[2] = lVar22 + 0x28;
+  goto LAB_14234234b;
+}
+
+
+
+/* CALLEES */
+{'name': 'do_reserve_and_handle<alloc::alloc::Global>', 'address': '1428a58d0'}
+{'name': 'grow_one<tuple$<ref$<str$>,enum2$<country_core::resources::gui::SettingsMenuState>_>,alloc::alloc::Global>', 'address': '140562db0'}

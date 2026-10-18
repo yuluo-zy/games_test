@@ -1,0 +1,100 @@
+
+void __cdecl
+alloc::vec::Vec::
+retain<glam::f32::vec3::Vec3,alloc::alloc::Global,utils::curve::impl_4::try_new_from_points_remove_duplicates::closure_env_0<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D>_>
+          (void)
+
+{
+  uint *puVar1;
+  longlong lVar2;
+  float *pfVar3;
+  longlong in_RCX;
+  uint *in_RDX;
+  float *pfVar4;
+  longlong lVar5;
+  longlong lVar6;
+  longlong lVar7;
+  uint uVar8;
+  float *pfVar9;
+  bool bVar10;
+  
+  lVar2 = *(longlong *)(in_RCX + 0x10);
+  if (lVar2 == 0) {
+    return;
+  }
+  puVar1 = in_RDX + 1;
+  pfVar9 = *(float **)(in_RCX + 8);
+  uVar8 = *in_RDX;
+  if (((((uVar8 & 1) != 0) && (*pfVar9 == (float)in_RDX[1])) &&
+      (!NAN(*pfVar9) && !NAN((float)in_RDX[1]))) &&
+     ((pfVar9[1] == (float)in_RDX[2] && (!NAN(pfVar9[1]) && !NAN((float)in_RDX[2]))))) {
+    lVar6 = 1;
+    if ((pfVar9[2] == (float)in_RDX[3]) && (!NAN(pfVar9[2]) && !NAN((float)in_RDX[3]))) {
+LAB_1412f6963:
+      lVar7 = 1;
+      lVar5 = lVar2 - lVar6;
+      if (lVar5 != 0) {
+        pfVar9 = pfVar9 + lVar6 * 3;
+        lVar7 = 1;
+LAB_1412f69d7:
+        do {
+          if ((uVar8 & 1) != 0) {
+            if ((*pfVar9 == (float)in_RDX[1]) && (!NAN(*pfVar9) && !NAN((float)in_RDX[1]))) {
+              if ((pfVar9[1] == (float)in_RDX[2]) && (!NAN(pfVar9[1]) && !NAN((float)in_RDX[2]))) {
+                if ((pfVar9[2] == (float)in_RDX[3]) && (!NAN(pfVar9[2]) && !NAN((float)in_RDX[3])))
+                {
+                  lVar7 = lVar7 + 1;
+                  pfVar9 = pfVar9 + 3;
+                  lVar5 = lVar5 + -1;
+                  if (lVar5 == 0) break;
+                  goto LAB_1412f69d7;
+                }
+              }
+            }
+          }
+          *in_RDX = 1;
+          in_RDX[3] = (uint)pfVar9[2];
+          *(undefined8 *)puVar1 = *(undefined8 *)pfVar9;
+          pfVar9[lVar7 * -3 + 2] = pfVar9[2];
+          *(undefined8 *)(pfVar9 + lVar7 * -3) = *(undefined8 *)pfVar9;
+          uVar8 = 1;
+          pfVar9 = pfVar9 + 3;
+          lVar5 = lVar5 + -1;
+        } while (lVar5 != 0);
+      }
+      goto LAB_1412f6971;
+    }
+  }
+  *in_RDX = 1;
+  in_RDX[3] = (uint)pfVar9[2];
+  *(undefined8 *)puVar1 = *(undefined8 *)pfVar9;
+  if (lVar2 == 1) {
+    lVar7 = 0;
+  }
+  else {
+    lVar7 = 0;
+    lVar6 = 2;
+    pfVar3 = pfVar9;
+    do {
+      pfVar4 = pfVar3 + 3;
+      if ((*pfVar4 == (float)in_RDX[1]) && (!NAN(*pfVar4) && !NAN((float)in_RDX[1]))) {
+        if ((pfVar3[4] == (float)in_RDX[2]) && (!NAN(pfVar3[4]) && !NAN((float)in_RDX[2]))) {
+          if ((pfVar3[5] == (float)in_RDX[3]) && (!NAN(pfVar3[5]) && !NAN((float)in_RDX[3]))) {
+            uVar8 = 1;
+            goto LAB_1412f6963;
+          }
+        }
+      }
+      *in_RDX = 1;
+      in_RDX[3] = (uint)pfVar3[5];
+      *(undefined8 *)puVar1 = *(undefined8 *)pfVar4;
+      bVar10 = lVar6 != lVar2;
+      lVar6 = lVar6 + 1;
+      pfVar3 = pfVar4;
+    } while (bVar10);
+  }
+LAB_1412f6971:
+  *(longlong *)(in_RCX + 0x10) = lVar2 - lVar7;
+  return;
+}
+

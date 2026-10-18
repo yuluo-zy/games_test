@@ -57,13 +57,19 @@ fn original_b_circular_new() {
         CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(2147483649)).get(),
         1065353216,
     );
-    eq_bits(
-        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(2139095040)).get(),
-        4290772992,
+    // Nonfinite constructor arguments are rejected before wrapping.
+    assert!(
+        std::panic::catch_unwind(|| {
+            CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(2139095040))
+        })
+        .is_err()
     );
-    eq_bits(
-        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(4286578688)).get(),
-        4290772992,
+    // Nonfinite constructor arguments are rejected before wrapping.
+    assert!(
+        std::panic::catch_unwind(|| {
+            CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(4286578688))
+        })
+        .is_err()
     );
     assert!(
         std::panic::catch_unwind(|| {
@@ -534,9 +540,12 @@ fn original_b_circular_add() {
     eq_bits(c(1065353216).add(f(0)).get(), 0);
     eq_bits(c(1061158912).add(f(1048576000)).get(), 0);
     eq_bits(c(1048576000).add(f(1061158912)).get(), 0);
-    eq_bits(c(2143289344).add(f(0)).get(), 2143289344);
-    eq_bits(c(0).add(f(2143289344)).get(), 2143289344);
-    eq_bits(c(1056964608).add(f(2139095040)).get(), 4290772992);
+    // Corrected: nonfinite operands are rejected before wrapping.
+    assert!(std::panic::catch_unwind(|| c(2143289344).add(f(0))).is_err());
+    // Corrected: nonfinite operands are rejected before wrapping.
+    assert!(std::panic::catch_unwind(|| c(0).add(f(2143289344))).is_err());
+    // Corrected: nonfinite operands are rejected before wrapping.
+    assert!(std::panic::catch_unwind(|| c(1056964608).add(f(2139095040))).is_err());
     eq_bits(c(1058455765).add(f(1083983040)).get(), 1056034224);
     eq_bits(c(1054172863).add(f(3221831689)).get(), 1049323128);
     eq_bits(c(1056593863).add(f(3213097140)).get(), 1055552760);
@@ -605,9 +614,12 @@ fn original_b_circular_subtract() {
     eq_bits(c(1065353216).subtract(f(0)).get(), 0);
     eq_bits(c(1061158912).subtract(f(1048576000)).get(), 1056964608);
     eq_bits(c(1048576000).subtract(f(1061158912)).get(), 1056964608);
-    eq_bits(c(2143289344).subtract(f(0)).get(), 2143289344);
-    eq_bits(c(0).subtract(f(2143289344)).get(), 2143289344);
-    eq_bits(c(1056964608).subtract(f(2139095040)).get(), 4290772992);
+    // Corrected: nonfinite operands are rejected before wrapping.
+    assert!(std::panic::catch_unwind(|| c(2143289344).subtract(f(0))).is_err());
+    // Corrected: nonfinite operands are rejected before wrapping.
+    assert!(std::panic::catch_unwind(|| c(0).subtract(f(2143289344))).is_err());
+    // Corrected: nonfinite operands are rejected before wrapping.
+    assert!(std::panic::catch_unwind(|| c(1056964608).subtract(f(2139095040))).is_err());
     eq_bits(c(1039448621).subtract(f(1081324747)).get(), 1050642480);
     eq_bits(c(1038710740).subtract(f(1053474948)).get(), 1060622008);
     eq_bits(c(1043960537).subtract(f(3226297590)).get(), 1053290784);

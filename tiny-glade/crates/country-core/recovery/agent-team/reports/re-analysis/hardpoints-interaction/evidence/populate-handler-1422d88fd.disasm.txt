@@ -1,0 +1,80 @@
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1422d88fd      add al, 0
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1422d88ff      add byte [rbp + 0xe], dh
+   ; likely
+0x1422d8902      jp 0x1422d8910
+0x1422d8904      ucomiss xmm12, dword [rbp + 0x6a0]
+   ; likely
+0x1422d890c      jne 0x1422d8910
+   ; unlikely
+0x1422d890e      jnp 0x1422d891a
+0x1422d8910      mov dword [rbp + 0x6b0], 0
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1422d891a      xor eax, eax
+; reloc.WS2_32.dll_closesocket
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1422d891c      cmp r12b, 3
+   ; reloc.WS2_32.dll_accept
+0x1422d8920      setb cl
+0x1422d8923      mov r11, qword [rbp + 0x6c0]
+0x1422d892a      mov rdx, qword [r11 - 0x40]
+0x1422d892e      lea r8, [rdx - 3]
+0x1422d8932      lea r9, [rdx - 2]
+; reloc.WS2_32.dll_closesocket
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1422d8936      cmp r8, 3
+0x1422d893a      mov r8d, 0
+0x1422d8940      cmovae r9, r8
+0x1422d8944      lea r10, [0x143043884]
+0x1422d894b      movsxd r8, dword [r10 + r9*4]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1422d894f      add r8, r10
+0x1422d8952      jmp r8
+0x1422d8955      mov r8d, dword [r11 - 0x30]
+0x1422d8959      mov rdi, qword [r11 - 0x38]
+0x1422d895d      movabs r9, 0xffffffff00000000
+0x1422d8967      mov rsi, qword [rbp + 0xe0]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1422d896e      and rsi, r9
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1422d8971      or rsi, r8
+0x1422d8974      jmp 0x1422d8ef6
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1422d8979      xor eax, eax
+0x1422d897b      jmp 0x1422d8a6e
+; "crates/systems/clutter/src/autoclutter/populate_autoclutter_regions.rs"
+0x1422d8980      lea rax, [0x1430433c8]
+   ; reloc.WS2_32.dll_accept
+0x1422d8987      sub rsi, rax
+   ; reloc.WS2_32.dll_accept
+0x1422d898a      inc rsi
+   ; unlikely
+0x1422d898d      je 0x1422d89d3
+; "crates/systems/clutter/src/autoclutter/populate_autoclutter_regions.rs"
+0x1422d898f      lea rax, [0x1430433c8]
+; 'F'
+; 70
+   ; reloc.WS2_32.dll_accept
+0x1422d8996      cmp rsi, 0x46
+   ; likely
+0x1422d899a      jae 0x1422d89cd
+0x1422d899c      cmp byte [rsi + rax], 0xbf
+   ; likely
+0x1422d89a0      jg 0x1422d89d3
+0x1422d89a2      jmp 0x1422de8c3
+0x1422d89a7      movss dword [rbp + 0x6a0], xmm12
+0x1422d89b0      mov qword [rbp + 0x6c8], r9
+0x1422d89b7      mov qword [rbp + 0x6a8], r8
+0x1422d89be      mov dword [rbp + 0x6b0], edx
+0x1422d89c4      movaps xmm7, xmm11

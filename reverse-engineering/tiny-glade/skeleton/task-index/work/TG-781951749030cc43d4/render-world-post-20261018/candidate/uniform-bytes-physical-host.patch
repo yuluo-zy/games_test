@@ -1,0 +1,71 @@
+--- a/crates/tiny-glade/src/render_host.rs
++++ b/crates/tiny-glade/src/render_host.rs
+@@ -1372,6 +1372,10 @@
+     dynamic: Arc<Mutex<DynamicConstants>>,
+     tables: Option<HostTables>,
+     cache_session: Option<GraphSession<'session>>,
++    // Same Arc table -> same real constants range within this declaration
++    // host. Actual pages remain owned by the existing DynamicConstants pool;
++    // the graph/session and commands retain each imported allocation.
++    uniform_uploads: Vec<(Arc<[u8]>, DynamicConstantsChunk)>,
+ }
+ enum GraphSession<'a> {
+     Exclusive(&'a mut rhapsody::rg::vulkan::VulkanGraphSession),
+@@ -1436,6 +1440,7 @@
+             dynamic: Arc::new(Mutex::new(dynamic)),
+             tables: None,
+             cache_session: None,
++            uniform_uploads: Vec::new(),
+         })
+     }
+ 
+@@ -2251,6 +2256,49 @@
+                     )
+                 })?;
+             let (resource, handle, range, code) = match external.slot {
++                ExternalSlot::UniformBytes(bytes) => {
++                    if !matches!(kind, BindingKind::StorageBuffer | BindingKind::UniformBuffer) {
++                        return Err(rhapsody::Error::invalid_usage("external uniform differs from shader ABI"));
++                    }
++                    if bytes.is_empty() {
++                        return Err(rhapsody::Error::invalid_usage("external uniform has an empty range"));
++                    }
++                    let (buffer, offset, size) = if let Some((_, chunk)) = self.uniform_uploads
++                        .iter().find(|(source, _)| Arc::ptr_eq(source, &bytes))
++                    {
++                        (chunk.buffer.clone(), chunk.offset, chunk.size)
++                    } else {
++                        // Bounded declaration cache, not another allocator or
++                        // descriptor heap. Original DoF uses one shared table.
++                        if self.uniform_uploads.len() == 64 {
++                            return Err(rhapsody::Error::unsupported("external uniform declaration budget exceeded"));
++                        }
++                        self.uniform_uploads.try_reserve(1)
++                            .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
++                        let chunk = self.dynamic.lock().push_slice(&bytes)?;
++                        let range = (chunk.buffer.clone(), chunk.offset, chunk.size);
++                        self.uniform_uploads.push((bytes, chunk));
++                        range
++                    };
++                    let expected = if kind == BindingKind::UniformBuffer {
++                        vk::BufferUsageFlags::UNIFORM_BUFFER
++                    } else {
++                        vk::BufferUsageFlags::STORAGE_BUFFER
++                    };
++                    if !Arc::ptr_eq(&buffer.device, &self.device)
++                        || !buffer.usage.contains(expected)
++                        || offset.checked_add(size).is_none_or(|end| end > buffer.size)
++                    {
++                        return Err(rhapsody::Error::invalid_usage("external uniform physical range/device mismatch"));
++                    }
++                    let handle = session.import_frame_buffer(&mut graph, buffer.clone(), 0x1a)?;
++                    (
++                        BindlessResource::Buffer { buffer, offset, size },
++                        handle,
++                        AccessRange::Buffer { offset, size },
++                        0x1a,
++                    )
++                }
+                 ExternalSlot::Buffer {
+                     vk_buffer,
+                     offset,

@@ -1,0 +1,7 @@
+# B legacy camera keys
+
+原发行 full/demo intro/history.json 均Version16，Camera使用yaw_cache/pitch_cache/position_cache。当前源码注释声称接受legacy，但derive实际上没有alias，解析真实资产将失败。
+
+fresh Ghidra B访客1403b5ba0与1416fb440（正文JSON同目录）：len9字符yaw_cache和len3 yaw共同输出字段tag0；len11 pitch_cache与len5 pitch共同tag1；len14 position_cache与len8 position共同tag2。旧vertical_fov_degrees按unknown字段忽略（tag6）。canonical序列化仍写yaw/pitch/position六字段。
+
+候选只有这3个serde alias，未因现成资产字段而推断整个旧schema。父任务在v5统一构建等待锁期间明确授权后已应用这3个alias，并加入真实intro Camera解析与canonical序列化回归。尚未在本分工独立运行Cargo；统一编译结果由父任务记录。original-intro-camera.json直接提取原资产Camera，不创建或修改用户存档。

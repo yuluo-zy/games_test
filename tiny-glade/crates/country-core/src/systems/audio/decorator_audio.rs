@@ -2,14 +2,22 @@
 //! edit sounds — 16 loops driven by `PlayDecoratorSoundCmd`.
 //!
 //! O-level facts (chapter decorator_audio.rs.md, decomp-0x14145c6b0 /
-//! 0x14145dc20, rne-read): init creates 16 loops (decomp names, incl. three
-//! `Lantern/Amb` and the `Cosmetics/Clutter_Rotate` / `Cosmetics/MoveGround`
-//! pair). The system collects `PlayDecoratorSoundCmd` events into a
-//! `(dist, position)` list, stable-sorts it, and drives the loop players by
-//! distance/attenuation with stop/start_if_not_playing pair toggling.
+//! 0x14145dc20, disasm-0x14145e9c0, rne-read): init creates 16 loops (decomp
+//! names, incl. three `Lantern/Amb` and the `Cosmetics/Clutter_Rotate` /
+//! `Cosmetics/MoveGround` pair). The system dispatches each event kind to a
+//! **one-shot** (verified names: WindowPlace / WindowCombine /
+//! WindowPlacePreview / WindowDelete / WindowRemove / WindowChangeSeed /
+//! WindowHover / WindowSplit / Lantern/Delete / ChimneyBaseDisappear /
+//! ChimneyDelete / Flags/ChangeSeed / Flags/Delete / Cosmetics/Clutter_Clone)
+//! or to a **loop** slot (kinds 6/7/0xc/0xd/0x12/0x16/0x18/0x1c/0x1d/0x22/0x24),
+//! collects distance records for kind 0xf, and frame-end drives the loops with
+//! stop/start_if_not_playing pair toggling. The loop slot ↔ event-name
+//! correspondence (native state +0x10/+0x38/+0x70/+0xb8/+0xf0/+0x128/+0x160/
+//! +0x198/+0x1d0/+0x208/+0x240/+0x278/+0x2b0/+0x2d8/+0x310/+0x358) is 待对账.
 
 use crate::{
     resources::audio_resources::{AudioCore, AudioInstance, EventInstance, Studio},
+    systems::audio::roof_audio::instantiate_audio_w_position,
     utils::audio_utils::AudioLoop,
 };
 use crate::systems::audio::PlayDecoratorSoundCmd;
@@ -64,34 +72,71 @@ pub fn decorator_audio_init_system<S: Studio + Send + Sync + 'static>(
     commands.insert_resource(DecoratorAudioState::<S::Event>::new(&core));
 }
 
-/// Map a `PlayDecoratorSoundCmd` kind to a loop index. The native 0x14145dc20
-/// jump table's full kind→loop mapping is 待取证; the decomp shows distance
-/// sorting then per-loop stop/start_if_not_playing pair toggling, so the kind
-/// below selects the loop that matches the edit action where known.
-fn kind_to_loop(kind: u8) -> usize {
-    // O partial: window edits → loop 0 (WindowDrag); lantern placement/move →
-    // 2..7; chimney height → 8; flag rotate → 10; clutter rotate → 13.
+/// Decorator one-shot event by kind (O: disasm-0x14145dc20 string table;
+/// each verified by the native string address + length. Kinds not listed are
+/// either loop kinds (see [`kind_to_loop`]) or reserved).
+pub fn decorator_one_shot(kind: u8) -> Option<&'static str> {
+    Some(match kind {
+        1 => "event:/SFX/WindowPlace",
+        2 => "event:/SFX/WindowCombine",
+        3 => "event:/SFX/WindowPlacePreview",
+        4 => "event:/SFX/WindowDelete",
+        5 => "event:/SFX/WindowRemove",
+        8 => "event:/SFX/WindowChangeSeed",
+        9 => "event:/SFX/WindowHover",
+        10 => "event:/SFX/WindowSplit",
+        0x10 => "event:/SFX/Lantern/Delete",
+        0x14 => "event:/SFX/ChimneyBaseDisappear",
+        0x17 => "event:/SFX/ChimneyDelete",
+        0x19 => "event:/SFX/Flags/ChangeSeed",
+        0x1e => "event:/SFX/Flags/Delete",
+        0x1f => "event:/SFX/Cosmetics/Clutter_Clone",
+        _ => return None,
+    })
+}
+
+/// Map a `PlayDecoratorSoundCmd` loop kind to a loop index. The native
+/// 0x14145dc20 jump table assigns each loop kind a state slot at
+/// +0x10/+0x38/+0x70/+0xb8/+0xf0/+0x128/+0x160/+0x198/+0x1d0/+0x208/+0x240/
+/// +0x278/+0x2b0/+0x2d8/+0x310/+0x358; the exact slot ↔ event-name
+/// correspondence requires the full DecoratorAudioState layout and is 待对账.
+/// The assignment below is the best-effort mapping kept from the pre-verification
+/// code (window→0, lantern→2..7, chimney→8, flags→10..12, clutter→13).
+fn kind_to_loop(kind: u8) -> Option<usize> {
+    // O partial: loop kinds only (the one-shot kinds are handled first).
     match kind {
-        0..=1 => 0,
-        2..=5 => 2,
-        6 => 3,
-        7..=8 => 8,
-        9 => 10,
-        10 => 13,
-        _ => 5, // Lantern/Amb fallback.
+        0xc | 0xd => Some(8),
+        6 => Some(1),
+        7 => Some(2),
+        0x12 => Some(4),
+        0x16 => Some(13),
+        0x18 => Some(10),
+        0x1c | 0x1d => Some(12),
+        0x22 => Some(14),
+        0x24 => Some(9),
+        _ => None,
     }
 }
 
-/// `decorator_audio_system` (0x14145dc20): collect events, drive the matching
-/// loop at the event position (O: distance-sorted stop/start_if_not_playing
-/// toggling). The exact attenuation curve is 待取证.
+/// `decorator_audio_system` (0x14145dc20): dispatch each event to the verified
+/// one-shot (kind→event) or loop (kind→loop slot), drive the flagged loops at
+/// frame end (O: distance-sorted stop/start_if_not_playing toggling; the
+/// distance collection for kind 0xf and the 3-nearest drive are 待对账).
 pub fn decorator_audio_system<S: Studio + Send + Sync + 'static>(
     mut state: ResMut<DecoratorAudioState<S::Event>>,
     mut events: EventReader<PlayDecoratorSoundCmd>,
-    _core: Res<AudioCore<S>>,
+    core: Res<AudioCore<S>>,
 ) {
     for event in events.read() {
-        let index = kind_to_loop(event.kind);
+        let position = [event.position.x, event.position.y, event.position.z];
+        if let Some(name) = decorator_one_shot(event.kind) {
+            // O: one-shot instantiate → set_position → start_if_not_playing.
+            let _ = instantiate_audio_w_position(&core, name, position);
+            continue;
+        }
+        let Some(index) = kind_to_loop(event.kind) else {
+            continue;
+        };
         state.should_play[index] = true;
         state.positions[index] = event.position;
     }
@@ -105,7 +150,7 @@ pub fn decorator_audio_system<S: Studio + Send + Sync + 'static>(
             let pos = positions[index];
             let _ = current.set_position([pos.x, pos.y, pos.z]);
         } else {
-            let _ = loop_player.stop(std::time::Duration::ZERO);
+            let _ = loop_player.stop_now();
         }
     }
     state.should_play = should_play;
@@ -122,5 +167,16 @@ mod tests {
         assert_eq!(DECORATOR_LOOP_EVENTS[0], "event:/SFX/WindowDrag");
         assert_eq!(DECORATOR_LOOP_EVENTS[13], "event:/SFX/Cosmetics/Clutter_Rotate");
         assert_eq!(DECORATOR_LOOP_EVENTS[14], "event:/SFX/Cosmetics/MoveGround");
+    }
+
+    #[test]
+    fn decorator_one_shots_match_the_dispatch_string_table() {
+        assert_eq!(decorator_one_shot(1), Some("event:/SFX/WindowPlace"));
+        assert_eq!(decorator_one_shot(2), Some("event:/SFX/WindowCombine"));
+        assert_eq!(decorator_one_shot(4), Some("event:/SFX/WindowDelete"));
+        assert_eq!(decorator_one_shot(8), Some("event:/SFX/WindowChangeSeed"));
+        assert_eq!(decorator_one_shot(0x17), Some("event:/SFX/ChimneyDelete"));
+        assert_eq!(decorator_one_shot(0x19), Some("event:/SFX/Flags/ChangeSeed"));
+        assert_eq!(decorator_one_shot(0x1e), Some("event:/SFX/Flags/Delete"));
     }
 }

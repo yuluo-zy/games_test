@@ -1,0 +1,7 @@
+# Original Nani visibility buffers — current B
+
+The production types now use their original dynamic u32 storage shape, rather than zero-sized name carriers. Native full constructor ranges `14160fd90` (Prev) and `141614b00` (Next) are retained in the renderer-owned `TG-5f034e6af1260241e4/render-nani-main-20261018/*-full-B-rne.asm` pack. Both check whole u32 elements/pointer alignment4 and pass the actual byte length to a usage0x22/memory1/alignment4 descriptor. None is an error because no dynamic size exists; Some(empty) remains a valid distinct input.
+
+Original startup_nani@140a38610 reads `GpuWorld.params.total_cmd_offset>>5` at140a3942e. The140a39565..579 allocation zeroes word_count*4 bytes;140a395ab then140a395c0 register the same real initial zero vector into Prev then Next. For the observed default parameters,3788800/32 gives118400 words and473600B per buffer. The actual startup producer belongs to renderer task `TG-a31ead12d06d2bb8a2` and was not duplicated here.
+
+The two canonical element wrappers are `[u32;1]`, dynamic BUFFER_LEN0 and TypedStorageBuffer40B. They are not one-element fixed allocations, and their actual NAME strings/graph hashes remain native. Meaningful recording-device tests exercise unequal dynamic word lengths and None rejection through the real library. The parent separately compiles/runs these tests. The frozen source snapshot/hash is `applied-source-manifest.json`; this startup pair is not part of the fixed72 init_populate registrations.

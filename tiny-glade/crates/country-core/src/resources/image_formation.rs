@@ -157,6 +157,38 @@ impl ImageFormationConfig {
             ..Self::default_plain()
         }
     }
+
+    /// `ColorGradingState::flattened`（0x140b00b20，fresh）：把调色段（名称 + 4×f32 +
+    /// +0x28 bypass 字节）压平为**无 bypass 的生效配置**。
+    ///
+    /// fresh 反编译（grading-b1.json，2026-10-17）：
+    /// - `if (*(char*)(in_RDX+0x28) == 0)`：克隆输入名（`String::clone`）+ 拷贝
+    ///   +0x18/+0x1c/+0x20/+0x24 四 f32；
+    /// - else：新分配名 `"default"`（`0x61666564`/`0x746c7561` = "default"，len/cap 7）+
+    ///   参数 `{1.0, 0.0, 1.0, 1.0}`（`0x3f800000`/0/`0x3f800000`/`0x3f800000`）；
+    /// - 两分支都写输出 +0x28 字节 = 0（输出 bypass 恒清）。
+    ///
+    /// 语义 = 把 bypass 门控消解成具体参数。尾部（+0x30 镜头 / +0x38 / +0x3c / +0x3d）
+    /// 原生**不写**（输出为调用方栈上未初始化区，不属于 `ColorGradingState`），这里保留
+    /// `self` 原值作语义模型，登记。
+    pub fn flattened(&self) -> Self {
+        let (name, params_18) = if self.flag_28 == 0 {
+            (self.name.clone(), self.params_18)
+        } else {
+            ("default".to_owned(), [1.0, 0.0, 1.0, 1.0])
+        };
+        Self {
+            name,
+            params_18,
+            flag_28: 0,
+            _pad_29: self._pad_29,
+            params_30: self.params_30,
+            word_38: self.word_38,
+            flag_3c: self.flag_3c,
+            flag_3d: self.flag_3d,
+            _pad_3e: self._pad_3e,
+        }
+    }
 }
 
 impl Default for ImageFormationConfig {
@@ -289,5 +321,33 @@ mod tests {
         assert_eq!(c.get(2).map(|x| x.word_38), Some(7));
         assert!(c.get(3).is_none());
         assert_eq!(c.iter_non_default_mut().count(), 3);
+    }
+
+    /// O 0x140b00b20 `ColorGradingState::flattened`：bypass 未置位 → 克隆名 + 拷贝四 f32；
+    /// bypass 置位 → 名 "default" + `{1, 0, 1, 1}`；输出 bypass 字节恒 0。
+    #[test]
+    fn flattened_resolves_bypass_to_concrete_params() {
+        let plain = ImageFormationConfig {
+            name: "warm".to_owned(),
+            params_18: [0.4, 0.5, 0.6, 0.7],
+            flag_28: 0,
+            ..ImageFormationConfig::default_plain()
+        };
+        let f = plain.flattened();
+        assert_eq!(f.name, "warm");
+        assert_eq!(f.params_18, [0.4, 0.5, 0.6, 0.7]);
+        assert_eq!(f.flag_28, 0);
+
+        let bypassed = ImageFormationConfig {
+            name: "anything".to_owned(),
+            params_18: [9.0, 9.0, 9.0, 9.0],
+            flag_28: 1,
+            ..ImageFormationConfig::default_plain()
+        };
+        let g = bypassed.flattened();
+        assert_eq!(g.name, "default");
+        assert_eq!(g.name.len(), 7, "len/cap = 7 的 String 常量");
+        assert_eq!(g.params_18, [1.0, 0.0, 1.0, 1.0]);
+        assert_eq!(g.flag_28, 0);
     }
 }

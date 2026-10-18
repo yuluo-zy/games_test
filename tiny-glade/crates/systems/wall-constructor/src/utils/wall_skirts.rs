@@ -4,21 +4,14 @@
 use glam::Vec3;
 
 /// B `add_skirts`（0x1412221f0）：墙裙边砖（96B 记录）。
-/// 结构：沿墙底线每砖间隔放裙边砖（y = 底部 −0.1；数值登记）。
-pub fn add_skirts_new(points: &[Vec3], out: &mut Vec<[u8; 96]>) {
-    if points.len() < 2 {
-        return;
-    }
-    let count = ((points.len() as f32 * 0.5).ceil() as usize).max(1);
-    for i in 0..count {
-        let t = i as f32 / count as f32;
-        let span = (points.len() - 1) as f32;
-        let u = t * span;
-        let idx = (u as usize).min(points.len() - 2);
-        let frac = u - idx as f32;
-        let p = points[idx] + (points[idx + 1] - points[idx]) * frac;
-        let mut record = [0u8; 96];
-        record[..12].copy_from_slice(&p.to_array().map(f32::to_le_bytes).concat());
-        out.push(record);
-    }
+/// **未实现**：旧近似体（沿曲线均分插值）不是原二进制真实逻辑。
+/// 真实逻辑（fresh decomp /tmp/wc-dec/0x1412221f0.c）含 max_y/is_rectangle
+/// 分支（矩形 get_point_u×8，非矩形 [0,1]）、split_height_into_skirts、
+/// ceilf((u1−u0)*h/0.69)+random_splits_into、abs 累计距离 inverse_lerp、
+/// Aabb2::from_center_dims+holes_no_duplicates→resolve_hole_overlap、
+/// WallSpaceCoord::to_world_space→96B（@0x54/58=(中点±半宽)*h）、
+/// 裙阈值 wall_y+3.5。
+pub fn add_skirts_new(points: &[Vec3], _out: &mut Vec<[u8; 96]>) {
+    let _ = points;
+    todo!("未实现: add_skirts 0x1412221f0")
 }

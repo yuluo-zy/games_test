@@ -1,0 +1,155 @@
+
+void __cdecl
+bevy_ecs::system::schedule_system::impl$1::
+run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(country_core::systems::world_raster::RasterHistoryRecordResources,bevy_ecs::event::reader::EventReader<system_water::record_water_history::RecordWaterEditToHistoryCmd>),void_(*)(country_core::systems::world_raster::RasterHistoryRecordResources,bevy_ecs::event::reader::EventReader<system_water::record_water_history::RecordWaterEditToHistoryCmd>)>_>
+          (void)
+
+{
+  int *piVar1;
+  int iVar2;
+  ulonglong uVar3;
+  ulonglong uVar4;
+  ulonglong uVar5;
+  byte *in_RCX;
+  longlong lVar6;
+  ulonglong uVar7;
+  longlong in_RDX;
+  ulonglong uVar8;
+  ulonglong uVar9;
+  ulonglong uVar10;
+  char *local_c8;
+  undefined8 local_c0;
+  byte *local_b8;
+  code *local_b0;
+  char **local_a8;
+  code *local_a0;
+  undefined **local_98;
+  longlong local_90;
+  byte **local_88;
+  undefined8 local_80;
+  undefined8 local_78;
+  longlong local_70;
+  longlong local_68;
+  undefined4 local_60;
+  int local_5c;
+  byte *local_58;
+  longlong local_50;
+  longlong local_48;
+  longlong local_40;
+  undefined4 local_38;
+  int local_34;
+  
+  LOCK();
+  piVar1 = (int *)(in_RDX + 0x5b0);
+  iVar2 = *piVar1;
+  *piVar1 = *piVar1 + 1;
+  UNLOCK();
+  if ((*in_RCX & 1) == 0) {
+                    // WARNING: Subroutine does not return
+    core::option::expect_failed();
+  }
+  if ((*(ulonglong *)(in_RCX + 8) < *(ulonglong *)(in_RDX + 0x218)) &&
+     (uVar3 = *(ulonglong *)(*(longlong *)(in_RDX + 0x210) + *(ulonglong *)(in_RCX + 8) * 8),
+     uVar3 != 0)) {
+    lVar6 = ~uVar3 * 0x60;
+    if (*(longlong *)(*(longlong *)(in_RDX + 0x1e0) + 0x20 + lVar6) != 0) {
+      lVar6 = *(longlong *)(in_RDX + 0x1e0) + lVar6;
+      local_98 = *(undefined ***)(lVar6 + 0x10);
+      if ((*(ulonglong *)(in_RCX + 0x10) < *(ulonglong *)(in_RDX + 0x218)) &&
+         (uVar3 = *(ulonglong *)(*(longlong *)(in_RDX + 0x210) + *(ulonglong *)(in_RCX + 0x10) * 8),
+         uVar3 != 0)) {
+        local_70 = ~uVar3 * 0x60;
+        if (*(longlong *)(*(longlong *)(in_RDX + 0x1e0) + 0x20 + local_70) != 0) {
+          local_60 = *(undefined4 *)(in_RCX + 0x160);
+          local_70 = *(longlong *)(in_RDX + 0x1e0) + local_70;
+          local_78 = *(undefined8 *)(local_70 + 0x10);
+          if ((*(ulonglong *)(in_RCX + 0x20) < *(ulonglong *)(in_RDX + 0x218)) &&
+             (uVar3 = *(ulonglong *)
+                       (*(longlong *)(in_RDX + 0x210) + *(ulonglong *)(in_RCX + 0x20) * 8),
+             uVar3 != 0)) {
+            local_40 = ~uVar3 * 0x60;
+            if (*(longlong *)(*(longlong *)(in_RDX + 0x1e0) + 0x20 + local_40) != 0) {
+              local_40 = *(longlong *)(in_RDX + 0x1e0) + local_40;
+              local_58 = in_RCX + 0x18;
+              local_68 = local_70 + 0x5c;
+              local_70 = local_70 + 0x58;
+              local_90 = lVar6 + 0x58;
+              local_88 = (byte **)(lVar6 + 0x5c);
+              local_50 = *(longlong *)(local_40 + 0x10);
+              local_48 = local_40 + 0x58;
+              local_40 = local_40 + 0x5c;
+              local_80 = CONCAT44(iVar2,local_60);
+              uVar3 = *(ulonglong *)(in_RCX + 0x18);
+              uVar7 = 0;
+              uVar9 = uVar3 - *(ulonglong *)(local_50 + 0x18);
+              if (uVar3 < *(ulonglong *)(local_50 + 0x18)) {
+                uVar9 = uVar7;
+              }
+              uVar5 = uVar3 - *(ulonglong *)(local_50 + 0x38);
+              if (uVar3 < *(ulonglong *)(local_50 + 0x38)) {
+                uVar5 = uVar7;
+              }
+              uVar3 = *(ulonglong *)(local_50 + 0x30);
+              uVar10 = uVar3 - uVar5;
+              if (uVar3 < uVar5) {
+                uVar10 = uVar7;
+              }
+              uVar4 = *(ulonglong *)(local_50 + 0x10);
+              uVar8 = uVar4 - uVar9;
+              if (uVar4 < uVar9) {
+                uVar8 = uVar7;
+              }
+              lVar6 = *(longlong *)(local_50 + 0x40);
+              *(ulonglong *)(in_RCX + 0x18) = lVar6 - (uVar8 + uVar10);
+              if (uVar4 >= uVar9 && uVar4 - uVar9 != 0 || uVar3 >= uVar5 && uVar3 - uVar5 != 0) {
+                *(longlong *)local_58 = lVar6;
+                local_5c = iVar2;
+                local_38 = local_60;
+                local_34 = iVar2;
+                country_core::systems::world_raster::record_raster_history();
+              }
+              *(int *)(in_RCX + 0x160) = iVar2;
+              return;
+            }
+          }
+          local_b8 = in_RCX + 200;
+          local_c8 = 
+          "bevy_ecs::event::collections::Events<system_water::record_water_history::RecordWaterEditToHistoryCmd>Resource requested by  does not exist: "
+          ;
+          local_c0 = 0x65;
+          local_b0 = alloc::string::impl$23::fmt;
+          local_a8 = &local_c8;
+          local_a0 = anyhow::context::impl$3::fmt<ref_<str_>,alloc::ffi::c_str::FromVecWithNulError>
+          ;
+          local_98 = &PTR_s_Resource_requested_by_does_not_e_142b8b748;
+          local_90 = 2;
+          local_78 = 0;
+          local_88 = &local_b8;
+          local_80 = 2;
+                    // WARNING: Subroutine does not return
+          core::panicking::panic_fmt();
+        }
+      }
+      local_c8 = "country_core::resources::history::History";
+      local_c0 = 0x29;
+      goto LAB_140e92cd5;
+    }
+  }
+  local_c8 = 
+  "country_core::resources::active_raster_stroke::ActiveRasterStrokesStorageSystem built with a different world than the one it was added to."
+  ;
+  local_c0 = 0x49;
+LAB_140e92cd5:
+  local_b8 = in_RCX + 200;
+  local_b0 = alloc::string::impl$23::fmt;
+  local_a8 = &local_c8;
+  local_a0 = anyhow::context::impl$3::fmt<ref_<str_>,alloc::ffi::c_str::FromVecWithNulError>;
+  local_98 = &PTR_s_Resource_requested_by_does_not_e_142b8b748;
+  local_90 = 2;
+  local_78 = 0;
+  local_88 = &local_b8;
+  local_80 = 2;
+                    // WARNING: Subroutine does not return
+  core::panicking::panic_fmt();
+}
+

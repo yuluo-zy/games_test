@@ -7,8 +7,8 @@
 //! `ticks_60` u64 @+0x18、`frac` f32 @+0x20、`delta` f32 @+0x28、`frame_count` u32 @+0x2c、`ran` u8 @+0x30、
 //! `paused` u8 @+0x31（只读）。此前文档把 `nanos` 写成 `+0x4`、`flag` 写成 `+0x6`，与写入偏移不符。
 //!
-//! 未恢复：`time_update` 在重放时从 `InputRecordReplayState` 取帧的下标运算（调用方把结果作为
-//! [`DeltaSource::Replay`] 传入）。
+//! ECS producer is `systems::time_update`; it resolves the actual refactoring,
+//! menu and replay resources before invoking this arithmetic core.
 use core::time::Duration;
 
 /// 前两帧对 `delta` 的上限（O：0x142aad4a8 = 0x3c888889）。
@@ -97,6 +97,8 @@ pub struct GameClock {
     pub delta: f32,
     pub frame_count: u32,
     pub ran: bool,
+    /// Original +0x31. time_update reads this byte but never overwrites it.
+    pub paused: bool,
 }
 
 impl GameClock {
@@ -166,16 +168,20 @@ mod tests {
         assert!(g(7, 1).runs());
         assert!(!g(7, 0).runs());
         assert!(!g(3, 0).runs());
-        assert!(!ClockGate {
-            state_is_zero: false,
-            ..running()
-        }
-        .runs());
-        assert!(!ClockGate {
-            paused: true,
-            ..running()
-        }
-        .runs());
+        assert!(
+            !ClockGate {
+                state_is_zero: false,
+                ..running()
+            }
+            .runs()
+        );
+        assert!(
+            !ClockGate {
+                paused: true,
+                ..running()
+            }
+            .runs()
+        );
     }
 
     #[test]

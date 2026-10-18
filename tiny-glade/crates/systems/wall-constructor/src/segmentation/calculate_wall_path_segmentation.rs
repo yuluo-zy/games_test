@@ -10,9 +10,8 @@
 //! - `add_splits_in_empty_range`（0x140751240）：常量 1.0/0.5/1.5 +
 //!   u32 转换守卫 0x5f000000/0x5f7fffff；
 //! - `score_split_candidate`（0x140751610）：分裂候选评分。
-use country_core::recovered_building::wall_segmentation::{
-    WallPathSegmentationMask, wall_path_segmentation,
-};
+use country_core::systems::wall::construction::segmentation::WallPathSegmentationMask;
+use country_core::systems::wall::construction::segmentation::wall_path_segmentation;
 use country_core::resources::walls::public_walls::{OnWallChanged, PublicWalls};
 use country_core::systems::ui::signifiers::signifier_create::UiSignifierStream;
 use bevy_ecs::prelude::*;
@@ -33,7 +32,7 @@ pub fn calculate_wall_path_segmentation(
         let curve = wall.simplified_curve_2d();
         let prepared_positions: Vec<[f32; 3]> =
             curve.points.iter().map(|p| [p[0], p[1], 0.0]).collect();
-        let input = country_core::recovered_building::wall_segmentation::WallSegmentationInput {
+        let input = country_core::systems::wall::construction::segmentation::WallSegmentationInput {
             prepared_positions: &prepared_positions,
             path_values: &curve.points.iter().map(|p| p[1]).collect::<Vec<f32>>(),
             shape: &projection.shape(),

@@ -1,0 +1,86 @@
+
+ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140a7d500:     	movl	%edi, %eax
+140a7d502:     	shrq	$0x3e, %rax
+140a7d506:     	jne	0x140a7efa0 <.text+0xa7dfa0>
+140a7d50c:     	movabsq	$0x7ffffffffffffffc, %rax # imm = 0x7FFFFFFFFFFFFFFC
+140a7d516:     	cmpq	%rax, %r14
+140a7d519:     	ja	0x140a7efa0 <.text+0xa7dfa0>
+140a7d51f:     	movq	0x20(%rcx), %r12
+140a7d523:     	testq	%r14, %r14
+140a7d526:     	je	0x140a7d627 <.text+0xa7c627>
+140a7d52c:     	movzbl	0x2bb76d6(%rip), %eax   # 0x143634c09
+140a7d533:     	movl	$0x4, %edi
+140a7d538:     	movl	$0x4, %edx
+140a7d53d:     	movq	%r14, %rcx
+140a7d540:     	callq	0x140613c10 <.text+0x612c10>
+140a7d545:     	testq	%rax, %rax
+140a7d548:     	je	0x140a7efa0 <.text+0xa7dfa0>
+140a7d54e:     	movq	%rax, %r13
+140a7d551:     	movq	%r15, %rdi
+140a7d554:     	jmp	0x140a7d62f <.text+0xa7c62f>
+140a7d559:     	movq	0x278(%rbp), %r14
+140a7d560:     	movq	0x48(%r14), %rsi
+140a7d564:     	testq	%rsi, %rsi
+140a7d567:     	je	0x140a7e061 <.text+0xa7d061>
+140a7d56d:     	movq	0x248(%rbp), %rax
+140a7d574:     	movss	0x28(%rax), %xmm1
+140a7d579:     	maxss	0x1ed37ef(%rip), %xmm1  # 0x142950d70
+140a7d581:     	movss	0x1ea837b(%rip), %xmm6  # 0x142925904
+140a7d589:     	movaps	%xmm6, %xmm0
+140a7d58c:     	divss	%xmm1, %xmm0
+140a7d590:     	callq	0x142923fa0 <.text+0x2922fa0>
+140a7d595:     	movss	0x1f5432f(%rip), %xmm1  # 0x1429d18cc
+140a7d59d:     	divss	%xmm0, %xmm1
+140a7d5a1:     	movaps	%xmm1, %xmm0
+140a7d5a4:     	callq	0x142923fa0 <.text+0x2922fa0>
+140a7d5a9:     	maxss	%xmm6, %xmm0
+140a7d5ad:     	cvttss2si	%xmm0, %rax
+140a7d5b2:     	movq	%rax, %rcx
+140a7d5b5:     	sarq	$0x3f, %rcx
+140a7d5b9:     	movaps	%xmm0, %xmm1
+140a7d5bc:     	subss	0x1edcb18(%rip), %xmm1  # 0x14295a0dc
+140a7d5c4:     	cvttss2si	%xmm1, %rdx
+140a7d5c9:     	andq	%rcx, %rdx
+140a7d5cc:     	orq	%rax, %rdx
+140a7d5cf:     	movq	$0x0, 0x260(%rbp)
+140a7d5da:     	xorps	%xmm1, %xmm1
+140a7d5dd:     	ucomiss	%xmm1, %xmm0
+140a7d5e0:     	movl	$0x0, %eax
+140a7d5e5:     	cmovaeq	%rdx, %rax
+140a7d5e9:     	ucomiss	0x1edcaf0(%rip), %xmm0  # 0x14295a0e0
+140a7d5f0:     	movq	$-0x1, %rcx
+140a7d5f7:     	cmovbeq	%rax, %rcx
+140a7d5fb:     	movq	0x40(%r14), %rax
+140a7d5ff:     	addq	-0x8(%rax,%rsi,8), %rcx
+140a7d604:     	cmpq	$0x32, %rcx
+140a7d608:     	movl	$0x32, %edx
+140a7d60d:     	cmovbq	%rcx, %rdx
+140a7d611:     	testq	%rcx, %rcx
+140a7d614:     	movl	$0x1, %ecx
+140a7d619:     	cmovneq	%rdx, %rcx
+140a7d61d:     	movq	%rcx, -0x8(%rax,%rsi,8)
+140a7d622:     	jmp	0x140a7e06c <.text+0xa7d06c>
+140a7d627:     	movl	$0x4, %r13d
+140a7d62d:     	xorl	%edi, %edi
+140a7d62f:     	movq	%r13, %rcx
+140a7d632:     	movq	%r12, %rdx
+140a7d635:     	movq	%r14, %r8
+140a7d638:     	callq	0x142923c00 <.text+0x2922c00>
+140a7d63d:     	movq	0x278(%rbp), %rcx
+140a7d644:     	movss	0x30(%rcx), %xmm0
+140a7d649:     	movq	0x260(%rbp), %rax
+140a7d650:     	movq	%rax, 0x1c0(%rbp)
+140a7d657:     	movq	0x1a8(%rbp), %rax
+140a7d65e:     	movq	%rax, 0x1c8(%rbp)
+140a7d665:     	movq	%rsi, 0x1d0(%rbp)
+140a7d66c:     	movq	%rdi, 0x1d8(%rbp)
+140a7d673:     	movq	%r13, 0x1e0(%rbp)
+140a7d67a:     	movq	%r15, 0x1e8(%rbp)
+140a7d681:     	movss	%xmm0, 0x1f0(%rbp)
+140a7d689:     	movq	0x48(%rcx), %rdi
+140a7d68d:     	leaq	(,%rdi,8), %r14

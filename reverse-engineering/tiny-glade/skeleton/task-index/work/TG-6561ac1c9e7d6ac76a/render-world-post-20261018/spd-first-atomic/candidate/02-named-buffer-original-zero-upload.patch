@@ -1,0 +1,55 @@
+--- a/crates/rhapsody/src/rg/vulkan.rs
++++ b/crates/rhapsody/src/rg/vulkan.rs
+@@ -3071,13 +3071,49 @@
+                 "跨帧声明与物理规格不一致".into(),
+             ));
+         }
+-        let resource = spec
+-            .create_resource(self.device.clone(), 0)
+-            .map_err(graph::BuildError::from)?;
++        // Native get_or_create_temporal<Buffer> @0x1404f62d0 allocates a
++        // zero-filled Vec of desc.size, then passes Some(slice) to
++        // create_buffer @0x1405b93b0. Textures follow their separate None path.
++        let resource = match spec {
++            ResourceSpec::Buffer(desc) | ResourceSpec::ConcurrentBuffer(desc, _) => {
++                let size = usize::try_from(desc.size)
++                    .map_err(|_| graph::BuildError::from(crate::Error::OutOfHostMemory))?;
++                let mut initial = Vec::new();
++                initial.try_reserve_exact(size)
++                    .map_err(|_| graph::BuildError::from(crate::Error::OutOfHostMemory))?;
++                initial.resize(size, 0u8);
++                let object = match spec.sharing() {
++                    crate::resource::ResourceSharing::Exclusive => self.device
++                        .create_buffer(&desc, name, Some(initial.as_slice()))
++                        .map_err(graph::BuildError::from)?,
++                    crate::resource::ResourceSharing::Concurrent(families) => {
++                        let mut physical_desc = desc;
++                        physical_desc.usage |= vk::BufferUsageFlags::TRANSFER_DST;
++                        let raw = buffer::Buffer::new_concurrent(
++                            self.device.clone(), &physical_desc, families.as_slice(),
++                        ).map_err(graph::BuildError::from)?;
++                        let managed = self.device.resources.buffers.allocate(raw)
++                            .map_err(graph::BuildError::from)?;
++                        self.device.set_buffer_debug_name(&managed, name);
++                        if size != 0 {
++                            self.device.update_buffer_bytes(&managed, &initial, &[0..size], 0)
++                                .map_err(graph::BuildError::from)?;
++                        }
++                        managed
++                    }
++                };
++                GpuResource::Buffer(object.shared())
++            }
++            _ => spec.create_resource(self.device.clone(), 0)
++                .map_err(graph::BuildError::from)?,
++        };
+         let token = try_allocate_token()
+             .ok_or_else(|| graph::BuildError::ResourceCreationFailed("跨帧token耗尽".into()))?;
+         self.resources.insert(token, resource);
+         Ok(token)
++    }
++    fn initial_contents_defined(&self, token: u64) -> bool {
++        matches!(self.resources.get(&token), Some(GpuResource::Buffer(_)))
+     }
+     fn temporal_sharing(&self, name: &str) -> crate::resource::ResourceSharing {
+         self.specifications

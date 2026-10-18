@@ -1,0 +1,85 @@
+{
+  "recorded_at": "2026-10-17T23:40:08.962743+00:00",
+  "scope": "Vulkan loader configuration and existing core/rhapsody GPU integration tests; no game behavior changes",
+  "host": "macOS-26.3-arm64-arm-64bit",
+  "loader": "/opt/homebrew/lib/libvulkan.dylib",
+  "icd": "/opt/homebrew/etc/vulkan/icd.d/MoltenVK_icd.json",
+  "gpu": "Apple M3",
+  "driver": "MoltenVK 1.4.2",
+  "gpu_api": "1.4.357",
+  "changes": [
+    "Project Cargo default RHAPSODY_VULKAN_LIBRARY, force=false",
+    "GraphicsInstanceLoader::new consumes explicit environment candidate and preserves system fallback"
+  ],
+  "checks": [
+    {
+      "name": "dyld_config_attempt",
+      "command": "RHAPSODY_REQUIRE_VULKAN=1 cargo test -p tiny-glade --test core_render_bridge --locked --offline -- --nocapture",
+      "log": "strict-bridge-sandbox.log",
+      "exit_code": 101,
+      "note": "Initial dyld-only configuration was not retained by Cargo for this test process.",
+      "sha256": "b2d4520ebd0ab3b389b55b6240c4e7e8da148c58c3c3b309d5425b222cfba080",
+      "result": "FAILED",
+      "passed": 0,
+      "failed": 2,
+      "ignored": 0,
+      "skip_markers": 0
+    },
+    {
+      "name": "explicit_loader_sandbox",
+      "command": "RHAPSODY_REQUIRE_VULKAN=1 cargo test -p tiny-glade --test core_render_bridge --locked --offline -- --nocapture",
+      "log": "strict-explicit-loader-sandbox.log",
+      "exit_code": 101,
+      "note": "Loader now resolves, but the sandbox cannot access Metal: ERROR_INCOMPATIBLE_DRIVER.",
+      "sha256": "00571af437ca81d09f02392b8fb1df5e33cded956b44cdbc637ebb14a822b238",
+      "result": "FAILED",
+      "passed": 0,
+      "failed": 2,
+      "ignored": 0,
+      "skip_markers": 0
+    },
+    {
+      "name": "gpu_inventory_sandbox",
+      "command": "/opt/homebrew/bin/vulkaninfo --summary",
+      "log": "vulkaninfo-sandbox.log",
+      "exit_code": 1,
+      "note": "MoltenVK library is found; Metal is unavailable in the sandbox.",
+      "sha256": "99d1a0dc96f9d9fd7431b8f9113716146a75860c1947056d26faf46ec7e1481b"
+    },
+    {
+      "name": "gpu_inventory_host",
+      "command": "/opt/homebrew/bin/vulkaninfo --summary",
+      "log": "vulkaninfo-host.log",
+      "exit_code": 0,
+      "note": "Apple M3 / MoltenVK 1.4.2 enumerated in GPU-capable host execution.",
+      "sha256": "e8b6178fc42917ba5bd05a8001184602f39f391fda589d86c5817c264591606f"
+    },
+    {
+      "name": "strict_bridge_host",
+      "command": "RHAPSODY_REQUIRE_VULKAN=1 cargo test -p tiny-glade --test core_render_bridge --locked --offline -- --nocapture",
+      "log": "strict-bridge-host.log",
+      "exit_code": 0,
+      "note": "Both actual GPU integration tests passed; the builder panic is intentional and caught by its test.",
+      "sha256": "220e5f8027270af05e47caf2e7ee5fa454e29bb356ee3ec2f029d8a79ac07928",
+      "result": "ok",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "skip_markers": 0
+    }
+  ],
+  "source_sha256": {
+    ".cargo/config.toml": "6bdceefcce9b67ecf1f355d846cb35462d0a217404e2d99678340833d44b330b",
+    "crates/rhapsody/src/raw/instance.rs": "a1a4adbde2e80d12459cb2c78ae4992686885b2de66f8d290258da8c6c1c4502",
+    "crates/tiny-glade/tests/core_render_bridge.rs": "3a69e9998372cc7f28990f7d6ea44860a5f7714e95735e38e7cbcf256a66ded2",
+    "Cargo.lock": "ed24db62aa2d8dbf84d397ce65f16832dfae8dba538fe1ff5c6350429790a7f1"
+  },
+  "acceptance": {
+    "loader_configured": true,
+    "real_gpu_bridge_tests_passed": true,
+    "gpu_tests_passed": 2,
+    "gpu_tests_skipped": 0,
+    "sandbox_gpu_access": false,
+    "full_game_or_original_equivalence": false
+  }
+}

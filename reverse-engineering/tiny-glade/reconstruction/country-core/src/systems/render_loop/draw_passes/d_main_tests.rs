@@ -390,8 +390,8 @@ fn water_and_ice_plans_are_selected_by_season() {
     assert_eq!(WATER_PLAN.compute_passes.len(), 2);
     assert_eq!(ICE_PLAN.compute_passes.len(), 4);
     assert!(ICE_OPS.len() > WATER_OPS.len());
-    assert_eq!(surface_plan_for(GladeType(true)).kind, WaterSurfaceKind::Ice);
-    assert_eq!(surface_plan_for(GladeType(false)).kind, WaterSurfaceKind::Water);
+    assert_eq!(surface_plan_for(GladeType::Winter).kind, WaterSurfaceKind::Ice);
+    assert_eq!(surface_plan_for(GladeType::Flowery).kind, WaterSurfaceKind::Water);
     // 机器码里水 pass 的首个哈希绑定：`0x2a333c3a28028230`（与 pre_taa 的 B 绑定同名）。
     assert!(WATER_OPS.iter().any(|o| o.key == Some(PRE_TAA_B_BINDING)));
 }

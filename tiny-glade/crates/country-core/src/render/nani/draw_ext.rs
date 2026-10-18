@@ -1,6 +1,6 @@
 //! draw_ext.rs — DrawBuilder 的 nani 扩展（B 阶段按机器码重写）。
 //!
-//! 机器码锚点（B patched EXE，cf048e27…）：
+//! 机器码锚点（B original RNE，f507a6cea25c5199…）：
 //! - `draw_ext::impl$0::nani_draw` 0x140904ae0（1428 B；PDB 过程表 size=1428）。
 //!
 //! 标注：**O**=机器码观测；**I**=推断；**U**=未知（typed gap）。
@@ -10,7 +10,8 @@
 //!    （type-hash `0x662978458699a5ef/0x3ec057c162419b46`）取 `GpuWorld`；缺失 → `Option::unwrap` panic。
 //! 2. 取 `GpuWorld.subsets[kind]`（槽 stride 0xc0）的 **读锁**（`RwLock::read`，慢路径
 //!    `lock_shared_slow`）；槽为 `None`（哨兵 `0x8000000000000001`）→ `Option::unwrap` panic。
-//! 3. subset 是 Owned/External 之一（`neg` 溢出判别）：取该变体里的 `u64`（`+0x8` 或 `+0xa8` 后 `+8`）
+//! 3. subset 是 Owned/External 之一（`neg` 溢出判别）：取该变体里的 mesh-part count
+//!    （External 构造载荷 `+0x8`；Owned 对象 `+0xa8`，不同于 live count `+0xa0`）
 //!    作为 `draw_count`（O）；Owned 时另经 vtable `+0x38` 取实例间接缓冲的 RG 句柄
 //!    （`Option`；External 为 `None`）。
 //! 4. `list_index = kind*4 | PASS_VARIANT_TABLE[self.pass_variant(+0xf0)]`；
@@ -175,11 +176,11 @@ impl NaniDrawExt for DrawBuilder<'_> {
         // 步骤 3：draw_count 与实例间接缓冲 RG 句柄（Owned 才有，O：vtable +0x38 → `rg_handle`）。
         let (draw_count, indirection_handle) = match subset {
             GpuWorldSubset::Owned(owned) => (
-                owned.instance_count() as u64,
+                owned.mesh_part_count() as u64,
                 Some(owned.data().rg_handle().resource as u32),
             ),
-            // U：External 变体的 draw_count 字段（`+0xa8` 后 `+8`）在重建类型里尚无访问器。
-            GpuWorldSubset::External(_) => (0, None),
+            // Native external ctor1409912a0 stores the mesh-layout count at+8.
+            GpuWorldSubset::External(external) => (external.mesh_part_count as u64, None),
         };
 
         // 步骤 4：list_index / cmd_slot。
@@ -361,20 +362,22 @@ mod tests {
     ) -> (GpuWorld, AssetSsboLibrary, RenderGraph) {
         let dev = MockDevice::default();
         let mut gw = GpuWorld::new(&dev);
-        let mut sub = OwnedGpuWorldSubset::new::<PlantInstanceData>(&dev, kind);
+        // Explicit fixture: seven mesh parts and an independent live count.
+        let mut sub = OwnedGpuWorldSubset::new_with_mesh_parts::<PlantInstanceData>(&dev, kind, 7);
         let items = vec![InstanceCullData::new(Vec3::ZERO, 1.0, 0); instances];
         sub.extend_no_data(kind, &items, |_| {});
         gw.assign_subset(kind, GpuWorldSubset::Owned(sub));
         let mut rg = RenderGraph::default();
         gw.import_to_rg(&mut rg); // `rg_handle()` 只能在 import 之后调用（原版 expect 文案）。
         let lib = AssetSsboLibrary::new();
-        lib.add_new::<NaniDrawListLengthSsbo>(&dev);
-        lib.add_new::<NaniDrawListSsbo>(&dev);
+        // The original draw buffer is dynamic; use its actual startup
+        // producer rather than the former zero-sized add_new fixture.
+        super::super::buffers::populate_nani_ssbo_library(&lib, &dev);
         (gw, lib, rg)
     }
 
     #[test]
-    fn nani_draw_raw_path_uses_draw_count_stride_and_rg_handle() {
+    fn nani_draw_raw_path_uses_mesh_part_count_instead_of_live_instances() {
         let kind = GpuWorldSubsetKind::WoodenPlank; // kind > 1 且未强制 → raw
         let (gw, lib, mut rg) = world_and_library(kind, 3);
         let mut p = pass();
@@ -396,7 +399,10 @@ mod tests {
             } => {
                 assert_eq!(*arg_48, cmd_slot as u64 * 20, "r8 = cmd_slot*20");
                 assert_eq!(*arg_58, 0x14, "r9d = 0x14");
-                assert_eq!(*arg_50, 3, "[rsp+0x20] = 实例数");
+                assert_eq!(
+                    *arg_50, 7,
+                    "[rsp+0x20] = mesh-part count, despite live count3"
+                );
                 assert_eq!(*first_index_count, None);
             }
             other => panic!("expected IndexedIndirect, got {other:?}"),
@@ -406,6 +412,25 @@ mod tests {
             p.accesses.iter().any(|a| a.resource == 77),
             "间接寻址 SSBO 的 RG 资源"
         );
+        p.rendered.0 = true;
+    }
+
+    #[test]
+    fn nani_draw_external_raw_path_uses_original_mesh_part_count() {
+        let kind = GpuWorldSubsetKind::WoodenPlank;
+        let (mut gw, lib, mut rg) = world_and_library(kind, 3);
+        gw.assign_subset(
+            kind,
+            GpuWorldSubset::External(super::super::gpu_world::ExternalGpuWorldSubset {
+                mesh_part_count: 5,
+            }),
+        );
+        let mut p = pass();
+        builder(&mut p, 0).nani_draw(kind, &gw, &lib, &mut rg);
+        match &p.draws[0].kind {
+            DrawKind::IndexedIndirect { arg_50, .. } => assert_eq!(*arg_50, 5),
+            other => panic!("expected raw external mesh-part dispatch, got {other:?}"),
+        }
         p.rendered.0 = true;
     }
 

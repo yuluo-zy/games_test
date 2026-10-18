@@ -33,6 +33,11 @@ pub const BUILDING_LOOP_EVENTS: [&str; 7] = [
     "event:/SFX/Building/BuildingOverlapMove",
 ];
 
+/// O (decomp-0x1417d2ad0): the loop kind → loop-index order the frame-end
+/// drives (`local_208` = {0,1,2,3,4,9,5}). Kind 5 maps to the last loop
+/// (BuildingOverlapMove), kind 9 to PlasterChangeLoop.
+pub const BUILDING_LOOP_KINDS: [u8; 7] = [0, 1, 2, 3, 4, 9, 5];
+
 /// One-shots for kind 6/7/8 (O: rne-read).
 pub const BUILDING_ONE_SHOTS: [&str; 3] = [
     "event:/SFX/Shapes/DetachFromGround",
@@ -65,13 +70,44 @@ pub fn building_audio_init_system<S: Studio + Send + Sync + 'static>(
 }
 
 /// `building_audio` (0x1417d2ad0): one-shot dispatch + frame-end loop driving.
+///
+/// O (decomp-0x1417d2ad0): the native groups the `PlayBuildingAudio` events by
+/// kind and drives each of the 7 loop kinds {0,1,2,3,4,9,5} — a matching event
+/// sets the loop's should-play/position/parameters, otherwise the loop is
+/// stopped (previously the loop kinds were discarded by the one-shot filter, so
+/// the 7 loops never started). Kinds 6/7/8 are the Detach/Attach/Peak one-shots
+/// with `BuildingSize = inverse_lerp(area)` (the building-table area lookup is
+/// 待接线; `editing_speed` stands in here as documented).
 pub fn building_audio<S: Studio + Send + Sync + 'static>(
     mut state: ResMut<BuildingAudioState<S::Event>>,
     mut events: EventReader<PlayBuildingAudio>,
     core: Res<AudioCore<S>>,
 ) {
-    for event in events.read() {
-        // O: only kind 6/7/8 produce one-shots; others are skipped.
+    let collected: Vec<PlayBuildingAudio> = events.read().copied().collect();
+
+    // O: per-loop-kind drive (frame-end start_if_not_playing / stop).
+    for (index, loop_kind) in BUILDING_LOOP_KINDS.iter().enumerate() {
+        let loop_player = &mut state.loops[index];
+        let event = collected.iter().find(|e| e.kind == *loop_kind);
+        match event {
+            Some(event) => {
+                let position = [event.position.x, event.position.y, event.position.z];
+                let _ = loop_player.request_play(position, 1.0, event.editing_speed);
+                // O: per-loop BuildingSize / ifWindow / BuildingHeight /
+                // isHalfTimbered / IsOnGround params are set from the building
+                // table (0x2a8 stride, 待接线); BuildingSize stands in here.
+                let current = loop_player.current;
+                let _ = loop_player.instances[current]
+                    .set_parameter("BuildingSize", event.editing_speed);
+            }
+            None => {
+                let _ = loop_player.frame_end();
+            }
+        }
+    }
+
+    // O: kinds 6/7/8 only produce the Detach/Attach/Peak one-shots.
+    for event in collected {
         if event.kind >= 6 && event.kind < 9 {
             let name = BUILDING_ONE_SHOTS[(event.kind - 6) as usize];
             let position = [event.position.x, event.position.y, event.position.z];
@@ -79,16 +115,11 @@ pub fn building_audio<S: Studio + Send + Sync + 'static>(
             let _ = instance.set_position(position);
             let _ = instance.set_parameter("editing_speed", event.editing_speed);
             // O: BuildingSize = inverse_lerp(area) — the building area comes
-            // from the 0x2a8 building table (待接线); the loop's size param is
-            // set here with the event editing speed as a documented stand-in.
+            // from the 0x2a8 building table (待接线); the event editing speed
+            // is the documented stand-in.
             let _ = instance.set_parameter("BuildingSize", event.editing_speed);
             let _ = instance.start_if_not_playing();
         }
-    }
-
-    // O: frame-end — drive the 7 loop kinds by their should-play flags.
-    for loop_player in state.loops.iter_mut() {
-        let _ = loop_player.frame_end();
     }
 }
 

@@ -1,0 +1,15 @@
+--- a/crates/rhapsody/src/rg/resource_info.rs
++++ b/crates/rhapsody/src/rg/resource_info.rs
+@@ -110,6 +110,12 @@
+     /// contents. Binding, native access, range and lifetime remain declared.
+     /// This is not a field recovered from the original twelve-byte ledger.
+     pub contents_unused: bool,
++    /// Explicit caller contract: this read may consume undefined contents.
++    /// Unlike contents_unused it remains a real content read, preserving every
++    /// available producer, native access, synchronization and lifetime. It
++    /// neither initializes a resource nor permits a later ordinary read/export.
++    /// This is a current architecture capability, not original ledger ABI.
++    pub allow_undefined_contents: bool,
+ }
+ impl AccessDeclaration {
+     pub const fn reads_contents(&self, write: bool) -> bool {

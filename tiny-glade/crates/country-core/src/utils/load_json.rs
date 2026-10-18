@@ -1,146 +1,115 @@
-//! `country_core::utils::load_json` — JSON 网格加载器。
-//!
-//! 原版符号（B 构建）：`read_attribute_from_json`（0x14083e210）、`load_json_as_mesh`（四个单态 0x140b10ed0 /
-//! 0x140b11f50 / 0x140b0eeb0 / 0x140b0fe60）。逐条对照汇编（含 2026-10-15 的独立核对）：
-//!
-//! * 属性类型用 `format!("{}", json[name]["type"])` 的**文本**匹配：`["int",1]` → `Int`，`["float",1..4]` → `Float..Float4`。
-//!   其余类型**返回** `Err`（anyhow 风格，文案 `load_json_as_mesh: unrecognized attrib '{name}' with type '{ty}'`），
-//!   由调用方 `unwrap`（load_json.rs:43:64），所以 panic 文本以 `called `Result::unwrap()` on an `Err` value` 开头；
-//! * `json[name]["buffer"]` 必须是数组，**在匹配到类型之后才取**（未知类型先于 buffer 检查失败）。
-//!   `Int` 元素 `as_i64().unwrap() as i32`，`Float` 元素 `as_f64().unwrap() as f32`；`Float2/3/4` 的元素各自是数组，
-//!   收集成 `Vec<f32>` 后按下标取前 N 个——**长度不足才越界 panic，多出的分量被忽略**（不是 `try_into [f32; N]`）；
-//! * 每种类型收集完都做 `assert!(!v.is_empty())`（串 0x142ac6fdd，"assertion failed: !v.is_empty()"）：空 buffer 直接 panic；
-//! * `load_json_as_mesh`：读文件失败 → panic `Couldn't find  {path}`；`log::trace!("Reading mesh {path}")`；
-//!   解析失败 → panic `Couldn't parse  {path}`；`Mesh::new("load_json_as_mesh")` 之后**立即 `set_source_file(path)`**
-//!   （0x140d61b00，与 `Mesh::set_source_file` 同码；没有它 `AssetMeshLibrary::add` 不会登记路径、也不会热重载）；
-//!   `indices = json["indices"]["buffer"]`（PosInt 取 `u32`），`max_index` 取有符号最大值（空时为 −1）；
-//!   `json["attributes"]` 先**整体**收集成字符串列表（任一元素不是字符串就先 panic），再逐个读属性；
-//!   每个属性读出后 `assert!(values.array_length() as i32 > max_index)` 再 `set_attribute`。
-//!   函数本身不返回 `Result`：所有失败都是 panic。
-//!
-//! 入口另有一段 puffin profile scope（`0x140c16a00`），属于仪表，不影响结果。
+//! JSON 网格加载与发布前校验。解析复用 Serde，失败返回带路径和属性名的错误。
 
-use glam::{Vec2, Vec3, Vec4};
+use anyhow::{Context, ensure};
+use serde::Deserialize;
 use serde_json::Value;
 
-use crate::render::mesh::{Mesh, SourceFile, VertexAttributeValues};
+use crate::render::mesh::{
+    ATTR_COLOR, ATTR_NORMAL, ATTR_POSITION, ATTR_UV, Mesh, SourceFile, VertexAttributeValues,
+};
 
-fn buffer_of<'a>(json: &'a Value, name: &str) -> &'a Vec<Value> {
-    json[name]["buffer"].as_array().unwrap()
-}
-
-/// 原版收集后的非空断言（"assertion failed: !v.is_empty()"）。
-fn non_empty<T>(values: Vec<T>) -> Vec<T> {
-    assert!(!values.is_empty(), "assertion failed: !v.is_empty()");
-    values
-}
-
-/// `Float2/3/4` 的一个元素：收集成 `Vec<f32>` 后取前 `N` 个分量，长度不足时按下标越界 panic。
-fn float_components<const N: usize>(element: &Value) -> [f32; N] {
-    let components: Vec<f32> = element
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|v| v.as_f64().unwrap() as f32)
-        .collect();
-    std::array::from_fn(|i| components[i])
-}
-
-/// 读取名为 `name` 的顶点属性；未知类型返回 `Err`（原版返回 tag 5，由调用方 `unwrap`）。
+/// 解析一个属性；向量直接反序列化为 glam 类型，避免中间数组和第二次分配。
 pub fn read_attribute_from_json(json: &Value, name: &str) -> anyhow::Result<VertexAttributeValues> {
-    let ty = format!("{}", json[name]["type"]);
-    // O 0x14083e210：`["buffer"]` 在每个匹配分支里才取，所以未知类型先于 buffer 检查失败。
-    let buffer = || buffer_of(json, name);
-    Ok(match ty.as_str() {
-        "[\"int\",1]" => VertexAttributeValues::Int(non_empty(
-            buffer()
-                .iter()
-                .map(|v| v.as_i64().unwrap() as i32)
-                .collect(),
-        )),
-        "[\"float\",1]" => VertexAttributeValues::Float(non_empty(
-            buffer()
-                .iter()
-                .map(|v| v.as_f64().unwrap() as f32)
-                .collect(),
-        )),
-        "[\"float\",2]" => VertexAttributeValues::Float2(non_empty(
-            buffer()
-                .iter()
-                .map(|v| Vec2::from(float_components(v)))
-                .collect(),
-        )),
-        "[\"float\",3]" => VertexAttributeValues::Float3(non_empty(
-            buffer()
-                .iter()
-                .map(|v| Vec3::from(float_components(v)))
-                .collect(),
-        )),
-        "[\"float\",4]" => VertexAttributeValues::Float4(non_empty(
-            buffer()
-                .iter()
-                .map(|v| Vec4::from(float_components(v)))
-                .collect(),
-        )),
-        _ => anyhow::bail!("load_json_as_mesh: unrecognized attrib '{name}' with type '{ty}'"),
-    })
+    let attribute = &json[name];
+    let descriptor = &attribute["type"];
+    let Some([scalar_type, components]) = descriptor.as_array().map(Vec::as_slice) else {
+        anyhow::bail!("属性 {name} 的 type 必须是 [标量类型, 分量数]");
+    };
+    let buffer = attribute
+        .get("buffer")
+        .with_context(|| format!("顶点属性 {name} 缺少 buffer"))?;
+    let values = match (scalar_type.as_str(), components.as_u64()) {
+        (Some("int"), Some(1)) => VertexAttributeValues::Int(Vec::deserialize(buffer)?),
+        (Some("float"), Some(1)) => VertexAttributeValues::Float(Vec::deserialize(buffer)?),
+        (Some("float"), Some(2)) => VertexAttributeValues::Float2(Vec::deserialize(buffer)?),
+        (Some("float"), Some(3)) => VertexAttributeValues::Float3(Vec::deserialize(buffer)?),
+        (Some("float"), Some(4)) => VertexAttributeValues::Float4(Vec::deserialize(buffer)?),
+        _ => anyhow::bail!(
+            "load_json_as_mesh: unrecognized attrib '{name}' with type '{descriptor}'"
+        ),
+    };
+    ensure!(values.array_length() != 0, "顶点属性 {name} 不能为空");
+    let finite = match &values {
+        VertexAttributeValues::Int(_) => true,
+        VertexAttributeValues::Float(values) => values.iter().all(|value| value.is_finite()),
+        VertexAttributeValues::Float2(values) => values.iter().all(|value| value.is_finite()),
+        VertexAttributeValues::Float3(values) => values.iter().all(|value| value.is_finite()),
+        VertexAttributeValues::Float4(values) => values.iter().all(|value| value.is_finite()),
+    };
+    ensure!(finite, "顶点属性 {name} 含有非有限数值");
+    let valid_type = match name {
+        ATTR_POSITION | ATTR_NORMAL => matches!(&values, VertexAttributeValues::Float3(_)),
+        ATTR_UV => matches!(&values, VertexAttributeValues::Float2(_)),
+        ATTR_COLOR => matches!(
+            &values,
+            VertexAttributeValues::Float3(_) | VertexAttributeValues::Float4(_)
+        ),
+        _ => true,
+    };
+    ensure!(valid_type, "顶点属性 {name} 类型不符合网格约定");
+    Ok(values)
 }
 
-/// 把 JSON 文本构建成网格（读文件之外的部分，便于测试）。`path` 写入 `source_file`。
+/// 构造完整的可绘制网格。所有检查通过后才返回，调用方可安全替换旧资产。
+fn try_mesh_from_json(json: &Value, path: &str) -> anyhow::Result<Mesh> {
+    let indices: Vec<u32> = Vec::deserialize(&json["indices"]["buffer"])
+        .context("网格 indices.buffer 必须为 u32 数组")?;
+    let names = json["attributes"]
+        .as_array()
+        .context("网格 attributes 必须为属性名数组")?;
+    let mut mesh = Mesh::new("load_json_as_mesh");
+    for name in names {
+        let name = name.as_str().context("网格属性名必须为字符串")?;
+        ensure!(!mesh.has_attribute(name), "网格属性 {name} 重复声明");
+        let values = read_attribute_from_json(json, name)
+            .with_context(|| format!("解析网格属性 {name} 失败"))?;
+        mesh.set_attribute(name, values);
+    }
+    let vertex_count = mesh
+        .attributes
+        .get(ATTR_POSITION)
+        .context("网格缺少 Vertex_Position 属性")?
+        .array_length();
+    for (name, values) in &mesh.attributes {
+        ensure!(
+            values.array_length() == vertex_count,
+            "属性 {name} 的顶点数量与 Vertex_Position 不一致"
+        );
+    }
+    ensure!(
+        indices.iter().all(|&index| (index as usize) < vertex_count),
+        "顶点属性长度不足以覆盖网格索引"
+    );
+    mesh.set_indices(indices);
+    mesh.set_source_file(SourceFile {
+        path: path.to_owned(),
+        stamp: 0,
+    });
+    Ok(mesh)
+}
+
+/// 启动期必需资产的便捷入口；需要可恢复错误时使用 try_load_json_as_mesh。
+pub fn load_json_as_mesh(path: &str) -> Mesh {
+    try_load_json_as_mesh(path).unwrap()
+}
+
+/// 读文件、解析和校验失败都返回 Err，不中断资产热重载。
+pub fn try_load_json_as_mesh(path: &str) -> anyhow::Result<Mesh> {
+    let text = std::fs::read_to_string(path).with_context(|| format!("读取网格失败：{path}"))?;
+    let json: Value =
+        serde_json::from_str(&text).with_context(|| format!("解析网格失败：{path}"))?;
+    try_mesh_from_json(&json, path).with_context(|| format!("校验网格失败：{path}"))
+}
+
 #[cfg(test)]
 fn mesh_from_json(json: &Value, path: &str) -> Mesh {
     try_mesh_from_json(json, path).unwrap()
 }
 
-/// 同上，但属性读取错误以 `Err` 传播（`reload_mesh_src` 所用的 Result 单态，0x140b0eeb0）。
-fn try_mesh_from_json(json: &Value, path: &str) -> anyhow::Result<Mesh> {
-    let mut mesh = Mesh::new("load_json_as_mesh");
-    mesh.set_source_file(SourceFile {
-        path: path.to_owned(),
-        stamp: 0,
-    });
-
-    let indices: Vec<u32> = json["indices"]["buffer"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|v| v.as_u64().unwrap() as u32)
-        .collect();
-    let max_index = indices.iter().map(|&i| i as i32).max().unwrap_or(-1);
-
-    // 先整体收集属性名，任一元素不是字符串就在读任何属性之前 panic。
-    let names: Vec<&str> = json["attributes"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|name| name.as_str().unwrap())
-        .collect();
-    for name in names {
-        let values = read_attribute_from_json(json, name)?;
-        assert!(values.array_length() as i32 > max_index);
-        mesh.set_attribute(name, values);
-    }
-    mesh.set_indices(indices);
-    Ok(mesh)
-}
-
-/// 从磁盘加载 JSON 网格；任何失败都是 panic。
-pub fn load_json_as_mesh(path: &str) -> Mesh {
-    try_load_json_as_mesh(path).unwrap()
-}
-
-/// Result 单态：读文件/解析失败仍 panic，只有属性读取错误返回 `Err`（O：0x140b0fa1b 读文件失败直接 panic）。
-pub fn try_load_json_as_mesh(path: &str) -> anyhow::Result<Mesh> {
-    let text = std::fs::read_to_string(path).unwrap_or_else(|_| panic!("Couldn't find  {path}"));
-    log::trace!("Reading mesh {path}");
-    let json: Value =
-        serde_json::from_str(&text).unwrap_or_else(|_| panic!("Couldn't parse  {path}"));
-    try_mesh_from_json(&json, path)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use glam::{Vec2, Vec3};
     use serde_json::json;
 
     fn sample() -> Value {
@@ -213,7 +182,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "assertion failed: !v.is_empty()")]
+    #[should_panic(expected = "不能为空")]
     fn an_empty_attribute_buffer_panics_even_with_empty_indices() {
         let mut json = sample();
         json["indices"]["buffer"] = json!([]);
@@ -222,23 +191,19 @@ mod tests {
     }
 
     #[test]
-    fn extra_float_components_are_ignored() {
+    fn extra_float_components_are_rejected() {
         let json = json!({"P": {"type": ["float", 3], "buffer": [[1.0, 2.0, 3.0, 99.0]]}});
-        assert_eq!(
-            read_attribute_from_json(&json, "P").unwrap(),
-            VertexAttributeValues::Float3(vec![Vec3::new(1.0, 2.0, 3.0)])
-        );
+        assert!(read_attribute_from_json(&json, "P").is_err());
     }
 
     #[test]
-    #[should_panic(expected = "index out of bounds")]
-    fn too_few_float_components_index_out_of_bounds() {
+    fn too_few_float_components_returns_an_error() {
         let json = json!({"P": {"type": ["float", 2], "buffer": [[1.0]]}});
-        let _ = read_attribute_from_json(&json, "P");
+        assert!(read_attribute_from_json(&json, "P").is_err());
     }
 
     #[test]
-    #[should_panic(expected = "called `Option::unwrap()` on a `None` value")]
+    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value")]
     fn a_non_string_attribute_name_panics_before_any_attribute_is_read() {
         let mut json = sample();
         json["attributes"] = json!(["Bad", 7]);
@@ -247,7 +212,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "assertion failed: values.array_length() as i32 > max_index")]
+    #[should_panic(expected = "长度不足以覆盖网格索引")]
     fn index_beyond_attribute_length_asserts() {
         let mut json = sample();
         json["indices"]["buffer"] = json!([0, 1, 3]);
@@ -255,24 +220,72 @@ mod tests {
     }
 
     #[test]
-    fn empty_indices_use_minus_one_as_max() {
+    fn empty_indices_are_allowed() {
         let mut json = sample();
         json["indices"]["buffer"] = json!([]);
         assert!(mesh_from_json(&json, "m.json").indices.is_empty());
     }
 
     #[test]
-    #[should_panic(expected = "Couldn't find  /nonexistent/mesh.json")]
+    #[should_panic(expected = "读取网格失败：/nonexistent/mesh.json")]
     fn missing_file_panics_with_the_path() {
         load_json_as_mesh("/nonexistent/mesh.json");
     }
 
     #[test]
     fn loads_from_disk() {
-        let path = std::env::temp_dir().join("country_core_load_json_test.json");
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("mesh.json");
         std::fs::write(&path, sample().to_string()).unwrap();
         let mesh = load_json_as_mesh(path.to_str().unwrap());
         assert_eq!(mesh.indices.len(), 3);
         let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn invalid_semantic_attributes_are_rejected_before_publication() {
+        let mut json = sample();
+        json[ATTR_POSITION] = json!({"type": ["float", 2], "buffer": [[0,0],[1,0],[0,1]]});
+        assert!(try_mesh_from_json(&json, "invalid.json").is_err());
+        json["attributes"] = json!(["Tag"]);
+        assert!(try_mesh_from_json(&json, "missing.json").is_err());
+        json = sample();
+        json["attributes"] = json!(["Vertex_Position", "Vertex_Position"]);
+        assert!(try_mesh_from_json(&json, "duplicate.json").is_err());
+        json = sample();
+        json["Weight"]["buffer"] = json!([1.0, 2.0, 3.0, 4.0]);
+        assert!(try_mesh_from_json(&json, "length.json").is_err());
+    }
+
+    #[test]
+    fn malformed_type_descriptors_and_overflowing_floats_are_errors() {
+        let json = json!({"P": {"type": ["float", 3, "extra"], "buffer": [[1,2,3]]}});
+        assert!(read_attribute_from_json(&json, "P").is_err());
+        let json = json!({"P": {"type": ["float", 1], "buffer": [1e100]}});
+        assert!(read_attribute_from_json(&json, "P").is_err());
+    }
+
+    #[test]
+    fn failed_hot_reload_preserves_the_previous_mesh_and_dirty_list() {
+        use crate::asset_libraries::mesh_library::{AssetMeshLibrary, MeshAsset};
+
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("mesh.json");
+        let previous = mesh_from_json(&sample(), path.to_str().unwrap());
+        let mut library = AssetMeshLibrary::new();
+        let handle = library.add(MeshAsset::new(previous, None));
+        let mut invalid = sample();
+        invalid[ATTR_POSITION] = json!({"type":["float",2], "buffer":[[0,0],[1,0],[0,1]]});
+        std::fs::write(&path, invalid.to_string()).unwrap();
+        assert!(library.try_reload_mesh_src(&path).is_err());
+        assert_eq!(
+            library
+                .get(handle)
+                .unwrap()
+                .positions_without_indices()
+                .len(),
+            3
+        );
+        assert!(library.modified_meshes.is_empty());
     }
 }

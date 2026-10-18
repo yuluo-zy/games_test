@@ -1,0 +1,805 @@
+{
+  "backend": "ghidra",
+  "worker": "shared",
+  "access": "read",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "disassemble_function",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "address": "0x14003ac90"
+      },
+      "args": {
+        "program": "tiny-glade.exe",
+        "address": "0x14003ac90"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program\":\"tiny-glade.exe\",\"instructions\":[{\"address\":\"14003ac90\",\"instruction\":\"PUSH RSI\"},{\"address\":\"14003ac91\",\"instruction\":\"PUSH RDI\"},{\"address\":\"14003ac92\",\"instruction\":\"SUB RSP,0x68\"},{\"address\":\"14003ac96\",\"instruction\":\"MOV RDI,R8\"},{\"address\":\"14003ac99\",\"instruction\":\"MOV RSI,RCX\"},{\"address\":\"14003ac9c\",\"instruction\":\"MOVZX EAX,byte ptr [RDX]\"},{\"address\":\"14003ac9f\",\"instruction\":\"LEA RCX,[0x14292c04c]\"},{\"address\":\"14003aca6\",\"instruction\":\"MOVSXD RAX,dword ptr [RCX + RAX*0x4]\"},{\"address\":\"14003acaa\",\"instruction\":\"ADD RAX,RCX\"},{\"address\":\"14003acad\",\"instruction\":\"JMP RAX\"}],\"count\":10}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "get_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x140912500",
+        "fields": "signature,decompiled_code",
+        "include_call_context": false
+      },
+      "args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x140912500",
+        "fields": "signature,decompiled_code",
+        "include_call_context": false
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program\":\"tiny-glade.exe\",\"functions\":{\"0x140912500\":{\"name\":\"fmt\",\"size\":27,\"address\":\"140912500\",\"signature\":\"void __cdecl fmt(void)\",\"decompiled_code\":\"\\n// WARNING: Instruction at (ram,0x000140914949) overlaps instruction at (ram,0x000140914943)\\n// \\n// WARNING: Control flow encountered bad instruction data\\n// WARNING: Globals starting with '_' overlap smaller symbols at the same address\\n\\nvoid __cdecl country_core::systems::main_camera::impl$2::fmt(void)\\n\\n{\\n  uint *puVar1;\\n  byte *pbVar2;\\n  undefined *puVar3;\\n  ulonglong *puVar4;\\n  undefined **ppuVar5;\\n  undefined8 uVar6;\\n  undefined4 *puVar7;\\n  char unaff_00084f00;\\n  undefined1 *unaff_0008ae00;\\n  undefined8 uVar8;\\n  undefined8 uVar9;\\n  undefined8 uVar10;\\n  undefined1 auVar11 [16];\\n  uint7 uVar12;\\n  undefined1 *puVar13;\\n  undefined1 *puVar14;\\n  undefined1 *puVar15;\\n  undefined1 *puVar16;\\n  byte bVar17;\\n  char cVar18;\\n  ulonglong uVar20;\\n  undefined **ppuVar21;\\n  undefined7 uVar28;\\n  int *piVar22;\\n  undefined8 *puVar23;\\n  undefined8 *puVar24;\\n  longlong lVar25;\\n  longlong lVar26;\\n  char *pcVar27;\\n  code *UNRECOVERED_JUMPTABLE;\\n  byte bVar29;\\n  int iVar30;\\n  byte *in_RCX;\\n  undefined **ppuVar31;\\n  uint uVar32;\\n  undefined **in_RDX;\\n  undefined8 uVar33;\\n  undefined **ppuVar34;\\n  undefined **unaff_RBX;\\n  undefined **ppuVar35;\\n  undefined1 *puVar36;\\n  undefined1 *puVar37;\\n  undefined1 *puVar38;\\n  undefined8 *puVar39;\\n  undefined1 *puVar40;\\n  undefined1 *puVar41;\\n  undefined1 *puVar42;\\n  undefined8 *puVar43;\\n  undefined1 *puVar44;\\n  undefined1 *puVar45;\\n  undefined1 *puVar46;\\n  undefined8 *puVar47;\\n  undefined1 *puVar48;\\n  undefined1 *puVar49;\\n  undefined1 *puVar50;\\n  undefined1 *puVar51;\\n  undefined1 *puVar52;\\n  undefined8 *puVar53;\\n  undefined8 *puVar54;\\n  undefined1 *puVar55;\\n  undefined8 *puVar56;\\n  undefined8 *puVar57;\\n  undefined8 *puVar58;\\n  undefined1 *puVar59;\\n  undefined8 *unaff_RBP;\\n  longlong lVar60;\\n  undefined **unaff_RDI;\\n  undefined **in_R8;\\n  undefined **ppuVar61;\\n  undefined **in_R9;\\n  ulonglong uVar62;\\n  undefined *puVar63;\\n  undefined *puVar64;\\n  undefined8 *unaff_R12;\\n  ulonglong unaff_R13;\\n  undefined **unaff_R14;\\n  undefined **unaff_R15;\\n  undefined2 in_ES;\\n  undefined1 uVar65;\\n  undefined2 in_DS;\\n  bool bVar66;\\n  bool bVar67;\\n  bool bVar68;\\n  bool bVar69;\\n  int in_MM0_Da;\\n  int in_MM2_Da;\\n  uint in_MM3_Da;\\n  float in_XMM0_Da;\\n  float extraout_XMM0_Da;\\n  float fVar70;\\n  float in_XMM0_Db;\\n  float in_XMM0_Dc;\\n  float fVar71;\\n  float in_XMM0_Dd;\\n  float in_XMM1_Da;\\n  float fVar72;\\n  float fVar73;\\n  float in_XMM1_Db;\\n  float in_XMM1_Dc;\\n  float in_XMM1_Dd;\\n  undefined1 auVar74 [16];\\n  undefined1 auVar75 [16];\\n  float in_XMM2_Da;\\n  float fVar76;\\n  float in_XMM2_Db;\\n  float in_XMM2_Dc;\\n  float in_XMM2_Dd;\\n  undefined1 auVar77 [16];\\n  undefined1 auVar78 [16];\\n  float in_XMM3_Da;\\n  float in_XMM3_Db;\\n  float in_XMM3_Dc;\\n  float in_XMM3_Dd;\\n  float unaff_XMM6_Da;\\n  undefined4 unaff_XMM6_Db;\\n  undefined4 unaff_XMM6_Dc;\\n  undefined4 unaff_XMM6_Dd;\\n  float unaff_XMM7_Da;\\n  float unaff_XMM7_Db;\\n  float unaff_XMM8_Da;\\n  float unaff_XMM9_Da;\\n  float unaff_XMM10_Da;\\n  float unaff_XMM10_Db;\\n  float unaff_XMM10_Dd;\\n  float unaff_XMM11_Da;\\n  float unaff_XMM11_Db;\\n  float unaff_XMM12_Da;\\n  float unaff_XMM13_Da;\\n  float afStackX_20 [2];\\n  char cStack0000000000000038;\\n  undefined7 uStack0000000000000039;\\n  float in_stack_00000040;\\n  undefined8 in_stack_00000044;\\n  float in_stack_0000004c;\\n  undefined4 in_stack_00000050;\\n  int in_stack_000000c8;\\n  int in_stack_000000d8;\\n  int in_stack_00000108;\\n  char in_stack_00000148;\\n  undefined7 in_stack_00000149;\\n  float in_stack_00000150;\\n  uint in_stack_00000154;\\n  char cStack0000000000000158;\\n  undefined3 uStack0000000000000159;\\n  char in_stack_000001a8;\\n  int in_stack_000001f8;\\n  undefined *apuStack_98 [4];\\n  undefined1 auStack_78 [2];\\n  undefined1 auStack_76 [8];\\n  undefined6 uStack_6e;\\n  undefined2 uStack_68;\\n  undefined6 uStack_66;\\n  char cStack_59;\\n  undefined8 uStack_58;\\n  code *pcStack_50;\\n  longlong alStack_48 [2];\\n  undefined *puStack_38;\\n  longlong lStack_30;\\n  undefined8 uStack_28;\\n  ulonglong auStack_20 [2];\\n  uint uStack_c;\\n  int iVar19;\\n  \\n  uVar65 = (undefined1)((ushort)in_ES >> 8);\\n  puVar47 = (undefined8 *)auStack_78;\\n  puVar54 = (undefined8 *)auStack_78;\\n  puVar40 = auStack_78;\\n  puVar55 = auStack_78;\\n  puVar50 = auStack_78;\\n  puVar56 = (undefined8 *)auStack_78;\\n  puVar51 = auStack_78;\\n  puVar44 = auStack_78;\\n  puVar43 = (undefined8 *)auStack_78;\\n  puVar38 = auStack_78;\\n  puVar48 = auStack_78;\\n  puVar24 = (undefined8 *)auStack_78;\\n  puVar58 = (undefined8 *)auStack_78;\\n  puVar57 = (undefined8 *)auStack_78;\\n  puVar53 = (undefined8 *)auStack_78;\\n  puVar23 = (undefined8 *)auStack_78;\\n  puVar42 = auStack_78;\\n  puVar39 = (undefined8 *)auStack_78;\\n  ppuVar35 = (undefined **)auStack_78;\\n  puVar41 = auStack_78;\\n  puVar46 = auStack_78;\\n  ppuVar31 = (undefined **)&DAT_142aabcec;\\n  uVar20 = (ulonglong)*(int *)(&DAT_142aabcec + (ulonglong)*in_RCX * 4);\\n  bVar69 = SCARRY8(uVar20,0x142aabcec);\\n  ppuVar21 = (undefined **)(&DAT_142aabcec + uVar20);\\n  bVar68 = (longlong)ppuVar21 < 0;\\n  bVar67 = ppuVar21 == (undefined **)0x0;\\n  bVar66 = (POPCOUNT((ulonglong)ppuVar21 & 0xff) & 1U) == 0;\\n  cVar18 = (char)ppuVar21;\\n  iVar19 = (int)ppuVar21;\\n  uVar32 = (uint)unaff_RBX;\\n  iVar30 = (int)unaff_RDI;\\n  ppuVar61 = in_RDX;\\n  puVar52 = auStack_78;\\n  puVar37 = auStack_78;\\n  puVar13 = auStack_78;\\n  puVar36 = auStack_78;\\n  puVar14 = auStack_78;\\n  puVar15 = auStack_78;\\n  puVar45 = auStack_78;\\n  puVar16 = auStack_78;\\n  puVar49 = auStack_78;\\n                    // WARNING (jumptable): Sanity check requires truncation of jumptable\\n                    // WARNING: Could not find normalized switch variable to match jumptable\\n  switch(*in_RCX) {\\n  case 0:\\n    uVar33 = 0x2d;\\n    break;\\n  case 1:\\n    uVar33 = 0x2e;\\n    break;\\n  case 2:\\n    uVar33 = 0x2d;\\n    break;\\n  case 3:\\n    uVar33 = 0x2e;\\n    break;\\n  case 4:\\n    goto code_r0x000140912563;\\n  case 5:\\ncode_r0x000140912563:\\n    uVar33 = 0x2f;\\n    break;\\n  case 6:\\n    unaff_XMM9_Da = *(float *)(unaff_RBP + 0x2d);\\n    unaff_R13 = CONCAT71((int7)(unaff_R13 >> 8),5);\\n    if (unaff_XMM9_Da != 0.0) {\\n      pcStack_50 = (code *)CONCAT44(pcStack_50._4_4_,(float)(uint)*(float *)((longlong)in_RDX + 4));\\n      uStack_58 = (longlong *)CONCAT44(uStack_58._4_4_,(float)(uint)*(float *)in_RDX);\\n      unaff_R15 = (undefined **)&stack0x000001c8;\\n      apuStack_98[3] = (undefined *)0x140912f42;\\n      in_R9 = unaff_RDI;\\n      ::utils::geometry::ray::Ray::from_mouse_ss();\\n      fVar70 = (1.0 - *(float *)((longlong)unaff_R14 + 4)) /\\n               (float)(uint)*(float *)((longlong)in_RDX + 4);\\n      fVar76 = *(float *)unaff_R14 / (float)(uint)*(float *)in_RDX +\\n               *(float *)unaff_R14 / (float)(uint)*(float *)in_RDX + -1.0;\\n      fVar70 = fVar70 + fVar70 + 1.0;\\n      fVar73 = fVar70 * *(float *)(unaff_RDI + 10) + fVar76 * *(float *)(unaff_RDI + 8);\\n      fVar72 = fVar70 * *(float *)((longlong)unaff_RDI + 0x54) +\\n               fVar76 * *(float *)((longlong)unaff_RDI + 0x44);\\n      fVar71 = fVar70 * *(float *)(unaff_RDI + 0xb) + fVar76 * *(float *)(unaff_RDI + 9);\\n      fVar70 = fVar70 * *(float *)((longlong)unaff_RDI + 0x5c) +\\n               fVar76 * *(float *)((longlong)unaff_RDI + 0x4c);\\n      auVar77._0_4_ = *(float *)(unaff_RDI + 0xc) + fVar73 + *(float *)(unaff_RDI + 0xe);\\n      auVar77._4_4_ =\\n           *(float *)((longlong)unaff_RDI + 100) + fVar72 + *(float *)((longlong)unaff_RDI + 0x74);\\n      auVar77._8_4_ = *(float *)(unaff_RDI + 0xd) + fVar71 + *(float *)(unaff_RDI + 0xf);\\n      auVar77._12_4_ =\\n           *(float *)((longlong)unaff_RDI + 0x6c) + fVar70 + *(float *)((longlong)unaff_RDI + 0x7c);\\n      auVar78._4_4_ = auVar77._12_4_;\\n      auVar78._0_4_ = auVar77._12_4_;\\n      auVar78._8_4_ = auVar77._12_4_;\\n      auVar78._12_4_ = auVar77._12_4_;\\n      auVar78 = divps(auVar77,auVar78);\\n      auVar74._0_4_ = *(float *)(unaff_RDI + 0xc) * 0.01 + fVar73 + *(float *)(unaff_RDI + 0xe);\\n      auVar74._4_4_ =\\n           *(float *)((longlong)unaff_RDI + 100) * 0.01 + fVar72 +\\n           *(float *)((longlong)unaff_RDI + 0x74);\\n      auVar74._8_4_ = *(float *)(unaff_RDI + 0xd) * 0.01 + fVar71 + *(float *)(unaff_RDI + 0xf);\\n      auVar74._12_4_ =\\n           *(float *)((longlong)unaff_RDI + 0x6c) * 0.01 + fVar70 +\\n           *(float *)((longlong)unaff_RDI + 0x7c);\\n      auVar75._4_4_ = auVar74._12_4_;\\n      auVar75._0_4_ = auVar74._12_4_;\\n      auVar75._8_4_ = auVar74._12_4_;\\n      auVar75._12_4_ = auVar74._12_4_;\\n      auVar75 = divps(auVar74,auVar75);\\n      in_XMM1_Da = auVar75._0_4_ - auVar78._0_4_;\\n      in_XMM1_Db = auVar75._4_4_ - auVar78._4_4_;\\n      in_XMM0_Da = auVar75._8_4_ - auVar78._8_4_;\\n      in_XMM0_Db = auVar75._12_4_ - auVar78._12_4_;\\n      in_XMM3_Db = in_XMM1_Db * in_XMM1_Db;\\n      in_XMM3_Dc = in_XMM0_Db * in_XMM0_Db;\\n      in_XMM3_Da = in_XMM3_Db + in_XMM1_Da * in_XMM1_Da;\\n      in_XMM2_Da = SQRT(in_XMM0_Da * in_XMM0_Da + in_XMM3_Da);\\n      unaff_XMM10_Da = 1.0 / in_XMM2_Da;\\n      unaff_XMM11_Da = unaff_XMM10_Da * in_XMM1_Da;\\n      unaff_XMM11_Db = unaff_XMM10_Da * in_XMM1_Db;\\n      in_XMM0_Dc = in_XMM0_Da;\\n      in_XMM0_Dd = in_XMM0_Db;\\n      in_XMM1_Dc = in_XMM0_Da;\\n      in_XMM1_Dd = in_XMM0_Db;\\n      in_XMM2_Db = in_XMM0_Db;\\n      in_XMM2_Dc = in_XMM0_Da;\\n      in_XMM2_Dd = in_XMM0_Db;\\n      in_XMM3_Dd = in_XMM3_Dc;\\n      goto code_r0x000140913006;\\n    }\\n  default:\\n    ppuVar31 = (undefined **)((ulonglong)ppuVar21 & 0xffffffff);\\ncode_r0x000140913144:\\n                    // WARNING: Could not emulate address calculation at 0x00014091314b\\n                    // WARNING: Treating indirect jump as call\\n    (*(code *)(&DAT_142aabd04 + *(int *)(&DAT_142aabd04 + (longlong)ppuVar31 * 4)))\\n              (&DAT_142aabd04 + *(int *)(&DAT_142aabd04 + (longlong)ppuVar31 * 4));\\n    return;\\n  case 8:\\n    uVar65 = (undefined1)((ushort)*(undefined2 *)in_RDX >> 8);\\n    *(byte *)ppuVar21 = *(byte *)ppuVar21 + cVar18;\\n    puVar40 = auStack_78;\\n    goto LAB_14091324e;\\n  case 0xb:\\n    goto code_r0x0001409133bb;\\n  case 0xc:\\ncode_r0x000140914494:\\n    apuStack_98[3] = &UNK_1409144a5;\\n    camera_rig::free::impl$1::rotate_yaw_pitch();\\n    puVar40 = auStack_78;\\n    in_RDX = ppuVar61;\\n    goto LAB_1409135c3;\\n  case 0xd:\\n    ppuVar21 = in_RDX;\\n    goto code_r0x000140914464;\\n  case 0xe:\\n    puVar54 = (undefined8 *)auStack_78;\\ncode_r0x00014091446c:\\n    *(ulonglong *)((longlong)unaff_RBX + 0x14) = CONCAT44(unaff_XMM7_Db,unaff_XMM7_Da);\\n    *(float *)((longlong)unaff_RBX + 0x1c) = unaff_XMM8_Da;\\n    fVar70 = *(float *)((longlong)puVar54 + 0x38);\\n    unaff_R15 = *(undefined ***)((longlong)puVar54 + 0x48);\\n    goto LAB_140913bec;\\n  case 0xf:\\n    __xmm_3f8000003f8000003f8000003f800000 = 0;\\n    __real_43430000._0_1_ = 0;\\n    _DAT_142aabcec = 0xfde6682f;\\n    UNK_142aabd2f = 0xfd;\\n    _DAT_142aabd30 = 0xfde67498;\\n    DAT_142aabd48 = 0xae;\\n    PTR_update_142c91c20._5_1_ = 0;\\n    anon_0555c73667d6be1dc866b3f0ae0b3f3f_19_llvm_14020587298740829885._0_2_ = 0xa640;\\n                    // WARNING: Bad instruction - Truncating control flow here\\n    halt_baddata();\\n  case 0x10:\\n    __xmm_3f8000003f8000003f8000003f800000 = 0;\\n    __real_43430000._0_1_ = 0;\\n    _DAT_142aabcec = 0xfde6682f;\\n    UNK_142aabd2f = 0xfd;\\n    _DAT_142aabd30 = 0xfde67498;\\n    DAT_142aabd48 = 0xae;\\n    PTR_update_142c91c20._5_1_ = 0;\\n    anon_0555c73667d6be1dc866b3f0ae0b3f3f_19_llvm_14020587298740829885._0_2_ = 0xa640;\\n                    // WARNING: Bad instruction - Truncating control flow here\\n    halt_baddata();\\n  case 0x11:\\n    *(byte *)ppuVar21 = *(byte *)ppuVar21 + cVar18;\\ncode_r0x000140913186:\\n    ppuVar34 = (undefined **)auStack_78;\\n    fVar70 = unaff_XMM12_Da;\\nLAB_1409131c8:\\n    in_XMM0_Da = SQRT(unaff_XMM13_Da * unaff_XMM13_Da + fVar70 * fVar70);\\n    in_XMM1_Da = 195.0;\\n    goto code_r0x0001409131ed;\\n  case 0x12:\\ncode_r0x000140913170:\\n    UNRECOVERED_JUMPTABLE = (code *)swi(3);\\n    (*UNRECOVERED_JUMPTABLE)();\\n    return;\\n  case 0x13:\\n    goto code_r0x000140913144;\\n  case 0x14:\\n    *(int *)ppuVar21 = (int)*(float *)ppuVar21 + iVar19;\\n                    // WARNING: Bad instruction - Truncating control flow here\\n    halt_baddata();\\n  case 0x15:\\n  case 0x16:\\ncode_r0x000140913006:\\n    unaff_XMM10_Da = unaff_XMM10_Da * in_XMM0_Da;\\n    uVar20 = unaff_R13 & 0xff;\\n    in_RDX = ppuVar61;\\n    if (((byte)unaff_R13 < 6) && ((0x2cU >> ((uint)uVar20 & 0x1f) & 1) != 0)) {\\n      unaff_XMM11_Da = -0.0;\\n      unaff_XMM11_Db = -0.0;\\n      unaff_XMM10_Da = -1.0;\\n    }\\nLAB_14091302e:\\n    uVar65 = (undefined1)((ushort)in_ES >> 8);\\n    ppuVar31 = (undefined **)&DAT_142aabd30;\\n    uVar20 = (ulonglong)*(int *)(&DAT_142aabd30 + uVar20 * 4);\\n    ppuVar21 = (undefined **)(&DAT_142aabd30 + uVar20);\\n    ppuVar61 = (undefined **)(ulonglong)uStack_c;\\n    cVar18 = (char)ppuVar21;\\n    ppuVar34 = (undefined **)auStack_78;\\n    puVar37 = auStack_78;\\n    fVar70 = unaff_XMM8_Da;\\n    unaff_XMM12_Da = unaff_XMM8_Da;\\n    ppuVar5 = ppuVar21;\\n    unaff_XMM13_Da = unaff_XMM7_Da;\\n                    // WARNING (jumptable): Sanity check requires truncation of jumptable\\n    switch(ppuVar21) {\\n    case (undefined **)0x14091304a:\\n      apuStack_98[3] = (undefined *)0x14091305a;\\n      ::utils::camera::CameraMatrices::eye_position();\\n      apuStack_98[3] = (undefined *)0x14091306d;\\n      ::utils::camera::CameraMatrices::eye_direction();\\n      uVar33 = CONCAT71(in_stack_00000149,in_stack_00000148);\\n      uVar12 = (uint7)in_stack_00000149 >> 0x18;\\n      fVar70 = in_stack_00000040 * -100.0 + in_stack_00000150;\\n      apuStack_98[3] = (undefined *)0x1409130b8;\\n      ::utils::camera::CameraMatrices::eye_direction();\\n      in_stack_00000044 = CONCAT71(in_stack_00000149,in_stack_00000148);\\n      in_stack_0000004c = in_stack_00000150;\\n      if ((char)unaff_R13 != '\\\\x04') {\\n        unaff_R15 = (undefined **)&stack0x00000038;\\n      }\\n      apuStack_98[3] = (undefined *)0x140913111;\\n      in_R8 = unaff_R15;\\n      _cStack0000000000000038 =\\n           (undefined *)\\n           CONCAT44((float)uVar12 + (float)((ulonglong)_cStack0000000000000038 >> 0x20) * -100.0,\\n                    (float)uVar33 + SUB84(_cStack0000000000000038,0) * -100.0);\\n      in_stack_00000040 = fVar70;\\n      resources::terrain_height::TerrainHeightsData::\\n      intersect_ray<country_core::resources::terrain_height::TerrainHeightSsbo>();\\n      ppuVar61 = (undefined **)0x0;\\n      fVar70 = 0.0;\\n      if (in_stack_00000148 != '\\\\0') {\\n        ppuVar61 = (undefined **)(ulonglong)in_stack_00000154;\\n        unaff_XMM13_Da = _cStack0000000000000158;\\n      }\\n      else {\\n        unaff_XMM13_Da = 0.0;\\n      }\\n      unaff_R12 = (undefined8 *)(alStack_48[1] & 0xffffffff);\\n      ppuVar34 = (undefined **)auStack_78;\\n      unaff_XMM12_Da = in_stack_00000150;\\n      if (in_stack_00000148 != '\\\\0') goto code_r0x000140913186;\\n      break;\\n    case (undefined **)0x140913188:\\n      fVar70 = *(float *)((longlong)puStack_38 + 0x14);\\n      ppuVar61 = (undefined **)(ulonglong)*(uint *)((longlong)puStack_38 + 0x18);\\n      unaff_XMM13_Da = *(float *)((longlong)puStack_38 + 0x1c);\\ncode_r0x00014091319c:\\n      ppuVar34 = (undefined **)auStack_78;\\n      break;\\n    case (undefined **)0x14091319e:\\n      fVar70 = *(float *)((longlong)puStack_38 + 0x2c);\\n      ppuVar61 = (undefined **)(ulonglong)*(uint *)((longlong)puStack_38 + 0x30);\\n      unaff_XMM13_Da = *(float *)((longlong)puStack_38 + 0x34);\\n      ppuVar34 = (undefined **)auStack_78;\\n      break;\\n    case (undefined **)0x1409131b4:\\ncode_r0x0001409131b9:\\n      fVar70 = *(float *)((longlong)puStack_38 + 0x20);\\n      ppuVar61 = (undefined **)(ulonglong)*(uint *)((longlong)puStack_38 + 0x24);\\n      unaff_XMM13_Da = *(float *)((longlong)puStack_38 + 0x28);\\n      ppuVar34 = ppuVar35;\\n      break;\\n    case (undefined **)0x140913224:\\n      *(byte *)unaff_RDI = *(byte *)unaff_RDI + 0x30;\\n      pbVar2 = (byte *)((longlong)ppuVar21 * 2);\\n      *pbVar2 = *pbVar2 << 1 | (char)*pbVar2 < '\\\\0';\\n      (&UNK_142aabcbd)[uVar20] = (&UNK_142aabcbd)[uVar20] + '0';\\n      puVar54 = (undefined8 *)auStack_78;\\n      goto code_r0x0001409131f2;\\n    case (undefined **)0x1409133de:\\ncode_r0x0001409133de:\\n      uVar65 = (undefined1)((ushort)in_ES >> 8);\\n      uVar20 = (ulonglong)(int)*(float *)((longlong)in_RDX + (longlong)ppuVar31 * 4);\\n      bVar66 = CARRY8(uVar20,(ulonglong)in_RDX);\\n      ppuVar31 = (undefined **)(uVar20 + (longlong)in_RDX);\\n      bVar17 = (byte)ppuVar21;\\n      iVar19 = (int)ppuVar21;\\n      uVar28 = (undefined7)((ulonglong)ppuVar21 >> 8);\\n      bVar29 = (byte)ppuVar31;\\n      puVar47 = (undefined8 *)auStack_78;\\n      puVar54 = (undefined8 *)auStack_78;\\n      fVar70 = unaff_XMM12_Da;\\n                    // WARNING (jumptable): Sanity check requires truncation of jumptable\\n      switch(ppuVar31) {\\n      case (undefined **)0x140913032:\\n        goto code_r0x000140913032;\\n      case (undefined **)0x140913170:\\n        goto code_r0x000140913170;\\n      case (undefined **)0x140913186:\\n        goto code_r0x000140913186;\\n      case (undefined **)0x14091319c:\\n        goto code_r0x00014091319c;\\n      case (undefined **)0x1409131b0:\\n        ppuVar35 = apuStack_98 + 3;\\n        apuStack_98[3] = (undefined *)0x4814eb34;\\n        puStack_38 = (undefined *)(alStack_48[1] & 0xffffffff);\\n        goto code_r0x0001409131b9;\\n      case (undefined **)0x14091320c:\\n        _cStack0000000000000038 =\\n             (undefined *)\\n             CONCAT71(uStack0000000000000039,cStack0000000000000038 + (char)in_RDX + bVar66);\\n        puVar54 = (undefined8 *)auStack_78;\\n        goto code_r0x0001409131f2;\\n      case (undefined **)0x1409133c6:\\ncode_r0x0001409133c6:\\n        in_XMM1_Da = (float)((uint)in_XMM1_Da ^ (uint)in_XMM0_Da);\\n        in_XMM1_Db = (float)((uint)in_XMM1_Db ^ (uint)in_XMM0_Db);\\n        in_XMM1_Dc = (float)((uint)in_XMM1_Dc ^ (uint)in_XMM0_Dc);\\n        in_XMM1_Dd = (float)((uint)in_XMM1_Dd ^ (uint)in_XMM0_Dd);\\n        break;\\n      case (undefined **)0x1409133cf:\\n        *(byte *)((longlong)ppuVar21 + -0x73) = *(byte *)((longlong)ppuVar21 + -0x73) + bVar29;\\n        break;\\n      case (undefined **)0x1409133d8:\\n        goto code_r0x0001409133d8;\\n      case (undefined **)0x1409133e7:\\n        goto code_r0x0001409133e7;\\n      case (undefined **)0x140913488:\\n                    // WARNING: Bad instruction - Truncating control flow here\\n        halt_baddata();\\n      case (undefined **)0x1409134ea:\\n        *(byte *)((longlong)ppuVar31 + 0x328b4801) =\\n             *(byte *)((longlong)ppuVar31 + 0x328b4801) + bVar29 + bVar66;\\n        puVar37 = auStack_78;\\n        goto code_r0x0001409134f0;\\n      case (undefined **)0x1409134f3:\\n        pbVar2 = (byte *)((longlong)unaff_RBX + (longlong)ppuVar31 * 4 + 0x7e);\\n        *pbVar2 = *pbVar2 ^ bVar29;\\n                    // WARNING: Bad instruction - Truncating control flow here\\n        halt_baddata();\\n      case (undefined **)0x140913503:\\n        puVar37 = auStack_78;\\n        goto code_r0x000140913502;\\n      case (undefined **)0x140913513:\\n        goto code_r0x00014091350e;\\n      case (undefined **)0x14091351c:\\n        *(byte *)ppuVar21 = *(byte *)ppuVar21 | (byte)in_R9;\\n        *(byte *)((longlong)ppuVar31 + -1) = *(byte *)((longlong)ppuVar31 + -1) + bVar29;\\n                    // WARNING: Bad instruction - Truncating control flow here\\n        halt_baddata();\\n      case (undefined **)0x14091395e:\\n        goto code_r0x00014091395e;\\n      case (undefined **)0x140913967:\\n        goto code_r0x000140913967;\\n      case (undefined **)0x140913970:\\n                    // WARNING: Bad instruction - Truncating control flow here\\n        halt_baddata();\\n      case (undefined **)0x140913980:\\n        goto code_r0x000140913980;\\n      case (undefined **)0x140913990:\\n        unaff_RBX = (undefined **)(ulonglong)(uVar32 + _cStack0000000000000038 + (uint)bVar66);\\n        goto code_r0x000140913997;\\n      case (undefined **)0x140913999:\\n        in_stack_00000040 = (float)((int)in_stack_00000040 + iVar19 + (uint)bVar66);\\n        puVar54 = (undefined8 *)auStack_78;\\n        goto code_r0x0001409139a0;\\n      case (undefined **)0x140913bac:\\n        piVar22 = (int *)CONCAT71(uVar28,bVar17 + 8);\\n        *piVar22 = *piVar22 + (int)piVar22;\\n        *(byte *)piVar22 = (char)*piVar22 + bVar17 + 8;\\n        goto LAB_140913ba0;\\n      case (undefined **)0x140913c47:\\n        puVar54 = (undefined8 *)auStack_78;\\n        goto LAB_140913c50;\\n      case (undefined **)0x140913c59:\\n        goto code_r0x000140913c59;\\n      case (undefined **)0x140913c6f:\\n        goto code_r0x000140913c6f;\\n      case (undefined **)0x140913c85:\\n        *(byte *)ppuVar21 = *(byte *)ppuVar21 + bVar17;\\n        goto code_r0x000140913c87;\\n      case (undefined **)0x140913c97:\\n        puVar64 = (undefined *)(ulonglong)(uint)*(float *)(in_RDX + (longlong)ppuVar31);\\n        puVar48 = auStack_78;\\n        goto code_r0x000140913c92;\\n      case (undefined **)0x140913ebf:\\n        *(int *)ppuVar21 = (int)*(float *)ppuVar21 + iVar19;\\n        *(byte *)unaff_RDI = *(byte *)unaff_RDI + bVar29;\\n        in_stack_000000d8 = in_stack_000000d8 - (int)in_RDX;\\n        goto code_r0x000140913ecb;\\n      case (undefined **)0x140913ec8:\\n        goto code_r0x000140913ec8;\\n      case (undefined **)0x140913ed1:\\n        *(byte *)ppuVar21 = *(byte *)ppuVar21 + bVar17;\\n        puVar52 = auStack_78;\\n        goto code_r0x000140913ed3;\\n      case (undefined **)0x140913ee1:\\n        *(byte *)ppuVar21 = *(byte *)ppuVar21 + bVar17;\\n        puVar52 = auStack_78;\\n        goto code_r0x000140913ed3;\\n      case (undefined **)0x140913ef1:\\n        goto code_r0x000140913ef1;\\n      case (undefined **)0x140913f00:\\n        *(int *)ppuVar21 = (int)*(float *)ppuVar21 + iVar19;\\n        *(byte *)unaff_RDI = *(byte *)unaff_RDI + bVar29;\\n        in_stack_00000108 = in_stack_00000108 - (int)ppuVar31;\\n        puVar53 = (undefined8 *)auStack_78;\\n        goto code_r0x000140913efb;\\n      case (undefined **)0x140914485:\\n        apuStack_98[3] = &UNK_14091448f;\\n        (*(code *)ppuVar21[3])(unaff_RDI + 0x72);\\n        puVar40 = auStack_78;\\n        in_RDX = ppuVar61;\\n        goto LAB_1409135c3;\\n      case (undefined **)0x140914494:\\n        goto code_r0x000140914494;\\n      case (undefined **)0x1409144aa:\\n        apuStack_98[3] = &UNK_1409144bb;\\n        camera_rig::free::impl$1::rotate_yaw_pitch();\\n        puVar40 = auStack_78;\\n        in_RDX = ppuVar61;\\n        goto LAB_1409135c3;\\n      case (undefined **)0x1409144c0:\\n        apuStack_98[3] = &UNK_1409144ca;\\n        (*(code *)ppuVar21[3])(unaff_RDI + 0x37);\\n        puVar40 = auStack_78;\\n        in_RDX = ppuVar61;\\n        goto LAB_1409135c3;\\n      case (undefined **)0x1409144cf:\\n        apuStack_98[3] = &UNK_1409144e0;\\n        bevy_app::plugin::Plugin::finish<country_core::systems::main_camera::MainCameraPlugin>();\\n        puVar40 = auStack_78;\\n        in_RDX = ppuVar61;\\n        goto LAB_1409135c3;\\n      case (undefined **)0x140914559:\\n        *(byte *)ppuVar21 = *(byte *)ppuVar21 + bVar17;\\n        *(byte *)in_RDX = *(byte *)in_RDX + bVar17;\\n        *(byte *)ppuVar21 = *(byte *)ppuVar21 + bVar17;\\n        *(byte *)((longlong)ppuVar21 + -0x39) = *(byte *)((longlong)ppuVar21 + -0x39) + bVar29;\\n        goto code_r0x000140914565;\\n      case (undefined **)0x140914563:\\n        ppuVar21 = (undefined **)((ulonglong)ppuVar21 & 0xffffffffffffffd0);\\ncode_r0x000140914565:\\n        cVar18 = (char)ppuVar21;\\n        *(byte *)ppuVar21 = *(byte *)ppuVar21 + cVar18;\\n        *(byte *)ppuVar21 = *(byte *)ppuVar21 + cVar18;\\n        *(byte *)ppuVar21 = *(byte *)ppuVar21 + cVar18;\\n        *(byte *)((longlong)ppuVar21 + -0x73) = *(byte *)((longlong)ppuVar21 + -0x73) + bVar29;\\n      case (undefined **)0x140914571:\\n        goto code_r0x000140914571;\\n      case (undefined **)0x140914586:\\n        *(byte *)ppuVar21 = *(byte *)ppuVar21 + bVar17;\\n        goto code_r0x00014091458f;\\n      case (undefined **)0x14091459b:\\n        UNRECOVERED_JUMPTABLE = (code *)swi(3);\\n        (*UNRECOVERED_JUMPTABLE)();\\n        return;\\n      case (undefined **)0x1409145a9:\\n        *(byte *)unaff_RDI = *(byte *)unaff_RDI + bVar29;\\n        in_stack_000001f8 = in_stack_000001f8 - (int)ppuVar61;\\n        puVar57 = (undefined8 *)auStack_78;\\n        goto code_r0x0001409145a1;\\n      case (undefined **)0x140914933:\\n        fVar70 = *(float *)ppuVar61;\\n        pcVar27 = (char *)(ulonglong)(uint)fVar70;\\n        *pcVar27 = *pcVar27 + SUB41(fVar70,0);\\n        pcVar27[-0x75] = pcVar27[-0x75] + bVar29;\\n        ppuVar21 = (undefined **)((ulonglong)(uint)fVar70 & 0xffffffffffffff10);\\n        goto code_r0x00014091491a;\\n      case (undefined **)0x140914944:\\n        *(byte *)ppuVar21 = *(byte *)ppuVar21 + bVar17;\\n        goto code_r0x000140914949;\\n      case (undefined **)0x140914959:\\n        goto code_r0x00014091491a;\\n      case (undefined **)0x140914975:\\n        *(byte *)ppuVar21 = *(byte *)ppuVar21 + bVar17;\\n        *(byte *)ppuVar21 = *(byte *)ppuVar21 + bVar17;\\n        goto code_r0x000140914968;\\n      case (undefined **)0x140914991:\\n        bVar66 = CARRY1((byte)((ulonglong)unaff_RBX >> 8),bVar17);\\n        goto code_r0x000140914993;\\n      case (undefined **)0x1409149a6:\\n        *(byte *)ppuVar61 = (*(byte *)ppuVar61 - 1) - bVar66;\\n        goto code_r0x0001409149a9;\\n      }\\ncode_r0x0001409133c9:\\n      ppuVar31 = (undefined **)(ulonglong)*(byte *)(unaff_RDI + 0x9a);\\n      ppuVar21 = &anon_0555c73667d6be1dc866b3f0ae0b3f3f_19_llvm_14020587298740829885;\\n      in_RDX = (undefined **)&UNK_142aabd18;\\n      goto code_r0x0001409133de;\\n    case (undefined **)0x1409133e7:\\ncode_r0x0001409133e7:\\n      in_RDX = ppuVar61;\\n      apuStack_98[3] = &UNK_1409133f1;\\n      (*(code *)ppuVar21[3])(unaff_RDI + 0x20);\\n      puVar40 = auStack_78;\\n      goto LAB_1409135c3;\\n    case (undefined **)0x1409133f0:\\n      ppuVar31 = (undefined **)CONCAT71(0x142aabd,'s' - (0xfffffffebd5542cf < uVar20));\\n      UNRECOVERED_JUMPTABLE = (code *)swi(1);\\n      pcVar27 = (char *)(*UNRECOVERED_JUMPTABLE)();\\n      puVar54 = (undefined8 *)(auStack_76 + 6);\\n      *pcVar27 = *pcVar27 + (char)pcVar27;\\n      in_XMM0_Da = extraout_XMM0_Da;\\n      goto code_r0x0001409133f6;\\n    case (undefined **)0x1409134a0:\\n      *(int *)((longlong)unaff_RDI + 0x3d) = *(int *)((longlong)unaff_RDI + 0x3d) + 1;\\n                    // WARNING: Bad instruction - Truncating control flow here\\n      halt_baddata();\\n    case (undefined **)0x140913502:\\n      goto code_r0x000140913502;\\n    case (undefined **)0x14091350b:\\n      UNRECOVERED_JUMPTABLE = (code *)swi(1);\\n      (*UNRECOVERED_JUMPTABLE)();\\n      return;\\n    case (undefined **)0x14091351b:\\n      goto code_r0x00014091351d;\\n    case (undefined **)0x14091352b:\\n                    // WARNING: Bad instruction - Truncating control flow here\\n      halt_baddata();\\n    case (undefined **)0x140913534:\\n                    // WARNING: Bad instruction - Truncating control flow here\\n      halt_baddata();\\n    case (undefined **)0x140913976:\\n      *(byte *)ppuVar21 = *(byte *)ppuVar21 + cVar18;\\n      pcVar27 = (char *)(uVar20 + 0x14396413f + (longlong)ppuVar21 * 8);\\n      *pcVar27 = *pcVar27 + cVar18;\\ncode_r0x000140913980:\\n      *(byte *)ppuVar21 = *(byte *)ppuVar21 + (char)ppuVar21;\\n      puVar54 = (undefined8 *)auStack_78;\\n      goto code_r0x000140913982;\\n    case (undefined **)0x14091397f:\\n      *(byte *)ppuVar21 = *(byte *)ppuVar21 + cVar18;\\n      cRam0000000b58e42abf = cRam0000000b58e42abf + cVar18;\\n    case (undefined **)0x140913988:\\n      *(byte *)ppuVar21 = *(byte *)ppuVar21 + cVar18;\\n      goto code_r0x00014091398a;\\n    case (undefined **)0x140913998:\\n      in_stack_00000040 = in_XMM0_Da;\\n      in_stack_00000044 = CONCAT44(in_XMM0_Dc,in_XMM0_Db);\\n      in_stack_0000004c = in_XMM0_Dd;\\n      puVar54 = (undefined8 *)auStack_78;\\n      goto code_r0x0001409139a0;\\n    case (undefined **)0x1409139a8:\\n      puVar54 = (undefined8 *)auStack_78;\\n      goto code_r0x0001409139a0;\\n    case (undefined **)0x1409139b1:\\n      return;\\n    case (undefined **)0x140913bc4:\\n                    // WARNING (jumptable): Read-only address (ram,0x000142aabd2f) is written\\n                    // WARNING: Read-only address (ram,0x000142aabd2f) is written\\n      UNK_142aabd2f = 0xcd;\\n                    // WARNING: Bad instruction - Truncating control flow here\\n      halt_baddata();\\n    case (undefined **)0x140913c5f:\\n      *(byte *)ppuVar21 = *(byte *)ppuVar21 + cVar18;\\n      goto code_r0x000140913c55;\\n    case (undefined **)0x140913c71:\\n      puVar47 = (undefined8 *)auStack_78;\\n      goto code_r0x000140913c6f;\\n    case (undefined **)0x140913c87:\\ncode_r0x000140913c87:\\n      *(byte *)((longlong)ppuVar21 + 0x39) = *(byte *)((longlong)ppuVar21 + 0x39) + (char)ppuVar31;\\n                    // WARNING: Bad instruction - Truncating control flow here\\n      halt_baddata();\\n    case (undefined **)0x140913c9d:\\n      goto code_r0x000140913c9d;\\n    case (undefined **)0x140913caf:\\n      ppuVar31 = (undefined **)0x2aabd300;\\n      goto code_r0x000140913ca7;\\n    case (undefined **)0x140913ed7:\\n      *(byte *)in_RDX = *(byte *)in_RDX + cVar18;\\n      *(byte *)ppuVar21 = *(byte *)ppuVar21 + cVar18;\\n      puVar52 = auStack_78;\\n      goto code_r0x000140913ed3;\\n    case (undefined **)0x140913ee0:\\n      *(byte *)unaff_RDI = *(byte *)unaff_RDI + 0x30;\\n      in_stack_000001a8 = in_stack_000001a8 - (char)in_RDX;\\n      puVar52 = auStack_78;\\n      goto code_r0x000140913ed3;\\n    case (undefined **)0x140913ee9:\\n      *(byte *)ppuVar21 = *(byte *)ppuVar21 + cVar18;\\n      puVar52 = auStack_78;\\n      goto code_r0x000140913ed3;\\n    case (undefined **)0x140913ef9:\\n      *(byte *)ppuVar21 = *(byte *)ppuVar21 + cVar18;\\n      puVar53 = (undefined8 *)auStack_78;\\n      goto code_r0x000140913efb;\\n    case (undefined **)0x140913f09:\\n      *(byte *)ppuVar21 = *(byte *)ppuVar21 + cVar18;\\n      puVar53 = (undefined8 *)auStack_78;\\n      goto code_r0x000140913efb;\\n    case (undefined **)0x140913f17:\\n      *(undefined1 *)((ulonglong)ppuVar21 & 0xffffffffffffff00) =\\n           *(undefined1 *)((ulonglong)ppuVar21 & 0xffffffffffffff00);\\n      goto code_r0x000140913efb;\\n    case (undefined **)0x140914571:\\n      goto code_r0x000140914571;\\n    case (undefined **)0x14091457b:\\n      goto code_r0x00014091457b;\\n    case (undefined **)0x140914589:\\n      goto code_r0x000140914589;\\n    case (undefined **)0x14091459e:\\n      UNRECOVERED_JUMPTABLE = (code *)swi(3);\\n      (*UNRECOVERED_JUMPTABLE)();\\n      return;\\n    case (undefined **)0x1409145b3:\\n      goto code_r0x0001409145a1;\\n    case (undefined **)0x1409145c1:\\n      fVar70 = (float)in_MM0_Da;\\n      goto code_r0x0001409145c4;\\n    case (undefined **)0x14091494b:\\n      goto code_r0x00014091494b;\\n    case (undefined **)0x14091495c:\\n      *(byte *)((longlong)unaff_RBX + 0x19) = *(byte *)((longlong)unaff_RBX + 0x19) >> 1;\\n      *(float *)(&UNK_142aabe18 + uVar20) = in_XMM0_Da;\\n      *(float *)(&UNK_142aabe1c + uVar20) = in_XMM0_Db;\\n      *(float *)(&UNK_142aabe20 + uVar20) = in_XMM0_Dc;\\n      *(float *)(&UNK_142aabe24 + uVar20) = in_XMM0_Dd;\\n      goto code_r0x000140914968;\\n    case (undefined **)0x140914971:\\n      *(byte *)ppuVar21 = *(byte *)ppuVar21 + cVar18;\\n      (&UNK_142aabcf7)[uVar20] = (&UNK_142aabcf7)[uVar20] + '0';\\n      ppuVar21 = (undefined **)((ulonglong)ppuVar21 & 0xffffffffffffff00);\\n      *(byte *)ppuVar21 = *(byte *)ppuVar21;\\n                    // WARNING (jumptable): Read-only address (ram,0x000142aabd30) is written\\n                    // WARNING: Read-only address (ram,0x000142aabd30) is written\\n                    // WARNING (jumptable): Read-only address (ram,0x000142aabd30) is written\\n                    // WARNING: Read-only address (ram,0x000142aabd30) is written\\n                    // WARNING: Read-only address (ram,0x000142aabd31) is written\\n      _DAT_142aabd30 = CONCAT31((int3)((uint)((int)ppuVar21 + -0x2198b68) >> 8),0x98);\\n      goto code_r0x000140914984;\\n    case (undefined **)0x14091498d:\\n      *(byte *)ppuVar21 = *(byte *)ppuVar21 | 1;\\n      *(byte *)ppuVar21 = *(byte *)ppuVar21 + cVar18;\\n      goto code_r0x000140914992;\\n    case (undefined **)0x1409149a9:\\ncode_r0x0001409149a9:\\n      cVar18 = (char)ppuVar21;\\n      *(byte *)ppuVar21 = *(byte *)ppuVar21 + cVar18;\\n      *(byte *)ppuVar21 = *(byte *)ppuVar21 + cVar18;\\n      *(byte *)ppuVar21 = *(byte *)ppuVar21 + cVar18;\\n      goto code_r0x0001409149a5;\\n    case (undefined **)0x1409149be:\\n      *(byte *)ppuVar21 = *(byte *)ppuVar21 + cVar18;\\n      goto code_r0x0001409149b9;\\n    }\\n    goto LAB_1409131c8;\\n  case 0x17:\\n    __xmm_3f8000003f8000003f8000003f800000 = 0;\\n    __real_43430000._0_1_ = 0;\\n    _DAT_142aabcec = 0xfde6682f;\\n    UNK_142aabd2f = 0xfd;\\n    _DAT_142aabd30 = 0xfde67498;\\n    DAT_142aabd48 = 0xae;\\n    PTR_update_142c91c20._5_1_ = 0;\\n    anon_0555c73667d6be1dc866b3f0ae0b3f3f_19_llvm_14020587298740829885._0_2_ = 0xa640;\\n    return;\\n  case 0x18:\\ncode_r0x0001409133ac:\\n    puVar40 = auStack_78;\\n    if ((char)in_RDX != '\\\\0') {\\n      in_XMM0_Da = -0.0;\\n      in_XMM0_Db = -0.0;\\n      in_XMM0_Dc = -0.0;\\n      in_XMM0_Dd = -0.0;\\ncode_r0x0001409133bb:\\n      in_XMM2_Da = (float)((uint)in_XMM2_Da ^ (uint)in_XMM0_Da);\\n      in_XMM2_Db = (float)((uint)in_XMM2_Db ^ (uint)in_XMM0_Db);\\n      in_XMM2_Dc = (float)((uint)in_XMM2_Dc ^ (uint)in_XMM0_Dc);\\n      in_XMM2_Dd = (float)((uint)in_XMM2_Dd ^ (uint)in_XMM0_Dd);\\n      if (cVar18 == '\\\\0') goto code_r0x0001409133c9;\\n      goto code_r0x0001409133c6;\\n    }\\n    goto LAB_1409135c3;\\n  case 0x19:\\n  case 0x1a:\\n  case 0x1c:\\n    ppuVar34 = apuStack_98 + 3;\\n    apuStack_98[3] = &DAT_142aabcec;\\n    unaff_RBX = (undefined **)(ulonglong)((uVar32 & 0xffffff00) << 0xf);\\n                    // WARNING (jumptable): Read-only address (ram,0x000142aab4f0) is written\\n                    // WARNING: Read-only address (ram,0x000142aab4f0) is written\\n    __real_43430000._0_1_ = ((int)((uVar32 & 0xffffff00) << 0xe) < 0) + -0x14;\\n    fVar70 = unaff_XMM12_Da;\\ncode_r0x0001409131ed:\\n    puVar54 = ppuVar34;\\n    puVar40 = (undefined1 *)ppuVar34;\\n    in_RDX = ppuVar61;\\n    unaff_XMM12_Da = fVar70;\\n    if (in_XMM1_Da <= in_XMM0_Da) {\\nLAB_14091324e:\\n      puVar54 = (undefined8 *)puVar40;\\n      ppuVar61 = in_RDX;\\n      if (unaff_XMM9_Da == 0.0) goto LAB_1409135c3;\\n      goto LAB_140913467;\\n    }\\ncode_r0x0001409131f2:\\n    fVar70 = SUB84(unaff_R12,0);\\n    *(float *)puVar54[9] = fVar70;\\n    puVar54[-1] = 0x14091320a;\\n    in_RDX = unaff_RDI;\\n    ::utils::camera::CameraMatrices::eye_position();\\n    in_XMM2_Da = *(float *)(puVar54 + 0x16);\\n    in_XMM2_Db = 0.0;\\n    in_XMM2_Dc = 0.0;\\n    in_XMM2_Dd = 0.0;\\n    in_XMM0_Da = *(float *)((longlong)puVar54 + 0xb4);\\n    in_XMM0_Db = 0.0;\\n    in_XMM0_Dc = 0.0;\\n    in_XMM0_Dd = 0.0;\\n    in_XMM1_Da = *(float *)(puVar54 + 0x17);\\n    in_XMM1_Db = 0.0;\\n    in_XMM1_Dc = 0.0;\\n    in_XMM1_Dd = 0.0;\\n    ppuVar31 = (undefined **)&DAT_142aabd48;\\n    uVar20 = (ulonglong)*(int *)(&DAT_142aabd48 + (ulonglong)*(byte *)(unaff_RDI + 0x9a) * 4);\\n    ppuVar21 = (undefined **)(&DAT_142aabd48 + uVar20);\\n    bVar17 = (byte)ppuVar21;\\n    iVar19 = (int)ppuVar21;\\n    puVar24 = puVar54;\\n    puVar57 = puVar54;\\n    puVar43 = puVar54;\\n    puVar53 = puVar54;\\n    puVar39 = puVar54;\\n                    // WARNING (jumptable): Sanity check requires truncation of jumptable\\n                    // WARNING: Could not find normalized switch variable to match jumptable\\n    switch(*(byte *)(unaff_RDI + 0x9a)) {\\n    case 0:\\ncode_r0x0001409133f6:\\n      ppuVar21 = unaff_RDI + 0x20;\\n      goto code_r0x00014091340f;\\n    case 1:\\n      ppuVar21 = unaff_RDI + 0x37;\\n      goto code_r0x00014091340f;\\n    default:\\n      puVar47 = puVar54;\\n      if (unaff_XMM9_Da != 0.0) goto LAB_140913467;\\n      goto code_r0x0001409134dc;\\n    case 4:\\n      ppuVar21 = unaff_RDI + 0x72;\\ncode_r0x00014091340f:\\n      fVar70 = in_XMM0_Da - SUB84(ppuVar61,0);\\n      fVar70 = SQRT((in_XMM1_Da - unaff_XMM13_Da) * (in_XMM1_Da - unaff_XMM13_Da) +\\n                    fVar70 * fVar70 + (in_XMM2_Da - unaff_XMM12_Da) * (in_XMM2_Da - unaff_XMM12_Da))\\n      ;\\n      *(float *)(ppuVar21 + 3) = 1.4013e-45;\\n      *(float *)((longlong)ppuVar21 + 0x1c) = fVar70;\\n      *(float *)(ppuVar21 + 4) = fVar70;\\n      ((float *)((longlong)ppuVar21 + 0x24))[0] = 0.0;\\n      ((float *)((longlong)ppuVar21 + 0x24))[1] = 0.0;\\n      *(ulonglong *)((longlong)ppuVar21 + 0x2c) = CONCAT44(unaff_XMM11_Db,unaff_XMM11_Da);\\n      *(float *)((longlong)ppuVar21 + 0x34) = unaff_XMM10_Da;\\n      puVar36 = (undefined1 *)puVar54;\\ncode_r0x00014091345c:\\n      *(undefined ***)(puVar36 + -8) = ppuVar21;\\n      *(undefined ***)(puVar36 + -0x10) = unaff_RDI;\\n      ((byte *)((longlong)unaff_RDI + 0x2e))[(longlong)ppuVar31] =\\n           ((byte *)((longlong)unaff_RDI + 0x2e))[(longlong)ppuVar31];\\n      puVar54 = (undefined8 *)(puVar36 + -0x10);\\n      puVar47 = (undefined8 *)(puVar36 + -0x10);\\n      if ((char)ppuVar21 == '\\\\x0f') {\\ncode_r0x0001409134dc:\\n        in_RDX = *(undefined ***)((longlong)puVar47 + 0x80);\\n        ppuVar21 = (undefined **)(ulonglong)(uint)*(float *)((longlong)in_RDX + 0x1c);\\ncode_r0x0001409134e7:\\n        *(int *)in_RDX[2] = (int)ppuVar21;\\n        ppuVar61 = (undefined **)*in_RDX;\\n        puVar37 = (undefined1 *)puVar47;\\ncode_r0x0001409134f0:\\n        unaff_R14 = (undefined **)ppuVar61[6];\\n        unaff_R15 = (undefined **)ppuVar61[8];\\n        puVar38 = puVar37;\\n        if (unaff_R14 == (undefined **)ppuVar61[4]) {\\ncode_r0x000140913502:\\n          *(undefined **)(puVar37 + -8) = &UNK_14091350e;\\n          alloc::raw_vec::RawVec::\\n          grow_one<bevy_ecs::event::base::EventInstance<country_core::resources::window::WindowFocusEvent>,alloc::alloc::Global>\\n                    ();\\n          puVar38 = puVar37;\\n        }\\ncode_r0x00014091350e:\\n        ppuVar21 = (undefined **)ppuVar61[5];\\n        ppuVar31 = (undefined **)((longlong)unaff_R14 * 0x10);\\n        ppuVar21[(longlong)unaff_R14 * 2] = (undefined *)unaff_R15;\\n        puVar39 = (undefined8 *)puVar38;\\ncode_r0x00014091351d:\\n        *(byte *)((longlong)(ppuVar21 + 1) + (longlong)ppuVar31) = 0;\\n        unaff_R14 = (undefined **)((longlong)unaff_R14 + 1);\\n        ppuVar61[6] = (undefined *)unaff_R14;\\n        ppuVar61[8] = ppuVar61[8] + 1;\\n        puVar40 = (undefined1 *)puVar39;\\n        in_RDX = ppuVar61;\\n      }\\n      else {\\nLAB_140913467:\\n        puVar40 = (undefined1 *)puVar54;\\n        in_RDX = ppuVar61;\\n        if (*(byte *)(unaff_RDI + 0x9a) == 0) {\\n          **(undefined4 **)((longlong)puVar54 + 0x48) = (int)unaff_R12;\\n          unaff_RBX = *(undefined ***)((longlong)puVar54 + 0x78);\\n          if ((uint)ABS(*(float *)(unaff_RBP + 0x2d) * 0.25 *\\n                        *(float *)(*(longlong *)((longlong)puVar54 + 0x58) + 0x108)) < 0x7f800000) {\\n            ppuVar31 = (undefined **)(ulonglong)*(byte *)(unaff_RDI + 0x9a);\\ncode_r0x0001409134c0:\\n            in_RDX = (undefined **)&DAT_142aabd60;\\ncode_r0x0001409134c7:\\n            UNRECOVERED_JUMPTABLE =\\n                 (code *)((longlong)(int)*(float *)((longlong)in_RDX + (longlong)ppuVar31 * 4) +\\n                         (longlong)in_RDX);\\n                    // WARNING: Could not recover jumptable at 0x0001409134ce. Too many branches\\n                    // WARNING: Treating indirect jump as call\\n            (*UNRECOVERED_JUMPTABLE)(UNRECOVERED_JUMPTABLE);\\n            return;\\n          }\\nLAB_140913578:\\n          **(undefined4 **)((longlong)puVar54 + 0x70) = *(undefined4 *)((longlong)puVar54 + 0x3c);\\n          puVar64 = unaff_RBX[6];\\n          unaff_R14 = (undefined **)unaff_RBX[8];\\n          if (puVar64 == unaff_RBX[4]) {\\n            *(undefined1 **)((longlong)puVar54 + -8) = &LAB_1409135a1;\\n            alloc::raw_vec::RawVec::\\n            grow_one<bevy_ecs::event::base::EventInstance<country_core::resources::window::WindowFocusEvent>,alloc::alloc::Global>\\n                      ();\\n          }\\n          puVar63 = unaff_RBX[5];\\n          *(undefined4 *)(puVar63 + (longlong)puVar64 * 0x10) = 2;\\n          *(undefined ***)(puVar63 + (longlong)puVar64 * 0x10 + 8) = unaff_R14;\\n          unaff_RBX[6] = puVar64 + 1;\\n          unaff_RBX[8] = unaff_RBX[8] + 1;\\n          puVar40 = (undefined1 *)puVar54;\\n          in_RDX = (undefined **)(puVar64 + 1);\\n        }\\n      }\\n      goto LAB_1409135c3;\\n    case 6:\\n      (&UNK_142aabcd5)[uVar20] = (&UNK_142aabcd5)[uVar20] + 'H';\\n      goto code_r0x0001409134c0;\\n    case 7:\\n      ppuVar21 = (undefined **)0x42c91c28;\\n      goto code_r0x000140913572;\\n    case 8:\\n      ppuVar61 = (undefined **)(ulonglong)((int)ppuVar61 + 1);\\n      goto code_r0x00014091351d;\\n    case 9:\\n      ppuVar31 = (undefined **)(ulonglong)(iVar30 + 0x390);\\n      goto code_r0x000140913572;\\n    case 10:\\n      *(int *)(uVar20 + 0x285557a90) = iVar30;\\n      goto code_r0x00014091351d;\\n    case 0xb:\\n      ppuVar31 = (undefined **)(ulonglong)(iVar30 + 0x2f0);\\n      ppuVar21 = (undefined **)&anon_0555c73667d6be1dc866b3f0ae0b3f3f_16_llvm_14020587298740829885;\\ncode_r0x000140913572:\\n      UNRECOVERED_JUMPTABLE = (code *)ppuVar21[3];\\n      *(undefined1 **)((longlong)puVar54 + -8) = &LAB_140913578;\\n      (*UNRECOVERED_JUMPTABLE)(ppuVar31);\\n      goto LAB_140913578;\\n    case 0xc:\\n      puVar54[0x16] = CONCAT44(unaff_XMM11_Db,unaff_XMM11_Da);\\n      goto code_r0x000140913997;\\n    case 0xd:\\n      *ppuVar21 = (undefined *)*puVar54;\\n      *(int *)ppuVar21 = (int)*(float *)ppuVar21 + iVar19;\\n                    // WARNING: Bad instruction - Truncating control flow here\\n      halt_baddata();\\n    case 0xe:\\n      goto code_r0x0001409139a0;\\n    case 0xf:\\n      goto code_r0x0001409139a0;\\n    case 0x10:\\n      goto code_r0x000140913997;\\n    case 0x11:\\n                    // WARNING: Bad instruction - Truncating control flow here\\n      halt_baddata();\\n    case 0x12:\\n      *(byte *)ppuVar21 = *(byte *)ppuVar21 + bVar17;\\n      *(byte *)unaff_RDI = *(byte *)unaff_RDI + 0x48;\\n      uVar32 = iVar19 + 0xfde676ae;\\n      *(char *)(ulonglong)uVar32 = *(char *)(ulonglong)uVar32 + (char)uVar32;\\n      goto LAB_140913bd4;\\n    case 0x13:\\n      *(byte *)ppuVar21 = *(byte *)ppuVar21 | (byte)in_RDX;\\n      puVar23 = puVar54;\\n      goto code_r0x000140913ca7;\\n    case 0x14:\\n      puVar47 = puVar54;\\n      goto code_r0x000140913c6f;\\n    case 0x15:\\n      *(byte *)ppuVar21 = *(byte *)ppuVar21 + bVar17;\\n      goto code_r0x000140913ca3;\\n    case 0x16:\\n                    // WARNING: Bad instruction - Truncating control flow here\\n      halt_baddata();\\n    case 0x17:\\n      ppuVar61 = (undefined **)0x31c;\\n      ppuVar21 = (undefined **)0x31c;\\n      goto code_r0x000140913ccf;\\n    case 0x18:\\n      ppuVar21 = (undefined **)((ulonglong)ppuVar21 & 0xffffffffffffffb0);\\n      goto code_r0x000140913f31;\\n    case 0x19:\\n      *(byte *)in_RDX = *(byte *)in_RDX ^ bVar17;\\ncode_r0x000140913ef1:\\n      *(byte *)ppuVar21 = *(byte *)ppuVar21 + (char)ppuVar21;\\n      puVar52 = (undefined1 *)puVar54;\\n      goto code_r0x000140913ed3;\\n    case 0x1a:\\n      *(byte *)ppuVar21 = *(byte *)ppuVar21 + bVar17;\\n      break;\\n    case 0x1b:\\n      *(byte *)ppuVar21 = *(byte *)ppuVar21 + bVar17;\\n      break;\\n    case 0x1c:\\n      *(int *)ppuVar21 = (int)*(float *)ppuVar21 + iVar19;\\n      *(byte *)unaff_RDI = *(byte *)unaff_RDI + 0x48;\\n      *(int *)(puVar54 + 0x32) = *(int *)(puVar54 + 0x32) - (int)in_RDX;\\n      break;\\n    case 0x1d:\\n      goto code_r0x000140913f21;\\n    case 0x1e:\\ncode_r0x000140914589:\\n      puVar56 = puVar24;\\n      goto code_r0x00014091458f;\\n    case 0x1f:\\n      goto code_r0x0001409145cb;\\n    case 0x20:\\ncode_r0x0001409145a1:\\n      *(undefined ***)((longlong)puVar57 + -8) = unaff_RDI;\\n      *(undefined ***)((longlong)puVar57 + -0x10) = unaff_RBX;\\n      puVar58 = (undefined8 *)((longlong)puVar57 + -0x290);\\n      *(float *)((longlong)puVar57 + -0x20) = unaff_XMM6_Da;\\n      *(undefined4 *)((longlong)puVar57 + -0x1c) = unaff_XMM6_Db;\\n      *(undefined4 *)((longlong)puVar57 + -0x18) = unaff_XMM6_Dc;\\n      *(undefined4 *)((longlong)puVar57 + -0x14) = unaff_XMM6_Dd;\\n      ppuVar21 = (undefined **)*in_RDX;\\n      in_XMM0_Da = (float)(uint)*(float *)ppuVar21;\\n      goto code_r0x0001409145bc;\\n    case 0x21:\\n      unaff_RBX = (undefined **)\\n                  CONCAT71((int7)((ulonglong)unaff_RBX >> 8),\\n                           (char)unaff_RBX + (char)((ulonglong)in_RDX >> 8) +\\n                           (0xfffffffebd5542b7 < uVar20));\\n      in_XMM0_Da = (float)in_MM2_Da;\\n      puVar58 = puVar54;\\n      goto code_r0x0001409145bc;\\n    case 0x22:\\n      *(undefined1 *)((ulonglong)ppuVar21 & 0xffffffffffffff00) =\\n           *(undefined1 *)((ulonglong)ppuVar21 & 0xffffffffffffff00);\\n      puVar56 = puVar54;\\n      goto code_r0x00014091458f;\\n    case 0x23:\\n      cRam0000000101380549 = cRam0000000101380549 + 'H';\\n                    // WARNING (jumptable): Read-only address (ram,0x000142aabd48) is written\\n                    // WARNING: Read-only address (ram,0x000142aabd48) is written\\n      DAT_142aabd48 = bVar17 + 0xae;\\n      *(byte *)ppuVar21 = *(byte *)ppuVar21 + bVar17;\\n      goto code_r0x0001409145c3;\\n    case 0x24:\\n      *(byte *)ppuVar21 = *(byte *)ppuVar21 + bVar17;\\n      goto code_r0x000140914968;\\n    case 0x25:\\n      return;\\n    case 0x26:\\n      *(uint *)in_RDX = ((int)*(float *)in_RDX - iVar19) - (uint)(0xfffffffebd5542b7 < uVar20);\\n      goto code_r0x000140914984;\\n    case 0x27:\\n      goto code_r0x0001409149a5;\\n    case 0x28:\\n      do {\\n      } while( true );\\n    case 0x29:\\n                    // WARNING: Bad instruction - Truncating control flow here\\n      halt_baddata();\\n    }\\n    goto code_r0x000140913efb;\\n  case 0x1b:\\n    pbVar2 = (byte *)((longlong)unaff_RDI + 0x7f);\\n    iVar19 = *(int *)pbVar2;\\n    *(int *)pbVar2 = *(int *)pbVar2 + 1;\\n    puVar40 = auStack_78;\\n    if (*(int *)pbVar2 == 0 || SCARRY4(iVar19,1) != *(int *)pbVar2 < 0) goto code_r0x0001409133ac;\\nLAB_1409135c3:\\n    if (*(int *)(unaff_RBP + 2) == 3) {\\n      puVar54 = *(undefined8 **)(puVar40 + 0x80);\\n      *(undefined4 *)puVar54[2] = *(undefined4 *)((longlong)puVar54 + 0x1c);\\n      in_RDX = (undefined **)*puVar54;\\n      puVar64 = in_RDX[6];\\n      puVar63 = in_RDX[8];\\n      if (puVar64 == in_RDX[4]) {\\n        *(undefined1 **)(puVar40 + -8) = &LAB_1409135fb;\\n        alloc::raw_vec::RawVec::\\n        grow_one<bevy_ecs::event::base::EventInstance<country_core::resources::window::WindowFocusEvent>,alloc::alloc::Global>\\n                  ();\\n      }\\n      puVar3 = in_RDX[5];\\n      *(undefined **)(puVar3 + (longlong)puVar64 * 0x10) = puVar63;\\n      puVar3[(longlong)puVar64 * 0x10 + 8] = 1;\\n      unaff_R14 = (undefined **)(puVar64 + 1);\\n      in_RDX[6] = (undefined *)unaff_R14;\\n      in_RDX[8] = in_RDX[8] + 1;\\n      **(undefined4 **)(puVar40 + 0x48) = (int)unaff_R12;\\n      if (*(byte *)(unaff_RDI + 0x9a) - 2 < 4) goto LAB_140913635;\\n      if (*(byte *)(unaff_RDI + 0x9a) == 0) {\\n        unaff_R14 = unaff_RDI + 0x20;\\n        bVar17 = *(byte *)(unaff_RDI + 0x23);\\n        *(float *)(unaff_RDI + 0x23) = 0.0;\\n      }\\n      else {\\n        unaff_R14 = unaff_RDI + 0x37;\\n        bVar17 = *(byte *)(unaff_RDI + 0x3a);\\n        *(float *)(unaff_RDI + 0x3a) = 0.0;\\n      }\\n      if ((bVar17 & 1) == 0) goto LAB_140913635;\\n      uVar33 = *(undefined8 *)((longlong)unaff_R14 + 0x1c);\\n      uVar8 = *(undefined8 *)((longlong)unaff_R14 + 0x24);\\n      puVar64 = unaff_R14[6];\\n      *(undefined **)(puVar40 + 0xbc) = unaff_R14[5];\\n      *(undefined **)(puVar40 + 0xc4) = puVar64;\\n      *(undefined8 *)(puVar40 + 0xb0) = uVar33;\\n      *(undefined8 *)(puVar40 + 0xb8) = uVar8;\\n      puVar64 = unaff_R14[2];\\n      if (puVar64 == *unaff_R14) {\\n        *(undefined1 **)(puVar40 + -8) = &LAB_140913839;\\n        alloc::raw_vec::RawVec::\\n        grow_one<system_wall_constructor::place_pillars::PillarPlacementProposal,alloc::alloc::Global>\\n                  ();\\n      }\\n      puVar63 = unaff_R14[1];\\n      uVar33 = *(undefined8 *)(puVar40 + 0xc4);\\n      puVar54 = (undefined8 *)(puVar63 + (longlong)puVar64 * 0x1c + 0xc);\\n      *puVar54 = *(undefined8 *)(puVar40 + 0xbc);\\n      puVar54[1] = uVar33;\\n      uVar33 = *(undefined8 *)(puVar40 + 0xb8);\\n      puVar54 = (undefined8 *)(puVar63 + (longlong)puVar64 * 0x1c);\\n      *puVar54 = *(undefined8 *)(puVar40 + 0xb0);\\n      puVar54[1] = uVar33;\\n      in_RDX = (undefined **)(puVar64 + 1);\\n      unaff_R14[2] = (undefined *)in_RDX;\\n      if (2 < *(uint *)(unaff_RBP + 3)) goto LAB_14091387a;\\nLAB_140913647:\\n      unaff_XMM10_Db = 0.0;\\n      unaff_XMM10_Da = 0.0;\\n      unaff_XMM9_Da = 0.0;\\n      puVar4 = (ulonglong *)**(undefined8 **)(puVar40 + 0x88);\\n      lVar60 = (*(undefined8 **)(puVar40 + 0x88))[1];\\n      uVar20 = *puVar4;\\n      ppuVar31 = (undefined **)0x0;\\n      ppuVar21 = (undefined **)(uVar20 - *(ulonglong *)(lVar60 + 0x18));\\n      if (uVar20 < *(ulonglong *)(lVar60 + 0x18)) {\\n        ppuVar21 = ppuVar31;\\n      }\\n      ppuVar61 = (undefined **)(uVar20 - *(ulonglong *)(lVar60 + 0x38));\\n      if (uVar20 < *(ulonglong *)(lVar60 + 0x38)) {\\n        ppuVar61 = ppuVar31;\\n      }\\n      lVar25 = *(longlong *)(lVar60 + 8);\\n      ppuVar34 = *(undefined ***)(lVar60 + 0x30);\\n      *(undefined ***)(puVar40 + 0x40) = ppuVar34;\\n      bVar66 = ppuVar61 <= ppuVar34;\\n      ppuVar34 = (undefined **)((longlong)ppuVar34 - (longlong)ppuVar61);\\n      in_R8 = ppuVar34;\\n      if (!bVar66) {\\n        in_R8 = ppuVar31;\\n      }\\n      ppuVar5 = *(undefined ***)(lVar60 + 0x10);\\n      unaff_RBX = (undefined **)\\n                  CONCAT71((int7)((ulonglong)unaff_RBX >> 8),bVar66 && ppuVar34 != (undefined **)0x0\\n                          );\\n      unaff_R14 = (undefined **)((longlong)ppuVar5 - (longlong)ppuVar21);\\n      if (ppuVar5 < ppuVar21) {\\n        unaff_R14 = ppuVar31;\\n      }\\n      in_RDX = *(undefined ***)(lVar60 + 0x28);\\n      uVar20 = *(ulonglong *)(lVar60 + 0x40);\\n      unaff_R12 = (undefined8 *)(ulonglong)*(uint *)(puVar40 + 0x38);\\n      *puVar4 = (uVar20 - (longlong)in_R8) - (longlong)unaff_R14;\\n      unaff_R13 = *(ulonglong *)(puVar40 + 0x78);\\n      in_R9 = unaff_RDI;\\n      if (ppuVar5 >= ppuVar21 &&\\n          (undefined **)((longlong)ppuVar5 - (longlong)ppuVar21) != (undefined **)0x0 ||\\n          bVar66 && ppuVar34 != (undefined **)0x0) {\\n        in_RDX = in_RDX + (longlong)ppuVar61 * 2;\\n        in_R8 = (undefined **)((longlong)in_R8 << 4);\\n        lVar25 = lVar25 + (longlong)ppuVar21 * 0x10;\\n        unaff_R14 = (undefined **)((longlong)unaff_R14 * 0x10);\\n        if (ppuVar5 < ppuVar21) {\\n          lVar25 = 8;\\n        }\\n        unaff_RBX = (undefined **)0x0;\\n        if (ppuVar21 < ppuVar5) {\\n          unaff_RBX = (undefined **)(lVar25 + -0x10 + (longlong)unaff_R14);\\n        }\\n        if (*(undefined ***)(puVar40 + 0x40) < ppuVar61) {\\n          in_RDX = (undefined **)&DAT_00000008;\\n        }\\n        *puVar4 = uVar20;\\n        *(undefined8 *)(puVar40 + -8) = 0x140913723;\\n        ::utils::swizzlers::impl$0::x0y();\\n        fVar70 = *(float *)(*(longlong *)(puVar40 + 0x58) + 0x10c);\\n        fVar73 = *(float *)(puVar40 + 0xb0) * -0.04 * fVar70;\\n        fVar72 = fVar70 * (float)*(undefined8 *)(puVar40 + 0xb4) * -0.04;\\n        fVar70 = fVar70 * (float)((ulonglong)*(undefined8 *)(puVar40 + 0xb4) >> 0x20) * -0.04;\\n        if ((*(byte *)(unaff_RDI + 0x9a) == 4) || (*(byte *)(unaff_RDI + 0x9a) == 1)) {\\n          fVar73 = fVar73 * 0.5;\\n          fVar72 = fVar72 * 0.5;\\n          fVar70 = fVar70 * 0.5;\\n        }\\n        unaff_XMM9_Da = fVar73 + 0.0;\\n        unaff_XMM10_Da = fVar72 + 0.0;\\n        unaff_XMM10_Db = fVar70 + 0.0;\\n      }\\n      bVar17 = *(byte *)(unaff_RDI + 0x9a);\\n      unaff_R15 = *(undefined ***)(puVar40 + 0x48);\\n      if (bVar17 == 1) goto LAB_140913894;\\nLAB_1409137a2:\\n      if (bVar17 == 2) {\\n        unaff_XMM11_Da = 2.0;\\n      }\\n      else {\\n        unaff_XMM11_Da = *(float *)(&__real_3e4ccccd3f800000 + (ulonglong)(bVar17 == 4) * 4);\\n      }\\n    }\\n    else {\\nLAB_140913635:\\n      if (*(uint *)(unaff_RBP + 3) < 3) goto LAB_140913647;\\nLAB_14091387a:\\n      unaff_XMM10_Db = 0.0;\\n      unaff_XMM10_Da = 0.0;\\n      unaff_XMM9_Da = 0.0;\\n      unaff_R13 = *(ulonglong *)(puVar40 + 0x78);\\n      bVar17 = *(byte *)(unaff_RDI + 0x9a);\\n      unaff_R15 = *(undefined ***)(puVar40 + 0x48);\\n      if (bVar17 != 1) goto LAB_1409137a2;\\nLAB_140913894:\\n      unaff_XMM11_Da = 0.25;\\n    }\\n    *(undefined8 *)(puVar40 + -8) = 0x1409138b1;\\n    ::utils::swizzlers::impl$0::x0y();\\n    in_XMM1_Da = *(float *)(puVar40 + 0xb8) * unaff_XMM11_Da;\\n    in_XMM2_Da = *(float *)(puVar40 + 0xb0);\\n    in_XMM3_Da = *(float *)(*(longlong *)(puVar40 + 0x58) + 0x10c);\\n    in_XMM0_Da = *(float *)(puVar40 + 0xb4) * unaff_XMM11_Da * in_XMM3_Da;\\n    unaff_XMM10_Dd = 0.0;\\ncode_r0x0001409138e7:\\n    in_XMM0_Dc = unaff_XMM10_Dd;\\n    in_XMM0_Db = unaff_XMM10_Db;\\n    fVar70 = in_XMM0_Da + unaff_XMM10_Da;\\n    in_XMM0_Da = in_XMM0_Db + in_XMM1_Da * in_XMM3_Da;\\n    fVar73 = unaff_XMM11_Da * *(float *)(unaff_RBP + 0x2b) * in_XMM3_Da;\\n    unaff_XMM11_Da = in_XMM3_Da * in_XMM2_Da * unaff_XMM11_Da + unaff_XMM9_Da;\\n    unaff_XMM11_Db = fVar73 + fVar70;\\n    in_XMM2_Da = 0.0;\\n    puVar54 = (undefined8 *)puVar40;\\n    in_XMM0_Dd = in_XMM0_Dc;\\n    in_XMM1_Da = unaff_XMM11_Db;\\n    if ((unaff_XMM11_Da == 0.0) &&\\n       (bVar66 = NAN(unaff_XMM11_Db), puVar14 = puVar40, unaff_XMM11_Db == 0.0)) {\\ncode_r0x000140913932:\\n      puVar54 = (undefined8 *)puVar14;\\n      if (bVar66) goto LAB_14091393f;\\n      if ((in_XMM0_Da != in_XMM2_Da) || (NAN(in_XMM0_Da) || NAN(in_XMM2_Da))) goto LAB_14091393f;\\n      goto LAB_140913a6d;\\n    }\\nLAB_14091393f:\\n    ppuVar61 = (undefined **)(ulonglong)(uint)unaff_XMM11_Da;\\n    puVar15 = (undefined1 *)puVar54;\\ncode_r0x000140913944:\\n    puVar41 = puVar15;\\n    uVar32 = (uint)ppuVar61 & 0x7fffffff;\\n    ppuVar21 = (undefined **)(ulonglong)((uint)ABS(in_XMM1_Da) < 0x7f800000);\\n    ppuVar31 = (undefined **)(ulonglong)(uint)ABS(in_XMM0_Da);\\n    ppuVar61 = in_RDX;\\ncode_r0x000140913965:\\n    ppuVar31 = (undefined **)CONCAT71((int7)((ulonglong)ppuVar31 >> 8),(int)ppuVar31 < 0x7f800000);\\n    bVar69 = SBORROW4(uVar32,0x7f7fffff);\\n    bVar68 = (int)(uVar32 + 0x80800001) < 0;\\n    bVar67 = uVar32 == 0x7f7fffff;\\n    puVar13 = puVar41;\\ncode_r0x00014091396d:\\n    puVar54 = (undefined8 *)puVar13;\\n    puVar1 = (uint *)((longlong)ppuVar31 + 0x7ffffffa);\\n    *puVar1 = *puVar1 << 0x1f | *puVar1 >> 1;\\n    if ((!bVar67 && bVar69 == bVar68) || ((char)ppuVar21 == '\\\\0')) goto LAB_140913a6d;\\ncode_r0x000140913982:\\n    puVar42 = (undefined1 *)puVar54;\\n    if ((char)ppuVar31 == '\\\\0') goto LAB_140913a6d;\\ncode_r0x00014091398a:\\n    *(float *)unaff_R15 = SUB84(unaff_R12,0);\\n    *(ulonglong *)(puVar42 + 0xb0) = CONCAT44(unaff_XMM11_Db,unaff_XMM11_Da);\\n    puVar43 = (undefined8 *)puVar42;\\ncode_r0x000140913997:\\n    *(float *)((longlong)puVar43 + 0xb8) = in_XMM0_Da;\\n    puVar54 = puVar43;\\ncode_r0x0001409139a0:\\n    fVar70 = SUB84(unaff_R12,0);\\n    ppuVar21 = &anon_0555c73667d6be1dc866b3f0ae0b3f3f_19_llvm_14020587298740829885;\\n    in_RDX = (undefined **)&DAT_142aabd78;\\n    bVar66 = 0xfffffffebd554287 <\\n             (ulonglong)\\n             (longlong)*(int *)(&DAT_142aabd78 + (ulonglong)*(byte *)(unaff_RDI + 0x9a) * 4);\\n    ppuVar31 = (undefined **)\\n               (&DAT_142aabd78 +\\n               *(int *)(&DAT_142aabd78 + (ulonglong)*(byte *)(unaff_RDI + 0x9a) * 4));\\n    uVar28 = (undefined7)((ulonglong)unaff_RBX >> 8);\\n    puVar23 = puVar54;\\n    puVar58 = puVar54;\\n                    // WARNING (jumptable): Sanity check requires truncation of jumptable\\n                    // WARNING: Could not find normalized switch variable to match jumptable\\n    switch(*(byte *)(unaff_RDI + 0x9a)) {\\n    case 0:\\n      ppuVar31 = unaff_RDI + 0x20;\\n      break;\\n    case 1:\\n      ppuVar31 = unaff_RDI + 0x37;\\n      break;\\n    case 2:\\n      ppuVar31 = unaff_RDI + 0x4e;\\n      ppuVar21 = &anon_0555c73667d6be1dc866b3f0ae0b3f3f_17_llvm_14020587298740829885;\\n      break;\\n    case 3:\\n      ppuVar31 = unaff_RDI + 0x5e;\\n      ppuVar21 = (undefined **)&anon_0555c73667d6be1dc866b3f0ae0b3f3f_16_llvm_14020587298740829885;\\n      break;\\n    case 4:\\n      ppuVar31 = unaff_RDI + 0x72;\\n      break;\\n    case 5:\\n      ppuVar31 = unaff_RDI + 0x89;\\n      ppuVar21 = &anon_0555c73667d6be1dc866b3f0ae0b3f3f_18_llvm_14020587298740829885;\\n      break;\\n    case 6:\\n                    // WARNING (jumptable): Read-only address (ram,0x000142c91c25) is written\\n                    // WARNING: Read-only address (ram,0x000142c91c25) is written\\n      PTR_update_142c91c20._5_1_ = SUB81(ppuVar31,0);\\n      goto LAB_140913bec;\\n    case 7:\\n      goto code_r0x000140913d23;\\n    case 8:\\n      puVar23 = unaff_RBP + 1;\\n      goto code_r0x000140913ca7;\\n    case 9:\\ncode_r0x000140913ccf:\\n      goto code_r0x000140913d23;\\n    case 10:\\n      goto code_r0x000140913ca7;\\n    case 0xb:\\n      unaff_RBX = (undefined **)CONCAT71(uVar28,(char)unaff_RBX + (char)((ulonglong)ppuVar31 >> 8));\\n      unaff_R14 = (undefined **)&DAT_00000144;\\n      ppuVar21 = ppuVar61;\\ncode_r0x000140913d23:\\n      UNRECOVERED_JUMPTABLE = (code *)ppuVar21[6];\\n      *(undefined **)((longlong)puVar54 + -8) = &UNK_140913d31;\\n      (*UNRECOVERED_JUMPTABLE)((undefined1 *)((longlong)puVar54 + 0xb0));\\n      *(undefined4 *)((longlong)puVar54 + 0x2c8) = *(undefined4 *)((longlong)puVar54 + 0xb8);\\n      *(undefined8 *)((longlong)puVar54 + 0x2c0) = *(undefined8 *)((longlong)puVar54 + 0xb0);\\n      uVar8 = *(undefined8 *)((longlong)puVar54 + 0xc0);\\n      uVar9 = *(undefined8 *)((longlong)puVar54 + 200);\\n      *(undefined **)((longlong)puVar54 + -8) = &UNK_140913d67;\\n      fVar70 = expf(unaff_XMM6_Da / -0.2);\\n      uVar33 = *(undefined8 *)((longlong)((longlong)unaff_RDI + 0x104) + (longlong)unaff_R14);\\n      *(float *)((longlong)((longlong)unaff_RDI + 0x104) + (longlong)unaff_R14) =\\n           (1.0 - fVar70) * (float)((ulonglong)uVar33 >> 0x20) +\\n           (1.0 - (1.0 - fVar70)) * (float)uVar33;\\n      *(undefined8 *)((longlong)puVar54 + 0x2d0) = uVar8;\\n      *(undefined8 *)((longlong)puVar54 + 0x2d8) = uVar9;\\n      fVar70 = *(float *)(unaff_RDI + 0x9b);\\n      uVar8 = *(undefined8 *)((longlong)unaff_RBX + (longlong)unaff_R14);\\n      uVar9 = *(undefined8 *)((byte *)((longlong)unaff_RBX + (longlong)unaff_R14) + 8);\\n      uVar6 = *(undefined8 *)((longlong)(unaff_RBX + 2) + (longlong)unaff_R14);\\n      uVar10 = *(undefined8 *)((byte *)((longlong)(unaff_RBX + 2) + (longlong)unaff_R14) + 8);\\n      uVar33 = *(undefined8 *)((longlong)(unaff_RBX + 4) + (longlong)unaff_R14);\\n      *(undefined4 *)((longlong)puVar54 + 0x30c) =\\n           *(undefined4 *)((longlong)(unaff_RBX + 5) + (longlong)unaff_R14);\\n      *(undefined8 *)((longlong)puVar54 + 0x304) = uVar33;\\n      *(undefined8 *)((longlong)puVar54 + 0x2f4) = uVar6;\\n      *(undefined8 *)((longlong)puVar54 + 0x2fc) = uVar10;\\n      *(undefined8 *)((longlong)puVar54 + 0x2e4) = uVar8;\\n      *(undefined8 *)((longlong)puVar54 + 0x2ec) = uVar9;\\n      *(float *)((longlong)puVar54 + 0x2e0) = fVar70;\\n      *(undefined **)((longlong)puVar54 + -8) = &UNK_140913dfe;\\n      ::utils::camera::impl$2::into_camera_body_matrices();\\n      *(undefined **)((longlong)puVar54 + -8) = &UNK_140913e13;\\n      ::utils::camera::CameraProjectionParams::calc_matrices();\\n      *(undefined8 *)((longlong)puVar54 + 0xe0) = *(undefined8 *)((longlong)puVar54 + 0x270);\\n      *(undefined8 *)((longlong)puVar54 + 0xe8) = *(undefined8 *)((longlong)puVar54 + 0x278);\\n      *(undefined8 *)((longlong)puVar54 + 0xd0) = *(undefined8 *)((longlong)puVar54 + 0x260);\\n      *(undefined8 *)((longlong)puVar54 + 0xd8) = *(undefined8 *)((longlong)puVar54 + 0x268);\\n      *(undefined8 *)((longlong)puVar54 + 0xc0) = *(undefined8 *)((longlong)puVar54 + 0x250);\\n      *(undefined8 *)((longlong)puVar54 + 200) = *(undefined8 *)((longlong)puVar54 + 600);\\n      *(undefined8 *)((longlong)puVar54 + 0xb0) = *(undefined8 *)((longlong)puVar54 + 0x240);\\n      *(undefined8 *)((longlong)puVar54 + 0xb8) = *(undefined8 *)((longlong)puVar54 + 0x248);\\n      *(undefined8 *)((longlong)puVar54 + 0xf0) = *(undefined8 *)((longlong)puVar54 + 0x280);\\n      *(undefined8 *)((longlong)puVar54 + 0xf8) = *(undefined8 *)((longlong)puVar54 + 0x288);\\n      *(undefined8 *)((longlong)puVar54 + 0x100) = *(undefined8 *)((longlong)puVar54 + 0x290);\\n      *(undefined8 *)((longlong)puVar54 + 0x108) = *(undefined8 *)((longlong)puVar54 + 0x298);\\n      *(undefined8 *)((longlong)puVar54 + 0x110) = *(undefined8 *)((longlong)puVar54 + 0x2a0);\\n      *(undefined8 *)((longlong)puVar54 + 0x118) = *(undefined8 *)((longlong)puVar54 + 0x2a8);\\n      *(undefined8 *)((longlong)puVar54 + 0x120) = *(undefined8 *)((longlong)puVar54 + 0x2b0);\\n      *(undefined8 *)((longlong)puVar54 + 0x128) = *(undefined8 *)((longlong)puVar54 + 0x2b8);\\n      puVar49 = (undefined1 *)puVar54;\\ncode_r0x000140913e93:\\n      in_XMM0_Da = *(float *)(puVar49 + 0x1c0);\\n      in_XMM0_Db = *(float *)(puVar49 + 0x1c4);\\n      in_XMM0_Dc = *(float *)(puVar49 + 0x1c8);\\n      in_XMM0_Dd = *(float *)(puVar49 + 0x1cc);\\n      in_XMM1_Da = *(float *)(puVar49 + 0x1d0);\\n      in_XMM1_Db = *(float *)(puVar49 + 0x1d4);\\n      in_XMM1_Dc = *(float *)(puVar49 + 0x1d8);\\n      in_XMM1_Dd = *(float *)(puVar49 + 0x1dc);\\n      puVar51 = puVar49;\\n      goto code_r0x000140913ea3;\\n    case 0xc:\\n      goto code_r0x000140913f5f;\\n    case 0xd:\\n                    // WARNING (jumptable): Read-only address (ram,0x000142c91c98) is written\\n                    // WARNING: Read-only address (ram,0x000142c91c98) is written\\n                    // WARNING: Read-only address (ram,0x000142c91c99) is written\\n      anon_0555c73667d6be1dc866b3f0ae0b3f3f_19_llvm_14020587298740829885._0_2_ =\\n           CONCAT11(anon_0555c73667d6be1dc866b3f0ae0b3f3f_19_llvm_14020587298740829885._1_1_,0xd8);\\n      goto code_r0x000140913f21;\\n    case 0xe:\\ncode_r0x000140913f31:\\n      *(int *)ppuVar21 = *(int *)ppuVar21 + (int)ppuVar21;\\n      *(byte *)unaff_RDI = *(byte *)unaff_RDI + (char)ppuVar31;\\n      in_RDX = (undefined **)CONCAT62((int6)((ulonglong)in_RDX >> 0x10),CONCAT11(0x40,(char)in_RDX))\\n      ;\\n      puVar54 = (undefined8 *)((longlong)puVar54 + 8);\\n      goto code_r0x000140913f21;\\n    case 0xf:\\n      goto code_r0x000140913f21;\\n    case 0x10:\\n                    // WARNING: Bad instruction - Truncating control flow here\\n      halt_baddata();\\n    case 0x11:\\n                    // WARNING: Bad instruction - Truncating control flow here\\n      halt_baddata();\\n    case 0x12:\\n      in_XMM0_Da = (float)in_MM2_Da;\\ncode_r0x0001409145bc:\\n      fVar70 = (float)(uint)*(float *)((longlong)ppuVar21 + 4);\\ncode_r0x0001409145c4:\\n      in_XMM0_Da = in_XMM0_Da / fVar70;\\n      ppuVar21 = (undefined **)(ulonglong)(uint)*(float *)((longlong)ppuVar31 + 0x1c);\\n      puVar54 = puVar58;\\ncode_r0x0001409145cb:\\n      ppuVar61 = (undefined **)*ppuVar31;\\n      goto code_r0x0001409145c3;\\n    case 0x13:\\n      in_RDX = (undefined **)(ulonglong)(uint)(iVar30 >> 1);\\n      ppuVar31 = (undefined **)(CONCAT71((int7)((ulonglong)ppuVar31 >> 8),0xa6) + -1);\\n      if (ppuVar31 != (undefined **)0x0 && iVar30 >> 1 == 0) {\\n        fVar70 = (float)in_MM0_Da;\\n        goto code_r0x0001409145c4;\\n      }\\n                    // WARNING (jumptable): Read-only address (ram,0x000142c91c98) is written\\n                    // WARNING: Read-only address (ram,0x000142c91c98) is written\\n                    // WARNING (jumptable): Read-only address (ram,0x000142c91c98) is written\\n                    // WARNING: Read-only address (ram,0x000142c91c98) is written\\n      anon_0555c73667d6be1dc866b3f0ae0b3f3f_19_llvm_14020587298740829885._0_2_ =\\n           CONCAT11(uVar65,0xd8);\\n      goto code_r0x000140914601;\\n    case 0x14:\\n      unaff_RBX = (undefined **)CONCAT71(uVar28,(char)unaff_RBX + -0x43 + bVar66);\\n      *(float *)(ppuVar61 + 0x9b) = in_XMM0_Da;\\n      *(float *)((longlong)ppuVar61 + 0x4dc) = in_XMM0_Db;\\n      *(float *)(ppuVar61 + 0x9c) = in_XMM0_Dc;\\n      *(float *)((longlong)ppuVar61 + 0x4e4) = in_XMM0_Dd;\\n      goto code_r0x0001409145c3;\\n    case 0x15:\\n      bRam0000000285923930 = bRam0000000285923930 << 1 | (char)bRam0000000285923930 < '\\\\0';\\n      goto code_r0x0001409145e9;\\n    case 0x16:\\n      unaff_00084f00 = '\\\\x1e';\\n      puVar59 = (undefined1 *)((longlong)puVar54 + -8);\\n      unaff_0008ae00 = (undefined1 *)((longlong)puVar54 + -8);\\n      puVar23 = (undefined8 *)((longlong)puVar54 + -8);\\n      *(undefined8 **)((longlong)puVar54 + -8) = unaff_RBP;\\n      cVar18 = '\\\\x1d';\\n      do {\\n        unaff_RBP = unaff_RBP + -1;\\n        puVar23 = puVar23 + -1;\\n        *puVar23 = *unaff_RBP;\\n        cVar18 = cVar18 + -1;\\n        puVar54 = (undefined8 *)puVar59;\\n      } while ('\\\\0' < cVar18);\\ncode_r0x0001409145c3:\\n      *(undefined1 **)((longlong)puVar54 + (ulonglong)(byte)(unaff_00084f00 - 1) * -8 + -8) =\\n           unaff_0008ae00;\\n      puVar1 = (uint *)((longlong)unaff_RBX + -0x74b7e3bf);\\n      *puVar1 = *puVar1 >> 0x11 | *puVar1 << 0xf;\\n      puVar7 = (undefined4 *)ppuVar31[2];\\n      *(float *)(ppuVar61 + 0x9b) = in_XMM0_Da;\\n      *puVar7 = (int)ppuVar21;\\n      ppuVar31 = (undefined **)(ulonglong)*(byte *)(ppuVar61 + 0x9a);\\n      goto code_r0x0001409145f1;\\n    case 0x17:\\n      goto code_r0x000140914609;\\n    case 0x18:\\ncode_r0x000140914993:\\n      *(byte *)ppuVar21 = (*(byte *)ppuVar21 - 1) - bVar66;\\n      *(byte *)ppuVar21 = *(byte *)ppuVar21 + (char)ppuVar21;\\n      *(byte *)ppuVar21 = *(byte *)ppuVar21 + (char)ppuVar21;\\n      *(float *)((longlong)ppuVar21 + 0x11c) = -1.8277425e-38;\\n                    // WARNING: Bad instruction - Truncating control flow here\\n      halt_baddata();\\n    case 0x19:\\n      (*(code *)&anon_0555c73667d6be1dc866b3f0ae0b3f3f_19_llvm_14020587298740829885)();\\n      return;\\n    case 0x1a:\\n      goto code_r0x0001409149b9;\\n    case 0x1b:\\n      ppuVar34 = &PTR_DAT_142aa8278;\\n      *(byte *)unaff_RBX = *(byte *)unaff_RBX << 1 | (char)*(byte *)unaff_RBX < '\\\\0';\\n                    // WARNING (jumptable): Read-only address (ram,0x000142c91c98) is written\\n                    // WARNING: Read-only address (ram,0x000142c91c98) is written\\n                    // WARNING: Read-only address (ram,0x000142c91c99) is written\\n      anon_0555c73667d6be1dc866b3f0ae0b3f3f_19_llvm_14020587298740829885._0_2_ =\\n           CONCAT11(anon_0555c73667d6be1dc866b3f0ae0b3f3f_19_llvm_14020587298740829885._1_1_,0xd8);\\n      goto code_r0x0001409149d4;\\n    case 0x1c:\\n                    // WARNING: Bad instruction - Truncating control flow here\\n      halt_baddata();\\n    case 0x1d:\\n                    // WARNING: Bad instruction - Truncating control flow here\\n      halt_baddata();\\n    }\\n    *(undefined ***)((longlong)puVar54 + 0x20) = unaff_RDI;\\n    UNRECOVERED_JUMPTABLE = (code *)ppuVar21[5];\\n    *(undefined **)((longlong)puVar54 + -8) = &UNK_140913a22;\\n    (*UNRECOVERED_JUMPTABLE)(ppuVar31);\\n    **(undefined4 **)((longlong)puVar54 + 0x70) = *(undefined4 *)((longlong)puVar54 + 0x3c);\\n    lVar60 = *(longlong *)(unaff_R13 + 0x30);\\n    uVar33 = *(undefined8 *)(unaff_R13 + 0x40);\\n    if (lVar60 == *(longlong *)(unaff_R13 + 0x20)) {\\n      *(undefined **)((longlong)puVar54 + -8) = &UNK_140913a4b;\\n      alloc::raw_vec::RawVec::\\n      grow_one<bevy_ecs::event::base::EventInstance<country_core::resources::window::WindowFocusEvent>,alloc::alloc::Global>\\n                ();\\n    }\\n    lVar25 = *(longlong *)(unaff_R13 + 0x28);\\n    *(undefined4 *)(lVar25 + lVar60 * 0x10) = 0;\\n    *(undefined8 *)(lVar25 + 8 + lVar60 * 0x10) = uVar33;\\n    *(longlong *)(unaff_R13 + 0x30) = lVar60 + 1;\\n    *(longlong *)(unaff_R13 + 0x40) = *(longlong *)(unaff_R13 + 0x40) + 1;\\nLAB_140913a6d:\\n    fVar70 = SUB84(unaff_R12,0);\\n    fVar73 = *(float *)(unaff_RBP + 0x2c);\\n    if (fVar73 == 0.0) {\\nLAB_140913ada:\\n      cVar18 = *(char *)((longlong)puVar54 + 0x37);\\n    }\\n    else {\\n      bVar17 = *(byte *)(unaff_RDI + 0x9a);\\n      if ((1 < bVar17) && (bVar17 != 4)) {\\n        if (bVar17 == 5) {\\n          auVar11._1_15_ = _UNK_142925931;\\n          auVar11[0] = __xmm_3f8000003f8000003f8000003f800000;\\n          fVar73 = (float)((uint)fVar73 & 0x80000000 | auVar11._0_4_);\\n          iVar30 = 0x7fffffff;\\n          if (fVar73 <= 2.1474835e+09) {\\n            iVar30 = (int)fVar73;\\n          }\\n          if (NAN(fVar73)) {\\n            iVar30 = 0;\\n          }\\n          fVar73 = (float)((int)*(float *)((longlong)unaff_RDI + 0x484) - iVar30);\\n          if ((int)fVar73 < 1) {\\n            fVar73 = 0.0;\\n          }\\n          *(float *)unaff_R15 = fVar70;\\n          *(float *)((longlong)unaff_RDI + 0x484) = fVar73;\\n        }\\n        goto LAB_140913ada;\\n      }\\n      unaff_XMM9_Da = ABS(fVar73);\\n      *(float *)unaff_R15 = fVar70;\\n      *(float *)((longlong)puVar54 + 0xb0) = unaff_XMM8_Da;\\n      *(undefined4 *)((longlong)puVar54 + 0xb4) = *(undefined4 *)((longlong)puVar54 + 0x6c);\\n      *(float *)((longlong)puVar54 + 0xb8) = unaff_XMM7_Da;\\n      *(undefined8 *)((longlong)puVar54 + -8) = 0x140913b77;\\n      camera_rig::MainCamera::zoom();\\n      ppuVar21 = *(undefined ***)((longlong)puVar54 + 0x70);\\n      ppuVar31 = (undefined **)(ulonglong)*(uint *)((longlong)puVar54 + 0x3c);\\ncode_r0x000140913b80:\\n      *(float *)ppuVar21 = SUB84(ppuVar31,0);\\n      ppuVar61 = *(undefined ***)(unaff_R13 + 0x30);\\n      unaff_R14 = *(undefined ***)(unaff_R13 + 0x40);\\n      puVar44 = (undefined1 *)puVar54;\\n      if (ppuVar61 == *(undefined ***)(unaff_R13 + 0x20)) {\\n        *(undefined1 **)((longlong)puVar54 + -8) = &LAB_140913ba0;\\n        alloc::raw_vec::RawVec::\\n        grow_one<bevy_ecs::event::base::EventInstance<country_core::resources::window::WindowFocusEvent>,alloc::alloc::Global>\\n                  ();\\n      }\\nLAB_140913ba0:\\n      fVar70 = SUB84(unaff_R12,0);\\n      lVar60 = *(longlong *)(unaff_R13 + 0x28);\\n      lVar25 = (longlong)ppuVar61 * 0x10;\\n      *(undefined4 *)(lVar60 + lVar25) = 1;\\n      *(float *)(lVar60 + 4 + lVar25) = unaff_XMM9_Da;\\n      *(undefined ***)(lVar60 + 8 + lVar25) = unaff_R14;\\n      *(byte **)(unaff_R13 + 0x30) = (byte *)((longlong)ppuVar61 + 1);\\n      *(longlong *)(unaff_R13 + 0x40) = *(longlong *)(unaff_R13 + 0x40) + 1;\\n      cVar18 = puVar44[0x37];\\n      puVar54 = (undefined8 *)puVar44;\\n    }\\n    if (cVar18 != '\\\\x05') {\\nLAB_140913bd4:\\n      *(float *)unaff_R15 = fVar70;\\n      *(byte *)(unaff_RDI + 0x9a) = *(byte *)(*(longlong *)((longlong)puVar54 + 0x90) + 0x103);\\nLAB_140913bec:\\n      *(undefined8 *)((longlong)puVar54 + -8) = 0x140913bfc;\\n      ::utils::camera::CameraMatrices::eye_position();\\n      *(float *)unaff_R15 = fVar70;\\n      ppuVar21 = (undefined **)(ulonglong)*(byte *)(unaff_RDI + 0x9a);\\n      ppuVar31 = (undefined **)&DAT_142aabd90;\\ncode_r0x000140913c1b:\\n                    // WARNING: Could not recover jumptable at 0x000140913c22. Too many branches\\n                    // WARNING: Treating indirect jump as call\\n      (*(code *)((longlong)(int)*(float *)((longlong)ppuVar31 + (longlong)ppuVar21 * 4) +\\n                (longlong)ppuVar31))();\\n      return;\\n    }\\n    fVar70 = SUB84(unaff_R12,0);\\n                    // WARNING: Read-only address (ram,0x000142925930) is written\\n                    // WARNING: Read-only address (ram,0x000142925931) is written\\n                    // WARNING: Read-only address (ram,0x000142aab4f0) is written\\n                    // WARNING: Read-only address (ram,0x000142aabcec) is written\\n                    // WARNING: Read-only address (ram,0x000142aabd2f) is written\\n                    // WARNING: Read-only address (ram,0x000142aabd30) is written\\n                    // WARNING: Read-only address (ram,0x000142aabd48) is written\\n                    // WARNING: Read-only address (ram,0x000142c91c25) is written\\n                    // WARNING: Read-only address (ram,0x000142c91c98) is written\\n    lVar60 = *(longlong *)((longlong)puVar54 + 0x60);\\n    ppuVar21 = *(undefined ***)(lVar60 + 0xf8);\\n    ppuVar31 = (undefined **)((longlong)ppuVar21 + *(longlong *)(lVar60 + 0x100) * 4);\\n    in_RDX = (undefined **)(ulonglong)(uint)*(float *)((longlong)unaff_RDI + 0x484);\\n    if (in_RDX == (undefined **)0x0) {\\n      if (*(char *)(lVar60 + 0x108) != '\\\\0') {\\nLAB_140913c3e:\\n        in_R9 = *(undefined ***)((longlong)puVar54 + 0x50);\\n        puVar45 = (undefined1 *)puVar54;\\ncode_r0x000140913c43:\\n        puVar54 = (undefined8 *)puVar45;\\nLAB_140913c50:\\n        do {\\n          fVar70 = SUB84(unaff_R12,0);\\n          puVar46 = (undefined1 *)puVar54;\\n          if (ppuVar21 == ppuVar31) goto LAB_140913bec;\\ncode_r0x000140913c55:\\n          fVar70 = *(float *)ppuVar21;\\n          ppuVar21 = (undefined **)((longlong)ppuVar21 + 4);\\n          in_RDX = (undefined **)in_R9[0x35];\\n          in_R8 = (undefined **)((ulonglong)(uint)fVar70 * 9);\\n          bVar66 = in_RDX[(ulonglong)(uint)fVar70 * 9 + 2] == (undefined *)0x0;\\ncode_r0x000140913c6d:\\n          puVar47 = (undefined8 *)puVar46;\\n          puVar54 = (undefined8 *)puVar46;\\n        } while (bVar66);\\ncode_r0x000140913c6f:\\n        fVar70 = SUB84(unaff_R12,0);\\n        ppuVar21 = in_RDX + (longlong)in_R8;\\n        puVar64 = *(undefined **)(*(longlong *)((longlong)puVar47 + 0x60) + 0x110);\\n        uVar62 = 0;\\n        puVar63 = (undefined *)0x0;\\n        puVar48 = (undefined1 *)puVar47;\\n        puVar54 = puVar47;\\n        if (puVar64 < ppuVar21[8]) {\\ncode_r0x000140913c92:\\n          in_RDX = (undefined **)ppuVar21[7];\\n          ppuVar31 = (undefined **)in_RDX[(longlong)puVar64];\\n          ppuVar5 = ppuVar31;\\ncode_r0x000140913c9d:\\n          fVar70 = SUB84(unaff_R12,0);\\n          puVar54 = (undefined8 *)puVar48;\\n          if (ppuVar5 == (undefined **)0x0) {\\n            uVar62 = 0;\\n            puVar63 = (undefined *)0x0;\\n          }\\n          else {\\ncode_r0x000140913ca3:\\n            ppuVar21 = (undefined **)ppuVar21[3];\\n            puVar23 = puVar54;\\ncode_r0x000140913ca7:\\n            fVar70 = SUB84(unaff_R12,0);\\n            puVar63 = ppuVar21[~(ulonglong)ppuVar31 * 6 + 2];\\n            uVar62 = 0;\\n            puVar54 = puVar23;\\n          }\\n        }\\n        goto LAB_1409142e5;\\n      }\\nLAB_14091423a:\\n      do {\\n        if (ppuVar21 == ppuVar31) goto LAB_140913bec;\\n        fVar73 = *(float *)ppuVar21;\\n        ppuVar21 = (undefined **)((longlong)ppuVar21 + 4);\\n        lVar60 = *(longlong *)(*(longlong *)((longlong)puVar54 + 0x50) + 0x100);\\n      } while (*(longlong *)(lVar60 + 0x58 + (ulonglong)(uint)fVar73 * 0xa0) == 0);\\n      in_RDX = (undefined **)(lVar60 + (ulonglong)(uint)fVar73 * 0xa0);\\n      lVar60 = *(longlong *)(*(longlong *)((longlong)puVar54 + 0x50) + 0x1a8);\\n      if (*(ulonglong *)(*(longlong *)((longlong)puVar54 + 0x60) + 0x110) <\\n          *(ulonglong *)\\n           (lVar60 + 0x40 + (ulonglong)(uint)*(float *)((longlong)in_RDX + 0x94) * 0x48)) {\\n        lVar60 = lVar60 + (ulonglong)(uint)*(float *)((longlong)in_RDX + 0x94) * 0x48;\\n        uVar20 = *(ulonglong *)\\n                  (*(longlong *)(lVar60 + 0x38) +\\n                  *(ulonglong *)(*(longlong *)((longlong)puVar54 + 0x60) + 0x110) * 8);\\n        if (uVar20 == 0) goto LAB_1409142b5;\\n        lVar25 = *(longlong *)(*(longlong *)(lVar60 + 0x18) + 0x10 + ~uVar20 * 0x30);\\n      }\\n      else {\\nLAB_1409142b5:\\n        lVar25 = 0;\\n      }\\n      puVar64 = in_RDX[10];\\n      lVar26 = 0;\\n    }\\n    else {\\n      if (*(char *)(lVar60 + 0x108) != '\\\\0') {\\n        uVar62 = 0;\\n        uVar20 = 0;\\n        puVar63 = (undefined *)0x0;\\n        ppuVar61 = (undefined **)0x0;\\n        lVar60 = *(longlong *)((longlong)puVar54 + 0x50);\\n        do {\\n          if (uVar62 == uVar20) {\\n            do {\\n              if (ppuVar21 == ppuVar31) goto LAB_140913bec;\\n              fVar73 = *(float *)ppuVar21;\\n              ppuVar21 = (undefined **)((longlong)ppuVar21 + 4);\\n              uVar20 = *(ulonglong *)\\n                        (*(longlong *)(lVar60 + 0x1a8) + 0x10 + (ulonglong)(uint)fVar73 * 0x48);\\n            } while (uVar20 == 0);\\n            lVar25 = *(longlong *)(lVar60 + 0x1a8) + (ulonglong)(uint)fVar73 * 0x48;\\n            if (*(ulonglong *)(*(longlong *)((longlong)puVar54 + 0x60) + 0x110) <\\n                *(ulonglong *)(lVar25 + 0x40)) {\\n              uVar62 = *(ulonglong *)\\n                        (*(longlong *)(lVar25 + 0x38) +\\n                        *(ulonglong *)(*(longlong *)((longlong)puVar54 + 0x60) + 0x110) * 8);\\n              if (uVar62 == 0) {\\n                puVar63 = (undefined *)0x0;\\n              }\\n              else {\\n                puVar63 = *(undefined **)(*(longlong *)(lVar25 + 0x18) + 0x10 + ~uVar62 * 0x30);\\n              }\\n              uVar62 = 0;\\n              lVar60 = *(longlong *)((longlong)puVar54 + 0x50);\\n            }\\n            else {\\n              uVar62 = 0;\\n              puVar63 = (undefined *)0x0;\\n            }\\n          }\\n          ppuVar61 = (undefined **)((longlong)ppuVar61 + 1);\\n          uVar62 = uVar62 + 1;\\n        } while (ppuVar61 != in_RDX);\\n        if (uVar62 == uVar20) goto LAB_140913c3e;\\nLAB_1409142e5:\\n        puVar23 = (undefined8 *)(puVar63 + (uVar62 & 0xffffffff) * 0x30);\\n        puVar55 = (undefined1 *)puVar54;\\n        goto LAB_1409142f3;\\n      }\\n      puVar64 = (undefined *)0x8;\\n      lVar26 = 0;\\n      lVar60 = 0;\\n      lVar25 = 0;\\n      ppuVar61 = (undefined **)0x0;\\n      do {\\n        if (lVar26 == lVar60) {\\n          do {\\n            if (ppuVar21 == ppuVar31) goto LAB_140913bec;\\n            fVar73 = *(float *)ppuVar21;\\n            ppuVar21 = (undefined **)((longlong)ppuVar21 + 4);\\n            lVar26 = *(longlong *)(*(longlong *)((longlong)puVar54 + 0x50) + 0x100);\\n            lVar60 = *(longlong *)(lVar26 + 0x58 + (ulonglong)(uint)fVar73 * 0xa0);\\n          } while (lVar60 == 0);\\n          lVar26 = lVar26 + (ulonglong)(uint)fVar73 * 0xa0;\\n          uVar20 = (ulonglong)*(uint *)(lVar26 + 0x94);\\n          lVar25 = *(longlong *)(*(longlong *)((longlong)puVar54 + 0x50) + 0x1a8);\\n          if (*(ulonglong *)(*(longlong *)((longlong)puVar54 + 0x60) + 0x110) <\\n              *(ulonglong *)(lVar25 + 0x40 + uVar20 * 0x48)) {\\n            lVar25 = lVar25 + uVar20 * 0x48;\\n            uVar20 = *(ulonglong *)\\n                      (*(longlong *)(lVar25 + 0x38) +\\n                      *(ulonglong *)(*(longlong *)((longlong)puVar54 + 0x60) + 0x110) * 8);\\n            if (uVar20 == 0) goto LAB_1409140e3;\\n            lVar25 = *(longlong *)(*(longlong *)(lVar25 + 0x18) + 0x10 + ~uVar20 * 0x30);\\n          }\\n          else {\\nLAB_1409140e3:\\n            lVar25 = 0;\\n          }\\n          puVar64 = *(undefined **)(lVar26 + 0x50);\\n          lVar26 = 0;\\n        }\\n        ppuVar61 = (undefined **)((longlong)ppuVar61 + 1);\\n        lVar26 = lVar26 + 1;\\n      } while (ppuVar61 != in_RDX);\\n      if (lVar26 == lVar60) goto LAB_14091423a;\\n    }\\n    puVar23 = (undefined8 *)((ulonglong)*(uint *)(puVar64 + lVar26 * 0x10 + 8) * 0x30 + lVar25);\\n    puVar55 = (undefined1 *)puVar54;\\nLAB_1409142f3:\\n    *(float *)unaff_R15 = fVar70;\\n    uVar33 = puVar23[2];\\n    fVar70 = *(float *)(puVar23 + 3);\\n    uVar8 = *puVar23;\\n    uVar9 = puVar23[1];\\n    *(byte *)(unaff_RDI + 0x9a) = 5;\\n    lVar60 = (longlong)unaff_RDI[0x8b] << 4;\\n    puVar54 = (undefined8 *)unaff_RDI[0x8a];\\n    do {\\n      if (lVar60 == 0) {\\n        pcVar27 = \\\"dolly::drivers::position::PositionNo  driver found in the CameraRig\\\";\\n        goto LAB_1409144f5;\\n      }\\n      puVar23 = puVar54 + 2;\\n      uVar6 = *puVar54;\\n      UNRECOVERED_JUMPTABLE = *(code **)(puVar54[1] + 0x40);\\n      *(undefined8 *)(puVar55 + -8) = 0x140914357;\\n      puVar24 = (undefined8 *)(*UNRECOVERED_JUMPTABLE)(uVar6);\\n      UNRECOVERED_JUMPTABLE = (code *)in_RDX[3];\\n      *(undefined8 *)(puVar55 + -8) = 0x140914360;\\n      lVar25 = (*UNRECOVERED_JUMPTABLE)(puVar24);\\n      lVar60 = lVar60 + -0x10;\\n      puVar54 = puVar23;\\n    } while (((puVar24 == (undefined8 *)0x0) || (lVar25 != 0x6b8463577afc1a66)) ||\\n            (in_RDX != (undefined **)0xe4b9f294168d7e3));\\n    *puVar24 = uVar33;\\n    *(float *)(puVar24 + 1) = fVar70;\\n    lVar25 = (longlong)unaff_RDI[0x8b] << 4;\\n    lVar60 = 0xe4b9f294168d7e3;\\n    puVar54 = (undefined8 *)unaff_RDI[0x8a];\\nLAB_1409143b0:\\n    if (lVar25 != 0) goto code_r0x0001409143b9;\\n    pcVar27 = \\\"dolly::drivers::rotation::Rotationdolly::drivers::look_at::LookAt\\\";\\nLAB_1409144f5:\\n    *(char **)(puVar55 + 0x240) = pcVar27;\\n    *(undefined8 *)(puVar55 + 0x248) = 0x22;\\n    goto LAB_140914526;\\n  case 0x1d:\\n    goto code_r0x00014091345c;\\n  case 0x1e:\\n    goto code_r0x0001409134e7;\\n  case 0x1f:\\n    goto code_r0x0001409134c7;\\n  case 0x20:\\n    puVar54 = (undefined8 *)auStack_78;\\n    goto code_r0x000140913572;\\n  case 0x21:\\n    __xmm_3f8000003f8000003f8000003f800000 = 0;\\n    __real_43430000._0_1_ = 0;\\n    _DAT_142aabcec = 0xfde6682f;\\n    UNK_142aabd2f = 0xfd;\\n    _DAT_142aabd30 = 0xfde67498;\\n    DAT_142aabd48 = 0xae;\\n    PTR_update_142c91c20._5_1_ = 0;\\n    anon_0555c73667d6be1dc866b3f0ae0b3f3f_19_llvm_14020587298740829885._0_2_ = 0xa640;\\n                    // WARNING: Bad instruction - Truncating control flow here\\n    halt_baddata();\\n  case 0x22:\\n    goto code_r0x0001409134f0;\\n  case 0x23:\\n    goto code_r0x000140913932;\\n  case 0x24:\\n    if (bVar67 || (longlong)uVar20 < -0x142aabcec) {\\ncode_r0x000140913967:\\n      *(byte *)ppuVar21 = *(byte *)ppuVar21 + (char)ppuVar21;\\n      bVar17 = *(byte *)((longlong)unaff_RDI + 0xf);\\n      bVar69 = SBORROW1(bVar17,-100);\\n      bVar68 = (char)(bVar17 + 100) < '\\\\0';\\n      bVar67 = bVar17 == 0x9c;\\n      puVar13 = auStack_78;\\n      goto code_r0x00014091396d;\\n    }\\n    goto code_r0x0001409138e7;\\n  case 0x25:\\n    goto code_r0x000140913944;\\n  case 0x26:\\n    *(byte *)ppuVar21 = *(byte *)ppuVar21 + cVar18;\\n    *(byte *)((longlong)in_RDX + 0xf) = 0;\\ncode_r0x00014091395e:\\n    uVar32 = (uint)in_RDX;\\n                    // WARNING (jumptable): Read-only address (ram,0x000142aabccd) is written\\n    puVar1 = (uint *)((longlong)ppuVar31 + -0x1f);\\n    *puVar1 = *puVar1 << 0x1f | *puVar1 >> 1;\\n    goto code_r0x000140913965;\\n  case 0x27:\\n    *(int *)ppuVar21 = (int)*(float *)ppuVar21 + iVar19;\\n    *(byte *)((longlong)in_RDX + 0x44) =\\n         *(byte *)((longlong)in_RDX + 0x44) + (char)((ulonglong)ppuVar21 >> 8);\\n    ppuVar61 = (undefined **)(ulonglong)in_MM3_Da;\\n    puVar15 = auStack_78;\\n    goto code_r0x000140913944;\\n  case 0x28:\\n    goto code_r0x00014091396d;\\n  case 0x29:\\n    goto code_r0x000140913b80;\\n  case 0x2a:\\ncode_r0x000140913c59:\\n    ppuVar21 = (undefined **)(ulonglong)((int)ppuVar21 + 4);\\n    puVar46 = auStack_78;\\n    goto code_r0x000140913c55;\\n  case 0x2b:\\n    ppuVar21 = in_RDX;\\n    puVar54 = (undefined8 *)auStack_78;\\n    goto code_r0x000140913d23;\\n  case 0x2c:\\n    goto code_r0x000140913c43;\\n  case 0x2d:\\n    goto code_r0x000140913c1b;\\n  case 0x2e:\\n    *(byte *)ppuVar21 = *(byte *)ppuVar21 + cVar18 + (0xfffffffebd554313 < uVar20);\\n    bVar66 = *(byte *)ppuVar21 == 0;\\n    puVar46 = auStack_78;\\n    goto code_r0x000140913c6d;\\n  case 0x2f:\\n    goto code_r0x000140913ed3;\\n  case 0x30:\\n    goto code_r0x000140913e93;\\n  case 0x31:\\n    piVar22 = (int *)((ulonglong)auStack_78 & 0xffffffe0);\\n    *piVar22 = *piVar22 + (int)piVar22;\\n    *(byte *)unaff_RDI = *(byte *)unaff_RDI - 0x14;\\n    pcVar27 = (undefined1 *)((ulonglong)ppuVar21 & 0xffffffff) + 0x1f0;\\n    *pcVar27 = *pcVar27 - (char)unaff_RBX;\\n    puVar51 = (undefined1 *)((ulonglong)ppuVar21 & 0xffffffff);\\n    goto code_r0x000140913ea3;\\n  case 0x32:\\n    *(int *)ppuVar21 = (int)*(float *)ppuVar21 + iVar19;\\n    *(byte *)unaff_RDI = *(byte *)unaff_RDI - 0x14;\\n    in_stack_000000c8 = in_stack_000000c8 + -0x42aabcec;\\n    puVar51 = auStack_78;\\n    goto code_r0x000140913ea3;\\n  case 0x33:\\n    _cStack0000000000000158 =\\n         (float)CONCAT31(uStack0000000000000159,cStack0000000000000158 + '\\\\x14');\\n    puVar51 = auStack_78;\\ncode_r0x000140913ea3:\\n    in_XMM3_Da = *(float *)(puVar51 + 0x1f0);\\n    in_XMM3_Db = *(float *)(puVar51 + 500);\\n    in_XMM3_Dc = *(float *)(puVar51 + 0x1f8);\\n    in_XMM3_Dd = *(float *)(puVar51 + 0x1fc);\\n    *(float *)(puVar51 + 0x130) = in_XMM0_Da;\\n    *(float *)(puVar51 + 0x134) = in_XMM0_Db;\\n    *(float *)(puVar51 + 0x138) = in_XMM0_Dc;\\n    *(float *)(puVar51 + 0x13c) = in_XMM0_Dd;\\n    *(float *)(puVar51 + 0x140) = in_XMM1_Da;\\n    *(float *)(puVar51 + 0x144) = in_XMM1_Db;\\n    *(float *)(puVar51 + 0x148) = in_XMM1_Dc;\\n    *(float *)(puVar51 + 0x14c) = in_XMM1_Dd;\\n    *(undefined8 *)(puVar51 + 0x150) = *(undefined8 *)(puVar51 + 0x1e0);\\n    *(undefined8 *)(puVar51 + 0x158) = *(undefined8 *)(puVar51 + 0x1e8);\\ncode_r0x000140913ecb:\\n    *(float *)(puVar51 + 0x160) = in_XMM3_Da;\\n    *(float *)(puVar51 + 0x164) = in_XMM3_Db;\\n    *(float *)(puVar51 + 0x168) = in_XMM3_Dc;\\n    *(float *)(puVar51 + 0x16c) = in_XMM3_Dd;\\n    puVar52 = puVar51;\\ncode_r0x000140913ed3:\\n    in_XMM0_Da = *(float *)(puVar52 + 0x200);\\n    in_XMM0_Db = *(float *)(puVar52 + 0x204);\\n    in_XMM0_Dc = *(float *)(puVar52 + 0x208);\\n    in_XMM0_Dd = *(float *)(puVar52 + 0x20c);\\n    in_XMM1_Da = *(float *)(puVar52 + 0x210);\\n    in_XMM1_Db = *(float *)(puVar52 + 0x214);\\n    in_XMM1_Dc = *(float *)(puVar52 + 0x218);\\n    in_XMM1_Dd = *(float *)(puVar52 + 0x21c);\\n    in_XMM2_Da = *(float *)(puVar52 + 0x220);\\n    in_XMM2_Db = *(float *)(puVar52 + 0x224);\\n    in_XMM2_Dc = *(float *)(puVar52 + 0x228);\\n    in_XMM2_Dd = *(float *)(puVar52 + 0x22c);\\n    *(undefined8 *)(puVar52 + 0x1a0) = *(undefined8 *)(puVar52 + 0x230);\\n    *(undefined8 *)(puVar52 + 0x1a8) = *(undefined8 *)(puVar52 + 0x238);\\n    puVar53 = (undefined8 *)puVar52;\\ncode_r0x000140913efb:\\n    fVar70 = SUB84(unaff_R12,0);\\n    *(float *)((longlong)puVar53 + 400) = in_XMM2_Da;\\n    *(float *)((longlong)puVar53 + 0x194) = in_XMM2_Db;\\n    *(float *)((longlong)puVar53 + 0x198) = in_XMM2_Dc;\\n    *(float *)((longlong)puVar53 + 0x19c) = in_XMM2_Dd;\\n    *(float *)((longlong)puVar53 + 0x180) = in_XMM1_Da;\\n    *(float *)((longlong)puVar53 + 0x184) = in_XMM1_Db;\\n    *(float *)((longlong)puVar53 + 0x188) = in_XMM1_Dc;\\n    *(float *)((longlong)puVar53 + 0x18c) = in_XMM1_Dd;\\n    *(float *)((longlong)puVar53 + 0x170) = in_XMM0_Da;\\n    *(float *)((longlong)puVar53 + 0x174) = in_XMM0_Db;\\n    *(float *)((longlong)puVar53 + 0x178) = in_XMM0_Dc;\\n    *(float *)((longlong)puVar53 + 0x17c) = in_XMM0_Dd;\\n    in_RDX = (undefined **)((longlong)puVar53 + 0xb0);\\n    in_R8 = (undefined **)&DAT_00000100;\\n    puVar54 = puVar53;\\ncode_r0x000140913f21:\\n    *(undefined **)((longlong)puVar54 + -8) = &UNK_140913f29;\\n    memcpy(unaff_RDI,in_RDX,(size_t)in_R8);\\n    *(float *)unaff_R15 = fVar70;\\n    bVar17 = *(byte *)(*(longlong *)((longlong)puVar54 + 0x1b0) + 0x58);\\n    ppuVar21 = (undefined **)(ulonglong)bVar17;\\n    ppuVar34 = (undefined **)&UNK_142aabda8;\\n    ppuVar31 = (undefined **)\\n               (&UNK_142aabda8 +\\n               *(int *)(&UNK_142aabda8 + (ulonglong)*(byte *)(unaff_RDI + 0x9a) * 4));\\n    in_RDX = unaff_RDI;\\n                    // WARNING (jumptable): Sanity check requires truncation of jumptable\\n                    // WARNING: Could not find normalized switch variable to match jumptable\\n    switch(*(byte *)(unaff_RDI + 0x9a)) {\\n    case 1:\\n      unaff_RBX = unaff_RDI + 0x37;\\n      break;\\n    case 2:\\n      unaff_RBX = unaff_RDI + 0x4e;\\n      ppuVar61 = &anon_0555c73667d6be1dc866b3f0ae0b3f3f_17_llvm_14020587298740829885;\\n      break;\\n    case 3:\\n      unaff_RBX = unaff_RDI + 0x5e;\\n      ppuVar61 = (undefined **)&anon_0555c73667d6be1dc866b3f0ae0b3f3f_16_llvm_14020587298740829885;\\n      break;\\n    case 4:\\n      unaff_RBX = unaff_RDI + 0x72;\\ncode_r0x000140913f5f:\\n      bVar17 = (byte)ppuVar21;\\n      break;\\n    case 5:\\n      unaff_RBX = unaff_RDI + 0x89;\\n      ppuVar61 = &anon_0555c73667d6be1dc866b3f0ae0b3f3f_18_llvm_14020587298740829885;\\n      break;\\n    case 6:\\ncode_r0x0001409145e9:\\n      *(char *)((longlong)ppuVar21 + -0x73) = *(char *)((longlong)ppuVar21 + -0x73) + (char)ppuVar31\\n      ;\\ncode_r0x0001409145f1:\\n      ppuVar34 = (undefined **)&DAT_142aabdc0;\\n      goto code_r0x0001409145f8;\\n    case 7:\\n      in_RDX = ppuVar61 + 0x5e;\\n      ppuVar21 = (undefined **)&anon_0555c73667d6be1dc866b3f0ae0b3f3f_16_llvm_14020587298740829885;\\n      unaff_RBX = (undefined **)0x264;\\n      goto code_r0x000140914664;\\n    case 8:\\ncode_r0x000140914601:\\n      unaff_RBX = (undefined **)&DAT_0000008c;\\n      unaff_RDI = in_RDX;\\ncode_r0x000140914609:\\ncode_r0x000140914664:\\n      UNRECOVERED_JUMPTABLE = (code *)ppuVar21[6];\\n      *(undefined **)((longlong)puVar54 + -8) = &UNK_140914672;\\n      (*UNRECOVERED_JUMPTABLE)((undefined1 *)((longlong)puVar54 + 0x70),in_RDX);\\n      *(undefined4 *)((longlong)puVar54 + 0x28) = *(undefined4 *)((longlong)puVar54 + 0x78);\\n      *(undefined8 *)((longlong)puVar54 + 0x20) = *(undefined8 *)((longlong)puVar54 + 0x70);\\n      uVar33 = *(undefined8 *)((longlong)puVar54 + 0x80);\\n      uVar8 = *(undefined8 *)((longlong)puVar54 + 0x88);\\n      *(float *)((longlong)((longlong)ppuVar61 + 0x104) + (longlong)unaff_RBX) =\\n           *(float *)((longlong)(ppuVar61 + 0x21) + (longlong)unaff_RBX) * 0.0 +\\n           *(float *)((longlong)((longlong)ppuVar61 + 0x104) + (longlong)unaff_RBX);\\n      *(undefined8 *)((longlong)puVar54 + 0x30) = uVar33;\\n      *(undefined8 *)((longlong)puVar54 + 0x38) = uVar8;\\n      fVar70 = *(float *)(ppuVar61 + 0x9b);\\n      uVar8 = *(undefined8 *)((longlong)unaff_RDI + (longlong)unaff_RBX);\\n      uVar9 = *(undefined8 *)((byte *)((longlong)unaff_RDI + (longlong)unaff_RBX) + 8);\\n      uVar6 = *(undefined8 *)((longlong)(unaff_RDI + 2) + (longlong)unaff_RBX);\\n      uVar10 = *(undefined8 *)((byte *)((longlong)(unaff_RDI + 2) + (longlong)unaff_RBX) + 8);\\n      uVar33 = *(undefined8 *)((longlong)(unaff_RDI + 4) + (longlong)unaff_RBX);\\n      *(undefined4 *)((longlong)puVar54 + 0x6c) =\\n           *(undefined4 *)((longlong)(unaff_RDI + 5) + (longlong)unaff_RBX);\\n      *(undefined8 *)((longlong)puVar54 + 100) = uVar33;\\n      *(undefined8 *)((longlong)puVar54 + 0x54) = uVar6;\\n      *(undefined8 *)((longlong)puVar54 + 0x5c) = uVar10;\\n      *(undefined8 *)((longlong)puVar54 + 0x44) = uVar8;\\n      *(undefined8 *)((longlong)puVar54 + 0x4c) = uVar9;\\n      *(float *)((longlong)puVar54 + 0x40) = fVar70;\\n      *(undefined **)((longlong)puVar54 + -8) = &UNK_1409146f1;\\n      ::utils::camera::impl$2::into_camera_body_matrices();\\n      *(undefined **)((longlong)puVar54 + -8) = &UNK_140914703;\\n      ::utils::camera::CameraProjectionParams::calc_matrices();\\n      *(undefined8 *)((longlong)puVar54 + 0xa0) = *(undefined8 *)((longlong)puVar54 + 0x220);\\n      *(undefined8 *)((longlong)puVar54 + 0xa8) = *(undefined8 *)((longlong)puVar54 + 0x228);\\n      *(undefined8 *)((longlong)puVar54 + 0x90) = *(undefined8 *)((longlong)puVar54 + 0x210);\\n      *(undefined8 *)((longlong)puVar54 + 0x98) = *(undefined8 *)((longlong)puVar54 + 0x218);\\n      *(undefined8 *)((longlong)puVar54 + 0x80) = *(undefined8 *)((longlong)puVar54 + 0x200);\\n      *(undefined8 *)((longlong)puVar54 + 0x88) = *(undefined8 *)((longlong)puVar54 + 0x208);\\n      *(undefined8 *)((longlong)puVar54 + 0x70) = *(undefined8 *)((longlong)puVar54 + 0x1f0);\\n      *(undefined8 *)((longlong)puVar54 + 0x78) = *(undefined8 *)((longlong)puVar54 + 0x1f8);\\n      *(undefined8 *)((longlong)puVar54 + 0xb0) = *(undefined8 *)((longlong)puVar54 + 0x230);\\n      *(undefined8 *)((longlong)puVar54 + 0xb8) = *(undefined8 *)((longlong)puVar54 + 0x238);\\n      *(undefined8 *)((longlong)puVar54 + 0xc0) = *(undefined8 *)((longlong)puVar54 + 0x240);\\n      *(undefined8 *)((longlong)puVar54 + 200) = *(undefined8 *)((longlong)puVar54 + 0x248);\\n      *(undefined8 *)((longlong)puVar54 + 0xd0) = *(undefined8 *)((longlong)puVar54 + 0x250);\\n      *(undefined8 *)((longlong)puVar54 + 0xd8) = *(undefined8 *)((longlong)puVar54 + 600);\\n      *(undefined8 *)((longlong)puVar54 + 0xe0) = *(undefined8 *)((longlong)puVar54 + 0x260);\\n      *(undefined8 *)((longlong)puVar54 + 0xe8) = *(undefined8 *)((longlong)puVar54 + 0x268);\\n      *(undefined8 *)((longlong)puVar54 + 0xf0) = *(undefined8 *)((longlong)puVar54 + 0x170);\\n      *(undefined8 *)((longlong)puVar54 + 0xf8) = *(undefined8 *)((longlong)puVar54 + 0x178);\\n      *(undefined8 *)((longlong)puVar54 + 0x100) = *(undefined8 *)((longlong)puVar54 + 0x180);\\n      *(undefined8 *)((longlong)puVar54 + 0x108) = *(undefined8 *)((longlong)puVar54 + 0x188);\\n      *(undefined8 *)((longlong)puVar54 + 0x110) = *(undefined8 *)((longlong)puVar54 + 400);\\n      *(undefined8 *)((longlong)puVar54 + 0x118) = *(undefined8 *)((longlong)puVar54 + 0x198);\\n      *(undefined8 *)((longlong)puVar54 + 0x120) = *(undefined8 *)((longlong)puVar54 + 0x1a0);\\n      *(undefined8 *)((longlong)puVar54 + 0x128) = *(undefined8 *)((longlong)puVar54 + 0x1a8);\\n      *(undefined8 *)((longlong)puVar54 + 0x160) = *(undefined8 *)((longlong)puVar54 + 0x1e0);\\n      *(undefined8 *)((longlong)puVar54 + 0x168) = *(undefined8 *)((longlong)puVar54 + 0x1e8);\\n      *(undefined8 *)((longlong)puVar54 + 0x150) = *(undefined8 *)((longlong)puVar54 + 0x1d0);\\n      *(undefined8 *)((longlong)puVar54 + 0x158) = *(undefined8 *)((longlong)puVar54 + 0x1d8);\\n      *(undefined8 *)((longlong)puVar54 + 0x140) = *(undefined8 *)((longlong)puVar54 + 0x1c0);\\n      *(undefined8 *)((longlong)puVar54 + 0x148) = *(undefined8 *)((longlong)puVar54 + 0x1c8);\\n      *(undefined8 *)((longlong)puVar54 + 0x130) = *(undefined8 *)((longlong)puVar54 + 0x1b0);\\n      *(undefined8 *)((longlong)puVar54 + 0x138) = *(undefined8 *)((longlong)puVar54 + 0x1b8);\\n      *(undefined **)((longlong)puVar54 + -8) = &UNK_140914813;\\n      memcpy(ppuVar61,(undefined1 *)((longlong)puVar54 + 0x70),0x100);\\n      return;\\n    case 9:\\n                    // WARNING: Bad instruction - Truncating control flow here\\n      halt_baddata();\\n    case 10:\\ncode_r0x0001409145f8:\\n      UNRECOVERED_JUMPTABLE =\\n           (code *)((longlong)*(int *)((longlong)ppuVar34 + (longlong)ppuVar31 * 4) +\\n                   (longlong)ppuVar34);\\n                    // WARNING: Could not recover jumptable at 0x0001409145ff. Too many branches\\n                    // WARNING: Treating indirect jump as call\\n      (*UNRECOVERED_JUMPTABLE)(UNRECOVERED_JUMPTABLE);\\n      return;\\n    case 0xb:\\n                    // WARNING: Bad instruction - Truncating control flow here\\n      halt_baddata();\\n    case 0xc:\\n      UNRECOVERED_JUMPTABLE = (code *)swi(3);\\n      (*UNRECOVERED_JUMPTABLE)();\\n      return;\\n    case 0xd:\\n      ppuVar31 = (undefined **)0x42c91c28;\\n      lVar60 = 0x1a8;\\n      lVar25 = 0x1c4;\\n      goto code_r0x000140914a80;\\n    case 0xf:\\n      ppuVar21 = (undefined **)0x42aac038;\\n      lVar60 = 0x300;\\n      lVar25 = 0x31c;\\n      goto code_r0x000140914a80;\\n    case 0x10:\\ncode_r0x0001409149d4:\\n      ppuVar31 = &anon_0555c73667d6be1dc866b3f0ae0b3f3f_19_llvm_14020587298740829885;\\n      in_R9 = (undefined **)&DAT_142aabdd8;\\n    case 0xe:\\n      UNRECOVERED_JUMPTABLE =\\n           (code *)((longlong)(int)*(float *)((longlong)in_R9 + (longlong)in_R8 * 4) +\\n                   (longlong)in_R9);\\n                    // WARNING: Could not recover jumptable at 0x0001409149f0. Too many branches\\n                    // WARNING: Treating indirect jump as call\\n      (*UNRECOVERED_JUMPTABLE)(ppuVar31,ppuVar34,UNRECOVERED_JUMPTABLE);\\n      return;\\n    case 0x11:\\n      ppuVar21 = (undefined **)0x42aabf98;\\n      ppuVar31 = (undefined **)&anon_0555c73667d6be1dc866b3f0ae0b3f3f_16_llvm_14020587298740829885;\\n      lVar60 = 0x248;\\n      lVar25 = 0x264;\\ncode_r0x000140914a80:\\n      *ppuVar21 = (undefined *)in_R8;\\n      ppuVar21[1] = (undefined *)ppuVar31;\\n      ppuVar21[2] = &UNK_142aabda8 + lVar25;\\n      ppuVar21[3] = &UNK_142aabda8 + lVar60;\\n      return;\\n    }\\n    UNRECOVERED_JUMPTABLE = (code *)ppuVar61[4];\\n    *(undefined **)((longlong)puVar54 + -8) = &UNK_140913fab;\\n    (*UNRECOVERED_JUMPTABLE)\\n              (unaff_RBX,(undefined1 *)((longlong)puVar54 + 0x310),\\n               *(undefined8 *)((longlong)puVar54 + 0x1b8),bVar17 == 4);\\n    *(undefined **)((longlong)puVar54 + -8) = &UNK_140913fbb;\\n    ::utils::camera::CameraMatrices::eye_position();\\n    if ((*(uint *)(unaff_RBP + 2) < 3) &&\\n       (unaff_XMM6_Da * 0.2 <\\n        SQRT((*(float *)((longlong)puVar54 + 0xa0) - *(float *)((longlong)puVar54 + 0xac)) *\\n             (*(float *)((longlong)puVar54 + 0xa0) - *(float *)((longlong)puVar54 + 0xac)) +\\n             (*(float *)((longlong)puVar54 + 0x9c) - *(float *)((longlong)puVar54 + 0xa8)) *\\n             (*(float *)((longlong)puVar54 + 0x9c) - *(float *)((longlong)puVar54 + 0xa8)) +\\n             (*(float *)((longlong)puVar54 + 0x98) - *(float *)((longlong)puVar54 + 0xa4)) *\\n             (*(float *)((longlong)puVar54 + 0x98) - *(float *)((longlong)puVar54 + 0xa4))))) {\\n      **(undefined4 **)((longlong)puVar54 + 0x70) = *(undefined4 *)((longlong)puVar54 + 0x3c);\\n      lVar60 = *(longlong *)(unaff_R13 + 0x30);\\n      uVar33 = *(undefined8 *)(unaff_R13 + 0x40);\\n      if (lVar60 == *(longlong *)(unaff_R13 + 0x20)) {\\n        *(undefined **)((longlong)puVar54 + -8) = &UNK_140914054;\\n        alloc::raw_vec::RawVec::\\n        grow_one<bevy_ecs::event::base::EventInstance<country_core::resources::window::WindowFocusEvent>,alloc::alloc::Global>\\n                  ();\\n      }\\n      lVar25 = *(longlong *)(unaff_R13 + 0x28);\\n      *(undefined4 *)(lVar25 + lVar60 * 0x10) = 2;\\n      *(undefined8 *)(lVar25 + 8 + lVar60 * 0x10) = uVar33;\\n      *(longlong *)(unaff_R13 + 0x30) = lVar60 + 1;\\n      *(longlong *)(unaff_R13 + 0x40) = *(longlong *)(unaff_R13 + 0x40) + 1;\\n    }\\n    return;\\n  case 0x34:\\n    puVar50 = (undefined1 *)((ulonglong)ppuVar21 & 0xffffffff);\\n    ppuVar21 = (undefined **)((ulonglong)auStack_78 & 0xffffff50);\\ncode_r0x000140913ec8:\\n    *(int *)ppuVar21 = (int)*(float *)ppuVar21 + (int)ppuVar21;\\n    *(byte *)unaff_RDI = *(byte *)unaff_RDI + (char)ppuVar31;\\n    *(uint *)(puVar50 + 0x160) = *(int *)(puVar50 + 0x160) - uVar32;\\n    puVar52 = puVar50;\\n    goto code_r0x000140913ed3;\\n  case 0x35:\\n    (&UNK_142aabc75)[uVar20] = (&UNK_142aabc75)[uVar20] + -0x14;\\n    *(int *)ppuVar21 = (int)*(float *)ppuVar21 + iVar19;\\n    (&UNK_142aabc79)[uVar20] = (&UNK_142aabc79)[uVar20] + -0x14;\\n    UNRECOVERED_JUMPTABLE = (code *)(ulonglong)(iVar19 - 0x80a6ad);\\n    puVar55 = auStack_78;\\n    goto code_r0x00014091453d;\\n  case 0x36:\\n    ppuVar21 = (undefined **)((ulonglong)ppuVar21 & 0xffffffffffffffc0);\\ncode_r0x000140914571:\\n    *(int *)ppuVar21 = (int)*(float *)ppuVar21 + (int)ppuVar21;\\n    *(byte *)((longlong)ppuVar21 + -0x77) = *(byte *)((longlong)ppuVar21 + -0x77) + (char)ppuVar31;\\n    *(byte *)ppuVar21 = *(byte *)ppuVar21 + (char)ppuVar21;\\n    goto code_r0x00014091457b;\\n  case 0x37:\\n    goto code_r0x000140914545;\\n  case 0x38:\\n    *(byte *)ppuVar21 = *(byte *)ppuVar21 + cVar18;\\n    pcVar27 = (char *)CONCAT71((int7)((ulonglong)ppuVar21 >> 8),cVar18 + *(byte *)ppuVar21);\\n    *pcVar27 = *pcVar27 + cVar18 + *(byte *)ppuVar21;\\n    puVar16 = auStack_78;\\n    goto code_r0x000140914545;\\n  case 0x39:\\n    UNRECOVERED_JUMPTABLE = (code *)0x40109e90;\\n    puVar55 = auStack_78;\\ncode_r0x00014091453d:\\n    *(code **)(puVar55 + 0x1c8) = UNRECOVERED_JUMPTABLE;\\n    puVar16 = puVar55;\\ncode_r0x000140914545:\\n    puVar56 = (undefined8 *)puVar16;\\n    *(undefined **)((longlong)puVar56 + 0xb0) =\\n         &anon_f854cc98b5e1efe54f6ab98d53b9f85b_10_llvm_5637972437638668905;\\n    *(undefined8 *)((longlong)puVar56 + 0xb8) = 2;\\n    *(undefined8 *)((longlong)puVar56 + 0xd0) = 0;\\n    *(undefined1 **)((longlong)puVar56 + 0xc0) = (undefined1 *)((longlong)puVar56 + 0x1c0);\\n    *(undefined8 *)((longlong)puVar56 + 200) = 1;\\ncode_r0x00014091458f:\\n                    // WARNING: Subroutine does not return\\n    *(undefined **)((longlong)puVar56 + -8) = &UNK_14091459c;\\n    core::panicking::panic_fmt();\\n  case 0x3a:\\n    in_stack_00000050 = 1;\\n    puVar56 = (undefined8 *)auStack_78;\\n    goto code_r0x00014091458f;\\n  case 0x3b:\\n    *(byte *)ppuVar21 = *(byte *)ppuVar21 + cVar18;\\n    *(byte *)ppuVar21 = *(byte *)ppuVar21 + cVar18;\\n    *(undefined8 *)(&UNK_142aabd84 + uVar20) = 0x42700000;\\n    *(undefined8 *)(&UNK_142aabd8c + uVar20) = 0;\\n    goto code_r0x00014091491a;\\n  case 0x3c:\\n    *(byte *)ppuVar21 = *(byte *)ppuVar21 + cVar18;\\n    *(byte *)ppuVar21 = *(byte *)ppuVar21 + cVar18;\\n    *(byte *)ppuVar21 = *(byte *)ppuVar21 + cVar18;\\n                    // WARNING (jumptable): Read-only address (ram,0x000142aabcec) is written\\n                    // WARNING: Read-only address (ram,0x000142aabcec) is written\\n    _DAT_142aabcec = iVar19 + -0x21997d1;\\n    goto code_r0x000140914968;\\n  case 0x3d:\\n    ppuVar21 = (undefined **)((ulonglong)ppuVar21 & 0xffffffffffffff02);\\n    goto code_r0x00014091491a;\\n  case 0x3e:\\ncode_r0x000140914949:\\ncode_r0x00014091494b:\\n                    // WARNING (jumptable): Read-only address (ram,0x000142925930) is written\\n                    // WARNING: Read-only address (ram,0x000142925930) is written\\n    __xmm_3f8000003f8000003f8000003f800000 = -(char)ppuVar21;\\n    goto code_r0x00014091491a;\\n  case 0x3f:\\n    *(byte *)ppuVar21 = *(byte *)ppuVar21 + cVar18;\\ncode_r0x00014091491a:\\n    *(float *)(ppuVar21 + 0x15) = 9.21956e-41;\\n    *(byte *)((longlong)ppuVar21 + 0xac) = 0;\\n    *(undefined1 (*) [8])((longlong)ppuVar21 + 0xad) = auStack_76;\\n    *(ulonglong *)((longlong)ppuVar21 + 0xb5) = CONCAT26(uStack_68,uStack_6e);\\n    *(ulonglong *)((longlong)ppuVar21 + 0xbb) = CONCAT62(uStack_66,uStack_68);\\n    *(byte *)((longlong)ppuVar21 + 0xc3) = 3;\\n    ppuVar21[0x1f] = (undefined *)0x3f8000003f800000;\\n    ppuVar21[0x20] = (undefined *)0x3f8000003f800000;\\n    ppuVar21[0x1d] = (undefined *)0x41c000003f800000;\\ncode_r0x000140914968:\\n    *(float *)(ppuVar21 + 0x1e) = 2.3693558e-38;\\n    *(byte *)((longlong)ppuVar21 + 0xf4) = 0;\\n    ppuVar21[0x1c] = (undefined *)0x1000101;\\ncode_r0x000140914984:\\n    ppuVar21[0x21] = (undefined *)0x3f8000003f800000;\\n    ppuVar21[0x22] = (undefined *)0x423400003e99999a;\\ncode_r0x000140914992:\\n    *(float *)(ppuVar21 + 0x23) = 1.0;\\n    *(undefined2 *)((longlong)ppuVar21 + 0x11c) = 0x606;\\ncode_r0x0001409149a5:\\n    pbVar2 = (byte *)((longlong)ppuVar21 + 0x11e);\\n    pbVar2[0] = 0;\\n    pbVar2[1] = 0;\\n    pbVar2[2] = 0;\\n    pbVar2[3] = 0;\\n    ppuVar31 = (undefined **)&DAT_8000000000000000;\\ncode_r0x0001409149b9:\\n    ppuVar21[0x19] = (undefined *)ppuVar31;\\n                    // WARNING: Read-only address (ram,0x000142925930) is written\\n                    // WARNING: Read-only address (ram,0x000142925931) is written\\n                    // WARNING: Read-only address (ram,0x000142aab4f0) is written\\n                    // WARNING: Read-only address (ram,0x000142aabcec) is written\\n                    // WARNING: Read-only address (ram,0x000142aabd2f) is written\\n                    // WARNING: Read-only address (ram,0x000142aabd30) is written\\n                    // WARNING: Read-only address (ram,0x000142aabd48) is written\\n                    // WARNING: Read-only address (ram,0x000142c91c25) is written\\n                    // WARNING: Read-only address (ram,0x000142c91c98) is written\\n    return;\\n  case 0x40:\\n    *(undefined4 *)(&UNK_142aabdcc + uVar20) = 0x1000101;\\n    goto code_r0x000140914984;\\n  }\\n  apuStack_98[3] = &UNK_14091256d;\\n  lang_lib::lookup();\\n  uStack_58 = alStack_48;\\n  pcStack_50 = anyhow::context::impl$3::fmt<ref_<str_>,alloc::ffi::c_str::FromVecWithNulError>;\\n  puStack_38 = &UNK_142aab9d0;\\n  lStack_30 = 1;\\n  uStack_28 = &uStack_58;\\n  auStack_20[0] = 1;\\n  auStack_20[1] = 0;\\n  apuStack_98[3] = &UNK_1409125d0;\\n  alStack_48[1] = uVar33;\\n  core::fmt::write();\\n  return;\\ncode_r0x00014091457b:\\n  *(byte *)((longlong)ppuVar21 + -0x39) = *(byte *)((longlong)ppuVar21 + -0x39) + (char)ppuVar31;\\n  cVar18 = (char)ppuVar21;\\n  *(byte *)ppuVar21 = *(byte *)ppuVar21 + cVar18;\\n                    // WARNING (jumptable): Read-only address (ram,0x000142aabcec) is written\\n  *(byte *)ppuVar31 = *(byte *)ppuVar31 + cVar18;\\n  *(byte *)ppuVar21 = *(byte *)ppuVar21 + cVar18;\\n  *(byte *)((longlong)ppuVar21 + -0x73) = *(byte *)((longlong)ppuVar21 + -0x73) + (char)ppuVar31;\\n  puVar56 = (undefined8 *)auStack_78;\\n  goto code_r0x00014091458f;\\ncode_r0x0001409133d8:\\n  in_RDX = (undefined **)0x42aabd18;\\n  goto code_r0x0001409133de;\\ncode_r0x000140913032:\\n  *(undefined2 *)ppuVar31 = in_DS;\\n  uVar20 = CONCAT71(uVar28,bVar17 + 0x81);\\n  goto LAB_14091302e;\\ncode_r0x0001409143b9:\\n  puVar23 = puVar54 + 2;\\n  uVar6 = *puVar54;\\n  UNRECOVERED_JUMPTABLE = *(code **)(puVar54[1] + 0x40);\\n  *(undefined8 *)(puVar55 + -8) = 0x1409143c7;\\n  puVar24 = (undefined8 *)(*UNRECOVERED_JUMPTABLE)(uVar6);\\n  UNRECOVERED_JUMPTABLE = *(code **)(lVar60 + 0x18);\\n  *(undefined8 *)(puVar55 + -8) = 0x1409143d0;\\n  lVar26 = (*UNRECOVERED_JUMPTABLE)(puVar24);\\n  lVar25 = lVar25 + -0x10;\\n  puVar54 = puVar23;\\n  if (((puVar24 == (undefined8 *)0x0) || (lVar26 != -0x60734237c020af2a)) ||\\n     (lVar60 != -0x3962ba8e243f3ef9)) goto LAB_1409143b0;\\n  unaff_XMM7_Da = (float)uVar33 + 0.0;\\n  unaff_XMM7_Db = (float)((ulonglong)uVar33 >> 0x20) + 1.0;\\n  *puVar24 = uVar8;\\n  puVar24[1] = uVar9;\\n  unaff_XMM8_Da = fVar70 + 0.0;\\n  ppuVar21 = (undefined **)((longlong)unaff_RDI[0x8b] << 4);\\n  unaff_R14 = (undefined **)0x601d3feb7ea275df;\\n  unaff_R15 = (undefined **)0xcb8ec583f4439065;\\n  in_RDX = (undefined **)0xc69d4571dbc0c107;\\n  unaff_R12 = (undefined8 *)unaff_RDI[0x8a];\\nLAB_140914430:\\n  while (ppuVar21 != (undefined **)0x0) {\\n    puVar54 = unaff_R12 + 2;\\n    uVar33 = *unaff_R12;\\n    UNRECOVERED_JUMPTABLE = *(code **)(unaff_R12[1] + 0x40);\\n    *(undefined8 *)(puVar55 + -8) = 0x140914447;\\n    unaff_RBX = (undefined **)(*UNRECOVERED_JUMPTABLE)(uVar33);\\n    UNRECOVERED_JUMPTABLE = (code *)in_RDX[3];\\n    *(undefined8 *)(puVar55 + -8) = 0x140914450;\\n    ppuVar31 = (undefined **)(*UNRECOVERED_JUMPTABLE)(unaff_RBX);\\n    ppuVar21 = ppuVar21 + -2;\\n    unaff_R12 = puVar54;\\n    if ((unaff_RBX != (undefined **)0x0) && (ppuVar31 == unaff_R14)) goto code_r0x000140914464;\\n  }\\n  *(char **)(puVar55 + 0x240) = \\\"dolly::drivers::look_at::LookAt\\\";\\n  *(undefined8 *)(puVar55 + 0x248) = 0x1f;\\nLAB_140914526:\\n  *(undefined1 **)(puVar55 + 0x1c0) = puVar55 + 0x240;\\n  UNRECOVERED_JUMPTABLE =\\n       anyhow::context::impl$3::fmt<ref_<str_>,alloc::ffi::c_str::FromVecWithNulError>;\\n  goto code_r0x00014091453d;\\ncode_r0x000140914464:\\n  puVar54 = (undefined8 *)puVar55;\\n  if (in_RDX == unaff_R15) goto code_r0x00014091446c;\\n  goto LAB_140914430;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}}},\"count\":1,\"requested\":1}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "read_memory",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "address": "0x1429b5790",
+        "length": 32
+      },
+      "args": {
+        "program": "tiny-glade.exe",
+        "address": "0x1429b5790",
+        "length": 32
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program\":\"tiny-glade.exe\",\"address\":\"1429b5790\",\"length\":32,\"data\":[108,105,110,101,83,99,114,101,101,110,115,104,111,116,70,111,114,109,97,116,74,112,101,103,80,110,103,0,0,0,0,0],\"hex\":\"6c696e6553637265656e73686f74466f726d61744a706567506e670000000000\"}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "list_instances",
+        "title": null,
+        "description": "\nList known Ghidra instances from UDS discovery and the active TCP fallback.\n\nReturns JSON with each instance's project name, PID, open programs, and\nsocket path or TCP URL. Also shows which instance is currently connected.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "_list_instances_toolArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "connect_instance",
+        "title": null,
+        "description": "\nSwitch the MCP bridge to a different Ghidra instance by project name.\n\nIMPORTANT: Before calling this function only the static bridge tools are\nexposed (list_instances, connect_instance, tool-group management,\ndebugger proxy). After a successful connect the bridge fetches the\ninstance's /mcp/schema and registers Ghidra analysis tools dynamically.\nBy default all tool groups are loaded on connect. When started with\n--lazy, only the default groups are loaded initially and clients may need\nto call load_tool_group() for additional categories. Clients that cache\nthe initial tools/list and don't honor tools/list_changed must re-list\ntools after this call.\n\nUse list_instances() first to see available instances.\n\nArgs:\n    project: Project name (or substring) to connect to\n",
+        "inputSchema": {
+          "properties": {
+            "project": {
+              "description": "Project name (or substring) to connect to",
+              "title": "Project",
+              "type": "string"
+            }
+          },
+          "required": [
+            "project"
+          ],
+          "title": "connect_instanceArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_tool_groups",
+        "title": null,
+        "description": "\nList all available tool groups with their tool counts and loaded status.\n\nReturns each category with: tool count, loaded status, and tool names.\nUse load_tool_group(group) to load a group's tools.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "list_tool_groupsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "load_tool_group",
+        "title": null,
+        "description": "\nLoad all tools in a category. Accepts a category name or \"all\" to load everything.\n\nUse list_tool_groups() to see available categories.\n\nArgs:\n    group: Category name (e.g. \"function\", \"datatype\") or \"all\"\n",
+        "inputSchema": {
+          "properties": {
+            "group": {
+              "description": "Category name (e.g. \"function\", \"datatype\") or \"all\"",
+              "title": "Group",
+              "type": "string"
+            }
+          },
+          "required": [
+            "group"
+          ],
+          "title": "load_tool_groupArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "search_tools",
+        "title": null,
+        "description": "\nSearch the full Ghidra tool catalog by keyword \u2014 including tools whose group\nis not currently loaded. Use this to discover the right tool without paying\nthe context cost of loading all groups (run the bridge with --lazy and search\non demand). Matches against tool name, description, and category.\n\nEach result reports whether the tool is callable right now; if not, it\nincludes the exact load_tool_group(...) call needed to make it callable.\n\nArgs:\n    query: Space-separated keywords, e.g. \"rename function\" or \"xref struct\".\n    limit: Maximum number of results to return (default 15).\n",
+        "inputSchema": {
+          "properties": {
+            "query": {
+              "description": "Space-separated keywords, e.g. \"rename function\" or \"xref struct\".",
+              "title": "Query",
+              "type": "string"
+            },
+            "limit": {
+              "default": 15,
+              "description": "Maximum number of results to return (default 15).",
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "title": "search_toolsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "disassemble_function",
+        "title": null,
+        "description": "Get assembly listing of function. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution. When Ghidra's stored function body is degenerate (body_end == body_start, which would truncate the listing to a single instruction), the listing is instead bounded by the next function or the containing memory block and the response adds body_degenerate=true, bounded_by (next_function | memory_block | function_body) and a warning; do not trust this function's stored extent in that case.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "disassemble_functionArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_data_types",
+        "title": null,
+        "description": "Find data types by name or path pattern, category and kind, one record per type (name, kind, category, size, path). With categories=true, list the category paths instead. With no filter it lists every type.",
+        "inputSchema": {
+          "properties": {
+            "pattern": {
+              "default": "",
+              "description": "Case-insensitive substring of the type's name or full path; omit for no name filter.",
+              "title": "Pattern",
+              "type": "string"
+            },
+            "category": {
+              "default": "",
+              "description": "Case-insensitive substring of the category path (e.g. Windows, /MyTypes); omit for any category.",
+              "title": "Category",
+              "type": "string"
+            },
+            "kind": {
+              "default": "",
+              "description": "Only this kind: struct, union, enum, typedef, pointer, array, function or primitive. Omit for all kinds.",
+              "title": "Kind",
+              "type": "string"
+            },
+            "categories": {
+              "default": "false",
+              "description": "True lists the category paths (filtered by pattern) instead of types; category and kind do not apply.",
+              "title": "Categories",
+              "type": "boolean"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "find_data_typesArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_functions",
+        "title": null,
+        "description": "Find functions: every filter is optional, so with none it lists the whole program a page at a time. Filter by name (substring or regex=true), xref count, calling convention, whether the name is user-given, thunk or external, or by tag (tag=a,b keeps functions carrying ANY of them); each result lists its tags; sort by address, name or xref_count. Replaces list_functions, list_functions_enhanced, search_functions and search_functions_enhanced, which returned four different shapes for the same question.",
+        "inputSchema": {
+          "properties": {
+            "name_pattern": {
+              "default": "",
+              "description": "Substring to match, or a regex when regex=true. Omit to match every function.",
+              "title": "Name Pattern",
+              "type": "string"
+            },
+            "regex": {
+              "default": "false",
+              "description": "Treat name_pattern as a regular expression.",
+              "title": "Regex",
+              "type": "boolean"
+            },
+            "min_xrefs": {
+              "default": "",
+              "description": "Only functions with at least this many references to them.",
+              "title": "Min Xrefs",
+              "type": "integer"
+            },
+            "max_xrefs": {
+              "default": "",
+              "description": "Only functions with at most this many references to them.",
+              "title": "Max Xrefs",
+              "type": "integer"
+            },
+            "calling_convention": {
+              "default": "",
+              "description": "Only functions with this calling convention (e.g. __stdcall).",
+              "title": "Calling Convention",
+              "type": "string"
+            },
+            "has_custom_name": {
+              "default": "",
+              "description": "true = only functions somebody has named; false = only auto-generated names (FUN_*, thunk_*).",
+              "title": "Has Custom Name",
+              "type": "boolean"
+            },
+            "is_thunk": {
+              "default": "",
+              "description": "true = only thunks, false = exclude them, omit for both.",
+              "title": "Is Thunk",
+              "type": "boolean"
+            },
+            "is_external": {
+              "default": "",
+              "description": "true = only external functions, false = exclude them.",
+              "title": "Is External",
+              "type": "boolean"
+            },
+            "tag": {
+              "default": "",
+              "description": "Only functions carrying any of these tags: one name or a comma-separated list. A name that is not a defined tag is an error (list_function_tags shows the definitions).",
+              "title": "Tag",
+              "type": "string"
+            },
+            "sort_by": {
+              "default": "address",
+              "description": "address | name | xref_count.",
+              "title": "Sort By",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Page size. 0 means no limit, which on a large binary is a megabytes-long response \u2014 the old list_functions had no pagination at all and returned 1.7MB on a stripped `ls`.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "pattern": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Pattern"
+            },
+            "query": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Query"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            }
+          },
+          "title": "find_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_functions",
+        "title": null,
+        "description": "Everything about one or many functions in a single call. Pass functions= as a comma-separated list of names or addresses for bulk mode (up to 20); omit it and pass function=/name=/address= for one. Pass fields= as a comma-separated subset to skip work you do not need \u2014 omitted or empty returns everything. When the requested fields need no decompiled text (e.g. fields=callers,callees,signature,labels,entry_point), the target function is NOT decompiled (238 ms cold / 5\u201310 ms warm per function); only decompiled_code (and call_context when enabled) pays that cost. Decompiled text renders EOL comments (// style), so comments written with set_comment are visible in the code. Replaces get_function_by_address, get_function_variables, get_function_xrefs, decompile_function, and the former get_function_callers/callees/labels/signature tools. Completeness scoring is NOT included \u2014 call analyze_function_completeness for that.",
+        "inputSchema": {
+          "properties": {
+            "function": {
+              "default": "",
+              "description": "Single mode: function name or address (0x<hex> or <space>:<hex>). Ignored when functions= is set.",
+              "title": "Function",
+              "type": "string"
+            },
+            "functions": {
+              "default": "",
+              "description": "Bulk mode: comma-separated function references (names or addresses). When set, function= is ignored. Returns a map keyed by the reference asked for.",
+              "title": "Functions",
+              "type": "string"
+            },
+            "fields": {
+              "default": "",
+              "description": "Comma-separated subset: signature, classification, return_type, entry_point, body_start, body_end, decompiled_code, plate_comment, comments, labels, tags, parameters, locals, callers, call_context, callees, xrefs, disassembly, jump_targets, refs (the absolute addresses the function uses: data references, the values of literal-pool words, and the memory the decompiled code reads and writes, so a register reached as base + offset is listed by its own address; a pool value is written value<word; asking for refs decompiles). Omit or leave empty for the full bundle.",
+              "title": "Fields",
+              "type": "string"
+            },
+            "include_call_context": {
+              "default": "true",
+              "description": "Include each caller's decompiled call-site line. Costs one decompilation per unique caller (~43ms); set false for the cheapest possible bundle. Ignored unless call_context is requested (explicitly or via an empty fields=).",
+              "title": "Include Call Context",
+              "type": "boolean"
+            },
+            "call_context_limit": {
+              "default": "6",
+              "description": "Maximum number of UNIQUE callers to decompile for call context.",
+              "title": "Call Context Limit",
+              "type": "integer"
+            },
+            "call_context_lines": {
+              "default": "3",
+              "description": "Lines of the caller's decompilation to return per call site, centred on the call. 1 is the call line alone; the default 3 adds the line above and below, which is usually where the guard and the use of the result live. Clamped to 1-21; costs no extra decompilation.",
+              "title": "Call Context Lines",
+              "type": "integer"
+            },
+            "include_disasm": {
+              "default": "false",
+              "description": "Include the raw instruction listing. Off by default: it roughly doubles the payload and agents rarely read it.",
+              "title": "Include Disasm",
+              "type": "boolean"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Address"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "function_address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Address"
+            },
+            "function_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Name"
+            },
+            "call_context_window": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Call Context Window"
+            }
+          },
+          "title": "get_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_metadata",
+        "title": null,
+        "description": "Get program metadata",
+        "inputSchema": {
+          "properties": {
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_metadataArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_struct_layout",
+        "title": null,
+        "description": "Get structure field layout",
+        "inputSchema": {
+          "properties": {
+            "struct_name": {
+              "description": "Structure name",
+              "title": "Struct Name",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "struct_name"
+          ],
+          "title": "get_struct_layoutArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_from",
+        "title": null,
+        "description": "Get cross-references from an address. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "get_xrefs_fromArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_to",
+        "title": null,
+        "description": "Get cross-references to ONE address, or to MANY at once (addresses=comma-separated), which returns a map keyed by the address you asked for. Replaces the former get_bulk_xrefs. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "default": "",
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "addresses": {
+              "default": "",
+              "description": "Comma-separated addresses for the many-at-once form. The result is a map of address to its reference list, and an address that does not resolve gets an empty list rather than failing the whole call.",
+              "title": "Addresses",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_xrefs_toArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "read_memory",
+        "title": null,
+        "description": "Read raw memory bytes. Always pass the 'program' argument to target the correct binary \u2014 especially when multiple programs are open. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "length": {
+              "default": "16",
+              "description": "Number of bytes",
+              "title": "Length",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "read_memoryArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 1,
+  "ok": true
+}

@@ -100,6 +100,11 @@ pub struct RgBuffer {
 /// 外部（非 RG）绑定的槽（`PassResourceSlot` 的已观测变体，0x40 B）。
 #[derive(Clone, Debug)]
 pub enum ExternalSlot {
+    /// Immutable original uniform bytes. The current declaration host uploads
+    /// the shared table once through its existing DynamicConstants allocator,
+    /// imports the actual physical range and keeps that owner through commands.
+    /// This source adapter is not an original native enum discriminant.
+    UniformBytes(Arc<[u8]>),
     /// 标签 5：`bind_external_storage_buffer` 构造 `{vk 缓冲, offset 0, range !0, 受管句柄克隆, 标志 0}`。
     Buffer {
         vk_buffer: u64,
@@ -154,6 +159,13 @@ pub struct ComputePassInit<'a> {
 pub trait WorldAccess: ResourceLookup {
     /// `UnsafeWorldCell::get_resource<GraphicsDeviceResource>` + `Deref`；缺失 → `Option::unwrap` panic。
     fn graphics_device(&self) -> Option<Arc<dyn ComputePassDevice>>;
+    /// The original PassBuilder carries its enclosing graph (`+0x40`). A
+    /// production WorldAccess returns that same live graph facade so library
+    /// SSBOs are imported lazily by get_rg_buffer, rather than into a detached
+    /// default recorder. Unit-test worlds can keep the CPU recorder default.
+    fn resource_graph(&self) -> crate::rhapsody_types::RenderGraph {
+        crate::rhapsody_types::RenderGraph::default()
+    }
 }
 
 /// dispatch 模式（`closure_env_0 +0x50` 的判别，O）。
@@ -169,7 +181,7 @@ pub enum DispatchMode {
     /// 4：先登记间接缓冲读访问，再调用户闭包（`dispatch_indirect_with`）。
     IndirectWith {
         buffer: u32,
-        f: Box<dyn FnOnce(&mut dyn ComputeDispatchApi) + Send>,
+        f: Box<dyn FnOnce(&mut dyn ComputeDispatchIndirectApi) + Send>,
     },
 }
 
@@ -192,7 +204,17 @@ pub struct RecordedComputePass {
     pub builder: RecordingPassBuilder,
     pub bindings: Vec<PassBinding>,
     pub access_ranges: Vec<AccessRange>,
+    /// Binding-table indices with a proven uniformly disabled texel read.
+    pub inactive_texture_bindings: Vec<u8>,
+    /// Real reads whose original caller allows undefined initial contents.
+    pub undefined_texture_bindings: Vec<u8>,
+    /// Host content intent; native access codes and synchronization stay intact.
+    pub preserving_buffers: Vec<u32>,
+    /// Image binding indices whose writes retain previously produced texels.
+    pub preserving_texture_bindings: Vec<u8>,
     pub external_bindings: Vec<ExternalBinding>,
+    /// Immutable physical ranges read through shader device addresses.
+    pub device_address_reads: Vec<rhapsody::raw::dynamic_constants::DynamicConstantsChunk>,
     pub uniform_binder: Option<UniformBinder>,
     pub push_constants: Vec<u8>,
     pub program: Option<Handle<ComputeShaderProgram>>,
@@ -229,7 +251,7 @@ pub trait ComputeDispatchApi {
 
 /// 间接 dispatch 接口（`dispatch_indirect_*`）。
 pub trait ComputeDispatchIndirectApi {
-    fn dispatch_indirect(&mut self, args: DispatchArgs);
+    fn dispatch_indirect(&mut self, byte_offset: u64);
     fn push_constants(&mut self, bytes: &[u8]);
 }
 
@@ -288,6 +310,28 @@ impl ComputeDispatchApi for ImmediateDispatch<'_> {
     fn track_gpu_lifetime(&mut self) {}
 }
 
+/// The indirect callback is bound to the argument buffer declared by the pass.
+/// Original callback families use ComputeDispatchIndirectApi, not the ordinary
+/// thread-count dispatcher (PDB 14160bdf0 / FnOnce 1415fbc50).
+struct ImmediateIndirectDispatch<'a> {
+    exec: &'a mut dyn ComputeExec,
+    buffer: u32,
+}
+impl ComputeDispatchIndirectApi for ImmediateIndirectDispatch<'_> {
+    fn dispatch_indirect(&mut self, byte_offset: u64) {
+        if self.exec.full_barrier_enabled() {
+            self.exec.issue_full_pipeline_barrier();
+        }
+        self.exec.count_dispatch();
+        self.exec
+            .cmd_dispatch_indirect(self.buffer, byte_offset)
+            .expect("Resource does not exist");
+    }
+    fn push_constants(&mut self, bytes: &[u8]) {
+        self.exec.push_constants(bytes);
+    }
+}
+
 /// 渲染回调里真正执行的部分（push constants + dispatch 模式）。不含构图用的 `RecordingPassBuilder`，
 /// 因此是 `Send` 的，可以交给 rhapsody 的并行录制线程。
 pub struct ComputeExecution {
@@ -327,16 +371,32 @@ impl ComputeExecution {
                 exec.cmd_dispatch_indirect(buffer, offset)
                     .expect("Resource does not exist");
             }
-            DispatchMode::With(f) | DispatchMode::IndirectWith { f, .. } => {
+            DispatchMode::With(f) => {
                 f(&mut ImmediateDispatch { exec });
+            }
+            DispatchMode::IndirectWith { buffer, f } => {
+                f(&mut ImmediateIndirectDispatch { exec, buffer });
             }
         }
     }
 }
 
 impl RecordedComputePass {
+    /// Attach actual BDA upload allocations, never numeric lifetime tokens.
+    /// The production graph imports their physical buffers/ranges and its
+    /// existing command owner protocol retains them through GPU completion.
+    pub fn with_device_address_reads(
+        mut self,
+        chunks: Vec<rhapsody::raw::dynamic_constants::DynamicConstantsChunk>,
+    ) -> Self {
+        self.device_address_reads.extend(chunks);
+        self
+    }
+
     /// 见 [`ComputeExecution::execute`]。
     pub fn execute(self, exec: &mut dyn ComputeExec) {
+        assert!(self.device_address_reads.is_empty(),
+            "BDA upload ranges require the production graph command owner path");
         ComputeExecution {
             push_constants: self.push_constants,
             dispatch: self.dispatch,
@@ -351,6 +411,10 @@ pub struct ComputePass {
     pub(crate) bindings: Vec<PassBinding>,
     /// `+0x18`：访问范围表（8 B/项）。
     pub(crate) access_ranges: Vec<AccessRange>,
+    pub(crate) inactive_texture_bindings: Vec<u8>,
+    pub(crate) undefined_texture_bindings: Vec<u8>,
+    pub(crate) preserving_buffers: Vec<u32>,
+    pub(crate) preserving_texture_bindings: Vec<u8>,
     /// `+0x30`：外部绑定表（0x48 B/项）。
     pub(crate) external_bindings: Vec<ExternalBinding>,
     /// `+0x60`：`PassBuilder`。
@@ -404,6 +468,14 @@ impl ComputePass {
         source: &T,
         init: ComputePassInit<'_>,
     ) -> ComputePass {
+        Self::try_new(name, source, init).expect("compute pass creation failed")
+    }
+
+    pub fn try_new<T: AsComputeShaderSource>(
+        name: &'static str,
+        source: &T,
+        init: ComputePassInit<'_>,
+    ) -> rhapsody::Result<ComputePass> {
         let hash = source.source_hash();
         let resources = PassResources::new_from(init.world);
         let device = init.world.graphics_device().unwrap();
@@ -414,7 +486,7 @@ impl ComputePass {
             Some((handle, program)) => (handle, device.pipeline_registry(program)),
             None => {
                 let desc = compute_desc(source);
-                let program = ComputeShaderProgram::new(name, desc, init.backend);
+                let program = ComputeShaderProgram::try_new(name, desc, init.backend)?;
                 let registry = device.pipeline_registry(&program);
                 (library.add_compute(program, key), registry)
             }
@@ -424,9 +496,14 @@ impl ComputePass {
         let pass = ComputePass {
             bindings: Vec::new(),
             access_ranges: Vec::new(),
+            inactive_texture_bindings: Vec::new(),
+            undefined_texture_bindings: Vec::new(),
+            preserving_buffers: Vec::new(),
+            preserving_texture_bindings: Vec::new(),
             external_bindings: Vec::new(),
             builder: RecordingPassBuilder {
                 name,
+                render_graph: init.world.resource_graph(),
                 ..RecordingPassBuilder::default()
             },
             uniform_binder,
@@ -439,7 +516,7 @@ impl ComputePass {
         };
         let mut pass = pass;
         BindGameResources::bind_color_library(&mut pass);
-        pass
+        Ok(pass)
     }
 
     /// 注册表解析：未命中 `None`；命中则 `assert_eq!(set_index, 0)`（`assert_failed<SetIndex>`）。
@@ -613,6 +690,104 @@ impl ComputePass {
         }
     }
 
+    /// Current-host metadata for a bound texture whose configured shader
+    /// branch cannot fetch texels. The binding and native access stay intact.
+    pub fn inactive_texture_contents(mut self, hash: u64) -> Self {
+        let Some(binding) = self.resolve(hash) else {
+            return self;
+        };
+        let range = self
+            .access_ranges
+            .iter()
+            .rev()
+            .find(|range| range.resource_index == binding)
+            .expect("inactive texture contents requires an existing graph binding");
+        assert!(
+            matches!(
+                self.bindings.get(range.access_index as usize),
+                Some(PassBinding::ImageView { write: false, .. })
+            ),
+            "inactive texture contents requires a non-writing image binding"
+        );
+        if !self.inactive_texture_bindings.contains(&range.access_index) {
+            self.inactive_texture_bindings.push(range.access_index);
+        }
+        self
+    }
+
+    /// A confirmed shader branch performs no fetch from this storage buffer.
+    /// Reuse the existing per-binding inactive-content capability; its legacy
+    /// `inactive_texture_bindings` field name is retained for API compatibility.
+    /// The descriptor, native access, synchronization and owner remain present.
+    pub fn inactive_storage_buffer_contents(mut self, hash: u64) -> Self {
+        let Some(binding) = self.resolve(hash) else { return self; };
+        let range = self.access_ranges.iter().rev()
+            .find(|range| range.resource_index == binding)
+            .expect("inactive storage contents requires an existing graph binding");
+        assert!(matches!(self.bindings.get(range.access_index as usize),
+            Some(PassBinding::BufferRead { .. })),
+            "inactive storage contents requires a non-writing buffer binding");
+        if !self.inactive_texture_bindings.contains(&range.access_index) {
+            self.inactive_texture_bindings.push(range.access_index);
+        }
+        self
+    }
+
+    /// Current-host original-caller contract: the texture is genuinely read
+    /// but its initial contents may be undefined. Does not mark it initialized,
+    /// remove native binding/sync, or suppress an available producer.
+    pub fn allow_undefined_texture_contents(mut self, hash: u64) -> Self {
+        let Some(binding) = self.resolve(hash) else { return self; };
+        let range = self.access_ranges.iter().rev().find(|range| range.resource_index == binding)
+            .expect("undefined texture contents requires an existing graph binding");
+        assert!(matches!(self.bindings.get(range.access_index as usize),
+            Some(PassBinding::ImageView { write: false, .. })),
+            "undefined texture contents requires a non-writing image binding");
+        assert!(!self.inactive_texture_bindings.contains(&range.access_index),
+            "undefined content read is distinct from an inactive binding");
+        if !self.undefined_texture_bindings.contains(&range.access_index) {
+            self.undefined_texture_bindings.push(range.access_index);
+        }
+        self
+    }
+
+    /// Current-host content intent for a confirmed read/modify operation or a
+    /// partial write whose previously produced regions must survive. Call only
+    /// after the actual storage write binding has been declared.
+    pub fn preserve_storage_buffer_contents(mut self, hash: u64) -> Self {
+        let Some(binding) = self.resolve(hash) else { return self; };
+        let range = self.access_ranges.iter().rev()
+            .find(|range| range.resource_index == binding)
+            .expect("preserving buffer contents requires a declared binding");
+        let resource = match self.bindings.get(range.access_index as usize) {
+            Some(PassBinding::Buffer { resource }) => *resource,
+            _ => panic!("preserving contents requires a graph buffer binding"),
+        };
+        assert!(self.builder.accesses.iter().any(|access| access.resource == resource
+            && matches!(access.access, ACCESS_CPU_MAPPED_WRITE | ACCESS_WRITE_CONCURRENT)),
+            "preserving contents requires a declared buffer write");
+        if !self.preserving_buffers.contains(&resource) {
+            self.preserving_buffers.push(resource);
+        }
+        self
+    }
+
+    /// Preserve the actual previous texture contents for a confirmed partial
+    /// image write. Uses the exact bound view, never every alias of its owner.
+    pub fn preserve_storage_texture_contents(mut self, hash: u64) -> Self {
+        let Some(binding) = self.resolve(hash) else { return self; };
+        let range = self.access_ranges.iter().rev()
+            .find(|range| range.resource_index == binding)
+            .expect("preserving texture contents requires a declared binding");
+        assert!(matches!(self.bindings.get(range.access_index as usize),
+            Some(PassBinding::ImageView { write: true, .. })),
+            "preserving texture contents requires a writing image binding");
+        if !self.preserving_texture_bindings.contains(&range.access_index) {
+            self.preserving_texture_bindings.push(range.access_index);
+        }
+        self
+    }
+
     /// `bind_texture_to_compute_pass<A>`（0x140905260 等）：无视图版。见 [`ComputePass::bind_texture_with_view`]。
     pub fn bind_texture<A: ComputeTexture>(
         self,
@@ -712,7 +887,12 @@ impl ComputePass {
             builder: self.builder,
             bindings: self.bindings,
             access_ranges: self.access_ranges,
+            inactive_texture_bindings: self.inactive_texture_bindings,
+            undefined_texture_bindings: self.undefined_texture_bindings,
+            preserving_buffers: self.preserving_buffers,
+            preserving_texture_bindings: self.preserving_texture_bindings,
             external_bindings: self.external_bindings,
+            device_address_reads: Vec::new(),
             uniform_binder: self.uniform_binder,
             push_constants: self.push_constants,
             program: self.program,
@@ -757,7 +937,7 @@ impl ComputePass {
     pub fn dispatch_indirect_with(
         mut self,
         buffer: &RgBuffer,
-        f: impl FnOnce(&mut dyn ComputeDispatchApi) + Send + 'static,
+        f: impl FnOnce(&mut dyn ComputeDispatchIndirectApi) + Send + 'static,
     ) -> RecordedComputePass {
         self.builder
             .add_resource_access(buffer.resource, ACCESS_INDIRECT_READ, SYNC_GROUP_READ);
@@ -969,7 +1149,7 @@ mod tests {
         CompiledShaderPipeline, ComputePipeline, RasterPipeline, RasterPipelineDesc,
         RasterPipelineKey,
     };
-    use crate::rhapsody_contract::GraphicsDevice;
+    use crate::render::test_device::TestDevice;
     use crate::rhapsody_types::{BackendError, Error, TextureDesc};
     use std::cell::{Cell, RefCell};
 
@@ -1037,6 +1217,7 @@ mod tests {
         loads: Cell<u32>,
         last_path: RefCell<String>,
         last_defines: RefCell<Vec<(String, String)>>,
+        failure: RefCell<Option<rhapsody::Error>>,
     }
     impl ShaderBackend for Backend {
         fn load_compiled_compute(
@@ -1061,8 +1242,11 @@ mod tests {
             &self,
             _: &str,
             _: Arc<CompiledShaderPipeline>,
-        ) -> ComputePipeline {
-            ComputePipeline { id: 1 }
+        ) -> rhapsody::Result<ComputePipeline> {
+            if let Some(error) = self.failure.borrow_mut().take() {
+                return Err(error);
+            }
+            Ok(ComputePipeline { id: 1 })
         }
         fn create_raster_pipeline(
             &self,
@@ -1102,15 +1286,17 @@ mod tests {
     }
 
     fn env_with(registry: ResourceRegistry, vk: &[(u64, u64)]) -> Env {
-        let dev = GraphicsDevice(1);
+        let dev = TestDevice(1);
         let shaders = Box::new(AssetShaderLibrary::new());
         let mut textures = Box::new(AssetTextureLibrary::new(&dev));
-        let ssbos = Box::new(AssetSsboLibrary::new());
+        let mut ssbos = Box::new(AssetSsboLibrary::new());
         ssbos.add_new::<ColorLibrarySsbo>(&dev);
         ssbos.add_new::<RtTrianglesSsbo>(&dev);
         ssbos.add_new::<RtTriangleMetaSsbo>(&dev);
         ssbos.add_new::<RtBvhSsbo>(&dev);
         ssbos.add_new::<WallColorIdSsbo>(&dev);
+        ssbos.get_mut::<RtTrianglesSsbo>().unwrap().instance_count = 17;
+        ssbos.get_mut::<RtBvhSsbo>().unwrap().instance_count = 9;
         textures.create_preset_textures_with(&dev, |_| TextureDesc::new([8, 4, 1], 2, 0x25));
         textures.import_texture_presets_to_rg(&mut crate::rhapsody_types::RenderGraph::default());
         let mut map: HashMap<TypeId128, *const ()> = HashMap::new();
@@ -1146,7 +1332,7 @@ mod tests {
     }
 
     fn new_pass(env: &Env) -> ComputePass {
-        ComputePass::new(
+        ComputePass::try_new(
             "test_pass",
             &"/shaders/foo.cs.hlsl:main",
             ComputePassInit {
@@ -1155,6 +1341,7 @@ mod tests {
                 uniforms: &mut Pool(vec![]),
             },
         )
+        .unwrap()
     }
 
     fn rgb(resource: u32) -> RgBuffer {
@@ -1162,6 +1349,36 @@ mod tests {
     }
 
     // ---------------------------------------------------------------- new
+
+    #[test]
+    fn try_pass_does_not_publish_a_program_when_pipeline_admission_fails() {
+        for error in [
+            rhapsody::Error::Timeout,
+            rhapsody::Error::OutOfHostMemory,
+            rhapsody::Error::OutOfDeviceMemory,
+            rhapsody::Error::DeviceLost,
+        ] {
+            let expected = core::mem::discriminant(&error);
+            let env = env();
+            *env.backend.failure.borrow_mut() = Some(error);
+            let actual = ComputePass::try_new(
+                "failure",
+                &"/shaders/foo.cs.hlsl:main",
+                ComputePassInit {
+                    world: &env,
+                    backend: &env.backend,
+                    uniforms: &mut Pool(vec![]),
+                },
+            )
+            .err()
+            .unwrap();
+            assert_eq!(core::mem::discriminant(&actual), expected);
+            assert_eq!(env._shaders.compute_shaders.len(), 0);
+            let pass = new_pass(&env);
+            assert!(pass.program.is_some());
+            assert_eq!(env._shaders.compute_shaders.len(), 1);
+        }
+    }
 
     #[test]
     fn new_compiles_once_per_source_hash_then_reuses_the_library_program() {
@@ -1277,6 +1494,31 @@ mod tests {
             pass.bindings()[1..].iter().all(|b| b.tag() == 4),
             "all three use tag 4"
         );
+    }
+
+    #[test]
+    fn explicit_buffer_content_intent_preserves_only_the_named_write() {
+        let env = env();
+        let recorded = new_pass(&env)
+            .write_rg_storage_buffer(H_BUF_A, &rgb(100))
+            .write_rg_storage_buffer(H_BUF_B, &rgb(101))
+            .preserve_storage_buffer_contents(H_BUF_A)
+            .preserve_storage_buffer_contents(H_BUF_A)
+            .preserve_storage_buffer_contents(0xDEAD)
+            .dispatch_1d(1);
+        assert_eq!(recorded.preserving_buffers, [100]);
+        assert_eq!(recorded.builder.accesses.iter()
+            .filter(|a| a.resource == 100 || a.resource == 101)
+            .map(|a| (a.resource, a.access)).collect::<Vec<_>>(),
+            [(100, 0x37), (101, 0x37)]);
+    }
+
+    #[test]
+    #[should_panic(expected = "declared buffer write")]
+    fn content_intent_does_not_turn_a_read_into_a_write() {
+        let env = env();
+        new_pass(&env).read_rg_storage_buffer(H_BUF_A, &rgb(100))
+            .preserve_storage_buffer_contents(H_BUF_A);
     }
 
     #[test]
@@ -1472,8 +1714,10 @@ mod tests {
         let tri = u32::from_le_bytes(data[24..28].try_into().unwrap());
         let bvh = u32::from_le_bytes(data[28..32].try_into().unwrap());
         let lib = &env.ssbos;
-        assert_eq!(tri, lib.get_buffer::<RtTrianglesSsbo>().unwrap().id as u32);
-        assert_eq!(bvh, lib.get_buffer::<RtBvhSsbo>().unwrap().id as u32);
+        assert_eq!(tri, 17);
+        assert_ne!(tri, lib.get_buffer::<RtTrianglesSsbo>().unwrap().id as u32);
+        assert_eq!(bvh, 9);
+        assert_ne!(bvh, lib.get_buffer::<RtBvhSsbo>().unwrap().id as u32);
     }
 
     // ---------------------------------------------------------------- uniform / textures
@@ -1991,6 +2235,37 @@ mod tests {
         assert_eq!(
             e.log,
             ["count", "dispatch 3 1 1", "count", "dispatch 2 1 2"]
+        );
+    }
+
+    #[test]
+    fn indirect_callback_uses_declared_buffer_and_each_native_byte_offset() {
+        let env = env();
+        let mut exec = Exec {
+            barrier: true,
+            indirect_ok: true,
+            ..Default::default()
+        };
+        new_pass(&env)
+            .dispatch_indirect_with(&rgb(71), |api| {
+                api.push_constants(&[1, 2, 3, 4]);
+                api.dispatch_indirect(0x6c0);
+                api.push_constants(&[9, 8, 7, 6]);
+                api.dispatch_indirect(0x6d0);
+            })
+            .execute(&mut exec);
+        assert_eq!(
+            exec.log,
+            [
+                "push [1, 2, 3, 4]",
+                "barrier",
+                "count",
+                "indirect 71 1728",
+                "push [9, 8, 7, 6]",
+                "barrier",
+                "count",
+                "indirect 71 1744",
+            ]
         );
     }
 

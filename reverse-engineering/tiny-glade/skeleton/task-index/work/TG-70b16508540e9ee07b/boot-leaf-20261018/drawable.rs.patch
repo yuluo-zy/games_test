@@ -1,0 +1,19 @@
+--- a/games_test/tiny-glade/crates/country-core/src/components/drawable.rs
++++ b/games_test/tiny-glade/crates/country-core/src/components/drawable.rs
+@@ -78,6 +78,16 @@
+     pub transform: Transform,
+ }
+ 
++/// Canonical texture-name hash used by original per-entity draw callbacks.
++/// B flowery/olden insert these beside DrawableMeshBundle; no duplicate view
++/// components should be created by the host.
++#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, PartialEq, Eq)]
++pub struct AlbedoMap(pub u64);
++#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, PartialEq, Eq)]
++pub struct AlphaMap(pub u64);
++#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, PartialEq, Eq)]
++pub struct NormalMap(pub u64);
++
+ #[cfg(test)]
+ mod tests {
+     use super::*;

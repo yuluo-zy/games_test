@@ -18,17 +18,41 @@
 //!
 //! SSBO 名（O：SsboId 与 xxh3_64 比对）："Stairs transforms"（`StairsTransformSsbo`）、"Stairs Counter"（`StairsCounterSsbo`）。
 
+use crate::asset_libraries::ssbo_library::SsboType as LibrarySsbo;
+use crate::render::ssbo::{rhapsody_boundary::GraphicsDevice, StorageElement, TypedStorageBuffer};
 use crate::resources::texture_presets::TexturePreset;
 use crate::systems::render_loop::compute_passes::pass_kit::{
-    PassEnv, StairsCounterBuf, TEX_READ, binding_hash, ssbo_carrier,
+    PassEnv, StairsCounterBuf, TEX_READ, binding_hash,
 };
 use crate::systems::render_loop::indirect_params::DrawIndexedIndirectBuffer;
-use crate::typed_gap::Gap;
 
-/// 台阶变换 SSBO（O 名；布局 U，HLSL `Stair{Affine3Packed}`）。
-#[derive(Clone, Copy, Debug, Default)]
-pub struct StairsTransformSsbo(pub Gap);
-ssbo_carrier!(StairsTransformSsbo, "Stairs transforms");
+/// Original fixed48B affine storage, not an InstanceBuffer. The add_new
+/// wrapper@1412c37d0 allocates40B; ctor@141612cb0 checks whole48B rows and
+/// size<=0x1e0780, then forwards None without uploading zeroes.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct StairsTransformSsbo(pub crate::resources::render::Affine3Packed);
+// SAFETY: repr(C) Affine3Packed consists only of four contiguous Vec3 columns,
+//48B of f32 fields with no padding. Allzero bits are valid f32 values.
+unsafe impl bytemuck::Pod for StairsTransformSsbo {}
+unsafe impl bytemuck::Zeroable for StairsTransformSsbo {}
+impl StorageElement for StairsTransformSsbo {
+    const NAME: &'static str = "Stairs transforms";
+    const BUFFER_LEN: usize = 41000;
+}
+impl LibrarySsbo for StairsTransformSsbo {
+    type Storage = TypedStorageBuffer<Self>;
+    fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
+        TypedStorageBuffer::new_storage_buffer(device, initial)
+    }
+}
+impl crate::render::pass_builder::pass_resource_access::SsboType for StairsTransformSsbo {
+    fn rg_buffer_hash() -> u64 {
+        crate::asset_libraries::ssbo_library::SsboId::of::<Self>()
+            .0
+             .0
+    }
+}
 
 pub const MARCHING_NAME: &str = "Stairs Marching Squares";
 pub const MARCHING_URI: &str = "/rocky_terrain/stairs/stairs.cs.hlsl";
@@ -68,6 +92,9 @@ pub fn stairs(env: &mut PassEnv<'_>) {
     }
     let rec = pass
         .write_storage_buffer_concurrent::<DrawIndexedIndirectBuffer>(HASH_DRAW_COMMANDS, 1)
+        // Original SPV atomically appends only instanceCount; preserve the
+        // existing command fields initialized by reset_indirect_args.
+        .preserve_storage_buffer_contents(HASH_DRAW_COMMANDS)
         .uniform(KEY_DRAW_OFFSET, DRAW_OFFSET)
         .dispatch_2d(GRID, GRID);
     env.record(rec);
@@ -178,5 +205,27 @@ mod tests {
         assert_eq!(COUNTER_NAME.len(), 0xe);
         assert_eq!(COUNTER_URI.len(), 0x2c);
         assert_eq!(PEBBLE_OFFSET, 40_000);
+    }
+}
+
+#[cfg(test)]
+mod bounded_native_factory_regression {
+    use super::*;
+    use crate::asset_libraries::ssbo_library::AssetSsboLibrary;
+    use crate::render::ssbo::tests::MockDevice;
+    #[test]
+    fn original_stairs_allocation_is_typed48b_with_no_none_upload() {
+        let device = MockDevice::default();
+        let library = AssetSsboLibrary::new();
+        library.add_new::<StairsTransformSsbo>(&device);
+        let storage = library.get::<StairsTransformSsbo>().unwrap();
+        assert_eq!(storage.buffer.byte_size, 0x1e0780);
+        let rows = device.created.borrow();
+        assert_eq!((rows[0].1.as_str(), rows[0].0.size, rows[0].0.usage, rows[0].0.memory, rows[0].0.alignment),
+            ("Stairs transforms", 0x1e0780, 0x22, 1, 4));
+        assert!(rows[0].2.is_none());
+        assert_eq!(core::mem::size_of::<StairsTransformSsbo>(), 48);
+        assert_eq!(StairsTransformSsbo::BUFFER_LEN, 41000);
+        assert_eq!(<StairsTransformSsbo as crate::render::pass_builder::pass_resource_access::SsboType>::rg_buffer_hash(), utils::name_hash::NameHash::compute("Stairs transforms").0);
     }
 }

@@ -1,0 +1,151 @@
+--- a/games_test/tiny-glade/crates/country-core/src/resources/walls/decorator.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/walls/decorator.rs
+@@ -783,7 +783,7 @@
+ 
+ /// Original EventWriter consumes this same136B payload; keep a single event
+ /// identity rather than copying it into a second host-only wrapper.
+-pub type DecoratorOpEvent = DecoratorOpEventKind;
++pub use DecoratorOpEventKind as DecoratorOpEvent;
+ 
+ #[cfg(test)]
+ mod canonical_event_owner_tests {
+@@ -915,6 +915,17 @@
+             g = self.wake.wait(g).unwrap();
+         }
+     }
++}
++
++/// B 0x1408337c0: drain the authoritative deferred resource into the canonical
++/// EventWriter. Reuse the owner's existing drain/sentinel implementation.
++pub fn unleash_decorator_op_events(
++    mut deferred: bevy_ecs::prelude::ResMut<DeferredDecoratorOpEvents>,
++    mut writer: bevy_ecs::event::EventWriter<DecoratorOpEvent>,
++) {
++    // Original mutable resource access updates its change tick even if empty.
++    let deferred = &mut *deferred;
++    deferred.drain_events(|event| { writer.write(DecoratorOpEvent(event)); });
+ }
+ 
+ /// B DecoratorRotationXZ：XZ 平面旋转（角度编码，O，2026-10-17 fresh disasm）。
+@@ -1204,3 +1215,121 @@
+ pub mod anchors;
+ 
+ pub mod placement;
++
++#[cfg(test)]
++mod canonical_decorator_event_tests {
++    use super::*;
++    use bevy_ecs::{event::Events, prelude::{Schedule, World}};
++    use crate::resources::history::decorator_edit::DecoratorDiffEvent;
++
++    fn payload(tag: u64, fill: u8) -> [u8; 0x88] {
++        let mut event = [fill; 0x88];
++        event[..8].copy_from_slice(&tag.to_le_bytes());
++        event
++    }
++
++    #[test]
++    fn canonical_aliases_share_type_id_and_tuple_constructor() {
++        use std::any::TypeId;
++        assert_eq!(TypeId::of::<DecoratorOpEvent>(), TypeId::of::<DecoratorOpEventKind>());
++        assert_eq!(TypeId::of::<DecoratorOpEvent>(), TypeId::of::<DecoratorDiffEvent>());
++        assert_eq!(DecoratorOpEventKind([0; 0x88]), DecoratorDiffEvent([0; 0x88]));
++        // Native id dispatch compares the full u64 tag, not its lower dword.
++        let mut event = payload((1_u64 << 32) | 3, 0);
++        event[0x40..0x44].copy_from_slice(&7_u32.to_le_bytes());
++        event[0x68..0x6c].copy_from_slice(&9_u32.to_le_bytes());
++        assert_eq!(DecoratorDiffEvent(event).decorator_id(), 9);
++    }
++
++    #[test]
++    fn actual_world_drain_preserves_payloads_and_bevy_ids_across_frames() {
++        let mut world = World::new();
++        world.init_resource::<DeferredDecoratorOpEvents>();
++        world.init_resource::<Events<DecoratorOpEvent>>();
++        let mut schedule = Schedule::default();
++        schedule.add_systems(unleash_decorator_op_events);
++        let a = payload(3, 0xa1);
++        let b = payload(4, 0xb2);
++        let c = payload(2, 0xc3);
++        world.resource::<DeferredDecoratorOpEvents>().send(a);
++        world.resource::<DeferredDecoratorOpEvents>().send(b);
++        schedule.run(&mut world);
++        let mut cursor = world.resource::<Events<DecoratorOpEvent>>().get_cursor();
++        let first: Vec<_> = cursor.read_with_id(world.resource::<Events<DecoratorOpEvent>>())
++            .map(|(event, id)| (event.0, id.id)).collect();
++        assert_eq!(first, vec![(a, 0), (b, 1)]);
++        schedule.run(&mut world);
++        assert_eq!(cursor.read(world.resource::<Events<DecoratorOpEvent>>()).count(), 0);
++        world.resource_mut::<Events<DecoratorOpEvent>>().update();
++        world.resource::<DeferredDecoratorOpEvents>().send(c);
++        schedule.run(&mut world);
++        let next: Vec<_> = cursor.read_with_id(world.resource::<Events<DecoratorOpEvent>>())
++            .map(|(event, id)| (event.0, id.id)).collect();
++        assert_eq!(next, vec![(c, 2)]);
++    }
++
++    #[test]
++    fn empty_unleash_still_marks_the_deferred_resource_changed() {
++        use bevy_ecs::change_detection::DetectChanges;
++        let mut world = World::new();
++        world.init_resource::<DeferredDecoratorOpEvents>();
++        world.init_resource::<Events<DecoratorOpEvent>>();
++        world.clear_trackers();
++        let mut schedule = Schedule::default();
++        schedule.add_systems(unleash_decorator_op_events);
++        schedule.run(&mut world);
++        assert!(world.get_resource_ref::<DeferredDecoratorOpEvents>().unwrap().is_changed());
++        assert!(world.resource::<Events<DecoratorOpEvent>>().is_empty());
++    }
++
++    #[test]
++    fn existing_history_diff_producer_reaches_the_canonical_stream() {
++        use crate::resources::history::decorator_edit::{
++            send_state_diff_events, DecoratorBeforeAfterWithStorage,
++            DecoratorHistoryState, DecoratorStateWithStorage,
++        };
++        let mut world = World::new();
++        world.init_resource::<DeferredDecoratorOpEvents>();
++        world.init_resource::<Events<DecoratorOpEvent>>();
++        let after = DecoratorStateWithStorage {
++            storage_disc: 1, storage_payload: 0,
++            state: DecoratorHistoryState { ty: 0x3c, ..Default::default() },
++        };
++        let diffs = std::collections::HashMap::from([(
++            DecoratorId(71), DecoratorBeforeAfterWithStorage {
++                before: DecoratorStateWithStorage { storage_disc: 3, ..Default::default() },
++                after,
++            },
++        )]);
++        send_state_diff_events(&diffs, world.resource::<DeferredDecoratorOpEvents>());
++        let mut schedule = Schedule::default();
++        schedule.add_systems(unleash_decorator_op_events);
++        schedule.run(&mut world);
++        let events = world.resource::<Events<DecoratorOpEvent>>();
++        let actual: Vec<_> = events.get_cursor().read(events).copied().collect();
++        assert_eq!(actual, vec![DecoratorDiffEvent::from_added(DecoratorId(71), &after)]);
++        assert_eq!(actual[0].decorator_id(), 71);
++    }
++
++    #[test]
++    fn sentinel_discards_current_remainder_and_allows_later_batch() {
++        let mut world = World::new();
++        world.init_resource::<DeferredDecoratorOpEvents>();
++        world.init_resource::<Events<DecoratorOpEvent>>();
++        let mut schedule = Schedule::default();
++        schedule.add_systems(unleash_decorator_op_events);
++        let a = payload(1, 10);
++        let b = payload(0, 20);
++        for value in [a, payload(5, 0), payload(3, 30)] {
++            world.resource::<DeferredDecoratorOpEvents>().send(value);
++        }
++        schedule.run(&mut world);
++        let mut cursor = world.resource::<Events<DecoratorOpEvent>>().get_cursor();
++        let first: Vec<_> = cursor.read(world.resource::<Events<DecoratorOpEvent>>()).map(|e| e.0).collect();
++        assert_eq!(first, vec![a]);
++        world.resource::<DeferredDecoratorOpEvents>().send(b);
++        schedule.run(&mut world);
++        let next: Vec<_> = cursor.read(world.resource::<Events<DecoratorOpEvent>>()).map(|e| e.0).collect();
++        assert_eq!(next, vec![b]);
++    }
++}

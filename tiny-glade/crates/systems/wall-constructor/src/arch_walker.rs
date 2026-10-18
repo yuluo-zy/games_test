@@ -35,8 +35,17 @@ impl ArchWalker {
         }
     }
 
-    /// B `walk`（4 实例同构）：沿两条点列（取 min 计数）每砖调一次 closure。
-    /// t 越界/NaN 按原断言 panic（payload = f32 fmt）。
+    /// B `walk`（4 实例同构）。**未实现（近似体）**：本实现是依据 re-analyst-C
+    /// O 机器码差分重建的骨架，但 fresh 反编译（0x141232bb0）显示与真实逻辑
+    /// 存在结构性分歧，逐语句不判等：
+    /// - 真实循环推进 `travelled = (travelled − step).max(0)`，逐段 u 经
+    ///   `utils::wall_space::impl$1::subtract()` + `project_clamp()` 周期投影
+    ///   后断言 u∈[0,1]（panic_fmt/panic 串）；本实现用 `travelled = step*emitted`
+    ///   与 `normalize/dir` 直插值，非周期投影。
+    /// - 真实 while 条件 `step < travelled + dist`，循环内 `traversed` 累加；
+    ///   本实现 `step >= travelled + seg*t`。
+    /// - 真实尾砖条件 `step*0.1 < fVar5`（fVar5=循环末 travelled=剩余）；本实现
+    ///   `step*0.1 < total−travelled`。参数面也不完整（真实取两条点列 min 计数）。
     pub fn walk(
         &self,
         points_a: &[Vec3],
@@ -56,7 +65,6 @@ impl ArchWalker {
         let step = total / n as f32;
         let mut travelled = 0.0f32;
         let mut emitted = 0u32;
-        let mut seg_start = 0.0f32;
         for i in 0..count - 1 {
             let a = points_a[i];
             let b = points_a[i + 1];
@@ -66,7 +74,6 @@ impl ArchWalker {
             }
             let mut t = (step - travelled).max(0.0) / seg;
             while step >= travelled + seg * t {
-                // t ∈ [0,1] 且非 NaN（原断言）。
                 assert!(
                     t.is_finite() && (0.0..=1.0).contains(&t),
                     "arch walk interpolation out of range"
@@ -86,9 +93,7 @@ impl ArchWalker {
                 }
                 t = (step - travelled).max(0.0) / seg;
             }
-            seg_start += seg;
         }
-        // 收尾：`if brick_len'·0.1 < 剩余` → 再发一砖。
         let remaining = total - travelled;
         if step * self.tail_ratio < remaining && emitted < n {
             let a = points_a[count - 2];
@@ -97,6 +102,5 @@ impl ArchWalker {
             let at = a + dir * remaining;
             closure(at, at, 1.0);
         }
-        let _ = (seg_start, points_b);
     }
 }

@@ -56,8 +56,8 @@ pub fn ui_place_decorator(
     // NotifyHintSystemStairsPlaced（onboarding 域）core 未落——登记待接线。
     mut _border_feedback: EventWriter<FeedbackInputOutOfBorder>,
     mut _border_display: EventWriter<DisplayOutOfBorder>,
-    mut _insta_point: EventReader<country_core::systems::ui_clutter::ui_autoclutter::InstaCreateStairPoint>,
-    mut _insta_deco: EventReader<country_core::systems::ui_clutter::ui_autoclutter::InstaCreateDeco>,
+    // InstaCreateStairPoint/InstaCreateDeco 为早期编造事件（fresh 0x1407adb20 无此
+    // 事件面；core ui_autoclutter 已删除）——不伪造参数，登记待真事件取证。
     mut _local: Local<PlayedConnectSoundLastFrame>,
 ) {
     // O 结构：init 事件 → 瞬时 id 生成器 + 交互状态初始化；随后命中转换 +

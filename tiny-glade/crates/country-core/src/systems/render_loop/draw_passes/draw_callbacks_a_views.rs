@@ -60,9 +60,8 @@ pub struct ArrowGizmoView {
     pub f4: f32,
 }
 
-/// `components::DashedLineLength`（TypeId 0x4782fcee8a8c578b/0x8dfbde843e1dee9d）：`f32 @+0`。
-#[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
-pub struct DashedLineLengthView(pub f32);
+// 保留旧导出名，绘制端与创建端必须使用同一个 ECS 组件身份。
+pub use crate::components::DashedLineLength as DashedLineLengthView;
 
 /// `resources::critters::sheep::Sheep`（TypeId 0x60556123d75da34f/0x847d370ca9cbbae9；crate 里不存在）：
 /// `qword @+0x28`（取低 32 位写 `i32`）、`f32 @+0x58`、`u8 @+0x60`（写 `bool`）。
@@ -82,11 +81,9 @@ pub struct PrevTransformView {
     pub scale: Vec3,
 }
 
-/// `components::StairsStep`（TypeId 0x775c6361f3425a3a/0x3bad471c3be19d00；真实类型 `(pub Gap)`）：首字节 `flags`。
-#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct StairsStepView {
-    pub flags: u8,
-}
+/// Compatibility name for the same canonical Component identity. No byte cast
+/// or independently registered View remains on the startup -> draw path.
+pub use crate::components::rendering::StairsStep as StairsStepView;
 
 /// `geometry::instanced_wall::WallBrickInstancedDrawProxy`（组件）：三个字节 `b0 @+0`、`b1 @+1`、`b2 @+2`。真实类型
 /// `{ kind: u16, sub: u8 }` 的字节对应关系 U，故用视图。

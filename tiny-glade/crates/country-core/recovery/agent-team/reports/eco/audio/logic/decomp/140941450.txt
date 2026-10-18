@@ -1,0 +1,157 @@
+// add_audio_events @ 0x140941450
+
+void __cdecl country_core::systems::audio::impl$1::add_audio_events(void)
+
+{
+  longlong extraout_RAX;
+  longlong extraout_RAX_00;
+  longlong extraout_RAX_01;
+  longlong extraout_RAX_02;
+  longlong extraout_RAX_03;
+  longlong extraout_RAX_04;
+  longlong extraout_RAX_05;
+  longlong extraout_RAX_06;
+  longlong extraout_RAX_07;
+  longlong extraout_RAX_08;
+  longlong extraout_RAX_09;
+  longlong extraout_RAX_10;
+  longlong extraout_RAX_11;
+  longlong extraout_RAX_12;
+  longlong extraout_RAX_13;
+  longlong extraout_RAX_14;
+  longlong in_RCX;
+  ulonglong uVar1;
+  
+  uVar1 = 0x7ec63db0ec5bfa27;
+  bevy_ecs::component::Components::get_resource_id();
+  if ((((extraout_RAX == 0) || (*(ulonglong *)(in_RCX + 0x218) <= uVar1)) ||
+      (uVar1 = *(ulonglong *)(*(longlong *)(in_RCX + 0x210) + uVar1 * 8), uVar1 == 0)) ||
+     (*(longlong *)(*(longlong *)(in_RCX + 0x1e0) + 0x20 + ~uVar1 * 0x60) == 0)) {
+    bevy_ecs::event::registry::EventRegistry::
+    register_event<enum2_<country_core::systems::audio::terrain_audio::PlayTerrainSound>_>();
+  }
+  uVar1 = 0xff5aab470424bf42;
+  bevy_ecs::component::Components::get_resource_id();
+  if (((extraout_RAX_00 == 0) || (*(ulonglong *)(in_RCX + 0x218) <= uVar1)) ||
+     ((uVar1 = *(ulonglong *)(*(longlong *)(in_RCX + 0x210) + uVar1 * 8), uVar1 == 0 ||
+      (*(longlong *)(*(longlong *)(in_RCX + 0x1e0) + 0x20 + ~uVar1 * 0x60) == 0)))) {
+    bevy_ecs::event::registry::EventRegistry::
+    register_event<country_core::systems::audio::terrain_stairs_audio::SuppressPathSound>();
+  }
+  uVar1 = 0x2e2680f935d7e684;
+  bevy_ecs::component::Components::get_resource_id();
+  if (((extraout_RAX_01 == 0) || (*(ulonglong *)(in_RCX + 0x218) <= uVar1)) ||
+     ((uVar1 = *(ulonglong *)(*(longlong *)(in_RCX + 0x210) + uVar1 * 8), uVar1 == 0 ||
+      (*(longlong *)(*(longlong *)(in_RCX + 0x1e0) + 0x20 + ~uVar1 * 0x60) == 0)))) {
+    bevy_ecs::event::registry::EventRegistry::
+    register_event<country_core::systems::audio::replay_audio::PlayReplayAudio>();
+  }
+  uVar1 = 0x5346e6de066d963d;
+  bevy_ecs::component::Components::get_resource_id();
+  if ((((extraout_RAX_02 == 0) || (*(ulonglong *)(in_RCX + 0x218) <= uVar1)) ||
+      (uVar1 = *(ulonglong *)(*(longlong *)(in_RCX + 0x210) + uVar1 * 8), uVar1 == 0)) ||
+     (*(longlong *)(*(longlong *)(in_RCX + 0x1e0) + 0x20 + ~uVar1 * 0x60) == 0)) {
+    bevy_ecs::event::registry::EventRegistry::
+    register_event<country_core::systems::audio::decorator_audio::PlayDecoratorSoundCmd>();
+  }
+  uVar1 = 0xa426e5baec5c3c50;
+  bevy_ecs::component::Components::get_resource_id();
+  if (((extraout_RAX_03 == 0) || (*(ulonglong *)(in_RCX + 0x218) <= uVar1)) ||
+     ((uVar1 = *(ulonglong *)(*(longlong *)(in_RCX + 0x210) + uVar1 * 8), uVar1 == 0 ||
+      (*(longlong *)(*(longlong *)(in_RCX + 0x1e0) + 0x20 + ~uVar1 * 0x60) == 0)))) {
+    bevy_ecs::event::registry::EventRegistry::
+    register_event<country_core::systems::audio::playermade_stairs_audio::PlayStairsAudioCmd>();
+  }
+  uVar1 = 0x17efc73a52cbc5e0;
+  bevy_ecs::component::Components::get_resource_id();
+  if (((extraout_RAX_04 == 0) || (*(ulonglong *)(in_RCX + 0x218) <= uVar1)) ||
+     ((uVar1 = *(ulonglong *)(*(longlong *)(in_RCX + 0x210) + uVar1 * 8), uVar1 == 0 ||
+      (*(longlong *)(*(longlong *)(in_RCX + 0x1e0) + 0x20 + ~uVar1 * 0x60) == 0)))) {
+    bevy_ecs::event::registry::EventRegistry::
+    register_event<country_core::systems::audio::wall_audio_ui::PlayWallUiSound>();
+  }
+  uVar1 = 0xd939acd8c1b1e20c;
+  bevy_ecs::component::Components::get_resource_id();
+  if ((((extraout_RAX_05 == 0) || (*(ulonglong *)(in_RCX + 0x218) <= uVar1)) ||
+      (uVar1 = *(ulonglong *)(*(longlong *)(in_RCX + 0x210) + uVar1 * 8), uVar1 == 0)) ||
+     (*(longlong *)(*(longlong *)(in_RCX + 0x1e0) + 0x20 + ~uVar1 * 0x60) == 0)) {
+    bevy_ecs::event::registry::EventRegistry::
+    register_event<country_core::systems::audio::wall_audio_fmod::PlayWallAudio>();
+  }
+  uVar1 = 0xf6ea83c3aaec457d;
+  bevy_ecs::component::Components::get_resource_id();
+  if (((extraout_RAX_06 == 0) || (*(ulonglong *)(in_RCX + 0x218) <= uVar1)) ||
+     ((uVar1 = *(ulonglong *)(*(longlong *)(in_RCX + 0x210) + uVar1 * 8), uVar1 == 0 ||
+      (*(longlong *)(*(longlong *)(in_RCX + 0x1e0) + 0x20 + ~uVar1 * 0x60) == 0)))) {
+    bevy_ecs::event::registry::EventRegistry::
+    register_event<country_core::systems::audio::wall_audio_orchestrator::RequestWallMaterialAudio>
+              ();
+  }
+  uVar1 = 0x32d6124d18ba99a1;
+  bevy_ecs::component::Components::get_resource_id();
+  if (((extraout_RAX_07 == 0) || (*(ulonglong *)(in_RCX + 0x218) <= uVar1)) ||
+     ((uVar1 = *(ulonglong *)(*(longlong *)(in_RCX + 0x210) + uVar1 * 8), uVar1 == 0 ||
+      (*(longlong *)(*(longlong *)(in_RCX + 0x1e0) + 0x20 + ~uVar1 * 0x60) == 0)))) {
+    bevy_ecs::event::registry::EventRegistry::
+    register_event<country_core::systems::audio::WallBendAudioParamReset>();
+  }
+  uVar1 = 0xd6fb7b0d0feee696;
+  bevy_ecs::component::Components::get_resource_id();
+  if ((((extraout_RAX_08 == 0) || (*(ulonglong *)(in_RCX + 0x218) <= uVar1)) ||
+      (uVar1 = *(ulonglong *)(*(longlong *)(in_RCX + 0x210) + uVar1 * 8), uVar1 == 0)) ||
+     (*(longlong *)(*(longlong *)(in_RCX + 0x1e0) + 0x20 + ~uVar1 * 0x60) == 0)) {
+    bevy_ecs::event::registry::EventRegistry::
+    register_event<country_core::systems::audio::timberframe_audio::PlayTimberframeSound>();
+  }
+  uVar1 = 0x574af3bb50cbe03;
+  bevy_ecs::component::Components::get_resource_id();
+  if (((extraout_RAX_09 == 0) || (*(ulonglong *)(in_RCX + 0x218) <= uVar1)) ||
+     ((uVar1 = *(ulonglong *)(*(longlong *)(in_RCX + 0x210) + uVar1 * 8), uVar1 == 0 ||
+      (*(longlong *)(*(longlong *)(in_RCX + 0x1e0) + 0x20 + ~uVar1 * 0x60) == 0)))) {
+    bevy_ecs::event::registry::EventRegistry::
+    register_event<country_core::systems::audio::sheep_audio::PlaySheepReactSound>();
+  }
+  uVar1 = 0xfc533cfe7fb82312;
+  bevy_ecs::component::Components::get_resource_id();
+  if (((extraout_RAX_10 == 0) || (*(ulonglong *)(in_RCX + 0x218) <= uVar1)) ||
+     ((uVar1 = *(ulonglong *)(*(longlong *)(in_RCX + 0x210) + uVar1 * 8), uVar1 == 0 ||
+      (*(longlong *)(*(longlong *)(in_RCX + 0x1e0) + 0x20 + ~uVar1 * 0x60) == 0)))) {
+    bevy_ecs::event::registry::EventRegistry::
+    register_event<country_core::systems::audio::menu_audio::PlayMenuUiSound>();
+  }
+  uVar1 = 0x92363eed557867c4;
+  bevy_ecs::component::Components::get_resource_id();
+  if ((((extraout_RAX_11 == 0) || (*(ulonglong *)(in_RCX + 0x218) <= uVar1)) ||
+      (uVar1 = *(ulonglong *)(*(longlong *)(in_RCX + 0x210) + uVar1 * 8), uVar1 == 0)) ||
+     (*(longlong *)(*(longlong *)(in_RCX + 0x1e0) + 0x20 + ~uVar1 * 0x60) == 0)) {
+    bevy_ecs::event::registry::EventRegistry::
+    register_event<country_core::systems::audio::building_audio::PlayBuildingAudio>();
+  }
+  uVar1 = 0x42f819386ab1e370;
+  bevy_ecs::component::Components::get_resource_id();
+  if (((extraout_RAX_12 == 0) || (*(ulonglong *)(in_RCX + 0x218) <= uVar1)) ||
+     ((uVar1 = *(ulonglong *)(*(longlong *)(in_RCX + 0x210) + uVar1 * 8), uVar1 == 0 ||
+      (*(longlong *)(*(longlong *)(in_RCX + 0x1e0) + 0x20 + ~uVar1 * 0x60) == 0)))) {
+    bevy_ecs::event::registry::EventRegistry::
+    register_event<country_core::systems::audio::elevation_supports_audio::PlayElevationSupportSoundCmd>
+              ();
+  }
+  uVar1 = 0xcc5c77fac0305738;
+  bevy_ecs::component::Components::get_resource_id();
+  if (((extraout_RAX_13 == 0) || (*(ulonglong *)(in_RCX + 0x218) <= uVar1)) ||
+     ((uVar1 = *(ulonglong *)(*(longlong *)(in_RCX + 0x210) + uVar1 * 8), uVar1 == 0 ||
+      (*(longlong *)(*(longlong *)(in_RCX + 0x1e0) + 0x20 + ~uVar1 * 0x60) == 0)))) {
+    bevy_ecs::event::registry::EventRegistry::
+    register_event<country_core::systems::audio::clutter_audio::PlayClutterSoundCmd>();
+  }
+  uVar1 = 0xf2179e648d4a36a7;
+  bevy_ecs::component::Components::get_resource_id();
+  if ((((extraout_RAX_14 == 0) || (*(ulonglong *)(in_RCX + 0x218) <= uVar1)) ||
+      (uVar1 = *(ulonglong *)(*(longlong *)(in_RCX + 0x210) + uVar1 * 8), uVar1 == 0)) ||
+     (*(longlong *)(*(longlong *)(in_RCX + 0x1e0) + 0x20 + ~uVar1 * 0x60) == 0)) {
+    bevy_ecs::event::registry::EventRegistry::
+    register_event<country_core::systems::audio::tree_audio::PlayTreeSoundCmd>();
+  }
+  return;
+}
+

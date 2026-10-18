@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-18",
+  "kind": "post-refactor source review; production source unchanged",
+  "geometry_unchanged_during_review": true,
+  "findings": [
+    {
+      "id": "R1",
+      "priority": "P1",
+      "status": "open",
+      "scope": "GPU buffer ownership on sparse storage/library teardown",
+      "evidence": "source-confirmed; no Drop/uninstall calls release_buffer; live BufferHost retains ManagedBuffer slots"
+    }
+  ],
+  "checks": [
+    {
+      "kind": "vulkaninfo read-only properties",
+      "exit_code": 0,
+      "device": "Apple M3",
+      "maxStorageBufferRange": 4294967295,
+      "brick_buffer_bytes": 201326592,
+      "log": "device-info.log"
+    },
+    {
+      "command": "RHAPSODY_REQUIRE_VULKAN=1 cargo test -p tiny-glade --test geometry_rereview_gpu_probe_20261018 --locked --offline -- --nocapture",
+      "exit_code": 101,
+      "result": "did not run",
+      "reason": "save system configuration E0277",
+      "log": "gpu-probe.log"
+    },
+    {
+      "command": "same diagnostic after save-source changes",
+      "exit_code": 101,
+      "result": "did not run",
+      "reason": "No space left on device (os error 28) writing country-core rmeta",
+      "log": "gpu-probe-retry.log"
+    }
+  ],
+  "temporary_test_removed": true,
+  "gpu_diagnostic_confirmed_runtime": false,
+  "scope_limits": [
+    "no new full-game/runtime acceptance",
+    "existing geometry tests not rerun under disk exhaustion",
+    "R1 is confirmed by production ownership code; GPU reproducer remains unexecuted"
+  ]
+}

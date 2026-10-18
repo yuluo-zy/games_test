@@ -1,0 +1,66 @@
+--- games_test/tiny-glade/crates/country-core/src/systems/save/mod.rs
++++ games_test/tiny-glade/crates/country-core/src/systems/save/mod.rs
+@@ -1,8 +1,7 @@
+ //! Recovered save-file codec, mutable shadow and incremental write consumers,
+-//! plus the asynchronous capture thread. The original game-thread capture
+-//! system that assembles GameSaveData from ~9 domain resources is not
+-//! registered here yet (domain owners pending); load_game's on_load replay
+-//! depends on meta_commander.rs per the coordinator ruling.
++//! plus the original inline game-thread snapshot collector and save worker.
++//! The actual host registers these systems with its original numeric sets.
++//! Session switching still goes through canonical MetaCommander and NextSession.
+ pub mod load_completion_checker;
+ pub mod load_game;
+ pub mod save_backup_list;
+@@ -33,7 +32,11 @@
+ /// B `add_save_load_events_and_resources` 0x1409447e0：注册事件/资源
+ /// （SaveGameCmd/SavingGameComplete/LoadingGameComplete 等）。
+ pub fn add_save_load_events_and_resources(world: &mut bevy_ecs::world::World) {
+-    use bevy_ecs::event::Events;
++    fn register<T: bevy_ecs::event::Event>(world: &mut bevy_ecs::world::World) {
++        if !world.contains_resource::<bevy_ecs::event::Events<T>>() {
++            bevy_ecs::event::EventRegistry::register_event::<T>(world);
++        }
++    }
+     // Original @1409447e0 constructs both channels and starts Async save
+     // before inserting the load/save owners. Do it once at App assembly.
+     if !world.contains_resource::<save_game::AutoSaveState>() {
+@@ -47,13 +50,13 @@
+     world.init_resource::<load_completion_checker::LoadingCompletionState>();
+     world.init_resource::<crate::resources::session::SavedSessionList>();
+     save_game::register_save_game_events(world);
+-    world.init_resource::<Events<save_game::SavingGameComplete>>();
+-    world.init_resource::<Events<load_game::LoadingGameComplete>>();
+-    world.init_resource::<Events<load_game::StartupRevealStarted>>();
+-    world.init_resource::<Events<load_game::StartupRevealFinished>>();
+-    world.init_resource::<Events<load_completion_checker::DisplayCorruptedSaveFileWarning>>();
+-    world.init_resource::<Events<crate::resources::session::NewSessionStartedCmd>>();
+-    world.init_resource::<Events<crate::resources::session::SessionLoadedCmd>>();
++    register::<save_game::SavingGameComplete>(world);
++    register::<load_game::LoadingGameComplete>(world);
++    register::<load_game::StartupRevealStarted>(world);
++    register::<load_game::StartupRevealFinished>(world);
++    register::<load_completion_checker::DisplayCorruptedSaveFileWarning>(world);
++    register::<crate::resources::session::NewSessionStartedCmd>(world);
++    register::<crate::resources::session::SessionLoadedCmd>(world);
+ }
+ 
+ /// 注册 save 系统（save_game 节拍器/快照触发；load_game 消费 NextSession；save_thread
+@@ -61,12 +64,11 @@
+ use bevy_ecs::schedule::IntoScheduleConfigs;
+ pub fn add_save_load_systems_impl(schedule: &mut bevy_ecs::schedule::Schedule) {
+     schedule.add_systems((
+-        save_game::save_game_system
+-            .after(crate::systems::debug::sheep_controls::sheep_controls),
+-        // 域内快照捕获系统（O：save_game 0x140a3f470 触发后内联快照采集）——
+-        // 宿主经 `CaptureSnapshotRequested` 请求额外快照；采集 roofs/walls/terrain/
+-        // stairs 并发送 AsyncSaveCmd::CaptureSnapshot(9) + record_snapshot。
+-        save_game::capture_snapshot_system,
++        save_game::save_game_system.run_if(
++            |active: Option<bevy_ecs::system::Res<crate::resources::session::ActiveSession>>| {
++                active.is_some()
++            },
++        ),
+         load_game::load_game_system,
+         save_thread::init_save_thread,
+     ));

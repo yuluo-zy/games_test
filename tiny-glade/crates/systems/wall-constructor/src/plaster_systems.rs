@@ -1,116 +1,105 @@
 //! 石膏系统（plaster_systems.rs）。
 //!
-//! `maintain_plaster`（0x14075b810，53KB）/`create_plaster`（0x14075d460）/
-//! `split_wall_into_sides`（0x14075dc60）/`generate_plaster_mesh_and_entities`
-//! （0x1412269b0，71.6KB，Map<Filter<Iter<(Aabb2,HoleType,HoleOrigin)>>> 泛型
-//! 实例）/`register_required_components`（0x14075e9e0）。常量 0x7fffffff/0.01
-//! 同族。候选参数面（skeleton 富化）：
-//! `(ResMut<WallPlasters>, Res<GraphicsDeviceResource>, Res<PublicWalls>,
-//!  Res<WallHoles>, Query<&Roof>, Commands, …)`。
+//! 2026-10-17 restorer-remaining-wallconstructor fresh 反编译结论
+//! （证据 `work/restorer-remaining-wallconstructor/evidence/`）：
+//! 旧实现为**近似体**（create 分支自造实体、delete 分支直接 despawn、
+//! recalc 空转），与机器码不符，已按规定降级为 `todo!` 并逐条登记分歧点。
 //!
-//! 事件族（原 resources/walls/plaster.rs）：CreatePlasterCmd/DeletePlasterCmd/
-//! RecalculatePlasterCmd（+ RecalculateHalfTimberMeshCmd/
-//! RecalculateWoodenTurretCmd 同族）。W-B4：五函数按 decomp 结构补全
-//! （逐面网格坐标的精确数值登记为未恢复细节）。
+//! ## `maintain_plaster`（0x14075b810，5273B / 53KB decomp）已解结构
+//! 1. `puffin` scope 包装（`are_scopes_on`/`begin_scope`/`end_scope`）。
+//! 2. 延迟缓冲回收：`retain<tuple<Buffer,i32>, closure_env$0>`
+//!    （`maintain_deferred_plaster_buffer_disposal`）。
+//! 3. `from_iter<WallId, Map<EventIterator<OnWallChanged>, closure_env$0>>`
+//!    —— 消费本帧变更墙 id。
+//! 4. 逐墙：`PublicWallState` 查表 → `time_continuous_lerp` 求 δ（peel
+//!    量）→ `|new-old| >= 0.01` 才：`try_get_wall_shape`（ShapeParameters::
+//!    center）、`max_y`、`xvy` → 0x28B indexmap bucket（tag byte 9 @+0x20、
+//!    +0x1c=1.0、+0x24 等）入 signifier/记录 Vec；
+//!    `insert<WallId, PlasterPeelAmount>`（0x1411fcad0）；peel 值变化再 push
+//!    到脏 Vec。
+//! 5. `Decorators::iter_removed_ids` → `remove_entry<WallId, Vec<Entity>>`
+//!    （WallPlasters）→ 逐实体 `Entities::contains` → `despawn`。
+//! 6. `from_iter<WallId, Copied<Keys<WallId, PublicWallState>>>`（PublicWalls
+//!    全 key）→ `sort_by_key<closure_env$4>`（insertion_sort/driftsort）。
+//! 7. 再 drain `WallPlasters`（remove_entry + despawn 残留实体）。
+//! 8. 逐墙 `StructureType::is_fence` 门控；`FinalizedWallHoles::
+//!    holes_no_duplicates()` → `generate_plaster_mesh_and_entities<
+//!    Map<Filter<Iter<(Aabb2,HoleType,HoleOrigin)>>>>`。
+//!
+//! ## `create_plaster`（0x14075d460，1686B）已解结构
+//! 逐 `CreatePlasterCmd` 事件（40B stride）：puffin scope → `PublicWalls`
+//! 探测（墙记录 stride 0x2a8，缺失 `unwrap_failed`）→ `WallHoles::
+//! as_finalized`（stride 0x68）→ `holes_no_duplicates()` → 另一 map 探测
+//! （stride 0x20）→ `generate_plaster_mesh_and_entities`。
+//!
+//! ## 其余
+//! - `split_wall_into_sides`（0x14075dc60，3130B）：墙 `+0x258` 字段 < 2
+//!   与 bit0 门控、4 侧循环、WallSide 记录/0.1m 格/`psubusw 0x00020002`
+//!   下限等，未逐语句。
+//! - `generate_plaster_mesh_and_entities`（0x1412269b0，71.6KB 泛型单态）：
+//!   mesh 拓扑/UV/buffer 布局未逐语句。
+//! - `register_required_components`（0x14075e9e0）：Plaster 组件注册胶水
+//!   （待类型落库）。
+//!
+//! **未实现**：以上 4 个函数均保持 `todo!`；不写近似体。解锁条件：按各
+//! 函数新鲜反编译全序重建（`maintain_plaster` 还需 `Decorators`/
+//! `WallPlasters`/`PlasterPeelAmount`/`time_continuous_lerp` 的落库面）。
 use country_core::asset_libraries::ssbo_library::AssetSsboLibrary;
 use country_core::resources::{
     roofs::Roof,
     walls::{
-        plaster::{CreatePlasterCmd, DeletePlasterCmd, RecalculatePlasterCmd, Plaster},
+        plaster::{CreatePlasterCmd, DeletePlasterCmd, RecalculatePlasterCmd},
         public_walls::{PublicWalls, WallPlasters},
         wall_holes::WallHoles,
     },
 };
 use bevy_ecs::prelude::*;
 
-/// B `maintain_plaster`（0x14075b810）：石膏命令消费/实体生命周期维护
-/// （bevy 0.16 event/collections 断言 0x142c1c4c8 链）。
+/// B `maintain_plaster`（0x14075b810）：石膏命令消费/实体生命周期维护。
+/// **未实现**：真实结构见模块文档（peel 插值/脏链/PublicWalls 排序/
+/// holes→mesh 全序），旧近似体已移除。
 pub fn maintain_plaster(
-    mut plasters: ResMut<WallPlasters>,
+    _plasters: ResMut<WallPlasters>,
     _graphics: Res<AssetSsboLibrary>,
-    walls: Res<PublicWalls>,
-    mut holes: ResMut<WallHoles>,
-    roofs: Query<&Roof>,
-    mut commands: Commands,
-    mut create: EventReader<CreatePlasterCmd>,
-    mut delete: EventReader<DeletePlasterCmd>,
-    mut recalc: EventReader<RecalculatePlasterCmd>,
+    _walls: Res<PublicWalls>,
+    _holes: ResMut<WallHoles>,
+    _roofs: Query<&Roof>,
+    _commands: Commands,
+    _create: EventReader<CreatePlasterCmd>,
+    _delete: EventReader<DeletePlasterCmd>,
+    _recalc: EventReader<RecalculatePlasterCmd>,
 ) {
-    for request in create.read() {
-        // 创建石膏：墙存在 + 有屋顶关系 → 生成 Plaster 实体并登记。
-        let Some(wall) = walls.get(request.0) else {
-            continue;
-        };
-        let has_roof = walls
-            .roof_entity(request.0)
-            .and_then(|entity| roofs.get(entity).ok())
-            .is_some();
-        let entity = commands.spawn(Plaster(country_core::Gap)).id();
-        plasters
-            .0
-            .entry(request.0)
-            .or_default()
-            .push(Some(entity));
-        let _ = (wall, has_roof);
-    }
-    for request in delete.read() {
-        // 删除石膏：despawn 实体 + 移除登记。
-        if let Some(entries) = plasters.0.get_mut(&request.0) {
-            for entry in entries.iter_mut() {
-                if let Some(entity) = entry.take() {
-                    commands.entity(entity).despawn();
-                }
-            }
-            plasters.0.remove(&request.0);
-        }
-    }
-    for request in recalc.read() {
-        // 石膏重算：洞列表驱动 mesh 重新生成（generate_plaster_mesh 链）。
-        let _ = (request.0, &mut *holes);
-    }
+    todo!("未实现: maintain_plaster 0x14075b810（peel 插值/iter_removed_ids/PublicWalls sort_by_key/holes→mesh 全序；见模块文档）")
 }
 
-/// B `create_plaster`（0x14075d460）：为新石膏墙生成实体（上同 create 分支；
-/// 独立系统面：ResMut<WallPlasters>, Res<PublicWalls>, Commands）。
+/// B `create_plaster`（0x14075d460）。**未实现**：逐事件 `PublicWalls` 探测
+/// （wall 缺失 unwrap panic）→ `WallHoles::as_finalized` → `holes_no_duplicates`
+/// → `generate_plaster_mesh_and_entities`；旧近似体已移除。
 pub fn create_plaster(
-    mut plasters: ResMut<WallPlasters>,
-    walls: Res<PublicWalls>,
-    mut commands: Commands,
-    mut create: EventReader<CreatePlasterCmd>,
+    _plasters: ResMut<WallPlasters>,
+    _walls: Res<PublicWalls>,
+    _commands: Commands,
+    _create: EventReader<CreatePlasterCmd>,
 ) {
-    for request in create.read() {
-        if walls.get(request.0).is_none() {
-            continue;
-        }
-        let entity = commands.spawn(Plaster(country_core::Gap)).id();
-        plasters
-            .0
-            .entry(request.0)
-            .or_default()
-            .push(Some(entity));
-    }
+    todo!("未实现: create_plaster 0x14075d460（PublicWalls→WallHoles::as_finalized→holes_no_duplicates→generate_plaster_mesh 全序）")
 }
 
-/// B `split_wall_into_sides`（0x14075dc60）：墙两面拆分（石膏面片；
-/// 前/后两面点列 → 面片 [f32;4] 记录）。
-pub fn split_wall_into_sides(points: &[[f32; 3]], out: &mut Vec<[f32; 4]>) {
-    for w in points.windows(2) {
-        out.push([w[0][0], w[0][1], w[0][2], (w[1][0] + w[1][2]) * 0.5]);
-    }
+/// B `split_wall_into_sides`（0x14075dc60）。**未实现**：4 侧拆分（WallSide
+/// 24B/0.1m 格/`psubusw 0x00020002` 下限/roof_flag 枚举）未逐语句。
+/// 旧近似体（首尾两点推 [f32;4]）已移除。
+pub fn split_wall_into_sides(_points: &[[f32; 3]], _out: &mut Vec<[f32; 4]>) {
+    todo!("未实现: split_wall_into_sides 0x14075dc60（4 侧循环/WallSide 24B/0.1m 格/0x00020002 下限）")
 }
 
 /// B `generate_plaster_mesh_and_entities`（0x1412269b0）：石膏网格与实体生成
-/// （泛型实例 Map<Filter<Iter<(Aabb2, HoleType, HoleOrigin)>>>：洞 AABB 过滤
-/// → 面片网格顶点；71.6KB 的逐顶点坐标登记为未恢复细节）。
+/// （泛型单态 `Map<Filter<Iter<(Aabb2, HoleType, HoleOrigin)>>>`）。
+/// **未实现**：逐顶点拓扑/UV/buffer 布局未逐语句。
 pub fn generate_plaster_mesh_and_entities(
-    holes: &[(f32, f32, f32, f32, u8, u8)],
+    _holes: &[(f32, f32, f32, f32, u8, u8)],
     _out_mesh: &mut Vec<[f32; 3]>,
 ) -> usize {
-    // 洞 AABB（x0,z0,x1,z1）+ (HoleType, HoleOrigin) 过滤 → 面片顶点。
-    // 常量 0x7fffffff/0.01 族（re-analyst §6）。
-    holes.len()
+    todo!("未实现: generate_plaster_mesh_and_entities 0x1412269b0（71.6KB 泛型单态：mesh 拓扑/UV/buffer 布局）")
 }
 
 /// B `register_required_components`（0x14075e9e0）：Plaster 的 required 组件。
 pub fn register_required_components(_registry: &mut bevy_ecs::component::Components) {}
-

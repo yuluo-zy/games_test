@@ -36,12 +36,15 @@ use super::{
     WATER_RT_SHADER_URI,
 };
 
-/// `water_surface_pass(rg, world, color, depth, A, B, history_valid, C, D, lists)`。
-pub fn water_surface_pass(
-    ctx: &mut DrawPassCtx<'_>,
-    env: &mut SurfaceEnv<'_>,
-    i: &SurfaceInputs<'_>,
-) {
+/// Owned exact resources created before native Water plane. No World,
+/// compute host or mutable graph borrow escapes this preparation phase.
+pub struct WaterSurfacePrepared {
+    count: crate::render::pass_builder::compute_pass_builder::RgBuffer,
+    ray: crate::render::pass_builder::compute_pass_builder::RgBuffer,
+    trace: super::surface_support::SurfaceRasterTrace,
+}
+
+pub fn prepare_water_surface(env: &mut SurfaceEnv<'_>, i: &SurfaceInputs<'_>) -> WaterSurfacePrepared {
     // 1. 计数缓冲 + 清零。
     let (count, _) = env.create_buffer(WATER_COUNT_BUFFER_NAME, WATER_COUNT_BUFFER_SIZE);
     env.clear_buffer(&count);
@@ -49,11 +52,15 @@ pub fn water_surface_pass(
     let [w, h] = i.half_depth.desc.extent_2d();
     let (ray, _) = env.create_buffer(WATER_RAY_BUFFER_NAME, super::water_ray_buffer_size(w, h));
 
+    WaterSurfacePrepared { count, ray, trace: env.raster_trace() }
+}
+
+pub fn raster_water_surface(ctx: &mut DrawPassCtx<'_>, prepared: &WaterSurfacePrepared, i: &SurfaceInputs<'_>) {
     // 3-5. 栅格 pass "Water plane"。
     let colors = [ColorAttachment::Texture(att(i.color))];
     let history_valid = u32::from(i.history_valid);
     {
-        let e: &SurfaceEnv<'_> = env;
+        let e = &prepared.trace;
         run_surface_raster(
             ctx,
             e,
@@ -64,19 +71,27 @@ pub fn water_surface_pass(
             &|b| {
                 let b = d_sampled(e, b, i.half_depth, names::HALF_DEPTH_TEX);
                 let b = d_sampled(e, b, i.taa_history, names::TAA_HISTORY_TEX);
+                let b = if i.history_valid == 0 { b.inactive_texture_contents(names::TAA_HISTORY_TEX) } else { b };
                 let b = d_uniform_u32(e, b, names::HISTORY_VALID, history_valid);
                 let b = d_sampled(e, b, i.reprojection, names::REPROJECTION_TEX);
-                let b = d_write_rg(e, b, names::WATER_RT_COUNT_BUFFER, &count);
-                let b = d_write_rg(e, b, names::WATER_RT_RAY_BUFFER, &ray);
+                let b = d_write_rg(e, b, names::WATER_RT_COUNT_BUFFER, &prepared.count);
+                let b = b.preserve_storage_buffer_contents(names::WATER_RT_COUNT_BUFFER);
+                let b = d_write_rg(e, b, names::WATER_RT_RAY_BUFFER, &prepared.ray);
                 d_sampled(e, b, i.refraction, names::REFRACTION_TEX)
             },
         );
     }
 
+}
+
+pub fn finish_water_surface(env: &mut SurfaceEnv<'_>, prepared: WaterSurfacePrepared, i: &SurfaceInputs<'_>) {
+    let history_valid = u32::from(i.history_valid);
+    let WaterSurfacePrepared { count, ray, .. } = prepared;
     // 6. "Water deferred rt args"：计数缓冲写 + 单线程。
     let args = env
         .compute_pass(WATER_ARGS_PASS_NAME, WATER_ARGS_SHADER_URI)
         .write_rg(names::WATER_RT_COUNT_BUFFER, &count)
+        .preserve_buffer(names::WATER_RT_COUNT_BUFFER)
         .dispatch_1d(1);
     env.record(args);
 
@@ -99,6 +114,17 @@ pub fn water_surface_pass(
         .disk(names::BLUE_NOISE_TEXTURE, names::BLUE_NOISE_FILE)
         .ray_tracing()
         .tex_write(names::COLOR_TEX, i.color)
+        .preserve_texture(names::COLOR_TEX)
+        .inactive_texture_when(names::TAA_HISTORY_TEX, i.history_valid == 0)
         .dispatch_indirect(&count);
     env.record(rt);
+}
+
+/// Existing entry delegates to the same original preparation/raster/finish
+/// sequence. Production hosts may release their immutable World borrow between
+/// phases; no native call or ordering is omitted.
+pub fn water_surface_pass(ctx: &mut DrawPassCtx<'_>, env: &mut SurfaceEnv<'_>, i: &SurfaceInputs<'_>) {
+    let prepared = prepare_water_surface(env, i);
+    raster_water_surface(ctx, &prepared, i);
+    finish_water_surface(env, prepared, i);
 }

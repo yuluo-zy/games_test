@@ -12,7 +12,6 @@ use super::{
     save_game::{
         AsyncSaveCmd, GameSaveSections, SaveFileSection, SaveFileStructure, SerializedJson,
     },
-    save_backup_list::BackupSaveFileKind,
     shadow_file::ShadowFile,
     snapshot::SnapshotSaveData,
 };
@@ -39,23 +38,57 @@ pub struct DeferredSection {
     pub value: SerializedJson,
 }
 
-/// 未落盘文件列表（PDB：`save_thread::UnsavedFileList`；Arc 共享，游戏线程/存档线程共用）。
+/// 未落盘文件列表条目（O：`UnsavedFileList::add` 0x14171ff80 fresh disasm：
+/// `len << 7` 计算尾部、`grow_one` 后**拷贝 16 qword = 0x80B**；`contains_file`
+/// 0x1417201a0 每步 `len*0x80 - 0x80` 遍历，条目内路径按 `Path::components()`
+/// 反向 `eq_by` 比较）。路径位于条目 **+0**（`OsStr/PathBuf` 24B）；其余 `0x68`
+/// 字段身份 U（`contains_file` 不读），保持为不解析的不透明字节，不编造字段名。
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct UnsavedFileEntry {
+    /// +0x00：路径（`PathBuf`，24B）。
+    pub path: PathBuf,
+    /// +0x18..0x80：未被 `contains_file` 读取的原生尾部（U，原样保留）。
+    pub opaque: [u8; 0x68],
+}
+impl UnsavedFileEntry {
+    /// 生产路径构造（未被消费的 0x68 尾部置零；不是对原生字段值的断言）。
+    pub fn from_path(path: PathBuf) -> Self {
+        Self {
+            path,
+            opaque: [0u8; 0x68],
+        }
+    }
+}
+const _: () = assert!(std::mem::size_of::<UnsavedFileEntry>() == 0x80);
+
+/// 未落盘文件列表（PDB：`save_thread::UnsavedFileList`；`parking_lot::Mutex`
+/// 保护，O：add 0x14171ff80 / contains_file 0x1417201a0 的 `RawMutex` fast/slow
+/// 路径与 `Vec` 三元组 {ptr, cap, len}）。
 #[derive(Debug, Default)]
 pub struct UnsavedFileList {
-    files: std::sync::Mutex<Vec<PathBuf>>,
+    files: parking_lot::Mutex<Vec<UnsavedFileEntry>>,
 }
 impl UnsavedFileList {
-    /// B 0x14171ff80：登记一个未落盘文件。
-    pub fn add(&self, path: PathBuf) {
-        self.files.lock().expect("unsaved list poisoned").push(path);
+    /// B 0x14171ff80：登记一个未落盘文件（0x80B 整条目拷贝）。
+    pub fn add(&self, entry: UnsavedFileEntry) {
+        self.files.lock().push(entry);
+    }
+    /// 生产便利入口：以路径构造 0x80B 条目。
+    pub fn add_path(&self, path: PathBuf) {
+        self.add(UnsavedFileEntry::from_path(path));
     }
     /// B 0x1417201a0：列表查找（"Was asked to load an unsaved file" 前置检查）。
+    /// 原生按 `Path::components()` 反向逐组件比较；对等价的绝对/相对路径，
+    /// `PathBuf ==` 等价（CRATE 侧路径均为 join 生成的同形路径）。
     pub fn contains_file(&self, path: &Path) -> bool {
         self.files
             .lock()
-            .expect("unsaved list poisoned")
             .iter()
-            .any(|candidate| candidate == path)
+            .any(|candidate| candidate.path == path)
+    }
+    /// 条目数（测试/诊断）。
+    pub fn len(&self) -> usize {
+        self.files.lock().len()
     }
 }
 
@@ -90,7 +123,9 @@ impl AutosaveErrorState {
             errors: Vec::new(),
         }
     }
-    /// B `AutosaveErrorState::is_ok` 0x140b92210：`[rcx+0x10]==0`（错误列表空）。
+    /// **VA 错锚纠正（O：fresh 反编译）**：0x140b92210 实为
+    /// `tg_text::shape_stream::ShapeStream::is_empty`（9B 空函数），**非**
+    /// `AutosaveErrorState::is_ok`。本访问器语义 = 错误列表空（原生 `[rcx+0x10]==0`）。
     pub fn is_ok(&self) -> bool {
         self.errors.is_empty()
     }
@@ -229,15 +264,17 @@ impl CurrentSaveFile {
         self.shadow_file.sync_all()
     }
 
-    /// B `CurrentSaveFile::flush_deferred_and_sync` 0x14171f7f0：应用延迟节变更并落盘。
-    /// save_thread Shutdown 路径调用；失败由调用方 log
-    /// "Error flushing save file on game thread disconnect."。
+    /// B `CurrentSaveFile::flush_deferred_and_sync` 0x14171f7f0：应用延迟节变更。
+    /// fresh 反编译 disasm 全 CALL 清单**无 `0x14091a230`(sync_all)/`0x1409193d0`(flush)**——
+    /// 原生只逐槽 apply `change_section`（deferred @+0xd8 stride 0x28），**不 sync_all**
+    /// （旧实现的末尾 `self.sync_all()` 为新增，已删）。save_thread Shutdown-flush 路径调用；
+    /// 失败由调用方 log "Error flushing save file on game thread disconnect."。
     pub fn flush_deferred_and_sync(&mut self) -> bool {
         let pending = std::mem::take(&mut self.deferred_sections);
         for slot in pending.into_iter().flatten() {
             self.change_section(slot.section, &slot.value);
         }
-        self.sync_all()
+        true
     }
 
     /// B execute_save_cmd case 7 BackupSave / default 8 ManualBackup：
@@ -382,28 +419,42 @@ impl CurrentSaveFile {
 /// 公共断言 `truncate <= history_edit_offsets.len()` 已由 `replace_edits` 内置；
 /// `ChangeSection`/`ReplaceEdits` 在无活动档时 panic（state==3），
 /// `CaptureSnapshot`/`Flush` 在无活动档时仅日志。
-pub fn execute_save_cmd(current: &mut Option<CurrentSaveFile>, cmd: AsyncSaveCmd) {
+///
+/// **case3(OpenFile)/case4(CloseFile)（O：fresh 反编译）**：均对前一档
+/// `flush_deferred_and_sync`（非旧实现的 `sync_all`），失败时 **`UnsavedFileList::add`**
+/// （原生生产路径调用 add，unsaved 机制由 save_thread OpenFile 前置检查消费）。
+pub fn execute_save_cmd(
+    current: &mut Option<CurrentSaveFile>,
+    cmd: AsyncSaveCmd,
+    unsaved: &UnsavedFileList,
+) {
     match cmd {
         AsyncSaveCmd::OpenFile {
             session,
             sections,
             edits,
         } => {
-            execute_open_file_cmd(current, session, sections, edits);
+            execute_open_file_cmd(current, session, sections, edits, unsaved);
         }
         AsyncSaveCmd::CloseFile { .. } => {
-            *current = None;
+            // case4：flush 前一档 + 失败 UnsavedFileList::add + drop（原生 = flush+add+drop）。
+            if let Some(mut previous) = current.take() {
+                if !previous.flush_deferred_and_sync() {
+                    let path = previous.shadow_file.path().to_path_buf();
+                    unsaved.add_path(path);
+                }
+            }
         }
         AsyncSaveCmd::ChangeSection { section, value } => {
-            let file = current.as_mut().expect(
-                "No active save file, but AsyncSaveCmd::ChangeSection has been issued",
-            );
+            let file = current
+                .as_mut()
+                .expect("No active save file, but AsyncSaveCmd::ChangeSection has been issued");
             file.change_section(section, &value);
         }
         AsyncSaveCmd::ReplaceEdits { truncate, edits } => {
-            let file = current.as_mut().expect(
-                "No active save file, but AsyncSaveCmd::ReplaceEdits has been issued",
-            );
+            let file = current
+                .as_mut()
+                .expect("No active save file, but AsyncSaveCmd::ReplaceEdits has been issued");
             if file.replace_edits(truncate, &edits) {
                 log::debug!("Edit appended to save file");
             } else {
@@ -430,11 +481,25 @@ pub fn execute_save_cmd(current: &mut Option<CurrentSaveFile>, cmd: AsyncSaveCmd
                 log::warn!("No active save file, but AsyncSaveCmd::BackupSave has been issued");
             }
         }
-        AsyncSaveCmd::ManualBackup { path, kind } => {
+        AsyncSaveCmd::ManualBackup { path, kind, reply } => {
             if let Some(file) = current.as_mut() {
-                file.perform_manual_backup(&path, kind);
+                let result = file.perform_manual_backup(&path, kind);
+                if let Some(reply) = reply {
+                    let _ = reply.send(if result {
+                        Ok(())
+                    } else {
+                        Err(anyhow::anyhow!("Manual backup failed: {}", path.display()))
+                    });
+                }
             } else {
                 log::warn!("No active save file, but AsyncSaveCmd::ManualBackup has been issued");
+                // 同步请求-应答（create_backup_of 0x141e59860）：无活动档也必须回发，
+                // 否则请求方阻塞 recv 死锁。
+                if let Some(reply) = reply {
+                    let _ = reply.send(Err(anyhow::anyhow!(
+                        "No active save file, but AsyncSaveCmd::ManualBackup has been issued"
+                    )));
+                }
             }
         }
         AsyncSaveCmd::CaptureSnapshot { snapshot } => {
@@ -460,18 +525,22 @@ pub fn execute_save_cmd(current: &mut Option<CurrentSaveFile>, cmd: AsyncSaveCmd
 }
 
 /// B execute_save_cmd case 3 OpenFile（内联 `execute_open_file_cmd`）：
-/// 旧态 flush（失败 warn "Flush error while closing previous save file (upon open request)"）
-/// → 全量重写（save_game_to_file<Cursor>，失败 log "Rewriting history file"）→
+/// 前一档 `flush_deferred_and_sync`（失败 `UnsavedFileList::add`，log
+/// "Flush error while closing previous save file (upon open request)"）→
+/// 全量重写（save_game_to_file<Cursor>，失败 log "Rewriting history file"）→
 /// ShadowFile::create("history.json") → 装入新 CurrentSaveFile。
 pub fn execute_open_file_cmd(
     current: &mut Option<CurrentSaveFile>,
     session: SessionId,
     sections: GameSaveSections,
     edits: Vec<SerializedJson>,
+    unsaved: &UnsavedFileList,
 ) {
     if let Some(previous) = current.as_mut() {
-        if !previous.shadow_file.sync_all() {
+        if !previous.flush_deferred_and_sync() {
             log::warn!("Flush error while closing previous save file (upon open request)");
+            let path = previous.shadow_file.path().to_path_buf();
+            unsaved.add_path(path);
         }
     }
     let new_file = CurrentSaveFile::create(session.save_folder_path(), sections, &edits);
@@ -490,16 +559,17 @@ pub fn execute_open_file_cmd(
 /// - drop 当前存档（消费一个 GC 释放，断言属于当前档）；
 /// - 3=OpenFile 前置：`unsaved.contains_file(save_folder/history.json)` → panic
 ///   "Was asked to load an unsaved file"；
-/// - 11=Shutdown：需 flush → `flush_deferred_and_sync`（失败 warn
-///   "Error flushing save file on game thread disconnect."）→ 发回确认 → 退出线程；
-///   无活动档且不需 flush → 睡 10ms 继续；有活动档 → 直接退出。
+/// - 11=Shutdown：**flush=true** → `flush_deferred_and_sync`（失败 warn
+///   "Error flushing save file on game thread disconnect."）→ drop 当前档 → **返回退出**；
+///   **flush=false** → 应用 deferred + 睡 10ms + **继续循环（不 break，O 0x141721104
+///   jumptable 应用 deferred change_section→sleep(0x989680=10ms)→continue）**。
 ///
-/// 返回关闭确认（Shutdown 完成时发送 `()`）；调用方可用它等待存档线程退出。
+/// 原生**无 shutdown_ack 通道**（退出路径 drop error_sender + commands receiver 后
+/// return）；本实现已删自造 shutdown_ack。
 pub fn save_thread(
     commands: Receiver<AsyncSaveCmd>,
     error_sender: crossbeam_channel::Sender<Vec<(PathBuf, AutoSaveError)>>,
     unsaved: Arc<UnsavedFileList>,
-    shutdown_ack: crossbeam_channel::Sender<()>,
 ) {
     let mut current: Option<CurrentSaveFile> = None;
     let mut previous_errors: Vec<(PathBuf, AutoSaveError)> = Vec::new();
@@ -540,53 +610,45 @@ pub fn save_thread(
         }
 
         // 2/6. 等待命令（≤1s）。
-        let mut shutdown = None;
         match commands.recv_timeout(Duration::from_secs(1)) {
+            Ok(AsyncSaveCmd::Shutdown { flush }) => {
+                if flush {
+                    // 11=Shutdown{flush:true}：flush_deferred_and_sync + drop + 退出线程。
+                    if let Some(file) = current.as_mut() {
+                        if !file.flush_deferred_and_sync() {
+                            log::warn!("Error flushing save file on game thread disconnect.");
+                        }
+                    }
+                    // current drop + error_sender/commands receiver drop + return 退出。
+                    return;
+                }
+                // 11=Shutdown{flush:false}：应用 deferred（有活动档时）+ 睡 10ms + 继续循环。
+                if let Some(file) = current.as_mut() {
+                    file.flush_deferred_and_sync();
+                }
+                std::thread::sleep(Duration::from_millis(10));
+            }
             Ok(cmd) => {
                 // 5. 每次处理命令前消费一个 GC 释放并断言属于当前档。
                 if let Some(file) = current.as_mut() {
                     file.consume_snapshot_gc_release();
                 }
-                if matches!(cmd, AsyncSaveCmd::Shutdown { .. }) {
-                    shutdown = Some(cmd);
-                } else {
-                    // 8. OpenFile 前置：unsaved 列表命中 history.json → panic。
-                    if let AsyncSaveCmd::OpenFile { session, .. } = &cmd {
-                        let history = session.save_folder_path().join("history.json");
-                        if unsaved.contains_file(&history) {
-                            panic!("Was asked to load an unsaved file");
-                        }
+                // 8. OpenFile 前置：unsaved 列表命中 history.json → panic。
+                if let AsyncSaveCmd::OpenFile { session, .. } = &cmd {
+                    let history = session.save_folder_path().join("history.json");
+                    if unsaved.contains_file(&history) {
+                        panic!("Was asked to load an unsaved file");
                     }
-                    execute_save_cmd(&mut current, cmd);
                 }
+                execute_save_cmd(&mut current, cmd, &unsaved);
             }
             Err(_) => {
-                // 超时：进入下一轮（diff 已在每轮开头执行）。
-            }
-        }
-
-        // 7. Shutdown。
-        if let Some(cmd) = shutdown {
-            let need_flush = match cmd {
-                AsyncSaveCmd::Shutdown { flush } => flush,
-                _ => unreachable!(),
-            };
-            if need_flush {
+                // 超时：无命令 → 有活动档时应用 deferred（原生每轮无命令即 apply），
+                // 进入下一轮（diff 已在每轮开头执行）。
                 if let Some(file) = current.as_mut() {
-                    if !file.flush_deferred_and_sync() {
-                        log::warn!("Error flushing save file on game thread disconnect.");
-                    }
+                    file.flush_deferred_and_sync();
                 }
-                let _ = shutdown_ack.send(());
-                break;
             }
-            if current.is_some() {
-                // 待取证：原版无 flush 且有活动档时走 0x141721104 未恢复 jumptable
-                // （DELTA §1 差异项）；当前直接 break 退出，语义标 O 实为待取证。
-                break;
-            }
-            // 无活动档且不需 flush：睡 10ms 后继续（原版行为，O）。
-            std::thread::sleep(Duration::from_millis(10));
         }
     }
 }
@@ -597,45 +659,43 @@ pub fn save_thread(
 // ---------------------------------------------------------------------------
 
 /// 存档线程生产句柄（游戏线程侧资源）。`join` 供收尾等待；`command_sender` 经
-/// `AutoSaveState::attach_command_sender` 装配；`error_state` 供游戏线程吸干错误列表；
-/// `shutdown_ack` 供关闭时等待存档线程确认。
+/// `AutoSaveState::attach_command_sender` 装配；`error_state` 供游戏线程吸干错误列表。
+/// 原生无 shutdown_ack（Shutdown{flush:true} 直接退出线程），已删。
 #[derive(bevy_ecs::resource::Resource)]
 pub struct SaveThreadHandle {
     pub join: JoinHandle<()>,
     pub command_sender: crossbeam_channel::Sender<AsyncSaveCmd>,
     pub error_state: AutosaveErrorState,
-    pub shutdown_ack: crossbeam_channel::Receiver<()>,
 }
 
 impl SaveThreadHandle {
     /// 生产存档线程（O：主循环 `save_thread` + 通道对 + unsaved 共享列表）。
     pub fn spawn() -> Self {
+        Self::spawn_with_unsaved(Arc::new(UnsavedFileList::default()))
+    }
+
+    pub fn spawn_with_unsaved(unsaved: Arc<UnsavedFileList>) -> Self {
         let (command_sender, command_receiver) = crossbeam_channel::unbounded();
         let (error_sender, error_state) = AutosaveErrorState::channel();
-        let (shutdown_ack, shutdown_ack_receiver) = crossbeam_channel::unbounded();
-        let unsaved = Arc::new(UnsavedFileList::default());
-        let join = std::thread::spawn(move || {
-            save_thread(command_receiver, error_sender, unsaved, shutdown_ack)
-        });
+        let join = std::thread::Builder::new()
+            .name("Async save".into())
+            .spawn(move || save_thread(command_receiver, error_sender, unsaved))
+            .expect("spawning Async save");
         Self {
             join,
             command_sender,
             error_state,
-            shutdown_ack: shutdown_ack_receiver,
         }
     }
 }
 
 /// `init_save_thread`（O：run_game_thread 装配点）：生产存档线程并把命令发送端
 /// 绑定到 `AutoSaveState`。已在装配（command_sender 已附）则跳过（幂等）。
-pub fn init_save_thread(
-    mut auto: ResMut<super::save_game::AutoSaveState>,
-    mut commands: Commands,
-) {
+pub fn init_save_thread(mut auto: ResMut<super::save_game::AutoSaveState>, mut commands: Commands) {
     if auto.is_command_attached() {
         return;
     }
-    let handle = SaveThreadHandle::spawn();
+    let handle = SaveThreadHandle::spawn_with_unsaved(auto.unsaved_files.clone());
     auto.attach_command_sender(handle.command_sender.clone());
     commands.insert_resource(handle);
 }

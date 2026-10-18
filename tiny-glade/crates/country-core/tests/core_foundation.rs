@@ -218,6 +218,8 @@ fn both_draw_consumers_read_the_same_highlight_resource_after_clear() {
     world.insert_resource(CursorTerrainRaycast {
         tag: 1,
         pos: Vec3::new(5.0, 6.0, 7.0),
+        delta: Vec3::ZERO,
+        speed: 0.0,
     });
     let before = BrickEraseInputs::from_world(&world).to_a4();
     assert!(before.enabled);

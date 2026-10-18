@@ -1,0 +1,11 @@
+
+void __cdecl
+country_core::resources::walls::decorator_archivist::DecoratorArchivist::decorator_cull_allow_stairs
+          (void)
+
+{
+  _ZN102__LT_core__iter__adapters__map__Map_LT_I_C_F_GT__u20_as_u20_core__iter__traits__iterator__Iterator_GT_4fold17h1014fed281d97499E
+            ();
+  return;
+}
+

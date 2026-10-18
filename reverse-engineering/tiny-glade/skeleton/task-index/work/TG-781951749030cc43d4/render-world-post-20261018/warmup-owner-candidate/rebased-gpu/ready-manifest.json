@@ -1,0 +1,39 @@
+{
+  "mode": "candidate only; no production/Cargo/GPU",
+  "apply_order": [
+    "04-owner-aa-and-w54-strict-gpu.patch",
+    "05-spd-after-owner-w54-gpu.patch"
+  ],
+  "checks_preserved": [
+    "TAA and TGSR two frames: exact TGSR blue22 on both",
+    "all existing history declaration and byte flags",
+    "original W54 whole36B replacement and actual capture/reference pixels"
+  ],
+  "dependencies": [
+    "warmup-owner 01/02/03",
+    "W54 core/source integrated",
+    "SPD candidate 01/02 before SPD test execution"
+  ],
+  "patches": [
+    {
+      "patch": "04-owner-aa-and-w54-strict-gpu.patch",
+      "sha256": "0de573097988a5a8bff5c614e413ade5c1b92944d766879a1fd54d3ef20d6146",
+      "before_sha256": "8235d93306bcc1105c44aef30c959415ad629f17c72ba20c0eafba16d53b52a0",
+      "after_sha256": "4079066790b72110560fa68c9814770f56c730bc9c08272f96368c80466eb513",
+      "parse_exit": 0,
+      "parse_stderr": "",
+      "dry_run_exit": 0,
+      "dry_run_output": "patching file 'crates/tiny-glade/tests/original_scene_compute_gpu.rs'\n"
+    },
+    {
+      "patch": "05-spd-after-owner-w54-gpu.patch",
+      "sha256": "6b45947beb42593ccc6dbf5417cb3a8b8099a8577a2476c3ad1073f77cd45dee",
+      "before_sha256": "4079066790b72110560fa68c9814770f56c730bc9c08272f96368c80466eb513",
+      "after_sha256": "21975433aceb93eb4a5874cc620aa18bf9ec53a888790623b1d112129264b596",
+      "parse_exit": 0,
+      "parse_stderr": "",
+      "dry_run_exit": 0,
+      "dry_run_output": "patching file 'crates/tiny-glade/tests/original_scene_compute_gpu.rs'\n"
+    }
+  ]
+}

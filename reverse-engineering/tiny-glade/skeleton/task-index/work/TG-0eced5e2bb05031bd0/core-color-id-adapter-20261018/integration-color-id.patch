@@ -1,0 +1,193 @@
+--- a/games_test/tiny-glade/crates/country-core/src/resources/color_id.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/color_id.rs
+@@ -140,14 +140,14 @@
+ /// 墙颜色设置命令（O：`color_id::SetWallColorIdCmd`；color_menu 0x142291230
+ /// 发射、set_wall_color_id 0x142290820 消费）。
+ ///
+-/// 载荷（0x18B EventInstance = 0x10B 载荷，fresh 反编译 2026-10-17）：`{id u32@+8,
+-/// +0xc..+0x10 U, 新色 u32@+0x10, custom u8@+0x14}`。`repr(C)` 对齐 0x10B 载荷。
++/// 载荷（0x18B EventInstance = 0x10B payload）：`{wall_id u64@+8,
++/// color u32@+0x10, custom u8@+0x14}`。现接口保留低/高两个u32组成完整WallId。
+ #[repr(C)]
+ #[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default)]
+ pub struct SetWallColorIdCmd {
+-    /// 目标墙 id（u32 @+8）。
+-    pub id: u32,
+-    /// +0xc..+0x10：U（re-analyst §2 未定；typed gap）。
++    /// WallId low32; use wall_id() for the actual complete identity.
++    pub id: u32,
++    /// WallId high32; original producers/consumers copy the whole u64.
+     pub _gap4: u32,
+     /// 新颜色（u32 @+0x10）。
+     pub color: u32,
+@@ -162,9 +162,9 @@
+ #[repr(C)]
+ #[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default)]
+ pub struct SetGateColorIdCmd {
+-    /// 目标门 id（u32 @+8）。
+-    pub id: u32,
+-    /// +0xc..+0x10：U。
++    /// WallId low32; use wall_id() for the actual complete identity.
++    pub id: u32,
++    /// WallId high32; original producers/consumers copy the whole u64.
+     pub _gap4: u32,
+     /// 新颜色（u32 @+0x10）。
+     pub color: u32,
+@@ -179,9 +179,9 @@
+ #[repr(C)]
+ #[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default)]
+ pub struct SetHalftimberColorIdCmd {
+-    /// 目标 id（u32 @+8）。
+-    pub id: u32,
+-    /// +0xc..+0x10：U。
++    /// WallId low32; use wall_id() for the actual complete identity.
++    pub id: u32,
++    /// WallId high32; original producers/consumers copy the whole u64.
+     pub _gap4: u32,
+     /// 新颜色（u32 @+0x10）。
+     pub color: u32,
+@@ -189,6 +189,57 @@
+     pub custom: u8,
+     /// +0x15..+0x18 对齐填充。
+     pub _pad: [u8; 3],
++}
++
++impl SetWallColorIdCmd {
++    /// Lossless adapter for the existing split-field representation. B callers
++    /// pass the full event+8 qword to the identity-index leaf1400885d0.
++    pub const fn wall_id(&self) -> crate::resources::walls::WallId {
++        crate::resources::walls::WallId((self.id as u64) | ((self._gap4 as u64) << 32))
++    }
++    pub const fn new(wall_id: crate::resources::walls::WallId, color: u32, custom: u8) -> Self {
++        Self {
++            id: wall_id.0 as u32,
++            _gap4: (wall_id.0 >> 32) as u32,
++            color,
++            custom,
++            _pad: [0; 3],
++        }
++    }
++}
++
++impl SetGateColorIdCmd {
++    /// Lossless adapter for the existing split-field representation. B callers
++    /// pass the full event+8 qword to the identity-index leaf1400885d0.
++    pub const fn wall_id(&self) -> crate::resources::walls::WallId {
++        crate::resources::walls::WallId((self.id as u64) | ((self._gap4 as u64) << 32))
++    }
++    pub const fn new(wall_id: crate::resources::walls::WallId, color: u32, custom: u8) -> Self {
++        Self {
++            id: wall_id.0 as u32,
++            _gap4: (wall_id.0 >> 32) as u32,
++            color,
++            custom,
++            _pad: [0; 3],
++        }
++    }
++}
++
++impl SetHalftimberColorIdCmd {
++    /// Lossless adapter for the existing split-field representation. B callers
++    /// pass the full event+8 qword to the identity-index leaf1400885d0.
++    pub const fn wall_id(&self) -> crate::resources::walls::WallId {
++        crate::resources::walls::WallId((self.id as u64) | ((self._gap4 as u64) << 32))
++    }
++    pub const fn new(wall_id: crate::resources::walls::WallId, color: u32, custom: u8) -> Self {
++        Self {
++            id: wall_id.0 as u32,
++            _gap4: (wall_id.0 >> 32) as u32,
++            color,
++            custom,
++            _pad: [0; 3],
++        }
++    }
+ }
+ 
+ /// 装饰颜色设置命令（O：`resources::color_id::SetDecoratorColorIdCmd`；
+@@ -326,10 +377,7 @@
+ 
+ impl LibrarySsbo for WallColorIdSsbo {
+     type Storage = TypedStorageBuffer<WallColorIdSsbo>;
+-    fn new_storage_buffer(
+-        device: &dyn GraphicsDevice,
+-        initial: Option<&[u8]>,
+-    ) -> Self::Storage {
++    fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
+         TypedStorageBuffer::<WallColorIdSsbo>::new_storage_buffer(device, initial)
+     }
+ }
+@@ -347,10 +395,7 @@
+ 
+ impl LibrarySsbo for GateColorIdSsbo {
+     type Storage = TypedStorageBuffer<GateColorIdSsbo>;
+-    fn new_storage_buffer(
+-        device: &dyn GraphicsDevice,
+-        initial: Option<&[u8]>,
+-    ) -> Self::Storage {
++    fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
+         TypedStorageBuffer::<GateColorIdSsbo>::new_storage_buffer(device, initial)
+     }
+ }
+@@ -368,10 +413,7 @@
+ 
+ impl LibrarySsbo for HalftimberColorIdSsbo {
+     type Storage = TypedStorageBuffer<HalftimberColorIdSsbo>;
+-    fn new_storage_buffer(
+-        device: &dyn GraphicsDevice,
+-        initial: Option<&[u8]>,
+-    ) -> Self::Storage {
++    fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
+         TypedStorageBuffer::<HalftimberColorIdSsbo>::new_storage_buffer(device, initial)
+     }
+ }
+@@ -418,9 +460,11 @@
+         );
+         // SsboId 与着色器绑定立即数（O：bind_resources `0xaf42315d263aa22a`；
+         // ssbo_tags `RoofColorIdTag` 0x8cce418b17d89f9b）。
+-        assert_eq!(SsboId::of::<WallColorIdSsbo>().0 .0, 0xaf42315d263aa22a);
++        assert_eq!(SsboId::of::<WallColorIdSsbo>().0.0, 0xaf42315d263aa22a);
+         assert_eq!(
+-            SsboId::of::<crate::resources::color_id_roof::RoofColorIdSsbo>().0 .0,
++            SsboId::of::<crate::resources::color_id_roof::RoofColorIdSsbo>()
++                .0
++                .0,
+             0x8cce418b17d89f9b
+         );
+     }
+@@ -441,3 +485,36 @@
+         assert_eq!(core::mem::size_of::<SetStairRailingCmd>(), 0x8);
+     }
+ }
++
++#[cfg(test)]
++mod full_wall_id_tests {
++    use super::*;
++    #[test]
++    fn wall_color_commands_keep_all_identity_bits_and_current_layout() {
++        for id in [0, 7, 0xffff_ffff, 0x1_0000_0007, u64::MAX] {
++            let wall = crate::resources::walls::WallId(id);
++            for (low, high, decoded) in [
++                {
++                    let c = SetWallColorIdCmd::new(wall, 12, 255);
++                    (c.id, c._gap4, c.wall_id())
++                },
++                {
++                    let c = SetGateColorIdCmd::new(wall, 12, 255);
++                    (c.id, c._gap4, c.wall_id())
++                },
++                {
++                    let c = SetHalftimberColorIdCmd::new(wall, 12, 255);
++                    (c.id, c._gap4, c.wall_id())
++                },
++            ] {
++                assert_eq!(low, id as u32);
++                assert_eq!(high, (id >> 32) as u32);
++                assert_eq!(decoded, wall);
++            }
++        }
++        assert_eq!(core::mem::size_of::<SetWallColorIdCmd>(), 16);
++        assert_eq!(core::mem::offset_of!(SetWallColorIdCmd, _gap4), 4);
++        assert_eq!(core::mem::offset_of!(SetWallColorIdCmd, color), 8);
++        assert_eq!(core::mem::offset_of!(SetWallColorIdCmd, custom), 12);
++    }
++}

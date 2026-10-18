@@ -61,12 +61,21 @@ fn radiance_view() -> TextureViewDesc {
         .usage(RADIANCE_VIEW_USAGE)
 }
 
-/// `ice_surface_pass(rg, world, color, depth, A, B, history_valid, C, D, lists)`。
-pub fn ice_surface_pass(
-    ctx: &mut DrawPassCtx<'_>,
-    env: &mut SurfaceEnv<'_>,
-    i: &SurfaceInputs<'_>,
-) {
+/// Complete owned outputs of native pre-raster resource creation. The exact
+/// ray/count/history identities continue through all four compute consumers.
+pub struct IceSurfacePrepared {
+    rough: crate::render::pass_builder::pass_resource_access::RgTexture,
+    refr_hits: crate::render::pass_builder::pass_resource_access::RgTexture,
+    refr_hit_radiance: crate::render::pass_builder::pass_resource_access::RgTexture,
+    refl_count: crate::render::pass_builder::compute_pass_builder::RgBuffer,
+    rt_count: crate::render::pass_builder::compute_pass_builder::RgBuffer,
+    refl_px: crate::render::pass_builder::compute_pass_builder::RgBuffer,
+    rt_ray: crate::render::pass_builder::compute_pass_builder::RgBuffer,
+    shadows: crate::render::pass_builder::rg_resources::TemporalTexturePair,
+    trace: super::surface_support::SurfaceRasterTrace,
+}
+
+pub fn prepare_ice_surface(env: &mut SurfaceEnv<'_>, i: &SurfaceInputs<'_>) -> rhapsody::Result<IceSurfacePrepared> {
     let color_extent = i.color.desc.extent_2d();
     let [aw, ah] = i.half_depth.desc.extent_2d();
     let names_ = ICE_RESOURCE_NAMES;
@@ -85,19 +94,23 @@ pub fn ice_surface_pass(
     let (refl_count, refl_count_desc) =
         env.create_buffer(names_[3], super::WATER_COUNT_BUFFER_SIZE);
     let (rt_count, rt_count_desc) = env.create_buffer(names_[4], super::WATER_COUNT_BUFFER_SIZE);
-    env.copy_u32(&refl_count, &refl_count_desc, &ICE_COUNT_INIT);
-    env.copy_u32(&rt_count, &rt_count_desc, &ICE_COUNT_INIT);
+    env.copy_u32(&refl_count, &refl_count_desc, &ICE_COUNT_INIT)?;
+    env.copy_u32(&rt_count, &rt_count_desc, &ICE_COUNT_INIT)?;
     let units = u64::from(ray_units(aw, ah));
     let (refl_px, _) = env.create_buffer(names_[5], 4 * units);
     let (rt_ray, _) = env.create_buffer(names_[6], units << 4);
     // 3. "Ice shadows" temporal pair（`color_attachment()` 用途位在 `TextureDesc` 里无字段，U）。
-    let shadows = env.temporal_pair(
+    let shadows = env.try_temporal_pair(
         names_[11],
-        TextureDesc::new_2d(color_extent, format::SHADOWS).sampled(),
-    );
+        TextureDesc::new_2d(color_extent, format::SHADOWS).sampled().color_attachment(),
+    )?;
+    Ok(IceSurfacePrepared { rough, refr_hits, refr_hit_radiance, refl_count, rt_count, refl_px, rt_ray, shadows, trace: env.raster_trace() })
+}
+
+pub fn raster_ice_surface(ctx: &mut DrawPassCtx<'_>, prepared: &IceSurfacePrepared, i: &SurfaceInputs<'_>) {
+    let IceSurfacePrepared { rough, refr_hits, refr_hit_radiance, refl_count, refl_px, shadows, .. } = prepared;
     let flag_in = i.history_valid != 0;
     let raster_history_valid = if flag_in { u32::from(shadows.fresh) } else { 0 };
-
     // 4-5. 栅格 pass "Ice plane"（5 个颜色附件）。
     let colors = [
         ColorAttachment::Texture(att(i.color)),
@@ -116,7 +129,7 @@ pub fn ice_surface_pass(
         },
     ];
     {
-        let e: &SurfaceEnv<'_> = env;
+        let e = &prepared.trace;
         run_surface_raster(
             ctx,
             e,
@@ -130,15 +143,23 @@ pub fn ice_surface_pass(
                 let b = d_sampled(e, b, i.half_depth, names::HALF_DEPTH_TEX);
                 let b = d_sampled(e, b, i.taa_history, names::TAA_HISTORY_TEX);
                 let b = d_sampled(e, b, &shadows.previous, names::SHADOWS_HISTORY_TEX);
+                let b = if raster_history_valid == 0 { b.inactive_texture_contents(names::SHADOWS_HISTORY_TEX) } else { b };
                 let b = d_uniform_u32(e, b, names::HISTORY_VALID, raster_history_valid);
                 let b = d_sampled(e, b, i.reprojection, names::REPROJECTION_TEX);
                 let b = d_sampled(e, b, i.refraction, names::REFRACTION_TEX);
                 let b = d_write_rg(e, b, names::ICE_REFL_COUNT_BUFFER, &refl_count);
+                let b = b.preserve_storage_buffer_contents(names::ICE_REFL_COUNT_BUFFER);
                 d_write_rg(e, b, names::ICE_REFL_PX_BUFFER, &refl_px)
             },
         );
     }
 
+}
+
+pub fn finish_ice_surface(env: &mut SurfaceEnv<'_>, prepared: IceSurfacePrepared, i: &SurfaceInputs<'_>) -> rhapsody::Result<()> {
+    let IceSurfacePrepared { rough, refr_hits, refr_hit_radiance, refl_count, rt_count, refl_px, rt_ray, .. } = prepared;
+    let color_extent = i.color.desc.extent_2d();
+    let names_ = ICE_RESOURCE_NAMES;
     // 6. 半分辨率命中纹理。
     let half_extent = half_res(i.color.desc).extent_2d();
     let refl_hit_radiance = env.create_texture(
@@ -173,9 +194,12 @@ pub fn ice_surface_pass(
         .disk(names::BLUE_NOISE_TEXTURE, names::BLUE_NOISE_FILE)
         .ray_tracing()
         .tex_write(names::REFL_HIT_TEX, &refl_hits)
+        .preserve_texture(names::REFL_HIT_TEX)
         .tex_write(names::REFL_HIT_RADIANCE_TEX, &refl_hit_radiance)
         .write_rg(names::ICE_RT_COUNT_BUFFER, &rt_count)
+        .preserve_buffer(names::ICE_RT_COUNT_BUFFER)
         .write_rg(names::ICE_RT_RAY_BUFFER, &rt_ray)
+        .inactive_texture_when(names::TAA_HISTORY_TEX, i.history_valid == 0)
         .dispatch_indirect(&refl_count);
     env.record(p);
 
@@ -199,23 +223,26 @@ pub fn ice_surface_pass(
         .disk(names::BLUE_NOISE_TEXTURE, names::BLUE_NOISE_FILE)
         .ray_tracing()
         .tex_write(names::REFL_HIT_TEX, &refl_hits)
+        .preserve_texture(names::REFL_HIT_TEX)
         .tex_write(names::REFL_HIT_RADIANCE_TEX, &refl_hit_radiance)
+        .preserve_texture(names::REFL_HIT_RADIANCE_TEX)
+        .inactive_texture_when(names::TAA_HISTORY_TEX, i.history_valid == 0)
         .dispatch_indirect(&rt_count);
     env.record(p);
 
     // 两个 temporal pair（顺序：refr temporal、ray len；标志字节相与）。
-    let refr_temporal = env.temporal_pair(
+    let refr_temporal = env.try_temporal_pair(
         names_[9],
         TextureDesc::new_2d(color_extent, format::REFR_TEMPORAL)
             .sampled()
             .storage(),
-    );
-    let ray_len = env.temporal_pair(
+    )?;
+    let ray_len = env.try_temporal_pair(
         names_[10],
         TextureDesc::new_2d(color_extent, format::RAY_LEN)
             .sampled()
             .storage(),
-    );
+    )?;
     let resolve_valid = u32::from(refr_temporal.fresh & ray_len.fresh) & 1;
     let view = radiance_view();
 
@@ -250,6 +277,18 @@ pub fn ice_surface_pass(
         .tex_write(names::REFL_REFR_RADIANCE_OUT_TEX, &refr_temporal.current)
         .tex(names::RAY_LEN_HISTORY_TEX, &ray_len.previous)
         .tex_write(names::RAY_LEN_OUT_TEX, &ray_len.current)
+        .preserve_texture(names::REFL_REFR_RADIANCE_OUT_TEX)
+        .preserve_texture(names::COLOR_TEX)
+        .inactive_texture_when(names::REFL_REFR_RADIANCE_HISTORY_TEX, resolve_valid == 0)
+        .original_undefined_texture_when(names::RAY_LEN_HISTORY_TEX, !ray_len.fresh)
         .dispatch_2d(color_extent[0], color_extent[1]);
     env.record(p);
+    Ok(())
+}
+
+/// Compatibility entry, delegating every original call to the same phases.
+pub fn ice_surface_pass(ctx: &mut DrawPassCtx<'_>, env: &mut SurfaceEnv<'_>, i: &SurfaceInputs<'_>) -> rhapsody::Result<()> {
+    let prepared = prepare_ice_surface(env, i)?;
+    raster_ice_surface(ctx, &prepared, i);
+    finish_ice_surface(env, prepared, i)
 }

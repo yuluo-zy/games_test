@@ -77,17 +77,21 @@ pub fn spawn_vegetation_around_buildings<Bush: SsboType, Flower: SsboType>(
         .uniform(GRID_UNIFORM, [0x5au32, 0x5a]);
     let bushes = bind_building_masks(bind_garden_exclusion_compute(bind_terrain(bushes)))
         .write_storage_buffer_concurrent::<DrawIndexedIndirectBuffer>(binding::DRAW_COMMANDS, 1)
+        .preserve_storage_buffer_contents(binding::DRAW_COMMANDS)
         .uniform(binding::DRAW_INDIRECT_BUFFER_OFFSET, 10i32)
         .dispatch_2d(0x5a, 0x5a);
 
     let flowers = env
         .pass(FLOWERS_NAME, FLOWERS_URI)
         .write_storage_buffer_concurrent::<Flower>(FLOWER_BUFFER_B, 1)
+        // Continue flowers written by the preceding building bushes pass.
+        .preserve_storage_buffer_contents(FLOWER_BUFFER_B)
         .uniform(GRID_UNIFORM, [0x96u32, 0x96]);
     let flowers = bind_terrain(bind_building_masks(bind_garden_exclusion_compute(
         bind_terrain(flowers),
     )))
     .write_storage_buffer_concurrent::<DrawIndexedIndirectBuffer>(binding::DRAW_COMMANDS, 1)
+    .preserve_storage_buffer_contents(binding::DRAW_COMMANDS)
     .uniform(binding::DRAW_INDIRECT_BUFFER_OFFSET, 11i32)
     .dispatch_2d(0x96, 0x96);
 
@@ -177,6 +181,7 @@ mod tests {
         assert_eq!(e.uniform_u32(p, binding::DRAW_INDIRECT_BUFFER_OFFSET), 10);
         // 2 个并发写 + 2 地形 + 4 排斥 + 3 mask + 1 draw_commands
         assert_eq!(accesses(p).len(), 12);
+        assert_eq!(p.preserving_buffers, [p.builder.accesses.last().unwrap().resource]);
     }
 
     #[test]
@@ -192,6 +197,14 @@ mod tests {
         assert_eq!(e.uniform_u32(p, binding::DRAW_INDIRECT_BUFFER_OFFSET), 11);
         // 1 并发写 + 2 + 4 + 3 + 2（重复）+ 1
         assert_eq!(accesses(p).len(), 13);
+        // This fixture aliases buffer bindings to one graph resource;
+        // preservation metadata deduplicates graph resource IDs.
+        let mut expected = vec![
+            p.builder.accesses[1].resource,
+            p.builder.accesses.last().unwrap().resource,
+        ];
+        expected.dedup();
+        assert_eq!(p.preserving_buffers, expected);
     }
 
     /// `[u32;2]` uniform 的键 = `binding_hash("grid_dims")`（`_dims` 规则：fnv("grid") + 1），与 EXE 立即数一致。

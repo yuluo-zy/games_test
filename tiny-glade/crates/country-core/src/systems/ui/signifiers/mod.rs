@@ -8,24 +8,37 @@
 //! 匹配依赖宿主 UiState，登记待取证。
 pub mod animation;
 pub mod signifier_create;
+pub mod signifier_factory;
 pub mod signifier_mark_for_delete;
+
+#[cfg(test)]
+mod tests;
 
 use bevy_ecs::prelude::*;
 
-pub use signifier_create::{UiAppendSignifier, UiSignifierStream};
+pub use animation::{SignifierAnimation, SignifierParentToVolumeOrigin};
+pub use signifier_create::{SignifierId, UiAppendSignifier, UiSignifierEntry, UiSignifierStream};
+pub use signifier_factory::{SignifierClosure, SignifierEntityBuilder, SignifierFactory};
+pub use signifier_mark_for_delete::{
+    SignifierMarkedForDeletion, SignifierMinimumLifespan, signfier_mark_for_delete,
+};
 
-/// 注册指示符事件与资源。
+/// 注册指示符资源。
 pub fn register_signifier_resources(world: &mut World) {
     world.init_resource::<UiSignifierStream>();
-    world.init_resource::<Events<signifier_create::SignifierSpawned>>();
 }
 
-/// 本地可运行顺序（仅接本模块内部可自持的组件；host 插入 SignifierAnimation 实体）。
+/// 请求生产者应在本组之前执行；创建、动画、标记和销毁按顺序执行。
+/// chain 同时保证延迟命令在后续查询前提交。
 pub fn add_signifier_systems(schedule: &mut Schedule) {
-    schedule.add_systems((
-        signifier_create::signifier_create,
-        animation::signifier_animation_t,
-        animation::signifier_animation,
-        signifier_mark_for_delete::despawn_marked,
-    ));
+    schedule.add_systems(
+        (
+            signifier_create::signifier_create,
+            animation::signifier_animation_t,
+            animation::signifier_animation,
+            signifier_mark_for_delete::signfier_mark_for_delete,
+            signifier_mark_for_delete::despawn_marked,
+        )
+            .chain(),
+    );
 }

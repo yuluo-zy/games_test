@@ -279,6 +279,72 @@ restorer 需新建。`in_progress` 状态沿用主会话写入值(restorer 已�
 
 验收达成清单:全局调度+存档往返+渲染消费桥+证据完备+宿主确权全闭合方可宣布完整 core 行为验收。
 
+## 逐函数逻辑判等(2026-10-16,用户硬标准:结构/签名≠实现,函数内部逻辑必须逐函数 fresh 反编译判等)
+
+**协议**:planning/2026-10-16-logic-verify-protocol.md。verdict:判等 / 未实现-需重做(附分歧点) / 胶水-非业务。**不得以"待取证登记"通过未判等函数**。
+
+| verifier | 模块 | 状态 |
+|---|---|---|
+| logic-ivy | resources/ivy + systems/ivy(含 grower 主闭包/spawner/pruner/send_to_gpu 候选近似) | in_progress |
+| logic-ecob | garden + critters/sheep | in_progress |
+| logic-audio | systems/audio 全部 + audio_resources/instance | in_progress |
+| logic-save | systems/save + meta_commander + startup | in_progress |
+| logic-session | session + music + camera_rig | in_progress |
+| logic-history | resources/history + systems/history | in_progress |
+| logic-input | systems/backend/input + input/ | in_progress |
+| logic-terrain | systems/terrain + 地形资源 + ui_clutter | in_progress |
+| logic-cameraui | camera/time + ui/mode + time_of_day | in_progress |
+| logic-walls | resources/walls + systems/wall(已实现:decorator 族/墙系统/valid_enclosure/snapping/eraser/shapes) | in_progress |
+| logic-collision | systems/collision + resources/rt(R1 核心族) | in_progress |
+| logic-renderloop | systems/render_loop + render/pass_builder + render/nani(已实现) | in_progress |
+| logic-roofsstairs | resources/roofs + resources/stairs + systems/roof | in_progress |
+| logic-worldraster | resources/world_raster + systems/world_raster + systems/paths + raster_stroke | in_progress |
+| (第三波) | steam(27+22)/debug/gui/toolbar/grading_lut/image_formation/prefab/photo_mode/asset_libraries/render 余 | queued |
+
+## 真实逻辑重建轮(2026-10-17,依据 2026-10-17-logic-master-ledger.md;先分类宏胶水 vs 真业务再重建)
+
+**协议补充**:重建前对每个需重做函数分类——宏生成胶水(derive/fmt/serde/注册)→标记 glue-legitimate 不重建;真实业务→fresh 反编译逐语句重建。产出 `<模块>-REBUILD.md`。
+
+| 模块 | 需重做 | 状态 |
+|---|---|---|
+| collision | 9 | in_progress(rebuild-collision) |
+| input | 8 | in_progress(rebuild-input) |
+| ivy | 9 | in_progress(rebuild-ivy) |
+| walls | 11 | in_progress(rebuild-walls) |
+| terrain+ui_clutter | 7+5 | in_progress(rebuild-terrain) |
+| camera/ui | 21 | queued(批 2) |
+| session+music+camera | 10 | queued(批 2) |
+| audio | 21 | queued(批 2) |
+| save+meta | 19 | queued(批 3) |
+| roofs+stairs | 17 | queued(批 3) |
+| history | 15 | queued(批 3) |
+
+## 未实现/待判等函数分批实现轮(2026-10-17,重建轮收口后推进)
+
+| 范围 | agent | 状态 |
+|---|---|---|
+| collision 余量(~66 业务+intersect_meshes 21+visualize 6+rt 13) | impl-collision-remainder | in_progress |
+| walls 待判等(~240)+compound 完整族+decorator 余量 | impl-walls-remainder | in_progress |
+| render_loop 未判等 3 批(env 闭包/nani 22/ice 4 pass) | impl-renderloop-remainder | in_progress |
+| history 未重建(Stairs serde 单边枚举/第二事件流/replay_wall 17-op/replay_edit/pop_bucket) | impl-history-remainder | in_progress |
+| steam 域(27+22,判等+重建一体化) | rebuild-steam | in_review(2026-10-17:重建 22(纯业务 19+from×3 转换胶水)/胶水 27/判等 0;reports/interaction/steam/LOGIC.md+REBUILD.md;库内 SteamSdk 注入边界+update_steam_inputs 算法级重建(22 码序 O,16B/槽 SIMD 简化,码→动作名候选待 ui-input 域),OsWindowCmd 本地承载待并入 window;cargo check 过+7 测试过) |
+| UI 域未审计(gui/toolbar/grading_lut/image_formation/prefab/photo_mode,判等+重建) | rebuild-ui-remainder | in_review(判等34/重建1/未实现登记21,见 ui_mode/LOGIC-UI-REMAINDER.md+REBUILD-UI-REMAINDER.md) |
+| save / roofs+stairs 复验(重建轮收口) | reviewer-state 队列 | in_progress |
+
+## 低进度模块深收口轮(2026-10-17,按最新标准逐函数 fresh→重建→判等,收口剩余待办)
+
+| 模块 | 待办面 | agent | 状态 |
+|---|---|---|---|
+| walls(27%) | ~240 待判等+未覆盖文件(decorator_subtype/inner_walls/public_wall_state/inner_wall_state/shapes-eraser/publish_public_wall_state)+未实现 10 | impl-walls-deep | in_progress |
+| collision(18%) | RaycastMeshData 布局锚定+~66 业务+collider 生命周期+缺类型(RaycastGeoSource 等)+intersect/visualize/rt | impl-collision-deep | in_progress |
+| audio(61%) | sheep 0x1b..0x51 大分派+decorator 跳表+timberframe/signifier/wall_path/orchestrator+roof 参数+water_ambience+firstperson SSBO | impl-audio-deep | in_progress |
+| terrain+ui_clutter(65%) | ui_edit case 4 跳表+focus_mode 复杂体+decoclutter 几何/spawn+EditType::Terrain 机制+判等注意 4 | impl-terrain-deep | in_progress |
+| history(68%) | replay_wall 17-op+replay_pop_bucket+replay_edit+DecoratorHistoryState::from+ColorEdit 8 类载荷+第二流 case 0xb+ | impl-history-deep | in_progress |
+| save+roofs(72%/78%) | save 域 Query 面 6+save_game 余+wall_platform_stairs 5+roof_uv 族+upgrade 验证 | impl-save-roofs-deep | in_progress |
+
+**全局目标**:每模块待办面收口到仅剩外部依赖/宿主接线;还原进度目标 walls≥70%、collision≥60%、audio/terrain/history≥85%。
+| garden+sheep | 2+3 | queued(批 3) |
+
 ## 状态流转约定
 
 - restorer 完成模块实现并自检 → 改状态 `in_review`,写 `RESTORE.md`。
@@ -287,3 +353,64 @@ restorer 需新建。`in_progress` 状态沿用主会话写入值(restorer 已�
 - 证据不足/未挖透 → re-analyst 定点补挖,输出 RE-ANALYSIS.md 后再回到 restorer。
 - 验收层面(行为等价、消费者闭合、原生证据齐备)达成前不得宣布模块 100%;不得把编译通过
   或局部测试通过当整模块完成。
+
+## 上层模块批次(2026-10-17,依据 reverse-engineering/tiny-glade/upper-modules-plan/)
+
+用户硬标准同 country-core 逻辑判等轮:逐函数 fresh 反编译重建完整控制流图(每分支/循环/调用/数据流),
+Rust body 与之一一判等;禁止近似体/结构先行。ANALYSIS 文档提供逐函数内部逻辑/算法/未知(非实现凭据)。
+落点:已注册 crates/systems/<crate>(镜像 B 结构,与 country-core 恢复团队同 workspace)。
+分类:宏生成胶水(derive/fmt/serde/注册)→glue-legitimate 不重建;真业务→fresh 反编译逐语句重建。
+
+| 批次 | 模块 | 组 | restorer worker | 状态 |
+|---|---|---|---|---|
+| 1 | water | state | restorer-state-water | review_passed(限定:判等3/未落库1登记core) |
+| 1 | timberframe | state | restorer-state-timberframe | review_passed(限定:判等1/重建+未实现2登记core) |
+| 1 | roof 剩余族 | state | restorer-state-roof | review_passed(限定:判等7/重建2/未实现11登记core) |
+| 1 | forest | eco | restorer-eco-forest | review_passed(限定:判等1/未实现3登记core) |
+| 1 | glade-border | eco | restorer-eco-gladeborder | review_passed(限定:判等1/未实现3登记core) |
+| 1 | tree-tool | eco | restorer-eco-treetool | review_passed(限定:判等4/未实现9登记core) |
+| 2 | critters | eco | restorer-eco-critters | review_passed(限定:判等11/未实现18登记core) |
+| 2 | clutter | interaction | restorer-interaction-clutter | review_passed(限定:判等3+U2/未实现25登记core) |
+| 2 | color | state | restorer-state-color | review_passed(限定:判等2/未实现22登记core) |
+| 2 | onboarding | interaction | restorer-interaction-onboarding | review_passed(限定:判等18/未实现36登记core) |
+| 3 | wall-constructor | interaction | restorer-interaction-wallconstructor | review_passed(限定:判等8/胶水5/未实现~60登记core) |
+| 3 | decorator | state | restorer-state-decorator | fix_pending（reviewer-wave3-toolbar-decorator 2026-10-17：判等面 window_lights 常量/retain 序、chimney 公式、replay_decorator 结构 0.05、visual build 结构、maintain 结构全成立；**需修 1**=maintain_dormer_tiles 游标写序（末值 total vs total-N）；未实现登记 8 项诚实；新增 core-gap=ReplayCommand Decorator 变体 + ReplayBucket cull 表。详见 reports/wave3/reviews/toolbar-decorator/REVIEW.md） |
+| 3 | toolbar | interaction | restorer-interaction-toolbar | fix_pending（reviewer-wave3-toolbar-decorator 2026-10-17：类型校正 UiAnimationState 16B / UiInteractionState 4B 判等；**需修 4**=switch_app_mode 判定降级未实现、keep_focus keep 字节代理非判等、switch_category/tod 漏门控、ui_animation_state_update state 字节写面未登记；**保真建议 1**=toolbar_alignment 掩码缺显式 `&3`（release 行为等价、debug alignment≥4 panic）；taffy 骨架/分派跳表/公式判等。详见 reports/wave3/reviews/toolbar-decorator/REVIEW.md） |
+| 4 | tiny-glade | — | (依赖全部,后置) | queued |
+
+## 第 4 波：NaniBundle 消费者复核(2026-10-17,reviewer-wave4-visual)
+
+| 交付 | 组 | 状态 | 复核结论 |
+|---|---|---|---|
+| consume/nani-decorator | state | review_passed(附台账更正) | 判等 5 组：12 类 mesh 分派(跳表 0x142c2b058 fresh 解码/name 字节/实例类型/subset 3..23/selector)、transform(rotation/translation/scale/法线偏移/覆盖)、14 位条件链(含 BrickColor `+0x114 !=2` 极性更正成立)、impl$4(seal panic+push)、impl$5(grow_one<usize> 8B push ⇒ HashMap<u32,Vec<Entity>>;wave3 autoclutter 结论否证成立)。需修(文档)：FIX-4 RESTORE §1 调用点 ABI 错([RSP+0x178]=&mut Commands 非实体,build 内 Commands::spawn 自建实体)+ FIX-5 decorator_visual_state.rs impl$5 注释仍为旧 autoclutter 结论。详见 reports/wave4/reviews/visual/REVIEW.md |
+| consume/nani-roof-toolbar | interaction | fix_pending | roof `switch_roof_type` mesh ops **5/5 判等**(flat insert 单位变换/AtlasPart(0)/subset 9；pitched remove DrawableMeshBundle+warn；format `roof_{:?}`+try_get_handle；deferred_delete_mesh lock/push；恒有 remove Handle<Vao>)。toolbar spawn 面判等 13 项(8 组件值级 5：UAS state=2、USS=size*82.5+(1.0,0.011)、TaffyNode=新 leaf 节点、UiDrawOrder、组件序；零载荷 3；两条附加 insert/容器控制流/Style 常量/类型读面 5)。**需修 3**：FIX-1 容器子项缓冲未 `__rust_dealloc`(B 有释放)、FIX-2 TaffyNode 16B→8B(仅写 index/gen)、FIX-3 ShowOnlyInFpvAndFree 16B→bool(payload≤8B，command 0x20)；**未实现 2 登记**：Ui2dImage::new(label)(fresh=24B String 类载荷)、kind_handler 命令记录。计数/精度更正 FIX-6。详见 reports/wave4/reviews/visual/REVIEW.md |
+
+## 第 5 波：consume 三消费者复核(2026-10-17,reviewer-consumers)
+
+| 交付 | 组 | 状态 | 复核结论 |
+|---|---|---|---|
+| consume/geo-src | eco | fix_pending | 判等 2：`ui_place_tree` geo_src 门(`+0x30==2` 跳过 / subject≠None 早退 / 顺序)、`HintPlacement::Subject`(0x0101 Wall/Roof、0x0100 DecoClutter、flags0/id1)。**需修 2**：FIX-4 `hint_focused_edit_hint` EventReader 用 `.next()` 只消费 1 个事件(原生一次性耗尽 → count 每帧最多 +1；多事件帧会提前触发 `4<count`)；FIX-5 `hint_clutter_focused_edit_hint` 同(状态幂等、功能无差)。另 FIX-6/7/8(helper `make_focus_or_camera_binding_hint`)：Steam 查询实为 `packed_set_plus_one(1)`=0x0101(非 0)、鼠标键取 profile+0x1c6(core 缺字段)、双图标单 Graphic 载荷 + 0.7/100.0(非两个 Alternate 元素/ZERO/0)。详见 reports/consume/reviews/REVIEW.md |
+| consume/hint | interaction | fix_pending | `hint_orchestrator` **判等**(收集/稳定排序 +0x49/抑制位(linger 全耗、Replay/Photomode|Esc)/工具栏/首实体/无实体 spawn/同 id/异 id/冷却表 19 项；文本 pieces、名称表 19 项、emoji 🎢(U+1F3A2)逐字核对)。`hint_position_update` **需修+未实现**：公共块与 case6/10 判等，但 **FIX-1 边距用 window.height/1000×{20,30}(非 width)**、**FIX-2 case8 选屏幕 x 最大角(非分量 min)**；FIX-3 case7/8 Y 仍 0.0 占位(原生 PreviewCircle+0x20 / PreviewRectangle+0x28，core 缺字段)=未实现；二级跳转表 tags 未做。详见 reports/consume/reviews/REVIEW.md |
+| consume/debugline | state | review_passed(限定) | 判等 3：`display_glade_border` 本批范围(DebugColor Red tag1/width 4.0/ui_pass false/`DebugLine::show` 0x140b04f70 直调/perimeter 门+`glade_border{frame_count}`+ArcInner{cap,ptr,len,perimeter}+from_closure)、`closure$1`(env{cap,ptr,len,length}/载荷 0x8000000000000002/builder 链/先 DrawTopology Alt(2.0) 后 DashedLineLength=len×0.7/返回 Vec1)、water `closure$0`(env{pos,scale}/brush_circle_scribble/position+scale 字段/返回 Vec1)。**限定**：FIX-9 closure$1 插 `DashedLineLengthView` 而非真实 `components::DashedLineLength`(TypeId 不同，渲染消费面不互通)；I-3/I-3b 载荷尾/静态网格名。详见 reports/consume/reviews/REVIEW.md |
+
+## unlock A 清单独立复核(2026-10-17, reviewer-A-unlock)
+
+> 只读 fresh 复核;未改 src。报告 `reports/unlock/reviews/A/REVIEW.md`,证据 `reports/unlock/reviews/A/evidence/`。
+> 总账已更新:`planning/2026-10-17-evidence-audit-interaction.md` §11 + 同名 `.json` `review_receipts`。
+
+| 范围 | 项数 | verdict |
+|---|---:|---|
+| unlock A 主清单(6×A2 + 6×A4) | 12 | **判等 11 / 需修 1 / 未实现 0** |
+| 任务点名附加(geo_src 跳表链、legacy_raycast 命中码、UiNav/HistoryButton、link_up_nav、8× taffy setter、RoofTileSsbo SparseSsbo) | 6 组 | **判等 6 / 需修 0 / 未实现 0** |
+
+- 主要升级:DisplayHintRequest 布局(0x50/0x58/placement·flags·id 及 12 处写面)、
+  sort key(+0x49 稳定升序)、SignifierFactory/UiSignifierStream、NaniBundle/DrawableMeshBundle
+  (布局测试现已 4/4 通过)、mei_pre/post 9 参与 render_taffy 13 参、geo_src 双跳表 17 项、
+  legacy_raycast mask 0xFB/命中码、UiNav 0x40/HistoryButton 1B、link_up_nav 槽写面、
+  8 setter(独立 taffy 0.3.13 探针确认偏移/判别)、RoofTileSsbo SparseSsbo
+  (wave3 core-type-gap 闭合,3/3 测试通过)、DebugColor、HintType::Rollercoaster=18。
+- **FIX 清单(1)**:**FIX-A1** `crates/country-core/src/utils/debug_viz.rs` `DebugLine::show`
+  闭包 payload 第 4 qword `points.capacity()` → `colors.capacity()`(原生 build 默认分支以该槽
+  作 colors Vec cap;colors 与 points 不同长时暴露,属字段级不等)。
+- 冷却表 [f32;19] 与原生 0x143038ae8 的 19×f32+4B padding 一致,无需调整。
+- 剩余未由本复核覆盖:toolbar A4 的 20× `register_required_components` 组件定义(1 组)。

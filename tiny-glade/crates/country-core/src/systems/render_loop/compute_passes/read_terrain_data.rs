@@ -1,29 +1,7 @@
-//! read_terrain_data.rs — W5 CPU 地形/水面/花园回读（O：`read_terrain_data` 0x14098c680，5917 B）。
-//!
-//! # 流程（O）
-//! 0. 取预设纹理 10（`AssetTextureLibrary::get_rg_texture(.., 10)`）的 extent，建光栅 pass
-//!    `"Visual terrain height"`（`RasterPass::new_impl`），在其中依次用两个 `DrawBuilder`
-//!    （`"terrain_shader"` → `draw_floor_shader`、`"rocky_terrain"` → `rocky_terrain_shader`）绘制地形实体，
-//!    然后 `RasterPass::render`。（光栅部分依赖 ECS 实体查询 + A4 draw_builder，这里只固化其**参数**，见
-//!    [`VisualHeightRasterPlan`]，执行经 [`VisualHeightRaster`] 接缝。）
-//! 1. `"Read terrain height"`（`/terrain_editing/read_terrain_height.cs.hlsl`）：`terrain_heightmap`（预设 9）、
-//!    `visual_terrain_heightmap`（预设 10）读 0x19；写 `height_out`（`TerrainHeightSsbo`）、`visual_height_out`
-//!    （`VisualTerrainHeightSsbo`）；`dispatch_1d(0x20000)`。
-//! 2. `"Read terrain rock mask"`（`/terrain_editing/read_terrain_rock_mask.cs.hlsl`）：`rocky_terrain`（预设 0xe）读；
-//!    写 `mask_out`（`TerrainRockMaskSsbo`）；`dispatch_1d(0x2000)`。
-//! 3. `"Read water"`（`/water/read_water_mask.cs.hlsl`）**仅当 `_DEV_OVERRIDE_IS_DEMO_MODE`（`*0x143634d90`）为假**：
-//!    `water_mask`（预设 0x13）读；写 `mask_out`（`WaterMaskSsbo`）、`mask_out_clutter`
-//!    （`WaterExcludeClutterMaskSsbo`）；`dispatch_1d(0x2000)`。
-//! 4. `"Read garden"`（`/garden/read_garden_mask.cs.hlsl`）：`garden_mask`（预设 0x14）读；写 `mask_out`
-//!    （`GardenMaskSsbo`）；`dispatch_1d(0x2000)`。
-//! 5. `ScheduledTerrainReadback`（type-id `0x24ccb35ae3644351…`，缺失 `Option::unwrap`）：
-//!    `ScheduledTerrainReadback::on_gpu_copy_issued`（见 [`ScheduledTerrainReadback`]）。
-//!
-//! 所有 dispatch 描述符读自 `.rdata`（`0x142ab8410 = {1, 0x20000, 1, 1}`、`0x142ab8420 = {1, 0x2000, 1, 1}`），
-//! 即 `Threads` 模式、一维。
-//!
-//! # 偏离
-//! 六个 SSBO 载体在 `resources::*` 里是 typed gap（不满足 `LibrarySsbo`），经 [`ReadbackSsbos`] 关联类型注入。
+//! Original B W5 @14098c680/5917B: actual floor/rocky entities first render
+//! visual depth, then height/rock/water(non-demo)/garden mapped SSBO passes.
+//! The same ScheduledTerrainReadback tail is committed by the typed host only
+//! after graph admission succeeds, not before its recorded passes are admitted.
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -81,30 +59,50 @@ pub fn pack_water_mask_word(texels_y: &[f32; 32]) -> (u32, u32) {
     (water, clutter)
 }
 
-// ---------------------------------------------------------------- 光栅预渲染参数（O，执行经接缝）
-
-/// 光栅 pass `"Visual terrain height"` 的固化参数（O）。
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct VisualHeightRasterPlan {
-    pub pass_name: &'static str,
-    /// 深度附件预设（O：`get_rg_texture(.., 10)`；pass extent = 该纹理 `extent_2d`）。
-    pub depth_preset: TexturePreset,
-    /// 依次绘制的 `(DrawBuilder 名, 着色器函数)`（O：`DrawBuilder::new` + `bind_common` + draw_*）。
-    pub draws: [(&'static str, &'static str); 2],
-}
-
-pub const VISUAL_HEIGHT_RASTER: VisualHeightRasterPlan = VisualHeightRasterPlan {
-    pass_name: "Visual terrain height",
-    depth_preset: PRESET_VISUAL_TERRAIN_HEIGHT,
-    draws: [
-        ("terrain_shader", "draw_floor_shader::draw_floor_shader"),
-        ("rocky_terrain", "rocky_terrain_draw::rocky_terrain_shader"),
-    ],
-};
-
-/// 光栅预渲染接缝（`RasterPass::new_impl` / `DrawBuilder::new` / `RasterPass::render`，A4 draw 域）。
-pub trait VisualHeightRaster {
-    fn render_visual_height(&mut self, plan: &VisualHeightRasterPlan);
+/// Original direct raster body. Items are snapshots of the two actual
+/// TerrainEntities and their typed Vao/Shader/Transform/optional topology.
+/// No shaders are selected by a guessed query, and no fake geometry is created.
+pub fn render_visual_height(
+    ctx: &mut crate::systems::render_loop::draw_passes::d_main_support::DrawPassCtx<'_>,
+    floor: &crate::render::pass_builder::draw_list::DrawListItem,
+    rocky: &crate::render::pass_builder::draw_list::DrawListItem,
+    vertex_count: u32,
+) {
+    use crate::{
+        asset_libraries::color_library::ColorLibrarySsbo,
+        render::pass_builder::draw_builder::{CommonDrawFlag, CommonDrawParams, DrawBuilder},
+        systems::render_loop::draw_passes::{
+            d_main_support::DepthSpec,
+            draw_shaders::{floor_shader, rocky_terrain_draw},
+        },
+    };
+    let depth = ctx.host().rg_texture(10);
+    // Native depth descriptor @14098c74b..75d: tag0, preset10, Some(0).
+    let mut pass = ctx.raster_pass(
+        "Visual terrain height",
+        &[],
+        DepthSpec::Write {
+            tex: depth,
+            layer: 0,
+            clear: Some(0.0),
+        },
+        depth,
+    );
+    // Both native bind_common calls use static142ab9238 = {time0,flag0}.
+    // This pass must not reuse the ordinary scene's elapsed-time parameters.
+    let params = CommonDrawParams {
+        time: 0.0,
+        flag: CommonDrawFlag::Off,
+    };
+    let state = pass.host.default_raster_state();
+    let floor_builder = DrawBuilder::new(&mut pass, floor.to_draw_packet(state), 1)
+        .bind_common::<ColorLibrarySsbo>(&params, &floor.params.transform);
+    floor_shader::draw_floor_shader(floor_builder, true);
+    let state = pass.host.default_raster_state();
+    let rocky_builder = DrawBuilder::new(&mut pass, rocky.to_draw_packet(state), 1)
+        .bind_common::<ColorLibrarySsbo>(&params, &rocky.params.transform);
+    rocky_terrain_draw::rocky_terrain_shader(rocky_builder, true, vertex_count);
+    pass.render();
 }
 
 // ---------------------------------------------------------------- ScheduledTerrainReadback
@@ -146,17 +144,14 @@ pub trait ReadbackSsbos {
     type Garden: LibrarySsbo;
 }
 
-/// W5 — `read_terrain_data`（O 0x14098c680）：返回按序声明的 compute pass（光栅部分已经 `raster` 接缝执行）。
-/// `demo_mode` = `*0x143634d90`；`world_tick` = `[world+0x5b0]`。
+/// Compute portion after render_visual_height. The actual same-world host
+/// records these passes, waits for declaration/admission success, then calls
+/// ScheduledTerrainReadback::on_gpu_copy_issued with the actual Bevy tick.
+/// Delayed CPU copies remain driven by that existing canonical owner.
 pub fn read_terrain_data<S: ReadbackSsbos>(
     env: &mut PassEnv<'_>,
-    raster: &mut dyn VisualHeightRaster,
-    readback: &mut ScheduledTerrainReadback,
     demo_mode: bool,
-    world_tick: u32,
 ) -> Vec<RecordedComputePass> {
-    raster.render_visual_height(&VISUAL_HEIGHT_RASTER);
-
     let mut passes = vec![
         read_terrain_height::<S>(env),
         read_terrain_rock_mask::<S>(env),
@@ -165,8 +160,6 @@ pub fn read_terrain_data<S: ReadbackSsbos>(
         passes.push(read_water_mask::<S>(env));
     }
     passes.push(read_garden_mask::<S>(env));
-
-    readback.on_gpu_copy_issued(world_tick);
     passes
 }
 
@@ -271,14 +264,6 @@ mod tests {
     }
     more!(W, X, Y);
 
-    #[derive(Default)]
-    struct Rec(Vec<&'static str>);
-    impl VisualHeightRaster for Rec {
-        fn render_visual_height(&mut self, plan: &VisualHeightRasterPlan) {
-            self.0.push(plan.pass_name);
-        }
-    }
-
     fn make_env() -> Env {
         env_with(
             &[
@@ -318,14 +303,9 @@ mod tests {
     }
 
     #[test]
-    fn full_readback_declares_four_passes_after_the_raster() {
+    fn non_demo_compute_tail_declares_four_passes_in_original_order() {
         let mut e = make_env();
-        let mut raster = Rec::default();
-        let mut rb = ScheduledTerrainReadback::default();
-        rb.pending.store(7, Ordering::SeqCst);
-        let passes =
-            e.run(|penv| read_terrain_data::<Ssbos>(penv, &mut raster, &mut rb, false, 42));
-        assert_eq!(raster.0, ["Visual terrain height"]);
+        let passes = e.run(|penv| read_terrain_data::<Ssbos>(penv, false));
         let names: Vec<_> = passes.iter().map(|p| p.name).collect();
         assert_eq!(
             names,
@@ -366,18 +346,12 @@ mod tests {
         }
         // 水回读：1 个纹理 + 2 个缓冲（含 ctor 的 color library）。
         assert_eq!(passes[2].bindings.len(), 4);
-        // 回读登记。
-        assert!(rb.copy_issued);
-        assert_eq!(rb.changed_tick, 42);
-        assert_eq!(rb.pending.load(Ordering::SeqCst), 0);
     }
 
     #[test]
     fn demo_mode_skips_only_the_water_pass() {
         let mut e = make_env();
-        let mut rb = ScheduledTerrainReadback::default();
-        let passes =
-            e.run(|penv| read_terrain_data::<Ssbos>(penv, &mut Rec::default(), &mut rb, true, 1));
+        let passes = e.run(|penv| read_terrain_data::<Ssbos>(penv, true));
         let names: Vec<_> = passes.iter().map(|p| p.name).collect();
         assert_eq!(
             names,
@@ -387,8 +361,6 @@ mod tests {
                 "Read garden"
             ]
         );
-        // 没有待处理请求：不置位。
-        assert!(!rb.copy_issued);
     }
 
     #[test]
@@ -415,10 +387,144 @@ mod tests {
     }
 
     #[test]
-    fn raster_plan_constants() {
-        assert_eq!(VISUAL_HEIGHT_RASTER.pass_name.len(), 0x15);
-        assert_eq!(VISUAL_HEIGHT_RASTER.depth_preset, TexturePreset(10));
-        assert_eq!(VISUAL_HEIGHT_RASTER.draws[0].0.len(), 0xe);
-        assert_eq!(VISUAL_HEIGHT_RASTER.draws[1].0.len(), 0xd);
+    fn visual_height_records_clear_and_both_real_callbacks_with_static_common_params() {
+        use crate::{
+            asset_libraries::color_library::ColorLibrarySsbo,
+            render::pass_builder::{
+                bind_resources::WallColorIdSsbo,
+                draw_builder::{STONE_FLOOR_TEXTURES, WALL_COLOR_TEXTURES},
+                draw_list::DrawListItem,
+                draw_stream::{
+                    DrawKind, ShaderReflection,
+                    test_host::{Log, MockHost},
+                },
+                framebuffer_binding::{AttachmentTexture, DepthClear},
+                pass_resource_access::SsboType,
+            },
+            systems::render_loop::draw_passes::{
+                d_main_support::{DrawPassCtx, NoShaders},
+                draw_shaders::{
+                    floor_shader, rocky_terrain_draw,
+                    ssbo_tags::{RockyTerrainTriangleTag, RockyTerrainVertexTag},
+                },
+            },
+        };
+        use std::{cell::RefCell, rc::Rc, sync::Arc, time::Duration};
+        let log = Rc::new(RefCell::new(Log::default()));
+        let mut factory = || {
+            let (mut host, _) = MockHost::new();
+            host.log = log.clone();
+            for id in [11, 22] {
+                let mut reflection = ShaderReflection::default();
+                reflection.program_name = "w5_actual_callbacks";
+                reflection.has_uniform_block = true;
+                reflection.uniform_block_size = 16;
+                reflection.uniform_block_binding = 7;
+                for (name, offset) in [
+                    (0x418a98441f59a54c, 0), // common flag == Off
+                    (0xc5ab673fb08651f5, 4), // original flag byte
+                    (0x1e5485ef2e9f9384, 8), // static time, not ctx elapsed
+                    (floor_shader::FLOOR_FLAG_UNIFORM, 12),
+                ] {
+                    reflection.uniform_offsets.insert(name, offset);
+                }
+                host.shaders.insert(id, Arc::new(reflection));
+            }
+            for (index, hash) in [
+                ColorLibrarySsbo::rg_buffer_hash(),
+                WallColorIdSsbo::rg_buffer_hash(),
+                RockyTerrainVertexTag::rg_buffer_hash(),
+                RockyTerrainTriangleTag::rg_buffer_hash(),
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                host.rg_buffers.insert(hash, index as u32 + 1);
+            }
+            for preset in 0..=0x15 {
+                host.presets.insert(
+                    preset,
+                    AttachmentTexture {
+                        id: 100 + preset as u32,
+                        extent: (512, 512),
+                        format: 126,
+                        sample_count: 1,
+                    },
+                );
+            }
+            let disks = STONE_FLOOR_TEXTURES
+                .iter()
+                .chain(WALL_COLOR_TEXTURES.iter())
+                .chain(floor_shader::FLOOR_DISK_MID.iter())
+                .copied()
+                .chain([
+                    floor_shader::FLOOR_DISK_HEAD,
+                    floor_shader::FLOOR_DISK_TAIL,
+                    rocky_terrain_draw::ROCKY_DISK_TEXTURE,
+                ]);
+            for (key, _) in disks {
+                host.textures_by_name.insert(
+                    key,
+                    (
+                        crate::rhapsody_contract::ManagedHandle(key),
+                        AttachmentTexture {
+                            id: 500,
+                            extent: (8, 8),
+                            format: 37,
+                            sample_count: 1,
+                        },
+                    ),
+                );
+            }
+            host.boxed()
+        };
+        let mut world = bevy_ecs::world::World::new();
+        let mut ctx = DrawPassCtx::new(
+            &mut world,
+            Duration::from_secs(73),
+            &mut factory,
+            &NoShaders,
+        );
+        let mut floor = DrawListItem::new(11, 0);
+        floor.vao = 101;
+        let mut rocky = DrawListItem::new(22, 0);
+        rocky.vao = 202;
+        render_visual_height(&mut ctx, &floor, &rocky, 123);
+        let log = log.borrow();
+        assert_eq!(log.submissions.len(), 1);
+        let pass = &log.submissions[0];
+        assert_eq!(pass.name, "Visual terrain height");
+        assert_eq!(pass.color_count, 0);
+        assert_eq!(pass.viewport, [512, 512]);
+        let depth = pass.depth.unwrap();
+        assert_eq!(depth.texture_id, 110);
+        assert_eq!(depth.layer, 0);
+        assert!(depth.writable);
+        assert_eq!(depth.clear, DepthClear::Clear(0.0));
+        assert_eq!(pass.draws.len(), 2);
+        assert_eq!(pass.draws[0].shader.0.0, 11);
+        assert_eq!(pass.draws[1].shader.0.0, 22);
+        assert_eq!(pass.draws[0].head, [1, 101]);
+        assert_eq!(pass.draws[1].head, [1, 202]);
+        assert_eq!(
+            pass.draws.iter().map(|d| d.variant).collect::<Vec<_>>(),
+            [1, 1]
+        );
+        assert_eq!(
+            pass.draws[0].kind,
+            DrawKind::InstancedGlDrawFlag { flag: 1 }
+        );
+        assert_eq!(
+            pass.draws[1].kind,
+            DrawKind::NoIndexBuffer { vertex_count: 123 }
+        );
+        assert_eq!(log.flushed_constants.len(), 2);
+        for (_, bytes) in &log.flushed_constants {
+            let words: Vec<_> = bytes
+                .chunks_exact(4)
+                .map(|v| u32::from_le_bytes(v.try_into().unwrap()))
+                .collect();
+            assert_eq!(words, [1, 0, 0, 1]);
+        }
     }
 }

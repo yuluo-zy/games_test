@@ -53,7 +53,8 @@ pub(crate) fn validate_matching_initialization(
     };
     for (pass_index, pass) in graph.passes.iter().enumerate() {
         for (access_index, access) in pass.accesses.iter().enumerate() {
-            if (!is_write(access.access_code) || access.reads_previous)
+            if access.reads_contents(is_write(access.access_code))
+                && !access.allow_undefined_contents
                 && !initialized(access.resource_index as usize)
             {
                 let writes = graph.passes[..=pass_index]
@@ -270,7 +271,10 @@ fn resolve_with_initialization(
                 .map_err(|error| range_error(access.resource_index, error))?;
             let current = versions[resource];
             let write = is_write(access.access_code);
-            if access.reads_previous && !write {
+            if (access.reads_previous && !write)
+                || (access.contents_unused && (write || access.reads_previous))
+                || (access.allow_undefined_contents && (write || access.reads_previous || access.contents_unused))
+            {
                 return Err(BuildError::Contract(Contract::WrongAccessMode {
                     resource: access.resource_index,
                     access_code: access.access_code,
@@ -312,7 +316,8 @@ fn resolve_with_initialization(
                     }));
                 }
             };
-            if (!write || access.reads_previous)
+            if access.reads_contents(write)
+                && !access.allow_undefined_contents
                 && !covers(&initialized[resource], access.range, descriptor)
                     .map_err(|error| range_error(access.resource_index, error))?
             {

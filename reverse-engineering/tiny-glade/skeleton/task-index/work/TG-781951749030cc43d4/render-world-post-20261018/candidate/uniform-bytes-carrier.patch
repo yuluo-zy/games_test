@@ -1,0 +1,14 @@
+--- a/crates/country-core/src/render/pass_builder/compute_pass_builder.rs
++++ b/crates/country-core/src/render/pass_builder/compute_pass_builder.rs
+@@ -100,6 +100,11 @@
+ /// 外部（非 RG）绑定的槽（`PassResourceSlot` 的已观测变体，0x40 B）。
+ #[derive(Clone, Debug)]
+ pub enum ExternalSlot {
++    /// Immutable original uniform bytes. The current declaration host uploads
++    /// the shared table once through its existing DynamicConstants allocator,
++    /// imports the actual physical range and keeps that owner through commands.
++    /// This source adapter is not an original native enum discriminant.
++    UniformBytes(Arc<[u8]>),
+     /// 标签 5：`bind_external_storage_buffer` 构造 `{vk 缓冲, offset 0, range !0, 受管句柄克隆, 标志 0}`。
+     Buffer {
+         vk_buffer: u64,

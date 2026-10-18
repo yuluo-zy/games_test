@@ -1,11 +1,11 @@
 use bevy_ecs::prelude::*;
-use country_core::recovered_building::{
-    building_roof_creation::RoofCreateRequestObserved,
-    building_wall_collection::{RawWallPublicationSource, TerrainHeightGrid512},
-    building_wall_path_preparation::PathRasters512,
-    building_wall_state::{WallId, WallShapeSnapshot},
-    surface::Curve2,
-};
+use country_core::resources::roofs::creation::RoofCreateRequestObserved;
+use country_core::resources::walls::publication_source::RawWallPublicationSource;
+use country_core::resources::walls::publication_source::TerrainHeightGrid512;
+use country_core::systems::wall::wall_state::path_preparation::PathRasters512;
+use country_core::resources::walls::publication_fields::WallId;
+use country_core::resources::walls::publication_fields::WallShapeSnapshot;
+use country_core::resources::roofs::geometry::surface::Curve2;
 use std::sync::Arc;
 use tg_building_runtime::{wall_arches::*, wall_paths::*, wall_structures::*, *};
 fn emit<T: Event>(app: &mut bevy_app::App, value: T) {
@@ -129,6 +129,17 @@ fn raw_paths_regular_and_freehand_rebuild_without_feedback_clear_and_remove() {
             app.world().resource::<PublicWalls>().walls[&wall].segment_heights,
             third
         );
+        emit(&mut app, WallSpatialDirty(wall));
+        step(&mut app);
+        assert_eq!(output(&app, wall), high);
+        assert_eq!(
+            app.world().resource::<PublicWalls>().walls[&wall].arch_segment_heights,
+            arch
+        );
+        assert_eq!(
+            app.world().resource::<PublicWalls>().walls[&wall].segment_heights,
+            third
+        );
         emit(
             &mut app,
             UpsertRawWall {
@@ -216,6 +227,10 @@ fn raw_paths_regular_and_freehand_rebuild_without_feedback_clear_and_remove() {
 fn actual_roof_relationship_emits_gate_payloads_via_bevy_and_changes_with_source() {
     let mut app = setup();
     let wall = WallId(12345);
+    app.world_mut().resource_mut::<wall_authoring::WallAuthoringState>().history_metadata.insert(
+        wall,
+        country_core::resources::history::wall_edit::WallHistoryMetadata::for_new_wall(false),
+    );
     let mut strip = vec![0; 512 * 512];
     for z in 240..274 {
         for x in 249..254 {
@@ -276,7 +291,102 @@ fn actual_roof_relationship_emits_gate_payloads_via_bevy_and_changes_with_source
             .iter()
             .all(|c| c.0.wall_id == wall && c.0.ordinal > 0 && !c.0.segment.positions.is_empty())
     );
+    // The producer emits commands only on rebuild. Missing dependencies must
+    // retain that batch so completing the dependency can resume construction.
+    let terrain = app
+        .world_mut()
+        .resource_mut::<WallCollectionState>()
+        .terrain
+        .take()
+        .unwrap();
+    for command in &commands {
+        emit(&mut app, command.clone());
+    }
     step(&mut app);
+    assert_eq!(
+        app.world()
+            .resource::<gates::GateBuildState>()
+            .pending
+            .get(&wall),
+        Some(&gates::PendingGateReason::MissingTerrain)
+    );
+    app.world_mut()
+        .resource_mut::<WallCollectionState>()
+        .terrain = Some(terrain);
+    step(&mut app);
+    assert!(
+        app.world()
+            .resource::<gates::GateBuildState>()
+            .cpu_outputs
+            .contains_key(&wall),
+        "retained gate commands must resume without another producer event"
+    );
+    // Terrain can change outside the wall's sampled outline. The gate still
+    // samples that terrain for support geometry and must refresh independently.
+    let gate_generation_before_terrain = app.world().resource::<gates::Gates>().0[&wall].clone();
+    {
+        let mut collection = app.world_mut().resource_mut::<WallCollectionState>();
+        let terrain = collection.terrain.as_mut().unwrap();
+        terrain.maximum_y = 0.1;
+    }
+    step(&mut app);
+    assert!(
+        app.world()
+            .resource::<gates::GateBuildState>()
+            .rebuilt
+            .contains(&wall)
+    );
+    assert_ne!(
+        app.world().resource::<gates::Gates>().0[&wall],
+        gate_generation_before_terrain
+    );
+    // Mutating the public Arc uses COW because the cached fingerprint retains
+    // its allocation; replacing terrain cells invalidates the support meshes.
+    {
+        let mut collection = app.world_mut().resource_mut::<WallCollectionState>();
+        let terrain = collection.terrain.as_mut().unwrap();
+        Arc::make_mut(&mut terrain.encoded).fill(1);
+    }
+    step(&mut app);
+    assert!(
+        app.world()
+            .resource::<gates::GateBuildState>()
+            .rebuilt
+            .contains(&wall)
+    );
+    let gate_entities = app.world().resource::<gates::Gates>().0[&wall].clone();
+    assert!(
+        app.world()
+            .resource::<gates::GateBuildState>()
+            .cpu_outputs
+            .contains_key(&wall)
+    );
+    let mut keep = [0; 64];
+    keep[32..40].copy_from_slice(&wall.0.to_le_bytes());
+    emit(
+        &mut app,
+        roof_edits::EditRoof(
+            country_core::resources::roofs::geometry::edit_rules::RoofEditEvent::from_observed(&keep),
+        ),
+    );
+    emit(&mut app, WallSpatialDirty(wall));
+    step(&mut app);
+    assert_eq!(
+        app.world().resource::<gates::Gates>().0[&wall],
+        gate_entities
+    );
+    assert!(
+        app.world()
+            .resource::<gates::GateBuildState>()
+            .cpu_outputs
+            .contains_key(&wall)
+    );
+    assert!(
+        app.world()
+            .resource::<gates::GateBuildState>()
+            .rebuilt
+            .is_empty()
+    );
     assert_eq!(
         cursor
             .read(app.world().resource::<Events<ConstructGateCmd>>())
@@ -297,6 +407,24 @@ fn actual_roof_relationship_emits_gate_payloads_via_bevy_and_changes_with_source
         .collect();
     assert!(!changed.is_empty());
     assert_ne!(changed[0].0.segment.heights, commands[0].0.segment.heights);
+    assert!(
+        app.world()
+            .resource::<gates::GateBuildState>()
+            .cpu_outputs
+            .contains_key(&wall)
+    );
+    emit(&mut app, DeleteRoof(wall));
+    for command in &changed {
+        emit(&mut app, command.clone());
+    }
+    step(&mut app);
+    assert!(
+        !app.world()
+            .resource::<gates::GateBuildState>()
+            .cpu_outputs
+            .contains_key(&wall)
+    );
+    assert!(!app.world().resource::<gates::Gates>().0.contains_key(&wall));
     emit(&mut app, RemoveWall(wall));
     step(&mut app);
     assert!(

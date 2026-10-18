@@ -1,0 +1,184 @@
+// set_parameter @ 0x140a57670
+
+void __cdecl country_core::resources::audio_resources::impl$10::set_parameter(void)
+
+{
+  char cVar1;
+  undefined **ppuVar2;
+  undefined ***pppuVar3;
+  char extraout_AL;
+  char extraout_AL_00;
+  code *extraout_RAX;
+  undefined8 *extraout_RAX_00;
+  int *in_RCX;
+  longlong local_1f8;
+  undefined1 *local_1c0;
+  void *pvStack_1b8;
+  ulonglong local_1b0;
+  undefined1 local_1a8 [64];
+  undefined1 local_168 [16];
+  undefined **local_158;
+  code *pcStack_150;
+  int *local_148;
+  code *local_140;
+  undefined1 *local_138;
+  code *local_130;
+  undefined ***local_128;
+  undefined **ppuStack_120;
+  longlong local_118;
+  undefined8 local_110;
+  undefined8 local_108;
+  undefined8 uStack_100;
+  undefined8 local_f8;
+  undefined *local_f0;
+  undefined8 local_e8;
+  undefined8 local_e0;
+  undefined *local_d8;
+  undefined8 local_d0;
+  undefined ***local_c8;
+  undefined8 local_c0;
+  undefined8 local_b8;
+  undefined8 local_b0;
+  undefined8 local_a8;
+  undefined8 local_98;
+  undefined8 local_90;
+  undefined1 local_88;
+  undefined **local_80;
+  undefined ***local_78;
+  code *pcStack_70;
+  undefined ***local_68;
+  undefined8 local_60;
+  undefined ****local_58;
+  undefined8 local_50;
+  char local_39;
+  undefined8 local_38;
+  
+  local_38 = 0xfffffffffffffffe;
+  if (*in_RCX == 1) {
+    libfmod::EventInstance::set_parameter_by_name();
+    if (local_1f8 != -0x7ffffffffffffffc) {
+      local_148 = in_RCX + 4;
+      local_158 = (undefined **)local_168;
+      pcStack_150 = core::fmt::impl$74::fmt<str_>;
+      local_140 = alloc::string::impl$24::fmt;
+      local_130 = libfmod::impl$341::fmt;
+      local_128 = (undefined ***)0x2;
+      ppuStack_120 = (undefined **)0x2;
+      local_118 = 2;
+      local_108 = 0;
+      uStack_100 = 0x20;
+      local_f8 = CONCAT71(local_f8._1_7_,3);
+      local_f0 = (undefined *)0x2;
+      local_e8 = 2;
+      local_e0 = 2;
+      local_d0 = 1;
+      local_c8 = (undefined ***)&DAT_00000020;
+      local_c0 = CONCAT71(local_c0._1_7_,3);
+      local_b8 = 2;
+      local_b0 = 2;
+      local_a8 = 2;
+      local_98 = 2;
+      local_90 = 0x400000020;
+      local_88 = 3;
+      local_78 = (undefined ***)&PTR_s_Failed_to_set_parameter_named_on_142ad2cc8;
+      pcStack_70 = (code *)0x3;
+      local_60 = 3;
+      local_58 = &local_128;
+      local_50 = 3;
+      local_138 = local_1a8;
+      local_68 = &local_158;
+      alloc::fmt::format::format_inner();
+      local_158 = (undefined **)local_1c0;
+      pcStack_150 = pvStack_1b8;
+      local_148 = (int *)local_1b0;
+      if (DAT_143634d70 != 3) {
+        local_78 = (undefined ***)CONCAT71(local_78._1_7_,1);
+        local_128 = (undefined ***)&local_78;
+        std::sys::sync::once::futex::Once::call();
+      }
+      std::sync::poison::mutex::Mutex::lock<winit::dpi::PhysicalSize<u32>_>();
+      if ((int)local_128 == 1) {
+        local_78 = (undefined ***)ppuStack_120;
+        pcStack_70 = (code *)CONCAT71(pcStack_70._1_7_,(char)local_118);
+                    // WARNING: Subroutine does not return
+        core::result::unwrap_failed();
+      }
+      local_80 = ppuStack_120;
+      local_39 = (char)local_118;
+      std::alloc::__default_lib_allocator::__rust_alloc();
+      if (extraout_RAX == (code *)0x0) {
+                    // WARNING: Subroutine does not return
+        alloc::raw_vec::handle_error();
+      }
+      *(undefined8 *)(extraout_RAX + 7) = 0x2928202168746170;
+      *(undefined8 *)extraout_RAX = 0x705f656c75646f6d;
+      local_128 = (undefined ***)&DAT_0000000f;
+      local_118 = 0xf;
+      ppuStack_120 = (undefined **)extraout_RAX;
+      alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+      *(undefined8 *)((longlong)ppuStack_120 + local_118) = 0x3a20657461726324;
+      *(undefined8 *)((code *)((longlong)ppuStack_120 + local_118) + 8) = 0x206c6576654c203a;
+      *(undefined8 *)((longlong)ppuStack_120 + local_118 + 0xf) = 0x6e726157203a3a20;
+      local_68 = (undefined ***)(local_118 + 0x17);
+      local_78 = local_128;
+      pcStack_70 = (code *)ppuStack_120;
+      if ((ulonglong)((longlong)local_128 - (longlong)local_68) < local_148) {
+        alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+      }
+      pppuVar3 = local_68;
+      memcpy(pcStack_70 + (longlong)local_68,pcStack_150,(size_t)local_148);
+      local_118 = (longlong)pppuVar3 + (longlong)local_148;
+      local_128 = local_78;
+      ppuStack_120 = (undefined **)pcStack_70;
+      local_68 = (undefined ***)local_118;
+      alloc::collections::btree::map::BTreeMap::
+      insert<alloc::string::String,alloc::collections::btree::set_val::SetValZST,alloc::alloc::Global>
+                ();
+      if ((extraout_AL == '\0') &&
+         (1 < *(ulonglong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E)) {
+        pcStack_70 = alloc::string::impl$23::fmt;
+        local_78 = &local_158;
+        ::toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();
+        local_108 = *extraout_RAX_00;
+        uStack_100 = extraout_RAX_00[1];
+        local_f8 = 2;
+        local_f0 = &DAT_142ad2550;
+        local_e8 = 0x28;
+        local_d8 = &DAT_142ad2a78;
+        local_d0 = 1;
+        local_c0 = 1;
+        local_b8 = 0;
+        local_128 = (undefined ***)0x0;
+        ppuStack_120 = (undefined **)&DAT_142ad2550;
+        local_118 = 0x28;
+        local_110 = 0;
+        local_e0 = CONCAT44(*(undefined4 *)(extraout_RAX_00 + 2),1);
+        local_c8 = (undefined ***)&local_78;
+        ::log::__private_api::impl$2::log();
+      }
+      ppuVar2 = local_80;
+      if ((local_39 == '\0') &&
+         ((*(ulonglong *)
+            __imp__ZN3std9panicking11panic_count18GLOBAL_PANIC_COUNT17h923f4fc2d5dc75a1E &
+          0x7fffffffffffffff) != 0)) {
+        std::panicking::panic_count::is_zero_slow_path();
+        if (extraout_AL_00 == '\0') {
+          *(char *)((longlong)ppuVar2 + 1) = '\x01';
+        }
+      }
+      LOCK();
+      cVar1 = *(char *)ppuVar2;
+      *(char *)ppuVar2 = '\0';
+      UNLOCK();
+      if (cVar1 == '\x02') {
+        std::sys::sync::mutex::futex::Mutex::wake();
+      }
+      if (local_158 != (undefined **)0x0) {
+        std::alloc::__default_lib_allocator::__rust_dealloc();
+      }
+      core::ptr::drop_in_place<enum2_<libfmod::Error>_>();
+    }
+  }
+  return;
+}
+

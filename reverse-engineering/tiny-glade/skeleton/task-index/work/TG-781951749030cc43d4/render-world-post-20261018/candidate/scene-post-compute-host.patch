@@ -1,0 +1,82 @@
+--- a/crates/tiny-glade/src/scene_compute.rs
++++ b/crates/tiny-glade/src/scene_compute.rs
+@@ -17,11 +17,12 @@
+         ssbo::InstanceCounted,
+     },
+     resources::{
+-        render_ssbo::LanternSsbo, shader_refactoring_state::ShaderRefactoringState,
++        render_ssbo::{LanternSsbo, SpatialResolveOffsetsSsbo}, shader_refactoring_state::ShaderRefactoringState,
+         world_raster_defs,
+     },
+     systems::render_loop::compute_passes::{
+         apply_screen_shadows::{self, ScreenShadowInputs},
++        apply_volumetrics, generate_mips,
+         bin_lights::{self, LightBinning},
+         dof::{self, DofConfig, DofPrepared},
+         dof_autofocus::DofAutofocusSsbo,
+@@ -210,6 +211,13 @@
+     pub normals: RgTexture,
+ }
+ 
++/// Real postprocessing output plus optional original multires graph buffers.
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub struct DofFrameOutput {
++    pub color: RgTexture,
++    pub tile_buffers: Option<dof::DofTileBuffers>,
++}
++
+ /// Typed world consumers borrowing one current App and frame. All mandatory
+ /// resources must already have been produced by the real startup/ECS chain.
+ pub struct SceneComputeHost<'f, 's, 'w> {
+@@ -390,6 +398,40 @@
+         })
+     }
+ 
++    /// W48 reads the real MainCamera mode, not a new default camera.
++    pub fn apply_volumetrics(&mut self, color: &RgTexture, depth: &RgTexture) -> rhapsody::Result<()> {
++        let mode = self.world.get_resource::<country_core::systems::camera_rig::main_camera::MainCamera>()
++            .ok_or_else(|| missing("MainCamera"))?.mode_byte();
++        with_env(self.frame, self.world, |env| {
++            let pass = apply_volumetrics::apply_volumetrics(env, mode, color, depth);
++            env.record(pass);
++            Ok(())
++        })
++    }
++
++    /// W50 reads the actual source description's mip count. The native stack
++    /// value8 at1404eccd0 is the length of `dof_mips`, not a mip-count argument.
++    pub fn generate_mips(&mut self, color: &RgTexture, name: &str) -> rhapsody::Result<()> {
++        with_env(self.frame, self.world, |env| {
++            generate_mips::generate_mips(env, &color.desc, &country_core::render::pass_builder::pass_resource_access::WriteTextureUnchecked(*color), name);
++            Ok(())
++        })
++    }
++
++    /// Whole W51, including the original shared offsets upload and nine-pass
++    /// indirect multires branch. Global multires and photomode quality differ.
++    pub fn calc_dof(
++        &mut self, color: &RgTexture, depth: &RgTexture, prepared: &DofPrepared,
++        config: &DofConfig, multires: bool, photomode: bool,
++    ) -> rhapsody::Result<DofFrameOutput> {
++        with_env(self.frame, self.world, |env| {
++            let out = dof::calc_dof::<SpatialResolveOffsetsSsbo>(
++                env, multires, color, depth, prepared, None, config, u8::from(photomode));
++            for pass in out.passes { env.record(pass); }
++            Ok(DofFrameOutput { color: out.output, tile_buffers: out.tile_buffers })
++        })
++    }
++
+     pub fn dof_prepare(&mut self, depth: &RgTexture) -> rhapsody::Result<DofPrepared> {
+         with_env(self.frame, self.world, |env| {
+             let (out, pass) = dof::dof_prepare::<DofAutofocusSsbo>(env, depth);
+@@ -398,8 +440,8 @@
+         })
+     }
+ 
+-    /// The original non-multires branch only. Multires also requires the
+-    /// native DynamicConstants tile-offset upload, so it is not approximated.
++    /// Explicit fused-only entry for bounded callers. The complete original
++    /// multires branch is available above through calc_dof.
+     pub fn calc_dof_fullres(
+         &mut self,
+         color: &RgTexture,

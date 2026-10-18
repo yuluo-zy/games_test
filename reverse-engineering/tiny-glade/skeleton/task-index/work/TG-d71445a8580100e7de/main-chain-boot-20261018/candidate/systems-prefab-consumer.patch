@@ -1,0 +1,41 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/prefab.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/prefab.rs
+@@ -467,7 +467,7 @@
+                     data.prefab_name.as_name_ref()
+                 );
+             }
+-            let shape = part
++            let shape = trigger
+                 .bounds
+                 .scaled(Vec3::splat(transform.scale))
+                 .translated(transform.translation);
+@@ -845,23 +845,12 @@
+     }
+ 
+     #[test]
+-    fn audio_trigger_kind_gate_matches_tree_tag_and_prefix() {
+-        let ok = PrefabAudioTrigger {
+-            kind_tag: 4,
+-            kind_name: "Tree".into(),
+-            ..PrefabAudioTrigger::default()
+-        };
+-        assert!(ok.is_tree());
+-        let bad_tag = PrefabAudioTrigger {
+-            kind_tag: 3,
+-            ..ok.clone()
+-        };
+-        assert!(!bad_tag.is_tree());
+-        let bad_name = PrefabAudioTrigger {
+-            kind_name: "Bush".into(),
+-            ..ok
+-        };
+-        assert!(!bad_name.is_tree());
++    fn audio_trigger_kind_gate_requires_exact_tree_string() {
++        let bounds = Aabb3 { min: Vec3::ZERO, max: Vec3::ONE };
++        for (kind, accepted) in [("Tree", true), ("TreeX", false), ("Tre", false), ("Bush", false)] {
++            let trigger = PrefabAudioTrigger { kind_name: kind.into(), bounds };
++            assert_eq!(trigger.is_tree(), accepted);
++        }
+     }
+ 
+     #[test]

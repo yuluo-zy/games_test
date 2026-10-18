@@ -1,0 +1,32 @@
+// set_vca_volume @ 0x140a54810
+
+void __cdecl country_core::resources::audio_resources::AudioCoreInner::set_vca_volume(void)
+
+{
+  longlong local_140;
+  longlong local_88 [8];
+  longlong *local_48;
+  code *local_40;
+  undefined8 local_30;
+  
+  local_30 = 0xfffffffffffffffe;
+  libfmod::Studio::get_vca();
+  if (local_140 == -0x7ffffffffffffffc) {
+    libfmod::Vca::set_volume();
+    if (local_88[0] != -0x7ffffffffffffffc) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+  }
+  else {
+    if (*(longlong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E != 0) {
+      local_48 = local_88;
+      local_40 = libfmod::impl$341::fmt;
+      ::toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();
+      ::log::__private_api::impl$2::log();
+    }
+    core::ptr::drop_in_place<enum2_<libfmod::Error>_>();
+  }
+  return;
+}
+

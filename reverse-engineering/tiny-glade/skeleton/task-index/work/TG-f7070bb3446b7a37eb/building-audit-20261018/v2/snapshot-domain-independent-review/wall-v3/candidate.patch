@@ -1,0 +1,19 @@
+--- a/crates/country-core/src/systems/save/snapshot.rs
++++ b/crates/country-core/src/systems/save/snapshot.rs
+@@ -298,7 +298,15 @@
+         ids.sort_unstable();
+         let mut sections = vec![
+             ("Version", json!(SNAPSHOT_FORMAT_VERSION)),
+-            ("Walls", serde_json::to_value(walls)?),
++            (
++                "Walls",
++                serde_json::to_value(
++                    walls
++                        .into_iter()
++                        .map(|(id, state)| (id.0, state))
++                        .collect::<Vec<_>>(),
++                )?,
++            ),
+             ("Roofs", serde_json::to_value(roofs)?),
+             ("Decorators", json!({"states": states})),
+             (

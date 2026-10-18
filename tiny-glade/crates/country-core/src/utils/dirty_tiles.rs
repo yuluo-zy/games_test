@@ -1,49 +1,33 @@
-//! `country_core::utils::dirty_tiles` — 64×64 位的脏瓦片位图（0x200 B）。
+//! 世界编辑区域的脏瓦片位图：每行一个 u64，支持区域置位、查询和发布合并。
 //!
-//! 原版唯一的 `DirtyTiles`：建筑碰撞（`recovered_building`）与世界栅格
-//! （`resources::world_raster`）共用同一类型。原版符号（B 构建，PDB 权威地址）：
-//!
-//! | 方法 | 地址 | 级别 |
-//! |---|---|---|
-//! | `new_clear` | 0x140960ac0 | O，显式清零 512 B |
-//! | `rasterize_world_space_rect` | 0x140960ae0 | O，14 B 跳板进 `iter_world_space_rect_cells`（0x140ade8e0） |
-//! | `intersects_world_space_rect` | 0x140960af0 | O，0x26 B 包装：清零栈上 bool、交换 rcx/rdx 后调 0x140adec50 并返回该 bool；内循环 `bt` 测位，命中后置标志但继续下一行（结果等价于 `any`） |
-//! | `clear` | 0x140960c20 | O |
-//! | `extend` / `impl StateDelta::apply_to` | 0x140960c30 / 0x140960ef0 | O，两者同大小（694 B），逐字 OR |
-//! | `retain<copy_to_staging 闭包>` | 0x140adfcb0 | O，见 [`DirtyTiles::retain`] |
-//!
-//! 位图布局（O，0x140adfcb0 的 `tzcnt` 循环与 0x140ade8e0 的 `shl/or [rsi+r8*8]`）：
-//! 第 `y` 个 u64 字是第 `y` 行瓦片，第 `x` 位是该行第 `x` 列瓦片，瓦片边长 8 px，
-//! 世界边长 130。
-//!
-//! `rasterize_world_space_stroke`（0x140ade620）：`iter_world_space_stroke_cells` 的 `DirtyTiles` 实例，见
-//! [`DirtyTiles::rasterize_world_space_stroke`] 与 `utils::conservative_line_raster`。
-//!
-//! `cell_from_world_space`（0x140960b20）返回 tag + 两个坐标；最后仅存低 64 位，
-//! 旧“四通道输出”解释错误。第三次 fmaf 的结果不写入返回值。
+//! 64×64 瓦片覆盖 130×130 的世界范围，单瓦片对应 8×8 个栅格像素。
+//! 矩形使用半开区间，笔画在枚举前裁剪到位图边界。
 
-// Preserve the original instruction-level expression order/NaN policy, API call shapes, and evidence/test transcription. See README.md.
-#![allow(clippy::manual_clamp)]
-
+use ::utils::float_grid::DEFAULT_WORLD_EXTENT;
 use glam::{Vec2, Vec3};
 use tabloid::{State, StateDelta};
 
-use crate::utils::conservative_line_raster::conservative_plot_line;
+use crate::utils::conservative_line_raster::conservative_plot_line_in_bounds;
 
-/// 瓦片边长（像素）。O：`retain` 里 `shl 0xc`（8 行 × 512 B）与 `lea [rdi*8]`。
+/// 单个瓦片包含的栅格像素边长。
 pub const TILE_SIZE: usize = 8;
-/// 位图边长（瓦片）。O：`cmp edx,0x3f`、0x200 B / 8 = 64 个 u64。
+/// 每个方向的瓦片数量；一行恰好放入一个 u64。
 pub const GRID_SIZE: usize = 64;
+/// 超出多个世界宽度的坐标改用全图重建，避免 f32 转换精度不足导致漏标。
+const MAX_PRECISE_WORLD_COORDINATE: f32 = DEFAULT_WORLD_EXTENT * 16.0;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DirtyTiles {
     rows: [u64; GRID_SIZE],
 }
 
+/// Historical name for the same 64 by 64 dirty tile grid.
+pub use DirtyTiles as DirtyTiles64;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct DirtyTileRect {
     pub minimum: [u32; 2],
-    /// Original raster end coordinates are exclusive and clamp to 63.
+    /// 不包含的终点，范围为 0..=64。
     pub end: [u32; 2],
 }
 
@@ -53,30 +37,35 @@ impl DirtyTileRect {
     }
 }
 
-/// Native constants at B 142925874/14292587c and 142ae19d0.
-/// scale is exactly 0x3efc0fc1, bias32, clamp63; fmaf occurs before rounding.
-fn cell_coordinate(world: f32, upper: bool) -> u32 {
-    let value = world.mul_add(f32::from_bits(0x3efc0fc1), 32.0);
-    let value = if upper { value.ceil() } else { value.floor() };
-    // Original CMPORD mask converts NaN to zero before the upper clamp.
-    if value.is_nan() {
-        0
-    } else {
-        value.max(0.0).min(63.0) as u32
+/// 世界坐标转连续瓦片坐标。f64 避免极大有限坐标在转换时溢出。
+fn world_to_tile(world: f32) -> f64 {
+    (f64::from(world) / f64::from(::utils::float_grid::DEFAULT_WORLD_EXTENT) + 0.5)
+        * GRID_SIZE as f64
+}
+
+/// 世界 XZ 矩形转位图范围；无效或逆序输入返回空区间。
+pub fn world_rect_cells(rect: [f32; 4]) -> DirtyTileRect {
+    let [min_x, min_z, max_x, max_z] = rect;
+    if !rect.iter().all(|value| value.is_finite()) || min_x > max_x || min_z > max_z {
+        return DirtyTileRect {
+            minimum: [0; 2],
+            end: [0; 2],
+        };
+    }
+    let bound = |coordinate: f32, upper: bool| {
+        let tile = world_to_tile(coordinate);
+        let rounded = if upper { tile.ceil() } else { tile.floor() };
+        rounded.clamp(0.0, GRID_SIZE as f64) as u32
+    };
+    DirtyTileRect {
+        minimum: [bound(min_x, false), bound(min_z, false)],
+        end: [bound(max_x, true), bound(max_z, true)],
     }
 }
 
-pub fn world_rect_cells(rect: [f32; 4]) -> DirtyTileRect {
-    DirtyTileRect {
-        minimum: [
-            cell_coordinate(rect[0], false),
-            cell_coordinate(rect[1], false),
-        ],
-        end: [
-            cell_coordinate(rect[2], true),
-            cell_coordinate(rect[3], true),
-        ],
-    }
+/// 已验证的非空半开列区间转连续位掩码，不执行移位 64 位。
+fn column_mask(start: u32, end: u32) -> u64 {
+    (u64::MAX >> (GRID_SIZE as u32 - (end - start))) << start
 }
 
 impl Default for DirtyTiles {
@@ -86,24 +75,22 @@ impl Default for DirtyTiles {
 }
 
 impl DirtyTiles {
-    /// B 0x140960b20: fused scaling, saturating truncation, then unsigned bounds.
-    /// NaN converts to cell 0; slightly negative scaled coordinates also truncate
-    /// to 0. This differs from rectangle floor/clamp policy.
+    /// 查询世界点所在的瓦片；非有限或超出世界边界时返回 None。
     pub fn cell_from_world_space(world: Vec2) -> Option<[u32; 2]> {
-        let scale = f32::from_bits(0x3efc_0fc1);
-        let x = world.x.mul_add(scale, 32.0) as i32 as u32;
-        let y = world.y.mul_add(scale, 32.0) as i32 as u32;
-        ((x | y) < GRID_SIZE as u32).then_some([x, y])
+        let column = world_to_tile(world.x).floor();
+        let row = world_to_tile(world.y).floor();
+        let range = 0.0..GRID_SIZE as f64;
+        (range.contains(&column) && range.contains(&row)).then_some([column as u32, row as u32])
     }
 
-    /// B new_clear140960ac0 explicitly zeros all512 bytes.
+    /// 创建空位图。
     pub fn new_clear() -> Self {
         Self {
             rows: [0; GRID_SIZE],
         }
     }
 
-    /// 全脏。O：`AllWorldRasterWrite::write` / `clear_all` 对 +0x98 做 `memset(0xff, 0x200)`。
+    /// 创建全部置脏的位图。
     pub fn new_all_dirty() -> Self {
         Self {
             rows: [u64::MAX; GRID_SIZE],
@@ -114,12 +101,12 @@ impl DirtyTiles {
         Self { rows }
     }
 
-    /// B clear140960c20; this resets mask contents, not owner availability.
+    /// 清空脏标记，不修改发布者或上传状态。
     pub fn clear(&mut self) {
         self.rows.fill(0);
     }
 
-    /// 全部置脏（`memset(0xff)`）。
+    /// 将全部瓦片置脏。
     pub fn set_all(&mut self) {
         self.rows.fill(u64::MAX);
     }
@@ -130,11 +117,9 @@ impl DirtyTiles {
         }
     }
 
-    /// B flush copies the bitmap then clears it before publishing the copy.
+    /// 取出待发布快照，并将当前位图恢复为空。
     pub fn take_and_clear(&mut self) -> Self {
-        let snapshot = self.clone();
-        self.clear();
-        snapshot
+        std::mem::take(self)
     }
 
     pub fn is_empty(&self) -> bool {
@@ -158,7 +143,7 @@ impl DirtyTiles {
                     }
                     let column = bits.trailing_zeros() as usize;
                     bits &= bits - 1;
-                    Some(row * 64 + column)
+                    Some(row * GRID_SIZE + column)
                 })
             })
     }
@@ -167,59 +152,82 @@ impl DirtyTiles {
         &self.rows
     }
 
+    /// 按行一次 OR 整段列掩码，最多操作 64 个机器字。
     pub fn rasterize_world_rect(&mut self, rect: [f32; 4]) -> DirtyTileRect {
         let cells = world_rect_cells(rect);
         if !cells.is_empty() {
-            for z in cells.minimum[1]..cells.end[1] {
-                for x in cells.minimum[0]..cells.end[0] {
-                    self.rows[z as usize] |= 1u64 << x;
-                }
+            let mask = column_mask(cells.minimum[0], cells.end[0]);
+            for row in &mut self.rows[cells.minimum[1] as usize..cells.end[1] as usize] {
+                *row |= mask;
             }
         }
         cells
     }
 
-    /// 置一个瓦片；`(x | y) as u32 > 63`（含负数）时忽略。O：0x140b1e460 内联回调的 `cmp r9d,0x3f; ja`。
-    pub fn set_cell(&mut self, x: i32, y: i32) {
-        if ((x | y) as u32) <= 63 {
-            self.rows[y as usize] |= 1u64 << x;
+    /// 置单格；负数或越界坐标忽略。
+    pub fn set_cell(&mut self, column: i32, row: i32) {
+        if (0..GRID_SIZE as i32).contains(&column) && (0..GRID_SIZE as i32).contains(&row) {
+            self.rows[row as usize] |= 1u64 << column;
         }
     }
 
-    /// O：0x140ade620 `iter_world_space_stroke_cells<&[Vec3]>`（`DirtyTiles` 实例）。
-    ///
-    /// 少于 2 个点什么也不做。半径 `r_cells = radius * 0.4923 + 3.846e-4`（0x142925874 = `0x3efc0fc1`、
-    /// 0x142925878 = `0x39c9a634`，普通 `mulss` + `addss`）；每个点取 `(x, z)`，各自 `fmaf(v, 0x3efc0fc1, 32.0)`
-    /// 换成瓦片坐标；相邻两点交给 [`conservative_plot_line`]，回调为 [`Self::set_cell`]。
+    /// 标记世界 XZ 平面中的连续笔画。每段至多访问 4096 格，不创建临时点数组。
     pub fn rasterize_world_space_stroke(&mut self, points: &[Vec3], radius: f32) {
-        if points.len() < 2 {
+        if points.len() < 2 || !radius.is_finite() || radius < 0.0 {
             return;
         }
-        let scale = f32::from_bits(0x3efc0fc1);
-        let radius_cells = radius * scale + f32::from_bits(0x39c9a634);
-        let to_cell = |p: Vec3| (p.x.mul_add(scale, 32.0), p.z.mul_add(scale, 32.0));
-        for pair in points.windows(2) {
-            conservative_plot_line(to_cell(pair[0]), to_cell(pair[1]), radius_cells, |x, y| {
-                self.set_cell(x, y)
-            });
+        let tiles_per_world_unit = GRID_SIZE as f32 / ::utils::float_grid::DEFAULT_WORLD_EXTENT;
+        // 小幅外扩防止刚好落在格线上的笔画因舍入漏掉相邻瓦片。
+        let radius_tiles = radius * tiles_per_world_unit + 0.000_4;
+        let to_tile = |point: Vec3| (world_to_tile(point.x) as f32, world_to_tile(point.z) as f32);
+        for segment in points.windows(2) {
+            let [start, end] = [segment[0], segment[1]];
+            if ![start.x, start.z, end.x, end.z]
+                .iter()
+                .all(|value| value.is_finite())
+            {
+                continue;
+            }
+            let half_extent = ::utils::float_grid::DEFAULT_WORLD_EXTENT * 0.5;
+            if start.x.min(end.x) > half_extent + radius
+                || start.x.max(end.x) < -half_extent - radius
+                || start.z.min(end.z) > half_extent + radius
+                || start.z.max(end.z) < -half_extent - radius
+            {
+                continue;
+            }
+            // 超大世界坐标已无法表达瓦片大小的平移。范围可能触及世界时，
+            // 保守标记全图，避免转换丢掉世界原点偏移后漏掉真正变化的瓦片。
+            if [start.x, start.z, end.x, end.z, radius]
+                .iter()
+                .any(|value| value.abs() > MAX_PRECISE_WORLD_COORDINATE)
+            {
+                self.set_all();
+                return;
+            }
+            conservative_plot_line_in_bounds(
+                to_tile(segment[0]),
+                to_tile(segment[1]),
+                radius_tiles,
+                [0..=GRID_SIZE as i32 - 1, 0..=GRID_SIZE as i32 - 1],
+                |column, row| self.set_cell(column, row),
+            );
         }
     }
 
-    /// O：0x140adec50。同一个取整/钳制规则，内循环对每个格 `bt` 测位，命中置标志。
+    /// 使用与区域置位一致的范围，按行检测位掩码交集。
     pub fn intersects_world_rect(&self, rect: [f32; 4]) -> bool {
         let cells = world_rect_cells(rect);
         if cells.is_empty() {
             return false;
         }
-        (cells.minimum[1]..cells.end[1])
-            .any(|z| (cells.minimum[0]..cells.end[0]).any(|x| self.rows[z as usize] >> x & 1 != 0))
+        let mask = column_mask(cells.minimum[0], cells.end[0]);
+        self.rows[cells.minimum[1] as usize..cells.end[1] as usize]
+            .iter()
+            .any(|row| row & mask != 0)
     }
 
-    /// O：0x140adfcb0 `DirtyTiles::retain<copy_to_staging::closure_env$0<512>>`。
-    ///
-    /// 行（`y`）由小到大，行内由低位到高位（`tzcnt` + `blsr`）逐个置位瓦片调用
-    /// `keep(x, y)`；返回 `false` 的瓦片被 `btr` 清位，并把该行字写回位图。
-    /// 回调拿到的是当时的位图拷贝，所以回调内的清位不影响本次遍历。
+    /// 按行、再按从低到高的列访问脏格；回调返回 false 则清位。
     pub fn retain(&mut self, mut keep: impl FnMut(u32, u32) -> bool) {
         for (y, row) in self.rows.iter_mut().enumerate() {
             let mut remaining = *row;
@@ -241,7 +249,7 @@ impl State for DirtyTiles {
     }
 }
 
-/// O：`impl$2::apply_to`（0x140960ef0）与 `extend` 同为 694 B，逐字 OR。
+/// 发布订阅增量按位合并，避免覆盖尚未消费的变更。
 impl StateDelta<DirtyTiles> for DirtyTiles {
     fn apply_to(&self, state: &mut DirtyTiles) {
         state.extend(self);
@@ -254,11 +262,11 @@ mod tests {
     use tabloid::Publisher;
 
     #[test]
-    fn rect_cells_use_the_exe_constants() {
-        // 世界 0 → 格 32；±65 为世界边界 → 0 / 64 → 钳到 63。
+    fn rect_cells_cover_the_complete_world() {
+        // 世界两端映射到半开范围 0..64，最后一行和一列也必须覆盖。
         let cells = world_rect_cells([-65.0, -65.0, 65.0, 65.0]);
         assert_eq!(cells.minimum, [0, 0]);
-        assert_eq!(cells.end, [63, 63]);
+        assert_eq!(cells.end, [64, 64]);
         let mid = world_rect_cells([0.0, 0.0, 0.0, 0.0]);
         assert_eq!(mid.minimum, [32, 32]);
         assert_eq!(mid.end, [32, 32]);
@@ -366,5 +374,43 @@ mod tests {
         publisher.publish(DirtyTiles::from_rows(rows)).unwrap();
         let batch = subscriber.take().unwrap();
         assert_eq!(batch.rows()[2], 0b11);
+    }
+
+    #[test]
+    fn complete_rect_marks_all_tiles_and_far_outside_does_not_mark_edges() {
+        let mut tiles = DirtyTiles::new_clear();
+        tiles.rasterize_world_rect([-65.0, -65.0, 65.0, 65.0]);
+        assert_eq!(tiles, DirtyTiles::new_all_dirty());
+        tiles.clear();
+        tiles.rasterize_world_rect([500.0, 500.0, 501.0, 501.0]);
+        assert!(tiles.is_empty());
+        assert_eq!(
+            DirtyTiles::cell_from_world_space(Vec2::splat(f32::NAN)),
+            None
+        );
+        assert_eq!(
+            DirtyTiles::cell_from_world_space(Vec2::new(-65.01, 0.0)),
+            None
+        );
+        assert_eq!(
+            DirtyTiles::cell_from_world_space(Vec2::splat(64.9)),
+            Some([63, 63])
+        );
+    }
+
+    #[test]
+    fn extreme_stroke_is_bounded_but_does_not_skip_a_world_crossing() {
+        let mut tiles = DirtyTiles::new_clear();
+        tiles.rasterize_world_space_stroke(
+            &[
+                Vec3::new(-f32::MAX, 0.0, 0.0),
+                Vec3::new(f32::MAX, 0.0, 0.0),
+            ],
+            0.0,
+        );
+        assert_eq!(tiles.rows()[32], u64::MAX);
+        tiles.clear();
+        tiles.rasterize_world_space_stroke(&[Vec3::splat(3e9); 2], 0.0);
+        assert!(tiles.is_empty());
     }
 }

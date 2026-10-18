@@ -1,0 +1,37 @@
+--- a/crates/tiny-glade/src/production_renderer.rs
++++ b/crates/tiny-glade/src/production_renderer.rs
+@@ -145,20 +145,32 @@
+     pub fn activate_application(&mut self, world: &World) -> Result<()> {
+         let shaders = world.get_resource::<crate::run_game::ApplicationShaderLibrary>()
+             .context("App has no original shader-library owner")?.0.clone();
+-        if Arc::ptr_eq(&self.shaders, &shaders) { return Ok(()); }
++        if Arc::ptr_eq(&self.shaders, &shaders) {
++            if let Some(completed) = world.get_resource::<crate::render_bridge::CompletedGameplayWarmup>() {
++                self.bridge.accept_gameplay_warmup(completed)?;
++            }
++            return Ok(());
++        }
+         anyhow::ensure!(self.acquired.is_none() && self.presentation.is_none(),
+             "cannot switch App while its WSI acquisition is live");
+         let key = Arc::as_ptr(&shaders) as usize;
+         let previous = Arc::as_ptr(&self.shaders) as usize;
+         let mut next = match self.other_applications.remove(&key) {
+             Some(next) => next,
+-            None => ApplicationGpu::new(self.device.clone(), &self.compiled_shader_root, shaders)?,
++            None => {
++                anyhow::ensure!(!world.contains_resource::<country_core::asset_libraries::runtime::AssetLibraryRuntime>(),
++                    "App already owns GPU libraries but its original render bridge is missing");
++                ApplicationGpu::new(self.device.clone(), &self.compiled_shader_root, shaders)?
++            },
+         };
+         std::mem::swap(&mut self.bridge, &mut next.bridge);
+         std::mem::swap(&mut self.egui, &mut next.egui);
+         std::mem::swap(&mut self.shaders, &mut next.shaders);
+         std::mem::swap(&mut self.final_post_shader, &mut next.final_post_shader);
+         self.other_applications.insert(previous, next);
++        if let Some(completed) = world.get_resource::<crate::render_bridge::CompletedGameplayWarmup>() {
++            self.bridge.accept_gameplay_warmup(completed)?;
++        }
+         self.main_output.take();
+         self.main.take();
+         Ok(())

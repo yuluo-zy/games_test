@@ -1,0 +1,75 @@
+0x14231ebf8      movss xmm0, dword [r12 + 0x34]
+0x14231ebff      subss xmm0, dword [rbp + 0x28]
+0x14231ec04      movss xmm15, dword [r12 + 0x44]
+0x14231ec0b      movss dword [r12 + 0x34], xmm0
+0x14231ec12      ucomiss xmm8, xmm0
+   ; likely
+0x14231ec16      jae 0x14231e937
+0x14231ec1c      ucomiss xmm7, xmm8
+   ; unlikely
+0x14231ec20      jbe 0x14231e969
+0x14231ec26      lea rcx, [rsp + 0x128]
+0x14231ec2e      mov rdx, qword [rsp + 0xe8]
+   ; 0x140a12650(0x0, 0x0, -1, 0x128)
+0x14231ec36      call 0x140a12650
+0x14231ec3b      movss xmm0, dword [rsp + 0x128]
+0x14231ec44      movss xmm1, dword [rsp + 0x130]
+0x14231ec4d      unpcklps xmm0, xmm1
+0x14231ec50      movss xmm1, dword [r13 + 0x10]
+0x14231ec56      movss xmm2, dword [r13 + 0x18]
+0x14231ec5c      unpcklps xmm1, xmm2
+0x14231ec5f      subps xmm0, xmm1
+0x14231ec62      mulps xmm0, xmm0
+0x14231ec65      movshdup xmm1, xmm0
+0x14231ec69      addss xmm1, xmm0
+0x14231ec6d      xorps xmm0, xmm0
+0x14231ec70      sqrtss xmm0, xmm1
+0x14231ec74      ucomiss xmm7, xmm0
+   ; likely
+0x14231ec77      ja 0x14231e937
+0x14231ec7d      jmp 0x14231e969
+0x14231ec82      mov qword [rsp + 0xa0], rsi
+0x14231ec8a      movss xmm0, dword [r12 + 0x40]
+0x14231ec91      movaps xmm1, xmm0
+0x14231ec94      divss xmm1, dword [0x1429258d8]
+0x14231ec9c      xorps xmm2, xmm2
+0x14231ec9f      maxss xmm2, xmm1
+0x14231eca3      movaps xmm1, xmm9
+0x14231eca7      minss xmm1, xmm2
+0x14231ecab      movaps xmm2, xmm1
+0x14231ecae      mulss xmm2, xmm1
+0x14231ecb2      addss xmm1, xmm1
+0x14231ecb6      movaps xmm15, xmm11
+0x14231ecba      subss xmm15, xmm1
+0x14231ecbf      mulss xmm15, xmm2
+0x14231ecc4      addss xmm0, dword [0x142f9b080]
+0x14231eccc      maxss xmm0, xmm8
+0x14231ecd1      mulss xmm0, dword [0x142934674]
+   ; 0x142923fd0(0x0, 0x0, -1, 0x128)
+0x14231ecd9      call 0x142923fd0
+0x14231ecde      mulss xmm0, xmm6
+0x14231ece2      addss xmm0, xmm6
+0x14231ece6      unpcklps xmm15, xmm0
+0x14231ecea      movaps xmm0, xmm14
+0x14231ecee      subps xmm0, xmm15
+0x14231ecf2      mulps xmm0, xmmword [0x142b2e410]
+0x14231ecf9      mulps xmm15, xmm10
+0x14231ecfd      movaps xmm1, xmm0
+0x14231ed00      addps xmm1, xmm15
+0x14231ed04      movss xmm2, dword [r12 + 0x38]
+0x14231ed0b      mulss xmm2, xmm1
+0x14231ed0f      movss xmm3, dword [r12 + 0x3c]
+0x14231ed16      mulss xmm3, xmm1
+0x14231ed1a      movss xmm4, dword [r12 + 0x34]
+0x14231ed21      unpcklps xmm4, xmm2
+0x14231ed24      mov eax, dword [rsp + 0x30]
+0x14231ed28      mov rcx, qword [rsp + 0x70]
+0x14231ed2d      mov dword [rcx], eax
+0x14231ed2f      movss xmm2, dword [rbp + 0x28]
+0x14231ed34      subps xmm0, xmm15
+0x14231ed38      shufps xmm0, xmm1, 1
+0x14231ed3c      shufps xmm0, xmm1, 0xe2
+0x14231ed40      mulps xmm0, xmm4
+0x14231ed43      movsldup xmm1, xmm2
+0x14231ed47      mulps xmm1, xmm0
+0x14231ed4a      mulss xmm3, xmm2

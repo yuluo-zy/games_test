@@ -1,0 +1,10 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.program.model.address import AddressSet\nst = currentProgram.getSymbolTable()\nres = []\n# iterate all symbols containing the llvm hash and anon\nfor sym in st.getAllSymbols(False):\n    sname = sym.getName()\n    if '7548959914703945057' in sname and 'anon_' in sname:\n        addr = sym.getAddress()\n        try:\n            data = currentProgram.getMemory().getBytes(addr, 80)\n            s = ''.join(chr(b) if 32 <= b < 127 else '.' for b in data)\n        except Exception as e:\n            s = 'ERR ' + str(e)\n        res.append({'name': sname[:80], 'addr': str(addr), 'bytes': s})\nprint(json.dumps(res, ensure_ascii=False))\n"
+    },
+    "timeout_seconds": 60
+  }
+]

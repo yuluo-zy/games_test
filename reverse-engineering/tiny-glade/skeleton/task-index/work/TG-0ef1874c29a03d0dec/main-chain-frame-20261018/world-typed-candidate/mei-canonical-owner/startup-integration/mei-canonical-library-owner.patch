@@ -1,0 +1,108 @@
+--- games_test/tiny-glade/crates/tiny-glade/src/mei_host.rs
++++ games_test/tiny-glade/crates/tiny-glade/src/mei_host.rs
+@@ -9,6 +9,7 @@
+ use ash::vk;
+ use bevy_ecs::prelude::*;
+ use country_core::{
++    asset_libraries::ssbo_library::AssetSsboLibrary,
+     render::{
+         load_texture::boundary::TextureDevice,
+         pass_builder::{framebuffer_binding::AttachmentTexture, pass_resource_access::SsboType},
+@@ -22,6 +23,7 @@
+ use rhapsody::raw::{
+     buffer::{Buffer as NativeBuffer, BufferDesc as NativeBufferDesc},
+     device::Device,
++    managed::buffer::ManagedBuffer,
+     setup::with_setup_command,
+     texture_upload::record_texture_regions,
+ };
+@@ -95,12 +97,20 @@
+ /// Exact native fixed-capacity TextPrim/ShapeStream buffers and glyph atlas on
+ /// the same device/host namespaces as the main graph. The owner must outlive all
+ /// frames that use it; rhapsody's managed handles retain actual GPU ownership.
++enum MeiBufferOwnership {
++    Private,
++    // Real ManagedBuffer leases retain both physical allocations; a library
++    // consumer must not invalidate their shared BufferHost slot on drop.
++    Library { _primitives: ManagedBuffer, _shapes: ManagedBuffer },
++}
++
+ pub struct MeiHost {
+     device: Arc<Device>,
+     buffers: Arc<BufferHost>,
+     textures: Arc<TextureHost>,
+     primitives: Buffer,
+     shapes: Buffer,
++    buffer_ownership: MeiBufferOwnership,
+     atlas: Option<(AtlasDescriptor, Texture)>,
+     last_output: Option<MeiTextOutput>,
+ }
+@@ -127,8 +137,55 @@
+             textures,
+             primitives,
+             shapes,
++            buffer_ownership: MeiBufferOwnership::Private,
+             atlas: None,
+             last_output: None,
++        })
++    }
++
++    /// Original flush_text_render@141e9e1f0 reads the actual TextPrim and
++    /// ShapeStream entries from this App's AssetSsboLibrary. Use this entry
++    /// after its real minimal/full init_populate producer, never allocate replacement buffers
++    /// when the mandatory library owner is absent.
++    pub fn from_library(
++        device: Arc<Device>,
++        buffers: Arc<BufferHost>,
++        textures: Arc<TextureHost>,
++        library: &AssetSsboLibrary,
++    ) -> rhapsody::Result<Self> {
++        if !Arc::ptr_eq(&device, buffers.graphics_device()) {
++            return Err(rhapsody::Error::invalid_usage("MEI library BufferHost belongs to another device"));
++        }
++        let primitives = library.get::<TextPrimSsbo>().ok_or_else(|| {
++            rhapsody::Error::invalid_usage("original text flush: missing canonical TextPrimSsbo producer")
++        })?.buffer;
++        let shapes = library.get::<ShapeStreamSsbo>().ok_or_else(|| {
++            rhapsody::Error::invalid_usage("original text flush: missing canonical ShapeStreamSsbo producer")
++        })?.buffer;
++        let primitive_lease = buffers.managed_buffer(&primitives).ok_or_else(|| {
++            rhapsody::Error::invalid_usage("TextPrimSsbo has no live owner in this BufferHost")
++        })?;
++        let shape_lease = buffers.managed_buffer(&shapes).ok_or_else(|| {
++            rhapsody::Error::invalid_usage("ShapeStreamSsbo has no live owner in this BufferHost")
++        })?;
++        for (lease, handle, expected) in [
++            (&primitive_lease, &primitives, TEXT_PRIMITIVE_BYTES),
++            (&shape_lease, &shapes, SHAPE_STREAM_BYTES),
++        ] {
++            if !Arc::ptr_eq(&lease.device, &device)
++                || lease.size != expected as u64
++                || handle.byte_size != expected as u64
++                || !lease.usage.contains(vk::BufferUsageFlags::STORAGE_BUFFER | vk::BufferUsageFlags::TRANSFER_DST)
++            {
++                return Err(rhapsody::Error::invalid_usage("canonical MEI buffer descriptor/device mismatch"));
++            }
++        }
++        Ok(Self {
++            device, buffers, textures, primitives, shapes,
++            buffer_ownership: MeiBufferOwnership::Library {
++                _primitives: primitive_lease, _shapes: shape_lease,
++            },
++            atlas: None, last_output: None,
+         })
+     }
+ 
+@@ -322,8 +379,10 @@
+ 
+ impl Drop for MeiHost {
+     fn drop(&mut self) {
+-        self.buffers.release(&self.primitives);
+-        self.buffers.release(&self.shapes);
++        if matches!(&self.buffer_ownership, MeiBufferOwnership::Private) {
++            self.buffers.release(&self.primitives);
++            self.buffers.release(&self.shapes);
++        }
+         if let Some((_, atlas)) = self.atlas.take() {
+             self.textures.release(&atlas);
+         }

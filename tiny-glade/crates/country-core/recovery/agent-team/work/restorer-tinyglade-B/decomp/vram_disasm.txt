@@ -1,0 +1,260 @@
+            0x1404f7f20      56             push rsi
+            0x1404f7f21      57             push rdi
+            0x1404f7f22      55             push rbp
+            0x1404f7f23      53             push rbx
+            0x1404f7f24      4881ec8800..   sub rsp, 0x88
+            0x1404f7f2b      66440f295c..   movapd xmmword [rsp + 0x70], xmm11
+            0x1404f7f32      66440f2954..   movapd xmmword [rsp + 0x60], xmm10
+            0x1404f7f39      440f294c2450   movaps xmmword [rsp + 0x50], xmm9
+            0x1404f7f3f      440f29442440   movaps xmmword [rsp + 0x40], xmm8
+            0x1404f7f45      660f297c2430   movapd xmmword [rsp + 0x30], xmm7
+            0x1404f7f4b      660f29742420   movapd xmmword [rsp + 0x20], xmm6
+            0x1404f7f51      4889d7         mov rdi, rdx
+            0x1404f7f54      e8f7097000     call 0x140bf8950
+            0x1404f7f59      4889c6         mov rsi, rax
+            0x1404f7f5c      8ba8d8000000   mov ebp, dword [rax + 0xd8]
+            0x1404f7f62      4889c1         mov rcx, rax
+            0x1404f7f65      e836877000     call 0x140c006a0
+            0x1404f7f6a      4889c3         mov rbx, rax
+            0x1404f7f6d      83fd02         cmp ebp, 2                 ; reloc.WS2_32.dll_bind
+        ,=< 0x1404f7f70      0f85ac010000   jne 0x1404f8122
+        |   0x1404f7f76      4889f8         mov rax, rdi
+        |   0x1404f7f79      48c1e820       shr rax, 0x20
+        |   0x1404f7f7d      66480f6ec3     movq xmm0, rbx
+        |   0x1404f7f82      660f6205a6..   punpckldq xmm0, xmmword [0x14292e930]
+        |   0x1404f7f8a      660f5c05ae..   subpd xmm0, xmmword [0x14292e940]
+        |   0x1404f7f92      660f28c8       movapd xmm1, xmm0
+        |   0x1404f7f96      660f15c8       unpckhpd xmm1, xmm0
+        |   0x1404f7f9a      f20f58c8       addsd xmm1, xmm0
+        |   0x1404f7f9e      89f9           mov ecx, edi
+        |   0x1404f7fa0      0f57ff         xorps xmm7, xmm7
+        |   0x1404f7fa3      f2480f2af9     cvtsi2sd xmm7, rcx
+        |   0x1404f7fa8      0f57f6         xorps xmm6, xmm6
+        |   0x1404f7fab      f2480f2af0     cvtsi2sd xmm6, rax
+        |   0x1404f7fb0      f20f580de0..   addsd xmm1, qword [0x1429ecb98]
+        |   0x1404f7fb8      f20f1005c0..   movsd xmm0, qword [0x1429ecb80] ; [0x1429ecb80:8]=0xc047deb5f12efbb8
+        |   0x1404f7fc0      f20f59c7       mulsd xmm0, xmm7
+        |   0x1404f7fc4      f20f59c6       mulsd xmm0, xmm6
+        |   0x1404f7fc8      f20f58c1       addsd xmm0, xmm1
+        |   0x1404f7fcc      f20f5e05b4..   divsd xmm0, qword [0x1429ecb88]
+        |   0x1404f7fd4      66450f57db     xorpd xmm11, xmm11
+        |   0x1404f7fd9      66440f2ed8     ucomisd xmm11, xmm0
+        |   0x1404f7fde      450f57c0       xorps xmm8, xmm8
+        |   0x1404f7fe2      66440f28d7     movapd xmm10, xmm7
+        |   0x1404f7fe7      f2440f59d6     mulsd xmm10, xmm6
+        |   0x1404f7fec      450f57c9       xorps xmm9, xmm9
+       ,==< 0x1404f7ff0      7369           jae 0x1404f805b
+       ||   0x1404f7ff2      f2410f5ec2     divsd xmm0, xmm10
+       ||   0x1404f7ff7      f2410f5fc3     maxsd xmm0, xmm11
+       ||   0x1404f7ffc      660f28cf       movapd xmm1, xmm7
+       ||   0x1404f8000      f20fc2cf03     cmpunordsd xmm1, xmm7
+       ||   0x1404f8005      660f28d1       movapd xmm2, xmm1
+       ||   0x1404f8009      660f54d6       andpd xmm2, xmm6
+       ||   0x1404f800d      660f28de       movapd xmm3, xmm6
+       ||   0x1404f8011      f20f5ddf       minsd xmm3, xmm7
+       ||   0x1404f8015      660f55cb       andnpd xmm1, xmm3
+       ||   0x1404f8019      660f56ca       orpd xmm1, xmm2
+       ||   0x1404f801d      f20f5f0dc3..   maxsd xmm1, qword [0x1429345e8]
+       ||   0x1404f8025      f20f51c0       sqrtsd xmm0, xmm0
+       ||   0x1404f8029      f20f10155f..   movsd xmm2, qword [0x1429ecb90] ; [0x1429ecb90:8]=0x40c5500000000000
+       ||   0x1404f8031      f20f5ed1       divsd xmm2, xmm1
+       ||   0x1404f8035      660f28c8       movapd xmm1, xmm0
+       ||   0x1404f8039      f20fc2c803     cmpunordsd xmm1, xmm0
+       ||   0x1404f803e      660f28d9       movapd xmm3, xmm1
+       ||   0x1404f8042      660f54da       andpd xmm3, xmm2
+       ||   0x1404f8046      f20f5dd0       minsd xmm2, xmm0
+       ||   0x1404f804a      660f55ca       andnpd xmm1, xmm2
+       ||   0x1404f804e      660f56cb       orpd xmm1, xmm3
+       ||   0x1404f8052      450f57c9       xorps xmm9, xmm9
+       ||   0x1404f8056      f2440f5ac9     cvtsd2ss xmm9, xmm1
+       `--> 0x1404f805b      4889f1         mov rcx, rsi
+        |   0x1404f805e      e82d887000     call 0x140c00890
+        |   0x1404f8063      66480f6ec8     movq xmm1, rax
+        |   0x1404f8068      660f620dc0..   punpckldq xmm1, xmmword [0x14292e930]
+        |   0x1404f8070      660f5c0dc8..   subpd xmm1, xmmword [0x14292e940]
+        |   0x1404f8078      660f28c1       movapd xmm0, xmm1
+        |   0x1404f807c      660f15c1       unpckhpd xmm0, xmm1
+        |   0x1404f8080      f20f58c1       addsd xmm0, xmm1
+        |   0x1404f8084      f20f580514..   addsd xmm0, qword [0x1429ecba0]
+        |   0x1404f808c      f2410f5ec3     divsd xmm0, xmm11
+        |   0x1404f8091      66440f2ed8     ucomisd xmm11, xmm0
+        |   0x1404f8096      7368           jae 0x1404f8100
+        |   0x1404f8098      f2410f5ec2     divsd xmm0, xmm10
+        |   0x1404f809d      660f57c9       xorpd xmm1, xmm1
+        |   0x1404f80a1      f20f5fc1       maxsd xmm0, xmm1
+        |   0x1404f80a5      660f28cf       movapd xmm1, xmm7
+        |   0x1404f80a9      f20fc2cf03     cmpunordsd xmm1, xmm7
+        |   0x1404f80ae      660f28d1       movapd xmm2, xmm1
+        |   0x1404f80b2      660f54d6       andpd xmm2, xmm6
+        |   0x1404f80b6      f20f5df7       minsd xmm6, xmm7
+        |   0x1404f80ba      660f55ce       andnpd xmm1, xmm6
+        |   0x1404f80be      660f56ca       orpd xmm1, xmm2
+        |   0x1404f80c2      f20f5f0d1e..   maxsd xmm1, qword [0x1429345e8]
+        |   0x1404f80ca      f20f51c0       sqrtsd xmm0, xmm0
+        |   0x1404f80ce      f20f1015ba..   movsd xmm2, qword [0x1429ecb90] ; [0x1429ecb90:8]=0x40c5500000000000
+        |   0x1404f80d6      f20f5ed1       divsd xmm2, xmm1
+        |   0x1404f80da      660f28c8       movapd xmm1, xmm0
+        |   0x1404f80de      f20fc2c803     cmpunordsd xmm1, xmm0
+        |   0x1404f80e3      660f28d9       movapd xmm3, xmm1
+        |   0x1404f80e7      660f54da       andpd xmm3, xmm2
+        |   0x1404f80eb      f20f5dd0       minsd xmm2, xmm0
+        |   0x1404f80ef      660f55ca       andnpd xmm1, xmm2
+        |   0x1404f80f3      660f56cb       orpd xmm1, xmm3
+        |   0x1404f80f7      450f57c0       xorps xmm8, xmm8
+        |   0x1404f80fb      f2440f5ac1     cvtsd2ss xmm8, xmm1
+        |   0x1404f8100      410f28c1       movaps xmm0, xmm9
+        |   0x1404f8104      f3410fc2c103   cmpunordss xmm0, xmm9
+        |   0x1404f810a      0f28c8         movaps xmm1, xmm0
+        |   0x1404f810d      410f54c8       andps xmm1, xmm8
+        |   0x1404f8111      f3450f5dc1     minss xmm8, xmm9
+        |   0x1404f8116      410f55c0       andnps xmm0, xmm8
+        |   0x1404f811a      0f56c1         orps xmm0, xmm1
+        |   0x1404f811d      e9d7000000     jmp 0x1404f81f9
+        `-> 0x1404f8122      4889f1         mov rcx, rsi
+            0x1404f8125      e866877000     call 0x140c00890
+            0x1404f812a      4801d8         add rax, rbx
+            0x1404f812d      4889f9         mov rcx, rdi
+            0x1404f8130      48c1e920       shr rcx, 0x20
+            0x1404f8134      66480f6ec0     movq xmm0, rax
+            0x1404f8139      660f6205ef..   punpckldq xmm0, xmmword [0x14292e930]
+            0x1404f8141      660f5c05f7..   subpd xmm0, xmmword [0x14292e940]
+            0x1404f8149      660f28e0       movapd xmm4, xmm0
+            0x1404f814d      660f15e0       unpckhpd xmm4, xmm0
+            0x1404f8151      f20f58e0       addsd xmm4, xmm0
+            0x1404f8155      89f8           mov eax, edi
+            0x1404f8157      f2480f2ad8     cvtsi2sd xmm3, rax
+            0x1404f815c      f2480f2ad1     cvtsi2sd xmm2, rcx
+            0x1404f8161      f20f58250f..   addsd xmm4, qword [0x1429ecb78]
+            0x1404f8169      f20f100d0f..   movsd xmm1, qword [0x1429ecb80] ; [0x1429ecb80:8]=0xc047deb5f12efbb8
+            0x1404f8171      f20f59cb       mulsd xmm1, xmm3
+            0x1404f8175      f20f59ca       mulsd xmm1, xmm2
+            0x1404f8179      f20f58cc       addsd xmm1, xmm4
+            0x1404f817d      f20f5e0d03..   divsd xmm1, qword [0x1429ecb88]
+            0x1404f8185      660f57c0       xorpd xmm0, xmm0
+            0x1404f8189      660f57e4       xorpd xmm4, xmm4
+            0x1404f818d      660f2ee1       ucomisd xmm4, xmm1
+            0x1404f8191      7366           jae 0x1404f81f9
+            0x1404f8193      660f28c3       movapd xmm0, xmm3
+            0x1404f8197      f20f59c2       mulsd xmm0, xmm2
+            0x1404f819b      f20f5ec8       divsd xmm1, xmm0
+            0x1404f819f      f20f5fcc       maxsd xmm1, xmm4
+            0x1404f81a3      660f28c3       movapd xmm0, xmm3
+            0x1404f81a7      f20fc2c303     cmpunordsd xmm0, xmm3
+            0x1404f81ac      660f28e0       movapd xmm4, xmm0
+            0x1404f81b0      660f54e2       andpd xmm4, xmm2
+            0x1404f81b4      f20f5dd3       minsd xmm2, xmm3
+            0x1404f81b8      660f55c2       andnpd xmm0, xmm2
+            0x1404f81bc      660f56c4       orpd xmm0, xmm4
+            0x1404f81c0      f20f5f0520..   maxsd xmm0, qword [0x1429345e8]
+            0x1404f81c8      f20f51c9       sqrtsd xmm1, xmm1
+            0x1404f81cc      f20f1015bc..   movsd xmm2, qword [0x1429ecb90] ; [0x1429ecb90:8]=0x40c5500000000000
+            0x1404f81d4      f20f5ed0       divsd xmm2, xmm0
+            0x1404f81d8      660f28c1       movapd xmm0, xmm1
+            0x1404f81dc      f20fc2c103     cmpunordsd xmm0, xmm1
+            0x1404f81e1      660f28d8       movapd xmm3, xmm0
+            0x1404f81e5      660f54da       andpd xmm3, xmm2
+            0x1404f81e9      f20f5dd1       minsd xmm2, xmm1
+            0x1404f81ed      660f55c2       andnpd xmm0, xmm2
+            0x1404f81f1      660f56c3       orpd xmm0, xmm3
+            0x1404f81f5      f20f5ac0       cvtsd2ss xmm0, xmm0
+            0x1404f81f9      f30f5905a7..   mulss xmm0, dword [0x1429345a8]
+            0x1404f8201      e8dabc4202     call 0x142923ee0
+            0x1404f8206      f30f590576..   mulss xmm0, dword [0x142925984]
+            0x1404f820e      0f28742420     movaps xmm6, xmmword [rsp + 0x20]
+            0x1404f8213      0f287c2430     movaps xmm7, xmmword [rsp + 0x30]
+            0x1404f8218      440f28442440   movaps xmm8, xmmword [rsp + 0x40]
+            0x1404f821e      440f284c2450   movaps xmm9, xmmword [rsp + 0x50]
+            0x1404f8224      440f28542460   movaps xmm10, xmmword [rsp + 0x60]
+            0x1404f822a      440f285c2470   movaps xmm11, xmmword [rsp + 0x70]
+            0x1404f8230      4881c48800..   add rsp, 0x88
+            0x1404f8237      5b             pop rbx
+            0x1404f8238      5d             pop rbp
+            0x1404f8239      5f             pop rdi
+            0x1404f823a      5e             pop rsi
+            0x1404f823b      c3             ret
+            0x1404f823c      cc             int3
+            0x1404f823d      cc             int3
+            0x1404f823e      cc             int3
+            0x1404f823f      cc             int3
+            0x1404f8240      56             push rsi
+            0x1404f8241      57             push rdi
+            0x1404f8242      53             push rbx
+            0x1404f8243      4881ecd001..   sub rsp, 0x1d0
+            0x1404f824a      66440f298c..   movapd xmmword [rsp + 0x1c0], xmm9
+            0x1404f8254      440f298424..   movaps xmmword [rsp + 0x1b0], xmm8
+            0x1404f825d      0f29bc24a0..   movaps xmmword [rsp + 0x1a0], xmm7
+            0x1404f8265      0f29b42490..   movaps xmmword [rsp + 0x190], xmm6
+            0x1404f826d      0f28f3         movaps xmm6, xmm3
+            0x1404f8270      4c89c3         mov rbx, r8
+            0x1404f8273      4889ce         mov rsi, rcx
+            0x1404f8276      4889d1         mov rcx, rdx
+            0x1404f8279      e8d2067000     call 0x140bf8950
+            0x1404f827e      4889c7         mov rdi, rax
+            0x1404f8281      4889d8         mov rax, rbx
+            0x1404f8284      48c1e820       shr rax, 0x20
+            0x1404f8288      83bfd80000..   cmp dword [rdi + 0xd8], 2
+            0x1404f828f      89d9           mov ecx, ebx
+            0x1404f8291      f2480f2ac1     cvtsi2sd xmm0, rcx
+            0x1404f8296      f2480f2ad0     cvtsi2sd xmm2, rax
+            0x1404f829b      f30f5ae6       cvtss2sd xmm4, xmm6
+            0x1404f829f      660f28c8       movapd xmm1, xmm0
+            0x1404f82a3      f20f59ca       mulsd xmm1, xmm2
+            0x1404f82a7      f20f101df9..   movsd xmm3, qword [0x1429ecba8] ; [0x1429ecba8:8]=0x4047deb5f12efbb8
+            0x1404f82af      f20f59d9       mulsd xmm3, xmm1
+            0x1404f82b3      f20f59c4       mulsd xmm0, xmm4
+            0x1404f82b7      f20f59c2       mulsd xmm0, xmm2
+            0x1404f82bb      f20f59c4       mulsd xmm0, xmm4
+            0x1404f82bf      f20f1015c1..   movsd xmm2, qword [0x1429ecb88] ; [0x1429ecb88:8]=0x4062437e49ef00cb
+            0x1404f82c7      f20f59d0       mulsd xmm2, xmm0
+            0x1404f82cb      0f8508030000   jne 0x1404f85d9
+            0x1404f82d1      f20f581de7..   addsd xmm3, qword [0x1429ecbc0]
+            0x1404f82d9      f20f58d3       addsd xmm2, xmm3
+            0x1404f82dd      f2480f2cc2     cvttsd2si rax, xmm2
+            0x1404f82e2      4889c1         mov rcx, rax
+            0x1404f82e5      48c1f93f       sar rcx, 0x3f
+            0x1404f82e9      f20f101db7..   movsd xmm3, qword [0x1429cfca8] ; [0x1429cfca8:8]=0x43e0000000000000
+            0x1404f82f1      660f28e2       movapd xmm4, xmm2
+            0x1404f82f5      f20f5ce3       subsd xmm4, xmm3
+            0x1404f82f9      f2480f2cd4     cvttsd2si rdx, xmm4
+            0x1404f82fe      4821ca         and rdx, rcx
+            0x1404f8301      4809c2         or rdx, rax
+            0x1404f8304      31c0           xor eax, eax
+            0x1404f8306      660f57e4       xorpd xmm4, xmm4
+            0x1404f830a      660f2ed4       ucomisd xmm2, xmm4
+            0x1404f830e      480f42d0       cmovb rdx, rax
+            0x1404f8312      f20f102d96..   movsd xmm5, qword [0x1429cfcb0] ; [0x1429cfcb0:8]=0x43efffffffffffff
+            0x1404f831a      660f2ed5       ucomisd xmm2, xmm5
+            0x1404f831e      48c7c1ffff..   mov rcx, 0xffffffffffffffff
+            0x1404f8325      480f47d1       cmova rdx, rcx
+            0x1404f8329      66480f6ed2     movq xmm2, rdx
+            0x1404f832e      f30f7e35fa..   movq xmm6, qword [0x14292e930] ; [0x14292e930:8]=0x4530000043300000
+            0x1404f8336      660f62d6       punpckldq xmm2, xmm6
+            0x1404f833a      660f283dfe..   movapd xmm7, xmmword [0x14292e940] ; [0x14292e940:16]=-1
+            0x1404f8342      660f5cd7       subpd xmm2, xmm7
+            0x1404f8346      66440f28ca     movapd xmm9, xmm2
+            0x1404f834b      66440f15ca     unpckhpd xmm9, xmm2
+            0x1404f8350      f2440f58ca     addsd xmm9, xmm2
+            0x1404f8355      f2440f1005..   movsd xmm8, qword [0x1429ecbb8] ; [0x1429ecbb8:8]=0x3e10000000000000
+            0x1404f835e      f2450f59c8     mulsd xmm9, xmm8
+            0x1404f8363      f20f59cc       mulsd xmm1, xmm4
+            0x1404f8367      f20f580d59..   addsd xmm1, qword [0x1429ecbc8]
+            0x1404f836f      f20f59c4       mulsd xmm0, xmm4
+            0x1404f8373      f20f58c1       addsd xmm0, xmm1
+            0x1404f8377      f2480f2cd0     cvttsd2si rdx, xmm0
+            0x1404f837c      4989d0         mov r8, rdx
+            0x1404f837f      49c1f83f       sar r8, 0x3f
+            0x1404f8383      660f28c8       movapd xmm1, xmm0
+            0x1404f8387      f20f5ccb       subsd xmm1, xmm3
+            0x1404f838b      f24c0f2cc9     cvttsd2si r9, xmm1
+            0x1404f8390      4d21c1         and r9, r8
+            0x1404f8393      4909d1         or r9, rdx
+            0x1404f8396      660f2ec4       ucomisd xmm0, xmm4
+            0x1404f839a      4c0f42c8       cmovb r9, rax
+            0x1404f839e      660f2ec5       ucomisd xmm0, xmm5
+            0x1404f83a2      f2440f114c..   movsd qword [rsp + 0x30], xmm9
+            0x1404f83a9      4c0f47c9       cmova r9, rcx
+            0x1404f83ad      66490f6ec1     movq xmm0, r9
+            0x1404f83b2      660f62c6       punpckldq xmm0, xmm6
+            0x1404f83b6      660f5cc7       subpd xmm0, xmm7
+            0x1404f83ba      660f28c8       movapd xmm1, xmm0
+            0x1404f83be      660f15c8       unpckhpd xmm1, xmm0

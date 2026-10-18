@@ -1,0 +1,10 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.program.model.symbol import SymbolType\n\ndef find_and_dump(name_frag):\n    out = []\n    st = currentProgram.getSymbolTable()\n    for sym in st.getSymbolIterator():\n        sname = sym.getName()\n        if name_frag in sname and 'anon_' in sname:\n            addr = sym.getAddress()\n            try:\n                data = currentProgram.getMemory().getBytes(addr, 64)\n                s = ''.join(chr(b) if 32 <= b < 127 else '.' for b in data)\n            except Exception as e:\n                s = 'ERR ' + str(e)\n            out.append({'name': sname, 'addr': str(addr), 'bytes': s})\n    return out\n\nres = []\nres.extend(find_and_dump('6e408d00298a25f82ec1f0a36cb9271b_75'))\nres.extend(find_and_dump('6e408d00298a25f82ec1f0a36cb9271b_77'))\nres.extend(find_and_dump('6e408d00298a25f82ec1f0a36cb9271b_78'))\nres.extend(find_and_dump('6e408d00298a25f82ec1f0a36cb9271b_42'))\nres.extend(find_and_dump('6e408d00298a25f82ec1f0a36cb9271b_43'))\nres.extend(find_and_dump('6e408d00298a25f82ec1f0a36cb9271b_44'))\nprint(json.dumps(res))\n"
+    },
+    "timeout_seconds": 60
+  }
+]

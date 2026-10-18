@@ -1,7 +1,6 @@
-//! `country_core::geometry` — 程序化几何与砖实例墙载体（B `geometry::*`）。
-//!
-//! 已做：`cube`、`plane`、`sphere`（汇编逐条还原；`sphere` 复用 `hexasphere 12.0.0`）、`instanced_wall`。
+//! 基础网格与墙砖实例发布；几何生成、分配拥有权和设备同步各自独立。
 pub mod cube;
 pub mod instanced_wall;
 pub mod plane;
+pub mod runtime;
 pub mod sphere;

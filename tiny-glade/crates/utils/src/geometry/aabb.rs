@@ -1,4 +1,4 @@
-//! 原B Aabb定义/边界策略，0x14123ffc0..0x141240b10。
+//! Axis-aligned bounds with inclusive intersection boundaries.
 use super::ray::{Ray, Ray2};
 use glam::{Vec2, Vec3};
 
@@ -20,7 +20,7 @@ impl Aabb2 {
         }
         bounds
     }
-    /// Reuse the original segment entrance policy, including strict inside starts.
+    /// Returns the first segment point in the closed bounds.
     pub fn intersect_segment(self, start: Vec2, end: Vec2) -> Option<Vec2> {
         intersection_aabb_segment2(self.min, self.max, start, end)
     }
@@ -58,11 +58,18 @@ impl Aabb2 {
             && self.min.y <= b.max.y
             && b.min.y <= self.max.y
     }
-    /// 原函数只返回进入参数，不过滤负t、不检查离开参数，也不是bool射线命中。
+    /// Returns the signed slab entrance parameter, without testing the exit.
+    /// A parallel ray outside a slab returns positive infinity.
     pub fn intersect_ray(self, ray: Ray2) -> f32 {
-        let a = (self.min - ray.origin) / ray.direction;
-        let b = (self.max - ray.origin) / ray.direction;
-        a.x.min(b.x).max(a.y.min(b.y))
+        let Some((x, _)) = slab_interval(self.min.x, self.max.x, ray.origin.x, ray.direction.x)
+        else {
+            return f32::INFINITY;
+        };
+        let Some((y, _)) = slab_interval(self.min.y, self.max.y, ray.origin.y, ray.direction.y)
+        else {
+            return f32::INFINITY;
+        };
+        x.max(y)
     }
     pub fn max_extent(self) -> f32 {
         let d = self.max - self.min;
@@ -136,11 +143,13 @@ impl Aabb3 {
     pub fn extent(self) -> Vec3 {
         self.max - self.min
     }
-    /// 原缩放直接乘两个端点，负scale不会重新排序。
+    /// Scales both endpoints and sorts them to support reflected axes.
     pub fn scaled(self, scale: Vec3) -> Self {
+        let a = self.min * scale;
+        let b = self.max * scale;
         Self {
-            min: self.min * scale,
-            max: self.max * scale,
+            min: a.min(b),
+            max: a.max(b),
         }
     }
     pub fn translated(self, delta: Vec3) -> Self {
@@ -155,66 +164,104 @@ impl Aabb3 {
     fn strict_contains(self, p: Vec3) -> bool {
         (self.min.cmplt(p) & p.cmplt(self.max)).all()
     }
-    fn ray_interval(self, ray: Ray) -> (f32, f32) {
-        let a = (self.min - ray.origin) / ray.direction;
-        let b = (self.max - ray.origin) / ray.direction;
-        let near = Vec3::new(a.x.min(b.x), a.y.min(b.y), a.z.min(b.z));
-        let far = Vec3::new(a.x.max(b.x), a.y.max(b.y), a.z.max(b.z));
-        (near.z.max(near.y).max(near.x), far.z.min(far.y).min(far.x))
+    fn ray_interval(self, ray: Ray) -> Option<(f32, f32)> {
+        ray_interval(
+            self.min.to_array(),
+            self.max.to_array(),
+            ray.origin.to_array(),
+            ray.direction.to_array(),
+        )
     }
+    /// Returns the first segment point inside the closed box.
     pub fn intersect_segment(self, start: Vec3, end: Vec3) -> Option<Vec3> {
+        if self.inclusive_contains_point(start) {
+            return Some(start);
+        }
         let ray = Ray {
             origin: start,
             direction: end - start,
         };
-        let (near, far) = self.ray_interval(ray);
-        if near <= far && near <= 1.0 {
-            if near >= 0.0 {
-                return Some(start + ray.direction * near);
-            }
-            if self.strict_contains(start) {
-                return Some(start);
-            }
+        let (enter, exit) = self.ray_interval(ray)?;
+        if enter.is_finite() && enter <= exit && (0.0..=1.0).contains(&enter) {
+            Some(start + ray.direction * enter)
+        } else {
+            None
         }
-        None
     }
+    /// Classifies a nonzero ray; starts on a face count as a hit at zero.
     pub fn classify_ray_intersection(self, ray: Ray) -> RayBoxIntersection {
-        let (near, far) = self.ray_interval(ray);
-        if near <= far {
-            if near >= 0.0 {
-                return RayBoxIntersection::Hit {
-                    enter: near,
-                    exit: far,
-                };
-            }
-            if self.strict_contains(ray.origin) {
-                return RayBoxIntersection::Inside {
-                    enter: near,
-                    exit: far,
-                };
+        if ray.direction == Vec3::ZERO {
+            return RayBoxIntersection::NoHit;
+        }
+        let Some((enter, exit)) = self.ray_interval(ray) else {
+            return RayBoxIntersection::NoHit;
+        };
+        if exit < 0.0 {
+            return RayBoxIntersection::NoHit;
+        }
+        if self.strict_contains(ray.origin) {
+            RayBoxIntersection::Inside { enter, exit }
+        } else {
+            RayBoxIntersection::Hit {
+                enter: enter.max(0.0),
+                exit,
             }
         }
-        RayBoxIntersection::NoHit
     }
 }
 pub fn is_inside_bbx(point: Vec2, min: Vec2, max: Vec2) -> bool {
     Aabb2 { min, max }.contains(point)
 }
-/// B 0x141240b30. No invented far>=0 test; a strictly interior start is returned
-/// unchanged. Starting exactly on a boundary uses the original entrance rule.
+/// Returns the first segment point inside the closed 2D box.
 pub fn intersection_aabb_segment2(min: Vec2, max: Vec2, start: Vec2, end: Vec2) -> Option<Vec2> {
+    if (Aabb2 { min, max }).contains(start) {
+        return Some(start);
+    }
     let direction = end - start;
-    let a = (max - start) / direction;
-    let b = (min - start) / direction;
-    let enter = a.min(b).max_element();
-    let exit = a.max(b).min_element();
-    if enter <= exit && enter <= 1.0 {
-        if enter >= 0.0 {
-            return Some(start + direction * enter);
-        }
-        if (start.cmpgt(min) & start.cmplt(max)).all() {
-            return Some(start);
+    let (enter, exit) = ray_interval(
+        min.to_array(),
+        max.to_array(),
+        start.to_array(),
+        direction.to_array(),
+    )?;
+    if enter.is_finite() && enter <= exit && (0.0..=1.0).contains(&enter) {
+        Some(start + direction * enter)
+    } else {
+        None
+    }
+}
+
+// A parallel ray contributes the whole interval when it lies in the slab.
+// Handling it explicitly avoids the NaN produced by 0 / 0 on a box face.
+fn slab_interval(min: f32, max: f32, origin: f32, direction: f32) -> Option<(f32, f32)> {
+    if !(min.is_finite() && max.is_finite() && origin.is_finite() && direction.is_finite())
+        || min > max
+    {
+        return None;
+    }
+    if direction == 0.0 {
+        return (min <= origin && origin <= max).then_some((f32::NEG_INFINITY, f32::INFINITY));
+    }
+    let a = (min - origin) / direction;
+    let b = (max - origin) / direction;
+    Some((a.min(b), a.max(b)))
+}
+
+fn ray_interval<const N: usize>(
+    min: [f32; N],
+    max: [f32; N],
+    origin: [f32; N],
+    direction: [f32; N],
+) -> Option<(f32, f32)> {
+    let mut enter = f32::NEG_INFINITY;
+    let mut exit = f32::INFINITY;
+    for axis in 0..N {
+        let (near, far) = slab_interval(min[axis], max[axis], origin[axis], direction[axis])?;
+        enter = enter.max(near);
+        exit = exit.min(far);
+        if enter > exit {
+            return None;
         }
     }
-    None
+    Some((enter, exit))
 }

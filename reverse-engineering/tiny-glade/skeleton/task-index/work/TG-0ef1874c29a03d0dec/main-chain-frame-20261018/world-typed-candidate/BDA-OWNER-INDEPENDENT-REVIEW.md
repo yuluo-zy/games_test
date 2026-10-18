@@ -1,0 +1,13 @@
+# BDA metadata owner review
+
+Source-only independent review of boot metadata-owner.patch, SHA256 5c8591222ce2dc6bbe9e8edf7a1b56f4a355443a50393603b06ad5343257fdfb. No source edit, Cargo, GPU run or original-equivalence claim is made here.
+
+The patch uses actual DynamicConstantsChunk Arc<Buffer>/offset/size, checks nonzero range and device_address admission, imports that same physical resource into the existing shared graph/session, and registers actual 0x1a/group1 Buffer access over the exact byte range before its callback. It does not retain a native memory owner through the invalid retain_object route.
+
+Current implementation trace independently read: VulkanGraphSession::import_frame_buffer(vulkan.rs1939)→import_frame_resource1963 validates same device and deduplicates actual Arc physical identity, then graph.on_retire marker2062 holds the declaration lease. FrameImports retains its weak declaration marker only until cancel/retirement. Existing access ledger includes actual range/version in its key, so multiple distinct chunks on one page remain declared.
+
+Both executor paths call ManagedPassResources::retain_pass_resources before the pass callback (executor.rs974 and1439). pass_bindings.rs241 obtains each declared backing Buffer handle.shared and adds Retention::Recorded. Executor1023/1499 transfers the owner program through VulkanGraphBackend::retain_command_owners1520 to command.retain_resources→retain_owner. That method retains actual Arc owners and validates/records real GPU SyncCells. Command release_completed_owners occurs only after real completion. Existing DynamicConstants ring resets a page only after Arc::get_mut succeeds and its SyncCell is complete; actual CPU leases, graph import owner and command owner prevent premature page reuse.
+
+Thus the proposed lifetime mechanism fits the current refactored architecture. It is not a new original rhapsody reconstruction. Zero-sized BDA reads remain rejected although original allocation0 may return a real aligned address; a consumer with no memory read should not attach a zero range. The actual upload must still happen before graph construction. Import access0x1a is a caller claim about initialized bytes, not a way to initialize arbitrary unwritten page ranges. The declared terrain reads are bounded to written chunks.
+
+Remaining validation: real shader BDA read with two ranges on one page, dropping CPU chunk handles before recording, then actual readback and cancellation/retirement; preserve page-budget pressure/backpressure and cross-device rejection. No unused data or zero fill should be injected to satisfy the graph.

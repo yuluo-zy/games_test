@@ -18,7 +18,6 @@ use core::sync::atomic::{AtomicBool, Ordering};
 use crate::render::pass_builder::draw_builder::{ACCESS_SAMPLED_IMAGE, BindTexture, DrawBuilder};
 use crate::render::pass_builder::draw_stream::DrawPacket;
 use crate::resources::texture_presets::TexturePreset;
-use crate::rhapsody_contract::ManagedHandle;
 use crate::systems::render_loop::draw_passes::d_main_support::{ColorSpec, DepthSpec, DrawPassCtx};
 
 pub const PASS_NAME: &str = "Foliage exclusion";
@@ -34,12 +33,8 @@ pub const PRESET_B_BINDING: u64 = 0x297d_1e4c_dae8_f657;
 /// 全局脏标志（O：静态 bool 0x143634cf8）。
 pub static FOLIAGE_EXCLUSION_DIRTY: AtomicBool = AtomicBool::new(false);
 
-/// 资源 R 被读取的部分：缓冲句柄与 `+0x28` 的顶点数。
-#[derive(Clone, Debug)]
-pub struct StairsFoliageExclusion {
-    pub buffer: ManagedHandle,
-    pub vertex_count: u32,
-}
+/// Compatibility spelling for the same canonical optional resource.
+pub use crate::resources::stairs::stairs_top_down::StairsTopDownMesh as StairsFoliageExclusion;
 
 /// `rasterize_foliage_exclusion_mask(ctx, world)`。
 pub fn rasterize_foliage_exclusion_mask(

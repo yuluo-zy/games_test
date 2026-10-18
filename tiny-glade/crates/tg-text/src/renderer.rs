@@ -1,134 +1,71 @@
-//! 字体、字形 atlas 与原 48 字节 primitive 流；通用整形/分配由原依赖执行。
-use crate::{RawShapeStream, ShapeStream};
+//! Text rasterization, bounded atlas allocation and frame batch construction.
+mod atlas;
+mod primitive;
+use crate::color::tint_color;
+use crate::shape_stream::encoding::{MAX_SHAPE_WORDS, ShapePacket};
+use crate::validation::validate_primitive_geometry;
+use crate::{RawShapeStream, ShapeStream, TextError, TextResult};
+use atlas::AtlasCache;
+pub use atlas::AtlasConfig;
 use cosmic_text::{CacheKey, FontSystem, SwashCache, SwashContent};
-use etagere::{AllocId, AtlasAllocator, Size};
-use std::{
-    collections::{HashMap, HashSet},
-    path::Path,
+use etagere::AllocId;
+pub use primitive::{
+    AtlasDescriptor, PendingGlyphUpload, Primitive, RenderBatch, TextRenderStream,
 };
+use std::{path::Path, sync::Arc};
 
-// 原锁 bytemuck_derive 1.4.1 在新版 Rust 生成未使用的静态布局检查 helper。
-#[allow(dead_code)]
-mod packed {
-    #[repr(C)]
-    #[derive(Clone, Copy, Debug, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
-    pub struct Primitive {
-        pub pos_min: [f32; 2],
-        pub pos_extent: [f32; 2],
-        pub uv_min: [f32; 2],
-        pub uv_extent: [f32; 2],
-        pub color: u32,
-        pub stream: u32,
-        pub padding: [u32; 2],
-    }
-    impl Primitive {
-        pub fn rect(pos_min: [f32; 2], pos_extent: [f32; 2], color: u32) -> Self {
-            Self {
-                pos_min,
-                pos_extent,
-                uv_min: [0.; 2],
-                uv_extent: [1.; 2],
-                color,
-                stream: u32::MAX,
-                padding: [0; 2],
-            }
-        }
-    }
-}
-pub use packed::Primitive;
+/// A glyph allocation tied to one renderer and atlas revision.
+///
+/// Atlas coordinates and size are pixels; bearing offsets locate the bitmap relative
+/// to its baseline. Resetting or growing the atlas invalidates every existing handle.
+/// Use [`TextRenderer::validate_glyph_cache_allocs`] before reusing cached handles.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct AtlasDescriptor {
-    pub width: u32,
-    pub height: u32,
-    pub generation: u64,
-}
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PendingGlyphUpload {
-    pub x: u32,
-    pub y: u32,
-    pub width: u32,
-    pub height: u32,
-    pub rgba: Vec<u8>,
-    pub generation: u64,
-}
-#[derive(Clone, Debug, Default)]
-pub struct RenderBatch {
-    pub primitives: Vec<Primitive>,
-    pub shape_words: Vec<u32>,
-    /// CPU-produced glyph payloads from the upload step before frame advancement.
-    /// Native GPU submission is outside this module's current execution boundary.
-    pub glyph_uploads: Vec<PendingGlyphUpload>,
-}
-impl RenderBatch {
-    pub fn primitive_bytes(&self) -> &[u8] {
-        bytemuck::cast_slice(&self.primitives)
-    }
-}
-#[derive(Clone, Debug, Default)]
-pub struct TextRenderStream {
-    pub primitives: Vec<Primitive>,
-    pub shapes: RawShapeStream,
-}
-impl TextRenderStream {
-    pub fn consume(&mut self) -> RenderBatch {
-        RenderBatch {
-            primitives: std::mem::take(&mut self.primitives),
-            shape_words: std::mem::take(&mut self.shapes.0),
-            glyph_uploads: Vec::new(),
-        }
-    }
-    pub fn consume_with<T>(&mut self, consume: impl FnOnce(&[Primitive], &[u32]) -> T) -> T {
-        let result = consume(&self.primitives, &self.shapes.0);
-        self.clear();
-        result
-    }
-    pub fn clear(&mut self) {
-        self.primitives.clear();
-        self.shapes.clear();
-    }
-}
-#[derive(Clone, Copy, Debug)]
 pub struct Glyph {
+    /// Allocator handle; callers must not modify it before cache validation.
     pub allocation: AllocId,
+    /// Top-left bitmap position in atlas pixels.
     pub atlas: [u32; 2],
+    /// Bitmap width and height in pixels.
     pub size: [u32; 2],
+    /// Horizontal and downward vertical offsets from the glyph baseline.
     pub bearing: [i32; 2],
+    owner: u64,
+    epoch: u64,
+    nonce: u64,
 }
-#[repr(C)]
+/// A frame stamp and allocator generation value. Frame zero denotes unused storage.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct AtlasAllocUsage {
-    pub last_frame: u32,
+    pub last_frame: u64,
     pub generation: u16,
 }
-impl AtlasAllocUsage {
-    fn is_expired(self, frame: u32) -> bool {
-        self.last_frame != 0 && self.last_frame.wrapping_add(1) < frame
-    }
-}
+/// Cumulative rasterization and atlas counters; counters saturate at `u64::MAX`.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct TextStats {
+    /// Images returned by the rasterizer, including empty bitmaps.
     pub rasterized: u64,
+    /// Positive and negative glyph-cache hits.
     pub cache_hits: u64,
+    /// Expired atlas allocations reclaimed to satisfy new requests.
     pub evicted: u64,
+    /// Successful atlas growth operations; explicit resets are not counted.
     pub atlas_rebuilds: u64,
 }
 
+/// Owns font data, reusable glyph allocations, pending uploads and one frame stream.
+///
+/// Build primitives, then [`Self::consume`] to submit a frame. Atlas growth returns
+/// [`TextError::AtlasChanged`]: call [`Self::begin_frame`] and rebuild that frame.
+/// [`TextError::AtlasFull`] means the configured budget cannot satisfy the request.
 #[derive(bevy_ecs::prelude::Resource)]
 pub struct TextRenderer {
-    pub font_system: FontSystem,
+    pub(crate) font_system: FontSystem,
     swash: SwashCache,
-    allocator: AtlasAllocator,
-    glyph_cache: HashMap<CacheKey, Option<Glyph>>,
-    usage: Vec<AtlasAllocUsage>,
-    pending: Vec<PendingGlyphUpload>,
+    atlas: AtlasCache,
     stream: TextRenderStream,
-    // 原 +0x440：consume 开始时保存图元数，供 render getter 使用。
     consumed_primitive_count: u64,
-    atlas_view: AtlasDescriptor,
     pixels_per_point: f32,
-    invalidation_frame: u32,
-    frame: u32,
-    grow_requested: bool,
+    frame_invalidated: bool,
     pub stats: TextStats,
 }
 impl Default for TextRenderer {
@@ -136,8 +73,9 @@ impl Default for TextRenderer {
         Self::new()
     }
 }
+/// Create an empty font database using the requested locale, the system locale,
+/// or `en-US` when neither is available. Font files are loaded explicitly.
 pub fn init_font_system(locale: Option<String>) -> FontSystem {
-    // 原 PDB 显示 new_with_locale_and_db；只加载调用方明确提供的发行字体。
     FontSystem::new_with_locale_and_db(
         locale
             .or_else(sys_locale::get_locale)
@@ -146,218 +84,290 @@ pub fn init_font_system(locale: Option<String>) -> FontSystem {
     )
 }
 impl TextRenderer {
+    /// Create the default 1024×1024 atlas with a 64 MiB growth budget.
+    ///
+    /// # Panics
+    /// Panics if the process exhausts its unique `u64` atlas revision counter.
+    /// Use [`Self::with_config`] to handle initialization errors as a result.
     pub fn new() -> Self {
-        Self::with_atlas_size(1024, 1024)
+        Self::with_config(AtlasConfig::default()).expect("default renderer initialization failed")
     }
-    /// 测试/独立消费者可选择较小 atlas；原默认尺寸由 new 的 0x400 证实。
-    pub fn with_atlas_size(width: u32, height: u32) -> Self {
-        assert!(width > 0 && height > 0 && width <= i32::MAX as u32 && height <= i32::MAX as u32);
-        Self {
+    /// Create an atlas using explicit initial dimensions and growth limits.
+    ///
+    /// # Errors
+    /// Returns [`TextError::InvalidAtlas`] for unsupported dimensions, insufficient
+    /// byte budget, or exhaustion of the process-wide revision counter.
+    pub fn with_config(config: AtlasConfig) -> TextResult<Self> {
+        Ok(Self {
             font_system: init_font_system(None),
             swash: SwashCache::new(),
-            allocator: AtlasAllocator::new(Size::new(width as i32, height as i32)),
-            glyph_cache: HashMap::new(),
-            usage: Vec::new(),
-            pending: Vec::new(),
+            atlas: AtlasCache::new(config)?,
             stream: TextRenderStream::default(),
             consumed_primitive_count: 0,
-            atlas_view: AtlasDescriptor {
-                width,
-                height,
-                generation: 1,
-            },
             pixels_per_point: 1.,
-            invalidation_frame: 1,
-            frame: 1,
-            grow_requested: false,
+            frame_invalidated: false,
             stats: TextStats::default(),
+        })
+    }
+    /// Create an atlas of `width`×`height`, retaining the default growth limits.
+    ///
+    /// # Errors
+    /// Returns [`TextError::InvalidAtlas`] if dimensions are zero, exceed the
+    /// default 4096×4096 limit, or a unique revision cannot be allocated.
+    pub fn with_atlas_size(width: u32, height: u32) -> TextResult<Self> {
+        Self::with_config(AtlasConfig {
+            width,
+            height,
+            ..Default::default()
+        })
+    }
+    /// Borrow the font system without allowing mutations that bypass invalidation.
+    pub fn font_system(&self) -> &FontSystem {
+        &self.font_system
+    }
+    /// Read a font file and load all readable faces, invalidating existing glyphs.
+    ///
+    /// # Errors
+    /// Returns an I/O error, invalid font input, or revision exhaustion. Failed reads
+    /// and unparseable input leave font data and queued rendering unchanged.
+    pub fn load_font_from_file(&mut self, path: impl AsRef<Path>) -> TextResult<()> {
+        let bytes = std::fs::read(path)?;
+        self.load_font_data(bytes)
+    }
+    /// Load all readable faces from owned font bytes without duplicating the buffer.
+    /// Successful loading clears queued primitives/uploads and changes the cache token.
+    ///
+    /// # Errors
+    /// Returns [`TextError::InvalidInput`] when no faces can be read, or
+    /// [`TextError::InvalidAtlas`] if a new revision cannot be allocated.
+    pub fn load_font_data(&mut self, bytes: Vec<u8>) -> TextResult<()> {
+        let font_data: Arc<dyn AsRef<[u8]> + Send + Sync> = Arc::new(bytes);
+        let mut validation_database = cosmic_text::fontdb::Database::new();
+        let loaded_faces = validation_database
+            .load_font_source(cosmic_text::fontdb::Source::Binary(Arc::clone(&font_data)));
+        if loaded_faces.is_empty() {
+            return Err(TextError::InvalidInput(
+                "font data contains no readable faces".into(),
+            ));
         }
+        self.reset_glyph_cache()?;
+        self.font_system
+            .db_mut()
+            .load_font_source(cosmic_text::fontdb::Source::Binary(font_data));
+        Ok(())
     }
-    pub fn load_font_from_file(&mut self, path: impl AsRef<Path>) -> std::io::Result<()> {
-        self.font_system.db_mut().load_font_file(path)
-    }
-    pub fn load_font_data(&mut self, bytes: Vec<u8>) {
-        self.font_system.db_mut().load_font_data(bytes);
-    }
+    /// Iterate over the faces explicitly loaded into this renderer.
     pub fn font_faces(&self) -> impl Iterator<Item = &cosmic_text::fontdb::FaceInfo> {
         self.font_system.db().faces()
     }
+    /// Return the positive device-pixel scale used for glyph rasterization.
     pub fn pixels_per_point(&self) -> f32 {
         self.pixels_per_point
     }
-    pub fn current_frame(&self) -> u32 {
-        self.frame
+    /// Return the frame stamp, advanced only by a successful consume operation.
+    pub fn current_frame(&self) -> u64 {
+        self.atlas.frame
     }
-    pub fn invalidation_frame(&self) -> u32 {
-        self.invalidation_frame
+    /// Return the current atlas revision, independent of the frame counter.
+    pub fn invalidation_frame(&self) -> u64 {
+        self.atlas.descriptor.generation
     }
+    /// Return `(renderer identity, atlas revision)` for validating fragment caches.
+    pub fn cache_token(&self) -> (u64, u64) {
+        self.atlas.token()
+    }
+    /// Return dimensions and a process-unique revision for GPU atlas synchronization.
     pub fn atlas(&self) -> AtlasDescriptor {
-        self.atlas_view
+        self.atlas.descriptor
     }
-    pub fn set_pixels_per_point(&mut self, value: f32) {
-        if self.pixels_per_point != value {
+    /// Change device-pixel scale; a changed value invalidates queued glyph rendering.
+    ///
+    /// # Errors
+    /// Returns [`TextError::InvalidValue`] unless `value` is finite and positive,
+    /// or [`TextError::InvalidAtlas`] if invalidation exhausts revision storage.
+    pub fn set_pixels_per_point(&mut self, value: f32) -> TextResult<()> {
+        positive("pixels per point", value)?;
+        if value != self.pixels_per_point {
+            self.reset_glyph_cache()?;
             self.pixels_per_point = value;
-            self.clear_atlas_for_scale();
         }
+        Ok(())
     }
-    /// 独立消费者重建设备/atlas后的恢复扩展；原公开接口不作此命名承诺。
-    pub fn reset_glyph_cache(&mut self) {
-        self.clear_atlas_for_scale();
+    /// Invalidate all glyph handles, pending uploads and queued primitives.
+    /// The frame counter is preserved; an earlier growth failure still requires
+    /// [`Self::begin_frame`] before further rendering.
+    ///
+    /// # Errors
+    /// Returns [`TextError::InvalidAtlas`] on revision exhaustion without clearing data.
+    pub fn reset_glyph_cache(&mut self) -> TextResult<()> {
+        self.atlas.reset()?;
+        self.swash = SwashCache::new();
+        self.stream.clear();
+        self.consumed_primitive_count = 0;
+        Ok(())
     }
-    fn clear_atlas_for_scale(&mut self) {
-        // 0x140b8f3f0: stamp is the current frame, including frame zero;
-        // same-frame invalidations do not invent a new epoch.
-        self.invalidation_frame = self.frame;
-        self.atlas_view.generation = u64::from(self.invalidation_frame);
-        self.allocator.clear();
-        self.glyph_cache.clear();
-        self.usage.fill(AtlasAllocUsage::default());
-        self.pending.clear();
-    }
+    /// Discard queued primitives and acknowledge any atlas rebuild failure.
+    /// Pending valid glyph uploads and the frame stamp are preserved; beginning a
+    /// frame alone does not make glyph allocations eligible for eviction.
     pub fn begin_frame(&mut self) {
         self.stream.clear();
+        self.frame_invalidated = false;
     }
+    /// Return the number of cached glyph keys, including cached missing glyphs.
     pub fn cache_len(&self) -> usize {
-        self.glyph_cache.len()
+        self.atlas.cache.len()
     }
+    /// Borrow glyph updates that have not yet been drained by upload or consume.
     pub fn pending_uploads(&self) -> &[PendingGlyphUpload] {
-        &self.pending
+        &self.atlas.pending
     }
+    /// Validate every handle before marking any allocation as recently used.
+    /// Returns `false` for foreign, stale, evicted or modified handles without
+    /// touching the valid prefix. Empty slices are valid; malformed IDs never panic.
     pub fn validate_glyph_cache_allocs(&mut self, glyphs: &[Glyph]) -> bool {
-        for glyph in glyphs {
-            let id = glyph.allocation.serialize();
-            // Original validation deliberately panics for an out-of-bounds slot.
-            let usage = &mut self.usage[(id & 0xffff) as usize];
-            if usage.generation != (id >> 16) as u16 || usage.last_frame == 0 {
-                return false;
-            }
-            // A later invalid item does not roll back the already visited prefix.
-            usage.last_frame = self.frame;
-        }
-        true
+        self.atlas.validate(glyphs)
     }
-    fn allocate_atlas_space(&mut self, width: u32, height: u32) -> Option<etagere::Allocation> {
-        let size = Size::new(i32::try_from(width).ok()?, i32::try_from(height).ok()?);
-        if let Some(a) = self.allocator.allocate(size) {
-            return Some(a);
+    /// Rasterize or reuse a glyph with a finite font size in `(0, 4096]` pixels.
+    /// `Ok(None)` denotes a missing glyph or an empty bitmap, not atlas exhaustion.
+    ///
+    /// # Errors
+    /// Invalid keys or raster payloads return input errors. A successful atlas growth
+    /// returns [`TextError::AtlasChanged`] and discards this frame; begin and rebuild
+    /// it before continuing. [`TextError::AtlasFull`] indicates a dimension, byte or
+    /// allocation-count budget that cannot satisfy the request. Revision or allocation
+    /// counter exhaustion returns [`TextError::InvalidAtlas`].
+    pub fn get_glyph(&mut self, key: CacheKey) -> TextResult<Option<Glyph>> {
+        self.check_frame()?;
+        let font_size = f32::from_bits(key.font_size_bits);
+        positive("glyph font size", font_size)?;
+        if font_size > 4096. {
+            return Err(TextError::InvalidValue {
+                field: "glyph font size",
+                value: font_size,
+            });
         }
-        // 原 get_glyph：回收 last_used + 1 < current_frame 的分配后再尝试。
-        let mut removed = HashSet::new();
-        for (index, usage) in self.usage.iter_mut().enumerate() {
-            if usage.is_expired(self.frame) {
-                let id = AllocId::deserialize(index as u32 | (u32::from(usage.generation) << 16));
-                self.allocator.deallocate(id);
-                usage.last_frame = 0;
-                removed.insert(id);
-                self.stats.evicted += 1;
-            }
+        if let Some(entry) = self.atlas.hit(&key) {
+            self.stats.cache_hits = self.stats.cache_hits.saturating_add(1);
+            return Ok(entry);
         }
-        self.glyph_cache
-            .retain(|_, entry| entry.is_none_or(|g| !removed.contains(&g.allocation)));
-        self.allocator.allocate(size)
-    }
-    pub fn get_glyph(&mut self, key: CacheKey) -> Option<Glyph> {
-        if let Some(entry) = self.glyph_cache.get(&key).copied() {
-            self.stats.cache_hits += 1;
-            return entry;
-        }
-        let image = self.swash.get_image_uncached(&mut self.font_system, key)?;
-        self.stats.rasterized += 1;
+        let Some(image) = self.swash.get_image_uncached(&mut self.font_system, key) else {
+            self.atlas.cache_empty(key);
+            return Ok(None);
+        };
+        self.stats.rasterized = self.stats.rasterized.saturating_add(1);
         let width = image.placement.width;
         let height = image.placement.height;
         if width == 0 || height == 0 {
-            self.glyph_cache.insert(key, None);
-            return None;
+            self.atlas.cache_empty(key);
+            return Ok(None);
         }
-        let Some(allocation) = self.allocate_atlas_space(width, height) else {
-            self.grow_requested = true;
-            return None;
-        };
-        let rgba = glyph_rgba(image.content, image.data);
-        let glyph = Glyph {
-            allocation: allocation.id,
-            atlas: [
-                allocation.rectangle.min.x as u32,
-                allocation.rectangle.min.y as u32,
+        let rgba = glyph_rgba(image.content, image.data, width, height)?;
+        let glyph = match self.atlas.allocate(
+            width,
+            height,
+            [
+                image.placement.left,
+                image
+                    .placement
+                    .top
+                    .checked_neg()
+                    .ok_or_else(|| TextError::InvalidInput("glyph bearing overflow".into()))?,
             ],
-            size: [width, height],
-            bearing: [image.placement.left, -image.placement.top],
+            &mut self.stats,
+        ) {
+            Ok(glyph) => glyph,
+            Err(TextError::AtlasChanged) => {
+                self.stream.clear();
+                self.consumed_primitive_count = 0;
+                self.frame_invalidated = true;
+                return Err(TextError::AtlasChanged);
+            }
+            Err(error) => return Err(error),
         };
-        self.track_allocation(allocation.id);
-        self.pending.push(PendingGlyphUpload {
+        self.atlas.pending.push(PendingGlyphUpload {
             x: glyph.atlas[0],
             y: glyph.atlas[1],
             width,
             height,
             rgba,
-            generation: u64::from(self.invalidation_frame),
+            generation: self.atlas.descriptor.generation,
         });
-        self.glyph_cache.insert(key, Some(glyph));
-        Some(glyph)
+        self.atlas.cache.insert(key, Some(glyph));
+        Ok(Some(glyph))
     }
-    fn track_allocation(&mut self, allocation: AllocId) {
-        let id = allocation.serialize();
-        let index = (id & 0xffff) as usize;
-        if self.usage.len() <= index {
-            self.usage.resize(index + 1, AtlasAllocUsage::default());
+    /// Drain pending RGBA updates without advancing the frame counter.
+    /// The caller must upload them before drawing primitives that reference them.
+    ///
+    /// # Errors
+    /// Returns [`TextError::AtlasChanged`] while a discarded frame awaits `begin_frame`.
+    pub fn upload_pending_glyphs(&mut self) -> TextResult<Vec<PendingGlyphUpload>> {
+        self.check_frame()?;
+        Ok(std::mem::take(&mut self.atlas.pending))
+    }
+    /// Queue a white rectangle with finite opacity in `[0, 1]` and optional shapes.
+    /// Positions must be finite and extents finite and nonnegative.
+    ///
+    /// # Errors
+    /// Rejects invalid geometry, opacity or packed shapes without changing the stream;
+    /// also reports an atlas-changed frame awaiting [`Self::begin_frame`].
+    pub fn rect(
+        &mut self,
+        pos: [f32; 2],
+        extent: [f32; 2],
+        opacity: f32,
+        shapes: &RawShapeStream,
+    ) -> TextResult<()> {
+        if !opacity.is_finite() || !(0.0..=1.0).contains(&opacity) {
+            return Err(TextError::InvalidValue {
+                field: "opacity",
+                value: opacity,
+            });
         }
-        self.usage[index] = AtlasAllocUsage {
-            last_frame: self.frame,
-            generation: (id >> 16) as u16,
-        };
-    }
-    /// 原 overflow 在 upload 阶段倍增 atlas、清缓存并废弃待上传；下一帧重新生成。
-    pub fn upload_pending_glyphs(&mut self) -> Vec<PendingGlyphUpload> {
-        if self.grow_requested {
-            self.grow_requested = false;
-            let size = self.allocator.size();
-            let width = size.width.checked_mul(2).expect("atlas width overflow");
-            let height = size.height.checked_mul(2).expect("atlas height overflow");
-            self.allocator = AtlasAllocator::new(Size::new(width, height));
-            self.atlas_view.width = width as u32;
-            self.atlas_view.height = height as u32;
-            self.swash = SwashCache::new();
-            self.glyph_cache.clear();
-            self.usage = Vec::new();
-            self.pending.clear();
-            self.invalidation_frame = self.frame;
-            self.atlas_view.generation = u64::from(self.invalidation_frame);
-            self.stats.atlas_rebuilds += 1;
-            Vec::new()
-        } else {
-            std::mem::take(&mut self.pending)
-        }
-    }
-    /// 原 TextRenderer::rect(pos, extent, opacity, shapes)：颜色固定白色 u32::MAX，
-    /// alpha 经 utils::scale_u32_packed_srgba_color 按 opacity 缩放（RNE 0x140b8f548/0x140b8f550）。
-    pub fn rect(&mut self, pos: [f32; 2], extent: [f32; 2], opacity: f32, shapes: &RawShapeStream) {
-        assert!(shapes.0.len() < 256, "stream_len < 256");
         self.rect_with_color(
             pos,
             extent,
             crate::scale_u32_packed_srgba_color(u32::MAX, opacity),
             shapes,
-        );
+        )
     }
-    /// 重建扩展：候选显式颜色入口；原 rect 固定白色仅接受 opacity。
+    /// Queue a rectangle using an explicit packed color and validated shape words.
+    /// An empty shape stream emits a solid rectangle. Geometry uses the same bounds
+    /// as [`Self::rect`]; image indices are checked against bound images by the GPU.
+    ///
+    /// # Errors
+    /// Rejects invalid geometry, shape instructions, oversized packets or an
+    /// atlas-changed frame without modifying the queued stream.
     pub fn rect_with_color(
         &mut self,
         pos: [f32; 2],
         extent: [f32; 2],
         color: u32,
         shapes: &RawShapeStream,
-    ) {
-        assert!(shapes.0.len() < 256, "stream_len < 256");
-        let start = self.stream.shapes.0.len();
-        assert!(
-            start <= 0x00ff_ffff,
-            "shape stream offset exceeds packed range"
-        );
+    ) -> TextResult<()> {
+        self.check_frame()?;
         let mut primitive = Primitive::rect(pos, extent, color);
-        primitive.stream = ((start as u32) << 8) | shapes.0.len() as u32;
+        validate_primitive_geometry(&primitive)?;
+        if shapes.0.len() > MAX_SHAPE_WORDS {
+            return Err(TextError::ShapeStreamTooLong(shapes.0.len()));
+        }
+        crate::validation::validate_shape_words(&shapes.0, 65_536)?;
+        if !shapes.0.is_empty() {
+            primitive.stream = ShapePacket {
+                word_offset: self.stream.shapes.0.len(),
+                word_count: shapes.0.len(),
+            }
+            .pack()?;
+        }
         self.stream.primitives.push(primitive);
         self.stream.shapes.0.extend_from_slice(&shapes.0);
+        Ok(())
     }
+    /// Encode named shapes using `resolver`, then queue a colored rectangle.
+    /// Resolver callbacks run in source order and their side effects are not rolled back.
+    ///
+    /// # Errors
+    /// Propagates shape encoding and [`Self::rect_with_color`] errors without adding
+    /// a partial rectangle to the frame.
     pub fn shaped_rect(
         &mut self,
         pos: [f32; 2],
@@ -365,248 +375,277 @@ impl TextRenderer {
         color: u32,
         shapes: &ShapeStream,
         resolver: &mut impl FnMut(&str) -> u32,
-    ) {
+    ) -> TextResult<()> {
         let mut raw = RawShapeStream::new();
-        raw.append(shapes, resolver);
-        self.rect_with_color(pos, extent, color, &raw);
+        raw.append(shapes, resolver)?;
+        self.rect_with_color(pos, extent, color, &raw)
     }
-    pub fn append_primitives(&mut self, primitives: &[Primitive], offset: [f32; 2], color: u32) {
-        self.stream.primitives.extend(primitives.iter().map(|p| {
-            let mut p = *p;
-            p.pos_min[0] += offset[0];
-            p.pos_min[1] += offset[1];
-            p.color = color;
-            p
-        }));
+    /// Append local primitives with an offset and per-channel RGBA tint (white is identity).
+    /// Glyph primitives must refer to handles already validated for this atlas.
+    ///
+    /// # Errors
+    /// Nonfinite coordinates, negative extents, offset overflow or an atlas-changed
+    /// frame leave the entire destination stream unchanged.
+    pub fn append_primitives(
+        &mut self,
+        primitives: &[Primitive],
+        offset: [f32; 2],
+        tint: u32,
+    ) -> TextResult<()> {
+        self.check_frame()?;
+        for value in offset {
+            finite("primitive offset", value)?;
+        }
+        for primitive in primitives {
+            let mut adjusted = *primitive;
+            adjusted.pos_min[0] += offset[0];
+            adjusted.pos_min[1] += offset[1];
+            validate_primitive_geometry(&adjusted)?;
+        }
+        self.stream
+            .primitives
+            .extend(primitives.iter().map(|primitive| {
+                let mut adjusted = *primitive;
+                adjusted.pos_min[0] += offset[0];
+                adjusted.pos_min[1] += offset[1];
+                adjusted.color = tint_color(adjusted.color, tint);
+                adjusted
+            }));
+        Ok(())
     }
-    /// 原 0x140b8f670：借用 atlas，并返回最近一次 consume 的图元数。
-    /// 原返回 &rhapsody::raw::Texture；CPU 接口仅提供它的 descriptor，
-    /// 真实 native texture 仍由可选 GPU 适配器持有。
+    /// Borrow the current atlas and report the last successfully consumed primitive count.
     pub fn render(&self) -> (&AtlasDescriptor, u64) {
-        (&self.atlas_view, self.consumed_primitive_count)
+        (&self.atlas.descriptor, self.consumed_primitive_count)
     }
-    pub fn consume(&mut self) -> RenderBatch {
+    /// Drain primitives, shapes and pending glyph uploads, then advance the frame stamp.
+    /// Submit this batch against the current atlas before resetting or growing it.
+    ///
+    /// # Errors
+    /// Returns [`TextError::AtlasChanged`] for a discarded frame, or an invalid-batch
+    /// error if the frame counter is exhausted. Errors preserve queued data.
+    pub fn consume(&mut self) -> TextResult<RenderBatch> {
+        self.check_frame()?;
+        let next_frame = self
+            .atlas
+            .frame
+            .checked_add(1)
+            .ok_or_else(|| TextError::InvalidBatch("frame counter exhausted".into()))?;
         self.consumed_primitive_count = self.stream.primitives.len() as u64;
         let mut batch = self.stream.consume();
-        // Original consume clears both streams, uploads pending glyphs using
-        // the old frame, then advances the u32 frame counter.
-        batch.glyph_uploads = self.upload_pending_glyphs();
-        self.frame = self.frame.wrapping_add(1);
-        batch
+        batch.glyph_uploads = std::mem::take(&mut self.atlas.pending);
+        self.atlas.frame = next_frame;
+        Ok(batch)
     }
+    /// Borrow frame streams for an infallible consumer, then clear and advance them.
+    /// A panic in `consume` leaves the frame intact. Use [`Self::try_consume_with`]
+    /// when a normal callback error should retain the frame for retry.
+    ///
+    /// # Errors
+    /// Reports an atlas-changed frame or frame-counter exhaustion before the callback.
     pub fn consume_with<T>(
         &mut self,
         consume: impl FnOnce(&[Primitive], &[u32]) -> T,
-    ) -> (T, Vec<PendingGlyphUpload>) {
-        // 原 0x140fac810：先保存 count，再调用上传 closure；失败不清流、不推进 frame。
-        self.consumed_primitive_count = self.stream.primitives.len() as u64;
-        let result = self.stream.consume_with(consume);
-        let uploads = self.upload_pending_glyphs();
-        self.frame = self.frame.wrapping_add(1);
-        (result, uploads)
+    ) -> TextResult<(T, Vec<PendingGlyphUpload>)> {
+        self.try_consume_with(|primitives, shapes| Ok(consume(primitives, shapes)))
     }
-    #[cfg(test)]
-    pub(crate) fn set_cache_fixture(&mut self, frame: u32, stamp: u32, usage: &[[u32; 2]]) {
-        self.frame = frame;
-        self.invalidation_frame = stamp;
-        self.atlas_view.generation = u64::from(stamp);
-        self.usage = usage
-            .iter()
-            .map(|u| AtlasAllocUsage {
-                last_frame: u[0],
-                generation: u[1] as u16,
-            })
-            .collect();
+    /// Borrow frame streams and commit only after the consumer returns success.
+    /// The callback runs before pending uploads are drained. A returned error or panic
+    /// preserves primitives, shape words, uploads, counts and the current frame stamp.
+    ///
+    /// # Errors
+    /// Propagates callback errors and reports atlas invalidation or counter exhaustion.
+    /// Caller-owned callback side effects cannot be rolled back.
+    pub fn try_consume_with<T>(
+        &mut self,
+        consume: impl FnOnce(&[Primitive], &[u32]) -> TextResult<T>,
+    ) -> TextResult<(T, Vec<PendingGlyphUpload>)> {
+        self.check_frame()?;
+        let next_frame = self
+            .atlas
+            .frame
+            .checked_add(1)
+            .ok_or_else(|| TextError::InvalidBatch("frame counter exhausted".into()))?;
+        let primitive_count = self.stream.primitives.len() as u64;
+        let result = consume(&self.stream.primitives, &self.stream.shapes.0)?;
+        self.stream.clear();
+        self.consumed_primitive_count = primitive_count;
+        let uploads = std::mem::take(&mut self.atlas.pending);
+        self.atlas.frame = next_frame;
+        Ok((result, uploads))
     }
-    #[cfg(test)]
-    pub(crate) fn usage_fixture(&self) -> Vec<[u32; 2]> {
-        self.usage
-            .iter()
-            .map(|u| [u.last_frame, u32::from(u.generation)])
-            .collect()
+    fn check_frame(&self) -> TextResult<()> {
+        if self.frame_invalidated {
+            Err(TextError::AtlasChanged)
+        } else {
+            Ok(())
+        }
     }
 }
-
-fn glyph_rgba(content: SwashContent, data: Vec<u8>) -> Vec<u8> {
-    match content {
+fn finite(field: &'static str, value: f32) -> TextResult<()> {
+    if value.is_finite() {
+        Ok(())
+    } else {
+        Err(TextError::InvalidValue { field, value })
+    }
+}
+fn positive(field: &'static str, value: f32) -> TextResult<()> {
+    if value.is_finite() && value > 0. {
+        Ok(())
+    } else {
+        Err(TextError::InvalidValue { field, value })
+    }
+}
+fn glyph_rgba(
+    content: SwashContent,
+    data: Vec<u8>,
+    width: u32,
+    height: u32,
+) -> TextResult<Vec<u8>> {
+    let pixels = (width as usize)
+        .checked_mul(height as usize)
+        .ok_or(TextError::AtlasFull)?;
+    let expected = match content {
+        SwashContent::Mask => pixels,
+        SwashContent::Color | SwashContent::SubpixelMask => {
+            pixels.checked_mul(4).ok_or(TextError::AtlasFull)?
+        }
+    };
+    if data.len() != expected {
+        return Err(TextError::InvalidInput(
+            "rasterizer returned an inconsistent glyph payload".into(),
+        ));
+    }
+    Ok(match content {
         SwashContent::Mask => data
             .into_iter()
             .flat_map(|alpha| [255, 255, 255, alpha])
             .collect(),
-        // 原 upload fold 0x14180585e：content tag 非零时直接使用原 bytes。
-        // swash 0.1.16 的 Color/SubpixelMask 都是 RGBA32；当前 cosmic fork
-        // 固定 Format::Alpha，通常不产生 SubpixelMask。
         SwashContent::Color | SwashContent::SubpixelMask => data,
-    }
+    })
 }
 
 #[cfg(test)]
-mod followup_tests {
+mod tests {
     use super::*;
-
     #[test]
-    fn upload_content_dispatch_preserves_rgba_and_expands_only_alpha() {
-        let bytes = vec![1, 2, 3, 4, 5, 6, 7, 8];
-        assert_eq!(glyph_rgba(SwashContent::Color, bytes.clone()), bytes);
-        assert_eq!(glyph_rgba(SwashContent::SubpixelMask, bytes.clone()), bytes);
-        assert_eq!(
-            glyph_rgba(SwashContent::Mask, vec![0, 128, 255]),
-            [255, 255, 255, 0, 255, 255, 255, 128, 255, 255, 255, 255]
+    fn validates_configuration_scaling_and_counter_exhaustion() {
+        assert!(TextRenderer::with_atlas_size(0, 16).is_err());
+        assert!(
+            TextRenderer::with_config(AtlasConfig {
+                width: 65536,
+                height: 1,
+                max_width: 65536,
+                max_height: 1,
+                max_bytes: u64::MAX
+            })
+            .is_err()
         );
-    }
-
-    #[test]
-    fn callback_unwind_does_not_advance_frame_and_scale_preserves_growth_request() {
+        assert!(
+            TextRenderer::with_config(AtlasConfig {
+                width: 65535,
+                height: 65535,
+                max_width: 65535,
+                max_height: 65535,
+                max_bytes: u64::MAX
+            })
+            .is_err()
+        );
         let mut renderer = TextRenderer::new();
-        let frame = renderer.frame;
-        renderer.rect([0.; 2], [1.; 2], 1., &RawShapeStream::new());
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            renderer.consume_with(|_, _| panic!("upload failure"));
-        }));
-        assert!(result.is_err());
-        assert_eq!(renderer.frame, frame);
-        renderer.consume();
-        assert_eq!(renderer.frame, frame + 1);
-        renderer.grow_requested = true;
-        renderer.set_pixels_per_point(2.);
-        assert!(renderer.grow_requested);
-        renderer.upload_pending_glyphs();
-        assert_eq!(renderer.atlas().width, 2048);
+        for scale in [0., -1., f32::NAN, f32::INFINITY] {
+            assert!(renderer.set_pixels_per_point(scale).is_err());
+        }
+        let revision = renderer.atlas().generation;
+        renderer.reset_glyph_cache().unwrap();
+        assert!(renderer.atlas().generation > revision);
+        let revision = renderer.atlas().generation;
+        renderer.reset_glyph_cache().unwrap();
+        assert!(renderer.atlas().generation > revision);
+        renderer.atlas.frame = u64::MAX;
+        assert!(renderer.consume().is_err());
+        assert_eq!(renderer.current_frame(), u64::MAX);
     }
-
     #[test]
-    fn original_frame_stores_expiry_and_slot_writes() {
-        let evidence: serde_json::Value = serde_json::from_str(include_str!(
-            "../tests/fixtures/internal-native-cache-oracle.json"
-        ))
-        .unwrap();
-        for case in evidence["expiry_cases"].as_array().unwrap() {
-            let usage = AtlasAllocUsage {
-                last_frame: case["last"].as_u64().unwrap() as u32,
-                generation: 65535,
-            };
-            assert_eq!(
-                usage.is_expired(case["frame"].as_u64().unwrap() as u32),
-                case["expired"].as_bool().unwrap()
-            );
-        }
-        for case in evidence["overflow_consume_store_cases"].as_array().unwrap() {
-            let mut renderer = TextRenderer::with_atlas_size(8, 8);
-            let frame = case["before_frame"].as_u64().unwrap() as u32;
-            renderer.set_cache_fixture(frame, 7, &[[9, 65535]]);
-            renderer.grow_requested = true;
-            let batch = renderer.consume();
-            assert!(batch.glyph_uploads.is_empty());
-            assert_eq!(
-                renderer.invalidation_frame,
-                case["overflow_stamp"].as_u64().unwrap() as u32
-            );
-            assert_eq!(
-                renderer.frame,
-                case["after_consume_frame"].as_u64().unwrap() as u32
-            );
-            assert!(renderer.usage.is_empty());
-            assert_eq!(renderer.atlas().width, 16);
-        }
-        for case in evidence["setter_prefix_cases"].as_array().unwrap() {
-            let mut renderer = TextRenderer::with_atlas_size(8, 8);
-            let frame = case["frame"].as_u64().unwrap() as u32;
-            renderer.set_cache_fixture(frame, 7, &[[9, 65535]]);
-            renderer.pixels_per_point = f32::from_bits(case["old_bits"].as_u64().unwrap() as u32);
-            renderer.grow_requested = true;
+    fn rejected_callback_and_append_preserve_frame_data() {
+        let mut renderer = TextRenderer::new();
+        renderer
+            .rect([0., 0.], [1., 1.], 1., &RawShapeStream::new())
+            .unwrap();
+        let primitives = [
+            Primitive::rect([0., 0.], [1., 1.], 0),
+            Primitive::rect([f32::MAX, 0.], [1., 1.], 0),
+        ];
+        assert!(
             renderer
-                .set_pixels_per_point(f32::from_bits(case["new_bits"].as_u64().unwrap() as u32));
-            assert_eq!(
-                renderer.invalidation_frame,
-                case["stamp"].as_u64().unwrap() as u32
-            );
-            assert!(renderer.grow_requested);
-            assert_eq!(renderer.usage.len(), 1);
-            if case["changed"].as_u64().unwrap() != 0 {
-                assert_eq!(renderer.usage_fixture(), [[0, 0]]);
-            } else {
-                assert_eq!(renderer.usage_fixture(), [[9, 65535]]);
-            }
-        }
-        for case in evidence["usage_helper_cases"].as_array().unwrap() {
-            let mut renderer = TextRenderer::with_atlas_size(8, 8);
-            renderer.set_cache_fixture(case["frame"].as_u64().unwrap() as u32, 1, &[[9, 7]; 3]);
-            let index = case["index"].as_u64().unwrap() as u32;
-            let generation = case["generation"].as_u64().unwrap() as u32;
-            renderer.track_allocation(AllocId::deserialize(index | (generation << 16)));
-            assert_eq!(
-                renderer.usage.len() as u64,
-                case["vector_len"].as_u64().unwrap()
-            );
-            assert_eq!(
-                renderer.usage_fixture()[index as usize],
-                [renderer.frame, generation]
-            );
-        }
-    }
-
-    #[test]
-    fn cache_hit_does_not_touch_usage_and_uploads_precede_frame_advance() {
-        let mut renderer = TextRenderer::new();
-        renderer.set_cache_fixture(9, 3, &[[4, 65535]]);
-        let key = CacheKey::new(
-            cosmic_text::fontdb::ID::dummy(),
-            1,
-            20.,
-            (0., 0.),
-            cosmic_text::CacheKeyFlags::empty(),
-        )
-        .0;
-        let glyph = Glyph {
-            allocation: AllocId::deserialize(0xffff0000),
-            atlas: [0; 2],
-            size: [1; 2],
-            bearing: [0; 2],
-        };
-        renderer.glyph_cache.insert(key, Some(glyph));
-        assert_eq!(
-            renderer.get_glyph(key).unwrap().allocation,
-            glyph.allocation
+                .append_primitives(&primitives, [f32::MAX, 0.], 0)
+                .is_err()
         );
-        assert_eq!(renderer.usage_fixture(), [[4, 65535]]);
-        renderer.pending.push(PendingGlyphUpload {
-            x: 0,
-            y: 0,
-            width: 1,
-            height: 1,
-            rgba: vec![255; 4],
-            generation: 3,
-        });
-        let batch = renderer.consume();
-        assert_eq!(batch.glyph_uploads.len(), 1);
-        assert!(renderer.pending.is_empty());
-        assert_eq!(renderer.frame, 10);
-        assert_eq!(renderer.invalidation_frame, 3);
+        let frame = renderer.current_frame();
+        let failure: TextResult<((), Vec<PendingGlyphUpload>)> = renderer
+            .try_consume_with(|_, _| Err(TextError::InvalidInput("consumer failed".into())));
+        assert!(failure.is_err());
+        assert_eq!(renderer.current_frame(), frame);
+        assert_eq!(renderer.consume().unwrap().primitives.len(), 1);
+        assert!(
+            renderer
+                .rect([0., 0.], [1., 1.], 1., &RawShapeStream(vec![0]))
+                .is_err()
+        );
+        assert!(renderer.consume().unwrap().primitives.is_empty());
+        let selection = Primitive::rect([0., 0.], [1., 1.], 0x80ff_ffff);
+        renderer
+            .append_primitives(&[selection], [0., 0.], u32::MAX)
+            .unwrap();
+        assert_eq!(
+            renderer.consume().unwrap().primitives[0].color,
+            selection.color
+        );
+        let colored = Primitive::rect([0., 0.], [1., 1.], 0x8040_2010);
+        renderer
+            .append_primitives(&[colored], [0., 0.], 0x8080_8080)
+            .unwrap();
+        assert_eq!(renderer.consume().unwrap().primitives[0].color, 0x4020_1008);
     }
     #[test]
-    fn original_usage_gap_initialization() {
-        let evidence: serde_json::Value = serde_json::from_str(include_str!(
-            "../tests/fixtures/internal-native-same-id.json"
-        ))
-        .unwrap();
-        for case in evidence["gap_cases"].as_array().unwrap() {
-            let mut renderer = TextRenderer::new();
-            renderer.set_cache_fixture(
-                case["frame"].as_u64().unwrap() as u32,
-                1,
-                &[[10, 0], [11, 1], [12, 2]],
-            );
-            renderer.usage.reserve(5);
-            let before = renderer.usage.as_ptr();
-            renderer.track_allocation(AllocId::deserialize(
-                case["requested_index"].as_u64().unwrap() as u32,
-            ));
-            assert_eq!(renderer.usage.as_ptr(), before);
-            let length = case["after_len"].as_u64().unwrap() as usize;
-            assert_eq!(renderer.usage.len(), length);
-            let original: Vec<[u32; 2]> =
-                serde_json::from_value(case["after_usage"].clone()).unwrap();
-            assert_eq!(renderer.usage_fixture(), original[..length]);
-        }
+    fn empty_shape_rect_is_solid_and_invalid_inputs_leave_the_stream_unchanged() {
+        let mut renderer = TextRenderer::new();
+        renderer
+            .rect([0., 0.], [1., 1.], 1., &RawShapeStream::new())
+            .unwrap();
+        assert!(
+            renderer
+                .rect([f32::NAN, 0.], [1., 1.], 1., &RawShapeStream::new())
+                .is_err()
+        );
+        assert!(
+            renderer
+                .rect([0., 0.], [-1., 1.], 1., &RawShapeStream::new())
+                .is_err()
+        );
+        assert!(
+            renderer
+                .rect([0., 0.], [1., 1.], 1., &RawShapeStream(vec![0; 256]))
+                .is_err()
+        );
+        let batch = renderer.consume().unwrap();
+        assert_eq!(batch.primitives.len(), 1);
+        assert_eq!(batch.primitives[0].stream, u32::MAX);
+        assert_eq!(std::mem::size_of::<Primitive>(), 48);
+        assert!(
+            ShapePacket {
+                word_offset: 0x00ff_ffff,
+                word_count: 255
+            }
+            .pack()
+            .is_err()
+        );
+        assert_eq!(
+            ShapePacket {
+                word_offset: 0x00ff_ffff,
+                word_count: 254
+            }
+            .pack()
+            .unwrap(),
+            u32::MAX - 1
+        );
     }
 }

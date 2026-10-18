@@ -1,22 +1,22 @@
-//! UNVERIFIED parallel integration of the recovered decorator cancellation owner.
-//! Info72 is opaque. Projection requires an explicit observed Info→request binding.
+//! Restores decorator storage on cancellation and reconciles legacy openings.
+//! Opaque Info72 records require explicit observed placement bindings.
 use crate::{
     BuildingReport,
     decorator_placement::PlaceWallOpening,
     openings::{OpeningId, RemoveOpening},
 };
 use bevy_ecs::prelude::*;
-use country_core::recovered_building::building_wall_decorator_archivist::{
-    DecoratorArchivist, DecoratorStorage, DecoratorStorageAddress, ObservedDecoratorInfo,
-    restore_archived_decorators,
-};
+use country_core::resources::walls::decorator_archivist::changes::DecoratorArchivist;
+use country_core::resources::walls::decorator_archivist::changes::DecoratorStorage;
+use country_core::resources::walls::decorator_archivist::changes::DecoratorStorageAddress;
+use country_core::resources::walls::decorator_archivist::changes::ObservedDecoratorInfo;
+use country_core::resources::walls::decorator_archivist::changes::restore_archived_decorators;
 use std::{
     any::Any,
     collections::{HashMap, HashSet},
     sync::Arc,
 };
-/// The real caller retains collision resource handles, not fabricated collider
-/// geometry. Clearing these maps releases those dependency-owned references.
+/// Shared collision resource ownership; clearing archive maps releases references.
 pub type ObservedCollisionHandle = Arc<dyn Any + Send + Sync>;
 pub type ObservedDecoratorArchive = DecoratorArchivist<ObservedCollisionHandle>;
 #[derive(Event, Clone)]
@@ -40,7 +40,7 @@ pub struct WallDecoratorArchiveState {
     pub pending_projection: HashMap<u32, String>,
     bindings: HashMap<u32, Vec<ObserveDecoratorOpeningBinding>>,
     published_openings: HashMap<u32, PlaceWallOpening>,
-    projection_dirty: bool,
+    pub(crate) projection_dirty: bool,
 }
 #[derive(Clone, Debug)]
 pub enum CancelRestorePending {
@@ -54,17 +54,14 @@ pub fn register(app: &mut bevy_app::App) {
         .add_event::<ObserveDecoratorArchive>()
         .add_event::<ObserveDecoratorOpeningBinding>();
 }
-fn clone_archive(a: &ObservedDecoratorArchive) -> ObservedDecoratorArchive {
+fn clone_archive(archive: &ObservedDecoratorArchive) -> ObservedDecoratorArchive {
     DecoratorArchivist {
-        walls: a.walls.clone(),
-        special1: a.special1.clone(),
-        special2: a.special2.clone(),
-        collision_a: a.collision_a.clone(),
-        collision_b: a.collision_b.clone(),
-        culling: country_core::resources::walls::decorator_archivist::DecoratorCullPolicy {
-            allowed_ids: Default::default(),
-            allow_any: true,
-        },
+        walls: archive.walls.clone(),
+        special1: archive.special1.clone(),
+        special2: archive.special2.clone(),
+        collision_a: archive.collision_a.clone(),
+        collision_b: archive.collision_b.clone(),
+        culling: archive.culling.clone(),
     }
 }
 pub(crate) fn consume_observed(
@@ -95,8 +92,8 @@ pub(crate) fn consume_observed(
         state.projection_dirty = true;
     }
 }
-/// This mutates all three tracking containers and the live-ID index using the
-/// recovered core. Missing original owner state leaves the finish pending.
+/// Restores the tracked containers and live-ID index for a cancelled edit.
+/// Missing storage or archive leaves the finish request pending.
 pub(crate) fn restore_for_cancel(
     state: &mut WallDecoratorArchiveState,
 ) -> Result<(), CancelRestorePending> {
@@ -176,7 +173,7 @@ pub(crate) fn publish_projection(
     mut removals: EventWriter<RemoveOpening>,
     mut report: ResMut<BuildingReport>,
 ) {
-    if !state.projection_dirty {
+    if !state.projection_dirty && !native_ids.is_changed() {
         return;
     }
     let Some(storage) = state.storage.as_ref() else {
@@ -215,14 +212,37 @@ pub(crate) fn publish_projection(
             );
         }
     }
+    // A shared identity has no unique authoritative opening. Withdraw its
+    // previous contribution and keep both bindings pending until corrected.
+    let mut seen = HashSet::new();
+    let conflicts: HashSet<_> = desired
+        .values()
+        .filter(|opening| !seen.insert(opening.id))
+        .map(|opening| opening.id)
+        .collect();
+    desired.retain(|id, opening| {
+        if conflicts.contains(&opening.id) {
+            gaps.insert(
+                *id,
+                format!(
+                    "Opening {} is shared by multiple decorator bindings",
+                    opening.id.0
+                ),
+            );
+            false
+        } else {
+            true
+        }
+    });
     // Openings consume upserts before removals. Preserve IDs also requested
     // by the restored version to avoid removing a same-frame replacement.
     let desired_ids: HashSet<OpeningId> = desired.values().map(|p| p.id).collect();
+    let native_openings: HashSet<_> = native_ids.0.values().copied().collect();
     let removed_ids: HashSet<_> = state
         .published_openings
         .values()
         .map(|p| p.id)
-        .filter(|id| !desired_ids.contains(id) && !native_ids.owns(*id))
+        .filter(|id| !desired_ids.contains(id) && !native_openings.contains(id))
         .collect();
     for id in removed_ids {
         removals.write(RemoveOpening(id));

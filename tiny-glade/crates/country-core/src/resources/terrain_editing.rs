@@ -17,3 +17,13 @@ impl DerefMut for TerrainEditingData {
         &mut self.0
     }
 }
+
+impl TerrainEditingData {
+    /// B W3 borrows the actual stroke map and the same resource's +0x40 flag.
+    /// Calling through ResMut preserves its original unconditional change tick.
+    pub fn rasterization_parts(
+        &mut self,
+    ) -> (&std::collections::HashMap<StrokeId, TerrainStroke>, &mut bool) {
+        (&self.0.strokes, &mut self.0.rasterized)
+    }
+}

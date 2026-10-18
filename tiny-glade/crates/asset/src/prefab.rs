@@ -3,13 +3,12 @@ pub mod scan;
 use std::sync::Arc;
 use std::{borrow::Borrow, ops::Deref};
 
-/// Borrowed name view. Original B getters preserve string bytes and length;
-/// PrefabLibrary compares that length and delegates byte equality to the runtime.
+/// Borrowed prefab name; comparison and hashing preserve the exact UTF-8 bytes.
 #[repr(transparent)]
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct PrefabNameRef(str);
 impl PrefabNameRef {
-    /// Port adapter for the borrowed nominal view; no allocation or normalization.
+    /// Borrow a name without allocation or normalization.
     pub fn from_str_ref(name: &str) -> &Self {
         // SAFETY: this transparent single-field type has str's layout/metadata,
         // and introduces no invariant beyond its existing valid UTF-8 contents.

@@ -15,7 +15,7 @@ use crate::typed_gap::Gap;
 /// 常春藤折线点（O：`Ivy::add_point` 0x140869460 写 0x28 字节 stride）：
 /// `{ point_id: u64 @0x0, position: Vec3 @0x8, direction: Vec3 @0x14,
 ///    reserved: u32 @0x20 }`（36 有效 + 4 填充 = 40）。
-#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct IvyPoint {
     /// 唯一点 id（O：`add_point` 从 `next_point_id` 递增写入）。
     pub point_id: u64,

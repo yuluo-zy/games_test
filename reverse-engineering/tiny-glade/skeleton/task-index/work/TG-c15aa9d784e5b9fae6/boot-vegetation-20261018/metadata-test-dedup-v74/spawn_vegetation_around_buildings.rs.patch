@@ -1,0 +1,19 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/spawn_vegetation_around_buildings.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/spawn_vegetation_around_buildings.rs
+@@ -197,10 +197,14 @@
+         assert_eq!(e.uniform_u32(p, binding::DRAW_INDIRECT_BUFFER_OFFSET), 11);
+         // 1 并发写 + 2 + 4 + 3 + 2（重复）+ 1
+         assert_eq!(accesses(p).len(), 13);
+-        assert_eq!(p.preserving_buffers, [
++        // This fixture aliases buffer bindings to one graph resource;
++        // preservation metadata deduplicates graph resource IDs.
++        let mut expected = vec![
+             p.builder.accesses[1].resource,
+             p.builder.accesses.last().unwrap().resource,
+-        ]);
++        ];
++        expected.dedup();
++        assert_eq!(p.preserving_buffers, expected);
+     }
+ 
+     /// `[u32;2]` uniform 的键 = `binding_hash("grid_dims")`（`_dims` 规则：fnv("grid") + 1），与 EXE 立即数一致。

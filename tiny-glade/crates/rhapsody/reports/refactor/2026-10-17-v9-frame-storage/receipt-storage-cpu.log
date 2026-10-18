@@ -1,0 +1,45 @@
+   Compiling rhapsody v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody)
+warning: struct `SubmitScratch` is never constructed
+  --> crates/rhapsody/src/raw/submit.rs:12:19
+   |
+12 | pub(crate) struct SubmitScratch<A: smallvec::Array> {
+   |                   ^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: associated items `try_collect` and `dedup_by` are never used
+  --> crates/rhapsody/src/raw/submit.rs:17:19
+   |
+16 | impl<A: smallvec::Array> SubmitScratch<A> {
+   | ----------------------------------------- associated items in this implementation
+17 |     pub(crate) fn try_collect(
+   |                   ^^^^^^^^^^^
+...
+45 |     pub(crate) fn dedup_by(&mut self, same: impl FnMut(&mut A::Item, &mut A::Item) -> bool) {
+   |                   ^^^^^^^^
+
+warning: methods `copied_heap_bytes`, `try_clone_with_wait_capacity`, and `heap_capacity_bytes` are never used
+   --> crates/rhapsody/src/raw/submit.rs:70:19
+    |
+ 67 | impl PreparedSubmit {
+    | ------------------- methods in this implementation
+...
+ 70 |     pub(crate) fn copied_heap_bytes(&self, extra_waits: usize) -> crate::Result<usize> {
+    |                   ^^^^^^^^^^^^^^^^^
+...
+ 84 |     pub(crate) fn try_clone_with_wait_capacity(&self, extra_waits: usize) -> crate::Result<Self> {
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+101 |     pub(crate) fn heap_capacity_bytes(&self) -> usize {
+    |                   ^^^^^^^^^^^^^^^^^^^
+
+warning: `rhapsody` (lib test) generated 3 warnings
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 11.10s
+     Running unittests src/lib.rs (target/debug/deps/rhapsody-bcc529fddb5b5040)
+
+running 2 tests
+test rg::receipt_storage::tests::local_receipt_capacity_backpressure_and_host_budget_errors_are_distinct ... ok
+test rg::receipt_storage::tests::retained_clones_bound_reuse_and_own_bytes_after_session_pool_drop ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 243 filtered out; finished in 0.01s
+

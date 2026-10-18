@@ -1,78 +1,290 @@
-//! timberframe_rectangle.rs — 矩形木框架梁构建（B 0x141a41ba0，O；re-analyst-A
-//! 契约 §2）。
-//!
-//! 算法骨架（O）：`Rectangle2d::as_curve2`（0x140c98cf0）×2 / `as_curve3`
-//! （0x140c991f0）×3 / `get_point`（0x140c99600）×2 / `orientation_mat3`
-//! （0x140c99570）×2 / `perimeter`（0x140c99530）；`RoofRidgeDims::calc`
-//! （0x1408e2700）、`ridge_length_01_from_rectangle_ratio`（0x1408e3b60）、
-//! `roof_height_ws_from_wall_shape`（0x1408e3c70）；常量 0.2 间距（0x142a8c6f0）、
-//! 0.5 归一化（0x142925870）、0.63 缩放（0x1429258e0 区）、1.0/-0.3
-//! （0x142925900）；输出四边梁实例 → `TimberframeInstanceBuffer`。
-
+//! B construct_timberframe_rectangle@141a41ba0, complete9275B RNE range.
+//! Full affine instances replace the old position/section/quaternion proxy.
+//! Native phases: verticals, spaced verticals, skirt segments, roof rafters,
+//! then the selected ridge edge. See TG-ff033b6ba4d486ec81/WOODEN-PLANK-CONTRACT.md.
 use bevy_ecs::prelude::*;
-use glam::Vec3;
-use utils::geometry::Rectangle2d;
+use glam::{Affine3A, Mat3, Quat, Vec2, Vec3};
 
+use crate::timberframe_beam_count_change_audio::TimberframeBeamCount;
+use crate::TimberframeInstanceBuffer;
 use country_core::asset_libraries::ssbo_library::AssetSsboLibrary;
 use country_core::resources::events::ConstructTimberframeCmd;
-use country_core::resources::roofs::roof_shape::roof_height_ws_from_wall_shape;
+use country_core::resources::roofs::roof_buffers::WoodenPlankSsbo;
 use country_core::systems::wall::shapes::calc_shape_height::TimberframeConstructionParamsCache;
 use country_core::systems::wall::valid_enclosure::{Shape, ShapeParameters};
 
-use crate::timberframe_beam_count_change_audio::TimberframeBeamCount;
-use crate::timberframe_circle::{TimberframePlank, BEAM_SPACING, PLANK_LENGTH_SCALE};
-use crate::TimberframeInstanceBuffer;
+pub const EDGE_DIST_DIVISOR: f32 = 1.51;
+pub const BEAM_SECTION: f32 = 0.2;
+/// Native immediate141a4273f, one ULP below the Rust literal0.18.
+pub const BEAM_SECTION_MID: f32 = f32::from_bits(0x3e3851eb);
+pub const RIDGE_MIN_PERIMETER: f32 = 0.5;
 
-/// 归一化系数（O：0x142925870 = 0.5，`0.5 / sqrt(…)` 归一化面）。
-pub const NORMALIZE_HALF: f32 = 0.5;
-/// 矩形缩放（O：0x1429258e0 区 = 0.63，`(a+b) * 0.63` 面；字节直读 I）。
-pub const RECT_SCALE: f32 = 0.63;
+/// Native orientation_mat3@140c99570; retained public projection API.
+pub fn orientation_mat3(axis: Vec2) -> Mat3 {
+    Mat3::from_cols(
+        Vec3::new(axis.x, 0.0, axis.y),
+        Vec3::Y,
+        Vec3::new(-axis.y, 0.0, axis.x),
+    )
+}
 
-/// `construct_timberframe_rectangle` @0x141a41ba0（O 面）。
+/// Scalar sum order in native timberframe's length computations.
+pub(crate) fn segment_length(delta: Vec3) -> f32 {
+    ((delta.y * delta.y + delta.x * delta.x) + delta.z * delta.z).sqrt()
+}
+
+/// Shared source projection of the inlined segment instances. The original
+/// utils function supplies the orientation; local+Z receives the full length.
+pub(crate) fn segment_plank(a: Vec3, b: Vec3, translation: Vec3) -> WoodenPlankSsbo {
+    let delta = b - a;
+    let inverse = 1.0 / segment_length(delta);
+    let rotation = utils::geometry::rotation_from_normal(delta * inverse);
+    let length = segment_length(a - b);
+    WoodenPlankSsbo::timberframe(Affine3A::from_scale_rotation_translation(
+        Vec3::new(BEAM_SECTION, BEAM_SECTION, length),
+        rotation,
+        translation,
+    ))
+}
+
 pub fn construct_timberframe_rectangle(
     mut constructs: EventReader<ConstructTimberframeCmd>,
     mut buffer: ResMut<TimberframeInstanceBuffer>,
-    _library: Res<AssetSsboLibrary>,
+    mut library: ResMut<AssetSsboLibrary>,
     mut beams: ResMut<TimberframeBeamCount>,
-    _params: Res<TimberframeConstructionParamsCache>,
+    params: Res<TimberframeConstructionParamsCache>,
 ) {
+    // Host adaptation: the current library's mutation API takes &mut self;
+    // the native Res<AssetSsboLibrary> used its interior mutable storage.
+    let ssbo = library
+        .get_mut::<WoodenPlankSsbo>()
+        .expect("called `Option::unwrap()` on a `None` value");
+    if buffer.allocation.is_none() {
+        buffer.allocation = Some(ssbo.new_allocation());
+    }
+    let mut writer = ssbo.writer(buffer.allocation.as_ref().unwrap());
+    writer.clear();
+    let mut exhausted = false;
     for cmd in constructs.read() {
-        if cmd.shape.len() < 28 {
+        let shape = ShapeParameters::from_observed(cmd.shape);
+        let Some(Shape::Rectangle(rect)) = shape.get_shape() else {
             continue;
+        };
+        let mut count = 0i64;
+        let rotation = Quat::from_mat3(&orientation_mat3(rect.axis));
+        let curve = rect.as_curve3(params.skirt_offset);
+        // The native closed curve has five vertices, including its repeated
+        // first vertex. It is deliberately not deduplicated here.
+        for &position in &curve.points {
+            let plank = WoodenPlankSsbo::timberframe(Affine3A::from_scale_rotation_translation(
+                Vec3::new(BEAM_SECTION, params.main_height, BEAM_SECTION),
+                rotation,
+                position,
+            ));
+            exhausted |= writer.push(&plank).is_err();
+            count = count.wrapping_add(1);
         }
-        let params = ShapeParameters::from_observed(cmd.shape[..28].try_into().unwrap());
-        match params.get_shape() {
-            Some(Shape::Rectangle(rect)) => {
-                build_rectangle_beams(rect, &cmd.shape, &mut buffer.0);
+        for edge in curve.points.windows(2) {
+            let n = (segment_length(edge[0] - edge[1]) / EDGE_DIST_DIVISOR).floor() as usize;
+            if n < 2 {
+                continue;
             }
-            _ => {}
+            count = count.wrapping_add((n - 1) as i64);
+            for i in 1..n {
+                let t = i as f32 / n as f32;
+                let position = edge[0] * (1.0 - t) + edge[1] * t;
+                let plank =
+                    WoodenPlankSsbo::timberframe(Affine3A::from_scale_rotation_translation(
+                        Vec3::new(BEAM_SECTION_MID, params.main_height, BEAM_SECTION_MID),
+                        rotation,
+                        position,
+                    ));
+                exhausted |= writer.push(&plank).is_err();
+            }
         }
-        beams.current = buffer.0.len() as i32;
-        beams.non_empty = !buffer.0.is_empty();
+        let skirts = country_core::resources::walls::split_height_into_skirts(params.main_height);
+        for ring in skirts.into_iter().chain([0.0, params.main_height]) {
+            let height = ring + params.skirt_offset;
+            let offset = Vec3::new(height * 0.0, height, height * 0.0);
+            let perimeter = rect.as_curve3(0.0);
+            for edge in perimeter.points.windows(2) {
+                let translation = (edge[0] + edge[1]) * 0.5 + offset;
+                exhausted |= writer
+                    .push(&segment_plank(edge[0], edge[1], translation))
+                    .is_err();
+                count = count.wrapping_add(1);
+            }
+        }
+        if cmd.roof_gate == 0 {
+            use country_core::resources::roofs::{
+                roof_ridge::RoofRidgeDims,
+                roof_shape::{
+                    ridge_length_01_from_rectangle_ratio, roof_height_ws_from_wall_shape,
+                },
+            };
+            let roof_height = roof_height_ws_from_wall_shape(&cmd.shape);
+            let ratio = ridge_length_01_from_rectangle_ratio(rect.size.x, rect.size.y);
+            let direction = u8::from(rect.size.y > rect.size.x);
+            let dims = RoofRidgeDims::calc(ratio, direction, rect.size.to_array()).get();
+            let ridge = utils::geometry::Rectangle2d {
+                size: Vec2::from_array(dims),
+                ..rect
+            };
+            let outer = rect.as_curve2();
+            let inner = ridge.as_curve2();
+            let base = params.skirt_offset + params.main_height;
+            let peak = roof_height + base;
+            for (a, b) in outer.points.iter().zip(&inner.points) {
+                let a = Vec3::new(a.x, base, a.y);
+                let b = Vec3::new(b.x, peak, b.y);
+                exhausted |= writer.push(&segment_plank(a, b, (a + b) * 0.5)).is_err();
+                count = count.wrapping_add(1);
+            }
+            if ridge.perimeter() > RIDGE_MIN_PERIMETER {
+                // Original SETBE includes the unordered case.
+                let index = usize::from(
+                    ridge.size.y.partial_cmp(&ridge.size.x) != Some(core::cmp::Ordering::Greater),
+                );
+                let a = ridge.get_point(index);
+                let b = ridge.get_point(index + 1);
+                let a = Vec3::new(a.x, peak, a.y);
+                let b = Vec3::new(b.x, peak, b.y);
+                exhausted |= writer.push(&segment_plank(a, b, (a + b) * 0.5)).is_err();
+                count = count.wrapping_add(1);
+            }
+        }
+        beams.count = count;
+    }
+    if exhausted {
+        eprintln!("Timberframe constructor ran out of memory");
     }
 }
 
-/// 矩形四边梁（O 骨架：as_curve2/3 + get_point + orientation + perimeter +
-/// roof/ridge 域高度；采样相位 I）。
-fn build_rectangle_beams(rect: Rectangle2d, wall_shape: &[u8], out: &mut Vec<TimberframePlank>) {
-    let height = roof_height_ws_from_wall_shape(wall_shape);
-    let corners = rect.as_points2();
-    let perimeter = rect.perimeter();
-    let count = (perimeter / BEAM_SPACING).ceil().max(1.0) as usize;
-    for index in 0..count {
-        // I：矩形边 u 采样（机器码 get_point ×2 的边采样族；四边成对输出——
-        // re-analyst §2：实例范围标记 {start=0, count=2}）。
-        let t = (index as f32 + 0.5) / count as f32;
-        let edge = index % 4;
-        let a = corners[edge];
-        let b = corners[(edge + 1) % 4];
-        let pos = a + (b - a) * t;
-        let dir = (b - a).normalize();
-        out.push(TimberframePlank {
-            position: Vec3::new(pos.x, height * NORMALIZE_HALF, pos.y),
-            orientation: Vec3::new(dir.y, 0.0, -dir.x),
-            length: PLANK_LENGTH_SCALE * (b - a).length() * RECT_SCALE,
-            _pad: [0; 4],
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use core::ops::Range;
+    use country_core::render::ssbo::rhapsody_boundary::{
+        BackendError, Buffer, BufferDesc, GraphicsDevice,
+    };
+    use utils::geometry::{Circle2d, Rectangle2d};
+
+    struct CpuDevice;
+    impl GraphicsDevice for CpuDevice {
+        fn create_buffer(
+            &self,
+            desc: &BufferDesc,
+            _: &str,
+            _: Option<&[u8]>,
+        ) -> Result<Buffer, BackendError> {
+            Ok(Buffer {
+                byte_size: desc.size as u64,
+                ..Default::default()
+            })
+        }
+        fn update_buffer_bytes(
+            &self,
+            _: &Buffer,
+            _: &[u8],
+            _: &[Range<usize>],
+            _: usize,
+        ) -> Result<(), BackendError> {
+            unreachable!("this fixture exercises CPU production, not GPU upload")
+        }
+    }
+    fn run(shape: Shape, gate: u8) -> (i64, Vec<WoodenPlankSsbo>) {
+        let mut world = World::new();
+        let library = AssetSsboLibrary::new();
+        library.add_new::<WoodenPlankSsbo>(&CpuDevice);
+        world.insert_resource(library);
+        world.init_resource::<Events<ConstructTimberframeCmd>>();
+        world.init_resource::<TimberframeInstanceBuffer>();
+        world.init_resource::<TimberframeBeamCount>();
+        // Explicit CPU fixture, not a claim about cache startup values.
+        world.insert_resource(TimberframeConstructionParamsCache {
+            _gap: 0,
+            skirt_offset: 1.0,
+            main_height: 4.0,
         });
+        world
+            .resource_mut::<Events<ConstructTimberframeCmd>>()
+            .send(ConstructTimberframeCmd::from_shape(
+                ShapeParameters::from_shape(shape),
+                gate,
+            ));
+        let mut schedule = Schedule::default();
+        schedule.add_systems(
+            (
+                construct_timberframe_rectangle,
+                crate::timberframe_circle::construct_timberframe_circle,
+            )
+                .chain_ignore_deferred(),
+        );
+        schedule.run(&mut world);
+        let library = world.resource::<AssetSsboLibrary>();
+        let ssbo = library.get::<WoodenPlankSsbo>().unwrap();
+        let allocation = world.resource::<TimberframeInstanceBuffer>();
+        let ranges =
+            ssbo.allocation_to_draw_multi_instanced(allocation.allocation.as_ref().unwrap());
+        let records = ranges
+            .into_iter()
+            .flat_map(|(first, count)| {
+                ssbo.data[first as usize..(first + count) as usize]
+                    .iter()
+                    .copied()
+            })
+            .collect();
+        (world.resource::<TimberframeBeamCount>().count, records)
+    }
+    #[test]
+    fn canonical_ecs_rectangle_uses_full_affines_and_independent_roof_gate() {
+        assert_eq!(core::mem::size_of::<ConstructTimberframeCmd>(), 32);
+        assert_eq!(core::mem::align_of::<ConstructTimberframeCmd>(), 4);
+        assert_eq!(
+            core::mem::offset_of!(ConstructTimberframeCmd, roof_gate),
+            28
+        );
+        let shape = Shape::Rectangle(Rectangle2d::new_axis_aligned(
+            Vec2::ZERO,
+            Vec2::new(2.0, 8.0),
+        ));
+        let (count, records) = run(shape, 1);
+        assert_eq!((count, records.len()), (21, 21));
+        assert_eq!(records[0].transform.cols[1], Vec3::new(0.0, 4.0, 0.0));
+        assert_eq!(records[0].transform.cols[3].y, 1.0);
+        assert_eq!(
+            records[5].transform.cols[0].length().to_bits(),
+            BEAM_SECTION_MID.to_bits()
+        );
+        assert!(records
+            .iter()
+            .all(|p| (p.gate_seed, p.piece_seed, p.wall_id, p.flags) == (0, 0, 0, 2)));
+        let (count, records) = run(shape, 0);
+        assert_eq!((count, records.len()), (27, 27));
+        // Real ridge edge runs along the long dimension, not the old outer
+        // rectangle diagonal. Its short-axis coordinate is the native -0.05.
+        let ridge = records.last().unwrap();
+        assert!((ridge.transform.cols[2] - Vec3::new(0.0, 0.0, 8.0)).length() < 1e-5);
+        assert!((ridge.transform.cols[3].x + 0.05).abs() < 1e-6);
+    }
+    #[test]
+    fn canonical_ecs_circle_uses_tuple_windows_and_radial_roof_beams() {
+        let circle = Circle2d::new(Vec2::new(4.0, -2.0), 1.0);
+        let (count, records) = run(Shape::Circle(circle), 1);
+        assert_eq!((count, records.len()), (16, 16));
+        assert_eq!(records[0].transform.cols[1], Vec3::new(0.0, 4.0, 0.0));
+        assert_eq!(records[0].transform.cols[3].y, 1.0);
+        let (count, records) = run(Shape::Circle(circle), 0);
+        assert_eq!((count, records.len()), (22, 22));
+        let roof = &records[16];
+        let point = circle.get_pos_at_u(0.0);
+        let shape = ShapeParameters::from_shape(Shape::Circle(circle));
+        let peak = country_core::resources::roofs::roof_shape::roof_height_ws_from_wall_shape(
+            shape.bytes(),
+        ) + 5.0;
+        let base = Vec3::new(point.x, 5.0, point.y);
+        let tip = Vec3::new(circle.center.x, peak, circle.center.y);
+        assert!((roof.transform.cols[2] - (tip - base)).length() < 1e-4);
+        assert!((roof.transform.cols[3] - (tip + base) * 0.5).length() < 1e-5);
     }
 }

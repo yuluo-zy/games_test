@@ -10,7 +10,7 @@
 //! 写成数字字符串；因此存档内 `"Identity":<number>` 中的 `<number>` 就是身份值。
 //! 文件身份与历史身份同值（`SaveFileIdentity` = `HistoryIdentity`，re-analyst 闭合）。
 use crate::resources::history::HistoryIdentity;
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use std::{
     fs::File,
     io::Read,
@@ -113,7 +113,9 @@ mod tests {
         )
         .unwrap();
         temp.flush().unwrap();
-        temp.as_file_mut().seek(std::io::SeekFrom::Start(0)).unwrap();
+        temp.as_file_mut()
+            .seek(std::io::SeekFrom::Start(0))
+            .unwrap();
         assert_eq!(
             try_approx_parse_save_file_identity(temp.as_file_mut()).unwrap(),
             Some(HistoryIdentity(1048580))
@@ -125,8 +127,13 @@ mod tests {
         let mut temp = tempfile::NamedTempFile::new().unwrap();
         temp.write_all(br#"{"Version":27,"Camera":{}}"#).unwrap();
         temp.flush().unwrap();
-        temp.as_file_mut().seek(std::io::SeekFrom::Start(0)).unwrap();
-        assert_eq!(try_approx_parse_save_file_identity(temp.as_file_mut()).unwrap(), None);
+        temp.as_file_mut()
+            .seek(std::io::SeekFrom::Start(0))
+            .unwrap();
+        assert_eq!(
+            try_approx_parse_save_file_identity(temp.as_file_mut()).unwrap(),
+            None
+        );
         let identity = derive_fallback_save_file_identity(temp.path());
         assert_ne!(identity, HistoryIdentity(0));
     }

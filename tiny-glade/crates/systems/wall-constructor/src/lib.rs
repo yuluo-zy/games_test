@@ -2,7 +2,7 @@
 //!
 //! 原始布局（PDB 源路径 `crates/systems/wall-constructor/src/lib.rs`）：
 //! 本 crate 消费 country-core 的墙权威（PublicWalls/PublicWallState 0x2a0
-//! 投影、recovered_building 策略链）并生产 96B BrickTransformSsbo /
+//! 投影、共享建筑策略链）并生产 96B BrickTransformSsbo /
 //! 64B WoodenPlankSsbo 等实例记录。SSBO/渲染上传（FUN_141209c40 注册表 +
 //! 虚调取缓冲 + Arc/condvar 握手）为渲染边界后置登记。
 //!
@@ -87,5 +87,6 @@ pub fn gpu_flush_plank_buffers() {}
 pub fn gpu_clear_wall_gate_pieces() {}
 
 /// 原 `system_wall_constructor::debug_force_update_arches`（0x14003bb80）：
-/// 调试强制刷新拱。**未恢复（壳登记）**：debug 域（不称已恢复）。
+/// B 中该符号为 **1B `ret` 存根**（C3+0xCC 填充，无真实业务）；空函数体与之
+/// **判等**（非"未恢复"）。若 A/C 版有真实语义则需另行恢复。
 pub fn debug_force_update_arches() {}

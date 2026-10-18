@@ -1,0 +1,185 @@
+{
+  "source_before": "778af082e71e6a815e5df4cd85840bd94884dde3acf2eb051eff1f3d1ec25067",
+  "started_utc": "2026-10-17T03:14:24.227135+00:00",
+  "checks": [
+    {
+      "name": "pipeline-cpu",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "rhapsody",
+        "--all-features",
+        "--lib",
+        "--offline",
+        "--locked",
+        "-j",
+        "2",
+        "pipeline::tests::",
+        "--",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "validation_errors": 0,
+      "skips": [],
+      "status": "PASS",
+      "totals": [
+        3,
+        0,
+        0
+      ],
+      "binaries": [
+        {
+          "path": "binaries/pipeline-cpu/rhapsody-bcc529fddb5b5040",
+          "sha256": "5c54a72edfe0da668ad5b22717a444af7c5393e5cc81bd0d279af02d8455b912"
+        }
+      ],
+      "log": "pipeline-cpu.log"
+    },
+    {
+      "name": "tracked-cpu",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "rhapsody",
+        "--all-features",
+        "--lib",
+        "--offline",
+        "--locked",
+        "-j",
+        "2",
+        "resource::tracked::tests::standalone_cell_capacity_follows_the_last_recording_owner",
+        "--",
+        "--exact",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "validation_errors": 0,
+      "skips": [],
+      "status": "PASS",
+      "totals": [
+        1,
+        0,
+        0
+      ],
+      "binaries": [
+        {
+          "path": "binaries/tracked-cpu/rhapsody-bcc529fddb5b5040",
+          "sha256": "5c54a72edfe0da668ad5b22717a444af7c5393e5cc81bd0d279af02d8455b912"
+        }
+      ],
+      "log": "tracked-cpu.log"
+    },
+    {
+      "name": "gpu-timing",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "rhapsody",
+        "--all-features",
+        "--test",
+        "gpu_timing",
+        "--offline",
+        "--locked",
+        "-j",
+        "2",
+        "--",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "validation_errors": 0,
+      "skips": [],
+      "status": "PASS",
+      "totals": [
+        4,
+        0,
+        0
+      ],
+      "binaries": [
+        {
+          "path": "binaries/gpu-timing/gpu_timing-99fee40ade103b92",
+          "sha256": "4485d9fad84f3a054321b49554616d609934f0244b31b663fbef01349c510495"
+        }
+      ],
+      "log": "gpu-timing.log"
+    },
+    {
+      "name": "pipeline-cache",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "rhapsody",
+        "--all-features",
+        "--test",
+        "pipeline_cache",
+        "--offline",
+        "--locked",
+        "-j",
+        "2",
+        "--",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "validation_errors": 0,
+      "skips": [],
+      "status": "PASS",
+      "totals": [
+        4,
+        0,
+        0
+      ],
+      "binaries": [
+        {
+          "path": "binaries/pipeline-cache/pipeline_cache-5ddeede2ac829816",
+          "sha256": "63fdb4ac392ad8317fe8e26ac4e905bae62a8ee63912acd3755f70fc2d372764"
+        }
+      ],
+      "log": "pipeline-cache.log"
+    },
+    {
+      "name": "window-cpu",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "rhapsody",
+        "--all-features",
+        "--example",
+        "window_lab",
+        "--offline",
+        "--locked",
+        "-j",
+        "2",
+        "--",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "validation_errors": 0,
+      "skips": [],
+      "status": "PASS",
+      "totals": [
+        24,
+        0,
+        0
+      ],
+      "binaries": [
+        {
+          "path": "binaries/window-cpu/window_lab-bb826dfe785d8134",
+          "sha256": "34ac5db101ed564db79c07ea203476acd6296c06a0d3f559080a1f8d01a6ee2c"
+        }
+      ],
+      "log": "window-cpu.log"
+    }
+  ],
+  "scope": "Short domain followups. Unregistered range-state/oracle drafts may change; no production consumers are changed during these checks. Not final acceptance.",
+  "source_after": "964dd81e107ea63eebf59549212c3115d70f0bdbf76f7fcac0185af790bb18e9",
+  "source_stable": false
+}

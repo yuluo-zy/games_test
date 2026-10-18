@@ -16,10 +16,9 @@
 //! - 产出（W-B2 落盘）：96B WallBrickInstance 记录 + ConstructGateCmd120
 //!   （→ construct_gates 消费）+ segment_count → 输出资源写回。
 use country_core::asset_libraries::ssbo_library::AssetSsboLibrary;
-use country_core::recovered_building::{
-    wall_arches::{RegularWallArchesInput, construct_regular_wall_arches},
-    wall_segmentation::WallPathSegmentationMask,
-};
+use country_core::systems::wall::construction::arches::RegularWallArchesInput;
+use country_core::systems::wall::construction::arches::construct_regular_wall_arches;
+use country_core::systems::wall::construction::segmentation::WallPathSegmentationMask;
 use country_core::resources::{
     roofs::{Roof, commands::CreateRoofCmd},
     walls::public_walls::{OnWallChanged, PublicWalls},
@@ -99,7 +98,7 @@ pub fn construct_arches(
             public_284: projection.float_0x284(),
             observed_294: projection.observed_294(),
             source_curve_length: curve.length,
-            wall_id: country_core::recovered_building::wall_state::WallId(id.0),
+            wall_id: country_core::resources::walls::publication_fields::WallId(id.0),
             has_roof,
         };
         if let Ok(outcome) = construct_regular_wall_arches(input, &mut arch, &mut third) {

@@ -1,51 +1,43 @@
-//! `country_core::utils::debug_viz` — 调试绘制的构造器（builder）部分。
-//!
-//! 布局与默认值逐字节取自 EXE（B 构建）：
-//!
-//! | 类型 / 函数 | 地址 | 布局 |
-//! |---|---|---|
-//! | `DebugSphere::new` | 0x140b02490 | 0x28 B：color@0（16 B，仅首 dword 置 0）、radius@0x10 = 0.1（`0x3dcccccd`）、center@0x14（12 B）、alpha@0x20 = 1.0、solid@0x24 = false |
-//! | `DebugSphere::{color,radius,solid}` | 0x140b024c0 / 0x140b024e0 / 0x140b02500 | 就地改写对应字段，按值返回 |
-//! | `DebugRectangle3d::new` | 0x140b02e10 | 0x38 B：color@0、line_width@0x10 = 1.0、rect@0x14（32 B，来自入参指针）、dashed@0x34 = false |
-//! | `DebugRectangle3d::{color,line_width,dashed_line}` | 0x140b02e40 / 0x140b02e70 / 0x140b02ea0 | 同上 |
-//! | `DebugLine::new` | 0x140b04e70 | 0x48 B：points `Vec<Vec3>`@0（24 B）、label `Option<String>`@0x18（None = `0x8000000000000000`）、color@0x30、line_width@0x40 = 1.0、ui_pass@0x44 = true、dashed@0x45 = false |
-//! | `DebugLine::{color,set_ui_pass,dashed,line_width}` | 0x140b04eb0 / 0x140b04ee0 / 0x140b04f10 / 0x140b04f40 | 同上 |
-//!
-//! 颜色：`color` 不是 RGBA 向量，而是 16 B 的 6 变体枚举——`u32` 标签 @0，`Custom` 的 RGB 三个 f32 @4..16。
-//! 构造器只写标签（`mov dword [rcx], 0` = `White`），其余 12 字节在 EXE 里未初始化。
-//! 证据：`DebugSphere::show`（0x140b02520）用标签索引两张 6 项表（长度 0x142ae7200、串指针 0x142ae7230）选
-//! `debug_sphere_{white,red,blue,green,grey,custom}`；`DebugLine::show`（0x140b04f70）按跳表 0x142ae731c 把标签映射为
-//! RGB：白 (1,1,1)、红 (1,0,0)、蓝 (0,0,1)、绿 (0,1,0)、灰 (0.1,0.1,0.1)、自定义取 `+0x34` 起的三个 f32。
-//! `DebugRectangle3d` 的标签同位置同写法，按同一枚举处理（`show` 0x140b02ed0 只粗读过，I）。
-//! `DebugRectangle2d` 没有独立构造器（`show` 直接取 4 个 f32）。
-//!
-//! `show` 系列（0x140b02520 / 0x140b02ed0 / 0x140b04640 / 0x140b04f70 及其闭包）把一次性闭包
-//! 压入 `Commands`，闭包体读 `AssetMeshLibrary` / `AssetShaderLibrary`，属于 ECS 胶水层，
-//! 留给组件/ECS 包（H）。
+//! 调试图元请求与折线实体工厂。使用类型化网格和现有资产库，不再打包裸指针。
 
+use crate::{
+    asset_libraries::{
+        mesh_library::{AssetMeshLibrary, MeshAsset},
+        shader_library::AssetShaderLibrary,
+        transient_mesh::TransientMesh,
+    },
+    components::{DashedLineLength, drawable::DrawableMeshBundle},
+    render::{mesh::ATTR_COLOR, pass_builder::draw_list::DrawTopology},
+    systems::{
+        render_loop::draw_passes::draw_lists::{DontCastShadow, UiPass},
+        ui::signifiers::{
+            animation::SignifierAnimation,
+            signifier_create::{SignifierId, UiSignifierStream},
+            signifier_factory::SignifierFactory,
+        },
+    },
+    utils::{components::transform::Transform, geo::mesh_from_pts},
+};
+use bevy_ecs::prelude::Commands;
 use glam::Vec3;
+use std::{
+    hash::{Hash, Hasher},
+    sync::Arc,
+};
 
-/// 调试图元的颜色（O：标签顺序与串表一致）。
-#[derive(Clone, Copy, Debug, PartialEq)]
+/// 调试图元的颜色。
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum DebugColor {
+    #[default]
     White,
     Red,
     Blue,
     Green,
     Grey,
-    /// 标签 5，RGB 在 `+4..+16`。
     Custom(Vec3),
 }
 
-impl Default for DebugColor {
-    /// 构造器写入的标签 0。
-    fn default() -> Self {
-        Self::White
-    }
-}
-
 impl DebugColor {
-    /// 标签字节（O：`u32 @0`）。
     pub fn tag(self) -> u32 {
         match self {
             Self::White => 0,
@@ -57,7 +49,6 @@ impl DebugColor {
         }
     }
 
-    /// `DebugLine::show` 的映射（O：0x140b0507d..0x140b05119）。
     pub fn rgb(self) -> Vec3 {
         match self {
             Self::White => Vec3::new(1.0, 1.0, 1.0),
@@ -69,7 +60,11 @@ impl DebugColor {
         }
     }
 
-    /// `DebugSphere::show` 选用的网格名（O：0x142ae7230 的 6 个串）。
+    pub fn as_array(self) -> [f32; 3] {
+        let rgb = self.rgb();
+        [rgb.x, rgb.y, rgb.z]
+    }
+
     pub fn sphere_mesh_name(self) -> &'static str {
         match self {
             Self::White => "debug_sphere_white",
@@ -82,7 +77,7 @@ impl DebugColor {
     }
 }
 
-/// 一次画一个球的请求（0x28 B）。
+/// 球体请求参数。
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DebugSphere {
     pub color: DebugColor,
@@ -93,7 +88,6 @@ pub struct DebugSphere {
 }
 
 impl DebugSphere {
-    /// O 0x140b02490。
     pub fn new(center: Vec3) -> Self {
         Self {
             color: DebugColor::White,
@@ -104,27 +98,23 @@ impl DebugSphere {
         }
     }
 
-    /// O 0x140b024c0。
     pub fn color(mut self, color: DebugColor) -> Self {
         self.color = color;
         self
     }
 
-    /// O 0x140b024e0。
     pub fn radius(mut self, radius: f32) -> Self {
         self.radius = radius;
         self
     }
 
-    /// O 0x140b02500。
     pub fn solid(mut self) -> Self {
         self.solid = true;
         self
     }
 }
 
-/// 一次画一个 3D 矩形的请求（0x38 B）。`rect` 是入参里的 32 字节，布局 U（`show` 里用
-/// `FUN_140c99600` 展开为 4 个角点）。
+/// 三维矩形请求参数；rect 的解释由调用方约定。
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DebugRectangle3d {
     pub color: DebugColor,
@@ -134,7 +124,6 @@ pub struct DebugRectangle3d {
 }
 
 impl DebugRectangle3d {
-    /// O 0x140b02e10。
     pub fn new(rect: [f32; 8]) -> Self {
         Self {
             color: DebugColor::White,
@@ -144,30 +133,27 @@ impl DebugRectangle3d {
         }
     }
 
-    /// O 0x140b02e40。
     pub fn color(mut self, color: DebugColor) -> Self {
         self.color = color;
         self
     }
 
-    /// O 0x140b02e70。
     pub fn line_width(mut self, line_width: f32) -> Self {
         self.line_width = line_width;
         self
     }
 
-    /// O 0x140b02ea0。
     pub fn dashed_line(mut self) -> Self {
         self.dashed = true;
         self
     }
 }
 
-/// 一次画一条折线的请求（0x48 B）。
+/// 折线请求；颜色可按点提供，也可使用统一颜色。
 #[derive(Clone, Debug, PartialEq)]
 pub struct DebugLine {
     pub points: Vec<Vec3>,
-    pub label: Option<String>,
+    pub colors: Option<Vec<Vec3>>,
     pub color: DebugColor,
     pub line_width: f32,
     pub ui_pass: bool,
@@ -175,40 +161,149 @@ pub struct DebugLine {
 }
 
 impl DebugLine {
-    /// O 0x140b04e70。
     pub fn new(points: Vec<Vec3>) -> Self {
         Self {
             points,
-            label: None,
+            colors: None,
             color: DebugColor::White,
             line_width: 1.0,
             ui_pass: true,
             dashed: false,
         }
     }
-
-    /// O 0x140b04eb0。
     pub fn color(mut self, color: DebugColor) -> Self {
         self.color = color;
         self
     }
-
-    /// O 0x140b04ee0：`r8b` 直接写入 +0x44。
     pub fn set_ui_pass(mut self, ui_pass: bool) -> Self {
         self.ui_pass = ui_pass;
         self
     }
-
-    /// O 0x140b04f10。
     pub fn dashed(mut self) -> Self {
         self.dashed = true;
         self
     }
-
-    /// O 0x140b04f40。
     pub fn line_width(mut self, line_width: f32) -> Self {
         self.line_width = line_width;
         self
+    }
+
+    /// 无效调试输入只记录告警，不中断主编辑流程。
+    pub fn show(&self, stream: &mut UiSignifierStream) {
+        if let Err(error) = self.try_show(stream) {
+            log::warn!("调试折线未提交：{error}");
+        }
+    }
+
+    /// 校验成功才提交工厂。名字包含实际颜色、绘制通道和虚线模式，避免错误去重。
+    pub fn try_show(&self, stream: &mut UiSignifierStream) -> anyhow::Result<()> {
+        anyhow::ensure!(self.points.len() >= 2, "调试折线至少需要两个点");
+        anyhow::ensure!(
+            self.points.iter().all(|point| point.is_finite()),
+            "调试折线包含非有限位置"
+        );
+        anyhow::ensure!(
+            self.line_width.is_finite() && self.line_width > 0.0,
+            "调试线宽必须为有限正数"
+        );
+        anyhow::ensure!(self.color.rgb().is_finite(), "调试颜色必须有限");
+        if let Some(colors) = &self.colors {
+            anyhow::ensure!(
+                colors.len() == self.points.len() && colors.iter().all(|color| color.is_finite()),
+                "逐点颜色数量必须匹配位置且全部有限"
+            );
+        }
+        let length: f32 = self
+            .points
+            .windows(2)
+            .map(|segment| segment[0].distance(segment[1]))
+            .sum();
+        anyhow::ensure!((length * 4.0).is_finite(), "调试折线长度过大");
+        let name = format!("debug_line:{:016x}", self.identity_hash());
+        let points = self.points.clone();
+        let colors = self
+            .colors
+            .clone()
+            .unwrap_or_else(|| vec![self.color.rgb(); points.len()]);
+        let line_width = self.line_width;
+        let ui_pass = self.ui_pass;
+        let dashed = self.dashed;
+        let factory = SignifierFactory::from_closure(
+            &name,
+            Arc::new(
+                move |meshes: &AssetMeshLibrary,
+                      shaders: &AssetShaderLibrary,
+                      commands: &mut Commands| {
+                    let shader_name = if dashed {
+                        "dashed_line"
+                    } else {
+                        "vertex_color_shader"
+                    };
+                    let Some(shader) = shaders.get_raster_handle_by_name(shader_name) else {
+                        log::warn!("调试折线着色器未注册：{shader_name}");
+                        return Vec::new();
+                    };
+                    let mut mesh = mesh_from_pts("debug_line", &points);
+                    mesh.set_attribute(ATTR_COLOR, colors.clone());
+                    let mesh = meshes.add(MeshAsset::new(mesh, None));
+                    let entity = commands
+                        .spawn((
+                            DrawableMeshBundle {
+                                mesh,
+                                shader,
+                                transform: Transform::identity(),
+                            },
+                            TransientMesh::new_with_registry(mesh, meshes.transient_meshes()),
+                            DrawTopology::Alt(line_width),
+                            DontCastShadow,
+                            SignifierId(0),
+                            // 点已经位于世界空间；不让通用指示符动画把线缩放到零。
+                            SignifierAnimation {
+                                flag_8: 1,
+                                duration: 0.0,
+                                value: 1.0,
+                                t: 1.0,
+                                eased: 1.0,
+                                ..Default::default()
+                            },
+                        ))
+                        .id();
+                    if ui_pass {
+                        commands.entity(entity).insert(UiPass);
+                    }
+                    if dashed {
+                        commands
+                            .entity(entity)
+                            .insert(DashedLineLength(length * 4.0));
+                    }
+                    vec![entity]
+                },
+            ),
+        );
+        stream.write_factory(&factory);
+        Ok(())
+    }
+
+    /// 哈希浮点位模式，不创建整条点列的格式化字符串；分隔长度防止不同点列拼接混淆。
+    fn identity_hash(&self) -> u64 {
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        self.points.len().hash(&mut hasher);
+        for point in &self.points {
+            point.to_array().map(f32::to_bits).hash(&mut hasher);
+        }
+        self.colors.is_some().hash(&mut hasher);
+        if let Some(colors) = &self.colors {
+            colors.len().hash(&mut hasher);
+            for color in colors {
+                color.to_array().map(f32::to_bits).hash(&mut hasher);
+            }
+        } else {
+            self.color.as_array().map(f32::to_bits).hash(&mut hasher);
+        }
+        self.line_width.to_bits().hash(&mut hasher);
+        self.ui_pass.hash(&mut hasher);
+        self.dashed.hash(&mut hasher);
+        hasher.finish()
     }
 }
 
@@ -273,11 +368,163 @@ mod tests {
             (line.line_width, line.ui_pass, line.dashed),
             (1.0, true, false)
         );
-        assert!(line.label.is_none());
+        assert!(line.colors.is_none());
         let line = line.set_ui_pass(false).dashed().line_width(3.0);
         assert_eq!(
             (line.ui_pass, line.dashed, line.line_width),
             (false, true, 3.0)
         );
+    }
+
+    #[test]
+    fn show_packs_the_record_and_wakes_the_dashed_line_closure() {
+        use bevy_ecs::prelude::{Commands, Res, ResMut};
+        use bevy_ecs::system::RunSystemOnce;
+        use bevy_ecs::world::World;
+
+        use crate::components::DashedLineLength;
+        use crate::render::pass_builder::draw_list::DrawTopology;
+        use crate::systems::ui::signifiers::UiSignifierStream;
+        use crate::systems::ui::signifiers::signifier_create::UiSignifierEntry;
+
+        let mut stream = UiSignifierStream::default();
+        let line = DebugLine::new(vec![Vec3::ZERO, Vec3::new(3.0, 4.0, 0.0)])
+            .color(DebugColor::Red)
+            .line_width(2.5)
+            .set_ui_pass(false)
+            .dashed();
+        line.show(&mut stream);
+        assert_eq!(stream.committed_len(), 1);
+
+        let entries = stream.take_entries();
+        let UiSignifierEntry::Factory(factory) = &entries[0] else {
+            panic!("DebugLine::show must push a native factory slot");
+        };
+        assert!(factory.has_closure());
+        let name = factory.name().expect("factory name is utf-8");
+        // 工厂使用紧凑哈希名，完整绘制参数参与去重。
+        assert!(name.starts_with("debug_line:"));
+
+        // 唤醒：等价于 signifier_create 的 vtable 调用槽。
+        let mut world = World::new();
+        world.init_resource::<AssetMeshLibrary>();
+        let shaders = AssetShaderLibrary::new();
+        shaders.add_raster(
+            crate::render::shader::RasterShaderProgram::new_draw(
+                "dashed_line",
+                crate::rhapsody_types::RasterPipelineDesc::default(),
+                &crate::render::test_device::TestDevice(1),
+            ),
+            false,
+        );
+        world.insert_resource(shaders);
+        world.init_resource::<UiSignifierStream>();
+        world
+            .resource_mut::<UiSignifierStream>()
+            .write_factory(factory);
+
+        fn wake(
+            mut commands: Commands,
+            mesh: Res<AssetMeshLibrary>,
+            shader: Res<AssetShaderLibrary>,
+            mut stream: ResMut<UiSignifierStream>,
+        ) {
+            let mut spawned = 0usize;
+            for entry in stream.take_entries() {
+                if let UiSignifierEntry::Factory(factory) = entry {
+                    spawned += factory.wake(&mesh, &shader, &mut commands).len();
+                }
+            }
+            assert_eq!(spawned, 1);
+        }
+        world.run_system_once(wake).unwrap();
+
+        let mut drawables = world.query::<(
+            bevy_ecs::entity::Entity,
+            &crate::asset_libraries::Handle<crate::render::mesh::Mesh>,
+            &crate::asset_libraries::Handle<crate::render::shader::RasterShaderProgram>,
+            &Transform,
+            &TransientMesh,
+        )>();
+        let (entity, mesh_handle, shader_handle, transform, transient) =
+            drawables.single(&world).unwrap();
+        assert_eq!(transform.scale, Vec3::ONE);
+        assert_eq!(transient.mesh_handle(), *mesh_handle);
+        assert_eq!(
+            world
+                .resource::<AssetShaderLibrary>()
+                .get_raster(*shader_handle)
+                .unwrap()
+                .name,
+            "dashed_line"
+        );
+        assert!(world.get::<UiPass>(entity).is_none());
+        let mesh_handle = *mesh_handle;
+        assert_eq!(
+            world
+                .resource::<AssetMeshLibrary>()
+                .get(mesh_handle)
+                .unwrap()
+                .positions_without_indices(),
+            &[Vec3::ZERO, Vec3::new(3.0, 4.0, 0.0)]
+        );
+        let mut dashed = world.query::<&DashedLineLength>();
+        let lengths: Vec<f32> = dashed.iter(&world).map(|d| d.0).collect();
+        assert_eq!(lengths, vec![20.0], "|(3,4,0)| = 5.0, x4.0");
+        // 走真实绘制回调，防止创建端和消费端再次定义不同身份的组件。
+        let draw_input =
+            crate::systems::render_loop::draw_passes::draw_callbacks_a::read_env57(&world, entity);
+        assert_eq!(draw_input.dashed_len, 20.0);
+        assert_eq!(
+            draw_input.index_count,
+            world
+                .resource::<AssetMeshLibrary>()
+                .get(mesh_handle)
+                .unwrap()
+                .indices
+                .len() as u64
+        );
+
+        let mut topology = world.query::<&DrawTopology>();
+        let topologies: Vec<DrawTopology> = topology.iter(&world).copied().collect();
+        assert_eq!(topologies, vec![DrawTopology::Alt(2.5)]);
+        let registry = Arc::clone(world.resource::<AssetMeshLibrary>().transient_meshes());
+        world.despawn(entity);
+        assert_eq!(*registry.lock().unwrap(), vec![mesh_handle]);
+    }
+
+    #[test]
+    fn external_factory_shape_matches_water_closure_zero() {
+        use crate::systems::ui::signifiers::UiSignifierStream;
+        use crate::systems::ui::signifiers::signifier_create::UiSignifierEntry;
+
+        let mut stream = UiSignifierStream::default();
+        let factory = SignifierFactory::from_closure(
+            "brush_circle_scribble",
+            Arc::new(|_mesh, _shader, _commands| Vec::new()),
+        );
+        stream.write_factory(&factory);
+        let entries = stream.take_entries();
+        let UiSignifierEntry::Factory(slot) = &entries[0] else {
+            panic!("closure factory must use the native slot");
+        };
+        assert_eq!(slot.name(), Some("brush_circle_scribble"));
+    }
+
+    #[test]
+    fn invalid_colors_are_not_committed_and_render_modes_have_distinct_ids() {
+        let mut line = DebugLine::new(vec![Vec3::ZERO, Vec3::X]);
+        line.colors = Some(vec![Vec3::ONE]);
+        let mut stream = UiSignifierStream::default();
+        assert!(line.try_show(&mut stream).is_err());
+        assert_eq!(stream.committed_len(), 0);
+        line.colors = None;
+        let identity = line.identity_hash();
+        assert_ne!(identity, line.clone().dashed().identity_hash());
+        assert_ne!(identity, line.clone().set_ui_pass(false).identity_hash());
+        line.colors = Some(vec![Vec3::X; 2]);
+        let red = line.identity_hash();
+        line.colors = Some(vec![Vec3::Y; 2]);
+        assert_ne!(red, line.identity_hash());
     }
 }

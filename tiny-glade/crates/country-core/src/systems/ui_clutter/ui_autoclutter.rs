@@ -1,141 +1,277 @@
-//! `ui_autoclutter.rs` — 右键把 auto-clutter 转 deco-clutter（B 0x14099ca60，O）。
+//! `ui_autoclutter.rs` — 右键把 auto-clutter 转 deco-clutter（B 0x14099ca60）。
 //!
-//! 证据：`chapters/systems/ui_clutter/ui_autoclutter.rs.md`、`ui-input/DIGEST.md`、
-//! `ui-input/decomp/decomp-0x14099ca60.txt`（1404 行）、re-analyst-interaction：
-//! 0x48 B spawn 事件统一布局（tag=2@0、subtype=3@+0x29、type@+0x3c、entity@+0x40）；
-//! 旋转 = `FUN_1408b83d0`（`ClutterMeshTy::from`）+ 常量区 UNK_1429cd1/1429258。
+//! 证据：fresh 反编译（restorer-terrain-clutter/jobs/decomp/14099ca60，1400+ 行）。逐语句对照：
+//! - 消费点击事件队列（stride 0x10）；对每个 id 查 0xa0B clutter 记录表，`+0x58 == 0`
+//!   视为已删除跳过；
+//! - 记录 `+0x94` → 0x48 步长类型表；记录 `+0x50` = 子项列表（stride 0x10）；
+//! - 逐子项：`uVar37 = *(uint*)(children + 8 + i*0x10)`；父记录 `0x60` 步长（`uVar37*0x60`），
+//!   变换记录 `0x30` 步长（`uVar37*0x30`）；
+//! - **`parent = puVar19[4]`（父记录 +0x10）**：`HashMap<DecoratorId,
+//!   Vec<DisplayChildAutoClutterInfo>>`；父类型 `*puVar19 < 3` 才处理；
+//! - `ClutterMeshTy::from` + `clutter_mesh_ty_data` → DisplayChildAutoClutterInfo
+//!   （0x60 B：mesh 4 qword @+0x00、transform 6 qword @+0x20、`+0x50` = 变换记录 +0xc）；
+//!   已有键 → `Vec::push`（`grow_one<DisplayChildAutoClutterInfo>`）；无键 →
+//!   `RawTable::reserve_rehash` + 新建 `Vec`（cap=1/len=1）；
+//! - 第二事件队列：命中 d2s 位图 → 直接调用 `handle_rmb_autoclutter`（crate 以产出
+//!   [`RmbAutoClutterHit`] 事件承载）；
+//! - 尾部模式门：`disc ∈ [6,0x15) → disc-5`，其余 0；接受 `disc==0` 或
+//!   `disc==9 ∧ payload 低字节==3`（Bulldoze），随后 `Rapier::raycast`（命中 tag != 2
+//!   ∧ 标签字节 0x0c）→ `DecoratorStorage` 探测 → `UiState::add` → 0x60 记录类型
+//!   3..5 子跳表 `&DAT_142abbcdc`（UNRECOVERED_JUMPTABLE）。
 //!
-//! 转换流程（decomp）：消费点击事件 → 解析点击 clutter 记录（0xa0B，type @+0x94）→
-//! `maintain_autoclutter_parent_hashmap`（行 410）维护 clutter→parent 映射（0x60B
-//! 分配；hashbrown insert @code_r0x00014099d329）→ 按记录类型生成 InstaCreateDeco
-//! （decorator 放置）或 InstaCreateStairPoint（台阶点）→ 经 `FUN_1408b8e90`
-//! （clutter_mesh_ty_data）+ 变换计算推 0x48B 事件。
-//!
-//! 卡点：`maintain_autoclutter_parent_hashmap` 映射表槽位布局 U（0x60B 载荷字段名
-//! 待取证）；`InstaCreateDeco/InstaCreateStairPoint/StartPlaceDecoClutterInteraction`
-//! 事件类型为全局事件 registry 合同（wp20），本域先定义最小 struct。
+//! B 完整 FunctionSystem 与真实 producer/consumer 已确认 `InstaCreateDeco` /
+//! `InstaCreateStairPoint` 是创建命令；早前以 show_decorator_icon 地址排除它们的结论撤回。宿主实体表（0xa0B/0x60/0x30 记录）由 [`AutoClutterChildTable`]
+//! 适配承载，尾部 raycast/UI 注册路径登记待接。
 use bevy_ecs::prelude::*;
+use hashbrown::HashMap;
 
-use super::{
-    AutoClutterEntityIndex,
-    rmb_autoclutter::{EvRightClickedAutoClutter, get_clutter_rot_in_roof_space},
-};
+use crate::systems::mode_manager::{AppMode, EraserLayer};
 
-/// 已解析的 auto-clutter parent（0x60B 槽位 O 观测字段 + crate 转换输入 I 模型）。
-///
-/// ① T3 t3-ui_clutter-parent-map-0x60B：native parent 记录按 `slot * 0x60` 索引
-/// （decomp-0x14099ca60 行 480-520），已观测字段：
-/// - `+0x00` u32 tag/判别（`< 3` 门才进入转换）
-/// - `+0x10` u32 计数/类别候选
-/// - `+0x30` u64 `ClutterMeshTy::from` 第一参（FUN_1408b83d0）
-/// - `+0x38` u64 `ClutterMeshTy::from` 第二参
-/// 其余区间（+0x04..0x0f、+0x14..0x2f、+0x3c..0x5f）**U**，不填默认值。
-/// 下侧字段（parent_entity/roof_space/w/x/y/entry_angle）为 crate 转换数学的输入
-/// （ui_clutter DELIVERY 的 I 模型，非原生槽位偏移声明）。
-#[derive(Clone, Copy, Debug)]
-pub struct AutoClutterParent {
-    /// O `+0x00`：tag/判别（`< 3` 门进入转换）。
-    pub tag: u32,
-    /// O `+0x10`：计数/类别候选。
-    pub slot_count: u32,
-    /// O `+0x30`：`ClutterMeshTy::from` 第一参。
-    pub mesh_ty_arg: u64,
-    /// O `+0x38`：`ClutterMeshTy::from` 第二参。
-    pub mesh_ty_arg2: u64,
-    /// parent 实体 id（roof/ground）。
-    pub parent_entity: u64,
-    /// roof-space 判别（roof 上 clutter 的变换基准）。
-    pub roof_space: bool,
-    /// parent 四元数分量 w/x/y（roof-space 旋转输入）。
-    pub w: f32,
-    pub x: f32,
-    pub y: f32,
-    /// parent 入口角（`CircularF32` 输入）。
-    pub entry_angle: f32,
+use super::rmb_autoclutter::EvRightClickedAutoClutter;
+
+/// Original B InstaCreateDeco: an actual creation command, not the right-click
+/// input. Native EventId and inactive extra/padding bytes are not business data.
+#[derive(Event, Debug)]
+pub struct InstaCreateDeco {
+    /// Existing source component's 24-byte destination union. Semantic decoding
+    /// remains with placement; never synthesize it from an auto-clutter ID.
+    pub destination: [u64; 3],
+    pub extra: Option<crate::resources::walls::decorator::DecoratorExtraInfo>,
+    pub rotation: f32,
+    pub position: glam::Vec3,
+    pub ty: crate::systems::mode_manager::ClutterMeshTy,
 }
 
-/// `maintain_autoclutter_parent_hashmap`（行 410）：clutter→parent 真实映射表。
-/// 原版维护哈希映射（0x60B 分配入表）；当前以 hashbrown `HashMap<entity, parent>`
-/// 承载，槽位布局 U 待取证。**非计数器**（修复"计数器冒充 parent map"水分）。
+/// Original B fixed-size stair creation business value. Its typed native Events
+/// destructor releases only two 120-byte-stride buffers, with no element/Arc/Vec
+/// destruction. No native pointer is converted to a Rust reference or owner.
+/// Destination enums and seven color bytes still need semantic recovery; the
+/// original placement consumer is not reconstructed by this transport type.
+/// No Default/Clone/Copy is supplied for unknown active application data.
+#[derive(Event, Debug)]
+pub struct InstaCreateStairPoint {
+    observed: [u8; 0x70],
+}
+impl InstaCreateStairPoint {
+    /// Accept a complete already observed payload, excluding its EventId.
+    /// The writer always supplies kind0x3f, also checked by original placement.
+    pub fn from_observed(observed: [u8; 0x70]) -> Self {
+        assert_eq!(observed[0x68], 0x3f, "original stair creation kind");
+        Self { observed }
+    }
+    pub fn observed(&self) -> &[u8; 0x70] {
+        &self.observed
+    }
+}
+
+/// DisplayChildAutoClutterInfo（O：0x60 B；`grow_one<DisplayChildAutoClutterInfo>`）。
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct DisplayChildAutoClutterInfo {
+    /// `+0x00..+0x1f`：`clutter_mesh_ty_data()` 的 4 个 qword。
+    pub mesh: [u64; 4],
+    /// `+0x20..+0x4f`：变换记录（0x30 stride）的 6 个 qword。
+    pub transform: [u64; 6],
+    /// `+0x50`：变换记录 `+0xc` 的 u32。
+    pub field: u32,
+}
+
+/// 单个子项输入（I：宿主从 0xa0B 记录的 +0x50 子表、0x60 父表、0x30 变换表解析）。
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct AutoClutterChild {
+    /// 父记录 `+0x00` 类型（O：`*puVar19 < 3` 门）。
+    pub parent_tag: u32,
+    /// 父记录 `+0x10`（O：HashMap 键 `DecoratorId`）。
+    pub parent_key: u32,
+    /// 子项信息（0x60 B）。
+    pub info: DisplayChildAutoClutterInfo,
+}
+
+/// clutter id → 子项列表（I：宿主维护；对应 fresh 的 0xa0B 记录表 + 父/变换表）。
 #[derive(Resource, Clone, Debug, Default)]
-pub struct AutoClutterParentMap(pub hashbrown::HashMap<u64, AutoClutterParent>);
+pub struct AutoClutterChildTable(pub HashMap<u64, Vec<AutoClutterChild>>);
+
+/// clutter→parent 映射（O：`HashMap<DecoratorId, Vec<DisplayChildAutoClutterInfo>>`；
+/// `maintain_autoclutter_parent_hashmap` 在函数内维护）。
+#[derive(Resource, Clone, Debug, Default)]
+pub struct AutoClutterParentMap(pub HashMap<u32, Vec<DisplayChildAutoClutterInfo>>);
 
 impl AutoClutterParentMap {
-    /// 维护一条 clutter→parent 映射（插入/更新）。
-    pub fn maintain(&mut self, clutter: u64, parent: AutoClutterParent) {
-        self.0.insert(clutter, parent);
+    /// 维护一条记录（已有键 push，新键新建 Vec）。
+    pub fn maintain(&mut self, parent: u32, info: DisplayChildAutoClutterInfo) {
+        self.0.entry(parent).or_default().push(info);
     }
-    /// 移除（clutter 删除时清理）。
-    pub fn remove(&mut self, clutter: u64) -> Option<AutoClutterParent> {
-        self.0.remove(&clutter)
-    }
-    /// 查询 parent（ui_convert 消费）。
-    pub fn parent_of(&self, clutter: u64) -> Option<AutoClutterParent> {
-        self.0.get(&clutter).copied()
+    pub fn parent_of(&self, parent: u32) -> Option<&Vec<DisplayChildAutoClutterInfo>> {
+        self.0.get(&parent)
     }
 }
 
-/// 转换产生的装饰放置事件（I：wp20 合同 `InstaCreateDeco`；字段布局 U）。
-#[derive(Event, Clone, Copy, Debug)]
-pub struct InstaCreateDeco {
-    pub entity: u64,
-    pub ty: crate::systems::mode_manager::ClutterMeshTy,
-    pub position: glam::Vec3,
-    pub rotation: f32,
-    pub parent: u64,
-}
-
-/// 转换产生的台阶点放置事件（I：wp20 合同 `InstaCreateStairPoint`；字段布局 U）。
-#[derive(Event, Clone, Copy, Debug)]
-pub struct InstaCreateStairPoint {
-    pub entity: u64,
-    pub ty: crate::systems::mode_manager::ClutterMeshTy,
-    pub position: glam::Vec3,
-    pub rotation: f32,
-    pub parent: Option<u64>,
-}
-
-/// `ui_convert_autoclutter_to_decoclutter` @0x14099ca60（O 结构）。
-///
-/// 消费 `EvRightClickedAutoClutter` → parent 解析（真实映射表）→ roof-space 旋转
-/// （`get_clutter_rot_in_roof_space`，**rotation=0 桩已删除**）→ InstaCreateDeco /
-/// InstaCreateStairPoint 生产。decomp 的 0xa0B 记录遍历 + 0x48B 事件推流（type < 3
-/// 走台阶点分支）为宿主实体机制依赖面，此处以实体索引记录的类型判别登记。
+/// `ui_convert_autoclutter_to_decoclutter` @0x14099ca60。
 pub fn ui_convert_autoclutter_to_decoclutter(
+    mode: Res<AppMode>,
     mut right_clicks: EventReader<EvRightClickedAutoClutter>,
-    index: Res<AutoClutterEntityIndex>,
-    parents: Res<AutoClutterParentMap>,
-    mut insta_deco: EventWriter<InstaCreateDeco>,
-    mut insta_stair: EventWriter<InstaCreateStairPoint>,
+    children: Res<AutoClutterChildTable>,
+    mut parents: ResMut<AutoClutterParentMap>,
+    index: Res<super::AutoClutterEntityIndex>,
+    mut hits: EventWriter<super::rmb_autoclutter::RmbAutoClutterHit>,
 ) {
+    // **主循环**：点击 → 查 clutter 记录 → 逐子项维护 parent 映射。
+    // Preserve the existing parent-map adapter, but forward only the newest
+    // click. B @14099d6c8..d7ca consumes the complete reader and validates that
+    // latest generation-bearing entity ID before invoking the RMB helper.
+    let mut latest = None;
     for click in right_clicks.read() {
-        let Some(record) = index.0.get(&click.entity).copied() else {
+        latest = Some(click.entity);
+        let Some(list) = children.0.get(&click.entity) else {
             continue;
         };
-        let parent = parents.parent_of(click.entity);
-        // 真实 roof-space 旋转（O：get_clutter_rot_in_roof_space 接入转换路径）。
-        let rotation =
-            get_clutter_rot_in_roof_space(record.w, record.x, record.y, record.entry_angle);
-        // 记录类型判别（O：decomp `if (*puVar22 < 3)` 走台阶点分支；记录 type 字段
-        // 语义 I）。roof-space parent → 装饰放置，否则台阶点。
-        if (record.ty as u8) < 3 {
-            insta_stair.write(InstaCreateStairPoint {
-                entity: click.entity,
-                ty: click.ty,
-                position: click.position,
-                rotation,
-                parent: parent.map(|p| p.parent_entity),
-            });
-        } else {
-            insta_deco.write(InstaCreateDeco {
-                entity: click.entity,
-                ty: click.ty,
-                position: click.position,
-                rotation,
-                parent: parent
-                    .map(|p| p.parent_entity)
-                    .unwrap_or(click.entity),
-            });
+        for child in list {
+            // O：`if (*puVar19 < 3)` 才进入转换；否则跳过。
+            if child.parent_tag < 3 {
+                parents.maintain(child.parent_key, child.info);
+            }
         }
+    }
+
+    if let Some(entity) = latest.filter(|entity| index.0.contains_key(entity)) {
+        hits.write(super::rmb_autoclutter::RmbAutoClutterHit(entity));
+    }
+
+    // **第二事件队列**（O：d2s 索引 + 位图命中 → 调 `handle_rmb_autoclutter`）。
+    // crate 以产出 RmbAutoClutterHit 事件承载（宿主实体表命中判定在宿主侧，I）。
+
+    // **尾部模式门**（O：`disc-6 < 0xf → disc-5`，否则 0；接受 disc==0 或
+    // disc==9 ∧ payload 低字节==3）。
+    let disc = mode.native_tag();
+    let accepted = disc == 0 || matches!(*mode, AppMode::Eraser(EraserLayer::Bulldoze));
+    if !accepted {
+        return;
+    }
+    // 之后：`Rapier::raycast`（命中 tag != 2 ∧ 标签 0x0c）→ DecoratorStorage 探测 →
+    // `UiState::add` → 0x60 记录类型 3..5 子跳表（&DAT_142abbcdc，UNRECOVERED_JUMPTABLE）。
+    // 宿主射线/装饰存储/UI 名队列未接入，登记待接（不伪造实体/事件）。
+}
+
+#[cfg(test)]
+mod lifecycle_integration_tests {
+    use super::*;
+    use crate::{
+        resources::history::{EditType, History, auto_clutter_edit::AutoClutterEdit},
+        systems::{
+            backend::input::input_record_replay::InputReplayCommand,
+            history::recording::{history_finish_recording_system, register_recording_events},
+            mode_manager::ClutterMeshTy,
+            ui_clutter::{
+                AutoClutterEntityIndex, AutoClutterRecord,
+                registration::register_ui_clutter_resources,
+                rmb_autoclutter::handle_rmb_autoclutter,
+            },
+        },
+    };
+
+    fn record() -> AutoClutterRecord {
+        AutoClutterRecord {
+            clutter_id: 73,
+            // Source destination observed in native writer fixture deco[0].
+            // Its placement enum semantics are outside this arrival test.
+            destination: [0x75dd10c75433c8db, 0xe038d51dca8bf380, 0xecd9fb9341459e0e],
+            position: glam::Vec3::new(1.0, 2.0, 3.0),
+            w: 1.0,
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+            entry_angle: 0.0,
+            roof_space: false,
+            local_x: 1.0,
+            local_y: 0.0,
+            ty: ClutterMeshTy::Bench,
+        }
+    }
+    fn world() -> World {
+        let mut world = World::new();
+        register_ui_clutter_resources(&mut world);
+        register_recording_events(&mut world);
+        world.insert_resource(AppMode::default());
+        world.insert_resource(History::<()>::empty_glade());
+        world
+            .resource_mut::<AutoClutterEntityIndex>()
+            .0
+            .insert(42, record());
+        world
+    }
+
+    #[test]
+    fn actual_latest_right_click_emits_creation_and_commits_its_history() {
+        let mut world = world();
+        assert!(!world.resource::<History<()>>().is_recording());
+        world.send_event(EvRightClickedAutoClutter { entity: 42 });
+        let mut schedule = Schedule::default();
+        schedule.add_systems(
+            (
+                ui_convert_autoclutter_to_decoclutter,
+                handle_rmb_autoclutter::<()>,
+                history_finish_recording_system::<()>,
+            )
+                .chain(),
+        );
+        schedule.run(&mut world);
+        let history = world.resource::<History<()>>();
+        assert!(!history.is_recording());
+        assert_eq!(history.ledger().entries.len(), 1);
+        assert!(
+            world
+                .resource::<crate::systems::ui_clutter::DeletedAutoClutter>()
+                .is_deleted(73)
+        );
+        assert!(
+            !world
+                .resource::<crate::systems::ui_clutter::DeletedAutoClutter>()
+                .is_deleted(42)
+        );
+        assert!(
+            matches!(&history.ledger().entries[0].edits[..], [EditType::AutoClutter(edit)] if **edit == (AutoClutterEdit::Delete { id: 73 }))
+        );
+        let events = world.resource::<Events<InstaCreateDeco>>();
+        let mut cursor = events.get_cursor();
+        let output = cursor.read(events).next().unwrap();
+        assert_eq!(output.destination, record().destination);
+        assert!(output.extra.is_none());
+        assert_eq!(output.position, record().position);
+        assert_eq!(output.ty, record().ty);
+        let sync = world.resource::<Events<InputReplayCommand>>();
+        assert_eq!(
+            sync.get_cursor().read(sync).cloned().collect::<Vec<_>>(),
+            [InputReplayCommand::Sync { record: true }]
+        );
+        // Actual placement consumption remains an explicit upper-module gap.
+    }
+
+    #[test]
+    fn latest_invalid_entity_suppresses_earlier_valid_click_and_consumes_reader() {
+        let mut world = world();
+        // A Direct record has no entity identity and cannot bypass the native
+        // generation-bearing entity guard on the ui_convert input path.
+        world
+            .resource_mut::<super::super::rmb_autoclutter::RmbAutoClutterDirect>()
+            .0 = Some(record());
+        world.send_event(EvRightClickedAutoClutter { entity: 42 });
+        world.send_event(EvRightClickedAutoClutter { entity: 999 });
+        let mut schedule = Schedule::default();
+        schedule.add_systems(
+            (
+                ui_convert_autoclutter_to_decoclutter,
+                handle_rmb_autoclutter::<()>,
+            )
+                .chain(),
+        );
+        schedule.run(&mut world);
+        assert!(world.resource::<Events<InstaCreateDeco>>().is_empty());
+        assert!(!world.resource::<History<()>>().is_recording());
+        schedule.run(&mut world);
+        assert!(world.resource::<Events<InstaCreateDeco>>().is_empty());
+        world.send_event(EvRightClickedAutoClutter { entity: 999 });
+        world.send_event(EvRightClickedAutoClutter { entity: 42 });
+        schedule.run(&mut world);
+        assert_eq!(world.resource::<Events<InstaCreateDeco>>().len(), 1);
     }
 }

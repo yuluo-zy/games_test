@@ -1,0 +1,755 @@
+{
+  "backend": "ghidra",
+  "worker": "shared",
+  "access": "read",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "get_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x1408cee40,0x1408cf7d0,0x1408d99e0,0x1408d99f0,0x1408d8710",
+        "fields": "signature,decompiled_code,callees",
+        "include_call_context": false
+      },
+      "args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x1408cee40,0x1408cf7d0,0x1408d99e0,0x1408d99f0,0x1408d8710",
+        "fields": "signature,decompiled_code,callees",
+        "include_call_context": false
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program\":\"tiny-glade.exe\",\"functions\":{\"0x1408cee40\":{\"name\":\"new_indexed\",\"size\":1256,\"address\":\"1408cee40\",\"signature\":\"void __cdecl new_indexed(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::systems::collision::world::RaycastMeshData::new_indexed(void)\\n\\n{\\n  undefined1 *puVar1;\\n  ulonglong uVar2;\\n  undefined1 auVar3 [16];\\n  undefined1 *_Src;\\n  undefined1 *extraout_RAX;\\n  undefined1 *extraout_RAX_00;\\n  undefined1 *extraout_RAX_01;\\n  undefined1 *extraout_RAX_02;\\n  ulonglong extraout_RAX_03;\\n  undefined1 *extraout_RAX_04;\\n  ulonglong extraout_RAX_05;\\n  ulonglong extraout_RAX_06;\\n  ulonglong extraout_RAX_07;\\n  ulonglong *in_RCX;\\n  ulonglong *in_RDX;\\n  undefined1 **ppuVar4;\\n  undefined1 *puVar5;\\n  undefined1 *puVar6;\\n  ulonglong *in_R8;\\n  ulonglong *in_R9;\\n  ulonglong uVar7;\\n  undefined1 *_Dst;\\n  longlong lVar8;\\n  ulonglong uVar9;\\n  ulonglong *in_stack_00000028;\\n  ulonglong local_d8;\\n  undefined1 *local_d0;\\n  undefined1 *local_c8;\\n  undefined1 *puStack_c0;\\n  ulonglong local_b8;\\n  undefined1 *local_b0;\\n  ulonglong local_a8;\\n  ulonglong local_a0;\\n  ulonglong *local_98;\\n  undefined1 *local_90;\\n  ulonglong local_88;\\n  undefined1 **local_80;\\n  ulonglong local_78;\\n  undefined1 *local_70;\\n  ulonglong local_68;\\n  ulonglong local_60;\\n  undefined1 local_4d;\\n  undefined1 local_4c;\\n  undefined1 local_4b;\\n  undefined1 local_4a;\\n  undefined1 local_49;\\n  undefined8 local_48;\\n  \\n  local_48 = 0xfffffffffffffffe;\\n  local_d0 = (undefined1 *)in_RDX[1];\\n  puVar1 = (undefined1 *)in_RDX[2];\\n  puStack_c0 = (undefined1 *)in_R8[1];\\n  uVar7 = in_R8[2];\\n  local_49 = 1;\\n  local_4a = 1;\\n  local_4b = 1;\\n  local_4c = 1;\\n  local_c8 = puVar1;\\n  local_b8 = uVar7;\\n  local_b0 = local_d0;\\n  local_98 = in_R9;\\n  local_78 = (ulonglong)puStack_c0;\\n  ::utils::\\n  calculate_hash<tuple_<ref_<slice2_<array_<u32,3>_>_>,ref_<slice2_<glam::u32::uvec3::UVec3>_>_>_>()\\n  ;\\n  uVar9 = *local_98;\\n  puVar6 = extraout_RAX;\\n  if (!SBORROW8(0,uVar9)) {\\n    local_c8 = (undefined1 *)local_98[1];\\n    puStack_c0 = (undefined1 *)local_98[2];\\n    local_49 = 1;\\n    local_4a = 1;\\n    local_4b = 1;\\n    local_4c = 1;\\n    local_d0 = extraout_RAX;\\n    ::utils::calculate_hash<tuple_<u64,ref_<slice2_<glam::u32::uvec3::UVec3>_>_>_>();\\n    puVar6 = extraout_RAX_00;\\n  }\\n  uVar2 = *in_stack_00000028;\\n  if (!SBORROW8(0,uVar2)) {\\n    local_c8 = (undefined1 *)in_stack_00000028[1];\\n    puStack_c0 = (undefined1 *)in_stack_00000028[2];\\n    local_49 = 1;\\n    local_4a = 1;\\n    local_4b = 1;\\n    local_4c = 1;\\n    local_d0 = puVar6;\\n    ::utils::calculate_hash<tuple_<u64,ref_<slice2_<glam::u32::uvec2::UVec2>_>_>_>();\\n    puVar6 = extraout_RAX_01;\\n  }\\n  local_49 = 1;\\n  local_4a = 1;\\n  local_4b = 1;\\n  local_4c = 1;\\n  alloc::vec::spec_from_iter::impl$0::\\n  from_iter<glam::f32::vec3::Vec3,core::iter::adapters::map::Map<core::iter::adapters::copied::Copied<core::slice::iter::Iter<array_<f32,3>_>_>,country_core::render::mesh::impl_0::normals_without_indices::closure_env_0>_>\\n            ();\\n  _Src = local_b0;\\n  auVar3._8_8_ = 0;\\n  auVar3._0_8_ = puVar1;\\n  local_a0 = SUB168(auVar3 * ZEXT816(0xc),0);\\n  local_88 = uVar2;\\n  local_60 = uVar7;\\n  if ((SUB168(auVar3 * ZEXT816(0xc),8) == 0) && (local_a0 < 0x7ffffffffffffffd)) {\\n    if (local_a0 == 0) {\\n      _Dst = &DAT_00000004;\\n      puVar5 = (undefined1 *)0x0;\\n    }\\n    else {\\n      std::alloc::__default_lib_allocator::__rust_alloc();\\n      puVar5 = puVar1;\\n      _Dst = extraout_RAX_02;\\n      if (extraout_RAX_02 == (undefined1 *)0x0) goto LAB_1408cf302;\\n    }\\n    memcpy(_Dst,_Src,local_a0);\\n    local_4d = 0;\\n    ppuVar4 = &local_d0;\\n    local_d0 = puVar5;\\n    local_c8 = _Dst;\\n    puStack_c0 = puVar1;\\n    parry3d::shape::shared_shape::SharedShape::trimesh();\\n    uVar7 = local_60;\\n    puVar5 = (undefined1 *)*in_RDX;\\n    local_90 = _Src;\\n    local_80 = ppuVar4;\\n    local_70 = (undefined1 *)extraout_RAX_03;\\n    if (puVar1 < puVar5) {\\n      if (puVar1 == (undefined1 *)0x0) {\\n        local_90 = &DAT_00000004;\\n        std::alloc::__default_lib_allocator::__rust_dealloc();\\n      }\\n      else {\\n        std::alloc::__default_lib_allocator::__rust_realloc();\\n        local_90 = extraout_RAX_04;\\n        if (extraout_RAX_04 == (undefined1 *)0x0) {\\n          local_60 = (longlong)puVar5 * 0xc;\\n                    // WARNING: Subroutine does not return\\n          alloc::raw_vec::handle_error();\\n        }\\n      }\\n    }\\n    uVar2 = *in_R8;\\n    local_d8 = local_78;\\n    if (uVar7 < uVar2) {\\n      if (uVar7 == 0) {\\n        std::alloc::__default_lib_allocator::__rust_dealloc();\\n        local_d8 = 4;\\n      }\\n      else {\\n        std::alloc::__default_lib_allocator::__rust_realloc();\\n        local_d8 = extraout_RAX_05;\\n        if (extraout_RAX_05 == 0) {\\n          local_70 = puVar1;\\n          local_60 = uVar2 * 0xc;\\n                    // WARNING: Subroutine does not return\\n          alloc::raw_vec::handle_error();\\n        }\\n      }\\n    }\\n    if (SBORROW8(0,uVar9)) {\\n      local_68 = 0;\\n    }\\n    else {\\n      uVar7 = local_98[1];\\n      local_a8 = local_98[2];\\n      local_68 = uVar7;\\n      if (local_a8 < uVar9) {\\n        if (local_a8 == 0) {\\n          local_68 = 4;\\n          std::alloc::__default_lib_allocator::__rust_dealloc();\\n        }\\n        else {\\n          std::alloc::__default_lib_allocator::__rust_realloc();\\n          local_68 = extraout_RAX_06;\\n          if (extraout_RAX_06 == 0) {\\n            local_88 = uVar7;\\n            local_80 = (undefined1 **)(uVar9 * 0xc);\\n            local_70 = puVar1;\\n                    // WARNING: Subroutine does not return\\n            alloc::raw_vec::handle_error();\\n          }\\n        }\\n      }\\n    }\\n    if (SBORROW8(0,local_88)) {\\n      uVar7 = local_d8;\\n      uVar9 = 0;\\n    }\\n    else {\\n      uVar2 = in_stack_00000028[1];\\n      uVar7 = in_stack_00000028[2];\\n      uVar9 = uVar2;\\n      if (uVar7 < local_88) {\\n        lVar8 = local_88 << 3;\\n        if (uVar7 == 0) {\\n          std::alloc::__default_lib_allocator::__rust_dealloc();\\n          uVar9 = 4;\\n        }\\n        else {\\n          std::alloc::__default_lib_allocator::__rust_realloc();\\n          uVar9 = extraout_RAX_07;\\n          if (extraout_RAX_07 == 0) {\\n            local_88 = lVar8;\\n            local_80 = (undefined1 **)uVar2;\\n            local_70 = puVar1;\\n                    // WARNING: Subroutine does not return\\n            alloc::raw_vec::handle_error();\\n          }\\n        }\\n      }\\n    }\\n    *in_RCX = local_d8;\\n    in_RCX[1] = local_60;\\n    in_RCX[2] = (ulonglong)local_90;\\n    in_RCX[3] = (ulonglong)puVar1;\\n    in_RCX[6] = local_68;\\n    in_RCX[7] = local_a8;\\n    in_RCX[8] = uVar9;\\n    in_RCX[9] = uVar7;\\n    in_RCX[4] = (ulonglong)local_70;\\n    in_RCX[5] = (ulonglong)local_80;\\n    in_RCX[10] = 0;\\n    in_RCX[0xb] = 0;\\n    in_RCX[0xc] = 0;\\n    in_RCX[0xd] = 0x3f80000000000000;\\n    in_RCX[0xe] = (ulonglong)puVar6;\\n    return;\\n  }\\nLAB_1408cf302:\\n  local_4d = 1;\\n                    // WARNING: Subroutine does not return\\n  alloc::raw_vec::handle_error();\\n}\\n\\n\",\"callee_count\":10,\"callees\":[{\"name\":\"__rust_alloc\",\"address\":\"140613c10\"},{\"name\":\"__rust_dealloc\",\"address\":\"140613c20\"},{\"name\":\"__rust_realloc\",\"address\":\"140613c30\"},{\"name\":\"calculate_hash<tuple$<ref$<slice2$<array$<u32,3>_>_>,ref$<slice2$<glam::u32::uvec3::UVec3>_>_>_>\",\"address\":\"14145b6a0\"},{\"name\":\"calculate_hash<tuple$<u64,ref$<slice2$<glam::u32::uvec2::UVec2>_>_>_>\",\"address\":\"14145ade0\"},{\"name\":\"calculate_hash<tuple$<u64,ref$<slice2$<glam::u32::uvec3::UVec3>_>_>_>\",\"address\":\"14145a190\"},{\"name\":\"from_iter<glam::f32::vec3::Vec3,core::iter::adapters::map::Map<core::iter::adapters::copied::Copied<core::slice::iter::Iter<array$<f32,3>_>_>,country_core::render::mesh::impl$0::normals_without_indices::closure_env$0>_>\",\"address\":\"1412612d0\"},{\"name\":\"handle_error\",\"address\":\"1428d8fe3\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"trimesh\",\"address\":\"1416bba10\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1408cf7d0\":{\"name\":\"new_unindexed\",\"size\":1102,\"address\":\"1408cf7d0\",\"signature\":\"void __cdecl new_unindexed(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::systems::collision::world::RaycastMeshData::new_unindexed(void)\\n\\n{\\n  ulonglong uVar1;\\n  longlong lVar2;\\n  int iVar3;\\n  ulonglong extraout_RAX;\\n  ulonglong extraout_RAX_00;\\n  undefined1 *extraout_RAX_01;\\n  undefined1 *extraout_RAX_02;\\n  undefined8 extraout_RAX_03;\\n  undefined8 extraout_RAX_04;\\n  undefined8 extraout_RAX_05;\\n  undefined8 uVar4;\\n  undefined8 extraout_RAX_06;\\n  undefined8 *in_RCX;\\n  undefined8 *in_RDX;\\n  longlong lVar5;\\n  ulonglong *puVar6;\\n  ulonglong *puVar7;\\n  longlong lVar8;\\n  undefined1 *_Dst;\\n  ulonglong uVar9;\\n  undefined8 *in_R8;\\n  longlong *in_R9;\\n  ulonglong uVar10;\\n  ulonglong local_168;\\n  undefined1 *local_160;\\n  ulonglong uStack_158;\\n  longlong local_150;\\n  undefined8 local_138;\\n  undefined8 local_128;\\n  longlong local_108;\\n  longlong local_100;\\n  longlong local_f8;\\n  longlong local_f0;\\n  ulonglong local_e8;\\n  ulonglong local_e0;\\n  undefined8 local_d8;\\n  longlong local_d0;\\n  ulonglong *local_c0;\\n  undefined8 *local_b8;\\n  undefined8 *local_b0;\\n  longlong local_a8;\\n  undefined8 local_a0;\\n  ulonglong local_98;\\n  longlong *local_90;\\n  ulonglong *local_88;\\n  undefined8 local_80;\\n  longlong local_78;\\n  ulonglong local_70;\\n  size_t local_68;\\n  undefined1 *local_60;\\n  undefined1 local_52;\\n  undefined1 local_51;\\n  undefined1 local_50;\\n  undefined1 local_4f;\\n  undefined1 local_4e;\\n  undefined1 local_4d;\\n  undefined1 local_4c;\\n  undefined1 local_4b;\\n  undefined1 local_4a;\\n  undefined1 local_49;\\n  undefined8 local_48;\\n  \\n  local_48 = 0xfffffffffffffffe;\\n  local_168 = in_RDX[1];\\n  uVar1 = in_RDX[2];\\n  uStack_158 = in_R8[1];\\n  lVar8 = in_R8[2];\\n  local_49 = 1;\\n  local_4a = 1;\\n  local_4b = 1;\\n  local_160 = (undefined1 *)uVar1;\\n  local_150 = lVar8;\\n  local_b8 = in_RDX;\\n  local_b0 = in_R8;\\n  local_a8 = uStack_158;\\n  local_98 = local_168;\\n  local_90 = in_R9;\\n  ::utils::\\n  calculate_hash<tuple_<ref_<slice2_<utils::geometry::intersect::Triangle>_>,ref_<slice2_<array_<glam::u32::uvec3::UVec3,3>_>_>_>_>\\n            ();\\n  lVar2 = *local_90;\\n  uVar9 = extraout_RAX;\\n  if (!SBORROW8(0,lVar2)) {\\n    local_160 = (undefined1 *)local_90[1];\\n    uStack_158 = local_90[2];\\n    local_49 = 1;\\n    local_4a = 1;\\n    local_4b = 1;\\n    local_168 = extraout_RAX;\\n    ::utils::calculate_hash<tuple_<u64,ref_<slice2_<array_<glam::u32::uvec2::UVec2,3>_>_>_>_>();\\n    uVar9 = extraout_RAX_00;\\n  }\\n  local_68 = uVar1 * 0xc;\\n  if (uVar1 == 0) {\\n    local_60 = &DAT_00000004;\\n  }\\n  else {\\n    std::alloc::__default_lib_allocator::__rust_alloc();\\n    if (extraout_RAX_01 == (undefined1 *)0x0) {\\n      local_49 = 1;\\n      local_4a = 1;\\n      local_4b = 1;\\n                    // WARNING: Subroutine does not return\\n      alloc::raw_vec::handle_error();\\n    }\\n    if (uVar1 == 1) {\\n      uVar10 = 0;\\n    }\\n    else {\\n      lVar5 = 0;\\n      uVar10 = 0;\\n      do {\\n        iVar3 = (int)lVar5;\\n        *(int *)(extraout_RAX_01 + lVar5 * 4) = iVar3;\\n        *(int *)(extraout_RAX_01 + lVar5 * 4 + 4) = iVar3 + 1;\\n        *(int *)(extraout_RAX_01 + lVar5 * 4 + 8) = iVar3 + 2;\\n        uVar10 = uVar10 + 2;\\n        *(int *)(extraout_RAX_01 + lVar5 * 4 + 0xc) = iVar3 + 3;\\n        *(int *)(extraout_RAX_01 + lVar5 * 4 + 0x10) = iVar3 + 4;\\n        *(int *)(extraout_RAX_01 + lVar5 * 4 + 0x14) = iVar3 + 5;\\n        lVar5 = lVar5 + 6;\\n      } while ((uVar1 & 0x3fffffffffffffe) != uVar10);\\n    }\\n    local_60 = extraout_RAX_01;\\n    if ((uVar1 & 1) != 0) {\\n      iVar3 = (int)uVar10;\\n      *(int *)(extraout_RAX_01 + uVar10 * 0xc) = iVar3 * 3;\\n      *(int *)(extraout_RAX_01 + uVar10 * 0xc + 4) = iVar3 * 3 + 1;\\n      *(int *)(extraout_RAX_01 + uVar10 * 0xc + 8) = iVar3 * 3 + 2;\\n    }\\n  }\\n  lVar5 = local_98 + uVar1 * 0x24;\\n  local_168 = 0;\\n  local_128 = 0;\\n  local_e8 = local_98;\\n  local_4c = 1;\\n  local_4d = 1;\\n  local_4e = 1;\\n  local_e0 = lVar5;\\n  local_70 = uVar1;\\n  alloc::vec::spec_from_iter::impl$0::\\n  from_iter<nalgebra::geometry::point::OPoint<f32,nalgebra::base::dimension::Const<3>_>,core::iter::adapters::map::Map<core::iter::adapters::flatten::FlatMap<core::slice::iter::Iter<utils::geometry::intersect::Triangle>,core::array::iter::IntoIter<glam::f32::vec3::Vec3,3>,country_core::systems::collision::world::impl_20::new_unindexed::closure_env_1>,nalgebra::geometry::point::OPoint<f32,nalgebra::base::dimension::Const<3>_>_(*)(glam::f32::vec3::Vec3)>_>\\n            ();\\n  uVar1 = local_70;\\n  if (local_70 == 0) {\\n    _Dst = &DAT_00000004;\\n  }\\n  else {\\n    std::alloc::__default_lib_allocator::__rust_alloc();\\n    _Dst = extraout_RAX_02;\\n    if (extraout_RAX_02 == (undefined1 *)0x0) {\\n      local_4f = 1;\\n                    // WARNING: Subroutine does not return\\n      alloc::raw_vec::handle_error();\\n    }\\n  }\\n  memcpy(_Dst,local_60,local_68);\\n  local_168 = uVar1;\\n  uStack_158 = uVar1;\\n  local_4f = 0;\\n  puVar6 = &local_168;\\n  local_160 = _Dst;\\n  parry3d::shape::shared_shape::SharedShape::trimesh();\\n  local_d8 = *local_b8;\\n  local_168 = 0;\\n  local_128 = 0;\\n  local_e8 = local_98;\\n  local_e0 = local_98;\\n  local_50 = 1;\\n  local_51 = 1;\\n  puVar7 = puVar6;\\n  local_d0 = lVar5;\\n  local_c0 = puVar6;\\n  alloc::boxed::iter::impl$13::\\n  from_iter<glam::f32::vec3::Vec3,core::iter::adapters::flatten::FlatMap<alloc::vec::into_iter::IntoIter<utils::geometry::intersect::Triangle,alloc::alloc::Global>,array_<glam::f32::vec3::Vec3,3>,country_core::systems::collision::world::impl_20::new_unindexed::closure_env_2>_>\\n            ();\\n  local_d8 = *local_b0;\\n  local_d0 = local_a8 + lVar8 * 0x24;\\n  local_168 = 0;\\n  local_128 = 0;\\n  local_e8 = local_a8;\\n  local_e0 = local_a8;\\n  local_52 = 1;\\n  lVar8 = local_a8;\\n  local_a0 = extraout_RAX_04;\\n  local_88 = puVar7;\\n  alloc::boxed::iter::impl$13::\\n  from_iter<glam::f32::vec3::Vec3,core::iter::adapters::flatten::Flatten<alloc::vec::into_iter::IntoIter<array_<glam::f32::vec3::Vec3,3>,alloc::alloc::Global>_>_>\\n            ();\\n  local_80 = extraout_RAX_05;\\n  local_78 = lVar8;\\n  if (SBORROW8(0,lVar2)) {\\n    uVar4 = 0;\\n  }\\n  else {\\n    local_108 = local_90[1];\\n    local_f0 = local_108 + local_90[2] * 0x18;\\n    local_168 = 0;\\n    local_138 = 0;\\n    local_100 = local_108;\\n    local_f8 = lVar2;\\n    alloc::boxed::iter::impl$13::\\n    from_iter<glam::f32::vec2::Vec2,core::iter::adapters::flatten::Flatten<alloc::vec::into_iter::IntoIter<array_<glam::f32::vec2::Vec2,3>,alloc::alloc::Global>_>_>\\n              ();\\n    uVar4 = extraout_RAX_06;\\n  }\\n  *in_RCX = local_a0;\\n  in_RCX[1] = local_88;\\n  in_RCX[2] = local_60;\\n  in_RCX[3] = local_70;\\n  in_RCX[6] = local_80;\\n  in_RCX[7] = local_78;\\n  in_RCX[8] = uVar4;\\n  in_RCX[9] = lVar8;\\n  in_RCX[4] = extraout_RAX_03;\\n  in_RCX[5] = puVar6;\\n  in_RCX[10] = 0;\\n  in_RCX[0xb] = 0;\\n  in_RCX[0xc] = 0;\\n  in_RCX[0xd] = 0x3f80000000000000;\\n  in_RCX[0xe] = uVar9;\\n  return;\\n}\\n\\n\",\"callee_count\":10,\"callees\":[{\"name\":\"__rust_alloc\",\"address\":\"140613c10\"},{\"name\":\"calculate_hash<tuple$<ref$<slice2$<utils::geometry::intersect::Triangle>_>,ref$<slice2$<array$<glam::u32::uvec3::UVec3,3>_>_>_>_>\",\"address\":\"14145b4e0\"},{\"name\":\"calculate_hash<tuple$<u64,ref$<slice2$<array$<glam::u32::uvec2::UVec2,3>_>_>_>_>\",\"address\":\"14145a3a0\"},{\"name\":\"from_iter<glam::f32::vec2::Vec2,core::iter::adapters::flatten::Flatten<alloc::vec::into_iter::IntoIter<array$<glam::f32::vec2::Vec2,3>,alloc::alloc::Global>_>_>\",\"address\":\"141696e10\"},{\"name\":\"from_iter<glam::f32::vec3::Vec3,core::iter::adapters::flatten::FlatMap<alloc::vec::into_iter::IntoIter<utils::geometry::intersect::Triangle,alloc::alloc::Global>,array$<glam::f32::vec3::Vec3,3>,country_core::systems::collision::world::impl$20::new_unindexed::closure_env$2>_>\",\"address\":\"1416966b0\"},{\"name\":\"from_iter<glam::f32::vec3::Vec3,core::iter::adapters::flatten::Flatten<alloc::vec::into_iter::IntoIter<array$<glam::f32::vec3::Vec3,3>,alloc::alloc::Global>_>_>\",\"address\":\"141696cf0\"},{\"name\":\"from_iter<nalgebra::geometry::point::OPoint<f32,nalgebra::base::dimension::Const<3>_>,core::iter::adapters::map::Map<core::iter::adapters::flatten::FlatMap<core::slice::iter::Iter<utils::geometry::intersect::Triangle>,core::array::iter::IntoIter<glam::f32::vec3::Vec3,3>,country_core::systems::collision::world::impl$20::new_unindexed::closure_env$1>,nalgebra::geometry::point::OPoint<f32,nalgebra::base::dimension::Const<3>_>_(*)(glam::f32::vec3::Vec3)>_>\",\"address\":\"1412fb530\"},{\"name\":\"handle_error\",\"address\":\"1428d8fe3\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"trimesh\",\"address\":\"1416bba10\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1408d99e0\":{\"name\":\"data\",\"size\":6,\"address\":\"1408d99e0\",\"signature\":\"void __cdecl data(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::systems::collision::world::impl$62::data(void)\\n\\n{\\n  return;\\n}\\n\\n\",\"callee_count\":0,\"callees\":[],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1408d99f0\":{\"name\":\"fmt\",\"size\":39,\"address\":\"1408d99f0\",\"signature\":\"void __cdecl fmt(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::systems::collision::world::impl$99::fmt(void)\\n\\n{\\n  core::fmt::Formatter::write_str();\\n  return;\\n}\\n\\n\",\"callee_count\":1,\"callees\":[{\"name\":\"write_str\",\"address\":\"140d86b90\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1408d8710\":{\"name\":\"on_level_reload\",\"size\":1993,\"address\":\"1408d8710\",\"signature\":\"void __cdecl on_level_reload(void)\",\"decompiled_code\":\"\\n// WARNING: Function: __chkstk replaced with injection: alloca_probe\\n// WARNING: Type propagation algorithm not settling\\n\\nvoid __cdecl country_core::systems::collision::world::RaycastWorld::on_level_reload(void)\\n\\n{\\n  undefined8 *puVar1;\\n  void *pvVar2;\\n  undefined *puVar3;\\n  longlong lVar4;\\n  longlong *extraout_RAX;\\n  longlong *extraout_RAX_00;\\n  longlong *extraout_RAX_01;\\n  longlong *extraout_RAX_02;\\n  longlong *extraout_RAX_03;\\n  undefined4 *extraout_RAX_04;\\n  longlong lVar5;\\n  longlong *in_RCX;\\n  undefined8 *puVar6;\\n  undefined *local_8088;\\n  undefined8 uStack_8080;\\n  undefined8 local_8078;\\n  undefined8 uStack_8070;\\n  longlong local_8068;\\n  longlong lStack_8060;\\n  undefined8 *local_43d8;\\n  undefined8 uStack_43d0;\\n  longlong local_43c8;\\n  undefined8 uStack_43c0;\\n  undefined8 local_43b8;\\n  undefined8 uStack_43b0;\\n  undefined8 local_43a8;\\n  undefined8 *local_42b8;\\n  undefined8 *puStack_42b0;\\n  longlong local_42a8;\\n  undefined8 uStack_42a0;\\n  longlong local_4298;\\n  longlong lStack_4290;\\n  undefined *local_4288;\\n  undefined8 uStack_4280;\\n  undefined8 local_4278;\\n  undefined8 uStack_4270;\\n  longlong local_4268;\\n  longlong lStack_4260;\\n  undefined *local_4258;\\n  undefined8 uStack_4250;\\n  undefined8 local_4248;\\n  undefined8 uStack_4240;\\n  longlong local_4238;\\n  longlong lStack_4230;\\n  undefined *local_4228;\\n  undefined8 uStack_4220;\\n  undefined8 local_4218;\\n  undefined8 uStack_4210;\\n  longlong local_4208;\\n  longlong lStack_4200;\\n  undefined *local_41f8;\\n  undefined8 uStack_41f0;\\n  undefined8 local_41e8;\\n  undefined8 uStack_41e0;\\n  longlong local_618;\\n  longlong local_610;\\n  undefined8 local_608;\\n  undefined8 uStack_600;\\n  undefined8 local_5f8;\\n  undefined8 uStack_5f0;\\n  undefined8 local_5e8;\\n  undefined8 uStack_5e0;\\n  undefined8 local_5d8;\\n  undefined1 local_5d0 [152];\\n  undefined *local_538;\\n  undefined8 uStack_530;\\n  undefined8 local_528;\\n  undefined8 uStack_520;\\n  longlong local_518;\\n  longlong lStack_510;\\n  undefined8 local_508;\\n  undefined8 uStack_500;\\n  undefined8 local_4f8;\\n  undefined *local_4e8;\\n  undefined8 uStack_4e0;\\n  undefined8 local_4d8;\\n  undefined8 uStack_4d0;\\n  longlong local_4c8;\\n  longlong lStack_4c0;\\n  undefined8 local_4b8;\\n  undefined8 local_4b0;\\n  undefined8 local_4a8;\\n  undefined8 uStack_4a0;\\n  undefined8 local_498;\\n  undefined8 local_490;\\n  undefined8 uStack_488;\\n  undefined8 local_480;\\n  undefined8 local_478;\\n  undefined8 uStack_470;\\n  undefined8 local_468;\\n  undefined8 local_460;\\n  undefined4 local_458;\\n  undefined *local_398;\\n  undefined8 uStack_390;\\n  undefined8 local_388;\\n  undefined8 uStack_380;\\n  longlong local_378;\\n  longlong lStack_370;\\n  undefined8 local_368;\\n  undefined1 local_360 [512];\\n  undefined1 local_160;\\n  undefined8 *local_150;\\n  undefined4 *puStack_148;\\n  longlong local_140;\\n  undefined8 uStack_138;\\n  longlong *local_130;\\n  undefined8 *local_128;\\n  undefined8 uStack_120;\\n  longlong local_118;\\n  undefined8 uStack_110;\\n  longlong local_108;\\n  longlong lStack_100;\\n  undefined8 local_f8;\\n  undefined *local_e8;\\n  undefined8 uStack_e0;\\n  undefined8 local_d8;\\n  undefined8 uStack_d0;\\n  longlong local_c8;\\n  longlong lStack_c0;\\n  undefined8 local_b8;\\n  undefined8 uStack_b0;\\n  undefined8 local_a8;\\n  void *local_98;\\n  undefined8 *local_90;\\n  undefined8 *local_88;\\n  undefined8 *local_80;\\n  undefined8 local_70;\\n  undefined8 uStack_48;\\n  \\n  uStack_48 = 0x1408d8726;\\n  local_70 = 0xfffffffffffffffe;\\n  *(undefined4 *)in_RCX[2] = *(undefined4 *)((longlong)in_RCX + 0x1c);\\n  pvVar2 = (void *)*in_RCX;\\n  core::ops::function::FnOnce::\\n  call_once<std::hash::random::impl_0::new::KEYS::constant_0::closure_env_1,tuple_<enum2_<core::option::Option<ref_mut_<enum2_<core::option::Option<core::cell::Cell<tuple_<u64,u64>_>_>_>_>_>_>_>_>\\n            ();\\n  if (extraout_RAX == (longlong *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    std::thread::local::panic_access_error();\\n  }\\n  local_108 = *extraout_RAX;\\n  lStack_100 = extraout_RAX[1];\\n  *extraout_RAX = *extraout_RAX + 1;\\n  local_118 = 0;\\n  uStack_110 = 0;\\n  local_128 = (undefined8 *)&anon_0461237f7ea623e727d94921971c3b0b_35_llvm_13041791703400780744;\\n  uStack_120 = 0;\\n  core::ops::function::FnOnce::\\n  call_once<std::hash::random::impl_0::new::KEYS::constant_0::closure_env_1,tuple_<enum2_<core::option::Option<ref_mut_<enum2_<core::option::Option<core::cell::Cell<tuple_<u64,u64>_>_>_>_>_>_>_>_>\\n            ();\\n  if (extraout_RAX_00 == (longlong *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    std::thread::local::panic_access_error();\\n  }\\n  local_c8 = *extraout_RAX_00;\\n  lStack_c0 = extraout_RAX_00[1];\\n  *extraout_RAX_00 = *extraout_RAX_00 + 1;\\n  local_d8 = 0;\\n  uStack_d0 = 0;\\n  local_e8 = &anon_0461237f7ea623e727d94921971c3b0b_35_llvm_13041791703400780744;\\n  uStack_e0 = 0;\\n  core::ops::function::FnOnce::\\n  call_once<std::hash::random::impl_0::new::KEYS::constant_0::closure_env_1,tuple_<enum2_<core::option::Option<ref_mut_<enum2_<core::option::Option<core::cell::Cell<tuple_<u64,u64>_>_>_>_>_>_>_>_>\\n            ();\\n  if (extraout_RAX_01 == (longlong *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    std::thread::local::panic_access_error();\\n  }\\n  local_4c8 = *extraout_RAX_01;\\n  lStack_4c0 = extraout_RAX_01[1];\\n  *extraout_RAX_01 = *extraout_RAX_01 + 1;\\n  local_4d8 = 0;\\n  uStack_4d0 = 0;\\n  local_4e8 = &anon_0461237f7ea623e727d94921971c3b0b_35_llvm_13041791703400780744;\\n  uStack_4e0 = 0;\\n  core::ops::function::FnOnce::\\n  call_once<std::hash::random::impl_0::new::KEYS::constant_0::closure_env_1,tuple_<enum2_<core::option::Option<ref_mut_<enum2_<core::option::Option<core::cell::Cell<tuple_<u64,u64>_>_>_>_>_>_>_>_>\\n            ();\\n  if (extraout_RAX_02 == (longlong *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    std::thread::local::panic_access_error();\\n  }\\n  local_8068 = *extraout_RAX_02;\\n  lStack_8060 = extraout_RAX_02[1];\\n  *extraout_RAX_02 = *extraout_RAX_02 + 1;\\n  local_8078 = 0;\\n  uStack_8070 = 0;\\n  local_8088 = &anon_0461237f7ea623e727d94921971c3b0b_35_llvm_13041791703400780744;\\n  uStack_8080 = 0;\\n  core::ops::function::FnOnce::\\n  call_once<std::hash::random::impl_0::new::KEYS::constant_0::closure_env_1,tuple_<enum2_<core::option::Option<ref_mut_<enum2_<core::option::Option<core::cell::Cell<tuple_<u64,u64>_>_>_>_>_>_>_>_>\\n            ();\\n  if (extraout_RAX_03 == (longlong *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    std::thread::local::panic_access_error();\\n  }\\n  local_88 = (undefined8 *)*extraout_RAX_03;\\n  local_80 = (undefined8 *)extraout_RAX_03[1];\\n  *extraout_RAX_03 = (longlong)local_88 + 1;\\n  local_4298 = local_108;\\n  lStack_4290 = lStack_100;\\n  local_42a8 = local_118;\\n  uStack_42a0 = uStack_110;\\n  local_42b8 = local_128;\\n  puStack_42b0 = (undefined8 *)uStack_120;\\n  local_4288 = local_e8;\\n  uStack_4280 = uStack_e0;\\n  local_4278 = local_d8;\\n  uStack_4270 = uStack_d0;\\n  local_4268 = local_c8;\\n  lStack_4260 = lStack_c0;\\n  local_4258 = local_4e8;\\n  uStack_4250 = uStack_4e0;\\n  local_4248 = local_4d8;\\n  uStack_4240 = uStack_4d0;\\n  local_4238 = local_4c8;\\n  lStack_4230 = lStack_4c0;\\n  local_4208 = local_8068;\\n  lStack_4200 = lStack_8060;\\n  local_4218 = local_8078;\\n  uStack_4210 = uStack_8070;\\n  local_4228 = local_8088;\\n  uStack_4220 = uStack_8080;\\n  local_41e8 = 0;\\n  uStack_41e0 = 0;\\n  local_41f8 = &anon_0461237f7ea623e727d94921971c3b0b_35_llvm_13041791703400780744;\\n  uStack_41f0 = 0;\\n  local_90 = (undefined8 *)((longlong)pvVar2 + 0x3dc8);\\n  local_98 = pvVar2;\\n  core::ptr::drop_in_place<country_core::systems::collision::world::MeshInstanceSources>();\\n  memcpy(local_90,&local_42b8,0xe0);\\n  pvVar2 = local_98;\\n  *(undefined8 **)((longlong)local_98 + 0x3ea8) = local_88;\\n  *(undefined8 **)((longlong)local_98 + 0x3eb0) = local_80;\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_04 == (undefined4 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::raw_vec::handle_error();\\n  }\\n  *extraout_RAX_04 = 0;\\n  extraout_RAX_04[8] = 0;\\n  local_150 = (undefined8 *)0x1;\\n  local_140 = 1;\\n  uStack_138 = 1;\\n  puStack_148 = extraout_RAX_04;\\n  core::array::impl$44::default<country_core::systems::collision::world::RapierSubWorld>();\\n  local_128 = (undefined8 *)0x0;\\n  uStack_120 = 8;\\n  local_118 = 0;\\n  uStack_110 = 0;\\n  local_108 = 8;\\n  lStack_100 = 0;\\n  local_f8 = 0;\\n  local_4e8 = (undefined *)0x0;\\n  uStack_4e0 = 4;\\n  local_4d8 = 0;\\n  uStack_4d0 = 0;\\n  local_4c8 = 4;\\n  lStack_4c0 = 0;\\n  local_4b8 = 0;\\n  local_4b0 = 8;\\n  local_4a8 = 0;\\n  uStack_4a0 = 0;\\n  local_498 = 8;\\n  local_458 = 0;\\n  local_490 = 0;\\n  uStack_488 = 0;\\n  local_480 = 4;\\n  local_478 = 0;\\n  uStack_470 = 0;\\n  local_468 = 4;\\n  local_460 = 0;\\n  rapier3d::data::arena::Arena::with_capacity<rapier3d::dynamics::rigid_body::RigidBody>();\\n  local_b8 = 0;\\n  uStack_b0 = 4;\\n  local_a8 = 0;\\n  local_42b8 = local_150;\\n  puStack_42b0 = (undefined8 *)puStack_148;\\n  local_42a8 = local_140;\\n  uStack_42a0 = uStack_138;\\n  memcpy(&local_4298,&local_8088,0x3c90);\\n  local_608 = local_128;\\n  uStack_600 = uStack_120;\\n  local_5f8 = local_118;\\n  uStack_5f0 = uStack_110;\\n  local_5e8 = local_108;\\n  uStack_5e0 = lStack_100;\\n  local_5d8 = local_f8;\\n  memcpy(local_5d0,&local_4e8,0x98);\\n  local_538 = local_e8;\\n  uStack_530 = uStack_e0;\\n  local_528 = local_d8;\\n  uStack_520 = uStack_d0;\\n  local_518 = local_c8;\\n  lStack_510 = lStack_c0;\\n  local_508 = local_b8;\\n  uStack_500 = uStack_b0;\\n  local_4f8 = local_a8;\\n  memcpy(&local_8088,pvVar2,0x3dc8);\\n  memcpy(pvVar2,&local_42b8,0x3dc8);\\n  puVar6 = (undefined8 *)((longlong)pvVar2 + 0x20);\\n  puVar1 = (undefined8 *)((longlong)pvVar2 + 0x3cb0);\\n  memcpy(&local_42a8,&local_8068,0x3c90);\\n  local_608 = 0;\\n  uStack_600 = 0;\\n  local_5f8 = 0;\\n  local_618 = 0;\\n  local_610 = 0x11;\\n  lVar5 = local_618;\\n  local_42b8 = puVar6;\\n  puStack_42b0 = puVar1;\\n  lVar4 = local_618;\\n  local_90 = puVar1;\\n  if (puVar6 != puVar1) {\\n    do {\\n      local_42b8 = puVar6 + 0x72;\\n      lVar5 = local_610;\\n      lVar4 = local_618;\\n      if (local_610 == local_618) break;\\n      lVar5 = local_618 + 1;\\n      puVar3 = (undefined *)(&local_42a8)[local_618 * 0x72];\\n      lVar4 = lVar5;\\n      if (SBORROW8(0,(longlong)puVar3)) break;\\n      lVar4 = local_618 * 0x390;\\n      local_618 = lVar5;\\n      memcpy(&uStack_4e0,(void *)((longlong)&uStack_42a0 + lVar4),0x388);\\n      *(undefined1 *)(puVar6 + 0x71) = local_160;\\n      local_4e8 = puVar3;\\n      memmove(puVar6 + 0x31,local_360,0x200);\\n      local_b8 = local_368;\\n      local_c8 = local_378;\\n      lStack_c0 = lStack_370;\\n      local_d8 = local_388;\\n      uStack_d0 = uStack_380;\\n      local_e8 = local_398;\\n      uStack_e0 = uStack_390;\\n      local_80 = puVar6 + 0x2a;\\n      local_88 = puVar6;\\n      core::ptr::\\n      drop_in_place<alloc::vec::Vec<alloc::sync::Arc<lock_api::rwlock::RwLock<parking_lot::raw_rwlock::RawRwLock,tabloid::Publication<country_core::utils::dirty_tiles::DirtyTiles>_>,alloc::alloc::Global>,alloc::alloc::Global>_>\\n                ();\\n      core::ptr::\\n      drop_in_place<alloc::vec::Vec<tabloid::Subscriber<country_core::utils::dirty_tiles::DirtyTiles>,alloc::alloc::Global>_>\\n                ();\\n      local_80[6] = local_b8;\\n      local_80[4] = local_c8;\\n      local_80[5] = lStack_c0;\\n      local_80[2] = local_d8;\\n      local_80[3] = uStack_d0;\\n      *local_80 = local_e8;\\n      local_80[1] = uStack_e0;\\n      core::ptr::\\n      drop_in_place<rapier3d::data::arena::Arena<rapier3d::geometry::collider::Collider>_>();\\n      core::ptr::drop_in_place<rapier3d::pipeline::query_pipeline::QueryPipeline>();\\n      lVar5 = local_618;\\n      puVar6 = local_42b8;\\n      lVar4 = local_618;\\n    } while (local_42b8 != puStack_42b0);\\n  }\\n  local_618 = lVar4;\\n  local_88 = (undefined8 *)(local_610 - lVar5);\\n  local_130 = &local_42a8 + lVar5 * 0x72;\\n  local_80 = (undefined8 *)0x0;\\n  while (local_88 != local_80) {\\n    local_80 = (undefined8 *)((longlong)local_80 + 1);\\n    core::ptr::drop_in_place<country_core::systems::collision::world::RapierSubWorld>();\\n  }\\n  local_4288 = (undefined *)local_43a8;\\n  local_4298 = local_43b8;\\n  lStack_4290 = uStack_43b0;\\n  local_42a8 = local_43c8;\\n  uStack_42a0 = uStack_43c0;\\n  local_42b8 = local_43d8;\\n  puStack_42b0 = (undefined8 *)uStack_43d0;\\n  core::ptr::\\n  drop_in_place<alloc::vec::Vec<alloc::sync::Arc<lock_api::rwlock::RwLock<parking_lot::raw_rwlock::RawRwLock,tabloid::Publication<country_core::systems::collision::world::ColliderDiff>_>,alloc::alloc::Global>,alloc::alloc::Global>_>\\n            ();\\n  core::ptr::\\n  drop_in_place<alloc::vec::Vec<alloc::sync::Arc<lock_api::mutex::Mutex<parking_lot::raw_mutex::RawMutex,tabloid::Subscription<country_core::systems::collision::world::ColliderDiff>_>,alloc::alloc::Global>,alloc::alloc::Global>_>\\n            ();\\n  local_90[6] = local_4288;\\n  local_90[4] = local_4298;\\n  local_90[5] = lStack_4290;\\n  local_90[2] = local_42a8;\\n  local_90[3] = uStack_42a0;\\n  *local_90 = local_42b8;\\n  local_90[1] = puStack_42b0;\\n  core::ptr::\\n  drop_in_place<alloc::vec::Vec<slotmap::basic::Slot<country_core::systems::collision::world::RaycastMesh>,alloc::alloc::Global>_>\\n            ();\\n  core::ptr::drop_in_place<rapier3d::dynamics::island_manager::IslandManager>();\\n  core::ptr::drop_in_place<rapier3d::dynamics::rigid_body_set::RigidBodySet>();\\n  return;\\n}\\n\\n\",\"callee_count\":20,\"callees\":[{\"name\":\"__chkstk\",\"address\":\"14289aa40\"},{\"name\":\"__rust_alloc\",\"address\":\"140613c10\"},{\"name\":\"call_once<std::hash::random::impl$0::new::KEYS::constant$0::closure_env$1,tuple$<enum2$<core::option::Option<ref_mut$<enum2$<core::option::Option<core::cell::Cell<tuple$<u64,u64>_>_>_>_>_>_>_>_>\",\"address\":\"1400d9b20\"},{\"name\":\"default<country_core::systems::collision::world::RapierSubWorld>\",\"address\":\"140b3dca0\"},{\"name\":\"drop_in_place<alloc::vec::Vec<alloc::sync::Arc<lock_api::mutex::Mutex<parking_lot::raw_mutex::RawMutex,tabloid::Subscription<country_core::systems::collision::world::ColliderDiff>_>,alloc::alloc::Global>,alloc::alloc::Global>_>\",\"address\":\"1405e3230\"},{\"name\":\"drop_in_place<alloc::vec::Vec<alloc::sync::Arc<lock_api::rwlock::RwLock<parking_lot::raw_rwlock::RawRwLock,tabloid::Publication<country_core::systems::collision::world::ColliderDiff>_>,alloc::alloc::Global>,alloc::alloc::Global>_>\",\"address\":\"140882fd0\"},{\"name\":\"drop_in_place<alloc::vec::Vec<alloc::sync::Arc<lock_api::rwlock::RwLock<parking_lot::raw_rwlock::RawRwLock,tabloid::Publication<country_core::utils::dirty_tiles::DirtyTiles>_>,alloc::alloc::Global>,alloc::alloc::Global>_>\",\"address\":\"140882a50\"},{\"name\":\"drop_in_place<alloc::vec::Vec<slotmap::basic::Slot<country_core::systems::collision::world::RaycastMesh>,alloc::alloc::Global>_>\",\"address\":\"14087c5f0\"},{\"name\":\"drop_in_place<alloc::vec::Vec<tabloid::Subscriber<country_core::utils::dirty_tiles::DirtyTiles>,alloc::alloc::Global>_>\",\"address\":\"1405d52b0\"},{\"name\":\"drop_in_place<country_core::systems::collision::world::MeshInstanceSources>\",\"address\":\"140892ca0\"},{\"name\":\"drop_in_place<country_core::systems::collision::world::RapierSubWorld>\",\"address\":\"14088ff70\"},{\"name\":\"drop_in_place<rapier3d::data::arena::Arena<rapier3d::geometry::collider::Collider>_>\",\"address\":\"1408987e0\"},{\"name\":\"drop_in_place<rapier3d::dynamics::island_manager::IslandManager>\",\"address\":\"1405fcf40\"},{\"name\":\"drop_in_place<rapier3d::dynamics::rigid_body_set::RigidBodySet>\",\"address\":\"1405fc310\"},{\"name\":\"drop_in_place<rapier3d::pipeline::query_pipeline::QueryPipeline>\",\"address\":\"1405fd000\"},{\"name\":\"handle_error\",\"address\":\"1428d8fe3\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"memmove\",\"address\":\"142923c10\"},{\"name\":\"panic_access_error\",\"address\":\"1428d80d0\"},{\"name\":\"with_capacity<rapier3d::dynamics::rigid_body::RigidBody>\",\"address\":\"1409875c0\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}}},\"count\":5,\"requested\":5}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "list_instances",
+        "title": null,
+        "description": "\nList known Ghidra instances from UDS discovery and the active TCP fallback.\n\nReturns JSON with each instance's project name, PID, open programs, and\nsocket path or TCP URL. Also shows which instance is currently connected.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "_list_instances_toolArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "connect_instance",
+        "title": null,
+        "description": "\nSwitch the MCP bridge to a different Ghidra instance by project name.\n\nIMPORTANT: Before calling this function only the static bridge tools are\nexposed (list_instances, connect_instance, tool-group management,\ndebugger proxy). After a successful connect the bridge fetches the\ninstance's /mcp/schema and registers Ghidra analysis tools dynamically.\nBy default all tool groups are loaded on connect. When started with\n--lazy, only the default groups are loaded initially and clients may need\nto call load_tool_group() for additional categories. Clients that cache\nthe initial tools/list and don't honor tools/list_changed must re-list\ntools after this call.\n\nUse list_instances() first to see available instances.\n\nArgs:\n    project: Project name (or substring) to connect to\n",
+        "inputSchema": {
+          "properties": {
+            "project": {
+              "description": "Project name (or substring) to connect to",
+              "title": "Project",
+              "type": "string"
+            }
+          },
+          "required": [
+            "project"
+          ],
+          "title": "connect_instanceArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_tool_groups",
+        "title": null,
+        "description": "\nList all available tool groups with their tool counts and loaded status.\n\nReturns each category with: tool count, loaded status, and tool names.\nUse load_tool_group(group) to load a group's tools.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "list_tool_groupsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "load_tool_group",
+        "title": null,
+        "description": "\nLoad all tools in a category. Accepts a category name or \"all\" to load everything.\n\nUse list_tool_groups() to see available categories.\n\nArgs:\n    group: Category name (e.g. \"function\", \"datatype\") or \"all\"\n",
+        "inputSchema": {
+          "properties": {
+            "group": {
+              "description": "Category name (e.g. \"function\", \"datatype\") or \"all\"",
+              "title": "Group",
+              "type": "string"
+            }
+          },
+          "required": [
+            "group"
+          ],
+          "title": "load_tool_groupArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "search_tools",
+        "title": null,
+        "description": "\nSearch the full Ghidra tool catalog by keyword \u2014 including tools whose group\nis not currently loaded. Use this to discover the right tool without paying\nthe context cost of loading all groups (run the bridge with --lazy and search\non demand). Matches against tool name, description, and category.\n\nEach result reports whether the tool is callable right now; if not, it\nincludes the exact load_tool_group(...) call needed to make it callable.\n\nArgs:\n    query: Space-separated keywords, e.g. \"rename function\" or \"xref struct\".\n    limit: Maximum number of results to return (default 15).\n",
+        "inputSchema": {
+          "properties": {
+            "query": {
+              "description": "Space-separated keywords, e.g. \"rename function\" or \"xref struct\".",
+              "title": "Query",
+              "type": "string"
+            },
+            "limit": {
+              "default": 15,
+              "description": "Maximum number of results to return (default 15).",
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "title": "search_toolsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "disassemble_function",
+        "title": null,
+        "description": "Get assembly listing of function. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution. When Ghidra's stored function body is degenerate (body_end == body_start, which would truncate the listing to a single instruction), the listing is instead bounded by the next function or the containing memory block and the response adds body_degenerate=true, bounded_by (next_function | memory_block | function_body) and a warning; do not trust this function's stored extent in that case.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "disassemble_functionArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_data_types",
+        "title": null,
+        "description": "Find data types by name or path pattern, category and kind, one record per type (name, kind, category, size, path). With categories=true, list the category paths instead. With no filter it lists every type.",
+        "inputSchema": {
+          "properties": {
+            "pattern": {
+              "default": "",
+              "description": "Case-insensitive substring of the type's name or full path; omit for no name filter.",
+              "title": "Pattern",
+              "type": "string"
+            },
+            "category": {
+              "default": "",
+              "description": "Case-insensitive substring of the category path (e.g. Windows, /MyTypes); omit for any category.",
+              "title": "Category",
+              "type": "string"
+            },
+            "kind": {
+              "default": "",
+              "description": "Only this kind: struct, union, enum, typedef, pointer, array, function or primitive. Omit for all kinds.",
+              "title": "Kind",
+              "type": "string"
+            },
+            "categories": {
+              "default": "false",
+              "description": "True lists the category paths (filtered by pattern) instead of types; category and kind do not apply.",
+              "title": "Categories",
+              "type": "boolean"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "find_data_typesArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_functions",
+        "title": null,
+        "description": "Find functions: every filter is optional, so with none it lists the whole program a page at a time. Filter by name (substring or regex=true), xref count, calling convention, whether the name is user-given, thunk or external, or by tag (tag=a,b keeps functions carrying ANY of them); each result lists its tags; sort by address, name or xref_count. Replaces list_functions, list_functions_enhanced, search_functions and search_functions_enhanced, which returned four different shapes for the same question.",
+        "inputSchema": {
+          "properties": {
+            "name_pattern": {
+              "default": "",
+              "description": "Substring to match, or a regex when regex=true. Omit to match every function.",
+              "title": "Name Pattern",
+              "type": "string"
+            },
+            "regex": {
+              "default": "false",
+              "description": "Treat name_pattern as a regular expression.",
+              "title": "Regex",
+              "type": "boolean"
+            },
+            "min_xrefs": {
+              "default": "",
+              "description": "Only functions with at least this many references to them.",
+              "title": "Min Xrefs",
+              "type": "integer"
+            },
+            "max_xrefs": {
+              "default": "",
+              "description": "Only functions with at most this many references to them.",
+              "title": "Max Xrefs",
+              "type": "integer"
+            },
+            "calling_convention": {
+              "default": "",
+              "description": "Only functions with this calling convention (e.g. __stdcall).",
+              "title": "Calling Convention",
+              "type": "string"
+            },
+            "has_custom_name": {
+              "default": "",
+              "description": "true = only functions somebody has named; false = only auto-generated names (FUN_*, thunk_*).",
+              "title": "Has Custom Name",
+              "type": "boolean"
+            },
+            "is_thunk": {
+              "default": "",
+              "description": "true = only thunks, false = exclude them, omit for both.",
+              "title": "Is Thunk",
+              "type": "boolean"
+            },
+            "is_external": {
+              "default": "",
+              "description": "true = only external functions, false = exclude them.",
+              "title": "Is External",
+              "type": "boolean"
+            },
+            "tag": {
+              "default": "",
+              "description": "Only functions carrying any of these tags: one name or a comma-separated list. A name that is not a defined tag is an error (list_function_tags shows the definitions).",
+              "title": "Tag",
+              "type": "string"
+            },
+            "sort_by": {
+              "default": "address",
+              "description": "address | name | xref_count.",
+              "title": "Sort By",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Page size. 0 means no limit, which on a large binary is a megabytes-long response \u2014 the old list_functions had no pagination at all and returned 1.7MB on a stripped `ls`.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "pattern": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Pattern"
+            },
+            "query": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Query"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            }
+          },
+          "title": "find_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_functions",
+        "title": null,
+        "description": "Everything about one or many functions in a single call. Pass functions= as a comma-separated list of names or addresses for bulk mode (up to 20); omit it and pass function=/name=/address= for one. Pass fields= as a comma-separated subset to skip work you do not need \u2014 omitted or empty returns everything. When the requested fields need no decompiled text (e.g. fields=callers,callees,signature,labels,entry_point), the target function is NOT decompiled (238 ms cold / 5\u201310 ms warm per function); only decompiled_code (and call_context when enabled) pays that cost. Decompiled text renders EOL comments (// style), so comments written with set_comment are visible in the code. Replaces get_function_by_address, get_function_variables, get_function_xrefs, decompile_function, and the former get_function_callers/callees/labels/signature tools. Completeness scoring is NOT included \u2014 call analyze_function_completeness for that.",
+        "inputSchema": {
+          "properties": {
+            "function": {
+              "default": "",
+              "description": "Single mode: function name or address (0x<hex> or <space>:<hex>). Ignored when functions= is set.",
+              "title": "Function",
+              "type": "string"
+            },
+            "functions": {
+              "default": "",
+              "description": "Bulk mode: comma-separated function references (names or addresses). When set, function= is ignored. Returns a map keyed by the reference asked for.",
+              "title": "Functions",
+              "type": "string"
+            },
+            "fields": {
+              "default": "",
+              "description": "Comma-separated subset: signature, classification, return_type, entry_point, body_start, body_end, decompiled_code, plate_comment, comments, labels, tags, parameters, locals, callers, call_context, callees, xrefs, disassembly, jump_targets, refs (the absolute addresses the function uses: data references, the values of literal-pool words, and the memory the decompiled code reads and writes, so a register reached as base + offset is listed by its own address; a pool value is written value<word; asking for refs decompiles). Omit or leave empty for the full bundle.",
+              "title": "Fields",
+              "type": "string"
+            },
+            "include_call_context": {
+              "default": "true",
+              "description": "Include each caller's decompiled call-site line. Costs one decompilation per unique caller (~43ms); set false for the cheapest possible bundle. Ignored unless call_context is requested (explicitly or via an empty fields=).",
+              "title": "Include Call Context",
+              "type": "boolean"
+            },
+            "call_context_limit": {
+              "default": "6",
+              "description": "Maximum number of UNIQUE callers to decompile for call context.",
+              "title": "Call Context Limit",
+              "type": "integer"
+            },
+            "call_context_lines": {
+              "default": "3",
+              "description": "Lines of the caller's decompilation to return per call site, centred on the call. 1 is the call line alone; the default 3 adds the line above and below, which is usually where the guard and the use of the result live. Clamped to 1-21; costs no extra decompilation.",
+              "title": "Call Context Lines",
+              "type": "integer"
+            },
+            "include_disasm": {
+              "default": "false",
+              "description": "Include the raw instruction listing. Off by default: it roughly doubles the payload and agents rarely read it.",
+              "title": "Include Disasm",
+              "type": "boolean"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Address"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "function_address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Address"
+            },
+            "function_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Name"
+            },
+            "call_context_window": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Call Context Window"
+            }
+          },
+          "title": "get_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_metadata",
+        "title": null,
+        "description": "Get program metadata",
+        "inputSchema": {
+          "properties": {
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_metadataArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_struct_layout",
+        "title": null,
+        "description": "Get structure field layout",
+        "inputSchema": {
+          "properties": {
+            "struct_name": {
+              "description": "Structure name",
+              "title": "Struct Name",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "struct_name"
+          ],
+          "title": "get_struct_layoutArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_from",
+        "title": null,
+        "description": "Get cross-references from an address. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "get_xrefs_fromArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_to",
+        "title": null,
+        "description": "Get cross-references to ONE address, or to MANY at once (addresses=comma-separated), which returns a map keyed by the address you asked for. Replaces the former get_bulk_xrefs. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "default": "",
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "addresses": {
+              "default": "",
+              "description": "Comma-separated addresses for the many-at-once form. The result is a map of address to its reference list, and an address that does not resolve gets an empty list rather than failing the whole call.",
+              "title": "Addresses",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_xrefs_toArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "read_memory",
+        "title": null,
+        "description": "Read raw memory bytes. Always pass the 'program' argument to target the correct binary \u2014 especially when multiple programs are open. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "length": {
+              "default": "16",
+              "description": "Number of bytes",
+              "title": "Length",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "read_memoryArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 1,
+  "ok": true
+}

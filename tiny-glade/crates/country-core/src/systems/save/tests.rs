@@ -4,7 +4,115 @@ use super::{
     save_thread::CurrentSaveFile,
     shadow_file::ShadowFile,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
+
+#[test]
+fn close_file_resets_native_metronome_fields() {
+    let mut metronome = SaveBackupMetronome::from_backup_counter(42);
+    metronome.add_active_game_time(3.0);
+    assert_eq!(metronome.active_game_time(), 3.0);
+    // O：close_file 尾部 `+0x140=0`、`+0x144=0x501502f900000000`
+    // （累计 0.0，阈值 f32 0x501502f9 = 1e10）。
+    metronome.reset_after_close();
+    assert_eq!(metronome.counter(), 0);
+    assert_eq!(metronome.active_game_time(), 0.0);
+    assert_eq!(metronome.active_game_threshold(), 1.0e10);
+}
+
+#[test]
+fn next_session_kind_clamps_decoded_values_above_two_to_one() {
+    use super::load_game::clamp_next_session_kind;
+    assert_eq!(clamp_next_session_kind(0), 0);
+    assert_eq!(clamp_next_session_kind(1), 1);
+    assert_eq!(clamp_next_session_kind(2), 2);
+    // O：原生 `if (2 < decoded) decoded = 1`，不是 min(2)。
+    assert_eq!(clamp_next_session_kind(3), 1);
+    assert_eq!(clamp_next_session_kind(0x14), 1);
+}
+
+#[test]
+fn parse_saved_game_data_parses_all_native_sections() {
+    use super::load_game::parse_saved_game_data;
+    let root = tempfile::tempdir().unwrap();
+    let path = root.path().join("history.json");
+    let body = json!({
+        "Version": 27,
+        "BackwardCompatibility": 0.5,
+        "Camera": {
+            "yaw": 1.0, "pitch": 2.0, "position": [3.0, 4.0, 5.0],
+            "camera_rig_arm_length": 6.0, "pitch_offset": 7.0, "yaw_offset": 8.0
+        },
+        "Time of day": {
+            "time_of_day": 0.25, "sun_xz_rotation": 0.5, "latitude_degrees": 40.0
+        },
+        "Sheep": {"sheep": []},
+        "Colors": {
+            "freeform_wall": 1, "building": 2, "roof": 3,
+            "building_wall_style": 1, "freehand_ty": 2, "halftimber": 4,
+            "lantern_light": 5, "fence": 6, "window_light": 7, "flag": true,
+            "windows": 8, "gates": 9, "flat_rim_style": 3,
+            "lantern_brightness": 0.5, "stairs": 10
+        },
+        "History": {
+            "chain_index": -1,
+            "history_start": -1,
+            "snapshots": [{"chain_index": -1, "snapshot_id": 7}],
+            "edit_chain": [{"edits": []}]
+        },
+        "Identity": 123456789
+    });
+    std::fs::write(&path, serde_json::to_vec(&body).unwrap()).unwrap();
+    let parsed = parse_saved_game_data(&path).unwrap();
+    assert_eq!(parsed.version, 27);
+    assert_eq!(parsed.camera.unwrap().yaw, 1.0);
+    assert_eq!(parsed.time_of_day.time_of_day, 0.25);
+    assert_eq!(parsed.time_of_day.latitude_degrees, 40.0);
+    assert!(parsed.sheep.unwrap().sheep.is_empty());
+    assert_eq!(parsed.colors.building.0, 2);
+    assert_eq!(parsed.identity.unwrap().0, 123456789);
+    assert_eq!(parsed.chain_index, -1);
+    assert_eq!(parsed.history_start, -1);
+    assert_eq!(parsed.edits.len(), 1);
+    assert_eq!(parsed.snapshots.len(), 1);
+
+    // 版本门（O：<3 / ≥0x1c 两条错误）。
+    let mut low = body.clone();
+    low["Version"] = json!(2);
+    std::fs::write(&path, serde_json::to_vec(&low).unwrap()).unwrap();
+    assert!(parse_saved_game_data(&path).is_err());
+    let mut high = body.clone();
+    high["Version"] = json!(0x1c);
+    std::fs::write(&path, serde_json::to_vec(&high).unwrap()).unwrap();
+    assert!(parse_saved_game_data(&path).is_err());
+}
+
+#[test]
+fn unsaved_file_list_uses_the_native_0x80_byte_entry() {
+    use super::save_thread::{UnsavedFileEntry, UnsavedFileList};
+    assert_eq!(std::mem::size_of::<UnsavedFileEntry>(), 0x80);
+    let list = UnsavedFileList::default();
+    let path = std::path::PathBuf::from("session/history.json");
+    list.add(UnsavedFileEntry::from_path(path.clone()));
+    assert_eq!(list.len(), 1);
+    assert!(list.contains_file(&path));
+    assert!(!list.contains_file(std::path::Path::new("session/other.json")));
+}
+
+#[test]
+fn save_game_to_memory_serializes_edit_items_inside_the_function() {
+    use super::save_game::{GameSaveSections, save_game_to_memory};
+    let values = std::array::from_fn(|_| SerializedJson::new(&json!([])).unwrap());
+    let sections = GameSaveSections { values };
+    // 传域类型（serde_json::Value）而非预序列化文本：函数内完成 serde。
+    let (bytes, structure) =
+        save_game_to_memory(sections, vec![json!({"edit": 1}), json!({"edit": 2})]);
+    assert_eq!(structure.history_edit_offsets.len(), 2);
+    let parsed: Value = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(
+        parsed["History"]["edit_chain"],
+        json!([{"edit": 1}, {"edit": 2}])
+    );
+}
 
 #[test]
 fn create_grow_replace_shrink_retry_and_sync_actual_shadow_file() {
@@ -205,9 +313,10 @@ fn backup_scan_and_snapshot_gc_release_cancel_and_delete_actual_files() {
 fn execute_save_cmd_changes_sections_and_flushes_to_disk() {
     use super::{
         save_game::AsyncSaveCmd,
-        save_thread::{CurrentSaveFile, execute_save_cmd},
+        save_thread::{CurrentSaveFile, UnsavedFileList, execute_save_cmd},
     };
     let root = tempfile::tempdir().unwrap();
+    let unsaved = UnsavedFileList::default();
     let values = [
         json!(27),
         json!({"id":"fixture"}),
@@ -231,51 +340,78 @@ fn execute_save_cmd_changes_sections_and_flushes_to_disk() {
             section: SaveFileSection::Camera,
             value: camera,
         },
+        &unsaved,
     );
-    execute_save_cmd(&mut current, AsyncSaveCmd::Flush);
+    execute_save_cmd(&mut current, AsyncSaveCmd::Flush, &unsaved);
     let bytes = std::fs::read(root.path().join("history.json")).unwrap();
     let parsed: Value = serde_json::from_slice(&bytes).unwrap();
     let written = parsed["Camera"]["x"].as_str().unwrap();
     assert_eq!(written.len(), 1000);
-    // CloseFile 清档；后续 ChangeSection 应 panic。
-    execute_save_cmd(&mut current, AsyncSaveCmd::CloseFile { session: crate::resources::session::SessionId::new() });
+    // CloseFile 清档并 flush 前一档；后续 ChangeSection 应 panic。
+    execute_save_cmd(
+        &mut current,
+        AsyncSaveCmd::CloseFile {
+            session: crate::resources::session::SessionId::new(),
+        },
+        &unsaved,
+    );
     assert!(current.is_none());
 }
 
 #[test]
 #[should_panic(expected = "No active save file, but AsyncSaveCmd::ChangeSection has been issued")]
 fn change_section_without_active_file_panics() {
-    use super::{save_game::AsyncSaveCmd, save_thread::execute_save_cmd};
+    use super::{
+        save_game::AsyncSaveCmd, save_thread::UnsavedFileList, save_thread::execute_save_cmd,
+    };
     let mut current: Option<CurrentSaveFile> = None;
+    let unsaved = UnsavedFileList::default();
     execute_save_cmd(
         &mut current,
         AsyncSaveCmd::ChangeSection {
             section: SaveFileSection::Camera,
             value: SerializedJson::new(&json!(1)).unwrap(),
         },
+        &unsaved,
     );
 }
 
 #[test]
-fn save_thread_receives_shutdown_with_flush_and_acks() {
+fn save_thread_exits_on_shutdown_with_flush_and_waits_when_flush_false() {
     use super::save_thread::{AutosaveErrorState, UnsavedFileList, save_thread};
     use std::sync::Arc;
     let (cmd_sender, cmd_receiver) = crossbeam_channel::unbounded();
     let (error_sender, _error_receiver) = AutosaveErrorState::channel();
     let unsaved = Arc::new(UnsavedFileList::default());
-    let (ack_sender, ack_receiver) = crossbeam_channel::unbounded();
-    let handle = std::thread::spawn(move || {
-        save_thread(cmd_receiver, error_sender, unsaved, ack_sender)
-    });
+    let handle = std::thread::spawn(move || save_thread(cmd_receiver, error_sender, unsaved));
+    // Shutdown{flush:true}：原生 flush + drop + 退出线程（无 ack 通道）。
     cmd_sender
         .send(super::save_game::AsyncSaveCmd::Shutdown { flush: true })
         .unwrap();
-    assert_eq!(
-        ack_receiver
-            .recv_timeout(std::time::Duration::from_secs(5))
-            .unwrap(),
-        ()
-    );
+    handle.join().unwrap();
+}
+
+#[test]
+fn save_thread_shutdown_without_flush_keeps_looping() {
+    use super::save_thread::{AutosaveErrorState, UnsavedFileList, save_thread};
+    use std::sync::Arc;
+    let (cmd_sender, cmd_receiver) = crossbeam_channel::unbounded();
+    let (error_sender, _error_receiver) = AutosaveErrorState::channel();
+    let unsaved = Arc::new(UnsavedFileList::default());
+    let handle = std::thread::spawn(move || save_thread(cmd_receiver, error_sender, unsaved));
+    // Shutdown{flush:false}：原生应用 deferred + 睡 10ms + 继续循环（不退出）。
+    cmd_sender
+        .send(super::save_game::AsyncSaveCmd::Shutdown { flush: false })
+        .unwrap();
+    // 线程仍在循环：还能接收并处理命令。
+    cmd_sender
+        .send(super::save_game::AsyncSaveCmd::Flush)
+        .unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(50));
+    // 收尾：用 flush=true 结束线程。
+    cmd_sender
+        .send(super::save_game::AsyncSaveCmd::Shutdown { flush: true })
+        .unwrap();
     handle.join().unwrap();
 }
 
@@ -283,12 +419,14 @@ fn save_thread_receives_shutdown_with_flush_and_acks() {
 fn on_load_fence_terminates_both_replay_passes() {
     use super::load_game::{ReplayedOnLoadCommand, advance_load_game};
     use crate::meta_commander::{MetaCommand, MetaCommandFence};
-    use crate::resources::session::{NextSession, SessionId, ON_LOAD_VARIANT_MASK};
     use crate::resources::session::NextSessionKind;
+    use crate::resources::session::{
+        NextSession, NextSessionTail, NextSessionTemplate, ON_LOAD_VARIANT_MASK, SessionId,
+    };
 
     let mut session = NextSession::create(
-        SessionId::new(),
-        NextSessionKind::LoadOnLoad,
+        &NextSessionTemplate::new(SessionId::new(), NextSessionKind::LoadOnLoad),
+        &NextSessionTail::EMPTY,
     );
     session.extend_on_load([
         MetaCommand {
@@ -320,4 +458,28 @@ fn on_load_fence_terminates_both_replay_passes() {
     assert_eq!(meta, 2);
     assert_eq!(apply, 2);
     assert!(ON_LOAD_VARIANT_MASK != 0);
+}
+
+#[test]
+fn on_load_variant2_fence_release_unblocks_inline() {
+    use super::load_game::{LoadGameManager, LoadGameState, advance_load_game};
+    use crate::meta_commander::MetaCommandFence;
+    use crate::resources::session::{
+        NextSession, NextSessionKind, NextSessionTail, NextSessionTemplate, SessionId,
+    };
+    let mut session = NextSession::create(
+        &NextSessionTemplate::new(SessionId::new(), NextSessionKind::LoadOnLoad),
+        &NextSessionTail::EMPTY,
+    );
+    let fence = MetaCommandFence::new_pair_blocked();
+    let check = fence.clone();
+    // 变体 2 fence 释放条目 + 终止哨兵。
+    session.append_fence_release(fence);
+    session.append_replay_terminator();
+    let mut manager = LoadGameManager::default();
+    manager.state = LoadGameState::Loaded;
+    let (parsed, _commands) = advance_load_game(&mut manager, &session, None).unwrap();
+    assert!(parsed.is_none());
+    // 变体2 内联释放（O 0x14146d030 首遍 uVar23==2）：fence 已被 unblock（+0x10 清 0）。
+    assert!(!check.is_blocked());
 }

@@ -1,0 +1,58 @@
+{
+  "mode": "candidate only; fresh current production source baselines; no production edit/Cargo/GPU",
+  "dependencies": [
+    "Root integrated W51 DynamicConstants UniformBytes+DoF correctness, strict GPU v64 PASS",
+    "Root integrated undefined-history13patch, CPU5+cache1 PASS; TAA2frames PASS; TGSR fixture first-pixel bias correction pending second frame",
+    "TG-50b39e9844f539b049/render-world-post-20261018/w54-whole-frame-and-reference.patch",
+    "Existing typed world_lighting W35..43 output on same CoreGraphFrame",
+    "Actual W44..46 declaration precedes this segment; not synthesized here"
+  ],
+  "files": [
+    {
+      "patch": "01-volumetrics.patch",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/apply_volumetrics.rs",
+      "candidate": "apply_volumetrics.rs.candidate",
+      "source_before_sha256": "3a179236203e99241fd86fa5c1df970361429e6c7f6008ecac2cbb4d157a7614",
+      "dry_run_exit": 0,
+      "dry_run": "patching file 'crates/country-core/src/systems/render_loop/compute_passes/apply_volumetrics.rs'\n",
+      "patch_sha256": "8dbd0b2a0d0dfc835eb38a54721aac6ad7522d0cab2653cd2e9b7f29bebcb8a3",
+      "parse_exit": 0,
+      "parse_stderr": ""
+    },
+    {
+      "patch": "02-spd.patch",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/generate_mips.rs",
+      "candidate": "generate_mips.rs.candidate",
+      "source_before_sha256": "5f5fd36b449f95f6b353772642859194530d6cc6c57a4425073aa0da55eae410",
+      "dry_run_exit": 0,
+      "dry_run": "patching file 'crates/country-core/src/systems/render_loop/compute_passes/generate_mips.rs'\n",
+      "patch_sha256": "112fbf5e15e780f84d0189c34e23b1668ce36b07917d58362db43696da4f8fb9",
+      "parse_exit": 0,
+      "parse_stderr": ""
+    },
+    {
+      "patch": "03-typed-world-post-parameters.patch",
+      "path": "crates/country-core/src/systems/render_loop/render_world.rs",
+      "candidate": "render_world.rs.candidate",
+      "source_before_sha256": "08ffd6d95eb2540b975c2b8d4d4f0f3e0bf90472022542d410100b885cf86016",
+      "dry_run_exit": 0,
+      "dry_run": "patching file 'crates/country-core/src/systems/render_loop/render_world.rs'\n",
+      "patch_sha256": "a9d3619ce587b455b798123b88d5c1ab5b60fcde4b65d882e9369be6d6277f9e",
+      "parse_exit": 0,
+      "parse_stderr": ""
+    },
+    {
+      "patch": "04-world-postprocess-and-export.patch",
+      "path": "crates/tiny-glade/src/world_postprocess.rs",
+      "candidate": "world_postprocess.rs.candidate",
+      "new": true,
+      "additional_path": "crates/tiny-glade/src/lib.rs",
+      "additional_before_sha256": "5f7c5730084cd1279d5bdaec969778465b347848021e552edf1ab5af9a3bc941",
+      "dry_run_exit": 0,
+      "dry_run": "patching file 'crates/tiny-glade/src/world_postprocess.rs'\npatching file 'crates/tiny-glade/src/lib.rs'\n",
+      "patch_sha256": "0d19b7028732a85efb42ef649314da2334b20808554594dbf9c3b968f7dbc6f6",
+      "parse_exit": 0,
+      "parse_stderr": ""
+    }
+  ]
+}

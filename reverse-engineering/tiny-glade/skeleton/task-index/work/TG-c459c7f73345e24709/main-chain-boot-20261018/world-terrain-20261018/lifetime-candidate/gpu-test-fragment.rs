@@ -1,0 +1,284 @@
+/// Actual GraphPasses metadata/owner lifecycle regression. Append to the
+/// existing tests/render_host.rs to reuse graphics_device() and compute_words().
+/// The diagnostic shader writes out_data; it deliberately does not dereference
+/// BDA inputs. Passing this is NOT an original terrain shader result.
+#[test]
+fn device_address_chunks_keep_same_page_ranges_until_cancel_or_real_completion() {
+    use country_core::render::{
+        pass_builder::{
+            compute_pass_builder::{AccessRange, DispatchMode, RecordedComputePass},
+            pass_resource_access::{PassBinding, RecordingPassBuilder, ResourceAccess},
+            shader_uri::ComputePipelineDesc,
+        },
+        shader::boundary::ShaderBackend,
+    };
+    use rhapsody::{
+        raw::dynamic_constants::{
+            DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES as PAGE, DynamicConstants, DynamicConstantsConfig,
+        },
+        resource::GpuUse,
+        rg::{
+            resource::AccessRange as NativeRange,
+            vulkan::{AccessTable, VulkanGraphBackend, VulkanGraphSession},
+        },
+        shader_pipeline::{
+            compiled::{CompiledShaderPipeline, CompiledShaderStage, ShaderStage},
+            pipeline_desc::ComputePipelineDesc as FileDesc,
+            reflection::{
+                Binding, BindingArray, BindingKind, BindingLocation, BindingNameHash,
+                ShaderReflection,
+            },
+            shader_defines::ShaderDefines,
+        },
+    };
+    use std::{cell::RefCell, rc::Rc, sync::Arc};
+    use tiny_glade::render_host::{GraphPasses, HostTables, ShaderHost, TextureHost};
+    let Some(device) = graphics_device() else {
+        return;
+    };
+    assert!(
+        device.capabilities.buffer_device_address,
+        "this GPU regression requires the real BDA feature"
+    );
+    let root = tempfile::tempdir().unwrap();
+    let file = FileDesc {
+        source_path: "test/bda-metadata-owner".into(),
+        entry_point: "cs_main".into(),
+        defines: ShaderDefines::default(),
+    };
+    let location = BindingLocation { set: 0, binding: 0 };
+    let compiled = CompiledShaderPipeline {
+        stages: vec![CompiledShaderStage {
+            stage: ShaderStage::Compute,
+            entry_point: "cs_main".into(),
+            spirv: compute_words(false),
+        }],
+        source_dependencies: vec![],
+        reflection: ShaderReflection {
+            descriptor_sets: vec![vec![(
+                0,
+                Binding {
+                    kind: BindingKind::StorageBuffer,
+                    array: BindingArray::Fixed(1),
+                    name: "out_data".into(),
+                },
+            )]],
+            uniform_block: None,
+            binding_names: vec![("out_data".into(), location)],
+            binding_name_hashes: vec![(BindingNameHash::new("out_data").0, location)],
+            vertex_inputs: vec![],
+            local_size: Some([4, 1, 1]),
+            push_constant_size: 0,
+        },
+        trailing_bytes: vec![],
+    };
+    let path = root.path().join(file.compiled_file_path());
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(path, compiled.encode().unwrap()).unwrap();
+    let shaders = Arc::new(ShaderHost::new(device.clone(), root.path()).unwrap());
+    let desc = ComputePipelineDesc {
+        path: file.source_path,
+        entry: file.entry_point,
+        defines: vec![],
+    };
+    let pipeline = shaders
+        .create_compute_pipeline(
+            "BDA metadata diagnostic",
+            Arc::new(shaders.load_compiled_compute(&desc).unwrap()),
+        )
+        .unwrap();
+    shaders.prewarm(std::time::Duration::from_secs(10)).unwrap();
+    let buffers = Arc::new(BufferHost::new(device.clone()));
+    let textures = Arc::new(TextureHost::new(device.clone()));
+    let mut session = VulkanGraphSession::new(
+        VulkanGraphBackend::new(device.clone(), AccessTable::original()).unwrap(),
+    );
+
+    for submit in [false, true] {
+        // Bound to one full page: the next allocation can succeed only after
+        // the actual imported ranges have been released, not by adding a page.
+        let mut constants = DynamicConstants::with_config(
+            device.clone(),
+            DynamicConstantsConfig {
+                max_pages: 1,
+                max_backing_bytes: PAGE,
+                max_idle_pages: 1,
+            },
+        )
+        .unwrap();
+        let empty = constants.allocate(0).expect("original size0 allocation");
+        assert_eq!(empty.size, 0);
+        assert_ne!(empty.device_address().unwrap(), 0);
+        assert_eq!(constants.page_count(), 1);
+        let first = constants.allocate(16).unwrap();
+        let second = constants.allocate(32).unwrap();
+        assert!(Arc::ptr_eq(&empty.buffer, &first.buffer));
+        assert!(Arc::ptr_eq(&first.buffer, &second.buffer));
+        assert_eq!(
+            empty.offset, first.offset,
+            "size0 did not consume page bytes"
+        );
+        let first_range = NativeRange::Buffer {
+            offset: first.offset,
+            size: first.size,
+        };
+        let second_range = NativeRange::Buffer {
+            offset: second.offset,
+            size: second.size,
+        };
+        let first_bytes = [0x31; 16];
+        let second_bytes = [0xa7; 32];
+        first.write_bytes(&first_bytes).unwrap();
+        second.write_bytes(&second_bytes).unwrap();
+        let first_offset = first.offset;
+        let second_offset = second.offset;
+        let page = Arc::downgrade(&first.buffer);
+        // Exhaust the exact remaining page without declaring a fake read.
+        let aligned_after = constants.allocate(0).unwrap();
+        let tail = constants.allocate(PAGE - aligned_after.offset).unwrap();
+        drop(aligned_after);
+        drop(tail);
+        drop(empty); // zero read must never appear in metadata
+
+        let target = buffers
+            .create_buffer(
+                &BufferDesc::new(16, 0x22, 2),
+                "BDA metadata diagnostic output",
+                Some(&[0; 16]),
+            )
+            .unwrap();
+        let managed = buffers.managed_buffer(&target).unwrap();
+        let graph = Rc::new(RefCell::new(session.begin_frame().unwrap()));
+        let output = session
+            .import_frame_buffer(&mut graph.borrow_mut(), managed.shared(), 0x37)
+            .unwrap();
+        let mut passes = GraphPasses::new(graph.clone(), device.clone())
+            .unwrap()
+            .with_session(&mut session)
+            .unwrap()
+            .with_tables(HostTables {
+                buffers: buffers.clone(),
+                textures: textures.clone(),
+                shaders: shaders.clone(),
+            });
+        passes
+            .add_compute(
+                RecordedComputePass {
+                    name: "BDA metadata diagnostic",
+                    builder: RecordingPassBuilder {
+                        name: "BDA metadata diagnostic",
+                        accesses: vec![ResourceAccess {
+                            resource: output.raw(),
+                            access: 0x37,
+                            group: 0,
+                        }],
+                        ..Default::default()
+                    },
+                    bindings: vec![PassBinding::Buffer {
+                        resource: output.raw(),
+                    }],
+                    access_ranges: vec![AccessRange {
+                        resource_index: 0,
+                        access_index: 0,
+                    }],
+                    inactive_texture_bindings: vec![],
+                    preserving_buffers: vec![],
+                    preserving_texture_bindings: vec![],
+                    external_bindings: vec![],
+                    device_address_reads: vec![first, second],
+                    uniform_binder: None,
+                    push_constants: vec![],
+                    program: None,
+                    dispatch: DispatchMode::Threads { x: 4, y: 1, z: 1 },
+                },
+                &pipeline,
+            )
+            .unwrap();
+        // CPU chunk/RecordedComputePass owners are gone here. Graph imports own
+        // the two exact ranges of ONE physical page; zero had no readable range.
+        drop(passes);
+        let bda = graph.borrow().declaration().passes[0]
+            .accesses
+            .iter()
+            .filter(|a| a.access_code == 0x1a)
+            .copied()
+            .collect::<Vec<_>>();
+        assert_eq!(bda.len(), 2);
+        assert_eq!(bda[0].resource_index, bda[1].resource_index);
+        assert_eq!([bda[0].range, bda[1].range], [first_range, second_range]);
+        assert!(bda.iter().all(|a| a.synchronization_group == 1));
+        graph.borrow_mut().export(output, 0x26).unwrap();
+        let built = Rc::try_unwrap(graph).ok().unwrap().into_inner().build();
+        assert_eq!(constants.stats().referenced_pages, 1);
+        // Drop the Weak before admission: Weak itself intentionally blocks page
+        // reset in the existing allocator, so it must not create a false pass.
+        let page_owner = page.upgrade().unwrap();
+        let page_ptr = Arc::as_ptr(&page_owner) as usize;
+        drop(page_owner);
+        drop(page);
+        // No external Weak remains after this point.
+        assert!(
+            matches!(constants.allocate(16), Err(rhapsody::Error::Timeout)),
+            "an unsubmitted graph must retain its constants page"
+        );
+        if submit {
+            let receipt = session.execute_frame(built).unwrap();
+            assert!(
+                !receipt.receipts.is_empty(),
+                "actual Vulkan submission required"
+            );
+            session.wait_submits_done(10_000_000_000).unwrap();
+            let mut bytes = [0; 16];
+            managed.read_bytes(0, &mut bytes).unwrap();
+            assert_eq!(
+                bytes,
+                [100_u32, 101, 102, 103].map(u32::to_ne_bytes).concat()[..]
+            );
+            // Re-obtain the page through the allocator only after the session
+            // has released owners. The still-unwritten tail means this forces
+            // reset rather than append; bytes are observed before overwriting.
+        } else {
+            session.cancel_frame(built).unwrap();
+        }
+        assert_eq!(session.frame_import_count(), 0);
+        let reused = constants
+            .allocate(16)
+            .expect("cancel/completion released imported page");
+        assert_eq!(Arc::as_ptr(&reused.buffer) as usize, page_ptr);
+        assert_eq!(reused.offset, 0);
+        assert_eq!(constants.stats().page_reuses, 1);
+        // Reset does not clear contents: verify both exact CPU uploads after
+        // cancellation/completion and before writing the reused range.
+        let mut actual_first = [0; 16];
+        let mut actual_second = [0; 32];
+        reused
+            .buffer
+            .read_bytes(first_offset, &mut actual_first)
+            .unwrap();
+        reused
+            .buffer
+            .read_bytes(second_offset, &mut actual_second)
+            .unwrap();
+        assert_eq!(actual_first, first_bytes);
+        assert_eq!(actual_second, second_bytes);
+        if submit {
+            let mut uses = 0;
+            reused
+                .buffer
+                .visit_uses(&mut |cell| {
+                    uses += usize::from(!cell.snapshot().is_empty());
+                    assert!(cell.snapshot().is_reached(&device.poll().unwrap()));
+                    Ok(())
+                })
+                .unwrap();
+            assert_ne!(
+                uses, 0,
+                "metadata participated in the real command owner protocol"
+            );
+        }
+        drop(reused);
+        assert_eq!(constants.trim_idle(0).unwrap(), 1);
+        assert_eq!(constants.page_count(), 0);
+        assert!(buffers.release(&target));
+    }
+}

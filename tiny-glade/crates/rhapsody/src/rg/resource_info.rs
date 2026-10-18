@@ -106,6 +106,21 @@ pub struct AccessDeclaration {
     pub version: super::resource::AccessVersion,
     /// LOAD and in-place updates consume the contents of the previous version.
     pub reads_previous: bool,
+    /// Current graph capability: the configured shader cannot read these
+    /// contents. Binding, native access, range and lifetime remain declared.
+    /// This is not a field recovered from the original twelve-byte ledger.
+    pub contents_unused: bool,
+    /// Explicit caller contract: this read may consume undefined contents.
+    /// Unlike contents_unused it remains a real content read, preserving every
+    /// available producer, native access, synchronization and lifetime. It
+    /// neither initializes a resource nor permits a later ordinary read/export.
+    /// This is a current architecture capability, not original ledger ABI.
+    pub allow_undefined_contents: bool,
+}
+impl AccessDeclaration {
+    pub const fn reads_contents(&self, write: bool) -> bool {
+        !self.contents_unused && (!write || self.reads_previous)
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

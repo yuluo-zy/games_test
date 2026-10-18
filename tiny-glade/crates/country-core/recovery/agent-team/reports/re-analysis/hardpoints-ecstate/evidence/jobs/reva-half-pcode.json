@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface, DecompileOptions\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x141218e30\")\nf = prog.getFunctionManager().getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent\")\nout[\"signature\"] = str(f.getSignature())\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    # try simplified style\n    opts = d.getOptions()\n    opts.setSimplificationStyle(\"normalize\")\n    d.setOptions(opts)\n    res = d.decompileFunction(f, 300, monitor)\n    out[\"decompCompleted\"] = bool(res.decompileCompleted())\n    if not res.decompileCompleted():\n        out[\"error\"] = str(res.getErrorMessage())\n    else:\n        out[\"decompiled\"] = res.getDecompiledFunction().getC()\n    # Also capture high function pcode sample regardless\n    high = res.getHighFunction()\n    if high is not None:\n        ops = high.getPcodeOps()\n        sample = []\n        count = 0\n        while ops.hasNext() and count < 40:\n            monitor.checkCancelled()\n            sample.append(str(ops.next()))\n            count += 1\n        out[\"pcode_sample\"] = sample\nfinally:\n    d.dispose()\nprint(json.dumps(out))",
+      "timeoutSeconds": 400
+    },
+    "timeout_seconds": 500
+  }
+]

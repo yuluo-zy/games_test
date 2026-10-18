@@ -1,0 +1,163 @@
+
+void __cdecl country_core::systems::save::shadow_file::ShadowFile::mark_dirty(void)
+
+{
+  ulonglong *puVar1;
+  ulonglong *puVar2;
+  byte bVar3;
+  char cVar4;
+  undefined8 *extraout_RAX;
+  ulonglong uVar5;
+  code *pcVar6;
+  longlong in_RCX;
+  code *pcVar7;
+  ulonglong in_RDX;
+  uint uVar8;
+  ulonglong in_R8;
+  ulonglong uVar9;
+  ulonglong uVar10;
+  longlong lVar11;
+  ulonglong uVar12;
+  ulonglong uVar13;
+  ulonglong local_d8;
+  ulonglong local_d0;
+  ulonglong *local_c8;
+  code *local_c0;
+  ulonglong *local_b8;
+  code *local_b0;
+  ulonglong local_a8;
+  ulonglong local_a0;
+  ulonglong local_98;
+  undefined **local_90;
+  ulonglong *local_88;
+  ulonglong **local_80;
+  ulonglong local_78;
+  undefined8 local_70;
+  ulonglong *puStack_68;
+  ulonglong *local_60;
+  undefined8 *local_58;
+  undefined8 local_50;
+  undefined4 local_48;
+  undefined4 local_44;
+  undefined *local_40;
+  undefined8 local_38;
+  ulonglong **local_30;
+  undefined8 local_28;
+  undefined8 local_20;
+  
+  if (in_R8 <= in_RDX) {
+    return;
+  }
+  local_d0 = in_RDX >> 0xc;
+  local_d8 = ((in_R8 >> 0xc) + 1) - (ulonglong)((in_R8 & 0xfff) == 0);
+  if (4 < *(ulonglong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E) {
+    local_c8 = &local_d0;
+    local_c0 = core::fmt::num::imp::impl$9::fmt;
+    local_b8 = &local_d8;
+    local_b0 = core::fmt::num::imp::impl$9::fmt;
+    toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();
+    local_70 = *extraout_RAX;
+    puStack_68 = (ulonglong *)extraout_RAX[1];
+    local_44 = *(undefined4 *)(extraout_RAX + 2);
+    local_60 = (ulonglong *)&DAT_00000005;
+    local_58 = &anon_0de6f48e523060bc80b429b03e3c24c8_197_llvm_11933763432560700012;
+    local_50 = 0x28;
+    local_40 = &DAT_142aad220;
+    local_38 = 2;
+    local_30 = &local_c8;
+    local_28 = 2;
+    local_20 = 0;
+    local_90 = (undefined **)0x0;
+    local_88 = &anon_0de6f48e523060bc80b429b03e3c24c8_197_llvm_11933763432560700012;
+    local_80 = (ulonglong **)&DAT_00000028;
+    local_78 = 0;
+    local_48 = 1;
+    ::log::__private_api::impl$2::log();
+  }
+  uVar9 = *(ulonglong *)(in_RCX + 0x68);
+  local_98 = uVar9 >> 3;
+  if (local_98 < local_d8) {
+    bitvec::vec::BitVec::resize<usize,bitvec::order::Lsb0>();
+    uVar9 = *(ulonglong *)(in_RCX + 0x68);
+    local_98 = uVar9 >> 3;
+  }
+  local_a8 = local_d0;
+  uVar5 = local_d8 - local_d0;
+  local_a0 = local_d8;
+  if (((local_d8 < local_d0) || (local_98 < local_d8)) || (local_98 < local_d0)) {
+    local_c8 = &local_a8;
+    local_c0 = core::ops::range::impl$1::fmt<usize>;
+    local_b8 = &local_98;
+    local_b0 = core::fmt::num::imp::impl$9::fmt;
+    local_90 = &PTR_s_range_out_of_bounds__142aabe08;
+    local_88 = (ulonglong *)0x2;
+    local_70 = 0;
+    local_80 = &local_c8;
+    local_78 = 2;
+                    // WARNING: Subroutine does not return
+    core::panicking::panic_fmt();
+  }
+  uVar10 = (ulonglong)((uint)uVar9 & 7) + (ulonglong)((uint)*(ulonglong *)(in_RCX + 0x60) & 7) * 8 +
+           local_d0;
+  uVar8 = (uint)uVar10;
+  uVar12 = (ulonglong)(uVar8 & 7);
+  uVar13 = (ulonglong)(uVar8 & 0x38);
+  uVar9 = uVar13 + uVar12;
+  uVar13 = uVar12 + (uVar5 & 0x1fffffffffffffff) + uVar13;
+  lVar11 = ((uVar13 >> 6) + 1) - (ulonglong)((uVar13 & 0x3f) == 0);
+  uVar13 = uVar9;
+  if ((uVar5 & 0x1fffffffffffffff) != 0) {
+    if ((uVar5 & 0x1fffffffffffffff) <= 0x40 - uVar9) {
+      cVar4 = (char)uVar5 + (char)uVar9;
+      goto joined_r0x00014091a67d;
+    }
+    bVar3 = (char)uVar5 - (char)(0x40 - uVar9) & 0x3f;
+    uVar13 = (ulonglong)(byte)((bVar3 == 0) << 6 | bVar3);
+  }
+  cVar4 = (char)uVar13;
+joined_r0x00014091a67d:
+  uVar5 = (*(ulonglong *)(in_RCX + 0x60) & 0xfffffffffffffff8) + (uVar10 >> 6) * 8;
+  if (lVar11 == 0) {
+    pcVar6 = bitvec::domain::Domain::empty<wyz::comu::Const,usize,bitvec::order::Lsb0>;
+  }
+  else {
+    pcVar7 = bitvec::domain::Domain::spanning<wyz::comu::Const,usize,bitvec::order::Lsb0>;
+    if (cVar4 != '@') {
+      pcVar7 = bitvec::domain::Domain::partial_head<wyz::comu::Mut,usize,bitvec::order::Lsb0>;
+    }
+    if (uVar9 != 0) {
+      pcVar7 = bitvec::domain::Domain::partial_head<wyz::comu::Mut,usize,bitvec::order::Lsb0>;
+    }
+    pcVar6 = bitvec::domain::Domain::
+             partial_tail<wyz::comu::Mut,core::cell::Cell<usize>,bitvec::order::Lsb0>;
+    if (cVar4 == '@') {
+      pcVar6 = pcVar7;
+    }
+    if (((uVar9 != 0) && (cVar4 != '@')) &&
+       (pcVar6 = bitvec::domain::Domain::
+                 major<wyz::comu::Const,core::cell::Cell<usize>,bitvec::order::Lsb0>, lVar11 == 1))
+    {
+      pcVar6 = bitvec::domain::Domain::minor<wyz::comu::Const,usize,bitvec::order::Lsb0>;
+    }
+  }
+  (*pcVar6)(&local_90,uVar5,lVar11,uVar9,cVar4);
+  puVar2 = local_60;
+  puVar1 = puStack_68;
+  if (local_90 != (undefined **)0x0) {
+    if (local_80 != (ulonglong **)0x0) {
+      *local_80 = (ulonglong *)((ulonglong)*local_80 | local_78);
+      uVar5 = local_78;
+    }
+    if (local_88 != (ulonglong *)0x0) {
+      memset(local_90,(int)CONCAT71((int7)(uVar5 >> 8),0xff),(longlong)local_88 << 3);
+    }
+    local_88 = puVar1;
+    local_80 = (ulonglong **)puVar2;
+    if (puVar1 == (ulonglong *)0x0) {
+      return;
+    }
+  }
+  *local_88 = *local_88 | (ulonglong)local_80;
+  return;
+}
+

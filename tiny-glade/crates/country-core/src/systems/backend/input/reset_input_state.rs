@@ -1,46 +1,73 @@
-//! `reset_input_state.rs` — 输入状态复位（B 0x140942b00，O）。
+//! B reset_input_state @0x140942b00.
 //!
-//! 证据：`reconstruction/country-core-render/wp20/analysis/0x140942b00_reset_input_state.txt`
-//! 与 `chapters/systems/backend/input/reset_input_state.rs.md`（wp20 合同复核）。
-//!
-//! 算法（O）：
-//! 1. **清零并重排**：翻译状态资源 `current @0x00..0x58` ← `buffer @0x58..0xa8`（11 qword
-//!    恒等置换），并清零 `buffer`（`0x58..0xa8`）。
-//! 2. **按事件双缓冲修剪**：排空两个 `Events<T>` 双 VecDeque（计数回写；本实现消费
-//!    `InputCursorMoved` 与 `InputReplayCommand` 两个事件流，语义与 bevy 排空一致）。
-//! 3. **`ButtonInput::reset_all<KeyCode>()`**：复位键盘按键沿状态。crate 无 bevy_input
-//!    依赖，用 [`crate::systems::backend::input::button_input::KeyButtonInput`] 等价抽象
-//!    （`reset_all` 清空 just-pressed 沿）。
-//! 4. 保留 `InputStream` 结构（mode/index 不动）——仅供录制重来。
+//! The original in_set helper @0x14168c0e0 explicitly names ActionSetValues,
+//! NewSessionStartedCmd, SessionLoadedCmd and ButtonInput<KeyCode>. Earlier
+//! recovery incorrectly substituted translation state and cursor/replay events
+//! just because those types had similar byte shapes.
 use bevy_ecs::prelude::*;
 
-use super::{
-    button_input::KeyButtonInput,
-    input_record_replay::{InputReplayCommand, InputTranslationStateResource},
-    translate_input_to_cursor_moved::InputCursorMoved,
+use super::button_input::KeyButtonInput;
+use crate::{
+    input::action_set::ActionSetValues,
+    resources::session::{NewSessionStartedCmd, SessionLoadedCmd},
 };
 
-/// `reset_input_state` @0x140942b00。
-///
-/// decomp 参数：`in_RCX` = ResMut<翻译状态资源>（22 qword 置换）、`in_RDX`/`in_R8` = 两个
-/// Events 双缓冲、`in_R9` = ResMut<ButtonInput<KeyCode>>（本实现为 `KeyButtonInput`）。
 pub fn reset_input_state(
-    mut translation: ResMut<InputTranslationStateResource>,
-    mut cursor_moved: EventReader<InputCursorMoved>,
-    mut replay_commands: EventReader<InputReplayCommand>,
+    mut values: ResMut<ActionSetValues>,
+    mut new_sessions: EventReader<NewSessionStartedCmd>,
+    mut loaded_sessions: EventReader<SessionLoadedCmd>,
     mut keyboard: ResMut<KeyButtonInput>,
 ) {
-    // 1. buffer → current 置换（O：`new[i] = old[0xb+i]`，i in 0..11），buffer 清零。
-    let buffer = translation.buffer;
-    translation.current = buffer;
-    translation.buffer = Default::default();
+    // Native 11-qword move: previous <- current; current <- zero, every
+    // frame. It occurs even when neither session event has arrived.
+    values.previous = values.current;
+    values.current = Default::default();
 
-    // 2. 排空事件双缓冲（O：两个 Events 各自计算未消费计数并回写）。
-    let had_cursor = cursor_moved.read().next().is_some();
-    let had_replay = replay_commands.read().next().is_some();
+    // Preserve short-circuit reader consumption: a new-session event leaves
+    // the loaded-session reader untouched until the next call.
+    if new_sessions.read().last().is_none() && loaded_sessions.read().last().is_none() {
+        return;
+    }
+    // 会话切换时同时清除按住、按下和释放状态，复用 Bevy 的完整复位语义。
+    keyboard.reset_all();
+}
 
-    // 3. 有任一事件 → 复位键盘按键沿（O：`reset_all<KeyCode>`）。
-    if had_cursor || had_replay {
-        keyboard.reset_all();
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_frame_rotates_values_but_only_session_events_reset_held_keys() {
+        let mut world = World::new();
+        let mut values = ActionSetValues::default();
+        values.current.digital[3] = true;
+        world.insert_resource(values);
+        let mut keyboard = KeyButtonInput::default();
+        keyboard.press(0x14);
+        world.insert_resource(keyboard);
+        world.init_resource::<Events<NewSessionStartedCmd>>();
+        world.init_resource::<Events<SessionLoadedCmd>>();
+        let mut schedule = Schedule::default();
+        schedule.add_systems(reset_input_state);
+        schedule.run(&mut world);
+        assert!(world.resource::<ActionSetValues>().previous.digital[3]);
+        assert!(!world.resource::<ActionSetValues>().current.digital[3]);
+        assert!(world.resource::<KeyButtonInput>().pressed(0x14));
+        world.send_event(SessionLoadedCmd);
+        schedule.run(&mut world);
+        assert!(
+            world
+                .resource::<KeyButtonInput>()
+                .get_pressed()
+                .next()
+                .is_none()
+        );
+        assert!(
+            world
+                .resource::<KeyButtonInput>()
+                .get_just_pressed()
+                .next()
+                .is_none()
+        );
     }
 }

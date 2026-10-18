@@ -370,6 +370,7 @@ impl<'p> DrawBuilder<'p> {
                     GpuOwned::new(DescriptorSetBinding::UniformBuffer {
                         size: shader.uniform_block_size,
                         keepalive: c.keepalive.clone(),
+                        lease: c.lease.clone(),
                     }),
                 );
                 constants = Some(c);
@@ -513,6 +514,40 @@ impl<'p> DrawBuilder<'p> {
         self.rg_storage_access(name_hash, buffer_resource, ACCESS_RG_STORAGE_WRITE, 0)
     }
 
+    /// Current-host content intent for an original fragment atomic/RMW.
+    /// It keeps the native access and real clear/upload dependency intact.
+    pub fn preserve_storage_buffer_contents(mut self, hash: u64) -> Self {
+        let Some(binding) = self.lookup_binding(hash) else { return self; };
+        let access = self.packet.get().accesses.iter().rev()
+            .find(|access| access.binding_index == binding)
+            .expect("preserving raster buffer requires its actual graph binding");
+        let actual = &self.pass.bindings[access.slot as usize];
+        assert!(!self.pass.texture_slots.values().any(|slot| *slot == access.slot) && access_is_write(actual.access_type),
+            "preserving raster buffer requires a buffer write");
+        let packet = self.packet.get_mut();
+        if !packet.preserving_buffer_bindings.contains(&binding) {
+            packet.preserving_buffer_bindings.push(binding);
+        }
+        self
+    }
+
+    /// A proven uniform configuration prevents all texel fetches from this
+    /// binding. Preserve the actual descriptor, owner and native sync access.
+    pub fn inactive_texture_contents(mut self, hash: u64) -> Self {
+        let Some(binding) = self.lookup_binding(hash) else { return self; };
+        let access = self.packet.get().accesses.iter().rev()
+            .find(|access| access.binding_index == binding)
+            .expect("inactive raster texture requires its actual graph binding");
+        let actual = &self.pass.bindings[access.slot as usize];
+        assert!(self.pass.texture_slots.values().any(|slot| *slot == access.slot) && !access_is_write(actual.access_type),
+            "inactive raster texture requires a non-writing image binding");
+        let packet = self.packet.get_mut();
+        if !packet.inactive_texture_bindings.contains(&binding) {
+            packet.inactive_texture_bindings.push(binding);
+        }
+        self
+    }
+
     /// `bind_external_storage_buffer`（0x140906400）：名字命中后取 `get_vk_buffer`（`None` → `Option::unwrap`
     /// panic，draw_builder.rs:189:89），把 `{buffer, 0, u64::MAX}` + 句柄克隆 `insert` 进 `packet.bindings`。
     pub fn bind_external_storage_buffer(mut self, name_hash: u64, buffer: &ManagedHandle) -> Self {
@@ -545,13 +580,19 @@ impl<'p> DrawBuilder<'p> {
         slot_name: &'static str,
         binding_name_hash: u64,
     ) -> Self {
-        self.read_storage_buffer_hash(slot_name, T::rg_buffer_hash(), binding_name_hash)
+        self.read_storage_buffer_hash(
+            slot_name,
+            T::rg_buffer_hash(),
+            core::any::type_name::<T>(),
+            binding_name_hash,
+        )
     }
 
     fn read_storage_buffer_hash(
         mut self,
         slot_name: &'static str,
         rg_hash: u64,
+        type_name: &'static str,
         binding_name_hash: u64,
     ) -> Self {
         let slot = match self.pass.buffer_slots.get(slot_name).copied() {
@@ -560,7 +601,7 @@ impl<'p> DrawBuilder<'p> {
                 let resource = self
                     .pass
                     .host
-                    .rg_buffer_resource(rg_hash)
+                    .rg_buffer_resource_typed(rg_hash, type_name)
                     .expect("no entry found for key");
                 self.pass.accesses.push(PassAccess {
                     resource,
@@ -747,11 +788,11 @@ impl<'p> DrawBuilder<'p> {
 
     /// 取 SSBO 间接缓冲的 rg 资源并登记访问（`get_rg_buffer<DrawIndirectBuffer/DrawIndexedIndirectBuffer>`
     /// + `add_resource_access(res, 2, 1)`）。
-    fn indirect_resource(&mut self, rg_hash: u64) -> u32 {
+    fn indirect_resource<D: SsboType>(&mut self) -> u32 {
         let resource = self
             .pass
             .host
-            .rg_buffer_resource(rg_hash)
+            .rg_buffer_resource_typed(D::rg_buffer_hash(), core::any::type_name::<D>())
             .expect("no entry found for key");
         self.pass.accesses.push(PassAccess {
             resource,
@@ -763,7 +804,7 @@ impl<'p> DrawBuilder<'p> {
 
     /// `multi_draw_indirect`（0x1409076b0）：种类 5。`D` = `DrawIndirectBuffer` 的 SSBO 类型。
     pub fn multi_draw_indirect<D: SsboType>(mut self, arg_50: u64, arg_58: u64) {
-        let buffer = self.indirect_resource(D::rg_buffer_hash());
+        let buffer = self.indirect_resource::<D>();
         self.finish(DrawKind::MultiDrawIndirect {
             buffer,
             arg_50,
@@ -774,7 +815,7 @@ impl<'p> DrawBuilder<'p> {
     /// `multi_draw_indexed_indirect`（0x140907990）：种类 7；`+0x48 = idx * 0x14`；`+0x60 = Some`、
     /// `+0x64 = INDEXED_INDIRECT_INDEX_COUNTS[idx]`（越界 → panic，原版无检查）。
     pub fn multi_draw_indexed_indirect<D: SsboType>(mut self, idx: u32, arg_50: u64, arg_58: u64) {
-        let buffer = self.indirect_resource(D::rg_buffer_hash());
+        let buffer = self.indirect_resource::<D>();
         let first_index_count = INDEXED_INDIRECT_INDEX_COUNTS[idx as usize];
         self.finish(DrawKind::IndexedIndirect {
             buffer,
@@ -863,6 +904,7 @@ impl<'p> DrawBuilder<'p> {
         self.read_storage_buffer_hash(
             COLOR_LIBRARY_SLOT_NAME,
             C::rg_buffer_hash(),
+            core::any::type_name::<C>(),
             COLOR_LIBRARY_BINDING_HASH,
         )
     }
@@ -964,15 +1006,15 @@ impl<'p> DrawBuilder<'p> {
     ///
     /// O 顺序（与 ComputePass 版 0x1415fc230 的差别：走槽表 + 多一次墙色读，访问码 0x1f）：
     ///  1. 从 world 取 `AssetSsboLibrary`；对 `RtTrianglesSsbo` 与 `RtBvhSsbo`：`FrozenMap::get` → 缺失 `Option::unwrap`；
-    ///     `assert_eq!(state.name, type_name::<T>())`（`assert_failed<&str,&str>`）→ 取 `Buffer`，其首个字低 32 位留作 uniform 值；
+    ///     `assert_eq!(state.name, type_name::<T>())`（`assert_failed<&str,&str>`）→ 取 `Buffer`，InstanceBuffer 的首个计数字段低 32 位留作 uniform 值；
     ///  2. 三个槽 `"RtTriangles"`(len 0xb) / `"RtTriangleMeta"`(0xe) / `"RtBvh"`(5)：槽表 `rustc_entry`，空位 →
     ///     `read_access_buffer<T>`（访问 0x1f、同步组 1）并插槽；再按 binding 名 `0x168ddb2c3b5f38a9` / `0x47ddebfb264383d0` /
     ///     `0x339e76846042a271` 查名字表，命中 `packet.accesses.push`——即 [`DrawBuilder::read_storage_buffer`] 的同一路径；
     ///  3. `read_storage_buffer<WallColorIdSsbo>`（槽 "WallColorIds"，binding `0xe9701a257aa8828c`）；
     ///  4. `write_uniform<u32>`：键 `0x1c9f2eef0ac739ac` ← RtTriangles 缓冲字，键 `0xc2b7f2fdf5e21521` ← RtBvh 缓冲字
-    ///     （两处 uniform 值与 ComputePass 版一致；缓冲字的含义 I：`Buffer+0` 低 32 位）。
+    ///     （两处 uniform 值与 ComputePass 版一致；已核为 instance_count，Buffer 从 +8 开始）。
     ///
-    /// 缓冲字经 [`PassHost::ssbo_buffer_word`](crate::render::pass_builder::draw_stream::PassHost::ssbo_buffer_word)
+    /// 缓冲字经 [`PassHost::ssbo_instance_count`](crate::render::pass_builder::draw_stream::PassHost::ssbo_instance_count)
     /// 取得（库查询在宿主侧；宿主未提供 → `Option::unwrap` panic，与原版“库里没有”同一路径）。
     pub fn bind_ray_tracing<Tri: SsboType, Meta: SsboType, Bvh: SsboType, Wall: SsboType>(
         self,
@@ -980,12 +1022,12 @@ impl<'p> DrawBuilder<'p> {
         let triangles_word = self
             .pass
             .host
-            .ssbo_buffer_word(Tri::rg_buffer_hash())
+            .ssbo_instance_count_typed(Tri::rg_buffer_hash(), core::any::type_name::<Tri>())
             .expect("called `Option::unwrap()` on a `None` value");
         let bvh_word = self
             .pass
             .host
-            .ssbo_buffer_word(Bvh::rg_buffer_hash())
+            .ssbo_instance_count_typed(Bvh::rg_buffer_hash(), core::any::type_name::<Bvh>())
             .expect("called `Option::unwrap()` on a `None` value");
         self.read_storage_buffer::<Tri>(RT_TRIANGLES_SLOT_NAME, RT_TRIANGLES_BINDING_HASH)
             .read_storage_buffer::<Meta>(RT_TRIANGLE_META_SLOT_NAME, RT_TRIANGLE_META_BINDING_HASH)
@@ -1380,10 +1422,22 @@ mod tests {
     #[test]
     fn rg_texture_binding_keeps_the_requested_view_desc() {
         let (mut pass, _l) = make_pass();
-        let tex = AttachmentTexture { id: 9, extent: (4, 4), format: 37, sample_count: 1 };
-        let view = TextureViewDesc::new().base_mip_level(2).level_count(Some(1));
+        let tex = AttachmentTexture {
+            id: 9,
+            extent: (4, 4),
+            format: 37,
+            sample_count: 1,
+        };
+        let view = TextureViewDesc::new()
+            .base_mip_level(2)
+            .level_count(Some(1));
         builder(&mut pass)
-            .bind_texture_to_draw_builder(BindTexture::RgHandle(&tex), 0x10, ACCESS_SAMPLED_IMAGE, Some(&view))
+            .bind_texture_to_draw_builder(
+                BindTexture::RgHandle(&tex),
+                0x10,
+                ACCESS_SAMPLED_IMAGE,
+                Some(&view),
+            )
             .draw_no_vao(3);
         assert_eq!(pass.bindings.len(), 1);
         assert_eq!(pass.bindings[0].resource_index, 9);
@@ -1391,7 +1445,12 @@ mod tests {
         // 不带视图：None（默认视图）。
         let tex2 = AttachmentTexture { id: 10, ..tex };
         builder(&mut pass)
-            .bind_texture_to_draw_builder(BindTexture::RgHandle(&tex2), 0x10, ACCESS_SAMPLED_IMAGE, None)
+            .bind_texture_to_draw_builder(
+                BindTexture::RgHandle(&tex2),
+                0x10,
+                ACCESS_SAMPLED_IMAGE,
+                None,
+            )
             .draw_no_vao(3);
         assert_eq!(pass.bindings[1].view, None);
         finish_pass(pass);
@@ -1435,6 +1494,25 @@ mod tests {
         // offset 0x3c 处写 8 字节越过 0x40 块 → 越界（slice 索引失败）。
         let (mut pass, _l) = make_pass();
         let _ = builder(&mut pass).optional_uniform(0x23, [1u32, 2u32]);
+    }
+
+    #[test]
+    fn raster_content_intents_only_tag_actual_reflected_bindings() {
+        let (mut pass, _) = make_pass();
+        let texture = AttachmentTexture { id: 50, extent: (4,4), format: 37, sample_count: 1 };
+        let b = builder(&mut pass)
+            .bind_texture_to_draw_builder(BindTexture::RgHandle(&texture), 0x10, ACCESS_SAMPLED_IMAGE, None)
+            .inactive_texture_contents(0x10).inactive_texture_contents(0x10)
+            .write_rg_storage_buffer(0x11, 60)
+            .preserve_storage_buffer_contents(0x11).preserve_storage_buffer_contents(0x11)
+            .inactive_texture_contents(0xdead).preserve_storage_buffer_contents(0xdead);
+        assert_eq!(b.packet().inactive_texture_bindings, [3]);
+        assert_eq!(b.packet().preserving_buffer_bindings, [4]);
+        assert_eq!(b.packet().accesses.len(), 2);
+        b.discard();
+        assert_eq!(pass.accesses[0].access, ACCESS_SAMPLED_IMAGE);
+        assert_eq!(pass.accesses[1].access, ACCESS_RG_STORAGE_WRITE);
+        finish_pass(pass);
     }
 
     #[test]

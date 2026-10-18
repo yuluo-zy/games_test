@@ -1,0 +1,17 @@
+//! Actual olden clearing output (B startup_olden@1415539d0).
+//! Native records have Rectangle2d24 followed by a byte kind at24; the owning
+//! resource is a Vec. Frame waiting belongs to the consumer Local, not here.
+use bevy_ecs::resource::Resource;
+use utils::geometry::Rectangle2d;
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PreplacedClutterRegion {
+    pub shape: Rectangle2d,
+    /// Original olden table: rocks0, logs1, stumps2.
+    pub kind: u8,
+}
+
+#[derive(Resource, Clone, Debug, Default)]
+pub struct PreplacedAutoClutter {
+    pub regions: Vec<PreplacedClutterRegion>,
+}

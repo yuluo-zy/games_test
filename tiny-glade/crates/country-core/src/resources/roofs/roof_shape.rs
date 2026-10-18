@@ -1,10 +1,12 @@
 //! B Roof component and its observed 0x58-byte game fields.
 //! Geometry is shared with the recovered system-roof crate. The byte projection
-//! preserves appearance fields whose original Rust enum schema is not yet known.
+//! retains the existing runtime layout; Serde projects the original named fields.
 
 use crate::resources::walls::WallId;
 use bevy_ecs::component::Component;
 use glam::Vec3;
+use serde::ser::{SerializeStruct, SerializeStructVariant};
+use serde::{Serialize, Serializer};
 
 #[derive(Component, Clone, Debug)]
 pub struct Roof(pub(crate) [u8; 88]);
@@ -25,7 +27,9 @@ impl Roof {
     }
     /// B `Roof::new`（0x1408e31c0；`new_observed` 的 8 参数面）：
     /// {wall_id, params(0x24..0x40), shape(0x08..0x24), floor(+0x4c),
-    ///  animation(+0x50), style_tag(+0x54), gable/flat 数据(+0x40..0x4c)}。
+    ///  color_id(+0x50), gable style(+0x54), flat style(+0x40..0x4c)}。
+    /// `animation`/`gable_data` retain the existing parameter names; the native
+    /// serializer identifies their stored fields as color_id / flat_roof_style.
     pub fn new(
         wall: [u8; 8],
         params: [u8; 28],
@@ -86,7 +90,10 @@ impl Roof {
             [self.float_at(0x1c), self.float_at(0x20)]
         }
     }
-    pub fn shape_at(&self, coordinate: f32) -> crate::resources::roofs::geometry::surface::RoofSection {
+    pub fn shape_at(
+        &self,
+        coordinate: f32,
+    ) -> crate::resources::roofs::geometry::surface::RoofSection {
         crate::resources::roofs::geometry::surface::section(&self.0, coordinate)
     }
     pub fn parameters(&self) -> crate::resources::roofs::geometry::parameters::RoofParameterBlock {
@@ -110,8 +117,16 @@ impl Roof {
         bottom: f32,
         top: f32,
         height: f32,
-    ) -> Result<crate::resources::roofs::geometry::surface::Curve2, crate::resources::roofs::geometry::surface::CurveError> {
-        crate::resources::roofs::geometry::surface::world_profile_curve(self.float_at(0x2c), bottom, top, height)
+    ) -> Result<
+        crate::resources::roofs::geometry::surface::Curve2,
+        crate::resources::roofs::geometry::surface::CurveError,
+    > {
+        crate::resources::roofs::geometry::surface::world_profile_curve(
+            self.float_at(0x2c),
+            bottom,
+            top,
+            height,
+        )
     }
     /// `Roof::rotation_yaw_radians`（0x1408e3b10，O）：矩形→`atan2(−frame.z, frame.x)`
     /// （frame.z 符号位翻转 0x1429258f0）；圆→`−π/2 − CircularF32(center_y).as_f32()`
@@ -127,13 +142,22 @@ impl Roof {
         }
     }
     /// `Roof::roof_shape_at_intersection_y`（0x1408e3820，O）：高度 y 处截面——
-    /// y==floor 直接拷帧体（本实现以 t=0 截面近似）；y 越界 → [`RoofIntersectionSection::OutOfBounds`]；
+    /// y==floor 直接拷 `roof[8..0x24]` 28 字节原始帧体（机器码 0x1408e3820 y==floor 分支
+    /// 逐 8 字节拷贝：out[0..]=roof[8..]、out[0xc..]=roof[0x14..]、out[0x14..]=roof[0x1c..]，
+    /// 覆盖 out[0..0x1c]=roof[8..0x24]；旧实现以 t=0 截面近似、末 8 字节=计算出的 bottom 尺寸≠原始 dims）；
+    /// y 越界 → [`RoofIntersectionSection::OutOfBounds`]；
     /// 否则 `t=(y−floor)/cap` 处截面（借 system_roof surface::section）。
     pub fn roof_shape_at_intersection_y(&self, y: f32) -> RoofIntersectionSection {
         let b = &self.0;
         let floor = self.float_at(0x4c);
         if y == floor {
-            return RoofIntersectionSection::Section(crate::resources::roofs::geometry::surface::section(b, 0.0));
+            // fresh 0x1408e3820 y==floor 分支：逐 8 字节拷贝
+            // out[0..]=roof[8..]、out[8..]=roof[0x10..]、out[0xc..]=roof[0x14..]、
+            // out[0x14..]=roof[0x1c..] → out[0..0x1c] = roof[8..0x24] 全部 28 字节原样。
+            // 用原始帧体变体保留全部字节（tag word@roof[8]、Circle 尾部@out[0x14..0x1c]）。
+            let mut raw = [0u8; 28];
+            raw.copy_from_slice(&b[8..0x24]);
+            return RoofIntersectionSection::RawSection(raw);
         }
         let cap = cap_height(b);
         if y < floor || cap + floor <= y {
@@ -151,6 +175,9 @@ impl Roof {
 /// （`crate::resources::roofs::geometry::surface::RoofSection` 不 impl PartialEq，故手写无 PartialEq。）
 #[derive(Clone, Debug)]
 pub enum RoofIntersectionSection {
+    /// y==floor：原样 28 字节帧体 `roof[8..0x24]`（fresh 0x1408e3820 逐 8 字节拷贝；
+    /// 含 tag word 全部字节与 Circle 尾部，非解码近似）。
+    RawSection([u8; 28]),
     /// 圆/矩截面（system_roof 同构）。
     Section(crate::resources::roofs::geometry::surface::RoofSection),
     /// 高度越界（原 tag 2）。
@@ -217,7 +244,10 @@ fn cap_height(b: &[u8; 88]) -> f32 {
     let smooth = (3.0 - (t + t)) * t * t;
     let cap_base = smooth * 12.0 + (1.0 - smooth) * base;
     assert!(cap_base >= 0.0, "original height cap assertion");
-    sse_min(cap_base, sse_max(0.0, height_01 * 12.0 + (1.0 - height_01) * 0.4))
+    sse_min(
+        cap_base,
+        sse_max(0.0, height_01 * 12.0 + (1.0 - height_01) * 0.4),
+    )
 }
 
 /// `RoofShapeParams`（28 字节参数块；B 序列化映射 parameters.rs 已建立）。
@@ -257,12 +287,13 @@ impl RoofShapeParams {
     }
 }
 
-/// `GableRoofStyle`（B 风格枚举；serde 变体串 "Matching"/"Override"，8 字节）。
+/// B style byte: 0 = Stepped, 1 = Overhang. The existing Rust variant names
+/// remain API-compatible; their serialized names follow the native schema.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum GableRoofStyle {
-    #[serde(rename = "Matching")]
+    #[serde(rename = "Stepped")]
     Matching,
-    #[serde(rename = "Override")]
+    #[serde(rename = "Overhang")]
     Override,
 }
 impl GableRoofStyle {
@@ -276,7 +307,8 @@ impl GableRoofStyle {
     }
 }
 
-/// `FlatRoofStyle` 观察投影（12B = {tag u8, pattern u8, payload}）。
+/// B FlatRoofStyle: tag byte0; Override has material byte1, ColorId u32@4,
+/// and pattern_id u32@8. Inactive payload and padding remain uninterpreted.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FlatRoofStyle([u8; 12]);
 impl FlatRoofStyle {
@@ -289,7 +321,8 @@ impl FlatRoofStyle {
     pub fn tag(&self) -> u8 {
         self.0[0]
     }
-    /// `pattern_id`（内联 86，I）：风格花纹 id（匹配序列化串）= 字节 +1。
+    /// Legacy byte observer retained for source compatibility. This reads the
+    /// material byte; native serialized `pattern_id` is the independent u32@+8.
     pub fn pattern_id(&self) -> u8 {
         self.0[1]
     }
@@ -299,6 +332,88 @@ impl FlatRoofStyle {
             0 => other,
             1 => false,
             _ => self.0[1] != 0,
+        }
+    }
+}
+
+// B capture 0x1417a2252 -> collect_seq 0x14158faf0 -> Roof serializer
+// 0x1416ea700. This is a logical Serde projection, not a native ABI declaration.
+impl Serialize for Roof {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use crate::resources::color_id::ColorId;
+        use crate::systems::wall::valid_enclosure::ShapeParameters;
+
+        let mut state = serializer.serialize_struct("Roof", 7)?;
+        state.serialize_field("id", &self.wall_id().0)?;
+        state.serialize_field("params", &RoofShapeParams::from_roof(&self.0))?;
+        state.serialize_field(
+            "wall_shape",
+            &ShapeParameters::from_observed(self.0[8..0x24].try_into().unwrap()),
+        )?;
+        state.serialize_field("pivot_y", &self.floor_y())?;
+        state.serialize_field(
+            "color_id",
+            &ColorId(u32::from_le_bytes(self.0[0x50..0x54].try_into().unwrap())),
+        )?;
+        let gable_style = if self.0[0x54] == 0 {
+            GableRoofStyle::Matching
+        } else {
+            GableRoofStyle::Override
+        };
+        state.serialize_field("gable_style", &gable_style)?;
+        state.serialize_field(
+            "flat_roof_style",
+            &FlatRoofStyle::from_observed(self.0[0x40..0x4c].try_into().unwrap()),
+        )?;
+        state.end()
+    }
+}
+
+// B 0x1416eaa40: all seven fields are emitted, including the independent rim byte.
+impl Serialize for RoofShapeParams {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut state = serializer.serialize_struct("RoofShapeParams", 7)?;
+        state.serialize_field("profile_01", &self.profile_01())?;
+        state.serialize_field("height_01", &self.height_01())?;
+        state.serialize_field(
+            "tip_offset_01",
+            &glam::Vec2::new(at(&self.0, 0), at(&self.0, 4)),
+        )?;
+        state.serialize_field("ridge_length_01", &self.ridge_length_01())?;
+        let direction = if self.0[24] == 0 {
+            tg_history::RidgeDirection::Width
+        } else {
+            tg_history::RidgeDirection::Length
+        };
+        state.serialize_field("ridge_dir", &direction)?;
+        state.serialize_field("eave_length_01", &at(&self.0, 20))?;
+        let rim = if self.0[25] == 0 { "Rim" } else { "NoRim" };
+        state.serialize_field("flat_rim_style", rim)?;
+        state.end()
+    }
+}
+
+// B 0x1416e8f20. The unit variants never read inactive union payload/padding.
+impl Serialize for FlatRoofStyle {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self.tag() {
+            0 => serializer.serialize_unit_variant("FlatRoofStyle", 0, "Matching"),
+            1 => serializer.serialize_unit_variant("FlatRoofStyle", 1, "MatchingStoneOnly"),
+            _ => {
+                let mut state =
+                    serializer.serialize_struct_variant("FlatRoofStyle", 2, "Override", 3)?;
+                let color = crate::resources::color_id::ColorId(u32::from_le_bytes(
+                    self.0[4..8].try_into().unwrap(),
+                ));
+                state.serialize_field("color_id", &color)?;
+                let material = if self.0[1] == 0 { "Stone" } else { "Wood" };
+                state.serialize_field("material", material)?;
+                state.serialize_field(
+                    "pattern_id",
+                    &u32::from_le_bytes(self.0[8..12].try_into().unwrap()),
+                )?;
+                state.end()
+            }
         }
     }
 }
@@ -352,53 +467,142 @@ pub fn clone_behavior(_roof: &Roof) -> Option<Roof> {
     None
 }
 
-/// B `roof_uv_at_ws_pos`（0x1408e4040）/ `roof_uv_and_point_at_ws_pos`
-/// （0x1408e4090）：碰撞世界注册表 + 竞技区 + barycentric 插值管线
-/// （roofs-rt/ALGORITHMS.md §6.2 O 级）。实现为结构级：注册表命中 →
-/// RaycastWorld::raycast → barycentric → uv/point 输出；
-/// 注册表/竞技区槽位的精确哈希链（FUN_1405b0d70 族）以 O 证据登记。
+/// 失败码 = 原版输出 `*out = {discriminant=1, code}` 的 `code`（machine 0x1408e4090）。
+///
+/// 机器路径（逐分支）：
+///  * 第一表缺键，或槽值 `handle >> 32 == 0`（generation 0）→ **0**（`{1,0}`）；
+///  * `world+0x3e10` arena 空 / 第二表缺键 / 槽控制字节 `== 0x11` → **1**（`{1,1}`）；
+///  * 形状 cast 失败或 `rapier_hit_to_raycast_world_result` 判别 `== 2`（未命中）→
+///    **3**（`*out = 0x0301`）；
+///  * 命中但判别 `& 1 == 0`（无 uv）→ **4**（`{1,4}`）。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RoofUvFailure {
+    /// 0：`GlobalId` 未注册 / 注册句柄 generation 为 0。
+    MissingGlobalId,
+    /// 1：arena 空或第二级句柄表缺失/槽空（控制字节 0x11）。
+    MissingArena,
+    /// 3：形状射线未命中（含 `cast_ray` 判别 4）。
+    RayMiss,
+    /// 4：命中但 `rapier_hit_to_raycast_world_result` 无 barycentric uv。
+    NoUv,
+}
+
+impl RoofUvFailure {
+    /// 原版写回 `out[1]` 的字节。
+    pub const fn code(self) -> u8 {
+        match self {
+            RoofUvFailure::MissingGlobalId => 0,
+            RoofUvFailure::MissingArena => 1,
+            RoofUvFailure::RayMiss => 3,
+            RoofUvFailure::NoUv => 4,
+        }
+    }
+}
+
+/// `roof_uv_and_point_at_ws_pos` 两级 `GlobalId` 查询面。
+///
+/// 原版两张 hashbrown 表在 **collision/rt 域**，country-core 尚未落库；此 trait 只固定
+/// 机器语义，供该域后续实现（登记项）：
+///  * 第一级（`ctx`，机器 `in_stack_00000030`）：`+0x30` data / `+0x38` mask / `+0x48` len，
+///    entry stride 0x10 = `{GlobalId u64 @+0, handle u64 @+8}`；键比较 `== key`。
+///  * 第二级（`world`，机器 `in_stack_00000028`）：`+0x3df8` data / `+0x3e00` mask /
+///    `+0x3e10` arena 指针（0 → 缺）；entry stride 0x20，键 = 第一级 handle（`local_f8`），
+///    槽控制字节 `+0x18 != 0x11` 才命中，值 = rapier collider 句柄。
+pub trait RoofUvColliderIndex {
+    /// 第一级：`hash_one<RandomState, &GlobalId>` 探表后的 64-bit 句柄
+    /// （低 32 位索引、高 32 位 generation）。
+    fn lookup_global_id(&self, key: u64) -> Option<u64>;
+    /// `world + 0x3e10 != 0`（arena 表已建立）。
+    fn arena_present(&self) -> bool;
+    /// 第二级：由第一级句柄取 collider 句柄（槽控制字节 0x11 = 空）。
+    fn lookup_collider(&self, handle: u64) -> Option<u64>;
+}
+
+/// 把 `rapier_hit_to_raycast_world_result` 的输出映射为管线结果。
+///
+/// fresh 0x1408e4090：`local_50[0] != 4`（形状 cast 成功）且判别 `!= 2` 才继续；
+/// 之后 `判别 & 1` 门控 uv：成功 → `uv = extra[0..2]`、`point = position`。
+pub fn roof_uv_from_raycast_hit(
+    hit: &crate::systems::collision::world::RaycastWorldResult,
+) -> Result<((f32, f32), glam::Vec3), RoofUvFailure> {
+    if hit.is_miss() {
+        return Err(RoofUvFailure::RayMiss);
+    }
+    if hit.discriminant & 1 == 0 {
+        return Err(RoofUvFailure::NoUv);
+    }
+    Ok(((hit.extra[0], hit.extra[1]), hit.position))
+}
+
+/// `roof_uv_and_point_at_ws_pos`（0x1408e4090）的**完整控制流**：第一级 `GlobalId`
+/// 表 → arena 存在性 → 第二级句柄表 → 射线 → barycentric 结果映射。
+///
+/// **仍登记（跨域）**：第 4–5 步原版为 `ColliderSet::get_mut_internal` + `(index < len &&
+/// generation == (gen|1))` 校验后的**单 collider** shape cast（方向 `(0,-1,-0)`、
+/// `max_toi = f32::MAX`、solid=1）；country-core `RaycastWorld` 尚无按 collider 句柄的入口，
+/// 此处用 `raycast(ws_pos, -Y, u32::MAX)` 全槽查询代替。解锁条件：collision 域补
+/// `ColliderSet` 句柄选择 + 两级表实现（`RoofUvColliderIndex`）。
+pub fn roof_uv_and_point_indexed(
+    index: &dyn RoofUvColliderIndex,
+    world: &crate::systems::collision::world::RaycastWorld,
+    key: u64,
+    ws_pos: glam::Vec3,
+) -> Result<((f32, f32), glam::Vec3), RoofUvFailure> {
+    let handle = index
+        .lookup_global_id(key)
+        .ok_or(RoofUvFailure::MissingGlobalId)?;
+    // 机器：`uVar10 >> 32 == 0` → out = {1, 0}（与缺键同码）。
+    if handle >> 32 == 0 {
+        return Err(RoofUvFailure::MissingGlobalId);
+    }
+    if !index.arena_present() {
+        return Err(RoofUvFailure::MissingArena);
+    }
+    let _collider = index
+        .lookup_collider(handle)
+        .ok_or(RoofUvFailure::MissingArena)?;
+    let hit = world.raycast(ws_pos, glam::Vec3::NEG_Y, u32::MAX);
+    roof_uv_from_raycast_hit(&hit)
+}
+
+/// `roof_uv_and_point_at_ws_pos` 的 uv 单输出面（丢掉 point）。
+pub fn roof_uv_indexed(
+    index: &dyn RoofUvColliderIndex,
+    world: &crate::systems::collision::world::RaycastWorld,
+    key: u64,
+    ws_pos: glam::Vec3,
+) -> Result<(f32, f32), RoofUvFailure> {
+    roof_uv_and_point_indexed(index, world, key, ws_pos).map(|(uv, _)| uv)
+}
+
+/// B `roof_uv_at_ws_pos`（0x1408e4040）：`roof_uv_and_point_at_ws_pos` 的薄包装——
+/// `out[0] = (discriminant != 0)`；失败 `out[1] = code`；成功 `out+4 = uv(8 B)`。
+///
+/// 当前无两级表实例，保留**全槽射线回退**（`key` 未使用）；完整管线见
+/// [`roof_uv_and_point_indexed`]。
 pub fn roof_uv_at_ws_pos(
     world: &crate::systems::collision::world::RaycastWorld,
     _key: u64,
     ws_pos: glam::Vec3,
 ) -> Option<(f32, f32)> {
-    // 观测：向下射线命中屋顶 collider 后经 barycentric 插值取 uv
-    // （raycast 在 native-physics 特性下接线；未启用时保持 not-found）。
-    #[cfg(feature = "native-physics")]
-    {
-        let hit = world.raycast(ws_pos, glam::Vec3::NEG_Y, u64::MAX)?;
-        return Some((hit.0, 0.0));
-    }
-    #[cfg(not(feature = "native-physics"))]
-    {
-        let _ = (world, ws_pos);
-        return None;
-    }
+    let hit = world.raycast(ws_pos, glam::Vec3::NEG_Y, u32::MAX);
+    roof_uv_from_raycast_hit(&hit).map(|(uv, _)| uv).ok()
 }
 
 /// B `roof_uv_and_point_at_ws_pos`（0x1408e4090）：uv + 世界点双输出；
-/// not-found 标记 = {1, 0}（观测字节）。
+/// 失败标记 = `{1, 3|4}`（机器码 `*out = 0x301` / `{1,4}`）。成功时
+/// point = `RaycastWorldResult.position`（= origin + dir·toi），uv = `extra[0..2]`。
+///
+/// 当前无两级表实例；完整管线见 [`roof_uv_and_point_indexed`]。
 pub fn roof_uv_and_point_at_ws_pos(
     world: &crate::systems::collision::world::RaycastWorld,
-    key: u64,
+    _key: u64,
     ws_pos: glam::Vec3,
 ) -> (bool, (f32, f32), glam::Vec3) {
-    #[cfg(feature = "native-physics")]
-    {
-        let Some((distance, _id)) = world.raycast(ws_pos, glam::Vec3::NEG_Y, u64::MAX) else {
-            return (false, (1.0, 0.0), ws_pos);
-        };
-        let point = ws_pos + glam::Vec3::NEG_Y * distance;
-        return (
-            true,
-            roof_uv_at_ws_pos(world, key, ws_pos).unwrap_or((1.0, 0.0)),
-            point,
-        );
-    }
-    #[cfg(not(feature = "native-physics"))]
-    {
-        let _ = (world, key);
-        return (false, (1.0, 0.0), ws_pos);
+    let hit = world.raycast(ws_pos, glam::Vec3::NEG_Y, u32::MAX);
+    match roof_uv_from_raycast_hit(&hit) {
+        Ok((uv, point)) => (true, uv, point),
+        Err(_) => (false, (1.0, 0.0), ws_pos),
     }
 }
 
@@ -412,6 +616,175 @@ mod tests {
             b[*offset..*offset + 4].copy_from_slice(&value.to_le_bytes());
         }
         Roof::from_observed(b)
+    }
+
+    fn snapshot_roof(shape_tag: u32, flat_tag: u8) -> Roof {
+        let mut bytes = [0xa5; 88];
+        bytes[..8].copy_from_slice(&0xfedc_ba98_7654_3210_u64.to_le_bytes());
+        bytes[8..12].copy_from_slice(&shape_tag.to_le_bytes());
+        let shape: [f32; 6] = if shape_tag == 0 {
+            [2.0, -3.0, 4.0, 0.0, 999.0, 999.0]
+        } else {
+            [0.0, 1.0, 2.0, -3.0, 4.0, 5.0]
+        };
+        for (index, number) in shape.into_iter().enumerate() {
+            bytes[12 + index * 4..16 + index * 4].copy_from_slice(&number.to_le_bytes());
+        }
+        for (index, number) in [0.25_f32, -0.5, 0.75, 0.125, 0.875, 0.5]
+            .into_iter()
+            .enumerate()
+        {
+            bytes[0x24 + index * 4..0x28 + index * 4].copy_from_slice(&number.to_le_bytes());
+        }
+        bytes[0x3c] = 0;
+        bytes[0x3d] = 1;
+        bytes[0x40] = flat_tag;
+        bytes[0x41] = 1;
+        bytes[0x44..0x48].copy_from_slice(&0xfedc_ba98_u32.to_le_bytes());
+        bytes[0x48..0x4c].copy_from_slice(&0x1234_5678_u32.to_le_bytes());
+        bytes[0x4c..0x50].copy_from_slice(&(-2.5_f32).to_le_bytes());
+        bytes[0x50..0x54].copy_from_slice(&0x8765_4321_u32.to_le_bytes());
+        bytes[0x54] = 0;
+        Roof::from_observed(bytes)
+    }
+
+    #[test]
+    fn snapshot_roof_preserves_named_fields_and_full_integer_widths() {
+        let roof = snapshot_roof(0, 2);
+        let before = *roof.observed();
+        let value = serde_json::to_value(&roof).unwrap();
+        assert_eq!(
+            value,
+            serde_json::json!({
+                "id": 0xfedc_ba98_7654_3210_u64,
+                "params": {
+                    "profile_01": 0.75, "height_01": 0.125,
+                    "tip_offset_01": [0.25, -0.5], "ridge_length_01": 0.875,
+                    "ridge_dir": "Width", "eave_length_01": 0.5,
+                    "flat_rim_style": "NoRim"
+                },
+                "wall_shape": {"Circle": {"center": [2.0, -3.0], "radius": 4.0}},
+                "pivot_y": -2.5, "color_id": 0x8765_4321_u32,
+                "gable_style": "Stepped",
+                "flat_roof_style": {"Override": {
+                    "color_id": 0xfedc_ba98_u32, "material": "Wood", "pattern_id": 0x1234_5678_u32
+                }}
+            })
+        );
+        assert_eq!(*roof.observed(), before);
+        assert_eq!(value.as_object().unwrap().len(), 7);
+    }
+
+    #[test]
+    fn snapshot_roof_reuses_shape_serde_and_distinct_style_bytes() {
+        for shape_tag in 0..=1 {
+            for gable in 0..=1 {
+                for ridge in 0..=1 {
+                    for rim in 0..=1 {
+                        for material in 0..=1 {
+                            for flat in 0..=2 {
+                                let mut roof = snapshot_roof(shape_tag, flat);
+                                roof.0[0x3c] = ridge;
+                                roof.0[0x3d] = rim;
+                                roof.0[0x41] = material;
+                                roof.0[0x54] = gable;
+                                let value = serde_json::to_value(&roof).unwrap();
+                                assert_eq!(
+                                    value["gable_style"],
+                                    if gable == 0 { "Stepped" } else { "Overhang" }
+                                );
+                                assert_eq!(
+                                    value["params"]["ridge_dir"],
+                                    if ridge == 0 { "Width" } else { "Length" }
+                                );
+                                assert_eq!(
+                                    value["params"]["flat_rim_style"],
+                                    if rim == 0 { "Rim" } else { "NoRim" }
+                                );
+                                match flat {
+                                    0 => assert_eq!(value["flat_roof_style"], "Matching"),
+                                    1 => assert_eq!(value["flat_roof_style"], "MatchingStoneOnly"),
+                                    _ => assert_eq!(
+                                        value["flat_roof_style"]["Override"]["material"],
+                                        if material == 0 { "Stone" } else { "Wood" }
+                                    ),
+                                }
+                                if shape_tag == 1 {
+                                    assert_eq!(
+                                        value["wall_shape"],
+                                        serde_json::json!({"Rectangle": {
+                                            "orientation": [0.0, 1.0], "width": 4.0, "length": 5.0, "center": [2.0, -3.0]
+                                        }})
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn snapshot_circle_zero_rotation_and_nonfinite_values_use_dependency_serde() {
+        for rotation in [0.0_f32, -0.0, 0.75, f32::NAN] {
+            let mut roof = snapshot_roof(0, 0);
+            roof.0[0x18..0x1c].copy_from_slice(&rotation.to_le_bytes());
+            roof.0[0x2c..0x30].copy_from_slice(&f32::INFINITY.to_le_bytes());
+            let value = serde_json::to_value(roof).unwrap();
+            assert!(value["params"]["profile_01"].is_null());
+            let circle = &value["wall_shape"]["Circle"];
+            if rotation == 0.0 {
+                assert!(circle.get("rotation").is_none());
+            } else if rotation.is_nan() {
+                assert!(circle["rotation"]["val"].is_null());
+            } else {
+                assert_eq!(circle["rotation"], serde_json::json!({"val": 0.75}));
+            }
+        }
+    }
+
+    #[test]
+    fn snapshot_inactive_flat_payload_and_padding_are_not_json_fields() {
+        for tag in [0, 1] {
+            let mut first = snapshot_roof(0, tag);
+            let second = first.clone();
+            first.0[0x41..0x4c].fill(0x5a);
+            first.0[0x3e..0x40].fill(0x11);
+            first.0[0x55..0x58].fill(0xff);
+            assert_eq!(
+                serde_json::to_value(first).unwrap(),
+                serde_json::to_value(second).unwrap()
+            );
+        }
+        assert_eq!(
+            serde_json::to_value(GableRoofStyle::Matching).unwrap(),
+            "Stepped"
+        );
+        assert_eq!(
+            serde_json::from_str::<GableRoofStyle>("\"Overhang\"").unwrap(),
+            GableRoofStyle::Override
+        );
+        assert!(serde_json::from_str::<GableRoofStyle>("\"Matching\"").is_err());
+    }
+
+    #[test]
+    fn snapshot_actual_roof_query_serializes_a_roof_sequence() {
+        let mut world = bevy_ecs::world::World::new();
+        let first = snapshot_roof(0, 0);
+        let mut second = snapshot_roof(1, 1);
+        second.0[..8].copy_from_slice(&17_u64.to_le_bytes());
+        world.spawn(first);
+        world.spawn(second);
+        world.spawn_empty();
+        let mut query = world.query::<&Roof>();
+        let mut roofs: Vec<Roof> = query.iter(&world).cloned().collect();
+        roofs.sort_by_key(|roof| roof.wall_id().0);
+        let value = serde_json::to_value(&roofs).unwrap();
+        assert_eq!(value.as_array().unwrap().len(), 2);
+        assert_eq!(value[0]["id"], 17_u64);
+        assert_eq!(value[1]["id"], 0xfedc_ba98_7654_3210_u64);
+        assert!(value[0]["wall_shape"].get("Rectangle").is_some());
     }
 
     #[test]
@@ -465,21 +838,23 @@ mod tests {
         assert!((0.0..=12.0).contains(&circle));
         // rect tag=1：dim_x@+0x14=4.0(0x40800000)、dim_z@+0x18=6.0(0x40c00000)。
         let rect = roof_height_ws_from_wall_shape(&[
-            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x40, 0x80, 0, 0,
-            0x40, 0xc0, 0, 0,
+            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x40, 0x80, 0, 0, 0x40,
+            0xc0, 0, 0,
         ]);
         assert!((0.0..=12.0).contains(&rect));
-        assert!(roof_height_01_from_wall_shape(&[
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x41, 0x20, 0x00, 0x00
-        ]) <= 1.0);
+        assert!(
+            roof_height_01_from_wall_shape(&[
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x41, 0x20, 0x00, 0x00
+            ]) <= 1.0
+        );
     }
 
     #[test]
     fn shape_params_eave_and_height() {
         let mut bytes = [0u8; 28];
-        bytes[8..12].copy_from_slice(&f32::to_bits(0.5).to_le_bytes());   // profile
-        bytes[20..24].copy_from_slice(&f32::to_bits(0.5).to_le_bytes());  // eave
-        bytes[12..16].copy_from_slice(&f32::to_bits(0.5).to_le_bytes());  // height
+        bytes[8..12].copy_from_slice(&f32::to_bits(0.5).to_le_bytes()); // profile
+        bytes[20..24].copy_from_slice(&f32::to_bits(0.5).to_le_bytes()); // eave
+        bytes[12..16].copy_from_slice(&f32::to_bits(0.5).to_le_bytes()); // height
         let params = RoofShapeParams(bytes);
         let eave_ws = params.eave_length_ws();
         let expected =
@@ -506,8 +881,138 @@ mod tests {
             (8, 1),
         ]);
         match pitched.roof_shape_at_intersection_y(0.0) {
-            RoofIntersectionSection::Section(_) => {}
-            other => panic!("pitched roof at floor should yield a section, got {other:?}"),
+            RoofIntersectionSection::RawSection(_) => {}
+            other => panic!("pitched roof at floor should yield a raw section, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn intersection_y_floor_copies_raw_frame_body() {
+        // 机器码 0x1408e3820：y==floor 直接拷 roof[8..0x24] 28 字节原始帧体
+        // （非 t=0 截面近似——t=0 截面末 8 字节为计算出的 bottom 尺寸）。
+        let pitched = roof_with(&[
+            (0x30, f32::to_bits(0.5)),
+            (0x2c, f32::to_bits(0.5)),
+            (0x38, f32::to_bits(0.5)),
+            (0x34, f32::to_bits(0.5)),
+            (0x1c, f32::to_bits(4.0)),
+            (0x20, f32::to_bits(6.0)),
+            (8, 1),
+            (0xc, f32::to_bits(0.25)),
+            (0x10, f32::to_bits(0.75)),
+            (0x14, f32::to_bits(1.5)),
+            (0x18, f32::to_bits(2.5)),
+        ]);
+        let expected: [u8; 28] = pitched.observed()[8..0x24].try_into().unwrap();
+        match pitched.roof_shape_at_intersection_y(0.0) {
+            RoofIntersectionSection::RawSection(raw) => {
+                assert_eq!(raw, expected);
+                // 逐字段解读：tag word@0、frame@4、dimensions@0x14。
+                assert_eq!(u32::from_le_bytes(raw[0..4].try_into().unwrap()), 1);
+                for (i, want) in [0.25f32, 0.75, 1.5, 2.5, 4.0, 6.0].iter().enumerate() {
+                    let got = f32::from_le_bytes(raw[4 + i * 4..8 + i * 4].try_into().unwrap());
+                    assert!((got - want).abs() < 1e-6, "field {i}: {got} != {want}");
+                }
+            }
+            other => panic!("floor intersection must be raw frame bytes, got {other:?}"),
+        }
+    }
+
+    /// 两级表桩：按 fresh 0x1408e4090 的失败码顺序逐级放行。
+    struct FakeIndex {
+        handle: Option<u64>,
+        arena: bool,
+        collider: Option<u64>,
+    }
+
+    impl RoofUvColliderIndex for FakeIndex {
+        fn lookup_global_id(&self, _key: u64) -> Option<u64> {
+            self.handle
+        }
+        fn arena_present(&self) -> bool {
+            self.arena
+        }
+        fn lookup_collider(&self, _handle: u64) -> Option<u64> {
+            self.collider
+        }
+    }
+
+    fn empty_world() -> crate::systems::collision::world::RaycastWorld {
+        crate::systems::collision::world::RaycastWorld::new()
+    }
+
+    #[test]
+    fn roof_uv_failure_codes_follow_the_machine_gates() {
+        let world = empty_world();
+        let pos = glam::Vec3::ONE;
+        // 第一表缺键 / generation 0 → 码 0。
+        let missing = FakeIndex {
+            handle: None,
+            arena: true,
+            collider: Some(0),
+        };
+        assert_eq!(
+            roof_uv_indexed(&missing, &world, 7, pos),
+            Err(RoofUvFailure::MissingGlobalId)
+        );
+        assert_eq!(RoofUvFailure::MissingGlobalId.code(), 0);
+        let gen0 = FakeIndex {
+            handle: Some(0x0000_0000_0000_0003),
+            arena: true,
+            collider: Some(0),
+        };
+        assert_eq!(
+            roof_uv_indexed(&gen0, &world, 7, pos),
+            Err(RoofUvFailure::MissingGlobalId)
+        );
+        // arena 空 / 第二表缺键 → 码 1。
+        let no_arena = FakeIndex {
+            handle: Some(0x0000_0001_0000_0003),
+            arena: false,
+            collider: Some(0),
+        };
+        assert_eq!(
+            roof_uv_indexed(&no_arena, &world, 7, pos),
+            Err(RoofUvFailure::MissingArena)
+        );
+        let no_slot = FakeIndex {
+            handle: Some(0x0000_0001_0000_0003),
+            arena: true,
+            collider: None,
+        };
+        assert_eq!(
+            roof_uv_indexed(&no_slot, &world, 7, pos),
+            Err(RoofUvFailure::MissingArena)
+        );
+        assert_eq!(RoofUvFailure::MissingArena.code(), 1);
+        // 全放行 → 空世界射线未命中 → 码 3。
+        let ready = FakeIndex {
+            handle: Some(0x0000_0001_0000_0003),
+            arena: true,
+            collider: Some(0x0000_0002_0000_0005),
+        };
+        assert_eq!(
+            roof_uv_indexed(&ready, &world, 7, pos),
+            Err(RoofUvFailure::RayMiss)
+        );
+        assert_eq!(RoofUvFailure::RayMiss.code(), 3);
+    }
+
+    #[test]
+    fn raycast_result_mapping_matches_barycentric_gate() {
+        use crate::systems::collision::world::RaycastWorldResult;
+        let mut hit = RaycastWorldResult::miss();
+        hit.discriminant = 1; // 奇数 = 有 uv
+        hit.extra = [0.25, 0.75];
+        hit.position = glam::Vec3::new(1.0, 2.0, 3.0);
+        assert_eq!(
+            roof_uv_from_raycast_hit(&hit),
+            Ok(((0.25, 0.75), glam::Vec3::new(1.0, 2.0, 3.0)))
+        );
+        hit.discriminant = 0; // 偶数 = 无 uv
+        assert_eq!(roof_uv_from_raycast_hit(&hit), Err(RoofUvFailure::NoUv));
+        assert_eq!(RoofUvFailure::NoUv.code(), 4);
+        let miss = RaycastWorldResult::miss();
+        assert_eq!(roof_uv_from_raycast_hit(&miss), Err(RoofUvFailure::RayMiss));
     }
 }

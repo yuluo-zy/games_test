@@ -25,9 +25,7 @@
 // Preserve the original instruction-level expression order/NaN policy, API call shapes, and evidence/test transcription. See README.md.
 #![allow(clippy::doc_lazy_continuation, clippy::type_complexity)]
 use crate::asset_libraries::ssbo_library::AssetSsboLibrary;
-use crate::render::rg_helpers::rg_boundary::{
-    ACCESS_TRANSFER_WRITE, CopyRegion, RenderFn, RenderGraph, StagingAlloc,
-};
+use crate::render::rg_helpers::rg_boundary::{RenderGraph, StagingAlloc, StagingCopy};
 use crate::rhapsody_types::RenderGraph as ImportGraph;
 use crate::systems::render_loop::indirect_params::{
     AtomicCounterBuffer, DispatchIndirectBuffer, DrawIndexedIndirectBuffer, DrawIndirectBuffer,
@@ -51,13 +49,6 @@ pub const DRAW_INDEXED_INDEX_COUNTS: [u32; 24] = [
 
 /// 渲染图接缝：在 [`RenderGraph`] 之上补“多资源访问登记”与“库缓冲导入用的渲染图”。
 pub trait IndirectResetGraph: RenderGraph {
-    /// `PassBuilder::new(name)` + 对每个 `(资源, 访问码, 同步组)` 调 `add_resource_access` + `render(回调)`。
-    fn add_pass_with_accesses(
-        &mut self,
-        name: &'static str,
-        accesses: &[(u32, u8, u32)],
-        render: RenderFn,
-    );
     /// `get_rg_buffer<T>` 的第二参数（`recorder` 内的渲染图）。
     fn import_graph(&mut self) -> &mut ImportGraph;
 }
@@ -94,12 +85,21 @@ pub fn atomic_init() -> Vec<u8> {
 }
 
 /// 把 `init` 拷进 `staging.bytes`（O：`copy_from_slice`，长度不符 → panic）。
-fn fill(staging: &mut StagingAlloc, init: &[u8]) {
+fn fill(staging: &mut StagingAlloc, init: &[u8]) -> rhapsody::Result<()> {
+    if staging.bytes.len() != init.len() {
+        return Err(rhapsody::Error::invalid_usage(
+            "indirect staging allocation has the wrong length",
+        ));
+    }
     staging.bytes.copy_from_slice(init);
+    Ok(())
 }
 
 /// W：每帧把四个 indirect-args 缓冲重置为初值。
-pub fn reset_indirect_args<G: IndirectResetGraph>(graph: &mut G, ssbos: &AssetSsboLibrary) {
+pub fn reset_indirect_args<G: IndirectResetGraph>(
+    graph: &mut G,
+    ssbos: &AssetSsboLibrary,
+) -> rhapsody::Result<()> {
     let dispatch = ssbos
         .get_rg_buffer::<DispatchIndirectBuffer>(graph.import_graph())
         .resource as u32;
@@ -113,104 +113,126 @@ pub fn reset_indirect_args<G: IndirectResetGraph>(graph: &mut G, ssbos: &AssetSs
         .get_rg_buffer::<AtomicCounterBuffer>(graph.import_graph())
         .resource as u32;
 
-    let mut s0 = graph.allocate_dynamic(STAGING_SIZES[0]);
-    fill(&mut s0, &dispatch_init());
-    let mut s1 = graph.allocate_dynamic(STAGING_SIZES[1]);
-    fill(&mut s1, &draw_indexed_init());
-    let mut s2 = graph.allocate_dynamic(STAGING_SIZES[2]);
-    fill(&mut s2, &draw_init());
-    let mut s3 = graph.allocate_dynamic(STAGING_SIZES[3]);
-    fill(&mut s3, &atomic_init());
+    let mut s0 = graph.allocate_dynamic(STAGING_SIZES[0])?;
+    fill(&mut s0, &dispatch_init())?;
+    let mut s1 = graph.allocate_dynamic(STAGING_SIZES[1])?;
+    fill(&mut s1, &draw_indexed_init())?;
+    let mut s2 = graph.allocate_dynamic(STAGING_SIZES[2])?;
+    fill(&mut s2, &draw_init())?;
+    let mut s3 = graph.allocate_dynamic(STAGING_SIZES[3])?;
+    fill(&mut s3, &atomic_init())?;
 
-    let targets = [dispatch, draw_indexed, draw, atomic];
-    let accesses: Vec<(u32, u8, u32)> = targets
-        .iter()
-        .map(|&r| (r, ACCESS_TRANSFER_WRITE, 0))
-        .collect();
-    let copies = [(s0, dispatch), (s1, draw_indexed), (s2, draw), (s3, atomic)];
-    graph.add_pass_with_accesses(
+    graph.copy_from_staging(
         PASS_NAME,
-        &accesses,
-        Box::new(move |api| {
-            for (staging, dst) in &copies {
-                api.copy_buffer(
-                    staging,
-                    *dst,
-                    &[CopyRegion {
-                        src_offset: staging.offset as u64,
-                        dst_offset: 0,
-                    }],
-                );
-            }
-        }),
-    );
+        vec![
+            StagingCopy {
+                source: s0,
+                target: dispatch,
+                dst_offset: 0,
+            },
+            StagingCopy {
+                source: s1,
+                target: draw_indexed,
+                dst_offset: 0,
+            },
+            StagingCopy {
+                source: s2,
+                target: draw,
+                dst_offset: 0,
+            },
+            StagingCopy {
+                source: s3,
+                target: atomic,
+                dst_offset: 0,
+            },
+        ],
+    )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::asset_libraries::ssbo_library::AssetSsboLibrary;
-    use crate::render::rg_helpers::rg_boundary::RenderPassApi;
-    use crate::rhapsody_contract::GraphicsDevice;
-    use std::ops::Range;
+    use crate::render::rg_helpers::rg_boundary::RenderFn;
+    use crate::render::test_device::TestDevice;
 
     #[derive(Default)]
     struct Graph {
         import: ImportGraph,
         cursor: u32,
-        passes: Vec<(&'static str, Vec<(u32, u8, u32)>, RenderFn)>,
+        passes: Vec<(&'static str, Vec<StagingCopy>)>,
         wrong_len: Option<usize>,
+        failure: Option<(usize, rhapsody::Error)>,
+        allocations: usize,
     }
     impl RenderGraph for Graph {
         fn add_pass(&mut self, _: &'static str, _: u32, _: u8, _: RenderFn) {
             unreachable!("single-resource add_pass is not used by reset_indirect_args")
         }
-        fn allocate_dynamic(&mut self, size: usize) -> StagingAlloc {
+        fn copy_from_staging(
+            &mut self,
+            name: &'static str,
+            copies: Vec<StagingCopy>,
+        ) -> rhapsody::Result<()> {
+            self.passes.push((name, copies));
+            Ok(())
+        }
+        fn allocate_dynamic(&mut self, size: usize) -> rhapsody::Result<StagingAlloc> {
+            self.allocations += 1;
+            if self
+                .failure
+                .as_ref()
+                .is_some_and(|(at, _)| *at == self.allocations)
+            {
+                return Err(self.failure.take().unwrap().1);
+            }
             let offset = self.cursor;
             self.cursor += size as u32;
             let n = self.wrong_len.unwrap_or(size);
-            StagingAlloc {
+            Ok(StagingAlloc {
                 buffer: 7,
                 offset,
                 bytes: vec![0xAB; n],
-            }
+                lease: None,
+            })
         }
     }
     impl IndirectResetGraph for Graph {
-        fn add_pass_with_accesses(
-            &mut self,
-            name: &'static str,
-            a: &[(u32, u8, u32)],
-            r: RenderFn,
-        ) {
-            self.passes.push((name, a.to_vec(), r));
-        }
         fn import_graph(&mut self) -> &mut ImportGraph {
             &mut self.import
         }
     }
 
-    #[derive(Default)]
-    struct Api(Vec<(u64, u32, usize, u32, Vec<u8>)>);
-    impl RenderPassApi for Api {
-        fn fill_buffer(&mut self, _: u32, _: Option<Range<u64>>, _: u32) {}
-        fn clear_color_image(&mut self, _: u32) {}
-        fn copy_buffer(&mut self, src: &StagingAlloc, dst: u32, regions: &[CopyRegion]) {
-            assert_eq!(regions.len(), 1);
-            assert_eq!(regions[0].dst_offset, 0);
-            self.0.push((
-                regions[0].src_offset,
-                dst,
-                src.bytes.len(),
-                src.offset,
-                src.bytes.clone(),
-            ));
-        }
-    }
-
     fn lib() -> AssetSsboLibrary {
+        struct DistinctBuffers(core::cell::Cell<u64>);
+        use crate::render::ssbo::rhapsody_boundary::{
+            BackendError, Buffer, BufferDesc, GraphicsDevice,
+        };
+        impl GraphicsDevice for DistinctBuffers {
+            fn create_buffer(
+                &self,
+                desc: &BufferDesc,
+                name: &str,
+                data: Option<&[u8]>,
+            ) -> Result<Buffer, BackendError> {
+                let mut buffer = GraphicsDevice::create_buffer(&TestDevice(1), desc, name, data)?;
+                let id = self.0.get() + 1;
+                self.0.set(id);
+                buffer.id = id;
+                Ok(buffer)
+            }
+            fn update_buffer_bytes(
+                &self,
+                buffer: &Buffer,
+                data: &[u8],
+                ranges: &[core::ops::Range<usize>],
+                offset: usize,
+            ) -> Result<(), BackendError> {
+                GraphicsDevice::update_buffer_bytes(&TestDevice(1), buffer, data, ranges, offset)
+            }
+        }
         let l = AssetSsboLibrary::new();
-        let dev = GraphicsDevice(1);
+        let dev = DistinctBuffers(core::cell::Cell::new(0));
         l.add_new::<DispatchIndirectBuffer>(&dev);
         l.add_new::<DrawIndexedIndirectBuffer>(&dev);
         l.add_new::<DrawIndirectBuffer>(&dev);
@@ -269,14 +291,34 @@ mod tests {
     }
 
     #[test]
+    fn partial_staging_allocation_failure_preserves_the_error_without_declaring_work() {
+        for error in [
+            rhapsody::Error::Timeout,
+            rhapsody::Error::OutOfHostMemory,
+            rhapsody::Error::OutOfDeviceMemory,
+            rhapsody::Error::DeviceLost,
+        ] {
+            let expected = core::mem::discriminant(&error);
+            let mut graph = Graph {
+                failure: Some((2, error)),
+                ..Default::default()
+            };
+            let error = reset_indirect_args(&mut graph, &lib()).unwrap_err();
+            assert_eq!(core::mem::discriminant(&error), expected);
+            assert_eq!(graph.allocations, 2);
+            assert!(graph.passes.is_empty());
+        }
+    }
+
+    #[test]
     fn registers_one_pass_with_four_transfer_writes_in_call_order() {
         let (mut g, l) = (Graph::default(), lib());
-        reset_indirect_args(&mut g, &l);
+        reset_indirect_args(&mut g, &l).unwrap();
         assert_eq!(g.passes.len(), 1);
-        let (name, acc, _) = &g.passes[0];
+        let (name, copies) = &g.passes[0];
         assert_eq!(*name, PASS_NAME);
-        assert_eq!(acc.len(), 4);
-        assert!(acc.iter().all(|a| a.1 == 0x34 && a.2 == 0));
+        assert_eq!(copies.len(), 4);
+        assert!(copies.iter().all(|copy| copy.dst_offset == 0));
         // 库导入顺序 = get_rg_buffer 调用顺序：Dispatch, DrawIndexed, Draw, Atomic
         assert_eq!(g.import.imports.len(), 4);
     }
@@ -284,33 +326,35 @@ mod tests {
     #[test]
     fn closure_copies_each_staging_into_its_buffer_in_order() {
         let (mut g, l) = (Graph::default(), lib());
-        reset_indirect_args(&mut g, &l);
-        let (_, acc, render) = g.passes.pop().unwrap();
-        let mut api = Api::default();
-        render(&mut api);
-        assert_eq!(api.0.len(), 4);
-        let sizes: Vec<usize> = api.0.iter().map(|c| c.2).collect();
-        assert_eq!(sizes, [0x80, 0x1e0, 0x10, 8]);
-        // 目的缓冲 = 声明的访问资源，顺序一致；源偏移 = 累计分配偏移
+        reset_indirect_args(&mut g, &l).unwrap();
+        let (_, copies) = g.passes.pop().unwrap();
+        assert_eq!(copies.len(), 4);
         assert_eq!(
-            api.0.iter().map(|c| c.1).collect::<Vec<_>>(),
-            acc.iter().map(|a| a.0).collect::<Vec<_>>()
+            copies
+                .iter()
+                .map(|copy| copy.source.bytes.len())
+                .collect::<Vec<_>>(),
+            STAGING_SIZES
         );
         assert_eq!(
-            api.0.iter().map(|c| c.0).collect::<Vec<_>>(),
+            copies
+                .iter()
+                .map(|copy| copy.source.offset)
+                .collect::<Vec<_>>(),
             [0, 0x80, 0x80 + 0x1e0, 0x80 + 0x1e0 + 0x10]
         );
-        assert_eq!(api.0[0].4, dispatch_init());
-        assert_eq!(api.0[1].4, draw_indexed_init());
-        assert_eq!(api.0[2].4, draw_init());
-        assert_eq!(api.0[3].4, atomic_init());
+        assert_eq!(copies[0].source.bytes, dispatch_init());
+        assert_eq!(copies[1].source.bytes, draw_indexed_init());
+        assert_eq!(copies[2].source.bytes, draw_init());
+        assert_eq!(copies[3].source.bytes, atomic_init());
+        assert_eq!(
+            copies.iter().map(|copy| copy.target).collect::<Vec<_>>(),
+            [1, 2, 3, 4]
+        );
     }
 
     #[test]
-    #[should_panic(
-        expected = "source slice length (128) does not match destination slice length (8)"
-    )]
-    fn staging_length_mismatch_panics_like_copy_from_slice() {
+    fn staging_length_mismatch_is_rejected_without_a_copy_declaration() {
         let (mut g, l) = (
             Graph {
                 wrong_len: Some(8),
@@ -318,12 +362,14 @@ mod tests {
             },
             lib(),
         );
-        reset_indirect_args(&mut g, &l);
+        let error = reset_indirect_args(&mut g, &l).unwrap_err();
+        assert_eq!(error.kind(), rhapsody::ErrorKind::InvalidUsage);
+        assert!(g.passes.is_empty());
     }
 
     #[test]
     #[should_panic(expected = "is not available in the library")]
     fn missing_ssbo_registration_panics() {
-        reset_indirect_args(&mut Graph::default(), &AssetSsboLibrary::new());
+        reset_indirect_args(&mut Graph::default(), &AssetSsboLibrary::new()).unwrap();
     }
 }

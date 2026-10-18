@@ -200,11 +200,12 @@ mod tests {
     use crate::render::pass_builder::compute_pass_builder::DispatchMode;
     use crate::render::pass_builder::pass_resource_access::PassBinding;
     use crate::render::ssbo::{InstanceBuffer, StorageElement};
-    use crate::rhapsody_contract::GraphicsDevice;
+    use crate::render::test_device::TestDevice;
     use crate::systems::render_loop::compute_passes::pass_kit::test_env::*;
 
     /// 灯笼缓冲替身：`InstanceBuffer<T>` 存储（实例数 = 注册时的数据长度）。
-    #[derive(Clone, Copy, Debug, Default, PartialEq)]
+    #[repr(transparent)]
+    #[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::NoUninit)]
     struct L(u32);
     impl StorageElement for L {
         const NAME: &'static str = "LanternSsbo";
@@ -234,10 +235,10 @@ mod tests {
                 .uniforms(&[KEY_LIGHT_COUNT]),
         );
         match count {
-            Some(0) => w.ssbos.add_new::<L>(&GraphicsDevice(1)),
+            Some(0) => w.ssbos.add_new::<L>(&TestDevice(1)),
             Some(n) => w
                 .ssbos
-                .add_new_with_data::<L>(&GraphicsDevice(1), &vec![L(0); n]),
+                .add_new_with_data::<L>(&TestDevice(1), &vec![L(0); n]),
             None => {}
         }
         w

@@ -33,19 +33,41 @@ pub fn add_save_load_systems(_schedule: &mut bevy_ecs::schedule::Schedule) {
 /// B `add_save_load_events_and_resources` 0x1409447e0：注册事件/资源
 /// （SaveGameCmd/SavingGameComplete/LoadingGameComplete 等）。
 pub fn add_save_load_events_and_resources(world: &mut bevy_ecs::world::World) {
-    use bevy_ecs::event::Events;
-    world.init_resource::<save_game::AutoSaveState>();
+    use bevy_ecs::event::{EventRegistry, Events};
+    // Original @1409447e0 constructs both channels and starts Async save
+    // before inserting the load/save owners. Do it once at App assembly.
+    if !world.contains_resource::<save_game::AutoSaveState>() {
+        let mut auto = save_game::AutoSaveState::default();
+        let handle = save_thread::SaveThreadHandle::spawn_with_unsaved(auto.unsaved_files.clone());
+        auto.attach_command_sender(handle.command_sender.clone());
+        world.insert_resource(handle);
+        world.insert_resource(auto);
+    }
     world.init_resource::<load_game::LoadGameManager>();
     world.init_resource::<load_completion_checker::LoadingCompletionState>();
     world.init_resource::<crate::resources::session::SavedSessionList>();
     save_game::register_save_game_events(world);
-    world.init_resource::<Events<save_game::SavingGameComplete>>();
-    world.init_resource::<Events<load_game::LoadingGameComplete>>();
-    world.init_resource::<Events<load_game::StartupRevealStarted>>();
-    world.init_resource::<Events<load_game::StartupRevealFinished>>();
-    world.init_resource::<Events<load_completion_checker::DisplayCorruptedSaveFileWarning>>();
-    world.init_resource::<Events<crate::resources::session::NewSessionStartedCmd>>();
-    world.init_resource::<Events<crate::resources::session::SessionLoadedCmd>>();
+    if !world.contains_resource::<Events<save_game::SavingGameComplete>>() {
+        EventRegistry::register_event::<save_game::SavingGameComplete>(world);
+    }
+    if !world.contains_resource::<Events<load_game::LoadingGameComplete>>() {
+        EventRegistry::register_event::<load_game::LoadingGameComplete>(world);
+    }
+    if !world.contains_resource::<Events<load_game::StartupRevealStarted>>() {
+        EventRegistry::register_event::<load_game::StartupRevealStarted>(world);
+    }
+    if !world.contains_resource::<Events<load_game::StartupRevealFinished>>() {
+        EventRegistry::register_event::<load_game::StartupRevealFinished>(world);
+    }
+    if !world.contains_resource::<Events<load_completion_checker::DisplayCorruptedSaveFileWarning>>() {
+        EventRegistry::register_event::<load_completion_checker::DisplayCorruptedSaveFileWarning>(world);
+    }
+    if !world.contains_resource::<Events<crate::resources::session::NewSessionStartedCmd>>() {
+        EventRegistry::register_event::<crate::resources::session::NewSessionStartedCmd>(world);
+    }
+    if !world.contains_resource::<Events<crate::resources::session::SessionLoadedCmd>>() {
+        EventRegistry::register_event::<crate::resources::session::SessionLoadedCmd>(world);
+    }
 }
 
 /// 注册 save 系统（save_game 节拍器/快照触发；load_game 消费 NextSession；save_thread
@@ -53,7 +75,12 @@ pub fn add_save_load_events_and_resources(world: &mut bevy_ecs::world::World) {
 use bevy_ecs::schedule::IntoScheduleConfigs;
 pub fn add_save_load_systems_impl(schedule: &mut bevy_ecs::schedule::Schedule) {
     schedule.add_systems((
-        save_game::save_game_system::<()>,
+        save_game::save_game_system
+            .after(crate::systems::debug::sheep_controls::sheep_controls),
+        // 域内快照捕获系统（O：save_game 0x140a3f470 触发后内联快照采集）——
+        // 宿主经 `CaptureSnapshotRequested` 请求额外快照；采集 roofs/walls/terrain/
+        // stairs 并发送 AsyncSaveCmd::CaptureSnapshot(9) + record_snapshot。
+        save_game::capture_snapshot_system,
         load_game::load_game_system,
         save_thread::init_save_thread,
     ));

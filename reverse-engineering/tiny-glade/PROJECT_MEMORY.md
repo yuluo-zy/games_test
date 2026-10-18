@@ -1,5 +1,35 @@
 # Tiny Glade 项目记忆
 
+## 2026-10-18 用户最新约束：保留已重构的 rhapsody 架构
+
+用户明确指出 `games_test/tiny-glade/crates/rhapsody` 已经重构：恢复整条游戏链时，应当给当前 rhapsody **添加所缺功能和修复缺陷，绝不能按原版再重新复现一遍 rhapsody**。当前 `crates/rhapsody` 的 API、资源所有权、渲染图与执行架构是工程基线。原版逆向用于确定游戏业务、调用顺序、参数和生命周期要求；游戏侧及宿主适配层优先对接现 API。库内确有缺口时作有界增量修复并保留验证，不引入平行 legacy 后端、不复制原内部 ABI、不回滚用户重构。此约束优先于旧恢复流程中的 `reconstruction/render` 单一入口等历史约定。主链当前记录见 `tiny-glade/reports/main-chain-recovery-2026-10-18/ORIGINAL-FIRST-REVIEW.md`。
+
+用户随后补充：保留架构不等于保留简化算法。如果当前手工实现过于简单，而原版证据确认还有复杂算法、必要步骤或状态处理，应直接重构现有手写部分并修正消费者，复用已有可用能力，不能只在简化实现外面包装接口。该解释同样适用于 rhapsody 与 core。
+
+本轮可复用经验已补入现有专用 skill：`skeleton/workflow-design/tiny-glade-recovery/references/original-driven-integration.md`，并从 SKILL.md 路由，技能格式检查通过。内容包括构造/CPU/shader 交叉核对、None/Some 各型合同、canonical 类型身份、同步与内容依赖分离、真实非空 GPU 回读、Timeout 分阶段定位及共享树验证指纹；不把当前未证实的 Nani Timeout 原因固化成规则。当前进度以 `tiny-glade/reports/main-chain-recovery-2026-10-18/ORIGINAL-FIRST-REVIEW.md` 及绑定源码/二进制的验证日志为准，不从历史统计推完成比例。
+
+## 2026-10-18 旧恢复集合按工作区归类
+
+用户要求迁出并删除 country-core/src/recovered_building 与 recovered_systems，随后明确“应该归类到工作区”。本次按已有 crate 与资源/系统所有权归类，替代早期“新增逻辑全部放 country-core”的组织约定：树删除判定回 system-tree/process_tree_cmds，小生物 locomotion 回 system-critters/components，水音频位投影回 system-water/water_audio_grid；core 保留墙/屋顶/历史资源、现有 core 消费者和核心音频/WorldRaster 合同。不要再新增统一 recovered_* 或共享收纳目录。当前路径及迁移前源码指纹见 tiny-glade/crates/country-core/recovery/module-migration-2026-10-18.json。此为源码归属/调用迁移，不提高原码行为验收；矩形历史回放、水音频生产资源不匹配、全局注册/GPU 缺口保持。
+
+
+## 2026-10-18 components 审查与现有占位恢复
+
+用户要求结构/注释/review 和全部现有 `_gap`。B 原注册描述符+创建/消费指令确认：TreeAnimation 16B=duration/progress/canopy_visibility/hidden_this_frame（+0/+4/+8/+12），TreeMoveBend 8B=XZ 缓动位置，Ui2dImage 32B=String+u32 layer@24；TreeComponent 16B=id+preplaced，ConvertedPreplacedTree 16B=PrefabName。UiDrawOrder 改 u64；Default ECS 克隆组件移除意外 Clone/Copy，Nani 网格选择器共用且不再误作 Component。UI/树/渲染拆分，旧公共导出兼容。树删除必须读 progress@4；forest 移除查询序 Local<Vec> 进度，改由实体组件持有；toolbar 不再丢 label。
+
+当前相关四库 --lib 编译及 5 针对性测试通过；26 段 analyzed/RNE 静态字节一致，不是原进程行为 oracle。all-targets 的 pass_kit/test_env 仍旧 import_unowned_texture trait 方法；workspace --lib 的 system-water 水格字段不匹配，本轮均未改。其余 registry 类型/放置 GPU 写面/全局 canopy/原调度/InsertTreeCmd 原 flags 仍未闭合；旧空标记/alpha+gap 报告作历史。报告与指纹入口 tiny-glade/crates/country-core/recovery/components-2026-10-18.{md,json}；工作目录 skeleton/task-index/work/TG-abf1305389c44cc264/components-review-20261018。
+
+## 2026-10-18 本机 Vulkan 配置与 GPU 验证（长期环境事实）
+
+用户要求修复加载配置并验证。**本机已有 Vulkan/MoltenVK，禁止再把 dlopen 查找失败说成未安装。** loader=`/opt/homebrew/lib/libvulkan.dylib`，MoltenVK=`/opt/homebrew/lib/libMoltenVK.dylib`，ICD=`/opt/homebrew/etc/vulkan/icd.d/MoltenVK_icd.json`。真实设备 Apple M3，MoltenVK 1.4.2、设备 Vulkan API 1.4.357。
+
+当前 `tiny-glade/.cargo/config.toml` 默认设置 `RHAPSODY_VULKAN_LIBRARY=/opt/homebrew/lib/libvulkan.dylib`（force=false，用户覆盖优先）；`GraphicsInstanceLoader::new` 读取变量后调用已有候选加载路径，失败仍保留系统 fallback。只加 `DYLD_FALLBACK_LIBRARY_PATH` 的首次尝试失败，Cargo 重写测试进程的动态库搜索路径；不要重复依赖该不稳定配置。直接运行已编译二进制不读取 Cargo 配置，须显式传 RHAPSODY_VULKAN_LIBRARY。
+
+**环境必须区分两层**：普通执行沙箱禁止 Metal，loader 修复后仍会报 ERROR_INCOMPATIBLE_DRIVER；这不是库缺失或硬件不支持。允许 GPU 的宿主执行已枚举真实 Apple M3，并用 `RHAPSODY_REQUIRE_VULKAN=1 cargo test -p tiny-glade --test core_render_bridge --locked --offline -- --nocapture` 实跑 **2 passed / 0 failed / 0 ignored / 0 SKIP**，覆盖实际上传回读和构图失败/异常取消回收。严格标志不可去掉以获得假成功；测试内主动 game builder panic 被捕获属于预期。
+
+证据：`tiny-glade/reports/vulkan-loader-config-2026-10-18/{README.md,verification.json,strict-bridge-host.log,vulkaninfo-host.log}`；失败尝试和沙箱日志一并保留。仅确认该机器配置及这两条 GPU 链，不提高整游戏/完整帧/原作等价验收。没有重装组件、改锁或改游戏业务。
+
+
 ## 2026-10-16 toolbar 开源来源核查
 
 仅 B 原发行：本轮重新导出原 PDB 文件表，31 个有记录的 Taffy 源文件 SHA-256 全部匹配 crates.io 0.3.13 发布包，包哈希匹配原 Cargo.lock。toolbar 直接使用 Taffy；8 个定点函数的完整 PDB 代码范围在原 RNE/patched EXE 一致，MCP 证实 TaffyLayout→Taffy compute_layout/layout、文本→tg_text::TextFragment::render。mei 还含自己的布局/节点/模板/输入，不把其 compute_min_size_with_children 说成 Taffy 算法。整体应描述为游戏自有 toolbar/mei 加开源依赖；未找到整个 mei 来自哪一个公开 GUI fork 的证据，不证明从零原创。cosmic-text 的 PounceLight fork 经 tg-text 接入；iced fork 用于辅助 GUI，不能据依赖出现就判定 toolbar 是 iced/egui 改版。报告：`evidence/toolbar-origin-2026-10-16/REPORT.md`。无业务代码修改，不增加还原进度。
@@ -214,3 +244,46 @@ frame/stamp和片段生成/验证帧均u32，恢复无符号<、wrapping+1、同
 
 
 2026-10-13 三个新reviewer并行独立审查motomoto/tg-package-integrity/tg-text，报告 evidence/small-libs-review-2026-10-13/REPORT.md。已恢复范围未发现确认业务算法bug/公共依赖重造；功能仍不完善：真实save/report/toolbar consumer缺接，完整TextFragment/TextRenderer/glyph/atlas/GPU未做。motomoto新增20限定原Cursor Writer/Drop+pending error、3原Reader异常恢复组匹配；integrity新增原x64 FNV/数组Hash叶4096与128依赖BLAKE3组合gate匹配，NTFS surrogate/junction/跨批候选探针通过，但原整verify/极端schema未执行。64批仍O(N)线程创建（1792项1764线程），fs::read整文件live缓冲，合成dev/cached probe仅量化成本、不证明原性能回退。tg-text确认原PDB module1186 record2768→2792→2816为String::deserialize/RON deserialize_string；旧deserialize_str来自同址标签误读，当前代码本来正确，仅修正文档注释与README，历史batch docs/hash保留，本review ERRATA取代误述。source21输入仅两处说明变化，无可执行body改动；22公共依赖identity仍匹配原锁。review-integrity初始化失败无ready，父用CIM完整命令行/创建时间核实两个专属进程并清理，剩余0，其他worker未停。函数列表仅业务族参考，私有折叠/trait/单态化不算独立功能分母；模块继续candidate_partial。
+
+
+## 2026-10-18 asset_libraries 工程化修复
+
+用户明确允许偏离逆向设计，以功能性、正确性优先。`games_test/tiny-glade/crates/country-core/src/asset_libraries` 完成六项审查问题修复：NoUninit 安全影子转换、真实纹理上传和 BindlessHeap 描述符租约、完整纹理描述与 D16 清零、ECS 热重载/VAO 刷新消费者、真实宿主每帧瞬态资源回收。中文业务注释与命名整理，复用既有 bytemuck/serde/rhapsody，不新增依赖版本；不计原作恢复信用，旧差分不覆盖当前源码。
+
+验证：成功构建快照 2103 项库测试 + 6 项资产链测试通过；真实 Vulkan GPU 1 项通过，已编译产物再次直接运行通过（sampled_capacity=1020，重载回收后 live_leases=1）。最终 17 文件格式检查通过；最新全目标编译、GPU 重新编译和 Clippy 被其他聊天中输入/工具栏接口变更阻断，不宣称最终全工作区通过。报告 `games_test/tiny-glade/reports/asset-libraries-refactor-2026-10-18/README.md`、`verification.json`，工程来源登记 `provenance/asset-libraries-refactor-2026-10-18.json`。没有全游戏/原进程验收或量化性能基准，摆放数据仍为 x/y schema。
+
+
+## 2026-10-18 asset_libraries 第二轮复审修复
+
+用户要求重新 review 并修复，继续以工程正确性优先，不计原作恢复信用。再次审查当前 15 个模块文件及生产调用链，修复 5 项：typed SSBO 初始上传缺少 NoUninit（改用 bytemuck，numeric records derive 校验）；普通 mesh 删除遗留 GPU VAO（独立删除通知，缺宿主保留、维护阶段释放）；延迟描述符连续热重载耗尽槽位（复用槽位并提交最新资产）；SSBO 缓存命中绕过完整类型检查（校验前置、写锁重查）；VAO Result 接口缺 mesh 仍 panic（改为 Err）。增加 1 库测试、3 链测试和 1 编译失败测试，更新 1 旧 VAO 测试。
+
+最新源码验证：country-core 2098 项库测试 + 9 项资产链测试通过；NoUninit 编译失败测试 1 项通过；重新编译并在本机严格 Vulkan 运行 GPU 测试 1 项通过（容量 1020，重载后 live_leases=1）；tiny-glade 全部目标 check、限定 core Clippy 均 exit 0；16 文件格式检查通过。Clippy 保留既有及锁定派生宏辅助项告警，未使用 -D warnings。本轮实际成功结果取代上一轮“全工程重编受阻”的状态，失败尝试仍保留。
+
+验证期间遇到其他任务的存档接口变动、临时探针移除、Cargo 锁和磁盘不足；只清理未锁定旧增量会话与旧核心编译归档，不删除源码/资产/证据。报告 `games_test/tiny-glade/reports/asset-libraries-rereview-2026-10-18/README.md`、verification.json；来源 `provenance/asset-libraries-rereview-2026-10-18.json`。下层通用缓冲的全部字节转换尚未全量收紧；没有整游戏/原进程或量化性能验收。
+
+
+## 2026-10-18 country-core 手工重构保留与算法升级（用户永久约束）
+
+用户明确：country-core 其他功能模块已经手工重构过，后续涉及这些模块时应以当前代码为起点添加功能、修复 bug，不能按照原版又重新复现一遍、覆盖已有重构或另造重复模块。用户随后补充：这不意味着保留简化算法；当手工算法过于简单，而原版挖出的业务复杂且现实现承载不足时，应直接重构当前手写算法、补齐业务并复用已有可用部分。原版证据裁定业务规则与边界，不要求复制原ABI/内存布局或回滚现工程架构。优先复用当前类型和接口，必要变更要一起修消费者，不留下平行的新旧实现。
+
+持久目录约束：`games_test/tiny-glade/crates/country-core/AGENTS.md`。本约束适用于 systems/resources 当前恢复涉及的上层及依赖模块。现有共享 utils 的工程改进不整体回退；需要原业务专用语义时做必要的增量适配，并明确验证范围。
+
+## 2026-10-18 systems/resources 恢复审查补充（仍进行中）
+
+- 本轮按 B 原 RNE/PDB 做有界恢复；默认 task-index 的 C 标签不允许跨版套地址。ICF 的 grow_one 等名称不能证明载荷类型，必须核 PDB 完整 SystemParam、原 caller 写入和真实 consumer。地形旧 StairsPlacementBucket 类型误认已撤回，改接当前 PlayTerrainSound、教学、Arrow、CursorCapture 等实际 owner。
+- 羊当前手工完整组件与 core 快照组件已统一 TypeId，保留当前 CritterGoal Rust 字段顺序；原字段偏移只用于证明归属，不复制原生布局。曲线在现 InProgressCurve/Rdp 上升级算法，改进版 Rdp 默认接口保留。
+- 本轮公开 CPU 调度入口与并行真实 tiny-glade host 是两个入口：后者已新增 set10 mode /35-40-41 history/wall 接线，不能沿用“所有宿主未接”的旧结论；但未发现其调用 terrain CPU/tool 或 onboarding 新配置入口。勿重复挂 mode，也勿将局部测试称完整宿主验收。
+- 原光标事件应传 analog0 位移（含捕获路径），非绝对位置。实际地形记录链仍需开启/结束事务；预先手动 start_input_recording 的 fixture 不能证明真实 UI 可录制。画布权限/参数 ABI、可写/不可写每帧生命周期也需一起核。
+- 报告入口：tiny-glade/reports/core-systems-resources-recovery-2026-10-18/README.md；各有界证据、独审、before快照、Cargo 失败及源漂移分开保留。493 文件盘点/原执行样例数均不能当恢复完成率。
+
+- 本轮端口追踪再次证实：不要跨事件套用EventInstance header偏移。不同载荷的EventId可在不同位置；原writer/reader/stride须同类型配对。rmb_autoclutter旧输出误命名EvRightClicked、尾EventId误作entity，真实输出为InstaCreateDeco；真实EvRightClicked是另一reader。新适配还须保留last点击和entity generation/d2s/bitset校验，不能用unwrap替代skip。相关候选正在独审，不能以type名已对上当完整消费者恢复。
+
+## 2026-10-18 systems/resources 第二次续推进
+
+仍按当前手工架构增量恢复，B发行身份不变。tree-history-r1 core2370/system-tree10通过，ordinary-wall-r1 core2382/真实graph1通过，两个run均source_drift=0；数字包含其他owner新增测试，不作为本轮独占或完成率。树使用既有TreeAnimation.hidden_this_frame、现WallSpatialHash与48B PrefabInstance(PlacementDataSsbo)，不造可见性数组；实际名在88B PrefabInstanceData。TreeData.id i32是placement variant，原TreeEdit外层另存u64 index；恢复index/tree与Move index/from/to保存、实际replay、完整已知Insert3字段。Insert末尾EventId不是height。Move→Insert→Delete及reserved实体query失败按原保留，不为合成测试补假出生。原nominal候选tuple仍有类型名歧义，数据面与当前唯一owner分别记。
+
+普通新墙/栅栏UI/nursery/smoother/draw/finish/history已接现core CPU注册；真实首帧空registry→录制→墙authority→结束提交ledger→下一帧Control Sync通过。原UI320案例与smoother163次执行支撑各自范围；draw原动态entry曾fetch-unmapped，因账户usage限制无法自动审查新探针，未绕过/不称原entry执行通过。独审将两次ceil误认纠正为实际IAT roundf，非整比末点权重回归已过。FinishWall bool后续从实际writer确认是新墙/续画族，不可命名成cancel；续画/反向/合墙仍在恢复。
+
+实际宿主独立intro→墙authority/spatial重验通过，但主机仍有未接Gameplay world graph等边界，不等于所有UI消费者已装入真实全局调度。与host协同以tiny-glade/reports/main-chain-recovery-2026-10-18/COORDINATION.md为入口，root新增helper不覆盖其render窄改。资源72项producer候选前置见core报告PENDING_RESOURCE_PRODUCERS.md；water/exclude/garden三mask已由独立worker合法claim恢复，颜色高32bits与每帧重建色表另处理中。
+
+方法已增量沉淀到现tiny-glade-recovery/references/original-driven-integration.md：EventInstance不固定头、外层serializer不可漏、真实schedule.initialize、空registry首帧闭环、混合批次reader、reserved Commands失败与import校正数值thunk。项目反例清单RECOVERY_LESSONS.md继续维护；未另装重复技能。

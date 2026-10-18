@@ -1,0 +1,145 @@
+
+void __cdecl
+country_core::render::ssbo::impl$4::
+new_storage_buffer<country_core::systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::MouseTerrainRaycastSsbo>
+          (void)
+
+{
+  undefined8 *extraout_RAX;
+  ulonglong extraout_RAX_00;
+  ulonglong *in_RCX;
+  ulonglong in_RDX;
+  ulonglong in_R8;
+  ulonglong in_R9;
+  char cVar1;
+  undefined4 uVar2;
+  undefined8 unaff_R12;
+  undefined *local_128;
+  undefined **ppuStack_120;
+  ulonglong uStack_118;
+  ulonglong uStack_110;
+  ulonglong uStack_108;
+  ulonglong local_100;
+  undefined8 local_f8;
+  undefined8 uStack_f0;
+  undefined8 local_e8;
+  undefined8 uStack_e0;
+  undefined **local_d8;
+  undefined **ppuStack_d0;
+  undefined ***local_c8;
+  ulonglong uStack_c0;
+  ulonglong local_b8;
+  ulonglong uStack_b0;
+  undefined8 local_a8;
+  undefined8 uStack_a0;
+  undefined8 local_98;
+  undefined8 uStack_90;
+  undefined **local_88;
+  code *pcStack_80;
+  ulonglong local_78;
+  ulonglong uStack_70;
+  ulonglong local_68;
+  undefined4 local_54;
+  char local_41;
+  undefined8 local_40;
+  
+  local_40 = 0xfffffffffffffffe;
+  if (in_R8 == 0) {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX == (undefined8 *)0x0) {
+      local_41 = 0;
+                    // WARNING: Subroutine does not return
+      alloc::raw_vec::handle_error();
+    }
+    *extraout_RAX = 0;
+    extraout_RAX[1] = 0;
+    *(undefined4 *)(extraout_RAX + 2) = 0xffffffff;
+    uVar2 = (undefined4)CONCAT71((int7)((ulonglong)unaff_R12 >> 8),1);
+  }
+  else {
+    local_128 = (undefined *)(in_R9 & 0x1f);
+    if ((local_128 != (undefined *)0x0) ||
+       (local_128 = (undefined *)(in_R8 & 0xf), local_128 != (undefined *)0x0)) {
+      local_d8 = (undefined **)0x0;
+                    // WARNING: Subroutine does not return
+      core::panicking::assert_failed<usize,usize>();
+    }
+    if (0x3f < in_R9) {
+      local_128 = &anon_107183261458dea85466985370debbb6_64_llvm_3641509820080252961;
+      ppuStack_120 = (undefined **)0x6c;
+      local_88 = &local_128;
+      pcStack_80 = anyhow::context::impl$3::fmt<ref_<str_>,alloc::ffi::c_str::FromVecWithNulError>;
+      local_d8 = &PTR_DAT_142c7f7c8;
+      ppuStack_d0 = (undefined **)0x1;
+      local_b8 = 0;
+      local_c8 = &local_88;
+      uStack_c0 = 1;
+      local_41 = 0;
+                    // WARNING: Subroutine does not return
+      core::panicking::panic_fmt();
+    }
+    uVar2 = 0;
+    local_128 = (undefined *)0x0;
+  }
+  cVar1 = (char)uVar2;
+  local_41 = cVar1;
+  rhapsody::raw::buffer::BufferDesc::new();
+  local_41 = cVar1;
+  rhapsody::raw::buffer::BufferDesc::alignment();
+  local_41 = cVar1;
+  rhapsody::raw::device::GraphicsDevice::
+  create_buffer<enum2_<core::option::Option<ref_<slice2_<u8>_>_>_>_>();
+  if ((int)local_128 != 0xb) {
+    local_98 = local_e8;
+    uStack_90 = uStack_e0;
+    local_a8 = local_f8;
+    uStack_a0 = uStack_f0;
+    local_b8 = uStack_108;
+    uStack_b0 = local_100;
+    local_c8 = (undefined ***)uStack_118;
+    uStack_c0 = uStack_110;
+    local_d8 = (undefined **)local_128;
+    ppuStack_d0 = ppuStack_120;
+    local_54 = uVar2;
+                    // WARNING: Subroutine does not return
+    core::result::unwrap_failed();
+  }
+  local_68 = local_100;
+  local_78 = uStack_110;
+  uStack_70 = uStack_108;
+  local_88 = ppuStack_120;
+  pcStack_80 = (code *)uStack_118;
+  if (cVar1 != '\0') {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  rhapsody::raw::buffer::Buffer::mapped_slice_mut();
+  if (extraout_RAX_00 != 0) {
+    if (in_RDX < uStack_70) {
+                    // WARNING: Subroutine does not return
+      core::panicking::panic();
+    }
+    local_128 = (undefined *)(in_RDX & 0x1f);
+    if (local_128 != (undefined *)0x0) {
+      local_d8 = (undefined **)0x0;
+                    // WARNING: Subroutine does not return
+      core::panicking::assert_failed<usize,usize>();
+    }
+    local_128 = (undefined *)(extraout_RAX_00 & 0xf);
+    if (local_128 != (undefined *)0x0) {
+      local_d8 = (undefined **)0x0;
+                    // WARNING: Subroutine does not return
+      core::panicking::assert_failed<usize,usize>();
+    }
+    in_RCX[6] = local_68;
+    in_RCX[4] = local_78;
+    in_RCX[5] = uStack_70;
+    in_RCX[2] = (ulonglong)local_88;
+    in_RCX[3] = (ulonglong)pcStack_80;
+    *in_RCX = extraout_RAX_00;
+    in_RCX[1] = in_RDX >> 5;
+    return;
+  }
+                    // WARNING: Subroutine does not return
+  core::option::unwrap_failed();
+}
+

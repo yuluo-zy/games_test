@@ -1,9 +1,8 @@
 use bevy_ecs::prelude::*;
-use country_core::recovered_building::{
-    building_roof_creation::RoofCreateRequestObserved,
-    building_roof_direction::RoofDirectionRequest,
-    building_wall_state::{WallId, WallShapeSnapshot},
-};
+use country_core::resources::roofs::creation::RoofCreateRequestObserved;
+use country_core::resources::roofs::direction::RoofDirectionRequest;
+use country_core::resources::walls::publication_fields::WallId;
+use country_core::resources::walls::publication_fields::WallShapeSnapshot;
 use std::sync::Arc;
 use tg_building_runtime::*;
 fn emit<T: Event>(app: &mut bevy_app::App, event: T) {
@@ -146,7 +145,7 @@ fn direction_switch_updates_gable_tiles_feedback_and_preserves_duplicate_events(
     assert!(app.world().resource::<BuildingReport>().faults.is_empty());
 }
 #[test]
-fn direction_missing_association_reports_original_failure_boundary() {
+fn invalid_direction_request_does_not_discard_later_valid_requests() {
     let (mut app, wall, entity) = scene();
     emit(
         &mut app,
@@ -161,18 +160,19 @@ fn direction_missing_association_reports_original_failure_boundary() {
     );
     app.update();
     assert_eq!(app.world().resource::<BuildingReport>().faults.len(), 1);
-    assert_eq!(app.world().get::<Roof>(entity).unwrap().0[0x3c], 0);
-    assert!(
+    assert_eq!(app.world().get::<Roof>(entity).unwrap().0[0x3c], 1);
+    assert_eq!(
         app.world()
             .resource::<BuildingReport>()
             .geometry_changes
-            .is_empty()
+            .len(),
+        1
     );
 }
 
 #[test]
 fn flat_style_rim_and_history_are_separate_consumers() {
-    use country_core::recovered_building::building_roof_customization::*;
+    use country_core::resources::roofs::customization::*;
     let (mut app, wall, entity) = scene_with_height(0.);
     assert!(app.world().get::<RoofCpuTiles>(entity).is_none());
     let mut style = [0x5a; 12];
@@ -281,7 +281,7 @@ fn flat_style_rim_and_history_are_separate_consumers() {
 }
 #[test]
 fn original_discrete_replay_producer_routes_direction_rim_and_undo_to_world() {
-    use country_core::recovered_building::roof_replay::VisualReplayState;
+    use country_core::resources::roofs::geometry::replay::VisualReplayState;
     let (mut app, wall, entity) = scene();
     app.world_mut().resource_mut::<BuildingFrame>().delta_time = 0.;
     for (undo, desired) in [(0, 1), (1, 0)] {
@@ -325,7 +325,7 @@ fn original_discrete_replay_producer_routes_direction_rim_and_undo_to_world() {
 }
 #[test]
 fn original_delete_replay_and_undo_restore_connect_to_entity_lifecycle() {
-    use country_core::recovered_building::roof_replay::VisualReplayState;
+    use country_core::resources::roofs::geometry::replay::VisualReplayState;
     let (mut app, wall, old_entity) = scene();
     let mut request = [0; 64];
     request[8..16].copy_from_slice(&wall.0.to_le_bytes());
@@ -372,4 +372,164 @@ fn original_delete_replay_and_undo_restore_connect_to_entity_lifecycle() {
     );
     assert_eq!(app.world().resource::<BuildingReport>().created.len(), 1);
     assert!(app.world().resource::<BuildingReport>().faults.is_empty());
+}
+
+#[test]
+fn invalid_roof_edits_leave_the_previous_geometry_and_accept_later_valid_edits() {
+    use country_core::resources::roofs::customization::FlatRoofStyleObserved;
+    use country_core::resources::roofs::customization::FlatRoofStyleRequest;
+    use country_core::resources::roofs::geometry::edit_rules::RoofEditEvent;
+    let (mut app, wall, entity) = scene();
+    let before = app.world().get::<Roof>(entity).unwrap().0;
+    let mut edit = [0; 64];
+    edit[32..40].copy_from_slice(&wall.0.to_le_bytes());
+    // An otherwise valid profile update must not partially commit if its tip is invalid.
+    edit[..4].copy_from_slice(&1u32.to_le_bytes());
+    edit[4..8].copy_from_slice(&0.9f32.to_le_bytes());
+    edit[40..44].copy_from_slice(&1u32.to_le_bytes());
+    edit[44..48].copy_from_slice(&f32::NAN.to_le_bytes());
+    emit(
+        &mut app,
+        roof_edits::EditRoof(RoofEditEvent::from_observed(&edit)),
+    );
+    let mut style = [0; 12];
+    style[0] = 2;
+    style[4..8].copy_from_slice(&f32::INFINITY.to_le_bytes());
+    emit(
+        &mut app,
+        SetFlatRoofStyle(FlatRoofStyleRequest {
+            wall_id: wall,
+            style: FlatRoofStyleObserved::from_observed(style),
+            observed_play_sound: 1,
+        }),
+    );
+    emit(
+        &mut app,
+        SwitchRoofDirection(RoofDirectionRequest { wall, direction: 2 }),
+    );
+    app.update();
+    assert_eq!(app.world().resource::<BuildingReport>().faults.len(), 3);
+    assert_eq!(app.world().get::<Roof>(entity).unwrap().0, before);
+    assert!(
+        app.world()
+            .resource::<BuildingReport>()
+            .geometry_changes
+            .is_empty()
+    );
+    edit[..8].fill(0);
+    edit[40..52].fill(0);
+    edit[8..12].copy_from_slice(&1u32.to_le_bytes());
+    edit[12..16].copy_from_slice(&0.6f32.to_le_bytes());
+    emit(
+        &mut app,
+        roof_edits::EditRoof(RoofEditEvent::from_observed(&edit)),
+    );
+    app.update();
+    assert!(app.world().resource::<BuildingReport>().faults.is_empty());
+    assert_eq!(
+        f32::from_le_bytes(
+            app.world().get::<Roof>(entity).unwrap().0[0x30..0x34]
+                .try_into()
+                .unwrap()
+        ),
+        0.6
+    );
+}
+
+#[test]
+fn a_failed_tile_projection_withdraws_the_previous_derived_mesh() {
+    let (mut app, _, entity) = scene();
+    assert!(app.world().get::<RoofCpuTiles>(entity).is_some());
+    let original_roof = app.world().get::<Roof>(entity).unwrap().0;
+    let mut tile = *app.world().get::<TileSimulation>(entity).unwrap().0.bytes();
+    tile[4..8].copy_from_slice(&(-f32::MAX).to_le_bytes());
+    app.world_mut().get_mut::<TileSimulation>(entity).unwrap().0 =
+        country_core::resources::roofs::components::RoofTileSimulation::from_observed(tile);
+    app.world_mut().get_mut::<Roof>(entity).unwrap().0[0x4c..0x50]
+        .copy_from_slice(&f32::MAX.to_le_bytes());
+    app.update();
+    assert_eq!(
+        *app.world().get::<TileSimulation>(entity).unwrap().0.bytes(),
+        tile
+    );
+    assert!(
+        app.world()
+            .resource::<BuildingReport>()
+            .faults
+            .iter()
+            .any(|fault| fault.contains("unrepresentable height step"))
+    );
+    app.world_mut().get_mut::<Roof>(entity).unwrap().0 = original_roof;
+    app.update();
+    assert!(app.world().resource::<BuildingReport>().faults.is_empty());
+    // An invalid externally replaced component still must not keep an old mesh
+    // whose geometry no longer corresponds to its authoritative roof record.
+    app.world_mut().get_mut::<Roof>(entity).unwrap().0[8..12].copy_from_slice(&2u32.to_le_bytes());
+    app.update();
+    assert!(
+        app.world()
+            .resource::<BuildingReport>()
+            .faults
+            .iter()
+            .any(|fault| fault.contains("Roof CPU tiles"))
+    );
+    assert!(app.world().get::<RoofCpuTiles>(entity).is_none());
+}
+
+#[test]
+fn invalid_external_roof_does_not_panic_in_direction_consumer() {
+    let (mut app, wall, entity) = scene();
+    app.world_mut().get_mut::<Roof>(entity).unwrap().0[8..12].copy_from_slice(&2u32.to_le_bytes());
+    emit(
+        &mut app,
+        SwitchRoofDirection(RoofDirectionRequest { wall, direction: 1 }),
+    );
+    app.update();
+    assert!(
+        app.world()
+            .resource::<BuildingReport>()
+            .faults
+            .iter()
+            .any(|fault| fault.contains("Invalid current roof geometry"))
+    );
+    assert_eq!(app.world().get::<Roof>(entity).unwrap().0[0x3c], 0);
+    assert!(app.world().get::<RoofCpuTiles>(entity).is_none());
+    emit(&mut app, DeleteRoof(wall));
+    app.update();
+    assert!(app.world().get::<Roof>(entity).is_none());
+    assert!(
+        app.world()
+            .resource::<BuildingReport>()
+            .faults
+            .iter()
+            .any(|fault| fault.contains("sound omitted"))
+    );
+}
+
+#[test]
+fn invalid_frame_times_do_not_poison_roof_animation_and_valid_time_recovers() {
+    let (mut app, _, entity) = scene();
+    let before = *app.world().get::<Animation>(entity).unwrap().0.bytes();
+    for delta in [f32::NAN, f32::INFINITY, -0.1] {
+        app.world_mut().resource_mut::<BuildingFrame>().delta_time = delta;
+        app.update();
+        assert_eq!(
+            *app.world().get::<Animation>(entity).unwrap().0.bytes(),
+            before
+        );
+        assert!(
+            app.world()
+                .resource::<BuildingReport>()
+                .faults
+                .iter()
+                .any(|fault| fault.contains("finite nonnegative delta time"))
+        );
+    }
+    app.world_mut().resource_mut::<BuildingFrame>().delta_time = 0.1;
+    app.update();
+    assert!(app.world().resource::<BuildingReport>().faults.is_empty());
+    assert_ne!(
+        *app.world().get::<Animation>(entity).unwrap().0.bytes(),
+        before
+    );
 }

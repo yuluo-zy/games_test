@@ -144,6 +144,12 @@ pub(crate) fn core_features(
     let fields = [
         (Feature::WideLines, core.wide_lines),
         (Feature::ImageCubeArray, core.image_cube_array),
+        (Feature::MultiDrawIndirect, core.multi_draw_indirect),
+        (
+            Feature::DrawIndirectFirstInstance,
+            core.draw_indirect_first_instance,
+        ),
+        (Feature::DrawIndirectCount, v12.draw_indirect_count),
         (
             Feature::ShaderStorageBufferArrayDynamicIndexing,
             core.shader_storage_buffer_array_dynamic_indexing,
@@ -468,6 +474,19 @@ pub(crate) fn create_candidate(
             return Err(Error::unsupported("设备缺少 VK_KHR_swapchain"));
         }
         extensions.push(ash::khr::swapchain::NAME.as_ptr());
+        if cfg!(target_os = "windows")
+            && has(ash::ext::full_screen_exclusive::NAME)
+            && instance
+                .enabled_extensions
+                .iter()
+                .any(|e| e == "VK_KHR_get_surface_capabilities2")
+            && instance
+                .enabled_extensions
+                .iter()
+                .any(|e| e == "VK_KHR_win32_surface")
+        {
+            extensions.push(ash::ext::full_screen_exclusive::NAME.as_ptr());
+        }
     }
     if supported.contains(Feature::MemoryBudget) {
         extensions.push(ash::ext::memory_budget::NAME.as_ptr());
@@ -510,6 +529,7 @@ pub(crate) fn create_candidate(
         .vertex_pipeline_stores_and_atomics(core.vertex_pipeline_stores_and_atomics != 0);
     let mut enabled12 = vk::PhysicalDeviceVulkan12Features::default()
         .timeline_semaphore(true)
+        .draw_indirect_count(v12.draw_indirect_count != 0)
         .buffer_device_address(v12.buffer_device_address != 0)
         .descriptor_indexing(v12.descriptor_indexing != 0)
         .runtime_descriptor_array(v12.runtime_descriptor_array != 0)
@@ -633,6 +653,37 @@ mod tests {
                 assert_eq!(actual.contains(other), other == feature);
             }
         }
+    }
+
+    #[test]
+    fn indirect_caps_distinguish_supported_from_actually_enabled_features() {
+        let core = vk::PhysicalDeviceFeatures::default()
+            .multi_draw_indirect(true)
+            .draw_indirect_first_instance(true);
+        let vulkan12 = vk::PhysicalDeviceVulkan12Features::default().draw_indirect_count(true);
+        let supported = core_features(&core, &vulkan12);
+        let disabled = core_features(
+            &vk::PhysicalDeviceFeatures::default(),
+            &vk::PhysicalDeviceVulkan12Features::default(),
+        );
+        let caps = DeviceCaps::new(supported, disabled);
+        for feature in [
+            Feature::MultiDrawIndirect,
+            Feature::DrawIndirectFirstInstance,
+            Feature::DrawIndirectCount,
+        ] {
+            assert!(caps.is_supported(feature));
+            assert!(caps.require_enabled(feature).is_err());
+            assert!(
+                DeviceCaps::new(supported, core_features(&core, &vulkan12))
+                    .require_enabled(feature)
+                    .is_ok()
+            );
+        }
+        let only_count = core_features(&vk::PhysicalDeviceFeatures::default(), &vulkan12);
+        assert!(!only_count.contains(Feature::MultiDrawIndirect));
+        assert!(!only_count.contains(Feature::DrawIndirectFirstInstance));
+        assert!(only_count.contains(Feature::DrawIndirectCount));
     }
 
     #[test]

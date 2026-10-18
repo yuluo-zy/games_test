@@ -29,10 +29,13 @@ impl DecoratorSubtype {
         Self(0)
     }
 
-    /// 0x140b25b50（O）：角吸附能力（字节标志读取）。I：corner 子类型=3
-    /// （recovered_building wall_opening_family corner=3 观察）。
+    /// 0x140b25b50（O，fresh disasm 2026-10-17）：**位掩码成员测试**
+    /// `mov ecx,0x91008; bt ecx,eax; setc al`——子类型 ∈ {bit3,bit12,bit16,bit19}
+    /// （0x91008 = 2³|2¹²|2¹⁶|2¹⁹）才可上角。Rust 此前 `== 3`（restorer 近似）与
+    /// 机器码不符——已重建为位测试。
     pub fn can_be_on_corner(self) -> bool {
-        self.0 == 3
+        // x86 `bt ecx, eax` 位索引按 32 取模；掩码 0x91008。
+        ((0x91008u32 >> (self.0 as u32 % 32)) & 1) != 0
     }
 }
 
@@ -332,3 +335,5 @@ mod tests {
         assert_eq!(d.into_decorator_subtype(), DecoratorSubtype(6));
     }
 }
+
+pub mod placement;

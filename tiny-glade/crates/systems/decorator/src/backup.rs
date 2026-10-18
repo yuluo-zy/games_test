@@ -30,9 +30,8 @@ use bevy_ecs::prelude::*;
 
 use country_core::resources::stairs::stairs_state::StairsState;
 use country_core::resources::walls::decorator_storage::DecoratorStorage;
-use country_core::recovered_building::wall_decorator_archivist::{
-    DecoratorArchivist, TrackedDecorators,
-};
+use country_core::resources::walls::decorator_archivist::changes::DecoratorArchivist;
+use country_core::resources::walls::decorator_archivist::changes::TrackedDecorators;
 
 use crate::deferred_decorator_history::{DeferredDecoratorEditHistory, DeferredDecoratorRecord};
 
@@ -57,7 +56,7 @@ pub struct DecoratorBackup {
 }
 
 /// DecoratorStorage 备份（墙桶 + 特殊桶；模型对应
-/// `recovered_building::wall_decorator_archivist::DecoratorStorage`）。
+/// `resources::walls::decorator_archivist::changes::DecoratorStorage`）。
 #[derive(Clone, Debug, Default)]
 pub struct BackupStorage {
     /// 分墙桶（TrackedDecorators = {removed, items, added}）。
@@ -126,7 +125,7 @@ fn create_backup(
         tracked.items.extend(bucket.decorators.iter().map(|(id, info)| {
             (
                 *id,
-                country_core::recovered_building::wall_decorator_archivist::ObservedDecoratorInfo(
+                country_core::resources::walls::decorator_archivist::changes::ObservedDecoratorInfo(
                     crate::apply_decorator_op::info_to_bytes(*info),
                 ),
             )
@@ -139,6 +138,12 @@ fn create_backup(
 }
 
 /// RESTORE 分支（O 结构；反向拷贝 + 状态清理）。
+///
+/// 2026-10-17 reviewer-state FIX-6：
+/// - modified state@+0x47 清除**由 history+0x48（pending）门控**（二进制
+///   `cVar2 = *[res+0x48]` 读于 RESTORE 入口，非无条件）；
+/// - **辅助 0x30B 三 map（+0x1d0/+0x200/+0x230）RESTORE 反向拷贝缺失**——live
+///   侧资源身份 U（core 未接线），标未实现登记。
 fn restore_backup<C: Send + Sync + 'static>(
     backup: &mut DecoratorBackup,
     storage: &mut DecoratorStorage,
@@ -147,8 +152,11 @@ fn restore_backup<C: Send + Sync + 'static>(
     archivist: &DecoratorArchivist<C>,
 ) {
     let _ = archivist;
+    // O：二进制 RESTORE 入口读 history+0x48 pending 作门控（cVar2），用于
+    // 下方 modified state 清除。
+    let clear_modified = deferred.pending;
     // 机器码：逐 archivist 存储地址 get_mut + clear_modification_tracking，
-    // 随后存储桶 tracked_clone_from ← 备份桶；modified state==1 → 0。
+    // 随后存储桶 tracked_clone_from ← 备份桶；modified state==1 且门控 → 0。
     for (wall, tracked) in &backup.storage_backup.walls {
         let wall_id = country_core::resources::walls::WallId(*wall);
         if let Some(bucket) = storage.wall_decorators_mut(wall_id) {
@@ -159,10 +167,11 @@ fn restore_backup<C: Send + Sync + 'static>(
                     country_core::resources::walls::decorator::DecoratorId(*id),
                     decorator_info,
                 );
-                if bucket
-                    .decorators
-                    .get(id)
-                    .is_some_and(|i| i.state == 1)
+                if clear_modified
+                    && bucket
+                        .decorators
+                        .get(id)
+                        .is_some_and(|i| i.state == 1)
                 {
                     bucket.decorators.get_mut(id).unwrap().state = 0;
                 }

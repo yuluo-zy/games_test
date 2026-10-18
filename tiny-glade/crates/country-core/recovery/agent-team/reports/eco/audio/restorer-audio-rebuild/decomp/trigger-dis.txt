@@ -1,0 +1,475 @@
+   ; reloc.WS2_32.dll_closesocket
+   ; reloc.WS2_32.dll_accept
+0x1409eb3c0      xor al, 3
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb3c2      add byte [rdx], al
+0x1409eb3c4      ucomiss xmm0, dword [0x142925904]
+   ; likely
+0x1409eb3cb      jbe 0x1409eb4ba
+0x1409eb3d1      mov qword [rbp + 0x88], r8
+0x1409eb3d8      mov dword [rbp + 0xac], edx
+0x1409eb3de      mov rax, qword [rdi]
+0x1409eb3e1      mov rcx, qword [rax + 8]
+0x1409eb3e5      mov rax, qword [rax + 0x10]
+0x1409eb3e9      lea rdx, [rax + rax*8]
+0x1409eb3ed      lea r12, [rdx + rdx*2]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb3f1      add r12, rcx
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb3f4      add r12, rax
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb3f7      xor r14d, r14d
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb3fa      test rax, rax
+   ; reloc.WS2_32.dll_accept
+0x1409eb3fd      setne r14b
+; 28
+0x1409eb401      mov r15d, 0x1c
+0x1409eb407      cmove r15, rax
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb40b      add r15, rcx
+; [0x142ac4cd0:16]=-1
+0x1409eb40e      movaps xmm12, xmmword [0x142ac4cd0]
+; [0x142ac4ce0:16]=-1
+0x1409eb416      movaps xmm13, xmmword [0x142ac4ce0]
+0x1409eb41e      lea r13, [rbp - 0x30]
+0x1409eb422      lea rdi, [rbp - 0x40]
+; [0x142925870:4]=0x3f000000
+0x1409eb426      movss xmm14, dword [0x142925870]
+0x1409eb42f      nop
+   ; reloc.WS2_32.dll_accept
+0x1409eb430      cmp r15, r12
+   ; unlikely
+0x1409eb433      je 0x1409eb4ad
+0x1409eb435      mov rax, r15
+; 28
+   ; reloc.WS2_32.dll_accept
+0x1409eb438      add r15, 0x1c
+   ; reloc.WS2_32.dll_bind
+   ; reloc.WS2_32.dll_bind
+0x1409eb43c      inc r14d
+0x1409eb43f      mov ecx, dword [rax + 0x18]
+; reloc.WS2_32.dll_accept
+0x1409eb442      test cl, 1
+   ; unlikely
+0x1409eb445      je 0x1409eb430
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb447      test ecx, ecx
+   ; unlikely
+0x1409eb449      je 0x1409eb4ad
+0x1409eb44b      movups xmm0, xmmword [rax]
+0x1409eb44e      movaps xmmword [rbp + 0x40], xmm0
+0x1409eb452      mov rax, qword [rax + 0x10]
+0x1409eb456      mov qword [rbp + 0x50], rax
+0x1409eb45a      movaps xmm0, xmmword [rbp + 0x40]
+0x1409eb45e      addps xmm0, xmm12
+0x1409eb462      movaps xmmword [rbp + 0x40], xmm0
+0x1409eb466      movsd xmm0, qword [rbp + 0x50]
+0x1409eb46b      addps xmm0, xmm13
+0x1409eb46f      movlps qword [rbp + 0x50], xmm0
+0x1409eb473      movlps qword [rbp - 0x30], xmm10
+0x1409eb478      movss dword [rbp - 0x28], xmm6
+0x1409eb47d      mov eax, dword [rbp + 0x98]
+0x1409eb483      mov dword [rbp - 0x38], eax
+0x1409eb486      mov rax, qword [rbp + 0x90]
+0x1409eb48d      mov qword [rbp - 0x40], rax
+0x1409eb491      mov rcx, rbp
+0x1409eb494      lea rdx, [rbp + 0x40]
+0x1409eb498      mov r8, r13
+0x1409eb49b      mov r9, rdi
+   ; 0x141240570(0xffffffffffffffc0, 0x0, 0x40, 0x0)
+0x1409eb49e      call 0x141240570
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb4a3      cmp dword [rbp], 0
+   ; unlikely
+0x1409eb4a7      je 0x1409eb430
+0x1409eb4a9      movaps xmm11, xmm14
+0x1409eb4ad      mov edx, dword [rbp + 0xac]
+0x1409eb4b3      mov r8, qword [rbp + 0x88]
+0x1409eb4ba      mov edi, edx
+0x1409eb4bc      mov r15, r8
+0x1409eb4bf      mov dword [r8], edx
+0x1409eb4c2      addss xmm11, dword [rbx + 0xd0]
+0x1409eb4cb      xorps xmm0, xmm0
+0x1409eb4ce      xorps xmm1, xmm1
+0x1409eb4d1      maxss xmm1, xmm11
+; [0x142925904:4]=0x3f800000
+0x1409eb4d6      movss xmm6, dword [0x142925904]
+0x1409eb4de      movaps xmm2, xmm6
+0x1409eb4e1      minss xmm2, xmm1
+0x1409eb4e5      movss dword [rbx + 0xd0], xmm2
+0x1409eb4ed      ucomiss xmm2, xmm0
+   ; unlikely
+0x1409eb4f0      jbe 0x1409eb4fc
+0x1409eb4f2      mov rcx, rbx
+   ; 0x140a57300(-1, 0x0, -1, 0x0)
+0x1409eb4f5      call 0x140a57300
+0x1409eb4fa      jmp 0x1409eb524
+   ; reloc.WS2_32.dll_accept
+0x1409eb4fc      cmp dword [rbx], 1
+   ; likely
+0x1409eb4ff      jne 0x1409eb524
+0x1409eb501      lea rdx, [rbx + 8]
+0x1409eb505      mov rcx, rbp
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb508      xor r8d, r8d
+   ; 0x141437440(-1, 0x0, 0x8, 0x0)
+0x1409eb50b      call 0x141437440
+0x1409eb510      movabs rax, 0x8000000000000004
+0x1409eb51a      cmp qword [rbp], rax
+   ; likely
+0x1409eb51e      jne 0x1409eb888
+0x1409eb524      mov rdx, qword [rbp + 0xa0]
+0x1409eb52b      movzx eax, byte [rdx + 0x4d0]
+0x1409eb532      lea rcx, [0x142ac5670]
+   ; "/home/h3/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/b"
+0x1409eb539      mov rax, qword [rcx + rax*8]
+   ; reloc.WS2_32.dll_accept
+0x1409eb53d      cmp byte [rdx + rax + 0x128], 0
+   ; unlikely
+0x1409eb545      je 0x1409eb54f
+; [0x142925984:4]=0x3dcccccd
+0x1409eb547      movss xmm6, dword [0x142925984]
+0x1409eb54f      mov rax, qword [rbp + 0x80]
+0x1409eb556      movshdup xmm10, xmm8
+0x1409eb55b      mulss xmm8, xmm8
+0x1409eb560      movaps xmm0, xmm10
+0x1409eb564      mulss xmm0, xmm10
+0x1409eb569      addss xmm0, xmm8
+0x1409eb56e      mulss xmm7, xmm7
+0x1409eb572      addss xmm7, xmm0
+0x1409eb576      sqrtss xmm7, xmm7
+0x1409eb57a      mov r14, qword [rax]
+0x1409eb57d      mov rcx, qword [r14]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb580      test rcx, rcx
+   ; unlikely
+0x1409eb583      je 0x1409eb5a2
+0x1409eb585      movaps xmm3, xmm7
+0x1409eb588      mulss xmm3, xmm6
+; reloc.WS2_32.dll_recv
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb58c      add rcx, 0x10
+; "camera_heightcamera_speedInForestcrates/country-core/src/systems/audio/water_ambience_audio.rs"
+0x1409eb590      lea rdx, [0x142ac51c0]
+; 0xd
+   ; reloc.WS2_32.dll_listen
+0x1409eb597      mov r8d, reloc.WS2_32.dll_listen
+   ; 0x140a53db0(-1, 0x0, 0x142ac51c0, 0xf)
+0x1409eb59d      call 0x140a53db0
+0x1409eb5a2      divss xmm9, dword [rsi]
+0x1409eb5a7      mulss xmm9, dword [0x142ac4cf0]
+0x1409eb5b0      mulss xmm6, xmm9
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb5b5      cmp byte [rbx + 0xd8], 0
+   ; unlikely
+0x1409eb5bc      je 0x1409eb5c6
+0x1409eb5be      mulss xmm6, dword [0x1429345a8]
+0x1409eb5c6      movss xmm0, dword [rbx + 0xd4]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb5ce      xor eax, eax
+0x1409eb5d0      ucomiss xmm6, xmm0
+0x1409eb5d3      setb al
+0x1409eb5d6      subss xmm6, xmm0
+0x1409eb5da      lea rcx, [0x142ac4cf8]
+0x1409eb5e1      mulss xmm6, dword [rcx + rax*4]
+0x1409eb5e6      addss xmm6, xmm0
+0x1409eb5ea      minss xmm6, dword [0x14292e6f0]
+0x1409eb5f2      mov dword [r15], edi
+0x1409eb5f5      movss dword [rbx + 0xd4], xmm6
+0x1409eb5fd      mov rcx, qword [r14]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb600      test rcx, rcx
+   ; unlikely
+0x1409eb603      je 0x1409eb61e
+; reloc.WS2_32.dll_recv
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb605      add rcx, 0x10
+; "camera_speedInForestcrates/country-core/src/systems/audio/water_ambience_audio.rs"
+0x1409eb609      lea rdx, [0x142ac51cd]
+; 0xc
+; 12
+0x1409eb610      mov r8d, listen
+0x1409eb616      movaps xmm3, xmm6
+   ; 0x140a53db0(-1, 0x0, 0x142ac51cd, 0xf)
+0x1409eb619      call 0x140a53db0
+0x1409eb61e      lea rcx, [rbx + 0x30]
+   ; 0x140a57300(-1, 0x0, 0x142ac51cd, 0x30)
+0x1409eb622      call 0x140a57300
+0x1409eb627      lea rdi, [rbx + 0x60]
+0x1409eb62b      mov rcx, rdi
+   ; 0x140a57300(0x60, 0x0, 0x142ac51cd, 0x60)
+0x1409eb62e      call 0x140a57300
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb633      cmp byte [rbx + 0xd8], 0
+   ; unlikely
+0x1409eb63a      je 0x1409eb65b
+0x1409eb63c      movss xmm2, dword [rbx + 0xd4]
+0x1409eb644      mulss xmm2, dword [0x142925870]
+0x1409eb64c      addss xmm2, dword [0x142925904]
+   ; reloc.WS2_32.dll_accept
+0x1409eb654      cmp dword [rdi], 1
+   ; unlikely
+0x1409eb657      je 0x1409eb668
+0x1409eb659      jmp 0x1409eb688
+; [0x142925904:4]=0x3f800000
+0x1409eb65b      movss xmm2, dword [0x142925904]
+   ; reloc.WS2_32.dll_accept
+0x1409eb663      cmp dword [rdi], 1
+   ; likely
+0x1409eb666      jne 0x1409eb688
+0x1409eb668      lea rdx, [rbx + 0x68]
+0x1409eb66c      mov rcx, rbp
+   ; 0x141436b40(0x60, 0x0, 0x68, 0x0)
+0x1409eb66f      call 0x141436b40
+0x1409eb674      movabs rax, 0x8000000000000004
+0x1409eb67e      cmp qword [rbp], rax
+   ; likely
+0x1409eb682      jne 0x1409eb83b
+0x1409eb688      lea rcx, [rbx + 0x90]
+; [0x142ac193c:4]=0x41300000
+0x1409eb68f      movss xmm0, dword [0x142ac193c]
+0x1409eb697      ucomiss xmm0, xmm10
+   ; unlikely
+0x1409eb69b      jbe 0x1409eb6d3
+0x1409eb69d      ucomiss xmm7, dword [0x1429edc04]
+   ; unlikely
+0x1409eb6a4      jbe 0x1409eb6d3
+   ; 0x140a57300(0x60, 0x0, 0x68, 0x90)
+0x1409eb6a6      call 0x140a57300
+0x1409eb6ab      mov rcx, qword [r14]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb6ae      test rcx, rcx
+   ; unlikely
+0x1409eb6b1      je 0x1409eb722
+; reloc.WS2_32.dll_recv
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb6b3      add rcx, 0x10
+; "InForestcrates/country-core/src/systems/audio/water_ambience_audio.rs"
+0x1409eb6b7      lea rdx, [0x142ac51d9]
+; [0x142925904:4]=0x3f800000
+0x1409eb6be      movss xmm3, dword [0x142925904]
+0x1409eb6c6      mov r8d, 8
+   ; 0x140a53db0(0x60, 0x0, 0x142ac51d9, 0xf)
+0x1409eb6cc      call 0x140a53db0
+0x1409eb6d1      jmp 0x1409eb722
+   ; reloc.WS2_32.dll_accept
+0x1409eb6d3      cmp dword [rcx], 1
+   ; likely
+0x1409eb6d6      jne 0x1409eb701
+; 152
+0x1409eb6d8      add rbx, 0x98
+0x1409eb6df      mov rcx, rbp
+0x1409eb6e2      mov rdx, rbx
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb6e5      xor r8d, r8d
+   ; 0x141437440(0x60, 0x0, 0x98, 0x0)
+0x1409eb6e8      call 0x141437440
+0x1409eb6ed      movabs rax, 0x8000000000000004
+0x1409eb6f7      cmp qword [rbp], rax
+   ; likely
+0x1409eb6fb      jne 0x1409eb8d2
+0x1409eb701      mov rcx, qword [r14]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb704      test rcx, rcx
+   ; unlikely
+0x1409eb707      je 0x1409eb722
+; reloc.WS2_32.dll_recv
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb709      add rcx, 0x10
+; "InForestcrates/country-core/src/systems/audio/water_ambience_audio.rs"
+0x1409eb70d      lea rdx, [0x142ac51d9]
+0x1409eb714      mov r8d, 8
+0x1409eb71a      xorps xmm3, xmm3
+   ; 0x140a53db0(0x60, 0x0, 0x142ac51d9, 0xf)
+0x1409eb71d      call 0x140a53db0
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb722      cmp byte [rbp + 0xb0], 0
+   ; unlikely
+0x1409eb729      je 0x1409eb773
+   ; 0x140c18130(0x60, 0x0, 0x142ac51d9, 0xf)
+0x1409eb72b      call 0x140c18130
+0x1409eb730      mov rcx, rax
+0x1409eb733      mov rax, qword [rax]
+; reloc.WS2_32.dll_accept
+0x1409eb736      cmp rax, 1
+   ; likely
+0x1409eb73a      jne 0x1409eb801
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb740      add rcx, 8
+0x1409eb744      mov rdx, qword [rbp + 0x38]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb748      cmp qword [rcx], 0
+   ; likely
+0x1409eb74c      jne 0x1409eb82f
+0x1409eb752      mov qword [rcx], 0xffffffffffffffff
+0x1409eb759      mov qword [rbp + 0xb0], rcx
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb760      add rcx, 8
+   ; 0x140c170f0(0x60, 0x0, -1, 0x8000000000000014)
+0x1409eb764      call 0x140c170f0
+0x1409eb769      mov rax, qword [rbp + 0xb0]
+0x1409eb770      inc qword [rax]
+0x1409eb773      movaps xmm6, xmmword [rbp + 0xc0]
+0x1409eb77a      movaps xmm7, xmmword [rbp + 0xd0]
+0x1409eb781      movaps xmm8, xmmword [rbp + 0xe0]
+0x1409eb789      movaps xmm9, xmmword [rbp + 0xf0]
+0x1409eb791      movaps xmm10, xmmword [rbp + 0x100]
+0x1409eb799      movaps xmm11, xmmword [rbp + 0x110]
+0x1409eb7a1      movaps xmm12, xmmword [rbp + 0x120]
+0x1409eb7a9      movaps xmm13, xmmword [rbp + 0x130]
+0x1409eb7b1      movaps xmm14, xmmword [rbp + 0x140]
+   ; reloc.WS2_32.dll_accept
+0x1409eb7b9      add rsp, 0x1d8
+0x1409eb7c0      pop rbx
+0x1409eb7c1      pop rdi
+0x1409eb7c2      pop rsi
+0x1409eb7c3      pop r12
+0x1409eb7c5      pop r13
+0x1409eb7c7      pop r14
+0x1409eb7c9      pop r15
+0x1409eb7cb      pop rbp
+0x1409eb7cc      ret
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb7cd      test rax, rax
+   ; likely
+0x1409eb7d0      jne 0x1409eb823
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb7d2      xor edx, edx
+   ; 0x1428f87d0(-1, -1, 0x0, 0x8000000000000014)
+0x1409eb7d4      call 0x1428f87d0
+0x1409eb7d9      mov rcx, rax
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb7dc      test rax, rax
+   ; likely
+0x1409eb7df      jne 0x1409eb248
+0x1409eb7e5      jmp 0x1409eb823
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb7e7      test rax, rax
+   ; likely
+0x1409eb7ea      jne 0x1409eb823
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb7ec      xor edx, edx
+   ; 0x1428f87d0(-1, -1, 0x0, -1)
+0x1409eb7ee      call 0x1428f87d0
+0x1409eb7f3      mov rcx, rax
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb7f6      test rax, rax
+   ; likely
+0x1409eb7f9      jne 0x1409eb2d4
+0x1409eb7ff      jmp 0x1409eb823
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb801      test rax, rax
+0x1409eb804      mov rax, qword [rbp + 0x38]
+   ; likely
+0x1409eb808      jne 0x1409eb823
+0x1409eb80a      mov rsi, rax
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb80d      xor edx, edx
+   ; 0x1428f87d0(-1, -1, 0x0, -1)
+0x1409eb80f      call 0x1428f87d0
+0x1409eb814      mov rdx, rsi
+0x1409eb817      mov rcx, rax
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1409eb81a      test rax, rax
+   ; likely
+0x1409eb81d      jne 0x1409eb748
+   ; (pstr 0x142c3aa50) "/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\std\src"
+0x1409eb823      lea rcx, [0x142c3aaa0]
+   ; 0x1428d80d0(-1, -1, -1, 0x142c3aaa0)
+0x1409eb82a      call 0x1428d80d0
+   ; (pstr 0x142c3ab18) "/home/h3/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/p"
+0x1409eb82f      lea rcx, [0x142c3ab70]
+   ; 0x1428d9250(-1, -1, -1, 0x142c3ab70)
+0x1409eb836      call 0x1428d9250
+0x1409eb83b      mov rax, qword [rbp + 0x30]
+0x1409eb83f      mov qword [rbp + 0x70], rax
+0x1409eb843      movups xmm0, xmmword [rbp]
+0x1409eb847      movups xmm1, xmmword [rbp + 0x10]
+0x1409eb84b      movups xmm2, xmmword [rbp + 0x20]
+0x1409eb84f      movaps xmmword [rbp + 0x60], xmm2
+0x1409eb853      movaps xmmword [rbp + 0x50], xmm1
+0x1409eb857      movaps xmmword [rbp + 0x40], xmm0
+   ; (pstr 0x142ad2500) "crates/country-core/src/resources/audio_resources.rs"
+0x1409eb85b      lea rax, [0x142ad2c80]
+0x1409eb862      mov qword [rsp + 0x20], rax
+; "called `Result::unwrap()` on an `Err` value"
+0x1409eb867      lea rcx, [0x142ad0600]
+0x1409eb86e      lea r9, [0x142ad05c0]
+0x1409eb875      lea r8, [rbp + 0x40]
+; '+'
+; 43
+0x1409eb879      mov edx, 0x2b
+   ; 0x1428d9760(-1, -1, 0x2b, 0x142ad0600)
+0x1409eb87e      call 0x1428d9760
+0x1409eb883      jmp 0x1409eb91a
+0x1409eb888      mov rax, qword [rbp + 0x30]
+0x1409eb88c      mov qword [rbp + 0x70], rax
+0x1409eb890      movups xmm0, xmmword [rbp]
+0x1409eb894      movups xmm1, xmmword [rbp + 0x10]
+0x1409eb898      movups xmm2, xmmword [rbp + 0x20]
+0x1409eb89c      movaps xmmword [rbp + 0x60], xmm2
+0x1409eb8a0      movaps xmmword [rbp + 0x50], xmm1
+0x1409eb8a4      movaps xmmword [rbp + 0x40], xmm0
+   ; (pstr 0x142ad2500) "crates/country-core/src/resources/audio_resources.rs"
+0x1409eb8a8      lea rax, [0x142ad2c08]
+0x1409eb8af      mov qword [rsp + 0x20], rax
+; "called `Result::unwrap()` on an `Err` value"
+0x1409eb8b4      lea rcx, [0x142ad0600]
+0x1409eb8bb      lea r9, [0x142ad05c0]
+0x1409eb8c2      lea r8, [rbp + 0x40]
+; '+'
+; 43
+0x1409eb8c6      mov edx, 0x2b
+   ; 0x1428d9760(-1, -1, 0x2b, 0x142ad0600)
+0x1409eb8cb      call 0x1428d9760
+0x1409eb8d0      jmp 0x1409eb91a
+0x1409eb8d2      mov rax, qword [rbp + 0x30]
+0x1409eb8d6      mov qword [rbp + 0x70], rax
+0x1409eb8da      movups xmm0, xmmword [rbp]
+0x1409eb8de      movups xmm1, xmmword [rbp + 0x10]
+0x1409eb8e2      movups xmm2, xmmword [rbp + 0x20]
+0x1409eb8e6      movaps xmmword [rbp + 0x60], xmm2
+0x1409eb8ea      movaps xmmword [rbp + 0x50], xmm1
+0x1409eb8ee      movaps xmmword [rbp + 0x40], xmm0
+   ; (pstr 0x142ad2500) "crates/country-core/src/resources/audio_resources.rs"
+0x1409eb8f2      lea rax, [0x142ad2c08]

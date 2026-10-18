@@ -1,0 +1,215 @@
+/// B snapshot addresses use unit "Stairs" (plural), not an invented stair ID.
+#[derive(Clone, Copy, Debug, serde::Deserialize)]
+pub enum DecoratorAddrJson {
+    Wall(u64),
+    Terrain,
+    #[serde(rename = "Stairs")]
+    Stair,
+}
+impl DecoratorAddrJson {
+    pub fn to_storage_addr(&self) -> DecoratorStorageAddr {
+        match self {
+            Self::Wall(id) => DecoratorStorageAddr::Wall(WallId(*id)),
+            Self::Terrain => DecoratorStorageAddr::Terrain,
+            Self::Stair => DecoratorStorageAddr::Stair,
+        }
+    }
+}
+
+fn state_default_one() -> f32 { 1.0 }
+fn state_default_true() -> bool { true }
+
+/// Native State map@1415ca5f0 and sequence@1415aaf40. This is a Serde
+/// boundary over the existing owned HistoryState, not another runtime owner.
+/// Field order also preserves the original sixteen-element sequence schema.
+#[derive(Clone, Copy, Debug, serde::Deserialize)]
+pub struct DecoratorInfoJson {
+    pub dst: DecoratorDstJson,
+    pub ty: DecoratorTypeJson,
+    pub rank: DecoratorRankJson,
+    #[serde(default)]
+    pub color_id: u32,
+    pub seed: u32,
+    #[serde(default)]
+    pub clv: u8,
+    #[serde(default, alias = "chimney_h_offset")]
+    pub h_offset: f32,
+    #[serde(default = "state_default_true")]
+    pub allow_connection: bool,
+    #[serde(default)]
+    pub window_light_color: u32,
+    #[serde(default = "state_default_one")]
+    pub lantern_brightness: f32,
+    #[serde(default = "state_default_true")]
+    pub chimney_smoke: bool,
+    #[serde(default = "state_default_one")]
+    pub stair_width: f32,
+    #[serde(default)]
+    pub ladder_color: u32,
+    #[serde(default)]
+    pub railing: DecoratorRailingJson,
+    #[serde(default)]
+    pub stairs_supports: DecoratorSupportsJson,
+    #[serde(default)]
+    pub magic_color: u32,
+}
+
+#[derive(Clone, Copy, Debug, serde::Deserialize)]
+pub struct DecoratorRankJson { pub x: u8 }
+
+#[derive(Clone, Copy, Debug, serde::Deserialize)]
+pub enum DecoratorTypeJson {
+    CottageWindow, GothicWindow, ArrowSlit, Chimney, Lantern, Flag,
+    Clutter { ty: SnapshotClutterMeshJson },
+    Stairs,
+}
+impl DecoratorTypeJson {
+    fn native_tag(self) -> u8 {
+        match self {
+            Self::CottageWindow => 56, Self::GothicWindow => 57,
+            Self::ArrowSlit => 58, Self::Chimney => 59, Self::Lantern => 60,
+            Self::Flag => 61, Self::Clutter { ty } => ty as u8, Self::Stairs => 63,
+        }
+    }
+}
+
+// Exact native enum spellings/order from the original 56-entry variant list.
+// Unit enum Deserialize also accepts the original {"variant":null} shape;
+// decoding only String would incorrectly reject it.
+__CLUTTER_ENUM__
+
+#[derive(Clone, Copy, Debug, Default, serde::Deserialize)]
+pub enum DecoratorRailingJson {
+    #[default] None, Low, High, Wooden,
+}
+#[derive(Clone, Copy, Debug, Default, serde::Deserialize)]
+pub enum DecoratorSupportsJson { #[default] Full, None }
+#[derive(Clone, Copy, Debug, Default, serde::Deserialize)]
+pub enum DecoratorSideJson { Inner, #[default] Outer }
+
+#[derive(Clone, Copy, Debug, serde::Deserialize)]
+pub enum DecoratorDstJson {
+    Wall(DecoratorWallDstJson),
+    Roof(DecoratorRoofDstJson),
+    Terrain(DecoratorTerrainDstJson),
+    Stair(DecoratorStairDstJson),
+}
+#[derive(Clone, Copy, Debug, serde::Deserialize)]
+pub struct DecoratorWallDstJson {
+    pub coord: DecoratorCoordJson,
+    pub anchor: DecoratorAnchorJson,
+}
+#[derive(Clone, Copy, Debug, serde::Deserialize)]
+pub struct DecoratorCoordJson { pub x: f32, pub y: f32 }
+#[derive(Clone, Copy, Debug, serde::Deserialize)]
+pub struct DecoratorAnchorJson {
+    #[serde(default)] pub wall_height_relative_y: f32,
+    #[serde(default)] pub anchor_ws: [f32; 3],
+    pub corner: u8,
+    #[serde(default)] pub platform: u64,
+    #[serde(default)] pub is_bottom_door: bool,
+    #[serde(default)] pub side: DecoratorSideJson,
+}
+#[derive(Clone, Copy, Debug, serde::Deserialize)]
+pub struct DecoratorRoofDstJson {
+    pub mesh_uv: [f32; 2],
+    #[serde(default)] pub relative_yaw_radians: f32,
+}
+#[derive(Clone, Copy, Debug, serde::Deserialize)]
+pub struct DecoratorTerrainDstJson {
+    pub pos_xz: [f32; 2],
+    #[serde(default)] pub yaw_radians: f32,
+}
+#[derive(Clone, Copy, Debug, serde::Deserialize)]
+pub struct DecoratorStairDstJson {
+    pub graph_edge: (u32, u32),
+    pub uv: [f32; 2],
+    #[serde(default)] pub yaw_radians: f32,
+}
+
+impl DecoratorDstJson {
+    fn projected_bytes(self) -> [u8; 40] {
+        // Only inactive host padding is initialized here. Every active field
+        // comes from the typed wire payload; no native pointers are constructed.
+        let mut b = [0u8; 40];
+        fn f(b: &mut [u8], at: usize, value: f32) {
+            b[at..at+4].copy_from_slice(&value.to_bits().to_le_bytes());
+        }
+        match self {
+            Self::Wall(wall) => {
+                f(&mut b, 0, wall.coord.x); f(&mut b, 4, wall.coord.y);
+                b[8..16].copy_from_slice(&wall.anchor.platform.to_le_bytes());
+                f(&mut b, 0x10, wall.anchor.wall_height_relative_y);
+                for (i, value) in wall.anchor.anchor_ws.into_iter().enumerate() {
+                    f(&mut b, 0x14+i*4, value);
+                }
+                b[0x20] = wall.anchor.corner;
+                b[0x21] = u8::from(wall.anchor.is_bottom_door);
+                b[0x22] = wall.anchor.side as u8;
+            }
+            Self::Roof(roof) => {
+                f(&mut b, 0, roof.mesh_uv[0]); f(&mut b, 4, roof.mesh_uv[1]);
+                f(&mut b, 8, roof.relative_yaw_radians); b[0x22] = 2;
+            }
+            Self::Terrain(terrain) => {
+                f(&mut b, 0, terrain.pos_xz[0]); f(&mut b, 4, terrain.pos_xz[1]);
+                f(&mut b, 8, terrain.yaw_radians); b[0x22] = 3;
+            }
+            Self::Stair(stair) => {
+                b[..4].copy_from_slice(&stair.graph_edge.0.to_le_bytes());
+                b[4..8].copy_from_slice(&stair.graph_edge.1.to_le_bytes());
+                f(&mut b, 8, stair.uv[0]); f(&mut b, 0xc, stair.uv[1]);
+                f(&mut b, 0x10, stair.yaw_radians); b[0x22] = 4;
+            }
+        }
+        b
+    }
+}
+
+impl DecoratorInfoJson {
+    pub fn to_history_state(&self) -> crate::resources::history::decorator_edit::DecoratorHistoryState {
+        use crate::resources::history::decorator_edit::DecoratorHistoryState;
+        let dst = self.dst.projected_bytes();
+        let q = |at| u64::from_le_bytes(dst[at..at+8].try_into().unwrap());
+        let d = |at| u32::from_le_bytes(dst[at..at+4].try_into().unwrap());
+        DecoratorHistoryState {
+            dst_wall: q(0), dst_secondary: q(8), dst_payload: q(0x10),
+            u18: q(0x18), u20: d(0x20), u24: d(0x24),
+            u28: u64::from(self.color_id) | (u64::from(self.seed) << 32),
+            u30: self.h_offset.to_bits(), u34: self.window_light_color,
+            u38: self.lantern_brightness.to_bits(), u3c: self.stair_width.to_bits(),
+            u40: self.ladder_color, u44: self.magic_color,
+            rank: self.rank.x, u49: self.clv, ty: self.ty.native_tag(),
+            u4b: self.railing as u8, u4c: u8::from(self.allow_connection),
+            u4d: u8::from(self.chimney_smoke), style: self.stairs_supports as u8,
+        }
+    }
+}
+
+pub fn deserialize_decorator_history_state(value: Value)
+    -> anyhow::Result<crate::resources::history::decorator_edit::DecoratorHistoryState>
+{
+    Ok(serde_json::from_value::<DecoratorInfoJson>(value)?.to_history_state())
+}
+
+#[derive(Clone, Debug, serde::Deserialize)]
+pub struct DecoratorsSectionJson {
+    pub states: Vec<(DecoratorAddrJson, DecoratorStateListJson)>,
+}
+#[derive(Clone, Debug, serde::Deserialize)]
+pub struct DecoratorStateListJson {
+    pub state: Vec<(u32, DecoratorInfoJson)>,
+}
+impl DecoratorsSectionJson {
+    pub fn into_storage_snapshot(&self) -> anyhow::Result<DecoratorStorageSnapshot> {
+        use crate::resources::walls::decorator::DecoratorId;
+        Ok(DecoratorStorageSnapshot {
+            states: self.states.iter().map(|(addr, bucket)| (
+                addr.to_storage_addr(), DecoratorAddrSnapshot {
+                    states: bucket.state.iter().map(|(id, wire)|
+                        (DecoratorId(*id), wire.to_history_state())).collect(),
+                },
+            )).collect(),
+        })
+    }
+}

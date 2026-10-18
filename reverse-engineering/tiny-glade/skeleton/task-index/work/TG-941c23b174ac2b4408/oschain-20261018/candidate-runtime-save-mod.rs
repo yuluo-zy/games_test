@@ -1,0 +1,75 @@
+//! Recovered save-file codec, mutable shadow and incremental write consumers,
+//! plus the original inline game-thread snapshot collector and save worker.
+//! The actual host registers these systems with its original numeric sets.
+//! Session switching still goes through canonical MetaCommander and NextSession.
+pub mod load_completion_checker;
+pub mod load_game;
+pub mod save_backup_list;
+pub mod save_backup_metronome;
+pub mod save_file_identity;
+pub mod save_game;
+pub mod save_thread;
+pub mod shadow_file;
+pub mod snapshot;
+pub mod snapshot_gc;
+
+#[cfg(test)]
+mod tests;
+
+/// B `add_save_load_systems` 0x1409443b0：注册 save_game / load_game / save_thread /
+/// check_load_completion 等系统。当前域资源（GameProfile/各域 Query）未齐，系统注册
+/// 留待域恢复后接入；此函数保留合同签名并记录阻塞面，不注册空系统。
+/// on_load 回放链已由 `load_game::advance_load_game`/`load_game_session` 落地。
+pub fn add_save_load_systems(_schedule: &mut bevy_ecs::schedule::Schedule) {
+    // 阻塞：save_game 本体 ECS 组装（0x140a3f470，~9 资源）依赖
+    // CameraRigParametersCache 以外的 TimeOfDay/Sheep/chain_index/snapshots 域资源；
+    // capture_game_snapshot（0x1417a1d00 域 Query）；load_game 系统本体接线依赖
+    // AppMode/GameProfile/ActiveSession 等宿主资源。commander_update 由
+    // `meta_commander::configure_session_switch_systems` 注册。
+    // save_thread 是独立线程（`save_thread` 入口），不属于 Schedule。
+}
+
+/// B `add_save_load_events_and_resources` 0x1409447e0：注册事件/资源
+/// （SaveGameCmd/SavingGameComplete/LoadingGameComplete 等）。
+pub fn add_save_load_events_and_resources(world: &mut bevy_ecs::world::World) {
+    fn register<T: bevy_ecs::event::Event>(world: &mut bevy_ecs::world::World) {
+        if !world.contains_resource::<bevy_ecs::event::Events<T>>() {
+            bevy_ecs::event::EventRegistry::register_event::<T>(world);
+        }
+    }
+    // Original @1409447e0 constructs both channels and starts Async save
+    // before inserting the load/save owners. Do it once at App assembly.
+    if !world.contains_resource::<save_game::AutoSaveState>() {
+        let mut auto = save_game::AutoSaveState::default();
+        let handle = save_thread::SaveThreadHandle::spawn_with_unsaved(auto.unsaved_files.clone());
+        auto.attach_command_sender(handle.command_sender.clone());
+        world.insert_resource(handle);
+        world.insert_resource(auto);
+    }
+    world.init_resource::<load_game::LoadGameManager>();
+    world.init_resource::<load_completion_checker::LoadingCompletionState>();
+    world.init_resource::<crate::resources::session::SavedSessionList>();
+    save_game::register_save_game_events(world);
+    register::<save_game::SavingGameComplete>(world);
+    register::<load_game::LoadingGameComplete>(world);
+    register::<load_game::StartupRevealStarted>(world);
+    register::<load_game::StartupRevealFinished>(world);
+    register::<load_completion_checker::DisplayCorruptedSaveFileWarning>(world);
+    register::<crate::resources::session::NewSessionStartedCmd>(world);
+    register::<crate::resources::session::SessionLoadedCmd>(world);
+}
+
+/// 注册 save 系统（save_game 节拍器/快照触发；load_game 消费 NextSession；save_thread
+/// 生产 spawner）。由中央仲裁接入 `startup/run_game.rs::register_core_startup`。
+use bevy_ecs::schedule::IntoScheduleConfigs;
+pub fn add_save_load_systems_impl(schedule: &mut bevy_ecs::schedule::Schedule) {
+    schedule.add_systems((
+        save_game::save_game_system.run_if(
+            |active: Option<bevy_ecs::system::Res<crate::resources::session::ActiveSession>>| {
+                active.is_some()
+            },
+        ),
+        load_game::load_game_system,
+        save_thread::init_save_thread,
+    ));
+}

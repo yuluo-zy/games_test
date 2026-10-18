@@ -1,0 +1,134 @@
+$ rustc --edition=2024 --test /var/folders/nn/2ymzgfd16j96wv2_mj2bpsfm0000gn/T/country-utils-refactor-check-1wpkt1ii/main.rs -L dependency=/tmp/tg-country-core-utils-review-20261018-target/debug/deps --extern glam=/tmp/tg-country-core-utils-review-20261018-target/debug/deps/libglam-dcf8234e6d607163.rlib --extern serde=/tmp/tg-country-core-utils-review-20261018-target/debug/deps/libserde-786e34224983ef47.rlib --extern serde_json=/tmp/tg-country-core-utils-review-20261018-target/debug/deps/libserde_json-57a2800a1410d1e0.rlib --extern anyhow=/tmp/tg-country-core-utils-review-20261018-target/debug/deps/libanyhow-19c0c2cd6065c249.rlib --extern bevy_ecs=/tmp/tg-country-core-utils-review-20261018-target/debug/deps/libbevy_ecs-a0433408d24c836f.rlib --extern parking_lot=/tmp/tg-country-core-utils-review-20261018-target/debug/deps/libparking_lot-febe2c3fe7e497ad.rlib --extern tempfile=/tmp/tg-country-core-utils-review-20261018-target/debug/deps/libtempfile-4767dd745ae780c9.rlib --extern log=/tmp/tg-country-core-utils-review-20261018-target/debug/deps/liblog-8c531d7faaa1e715.rlib --extern utils=/tmp/tg-country-core-utils-review-20261018-target/debug/deps/libutils-bc1fbda08bc8add1.rlib --extern tabloid=/tmp/tg-country-core-utils-review-20261018-target/debug/deps/libtabloid-c4643e9a3fe14595.rlib -o /var/folders/nn/2ymzgfd16j96wv2_mj2bpsfm0000gn/T/country-utils-refactor-check-1wpkt1ii/tests
+warning: method `drain_removed_meshes` is never used
+   --> /Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/asset_libraries/mesh_library.rs:133:19
+    |
+ 39 | impl AssetMeshLibrary {
+    | --------------------- method in this implementation
+...
+133 |     pub(crate) fn drain_removed_meshes(&mut self) -> impl Iterator<Item = Handle<Mesh>> + '_ {
+    |                   ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+
+
+running 115 tests
+test asset_libraries::mesh_library::tests::add_allocates_distinct_increasing_handles_and_registers_name ... ok
+test asset_libraries::mesh_library::tests::add_registers_source_path_only_when_present ... ok
+test asset_libraries::mesh_library::tests::add_same_name_overwrites_previous_mapping ... ok
+test asset_libraries::mesh_library::tests::add_without_name_registers_no_name ... ok
+test asset_libraries::mesh_library::tests::get_by_name_panics_when_name_missing - should panic ... ok
+test asset_libraries::mesh_library::tests::get_by_name_returns_none_when_mesh_removed_but_name_kept ... ok
+test asset_libraries::mesh_library::tests::get_handle_by_name_panics_with_debug_quoted_name - should panic ... ok
+test asset_libraries::mesh_library::tests::get_mut_pushes_handle_before_lookup_even_when_missing ... ok
+test asset_libraries::mesh_library::tests::get_unknown_handle_is_none ... ok
+test asset_libraries::mesh_library::tests::new_library_is_empty ... ok
+test asset_libraries::mesh_library::tests::reload_failure_keeps_old_mesh_without_marking_modified ... ok
+test asset_libraries::mesh_library::tests::reload_non_json_does_not_touch_modified_list ... ok
+test asset_libraries::mesh_library::tests::reload_non_json_extension_asserts_and_does_not_mark_modified - should panic ... ok
+test asset_libraries::mesh_library::tests::reload_path_without_extension_asserts ... ok
+test asset_libraries::mesh_library::tests::reload_replaces_mesh_in_place_and_marks_modified ... ok
+test asset_libraries::mesh_library::tests::reload_unknown_path_panics - should panic ... ok
+test asset_libraries::mesh_library::tests::reload_with_empty_path_table_panics - should panic ... ok
+test asset_libraries::mesh_library::tests::remove_drops_mesh_and_clears_names_and_source_path ... ok
+test asset_libraries::mesh_library::tests::remove_unknown_handle_is_noop ... ok
+test asset_libraries::mesh_library::tests::shared_handle_counter_is_monotonic_across_types ... ok
+test render::mesh::tests::add_color_and_builder ... ok
+test render::mesh::tests::append_mismatch_panics_with_discriminants - should panic ... ok
+test render::mesh::tests::append_same_kind ... ok
+test render::mesh::tests::bounds_and_collision ... ok
+test render::mesh::tests::empty_positions_give_inverted_box ... ok
+test render::mesh::tests::from_vec_rejects_empty - should panic ... ok
+test render::mesh::tests::missing_or_wrong_attribute_panics ... ok
+test render::mesh::tests::retain_vertices_out_of_range_index_panics - should panic ... ok
+test render::mesh::tests::retain_vertices_remaps_flags_and_indices ... ok
+test render::mesh::tests::set_attribute_replaces_in_place ... ok
+test render::mesh::tests::tags_and_strides ... ok
+test render::mesh::tests::triangles_and_arrayed_indices_drop_remainder ... ok
+test utils::audio_utils::tests::current_out_of_bounds_panics - should panic ... ok
+test utils::audio_utils::tests::empty_audio_rings_are_rejected_at_construction - should panic ... ok
+test utils::audio_utils::tests::first_stop_only_records_the_time ... ok
+test utils::audio_utils::tests::inactive_entries_are_not_started_but_the_flag_is_still_set ... ok
+test utils::audio_utils::tests::long_running_audio_does_not_wrap_the_stop_delay ... ok
+test utils::audio_utils::tests::parameter_name_is_loop ... ok
+test utils::audio_utils::tests::start_clears_a_pending_stop_timestamp ... ok
+test utils::audio_utils::tests::start_sets_the_parameter_starts_active_entries_and_is_idempotent ... ok
+test utils::audio_utils::tests::stop_advances_the_cursor_around_the_ring_and_unsets_the_timestamp ... ok
+test utils::audio_utils::tests::stop_failure_leaves_the_cursor_and_flags_untouched ... ok
+test utils::audio_utils::tests::stop_waits_until_the_threshold_is_exceeded ... ok
+test utils::audio_utils::tests::stop_with_loop_parameter_stops_the_instance_only_when_asked_to ... ok
+test utils::child_wall::tests::nan_takes_the_same_panic - should panic ... ok
+test utils::child_wall::tests::slice_lerps_both_ends_inside_the_interval ... ok
+test utils::child_wall::tests::slice_panics_when_the_result_leaves_unit_range - should panic ... ok
+test utils::components::transform::tests::affine_is_trs ... ok
+test utils::components::transform::tests::default_is_identity ... ok
+test utils::components::transform::tests::layout_is_rotation_translation_scale_at_0_0x10_0x1c ... ok
+test utils::conservative_line_raster::tests::bounded_output_matches_filtering_for_each_axis_and_endpoint_order ... ok
+test utils::conservative_line_raster::tests::diagonal_is_conservative ... ok
+test utils::conservative_line_raster::tests::extreme_points_do_not_wrap_into_the_grid ... ok
+test utils::conservative_line_raster::tests::horizontal_line_covers_a_band_of_rows ... ok
+test utils::conservative_line_raster::tests::huge_crossing_strokes_are_bounded_and_still_cover_the_grid ... ok
+test utils::conservative_line_raster::tests::nan_input_does_not_loop_forever ... ok
+test utils::conservative_line_raster::tests::negative_coordinates_use_floor_and_invalid_input_is_ignored ... ok
+test utils::conservative_line_raster::tests::negative_slope_band_follows_the_line ... ok
+test utils::conservative_line_raster::tests::point_like_segment_marks_its_cell ... ok
+test utils::conservative_line_raster::tests::reversed_endpoints_give_the_same_cells ... ok
+test utils::conservative_line_raster::tests::vertical_line_uses_the_swapped_axes ... ok
+test utils::dirty_tiles::tests::all_dirty_is_memset_ff_over_512_bytes ... ok
+test utils::dirty_tiles::tests::complete_rect_marks_all_tiles_and_far_outside_does_not_mark_edges ... ok
+test utils::dirty_tiles::tests::extreme_stroke_is_bounded_but_does_not_skip_a_world_crossing ... ok
+test utils::dirty_tiles::tests::intersects_matches_rasterized_region ... ok
+test utils::dirty_tiles::tests::nan_rect_maps_to_zero_cells ... ok
+test utils::dirty_tiles::tests::rasterize_sets_row_major_bits_with_row_as_y ... ok
+test utils::dirty_tiles::tests::rect_cells_cover_the_complete_world ... ok
+test utils::dirty_tiles::tests::retain_visits_in_row_then_bit_order_and_clears_rejected ... ok
+test utils::dirty_tiles::tests::stroke_marks_the_tiles_along_a_world_space_polyline ... ok
+test utils::dirty_tiles::tests::stroke_needs_two_points_and_clips_to_the_grid ... ok
+test utils::dirty_tiles::tests::tabloid_delta_ors_per_subscriber ... ok
+test utils::float_grid::tests::centered_path_shifts_by_half_a_cell_and_clamps_to_511 ... ok
+test utils::float_grid::tests::lerp_is_a_plus_b_minus_a_times_t ... ok
+test utils::float_grid::tests::public_entry_uses_switch_and_130_wrapper_matches_explicit_extent ... ok
+test utils::float_grid::tests::vector_path_clamps_to_510_with_frac_two_at_the_edge ... ok
+test utils::float_grid::tests::vector_path_interpolates_between_columns ... ok
+test utils::float_grid::tests::vector_path_nan_maps_to_origin_cell ... ok
+test utils::float_grid::tests::vector_path_world_origin_is_cell_256 ... ok
+test utils::float_grid::tests::z_selects_rows_and_x_selects_columns ... ok
+test utils::geo::tests::mesh_from_pts_has_white_colours_and_sequential_indices ... ok
+test utils::geo::tests::mesh_from_pts_rejects_empty_input - should panic ... ok
+test utils::geo::tests::rewire_refuses_sentinel_and_tiny_pieces ... ok
+test utils::geo::tests::rewire_rejects_invalid_splits_and_open_curves ... ok
+test utils::geo::tests::rewire_rotates_a_closed_loop_to_start_at_the_split ... ok
+test utils::geo::tests::update_curve_mesh_panics_without_a_mesh - should panic ... ok
+test utils::geo::tests::update_curve_mesh_replaces_existing_contents ... ok
+test utils::geo::tests::vec2_mappings_put_y_into_the_z_slot ... ok
+test utils::index_condenser::tests::empty_map_fails_fast ... ok
+test utils::index_condenser::tests::push_resolve_and_fast_path ... ok
+test utils::index_condenser::tests::remove_swaps_last_into_hole_and_fixes_map ... ok
+test utils::load_json::tests::a_non_string_attribute_name_panics_before_any_attribute_is_read - should panic ... ok
+test utils::load_json::tests::an_empty_attribute_buffer_panics_even_with_empty_indices - should panic ... ok
+test utils::load_json::tests::builds_every_attribute_kind ... ok
+test utils::load_json::tests::empty_indices_are_allowed ... ok
+test utils::load_json::tests::extra_float_components_are_rejected ... ok
+test utils::load_json::tests::failed_hot_reload_preserves_the_previous_mesh_and_dirty_list ... ok
+test utils::load_json::tests::index_beyond_attribute_length_asserts - should panic ... ok
+test utils::load_json::tests::invalid_semantic_attributes_are_rejected_before_publication ... ok
+test utils::load_json::tests::loaded_meshes_remember_their_source_path ... ok
+test utils::load_json::tests::loads_from_disk ... ok
+test utils::load_json::tests::malformed_type_descriptors_and_overflowing_floats_are_errors ... ok
+test utils::load_json::tests::missing_file_panics_with_the_path - should panic ... ok
+test utils::load_json::tests::too_few_float_components_returns_an_error ... ok
+test utils::load_json::tests::unknown_type_fails_before_the_buffer_is_read ... ok
+test utils::load_json::tests::unknown_type_in_a_mesh_panics_through_unwrap - should panic ... ok
+test utils::load_json::tests::unknown_type_is_an_err_with_the_type_text ... ok
+test utils::project_cursor_onto_ray::tests::degenerate_ray_hits_the_epsilon_floor_without_nan ... ok
+test utils::project_cursor_onto_ray::tests::from_window_size_is_the_exe_16_byte_record ... ok
+test utils::project_cursor_onto_ray::tests::identity_matrices_project_to_the_cursor_point_along_the_ray ... ok
+test utils::project_cursor_onto_ray::tests::perspective_w_changes_the_interpolation_weight ... ok
+test utils::project_cursor_onto_ray::tests::reversed_range_panics_like_f32_clamp - should panic ... ok
+test utils::project_cursor_onto_ray::tests::screen_coordinates_have_a_centered_origin_and_upward_y ... ok
+test utils::project_cursor_onto_ray::tests::t_is_clamped_to_the_range ... ok
+test utils::project_cursor_onto_ray::tests::viewport_center_and_invalid_perspective_are_safe ... ok
+
+test result: ok. 115 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+

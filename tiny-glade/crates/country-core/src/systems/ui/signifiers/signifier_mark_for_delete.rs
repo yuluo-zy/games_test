@@ -1,37 +1,47 @@
-//! `signifier_mark_for_delete.rs` — 指示符删除（B 0x140929160 `signfier_mark_for_delete`
-//! / 0x140929a90 `despawn_marked`，O；PDB 拼写 `signfier`）。
-//!
-//! 证据：`chapters/systems/ui/signifiers/signifier_mark_for_delete.rs.md`（wp15 b7）：
-//! - `signfier_mark_for_delete` @0x140929160：按 `signifier_config_hash` 关联 UiState，
-//!   对匹配 widget 的 signifier 实体打 [`SignifierMarkedForDeletion`] 标记；2 callers；
-//! - `despawn_marked` @0x140929a90：遍历带 `SignifierMarkedForDeletion` 的实体并
-//!   `Commands::despawn`；3 callers。
-//!
-//! 回收链（I 组合）：ui_update 标记 → despawn_marked 销毁；与 signifier_create（生成）
-//! 构成 signifier 实体生命周期闭合。config_hash → widget 匹配依赖 UiState 宿主，登记待接。
+//! 指示符回收：本帧不再请求且已满足最短寿命时，标记并销毁实体。
+//! 活动集合由创建系统统一维护；保留历史拼写 signfier 以兼容现有调用。
 use bevy_ecs::prelude::*;
+
+use super::signifier_create::{SignifierId, UiSignifierStream};
 
 /// 已标记删除的指示符实体（O：`SignifierMarkedForDeletion` 组件标记）。
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
 pub struct SignifierMarkedForDeletion;
 
-/// `signfier_mark_for_delete` @0x140929160（O 结构）：按 `signifier_config_hash` 匹配
-/// UiState widget，对匹配实体打删除标记。config_hash → widget 关联依赖宿主 UiState
-/// （crate 的 UiState 在 resources/ui_state.rs），登记待接。
+/// 指示符最短寿命（O：组件 8 B；`min_lifespan @+4`、`t @+0`）。
+///
+/// 删除条件（机器码：`movss xmm0,[rdi+4]; ucomiss xmm0,[rdi]; ja 跳过`）：
+/// `min_lifespan <= t` 时打删除标记。
+#[repr(C)]
+#[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
+pub struct SignifierMinimumLifespan {
+    /// +0x00：计时/已存活时间（U：字段名按比较语义取）。
+    pub t: f32,
+    /// +0x04：最短寿命。
+    pub min_lifespan: f32,
+}
+
+/// `signfier_mark_for_delete` @0x140929160（O）：按 live-hash 表 + 寿命对匹配实体打标记。
 pub fn signfier_mark_for_delete(
-    mut query: Query<&mut SignifierMarkedForDeletion, With<crate::systems::ui::signifiers::animation::SignifierAnimation>>,
-    _ui_state: Res<crate::systems::ui::resources::ui_state::UiState>,
+    stream: Res<UiSignifierStream>,
+    query: Query<
+        (Entity, &SignifierId, Option<&SignifierMinimumLifespan>),
+        Without<SignifierMarkedForDeletion>,
+    >,
+    mut commands: Commands,
 ) {
-    for mut marker in &mut query {
-        let _ = &mut *marker;
+    for (entity, id, lifespan) in &query {
+        let is_live = stream.is_active(*id);
+        // O：`RDI == None`（无最短寿命组件）→ 命中；否则 `min_lifespan <= t` 才命中。
+        let expired = lifespan.is_none_or(|lifespan| lifespan.min_lifespan <= lifespan.t);
+        if !is_live && expired {
+            commands.entity(entity).insert(SignifierMarkedForDeletion);
+        }
     }
 }
 
 /// `despawn_marked` @0x140929a90（O）：销毁所有带删除标记的指示符实体。
-pub fn despawn_marked(
-    query: Query<(Entity, &SignifierMarkedForDeletion)>,
-    mut commands: Commands,
-) {
+pub fn despawn_marked(query: Query<(Entity, &SignifierMarkedForDeletion)>, mut commands: Commands) {
     for (entity, _) in &query {
         commands.entity(entity).despawn();
     }

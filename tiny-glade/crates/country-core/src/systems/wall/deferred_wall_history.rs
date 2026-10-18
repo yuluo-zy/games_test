@@ -1,0 +1,113 @@
+//! B deferred freehand wall expansion, using the existing typed compound
+//! history and its recording consumer. Merge history remains a separate branch.
+use std::sync::Arc;
+
+use bevy_ecs::prelude::*;
+use glam::Vec2;
+use utils::curve::Curve2 as InputCurve;
+
+use crate::{
+    resources::{
+        history::wall_edit::{WallAuthoritySnapshot, WallCompoundHistoryEdit, WallHistoryEdit},
+        roofs::geometry::surface::Curve2,
+        walls::WallId,
+    },
+    systems::wall::history_recording::RecordWallHistory,
+};
+
+#[derive(Clone, Debug)]
+pub struct PendingWallChanged {
+    pub wall: WallId,
+    pub previous: WallAuthoritySnapshot,
+    pub next: WallAuthoritySnapshot,
+    pub observed_operation: [u8; 12],
+}
+
+/// This is the same pending owner written by FinishWall and drained by the
+/// deferred history system. No parallel source or default previous wall exists.
+#[derive(Resource, Clone, Debug, Default)]
+pub struct PendingWallHistory {
+    pub wall_changed: Option<PendingWallChanged>,
+}
+
+/// Adapt only representation: retain original authority points_u/length rather
+/// than replacing its stored parameterization with newly computed values.
+fn input_curve(curve: &Curve2) -> InputCurve {
+    let mut input = InputCurve::crashy_new_from_points(
+        curve.points.iter().copied().map(Vec2::from_array).collect(),
+        false,
+    );
+    input.points_u.clone_from(&curve.points_u);
+    input.length = curve.length;
+    input
+}
+
+impl PendingWallChanged {
+    /// Original 0x1408dc9f0. A direction byte chooses the previous first/last
+    /// endpoint, projected onto the next curve; only a strict old subrange exists.
+    pub fn try_new(
+        wall: WallId,
+        previous: WallAuthoritySnapshot,
+        next: WallAuthoritySnapshot,
+        extend_start: bool,
+    ) -> Option<Self> {
+        assert!(
+            !previous.source.curve.points.is_empty(),
+            "!before.curve.is_empty()"
+        );
+        assert!(
+            !next.source.curve.points.is_empty(),
+            "!after.curve.is_empty()"
+        );
+        let endpoint = if extend_start {
+            previous.source.curve.points[0]
+        } else {
+            *previous.source.curve.points.last().unwrap()
+        };
+        // Reuse the recovered original strict-distance / first-tie projection.
+        // The existing geometry API asserts its final parameter is finite.
+        let coordinate =
+            input_curve(&next.source.curve).get_approx_u_from_pos(Vec2::from_array(endpoint));
+        let coordinate = coordinate.clamp(0.0, 1.0);
+        let (low, high) = if extend_start {
+            (coordinate, 1.0)
+        } else {
+            (0.0, coordinate)
+        };
+        if !(low < high) {
+            return None;
+        }
+        let mut observed_operation = [0; 12];
+        observed_operation[4..8].copy_from_slice(&low.to_le_bytes());
+        observed_operation[8..12].copy_from_slice(&high.to_le_bytes());
+        Some(Self {
+            wall,
+            previous,
+            next,
+            observed_operation,
+        })
+    }
+
+    pub fn into_compound(self) -> WallCompoundHistoryEdit {
+        WallCompoundHistoryEdit {
+            groups: vec![vec![WallHistoryEdit::StateChange {
+                wall: crate::resources::walls::publication_fields::WallId(self.wall.0),
+                previous: self.previous,
+                next: self.next,
+                observed_operation: self.observed_operation,
+            }]],
+        }
+    }
+}
+
+/// Original 0x1408dccf0 drains once into one concurrent-edit group. Feed the
+/// already installed RecordWallHistory consumer so its transaction/error path
+/// remains shared with other live wall edits.
+pub fn history_record_wall_changed(
+    mut pending: ResMut<PendingWallHistory>,
+    mut records: EventWriter<RecordWallHistory>,
+) {
+    if let Some(changed) = pending.wall_changed.take() {
+        records.write(RecordWallHistory(Arc::new(changed.into_compound())));
+    }
+}

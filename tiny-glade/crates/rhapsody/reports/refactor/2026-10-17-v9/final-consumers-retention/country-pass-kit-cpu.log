@@ -1,0 +1,146 @@
+warning: unused import: `bevy_ecs::prelude::*`
+  --> crates/country-core/src/resources/stairs/invalidate.rs:49:9
+   |
+49 |     use bevy_ecs::prelude::*;
+   |         ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `AudioInstance`
+  --> crates/country-core/src/systems/audio/wall_audio_orchestrator.rs:12:45
+   |
+12 |     resources::audio_resources::{AudioCore, AudioInstance, Studio},
+   |                                             ^^^^^^^^^^^^^
+
+warning: unused import: `AudioInstance`
+  --> crates/country-core/src/systems/audio/wall_audio_path.rs:11:45
+   |
+11 |     resources::audio_resources::{AudioCore, AudioInstance, Studio},
+   |                                             ^^^^^^^^^^^^^
+
+warning: unused import: `SubworldColliderHandle`
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:44:54
+   |
+44 | use crate::systems::collision::world::{RaycastWorld, SubworldColliderHandle};
+   |                                                      ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `DebugColor`
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:45:31
+   |
+45 | use crate::utils::debug_viz::{DebugColor, DebugLine, DebugSphere};
+   |                               ^^^^^^^^^^
+
+warning: unused import: `glam::Vec3`
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:46:5
+   |
+46 | use glam::Vec3;
+   |     ^^^^^^^^^^
+
+warning: unused imports: `Roof`, `WallId`, `commands::*`, `public_walls::PublicWalls`, `roof_customization::FlatRoofRimRequest`, `time::GameTime`, and `wall_state::WallId as ObservedWallId`
+  --> crates/country-core/src/systems/history/tests.rs:5:9
+   |
+ 5 |         roof_customization::FlatRoofRimRequest,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 6 |         wall_state::WallId as ObservedWallId,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+10 |         roofs::{Roof, commands::*},
+   |                 ^^^^  ^^^^^^^^^^^
+11 |         time::GameTime,
+   |         ^^^^^^^^^^^^^^
+12 |         walls::{WallId, public_walls::PublicWalls},
+   |                 ^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `bevy_ecs::schedule::IntoScheduleConfigs`
+  --> crates/country-core/src/systems/save/mod.rs:53:5
+   |
+53 | use bevy_ecs::schedule::IntoScheduleConfigs;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `WallId`
+  --> crates/country-core/src/systems/wall/snapping/snapping_init.rs:91:17
+   |
+91 |         walls::{WallId, WallState},
+   |                 ^^^^^^
+
+warning: unused variable: `emit`
+   --> crates/country-core/src/systems/ivy/ivy_grower.rs:454:5
+    |
+454 |     emit: &mut impl FnMut(IvySegmentDoneGrowingMsg),
+    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_emit`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `name` is never read
+  --> crates/country-core/src/systems/audio/music/load_glade_audio.rs:89:9
+   |
+88 |     struct Event {
+   |            ----- field in this struct
+89 |         name: String,
+   |         ^^^^
+   |
+   = note: `Event` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `kind_filtered` is never used
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:60:4
+   |
+60 | fn kind_filtered(kind: u8, gui_byte: u8) -> bool {
+   |    ^^^^^^^^^^^^^
+
+warning: function `empty_history` is never used
+  --> crates/country-core/src/systems/history/tests.rs:16:4
+   |
+16 | fn empty_history() -> History {
+   |    ^^^^^^^^^^^^^
+
+warning: structure field `Wall` should have a snake case name
+   --> crates/country-core/src/systems/save/snapshot.rs:687:12
+    |
+687 |     Wall { Wall: u64 },
+    |            ^^^^ help: convert the identifier to snake case (notice the capitalization): `wall`
+    |
+    = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default
+
+warning: structure field `Stair` should have a snake case name
+   --> crates/country-core/src/systems/save/snapshot.rs:689:13
+    |
+689 |     Stair { Stair: u64 },
+    |             ^^^^^ help: convert the identifier to snake case (notice the capitalization): `stair`
+
+warning: structure field `Wall` should have a snake case name
+   --> crates/country-core/src/systems/save/snapshot.rs:721:12
+    |
+721 |     Wall { Wall: DecoratorWallDstJson },
+    |            ^^^^ help: convert the identifier to snake case (notice the capitalization): `wall`
+
+warning: structure field `Terrain` should have a snake case name
+   --> crates/country-core/src/systems/save/snapshot.rs:722:15
+    |
+722 |     Terrain { Terrain: DecoratorTerrainDstJson },
+    |               ^^^^^^^ help: convert the identifier to snake case: `terrain`
+
+warning: `country-core` (lib test) generated 17 warnings (run `cargo fix --lib -p country-core --tests` to apply 10 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.19s
+     Running unittests src/lib.rs (target/debug/deps/country_core-8ae16c4d1c1dd423)
+
+running 12 tests
+test systems::render_loop::compute_passes::pass_kit::tests::binding_hash_matches_exe_immediates ... ok
+test systems::render_loop::compute_passes::pass_kit::tests::binding_module_matches_exe_immediates ... ok
+test systems::render_loop::compute_passes::pass_kit::tests::blue_noise_constant_is_namehash_of_blue_noise ... ok
+test systems::render_loop::compute_passes::pass_kit::tests::const_hash_agrees_with_fnv_crate ... ok
+test systems::render_loop::compute_passes::pass_kit::tests::dims_suffix_is_stripped_and_adds_one ... ok
+test systems::render_loop::compute_passes::pass_kit::tests::div_up_extent_rounds_up_and_clamps ... ok
+test systems::render_loop::compute_passes::pass_kit::tests::div_up_extent_zero_divisor_panics - should panic ... 
+thread 'systems::render_loop::compute_passes::pass_kit::tests::div_up_extent_zero_divisor_panics' (21520959) panicked at crates/country-core/src/systems/render_loop/compute_passes/pass_kit.rs:344:9:
+attempt to divide by zero
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+ok
+test systems::render_loop::compute_passes::pass_kit::tests::fallible_pass_factory_records_through_the_existing_frame_adapter ... ok
+test systems::render_loop::compute_passes::pass_kit::tests::fallible_temporal_entries_keep_allocation_and_device_errors ... ok
+test systems::render_loop::compute_passes::pass_kit::tests::half_res_rounds_up_and_clamps_to_one ... ok
+test systems::render_loop::compute_passes::pass_kit::tests::new_2d_has_depth_one_and_format ... ok
+test systems::render_loop::compute_passes::pass_kit::tests::ssbo_carriers_use_verified_names ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 1825 filtered out; finished in 0.00s
+

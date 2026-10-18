@@ -1,25 +1,25 @@
 use super::*;
-use crate::{
-    asset_libraries::ssbo_library::AssetSsboLibrary,
-    recovered_building::history_transactions::ObservedHistoryLedger,
-    resources::{
-        active_raster_stroke::ActiveRasterStrokesStorage,
-        brush_sizes::BrushSizes,
-        cursor_terrain_raycast::CursorTerrainRaycast,
-        glade_border::{BorderShape, DisplayOutOfBorder, FeedbackInputOutOfBorder, GladeBorder},
-        history::{EditType, History},
-        walls::{
-            decorator_archivist::{DecoratorArchivist, DecoratorCullPolicy},
-            EraserSizeMultiplier,
-        },
-        world_raster::DirtyTilePublisher,
-        world_raster_defs::{GardenRaster, GardenRasterStagingSsbo},
-    },
-    systems::{
-        mode_manager::AppMode,
-        ui::resources::ui_state::{UiInteraction, UiState, WidgetId},
-    },
-};
+use crate::asset_libraries::ssbo_library::AssetSsboLibrary;
+use crate::resources::history::transactions::ObservedHistoryLedger;
+use crate::resources::active_raster_stroke::ActiveRasterStrokesStorage;
+use crate::resources::brush_sizes::BrushSizes;
+use crate::resources::cursor_terrain_raycast::CursorTerrainRaycast;
+use crate::resources::glade_border::BorderShape;
+use crate::resources::glade_border::DisplayOutOfBorder;
+use crate::resources::glade_border::FeedbackInputOutOfBorder;
+use crate::resources::glade_border::GladeBorder;
+use crate::resources::history::EditType;
+use crate::resources::history::History;
+use crate::resources::walls::decorator_archivist::DecoratorArchivist;
+use crate::resources::walls::decorator_archivist::DecoratorCullPolicy;
+use crate::resources::walls::EraserSizeMultiplier;
+use crate::resources::world_raster::DirtyTilePublisher;
+use crate::resources::world_raster_defs::GardenRaster;
+use crate::resources::world_raster_defs::GardenRasterStagingSsbo;
+use crate::systems::mode_manager::AppMode;
+use crate::systems::ui::resources::ui_state::UiInteraction;
+use crate::systems::ui::resources::ui_state::UiState;
+use crate::systems::ui::resources::ui_state::WidgetId;
 use glam::Vec2;
 use std::collections::{HashMap, HashSet};
 
@@ -63,9 +63,9 @@ fn garden_drag_border_resume_commit_records_the_live_raster_once() {
     // Existing cfg(test) adapter allocates mapped host bytes. This verifies the
     // real staging writes, not a graphics driver or GPU execution.
     let library = AssetSsboLibrary::new();
-    library.add_new::<GardenRasterStagingSsbo>(&crate::rhapsody_contract::GraphicsDevice(0));
+    library.add_new::<GardenRasterStagingSsbo>(&crate::render::test_device::TestDevice(0));
     world.insert_resource(library);
-    let mut history: History = History::from_observed(ObservedHistoryLedger {
+    let mut history: History<()> = History::<()>::from_observed(ObservedHistoryLedger {
         entries: vec![],
         cursor: -1,
         undo_anchor: -1,
@@ -133,10 +133,10 @@ fn garden_drag_border_resume_commit_records_the_live_raster_once() {
         });
     schedule.run(&mut world); // Commit; the same frame's record consumer takes slot 5.
     assert_eq!(
-        world.resource::<History>().pending().unwrap().edits.len(),
+        world.resource::<History<()>>().pending().unwrap().edits.len(),
         1
     );
-    let EditType::Garden(stroke) = &world.resource::<History>().pending().unwrap().edits[0] else {
+    let EditType::Garden(stroke) = &world.resource::<History<()>>().pending().unwrap().edits[0] else {
         panic!("wrong edit owner")
     };
     assert_eq!(
@@ -154,7 +154,7 @@ fn garden_drag_border_resume_commit_records_the_live_raster_once() {
         .is_empty());
     schedule.run(&mut world); // EventReader must not rerecord the old notification.
     assert_eq!(
-        world.resource::<History>().pending().unwrap().edits.len(),
+        world.resource::<History<()>>().pending().unwrap().edits.len(),
         1
     );
     assert!(world

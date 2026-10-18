@@ -1,0 +1,27 @@
+
+running 10 tests
+test systems::render_loop::compute_passes::compute_garden::tests::bush_and_flower_elements_match_the_buffer_sizes_in_the_machine_code ... 
+thread 'systems::render_loop::compute_passes::compute_garden::tests::flower_initial_data_must_be_a_whole_number_of_elements' (24398743) panicked at crates/country-core/src/systems/render_loop/compute_passes/pass_kit.rs:430:13:
+assertion `left == right` failed
+  left: 4
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+ok
+thread 'systems::render_loop::compute_passes::compute_garden::tests::bush_initial_data_above_capacity_panics' (24398739) panicked at crates/country-core/src/render/ssbo.rs:379:21:
+Excessive data size supplied for buffer country_core::systems::render_loop::compute_passes::compute_garden::BushSsbo
+
+test systems::render_loop::compute_passes::compute_garden::tests::constants_match_machine_code ... ok
+
+thread 'systems::render_loop::compute_passes::compute_garden::tests::missing_staging_resource_unwraps' (24398745) panicked at crates/country-core/src/systems/render_loop/compute_passes/pass_kit.rs:144:33:
+called `Option::unwrap()` on a `None` value
+test systems::render_loop::compute_passes::compute_garden::tests::flower_initial_data_must_be_a_whole_number_of_elements - should panic ... ok
+test systems::render_loop::compute_passes::compute_garden::tests::bush_initial_data_above_capacity_panics - should panic ... ok
+test systems::render_loop::compute_passes::compute_garden::tests::bush_and_flower_buffers_are_fixed_size_in_the_library ... ok
+test systems::render_loop::compute_passes::compute_garden::tests::clean_staging_does_nothing ... ok
+test systems::render_loop::compute_passes::compute_garden::tests::missing_staging_resource_unwraps - should panic ... ok
+test systems::render_loop::compute_passes::compute_garden::tests::dirty_staging_clears_flags_then_blurs_horizontally_then_vertically ... ok
+test systems::render_loop::compute_passes::compute_garden::tests::spawn_pass_access_sequences ... ok
+test systems::render_loop::compute_passes::compute_garden::tests::four_spawn_passes_in_order_with_grid_sizes ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 2374 filtered out; finished in 0.00s
+

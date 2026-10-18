@@ -1,0 +1,753 @@
+{
+  "backend": "ghidra",
+  "worker": "shared",
+  "access": "read",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "get_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x140c906d0,0x141467ce0,0x140ac84a0",
+        "fields": "signature,decompiled_code,callees"
+      },
+      "args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x140c906d0,0x141467ce0,0x140ac84a0",
+        "fields": "signature,decompiled_code,callees"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program\":\"tiny-glade.exe\",\"functions\":{\"0x140c906d0\":{\"name\":\"mouse_ss_to_cs\",\"size\":47,\"address\":\"140c906d0\",\"signature\":\"void __cdecl mouse_ss_to_cs(void)\",\"decompiled_code\":\"\\nvoid __cdecl utils::mouse_ss_to_cs(void)\\n\\n{\\n  return;\\n}\\n\\n\",\"callee_count\":0,\"callees\":[],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x141467ce0\":{\"name\":\"get_coord_at_u<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D,utils::curve::curve_u::CurveU<utils::curve::CurveCoordSemantic2D>_>\",\"size\":571,\"address\":\"141467ce0\",\"signature\":\"void __cdecl get_coord_at_u<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D,utils::curve::curve_u::CurveU<utils::curve::CurveCoordSemantic2D>_>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\nutils::curve::Curve::\\nget_coord_at_u<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D,utils::curve::curve_u::CurveU<utils::curve::CurveCoordSemantic2D>_>\\n          (void)\\n\\n{\\n  longlong lVar1;\\n  longlong lVar2;\\n  ulonglong uVar3;\\n  longlong in_RCX;\\n  longlong lVar4;\\n  ulonglong uVar5;\\n  float in_XMM1_Da;\\n  undefined1 local_90 [24];\\n  undefined **local_78;\\n  undefined8 local_70;\\n  undefined1 **local_68;\\n  undefined8 local_60;\\n  undefined8 local_58;\\n  undefined1 *local_48;\\n  code *local_40;\\n  undefined1 *local_38;\\n  code *local_30;\\n  float local_24;\\n  float local_20;\\n  undefined1 local_1c [4];\\n  undefined8 local_18;\\n  \\n  local_18 = 0xfffffffffffffffe;\\n  if (0x7f7fffff < (uint)ABS(in_XMM1_Da)) {\\n                    // WARNING: Subroutine does not return\\n    core::panicking::panic();\\n  }\\n  if ((in_XMM1_Da < 1.0) && (0.0 < in_XMM1_Da)) {\\n    lVar2 = *(longlong *)(in_RCX + 0x20);\\n    uVar3 = *(ulonglong *)(in_RCX + 0x28);\\n    if (uVar3 == 1) {\\n      lVar4 = 0;\\n    }\\n    else {\\n      if (uVar3 == 0) goto LAB_141467e25;\\n      lVar4 = 0;\\n      uVar5 = uVar3;\\n      do {\\n        lVar1 = (uVar5 >> 1) + lVar4;\\n        if (*(float *)(lVar2 + lVar1 * 4) <= in_XMM1_Da) {\\n          lVar4 = lVar1;\\n        }\\n        uVar5 = uVar5 - (uVar5 >> 1);\\n      } while (1 < uVar5);\\n    }\\n    uVar5 = (lVar4 + 1) - (ulonglong)(in_XMM1_Da < *(float *)(lVar2 + lVar4 * 4));\\n    if (uVar3 <= uVar5) {\\nLAB_141467e25:\\n      itertools::Itertools::\\n      collect_vec<core::iter::adapters::map::Map<core::slice::iter::Iter<utils::curve::curve_u::CurveU<utils::curve::CurveCoordSemantic2D>_>,utils::curve::impl_4::get_coord_at_u::closure_env_2<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D,utils::curve::curve_u::CurveU<utils::curve::CurveCoordSemantic2D>_>_>_>\\n                ();\\n      local_48 = local_1c;\\n      local_40 = core::fmt::float::impl$5::fmt;\\n      local_30 = alloc::vec::impl$27::fmt<f32,alloc::alloc::Global>;\\n      local_78 = &PTR_s_invalid_i1__u____points_u__142c63520;\\n      local_70 = 2;\\n      local_58 = 0;\\n      local_68 = &local_48;\\n      local_60 = 2;\\n      local_38 = local_90;\\n                    // WARNING: Subroutine does not return\\n      core::panicking::panic_fmt();\\n    }\\n    if (uVar5 == 0) {\\n      itertools::Itertools::\\n      collect_vec<core::iter::adapters::map::Map<core::slice::iter::Iter<utils::curve::curve_u::CurveU<utils::curve::CurveCoordSemantic2D>_>,utils::curve::impl_4::get_coord_at_u::closure_env_2<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D,utils::curve::curve_u::CurveU<utils::curve::CurveCoordSemantic2D>_>_>_>\\n                ();\\n      local_48 = local_1c;\\n      local_40 = core::fmt::float::impl$5::fmt;\\n      local_30 = alloc::vec::impl$27::fmt<f32,alloc::alloc::Global>;\\n      local_78 = &PTR_s_i1_must_be_>_0__u__142c635a0;\\n      local_70 = 2;\\n      local_58 = 0;\\n      local_68 = &local_48;\\n      local_60 = 2;\\n      local_38 = local_90;\\n                    // WARNING: Subroutine does not return\\n      core::panicking::panic_fmt();\\n    }\\n    if (uVar3 <= uVar5 - 1) {\\n                    // WARNING: Subroutine does not return\\n      core::panicking::panic_bounds_check();\\n    }\\n    local_20 = *(float *)(lVar2 + (uVar5 - 1) * 4);\\n    local_24 = *(float *)(lVar2 + uVar5 * 4);\\n    if ((local_20 == local_24) && (!NAN(local_20) && !NAN(local_24))) {\\n      local_78 = (undefined **)0x0;\\n                    // WARNING: Subroutine does not return\\n      core::panicking::assert_failed<f32,f32>();\\n    }\\n    inverse_lerp();\\n  }\\n  return;\\n}\\n\\n\",\"callee_count\":6,\"callees\":[{\"name\":\"assert_failed<f32,f32>\",\"address\":\"1428ce04f\"},{\"name\":\"collect_vec<core::iter::adapters::map::Map<core::slice::iter::Iter<utils::curve::curve_u::CurveU<utils::curve::CurveCoordSemantic2D>_>,utils::curve::impl$4::get_coord_at_u::closure_env$2<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D,utils::curve::curve_u::CurveU<utils::curve::CurveCoordSemantic2D>_>_>_>\",\"address\":\"14147b5c0\"},{\"name\":\"inverse_lerp\",\"address\":\"140c904a0\"},{\"name\":\"panic\",\"address\":\"1428d9430\"},{\"name\":\"panic_bounds_check\",\"address\":\"1428d9518\"},{\"name\":\"panic_fmt\",\"address\":\"1428d9390\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140ac84a0\":{\"name\":\"project_onto_ray\",\"size\":722,\"address\":\"140ac84a0\",\"signature\":\"void __cdecl project_onto_ray(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncountry_core::utils::project_cursor_onto_ray::ProportionalScreenSpaceCoord::project_onto_ray(void)\\n\\n{\\n  float fVar1;\\n  undefined1 auVar2 [16];\\n  undefined1 auVar3 [16];\\n  undefined8 *in_RCX;\\n  float extraout_XMM0_Da;\\n  float extraout_XMM0_Da_00;\\n  float fVar4;\\n  float fVar6;\\n  float fVar7;\\n  undefined1 auVar5 [16];\\n  float fVar8;\\n  float fVar9;\\n  float fVar10;\\n  float fVar11;\\n  float fVar12;\\n  float fVar13;\\n  float fVar15;\\n  float fVar16;\\n  undefined1 auVar14 [16];\\n  float *in_stack_00000028;\\n  undefined8 *in_stack_00000030;\\n  float *in_stack_00000038;\\n  \\n  if (*in_stack_00000038 <= in_stack_00000038[1]) {\\n    fVar1 = *(float *)(in_stack_00000030 + 1);\\n    fVar10 = *(float *)((longlong)in_stack_00000030 + 0x14) + fVar1;\\n    fVar8 = (float)*in_stack_00000030;\\n    fVar9 = (float)((ulonglong)*in_stack_00000030 >> 0x20);\\n    fVar4 = fVar9 * in_stack_00000028[0x24] + fVar8 * in_stack_00000028[0x20] +\\n            fVar1 * in_stack_00000028[0x28] + in_stack_00000028[0x2c];\\n    fVar6 = fVar9 * in_stack_00000028[0x25] + fVar8 * in_stack_00000028[0x21] +\\n            fVar1 * in_stack_00000028[0x29] + in_stack_00000028[0x2d];\\n    fVar7 = fVar9 * in_stack_00000028[0x26] + fVar8 * in_stack_00000028[0x22] +\\n            fVar1 * in_stack_00000028[0x2a] + in_stack_00000028[0x2e];\\n    fVar11 = (float)*(undefined8 *)((longlong)in_stack_00000030 + 0xc) + fVar8;\\n    fVar12 = (float)((ulonglong)*(undefined8 *)((longlong)in_stack_00000030 + 0xc) >> 0x20) + fVar9;\\n    fVar13 = fVar12 * in_stack_00000028[0x24] + fVar11 * in_stack_00000028[0x20] +\\n             fVar10 * in_stack_00000028[0x28] + in_stack_00000028[0x2c];\\n    fVar15 = fVar12 * in_stack_00000028[0x25] + fVar11 * in_stack_00000028[0x21] +\\n             fVar10 * in_stack_00000028[0x29] + in_stack_00000028[0x2d];\\n    fVar16 = fVar12 * in_stack_00000028[0x26] + fVar11 * in_stack_00000028[0x22] +\\n             fVar10 * in_stack_00000028[0x2a] + in_stack_00000028[0x2e];\\n    auVar5._0_4_ = fVar6 * in_stack_00000028[4] + fVar4 * *in_stack_00000028 +\\n                   fVar7 * in_stack_00000028[8] + in_stack_00000028[0xc];\\n    auVar5._4_4_ = fVar6 * in_stack_00000028[5] + fVar4 * in_stack_00000028[1] +\\n                   fVar7 * in_stack_00000028[9] + in_stack_00000028[0xd];\\n    auVar5._8_4_ = fVar6 * in_stack_00000028[6] + fVar4 * in_stack_00000028[2] +\\n                   fVar7 * in_stack_00000028[10] + in_stack_00000028[0xe];\\n    auVar5._12_4_ =\\n         fVar6 * in_stack_00000028[7] + fVar4 * in_stack_00000028[3] +\\n         fVar7 * in_stack_00000028[0xb] + in_stack_00000028[0xf];\\n    auVar14._0_4_ =\\n         fVar15 * in_stack_00000028[4] + fVar13 * *in_stack_00000028 + fVar16 * in_stack_00000028[8]\\n         + in_stack_00000028[0xc];\\n    auVar14._4_4_ =\\n         fVar15 * in_stack_00000028[5] + fVar13 * in_stack_00000028[1] +\\n         fVar16 * in_stack_00000028[9] + in_stack_00000028[0xd];\\n    auVar14._8_4_ =\\n         fVar15 * in_stack_00000028[6] + fVar13 * in_stack_00000028[2] +\\n         fVar16 * in_stack_00000028[10] + in_stack_00000028[0xe];\\n    auVar14._12_4_ =\\n         fVar15 * in_stack_00000028[7] + fVar13 * in_stack_00000028[3] +\\n         fVar16 * in_stack_00000028[0xb] + in_stack_00000028[0xf];\\n    auVar3._4_4_ = auVar5._12_4_;\\n    auVar3._0_4_ = auVar5._12_4_;\\n    auVar3._8_4_ = auVar5._12_4_;\\n    auVar3._12_4_ = auVar5._12_4_;\\n    divps(auVar5,auVar3);\\n    auVar2._4_4_ = auVar14._12_4_;\\n    auVar2._0_4_ = auVar14._12_4_;\\n    auVar2._8_4_ = auVar14._12_4_;\\n    auVar2._12_4_ = auVar14._12_4_;\\n    divps(auVar14,auVar2);\\n    ::utils::lerp();\\n    ::utils::lerp();\\n    fVar4 = extraout_XMM0_Da_00;\\n    if (extraout_XMM0_Da_00 <= 1e-10) {\\n      fVar4 = 1e-10;\\n    }\\n    fVar4 = extraout_XMM0_Da / fVar4;\\n    fVar6 = 1.0 - fVar4;\\n    *in_RCX = CONCAT44(fVar4 * fVar12 + fVar6 * fVar9,fVar4 * fVar11 + fVar6 * fVar8);\\n    *(float *)(in_RCX + 1) = fVar4 * fVar10 + fVar6 * fVar1;\\n    return;\\n  }\\n                    // WARNING: Subroutine does not return\\n  core::f32::impl$0::clamp::do_panic::runtime();\\n}\\n\\n\",\"callee_count\":2,\"callees\":[{\"name\":\"lerp\",\"address\":\"140c904d0\"},{\"name\":\"runtime\",\"address\":\"140d8b480\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}}},\"count\":3,\"requested\":3}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "list_instances",
+        "title": null,
+        "description": "\nList known Ghidra instances from UDS discovery and the active TCP fallback.\n\nReturns JSON with each instance's project name, PID, open programs, and\nsocket path or TCP URL. Also shows which instance is currently connected.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "_list_instances_toolArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "connect_instance",
+        "title": null,
+        "description": "\nSwitch the MCP bridge to a different Ghidra instance by project name.\n\nIMPORTANT: Before calling this function only the static bridge tools are\nexposed (list_instances, connect_instance, tool-group management,\ndebugger proxy). After a successful connect the bridge fetches the\ninstance's /mcp/schema and registers Ghidra analysis tools dynamically.\nBy default all tool groups are loaded on connect. When started with\n--lazy, only the default groups are loaded initially and clients may need\nto call load_tool_group() for additional categories. Clients that cache\nthe initial tools/list and don't honor tools/list_changed must re-list\ntools after this call.\n\nUse list_instances() first to see available instances.\n\nArgs:\n    project: Project name (or substring) to connect to\n",
+        "inputSchema": {
+          "properties": {
+            "project": {
+              "description": "Project name (or substring) to connect to",
+              "title": "Project",
+              "type": "string"
+            }
+          },
+          "required": [
+            "project"
+          ],
+          "title": "connect_instanceArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_tool_groups",
+        "title": null,
+        "description": "\nList all available tool groups with their tool counts and loaded status.\n\nReturns each category with: tool count, loaded status, and tool names.\nUse load_tool_group(group) to load a group's tools.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "list_tool_groupsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "load_tool_group",
+        "title": null,
+        "description": "\nLoad all tools in a category. Accepts a category name or \"all\" to load everything.\n\nUse list_tool_groups() to see available categories.\n\nArgs:\n    group: Category name (e.g. \"function\", \"datatype\") or \"all\"\n",
+        "inputSchema": {
+          "properties": {
+            "group": {
+              "description": "Category name (e.g. \"function\", \"datatype\") or \"all\"",
+              "title": "Group",
+              "type": "string"
+            }
+          },
+          "required": [
+            "group"
+          ],
+          "title": "load_tool_groupArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "search_tools",
+        "title": null,
+        "description": "\nSearch the full Ghidra tool catalog by keyword \u2014 including tools whose group\nis not currently loaded. Use this to discover the right tool without paying\nthe context cost of loading all groups (run the bridge with --lazy and search\non demand). Matches against tool name, description, and category.\n\nEach result reports whether the tool is callable right now; if not, it\nincludes the exact load_tool_group(...) call needed to make it callable.\n\nArgs:\n    query: Space-separated keywords, e.g. \"rename function\" or \"xref struct\".\n    limit: Maximum number of results to return (default 15).\n",
+        "inputSchema": {
+          "properties": {
+            "query": {
+              "description": "Space-separated keywords, e.g. \"rename function\" or \"xref struct\".",
+              "title": "Query",
+              "type": "string"
+            },
+            "limit": {
+              "default": 15,
+              "description": "Maximum number of results to return (default 15).",
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "title": "search_toolsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "disassemble_function",
+        "title": null,
+        "description": "Get assembly listing of function. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution. When Ghidra's stored function body is degenerate (body_end == body_start, which would truncate the listing to a single instruction), the listing is instead bounded by the next function or the containing memory block and the response adds body_degenerate=true, bounded_by (next_function | memory_block | function_body) and a warning; do not trust this function's stored extent in that case.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "disassemble_functionArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_data_types",
+        "title": null,
+        "description": "Find data types by name or path pattern, category and kind, one record per type (name, kind, category, size, path). With categories=true, list the category paths instead. With no filter it lists every type.",
+        "inputSchema": {
+          "properties": {
+            "pattern": {
+              "default": "",
+              "description": "Case-insensitive substring of the type's name or full path; omit for no name filter.",
+              "title": "Pattern",
+              "type": "string"
+            },
+            "category": {
+              "default": "",
+              "description": "Case-insensitive substring of the category path (e.g. Windows, /MyTypes); omit for any category.",
+              "title": "Category",
+              "type": "string"
+            },
+            "kind": {
+              "default": "",
+              "description": "Only this kind: struct, union, enum, typedef, pointer, array, function or primitive. Omit for all kinds.",
+              "title": "Kind",
+              "type": "string"
+            },
+            "categories": {
+              "default": "false",
+              "description": "True lists the category paths (filtered by pattern) instead of types; category and kind do not apply.",
+              "title": "Categories",
+              "type": "boolean"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "find_data_typesArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_functions",
+        "title": null,
+        "description": "Find functions: every filter is optional, so with none it lists the whole program a page at a time. Filter by name (substring or regex=true), xref count, calling convention, whether the name is user-given, thunk or external, or by tag (tag=a,b keeps functions carrying ANY of them); each result lists its tags; sort by address, name or xref_count. Replaces list_functions, list_functions_enhanced, search_functions and search_functions_enhanced, which returned four different shapes for the same question.",
+        "inputSchema": {
+          "properties": {
+            "name_pattern": {
+              "default": "",
+              "description": "Substring to match, or a regex when regex=true. Omit to match every function.",
+              "title": "Name Pattern",
+              "type": "string"
+            },
+            "regex": {
+              "default": "false",
+              "description": "Treat name_pattern as a regular expression.",
+              "title": "Regex",
+              "type": "boolean"
+            },
+            "min_xrefs": {
+              "default": "",
+              "description": "Only functions with at least this many references to them.",
+              "title": "Min Xrefs",
+              "type": "integer"
+            },
+            "max_xrefs": {
+              "default": "",
+              "description": "Only functions with at most this many references to them.",
+              "title": "Max Xrefs",
+              "type": "integer"
+            },
+            "calling_convention": {
+              "default": "",
+              "description": "Only functions with this calling convention (e.g. __stdcall).",
+              "title": "Calling Convention",
+              "type": "string"
+            },
+            "has_custom_name": {
+              "default": "",
+              "description": "true = only functions somebody has named; false = only auto-generated names (FUN_*, thunk_*).",
+              "title": "Has Custom Name",
+              "type": "boolean"
+            },
+            "is_thunk": {
+              "default": "",
+              "description": "true = only thunks, false = exclude them, omit for both.",
+              "title": "Is Thunk",
+              "type": "boolean"
+            },
+            "is_external": {
+              "default": "",
+              "description": "true = only external functions, false = exclude them.",
+              "title": "Is External",
+              "type": "boolean"
+            },
+            "tag": {
+              "default": "",
+              "description": "Only functions carrying any of these tags: one name or a comma-separated list. A name that is not a defined tag is an error (list_function_tags shows the definitions).",
+              "title": "Tag",
+              "type": "string"
+            },
+            "sort_by": {
+              "default": "address",
+              "description": "address | name | xref_count.",
+              "title": "Sort By",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Page size. 0 means no limit, which on a large binary is a megabytes-long response \u2014 the old list_functions had no pagination at all and returned 1.7MB on a stripped `ls`.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "pattern": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Pattern"
+            },
+            "query": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Query"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            }
+          },
+          "title": "find_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_functions",
+        "title": null,
+        "description": "Everything about one or many functions in a single call. Pass functions= as a comma-separated list of names or addresses for bulk mode (up to 20); omit it and pass function=/name=/address= for one. Pass fields= as a comma-separated subset to skip work you do not need \u2014 omitted or empty returns everything. When the requested fields need no decompiled text (e.g. fields=callers,callees,signature,labels,entry_point), the target function is NOT decompiled (238 ms cold / 5\u201310 ms warm per function); only decompiled_code (and call_context when enabled) pays that cost. Decompiled text renders EOL comments (// style), so comments written with set_comment are visible in the code. Replaces get_function_by_address, get_function_variables, get_function_xrefs, decompile_function, and the former get_function_callers/callees/labels/signature tools. Completeness scoring is NOT included \u2014 call analyze_function_completeness for that.",
+        "inputSchema": {
+          "properties": {
+            "function": {
+              "default": "",
+              "description": "Single mode: function name or address (0x<hex> or <space>:<hex>). Ignored when functions= is set.",
+              "title": "Function",
+              "type": "string"
+            },
+            "functions": {
+              "default": "",
+              "description": "Bulk mode: comma-separated function references (names or addresses). When set, function= is ignored. Returns a map keyed by the reference asked for.",
+              "title": "Functions",
+              "type": "string"
+            },
+            "fields": {
+              "default": "",
+              "description": "Comma-separated subset: signature, classification, return_type, entry_point, body_start, body_end, decompiled_code, plate_comment, comments, labels, tags, parameters, locals, callers, call_context, callees, xrefs, disassembly, jump_targets, refs (the absolute addresses the function uses: data references, the values of literal-pool words, and the memory the decompiled code reads and writes, so a register reached as base + offset is listed by its own address; a pool value is written value<word; asking for refs decompiles). Omit or leave empty for the full bundle.",
+              "title": "Fields",
+              "type": "string"
+            },
+            "include_call_context": {
+              "default": "true",
+              "description": "Include each caller's decompiled call-site line. Costs one decompilation per unique caller (~43ms); set false for the cheapest possible bundle. Ignored unless call_context is requested (explicitly or via an empty fields=).",
+              "title": "Include Call Context",
+              "type": "boolean"
+            },
+            "call_context_limit": {
+              "default": "6",
+              "description": "Maximum number of UNIQUE callers to decompile for call context.",
+              "title": "Call Context Limit",
+              "type": "integer"
+            },
+            "call_context_lines": {
+              "default": "3",
+              "description": "Lines of the caller's decompilation to return per call site, centred on the call. 1 is the call line alone; the default 3 adds the line above and below, which is usually where the guard and the use of the result live. Clamped to 1-21; costs no extra decompilation.",
+              "title": "Call Context Lines",
+              "type": "integer"
+            },
+            "include_disasm": {
+              "default": "false",
+              "description": "Include the raw instruction listing. Off by default: it roughly doubles the payload and agents rarely read it.",
+              "title": "Include Disasm",
+              "type": "boolean"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Address"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "function_address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Address"
+            },
+            "function_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Name"
+            },
+            "call_context_window": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Call Context Window"
+            }
+          },
+          "title": "get_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_metadata",
+        "title": null,
+        "description": "Get program metadata",
+        "inputSchema": {
+          "properties": {
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_metadataArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_struct_layout",
+        "title": null,
+        "description": "Get structure field layout",
+        "inputSchema": {
+          "properties": {
+            "struct_name": {
+              "description": "Structure name",
+              "title": "Struct Name",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "struct_name"
+          ],
+          "title": "get_struct_layoutArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_from",
+        "title": null,
+        "description": "Get cross-references from an address. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "get_xrefs_fromArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_to",
+        "title": null,
+        "description": "Get cross-references to ONE address, or to MANY at once (addresses=comma-separated), which returns a map keyed by the address you asked for. Replaces the former get_bulk_xrefs. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "default": "",
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "addresses": {
+              "default": "",
+              "description": "Comma-separated addresses for the many-at-once form. The result is a map of address to its reference list, and an address that does not resolve gets an empty list rather than failing the whole call.",
+              "title": "Addresses",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_xrefs_toArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "read_memory",
+        "title": null,
+        "description": "Read raw memory bytes. Always pass the 'program' argument to target the correct binary \u2014 especially when multiple programs are open. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "length": {
+              "default": "16",
+              "description": "Number of bytes",
+              "title": "Length",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "read_memoryArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 1,
+  "ok": true
+}

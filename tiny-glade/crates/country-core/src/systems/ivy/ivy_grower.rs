@@ -40,20 +40,20 @@
 //! 4. Otherwise, when the ivy has points, propose a new segment.
 //!
 //! The proposal (0x14094aef9..) resolves the tip's world position into the
-//! wall spatial-hash cell with the CRT `floorf` import (0x142923ee0, twice —
-//! NOT a perchance RNG; the 2026-10-16 correction of the earlier "RNG ×2"
-//! reading), runs `closest_segment_index` (0x14094c800) over the cell's
-//! segments at the max ivy grow height 0.5, and accepts only a hit closer
-//! than 0.365 (0x142ab3190). The owning wall must have ≥ 2 simplified
-//! segments and a positive height (0x14094b31d/0x14094b32c). The proposed
-//! point is `WallCoord::into_world_space` (call 0x14094b7b9) with the height
-//! from the wall height at the tip's `u` (0x14094b594..b703); the direction
-//! proposer's output is scaled by 0.21 (0x142ab3194). Height acceptance:
-//! `0 ≤ height ≤ wall_height` (0x14094b719/b72f) and
-//! `height ≤ arch_height + subtype band` (0x14094b73d..b77a; band: +0.2
-//! for the flag byte, −0.46 for subtype ≥ 2, −0.79 + 0.2 otherwise). The
-//! exact SIMD for the lateral/height blend (0x14094ba5d..0x14094bd34) is
-//! partially reconstructed; the structure, gates and constants are verified.
+//! wall spatial-hash cell with the CRT `floorf` import (0x142923ee0, twice),
+//! runs `closest_segment_index` (0x14094c800) over the cell's segments at the
+//! max ivy grow height 0.5, and accepts only a hit closer than 0.365
+//! (0x142ab3190). The owning wall must have ≥ 2 points and a positive curve
+//! length (0x14094b31d/0x14094b32c; `[wall-0x270]` is the **curve length**,
+//! not a height). The proposed point is `WallCoord::into_world_space` (call
+//! 0x14094b7b9) with the arc-distance coordinate from the wall curve length at
+//! the tip's `u` (0x14094b594..b703); the direction proposer's output is
+//! scaled by 0.21 (0x142ab3194). Height acceptance: `0 ≤ u_field ≤ length`
+//! (0x14094b719/b72f) and `v ≤ arch_height + subtype band`
+//! (0x14094b73d..b77a; band: +0.2 for the flag byte, −0.46 for subtype ≥ 2,
+//! −0.79 + 0.2 otherwise). Wall jumps use
+//! `intersect_ivy_growth_w_wall_segment` over `query_with_segment` and pick the
+//! nearest re-anchor (0x14094b873..b9a4).
 
 use crate::resources::{
     ivy::{Ivy, IvyDirectionProposer, IvyGrowthSegment, IvyPointId, IvyStorage, WallCoord},
@@ -165,24 +165,6 @@ pub fn get_wall_double_sided_normal(curve: &crate::resources::roofs::geometry::s
     }
 }
 
-/// Segment/ray intersection used to stop growth that would cross a wall
-/// (B 0x14094cc60). Returns the parametric `t` along `from -> to` of the
-/// first contact, if any.
-pub fn intersect_ivy_growth_w_wall_segment(from: Vec2, to: Vec2, a: Vec2, b: Vec2) -> Option<f32> {
-    let direction = to - from;
-    let denominator = direction.perp_dot(b - a);
-    if denominator.abs() < 1e-20 {
-        return None;
-    }
-    let t = (a - from).perp_dot(b - a) / denominator;
-    let u = (a - from).perp_dot(direction) / denominator;
-    if (0.0..=1.0).contains(&t) && (0.0..=1.0).contains(&u) {
-        Some(t)
-    } else {
-        None
-    }
-}
-
 /// Builds the 56-byte `WallSegment` rows `closest_segment_index` reads from a
 /// spatial-hash cell's native 48-byte records. The native segment layout is
 /// `{p0.xy@0, p1.xy@8, u pair@+0x10, h0@+0x18, h1@+0x1c, wall@+0x28}`; the
@@ -199,14 +181,15 @@ pub fn wall_segment_from_spatial(segment: &WallSpatialSegment) -> WallSegment {
     }
 }
 
-/// The wall's growth-height limit. The native grower reads it at
-/// `[wall - 0x270]` (0x14094b32c / 0x14094b594); the crate's closest getter is
-/// the calculated maximum y, falling back to the authority arch height
-/// (待取证 for the exact native field).
-pub fn wall_growth_height(state: &PublicWallState) -> f32 {
-    state
-        .calculated_max_y()
-        .unwrap_or_else(|| state.authority.arch_height())
+/// The wall's curve length (`[wall - 0x270]` in 0x14094b32c / 0x14094b594 /
+/// 0x140998dc0). The map bucket's value base is `PublicWallState`, whose
+/// `simplified_curve_2d().length` sits at `+0x30` — exactly the field
+/// `WallCoord::into_world_space` reads as the normalising denominator
+/// (0x140b199e0 `[in_R8+0x30]`). The earlier `calculated_max_y()` reading was
+/// wrong: the grower compares the arc-distance coordinate against this length,
+/// and the spawner divides its vertical sample by it.
+pub fn wall_length(state: &PublicWallState) -> f32 {
+    state.simplified_curve_2d().length
 }
 
 /// The wall's arch height used for the subtype height band. Native
@@ -236,32 +219,97 @@ pub fn get_ivy_x_direction_relative_to_wall_direction(wall_direction: Vec2) -> V
     Vec2::new(-wall_direction.y, wall_direction.x)
 }
 
-/// Proposes the next world-space growth point. The original (0x14094aef9..)
-/// resolves the tip's spatial-hash cell, finds the closest segment within
-/// `GROWTH_ACCEPT_DISTANCE`, and places the new point through
-/// `WallCoord::into_world_space` at the tip's advanced `u`; the direction
-/// proposer output scaled by `DIRECTION_SCALE` (0.21) supplies the lateral
-/// and the height comes from the wall height at `u`. The exact SIMD blend
-/// (0x14094ba5d..0x14094bd34) is partially reconstructed (待取证); the
-/// structure, gates and constants below are machine-code verified.
+/// The point a growth proposal lands on plus the exact `WallCoord` fields the
+/// native checks before converting: `u_field` is an arc distance along the
+/// curve, `v` is the world-space height (0x14094b719..b77a).
+#[derive(Clone, Copy, Debug)]
+pub struct GrowthProposal {
+    pub world: Vec3,
+    pub normal: Vec3,
+    pub u_field: f32,
+    pub v: f32,
+}
+
+/// `Curve::get_pos_at_u` (utils 0x141467270 / 0x141467ce0): interpolated 2D
+/// curve point at the normalised `u` (clamped to `[0,1]`).
+pub fn curve_pos_at_u(
+    curve: &crate::resources::roofs::geometry::surface::Curve2,
+    u: f32,
+) -> Vec2 {
+    let u = u.clamp(0.0, 1.0);
+    let (index, t) = curve.coord_at_u(u);
+    let a = Vec2::from(curve.points[index]);
+    let b = Vec2::from(curve.points[index + 1]);
+    a + (b - a) * t
+}
+
+/// `Curve::get_tangent_at_u` (utils 0x141468f90): unit tangent of the segment
+/// under `u`.
+pub fn curve_tangent_at_u(
+    curve: &crate::resources::roofs::geometry::surface::Curve2,
+    u: f32,
+) -> Vec2 {
+    let u = u.clamp(0.0, 1.0);
+    let (index, _) = curve.coord_at_u(u);
+    let a = Vec2::from(curve.points[index]);
+    let b = Vec2::from(curve.points[index + 1]);
+    (b - a).normalize_or_zero()
+}
+
+/// `Curve::is_on_right_side` (utils 0x141469000): the point is on the right
+/// side of the nearest polyline segment.
+pub fn curve_is_on_right_side(
+    curve: &crate::resources::roofs::geometry::surface::Curve2,
+    point: Vec2,
+) -> bool {
+    let u = approx_u_from_pos(curve, point);
+    let (index, _) = curve.coord_at_u(u);
+    let a = Vec2::from(curve.points[index]);
+    let b = Vec2::from(curve.points[index + 1]);
+    let from_start = (point - a).normalize_or_zero();
+    let reverse_segment = (a - b).normalize_or_zero();
+    reverse_segment.y * from_start.x < reverse_segment.x * from_start.y
+}
+
+/// Proposes the next world-space growth point (guard body 0x14094aef9..0x14094b7b9).
+///
+/// Field-by-field from the fresh disassembly:
+/// - `u = clamp(get_approx_u_from_pos(tail.xz))` (0x14094b536/b53b..b5b5).
+/// - lateral sign: the tail's offset from the curve point at `u` is projected
+///   on the tangent; `tangent.y*dx > tangent.x*dz` selects `-direction.x*0.21`
+///   (0x14094b6d9..b6ff), otherwise `+direction.x*0.21`.
+/// - `WallCoord.u = length*u + lateral` (0x14094b5a5 mulss / 0x14094b703 addss),
+///   `WallCoord.v = tail.y + direction.y*0.21` (0x14094b661/665).
+/// - `into_world_space` side argument is `Curve::is_on_right_side(tail)`
+///   (0x14094b7a0 call 0x141469000, result in r9d).
+/// - the pending point direction is the normalised double-sided wall normal at
+///   the landing point (0x14094be99 call 0x14094caa0, normalised at
+///   0x14094bee7..bef2).
 pub fn get_growth_point_proposal(
     wall: &PublicWallState,
     tail: Vec3,
-    proposed_direction: Vec2,
-    wall_normal: Vec2,
-    side: f32,
-) -> (Vec3, Vec3) {
+    direction: Vec2,
+) -> GrowthProposal {
     let curve = wall.simplified_curve_2d();
-    let point = Vec2::new(tail.x, tail.z);
-    let u = approx_u_from_pos(curve, point).clamp(0.0, 1.0);
-    // Advance the tip's u by one growth step along the wall.
-    let u_next = (u + SEGMENT_DURATION / curve.length.max(1e-20)).clamp(0.0, 1.0);
-    // Height at the advanced u from the wall height, plus the direction's
-    // lateral contribution (0x14094b594..b703; 0x142ab3194 scale).
-    let v = wall_growth_height(wall) * u_next + proposed_direction.y * DIRECTION_SCALE;
-    let world = WallCoord { u: u_next * curve.length, v }.into_world_space(wall, side >= 0.0);
-    let normal = Vec3::new(wall_normal.x, 0.0, wall_normal.y);
-    (world, normal)
+    let tail_xz = Vec2::new(tail.x, tail.z);
+    let u = approx_u_from_pos(curve, tail_xz).clamp(0.0, 1.0);
+    let interp = curve_pos_at_u(curve, u);
+    let tangent = curve_tangent_at_u(curve, u);
+    let cross = (tail_xz.x - interp.x) * tangent.y - (tail_xz.y - interp.y) * tangent.x;
+    let lateral_sign = if cross > 0.0 { -1.0 } else { 1.0 };
+    let lateral = direction.x * DIRECTION_SCALE * lateral_sign;
+    let u_field = wall_length(wall) * u + lateral;
+    let v = tail.y + direction.y * DIRECTION_SCALE;
+    let side = curve_is_on_right_side(curve, tail_xz);
+    let world = WallCoord { u: u_field, v }.into_world_space(wall, side);
+    let normal2 = get_wall_double_sided_normal(curve, Vec2::new(world.x, world.z))
+        .normalize_or_zero();
+    GrowthProposal {
+        world,
+        normal: Vec3::new(normal2.x, 0.0, normal2.y),
+        u_field,
+        v,
+    }
 }
 
 /// Native hole containment (`PrevWallHoles::wall_holes` 0x140f86d00 + the box
@@ -295,34 +343,101 @@ fn hole_blocks_growth(prev_holes: &PrevWallHoles, wall_id: WallId, probe: Vec2) 
     false
 }
 
+/// `intersect_ivy_growth_w_wall_segment` (0x14094cc60). Called from
+/// `check_for_wall_jump`'s filter-map closure (0x141308501 / 0x1413085fa), so
+/// it is **not** dead code.
+///
+/// Arguments: a wall segment (`p0,p1`), the growth tip `query`, and the first
+/// proposed landing `other`. The native:
+/// 1. builds the `(normal, tangent)` frame of the segment around its midpoint;
+/// 2. maps both points into that frame and intersects the segment `query→other`
+///    with the box `[-0.315,0.315] x [-0.5·len,0.5·len]` via
+///    `utils::geometry::aabb::intersection_aabb_segment2` (0x141240b30);
+/// 3. projects the hit back onto the wall segment (`t = dot(mid + offset - p0,
+///    dir)/len²`, clamped) and returns the nearer of `seg_point ± 0.315·unit
+///    tangent` to `query` (0x14094ced3..cf22).
+pub fn intersect_ivy_growth_w_wall_segment(
+    segment: &WallSegment,
+    query: Vec2,
+    other: Vec2,
+) -> Option<Vec2> {
+    let p0 = segment.p0;
+    let p1 = segment.p1;
+    let dir = p1 - p0;
+    let len_sq = dir.length_squared();
+    if len_sq < 1e-20 {
+        return None;
+    }
+    let len = len_sq.sqrt();
+    let unit = dir / len;
+    let normal = Vec2::new(-unit.y, unit.x);
+    let mid = (p0 + p1) * 0.5;
+    let qn = normal.dot(query - mid);
+    let qu = unit.dot(query - mid);
+    let sn = normal.dot(other - mid);
+    let su = unit.dot(other - mid);
+    let half = 0.5 * len;
+    let hit = utils::geometry::aabb::intersection_aabb_segment2(
+        Vec2::new(-ROOT_BOX_HALF, -half),
+        Vec2::new(ROOT_BOX_HALF, half),
+        Vec2::new(qn, qu),
+        Vec2::new(sn, su),
+    )?;
+    let world_offset = normal * hit.x + unit * hit.y;
+    let t = ((mid + world_offset - p0).dot(dir) / len_sq).clamp(0.0, 1.0);
+    let seg_point = p0 + dir * t;
+    let offset = unit * ROOT_BOX_HALF;
+    let a = seg_point - offset;
+    let b = seg_point + offset;
+    let da = (a - query).length_squared();
+    let db = (b - query).length_squared();
+    Some(if db > da { a } else { b })
+}
+
+/// Half extent used by the native intersection box: `0.63 * 0.5` (constants
+/// 0x142aa4550 and 0x1429258e0).
+const ROOT_BOX_HALF: f32 = 0.63 * 0.5;
+
 /// Re-anchors growth onto whichever wall owns the segment nearest to the
-/// growth tip, resolved through the wall spatial hash (0x140aa5850
-/// `query_with_segment` + the `check_for_wall_jump` closures at
-/// 0x1412f6b60/0x141308470). Returns the wall to jump to, if any. The
-/// current nearest-wall pass over the published walls is the recovered
-/// equivalent; the exact spatial-hash cell iteration is 待取证.
+/// growth path, resolved through the wall spatial hash.
+///
+/// Fresh control flow (0x14094b873..0x14094b95c):
+/// `WallSpatialHash::query_with_segment` (0x140aa5850) over the box spanned by
+/// the tail and the first proposed point → `Vec::retain` drops segments on the
+/// current wall (0x1412f6b60 compares `WallSegment+0x28`) → the filter-map
+/// closure (0x141308470) runs `intersect_ivy_growth_w_wall_segment` on every
+/// segment, keeps the hits and records `(distance-to-tail, hit, wall)` → the
+/// vector is sorted by distance and the nearest candidate wins
+/// (0x14094b961..0x14094b9a4).
 pub fn check_for_wall_jump(
     walls: &PublicWalls,
-    tip: Vec3,
+    spatial: &WallSpatialHash,
+    tail: Vec3,
+    proposed: Vec3,
     current_wall: Option<WallId>,
 ) -> Option<WallId> {
-    let point = Vec2::new(tip.x, tip.z);
-    let mut nearest: Option<(WallId, f32)> = None;
-    for (id, state) in walls.all() {
-        let segments = wall_segments_from_state(state);
-        let Ok(Some(hit)) = super::closest_segment_index(point, &segments, f32::MAX) else {
+    let _ = walls;
+    let tail_xz = Vec2::new(tail.x, tail.z);
+    let proposed_xz = Vec2::new(proposed.x, proposed.z);
+    let mut best: Option<(f32, WallId)> = None;
+    for segment in spatial.query_with_segment(
+        [tail_xz.x, tail_xz.y],
+        [proposed_xz.x, proposed_xz.y],
+        0.0,
+    ) {
+        if current_wall == Some(segment.wall) {
+            continue;
+        }
+        let row = wall_segment_from_spatial(segment);
+        let Some(hit) = intersect_ivy_growth_w_wall_segment(&row, tail_xz, proposed_xz) else {
             continue;
         };
-        match nearest {
-            Some((_, d)) if d <= hit.distance => {}
-            _ => nearest = Some((id, hit.distance)),
+        let distance = (hit - tail_xz).length();
+        if best.map_or(true, |(best_distance, _)| distance < best_distance) {
+            best = Some((distance, segment.wall));
         }
     }
-    let (id, _) = nearest?;
-    match current_wall {
-        Some(current) if current == id => None,
-        _ => Some(id),
-    }
+    best.map(|(_, wall)| wall)
 }
 
 /// Builds `WallSegment` rows from a published wall's simplified curve. Heights
@@ -462,12 +577,12 @@ fn propose_new_segment(
     proposer: &IvyDirectionProposer,
     prev_holes: &PrevWallHoles,
     affected_ids: &mut Vec<u64>,
-    emit: &mut impl FnMut(IvySegmentDoneGrowingMsg),
+    _emit: &mut impl FnMut(IvySegmentDoneGrowingMsg),
 ) {
     let tail = ivy.last_point().position;
     let point = Vec2::new(tail.x, tail.z);
     // Spatial-hash cell of the tip (floorf ×2; 0x14094af3c..0x14094af87).
-    let cell = crate::recovered_building::wall_spatial_index::cell_index_of_world_point([
+    let cell = crate::resources::walls::spatial_index::cell_index_of_world_point([
         point.x,
         point.y,
     ]);
@@ -490,27 +605,21 @@ fn propose_new_segment(
         return;
     };
     let curve = state.simplified_curve_2d();
-    // Wall validity (0x14094b31d / 0x14094b32c): >= 2 segments and height > 0.
-    if curve.points.len() < 2 || wall_growth_height(state) <= 0.0 {
-        return;
+    // Wall validity (0x14094b31d / 0x14094b32c): point count >= 2 and curve
+    // length > 0. The original **panics** here (0x14094c1e3) rather than
+    // skipping — a proposal on an invalid wall is an invariant violation.
+    if curve.points.len() < 2 || wall_length(state) <= 0.0 {
+        panic!("ivy_grower: growth proposed on an invalid wall");
     }
     // Direction from the proposer (0x14094b4cc); the seed is the ivy id at
     // record +0x20 (`mov r8, qword ptr [r14 - 0x70]`, 0x14094b4bd).
     let direction = proposer.get_direction(tail, ivy.id);
-    let normal = get_wall_double_sided_normal(curve, point);
-    let side = if Vec3::new(direction.x, 0.0, direction.y).dot(Vec3::new(normal.x, 0.0, normal.y))
-        >= 0.0
-    {
-        1.0
-    } else {
-        -1.0
-    };
-    let (next, facing) = get_growth_point_proposal(state, tail, direction, normal, side);
-    // Height acceptance: 0 <= proposed.y <= wall height (0x14094b719/b72f),
-    // and <= arch height + subtype band (0x14094b73d..b77a). The native flag
-    // byte `[wall-0xa]` / subtype `[wall-0x48]` map onto the authority's
-    // `source_flag_65` / `arch_type` (待取证 for the exact native offsets).
-    if next.y < 0.0 || next.y > wall_growth_height(state) {
+    let proposal = get_growth_point_proposal(state, tail, direction);
+    // Height acceptance (0x14094b719..b77a): the WallCoord.u arc distance must
+    // stay in [0, curve length], and v (world height) must be at or below the
+    // arch height plus the subtype band. Note the native compares the **u
+    // field**, not the world Y, against the curve length.
+    if proposal.u_field < 0.0 || proposal.u_field > wall_length(state) {
         return;
     }
     let band = wall_height_band(
@@ -518,7 +627,7 @@ fn propose_new_segment(
         state.authority.source_flag_65() != 0,
         state.authority.arch_type() as u32,
     );
-    if next.y > band {
+    if proposal.v > band {
         return;
     }
     // Wall-hole gate (0x14094b7be..b86e): a previous-frame hole whose
@@ -532,31 +641,35 @@ fn propose_new_segment(
         affected_ids.push(ivy.id);
         return;
     }
-    // Wall-jump re-anchor (0x14094b7c6..0x14094b873, spatial-hash based).
-    if let Some(jump) = check_for_wall_jump(walls, tail, Some(wall_id)) {
+    // Wall-jump re-anchor (0x14094b7c6..0x14094b95c): query the spatial hash
+    // over the box between the tail and the first proposal, intersect every
+    // other-wall segment, and re-anchor onto the nearest candidate.
+    if let Some(jump) = check_for_wall_jump(walls, spatial, tail, proposal.world, Some(wall_id)) {
         if jump != wall_id {
             if let Some(state_jump) = walls.get(jump) {
-                let normal_jump = get_wall_double_sided_normal(
-                    state_jump.simplified_curve_2d(),
-                    point,
-                );
-                let (next_jump, facing_jump) =
-                    get_growth_point_proposal(state_jump, tail, direction, normal_jump, side);
+                let curve_jump = state_jump.simplified_curve_2d();
+                // Wall-jump validity (0x14094b410 / 0x14094b43a): the two
+                // re-anchor candidates also **panic** (0x14094c200 / 0x14094c21d)
+                // when invalid.
+                if curve_jump.points.len() < 2 || wall_length(state_jump) <= 0.0 {
+                    panic!("ivy_grower: growth re-anchored on an invalid wall");
+                }
+                let jump_proposal = get_growth_point_proposal(state_jump, tail, direction);
                 // Landing gate (0x14094bd38..40): the re-anchored landing must
                 // stay within 0.42 of the tip.
-                if (next_jump - tail).length() > LANDING_MAX_DISTANCE {
+                if (jump_proposal.world - tail).length() > LANDING_MAX_DISTANCE {
                     return;
                 }
-                start_growth_segment(ivy, tail, facing_jump, next_jump);
+                start_growth_segment(ivy, tail, jump_proposal.normal, jump_proposal.world);
                 return;
             }
         }
     }
     // Landing gate (0x14094bf26..2e): reject landings farther than 0.42.
-    if (next - tail).length() > LANDING_MAX_DISTANCE {
+    if (proposal.world - tail).length() > LANDING_MAX_DISTANCE {
         return;
     }
-    start_growth_segment(ivy, tail, facing, next);
+    start_growth_segment(ivy, tail, proposal.normal, proposal.world);
 }
 
 /// `ivy_grower` (0x14094a910). Dispatch on the persisted phase; the guard bit
@@ -658,6 +771,54 @@ mod tests {
     use super::*;
     use crate::resources::ivy::IvyStorage;
     use glam::Vec3;
+
+    #[test]
+    fn intersect_returns_the_shifted_box_corner_on_a_crossing_segment() {
+        // Horizontal wall segment p0=(0,0) p1=(10,0); the growth segment runs
+        // vertically through it at x=4.9. The box is ±0.315 along the unit
+        // tangent around the projected hit. Because the query's tangent
+        // coordinate is preserved by the projection, both corners are
+        // equidistant, and the native `d_b > d_a` test selects the +tangent
+        // corner: 4.9 + 0.315 = 5.215.
+        let segment = WallSegment {
+            p0: Vec2::new(0.0, 0.0),
+            p1: Vec2::new(10.0, 0.0),
+            extra_a: 0.0,
+            extra_b: 0.0,
+            h0: 0.0,
+            h1: 0.0,
+        };
+        let hit = intersect_ivy_growth_w_wall_segment(
+            &segment,
+            Vec2::new(4.9, 1.0),
+            Vec2::new(4.9, -1.0),
+        )
+        .expect("growth segment crosses the wall box");
+        assert!((hit.x - 5.215).abs() < 1e-3, "hit = {hit:?}");
+        assert!(hit.y.abs() < 1e-3, "hit = {hit:?}");
+        // A growth segment that misses the box entirely is rejected.
+        assert!(intersect_ivy_growth_w_wall_segment(
+            &segment,
+            Vec2::new(4.9, 5.0),
+            Vec2::new(4.9, 4.0),
+        )
+        .is_none());
+    }
+
+    #[test]
+    fn curve_frame_helpers_follow_the_polyline() {
+        let curve = crate::resources::roofs::geometry::surface::Curve2 {
+            points: vec![[0.0, 0.0], [10.0, 0.0], [10.0, 10.0]],
+            points_u: vec![0.0, 0.5, 1.0],
+            length: 20.0,
+        };
+        assert!(curve_pos_at_u(&curve, 0.25).abs_diff_eq(Vec2::new(5.0, 0.0), 1e-4));
+        assert!(curve_tangent_at_u(&curve, 0.25).abs_diff_eq(Vec2::X, 1e-4));
+        assert!(curve_tangent_at_u(&curve, 0.75).abs_diff_eq(Vec2::Y, 1e-4));
+        // Right side of the first segment (downward normal is -Y).
+        assert!(curve_is_on_right_side(&curve, Vec2::new(5.0, -1.0)));
+        assert!(!curve_is_on_right_side(&curve, Vec2::new(5.0, 1.0)));
+    }
 
     #[test]
     fn growth_completes_and_emits_one_event_per_segment() {

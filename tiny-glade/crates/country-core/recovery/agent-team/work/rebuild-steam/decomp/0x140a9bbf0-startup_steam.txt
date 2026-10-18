@@ -1,0 +1,72 @@
+NAME: startup_steam
+VA: 0x140a9bbf0
+SIZE: 268
+SIGNATURE: void __cdecl startup_steam(void)
+CALLEES:
+  {'name': 'SteamAPI_ISteamInput_Init', 'address': '1429236e0'}
+  {'name': 'SteamAPI_SteamInput_v006', 'address': '142923700'}
+  {'name': 'VAL', 'address': '140d4d740'}
+  {'name': 'drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>', 'address': '140b85350'}
+  {'name': 'hashmap_random_keys', 'address': '140d64e00'}
+  {'name': 'insert_resource<country_core::resources::steam::SteamInput>', 'address': '1412e0660'}
+DECOMP:
+
+void __cdecl country_core::systems::steam::startup_steam::startup_steam(void)
+
+{
+  undefined8 *puVar1;
+  longlong *plVar2;
+  code *pcVar3;
+  undefined8 uVar4;
+  byte *extraout_RAX;
+  longlong extraout_RAX_00;
+  longlong lVar5;
+  undefined8 *in_RCX;
+  undefined8 in_RDX;
+  undefined8 uVar6;
+  
+  puVar1 = (undefined8 *)*in_RCX;
+  uVar4 = SteamAPI_SteamInput_v006();
+  plVar2 = (longlong *)*puVar1;
+  LOCK();
+  lVar5 = *plVar2;
+  *plVar2 = *plVar2 + 1;
+  UNLOCK();
+  if (*plVar2 != 0 && SCARRY8(lVar5,1) == *plVar2 < 0) {
+    uVar6 = CONCAT71((int7)((ulonglong)in_RDX >> 8),1);
+    SteamAPI_ISteamInput_Init(uVar4);
+    std::hash::random::impl$0::new::KEYS::constant$0::closure$1::VAL();
+    if ((*extraout_RAX & 1) == 0) {
+      std::sys::random::hashmap_random_keys();
+      extraout_RAX[0] = 1;
+      extraout_RAX[1] = 0;
+      extraout_RAX[2] = 0;
+      extraout_RAX[3] = 0;
+      extraout_RAX[4] = 0;
+      extraout_RAX[5] = 0;
+      extraout_RAX[6] = 0;
+      extraout_RAX[7] = 0;
+      *(longlong *)(extraout_RAX + 8) = extraout_RAX_00;
+      *(undefined8 *)(extraout_RAX + 0x10) = uVar6;
+      lVar5 = extraout_RAX_00;
+    }
+    else {
+      lVar5 = *(longlong *)(extraout_RAX + 8);
+    }
+    *(longlong *)(extraout_RAX + 8) = lVar5 + 1;
+    bevy_ecs::system::commands::Commands::
+    insert_resource<country_core::resources::steam::SteamInput>();
+    LOCK();
+    *plVar2 = *plVar2 + -1;
+    UNLOCK();
+    if (*plVar2 == 0) {
+      alloc::sync::Arc::drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>
+                ();
+    }
+    return;
+  }
+                    // WARNING: Does not return
+  pcVar3 = (code *)invalidInstructionException();
+  (*pcVar3)();
+}
+

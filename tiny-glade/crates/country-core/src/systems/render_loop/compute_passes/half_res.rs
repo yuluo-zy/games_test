@@ -10,12 +10,12 @@
 //!    `gbuffer_input_tex`（读）→ `normals_output_tex`（写）→ `dispatch_2d(ext)`。
 //! 4. 返回 `(half depth, half normals)` 两个句柄。
 //!
-//! A4 缺口（U）：`stencil_tex` 原版用 `read_texture_view`（`TextureViewDesc` 取模板 aspect：`bd57a0`/`bd58a0(…, 4)`），
-//! A4 的 `bind_texture` 不带视图描述，这里按同一深度句柄绑定、视图差异不建模；视图 aspect 值 4 记在 [`STENCIL_VIEW_ASPECT`]。
+//! `stencil_tex` 使用同一深度资源的模板视图：原 `0x1408f63a4..0x1408f6421`
+//! 构造默认 `TextureViewDesc` 后设置 aspect 4，再传给只读绑定。当前构建器直接保留该视图描述。
 
 use crate::render::pass_builder::compute_pass_builder::RecordedComputePass;
 use crate::render::pass_builder::pass_resource_access::{RgTexture, WriteTextureUnchecked};
-use crate::rhapsody_types::TextureDesc;
+use crate::rhapsody_types::{TextureDesc, TextureViewDesc};
 use crate::systems::render_loop::compute_passes::pass_kit::{
     PassEnv, binding, binding_hash, dispatch_extent, extent_of,
 };
@@ -31,7 +31,7 @@ pub const STENCIL_TEX: u64 = binding_hash("stencil_tex");
 pub const DEPTH_OUTPUT_TEX: u64 = binding_hash("depth_output_tex");
 pub const GBUFFER_INPUT_TEX: u64 = binding_hash("gbuffer_input_tex");
 pub const NORMALS_OUTPUT_TEX: u64 = binding_hash("normals_output_tex");
-/// `read_texture_view` 里 `TextureViewDesc` 的参数（O：`bd58a0(.., 4)`；语义 I：模板 aspect）。
+/// Vulkan STENCIL aspect（O：原 `0x1408f63ba` 设置参数 4）。
 pub const STENCIL_VIEW_ASPECT: u32 = 4;
 
 /// G-buffer 句柄组（O：`+0x00` gbuffer、`+0x24` 深度）。
@@ -59,10 +59,11 @@ pub fn extract_half_res_depth_normals(env: &mut PassEnv<'_>, gbuffer: &GBuffer) 
     let ext = div_up_extent([full.width, full.height], [2, 2]);
     let depth = env.create_texture(DEPTH_NAME, TextureDesc::new_2d(ext, DEPTH_FORMAT));
     let normals = env.create_texture(NORMALS_NAME, TextureDesc::new_2d(ext, NORMALS_FORMAT));
+    let stencil_view = TextureViewDesc::new().aspect_mask(STENCIL_VIEW_ASPECT);
     let pass = env
         .pass(PASS_NAME, URI)
         .bind_texture(DEPTH_INPUT_TEX, &&gbuffer.depth, 0x19)
-        .bind_texture(STENCIL_TEX, &&gbuffer.depth, 0x19)
+        .bind_texture_with_view(STENCIL_TEX, &&gbuffer.depth, 0x19, Some(&stencil_view))
         .bind_texture(DEPTH_OUTPUT_TEX, &WriteTextureUnchecked(depth), 0x32)
         .bind_texture(GBUFFER_INPUT_TEX, &&gbuffer.gbuffer, 0x19)
         .bind_texture(NORMALS_OUTPUT_TEX, &WriteTextureUnchecked(normals), 0x32);
@@ -78,6 +79,7 @@ pub fn extract_half_res_depth_normals(env: &mut PassEnv<'_>, gbuffer: &GBuffer) 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::render::pass_builder::pass_resource_access::PassBinding;
     use crate::systems::render_loop::compute_passes::pass_kit::test_env::{
         accesses, env, rgtex, tex_key, threads,
     };
@@ -129,6 +131,27 @@ mod tests {
         assert_eq!(
             a.iter().map(|x| x.0).collect::<Vec<_>>(),
             [2, 2, out.depth.resource, 1, out.normals.resource]
+        );
+        let depth_views = out
+            .pass
+            .bindings
+            .iter()
+            .filter_map(|binding| match binding {
+                PassBinding::ImageView {
+                    resource: 2,
+                    write: false,
+                    view,
+                } => Some(*view),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            depth_views,
+            [
+                TextureViewDesc::default(),
+                TextureViewDesc::new().aspect_mask(STENCIL_VIEW_ASPECT),
+            ],
+            "depth and stencil share ownership but require different image views"
         );
     }
 }

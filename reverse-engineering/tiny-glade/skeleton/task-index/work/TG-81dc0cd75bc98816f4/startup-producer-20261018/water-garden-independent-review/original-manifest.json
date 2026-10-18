@@ -1,0 +1,145 @@
+{
+  "scope": "Independent B native W2/W12 and packaged shader review; no execution, production edits or Cargo.",
+  "rne": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne",
+  "rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "procs": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/country-core-audit/data/procs.tsv",
+  "procs_sha256": "8170fd8276450543e4312885f53e1cb401624726b98191a2bcb602e43e218653",
+  "native": [
+    {
+      "entry": "0x1403d9610",
+      "full_pdb_length": 1306,
+      "symbol": "country_core::systems::render_loop::compute_passes::upload_world_raster::upload_raster_staging_to_texture<country_core::resources::world_raster_defs::WaterRaster>",
+      "range_sha256": "9128901dcd465a0ff74c6aafa92775c24bc6830787c0bf8c671cd1924cc06233",
+      "instructions": 308,
+      "path": "1403d9610.asm"
+    },
+    {
+      "entry": "0x1403d9b30",
+      "full_pdb_length": 1306,
+      "symbol": "country_core::systems::render_loop::compute_passes::upload_world_raster::upload_raster_staging_to_texture<country_core::resources::world_raster_defs::GardenRaster>",
+      "range_sha256": "533aea1a22f35749268356acd274ab4cbf237aba6da7a77aac827b6888bc2d03",
+      "instructions": 308,
+      "path": "1403d9b30.asm"
+    },
+    {
+      "entry": "0x1404ec110",
+      "full_pdb_length": 4314,
+      "symbol": "tiny_glade::render_loop::render_world",
+      "range_sha256": "520352bc4ed7343a5ada7f2f2e065ddcaa1e4914138a5778f3e88d65afe2fd81",
+      "instructions": 862,
+      "path": "1404ec110.asm"
+    },
+    {
+      "entry": "0x140a12680",
+      "full_pdb_length": 4840,
+      "symbol": "country_core::systems::render_loop::compute_passes::compute_water::water_rasterize_from_cpu",
+      "range_sha256": "d6aa2a72b268a2ae434d4d5013bacb248fd9f23967a6834b5d8d2a191406f1d8",
+      "instructions": 1101,
+      "path": "140a12680.asm"
+    },
+    {
+      "entry": "0x140a22140",
+      "full_pdb_length": 2616,
+      "symbol": "country_core::systems::render_loop::compute_passes::compute_garden::garden_rasterize_from_cpu",
+      "range_sha256": "b35149b0e83d278eb4cde743837893ecede696464dea1ad34cdcaf029568a999",
+      "instructions": 589,
+      "path": "140a22140.asm"
+    }
+  ],
+  "rip_float_constants": {
+    "0x1429345a8": {
+      "bytes": "00002041",
+      "float": 10.0
+    },
+    "0x1429cd034": {
+      "bytes": "0000f041",
+      "float": 30.0
+    },
+    "0x142925988": {
+      "bytes": "0000a040",
+      "float": 5.0
+    }
+  },
+  "shader": {
+    "file": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/compiled-shaders/_gauss_blur_mask.cs.hlsl_cs_main_0.bin",
+    "sha256": "3474c437ce66699d60a2aabcbea699c58a48408879e359b3b38b63b44a2d8258",
+    "stage_offset": 23,
+    "stage_words": 1478,
+    "stage_sha256": "6bf38b9a8f8aad703574c82eefb16673cbb2e4798c8e4f52c38a53e97a70a07d",
+    "stage_equals_retained": true,
+    "instructions": 243,
+    "retained": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-60ea7c6fe1579df293/render-water-live-20261018/_gauss_blur_mask.cs.hlsl_cs_main_0.bin.spv",
+    "image_fetch": [
+      {
+        "word": 1161,
+        "opcode": 95,
+        "operands": [
+          41,
+          92,
+          91,
+          74,
+          2,
+          26
+        ]
+      },
+      {
+        "word": 1207,
+        "opcode": 95,
+        "operands": [
+          41,
+          97,
+          96,
+          74,
+          2,
+          26
+        ]
+      }
+    ],
+    "image_read": [
+      {
+        "word": 1368,
+        "opcode": 98,
+        "operands": [
+          41,
+          112,
+          111,
+          110,
+          0
+        ]
+      },
+      {
+        "word": 1435,
+        "opcode": 98,
+        "operands": [
+          41,
+          120,
+          119,
+          118,
+          0
+        ]
+      }
+    ],
+    "image_write": [
+      {
+        "word": 1384,
+        "opcode": 99,
+        "operands": [
+          114,
+          110,
+          113,
+          0
+        ]
+      },
+      {
+        "word": 1451,
+        "opcode": 99,
+        "operands": [
+          122,
+          118,
+          121,
+          0
+        ]
+      }
+    ]
+  }
+}

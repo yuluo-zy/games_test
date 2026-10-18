@@ -1,0 +1,62 @@
+{
+ "name": "deserialize<enum2$<serde_json::value::Value>_>",
+ "size": 1161,
+ "address": "14085ff00",
+ "signature": "void __cdecl deserialize<enum2$<serde_json::value::Value>_>(void)",
+ "decompiled_code": "\nvoid __cdecl\ncountry_core::resources::walls::inner_wall_state::_::impl$0::\ndeserialize<enum2_<serde_json::value::Value>_>(void)\n\n{\n  longlong *plVar1;\n  undefined8 *puVar2;\n  char cVar3;\n  longlong lVar4;\n  longlong lVar5;\n  undefined8 uVar6;\n  longlong lVar7;\n  undefined8 extraout_RAX;\n  longlong extraout_RAX_00;\n  undefined8 extraout_RAX_01;\n  undefined8 extraout_RAX_02;\n  undefined1 *in_RCX;\n  char *in_RDX;\n  longlong lVar8;\n  longlong local_150;\n  longlong local_140;\n  longlong local_118;\n  longlong lStack_110;\n  byte bStack_100;\n  byte local_d8;\n  byte local_78;\n  undefined7 uStack_77;\n  undefined1 local_68;\n  undefined7 uStack_67;\n  \n  cVar3 = *in_RDX;\n  if (cVar3 == '\\x03') {\n    lVar8 = *(longlong *)(in_RDX + 8);\nLAB_140860042:\n    serde_json::value::de::impl$3::\n    variant_seed<core::marker::PhantomData<country_core::resources::walls::inner_wall_state::_::impl_0::deserialize::__Field>_>\n              ();\n    if (((char)local_118 == '\\x02') ||\n       (serde_json::value::de::impl$5::unit_variant(), lStack_110 = extraout_RAX_00,\n       extraout_RAX_00 != 0)) {\n      *(longlong *)(in_RCX + 8) = lStack_110;\n      *in_RCX = 1;\n    }\n    else {\n      in_RCX[1] = (char)local_118;\n      *in_RCX = 0;\n    }\n    if (cVar3 == '\\x03') {\n      return;\n    }\n    if (cVar3 == '\\x05') {\n      return;\n    }\n    core::ptr::drop_in_place<slice2_<enum2_<serde_json::value::Value>_>_>();\njoined_r0x000140860100:\n    if (lVar8 != 0) {\n      std::alloc::__default_lib_allocator::__rust_dealloc();\n    }\n    return;\n  }\n  if (cVar3 != '\\x05') {\n    uVar6 = *(undefined8 *)in_RDX;\n    lVar8 = *(longlong *)(in_RDX + 8);\n    serde_json::value::Value::unexpected();\n    serde_json::error::impl$8::invalid_type();\n    *(undefined8 *)(in_RCX + 8) = extraout_RAX_01;\n    *in_RCX = 1;\n    local_d8 = (byte)uVar6;\n    if (local_d8 < 3) {\n      return;\n    }\n    if (local_d8 != 3) {\n      if (local_d8 != 4) {\n        core::ptr::\n        drop_in_place<serde_json::map::Map<alloc::string::String,enum2_<serde_json::value::Value>_>_>\n                  ();\n        return;\n      }\n      core::ptr::drop_in_place<slice2_<enum2_<serde_json::value::Value>_>_>();\n    }\n    goto joined_r0x000140860100;\n  }\n  lVar8 = *(longlong *)(in_RDX + 8);\n  alloc::collections::btree::map::IntoIter::\n  dying_next<alloc::string::String,enum2_<serde_json::value::Value>,alloc::alloc::Global>();\n  lVar5 = CONCAT71(uStack_77,local_78);\n  if (lVar5 != 0) {\n    lVar4 = *(longlong *)(lVar5 + 0x168 + CONCAT71(uStack_67,local_68) * 0x18);\n    plVar1 = (longlong *)(lVar5 + CONCAT71(uStack_67,local_68) * 0x20);\n    local_118 = *plVar1;\n    lVar5 = plVar1[1];\n    if (!SBORROW8(0,lVar4)) {\n      local_78 = (byte)local_118;\n      alloc::collections::btree::map::IntoIter::\n      dying_next<alloc::string::String,enum2_<serde_json::value::Value>,alloc::alloc::Global>();\n      lStack_110 = lVar5;\n      if (local_150 != 0) {\n        plVar1 = (longlong *)(local_150 + 0x168 + local_140 * 0x18);\n        local_118 = *plVar1;\n        lStack_110 = plVar1[1];\n        puVar2 = (undefined8 *)(local_150 + local_140 * 0x20);\n        uVar6 = *puVar2;\n        lVar7 = puVar2[1];\n        if (!SBORROW8(0,local_118)) {\n          if (local_118 != 0) {\n            std::alloc::__default_lib_allocator::__rust_dealloc();\n          }\n          bStack_100 = (byte)uVar6;\n          if (2 < bStack_100) {\n            if (bStack_100 == 3) {\n              if (lVar7 != 0) {\n                std::alloc::__default_lib_allocator::__rust_dealloc();\n              }\n            }\n            else if (bStack_100 == 4) {\n              core::ptr::drop_in_place<serde_json::value::ser::SerializeVec>();\n            }\n            else {\n              core::ptr::\n              drop_in_place<serde_json::map::Map<alloc::string::String,enum2_<serde_json::value::Value>_>_>\n                        ();\n            }\n          }\n          serde::de::Error::invalid_value<serde_json::error::Error>();\n          *(undefined8 *)(in_RCX + 8) = extraout_RAX_02;\n          *in_RCX = 1;\n          if (2 < local_78) {\n            if (local_78 == 3) {\n              if (lVar5 != 0) {\n                std::alloc::__default_lib_allocator::__rust_dealloc();\n              }\n            }\n            else if (local_78 == 4) {\n              core::ptr::drop_in_place<serde_json::value::ser::SerializeVec>();\n            }\n            else {\n              core::ptr::\n              drop_in_place<serde_json::map::Map<alloc::string::String,enum2_<serde_json::value::Value>_>_>\n                        ();\n            }\n          }\n          if (lVar4 != 0) {\n            std::alloc::__default_lib_allocator::__rust_dealloc();\n          }\n          goto LAB_140860015;\n        }\n      }\n      core::ptr::drop_in_place<serde_json::map::IntoIter>();\n      goto LAB_140860042;\n    }\n  }\n  serde::de::Error::invalid_value<serde_json::error::Error>();\n  *(undefined8 *)(in_RCX + 8) = extraout_RAX;\n  *in_RCX = 1;\nLAB_140860015:\n  core::ptr::drop_in_place<serde_json::map::IntoIter>();\n  return;\n}\n\n",
+ "callee_count": 11,
+ "callees": [
+  {
+   "name": "__rust_dealloc",
+   "address": "140613c20"
+  },
+  {
+   "name": "drop_in_place<serde_json::map::IntoIter>",
+   "address": "140887df0"
+  },
+  {
+   "name": "drop_in_place<serde_json::map::Map<alloc::string::String,enum2$<serde_json::value::Value>_>_>",
+   "address": "140898f40"
+  },
+  {
+   "name": "drop_in_place<serde_json::value::ser::SerializeVec>",
+   "address": "140889390"
+  },
+  {
+   "name": "drop_in_place<slice2$<enum2$<serde_json::value::Value>_>_>",
+   "address": "140888d70"
+  },
+  {
+   "name": "dying_next<alloc::string::String,enum2$<serde_json::value::Value>,alloc::alloc::Global>",
+   "address": "14143c450"
+  },
+  {
+   "name": "invalid_type",
+   "address": "1428c9a00"
+  },
+  {
+   "name": "invalid_value<serde_json::error::Error>",
+   "address": "1428f9b40"
+  },
+  {
+   "name": "unexpected",
+   "address": "1428c9c10"
+  },
+  {
+   "name": "unit_variant",
+   "address": "140b88000"
+  },
+  {
+   "name": "variant_seed<core::marker::PhantomData<country_core::resources::walls::inner_wall_state::_::impl$0::deserialize::__Field>_>",
+   "address": "1415d1fd0"
+  }
+ ],
+ "revision": {
+  "token": "1791719479858:b17d372d:3",
+  "epoch": "b17d372d",
+  "modification_number": 3,
+  "saved_time": 1791719479858,
+  "unsaved_changes": false,
+  "decompiled": true
+ }
+}

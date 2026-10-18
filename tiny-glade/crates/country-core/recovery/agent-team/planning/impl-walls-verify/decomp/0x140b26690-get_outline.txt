@@ -1,0 +1,147 @@
+// 0x140b26690 get_outline size=351
+
+void __cdecl
+country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary::get_outline(void)
+
+{
+  longlong lVar1;
+  char *pcVar2;
+  uint uVar3;
+  uint uVar4;
+  ulonglong extraout_RAX;
+  ulonglong uVar5;
+  longlong in_RCX;
+  char in_DL;
+  char in_R8B;
+  longlong lVar6;
+  uint uVar7;
+  ushort uVar8;
+  ulonglong uVar9;
+  byte bVar10;
+  char cVar11;
+  char cVar13;
+  char cVar14;
+  char cVar15;
+  undefined1 auVar12 [16];
+  undefined1 auVar16 [16];
+  undefined1 auVar17 [16];
+  undefined1 local_6c;
+  undefined1 local_6b [3];
+  undefined1 *local_68;
+  code *local_60;
+  undefined1 *local_58;
+  code *local_50;
+  undefined **local_48;
+  undefined8 local_40;
+  undefined1 **local_38;
+  undefined8 local_30;
+  undefined8 local_28;
+  
+  if (*(longlong *)(in_RCX + 0x78) != 0) {
+    core::hash::BuildHasher::
+    hash_one<std::hash::random::RandomState,ref_<enum2_<country_core::resources::walls::decorator_subtype::DecoratorLibKey>_>_>
+              ();
+    bVar10 = (byte)(extraout_RAX >> 0x39);
+    auVar12 = ZEXT216(CONCAT11(bVar10,bVar10));
+    auVar12 = pshuflw(auVar12,auVar12,0);
+    lVar1 = *(longlong *)(in_RCX + 0x60) + -0x28;
+    lVar6 = 0;
+    uVar5 = extraout_RAX;
+    while( true ) {
+      uVar5 = uVar5 & *(ulonglong *)(in_RCX + 0x68);
+      pcVar2 = (char *)(*(longlong *)(in_RCX + 0x60) + uVar5);
+      cVar11 = auVar12[0];
+      auVar17[0] = -(*pcVar2 == cVar11);
+      cVar13 = auVar12[1];
+      auVar17[1] = -(pcVar2[1] == cVar13);
+      cVar14 = auVar12[2];
+      auVar17[2] = -(pcVar2[2] == cVar14);
+      cVar15 = auVar12[3];
+      auVar17[3] = -(pcVar2[3] == cVar15);
+      auVar17[4] = -(pcVar2[4] == cVar11);
+      auVar17[5] = -(pcVar2[5] == cVar13);
+      auVar17[6] = -(pcVar2[6] == cVar14);
+      auVar17[7] = -(pcVar2[7] == cVar15);
+      auVar17[8] = -(pcVar2[8] == cVar11);
+      auVar17[9] = -(pcVar2[9] == cVar13);
+      auVar17[10] = -(pcVar2[10] == cVar14);
+      auVar17[0xb] = -(pcVar2[0xb] == cVar15);
+      auVar17[0xc] = -(pcVar2[0xc] == cVar11);
+      auVar17[0xd] = -(pcVar2[0xd] == cVar13);
+      auVar17[0xe] = -(pcVar2[0xe] == cVar14);
+      auVar17[0xf] = -(pcVar2[0xf] == cVar15);
+      uVar8 = (ushort)(SUB161(auVar17 >> 7,0) & 1) | (ushort)(SUB161(auVar17 >> 0xf,0) & 1) << 1 |
+              (ushort)(SUB161(auVar17 >> 0x17,0) & 1) << 2 |
+              (ushort)(SUB161(auVar17 >> 0x1f,0) & 1) << 3 |
+              (ushort)(SUB161(auVar17 >> 0x27,0) & 1) << 4 |
+              (ushort)(SUB161(auVar17 >> 0x2f,0) & 1) << 5 |
+              (ushort)(SUB161(auVar17 >> 0x37,0) & 1) << 6 |
+              (ushort)(SUB161(auVar17 >> 0x3f,0) & 1) << 7 |
+              (ushort)(SUB161(auVar17 >> 0x47,0) & 1) << 8 |
+              (ushort)(SUB161(auVar17 >> 0x4f,0) & 1) << 9 |
+              (ushort)(SUB161(auVar17 >> 0x57,0) & 1) << 10 |
+              (ushort)(SUB161(auVar17 >> 0x5f,0) & 1) << 0xb |
+              (ushort)(SUB161(auVar17 >> 0x67,0) & 1) << 0xc |
+              (ushort)(SUB161(auVar17 >> 0x6f,0) & 1) << 0xd |
+              (ushort)(SUB161(auVar17 >> 0x77,0) & 1) << 0xe | (ushort)(auVar17[0xf] >> 7) << 0xf;
+      uVar7 = (uint)uVar8;
+      while (uVar8 != 0) {
+        uVar3 = 0;
+        for (uVar4 = uVar7; (uVar4 & 1) == 0; uVar4 = uVar4 >> 1 | 0x80000000) {
+          uVar3 = uVar3 + 1;
+        }
+        uVar9 = uVar3 + uVar5 & *(ulonglong *)(in_RCX + 0x68);
+        cVar11 = *(char *)(lVar1 + uVar9 * -0x28);
+        if (((cVar11 != '\x1a') && (cVar11 == in_R8B)) &&
+           (*(char *)(lVar1 + uVar9 * -0x28 + 1) == in_DL)) {
+          return;
+        }
+        uVar8 = (ushort)(uVar7 - 1) & (ushort)uVar7;
+        uVar7 = CONCAT22((short)(uVar7 - 1 >> 0x10),uVar8);
+      }
+      auVar16[0] = -(*pcVar2 == -1);
+      auVar16[1] = -(pcVar2[1] == -1);
+      auVar16[2] = -(pcVar2[2] == -1);
+      auVar16[3] = -(pcVar2[3] == -1);
+      auVar16[4] = -(pcVar2[4] == -1);
+      auVar16[5] = -(pcVar2[5] == -1);
+      auVar16[6] = -(pcVar2[6] == -1);
+      auVar16[7] = -(pcVar2[7] == -1);
+      auVar16[8] = -(pcVar2[8] == -1);
+      auVar16[9] = -(pcVar2[9] == -1);
+      auVar16[10] = -(pcVar2[10] == -1);
+      auVar16[0xb] = -(pcVar2[0xb] == -1);
+      auVar16[0xc] = -(pcVar2[0xc] == -1);
+      auVar16[0xd] = -(pcVar2[0xd] == -1);
+      auVar16[0xe] = -(pcVar2[0xe] == -1);
+      auVar16[0xf] = -(pcVar2[0xf] == -1);
+      if ((((((((((((((((SUB161(auVar16 >> 7,0) & 1) != 0 || (SUB161(auVar16 >> 0xf,0) & 1) != 0) ||
+                      (SUB161(auVar16 >> 0x17,0) & 1) != 0) || (SUB161(auVar16 >> 0x1f,0) & 1) != 0)
+                    || (SUB161(auVar16 >> 0x27,0) & 1) != 0) || (SUB161(auVar16 >> 0x2f,0) & 1) != 0
+                   ) || (SUB161(auVar16 >> 0x37,0) & 1) != 0) ||
+                 (SUB161(auVar16 >> 0x3f,0) & 1) != 0) || (SUB161(auVar16 >> 0x47,0) & 1) != 0) ||
+               (SUB161(auVar16 >> 0x4f,0) & 1) != 0) || (SUB161(auVar16 >> 0x57,0) & 1) != 0) ||
+             (SUB161(auVar16 >> 0x5f,0) & 1) != 0) || (SUB161(auVar16 >> 0x67,0) & 1) != 0) ||
+           (SUB161(auVar16 >> 0x6f,0) & 1) != 0) || (SUB161(auVar16 >> 0x77,0) & 1) != 0) ||
+          auVar16[0xf] < '\0') break;
+      uVar5 = uVar5 + lVar6 + 0x10;
+      lVar6 = lVar6 + 0x10;
+    }
+  }
+  local_68 = &local_6c;
+  local_60 = decorator::impl$57::fmt;
+  local_58 = local_6b;
+  local_50 = decorator_subtype::impl$15::fmt;
+  local_48 = &anon_e2dabe35599ea0dc64bcd0595e4954fe_14_llvm_17342129544673437732;
+  local_40 = 2;
+  local_28 = 0;
+  local_38 = &local_68;
+  local_30 = 2;
+                    // WARNING: Subroutine does not return
+  core::panicking::panic_fmt();
+}
+
+
+// CALLEES:
+{'name': 'hash_one<std::hash::random::RandomState,ref$<enum2$<country_core::resources::walls::decorator_subtype::DecoratorLibKey>_>_>', 'address': '1411f7dc0'}
+{'name': 'panic_fmt', 'address': '1428d9390'}

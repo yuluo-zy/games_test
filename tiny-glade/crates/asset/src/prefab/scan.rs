@@ -12,7 +12,7 @@ pub struct PrefabDependencies {
     pub by_file: HashMap<PathBuf, Vec<PrefabName>>,
 }
 impl PrefabDependencies {
-    /// Original pushes a name into Vec; duplicate registrations are preserved.
+    /// Record a source file dependency; repeated registrations retain their order.
     pub fn add_file_to_prefab_dependency(&mut self, file: &Path, name: PrefabName) {
         self.by_file.entry(file.to_owned()).or_default().push(name);
     }
@@ -52,18 +52,30 @@ pub fn scan_asset_tree_walker(
         inherited.inherit_from(parent);
         dependencies.push(default_path);
     }
+    let scan_result = scan_directory_contents(dir, prefix, &inherited, dependencies, result);
+    dependencies.truncate(start);
+    scan_result
+}
+
+fn scan_directory_contents(
+    dir: &Path,
+    prefix: &RelativePathBuf,
+    inherited: &PrefabConfig,
+    dependencies: &mut Vec<PathBuf>,
+    result: &mut PrefabScan,
+) -> Result<()> {
     for entry in std::fs::read_dir(dir).with_context(|| format!("Reading {dir:?}"))? {
         let entry = entry?;
         let path = entry.path();
         let filename = entry
             .file_name()
             .into_string()
-            .map_err(|_| anyhow::anyhow!("Non-UTF8 prefab name"))?;
+            .map_err(|_| anyhow::anyhow!("Non-UTF8 prefab name in {dir:?}"))?;
         if entry.file_type()?.is_dir() {
             scan_asset_tree_walker(
                 &path,
                 &prefix.join(filename),
-                &inherited,
+                inherited,
                 dependencies,
                 result,
             )?;
@@ -74,7 +86,7 @@ pub fn scan_asset_tree_walker(
             match path.extension().and_then(|x| x.to_str()) {
                 Some("asset-filter") => continue,
                 Some("ron") => {}
-                ext => bail!("Unsupported prefab file extension: {ext:?}"),
+                ext => bail!("Unsupported prefab file extension {ext:?}: {path:?}"),
             }
             let name = PrefabName::new(
                 prefix
@@ -86,7 +98,10 @@ pub fn scan_asset_tree_walker(
                     .as_str(),
             );
             let mut config = load_prefab_config(&path)?;
-            config.inherit_from(&inherited);
+            config.inherit_from(inherited);
+            config
+                .validate()
+                .with_context(|| format!("Resolving prefab {path:?}"))?;
             result.prefabs.insert(name.clone(), config);
             for file in dependencies.iter().chain(std::iter::once(&path)) {
                 result
@@ -95,6 +110,5 @@ pub fn scan_asset_tree_walker(
             }
         }
     }
-    dependencies.truncate(start);
     Ok(())
 }

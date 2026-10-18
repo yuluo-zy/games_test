@@ -1,7 +1,7 @@
 //! B `systems/wall/eraser/animate_wall_bulldoze.rs`: wall bulldoze animation.
 //!
 //! Evidence: `chapters/systems/wall/eraser/animate_wall_bulldoze.rs.md` (O,
-//! 0x140ac27e0) + `recovered_building/wall_bulldoze.rs`. Each frame phase
+//! 0x140ac27e0) + `systems/wall/eraser/bulldoze.rs`. Each frame phase
 //! advances by dt / 0.2, then the CubicInOut ease slices the curve; at
 //! phase == 1.0 the wall authority is removed. The 152 B command record is
 //! represented by [`WallBulldozeCommand`].
@@ -10,11 +10,9 @@ use bevy_ecs::prelude::*;
 use glam::Vec3;
 
 use super::WallBulldozeAudio;
-use crate::recovered_building::{
-    wall_bulldoze::WallBulldozeCommand,
-    wall_history_edit::slice_source_curve,
-    wall_state::WallShapeSnapshot,
-};
+use crate::systems::wall::eraser::bulldoze::WallBulldozeCommand;
+use crate::resources::history::wall_edit::slice_source_curve;
+use crate::resources::walls::publication_fields::WallShapeSnapshot;
 use crate::resources::{
     time::GameTime,
     walls::{InnerWalls, WallId},

@@ -12,21 +12,29 @@
 //! CPU 链已冻结（3516/3516 案例）：split_into_random_rows/trim_rows/
 //! normalize_wall_holes/resolve_hole_overlap/cut_wall_bricks/
 //! emit_resolved_wall_brick（96B BrickTransformSsbo）→ 本 crate 直接复用
-//! country-core recovered_building 的同一链。**row→proposal 中段
+//! country-core shared building modules 的同一链。**row→proposal 中段
 //! （相邻行匹配/横向 partition/噪声与 seed 来源）仍未恢复** ——
 //! from_curve 的完整装配以 `consume_wall_proposal` 的已解析源值输入
 //! （building-constructor README 边界），不自行补造缺失源值。
-use country_core::recovered_building::wall_constructor::*;
+use country_core::systems::wall::construction::bricks::*;
 use country_core::resources::walls::public_walls::PublicWalls;
 use glam::Vec2;
 
-pub use country_core::recovered_building::wall_constructor::{
-    WallBrick, WallBrickInstance, WallEmissionContext, WallRow,
-    consume_wall_proposal, construct_resolved_plain_wall_proposal, cut_wall_bricks,
-    emit_plain_wall_brick, emit_resolved_wall_brick, normalize_wall_holes,
-    resolve_hole_overlap, select_native_row_holes, split_into_random_rows,
-    split_plain_row_horizontal, trim_rows,
-};
+pub use country_core::systems::wall::construction::bricks::WallBrick;
+pub use country_core::systems::wall::construction::bricks::WallBrickInstance;
+pub use country_core::systems::wall::construction::bricks::WallEmissionContext;
+pub use country_core::systems::wall::construction::bricks::WallRow;
+pub use country_core::systems::wall::construction::bricks::consume_wall_proposal;
+pub use country_core::systems::wall::construction::bricks::construct_resolved_plain_wall_proposal;
+pub use country_core::systems::wall::construction::bricks::cut_wall_bricks;
+pub use country_core::systems::wall::construction::bricks::emit_plain_wall_brick;
+pub use country_core::systems::wall::construction::bricks::emit_resolved_wall_brick;
+pub use country_core::systems::wall::construction::bricks::normalize_wall_holes;
+pub use country_core::systems::wall::construction::bricks::resolve_hole_overlap;
+pub use country_core::systems::wall::construction::bricks::select_native_row_holes;
+pub use country_core::systems::wall::construction::bricks::split_into_random_rows;
+pub use country_core::systems::wall::construction::bricks::split_plain_row_horizontal;
+pub use country_core::systems::wall::construction::bricks::trim_rows;
 
 /// 96B 实例记录（BrickTransformSsbo 观测投影；48 affine + 16 deformation +
 /// 12 surface + 4 seed + 4 material + 8 wall_distance + 4 flags）。

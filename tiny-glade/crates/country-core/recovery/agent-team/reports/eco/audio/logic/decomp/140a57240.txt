@@ -1,0 +1,18 @@
+// start @ 0x140a57240
+
+void __cdecl country_core::resources::audio_resources::AudioInstance::start(void)
+
+{
+  int *in_RCX;
+  undefined8 local_80;
+  
+  if (*in_RCX == 1) {
+    libfmod::EventInstance::start();
+    if (local_80 != -0x7ffffffffffffffc) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+  }
+  return;
+}
+

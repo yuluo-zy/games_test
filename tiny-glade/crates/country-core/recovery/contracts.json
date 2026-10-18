@@ -409,7 +409,7 @@
       "provenance/core-wall-authority-2026-10-14.json"
     ],
     "consumers": [
-      "recovered_building/wall_construction_sources.rs",
+      "systems/wall/construction/parameters.rs",
       "resources/walls/height_rules.rs"
     ],
     "remaining": [
@@ -420,7 +420,7 @@
   },
   "resources/history/auto_clutter_edit.rs": {
     "formal_paths": [
-      "recovered_systems/clutter.rs"
+      "resources/history/auto_clutter_edit.rs"
     ],
     "status_label": "已存在 Delete serde 合同投影；完整历史链未接",
     "implementation": "partial_schema",
@@ -813,6 +813,86 @@
     "remaining": [
       "automatic session/save scheduler connection",
       "complete async save thread"
+    ]
+  },
+  "components/mod.rs": {
+    "implementation": "implemented_bounded",
+    "target": "B",
+    "review": "self_review_against_original_evidence",
+    "evidence": [
+      "recovery/components-2026-10-18.md",
+      "skeleton/task-index/work/TG-abf1305389c44cc264/components-review-20261018/evidence/schema-direct.json",
+      "skeleton/task-index/work/TG-abf1305389c44cc264/components-review-20261018/evidence/original-span-identity.json"
+    ],
+    "verification": "recovery/components-2026-10-18.json",
+    "formal_paths": [
+      "components/mod.rs",
+      "components/rendering.rs",
+      "components/trees.rs",
+      "components/ui.rs",
+      "components/registry.rs"
+    ],
+    "status_label": "现有三个占位载荷已恢复；组件字段/克隆策略及直接消费者限定检查；其余类型库存待恢复",
+    "verified_scope": [
+      "TreeAnimation payload",
+      "TreeMoveBend payload",
+      "TreeComponent payload",
+      "ConvertedPreplacedTree payload",
+      "Ui2dImage payload",
+      "UiDrawOrder u64",
+      "actual Component clone/required descriptors"
+    ],
+    "corrections": [
+      "时长与进度分离，删除读 progress@4",
+      "进度随实体而非查询顺序 Local<Vec<_>>",
+      "拥有 UI 资源名，工具栏不再丢弃 label",
+      "恢复两个误作 ZST 的树载荷",
+      "移除改变原 ECS 克隆策略的 Clone/Copy 派生"
+    ],
+    "consumers": [
+      "system-tree/process_tree_cmds",
+      "system-tree/tree_move_bend",
+      "forest/tree_animation",
+      "toolbar/toolbar_layout",
+      "systems/render_loop/draw_passes/ui_2d_pass"
+    ],
+    "remaining": [
+      "原放置记录 GPU 写面/全局 canopy/原调度未闭合",
+      "InsertTreeCmd 原 flags 等尚未完整恢复",
+      "其余未定义的 registry 组件不计完成",
+      "未执行原进程或跨版本 oracle"
+    ]
+  },
+  "components/drawable.rs": {
+    "implementation": "implemented_bounded",
+    "target": "B",
+    "review": "self_review_against_original_evidence",
+    "evidence": [
+      "recovery/components-2026-10-18.md",
+      "skeleton/task-index/work/TG-abf1305389c44cc264/components-review-20261018/evidence/schema-direct.json",
+      "skeleton/task-index/work/TG-abf1305389c44cc264/components-review-20261018/evidence/original-span-identity.json"
+    ],
+    "verification": "recovery/components-2026-10-18.json",
+    "formal_paths": [
+      "components/drawable.rs",
+      "render/nani/systems.rs"
+    ],
+    "status_label": "选择器共用、移除误加 Component/Clone、澄清 Bundle 布局；系统/其余材质载荷仍待恢复",
+    "verified_scope": [
+      "shared mesh selector",
+      "NaniInstanceDesc Component clone behavior",
+      "host NaniBundle/DrawableMeshBundle layouts in components_recovery"
+    ],
+    "corrections": [
+      "NaniMeshSelector 与 NaniInstanceMeshDesc 统一",
+      "0x48 有效复制范围与本机 0x50 分配大小分开"
+    ],
+    "consumers": [
+      "render/nani/systems"
+    ],
+    "remaining": [
+      "cache_prev_object_transforms 未恢复",
+      "其余材质组件/原完整 ABI 与 GPU 链未验收"
     ]
   }
 }

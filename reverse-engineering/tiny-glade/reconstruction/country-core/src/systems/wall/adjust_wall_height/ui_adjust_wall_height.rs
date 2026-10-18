@@ -37,7 +37,13 @@ pub fn ui_adjust_wall_height(
         let Some(state) = public_walls.get(wall) else { continue };
         if state.is_premade_shape() {
             let _ = state;
-            *widget = UiWallHeight::new();
+            // O: UiWallHeight::new inlined；raw_id@+0 写墙体 id，active@+9
+            // 由 premade-shape 分支置位（widget @0x1409566d0 读 +9 选高度
+            // 数组分支）。flag8@+8 的具体选择条件 U。
+            let mut w = UiWallHeight::new();
+            w.raw_id = wall.get_inner();
+            w.active = true;
+            *widget = w;
             break;
         }
     }

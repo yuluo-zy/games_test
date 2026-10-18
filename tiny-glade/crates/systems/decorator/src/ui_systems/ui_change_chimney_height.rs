@@ -96,7 +96,7 @@ pub fn ui_change_chimney_height(
                 u8::from(dragged > 1),
                 dst,
                 &mut storage,
-                None::<&mut country_core::recovered_building::wall_decorator_archivist::DecoratorArchivist<()>>,
+                None::<&mut country_core::resources::walls::decorator_archivist::changes::DecoratorArchivist<()>>,
                 Some(&mut history),
                 &Default::default(),
             );

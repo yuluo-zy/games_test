@@ -1,5 +1,23 @@
 use crate::inheritable::Inherit;
+use anyhow::{Result, ensure};
+use relative_path::RelativePath;
 use serde::{Deserialize, Serialize};
+
+/// Check an asset's portable, slash-separated path within an output directory.
+///
+/// Empty components, traversal components and platform-specific separators or
+/// drive prefixes cannot be represented as logical asset names.
+pub fn validate_logical_name(name: &RelativePath) -> Result<()> {
+    let name = name.as_str();
+    ensure!(
+        !name.contains(['\\', ':'])
+            && name
+                .split('/')
+                .all(|component| !matches!(component, "" | "." | "..")),
+        "Invalid texture logical name {name:?}"
+    );
+    Ok(())
+}
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Gamma {
@@ -38,7 +56,7 @@ pub struct TextureOpts {
     pub mips: MipChain,
     pub compression: CompressionMethod,
 }
-/// B derived serialization names and field types are independently present in the PDB.
+/// A single texture or an array whose source images are its leaf descriptors.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TextureAssetDesc {
     pub path: std::path::PathBuf,
@@ -47,10 +65,19 @@ pub struct TextureAssetDesc {
 }
 impl TextureAssetDesc {
     pub fn source_files(&self) -> Vec<&std::path::Path> {
+        let mut files = Vec::new();
+        self.visit_source_files(&mut |path| files.push(path));
+        files
+    }
+
+    /// Visit leaf source paths in layer order without allocating intermediate vectors.
+    pub fn visit_source_files<'a>(&'a self, visitor: &mut impl FnMut(&'a std::path::Path)) {
         if self.layers.is_empty() {
-            vec![self.path.as_path()]
+            visitor(self.path.as_path());
         } else {
-            self.layers.iter().flat_map(Self::source_files).collect()
+            for layer in &self.layers {
+                layer.visit_source_files(visitor);
+            }
         }
     }
 }

@@ -1,0 +1,97 @@
+{
+  "status": "candidate_only_uncompiled",
+  "production_modified": false,
+  "cargo_or_gpu_run": false,
+  "original_evidence": "../loading-startup-proof/manifest.json",
+  "callers": [
+    {
+      "file": "tiny-glade/src/game_loop.rs",
+      "change": "replace immediate initialize_loading_resources with install_loading_startup"
+    },
+    {
+      "file": "tiny-glade/tests/original_loading_gpu.rs",
+      "change": "real App Startup, Update44 prerequisite assertion, existing actual text/Logo/readback, same canonical graph import and retained-slot assertions"
+    },
+    {
+      "file": "tiny-glade/tests/original_loading_present.rs",
+      "change": "explicit World fixture calls same core minimal producer before callable initialize helper"
+    }
+  ],
+  "original_schedule": "loading MinimalStartupPlugin five-entry Startup tuple; no proven chain among original entries",
+  "host_dependency": "attach_loading_mei.after(minimal_startup_ssbo_system) only",
+  "base_guards": [
+    {
+      "path": "games_test/tiny-glade/crates/country-core/src/startup/mod.rs",
+      "sha256": "a66e59d06b70977de374bbade8168b821365123fc2ac7f9c299baadae7bd231e",
+      "still_matches_at_delivery": true
+    },
+    {
+      "path": "games_test/tiny-glade/crates/tiny-glade/src/loading_graph.rs",
+      "sha256": "974fb67d5b78d07527811d44454d855c328dbfffea48f3decaf321d1a54b2e78",
+      "still_matches_at_delivery": true
+    },
+    {
+      "path": "games_test/tiny-glade/crates/tiny-glade/src/game_loop.rs",
+      "sha256": "cbda15303062856fade83d512df3fa85e327019e1a247be57a9ffdaec12b3915",
+      "still_matches_at_delivery": true
+    },
+    {
+      "path": "games_test/tiny-glade/crates/tiny-glade/src/mei_host.rs",
+      "sha256": "3adff95c2da5efc30ecf5078bed85ac2386440e6b1840dca84fa9ca842a007da",
+      "still_matches_at_delivery": true
+    },
+    {
+      "path": "games_test/tiny-glade/crates/tiny-glade/tests/original_loading_gpu.rs",
+      "sha256": "b47f7560da183f31ded31025cc6508d39a4d606d48551c53cd741a1e9e0b6cf7",
+      "still_matches_at_delivery": true
+    },
+    {
+      "path": "games_test/tiny-glade/crates/tiny-glade/tests/original_loading_present.rs",
+      "sha256": "e5d0ce6c1b3813ca6a17af938b050b9ba96f90db0ad0625937917b3e0cf96143",
+      "still_matches_at_delivery": true
+    }
+  ],
+  "patches": [
+    {
+      "path": "core-minimal-startup.patch",
+      "size": 3153,
+      "sha256": "094cc18fa2bc2e1be8672ac61c1c69d552749a486d0088a2e889ec36ae736944"
+    },
+    {
+      "path": "game-loop-loading-startup.patch",
+      "size": 806,
+      "sha256": "932fdcf49a77295e1ce7e7a37409a2d67f0e291632467b28d983160937670360"
+    },
+    {
+      "path": "loading-canonical-startup-gpu.patch",
+      "size": 4700,
+      "sha256": "8d16769b712781b26fcb2feeac9b3f4f3c40ff7b034ff247b27a1dcee0be6e6e"
+    },
+    {
+      "path": "loading-present-canonical-producer.patch",
+      "size": 839,
+      "sha256": "4367841ed6cca5dd350289c4f958e09bff3bc7a03eecaa088ca96b06c7fd2442"
+    },
+    {
+      "path": "loading-startup-adapter.patch",
+      "size": 4805,
+      "sha256": "44bc019571cba910a97939ae658a24a75097cfe7ba47695d7081b439b52fd95d"
+    },
+    {
+      "path": "mei-canonical-library-owner.patch",
+      "size": 4560,
+      "sha256": "1359e0b553f796d376cf953a3dafeaa9b9a7e9215d1173a7c73cd95de9496725"
+    }
+  ],
+  "contract_sha256": "75816c7d5e8f863ab35437f0e9fbcc9ca2fa25825e6997783c70d1850ba75e15",
+  "syntax_check": {
+    "tool": "rustfmt --edition 2021 --emit stdout",
+    "passed": [
+      "init_populate_minimal_startup_ssbo_library.rs.candidate",
+      "loading_graph.rs.candidate",
+      "mei_host.rs.candidate",
+      "original_loading_gpu.rs.candidate"
+    ],
+    "typecheck": false
+  }
+}

@@ -1,0 +1,120 @@
+
+void __cdecl utils::rotation_from_normal(void)
+
+{
+  bool bVar1;
+  ulonglong uVar2;
+  undefined4 extraout_EAX;
+  int iVar3;
+  float *in_RCX;
+  undefined8 *in_RDX;
+  bool bVar4;
+  bool bVar5;
+  float fVar6;
+  float fVar7;
+  float fVar8;
+  float fVar9;
+  float fVar10;
+  float fVar11;
+  float fVar12;
+  float fVar13;
+  float fVar14;
+  float fVar15;
+  float fVar16;
+  undefined1 local_78 [16];
+  
+  fVar11 = (float)*in_RDX;
+  fVar6 = (float)((ulonglong)*in_RDX >> 0x20);
+  fVar14 = *(float *)(in_RDX + 1);
+  if ((((uint)ABS(fVar11) < 0x7f800000) && ((uint)ABS(fVar6) < 0x7f800000)) &&
+     ((uint)ABS(fVar14) < 0x7f800000)) {
+    fVar7 = fVar6 * 0.0 - fVar14;
+    fVar8 = fVar14 * 0.0 - fVar11 * 0.0;
+    fVar9 = fVar11 - fVar6 * 0.0;
+    fVar10 = 1.0;
+    fVar13 = 1.0;
+    fVar12 = 1.0 / SQRT(fVar9 * fVar9 + fVar7 * fVar7 + fVar8 * fVar8);
+    bVar4 = (int)ABS(fVar12) - 0x800000U < 0x7f000000;
+    bVar5 = (int)fVar12 - 1U < 0x7fffff;
+    bVar1 = bVar5 || bVar4 && -1 < (int)fVar12;
+    uVar2 = CONCAT44((int)((uint)bVar1 << 0x1f) >> 0x1f,
+                     (int)((uint)(bVar5 || bVar4 && -1 < (int)fVar12) << 0x1f) >> 0x1f) &
+            CONCAT44(fVar12 * fVar9,fVar12 * fVar8);
+    fVar8 = (float)uVar2;
+    fVar9 = (float)(uVar2 >> 0x20);
+    if (bVar1) {
+      fVar13 = fVar7 * fVar12;
+    }
+    fVar7 = fVar6 * fVar9 - fVar14 * fVar8;
+    fVar16 = fVar14 * fVar13 - fVar9 * fVar11;
+    fVar12 = fVar11 * fVar8 - fVar6 * fVar13;
+    fVar15 = 1.0 / SQRT(fVar12 * fVar12 + fVar16 * fVar16 + fVar7 * fVar7);
+    if ((int)fVar15 - 1U < 0x7fffff || (int)ABS(fVar15) - 0x800000U < 0x7f000000 && -1 < (int)fVar15
+       ) {
+      fVar7 = fVar7 * fVar15;
+      fVar10 = fVar16 * fVar15;
+      fVar12 = fVar12 * fVar15;
+    }
+    else {
+      fVar7 = 0.0;
+      fVar12 = 0.0;
+    }
+    if (0.0 < fVar14) {
+      fVar13 = fVar13 + fVar10;
+      if (fVar13 <= 0.0) {
+        fVar13 = (fVar14 + 1.0) - fVar13;
+        fVar8 = fVar8 - fVar7;
+        fVar15 = fVar9 + fVar11;
+        fVar11 = fVar12 + fVar6;
+        fVar14 = fVar13;
+      }
+      else {
+        fVar15 = fVar12 - fVar6;
+        fVar11 = fVar11 - fVar9;
+        fVar13 = fVar13 + fVar14 + 1.0;
+        fVar14 = fVar8 - fVar7;
+        fVar8 = fVar13;
+      }
+      fVar13 = 0.5 / SQRT(fVar13);
+      fVar15 = fVar13 * fVar15;
+      fVar10 = fVar13 * fVar11;
+      fVar14 = fVar13 * fVar14;
+      fVar13 = fVar13 * fVar8;
+    }
+    else {
+      fVar10 = fVar10 - fVar13;
+      if (fVar10 <= 0.0) {
+        fVar10 = (1.0 - fVar14) - fVar10;
+        fVar13 = 0.5 / SQRT(fVar10);
+        fVar15 = fVar13 * fVar10;
+        fVar10 = fVar13 * (fVar7 + fVar8);
+        fVar14 = fVar13 * (fVar11 + fVar9);
+        fVar13 = fVar13 * (fVar12 - fVar6);
+      }
+      else {
+        fVar10 = (1.0 - fVar14) + fVar10;
+        fVar13 = 0.5 / SQRT(fVar10);
+        fVar15 = fVar13 * (fVar8 + fVar7);
+        fVar10 = fVar13 * fVar10;
+        fVar14 = fVar13 * (fVar6 + fVar12);
+        fVar13 = fVar13 * (fVar11 - fVar9);
+      }
+    }
+    glam::f32::sse2::vec4::Vec4::is_finite_mask();
+    iVar3 = movmskps(extraout_EAX,local_78);
+    if (iVar3 != 0xf) {
+      fVar15 = 0.0;
+      fVar10 = 0.0;
+      fVar14 = 0.0;
+      fVar13 = 1.0;
+    }
+    *in_RCX = fVar15;
+    in_RCX[1] = fVar10;
+    in_RCX[2] = fVar14;
+    in_RCX[3] = fVar13;
+    return;
+  }
+                    // WARNING: Subroutine does not return
+  core::panicking::panic();
+}
+

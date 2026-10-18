@@ -1,0 +1,17 @@
+--- a/crates/tiny-glade/tests/original_scene_compute_gpu.rs
++++ b/crates/tiny-glade/tests/original_scene_compute_gpu.rs
+@@ -1073,9 +1073,11 @@
+             // 2^-7, exactly representable in B10G11R11; original resolve then
+             // encodes it to UNORM22. TAA applies that bias only to history.
+             // Keep the later-frame check separate: it consumes real history.
+-            let blue_matches = if use_tgsr && frame_index == 0 {
+-                pixel[2] == 22
+-            } else { pixel[2] <= 3 };
++            // Constant current color has exact zero weighted variance. On
++            // frame1, neighborhood clamping collapses history to that same
++            // current YUV; inverse blue is still negative -> exact0 before
++            // the identical TGSR output bias. Both TGSR frames require22.
++            let blue_matches = if use_tgsr { pixel[2] == 22 } else { pixel[2] <= 3 };
+             assert!(pixel[0] >= 250 && pixel[1] <= 3 && blue_matches && pixel[3] == 255,
+                 "original AA constant red center, TGSR={use_tgsr} frame={frame_index} prev={history_resource}: {pixel:?}");
+         }

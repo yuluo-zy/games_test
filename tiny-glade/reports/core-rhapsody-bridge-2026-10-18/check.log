@@ -1,0 +1,221 @@
+    Blocking waiting for file lock on build directory
+    Checking country-core v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core)
+    Checking rhapsody v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody)
+warning: unused import: `crate::resources::color_id::ColorId`
+  --> crates/country-core/src/resources/history/color_edit.rs:43:5
+   |
+43 | use crate::resources::color_id::ColorId;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `SubworldColliderHandle`
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:44:54
+   |
+44 | use crate::systems::collision::world::{RaycastWorld, SubworldColliderHandle};
+   |                                                      ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `DebugColor`
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:45:31
+   |
+45 | use crate::utils::debug_viz::{DebugColor, DebugLine, DebugSphere};
+   |                               ^^^^^^^^^^
+
+warning: unused import: `glam::Vec3`
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:46:5
+   |
+46 | use glam::Vec3;
+   |     ^^^^^^^^^^
+
+warning: unused import: `DecoratorStorage`
+  --> crates/country-core/src/systems/save/snapshot.rs:29:40
+   |
+29 |                 DecoratorAddrSnapshot, DecoratorStorage, DecoratorStorageAddr,
+   |                                        ^^^^^^^^^^^^^^^^
+
+warning: unused import: `bevy_ecs::schedule::IntoScheduleConfigs`
+  --> crates/country-core/src/systems/save/mod.rs:53:5
+   |
+53 | use bevy_ecs::schedule::IntoScheduleConfigs;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `bevy_ecs::prelude::*`
+  --> crates/country-core/src/resources/stairs/invalidate.rs:49:9
+   |
+49 |     use bevy_ecs::prelude::*;
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `Roof`, `WallId`, `commands::*`, `public_walls::PublicWalls`, `roof_customization::FlatRoofRimRequest`, `time::GameTime`, and `wall_state::WallId as ObservedWallId`
+  --> crates/country-core/src/systems/history/tests.rs:5:9
+   |
+ 5 |         roof_customization::FlatRoofRimRequest,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 6 |         wall_state::WallId as ObservedWallId,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+10 |         roofs::{Roof, commands::*},
+   |                 ^^^^  ^^^^^^^^^^^
+11 |         time::GameTime,
+   |         ^^^^^^^^^^^^^^
+12 |         walls::{WallId, public_walls::PublicWalls},
+   |                 ^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Decorators`
+   --> crates/country-core/src/systems/ui_edit_focus.rs:228:54
+    |
+228 |     use crate::resources::walls::decorator_storage::{Decorators, DecoratorStorage};
+    |                                                      ^^^^^^^^^^
+
+warning: unused import: `WallId`
+  --> crates/country-core/src/systems/wall/snapping/snapping_init.rs:91:17
+   |
+91 |         walls::{WallId, WallState},
+   |                 ^^^^^^
+
+warning: unused import: `super::*`
+   --> crates/country-core/src/systems/wall/snapping/telegraph_walls_are_merged.rs:109:9
+    |
+109 |     use super::*;
+    |         ^^^^^^^^
+
+warning: variable does not need to be mutable
+   --> crates/country-core/src/resources/history/color_edit.rs:331:39
+    |
+331 |         let serde_json::Value::Object(mut outer) = value else {
+    |                                       ----^^^^^
+    |                                       |
+    |                                       help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `aux`
+   --> crates/country-core/src/resources/history/replay_cmd_buffer.rs:179:9
+    |
+179 |         aux: ReplayBucketAux,
+    |         ^^^ help: if this is intentional, prefix it with an underscore: `_aux`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `kind_filtered` is never used
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:60:4
+   |
+60 | fn kind_filtered(kind: u8, gui_byte: u8) -> bool {
+   |    ^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: constant `A` is never used
+   --> crates/country-core/src/systems/time_of_day.rs:237:15
+    |
+237 |     pub const A: f32 = -0.762_442_5; // 0xbf432f6f
+    |               ^
+
+warning: structure field `Wall` should have a snake case name
+   --> crates/country-core/src/systems/save/snapshot.rs:983:12
+    |
+983 |     Wall { Wall: u64 },
+    |            ^^^^ help: convert the identifier to snake case (notice the capitalization): `wall`
+    |
+    = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default
+
+warning: structure field `Stair` should have a snake case name
+   --> crates/country-core/src/systems/save/snapshot.rs:985:13
+    |
+985 |     Stair { Stair: u64 },
+    |             ^^^^^ help: convert the identifier to snake case (notice the capitalization): `stair`
+
+warning: structure field `Wall` should have a snake case name
+    --> crates/country-core/src/systems/save/snapshot.rs:1073:12
+     |
+1073 |     Wall { Wall: DecoratorWallDstJson },
+     |            ^^^^ help: convert the identifier to snake case (notice the capitalization): `wall`
+
+warning: structure field `Terrain` should have a snake case name
+    --> crates/country-core/src/systems/save/snapshot.rs:1074:15
+     |
+1074 |     Terrain { Terrain: DecoratorTerrainDstJson },
+     |               ^^^^^^^ help: convert the identifier to snake case: `terrain`
+
+warning: `country-core` (lib) generated 14 warnings (run `cargo fix --lib -p country-core` to apply 8 suggestions)
+    Checking system-roof v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/roof)
+    Checking toolbar v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/toolbar)
+warning: variable does not need to be mutable
+   --> crates/country-core/src/systems/wall/snapping/telegraph_walls_are_merged.rs:115:17
+    |
+115 |             let mut lo = (2.0 * e - 1.0).clamp(0.0, 1.0);
+    |                 ----^^
+    |                 |
+    |                 help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/country-core/src/systems/wall/snapping/telegraph_walls_are_merged.rs:116:17
+    |
+116 |             let mut hi = (2.0 * e).clamp(0.0, 1.0);
+    |                 ----^^
+    |                 |
+    |                 help: remove this `mut`
+
+warning: unused import: `public_walls::PublicWalls`
+  --> crates/systems/roof/src/delete_roof.rs:15:21
+   |
+15 |     walls::{WallId, public_walls::PublicWalls},
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `WallId`
+  --> crates/systems/roof/src/update_roof_spatial.rs:15:13
+   |
+15 |     walls::{WallId, public_walls::{OnWallChanged, PublicWalls}},
+   |             ^^^^^^
+
+warning: `system-roof` (lib) generated 2 warnings (run `cargo fix --lib -p system-roof` to apply 2 suggestions)
+warning: field `name` is never read
+  --> crates/country-core/src/systems/audio/music/load_glade_audio.rs:89:9
+   |
+88 |     struct Event {
+   |            ----- field in this struct
+89 |         name: String,
+   |         ^^^^
+   |
+   = note: `Event` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `kind_filtered` is never used
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:60:4
+   |
+60 | fn kind_filtered(kind: u8, gui_byte: u8) -> bool {
+   |    ^^^^^^^^^^^^^
+
+    Checking tiny-glade v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade)
+warning: `country-core` (lib test) generated 21 warnings (12 duplicates) (run `cargo fix --lib -p country-core --tests` to apply 7 suggestions)
+warning: found module declaration for main.rs
+  --> crates/tiny-glade/src/lib.rs:26:1
+   |
+26 | pub mod main;
+   | ^^^^^^^^^^^^^
+   |
+   = note: a binary crate cannot be used as library
+   = note: `#[warn(special_module_name)]` on by default
+
+warning: unused import: `Context`
+  --> crates/tiny-glade/src/screenshot.rs:28:22
+   |
+28 | use anyhow::{anyhow, Context, Result};
+   |                      ^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> crates/tiny-glade/src/screenshot.rs:280:13
+    |
+280 |         let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(
+    |             ----^^^^^^^
+    |             |
+    |             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: `tiny-glade` (lib test) generated 3 warnings (2 duplicates)
+warning: `tiny-glade` (lib) generated 3 warnings (1 duplicate) (run `cargo fix --lib -p tiny-glade` to apply 2 suggestions)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1m 21s

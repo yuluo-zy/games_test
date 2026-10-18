@@ -1800,26 +1800,29 @@ pub fn vertex_input_from_reflection(
     let mut bindings = Vec::new();
     let mut attributes = Vec::new();
     for input in reflection.effective_vertex_inputs().into_values() {
-        input
+        let bytes = input
             .ty
             .nbyte()
-            .ok_or(InterfaceError::VertexInputByteCount)?;
-        let (scalar, count) = match &input.ty {
-            Type::Scalar(s) => (s.clone(), 1),
-            Type::Vector(v) => (v.scalar_ty.clone(), v.nscalar),
+            .ok_or(InterfaceError::VertexInputByteCount)? as u64;
+        let scalar = match &input.ty {
+            Type::Scalar(s) => s,
+            Type::Vector(v) => &v.scalar_ty,
             other => {
                 return Err(
                     InterfaceError::UnsupportedVertexAttributeType(format!("{other:?}")).into(),
                 );
             }
         };
+        // Original schema stores scalar *bytes*, not SPIR-V bits. B's
+        // create_raster_pipeline 0x1416a3b40..3b91 passes scalar.nbyte()*N
+        // and the scalar tag to map_vertex_attribute_format 0x140be6850;
+        // 0x1416a3ba2 uses the actual Type::nbyte for vertex stride.
         let tag = match scalar {
-            ScalarType::Signed(32) => 2,
-            ScalarType::Unsigned(32) => 3,
-            ScalarType::Float(32) => 4,
+            ScalarType::Signed(_) => 2,
+            ScalarType::Unsigned(_) => 3,
+            ScalarType::Float(_) => 4,
             _ => return Err(InterfaceError::InvalidLayout.into()),
         };
-        let bytes = u64::from(count) * 4;
         let format = map_vertex_attribute_format(tag, bytes)?;
         bindings.push(
             vk::VertexInputBindingDescription::default()

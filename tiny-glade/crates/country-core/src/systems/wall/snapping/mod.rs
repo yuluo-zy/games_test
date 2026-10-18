@@ -24,6 +24,23 @@ pub const SNAP_MODE_SEGMENT_CANDIDATE: u8 = 1;
 pub const SNAP_MODE_END: u8 = 2;
 pub const SNAP_MODE_SEGMENT: u8 = 3;
 
+/// B SnappingMode 发布区副本（+0x20..+0x38，fresh 0x140a6ad00）：snapping_maintain
+/// 把活动区全状态发布到此处；snapping_audio 按发布区模式字节去重。原生偏移：
+/// mode@+0x20、snapped@+0x21、snap@+0x24..+0x30、wall@+0x30、end@+0x38。
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
+pub struct SnappingModePublished {
+    /// +0x20：发布的模式字节（snapping_audio 去重键）。
+    pub mode: u8,
+    /// +0x21：发布的占用标志。
+    pub snapped: bool,
+    /// +0x24..+0x30：发布的共享 snap 区。
+    pub snap: Vec3,
+    /// +0x30：发布的墙 id。
+    pub wall: WallId,
+    /// +0x38：发布的端 id。
+    pub end: u8,
+}
+
 /// B SnappingMode (0x140ade610 `new`; snapping_to_ends/segments write the
 /// shared region). The `+4..+0xc` region is reused per mode:
 /// - mode 2 (end): `(x, y, z)` world snap point.
@@ -42,8 +59,8 @@ pub struct SnappingMode {
     pub wall: WallId,
     /// End id (+0x18): mode 2 only, 0 = start near, 1 = end near.
     pub end: u8,
-    /// Previous published mode (+0x20), used by snapping_audio dedup.
-    pub last_published_mode: u8,
+    /// 发布区 +0x20..+0x38（snapping_maintain 0x140a6ad00 写全状态副本）。
+    pub published: SnappingModePublished,
 }
 
 impl Default for SnappingMode {
@@ -62,7 +79,7 @@ impl SnappingMode {
             snap: Vec3::ZERO,
             wall: WallId(0),
             end: 0,
-            last_published_mode: 0,
+            published: SnappingModePublished::default(),
         }
     }
 

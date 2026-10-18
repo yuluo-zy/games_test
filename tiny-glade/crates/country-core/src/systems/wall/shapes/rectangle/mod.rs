@@ -15,3 +15,5 @@ pub fn get_rectangle_orientation(angle: f32) -> glam::Vec2 {
     let (sin, cos) = angle.sin_cos();
     glam::Vec2::new(cos, sin)
 }
+
+pub mod edit_decision;

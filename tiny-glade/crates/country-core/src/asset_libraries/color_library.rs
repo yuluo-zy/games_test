@@ -1,48 +1,6 @@
-//! `asset_libraries/color_library.rs` —— 调色板 SSBO `ColorLibrarySsbo` 及其 JSON 装载（A3 逐函数核对版）。
-//!
-//! 原版 6 个过程（PDB `country_core::asset_libraries::color_library::*`），全部对照机器码（O）：
-//!
-//! | 过程 | 地址 | 大小 | 结论 |
-//! |---|---|---|---|
-//! | `impl$1::default_value` | 0x14093b430 | 252 | `StorageElement::default_value() -> Option<Self>`：`{tag=1(u32), 37×(1,0,1,1)}`，**品红** |
-//! | `impl$3::default` | 0x14093f900 | 245 | `Default`：同一块 37×(1,0,1,1)（0x250 B，**不是**全白） |
-//! | `ColorLibrarySsbo::deserialize_from` | 0x14093e510 | 5102 | 吃 `Vec<ColorFromJson>`，按名字写槽，alpha 恒 1.0 |
-//! | `deserialize_from_path<&str>` / `<&PathBuf>` | 0x14155a320 / 0x14155a170 | 403 / 419 | `read_to_string` + `serde_json::from_str`，两处 `unwrap` |
-//! | `update_color_library` | 0x14093b530 | 1502 | bevy 系统：默认 → 基础 json → 主题 json → 上传 GPU → 写回 CPU 副本 |
-//!
-//! 旧版的重大错误（逐条已改）：
-//!  * 数据格式是 **JSON**（`serde_json 1.0.85`，`from_str::<Vec<ColorFromJson>>`），不是 RON；
-//!  * 元素是 `ColorFromJson { name: String, color: [f32; 3] }`（O：`serde_json deserialize_struct` 的字段名表
-//!    "name"、"color"，两者缺失都报 `missing_field`；多余字段被 `IgnoredAny` 忽略），不是“按固定字段名的结构体”；
-//!  * 调色板共 **37** 个槽（0x250 / 16），槽位与名字的对应来自 `deserialize_from` 内按名字长度跳转的比较链，
-//!    旧版的槽偏移（0x50/0x48/…）与 `ColorLibraryRon` 全是臆造；
-//!  * 默认值是品红 (1,0,1,1)，缺失条目保持品红；alpha 被强制 1.0（JSON 只给 rgb）；
-//!  * 未知名字 → `panic!("Init Color Library failed: {name} entry is missing from ColorLibrarySSBO")`
-//!    （O：pieces @0x142ab2208，`String` Display 实参，源码行 66）；
-//!  * 加载顺序：先 `assets/colors.json`（`unwrap`，必须存在），再按主题叠加
-//!    `assets/glade/<theme>/colors.json`（存在才读），最后把结果上传并写回 CPU 资源。
-//!
-//! 槽位表（O，由比较链逐项解码；槽字节偏移 = 序号 × 16）：序号 0..36 依次为
-//! `temp_color_1/2/3, roof_color_1/2, sky_low_day, sky_high_day, sun_tint_day, sky_low_dusk, sky_high_dusk,
-//! sun_tint_dusk, indirect_light_tint, fence_color_1/2, flower_color_1/2, canopy_color_1/2, grass_1/2, path,
-//! sky_base, sky_horizon, sky_clouds_1/2, terrain_1/2, terrain_flattened, wall_1/2, wall_moss, wall_bricks,
-//! ivy_branch, ivy_leaf_1/2, terrain_highlight, night_tint`。
-//! （名字长度 4..=19 走 `jmp [table]`：4 字节 `path`、19 字节 `indirect_light_tint` 用 SSE `pcmpeqb`、
-//! `terrain_1/2, wall_moss, wall_bricks, terrain_highlight, night_tint` 走 `bcmp` 调用，其余为内联 xor 比较；
-//! 行为等价于“在表里按字节精确查名”，因此这里用线性表查找。）
-//!
-//! `StorageElement::NAME` = `"ColorLibrary"`（O）：`update_color_library` 里 `FrozenMap::get` 的键立即数
-//! `0xef2a68c12cde3f0d`，用原 EXE 的 XXH3 secret（0x142b2ebb0）对 `"ColorLibrary"` 复算一致（见 A3_color.md）。
-//! `type_name::<ColorLibrarySsbo>()` 长 0x3e = `country_core::asset_libraries::color_library::ColorLibrarySsbo`。
-//!
-//! 仍为 I/U：
-//!  * I：`ColorLibrarySsbo` 是 `Resource`（`update_color_library` 的第 4 参数被 `memcpy` 0x250 字节写回）；
-//!    `BUFFER_LEN == 1`（有 `default_value`、缓冲 0x250 B）；缓冲实际是 `TypedStorageBuffer<ColorLibrarySsbo>`。
-//!  * I：主题枚举的类型名与变体名（O 只有 `u8` 下标 → 5 个目录名 `summer/olden/flowery/autumn/winter`）。
-//!  * U：`vtable +0x18` 返回 `Buffer*`（为空 → `Option::unwrap` panic，源码行 156）的方法在本重建的
-//!    `Ssbo` trait 里对应 `buffer()`（该 trait 的槽顺序见 ssbo_library 文档）。
+//! 主题调色板。加载基础颜色与主题覆盖，GPU 上传成功后发布 CPU 副本。
+//! 原作来源见项目 evidence；当前接口、行为变化与验证范围见 README.md。
 
-// Preserve the original instruction-level expression order/NaN policy, API call shapes, and evidence/test transcription. See README.md.
 #![allow(clippy::single_range_in_vec_init)]
 use std::path::{Path, PathBuf};
 
@@ -51,13 +9,11 @@ use glam::Vec4;
 use serde::Deserialize;
 
 use crate::asset_libraries::ssbo_library::{AssetSsboLibrary, SsboType};
-use crate::render::ssbo::rhapsody_boundary::{GraphicsDevice, slice_as_bytes};
-use crate::render::ssbo::{BufferWriteError, StorageElement, TypedStorageBuffer};
+use crate::render::ssbo::rhapsody_boundary::GraphicsDevice;
+use crate::render::ssbo::{StorageElement, TypedStorageBuffer};
 
-/// 调色板槽数（O：0x250 / 16）。
 pub const COLOR_ENTRY_COUNT: usize = 37;
 
-/// 槽名表（O：`deserialize_from` 比较链解码，序号即槽下标）。
 pub const COLOR_NAMES: [&str; COLOR_ENTRY_COUNT] = [
     "temp_color_1",
     "temp_color_2",
@@ -98,18 +54,16 @@ pub const COLOR_NAMES: [&str; COLOR_ENTRY_COUNT] = [
     "night_tint",
 ];
 
-/// 品红 (1,0,1,1)（O：0x142a9be30，`default`/`default_value`/`update_color_library` 栈上初值同一常量）。
 pub const MISSING_COLOR: [f32; 4] = [1.0, 0.0, 1.0, 1.0];
 
-/// GPU 调色板（O：0x250 B，4 字节对齐的 37×`[f32; 4]`；`Option<Self>` 的 tag 在 +0、数据在 +4 即由此而来）。
+/// 37 个 RGBA 槽，布局与 GPU 调色板保持一致。
 #[repr(C)]
-#[derive(Resource, Clone, Copy, Debug, PartialEq)]
+#[derive(Resource, Clone, Copy, Debug, PartialEq, bytemuck::NoUninit)]
 pub struct ColorLibrarySsbo {
     pub colors: [[f32; 4]; COLOR_ENTRY_COUNT],
 }
 
 impl Default for ColorLibrarySsbo {
-    /// O 0x14093f900：37 个槽全写品红。
     fn default() -> Self {
         ColorLibrarySsbo {
             colors: [MISSING_COLOR; COLOR_ENTRY_COUNT],
@@ -118,23 +72,17 @@ impl Default for ColorLibrarySsbo {
 }
 
 impl StorageElement for ColorLibrarySsbo {
-    /// O：`SsboId` 键 = xxh3_64("ColorLibrary") = 0xef2a68c12cde3f0d。
     const NAME: &'static str = "ColorLibrary";
-    /// I：单个 uniform 结构体（有 `default_value`）。
     const BUFFER_LEN: usize = 1;
 
-    /// O 0x14093b430：`Some(默认调色板)`（tag = 1）。
     fn default_value() -> Option<Self> {
         Some(Self::default())
     }
 }
 
 impl SsboType for ColorLibrarySsbo {
-    /// I：见模块文档。
     type Storage = TypedStorageBuffer<ColorLibrarySsbo>;
 
-    /// I：无初始数据走 `TypedStorageBuffer::new(.., None)`（`BUFFER_LEN == 1` → `default_value`，即品红调色板）；
-    /// 带字节数据走按字节创建器。
     fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
         match initial {
             None => TypedStorageBuffer::<ColorLibrarySsbo>::new(device, None),
@@ -145,15 +93,13 @@ impl SsboType for ColorLibrarySsbo {
     }
 }
 
-/// JSON 里的一项（O：`serde_json deserialize_struct` 的字段表 `name`、`color`；
-/// `color` 是 `[f32; 3]`（`ArrayVisitor<[f32;3]>`），所以结构体 0x28 B = String 0x18 + 3×f32 + 填充）。
+/// 配置中的颜色条目，alpha 在加载时固定为 1。
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 pub struct ColorFromJson {
     pub name: String,
     pub color: [f32; 3],
 }
 
-/// 槽下标查找（O：`deserialize_from` 的比较链；名字长度不在 4..=19 同样落到 panic 分支）。
 pub fn slot_index(name: &str) -> Option<usize> {
     COLOR_NAMES.iter().position(|n| *n == name)
 }
@@ -162,7 +108,6 @@ macro_rules! color_getters {
     ($($name:ident => $idx:expr),* $(,)?) => {
         impl ColorLibrarySsbo {
             $(
-                /// 命名取色（O：槽序号见 `COLOR_NAMES`）。
                 pub fn $name(&self) -> Vec4 {
                     Vec4::from_array(self.colors[$idx])
                 }
@@ -212,24 +157,33 @@ color_getters! {
 }
 
 impl ColorLibrarySsbo {
-    /// O 0x14093e510：逐项（输入顺序）把 `[r, g, b, 1.0]` 写进名字对应的槽；未出现的槽保持原值。
-    /// 未知名字 → panic（文案见模块文档）；panic 前已处理的条目已写入（原版同样是边遍历边写）。
+    /// 按输入顺序覆盖命名颜色槽，alpha 固定为 1。
     pub fn deserialize_from(&mut self, entries: Vec<ColorFromJson>) {
-        for entry in entries {
-            let Some(slot) = slot_index(&entry.name) else {
-                panic!(
-                    "Init Color Library failed: {} entry is missing from ColorLibrarySSBO",
-                    entry.name
-                );
-            };
-            let [r, g, b] = entry.color;
-            self.colors[slot] = [r, g, b, 1.0];
-        }
+        self.try_deserialize_from(entries).expect("加载调色板失败");
     }
 
-    /// O 0x14155a170（`&PathBuf`）/ 0x14155a320（`&str`）：泛型 `AsRef<Path>`。
-    /// `fs::read_to_string(path).unwrap()`（源码行 114），`serde_json::from_str::<Vec<ColorFromJson>>(..).unwrap()`
-    ///（行 115），然后 `deserialize_from`。任何一步失败都 panic（`Result::unwrap`）。
+    /// 在栈上构建候选副本，未知名字或非法数值不会留下部分写入。
+    pub fn try_deserialize_from(&mut self, entries: Vec<ColorFromJson>) -> anyhow::Result<()> {
+        let mut next = *self;
+        for entry in entries {
+            let slot = slot_index(&entry.name).ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Init Color Library failed: {} entry is missing from ColorLibrarySSBO",
+                    entry.name
+                )
+            })?;
+            anyhow::ensure!(
+                entry.color.iter().all(|channel| channel.is_finite()),
+                "颜色必须为有限数值"
+            );
+            let [red, green, blue] = entry.color;
+            next.colors[slot] = [red, green, blue, 1.0];
+        }
+        *self = next;
+        Ok(())
+    }
+
+    /// 读取 JSON 颜色条目。
     pub fn deserialize_from_path<P: AsRef<Path>>(&mut self, path: P) {
         let text = std::fs::read_to_string(path).unwrap();
         let entries: Vec<ColorFromJson> = serde_json::from_str(&text).unwrap();
@@ -237,8 +191,7 @@ impl ColorLibrarySsbo {
     }
 }
 
-/// 主题（O：`update_color_library` 第 1 参数指向的设置里 `+0x58` 处的 `u8`，用作 5 项目录名表的下标，
-/// 表 @0x142ab22b8/0x142ab22e0 = {"summer", "olden", "flowery", "autumn", "winter"}；类型名/变体名为 I）。
+/// 主题目录选择。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum GladeTheme {
@@ -250,73 +203,80 @@ pub enum GladeTheme {
 }
 
 impl GladeTheme {
-    /// O：目录名表。
     pub fn dir_name(self) -> &'static str {
         ["summer", "olden", "flowery", "autumn", "winter"][self as usize]
     }
 }
 
-/// 资源根目录（O：字面量 "assets/colors.json" 的前缀 + "assets/glade"）。
 pub const ASSETS_ROOT: &str = "assets";
 
-/// 主题覆盖文件路径（O：`Path::join("assets/glade", theme).join("colors.json")`）。
 pub fn theme_colors_path(root: &Path, theme: GladeTheme) -> PathBuf {
     root.join("glade")
         .join(theme.dir_name())
         .join("colors.json")
 }
 
-/// O 0x14093b530：bevy 系统 `update_color_library`。
-///
-/// 1. `lib = default()`（品红）；
-/// 2. `lib.deserialize_from_path("assets/colors.json")`（文件缺失 → `unwrap` panic）；
-/// 3. `assets/glade/<theme>/colors.json` 存在（`fs::stat` 成功）才再叠加一次；
-/// 4. `ssbos` 里按键取 `ColorLibrarySsbo` 的缓冲：未注册 → `Option::unwrap` panic（行 156）；类型名断言
-///    （ssbo_library.rs 行 210，`assert_eq!`）；缓冲 < 0x250 B → 越界错误；整块 `update_buffer_bytes(.., [0..0x250], 0)`，
-///    失败 `Result::unwrap` panic（行 158）；
-/// 5. 成功后把 `lib` 的 0x250 字节写回 CPU 资源 `cpu`（O：`memcpy(r9, lib, 0x250)`，只在上传成功之后）。
+/// 使用默认资源目录更新主题调色板。
 pub fn update_color_library(
     theme: GladeTheme,
     ssbos: &AssetSsboLibrary,
     device: &dyn GraphicsDevice,
-    cpu: &mut ColorLibrarySsbo,
+    cpu_palette: &mut ColorLibrarySsbo,
 ) {
-    update_color_library_in(Path::new(ASSETS_ROOT), theme, ssbos, device, cpu)
+    update_color_library_in(Path::new(ASSETS_ROOT), theme, ssbos, device, cpu_palette)
 }
 
-/// `update_color_library` 的可注入资源根版本（原版根为相对工作目录的 "assets"，这里仅为可测试而参数化）。
+/// 加载并上传主题调色板，成功后才发布 CPU 状态。
 pub fn update_color_library_in(
     root: &Path,
     theme: GladeTheme,
     ssbos: &AssetSsboLibrary,
     device: &dyn GraphicsDevice,
-    cpu: &mut ColorLibrarySsbo,
+    cpu_palette: &mut ColorLibrarySsbo,
 ) {
-    let mut lib = ColorLibrarySsbo::default();
-    lib.deserialize_from_path(root.join("colors.json"));
+    try_update_color_library_in(root, theme, ssbos, device, cpu_palette).unwrap();
+}
 
-    let themed = theme_colors_path(root, theme);
-    if std::fs::metadata(&themed).is_ok() {
-        lib.deserialize_from_path(&themed);
+/// 可恢复的主题更新入口，供文件监听消费者使用。
+pub fn try_update_color_library_in(
+    root: &Path,
+    theme: GladeTheme,
+    ssbos: &AssetSsboLibrary,
+    device: &dyn GraphicsDevice,
+    cpu_palette: &mut ColorLibrarySsbo,
+) -> anyhow::Result<()> {
+    fn apply(palette: &mut ColorLibrarySsbo, path: &Path) -> anyhow::Result<()> {
+        use anyhow::Context;
+        let text = std::fs::read_to_string(path)
+            .with_context(|| format!("读取颜色失败：{}", path.display()))?;
+        let entries: Vec<ColorFromJson> = serde_json::from_str(&text)?;
+        palette.try_deserialize_from(entries)
     }
-
-    let buffer = ssbos.get_buffer::<ColorLibrarySsbo>().unwrap();
-    let bytes = slice_as_bytes(core::slice::from_ref(&lib));
-    let result: Result<(), BufferWriteError> = if (buffer.byte_size as usize) < bytes.len() {
-        Err(BufferWriteError::OutOfBounds)
-    } else {
-        device
-            .update_buffer_bytes(buffer, bytes, &[0..bytes.len()], 0)
-            .map_err(|_| BufferWriteError::Device)
-    };
-    result.unwrap();
-    *cpu = lib;
+    let mut palette = ColorLibrarySsbo::default();
+    apply(&mut palette, &root.join("colors.json"))?;
+    let theme_path = theme_colors_path(root, theme);
+    match std::fs::metadata(&theme_path) {
+        Ok(_) => apply(&mut palette, &theme_path)?,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => return Err(error.into()),
+    }
+    let buffer = ssbos
+        .get_buffer::<ColorLibrarySsbo>()
+        .ok_or_else(|| anyhow::anyhow!("调色板缓冲未注册"))?;
+    let bytes = bytemuck::cast_slice(&palette.colors);
+    anyhow::ensure!(
+        buffer.byte_size >= bytes.len() as u64,
+        "调色板 GPU 缓冲过小"
+    );
+    device.update_buffer_bytes(buffer, bytes, &[0..bytes.len()], 0)?;
+    *cpu_palette = palette;
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::rhapsody_contract::GraphicsDevice as Device;
+    use crate::render::test_device::TestDevice as Device;
 
     fn tmp_root(tag: &str) -> PathBuf {
         let d = std::env::temp_dir().join(format!("color_lib_{}_{}", tag, std::process::id()));
@@ -439,7 +399,7 @@ mod tests {
     }
 
     #[test]
-    fn unknown_name_panics_after_earlier_entries_were_applied() {
+    fn unknown_name_does_not_publish_a_partial_palette() {
         let mut lib = ColorLibrarySsbo::default();
         let r = std::panic::catch_unwind(core::panic::AssertUnwindSafe(|| {
             lib.deserialize_from(vec![
@@ -456,8 +416,8 @@ mod tests {
         assert!(r.is_err());
         assert_eq!(
             lib.path(),
-            Vec4::new(0.0, 0.0, 0.0, 1.0),
-            "panic 前的条目已写入"
+            Vec4::from_array(MISSING_COLOR),
+            "失败时必须保留整张旧调色板"
         );
     }
 
@@ -610,7 +570,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "called `Option::unwrap()` on a `None` value")]
+    #[should_panic(expected = "调色板缓冲未注册")]
     fn update_with_unregistered_buffer_panics() {
         let root = tmp_root("noreg");
         write(&root.join("colors.json"), "[]");
@@ -665,7 +625,7 @@ mod tests {
             update_color_library_in(&root, GladeTheme::Summer, &ssbos, &Tiny, &mut cpu);
         }));
         let msg = *r.unwrap_err().downcast::<String>().unwrap();
-        assert!(msg.contains("OutOfBounds"), "{msg}");
+        assert!(msg.contains("调色板 GPU 缓冲过小"), "{msg}");
         assert_eq!(cpu, before);
     }
 }

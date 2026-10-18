@@ -124,6 +124,16 @@ pub struct SurfaceInputs<'a> {
     pub lists: &'a DrawLists,
 }
 
+/// Owned declaration trace for the raster phase. It keeps the original
+/// operation log without retaining the compute environment or its World borrow.
+#[derive(Clone)]
+pub struct SurfaceRasterTrace(Rc<RefCell<Vec<PlanOp>>>);
+impl SurfaceRasterTrace {
+    pub fn op(&self, kind: PlanKind, key: Option<u64>) {
+        self.0.borrow_mut().push(PlanOp { kind, key });
+    }
+}
+
 /// 运行环境：RG 创建面、图（清除/拷贝）、计算接缝 + 黄金序列 trace。
 pub struct SurfaceEnv<'a> {
     pub rg: &'a mut dyn RgResources,
@@ -133,6 +143,11 @@ pub struct SurfaceEnv<'a> {
     pub trace: Rc<RefCell<Vec<PlanOp>>>,
     /// `PlanKind` 之外的步骤名（按调用顺序）。
     pub extra: RefCell<Vec<&'static str>>,
+    raster_trace: SurfaceRasterTrace,
+}
+impl core::ops::Deref for SurfaceEnv<'_> {
+    type Target = SurfaceRasterTrace;
+    fn deref(&self) -> &Self::Target { &self.raster_trace }
 }
 
 impl<'a> SurfaceEnv<'a> {
@@ -141,17 +156,23 @@ impl<'a> SurfaceEnv<'a> {
         graph: &'a mut dyn RenderGraph,
         compute: &'a mut dyn SurfaceCompute,
     ) -> SurfaceEnv<'a> {
+        let trace = Rc::new(RefCell::new(Vec::new()));
         SurfaceEnv {
             rg,
             graph,
             compute,
-            trace: Rc::new(RefCell::new(Vec::new())),
+            raster_trace: SurfaceRasterTrace(Rc::clone(&trace)),
+            trace,
             extra: RefCell::new(Vec::new()),
         }
     }
 
     pub fn op(&self, kind: PlanKind, key: Option<u64>) {
         self.trace.borrow_mut().push(PlanOp { kind, key });
+    }
+
+    pub fn raster_trace(&self) -> SurfaceRasterTrace {
+        self.raster_trace.clone()
     }
 
     fn note(&self, what: &'static str) {
@@ -173,13 +194,20 @@ impl<'a> SurfaceEnv<'a> {
         self.rg.create_raw_texture(name, &desc)
     }
 
-    /// `get_or_create_temporal_pair(name, desc).unwrap()`（O：`Err` → `Result::unwrap` panic；`desc` 的构造记一次 `NewTexture2d`）。
     pub fn temporal_pair(&mut self, name: &'static str, desc: TextureDesc) -> TemporalTexturePair {
+        self.try_temporal_pair(name, desc)
+            .expect("called `Result::unwrap()` on an `Err` value")
+    }
+    pub fn try_temporal_pair(
+        &mut self,
+        name: &'static str,
+        desc: TextureDesc,
+    ) -> rhapsody::Result<TemporalTexturePair> {
         self.op(PlanKind::NewTexture2d, None);
         self.note("temporal_pair");
         self.rg
             .get_or_create_temporal_texture_pair(name, &desc)
-            .unwrap_or_else(|e| panic!("called `Result::unwrap()` on an `Err` value: {e:?}"))
+            .map_err(crate::render::pass_builder::rg_resources::into_backend_error)
     }
 
     /// `clear_rg_buffer`（0x1409ddbb0）。
@@ -195,14 +223,20 @@ impl<'a> SurfaceEnv<'a> {
     }
 
     /// `rg_buffer_copy_from_slice<u32>`（0x14090d9a0）。
-    pub fn copy_u32(&mut self, buffer: &RgBuffer, desc: &BufferDesc, data: &[u32]) {
+    pub fn copy_u32(
+        &mut self,
+        buffer: &RgBuffer,
+        desc: &BufferDesc,
+        data: &[u32],
+    ) -> rhapsody::Result<()> {
         self.note("rg_buffer_copy_from_slice");
         rg_helpers::rg_buffer_copy_from_slice_u32(
             self.graph,
             buffer.resource,
             desc.size as u64,
             data,
-        );
+            rg_helpers::rg_boundary::UploadContentVersion::Unknown,
+        )
     }
 
     /// `ComputePass::new(name, uri)`。
@@ -239,9 +273,10 @@ pub fn half_res(mut desc: TextureDesc) -> TextureDesc {
 }
 
 /// `TextureDesc::sampled_with_different_format`（O 0x140bd5410：`first_qword |= 0x10800000004`，即 usage |= 4 且 dword@+4 |= 0x108）。
-/// U：`rhapsody_types::TextureDesc` 没有“可变格式视图”字段，只能表达 `sampled`；见 B_d_water.md 请求。
+/// The canonical descriptor preserves both original image-create flags and
+/// usage; the production TextureHost passes them to the same graph allocation.
 pub fn sampled_with_different_format(desc: TextureDesc) -> TextureDesc {
-    desc.sampled()
+    desc.sampled_with_different_format()
 }
 
 /// 射线缓冲的像素数 `n = w * h`（32 位乘，回绕）与 `n + (n >> 4)`（32 位加）。
@@ -261,7 +296,7 @@ pub fn ray_units(width: u32, height: u32) -> u32 {
 /// `state.byte3 = (byte3 & 0x9f) | 0x40`（`set_byte3_field_2`；**没有** `byte0 &= 0xbf`，与 pre/post-TAA 不同）→ 回调 `(item+0x70)(builder, item, world)`。
 pub fn run_surface_raster(
     ctx: &mut DrawPassCtx<'_>,
-    env: &SurfaceEnv<'_>,
+    env: &SurfaceRasterTrace,
     name: &'static str,
     colors: &[ColorAttachment],
     depth: &RgTexture,
@@ -299,7 +334,7 @@ pub fn run_surface_raster(
 
 /// `bind_texture_to_draw_builder<&Handle<Texture>>`（访问 0x1d）。
 pub fn d_sampled<'p>(
-    env: &SurfaceEnv<'_>,
+    env: &SurfaceRasterTrace,
     b: DrawBuilder<'p>,
     t: &RgTexture,
     hash: u64,
@@ -311,7 +346,7 @@ pub fn d_sampled<'p>(
 
 /// `bind_texture_to_draw_builder<TexturePreset>`（访问 0x1d）。
 pub fn d_preset<'p>(
-    env: &SurfaceEnv<'_>,
+    env: &SurfaceRasterTrace,
     b: DrawBuilder<'p>,
     preset: u8,
     hash: u64,
@@ -327,7 +362,7 @@ pub fn d_preset<'p>(
 
 /// `UniformBinder::write_uniform<u32>`（栅格：未命中静默忽略）。
 pub fn d_uniform_u32<'p>(
-    env: &SurfaceEnv<'_>,
+    env: &SurfaceRasterTrace,
     b: DrawBuilder<'p>,
     hash: u64,
     v: u32,
@@ -338,7 +373,7 @@ pub fn d_uniform_u32<'p>(
 
 /// `UniformBinder::write_uniform<bool>`。
 pub fn d_uniform_bool<'p>(
-    env: &SurfaceEnv<'_>,
+    env: &SurfaceRasterTrace,
     b: DrawBuilder<'p>,
     hash: u64,
     v: bool,
@@ -349,7 +384,7 @@ pub fn d_uniform_bool<'p>(
 
 /// `DrawBuilder::write_rg_storage_buffer`（访问 0x37）。
 pub fn d_write_rg<'p>(
-    env: &SurfaceEnv<'_>,
+    env: &SurfaceRasterTrace,
     b: DrawBuilder<'p>,
     hash: u64,
     buf: &RgBuffer,
@@ -436,6 +471,25 @@ impl Cp {
     pub fn ray_tracing(mut self) -> Self {
         self.op(PlanKind::BindRayTracing, None);
         BindGameResources::bind_ray_tracing(&mut self.pass);
+        self
+    }
+
+    /// Current graph-host metadata for original SPIR-V content use. These
+    /// calls do not add original operations to the native call-order trace.
+    pub fn preserve_buffer(mut self, hash: u64) -> Self {
+        self.pass = self.pass.preserve_storage_buffer_contents(hash);
+        self
+    }
+    pub fn preserve_texture(mut self, hash: u64) -> Self {
+        self.pass = self.pass.preserve_storage_texture_contents(hash);
+        self
+    }
+    pub fn inactive_texture_when(mut self, hash: u64, inactive: bool) -> Self {
+        if inactive { self.pass = self.pass.inactive_texture_contents(hash); }
+        self
+    }
+    pub fn original_undefined_texture_when(mut self, hash: u64, undefined: bool) -> Self {
+        if undefined { self.pass = self.pass.allow_undefined_texture_contents(hash); }
         self
     }
 

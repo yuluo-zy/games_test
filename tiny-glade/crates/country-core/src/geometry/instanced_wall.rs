@@ -1,172 +1,283 @@
-//! `instanced_wall.rs` — 砖实例墙的几何载体与上传（B `geometry::instanced_wall`）。
+//! 墙砖的来源编码、实例载荷与待上传状态。
 //!
-//! 证据（汇编逐条核对，`components-geometry/ALGORITHMS.md` §5）：
-//! - `BrickSourceId::from_wall_id` 0x140858750（PDB 名错位，实为 `From<ColorId>`）与 `impl$1::from` 0x140858790
-//!   （`From<WallId>`，只用低 32 位）同逻辑：`d = id - 100000`（u32 回绕），`d <= 11` 且 `0x80f >> d` 的低位为 1
-//!   （即 `d ∈ {0,1,2,3,11}`）时取表 0x142a953f0 的 `0x80000000 | d`（瞬态楼梯边），否则原样返回；
-//! - `with_transient_stair_edge_id` 0x140858780：`(edge_id << 4) | self | 0x40000000`（u32，bit 30 家族位）；
-//! - `InstancedWall::new` 0x140858800（33 B）整体搬入；`update` 0x140858830 整体替换砖缓冲（释放旧缓冲）；
-//! - `upload_to_storage_buffer` 0x140858880：**取走**砖 Vec（原处留下 moved-from 哨兵）；写入器缺失 → panic；
-//!   对稀疏写入器先 `clear` 再逐块 `push`，`push` 失败 → panic `Out of bricks.`（0x142a94b90，源 instanced_wall.rs）。
-//!
-//! 原版 `InstancedWall` 有两个 `Option` 字段（`+0x20`、`+0x28`）；两者各自的类型在反编译里没有分开，
-//! 这里只保留 `upload_to_storage_buffer` 实际用到的那个稀疏写入器，由调用方每次传入。
-use crate::recovered_building::wall_state::WallId;
-use crate::render::sparse_instance_buffer::{SparseInstanceBufferWriter, SparseSsbo};
+//! 墙对象独占稀疏分配；更新按整批提交，容量不足保留旧几何和 CPU 数据。
+//! 布局来源见 README 的历史证据，运行期不依赖原作对象偏移或 moved-from 哨兵。
+use crate::asset_libraries::ssbo_library::SsboType;
+use crate::render::sparse_instance_buffer::{
+    NoFreeChunks, SparseInstanceBuffer, SparseInstanceBufferAllocation, SparseSsbo,
+};
+use crate::render::ssbo::rhapsody_boundary::GraphicsDevice;
+use crate::render::ssbo::StorageElement;
 use crate::resources::color_id::ColorId;
+use crate::resources::walls::publication_fields::WallId;
 
-/// 墙砖来源 id（O：`u32`）。
+/// 墙或楼梯砖的来源编码；不承担全局对象身份。
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct BrickSourceId(pub u32);
 
-/// 瞬态楼梯边的高位标志（O：`i32::MIN`）。
 pub const TRANSIENT_STAIR_FLAG: u32 = 0x8000_0000;
-/// 查表 0x142a953f0（O：12 项；只有 `{0,1,2,3,11}` 会被取到）。
-const TRANSIENT_STAIR_TABLE: [u32; 12] = [
-    0x8000_0000,
-    0x8000_0001,
-    0x8000_0002,
-    0x8000_0003,
-    0x8000_0000,
-    0x8000_0000,
-    0x8000_0000,
-    0x8000_0000,
-    0x8000_0000,
-    0x8000_0000,
-    0x8000_0000,
-    0x8000_000b,
-];
+const TRANSIENT_EDGE_FLAG: u32 = 0x4000_0000;
+const FIRST_TRANSIENT_STAIR_ID: u32 = 100_000;
 
-fn encode(raw: u32) -> u32 {
-    let d = raw.wrapping_sub(100_000);
-    if d <= 11 && (0x80f_u32 >> d) & 1 != 0 {
-        TRANSIENT_STAIR_TABLE[d as usize]
-    } else {
-        raw
+/// 上传准备错误；两种失败都保留旧分配和待上传列表。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WallUploadError {
+    CapacityExceeded,
+    ForeignStorage,
+}
+
+impl std::fmt::Display for WallUploadError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(match self {
+            Self::CapacityExceeded => "砖实例缓冲容量不足，更新仍待提交",
+            Self::ForeignStorage => "墙的分配不属于当前稀疏缓冲",
+        })
+    }
+}
+
+impl std::error::Error for WallUploadError {}
+
+impl From<NoFreeChunks> for WallUploadError {
+    fn from(_: NoFreeChunks) -> Self {
+        Self::CapacityExceeded
+    }
+}
+
+fn encode_source_id(source_id: u32) -> u32 {
+    let stair_index = source_id.wrapping_sub(FIRST_TRANSIENT_STAIR_ID);
+    match stair_index {
+        0..=3 | 11 => TRANSIENT_STAIR_FLAG | stair_index,
+        _ => source_id,
     }
 }
 
 impl BrickSourceId {
-    /// 0x140858750（`From<ColorId>`）。
-    pub fn from_color_id(id: ColorId) -> Self {
-        Self(encode(id.0))
+    pub fn from_color_id(color_id: ColorId) -> Self {
+        Self(encode_source_id(color_id.0))
     }
 
-    /// 0x140858790（`From<WallId>`，低 32 位）。
-    pub fn from_wall_id(id: WallId) -> Self {
-        Self(encode(id.0 as u32))
+    /// 砖来源格式只保留墙 ID 的低 32 位。
+    pub fn from_wall_id(wall_id: WallId) -> Self {
+        Self(encode_source_id(wall_id.0 as u32))
     }
 
-    /// 0x140858780：`(edge_id << 4) | self | 0x40000000`。
+    /// 将边编号放入第 4 位起的编码区域；调用方应使用受控的边编号。
     pub fn with_transient_stair_edge_id(self, edge_id: u32) -> u32 {
-        (edge_id << 4) | self.0 | 0x4000_0000
+        (edge_id << 4) | self.0 | TRANSIENT_EDGE_FLAG
     }
 }
 
-/// 砖实例墙。
-#[derive(bevy_ecs::component::Component, Clone, Debug)]
+/// 一堵墙的待提交砖列表与独占稀疏分配。
+///
+/// 不实现 Clone，避免复制实体时无意共享 GPU 分配；新实体应显式传入砖列表。
+#[derive(bevy_ecs::component::Component, Debug)]
 pub struct InstancedWall<T> {
     pub id: u64,
-    pub brick_transforms: Vec<T>,
+    brick_transforms: Vec<T>,
+    upload_pending: bool,
+    allocation: Option<SparseInstanceBufferAllocation<T>>,
 }
 
 impl<T> InstancedWall<T> {
-    /// 0x140858800。
     pub fn new(id: u64, brick_transforms: Vec<T>) -> Self {
         Self {
             id,
             brick_transforms,
+            upload_pending: true,
+            allocation: None,
         }
     }
 
-    /// 0x140858830：整体替换砖缓冲，旧缓冲被释放。
+    /// 合并同帧多次更新，只上传最后一份列表；空列表明确表示清除全部砖。
     pub fn update(&mut self, brick_transforms: Vec<T>) {
         self.brick_transforms = brick_transforms;
+        self.upload_pending = true;
+    }
+
+    /// 只读访问待上传数据，防止绕过更新标记直接修改列表。
+    pub fn pending_instances(&self) -> &[T] {
+        &self.brick_transforms
+    }
+
+    pub fn is_upload_pending(&self) -> bool {
+        self.upload_pending
+    }
+
+    pub fn allocation(&self) -> Option<&SparseInstanceBufferAllocation<T>> {
+        self.allocation.as_ref()
+    }
+
+    /// 从未分配过 GPU 槽的空更新无需创建整个共享缓冲。
+    pub(crate) fn finish_unallocated_empty_update(&mut self) {
+        if self.allocation.is_none() && self.brick_transforms.is_empty() {
+            self.upload_pending = false;
+        }
     }
 }
 
-impl<T: SparseSsbo + Copy> InstancedWall<T> {
-    /// 0x140858880：取走砖缓冲，写入器缺失 panic，`clear` 后逐块 `push`，空间不足 panic `Out of bricks.`。
+impl<T: SparseSsbo> InstancedWall<T> {
+    /// 返回是否写入了新版本。容量失败不清空 CPU 数据、不破坏旧分配；无更新直接返回。
+    /// GPU 提交由共享缓冲的 try_gpu_flush 统一完成。
     pub fn upload_to_storage_buffer(
         &mut self,
-        writer: Option<&mut SparseInstanceBufferWriter<'_, T>>,
-    ) {
-        let bricks = std::mem::take(&mut self.brick_transforms);
-        let writer = writer.unwrap();
-        writer.clear();
-        for brick in &bricks {
-            if writer.push(brick).is_err() {
-                panic!("Out of bricks.");
-            }
+        storage: &mut SparseInstanceBuffer<T>,
+    ) -> Result<bool, WallUploadError> {
+        if !self.upload_pending {
+            return Ok(false);
         }
+        let allocation = self
+            .allocation
+            .get_or_insert_with(|| storage.new_allocation());
+        if !storage.owns_allocation(allocation) {
+            return Err(WallUploadError::ForeignStorage);
+        }
+        let mut writer = storage.writer(allocation);
+        writer.replace_all(&self.brick_transforms)?;
+        // 生产者每次交付拥有的 Vec，成功后及时释放，避免每堵墙额外保留一份容量。
+        self.brick_transforms = Vec::new();
+        self.upload_pending = false;
+        Ok(true)
+    }
+}
+
+/// CPU 生产者和 GPU 缓冲共用的砖实例格式。字段按 shader 合同固定，不能随意重排。
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct BrickTransformSsbo {
+    /// 四列三分量仿射矩阵：三个基向量与平移。
+    pub affine_columns: [[f32; 3]; 4],
+    /// 变形参数，零值表示没有附加变形。
+    pub deformation: [f32; 4],
+    /// 表面参数；默认 -100 是禁用哨兵，不能用零初始化代替。
+    pub surface: [f32; 3],
+    /// 逐砖序号或随机种子，由生产者赋值。
+    pub seed: u32,
+    /// 砖来源编码，由 BrickSourceId 生成。
+    pub material: u32,
+    /// 墙方向的两个距离参数。
+    pub wall_distance: [f32; 2],
+    /// 着色器解释的实例标志。
+    pub flags: u32,
+}
+
+impl BrickTransformSsbo {
+    /// 存档/诊断使用固定小端字节序；GPU 上传直接复用 Pod 字节视图。
+    pub fn observed_bytes(self) -> [u8; 96] {
+        let mut bytes = [0; 96];
+        for (index, value) in self
+            .affine_columns
+            .into_iter()
+            .flatten()
+            .chain(self.deformation)
+            .chain(self.surface)
+            .enumerate()
+        {
+            bytes[index * 4..index * 4 + 4].copy_from_slice(&value.to_le_bytes());
+        }
+        bytes[76..80].copy_from_slice(&self.seed.to_le_bytes());
+        bytes[80..84].copy_from_slice(&self.material.to_le_bytes());
+        bytes[84..88].copy_from_slice(&self.wall_distance[0].to_le_bytes());
+        bytes[88..92].copy_from_slice(&self.wall_distance[1].to_le_bytes());
+        bytes[92..96].copy_from_slice(&self.flags.to_le_bytes());
+        bytes
+    }
+}
+
+impl Default for BrickTransformSsbo {
+    fn default() -> Self {
+        Self {
+            affine_columns: [[0.0; 3]; 4],
+            deformation: [0.0; 4],
+            surface: [-100.0; 3],
+            seed: 0,
+            material: 0,
+            wall_distance: [0.0; 2],
+            flags: 0,
+        }
+    }
+}
+
+impl StorageElement for BrickTransformSsbo {
+    const NAME: &'static str = "BrickTransforms";
+    const BUFFER_LEN: usize = 0x200000;
+}
+
+// SAFETY: Pod 派生验证无填充；容量等于 CHUNK_COUNT × SLOTS_PER_CHUNK。
+unsafe impl SparseSsbo for BrickTransformSsbo {
+    const CHUNK_COUNT: usize = 0x10000;
+}
+
+impl SsboType for BrickTransformSsbo {
+    type Storage = SparseInstanceBuffer<Self>;
+
+    fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
+        SparseInstanceBuffer::<Self>::new_storage_buffer(device, initial)
+    }
+}
+
+impl crate::render::pass_builder::pass_resource_access::SsboType for BrickTransformSsbo {
+    fn rg_buffer_hash() -> u64 {
+        xxhash_rust::xxh3::xxh3_64(<Self as StorageElement>::NAME.as_bytes())
     }
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
+#[path = "tests/instanced_wall.rs"]
+mod tests;
 
-    #[test]
-    fn only_the_five_transient_stair_ids_are_remapped() {
-        for (d, expect) in [
-            (0u32, 0x8000_0000u32),
-            (1, 0x8000_0001),
-            (2, 0x8000_0002),
-            (3, 0x8000_0003),
-            (11, 0x8000_000b),
-        ] {
-            assert_eq!(
-                BrickSourceId::from_wall_id(WallId(100_000 + u64::from(d))).0,
-                expect,
-                "d {d}"
-            );
-            assert_eq!(
-                BrickSourceId::from_color_id(ColorId(100_000 + d)).0,
-                expect,
-                "d {d}"
-            );
+// B init_populate's other three wall buffers. Canonical storage elements,
+// distinct from draw_shaders' read-only type-name tags.
+macro_rules! brick_render_ssbo {
+    ($name:ident, $len:literal, $zero_on_none:literal) => {
+        #[repr(transparent)]
+        #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
+        pub struct $name(pub u32);
+        impl StorageElement for $name {
+            const NAME: &'static str = stringify!($name);
+            const BUFFER_LEN: usize = $len;
         }
-        for d in [4u32, 5, 6, 7, 8, 9, 10, 12] {
-            let raw = 100_000 + d;
-            assert_eq!(BrickSourceId::from_color_id(ColorId(raw)).0, raw, "d {d}");
+        impl SsboType for $name {
+            type Storage = crate::render::ssbo::TypedStorageBuffer<Self>;
+            fn new_storage_buffer(
+                device: &dyn GraphicsDevice,
+                initial: Option<&[u8]>,
+            ) -> Self::Storage {
+                if $zero_on_none && initial.is_none() {
+                    // The two native visibility constructors clear all65536
+                    // words before creation. DrawList does not upload None.
+                    crate::render::ssbo::TypedStorageBuffer::new(device, None)
+                } else {
+                    crate::render::ssbo::TypedStorageBuffer::new_storage_buffer(device, initial)
+                }
+            }
         }
-    }
-
-    #[test]
-    fn ordinary_and_out_of_range_ids_pass_through() {
-        for raw in [0u32, 1, 99_999, 100_012, 5_000_000, u32::MAX] {
-            assert_eq!(BrickSourceId::from_color_id(ColorId(raw)).0, raw);
-            assert_eq!(BrickSourceId::from_wall_id(WallId(u64::from(raw))).0, raw);
+        impl crate::render::pass_builder::pass_resource_access::SsboType for $name {
+            fn rg_buffer_hash() -> u64 {
+                crate::asset_libraries::ssbo_library::SsboId::of::<Self>()
+                    .0
+                     .0
+            }
         }
-    }
+    };
+}
 
-    #[test]
-    fn wall_ids_use_only_the_low_32_bits() {
-        let wall = WallId((7u64 << 32) | 100_001);
-        assert_eq!(BrickSourceId::from_wall_id(wall).0, 0x8000_0001);
-    }
+// Constructor@141612a90: 0x3800000B, usage22/memory1/alignment4;
+// element4, BUFFER_LEN0xe00000. None is forwarded without an upload.
+brick_render_ssbo!(BrickDrawListSsbo, 0xe00000, false);
+// Constructors@141611000 and141611df0: 0x40000B each, same descriptor
+// but original None actually uploads all zero words.
+brick_render_ssbo!(BrickPrevVisibilityBitmaskSsbo, 0x10000, true);
+brick_render_ssbo!(BrickNextVisibilityBitmaskSsbo, 0x10000, true);
 
-    #[test]
-    fn transient_edge_ids_set_the_bit_30_family_flag() {
-        assert_eq!(
-            BrickSourceId(0x8000_0001).with_transient_stair_edge_id(3),
-            0xC000_0031
-        );
-        assert_eq!(
-            BrickSourceId(0).with_transient_stair_edge_id(0),
-            0x4000_0000
-        );
-        assert_eq!(
-            BrickSourceId(5).with_transient_stair_edge_id(0xf),
-            0x4000_00f5
-        );
-    }
-
-    #[test]
-    fn table_agrees_with_the_mask_for_every_index() {
-        for d in 0..12u32 {
-            let selected = (0x80f_u32 >> d) & 1 != 0;
-            assert_eq!(selected, matches!(d, 0 | 1 | 2 | 3 | 11), "d {d}");
-        }
-    }
+/// Exactly the first four entries of init_populate_ssbo_library@140909e80,
+/// preserving actual SparseInstanceBuffer default shadow and three distinct
+/// constructor policies. This explicit prefix is not the full72 system.
+pub fn populate_brick_ssbo_library(
+    library: &crate::asset_libraries::ssbo_library::AssetSsboLibrary,
+    device: &dyn GraphicsDevice,
+) {
+    library.add_new::<BrickTransformSsbo>(device);
+    library.add_new::<BrickDrawListSsbo>(device);
+    library.add_new::<BrickPrevVisibilityBitmaskSsbo>(device);
+    library.add_new::<BrickNextVisibilityBitmaskSsbo>(device);
 }

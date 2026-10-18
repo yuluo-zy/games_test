@@ -1,0 +1,81 @@
+--- a/games_test/tiny-glade/crates/systems/color/src/set_wall_color_id.rs
++++ b/games_test/tiny-glade/crates/systems/color/src/set_wall_color_id.rs
+@@ -38,12 +38,25 @@
+ /// **分歧点**：`AssetSsboLibrary::add_new::<T>` 需 `T: SsboType`，而 core 的
+ /// `WallColorIdSsbo/RoofColorIdSsbo/GateColorIdSsbo/HalftimberColorIdSsbo` 为
+ /// typed-gap（无 `StorageElement`/`SsboType` 实现）——SSBO 注册无法编译，登记。
+-pub fn init_color_ids_buffer(mut commands: Commands, _library: Res<AssetSsboLibrary>) {
++pub fn init_color_ids_buffer(
++    mut commands: Commands,
++    _library: Res<AssetSsboLibrary>,
++    wall_colors: Option<Res<WallColorIds>>,
++    gate_colors: Option<Res<country_core::resources::color_id::GateColorIds>>,
++    half_colors: Option<Res<country_core::resources::color_id::HalftimberColorIds>>,
++) {
+     use country_core::resources::color_id::{GateColorIds, HalftimberColorIds};
+     // O：`WallColorIds::new()`（0x140b19890）insert_resource。
+-    commands.insert_resource(WallColorIds::new());
+-    commands.insert_resource(GateColorIds::new());
+-    commands.insert_resource(HalftimberColorIds::new());
++    // Preserve actual loaded and previously edited resources on repeated runs.
++    if wall_colors.is_none() {
++        commands.insert_resource(WallColorIds::new());
++    }
++    if gate_colors.is_none() {
++        commands.insert_resource(GateColorIds::new());
++    }
++    if half_colors.is_none() {
++        commands.insert_resource(HalftimberColorIds::new());
++    }
+ }
+ 
+ /// `set_wall_color_id` @0x142290820（1817B，重建；SSBO 上传段未恢复）。
+@@ -230,4 +243,48 @@
+         assert_eq!(cursor.read(events).next().unwrap().0, id);
+         assert!(world.resource::<Events<DeletePlasterCmd>>().is_empty());
+     }
++    #[test]
++    fn actual_init_then_setter_retains_color_on_second_frame_without_new_events() {
++        let mut world = world(Some(WallId(7)));
++        world.remove_resource::<WallColorIds>();
++        world.remove_resource::<GateColorIds>();
++        world.remove_resource::<HalftimberColorIds>();
++        world.send_event(SetWallColorIdCmd::new(WallId(7), 12, 0));
++        let mut schedule = Schedule::default();
++        schedule.add_systems((init_color_ids_buffer, set_wall_color_id).chain());
++        schedule.run(&mut world);
++        assert_eq!(world.resource::<WallColorIds>().0[7], 12);
++        schedule.run(&mut world);
++        assert_eq!(world.resource::<WallColorIds>().0[7], 12);
++    }
++    #[test]
++    fn actual_init_preserves_all_loaded_color_tables() {
++        let mut world = world(None);
++        world.resource_mut::<WallColorIds>().0[7] = 91;
++        world.resource_mut::<GateColorIds>().0[7] = 87;
++        world.resource_mut::<HalftimberColorIds>().0[7] = 67;
++        let mut schedule = Schedule::default();
++        schedule.add_systems(init_color_ids_buffer);
++        schedule.run(&mut world);
++        assert_eq!(world.resource::<WallColorIds>().0[7], 91);
++        assert_eq!(world.resource::<GateColorIds>().0[7], 87);
++        assert_eq!(world.resource::<HalftimberColorIds>().0[7], 67);
++    }
++    #[test]
++    fn actual_init_only_creates_the_missing_table() {
++        let mut world = world(None);
++        world.resource_mut::<WallColorIds>().0[7] = 91;
++        world.resource_mut::<HalftimberColorIds>().0[7] = 67;
++        world.remove_resource::<GateColorIds>();
++        let mut schedule = Schedule::default();
++        schedule.add_systems(init_color_ids_buffer);
++        schedule.run(&mut world);
++        assert_eq!(world.resource::<WallColorIds>().0[7], 91);
++        assert_eq!(world.resource::<HalftimberColorIds>().0[7], 67);
++        assert_eq!(
++            world.resource::<GateColorIds>().0.len(),
++            MAX_NUMBER_OF_WALLS
++        );
++        assert_eq!(world.resource::<GateColorIds>().0[7], 0);
++    }
+ }

@@ -1,19 +1,18 @@
-//! UNVERIFIED parallel actual PendingWallChanged/deferred-history runtime owner.
-//! Upstream freehand UI's next Source is resolved input, not guessed geometry.
+//! Applies explicit freehand source changes and records their previous/next states.
+//! The upstream UI supplies the complete next authority snapshot.
 use crate::{
     BuildingReport, UpsertRawWall, WallCollectionState,
     history::{BuildingHistory, BuildingHistoryRequests},
     wall_authoring::WallAuthoringState,
 };
 use bevy_ecs::prelude::*;
-use country_core::recovered_building::{
-    building_history_transactions::BuildingEdit,
-    building_wall_history_edit::{WallAuthoritySnapshot, WallCompoundHistoryEdit},
-    building_wall_pending_changed::{
-        PendingWallChanged, take_pending_wall_changed, try_pending_wall_changed,
-    },
-    building_wall_state::WallId,
-};
+use country_core::resources::history::building_transactions::BuildingEdit;
+use country_core::resources::history::wall_edit::WallAuthoritySnapshot;
+use country_core::resources::history::wall_edit::WallCompoundHistoryEdit;
+use country_core::systems::wall::wall_state::pending_changed::PendingWallChanged;
+use country_core::systems::wall::wall_state::pending_changed::take_pending_wall_changed;
+use country_core::systems::wall::wall_state::pending_changed::try_pending_wall_changed;
+use country_core::resources::walls::publication_fields::WallId;
 #[derive(Event, Clone)]
 pub struct ApplyObservedFreeWallChange {
     pub wall: WallId,
@@ -22,7 +21,7 @@ pub struct ApplyObservedFreeWallChange {
 }
 #[derive(Resource, Default)]
 pub struct WallPendingChangedState {
-    /// Original deferred owner has one pending slot, not a fabricated ledger.
+    /// The current event is drained before accepting the next change.
     pub pending: Option<PendingWallChanged>,
     pub updated_this_frame: Vec<WallId>,
     pub recorded_this_frame: usize,
@@ -32,6 +31,23 @@ pub fn register(app: &mut bevy_app::App) {
     app.init_resource::<WallPendingChangedState>()
         .add_event::<ApplyObservedFreeWallChange>();
 }
+fn record_pending(
+    state: &mut WallPendingChangedState,
+    recording: bool,
+    owners: &mut BuildingHistoryRequests,
+) {
+    if let Some(owner) = take_pending_wall_changed(&mut state.pending) {
+        if recording {
+            owners
+                .0
+                .push(BuildingEdit::Wall(std::sync::Arc::new(owner)));
+            state.recorded_this_frame += 1;
+        } else {
+            state.unrecorded_history.push(owner);
+        }
+    }
+}
+
 pub(crate) fn consume(
     mut changes: EventReader<ApplyObservedFreeWallChange>,
     mut state: ResMut<WallPendingChangedState>,
@@ -44,7 +60,19 @@ pub(crate) fn consume(
 ) {
     state.updated_this_frame.clear();
     state.recorded_this_frame = 0;
+    let recording = history
+        .transactions
+        .as_ref()
+        .is_some_and(|t| t.is_recording());
+    record_pending(&mut state, recording, &mut owners);
     for event in changes.read() {
+        if !crate::raw_source_is_valid(&event.next.source) {
+            report.faults.push(format!(
+                "Pending wall change {} has invalid next authority",
+                event.wall.0
+            ));
+            continue;
+        }
         if authoring.removed_sources.contains(&event.wall) {
             report.faults.push(format!(
                 "Pending wall change {} targets a source removed this frame",
@@ -78,6 +106,7 @@ pub(crate) fn consume(
         {
             Ok(pending) => {
                 state.pending = pending;
+                record_pending(&mut state, recording, &mut owners);
                 authoring
                     .history_metadata
                     .insert(event.wall, event.next.metadata);
@@ -94,20 +123,6 @@ pub(crate) fn consume(
             Err(error) => report
                 .faults
                 .push(format!("Pending wall change {}: {error:?}", event.wall.0)),
-        }
-    }
-    if let Some(owner) = take_pending_wall_changed(&mut state.pending) {
-        if history
-            .transactions
-            .as_ref()
-            .is_some_and(|t| t.is_recording())
-        {
-            owners
-                .0
-                .push(BuildingEdit::Wall(std::sync::Arc::new(owner)));
-            state.recorded_this_frame = 1;
-        } else {
-            state.unrecorded_history.push(owner);
         }
     }
 }

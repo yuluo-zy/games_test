@@ -14,7 +14,6 @@
 pub mod autoclutter;
 pub mod inter_roof_merlons;
 pub mod inter_shape_stitches;
-pub mod auto_clutter_edit;
 
 use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::Schedule;
@@ -23,7 +22,7 @@ use autoclutter::manage_autoclutter_entities::manage_autoclutter_entities;
 use autoclutter::populate_autoclutter_regions::{autoclutter_subscribe_to_tabloids, populate_autoclutter_regions};
 use autoclutter::process_autoclutter_candidates::process_autoclutter_candidates;
 use inter_roof_merlons::construct_inter_roof_merlons::construct_inter_roof_merlons;
-use inter_roof_merlons::detect_inter_roof_merlons::detect_inter_roof_merlons;
+use inter_roof_merlons::detect_inter_roof_merlons::{detect_inter_roof_merlons, dirty_walls};
 use inter_shape_stitches::detect_intra_shape_corners::detect_intra_shape_corners;
 use inter_shape_stitches::stitch_bricks::{spawn_stitch_bricks, spawn_stitches};
 
@@ -43,12 +42,46 @@ pub fn configure(world: &mut World, schedule: &mut Schedule) {
     world.init_resource::<inter_roof_merlons::construct_inter_roof_merlons::MerlonRng>();
     world.init_resource::<inter_shape_stitches::stitch_bricks::StitchRng>();
     world.init_resource::<autoclutter::LazyGridClutterCell>();
+    // 2026-10-17 restorer-clutter-remaining：补齐系统参数所需资源（此前缺失会在运行期
+    // panic；cargo check 不捕获）。宿主装配层仍可覆盖这些默认值。
+    // The SSBO library is the actual readback owner; init preserves host data.
+    world.init_resource::<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>();
+    world.init_resource::<autoclutter::read_bush_positions_from_gpu::BushGrid>();
+    world.init_resource::<autoclutter::add_preplaced_autoclutter::PreplacedAutoClutter>();
+    world.init_resource::<autoclutter::add_lantern_water_setdresssing::TerrainDecoratorPositions>();
+    world.init_resource::<autoclutter::add_lantern_water_setdresssing::IsStarted>();
+    world.init_resource::<autoclutter::add_tree_vegetation_setdressing::TreePositions>();
+    world.init_resource::<autoclutter::add_tree_vegetation_setdressing::IsDragging>();
+    world.init_resource::<autoclutter::add_tree_vegetation_setdressing::IsCorrupted>();
+    world.init_resource::<autoclutter::manage_autoclutter_entities::ExistingAutoClutterKeys>();
+    world.init_resource::<autoclutter::populate_autoclutter_regions::DirtyTilesResource>();
+    world.init_resource::<autoclutter::populate_autoclutter_regions::RockMaskData>();
+    world.init_resource::<autoclutter::populate_autoclutter_regions::SessionMeta>();
+    world.init_resource::<autoclutter::populate_autoclutter_regions::PopulateLocal>();
+    world.init_resource::<autoclutter::populate_autoclutter_regions::RaycastWorldHandleClutter>();
+    world.init_resource::<inter_roof_merlons::construct_inter_roof_merlons::MerlonBricks>();
+    world.init_resource::<inter_roof_merlons::construct_inter_roof_merlons::MerlonHostGeometryList>();
+    world.init_resource::<inter_roof_merlons::detect_inter_roof_merlons::WallAndRoofChanges>();
+    world.init_resource::<inter_roof_merlons::detect_inter_roof_merlons::InterRoofMerlonsDescriptions>();
+    world.init_resource::<inter_shape_stitches::detect_intra_shape_corners::Corners>();
+    world.init_resource::<inter_shape_stitches::detect_intra_shape_corners::DirtyWallPairs>();
+    world.init_resource::<inter_shape_stitches::stitch_bricks::StitchDescriptions>();
+    world.init_resource::<inter_shape_stitches::stitch_bricks::FloatingBrickParams>();
+    world.init_resource::<inter_shape_stitches::stitch_bricks::StitchBrickInstances>();
+    world.init_resource::<country_core::systems::mode_manager::AppMode>();
     world.init_resource::<inter_shape_stitches::stitch_bricks::InterShapeBrickStitches>();
     world.init_resource::<inter_shape_stitches::detect_intra_shape_corners::ShapeIntersectionHoles>();
     world.init_resource::<Events<inter_roof_merlons::inter_roof_merlons_audio::InterRoofMerlonAudioRequest>>();
     world.init_resource::<Events<country_core::resources::walls::public_walls::OnWallChanged>>();
     world.init_resource::<Events<country_core::resources::walls::public_walls::OnWallDeleted>>();
 
+    // Original build65226c/ee2723 registers this canonical reader. Keep the
+    // current chain within Bevy's tuple limit; only add its data dependency.
+    schedule.add_systems(
+        autoclutter::read_bush_positions_from_gpu::read_bush_positions_from_gpu
+            .after(autoclutter_subscribe_to_tabloids)
+            .before(populate_autoclutter_regions),
+    );
     schedule.add_systems(
         (
             autoclutter_subscribe_to_tabloids,
@@ -64,6 +97,9 @@ pub fn configure(world: &mut World, schedule: &mut Schedule) {
             populate_autoclutter_regions,
             process_autoclutter_candidates,
             manage_autoclutter_entities,
+            // integration-registration 2026-10-17：dirty_walls（0x141cd16b0 判等）
+            // 补独立调度注册点，链前序刷新脏墙集（detect_inter_roof_merlons 改读之）。
+            dirty_walls,
             detect_inter_roof_merlons,
             construct_inter_roof_merlons,
             inter_roof_merlons::inter_roof_merlons_audio::request_inter_roof_merlon_audio,
@@ -73,4 +109,32 @@ pub fn configure(world: &mut World, schedule: &mut Schedule) {
         )
             .chain(),
     );
+}
+
+#[cfg(test)]
+mod bush_registration_tests {
+    use super::*;
+    use country_core::{
+        asset_libraries::ssbo_library::AssetSsboLibrary,
+        render::ssbo::{MappedStorageBuffer, rhapsody_boundary::Buffer},
+        systems::render_loop::compute_passes::read_bush_positions_for_cpu::BushCpuSsbo,
+    };
+
+    #[test]
+    fn configure_registers_actual_reader_and_keeps_host_mapped_storage() {
+        let mut world = World::new();
+        let library = AssetSsboLibrary::new();
+        library.register::<BushCpuSsbo>(MappedStorageBuffer {
+            mapped: Box::leak(vec![BushCpuSsbo([0, 0x12345678])].into_boxed_slice()),
+            buffer: Buffer { id: 71, generation: 1, _gap10: 0, byte_size: 8, _gap20: 0 },
+        });
+        world.insert_resource(library);
+        let mut schedule = Schedule::default();
+        configure(&mut world, &mut schedule);
+        assert_eq!(world.resource::<AssetSsboLibrary>().get::<BushCpuSsbo>().unwrap().mapped[0].0, [0, 0x12345678]);
+        schedule.initialize(&mut world).unwrap();
+        assert_eq!(schedule.systems().unwrap().filter(|(_, system)| system.name().ends_with("::read_bush_positions_from_gpu")).count(), 1);
+        // Running the whole clutter chain requires its separate host owners;
+        // actual reader execution is covered in its World/library regressions.
+    }
 }

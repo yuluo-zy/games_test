@@ -1,112 +1,83 @@
-//! `country_core::utils::geo` — 曲线/点集到网格的几何辅助。
-//!
-//! | 函数 | 地址 | 级别 |
-//! |---|---|---|
-//! | `mesh_from_pts` | 0x140a6c120 | O |
-//! | `update_curve_mesh`（4 个单态化，同一函数体） | 0x14157eac0 / 0x14157f130 / 0x14157eda0 / 0x14157ef70 | O |
-//! | `rewire_enclosed_curve` | 0x140a6ba50 | O |
-//!
-//! 常量（EXE 字节）：白色 `0x14292e6b0` = `[1.0, 1.0]` 加上栈上 `0x3f800000`，即 `Vec3::ONE`；
-//! `0x142925904` 低 4 字节 = 1.0；`0x142925984` 低 4 字节 = `0x3dcccccd` = 0.1（端点去重阈值）。
+//! 折线网格构建和闭合曲线起点调整。曲线采样/切片复用共享 Curve2。
 
+use crate::render::mesh::{ATTR_COLOR, ATTR_POSITION, Mesh};
 use glam::{Vec2, Vec3};
 use utils::curve::Curve2;
 
-use crate::render::mesh::{ATTR_COLOR, ATTR_POSITION, Mesh};
-
-/// 端点去重阈值。O：`0x142925984` = `0x3dcccccd`。
+/// 合并临近端点的世界空间距离。
 pub const ENDPOINT_EPSILON: f32 = 0.1;
 
 fn fill_polyline_attributes(mesh: &mut Mesh, points: Vec<Vec3>) {
-    let count = points.len();
+    let vertex_count = u32::try_from(points.len()).expect("折线顶点数量超过 u32 索引范围");
     mesh.set_attribute(ATTR_POSITION, points);
-    mesh.set_attribute(ATTR_COLOR, vec![Vec3::ONE; count]);
-    mesh.set_indices((0..count as u32).collect());
+    mesh.set_attribute(ATTR_COLOR, vec![Vec3::ONE; vertex_count as usize]);
+    mesh.set_indices((0..vertex_count).collect());
 }
 
-/// O 0x140a6c120：`(label, pts)` → 带顺序索引的折线网格。
-///
-/// 先 `assert!(pts_len > 0)`；`Vertex_Position` = 点的拷贝，`Vertex_Color` = 全白，
-/// 索引 `0..n`；`Mesh` 的 `label` 为入参。
-pub fn mesh_from_pts(label: &'static str, pts: &[Vec3]) -> Mesh {
-    assert!(!pts.is_empty(), "assertion failed: pts_len > 0");
+/// 创建白色折线网格；点集必须非空，绘制拓扑由消费方指定。
+pub fn mesh_from_pts(label: &'static str, points: &[Vec3]) -> Mesh {
+    assert!(!points.is_empty(), "折线网格至少需要一个顶点");
     let mut mesh = Mesh::new(label);
-    fill_polyline_attributes(&mut mesh, pts.to_vec());
+    fill_polyline_attributes(&mut mesh, points.to_vec());
     mesh
 }
 
-/// O 0x14157f130 等四个单态：取到资产里的网格后整体改写位置/颜色/索引。四个单态的**输入迭代器不同**，改写体相同：
-///
-/// | 单态 | 输入 | 点的来源 |
-/// |---|---|---|
-/// | 0x14157eac0 | `vec::IntoIter<Vec3>` | 直接取（复用分配） |
-/// | 0x14157f130 | `Vec3` 切片 `[start, end)` | 克隆（0x1412612d0） |
-/// | 0x14157ef70 | `Vec2` 切片 | 经 [`x0y`] 映射（0x140c9cdc0） |
-/// | 0x14157eda0 | `Vec2` 切片 + 捕获的高度 `h` | 经 [`x_h_y`] 映射（0x140c9cde0） |
-///
-/// `mesh` 是 `Assets<Mesh>` 按句柄查询的结果；查不到 → panic `MEOW####`（`0x142c77ab9`，8 字节）。
-/// 点列先于属性写入收集；空点列由 `set_attribute` 的非空断言 panic。
+/// 替换位置、颜色和索引。其他自定义属性由消费方自行更新。
 pub fn update_curve_mesh(mesh: Option<&mut Mesh>, points: impl IntoIterator<Item = Vec3>) {
-    let Some(mesh) = mesh else {
-        panic!("MEOW####");
-    };
+    let mesh = mesh.expect("更新折线时目标网格不存在");
     fill_polyline_attributes(mesh, points.into_iter().collect());
 }
 
-/// O 0x140c9cdc0：`Vec2 (x, y)` → `Vec3 (x, 0, y)`（`mov [rcx+4], 0`）。
-pub fn x0y(p: Vec2) -> Vec3 {
-    Vec3::new(p.x, 0.0, p.y)
+/// 二维 X/Y 作为世界 X/Z，世界高度为零。
+pub fn x0y(point: Vec2) -> Vec3 {
+    x_h_y(point, 0.0)
 }
 
-/// O 0x140c9cde0：`Vec2 (x, y)` 与高度 `h` → `Vec3 (x, h, y)`。
-pub fn x_h_y(p: Vec2, h: f32) -> Vec3 {
-    Vec3::new(p.x, h, p.y)
+/// 二维 X/Y 作为世界 X/Z，并指定世界高度。
+pub fn x_h_y(point: Vec2, height: f32) -> Vec3 {
+    Vec3::new(point.x, height, point.y)
 }
 
-/// O 0x140a6ba50：以 `u = split` 把曲线一分为二，调换两半的先后顺序后重新建曲线。
-///
-/// * `split == 0.0` 或 `split == 1.0` → `None`；
-/// * 取 `[0, split]` 与 `[split, 1]` 两段，任一段长度 < 0.1 → `None`；
-/// * 前段末两点距离 < 0.1 时丢弃末点（倒数第二点改写为末点）；
-///   后段首两点距离 < 0.1 时丢弃首点（保留原首点位置）；
-///   原曲线首尾点距离 < 0.1 时再丢弃后段的最后一个点；
-/// * 结果点列 = 后段 + 前段，`try_new_from_points(.., false)`，失败直接 unwrap panic。
+/// 把闭合曲线的起点移到 split，返回“后半段 + 前半段”。
+/// 无效分割、非闭合曲线或过短分段返回 None，不对用户编辑数据 unwrap。
 pub fn rewire_enclosed_curve(curve: &Curve2, split: f32) -> Option<Curve2> {
-    if split == 0.0 || split == 1.0 {
+    if !split.is_finite() || split <= 0.0 || split >= 1.0 {
         return None;
     }
-    let mut head = curve.crashy_slice(0.0, split);
-    let mut tail = curve.crashy_slice(split, 1.0);
-    if head.length < ENDPOINT_EPSILON || tail.length < ENDPOINT_EPSILON {
+    let first = *curve.points.first()?;
+    let last = *curve.points.last()?;
+    if first.distance(last) >= ENDPOINT_EPSILON {
         return None;
     }
-
-    let n = head.points.len();
-    assert!(n >= 2, "index out of bounds");
-    let last = head.points[n - 1];
-    let mut head_len = n;
-    if head.points[n - 1].distance(head.points[n - 2]) < ENDPOINT_EPSILON {
-        head.points[n - 2] = last;
-        head_len = n - 1;
+    let mut head = curve.try_slice(0.0, split).ok()?;
+    let mut tail = curve.try_slice(split, 1.0).ok()?;
+    if head.length < ENDPOINT_EPSILON
+        || tail.length < ENDPOINT_EPSILON
+        || head.points.len() < 2
+        || tail.points.len() < 2
+    {
+        return None;
     }
-
-    assert!(tail.points.len() >= 2, "index out of bounds");
-    let mut tail_len = tail.points.len();
-    if tail.points[0].distance(tail.points[1]) < ENDPOINT_EPSILON {
+    let head_length = head.points.len();
+    if head.points[head_length - 1].distance(head.points[head_length - 2]) < ENDPOINT_EPSILON {
+        head.points[head_length - 2] = head.points[head_length - 1];
+        head.points.pop();
+    }
+    let tail_start = if tail.points[0].distance(tail.points[1]) < ENDPOINT_EPSILON {
         tail.points[1] = tail.points[0];
-        tail.points.remove(0);
-        tail_len -= 1;
+        1
+    } else {
+        0
+    };
+    // 去掉原闭合接点的重复末点，复用后半段的 Vec 分配。
+    let tail_end = tail.points.len() - 1;
+    if tail_start > tail_end {
+        return None;
     }
-
-    let first = *curve.points.first().expect("empty curve");
-    let last_point = *curve.points.last().expect("empty curve");
-    if first.distance(last_point) < ENDPOINT_EPSILON {
-        tail_len -= 1;
-    }
-
-    let mut points: Vec<Vec2> = tail.points[..tail_len].to_vec();
-    points.extend_from_slice(&head.points[..head_len]);
-    Some(Curve2::try_new_from_points(points, false).unwrap())
+    tail.points.copy_within(tail_start..tail_end, 0);
+    tail.points.truncate(tail_end - tail_start);
+    tail.points.extend_from_slice(&head.points);
+    Curve2::try_new_from_points(tail.points, false).ok()
 }
 
 #[cfg(test)]
@@ -130,7 +101,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "assertion failed: pts_len > 0")]
+    #[should_panic(expected = "折线网格至少需要一个顶点")]
     fn mesh_from_pts_rejects_empty_input() {
         mesh_from_pts("x", &[]);
     }
@@ -144,7 +115,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "MEOW####")]
+    #[should_panic(expected = "更新折线时目标网格不存在")]
     fn update_curve_mesh_panics_without_a_mesh() {
         update_curve_mesh(None, [Vec3::X]);
     }
@@ -180,5 +151,14 @@ mod tests {
         assert!(rewire_enclosed_curve(&curve, 1.0).is_none());
         // 切出的前段只有 0.016 × 16 = 0.256 > 0.1 不算短，0.005 × 16 = 0.08 < 0.1 才算。
         assert!(rewire_enclosed_curve(&curve, 0.005).is_none());
+    }
+
+    #[test]
+    fn rewire_rejects_invalid_splits_and_open_curves() {
+        assert!(rewire_enclosed_curve(&square(), f32::NAN).is_none());
+        assert!(rewire_enclosed_curve(&square(), -0.5).is_none());
+        let open =
+            Curve2::try_new_from_points(vec![Vec2::ZERO, Vec2::X, Vec2::ONE], false).unwrap();
+        assert!(rewire_enclosed_curve(&open, 0.5).is_none());
     }
 }

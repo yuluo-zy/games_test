@@ -1,0 +1,24 @@
+
+// WARNING: Globals starting with '_' overlap smaller symbols at the same address
+
+void __cdecl country_core::systems::audio::music::music_player::get_timeline_beat_properties(void)
+
+{
+  ulonglong uVar1;
+  int *in_R8;
+  
+  if (in_R8 != (int *)0x0) {
+    _CURRENT_MUSIC_BEAT = (longlong)in_R8[1];
+    uVar1 = (ulonglong)*in_R8;
+    _CURRENT_TEMPO = in_R8[3];
+    _BAR_COUNT = (CURRENT_MUSIC_BAR != uVar1) + _BAR_COUNT;
+    if (_BAR_COUNT < uVar1) {
+      _BAR_COUNT = uVar1;
+    }
+    _CURRENT_TIME_UPPER = (longlong)in_R8[4];
+    _CURRENT_TIME_LOWER = (longlong)in_R8[5];
+    CURRENT_MUSIC_BAR = uVar1;
+  }
+  return;
+}
+

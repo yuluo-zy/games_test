@@ -1,0 +1,72 @@
+--- before/crates/country-core/src/systems/mode_manager.rs
++++ crates/country-core/src/systems/mode_manager.rs
+@@ -118,6 +118,12 @@
+ }
+ #[derive(Resource, Clone, Copy, Debug, Default)]
+ pub struct PreviousAppMode(pub AppMode);
++
++/// The mode manager's publication instance. Input replay also invokes the
++/// publisher earlier, so function-type ordering would be ambiguous when both
++/// public CPU installers are joined in one schedule.
++#[derive(bevy_ecs::schedule::SystemSet, Clone, Copy, Debug, PartialEq, Eq, Hash)]
++pub struct ModeChangePublication;
+ pub fn send_mode_just_changed_event(
+     current: Res<AppMode>,
+     mut previous: ResMut<PreviousAppMode>,
+@@ -304,7 +310,13 @@
+     world.init_resource::<Events<ModeManagerSound>>();
+     world.init_resource::<Events<ClearCanvasCmd>>();
+     world.init_resource::<Events<AppModeChanged>>();
+-    schedule.add_systems((mode_manager::<M, S>, send_mode_just_changed_event).chain());
++    schedule.add_systems(
++        (
++            mode_manager::<M, S>,
++            send_mode_just_changed_event.in_set(ModeChangePublication),
++        )
++            .chain(),
++    );
+ }
+ 
+ #[cfg(test)]
+--- before/crates/country-core/src/systems/history.rs
++++ crates/country-core/src/systems/history.rs
+@@ -526,7 +526,7 @@
+     schedule.add_systems(replay_decorator::replay_decorator.in_set(HistoryCpuStage::Replay));
+     schedule.add_systems(
+         replay_mode::replay_mode
+-            .after(crate::systems::mode_manager::send_mode_just_changed_event)
++            .after(crate::systems::mode_manager::ModeChangePublication)
+             .in_set(HistoryCpuStage::Replay),
+     );
+     schedule.add_systems(pop_empty_replay_bucket.in_set(HistoryCpuStage::Pop));
+--- before/crates/country-core/src/systems/terrain/mod.rs
++++ crates/country-core/src/systems/terrain/mod.rs
+@@ -148,7 +148,7 @@
+                 >,
+             ),
+             ui_terrain_focus_mode::ui_terrain_focus_mode
+-                .after(crate::systems::mode_manager::send_mode_just_changed_event),
++                .after(crate::systems::mode_manager::ModeChangePublication),
+             ui_draw_terrain::ui_draw_terrain,
+             ui_edit_terrain::ui_edit_terrain,
+         )
+@@ -171,7 +171,7 @@
+     );
+     schedule.configure_sets(
+         crate::systems::history::HistoryCpuStage::Cursor
+-            .after(crate::systems::mode_manager::send_mode_just_changed_event),
++            .after(crate::systems::mode_manager::ModeChangePublication),
+     );
+     schedule.add_systems(
+         deferred_terrain_history::history_record_terrain::<S>
+--- before/crates/tiny-glade/src/run_game.rs
++++ crates/tiny-glade/src/run_game.rs
+@@ -590,7 +590,7 @@
+         (
+             mode_manager::synchronize_mode_manager_ui_context,
+             mode_manager::mode_manager::<country_core::resources::history::EditType, ()>,
+-            mode_manager::send_mode_just_changed_event,
++            mode_manager::send_mode_just_changed_event.in_set(mode_manager::ModeChangePublication),
+         )
+             .chain_ignore_deferred()
+             .in_set(GameSystemSet(10)),

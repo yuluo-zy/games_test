@@ -1,0 +1,20 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x14229a7f0\")\nf = prog.getFunctionManager().getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at 0x14229a7f0\")\nout[\"name\"]=str(f.getName()); out[\"body\"]=str(f.getBody()); out[\"signature\"]=str(f.getSignature())\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 120, monitor)\n    if not res.decompileCompleted():\n        out[\"error\"]=str(res.getErrorMessage())\n    else:\n        out[\"decompiled\"]=res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))",
+      "timeoutSeconds": 300
+    },
+    "timeout_seconds": 400
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x141218e30\")\nf = prog.getFunctionManager().getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at 0x141218e30\")\nout[\"name\"]=str(f.getName()); out[\"body\"]=str(f.getBody()); out[\"signature\"]=str(f.getSignature())\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 120, monitor)\n    if not res.decompileCompleted():\n        out[\"error\"]=str(res.getErrorMessage())\n    else:\n        out[\"decompiled\"]=res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))",
+      "timeoutSeconds": 300
+    },
+    "timeout_seconds": 400
+  }
+]

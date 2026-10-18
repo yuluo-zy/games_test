@@ -1,0 +1,346 @@
+//! Recovered B terrain history rules, using the workspace's existing persisted
+//! schema and shared Curve/Easing implementations. No native ABI is reproduced.
+pub use tg_terrain::schema::TerrainEdit;
+use tg_terrain::{edit::{Adjustment, EditCommand}, replay::{observe_edit, ReplayDirection}};
+use crate::{resources::terrain_editing::{StrokeId, TerrainEditingData}, systems::terrain::edit_terrain_stroke::SetTerrainStrokePtsCmd};
+use glam::Vec3;
+use utils::{curve::Curve3, easing_functions::{cubic_in_out, EasingFunction}};
+
+#[derive(Default)]
+pub struct TerrainHistoryEffects {
+    pub edits: Vec<EditCommand>,
+    pub point_sets: Vec<SetTerrainStrokePtsCmd>,
+    pub changed: Vec<StrokeId>,
+}
+
+pub fn id(edit: &TerrainEdit) -> StrokeId {
+    match edit {
+        TerrainEdit::NewTerrainStroke { index, .. }
+        | TerrainEdit::EditTerrainStroke { index, .. } => *index,
+        TerrainEdit::MoveTerrainStroke { id, .. } => *id,
+    }
+}
+
+pub fn duration(edit: &TerrainEdit) -> f32 {
+    let TerrainEdit::NewTerrainStroke { stroke_pts, .. } = edit else { return 0.3; };
+    let mut length = 0.0;
+    for pair in stroke_pts.windows(2) {
+        let d = Vec3::from_array(pair[0]) - Vec3::from_array(pair[1]);
+        length += (d.z * d.z + (d.y * d.y + d.x * d.x)).sqrt();
+    }
+    assert!(length.is_finite(), "assertion failed: stroke_length.is_finite()");
+    (length * 0.01).clamp(0.4, 3.0)
+}
+
+/// B 0x140859740. Keep at least 0.1 world units visible, use arc-length slicing,
+/// and raise the stroke during the first quarter of its animation. Degenerate
+/// source curves retain the existing points. The original requires the stroke.
+pub fn update_terrain_curve(
+    editing: &mut TerrainEditingData,
+    index: StrokeId,
+    points: &[[f32; 3]],
+    progress: f32,
+) -> f32 {
+    let stroke = editing.strokes.get_mut(&index)
+        .unwrap_or_else(|| panic!("Requested terrain stroke {} doesn't exist", index.0));
+    assert!(!stroke.points.is_empty(), "terrain stroke must have at least one point");
+    if stroke.points.len() == 1 {
+        return cubic_in_out(progress);
+    }
+    let points = points.iter().copied().map(Vec3::from_array).collect();
+    let Ok(curve) = Curve3::try_new_from_points_remove_duplicates(points) else {
+        return cubic_in_out(progress);
+    };
+    let min_u = 0.1 / curve.length;
+    assert!(min_u.is_finite(), "original minimum curve coordinate assertion");
+    let eased = cubic_in_out(progress);
+    let end = (1.0 - eased) * min_u.clamp(0.0, 1.0) + eased;
+    assert!((0.0..=1.0).contains(&end), "original CurveU range assertion");
+    stroke.points = curve.crashy_slice(0.0, end).points.into_iter().map(|point| point.to_array()).collect();
+    cubic_in_out((progress * 4.0).clamp(0.0, 1.0))
+}
+
+/// B revert/reapply emit the existing editing commands; the completed undo of a
+/// new stroke sets its height to zero and retains the stroke in the ID map.
+pub fn apply(
+    edit: &TerrainEdit,
+    editing: &mut TerrainEditingData,
+    progress: f32,
+    undo: bool,
+) -> TerrainHistoryEffects {
+    let mut effects = TerrainHistoryEffects::default();
+    match edit {
+        TerrainEdit::NewTerrainStroke { index, height_ws, stroke_pts } => {
+            if undo && progress >= 0.99 {
+                editing.strokes.get_mut(index)
+                    .unwrap_or_else(|| panic!("Requested terrain stroke {} doesn't exist", index.0))
+                    .height_ws = 0.0;
+            } else {
+                let fraction = update_terrain_curve(editing, *index, stroke_pts,
+                    if undo { 1.0 - progress } else { progress });
+                let height = fraction * height_ws;
+                let position = stroke_pts.last().map_or([0.0; 3], |p| [p[0], height, p[2]]);
+                effects.edits.push(EditCommand {
+                    id: *index, falloff: Adjustment::Keep,
+                    height: Adjustment::Absolute(height), position,
+                });
+            }
+            effects.changed.push(*index);
+        }
+        TerrainEdit::EditTerrainStroke { .. } => {
+            let direction = if undo { ReplayDirection::Backward } else { ReplayDirection::Forward };
+            effects.edits.push(observe_edit(edit, progress, direction).unwrap().command());
+        }
+        TerrainEdit::MoveTerrainStroke { id, original_stroke_pts, move_vec } => {
+            let t = EasingFunction::CubicOut.apply(progress);
+            let inverse = 1.0 - t;
+            let points: Vec<_> = original_stroke_pts.iter().map(|p| {
+                let q = [p[0] + move_vec[0], p[1] + 0.0, p[2] + move_vec[1]];
+                if undo {
+                    [p[0] * t + inverse * q[0], p[1] * t + inverse * q[1], p[2] * t + inverse * q[2]]
+                } else {
+                    [q[0] * t + inverse * p[0], q[1] * t + inverse * p[1], q[2] * t + inverse * p[2]]
+                }
+            }).collect();
+            let position = Vec3::from_array(points[points.len() / 2]);
+            effects.point_sets.push(SetTerrainStrokePtsCmd { points, position, id: *id });
+        }
+    }
+    effects
+}
+
+#[cfg(test)]
+mod original_curve_history_tests {
+    use super::*;
+    fn points(bits: &[u32]) -> Vec<[f32; 3]> {
+        bits.chunks_exact(3).map(|p| [f32::from_bits(p[0]), f32::from_bits(p[1]), f32::from_bits(p[2])]).collect()
+    }
+    #[test]
+    fn original_b_update_curve_0() {
+        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
+        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 1065353216, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
+        let mut editing = TerrainEditingData(editing);
+        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 1065353216, 0, 0, 1065353216, 1065353216, 1065353216]), f32::from_bits(0));
+        assert_eq!(factor.to_bits(), 0);
+        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1036831949, 0, 0]);
+    }
+    #[test]
+    fn original_b_update_curve_1() {
+        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
+        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 1065353216, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
+        let mut editing = TerrainEditingData(editing);
+        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 1065353216, 0, 0, 1065353216, 1065353216, 1065353216]), f32::from_bits(1036831949));
+        assert_eq!(factor.to_bits(), 1048777327);
+        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1038074383, 0, 0]);
+    }
+    #[test]
+    fn original_b_update_curve_2() {
+        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
+        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 1065353216, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
+        let mut editing = TerrainEditingData(editing);
+        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 1065353216, 0, 0, 1065353216, 1065353216, 1065353216]), f32::from_bits(1048576000));
+        assert_eq!(factor.to_bits(), 1065353216);
+        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1048216186, 0, 0]);
+    }
+    #[test]
+    fn original_b_update_curve_3() {
+        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
+        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 1065353216, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
+        let mut editing = TerrainEditingData(editing);
+        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 1065353216, 0, 0, 1065353216, 1065353216, 1065353216]), f32::from_bits(1056964608));
+        assert_eq!(factor.to_bits(), 1065353216);
+        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1065353216, 0, 0, 1065353216, 1043999312, 1043999312]);
+    }
+    #[test]
+    fn original_b_update_curve_4() {
+        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
+        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 1065353216, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
+        let mut editing = TerrainEditingData(editing);
+        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 1065353216, 0, 0, 1065353216, 1065353216, 1065353216]), f32::from_bits(1065185444));
+        assert_eq!(factor.to_bits(), 1065353216);
+        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1065353216, 0, 0, 1065353216, 1065353107, 1065353107]);
+    }
+    #[test]
+    fn original_b_update_curve_5() {
+        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
+        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 1065353216, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
+        let mut editing = TerrainEditingData(editing);
+        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 1065353216, 0, 0, 1065353216, 1065353216, 1065353216]), f32::from_bits(1065353216));
+        assert_eq!(factor.to_bits(), 1065353216);
+        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1065353216, 0, 0, 1065353216, 1065353216, 1065353216]);
+    }
+    #[test]
+    fn original_b_update_curve_6() {
+        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
+        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 0, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
+        let mut editing = TerrainEditingData(editing);
+        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 0, 0, 0, 1073741824, 0, 0]), f32::from_bits(0));
+        assert_eq!(factor.to_bits(), 0);
+        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1036831949, 0, 0]);
+    }
+    #[test]
+    fn original_b_update_curve_7() {
+        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
+        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 0, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
+        let mut editing = TerrainEditingData(editing);
+        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 0, 0, 0, 1073741824, 0, 0]), f32::from_bits(1036831949));
+        assert_eq!(factor.to_bits(), 1048777327);
+        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1037852004, 0, 0]);
+    }
+    #[test]
+    fn original_b_update_curve_8() {
+        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
+        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 0, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
+        let mut editing = TerrainEditingData(editing);
+        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 0, 0, 0, 1073741824, 0, 0]), f32::from_bits(1048576000));
+        assert_eq!(factor.to_bits(), 1065353216);
+        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1046478848, 0, 0]);
+    }
+    #[test]
+    fn original_b_update_curve_9() {
+        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
+        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 0, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
+        let mut editing = TerrainEditingData(editing);
+        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 0, 0, 0, 1073741824, 0, 0]), f32::from_bits(1056964608));
+        assert_eq!(factor.to_bits(), 1065353216);
+        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1065772646, 0, 0]);
+    }
+    #[test]
+    fn original_b_update_curve_10() {
+        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
+        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 0, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
+        let mut editing = TerrainEditingData(editing);
+        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 0, 0, 0, 1073741824, 0, 0]), f32::from_bits(1065185444));
+        assert_eq!(factor.to_bits(), 1065353216);
+        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1073741760, 0, 0]);
+    }
+    #[test]
+    fn original_b_update_curve_11() {
+        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
+        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 0, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
+        let mut editing = TerrainEditingData(editing);
+        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 0, 0, 0, 1073741824, 0, 0]), f32::from_bits(1065353216));
+        assert_eq!(factor.to_bits(), 1065353216);
+        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1073741824, 0, 0]);
+    }
+    #[test]
+    fn original_b_update_curve_12() {
+        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
+        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 0, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
+        let mut editing = TerrainEditingData(editing);
+        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 0, 0, 0]), f32::from_bits(0));
+        assert_eq!(factor.to_bits(), 0);
+        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1065353216, 0, 0]);
+    }
+    #[test]
+    fn original_b_update_curve_13() {
+        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
+        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 0, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
+        let mut editing = TerrainEditingData(editing);
+        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 0, 0, 0]), f32::from_bits(1036831949));
+        assert_eq!(factor.to_bits(), 998445679);
+        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1065353216, 0, 0]);
+    }
+    #[test]
+    fn original_b_update_curve_14() {
+        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
+        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 0, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
+        let mut editing = TerrainEditingData(editing);
+        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 0, 0, 0]), f32::from_bits(1048576000));
+        assert_eq!(factor.to_bits(), 1031798784);
+        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1065353216, 0, 0]);
+    }
+    #[test]
+    fn original_b_update_curve_15() {
+        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
+        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 0, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
+        let mut editing = TerrainEditingData(editing);
+        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 0, 0, 0]), f32::from_bits(1056964608));
+        assert_eq!(factor.to_bits(), 1056964608);
+        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1065353216, 0, 0]);
+    }
+    #[test]
+    fn original_b_update_curve_16() {
+        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
+        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 0, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
+        let mut editing = TerrainEditingData(editing);
+        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 0, 0, 0]), f32::from_bits(1065185444));
+        assert_eq!(factor.to_bits(), 1065353149);
+        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1065353216, 0, 0]);
+    }
+    #[test]
+    fn original_b_update_curve_17() {
+        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
+        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 0, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
+        let mut editing = TerrainEditingData(editing);
+        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 0, 0, 0]), f32::from_bits(1065353216));
+        assert_eq!(factor.to_bits(), 1065353216);
+        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1065353216, 0, 0]);
+    }
+    #[test]
+    fn original_b_update_curve_18() {
+        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
+        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[1077936128, 1082130432, 1084227584]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
+        let mut editing = TerrainEditingData(editing);
+        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 1065353216, 0, 0]), f32::from_bits(0));
+        assert_eq!(factor.to_bits(), 0);
+        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [1077936128, 1082130432, 1084227584]);
+    }
+    #[test]
+    fn original_b_update_curve_19() {
+        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
+        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[1077936128, 1082130432, 1084227584]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
+        let mut editing = TerrainEditingData(editing);
+        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 1065353216, 0, 0]), f32::from_bits(1036831949));
+        assert_eq!(factor.to_bits(), 998445679);
+        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [1077936128, 1082130432, 1084227584]);
+    }
+    #[test]
+    fn original_b_update_curve_20() {
+        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
+        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[1077936128, 1082130432, 1084227584]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
+        let mut editing = TerrainEditingData(editing);
+        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 1065353216, 0, 0]), f32::from_bits(1048576000));
+        assert_eq!(factor.to_bits(), 1031798784);
+        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [1077936128, 1082130432, 1084227584]);
+    }
+    #[test]
+    fn original_b_update_curve_21() {
+        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
+        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[1077936128, 1082130432, 1084227584]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
+        let mut editing = TerrainEditingData(editing);
+        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 1065353216, 0, 0]), f32::from_bits(1056964608));
+        assert_eq!(factor.to_bits(), 1056964608);
+        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [1077936128, 1082130432, 1084227584]);
+    }
+    #[test]
+    fn original_b_update_curve_22() {
+        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
+        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[1077936128, 1082130432, 1084227584]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
+        let mut editing = TerrainEditingData(editing);
+        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 1065353216, 0, 0]), f32::from_bits(1065185444));
+        assert_eq!(factor.to_bits(), 1065353149);
+        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [1077936128, 1082130432, 1084227584]);
+    }
+    #[test]
+    fn original_b_update_curve_23() {
+        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
+        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[1077936128, 1082130432, 1084227584]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
+        let mut editing = TerrainEditingData(editing);
+        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 1065353216, 0, 0]), f32::from_bits(1065353216));
+        assert_eq!(factor.to_bits(), 1065353216);
+        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [1077936128, 1082130432, 1084227584]);
+    }
+
+    #[test]
+    fn completed_new_stroke_undo_retains_the_id_and_zeroes_height() {
+        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
+        let id = editing.new_stroke([0.0; 3]).unwrap().unwrap();
+        let mut editing = TerrainEditingData(editing);
+        let edit = TerrainEdit::NewTerrainStroke { index: id, height_ws: 2.5, stroke_pts: vec![[0.0; 3]] };
+        let effects = apply(&edit, &mut editing, 0.99, true);
+        assert_eq!(editing.strokes[&id].height_ws, 0.0);
+        assert_eq!(effects.changed, [id]);
+        assert!(effects.edits.is_empty());
+    }
+}

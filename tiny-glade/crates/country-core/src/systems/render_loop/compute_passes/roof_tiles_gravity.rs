@@ -25,23 +25,19 @@
 
 use crate::render::pass_builder::compute_pass_builder::DispatchArgs;
 use crate::render::pass_builder::pass_resources::TypeId128;
+use crate::resources::roofs::roof_tile_ssbo::RoofTileSsbo;
 use crate::systems::render_loop::compute_passes::pass_kit::{
-    PassEnv, ResourceView, binding_hash, ssbo_carrier,
+    PassEnv, ResourceView, binding_hash,
 };
-use crate::typed_gap::Gap;
 
-/// 屋顶瓦片 SSBO（O 名 `RoofTileSsbo`；布局 U）。
-#[derive(Clone, Copy, Debug, Default)]
-pub struct RoofTileSsbo(pub Gap);
-ssbo_carrier!(RoofTileSsbo, "RoofTileSsbo");
+/// 原版完整类型名（0x35 B，机器断言）；定义在 `RoofTileSsbo` 元素模块。
+pub use crate::resources::roofs::roof_tile_ssbo::TYPE_NAME;
 
 pub const PASS_NAME: &str = "Roof tiles";
 pub const SHADER_URI: &str = "/roof_tiles_gravity.cs.hlsl";
 pub const HASH_INSTANCED_DATA: u64 = binding_hash("instanced_data"); // 0xc3483cd70105de2f
 /// 第二个 uniform 键（O：`movabs r8, 0x601a45ce43af912f`；名字 U）。
 pub const KEY_FRAME_F32: u64 = 0x601a45ce43af912f;
-/// `RoofTileSsbo` 的库内类型名（O：0x35 B）。
-pub const TYPE_NAME: &str = "country_core::resources::roof_tile_ssbo::RoofTileSsbo";
 /// `PushConstants` 的字节数（O：`mov r9d, 0x14`）。
 pub const PUSH_SIZE: usize = 0x14;
 
@@ -125,6 +121,23 @@ pub fn collect_push_constants(rows: &[RoofTileRow]) -> Vec<PushConstants> {
 
 /// W19 入口（O 0x140a29b10）。`rows` = ECS 查询结果。
 pub fn roof_tiles_gravity_compute(env: &mut PassEnv<'_>, rows: &[RoofTileRow]) {
+    roof_tiles_gravity_impl(env, rows, |env| env.resource::<RoofGravityFrame>().value);
+}
+
+/// Actual Time::delta_seconds projection supplied by the enclosing host.
+pub fn roof_tiles_gravity_compute_with_delta(
+    env: &mut PassEnv<'_>,
+    rows: &[RoofTileRow],
+    value: f32,
+) {
+    roof_tiles_gravity_impl(env, rows, |_| value);
+}
+
+fn roof_tiles_gravity_impl(
+    env: &mut PassEnv<'_>,
+    rows: &[RoofTileRow],
+    value: impl FnOnce(&PassEnv<'_>) -> f32,
+) {
     // 1. 库与缓冲必须存在（缺失 → unwrap panic）。
     crate::render::pass_builder::pass_resources::ResourceLookup::get_resource_ptr(
         env.world,
@@ -140,8 +153,12 @@ pub fn roof_tiles_gravity_compute(env: &mut PassEnv<'_>, rows: &[RoofTileRow]) {
     // 3. pass
     let pass = env
         .pass(PASS_NAME, SHADER_URI)
-        .read_storage_buffer::<RoofTileSsbo>(HASH_INSTANCED_DATA);
-    let value = env.resource::<RoofGravityFrame>().value;
+        // Packaged original SPV loads RoofShingle at %104 and stores its
+        // updated record through the same pointer. The legacy native helper
+        // calls this a read; the current graph must retain the actual RMW.
+        .write_storage_buffer::<RoofTileSsbo>(HASH_INSTANCED_DATA)
+        .preserve_storage_buffer_contents(HASH_INSTANCED_DATA);
+    let value = value(env);
     let pass = pass.uniform(KEY_FRAME_F32, value);
     // 4. dispatch_with(闭包)
     let recorded = pass.dispatch_with(move |api| {
@@ -284,9 +301,10 @@ mod tests {
         );
         assert!(matches!(p.dispatch, DispatchMode::With(_)));
         assert_eq!(f32::from_bits(uniform_u32(&p, 0)), 0.016);
-        // 访问：color library 读、instanced_data 读(0x1a)。
+        // Original shader performs RMW despite its legacy read helper name.
         let acc: Vec<u8> = p.builder.accesses.iter().map(|a| a.access).collect();
-        assert_eq!(acc, [0x1a, 0x1a]);
+        assert_eq!(acc, [0x1a, 0x32]);
+        assert_eq!(p.preserving_buffers, [p.builder.accesses[1].resource]);
         let mut exec = Exec::default();
         p.execute(&mut exec);
         // 每个 draw：先 push 20 B，再 dispatch_3d((count,1,1))，local size 64 → ceil。

@@ -70,6 +70,12 @@ pub fn add_roof_systems(schedule: &mut Schedule) {
             visual::roof_animation::roof_animation,
             delete_roof::delete_roofs,
             update_roof_spatial::update_wall_gable_heights,
+            // 本批重建函数补注册（reviewer FIX-4，原 add_roof_systems
+            // 0x14062fcb0 注册：roof_record_history/record_switch_roof_ridge_history/
+            // switch_roof_ridge_direction）。
+            ui_edit_roof_ridge_dir::switch_roof_ridge_direction,
+            ui_edit_roof_ridge_dir::record_switch_roof_ridge_history,
+            deferred_record_roof_history::roof_record_history,
         )
             .chain()
             .in_set(WallCpuStage::RoofDependencies)
@@ -86,4 +92,28 @@ pub fn add_roof_systems(schedule: &mut Schedule) {
             .chain()
             .in_set(WallCpuStage::RoofDependencies),
     );
+}
+
+/// 屋顶 SSBO 缓冲刷新（B `lib.rs::gpu_flush_buffers` 0x140de50a0）。
+///
+/// fresh 反编译（2026-10-17 consume-types，`work/consume-types/decomp/0x140de50a0`）：
+/// `AssetSsboLibrary::get_mut<RoofTileSsbo>()` → `None` → `Option::unwrap` panic →
+/// `GraphicsDeviceResource::deref()`（`&dyn GraphicsDevice`）→
+/// `SparseInstanceBuffer<RoofTileSsbo>::gpu_flush` → 写 ResMut 变更 tick
+/// （`in_RCX+0x150`；Bevy `ResMut` 的 `deref_mut` 自动置 tick，等价）。
+/// panic 串：`"country_core::asset_libraries::ssbo_library::AssetSsboLibrary"`（0x3d B）
+/// 与 `"country_core::render::GraphicsDeviceResourceResource requested by  does not exist: "`
+/// （0x2c B）——由 Bevy 资源参数面生成，不手写。
+pub fn gpu_flush_buffers(
+    device: bevy_ecs::prelude::Res<country_core::render::device::GraphicsDeviceResource>,
+    mut library: bevy_ecs::prelude::ResMut<
+        country_core::asset_libraries::ssbo_library::AssetSsboLibrary,
+    >,
+) {
+    use country_core::resources::roofs::roof_tile_ssbo::RoofTileSsbo;
+
+    // O：get_mut<RoofTileSsbo> → None 时 unwrap_failed。
+    let buffer = library.get_mut::<RoofTileSsbo>().unwrap();
+    // O：GraphicsDeviceResource::deref() → SparseInstanceBuffer::gpu_flush<T>。
+    buffer.gpu_flush(device.device());
 }

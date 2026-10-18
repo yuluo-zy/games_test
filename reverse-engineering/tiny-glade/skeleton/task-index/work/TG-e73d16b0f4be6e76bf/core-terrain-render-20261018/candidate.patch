@@ -1,0 +1,41 @@
+--- a/games_test/tiny-glade/crates/country-core/src/resources/terrain_editing.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/terrain_editing.rs
+@@ -17,3 +17,13 @@
+         &mut self.0
+     }
+ }
++
++impl TerrainEditingData {
++    /// B W3 borrows the actual stroke map and the same resource's +0x40 flag.
++    /// Calling through ResMut preserves its original unconditional change tick.
++    pub fn rasterization_parts(
++        &mut self,
++    ) -> (&std::collections::HashMap<StrokeId, TerrainStroke>, &mut bool) {
++        (&self.0.strokes, &mut self.0.rasterized)
++    }
++}
+--- a/games_test/tiny-glade/crates/systems/terrain/src/stroke.rs
++++ b/games_test/tiny-glade/crates/systems/terrain/src/stroke.rs
+@@ -63,6 +63,11 @@
+ pub struct TerrainEditingData {
+     pub strokes: HashMap<StrokeId, TerrainStroke>,
+     pub next_index: u32,
++    /// Runtime rasterization state of this stroke owner. B startup +0x40 is
++    /// false; W3 marks it true only after all four passes are constructed.
++    /// RecalculateHeightMapCmd events trigger subsequent updates, so edits do
++    /// not independently reset this flag or allocate a mirror stroke map.
++    pub rasterized: bool,
+ }
+ #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+ pub enum StrokeError {
+--- a/games_test/tiny-glade/crates/country-core/src/systems/save/snapshot.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/save/snapshot.rs
+@@ -1155,6 +1155,8 @@
+             tg_terrain::stroke::TerrainEditingData {
+                 strokes,
+                 next_index: self.next_stroke_index,
++                // Loaded strokes have not yet reached this world's GPU raster.
++                rasterized: false,
+             },
+         )
+     }

@@ -1,0 +1,29 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/save/load_game.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/save/load_game.rs
+@@ -200,7 +200,10 @@
+ 
+ /// `LoadingGameComplete` 事件（PDB：`load_game::LoadingGameComplete`）。
+ #[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq)]
+-pub struct LoadingGameComplete;
++pub struct LoadingGameComplete {
++    /// Original state2 PostGameLoadCommand::SwitchAppMode payload, 16 B.
++    pub restore_to: AppMode,
++}
+ 
+ /// `StartupRevealStarted` / `StartupRevealFinished` 事件（PDB 同名）。
+ #[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq)]
+--- a/games_test/tiny-glade/crates/country-core/src/systems/mode_manager.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/mode_manager.rs
+@@ -30,10 +30,8 @@
+ /// 0x1423427f0 写 `{id u64@+0, 载荷字节@+8}`；载荷字节 = 目标类别字节（I）。
+ #[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
+ pub struct RequestToolbarCategoryChange(pub WindowFocusEvent);
+-#[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
+-pub struct LoadingGameComplete {
+-    pub restore_to: AppMode,
+-}
++// Original mode_manager reads the save owner's identical event type.
++pub use crate::systems::save::load_game::LoadingGameComplete;
+ #[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
+ pub struct RestoreAppTo(pub AppMode);
+ 

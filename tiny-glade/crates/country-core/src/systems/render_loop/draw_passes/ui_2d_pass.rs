@@ -19,7 +19,7 @@
 //! `write_uniform<u32>(-0x3a5498c04f79ae0b, 1)`、Vec3(`0x120d…`) = ws.+8 起 12 B、Vec2(`-0x5903…`) = ws.+0/+4、Vec2(`0x69fd…`) = 窗口，
 //! 同样的图像绑定与状态改写，`draw_no_vao(6)`。两个循环共用同一个 `RasterPass`，最后 `render` 一次。
 //!
-//! 组件名由 PDB 查询类型确定（O）；组件布局在 `components::Ui2d*` / `resources::color_icon` 里仍是 typed gap，下面的 `*Read` 记录只含被机器码读取的字段（字段真名 U）。
+//! Ui2dExtent/Ui2dImage/UiDrawOrder 已有共享组件定义；下面的 owned 绘制快照从组件转换。color_icon 等其余读取视图仍保留各自证据边界。
 //!
 //! # `mei_pass`（O）
 //! `AssetShaderLibrary` → `("text")`；`WindowSize`；`TextRenderer`（tg_text，外部库）`render()` → 文本图元数 `n` 与图集纹理；
@@ -44,15 +44,46 @@ use crate::render::pass_builder::draw_stream::DrawPacket;
 use crate::render::pass_builder::framebuffer_binding::{AttachmentTexture, ColorAttachment};
 use crate::render::pass_builder::pass_resource_access::SsboType;
 use crate::render::raster_single::raster_single_object;
+use crate::asset_libraries::ssbo_library::SsboType as LibrarySsbo;
+use crate::render::ssbo::{StorageElement, TypedStorageBuffer, rhapsody_boundary::GraphicsDevice};
 use crate::resources::texture_presets::TextureFromDisk;
 use crate::rhapsody_contract::ManagedHandle;
 use crate::systems::render_loop::draw_passes::custom_cursor_pass::overlay_state;
 use crate::systems::render_loop::draw_passes::d_main_support::{ColorSpec, DepthSpec, DrawPassCtx};
 
-/// 形状流 SSBO（O：`read_storage_buffer<ShapeStreamSsbo>` 0x141629e90，槽名 "ShapeStream"；布局 U）。
-pub struct ShapeStreamSsbo(pub crate::typed_gap::Gap);
-/// 文本图元 SSBO（O：0x14162c590，槽名 "TextPrim"；布局 U）。
-pub struct TextPrimSsbo(pub crate::typed_gap::Gap);
+/// Original ShapeStream is a u32 word stream; ctor14160fb70 allocates
+/// 0x400000 bytes, storage usage0x22/memory1/align4, None has no upload.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ShapeStreamSsbo(pub u32);
+
+/// Reuse the actual tg-text48B primitive. Original packaged text vertex
+/// shader PrimPacked matches all eight member offsets and array stride48;
+/// no parallel guessed packet schema is created in country-core.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TextPrimSsbo(pub tg_text::Primitive);
+
+impl StorageElement for ShapeStreamSsbo {
+    const NAME: &'static str = "ShapeStream";
+    const BUFFER_LEN: usize = 1048576;
+}
+impl StorageElement for TextPrimSsbo {
+    const NAME: &'static str = "TextPrim";
+    const BUFFER_LEN: usize = 131072;
+}
+impl LibrarySsbo for ShapeStreamSsbo {
+    type Storage = TypedStorageBuffer<Self>;
+    fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
+        TypedStorageBuffer::new_storage_buffer(device, initial)
+    }
+}
+impl LibrarySsbo for TextPrimSsbo {
+    type Storage = TypedStorageBuffer<Self>;
+    fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
+        TypedStorageBuffer::new_storage_buffer(device, initial)
+    }
+}
 
 impl SsboType for ShapeStreamSsbo {
     /// O：`get_rg_buffer<ShapeStreamSsbo>`（0x1412cbb70）里的 `SsboId` 立即数。
@@ -123,6 +154,15 @@ impl UniformValue for Vec3Uniform {
 pub struct Ui2dImageRef {
     pub name: String,
     pub layer: u32,
+}
+
+impl From<&crate::components::Ui2dImage> for Ui2dImageRef {
+    fn from(image: &crate::components::Ui2dImage) -> Self {
+        Self {
+            name: image.name.clone(),
+            layer: image.layer,
+        }
+    }
 }
 
 /// 视图描述（`view_type(1).base_layer(layer).layer_count(1, 1)`；A4 的 `TextureViewDesc` 是单元占位，这里只记参数）。
@@ -347,4 +387,52 @@ pub fn mei_pass(
             b
         },
     );
+}
+
+#[cfg(test)]
+mod native_ssbo_constructor_tests {
+    use super::*;
+    use crate::asset_libraries::ssbo_library::AssetSsboLibrary;
+    use crate::render::ssbo::{rhapsody_boundary::slice_as_bytes, tests::MockDevice};
+
+    #[test]
+    fn original_text_and_shape_factories_use_real_library_buffers_without_none_upload() {
+        let device = MockDevice::default();
+        let library = AssetSsboLibrary::new();
+        library.add_new::<TextPrimSsbo>(&device);
+        library.add_new::<ShapeStreamSsbo>(&device);
+        assert_eq!(library.get::<TextPrimSsbo>().unwrap().buffer.byte_size, 0x600000);
+        assert_eq!(library.get::<ShapeStreamSsbo>().unwrap().buffer.byte_size, 0x400000);
+        let rows = device.created.borrow();
+        assert_eq!(rows.len(), 2);
+        for (row, (name, size)) in rows.iter().zip([("TextPrim", 0x600000), ("ShapeStream", 0x400000)]) {
+            assert_eq!((row.1.as_str(), row.0.size, row.0.usage, row.0.memory, row.0.alignment),
+                (name, size, 0x22, 1, 4));
+            assert!(row.2.is_none(), "original None must not manufacture zero contents");
+        }
+        assert_eq!(TextPrimSsbo::rg_buffer_hash(), utils::name_hash::NameHash::compute("TextPrim").0);
+        assert_eq!(ShapeStreamSsbo::rg_buffer_hash(), utils::name_hash::NameHash::compute("ShapeStream").0);
+        assert_eq!(core::mem::size_of::<TextPrimSsbo>(), 48);
+        assert_eq!(core::mem::align_of::<TextPrimSsbo>(), 4);
+        assert_eq!(core::mem::size_of::<ShapeStreamSsbo>(), 4);
+    }
+
+    #[test]
+    fn text_primitive_reuses_original_member_offsets_and_forwards_real_tg_text_packet() {
+        use core::mem::offset_of;
+        assert_eq!(offset_of!(tg_text::Primitive, pos_min), 0);
+        assert_eq!(offset_of!(tg_text::Primitive, pos_extent), 8);
+        assert_eq!(offset_of!(tg_text::Primitive, uv_min), 16);
+        assert_eq!(offset_of!(tg_text::Primitive, uv_extent), 24);
+        assert_eq!(offset_of!(tg_text::Primitive, color), 32);
+        assert_eq!(offset_of!(tg_text::Primitive, stream), 36);
+        assert_eq!(offset_of!(tg_text::Primitive, padding), 40);
+        let primitive = TextPrimSsbo(tg_text::Primitive::rect([2., 3.], [4., 5.], 0x12345678));
+        let device = MockDevice::default();
+        let initial = [primitive];
+        let bytes = slice_as_bytes(&initial);
+        let storage = <TextPrimSsbo as LibrarySsbo>::new_storage_buffer(&device, Some(bytes));
+        assert_eq!(storage.buffer.byte_size, 0x600000);
+        assert_eq!(device.created.borrow()[0].2.as_deref(), Some(bytes));
+    }
 }

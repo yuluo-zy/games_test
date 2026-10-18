@@ -1,10 +1,10 @@
 use bevy_ecs::prelude::*;
-use country_core::recovered_building::{
-    building_wall_collection::{RawWallPublicationSource, TerrainHeightGrid512},
-    building_wall_path_preparation::PathRasters512,
-    building_wall_state::{WallId, WallShapeSnapshot},
-    surface::Curve2,
-};
+use country_core::resources::walls::publication_source::RawWallPublicationSource;
+use country_core::resources::walls::publication_source::TerrainHeightGrid512;
+use country_core::systems::wall::wall_state::path_preparation::PathRasters512;
+use country_core::resources::walls::publication_fields::WallId;
+use country_core::resources::walls::publication_fields::WallShapeSnapshot;
+use country_core::resources::roofs::geometry::surface::Curve2;
 use std::sync::Arc;
 use tg_building_runtime::{wall_bricks::*, wall_paths::*, *};
 fn emit<T: Event>(app: &mut bevy_app::App, event: T) {
@@ -134,7 +134,19 @@ fn actual_preparation_deduplicates_and_keeps_initial_seed_count_and_owner_identi
             .all(|record| record.material == 0x8000000b)
     );
     let before = records(&app, wall);
+    assert_eq!(
+        app.world()
+            .resource::<WallBrickBuildState>()
+            .prepared_arrays_this_frame,
+        1
+    );
     step(&mut app);
+    assert_eq!(
+        app.world()
+            .resource::<WallBrickBuildState>()
+            .prepared_arrays_this_frame,
+        0
+    );
     assert_eq!(records(&app, wall), before);
     assert_eq!(
         app.world().get::<WallCpuBricks>(entity).unwrap().generation,

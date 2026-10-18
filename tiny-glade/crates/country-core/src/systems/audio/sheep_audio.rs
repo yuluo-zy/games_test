@@ -6,6 +6,14 @@
 //! `event:/SFX/Sheep/{Aww,Think,Sob,Angry,Idea,Eyes,Confused}` + set_parameter
 //! (FirstPersonOff) + start_if_not_playing; kind 4 sets the should-play flag
 //! of a frame-end loop (no one-shot). Frame-end drives that loop by flag.
+//!
+//! DEEP-2026-10-17 (fresh disasm 0x1409d5ea0..0x1409d6201 + xrefs): the
+//! "0x1b..0x51 大分派" once registered as 待补挖 is a **Ghidra function-merge
+//! artifact** — the table entries 8..0x51 point into `signifier_audio_system`
+//! (0x1409d6b90..) code, which is the same generic dispatch instantiated for
+//! the signifier stream (`DAT_142ac2ce8`, byte-identical offsets, base+0x20).
+//! `sheep_audio_system`'s own body handles only kinds 0..7; the Rust `_ => {}`
+//! for kind ≥ 8 is behaviorally equivalent on the reachable producer range.
 
 use crate::{
     resources::audio_resources::{AudioCore, AudioInstance, EventInstance, Studio},
@@ -62,38 +70,55 @@ pub fn sheep_audio_init_system<S: Studio + Send + Sync + 'static>(
 }
 
 /// `sheep_audio_system` (0x1409d5ea0).
+///
+/// O (decomp-0x1409d5ea0 + disasm-0x1409d5ea0..0x1409d6201): kinds 0..3 →
+/// Aww/Think/Sob/Angry, kind 4 → the continuous Baah loop, kinds 5..7 →
+/// Idea/Eyes/Confused (kind 7 is Confused, not ignored). DEEP-2026-10-17:
+/// the dispatch-table cases 8..0x51 belong to `signifier_audio_system`
+/// (Ghidra merge artifact; see the module doc) and are unreachable for the
+/// sheep event stream.
 pub fn sheep_audio_system<S: Studio + Send + Sync + 'static>(
     mut state: ResMut<SheepAudioState<S::Event>>,
     mut events: EventReader<PlaySheepReactSound>,
     core: Res<AudioCore<S>>,
 ) {
+    let mut should_play4 = false;
     for event in events.read() {
         match event.kind {
             4 => {
-                // E3: kind 4 packages the continuous Baah loop (no one-shot).
-                state.should_play4 = true;
-                let cursor = state.loop4.cursor;
-                let _ = state.loop4.entries[cursor].set_parameter(SHEEP_PITCH_PARAM, event.pitch);
+                // O (0x1409d61b0): kind 4 only raises the frame-end loop flag;
+                // it sets no parameter and plays no one-shot.
+                should_play4 = true;
             }
-            kind if kind < SHEEP_EVENTS.len() as u8 => {
+            // O: kind 0..3 → Aww/Think/Sob/Angry, 5..7 → Idea/Eyes/Confused.
+            kind if kind <= 3 => {
                 let name = SHEEP_EVENTS[kind as usize];
-                let mut instance = core.instantiate_audio(name);
-                // O (decomp 0x1409d6166): set_parameter("Pitch", event f32 @+0x14)
-                // then start_if_not_playing. (The chapter's "FirstPersonOff" is a
-                // mis-read — the string table reads "Pitch" at 0x142ac2460.)
-                let _ = instance.set_parameter(SHEEP_PITCH_PARAM, event.pitch);
-                let _ = instance.start_if_not_playing();
+                play_one_shot(&core, name, event);
+            }
+            kind if (5..=7).contains(&kind) => {
+                let name = SHEEP_EVENTS[(kind - 1) as usize];
+                play_one_shot(&core, name, event);
             }
             _ => {}
         }
     }
-    // Frame-end loop driving (O: 0x1409d61b0; E3: continuous loop by flag).
+    state.should_play4 = should_play4;
+    // Frame-end loop driving (O: 0x1409d61b0; flag → start_if_not_playing, else stop).
     if state.should_play4 {
         let _ = state.loop4.start_if_not_playing();
     } else {
-        let _ = state.loop4.stop(std::time::Duration::ZERO);
+        let _ = state.loop4.stop_now();
     }
-    state.should_play4 = false;
+}
+
+/// One-shot path (O: 0x1409d60d4-0x1409d617d): instantiate →
+/// `set_position` (payload +8) → `set_parameter("Pitch", pitch@+0x14)` →
+/// `start_if_not_playing` → drop.
+fn play_one_shot<S: Studio>(core: &AudioCore<S>, name: &str, event: &PlaySheepReactSound) {
+    let mut instance = core.instantiate_audio(name);
+    let _ = instance.set_position([event.position.x, event.position.y, event.position.z]);
+    let _ = instance.set_parameter(SHEEP_PITCH_PARAM, event.pitch);
+    let _ = instance.start_if_not_playing();
 }
 
 #[cfg(test)]

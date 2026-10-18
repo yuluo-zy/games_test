@@ -1,5 +1,4 @@
-//! B look_at/abs_diff_eq访问40B实例的r@0,t@16,s@28。
-//! 恢复字段语义，不固定Rust布局；矩阵转四元数直接复用原glam。
+//! Scale, rotation, and translation in local coordinates.
 use glam::{Affine3A, Mat3, Mat4, Quat, Vec3};
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Transform {
@@ -20,11 +19,17 @@ impl Transform {
     pub fn forward(&self) -> Vec3 {
         self.r * Vec3::NEG_Z
     }
-    /// Local -Z faces target. The original does not replace degenerate inputs.
-    /// B 0x140c9ce00; only rotation changes.
+    /// Rotates local -Z toward `target`, preserving translation and scale.
+    /// Coincident targets leave the orientation unchanged. An invalid or parallel
+    /// up vector uses a perpendicular axis to retain a finite rotation.
     pub fn look_at(&mut self, target: Vec3, up: Vec3) {
-        let z = (self.t - target).normalize();
-        let x = up.cross(z).normalize();
+        let Some(z) = (self.t - target).try_normalize() else {
+            return;
+        };
+        let x = up.cross(z).try_normalize().unwrap_or_else(|| {
+            let fallback = if z.y.abs() < 0.999 { Vec3::Y } else { Vec3::X };
+            fallback.cross(z).normalize()
+        });
         let y = z.cross(x);
         self.r = Quat::from_mat3(&Mat3::from_cols(x, y, z));
     }

@@ -1,14 +1,17 @@
-//! B parameter consumer using actual Bevy resolution and change tracking.
-//! History sources are separate: edit_roof itself is not a recording producer.
+//! Applies roof parameter edits atomically and publishes geometry/type feedback.
+//! History is recorded by explicit owner events, so replay cannot record itself.
 use crate::{
     BuildingFrame, BuildingReport, Roof, RoofGeometryChanged, RoofSound, WallCollectionState,
-    WallGableDirty, WallRoofMap,
+    WallGableDirty, WallRoofMap, roof_record::RoofRecord,
 };
 use bevy_ecs::prelude::*;
-use country_core::recovered_building::{
-    building_wall_state::WallId,
-    roof_edit_rules::{EditFeedback, EditOutcome, HeightCrossing, RoofEditEvent, apply_edit},
-};
+use country_core::resources::walls::publication_fields::WallId;
+use country_core::resources::roofs::geometry::edit_rules::EditFeedback;
+use country_core::resources::roofs::geometry::edit_rules::EditOutcome;
+use country_core::resources::roofs::geometry::edit_rules::HeightCrossing;
+use country_core::resources::roofs::geometry::edit_rules::RoofEditEvent;
+use country_core::resources::roofs::geometry::edit_rules::apply_edit;
+use std::collections::HashSet;
 
 #[derive(Event, Clone, Copy, Debug)]
 pub struct EditRoof(pub RoofEditEvent);
@@ -20,8 +23,7 @@ pub struct RoofEditFeedback {
     pub feedback: EditFeedback,
 }
 
-/// Original threshold event fields. The visual type-switch consumer is
-/// recovered separately; retaining this event does not claim GPU ownership.
+/// A pitch threshold crossing used to update derived type and wall height.
 #[derive(Event, Clone, Copy, Debug)]
 pub struct RoofHeightCrossed {
     pub wall: WallId,
@@ -45,7 +47,7 @@ pub struct RoofParameterEdits {
 #[derive(Resource, Default, Debug)]
 pub struct RoofTypeTransitions {
     pub applied: Vec<RoofHeightCrossed>,
-    /// Failed source resolution for the original source_flag==1 Flat branch.
+    /// Flat roofs whose source-height adjustment needs a missing wall owner.
     pub pending_wall_height_owner: Vec<WallId>,
 }
 
@@ -57,8 +59,7 @@ pub fn register(app: &mut bevy_app::App) {
         .init_resource::<RoofTypeTransitions>();
 }
 
-/// Recovered CPU side of switch_roof_type. Drawable/VAO/transient mesh commands
-/// remain backend-owned. The existing Changed<Roof> consumer replaces CPU tiles.
+/// Updates CPU type feedback. Geometry changes rebuild tiles in the visual stage.
 pub fn switch_type_cpu(
     mut events: EventReader<RoofHeightCrossed>,
     roofs: Query<&Roof>,
@@ -71,40 +72,48 @@ pub fn switch_type_cpu(
 ) {
     state.applied.clear();
     state.pending_wall_height_owner.clear();
-    for event in events.read() {
+    // Parameters are already at the batch's final state. Only the last
+    // crossing for each roof can drive its derived type and source-height owner.
+    let events: Vec<_> = events.read().copied().collect();
+    let mut seen = HashSet::new();
+    let mut latest: Vec<_> = events
+        .into_iter()
+        .rev()
+        .filter(|event| seen.insert(event.entity))
+        .collect();
+    latest.reverse();
+    for event in &latest {
         let Ok(roof) = roofs.get(event.entity) else {
             report
                 .faults
                 .push(format!("Roof type invalid entity {:?}", event.entity));
-            return;
+            continue;
         };
-        let height = f32::from_le_bytes(roof.0[0x30..0x34].try_into().unwrap());
-        let pitched = country_core::recovered_building::roof_state::ty_observed(height);
+        let record = RoofRecord(&roof.0);
+        if !crate::roof_geometry_is_finite(&roof.0) {
+            report
+                .faults
+                .push(format!("Invalid current roof geometry {}", event.wall.0));
+            continue;
+        }
+        let pitched = country_core::resources::roofs::roof_shape::ty_observed(record.pitch());
         if pitched != (event.crossing == HeightCrossing::Up) {
             report.faults.push(format!(
                 "Roof type event disagrees with current state {}",
                 event.wall.0
             ));
-            return;
+            continue;
         }
-        let ridge = f32::from_le_bytes(roof.0[0x34..0x38].try_into().unwrap());
-        if ridge == 1.0 {
+        let Some(pivot) = record.sound_pivot() else {
+            report.faults.push(format!(
+                "Roof type has invalid sound pivot {}",
+                event.wall.0
+            ));
+            continue;
+        };
+        if record.ridge() == 1.0 {
             gable.write(WallGableDirty(event.wall));
         }
-        let shape = u32::from_le_bytes(roof.0[8..12].try_into().unwrap()) as usize;
-        if shape > 1 {
-            report
-                .faults
-                .push("Roof type has unsupported pivot shape".into());
-            return;
-        }
-        let field = |offset| f32::from_le_bytes(roof.0[offset..offset + 4].try_into().unwrap());
-        let world_height = country_core::recovered_building::surface::height(&roof.0);
-        let pivot = [
-            field(12 + shape * 8) + world_height * 0.0,
-            field(0x4c) + world_height,
-            field(16 + shape * 8) + world_height * 0.0,
-        ];
         let sound = RoofSound {
             entity: event.entity,
             wall: event.wall,
@@ -148,29 +157,45 @@ pub fn consume(
     results.applied.clear();
     for event in events.read() {
         let wall = WallId(event.0.wall_id);
-        // Original entity lookup/query unwrap fails; preserve the failed
-        // consumer boundary as a diagnostic rather than silently skipping it.
+        let valid_scalars = [event.0.profile, event.0.height, event.0.ridge, event.0.eave]
+            .into_iter()
+            .all(|edit| edit.mode == 0 || edit.value.is_finite());
+        if !valid_scalars || (event.0.tip.mode != 0 && !event.0.tip.value.is_finite()) {
+            report
+                .faults
+                .push(format!("Invalid roof edit geometry {}", wall.0));
+            continue;
+        }
+        // A rejected event is reported without discarding later edits.
         let Some(entity) = associations.entity(wall) else {
             report
                 .faults
                 .push(format!("Roof edit missing association {}", wall.0));
-            return;
+            continue;
         };
         let Ok(mut roof) = roofs.get_mut(entity) else {
             report
                 .faults
                 .push(format!("Roof edit invalid entity {entity:?}"));
-            return;
+            continue;
         };
         let mut observed_tick = 0;
-        let outcome = apply_edit(
-            &mut roof.bypass_change_detection().0,
-            &event.0,
-            &mut observed_tick,
-            frame.tick,
-        );
+        let mut candidate = roof.0;
+        if !crate::roof_geometry_is_finite(&candidate) {
+            report
+                .faults
+                .push(format!("Invalid current roof geometry {}", wall.0));
+            continue;
+        }
+        let outcome = apply_edit(&mut candidate, &event.0, &mut observed_tick, frame.tick);
+        if !crate::roof_geometry_is_finite(&candidate) {
+            report
+                .faults
+                .push(format!("Roof edit produced invalid geometry {}", wall.0));
+            continue;
+        }
         if outcome.changed_fields != 0 {
-            roof.set_changed();
+            roof.0 = candidate;
         }
         if outcome.rebuild_gable {
             gable.write(WallGableDirty(wall));
@@ -182,8 +207,8 @@ pub fn consume(
                 feedback: *value,
             });
         }
-        // Actual original resolved suffix emits this for every valid event,
-        // including Keep; it is independent of Changed<Roof>.
+        // Every accepted edit invalidates dependent geometry, even a Keep
+        // event whose parameters compare equal and do not mark Roof changed.
         let update = RoofGeometryChanged {
             wall,
             entity,

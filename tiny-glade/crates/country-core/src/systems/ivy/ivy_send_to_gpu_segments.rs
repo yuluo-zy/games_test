@@ -1,28 +1,8 @@
-//! B `ivy_send_to_gpu_segments` 0x140a9b4e0: collect every ivy growth segment
-//! and upload 48-byte GPU rows to the IvySegmentSsbo buffer.
-//!
-//! O-level facts (2026-10-15 re-analyst, chapter ivy_send_to_gpu_segments.rs.md):
-//! - `IvyStorage::total_segment_count` collect;
-//! - SSBO key (rne-read qword): IvySegmentSsbo = 0x2002d2fbdff3d80f, registered
-//!   under the full type path string in the ssbo name table;
-//! - GPU element = 48 B (`count * 0x30`); capacity check + buffer write.
-//!
-//! The GPU element is 48 B (`count * 0x30`), matching the shader struct in
-//! `reconstruction/human-readable-shaders/shaders/ivy/instanced_ivy_branch.raster.hlsl`:
-//! `{ start_pos: float3, start_thickness: float, end_pos: float3,
-//!   end_thickness: float, wall_normal: float3, arch_height: float }`. The CPU
-//! mapping is verified for start/end position and the point thicknesses;
-//! `wall_normal` (tangent perpendicular) is 待取证 and `arch_height` is the
-//! owning wall's arch (`ivy.source_60` = wall id). The GPU commit needs a
-//! `GraphicsDevice`, supplied by the render world; `upload_ivy_segments` is
-//! the library-side business mirroring `rasterize_buildings::upload_buildings`.
-//!
-//! **D 组 render handoff**: the native ivy chain registers the segment/leaf
-//! upload passes as part of the render loop (GPU 真机后置). The render world
-//! (D 组, `systems/render_loop/*`) must call `upload_ivy_segments` /
-//! `upload_ivy_leaves` with its `GraphicsDevice` after the grower/spawner CPU
-//! systems; this crate only owns the CPU producer and the 48 B layout.
-
+//! Current B IvySegmentSsbo identity and fixed48B ×40000 constructor.
+//! Original TypedStorageBuffer@14161a3c0 is451B; NAME is the19B
+//! `Ivy Segments Buffer`, usage0x22/memory1/alignment4, None no upload.
+//! Existing CPU segment packing below still requires independent original
+//! validation; fixing this type/factory does not certify its guessed normal.
 use crate::asset_libraries::ssbo_library::{AssetSsboLibrary, SsboType};
 use crate::render::ssbo::rhapsody_boundary::GraphicsDevice;
 use crate::render::ssbo::{InstanceBuffer, StorageElement};
@@ -34,16 +14,15 @@ use glam::Vec3;
 
 /// Verified IvySegmentSsbo key (rne-read qword).
 pub const IVY_SEGMENT_SSBO_ID: u64 = 0x2002d2_fbdf_f3d80f;
-/// The full type-path string the ssbo name table carries (O).
-pub const IVY_SEGMENT_SSBO_NAME: &str =
-    "country_core::systems::ivy::ivy_send_to_gpu_segments::IvySegmentSsbo";
+/// Original buffer NAME, separate from the canonical Rust type identity.
+pub const IVY_SEGMENT_SSBO_NAME: &str = "Ivy Segments Buffer";
 
 /// GPU segment element, 48 B (O: `count * 0x30`; shader `instanced_ivy_branch`).
 /// Field order matches the shader struct; `wall_normal`/`arch_height` mapping
 /// is 待取证.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct IvySegmentGpu {
+#[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct IvySegmentSsbo {
     pub start_pos: Vec3,
     pub start_thickness: f32,
     pub end_pos: Vec3,
@@ -55,25 +34,30 @@ pub struct IvySegmentGpu {
     pub arch_height: f32,
 }
 
-impl StorageElement for IvySegmentGpu {
+pub use IvySegmentSsbo as IvySegmentGpu;
+
+impl StorageElement for IvySegmentSsbo {
     const NAME: &'static str = IVY_SEGMENT_SSBO_NAME;
-    const BUFFER_LEN: usize = 0;
+    const BUFFER_LEN: usize = 40_000;
 }
-impl SsboType for IvySegmentGpu {
-    type Storage = InstanceBuffer<IvySegmentGpu>;
+impl SsboType for IvySegmentSsbo {
+    type Storage = InstanceBuffer<IvySegmentSsbo>;
     fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
-        InstanceBuffer::<IvySegmentGpu>::new_storage_buffer(device, initial)
+        super::ivy_send_to_gpu_leaf::create_ivy_instance_storage::<IvySegmentSsbo>(device, initial)
     }
 }
 
 /// Pack one ivy's consecutive points into 48 B GPU segment rows. The segment
 /// start/end are the deque-ordered point positions; the animated point
 /// thickness fills the start/end thickness (the branch shader lerps the
-/// thickness across the segment). `wall_normal` is the segment's unit tangent
-/// perpendicular (待取证 for the exact native value) and `arch_height` is the
-/// owning wall's arch height (`ivy.source_60` = wall id), falling back to 0.0
-/// when the wall is gone.
-pub fn pack_ivy_segments(ivy: &Ivy, walls: &PublicWalls) -> Vec<IvySegmentGpu> {
+/// thickness across the segment). `wall_normal` is the segment's horizontal
+/// unit tangent perpendicular — confirmed against the shader
+/// `instanced_ivy_branch.raster.hlsl` (`side = normalize(cross(dir,
+/// wall_normal))`, so `wall_normal` must be the horizontal wall-face normal,
+/// read at buffer offset 32). `arch_height` is the owning wall's arch height
+/// (`ivy.source_60` = wall id, shader offset 44, `base = arch_height -
+/// min(hstart, 0.0)`), falling back to 0.0 when the wall is gone.
+pub fn pack_ivy_segments(ivy: &Ivy, walls: &PublicWalls) -> Vec<IvySegmentSsbo> {
     let arch_height = walls
         .get(WallId(ivy.source_60))
         .map_or(0.0, wall_arch_height);
@@ -84,7 +68,7 @@ pub fn pack_ivy_segments(ivy: &Ivy, walls: &PublicWalls) -> Vec<IvySegmentGpu> {
             let d = b.position - a.position;
             let len = d.length().max(1e-20);
             let normal = Vec3::new(-d.z / len, 0.0, d.x / len);
-            IvySegmentGpu {
+            IvySegmentSsbo {
                 start_pos: a.position,
                 start_thickness: a.thickness,
                 end_pos: b.position,
@@ -105,12 +89,12 @@ pub fn upload_ivy_segments(
     ssbos: &mut AssetSsboLibrary,
     device: &dyn GraphicsDevice,
 ) -> usize {
-    let elements: Vec<IvySegmentGpu> = storage
+    let elements: Vec<IvySegmentSsbo> = storage
         .iter()
         .flat_map(|(_, ivy)| pack_ivy_segments(ivy, walls))
         .collect();
     let count = elements.len();
-    let Some(buffer) = ssbos.get_mut::<IvySegmentGpu>() else {
+    let Some(buffer) = ssbos.get_mut::<IvySegmentSsbo>() else {
         return count;
     };
     if count == 0 {
@@ -131,7 +115,7 @@ mod tests {
 
     #[test]
     fn segment_packs_to_48_bytes() {
-        assert_eq!(core::mem::size_of::<IvySegmentGpu>(), 48);
+        assert_eq!(core::mem::size_of::<IvySegmentSsbo>(), 48);
         let mut storage = IvyStorage::new();
         let id = storage.spawn_ivy(Vec3::ZERO, Vec3::X, 1.0..2.0, 3..4, 0);
         let ivy = storage.get_mut(id).unwrap();
@@ -147,8 +131,19 @@ mod tests {
 
     #[test]
     fn verified_key_is_the_documented_constant() {
-        // Original buffer key (rne-read qword); see ivy_send_to_gpu_leaf for
-        // the crate's `SsboId::of` modeling gap.
-        assert_eq!(IVY_SEGMENT_SSBO_ID, 0x2002d2fbdff3d80f);
+        assert_eq!(
+            crate::asset_libraries::ssbo_library::SsboId::of::<IvySegmentSsbo>()
+                .0
+                 .0,
+            IVY_SEGMENT_SSBO_ID
+        );
+    }
+}
+
+impl crate::render::pass_builder::pass_resource_access::SsboType for IvySegmentSsbo {
+    fn rg_buffer_hash() -> u64 {
+        crate::asset_libraries::ssbo_library::SsboId::of::<Self>()
+            .0
+             .0
     }
 }

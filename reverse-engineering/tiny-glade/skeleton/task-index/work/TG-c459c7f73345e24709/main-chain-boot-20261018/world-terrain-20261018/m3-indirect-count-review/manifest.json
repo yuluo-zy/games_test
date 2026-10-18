@@ -1,0 +1,52 @@
+{
+  "scope": "Independent source-only audit; no production/Cargo/GPU",
+  "findings": [
+    {
+      "priority": "P1",
+      "issue": "Duplicate scratch name makes second adapted counted packet fail in the same graph",
+      "candidate": "raster_host-count-adapter.patch",
+      "proof": "current VulkanGraphBackend::declare rejects duplicate specifications names; begin_frame clears only once"
+    }
+  ],
+  "reviewed_candidate_sha256": {
+    "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-781951749030cc43d4/render-world-post-20261018/indirect-count-adapter/indirect_count_spirv.rs.candidate": "e8df77db0b9528f5a8731b86876eb4bf332ab2fda61de5780a848baa97ae7d31",
+    "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-781951749030cc43d4/render-world-post-20261018/indirect-count-adapter/indirect_count_spirv-module.patch": "858e7d40bd5ac57abba66fca7642928cfc35e4f73e4d175b11a3dd9bac9d8d18",
+    "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-781951749030cc43d4/render-world-post-20261018/indirect-count-adapter/shader-manifest.json": "a32356a79ffc620f5c3b6a8e40ba161df7054e7fb102fc0dbb58cdf56f5909e5",
+    "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-781951749030cc43d4/render-world-post-20261018/indirect-count-adapter/original-evidence-manifest.json": "27bbfaf954341498ea97dd75ef2b86df16d2d37532cb952707cf3395d9bcb4e9",
+    "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-781951749030cc43d4/render-world-post-20261018/indirect-count-adapter/render_host.before.rs": "a351ae1eb673f2ace9bea1f15824f7e9e2de1abca7151672948cc83395b807e4",
+    "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-781951749030cc43d4/render-world-post-20261018/indirect-count-adapter/render_host.rs.candidate": "50c5d9eea51e985a4609202ea49b57c9b965b67457669fa48358f2e0903e5e7c",
+    "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-781951749030cc43d4/render-world-post-20261018/indirect-count-adapter/rg-mod-export.patch": "562cdfab7f4fc1273a55ba9a8b72ce4f6e290c00bc72ad59d468901c3bf887ec",
+    "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-781951749030cc43d4/render-world-post-20261018/indirect-count-adapter/render_host-count-adapter.patch": "5ad3b4ae82d3f5b1e9e7c09df72626a849808065112400b9f972372169d9c583",
+    "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-781951749030cc43d4/render-world-post-20261018/indirect-count-adapter/indirect_count.rs.candidate": "9ff110e3df9ee16d47ab54bda19ac87afa5363871563bcddd5f022fd8e8840e2",
+    "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-781951749030cc43d4/render-world-post-20261018/indirect-count-adapter/indirect_count-module.patch": "577d264cab4a9265fc9d47d3dff22cc52ddd55af8854296421a1782bd80d58ae",
+    "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-781951749030cc43d4/render-world-post-20261018/indirect-count-adapter/original_raster_gpu.before.rs": "ed2b8ba1618b93328ab1e340e78ed16926e4b376f8dc5f40d3edfa9d38401214",
+    "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-781951749030cc43d4/render-world-post-20261018/indirect-count-adapter/nani-draw-original-140904ae0.asm": "6aa0370446d9b2833fdaed716916c02d463f969b71e319d833beca4385857bf7",
+    "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-781951749030cc43d4/render-world-post-20261018/indirect-count-adapter/CONTRACT.md": "2b07cdb921100a7415ab73464ac5e5a01ea3b0084657ef685eea3b01edb44e30",
+    "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-781951749030cc43d4/render-world-post-20261018/indirect-count-adapter/original_raster_gpu.rs.candidate": "542e2b7726183c04ed6dfb35c071e31ce71500f57db5b09d005c213797f2ebf3",
+    "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-781951749030cc43d4/render-world-post-20261018/indirect-count-adapter/rg_mod.before.rs": "6f37a69cb2f6bfe839ffa37bf23b478282875d47eb4878b60c2e1b5484fb13d0",
+    "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-781951749030cc43d4/render-world-post-20261018/indirect-count-adapter/candidate-manifest.json": "e6dde0282a1013f858b897956bbc5c38f4362e7eaa8917988f47efb497e4040c",
+    "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-781951749030cc43d4/render-world-post-20261018/indirect-count-adapter/raster_host.before.rs": "48621f6f097adf9ed9fdf527efe9a7e98521364a6aaf34d95997d10f6de8dcc8",
+    "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-781951749030cc43d4/render-world-post-20261018/indirect-count-adapter/indexed_indirect_count.spv": "740e3aa4ee4d1da91f39c59d27f4e53979c1b2344730a4ce9e3937942265b8dd",
+    "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-781951749030cc43d4/render-world-post-20261018/indirect-count-adapter/raster_host.rs.candidate": "afb87de6be20ad8e81a49f77575648155f709621a6ae68aeacfe42ee83e6b109",
+    "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-781951749030cc43d4/render-world-post-20261018/indirect-count-adapter/raster_host-count-adapter.patch": "cd2aa45757f824e177bcb4f3ba9c8cf26ae44218a78c599af3058202eb278df7",
+    "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-781951749030cc43d4/render-world-post-20261018/indirect-count-adapter/indexed_indirect_count.comp": "192916b75246357d9a26501f1fa35b959d31b91639a00e9ad03404e87a2abc61",
+    "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-781951749030cc43d4/render-world-post-20261018/indirect-count-adapter/count-multiframe-strict-gpu.patch": "024677689f197daa9ac44073d271a22c0e1c226e3403df08ee51b0bb04e2686e"
+  },
+  "reviewed_current_source_sha256": {
+    "games_test/tiny-glade/crates/rhapsody/src/rg/vulkan.rs": "19afff3399f87629fa6f384913ecffd556550c33367e48a2a313bf1a61e35bdb",
+    "games_test/tiny-glade/crates/rhapsody/src/bindless.rs": "30689c7220669eb4e2b1f67bb92704dce6ddfe32585d5e12169dae3053f08ba7",
+    "games_test/tiny-glade/crates/rhapsody/src/bindless_parameters.rs": "d0611397d123d169bc6221ac0695ee22166bdc3d0ce2eed2fc21e61d544af969",
+    "games_test/tiny-glade/crates/rhapsody/src/raw/access_table.rs": "a25035e0cdbb224d9634014188b6adc35f8297132ebcb55c7a97b035baa2234c",
+    "games_test/tiny-glade/crates/tiny-glade/src/raster_host.rs": "2e15246f03846c81b34701cef466a2b7b825ee2199833467b6a4a4bbeb3a65a8",
+    "games_test/tiny-glade/crates/tiny-glade/src/production_renderer.rs": "c0f3f0c631de7bb57c6cd04fce3110957e940239254e7d54c0f3a54d7cc6bcf0"
+  },
+  "independent_native_code_sha256": "9d0caad61fff3aadea5943b38ea5785fdae52fea53717ca374ae974a9b2f7263",
+  "independent_spirv_words": 751,
+  "independent_spirv_rust_matches_binary": true,
+  "p1_followup": {
+    "status": "source fix independently accepted; actual GPU pending",
+    "candidate_manifest_sha256": "74dbb2c44db9ca3192c485678b2fb3cf1db5be4f713a3da8594f0dc3b0732e64",
+    "raster_patch_sha256": "5f6a5dbb317a45d75b817a059bc52e1cf258463d24d04f33469e96674302f3ce",
+    "fixture_patch_sha256": "5ebfe6368dda0d6fc89a5ae8b707ebef43f03c25e4dfd180cbf77a8da4f0750e"
+  }
+}

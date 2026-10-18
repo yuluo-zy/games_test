@@ -1,0 +1,278 @@
+{
+  "scope": "current core startup adapter only; static reduced graph, no Cargo/Bevy execution",
+  "sources": [
+    {
+      "role": "before",
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/core-systems-resources-recovery-2026-10-18/mode-registration-before/crates/country-core/src/startup/run_game.rs",
+      "sha256": "48e60c9ae2587a6ef6bd62d769843513d0b3064ea9422fe10c3803909ee81044"
+    },
+    {
+      "role": "current",
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/startup/run_game.rs",
+      "sha256": "3f45ac3fa3f8732ea4fd0dae1731a34d3fdb17b01734625dca86ad7d92071c7e"
+    },
+    {
+      "role": "before",
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/core-systems-resources-recovery-2026-10-18/mode-registration-before/crates/country-core/src/systems/terrain/mod.rs",
+      "sha256": "d6b0862633bd6719fde3f8f953e16a221b3ae52ae678790d41f6445e6434b441"
+    },
+    {
+      "role": "current",
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/terrain/mod.rs",
+      "sha256": "0461990f11096590f21450568499525a9e52aad0e32c0dd22982b1fcaadf4d70"
+    },
+    {
+      "role": "before",
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/core-systems-resources-recovery-2026-10-18/mode-registration-before/crates/country-core/tests/core_editing_schedule.rs",
+      "sha256": "35951e41a7ec7201ffd5e462259d581613cd52095726581be04f35db689ff912"
+    },
+    {
+      "role": "current",
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/tests/core_editing_schedule.rs",
+      "sha256": "7a108c271b7fc5cbe1ce815102916b95f8af3ac40b01ce3b6d094a3c90ba20ee"
+    },
+    {
+      "role": "read_dependency",
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/mode_manager.rs",
+      "sha256": "7d318df7241b7b227d38adf9fc9865577c00b76fd217f895c394217c38d65c39"
+    },
+    {
+      "role": "read_dependency",
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/backend/input/mod.rs",
+      "sha256": "cde1993bcb43318e18e2bfd419cd22545bcd55cccdfa5053850ecd2d5b31bd0d"
+    },
+    {
+      "role": "read_dependency",
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/history.rs",
+      "sha256": "49764e843ead26ae1e9a6a5c6baffab586c79aaeb44b0d8680fbf667f63cb219"
+    },
+    {
+      "role": "read_dependency",
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/history/mod.rs",
+      "sha256": "19dc5b631f7051719525f3f9882fa9b5bb29155c1fcea5486716b1b9e8d697d9"
+    },
+    {
+      "role": "read_dependency",
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/gui.rs",
+      "sha256": "19a572de88a20eea6552117889f0be484c133e3371eb59fde417eb87520a96db"
+    },
+    {
+      "role": "read_dependency",
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/ui/resources/ui_state.rs",
+      "sha256": "16ca52771e68dfa4e8692ea89dff6e671b29f9bad5978982139281461bff4ea5"
+    },
+    {
+      "role": "read_dependency",
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/run_game.rs",
+      "sha256": "26d1f23919d86eae2b993b2cc64c93692d5dab84e49898d12f9ff5bae7f11137"
+    }
+  ],
+  "edges": [
+    [
+      "Prepare",
+      "ControlEarlySend"
+    ],
+    [
+      "ControlEarlySend",
+      "Clock"
+    ],
+    [
+      "Clock",
+      "Translate"
+    ],
+    [
+      "Translate",
+      "Resolve"
+    ],
+    [
+      "Resolve",
+      "RecordReplay"
+    ],
+    [
+      "RecordReplay",
+      "Derive"
+    ],
+    [
+      "Derive",
+      "Consume"
+    ],
+    [
+      "Consume",
+      "Finish"
+    ],
+    [
+      "Derive",
+      "UiProjectionSync"
+    ],
+    [
+      "UiProjectionSync",
+      "ModeManager"
+    ],
+    [
+      "Derive",
+      "TerrainHover"
+    ],
+    [
+      "TerrainHover",
+      "FocusProducer"
+    ],
+    [
+      "FocusProducer",
+      "FocusMode"
+    ],
+    [
+      "FocusProducer",
+      "ModeManager"
+    ],
+    [
+      "ModeManager",
+      "LateSend"
+    ],
+    [
+      "ControlEarlySend",
+      "FocusMode"
+    ],
+    [
+      "LateSend",
+      "FocusMode"
+    ],
+    [
+      "FocusMode",
+      "DrawUi"
+    ],
+    [
+      "DrawUi",
+      "EditUi"
+    ],
+    [
+      "EditUi",
+      "Arrow"
+    ],
+    [
+      "Arrow",
+      "TerrainEdit"
+    ],
+    [
+      "EditUi",
+      "TerrainEdit"
+    ],
+    [
+      "Derive",
+      "HistoryCursor"
+    ],
+    [
+      "ControlEarlySend",
+      "HistoryCursor"
+    ],
+    [
+      "LateSend",
+      "HistoryCursor"
+    ],
+    [
+      "HistoryCursor",
+      "HistoryReplay"
+    ],
+    [
+      "ControlEarlySend",
+      "HistoryReplay"
+    ],
+    [
+      "LateSend",
+      "HistoryReplay"
+    ],
+    [
+      "HistoryReplay",
+      "HistoryApply"
+    ],
+    [
+      "HistoryApply",
+      "HistoryPop"
+    ],
+    [
+      "HistoryPop",
+      "HistoryRecord"
+    ],
+    [
+      "HistoryRecord",
+      "Finish"
+    ],
+    [
+      "HistoryReplay",
+      "TerrainEdit"
+    ],
+    [
+      "TerrainEdit",
+      "TerrainChanged"
+    ],
+    [
+      "TerrainChanged",
+      "TerrainReadback"
+    ],
+    [
+      "TerrainChanged",
+      "HistoryPop"
+    ]
+  ],
+  "topological_order": [
+    "Prepare",
+    "ControlEarlySend",
+    "Clock",
+    "Translate",
+    "Resolve",
+    "RecordReplay",
+    "Derive",
+    "Consume",
+    "UiProjectionSync",
+    "TerrainHover",
+    "FocusProducer",
+    "ModeManager",
+    "LateSend",
+    "FocusMode",
+    "HistoryCursor",
+    "DrawUi",
+    "HistoryReplay",
+    "EditUi",
+    "HistoryApply",
+    "Arrow",
+    "TerrainEdit",
+    "TerrainChanged",
+    "TerrainReadback",
+    "HistoryPop",
+    "HistoryRecord",
+    "Finish"
+  ],
+  "cyclic_nodes": [],
+  "function_type_set_note": "send_mode_just_changed_event has an existing early InputControl instance and a late configure_mode_manager instance. Current chain uses instance-local edges; after(send function type) intentionally waits for both. A global ModeManager.before(send function type) would point back into InputControl and cycle; current code does not add it.",
+  "incorrect_extra_mode_before_early_send_would_cycle": [
+    "Arrow",
+    "Clock",
+    "Consume",
+    "ControlEarlySend",
+    "Derive",
+    "DrawUi",
+    "EditUi",
+    "Finish",
+    "FocusMode",
+    "FocusProducer",
+    "HistoryApply",
+    "HistoryCursor",
+    "HistoryPop",
+    "HistoryRecord",
+    "HistoryReplay",
+    "LateSend",
+    "ModeManager",
+    "RecordReplay",
+    "Resolve",
+    "TerrainChanged",
+    "TerrainEdit",
+    "TerrainHover",
+    "TerrainReadback",
+    "Translate",
+    "UiProjectionSync"
+  ],
+  "original_global_schedule_claimed": false,
+  "current_host_calls_core_startup_found": false,
+  "current_host_calls_terrain_helpers_found": false,
+  "production_edited": false,
+  "cargo_run": false
+}

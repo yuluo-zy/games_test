@@ -1,60 +1,49 @@
-//! B `startup/run_game` — 宿主可调的核心启动链（order 8 收口）。
-//!
-//! 原版 run_game_thread 0x1405a3440（39KB）装配整个游戏线程；本文件给出库内可接的
-//! `register_core_startup`（会话/存档/历史/命令器/音频/会话切换注册），供宿主（tiny-glade）调用。
-//! 域系统（墙/屋顶/地形/水/常春藤…）由各域恢复后经 `add_game_startup_systems` 并入；
-//! 未注册不冒充原 28-系统顺序。
-//!
-//! 装配顺序按 ① T2 契约 round4/contracts/t2-run_game_thread-register_core_startup-CONTRACT.md §1
-//! （run_game_thread 359 直接调用序 O）对齐本地可落地部分：
-//! 会话流 → MetaCommander → GameConfig → 事件注册 → 域资源/系统 → 后台线程（init_save_thread）。
+//! 核心资源初始化、一次性启动、会话请求和每帧更新的分阶段装配。
+//! 各阶段只复用现有业务系统，宿主负责运行顺序和图形/音频设备资源。
 
 use crate::{
     game_config::GameConfig,
     meta_commander::{MetaCommand, MetaCommander},
-    resources::session::SessionFlowPlugin,
+    resources::history::History,
     startup::startup_session,
     systems::{
         audio::{
             add_audio_events, add_audio_systems, music::music_system::music_audio_init_system,
         },
         backend::input::{add_input_cpu_consumers, register_input_events},
-        debug::sheep_controls::{sheep_controls, SheepControl},
+        debug::sheep_controls::{SheepControl, sheep_controls},
         garden::{add_garden_cpu_systems, register_garden_events},
         history::{add_history_cpu_systems, register_history_events},
         ivy::registration::{add_ivy_systems, register_ivy_storage},
         save::{
             add_save_load_events_and_resources, add_save_load_systems_impl,
-            save_game::{sheep_save_section_system, SheepSaveSectionValue},
+            save_game::{SheepSaveSectionValue, sheep_save_section_system},
         },
         terrain::{add_terrain_cpu_systems, add_terrain_tool_systems, register_terrain_events},
+        wall::registration::{add_wall_cpu_systems, register_wall_cpu_resources},
     },
 };
 use bevy_ecs::prelude::*;
 
-/// `run_game_thread` 新会话初始命令集（X7，RE-X5X7 §2，RNE 原字节）。
-/// 数组 3 × 0x38B（cmd0@+0xb00/cmd1@+0xb38/cmd2@+0xb70）；cmd2 = **变体 8**
-/// （0x8000000000000008，0x1405a340c 直写），+0x08 = [rbx+0x2230] 16B、
-/// +0x18 = [rbx+0x2240] 16B、+0x28 = rdi。cmd0/cmd1 的 tag/逐字段载荷需 ReVa
-/// p-code 定点（残留），由调用方按已定位源字段传入。
+/// 组合三条初始命令。最后一条的业务类型尚未确认，保持完整载荷由调用方解释。
 pub fn new_session_on_load_commands(
-    cmd0: MetaCommand,
-    cmd1: MetaCommand,
-    cmd2_payload_a: [u64; 2],
-    cmd2_payload_b: [u64; 2],
-    cmd2_payload_c: u64,
+    first_command: MetaCommand,
+    second_command: MetaCommand,
+    final_payload_header: [u64; 2],
+    final_payload_body: [u64; 2],
+    final_payload_tail: u64,
 ) -> [MetaCommand; 3] {
     [
-        cmd0,
-        cmd1,
+        first_command,
+        second_command,
         MetaCommand {
             tag: 0x8000_0000_0000_0008,
             payloads: [
-                cmd2_payload_a[0],
-                cmd2_payload_a[1],
-                cmd2_payload_b[0],
-                cmd2_payload_b[1],
-                cmd2_payload_c,
+                final_payload_header[0],
+                final_payload_header[1],
+                final_payload_body[0],
+                final_payload_body[1],
+                final_payload_tail,
                 0,
             ],
         },
@@ -70,88 +59,137 @@ pub fn build_new_session_on_load(
     next.append_replay_terminator();
 }
 
-/// 注册 core 资源/事件与可挂载系统（库内可接部分）。
-/// - 会话流：SessionFlowPlugin::build（ActiveSession/SavedSessionList/NextSession/
-///   AutoSaveState + 会话事件）
-/// - 命令器：MetaCommander 资源 + configure_session_switch_systems（会话切换链，卡2）
-/// - GameConfig（native 0x140522ad0 载入；crate 语义结构 Default 注册）
-/// - 事件：add_save_load_events_and_resources（存档/读档事件）、register_input_events
-///   （输入游标族）、register_history_events（历史事件集）、add_audio_events（16 音频事件）
-/// - 音频：music_audio_init_system<B> + add_audio_systems::<S, B>（S = 宿主 Studio /
-///   B = 宿主 MusicBackend，feature native-audio 提供 FmodMusicBackend）
-/// - 会话切换：startup_session::load_game_session（13-param，NewSessionStartedCmd /
-///   SessionLoadedCmd / DisplayCorruptedSaveFileWarning 生产者）
-/// - 存档系统：add_save_load_systems_impl（save_game 节拍器 + load_game + init_save_thread
-///   后台线程生产）
-/// - 地形：register_terrain_events + add_terrain_cpu_systems + add_terrain_tool_systems
-/// - **A 块（⑤轮，③ 基线盘点 F2 闭合）孤儿系统并入生产 Schedule**：
-///   ivy（register_ivy_storage + add_ivy_systems 7 系统链；原 22 系统 0x140944070 序
-///   待①契约）、garden（register_garden_events + add_garden_cpu_systems::<(),()>）、
-///   input（add_input_cpu_consumers）、sheep（SheepControl 资源 + sheep_controls）、
-///   audio（add_audio_events + add_audio_systems）。宿主按各域资源面注入运行期资源。
-pub fn register_core_startup<B, S>(world: &mut World, schedule: &mut Schedule)
-where
+/// 分别装配一次性启动、会话请求和每帧更新，宿主按此顺序运行三个调度表。
+/// 对 Bevy App 分别挂载 Startup、PreUpdate、Update，避免初始化反复覆盖运行状态。
+/// 这里只注册已存在的业务系统，设备、相机等域资源仍由宿主提供。
+pub fn register_core_startup<B, S>(
+    world: &mut World,
+    startup_schedule: &mut Schedule,
+    session_schedule: &mut Schedule,
+    update_schedule: &mut Schedule,
+) where
     B: crate::systems::audio::music::music_player::MusicBackend + Resource + 'static,
     S: crate::resources::audio_resources::Studio + Send + Sync + 'static,
 {
-    // ① T2 契约 §1 装配顺序（run_game_thread 359 调用序 O，本地可落地部分）：
-    // 会话流 → MetaCommander → GameConfig → 事件注册 → 域资源/系统 → 后台线程。
-    //
-    // 1. 会话流资源（SavedSessionList/ActiveSession/NextSession/AutoSaveState + 会话事件）。
-    SessionFlowPlugin.build(world);
-    // 2. 命令器资源 + 会话切换系统（commander_update case 0 写 NextSession）。
+    initialize_core_resources(world);
+    let demo = world.resource::<GameConfig>().dev.demo;
+    crate::systems::mode_manager::configure_mode_manager::<crate::resources::history::EditType, crate::resources::history::MaybePendingSnapshotId>(
+        world,
+        update_schedule,
+        demo,
+    );
+    update_schedule.add_systems(
+        crate::systems::mode_manager::synchronize_mode_manager_ui_context
+            .after(crate::systems::backend::input::InputSystemSet::Derive)
+            .before(crate::systems::mode_manager::mode_manager::<
+                crate::resources::history::EditType,
+                (),
+            >),
+    );
+    register_startup_systems::<B>(startup_schedule);
+    register_session_systems(session_schedule);
+    register_update_systems::<B, S>(update_schedule);
+}
+
+/// 初始化共享资源；已由宿主载入的配置、会话列表和请求不会被默认值覆盖。
+pub fn initialize_core_resources(world: &mut World) {
+    use crate::resources::session::{
+        NextSession, NextSessionKind, NextSessionTail, NextSessionTemplate, SavedSessionList,
+        SessionId,
+    };
+    world.init_resource::<SavedSessionList>();
+    if !world.contains_resource::<NextSession>() {
+        world.insert_resource(NextSession::create(
+            &NextSessionTemplate::new(SessionId(uuid::Uuid::nil()), NextSessionKind::LoadSavedGame),
+            &NextSessionTail::EMPTY,
+        ));
+    }
     world.init_resource::<MetaCommander>();
-    crate::meta_commander::configure_session_switch_systems(schedule);
-    // 3. GameConfig（native 0x140522ad0 从配置文件载入；crate 语义结构，Default 注册）。
     world.init_resource::<GameConfig>();
-    // 4. 事件注册（存档/读档 + 输入游标族 + 历史 + 音频）。
+    // Reuse the UI's real constructor and projection. Preserve a host's live
+    // UI; the local CPU entry needs the same mode consumer as the full host.
+    if !world.contains_resource::<crate::systems::ui::resources::ui_state::UiState>() {
+        world.insert_resource(crate::systems::ui::resources::ui_state::UiState::at_startup());
+    }
+    let context = crate::systems::mode_manager::ModeManagerUiContext::from_ui_state(
+        world.resource::<crate::systems::ui::resources::ui_state::UiState>(),
+    );
+    world.insert_resource(context);
+    world.init_resource::<crate::resources::gui::TimeOfDayScreen>();
     add_save_load_events_and_resources(world);
     register_input_events(world);
     register_history_events(world);
     add_audio_events(world);
-    // 5. 域资源/系统：音频 → 历史回放链 → 会话切换 → 存档 → 地形 →
-    //    A 块孤儿系统（ivy/garden/input/sheep）。
-    schedule.add_systems(music_audio_init_system::<B>);
-    add_audio_systems::<S, B>(schedule);
-    add_history_cpu_systems::<()>(schedule);
-    schedule.add_systems(startup_session::load_game_session);
-    add_save_load_systems_impl(schedule);
-    // 地形 CPU 系统 + 工具 UI/历史生产（terrain 域；宿主注入 AppMode/History/SSBO）。
     register_terrain_events(world);
-    add_terrain_cpu_systems(schedule);
-    add_terrain_tool_systems::<()>(schedule);
-    // A 块：ivy（资源注册 + 7 系统链；原 22 系统 0x140944070 序待①契约）。
+    register_wall_cpu_resources(world);
     register_ivy_storage(world);
-    add_ivy_systems(schedule);
-    // A 块：garden（build 0x140b6d290 CPU 生产面：事件 + Draw/Record 链）。
     register_garden_events(world);
-    add_garden_cpu_systems::<(), ()>(schedule);
-    // A 块：input（translate_input→cursor_moved→delta→reset + mod_key +
-    //   update_cursor_position + 回放族）。
-    add_input_cpu_consumers(schedule);
-    // A 块：sheep（debug 域 sheep_controls；仲裁批准落地；宿主注入控制值）。
+    if !world.contains_resource::<History>() {
+        world.insert_resource(History::<crate::resources::history::MaybePendingSnapshotId>::empty_glade());
+    }
     world.init_resource::<SheepControl>();
-    schedule.add_systems(sheep_controls);
-    // C 块（⑤轮，① c-snapshot-apply-session-consumers 契约 §2）：会话切换消费端——
-    // time_of_day 系统（crate 恢复的 3 参子集；完整 11-param 面待①）。
-    world.init_resource::<crate::systems::time_of_day::TimeOfDayState>();
-    world.init_resource::<crate::systems::time_of_day::TimeOfDayLightingSink>();
-    // ⑥轮收官（① r6-28-system-names §2）：time_of_day 用 `resource_exists<NextSession>`
-    // run 条件（public-session-names entry7，O）。
-    schedule.add_systems(
-        crate::systems::time_of_day::time_of_day.run_if(bevy_ecs::schedule::common_conditions::resource_exists::<crate::resources::session::NextSession>),
-    );
-    // ⑦轮链3（① c-snapshot-apply-session-consumers + r6-28-system-names §2，宿主接线面）：
-    // 会话切换消费者完整链 = load_game_session（生产 NewSessionStartedCmd/SessionLoadedCmd）
-    // → 库内消费端（reset_input_state 用 on_event<NewSessionStartedCmd>、
-    //   time_of_day/input_record_replay 用 resource_exists<NextSession>，已接线）
-    // → **库外 3 消费系统**（add_preplaced_autoclutter [system_clutter] /
-    //   detect_overhang_support_segments [system_wall_constructor] /
-    //   sheep_unstuck [system_critters]，各带 ER<NewSessionStartedCmd>/ER<SessionLoadedCmd>）
-    //   宿主注册点——crate 只保证事件已注册 + 资源在场，不实现库外系统（round5 c 契约 §2）。
-    // B 块（⑤轮，① b-sheep-write-path 契约）：Sheep 节生产链——
-    // sheep_controls 捕获活羊 → SheepControl → sheep_save_section_system →
-    // SheepSaveSectionValue（宿主 assemble 从该资源取 SaveFileSection::Sheep 真实值）。
     world.init_resource::<SheepSaveSectionValue>();
-    schedule.add_systems(sheep_save_section_system);
+    world.init_resource::<Events<crate::systems::save::save_game::DeleteSessionCmd>>();
+    world.init_resource::<Events<crate::resources::session::NewSessionStartedCmd>>();
+    world.init_resource::<Events<crate::resources::session::SessionLoadedCmd>>();
+    world.init_resource::<Events<crate::systems::save::load_game::LoadingGameComplete>>();
+}
+
+/// 只在应用启动阶段执行；额外保护音乐状态，重复运行启动表也不会将其覆盖。
+pub fn register_startup_systems<B>(schedule: &mut Schedule)
+where
+    B: crate::systems::audio::music::music_player::MusicBackend + Resource,
+{
+    use crate::systems::audio::music::music_system::MusicAudioState;
+    use bevy_ecs::schedule::common_conditions::{not, resource_exists, run_once};
+    schedule.add_systems((
+        crate::resources::session::refresh_session_list_system.run_if(run_once),
+        music_audio_init_system::<B>.run_if(not(resource_exists::<MusicAudioState<B::Event>>)),
+    ));
+}
+
+/// 每帧先处理命令，再消费本帧新请求；chain 保证 Commands 在消费者之前提交。
+pub fn register_session_systems(schedule: &mut Schedule) {
+    use bevy_ecs::schedule::common_conditions::resource_exists;
+    schedule.add_systems(
+        (
+            crate::meta_commander::commander_update_system,
+            startup_session::load_game_session
+                .run_if(resource_exists::<crate::resources::session::NextSession>),
+        )
+            .chain(),
+    );
+}
+
+/// 每帧系统不再包含磁盘初始扫描、音乐重建和启动网格加载。
+pub fn register_update_systems<B, S>(schedule: &mut Schedule)
+where
+    B: crate::systems::audio::music::music_player::MusicBackend + Resource + 'static,
+    S: crate::resources::audio_resources::Studio + Send + Sync + 'static,
+{
+    use crate::systems::save::save_game::{DeleteSessionCmd, SavingGameComplete};
+    use bevy_ecs::schedule::{Condition, common_conditions::on_event};
+    schedule.add_systems(
+        (
+            crate::resources::session::delete_session_system.run_if(on_event::<DeleteSessionCmd>),
+            crate::resources::session::refresh_session_list_system
+                .run_if(on_event::<DeleteSessionCmd>.or(on_event::<SavingGameComplete>)),
+        )
+            .chain(),
+    );
+    add_audio_systems::<S, B>(schedule);
+    add_history_cpu_systems::<crate::resources::history::MaybePendingSnapshotId>(schedule);
+    add_save_load_systems_impl(schedule);
+    add_terrain_cpu_systems(schedule);
+    add_terrain_tool_systems::<crate::resources::history::MaybePendingSnapshotId>(schedule);
+    add_wall_cpu_systems(schedule);
+    crate::systems::wall::registration::add_wall_drawing_cpu_systems::<crate::resources::history::MaybePendingSnapshotId>(schedule);
+    add_ivy_systems(schedule);
+    add_garden_cpu_systems::<(), crate::resources::history::MaybePendingSnapshotId>(schedule);
+    add_input_cpu_consumers(schedule);
+    schedule.add_systems((
+        sheep_controls.after(crate::systems::history::finish_replay::finish_replay),
+        sheep_save_section_system.after(sheep_controls),
+        crate::systems::time_of_day::time_of_day::<S>,
+    ));
 }

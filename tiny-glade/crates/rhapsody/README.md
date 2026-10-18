@@ -1,5 +1,10 @@
 # rhapsody
 
+## 2026-10-18 core / rhapsody 调用接线
+
+新增宿主侧 `tiny_glade::render_bridge::CoreRenderBridge`，共用一个 `VulkanGraphSession`，连接 core 计算/光栅 pass、权威 shader 句柄和真实资源导入，并提供构图失败取消。接口调查、调用方式、验证范围及剩余阻塞见 [接线报告](../../reports/core-rhapsody-bridge-2026-10-18/README.md)。这不代表完整 `WorldAccess`、`FramePasses`、游戏主循环或 GPU 帧已经验收。
+
+
 自有渲染框架：把渲染 pass 和资源访问声明编译为录制、屏障、提交及 GPU 完成回收链。目录对应 B 版 `rhapsody/src/{rg,raw}`；shader 资产协议与构建器分别位于嵌套的 `shader-pipeline`、`shader-compiler` 包。
 
 ## 文档入口与完整重构范围
@@ -38,6 +43,16 @@ V0 窗口基线 → V1 设备与回收 → V2 提交/呈现闭环 → V3 图与�
 - `backend.configure_gpu_timing(Some(config))` 开启有界 query ring；`config.pass_spans` 可额外测逐 pass 跨度，提交的真实完成点到达后才可读取和复用。命令与 pass span 分开统计，不能重复相加或冒充多队列帧延迟。Window Lab 用 `--gpu-pass-timing on` 保留有界的带名称样本；历史性能 A/B 保持双方相同观测配置。
 - 未完成旧交换链代际最多保留 4 个。默认生产呈现要求 maintenance1，`FrameLoop::shutdown` 只接受真实 acquire/render/present 完成证明；显式兼容策略无法证明最终关闭时保留所有权并返回错误，详见进度记录。
 
+## 焦点与全屏呈现
+
+宿主设置 OS 窗口样式后，通过当前 `FrameLoop::set_window_mode` 请求 `Windowed`、`Borderless` 或 `Exclusive { monitor }`；焦点事件传给 `FrameLoop::set_focused(bool)`。这两个入口也直接提供在 `Swapchain` 上。`set_window_mode` 是 unsafe：独占请求的 Win32 `HMONITOR` 必须对应有效窗口及显示器。库不设置窗口样式、分辨率或选择显示器。外部创建的 Win32 surface 使用 `Surface::from_win32_raw`；普通 `from_raw` 不推断表面平台。
+
+失焦或请求尺寸为零时暂停新 acquire；已有租约允许完成呈现，全部归还后由 `collect_presentations` 或下一次 acquire 释放独占权。恢复焦点会重新尝试独占。Windows 的扩展和实例依赖齐备时自动启用 `VK_EXT_full_screen_exclusive`，按相同 monitor/policy 查询 capabilities、formats、present modes 并创建交换链。模式变更走现有代际重建与呈现完成协议，释放独占不充当资源回收证明。
+
+`swapchain.fullscreen_status()` 区分宿主请求、焦点、实际独占获取和 fallback。扩展/表面不支持、独占创建或获取被拒、原生独占丢失都会降级为普通呈现代际；`Windowed`/`Borderless` 在扩展启用时明确使用 DISALLOWED。降级原因保留到显式模式重试或真实焦点恢复，避免每帧重建。OOM、SurfaceLost 和 DeviceLost 保留错误类别。请求和实际状态可能在下一次 acquire 重建前不同。
+
+Windows 独占获取/释放及显示器切换的驱动实测仍为 BLOCKED；跨平台状态机和故障测试不等同 Windows 原生验证。
+
 ## 渲染框架性能运行模式
 
 `tests/p0_perf_baseline.rs` 现在包含同一 raster/copy/readback 场景的三条正式路径。三者默认都带 `#[ignore]`，避免混入普通测试：
@@ -58,7 +73,7 @@ cargo test -p rhapsody --release --test p0_perf_baseline -- --ignored --nocaptur
 
 可用环境变量覆盖采样参数：`RHAPSODY_PERF_WARMUP`、`RHAPSODY_PERF_SAMPLES`、`RHAPSODY_PERF_REPEATS`、`RHAPSODY_PERF_SAMPLE_EVERY`、`RHAPSODY_PERF_FRAMES_IN_FLIGHT`（1..=3）、`RHAPSODY_PERF_CACHE=on|off`（plan/subgraph/result 缓存一起开关）。正式模式拒绝低于 300/3000/3 的参数；冒烟用 `RHAPSODY_PERF_ALLOW_SHORT=1`。`RHAPSODY_PERF_ALLOW_DEVICE_CHANGE=1` 才允许复用其他设备上的验收。GPU 缺席默认跳过；CI 严格运行设 `RHAPSODY_REQUIRE_VULKAN=1`。
 
-macOS/Homebrew 下 `ash` 默认找不到 `/opt/homebrew/lib/libvulkan.dylib`，运行 GPU 命令需加 `DYLD_LIBRARY_PATH=/opt/homebrew/lib`；宿主沙箱若禁止 Metal/IOKit，`MTLCreateSystemDefaultDevice()` 会返回 nil，必须在允许 GPU 访问的宿主会话中运行。
+macOS/Homebrew 的 Vulkan loader/MoltenVK 已安装。workspace 的 `.cargo/config.toml` 默认设置 `RHAPSODY_VULKAN_LIBRARY=/opt/homebrew/lib/libvulkan.dylib`，初始化入口优先尝试该路径，再保留系统 fallback；用户环境覆盖优先。直接运行二进制需显式传该变量，不能依赖 Cargo 配置；仅配置 dyld 搜索变量可能被 Cargo 测试环境重写。普通沙箱若禁止 Metal/IOKit，仍需使用允许 GPU 访问的宿主执行。2026-10-18 的实际 Apple M3 严格链验证为 2 passed、0 SKIP，详见 [环境修复报告](../../reports/vulkan-loader-config-2026-10-18/README.md)。
 
 报告分开记录 CPU begin/build/compile/record/submit、等待帧槽、GPU command-span 与逐 pass span、p50/p95/p99 帧间隔、CPU/GPU 每帧分配次数和分配峰值。离屏吞吐入口的 `present_mode` 明确为 `offscreen`；真实 WSI 的 acquire/present 与呈现模式仍由 Window Lab `--performance --gpu-pass-timing on` 覆盖，两者不能把离屏吞吐当作窗口 FPS。
 

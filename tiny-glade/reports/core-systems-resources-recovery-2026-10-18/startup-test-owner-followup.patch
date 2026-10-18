@@ -1,0 +1,11 @@
+--- a/games_test/tiny-glade/crates/country-core/src/startup/tests.rs
++++ b/games_test/tiny-glade/crates/country-core/src/startup/tests.rs
+@@ -127,7 +127,7 @@
+         .unwrap()
+         .insert(deleted.clone());
+     let changed = load_prefabs::reload_prefabs(&root, &mut watcher, &mut library).unwrap();
+-    assert_eq!(changed, [PrefabName::new("new")].into_iter().collect());
++    assert_eq!(changed, [PrefabName::new("new")].into_iter().collect::<std::collections::HashSet<_>>());
+     assert!(Arc::ptr_eq(
+         &previous_deleted,
+         &library.get(&deleted).parts[0].render_mesh

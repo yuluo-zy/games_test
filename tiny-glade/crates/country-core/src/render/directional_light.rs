@@ -11,11 +11,12 @@
 //!    (1,1,1) Vec3 @0x58，target Vec3 @0x64，distance f32 @0x70；movaps 要求 16 对齐，尺寸 0x80。
 //!    旧版把 +0x40 当 position、+0x60 当 `1+target`，字段与偏移都不对。
 
+use bevy_ecs::resource::Resource;
 use glam::{Mat4, Vec3};
 
 /// 太阳方向光。
 #[repr(C, align(16))]
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Resource)]
 pub struct DirectionalLight {
     /// +0x00：`look_at_rh(position, target, Y)`。
     pub view: Mat4,

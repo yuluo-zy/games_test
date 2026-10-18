@@ -7,7 +7,7 @@
 //!
 //! W-B1 轮 3 终验接线：ConstructGateCmd（construct_arches 的
 //! ConstructGateCmd120 产出）→ payload 全解（wall/ordinal/段计数/端点）
-//! → `construct_gate_cpu`（recovered_building/gates.rs，内部按墙高比选
+//! → `construct_gate_cpu`（systems/wall/construction/gates.rs，内部按墙高比选
 //! construct_wooden_gate_doors 或 nani 分支）→ GateCpuOutput：
 //! - bricks（96B）→ WallConstructorOutput；
 //! - leaves（WoodenGateProjection：mesh 顶点/top_positions/端点方向/
@@ -20,12 +20,11 @@
 use country_core::asset_libraries::{
     mesh_library::AssetMeshLibrary, ssbo_library::AssetSsboLibrary,
 };
-use country_core::recovered_building::{
-    wall_structures::MaterializedWallSegment,
-    wall_collection::TerrainHeightGrid512,
-    gates::{GateConstructionInput, construct_gate_cpu},
-    wall_state::WallId as ObservedWallId,
-};
+use country_core::systems::wall::construction::structures::MaterializedWallSegment;
+use country_core::resources::walls::publication_source::TerrainHeightGrid512;
+use country_core::systems::wall::construction::gates::GateConstructionInput;
+use country_core::systems::wall::construction::gates::construct_gate_cpu;
+use country_core::resources::walls::publication_fields::WallId as ObservedWallId;
 use country_core::resources::{
     roofs::commands::{CreateRoofCmd, SwitchRoofTypeCmd},
     terrain_height::TerrainHeightsData,
@@ -102,7 +101,7 @@ pub fn construct_gates(
             positions,
             points_u,
             source_indices: [0, n],
-            range: country_core::recovered_building::wall_segmentation::WallLoopRange {
+            range: country_core::systems::wall::construction::segmentation::WallLoopRange {
                 start: 0,
                 end: n as i32,
                 modulus: n as i32,

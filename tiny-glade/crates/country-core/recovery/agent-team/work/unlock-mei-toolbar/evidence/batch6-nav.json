@@ -1,0 +1,755 @@
+{
+  "backend": "ghidra",
+  "worker": "shared",
+  "access": "read",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "get_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x14233eed0,0x140f9e3e0,0x140f9e610,0x141ea8c60,0x14233a170",
+        "fields": "signature,decompiled_code,callees,callers",
+        "include_call_context": false
+      },
+      "args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x14233eed0,0x140f9e3e0,0x140f9e610,0x141ea8c60,0x14233a170",
+        "fields": "signature,decompiled_code,callees,callers",
+        "include_call_context": false
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program\":\"tiny-glade.exe\",\"functions\":{\"0x14233eed0\":{\"name\":\"ui_nav_update\",\"size\":4561,\"address\":\"14233eed0\",\"signature\":\"void __cdecl ui_nav_update(void)\",\"decompiled_code\":\"\\n// WARNING: Control flow encountered bad instruction data\\n// WARNING: Instruction at (ram,0x00014304deda) overlaps instruction at (ram,0x00014304ded9)\\n// \\n// WARNING: Removing unreachable block (ram,0x00014304df14)\\n// WARNING: Removing unreachable block (ram,0x00014304df51)\\n// WARNING: Removing unreachable block (ram,0x00014304df17)\\n// WARNING: Removing unreachable block (ram,0x00014304df1c)\\n// WARNING: Removing unreachable block (ram,0x00014304e0c5)\\n// WARNING: Removing unreachable block (ram,0x00014304e0d1)\\n// WARNING: Removing unreachable block (ram,0x00014304e09c)\\n// WARNING: Type propagation algorithm not settling\\n// WARNING: Globals starting with '_' overlap smaller symbols at the same address\\n\\nvoid __cdecl toolbar::ui_interaction::ui_nav_update(void)\\n\\n{\\n  byte *pbVar1;\\n  undefined1 uVar2;\\n  undefined4 uVar3;\\n  undefined4 uVar4;\\n  undefined4 uVar5;\\n  longlong *plVar6;\\n  undefined *puVar7;\\n  undefined *puVar8;\\n  undefined *puVar9;\\n  undefined **ppuVar10;\\n  undefined8 uVar11;\\n  undefined **ppuVar12;\\n  char extraout_AL;\\n  char extraout_AL_00;\\n  char extraout_AL_01;\\n  char extraout_AL_02;\\n  char extraout_AL_03;\\n  char extraout_AL_04;\\n  char extraout_AL_05;\\n  char extraout_AL_06;\\n  char extraout_AL_07;\\n  char extraout_AL_08;\\n  char cVar13;\\n  char cVar14;\\n  uint extraout_EAX;\\n  uint extraout_EAX_00;\\n  uint extraout_EAX_01;\\n  uint extraout_EAX_02;\\n  uint uVar15;\\n  undefined8 *puVar16;\\n  undefined8 extraout_RAX;\\n  undefined8 extraout_RAX_00;\\n  longlong *extraout_RAX_01;\\n  longlong extraout_RAX_02;\\n  byte *pbVar17;\\n  undefined ***pppuVar18;\\n  int *piVar19;\\n  uint *puVar20;\\n  undefined **in_RCX;\\n  longlong lVar22;\\n  undefined ***pppuVar23;\\n  code *UNRECOVERED_JUMPTABLE;\\n  undefined ***pppuVar24;\\n  undefined2 uVar25;\\n  undefined8 *in_RDX;\\n  uint *puVar26;\\n  undefined8 uVar27;\\n  undefined **ppuVar28;\\n  byte bVar29;\\n  undefined **ppuVar30;\\n  ulonglong *puVar31;\\n  ulonglong *puVar32;\\n  char *pcVar33;\\n  char *pcVar34;\\n  undefined1 *puVar35;\\n  undefined1 *puVar36;\\n  byte *pbVar37;\\n  longlong lVar38;\\n  undefined **ppuVar39;\\n  undefined **in_R9;\\n  longlong lVar40;\\n  ulonglong uVar41;\\n  uint uVar42;\\n  byte bVar43;\\n  longlong lVar44;\\n  undefined **ppuVar45;\\n  ulonglong uVar46;\\n  longlong lVar47;\\n  undefined8 *puVar48;\\n  longlong in_FS_OFFSET;\\n  longlong unaff_GS_OFFSET;\\n  bool bVar49;\\n  byte in_AF;\\n  bool bVar50;\\n  bool bVar51;\\n  byte in_TF;\\n  byte in_IF;\\n  byte in_NT;\\n  byte in_AC;\\n  byte in_VIF;\\n  byte in_VIP;\\n  byte in_ID;\\n  int iVar53;\\n  undefined1 auVar52 [16];\\n  undefined **in_stack_00000028;\\n  ulonglong auStack_2c0 [5];\\n  undefined **local_298;\\n  undefined *local_288;\\n  undefined8 uStack_280;\\n  undefined8 local_278;\\n  undefined8 uStack_270;\\n  undefined8 local_268;\\n  undefined8 uStack_260;\\n  undefined *local_258;\\n  undefined8 uStack_250;\\n  undefined1 local_248 [16];\\n  undefined8 local_238;\\n  longlong lStack_230;\\n  undefined8 local_228;\\n  undefined8 uStack_220;\\n  undefined8 local_218;\\n  undefined8 uStack_210;\\n  undefined8 local_208;\\n  longlong lStack_200;\\n  undefined *local_1f8;\\n  undefined8 uStack_1f0;\\n  undefined8 local_1e8;\\n  undefined8 uStack_1e0;\\n  undefined8 local_1d8;\\n  undefined8 uStack_1d0;\\n  undefined **local_1c8;\\n  undefined **ppuStack_1c0;\\n  undefined **local_1b8;\\n  undefined **local_1b0;\\n  undefined4 *local_1a8;\\n  undefined8 local_198;\\n  code *local_190;\\n  int local_188;\\n  int iStack_184;\\n  undefined **ppuStack_180;\\n  longlong local_178;\\n  longlong lStack_170;\\n  undefined **local_168;\\n  byte abStack_160 [4];\\n  undefined4 local_15c;\\n  undefined4 local_158;\\n  float local_154;\\n  undefined **local_150;\\n  undefined **local_148;\\n  undefined **ppuStack_140;\\n  undefined **local_138;\\n  undefined4 *puStack_130;\\n  undefined4 *local_128;\\n  int *local_120;\\n  undefined **local_118;\\n  undefined **ppuStack_110;\\n  undefined **local_108;\\n  undefined **local_e8;\\n  undefined **ppuStack_e0;\\n  undefined **local_d8;\\n  undefined **local_d0;\\n  ulonglong local_c8;\\n  undefined **local_c0;\\n  undefined **local_b8;\\n  undefined **local_b0;\\n  undefined8 local_a8;\\n  uint local_a0;\\n  uint local_9c;\\n  undefined **local_98;\\n  byte local_8e;\\n  byte local_8d;\\n  uint local_8c;\\n  uint local_88;\\n  undefined1 local_82;\\n  undefined1 local_81;\\n  undefined8 local_80;\\n  undefined7 uVar21;\\n  \\n  bVar49 = false;\\n  puVar32 = auStack_2c0 + 1;\\n  local_80 = 0xfffffffffffffffe;\\n  puVar16 = (undefined8 *)*in_stack_00000028;\\n  local_b8 = (undefined **)in_RDX;\\n  country_core::systems::ui::resources::widget_params::UiFocus::is_mei();\\n  if (extraout_AL != '\\\\0') {\\n    *(undefined4 *)in_stack_00000028[2] = *(undefined4 *)((longlong)in_stack_00000028 + 0x1c);\\n    *puVar16 = 0;\\n    return;\\n  }\\n  country_core::input::action_set::DigitalActionState::just_pressed();\\n  if (extraout_AL_00 == '\\\\0') {\\n    local_8c = 0;\\n  }\\n  else {\\n    country_core::input::action_set::DigitalActionState::just_pressed();\\n    local_8c = extraout_EAX ^ 1;\\n  }\\n  country_core::input::action_set::DigitalActionState::just_pressed();\\n  if (extraout_AL_01 == '\\\\0') {\\n    local_a0 = 0;\\n  }\\n  else {\\n    country_core::input::action_set::DigitalActionState::just_pressed();\\n    local_a0 = extraout_EAX_00 ^ 1;\\n  }\\n  country_core::input::action_set::DigitalActionState::just_pressed();\\n  if (extraout_AL_02 == '\\\\0') {\\n    local_9c = 0;\\n  }\\n  else {\\n    country_core::input::action_set::DigitalActionState::just_pressed();\\n    local_9c = extraout_EAX_01 ^ 1;\\n  }\\n  country_core::input::action_set::DigitalActionState::just_pressed();\\n  local_d0 = in_R9;\\n  if (extraout_AL_03 == '\\\\0') {\\n    local_88 = 0;\\n  }\\n  else {\\n    country_core::input::action_set::DigitalActionState::just_pressed();\\n    local_88 = extraout_EAX_02 ^ 1;\\n  }\\n  bVar43 = (byte)local_8c | (byte)local_a0;\\n  bVar29 = (byte)local_9c | (byte)local_88 | bVar43;\\n  ppuVar45 = in_stack_00000028;\\n  if (*(int *)(*in_stack_00000028 + 0x10) == 1) {\\n    uVar41 = *(ulonglong *)(*in_stack_00000028 + 0x18);\\n    country_core::input::action_set::DigitalActionState::just_released();\\n    if (extraout_AL_04 == '\\\\0') {\\n      puVar7 = in_RCX[1];\\n      uVar46 = uVar41 & 0xffffffff;\\n      if (*(ulonglong *)(puVar7 + 0x10) <= uVar46) goto LAB_14233f184;\\n      iVar53 = (int)(uVar41 >> 0x20);\\n      if (*(int *)(*(longlong *)(puVar7 + 8) + uVar46 * 0x14) != iVar53) goto LAB_14233f184;\\n      lVar22 = *(longlong *)(puVar7 + 8) + uVar46 * 0x14;\\n      uVar46 = (ulonglong)*(uint *)(lVar22 + 4);\\n      if (((uVar46 == 0xffffffff) || (puVar8 = *in_RCX, *(ulonglong *)(puVar8 + 0x38) <= uVar46)) ||\\n         ((*(ulonglong *)\\n            (*(longlong *)(puVar8 + 0x28) + (ulonglong)(*(uint *)(lVar22 + 4) >> 6) * 8) >>\\n           (uVar46 & 0x3f) & 1) == 0)) goto LAB_14233f184;\\n      if (uVar46 < *(ulonglong *)(puVar7 + 0x108)) {\\n        lVar40 = uVar46 * 0xa0 + *(longlong *)(puVar7 + 0x100);\\n      }\\n      else {\\n        lVar40 = 0;\\n      }\\n      lVar38 = (ulonglong)*(uint *)(lVar22 + 0xc) * 0x48 + *(longlong *)(puVar7 + 0x1a8);\\n      uVar46 = *(ulonglong *)(puVar8 + 0x110);\\n      if ((uVar46 < *(ulonglong *)(lVar40 + 0x88)) &&\\n         (*(longlong *)(*(longlong *)(lVar40 + 0x80) + uVar46 * 8) != 0)) {\\n        bVar51 = true;\\n        bVar50 = true;\\n        if ((*(ulonglong *)(lVar38 + 0x40) <= uVar46) ||\\n           (uVar46 = *(ulonglong *)(*(longlong *)(lVar38 + 0x38) + uVar46 * 8), uVar46 == 0))\\n        goto LAB_14233f496;\\n        lVar40 = *(longlong *)(*(longlong *)(lVar38 + 0x18) + 0x10 + ~uVar46 * 0x30);\\n      }\\n      else {\\n        bVar50 = false;\\nLAB_14233f496:\\n        bVar51 = bVar50;\\n        lVar40 = 0;\\n      }\\n      uVar42 = *(uint *)(lVar22 + 0x10);\\n      if ((*(ulonglong *)(puVar8 + 0x120) < *(ulonglong *)(lVar38 + 0x40)) &&\\n         (uVar46 = *(ulonglong *)(*(longlong *)(lVar38 + 0x38) + *(ulonglong *)(puVar8 + 0x120) * 8)\\n         , uVar46 != 0)) {\\n        lVar22 = *(longlong *)(*(longlong *)(lVar38 + 0x18) + 0x10 + ~uVar46 * 0x30);\\n      }\\n      else {\\n        lVar22 = 0;\\n      }\\n      local_150 = (undefined **)0x0;\\n      if (bVar51) {\\n        local_150 = (undefined **)(lVar40 + (ulonglong)uVar42 * 0x10);\\n      }\\n      local_c8 = uVar41;\\n      local_8e = bVar43;\\n      country_core::input::action_set::DigitalActionState::just_pressed();\\n      if (extraout_AL_07 == '\\\\0') {\\n        puVar48 = (undefined8 *)(lVar22 + (ulonglong)uVar42 * 0x40);\\n        lVar22 = 8;\\n        puVar16 = puVar48;\\n        if ((char)local_8c == '\\\\0') {\\n          if ((byte)local_a0 == '\\\\0') {\\n            if ((char)local_9c == '\\\\0') {\\n              if ((char)local_88 == '\\\\0') {\\n                return;\\n              }\\n              puVar16 = puVar48 + 6;\\n              lVar22 = 0x38;\\n            }\\n            else {\\n              puVar16 = puVar48 + 4;\\n              lVar22 = 0x28;\\n            }\\n          }\\n          else {\\n            puVar16 = puVar48 + 2;\\n            lVar22 = 0x18;\\n          }\\n        }\\n        uVar27 = *(undefined8 *)((longlong)puVar48 + lVar22);\\n        local_190 = (code *)*puVar16;\\n        if ((bVar29 & local_190 == (code *)0x0) == 0) {\\n                    // WARNING: Could not recover jumptable at 0x00014233f68c. Too many branches\\n                    // WARNING: Treating indirect jump as call\\n          (*(code *)(&DAT_14304ded8 + *(int *)(&DAT_14304ded8 + (longlong)local_190 * 4)))\\n                    (&DAT_14304ded8 + *(int *)(&DAT_14304ded8 + (longlong)local_190 * 4));\\n          return;\\n        }\\n        if (local_150 == (undefined **)0x0) {\\n          *(undefined4 *)in_stack_00000028[2] = *(undefined4 *)((longlong)in_stack_00000028 + 0x1c);\\n          puVar7 = *in_stack_00000028;\\n          *(undefined8 *)(puVar7 + 0x10) = 1;\\n          *(int *)(puVar7 + 0x18) = (int)local_c8;\\n          *(int *)(puVar7 + 0x1c) = iVar53;\\n          return;\\n        }\\n        local_198 = uVar27;\\n        local_168 = in_RCX;\\n        std::thread::local::LocalKey::\\n        with<core::cell::Cell<tuple_<u64,u64>_>,std::hash::random::impl_0::new::closure_env_0,std::hash::random::RandomState>\\n                  ();\\n        local_1f8 = &DAT_14304d700;\\n        uStack_1f0 = 0;\\n        local_1e8 = 0;\\n        uStack_1e0 = 0;\\n        local_118 = (undefined **)0x0;\\n        ppuStack_110 = (undefined **)0x4;\\n        local_108 = (undefined **)0x0;\\n        lVar40 = *(longlong *)(*local_d0 + 0xa0);\\n        lVar22 = lVar40 + *(longlong *)(*local_d0 + 0xa8) * 0x28;\\n        local_1d8 = extraout_RAX;\\n        uStack_1d0 = uVar27;\\n        for (; ppuVar30 = local_108, lVar40 != lVar22; lVar40 = lVar40 + 0x28) {\\n          uVar27 = *(undefined8 *)(lVar40 + 0x10);\\n          if (local_108 == local_118) {\\n            alloc::raw_vec::RawVec::grow_one<tuple_<u32,u32>,alloc::alloc::Global>();\\n          }\\n          *(undefined8 *)((longlong)ppuStack_110 + (longlong)ppuVar30 * 8) = uVar27;\\n          local_108 = (undefined **)((longlong)ppuVar30 + 1);\\n        }\\n        while (local_108 != (undefined **)0x0) {\\n          while( true ) {\\n            uVar3 = *(undefined4 *)((longlong)ppuStack_110 + -4 + (longlong)local_108 * 8);\\n            local_108 = (undefined **)((longlong)local_108 + -1);\\n            taffy::node::Taffy::children();\\n            if ((int)local_148 != 4) break;\\n            local_98 = ppuStack_140;\\n            local_b0 = local_138;\\n            ppuVar30 = local_138;\\n            for (lVar22 = (longlong)puStack_130 << 3; ppuVar28 = local_108, lVar22 != 0;\\n                lVar22 = lVar22 + -8) {\\n              uVar4 = *(undefined4 *)ppuVar30;\\n              uVar5 = *(undefined4 *)((longlong)ppuVar30 + 4);\\n              if (local_108 == local_118) {\\n                alloc::raw_vec::RawVec::grow_one<tuple_<u32,u32>,alloc::alloc::Global>();\\n              }\\n              ppuVar30 = ppuVar30 + 1;\\n              *(undefined4 *)((longlong)ppuStack_110 + (longlong)ppuVar28 * 8) = uVar4;\\n              *(undefined4 *)((longlong)ppuStack_110 + 4 + (longlong)ppuVar28 * 8) = uVar5;\\n              local_108 = (undefined **)((longlong)ppuVar28 + 1);\\n              local_298 = (undefined **)CONCAT44(local_298._4_4_,uVar3);\\n              hashbrown::map::HashMap::\\n              insert<slotmap::DefaultKey,slotmap::DefaultKey,std::hash::random::RandomState,alloc::alloc::Global>\\n                        ();\\n            }\\n            if (local_98 != (undefined **)0x0) {\\n              std::alloc::__default_lib_allocator::__rust_dealloc();\\n            }\\n            if (local_108 == (undefined **)0x0) goto LAB_14233f7d0;\\n          }\\n        }\\nLAB_14233f7d0:\\n        uVar42 = local_88;\\n        lVar22 = 0;\\n        if (local_118 != (undefined **)0x0) {\\n          lVar22 = (longlong)local_118 << 3;\\n          std::alloc::__default_lib_allocator::__rust_dealloc();\\n        }\\n        local_268 = local_1d8;\\n        uStack_260 = uStack_1d0;\\n        local_278 = local_1e8;\\n        uStack_270 = uStack_1e0;\\n        local_288 = local_1f8;\\n        uStack_280 = uStack_1f0;\\n        local_158 = (float)(local_a0 & 0xff) + (0.0 - (float)(local_8c & 0xff));\\n        local_154 = (float)(local_9c & 0xff) - (float)(uVar42 & 0xff);\\n        std::thread::local::LocalKey::\\n        with<core::cell::Cell<tuple_<u64,u64>_>,std::hash::random::impl_0::new::closure_env_0,std::hash::random::RandomState>\\n                  ();\\n        local_218 = 0;\\n        uStack_210 = 0;\\n        local_228 = &DAT_14304d700;\\n        uStack_220 = 0;\\n        local_98 = (undefined **)*local_b8;\\n        lVar40 = (longlong)local_b8[1];\\n        puVar26 = (uint *)local_98[0x1f];\\n        puVar20 = puVar26 + (longlong)local_98[0x20];\\n        local_b8 = (undefined **)CONCAT71(local_b8._1_7_,*(char *)(local_98 + 0x21));\\n        local_c0 = (undefined **)&DAT_00000008;\\n        local_b0 = (undefined **)&DAT_00000008;\\n        lVar38 = 0;\\n        lVar44 = 0;\\n        local_208 = extraout_RAX_00;\\n        lStack_200 = lVar22;\\n        do {\\n          ppuVar30 = local_d0;\\n          if ((char)local_b8 == '\\\\0') {\\n            if (lVar44 == lVar38) {\\n              do {\\n                if (puVar26 == puVar20) goto LAB_14233fa2f;\\n                uVar42 = *puVar26;\\n                puVar26 = puVar26 + 1;\\n                lVar22 = *(longlong *)(lVar40 + 0x100);\\n                lVar38 = *(longlong *)(lVar22 + 0x58 + (ulonglong)uVar42 * 0xa0);\\n              } while (lVar38 == 0);\\n              local_c0 = *(undefined ***)(lVar22 + (ulonglong)uVar42 * 0xa0 + 0x50);\\n              lVar44 = 0;\\n            }\\n          }\\n          else if (lVar44 == lVar38) {\\n            do {\\n              if (puVar26 == puVar20) goto LAB_14233fa2f;\\n              uVar42 = *puVar26;\\n              puVar26 = puVar26 + 1;\\n              lVar22 = *(longlong *)(lVar40 + 0x1a8);\\n              lVar38 = *(longlong *)(lVar22 + 0x10 + (ulonglong)uVar42 * 0x48);\\n            } while (lVar38 == 0);\\n            local_b0 = *(undefined ***)(lVar22 + (ulonglong)uVar42 * 0x48 + 8);\\n            lVar44 = 0;\\n          }\\n          lVar44 = lVar44 + 1;\\n          local_82 = 1;\\n          hashbrown::map::HashMap::\\n          insert<slotmap::DefaultKey,bevy_ecs::entity::Entity,std::hash::random::RandomState,alloc::alloc::Global>\\n                    ();\\n        } while( true );\\n      }\\n      bevy_ecs::event::writer::EventWriter::write<toolbar::ui_interaction::UiClickEvent>();\\n    }\\n    puVar16 = (undefined8 *)*in_stack_00000028;\\n    uVar27 = puVar16[2];\\n    uVar11 = puVar16[3];\\n    *(undefined4 *)in_stack_00000028[2] = *(undefined4 *)((longlong)in_stack_00000028 + 0x1c);\\n    *puVar16 = uVar27;\\n    puVar16[1] = uVar11;\\nLAB_14233f184:\\n    *(undefined4 *)in_stack_00000028[2] = *(undefined4 *)((longlong)in_stack_00000028 + 0x1c);\\n    *(undefined8 *)(*in_stack_00000028 + 0x10) = 0;\\n    return;\\n  }\\n  if ((bVar29 == 0) &&\\n     (country_core::input::action_set::DigitalActionState::just_pressed(), extraout_AL_05 == '\\\\0'))\\n  {\\n    return;\\n  }\\n  country_core::systems::ui::resources::widget_params::UiFocus::is_toolbar();\\n  if (extraout_AL_06 == '\\\\0') {\\n    puVar7 = *in_RCX;\\n    puVar8 = in_RCX[1];\\n    puVar26 = *(uint **)(puVar7 + 0xf8);\\n    puVar20 = puVar26 + *(longlong *)(puVar7 + 0x100);\\n    if (puVar7[0x108] == '\\\\0') {\\n      lVar38 = 8;\\n      lVar40 = 0;\\n      bVar49 = false;\\n      lVar44 = 0;\\n      lVar22 = 0;\\n      while( true ) {\\n        if (lVar44 == lVar22) {\\n          do {\\n            if (puVar26 == puVar20) goto LAB_14233f3ae;\\n            uVar42 = *puVar26;\\n            puVar26 = puVar26 + 1;\\n            lVar22 = *(longlong *)(*(longlong *)(puVar8 + 0x100) + 0x58 + (ulonglong)uVar42 * 0xa0);\\n          } while (lVar22 == 0);\\n          lVar38 = *(longlong *)(puVar8 + 0x100) + (ulonglong)uVar42 * 0xa0;\\n          uVar41 = *(ulonglong *)(puVar7 + 0x118);\\n          if ((uVar41 < *(ulonglong *)(lVar38 + 0x88)) &&\\n             (*(longlong *)(*(longlong *)(lVar38 + 0x80) + uVar41 * 8) != 0)) {\\n            lVar40 = (ulonglong)*(uint *)(lVar38 + 0x94) * 0x48 + *(longlong *)(puVar8 + 0x1a8);\\n            bVar49 = true;\\n            if ((uVar41 < *(ulonglong *)(lVar40 + 0x40)) &&\\n               (uVar41 = *(ulonglong *)(*(longlong *)(lVar40 + 0x38) + uVar41 * 8), uVar41 != 0)) {\\n              lVar40 = *(longlong *)(*(longlong *)(lVar40 + 0x18) + 0x10 + ~uVar41 * 0x30);\\n            }\\n            else {\\n              lVar40 = 0;\\n            }\\n          }\\n          else {\\n            bVar49 = false;\\n          }\\n          lVar38 = *(longlong *)(lVar38 + 0x50);\\n          lVar44 = 0;\\n        }\\n        lVar47 = lVar44 * 0x10;\\n        ppuStack_110 = *(undefined ***)(lVar38 + lVar47);\\n        if (!bVar49) break;\\n        if ((ulonglong)ppuStack_110 >> 0x20 == 0) goto LAB_14233f3ae;\\n        if ((lVar40 == 0) ||\\n           (lVar44 = lVar44 + 1,\\n           *(char *)((ulonglong)*(uint *)(lVar47 + lVar38 + 8) * 3 + lVar40) != '\\\\0'))\\n        goto LAB_14233f414;\\n      }\\n      if ((ulonglong)ppuStack_110 >> 0x20 == 0) goto LAB_14233f3ae;\\n    }\\n    else {\\n      lVar40 = 8;\\n      lVar22 = 0;\\n      bVar49 = false;\\n      uVar46 = 0;\\n      uVar41 = 0;\\n      do {\\n        if (uVar46 == uVar41) {\\n          do {\\n            if (puVar26 == puVar20) goto LAB_14233f3ae;\\n            uVar42 = *puVar26;\\n            puVar26 = puVar26 + 1;\\n            uVar41 = *(ulonglong *)(*(longlong *)(puVar8 + 0x1a8) + 0x10 + (ulonglong)uVar42 * 0x48)\\n            ;\\n          } while (uVar41 == 0);\\n          lVar40 = *(longlong *)(puVar8 + 0x1a8) + (ulonglong)uVar42 * 0x48;\\n          if ((*(ulonglong *)(puVar7 + 0x118) < *(ulonglong *)(lVar40 + 0x40)) &&\\n             (uVar46 = *(ulonglong *)\\n                        (*(longlong *)(lVar40 + 0x38) + *(ulonglong *)(puVar7 + 0x118) * 8),\\n             uVar46 != 0)) {\\n            lVar22 = *(longlong *)(*(longlong *)(lVar40 + 0x18) + 0x10 + ~uVar46 * 0x30);\\n            bVar49 = true;\\n          }\\n          else {\\n            bVar49 = false;\\n          }\\n          lVar40 = *(longlong *)(lVar40 + 8);\\n          uVar46 = 0;\\n        }\\n        ppuStack_110 = *(undefined ***)(lVar40 + uVar46 * 8);\\n        pcVar33 = (char *)((uVar46 & 0xffffffff) * 3 + lVar22);\\n        if (!bVar49) {\\n          pcVar33 = (char *)0x0;\\n        }\\n        if ((ulonglong)ppuStack_110 >> 0x20 == 0) goto LAB_14233f3ae;\\n      } while ((pcVar33 != (char *)0x0) && (uVar46 = uVar46 + 1, *pcVar33 == '\\\\0'));\\n    }\\nLAB_14233f414:\\n    local_118 = (undefined **)0x1;\\n    pppuVar18 = &local_118;\\n    goto LAB_14233f3c0;\\n  }\\n  *(undefined4 *)in_stack_00000028[2] = *(undefined4 *)((longlong)in_stack_00000028 + 0x1c);\\n  plVar6 = (longlong *)*in_stack_00000028;\\n  local_1c8 = (undefined **)*plVar6;\\n  ppuStack_1c0 = (undefined **)plVar6[1];\\n  *plVar6 = 0;\\nLAB_14233f3d2:\\n  pbVar17 = (byte *)(ulonglong)*(uint *)((longlong)ppuVar45 + 0x1c);\\n  UNRECOVERED_JUMPTABLE = (code *)ppuVar45[2];\\ncode_r0x00014233f3da:\\n  *(int *)UNRECOVERED_JUMPTABLE = (int)pbVar17;\\n  puVar7 = *ppuVar45;\\n  *(undefined ***)(puVar7 + 0x10) = local_1c8;\\n  *(undefined ***)(puVar7 + 0x18) = ppuStack_1c0;\\n                    // WARNING: Read-only address (ram,0x00014304dec8) is written\\n                    // WARNING: Read-only address (ram,0x00014304e008) is written\\n  return;\\nLAB_14233f3ae:\\n  local_118 = (undefined **)0x3;\\n  pppuVar18 = &local_148;\\nLAB_14233f3c0:\\n  local_148 = (undefined **)0x0;\\n  local_1c8 = *pppuVar18;\\n  ppuStack_1c0 = pppuVar18[1];\\n  goto LAB_14233f3d2;\\nLAB_14233fa2f:\\n  local_248._8_8_ = uStack_210;\\n  local_248._0_8_ = local_218;\\n  local_238 = local_208;\\n  lStack_230 = lStack_200;\\n  local_258 = local_228;\\n  uStack_250 = uStack_220;\\n  local_1c8 = local_d0;\\n  ppuStack_1c0 = &local_258;\\n  local_1b8 = local_168;\\n  local_1b0 = local_150;\\n  local_1a8 = &local_158;\\n  bevy_ecs::system::query::Query::\\n  get<tuple_<bevy_ecs::entity::Entity,ref_<toolbar::resouces_and_components::TaffyNode>,ref_<country_core::components::UiNav>_>,tuple_<>_>\\n            ();\\n  if (local_148 == (undefined **)0x0) {\\n    local_118 = ppuStack_140;\\n    ppuStack_110 = local_138;\\n    local_298 = &PTR_DAT_14304de08;\\n                    // WARNING: Subroutine does not return\\n    core::result::unwrap_failed();\\n  }\\n  local_a8 = *local_148;\\n  hashbrown::map::impl$7::\\n  default<slotmap::DefaultKey,tuple_<>,std::hash::random::RandomState,alloc::alloc::Global>();\\n  local_8d = (byte)local_8c | (byte)local_88;\\n  pppuVar23 = &local_118;\\nLAB_14233faff:\\n  hashbrown::map::HashMap::\\n  insert<slotmap::DefaultKey,tuple_<>,std::hash::random::RandomState,alloc::alloc::Global>();\\n  if (extraout_AL_08 == '\\\\0') {\\n    std::collections::hash::map::HashMap::\\n    get<slotmap::DefaultKey,slotmap::DefaultKey,std::hash::random::RandomState,slotmap::DefaultKey>\\n              ();\\n    if (extraout_RAX_01 == (longlong *)0x0) {\\n      lVar22 = *(longlong *)(*ppuVar30 + 0xa8);\\n      if (lVar22 != 0) {\\n        lVar40 = *(longlong *)(*ppuVar30 + 0xa0);\\n        ppuVar28 = (undefined **)(ulonglong)local_a8._4_4_;\\n        ppuVar39 = (undefined **)0x0;\\n        goto LAB_14233fc35;\\n      }\\n      goto LAB_142340005;\\n    }\\n    uVar42 = *(uint *)((longlong)extraout_RAX_01 + 4);\\n    puVar8 = (undefined *)*extraout_RAX_01;\\n    puVar7 = (undefined *)*extraout_RAX_01;\\n    resouces_and_components::taffy_layout::TaffyLayout::style();\\n    if ((*(char *)(extraout_RAX_02 + 0x14b) != '\\\\0') == (bool)local_8e) {\\n      local_e8 = (undefined **)0x0;\\n      ppuStack_e0 = (undefined **)&DAT_00000004;\\n      local_d8 = (undefined **)0x0;\\n    }\\n    else {\\n      uVar41 = (ulonglong)uVar42;\\n      taffy::node::Taffy::children();\\n      if (local_188 != 4) {\\n        local_148 = (undefined **)CONCAT44(iStack_184,local_188);\\n        local_138 = (undefined **)local_178;\\n        puStack_130 = (undefined4 *)lStack_170;\\n        ppuStack_140 = ppuStack_180;\\n        local_298 = &PTR_DAT_14304de20;\\n                    // WARNING: Subroutine does not return\\n        core::result::unwrap_failed();\\n      }\\n      local_b8 = ppuStack_180;\\n      local_98 = (undefined **)local_178;\\n      if (lStack_170 == 0) {\\nLAB_142340109:\\n                    // WARNING: Subroutine does not return\\n        core::option::unwrap_failed();\\n      }\\n      lVar22 = -8;\\n      lVar40 = 0;\\n      while (uVar27 = *(undefined8 *)(local_178 + lVar40 * 8),\\n            auVar52._0_4_ = -(uint)((int)uVar27 == (int)local_a8),\\n            iVar53 = -(uint)((int)((ulonglong)uVar27 >> 0x20) == (int)((ulonglong)local_a8 >> 0x20))\\n            , auVar52._4_4_ = auVar52._0_4_, auVar52._8_4_ = iVar53, auVar52._12_4_ = iVar53,\\n            iVar53 = movmskpd((int)uVar41,auVar52), iVar53 != 3) {\\n        lVar40 = lVar40 + 1;\\n        uVar41 = (lStack_170 * 8 + lVar22) - 8;\\n        lVar22 = lVar22 + -8;\\n        if (uVar41 == 0xfffffffffffffff8) goto LAB_142340109;\\n      }\\n      if (local_8d == 0) {\\n        alloc::slice::impl$0::to_vec<slotmap::DefaultKey>();\\n      }\\n      else {\\n        alloc::slice::impl$0::to_vec<slotmap::DefaultKey>();\\n        if ((undefined **)0x1 < local_138) {\\n          if ((ulonglong)local_138 >> 1 == 1) {\\n            uVar41 = 0;\\n          }\\n          else {\\n            lVar22 = (longlong)local_138 + -1;\\n            uVar41 = 0;\\n            do {\\n              puVar9 = ppuStack_140[uVar41];\\n              ppuStack_140[uVar41] = ppuStack_140[lVar22];\\n              ppuStack_140[lVar22] = puVar9;\\n              ppuVar45 = (undefined **)ppuStack_140[uVar41 + 1];\\n              ppuStack_140[uVar41 + 1] =\\n                   ppuStack_140[(longlong)local_138 + (uVar41 ^ 0x1ffffffffffffffe)];\\n              ppuStack_140[(longlong)local_138 + (uVar41 ^ 0x1ffffffffffffffe)] =\\n                   (undefined *)ppuVar45;\\n              uVar41 = uVar41 + 2;\\n              lVar22 = lVar22 + -2;\\n            } while (((ulonglong)local_138 >> 1 & 0xfffffffffffffffe) != uVar41);\\n          }\\n          ppuVar30 = local_d0;\\n          if (((ulonglong)local_138 & 2) != 0) {\\n            puVar9 = ppuStack_140[uVar41];\\n            ppuStack_140[uVar41] = ppuStack_140[(longlong)local_138 + ~uVar41];\\n            ppuStack_140[(longlong)local_138 + ~uVar41] = puVar9;\\n          }\\n        }\\n        local_d8 = local_138;\\n        local_e8 = local_148;\\n        ppuStack_e0 = ppuStack_140;\\n      }\\n      if (local_b8 != (undefined **)0x0) {\\n        std::alloc::__default_lib_allocator::__rust_dealloc();\\n      }\\n    }\\n    ppuVar10 = *(undefined ***)(*ppuVar30 + 0xa0);\\n    local_98 = ppuVar10 + *(longlong *)(*ppuVar30 + 0xa8) * 5;\\n    ppuVar28 = local_98;\\n    while (ppuVar39 = ppuVar10, ppuVar12 = local_d8, ppuVar39 != ppuVar28) {\\n      ppuVar30 = ppuVar39 + 5;\\n      bVar29 = *(byte *)((longlong)ppuVar39 + 0x24);\\n      ppuVar10 = ppuVar30;\\n      if ((bVar29 != 4) && (*(int *)((longlong)ppuVar39 + 0x1c) == local_a8._4_4_)) {\\n        pppuVar24 = (undefined ***)((ulonglong)local_a8 & 0xffffffff);\\n        if (*(int *)(ppuVar39 + 3) == (int)local_a8) {\\n          uVar41 = (ulonglong)*(int *)(&DAT_14304deb8 + (ulonglong)(uint)bVar29 * 4);\\n          pppuVar18 = (undefined ***)(&DAT_14304deb8 + uVar41);\\n          bVar50 = pppuVar18 == (undefined ***)0x0;\\n          cVar14 = (char)((ulonglong)ppuVar28 >> 8);\\n          cVar13 = (char)pppuVar18;\\n          bVar43 = (byte)local_a8;\\n          puVar9 = local_a8;\\n                    // WARNING (jumptable): Sanity check requires truncation of jumptable\\n                    // WARNING: Could not find normalized switch variable to match jumptable\\n          switch(bVar29) {\\n          case 0:\\n            cVar14 = (byte)local_88;\\n            break;\\n          case 1:\\n            cVar14 = (char)local_9c;\\n            break;\\n          case 2:\\n            cVar14 = (char)local_8c;\\n            break;\\n          case 3:\\n            cVar14 = (byte)local_a0;\\n            break;\\n          case 4:\\n            goto code_r0x00014233fc5c;\\n          case 5:\\n            cVar14 = local_228._6_1_ + cVar14;\\n            local_228._0_7_ = CONCAT16(cVar14,(undefined6)local_228);\\n            local_a8 = puVar8;\\n            goto LAB_14233faff;\\n          case 6:\\n            (&UNK_14304de43)[uVar41] = (&UNK_14304de43)[uVar41] + bVar43;\\n            in_NT = (auStack_2c0[1] & 0x4000) != 0;\\n            bVar49 = (auStack_2c0[1] & 0x400) != 0;\\n            in_IF = (auStack_2c0[1] & 0x200) != 0;\\n            in_TF = (auStack_2c0[1] & 0x100) != 0;\\n            in_AF = (auStack_2c0[1] & 0x10) != 0;\\n            in_ID = (auStack_2c0[1] & 0x200000) != 0;\\n            in_AC = (auStack_2c0[1] & 0x40000) != 0;\\n            in_VIP = 0;\\n            in_VIF = 0;\\n            auStack_2c0[1] = 0x48000001;\\n            pppuVar24 = (undefined ***)((ulonglong)pppuVar23 & 0xffffffff);\\n          case 7:\\n            goto code_r0x00014233ffb1;\\n          case 8:\\n          case 10:\\n            *(byte *)pppuVar18 = *(byte *)pppuVar18 << 1 | (char)*(byte *)pppuVar18 < '\\\\0';\\n            goto code_r0x000142340031;\\n          case 9:\\n            bVar49 = CARRY1((byte)local_158,bVar43);\\n            local_158 = (float)CONCAT31(local_158._1_3_,(byte)local_158 + bVar43);\\n            *(byte *)pppuVar18 = *(byte *)pppuVar18 + cVar13 + bVar49;\\n            goto LAB_14233f3c0;\\n          case 0xb:\\n            goto code_r0x00014234002f;\\n          default:\\n            if (0xfffffffebcfb2147 >= uVar41 && !bVar50) {\\n              local_158 = (float)((uint)local_158 & (uint)&local_238);\\n              (*(code *)*ppuVar28)();\\n                    // WARNING: Bad instruction - Truncating control flow here\\n              halt_baddata();\\n            }\\n                    // WARNING: Bad instruction - Truncating control flow here\\n            halt_baddata();\\n          case 0xe:\\n            if (bVar50 || (longlong)uVar41 < -0x14304deb8) {\\n              *(byte *)pppuVar18 = *(byte *)pppuVar18 + cVar13;\\n              *(byte *)pppuVar18 = *(byte *)pppuVar18 + cVar13;\\n              *(byte *)pppuVar18 = *(byte *)pppuVar18 + cVar14;\\n                    // WARNING: Bad instruction - Truncating control flow here\\n              halt_baddata();\\n            }\\n                    // WARNING: Bad instruction - Truncating control flow here\\n            halt_baddata();\\n          case 0x10:\\n                    // WARNING: Bad instruction - Truncating control flow here\\n            halt_baddata();\\n          }\\n          if (cVar14 != '\\\\0') {\\n            local_b8 = ppuVar39;\\n            puVar9 = ppuVar39[2];\\n            if (local_d8 == local_e8) {\\n              alloc::raw_vec::RawVec::grow_one<tuple_<u32,u32>,alloc::alloc::Global>();\\n            }\\n            ppuStack_e0[(longlong)ppuVar12] = puVar9;\\n            ppuVar45 = (undefined **)((longlong)ppuVar12 + 1);\\n            local_d8 = ppuVar45;\\n            ppuVar28 = local_98;\\n          }\\n        }\\n      }\\n    }\\n    local_c0 = local_e8;\\n    local_b0 = ppuStack_e0;\\n    local_b8 = ppuVar39;\\n    if (local_d8 != (undefined **)0x0) {\\n      ppuVar30 = ppuStack_e0 + (longlong)local_d8;\\n      ppuVar45 = ppuStack_e0;\\n      do {\\n        iStack_184 = 0;\\n        local_15c = 0x7f7fffff;\\n        local_148 = &local_258;\\n        ppuStack_140 = local_168;\\n        local_138 = local_150;\\n        local_128 = &local_15c;\\n        local_120 = &local_188;\\n        puStack_130 = &local_158;\\n        iter_subtree<tuple_<>,toolbar::ui_interaction::ui_nav_update::closure_0::closure_env_0>();\\n        if (iStack_184 != 0) {\\n          *(undefined4 *)in_stack_00000028[2] = *(undefined4 *)((longlong)in_stack_00000028 + 0x1c);\\n          puVar7 = *in_stack_00000028;\\n          *(undefined8 *)(puVar7 + 0x10) = 1;\\n          *(ulonglong *)(puVar7 + 0x18) = CONCAT44(iStack_184,local_188);\\n          if (local_c0 != (undefined **)0x0) {\\n            std::alloc::__default_lib_allocator::__rust_dealloc();\\n          }\\n          bevy_ecs::component::ComponentDescriptor::\\n          drop_ptr<country_core::resources::stairs::stairs_removed_supports::StairsRemovedSupports>\\n                    ();\\n          local_82 = 0;\\n          bevy_ecs::component::ComponentDescriptor::\\n          drop_ptr<country_core::resources::tree_storage::TreeStorage>();\\n          local_81 = 0;\\n          bevy_ecs::component::ComponentDescriptor::\\n          drop_ptr<country_core::resources::tree_storage::TreeStorage>();\\n          return;\\n        }\\n        ppuVar45 = ppuVar45 + 1;\\n      } while (ppuVar45 != ppuVar30);\\n    }\\n    pppuVar24 = pppuVar23;\\n    ppuVar30 = local_d0;\\n    ppuVar45 = in_stack_00000028;\\n    puVar9 = puVar7;\\n    if (local_c0 != (undefined **)0x0) {\\n      std::alloc::__default_lib_allocator::__rust_dealloc();\\n      ppuVar30 = local_d0;\\n    }\\ncode_r0x00014233ffb1:\\n    local_a8 = puVar9;\\n    pppuVar23 = pppuVar24;\\n    goto LAB_14233faff;\\n  }\\n  goto LAB_142340005;\\n  while (ppuVar39 = ppuVar39 + 5, (undefined **)(lVar22 * 0x28) != ppuVar39) {\\nLAB_14233fc35:\\n    if (((*(uint *)(lVar40 + 0x14 + (longlong)ppuVar39) == local_a8._4_4_) &&\\n        (*(int *)(lVar40 + 0x10 + (longlong)ppuVar39) == (int)local_a8)) &&\\n       (uVar42 = (uint)*(byte *)(lVar40 + 0x24 + (longlong)ppuVar39), uVar42 != 4)) {\\n      pppuVar18 = (undefined ***)(ulonglong)uVar42;\\n      goto code_r0x00014233fc5c;\\n    }\\n  }\\nLAB_142340005:\\n  bevy_ecs::component::ComponentDescriptor::\\n  drop_ptr<country_core::resources::stairs::stairs_removed_supports::StairsRemovedSupports>();\\n  local_82 = 0;\\n  bevy_ecs::component::ComponentDescriptor::\\n  drop_ptr<country_core::resources::tree_storage::TreeStorage>();\\n  local_81 = 0;\\n  bevy_ecs::component::ComponentDescriptor::\\n  drop_ptr<country_core::resources::tree_storage::TreeStorage>();\\ncode_r0x000142340031:\\n  pbVar17 = &DAT_14304ded8;\\n  UNRECOVERED_JUMPTABLE = local_190;\\ncode_r0x00014234003f:\\n  UNRECOVERED_JUMPTABLE =\\n       (code *)(pbVar17 + *(int *)(pbVar17 + (longlong)UNRECOVERED_JUMPTABLE * 4));\\n  goto code_r0x000142340046;\\ncode_r0x00014234002f:\\n  while (pppuVar24 = (undefined ***)((longlong)pppuVar24 + -1),\\n        pppuVar24 != (undefined ***)0x0 && !bVar50) {\\n    puVar31 = puVar32 + 0xffffffffffffffff;\\n    puVar32 = puVar32 + 0xffffffffffffffff;\\n    *puVar31 = (ulonglong)(in_NT & 1) * 0x4000 | (ulonglong)SCARRY8(uVar41,0x14304deb8) * 0x800 |\\n               (ulonglong)bVar49 * 0x400 | (ulonglong)(in_IF & 1) * 0x200 |\\n               (ulonglong)(in_TF & 1) * 0x100 | (ulonglong)((longlong)pppuVar18 < 0) * 0x80 |\\n               (ulonglong)bVar50 * 0x40 | (ulonglong)(in_AF & 1) * 0x10 |\\n               (ulonglong)((POPCOUNT((ulonglong)pppuVar18 & 0xff) & 1U) == 0) * 4 |\\n               (ulonglong)(0xfffffffebcfb2147 < uVar41) | (ulonglong)(in_ID & 1) * 0x200000 |\\n               (ulonglong)(in_VIP & 1) * 0x100000 | (ulonglong)(in_VIF & 1) * 0x80000 |\\n               (ulonglong)(in_AC & 1) * 0x40000;\\n  }\\n  goto code_r0x000142340031;\\ncode_r0x00014233fc5c:\\n  UNRECOVERED_JUMPTABLE = (code *)&DAT_14304dec8;\\n  pbVar17 = &DAT_14304dec8 + *(int *)(&DAT_14304dec8 + (longlong)pppuVar18 * 4);\\n  bVar29 = (byte)pbVar17;\\n  uVar25 = SUB82(ppuVar28,0);\\n                    // WARNING (jumptable): Sanity check requires truncation of jumptable\\n  switch(pbVar17) {\\n  case (byte *)0x14233f3da:\\n    goto code_r0x00014233f3da;\\n  case (byte *)0x14234003f:\\n    goto code_r0x00014234003f;\\n  case (byte *)0x142340046:\\ncode_r0x000142340046:\\n                    // WARNING: Could not recover jumptable at 0x00014234004d. Too many branches\\n                    // WARNING: Treating indirect jump as call\\n    (*UNRECOVERED_JUMPTABLE)(UNRECOVERED_JUMPTABLE,local_198);\\n    return;\\n  case (byte *)0x14304dec8:\\n                    // WARNING: Bad instruction - Truncating control flow here\\n    halt_baddata();\\n  case (byte *)0x14304ded0:\\n    out(uVar25,bVar29);\\n                    // WARNING: Bad instruction - Truncating control flow here\\n    halt_baddata();\\n  }\\n  *pbVar17 = *pbVar17 + bVar29;\\n  *pbVar17 = *pbVar17 + bVar29;\\n  *pbVar17 = *pbVar17 + bVar29;\\n  *pbVar17 = *pbVar17 + bVar29;\\n  *pbVar17 = *pbVar17 & bVar29;\\n  *pbVar17 = *pbVar17 + bVar29;\\n  *pbVar17 = *pbVar17 + bVar29;\\n  *pbVar17 = *pbVar17 + bVar29;\\n  *pbVar17 = *pbVar17 | bVar29;\\n  *pbVar17 = *pbVar17 + bVar29;\\n  *pbVar17 = *pbVar17 + bVar29;\\n  *pbVar17 = *pbVar17 + bVar29;\\n  uVar21 = (undefined7)((ulonglong)pbVar17 >> 8);\\n  piVar19 = (int *)((ulonglong)pbVar17 ^ 0x42);\\n  *piVar19 = *piVar19 + (int)piVar19;\\n  cVar14 = (char)piVar19;\\n  *(char *)piVar19 = (char)*piVar19 + cVar14;\\n  pbVar37 = (byte *)((longlong)&local_158 + (ulonglong)bVar49 * -2 + 1);\\n  uVar2 = in(uVar25);\\n  local_158 = (float)CONCAT31((int3)((uint)local_158 >> 8),uVar2);\\n  pbVar1 = (byte *)((longlong)piVar19 + in_FS_OFFSET + 0x52);\\n  *pbVar1 = *pbVar1 & (byte)((ulonglong)pbVar17 >> 8);\\n  *(char *)piVar19 = (char)*piVar19 + cVar14;\\n  *(char *)piVar19 = (char)*piVar19 + cVar14;\\n  *(char *)piVar19 = (char)*piVar19 + cVar14;\\n  *(char *)piVar19 = (char)*piVar19 + -0x38;\\n  *(char *)piVar19 = (char)*piVar19 + cVar14;\\n  *(char *)piVar19 = (char)*piVar19 + cVar14;\\n  *(char *)piVar19 = (char)*piVar19 + cVar14;\\n  *(char *)piVar19 = (char)*piVar19 + -0x38;\\n  *(char *)piVar19 = (char)*piVar19 + cVar14;\\n  *(char *)piVar19 = (char)*piVar19 + cVar14;\\n  *(char *)piVar19 = (char)*piVar19 + cVar14;\\n  bVar29 = cVar14 * '\\\\x02';\\n  puVar20 = (uint *)CONCAT71(uVar21,bVar29);\\n  uVar15 = (uint)puVar20;\\n  *puVar20 = *puVar20 + uVar15;\\n  *(byte *)puVar20 = (byte)*puVar20 + bVar29;\\n  *(byte *)puVar20 = (byte)*puVar20 + bVar29;\\n  *(byte *)puVar20 = (byte)*puVar20 | bVar29;\\n  *(byte *)puVar20 = (byte)*puVar20 + bVar29;\\n  *(byte *)puVar20 = (byte)*puVar20 + bVar29;\\n  *(byte *)puVar20 = (byte)*puVar20 + bVar29;\\n  *(byte *)puVar20 = (byte)*puVar20 | bVar29;\\n  *(byte *)puVar20 = (byte)*puVar20 + bVar29;\\n  *(byte *)puVar20 = (byte)*puVar20 + bVar29;\\n  *(byte *)puVar20 = (byte)*puVar20 + bVar29;\\n                    // WARNING: Read-only address (ram,0x00014304e008) is written\\n  UNK_14304e008 = 8;\\n  *(byte *)puVar20 = (byte)*puVar20 + bVar29;\\n  *(byte *)puVar20 = (byte)*puVar20 + bVar29;\\n  *(byte *)puVar20 = (byte)*puVar20 + bVar29;\\n  *(byte *)puVar20 = (byte)*puVar20 + bVar29;\\n  *(byte *)puVar20 = (byte)*puVar20 | bVar29;\\n  *(byte *)puVar20 = (byte)*puVar20 + bVar29;\\n  *(byte *)puVar20 = (byte)*puVar20 + bVar29;\\n  *(byte *)puVar20 = (byte)*puVar20 + bVar29;\\n  *(byte *)puVar20 = (byte)*puVar20 | bVar29;\\n  *(byte *)puVar20 = (byte)*puVar20 + bVar29;\\n  *(byte *)puVar20 = (byte)*puVar20 + bVar29;\\n  *(byte *)puVar20 = (byte)*puVar20 + bVar29;\\n  _DAT_fffffffffffffff8 = puVar20;\\n  *puVar20 = *puVar20 + uVar15;\\n  bVar50 = CARRY1((byte)*puVar20,bVar29);\\n  uVar42 = *puVar20;\\n  *(byte *)puVar20 = (byte)*puVar20 + bVar29;\\n  bVar51 = (byte)*puVar20 == 0;\\n  _DAT_fffffffffffffff0 = 0x49646c69;\\n  pcVar33 = (char *)((longlong)pppuVar23 + (ulonglong)bVar49 * -2 + 1);\\n  out(*(undefined1 *)pppuVar23,uVar25);\\n  if ((char)(byte)*puVar20 < '\\\\0') {\\n    if (!bVar50 && !bVar51) {\\n      puVar35 = (undefined1 *)\\n                ((longlong)&local_158 + (ulonglong)bVar49 * -2 + (ulonglong)bVar49 * -2 + 2);\\n      bVar43 = in(uVar25);\\n      *pbVar37 = bVar43;\\n      lVar22 = (longlong)*(int *)((longlong)puVar20 + (longlong)ppuVar28 * 2 + 0x61) * 0x746e6572;\\n      pcVar34 = pcVar33 + (ulonglong)bVar49 * -8 + 4;\\n      out(*(undefined4 *)pcVar33,uVar25);\\n      pcVar33 = pcVar34 + (ulonglong)bVar49 * -2 + 1;\\n      out(*pcVar34,uVar25);\\n      if ((int)lVar22 != lVar22 || bVar51) goto code_r0x00014304e096;\\n      puVar36 = puVar35 + (ulonglong)bVar49 * -2 + 1;\\n      uVar2 = in(uVar25);\\n      *puVar35 = uVar2;\\n      lVar22 = (longlong)*(int *)((longlong)ppuVar30 + (longlong)puVar20 * 2 + 0x68) * 0x4e646c69;\\n      out(*(undefined4 *)pcVar33,uVar25);\\n      pcVar34 = pcVar33 + (ulonglong)bVar49 * -8 + 4 + (ulonglong)bVar49 * -2 + 1;\\n      out(pcVar33[(ulonglong)bVar49 * -8 + 4],uVar25);\\n      if ((int)lVar22 != lVar22 || bVar51) {\\n                    // WARNING: Bad instruction - Truncating control flow here\\n        halt_baddata();\\n      }\\n      pbVar37 = puVar36 + (ulonglong)bVar49 * -2 + 1;\\n      uVar2 = in(uVar25);\\n      *puVar36 = uVar2;\\n      bVar50 = (longlong)(int)((longlong)iRam00000003c90e9cc6 * 0x4e747570) !=\\n               (longlong)iRam00000003c90e9cc6 * 0x4e747570;\\n      goto code_r0x00014304e04e;\\n    }\\n    *(byte *)puVar20 = (byte)*puVar20 + bVar29;\\ncode_r0x00014304e087:\\n    *(char *)ppuVar28 = *(char *)ppuVar28 + -0x22;\\n    *(byte *)puVar20 = (byte)*puVar20 + bVar29;\\n    *(byte *)puVar20 = (byte)*puVar20 + bVar29;\\n    *(byte *)puVar20 = (byte)*puVar20 + bVar29;\\n  }\\n  else {\\n    if (bVar51) {\\n                    // WARNING: Bad instruction - Truncating control flow here\\n      halt_baddata();\\n    }\\n    pcVar34 = pcVar33 + (ulonglong)bVar49 * -2 + 1;\\n    out(*pcVar33,uVar25);\\n    if (SCARRY1((byte)uVar42,bVar29)) goto code_r0x00014304e0c1;\\ncode_r0x00014304e04e:\\n    out(*(undefined4 *)pcVar34,uVar25);\\n    pcVar34 = (char *)(ulonglong)*(uint *)((longlong)ppuVar28 + unaff_GS_OFFSET + 0x61);\\n    if (bVar51) {\\n      *(byte *)puVar20 = (byte)*puVar20 + bVar29;\\n      *(byte *)puVar20 = (byte)*puVar20 + bVar29;\\n      bVar50 = 0x21 < *pbVar37;\\n      *pbVar37 = *pbVar37 - 0x22;\\ncode_r0x00014304e0c1:\\n      if (!bVar50) {\\n                    // WARNING: Bad instruction - Truncating control flow here\\n        halt_baddata();\\n      }\\n      *(byte *)puVar20 = (byte)*puVar20 + bVar29;\\n      *puVar20 = *puVar20 & uVar15;\\n      *(byte *)puVar20 = (byte)*puVar20 + bVar29;\\n      bVar43 = cVar14 * ' ';\\n      pbVar17 = (byte *)CONCAT71(uVar21,bVar43);\\n      *(int *)ppuVar39 = *(int *)ppuVar39 + (int)pbVar17;\\n      *pbVar17 = *pbVar17 + bVar43;\\n      *(char *)ppuVar39 = *(char *)ppuVar39 + (char)ppuVar39;\\n      *pbVar17 = *pbVar17 + bVar43;\\n      *pbVar17 = *pbVar17 + bVar43;\\n      pcVar34[(longlong)pbVar17] = pcVar34[(longlong)pbVar17] + -0x22;\\n      bVar29 = *pbVar17;\\n      *pbVar17 = *pbVar17 + bVar43;\\n      cVar14 = bVar43 + CARRY1(bVar29,bVar43);\\n      pcVar33 = (char *)CONCAT71(uVar21,cVar14);\\n      *pcVar33 = *pcVar33 + cVar14;\\n      cVar14 = CARRY1(bVar29,bVar43) * '\\\\x10';\\n      puVar20 = (uint *)CONCAT71(uVar21,cVar14);\\n      *(uint *)ppuVar39 = *(int *)ppuVar39 + (uint)puVar20;\\n      *(char *)puVar20 = (char)*puVar20 + cVar14;\\n      *(char *)ppuVar39 = *(char *)ppuVar39 + (char)ppuVar39;\\n      *(char *)puVar20 = (char)*puVar20 + cVar14;\\n      *(char *)puVar20 = (char)*puVar20 + cVar14;\\n      pcVar34[(longlong)puVar20] = pcVar34[(longlong)puVar20] + -0x22;\\n      *(char *)puVar20 = (char)*puVar20 + cVar14;\\n      *puVar20 = *puVar20 & (uint)puVar20;\\n      *(char *)puVar20 = (char)*puVar20 + cVar14;\\n      if ((char)*puVar20 == '\\\\0') {\\n                    // WARNING: Bad instruction - Truncating control flow here\\n        halt_baddata();\\n      }\\n      out(*(undefined4 *)pcVar34,uVar25);\\n      bVar29 = in(uVar25);\\n      *pbVar37 = bVar29;\\n                    // WARNING: Bad instruction - Truncating control flow here\\n      halt_baddata();\\n    }\\n    pcVar33 = pcVar34;\\n    if (!bVar50) goto code_r0x00014304e087;\\n    if (!bVar50) {\\n                    // WARNING: Read-only address (ram,0x00014304dec8) is written\\n      DAT_14304dec8 = (byte)((ulonglong)ppuVar30 >> 8) ^ 0xa4;\\n                    // WARNING: Bad instruction - Truncating control flow here\\n      halt_baddata();\\n    }\\n    if (!bVar50) {\\n                    // WARNING: Bad instruction - Truncating control flow here\\n      halt_baddata();\\n    }\\n    uVar3 = in(uVar25);\\n    *(undefined4 *)pbVar37 = uVar3;\\n    if (bVar50) {\\n      out(*(undefined4 *)pcVar34,uVar25);\\n      bVar29 = in(uVar25);\\n      pbVar37[(ulonglong)bVar49 * -8 + 4] = bVar29;\\n                    // WARNING: Bad instruction - Truncating control flow here\\n      halt_baddata();\\n    }\\n  }\\n  *pcVar33 = *pcVar33 + -0x38;\\n  *(byte *)puVar20 = (byte)*puVar20 + bVar29;\\ncode_r0x00014304e096:\\n  *(byte *)puVar20 = (byte)*puVar20 + bVar29;\\n                    // WARNING: Bad instruction - Truncating control flow here\\n  halt_baddata();\\n}\\n\\n\",\"caller_count\":2,\"callers\":[{\"name\":\"run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,enum2$<core::option::Option<ref$<country_core::components::Ui2dExtent>_>_>,enum2$<core::option::Option<ref$<country_core::components::UiInteractionState>_>_>,ref$<country_core::components::UiNav>_>,tuple$<>_>,bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref$<toolbar::resouces_and_components::TaffyNode>,ref$<country_core::components::UiNav>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::input::action_set::ActionSetStates>,bevy_ecs::change_detection::Res<toolbar::resouces_and_components::taffy_layout::TaffyLayout>,bevy_ecs::change_detection::ResMut<country_core::systems::ui::resources::widget_params::UiNavState>,bevy_ecs::event::writer::EventWriter<toolbar::ui_interaction::UiClickEvent>),void_(*)(bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,enum2$<core::option::Option<ref$<country_core::components::Ui2dExtent>_>_>,enum2$<core::option::Option<ref$<country_core::components::UiInteractionState>_>_>,ref$<country_core::components::UiNav>_>,tuple$<>_>,bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref$<toolbar::resouces_and_components::TaffyNode>,ref$<country_core::components::UiNav>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::input::action_set::ActionSetStates>,bevy_ecs::change_detection::Res<toolbar::resouces_and_components::taffy_layout::TaffyLayout>,bevy_ecs::change_detection::ResMut<country_core::systems::ui::resources::widget_params::UiNavState>,bevy_ecs::event::writer::EventWriter<toolbar::ui_interaction::UiClickEvent>)>_>\",\"address\":\"141ea3650\"},{\"name\":\"run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,enum2$<core::option::Option<ref$<country_core::components::Ui2dExtent>_>_>,enum2$<core::option::Option<ref$<country_core::components::UiInteractionState>_>_>,ref$<country_core::components::UiNav>_>,tuple$<>_>,bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref$<toolbar::resouces_and_components::TaffyNode>,ref$<country_core::components::UiNav>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::input::action_set::ActionSetStates>,bevy_ecs::change_detection::Res<toolbar::resouces_and_components::taffy_layout::TaffyLayout>,bevy_ecs::change_detection::ResMut<country_core::systems::ui::resources::widget_params::UiNavState>,bevy_ecs::event::writer::EventWriter<toolbar::ui_interaction::UiClickEvent>),void_(*)(bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,enum2$<core::option::Option<ref$<country_core::components::Ui2dExtent>_>_>,enum2$<core::option::Option<ref$<country_core::components::UiInteractionState>_>_>,ref$<country_core::components::UiNav>_>,tuple$<>_>,bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref$<toolbar::resouces_and_components::TaffyNode>,ref$<country_core::components::UiNav>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::input::action_set::ActionSetStates>,bevy_ecs::change_detection::Res<toolbar::resouces_and_components::taffy_layout::TaffyLayout>,bevy_ecs::change_detection::ResMut<country_core::systems::ui::resources::widget_params::UiNavState>,bevy_ecs::event::writer::EventWriter<toolbar::ui_interaction::UiClickEvent>)>_>_>\",\"address\":\"141e13150\"}],\"callee_count\":22,\"callees\":[{\"name\":\"__rust_dealloc\",\"address\":\"140613c20\"},{\"name\":\"children\",\"address\":\"140fe7950\"},{\"name\":\"default<slotmap::DefaultKey,tuple$<>,std::hash::random::RandomState,alloc::alloc::Global>\",\"address\":\"140fb16c0\"},{\"name\":\"drop_ptr<country_core::resources::stairs::stairs_removed_supports::StairsRemovedSupports>\",\"address\":\"140149f50\"},{\"name\":\"drop_ptr<country_core::resources::tree_storage::TreeStorage>\",\"address\":\"140149c70\"},{\"name\":\"get<slotmap::DefaultKey,slotmap::DefaultKey,std::hash::random::RandomState,slotmap::DefaultKey>\",\"address\":\"142338010\"},{\"name\":\"get<tuple$<bevy_ecs::entity::Entity,ref$<toolbar::resouces_and_components::TaffyNode>,ref$<country_core::components::UiNav>_>,tuple$<>_>\",\"address\":\"142338860\"},{\"name\":\"grow_one<tuple$<u32,u32>,alloc::alloc::Global>\",\"address\":\"140744e90\"},{\"name\":\"insert<slotmap::DefaultKey,bevy_ecs::entity::Entity,std::hash::random::RandomState,alloc::alloc::Global>\",\"address\":\"140fb23c0\"},{\"name\":\"insert<slotmap::DefaultKey,slotmap::DefaultKey,std::hash::random::RandomState,alloc::alloc::Global>\",\"address\":\"140fb2710\"},{\"name\":\"insert<slotmap::DefaultKey,tuple$<>,std::hash::random::RandomState,alloc::alloc::Global>\",\"address\":\"140fb2570\"},{\"name\":\"is_mei\",\"address\":\"1409a9140\"},{\"name\":\"is_toolbar\",\"address\":\"1409a9150\"},{\"name\":\"iter_subtree<tuple$<>,toolbar::ui_interaction::ui_nav_update::closure$0::closure_env$0>\",\"address\":\"141ea8c60\"},{\"name\":\"just_pressed\",\"address\":\"14093fa90\"},{\"name\":\"just_released\",\"address\":\"14093fac0\"},{\"name\":\"style\",\"address\":\"141e4c650\"},{\"name\":\"to_vec<slotmap::DefaultKey>\",\"address\":\"142338590\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9760\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9310\"},{\"name\":\"with<core::cell::Cell<tuple$<u64,u64>_>,std::hash::random::impl$0::new::closure_env$0,std::hash::random::RandomState>\",\"address\":\"140fcfbe0\"},{\"name\":\"write<toolbar::ui_interaction::UiClickEvent>\",\"address\":\"140fcfac0\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140f9e3e0\":{\"name\":\"iter_subtree<country_core::systems::ui::GlobalId,toolbar::mei::core::update_nav::closure_env$0>\",\"size\":555,\"address\":\"140f9e3e0\",\"signature\":\"void __cdecl iter_subtree<country_core::systems::ui::GlobalId,toolbar::mei::core::update_nav::closure_env$0>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ntoolbar::mei::core::\\niter_subtree<country_core::systems::ui::GlobalId,toolbar::mei::core::update_nav::closure_env_0>\\n          (void)\\n\\n{\\n  char *pcVar1;\\n  longlong *plVar2;\\n  longlong lVar3;\\n  uint uVar4;\\n  uint uVar5;\\n  ulonglong extraout_RAX;\\n  ulonglong extraout_RAX_00;\\n  longlong extraout_RAX_01;\\n  longlong in_RCX;\\n  longlong in_RDX;\\n  ushort uVar6;\\n  longlong lVar7;\\n  longlong *in_R8;\\n  ulonglong uVar8;\\n  uint uVar9;\\n  longlong lVar10;\\n  byte bVar11;\\n  char cVar12;\\n  char cVar14;\\n  char cVar15;\\n  char cVar16;\\n  undefined1 auVar13 [16];\\n  undefined1 auVar17 [16];\\n  undefined1 auVar18 [16];\\n  undefined1 auVar19 [16];\\n  undefined1 auVar20 [16];\\n  \\n  plVar2 = (longlong *)*in_R8;\\n  if (plVar2[3] != 0) {\\n    ::core::hash::BuildHasher::\\n    hash_one<std::hash::random::RandomState,ref_<country_core::systems::ui::GlobalId>_>();\\n    lVar3 = *plVar2;\\n    bVar11 = (byte)(extraout_RAX >> 0x39);\\n    auVar13 = ZEXT216(CONCAT11(bVar11,bVar11));\\n    auVar13 = pshuflw(auVar13,auVar13,0);\\n    lVar10 = 0;\\n    uVar8 = extraout_RAX;\\n    while( true ) {\\n      uVar8 = plVar2[1] & uVar8;\\n      pcVar1 = (char *)(lVar3 + uVar8);\\n      cVar12 = auVar13[0];\\n      auVar19[0] = -(*pcVar1 == cVar12);\\n      cVar14 = auVar13[1];\\n      auVar19[1] = -(pcVar1[1] == cVar14);\\n      cVar15 = auVar13[2];\\n      auVar19[2] = -(pcVar1[2] == cVar15);\\n      cVar16 = auVar13[3];\\n      auVar19[3] = -(pcVar1[3] == cVar16);\\n      auVar19[4] = -(pcVar1[4] == cVar12);\\n      auVar19[5] = -(pcVar1[5] == cVar14);\\n      auVar19[6] = -(pcVar1[6] == cVar15);\\n      auVar19[7] = -(pcVar1[7] == cVar16);\\n      auVar19[8] = -(pcVar1[8] == cVar12);\\n      auVar19[9] = -(pcVar1[9] == cVar14);\\n      auVar19[10] = -(pcVar1[10] == cVar15);\\n      auVar19[0xb] = -(pcVar1[0xb] == cVar16);\\n      auVar19[0xc] = -(pcVar1[0xc] == cVar12);\\n      auVar19[0xd] = -(pcVar1[0xd] == cVar14);\\n      auVar19[0xe] = -(pcVar1[0xe] == cVar15);\\n      auVar19[0xf] = -(pcVar1[0xf] == cVar16);\\n      uVar6 = (ushort)(SUB161(auVar19 >> 7,0) & 1) | (ushort)(SUB161(auVar19 >> 0xf,0) & 1) << 1 |\\n              (ushort)(SUB161(auVar19 >> 0x17,0) & 1) << 2 |\\n              (ushort)(SUB161(auVar19 >> 0x1f,0) & 1) << 3 |\\n              (ushort)(SUB161(auVar19 >> 0x27,0) & 1) << 4 |\\n              (ushort)(SUB161(auVar19 >> 0x2f,0) & 1) << 5 |\\n              (ushort)(SUB161(auVar19 >> 0x37,0) & 1) << 6 |\\n              (ushort)(SUB161(auVar19 >> 0x3f,0) & 1) << 7 |\\n              (ushort)(SUB161(auVar19 >> 0x47,0) & 1) << 8 |\\n              (ushort)(SUB161(auVar19 >> 0x4f,0) & 1) << 9 |\\n              (ushort)(SUB161(auVar19 >> 0x57,0) & 1) << 10 |\\n              (ushort)(SUB161(auVar19 >> 0x5f,0) & 1) << 0xb |\\n              (ushort)(SUB161(auVar19 >> 0x67,0) & 1) << 0xc |\\n              (ushort)(SUB161(auVar19 >> 0x6f,0) & 1) << 0xd |\\n              (ushort)(SUB161(auVar19 >> 0x77,0) & 1) << 0xe | (ushort)(auVar19[0xf] >> 7) << 0xf;\\n      uVar9 = (uint)uVar6;\\n      while (uVar6 != 0) {\\n        uVar4 = 0;\\n        for (uVar5 = uVar9; (uVar5 & 1) == 0; uVar5 = uVar5 >> 1 | 0x80000000) {\\n          uVar4 = uVar4 + 1;\\n        }\\n        lVar7 = (uVar4 + uVar8 & plVar2[1]) * -0xc0;\\n        if (*(longlong *)(lVar3 + -0xc0 + lVar7) == in_RDX) {\\n          if ((*(byte *)(lVar3 + -1 + lVar7) & 0x20) != 0) {\\n            return;\\n          }\\n          if (*(longlong *)(in_RCX + 0x1b8) != 0) {\\n            ::core::hash::BuildHasher::\\n            hash_one<std::hash::random::RandomState,ref_<country_core::systems::ui::GlobalId>_>();\\n            lVar3 = *(longlong *)(in_RCX + 0x1a0);\\n            bVar11 = (byte)(extraout_RAX_00 >> 0x39);\\n            auVar13 = ZEXT216(CONCAT11(bVar11,bVar11));\\n            auVar13 = pshuflw(auVar13,auVar13,0);\\n            lVar10 = 0;\\n            uVar8 = extraout_RAX_00;\\n            while( true ) {\\n              uVar8 = *(ulonglong *)(in_RCX + 0x1a8) & uVar8;\\n              pcVar1 = (char *)(lVar3 + uVar8);\\n              cVar12 = auVar13[0];\\n              auVar20[0] = -(*pcVar1 == cVar12);\\n              cVar14 = auVar13[1];\\n              auVar20[1] = -(pcVar1[1] == cVar14);\\n              cVar15 = auVar13[2];\\n              auVar20[2] = -(pcVar1[2] == cVar15);\\n              cVar16 = auVar13[3];\\n              auVar20[3] = -(pcVar1[3] == cVar16);\\n              auVar20[4] = -(pcVar1[4] == cVar12);\\n              auVar20[5] = -(pcVar1[5] == cVar14);\\n              auVar20[6] = -(pcVar1[6] == cVar15);\\n              auVar20[7] = -(pcVar1[7] == cVar16);\\n              auVar20[8] = -(pcVar1[8] == cVar12);\\n              auVar20[9] = -(pcVar1[9] == cVar14);\\n              auVar20[10] = -(pcVar1[10] == cVar15);\\n              auVar20[0xb] = -(pcVar1[0xb] == cVar16);\\n              auVar20[0xc] = -(pcVar1[0xc] == cVar12);\\n              auVar20[0xd] = -(pcVar1[0xd] == cVar14);\\n              auVar20[0xe] = -(pcVar1[0xe] == cVar15);\\n              auVar20[0xf] = -(pcVar1[0xf] == cVar16);\\n              uVar6 = (ushort)(SUB161(auVar20 >> 7,0) & 1) |\\n                      (ushort)(SUB161(auVar20 >> 0xf,0) & 1) << 1 |\\n                      (ushort)(SUB161(auVar20 >> 0x17,0) & 1) << 2 |\\n                      (ushort)(SUB161(auVar20 >> 0x1f,0) & 1) << 3 |\\n                      (ushort)(SUB161(auVar20 >> 0x27,0) & 1) << 4 |\\n                      (ushort)(SUB161(auVar20 >> 0x2f,0) & 1) << 5 |\\n                      (ushort)(SUB161(auVar20 >> 0x37,0) & 1) << 6 |\\n                      (ushort)(SUB161(auVar20 >> 0x3f,0) & 1) << 7 |\\n                      (ushort)(SUB161(auVar20 >> 0x47,0) & 1) << 8 |\\n                      (ushort)(SUB161(auVar20 >> 0x4f,0) & 1) << 9 |\\n                      (ushort)(SUB161(auVar20 >> 0x57,0) & 1) << 10 |\\n                      (ushort)(SUB161(auVar20 >> 0x5f,0) & 1) << 0xb |\\n                      (ushort)(SUB161(auVar20 >> 0x67,0) & 1) << 0xc |\\n                      (ushort)(SUB161(auVar20 >> 0x6f,0) & 1) << 0xd |\\n                      (ushort)(SUB161(auVar20 >> 0x77,0) & 1) << 0xe |\\n                      (ushort)(auVar20[0xf] >> 7) << 0xf;\\n              uVar9 = (uint)uVar6;\\n              while (uVar6 != 0) {\\n                uVar4 = 0;\\n                for (uVar5 = uVar9; (uVar5 & 1) == 0; uVar5 = uVar5 >> 1 | 0x80000000) {\\n                  uVar4 = uVar4 + 1;\\n                }\\n                lVar7 = (uVar4 + uVar8 & *(ulonglong *)(in_RCX + 0x1a8)) * -0xc0;\\n                if (*(longlong *)(lVar3 + -0xc0 + lVar7) == in_RDX) {\\n                  lVar3 = *(longlong *)(lVar3 + -0xa8 + lVar7);\\n                  lVar10 = 0;\\n                  do {\\n                    if (lVar3 << 3 == lVar10) {\\n                      return;\\n                    }\\n                    iter_subtree<country_core::systems::ui::GlobalId,toolbar::mei::core::update_nav::closure_env_0>\\n                              ();\\n                    lVar10 = lVar10 + 8;\\n                  } while (extraout_RAX_01 == 0);\\n                  return;\\n                }\\n                uVar6 = (ushort)(uVar9 - 1) & (ushort)uVar9;\\n                uVar9 = CONCAT22((short)(uVar9 - 1 >> 0x10),uVar6);\\n              }\\n              auVar18[0] = -(*pcVar1 == -1);\\n              auVar18[1] = -(pcVar1[1] == -1);\\n              auVar18[2] = -(pcVar1[2] == -1);\\n              auVar18[3] = -(pcVar1[3] == -1);\\n              auVar18[4] = -(pcVar1[4] == -1);\\n              auVar18[5] = -(pcVar1[5] == -1);\\n              auVar18[6] = -(pcVar1[6] == -1);\\n              auVar18[7] = -(pcVar1[7] == -1);\\n              auVar18[8] = -(pcVar1[8] == -1);\\n              auVar18[9] = -(pcVar1[9] == -1);\\n              auVar18[10] = -(pcVar1[10] == -1);\\n              auVar18[0xb] = -(pcVar1[0xb] == -1);\\n              auVar18[0xc] = -(pcVar1[0xc] == -1);\\n              auVar18[0xd] = -(pcVar1[0xd] == -1);\\n              auVar18[0xe] = -(pcVar1[0xe] == -1);\\n              auVar18[0xf] = -(pcVar1[0xf] == -1);\\n              if ((((((((((((((((SUB161(auVar18 >> 7,0) & 1) != 0 ||\\n                               (SUB161(auVar18 >> 0xf,0) & 1) != 0) ||\\n                              (SUB161(auVar18 >> 0x17,0) & 1) != 0) ||\\n                             (SUB161(auVar18 >> 0x1f,0) & 1) != 0) ||\\n                            (SUB161(auVar18 >> 0x27,0) & 1) != 0) ||\\n                           (SUB161(auVar18 >> 0x2f,0) & 1) != 0) ||\\n                          (SUB161(auVar18 >> 0x37,0) & 1) != 0) ||\\n                         (SUB161(auVar18 >> 0x3f,0) & 1) != 0) ||\\n                        (SUB161(auVar18 >> 0x47,0) & 1) != 0) ||\\n                       (SUB161(auVar18 >> 0x4f,0) & 1) != 0) || (SUB161(auVar18 >> 0x57,0) & 1) != 0\\n                      ) || (SUB161(auVar18 >> 0x5f,0) & 1) != 0) ||\\n                    (SUB161(auVar18 >> 0x67,0) & 1) != 0) || (SUB161(auVar18 >> 0x6f,0) & 1) != 0)\\n                  || (SUB161(auVar18 >> 0x77,0) & 1) != 0) || auVar18[0xf] < '\\\\0') break;\\n              uVar8 = uVar8 + lVar10 + 0x10;\\n              lVar10 = lVar10 + 0x10;\\n            }\\n          }\\n                    // WARNING: Subroutine does not return\\n          ::core::option::expect_failed();\\n        }\\n        uVar6 = (ushort)(uVar9 - 1) & (ushort)uVar9;\\n        uVar9 = CONCAT22((short)(uVar9 - 1 >> 0x10),uVar6);\\n      }\\n      auVar17[0] = -(*pcVar1 == -1);\\n      auVar17[1] = -(pcVar1[1] == -1);\\n      auVar17[2] = -(pcVar1[2] == -1);\\n      auVar17[3] = -(pcVar1[3] == -1);\\n      auVar17[4] = -(pcVar1[4] == -1);\\n      auVar17[5] = -(pcVar1[5] == -1);\\n      auVar17[6] = -(pcVar1[6] == -1);\\n      auVar17[7] = -(pcVar1[7] == -1);\\n      auVar17[8] = -(pcVar1[8] == -1);\\n      auVar17[9] = -(pcVar1[9] == -1);\\n      auVar17[10] = -(pcVar1[10] == -1);\\n      auVar17[0xb] = -(pcVar1[0xb] == -1);\\n      auVar17[0xc] = -(pcVar1[0xc] == -1);\\n      auVar17[0xd] = -(pcVar1[0xd] == -1);\\n      auVar17[0xe] = -(pcVar1[0xe] == -1);\\n      auVar17[0xf] = -(pcVar1[0xf] == -1);\\n      if ((((((((((((((((SUB161(auVar17 >> 7,0) & 1) != 0 || (SUB161(auVar17 >> 0xf,0) & 1) != 0) ||\\n                      (SUB161(auVar17 >> 0x17,0) & 1) != 0) || (SUB161(auVar17 >> 0x1f,0) & 1) != 0)\\n                    || (SUB161(auVar17 >> 0x27,0) & 1) != 0) || (SUB161(auVar17 >> 0x2f,0) & 1) != 0\\n                   ) || (SUB161(auVar17 >> 0x37,0) & 1) != 0) ||\\n                 (SUB161(auVar17 >> 0x3f,0) & 1) != 0) || (SUB161(auVar17 >> 0x47,0) & 1) != 0) ||\\n               (SUB161(auVar17 >> 0x4f,0) & 1) != 0) || (SUB161(auVar17 >> 0x57,0) & 1) != 0) ||\\n             (SUB161(auVar17 >> 0x5f,0) & 1) != 0) || (SUB161(auVar17 >> 0x67,0) & 1) != 0) ||\\n           (SUB161(auVar17 >> 0x6f,0) & 1) != 0) || (SUB161(auVar17 >> 0x77,0) & 1) != 0) ||\\n          auVar17[0xf] < '\\\\0') break;\\n      uVar8 = uVar8 + lVar10 + 0x10;\\n      lVar10 = lVar10 + 0x10;\\n    }\\n  }\\n                    // WARNING: Subroutine does not return\\n  ::core::option::expect_failed();\\n}\\n\\n\",\"caller_count\":2,\"callers\":[{\"name\":\"iter_subtree<country_core::systems::ui::GlobalId,toolbar::mei::core::update_nav::closure_env$0>\",\"address\":\"140f9e3e0\"},{\"name\":\"mei_post_update\",\"address\":\"1406884c0\"}],\"callee_count\":3,\"callees\":[{\"name\":\"expect_failed\",\"address\":\"1428d9330\"},{\"name\":\"hash_one<std::hash::random::RandomState,ref$<country_core::systems::ui::GlobalId>_>\",\"address\":\"1405b0d70\"},{\"name\":\"iter_subtree<country_core::systems::ui::GlobalId,toolbar::mei::core::update_nav::closure_env$0>\",\"address\":\"140f9e3e0\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140f9e610\":{\"name\":\"iter_subtree<tuple$<>,toolbar::mei::core::update_nav::closure_env$2>\",\"size\":854,\"address\":\"140f9e610\",\"signature\":\"void __cdecl iter_subtree<tuple$<>,toolbar::mei::core::update_nav::closure_env$2>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ntoolbar::mei::core::iter_subtree<tuple_<>,toolbar::mei::core::update_nav::closure_env_2>(void)\\n\\n{\\n  char *pcVar1;\\n  undefined8 uVar2;\\n  undefined8 uVar3;\\n  longlong *plVar4;\\n  longlong lVar5;\\n  float *pfVar6;\\n  undefined8 *puVar7;\\n  uint uVar8;\\n  int iVar9;\\n  int iVar10;\\n  int iVar11;\\n  int iVar12;\\n  uint uVar13;\\n  ulonglong extraout_RAX;\\n  ulonglong extraout_RAX_00;\\n  uint uVar14;\\n  longlong in_RCX;\\n  longlong in_RDX;\\n  longlong *in_R8;\\n  ulonglong uVar15;\\n  longlong lVar16;\\n  ushort uVar17;\\n  longlong lVar18;\\n  byte bVar19;\\n  char cVar20;\\n  char cVar21;\\n  char cVar28;\\n  float fVar22;\\n  char cVar24;\\n  char cVar25;\\n  char cVar26;\\n  char cVar27;\\n  char cVar29;\\n  undefined1 auVar23 [16];\\n  undefined1 in_XMM1_Ba;\\n  char cVar30;\\n  undefined1 in_XMM1_Bb;\\n  char cVar31;\\n  char cVar32;\\n  undefined1 in_XMM1_Bc;\\n  char cVar33;\\n  char cVar34;\\n  undefined1 in_XMM1_Bd;\\n  char cVar35;\\n  char cVar36;\\n  undefined1 in_XMM1_Be;\\n  undefined1 in_XMM1_Bf;\\n  undefined1 in_XMM1_Bg;\\n  undefined1 in_XMM1_Bh;\\n  undefined1 in_XMM1_Bi;\\n  char cVar37;\\n  undefined1 in_XMM1_Bj;\\n  char cVar38;\\n  undefined1 in_XMM1_Bk;\\n  char cVar39;\\n  undefined1 in_XMM1_Bl;\\n  char cVar40;\\n  undefined1 in_XMM1_Bm;\\n  undefined1 in_XMM1_Bn;\\n  undefined1 in_XMM1_Bo;\\n  undefined1 in_XMM1_Bp;\\n  float fVar41;\\n  float fVar44;\\n  undefined1 auVar42 [16];\\n  undefined1 auVar43 [16];\\n  float fVar45;\\n  float fVar49;\\n  undefined1 auVar47 [16];\\n  float fVar46;\\n  float fVar50;\\n  undefined1 auVar48 [16];\\n  \\n  plVar4 = (longlong *)*in_R8;\\n  if (plVar4[3] != 0) {\\n    ::core::hash::BuildHasher::\\n    hash_one<std::hash::random::RandomState,ref_<country_core::systems::ui::GlobalId>_>();\\n    lVar5 = *plVar4;\\n    bVar19 = (byte)(extraout_RAX >> 0x39);\\n    auVar23 = ZEXT216(CONCAT11(bVar19,bVar19));\\n    auVar23 = pshuflw(auVar23,auVar23,0);\\n    lVar16 = 0;\\n    iVar9 = -(uint)(CONCAT13(in_XMM1_Bd,CONCAT12(in_XMM1_Bc,CONCAT11(in_XMM1_Bb,in_XMM1_Ba))) ==\\n                   CONCAT13(in_XMM1_Bd,CONCAT12(in_XMM1_Bc,CONCAT11(in_XMM1_Bb,in_XMM1_Ba))));\\n    cVar30 = (char)iVar9;\\n    cVar31 = (char)((uint)iVar9 >> 8);\\n    cVar33 = (char)((uint)iVar9 >> 0x10);\\n    cVar35 = (char)((uint)iVar9 >> 0x18);\\n    iVar9 = -(uint)(CONCAT13(in_XMM1_Bh,CONCAT12(in_XMM1_Bg,CONCAT11(in_XMM1_Bf,in_XMM1_Be))) ==\\n                   CONCAT13(in_XMM1_Bh,CONCAT12(in_XMM1_Bg,CONCAT11(in_XMM1_Bf,in_XMM1_Be))));\\n    cVar29 = (char)iVar9;\\n    cVar32 = (char)((uint)iVar9 >> 8);\\n    cVar34 = (char)((uint)iVar9 >> 0x10);\\n    cVar36 = (char)((uint)iVar9 >> 0x18);\\n    iVar9 = -(uint)(CONCAT13(in_XMM1_Bl,CONCAT12(in_XMM1_Bk,CONCAT11(in_XMM1_Bj,in_XMM1_Bi))) ==\\n                   CONCAT13(in_XMM1_Bl,CONCAT12(in_XMM1_Bk,CONCAT11(in_XMM1_Bj,in_XMM1_Bi))));\\n    cVar37 = (char)iVar9;\\n    cVar38 = (char)((uint)iVar9 >> 8);\\n    cVar39 = (char)((uint)iVar9 >> 0x10);\\n    cVar40 = (char)((uint)iVar9 >> 0x18);\\n    iVar9 = -(uint)(CONCAT13(in_XMM1_Bp,CONCAT12(in_XMM1_Bo,CONCAT11(in_XMM1_Bn,in_XMM1_Bm))) ==\\n                   CONCAT13(in_XMM1_Bp,CONCAT12(in_XMM1_Bo,CONCAT11(in_XMM1_Bn,in_XMM1_Bm))));\\n    cVar21 = (char)((uint)iVar9 >> 8);\\n    cVar25 = (char)((uint)iVar9 >> 0x10);\\n    cVar27 = (char)((uint)iVar9 >> 0x18);\\n    uVar15 = extraout_RAX;\\n    while( true ) {\\n      uVar15 = plVar4[1] & uVar15;\\n      pcVar1 = (char *)(lVar5 + uVar15);\\n      cVar20 = auVar23[0];\\n      auVar47[0] = -(*pcVar1 == cVar20);\\n      cVar24 = auVar23[1];\\n      auVar47[1] = -(pcVar1[1] == cVar24);\\n      cVar26 = auVar23[2];\\n      auVar47[2] = -(pcVar1[2] == cVar26);\\n      cVar28 = auVar23[3];\\n      auVar47[3] = -(pcVar1[3] == cVar28);\\n      auVar47[4] = -(pcVar1[4] == cVar20);\\n      auVar47[5] = -(pcVar1[5] == cVar24);\\n      auVar47[6] = -(pcVar1[6] == cVar26);\\n      auVar47[7] = -(pcVar1[7] == cVar28);\\n      auVar47[8] = -(pcVar1[8] == cVar20);\\n      auVar47[9] = -(pcVar1[9] == cVar24);\\n      auVar47[10] = -(pcVar1[10] == cVar26);\\n      auVar47[0xb] = -(pcVar1[0xb] == cVar28);\\n      auVar47[0xc] = -(pcVar1[0xc] == cVar20);\\n      auVar47[0xd] = -(pcVar1[0xd] == cVar24);\\n      auVar47[0xe] = -(pcVar1[0xe] == cVar26);\\n      auVar47[0xf] = -(pcVar1[0xf] == cVar28);\\n      uVar17 = (ushort)(SUB161(auVar47 >> 7,0) & 1) | (ushort)(SUB161(auVar47 >> 0xf,0) & 1) << 1 |\\n               (ushort)(SUB161(auVar47 >> 0x17,0) & 1) << 2 |\\n               (ushort)(SUB161(auVar47 >> 0x1f,0) & 1) << 3 |\\n               (ushort)(SUB161(auVar47 >> 0x27,0) & 1) << 4 |\\n               (ushort)(SUB161(auVar47 >> 0x2f,0) & 1) << 5 |\\n               (ushort)(SUB161(auVar47 >> 0x37,0) & 1) << 6 |\\n               (ushort)(SUB161(auVar47 >> 0x3f,0) & 1) << 7 |\\n               (ushort)(SUB161(auVar47 >> 0x47,0) & 1) << 8 |\\n               (ushort)(SUB161(auVar47 >> 0x4f,0) & 1) << 9 |\\n               (ushort)(SUB161(auVar47 >> 0x57,0) & 1) << 10 |\\n               (ushort)(SUB161(auVar47 >> 0x5f,0) & 1) << 0xb |\\n               (ushort)(SUB161(auVar47 >> 0x67,0) & 1) << 0xc |\\n               (ushort)(SUB161(auVar47 >> 0x6f,0) & 1) << 0xd |\\n               (ushort)(SUB161(auVar47 >> 0x77,0) & 1) << 0xe | (ushort)(auVar47[0xf] >> 7) << 0xf;\\n      uVar13 = (uint)uVar17;\\n      while (uVar17 != 0) {\\n        uVar14 = 0;\\n        for (uVar8 = uVar13; (uVar8 & 1) == 0; uVar8 = uVar8 >> 1 | 0x80000000) {\\n          uVar14 = uVar14 + 1;\\n        }\\n        lVar18 = (uVar14 + uVar15 & plVar4[1]) * -0xc0;\\n        if (*(longlong *)(lVar5 + -0xc0 + lVar18) == in_RDX) {\\n          cVar20 = (char)iVar9;\\n          if ((*(byte *)(lVar5 + -1 + lVar18) & 0x20) != 0) {\\n            uVar2 = *(undefined8 *)(lVar5 + lVar18 + -0x48);\\n            uVar3 = *(undefined8 *)(lVar5 + lVar18 + -0x40);\\n            fVar41 = ((float)uVar2 * 0.5 + (float)uVar3) - (float)*(undefined8 *)in_R8[1];\\n            fVar44 = ((float)((ulonglong)uVar2 >> 0x20) * 0.5 + (float)((ulonglong)uVar3 >> 0x20)) -\\n                     (float)((ulonglong)*(undefined8 *)in_R8[1] >> 0x20);\\n            fVar22 = SQRT(fVar44 * fVar44 + fVar41 * fVar41);\\n            fVar45 = 1.0 / fVar22;\\n            uVar14 = (uint)((int)fVar45 - 1U < 0x7fffff ||\\n                           (int)ABS(fVar45) - 0x800000U < 0x7f000000 && -1 < (int)fVar45);\\n            fVar46 = (float)*(undefined8 *)in_R8[2];\\n            fVar49 = (float)((ulonglong)*(undefined8 *)in_R8[2] >> 0x20);\\n            fVar50 = 1.0 / SQRT(fVar49 * fVar49 + fVar46 * fVar46);\\n            fVar49 = fVar50 * fVar49;\\n            uVar13 = (uint)((int)fVar50 - 1U < 0x7fffff ||\\n                           (int)ABS(fVar50) - 0x800000U < 0x7f000000 && -1 < (int)fVar50);\\n            uVar15 = CONCAT44((int)(uVar13 << 0x1f) >> 0x1f,(int)(uVar13 << 0x1f) >> 0x1f) &\\n                     CONCAT17((char)((uint)fVar49 >> 0x18),\\n                              CONCAT16((char)((uint)fVar49 >> 0x10),\\n                                       CONCAT15((char)((uint)fVar49 >> 8),\\n                                                CONCAT14(SUB41(fVar49,0),fVar50 * fVar46))));\\n            fVar50 = (float)(uVar15 >> 0x20) *\\n                     (float)((int)(uVar14 << 0x1f) >> 0x1f & (uint)(fVar45 * fVar44));\\n            cVar29 = SUB41(fVar50,0);\\n            cVar32 = (char)((uint)fVar50 >> 8);\\n            cVar34 = (char)((uint)fVar50 >> 0x10);\\n            cVar36 = (char)((uint)fVar50 >> 0x18);\\n            cVar37 = '\\\\0';\\n            cVar38 = '\\\\0';\\n            cVar39 = '\\\\0';\\n            cVar40 = '\\\\0';\\n            fVar50 = fVar50 + (float)uVar15 *\\n                              (float)((int)(uVar14 << 0x1f) >> 0x1f & (uint)(fVar45 * fVar41));\\n            cVar30 = SUB41(fVar50,0);\\n            cVar31 = (char)((uint)fVar50 >> 8);\\n            cVar33 = (char)((uint)fVar50 >> 0x10);\\n            cVar35 = (char)((uint)fVar50 >> 0x18);\\n            cVar20 = cVar37;\\n            cVar21 = cVar38;\\n            cVar25 = cVar39;\\n            cVar27 = cVar40;\\n            if (0.0 < fVar50) {\\n              pfVar6 = (float *)in_R8[3];\\n              fVar50 = *pfVar6;\\n              cVar30 = SUB41(fVar50,0);\\n              cVar31 = (char)((uint)fVar50 >> 8);\\n              cVar33 = (char)((uint)fVar50 >> 0x10);\\n              cVar35 = (char)((uint)fVar50 >> 0x18);\\n              cVar29 = '\\\\0';\\n              cVar32 = '\\\\0';\\n              cVar34 = '\\\\0';\\n              cVar36 = '\\\\0';\\n              cVar37 = '\\\\0';\\n              cVar38 = '\\\\0';\\n              cVar39 = '\\\\0';\\n              cVar40 = '\\\\0';\\n              cVar20 = '\\\\0';\\n              cVar21 = '\\\\0';\\n              cVar25 = '\\\\0';\\n              cVar27 = '\\\\0';\\n              if (fVar22 < fVar50) {\\n                puVar7 = (undefined8 *)in_R8[4];\\n                *puVar7 = 1;\\n                puVar7[1] = in_RDX;\\n                *pfVar6 = fVar22;\\n              }\\n            }\\n          }\\n          if (*(longlong *)(in_RCX + 0x1b8) != 0) {\\n            ::core::hash::BuildHasher::\\n            hash_one<std::hash::random::RandomState,ref_<country_core::systems::ui::GlobalId>_>();\\n            lVar5 = *(longlong *)(in_RCX + 0x1a0);\\n            bVar19 = (byte)(extraout_RAX_00 >> 0x39);\\n            auVar23 = ZEXT216(CONCAT11(bVar19,bVar19));\\n            auVar23 = pshuflw(auVar23,auVar23,0);\\n            lVar16 = 0;\\n            iVar9 = -(uint)(CONCAT13(cVar35,CONCAT12(cVar33,CONCAT11(cVar31,cVar30))) ==\\n                           CONCAT13(cVar35,CONCAT12(cVar33,CONCAT11(cVar31,cVar30))));\\n            iVar10 = -(uint)(CONCAT13(cVar36,CONCAT12(cVar34,CONCAT11(cVar32,cVar29))) ==\\n                            CONCAT13(cVar36,CONCAT12(cVar34,CONCAT11(cVar32,cVar29))));\\n            iVar11 = -(uint)(CONCAT13(cVar40,CONCAT12(cVar39,CONCAT11(cVar38,cVar37))) ==\\n                            CONCAT13(cVar40,CONCAT12(cVar39,CONCAT11(cVar38,cVar37))));\\n            iVar12 = -(uint)(CONCAT13(cVar27,CONCAT12(cVar25,CONCAT11(cVar21,cVar20))) ==\\n                            CONCAT13(cVar27,CONCAT12(cVar25,CONCAT11(cVar21,cVar20))));\\n            uVar15 = extraout_RAX_00;\\n            while( true ) {\\n              uVar15 = *(ulonglong *)(in_RCX + 0x1a8) & uVar15;\\n              pcVar1 = (char *)(lVar5 + uVar15);\\n              cVar21 = auVar23[0];\\n              auVar48[0] = -(*pcVar1 == cVar21);\\n              cVar25 = auVar23[1];\\n              auVar48[1] = -(pcVar1[1] == cVar25);\\n              cVar27 = auVar23[2];\\n              auVar48[2] = -(pcVar1[2] == cVar27);\\n              cVar29 = auVar23[3];\\n              auVar48[3] = -(pcVar1[3] == cVar29);\\n              auVar48[4] = -(pcVar1[4] == cVar21);\\n              auVar48[5] = -(pcVar1[5] == cVar25);\\n              auVar48[6] = -(pcVar1[6] == cVar27);\\n              auVar48[7] = -(pcVar1[7] == cVar29);\\n              auVar48[8] = -(pcVar1[8] == cVar21);\\n              auVar48[9] = -(pcVar1[9] == cVar25);\\n              auVar48[10] = -(pcVar1[10] == cVar27);\\n              auVar48[0xb] = -(pcVar1[0xb] == cVar29);\\n              auVar48[0xc] = -(pcVar1[0xc] == cVar21);\\n              auVar48[0xd] = -(pcVar1[0xd] == cVar25);\\n              auVar48[0xe] = -(pcVar1[0xe] == cVar27);\\n              auVar48[0xf] = -(pcVar1[0xf] == cVar29);\\n              uVar17 = (ushort)(SUB161(auVar48 >> 7,0) & 1) |\\n                       (ushort)(SUB161(auVar48 >> 0xf,0) & 1) << 1 |\\n                       (ushort)(SUB161(auVar48 >> 0x17,0) & 1) << 2 |\\n                       (ushort)(SUB161(auVar48 >> 0x1f,0) & 1) << 3 |\\n                       (ushort)(SUB161(auVar48 >> 0x27,0) & 1) << 4 |\\n                       (ushort)(SUB161(auVar48 >> 0x2f,0) & 1) << 5 |\\n                       (ushort)(SUB161(auVar48 >> 0x37,0) & 1) << 6 |\\n                       (ushort)(SUB161(auVar48 >> 0x3f,0) & 1) << 7 |\\n                       (ushort)(SUB161(auVar48 >> 0x47,0) & 1) << 8 |\\n                       (ushort)(SUB161(auVar48 >> 0x4f,0) & 1) << 9 |\\n                       (ushort)(SUB161(auVar48 >> 0x57,0) & 1) << 10 |\\n                       (ushort)(SUB161(auVar48 >> 0x5f,0) & 1) << 0xb |\\n                       (ushort)(SUB161(auVar48 >> 0x67,0) & 1) << 0xc |\\n                       (ushort)(SUB161(auVar48 >> 0x6f,0) & 1) << 0xd |\\n                       (ushort)(SUB161(auVar48 >> 0x77,0) & 1) << 0xe |\\n                       (ushort)(auVar48[0xf] >> 7) << 0xf;\\n              uVar13 = (uint)uVar17;\\n              while (uVar17 != 0) {\\n                uVar14 = 0;\\n                for (uVar8 = uVar13; (uVar8 & 1) == 0; uVar8 = uVar8 >> 1 | 0x80000000) {\\n                  uVar14 = uVar14 + 1;\\n                }\\n                lVar18 = (uVar14 + uVar15 & *(ulonglong *)(in_RCX + 0x1a8)) * -0xc0;\\n                if (*(longlong *)(lVar5 + -0xc0 + lVar18) == in_RDX) {\\n                  lVar5 = *(longlong *)(lVar5 + -0xa8 + lVar18);\\n                  if (lVar5 != 0) {\\n                    lVar16 = 0;\\n                    do {\\n                      iter_subtree<tuple_<>,toolbar::mei::core::update_nav::closure_env_2>();\\n                      lVar16 = lVar16 + 8;\\n                    } while (lVar5 << 3 != lVar16);\\n                  }\\n                  return;\\n                }\\n                uVar17 = (ushort)(uVar13 - 1) & (ushort)uVar13;\\n                uVar13 = CONCAT22((short)(uVar13 - 1 >> 0x10),uVar17);\\n              }\\n              auVar43[0] = -(*pcVar1 == (char)iVar9);\\n              auVar43[1] = -(pcVar1[1] == (char)((uint)iVar9 >> 8));\\n              auVar43[2] = -(pcVar1[2] == (char)((uint)iVar9 >> 0x10));\\n              auVar43[3] = -(pcVar1[3] == (char)((uint)iVar9 >> 0x18));\\n              auVar43[4] = -(pcVar1[4] == (char)iVar10);\\n              auVar43[5] = -(pcVar1[5] == (char)((uint)iVar10 >> 8));\\n              auVar43[6] = -(pcVar1[6] == (char)((uint)iVar10 >> 0x10));\\n              auVar43[7] = -(pcVar1[7] == (char)((uint)iVar10 >> 0x18));\\n              auVar43[8] = -(pcVar1[8] == (char)iVar11);\\n              auVar43[9] = -(pcVar1[9] == (char)((uint)iVar11 >> 8));\\n              auVar43[10] = -(pcVar1[10] == (char)((uint)iVar11 >> 0x10));\\n              auVar43[0xb] = -(pcVar1[0xb] == (char)((uint)iVar11 >> 0x18));\\n              auVar43[0xc] = -(pcVar1[0xc] == (char)iVar12);\\n              auVar43[0xd] = -(pcVar1[0xd] == (char)((uint)iVar12 >> 8));\\n              auVar43[0xe] = -(pcVar1[0xe] == (char)((uint)iVar12 >> 0x10));\\n              auVar43[0xf] = -(pcVar1[0xf] == (char)((uint)iVar12 >> 0x18));\\n              if ((((((((((((((((SUB161(auVar43 >> 7,0) & 1) != 0 ||\\n                               (SUB161(auVar43 >> 0xf,0) & 1) != 0) ||\\n                              (SUB161(auVar43 >> 0x17,0) & 1) != 0) ||\\n                             (SUB161(auVar43 >> 0x1f,0) & 1) != 0) ||\\n                            (SUB161(auVar43 >> 0x27,0) & 1) != 0) ||\\n                           (SUB161(auVar43 >> 0x2f,0) & 1) != 0) ||\\n                          (SUB161(auVar43 >> 0x37,0) & 1) != 0) ||\\n                         (SUB161(auVar43 >> 0x3f,0) & 1) != 0) ||\\n                        (SUB161(auVar43 >> 0x47,0) & 1) != 0) ||\\n                       (SUB161(auVar43 >> 0x4f,0) & 1) != 0) || (SUB161(auVar43 >> 0x57,0) & 1) != 0\\n                      ) || (SUB161(auVar43 >> 0x5f,0) & 1) != 0) ||\\n                    (SUB161(auVar43 >> 0x67,0) & 1) != 0) || (SUB161(auVar43 >> 0x6f,0) & 1) != 0)\\n                  || (SUB161(auVar43 >> 0x77,0) & 1) != 0) || auVar43[0xf] < '\\\\0') break;\\n              uVar15 = uVar15 + lVar16 + 0x10;\\n              lVar16 = lVar16 + 0x10;\\n            }\\n          }\\n                    // WARNING: Subroutine does not return\\n          ::core::option::expect_failed();\\n        }\\n        uVar17 = (ushort)(uVar13 - 1) & (ushort)uVar13;\\n        uVar13 = CONCAT22((short)(uVar13 - 1 >> 0x10),uVar17);\\n      }\\n      auVar42[0] = -(*pcVar1 == cVar30);\\n      auVar42[1] = -(pcVar1[1] == cVar31);\\n      auVar42[2] = -(pcVar1[2] == cVar33);\\n      auVar42[3] = -(pcVar1[3] == cVar35);\\n      auVar42[4] = -(pcVar1[4] == cVar29);\\n      auVar42[5] = -(pcVar1[5] == cVar32);\\n      auVar42[6] = -(pcVar1[6] == cVar34);\\n      auVar42[7] = -(pcVar1[7] == cVar36);\\n      auVar42[8] = -(pcVar1[8] == cVar37);\\n      auVar42[9] = -(pcVar1[9] == cVar38);\\n      auVar42[10] = -(pcVar1[10] == cVar39);\\n      auVar42[0xb] = -(pcVar1[0xb] == cVar40);\\n      auVar42[0xc] = -(pcVar1[0xc] == (char)iVar9);\\n      auVar42[0xd] = -(pcVar1[0xd] == cVar21);\\n      auVar42[0xe] = -(pcVar1[0xe] == cVar25);\\n      auVar42[0xf] = -(pcVar1[0xf] == cVar27);\\n      if ((((((((((((((((SUB161(auVar42 >> 7,0) & 1) != 0 || (SUB161(auVar42 >> 0xf,0) & 1) != 0) ||\\n                      (SUB161(auVar42 >> 0x17,0) & 1) != 0) || (SUB161(auVar42 >> 0x1f,0) & 1) != 0)\\n                    || (SUB161(auVar42 >> 0x27,0) & 1) != 0) || (SUB161(auVar42 >> 0x2f,0) & 1) != 0\\n                   ) || (SUB161(auVar42 >> 0x37,0) & 1) != 0) ||\\n                 (SUB161(auVar42 >> 0x3f,0) & 1) != 0) || (SUB161(auVar42 >> 0x47,0) & 1) != 0) ||\\n               (SUB161(auVar42 >> 0x4f,0) & 1) != 0) || (SUB161(auVar42 >> 0x57,0) & 1) != 0) ||\\n             (SUB161(auVar42 >> 0x5f,0) & 1) != 0) || (SUB161(auVar42 >> 0x67,0) & 1) != 0) ||\\n           (SUB161(auVar42 >> 0x6f,0) & 1) != 0) || (SUB161(auVar42 >> 0x77,0) & 1) != 0) ||\\n          auVar42[0xf] < '\\\\0') break;\\n      uVar15 = uVar15 + lVar16 + 0x10;\\n      lVar16 = lVar16 + 0x10;\\n    }\\n  }\\n                    // WARNING: Subroutine does not return\\n  ::core::option::expect_failed();\\n}\\n\\n\",\"caller_count\":2,\"callers\":[{\"name\":\"iter_subtree<tuple$<>,toolbar::mei::core::update_nav::closure_env$2>\",\"address\":\"140f9e610\"},{\"name\":\"mei_post_update\",\"address\":\"1406884c0\"}],\"callee_count\":3,\"callees\":[{\"name\":\"expect_failed\",\"address\":\"1428d9330\"},{\"name\":\"hash_one<std::hash::random::RandomState,ref$<country_core::systems::ui::GlobalId>_>\",\"address\":\"1405b0d70\"},{\"name\":\"iter_subtree<tuple$<>,toolbar::mei::core::update_nav::closure_env$2>\",\"address\":\"140f9e610\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x141ea8c60\":{\"name\":\"iter_subtree<tuple$<>,toolbar::ui_interaction::ui_nav_update::closure$0::closure_env$0>\",\"size\":1051,\"address\":\"141ea8c60\",\"signature\":\"void __cdecl iter_subtree<tuple$<>,toolbar::ui_interaction::ui_nav_update::closure$0::closure_env$0>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ntoolbar::ui_interaction::\\niter_subtree<tuple_<>,toolbar::ui_interaction::ui_nav_update::closure_0::closure_env_0>(void)\\n\\n{\\n  char *pcVar1;\\n  undefined8 uVar2;\\n  longlong *plVar3;\\n  longlong lVar4;\\n  float *pfVar5;\\n  uint uVar6;\\n  uint uVar7;\\n  ulonglong uVar8;\\n  bool bVar9;\\n  ulonglong extraout_RAX;\\n  uint uVar10;\\n  int in_EDX;\\n  longlong lVar11;\\n  int in_R8D;\\n  ulonglong uVar12;\\n  longlong lVar13;\\n  longlong *in_R9;\\n  longlong lVar14;\\n  ushort uVar15;\\n  ulonglong uVar16;\\n  byte bVar17;\\n  char cVar18;\\n  char cVar23;\\n  float fVar19;\\n  char cVar21;\\n  char cVar22;\\n  undefined1 auVar20 [16];\\n  float fVar24;\\n  float fVar25;\\n  float fVar26;\\n  undefined1 auVar27 [16];\\n  int iVar30;\\n  undefined1 auVar28 [16];\\n  undefined1 auVar29 [16];\\n  int local_98;\\n  longlong lStack_90;\\n  longlong lStack_80;\\n  \\n  plVar3 = (longlong *)*in_R9;\\n  if (plVar3[3] == 0) {\\nLAB_141ea8fbd:\\n    taffy::node::Taffy::children();\\n    if (local_98 != 4) {\\n                    // WARNING: Subroutine does not return\\n      core::result::unwrap_failed();\\n    }\\n    for (lVar11 = lStack_80 << 3; lVar11 != 0; lVar11 = lVar11 + -8) {\\n      iter_subtree<tuple_<>,toolbar::ui_interaction::ui_nav_update::closure_0::closure_env_0>();\\n    }\\n    if (lStack_90 != 0) {\\n      std::alloc::__default_lib_allocator::__rust_dealloc();\\n    }\\n    return;\\n  }\\n  core::hash::BuildHasher::hash_one<std::hash::random::RandomState,ref_<slotmap::DefaultKey>_>();\\n  lVar11 = *plVar3;\\n  bVar17 = (byte)(extraout_RAX >> 0x39);\\n  auVar20 = ZEXT216(CONCAT11(bVar17,bVar17));\\n  auVar20 = pshuflw(auVar20,auVar20,0);\\n  lVar14 = 0;\\n  uVar12 = extraout_RAX;\\n  do {\\n    uVar12 = plVar3[1] & uVar12;\\n    pcVar1 = (char *)(lVar11 + uVar12);\\n    cVar18 = auVar20[0];\\n    auVar28[0] = -(*pcVar1 == cVar18);\\n    cVar21 = auVar20[1];\\n    auVar28[1] = -(pcVar1[1] == cVar21);\\n    cVar22 = auVar20[2];\\n    auVar28[2] = -(pcVar1[2] == cVar22);\\n    cVar23 = auVar20[3];\\n    auVar28[3] = -(pcVar1[3] == cVar23);\\n    auVar28[4] = -(pcVar1[4] == cVar18);\\n    auVar28[5] = -(pcVar1[5] == cVar21);\\n    auVar28[6] = -(pcVar1[6] == cVar22);\\n    auVar28[7] = -(pcVar1[7] == cVar23);\\n    auVar28[8] = -(pcVar1[8] == cVar18);\\n    auVar28[9] = -(pcVar1[9] == cVar21);\\n    auVar28[10] = -(pcVar1[10] == cVar22);\\n    auVar28[0xb] = -(pcVar1[0xb] == cVar23);\\n    auVar28[0xc] = -(pcVar1[0xc] == cVar18);\\n    auVar28[0xd] = -(pcVar1[0xd] == cVar21);\\n    auVar28[0xe] = -(pcVar1[0xe] == cVar22);\\n    auVar28[0xf] = -(pcVar1[0xf] == cVar23);\\n    uVar15 = (ushort)(SUB161(auVar28 >> 7,0) & 1) | (ushort)(SUB161(auVar28 >> 0xf,0) & 1) << 1 |\\n             (ushort)(SUB161(auVar28 >> 0x17,0) & 1) << 2 |\\n             (ushort)(SUB161(auVar28 >> 0x1f,0) & 1) << 3 |\\n             (ushort)(SUB161(auVar28 >> 0x27,0) & 1) << 4 |\\n             (ushort)(SUB161(auVar28 >> 0x2f,0) & 1) << 5 |\\n             (ushort)(SUB161(auVar28 >> 0x37,0) & 1) << 6 |\\n             (ushort)(SUB161(auVar28 >> 0x3f,0) & 1) << 7 |\\n             (ushort)(SUB161(auVar28 >> 0x47,0) & 1) << 8 |\\n             (ushort)(SUB161(auVar28 >> 0x4f,0) & 1) << 9 |\\n             (ushort)(SUB161(auVar28 >> 0x57,0) & 1) << 10 |\\n             (ushort)(SUB161(auVar28 >> 0x5f,0) & 1) << 0xb |\\n             (ushort)(SUB161(auVar28 >> 0x67,0) & 1) << 0xc |\\n             (ushort)(SUB161(auVar28 >> 0x6f,0) & 1) << 0xd |\\n             (ushort)(SUB161(auVar28 >> 0x77,0) & 1) << 0xe | (ushort)(auVar28[0xf] >> 7) << 0xf;\\n    uVar10 = (uint)uVar15;\\n    while (uVar15 != 0) {\\n      uVar6 = 0;\\n      for (uVar7 = uVar10; (uVar7 & 1) == 0; uVar7 = uVar7 >> 1 | 0x80000000) {\\n        uVar6 = uVar6 + 1;\\n      }\\n      uVar16 = uVar6 + uVar12 & plVar3[1];\\n      uVar2 = *(undefined8 *)(lVar11 + -0x10 + uVar16 * -0x10);\\n      auVar29._0_4_ = -(uint)((int)uVar2 == in_EDX);\\n      iVar30 = -(uint)((int)((ulonglong)uVar2 >> 0x20) == in_R8D);\\n      auVar29._4_4_ = auVar29._0_4_;\\n      auVar29._8_4_ = iVar30;\\n      auVar29._12_4_ = iVar30;\\n      iVar30 = movmskpd((int)uVar16 * 0x10,auVar29);\\n      if (iVar30 == 3) {\\n        lVar14 = ((longlong *)in_R9[1])[1];\\n        uVar12 = *(ulonglong *)(lVar11 + -8 + uVar16 * -0x10);\\n        uVar16 = uVar12 & 0xffffffff;\\n        if ((uVar16 < *(ulonglong *)(lVar14 + 0x10)) &&\\n           (*(int *)(*(longlong *)(lVar14 + 8) + uVar16 * 0x14) == (int)(uVar12 >> 0x20))) {\\n          lVar11 = *(longlong *)(lVar14 + 8) + uVar16 * 0x14;\\n          uVar16 = (ulonglong)*(uint *)(lVar11 + 4);\\n          if ((uVar16 != 0xffffffff) &&\\n             ((lVar4 = *(longlong *)in_R9[1], uVar16 < *(ulonglong *)(lVar4 + 0x38) &&\\n              ((*(ulonglong *)\\n                 (*(longlong *)(lVar4 + 0x28) + (ulonglong)(*(uint *)(lVar11 + 4) >> 6) * 8) >>\\n                (uVar16 & 0x3f) & 1) != 0)))) {\\n            if (uVar16 < *(ulonglong *)(lVar14 + 0x108)) {\\n              lVar13 = uVar16 * 0xa0 + *(longlong *)(lVar14 + 0x100);\\n            }\\n            else {\\n              lVar13 = 0;\\n            }\\n            uVar16 = *(ulonglong *)(lVar4 + 0x110);\\n            bVar9 = true;\\n            if ((uVar16 < *(ulonglong *)(lVar13 + 0x88)) &&\\n               (*(longlong *)(*(longlong *)(lVar13 + 0x80) + uVar16 * 8) != 0)) {\\n              lVar14 = (ulonglong)*(uint *)(lVar11 + 0xc) * 0x48 + *(longlong *)(lVar14 + 0x1a8);\\n              if ((*(ulonglong *)(lVar14 + 0x40) <= uVar16) ||\\n                 (uVar16 = *(ulonglong *)(*(longlong *)(lVar14 + 0x38) + uVar16 * 8), uVar16 == 0))\\n              {\\n                bVar9 = false;\\n                goto LAB_141ea8e5b;\\n              }\\n              lVar14 = *(longlong *)(*(longlong *)(lVar14 + 0x18) + 0x10 + ~uVar16 * 0x30);\\n              bVar9 = false;\\n            }\\n            else {\\nLAB_141ea8e5b:\\n              lVar14 = 0;\\n            }\\n            if (!bVar9 && lVar14 != 0) {\\n              uVar2 = *(undefined8 *)(lVar14 + (ulonglong)*(uint *)(lVar11 + 0x10) * 0x10);\\n              fVar24 = (float)uVar2 - (float)*(undefined8 *)in_R9[2];\\n              fVar25 = (float)((ulonglong)uVar2 >> 0x20) -\\n                       (float)((ulonglong)*(undefined8 *)in_R9[2] >> 0x20);\\n              fVar19 = SQRT(fVar25 * fVar25 + fVar24 * fVar24);\\n              fVar26 = 1.0 / fVar19;\\n              uVar10 = (uint)((int)fVar26 - 1U < 0x7fffff ||\\n                             (int)ABS(fVar26) - 0x800000U < 0x7f000000 && -1 < (int)fVar26);\\n              uVar16 = CONCAT44((int)(uVar10 << 0x1f) >> 0x1f,(int)(uVar10 << 0x1f) >> 0x1f) &\\n                       CONCAT44(fVar26 * fVar25,fVar26 * fVar24);\\n              fVar25 = (float)*(undefined8 *)in_R9[3];\\n              fVar26 = (float)((ulonglong)*(undefined8 *)in_R9[3] >> 0x20);\\n              fVar24 = 1.0 / SQRT(fVar26 * fVar26 + fVar25 * fVar25);\\n              uVar10 = (uint)((int)fVar24 - 1U < 0x7fffff ||\\n                             (int)ABS(fVar24) - 0x800000U < 0x7f000000 && -1 < (int)fVar24);\\n              uVar8 = CONCAT44((int)(uVar10 << 0x1f) >> 0x1f,(int)(uVar10 << 0x1f) >> 0x1f) &\\n                      CONCAT44(fVar24 * fVar26,fVar24 * fVar25);\\n              if ((0.0 < (float)(uVar8 >> 0x20) * (float)(uVar16 >> 0x20) +\\n                         (float)uVar8 * (float)uVar16) &&\\n                 (pfVar5 = (float *)in_R9[4], fVar19 < *pfVar5)) {\\n                *(ulonglong *)in_R9[5] = uVar12;\\n                *pfVar5 = fVar19;\\n              }\\n            }\\n          }\\n        }\\n        goto LAB_141ea8fbd;\\n      }\\n      uVar15 = (ushort)(uVar10 - 1) & (ushort)uVar10;\\n      uVar10 = CONCAT22((short)(uVar10 - 1 >> 0x10),uVar15);\\n    }\\n    auVar27[0] = -(*pcVar1 == -1);\\n    auVar27[1] = -(pcVar1[1] == -1);\\n    auVar27[2] = -(pcVar1[2] == -1);\\n    auVar27[3] = -(pcVar1[3] == -1);\\n    auVar27[4] = -(pcVar1[4] == -1);\\n    auVar27[5] = -(pcVar1[5] == -1);\\n    auVar27[6] = -(pcVar1[6] == -1);\\n    auVar27[7] = -(pcVar1[7] == -1);\\n    auVar27[8] = -(pcVar1[8] == -1);\\n    auVar27[9] = -(pcVar1[9] == -1);\\n    auVar27[10] = -(pcVar1[10] == -1);\\n    auVar27[0xb] = -(pcVar1[0xb] == -1);\\n    auVar27[0xc] = -(pcVar1[0xc] == -1);\\n    auVar27[0xd] = -(pcVar1[0xd] == -1);\\n    auVar27[0xe] = -(pcVar1[0xe] == -1);\\n    auVar27[0xf] = -(pcVar1[0xf] == -1);\\n    if ((((((((((((((((SUB161(auVar27 >> 7,0) & 1) != 0 || (SUB161(auVar27 >> 0xf,0) & 1) != 0) ||\\n                    (SUB161(auVar27 >> 0x17,0) & 1) != 0) || (SUB161(auVar27 >> 0x1f,0) & 1) != 0)\\n                  || (SUB161(auVar27 >> 0x27,0) & 1) != 0) || (SUB161(auVar27 >> 0x2f,0) & 1) != 0)\\n                || (SUB161(auVar27 >> 0x37,0) & 1) != 0) || (SUB161(auVar27 >> 0x3f,0) & 1) != 0) ||\\n              (SUB161(auVar27 >> 0x47,0) & 1) != 0) || (SUB161(auVar27 >> 0x4f,0) & 1) != 0) ||\\n            (SUB161(auVar27 >> 0x57,0) & 1) != 0) || (SUB161(auVar27 >> 0x5f,0) & 1) != 0) ||\\n          (SUB161(auVar27 >> 0x67,0) & 1) != 0) || (SUB161(auVar27 >> 0x6f,0) & 1) != 0) ||\\n        (SUB161(auVar27 >> 0x77,0) & 1) != 0) || auVar27[0xf] < '\\\\0') goto LAB_141ea8fbd;\\n    uVar12 = uVar12 + lVar14 + 0x10;\\n    lVar14 = lVar14 + 0x10;\\n  } while( true );\\n}\\n\\n\",\"caller_count\":3,\"callers\":[{\"name\":\"closure$0\",\"address\":\"142340660\"},{\"name\":\"iter_subtree<tuple$<>,toolbar::ui_interaction::ui_nav_update::closure$0::closure_env$0>\",\"address\":\"141ea8c60\"},{\"name\":\"ui_nav_update\",\"address\":\"14233eed0\"}],\"callee_count\":5,\"callees\":[{\"name\":\"__rust_dealloc\",\"address\":\"140613c20\"},{\"name\":\"children\",\"address\":\"140fe7950\"},{\"name\":\"hash_one<std::hash::random::RandomState,ref$<slotmap::DefaultKey>_>\",\"address\":\"140fa1290\"},{\"name\":\"iter_subtree<tuple$<>,toolbar::ui_interaction::ui_nav_update::closure$0::closure_env$0>\",\"address\":\"141ea8c60\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9760\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x14233a170\":{\"name\":\"ui_send_focus_begin_events\",\"size\":1398,\"address\":\"14233a170\",\"signature\":\"void __cdecl ui_send_focus_begin_events(void)\",\"decompiled_code\":\"\\nvoid __cdecl toolbar::ui_interaction::ui_send_focus_begin_events(void)\\n\\n{\\n  byte *pbVar1;\\n  uint *puVar2;\\n  byte bVar3;\\n  byte bVar4;\\n  byte bVar5;\\n  char cVar6;\\n  undefined4 uVar7;\\n  longlong lVar8;\\n  longlong lVar9;\\n  longlong lVar10;\\n  undefined4 *puVar11;\\n  undefined8 uVar12;\\n  longlong lVar13;\\n  char extraout_AL;\\n  char extraout_AL_00;\\n  uint uVar14;\\n  longlong extraout_RAX;\\n  longlong extraout_RAX_00;\\n  longlong *extraout_RAX_01;\\n  ulonglong *puVar15;\\n  ulonglong extraout_RAX_02;\\n  longlong *extraout_RAX_03;\\n  longlong *extraout_RAX_04;\\n  longlong *extraout_RAX_05;\\n  longlong *in_RCX;\\n  ulonglong uVar16;\\n  longlong *plVar17;\\n  longlong *in_RDX;\\n  ulonglong uVar18;\\n  ulonglong uVar19;\\n  longlong lVar20;\\n  uint *puVar21;\\n  char *pcVar22;\\n  longlong local_a0;\\n  longlong local_98;\\n  longlong local_58;\\n  \\n  puffin::are_scopes_on();\\n  if (extraout_AL != '\\\\0') {\\n    uVar18 = 0x33;\\n    core::str::impl$0::rfind<ref_<str_>_>();\\n    if (extraout_RAX == 1) {\\n      if (uVar18 != 0) {\\n        if (uVar18 < 0x33) {\\n          if ((char)(&DAT_14304da3d)[uVar18] < -0x40) {\\nLAB_14233a1e8:\\n                    // WARNING: Subroutine does not return\\n            core::str::slice_error_fail();\\n          }\\n        }\\n        else if (uVar18 != 0x33) goto LAB_14233a1e8;\\n      }\\n      core::str::impl$0::rfind<ref_<str_>_>();\\n      if ((extraout_RAX_00 == 1) && (uVar18 != 0xfffffffffffffffe)) {\\n        if (uVar18 + 2 < 0x33) {\\n          if ((char)(&UNK_14304da3f)[uVar18] < -0x40) {\\nLAB_14233a246:\\n                    // WARNING: Subroutine does not return\\n            core::str::slice_error_fail();\\n          }\\n        }\\n        else if (uVar18 + 2 != 0x33) goto LAB_14233a246;\\n      }\\n    }\\n    pcVar22 = \\\"toolbar_button_\\\";\\n    do {\\n      bVar3 = pcVar22[-1];\\n      uVar14 = (uint)(char)bVar3;\\n      if ((char)bVar3 < '\\\\0') {\\n        bVar4 = pcVar22[-2];\\n        if ((char)bVar4 < -0x40) {\\n          bVar5 = pcVar22[-3];\\n          if ((char)bVar5 < -0x40) {\\n            pbVar1 = (byte *)(pcVar22 + -4);\\n            pcVar22 = pcVar22 + -4;\\n            uVar14 = bVar5 & 0x3f | (*pbVar1 & 7) << 6;\\n          }\\n          else {\\n            pcVar22 = pcVar22 + -3;\\n            uVar14 = bVar5 & 0xf;\\n          }\\n          uVar14 = bVar4 & 0x3f | uVar14 << 6;\\n        }\\n        else {\\n          pcVar22 = pcVar22 + -2;\\n          uVar14 = bVar4 & 0x1f;\\n        }\\n        uVar14 = (uint)(bVar3 & 0x3f) | uVar14 << 6;\\n        if (uVar14 != 0x5c) goto LAB_14233a304;\\nLAB_14233a315:\\n        if (pcVar22 == \\\"\\\") break;\\n        if (pcVar22 + -0x14304dcd7 < (char *)0x2c) {\\n          if (-0x41 < pcVar22[1]) break;\\n        }\\n        else if (pcVar22 + -0x14304dcd7 == (char *)0x2c) break;\\n                    // WARNING: Subroutine does not return\\n        core::str::slice_error_fail();\\n      }\\n      pcVar22 = pcVar22 + -1;\\n      if (uVar14 == 0x5c) goto LAB_14233a315;\\nLAB_14233a304:\\n      if (uVar14 == 0x2f) goto LAB_14233a315;\\n    } while (pcVar22 != \\\"crates/systems/toolbar/src/ui_interaction.rstoolbar_button_\\\");\\n    puffin::impl$6::call::THREAD_PROFILER::constant$0::closure$0::VAL();\\n    if (*extraout_RAX_01 == 1) {\\n      plVar17 = extraout_RAX_01 + 1;\\n    }\\n    else if ((*extraout_RAX_01 != 0) ||\\n            (std::sys::thread_local::native::lazy::Storage::\\n             initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple_<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>\\n                       (), plVar17 = extraout_RAX_04, extraout_RAX_04 == (longlong *)0x0))\\n    goto LAB_14233a6ec;\\n    if (*plVar17 != 0) goto LAB_14233a6f8;\\n    *plVar17 = -1;\\n    puffin::ThreadProfiler::begin_scope();\\n    *plVar17 = *plVar17 + 1;\\n  }\\n  lVar8 = *in_RCX;\\n  lVar9 = in_RCX[1];\\n  puVar21 = *(uint **)(lVar8 + 0xf8);\\n  puVar2 = puVar21 + *(longlong *)(lVar8 + 0x100);\\n  cVar6 = *(char *)(lVar8 + 0x108);\\n  uVar7 = *(undefined4 *)((longlong)in_RDX + 0x1c);\\n  lVar10 = *in_RDX;\\n  puVar11 = (undefined4 *)in_RDX[2];\\n  local_a0 = 8;\\n  local_58 = 0;\\n  local_98 = 8;\\n  uVar18 = 0;\\n  uVar19 = 0;\\nLAB_14233a43b:\\n  do {\\n    if (cVar6 == '\\\\0') {\\n      if (uVar19 == uVar18) {\\n        do {\\n          if (puVar21 == puVar2) goto LAB_14233a660;\\n          uVar14 = *puVar21;\\n          puVar21 = puVar21 + 1;\\n          uVar18 = *(ulonglong *)(*(longlong *)(lVar9 + 0x100) + 0x58 + (ulonglong)uVar14 * 0xa0);\\n        } while (uVar18 == 0);\\n        lVar20 = *(longlong *)(lVar9 + 0x100) + (ulonglong)uVar14 * 0xa0;\\n        uVar19 = (ulonglong)*(uint *)(lVar20 + 0x94);\\n        if (*(ulonglong *)(lVar8 + 0x110) <\\n            *(ulonglong *)(*(longlong *)(lVar9 + 0x1a8) + 0x40 + uVar19 * 0x48)) {\\n          lVar13 = *(longlong *)(lVar9 + 0x1a8) + uVar19 * 0x48;\\n          uVar19 = *(ulonglong *)(*(longlong *)(lVar13 + 0x38) + *(ulonglong *)(lVar8 + 0x110) * 8);\\n          if (uVar19 == 0) goto LAB_14233a567;\\n          local_58 = *(longlong *)(*(longlong *)(lVar13 + 0x18) + 0x10 + ~uVar19 * 0x30);\\n        }\\n        else {\\nLAB_14233a567:\\n          local_58 = 0;\\n        }\\n        local_98 = *(longlong *)(lVar20 + 0x50);\\n        uVar19 = 0;\\n      }\\n      puVar15 = (ulonglong *)(local_98 + uVar19 * 0x10);\\n      uVar16 = (ulonglong)*(uint *)(local_98 + 8 + uVar19 * 0x10);\\n    }\\n    else {\\n      if (uVar19 == uVar18) {\\n        do {\\n          if (puVar21 == puVar2) goto LAB_14233a660;\\n          uVar14 = *puVar21;\\n          puVar21 = puVar21 + 1;\\n          uVar18 = *(ulonglong *)(*(longlong *)(lVar9 + 0x1a8) + 0x10 + (ulonglong)uVar14 * 0x48);\\n        } while (uVar18 == 0);\\n        lVar20 = *(longlong *)(lVar9 + 0x1a8) + (ulonglong)uVar14 * 0x48;\\n        if ((*(ulonglong *)(lVar8 + 0x110) < *(ulonglong *)(lVar20 + 0x40)) &&\\n           (uVar19 = *(ulonglong *)\\n                      (*(longlong *)(lVar20 + 0x38) + *(ulonglong *)(lVar8 + 0x110) * 8),\\n           uVar19 != 0)) {\\n          local_58 = *(longlong *)(*(longlong *)(lVar20 + 0x18) + 0x10 + ~uVar19 * 0x30);\\n        }\\n        else {\\n          local_58 = 0;\\n        }\\n        local_a0 = *(longlong *)(lVar20 + 8);\\n        uVar19 = 0;\\n      }\\n      puVar15 = (ulonglong *)(local_a0 + uVar19 * 8);\\n      uVar16 = uVar19 & 0xffffffff;\\n    }\\n    lVar20 = uVar16 * 3 + local_58;\\n    uVar16 = *puVar15;\\n    if (uVar16 >> 0x20 == 0) goto LAB_14233a660;\\n    uVar19 = uVar19 + 1;\\n    if (*(char *)(lVar20 + 1) == '\\\\0') break;\\n    hashbrown::map::HashMap::\\n    insert<country_core::resources::walls::WallId,tuple_<>,std::hash::random::RandomState,alloc::alloc::Global>\\n              ();\\n    if (extraout_AL_00 == '\\\\0') goto LAB_14233a5f7;\\n  } while( true );\\n  core::hash::BuildHasher::\\n  hash_one<std::hash::random::RandomState,ref_<country_core::systems::ui::GlobalId>_>();\\n  hashbrown::raw::RawTable::\\n  remove_entry<tuple_<bevy_ecs::entity::Entity,tuple_<>_>,alloc::alloc::Global,hashbrown::map::equivalent_key::closure_env_0<bevy_ecs::entity::Entity,bevy_ecs::entity::Entity,tuple_<>_>_>\\n            ();\\n  if (extraout_RAX_02 >> 0x20 == 0) {\\nLAB_14233a5f7:\\n    if (*(char *)(lVar20 + 1) == '\\\\x01') {\\n      *puVar11 = uVar7;\\n      lVar20 = *(longlong *)(lVar10 + 0x30);\\n      uVar12 = *(undefined8 *)(lVar10 + 0x40);\\n      if (lVar20 == *(longlong *)(lVar10 + 0x20)) {\\n        alloc::raw_vec::RawVec::\\n        grow_one<bevy_ecs::event::base::EventInstance<country_core::resources::window::WindowFocusEvent>,alloc::alloc::Global>\\n                  ();\\n      }\\n      lVar13 = *(longlong *)(lVar10 + 0x28);\\n      *(undefined8 *)(lVar13 + lVar20 * 0x10) = uVar12;\\n      *(ulonglong *)(lVar13 + 8 + lVar20 * 0x10) = uVar16;\\n      *(longlong *)(lVar10 + 0x30) = lVar20 + 1;\\n      *(longlong *)(lVar10 + 0x40) = *(longlong *)(lVar10 + 0x40) + 1;\\n    }\\n  }\\n  goto LAB_14233a43b;\\nLAB_14233a660:\\n  if (extraout_AL != '\\\\0') {\\n    puffin::impl$6::call::THREAD_PROFILER::constant$0::closure$0::VAL();\\n    if (*extraout_RAX_03 == 1) {\\n      plVar17 = extraout_RAX_03 + 1;\\n    }\\n    else if ((*extraout_RAX_03 != 0) ||\\n            (std::sys::thread_local::native::lazy::Storage::\\n             initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple_<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>\\n                       (), plVar17 = extraout_RAX_05, extraout_RAX_05 == (longlong *)0x0)) {\\nLAB_14233a6ec:\\n                    // WARNING: Subroutine does not return\\n      std::thread::local::panic_access_error();\\n    }\\n    if (*plVar17 != 0) {\\nLAB_14233a6f8:\\n                    // WARNING: Subroutine does not return\\n      core::cell::panic_already_borrowed();\\n    }\\n    *plVar17 = -1;\\n    puffin::ThreadProfiler::end_scope();\\n    *plVar17 = *plVar17 + 1;\\n  }\\n  return;\\n}\\n\\n\",\"caller_count\":2,\"callers\":[{\"name\":\"run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref$<country_core::components::UiInteractionState>_>,tuple$<>_>,bevy_ecs::event::writer::EventWriter<toolbar::ui_interaction::UiJustBecameInFocusEvent>,bevy_ecs::system::system_param::Local<std::collections::hash::set::HashSet<bevy_ecs::entity::Entity,std::hash::random::RandomState>_>),void_(*)(bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref$<country_core::components::UiInteractionState>_>,tuple$<>_>,bevy_ecs::event::writer::EventWriter<toolbar::ui_interaction::UiJustBecameInFocusEvent>,bevy_ecs::system::system_param::Local<std::collections::hash::set::HashSet<bevy_ecs::entity::Entity,std::hash::random::RandomState>_>)>_>\",\"address\":\"141ea4f10\"},{\"name\":\"run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref$<country_core::components::UiInteractionState>_>,tuple$<>_>,bevy_ecs::event::writer::EventWriter<toolbar::ui_interaction::UiJustBecameInFocusEvent>,bevy_ecs::system::system_param::Local<std::collections::hash::set::HashSet<bevy_ecs::entity::Entity,std::hash::random::RandomState>_>),void_(*)(bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref$<country_core::components::UiInteractionState>_>,tuple$<>_>,bevy_ecs::event::writer::EventWriter<toolbar::ui_interaction::UiJustBecameInFocusEvent>,bevy_ecs::system::system_param::Local<std::collections::hash::set::HashSet<bevy_ecs::entity::Entity,std::hash::random::RandomState>_>)>_>_>\",\"address\":\"141e127b0\"}],\"callee_count\":13,\"callees\":[{\"name\":\"VAL\",\"address\":\"140c18130\"},{\"name\":\"are_scopes_on\",\"address\":\"140c16a00\"},{\"name\":\"begin_scope\",\"address\":\"140c16d40\"},{\"name\":\"end_scope\",\"address\":\"140c170f0\"},{\"name\":\"grow_one<bevy_ecs::event::base::EventInstance<country_core::resources::window::WindowFocusEvent>,alloc::alloc::Global>\",\"address\":\"140562630\"},{\"name\":\"hash_one<std::hash::random::RandomState,ref$<country_core::systems::ui::GlobalId>_>\",\"address\":\"1405b0d70\"},{\"name\":\"initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple$<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>\",\"address\":\"1428e6250\"},{\"name\":\"insert<country_core::resources::walls::WallId,tuple$<>,std::hash::random::RandomState,alloc::alloc::Global>\",\"address\":\"1402ca2f0\"},{\"name\":\"panic_access_error\",\"address\":\"1428d80d0\"},{\"name\":\"panic_already_borrowed\",\"address\":\"1428d9250\"},{\"name\":\"remove_entry<tuple$<bevy_ecs::entity::Entity,tuple$<>_>,alloc::alloc::Global,hashbrown::map::equivalent_key::closure_env$0<bevy_ecs::entity::Entity,bevy_ecs::entity::Entity,tuple$<>_>_>\",\"address\":\"140fcc8b0\"},{\"name\":\"rfind<ref$<str$>_>\",\"address\":\"142338130\"},{\"name\":\"slice_error_fail\",\"address\":\"1428d9940\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}}},\"count\":5,\"requested\":5}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "list_instances",
+        "title": null,
+        "description": "\nList known Ghidra instances from UDS discovery and the active TCP fallback.\n\nReturns JSON with each instance's project name, PID, open programs, and\nsocket path or TCP URL. Also shows which instance is currently connected.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "_list_instances_toolArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "connect_instance",
+        "title": null,
+        "description": "\nSwitch the MCP bridge to a different Ghidra instance by project name.\n\nIMPORTANT: Before calling this function only the static bridge tools are\nexposed (list_instances, connect_instance, tool-group management,\ndebugger proxy). After a successful connect the bridge fetches the\ninstance's /mcp/schema and registers Ghidra analysis tools dynamically.\nBy default all tool groups are loaded on connect. When started with\n--lazy, only the default groups are loaded initially and clients may need\nto call load_tool_group() for additional categories. Clients that cache\nthe initial tools/list and don't honor tools/list_changed must re-list\ntools after this call.\n\nUse list_instances() first to see available instances.\n\nArgs:\n    project: Project name (or substring) to connect to\n",
+        "inputSchema": {
+          "properties": {
+            "project": {
+              "description": "Project name (or substring) to connect to",
+              "title": "Project",
+              "type": "string"
+            }
+          },
+          "required": [
+            "project"
+          ],
+          "title": "connect_instanceArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_tool_groups",
+        "title": null,
+        "description": "\nList all available tool groups with their tool counts and loaded status.\n\nReturns each category with: tool count, loaded status, and tool names.\nUse load_tool_group(group) to load a group's tools.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "list_tool_groupsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "load_tool_group",
+        "title": null,
+        "description": "\nLoad all tools in a category. Accepts a category name or \"all\" to load everything.\n\nUse list_tool_groups() to see available categories.\n\nArgs:\n    group: Category name (e.g. \"function\", \"datatype\") or \"all\"\n",
+        "inputSchema": {
+          "properties": {
+            "group": {
+              "description": "Category name (e.g. \"function\", \"datatype\") or \"all\"",
+              "title": "Group",
+              "type": "string"
+            }
+          },
+          "required": [
+            "group"
+          ],
+          "title": "load_tool_groupArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "search_tools",
+        "title": null,
+        "description": "\nSearch the full Ghidra tool catalog by keyword \u2014 including tools whose group\nis not currently loaded. Use this to discover the right tool without paying\nthe context cost of loading all groups (run the bridge with --lazy and search\non demand). Matches against tool name, description, and category.\n\nEach result reports whether the tool is callable right now; if not, it\nincludes the exact load_tool_group(...) call needed to make it callable.\n\nArgs:\n    query: Space-separated keywords, e.g. \"rename function\" or \"xref struct\".\n    limit: Maximum number of results to return (default 15).\n",
+        "inputSchema": {
+          "properties": {
+            "query": {
+              "description": "Space-separated keywords, e.g. \"rename function\" or \"xref struct\".",
+              "title": "Query",
+              "type": "string"
+            },
+            "limit": {
+              "default": 15,
+              "description": "Maximum number of results to return (default 15).",
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "title": "search_toolsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "disassemble_function",
+        "title": null,
+        "description": "Get assembly listing of function. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution. When Ghidra's stored function body is degenerate (body_end == body_start, which would truncate the listing to a single instruction), the listing is instead bounded by the next function or the containing memory block and the response adds body_degenerate=true, bounded_by (next_function | memory_block | function_body) and a warning; do not trust this function's stored extent in that case.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "disassemble_functionArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_data_types",
+        "title": null,
+        "description": "Find data types by name or path pattern, category and kind, one record per type (name, kind, category, size, path). With categories=true, list the category paths instead. With no filter it lists every type.",
+        "inputSchema": {
+          "properties": {
+            "pattern": {
+              "default": "",
+              "description": "Case-insensitive substring of the type's name or full path; omit for no name filter.",
+              "title": "Pattern",
+              "type": "string"
+            },
+            "category": {
+              "default": "",
+              "description": "Case-insensitive substring of the category path (e.g. Windows, /MyTypes); omit for any category.",
+              "title": "Category",
+              "type": "string"
+            },
+            "kind": {
+              "default": "",
+              "description": "Only this kind: struct, union, enum, typedef, pointer, array, function or primitive. Omit for all kinds.",
+              "title": "Kind",
+              "type": "string"
+            },
+            "categories": {
+              "default": "false",
+              "description": "True lists the category paths (filtered by pattern) instead of types; category and kind do not apply.",
+              "title": "Categories",
+              "type": "boolean"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "find_data_typesArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_functions",
+        "title": null,
+        "description": "Find functions: every filter is optional, so with none it lists the whole program a page at a time. Filter by name (substring or regex=true), xref count, calling convention, whether the name is user-given, thunk or external, or by tag (tag=a,b keeps functions carrying ANY of them); each result lists its tags; sort by address, name or xref_count. Replaces list_functions, list_functions_enhanced, search_functions and search_functions_enhanced, which returned four different shapes for the same question.",
+        "inputSchema": {
+          "properties": {
+            "name_pattern": {
+              "default": "",
+              "description": "Substring to match, or a regex when regex=true. Omit to match every function.",
+              "title": "Name Pattern",
+              "type": "string"
+            },
+            "regex": {
+              "default": "false",
+              "description": "Treat name_pattern as a regular expression.",
+              "title": "Regex",
+              "type": "boolean"
+            },
+            "min_xrefs": {
+              "default": "",
+              "description": "Only functions with at least this many references to them.",
+              "title": "Min Xrefs",
+              "type": "integer"
+            },
+            "max_xrefs": {
+              "default": "",
+              "description": "Only functions with at most this many references to them.",
+              "title": "Max Xrefs",
+              "type": "integer"
+            },
+            "calling_convention": {
+              "default": "",
+              "description": "Only functions with this calling convention (e.g. __stdcall).",
+              "title": "Calling Convention",
+              "type": "string"
+            },
+            "has_custom_name": {
+              "default": "",
+              "description": "true = only functions somebody has named; false = only auto-generated names (FUN_*, thunk_*).",
+              "title": "Has Custom Name",
+              "type": "boolean"
+            },
+            "is_thunk": {
+              "default": "",
+              "description": "true = only thunks, false = exclude them, omit for both.",
+              "title": "Is Thunk",
+              "type": "boolean"
+            },
+            "is_external": {
+              "default": "",
+              "description": "true = only external functions, false = exclude them.",
+              "title": "Is External",
+              "type": "boolean"
+            },
+            "tag": {
+              "default": "",
+              "description": "Only functions carrying any of these tags: one name or a comma-separated list. A name that is not a defined tag is an error (list_function_tags shows the definitions).",
+              "title": "Tag",
+              "type": "string"
+            },
+            "sort_by": {
+              "default": "address",
+              "description": "address | name | xref_count.",
+              "title": "Sort By",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Page size. 0 means no limit, which on a large binary is a megabytes-long response \u2014 the old list_functions had no pagination at all and returned 1.7MB on a stripped `ls`.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "pattern": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Pattern"
+            },
+            "query": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Query"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            }
+          },
+          "title": "find_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_functions",
+        "title": null,
+        "description": "Everything about one or many functions in a single call. Pass functions= as a comma-separated list of names or addresses for bulk mode (up to 20); omit it and pass function=/name=/address= for one. Pass fields= as a comma-separated subset to skip work you do not need \u2014 omitted or empty returns everything. When the requested fields need no decompiled text (e.g. fields=callers,callees,signature,labels,entry_point), the target function is NOT decompiled (238 ms cold / 5\u201310 ms warm per function); only decompiled_code (and call_context when enabled) pays that cost. Decompiled text renders EOL comments (// style), so comments written with set_comment are visible in the code. Replaces get_function_by_address, get_function_variables, get_function_xrefs, decompile_function, and the former get_function_callers/callees/labels/signature tools. Completeness scoring is NOT included \u2014 call analyze_function_completeness for that.",
+        "inputSchema": {
+          "properties": {
+            "function": {
+              "default": "",
+              "description": "Single mode: function name or address (0x<hex> or <space>:<hex>). Ignored when functions= is set.",
+              "title": "Function",
+              "type": "string"
+            },
+            "functions": {
+              "default": "",
+              "description": "Bulk mode: comma-separated function references (names or addresses). When set, function= is ignored. Returns a map keyed by the reference asked for.",
+              "title": "Functions",
+              "type": "string"
+            },
+            "fields": {
+              "default": "",
+              "description": "Comma-separated subset: signature, classification, return_type, entry_point, body_start, body_end, decompiled_code, plate_comment, comments, labels, tags, parameters, locals, callers, call_context, callees, xrefs, disassembly, jump_targets, refs (the absolute addresses the function uses: data references, the values of literal-pool words, and the memory the decompiled code reads and writes, so a register reached as base + offset is listed by its own address; a pool value is written value<word; asking for refs decompiles). Omit or leave empty for the full bundle.",
+              "title": "Fields",
+              "type": "string"
+            },
+            "include_call_context": {
+              "default": "true",
+              "description": "Include each caller's decompiled call-site line. Costs one decompilation per unique caller (~43ms); set false for the cheapest possible bundle. Ignored unless call_context is requested (explicitly or via an empty fields=).",
+              "title": "Include Call Context",
+              "type": "boolean"
+            },
+            "call_context_limit": {
+              "default": "6",
+              "description": "Maximum number of UNIQUE callers to decompile for call context.",
+              "title": "Call Context Limit",
+              "type": "integer"
+            },
+            "call_context_lines": {
+              "default": "3",
+              "description": "Lines of the caller's decompilation to return per call site, centred on the call. 1 is the call line alone; the default 3 adds the line above and below, which is usually where the guard and the use of the result live. Clamped to 1-21; costs no extra decompilation.",
+              "title": "Call Context Lines",
+              "type": "integer"
+            },
+            "include_disasm": {
+              "default": "false",
+              "description": "Include the raw instruction listing. Off by default: it roughly doubles the payload and agents rarely read it.",
+              "title": "Include Disasm",
+              "type": "boolean"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Address"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "function_address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Address"
+            },
+            "function_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Name"
+            },
+            "call_context_window": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Call Context Window"
+            }
+          },
+          "title": "get_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_metadata",
+        "title": null,
+        "description": "Get program metadata",
+        "inputSchema": {
+          "properties": {
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_metadataArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_struct_layout",
+        "title": null,
+        "description": "Get structure field layout",
+        "inputSchema": {
+          "properties": {
+            "struct_name": {
+              "description": "Structure name",
+              "title": "Struct Name",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "struct_name"
+          ],
+          "title": "get_struct_layoutArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_from",
+        "title": null,
+        "description": "Get cross-references from an address. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "get_xrefs_fromArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_to",
+        "title": null,
+        "description": "Get cross-references to ONE address, or to MANY at once (addresses=comma-separated), which returns a map keyed by the address you asked for. Replaces the former get_bulk_xrefs. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "default": "",
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "addresses": {
+              "default": "",
+              "description": "Comma-separated addresses for the many-at-once form. The result is a map of address to its reference list, and an address that does not resolve gets an empty list rather than failing the whole call.",
+              "title": "Addresses",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_xrefs_toArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "read_memory",
+        "title": null,
+        "description": "Read raw memory bytes. Always pass the 'program' argument to target the correct binary \u2014 especially when multiple programs are open. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "length": {
+              "default": "16",
+              "description": "Number of bytes",
+              "title": "Length",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "read_memoryArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 1,
+  "ok": true
+}

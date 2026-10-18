@@ -1,4 +1,4 @@
-//! Game trait adapters over the original half 2.4.1 dependency.
+//! Scalar, array, and glam conversions to IEEE binary16.
 use glam::{Quat, Vec2, Vec3, Vec4};
 use half::f16;
 pub trait Halver {

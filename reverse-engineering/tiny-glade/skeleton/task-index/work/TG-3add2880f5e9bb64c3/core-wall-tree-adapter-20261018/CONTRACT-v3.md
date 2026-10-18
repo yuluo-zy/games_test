@@ -1,0 +1,11 @@
+# Process tree v3: original Move -> Insert -> Delete order
+
+Use candidate-v3.rs/.patch instead of this group's v1/v2; earlier frozen bundles unchanged. V3 moves the existing corrected Delete block after the unchanged Insert block inside the same function. No duplicate algorithms, new resources, temporary birth maps or alternate placement owner.
+
+Fresh original Delete142268201..8595 consumes Delete only after Insert. It removes the current TreeStorage entry, invokes Entities.contains at14226835b, queues TreeMarkedForDeletion, then fetches the actual PrefabInstance placement. Original contains140ceafa0..aff9 is LLVM-bound to Bevy0.16.0 Entities::contains827 / resolve_from_id895. Its complete89B body compares generation and includes reserved IDs via free_cursor; it does not test row/archetype location. The pinned local0.16 source does the same. Original subsequent query explicitly rejects row0xffffffff142268406, and query failure reaches unwrap_failed142268583. Thus a synthetic same-frame Insert+Delete for a newly reserved entity can fail in the original too; do not invent a placeholder PrefabInstance or map to hide that.
+
+Actual same-frame World regression preserves this failure: existingindex73 is replaced by Insert, DespawnPrefabCmd retains the old entity, Delete removes the new current storage entry and queues its deletion marker, then query fails because the actual upper prefab birth consumer has not created placement. Test catches the error, verifies storage absence and replacement identity, applies the already queued Commands and verifies newentity marker. It does not claim that arbitrary sameindex event combinations occur from a particular game producer, or that upper prefab birth is recovered.
+
+Prior v2 retains actual placement Move/Delete query, original existing-entity missingcomponent expect, scalar scale/position audio and i32->u32 placement variant bit preservation. Root area/UIdelete uses real placement, so no old TreeStorageEntry.position synchronization is added. tree_move_bend/recalc/ui_move source adapters remain explicitly later work.
+
+Validation here: rustfmt parse and fullbase->v3 applycheck only, no compile/native execution. Original contains/delete bounded raw asm plus pinned local library source are frozen as evidence. Root performs combined tests.

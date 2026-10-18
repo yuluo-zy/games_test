@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-18",
+  "scope": "current source review; no new native behavior comparison or recovery credit",
+  "unit_tests": {
+    "command": "cargo test -p country-core --lib asset_libraries:: --locked --offline",
+    "exit_code": 0,
+    "passed": 157,
+    "failed": 0,
+    "ignored": 0,
+    "log": "unit-tests.log"
+  },
+  "counterexamples": {
+    "command": "cargo test -p country-core --test asset_libraries_review_probe_20261018 --locked --offline",
+    "exit_code": 101,
+    "passed": 0,
+    "failed": 3,
+    "intent": "expected failures confirming unresolved format/mip/array defects",
+    "source": "probe.rs",
+    "log": "probe.log",
+    "temporary_test_removed": true
+  },
+  "limitations": [
+    "no GPU execution",
+    "no end-to-end native file events",
+    "no full game execution",
+    "unsafe conversion finding is static analysis, not a Miri run"
+  ],
+  "reviewed_module_sha256": {
+    "crates/country-core/src/asset_libraries/audio_trigger_library.rs": "95371017026b4b6d9bf7af363ff2a9268266b31ab5fac0f10049497b377b4053",
+    "crates/country-core/src/asset_libraries/color_library.rs": "bcb3f26b2ad31a740da13bc7822ba008ecc2c01e4db4889cfbde34350e21b20d",
+    "crates/country-core/src/asset_libraries/configwatch.rs": "d5e6fabbd8fa8e30e639e5498f32d5bffbc26f10bc58ff36ef9245b262c9695f",
+    "crates/country-core/src/asset_libraries/mesh_library.rs": "75822864f298f2b8651b90fba68d9e14494723457dd7af02f334163a7a1fd8e8",
+    "crates/country-core/src/asset_libraries/meshwatch.rs": "045845a93d568ac67259b450c4f251b6d4a7901f77ea151385172188e3c2006b",
+    "crates/country-core/src/asset_libraries/mod.rs": "0d92d716e65dad4f91e74c06b281cc8898f31770e437fd164522b30311abc62a",
+    "crates/country-core/src/asset_libraries/placement_data_library.rs": "f786bbc9abf5f03f91624da15fe8cc4fada7ecaeefe9b36c61c570c86b06b90f",
+    "crates/country-core/src/asset_libraries/shader_library.rs": "13fcd567cd2522f89edd2b55b84fb591ba9e87a4776621074e8e47392562e08f",
+    "crates/country-core/src/asset_libraries/ssbo_library.rs": "7643d3598530e3259e4d39cea3535a00202915677ebe83fa4ca1cbcd4c6dc58f",
+    "crates/country-core/src/asset_libraries/texture_library.rs": "94ce8724278544375e27410dc424cfb7bdd312a058fadaa8a79edc4d55c37280",
+    "crates/country-core/src/asset_libraries/texture_watch.rs": "2d0e0d2a744b5789b4f0c200dc3c81aba4c80fd901e9052a17d5c644f7b8726a",
+    "crates/country-core/src/asset_libraries/transient_mesh.rs": "164a565883f8e3741329e689636302e597bf938077a9f7a47b2f5223d54d8b31",
+    "crates/country-core/src/asset_libraries/vao_library.rs": "0555fae8a94b16c2944599a154e07db78d4aa3843314d2d3a0d82ffc9c6daa60"
+  }
+}

@@ -764,7 +764,7 @@ impl AllocatorStats {
             .totals
             .total_allocated_bytes
             .checked_add(size)
-            .ok_or(Error::invalid_usage("内存统计溢出"))?;
+            .ok_or_else(|| Error::invalid_usage("内存统计溢出"))?;
         let old_spare = spare.map_or(0, |_| state.suballocator_spare[memory_type as usize]);
         let new_spare = spare.unwrap_or(0);
         let used = state
@@ -775,7 +775,7 @@ impl AllocatorStats {
             .checked_sub(old_spare)
             .and_then(|used| used.checked_add(new_spare))
             .and_then(|used| used.checked_add(size))
-            .ok_or(Error::invalid_usage("内存统计溢出"))?;
+            .ok_or_else(|| Error::invalid_usage("内存统计溢出"))?;
         if state
             .heap_budgets
             .get(&heap)
@@ -786,19 +786,19 @@ impl AllocatorStats {
         let id = state
             .next_id
             .checked_add(1)
-            .ok_or(Error::invalid_usage("内存ID耗尽"))?;
+            .ok_or_else(|| Error::invalid_usage("内存ID耗尽"))?;
         let mut totals = state.totals;
         totals.total_allocated_bytes = total;
         if properties.contains(vk::MemoryPropertyFlags::DEVICE_LOCAL) {
             totals.device_local_bytes = totals
                 .device_local_bytes
                 .checked_add(size)
-                .ok_or(Error::invalid_usage("内存统计溢出"))?;
+                .ok_or_else(|| Error::invalid_usage("内存统计溢出"))?;
         } else {
             totals.system_bytes = totals
                 .system_bytes
                 .checked_add(size)
-                .ok_or(Error::invalid_usage("内存统计溢出"))?;
+                .ok_or_else(|| Error::invalid_usage("内存统计溢出"))?;
         }
         let mut budget = state.budget;
         budget.release(crate::device::BudgetCategory::Cache, old_spare);
@@ -859,7 +859,7 @@ impl AllocatorStats {
         let record = state
             .records
             .remove(&id)
-            .ok_or(Error::invalid_usage("未知或已释放的内存ID"))?;
+            .ok_or_else(|| Error::invalid_usage("未知或已释放的内存ID"))?;
         if let Some(phase) = state.phases.remove(&id) {
             state.budget.release(phase.category, record.size);
         }

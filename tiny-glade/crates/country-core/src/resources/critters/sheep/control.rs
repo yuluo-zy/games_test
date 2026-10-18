@@ -1,8 +1,7 @@
-//! B control snapshots: native serializer 0x1416f9eb0/0x1416f9fd0,
-//! capture iterator 0x1412f03f0, restore consumer 0x1416f24f0.
-//! Borrowed rows expose the original query's fields without inventing the
-//! still-incomplete whole Sheep owner or copying unrelated animation state.
-use super::SheepMoveState;
+//! 羊群控制快照。B capture 0x1412f03f0 与 serializer 0x1416f9eb0
+//! 共同确认：position=Transform.translation，goal=CritterGoal，
+//! move_state=Sheep+0x30。声明顺序不代表原生内存顺序。
+use super::{Sheep, SheepMoveState};
 use crate::resources::critters::CritterGoal;
 use crate::utils::components::transform::Transform;
 use glam::Vec3;
@@ -10,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 /// One saved sheep row. Field names verified by rne-read on the B image:
 /// `sheep` at 0x142c91fa9; `position`/`goal`/`move_state` at
-/// 0x142c91f49/0x142c91f51/0x142c91f55 (re-analyst, 2026-10-15). The serde
+/// 0x142c91f4c/0x142c91f54/0x142c91f58 (re-analyst, 2026-10-15). The serde
 /// serialize (0x1416f9eb0) writes exactly these three entries in this order.
 /// The save file's Sheep section is `Option<SheepControlSnapshot>` (None →
 /// "null").
@@ -26,40 +25,43 @@ pub struct SheepControlSnapshot {
     pub sheep: Vec<SheepSnapshot>,
 }
 
-/// Caller passes rows in actual query order. Native capture stores no entity ID
-/// and does not sort: +0x1c position, +0 goal, +0x10 movement state.
+/// 按实际查询顺序捕获三个权威字段，不排序或保存实体ID。
 pub fn capture_sheep_snapshot<'a>(
-    rows: impl IntoIterator<Item = (&'a Transform, &'a CritterGoal, &'a SheepMoveState)>,
+    rows: impl IntoIterator<Item = (&'a Transform, &'a Sheep, &'a CritterGoal)>,
 ) -> SheepControlSnapshot {
     SheepControlSnapshot {
         sheep: rows
             .into_iter()
-            .map(|(transform, goal, move_state)| SheepSnapshot {
+            .map(|(transform, sheep, critter_goal)| SheepSnapshot {
                 position: transform.translation,
-                goal: goal.0,
-                move_state: *move_state,
+                goal: (critter_goal.goal_tag != 0).then_some(critter_goal.position),
+                move_state: sheep.move_state,
             })
             .collect(),
     }
 }
 
-/// Original restore zips query order with saved order, stops at the shorter
-/// input and overwrites exactly these three fields. It neither creates nor
-/// removes sheep, and preserves transform rotation/scale and other sheep state.
+/// 单行恢复供纯函数与ECS消费者共用；不修改旋转、缩放或抚摸状态。
+pub(crate) fn apply_row(
+    saved: &SheepSnapshot,
+    transform: &mut Transform,
+    sheep: &mut Sheep,
+    goal: &mut CritterGoal,
+) {
+    transform.translation = saved.position;
+    sheep.move_state = saved.move_state;
+    goal.position = saved.goal.unwrap_or_default();
+    goal.goal_tag = saved.goal.is_some() as u32;
+}
+
+/// 原apply按查询顺序zip到较短一侧，只恢复位置、目标和移动状态。
+/// rotation/scale、抚摸计时和额外实体保持原值。
 pub fn apply_sheep_snapshot<'a>(
     snapshot: &SheepControlSnapshot,
-    rows: impl IntoIterator<
-        Item = (
-            &'a mut Transform,
-            &'a mut CritterGoal,
-            &'a mut SheepMoveState,
-        ),
-    >,
+    rows: impl IntoIterator<Item = (&'a mut Transform, &'a mut Sheep, &'a mut CritterGoal)>,
 ) {
-    for ((transform, goal, move_state), saved) in rows.into_iter().zip(&snapshot.sheep) {
-        transform.translation = saved.position;
-        goal.0 = saved.goal;
-        *move_state = saved.move_state;
+    for ((transform, sheep, critter_goal), saved) in rows.into_iter().zip(&snapshot.sheep) {
+        apply_row(saved, transform, sheep, critter_goal);
     }
 }
 
@@ -103,44 +105,96 @@ mod tests {
     }
 
     #[test]
-    fn capture_and_apply_use_query_order_and_preserve_other_fields() {        let original = Transform::from_translation_scale(Vec3::new(1., 2., 3.), Vec3::splat(2.));
-        let original_goal = CritterGoal(Some(Vec3::new(4., 5., 6.)));
-        let original_move = SheepMoveState::Idle { timeout_s: 7. };
-        let snapshot = capture_sheep_snapshot([(&original, &original_goal, &original_move)]);
+    fn capture_and_apply_bind_real_positions_goals_and_movement() {
+        let position = Vec3::new(1., 2., 3.);
+        let target = Vec3::new(7., 8., 9.);
+        let movement = SheepMoveState::Walking {
+            timeout_s: 4.,
+            goal_change_timeout: 5.,
+            force_reach_goal: true,
+        };
+        let snapshot = capture_sheep_snapshot([(
+            &Transform::from_translation(position),
+            &Sheep {
+                behavior_state: 0,
+                goal_timer: 0.0,
+                pet_phase: 0,
+                pet_progress: 0.0,
+                pet_target: 0,
+                control_flag: 0,
+                move_state: movement,
+                amplitude: 9.,
+            },
+            &CritterGoal {
+                position: target,
+                goal_tag: 1,
+            },
+        )]);
+        assert_eq!(snapshot.sheep[0].position, position);
+        assert_eq!(snapshot.sheep[0].goal, Some(target));
+        assert_eq!(snapshot.sheep[0].move_state, movement);
         let mut transforms = [
             Transform::from_scale(Vec3::splat(3.)),
             Transform::identity(),
         ];
-        let mut goals = [CritterGoal(None); 2];
-        let mut states = [SheepMoveState::Idle { timeout_s: 0. }; 2];
+        let initial_sheep = Sheep {
+            behavior_state: 1,
+            goal_timer: 2.25,
+            pet_phase: 3,
+            pet_progress: 0.625,
+            pet_target: 17,
+            control_flag: 1,
+            move_state: SheepMoveState::Idle { timeout_s: 17. },
+            amplitude: 19.,
+        };
+        let mut sheeps = [initial_sheep; 2];
+        let initial_goal = CritterGoal {
+            position: Vec3::ZERO,
+            goal_tag: 0,
+        };
+        let mut goals = [initial_goal; 2];
         apply_sheep_snapshot(
             &snapshot,
             transforms
                 .iter_mut()
+                .zip(sheeps.iter_mut())
                 .zip(goals.iter_mut())
-                .zip(states.iter_mut())
-                .map(|((a, b), c)| (a, b, c)),
+                .map(|((t, s), g)| (t, s, g)),
         );
-        assert_eq!(transforms[0].translation, original.translation);
+        assert_eq!(transforms[0].translation, position);
         assert_eq!(transforms[0].scale, Vec3::splat(3.));
-        assert_eq!(goals[0], original_goal);
-        assert_eq!(states[0], original_move);
+        let mut expected_sheep = initial_sheep;
+        expected_sheep.move_state = movement;
+        assert_eq!(sheeps[0], expected_sheep);
+        assert_eq!(goals[0].position, target);
+        assert_eq!(goals[0].goal_tag, 1);
         assert_eq!(transforms[1], Transform::identity());
-        assert_eq!(goals[1], CritterGoal(None));
-        assert_eq!(states[1], SheepMoveState::Idle { timeout_s: 0. });
+        assert_eq!(sheeps[1], initial_sheep);
+        assert_eq!(goals[1], initial_goal);
     }
 
     #[test]
     fn sheep_section_is_option_json_none_to_null() {
         assert_eq!(sheep_section_json(None), "null");
         let snapshot = capture_sheep_snapshot([(
-            &Transform::from_translation_scale(Vec3::new(1., 2., 3.), Vec3::ONE),
-            &CritterGoal(None),
-            &SheepMoveState::Idle { timeout_s: 2. },
+            &Transform::from_translation(Vec3::new(1., 2., 3.)),
+            &Sheep {
+                behavior_state: 0,
+                goal_timer: 0.0,
+                pet_phase: 0,
+                pet_progress: 0.0,
+                pet_target: 0,
+                control_flag: 0,
+                move_state: SheepMoveState::Idle { timeout_s: 2. },
+                amplitude: 0.,
+            },
+            &CritterGoal {
+                position: Vec3::new(7., 8., 9.),
+                goal_tag: 0,
+            },
         )]);
-        let json = sheep_section_json(Some(&snapshot));
         assert_eq!(
-            json,
+            sheep_section_json(Some(&snapshot)),
             r#"{"sheep":[{"position":[1.0,2.0,3.0],"goal":null,"move_state":{"Idle":{"timeout_s":2.0}}}]}"#
         );
     }

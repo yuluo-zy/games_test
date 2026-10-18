@@ -1,0 +1,3 @@
+# Independent source API review
+
+writer_api_audit independently compared the final v2 file with current public APIs and pending canonical dependencies, without compilation, tests, native/JIT or edits. Its sole confirmed finding was missing Serialize for current WallId at v2 line301. Reviewed surfaces with no further finding: canonical69 bucket Vec<(DecoratorId,DecoratorHistoryState)> and Copy state projection; Roof139 Serialize; checksum accessor; serde tuple entry; current public StrokeId path; Motomoto Writer/Reader methods and borrowed payload lifetimes; flate2 finish borrow release; new snapshot_encode_tests. Existing dependency Cargo hunk is explicit. The v3 numeric borrowed-pair projection fixes the sole finding.

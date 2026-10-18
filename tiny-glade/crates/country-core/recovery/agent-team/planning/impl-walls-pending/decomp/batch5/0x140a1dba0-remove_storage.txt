@@ -1,0 +1,259 @@
+// 0x140a1dba0 remove_storage size=1413 sig=void __cdecl remove_storage(void)
+
+void __cdecl
+country_core::resources::walls::decorator_storage::DecoratorStorage::remove_storage(void)
+
+{
+  undefined1 auVar1 [16];
+  longlong lVar2;
+  ulonglong uVar3;
+  ushort uVar4;
+  undefined8 uVar5;
+  undefined8 *puVar6;
+  ulonglong uVar7;
+  longlong lVar8;
+  int iVar9;
+  uint uVar10;
+  longlong in_RCX;
+  longlong in_RDX;
+  undefined1 (*pauVar11) [16];
+  longlong lVar12;
+  uint uVar13;
+  byte bVar14;
+  byte bVar15;
+  ulonglong uVar16;
+  bool bVar17;
+  longlong local_188;
+  longlong lStack_180;
+  undefined8 *local_178;
+  ulonglong uStack_170;
+  undefined8 local_168;
+  undefined8 uStack_160;
+  undefined2 local_158;
+  undefined6 uStack_156;
+  undefined1 (*pauStack_150) [16];
+  longlong local_148;
+  longlong local_138;
+  longlong local_118;
+  
+  lVar8 = lStack_180;
+  if (*(char *)(in_RCX + 0x1b0) != '\0') {
+                    // WARNING: Subroutine does not return
+    core::panicking::panic();
+  }
+  if (in_RDX == 0) {
+    core::hash::BuildHasher::
+    hash_one<std::hash::random::RandomState,ref_<country_core::systems::ui::GlobalId>_>();
+    hashbrown::raw::RawTable::
+    remove_entry<tuple_<country_core::resources::walls::WallId,country_core::resources::walls::decorator_storage::Decorators>,alloc::alloc::Global,hashbrown::map::equivalent_key::closure_env_0<country_core::resources::walls::WallId,country_core::resources::walls::WallId,country_core::resources::walls::decorator_storage::Decorators>_>
+              ();
+    if (lStack_180 == 0) {
+      return;
+    }
+    uVar5 = CONCAT62(uStack_156,local_158);
+    lVar2 = lStack_180;
+    puVar6 = local_178;
+    uVar7 = uStack_170;
+  }
+  else if (in_RDX == 1) {
+    lVar2 = *(longlong *)(in_RCX + 0x90);
+    local_138 = *(longlong *)(in_RCX + 0xd8);
+    local_148 = *(longlong *)(in_RCX + 200);
+    uVar5 = *(undefined8 *)(in_RCX + 0xb8);
+    pauStack_150 = *(undefined1 (**) [16])(in_RCX + 0xc0);
+    local_168 = *(undefined8 *)(in_RCX + 0xa8);
+    uStack_160 = *(undefined8 *)(in_RCX + 0xb0);
+    puVar6 = *(undefined8 **)(in_RCX + 0x98);
+    uVar7 = *(ulonglong *)(in_RCX + 0xa0);
+    local_118 = *(longlong *)(in_RCX + 0xf8);
+    *(undefined8 *)(in_RCX + 0x90) = 0;
+  }
+  else {
+    lVar2 = *(longlong *)(in_RCX + 0x120);
+    local_138 = *(longlong *)(in_RCX + 0x168);
+    local_148 = *(longlong *)(in_RCX + 0x158);
+    uVar5 = *(undefined8 *)(in_RCX + 0x148);
+    pauStack_150 = *(undefined1 (**) [16])(in_RCX + 0x150);
+    local_168 = *(undefined8 *)(in_RCX + 0x138);
+    uStack_160 = *(undefined8 *)(in_RCX + 0x140);
+    local_118 = *(longlong *)(in_RCX + 0x188);
+    *(undefined8 *)(in_RCX + 0x120) = 0;
+    puVar6 = *(undefined8 **)(in_RCX + 0x128);
+    uVar7 = *(ulonglong *)(in_RCX + 0x130);
+  }
+  if (lVar2 != 0) {
+    if ((local_118 != 0) && (local_118 + (local_118 * 4 + 0x13U & 0xfffffffffffffff0) != -0x11)) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    hashbrown::map::HashMap::
+    rustc_entry<enum2_<country_core::resources::walls::decorator_storage::DecoratorStorageAddr>,std::collections::hash::set::HashSet<country_core::resources::walls::decorator::DecoratorId,std::hash::random::RandomState>,std::hash::random::RandomState,alloc::alloc::Global>
+              ();
+    lStack_180._0_4_ = (int)puVar6;
+    if (local_188 == 3) {
+      iVar9 = (int)in_RDX;
+      if (puVar6 != (undefined8 *)0x0) {
+        iVar9 = (int)lStack_180 + ((int)lStack_180 * 4 + 0x13U & 0xfffffff0) + 0x11;
+      }
+      lStack_180._0_4_ = iVar9;
+      hashbrown::map::impl$82::
+      extend<country_core::resources::walls::decorator::DecoratorId,tuple_<>,std::hash::random::RandomState,alloc::alloc::Global,core::iter::adapters::map::Map<std::collections::hash::set::IntoIter<country_core::resources::walls::decorator::DecoratorId>,hashbrown::set::impl_10::extend::closure_env_0<country_core::resources::walls::decorator::DecoratorId,std::hash::random::RandomState,alloc::alloc::Global,std::collections::hash::set::HashSet<country_core::resources::walls::decorator::DecoratorId,std::hash::random::RandomState>_>_>_>
+                ();
+    }
+    else {
+      pauVar11 = (undefined1 (*) [16])*local_178;
+      uVar3 = local_178[1];
+      uVar16 = uVar3 & uStack_170;
+      auVar1 = *(undefined1 (*) [16])(*pauVar11 + uVar16);
+      uVar4 = (ushort)(SUB161(auVar1 >> 7,0) & 1) | (ushort)(SUB161(auVar1 >> 0xf,0) & 1) << 1 |
+              (ushort)(SUB161(auVar1 >> 0x17,0) & 1) << 2 |
+              (ushort)(SUB161(auVar1 >> 0x1f,0) & 1) << 3 |
+              (ushort)(SUB161(auVar1 >> 0x27,0) & 1) << 4 |
+              (ushort)(SUB161(auVar1 >> 0x2f,0) & 1) << 5 |
+              (ushort)(SUB161(auVar1 >> 0x37,0) & 1) << 6 |
+              (ushort)(SUB161(auVar1 >> 0x3f,0) & 1) << 7 |
+              (ushort)(SUB161(auVar1 >> 0x47,0) & 1) << 8 |
+              (ushort)(SUB161(auVar1 >> 0x4f,0) & 1) << 9 |
+              (ushort)(SUB161(auVar1 >> 0x57,0) & 1) << 10 |
+              (ushort)(SUB161(auVar1 >> 0x5f,0) & 1) << 0xb |
+              (ushort)(SUB161(auVar1 >> 0x67,0) & 1) << 0xc |
+              (ushort)(SUB161(auVar1 >> 0x6f,0) & 1) << 0xd |
+              (ushort)(SUB161(auVar1 >> 0x77,0) & 1) << 0xe |
+              (ushort)(byte)(auVar1[0xf] >> 7) << 0xf;
+      uVar10 = (uint)uVar4;
+      if (uVar4 == 0) {
+        lVar12 = 0x10;
+        do {
+          uVar16 = uVar16 + lVar12 & uVar3;
+          auVar1 = *(undefined1 (*) [16])(*pauVar11 + uVar16);
+          lVar12 = lVar12 + 0x10;
+          uVar10 = (uint)(ushort)((ushort)(SUB161(auVar1 >> 7,0) & 1) |
+                                  (ushort)(SUB161(auVar1 >> 0xf,0) & 1) << 1 |
+                                  (ushort)(SUB161(auVar1 >> 0x17,0) & 1) << 2 |
+                                  (ushort)(SUB161(auVar1 >> 0x1f,0) & 1) << 3 |
+                                  (ushort)(SUB161(auVar1 >> 0x27,0) & 1) << 4 |
+                                  (ushort)(SUB161(auVar1 >> 0x2f,0) & 1) << 5 |
+                                  (ushort)(SUB161(auVar1 >> 0x37,0) & 1) << 6 |
+                                  (ushort)(SUB161(auVar1 >> 0x3f,0) & 1) << 7 |
+                                  (ushort)(SUB161(auVar1 >> 0x47,0) & 1) << 8 |
+                                  (ushort)(SUB161(auVar1 >> 0x4f,0) & 1) << 9 |
+                                  (ushort)(SUB161(auVar1 >> 0x57,0) & 1) << 10 |
+                                  (ushort)(SUB161(auVar1 >> 0x5f,0) & 1) << 0xb |
+                                  (ushort)(SUB161(auVar1 >> 0x67,0) & 1) << 0xc |
+                                  (ushort)(SUB161(auVar1 >> 0x6f,0) & 1) << 0xd |
+                                  (ushort)(SUB161(auVar1 >> 0x77,0) & 1) << 0xe |
+                                 (ushort)(byte)(auVar1[0xf] >> 7) << 0xf);
+        } while (uVar10 == 0);
+      }
+      uVar13 = 0;
+      for (; (uVar10 & 1) == 0; uVar10 = uVar10 >> 1 | 0x80000000) {
+        uVar13 = uVar13 + 1;
+      }
+      uVar16 = uVar13 + uVar16 & uVar3;
+      bVar15 = (*pauVar11)[uVar16];
+      if (-1 < (char)bVar15) {
+        auVar1 = *pauVar11;
+        uVar10 = 0;
+        for (uVar13 = (uint)(ushort)((ushort)(SUB161(auVar1 >> 7,0) & 1) |
+                                     (ushort)(SUB161(auVar1 >> 0xf,0) & 1) << 1 |
+                                     (ushort)(SUB161(auVar1 >> 0x17,0) & 1) << 2 |
+                                     (ushort)(SUB161(auVar1 >> 0x1f,0) & 1) << 3 |
+                                     (ushort)(SUB161(auVar1 >> 0x27,0) & 1) << 4 |
+                                     (ushort)(SUB161(auVar1 >> 0x2f,0) & 1) << 5 |
+                                     (ushort)(SUB161(auVar1 >> 0x37,0) & 1) << 6 |
+                                     (ushort)(SUB161(auVar1 >> 0x3f,0) & 1) << 7 |
+                                     (ushort)(SUB161(auVar1 >> 0x47,0) & 1) << 8 |
+                                     (ushort)(SUB161(auVar1 >> 0x4f,0) & 1) << 9 |
+                                     (ushort)(SUB161(auVar1 >> 0x57,0) & 1) << 10 |
+                                     (ushort)(SUB161(auVar1 >> 0x5f,0) & 1) << 0xb |
+                                     (ushort)(SUB161(auVar1 >> 0x67,0) & 1) << 0xc |
+                                     (ushort)(SUB161(auVar1 >> 0x6f,0) & 1) << 0xd |
+                                     (ushort)(SUB161(auVar1 >> 0x77,0) & 1) << 0xe |
+                                    (ushort)(byte)(auVar1[0xf] >> 7) << 0xf); (uVar13 & 1) == 0;
+            uVar13 = uVar13 >> 1 | 0x80000000) {
+          uVar10 = uVar10 + 1;
+        }
+        uVar16 = (ulonglong)uVar10;
+        bVar15 = (*pauVar11)[uVar16];
+      }
+      bVar14 = (byte)(uStack_170 >> 0x39);
+      (*pauVar11)[uVar16] = bVar14;
+      pauVar11[1][uVar16 - 0x10 & uVar3] = bVar14;
+      local_178[2] = local_178[2] - (ulonglong)(bVar15 & 1);
+      *(longlong *)pauVar11[uVar16 * -4 + -4] = local_188;
+      *(longlong *)(pauVar11[uVar16 * -4 + -4] + 8) = lVar8;
+      *(undefined8 *)pauVar11[uVar16 * -4 + -1] = uStack_160;
+      *(undefined8 *)(pauVar11[uVar16 * -4 + -1] + 8) = uVar5;
+      *(longlong *)pauVar11[uVar16 * -4 + -3] = lVar2;
+      *(undefined8 **)(pauVar11[uVar16 * -4 + -3] + 8) = puVar6;
+      *(ulonglong *)pauVar11[uVar16 * -4 + -2] = uVar7;
+      *(undefined8 *)(pauVar11[uVar16 * -4 + -2] + 8) = local_168;
+      local_178[3] = local_178[3] + 1;
+    }
+    auVar1 = *pauStack_150;
+    pauVar11 = pauStack_150 + 1;
+    uVar10 = ~(uint)(ushort)((ushort)(SUB161(auVar1 >> 7,0) & 1) |
+                             (ushort)(SUB161(auVar1 >> 0xf,0) & 1) << 1 |
+                             (ushort)(SUB161(auVar1 >> 0x17,0) & 1) << 2 |
+                             (ushort)(SUB161(auVar1 >> 0x1f,0) & 1) << 3 |
+                             (ushort)(SUB161(auVar1 >> 0x27,0) & 1) << 4 |
+                             (ushort)(SUB161(auVar1 >> 0x2f,0) & 1) << 5 |
+                             (ushort)(SUB161(auVar1 >> 0x37,0) & 1) << 6 |
+                             (ushort)(SUB161(auVar1 >> 0x3f,0) & 1) << 7 |
+                             (ushort)(SUB161(auVar1 >> 0x47,0) & 1) << 8 |
+                             (ushort)(SUB161(auVar1 >> 0x4f,0) & 1) << 9 |
+                             (ushort)(SUB161(auVar1 >> 0x57,0) & 1) << 10 |
+                             (ushort)(SUB161(auVar1 >> 0x5f,0) & 1) << 0xb |
+                             (ushort)(SUB161(auVar1 >> 0x67,0) & 1) << 0xc |
+                             (ushort)(SUB161(auVar1 >> 0x6f,0) & 1) << 0xd |
+                             (ushort)(SUB161(auVar1 >> 0x77,0) & 1) << 0xe |
+                            (ushort)(byte)(auVar1[0xf] >> 7) << 0xf);
+    while (bVar17 = local_138 != 0, local_138 = local_138 + -1, bVar17) {
+      if ((short)uVar10 == 0) {
+        do {
+          auVar1 = *pauVar11;
+          uVar4 = (ushort)(SUB161(auVar1 >> 7,0) & 1) | (ushort)(SUB161(auVar1 >> 0xf,0) & 1) << 1 |
+                  (ushort)(SUB161(auVar1 >> 0x17,0) & 1) << 2 |
+                  (ushort)(SUB161(auVar1 >> 0x1f,0) & 1) << 3 |
+                  (ushort)(SUB161(auVar1 >> 0x27,0) & 1) << 4 |
+                  (ushort)(SUB161(auVar1 >> 0x2f,0) & 1) << 5 |
+                  (ushort)(SUB161(auVar1 >> 0x37,0) & 1) << 6 |
+                  (ushort)(SUB161(auVar1 >> 0x3f,0) & 1) << 7 |
+                  (ushort)(SUB161(auVar1 >> 0x47,0) & 1) << 8 |
+                  (ushort)(SUB161(auVar1 >> 0x4f,0) & 1) << 9 |
+                  (ushort)(SUB161(auVar1 >> 0x57,0) & 1) << 10 |
+                  (ushort)(SUB161(auVar1 >> 0x5f,0) & 1) << 0xb |
+                  (ushort)(SUB161(auVar1 >> 0x67,0) & 1) << 0xc |
+                  (ushort)(SUB161(auVar1 >> 0x6f,0) & 1) << 0xd |
+                  (ushort)(SUB161(auVar1 >> 0x77,0) & 1) << 0xe |
+                  (ushort)(byte)(auVar1[0xf] >> 7) << 0xf;
+          pauVar11 = pauVar11 + 1;
+        } while (uVar4 == 0xffff);
+        uVar10 = ~(uint)uVar4;
+        uVar13 = uVar10 & -(uint)uVar4 - 2;
+      }
+      else {
+        uVar13 = uVar10 - 1 & uVar10;
+      }
+      for (; (uVar10 & 1) == 0; uVar10 = uVar10 >> 1 | 0x80000000) {
+      }
+      hashbrown::map::HashMap::
+      insert<country_core::resources::walls::decorator::DecoratorId,tuple_<>,std::hash::random::RandomState,alloc::alloc::Global>
+                ();
+      core::hash::BuildHasher::
+      hash_one<std::hash::random::RandomState,ref_<shader_pipeline::reflection::BindingIndex>_>();
+      hashbrown::raw::RawTable::
+      remove_entry<tuple_<country_core::resources::walls::decorator::DecoratorId,enum2_<country_core::resources::walls::decorator_storage::DecoratorStorageAddr>_>,alloc::alloc::Global,hashbrown::map::equivalent_key::closure_env_0<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId,enum2_<country_core::resources::walls::decorator_storage::DecoratorStorageAddr>_>_>
+                ();
+      uVar10 = uVar13;
+      if ((int)lStack_180 == 3) {
+                    // WARNING: Subroutine does not return
+        core::panicking::panic();
+      }
+    }
+    if ((local_148 != 0) && (local_148 * 0x51 != -0x61)) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+  }
+  return;
+}
+

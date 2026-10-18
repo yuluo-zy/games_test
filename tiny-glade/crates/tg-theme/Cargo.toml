@@ -1,0 +1,22 @@
+[package]
+name = "tg-theme"
+version.workspace = true
+edition.workspace = true
+rust-version = "1.89"
+publish.workspace = true
+description = "Validated seasonal theme delivery and transactional content cache"
+readme = "README.md"
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+blake3.workspace = true
+log.workspace = true
+cache_control = "=0.2.0"
+httpdate = "=1.0.3"
+reqwest = { version = "=0.11.22", default-features = false, features = ["blocking", "rustls-tls"] }
+zip = { version = "=0.6.6", default-features = false, features = ["deflate"] }
+
+[lints]
+workspace = true

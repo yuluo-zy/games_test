@@ -30,7 +30,7 @@
 //!    `write_storage<GrassBladeDataSsbo>`(`grass_blade_buffer`)；`write_storage_concurrent<DrawIndexedIndirectBuffer>`(`draw_commands`, 组 1) +
 //!    `i32 draw_indirect_buffer_offset = 0`；`write_storage<DrawIndirectBuffer>`(`lod1_commands`) + `i32 lod1_commands_offset = 0`；
 //!    `write_storage<AtomicCounterBuffer>`(`atomics`) + `i32 grass_buffer_size = 0x90000`；
-//!    取 `GladeTheme`（TypeId 0xc2b8e941c91a6428/0x59f3c6d1d3da43a0，缺失 → unwrap panic）首个 u32 `t`：
+//!    取实际 `AppMode`（TypeId 0xc2b8e941c91a6428/0x59f3c6d1d3da43a0，缺失 → unwrap panic）首个 u32 `t`：
 //!    `brush_index = BRUSH_TABLE[t - 7]`（`t ∈ 7..=9`），其余 0 → `i32 brush_index`；
 //!    纹理读：preset 0xe `rocky_terrain`、0x13 `water_mask`、0x15 `buildings_mask`、0x10 `foliage_exclusion_mask`、9、0xa、
 //!    5 `path_mask`、0x14 `garden_mask`、0xf `grass_object_push`，以及 `TextureFromDisk(0x8991bdb39a048ac5)` → `bg_terrain_heightmap`；
@@ -59,7 +59,7 @@ use crate::render::rg_helpers::clear_rg_buffer;
 use crate::resources::texture_presets::{TextureFromDisk, TexturePreset};
 use crate::systems::render_loop::compute_passes::generate_hzb::Hzb;
 use crate::systems::render_loop::compute_passes::pass_kit::{
-    PassEnv, ResourceView, TEX_READ, binding_hash, ssbo_carrier,
+    PassEnv, ResourceView, TEX_READ, binding_hash,
 };
 use crate::systems::render_loop::compute_passes::prefix_scan::{
     SizedRgBuffer, inclusive_prefix_scan_u32_1m,
@@ -67,19 +67,59 @@ use crate::systems::render_loop::compute_passes::prefix_scan::{
 use crate::systems::render_loop::indirect_params::{
     AtomicCounterBuffer, DrawIndexedIndirectBuffer, DrawIndirectBuffer,
 };
-use crate::typed_gap::Gap;
 
-/// 草叶数据 SSBO（O 名；布局 U）。
-#[derive(Clone, Copy, Debug, Default)]
-pub struct GrassBladeDataSsbo(pub Gap);
-ssbo_carrier!(GrassBladeDataSsbo, "GrassBlades");
+/// B ctor@141611980: 32-byte GPU-produced record, 0x90000 elements.
+/// Word payload preserves the recovered storage layout without guessing CPU
+/// field names. Grass generation and its draw shader own the actual contents.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct GrassBladeDataSsbo {
+    pub words: [u32; 8],
+}
+impl crate::render::ssbo::StorageElement for GrassBladeDataSsbo {
+    const NAME: &'static str = "GrassBlades";
+    const BUFFER_LEN: usize = 0x90000;
+}
+impl crate::asset_libraries::ssbo_library::SsboType for GrassBladeDataSsbo {
+    type Storage = crate::render::ssbo::TypedStorageBuffer<Self>;
+    fn new_storage_buffer(
+        device: &dyn crate::render::ssbo::rhapsody_boundary::GraphicsDevice,
+        initial: Option<&[u8]>,
+    ) -> Self::Storage {
+        use crate::render::ssbo::rhapsody_boundary::BufferDesc;
+        if let Some(bytes) = initial {
+            assert_eq!(bytes.len() % 32, 0);
+            assert_eq!(bytes.as_ptr() as usize % 4, 0);
+            assert!(
+                bytes.len() < 0x1200020,
+                "Excessive data size supplied for GrassBladeDataSsbo"
+            );
+        }
+        // None is uninitialized; the original skips temporary zero data.
+        let buffer = device
+            .create_buffer(
+                &BufferDesc::new(0x1200000, 0x22, 1).alignment(4),
+                "GrassBlades",
+                initial,
+            )
+            .expect("creating original GrassBlades buffer");
+        crate::render::ssbo::TypedStorageBuffer::from_created_buffer(buffer)
+    }
+}
+impl crate::render::pass_builder::pass_resource_access::SsboType for GrassBladeDataSsbo {
+    fn rg_buffer_hash() -> u64 {
+        crate::asset_libraries::ssbo_library::SsboId::of::<Self>()
+            .0
+            .0
+    }
+}
 
 /// 物体草 push 数据（O：单个 f32——`movss xmm1,[r8]`、`Layout` 4/4；`#[derive(Component)]`，无 require）。
 /// 查询项 `(&Transform, &ObjectGrassPush)` → `Vec4(translation, push)`（见 `draw_passes::object_grass_push`）。
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
 pub struct ObjectGrassPush(pub f32);
 
-/// 当前 Glade 主题（O：TypeId 0xc2b8e941c91a6428/0x59f3c6d1d3da43a0；首个 u32 = 主题 id）。
+/// 旧原生偏移兼容视图；实际身份为 AppMode，不在当前 App 插入第二资源（O：TypeId 0xc2b8e941c91a6428/0x59f3c6d1d3da43a0；首个 u32 = 模式 tag）。
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct GladeThemeId(pub u32);
@@ -162,6 +202,19 @@ pub const BUNDLE_INDEX_BYTES: u64 = 0x80000;
 /// W29 入口（O 0x140a60280）。在 "Grass tile bundle gen" 之后调用 `prefix_scan::inclusive_prefix_scan_u32_1m`
 /// 对 `bundle_grasslet_index_buffer` 做前缀和（三个 pass 依次登记）。
 pub fn grass_compute(env: &mut PassEnv<'_>, hzb: &Hzb, freeze_occlusion_culling: bool) {
+    grass_compute_impl(env, hzb, freeze_occlusion_culling, |env| env.resource::<GladeThemeId>().0)
+}
+
+/// Current typed AppMode projection; no partial-layout resource is installed.
+pub fn grass_compute_with_app_mode(
+    env: &mut PassEnv<'_>, hzb: &Hzb, freeze_occlusion_culling: bool, app_mode: u32,
+) {
+    grass_compute_impl(env, hzb, freeze_occlusion_culling, |_| app_mode)
+}
+
+fn grass_compute_impl(
+    env: &mut PassEnv<'_>, hzb: &Hzb, freeze_occlusion_culling: bool, mode: impl FnOnce(&PassEnv<'_>) -> u32,
+) {
     // 缓冲（先 temporal，再两个，pass 1 之前）。
     let tile = env
         .temporal_buffer(TEMPORAL_TILE_NAME, TILE_BUFFER_SIZE, TILE_BUFFER_USAGE)
@@ -188,6 +241,7 @@ pub fn grass_compute(env: &mut PassEnv<'_>, hzb: &Hzb, freeze_occlusion_culling:
     let p = env
         .pass("Grass prefix tiles", "/grass/tiles_prefix.cs.hlsl")
         .write_rg_storage_buffer(HASH_BLADE_SUBTOTAL, &blade_subtotal)
+        .preserve_storage_buffer_contents(HASH_BLADE_SUBTOTAL)
         .dispatch_groups(1, 1, 1);
     record(env, p);
 
@@ -211,6 +265,7 @@ pub fn grass_compute(env: &mut PassEnv<'_>, hzb: &Hzb, freeze_occlusion_culling:
     let p = env
         .pass("Grass prefix bundles", "/grass/bundles_prefix.cs.hlsl")
         .write_rg_storage_buffer(HASH_BUNDLE_SUBTOTAL, &bundle_subtotal)
+        .preserve_storage_buffer_contents(HASH_BUNDLE_SUBTOTAL)
         .dispatch_groups(1, 1, 1);
     record(env, p);
 
@@ -258,13 +313,14 @@ pub fn grass_compute(env: &mut PassEnv<'_>, hzb: &Hzb, freeze_occlusion_culling:
             "/grass/calc_grasslet_bundle_ranges.cs.hlsl",
         )
         .write_rg_storage_buffer(HASH_RANGES, &ranges)
+        .preserve_storage_buffer_contents(HASH_RANGES)
         .read_rg_storage_buffer(HASH_DISPATCH_ARGS, &args)
         .read_rg_storage_buffer(HASH_BUNDLE_INDEX, &bundle_index)
         .dispatch_indirect_raw(&args, RANGES_INDIRECT_OFFSET);
     record(env, p);
 
     // 8. generate grass
-    let theme = env.resource::<GladeThemeId>().0;
+    let theme = mode(env);
     let mut p = env
         .pass("Grass", "/generate_grass.cs.hlsl")
         .read_rg_storage_buffer(HASH_TILE, &tile)
@@ -272,10 +328,13 @@ pub fn grass_compute(env: &mut PassEnv<'_>, hzb: &Hzb, freeze_occlusion_culling:
         .read_rg_storage_buffer(HASH_RANGES, &ranges)
         .write_storage_buffer::<GrassBladeDataSsbo>(HASH_BLADES)
         .write_storage_buffer_concurrent::<DrawIndexedIndirectBuffer>(HASH_DRAW_COMMANDS, 1)
+        .preserve_storage_buffer_contents(HASH_DRAW_COMMANDS)
         .uniform(KEY_DRAW_OFFSET, 0i32)
         .write_storage_buffer::<DrawIndirectBuffer>(HASH_LOD1)
+        .preserve_storage_buffer_contents(HASH_LOD1)
         .uniform(KEY_LOD1_OFFSET, 0i32)
         .write_storage_buffer::<AtomicCounterBuffer>(HASH_ATOMICS)
+        .preserve_storage_buffer_contents(HASH_ATOMICS)
         .uniform(KEY_BUFFER_SIZE, GRASS_BUFFER_SIZE)
         .uniform(KEY_BRUSH, brush_index(theme) as i32);
     for (name, preset) in [

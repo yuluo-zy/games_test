@@ -1,0 +1,863 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/terrain/ui_draw_terrain.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/terrain/ui_draw_terrain.rs
+@@ -1,27 +1,8 @@
+-//! `ui_draw_terrain.rs` — 地形绘制 UI（B 0x140a9fdc0）。
+-//!
+-//! 证据：fresh 反编译 + 反汇编（restorer-terrain-clutter/jobs/decomp/140a9fdc0、
+-//! disasm-1.txt）。逐语句对照：
+-//! - 门：`*(int*)*in_RCX != 10 → return`（AppMode::Terrain）；
+-//! - 高度采样：`bilinear_sample_at_world_xz<RasterBufferRef<512>>`（extent 130）；
+-//! - **画布 1**（条件 `height > 0 ∧ ((tag&1)==0 ∨ pos.y ≤ 0.5)`）：
+-//!   `clearing_canvas_w_layer_and_sound("terrain_deny_draw", 0x11, 0)`
+-//!   （0x140a9fec2 路径；名字串 @0x142adc2df，R8=0x11、R9=0，栈字节 1）；
+-//! - **画布 2**（无条件）：`clearing_canvas_w_layer_and_sound("terrain_draw", 0x0c, 3)`
+-//!   （名字串 @0x142adc2f0，R8=0xc、R9B=3，栈字节 2）；
+-//! - `Circle2d::new(命中位置或 0, 0.8)`（半径常量 @0x142a16cb8 = 0.8）→
+-//!   `GladeBorder::is_shape_inside`；**非界内**写 8 B unit 事件（原生
+-//!   `EventInstance<WriteSettingsFileCmd>`，crate 以 [`RecalculateHeightMapCmd`] 承载）；
+-//! - 非界内且 `widget.dragged() != 2` 再写一条 8 B unit 事件；
+-//! - subtype = `widget.dragged()`（`[+0x18] ≥ 2 ∧ [+0x38]==widget id` → `[+0x19]`，否则 2），
+-//!   由 UI 交互（UiState::interaction）驱动，**不是**自造的 pressed 模型；
+-//! - `uVar10 = min(subtype.wrapping_sub(2), 3)`；u8 回绕状态机：
+-//!   `uVar10-1 < 2` → `(prev-1) > 1 ? inside : 2`；否则 `uVar10 != 0 ? ((prev-1)<2)*3 : 0`；
+-//! - 若 subtype == 3：把 `tag&1 ? pos.y : 0` 写入 drag 距离槽（本实现
+-//!   [`TerrainDrawState::drag_distance`]）；
+-//! - Original jump table at0x142adc498 is resolved:0=noop,1=new stroke with live mapped height policy,
+-//!   2=inside-only continuation plus changed event,3=owned typed history completion.
+-use bevy_ecs::prelude::*;
++//! B terrain draw state machine. Exact original SystemParam ports supersede
++//! folded grow_one aliases: water is WaterRaster, +1e0 belongs to the existing
++//! DecoratorArchivist culling policy, release notifies onboarding/tool usage,
++//! and state1 sends actual PlayTerrainSound tag5 with pre-clamp desired height.
++use bevy_ecs::{prelude::*, system::SystemParam};
+ use glam::Vec2;
+ use utils::geometry::Circle2d;
+ 
+@@ -29,18 +10,19 @@
+     asset_libraries::ssbo_library::AssetSsboLibrary,
+     resources::{
+         cursor_terrain_raycast::CursorTerrainRaycast,
+-        glade_border::{BorderShape, GladeBorder},
++        glade_border::{BorderShape, DisplayOutOfBorder, FeedbackInputOutOfBorder, GladeBorder},
++        onboarding::{NotifyHintSystemTerrain, NotifyHintSystemToolWasJustUsed},
+         terrain_editing::{StrokeId, TerrainEditingData},
+-        terrain_height::{TerrainHeightSsbo, TerrainHeightsData},
+         terrain_rock_mask::{TerrainRockMaskSsbo, sample_at_world_xz},
++        walls::decorator_archivist::LiveDecoratorArchivist,
++        world_raster_defs::WaterRaster,
+     },
+     systems::{
+         mode_manager::AppMode,
+         terrain::{
+-            RecalculateHeightMapCmd,
++            PlayTerrainSound,
+             deferred_terrain_history::{PendingTerrainHistory, TerrainEdit},
+             draw_terrain_stroke::EvTerrainStrokeChanged,
+-            ui_edit_terrain::{StairsPlacementBucket, StairsPlacementEntry, TerrainEditUiState},
+         },
+         ui::resources::ui_state::UiState,
+     },
+@@ -87,22 +69,30 @@
+     pub active: bool,
+ }
+ 
++#[derive(SystemParam)]
++pub struct TerrainDrawEffects<'w> {
++    changed: EventWriter<'w, EvTerrainStrokeChanged>,
++    sounds: EventWriter<'w, PlayTerrainSound>,
++    terrain_hint: EventWriter<'w, NotifyHintSystemTerrain>,
++    used: EventWriter<'w, NotifyHintSystemToolWasJustUsed>,
++    outside: EventWriter<'w, DisplayOutOfBorder>,
++    feedback: EventWriter<'w, FeedbackInputOutOfBorder>,
++}
++
+ /// `ui_draw_terrain` @0x140a9fdc0（逐语句重建）。
+ #[allow(clippy::too_many_arguments)]
+ pub fn ui_draw_terrain(
+     mode: Res<AppMode>,
+     hover: Res<CursorTerrainRaycast>,
+-    terrain: Res<TerrainHeightsData<TerrainHeightSsbo>>,
++    water: Res<WaterRaster>,
+     border: Res<GladeBorder>,
+     ui_state: Res<UiState>,
+     mut editing: ResMut<TerrainEditingData>,
+-    mut changed: EventWriter<EvTerrainStrokeChanged>,
+-    mut recalculate: EventWriter<RecalculateHeightMapCmd>,
++    mut effects: TerrainDrawEffects,
+     mut draw_state: ResMut<TerrainDrawState>,
+     mut pending: ResMut<PendingTerrainHistory>,
+-    mut stairs: ResMut<StairsPlacementBucket>,
+     assets: Option<Res<AssetSsboLibrary>>,
+-    mut terrain_ui: ResMut<TerrainEditUiState>,
++    mut archivist: ResMut<LiveDecoratorArchivist>,
+ ) {
+     // 门：AppMode::Terrain（O：0x140a9fdf9 `CMP dword [RAX],0xa`）。
+     if mode.native_tag() != 10 {
+@@ -114,7 +104,9 @@
+     let cursor = Vec2::new(position.x, position.z);
+     let distance = hover.pos.y;
+     // 高度采样（O：0x140a9fe9e `bilinear_sample_at_world_xz<RasterBufferRef<512>>`）。
+-    let height = terrain.sample_at_world_xz(cursor.x, cursor.y);
++    let height = water
++        .as_ref()
++        .bilinear_sample_at_world_xz(cursor.x, cursor.y, 130.0, 130.0);
+     // 画布 1：**`height>0 ∧ (¬hovered ∨ dist≤0.5)`**（O：disasm 0x140a9fea3..0x140a9ff07）。
+     if height > 0.0 && (!hovered || distance <= FOCUS_DISTANCE_GATE) {
+         ui_state.clearing_canvas_w_layer_and_sound(
+@@ -138,10 +130,10 @@
+     )));
+     if !inside {
+         // 8 B unit 事件（原生 EventInstance<WriteSettingsFileCmd>）。
+-        recalculate.write(RecalculateHeightMapCmd);
++        effects.outside.write(DisplayOutOfBorder);
+         // 第二条：`dragged() != 2`（disasm 0x140a9ffec..0x140a9fffc）。
+         if widget.dragged() != 2 {
+-            recalculate.write(RecalculateHeightMapCmd);
++            effects.feedback.write(FeedbackInputOutOfBorder);
+         }
+     }
+     // subtype = widget.dragged()（disasm 0x140aa003c..0x140aa004a）。
+@@ -188,15 +180,17 @@
+                 let height = initial_stroke_height(mouse_index, on_rock, draw_state.drag_distance);
+                 editing.strokes.get_mut(&id).unwrap().height_ws = height;
+                 draw_state.active = true;
+-                terrain_ui.active = 1;
+-                changed.write(EvTerrainStrokeChanged(StrokeId(id.0)));
+-                stairs.entries.push(StairsPlacementEntry {
+-                    tag: 5,
+-                    decorator_a: position.x.to_bits(),
+-                    decorator_b: position.y.to_bits(),
+-                    sub: position.z.to_bits(),
+-                    value_a: height.to_bits(),
+-                    ..Default::default()
++                archivist.decorator_cull_allow_any();
++                effects
++                    .changed
++                    .write(EvTerrainStrokeChanged(StrokeId(id.0)));
++                effects.sounds.write(PlayTerrainSound::CreateChunk {
++                    position,
++                    height: initial_stroke_desired_height(
++                        mouse_index,
++                        on_rock,
++                        draw_state.drag_distance,
++                    ),
+                 });
+             }
+         }
+@@ -213,7 +207,7 @@
+                 );
+                 // The native caller publishes this even when the point helper
+                 // returns without changing a point (near duplicate / 1024 cap).
+-                changed.write(EvTerrainStrokeChanged(id));
++                effects.changed.write(EvTerrainStrokeChanged(id));
+             }
+         }
+         3 => {
+@@ -224,11 +218,10 @@
+                     height_ws: stroke.height_ws,
+                     stroke_pts: stroke.points.clone(),
+                 });
+-                stairs.entries.push(StairsPlacementEntry {
+-                    tag: 0,
+-                    ..Default::default()
+-                });
+-                recalculate.write(RecalculateHeightMapCmd);
++                effects
++                    .terrain_hint
++                    .write(NotifyHintSystemTerrain { tag: 0 });
++                effects.used.write(NotifyHintSystemToolWasJustUsed);
+             }
+             draw_state.active = false;
+         }
+@@ -253,7 +246,9 @@
+             pos: position,
+             ..Default::default()
+         });
+-        world.insert_resource(TerrainHeightsData::<TerrainHeightSsbo>::new());
++        world.insert_resource(WaterRaster::new(
++            crate::resources::world_raster::DirtyTilePublisher::unique(),
++        ));
+         let mut editing = tg_terrain::stroke::TerrainEditingData::default();
+         editing.new_stroke([0.0; 3]).unwrap();
+         editing
+@@ -327,7 +322,9 @@
+         register_terrain_events(&mut world);
+         world.insert_resource(AppMode::Terrain);
+         world.insert_resource(CursorTerrainRaycast::default());
+-        world.insert_resource(TerrainHeightsData::<TerrainHeightSsbo>::new());
++        world.insert_resource(WaterRaster::new(
++            crate::resources::world_raster::DirtyTilePublisher::unique(),
++        ));
+         let mut editing = tg_terrain::stroke::TerrainEditingData::default();
+         editing.new_stroke([1.0, 2.0, 3.0]).unwrap();
+         editing
+@@ -377,14 +374,22 @@
+ 
+ /// B0x140aa0138..0x140aa0534 initial height policy. Equal signed-zero values
+ /// choose the drag value, and NaN chooses the finite minimum as in MAXSS.
++pub fn initial_stroke_desired_height(
++    mouse_index: Option<i32>,
++    on_rock: bool,
++    drag_height: f32,
++) -> f32 {
++    if mouse_index.is_some_and(|id| id != -1) && !on_rock {
++        drag_height + 1.5
++    } else {
++        drag_height
++    }
++}
++
+ pub fn initial_stroke_height(mouse_index: Option<i32>, on_rock: bool, drag_height: f32) -> f32 {
+     let existing = mouse_index.is_some_and(|index| index != -1);
+     let minimum = if existing { 0.0 } else { 2.5 };
+-    let desired = if existing && !on_rock {
+-        drag_height + 1.5
+-    } else {
+-        drag_height
+-    };
++    let desired = initial_stroke_desired_height(mouse_index, on_rock, drag_height);
+     let height = if desired.is_nan() || desired < minimum {
+         minimum
+     } else {
+@@ -680,7 +685,9 @@
+             pos: glam::Vec3::new(3.0, -1.0, 4.0),
+             ..Default::default()
+         });
+-        world.insert_resource(TerrainHeightsData::<TerrainHeightSsbo>::new());
++        world.insert_resource(WaterRaster::new(
++            crate::resources::world_raster::DirtyTilePublisher::unique(),
++        ));
+         world.insert_resource(TerrainEditingData(
+             tg_terrain::stroke::TerrainEditingData::default(),
+         ));
+@@ -701,11 +708,12 @@
+             0.5
+         );
+         assert_eq!(world.resource::<Events<EvTerrainStrokeChanged>>().len(), 1);
+-        let placements = &world.resource::<StairsPlacementBucket>().entries;
+-        assert_eq!(placements.len(), 1);
+-        assert_eq!(placements[0].tag, 5);
+-        assert_eq!(placements[0].value_a, 0.5f32.to_bits());
+-        assert_eq!(world.resource::<TerrainEditUiState>().active, 1);
++        let events = world.resource::<Events<PlayTerrainSound>>();
++        let mut reader = events.get_cursor();
++        assert!(
++            matches!(reader.read(events).last(),Some(PlayTerrainSound::CreateChunk{height,..})if *height==0.5)
++        );
++        assert!(world.resource::<LiveDecoratorArchivist>().culling.allow_any);
+         assert!(world.resource::<TerrainDrawState>().active);
+ 
+         let widget = WidgetId::clearing_canvas(DRAW_CANVAS_NAME);
+@@ -739,14 +747,164 @@
+             Some(TerrainEdit::NewTerrainStroke { index: StrokeId(0), height_ws, stroke_pts })
+             if *height_ws == 0.5 && *stroke_pts == [[3.0, -1.0, 4.0], [4.0, -1.0, 4.0]])
+         );
++        assert_eq!(world.resource::<Events<NotifyHintSystemTerrain>>().len(), 1);
+         assert_eq!(
+             world
+-                .resource::<StairsPlacementBucket>()
+-                .entries
+-                .last()
+-                .unwrap()
+-                .tag,
++                .resource::<Events<NotifyHintSystemToolWasJustUsed>>()
++                .len(),
++            1
++        );
++    }
++}
++
++#[cfg(test)]
++mod original_audio_height_tests {
++    use super::*;
++    #[test]
++    fn original_state1_audio_uses_pre_clamp_desired_bits() {
++        assert_eq!(
++            initial_stroke_desired_height(None, false, f32::from_bits(3212836864)).to_bits(),
++            3212836864
++        );
++        assert_eq!(
++            initial_stroke_desired_height(None, false, f32::from_bits(0)).to_bits(),
+             0
+         );
+-    }
+-}
++        assert_eq!(
++            initial_stroke_desired_height(None, false, f32::from_bits(1065353216)).to_bits(),
++            1065353216
++        );
++        assert_eq!(
++            initial_stroke_desired_height(None, false, f32::from_bits(1092616192)).to_bits(),
++            1092616192
++        );
++        assert_eq!(
++            initial_stroke_desired_height(None, false, f32::from_bits(1103626240)).to_bits(),
++            1103626240
++        );
++        assert_eq!(
++            initial_stroke_desired_height(None, false, f32::from_bits(2143289344)).to_bits(),
++            2143289344
++        );
++        assert_eq!(
++            initial_stroke_desired_height(None, true, f32::from_bits(3212836864)).to_bits(),
++            3212836864
++        );
++        assert_eq!(
++            initial_stroke_desired_height(None, true, f32::from_bits(0)).to_bits(),
++            0
++        );
++        assert_eq!(
++            initial_stroke_desired_height(None, true, f32::from_bits(1065353216)).to_bits(),
++            1065353216
++        );
++        assert_eq!(
++            initial_stroke_desired_height(None, true, f32::from_bits(1092616192)).to_bits(),
++            1092616192
++        );
++        assert_eq!(
++            initial_stroke_desired_height(None, true, f32::from_bits(1103626240)).to_bits(),
++            1103626240
++        );
++        assert_eq!(
++            initial_stroke_desired_height(None, true, f32::from_bits(2143289344)).to_bits(),
++            2143289344
++        );
++        assert_eq!(
++            initial_stroke_desired_height(Some(-1), false, f32::from_bits(3212836864)).to_bits(),
++            3212836864
++        );
++        assert_eq!(
++            initial_stroke_desired_height(Some(-1), false, f32::from_bits(0)).to_bits(),
++            0
++        );
++        assert_eq!(
++            initial_stroke_desired_height(Some(-1), false, f32::from_bits(1065353216)).to_bits(),
++            1065353216
++        );
++        assert_eq!(
++            initial_stroke_desired_height(Some(-1), false, f32::from_bits(1092616192)).to_bits(),
++            1092616192
++        );
++        assert_eq!(
++            initial_stroke_desired_height(Some(-1), false, f32::from_bits(1103626240)).to_bits(),
++            1103626240
++        );
++        assert_eq!(
++            initial_stroke_desired_height(Some(-1), false, f32::from_bits(2143289344)).to_bits(),
++            2143289344
++        );
++        assert_eq!(
++            initial_stroke_desired_height(Some(-1), true, f32::from_bits(3212836864)).to_bits(),
++            3212836864
++        );
++        assert_eq!(
++            initial_stroke_desired_height(Some(-1), true, f32::from_bits(0)).to_bits(),
++            0
++        );
++        assert_eq!(
++            initial_stroke_desired_height(Some(-1), true, f32::from_bits(1065353216)).to_bits(),
++            1065353216
++        );
++        assert_eq!(
++            initial_stroke_desired_height(Some(-1), true, f32::from_bits(1092616192)).to_bits(),
++            1092616192
++        );
++        assert_eq!(
++            initial_stroke_desired_height(Some(-1), true, f32::from_bits(1103626240)).to_bits(),
++            1103626240
++        );
++        assert_eq!(
++            initial_stroke_desired_height(Some(-1), true, f32::from_bits(2143289344)).to_bits(),
++            2143289344
++        );
++        assert_eq!(
++            initial_stroke_desired_height(Some(7), false, f32::from_bits(3212836864)).to_bits(),
++            1056964608
++        );
++        assert_eq!(
++            initial_stroke_desired_height(Some(7), false, f32::from_bits(0)).to_bits(),
++            1069547520
++        );
++        assert_eq!(
++            initial_stroke_desired_height(Some(7), false, f32::from_bits(1065353216)).to_bits(),
++            1075838976
++        );
++        assert_eq!(
++            initial_stroke_desired_height(Some(7), false, f32::from_bits(1092616192)).to_bits(),
++            1094189056
++        );
++        assert_eq!(
++            initial_stroke_desired_height(Some(7), false, f32::from_bits(1103626240)).to_bits(),
++            1104412672
++        );
++        assert_eq!(
++            initial_stroke_desired_height(Some(7), false, f32::from_bits(2143289344)).to_bits(),
++            2143289344
++        );
++        assert_eq!(
++            initial_stroke_desired_height(Some(7), true, f32::from_bits(3212836864)).to_bits(),
++            3212836864
++        );
++        assert_eq!(
++            initial_stroke_desired_height(Some(7), true, f32::from_bits(0)).to_bits(),
++            0
++        );
++        assert_eq!(
++            initial_stroke_desired_height(Some(7), true, f32::from_bits(1065353216)).to_bits(),
++            1065353216
++        );
++        assert_eq!(
++            initial_stroke_desired_height(Some(7), true, f32::from_bits(1092616192)).to_bits(),
++            1092616192
++        );
++        assert_eq!(
++            initial_stroke_desired_height(Some(7), true, f32::from_bits(1103626240)).to_bits(),
++            1103626240
++        );
++        assert_eq!(
++            initial_stroke_desired_height(Some(7), true, f32::from_bits(2143289344)).to_bits(),
++            2143289344
++        );
++    }
++}
+--- a/games_test/tiny-glade/crates/country-core/src/systems/terrain/ui_edit_terrain.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/terrain/ui_edit_terrain.rs
+@@ -4,18 +4,24 @@
+ //! serde field visitor, confirmed by original matching PDB/LLVM.
+ //! The real case2 produces EditTerrainStrokeCmd, as the original FunctionSystem
+ //! signature states. Code-folded grow_one labels do not identify its event type.
+-use bevy_ecs::prelude::*;
++use bevy_ecs::{prelude::*, system::SystemParam};
+ use glam::{Vec2, Vec3};
+ 
+ use crate::{
+     resources::{
+         cursor_terrain_raycast::CursorTerrainRaycast,
++        mouse_capture::CursorCaptureCmd,
++        onboarding::{NotifyHintSystemTerrain, NotifyHintSystemTerrainSteepness},
+         terrain_editing::{StrokeId, TerrainEditingData},
++        walls::decorator_archivist::LiveDecoratorArchivist,
+         window::CursorMovedScreenSpace,
+     },
+     systems::{
++        arrow_gizmo_animation::EnableArrowGizmoStretch,
++        backend::input::mod_key::Modifiers,
++        camera_rig::main_camera::MainCameraMoved,
+         mode_manager::AppMode,
+-        terrain::RecalculateHeightMapCmd,
++        render_loop::compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd,
+         ui::resources::{
+             ui_state::UiState,
+             widget_params::{WidgetParams, WidgetVolumeShape},
+@@ -26,22 +32,14 @@
+ use super::{edit_terrain_stroke::EditTerrainStrokeCmd, terrain_hover_idx::HoveredTerrainStrokeId};
+ use tg_terrain::edit::{Adjustment, EditCommand};
+ 
+-/// crate 本地 WindowFocusEvent 承载（I：原生 `country_core::resources::window::
+-/// WindowFocusEvent`，0x10B 步长事件，载荷字节 0/1；crate 事件类型存在，
+-/// 但 terrain 域以本地类型登记载荷语义）。
++/// Deprecated host compatibility type. Original terrain editing writes the
++/// actual CursorCapture/onboarding/highlight events, not WindowFocus.
+ #[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
+ pub struct TerrainWindowFocus(pub u8);
+ 
+-/// 台阶放置数据（O：decomp `indexmap::Bucket<(DecoratorId,DecoratorId), AlignKind>`，
+-/// 0x28B 元素）——terrain→stairs/decorator 消费链的 CPU 侧接口。
+-///
+-/// 原生写偏移按生产者区分（同一泛型被当作手写记录使用，hash 槽位被复用）：
+-/// - `edit_terrain_stroke`：`+0x00` 事件计数、`+0x08` tag(0/1/2/3/4)、`+0x0c..0x14` 位置、
+-///   `+0x18/+0x1c` 值、`+0x20` 幅度；
+-/// - `ui_edit_terrain` case 2：`+0x00` 判别(2/0)、`+0x08` tag(0/2)、`+0x0c..0x18`
+-///   载荷、`+0x1c` widget id、`+0x20` 事件计数。
+-///
+-/// crate 以规范化条目承载（无宿主 consumer，字段语义按原生偏移登记）。
++/// Legacy host-only compatibility record. The former claim that terrain
++/// native queue writes were stairs records was withdrawn after matching the
++/// original FunctionSystem/consumer identities; current terrain no longer uses it.
+ #[repr(C)]
+ #[derive(Clone, Copy, Debug, Default, PartialEq)]
+ pub struct StairsPlacementEntry {
+@@ -75,15 +73,17 @@
+ /// 地形编辑历史哨兵（O：case 3 `0x8000000000000001`；区别于 deferred 的 `…0002`）。
+ pub const TERRAIN_EDIT_SENTINEL: u64 = 0x8000_0000_0000_0001;
+ 
+-/// UI 状态槽（O：case 1 写 `puVar25[0..4]`、`*(local_130+0x1e0)=1`、`*pfVar22=0.0`；
+-/// `puVar25`/`local_130`/`pfVar22` 为宿主 UI 资源，crate 以本适配资源承载）。
++/// Existing semantic capture owner: previous height/falloff, drag point and
++/// steepness accumulator. This is not a native ABI layout. The legacy active
++/// and slot_10 fields remain host compatibility only; native+0x1e0 is the real
++/// DecoratorArchivist culling policy and is written through that owner.
+ #[derive(Resource, Clone, Copy, Debug, Default)]
+ pub struct TerrainEditUiState {
+     /// case 1 写入的 hover 点/朝向（cursor 命中时 = `CursorTerrainRaycast` 位置；否则 0）。
+     pub hover: Vec3,
+-    /// `+0x10` 槽（O：stroke/host 字段写入）。
++    /// Deprecated host-only slot; not an original terrain capture field.
+     pub slot_10: f32,
+-    /// `+0x1e0` 字节置 1（O：进入拖拽状态）。
++    /// Deprecated host compatibility; original+0x1e0 is archivist.culling.allow_any.
+     pub active: u8,
+     /// 拖动累加器（O：`*pfVar22`；case 1 清 0、case 2 累加 `|dx*0.002|`）。
+     pub accum: f32,
+@@ -151,6 +151,16 @@
+     })
+ }
+ 
++#[derive(SystemParam)]
++pub struct TerrainEditEffects<'w> {
++    edits: EventWriter<'w, EditTerrainStrokeCmd>,
++    capture: EventWriter<'w, CursorCaptureCmd>,
++    arrow: EventWriter<'w, EnableArrowGizmoStretch>,
++    highlight: EventWriter<'w, AddTerrainHighlightCmd>,
++    terrain_hint: EventWriter<'w, NotifyHintSystemTerrain>,
++    steepness: EventWriter<'w, NotifyHintSystemTerrainSteepness>,
++}
++
+ /// `ui_edit_terrain` @0x140aef1f0（逐语句重建）。
+ #[allow(clippy::too_many_arguments)]
+ pub fn ui_edit_terrain(
+@@ -161,10 +171,11 @@
+     terrain: Res<TerrainEditingData>,
+     mut cursor_moved: EventReader<CursorMovedScreenSpace>,
+     mut pending: ResMut<TerrainEditHistoryPending>,
+-    mut edits: EventWriter<EditTerrainStrokeCmd>,
++    mut effects: TerrainEditEffects,
+     mut ui: ResMut<TerrainEditUiState>,
+-    mut window_focus: EventWriter<TerrainWindowFocus>,
+-    mut recalculate: EventWriter<RecalculateHeightMapCmd>,
++    modifiers: Res<Modifiers>,
++    mut camera_moved: EventReader<MainCameraMoved>,
++    mut archivist: ResMut<LiveDecoratorArchivist>,
+ ) {
+     if mode.native_tag() != 10 {
+         return;
+@@ -176,21 +187,24 @@
+     } else {
+         -1
+     };
+-    // cursor tag 门（O：`*pcVar23 == 1` → WindowFocusEvent(1)）。
++    // Original arg12 tuple@0: hovered terrain notification tag1.
+     if hovered_id != -1 && cursor.tag == 1 {
+-        window_focus.write(TerrainWindowFocus(1));
++        effects
++            .terrain_hint
++            .write(NotifyHintSystemTerrain { tag: 1 });
+     }
+     // 最后一帧 cursor-moved（O：首事件队列，取最后未读；fVar75/fVar76）。
+     let delta = last_cursor_delta(&mut cursor_moved);
++    let camera_did_move = camera_moved.read().last().is_some();
+ 
+     // 逐笔画 widget 注册 + 各自的 subtype switch（O：`do { … } while (puVar48 != 0)`；
+     // `UiState::add` 返回值即该 widget 的上下文）。
+     let stroke_ids: Vec<StrokeId> = terrain.strokes.keys().copied().collect();
+     for id in stroke_ids {
+-        let ty = if cursor.tag == 0 {
++        let ty = if !modifiers.disable_snapping() {
+             (hovered_id != id.0 as i32) as u8 * 3 + 4
+         } else {
+-            // O：默认 7（`local_1a0 = '\a'`），cursor.tag != 0 时不按 id 区分。
++            // Original modifier byte0 disables the hovered-ID edit shape.
+             7
+         };
+         let widget = ui_state.add(
+@@ -204,38 +218,35 @@
+                 [0; 2],
+             ),
+         );
++        if widget.clicked() && hovered_id != -1 && !camera_did_move {
++            effects.highlight.write(AddTerrainHighlightCmd(hovered_id));
++        }
+         let subtype = widget.dragged();
+         match terrain_drag_case(subtype) {
+             1 => {
+-                // case 1：WindowFocusEvent(0) + hover 点/朝向写入（O decomp 行 422-458）。
+-                window_focus.write(TerrainWindowFocus(0));
+-                let (pos, slot_10) = if (cursor.tag & 1) != 0 {
+-                    (cursor.pos, delta.y)
+-                } else {
+-                    (Vec3::ZERO, 0.0)
+-                };
+-                ui.hover = pos;
++                // Capture cursor, cache current parameters/point, allow decorator culling.
++                effects.capture.write(CursorCaptureCmd(false));
++                ui.hover = cursor.position();
+                 if let Some(stroke) = terrain.strokes.get(&id) {
+                     ui.previous_height_ws = stroke.height_ws;
+                     ui.previous_falloff = stroke.falloff;
+                 }
+-                ui.slot_10 = slot_10;
+-                ui.active = 1;
++                archivist.decorator_cull_allow_any();
+                 ui.accum = 0.0;
+             }
+             2 => {
+-                // Original unit notification identity is corrected with the
+-                // remaining native event ports in the next integration batch.
+-                recalculate.write(RecalculateHeightMapCmd);
++                effects.arrow.write(EnableArrowGizmoStretch);
+                 if let Some(stroke) = terrain.strokes.get(&id) {
+                     if let Some(command) =
+                         edit_command_for_drag(id, stroke.height_ws, ui.hover, delta)
+                     {
+-                        edits.write(EditTerrainStrokeCmd(command));
++                        effects.edits.write(EditTerrainStrokeCmd(command));
+                         if delta.y.abs() <= delta.x.abs() {
+                             ui.accum += (delta.x * 0.002).abs();
+                             if 0.3 < ui.accum {
+-                                window_focus.write(TerrainWindowFocus(1));
++                                effects
++                                    .steepness
++                                    .write(NotifyHintSystemTerrainSteepness { tag: 1 });
+                             }
+                         }
+                     }
+@@ -247,7 +258,10 @@
+                 }
+             }
+             3 => {
+-                window_focus.write(TerrainWindowFocus(0));
++                effects.capture.write(CursorCaptureCmd(true));
++                effects
++                    .steepness
++                    .write(NotifyHintSystemTerrainSteepness { tag: 0 });
+                 let stroke = terrain
+                     .strokes
+                     .get(&id)
+@@ -652,5 +666,60 @@
+                 .load(std::sync::atomic::Ordering::Relaxed),
+             1
+         );
+-    }
+-}
++
++        let widget = WidgetId::from_name("terrain_edit_0__canvas");
++        world
++            .resource_mut::<UiState>()
++            .replace_interaction(UiInteraction {
++                native_tag: 2,
++                native_phase: 3,
++                widget,
++            });
++        schedule.run(&mut world);
++        assert!(world.resource::<LiveDecoratorArchivist>().culling.allow_any);
++        assert_eq!(world.resource::<TerrainEditUiState>().active, 0);
++        world
++            .resource_mut::<UiState>()
++            .replace_interaction(UiInteraction {
++                native_tag: 2,
++                native_phase: 4,
++                widget,
++            });
++        world.send_event(CursorMovedScreenSpace(Vec2::new(200., 0.)));
++        schedule.run(&mut world);
++        world
++            .resource_mut::<UiState>()
++            .replace_interaction(UiInteraction {
++                native_tag: 2,
++                native_phase: 5,
++                widget,
++            });
++        schedule.run(&mut world);
++        let capture = world.resource::<Events<CursorCaptureCmd>>();
++        let mut reader = capture.get_cursor();
++        assert_eq!(
++            reader
++                .read(capture)
++                .map(|event| event.0)
++                .collect::<Vec<_>>(),
++            [false, true]
++        );
++        let steep = world.resource::<Events<NotifyHintSystemTerrainSteepness>>();
++        let mut reader = steep.get_cursor();
++        assert_eq!(
++            reader
++                .read(steep)
++                .map(|event| event.tag)
++                .collect::<Vec<_>>(),
++            [1, 0]
++        );
++        assert_eq!(world.resource::<Events<EnableArrowGizmoStretch>>().len(), 2);
++        assert!(matches!(
++            world.resource::<TerrainEditHistoryPending>().edit.as_ref(),
++            Some(tg_terrain::schema::TerrainEdit::EditTerrainStroke {
++                index: StrokeId(0),
++                ..
++            })
++        ));
++    }
++}
+--- a/games_test/tiny-glade/crates/country-core/src/systems/terrain/terrain_hover_idx.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/terrain/terrain_hover_idx.rs
+@@ -18,9 +18,7 @@
+ 
+ use crate::{
+     asset_libraries::ssbo_library::AssetSsboLibrary,
+-    resources::{
+-        cursor_terrain_raycast::CursorTerrainRaycast, mouse_terrain_raycast::CursorPositionSS,
+-    },
++    resources::{cursor_terrain_raycast::CursorTerrainRaycast, world_raster_defs::WaterRaster},
+     systems::mode_manager::AppMode,
+ };
+ 
+@@ -72,10 +70,10 @@
+     mode: Res<AppMode>,
+     hover: Res<MouseTerrainHoverReadback>,
+     water: Res<TerrainWaterSample>,
+-    _cursor: Res<CursorPositionSS>,
+     mut hovered: ResMut<HoveredTerrainStrokeId>,
+     library: Option<Res<AssetSsboLibrary>>,
+     cursor: Option<Res<CursorTerrainRaycast>>,
++    water_raster: Option<Res<WaterRaster>>,
+ ) {
+     // **函数开头无条件复位输出 tag=0**（O：fresh 反编译 `*puVar4 = 0` 在 mode 门之前；
+     // miss/门失败帧输出被清）。早期 Rust 不清 → 门失败帧残留上帧命中。
+@@ -85,6 +83,17 @@
+     let disc = mode.native_tag();
+     if disc >= 0xb || ((0x421u32 >> (disc & 0x1f)) & 1) == 0 {
+         return;
++    }
++    let has_live_library = library.is_some();
++    if has_live_library {
++        assert!(
++            water_raster.is_some(),
++            "live terrain hover requires WaterRaster"
++        );
++        assert!(
++            cursor.is_some(),
++            "live terrain hover requires CursorTerrainRaycast"
++        );
+     }
+     let id = if let Some(library) = library {
+         let Some(id) = crate::systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::read_terrain_stroke_index(&library) else { return; };
+@@ -99,6 +108,18 @@
+     let distance = cursor
+         .as_ref()
+         .map_or(hover.distance, |cursor| cursor.pos.y);
++    let level = if let Some(raster) = water_raster.as_deref() {
++        let ray = cursor
++            .as_deref()
++            .expect("live water hover requires CursorTerrainRaycast");
++        let point = ray.position();
++        raster
++            .as_ref()
++            .bilinear_sample_at_world_xz(point.x, point.z, 130.0, 130.0)
++    } else {
++        assert!(!has_live_library, "live terrain hover requires WaterRaster");
++        water.level
++    };
+     // -1 哨兵 → 未命中，不更新。
+     if id == -1 {
+         return;
+@@ -106,7 +127,7 @@
+     // 光标高度采样两分支（O：decomp 行 75-90）：
+     //   `fVar12 <= 0.0` → 仅当 id == -1 才 return（**高度≤0 且 id 有效要写**）；
+     //   否则 → 悬停位门 + dist ≤ 0.5 → return（dist 门**仅**在高度>0 分支）。
+-    if water.level <= 0.0 {
++    if !(level > 0.0) {
+         if id == -1 {
+             return;
+         }
+@@ -124,3 +145,42 @@
+     hovered.tag = 1;
+     hovered.id = id as i64;
+ }
++
++#[cfg(test)]
++mod live_water_tests {
++    use super::*;
++    use crate::systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::MouseTerrainRaycastSsbo;
++    #[test]
++    fn live_water_raster_gates_the_same_live_mouse_buffer() {
++        let mut world = World::new();
++        crate::systems::terrain::register_terrain_events(&mut world);
++        let library = AssetSsboLibrary::new();
++        library.add_new::<MouseTerrainRaycastSsbo>(&crate::render::test_device::TestDevice(0));
++        library.get_mut::<MouseTerrainRaycastSsbo>().unwrap().mapped[0].terrain_stroke_index = 7;
++        world.insert_resource(library);
++        world.insert_resource(AppMode::Terrain);
++        world.insert_resource(CursorTerrainRaycast::default());
++        world.insert_resource(WaterRaster::new(
++            crate::resources::world_raster::DirtyTilePublisher::unique(),
++        ));
++        let mut schedule = Schedule::default();
++        schedule.add_systems(terrain_hover_idx);
++        schedule.run(&mut world);
++        assert_eq!(
++            *world.resource::<HoveredTerrainStrokeId>(),
++            HoveredTerrainStrokeId { tag: 1, id: 7 }
++        );
++        world
++            .resource_mut::<WaterRaster>()
++            .write_composite(Some(&vec![255; 512 * 512]));
++        schedule.run(&mut world);
++        assert_eq!(world.resource::<HoveredTerrainStrokeId>().tag, 0);
++        world.resource_mut::<CursorTerrainRaycast>().tag = 1;
++        world.resource_mut::<CursorTerrainRaycast>().pos.y = 0.6;
++        schedule.run(&mut world);
++        assert_eq!(
++            *world.resource::<HoveredTerrainStrokeId>(),
++            HoveredTerrainStrokeId { tag: 1, id: 7 }
++        );
++    }
++}
+--- a/games_test/tiny-glade/crates/country-core/src/resources/onboarding.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/onboarding.rs
+@@ -9,13 +9,10 @@
+ //! 不在本文件；`DisplayRollercoasterPrompt` 原模块路径为
+ //! `country_core::resources::events`（见 events.rs）。
+ //!
+-//! 载荷语义：
+-//! * 除 `NotifyHintSystemCameraMoved` 外均为 unit（`hint_*` 消费面未读载荷；
+-//!   部分事件在宿主有 payload 字节（如 Terrain/RoofShape `[+1]`、disable_snapping
+-//!   `[+8]`），宿主面待上层重建时按 fresh 反编译补字段——不在此发明）。
+-//! * `NotifyHintSystemCameraMoved` 载荷 = `{tag u32@+8, value u32@+0xc}`（0x10B
+-//!   EventInstance 步长，`hint_camera_progress_update` 0x14227bd30 读面：tag 1=zoom
+-//!   （value=滚轮增量）、2=rotate、其它=pan，O）。
++//! CameraMoved has two u32 payload words. Terrain and TerrainSteepness carry
++//! one observed native byte; all other current notifications remain unit until
++//! their own producer/consumer evidence requires payload. The old event+1 bool
++//! claim for Terrain confused a hint-condition field with event data.
+ 
+ /// 墙面/屋顶形状编辑已执行通知（O：add_onboarding register_event 顺序 1）。
+ #[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+@@ -34,9 +31,12 @@
+ #[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+ pub struct NotifyHintSystemSnapping;
+ 
+-/// 地形通知（O：register_event 顺序 5；宿主载荷 `[+1]` 门控字节待上层补证）。
+-#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+-pub struct NotifyHintSystemTerrain;
++/// Terrain notification: original event first byte0=draw committed,1=hovered terrain,2=focus entered.
++/// No event+1 bool is observed; Default0 is only host construction convenience.
++#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
++pub struct NotifyHintSystemTerrain {
++    pub tag: u8,
++}
+ 
+ /// 窗通知（O：register_event 顺序 9）。
+ #[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+@@ -50,9 +50,11 @@
+ #[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+ pub struct NotifyHintSystemSomethingWasErased;
+ 
+-/// 地形陡度通知（O：register_event 顺序 12）。
+-#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+-pub struct NotifyHintSystemTerrainSteepness;
++/// Native first byte0 on edit release;1 after horizontal drag accumulation>0.3.
++#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
++pub struct NotifyHintSystemTerrainSteepness {
++    pub tag: u8,
++}
+ 
+ /// 屋顶形状通知（O：register_event 顺序 13；宿主载荷 `[+1]` 门控字节待上层补证）。
+ #[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+--- a/games_test/tiny-glade/crates/country-core/src/systems/arrow_gizmo_animation.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/arrow_gizmo_animation.rs
+@@ -0,0 +1,7 @@
++//! Original B terrain UI publishes this unit event on every continued edit.
++//! Native arg10 at ui_edit0x140aef5a1/652 has8-byte EventInstance stride;
++//! unlike CursorCaptureCmd it carries no boolean payload. This is the actual
++//! original event owner. The native animation consumer0x140a92f80 still needs
++//! its multi-entity event-reader/query behavior recovered before integration.
++#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default)]
++pub struct EnableArrowGizmoStretch;

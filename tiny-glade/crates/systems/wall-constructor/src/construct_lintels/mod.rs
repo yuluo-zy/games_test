@@ -13,12 +13,11 @@
 //! - special 源 raw+54 夹 .3..2.5（有效下限 .8）。
 //!
 //! W-B1 接线：`materialize_wall_segments` + `construct_lintel_supports`
-//! （recovered_building/wall_structures.rs 冻结链）→ 64B 木板输出落盘。
+//! （systems/wall/construction/structures.rs 冻结链）→ 64B 木板输出落盘。
 use country_core::asset_libraries::ssbo_library::AssetSsboLibrary;
-use country_core::recovered_building::{
-    wall_segmentation::WallPathSegmentationMask,
-    wall_structures::{WallSegmentSource, construct_lintel_supports},
-};
+use country_core::systems::wall::construction::segmentation::WallPathSegmentationMask;
+use country_core::systems::wall::construction::structures::WallSegmentSource;
+use country_core::systems::wall::construction::structures::construct_lintel_supports;
 use country_core::resources::{
     roofs::commands::CreateRoofCmd,
     walls::public_walls::{OnWallChanged, PublicWalls},

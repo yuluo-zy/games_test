@@ -1,0 +1,16 @@
+--- frozen147
++++ root-integrated
+@@ -393,11 +393,11 @@
+         assert_eq!(calls[1].1, "Rocky Terrain Triangles");
+         assert_eq!(
+             calls[0].2.as_deref().unwrap(),
+-            bytemuck::cast_slice(&mesh.vertices)
++            bytemuck::cast_slice::<_, u8>(&mesh.vertices)
+         );
+         assert_eq!(
+             calls[1].2.as_deref().unwrap(),
+-            bytemuck::cast_slice(&mesh.triangles)
++            bytemuck::cast_slice::<_, u8>(&mesh.triangles)
+         );
+         assert_eq!(calls[0].0, BufferDesc::new(0x6cfae0, 0x22, 1).alignment(4));
+         assert_eq!(calls[1].0, BufferDesc::new(0x1837c0, 0x22, 1).alignment(4));

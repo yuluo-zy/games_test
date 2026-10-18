@@ -1,0 +1,268 @@
+// extract_and_restore_to_storage  size=1378
+// void __cdecl extract_and_restore_to_storage(void)
+
+void __cdecl
+country_core::resources::walls::decorator_archivist::DecoratorArchivist::
+extract_and_restore_to_storage(void)
+
+{
+  undefined1 auVar1 [16];
+  ushort uVar2;
+  ulonglong uVar3;
+  uint uVar4;
+  longlong lVar5;
+  undefined8 *in_RCX;
+  longlong *_Dst;
+  undefined8 uVar6;
+  undefined1 (*pauVar7) [16];
+  longlong lVar8;
+  undefined8 unaff_RSI;
+  undefined1 (*pauVar9) [16];
+  undefined8 uVar10;
+  longlong lVar11;
+  uint uVar12;
+  undefined1 local_380 [136];
+  undefined8 local_2f8;
+  undefined8 local_2f0;
+  undefined8 local_2e8;
+  longlong local_268;
+  longlong local_260 [6];
+  longlong local_230;
+  longlong local_200;
+  undefined8 local_1d8;
+  longlong local_1d0;
+  undefined1 local_1c8 [136];
+  ulonglong local_140;
+  longlong local_138;
+  undefined1 local_130 [136];
+  undefined1 (*local_a8) [16];
+  undefined1 (*local_a0) [16];
+  undefined1 *local_98;
+  ushort local_90;
+  longlong local_88;
+  void *local_80;
+  ulonglong uStack_78;
+  ulonglong local_70;
+  undefined8 uStack_68;
+  undefined8 *local_60;
+  undefined8 local_50;
+  undefined8 local_48;
+  
+  local_48 = 0xfffffffffffffffe;
+  hashbrown::raw::RawTable::
+  clear<tuple_<country_core::resources::walls::decorator::DecoratorId,tuple_<country_core::systems::collision::world::OffsetColliderTransform,country_core::systems::collision::world::RaycastMesh>_>,alloc::alloc::Global>
+            ();
+  hashbrown::raw::RawTable::
+  clear<tuple_<country_core::resources::walls::decorator::DecoratorId,tuple_<country_core::systems::collision::world::OffsetColliderTransform,country_core::systems::collision::world::RaycastMesh>_>,alloc::alloc::Global>
+            ();
+  memcpy(&local_2f8,in_RCX + 0x18,0x90);
+  in_RCX[0x18] = 0;
+  _Dst = &local_268;
+  memcpy(_Dst,in_RCX + 0x2a,0x90);
+  in_RCX[0x2a] = 0;
+  local_a8 = (undefined1 (*) [16])*in_RCX;
+  local_98 = *local_a8 + in_RCX[1] + 1;
+  auVar1 = *local_a8;
+  local_90 = ~((ushort)(SUB161(auVar1 >> 7,0) & 1) | (ushort)(SUB161(auVar1 >> 0xf,0) & 1) << 1 |
+               (ushort)(SUB161(auVar1 >> 0x17,0) & 1) << 2 |
+               (ushort)(SUB161(auVar1 >> 0x1f,0) & 1) << 3 |
+               (ushort)(SUB161(auVar1 >> 0x27,0) & 1) << 4 |
+               (ushort)(SUB161(auVar1 >> 0x2f,0) & 1) << 5 |
+               (ushort)(SUB161(auVar1 >> 0x37,0) & 1) << 6 |
+               (ushort)(SUB161(auVar1 >> 0x3f,0) & 1) << 7 |
+               (ushort)(SUB161(auVar1 >> 0x47,0) & 1) << 8 |
+               (ushort)(SUB161(auVar1 >> 0x4f,0) & 1) << 9 |
+               (ushort)(SUB161(auVar1 >> 0x57,0) & 1) << 10 |
+               (ushort)(SUB161(auVar1 >> 0x5f,0) & 1) << 0xb |
+               (ushort)(SUB161(auVar1 >> 0x67,0) & 1) << 0xc |
+               (ushort)(SUB161(auVar1 >> 0x6f,0) & 1) << 0xd |
+               (ushort)(SUB161(auVar1 >> 0x77,0) & 1) << 0xe |
+              (ushort)(byte)(auVar1[0xf] >> 7) << 0xf);
+  local_88 = in_RCX[3];
+  local_80 = (void *)*in_RCX;
+  uStack_78 = in_RCX[1];
+  local_70 = in_RCX[2];
+  uStack_68 = in_RCX[3];
+  *in_RCX = &anon_6652254e5a159f1dca07c38add8ba93c_0_llvm_3554112267207565025;
+  in_RCX[1] = 0;
+  in_RCX[2] = 0;
+  in_RCX[3] = 0;
+  local_a0 = local_a8 + 1;
+  local_60 = in_RCX;
+  memcpy(&local_138,&local_2f8,0x90);
+  memcpy(&local_1d0,_Dst,0x90);
+  local_1d8 = 1;
+  local_140 = 1;
+  do {
+    if (local_140 == 2) {
+LAB_140b2c8cd:
+      lVar8 = local_1d0;
+      if (((int)local_1d8 != 1) || (local_1d0 = 0, lVar8 == 0)) {
+        core::ptr::
+        drop_in_place<core::iter::adapters::chain::Chain<core::iter::adapters::chain::Chain<core::iter::adapters::map::Map<std::collections::hash::map::Drain<country_core::resources::walls::WallId,country_core::resources::walls::decorator_storage::Decorators>,country_core::resources::walls::decorator_archivist::impl_0::extract_archived_decorators::closure_env_0>,core::iter::adapters::map::Map<core::option::IntoIter<country_core::resources::walls::decorator_storage::Decorators>,country_core::resources::walls::decorator_archivist::impl_0::extract_archived_decorators::closure_env_1>_>,core::iter::adapters::map::Map<core::option::IntoIter<country_core::resources::walls::decorator_storage::Decorators>,country_core::resources::walls::decorator_archivist::impl_0::extract_archived_decorators::closure_env_2>_>_>
+                  ();
+        return;
+      }
+      memcpy(local_380,local_1c8,0x88);
+      uVar10 = 2;
+    }
+    else {
+      if (local_a8 == (undefined1 (*) [16])0x0) {
+LAB_140b2c850:
+        lVar8 = local_138;
+        if (((local_140 & 1) == 0) || (local_138 = 0, lVar8 == 0)) {
+          if (local_140 != 2) {
+            core::ptr::
+            drop_in_place<core::iter::adapters::chain::Chain<core::iter::adapters::map::Map<std::collections::hash::map::Drain<country_core::resources::walls::WallId,country_core::resources::walls::decorator_storage::Decorators>,country_core::resources::walls::decorator_archivist::impl_0::extract_archived_decorators::closure_env_0>,core::iter::adapters::map::Map<core::option::IntoIter<country_core::resources::walls::decorator_storage::Decorators>,country_core::resources::walls::decorator_archivist::impl_0::extract_archived_decorators::closure_env_1>_>_>
+                      ();
+          }
+          local_140 = 2;
+          goto LAB_140b2c8cd;
+        }
+        memcpy(&local_2f8,local_130,0x88);
+        uVar10 = 1;
+      }
+      else {
+        if (local_88 == 0) {
+LAB_140b2c7c7:
+          uVar3 = uStack_78;
+          if (uStack_78 == 0) {
+            local_70 = 0;
+          }
+          else {
+            memset(local_80,(int)CONCAT71((int7)((ulonglong)_Dst >> 8),0xff),uStack_78 + 0x11);
+            local_70 = (uVar3 + 1 & 0xfffffffffffffff8) - (uVar3 + 1 >> 3);
+            if (uVar3 < 8) {
+              local_70 = uVar3;
+            }
+          }
+          uStack_68 = 0;
+          local_60[2] = local_70;
+          local_60[3] = 0;
+          *local_60 = local_80;
+          local_60[1] = uStack_78;
+          local_a8 = (undefined1 (*) [16])0x0;
+          goto LAB_140b2c850;
+        }
+        uVar4 = (uint)local_90;
+        if (local_90 == 0) {
+          do {
+            auVar1 = *local_a0;
+            uVar2 = (ushort)(SUB161(auVar1 >> 7,0) & 1) | (ushort)(SUB161(auVar1 >> 0xf,0) & 1) << 1
+                    | (ushort)(SUB161(auVar1 >> 0x17,0) & 1) << 2 |
+                    (ushort)(SUB161(auVar1 >> 0x1f,0) & 1) << 3 |
+                    (ushort)(SUB161(auVar1 >> 0x27,0) & 1) << 4 |
+                    (ushort)(SUB161(auVar1 >> 0x2f,0) & 1) << 5 |
+                    (ushort)(SUB161(auVar1 >> 0x37,0) & 1) << 6 |
+                    (ushort)(SUB161(auVar1 >> 0x3f,0) & 1) << 7 |
+                    (ushort)(SUB161(auVar1 >> 0x47,0) & 1) << 8 |
+                    (ushort)(SUB161(auVar1 >> 0x4f,0) & 1) << 9 |
+                    (ushort)(SUB161(auVar1 >> 0x57,0) & 1) << 10 |
+                    (ushort)(SUB161(auVar1 >> 0x5f,0) & 1) << 0xb |
+                    (ushort)(SUB161(auVar1 >> 0x67,0) & 1) << 0xc |
+                    (ushort)(SUB161(auVar1 >> 0x6f,0) & 1) << 0xd |
+                    (ushort)(SUB161(auVar1 >> 0x77,0) & 1) << 0xe |
+                    (ushort)(byte)(auVar1[0xf] >> 7) << 0xf;
+            local_a8 = local_a8 + -0x98;
+            local_a0 = local_a0 + 1;
+          } while (uVar2 == 0xffff);
+          uVar4 = ~(uint)uVar2;
+          local_90 = (ushort)uVar4 & -uVar2 - 2;
+        }
+        else {
+          local_90 = local_90 - 1 & local_90;
+        }
+        pauVar9 = local_a8;
+        lVar11 = local_88 + -1;
+        uVar12 = 0;
+        for (; (uVar4 & 1) == 0; uVar4 = uVar4 >> 1 | 0x80000000) {
+          uVar12 = uVar12 + 1;
+        }
+        lVar5 = (ulonglong)uVar12 * -0x98;
+        uVar6 = *(undefined8 *)((longlong)local_a8 + lVar5 + -0x98);
+        lVar8 = *(longlong *)((longlong)local_a8 + lVar5 + -0x90);
+        _Dst = (longlong *)((longlong)local_a8 + lVar5 + -0x88);
+        local_88 = lVar11;
+        memcpy(&local_268,_Dst,0x88);
+        if (lVar8 == 0) {
+          if (lVar11 != 0) {
+            pauVar7 = local_a0;
+            uVar4 = (uint)local_90;
+            do {
+              if ((short)uVar4 == 0) {
+                do {
+                  auVar1 = *pauVar7;
+                  uVar2 = (ushort)(SUB161(auVar1 >> 7,0) & 1) |
+                          (ushort)(SUB161(auVar1 >> 0xf,0) & 1) << 1 |
+                          (ushort)(SUB161(auVar1 >> 0x17,0) & 1) << 2 |
+                          (ushort)(SUB161(auVar1 >> 0x1f,0) & 1) << 3 |
+                          (ushort)(SUB161(auVar1 >> 0x27,0) & 1) << 4 |
+                          (ushort)(SUB161(auVar1 >> 0x2f,0) & 1) << 5 |
+                          (ushort)(SUB161(auVar1 >> 0x37,0) & 1) << 6 |
+                          (ushort)(SUB161(auVar1 >> 0x3f,0) & 1) << 7 |
+                          (ushort)(SUB161(auVar1 >> 0x47,0) & 1) << 8 |
+                          (ushort)(SUB161(auVar1 >> 0x4f,0) & 1) << 9 |
+                          (ushort)(SUB161(auVar1 >> 0x57,0) & 1) << 10 |
+                          (ushort)(SUB161(auVar1 >> 0x5f,0) & 1) << 0xb |
+                          (ushort)(SUB161(auVar1 >> 0x67,0) & 1) << 0xc |
+                          (ushort)(SUB161(auVar1 >> 0x6f,0) & 1) << 0xd |
+                          (ushort)(SUB161(auVar1 >> 0x77,0) & 1) << 0xe |
+                          (ushort)(byte)(auVar1[0xf] >> 7) << 0xf;
+                  pauVar9 = pauVar9 + -0x98;
+                  pauVar7 = pauVar7 + 1;
+                } while (uVar2 == 0xffff);
+                uVar4 = ~(uint)uVar2;
+                uVar12 = uVar4 & -(uint)uVar2 - 2;
+                local_a8 = pauVar9;
+                local_a0 = pauVar7;
+              }
+              else {
+                uVar12 = uVar4 - 1 & uVar4;
+              }
+              local_90 = (ushort)uVar12;
+              lVar11 = lVar11 + -1;
+              for (; (uVar4 & 1) == 0; uVar4 = uVar4 >> 1 | 0x80000000) {
+              }
+              local_88 = lVar11;
+              core::ptr::
+              drop_in_place<country_core::resources::walls::decorator_storage::Decorators>();
+              uVar4 = uVar12;
+            } while (lVar11 != 0);
+          }
+          goto LAB_140b2c7c7;
+        }
+        memcpy(&local_2f8,&local_268,0x88);
+        uVar10 = 0;
+        local_50 = uVar6;
+      }
+      unaff_RSI = local_50;
+      memcpy(local_380,&local_2f8,0x88);
+    }
+    local_268 = lVar8;
+    memcpy(local_260,local_380,0x88);
+    uVar6 = uVar10;
+    decorator_storage::DecoratorStorage::get_or_insert_default();
+    local_2f8 = uVar10;
+    local_2f0 = unaff_RSI;
+    local_2e8 = uVar6;
+    decorator_storage::Decorators::
+    tracked_clone_from<country_core::resources::walls::decorator_storage::DecoMoveToStorage>();
+    if ((local_230 != 0) && (local_230 * 0x51 != -0x61)) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    if ((local_260[0] != 0) &&
+       (local_260[0] + (local_260[0] * 4 + 0x13U & 0xfffffffffffffff0) != -0x11)) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    _Dst = (longlong *)0x0;
+    if ((local_200 != 0) &&
+       (_Dst = (longlong *)(local_200 + (local_200 * 4 + 0x13U & 0xfffffffffffffff0) + 0x11),
+       _Dst != (longlong *)0x0)) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+  } while( true );
+}
+
+
+
+// CALLEES: [{'name': '__rust_dealloc', 'address': '140613c20'}, {'name': 'clear<tuple$<country_core::resources::walls::decorator::DecoratorId,tuple$<country_core::systems::collision::world::OffsetColliderTransform,country_core::systems::collision::world::RaycastMesh>_>,alloc::alloc::Global>', 'address': '140b79960'}, {'name': 'drop_in_place<core::iter::adapters::chain::Chain<core::iter::adapters::chain::Chain<core::iter::adapters::map::Map<std::collections::hash::map::Drain<country_core::resources::walls::WallId,country_core::resources::walls::decorator_storage::Decorators>,country_core::resources::walls::decorator_archivist::impl$0::extract_archived_decorators::closure_env$0>,core::iter::adapters::map::Map<core::option::IntoIter<country_core::resources::walls::decorator_storage::Decorators>,country_core::resources::walls::decorator_archivist::impl$0::extract_archived_decorators::closure_env$1>_>,core::iter::adapters::map::Map<core::option::IntoIter<country_core::resources::walls::decorator_storage::Decorators>,country_core::resources::walls::decorator_archivist::impl$0::extract_archived_decorators::closure_env$2>_>_>', 'address': '140897ea0'}, {'name': 'drop_in_place<core::iter::adapters::chain::Chain<core::iter::adapters::map::Map<std::collections::hash::map::Drain<country_core::resources::walls::WallId,country_core::resources::walls::decorator_storage::Decorators>,country_core::resources::walls::decorator_archivist::impl$0::extract_archived_decorators::closure_env$0>,core::iter::adapters::map::Map<core::option::IntoIter<country_core::resources::walls::decorator_storage::Decorators>,country_core::resources::walls::decorator_archivist::impl$0::extract_archived_decorators::closure_env$1>_>_>', 'address': '14088b1c0'}, {'name': 'drop_in_place<country_core::resources::walls::decorator_storage::Decorators>', 'address': '140604a90'}, {'name': 'get_or_insert_default', 'address': '140a1cf30'}, {'name': 'memcpy', 'address': '142923c00'}, {'name': 'memset', 'address': '142923c20'}, {'name': 'tracked_clone_from<country_core::resources::walls::decorator_storage::DecoMoveToStorage>', 'address': '14155a950'}]

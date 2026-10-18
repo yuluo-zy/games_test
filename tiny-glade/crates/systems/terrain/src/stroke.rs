@@ -63,6 +63,11 @@ impl TerrainStroke {
 pub struct TerrainEditingData {
     pub strokes: HashMap<StrokeId, TerrainStroke>,
     pub next_index: u32,
+    /// Runtime rasterization state of this stroke owner. B startup +0x40 is
+    /// false; W3 marks it true only after all four passes are constructed.
+    /// RecalculateHeightMapCmd events trigger subsequent updates, so edits do
+    /// not independently reset this flag or allocate a mirror stroke map.
+    pub rasterized: bool,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StrokeError {

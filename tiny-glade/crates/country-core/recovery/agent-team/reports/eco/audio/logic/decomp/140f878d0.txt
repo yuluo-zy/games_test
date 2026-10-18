@@ -1,0 +1,40 @@
+// stairs_audio_init_system @ 0x140f878d0
+
+// WARNING: Removing unreachable block (ram,0x000140f87e51)
+
+void __cdecl country_core::systems::audio::playermade_stairs_audio::stairs_audio_init_system(void)
+
+{
+  undefined8 local_1a8;
+  
+  resources::audio_resources::AudioCore::instantiate_loop();
+  if (SBORROW8(0,local_1a8)) {
+                    // WARNING: Subroutine does not return
+    core::result::unwrap_failed();
+  }
+  resources::audio_resources::AudioCore::instantiate_loop();
+  if (SBORROW8(0,local_1a8)) {
+                    // WARNING: Subroutine does not return
+    core::result::unwrap_failed();
+  }
+  resources::audio_resources::AudioCore::instantiate_loop();
+  if (SBORROW8(0,local_1a8)) {
+                    // WARNING: Subroutine does not return
+    core::result::unwrap_failed();
+  }
+  resources::audio_resources::AudioCore::instantiate_loop();
+  if (SBORROW8(0,local_1a8)) {
+                    // WARNING: Subroutine does not return
+    core::result::unwrap_failed();
+  }
+  resources::audio_resources::AudioCore::instantiate_loop();
+  if (!SBORROW8(0,local_1a8)) {
+    resources::audio_resources::AudioCore::instantiate_loop();
+    bevy_ecs::system::commands::Commands::
+    insert_resource<country_core::systems::audio::playermade_stairs_audio::StairsAudioState>();
+    return;
+  }
+                    // WARNING: Subroutine does not return
+  core::result::unwrap_failed();
+}
+

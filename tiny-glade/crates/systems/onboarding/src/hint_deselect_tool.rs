@@ -1,180 +1,97 @@
-//! hint_deselect_tool / hint_disable_snapping / hint_unlink_windows / hint_undo /
-//! hint_stairs / hint_terrain{,_focus,_steepness} / hint_roof_shape（B 主基线；碎而浅）。
+//! hint_deselect_tool（O 0x1422853c0，1116）。
 //!
-//! 证据（skeleton PDB 依赖注解）：
-//! - hint_deselect_tool 0x1422853c0（L51）：DigitalActionState::pressed +
-//!   AppMode::is_tool_selected + make_focus_or_camera_binding_hint + 0x140eaaa50。
-//! - hint_disable_snapping 0x14227e140（L33）：0x1409e8d90 + 0x140eaaa50 +
-//!   alternate<Option<KeyCode>> 0x141c4e4f0。
-//! - hint_unlink_windows 0x14227d760（L12）：同 disable_snapping 组合。
-//! - hint_undo 0x142284220（L24）：DigitalActionState::just_pressed + adjacent/together 组合。
-//! - hint_stairs 0x142285a20（L0）：LMB 组合。
-//! - hint_terrain_layering 0x142283cc0（L45）/ hint_terrain_focus 0x142283980（L45）/
-//!   hint_terrain_steepness 0x142283640（L0）：地形族（make_focus_or_camera_binding_hint /
-//!   make_lbm_drag_binding_hint 组合）。
+//! 真逻辑（fresh 0x1422853c0）：GameProfile+0x1f4!=0 → 返回。读事件：reader A
+//! （ToolWasJustUsed，0x10B）有事件 → state@+9=1；reader B（0x28B，U）有事件 →
+//! state@+9=0 + reader C（0x10B，U）事件字节==0 → state@+8=1 + TutorialHintComplete(0)；
+//! reader D/E（0x10B，U）事件 → count++。AppMode==6 且形状字节!=0 且 count!=0 →
+//! state@+9=1。AppMode::is_tool_selected() 且 state@+8==0 且 `DigitalActionState::pressed()`
+//! 非按下且 state@+9==1 → make_focus_or_camera_binding_hint；DisplayHintRequest：
+//! `+0x48` u16 = **0x0000** → id 0 DeselectTool、flags 0；`+0` placement =
+//! `6 + WallShape`（Freeform→Cursor / Circle→WorldPoint / Rectangle→Bounds）。
+//!
+//! **已重建（2026-10-17，NotifyHintSystemToolWasJustUsed + GameProfile 0x1f4 +
+//! AppMode 落库 + DisplayHintRequest 布局判等）**；分歧点：reader B/C/D/E 事件类型 U
+//! （seam `DeselectReset`）、pressed 动作 U、placement 7/8 payload 来源 U。
 
 use bevy_ecs::prelude::*;
-use country_core::input::action_set::DigitalActionState;
-use country_core::resources::time::GameTime;
-use country_core::systems::mode_manager::AppMode;
 
-use crate::exponential_back_off::ExponentialBackOff;
-use crate::hint_roof_shape::make_lbm_drag_binding_hint;
-use crate::{BindingHintDisplay, DisplayHintRequest, HintType, HintPlacement};
-
-/// 提示输入（宿主输入层填充；DigitalActionState 语义）。
+/// 取消选择提示条件（O：hints_startup 初值 10B {u64 count@+0=0, u8 hint_done@+8=
+/// profile[0x1f4], u8 state@+9=0}；deselect_tool 置 state@+9）。
 #[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
-pub struct HintInput {
-    pub cancel_pressed: bool,
-    pub undo_pressed: bool,
-    pub tool_selected: bool,
-    /// 光标世界位置（raycast 提示用）。
-    pub cursor: glam::Vec3,
+pub struct DeselectToolHintConditions {
+    /// @+0：事件计数（u64，O：reader 事件 → +1，`!=0` 门控）。
+    pub count: u64,
+    /// @+8：完成/展示标志（初值 profile[0x1f4]）。
+    pub hint_done: bool,
+    /// @+9：状态字节（O：deselect_tool 置 1）。
+    pub state: u8,
 }
 
-/// hint_deselect_tool（0x1422853c0）：选工具后提示"取消选择"（Esc）。
+/// reader B/C/D/E seam（O：0x28B 复位读者 + 0x10B 计数读者——类型 U，seam unit）。
+#[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct DeselectReset;
+
+/// pressed seam（O：`DigitalActionState::pressed()`；动作 U → 本重建 false）。
+pub fn deselect_pressed_seam() -> bool {
+    false
+}
+
+/// hint_deselect_tool（O 0x1422853c0）：见模块头。**重建**（2026-10-17）；
+/// 分歧点：reader B/C/D/E / pressed 动作 U（seam）。
 pub fn hint_deselect_tool(
-    time: Res<GameTime>,
-    input: Res<HintInput>,
-    mode: Res<AppMode>,
-    mut back_off: ResMut<ExponentialBackOff>,
-    mut ev: EventWriter<DisplayHintRequest>,
+    profile: Res<country_core::game_profile::GameProfile>,
+    mut state: ResMut<DeselectToolHintConditions>,
+    mode: Res<country_core::systems::mode_manager::AppMode>,
+    mut tool_used: EventReader<country_core::resources::onboarding::NotifyHintSystemToolWasJustUsed>,
+    mut reset: EventReader<DeselectReset>,
+    mut completed: EventWriter<crate::tutorial_completion::TutorialHintComplete>,
+    mut request: EventWriter<crate::DisplayHintRequest>,
 ) {
-    let _ = &time;
-    let selected = mode.is_tool_selected() || input.tool_selected;
-    if selected && input.cancel_pressed && back_off.trigger(5) {
-        let _ = ev.write(DisplayHintRequest {
-            display: BindingHintDisplay::Key(crate::BindingKey::Esc),
-            hint_type: HintType::DeselectTool,
-            placement: HintPlacement::Top,
-        });
+    if profile.tutorial {
+        return;
     }
-}
-
-/// hint_disable_snapping（0x14227e140）：吸附禁用提示（Alt 键）。
-pub fn hint_disable_snapping(
-    time: Res<GameTime>,
-    input: Res<HintInput>,
-    mut back_off: ResMut<ExponentialBackOff>,
-    mut ev: EventWriter<DisplayHintRequest>,
-) {
-    let _ = &time;
-    if input.cancel_pressed && back_off.trigger(6) {
-        let _ = ev.write(DisplayHintRequest {
-            display: BindingHintDisplay::Key(crate::BindingKey::Alt) // Alt
-                .alternate(BindingHintDisplay::Key(crate::BindingKey::Alt)),
-            hint_type: HintType::DisableSnapping,
-            placement: HintPlacement::Top,
-        });
+    // reader A：工具刚使用 → state@+9=1。
+    if tool_used.read().next().is_some() {
+        state.state = 1;
     }
-}
-
-/// hint_unlink_windows（0x14227d760）：窗解链提示（Alt 修饰）。
-pub fn hint_unlink_windows(
-    time: Res<GameTime>,
-    input: Res<HintInput>,
-    mut back_off: ResMut<ExponentialBackOff>,
-    mut ev: EventWriter<DisplayHintRequest>,
-) {
-    let _ = &time;
-    if input.cancel_pressed && back_off.trigger(7) {
-        let _ = ev.write(DisplayHintRequest {
-            display: BindingHintDisplay::Key(crate::BindingKey::Alt)
-                .together(BindingHintDisplay::Key(crate::BindingKey::MouseLeft)),
-            hint_type: HintType::UnlinkWindows,
-            placement: HintPlacement::Top,
-        });
+    // reader B：复位事件 → state@+9=0；reader C 字节==0 → done + 完成。
+    if reset.read().next().is_some() {
+        state.state = 0;
+        if crate::event_payload_byte_seam() == 0 {
+            state.hint_done = true;
+            completed.write(crate::tutorial_completion::TutorialHintComplete { id: 0 });
+        }
     }
-}
-
-/// hint_undo（0x142284220）：撤销提示（Ctrl+Z adjacent）。
-pub fn hint_undo(
-    time: Res<GameTime>,
-    input: Res<HintInput>,
-    mut back_off: ResMut<ExponentialBackOff>,
-    mut ev: EventWriter<DisplayHintRequest>,
-) {
-    let _ = &time;
-    if input.undo_pressed && back_off.trigger(8) {
-        let _ = ev.write(DisplayHintRequest {
-            display: BindingHintDisplay::Key(crate::BindingKey::Ctrl)
-                .adjacent(BindingHintDisplay::Key(crate::BindingKey::KeyZ)), // Z
-            hint_type: HintType::Undo,
-            placement: HintPlacement::Top,
-        });
+    // reader D/E seam：count++（U → 每帧 +1 的近似不成立，保持 0 → count 门控不触发，
+    // 见分歧点）。
+    // AppMode==6 且形状!=0 且 count!=0 → state@+9=1。
+    let shape = match *mode {
+        country_core::systems::mode_manager::AppMode::Wall(shape) => shape as u8,
+        _ => 0,
+    };
+    if mode.native_tag() == 6 && shape != 0 && state.count != 0 {
+        state.state = 1;
     }
-}
-
-/// hint_stairs（0x142285a20）：阶梯提示（LMB 拖动）。
-pub fn hint_stairs(
-    time: Res<GameTime>,
-    input: Res<HintInput>,
-    mut back_off: ResMut<ExponentialBackOff>,
-    mut ev: EventWriter<DisplayHintRequest>,
-) {
-    let _ = &time;
-    if input.tool_selected && back_off.trigger(9) {
-        let _ = ev.write(DisplayHintRequest {
-            display: make_lbm_drag_binding_hint(),
-            hint_type: HintType::Stairs,
-            placement: HintPlacement::Cursor,
-        });
+    if mode.is_tool_selected() && !state.hint_done && !deselect_pressed_seam() && state.state == 1 {
+        let display = crate::hint_clutter_focus_edit::make_focus_or_camera_binding_hint(&profile);
+        // O 0x1422853c0：`MOV EAX,0x6` / Wall 时 `MOVZX EAX,[RDI+4]; ADD EAX,0x6`
+        // → placement；`MOV word ptr [RBP+0x38],0x0` → +0x48 flags/id = 0/0。
+        let shape = match *mode {
+            country_core::systems::mode_manager::AppMode::Wall(shape) => shape as u8,
+            _ => 0,
+        };
+        let placement = if mode.native_tag() == 6 {
+            crate::hint_orchestrator::wall_shape_placement(shape)
+        } else {
+            crate::hint_orchestrator::HintPlacement::Cursor
+        };
+        request.write(
+            crate::DisplayHintRequest::new(
+                display,
+                crate::hint_orchestrator::HintType::DeselectTool,
+                0,
+            )
+            .with_placement(placement),
+        );
     }
-}
-
-/// hint_terrain_layering（0x142283cc0）：地形分层提示（LBM 拖动）。
-pub fn hint_terrain_layering(
-    time: Res<GameTime>,
-    input: Res<HintInput>,
-    mut back_off: ResMut<ExponentialBackOff>,
-    mut ev: EventWriter<DisplayHintRequest>,
-) {
-    let _ = &time;
-    if input.tool_selected && back_off.trigger(10) {
-        let _ = ev.write(DisplayHintRequest {
-            display: make_lbm_drag_binding_hint(),
-            hint_type: HintType::TerrainLayering,
-            placement: HintPlacement::Cursor,
-        });
-    }
-}
-
-/// hint_terrain_focus（0x142283980）：地形焦点提示。
-pub fn hint_terrain_focus(
-    time: Res<GameTime>,
-    input: Res<HintInput>,
-    mut back_off: ResMut<ExponentialBackOff>,
-    mut ev: EventWriter<DisplayHintRequest>,
-) {
-    let _ = &time;
-    if input.tool_selected && back_off.trigger(11) {
-        let _ = ev.write(DisplayHintRequest {
-            display: crate::hint_focused_edit::make_focus_or_camera_binding_hint(),
-            hint_type: HintType::TerrainFocus,
-            placement: HintPlacement::Cursor,
-        });
-    }
-}
-
-/// hint_terrain_steepness（0x142283640）：地形陡峭提示（LBM 拖动）。
-pub fn hint_terrain_steepness(
-    time: Res<GameTime>,
-    input: Res<HintInput>,
-    mut back_off: ResMut<ExponentialBackOff>,
-    mut ev: EventWriter<DisplayHintRequest>,
-) {
-    let _ = &time;
-    if input.tool_selected && back_off.trigger(12) {
-        let _ = ev.write(DisplayHintRequest {
-            display: make_lbm_drag_binding_hint(),
-            hint_type: HintType::TerrainSteepness,
-            placement: HintPlacement::Cursor,
-        });
-    }
-}
-
-/// DigitalActionState 引用标注（O：pressed/just_pressed 消费）。
-#[allow(unused)]
-fn action_state_contract(state: DigitalActionState) -> (bool, bool) {
-    (state.pressed(), state.just_pressed())
 }

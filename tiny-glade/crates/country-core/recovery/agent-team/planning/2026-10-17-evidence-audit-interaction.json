@@ -1,0 +1,1989 @@
+{
+  "audit": "evidence-grade-audit-interaction",
+  "date": "2026-10-17",
+  "role": "auditor-interaction",
+  "scope": {
+    "interaction_modules": [
+      "clutter",
+      "onboarding",
+      "wall-constructor",
+      "toolbar"
+    ],
+    "integration_rounds": [
+      "coregap-1",
+      "coregap-2",
+      "purelogic",
+      "external-dep",
+      "unlock",
+      "consume",
+      "remaining",
+      "tests"
+    ],
+    "tinyglade": [
+      "A",
+      "B"
+    ]
+  },
+  "definitions": {
+    "1_unverified": "no implementation/empty shell",
+    "2_restorer_self": "RESTORE claims equal/rebuild, no REVIEW verdict",
+    "3_independent_review": "REVIEW explicitly verdicts equal/fix_verified",
+    "4_numeric_assertion": "tests/numeric-assertions or module unit test directly asserts",
+    "5_differential_case": "original instruction/RNE/frozen case"
+  },
+  "category_rules": {
+    "A": "equal but no independent review (A2=self only, A4=unit test/numeric assertion but no independent review)",
+    "B": "rebuilt/partial but not judged equal (including REVIEW needs-fix with no independent re-verification)",
+    "C": "independent review judged equal/fix_verified (including G04/RNE)",
+    "D": "unimplemented/empty/todo/core-type-gap blocked"
+  },
+  "modules": {
+    "clutter": {
+      "business_functions": 31,
+      "counts": {
+        "A2": 0,
+        "A4": 0,
+        "B": 1,
+        "C": 8,
+        "D": 22
+      },
+      "glue": [
+        "AutoClutterState::register_required_components (0x140ee4ee0)"
+      ],
+      "ownership": [
+        "history_record_auto_clutter (0x1409a9160)",
+        "replay_auto_clutter (0x140aa4a60)"
+      ],
+      "A2": [],
+      "A4": [],
+      "B": [
+        {
+          "function": "populate_autoclutter_regions",
+          "va": "0x1422d6ed0",
+          "source": "reports/wave2/clutter/RESTORE.md + reports/wave2/reviews/geometry/REVIEW.md",
+          "note": "structure rebuilt; REVIEW needs-fix (weights/operator/live-path), not re-verified"
+        }
+      ],
+      "C": [
+        {
+          "function": "AutoClutterState::add_region",
+          "va": "0x140ee3fd0",
+          "source": "reports/interaction/clutter/REVIEW.md",
+          "evidence": 3
+        },
+        {
+          "function": "AutoClutterState::mark_dirty",
+          "va": "0x140ee48c0",
+          "source": "reports/interaction/clutter/REVIEW.md",
+          "evidence": 3
+        },
+        {
+          "function": "AutoClutterRegion::is_equivalent",
+          "va": "L408",
+          "source": "reports/interaction/clutter/REVIEW.md",
+          "evidence": 3
+        },
+        {
+          "function": "ClutterCandidateIndex::new/get/is_none",
+          "va": "",
+          "source": "reports/interaction/clutter/REVIEW.md",
+          "evidence": 3
+        },
+        {
+          "function": "AutoClutterState::remove_stale_regions",
+          "va": "L233",
+          "source": "reports/interaction/clutter/REVIEW.md",
+          "evidence": 3
+        },
+        {
+          "function": "WallAndRoofChanges::dirty_walls",
+          "va": "0x141cd16b0",
+          "source": "reports/interaction/clutter/REVIEW.md",
+          "evidence": 3
+        },
+        {
+          "function": "add_autoclutter_on_windows",
+          "va": "0x1422cd7d0",
+          "source": "reports/wave2/reviews/geometry/REVIEW.md",
+          "evidence": 3
+        },
+        {
+          "function": "load_clutter_meshes",
+          "va": "0x1422c0760",
+          "source": "reports/wave2/reviews/geometry/REVIEW.md",
+          "evidence": 3
+        }
+      ],
+      "D": [
+        {
+          "function": "remove_region_from_lazy_grid",
+          "va": "0x140ee4a70"
+        },
+        {
+          "function": "flush_candidates_pending_removal",
+          "va": "0x140ee4bf0",
+          "note": "FIX-1 sort direction fix_verified, but REVIEW final count keeps unimplemented"
+        },
+        {
+          "function": "set_current_tick",
+          "va": ""
+        },
+        {
+          "function": "reset_autoclutter_for_new_frame",
+          "va": ""
+        },
+        {
+          "function": "autoclutter_subscribe_to_tabloids",
+          "va": "0x1422d6930"
+        },
+        {
+          "function": "process_autoclutter_candidates",
+          "va": "0x1422ce260"
+        },
+        {
+          "function": "manage_autoclutter_entities",
+          "va": "0x1422d04e0"
+        },
+        {
+          "function": "read_bush_positions_from_gpu",
+          "va": "0x140eebaa0"
+        },
+        {
+          "function": "autoclutter_animation",
+          "va": "0x1422ccef0"
+        },
+        {
+          "function": "add_autoclutter_around_gates",
+          "va": "0x1422cc390"
+        },
+        {
+          "function": "add_autoclutter_around_windows",
+          "va": "0x1422cefe0"
+        },
+        {
+          "function": "add_birdnests",
+          "va": "0x1422c9c70"
+        },
+        {
+          "function": "add_lantern_water_setdresssing",
+          "va": "0x1422d2fa0"
+        },
+        {
+          "function": "add_preplaced_autoclutter",
+          "va": "0x141ce5900"
+        },
+        {
+          "function": "add_tree_setdressing",
+          "va": "0x1422d3800"
+        },
+        {
+          "function": "detect_inter_roof_merlons",
+          "va": "0x141ce3a70"
+        },
+        {
+          "function": "construct_inter_roof_merlons",
+          "va": "0x1422d4870"
+        },
+        {
+          "function": "request_inter_roof_merlon_audio",
+          "va": "0x1422d4230"
+        },
+        {
+          "function": "detect_intra_shape_corners",
+          "va": "0x141cd1a90"
+        },
+        {
+          "function": "add_hole_at_shape_intersection",
+          "va": "0x141cd3ce0"
+        },
+        {
+          "function": "spawn_stitches",
+          "va": "0x141ce65b0"
+        },
+        {
+          "function": "spawn_stitch_bricks",
+          "va": "0x141ce7190"
+        }
+      ]
+    },
+    "onboarding": {
+      "business_functions": 54,
+      "counts": {
+        "A2": 0,
+        "A4": 1,
+        "B": 25,
+        "C": 22,
+        "D": 6
+      },
+      "glue": [
+        "add_onboarding (0x140650d50)"
+      ],
+      "A2": [],
+      "A4": [
+        {
+          "function": "hint_orchestrator",
+          "va": "0x14227fc30",
+          "source": "reports/consume/hint/RESTORE.md",
+          "tests": [
+            "9 unit tests: sorting/text/gating/same-id/different-id/cooldown/menu/Rollercoaster/toolbar"
+          ],
+          "note": "self-judged equal; tests co-authored by restorer; no independent REVIEW"
+        }
+      ],
+      "B": [
+        {
+          "function": "resolve_steam_impl",
+          "va": "0x14227e5e0"
+        },
+        {
+          "function": "hint_highlight_shape",
+          "va": "0x141c50120"
+        },
+        {
+          "function": "hint_position_update",
+          "va": "0x141c50510",
+          "source": "reports/consume/hint/RESTORE.md"
+        },
+        {
+          "function": "exponential_back_off",
+          "va": "0x142284800"
+        },
+        {
+          "function": "reset_hints",
+          "va": "0x141c1c8d0"
+        },
+        {
+          "function": "hint_camera_display_condition",
+          "va": "0x14227c910"
+        },
+        {
+          "function": "camera_pan_hint",
+          "va": "0x14227d000"
+        },
+        {
+          "function": "camera_rotate_hint",
+          "va": "0x14227d2f0"
+        },
+        {
+          "function": "camera_zoom_hint",
+          "va": "0x14227d680"
+        },
+        {
+          "function": "hint_focused_edit_condition",
+          "va": "0x14227da70"
+        },
+        {
+          "function": "hint_focused_edit_hint",
+          "va": "0x14227dd60",
+          "source": "reports/consume/geo-src/RESTORE.md"
+        },
+        {
+          "function": "hint_clutter_focused_edit_condition",
+          "va": "0x141c3d890"
+        },
+        {
+          "function": "hint_clutter_focused_edit_hint",
+          "va": "0x141c3db80",
+          "source": "reports/consume/geo-src/RESTORE.md"
+        },
+        {
+          "function": "make_focus_or_camera_binding_hint",
+          "va": "0x141c3de00"
+        },
+        {
+          "function": "hint_roof_shape",
+          "va": "0x142284ed0"
+        },
+        {
+          "function": "make_lbm_drag_binding_hint",
+          "va": "0x142285270"
+        },
+        {
+          "function": "hint_stairs",
+          "va": "0x142285a20"
+        },
+        {
+          "function": "hint_terrain_layering",
+          "va": "0x142283cc0"
+        },
+        {
+          "function": "hint_terrain_focus",
+          "va": "0x142283980"
+        },
+        {
+          "function": "hint_terrain_steepness",
+          "va": "0x142283640"
+        },
+        {
+          "function": "hint_undo",
+          "va": "0x142284220"
+        },
+        {
+          "function": "hint_unlink_windows",
+          "va": "0x14227d760"
+        },
+        {
+          "function": "hint_deselect_tool",
+          "va": "0x1422853c0"
+        },
+        {
+          "function": "hint_disable_snapping",
+          "va": "0x14227e140"
+        },
+        {
+          "function": "prompt_rollercoaster",
+          "va": "0x14227bb70"
+        }
+      ],
+      "C": [
+        {
+          "function": "alternate<Option<KeyCode>>",
+          "va": "0x141c4e4f0",
+          "source": "reports/interaction/onboarding/REVIEW.md",
+          "evidence": 3
+        },
+        {
+          "function": "alternate<MouseButton>",
+          "va": "0x141c4e6d0",
+          "source": "same",
+          "evidence": 3
+        },
+        {
+          "function": "alternate<HintGraphicParams>",
+          "va": "0x141c4e8b0",
+          "source": "same",
+          "evidence": 3
+        },
+        {
+          "function": "alternate<[Option<KeyCode>;4]>",
+          "va": "0x141c4ead0",
+          "source": "same",
+          "evidence": 3
+        },
+        {
+          "function": "alternate<BindingHintDisplay>",
+          "va": "0x141c4ecb0",
+          "source": "same",
+          "evidence": 3
+        },
+        {
+          "function": "adjacent<Option<KeyCode>>",
+          "va": "0x141c4ee80",
+          "source": "same",
+          "evidence": 3
+        },
+        {
+          "function": "adjacent<BindingHintDisplay>",
+          "va": "0x141c4f060",
+          "source": "same",
+          "evidence": 3
+        },
+        {
+          "function": "together<BindingHintDisplay>",
+          "va": "0x141c4f230",
+          "source": "same",
+          "evidence": 3
+        },
+        {
+          "function": "filter_to_mode_impl",
+          "va": "0x1422808d0",
+          "source": "same",
+          "evidence": 3
+        },
+        {
+          "function": "cleanup_impl",
+          "va": "0x14227f4a0",
+          "source": "same",
+          "evidence": 3,
+          "note": "fix_verified"
+        },
+        {
+          "function": "is_some",
+          "va": "inline",
+          "source": "same",
+          "evidence": 3
+        },
+        {
+          "function": "is_row",
+          "va": "inline",
+          "source": "same",
+          "evidence": 3
+        },
+        {
+          "function": "hint_animation_system",
+          "va": "0x141c4f400",
+          "source": "same",
+          "evidence": 3
+        },
+        {
+          "function": "hint_deletion_cooldown_system",
+          "va": "0x141c4f790",
+          "source": "same",
+          "evidence": 3
+        },
+        {
+          "function": "hint_audio",
+          "va": "0x141c4fb00",
+          "source": "same",
+          "evidence": 3,
+          "note": "fix_verified"
+        },
+        {
+          "function": "hint_deletion_system",
+          "va": "0x141c4fea0",
+          "source": "same",
+          "evidence": 3
+        },
+        {
+          "function": "progress_bar_update_system",
+          "va": "0x141c530f0",
+          "source": "same",
+          "evidence": 3
+        },
+        {
+          "function": "hint_camera_progress_update",
+          "va": "0x14227bd30",
+          "source": "same + wave3 review",
+          "evidence": 3
+        },
+        {
+          "function": "hint_camera_progress_reset",
+          "va": "0x14227c070",
+          "source": "same",
+          "evidence": 3
+        },
+        {
+          "function": "tutorial_completion",
+          "va": "0x14227c230",
+          "source": "reports/wave3/reviews/onboarding/REVIEW.md",
+          "evidence": 3
+        },
+        {
+          "function": "hints_startup",
+          "va": "0x14227b450",
+          "source": "same",
+          "evidence": 3
+        },
+        {
+          "function": "hint_camera_enable_condition",
+          "va": "0x14227c780",
+          "source": "same",
+          "evidence": 3
+        }
+      ],
+      "D": [
+        {
+          "function": "hint_draw",
+          "va": "0x141c51a60"
+        },
+        {
+          "function": "hint_draw::closure$2",
+          "va": "0x14228c260"
+        },
+        {
+          "function": "render_hints",
+          "va": "0x141c52700"
+        },
+        {
+          "function": "render_hints::closure$1",
+          "va": "0x14228c870"
+        },
+        {
+          "function": "render_hints::closure$2",
+          "va": "0x14228ca20"
+        },
+        {
+          "function": "render_hints::closure$4",
+          "va": "0x14228cc00"
+        }
+      ]
+    },
+    "wall-constructor": {
+      "business_functions": 97,
+      "counts": {
+        "A2": 0,
+        "A4": 0,
+        "B": 4,
+        "C": 12,
+        "D": 81
+      },
+      "D_note": "81 named business functions; see D_families for grouped names. Family entries counted as one.",
+      "glue": [
+        "SupportBeamGrower::new (inline)",
+        "overhang_subscribe_to_tabloids (0x140786440)",
+        "check_for_hole_overlap (inline)",
+        "add_wall_constructor_systems",
+        "WallConstructor::normalize_holes/from_curve helpers",
+        "DoorMeshInProgress::add_quad (G06 reuse)"
+      ],
+      "A2": [],
+      "A4": [],
+      "B": [
+        {
+          "function": "ArchWalker::new",
+          "va": "0x14074c2d0",
+          "note": "layout confirmed; field semantics unverified"
+        },
+        {
+          "function": "calculate_wall_path_segments_impl",
+          "va": "0x14122ff90",
+          "note": "136B->104B materializer; frozen-chain reuse"
+        },
+        {
+          "function": "circle_categorize",
+          "va": "0x14124af60",
+          "source": "reports/remaining/wall-constructor/RESTORE.md + reports/wave4/reviews/geometry/REVIEW.md",
+          "note": "REVIEW FIX-G1 NaN/inf semantics; restorer applied fix, no independent re-verification"
+        },
+        {
+          "function": "BrickRowSine::new",
+          "va": "inline",
+          "note": "trivial constructor; excluded from count if treated as glue"
+        }
+      ],
+      "C": [
+        {
+          "function": "debug_force_update_arches",
+          "va": "0x14003bb80",
+          "source": "reports/interaction/wall-constructor/REVIEW.md",
+          "evidence": 5
+        },
+        {
+          "function": "resolve_hole_overlap",
+          "va": "0x1412411c0",
+          "source": "same",
+          "evidence": 5
+        },
+        {
+          "function": "trim_rows",
+          "va": "0x14123eef0",
+          "source": "same",
+          "evidence": 5
+        },
+        {
+          "function": "above_to_below",
+          "va": "0x14123fab0",
+          "source": "same",
+          "evidence": 5
+        },
+        {
+          "function": "below_to_above",
+          "va": "0x14123fb70",
+          "source": "same",
+          "evidence": 5
+        },
+        {
+          "function": "split_into_random_rows",
+          "va": "0x14123e110",
+          "source": "same",
+          "evidence": 5
+        },
+        {
+          "function": "perturb_row_ends",
+          "va": "0x141240d30",
+          "source": "same",
+          "evidence": 5
+        },
+        {
+          "function": "split_horizontally",
+          "va": "0x141240ec0",
+          "source": "same",
+          "evidence": 5
+        },
+        {
+          "function": "BrickRowSine::random_f",
+          "va": "inline@0x140769760",
+          "source": "reports/wave2/reviews/geometry/REVIEW.md",
+          "evidence": 3
+        },
+        {
+          "function": "BrickRowSine::sine_wave_deform",
+          "va": "inline@0x140769760",
+          "source": "same",
+          "evidence": 3
+        },
+        {
+          "function": "merge_nearby_proposals",
+          "va": "host 0x140178a70 step2",
+          "source": "same",
+          "evidence": 3
+        },
+        {
+          "function": "find_stone_column_start_y",
+          "va": "0x141250720",
+          "source": "reports/wave4/reviews/geometry/REVIEW.md",
+          "evidence": 3
+        }
+      ],
+      "D_families": {
+        "trunk": [
+          "from_curve 0x140769760",
+          "construct_walls 0x140757800",
+          "init_wall_height_and_arch_segment_height 0x14078b550",
+          "gpu_clear_wall_gate_pieces 0x140773c00",
+          "gpu_flush_plank_buffers 0x140774010"
+        ],
+        "arch_walker": [
+          "walk<arches> 0x141232bb0",
+          "walk<lintels> 0x141233380",
+          "walk<brackets> 0x141231ea0",
+          "walk<arches_n_walls> 0x14048ab50"
+        ],
+        "segmentation": [
+          "calculate_path_wall_segmentation 0x14074f310",
+          "calc_path_wall_segmentation 0x14074f7a0",
+          "process_segment 0x140750420",
+          "add_splits_in_empty_range 0x140751240",
+          "score_split_candidate 0x140751610",
+          "sample_wall_path_intersections 0x14074c720",
+          "split_wall_path_segment_into_platform_stairs 0x140751960"
+        ],
+        "arches_lintels": [
+          "construct_arches 0x14075f680",
+          "create_stone_arch_profile 0x1407645f0",
+          "ArchFunction::remap_t 0x140765300",
+          "construct_lintels 0x14076d9f0",
+          "place_support_beams 0x141242530",
+          "add_diagonal_support 0x141243740",
+          "emit_support_beams 0x141243c20",
+          "SupportBeamGrower::propose 0x141fe09c0"
+        ],
+        "facade_supports": [
+          "detect_overhang_support_segments 0x1407867d0",
+          "construct_circle_supports 0x140788160",
+          "construct_rectangle_columns 0x140788a80",
+          "construct_rectangle_brackets 0x1407896b0",
+          "construct_circle_bottom_layer 0x14124b2c0",
+          "add_bottom_brick 0x141fe1de0",
+          "construct_circle_pillars 0x14124ba30",
+          "construct_turret 0x14124cc30",
+          "construct_rect_bottom_layer 0x14124eb80",
+          "construct_rectangle_pillars 0x14124fcb0",
+          "construct_rectangle_large_brackets 0x141253fc0",
+          "construct_rectangle_small_brackets 0x141250da0",
+          "find_overhang_support_segments 0x141248620",
+          "OverhangSupportFinderCache::new 0x141248300",
+          "maintain_stone_column_colliders 0x14078a6e0",
+          "construct_wooden_pillar_w_stone_base 0x141fe2150",
+          "construct_brick_columns 0x141fe3240",
+          "construct_crossbrick_pillar 0x142418f50",
+          "place_pillars 0x140753670",
+          "PillarProposals::add_proposal 0x1407534d0",
+          "assemble_stone_pillar 0x14120d670",
+          "place_pillars::closure$4 0x14120d340"
+        ],
+        "gates_fences_floors_stairs": [
+          "construct_gates 0x140756370",
+          "update_gates_hashmap 0x140755690",
+          "construct_wooden_gate_doors 0x141210110",
+          "construct_fences 0x140765830",
+          "emit_fences 0x1412388f0",
+          "process_segment(fences) 0x141238d80",
+          "split_curve_based_on_angle 0x141fdf9e0",
+          "construct_floors 0x1407661e0",
+          "construct_platform_stairs 0x1407744d0",
+          "construct_playermade_stairs_arches_n_walls<true> 0x140496800",
+          "preprocess_curve 0x140780e20",
+          "construct_playermade_stair_brackets 0x1407834f0",
+          "playermade_stair_floating_bricks 0x14077a2f0",
+          "construct_playermade_stair_pillars_visuals 0x14077d520",
+          "process_playermade_stair_pillars_proposals 0x140178a70"
+        ],
+        "halftimber_plaster": [
+          "curved_halftimber_maintain_entities 0x1407706d0",
+          "wooden_floor_borders 0x141244310",
+          "create_plaster 0x14075d460",
+          "maintain_plaster 0x14075b810",
+          "split_wall_into_sides 0x14075dc60",
+          "generate_plaster_mesh_and_entities 0x1412269b0"
+        ],
+        "ui": [
+          "ui_arch_controls 0x140766e70",
+          "do_ui_arch_controls 0x140767b70",
+          "ui_lintel_controls 0x140771a60"
+        ],
+        "utils_approximations": [
+          "stairs_signifiers_new 0x141223d10",
+          "add_wall_corners 0x141215540",
+          "add_wall_corners::closure$1 0x141217a20",
+          "add_skirts 0x1412221f0",
+          "half_timbering 0x141218e30",
+          "roof_outline 0x141217be0",
+          "overlapping_windows 0x1412218a0",
+          "get_window_aabb 0x141221da0",
+          "check_for_overlap_with_all_windows 0x141221f70",
+          "add_underwindow_pattern 0x141fd1c30",
+          "wrap_around inline"
+        ]
+      }
+    },
+    "toolbar": {
+      "business_functions": 121,
+      "counts": {
+        "A2": 0,
+        "A4": 8,
+        "B": 12,
+        "C": 32,
+        "D": 69
+      },
+      "glue": [
+        "5 Plugin builds",
+        "26 register_required_components",
+        "GlobalId Hash derive",
+        "NodeContent default methods"
+      ],
+      "A2": [],
+      "A4": [
+        {
+          "function": "toolbar_env0 taffy setter",
+          "va": "0x142375c10",
+          "source": "reports/unlock/mei-toolbar/RESTORE.md",
+          "tests": [
+            "toolbar_systems::tests"
+          ]
+        },
+        {
+          "function": "toolbar_env2 taffy setter",
+          "va": "0x142375eb0"
+        },
+        {
+          "function": "toolbar_env10 taffy setter",
+          "va": "0x142375b40"
+        },
+        {
+          "function": "toolbar_env11 taffy setter",
+          "va": "0x142375ce0"
+        },
+        {
+          "function": "toolbar_env12 taffy setter",
+          "va": "0x142376050"
+        },
+        {
+          "function": "toolbar_env13 taffy setter",
+          "va": "0x142376300"
+        },
+        {
+          "function": "undo_redo_env0 taffy setter",
+          "va": "0x142376230"
+        },
+        {
+          "function": "undo_redo_env1 taffy setter",
+          "va": "0x142375f80"
+        }
+      ],
+      "B": [
+        {
+          "function": "MeiContext::reuse_or_create_node",
+          "va": "0x140683ec0"
+        },
+        {
+          "function": "process_input_action_handlers",
+          "va": "0x140687eb0"
+        },
+        {
+          "function": "MeiContext::load_configs",
+          "va": "0x140682e70"
+        },
+        {
+          "function": "config::load_font_table",
+          "va": "0x14068fc60"
+        },
+        {
+          "function": "ComputedLayout::center",
+          "va": "0x14068ea00"
+        },
+        {
+          "function": "Node::hover",
+          "va": "0x140683c90"
+        },
+        {
+          "function": "Node::has_focus",
+          "va": "0x140683ca0"
+        },
+        {
+          "function": "place_childen_impl<XY/YX>",
+          "va": "0x140fe12a0 / 0x140fe19a0"
+        },
+        {
+          "function": "toolbar_alignment",
+          "va": "0x142344560"
+        },
+        {
+          "function": "tod_v2_button",
+          "va": "0x142342f30"
+        },
+        {
+          "function": "ui_animation_state_update",
+          "va": "0x14233b3f0"
+        },
+        {
+          "function": "link_up_nav",
+          "va": "0x141e4d880"
+        }
+      ],
+      "C": [
+        {
+          "function": "Node::set_sounds",
+          "va": "0x140683c20",
+          "source": "reports/interaction/toolbar/REVIEW.md"
+        },
+        {
+          "function": "Node::ignore_input",
+          "va": "0x140683c30",
+          "source": "same"
+        },
+        {
+          "function": "Node::force_interactive",
+          "va": "0x140683c40",
+          "source": "same"
+        },
+        {
+          "function": "Node::default_focus",
+          "va": "0x140683c50",
+          "source": "same"
+        },
+        {
+          "function": "Node::with_nav",
+          "va": "0x140683c60",
+          "source": "same"
+        },
+        {
+          "function": "Node::block_input",
+          "va": "0x140683cd0",
+          "source": "same"
+        },
+        {
+          "function": "Node::used",
+          "va": "0x140683c80",
+          "source": "same"
+        },
+        {
+          "function": "NodeContext::hover",
+          "va": "0x140683ce0",
+          "source": "same"
+        },
+        {
+          "function": "NodeContext::interaction",
+          "va": "0x140683dd0",
+          "source": "same"
+        },
+        {
+          "function": "NodeContext::node",
+          "va": "0x140681d50",
+          "source": "same",
+          "note": "fix_verified"
+        },
+        {
+          "function": "NodeContext::node_mut",
+          "va": "0x140681e50",
+          "source": "same"
+        },
+        {
+          "function": "NodeContext::child_with_global_id",
+          "va": "0x1406861b0",
+          "source": "same",
+          "note": "fix_verified"
+        },
+        {
+          "function": "NodeContext::into_child_with_global_id",
+          "va": "0x140686300",
+          "source": "same",
+          "note": "fix_verified"
+        },
+        {
+          "function": "NodeContext::has_global_id",
+          "va": "0x140686450",
+          "source": "same"
+        },
+        {
+          "function": "NodeContext::expect_child_with_global_id",
+          "va": "0x140686530",
+          "source": "same"
+        },
+        {
+          "function": "NodeContext::layout",
+          "va": "0x140686550",
+          "source": "same"
+        },
+        {
+          "function": "NodeContext::ignore_input",
+          "va": "0x140686690",
+          "source": "same"
+        },
+        {
+          "function": "NodeContext::with_nav",
+          "va": "0x140686790",
+          "source": "same"
+        },
+        {
+          "function": "MeiContext::safe_frame<&str>",
+          "va": "0x140f99230",
+          "source": "same"
+        },
+        {
+          "function": "MeiContext::new_at_pos<&str>",
+          "va": "0x140f992e0",
+          "source": "same"
+        },
+        {
+          "function": "MeiContext::new_at_pos<String>",
+          "va": "0x142289f80",
+          "source": "same",
+          "note": "fix_verified src"
+        },
+        {
+          "function": "MeiContext::on_key_event",
+          "va": "0x140685fc0",
+          "source": "same"
+        },
+        {
+          "function": "MeiContext::on_clipboard_paste",
+          "va": "0x1406860d0",
+          "source": "same"
+        },
+        {
+          "function": "MeiContext::load_font_table",
+          "va": "0x140683a20",
+          "source": "same"
+        },
+        {
+          "function": "LayoutStyle::default",
+          "va": "0x14068e850",
+          "source": "same"
+        },
+        {
+          "function": "horizontal",
+          "va": "0x14068e880",
+          "source": "same"
+        },
+        {
+          "function": "LayoutStyle::place_childen",
+          "va": "0x14068ea20",
+          "source": "same"
+        },
+        {
+          "function": "LogSlider::param_to_value",
+          "va": "0x142383730",
+          "source": "same"
+        },
+        {
+          "function": "read_node_config_from_file",
+          "va": "0x14068fe40",
+          "source": "same"
+        },
+        {
+          "function": "toolbar_button_keep_focus",
+          "va": "0x1423414b0",
+          "source": "reports/gap/review/REVIEW.md"
+        },
+        {
+          "function": "switch_toolbar_category_button",
+          "va": "0x1423427f0",
+          "source": "same"
+        },
+        {
+          "function": "add_toolbar_item",
+          "va": "0x141e4dc40",
+          "source": "reports/wave4/reviews/visual/REVIEW.md",
+          "note": "spawn face C; kind_handler residual D (sub-item, not counted separately)"
+        }
+      ],
+      "D": [
+        {
+          "function": "Node::prev_computed_layout",
+          "va": "0x140683cb0"
+        },
+        {
+          "function": "switch_app_mode_button",
+          "va": "0x142341fe0"
+        },
+        {
+          "function": "toolbar_auto_hide",
+          "va": "0x142343a10"
+        },
+        {
+          "function": "ui_sounds",
+          "va": "0x14233a7f0"
+        },
+        {
+          "function": "ui_slider",
+          "va": "0x1423486d0"
+        },
+        {
+          "function": "render_taffy_ui_to_widgets",
+          "va": "0x142338990"
+        },
+        {
+          "function": "mei_pre_update (body)",
+          "va": "0x1406842e0"
+        },
+        {
+          "function": "mei_post_update (body)",
+          "va": "0x1406884c0"
+        },
+        {
+          "function": "alignment closure_env 6 uninstantiated",
+          "va": "closure_env_1/3/4/5/6/7/8/9 (6 of them)"
+        },
+        {
+          "function": "taffy_update_drawables",
+          "va": "0x142340d20"
+        },
+        {
+          "function": "taffy_finalize_element_size",
+          "va": "0x142340890"
+        },
+        {
+          "function": "setup_screen_and_toolbar_nodes",
+          "va": "0x141e4ccb0"
+        },
+        {
+          "function": "add_contextual_menu",
+          "va": "0x141e4d1e0"
+        },
+        {
+          "function": "UndoRedoLayout::setup",
+          "va": "0x140fad870"
+        },
+        {
+          "function": "toolbar_setup",
+          "va": "0x142345890"
+        },
+        {
+          "function": "toolbar_steal_mouse_input",
+          "va": "0x142344df0"
+        },
+        {
+          "function": "toolbar_button_size_and_padding_update",
+          "va": "0x141eaec50"
+        },
+        {
+          "function": "ui_send_focus_begin_events",
+          "va": "0x142338990 family"
+        },
+        {
+          "function": "ui_focus_animation",
+          "va": "0x14233a.."
+        },
+        {
+          "function": "ui_appear_animation",
+          "va": "0x14233a.."
+        },
+        {
+          "function": "ui_select_animation",
+          "va": "0x14233c450"
+        },
+        {
+          "function": "ui_locked_animation",
+          "va": "0x14233a.."
+        },
+        {
+          "function": "ui_show_if_parent_in_focus",
+          "va": "0x14233a.."
+        },
+        {
+          "function": "ui_notify_hints_if_toolbar_in_focus",
+          "va": "0x14233a.."
+        },
+        {
+          "function": "ui_focus_parent_if_self_in_focus",
+          "va": "0x14233a.."
+        },
+        {
+          "function": "sort_contextual_buttons_draw_order",
+          "va": "0x14233a.."
+        },
+        {
+          "function": "debug_hide_ui",
+          "va": "0x14233a.."
+        },
+        {
+          "function": "hide_ui",
+          "va": "0x14233a.."
+        },
+        {
+          "function": "ui_nav_update",
+          "va": "0x14233a.."
+        },
+        {
+          "function": "iter_subtree",
+          "va": "0x14233a.."
+        },
+        {
+          "function": "demo_show_full_glade_size",
+          "va": "0x141eac540"
+        },
+        {
+          "function": "demo_show_max_elevation",
+          "va": "0x141ead870 / 0x14234a410"
+        },
+        {
+          "function": "menu::advance_menu_state",
+          "va": "0x14068e5b0"
+        },
+        {
+          "function": "welcome::ui",
+          "va": "0x141ebe130"
+        },
+        {
+          "function": "new_session::ui",
+          "va": "0x141eb9690"
+        },
+        {
+          "function": "daily_welcome::ui",
+          "va": "0x141ebedd0"
+        },
+        {
+          "function": "splash::ui",
+          "va": "0x141ec1390"
+        },
+        {
+          "function": "load::ui",
+          "va": "0x141e1fe80"
+        },
+        {
+          "function": "thumbnail_scroll",
+          "va": "0x140fa06a0"
+        },
+        {
+          "function": "display_save_file_load_error",
+          "va": "0x141e23b90"
+        },
+        {
+          "function": "load_session_meta",
+          "va": "0x141e23c00"
+        },
+        {
+          "function": "show_contextual_buttons",
+          "va": "0x141e23d20"
+        },
+        {
+          "function": "corrupted_save_file::ui",
+          "va": "0x141ebfbf0"
+        },
+        {
+          "function": "save_error::ui",
+          "va": "0x141ec0ce0"
+        },
+        {
+          "function": "credits::ui",
+          "va": "0x141dfa070"
+        },
+        {
+          "function": "spawn_third_party_license_http_server",
+          "va": "0x141dfb410"
+        },
+        {
+          "function": "scroll<u64>",
+          "va": "0x140fa04f0"
+        },
+        {
+          "function": "report_bug::ui",
+          "va": "0x141e1b8e0"
+        },
+        {
+          "function": "try_remove_file",
+          "va": "0x141e1e5f0"
+        },
+        {
+          "function": "text_edit<&str>",
+          "va": "0x140fa0bd0"
+        },
+        {
+          "function": "toggle_icon",
+          "va": "0x14068cbf0"
+        },
+        {
+          "function": "photomode::do_photomode",
+          "va": "0x14234b010"
+        },
+        {
+          "function": "photomode_buttons",
+          "va": "0x14234c230"
+        },
+        {
+          "function": "setup_photomode_toolbar",
+          "va": "0x1426246e0"
+        },
+        {
+          "function": "ui_slider_reset",
+          "va": "0x142347f90"
+        },
+        {
+          "function": "slider_val_01",
+          "va": "0x142349de0"
+        },
+        {
+          "function": "lut_gallery::ui",
+          "va": "0x141ec0270"
+        },
+        {
+          "function": "text_startup_system",
+          "va": "0x141e9ce50"
+        },
+        {
+          "function": "update_text_renderer_scale",
+          "va": "0x141e9d960"
+        },
+        {
+          "function": "prepare_text_fragments",
+          "va": "0x141e9dd20"
+        },
+        {
+          "function": "render_text_fragments",
+          "va": "0x141e9df60"
+        },
+        {
+          "function": "flush_text_render",
+          "va": "0x141e9e1f0"
+        },
+        {
+          "function": "SingleFileServer::http",
+          "va": "0x14234d690"
+        },
+        {
+          "function": "SingleFileServer::run",
+          "va": "0x14286bf40"
+        },
+        {
+          "function": "widgets builder/view family",
+          "va": "0x67e390..0x6816c0",
+          "family": true
+        },
+        {
+          "function": "widgets/tweaker family",
+          "va": "0x32e920/0x330940/0x332010",
+          "family": true
+        },
+        {
+          "function": "decorate_hovered",
+          "va": "0x14067df20"
+        },
+        {
+          "function": "mei audio",
+          "va": "0x68e840"
+        },
+        {
+          "function": "config instantiate_ui_template_impl/TemplateView",
+          "va": "0x14068eb50 / 0x32e210..",
+          "family": true
+        }
+      ]
+    }
+  },
+  "integration": {
+    "coregap-1": {
+      "items": 10,
+      "C": 8,
+      "B": 2,
+      "skipped": [
+        "InsertTreeCmd 0x48 (conflict, layout contract verified)"
+      ],
+      "pending": [
+        "PublicWalls dense tables"
+      ]
+    },
+    "coregap-2": {
+      "items": 12,
+      "C": 10,
+      "B": 2,
+      "skipped": [
+        "SteamInput (rebuild-steam covered)"
+      ]
+    },
+    "purelogic": {
+      "items": 26,
+      "A2": 2,
+      "B": 6,
+      "C": 3,
+      "D": 15,
+      "note": "~146 decorator business functions counted as one family"
+    },
+    "external-dep": {
+      "items": 5,
+      "note": "dependency identity; no business functions"
+    },
+    "unlock": {
+      "lines": 7,
+      "A2": 8,
+      "A4": 12,
+      "B": 6,
+      "C": 1,
+      "D": 13,
+      "note": "includes type/layout/contract items; publicwalls-tables and replay-decorator are contract-only (0 implementation)"
+    },
+    "consume": {
+      "functions": 25,
+      "A2": 2,
+      "A4": 1,
+      "B": 9,
+      "C": 9,
+      "D": 4
+    },
+    "remaining": {
+      "items": 14,
+      "B": 5,
+      "C": 4,
+      "D": 5
+    },
+    "tests": {
+      "test_functions": 31,
+      "assertions": 188,
+      "passed": 31,
+      "level": 4,
+      "covered_functions": 16
+    }
+  },
+  "tinyglade": {
+    "A": {
+      "total": 55,
+      "A2": 0,
+      "A4": 0,
+      "B": 1,
+      "C": 5,
+      "D": 44,
+      "glue": 5,
+      "A_items": [
+        {
+          "function": "log_time_to_first_frame",
+          "va": "0x1403db200",
+          "grade": "A4",
+          "verdict": "C",
+          "note": "reviewer-A: niche/max_level/target/Duration-Debug 逐语句判等"
+        },
+        {
+          "function": "FpsLimiter::frame",
+          "va": "0x140270850",
+          "grade": "A4",
+          "verdict": "C",
+          "note": "reviewer-A: 分支/min/NaN/clamp/sleep/尾部写逐条判等"
+        },
+        {
+          "function": "is_supported_steam_language whitelist",
+          "va": "0x140323230 inline",
+          "grade": "A4",
+          "verdict": "C",
+          "note": "reviewer-A: 15 名逐字节全对"
+        },
+        {
+          "function": "render",
+          "va": "0x1404e8010",
+          "grade": "A2",
+          "verdict": "B",
+          "note": "reviewer-A: 主链/常量判等；OOM panic 的 Option<(vk::Format,[u32;2])> Debug 形状不符(FIX-A1)"
+        },
+        {
+          "function": "render_world",
+          "va": "0x1404ec110",
+          "grade": "A2",
+          "verdict": "C",
+          "note": "reviewer-A: 54 pass 顺序/分支/常量/返回体逐条判等"
+        },
+        {
+          "function": "handle_screenshot_error",
+          "va": "0x1404ebfb0",
+          "grade": "A2",
+          "verdict": "C(limited)",
+          "note": "reviewer-A: 分支+文案判等；日志副作用交宿主，生产调用点未接线(U)"
+        }
+      ]
+    },
+    "B": {
+      "total": 73,
+      "A2": 0,
+      "A4": 0,
+      "B": 32,
+      "C": 6,
+      "D": 26,
+      "glue": 9,
+      "A_items": [
+        {
+          "function": "winit_to_bevy_keycode",
+          "va": "0x1400fb850",
+          "grade": "A4",
+          "verdict": "C",
+          "note": "reviewer-A: 256 表 0 mismatch；winit194=bevy[1:] 逐名相等"
+        },
+        {
+          "function": "fs_util::copy_folder",
+          "va": "0x140355800",
+          "grade": "A4",
+          "verdict": "C",
+          "note": "reviewer-A: attr/symlink 条件与递归/copy 两分支判等"
+        },
+        {
+          "function": "EguiBackend::end_frame",
+          "va": "0x1400dd910",
+          "grade": "A2",
+          "verdict": "B",
+          "note": "reviewer-A: 缺 ViewportOutput/Vec<Shape> 销毁-替换与 delta 方向未闭合(FIX-A2)"
+        },
+        {
+          "function": "calculate_max_resolution_scale",
+          "va": "0x1404f7f20",
+          "grade": "A2",
+          "verdict": "C",
+          "note": "reviewer-A: 7 常量+floor*0.1 汇编证实；budget getter 契约为 U"
+        },
+        {
+          "function": "NvAftermathDelegate::default",
+          "va": "0x140244460",
+          "grade": "A2",
+          "verdict": "B",
+          "note": "reviewer-A: 日志等级/文案错 + derive Default 绕过(FIX-A3)"
+        },
+        {
+          "function": "NvAftermathDelegate::shader_debug_info",
+          "va": "0x140245340",
+          "grade": "A2",
+          "verdict": "B",
+          "note": "reviewer-A: 缺 Trace 日志(FIX-A4)"
+        },
+        {
+          "function": "crash_payload Serialize fields (6)",
+          "va": "0x14003e250/e7c0/eb80/ec80/e350/eda0",
+          "grade": "A2",
+          "verdict": "B",
+          "note": "reviewer-A: 6 字段面/顺序/键全对；breadcrumbs 元素类型错(FIX-A5)"
+        },
+        {
+          "function": "ClientHandle::send_message",
+          "va": "0x14015ac60",
+          "grade": "A2",
+          "verdict": "B",
+          "note": "reviewer-A: 序列化失败为 .unwrap()(43B 文案)，实现 expect(FIX-A6)"
+        },
+        {
+          "function": "server::on_message",
+          "va": "0x1402ae1f0",
+          "grade": "A2",
+          "verdict": "B",
+          "note": "reviewer-A: 坏包走 unwrap_failed(panic)，实现 log+continue(FIX-A7)"
+        },
+        {
+          "function": "dump_log_file",
+          "va": "0x1403acc70",
+          "grade": "A2",
+          "verdict": "C",
+          "note": "reviewer-A: 路径/文案逐字判等"
+        },
+        {
+          "function": "dump_settings_file",
+          "va": "0x1403ae050",
+          "grade": "A2",
+          "verdict": "B",
+          "note": "reviewer-A: file_name() 为 .unwrap()，实现 expect(FIX-A8,P3)"
+        },
+        {
+          "function": "dump_gpu_crash_dump_file",
+          "va": "0x1403ae570",
+          "grade": "A2",
+          "verdict": "C",
+          "note": "reviewer-A: 路径/文案逐字判等"
+        },
+        {
+          "function": "dump_rhapsody_log",
+          "va": "0x1403ae770",
+          "grade": "A2",
+          "verdict": "B",
+          "note": "reviewer-A: 原版 fs::write(dump_log())；实现 File::create+dump_log(writer)(FIX-A9)"
+        },
+        {
+          "function": "dump_screenshot",
+          "va": "0x14058a060",
+          "grade": "A2",
+          "verdict": "B",
+          "note": "reviewer-A: 文件名/格式错(jpg/RGB8)、错误文案缺后缀(FIX-A10)"
+        },
+        {
+          "function": "spawn_hang_watchdog_thread",
+          "va": "0x140365be0",
+          "grade": "A2",
+          "verdict": "C",
+          "note": "reviewer-A: 名称字节/Builder/spawn/Result 判等"
+        },
+        {
+          "function": "write_image_with_callback_impl",
+          "va": "0x1403206a0",
+          "grade": "A2",
+          "verdict": "B",
+          "note": "reviewer-A: 缺扩展名分派/父目录 None=error/回调载荷不符(FIX-A11)"
+        },
+        {
+          "function": "CoasterAudioInstance::new",
+          "va": "0x1403b6880",
+          "grade": "A2",
+          "verdict": "B",
+          "note": "reviewer-A: 参数 0x18 步长=(&str,f32)、日志 Error 级(FIX-A12)；NaN 分支正确"
+        },
+        {
+          "function": "confirm_incoming_panic_repro",
+          "va": "0x1400ed280",
+          "grade": "A2",
+          "verdict": "B",
+          "note": "reviewer-A: 原版状态机/字段写/描述包裹/标题 emoji 不符(FIX-A13)"
+        }
+      ],
+      "B_items": [
+        "calculate_resolution_scale_mem_estimate_text 0x1404f8240",
+        "NvAftermathDelegate::dumped 0x140244790",
+        "CrashReporter::spawn_server 0x14015aeb0",
+        "crash_pickup::client::start 0x14048a170",
+        "server::run 0x1402aee80",
+        "server::create_minidump_file 0x1402ad880",
+        "server::on_minidump_created 0x1402adae0",
+        "crash_trace_to_sentry_event 0x1404b17d0",
+        "setup_panic_hook 0x1400db5b0",
+        "setup_panic_hook::closure 0x1400db6b0",
+        "recover_game_state_after_crash 0x1400dbc30",
+        "create_sentry_attachment 0x1404b4d50",
+        "hang_watchdog 0x140365e20",
+        "verify_package_integrity_and_show_report 0x1402552b0",
+        "gather_screenshot_requests 0x14031af10",
+        "handle_screenshot_opportunity 0x14031d140",
+        "finish_screenshot_capture 0x14031ea20",
+        "hurry_active_screenshots_on_shutdown 0x14031eed0",
+        "run_vulkan_configuration_app 0x1403e74b0",
+        "date_spinner 0x140148b40"
+      ]
+    },
+    "review_note": "reviewer-A-tinyglade 2026-10-17 独立复核 24 项：判等 11 / 需修 13 / 未实现 0。判等升 C；需修仍计 B（有实现但存在语句/文案/类型偏差）。报告 reports/tinyglade/reviews/A/REVIEW.md。"
+  },
+  "priority_top10": [
+    {
+      "rank": 1,
+      "item": "hint_orchestrator",
+      "va": "0x14227fc30",
+      "grade": "A4",
+      "why": "onboarding hint pipeline central entry; self-authored 9 tests only"
+    },
+    {
+      "rank": 2,
+      "item": "DisplayHintRequest layout + write sites",
+      "va": "0x50B / stride 0x58",
+      "grade": "A4",
+      "why": "event carrier for all hint_*; placement/id/flags offsets critical"
+    },
+    {
+      "rank": 3,
+      "item": "geo_src_to_edit_subject / _w_deco_clutter + legacy hit code",
+      "va": "0x140977f50 / 0x140978000 / 0x1408cc680",
+      "grade": "A/B",
+      "why": "consumed by onboarding, tree-tool, hint_roof_shape"
+    },
+    {
+      "rank": 4,
+      "item": "DebugLine::show + SignifierFactory/UiSignifierStream wake",
+      "va": "0x140b04f70 / 0x14089d8b0 / 0x140b2cf90",
+      "grade": "A4/A2",
+      "why": "glade-border/water/signifiers shared"
+    },
+    {
+      "rank": 5,
+      "item": "NaniBundle<T> / DrawableMeshBundle layout",
+      "va": "0x141a07f20 / 0x141fe7aa0",
+      "grade": "A4",
+      "why": "foundation for decorator/roof/toolbar spawns; layout tests not run (ENOSPC)"
+    },
+    {
+      "rank": 6,
+      "item": "UiNav / HistoryButton layout + link_up_nav",
+      "va": "0x141e36510 / 0x141e34b90 / 0x141e4d880",
+      "grade": "A4/B",
+      "why": "toolbar nav and undo/redo foundation"
+    },
+    {
+      "rank": 7,
+      "item": "8 taffy setter closures",
+      "va": "0x142375c10..0x142376300",
+      "grade": "A4",
+      "why": "toolbar_alignment semantics core; only field assertions"
+    },
+    {
+      "rank": 8,
+      "item": "tiny-glade A render/render_world/handle_screenshot_error",
+      "va": "0x1404e8010 / 0x1404ec110 / 0x1404ebfb0",
+      "grade": "A2",
+      "why": "main render entry; delegated claim only"
+    },
+    {
+      "rank": 9,
+      "item": "tiny-glade B winit_to_bevy_keycode + crash_payload Serialize",
+      "va": "0x1400fb850 / 0x14003e250..",
+      "grade": "A4/A2",
+      "why": "input mapping and crash payload schema; batch B has no REVIEW"
+    },
+    {
+      "rank": 10,
+      "item": "FishSpawnLocations::new + draw_water registration",
+      "va": "0x140f909f0 / -",
+      "grade": "A2",
+      "why": "purelogic only two implemented/equal claims without review"
+    }
+  ],
+  "notes": [
+    "Four-module A2=0: every 'equal' claim in the four modules has independent review (C) or unit tests (A4).",
+    "A count includes type/layout/contract items in integration rounds; function-only A2 in four modules is zero.",
+    "Wall-constructor and toolbar D counts use named symbols; family entries counted as one. Function-face expansion adds ~10 (wall-constructor) and ~40 (toolbar).",
+    "Post-review fixes without a second independent review are classified B, not C."
+  ],
+  "review_receipts": [
+    {
+      "reviewer": "reviewer-A-unlock",
+      "date": "2026-10-17",
+      "report": "reports/unlock/reviews/A/REVIEW.md",
+      "evidence": "reports/unlock/reviews/A/evidence/",
+      "scope": "unlock A-list 12 + task-named additional 6",
+      "receipt": {
+        "judged_equal": 17,
+        "needs_fix": 1,
+        "unimplemented": 0
+      },
+      "fix_list": [
+        {
+          "id": "FIX-A1",
+          "file": "crates/country-core/src/utils/debug_viz.rs",
+          "function": "DebugLine::show (0x140b04f70) closure payload",
+          "change": "payload[3]: points.capacity() -> colors.capacity()",
+          "evidence": "fresh closure 0x140b055a0 insns 0x140b05739..0x140b0574d copy two Vec records {cap,ptr,len}; build 0x14089dd50 default branch uses in_RDX[5]=payload[3] as colors Vec cap",
+          "impact": "latent field-level mismatch when colors.len != points.len; None-fill path numerically equal"
+        }
+      ],
+      "nonblocking_suggestion": null,
+      "items": [
+        {
+          "item": "DebugColor Debug/as_array",
+          "va": "0x140b05c70",
+          "was": "A2",
+          "verdict": "C",
+          "note": "jump table 0x142ae7334 decoded; Custom debug_tuple_field1_finish"
+        },
+        {
+          "item": "SignifierFactory::new",
+          "va": "0x14089d8b0",
+          "was": "A2",
+          "verdict": "C",
+          "note": "5-qword record {len,ptr,len,inner,marker}"
+        },
+        {
+          "item": "UiSignifierStream write/wake",
+          "va": "0x140b2cf90/0x140b2cfa0",
+          "was": "A2",
+          "verdict": "C(limited)",
+          "note": "0x28 slot, mem::take 0x170, vtable+0x28, data_ptr formula confirmed; registered GAP: UiState+0x20 clone"
+        },
+        {
+          "item": "mei_pre_update 9-param signature",
+          "va": "0x1406842e0",
+          "was": "A2",
+          "verdict": "C(signature)",
+          "note": "procs.tsv 0x140f968d0 FunctionSystem tuple"
+        },
+        {
+          "item": "mei_post_update 9-param signature",
+          "va": "0x1406884c0",
+          "was": "A2",
+          "verdict": "C(signature)",
+          "note": "procs.tsv 0x140f971e0 FunctionSystem tuple"
+        },
+        {
+          "item": "render_taffy_ui_to_widgets 13-param",
+          "va": "0x142338990",
+          "was": "A2",
+          "verdict": "C(signature)",
+          "note": "procs.tsv 0x141ea4010 FunctionSystem tuple"
+        },
+        {
+          "item": "DisplayHintRequest layout",
+          "va": "0x14227fc30",
+          "was": "A4",
+          "verdict": "C",
+          "note": "T=0x50, stride=0x58, placement@0/display@0x18/flags@0x48/id@0x49; 12 write sites"
+        },
+        {
+          "item": "sort_display_hint_requests",
+          "va": "0x1425e5b70",
+          "was": "A4",
+          "verdict": "C",
+          "note": "compare u8@+0x49 strict less, stable"
+        },
+        {
+          "item": "HintType::Rollercoaster=18",
+          "va": "0x14227bb70",
+          "was": "A4",
+          "verdict": "C",
+          "note": "write u16 0x1200"
+        },
+        {
+          "item": "DebugLine::show",
+          "va": "0x140b04f70",
+          "was": "A4",
+          "verdict": "needs_fix",
+          "note": "FIX-A1: payload[3] should be colors.capacity(); all other show elements equal"
+        },
+        {
+          "item": "NaniBundle<T> layout",
+          "va": "0x141a07f20/0x14267a9e0",
+          "was": "A4",
+          "verdict": "C",
+          "note": "0x48B, desc@0x30/transform@0/layout tests 4/4 pass now"
+        },
+        {
+          "item": "DrawableMeshBundle layout",
+          "va": "0x141fe7aa0/0x14267c2a0",
+          "was": "A4",
+          "verdict": "C",
+          "note": "0x40B, mesh@0x30/shader@0x38/transform@0"
+        },
+        {
+          "item": "geo_src_to_edit_subject / _w_deco_clutter",
+          "va": "0x140977f50/0x140978000",
+          "was": "B",
+          "verdict": "C",
+          "note": "17-entry jump tables decoded from raw bytes; deco mapping confirmed"
+        },
+        {
+          "item": "legacy_raycast hit code",
+          "va": "0x1408cc680",
+          "was": "B/A",
+          "verdict": "C",
+          "note": "mask 0xFB, max_toi f32::MAX, miss writes u32 2 to +0x30"
+        },
+        {
+          "item": "UiNav 0x40 layout",
+          "va": "0x141e36510",
+          "was": "A4",
+          "verdict": "C",
+          "note": "descriptor size 0x40 align 8"
+        },
+        {
+          "item": "HistoryButton 1B layout",
+          "va": "0x141e34b90",
+          "was": "A4",
+          "verdict": "C",
+          "note": "descriptor size 1 align 1"
+        },
+        {
+          "item": "link_up_nav",
+          "va": "0x141e4d880",
+          "was": "B",
+          "verdict": "C(rebuilt)",
+          "note": "slots {3,next}/{3,prev}; modular prev/next"
+        },
+        {
+          "item": "8x taffy setter closures",
+          "va": "0x142375b40..0x142376300",
+          "was": "A4",
+          "verdict": "C",
+          "note": "immediate bytes + independent taffy 0.3.13 offset probe"
+        },
+        {
+          "item": "RoofTileSsbo SparseSsbo",
+          "va": "0x1412e4a90/0x1416191a0/0x141a3c070",
+          "was": "D/core-type-gap",
+          "verdict": "C",
+          "note": "CHUNK_COUNT 0x2000, len 0x40000, bitsets 0x80, stride 0x40, tests 3/3"
+        }
+      ],
+      "cooldown_table_note": "0x143038ae8 = 19xf32 (id 0..18) + 4B padding to +0x50; [f32;19] matches"
+    },
+    {
+      "reviewer": "reviewer-A-tinyglade",
+      "date": "2026-10-17",
+      "report": "reports/tinyglade/reviews/A/REVIEW.md",
+      "evidence": "reports/tinyglade/reviews/A/evidence/",
+      "scope": "tinyglade A/B A-list 24 items (A 6 + B 18; crash_payload 6 monomorphizations as 1)",
+      "receipt": {
+        "judged_equal": 11,
+        "needs_fix": 13,
+        "unimplemented": 0
+      },
+      "fix_list": [
+        "FIX-A5",
+        "FIX-A7",
+        "FIX-A10",
+        "FIX-A11",
+        "FIX-A13",
+        "FIX-A2",
+        "FIX-A9",
+        "FIX-A1",
+        "FIX-A3",
+        "FIX-A4",
+        "FIX-A12",
+        "FIX-A6",
+        "FIX-A8"
+      ],
+      "nonblocking_suggestion": "render/render_world/handle_screenshot_error 走 RenderHost 缝；本轮验证分支/顺序/常量/文案，宿主真实设备调用不在 A-list。",
+      "items": [
+        {
+          "item": "log_time_to_first_frame",
+          "va": "0x1403db200",
+          "was": "A4",
+          "verdict": "C",
+          "note": "reviewer-A: niche/max_level/target/Duration-Debug 逐语句判等"
+        },
+        {
+          "item": "FpsLimiter::frame",
+          "va": "0x140270850",
+          "was": "A4",
+          "verdict": "C",
+          "note": "reviewer-A: 分支/min/NaN/clamp/sleep/尾部写逐条判等"
+        },
+        {
+          "item": "is_supported_steam_language whitelist",
+          "va": "0x140323230 inline",
+          "was": "A4",
+          "verdict": "C",
+          "note": "reviewer-A: 15 名逐字节全对"
+        },
+        {
+          "item": "render",
+          "va": "0x1404e8010",
+          "was": "A2",
+          "verdict": "B",
+          "note": "reviewer-A: 主链/常量判等；OOM panic 的 Option<(vk::Format,[u32;2])> Debug 形状不符(FIX-A1)"
+        },
+        {
+          "item": "render_world",
+          "va": "0x1404ec110",
+          "was": "A2",
+          "verdict": "C",
+          "note": "reviewer-A: 54 pass 顺序/分支/常量/返回体逐条判等"
+        },
+        {
+          "item": "handle_screenshot_error",
+          "va": "0x1404ebfb0",
+          "was": "A2",
+          "verdict": "C(limited)",
+          "note": "reviewer-A: 分支+文案判等；日志副作用交宿主，生产调用点未接线(U)"
+        },
+        {
+          "item": "winit_to_bevy_keycode",
+          "va": "0x1400fb850",
+          "was": "A4",
+          "verdict": "C",
+          "note": "reviewer-A: 256 表 0 mismatch；winit194=bevy[1:] 逐名相等"
+        },
+        {
+          "item": "fs_util::copy_folder",
+          "va": "0x140355800",
+          "was": "A4",
+          "verdict": "C",
+          "note": "reviewer-A: attr/symlink 条件与递归/copy 两分支判等"
+        },
+        {
+          "item": "EguiBackend::end_frame",
+          "va": "0x1400dd910",
+          "was": "A2",
+          "verdict": "B",
+          "note": "reviewer-A: 缺 ViewportOutput/Vec<Shape> 销毁-替换与 delta 方向未闭合(FIX-A2)"
+        },
+        {
+          "item": "calculate_max_resolution_scale",
+          "va": "0x1404f7f20",
+          "was": "A2",
+          "verdict": "C",
+          "note": "reviewer-A: 7 常量+floor*0.1 汇编证实；budget getter 契约为 U"
+        },
+        {
+          "item": "NvAftermathDelegate::default",
+          "va": "0x140244460",
+          "was": "A2",
+          "verdict": "B",
+          "note": "reviewer-A: 日志等级/文案错 + derive Default 绕过(FIX-A3)"
+        },
+        {
+          "item": "NvAftermathDelegate::shader_debug_info",
+          "va": "0x140245340",
+          "was": "A2",
+          "verdict": "B",
+          "note": "reviewer-A: 缺 Trace 日志(FIX-A4)"
+        },
+        {
+          "item": "crash_payload Serialize fields (6)",
+          "va": "0x14003e250/e7c0/eb80/ec80/e350/eda0",
+          "was": "A2",
+          "verdict": "B",
+          "note": "reviewer-A: 6 字段面/顺序/键全对；breadcrumbs 元素类型错(FIX-A5)"
+        },
+        {
+          "item": "ClientHandle::send_message",
+          "va": "0x14015ac60",
+          "was": "A2",
+          "verdict": "B",
+          "note": "reviewer-A: 序列化失败为 .unwrap()(43B 文案)，实现 expect(FIX-A6)"
+        },
+        {
+          "item": "server::on_message",
+          "va": "0x1402ae1f0",
+          "was": "A2",
+          "verdict": "B",
+          "note": "reviewer-A: 坏包走 unwrap_failed(panic)，实现 log+continue(FIX-A7)"
+        },
+        {
+          "item": "dump_log_file",
+          "va": "0x1403acc70",
+          "was": "A2",
+          "verdict": "C",
+          "note": "reviewer-A: 路径/文案逐字判等"
+        },
+        {
+          "item": "dump_settings_file",
+          "va": "0x1403ae050",
+          "was": "A2",
+          "verdict": "B",
+          "note": "reviewer-A: file_name() 为 .unwrap()，实现 expect(FIX-A8,P3)"
+        },
+        {
+          "item": "dump_gpu_crash_dump_file",
+          "va": "0x1403ae570",
+          "was": "A2",
+          "verdict": "C",
+          "note": "reviewer-A: 路径/文案逐字判等"
+        },
+        {
+          "item": "dump_rhapsody_log",
+          "va": "0x1403ae770",
+          "was": "A2",
+          "verdict": "B",
+          "note": "reviewer-A: 原版 fs::write(dump_log())；实现 File::create+dump_log(writer)(FIX-A9)"
+        },
+        {
+          "item": "dump_screenshot",
+          "va": "0x14058a060",
+          "was": "A2",
+          "verdict": "B",
+          "note": "reviewer-A: 文件名/格式错(jpg/RGB8)、错误文案缺后缀(FIX-A10)"
+        },
+        {
+          "item": "spawn_hang_watchdog_thread",
+          "va": "0x140365be0",
+          "was": "A2",
+          "verdict": "C",
+          "note": "reviewer-A: 名称字节/Builder/spawn/Result 判等"
+        },
+        {
+          "item": "write_image_with_callback_impl",
+          "va": "0x1403206a0",
+          "was": "A2",
+          "verdict": "B",
+          "note": "reviewer-A: 缺扩展名分派/父目录 None=error/回调载荷不符(FIX-A11)"
+        },
+        {
+          "item": "CoasterAudioInstance::new",
+          "va": "0x1403b6880",
+          "was": "A2",
+          "verdict": "B",
+          "note": "reviewer-A: 参数 0x18 步长=(&str,f32)、日志 Error 级(FIX-A12)；NaN 分支正确"
+        },
+        {
+          "item": "confirm_incoming_panic_repro",
+          "va": "0x1400ed280",
+          "was": "A2",
+          "verdict": "B",
+          "note": "reviewer-A: 原版状态机/字段写/描述包裹/标题 emoji 不符(FIX-A13)"
+        }
+      ]
+    }
+  ]
+}

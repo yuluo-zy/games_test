@@ -1,2 +1,2 @@
-//! B private texture processing and cache policies; library codecs/compressors are reused.
+//! Offline texture processing, compression and persistent compilation.
 pub mod texture;

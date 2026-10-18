@@ -1,0 +1,734 @@
+--- games_test/tiny-glade/crates/country-core/src/systems/camera_rig/main_camera.rs
++++ games_test/tiny-glade/crates/country-core/src/systems/camera_rig/main_camera.rs
+@@ -1,20 +1,11 @@
+-//! `systems::camera_rig::main_camera` — `MainCamera`（0x4e0 B 资源）的已核对部分。
+-//!
+-//! 全部取自 B 构建 EXE：
+-//!
+-//! | 项 | 地址 | 级别 |
+-//! |---|---|---|
+-//! | 模式字节 `+0x4d0`、宽高比 `+0x4d8`、鼠标深度字节 `+0x344` | `main_camera_update` 0x140912c20 | O |
+-//! | `CameraMode::previous` | 0x140914ac0 | O：`movabs rax, 0x40302010006; shr rax, cl`（`cl = mode*8`） |
+-//! | fov 偏移表（13 项） | 0x142aabb98 | O：逐项实读 |
+-//! | `target_vertical_fov_degrees` | 0x1409114d0 | O：`[self + table[mode] + 0x108]` |
+-//! | `immediately_set_vertical_fov_degrees` | 0x1409114f0 → 0x140c974f0 | O：`[self + table[mode] + 0x100 + 8] = [… + 4] = fov` |
+-//! | `store_parameters` | 0x140911710 | O |
+-//!
+-//! `MainCamera::new`（0x14090ec70）已按原构造指令恢复六个 body、lens 和 dolly driver owner。
+-//! 未做：`main_camera_update` 的按模式
+-//! 跳表（0x142aabd04 / 0x142aabd30，各模式分支的反编译有损坏）、`immediately_finish_interpolating`、
+-//! `paused_main_camera_update`。所以 [`MainCamera`] 只是 0x4e0 字节原始缓冲加上已核对偏移的读写器。
++//! MainCamera owns the six original B bodies, lenses and persistent rig state.
++//! Normal/TiltShift/TopDown use the restored orbit queue and soft bounds;
++//! Free/Walk/Butterfly reuse the existing original Dolly0.6 drivers. The byte
++//! mirror supports existing consumers; every vector and rig has a Rust owner.
++//! Per-frame controls/snapshot/paused systems are in systems::main_camera.
++//! B FOV table142aabb98 has six entries; subsequent qwords are depth-pivot
++//! offset tables, not more modes. The old 13-mode/CameraMode::previous claim
++//! was false (previous@140914ac0 belongs to CameraRotationPivot).
+ 
+ use bevy_ecs::resource::Resource;
+ use glam::{Mat4, Quat, Vec3};
+@@ -22,16 +13,18 @@
+ pub const MAIN_CAMERA_SIZE: usize = 0x4e0;
+ pub const MODE_OFFSET: usize = 0x4d0;
+ pub const ASPECT_OFFSET: usize = 0x4d8;
+-pub const MOUSE_DEPTH_OFFSET: usize = 0x344;
++/// B main_camera_update140912e66..e74 copies Modifiers low byte into Walk.
++pub const WALK_MODIFIER_OFFSET: usize = 0x344;
+ 
+ /// 维护的 `CameraMatrices.inverse_view` 列（O：`CameraMatrices::eye_position`
+ /// 0x140c96d40 读 `[base+0xc0..0x100]`；`MainCamera::eye_position` 0x140911dd0 以
+ /// `self+0` 转发到该矩阵块）。
+ pub const INVERSE_VIEW_OFFSET: usize = 0xc0;
+ 
+-/// ActiveRotation 队列 `rotations Vec@+0x100`：len@+0x100、ptr@+0x108、cap@+0x110
+-/// （O 0x140911520 机器码 `[rsi+0x100]=len / [rsi+0x108]=ptr / [rsi+0x110]=cap`）。
+-pub const ROTATIONS_LEN_OFFSET: usize = 0x100;
++/// B owned rotations Vec header: cap100,ptr108,len110. The earlier equal
++/// cap/len=1 constructor obscured their order; normal::update reads len+10.
++pub const ROTATIONS_VEC_OFFSET: usize = 0x100;
++pub const ROTATIONS_LEN_OFFSET: usize = 0x110;
+ 
+ /// 轨道四元数角度系数（O 0x140911520：`mulss xmm2/xmm3, [0x142aab4b0]` =
+ /// 0x3c8efa35）。非 π/180 字面量，按位保留。
+@@ -45,12 +38,10 @@
+ pub const NORMAL_YAW_OFFSET: usize = 0x154;
+ pub const NORMAL_FOV_OFFSET: usize = 0x190;
+ 
+-/// fov 偏移表（O 0x142aabb98，13 个 u64，相对 `MainCamera + 0x100` 的 body 内 fov 槽）。
+-pub const FOV_OFFSETS: [usize; 13] = [
+-    0x8c, 0x144, 0x1c4, 0x264, 0x31c, 0x3a4, 0x8, 0x20, 0x14, 0x2c, 0x8, 0x14, 0xc,
+-];
+-
+-/// 模式字节（O：0..=12，共 13 个槽）。0..=5 是六个 body；6..=12 复用 body 的 fov 槽（名字 U）。
++/// B six-qword FOV table142aabb98, relative to MainCamera+100.
++pub const FOV_OFFSETS: [usize; 6] = [0x8c, 0x144, 0x1c4, 0x264, 0x31c, 0x3a4];
++
++/// B six original body modes0..5.
+ #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+ pub struct CameraMode(pub u8);
+ 
+@@ -63,15 +54,7 @@
+     pub const BUTTERFLY: Self = Self(5);
+ 
+     pub fn new(byte: u8) -> Option<Self> {
+-        (byte <= 12).then_some(Self(byte))
+-    }
+-
+-    /// O 0x140914ac0：`(0x40302010006 >> (mode * 8)) as u8`，x86 的 64 位移位按低 6 位取模，
+-    /// 所以 `mode >= 8` 回绕到 `mode & 7`。
+-    pub fn previous(self) -> Self {
+-        const TABLE: u64 = 0x0000_0403_0201_0006;
+-        let shift = u32::from(self.0.wrapping_mul(8)) & 63;
+-        Self((TABLE >> shift) as u8)
++        (byte < 6).then_some(Self(byte))
+     }
+ }
+ 
+@@ -127,7 +110,7 @@
+ /// B `country_core::systems::main_camera::MainCameraMoved`（roof ui_edit_roof
+ /// 0x141a18dd0 消费的事件；观测载荷为相机位置）。
+ #[derive(bevy_ecs::event::Event, Clone, Copy, Debug)]
+-pub struct MainCameraMoved(pub glam::Vec3);
++pub struct MainCameraMoved;
+ 
+ /// 28 B ActiveRotation 记录（O 0x140911520 机器码：`+0=0(u64)`、`+8=pitch_delta`、
+ /// `+0xc=yaw_delta`、`+0x10=0x80000000`、`+0x14=0x80000000`、`+0x18=-1.0`；push 入
+@@ -173,6 +156,9 @@
+     raw: Box<[u8; MAIN_CAMERA_SIZE]>,
+     /// ActiveRotation 队列（O 0x140911520：rotations Vec@+0x100）。
+     pub rotations: Vec<ActiveRotation>,
++    /// Safe owners of the other two NormalCamera body backlogs. All scalar
++    /// body state stays in the same canonical raw mirror; no pointer readback.
++    orbit_backlogs: [Vec<super::normal_body::ActiveRotation>; 2],
+     /// Rust owns the dolly allocations instead of storing original-process
+     /// pointers in `raw`. The native constructor builds these three rigs.
+     pub startup_rigs: Option<std::sync::Arc<std::sync::Mutex<StartupCameraRigs>>>,
+@@ -192,6 +178,7 @@
+         Self {
+             raw: Box::new([0; MAIN_CAMERA_SIZE]),
+             rotations: Vec::new(),
++            orbit_backlogs: std::array::from_fn(|_| Vec::new()),
+             startup_rigs: None,
+         }
+     }
+@@ -398,11 +385,10 @@
+         }
+     }
+ 
+-    /// 维护的 `CameraMatrices`（O：@+0x0 矩阵块区；`inverse_view` 列 +0xc0）。crate 内
+-    /// `projection` 用单位阵占位（`xz_projective_rotation` 只依赖 `inverse_view`）。
++    /// Read the maintained real projection and inverse-view matrices.
+     pub fn camera_matrices(&self) -> utils::camera::CameraMatrices {
+         utils::camera::CameraMatrices {
+-            projection: Mat4::IDENTITY,
++            projection: self.read_matrix(0),
+             inverse_view: self.read_matrix(INVERSE_VIEW_OFFSET),
+         }
+     }
+@@ -425,7 +411,8 @@
+         );
+         let yaw = self.read_f32(NORMAL_YAW_OFFSET);
+         let pitch = self.read_f32(NORMAL_PITCH_OFFSET);
+-        let rotation = Quat::from_rotation_y(yaw) * Quat::from_rotation_x(pitch);
++        let rotation = Quat::from_rotation_y(yaw * ORBIT_ANGLE_SCALE)
++            * Quat::from_rotation_x(pitch * ORBIT_ANGLE_SCALE);
+         let body = utils::camera::CameraBodyMatrices::from_position_rotation(position, rotation);
+         self.set_camera_matrices(body.inverse_view);
+     }
+@@ -451,7 +438,7 @@
+         FOV_OFFSETS[self.mode_byte() as usize]
+     }
+ 
+-    /// O 0x1409114d0。模式字节 > 12 时越界 panic（原版表只有 13 项）。
++    /// B target FOV read from the selected one of six original lenses.
+     pub fn target_vertical_fov_degrees(&self) -> f32 {
+         self.read_f32(self.fov_slot() + 0x108)
+     }
+@@ -529,8 +516,8 @@
+     ///    写 `+0x144/+0x148/+0x14c`（**不直写 Normal body 位置/yaw/pitch**）；
+     /// 3. `+0x118 = 0`；
+     /// 4. **替换** rotations Vec@+0x100（O：dealloc 旧+新 alloc，len=1），ActiveRotation
+-    ///    28B `{0, pitch−Δ, yaw−Δ, 0x80000000, 0x80000000, -1.0}`（len@+0x100、ptr@+0x108、
+-    ///    cap@+0x110）；
++    ///    28B `{0, pitch−Δ, yaw−Δ, 0x80000000, 0x80000000, -1.0}`
++    ///    with owned Vec header cap100/ptr108/len110;
+     /// 5. `!ignore_snapshot` 时 `+0x194 = params.vertical_fov_degrees`（native+18）。
+     pub fn load_parameters(
+         &mut self,
+@@ -563,118 +550,223 @@
+         let rotations_len = self.rotations.len() as u64;
+         let rotations_ptr = self.rotations.as_ptr() as usize as u64;
+         let rotations_cap = self.rotations.capacity() as u64;
++        self.write_u64(ROTATIONS_VEC_OFFSET, rotations_cap);
++        self.write_u64(ROTATIONS_VEC_OFFSET + 8, rotations_ptr);
+         self.write_u64(ROTATIONS_LEN_OFFSET, rotations_len);
+-        self.write_u64(ROTATIONS_LEN_OFFSET + 8, rotations_ptr);
+-        self.write_u64(ROTATIONS_LEN_OFFSET + 16, rotations_cap);
+         if !ignore_snapshot {
+             self.write_f32(0x194, params.vertical_fov_degrees);
+         }
+     }
+ 
+-    /// The Normal branch of B immediately_finish_interpolating@140911b50,
+-    /// called immediately after load_parameters. The original dispatch uses
+-    /// body.update(dt=100000), then lens smoothing exp(-500000), then writes
+-    /// all four matrices. This entry is deliberately restricted to the exact
+-    /// zero-arm rotation records produced by load_parameters; other body and
+-    /// active-orbit update paths retain their separate recovery boundary.
++    /// Full body update replaces the earlier special zero-arm loading path.
++    /// Original immediately_finish_interpolating uses dt100000. Loaded normal
++    /// camera records, pending translations and arbitrary orbit arms are all
++    /// handled by the same per-frame business algorithm.
+     pub fn finish_loaded_normal_interpolation(&mut self, demo: bool) -> anyhow::Result<()> {
+         anyhow::ensure!(
+             self.mode_byte() == CameraMode::NORMAL.0,
+-            "B loaded camera interpolation requires Normal mode"
++            "loaded camera must be Normal"
+         );
+-        anyhow::ensure!(
+-            self.raw[0x118] == 0 && self.raw[0x16c] == 0,
+-            "B loaded normal camera active/loose-body update is not restored"
+-        );
+-        anyhow::ensure!(
+-            self.rotations.iter().all(|rotation| rotation.pad == 0),
+-            "B loaded normal camera nonzero orbit-arm update is not restored"
+-        );
+-        let mut position = Vec3::new(
+-            self.read_f32(0x138),
+-            self.read_f32(0x13c),
+-            self.read_f32(0x140),
+-        );
+-        let mut pending = Vec3::new(
+-            self.read_f32(0x144),
+-            self.read_f32(0x148),
+-            self.read_f32(0x14c),
+-        );
+-        // update@14094a092..126 first bounds the eventual radial target.
+-        let target = position + pending;
+-        let radius = self.read_f32(0x164);
+-        let squared = target.z * target.z + (target.y * target.y + target.x * target.x);
+-        if radius * radius < squared {
+-            let bounded = (target / squared.sqrt()) * radius;
+-            pending += bounded - target;
+-        }
+-        let pitch = self.read_f32(NORMAL_PITCH_OFFSET);
+-        let yaw = self.read_f32(NORMAL_YAW_OFFSET);
+-        let before = Quat::from_rotation_y(yaw * ORBIT_ANGLE_SCALE)
+-            * Quat::from_rotation_x(pitch * ORBIT_ANGLE_SCALE);
+-        let forward = before * Vec3::NEG_Z;
+-        let offset_x = (forward.x * 89.7) * 0.2;
+-        let offset_z = (forward.z * 89.7) * 0.2;
+-        let mut anchor = glam::Vec2::new(position.x + offset_x, position.z + offset_z);
+-        if demo {
+-            let squared = anchor.y * anchor.y + anchor.x * anchor.x;
+-            if 8046.0894 < squared {
+-                anchor = (anchor / squared.sqrt()) * 89.7;
++        self.update_camera_matrices(100000.0, demo);
++        Ok(())
++    }
++
++    pub(crate) fn read_vec3(&self, offset: usize) -> Vec3 {
++        Vec3::new(
++            self.read_f32(offset),
++            self.read_f32(offset + 4),
++            self.read_f32(offset + 8),
++        )
++    }
++    fn write_vec3(&mut self, offset: usize, value: Vec3) {
++        for (index, component) in value.to_array().into_iter().enumerate() {
++            self.write_f32(offset + index * 4, component);
++        }
++    }
++    pub(crate) fn set_walk_modifier(&mut self, value: u8) {
++        self.raw[0x344] = value;
++    }
++
++    /// Borrow a Normal-family body, transferring (not cloning) its owned Vec.
++    /// Native cap/ptr/len are a diagnostic mirror only and are never dereferenced.
++    pub(crate) fn with_normal_body<T>(
++        &mut self,
++        mode: CameraMode,
++        op: impl FnOnce(&mut super::normal_body::NormalCameraBody) -> T,
++    ) -> T {
++        use super::normal_body::{ActiveRotation as Orbit, NormalCameraBody};
++        let (base, slot) = match mode.0 {
++            0 => (0x100, None),
++            1 => (0x1b8, Some(0)),
++            4 => (0x390, Some(1)),
++            _ => panic!("camera mode has no Normal body"),
++        };
++        let rotations = if let Some(slot) = slot {
++            std::mem::take(&mut self.orbit_backlogs[slot])
++        } else {
++            std::mem::take(&mut self.rotations)
++                .into_iter()
++                .map(|r| Orbit {
++                    unknown_00: f32::from_bits(r.pad as u32),
++                    arm_length: f32::from_bits((r.pad >> 32) as u32),
++                    pitch_delta: r.pitch_delta,
++                    yaw_delta: r.yaw_delta,
++                    unknown_10: f32::from_bits(r.field_10),
++                    unknown_14: f32::from_bits(r.field_14),
++                    unknown_18: r.field_18,
++                })
++                .collect()
++        };
++        let active = (u32::from_le_bytes(self.raw[base + 0x18..base + 0x1c].try_into().unwrap())
++            != 0)
++            .then(|| Orbit {
++                unknown_00: self.read_f32(base + 0x1c),
++                arm_length: self.read_f32(base + 0x20),
++                pitch_delta: self.read_f32(base + 0x24),
++                yaw_delta: self.read_f32(base + 0x28),
++                unknown_10: self.read_f32(base + 0x2c),
++                unknown_14: self.read_f32(base + 0x30),
++                unknown_18: self.read_f32(base + 0x34),
++            });
++        let mut body = NormalCameraBody {
++            rotations,
++            active,
++            position: self.read_vec3(base + 0x38),
++            pending_translation: self.read_vec3(base + 0x44),
++            pitch: self.read_f32(base + 0x50),
++            yaw: self.read_f32(base + 0x54),
++            pitch_min: self.read_f32(base + 0x58),
++            pitch_max: self.read_f32(base + 0x5c),
++            radial_min: self.read_f32(base + 0x60),
++            radial_max: self.read_f32(base + 0x64),
++            terrain_clearance: self.read_f32(base + 0x68),
++            loose_ground_projection: f32::from(self.raw[base + 0x6c]),
++        };
++        let value = op(&mut body);
++        self.write_vec3(base + 0x38, body.position);
++        self.write_vec3(base + 0x44, body.pending_translation);
++        self.write_f32(base + 0x50, body.pitch);
++        self.write_f32(base + 0x54, body.yaw);
++        self.raw[base + 0x18..base + 0x1c]
++            .copy_from_slice(&u32::from(body.active.is_some()).to_le_bytes());
++        if let Some(r) = body.active {
++            for (index, component) in [
++                r.unknown_00,
++                r.arm_length,
++                r.pitch_delta,
++                r.yaw_delta,
++                r.unknown_10,
++                r.unknown_14,
++                r.unknown_18,
++            ]
++            .into_iter()
++            .enumerate()
++            {
++                self.write_f32(base + 0x1c + index * 4, component);
+             }
++        }
++        let (cap, ptr, len) = if let Some(slot) = slot {
++            self.orbit_backlogs[slot] = body.rotations;
++            let rotations = &self.orbit_backlogs[slot];
++            (
++                rotations.capacity(),
++                rotations.as_ptr() as usize,
++                rotations.len(),
++            )
+         } else {
+-            // NaN-aware clamp from the maxps/minps original full-game branch.
+-            for value in [&mut anchor.x, &mut anchor.y] {
+-                *value = if value.is_nan() {
+-                    -44.85
+-                } else {
+-                    value.max(-44.85).min(44.85)
++            self.rotations = body
++                .rotations
++                .into_iter()
++                .map(|r| ActiveRotation {
++                    pad: u64::from(r.unknown_00.to_bits())
++                        | (u64::from(r.arm_length.to_bits()) << 32),
++                    pitch_delta: r.pitch_delta,
++                    yaw_delta: r.yaw_delta,
++                    field_10: r.unknown_10.to_bits(),
++                    field_14: r.unknown_14.to_bits(),
++                    field_18: r.unknown_18,
++                })
++                .collect();
++            (
++                self.rotations.capacity(),
++                self.rotations.as_ptr() as usize,
++                self.rotations.len(),
++            )
++        };
++        self.write_u64(base, cap as u64);
++        self.write_u64(base + 8, ptr as u64);
++        self.write_u64(base + 0x10, len as u64);
++        value
++    }
++
++    pub(crate) fn update_body_pose(&mut self, dt: f32, demo: bool) -> (Vec3, Quat) {
++        match self.mode_byte() {
++            0 | 1 | 4 => {
++                self.with_normal_body(CameraMode(self.mode_byte()), |body| body.update(dt, demo))
++            }
++            mode @ (2 | 3 | 5) => {
++                let mut update_dt = dt;
++                if mode == 5 {
++                    let applied = u32::from_le_bytes(self.raw[0x480..0x484].try_into().unwrap());
++                    let selected = u32::from_le_bytes(self.raw[0x484..0x488].try_into().unwrap());
++                    if applied != selected {
++                        self.raw[0x480..0x484].copy_from_slice(&selected.to_le_bytes());
++                        update_dt = 1000.0;
++                    }
++                }
++                let owner = self
++                    .startup_rigs
++                    .as_ref()
++                    .expect("original dolly rigs were not constructed")
++                    .clone();
++                let mut rigs = owner.lock().expect("camera rig mutex poisoned");
++                let transform = match mode {
++                    2 => rigs.free.update(update_dt),
++                    3 => rigs.walk.update(update_dt),
++                    5 => rigs.butterfly.update(update_dt),
++                    _ => unreachable!(),
+                 };
++                let p = transform.position;
++                let q = transform.rotation;
++                (
++                    Vec3::new(p.x, p.y, p.z),
++                    Quat::from_xyzw(q.v.x, q.v.y, q.v.z, q.s),
++                )
+             }
+-        }
+-        position.x = anchor.x - offset_x;
+-        position.z = anchor.y - offset_z;
+-        // exp(-8*100000) underflows to zero, so each saved delta is consumed
+-        // wholly. Both arm-length words are zero in the checked load record.
+-        let mut next_pitch = pitch;
+-        let mut next_yaw = yaw;
+-        for rotation in &self.rotations {
+-            next_pitch += rotation.pitch_delta;
+-            next_yaw += rotation.yaw_delta;
+-        }
+-        position += pending;
+-        if position.y <= 1.0 {
+-            position.y = 1.0;
+-        }
+-        for (offset, value) in [
+-            (0x138, position.x),
+-            (0x13c, position.y),
+-            (0x140, position.z),
+-            (0x144, 0.0),
+-            (0x148, 0.0),
+-            (0x14c, 0.0),
+-            (NORMAL_PITCH_OFFSET, next_pitch),
+-            (NORMAL_YAW_OFFSET, next_yaw),
+-        ] {
+-            self.write_f32(offset, value);
+-        }
+-        self.rotations.clear();
+-        self.write_u64(ROTATIONS_LEN_OFFSET + 16, 0);
+-        let fov = self.read_f32(0x194) * 1.0 + self.read_f32(0x190) * 0.0;
+-        self.write_f32(0x190, fov);
++            mode => panic!("invalid original camera mode {mode}"),
++        }
++    }
++
++    fn write_camera_pose_and_lens(&mut self, position: Vec3, rotation: Quat, fov: f32) {
++        let lens = 0x100 + FOV_OFFSETS[self.mode_byte() as usize];
+         let projection = utils::camera::CameraProjectionParams {
+-            aspect: self.read_f32(ASPECT_OFFSET),
+-            near: self.read_f32(0x18c),
++            aspect: self.aspect(),
++            near: self.read_f32(lens),
+             vertical_fov_degrees: fov,
+         }
+         .calc_matrices();
+-        let rotation = Quat::from_rotation_y(next_yaw * ORBIT_ANGLE_SCALE)
+-            * Quat::from_rotation_x(next_pitch * ORBIT_ANGLE_SCALE);
+         let body = utils::camera::CameraBodyMatrices::from_position_rotation(position, rotation);
+         self.write_matrix(0, &projection.projection);
+         self.write_matrix(0x40, &projection.inverse_projection);
+         self.write_matrix(0x80, &body.view);
+         self.write_matrix(0xc0, &body.inverse_view);
+-        Ok(())
++    }
++    pub(crate) fn update_camera_matrices(&mut self, dt: f32, demo: bool) {
++        let (position, rotation) = self.update_body_pose(dt, demo);
++        let lens = 0x100 + FOV_OFFSETS[self.mode_byte() as usize];
++        let alpha = 1.0 - (dt / -0.2).exp();
++        let fov = (1.0 - alpha) * self.read_f32(lens + 4) + alpha * self.read_f32(lens + 8);
++        self.write_f32(lens + 4, fov);
++        self.write_camera_pose_and_lens(position, rotation, fov);
++    }
++    /// Exact paused path includes `current + target * 0`, preserving its
++    /// IEEE behavior and body.update(0) rather than inventing a frozen matrix.
++    pub(crate) fn update_paused_camera_matrices(&mut self, demo: bool) {
++        let (position, rotation) = self.update_body_pose(0.0, demo);
++        let lens = 0x100 + FOV_OFFSETS[self.mode_byte() as usize];
++        let fov = self.read_f32(lens + 4) + self.read_f32(lens + 8) * 0.0;
++        self.write_f32(lens + 4, fov);
++        self.write_camera_pose_and_lens(position, rotation, fov);
+     }
+ 
+     /// O 0x140911dd0（12 B 转发器）：`eye_position` → 维护的 `CameraMatrices`（@+0x0，
+@@ -695,16 +787,9 @@
+         self.camera_matrices().xz_projective_rotation()
+     }
+ 
+-    /// `MainCamera::reset`（行 428，内联，I：重建默认装配；系统层 reset_camera 调用）。
+-    /// crate 内重建 = 清缓冲 + 模式=Normal + fov=默认 45 + 位置 (0,5,0) + 维护矩阵重建
+-    /// （使 `eye_position` 回到 (0,5,0)）。
++    /// Reuse the real constructor at the existing window aspect.
+     pub fn reset(&mut self) {
+-        self.raw = Box::new([0; MAIN_CAMERA_SIZE]);
+-        self.rotations.clear();
+-        self.set_mode_byte(CameraMode::NORMAL);
+-        self.write_f32(NORMAL_FOV_OFFSET, 45.0);
+-        self.write_f32(NORMAL_POSITION_OFFSET + 4, 5.0);
+-        self.rebuild_camera_matrices_from_normal_body();
++        *self = Self::new(self.aspect());
+     }
+ }
+ 
+@@ -800,23 +885,13 @@
+     }
+ 
+     #[test]
+-    fn previous_follows_the_packed_table_including_the_wraparound() {
+-        let table = [6, 0, 1, 2, 3, 4, 0, 0, 6, 0, 1, 2, 3];
+-        for (mode, expected) in table.into_iter().enumerate() {
+-            assert_eq!(
+-                CameraMode(mode as u8).previous(),
+-                CameraMode(expected),
+-                "mode {mode}"
+-            );
+-        }
+-        assert_eq!(CameraMode::NORMAL.previous(), CameraMode(6));
+-    }
+-
+-    #[test]
+-    fn mode_range_is_thirteen_slots() {
+-        assert!(CameraMode::new(12).is_some());
+-        assert!(CameraMode::new(13).is_none());
+-        assert_eq!(FOV_OFFSETS.len(), 13);
++    fn original_camera_modes_are_exactly_the_six_body_variants() {
++        for mode in 0..6 {
++            assert!(CameraMode::new(mode).is_some());
++        }
++        assert!(CameraMode::new(6).is_none());
++        assert!(CameraMode::new(12).is_none());
++        assert_eq!(FOV_OFFSETS.len(), 6);
+     }
+ 
+     #[test]
+@@ -828,10 +903,10 @@
+         assert_eq!(camera.read_f32(NORMAL_FOV_OFFSET), 50.0);
+         assert_eq!(camera.read_f32(0x194), 50.0);
+         assert_eq!(camera.target_vertical_fov_degrees(), 50.0);
+-        camera.set_mode_byte(CameraMode(10));
+-        assert_eq!(camera.target_vertical_fov_degrees(), 0.0);
+-        camera.immediately_set_vertical_fov_degrees(33.0);
+-        assert_eq!(camera.read_f32(0x100 + 0x8 + 8), 33.0);
++        camera.set_mode_byte(CameraMode::TOP_DOWN);
++        camera.immediately_set_vertical_fov_degrees(8.0);
++        assert_eq!(camera.read_f32(0x420), 8.0);
++        assert_eq!(camera.target_vertical_fov_degrees(), 8.0);
+     }
+ 
+     #[test]
+@@ -937,7 +1012,7 @@
+         );
+         assert_eq!(
+             u64::from_le_bytes(
+-                camera.raw[ROTATIONS_LEN_OFFSET + 8..ROTATIONS_LEN_OFFSET + 16]
++                camera.raw[ROTATIONS_VEC_OFFSET + 8..ROTATIONS_VEC_OFFSET + 16]
+                     .try_into()
+                     .unwrap()
+             ),
+@@ -945,7 +1020,7 @@
+         );
+         assert_eq!(
+             u64::from_le_bytes(
+-                camera.raw[ROTATIONS_LEN_OFFSET + 16..ROTATIONS_LEN_OFFSET + 24]
++                camera.raw[ROTATIONS_VEC_OFFSET..ROTATIONS_VEC_OFFSET + 8]
+                     .try_into()
+                     .unwrap()
+             ),
+@@ -1000,6 +1075,177 @@
+         let _ = camera.reset();
+         assert_eq!(camera.mode_byte(), CameraMode::NORMAL.0);
+         // reset 重建维护矩阵（Normal body 位置 (0,5,0)）→ eye_position 回到 (0,5,0)。
+-        assert_eq!(camera.eye_position(), Vec3::new(0.0, 5.0, 0.0));
++        assert_eq!(camera.eye_position(), Vec3::ZERO);
+     }
+ }
++
++impl MainCamera {
++    pub(crate) fn set_walk_modifier(&mut self, enabled: bool) {
++        self.raw[WALK_MODIFIER_OFFSET] = u8::from(enabled);
++    }
++    pub(crate) fn begin_selected_rotation(&mut self, anchor: Vec3, direction: Vec3, eye: Vec3) {
++        let mode = CameraMode(self.mode_byte());
++        if matches!(mode.0, 0 | 1 | 4) {
++            self.with_normal_body(mode, |body| body.begin_rotation(anchor, direction, eye));
++        }
++    }
++    pub(crate) fn finish_selected_rotation(&mut self) {
++        let mode = CameraMode(self.mode_byte());
++        // Original release excludes all modes2..5, including TopDown4.
++        if matches!(mode.0, 0 | 1) {
++            self.with_normal_body(mode, |body| body.finish_rotation());
++        }
++    }
++    pub(crate) fn rotate_selected(&mut self, yaw: f32, pitch: f32) {
++        match self.mode_byte() {
++            0 | 1 | 4 => {
++                let mode = CameraMode(self.mode_byte());
++                self.with_normal_body(mode, |body| body.rotate_yaw_pitch(yaw, pitch));
++            }
++            2 | 3 => {
++                let owner = self
++                    .startup_rigs
++                    .as_ref()
++                    .expect("MainCamera's real Dolly rigs are absent")
++                    .clone();
++                let mut rigs = owner.lock().expect("camera rig owner poisoned");
++                let rig = if self.mode_byte() == 2 {
++                    &mut rigs.free
++                } else {
++                    &mut rigs.walk
++                };
++                super::free_camera::rotate_rig_yaw_pitch(rig, yaw, pitch);
++            }
++            5 => {}
++            _ => panic!("invalid camera mode"),
++        }
++    }
++    #[cfg(feature = "native-physics")]
++    pub(crate) fn translate_selected(
++        &mut self,
++        movement: Vec3,
++        dt: f32,
++        heights: &crate::resources::terrain_height::TerrainHeightsData,
++        world: &crate::systems::collision::world::RaycastWorld,
++        demo: bool,
++    ) {
++        let mode = CameraMode(self.mode_byte());
++        match mode.0 {
++            0 | 1 | 4 => {
++                let matrices = self.camera_matrices();
++                self.with_normal_body(mode, |body| body.translate_screen_space(movement, matrices));
++            }
++            2 | 3 => {
++                let owner = self
++                    .startup_rigs
++                    .as_ref()
++                    .expect("MainCamera's real Dolly rigs are absent")
++                    .clone();
++                let mut rigs = owner.lock().expect("camera rig owner poisoned");
++                if mode.0 == 2 {
++                    super::free_camera::translate_rig_screen_space(
++                        &mut rigs.free,
++                        movement,
++                        dt,
++                        heights,
++                    );
++                } else {
++                    self.write_f32(0x340, dt);
++                    super::walk::translate_rig_screen_space(
++                        &mut rigs.walk,
++                        movement,
++                        dt,
++                        self.raw[0x344] != 0,
++                        world,
++                        heights,
++                        demo,
++                    );
++                }
++            }
++            5 => {}
++            _ => panic!("invalid camera mode"),
++        }
++    }
++    #[cfg(feature = "native-physics")]
++    pub(crate) fn constrain_selected(
++        &mut self,
++        heights: &crate::resources::terrain_height::TerrainHeightsData,
++        world: &crate::systems::collision::world::RaycastWorld,
++        path: &crate::resources::world_raster_defs::PathRaster,
++        winter: bool,
++    ) {
++        let mode = CameraMode(self.mode_byte());
++        match mode.0 {
++            0 | 1 | 4 => self.with_normal_body(mode, |body| {
++                body.constrain_to_be_above_terrain(|x, z| heights.sample_at_world_xz(x, z))
++            }),
++            2 | 5 => {}
++            3 => {
++                let owner = self
++                    .startup_rigs
++                    .as_ref()
++                    .expect("MainCamera's real Dolly rigs are absent")
++                    .clone();
++                let mut rigs = owner.lock().expect("camera rig owner poisoned");
++                let source = super::walk::constrain_rig_to_be_above_terrain(
++                    &mut rigs.walk,
++                    self.read_f32(0x340),
++                    self.raw[0x344] != 0,
++                    world,
++                    heights,
++                    path,
++                    winter,
++                );
++                match source {
++                    super::walk::GroundSourceUpdate::NoHit => self.raw[0x328] = 0x11,
++                    super::walk::GroundSourceUpdate::Terrain => self.raw[0x328] = 0x0b,
++                    super::walk::GroundSourceUpdate::Collider(words) => {
++                        for (i, word) in words.into_iter().enumerate() {
++                            self.write_u64(0x328 + i * 8, word);
++                        }
++                    }
++                }
++            }
++            _ => panic!("invalid camera mode"),
++        }
++    }
++    pub(crate) fn butterfly_selected_index(&self) -> usize {
++        u32::from_le_bytes(self.raw[0x484..0x488].try_into().unwrap()) as usize
++    }
++    pub(crate) fn advance_butterfly(&mut self, zoom: f32) {
++        // Original signum→saturating f32/i32 cast→wrapping subtraction/max0.
++        let sign = if zoom > 0.0 { 1 } else { -1 };
++        let selected = self.butterfly_selected_index() as i32;
++        let selected = selected.wrapping_sub(sign).max(0) as u32;
++        self.raw[0x484..0x488].copy_from_slice(&selected.to_le_bytes());
++    }
++    pub(crate) fn follow_butterfly(
++        &mut self,
++        transform: &crate::utils::components::transform::Transform,
++    ) {
++        use dolly::drivers::{LookAt, Position, Rotation};
++        let owner = self
++            .startup_rigs
++            .as_ref()
++            .expect("MainCamera's real Dolly rigs are absent")
++            .clone();
++        let mut rigs = owner.lock().expect("camera rig owner poisoned");
++        let p = transform.translation;
++        let q = transform.rotation;
++        rigs.butterfly.driver_mut::<Position>().position = [p.x, p.y, p.z].into();
++        rigs.butterfly.driver_mut::<Rotation>().rotation = [q.x, q.y, q.z, q.w].into();
++        let target = p + Vec3::Y;
++        rigs.butterfly.driver_mut::<LookAt>().target = [target.x, target.y, target.z].into();
++        self.set_mode_byte(CameraMode::BUTTERFLY);
++    }
++}
++
++impl MainCamera {
++    pub(crate) fn zoom_selected(&mut self, amount: f32, anchor: Vec3) {
++        let mode = CameraMode(self.mode_byte());
++        if let Some(body) = super::normal_body::ZoomBody::for_mode(mode) {
++            self.with_normal_body(mode, |normal| normal.zoom(body, amount, anchor))
++                .unwrap_or_else(|error| panic!("{error}"));
++        }
++    }
++}

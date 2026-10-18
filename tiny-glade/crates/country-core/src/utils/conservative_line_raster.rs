@@ -1,171 +1,111 @@
-//! `conservative_line_raster::conservative_plot_line` — 带半径的保守线段栅格化。
+//! 带半径线段的保守栅格覆盖；支持在枚举前限制输出矩形。
 //!
-//! 原版是自有工作区 crate（`crates/conservative-line-raster/src/lib.rs`，PDB 的 `impl$0..$3`、
-//! `conservative_plot_line_low`、两个 `quantize_range`、两个 `assert_delta`）；这里作为 `utils` 下的一个模块。
-//! 核对对象：`DirtyTiles` 的实例 0x140b1e460（3501 B，回调内联为"置位图"）。另外两个实例
-//! （0x1402582d0 / 0x142820fb0）回调不同，主体相同。
-//!
-//! 算法（O，逐段读自机器码）：
-//! 1. `dx = x1 - x0`、`dy = y1 - y0`。`|dx| > |dy|`（严格；NaN 走另一支）为 **x 主轴**，否则 **y 主轴**
-//!    （同一份代码把两轴互换）。下面以 x 主轴叙述，`major`=x、`minor`=y。
-//! 2. `slope = dy / dx`，非有限则 0；`c = r * (1 - |slope|)`（斜率非有限时 `c = r`）；`h = hypotf(slope, 1) * r`
-//!    （0x142923cf0 = `_hypotf`，导入表实读）。
-//! 3. 按主轴排序端点，`xs = x_min - r`，`xe = x_max + r + 0`（`x_max + r`），`ys = y@x_min - slope * r`。
-//! 4. 首列 `col = floor(xs)`：`y_end = (min(xe, col + 1) - xs) * slope + ys`；
-//!    斜率为正（`minor_end > minor_start`，调用 `assert_delta` ≥ 0）：行 `[trunc(ys - c), trunc(y_end + h)]`；
-//!    否则（`assert_delta` ≤ 0）：行 `[trunc(y_end - h), trunc(ys + c)]`。
-//! 5. 之后每列（`col < last = floor(xe)`）：`y_new = y_prev + slope`，
-//!    正：`[trunc(y_prev - h), trunc(y_new + h)]`；负：`[trunc(y_new - h), trunc(y_prev + h)]`。
-//! 6. 最后一列（`col == last`）：`y_at = slope * (xe - last) + y_prev`，
-//!    正：`[trunc(y_prev - h), trunc(y_at + c)]`；负：`[trunc(y_at - c), trunc(y_prev + h)]`。
-//! 7. 每个 `trunc` 都是 `cvttss2si` + 饱和（> 2147483520 → `i32::MAX`，NaN → 0），即 Rust 的 `as i32`。
-//!    行区间是闭区间，起点大于终点则该列为空；回调收到 `(x, y)`，x 主轴时 `(col, row)`，y 主轴时 `(row, col)`。
-//!
-//! `DirtyTiles` 实例的回调：`(x | y) as u32 <= 63` 才置 `rows[y] |= 1 << x`（见 [`DirtyTiles::set_cell`](super::dirty_tiles::DirtyTiles)）。
-//! 其它实例有一个 `&mut bool` 提前停止标志（0x140ade620 的外层循环检查它），这个实例不碰它。
-//!
-//! 偏差/不确定：`assert_delta` 的 panic 文本在 0x142af6f30（Display 一个 f32，源码行 ≥ 93），只在斜率符号与分支
-//! 矛盾时触发——上面的分支条件已经保证不会，所以这里不复刻（I）。
+//! 半径按轴对齐外扩计算，保证覆盖圆头笔画，允许少量多标记的边界格。
+//! 有界入口的开销只与输出矩形及线段数量有关，不枚举矩形外的格子。
 
-fn trunc_i32(value: f32) -> i32 {
-    value as i32
-}
+use std::ops::RangeInclusive;
 
-/// `minss(a, b)` 再按 `cmpunord` 选择：`b` 是 NaN 时取 `a`。
-fn min_or_a(a: f32, b: f32) -> f32 {
-    let m = if a < b { a } else { b };
-    if b.is_nan() { a } else { m }
-}
-
-struct Axes {
-    start_major: f32,
-    start_minor: f32,
-    end_major: f32,
-    end_minor: f32,
-}
-
-fn plot_major(axes: Axes, slope: f32, c: f32, h: f32, r: f32, mut cell: impl FnMut(i32, i32)) {
-    let Axes {
-        start_major,
-        start_minor,
-        end_major,
-        end_minor,
-    } = axes;
-    let positive = end_minor > start_minor;
-    let xs = start_major - r;
-    let ys = start_minor - slope * r;
-    let xe = end_major + r;
-    let c = c * 1.0;
-
-    let mut col = trunc_i32(xs.floor());
-    let first_end = min_or_a(xe, 1.0 + xs.floor());
-    let y_end = (first_end - xs) * slope + ys;
-    let (lo, hi) = if positive {
-        (trunc_i32(ys - c), trunc_i32(y_end + h))
-    } else {
-        (trunc_i32(y_end - h), trunc_i32(ys + c))
-    };
-    let mut emit = |col: i32, lo: i32, hi: i32| {
-        let mut row = lo;
-        while row < hi.wrapping_add(1) {
-            cell(col, row);
-            row += 1;
-        }
-    };
-    emit(col, lo, hi);
-
-    let last = trunc_i32(xe.floor());
-    let mut y_prev = y_end;
-    loop {
-        col = col.wrapping_add(1);
-        if col > last {
-            return;
-        }
-        if col == last {
-            let y_at = slope * (xe - xe.floor()) + y_prev;
-            let (lo, hi) = if positive {
-                (trunc_i32(y_prev - h), trunc_i32(y_at + c))
-            } else {
-                (trunc_i32(y_at - c), trunc_i32(y_prev + h))
-            };
-            emit(col, lo, hi);
-            return;
-        }
-        let y_new = slope + y_prev;
-        let (lo, hi) = if positive {
-            (trunc_i32(y_prev - h), trunc_i32(y_new + h))
-        } else {
-            (trunc_i32(y_new - h), trunc_i32(y_prev + h))
-        };
-        emit(col, lo, hi);
-        y_prev = y_new;
-    }
-}
-
-/// 端点排序判定：原版 `ucomiss start, end; jbe`（0x140b1e4fd / 0x140b1e556），`start <= end` 与**无序（NaN）**
-/// 都走"不交换"分支，只有 `start > end` 才交换。Rust 的 `start <= end` 对 NaN 为假，会错误地交换。
-fn keeps_order(start: f32, end: f32) -> bool {
-    start.is_nan() || end.is_nan() || start <= end
-}
-
-/// O 0x140b1e460 系：把半径 `r` 的线段 `(x0, y0) → (x1, y1)` 覆盖到的格子逐个交给 `cell(x, y)`。
+/// 枚举整个 i32 坐标域内的覆盖格。输出量取决于实际线段跨度。
+/// 绘制固定大小位图时应使用有界入口，避免无意义的大范围输出。
 pub fn conservative_plot_line(
-    (x0, y0): (f32, f32),
-    (x1, y1): (f32, f32),
-    r: f32,
-    mut cell: impl FnMut(i32, i32),
+    start: (f32, f32),
+    end: (f32, f32),
+    radius: f32,
+    visit: impl FnMut(i32, i32),
 ) {
-    let dx = x1 - x0;
-    let dy = y1 - y0;
-    let finite = |v: f32| v.abs().to_bits() < 0x7f80_0000;
-    if dx.abs() > dy.abs() {
-        let raw = dy / dx;
-        let slope = if finite(raw) { raw } else { 0.0 };
-        let c = r * if finite(raw) { 1.0 - raw.abs() } else { 1.0 };
-        let (first, second) = if keeps_order(x0, x1) {
-            ((x0, y0), (x1, y1))
-        } else {
-            ((x1, y1), (x0, y0))
-        };
-        let axes = Axes {
-            start_major: first.0,
-            start_minor: first.1,
-            end_major: second.0,
-            end_minor: second.1,
-        };
-        let h = slope.hypot(1.0) * r;
-        plot_major(axes, slope, c, h, r, &mut cell);
-    } else {
-        let raw = dx / dy;
-        let slope = if finite(raw) { raw } else { 0.0 };
-        let c = r * if finite(raw) { 1.0 - raw.abs() } else { 1.0 };
-        let (first, second) = if keeps_order(y0, y1) {
-            ((x0, y0), (x1, y1))
-        } else {
-            ((x1, y1), (x0, y0))
-        };
-        let axes = Axes {
-            start_major: first.1,
-            start_minor: first.0,
-            end_major: second.1,
-            end_minor: second.0,
-        };
-        let h = slope.hypot(1.0) * r;
-        plot_major(axes, slope, c, h, r, |major, minor| cell(minor, major));
+    conservative_plot_line_in_bounds(
+        start,
+        end,
+        radius,
+        [i32::MIN..=i32::MAX, i32::MIN..=i32::MAX],
+        visit,
+    );
+}
+
+/// 枚举指定 X/Y 闭区间中的覆盖格；非有限坐标、负半径或空边界不产生输出。
+///
+/// 用 f64 进行范围和直线计算，避免有限 f32 端点相减时溢出。
+/// 整数范围始终先相交后转换，既不饱和到错误位置，也不对整数上界加一。
+pub fn conservative_plot_line_in_bounds(
+    start: (f32, f32),
+    end: (f32, f32),
+    radius: f32,
+    bounds: [RangeInclusive<i32>; 2],
+    mut visit: impl FnMut(i32, i32),
+) {
+    if ![start.0, start.1, end.0, end.1, radius]
+        .iter()
+        .all(|value| value.is_finite())
+        || radius < 0.0
+        || bounds.iter().any(RangeInclusive::is_empty)
+    {
+        return;
     }
+    let start = [f64::from(start.0), f64::from(start.1)];
+    let end = [f64::from(end.0), f64::from(end.1)];
+    let radius = f64::from(radius);
+    let major_axis = usize::from((end[1] - start[1]).abs() >= (end[0] - start[0]).abs());
+    let minor_axis = 1 - major_axis;
+    let (start, end) = if start[major_axis] <= end[major_axis] {
+        (start, end)
+    } else {
+        (end, start)
+    };
+    let Some(columns) = intersect_cells(
+        start[major_axis] - radius,
+        end[major_axis] + radius,
+        &bounds[major_axis],
+    ) else {
+        return;
+    };
+    let major_length = end[major_axis] - start[major_axis];
+    let slope = if major_length == 0.0 {
+        0.0
+    } else {
+        (end[minor_axis] - start[minor_axis]) / major_length
+    };
+    // f32 端点乘积最多 48 位有效数，f64 能保留；先计算叉积再除长度，
+    // 避免用远端位置减 slope*position 时把穿过原点的直线偏移到极远处。
+    let intercept = if major_length == 0.0 {
+        start[minor_axis]
+    } else {
+        (start[minor_axis] * end[major_axis] - end[minor_axis] * start[major_axis]) / major_length
+    };
+    for column in columns {
+        let segment_start = (f64::from(column) - radius).max(start[major_axis]);
+        let segment_end = (f64::from(column) + 1.0 + radius).min(end[major_axis]);
+        let first_minor = slope.mul_add(segment_start, intercept);
+        let last_minor = slope.mul_add(segment_end, intercept);
+        let Some(rows) = intersect_cells(
+            first_minor.min(last_minor) - radius,
+            first_minor.max(last_minor) + radius,
+            &bounds[minor_axis],
+        ) else {
+            continue;
+        };
+        for row in rows {
+            if major_axis == 0 {
+                visit(column, row);
+            } else {
+                visit(row, column);
+            }
+        }
+    }
+}
+
+/// 连续坐标覆盖的整数格区间与输出边界求交。floor 保证负坐标也落在正确格中。
+fn intersect_cells(
+    minimum: f64,
+    maximum: f64,
+    bounds: &RangeInclusive<i32>,
+) -> Option<RangeInclusive<i32>> {
+    let minimum = minimum.floor().max(f64::from(*bounds.start()));
+    let maximum = maximum.floor().min(f64::from(*bounds.end()));
+    (minimum <= maximum).then_some(minimum as i32..=maximum as i32)
 }
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn endpoint_order_follows_jbe_so_nan_never_swaps() {
-        assert!(super::keeps_order(1.0, 2.0));
-        assert!(super::keeps_order(2.0, 2.0));
-        assert!(!super::keeps_order(3.0, 2.0));
-        assert!(super::keeps_order(f32::NAN, 2.0));
-        assert!(super::keeps_order(2.0, f32::NAN));
-    }
-
     use super::*;
     use std::collections::BTreeSet;
 
@@ -234,5 +174,89 @@ mod tests {
         let mut n = 0;
         conservative_plot_line((f32::NAN, 0.0), (1.0, 1.0), 0.5, |_, _| n += 1);
         assert!(n < 1_000);
+    }
+
+    #[test]
+    fn extreme_points_do_not_wrap_into_the_grid() {
+        assert!(cells((0.0, 3e9), (0.0, 3e9), 0.0).is_empty());
+        assert!(cells((3e9, 0.0), (3e9, 0.0), 0.0).is_empty());
+        assert_eq!(
+            cells((0.0, i32::MIN as f32), (0.0, i32::MIN as f32), 0.0),
+            BTreeSet::from([(0, i32::MIN)])
+        );
+    }
+
+    #[test]
+    fn huge_crossing_strokes_are_bounded_and_still_cover_the_grid() {
+        let mut visited = BTreeSet::new();
+        conservative_plot_line_in_bounds(
+            (-f32::MAX, 32.5),
+            (f32::MAX, 32.5),
+            0.0,
+            [0..=63, 0..=63],
+            |x, y| {
+                visited.insert((x, y));
+            },
+        );
+        assert_eq!(visited, (0..64).map(|x| (x, 32)).collect::<BTreeSet<_>>());
+        let mut count = 0;
+        conservative_plot_line_in_bounds(
+            (0.0, 0.0),
+            (1.0, 1.0),
+            f32::MAX,
+            [0..=63, 0..=63],
+            |_, _| count += 1,
+        );
+        assert_eq!(count, 4096);
+        let mut diagonal = BTreeSet::new();
+        conservative_plot_line_in_bounds(
+            (-f32::MAX, -f32::MAX * 0.3),
+            (f32::MAX, f32::MAX * 0.3),
+            0.0,
+            [0..=63, 0..=63],
+            |column, row| {
+                diagonal.insert((column, row));
+            },
+        );
+        assert!(diagonal.contains(&(10, 3)) && diagonal.contains(&(50, 15)));
+    }
+
+    #[test]
+    fn negative_coordinates_use_floor_and_invalid_input_is_ignored() {
+        assert_eq!(
+            cells((-0.25, -0.25), (-0.25, -0.25), 0.0),
+            BTreeSet::from([(-1, -1)])
+        );
+        assert!(cells((0.0, 0.0), (1.0, 1.0), -1.0).is_empty());
+        assert!(cells((f32::INFINITY, 0.0), (1.0, 1.0), 0.0).is_empty());
+    }
+
+    #[test]
+    fn bounded_output_matches_filtering_for_each_axis_and_endpoint_order() {
+        for (start, end) in [
+            ((-10.2, 1.3), (100.5, 60.7)),
+            ((5.2, -15.4), (60.8, 90.3)),
+            ((6.3, 5.8), (-2.4, -8.1)),
+        ] {
+            for radius in [0.0, 0.2, 3.5] {
+                let expected: BTreeSet<_> = cells(start, end, radius)
+                    .into_iter()
+                    .filter(|&(column, row)| (0..64).contains(&column) && (0..64).contains(&row))
+                    .collect();
+                for (start, end) in [(start, end), (end, start)] {
+                    let mut actual = BTreeSet::new();
+                    conservative_plot_line_in_bounds(
+                        start,
+                        end,
+                        radius,
+                        [0..=63, 0..=63],
+                        |column, row| {
+                            actual.insert((column, row));
+                        },
+                    );
+                    assert_eq!(actual, expected);
+                }
+            }
+        }
     }
 }

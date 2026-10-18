@@ -8,7 +8,7 @@ use super::{
 };
 use std::collections::{BTreeSet, VecDeque};
 
-pub const COMPILER_VERSION: u32 = 2;
+pub const COMPILER_VERSION: u32 = 4;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ResourceOriginKind {
@@ -533,7 +533,7 @@ pub(crate) fn analyze_passes(
                 .iter()
                 .any(|semantic| semantic.code == a.access_code && semantic.write);
             let producers = analysis.producers.entry(a.resource_index).or_default();
-            if !write || a.reads_previous {
+            if a.reads_contents(write) {
                 for &(producer, range) in producers.iter() {
                     if producer != pass_index && ranges_overlap(a.range, range) {
                         analysis.dependencies[pass_index].insert(producer);
@@ -649,7 +649,7 @@ fn compose_analysis(
         for access in &definition.passes[pass_index].accesses {
             let write = definition.is_write(access.access_code);
             let producers = global.producers.entry(access.resource_index).or_default();
-            if !write || access.reads_previous {
+            if access.reads_contents(write) {
                 for &(source, written) in producers.iter() {
                     if ranges_overlap(access.range, written) {
                         global.dependencies[pass_index].insert(source);
@@ -927,6 +927,7 @@ mod borrowed_definition_tests {
                 }
             },
             |g| g.passes[0].accesses[0].reads_previous = true,
+            |g| g.passes[0].accesses[0].allow_undefined_contents = true,
             |g| g.passes[0].accesses[0].version = AccessVersion::Read(9),
             |g| g.subgraphs[0].interface.implementation_signature += 1,
             |g| g.exports[0].access_code = 0x26,
@@ -1081,6 +1082,8 @@ mod borrowed_definition_tests {
             access_code: code,
             version: AccessVersion::Automatic,
             reads_previous: false,
+            contents_unused: false,
+            allow_undefined_contents: false,
             range: AccessRange::Texture {
                 aspect_mask: 1,
                 base_mip_level: mip,
@@ -1174,4 +1177,30 @@ mod borrowed_definition_tests {
                 .unwrap()
         );
     }
+    #[test]
+    fn undefined_read_permission_does_not_bypass_cached_ordinary_boundary_validation() {
+        let descriptor = super::super::vulkan::ResourceSpec::Image(
+            crate::raw::texture::TextureDesc::new_2d(8, 8, ash::vk::Format::R32_SFLOAT))
+            .descriptor();
+        for permitted in [false, true] {
+            let mut graph = RenderGraph::new();
+            let h = graph.import_unowned("history", descriptor, 9, 0x19).unwrap();
+            let mut pass = graph.add_pass("history");
+            if permitted {
+                pass.add_undefined_content_read_range(h, 0x19, 0, AccessRange::Whole).unwrap();
+            } else {
+                pass.add_resource_access(h, 0x19, 0).unwrap();
+            }
+            pass.side_effect(); pass.render(|_| true);
+            let mut raw = graph.build().declaration;
+            let context = PlanContext::default();
+            let key = GraphDefinition::from_declaration(&raw, &mut AccessTable::original(), context).unwrap();
+            raw.resources[0].source = OriginSource::ImportUnowned { token: 10, initial_access: 0 };
+            let borrowed = key.matches_declaration(&raw, &mut AccessTable::original(), context);
+            assert_eq!(borrowed.is_ok(), permitted);
+            if permitted { assert!(borrowed.unwrap()); }
+            assert_eq!(GraphDefinition::from_declaration(&raw, &mut AccessTable::original(), context).is_ok(), permitted);
+        }
+    }
+
 }

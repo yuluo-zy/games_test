@@ -1,0 +1,163 @@
+--- a/crates/tiny-glade/src/render_host.rs
++++ b/crates/tiny-glade/src/render_host.rs
+@@ -2029,7 +2029,14 @@
+     texture: &rhapsody::raw::texture::Texture,
+     view: &country_core::rhapsody_types::TextureViewDesc,
+ ) -> rhapsody::Result<rhapsody::raw::texture::TextureViewDesc> {
+-    let mut out = rhapsody::raw::texture::TextureViewDesc::new(&texture.desc)?;
++    project_view_desc(&texture.desc, view)
++}
++
++fn project_view_desc(
++    texture: &rhapsody::raw::texture::TextureDesc,
++    view: &country_core::rhapsody_types::TextureViewDesc,
++) -> rhapsody::Result<rhapsody::raw::texture::TextureViewDesc> {
++    let mut out = rhapsody::raw::texture::TextureViewDesc::new(texture)?;
+     if let Some(v) = view.view_type {
+         out.view_type = vk::ImageViewType::from_raw(v as i32);
+     }
+@@ -2042,15 +2049,47 @@
+     if let Some(v) = view.aspect_mask {
+         out.aspect = vk::ImageAspectFlags::from_raw(v);
+     }
+-    if let Some(v) = view.level_count {
+-        out.level_count = v;
+-    }
+-    if let Some(v) = view.layer_count {
+-        out.layer_count = v;
+-    }
++    out.level_count = remaining_view_count(out.level_count, view.base_mip_level, view.level_count)?;
++    out.layer_count = remaining_view_count(out.layer_count, view.base_layer, view.layer_count)?;
+     out.base_mip_level = view.base_mip_level;
+     out.base_layer = view.base_layer;
++    out.validate(texture)?;
+     Ok(out)
++}
++
++/// Native None means the remaining subresource count after the selected base,
++/// not the whole image count plus that base (rg binding @14205f263..297).
++fn remaining_view_count(total: u32, base: u32, explicit: Option<u32>) -> rhapsody::Result<u32> {
++    let remaining = total.checked_sub(base)
++        .ok_or_else(|| rhapsody::Error::invalid_usage("image view base exceeds its actual image"))?;
++    let count = explicit.unwrap_or(remaining);
++    if count == 0 || count > remaining {
++        return Err(rhapsody::Error::invalid_usage("image view count exceeds its actual remaining range"));
++    }
++    Ok(count)
++}
++
++/// Original bind_individual_mips enumerates the exact selected range and
++/// creates a level_count=1 view per element (@1418b4740..47f7). The current
++/// fully-bound shader ABI additionally fills unused array slots with the last
++/// actual view; it creates no owner or mip beyond the declared original range.
++fn individual_mip_views(
++    view: rhapsody::raw::texture::TextureViewDesc,
++    array_count: u32,
++) -> rhapsody::Result<Vec<rhapsody::raw::texture::TextureViewDesc>> {
++    if view.level_count == 0 || array_count < view.level_count {
++        return Err(rhapsody::Error::invalid_usage("individual mip views exceed the actual shader array"));
++    }
++    let mut views = Vec::new();
++    views.try_reserve_exact(array_count as usize).map_err(|_| rhapsody::Error::OutOfHostMemory)?;
++    for element in 0..array_count {
++        let mut selected = view;
++        selected.base_mip_level = view.base_mip_level.checked_add(element.min(view.level_count - 1))
++            .ok_or_else(|| rhapsody::Error::invalid_usage("individual mip index overflow"))?;
++        selected.level_count = 1;
++        views.push(selected);
++    }
++    Ok(views)
+ }
+ 
+ /// Declaration-time projection of the same view used by rh_view_desc during
+@@ -2084,9 +2123,9 @@
+             .as_raw()
+         }),
+         base_mip_level: view.base_mip_level,
+-        level_count: view.level_count.unwrap_or(level_count),
++        level_count: remaining_view_count(level_count, view.base_mip_level, view.level_count)?,
+         base_array_layer: view.base_layer,
+-        layer_count: view.layer_count.unwrap_or(layer_count),
++        layer_count: remaining_view_count(layer_count, view.base_layer, view.layer_count)?,
+     };
+     range.validate(descriptor).map_err(|error| {
+         rhapsody::Error::invalid_usage(format!("compute image view range: {error:?}"))
+@@ -2567,6 +2606,7 @@
+             let pipeline = entry.pipeline.try_get().inspect_err(|error| diagnose("pipeline.try_get", error))?;
+             let command = <vk::CommandBuffer as ash::vk::Handle>::from_raw(ctx.command.handle());
+             let mut resources = Vec::new();
++            let mut image_arrays: Vec<(u32, Vec<BindlessResource>)> = Vec::new();
+             for range in &access_ranges {
+                 let resource = match bindings[range.access_index as usize] {
+                     CorePassBinding::Buffer { resource }
+@@ -2585,6 +2625,23 @@
+                             rhapsody::Error::invalid_usage_with("compute image binding", error)
+                         })?;
+                         let desc = rh_view_desc(&texture, &view)?;
++                        if view.bind_individual_mips {
++                            let location = BindingLocation { set: 0, binding: range.resource_index };
++                            let count = entry.bindings.abi.slot(location)
++                                .ok_or_else(|| rhapsody::Error::invalid_usage("individual mip binding is absent from the shader ABI"))?
++                                .parameter_count;
++                            if image_arrays.iter().any(|(binding, _)| *binding == range.resource_index)
++                                || resources.iter().any(|(binding, _)| *binding == range.resource_index) {
++                                return Err(rhapsody::Error::invalid_usage("individual mip binding has conflicting values"));
++                            }
++                            let mut elements = Vec::new();
++                            for selected in individual_mip_views(desc, count)? {
++                                let selected = texture.image_view(&selected)?;
++                                elements.push(entry.bindings.image(range.resource_index, selected.view.clone())?);
++                            }
++                            image_arrays.push((range.resource_index, elements));
++                            continue;
++                        }
+                         let view = texture.image_view(&desc)?;
+                         entry
+                             .bindings
+@@ -2655,6 +2712,16 @@
+                             )
+                         })?;
+                     }
++                    for (binding, elements) in &image_arrays {
++                        if resources.iter().any(|(scalar, _)| scalar == binding) {
++                            return Err(rhapsody::Error::invalid_usage("individual mip binding conflicts with a scalar descriptor"));
++                        }
++                        let location = BindingLocation { set: 0, binding: *binding };
++                        for (element, resource) in elements.iter().enumerate() {
++                            first.write(location, element as u32, resource.clone())
++                                .inspect_err(|error| diagnose("parameters.write_individual_mips", error))?;
++                        }
++                    }
+                     first.finish(&mut dynamic.lock())
+                         .inspect_err(|error| diagnose("parameters.finish", error))?
+                 };
+@@ -2855,3 +2922,29 @@
+         assert!(matches!(error, Err(rhapsody::Error::InvalidUsage { .. })));
+     }
+ }
++
++
++#[cfg(test)]
++mod original_individual_mip_view_tests {
++    use super::*;
++    #[test]
++    fn selected_remaining_mips_are_individual_and_unused_abi_tail_reuses_the_last_actual_view() {
++        let desc = rhapsody::raw::texture::TextureDesc::new_2d_array(256, 256, 2, vk::Format::B10G11R11_UFLOAT_PACK32)
++            .mip_levels(9).usage(vk::ImageUsageFlags::STORAGE);
++        let source = country_core::rhapsody_types::TextureViewDesc::new()
++            .base_mip_level(1).base_layer(1).view_type(5).bind_individual_mips(true);
++        let selected = project_view_desc(&desc, &source).unwrap();
++        assert_eq!((selected.base_mip_level, selected.level_count, selected.base_layer, selected.layer_count), (1, 8, 1, 1));
++        let views = individual_mip_views(selected, 12).unwrap();
++        assert_eq!(views.len(), 12);
++        assert_eq!(views.iter().map(|v| v.base_mip_level).collect::<Vec<_>>(), [1,2,3,4,5,6,7,8,8,8,8,8]);
++        assert!(views.iter().all(|v| v.level_count == 1 && v.layer_count == 1 && v.base_layer == 1));
++        for v in views { v.validate(&desc).unwrap(); }
++        let logical = rhapsody::rg::vulkan::ResourceSpec::Image(desc).descriptor();
++        assert_eq!(compute_view_range(logical, &source).unwrap(),
++            rhapsody::rg::resource::AccessRange::Texture { aspect_mask: 1, base_mip_level: 1, level_count: 8, base_array_layer: 1, layer_count: 1 });
++        assert!(individual_mip_views(selected, 7).is_err());
++        assert!(project_view_desc(&desc, &source.base_mip_level(9)).is_err());
++        assert!(project_view_desc(&desc, &source.level_count(Some(9))).is_err());
++    }
++}

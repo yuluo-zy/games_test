@@ -42,15 +42,11 @@ use crate::utils::components::transform::Transform;
 
 const LOG_TARGET: &str = "country_core::render::nani::systems";
 
-/// 网格选择器（O：`NaniInstanceDesc` 的 `+0` 判别位：1 = `AtlasPart`，0 = `Named`）。
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum NaniMeshSelector {
-    AtlasPart(u32),
-    Named(NameHash),
-}
+/// 与 components::drawable 共用网格选择器，保持已有导入路径。
+pub use crate::components::drawable::NaniInstanceMeshDesc as NaniMeshSelector;
 
 /// 实例描述组件（O：24 B）。
-#[derive(Component, Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Component, Debug, PartialEq, Eq)]
 pub struct NaniInstanceDesc {
     pub mesh: NaniMeshSelector,
     pub subset_kind: GpuWorldSubsetKind,

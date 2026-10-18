@@ -1,0 +1,76 @@
+//! B flowery startup@141553120/2224B on current real asset owners.
+use crate::{
+    asset_libraries::{
+        mesh_library::AssetMeshLibrary, meshwatch::MeshWatch,
+        placement_data_library::AssetPlacementDataLibrary, shader_library::AssetShaderLibrary,
+    },
+    components::drawable::{AlbedoMap, NaniBundle, NaniInstanceMeshDesc},
+    name_hash::NameHash,
+    render::{
+        nani::{
+            gpu_world::{GpuWorldSubsetKind, InstanceDataMarker},
+            instance_data::PreplacedFlowerInstanceData,
+            systems::NaniInstanceDesc,
+        },
+        ssbo::rhapsody_boundary::GraphicsDevice,
+    },
+    resources::session::ActiveSession,
+    startup::clearing::{drawable, install_json_mesh},
+    systems::render_loop::draw_passes::draw_lists::DontCastShadow,
+};
+use bevy_ecs::system::Commands;
+use std::path::Path;
+
+#[allow(clippy::too_many_arguments)]
+pub fn startup_flowery(
+    root: &Path,
+    device: &dyn GraphicsDevice,
+    session: &ActiveSession,
+    meshes: &AssetMeshLibrary,
+    watch: &MeshWatch,
+    shaders: &AssetShaderLibrary,
+    placements: &mut AssetPlacementDataLibrary,
+    commands: &mut Commands,
+) -> anyhow::Result<()> {
+    let mesh = install_json_mesh(
+        root,
+        "assets/meshes/billboard_plants_2.json",
+        "billboard_plants_2",
+        meshes,
+        watch,
+    )?;
+    let shader = shaders
+        .get_raster_handle_by_name("billboard_plant_shader")
+        .expect("called `Option::unwrap()` on a `None` value");
+    commands.spawn((drawable(mesh, shader), DontCastShadow));
+    let path = root
+        .join(session.assets_root())
+        .join("plants/lavender.json");
+    let (lavender, _) = placements.load(device, path);
+    for placement in lavender {
+        commands.spawn(NaniBundle::<PreplacedFlowerInstanceData> {
+            desc: NaniInstanceDesc {
+                // Native literal at1415533c6; actual atlas name flowery_lavender.
+                mesh: NaniInstanceMeshDesc::Named(NameHash(0x13fa_53c5_8fdd_dee8)),
+                subset_kind: GpuWorldSubsetKind::PreplacedFlower,
+            },
+            transform: placement.to_transform(),
+            marker: InstanceDataMarker::default(),
+        });
+    }
+    let mesh = install_json_mesh(
+        root,
+        "assets/meshes/meadow_lowpoly_flowers.json",
+        "meadow_test",
+        meshes,
+        watch,
+    )?;
+    let shader = shaders
+        .get_raster_handle_by_name("meadow_flower")
+        .expect("called `Option::unwrap()` on a `None` value");
+    commands.spawn((
+        drawable(mesh, shader),
+        AlbedoMap(NameHash::compute("meadow_flowers").0),
+    ));
+    Ok(())
+}

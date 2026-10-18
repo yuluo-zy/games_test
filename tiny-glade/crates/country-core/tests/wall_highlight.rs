@@ -119,6 +119,8 @@ fn scheduled_highlight_clears_kind_next_frame_and_keeps_eraser_state() {
     world.insert_resource(CursorTerrainRaycast {
         tag: 1,
         pos: Vec3::ONE,
+        delta: Vec3::ZERO,
+        speed: 0.0,
     });
     world.insert_resource(EraserSizeMultiplier(2.0));
     let mut schedule = Schedule::default();

@@ -1,0 +1,277 @@
+[
+  {
+    "module": "apply_screen_shadows",
+    "resource_views": [],
+    "public_functions": []
+  },
+  {
+    "module": "apply_volumetrics",
+    "resource_views": [],
+    "public_functions": [
+      "volumetric_scales(camera_mode: u8) -> (f32, f32"
+    ]
+  },
+  {
+    "module": "bin_lights",
+    "resource_views": [],
+    "public_functions": []
+  },
+  {
+    "module": "blur_pyramid",
+    "resource_views": [],
+    "public_functions": [
+      "rev_blur_pyramid(env: &mut PassEnv<'_>, partial: &RgTexture) -> RgTexture { let desc = partial.desc; let full = env.create_texture(FULL_NAME, desc); let n = u32::from(desc.mip_levels); let (partial_tex, full_tex) = (partial, &full); let extent = desc.extent_2d(); for i in (0..n).rev("
+    ]
+  },
+  {
+    "module": "compute_garden",
+    "resource_views": [
+      "GardenRaster"
+    ],
+    "public_functions": [
+      "garden_rasterize_from_cpu(env: &mut PassEnv<'_>, world_change_tick: u32) -> Option<u32> { let raster = env.resource::<GardenRaster>(); if !raster.0.mask_dirty.get(",
+      "garden_spawn_vegetation(env: &mut PassEnv<'_>"
+    ]
+  },
+  {
+    "module": "compute_path_masks",
+    "resource_views": [
+      "Cobblestone1Raster",
+      "Cobblestone2Raster",
+      "Cobblestone3Raster",
+      "PathRaster",
+      "PathStrokeQueues"
+    ],
+    "public_functions": []
+  },
+  {
+    "module": "compute_water",
+    "resource_views": [],
+    "public_functions": []
+  },
+  {
+    "module": "displace_rocky_terrain",
+    "resource_views": [
+      "RockyTerrainMeshHead"
+    ],
+    "public_functions": [
+      "group_count(first_word: u64) -> u32 { (first_word / 3) as u32 } /// W4 \u7cfb\u7edf\uff08O 0x140a3ee80\uff09\u3002 pub fn displace_rocky_terrain(env: &mut PassEnv<'_>"
+    ]
+  },
+  {
+    "module": "dof",
+    "resource_views": [],
+    "public_functions": [
+      "dof_prepare<A: LibrarySsbo>( env: &mut PassEnv<'_>, depth_tex: &RgTexture, ) -> (DofPrepared, RecordedComputePass",
+      "calc_dof<S: LibrarySsbo>( env: &mut PassEnv<'_>, multires: bool, color: &RgTexture, depth: &RgTexture, coc: &DofPrepared, spatial_resolve: Option<()>, cfg: &DofConfig, quality: u8, ) -> DofOutput"
+    ]
+  },
+  {
+    "module": "dof_autofocus",
+    "resource_views": [],
+    "public_functions": []
+  },
+  {
+    "module": "eval_gi_screen_radiance",
+    "resource_views": [],
+    "public_functions": []
+  },
+  {
+    "module": "generate_hzb",
+    "resource_views": [],
+    "public_functions": []
+  },
+  {
+    "module": "generate_mips",
+    "resource_views": [],
+    "public_functions": []
+  },
+  {
+    "module": "gpu_generate_draw_lists",
+    "resource_views": [],
+    "public_functions": [
+      "fill_sorted_instance_list<S: NaniSsbos>( env: &mut PassEnv<'_>, sorted_bytes: u32, thread_count: &RgBuffer, filtered_meta: &RgBuffer, histogram: &RgBuffer, dispatch_args: &RgBuffer, ) -> (RgBuffer, [RecordedComputePass; 2]"
+    ]
+  },
+  {
+    "module": "grass",
+    "resource_views": [
+      "GladeThemeId"
+    ],
+    "public_functions": [
+      "grass_compute(env: &mut PassEnv<'_>, hzb: &Hzb, freeze_occlusion_culling: bool"
+    ]
+  },
+  {
+    "module": "half_res",
+    "resource_views": [],
+    "public_functions": []
+  },
+  {
+    "module": "highlight_active_terrain_stroke",
+    "resource_views": [],
+    "public_functions": [
+      "highlight_stroke_index( mode: u32, events_old: &[AddTerrainHighlightCmd], events_new: &[AddTerrainHighlightCmd], suppress: u8, ) -> i32 { let mut idx = -1; if mode == 5 || mode == 10 { if let Some(last) = events_new.last().or_else(|| events_old.last()"
+    ]
+  },
+  {
+    "module": "leaf_particles",
+    "resource_views": [
+      "LoadedLeafParticleCount",
+      "LoadedParticleEmitterCount"
+    ],
+    "public_functions": [
+      "clamp_emitter_count(count: usize) -> u32 { count.min(MAX_EMITTERS) as u32 } /// W18 \u5165\u53e3\uff08O 0x1408f4d00\uff09\u3002\u7c92\u5b50\u6570\u4e3a 0 \u2192 \u4e0d\u767b\u8bb0 pass\uff1b\u5426\u5219 `PassBuilder::render` \u767b\u8bb0\u4e00\u4e2a pass\u3002 pub fn leaf_particles_compute(env: &mut PassEnv<'_>"
+    ]
+  },
+  {
+    "module": "mod",
+    "resource_views": [],
+    "public_functions": []
+  },
+  {
+    "module": "mouse_depth_value",
+    "resource_views": [],
+    "public_functions": []
+  },
+  {
+    "module": "mouse_read_terrain_stroke_index",
+    "resource_views": [],
+    "public_functions": []
+  },
+  {
+    "module": "pass_kit",
+    "resource_views": [],
+    "public_functions": [
+      "half_res(mut desc: TextureDesc) -> TextureDesc { for v in desc.extent.iter_mut(",
+      "div_up_extent(mut desc: TextureDesc, div: [u32; 3]) -> TextureDesc { for (v, d) in desc.extent.iter_mut().zip(div",
+      "extent_xy(desc: &TextureDesc) -> (u32, u32"
+    ]
+  },
+  {
+    "module": "path_pebbles",
+    "resource_views": [],
+    "public_functions": []
+  },
+  {
+    "module": "prefix_scan",
+    "resource_views": [],
+    "public_functions": []
+  },
+  {
+    "module": "primary_rt_debug",
+    "resource_views": [],
+    "public_functions": []
+  },
+  {
+    "module": "rasterize_buildings",
+    "resource_views": [],
+    "public_functions": []
+  },
+  {
+    "module": "rasterize_terrain_stroke",
+    "resource_views": [],
+    "public_functions": [
+      "dispatch_args() -> DispatchArgs { DispatchArgs { x: RASTER_SIZE, y: RASTER_SIZE, z: 1, indirect_index: None, } } #[cfg(test)] mod tests { use super::*; use crate::render::pass_builder::compute_pass_builder::DispatchMode; use crate::systems::render_loop::compute_passes::pass_kit::imm; use crate::systems::render_loop::compute_passes::pass_kit::test_env::*; #[test] fn hashes_are_exe_immediates("
+    ]
+  },
+  {
+    "module": "ray_trace_gi",
+    "resource_views": [],
+    "public_functions": []
+  },
+  {
+    "module": "read_bush_positions_for_cpu",
+    "resource_views": [],
+    "public_functions": []
+  },
+  {
+    "module": "read_terrain_data",
+    "resource_views": [],
+    "public_functions": [
+      "pack_water_mask_bits(coverage_y: f32) -> (bool, bool",
+      "pack_water_mask_word(texels_y: &[f32; 32]) -> (u32, u32",
+      "on_terrain_modified(&self",
+      "on_gpu_copy_issued(&mut self, world_tick: u32"
+    ]
+  },
+  {
+    "module": "reprojection",
+    "resource_views": [],
+    "public_functions": []
+  },
+  {
+    "module": "reset_indirect_args",
+    "resource_views": [],
+    "public_functions": []
+  },
+  {
+    "module": "restir_di",
+    "resource_views": [],
+    "public_functions": []
+  },
+  {
+    "module": "roof_tiles_gravity",
+    "resource_views": [
+      "RoofGravityFrame"
+    ],
+    "public_functions": []
+  },
+  {
+    "module": "shader_refactoring",
+    "resource_views": [],
+    "public_functions": []
+  },
+  {
+    "module": "spawn_boats",
+    "resource_views": [],
+    "public_functions": []
+  },
+  {
+    "module": "spawn_vegetation_around_buildings",
+    "resource_views": [],
+    "public_functions": []
+  },
+  {
+    "module": "ssgi",
+    "resource_views": [],
+    "public_functions": []
+  },
+  {
+    "module": "stairs",
+    "resource_views": [],
+    "public_functions": [
+      "stairs(env: &mut PassEnv<'_>"
+    ]
+  },
+  {
+    "module": "taa",
+    "resource_views": [],
+    "public_functions": [
+      "calculate_tgsr( env: &mut PassEnv<'_>, i: &TgsrInputs<'_>, ) -> (RgTexture, Vec<RecordedComputePass>"
+    ]
+  },
+  {
+    "module": "terrain_lighting_texture",
+    "resource_views": [
+      "CameraMatrices"
+    ],
+    "public_functions": []
+  },
+  {
+    "module": "upload_world_raster",
+    "resource_views": [
+      "R"
+    ],
+    "public_functions": [
+      "new(upload_pending: bool, mask_dirty: bool) -> Self { RasterFlags { _head: [0; 0x98], dirty_rows: core::array::from_fn(|_| Cell::new(0xff)), _gap: [0; 2], upload_pending: Cell::new(upload_pending), mask_dirty: Cell::new(mask_dirty), } } /// `memset(res + 0x98, 0, 0x200)`\uff08O\uff1a\u4e0b\u6e38\u4e24\u4e2a pass \u51fd\u6570\u91cc\u7684\u6e05\u810f\u884c\uff09\u3002 pub fn clear_dirty_rows(&self",
+      "consume_mask_dirty(&self",
+      "upload_live_world_raster<R: LiveRasterKind>( env: &mut PassEnv<'_>, raster: &mut bevy_ecs::change_detection::Mut<'_, R>, world_change_tick: u32, preset: u8, ) -> Option<u32> { use bevy_ecs::change_detection::DetectChangesMut; if !raster.bypass_change_detection().published("
+    ]
+  },
+  {
+    "module": "visibility_queries",
+    "resource_views": [],
+    "public_functions": []
+  }
+]

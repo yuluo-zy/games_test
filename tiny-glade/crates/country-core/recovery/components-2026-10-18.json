@@ -1,0 +1,107 @@
+{
+  "date": "2026-10-18",
+  "target": "B",
+  "status": "implemented_bounded_candidate_checks_passed",
+  "semantic_acceptance": false,
+  "whole_module_complete": false,
+  "independent_review_complete": false,
+  "native_runtime_oracle_executed": false,
+  "native_static_identity": {
+    "analysis_sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "release_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "identical_spans": 26,
+    "all_identical": true
+  },
+  "existing_components_gap_fields": {
+    "before": 3,
+    "after": 0,
+    "recovered_types": [
+      "TreeAnimation",
+      "TreeMoveBend",
+      "Ui2dImage"
+    ]
+  },
+  "checks": [
+    {
+      "command": "cargo check -p country-core -p system-tree -p forest -p toolbar --lib --locked --offline",
+      "exit_code": 0,
+      "scope": "four related libraries at captured execution; existing warnings retained"
+    },
+    {
+      "command": "cargo test -p country-core --test components_recovery --locked --offline",
+      "exit_code": 0,
+      "passed": 4,
+      "failed": 0,
+      "includes": "payload and bundle layout, ECS clone/required, entity progress ownership, owned UI and u64 order",
+      "log": "verification-logs/tests-retry.log"
+    },
+    {
+      "command": "cargo test -p system-tree --test components_lifecycle --locked --offline",
+      "exit_code": 0,
+      "passed": 1,
+      "failed": 0,
+      "scope": "real despawn_trees system produces only correct marked/progress events",
+      "log": "verification-logs/lifecycle.log"
+    },
+    {
+      "command": "rustfmt --check (six module files and two integration tests)",
+      "exit_code": 0
+    }
+  ],
+  "failed_checks": [
+    {
+      "command": "cargo check ... --all-targets",
+      "exit_code": 101,
+      "reason": "pre-existing pass_kit/test_env.rs implements obsolete import_unowned_texture instead of import_texture",
+      "log": "verification-logs/check.log"
+    },
+    {
+      "command": "cargo check --workspace --lib --locked --offline",
+      "exit_code": 101,
+      "reason": "system-water/water_audio_grid.rs writes unavailable water_level and assigns Vec3 to [f32;2]",
+      "log": "verification-logs/workspace-check.log"
+    },
+    {
+      "command": "first final component test attempt",
+      "exit_code": 101,
+      "reason": "shared rhapsody temporarily referenced missing GraphImageLease; type appeared afterward, component retry passed",
+      "log": "verification-logs/tests-final.log"
+    }
+  ],
+  "concurrent_dependency_boundary": {
+    "files_changed_during_retry": [
+      "crates/rhapsody/src/rg/vulkan.rs"
+    ],
+    "note": "rhapsody was changing independently; these CPU component checks do not accept its backend changes. Dependency source observations retained separately; no full workspace snapshot equivalence asserted."
+  },
+  "source_hashes": {
+    "crates/country-core/src/components/drawable.rs": "7547a9246038e2cb0f9e6866975e57851bb98a5674e9a22c2c94581c4f8c93b4",
+    "crates/country-core/src/components/mod.rs": "32a71aac73dfbc2497d530944727a63c4eb2e7d20e67002a9558c9122bd884e1",
+    "crates/country-core/src/components/registry.rs": "03b96699fc2ab94f2314a9459f2d85df0857912e7d63e6a283dbc92a81ab4850",
+    "crates/country-core/src/components/rendering.rs": "329b38d265616193367c262f1d734a77010f47760521ef249bcc355a0ca33e4e",
+    "crates/country-core/src/components/trees.rs": "d1c0dd21d858788cd42299ef81e733b015cde98cadfa2a6b703a04fef5f7980c",
+    "crates/country-core/src/components/ui.rs": "7f600f6a3c720ce7d9be41a36fe872e86a1ac63774790a572922228448991569",
+    "crates/country-core/src/render/nani/systems.rs": "ace05d304857b9937dfc48629a25a0238d2e404771160cb4311d6cf07fb8abfb",
+    "crates/country-core/src/systems/render_loop/draw_passes/ui_2d_pass.rs": "516eb7d4bc07988f67a660d863f2bacef5b44da5e15a73a10e1613972f0ac6ea",
+    "crates/country-core/tests/components_recovery.rs": "89521e0db84de8266de213e0498f94b88c9449284a246f306129d4d1d4a6ff4a",
+    "crates/systems/forest/src/tree_animation.rs": "cf4718ea1d10b555579ffd7154ba5cc83a1f0335ac6c1965a31ccf26ff52e8cc",
+    "crates/systems/toolbar/src/resouces_and_components/toolbar_layout.rs": "95275842ff580578534671c0c3b6e32d054a833d9f14ac7f45f02146877bbf21",
+    "crates/systems/tree-tool/src/process_tree_cmds.rs": "593558932fbbe3a6693d4bee641dce56c798f8ac682f96d8d617ef18a7550edb",
+    "crates/systems/tree-tool/src/tree_move_bend.rs": "77246746a0258c163156888259a2dcec81f5e82d536605bb7da062b8b3092745",
+    "crates/systems/tree-tool/tests/components_lifecycle.rs": "c36ef51c20e4efe519c3da7db70acdc78367ebd82db5907f6546ae19fe8c4c05"
+  },
+  "cargo_lock_sha256": "2376468824b6e82820803bce8018745fbc064e2cd0e58e67d0926ec5dbe6661f",
+  "executed_test_artifacts": {
+    "target/debug/deps/components_recovery-535ad42ee2682851": "8bbfa4652cc0a7e7727391e2e998668c2414e70c912b477e20f1bfeb0a5a3d4e",
+    "target/debug/deps/components_lifecycle-c9a9ef08fb83ba41": "0bdf8cfe5a45752af1730e68f2bf186aac3406650a5d72d4dc77e2c28d027766"
+  },
+  "work_dir": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-abf1305389c44cc264/components-review-20261018",
+  "review": "REVIEW.md",
+  "contract": "CONTRACT.md",
+  "remaining": [
+    "unimplemented registry payloads and cache_prev_object_transforms",
+    "placement GPU write fields/global canopy/original schedule",
+    "full preplaced command flags and native runtime oracle",
+    "unrelated workspace/test build errors"
+  ]
+}

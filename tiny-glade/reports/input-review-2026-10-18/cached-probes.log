@@ -1,0 +1,20 @@
+
+running 4 tests
+test gap_cpu_schedule_has_no_ordering_edges ... F4: input CPU helper registered systems with zero ordering edges
+ok
+test gap_frame_conversion_discards_packed_actions_and_cursor ... F3: nonempty packed actions became empty; runtime cursor/output were zeroed
+ok
+test gap_load_on_a_fresh_stream_cannot_seek ... 
+thread 'gap_load_on_a_fresh_stream_cannot_seek' (23470596) panicked at crates/country-core/src/systems/backend/input/input_record_replay.rs:252:9:
+No sync points found in replay state
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+F2: load succeeded with zero sync points; seek panicked; second load appended
+ok
+test gap_snapshot_does_not_restore_toolbar_modes ... 
+thread 'gap_snapshot_does_not_restore_toolbar_modes' (23470598) panicked at crates/country-core/src/resources/toolbar.rs:79:28:
+index out of bounds: the len is 1 but the index is 1
+F1: restored current=1 into modes.len=1; last_selected_mode panicked
+ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+

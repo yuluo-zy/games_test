@@ -1,0 +1,11 @@
+140aae66c: c685c801000000 mov byte ptr [rbp + 0x1c8], 0
+140aae673: c785cc0100000000803f mov dword ptr [rbp + 0x1cc], 0x3f800000
+140aae67d: c685b801000000 mov byte ptr [rbp + 0x1b8], 0
+140aae684: c7855801000001000000 mov dword ptr [rbp + 0x158], 1
+140aae68e: 48c7856001000000000000 mov qword ptr [rbp + 0x160], 0
+140aae699: c7857001000002000000 mov dword ptr [rbp + 0x170], 2
+140aae6a3: c7858801000003000000 mov dword ptr [rbp + 0x188], 3
+140aae6ad: c785a001000003000000 mov dword ptr [rbp + 0x1a0], 3
+140aae6b7: 48c7854001000000000000 mov qword ptr [rbp + 0x140], 0
+140aae6c2: 48c7854801000008000000 mov qword ptr [rbp + 0x148], 8
+140aae6cd: 48c7855001000000000000 mov qword ptr [rbp + 0x150], 0

@@ -1,0 +1,728 @@
+    Blocking waiting for file lock on build directory
+warning: field `0` is never read
+   --> crates/rhapsody/src/raw/texture.rs:493:15
+    |
+493 |     Swapchain(Arc<super::swapchain::Swapchain>),
+    |     --------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     |
+    |     field in this variant
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+help: consider changing the field to be of unit type to suppress this warning while preserving the field numbering, or remove the field
+    |
+493 -     Swapchain(Arc<super::swapchain::Swapchain>),
+493 +     Swapchain(()),
+    |
+
+warning: `rhapsody` (lib) generated 1 warning
+warning: unused import: `glam::*`
+ --> third_party/obvhs-a3f3b3bf/src/cwbvh/simd.rs:1:5
+  |
+1 | use glam::*;
+  |     ^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `EPSILON`, `extract_byte64`, and `ray::Ray`
+  --> third_party/obvhs-a3f3b3bf/src/cwbvh/simd.rs:9:16
+   |
+ 9 |         node::{extract_byte64, EPSILON},
+   |                ^^^^^^^^^^^^^^  ^^^^^^^
+...
+12 |     ray::Ray,
+   |     ^^^^^^^^
+
+warning: value assigned to `state` is never read
+   --> third_party/obvhs-a3f3b3bf/src/cwbvh/traverse_macro.rs:114:21
+    |
+114 |                       $state.current_group.y = 0;
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+   ::: third_party/obvhs-a3f3b3bf/src/cwbvh/mod.rs:214:9
+    |
+214 | /         crate::traverse!(
+215 | |             self,
+216 | |             node,
+217 | |             state,
+...   |
+227 | |         );
+    | |_________- in this macro invocation
+    |
+    = help: maybe it is overwritten before being read?
+    = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+    = note: this warning originates in the macro `crate::traverse` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: value assigned to `current_group` is never read
+   --> third_party/obvhs-a3f3b3bf/src/cwbvh/mod.rs:455:21
+    |
+455 |                     current_group.y = 0;
+    |                     ^^^^^^^^^^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: unnecessary transmute
+   --> third_party/obvhs-a3f3b3bf/src/cwbvh/node.rs:216:30
+    |
+216 |         let meta8 = unsafe { transmute::<[u8; 8], u64>(self.child_meta) };
+    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: there's also `from_le_bytes` and `from_be_bytes` if you expect a particular byte order
+    = note: `#[warn(unnecessary_transmutes)]` on by default
+help: replace this with
+    |
+216 -         let meta8 = unsafe { transmute::<[u8; 8], u64>(self.child_meta) };
+216 +         let meta8 = unsafe { u64::from_ne_bytes(self.child_meta) };
+    |
+
+warning: `obvhs` (lib) generated 5 warnings (run `cargo fix --lib -p obvhs` to apply 3 suggestions)
+   Compiling country-core v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core)
+warning: unused import: `crate::resources::color_id::ColorId`
+  --> crates/country-core/src/resources/history/color_edit.rs:43:5
+   |
+43 | use crate::resources::color_id::ColorId;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `DecoratorStorage`
+  --> crates/country-core/src/systems/save/snapshot.rs:28:36
+   |
+28 |             DecoratorAddrSnapshot, DecoratorStorage, DecoratorStorageAddr, DecoratorStorageSnapshot,
+   |                                    ^^^^^^^^^^^^^^^^
+
+warning: unused import: `bevy_ecs::prelude::*`
+  --> crates/country-core/src/resources/stairs/invalidate.rs:49:9
+   |
+49 |     use bevy_ecs::prelude::*;
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::resources::roofs::Roof`
+ --> crates/country-core/src/systems/history/tests.rs:5:5
+  |
+5 | use crate::resources::roofs::Roof;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::resources::roofs::commands::*`
+ --> crates/country-core/src/systems/history/tests.rs:6:5
+  |
+6 | use crate::resources::roofs::commands::*;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::resources::roofs::customization::FlatRoofRimRequest`
+ --> crates/country-core/src/systems/history/tests.rs:7:5
+  |
+7 | use crate::resources::roofs::customization::FlatRoofRimRequest;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::resources::time::GameTime`
+ --> crates/country-core/src/systems/history/tests.rs:8:5
+  |
+8 | use crate::resources::time::GameTime;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::resources::walls::WallId`
+ --> crates/country-core/src/systems/history/tests.rs:9:5
+  |
+9 | use crate::resources::walls::WallId;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::resources::walls::public_walls::PublicWalls`
+  --> crates/country-core/src/systems/history/tests.rs:10:5
+   |
+10 | use crate::resources::walls::public_walls::PublicWalls;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::resources::walls::publication_fields::WallId as ObservedWallId`
+  --> crates/country-core/src/systems/history/tests.rs:11:5
+   |
+11 | use crate::resources::walls::publication_fields::WallId as ObservedWallId;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Decorators`
+   --> crates/country-core/src/systems/ui_edit_focus.rs:228:54
+    |
+228 |     use crate::resources::walls::decorator_storage::{Decorators, DecoratorStorage};
+    |                                                      ^^^^^^^^^^
+
+warning: unused import: `WallId`
+  --> crates/country-core/src/systems/wall/snapping/snapping_init.rs:91:17
+   |
+91 |         walls::{WallId, WallState},
+   |                 ^^^^^^
+
+warning: unused import: `super::*`
+   --> crates/country-core/src/systems/wall/snapping/telegraph_walls_are_merged.rs:109:9
+    |
+109 |     use super::*;
+    |         ^^^^^^^^
+
+error[E0277]: `AddTerrainHighlightCmd` is not an `Event`
+   --> crates/country-core/src/systems/terrain/ui_edit_terrain.rs:159:16
+    |
+159 |     highlight: EventWriter<'w, AddTerrainHighlightCmd>,
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid `Event`
+    |
+help: the trait `bevy_ecs::event::Event` is not implemented for `AddTerrainHighlightCmd`
+   --> crates/country-core/src/systems/render_loop/compute_passes/highlight_active_terrain_stroke.rs:57:1
+    |
+ 57 | pub struct AddTerrainHighlightCmd(pub i32);
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: consider annotating `AddTerrainHighlightCmd` with `#[derive(Event)]`
+    = help: the following other types implement trait `bevy_ecs::event::Event`:
+              AdjustWallHeightCmd
+              AnimateWallBulldozeCmd
+              AppExit
+              AppModeChanged
+              CaptureSnapshotRequested
+              ClearCanvasCmd
+              CmdCheckForSheepInsideBuilding
+              CmdUnfreezeSheep
+            and 231 others
+note: required by a bound in `bevy_ecs::event::EventWriter`
+   --> /Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/event/writer.rs:62:31
+    |
+ 62 | pub struct EventWriter<'w, E: Event> {
+    |                               ^^^^^ required by this bound in `EventWriter`
+
+error[E0277]: `AddTerrainHighlightCmd` is not an `Event`
+   --> crates/country-core/src/systems/terrain/ui_edit_terrain.rs:154:10
+    |
+154 | #[derive(SystemParam)]
+    |          ^^^^^^^^^^^ invalid `Event`
+    |
+help: the trait `bevy_ecs::event::Event` is not implemented for `AddTerrainHighlightCmd`
+   --> crates/country-core/src/systems/render_loop/compute_passes/highlight_active_terrain_stroke.rs:57:1
+    |
+ 57 | pub struct AddTerrainHighlightCmd(pub i32);
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: consider annotating `AddTerrainHighlightCmd` with `#[derive(Event)]`
+    = help: the following other types implement trait `bevy_ecs::event::Event`:
+              AdjustWallHeightCmd
+              AnimateWallBulldozeCmd
+              AppExit
+              AppModeChanged
+              CaptureSnapshotRequested
+              ClearCanvasCmd
+              CmdCheckForSheepInsideBuilding
+              CmdUnfreezeSheep
+            and 231 others
+    = note: required for `bevy_ecs::event::EventWriter<'static, AddTerrainHighlightCmd>` to implement `SystemParam`
+    = note: this error originates in the derive macro `SystemParam` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: `AddTerrainHighlightCmd` is not an `Event`
+   --> crates/country-core/src/systems/terrain/ui_edit_terrain.rs:154:10
+    |
+154 | #[derive(SystemParam)]
+    |          ^^^^^^^^^^^ invalid `Event`
+    |
+help: the trait `bevy_ecs::event::Event` is not implemented for `AddTerrainHighlightCmd`
+   --> crates/country-core/src/systems/render_loop/compute_passes/highlight_active_terrain_stroke.rs:57:1
+    |
+ 57 | pub struct AddTerrainHighlightCmd(pub i32);
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: consider annotating `AddTerrainHighlightCmd` with `#[derive(Event)]`
+    = help: the following other types implement trait `bevy_ecs::event::Event`:
+              AdjustWallHeightCmd
+              AnimateWallBulldozeCmd
+              AppExit
+              AppModeChanged
+              CaptureSnapshotRequested
+              ClearCanvasCmd
+              CmdCheckForSheepInsideBuilding
+              CmdUnfreezeSheep
+            and 231 others
+    = note: required for `bevy_ecs::event::EventWriter<'static, AddTerrainHighlightCmd>` to implement `SystemParam`
+note: required because it appears within the type `ui_edit_terrain::_::FetchState`
+   --> crates/country-core/src/systems/terrain/ui_edit_terrain.rs:154:10
+    |
+154 | #[derive(SystemParam)]
+    |          ^^^^^^^^^^^
+note: required by a bound in `bevy_ecs::system::SystemParam::State`
+   --> /Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/system/system_param.rs:215:24
+    |
+215 |     type State: Send + Sync + 'static;
+    |                        ^^^^ required by this bound in `SystemParam::State`
+    = note: this error originates in the derive macro `SystemParam` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: `AddTerrainHighlightCmd` is not an `Event`
+   --> crates/country-core/src/systems/terrain/ui_edit_terrain.rs:154:10
+    |
+154 | #[derive(SystemParam)]
+    |          ^^^^^^^^^^^ invalid `Event`
+    |
+help: the trait `bevy_ecs::event::Event` is not implemented for `AddTerrainHighlightCmd`
+   --> crates/country-core/src/systems/render_loop/compute_passes/highlight_active_terrain_stroke.rs:57:1
+    |
+ 57 | pub struct AddTerrainHighlightCmd(pub i32);
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: consider annotating `AddTerrainHighlightCmd` with `#[derive(Event)]`
+    = help: the following other types implement trait `bevy_ecs::event::Event`:
+              AdjustWallHeightCmd
+              AnimateWallBulldozeCmd
+              AppExit
+              AppModeChanged
+              CaptureSnapshotRequested
+              ClearCanvasCmd
+              CmdCheckForSheepInsideBuilding
+              CmdUnfreezeSheep
+            and 231 others
+note: required by a bound in `bevy_ecs::event::EventWriter`
+   --> /Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/event/writer.rs:62:31
+    |
+ 62 | pub struct EventWriter<'w, E: Event> {
+    |                               ^^^^^ required by this bound in `EventWriter`
+    = note: this error originates in the derive macro `SystemParam` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: `AddTerrainHighlightCmd` is not an `Event`
+   --> crates/country-core/src/systems/terrain/ui_edit_terrain.rs:154:10
+    |
+154 | #[derive(SystemParam)]
+    |          ^^^^^^^^^^^ invalid `Event`
+    |
+help: the trait `bevy_ecs::event::Event` is not implemented for `AddTerrainHighlightCmd`
+   --> crates/country-core/src/systems/render_loop/compute_passes/highlight_active_terrain_stroke.rs:57:1
+    |
+ 57 | pub struct AddTerrainHighlightCmd(pub i32);
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: consider annotating `AddTerrainHighlightCmd` with `#[derive(Event)]`
+    = help: the following other types implement trait `bevy_ecs::event::Event`:
+              AdjustWallHeightCmd
+              AnimateWallBulldozeCmd
+              AppExit
+              AppModeChanged
+              CaptureSnapshotRequested
+              ClearCanvasCmd
+              CmdCheckForSheepInsideBuilding
+              CmdUnfreezeSheep
+            and 231 others
+    = note: required for `bevy_ecs::event::EventWriter<'static, AddTerrainHighlightCmd>` to implement `SystemParam`
+note: required because it appears within the type `ui_edit_terrain::_::FetchState`
+   --> crates/country-core/src/systems/terrain/ui_edit_terrain.rs:154:10
+    |
+154 | #[derive(SystemParam)]
+    |          ^^^^^^^^^^^
+    = note: the return type of a function must have a statically known size
+    = note: this error originates in the derive macro `SystemParam` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: `compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd` is not an `Event`
+   --> crates/country-core/src/systems/terrain/ui_edit_terrain.rs:159:16
+    |
+159 |     highlight: EventWriter<'w, AddTerrainHighlightCmd>,
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid `Event`
+    |
+help: the trait `bevy_ecs::event::Event` is not implemented for `compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd`
+   --> crates/country-core/src/systems/render_loop/compute_passes/highlight_active_terrain_stroke.rs:57:1
+    |
+ 57 | pub struct AddTerrainHighlightCmd(pub i32);
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: consider annotating `compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd` with `#[derive(Event)]`
+    = help: the following other types implement trait `bevy_ecs::event::Event`:
+              AdjustWallHeightCmd
+              AppExit
+              CaptureSnapshotRequested
+              CmdCheckForSheepInsideBuilding
+              ColorHistoryReplayApply
+              ConstructTimberframeCmd
+              CreatePlasterCmd
+              CreateRoofCmd
+            and 231 others
+note: required by a bound in `bevy_ecs::event::EventWriter`
+   --> /Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/event/writer.rs:62:31
+    |
+ 62 | pub struct EventWriter<'w, E: Event> {
+    |                               ^^^^^ required by this bound in `EventWriter`
+
+error[E0277]: `compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd` is not an `Event`
+   --> crates/country-core/src/systems/terrain/ui_edit_terrain.rs:154:10
+    |
+154 | #[derive(SystemParam)]
+    |          ^^^^^^^^^^^ invalid `Event`
+    |
+help: the trait `bevy_ecs::event::Event` is not implemented for `compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd`
+   --> crates/country-core/src/systems/render_loop/compute_passes/highlight_active_terrain_stroke.rs:57:1
+    |
+ 57 | pub struct AddTerrainHighlightCmd(pub i32);
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: consider annotating `compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd` with `#[derive(Event)]`
+    = help: the following other types implement trait `bevy_ecs::event::Event`:
+              AdjustWallHeightCmd
+              AppExit
+              CaptureSnapshotRequested
+              CmdCheckForSheepInsideBuilding
+              ColorHistoryReplayApply
+              ConstructTimberframeCmd
+              CreatePlasterCmd
+              CreateRoofCmd
+            and 231 others
+    = note: required for `EventWriter<'static, AddTerrainHighlightCmd>` to implement `SystemParam`
+    = note: the full name for the type has been written to '/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/country_core-6e28205eb1df262e.long-type-17894149008805448338.txt'
+    = note: consider using `--verbose` to print the full type name to the console
+    = note: this error originates in the derive macro `SystemParam` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: `compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd` is not an `Event`
+   --> crates/country-core/src/systems/terrain/ui_edit_terrain.rs:154:10
+    |
+154 | #[derive(SystemParam)]
+    |          ^^^^^^^^^^^ invalid `Event`
+    |
+help: the trait `bevy_ecs::event::Event` is not implemented for `compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd`
+   --> crates/country-core/src/systems/render_loop/compute_passes/highlight_active_terrain_stroke.rs:57:1
+    |
+ 57 | pub struct AddTerrainHighlightCmd(pub i32);
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: consider annotating `compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd` with `#[derive(Event)]`
+    = help: the following other types implement trait `bevy_ecs::event::Event`:
+              AdjustWallHeightCmd
+              AppExit
+              CaptureSnapshotRequested
+              CmdCheckForSheepInsideBuilding
+              ColorHistoryReplayApply
+              ConstructTimberframeCmd
+              CreatePlasterCmd
+              CreateRoofCmd
+            and 231 others
+    = note: required for `EventWriter<'static, AddTerrainHighlightCmd>` to implement `SystemParam`
+note: required because it appears within the type `terrain::ui_edit_terrain::_::FetchState`
+   --> crates/country-core/src/systems/terrain/ui_edit_terrain.rs:154:10
+    |
+154 | #[derive(SystemParam)]
+    |          ^^^^^^^^^^^
+note: required by a bound in `bevy_ecs::system::SystemParam::State`
+   --> /Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/system/system_param.rs:215:24
+    |
+215 |     type State: Send + Sync + 'static;
+    |                        ^^^^ required by this bound in `SystemParam::State`
+    = note: the full name for the type has been written to '/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/country_core-6e28205eb1df262e.long-type-17894149008805448338.txt'
+    = note: consider using `--verbose` to print the full type name to the console
+    = note: this error originates in the derive macro `SystemParam` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: `compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd` is not an `Event`
+   --> crates/country-core/src/systems/terrain/ui_edit_terrain.rs:154:10
+    |
+154 | #[derive(SystemParam)]
+    |          ^^^^^^^^^^^ invalid `Event`
+    |
+help: the trait `bevy_ecs::event::Event` is not implemented for `compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd`
+   --> crates/country-core/src/systems/render_loop/compute_passes/highlight_active_terrain_stroke.rs:57:1
+    |
+ 57 | pub struct AddTerrainHighlightCmd(pub i32);
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: consider annotating `compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd` with `#[derive(Event)]`
+    = help: the following other types implement trait `bevy_ecs::event::Event`:
+              AdjustWallHeightCmd
+              AppExit
+              CaptureSnapshotRequested
+              CmdCheckForSheepInsideBuilding
+              ColorHistoryReplayApply
+              ConstructTimberframeCmd
+              CreatePlasterCmd
+              CreateRoofCmd
+            and 231 others
+note: required by a bound in `bevy_ecs::event::EventWriter`
+   --> /Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/event/writer.rs:62:31
+    |
+ 62 | pub struct EventWriter<'w, E: Event> {
+    |                               ^^^^^ required by this bound in `EventWriter`
+    = note: this error originates in the derive macro `SystemParam` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: `compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd` is not an `Event`
+   --> crates/country-core/src/systems/terrain/ui_edit_terrain.rs:154:10
+    |
+154 | #[derive(SystemParam)]
+    |          ^^^^^^^^^^^ invalid `Event`
+    |
+help: the trait `bevy_ecs::event::Event` is not implemented for `compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd`
+   --> crates/country-core/src/systems/render_loop/compute_passes/highlight_active_terrain_stroke.rs:57:1
+    |
+ 57 | pub struct AddTerrainHighlightCmd(pub i32);
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: consider annotating `compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd` with `#[derive(Event)]`
+    = help: the following other types implement trait `bevy_ecs::event::Event`:
+              AdjustWallHeightCmd
+              AppExit
+              CaptureSnapshotRequested
+              CmdCheckForSheepInsideBuilding
+              ColorHistoryReplayApply
+              ConstructTimberframeCmd
+              CreatePlasterCmd
+              CreateRoofCmd
+            and 231 others
+    = note: required for `EventWriter<'static, AddTerrainHighlightCmd>` to implement `SystemParam`
+note: required because it appears within the type `terrain::ui_edit_terrain::_::FetchState`
+   --> crates/country-core/src/systems/terrain/ui_edit_terrain.rs:154:10
+    |
+154 | #[derive(SystemParam)]
+    |          ^^^^^^^^^^^
+    = note: the return type of a function must have a statically known size
+    = note: the full name for the type has been written to '/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/country_core-6e28205eb1df262e.long-type-17894149008805448338.txt'
+    = note: consider using `--verbose` to print the full type name to the console
+    = note: this error originates in the derive macro `SystemParam` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0599]: no method named `bilinear_sample_at_world_xz` found for reference `&world_raster_defs::WaterRaster` in the current scope
+   --> crates/country-core/src/systems/terrain/ui_draw_terrain.rs:109:10
+    |
+107 |       let height = water
+    |  __________________-
+108 | |         .as_ref()
+109 | |         .bilinear_sample_at_world_xz(cursor.x, cursor.y, 130.0, 130.0);
+    | |         -^^^^^^^^^^^^^^^^^^^^^^^^^^^ method not found in `&world_raster_defs::WaterRaster`
+    | |_________|
+    |
+    |
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following trait defines an item `bilinear_sample_at_world_xz`, perhaps you need to implement it:
+            candidate #1: `FloatGridSampler`
+
+error[E0277]: `AddTerrainHighlightCmd` is not an `Event`
+   --> crates/country-core/src/systems/terrain/ui_edit_terrain.rs:154:10
+    |
+154 | #[derive(SystemParam)]
+    |          ^^^^^^^^^^^ invalid `Event`
+    |
+help: the trait `bevy_ecs::event::Event` is not implemented for `AddTerrainHighlightCmd`
+   --> crates/country-core/src/systems/render_loop/compute_passes/highlight_active_terrain_stroke.rs:57:1
+    |
+ 57 | pub struct AddTerrainHighlightCmd(pub i32);
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: consider annotating `AddTerrainHighlightCmd` with `#[derive(Event)]`
+    = help: the following other types implement trait `bevy_ecs::event::Event`:
+              AdjustWallHeightCmd
+              AnimateWallBulldozeCmd
+              AppExit
+              AppModeChanged
+              CaptureSnapshotRequested
+              ClearCanvasCmd
+              CmdCheckForSheepInsideBuilding
+              CmdUnfreezeSheep
+            and 231 others
+    = note: required for `bevy_ecs::event::EventWriter<'_, AddTerrainHighlightCmd>` to implement `SystemParam`
+    = note: this error originates in the derive macro `SystemParam` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: `AddTerrainHighlightCmd` is not an `Event`
+   --> crates/country-core/src/systems/terrain/ui_edit_terrain.rs:154:10
+    |
+154 | #[derive(SystemParam)]
+    |          ^^^^^^^^^^^ invalid `Event`
+    |
+help: the trait `bevy_ecs::event::Event` is not implemented for `AddTerrainHighlightCmd`
+   --> crates/country-core/src/systems/render_loop/compute_passes/highlight_active_terrain_stroke.rs:57:1
+    |
+ 57 | pub struct AddTerrainHighlightCmd(pub i32);
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: consider annotating `AddTerrainHighlightCmd` with `#[derive(Event)]`
+    = help: the following other types implement trait `bevy_ecs::event::Event`:
+              AdjustWallHeightCmd
+              AnimateWallBulldozeCmd
+              AppExit
+              AppModeChanged
+              CaptureSnapshotRequested
+              ClearCanvasCmd
+              CmdCheckForSheepInsideBuilding
+              CmdUnfreezeSheep
+            and 231 others
+    = note: required for `bevy_ecs::event::EventWriter<'w, AddTerrainHighlightCmd>` to implement `SystemParam`
+    = note: this error originates in the derive macro `SystemParam` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0599]: the method `write` exists for struct `bevy_ecs::event::EventWriter<'_, AddTerrainHighlightCmd>`, but its trait bounds were not satisfied
+   --> crates/country-core/src/systems/terrain/ui_edit_terrain.rs:222:31
+    |
+222 |             effects.highlight.write(AddTerrainHighlightCmd(hovered_id));
+    |                               ^^^^^ method cannot be called due to unsatisfied trait bounds
+    |
+   ::: crates/country-core/src/systems/render_loop/compute_passes/highlight_active_terrain_stroke.rs:57:1
+    |
+ 57 | pub struct AddTerrainHighlightCmd(pub i32);
+    | --------------------------------- doesn't satisfy `AddTerrainHighlightCmd: bevy_ecs::event::Event`
+    |
+    = note: the following trait bounds were not satisfied:
+            `AddTerrainHighlightCmd: bevy_ecs::event::Event`
+note: the trait `bevy_ecs::event::Event` must be implemented
+   --> /Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/event/base.rs:48:1
+    |
+ 48 | pub trait Event: Send + Sync + 'static {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `AddTerrainHighlightCmd` is not an `Event`
+  --> crates/country-core/src/systems/terrain/mod.rs:82:27
+   |
+82 | ...source::<Events<crate::systems::render_loop::compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd>>();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid `Event`
+   |
+help: the trait `bevy_ecs::event::Event` is not implemented for `AddTerrainHighlightCmd`
+  --> crates/country-core/src/systems/render_loop/compute_passes/highlight_active_terrain_stroke.rs:57:1
+   |
+57 | pub struct AddTerrainHighlightCmd(pub i32);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: consider annotating `AddTerrainHighlightCmd` with `#[derive(Event)]`
+   = help: the following other types implement trait `bevy_ecs::event::Event`:
+             AdjustWallHeightCmd
+             AnimateWallBulldozeCmd
+             AppExit
+             AppModeChanged
+             CaptureSnapshotRequested
+             ClearCanvasCmd
+             CmdCheckForSheepInsideBuilding
+             CmdUnfreezeSheep
+           and 231 others
+note: required by a bound in `bevy_ecs::event::Events`
+  --> /Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/event/collections.rs:94:22
+   |
+94 | pub struct Events<E: Event> {
+   |                      ^^^^^ required by this bound in `Events`
+
+warning: variable does not need to be mutable
+   --> crates/country-core/src/resources/history/color_edit.rs:331:39
+    |
+331 |         let serde_json::Value::Object(mut outer) = value else {
+    |                                       ----^^^^^
+    |                                       |
+    |                                       help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `aux`
+   --> crates/country-core/src/resources/history/replay_cmd_buffer.rs:181:9
+    |
+181 |         aux: ReplayBucketAux,
+    |         ^^^ help: if this is intentional, prefix it with an underscore: `_aux`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+Some errors have detailed explanations: E0277, E0599.
+For more information about an error, try `rustc --explain E0277`.
+warning: `country-core` (lib) generated 4 warnings
+error: could not compile `country-core` (lib) due to 14 previous errors; 4 warnings emitted
+warning: build failed, waiting for other jobs to finish...
+error[E0277]: `compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd` is not an `Event`
+   --> crates/country-core/src/systems/terrain/ui_edit_terrain.rs:154:10
+    |
+154 | #[derive(SystemParam)]
+    |          ^^^^^^^^^^^ invalid `Event`
+    |
+help: the trait `bevy_ecs::event::Event` is not implemented for `compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd`
+   --> crates/country-core/src/systems/render_loop/compute_passes/highlight_active_terrain_stroke.rs:57:1
+    |
+ 57 | pub struct AddTerrainHighlightCmd(pub i32);
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: consider annotating `compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd` with `#[derive(Event)]`
+    = help: the following other types implement trait `bevy_ecs::event::Event`:
+              AdjustWallHeightCmd
+              AppExit
+              CaptureSnapshotRequested
+              CmdCheckForSheepInsideBuilding
+              ColorHistoryReplayApply
+              ConstructTimberframeCmd
+              CreatePlasterCmd
+              CreateRoofCmd
+            and 231 others
+    = note: required for `EventWriter<'_, AddTerrainHighlightCmd>` to implement `SystemParam`
+    = note: the full name for the type has been written to '/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/country_core-6e28205eb1df262e.long-type-6656497676085087982.txt'
+    = note: consider using `--verbose` to print the full type name to the console
+    = note: this error originates in the derive macro `SystemParam` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: `compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd` is not an `Event`
+   --> crates/country-core/src/systems/terrain/ui_edit_terrain.rs:154:10
+    |
+154 | #[derive(SystemParam)]
+    |          ^^^^^^^^^^^ invalid `Event`
+    |
+help: the trait `bevy_ecs::event::Event` is not implemented for `compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd`
+   --> crates/country-core/src/systems/render_loop/compute_passes/highlight_active_terrain_stroke.rs:57:1
+    |
+ 57 | pub struct AddTerrainHighlightCmd(pub i32);
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: consider annotating `compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd` with `#[derive(Event)]`
+    = help: the following other types implement trait `bevy_ecs::event::Event`:
+              AdjustWallHeightCmd
+              AppExit
+              CaptureSnapshotRequested
+              CmdCheckForSheepInsideBuilding
+              ColorHistoryReplayApply
+              ConstructTimberframeCmd
+              CreatePlasterCmd
+              CreateRoofCmd
+            and 231 others
+    = note: required for `EventWriter<'w, AddTerrainHighlightCmd>` to implement `SystemParam`
+    = note: the full name for the type has been written to '/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/country_core-6e28205eb1df262e.long-type-12112856433005004374.txt'
+    = note: consider using `--verbose` to print the full type name to the console
+    = note: this error originates in the derive macro `SystemParam` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0599]: the method `write` exists for struct `EventWriter<'_, AddTerrainHighlightCmd>`, but its trait bounds were not satisfied
+   --> crates/country-core/src/systems/terrain/ui_edit_terrain.rs:222:31
+    |
+222 |             effects.highlight.write(AddTerrainHighlightCmd(hovered_id));
+    |                               ^^^^^ method cannot be called on `EventWriter<'_, AddTerrainHighlightCmd>` due to unsatisfied trait bounds
+    |
+   ::: crates/country-core/src/systems/render_loop/compute_passes/highlight_active_terrain_stroke.rs:57:1
+    |
+ 57 | pub struct AddTerrainHighlightCmd(pub i32);
+    | --------------------------------- doesn't satisfy `_: Event`
+    |
+    = note: the following trait bounds were not satisfied:
+            `compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd: bevy_ecs::event::Event`
+note: the trait `bevy_ecs::event::Event` must be implemented
+   --> /Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/event/base.rs:48:1
+    |
+ 48 | pub trait Event: Send + Sync + 'static {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: the full name for the type has been written to '/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/country_core-6e28205eb1df262e.long-type-14380178698727584100.txt'
+    = note: consider using `--verbose` to print the full type name to the console
+
+error[E0277]: `compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd` is not an `Event`
+  --> crates/country-core/src/systems/terrain/mod.rs:82:27
+   |
+82 | ...source::<Events<crate::systems::render_loop::compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd>>();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid `Event`
+   |
+help: the trait `bevy_ecs::event::Event` is not implemented for `compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd`
+  --> crates/country-core/src/systems/render_loop/compute_passes/highlight_active_terrain_stroke.rs:57:1
+   |
+57 | pub struct AddTerrainHighlightCmd(pub i32);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: consider annotating `compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd` with `#[derive(Event)]`
+   = help: the following other types implement trait `bevy_ecs::event::Event`:
+             AdjustWallHeightCmd
+             AppExit
+             CaptureSnapshotRequested
+             CmdCheckForSheepInsideBuilding
+             ColorHistoryReplayApply
+             ConstructTimberframeCmd
+             CreatePlasterCmd
+             CreateRoofCmd
+           and 231 others
+note: required by a bound in `bevy_ecs::event::Events`
+  --> /Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/event/collections.rs:94:22
+   |
+94 | pub struct Events<E: Event> {
+   |                      ^^^^^ required by this bound in `Events`
+
+error[E0596]: cannot borrow `library` as mutable, as it is not declared as mutable
+   --> crates/country-core/src/systems/terrain/terrain_hover_idx.rs:159:9
+    |
+159 |         library.get_mut::<MouseTerrainRaycastSsbo>().unwrap().mapped[0].terrain_stroke_index = 7;
+    |         ^^^^^^^ cannot borrow as mutable
+    |
+help: consider changing this to be mutable
+    |
+157 |         let mut library = AssetSsboLibrary::new();
+    |             +++
+
+warning: variable does not need to be mutable
+   --> crates/country-core/src/systems/wall/snapping/telegraph_walls_are_merged.rs:115:17
+    |
+115 |             let mut lo = (2.0 * e - 1.0).clamp(0.0, 1.0);
+    |                 ----^^
+    |                 |
+    |                 help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/country-core/src/systems/wall/snapping/telegraph_walls_are_merged.rs:116:17
+    |
+116 |             let mut hi = (2.0 * e).clamp(0.0, 1.0);
+    |                 ----^^
+    |                 |
+    |                 help: remove this `mut`
+
+Some errors have detailed explanations: E0277, E0596, E0599.
+warning: `country-core` (lib test) generated 16 warnings (3 duplicates)
+error: could not compile `country-core` (lib test) due to 15 previous errors; 16 warnings emitted

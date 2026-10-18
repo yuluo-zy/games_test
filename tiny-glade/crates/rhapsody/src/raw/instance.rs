@@ -32,7 +32,14 @@ pub struct GraphicsInstanceLoader {
 }
 impl GraphicsInstanceLoader {
     pub fn new() -> Result<Self> {
-        Self::from_candidates(&[])
+        // Explicit paths survive Cargo's rewriting of dynamic-library search
+        // variables for tests. Keep machine-specific locations in configuration.
+        let candidates = std::env::var_os("RHAPSODY_VULKAN_LIBRARY")
+            .filter(|path| !path.is_empty())
+            .map(std::path::PathBuf::from)
+            .into_iter()
+            .collect::<Vec<_>>();
+        Self::from_candidates(&candidates)
     }
     /// 先尝试调用者提供的 loader，再回退到 ash 系统 loader；失败原因不被丢弃。
     pub fn from_candidates(candidates: &[std::path::PathBuf]) -> Result<Self> {

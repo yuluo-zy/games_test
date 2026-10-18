@@ -1,0 +1,236 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/leaf_particles.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/leaf_particles.rs
+@@ -1,8 +1,9 @@
+ //! `leaf_particles.rs` — W18 leaf particles（O：`leaf_particles_compute` 0x1408f4d00，1154 B）。
+ //!
+ //! 流程（逐条对照机器码）：
+-//! 1. `get_resource_id(0x3dce36237fb50dff, 0x93a27cf4512d885c)` → [`LoadedLeafParticleCount`]（缺失 → `Option::unwrap` panic）；
+-//!    读其首个 `usize` 为已加载叶片粒子总数；**为 0 时整函数直接返回**（不建 pass）。
++//! 1. `get_resource_id(0x3dce36237fb50dff, 0x93a27cf4512d885c)` 是实际GladeSettings；
++//!    读其leaf_particle_count u64；**为 0 时整函数直接返回**（不建pass、不查emitter）。
++//!    typed宿主读取该真实Resource并传值，不通过错认的独立count资源布局cast。
+ //! 2. `n = min(count, 0x340)`（`cmp rax, 0x340; cmovb`），即同时最多 832 个粒子；`n` 同时是 `dispatch_1d` 的线程数。
+ //! 3. `ComputePass::new("LeafParticles", "/leaf_particles.cs.hlsl")`，依次：
+ //!    `write_storage_buffer<LeafParticleSsbo>`（`leaf_particle_buffer`）→
+@@ -125,22 +126,9 @@
+     }
+ }
+ 
+-/// 已加载叶片粒子总数（O：首个 `usize`，其余布局 U；语义由 `total_particle_count` 的写入点确定）。
+-#[repr(C)]
+-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+-pub struct LoadedLeafParticleCount(pub usize);
+-
+-// SAFETY: 首个 qword = 数量（O：`mov rax,[res]`）。
+-unsafe impl ResourceView for LoadedLeafParticleCount {
+-    const TYPE_ID: TypeId128 = TypeId128 {
+-        lo: 0x3dce36237fb50dff,
+-        hi: 0x93a27cf4512d885c,
+-    };
+-}
+-
+ /// 已加载粒子发射器数（O 名 `LoadedParticleEmitterCount`；首个 qword 的低 32 位写 `particle_emitter_count`）。
+ #[repr(C)]
+-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
++#[derive(bevy_ecs::resource::Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
+ pub struct LoadedParticleEmitterCount(pub u64);
+ 
+ // SAFETY: 首个 qword 被读取（O）。
+@@ -155,8 +143,8 @@
+ pub const PASS_NAME: &str = "LeafParticles";
+ /// shader URI（O，23 B）。
+ pub const SHADER_URI: &str = "/leaf_particles.cs.hlsl";
+-/// 同时最多处理的发射器数（O：`cmp rax, 0x340`）。
+-pub const MAX_EMITTERS: usize = 0x340;
++/// 同时最多处理的叶片粒子数（O：`cmp rax, 0x340`）。
++pub const MAX_PARTICLES: u64 = 0x340;
+ 
+ pub const HASH_LEAF_PARTICLES: u64 = binding_hash("leaf_particle_buffer"); // 0x0316dd88f93e7113
+ pub const HASH_EMITTERS: u64 = binding_hash("particle_emitter_buffer"); // 0x1ad3d8a882713639
+@@ -165,30 +153,44 @@
+ /// 发射器数 uniform 键（O：`movabs r8, 0x6ae860ef74719a42`）。
+ pub const KEY_EMITTER_COUNT: u64 = binding_hash("particle_emitter_count");
+ 
+-/// `min(count, 0x340)`（O：`cmp rax, 0x340; mov esi, 0x340; cmovb rsi, rax`）。
+-pub fn clamp_emitter_count(count: usize) -> u32 {
+-    count.min(MAX_EMITTERS) as u32
+-}
+-
+-/// W18 入口（O 0x1408f4d00）。粒子数为 0 → 不登记 pass；否则 `PassBuilder::render` 登记一个 pass。
+-pub fn leaf_particles_compute(env: &mut PassEnv<'_>) {
+-    let count = env.resource::<LoadedLeafParticleCount>().0;
++/// Original native u64 setting, clamped before its u32 dispatch projection.
++pub fn clamp_particle_count(count: u64) -> u32 {
++    count.min(MAX_PARTICLES) as u32
++}
++
++/// W18@1408f4d00, using the real GladeSettings.leaf_particle_count input.
++/// The lazy accessor preserves the original emitter-resource read after the
++/// first uniform, and is never evaluated for a zero particle count.
++pub fn leaf_particles_compute<E>(
++    env: &mut PassEnv<'_>,
++    count: u64,
++    emitter_count: impl FnOnce() -> Result<u64, E>,
++) -> Result<(), E> {
+     if count == 0 {
+-        return;
+-    }
+-    let n = clamp_emitter_count(count);
++        return Ok(());
++    }
++    let n = clamp_particle_count(count);
+     let pass = env
+         .pass(PASS_NAME, SHADER_URI)
+         .write_storage_buffer::<LeafParticleSsbo>(HASH_LEAF_PARTICLES)
++        // Original SPV reads each existing 32-byte particle before updating it.
++        .preserve_storage_buffer_contents(HASH_LEAF_PARTICLES)
+         .read_storage_buffer::<ParticleEmitterSsbo>(HASH_EMITTERS);
+     let pass = bind_water_object_push_compute::<RippleSourceBuf>(pass)
+         .uniform(KEY_TOTAL_PARTICLES, n as i32);
+-    // 第二个资源在第一个 uniform 之后取（缺失 → unwrap panic）。
+-    let emitters = env.resource::<LoadedParticleEmitterCount>().0;
++    let emitters = emitter_count()?;
++    let pass = if emitters as u32 == 0 {
++        // Shader's uniform zero branch does not fetch the None-initialized
++        // emitter storage; bindings and synchronization remain unchanged.
++        pass.inactive_storage_buffer_contents(HASH_EMITTERS)
++    } else {
++        pass
++    };
+     let recorded = pass
+         .uniform(KEY_EMITTER_COUNT, emitters as u32 as i32)
+         .dispatch_1d(n);
+     env.record(recorded);
++    Ok(())
+ }
+ 
+ #[cfg(test)]
+@@ -197,7 +199,7 @@
+     use crate::render::pass_builder::compute_pass_builder::DispatchMode;
+     use crate::systems::render_loop::compute_passes::pass_kit::test_env::*;
+ 
+-    fn world(count: usize, word: Option<u64>) -> TestWorld {
++    fn world(word: Option<u64>) -> TestWorld {
+         let refl = Reflection::new()
+             .bind(&[
+                 HASH_LEAF_PARTICLES,
+@@ -210,19 +212,26 @@
+         let w = TestWorld::new(refl)
+             .with_ssbo::<LeafParticleSsbo>()
+             .with_ssbo::<ParticleEmitterSsbo>()
+-            .with_ssbo::<RippleSourceBuf>()
+-            .with_resource(LoadedLeafParticleCount(count));
++            .with_ssbo::<RippleSourceBuf>();
+         match word {
+             Some(v) => w.with_resource(LoadedParticleEmitterCount(v)),
+             None => w,
+         }
+     }
+ 
+-    #[test]
+-    fn zero_emitters_registers_no_pass() {
+-        let w = world(0, None); // 第二个资源缺失也不 panic：count==0 在它之前返回
++    fn run(w: &TestWorld, frame: &mut TestFrame, particles: u64) {
++        with_env(w, frame, |env| leaf_particles_compute(env, particles, || {
++            Ok::<_, std::convert::Infallible>(
++                super::super::pass_kit::unwrap_resource::<_, LoadedParticleEmitterCount>(w).0,
++            )
++        })).unwrap();
++    }
++
++    #[test]
++    fn zero_particles_registers_no_pass() {
++        let w = world(None); // 第二个资源缺失也不 panic：count==0 在它之前返回
+         let mut f = TestFrame::default();
+-        with_env(&w, &mut f, leaf_particles_compute);
++        run(&w, &mut f, 0);
+         assert!(f.passes.is_empty());
+         assert_eq!(
+             w.backend.loads.get(),
+@@ -233,12 +242,12 @@
+ 
+     #[test]
+     fn clamps_to_0x340_and_dispatches_1d() {
+-        assert_eq!(clamp_emitter_count(5), 5);
+-        assert_eq!(clamp_emitter_count(0x340), 0x340);
+-        assert_eq!(clamp_emitter_count(100_000), 0x340);
+-        let w = world(100_000, Some(0x1_0000_002a));
++        assert_eq!(clamp_particle_count(5), 5);
++        assert_eq!(clamp_particle_count(0x340), 0x340);
++        assert_eq!(clamp_particle_count(100_000), 0x340);
++        let w = world(Some(0x1_0000_002a));
+         let mut f = TestFrame::default();
+-        with_env(&w, &mut f, leaf_particles_compute);
++        run(&w, &mut f, 100000);
+         assert_eq!(f.passes.len(), 1);
+         let p = &f.passes[0];
+         assert_eq!(p.name, "LeafParticles");
+@@ -261,9 +270,9 @@
+ 
+     #[test]
+     fn small_count_passes_through_and_declares_buffers_in_order() {
+-        let w = world(7, Some(1));
++        let w = world(Some(1));
+         let mut f = TestFrame::default();
+-        with_env(&w, &mut f, leaf_particles_compute);
++        run(&w, &mut f, 7);
+         let p = &f.passes[0];
+         assert!(matches!(p.dispatch, DispatchMode::Threads { x: 7, .. }));
+         // 访问登记顺序：color library(0x1a)、LeafParticles 写(0x32)、ParticleEmitter 读(0x1a)、
+@@ -271,23 +280,29 @@
+         let acc: Vec<u8> = p.builder.accesses.iter().map(|a| a.access).collect();
+         assert_eq!(&acc[..3], &[0x1a, 0x32, 0x1a]);
+         assert_eq!(&acc[3..], &[0x19, 0x1a, 0x19]);
+-    }
+-
+-    #[test]
+-    #[should_panic(expected = "called `Option::unwrap()` on a `None` value")]
+-    fn missing_count_resource_unwraps() {
+-        let refl = Reflection::new();
+-        let w = TestWorld::new(refl);
++        assert_eq!(p.preserving_buffers, [p.builder.accesses[1].resource]);
++    }
++
++    #[test]
++    fn zero_particles_never_evaluate_the_emitter_accessor_or_load_shader() {
++        let w = TestWorld::new(Reflection::new());
+         let mut f = TestFrame::default();
+-        with_env(&w, &mut f, leaf_particles_compute);
++        let mut called = false;
++        with_env(&w, &mut f, |env| leaf_particles_compute(env, 0, || {
++            called = true;
++            Err::<u64, _>("not called")
++        })).unwrap();
++        assert!(!called);
++        assert!(f.passes.is_empty());
++        assert_eq!(w.backend.loads.get(), 0);
+     }
+ 
+     #[test]
+     #[should_panic(expected = "called `Option::unwrap()` on a `None` value")]
+     fn missing_second_resource_unwraps_after_first_uniform() {
+-        let w = world(3, None);
++        let w = world(None);
+         let mut f = TestFrame::default();
+-        with_env(&w, &mut f, leaf_particles_compute);
++        run(&w, &mut f, 3);
+     }
+ 
+     #[test]
+@@ -296,15 +311,7 @@
+         assert_eq!(KEY_EMITTER_COUNT, 0x6ae860ef74719a42);
+         assert_eq!(HASH_LEAF_PARTICLES, 0x0316dd88f93e7113);
+         assert_eq!(HASH_EMITTERS, 0x1ad3d8a882713639);
+-        assert_eq!(
+-            <LoadedLeafParticleCount as ResourceView>::TYPE_ID.hi,
+-            (-0x6c5d830baed277a4_i64) as u64
+-        );
+-        assert_eq!(
+-            <LoadedLeafParticleCount as ResourceView>::TYPE_ID.lo,
+-            0x3dce36237fb50dff
+-        );
+-        assert_eq!(MAX_EMITTERS, 832);
++        assert_eq!(MAX_PARTICLES, 832);
+     }
+ }
+ 

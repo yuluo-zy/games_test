@@ -1,0 +1,85 @@
+
+void __cdecl
+utils::curve::Curve::try_new_from_points<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D>
+          (void)
+
+{
+  float fVar1;
+  undefined8 uVar2;
+  ulonglong uVar3;
+  undefined8 *puVar4;
+  longlong extraout_RAX;
+  longlong *in_RCX;
+  float *pfVar5;
+  longlong lVar6;
+  longlong *in_RDX;
+  ulonglong uVar7;
+  float fVar8;
+  float fVar9;
+  float fVar10;
+  undefined8 uVar11;
+  float fVar12;
+  
+  uVar3 = in_RDX[2];
+  if (uVar3 < 2) {
+    *(undefined1 *)(in_RCX + 1) = 0;
+    *(char *)((longlong)in_RCX + 9) = (char)uVar3;
+    *in_RCX = -0x8000000000000000;
+    lVar6 = *in_RDX;
+  }
+  else {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX == 0) {
+                    // WARNING: Subroutine does not return
+      alloc::raw_vec::handle_error();
+    }
+    puVar4 = (undefined8 *)in_RDX[1];
+    pfVar5 = (float *)(puVar4 + 1);
+    fVar8 = 0.0;
+    uVar7 = 0;
+    fVar9 = *(float *)(puVar4 + 1);
+    uVar11 = *puVar4;
+    do {
+      fVar1 = *pfVar5;
+      fVar9 = fVar9 - fVar1;
+      uVar2 = *(undefined8 *)(pfVar5 + -2);
+      fVar10 = (float)uVar11 - (float)uVar2;
+      fVar12 = (float)((ulonglong)uVar11 >> 0x20) - (float)((ulonglong)uVar2 >> 0x20);
+      fVar8 = fVar8 + SQRT(fVar9 * fVar9 + fVar12 * fVar12 + fVar10 * fVar10);
+      *(float *)(extraout_RAX + uVar7 * 4) = fVar8;
+      uVar7 = uVar7 + 1;
+      pfVar5 = pfVar5 + 3;
+      fVar9 = fVar1;
+      uVar11 = uVar2;
+    } while (uVar3 != uVar7);
+    if ((fVar8 != 0.0) || (NAN(fVar8))) {
+      lVar6 = 0;
+      do {
+        if (uVar3 * 4 - lVar6 == 0) {
+          in_RCX[2] = in_RDX[2];
+          lVar6 = in_RDX[1];
+          *in_RCX = *in_RDX;
+          in_RCX[1] = lVar6;
+          in_RCX[3] = uVar3;
+          in_RCX[4] = extraout_RAX;
+          in_RCX[5] = uVar3;
+          *(float *)(in_RCX + 6) = fVar8;
+          return;
+        }
+        fVar9 = *(float *)(extraout_RAX + lVar6) / fVar8;
+        *(float *)(extraout_RAX + lVar6) = fVar9;
+        lVar6 = lVar6 + 4;
+      } while ((uint)ABS(fVar9) < 0x7f800000);
+    }
+    *(undefined1 *)(in_RCX + 1) = 1;
+    *in_RCX = -0x8000000000000000;
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+    lVar6 = *in_RDX;
+  }
+  if (lVar6 == 0) {
+    return;
+  }
+  std::alloc::__default_lib_allocator::__rust_dealloc();
+  return;
+}
+

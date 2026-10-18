@@ -105,7 +105,9 @@ pub trait RenderHost {
     /// TypeId 0x3d7b56e787d47c40/0x67b0b10a8d43bfc7（`GameConfig`/`VideoSettings`；缺失 → `expect("GameConfig")`，行 650）。
     /// 成功时克隆其中的字符串/Vec（`LastKnownGraphicsDevice`、`GraphicsInstanceLayerAllowlistItem`）。
     fn clone_video_settings(&mut self) -> bool;
-    /// 视频设置里的"GPU 帧节奏"开关（O：`cmp byte [rbp+0x87a], 0`，0x1404ea052；语义 I）。
+    /// `GameConfig.ui.input_lag_reduction`。B 原始指令：0x1404e8666
+    /// 从 `GameConfig+0xf0` 读 4 字节，0x1404e870e 存到 `[rbp+0x878]`；
+    /// 0x1404ea052 比较 `[rbp+0x87a]`，即 `UiSettings+0xa`。
     fn gpu_pacing_enabled(&mut self) -> bool;
 
     // ---- 绘制列表 + swapchain ----
@@ -241,11 +243,15 @@ pub fn oom_message(old: f32, new: f32) -> String {
 }
 
 /// `render` 的 panic：显存不足（O：`panic_fmt`，参数是 `Option<(vk::Format, vk::Extent2D)>` 的 Debug）。
+///
+/// FIX-A1（reviewer-A-tinyglade）：原版是
+/// `core::option::impl$46::fmt<tuple<ash::vk::Format,array<u32,2>>>`，即用 `{:?}`
+/// 打印整个 `Option<(vk::Format, [u32; 2])>`；ash 0.38 的 `Format` Debug 输出
+/// 变体名（如 `B8G8R8A8_SRGB`），不是数值。这里把内部 u32 还原成
+/// `vk::Format::from_raw` 后整体 Debug 格式化，保持原生 Debug 形状。
 pub fn out_of_video_memory(info: Option<&SwapchainInfo>) -> String {
-    match info {
-        Some(i) => format!("{}Some(({}, {:?}))", msgs::OUT_OF_VRAM, i.format, i.extent),
-        None => format!("{}None", msgs::OUT_OF_VRAM),
-    }
+    let info = info.map(|i| (ash::vk::Format::from_raw(i.format as i32), i.extent));
+    format!("{}{info:?}", msgs::OUT_OF_VRAM)
 }
 
 /// `tiny_glade::render_loop::render`（0x1404e8010）。
@@ -658,7 +664,9 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Out of video memory. Swapchain info: Some((50, [1920, 1080]))")]
+    #[should_panic(
+        expected = "Out of video memory. Swapchain info: Some((B8G8R8A8_SRGB, [1920, 1080]))"
+    )]
     fn oom_at_scale_floor_panics_with_swapchain_info() {
         let mut h = Host::new();
         h.world_results = vec![Err("oom")];
@@ -829,6 +837,15 @@ mod tests {
         assert_eq!(
             out_of_video_memory(None),
             "Out of video memory. Swapchain info: None"
+        );
+        // FIX-A1：格式按 ash `vk::Format` 的 Debug 变体名输出（50 = B8G8R8A8_SRGB）。
+        let info = SwapchainInfo {
+            format: 50,
+            extent: [1920, 1080],
+        };
+        assert_eq!(
+            out_of_video_memory(Some(&info)),
+            "Out of video memory. Swapchain info: Some((B8G8R8A8_SRGB, [1920, 1080]))"
         );
     }
 

@@ -29,14 +29,14 @@ use crate::utils::dirty_tiles::{DirtyTiles, GRID_SIZE, TILE_SIZE};
 /// B readback SSBOs pack two u16 heights in each u32 (0x20000 elements).
 /// They are also the distinct identity parameters of the two CPU height owners.
 macro_rules! height_readback_ssbo {
-    ($($name:ident),+ $(,)?) => {$(
+    ($(($name:ident, $buffer_name:literal)),+ $(,)?) => {$(
         #[repr(transparent)]
         #[derive(Clone, Copy, Debug, Default)]
         pub struct $name(pub u32);
         unsafe impl bytemuck::Zeroable for $name {}
         unsafe impl bytemuck::Pod for $name {}
         impl crate::render::ssbo::StorageElement for $name {
-            const NAME: &'static str = stringify!($name);
+            const NAME: &'static str = $buffer_name;
             const BUFFER_LEN: usize = 0x20000;
             const MAPPED_MEMORY: u8 = crate::render::ssbo::MAPPED_MEMORY_READBACK;
         }
@@ -51,7 +51,12 @@ macro_rules! height_readback_ssbo {
         }
     )+};
 }
-height_readback_ssbo!(TerrainHeightSsbo, VisualTerrainHeightSsbo);
+// Native constructors 14161b870 / 14161c540 use these short names, which
+// also determine SsboId. The Rust type-name suffix is not part of either key.
+height_readback_ssbo!(
+    (TerrainHeightSsbo, "TerrainHeight"),
+    (VisualTerrainHeightSsbo, "VisualTerrainHeight"),
+);
 
 /// 网格边长（格）。
 pub const GRID_SIDE: usize = 512;

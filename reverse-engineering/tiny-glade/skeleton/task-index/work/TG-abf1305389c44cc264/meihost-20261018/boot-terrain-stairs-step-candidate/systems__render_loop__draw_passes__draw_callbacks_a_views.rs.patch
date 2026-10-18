@@ -1,0 +1,17 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_a_views.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_a_views.rs
+@@ -81,11 +81,9 @@
+     pub scale: Vec3,
+ }
+ 
+-/// `components::StairsStep`（TypeId 0x775c6361f3425a3a/0x3bad471c3be19d00；真实类型 `(pub Gap)`）：首字节 `flags`。
+-#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
+-pub struct StairsStepView {
+-    pub flags: u8,
+-}
++/// Compatibility name for the same canonical Component identity. No byte cast
++/// or independently registered View remains on the startup -> draw path.
++pub use crate::components::rendering::StairsStep as StairsStepView;
+ 
+ /// `geometry::instanced_wall::WallBrickInstancedDrawProxy`（组件）：三个字节 `b0 @+0`、`b1 @+1`、`b2 @+2`。真实类型
+ /// `{ kind: u16, sub: u8 }` 的字节对应关系 U，故用视图。

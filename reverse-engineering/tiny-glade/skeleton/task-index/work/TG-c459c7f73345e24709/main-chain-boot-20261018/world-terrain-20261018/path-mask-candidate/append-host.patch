@@ -1,0 +1,45 @@
+--- a/games_test/tiny-glade/crates/tiny-glade/src/world_terrain.rs
++++ b/games_test/tiny-glade/crates/tiny-glade/src/world_terrain.rs
+@@ -124,3 +124,42 @@
+         Ok(count)
+     })
+ }
++
++/// Native W10 @1409014e0. The same Path/Cobblestone owners consumed by W1,
++/// and the same Recalculate event read by W3, determine this thirteen-pass step.
++/// All mandatory identities are checked even when its run gate will be false.
++pub fn compute_path_masks(
++    frame: &mut CoreGraphFrame<'_>,
++    world: &mut World,
++) -> rhapsody::Result<Option<u32>> {
++    use country_core::resources::world_raster_defs::{
++        Cobblestone1Raster, Cobblestone2Raster, Cobblestone3Raster, PathRaster,
++    };
++    macro_rules! require {
++        ($r:ty) => {
++            if !world.contains_resource::<$r>() {
++                return Err(missing(stringify!($r)));
++            }
++        };
++    }
++    require!(PathRaster);
++    require!(Cobblestone1Raster);
++    require!(Cobblestone2Raster);
++    require!(Cobblestone3Raster);
++    let requested = !world
++        .get_resource::<Events<RecalculateHeightMapCmd>>()
++        .ok_or_else(|| missing("Events<RecalculateHeightMapCmd>"))?
++        .is_empty();
++    let tick = world.read_change_tick().get();
++    world.resource_scope(|world, mut a: Mut<PathRaster>| {
++        world.resource_scope(|world, mut b: Mut<Cobblestone1Raster>| {
++            world.resource_scope(|world, mut c: Mut<Cobblestone2Raster>| {
++                world.resource_scope(|world, mut d: Mut<Cobblestone3Raster>| {
++                    with_env(frame, world, |env| Ok(
++                        country_core::systems::render_loop::compute_passes::compute_path_masks::compute_path_masks(
++                            env, &mut a, &mut b, &mut c, &mut d, requested, tick)))
++                })
++            })
++        })
++    })
++}

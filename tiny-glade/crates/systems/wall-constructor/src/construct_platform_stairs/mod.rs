@@ -6,7 +6,7 @@
 //!
 //! 机器码（building-platform-stairs B-dirty-tiles/B-collision 冻结）：
 //! 平台楼梯构造 + 碰撞几何（rapier 边界按 building-platform-stairs 结论）；
-//! CPU 链 = recovered_building wall_platform_stairs 族
+//! CPU 链 = shared building modules wall_platform_stairs 族
 //! （collect_platform_stair_blockers/prepare_platform_stair_segments/
 //! platform_stair_cell/platform_stair_geometry/platform_stair_holes）。
 use country_core::asset_libraries::ssbo_library::AssetSsboLibrary;
@@ -23,21 +23,17 @@ pub struct PlatformStairsStorage {
     pub segments: hashbrown::HashMap<u64, Vec<[u8; 104]>>,
 }
 
-/// B 0x1407744d0。
+/// B 0x1407744d0。**未实现（零壳）**：真实逻辑为 80B 装饰源
+/// （raw[0x4e]==0x3f 且 raw[0x2a]∉{2,3,4}）→ blockers（coordinate=[f(8),f(12)]、
+/// terrain 差<3.0）→ process_loop_range_into_wallpath_segments → cells/碰撞
+/// （update_phys/add_colision_geo）→ 96B 砖/holes/stats。现有实现仅遍历
+/// storage 不产输出。
 pub fn construct_platform_stairs(
-    mut holes: ResMut<WallHoles>,
-    mut storage: ResMut<PlatformStairsStorage>,
-    walls: Res<PublicWalls>,
+    _holes: ResMut<WallHoles>,
+    _storage: ResMut<PlatformStairsStorage>,
+    _walls: Res<PublicWalls>,
     _signifiers: Res<UiSignifierStream>,
-    ssbo: Res<AssetSsboLibrary>,
+    _ssbo: Res<AssetSsboLibrary>,
 ) {
-    for (wall_id, segments) in storage.segments.iter_mut() {
-        let id = country_core::resources::walls::WallId(*wall_id);
-        let Some(wall) = walls.get(id) else {
-            continue;
-        };
-        // 冻结链：platform_stair_geometry/holes（碰撞几何 rapier 边界后置；
-        // 段源 = split_wall_path_segment_into_platform_stairs 产出）。
-        let _ = (wall.simplified_curve_2d().length, &mut *holes, &ssbo, segments);
-    }
+    todo!("未实现: construct_platform_stairs 0x1407744d0")
 }

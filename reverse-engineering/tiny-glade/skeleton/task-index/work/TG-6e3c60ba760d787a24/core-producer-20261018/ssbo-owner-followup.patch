@@ -1,0 +1,11 @@
+--- a/games_test/tiny-glade/crates/country-core/src/render/ssbo.rs
++++ b/games_test/tiny-glade/crates/country-core/src/render/ssbo.rs
+@@ -677,7 +677,7 @@
+             .mapped_slice_mut(&buffer)
+             .expect("called `Option::unwrap()` on a `None` value");
+         assert!(
+-            mapped.len() >= desc.size,
++            mapped.len() as u64 >= buffer.byte_size,
+             "assertion failed: data.len() >= buffer.buffer.desc.size"
+         );
+         if es > 1 {

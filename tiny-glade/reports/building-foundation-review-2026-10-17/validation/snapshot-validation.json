@@ -1,0 +1,79 @@
+[
+  {
+    "check": "snapshot-clippy",
+    "exit": 0,
+    "command": [
+      "cargo",
+      "clippy",
+      "--offline",
+      "--locked",
+      "-p",
+      "tg-building-runtime",
+      "-p",
+      "tabloid",
+      "-p",
+      "tg-package-integrity",
+      "--all-targets",
+      "--no-deps",
+      "--target-dir",
+      "/private/tmp/tg-runtime-review-target",
+      "--",
+      "-D",
+      "warnings"
+    ]
+  },
+  {
+    "check": "snapshot-test",
+    "exit": 0,
+    "command": [
+      "cargo",
+      "test",
+      "--offline",
+      "--locked",
+      "-p",
+      "tg-building-runtime",
+      "-p",
+      "tabloid",
+      "-p",
+      "tg-package-integrity",
+      "--all-targets",
+      "--target-dir",
+      "/private/tmp/tg-runtime-review-target"
+    ]
+  },
+  {
+    "check": "snapshot-doc",
+    "exit": 0,
+    "command": [
+      "cargo",
+      "test",
+      "--offline",
+      "--locked",
+      "-p",
+      "tg-building-runtime",
+      "-p",
+      "tabloid",
+      "-p",
+      "tg-package-integrity",
+      "--doc",
+      "--target-dir",
+      "/private/tmp/tg-runtime-review-target"
+    ]
+  },
+  {
+    "check": "snapshot-fmt",
+    "exit": 0,
+    "command": [
+      "cargo",
+      "fmt",
+      "-p",
+      "tg-building-runtime",
+      "-p",
+      "tabloid",
+      "-p",
+      "tg-package-integrity",
+      "--",
+      "--check"
+    ]
+  }
+]

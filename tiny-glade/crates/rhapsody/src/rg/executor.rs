@@ -352,6 +352,16 @@ pub trait ExecutionBackend: crate::rg::graph::ResourceBackend {
     }
 }
 
+/// An allocated graph before command recording. It is bound to its originating
+/// backend and resource pool; cancel it there if the consumer abandons the frame.
+pub struct PreparedGraph {
+    pub compiled: crate::rg::graph::FrameInstance,
+    pub stats: ExecutionStats,
+    cpu_arena: Option<CpuArenaLease>,
+    queue: (recording::Queue, u32),
+    original_pass_count: usize,
+}
+
 pub struct GraphExecution {
     pub compiled: crate::rg::graph::FrameInstance,
     pub transaction: FrameTransaction,
@@ -536,18 +546,20 @@ impl ExecutionChain {
         result
     }
 
-    fn execute_graph_inner(
+    /// Original compile/execute separation: compilation allocates and validates
+    /// the physical frame, but never records a callback or submits a command.
+    /// B RenderGraphState::compile instances 0x140161cd0 / 0x1401647b0 /
+    /// 0x140166510 precede execute_compiled 0x1400fa190 in the game consumer.
+    pub fn compile_graph(
         &mut self,
         mut graph: crate::rg::graph::GraphDeclaration,
         pool: &mut crate::rg::graph::Pool,
         dependency: &mut impl crate::rg::graph::AccessDependency,
         backend: &mut impl ExecutionBackend,
-        callbacks: &mut [impl FnMut(PassContext<'_>) -> bool + Send],
-        validate: impl FnOnce(&crate::rg::graph::FrameInstance) -> crate::Result<()>,
-    ) -> Result<GraphExecution, Error> {
-        self.recorded_commands = 0;
+        callback_count: usize,
+    ) -> Result<PreparedGraph, Error> {
         let mut stats = ExecutionStats::default();
-        if callbacks.len() != graph.passes.len() {
+        if callback_count != graph.passes.len() {
             return Err(Error::CallbackCount);
         }
         backend
@@ -610,22 +622,76 @@ impl ExecutionChain {
             .map(CpuArenaPool::checkout)
             .transpose()
             .map_err(Error::Validation)?;
+        // Allocation is a frame binding operation, never part of plan compilation.
+        let compiled =
+            crate::rg::graph::instantiate_validated_plan(plan, graph, pool, backend, dependency)
+                .map_err(Error::Compile)?;
+        stats.compile_ns = compile_start.elapsed().as_nanos() as u64;
+        let original_pass_count = callback_count;
+        Ok(PreparedGraph { compiled, stats, cpu_arena, queue: (queue, family), original_pass_count })
+    }
+
+    fn execute_graph_inner(
+        &mut self,
+        graph: crate::rg::graph::GraphDeclaration,
+        pool: &mut crate::rg::graph::Pool,
+        dependency: &mut impl crate::rg::graph::AccessDependency,
+        backend: &mut impl ExecutionBackend,
+        callbacks: &mut [impl FnMut(PassContext<'_>) -> bool + Send],
+        validate: impl FnOnce(&crate::rg::graph::FrameInstance) -> crate::Result<()>,
+    ) -> Result<GraphExecution, Error> {
+        let prepared = self.compile_graph(graph, pool, dependency, backend, callbacks.len())?;
+        self.execute_prepared_inner(prepared, pool, dependency, backend, callbacks, validate)
+    }
+
+    pub fn execute_prepared_validated(
+        &mut self,
+        prepared: PreparedGraph,
+        pool: &mut crate::rg::graph::Pool,
+        dependency: &mut impl crate::rg::graph::AccessDependency,
+        backend: &mut impl ExecutionBackend,
+        callbacks: &mut [impl FnMut(PassContext<'_>) -> bool + Send],
+        validate: impl FnOnce(&crate::rg::graph::FrameInstance) -> crate::Result<()>,
+    ) -> Result<GraphExecution, Error> {
+        let result = self.execute_prepared_inner(prepared, pool, dependency, backend, callbacks, validate);
+        self.pgo.end_frame();
+        result
+    }
+
+    fn execute_prepared_inner(
+        &mut self,
+        prepared: PreparedGraph,
+        pool: &mut crate::rg::graph::Pool,
+        dependency: &mut impl crate::rg::graph::AccessDependency,
+        backend: &mut impl ExecutionBackend,
+        callbacks: &mut [impl FnMut(PassContext<'_>) -> bool + Send],
+        validate: impl FnOnce(&crate::rg::graph::FrameInstance) -> crate::Result<()>,
+    ) -> Result<GraphExecution, Error> {
+        let PreparedGraph { mut compiled, mut stats, cpu_arena, queue: (queue, family), original_pass_count } = prepared;
+        self.recorded_commands = 0;
+        if callbacks.len() != original_pass_count {
+            crate::rg::graph::reclaim_failed_resources(&mut compiled.tables.registry,
+                &compiled.declarations.resources, &compiled.tables.snapshot.pool_hits, pool, backend);
+            return Err(Error::CallbackCount);
+        }
         let mut selected_callbacks = {
             let mut selected = callbacks
                 .iter_mut()
                 .enumerate()
-                .filter(|(i, _)| plan.retained_passes.binary_search(i).is_ok())
+                .filter(|(i, _)| compiled.plan.retained_passes.binary_search(i).is_ok())
                 .map(|(_, callback)| callback);
-            scratch_borrows(cpu_arena.as_ref(), plan.retained_passes.len(), |_| {
+            let selected = scratch_borrows(cpu_arena.as_ref(), compiled.plan.retained_passes.len(), |_| {
                 selected.next().expect("validated retained callback index")
-            })
-            .map_err(Error::Validation)?
+            });
+            match selected {
+                Ok(selected) => selected,
+                Err(error) => {
+                    crate::rg::graph::reclaim_failed_resources(&mut compiled.tables.registry,
+                        &compiled.declarations.resources, &compiled.tables.snapshot.pool_hits, pool, backend);
+                    return Err(Error::Validation(error));
+                }
+            }
         };
-        // Allocation is a frame binding operation, never part of plan compilation.
-        let mut compiled =
-            crate::rg::graph::instantiate_validated_plan(plan, graph, pool, backend, dependency)
-                .map_err(Error::Compile)?;
-        stats.compile_ns = compile_start.elapsed().as_nanos() as u64;
         let existing = self
             .command_records
             .keys()

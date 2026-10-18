@@ -1,5 +1,10 @@
 # tiny-glade
 
+## 2026-10-18 core / rhapsody 调用接线
+
+新增宿主侧 `tiny_glade::render_bridge::CoreRenderBridge`，共用一个 `VulkanGraphSession`，连接 core 计算/光栅 pass、权威 shader 句柄和真实资源导入，并提供构图失败取消。接口调查、调用方式、验证范围及剩余阻塞见 [接线报告](../../reports/core-rhapsody-bridge-2026-10-18/README.md)。这不代表完整 `WorldAccess`、`FramePasses`、游戏主循环或 GPU 帧已经验收。
+
+
 持续开发的游戏集成入口，目前为 library facade。重导出 country_core、rhapsody、roof、history、terrain 和 utils。
 
 ## 来源

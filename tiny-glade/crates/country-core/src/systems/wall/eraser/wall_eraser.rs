@@ -10,10 +10,8 @@
 use bevy_ecs::prelude::*;
 
 use super::archivist::{ErasedRange, WallEraserArchivist};
-use crate::recovered_building::{
-    wall_history_edit::slice_source_curve,
-    wall_state::WallShapeSnapshot,
-};
+use crate::resources::history::wall_edit::slice_source_curve;
+use crate::resources::walls::publication_fields::WallShapeSnapshot;
 use crate::resources::{
     roofs::Roof,
     walls::{InnerWalls, WallState, public_walls::PublicWalls},

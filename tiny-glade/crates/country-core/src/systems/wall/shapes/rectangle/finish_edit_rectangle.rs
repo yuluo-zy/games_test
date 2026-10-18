@@ -2,7 +2,7 @@
 //! finish.
 //!
 //! Evidence: `chapters/systems/wall/shapes/rectangle/finish_edit_rectangle.rs.md`
-//! (O, 0x141464a60) + `recovered_building/wall_rectangle_edit.rs` (the
+//! (O, 0x141464a60) + `systems/wall/shapes/rectangle/edit_decision.rs` (the
 //! `finish_rectangle_edit_decision` core). The 0.01 dual criteria (orientation
 //! degrees, dimension length) decide whether the change is recorded; the
 //! decorator restore is host 待接线.
@@ -10,9 +10,8 @@
 use bevy_ecs::prelude::*;
 
 use super::super::FinishEditRectangleCmd;
-use crate::recovered_building::wall_rectangle_edit::{
-    RectangleEditState, finish_rectangle_edit_decision,
-};
+use crate::systems::wall::shapes::rectangle::edit_decision::RectangleEditState;
+use crate::systems::wall::shapes::rectangle::edit_decision::finish_rectangle_edit_decision;
 use crate::resources::walls::InnerWalls;
 use crate::systems::wall::history_recording::RecordWallHistory;
 

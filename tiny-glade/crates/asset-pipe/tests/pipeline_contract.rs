@@ -5,18 +5,24 @@ use asset::texture::{
 use asset_pipe::texture::*;
 use image::{DynamicImage, Rgba, RgbaImage};
 use relative_path::{RelativePath, RelativePathBuf};
-use std::path::PathBuf;
+use std::{
+    path::PathBuf,
+    sync::atomic::{AtomicU64, Ordering},
+};
+
+static NEXT_FIXTURE: AtomicU64 = AtomicU64::new(0);
 
 struct Fixture(PathBuf);
 impl Fixture {
     fn new() -> Self {
         let root = std::env::temp_dir().join(format!(
-            "tiny-glade-asset-policy-{}-{}",
+            "tiny-glade-asset-policy-{}-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
-                .as_nanos()
+                .as_nanos(),
+            NEXT_FIXTURE.fetch_add(1, Ordering::Relaxed)
         ));
         std::fs::create_dir(&root).unwrap();
         Self(root)
@@ -110,12 +116,66 @@ fn transfer_preserves_alpha_and_gamma_selects_wire_format() {
     .unwrap();
     assert_eq!(srgb.format, 43);
     assert_eq!(srgb.data, rgba.into_raw());
+    for value in [1, 2, 3, 13, 127, 255] {
+        let output = process_decoded_image(
+            DynamicImage::ImageRgba8(RgbaImage::from_pixel(2, 2, Rgba([value, value, value, 73]))),
+            &opts(Gamma::Srgb, MipChain::Full, CompressionMethod::None),
+        )
+        .unwrap();
+        assert_eq!(output.mips, 2);
+        assert!(
+            output
+                .data
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .all(|pixel| *pixel == [value, value, value, 73]),
+            "uniform sRGB {value} must survive every mip"
+        );
+    }
+    for gamma in [Gamma::Linear, Gamma::Srgb] {
+        let edge = RgbaImage::from_fn(2, 1, |x, _| {
+            if x == 0 {
+                Rgba([255, 0, 0, 255])
+            } else {
+                Rgba([0, 0, 0, 0])
+            }
+        });
+        let output = process_decoded_image(
+            DynamicImage::ImageRgba8(edge),
+            &TextureOpts {
+                resize: Some([1, 1]),
+                ..opts(gamma, MipChain::None, CompressionMethod::None)
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            &output.data[..3],
+            &[255, 0, 0],
+            "transparent edge in {gamma:?}"
+        );
+        assert!(output.data[3].abs_diff(128) <= 1);
+    }
+    assert!(
+        process_decoded_image(
+            image(1, 1),
+            &TextureOpts {
+                resize: Some([u32::MAX, u32::MAX]),
+                ..opts(Gamma::Linear, MipChain::None, CompressionMethod::None)
+            }
+        )
+        .is_err()
+    );
+    assert!(pad_edges(&RgbaImage::new(1, 1), [u32::MAX, u32::MAX]).is_err());
     assert!(mip_count([8, 2], MipChain::Limited(0)).is_err());
     assert_eq!(mip_count([8, 2], MipChain::Limited(12)).unwrap(), 4);
     let padding = pad_edges(
         &RgbaImage::from_fn(2, 2, |x, y| Rgba([x as u8, y as u8, 0, 255])),
         [4, 4],
-    );
+    )
+    .unwrap();
+    assert!(pad_edges(&RgbaImage::new(0, 0), [1, 1]).is_err());
+    assert!(pad_edges(&padding, [1, 1]).is_err());
     assert_eq!(*padding.get_pixel(3, 3), Rgba([1, 1, 0, 255]));
 }
 #[test]
@@ -164,7 +224,7 @@ fn arrays_preserve_layer_order_and_reject_mixed_headers() {
     assert!(assemble_array(vec![blob(0), wrong]).is_err());
 }
 #[test]
-fn dds_keeps_the_author_layer_zero_rule_and_original_format_whitelist() {
+fn dds_preserves_all_layers_and_enforces_format_and_payload_contract() {
     use ddsfile::*;
     for (dxgi, vk) in [
         (DxgiFormat::R9G9B9E5_SharedExp, 123),
@@ -187,14 +247,14 @@ fn dds_keeps_the_author_layer_zero_rule_and_original_format_whitelist() {
             alpha_mode: AlphaMode::Unknown,
         })
         .unwrap();
-        let n = dds.get_data(0).unwrap().len();
+        let total_bytes = dds.data.len();
         dds.data.fill(63);
         let out = process_dds(dds).unwrap();
-        assert_eq!((out.format, out.kind, out.mips, out.layers), (vk, 2, 2, 2));
+        assert_eq!((out.format, out.kind, out.mips, out.layers), (vk, 3, 2, 2));
         assert_eq!(
             out.data.len(),
-            n,
-            "only layer zero copied, not all array layers"
+            total_bytes,
+            "all declared array layers must be retained"
         );
     }
     for (format, vk) in [(D3DFormat::DXT1, 134), (D3DFormat::DXT5, 138)] {
@@ -233,24 +293,37 @@ fn compilation_scan_inheritance_cache_and_rebuild_close() {
     );
     let source = fixture.0.join("assets-src/textures/a.png");
     image(4, 4).save(&source).unwrap();
-    fixture.write("compiled-assets/textures/list.ron", "[]");
-    let (names, meta) = compile_texture_assets(&fixture.0).unwrap();
+    let alias = fixture.0.join("assets-src/textures/a.detail.png");
+    image(4, 4).save(&alias).unwrap();
+    assert!(
+        compile_texture_assets(&fixture.0)
+            .unwrap_err()
+            .to_string()
+            .contains("same output file")
+    );
+    assert!(!fixture.0.join("compiled-assets").exists());
+    std::fs::remove_file(alias).unwrap();
+    let names = compile_or_load_texture_assets(&fixture.0, true).unwrap();
+    compile_texture_assets(&fixture.0).unwrap();
     assert_eq!(names, vec![RelativePathBuf::from("a")]);
     let output = fixture.0.join("compiled-assets/textures/a.texture");
     let original = std::fs::read(&output).unwrap();
     assert_eq!(TextureAssetBlob::load(&original).unwrap().format, 37);
     let mut header = TEXTURE_MAGIC.to_le_bytes().to_vec();
     header.extend(TEXTURE_VERSION.to_le_bytes());
-    std::fs::write(&output, &header).unwrap(); // Valid cache header intentionally permits a missing payload.
-    let desc = meta.assets[RelativePath::new("a")].desc.clone();
-    compile_texture_asset(
-        RelativePath::new("a"),
-        desc,
-        &fixture.0.join("compiled-assets/textures"),
-        meta.assets.get(RelativePath::new("a")),
-    )
-    .unwrap();
-    assert_eq!(std::fs::read(&output).unwrap(), header);
+    // Every truncated archive is disposable, including files with a valid header.
+    for corrupt in [&header[..4], &header[..], &original[..original.len() - 1]] {
+        std::fs::write(&output, corrupt).unwrap();
+        let (_, next) = compile_texture_assets(&fixture.0).unwrap();
+        assert_eq!(std::fs::read(&output).unwrap(), original);
+        assert_eq!(next.assets.len(), 1);
+    }
+    let mut corrupted_pixels = original.clone();
+    corrupted_pixels[8] ^= 1;
+    assert!(TextureAssetBlob::validate_file(&corrupted_pixels).is_ok());
+    std::fs::write(&output, corrupted_pixels).unwrap();
+    compile_texture_assets(&fixture.0).unwrap();
+    assert_eq!(std::fs::read(&output).unwrap(), original);
     header[4] = 7;
     std::fs::write(&output, &header).unwrap();
     let (_, next) = compile_texture_assets(&fixture.0).unwrap();
@@ -489,4 +562,221 @@ fn legacy_metadata_without_source_stamps_is_rebuilt_once() {
         compile_texture_asset(RelativePath::new("a"), desc, &fixture.0, Some(&legacy)).unwrap();
     assert_eq!(refreshed.sources.len(), 1);
     assert!(TextureAssetBlob::load(&std::fs::read(fixture.0.join("a.texture")).unwrap()).is_ok());
+}
+
+#[test]
+fn dds_array_sources_share_the_dispatcher_and_reject_invalid_layouts() {
+    use ddsfile::*;
+    let fixture = Fixture::new();
+    fixture.write("array_color/assets.ron", "()");
+    for layer in 0..2 {
+        let mut dds = Dds::new_dxgi(NewDxgiParams {
+            height: 4,
+            width: 4,
+            depth: None,
+            format: DxgiFormat::BC5_UNorm,
+            mipmap_levels: None,
+            array_layers: None,
+            caps2: None,
+            is_cubemap: false,
+            resource_dimension: D3D10ResourceDimension::Texture2D,
+            alpha_mode: AlphaMode::Unknown,
+        })
+        .unwrap();
+        dds.data.fill(layer + 1);
+        dds.write(
+            &mut std::fs::File::create(fixture.0.join(format!("array_color/{layer}.dds"))).unwrap(),
+        )
+        .unwrap();
+        if layer == 0 {
+            dds.data.pop();
+            assert!(process_dds(dds).is_err());
+        }
+    }
+    let descriptors = asset::texture::scan::scan_asset_tree(&fixture.0).unwrap();
+    let output = process_texture_asset(&descriptors[RelativePath::new("color")]).unwrap();
+    assert_eq!((output.layers, output.kind, output.format), (2, 3, 141));
+    assert_eq!(output.data, [vec![1; 16], vec![2; 16]].concat());
+
+    for mutate in [0, 1, 2, 3, 4] {
+        let mut dds = Dds::new_dxgi(NewDxgiParams {
+            height: 4,
+            width: 4,
+            depth: None,
+            format: DxgiFormat::BC5_UNorm,
+            mipmap_levels: None,
+            array_layers: None,
+            caps2: None,
+            is_cubemap: false,
+            resource_dimension: D3D10ResourceDimension::Texture2D,
+            alpha_mode: AlphaMode::Unknown,
+        })
+        .unwrap();
+        match mutate {
+            0 => dds.header.width = 0,
+            1 => dds.header.mip_map_count = Some(u32::MAX),
+            2 => dds.header10.as_mut().unwrap().array_size = 0,
+            3 => dds.header10.as_mut().unwrap().misc_flag = MiscFlag::TEXTURECUBE,
+            _ => {
+                dds.header.width = u32::MAX;
+                dds.header.height = u32::MAX;
+                dds.header.depth = Some(u32::MAX);
+                dds.header10.as_mut().unwrap().resource_dimension =
+                    D3D10ResourceDimension::Texture3D;
+            }
+        }
+        assert!(process_dds(dds).is_err(), "invalid DDS case {mutate}");
+    }
+    let mut incomplete = blob(1);
+    incomplete.data.clear();
+    assert!(assemble_array(vec![blob(1), incomplete]).is_err());
+    let mut nested = blob(1);
+    nested.layers = 2;
+    nested.kind = 3;
+    assert!(assemble_array(vec![nested]).is_err());
+}
+
+#[test]
+fn filtering_retains_input_precision_and_color_at_transparent_edges() {
+    use image::ImageBuffer;
+    let options = TextureOpts {
+        resize: Some([16, 1]),
+        ..opts(Gamma::Linear, MipChain::None, CompressionMethod::None)
+    };
+    for gamma in [Gamma::Linear, Gamma::Srgb] {
+        let edge = RgbaImage::from_fn(4, 1, |x, _| {
+            Rgba([128, 128, 128, if x < 2 { 255 } else { 0 }])
+        });
+        let output = process_decoded_image(
+            DynamicImage::ImageRgba8(edge),
+            &TextureOpts {
+                gamma,
+                ..options.clone()
+            },
+        )
+        .unwrap();
+        for pixel in output.data.as_chunks::<4>().0 {
+            if pixel[3] > 0 {
+                assert_eq!(
+                    &pixel[..3],
+                    &[128; 3],
+                    "uniform color with {gamma:?} alpha filtering"
+                );
+            }
+        }
+    }
+    let float_pixels = ImageBuffer::from_fn(2, 1, |x, _| {
+        let value = if x == 0 { 0.0019 } else { 0.0020 };
+        Rgba([value, value, value, 1.0])
+    });
+    let integer_pixels = ImageBuffer::from_fn(2, 1, |x, _| {
+        let value: u16 = if x == 0 { 125 } else { 131 };
+        Rgba([value, value, value, u16::MAX])
+    });
+    for pixels in [
+        DynamicImage::ImageRgba32F(float_pixels),
+        DynamicImage::ImageRgba16(integer_pixels),
+    ] {
+        let output = process_decoded_image(
+            pixels,
+            &TextureOpts {
+                resize: Some([1, 1]),
+                ..options.clone()
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            output.data,
+            [0, 0, 0, 255],
+            "quantize after averaging, not before"
+        );
+    }
+}
+
+#[test]
+fn public_compilation_rejects_nonlocal_names_before_filesystem_work() {
+    let fixture = Fixture::new();
+    let source = fixture.0.join("source.png");
+    image(1, 1).save(&source).unwrap();
+    let descriptor = TextureAssetDesc {
+        path: source,
+        opts: opts(Gamma::Linear, MipChain::None, CompressionMethod::None),
+        layers: vec![],
+    };
+    let output_root = fixture.0.join("compiled");
+    for name in [
+        "",
+        ".",
+        "..",
+        "../escaped",
+        "nested/../../escaped",
+        "/absolute",
+        "a//b",
+        "a\\..\\escaped",
+        "a:stream",
+    ] {
+        assert!(
+            compile_texture_asset(
+                RelativePath::new(name),
+                descriptor.clone(),
+                &output_root,
+                None
+            )
+            .is_err(),
+            "invalid logical name {name:?}"
+        );
+    }
+    assert!(!output_root.exists());
+    assert!(!fixture.0.join("escaped.texture").exists());
+    for names in [vec!["../escaped"], vec!["a", "A"]] {
+        fixture.write(
+            "compiled-assets/textures/list.ron",
+            ron::to_string(&names).unwrap(),
+        );
+        assert!(compile_or_load_texture_assets(&fixture.0, false).is_err());
+    }
+}
+
+#[test]
+fn compilation_rejects_case_and_unicode_output_aliases_before_writing() {
+    for names in [["a.png", "A.jpg"], ["é.png", "e\u{301}.jpg"]] {
+        let fixture = Fixture::new();
+        for name in names {
+            fixture.write(
+                &format!("assets-src/textures/{name}"),
+                b"preflight must precede decoding",
+            );
+        }
+        let error = compile_texture_assets(&fixture.0).unwrap_err();
+        assert!(error.to_string().contains("same output file"), "{error:#}");
+        assert!(!fixture.0.join("compiled-assets").exists());
+    }
+}
+
+#[test]
+fn nonfinite_float_images_return_errors_before_integer_conversion() {
+    use image::ImageBuffer;
+    for value in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+        for gamma in [Gamma::Linear, Gamma::Srgb] {
+            for pixel in [Rgba([value, 0.0, 0.0, 1.0]), Rgba([0.0, 0.0, 0.0, value])] {
+                let source = DynamicImage::ImageRgba32F(ImageBuffer::from_pixel(1, 1, pixel));
+                assert!(
+                    process_decoded_image(
+                        source,
+                        &opts(gamma, MipChain::None, CompressionMethod::None)
+                    )
+                    .is_err()
+                );
+            }
+        }
+    }
+    let source =
+        DynamicImage::ImageRgb32F(ImageBuffer::from_pixel(1, 1, image::Rgb([f32::NAN; 3])));
+    assert!(
+        process_decoded_image(
+            source,
+            &opts(Gamma::Linear, MipChain::None, CompressionMethod::None)
+        )
+        .is_err()
+    );
 }

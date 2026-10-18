@@ -1,17 +1,16 @@
-//! Actual processed wall masks -> arches CPU output, caches and game gate events.
+//! Builds arch instances, derived heights, and gate commands from processed masks.
 use crate::{
     BuildingStage, PublicWalls, Roof, WallCollectionState, WallRoofMap,
     wall_paths::WallPreparedPaths, wall_segments::WallProcessedMaskRegistry,
 };
 use bevy_ecs::{prelude::*, schedule::ApplyDeferred};
-use country_core::recovered_building::{
-    building_wall_arches::{
-        ConstructGateCmd120Projection, RegularWallArchesInput, construct_regular_wall_arches,
-    },
-    building_wall_arches_freehand::{FreehandWallArchesInput, construct_freehand_wall_arches},
-    building_wall_constructor::WallBrickInstance,
-    building_wall_state::WallId,
-};
+use country_core::systems::wall::construction::arches::ConstructGateCmd120Projection;
+use country_core::systems::wall::construction::arches::RegularWallArchesInput;
+use country_core::systems::wall::construction::arches::construct_regular_wall_arches;
+use country_core::systems::wall::construction::freehand_arches::FreehandWallArchesInput;
+use country_core::systems::wall::construction::freehand_arches::construct_freehand_wall_arches;
+use country_core::systems::wall::construction::bricks::WallBrickInstance;
+use country_core::resources::walls::publication_fields::WallId;
 use std::collections::{HashMap, HashSet};
 #[derive(Event, Clone, Debug)]
 pub struct ConstructGateCmd(pub ConstructGateCmd120Projection);
@@ -26,6 +25,7 @@ pub struct WallArchEntities(pub HashMap<WallId, Entity>);
 #[derive(Resource, Default)]
 pub struct WallArchesBuildState {
     fingerprints: HashMap<WallId, Vec<u8>>,
+    derived_heights: HashMap<WallId, (Vec<f32>, Vec<f32>)>,
     pub pending: Vec<WallId>,
     pub rebuilt: Vec<WallId>,
 }
@@ -64,7 +64,7 @@ fn rebuild(
             walls
                 .walls
                 .get(id)
-                .is_some_and(|w| w.projection[0x296] == 0)
+                .is_some_and(|w| w.state.observed_296() == 0)
         })
         .collect();
     let stale: Vec<_> = entities
@@ -78,8 +78,11 @@ fn rebuild(
             commands.entity(e).despawn();
         }
         state.fingerprints.remove(&id);
+        state.derived_heights.remove(&id);
         if let Some(w) = walls.walls.get_mut(&id) {
-            w.arch_segment_heights = w.structural_arch_segment_heights.clone(); /* Special lintels own current third; do not erase their preceding stage. */
+            // Lintels run before this stage and own the special wall's heights.
+            w.arch_segment_heights
+                .clone_from(&w.structural_arch_segment_heights);
         }
     }
     let mut ids: Vec<_> = active.into_iter().collect();
@@ -98,6 +101,7 @@ fn rebuild(
                 commands.entity(e).despawn();
             }
             state.fingerprints.remove(&wall);
+            state.derived_heights.remove(&wall);
             host.arch_segment_heights = host.structural_arch_segment_heights.clone();
             host.segment_heights = host.base_segment_heights.clone();
             state.pending.push(wall);
@@ -120,15 +124,35 @@ fn rebuild(
             fingerprint.extend(f.to_le_bytes());
         }
         if state.fingerprints.get(&wall) == Some(&fingerprint) {
-            continue;
+            // Base/gable stages may reset these arrays on a redundant dirty
+            // event even when the construction inputs are unchanged.
+            if let Some((arch_heights, segment_heights)) = state.derived_heights.get(&wall) {
+                if !host
+                    .arch_segment_heights
+                    .iter()
+                    .map(|value| value.to_bits())
+                    .eq(arch_heights.iter().map(|value| value.to_bits()))
+                {
+                    host.arch_segment_heights.clone_from(arch_heights);
+                }
+                if !host
+                    .segment_heights
+                    .iter()
+                    .map(|value| value.to_bits())
+                    .eq(segment_heights.iter().map(|value| value.to_bits()))
+                {
+                    host.segment_heights.clone_from(segment_heights);
+                }
+                continue;
+            }
         }
-        // Rebuild each original writer from its pre-structure cache; old maxima or
-        // freehand smoothing never feed their own next invocation.
-        let mut arch = host.structural_arch_segment_heights.clone();
-        let mut third = host.base_segment_heights.clone();
-        let p284 = f32::from_le_bytes(host.projection[0x284..0x288].try_into().unwrap());
-        let p288 = f32::from_le_bytes(host.projection[0x288..0x28c].try_into().unwrap());
-        let source_length = f32::from_le_bytes(host.projection[0x28c..0x290].try_into().unwrap());
+        // Start from upstream caches so maxima and smoothing cannot accumulate
+        // across repeated rebuilds of the same inputs.
+        let mut arch_heights = host.structural_arch_segment_heights.clone();
+        let mut segment_heights = host.base_segment_heights.clone();
+        let wall_height_parameter = host.state.float_0x284();
+        let path_scalar = host.state.float_0x288();
+        let source_length = host.state.published_source_curve_length();
         let tag = host.source.shape.tag();
         let result = if tag == 2 {
             construct_freehand_wall_arches(
@@ -137,16 +161,19 @@ fn rebuild(
                     prepared_positions: &path.path.positions,
                     prepared_u: &path.path.points_u,
                     path_values: &path.path.segment_values,
-                    public_284: p284,
-                    public_288: p288,
-                    observed_294: host.projection[0x294],
-                    clutter_version: host.projection[0x295],
+                    public_284: wall_height_parameter,
+                    public_288: path_scalar,
+                    observed_294: host.state.observed_294(),
+                    clutter_version: crate::wall_projection::WallProjection::new(
+                        host.observed_projection(),
+                    )
+                    .clutter_version(),
                     source_curve_length: source_length,
                     wall_id: wall,
                     has_roof: roof.is_some(),
                 },
-                &mut arch,
-                &mut third,
+                &mut arch_heights,
+                &mut segment_heights,
             )
         } else {
             construct_regular_wall_arches(
@@ -156,14 +183,14 @@ fn rebuild(
                     prepared_u: &path.path.points_u,
                     path_values: &path.path.segment_values,
                     shape_tag: tag,
-                    public_284: p284,
-                    observed_294: host.projection[0x294],
+                    public_284: wall_height_parameter,
+                    observed_294: host.state.observed_294(),
                     source_curve_length: source_length,
                     wall_id: wall,
                     has_roof: roof.is_some(),
                 },
-                &mut arch,
-                &mut third,
+                &mut arch_heights,
+                &mut segment_heights,
             )
         };
         let output = match result {
@@ -173,6 +200,7 @@ fn rebuild(
                     commands.entity(entity).despawn();
                 }
                 state.fingerprints.remove(&wall);
+                state.derived_heights.remove(&wall);
                 host.arch_segment_heights = host.structural_arch_segment_heights.clone();
                 host.segment_heights = host.base_segment_heights.clone();
                 state.pending.push(wall);
@@ -180,8 +208,11 @@ fn rebuild(
                 continue;
             }
         };
-        host.arch_segment_heights = arch;
-        host.segment_heights = third;
+        state
+            .derived_heights
+            .insert(wall, (arch_heights.clone(), segment_heights.clone()));
+        host.arch_segment_heights = arch_heights;
+        host.segment_heights = segment_heights;
         for gate in output.gate_commands {
             gates.write(ConstructGateCmd(gate));
         }

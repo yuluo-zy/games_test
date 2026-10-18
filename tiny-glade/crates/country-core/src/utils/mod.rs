@@ -1,3 +1,5 @@
+//! 游戏侧工具入口；共享数学、采样和索引算法委托工作区 utils crate。
+
 pub mod child_wall;
 pub mod conservative_line_raster;
 pub mod debug_viz;
@@ -11,6 +13,9 @@ pub mod components {
     pub mod transform;
 }
 
+/// 复用渲染模块的标准哈希入口；用于进程内名字和资源身份。
+pub use crate::render::utils::calculate_hash;
+
 use bevy_ecs::{
     event::{Event, Events},
     prelude::{Mut, Resource},
@@ -18,44 +23,60 @@ use bevy_ecs::{
 };
 use glam::{Mat4, Vec2, Vec3};
 
-/// Resource lookup delegates to the original Bevy API, preserving borrow ticks.
+/// 通过 Bevy 读取资源；缺失资源由 Bevy 报错。
 pub fn get_res<T: Resource>(world: &World) -> &T {
     world.resource::<T>()
 }
 
+/// 返回 Bevy 的可变借用守卫，保留变化检测。
 pub fn get_res_mut<T: Resource>(world: &mut World) -> Mut<'_, T> {
     world.resource_mut::<T>()
 }
 
-/// B 0x1402b47f0 drains both Events buffers. Event IDs/counters stay with Bevy.
+/// 消费并清空事件双缓冲；多个订阅者应改用 EventReader。
 pub fn drain_events<E: Event>(world: &mut World) -> Vec<E> {
     world.resource_mut::<Events<E>>().drain().collect()
 }
 
-/// B 0x1402b4910 consumes the complete stream, including older unselected events.
+/// 清空整个事件流并返回最后一项，之前的事件也会被消费。
 pub fn get_last_event<E: Event>(world: &mut World) -> Option<E> {
     world.resource_mut::<Events<E>>().drain().last()
 }
 
-/// O：0x140ac8780 `utils::world_space_to_screen_space`。
-///
-/// 世界点先过 `first`（参数结构 +0x80 处的矩阵，`transform_point3` 形式），再过 `second`
-/// （+0x00 处的矩阵，补 w = 1 的 4 分量乘法，**保留 w**），`xy / w` 后
-/// `x * 0.5 + 0.5`、`y * 0.5 + 0.5`，返回 `(x * width, (1.0 - y) * height)`。
-/// 两个矩阵各自是相机结构里的哪一个字段（I）：+0x80 / +0x00。
+/// 世界点转像素坐标。无效窗口、视点后方或奇异透视返回 NaN 坐标。
+/// 需要显式处理不可见点时，使用 try_world_space_to_screen_space。
 pub fn world_space_to_screen_space(
-    world: Vec3,
+    world_position: Vec3,
     width: f32,
     height: f32,
-    first: &Mat4,
-    second: &Mat4,
+    world_to_view: &Mat4,
+    view_to_clip: &Mat4,
 ) -> Vec2 {
-    let affine = |m: &Mat4, p: Vec3| m.y_axis * p.y + m.x_axis * p.x + m.z_axis * p.z + m.w_axis;
-    let view = affine(first, world);
-    let clip = affine(second, view.truncate());
-    let x = clip.x / clip.w * 0.5 + 0.5;
-    let y = clip.y / clip.w * 0.5 + 0.5;
-    Vec2::new(x * width, (1.0 - y) * height)
+    try_world_space_to_screen_space(world_position, width, height, world_to_view, view_to_clip)
+        .unwrap_or(Vec2::splat(f32::NAN))
+}
+
+/// 世界点转屏幕像素；保留完整齐次变换，避免丢弃第一个矩阵产生的 w。
+pub fn try_world_space_to_screen_space(
+    world_position: Vec3,
+    width: f32,
+    height: f32,
+    world_to_view: &Mat4,
+    view_to_clip: &Mat4,
+) -> Option<Vec2> {
+    if !(width.is_finite() && height.is_finite() && width > 0.0 && height > 0.0) {
+        return None;
+    }
+    let clip_position = *view_to_clip * (*world_to_view * world_position.extend(1.0));
+    if !clip_position.is_finite() || clip_position.w <= 1e-10 {
+        return None;
+    }
+    let normalized = clip_position.truncate().truncate() / clip_position.w;
+    let screen_position = Vec2::new(
+        (normalized.x + 1.0) * 0.5 * width,
+        (1.0 - normalized.y) * 0.5 * height,
+    );
+    screen_position.is_finite().then_some(screen_position)
 }
 
 #[cfg(test)]

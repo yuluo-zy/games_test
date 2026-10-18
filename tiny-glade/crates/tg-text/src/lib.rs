@@ -1,5 +1,6 @@
-//! B tg-text 行为候选：字体角色、编辑/整形、字形 atlas、48B primitive 和 shape 流。
-//! 原 Cosmic/etagere 处理通用算法；可选 gpu 适配复用 rhapsody 和发行 SPIR-V。
+#![doc = include_str!("../README.md")]
+pub mod error;
+pub use error::{TextError, TextResult};
 pub mod font_table;
 pub mod shape_stream;
 pub use font_table::{FontFamily, FontMetrics, FontTable, FontTableEntry, ScaledFont};
@@ -12,9 +13,10 @@ pub use cosmic_text::{
 };
 pub use fragment::TextFragment;
 pub use renderer::{
-    AtlasAllocUsage, AtlasDescriptor, Glyph, PendingGlyphUpload, Primitive, RenderBatch,
-    TextRenderStream, TextRenderer, TextStats, init_font_system,
+    AtlasAllocUsage, AtlasConfig, AtlasDescriptor, Glyph, PendingGlyphUpload, Primitive,
+    RenderBatch, TextRenderStream, TextRenderer, TextStats, init_font_system,
 };
+pub mod validation;
 
 #[cfg(feature = "gpu")]
 pub mod gpu;

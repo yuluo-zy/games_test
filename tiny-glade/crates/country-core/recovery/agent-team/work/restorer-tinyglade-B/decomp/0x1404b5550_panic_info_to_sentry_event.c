@@ -1,0 +1,405 @@
+// panic_info_to_sentry_event @ 0x1404b5550
+// sig: void __cdecl panic_info_to_sentry_event(void)
+
+
+void __cdecl tiny_glade::panic_reporter::sentry_reporter::panic_info_to_sentry_event(void)
+
+{
+  void *extraout_RAX;
+  undefined4 *extraout_RAX_00;
+  undefined4 *extraout_RAX_01;
+  void *extraout_RAX_02;
+  undefined8 *in_RCX;
+  void *in_RDX;
+  size_t in_R8;
+  undefined8 local_840;
+  undefined4 *puStack_838;
+  undefined8 local_830;
+  undefined8 uStack_828;
+  undefined8 local_820;
+  undefined8 uStack_818;
+  undefined8 local_810;
+  undefined8 uStack_808;
+  undefined8 local_800;
+  undefined1 local_7f8 [64];
+  undefined8 local_7b8;
+  undefined8 local_798;
+  undefined8 local_760;
+  undefined8 uStack_758;
+  undefined8 local_750;
+  longlong local_748;
+  undefined8 local_740;
+  longlong local_738;
+  undefined8 local_730;
+  undefined8 uStack_728;
+  undefined8 local_720;
+  undefined8 local_718;
+  undefined2 uStack_710;
+  undefined6 uStack_70e;
+  undefined8 local_708;
+  undefined8 local_700;
+  undefined8 uStack_6f8;
+  undefined8 local_6f0;
+  undefined8 local_6e8;
+  undefined8 uStack_6e0;
+  undefined8 local_6d8;
+  undefined8 local_6d0;
+  undefined8 uStack_6c8;
+  undefined8 local_6c0;
+  undefined8 local_6b8;
+  undefined8 uStack_6b0;
+  undefined8 local_6a8;
+  undefined8 uStack_6a0;
+  undefined8 local_698;
+  undefined8 uStack_690;
+  undefined8 local_688;
+  undefined8 uStack_680;
+  undefined8 local_678;
+  undefined8 local_670;
+  undefined8 uStack_668;
+  undefined8 local_660;
+  undefined8 local_658;
+  undefined8 uStack_650;
+  undefined8 local_648;
+  undefined8 uStack_640;
+  undefined8 local_638;
+  undefined8 uStack_630;
+  undefined8 local_628;
+  undefined8 uStack_620;
+  undefined8 local_618;
+  undefined8 uStack_610;
+  undefined8 local_608;
+  undefined8 local_600;
+  undefined8 uStack_5f8;
+  undefined8 local_5f0;
+  undefined8 local_5e8;
+  undefined8 uStack_5e0;
+  undefined8 local_5d8;
+  undefined8 local_5d0;
+  undefined8 uStack_5c8;
+  undefined8 local_5c0;
+  undefined8 local_5b8;
+  undefined8 uStack_5b0;
+  undefined8 local_5a8;
+  undefined8 uStack_5a0;
+  undefined8 local_598;
+  undefined8 uStack_590;
+  undefined8 local_588;
+  undefined8 uStack_580;
+  undefined8 local_578;
+  undefined8 uStack_570;
+  undefined8 local_568;
+  undefined8 uStack_560;
+  undefined8 local_558;
+  undefined8 uStack_550;
+  undefined8 local_548;
+  undefined1 local_540 [232];
+  undefined8 local_458;
+  undefined8 uStack_450;
+  undefined8 local_448;
+  undefined8 uStack_440;
+  undefined8 local_438;
+  undefined8 uStack_430;
+  undefined8 local_428;
+  undefined8 uStack_420;
+  undefined8 local_418;
+  undefined8 uStack_410;
+  undefined8 local_408;
+  undefined8 uStack_400;
+  undefined8 local_3f8;
+  undefined8 uStack_3f0;
+  undefined8 local_3e8;
+  undefined8 uStack_3e0;
+  undefined8 local_3d8;
+  undefined8 local_3d0;
+  undefined8 local_3c8;
+  undefined8 uStack_3c0;
+  undefined8 local_3b8;
+  undefined8 local_3b0;
+  undefined8 uStack_3a8;
+  undefined8 local_3a0;
+  undefined8 local_398;
+  undefined8 uStack_390;
+  undefined8 local_388;
+  undefined8 local_378;
+  undefined8 local_330;
+  undefined8 uStack_328;
+  undefined8 local_320;
+  undefined8 uStack_318;
+  undefined8 local_310;
+  undefined8 uStack_308;
+  undefined8 local_300;
+  undefined8 uStack_2f8;
+  undefined8 local_2f0;
+  longlong local_2e8;
+  undefined8 local_2e0;
+  undefined8 local_2d8;
+  longlong local_2d0;
+  undefined8 local_2b8;
+  undefined8 local_2b0;
+  undefined8 local_2a8;
+  longlong local_2a0;
+  undefined8 local_168;
+  undefined8 uStack_160;
+  undefined8 local_158;
+  undefined8 local_150;
+  undefined8 uStack_148;
+  undefined8 local_140;
+  undefined8 uStack_138;
+  undefined8 local_130;
+  undefined8 uStack_128;
+  undefined8 local_120;
+  undefined8 uStack_118;
+  undefined8 local_110;
+  undefined8 local_108;
+  void *pvStack_100;
+  undefined8 local_f8;
+  undefined8 uStack_f0;
+  undefined8 local_e8;
+  undefined8 uStack_e0;
+  undefined8 local_d8;
+  undefined8 uStack_d0;
+  undefined8 local_c8;
+  undefined8 local_c0;
+  undefined8 uStack_b8;
+  undefined8 local_b0;
+  undefined8 uStack_a8;
+  undefined8 local_a0;
+  undefined8 uStack_98;
+  undefined8 local_90;
+  undefined8 uStack_88;
+  undefined8 local_80;
+  size_t local_70;
+  undefined4 *local_68;
+  void *local_60;
+  void *local_58;
+  undefined1 local_49;
+  undefined8 local_48;
+  
+  local_48 = 0xfffffffffffffffe;
+  std::alloc::__default_lib_allocator::__rust_alloc();
+  if (extraout_RAX == (void *)0x0) {
+                    // WARNING: Subroutine does not return
+    alloc::alloc::handle_alloc_error();
+  }
+  std::alloc::__default_lib_allocator::__rust_alloc();
+  if (extraout_RAX_00 == (undefined4 *)0x0) {
+                    // WARNING: Subroutine does not return
+    alloc::raw_vec::handle_error();
+  }
+  *(undefined1 *)(extraout_RAX_00 + 1) = 99;
+  *extraout_RAX_00 = 0x696e6170;
+  local_68 = extraout_RAX_00;
+  local_58 = extraout_RAX;
+  std::alloc::__default_lib_allocator::__rust_alloc();
+  if (extraout_RAX_01 == (undefined4 *)0x0) {
+                    // WARNING: Subroutine does not return
+    alloc::raw_vec::handle_error();
+  }
+  *(undefined1 *)(extraout_RAX_01 + 1) = 99;
+  *extraout_RAX_01 = 0x696e6170;
+  uStack_828 = 0x8000000000000000;
+  local_810 = 0x8000000000000000;
+  uStack_728 = 0;
+  local_718 = 0;
+  local_7b8 = 0x8000000000000001;
+  local_798 = 0x8000000000000001;
+  uStack_758 = 0x8000000000000001;
+  local_840 = 5;
+  local_830 = 5;
+  uStack_710 = 0x200;
+  if ((longlong)in_R8 < 0) {
+LAB_1404b5d46:
+                    // WARNING: Subroutine does not return
+    alloc::raw_vec::handle_error();
+  }
+  puStack_838 = extraout_RAX_01;
+  if (in_R8 == 0) {
+    local_60 = (void *)0x1;
+  }
+  else {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    local_60 = extraout_RAX_02;
+    if (extraout_RAX_02 == (void *)0x0) goto LAB_1404b5d46;
+  }
+  memcpy(local_60,in_RDX,in_R8);
+  local_70 = in_R8;
+  sentry_backtrace::process::backtrace_to_stacktrace();
+  local_2e8 = 0;
+  local_2e0 = 1;
+  local_2d8 = 0;
+  local_2d0 = -0x8000000000000000;
+  local_2b8 = 0x8000000000000000;
+  local_378 = 2;
+  local_330 = 2;
+  local_168 = 0x8000000000000001;
+  local_2a0 = -0x8000000000000000;
+  *(undefined8 *)((longlong)local_58 + 0xd0) = local_2a8;
+  *(undefined8 *)((longlong)local_58 + 0xc0) = 0x8000000000000000;
+  *(undefined8 *)((longlong)local_58 + 200) = local_2b0;
+  local_108 = local_150;
+  pvStack_100 = (void *)uStack_148;
+  local_f8 = local_140;
+  uStack_f0 = uStack_138;
+  local_e8 = local_130;
+  uStack_e0 = uStack_128;
+  local_d8 = local_120;
+  uStack_d0 = uStack_118;
+  local_c8 = local_110;
+  local_c0 = 2;
+  uStack_b8 = uStack_328;
+  local_b0 = local_320;
+  uStack_a8 = uStack_318;
+  local_a0 = local_310;
+  uStack_98 = uStack_308;
+  local_90 = local_300;
+  uStack_88 = uStack_2f8;
+  local_80 = local_2f0;
+  *(undefined8 *)((longlong)local_58 + 0x220) = local_158;
+  *(undefined8 *)((longlong)local_58 + 0x210) = 0x8000000000000001;
+  *(undefined8 *)((longlong)local_58 + 0x218) = uStack_160;
+  memcpy((void *)((longlong)local_58 + 0xd8),&local_840,0x138);
+  memcpy(local_58,&local_108,0x90);
+  *(undefined8 *)((longlong)local_58 + 0x90) = 5;
+  *(undefined4 **)((longlong)local_58 + 0x98) = local_68;
+  *(undefined8 *)((longlong)local_58 + 0xa0) = 5;
+  *(size_t *)((longlong)local_58 + 0xa8) = local_70;
+  *(void **)((longlong)local_58 + 0xb0) = local_60;
+  *(size_t *)((longlong)local_58 + 0xb8) = local_70;
+  local_108 = 1;
+  pvStack_100 = local_58;
+  local_f8 = 1;
+  local_49 = 1;
+  sentry_types::protocol::v7::impl$65::default();
+  in_RCX[0x89] = local_3f8;
+  in_RCX[0x8a] = uStack_3f0;
+  *(undefined1 *)(in_RCX + 0x98) = 4;
+  in_RCX[0x27] = local_708;
+  in_RCX[0x25] = local_718;
+  in_RCX[0x26] = CONCAT62(uStack_70e,uStack_710);
+  in_RCX[0x2a] = local_6f0;
+  in_RCX[0x28] = local_700;
+  in_RCX[0x29] = uStack_6f8;
+  in_RCX[0x2d] = local_6d8;
+  in_RCX[0x2b] = local_6e8;
+  in_RCX[0x2c] = uStack_6e0;
+  in_RCX[0x30] = local_6c0;
+  in_RCX[0x2e] = local_6d0;
+  in_RCX[0x2f] = uStack_6c8;
+  in_RCX[0x35] = local_698;
+  in_RCX[0x36] = uStack_690;
+  in_RCX[0x33] = local_6a8;
+  in_RCX[0x34] = uStack_6a0;
+  in_RCX[0x31] = local_6b8;
+  in_RCX[0x32] = uStack_6b0;
+  in_RCX[0x39] = local_678;
+  in_RCX[0x37] = local_688;
+  in_RCX[0x38] = uStack_680;
+  in_RCX[0x8d] = local_3d8;
+  in_RCX[0x8b] = local_3e8;
+  in_RCX[0x8c] = uStack_3e0;
+  in_RCX[0x3c] = local_660;
+  in_RCX[0x3a] = local_670;
+  in_RCX[0x3b] = uStack_668;
+  in_RCX[0x8e] = local_3d0;
+  in_RCX[0x47] = local_608;
+  in_RCX[0x45] = local_618;
+  in_RCX[0x46] = uStack_610;
+  in_RCX[0x4a] = local_5f0;
+  in_RCX[0x48] = local_600;
+  in_RCX[0x49] = uStack_5f8;
+  in_RCX[0x4d] = local_5d8;
+  in_RCX[0x4b] = local_5e8;
+  in_RCX[0x4c] = uStack_5e0;
+  in_RCX[0x4e] = local_5d0;
+  in_RCX[0x4f] = uStack_5c8;
+  in_RCX[0x50] = local_5c0;
+  in_RCX[0x5f] = local_548;
+  in_RCX[0x5d] = local_558;
+  in_RCX[0x5e] = uStack_550;
+  in_RCX[0x5b] = local_568;
+  in_RCX[0x5c] = uStack_560;
+  in_RCX[0x59] = local_578;
+  in_RCX[0x5a] = uStack_570;
+  in_RCX[0x57] = local_588;
+  in_RCX[0x58] = uStack_580;
+  in_RCX[0x55] = local_598;
+  in_RCX[0x56] = uStack_590;
+  in_RCX[0x53] = local_5a8;
+  in_RCX[0x54] = uStack_5a0;
+  in_RCX[0x51] = local_5b8;
+  in_RCX[0x52] = uStack_5b0;
+  memcpy(in_RCX + 0x60,local_540,0xe8);
+  in_RCX[0x91] = local_3b8;
+  in_RCX[0x8f] = local_3c8;
+  in_RCX[0x90] = uStack_3c0;
+  in_RCX[0x1e] = local_750;
+  in_RCX[0x1c] = local_760;
+  in_RCX[0x1d] = uStack_758;
+  in_RCX[0x1f] = local_108;
+  in_RCX[0x20] = pvStack_100;
+  in_RCX[0x21] = local_f8;
+  *in_RCX = local_840;
+  in_RCX[1] = puStack_838;
+  in_RCX[2] = local_830;
+  in_RCX[3] = uStack_828;
+  in_RCX[4] = local_820;
+  in_RCX[5] = uStack_818;
+  in_RCX[6] = local_810;
+  in_RCX[7] = uStack_808;
+  in_RCX[8] = local_800;
+  memcpy(in_RCX + 9,local_7f8,0x98);
+  in_RCX[0x24] = local_720;
+  in_RCX[0x22] = local_730;
+  in_RCX[0x23] = uStack_728;
+  in_RCX[0x94] = local_3a0;
+  in_RCX[0x92] = local_3b0;
+  in_RCX[0x93] = uStack_3a8;
+  in_RCX[0x97] = local_388;
+  in_RCX[0x95] = local_398;
+  in_RCX[0x96] = uStack_390;
+  in_RCX[0x43] = local_628;
+  in_RCX[0x44] = uStack_620;
+  in_RCX[0x41] = local_638;
+  in_RCX[0x42] = uStack_630;
+  in_RCX[0x3f] = local_648;
+  in_RCX[0x40] = uStack_640;
+  in_RCX[0x3d] = local_658;
+  in_RCX[0x3e] = uStack_650;
+  in_RCX[0x7d] = local_458;
+  in_RCX[0x7e] = uStack_450;
+  in_RCX[0x7f] = local_448;
+  in_RCX[0x80] = uStack_440;
+  in_RCX[0x81] = local_438;
+  in_RCX[0x82] = uStack_430;
+  in_RCX[0x83] = local_428;
+  in_RCX[0x84] = uStack_420;
+  in_RCX[0x85] = local_418;
+  in_RCX[0x86] = uStack_410;
+  in_RCX[0x87] = local_408;
+  in_RCX[0x88] = uStack_400;
+  local_68 = (undefined4 *)local_738;
+  local_58 = (void *)0x0;
+  local_60 = (void *)local_740;
+  while (local_68 != local_58) {
+    local_58 = (void *)((longlong)local_58 + 1);
+    core::ptr::drop_in_place<sentry_types::protocol::v7::Exception>();
+  }
+  if (local_748 != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  if (local_2e8 != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  if ((!SBORROW8(0,local_2d0)) && (local_2d0 != 0)) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  if ((int)local_378 != 2) {
+    core::ptr::drop_in_place<sentry_types::protocol::v7::Stacktrace>();
+  }
+  if (!SBORROW8(0,local_2a0)) {
+    core::ptr::drop_in_place<sentry_types::protocol::v7::Mechanism>();
+  }
+  return;
+}
+

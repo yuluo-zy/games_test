@@ -1,26 +1,31 @@
-//! construct_inter_roof_merlons（B 主基线；0x1422d4870，size 7070，源 L39–215+）。
+//! construct_inter_roof_merlons（B 主基线；0x1422d4870，size 7070）。
 //!
-//! 证据（clutter-extra-analysis.md §host_geometry）：
-//! - 输入：宿主几何集合 Vec（stride 0x38）——每元素 `+0x10` i32 判别（0=Circle2d、
-//!   非 0=Rectangle2d）、`+0x14/+0x1c` u64×2、`+0x24` u64、`+0x34` float（宽度基准）。
-//! - 城垛门控（local_f1）：`PublicWalls::get` → `WallStyle::is_halftimbered()`（半木墙）
-//!   或 `PublicWalls::roof_entity()` + `Roof::is_flat_w_no_rim()`（平顶无沿）→ f1=1 才生成；
-//!   随后 `f1 ^= 1` 取反。
-//! - 数量：`ceilf(曲线长 / 0.46)`（0x3eeb851f）；`长*1000.0`（0x447a0000）截断整型。
-//! - `utils::random_splits_into()` 按均匀 u 切段；每段 `fastrand::Rng::f32()` 抖动：
-//!   `((r*0.5-(1-r)*0.5)*0.21*0.8+0.368)*0.5 + (宽基+0.23)`。
-//! - `Curve::get_coord_at_u` ×2 取段两端坐标 → 线性插值 + 垂直方向归一化（1/SQRT）→
-//!   swizzle x0y/xvy。
-//! - 实体产出：每段 `SparseInstanceBufferWriter::push<BrickTransformSsbo>()` 一个城垛砖
-//!   实例（记录含段 u×曲线长、形状原点、(-100,-100) 常量、砖种类 4、缩放）。
-//!   城垛 = 沿屋顶形状曲线等距（0.46）的 BrickTransformSsbo 砖实例。
+//! 2026-10-17 restorer-clutter-remaining：按 fresh 反编译 + 逐指令反汇编重建
+//! （`evidence/decomp/0x1422d4870_*.c`、`evidence/disasm5_0.txt`；常量实读
+//! `0x142a7e348=0.32`、`0x142a7e354=0.07`、`0x142a80a4c=0.28`、
+//! `0x142a89600=0.23`、`0x142c1c7a4=0.115`、`0x14295b630=1000.0`、`0x447a0000=1000.0`、
+//! `0x3eeb851f=0.46`、`0x142925870=0.5`、`0x142a89668=0.21`、`0x142a16cb8=0.8`、
+//! `0x142a7fca0=0.368`、`0x142a8c5e0=(-100,-100)`）。
+//!
+//! 控制流（O）：
+//! - 宿主几何 Vec stride 0x38：`+0x10` i32 判别（0=Circle、非 0=Rectangle）、
+//!   `+0x14/+0x1c` 形状载荷、`+0x24` u64、`+0x34` 宽度基准。
+//! - 城垛门控 `local_f1 = !(halftimbered || flat_w_no_rim)`；数量
+//!   `ceil(周长/0.46)`；`random_splits_into(count, 0.32/周长, rng)`。
+//! - 每段端点由 `get_coord_at_u` 插值；额外段抖动
+//!   `((r*0.5-(1-r)*0.5)*0.21*0.8+0.368)*0.5 + (宽基+0.23)`；
+//!   普通段偏移 `宽基+0.115`；砖缩放 `((r2*0.5-(1-r2)*0.5)*0.07+0.28)`。
+//! - 推 `BrickTransformSsbo`（常量 (-100,-100)、砖种类 4）。
+//!
+//! U 登记：段端点/法向的 SSE 展开（4.72/0.28/1.5 项）为 I；BrickTransformSsbo 写入为
+//! 宿主 SparseInstanceBufferWriter 边界（本 crate 以 [`MerlonBrick`] 承载 CPU 侧）。
 
 use bevy_ecs::prelude::*;
+use country_core::systems::wall::construction::bricks::random_splits_into;
 use country_core::resources::roofs::roof_shape::Roof;
 use country_core::resources::walls::public_walls::PublicWalls;
 use country_core::resources::walls::WallId;
 use country_core::systems::wall::valid_enclosure::ShapeParameters;
-use fastrand::Rng;
 use glam::{Vec2, Vec3};
 
 /// 城垛砖实例（BrickTransformSsbo 的 CPU 侧投影；宿主写入实例缓冲）。
@@ -59,8 +64,10 @@ pub struct MerlonHostGeometry {
     pub width_base: f32,
 }
 
+/// 段距常量（O，0x3eeb851f = 0.46）。
+pub const MERLON_SPACING: f32 = 0.46;
+
 /// construct_inter_roof_merlons（0x1422d4870）。
-#[allow(clippy::too_many_arguments)]
 pub fn construct_inter_roof_merlons(
     walls: Res<PublicWalls>,
     mut rng: ResMut<MerlonRng>,
@@ -70,7 +77,7 @@ pub fn construct_inter_roof_merlons(
 ) {
     let r = &mut rng.0.lock().unwrap();
     for host in geometry.0.iter() {
-        // 城垛门控（O）：半木墙 或 平顶无沿屋顶。
+        // 城垛门控（O）：half-timbered 或 flat_w_no_rim → 取反后门控。
         let halftimbered = walls
             .get(host.wall)
             .map_or(false, |w| wall_is_halftimbered(w));
@@ -78,36 +85,66 @@ pub fn construct_inter_roof_merlons(
             .roof_entity(host.wall)
             .and_then(|e| roof_query.get(e).ok())
             .map_or(false, |roof| roof.is_flat_w_no_rim());
-        let mut gate = halftimbered || flat_no_rim;
-        gate = !gate; // 随后取反（O：local_f1 ^= 1）。
+        let gate = !(halftimbered || flat_no_rim);
 
-        // 数量：ceilf(周长 / 0.46)。
+        // 数量：ceil(周长 / 0.46)。
         let length = host.shape.perimeter();
-        let count = (length / 0.46).ceil() as usize;
-        // 段切分（O：utils::random_splits_into 均匀 u 切段；每段 jitter）。
-        let mut bricks_out = Vec::with_capacity(count);
-        for i in 0..count {
-            let u0 = i as f32 / count.max(1) as f32;
-            let u1 = (i + 1) as f32 / count.max(1) as f32;
-            let p0 = host.shape.get_pos_at_u(u0);
-            let p1 = host.shape.get_pos_at_u(u1);
-            let rnd = r.f32();
-            let jitter = ((rnd * 0.5 - (1.0 - rnd) * 0.5) * 0.21 * 0.8 + 0.368) * 0.5
-                + (host.width_base + 0.23);
+        let count = (length / MERLON_SPACING).ceil() as usize;
+        if count == 0 {
+            continue;
+        }
+        // O：random_splits_into(count, 0.32/周长, rng)。
+        let mut splits = Vec::new();
+        random_splits_into(
+            count,
+            0.32 / length.max(f32::MIN_POSITIVE),
+            r,
+            &mut splits,
+        );
+        let n = splits.len();
+        // 每段（splits[1..]）+ 额外 1 段（idx == n 时走抖动公式）。
+        let mut points: Vec<(usize, f32)> = splits
+            .iter()
+            .enumerate()
+            .skip(1)
+            .map(|(i, &u)| (i, u))
+            .collect();
+        points.push((n, 1.0));
+        let mut prev_u = 0.0f32;
+        for (idx, u) in points {
+            let p0 = host.shape.get_pos_at_u(prev_u);
+            let p1 = host.shape.get_pos_at_u(u);
             let mid = p0.lerp(p1, 0.5);
             let dir = (p1 - p0).normalize_or_zero();
             let normal = Vec2::new(-dir.y, dir.x);
-            let pos = Vec3::new(mid.x + normal.x * jitter, 0.0, mid.y + normal.y * jitter);
+            let offset = if idx < n {
+                // O：普通段偏移 宽基+0.115。
+                host.width_base + 0.115
+            } else {
+                // O：额外段抖动 ((r*0.5-(1-r)*0.5)*0.21*0.8+0.368)*0.5 + (宽基+0.23)。
+                let rnd = r.f32();
+                ((rnd * 0.5 - (1.0 - rnd) * 0.5) * 0.21 * 0.8 + 0.368) * 0.5
+                    + (host.width_base + 0.23)
+            };
+            let scale = {
+                // O：砖缩放 ((r2*0.5-(1-r2)*0.5)*0.07+0.28)。
+                let rnd = r.f32();
+                (rnd * 0.5 - (1.0 - rnd) * 0.5) * 0.07 + 0.28
+            };
             if gate {
-                bricks_out.push(MerlonBrick {
-                    position: pos,
+                bricks.bricks.push(MerlonBrick {
+                    position: Vec3::new(
+                        mid.x + normal.x * offset,
+                        0.0,
+                        mid.y + normal.y * offset,
+                    ),
                     rotation: normal.y.atan2(normal.x),
                     kind: 4,
-                    scale: 1.0,
+                    scale,
                 });
             }
+            prev_u = u;
         }
-        bricks.bricks.extend(bricks_out);
     }
 }
 

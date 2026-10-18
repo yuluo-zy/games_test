@@ -22,7 +22,9 @@ pub fn stairs_reset_for_new_frame(
 ) {
     interaction.reset_interaction();
     match dispatcher.state {
-        4 | 5 => {}
+        // O（0x14079c350）：仅 state==4 保留；state==5 亦走 unset_endpoint
+        // （`(state-6)<0xf` 门控：state==5 → lVar2=0 且 state!=4 → unset）。
+        4 => {}
         11 if (dispatcher.payload as u8) == b'?' => {}
         _ => {
             // O：0x1408fe880 `[内层+0x10] = 3`（I：失效标记）。

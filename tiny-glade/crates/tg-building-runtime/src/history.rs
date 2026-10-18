@@ -1,16 +1,36 @@
-//! Roof owner history over an explicit observed ledger. Replay preserves the
-//! native front-bucket emission/removal policy; cross-channel World scheduling
-//! remains the adapter graph, not a recovered engine fork registration graph.
-use crate::roof_edits::EditRoof;
+//! Records coordinated wall/roof transactions and advances ordered replay.
+//! Replay emits mutation events without recording a second transaction.
 use crate::{BuildingFrame, BuildingReport, ReplayRoofEvent, RoofRimHistoryRequests};
+use crate::{history_replay::advance_wall_bucket, roof_edits::EditRoof};
 use bevy_ecs::prelude::*;
-use country_core::recovered_building::building_history_transactions::{
-    BuildingEdit, BuildingHistoryTransactions, BuildingReplayBucket, BuildingReplayBucketSelection,
-    BuildingReplayOutput, RoofHistoryEdit, RoofVisualHistoryRecord, advance_roof_bucket,
-    collect_last_visual_history,
-};
-use country_core::recovered_building::history_transactions::HistoryCursorStep;
+use country_core::resources::history::building_transactions::BuildingEdit;
+use country_core::resources::history::building_transactions::BuildingHistoryTransactions;
+use country_core::resources::history::building_transactions::BuildingReplayBucket;
+use country_core::resources::history::building_transactions::BuildingReplayBucketSelection;
+use country_core::resources::history::building_transactions::BuildingReplayOutput;
+use country_core::resources::history::building_transactions::RoofHistoryEdit;
+use country_core::resources::history::building_transactions::RoofVisualHistoryRecord;
+use country_core::resources::history::building_transactions::advance_roof_bucket;
+use country_core::resources::history::transactions::HistoryCursorStep;
+use country_core::systems::wall::height_command::AdjustWallHeightRequest;
+use country_core::resources::history::wall_edit::WallAuthoritySnapshot;
+use country_core::resources::history::wall_edit::WallHistoryEdit;
+use country_core::resources::history::wall_edit::WallHistoryMetadata;
+use country_core::resources::history::wall_edit::WallReplayAudio;
+use country_core::resources::history::wall_edit::WallRestoreColorRequest;
+use country_core::resources::history::wall_edit::record_new_wall;
 use std::collections::VecDeque;
+
+fn supported_wall_edit(edit: &WallHistoryEdit) -> bool {
+    matches!(
+        edit,
+        WallHistoryEdit::StateChange { .. }
+            | WallHistoryEdit::Create { .. }
+            | WallHistoryEdit::Delete { .. }
+            | WallHistoryEdit::AdjustHeight { .. }
+            | WallHistoryEdit::EnclosureChange { .. }
+    )
+}
 #[derive(Resource, Default)]
 pub struct BuildingHistory {
     pub transactions: Option<BuildingHistoryTransactions>,
@@ -18,8 +38,7 @@ pub struct BuildingHistory {
     pub committed_this_frame: Vec<usize>,
     pub replayed_this_frame: usize,
 }
-/// Original owner source messages, separate from consumers: replayed EditRoof
-/// and CreateRoof/DeleteRoof must never implicitly record fresh history.
+/// Explicit history input. Replayed mutation events never implicitly record history.
 #[derive(Event, Clone, Debug)]
 pub struct RecordRoofVisualChange(pub RoofVisualHistoryRecord);
 #[derive(Event, Clone, Copy, Debug)]
@@ -35,7 +54,7 @@ pub struct BuildingHistoryRequests(pub Vec<BuildingEdit>);
 #[derive(Resource)]
 pub struct RoofHistoryReplay {
     pub buckets: VecDeque<BuildingReplayBucketSelection>,
-    /// Explicit CPU adapter setting; original replay speed is an input resource.
+    /// Multiplier applied to the frame delta while advancing replay.
     pub speed: f32,
     pub emissions: Vec<BuildingReplayOutput>,
     pub completed_this_frame: Vec<usize>,
@@ -51,13 +70,9 @@ impl Default for RoofHistoryReplay {
     }
 }
 #[derive(Event, Clone, Debug)]
-pub struct WallHistoryReplayAudio(
-    pub country_core::recovered_building::building_wall_history_edit::WallReplayAudio,
-);
+pub struct WallHistoryReplayAudio(pub WallReplayAudio);
 #[derive(Event, Clone, Debug)]
-pub struct WallHistoryRestoreColor(
-    pub country_core::recovered_building::building_wall_history_edit::WallRestoreColorRequest,
-);
+pub struct WallHistoryRestoreColor(pub WallRestoreColorRequest);
 #[derive(Event, Clone, Copy, Debug)]
 pub enum HistoryAction {
     ResetAfterFutureClear,
@@ -111,7 +126,7 @@ pub fn prepare(
         if matches!(action, HistoryAction::ResetAfterFutureClear) {
             if !pending.0.is_empty() || !owners.0.is_empty() || !buffer.buckets.is_empty() {
                 report.faults.push("History reset requires outstanding owner mutations and replay buckets to be resolved".into());
-                return;
+                continue;
             }
             history.transactions = Some(BuildingHistoryTransactions::after_observed_future_clear());
             continue;
@@ -122,6 +137,14 @@ pub fn prepare(
                 .push("History requires an explicit observed ledger or reset state".into());
             return;
         };
+        if matches!(action, HistoryAction::Start | HistoryAction::TryStart)
+            && !buffer.buckets.is_empty()
+        {
+            report
+                .faults
+                .push("History recording requested during an active replay bucket".into());
+            continue;
+        }
         match action {
             HistoryAction::Start => {
                 if let Err(error) = transaction.start_input_recording(frame.phase) {
@@ -134,13 +157,13 @@ pub fn prepare(
             }
             HistoryAction::Finish => history.finish_requests += 1,
             HistoryAction::Undo { instant } | HistoryAction::Redo { instant } => {
-                // Serial cursor admission is an adapter guard until the complete
-                // process_replay_mode/Wall-owner scheduling contract is recovered.
+                // A new cursor operation must not replace an unfinished replay;
+                // each update advances at most the front owner bucket.
                 if !buffer.buckets.is_empty() {
                     report
                         .faults
                         .push("History cursor requested during an active replay bucket".into());
-                    return;
+                    continue;
                 }
                 let step = if matches!(action, HistoryAction::Undo { .. }) {
                     HistoryCursorStep::Undo
@@ -162,16 +185,28 @@ pub fn prepare(
         }
     }
     let scaled_delta = frame.delta_time * buffer.speed;
+    if !buffer.buckets.is_empty()
+        && (!buffer.speed.is_finite() || buffer.speed < 0.0 || !scaled_delta.is_finite())
+    {
+        report
+            .faults
+            .push("History replay requires a finite nonnegative speed and delta".into());
+        return;
+    }
     if let Some(bucket) = buffer.buckets.front_mut() {
         match &mut bucket.owner {
             BuildingReplayBucket::Roof(commands) => {
-                let outputs = match advance_roof_bucket(commands, scaled_delta) {
+                // Roof commands share immutable edits through Arc; staging their
+                // small animation states keeps a failed batch from losing events.
+                let mut candidate = commands.clone();
+                let outputs = match advance_roof_bucket(&mut candidate, scaled_delta) {
                     Ok(outputs) => outputs,
                     Err(error) => {
                         report.faults.push(format!("Roof bucket replay: {error:?}"));
                         return;
                     }
                 };
+                *commands = candidate;
                 for output in &outputs {
                     match output {
                         BuildingReplayOutput::Discrete(event) => {
@@ -194,41 +229,89 @@ pub fn prepare(
                         .push("Wall replay requires actual terrain".into());
                     return;
                 };
-                let mut sources = std::collections::HashMap::new();
-                for (wall, source) in &collection.raw_sources {
-                    if let Some(metadata) = authoring.history_metadata.get(wall) {
-                        sources.insert(*wall,country_core::recovered_building::building_wall_history_edit::WallAuthoritySnapshot{source:source.clone(),metadata:*metadata});
-                    }
-                }
                 // Missing snapshot metadata must not make a present source look
                 // absent to native restore/removal semantics.
+                let mut targets = std::collections::HashSet::new();
                 for command in groups.iter().flatten() {
-                    let wall=match &command.edit {
-                        country_core::recovered_building::building_wall_history_edit::WallHistoryEdit::Create{wall,..}|
-                        country_core::recovered_building::building_wall_history_edit::WallHistoryEdit::Delete{wall,..}|
-                        country_core::recovered_building::building_wall_history_edit::WallHistoryEdit::StateChange{wall,..}|
-                        country_core::recovered_building::building_wall_history_edit::WallHistoryEdit::EnclosureChange{wall,..}=>wall,
+                    if !supported_wall_edit(&command.edit) {
+                        report.faults.push(format!(
+                            "Wall replay operation {:?} is not supported",
+                            command.edit.operation_tag()
+                        ));
+                        return;
+                    }
+                    if command.timed
+                        && matches!(
+                            command.edit,
+                            WallHistoryEdit::Create { .. } | WallHistoryEdit::Delete { .. }
+                        )
+                    {
+                        report
+                            .faults
+                            .push("Wall replay creation/deletion cannot be timed".into());
+                        return;
+                    }
+                    if !command.elapsed.is_finite()
+                        || command.elapsed < 0.0
+                        || (command.timed
+                            && (!command.duration.is_finite() || command.duration <= 0.0))
+                    {
+                        report
+                            .faults
+                            .push("Wall replay has invalid animation timing".into());
+                        return;
+                    }
+                    let Some(wall) = command.edit.wall_id() else {
+                        report
+                            .faults
+                            .push("Wall replay requires a resolved wall ID".into());
+                        return;
                     };
-                    if collection.raw_sources.contains_key(wall) && !sources.contains_key(wall) {
+                    if collection.raw_sources.contains_key(&wall)
+                        && !authoring.history_metadata.contains_key(&wall)
+                    {
                         report.faults.push(format!(
                             "Wall {} replay lacks observed source metadata",
                             wall.0
                         ));
                         return;
                     }
+                    targets.insert(wall);
                 }
-                let outcome=match country_core::recovered_building::building_wall_history_replay::advance_wall_groups(groups,&mut sources,scaled_delta,terrain) {
-                    Ok(outcome)=>outcome,
-                    Err(error)=>{report.faults.push(format!("Wall bucket replay: {error:?}"));return;}
+                // Replay commands only access their target walls. Avoid copying
+                // every unrelated Curve2 on each interpolation tick.
+                let mut sources = std::collections::HashMap::with_capacity(targets.len());
+                for wall in targets {
+                    if let Some((source, metadata)) = collection
+                        .raw_sources
+                        .get(&wall)
+                        .zip(authoring.history_metadata.get(&wall))
+                    {
+                        sources.insert(
+                            wall,
+                            WallAuthoritySnapshot {
+                                source: source.clone(),
+                                metadata: *metadata,
+                            },
+                        );
+                    }
+                }
+                let effects = match advance_wall_bucket(groups, &mut sources, scaled_delta, terrain)
+                {
+                    Ok(outcome) => outcome,
+                    Err(error) => {
+                        report.faults.push(format!("Wall bucket replay: {error:?}"));
+                        return;
+                    }
                 };
                 let mut dirty = std::collections::HashSet::new();
-                for effect in outcome.effects {
+                for effect in effects {
                     dirty.extend(effect.updated_source_notifications);
                     if let Some(request) = effect.height_request {
                         let mut payload = [0; 40];
                         request.write_observed_fields(&mut payload);
                         heights.write(crate::wall_height::AdjustWallHeight {
-                            request:country_core::recovered_building::building_wall_height_command::AdjustWallHeightRequest::from_observed(&payload),
+                            request: AdjustWallHeightRequest::from_observed(&payload),
                         });
                     }
                     if let Some(value) = effect.audio {
@@ -271,7 +354,7 @@ pub fn prepare(
             BuildingReplayBucket::Roof(commands) => commands.is_empty(),
             BuildingReplayBucket::Wall(groups) => groups.is_empty(),
         });
-        // Original replay_pop_bucket removes at most one outer bucket per call.
+        // Advance one owner bucket per update so cross-owner order is stable.
         if done {
             let completed = buffer.buckets.pop_front().unwrap();
             buffer.completed_this_frame.push(completed.entry_index);
@@ -306,17 +389,12 @@ pub fn record_and_finish(
                     continue;
                 }
                 let wall = building.wall.wall_id;
-                let metadata=country_core::recovered_building::building_wall_history_edit::WallHistoryMetadata::for_new_wall(demo_mode);
-                let snapshot =
-                    country_core::recovered_building::building_wall_history_edit::WallAuthoritySnapshot {
-                        source: building.wall.source,
-                        metadata,
-                    };
-                match country_core::recovered_building::building_wall_history_edit::record_new_wall(
-                    wall,
-                    &snapshot,
-                    building.appearance.wall_color_id,
-                ) {
+                let metadata = WallHistoryMetadata::for_new_wall(demo_mode);
+                let snapshot = WallAuthoritySnapshot {
+                    source: building.wall.source,
+                    metadata,
+                };
+                match record_new_wall(wall, &snapshot, building.appearance.wall_color_id) {
                     Ok(edit) => {
                         owners.0.push(BuildingEdit::Wall(std::sync::Arc::new(edit)));
                         let record = building.roof_request.record();
@@ -334,14 +412,13 @@ pub fn record_and_finish(
                 .faults
                 .push("New Wall history requires observed DEV_OVERRIDE_IS_DEMO_MODE".into());
         }
-        // Original bulldoze owner records Roof deletion before Wall compound.
-        // This direct authority removal adapter has no shrink producer yet;
-        // preserve owner order while keeping that unresolved operation explicit.
+        // Record a removed roof before its wall so reverse replay restores the
+        // wall authority before the roof consumes its public geometry.
         let mut roof_deletions = std::mem::take(&mut invalid.recording_pending);
         for wall_edit in authoring.pending_deletion_history.drain(..) {
-            let wall=match wall_edit.groups.first().and_then(|g|g.first()) {
-                Some(country_core::recovered_building::building_wall_history_edit::WallHistoryEdit::Delete{wall,..})=>Some(*wall),
-                _=>None,
+            let wall = match wall_edit.groups.first().and_then(|group| group.first()) {
+                Some(WallHistoryEdit::Delete { wall, .. }) => Some(*wall),
+                _ => None,
             };
             if let Some(index) =
                 wall.and_then(|wall| roof_deletions.iter().position(|e| e.wall_id() == wall.0))
@@ -359,10 +436,7 @@ pub fn record_and_finish(
             owners.0.push(BuildingEdit::Roof(edit));
         }
     }
-    let records: Vec<_> = visual.read().map(|event| *event.0.record()).collect();
-    if let Some(edit) = collect_last_visual_history(&records) {
-        owners.0.push(edit);
-    }
+    owners.0.extend(visual.read().map(|event| event.0.edit()));
     owners.0.extend(direction.read().map(|event| {
         BuildingEdit::Roof(RoofHistoryEdit::direction(event.wall, event.from, event.to))
     }));
@@ -382,7 +456,7 @@ pub fn record_and_finish(
         return;
     }
     // Source-owner order here is explicit adapter scheduling. Within each
-    // original reader: visual is last-only, direction is all, Rim remains all.
+    // reader, preserve every edit so undo reaches the initial state of the batch.
     owners.0.extend(pending.0.drain(..).map(BuildingEdit::from));
     // Unsupported owners are an adapter boundary. Reject before ledger mutation
     // and preserve their complete source queue for recovery/retry.
@@ -395,12 +469,37 @@ pub fn record_and_finish(
             .push(format!("Record history: unresolved owner {tag}"));
         return;
     }
-    while let Some(edit) = owners.0.first().cloned() {
-        if let Err(error) = transaction.add(edit) {
-            report.faults.push(format!("Record history: {error:?}"));
+    for edit in &owners.0 {
+        let BuildingEdit::Wall(compound) = edit else {
+            continue;
+        };
+        if let Some(unsupported) = compound
+            .groups
+            .iter()
+            .flatten()
+            .find(|e| !supported_wall_edit(e))
+        {
+            report.faults.push(format!(
+                "Record history: unsupported wall operation {:?}",
+                unsupported.operation_tag()
+            ));
             return;
         }
-        owners.0.remove(0);
+    }
+    let mut accepted = 0;
+    let mut failure = None;
+    for edit in &owners.0 {
+        if let Err(error) = transaction.add(edit.clone()) {
+            failure = Some(error);
+            break;
+        }
+        accepted += 1;
+    }
+    // Shift the remaining queue once, preserving the failed edit and suffix.
+    drop(owners.0.drain(..accepted));
+    if let Some(error) = failure {
+        report.faults.push(format!("Record history: {error:?}"));
+        return;
     }
     let mut commits = Vec::new();
     for _ in 0..requests {

@@ -6,23 +6,31 @@ use glam::Vec2;
 use utils::geometry::{Circle2d, Rectangle2d};
 
 use super::WallState;
-use crate::recovered_building::{
-    decorator_info::{DecoratorAnchorContext, DecoratorAnchorError, wall_attachment_height},
-    wall_cache::{RegularWallHeightCache, regular_wall_height_cache},
-    wall_collection::{
-        CollectedWallPublication, CollectionError, TerrainHeightGrid512,
-        collect_raw_wall_publication,
-    },
-    wall_freeform_cache::{FreeformWallHeightCache, freeform_wall_height_cache},
-    wall_gable::{GableArchHeights, GableError, apply_gable_arch_heights},
-    wall_path_preparation::{
-        PathPreparationError, PathRasters512, PreparedWallPath, prepare_wall_path,
-    },
-    wall_publication::WallPublicationCore,
-    wall_state::{PublicWallBuildingState, WallShapeSnapshot, validate_public_wall_read},
-};
+use crate::resources::walls::decorator::anchors::DecoratorAnchorContext;
+use crate::resources::walls::decorator::anchors::DecoratorAnchorError;
+use crate::resources::walls::decorator::anchors::wall_attachment_height;
+use crate::resources::walls::height_cache::RegularWallHeightCache;
+use crate::resources::walls::height_cache::regular_wall_height_cache;
+use crate::resources::walls::publication_source::CollectedWallPublication;
+use crate::resources::walls::publication_source::CollectionError;
+use crate::resources::walls::publication_source::TerrainHeightGrid512;
+use crate::resources::walls::publication_source::collect_raw_wall_publication;
+use crate::resources::walls::freeform_height_cache::FreeformWallHeightCache;
+use crate::resources::walls::freeform_height_cache::freeform_wall_height_cache;
+use crate::resources::walls::gable_heights::GableArchHeights;
+use crate::resources::walls::gable_heights::GableError;
+use crate::resources::walls::gable_heights::apply_gable_arch_heights;
+use crate::systems::wall::wall_state::path_preparation::PathPreparationError;
+use crate::systems::wall::wall_state::path_preparation::PathRasters512;
+use crate::systems::wall::wall_state::path_preparation::PreparedWallPath;
+use crate::systems::wall::wall_state::path_preparation::prepare_wall_path;
+use crate::systems::wall::wall_state::publication_policy::WallPublicationCore;
+use crate::resources::walls::publication_fields::PublicWallBuildingState;
+use crate::resources::walls::publication_fields::WallShapeSnapshot;
+use crate::resources::walls::publication_fields::validate_public_wall_read;
 
 const MISSING_HEIGHT: &str = "wall heights have not been calculated yet. Perhaps you are trying to access it before `init_wall_height_and_arch_segment_height` system had a chance to run?";
+const MISSING_GABLE_HEIGHT: &str = "`max_wall_y_gable` has not been calculated yet. Perhaps you are trying to access it before `init_wall_height_and_arch_segment_height` system had a chance to run?";
 
 #[derive(Clone, Debug)]
 pub struct PublicWallState {
@@ -35,9 +43,21 @@ pub struct PublicWallState {
     /// prepared segment-owner count (+d0), not the source point count.
     pub segment_heights: Vec<f32>,
     pub gable_heights: Option<GableArchHeights>,
+    /// Derived at publication, from the actual bulldoze animation queue.
+    being_bulldozed: bool,
 }
 
 impl PublicWallState {
+    pub fn is_being_bulldozed(&self) -> bool {
+        self.being_bulldozed
+    }
+
+    /// The publication owner captures this value when rebuilding the row.
+    /// UI consumers must not substitute the later queue's current membership.
+    pub(crate) fn set_being_bulldozed(&mut self, value: bool) {
+        self.being_bulldozed = value;
+    }
+
     pub fn collect(
         authority: &WallState,
         terrain: &TerrainHeightGrid512,
@@ -57,6 +77,7 @@ impl PublicWallState {
             freeform_heights: None,
             segment_heights: Vec::new(),
             gable_heights: None,
+            being_bulldozed: false,
         })
     }
 
@@ -109,7 +130,7 @@ impl PublicWallState {
             );
         }
         self.segment_heights =
-            crate::recovered_building::wall_construction_sources::initialize_segment_height_array(
+            crate::systems::wall::construction::parameters::initialize_segment_height_array(
                 prepared.segment_values.len(),
             );
         self.prepared_path = Some(prepared);
@@ -176,11 +197,13 @@ impl PublicWallState {
     pub fn max_y(&self) -> f32 {
         self.calculated_max_y().expect(MISSING_HEIGHT)
     }
+    /// 0x140b2a680（fresh disasm 2026-10-17）：`TEST byte[RCX+0x110],0x1;
+    /// JZ panic_fmt` —— gable 高度未就绪时 **panic**（不回退 max_y）。
     pub fn max_y_gable(&self) -> f32 {
         self.gable_heights
             .as_ref()
-            .map(|h| h.maximum_y)
-            .unwrap_or_else(|| self.max_y())
+            .expect(MISSING_GABLE_HEIGHT)
+            .maximum_y
     }
     pub fn flat_roof_y(&self) -> f32 {
         self.max_y() - 0.79
@@ -252,6 +275,7 @@ impl PublicWallState {
         .write_projection(&mut bytes);
         bytes[0x295] = self.authority.freehand_ty();
         bytes[0x296] = self.authority.source_flag_65();
+        bytes[0x297] = self.being_bulldozed as u8;
         if let Some(base) = self.calculated_max_y() {
             bytes[0x108..0x10c].copy_from_slice(&1u32.to_le_bytes());
             bytes[0x10c..0x110].copy_from_slice(&base.to_le_bytes());

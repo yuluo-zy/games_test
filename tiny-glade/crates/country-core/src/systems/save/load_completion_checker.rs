@@ -10,10 +10,7 @@
 //!   (Res<AppMode>, EventReader<LoadingGameComplete>, Local<LoadingCompletionState>,
 //!   Res<ActiveSession>)；`is_session_ok_to_load` = (SessionId, &UnsavedFileList)——**均不含
 //!   GameProfile/MetaCommander**。Bevy 系统接线留待调度恢复后接入；纯函数已落地。
-use crate::{
-    resources::session::SessionId,
-    systems::save::save_thread::UnsavedFileList,
-};
+use crate::{resources::session::SessionId, systems::save::save_thread::UnsavedFileList};
 use bevy_ecs::prelude::Resource;
 use std::path::Path;
 
@@ -54,21 +51,25 @@ pub fn check_load_completion_in(session_folder: &Path) -> SessionLoadReadiness {
 
 /// `is_session_ok_to_load` 0x140a9fa80：会话文件就绪检查。
 ///
-/// - `history.json` 已在 unsaved 列表 → 该文件上有挂起保存，可继续（Ok）；
-/// - 否则探测 `loading.tmp`：不存在 → 上个会话已完整落盘，可继续（Ok）；
-///   存在 → 加载进行中，不可（NotReady）。
-pub fn is_session_ok_to_load(session: SessionId, unsaved: &UnsavedFileList) -> SessionLoadReadiness {
+/// **三值编码（O：fresh 反编译）**：unsaved 命中 `history.json` → **1**；`loading.tmp`
+/// 缺失 → **0**；`loading.tmp` 存在 → **2**。旧实现把 unsaved 命中折叠为 `Ok(0)`，
+/// 编码与原生不符（unsaved 命中是"有挂起保存可续"的**不同就绪值**）。
+pub fn is_session_ok_to_load(
+    session: SessionId,
+    unsaved: &UnsavedFileList,
+) -> SessionLoadReadiness {
     is_session_ok_to_load_in(&session.save_folder_path(), unsaved)
 }
 
-/// 按会话目录判定的 `is_session_ok_to_load`。
+/// 按会话目录判定的 `is_session_ok_to_load`（三值编码，见上）。
 pub fn is_session_ok_to_load_in(
     session_folder: &Path,
     unsaved: &UnsavedFileList,
 ) -> SessionLoadReadiness {
     let history = session_folder.join("history.json");
     if unsaved.contains_file(&history) {
-        return SessionLoadReadiness::Ok;
+        // 原生值 1（"unsaved 挂起可续"；与 Ok=0 不同编码）。
+        return SessionLoadReadiness::DenyLoad;
     }
     if session_folder.join("loading.tmp").exists() {
         SessionLoadReadiness::NotReady
@@ -123,10 +124,11 @@ mod tests {
             is_session_ok_to_load_in(&folder, &unsaved),
             SessionLoadReadiness::Ok
         );
-        unsaved.add(folder.join("history.json"));
+        unsaved.add_path(folder.join("history.json"));
+        // 三值编码：unsaved 命中 → 原生值 1（DenyLoad），非 Ok(0)。
         assert_eq!(
             is_session_ok_to_load_in(&folder, &unsaved),
-            SessionLoadReadiness::Ok
+            SessionLoadReadiness::DenyLoad
         );
     }
 }

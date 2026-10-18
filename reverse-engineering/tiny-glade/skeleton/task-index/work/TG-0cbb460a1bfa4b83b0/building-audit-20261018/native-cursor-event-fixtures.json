@@ -1,0 +1,287 @@
+{
+  "target": "B",
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "ranges": [
+    "0x14173db1f..0x14173dba5",
+    "0x1414fbcc2..0x1414fbd48"
+  ],
+  "second_inline_results_equal": true,
+  "method": "Original inline instructions execute position update, raw-vector nonzero gate and actual native EventWriter push against resolved resource pointers and preallocated capacity; no arithmetic/event bridge or allocator.",
+  "cases": [
+    {
+      "name": "idle",
+      "input_bits": [
+        0,
+        0
+      ],
+      "hardware_bits": [
+        0,
+        0
+      ],
+      "captured": false,
+      "initial_position_bits": [
+        1112014848,
+        1101004800
+      ],
+      "output_position_bits": [
+        1112014848,
+        1101004800
+      ],
+      "event_payload_bits": [],
+      "event_count_after": 7,
+      "cursor_changed_tick": 77,
+      "events_changed_tick": 0
+    },
+    {
+      "name": "raw_differs_from_hardware",
+      "input_bits": [
+        1077936128,
+        1101004800
+      ],
+      "hardware_bits": [
+        1065353216,
+        3221225472
+      ],
+      "captured": false,
+      "initial_position_bits": [
+        1112014848,
+        1101004800
+      ],
+      "output_position_bits": [
+        1112276992,
+        1099956224
+      ],
+      "event_payload_bits": [
+        [
+          1077936128,
+          1101004800
+        ]
+      ],
+      "event_count_after": 8,
+      "cursor_changed_tick": 77,
+      "events_changed_tick": 77
+    },
+    {
+      "name": "captured_still_emits_raw",
+      "input_bits": [
+        1077936128,
+        1101004800
+      ],
+      "hardware_bits": [
+        1120272384,
+        1120272384
+      ],
+      "captured": true,
+      "initial_position_bits": [
+        1112014848,
+        1101004800
+      ],
+      "output_position_bits": [
+        1112014848,
+        1101004800
+      ],
+      "event_payload_bits": [
+        [
+          1077936128,
+          1101004800
+        ]
+      ],
+      "event_count_after": 8,
+      "cursor_changed_tick": 0,
+      "events_changed_tick": 77
+    },
+    {
+      "name": "hardware_without_raw",
+      "input_bits": [
+        0,
+        0
+      ],
+      "hardware_bits": [
+        1065353216,
+        3221225472
+      ],
+      "captured": false,
+      "initial_position_bits": [
+        1112014848,
+        1101004800
+      ],
+      "output_position_bits": [
+        1112276992,
+        1099956224
+      ],
+      "event_payload_bits": [],
+      "event_count_after": 7,
+      "cursor_changed_tick": 77,
+      "events_changed_tick": 0
+    },
+    {
+      "name": "negative_zero_is_zero",
+      "input_bits": [
+        2147483648,
+        2147483648
+      ],
+      "hardware_bits": [
+        0,
+        0
+      ],
+      "captured": false,
+      "initial_position_bits": [
+        1112014848,
+        1101004800
+      ],
+      "output_position_bits": [
+        1112014848,
+        1101004800
+      ],
+      "event_payload_bits": [],
+      "event_count_after": 7,
+      "cursor_changed_tick": 77,
+      "events_changed_tick": 0
+    },
+    {
+      "name": "nan_x_is_nonzero",
+      "input_bits": [
+        2143294004,
+        1065353216
+      ],
+      "hardware_bits": [
+        0,
+        0
+      ],
+      "captured": false,
+      "initial_position_bits": [
+        1112014848,
+        1101004800
+      ],
+      "output_position_bits": [
+        1112014848,
+        1101004800
+      ],
+      "event_payload_bits": [
+        [
+          2143294004,
+          1065353216
+        ]
+      ],
+      "event_count_after": 8,
+      "cursor_changed_tick": 77,
+      "events_changed_tick": 77
+    },
+    {
+      "name": "infinities_are_nonzero",
+      "input_bits": [
+        2139095040,
+        4286578688
+      ],
+      "hardware_bits": [
+        0,
+        0
+      ],
+      "captured": false,
+      "initial_position_bits": [
+        1112014848,
+        1101004800
+      ],
+      "output_position_bits": [
+        1112014848,
+        1101004800
+      ],
+      "event_payload_bits": [
+        [
+          2139095040,
+          4286578688
+        ]
+      ],
+      "event_count_after": 8,
+      "cursor_changed_tick": 77,
+      "events_changed_tick": 77
+    },
+    {
+      "name": "subnormals_are_nonzero",
+      "input_bits": [
+        1,
+        2147483649
+      ],
+      "hardware_bits": [
+        0,
+        0
+      ],
+      "captured": false,
+      "initial_position_bits": [
+        1112014848,
+        1101004800
+      ],
+      "output_position_bits": [
+        1112014848,
+        1101004800
+      ],
+      "event_payload_bits": [
+        [
+          1,
+          2147483649
+        ]
+      ],
+      "event_count_after": 8,
+      "cursor_changed_tick": 77,
+      "events_changed_tick": 77
+    },
+    {
+      "name": "nan_y_is_nonzero",
+      "input_bits": [
+        0,
+        2143289344
+      ],
+      "hardware_bits": [
+        0,
+        0
+      ],
+      "captured": false,
+      "initial_position_bits": [
+        1112014848,
+        1101004800
+      ],
+      "output_position_bits": [
+        1112014848,
+        1101004800
+      ],
+      "event_payload_bits": [
+        [
+          0,
+          2143289344
+        ]
+      ],
+      "event_count_after": 8,
+      "cursor_changed_tick": 77,
+      "events_changed_tick": 77
+    },
+    {
+      "name": "negative_raw",
+      "input_bits": [
+        3225419776,
+        3248488448
+      ],
+      "hardware_bits": [
+        3212836864,
+        1073741824
+      ],
+      "captured": false,
+      "initial_position_bits": [
+        1112014848,
+        1101004800
+      ],
+      "output_position_bits": [
+        1111752704,
+        1102053376
+      ],
+      "event_payload_bits": [
+        [
+          3225419776,
+          3248488448
+        ]
+      ],
+      "event_count_after": 8,
+      "cursor_changed_tick": 77,
+      "events_changed_tick": 77
+    }
+  ]
+}

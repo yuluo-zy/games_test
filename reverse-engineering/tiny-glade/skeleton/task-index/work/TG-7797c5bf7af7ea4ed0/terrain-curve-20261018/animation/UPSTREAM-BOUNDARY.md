@@ -1,0 +1,11 @@
+# Arrow consumer independent-review clarifications
+
+This is an additive clarification to the frozen 13-file Arrow consumer pack. It does not alter any frozen input, candidate, original fixture or the result of the independent 56-case and two-sequence rerun.
+
+The original consumer reads the last unread `CursorMovedScreenSpace` payload as two raw f32 values and applies the axis selection and arithmetic recorded in CONTRACT.md. The fixture acceptance proves that consumer behavior for the supplied payload bits. Words such as “movement” and “delta” in the contract describe the consumer's arithmetic input; they do not prove the identity or coordinate meaning of the real upstream producer.
+
+The current `systems/backend/input/update_cursor_position.rs` emits `CursorMovedScreenSpace(next)`, where `next` is the clamped absolute screen coordinate and may be the fixed capture anchor. Independent review identified this as an unresolved upstream contract question because both Arrow and the recovered terrain-edit consumer use these values directly. Original producer behavior must be audited under its own source ownership before the whole input-to-Arrow or input-to-terrain-edit chain can be accepted. Do not infer displacement from the event name, fabricate an extra difference event or silently modify the frozen consumer to compensate for an unverified producer.
+
+The query-path label in the frozen contract is also corrected precisely: the probe initializes `QSTATE + 0x108` to zero, so native traversal takes `0x140a932c0` and then the table-row mapping. It does not exercise the alternate `0x140a93277` direct-table branch. “Dense” and “sparse” in the frozen prose are withdrawn as names for these two paths. The common business loop, event readers, axis guards, arithmetic and changed-tick writes are exercised; the alternate dispatch branch and profiling remain unverified. The current Bevy query API supplies actual storage traversal in the candidate.
+
+The consumer leaf has no confirmed blocking finding in independent review. Renderer entity birth, upstream event production, global ordering, the alternate native traversal branch and native runtime/GPU acceptance remain explicit boundaries.

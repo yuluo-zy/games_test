@@ -1,6 +1,6 @@
-//! 原 Cosmic Editor 上的游戏文本片段策略；不实现整形、字体光栅或 Unicode 分割。
+//! Editable text, layout invalidation, and renderer-specific glyph primitives.
 use crate::renderer::{Glyph, Primitive, TextRenderer};
-use crate::{FontFamily, FontMetrics, FontTable};
+use crate::{FontFamily, FontMetrics, FontTable, TextError, TextResult};
 use cosmic_text::{
     Action, Align, Attrs, AttrsList, AttrsOwned, Buffer, Cursor, Edit, Editor, Family, FamilyOwned,
     Metrics, Selection, Shaping, Weight,
@@ -8,6 +8,11 @@ use cosmic_text::{
 use std::sync::Arc;
 use unicode_segmentation::UnicodeSegmentation;
 
+// Renderer colors use RRGGBBAA, with alpha in the least significant byte.
+const SELECTION_COLOR: u32 = 0xffff_ff80;
+
+/// Editable text with shared role configuration and renderer-bound layout caches.
+/// Mutations invalidate cached primitives; prepare/render apply queued actions.
 #[derive(bevy_ecs::prelude::Component)]
 pub struct TextFragment {
     editor: Editor<'static>,
@@ -21,25 +26,31 @@ pub struct TextFragment {
     bounds: [f32; 2],
     primitives: Vec<Primitive>,
     glyphs: Vec<Glyph>,
-    generated_at: u32,
-    validated_at: u32,
+    // Primitive validity depends on renderer identity and atlas generation.
+    cache_token: Option<(u64, u64)>,
+    // Shaping may precede primitive generation, so font IDs need a separate owner token.
+    shaping_token: Option<(u64, u64)>,
+    last_extent: Option<[f32; 2]>,
+    dirty: bool,
     cursor_visible: bool,
 }
 
 impl TextFragment {
-    /// Original new<f32>: the shared table is moved into the fragment.
-    /// Buffer construction does not load fonts or require a FontSystem.
+    /// Construct a fragment using a validated role from the shared font table.
+    /// Font bytes are loaded separately into TextRenderer. Missing roles and
+    /// invalid metrics/scales return an error before constructing the editor.
     pub fn new(
         metrics: impl Into<FontMetrics>,
         family: FontFamily,
         font_table: Arc<FontTable>,
-    ) -> Self {
+    ) -> TextResult<Self> {
         let metrics = metrics.into();
-        let entry = font_table.get(family).unwrap();
-        let scaled = entry.scaled(metrics.font_size, metrics.line_height);
+        metrics.validate()?;
+        let entry = font_table.require(family)?;
+        let scaled = entry.scaled(metrics.font_size, metrics.line_height)?;
         let buffer = Buffer::new_empty(Metrics::new(scaled.font_size, scaled.line_height));
         let attrs = AttrsOwned::new(Attrs::new().family(Family::Name(scaled.family)));
-        Self {
+        Ok(Self {
             editor: Editor::new(buffer),
             actions: Vec::new(),
             metrics,
@@ -51,190 +62,309 @@ impl TextFragment {
             bounds: [0.; 2],
             primitives: Vec::new(),
             glyphs: Vec::new(),
-            generated_at: 0,
-            validated_at: 0,
+            cache_token: None,
+            shaping_token: None,
+            last_extent: None,
+            dirty: true,
             cursor_visible: false,
-        }
+        })
     }
+    /// Borrow the editor without changing layout or glyph-cache validity.
     pub fn editor(&self) -> &Editor<'static> {
         &self.editor
     }
+    /// Access the editor directly, discarding generated primitives and shaping identity.
+    /// Callers must keep cursor/selection positions valid for the buffer's UTF-8 text.
     pub fn editor_mut(&mut self) -> &mut Editor<'static> {
+        self.shaping_token = None;
+        self.invalidate();
         &mut self.editor
     }
-    /// 原 0x140b906d0：drop 旧 editor 后装入新 editor，返回 void（丢弃旧值）。
-    pub fn replace_editor(&mut self, editor: Editor<'static>) {
-        self.generated_at = 0;
+    /// Replace the editor and discard actions queued for its predecessor.
+    /// Invalid metrics return an error before the existing editor is changed.
+    pub fn replace_editor(&mut self, editor: Editor<'static>) -> TextResult<()> {
+        let metrics = editor.with_buffer(|buffer| buffer.metrics());
+        FontMetrics::new(metrics.font_size, metrics.line_height).validate()?;
+        self.actions.clear();
+        self.invalidate();
         self.editor = editor;
+        self.shaping_token = None;
+        Ok(())
     }
+    /// Move the editor out, leaving an empty editor with its scaled metrics.
+    /// Pending actions and generated primitives are discarded.
     pub fn take_editor(&mut self) -> Editor<'static> {
-        let metrics = self.editor.with_buffer(|b| b.metrics());
+        self.actions.clear();
+        self.invalidate();
+        let metrics = self.editor.with_buffer(|buffer| buffer.metrics());
         let buffer = Buffer::new_empty(metrics);
         std::mem::replace(&mut self.editor, Editor::new(buffer))
     }
+    /// Collect the current buffer's logical lines, separated by newline characters.
+    /// Queued actions become visible only after prepare/render.
     pub fn text(&self) -> String {
-        self.editor.with_buffer(|b| {
-            b.lines
+        self.editor.with_buffer(|buffer| {
+            buffer
+                .lines
                 .iter()
-                .map(|l| l.text())
+                .map(|line| line.text())
                 .collect::<Vec<_>>()
                 .join("\n")
         })
     }
-    pub fn set_text(&mut self, renderer: &mut TextRenderer, text: impl AsRef<str>) {
-        let changed = self.text() != text.as_ref();
+    /// Replace text only when its lines differ, then queue a move to buffer end.
+    /// Clears the current selection. A renderer without loaded fonts returns an error.
+    pub fn set_text(
+        &mut self,
+        renderer: &mut TextRenderer,
+        text: impl AsRef<str>,
+    ) -> TextResult<()> {
+        if renderer.font_faces().next().is_none() {
+            return Err(TextError::InvalidInput(
+                "text renderer has no loaded fonts".into(),
+            ));
+        }
+        self.sync_renderer(renderer);
+        let text = text.as_ref();
+        let changed = !self.editor.with_buffer(|buffer| {
+            let mut incoming = text.split('\n');
+            buffer
+                .lines
+                .iter()
+                .all(|line| incoming.next() == Some(line.text()))
+                && incoming.next().is_none()
+        });
         let attrs = self.attrs.as_attrs();
         if changed {
-            self.editor.with_buffer_mut(|b| {
-                b.set_text(
-                    &mut renderer.font_system,
-                    text.as_ref(),
-                    attrs,
-                    Shaping::Advanced,
-                )
+            self.editor.with_buffer_mut(|buffer| {
+                buffer.set_text(&mut renderer.font_system, text, attrs, Shaping::Advanced)
             });
         }
         self.editor.set_cursor(Cursor::default());
         self.editor.set_selection(Selection::None);
         self.editor_action(Action::Motion(cosmic_text::Motion::BufferEnd));
+        Ok(())
     }
+    /// Apply the fragment's family and weight to every existing buffer line.
+    /// This deliberately replaces per-span attributes and invalidates layout.
     pub fn apply_buffer_attrs(&mut self) {
+        self.invalidate();
         let attrs = AttrsList::new(self.attrs.as_attrs());
-        self.editor.with_buffer_mut(|b| {
-            for line in &mut b.lines {
+        self.editor.with_buffer_mut(|buffer| {
+            for line in &mut buffer.lines {
                 line.set_attrs_list(attrs.clone());
             }
-            b.set_redraw(true);
+            buffer.set_redraw(true);
         });
     }
-    /// Original 0x140b90c80 compares the construction role but never writes it.
-    /// Preserve that observed behavior: a later metrics change uses the original role.
-    pub fn set_family(&mut self, family: FontFamily) {
+    /// Change role, family attributes and scale while retaining unscaled metrics.
+    /// Missing roles, invalid scales or scaling overflow leave the fragment unchanged.
+    pub fn set_family(&mut self, family: FontFamily) -> TextResult<()> {
+        let entry = self.font_table.require(family)?;
+        let scaled = entry.scaled(self.metrics.font_size, self.metrics.line_height)?;
         if self.family == family {
-            return;
+            return Ok(());
         }
-        let table = Arc::clone(&self.font_table);
-        let entry = table.get(family).unwrap();
+        let scaled_metrics = FontMetrics::new(scaled.font_size, scaled.line_height);
         self.attrs.family_owned = FamilyOwned::Name(entry.family.clone());
+        self.family = family;
         self.apply_buffer_attrs();
-        self.set_internal_scaled_metrics(
-            self.metrics.font_size * entry.scale,
-            entry.scale * self.metrics.line_height,
-        );
+        self.apply_scaled_metrics(scaled_metrics);
+        Ok(())
     }
+    /// Set a uniform weight for all lines and invalidate layout when it changes.
     pub fn set_weight(&mut self, weight: Weight) {
         if self.attrs.weight != weight {
             self.attrs.weight = weight;
             self.apply_buffer_attrs();
         }
     }
-    pub fn set_metrics(&mut self, metrics: impl Into<FontMetrics>) {
+    /// Set unscaled metrics using the current role's scale.
+    /// Rejects nonpositive/nonfinite values and scaling overflow before mutation.
+    pub fn set_metrics(&mut self, metrics: impl Into<FontMetrics>) -> TextResult<()> {
         let metrics = metrics.into();
-        if self.metrics != metrics {
-            let (font_size, line_height) = {
-                let entry = self.font_table.get(self.family).unwrap();
-                let scaled = entry.scaled(metrics.font_size, metrics.line_height);
-                (scaled.font_size, scaled.line_height)
-            };
-            self.set_internal_scaled_metrics(font_size, line_height);
-            self.metrics = metrics;
+        metrics.validate()?;
+        let entry = self.font_table.require(self.family)?;
+        let scaled = entry.scaled(metrics.font_size, metrics.line_height)?;
+        self.apply_scaled_metrics(FontMetrics::new(scaled.font_size, scaled.line_height));
+        self.metrics = metrics;
+        Ok(())
+    }
+    /// Set already-scaled buffer metrics without changing the stored role or base metrics.
+    /// Values must be finite and positive. Preserves text, cursor, selection, scroll,
+    /// indentation and tab width; wrapping and available size are reapplied on prepare.
+    pub fn set_internal_scaled_metrics(
+        &mut self,
+        font_size: f32,
+        line_height: f32,
+    ) -> TextResult<()> {
+        let metrics = FontMetrics::new(font_size, line_height);
+        metrics.validate()?;
+        self.apply_scaled_metrics(metrics);
+        Ok(())
+    }
+    // Public scalar input or FontTableEntry::scaled validates before this commit.
+    fn apply_scaled_metrics(&mut self, metrics: FontMetrics) {
+        let FontMetrics {
+            font_size,
+            line_height,
+        } = metrics;
+        let current = self.editor.with_buffer(|buffer| buffer.metrics());
+        if current.font_size != font_size || current.line_height != line_height {
+            // Buffer::set_metrics needs a FontSystem; rebuilding only its metrics
+            // here keeps this setter independent of renderer ownership.
+            let mut lines = self
+                .editor
+                .with_buffer_mut(|buffer| std::mem::take(&mut buffer.lines));
+            for line in &mut lines {
+                line.reset_layout();
+            }
+            let scroll = self.editor.with_buffer(|buffer| buffer.scroll());
+            let cursor = self.editor.cursor();
+            let selection = self.editor.selection();
+            let mut buffer = Buffer::new_empty(Metrics::new(font_size, line_height));
+            buffer.lines = lines;
+            buffer.set_scroll(scroll);
+            let mut editor = Editor::new(buffer);
+            editor.set_cursor(cursor);
+            editor.set_selection(selection);
+            editor.set_auto_indent(self.editor.auto_indent());
+            editor.set_tab_width(self.editor.tab_width());
+            self.editor = editor;
+            self.invalidate();
         }
     }
-    pub fn set_internal_scaled_metrics(&mut self, font_size: f32, line_height: f32) {
-        // 原 0x140b90780：传入已缩放 metrics，与当前 buffer 相等且均非 NaN 时早退。
-        let current = self
-            .editor
-            .with_buffer(|b| (b.metrics().font_size, b.metrics().line_height));
-        let equal = !current.0.is_nan()
-            && !font_size.is_nan()
-            && current.0 == font_size
-            && !current.1.is_nan()
-            && !line_height.is_nan()
-            && current.1 == line_height;
-        if equal {
-            return;
+    /// Set a finite positive wrapping limit; render also respects its available width.
+    /// Invalid values leave the previous limit and layout unchanged.
+    pub fn set_max_width(&mut self, width: f32) -> TextResult<()> {
+        if !width.is_finite() || width <= 0. {
+            return Err(TextError::InvalidInput(
+                "text width must be finite and positive".into(),
+            ));
         }
-        // 原 0x140b90780：move 原 buffer 的 lines 到 Buffer::new_empty，
-        // 然后 Editor::new；保留文本/attrs，重置 cursor、selection、scroll、
-        // 尺寸、wrap 以及 editor 的 auto_indent/tab_width/change 状态。
-        // cosmic 的 set_metrics 会保留上述状态，不能替代这段游戏策略。
-        let lines = self
-            .editor
-            .with_buffer_mut(|b| std::mem::take(&mut b.lines));
-        let mut buffer = Buffer::new_empty(Metrics::new(font_size, line_height));
-        buffer.lines = lines;
-        self.editor = Editor::new(buffer);
-    }
-    pub fn set_max_width(&mut self, width: f32) {
         if self.max_width != width {
+            self.invalidate();
             self.max_width = width;
             self.editor.set_redraw(true);
         }
+        Ok(())
     }
+    /// Select horizontal alignment and invalidate layout if it changes.
     pub fn set_align(&mut self, align: Align) {
+        if self.align != Some(align) {
+            self.invalidate();
+        }
         self.align = Some(align);
     }
+    /// Restore the shaping engine's default horizontal alignment.
     pub fn clear_align(&mut self) {
+        if self.align.is_some() {
+            self.invalidate();
+        }
         self.align = None;
     }
+    /// Enable or hide the caret in subsequently generated primitives.
     pub fn set_cursor_visible(&mut self, visible: bool) {
         if self.cursor_visible != visible {
+            self.invalidate();
             self.cursor_visible = visible;
             self.editor.set_redraw(true);
         }
     }
+    /// Return dimensions of the last successfully prepared or rendered layout.
+    /// Mutations do not update this snapshot until prepare/render succeeds.
     pub fn bounds(&self) -> [f32; 2] {
         self.bounds
     }
+    /// Queue an editing action for the next prepare/render and invalidate primitives.
     pub fn editor_action(&mut self, action: Action) {
+        self.invalidate();
         self.actions.push(action);
     }
+    /// Count actions that have not yet been applied to the editor.
     pub fn pending_actions(&self) -> usize {
         self.actions.len()
     }
-    pub fn prepare(&mut self, renderer: &mut TextRenderer) {
+    /// Apply queued actions, configure wrapping and shape the current text.
+    /// Requires loaded fonts and valid buffer metrics; updates bounds without
+    /// appending primitives or advancing the renderer's frame.
+    pub fn prepare(&mut self, renderer: &mut TextRenderer) -> TextResult<()> {
+        if renderer.font_faces().next().is_none() {
+            return Err(TextError::InvalidInput(
+                "text renderer has no loaded fonts".into(),
+            ));
+        }
+        self.sync_renderer(renderer);
+        let metrics = self.editor.with_buffer(|buffer| buffer.metrics());
+        FontMetrics::new(metrics.font_size, metrics.line_height).validate()?;
         for action in self.actions.drain(..) {
             self.editor.action(&mut renderer.font_system, action);
         }
-        self.editor.with_buffer_mut(|b| {
-            for line in &mut b.lines {
-                line.set_align(None);
+        let size = if self.dirty {
+            [self.max_width, f32::MAX]
+        } else {
+            let extent = self.last_extent.unwrap_or([self.max_width, f32::MAX]);
+            [extent[0].min(self.max_width), extent[1]]
+        };
+        self.editor.with_buffer_mut(|buffer| {
+            for line in &mut buffer.lines {
+                line.set_align(self.align);
             }
-            b.set_wrap(&mut renderer.font_system, cosmic_text::Wrap::Word);
-            b.set_size(&mut renderer.font_system, self.max_width, f32::MAX);
+            buffer.set_wrap(&mut renderer.font_system, cosmic_text::Wrap::Word);
+            buffer.set_size(&mut renderer.font_system, size[0], size[1]);
         });
         self.editor
             .shape_as_needed(&mut renderer.font_system, false);
-        // 原 0x140b90f60：bounds[0] 由 with_buffer 布局闭包取 max(line_w)；
-        // bounds[1] reads the active Buffer's scaled line_height. The original
-        // Owned/Borrowed/Arc BufferRef branches are unrelated to font roles.
-        let width = self
-            .editor
-            .with_buffer(|b| b.layout_runs().fold(0_f32, |acc, run| acc.max(run.line_w)));
-        self.bounds = [
-            width,
-            self.editor.with_buffer(|b| b.metrics().line_height) + 0.0,
-        ];
+        self.update_bounds();
+        Ok(())
     }
-    fn needs_regeneration(&mut self, renderer: &mut TextRenderer) -> bool {
-        if !self.editor.redraw() && self.generated_at >= renderer.invalidation_frame() {
-            if self.validated_at < renderer.current_frame() {
-                if renderer.validate_glyph_cache_allocs(&self.glyphs) {
-                    self.validated_at = renderer.current_frame();
-                } else {
-                    self.generated_at = 0;
+    /// Recompute both dimensions from the same shaped layout after prepare or resize.
+    fn update_bounds(&mut self) {
+        self.bounds = self.editor.with_buffer(|buffer| {
+            let (width, last_line_top) = buffer
+                .layout_runs()
+                .fold((0_f32, 0_f32), |(width, top), run| {
+                    (width.max(run.line_w), top.max(run.line_top))
+                });
+            [width, buffer.metrics().line_height + last_line_top]
+        });
+    }
+
+    // Font IDs inside cached shaping are local to a renderer's font database.
+    // A fragment can already be shaped before it has any cached primitives.
+    fn sync_renderer(&mut self, renderer: &TextRenderer) {
+        let token = renderer.cache_token();
+        if self.shaping_token != Some(token) {
+            self.editor.with_buffer_mut(|buffer| {
+                for line in &mut buffer.lines {
+                    line.reset_shaping();
                 }
-            }
-            if self.generated_at >= renderer.invalidation_frame() {
-                return false;
-            }
+            });
+            self.invalidate();
+            self.shaping_token = Some(token);
         }
-        true
     }
-    fn generate_primitives(&mut self, renderer: &mut TextRenderer, extent: [f32; 2]) {
-        if !self.needs_regeneration(renderer) {
-            return;
+    fn invalidate(&mut self) {
+        self.dirty = true;
+        self.cache_token = None;
+        self.primitives.clear();
+        self.glyphs.clear();
+        self.editor.set_redraw(true);
+    }
+    fn generate_primitives(
+        &mut self,
+        renderer: &mut TextRenderer,
+        extent: [f32; 2],
+    ) -> TextResult<()> {
+        if !self.dirty
+            && !self.editor.redraw()
+            && self.cache_token == Some(renderer.cache_token())
+            && self.last_extent == Some(extent)
+            && renderer.validate_glyph_cache_allocs(&self.glyphs)
+        {
+            return Ok(());
         }
+        self.dirty = true;
         self.primitives.clear();
         self.glyphs.clear();
         self.layout_for_render(renderer, extent, self.align);
@@ -243,19 +373,32 @@ impl TextFragment {
         let selection = self.editor.selection_bounds();
         let cursor = self.editor.cursor();
         let visible = self.cursor_visible;
-        self.editor.with_buffer(|b| {
-            for run in b.layout_runs() {
+        let generated = self.editor.with_buffer(|buffer| -> TextResult<()> {
+            for run in buffer.layout_runs() {
                 if let Some((x, width)) =
                     selection.and_then(|(start, end)| run.highlight(start, end))
                 {
                     self.primitives.push(Primitive::rect(
                         [x, run.line_top],
-                        [width, b.metrics().line_height],
-                        0x80ff_ffff,
+                        [width, buffer.metrics().line_height],
+                        SELECTION_COLOR,
                     ));
                 }
-                if visible && cursor.line == run.line_i {
-                    let mut cursor_x = if run.rtl { run.line_w } else { 0. };
+                let cursor_in_run = run
+                    .glyphs
+                    .iter()
+                    .any(|glyph| cursor.index >= glyph.start && cursor.index < glyph.end)
+                    || (cursor.index == run.text.len()
+                        && run
+                            .glyphs
+                            .last()
+                            .is_none_or(|glyph| glyph.end == run.text.len()));
+                if visible && cursor.line == run.line_i && cursor_in_run {
+                    let mut cursor_x = if (cursor.index == 0) != run.rtl {
+                        0.
+                    } else {
+                        run.line_w
+                    };
                     for glyph in run.glyphs {
                         if cursor.index >= glyph.start && cursor.index <= glyph.end {
                             let cluster = &run.text[glyph.start..glyph.end];
@@ -279,13 +422,13 @@ impl TextFragment {
                     }
                     self.primitives.push(Primitive::rect(
                         [cursor_x, run.line_top],
-                        [4., b.metrics().line_height],
+                        [4., buffer.metrics().line_height],
                         u32::MAX,
                     ));
                 }
                 for glyph in run.glyphs {
                     let physical = glyph.physical((0., 0.), scale);
-                    if let Some(cached) = renderer.get_glyph(physical.cache_key) {
+                    if let Some(cached) = renderer.get_glyph(physical.cache_key)? {
                         self.glyphs.push(cached);
                         self.primitives.push(Primitive {
                             pos_min: [
@@ -301,21 +444,32 @@ impl TextFragment {
                             ],
                             uv_min: [cached.atlas[0] as f32, cached.atlas[1] as f32],
                             uv_extent: [cached.size[0] as f32, cached.size[1] as f32],
-                            color: glyph.color_opt.map_or(u32::MAX, |c| c.0),
+                            color: glyph
+                                .color_opt
+                                .map_or(u32::MAX, crate::color::pack_text_color),
                             stream: 0,
                             padding: [0; 2],
                         });
                     }
                 }
             }
+            Ok(())
         });
-        self.bounds[1] = self.editor.with_buffer(|b| {
-            b.metrics().line_height
-                + b.layout_runs()
-                    .fold(0_f32, |top, run| top.max(run.line_top))
-        });
-        self.generated_at = renderer.invalidation_frame();
+        if let Err(error) = generated {
+            self.primitives.clear();
+            self.glyphs.clear();
+            self.cache_token = None;
+            return Err(error);
+        }
+        self.update_bounds();
+        self.cache_token = Some(renderer.cache_token());
+        self.last_extent = Some(extent);
+        self.dirty = false;
+        self.editor.set_redraw(false);
+        Ok(())
     }
+    /// Borrow the last generated primitives in fragment-local coordinates.
+    /// Editing clears this cache; render must regenerate it for the current renderer.
     pub fn primitives(&self) -> &[Primitive] {
         &self.primitives
     }
@@ -325,366 +479,49 @@ impl TextFragment {
         extent: [f32; 2],
         align: Option<Align>,
     ) {
-        // Original closure returns immediately for Align::None. Layout changes
-        // are performed only after the original cache predicate requests generation.
-        if align.is_none() {
-            return;
-        }
-        self.editor.with_buffer_mut(|b| {
-            for line in &mut b.lines {
+        self.editor.with_buffer_mut(|buffer| {
+            for line in &mut buffer.lines {
                 line.set_align(align);
             }
-            b.set_size(&mut renderer.font_system, extent[0], extent[1]);
+            buffer.set_size(
+                &mut renderer.font_system,
+                extent[0].min(self.max_width),
+                extent[1],
+            );
         });
     }
-    /// Original render takes a center and extent. Preparation is a separate step;
-    /// render does not force preparation, left alignment, or a new cache epoch.
+    /// Prepare changed text, then append primitives centered within the extent.
+    /// Center and extent must be finite, and both extent components positive.
+    /// The color is a packed RRGGBBAA tint. Atlas errors require the renderer's
+    /// documented frame recovery; a failed generation appends no partial fragment.
     pub fn render(
         &mut self,
         renderer: &mut TextRenderer,
         center: [f32; 2],
         extent: [f32; 2],
-        color: u32,
-    ) {
-        self.generate_primitives(renderer, extent);
+        tint: u32,
+    ) -> TextResult<()> {
+        if center.iter().any(|value| !value.is_finite())
+            || extent
+                .iter()
+                .any(|value| !value.is_finite() || *value <= 0.)
+        {
+            return Err(TextError::InvalidInput(
+                "text geometry must be finite with positive extent".into(),
+            ));
+        }
+        self.sync_renderer(renderer);
+        if self.dirty || self.editor.redraw() || !self.actions.is_empty() {
+            self.prepare(renderer)?;
+        }
+        self.generate_primitives(renderer, extent)?;
         renderer.append_primitives(
             &self.primitives,
             [
                 center[0] - extent[0] * 0.5,
                 center[1] - self.bounds[1] * 0.5,
             ],
-            color,
-        );
-    }
-}
-
-#[cfg(test)]
-mod internal_contract_tests {
-    use super::*;
-    use crate::{FontTableEntry, renderer::AtlasAllocUsage};
-
-    fn table() -> Arc<FontTable> {
-        Arc::new(FontTable {
-            fonts: [
-                (
-                    FontFamily::Label,
-                    FontTableEntry {
-                        family: "FamilyZero".into(),
-                        scale: 1.,
-                    },
-                ),
-                (
-                    FontFamily::MenuButton,
-                    FontTableEntry {
-                        family: "FamilyOne".into(),
-                        scale: 2.,
-                    },
-                ),
-                (
-                    FontFamily::TextEditor,
-                    FontTableEntry {
-                        family: "FamilyTwo".into(),
-                        scale: 0.5,
-                    },
-                ),
-                (
-                    FontFamily::Hand,
-                    FontTableEntry {
-                        family: "FamilyThree".into(),
-                        scale: 3.,
-                    },
-                ),
-            ]
-            .into_iter()
-            .collect(),
-        })
-    }
-    fn role(tag: u64) -> FontFamily {
-        [
-            FontFamily::Label,
-            FontFamily::MenuButton,
-            FontFamily::TextEditor,
-            FontFamily::Hand,
-        ][tag as usize]
-    }
-    fn native_font_state(
-        fragment: &TextFragment,
-        table_ptr: *const FontTable,
-    ) -> serde_json::Value {
-        let metrics = fragment.editor.with_buffer(|b| b.metrics());
-        let family = match &fragment.attrs.family_owned {
-            FamilyOwned::Name(name) => name.as_str(),
-            _ => panic!("original table entries select named families"),
-        };
-        serde_json::json!({
-            "role": fragment.family as u8,
-            "metrics_base": [fragment.metrics.font_size, fragment.metrics.line_height],
-            "metrics_scaled": [metrics.font_size, metrics.line_height],
-            "bounds": fragment.bounds,
-            "max_width_bits": fragment.max_width.to_bits(),
-            "align_tag": if fragment.align.is_none() { 5 } else { panic!("expected None") },
-            "attrs_family": family,
-            "attrs_weight": fragment.attrs.weight.0,
-            "buffer_lines": fragment.editor.with_buffer(|b| b.lines.len()),
-            "pending_actions": fragment.actions.len(),
-            "arc_strong": Arc::strong_count(&fragment.font_table),
-            "stored_arc_matches": Arc::as_ptr(&fragment.font_table) == table_ptr,
-        })
-    }
-    #[test]
-    fn original_font_constructor_and_role_switch_sequence() {
-        let original: serde_json::Value =
-            serde_json::from_str(include_str!("../tests/fixtures/internal-native-font.json"))
-                .unwrap();
-        for case in original["role_cases"].as_array().unwrap() {
-            let decoded: FontFamily = serde_json::from_value(case["name"].clone()).unwrap();
-            assert_eq!(u64::from(decoded as u8), case["tag"].as_u64().unwrap());
-        }
-        let cases = original["scenarios"].as_array().unwrap();
-        for case in &cases[..4] {
-            let table = table();
-            let ptr = Arc::as_ptr(&table);
-            let fragment = TextFragment::new(20_f32, role(case["role"].as_u64().unwrap()), table);
-            assert_eq!(native_font_state(&fragment, ptr), case["state"]);
-        }
-        let table = table();
-        let ptr = Arc::as_ptr(&table);
-        let mut fragment = TextFragment::new(20_f32, FontFamily::Label, table);
-        fragment.editor_action(Action::Insert('X'));
-        fragment.set_family(FontFamily::MenuButton);
-        assert_eq!(native_font_state(&fragment, ptr), cases[4]["state"]);
-        fragment.set_family(FontFamily::Label);
-        assert_eq!(native_font_state(&fragment, ptr), cases[5]["state"]);
-        fragment.set_metrics(25_f32);
-        assert_eq!(native_font_state(&fragment, ptr), cases[6]["state"]);
-        fragment.take_editor();
-        assert_eq!(native_font_state(&fragment, ptr), cases[7]["state"]);
-    }
-    #[test]
-    fn shared_font_table_is_retained_and_missing_role_uses_unwrap() {
-        let table = table();
-        let weak = Arc::downgrade(&table);
-        let mut first = TextFragment::new(20_f32, FontFamily::Label, Arc::clone(&table));
-        let second = TextFragment::new(10_f32, FontFamily::Hand, Arc::clone(&table));
-        assert!(Arc::ptr_eq(&first.font_table, &second.font_table));
-        assert_eq!(Arc::strong_count(&table), 3);
-        first.set_family(FontFamily::MenuButton);
-        assert_eq!(Arc::strong_count(&table), 3);
-        drop(table);
-        drop(first);
-        assert!(weak.upgrade().is_some());
-        drop(second);
-        assert!(weak.upgrade().is_none());
-        let empty = Arc::new(FontTable::default());
-        assert!(
-            std::panic::catch_unwind(|| TextFragment::new(20_f32, FontFamily::Label, empty))
-                .is_err()
-        );
-    }
-    #[test]
-    fn original_cache_decision_matrix_and_prefix_updates() {
-        let original: serde_json::Value = serde_json::from_str(include_str!(
-            "../tests/fixtures/internal-native-cache-oracle.json"
-        ))
-        .unwrap();
-        let mut renderer = TextRenderer::new();
-        let table = table();
-        for case in original["prefix_cases"].as_array().unwrap() {
-            let mut fragment = TextFragment::new(20_f32, FontFamily::Label, Arc::clone(&table));
-            fragment.editor.set_redraw(false);
-            fragment.generated_at = case["fragment_stamp"].as_u64().unwrap() as u32;
-            fragment.validated_at = case["validated_frame"].as_u64().unwrap() as u32;
-            let pattern = case["pattern"].as_str().unwrap();
-            renderer.set_cache_fixture(
-                case["frame"].as_u64().unwrap() as u32,
-                case["renderer_stamp"].as_u64().unwrap() as u32,
-                &[
-                    [9, 65535],
-                    [if pattern == "zero-sentinel" { 0 } else { 9 }, 65535],
-                ],
-            );
-            let mut ids = if pattern == "empty" {
-                Vec::new()
-            } else {
-                vec![0xffff0000]
-            };
-            match pattern {
-                "generation-mismatch" => ids.push(0xfffe0001),
-                "zero-sentinel" => ids.push(0xffff0001),
-                "out-of-bounds" => ids.push(0xffff0002),
-                _ => {}
-            }
-            fragment.glyphs = ids
-                .into_iter()
-                .map(|id| Glyph {
-                    allocation: etagere::AllocId::deserialize(id),
-                    atlas: [0; 2],
-                    size: [1; 2],
-                    bearing: [0; 2],
-                })
-                .collect();
-            let actual = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                fragment.needs_regeneration(&mut renderer)
-            }));
-            let branch = actual.map_or(2, u32::from);
-            assert_eq!(
-                u64::from(branch),
-                case["branch"].as_u64().unwrap(),
-                "{case}"
-            );
-            assert_eq!(
-                u64::from(fragment.generated_at),
-                case["after_fragment_stamp"].as_u64().unwrap()
-            );
-            assert_eq!(
-                u64::from(fragment.validated_at),
-                case["after_validated_frame"].as_u64().unwrap()
-            );
-            assert_eq!(
-                serde_json::json!(renderer.usage_fixture()),
-                case["after_usage"]
-            );
-        }
-        // Editor redraw is a separate original regeneration trigger, even at frame zero.
-        renderer.set_cache_fixture(0, 0, &[]);
-        let mut fragment = TextFragment::new(20_f32, FontFamily::Label, table);
-        fragment.editor.set_redraw(true);
-        assert!(fragment.needs_regeneration(&mut renderer));
-        assert_eq!(std::mem::size_of::<AtlasAllocUsage>(), 8);
-    }
-    #[test]
-    fn render_reuses_without_implicit_prepare_or_layout_changes() {
-        let mut renderer = TextRenderer::new();
-        renderer.set_cache_fixture(2, 1, &[]);
-        let mut fragment = TextFragment::new(20_f32, FontFamily::Label, table());
-        fragment.editor.set_redraw(false);
-        fragment.generated_at = u32::MAX;
-        fragment.validated_at = u32::MAX;
-        fragment.editor_action(Action::Insert('X'));
-        fragment
-            .primitives
-            .push(Primitive::rect([0.; 2], [1.; 2], u32::MAX));
-        fragment.set_align(Align::Center);
-        fragment.render(&mut renderer, [100.; 2], [50.; 2], u32::MAX);
-        assert_eq!(fragment.pending_actions(), 1);
-        assert_eq!(fragment.editor.with_buffer(|b| b.size()), (0., 0.));
-        assert!(!fragment.editor.redraw());
-        assert_eq!(fragment.generated_at, u32::MAX);
-        assert_eq!(fragment.validated_at, u32::MAX);
-        assert_eq!(renderer.consume().primitives.len(), 1);
-    }
-
-    #[test]
-    fn generation_preserves_redraw_and_the_previous_validation_frame() {
-        let mut renderer = TextRenderer::new();
-        let font = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .ancestors()
-            .find(|p| p.join("ljxsj_92385").exists())
-            .unwrap()
-            .join("ljxsj_92385/Tiny Glade/assets/fonts/ubuntu/Ubuntu-Regular.ttf");
-        renderer.load_font_from_file(font).unwrap();
-        renderer.set_cache_fixture(5, 3, &[]);
-        let table = Arc::new(FontTable {
-            fonts: [(
-                FontFamily::Label,
-                FontTableEntry {
-                    family: "Ubuntu".into(),
-                    scale: 1.,
-                },
-            )]
-            .into_iter()
-            .collect(),
-        });
-        let mut fragment = TextFragment::new(20_f32, FontFamily::Label, table);
-        fragment.set_text(&mut renderer, "glyph");
-        fragment.prepare(&mut renderer);
-        fragment.validated_at = u32::MAX;
-        fragment.render(&mut renderer, [0.; 2], [100.; 2], u32::MAX);
-        assert!(!fragment.primitives.is_empty());
-        assert_eq!(fragment.generated_at, 3);
-        assert_eq!(fragment.validated_at, u32::MAX);
-        assert!(fragment.editor.redraw());
-    }
-    #[test]
-    fn failing_metric_rebuild_keeps_original_mutation_order() {
-        let mut table = FontTable::default();
-        table.fonts.insert(
-            FontFamily::Label,
-            FontTableEntry {
-                family: "Before".into(),
-                scale: 1.,
-            },
-        );
-        table.fonts.insert(
-            FontFamily::MenuButton,
-            FontTableEntry {
-                family: "After".into(),
-                scale: 0.,
-            },
-        );
-        let mut fragment = TextFragment::new(20_f32, FontFamily::Label, Arc::new(table));
-        let attrs = AttrsList::new(fragment.attrs.as_attrs());
-        fragment.editor.with_buffer_mut(|buffer| {
-            buffer.lines.push(cosmic_text::BufferLine::new(
-                "before",
-                attrs,
-                Shaping::Advanced,
-            ))
-        });
-        fragment.editor_action(Action::Insert('X'));
-        let failed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            fragment.set_family(FontFamily::MenuButton)
-        }));
-        assert!(failed.is_err());
-        assert_eq!(fragment.family, FontFamily::Label);
-        assert_eq!(fragment.metrics, FontMetrics::from(20_f32));
-        assert_eq!(
-            fragment.attrs.family_owned,
-            FamilyOwned::Name("After".into())
-        );
-        assert_eq!(fragment.text(), "");
-        assert_eq!(fragment.actions.len(), 1);
-        assert_eq!(Arc::strong_count(&fragment.font_table), 1);
-    }
-    #[test]
-    fn reused_raw_alloc_id_zero_matches_original_validation() {
-        let evidence: serde_json::Value = serde_json::from_str(include_str!(
-            "../tests/fixtures/internal-native-same-id.json"
-        ))
-        .unwrap();
-        let mut renderer = TextRenderer::new();
-        for case in evidence["validation_cases"].as_array().unwrap() {
-            let usage: Vec<[u32; 2]> =
-                serde_json::from_value(case["usage_before"].clone()).unwrap();
-            renderer.set_cache_fixture(case["frame"].as_u64().unwrap() as u32, 1, &usage);
-            let mut fragment = TextFragment::new(20_f32, FontFamily::Label, table());
-            fragment.editor.set_redraw(false);
-            fragment.generated_at = 1;
-            fragment.glyphs = case["ids"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .map(|id| Glyph {
-                    allocation: etagere::AllocId::deserialize(id.as_u64().unwrap() as u32),
-                    atlas: [0; 2],
-                    size: [1; 2],
-                    bearing: [0; 2],
-                })
-                .collect();
-            let regenerate = fragment.needs_regeneration(&mut renderer);
-            assert_eq!(u64::from(regenerate), case["branch"].as_u64().unwrap());
-            assert_eq!(
-                u64::from(fragment.generated_at),
-                case["fragment_stamp"].as_u64().unwrap()
-            );
-            assert_eq!(
-                u64::from(fragment.validated_at),
-                case["validated_at"].as_u64().unwrap()
-            );
-            assert_eq!(
-                serde_json::json!(renderer.usage_fixture()),
-                case["usage_after"]
-            );
-        }
+            tint,
+        )
     }
 }

@@ -1,0 +1,51 @@
+--- a/games_test/tiny-glade/crates/country-core/src/resources/onboarding.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/onboarding.rs
+@@ -9,13 +9,10 @@
+ //! 不在本文件；`DisplayRollercoasterPrompt` 原模块路径为
+ //! `country_core::resources::events`（见 events.rs）。
+ //!
+-//! 载荷语义：
+-//! * 除 `NotifyHintSystemCameraMoved` 外均为 unit（`hint_*` 消费面未读载荷；
+-//!   部分事件在宿主有 payload 字节（如 Terrain/RoofShape `[+1]`、disable_snapping
+-//!   `[+8]`），宿主面待上层重建时按 fresh 反编译补字段——不在此发明）。
+-//! * `NotifyHintSystemCameraMoved` 载荷 = `{tag u32@+8, value u32@+0xc}`（0x10B
+-//!   EventInstance 步长，`hint_camera_progress_update` 0x14227bd30 读面：tag 1=zoom
+-//!   （value=滚轮增量）、2=rotate、其它=pan，O）。
++//! CameraMoved has two u32 payload words. Terrain and TerrainSteepness carry
++//! one observed native byte; all other current notifications remain unit until
++//! their own producer/consumer evidence requires payload. The old event+1 bool
++//! claim for Terrain confused a hint-condition field with event data.
+ 
+ /// 墙面/屋顶形状编辑已执行通知（O：add_onboarding register_event 顺序 1）。
+ #[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+@@ -34,9 +31,12 @@
+ #[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+ pub struct NotifyHintSystemSnapping;
+ 
+-/// 地形通知（O：register_event 顺序 5；宿主载荷 `[+1]` 门控字节待上层补证）。
+-#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+-pub struct NotifyHintSystemTerrain;
++/// Terrain notification: original event first byte0=draw committed,1=hovered terrain,2=focus entered.
++/// No event+1 bool is observed; Default0 is only host construction convenience.
++#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
++pub struct NotifyHintSystemTerrain {
++    pub tag: u8,
++}
+ 
+ /// 窗通知（O：register_event 顺序 9）。
+ #[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+@@ -50,9 +50,11 @@
+ #[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+ pub struct NotifyHintSystemSomethingWasErased;
+ 
+-/// 地形陡度通知（O：register_event 顺序 12）。
+-#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+-pub struct NotifyHintSystemTerrainSteepness;
++/// Native first byte0 on edit release;1 after horizontal drag accumulation>0.3.
++#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
++pub struct NotifyHintSystemTerrainSteepness {
++    pub tag: u8,
++}
+ 
+ /// 屋顶形状通知（O：register_event 顺序 13；宿主载荷 `[+1]` 门控字节待上层补证）。
+ #[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]

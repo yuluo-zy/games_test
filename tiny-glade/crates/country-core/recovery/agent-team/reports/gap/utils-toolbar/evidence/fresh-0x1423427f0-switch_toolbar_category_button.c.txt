@@ -1,0 +1,302 @@
+// 0x1423427f0 switch_toolbar_category_button size=1818
+
+
+void __cdecl toolbar::toolbar_button::switch_toolbar_category_button(void)
+
+{
+  uint *puVar1;
+  undefined1 uVar2;
+  char cVar3;
+  char cVar4;
+  undefined4 uVar5;
+  ulonglong *puVar6;
+  longlong lVar7;
+  longlong lVar8;
+  undefined8 uVar9;
+  longlong lVar10;
+  longlong lVar11;
+  longlong lVar12;
+  longlong *in_RCX;
+  longlong lVar13;
+  ulonglong uVar14;
+  undefined8 *in_RDX;
+  ulonglong uVar15;
+  longlong lVar16;
+  longlong lVar17;
+  longlong *in_R8;
+  longlong lVar18;
+  undefined8 *in_R9;
+  ulonglong uVar19;
+  ulonglong uVar20;
+  longlong lVar21;
+  longlong lVar22;
+  uint *puVar23;
+  bool bVar24;
+  bool bVar25;
+  bool bVar26;
+  bool bVar27;
+  longlong *in_stack_00000028;
+  longlong in_stack_00000030;
+  longlong *local_a8;
+  undefined4 *local_70;
+  
+  puVar6 = (ulonglong *)*in_RDX;
+  lVar7 = in_RDX[1];
+  uVar14 = *puVar6;
+  uVar15 = 0;
+  uVar19 = uVar14 - *(ulonglong *)(lVar7 + 0x18);
+  if (uVar14 < *(ulonglong *)(lVar7 + 0x18)) {
+    uVar19 = uVar15;
+  }
+  uVar20 = uVar14 - *(ulonglong *)(lVar7 + 0x38);
+  if (uVar14 < *(ulonglong *)(lVar7 + 0x38)) {
+    uVar20 = uVar15;
+  }
+  lVar16 = uVar19 * 0x10 + *(longlong *)(lVar7 + 8);
+  uVar14 = *(ulonglong *)(lVar7 + 0x10) - uVar19;
+  if (*(ulonglong *)(lVar7 + 0x10) < uVar19) {
+    lVar16 = 8;
+    uVar14 = uVar15;
+  }
+  lVar12 = uVar20 * 0x10 + *(longlong *)(lVar7 + 0x28);
+  uVar19 = *(ulonglong *)(lVar7 + 0x30) - uVar20;
+  if (*(ulonglong *)(lVar7 + 0x30) < uVar20) {
+    lVar12 = 8;
+    uVar19 = uVar15;
+  }
+  *puVar6 = (*(longlong *)(lVar7 + 0x40) - uVar19) - uVar14;
+  lVar21 = uVar14 * 0x10 + lVar16;
+  lVar22 = uVar19 * 0x10 + lVar12;
+  lVar7 = *in_RCX;
+  lVar8 = in_RCX[1];
+  uVar5 = *(undefined4 *)((longlong)in_R8 + 0x1c);
+  lVar18 = *in_R8;
+  local_70 = (undefined4 *)in_R8[2];
+  do {
+    if ((lVar16 == 0) || (lVar16 == lVar21)) {
+      if ((lVar12 == 0) || (lVar12 == lVar22)) break;
+      lVar16 = 0;
+      lVar13 = lVar12 + 0x10;
+      lVar17 = lVar12;
+    }
+    else {
+      lVar13 = lVar12;
+      lVar17 = lVar16;
+      lVar16 = lVar16 + 0x10;
+    }
+    lVar12 = lVar13;
+    *puVar6 = *puVar6 + 1;
+    uVar14 = *(ulonglong *)(lVar17 + 8) & 0xffffffff;
+    if ((uVar14 < *(ulonglong *)(lVar8 + 0x10)) &&
+       (*(int *)(*(longlong *)(lVar8 + 8) + uVar14 * 0x14) ==
+        (int)(*(ulonglong *)(lVar17 + 8) >> 0x20))) {
+      lVar13 = *(longlong *)(lVar8 + 8) + uVar14 * 0x14;
+      uVar14 = (ulonglong)*(uint *)(lVar13 + 4);
+      if ((uVar14 != 0xffffffff) &&
+         ((uVar14 < *(ulonglong *)(lVar7 + 0x38) &&
+          ((*(ulonglong *)
+             (*(longlong *)(lVar7 + 0x28) + (ulonglong)(*(uint *)(lVar13 + 4) >> 6) * 8) >>
+            (uVar14 & 0x3f) & 1) != 0)))) {
+        uVar2 = *(undefined1 *)
+                 (*(longlong *)
+                   (*(longlong *)
+                     (*(longlong *)(lVar8 + 0x1a8) + 0x18 +
+                     (ulonglong)*(uint *)(lVar13 + 0xc) * 0x48) + 0x10 +
+                   ~*(ulonglong *)
+                     (*(longlong *)
+                       (*(longlong *)(lVar8 + 0x1a8) + 0x38 +
+                       (ulonglong)*(uint *)(lVar13 + 0xc) * 0x48) + *(longlong *)(lVar7 + 0x110) * 8
+                     ) * 0x30) + (ulonglong)*(uint *)(lVar13 + 0x10));
+        *local_70 = uVar5;
+        lVar13 = *(longlong *)(lVar18 + 0x30);
+        uVar9 = *(undefined8 *)(lVar18 + 0x40);
+        if (lVar13 == *(longlong *)(lVar18 + 0x20)) {
+          alloc::raw_vec::RawVec::
+          grow_one<bevy_ecs::event::base::EventInstance<country_core::resources::window::WindowFocusEvent>,alloc::alloc::Global>
+                    ();
+        }
+        lVar17 = *(longlong *)(lVar18 + 0x28);
+        *(undefined8 *)(lVar17 + lVar13 * 0x10) = uVar9;
+        *(undefined1 *)(lVar17 + 8 + lVar13 * 0x10) = uVar2;
+        *(longlong *)(lVar18 + 0x30) = lVar13 + 1;
+        *(longlong *)(lVar18 + 0x40) = *(longlong *)(lVar18 + 0x40) + 1;
+      }
+    }
+  } while( true );
+  lVar16 = in_R9[1];
+  uVar14 = *(ulonglong *)*in_R9;
+  uVar15 = 0;
+  uVar19 = uVar14 - *(ulonglong *)(lVar16 + 0x18);
+  if (uVar14 < *(ulonglong *)(lVar16 + 0x18)) {
+    uVar19 = uVar15;
+  }
+  uVar20 = uVar14 - *(ulonglong *)(lVar16 + 0x38);
+  if (uVar14 < *(ulonglong *)(lVar16 + 0x38)) {
+    uVar20 = uVar15;
+  }
+  bVar24 = *(ulonglong *)(lVar16 + 0x30) < uVar20;
+  uVar20 = *(ulonglong *)(lVar16 + 0x30) - uVar20;
+  bVar26 = uVar20 != 0;
+  if (bVar24) {
+    uVar20 = uVar15;
+  }
+  bVar25 = *(ulonglong *)(lVar16 + 0x10) < uVar19;
+  uVar19 = *(ulonglong *)(lVar16 + 0x10) - uVar19;
+  bVar27 = uVar19 != 0;
+  if (bVar25) {
+    uVar19 = uVar15;
+  }
+  uVar14 = uVar19 + uVar20;
+  if (!bVar25 && bVar27 || !bVar24 && bVar26) {
+    uVar14 = uVar15;
+  }
+  *(ulonglong *)*in_R9 = *(longlong *)(lVar16 + 0x40) - uVar14;
+  puVar23 = *(uint **)(lVar7 + 0xf8);
+  local_a8 = *(longlong **)(in_stack_00000030 + 8);
+  if (local_a8 == (longlong *)0x0) {
+    local_a8 = *(longlong **)(in_stack_00000030 + 0x10);
+  }
+  uVar5 = *(undefined4 *)((longlong)in_RCX + 0x14);
+  puVar1 = puVar23 + *(longlong *)(lVar7 + 0x100);
+  lVar16 = *in_stack_00000028;
+  if (*(char *)(lVar7 + 0x108) == '\0') {
+    lVar22 = 8;
+    lVar21 = 0;
+    lVar18 = 0;
+    lVar12 = 0;
+    lVar13 = 0;
+    do {
+      if (lVar13 == lVar12) {
+        if (puVar23 == puVar1) {
+          return;
+        }
+        while( true ) {
+          lVar12 = *(longlong *)(*(longlong *)(lVar8 + 0x100) + 0x58 + (ulonglong)*puVar23 * 0xa0);
+          if (lVar12 != 0) break;
+          puVar23 = puVar23 + 1;
+          if (puVar23 == puVar1) {
+            return;
+          }
+        }
+        lVar13 = *(longlong *)(lVar8 + 0x100) + (ulonglong)*puVar23 * 0xa0;
+        uVar14 = (ulonglong)*(uint *)(lVar13 + 0x94);
+        lVar21 = *(longlong *)(lVar8 + 0x1a8);
+        lVar18 = lVar21 + uVar14 * 0x48;
+        lVar22 = *(longlong *)(lVar21 + 0x38 + uVar14 * 0x48);
+        if (*(ulonglong *)(lVar7 + 0x110) < *(ulonglong *)(lVar21 + 0x40 + uVar14 * 0x48)) {
+          uVar14 = *(ulonglong *)(lVar22 + *(ulonglong *)(lVar7 + 0x110) * 8);
+          lVar17 = *(longlong *)(lVar18 + 0x18);
+          if (uVar14 == 0) {
+            lVar18 = 0;
+          }
+          else {
+            lVar18 = *(longlong *)(lVar17 + 0x10 + ~uVar14 * 0x30);
+          }
+        }
+        else {
+          lVar17 = *(longlong *)(lVar18 + 0x18);
+          lVar18 = 0;
+        }
+        puVar23 = puVar23 + 1;
+        lVar22 = ~*(ulonglong *)(lVar22 + *(longlong *)(lVar7 + 0x118) * 8) * 0x30;
+        lVar21 = *(longlong *)(lVar17 + 0x10 + lVar22);
+        local_70 = *(undefined4 **)(lVar17 + 0x28 + lVar22);
+        lVar22 = *(longlong *)(lVar13 + 0x50);
+        lVar13 = 0;
+      }
+      uVar14 = (ulonglong)*(uint *)(lVar22 + 8 + lVar13 * 0x10);
+      lVar17 = uVar14 * 3 + lVar21;
+      if (((!bVar25 && bVar27 || !bVar24 && bVar26) && (*(char *)(lVar17 + 2) != '\x01')) &&
+         (*(char *)(lVar16 + 0x18) == *(char *)(lVar18 + uVar14))) {
+        uVar9 = *(undefined8 *)(lVar22 + lVar13 * 0x10);
+        lVar11 = local_a8[2];
+        if ((ulonglong)(*local_a8 - lVar11) < 0x28) {
+          alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+        }
+        lVar10 = local_a8[1];
+        *(code **)(lVar10 + lVar11) =
+             core::ops::function::FnOnce::
+             call_once<bevy_ecs::world::command_queue::impl_4::push::closure_env_0<bevy_ecs::error::command_handling::impl_0::handle_error_with::closure_env_0<bevy_ecs::error::command_handling::impl_3::with_entity::closure_env_0<bevy_ecs::system::commands::entity_command::insert::closure_env_0<toolbar::resouces_and_components::UiPlaySelectAnimation>_>,tuple_<>,enum2_<bevy_ecs::world::error::EntityMutableFetchError>_>_>,tuple_<bevy_ptr::OwningPtr<bevy_ptr::Unaligned>,enum2_<core::option::Option<core::ptr::non_null::NonNull<bevy_ecs::world::World>_>_>,ref_mut_<usize>_>_>
+        ;
+        *(code **)(lVar10 + 8 + lVar11) = bevy_ecs::error::handler::panic;
+        *(undefined8 *)(lVar10 + 0x10 + lVar11) = uVar9;
+        *(undefined8 *)(lVar10 + 0x18 + lVar11) = 0x3e4ccccd3dcccccd;
+        *(undefined4 *)(lVar10 + 0x20 + lVar11) = 0;
+        *(undefined1 *)(lVar10 + 0x24 + lVar11) = 0;
+        local_a8[2] = lVar11 + 0x28;
+      }
+      lVar13 = lVar13 + 1;
+      cVar3 = *(char *)(lVar16 + 0x18);
+      cVar4 = *(char *)(lVar18 + uVar14);
+      local_70[uVar14] = uVar5;
+      *(bool *)(lVar17 + 2) = cVar3 == cVar4;
+    } while( true );
+  }
+  lVar21 = 8;
+  lVar18 = 0;
+  lVar12 = 0;
+  uVar14 = 0;
+  uVar19 = 0;
+  do {
+    if (uVar19 == uVar14) {
+      if (puVar23 == puVar1) {
+        return;
+      }
+      while( true ) {
+        uVar14 = *(ulonglong *)(*(longlong *)(lVar8 + 0x1a8) + 0x10 + (ulonglong)*puVar23 * 0x48);
+        if (uVar14 != 0) break;
+        puVar23 = puVar23 + 1;
+        if (puVar23 == puVar1) {
+          return;
+        }
+      }
+      lVar21 = *(longlong *)(lVar8 + 0x1a8) + (ulonglong)*puVar23 * 0x48;
+      if (*(ulonglong *)(lVar7 + 0x110) < *(ulonglong *)(lVar21 + 0x40)) {
+        uVar19 = *(ulonglong *)(*(longlong *)(lVar21 + 0x38) + *(ulonglong *)(lVar7 + 0x110) * 8);
+        lVar22 = *(longlong *)(lVar21 + 0x18);
+        if (uVar19 == 0) goto LAB_142342c1b;
+        lVar12 = *(longlong *)(lVar22 + 0x10 + ~uVar19 * 0x30);
+      }
+      else {
+        lVar22 = *(longlong *)(lVar21 + 0x18);
+LAB_142342c1b:
+        lVar12 = 0;
+      }
+      puVar23 = puVar23 + 1;
+      lVar13 = ~*(ulonglong *)(*(longlong *)(lVar21 + 0x38) + *(longlong *)(lVar7 + 0x118) * 8) *
+               0x30;
+      lVar18 = *(longlong *)(lVar22 + 0x10 + lVar13);
+      local_70 = *(undefined4 **)(lVar22 + 0x28 + lVar13);
+      lVar21 = *(longlong *)(lVar21 + 8);
+      uVar19 = 0;
+    }
+    uVar15 = uVar19 & 0xffffffff;
+    lVar22 = uVar15 * 3 + lVar18;
+    if (((!bVar25 && bVar27 || !bVar24 && bVar26) && (*(char *)(lVar22 + 2) == '\0')) &&
+       (*(char *)(lVar16 + 0x18) == *(char *)(lVar12 + uVar15))) {
+      uVar9 = *(undefined8 *)(lVar21 + uVar19 * 8);
+      lVar13 = local_a8[2];
+      if ((ulonglong)(*local_a8 - lVar13) < 0x28) {
+        alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+      }
+      lVar17 = local_a8[1];
+      *(code **)(lVar17 + lVar13) =
+           core::ops::function::FnOnce::
+           call_once<bevy_ecs::world::command_queue::impl_4::push::closure_env_0<bevy_ecs::error::command_handling::impl_0::handle_error_with::closure_env_0<bevy_ecs::error::command_handling::impl_3::with_entity::closure_env_0<bevy_ecs::system::commands::entity_command::insert::closure_env_0<toolbar::resouces_and_components::UiPlaySelectAnimation>_>,tuple_<>,enum2_<bevy_ecs::world::error::EntityMutableFetchError>_>_>,tuple_<bevy_ptr::OwningPtr<bevy_ptr::Unaligned>,enum2_<core::option::Option<core::ptr::non_null::NonNull<bevy_ecs::world::World>_>_>,ref_mut_<usize>_>_>
+      ;
+      *(code **)(lVar17 + 8 + lVar13) = bevy_ecs::error::handler::panic;
+      *(undefined8 *)(lVar17 + 0x10 + lVar13) = uVar9;
+      *(undefined8 *)(lVar17 + 0x18 + lVar13) = 0x3e4ccccd3dcccccd;
+      *(undefined4 *)(lVar17 + 0x20 + lVar13) = 0;
+      *(undefined1 *)(lVar17 + 0x24 + lVar13) = 0;
+      local_a8[2] = lVar13 + 0x28;
+    }
+    uVar19 = uVar19 + 1;
+    cVar3 = *(char *)(lVar16 + 0x18);
+    cVar4 = *(char *)(lVar12 + uVar15);
+    local_70[uVar15] = uVar5;
+    *(bool *)(lVar22 + 2) = cVar3 == cVar4;
+  } while( true );
+}
+
+

@@ -200,10 +200,12 @@ pub struct GpuWorldSubsetDesc {
     pub owned: bool,
 }
 
-/// 外部 subset（`GpuWorldSubset` 的第二个变体：`owned_subset_mut` 对它 panic "Subset {kind:?} is not owned"，
-/// `import_to_rg`/`export_from_rg` 跳过它；其余字段 U）。
+/// External subset stores the atlas-part count used by raw indirect draws.
+/// Original external constructor@1409912a0 stores its third argument at +8.
 #[derive(Clone, Copy, Debug, Default)]
-pub struct ExternalGpuWorldSubset;
+pub struct ExternalGpuWorldSubset {
+    pub mesh_part_count: usize,
+}
 
 /// 槽内的 subset。机器码的 `Option<GpuWorldSubset>` 用首个 u64 的 niche 区分：
 /// `0x8000000000000000` = External，`0x8000000000000001` = None，其余 = Owned（O，`owned_subset_mut` 0x140991c50）。
@@ -221,6 +223,10 @@ pub struct InstanceCullData {
     pub position: Vec3,
     pub radius: f16,
     pub mesh_index: u16,
+}
+
+impl StorageElement for InstanceCullData {
+    const NAME: &'static str = "GpuInstance";
 }
 
 impl Default for InstanceCullData {
@@ -335,10 +341,10 @@ impl<T: InstanceElement> NaniInstanceData for InstanceDataBuffer<T> {
 /// * +0xa0 `instance_count: usize`；+0xb0 `next_id: u32`。
 pub struct OwnedGpuWorldSubset {
     condenser: IndexCondenser<InstanceKey>,
-    positions_dirty: DirtyIndexRange,
-    positions: Vec<InstanceCullData>,
+    positions: ShadowedBuffer<InstanceCullData>,
     data: Box<dyn NaniInstanceData>,
     instance_count: usize,
+    mesh_part_count: usize,
     next_id: u32,
 }
 
@@ -351,15 +357,52 @@ fn warn_once(message: String) {
 impl OwnedGpuWorldSubset {
     /// 新 owned subset（I：机器码里内联 21 处；容量按 `kind.max_instances()`，数据缓冲元素为 `T`）。
     pub fn new<T: InstanceElement>(device: &dyn GraphicsDevice, kind: GpuWorldSubsetKind) -> Self {
+        Self::new_with_mesh_parts::<T>(device, kind, 0)
+    }
+
+    /// Startup passes the actual atlas layout count as the native constructor's
+    /// third argument. It is independent of the number of live instances.
+    pub fn new_with_mesh_parts<T: InstanceElement>(
+        device: &dyn GraphicsDevice,
+        kind: GpuWorldSubsetKind,
+        mesh_part_count: usize,
+    ) -> Self {
         let cap = kind.max_instances();
         Self {
             condenser: IndexCondenser::new(),
-            positions_dirty: DirtyIndexRange::empty(),
-            positions: vec![InstanceCullData::default(); cap],
+            positions: Self::create_cull_buffer(device, cap),
             data: Box::new(InstanceDataBuffer::<T>::new(device, cap)),
             instance_count: 0,
+            mesh_part_count,
             next_id: 0,
         }
+    }
+
+    // Native TypedStorageBuffer<GpuInstance>@141616f30 uses 0x20022,
+    // unlike ordinary storage data: its pointer is consumed via buffer BDA.
+    // Retain the current ShadowedBuffer implementation and real Buffer owner.
+    fn create_cull_buffer(
+        device: &dyn GraphicsDevice,
+        cap: usize,
+    ) -> ShadowedBuffer<InstanceCullData> {
+        use crate::render::ssbo::rhapsody_boundary::{BufferDesc, slice_as_bytes};
+        let data = vec![InstanceCullData::default(); cap];
+        let bytes = slice_as_bytes(&data);
+        let desc = BufferDesc::new(bytes.len(), 0x20022, 1).alignment(4);
+        let buffer = device
+            .create_buffer(&desc, "GpuInstance", Some(bytes))
+            .expect("GpuInstance buffer creation failed");
+        ShadowedBuffer {
+            dirty: DirtyIndexRange::empty(),
+            data: data.into_boxed_slice(),
+            buffer: TypedStorageBuffer::from_created_buffer(buffer),
+        }
+    }
+
+    /// Real owned cull payload. The returned Buffer is resolved through the
+    /// same device host; its ID is never interpreted as a Vulkan address.
+    pub fn cull_buffer(&self) -> &TypedStorageBuffer<InstanceCullData> {
+        &self.positions.buffer
     }
 
     /// 实例数（O：`[+0xa0]`）。
@@ -367,14 +410,19 @@ impl OwnedGpuWorldSubset {
         self.instance_count
     }
 
+    /// Native +0xa8, read by nani_draw for non-fine indirect draw count.
+    pub fn mesh_part_count(&self) -> usize {
+        self.mesh_part_count
+    }
+
     /// 剔除数据数组（O：`[+0x58]`；长度 = 容量）。
     pub fn positions(&self) -> &[InstanceCullData] {
-        &self.positions
+        &self.positions.data
     }
 
     /// 稠密下标 min/max 窗口（O：`[+0x48]/[+0x50]`）。
     pub fn positions_dirty(&self) -> &DirtyIndexRange {
-        &self.positions_dirty
+        &self.positions.dirty
     }
 
     /// 类型擦除的实例数据缓冲（O：`[+0x90]/[+0x98]`）。
@@ -388,6 +436,7 @@ impl OwnedGpuWorldSubset {
 
     /// 把实例数据缓冲上传 GPU（I：`gpu_generate_draw_lists` 之前的 flush，转发 `NaniInstanceData::gpu_flush`）。
     pub fn gpu_flush(&mut self, device: &dyn GraphicsDevice) {
+        self.positions.gpu_flush(device);
         self.data.gpu_flush(device);
     }
 
@@ -414,8 +463,8 @@ impl OwnedGpuWorldSubset {
 
     /// 写剔除数据并更新 min/max（O：`positions[dense] = item`，越界 → `panic_bounds_check`）。
     fn write_cull(&mut self, dense: usize, item: InstanceCullData) {
-        self.positions[dense] = item;
-        self.positions_dirty.add(dense..dense + 1);
+        self.positions.data[dense] = item;
+        self.positions.dirty.add(dense..dense + 1);
     }
 
     /// 无数据扩展（0x140992280，O）：对每个 `items[i]`——
@@ -479,8 +528,8 @@ impl OwnedGpuWorldSubset {
         data: T,
     ) {
         let dense = self.resolve(key);
-        self.positions_dirty.add(dense..dense + 1);
-        let cull = &mut self.positions[dense];
+        self.positions.dirty.add(dense..dense + 1);
+        let cull = &mut self.positions.data[dense];
         cull.position = position;
         cull.radius = f16::from_f32(radius);
         self.typed_data::<T>(key.kind).set(dense, data);
@@ -490,8 +539,8 @@ impl OwnedGpuWorldSubset {
     /// 解析 key，min/max，`positions[dense].mesh_index = mesh_index`（越界 → `panic_bounds_check`）。
     pub fn update_instance_mesh(&mut self, key: &mut InstanceKey, mesh_index: u16) {
         let dense = self.resolve(key);
-        self.positions_dirty.add(dense..dense + 1);
-        self.positions[dense].mesh_index = mesh_index;
+        self.positions.dirty.add(dense..dense + 1);
+        self.positions.data[dense].mesh_index = mesh_index;
     }
 
     /// 删除（`GpuWorld::remove_instance` 0x140991f60 的 subset 侧，O）：
@@ -507,9 +556,9 @@ impl OwnedGpuWorldSubset {
             .checked_sub(1)
             .expect("instance_count > 0");
         self.instance_count = count;
-        let last = self.positions[count];
-        self.positions[dense] = last;
-        self.positions_dirty.add(dense..dense + 1);
+        let last = self.positions.data[count];
+        self.positions.data[dense] = last;
+        self.positions.dirty.add(dense..dense + 1);
         self.data.copy(dense, count);
         true
     }
@@ -550,6 +599,18 @@ impl StorageElement for NaniMeshAtlasPartInfo {
 }
 
 impl GpuWorld {
+    /// B uninit_clearing@140a7a675..708 only clears owned instance IDs and
+    /// their count. Retain actual GPU buffers, dirty ranges, mesh part count,
+    /// next ID, external subsets, None slots and global frame counts.
+    pub fn clear_owned_instances(&mut self) {
+        for slot in &mut self.subsets {
+            if let Some(GpuWorldSubset::Owned(subset)) = slot.get_mut() {
+                subset.condenser.clear();
+                subset.instance_count = 0;
+            }
+        }
+    }
+
     /// 构造（0x1409917d0，O）：
     /// 1. `nani_calculate_draw_list_params()`；克隆 `max_instance_offsets`；
     /// 2. 27 槽默认值（`array::default<RwLock<Option<GpuWorldSubset>>>`）；
@@ -624,7 +685,16 @@ impl GpuWorld {
 
     /// 安装 subset（`assign_subset`，内联 1 处；I）。
     pub fn assign_subset(&mut self, kind: GpuWorldSubsetKind, subset: GpuWorldSubset) {
-        *self.subsets[kind as usize].get_mut() = Some(subset);
+        self.assign_optional_subset(kind, Some(subset));
+    }
+
+    /// Native startup also clears slots for unregistered atlas meshes.
+    pub fn assign_optional_subset(
+        &mut self,
+        kind: GpuWorldSubsetKind,
+        subset: Option<GpuWorldSubset>,
+    ) {
+        *self.subsets[kind as usize].get_mut() = subset;
     }
 
     /// 创建实例（0x14156d0d0，O；原版是单态化 `<PlacementDataSsbo, create_prefab_gpu_instances::closure_env$0>`）：
@@ -733,6 +803,22 @@ impl GpuWorld {
         &self.mesh_atlas_info
     }
 
+    /// Native startup/reload upload: one fixed 64-part region per subset.
+    /// The source is the actual atlas layout, not a second generated table.
+    pub fn update_mesh_atlas_slices(
+        &self,
+        device: &dyn GraphicsDevice,
+        kind: GpuWorldSubsetKind,
+        layouts: &[NaniMeshAtlasPartInfo],
+    ) {
+        if layouts.is_empty() {
+            return;
+        }
+        self.mesh_atlas_info
+            .gpu_write_with_offset(device, layouts, (kind as usize) << 10)
+            .expect("called `Result::unwrap()` on an `Err` value: update mesh atlas slices");
+    }
+
     /// draw-list 信息缓冲句柄（`draw_list_info_buf`，内联 1 处）。
     pub fn draw_list_info_buf(&self) -> &TypedStorageBuffer<NaniDrawListInfo> {
         &self.draw_list_info
@@ -764,6 +850,38 @@ mod tests {
             GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<Elem40>(dev, kind)),
         );
         w
+    }
+
+    #[test]
+    fn native_atlas_slice_and_draw_part_count_are_not_live_instance_count() {
+        let dev = MockDevice::default();
+        let world = GpuWorld::new(&dev);
+        assert_eq!(world.mesh_atlas_info_buf().byte_size(), 0x6c00);
+        dev.mem.borrow_mut().resize(0x6c00, 0);
+        let layout = NaniMeshAtlasPartInfo {
+            base_index: 31,
+            count: 6,
+            radius: 2.5,
+            pad: 0,
+        };
+        world.update_mesh_atlas_slices(&dev, GpuWorldSubsetKind::VelocityOnly, &[layout]);
+        assert_eq!(
+            dev.writes.borrow().last().unwrap(),
+            &(vec![0..16], 25 * 1024, 16)
+        );
+        let mem = dev.mem.borrow();
+        let bytes = &mem[25 * 1024..25 * 1024 + 16];
+        assert_eq!(u32::from_le_bytes(bytes[..4].try_into().unwrap()), 31);
+        assert_eq!(u32::from_le_bytes(bytes[4..8].try_into().unwrap()), 6);
+        assert_eq!(f32::from_le_bytes(bytes[8..12].try_into().unwrap()), 2.5);
+        drop(mem);
+        let owned = OwnedGpuWorldSubset::new_with_mesh_parts::<Elem40>(
+            &dev,
+            GpuWorldSubsetKind::VelocityOnly,
+            7,
+        );
+        assert_eq!(owned.mesh_part_count(), 7);
+        assert_eq!(owned.instance_count(), 0);
     }
 
     fn cull(x: f32) -> InstanceCullData {
@@ -841,6 +959,35 @@ mod tests {
         assert_eq!(w.draw_list_params().max_instance_offsets.len(), 108);
         assert_eq!(w.total_instance_count, 0);
         assert_eq!(w.list_index_to_cmd_offset(1), 8192);
+    }
+
+    #[test]
+    fn owned_subset_keeps_real_bda_cull_payload_and_flushes_dirty_record() {
+        let dev = MockDevice::default();
+        let kind = GpuWorldSubsetKind::VelocityOnly;
+        let mut subset = OwnedGpuWorldSubset::new::<Elem40>(&dev, kind);
+        {
+            let created = dev.created.borrow();
+            assert_eq!(created[0].1, "GpuInstance");
+            assert_eq!(created[0].0.usage, 0x20022);
+            assert_eq!(created[0].0.alignment, 4);
+            assert_eq!(created[0].0.size, kind.max_instances() * 16);
+            assert_eq!(
+                created[0].2.as_ref().unwrap().len(),
+                kind.max_instances() * 16
+            );
+        }
+        let cull = InstanceCullData::new(Vec3::new(1.25, -2.0, 7.5), 0.75, 19);
+        subset.extend_no_data(kind, &[cull], |_| {});
+        assert_eq!(subset.positions_dirty().to_range(), Some(0..1));
+        subset.gpu_flush(&dev);
+        assert!(subset.positions_dirty().is_empty());
+        assert!(
+            dev.writes
+                .borrow()
+                .iter()
+                .any(|(ranges, offset, len)| ranges == &[0..16] && *offset == 0 && *len == 16)
+        );
     }
 
     #[test]
@@ -1036,7 +1183,7 @@ mod tests {
         let mut w = GpuWorld::new(&dev);
         w.assign_subset(
             GpuWorldSubsetKind::Canopy,
-            GpuWorldSubset::External(ExternalGpuWorldSubset),
+            GpuWorldSubset::External(ExternalGpuWorldSubset::default()),
         );
         let _ = w.owned_subset_mut(GpuWorldSubsetKind::Canopy);
     }
@@ -1055,7 +1202,7 @@ mod tests {
         let mut w = world_with(GpuWorldSubsetKind::Plant, &dev);
         w.assign_subset(
             GpuWorldSubsetKind::Canopy,
-            GpuWorldSubset::External(ExternalGpuWorldSubset),
+            GpuWorldSubset::External(ExternalGpuWorldSubset::default()),
         );
         let mut rg = RenderGraph::default();
         w.import_to_rg(&mut rg);

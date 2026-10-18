@@ -1,0 +1,47 @@
+// instantiate_audio_w_position @ 0x140aa3360
+
+
+void __cdecl country_core::systems::audio::roof_audio::instantiate_audio_w_position(void)
+
+{
+  void *extraout_RAX;
+  longlong *in_RCX;
+  void *in_RDX;
+  size_t in_R8;
+  void *_Dst;
+  undefined8 local_98;
+  undefined8 local_88;
+  
+  if (*in_RCX == 0) {
+    if ((longlong)in_R8 < 0) {
+LAB_140aa34d5:
+                    // WARNING: Subroutine does not return
+      alloc::raw_vec::handle_error();
+    }
+    if (in_R8 == 0) {
+      _Dst = (void *)0x1;
+    }
+    else {
+      std::alloc::__default_lib_allocator::__rust_alloc();
+      _Dst = extraout_RAX;
+      if (extraout_RAX == (void *)0x0) goto LAB_140aa34d5;
+    }
+    memcpy(_Dst,in_RDX,in_R8);
+    local_88 = in_R8;
+  }
+  else {
+    resources::audio_resources::AudioCoreInner::instantiate_audio();
+    if (local_98 == 2) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+  }
+  resources::audio_resources::impl$10::set_position();
+  resources::audio_resources::AudioInstance::start_if_not_playing();
+  resources::audio_resources::impl$13::drop();
+  if (local_88 != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  return;
+}
+

@@ -1,0 +1,13 @@
+0x140c97500 push rsi
+0x140c97501 sub rsp, 0x30
+0x140c97505 mov rsi, rcx
+0x140c97508 movabs rax, 0x8000000001
+0x140c97512 mov qword ptr [rsp + 0x24], rax
+0x140c97517 mov byte ptr [rsp + 0x2c], 0
+0x140c9751c lea r8, [rip + 0x1e96ed5] ; 0x142b2e3f8 a0e3b242010000005800000000000000 f32=89.444580078125
+0x140c97523 lea rdx, [rsp + 0x24]
+0x140c97528 call 0x141941cd0
+0x140c9752d mov rax, rsi
+0x140c97530 add rsp, 0x30
+0x140c97534 pop rsi
+0x140c97535 ret 

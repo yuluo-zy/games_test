@@ -1,0 +1,120 @@
+{
+  "date": "2026-10-18",
+  "checks": [
+    {
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "country-core",
+        "--lib",
+        "--test",
+        "asset_libraries",
+        "--locked",
+        "--offline"
+      ],
+      "exit_code": 0,
+      "log": "regression-final.log",
+      "passed": {
+        "lib": 2087,
+        "asset_libraries": 6
+      },
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "command": [
+        "cargo",
+        "check",
+        "-p",
+        "tiny-glade",
+        "--test",
+        "geometry_gpu",
+        "--locked",
+        "--offline"
+      ],
+      "exit_code": 0,
+      "log": "check-gpu-attempt3.log"
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "tiny-glade",
+        "--test",
+        "geometry_gpu",
+        "--locked",
+        "--offline",
+        "--",
+        "--nocapture"
+      ],
+      "environment": {
+        "RHAPSODY_REQUIRE_VULKAN": "1"
+      },
+      "execution": "host with GPU access",
+      "exit_code": 0,
+      "log": "gpu-host.log",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "skipped": 0
+    }
+  ],
+  "all_required_checks_passed": true,
+  "format": {
+    "exit_code": 0,
+    "scope": "geometry sources and tests, sparse instance buffer, geometry GPU test",
+    "log": "format.log"
+  },
+  "source_sha256": {
+    "crates/country-core/Cargo.toml": "cdc2dd8a9afd9d405eb15ef606171e23bda4d07ac85565f65478dc52c2c70455",
+    "crates/country-core/src/asset_libraries/descriptor_table.rs": "a587397ac25b97318172a86597231070d488c9314a09b428b6f0bd7add02b9d7",
+    "crates/country-core/src/asset_libraries/runtime.rs": "18d5b78ba6285c2bb714d19e294037effdb3fa0e6ecb8499c637657f0e667102",
+    "crates/country-core/src/asset_libraries/ssbo_library.rs": "853250e0e060f103e0ca178f5860e5be9a8070b9065224a6b86438ca11f1a5de",
+    "crates/country-core/src/asset_libraries/texture_library.rs": "0ae73556e5353f4caed4ffd5c14a85a17f39f4bbc67db3ae7967d91d5147b8df",
+    "crates/country-core/src/geometry/cube.rs": "abb77f35f5754d380b9e95ecc7dfd8fd3fda7d58a51c00fab808550137382c51",
+    "crates/country-core/src/geometry/instanced_wall.rs": "f16deded963f178dfbc1221469e6d37d4c3524a6838f8711bb567e577e4e3d3f",
+    "crates/country-core/src/geometry/mod.rs": "9ea9ba40d75be8e7832d5009408d06cc67e6a476a21a0787fd1ffd930add9f43",
+    "crates/country-core/src/geometry/plane.rs": "2d378abee5f3c7d681835ee8c2ee01815665c9d2dca2aa5d501e157f6394008f",
+    "crates/country-core/src/geometry/runtime.rs": "db9690e9b5fa8f93d984d74ac290bab975507bd36ece1a66a7b77577abff1bfe",
+    "crates/country-core/src/geometry/sphere.rs": "ecf1ee45d6ec2416b758d4dd7cac66fda5a4ae59f40dbc3b58af9781c7d3213d",
+    "crates/country-core/src/geometry/tests/cube.rs": "5e99f36461b55d67b0828319a5cce2d5be83825e7d8330e817b15ad98649061b",
+    "crates/country-core/src/geometry/tests/instanced_wall.rs": "4bbfe48300cbb522c4be8c42ce8ba7ec8bbdb6b91328ef70eecf6ceff9b69ab4",
+    "crates/country-core/src/geometry/tests/plane.rs": "33bc420ac11c2a934bca12bcc55d2265293c1ca60086c37e9a10e7117ebc8c9d",
+    "crates/country-core/src/geometry/tests/runtime.rs": "c50aaced460c2df9f1878461f498b704fdfac0613e2c155540b4b9a8f618ac95",
+    "crates/country-core/src/geometry/tests/sphere.rs": "b90c129a306f977d23fa4978c4e189dcd680c5e683a99ee576cbafc1c30b1025",
+    "crates/country-core/src/recovered_building/wall_constructor.rs": "682f9ebf246b4c9c14c7ad5aa6c20caa7d7c513817fe0aa49f8a0132a2dbd284",
+    "crates/country-core/src/render/sparse_instance_buffer.rs": "46a3dcbb2e2fa636e79ff25c5c5e6c9bc8315060863ac79d6679dabc1e85ba8d",
+    "crates/country-core/src/render/ssbo.rs": "81c37d98661621e1e0536213969583d5e0e40a40fc178e2578097a089b036b31",
+    "crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_a.rs": "2dd994922b7b373720c7af27e3e175e04c285527cd81bb7469613ed736dad367",
+    "crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_b.rs": "16b2e414e501e0dcdee0e67057978b5a35a5677651e082d10a62b34b67f9b189",
+    "crates/country-core/src/systems/render_loop/draw_passes/draw_shaders/draw_bricks.rs": "a354229a6bcf7e911356cdd3f3b46d9169bfd5ccf8b76e93f89e8a0b054f954c",
+    "crates/country-core/src/systems/render_loop/draw_passes/draw_shaders/ssbo_tags.rs": "f5fbb355b624a4f599ef86cb43d40b8481f50fc95dc914abdea0bedfbd8b5420",
+    "crates/country-core/src/systems/wall/registration.rs": "49b4a26fc5b6a7622644005296098130f2a0b15ff910072b2445da951ac7bf22",
+    "crates/systems/toolbar/src/mei/systems.rs": "0a550f677128574f32b326fff52f27273f378a6b126e2893eb1dc6cf7924df90",
+    "crates/tiny-glade/src/render_bridge.rs": "7ecf651dcfa8bc0205c9965f1e1eda99be9c5201848eb8a7be7fe1b4f713f6e2",
+    "crates/tiny-glade/tests/geometry_gpu.rs": "65f2ead7f3fd7ea5136c1f0d7979c07e76f773c4de63699216c5edef318b6a27"
+  },
+  "behavior_changes": [
+    "pending upload state",
+    "exclusive per-wall allocation",
+    "atomic CPU capacity check",
+    "retryable dirty GPU writes",
+    "sparse buffer direct draw binding",
+    "shared CPU/GPU brick type",
+    "validated primitive parameters",
+    "no initial 192 MiB GPU zero upload"
+  ],
+  "compatibility_repairs": [
+    "removed duplicate sampled_views and named_textures definitions",
+    "adapted toolbar internal records to Result-returning action APIs"
+  ],
+  "original_differential_status": "historical only; behavior changed; no new original binary equivalence claimed",
+  "limits": [
+    "fixed 192 MiB CPU shadow retained",
+    "not a whole-game culling/draw-list or final-scene acceptance",
+    "existing unrelated warnings remain",
+    "locked bytemuck derive generates dead_code warnings with this compiler"
+  ]
+}

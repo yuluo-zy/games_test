@@ -1,0 +1,192 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/audio/decorator_audio.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/audio/decorator_audio.rs
+@@ -150,7 +150,7 @@
+             let pos = positions[index];
+             let _ = current.set_position([pos.x, pos.y, pos.z]);
+         } else {
+-            let _ = loop_player.stop(std::time::Duration::ZERO);
++            let _ = loop_player.stop_now();
+         }
+     }
+     state.should_play = should_play;
+--- a/games_test/tiny-glade/crates/country-core/src/systems/audio/firstperson_steps.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/audio/firstperson_steps.rs
+@@ -141,7 +141,7 @@
+     if bytes[0x344] == 0 {
+         let _ = state.walking_loop.start_if_not_playing();
+     } else {
+-        let _ = state.walking_loop.stop(std::time::Duration::ZERO);
++        let _ = state.walking_loop.stop_now();
+     }
+ }
+ 
+--- a/games_test/tiny-glade/crates/country-core/src/systems/audio/forest_audio.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/audio/forest_audio.rs
+@@ -77,7 +77,7 @@
+             let _ = current.set_position(position);
+         }
+     } else {
+-        let _ = state.loop_player.stop(std::time::Duration::ZERO);
++        let _ = state.loop_player.stop_now();
+     }
+ }
+ 
+--- a/games_test/tiny-glade/crates/country-core/src/systems/audio/garden_audio.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/audio/garden_audio.rs
+@@ -182,7 +182,7 @@
+         let _ = current.set_parameter(PATH_SIZE_PARAMETER, garden_path_size(radius));
+         let _ = loop_player.start_if_not_playing();
+     } else {
+-        let _ = loop_player.stop(std::time::Duration::ZERO);
++        let _ = loop_player.stop_now();
+     }
+ }
+ 
+--- a/games_test/tiny-glade/crates/country-core/src/systems/audio/path_audio.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/audio/path_audio.rs
+@@ -94,7 +94,7 @@
+         let current = &mut loop_player.entries[loop_player.cursor];
+         let _ = current.set_position([position.x, position.y, position.z]);
+     } else {
+-        let _ = loop_player.stop(std::time::Duration::ZERO);
++        let _ = loop_player.stop_now();
+     }
+ }
+ 
+@@ -120,7 +120,7 @@
+     if draw.is_empty() {
+         // O: no events → stop the four loops (order 2, 1, 0, 4), then drive 3.
+         for slot in [2usize, 1, 0, 4] {
+-            let _ = state.loops[slot].stop(std::time::Duration::ZERO);
++            let _ = state.loops[slot].stop_now();
+         }
+     } else {
+         let draw_last = draw.last().copied();
+--- a/games_test/tiny-glade/crates/country-core/src/systems/audio/roof_audio.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/audio/roof_audio.rs
+@@ -249,7 +249,7 @@
+     // O: frame-end — loop[0] (RoofShape) follows the selector (stop when 2).
+     let loop0 = &mut state.loops[0];
+     if shape_selector == 2 {
+-        let _ = loop0.stop(std::time::Duration::ZERO);
++        let _ = loop0.stop_now();
+     } else {
+         let _ = loop0.start_if_not_playing();
+         let current = &mut loop0.entries[loop0.cursor];
+@@ -269,7 +269,7 @@
+         let current = &mut loop1.entries[loop1.cursor];
+         let _ = current.set_position([tip_pos.x, tip_pos.y, tip_pos.z]);
+     } else {
+-        let _ = loop1.stop(std::time::Duration::ZERO);
++        let _ = loop1.stop_now();
+     }
+     // loop[2] (InterRoofMerlonsRearrange).
+     let loop2 = &mut state.loops[2];
+@@ -278,7 +278,7 @@
+         let current = &mut loop2.entries[loop2.cursor];
+         let _ = current.set_position([merlons_pos.x, merlons_pos.y, merlons_pos.z]);
+     } else {
+-        let _ = loop2.stop(std::time::Duration::ZERO);
++        let _ = loop2.stop_now();
+     }
+ }
+ 
+--- a/games_test/tiny-glade/crates/country-core/src/systems/audio/sheep_audio.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/audio/sheep_audio.rs
+@@ -107,7 +107,7 @@
+     if state.should_play4 {
+         let _ = state.loop4.start_if_not_playing();
+     } else {
+-        let _ = state.loop4.stop(std::time::Duration::ZERO);
++        let _ = state.loop4.stop_now();
+     }
+ }
+ 
+--- a/games_test/tiny-glade/crates/country-core/src/systems/audio/signifier_audio.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/audio/signifier_audio.rs
+@@ -106,7 +106,7 @@
+         }
+     }
+     // O: frame-end hold-time loop toggle.
+-    let _ = state.hold_time.stop(std::time::Duration::ZERO);
++    let _ = state.hold_time.stop_now();
+     let _ = &state.boop;
+     let _ = &state.cursor_grab;
+     let _ = &state.cursor_release;
+--- a/games_test/tiny-glade/crates/country-core/src/systems/audio/terrain_audio.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/audio/terrain_audio.rs
+@@ -212,7 +212,7 @@
+             let _ = loop_player.entries[cursor].set_parameter(TERRAIN_EDITING_SPEED_PARAM, speed);
+             let _ = loop_player.entries[cursor].set_position([position.x, position.y, position.z]);
+         } else {
+-            let _ = loop_player.stop(std::time::Duration::ZERO);
++            let _ = loop_player.stop_now();
+         }
+         state.should_play[slot] = false;
+     }
+--- a/games_test/tiny-glade/crates/country-core/src/systems/audio/terrain_stairs_audio.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/audio/terrain_stairs_audio.rs
+@@ -141,7 +141,7 @@
+     // O: SSBO value compare.
+     if raster.0 == state.last_raster {
+         // O: same value → stop the ring + return.
+-        let _ = state.ring.stop(std::time::Duration::ZERO);
++        let _ = state.ring.stop_now();
+         return;
+     }
+     state.last_raster = raster.0;
+--- a/games_test/tiny-glade/crates/country-core/src/systems/audio/timberframe_audio.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/audio/timberframe_audio.rs
+@@ -178,7 +178,7 @@
+             let _ = loop_player.entries[cursor].set_parameter("is_on_ground", on_ground);
+         }
+     } else {
+-        let _ = loop_player.stop(std::time::Duration::ZERO);
++        let _ = loop_player.stop_now();
+     }
+ }
+ 
+--- a/games_test/tiny-glade/crates/country-core/src/systems/audio/tree_audio.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/audio/tree_audio.rs
+@@ -107,7 +107,7 @@
+             let current = &mut loop_player.entries[loop_player.cursor];
+             let _ = current.set_position([position.x, position.y, position.z]);
+         } else {
+-            let _ = loop_player.stop(std::time::Duration::ZERO);
++            let _ = loop_player.stop_now();
+         }
+     }
+ 
+@@ -162,7 +162,7 @@
+ 
+     let loop_player = &mut state.loops[0];
+     if move_selector == 2 {
+-        let _ = loop_player.stop(std::time::Duration::ZERO);
++        let _ = loop_player.stop_now();
+     } else {
+         let _ = loop_player.start_if_not_playing();
+         let current = &mut loop_player.entries[loop_player.cursor];
+--- a/games_test/tiny-glade/crates/country-core/src/systems/audio/water_ambience_audio.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/audio/water_ambience_audio.rs
+@@ -145,7 +145,7 @@
+                 let _ = current.set_volume(volume);
+             }
+         } else {
+-            let _ = loop_player.stop(std::time::Duration::ZERO);
++            let _ = loop_player.stop_now();
+         }
+     }
+ }
+--- a/games_test/tiny-glade/crates/country-core/src/systems/audio/water_audio.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/audio/water_audio.rs
+@@ -98,8 +98,8 @@
+     update_draw_audio_volume(&mut state.loops[0], draw_last.is_some(), draw_pos, draw_radius, volume);
+     update_draw_audio_volume(&mut state.loops[1], erase_last.is_some(), erase_pos, erase_radius, volume);
+     // O (decomp-0x140873630): unconditionally stop the two ice loops.
+-    let _ = state.loops[2].stop(std::time::Duration::ZERO);
+-    let _ = state.loops[3].stop(std::time::Duration::ZERO);
++    let _ = state.loops[2].stop_now();
++    let _ = state.loops[3].stop_now();
+ }
+ 
+ #[cfg(test)]

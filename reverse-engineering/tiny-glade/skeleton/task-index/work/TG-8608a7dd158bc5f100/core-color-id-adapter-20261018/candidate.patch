@@ -1,0 +1,90 @@
+--- a/games_test/tiny-glade/crates/systems/color/src/replay_color.rs
++++ b/games_test/tiny-glade/crates/systems/color/src/replay_color.rs
+@@ -296,3 +296,87 @@
+         bucket.commands.remove(index);
+     }
+ }
++
++#[cfg(test)]
++mod full_wall_id_tests {
++    use super::*;
++    use country_core::resources::{
++        history::{ReplayBucket, replay_cmd_buffer::ColorReplayCmd},
++        terrain_editing::StrokeId,
++        walls::WallId,
++    };
++    use std::sync::Arc;
++    #[test]
++    fn existing_replay_retains_both_words_for_all_three_wall_families() {
++        for (kind, undo) in [
++            (0, false),
++            (0, true),
++            (1, false),
++            (1, true),
++            (2, false),
++            (2, true),
++        ] {
++            let id = WallId(0x1234_5678_0000_0007);
++            let from = StrokeId(3);
++            let to = StrokeId(12);
++            let edit = match kind {
++                0 => ColorEdit::Wall {
++                    wall_id: id,
++                    from,
++                    to,
++                },
++                1 => ColorEdit::Gate {
++                    wall_id: id,
++                    from,
++                    to,
++                },
++                _ => ColorEdit::Halftimber {
++                    wall_id: id,
++                    from,
++                    to,
++                },
++            };
++            let mut buffer = ReplayBuffer::new(1.0);
++            buffer.push(ReplayBucket {
++                entry_index: 0,
++                undo,
++                commands: vec![ReplayCommand::Color(ColorReplayCmd::expanded(
++                    Arc::new(edit),
++                    undo,
++                    true,
++                ))],
++                timing: vec![Default::default()],
++            });
++            let mut world = World::new();
++            crate::register_color_events(&mut world);
++            world.insert_resource(buffer);
++            world.insert_resource(GameTime::default());
++            let mut schedule = Schedule::default();
++            schedule.add_systems(replay_color::<()>);
++            schedule.run(&mut world);
++            let (actual, color, custom) = match kind {
++                0 => {
++                    let events = world.resource::<Events<SetWallColorIdCmd>>();
++                    let mut cursor = events.get_cursor();
++                    let cmd = cursor.read(events).next().unwrap();
++                    (cmd.wall_id(), cmd.color, cmd.custom)
++                }
++                1 => {
++                    let events = world.resource::<Events<SetGateColorIdCmd>>();
++                    let mut cursor = events.get_cursor();
++                    let cmd = cursor.read(events).next().unwrap();
++                    (cmd.wall_id(), cmd.color, cmd.custom)
++                }
++                _ => {
++                    let events = world.resource::<Events<SetHalftimberColorIdCmd>>();
++                    let mut cursor = events.get_cursor();
++                    let cmd = cursor.read(events).next().unwrap();
++                    (cmd.wall_id(), cmd.color, cmd.custom)
++                }
++            };
++            assert_eq!(actual, id);
++            assert_eq!(color, if undo { 3 } else { 12 });
++            assert_eq!(custom, 1);
++        }
++    }
++}

@@ -1,19 +1,18 @@
-//! Prepared raw wall authority -> original RNG/noise/height producer -> 96B bricks.
+//! Builds CPU brick instances from wall authority, height caches, and openings.
 use crate::{
     BuildingReport, PublicWalls, Roof, WallCollectionState, WallRoofMap, openings::WallOpenings,
     wall_paths::WallPreparedPaths,
 };
 use bevy_ecs::{prelude::*, schedule::ApplyDeferred};
-use country_core::recovered_building::{
-    building_wall_construction_sources::{
-        ConstructionTopPolicy, construction_policy, prepared_construction_arrays,
-    },
-    building_wall_constructor::WallBrickInstance,
-    building_wall_production::{
-        PlainWallProductionInput, WallProductionBranch, WallTopBounds, produce_wall,
-    },
-    building_wall_state::WallId,
-};
+use country_core::systems::wall::construction::parameters::ConstructionTopPolicy;
+use country_core::systems::wall::construction::parameters::construction_policy;
+use country_core::systems::wall::construction::parameters::prepared_construction_arrays;
+use country_core::systems::wall::construction::bricks::WallBrickInstance;
+use country_core::systems::wall::construction::production::PlainWallProductionInput;
+use country_core::systems::wall::construction::production::WallProductionBranch;
+use country_core::systems::wall::construction::production::WallTopBounds;
+use country_core::systems::wall::construction::production::produce_wall;
+use country_core::resources::walls::publication_fields::WallId;
 use std::collections::HashMap;
 
 #[derive(Component, Clone, Debug)]
@@ -38,7 +37,10 @@ pub enum PendingWallProductionReason {
 #[derive(Resource, Default)]
 pub struct WallBrickBuildState {
     fingerprints: HashMap<WallId, Vec<u32>>,
+    fingerprint_scratch: Vec<u32>,
     pub rebuilt: Vec<WallId>,
+    /// Per-wall working-array preparations attempted during this update.
+    pub prepared_arrays_this_frame: usize,
     pub pending: HashMap<WallId, PendingWallProductionReason>,
 }
 pub fn register(app: &mut bevy_app::App) {
@@ -78,6 +80,7 @@ fn construct(
     mut report: ResMut<BuildingReport>,
 ) {
     state.rebuilt.clear();
+    state.prepared_arrays_this_frame = 0;
     state
         .pending
         .retain(|wall, _| walls.walls.contains_key(wall));
@@ -142,8 +145,7 @@ fn construct(
         let roof = roof_map
             .entity(wall)
             .and_then(|entity| roofs.get(entity).ok());
-        let field =
-            |offset| f32::from_le_bytes(host.projection[offset..offset + 4].try_into().unwrap());
+        let projection = crate::wall_projection::WallProjection::new(host.observed_projection());
         let policy = match construction_policy(
             wall,
             host.source.outline.len() as u64,
@@ -151,11 +153,11 @@ fn construct(
             raw.clutter_version,
             raw.style,
             &raw.shape,
-            field(0x274),
-            field(0x284),
+            projection.observed_f32_0x274(),
+            host.state.float_0x284(),
             host.state.max_y().ok(),
             roof.map(|roof| &roof.0),
-            host.projection[0x296],
+            host.state.observed_296(),
         ) {
             Ok(policy) => policy,
             Err(_) => {
@@ -181,24 +183,6 @@ fn construct(
                 tag,
             },
         };
-        let construction_arches = policy.constructor_arch_heights(&host.arch_segment_heights);
-        let arrays = match prepared_construction_arrays(
-            &prepared.path.positions,
-            &construction_arches,
-            &host.segment_heights,
-        ) {
-            Ok(arrays) => arrays,
-            Err(_) => {
-                withdraw(
-                    wall,
-                    &mut commands,
-                    &mut entities,
-                    &mut state,
-                    PendingWallProductionReason::InvalidConstructionArrays,
-                );
-                continue;
-            }
-        };
         let finalized = match holes.storage.get(&wall) {
             Some(storage) => match storage.finalized_holes() {
                 Ok(value) => value,
@@ -215,11 +199,11 @@ fn construct(
             },
             None => &[],
         };
-        let hole_input: Vec<_> = finalized
-            .iter()
-            .map(|hole| (hole.aabb, hole.origin))
-            .collect();
-        let mut key = vec![
+        // A stable wall still needs content comparison because height arrays
+        // are publicly editable. Reuse one scratch buffer across those checks.
+        let mut key = std::mem::take(&mut state.fingerprint_scratch);
+        key.clear();
+        key.extend([
             host.publication_revision as u32,
             (host.publication_revision >> 32) as u32,
             prepared.generation as u32,
@@ -236,24 +220,51 @@ fn construct(
             top.tag as u32,
             top.height.to_bits(),
             u32::from(policy.lower_flat_no_rim_arches),
-        ];
+        ]);
+        for option in [policy.options.width_padding, policy.options.thickness_scale] {
+            key.push(u32::from(option.is_some()));
+            key.push(option.unwrap_or_default().to_bits());
+        }
         key.extend(top.intervals.into_iter().flatten().map(f32::to_bits));
-        for values in [
-            &arrays.arch_heights,
-            &arrays.second_heights,
-            &arrays.third_heights,
-        ] {
+        // Construction arrays are a deterministic projection of these source
+        // arrays and the policy above. Compare inputs before allocating them.
+        for values in [&host.arch_segment_heights, &host.segment_heights] {
             key.push(values.len() as u32);
             key.extend(values.iter().map(|value| value.to_bits()));
         }
-        key.push(hole_input.len() as u32);
-        for (aabb, origin) in &hole_input {
-            key.extend(aabb.iter().map(|value| value.to_bits()));
-            key.push(*origin as u32);
+        key.push(finalized.len() as u32);
+        for hole in finalized {
+            key.extend(hole.aabb.iter().map(|value| value.to_bits()));
+            key.push(hole.origin as u32);
         }
         if state.fingerprints.get(&wall) == Some(&key) && entities.0.contains_key(&wall) {
+            state.fingerprint_scratch = key;
             continue;
         }
+        state.prepared_arrays_this_frame += 1;
+        let construction_arches = policy.constructor_arch_heights(&host.arch_segment_heights);
+        let arrays = match prepared_construction_arrays(
+            &prepared.path.positions,
+            &construction_arches,
+            &host.segment_heights,
+        ) {
+            Ok(arrays) => arrays,
+            Err(_) => {
+                state.fingerprint_scratch = key;
+                withdraw(
+                    wall,
+                    &mut commands,
+                    &mut entities,
+                    &mut state,
+                    PendingWallProductionReason::InvalidConstructionArrays,
+                );
+                continue;
+            }
+        };
+        let hole_input: Vec<_> = finalized
+            .iter()
+            .map(|hole| (hole.aabb, hole.origin))
+            .collect();
         let input = PlainWallProductionInput {
             curve: &arrays.curve,
             arch_heights: &arrays.arch_heights,
@@ -280,6 +291,7 @@ fn construct(
         ) {
             Ok(instances) => instances,
             Err(error) => {
+                state.fingerprint_scratch = key;
                 withdraw(
                     wall,
                     &mut commands,
@@ -313,7 +325,7 @@ fn construct(
             entities.0.insert(wall, entity);
         }
         state.pending.remove(&wall);
-        state.fingerprints.insert(wall, key);
+        state.fingerprint_scratch = state.fingerprints.insert(wall, key).unwrap_or_default();
         state.rebuilt.push(wall);
     }
 }

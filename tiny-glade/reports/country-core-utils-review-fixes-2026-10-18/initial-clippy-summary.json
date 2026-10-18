@@ -1,0 +1,1125 @@
+{
+  "warnings_all": 559,
+  "warnings_scope": 12,
+  "errors": 0,
+  "scoped_diagnostics": [
+    {
+      "rendered": "warning: variables in the condition are not mutated in the loop body\n   --> crates/country-core/src/systems/ui/signifiers/signifier_create.rs:119:15\n    |\n119 |         while self.committed != slot {\n    |               ^^^^^^^^^^^^^^^^^^^^^^\n    |\n    = note: this may lead to an infinite or to a never running loop\n    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#while_immutable_condition\n    = note: `-W clippy::while-immutable-condition` implied by `-W clippy::all`\n    = help: to override `-W clippy::all` add `#[allow(clippy::while_immutable_condition)]`\n\n",
+      "$message_type": "diagnostic",
+      "children": [
+        {
+          "children": [],
+          "code": null,
+          "level": "note",
+          "message": "this may lead to an infinite or to a never running loop",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#while_immutable_condition",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "note",
+          "message": "`-W clippy::while-immutable-condition` implied by `-W clippy::all`",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "to override `-W clippy::all` add `#[allow(clippy::while_immutable_condition)]`",
+          "rendered": null,
+          "spans": []
+        }
+      ],
+      "level": "warning",
+      "message": "variables in the condition are not mutated in the loop body",
+      "spans": [
+        {
+          "byte_end": 4901,
+          "byte_start": 4879,
+          "column_end": 37,
+          "column_start": 15,
+          "expansion": null,
+          "file_name": "crates/country-core/src/systems/ui/signifiers/signifier_create.rs",
+          "is_primary": true,
+          "label": null,
+          "line_end": 119,
+          "line_start": 119,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "text": [
+            {
+              "highlight_end": 37,
+              "highlight_start": 15,
+              "text": "        while self.committed != slot {"
+            }
+          ]
+        }
+      ],
+      "code": {
+        "code": "clippy::while_immutable_condition",
+        "explanation": null
+      }
+    },
+    {
+      "rendered": "warning: implicitly casting the result of `from_raw_parts_mut` to `*mut [u8]`\n   --> crates/country-core/src/systems/ui/signifiers/signifier_factory.rs:184:36\n    |\n184 |                   drop(Box::from_raw(std::slice::from_raw_parts_mut(\n    |  ____________________________________^\n185 | |                     self.name_ptr,\n186 | |                     self.name_len,\n187 | |                 )));\n    | |_________________^ help: replace_with: `std::ptr::slice_from_raw_parts_mut(self.name_ptr, self.name_len)`\n    |\n    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#cast_slice_from_raw_parts\n    = note: `-W clippy::cast-slice-from-raw-parts` implied by `-W clippy::all`\n    = help: to override `-W clippy::all` add `#[allow(clippy::cast_slice_from_raw_parts)]`\n\n",
+      "$message_type": "diagnostic",
+      "children": [
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#cast_slice_from_raw_parts",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "note",
+          "message": "`-W clippy::cast-slice-from-raw-parts` implied by `-W clippy::all`",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "to override `-W clippy::all` add `#[allow(clippy::cast_slice_from_raw_parts)]`",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "replace_with",
+          "rendered": null,
+          "spans": [
+            {
+              "byte_end": 8326,
+              "byte_start": 8207,
+              "column_end": 18,
+              "column_start": 36,
+              "expansion": null,
+              "file_name": "crates/country-core/src/systems/ui/signifiers/signifier_factory.rs",
+              "is_primary": true,
+              "label": null,
+              "line_end": 187,
+              "line_start": 184,
+              "suggested_replacement": "std::ptr::slice_from_raw_parts_mut(self.name_ptr, self.name_len)",
+              "suggestion_applicability": "MachineApplicable",
+              "text": [
+                {
+                  "highlight_end": 67,
+                  "highlight_start": 36,
+                  "text": "                drop(Box::from_raw(std::slice::from_raw_parts_mut("
+                },
+                {
+                  "highlight_end": 35,
+                  "highlight_start": 1,
+                  "text": "                    self.name_ptr,"
+                },
+                {
+                  "highlight_end": 35,
+                  "highlight_start": 1,
+                  "text": "                    self.name_len,"
+                },
+                {
+                  "highlight_end": 18,
+                  "highlight_start": 1,
+                  "text": "                )));"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "level": "warning",
+      "message": "implicitly casting the result of `from_raw_parts_mut` to `*mut [u8]`",
+      "spans": [
+        {
+          "byte_end": 8326,
+          "byte_start": 8207,
+          "column_end": 18,
+          "column_start": 36,
+          "expansion": null,
+          "file_name": "crates/country-core/src/systems/ui/signifiers/signifier_factory.rs",
+          "is_primary": true,
+          "label": null,
+          "line_end": 187,
+          "line_start": 184,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "text": [
+            {
+              "highlight_end": 67,
+              "highlight_start": 36,
+              "text": "                drop(Box::from_raw(std::slice::from_raw_parts_mut("
+            },
+            {
+              "highlight_end": 35,
+              "highlight_start": 1,
+              "text": "                    self.name_ptr,"
+            },
+            {
+              "highlight_end": 35,
+              "highlight_start": 1,
+              "text": "                    self.name_len,"
+            },
+            {
+              "highlight_end": 18,
+              "highlight_start": 1,
+              "text": "                )));"
+            }
+          ]
+        }
+      ],
+      "code": {
+        "code": "clippy::cast_slice_from_raw_parts",
+        "explanation": null
+      }
+    },
+    {
+      "rendered": "warning: field assignment outside of initializer for an instance created with Default::default()\n   --> crates/country-core/src/systems/ui/signifiers/signifier_factory.rs:347:9\n    |\n347 |         builder.mesh_kind = payload[0];\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    |\nnote: consider initializing the variable with `systems::ui::signifiers::signifier_factory::SignifierEntityBuilder { mesh_kind: payload[0], mesh_payload: [\n                  payload[1],\n                  payload[2],\n                  payload[3],\n                  payload[4],\n                  payload[5],\n              ], ..Default::default() }` and removing relevant reassignments\n   --> crates/country-core/src/systems/ui/signifiers/signifier_factory.rs:346:9\n    |\n346 |         let mut builder = Self::default();\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#field_reassign_with_default\n\n",
+      "$message_type": "diagnostic",
+      "children": [
+        {
+          "children": [],
+          "code": null,
+          "level": "note",
+          "message": "consider initializing the variable with `systems::ui::signifiers::signifier_factory::SignifierEntityBuilder { mesh_kind: payload[0], mesh_payload: [\n            payload[1],\n            payload[2],\n            payload[3],\n            payload[4],\n            payload[5],\n        ], ..Default::default() }` and removing relevant reassignments",
+          "rendered": null,
+          "spans": [
+            {
+              "byte_end": 14275,
+              "byte_start": 14241,
+              "column_end": 43,
+              "column_start": 9,
+              "expansion": null,
+              "file_name": "crates/country-core/src/systems/ui/signifiers/signifier_factory.rs",
+              "is_primary": true,
+              "label": null,
+              "line_end": 346,
+              "line_start": 346,
+              "suggested_replacement": null,
+              "suggestion_applicability": null,
+              "text": [
+                {
+                  "highlight_end": 43,
+                  "highlight_start": 9,
+                  "text": "        let mut builder = Self::default();"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#field_reassign_with_default",
+          "rendered": null,
+          "spans": []
+        }
+      ],
+      "level": "warning",
+      "message": "field assignment outside of initializer for an instance created with Default::default()",
+      "spans": [
+        {
+          "byte_end": 14315,
+          "byte_start": 14284,
+          "column_end": 40,
+          "column_start": 9,
+          "expansion": null,
+          "file_name": "crates/country-core/src/systems/ui/signifiers/signifier_factory.rs",
+          "is_primary": true,
+          "label": null,
+          "line_end": 347,
+          "line_start": 347,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "text": [
+            {
+              "highlight_end": 40,
+              "highlight_start": 9,
+              "text": "        builder.mesh_kind = payload[0];"
+            }
+          ]
+        }
+      ],
+      "code": {
+        "code": "clippy::field_reassign_with_default",
+        "explanation": null
+      }
+    },
+    {
+      "rendered": "warning: implicitly casting the result of `from_raw_parts_mut` to `*mut [u8]`\n   --> crates/country-core/src/systems/ui/signifiers/signifier_factory.rs:383:36\n    |\n383 |                   drop(Box::from_raw(std::slice::from_raw_parts_mut(\n    |  ____________________________________^\n384 | |                     self.shader_ptr,\n385 | |                     self.shader_len as usize,\n386 | |                 )));\n    | |_________________^ help: replace_with: `std::ptr::slice_from_raw_parts_mut(self.shader_ptr, self.shader_len as usize)`\n    |\n    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#cast_slice_from_raw_parts\n\n",
+      "$message_type": "diagnostic",
+      "children": [
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#cast_slice_from_raw_parts",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "replace_with",
+          "rendered": null,
+          "spans": [
+            {
+              "byte_end": 15733,
+              "byte_start": 15601,
+              "column_end": 18,
+              "column_start": 36,
+              "expansion": null,
+              "file_name": "crates/country-core/src/systems/ui/signifiers/signifier_factory.rs",
+              "is_primary": true,
+              "label": null,
+              "line_end": 386,
+              "line_start": 383,
+              "suggested_replacement": "std::ptr::slice_from_raw_parts_mut(self.shader_ptr, self.shader_len as usize)",
+              "suggestion_applicability": "MachineApplicable",
+              "text": [
+                {
+                  "highlight_end": 67,
+                  "highlight_start": 36,
+                  "text": "                drop(Box::from_raw(std::slice::from_raw_parts_mut("
+                },
+                {
+                  "highlight_end": 37,
+                  "highlight_start": 1,
+                  "text": "                    self.shader_ptr,"
+                },
+                {
+                  "highlight_end": 46,
+                  "highlight_start": 1,
+                  "text": "                    self.shader_len as usize,"
+                },
+                {
+                  "highlight_end": 18,
+                  "highlight_start": 1,
+                  "text": "                )));"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "level": "warning",
+      "message": "implicitly casting the result of `from_raw_parts_mut` to `*mut [u8]`",
+      "spans": [
+        {
+          "byte_end": 15733,
+          "byte_start": 15601,
+          "column_end": 18,
+          "column_start": 36,
+          "expansion": null,
+          "file_name": "crates/country-core/src/systems/ui/signifiers/signifier_factory.rs",
+          "is_primary": true,
+          "label": null,
+          "line_end": 386,
+          "line_start": 383,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "text": [
+            {
+              "highlight_end": 67,
+              "highlight_start": 36,
+              "text": "                drop(Box::from_raw(std::slice::from_raw_parts_mut("
+            },
+            {
+              "highlight_end": 37,
+              "highlight_start": 1,
+              "text": "                    self.shader_ptr,"
+            },
+            {
+              "highlight_end": 46,
+              "highlight_start": 1,
+              "text": "                    self.shader_len as usize,"
+            },
+            {
+              "highlight_end": 18,
+              "highlight_start": 1,
+              "text": "                )));"
+            }
+          ]
+        }
+      ],
+      "code": {
+        "code": "clippy::cast_slice_from_raw_parts",
+        "explanation": null
+      }
+    },
+    {
+      "rendered": "warning: implicitly casting the result of `from_raw_parts_mut` to `*mut [u8]`\n   --> crates/country-core/src/systems/ui/signifiers/signifier_factory.rs:436:36\n    |\n436 |                   drop(Box::from_raw(std::slice::from_raw_parts_mut(\n    |  ____________________________________^\n437 | |                     self.shader_ptr,\n438 | |                     self.shader_len as usize,\n439 | |                 )));\n    | |_________________^ help: replace_with: `std::ptr::slice_from_raw_parts_mut(self.shader_ptr, self.shader_len as usize)`\n    |\n    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#cast_slice_from_raw_parts\n\n",
+      "$message_type": "diagnostic",
+      "children": [
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#cast_slice_from_raw_parts",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "replace_with",
+          "rendered": null,
+          "spans": [
+            {
+              "byte_end": 18115,
+              "byte_start": 17983,
+              "column_end": 18,
+              "column_start": 36,
+              "expansion": null,
+              "file_name": "crates/country-core/src/systems/ui/signifiers/signifier_factory.rs",
+              "is_primary": true,
+              "label": null,
+              "line_end": 439,
+              "line_start": 436,
+              "suggested_replacement": "std::ptr::slice_from_raw_parts_mut(self.shader_ptr, self.shader_len as usize)",
+              "suggestion_applicability": "MachineApplicable",
+              "text": [
+                {
+                  "highlight_end": 67,
+                  "highlight_start": 36,
+                  "text": "                drop(Box::from_raw(std::slice::from_raw_parts_mut("
+                },
+                {
+                  "highlight_end": 37,
+                  "highlight_start": 1,
+                  "text": "                    self.shader_ptr,"
+                },
+                {
+                  "highlight_end": 46,
+                  "highlight_start": 1,
+                  "text": "                    self.shader_len as usize,"
+                },
+                {
+                  "highlight_end": 18,
+                  "highlight_start": 1,
+                  "text": "                )));"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "level": "warning",
+      "message": "implicitly casting the result of `from_raw_parts_mut` to `*mut [u8]`",
+      "spans": [
+        {
+          "byte_end": 18115,
+          "byte_start": 17983,
+          "column_end": 18,
+          "column_start": 36,
+          "expansion": null,
+          "file_name": "crates/country-core/src/systems/ui/signifiers/signifier_factory.rs",
+          "is_primary": true,
+          "label": null,
+          "line_end": 439,
+          "line_start": 436,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "text": [
+            {
+              "highlight_end": 67,
+              "highlight_start": 36,
+              "text": "                drop(Box::from_raw(std::slice::from_raw_parts_mut("
+            },
+            {
+              "highlight_end": 37,
+              "highlight_start": 1,
+              "text": "                    self.shader_ptr,"
+            },
+            {
+              "highlight_end": 46,
+              "highlight_start": 1,
+              "text": "                    self.shader_len as usize,"
+            },
+            {
+              "highlight_end": 18,
+              "highlight_start": 1,
+              "text": "                )));"
+            }
+          ]
+        }
+      ],
+      "code": {
+        "code": "clippy::cast_slice_from_raw_parts",
+        "explanation": null
+      }
+    },
+    {
+      "rendered": "warning: this `map_or` can be simplified\n  --> crates/country-core/src/systems/ui/signifiers/signifier_mark_for_delete.rs:36:23\n   |\n36 |         let expired = lifespan.map_or(true, |l| l.min_lifespan <= l.t);\n   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n   |\n   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#unnecessary_map_or\nhelp: use `is_none_or` instead\n   |\n36 -         let expired = lifespan.map_or(true, |l| l.min_lifespan <= l.t);\n36 +         let expired = lifespan.is_none_or(|l| l.min_lifespan <= l.t);\n   |\n\n",
+      "$message_type": "diagnostic",
+      "children": [
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#unnecessary_map_or",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "use `is_none_or` instead",
+          "rendered": null,
+          "spans": [
+            {
+              "byte_end": 1542,
+              "byte_start": 1536,
+              "column_end": 38,
+              "column_start": 32,
+              "expansion": null,
+              "file_name": "crates/country-core/src/systems/ui/signifiers/signifier_mark_for_delete.rs",
+              "is_primary": true,
+              "label": null,
+              "line_end": 36,
+              "line_start": 36,
+              "suggested_replacement": "is_none_or",
+              "suggestion_applicability": "MachineApplicable",
+              "text": [
+                {
+                  "highlight_end": 38,
+                  "highlight_start": 32,
+                  "text": "        let expired = lifespan.map_or(true, |l| l.min_lifespan <= l.t);"
+                }
+              ]
+            },
+            {
+              "byte_end": 1549,
+              "byte_start": 1543,
+              "column_end": 45,
+              "column_start": 39,
+              "expansion": null,
+              "file_name": "crates/country-core/src/systems/ui/signifiers/signifier_mark_for_delete.rs",
+              "is_primary": true,
+              "label": null,
+              "line_end": 36,
+              "line_start": 36,
+              "suggested_replacement": "",
+              "suggestion_applicability": "MachineApplicable",
+              "text": [
+                {
+                  "highlight_end": 45,
+                  "highlight_start": 39,
+                  "text": "        let expired = lifespan.map_or(true, |l| l.min_lifespan <= l.t);"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "level": "warning",
+      "message": "this `map_or` can be simplified",
+      "spans": [
+        {
+          "byte_end": 1575,
+          "byte_start": 1527,
+          "column_end": 71,
+          "column_start": 23,
+          "expansion": null,
+          "file_name": "crates/country-core/src/systems/ui/signifiers/signifier_mark_for_delete.rs",
+          "is_primary": true,
+          "label": null,
+          "line_end": 36,
+          "line_start": 36,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "text": [
+            {
+              "highlight_end": 71,
+              "highlight_start": 23,
+              "text": "        let expired = lifespan.map_or(true, |l| l.min_lifespan <= l.t);"
+            }
+          ]
+        }
+      ],
+      "code": {
+        "code": "clippy::unnecessary_map_or",
+        "explanation": null
+      }
+    },
+    {
+      "rendered": "warning: variables in the condition are not mutated in the loop body\n   --> crates/country-core/src/systems/ui/signifiers/signifier_create.rs:119:15\n    |\n119 |         while self.committed != slot {\n    |               ^^^^^^^^^^^^^^^^^^^^^^\n    |\n    = note: this may lead to an infinite or to a never running loop\n    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#while_immutable_condition\n    = note: `-W clippy::while-immutable-condition` implied by `-W clippy::all`\n    = help: to override `-W clippy::all` add `#[allow(clippy::while_immutable_condition)]`\n\n",
+      "$message_type": "diagnostic",
+      "children": [
+        {
+          "children": [],
+          "code": null,
+          "level": "note",
+          "message": "this may lead to an infinite or to a never running loop",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#while_immutable_condition",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "note",
+          "message": "`-W clippy::while-immutable-condition` implied by `-W clippy::all`",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "to override `-W clippy::all` add `#[allow(clippy::while_immutable_condition)]`",
+          "rendered": null,
+          "spans": []
+        }
+      ],
+      "level": "warning",
+      "message": "variables in the condition are not mutated in the loop body",
+      "spans": [
+        {
+          "byte_end": 4901,
+          "byte_start": 4879,
+          "column_end": 37,
+          "column_start": 15,
+          "expansion": null,
+          "file_name": "crates/country-core/src/systems/ui/signifiers/signifier_create.rs",
+          "is_primary": true,
+          "label": null,
+          "line_end": 119,
+          "line_start": 119,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "text": [
+            {
+              "highlight_end": 37,
+              "highlight_start": 15,
+              "text": "        while self.committed != slot {"
+            }
+          ]
+        }
+      ],
+      "code": {
+        "code": "clippy::while_immutable_condition",
+        "explanation": null
+      }
+    },
+    {
+      "rendered": "warning: implicitly casting the result of `from_raw_parts_mut` to `*mut [u8]`\n   --> crates/country-core/src/systems/ui/signifiers/signifier_factory.rs:184:36\n    |\n184 |                   drop(Box::from_raw(std::slice::from_raw_parts_mut(\n    |  ____________________________________^\n185 | |                     self.name_ptr,\n186 | |                     self.name_len,\n187 | |                 )));\n    | |_________________^ help: replace_with: `std::ptr::slice_from_raw_parts_mut(self.name_ptr, self.name_len)`\n    |\n    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#cast_slice_from_raw_parts\n    = note: `-W clippy::cast-slice-from-raw-parts` implied by `-W clippy::all`\n    = help: to override `-W clippy::all` add `#[allow(clippy::cast_slice_from_raw_parts)]`\n\n",
+      "$message_type": "diagnostic",
+      "children": [
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#cast_slice_from_raw_parts",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "note",
+          "message": "`-W clippy::cast-slice-from-raw-parts` implied by `-W clippy::all`",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "to override `-W clippy::all` add `#[allow(clippy::cast_slice_from_raw_parts)]`",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "replace_with",
+          "rendered": null,
+          "spans": [
+            {
+              "byte_end": 8326,
+              "byte_start": 8207,
+              "column_end": 18,
+              "column_start": 36,
+              "expansion": null,
+              "file_name": "crates/country-core/src/systems/ui/signifiers/signifier_factory.rs",
+              "is_primary": true,
+              "label": null,
+              "line_end": 187,
+              "line_start": 184,
+              "suggested_replacement": "std::ptr::slice_from_raw_parts_mut(self.name_ptr, self.name_len)",
+              "suggestion_applicability": "MachineApplicable",
+              "text": [
+                {
+                  "highlight_end": 67,
+                  "highlight_start": 36,
+                  "text": "                drop(Box::from_raw(std::slice::from_raw_parts_mut("
+                },
+                {
+                  "highlight_end": 35,
+                  "highlight_start": 1,
+                  "text": "                    self.name_ptr,"
+                },
+                {
+                  "highlight_end": 35,
+                  "highlight_start": 1,
+                  "text": "                    self.name_len,"
+                },
+                {
+                  "highlight_end": 18,
+                  "highlight_start": 1,
+                  "text": "                )));"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "level": "warning",
+      "message": "implicitly casting the result of `from_raw_parts_mut` to `*mut [u8]`",
+      "spans": [
+        {
+          "byte_end": 8326,
+          "byte_start": 8207,
+          "column_end": 18,
+          "column_start": 36,
+          "expansion": null,
+          "file_name": "crates/country-core/src/systems/ui/signifiers/signifier_factory.rs",
+          "is_primary": true,
+          "label": null,
+          "line_end": 187,
+          "line_start": 184,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "text": [
+            {
+              "highlight_end": 67,
+              "highlight_start": 36,
+              "text": "                drop(Box::from_raw(std::slice::from_raw_parts_mut("
+            },
+            {
+              "highlight_end": 35,
+              "highlight_start": 1,
+              "text": "                    self.name_ptr,"
+            },
+            {
+              "highlight_end": 35,
+              "highlight_start": 1,
+              "text": "                    self.name_len,"
+            },
+            {
+              "highlight_end": 18,
+              "highlight_start": 1,
+              "text": "                )));"
+            }
+          ]
+        }
+      ],
+      "code": {
+        "code": "clippy::cast_slice_from_raw_parts",
+        "explanation": null
+      }
+    },
+    {
+      "rendered": "warning: field assignment outside of initializer for an instance created with Default::default()\n   --> crates/country-core/src/systems/ui/signifiers/signifier_factory.rs:347:9\n    |\n347 |         builder.mesh_kind = payload[0];\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    |\nnote: consider initializing the variable with `systems::ui::signifiers::signifier_factory::SignifierEntityBuilder { mesh_kind: payload[0], mesh_payload: [\n                  payload[1],\n                  payload[2],\n                  payload[3],\n                  payload[4],\n                  payload[5],\n              ], ..Default::default() }` and removing relevant reassignments\n   --> crates/country-core/src/systems/ui/signifiers/signifier_factory.rs:346:9\n    |\n346 |         let mut builder = Self::default();\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#field_reassign_with_default\n\n",
+      "$message_type": "diagnostic",
+      "children": [
+        {
+          "children": [],
+          "code": null,
+          "level": "note",
+          "message": "consider initializing the variable with `systems::ui::signifiers::signifier_factory::SignifierEntityBuilder { mesh_kind: payload[0], mesh_payload: [\n            payload[1],\n            payload[2],\n            payload[3],\n            payload[4],\n            payload[5],\n        ], ..Default::default() }` and removing relevant reassignments",
+          "rendered": null,
+          "spans": [
+            {
+              "byte_end": 14275,
+              "byte_start": 14241,
+              "column_end": 43,
+              "column_start": 9,
+              "expansion": null,
+              "file_name": "crates/country-core/src/systems/ui/signifiers/signifier_factory.rs",
+              "is_primary": true,
+              "label": null,
+              "line_end": 346,
+              "line_start": 346,
+              "suggested_replacement": null,
+              "suggestion_applicability": null,
+              "text": [
+                {
+                  "highlight_end": 43,
+                  "highlight_start": 9,
+                  "text": "        let mut builder = Self::default();"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#field_reassign_with_default",
+          "rendered": null,
+          "spans": []
+        }
+      ],
+      "level": "warning",
+      "message": "field assignment outside of initializer for an instance created with Default::default()",
+      "spans": [
+        {
+          "byte_end": 14315,
+          "byte_start": 14284,
+          "column_end": 40,
+          "column_start": 9,
+          "expansion": null,
+          "file_name": "crates/country-core/src/systems/ui/signifiers/signifier_factory.rs",
+          "is_primary": true,
+          "label": null,
+          "line_end": 347,
+          "line_start": 347,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "text": [
+            {
+              "highlight_end": 40,
+              "highlight_start": 9,
+              "text": "        builder.mesh_kind = payload[0];"
+            }
+          ]
+        }
+      ],
+      "code": {
+        "code": "clippy::field_reassign_with_default",
+        "explanation": null
+      }
+    },
+    {
+      "rendered": "warning: implicitly casting the result of `from_raw_parts_mut` to `*mut [u8]`\n   --> crates/country-core/src/systems/ui/signifiers/signifier_factory.rs:383:36\n    |\n383 |                   drop(Box::from_raw(std::slice::from_raw_parts_mut(\n    |  ____________________________________^\n384 | |                     self.shader_ptr,\n385 | |                     self.shader_len as usize,\n386 | |                 )));\n    | |_________________^ help: replace_with: `std::ptr::slice_from_raw_parts_mut(self.shader_ptr, self.shader_len as usize)`\n    |\n    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#cast_slice_from_raw_parts\n\n",
+      "$message_type": "diagnostic",
+      "children": [
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#cast_slice_from_raw_parts",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "replace_with",
+          "rendered": null,
+          "spans": [
+            {
+              "byte_end": 15733,
+              "byte_start": 15601,
+              "column_end": 18,
+              "column_start": 36,
+              "expansion": null,
+              "file_name": "crates/country-core/src/systems/ui/signifiers/signifier_factory.rs",
+              "is_primary": true,
+              "label": null,
+              "line_end": 386,
+              "line_start": 383,
+              "suggested_replacement": "std::ptr::slice_from_raw_parts_mut(self.shader_ptr, self.shader_len as usize)",
+              "suggestion_applicability": "MachineApplicable",
+              "text": [
+                {
+                  "highlight_end": 67,
+                  "highlight_start": 36,
+                  "text": "                drop(Box::from_raw(std::slice::from_raw_parts_mut("
+                },
+                {
+                  "highlight_end": 37,
+                  "highlight_start": 1,
+                  "text": "                    self.shader_ptr,"
+                },
+                {
+                  "highlight_end": 46,
+                  "highlight_start": 1,
+                  "text": "                    self.shader_len as usize,"
+                },
+                {
+                  "highlight_end": 18,
+                  "highlight_start": 1,
+                  "text": "                )));"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "level": "warning",
+      "message": "implicitly casting the result of `from_raw_parts_mut` to `*mut [u8]`",
+      "spans": [
+        {
+          "byte_end": 15733,
+          "byte_start": 15601,
+          "column_end": 18,
+          "column_start": 36,
+          "expansion": null,
+          "file_name": "crates/country-core/src/systems/ui/signifiers/signifier_factory.rs",
+          "is_primary": true,
+          "label": null,
+          "line_end": 386,
+          "line_start": 383,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "text": [
+            {
+              "highlight_end": 67,
+              "highlight_start": 36,
+              "text": "                drop(Box::from_raw(std::slice::from_raw_parts_mut("
+            },
+            {
+              "highlight_end": 37,
+              "highlight_start": 1,
+              "text": "                    self.shader_ptr,"
+            },
+            {
+              "highlight_end": 46,
+              "highlight_start": 1,
+              "text": "                    self.shader_len as usize,"
+            },
+            {
+              "highlight_end": 18,
+              "highlight_start": 1,
+              "text": "                )));"
+            }
+          ]
+        }
+      ],
+      "code": {
+        "code": "clippy::cast_slice_from_raw_parts",
+        "explanation": null
+      }
+    },
+    {
+      "rendered": "warning: implicitly casting the result of `from_raw_parts_mut` to `*mut [u8]`\n   --> crates/country-core/src/systems/ui/signifiers/signifier_factory.rs:436:36\n    |\n436 |                   drop(Box::from_raw(std::slice::from_raw_parts_mut(\n    |  ____________________________________^\n437 | |                     self.shader_ptr,\n438 | |                     self.shader_len as usize,\n439 | |                 )));\n    | |_________________^ help: replace_with: `std::ptr::slice_from_raw_parts_mut(self.shader_ptr, self.shader_len as usize)`\n    |\n    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#cast_slice_from_raw_parts\n\n",
+      "$message_type": "diagnostic",
+      "children": [
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#cast_slice_from_raw_parts",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "replace_with",
+          "rendered": null,
+          "spans": [
+            {
+              "byte_end": 18115,
+              "byte_start": 17983,
+              "column_end": 18,
+              "column_start": 36,
+              "expansion": null,
+              "file_name": "crates/country-core/src/systems/ui/signifiers/signifier_factory.rs",
+              "is_primary": true,
+              "label": null,
+              "line_end": 439,
+              "line_start": 436,
+              "suggested_replacement": "std::ptr::slice_from_raw_parts_mut(self.shader_ptr, self.shader_len as usize)",
+              "suggestion_applicability": "MachineApplicable",
+              "text": [
+                {
+                  "highlight_end": 67,
+                  "highlight_start": 36,
+                  "text": "                drop(Box::from_raw(std::slice::from_raw_parts_mut("
+                },
+                {
+                  "highlight_end": 37,
+                  "highlight_start": 1,
+                  "text": "                    self.shader_ptr,"
+                },
+                {
+                  "highlight_end": 46,
+                  "highlight_start": 1,
+                  "text": "                    self.shader_len as usize,"
+                },
+                {
+                  "highlight_end": 18,
+                  "highlight_start": 1,
+                  "text": "                )));"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "level": "warning",
+      "message": "implicitly casting the result of `from_raw_parts_mut` to `*mut [u8]`",
+      "spans": [
+        {
+          "byte_end": 18115,
+          "byte_start": 17983,
+          "column_end": 18,
+          "column_start": 36,
+          "expansion": null,
+          "file_name": "crates/country-core/src/systems/ui/signifiers/signifier_factory.rs",
+          "is_primary": true,
+          "label": null,
+          "line_end": 439,
+          "line_start": 436,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "text": [
+            {
+              "highlight_end": 67,
+              "highlight_start": 36,
+              "text": "                drop(Box::from_raw(std::slice::from_raw_parts_mut("
+            },
+            {
+              "highlight_end": 37,
+              "highlight_start": 1,
+              "text": "                    self.shader_ptr,"
+            },
+            {
+              "highlight_end": 46,
+              "highlight_start": 1,
+              "text": "                    self.shader_len as usize,"
+            },
+            {
+              "highlight_end": 18,
+              "highlight_start": 1,
+              "text": "                )));"
+            }
+          ]
+        }
+      ],
+      "code": {
+        "code": "clippy::cast_slice_from_raw_parts",
+        "explanation": null
+      }
+    },
+    {
+      "rendered": "warning: this `map_or` can be simplified\n  --> crates/country-core/src/systems/ui/signifiers/signifier_mark_for_delete.rs:36:23\n   |\n36 |         let expired = lifespan.map_or(true, |l| l.min_lifespan <= l.t);\n   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n   |\n   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#unnecessary_map_or\nhelp: use `is_none_or` instead\n   |\n36 -         let expired = lifespan.map_or(true, |l| l.min_lifespan <= l.t);\n36 +         let expired = lifespan.is_none_or(|l| l.min_lifespan <= l.t);\n   |\n\n",
+      "$message_type": "diagnostic",
+      "children": [
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#unnecessary_map_or",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "use `is_none_or` instead",
+          "rendered": null,
+          "spans": [
+            {
+              "byte_end": 1542,
+              "byte_start": 1536,
+              "column_end": 38,
+              "column_start": 32,
+              "expansion": null,
+              "file_name": "crates/country-core/src/systems/ui/signifiers/signifier_mark_for_delete.rs",
+              "is_primary": true,
+              "label": null,
+              "line_end": 36,
+              "line_start": 36,
+              "suggested_replacement": "is_none_or",
+              "suggestion_applicability": "MachineApplicable",
+              "text": [
+                {
+                  "highlight_end": 38,
+                  "highlight_start": 32,
+                  "text": "        let expired = lifespan.map_or(true, |l| l.min_lifespan <= l.t);"
+                }
+              ]
+            },
+            {
+              "byte_end": 1549,
+              "byte_start": 1543,
+              "column_end": 45,
+              "column_start": 39,
+              "expansion": null,
+              "file_name": "crates/country-core/src/systems/ui/signifiers/signifier_mark_for_delete.rs",
+              "is_primary": true,
+              "label": null,
+              "line_end": 36,
+              "line_start": 36,
+              "suggested_replacement": "",
+              "suggestion_applicability": "MachineApplicable",
+              "text": [
+                {
+                  "highlight_end": 45,
+                  "highlight_start": 39,
+                  "text": "        let expired = lifespan.map_or(true, |l| l.min_lifespan <= l.t);"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "level": "warning",
+      "message": "this `map_or` can be simplified",
+      "spans": [
+        {
+          "byte_end": 1575,
+          "byte_start": 1527,
+          "column_end": 71,
+          "column_start": 23,
+          "expansion": null,
+          "file_name": "crates/country-core/src/systems/ui/signifiers/signifier_mark_for_delete.rs",
+          "is_primary": true,
+          "label": null,
+          "line_end": 36,
+          "line_start": 36,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "text": [
+            {
+              "highlight_end": 71,
+              "highlight_start": 23,
+              "text": "        let expired = lifespan.map_or(true, |l| l.min_lifespan <= l.t);"
+            }
+          ]
+        }
+      ],
+      "code": {
+        "code": "clippy::unnecessary_map_or",
+        "explanation": null
+      }
+    }
+  ]
+}

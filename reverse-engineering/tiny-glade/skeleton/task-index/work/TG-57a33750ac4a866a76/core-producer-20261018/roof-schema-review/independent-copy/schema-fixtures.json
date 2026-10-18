@@ -1,0 +1,145 @@
+{
+  "version": "B",
+  "method": "static PE instruction and key-schema fixtures; no original execution",
+  "roof_fields": [
+    [
+      "id",
+      "u64",
+      0
+    ],
+    [
+      "params",
+      "RoofShapeParams",
+      36
+    ],
+    [
+      "wall_shape",
+      "ShapeParameters",
+      8
+    ],
+    [
+      "pivot_y",
+      "f32",
+      76
+    ],
+    [
+      "color_id",
+      "u32",
+      80
+    ],
+    [
+      "gable_style",
+      "GableRoofStyle",
+      84
+    ],
+    [
+      "flat_roof_style",
+      "FlatRoofStyle",
+      64
+    ]
+  ],
+  "params_fields": [
+    [
+      "profile_01",
+      "f32",
+      8
+    ],
+    [
+      "height_01",
+      "f32",
+      12
+    ],
+    [
+      "tip_offset_01",
+      "Vec2",
+      0
+    ],
+    [
+      "ridge_length_01",
+      "f32",
+      16
+    ],
+    [
+      "ridge_dir",
+      "RoofRidgeDirection",
+      24
+    ],
+    [
+      "eave_length_01",
+      "f32",
+      20
+    ],
+    [
+      "flat_rim_style",
+      "FlatRoofRimStyle",
+      25
+    ]
+  ],
+  "unit_variants": {
+    "ridge_dir": [
+      "Width",
+      "Length"
+    ],
+    "flat_rim_style": [
+      "Rim",
+      "NoRim"
+    ],
+    "gable_style": [
+      "Stepped",
+      "Overhang"
+    ],
+    "material": [
+      "Stone",
+      "Wood"
+    ]
+  },
+  "flat_roof_style": [
+    {
+      "tag": 0,
+      "json": "Matching"
+    },
+    {
+      "tag": 1,
+      "json": "MatchingStoneOnly"
+    },
+    {
+      "tag": 2,
+      "json": {
+        "Override": {
+          "color_id": 4275878552,
+          "material": "Wood",
+          "pattern_id": 305419896
+        }
+      }
+    }
+  ],
+  "circle_rotation": [
+    {
+      "input_bits": "00000000",
+      "omitted": true
+    },
+    {
+      "input_bits": "80000000",
+      "omitted": true
+    },
+    {
+      "input_bits": "3f400000",
+      "json": {
+        "val": 0.75
+      }
+    },
+    {
+      "input_bits": "7fc00000",
+      "json": {
+        "val": null
+      }
+    }
+  ],
+  "unused_native_bytes": [
+    "params26..28",
+    "flat payload for tag0/1",
+    "Roof85..88"
+  ],
+  "rust_tests_written": 6,
+  "rust_tests_executed": false
+}

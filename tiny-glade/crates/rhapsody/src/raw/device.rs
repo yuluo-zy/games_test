@@ -106,6 +106,11 @@ impl Device {
     pub fn frames_in_flight(&self) -> u32 {
         self.frames_in_flight
     }
+    /// Physical command limit; callers must also check the actually enabled
+    /// MultiDrawIndirect / DrawIndirectCount features in this device's caps.
+    pub fn max_draw_indirect_count(&self) -> u32 {
+        self.properties.limits.max_draw_indirect_count
+    }
     pub fn reclamation_config(&self) -> crate::device::ReclamationConfig {
         self.reclamation
     }

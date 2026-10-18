@@ -1,0 +1,113 @@
+140911520: push r14
+140911522: push rsi
+140911523: push rdi
+140911524: push rbx
+140911525: sub rsp, 0x68
+140911529: movaps xmmword ptr [rsp + 0x50], xmm7
+14091152e: movaps xmmword ptr [rsp + 0x40], xmm6
+140911533: mov ebx, r8d
+140911536: mov rdi, rdx
+140911539: mov rsi, rcx
+14091153c: mov byte ptr [rcx + 0x4d0], 0
+140911543: movss xmm7, dword ptr [rdx + 0x10]
+140911548: movsd xmm6, qword ptr [rdx]
+14091154c: movshdup xmm3, xmm6
+140911550: movss xmm0, dword ptr [rip + 0x2199f58] ; 0x142aab4b0 b'5\xfa\x8e<\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xa0@\x00\x00\x00\x00\x00\x00\x00\x00\x00$\xf4\xc8\x00\x00\xc0\xc0\x00\x00\x00\x00\x00\x00\x00\x00\n\xd7#<\n\xd7#<\n\xd7#<\n\xd7#<'
+140911558: movaps xmm2, xmm6
+14091155b: mulss xmm2, xmm0
+14091155f: mulss xmm3, xmm0
+140911563: mov dword ptr [rsp + 0x20], 0
+14091156b: lea rcx, [rsp + 0x30]
+140911570: mov dl, 2
+140911572: call 0x140d4b440
+140911577: movaps xmm0, xmmword ptr [rsp + 0x30]
+14091157c: movss xmm2, dword ptr [rdi + 0x14]
+140911581: xorps xmm4, xmm4
+140911584: mulss xmm4, xmm2
+140911588: movaps xmm1, xmm4
+14091158b: shufps xmm1, xmm2, 0x40
+14091158f: shufps xmm4, xmm2, 0
+140911593: movaps xmm3, xmm0
+140911596: mulps xmm3, xmm0
+140911599: movshdup xmm2, xmm3
+14091159d: addss xmm2, xmm3
+1409115a1: movaps xmm5, xmm3
+1409115a4: unpckhpd xmm5, xmm3
+1409115a8: addss xmm5, xmm2
+1409115ac: shufps xmm5, xmm5, 0
+1409115b0: shufps xmm3, xmm3, 0xff
+1409115b4: subps xmm3, xmm5
+1409115b7: mulps xmm3, xmm4
+1409115ba: movaps xmm2, xmm0
+1409115bd: mulps xmm2, xmm1
+1409115c0: movshdup xmm4, xmm2
+1409115c4: addss xmm4, xmm2
+1409115c8: movhlps xmm2, xmm2
+1409115cb: addss xmm2, xmm4
+1409115cf: addss xmm2, xmm2
+1409115d3: shufps xmm2, xmm2, 0
+1409115d7: mulps xmm2, xmm0
+1409115da: addps xmm2, xmm3
+1409115dd: movaps xmm3, xmm0
+1409115e0: shufps xmm3, xmm0, 0xd2
+1409115e4: mulps xmm3, xmm1
+1409115e7: shufps xmm1, xmm1, 0xd2
+1409115eb: mulps xmm1, xmm0
+1409115ee: subps xmm3, xmm1
+1409115f1: shufps xmm3, xmm3, 0xd2
+1409115f5: addps xmm0, xmm0
+1409115f8: shufps xmm0, xmm0, 0xff
+1409115fc: mulps xmm0, xmm3
+1409115ff: addps xmm0, xmm2
+140911602: movsd xmm1, qword ptr [rdi + 8]
+140911607: addps xmm1, xmm0
+14091160a: movhlps xmm0, xmm0
+14091160d: addss xmm0, xmm7
+140911611: subss xmm0, dword ptr [rsi + 0x140]
+140911619: movsd xmm2, qword ptr [rsi + 0x138]
+140911621: subps xmm1, xmm2
+140911624: movlps qword ptr [rsi + 0x144], xmm1
+14091162b: movss dword ptr [rsi + 0x14c], xmm0
+140911633: mov dword ptr [rsi + 0x118], 0
+14091163d: movzx eax, byte ptr [rip + 0x2d235c5] ; 0x143634c09 b''
+140911644: mov ecx, 0x1c
+140911649: mov edx, 4
+14091164e: call 0x140613c10
+140911653: test rax, rax
+140911656: je 0x1409116f3
+14091165c: mov r14, rax
+14091165f: shufps xmm6, xmm6, 0xe1
+140911663: mov qword ptr [rax], 0
+14091166a: movsd xmm0, qword ptr [rsi + 0x150]
+140911672: subps xmm6, xmm0
+140911675: unpcklpd xmm6, xmmword ptr [rip + 0x20bbcb3] ; 0x1429cd330 b'\x00\x00\x00\x80\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xf3\x045?\x00\x00\x00\x00\xf3\x045?\xf3\x045?\x00\x00\x00\x00\xf3\x045?\x00\x00\x00\x00\xcd\xcc\x8c?\xcd\xcc\x8c?\x00\x00\x00\x00\x00\x00\x00\x00'
+14091167d: movups xmmword ptr [rax + 8], xmm6
+140911681: mov dword ptr [rax + 0x18], 0xbf800000
+140911688: mov rax, qword ptr [rsi + 0x100]
+14091168f: test rax, rax
+140911692: je 0x1409116b1
+140911694: mov rcx, qword ptr [rsi + 0x108]
+14091169b: lea rdx, [rax + rax*8]
+14091169f: lea rdx, [rdx + rdx*2]
+1409116a3: add rdx, rax
+1409116a6: mov r8d, 4
+1409116ac: call 0x140613c20
+1409116b1: mov qword ptr [rsi + 0x100], 1
+1409116bc: mov qword ptr [rsi + 0x108], r14
+1409116c3: mov qword ptr [rsi + 0x110], 1
+1409116ce: test bl, bl
+1409116d0: jne 0x1409116df
+1409116d2: movss xmm0, dword ptr [rdi + 0x18]
+1409116d7: movss dword ptr [rsi + 0x194], xmm0
+1409116df: movaps xmm6, xmmword ptr [rsp + 0x40]
+1409116e4: movaps xmm7, xmmword ptr [rsp + 0x50]
+1409116e9: add rsp, 0x68
+1409116ed: pop rbx
+1409116ee: pop rdi
+1409116ef: pop rsi
+1409116f0: pop r14
+1409116f2: ret 
+1409116f3: mov ecx, 4
+1409116f8: mov edx, 0x1c
+1409116fd: call 0x1428d9000
+140911702: int3 

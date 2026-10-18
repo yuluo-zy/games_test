@@ -1,0 +1,11 @@
+# B host wall unload
+
+Complete5354B walls_on_glade_unload@1402b1cb0 and exact13-resource system wrapper1403bf820/2831B are in unload-original-manifest.json. add_wall_systems@14049356f supplies dl1 to140327c20; its complete PDB generic is OnExit<AppLoadingState>, and into_configs1403c0e50 binds that wrapper. This is OnExit(Game), not Startup or PostUpdate.
+
+Observed mutation order: PublicWalls replaced with new default three maps@1e40..1ed2; WallEntities default@1f24..1f75; WallPlasters default@1fcf..202c; WallHighlight byte+10 cleared@203c (typed projection ty only); PlatformStairsStorage replaced default@2152..21fb; InnerWalls::remove_all@2214 then reset_max_id@2220; Gates::clear@2232; WallSpatialHash::new@223b and replacement; WallColorIds::new@22a9 then full GPU table upload@247e; GateColorIds::new@24ac then upload@266d; HalftimberColorIds::new@269b then upload@2852. Their actual Current Rust owners are reused. Container alloc/hash algorithms stay dependency behavior.
+
+Each color constructor allocates0x14000B u32 and memset0 (140b19890/140b19900/140b19970). GPU code calls14099ca50 returning u64=1, tests low32 nonzero as Option Some, then shifts32 to obtain value0 and fills0x5000 values. This is not GPU color1. Each typed library lookup checks full canonical type name and downcast, missing buffer panics. byte_size>=0x14000 is required; each upload uses one range[0,0x14000], offset0, and unwraps failure before resetting the following CPU table. Candidate preserves this nontransactional order.
+
+PlatformStairsStorage's current representation contains only its present owned segmentation map. The host resets that same authority via Default rather than creating a parallel storage or guessing native hidden fields. Original native reset covers an additional vector and several maps; their business schema remains in that owner. The candidate does not claim those unrelated constructor algorithms recovered.
+
+Required dependency is existing workspace system-wall-constructor, absent from tiny-glade/Cargo.toml today. Root integrates that dependency and lifecycle registrations; this work does not edit shared Cargo/lib or run Cargo. Other original plugins also have OnExit(Game) consumers; this single wall function is not presented as total-world cleanup.

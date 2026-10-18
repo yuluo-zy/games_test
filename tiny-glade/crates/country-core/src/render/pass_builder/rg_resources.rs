@@ -21,22 +21,35 @@ use crate::render::pass_builder::pass_resource_access::RgTexture;
 use crate::render::ssbo::rhapsody_boundary::BufferDesc;
 use crate::rhapsody_types::TextureDesc;
 
-/// `get_or_create_temporal*` 的 `Err` 载荷（原版为 rhapsody 的错误类型；调用点 `Result::unwrap`，故只保留文本）。
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct RgError(pub String);
+/// Preserves the concrete backend source so callers can classify OOM/device loss.
+pub type RgError = anyhow::Error;
 
-/// `get_or_create_temporal`（纹理）的成功结果：纹理 + 标志字节（I：1 = 本帧新建；O：`+0x24 == 2` 是 `Err` niche）。
+/// Recover driver categories across the game-side error envelope.
+pub(crate) fn into_backend_error(error: RgError) -> rhapsody::Error {
+    match error.downcast::<rhapsody::Error>() {
+        Ok(error) => error,
+        Err(error) => rhapsody::Error::InvalidUsage {
+            what: "named graph resource".into(),
+            source: Some(error.into()),
+        },
+    }
+}
+
+/// `get_or_create_temporal`（纹理）的成功结果：纹理 + 历史有效字节。
+/// B `0x1404f702e` 缓存命中写 1，`0x1404f72d6` 新建写 0；2 是 Err niche。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TemporalTexture {
     pub texture: RgTexture,
     pub flag: u8,
 }
 
-/// `get_or_create_temporal_pair` 的成功结果：当前帧 / 上一帧各一张 + 标志（I：`history_is_fresh`）。
+/// `get_or_create_temporal_pair` 的成功结果：当前帧 / 上一帧各一张 + 历史有效标志。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TemporalTexturePair {
     pub current: RgTexture,
     pub previous: RgTexture,
+    /// Historical field name retained for compatibility. True means valid
+    /// history, as consumed by SSGI/ReSTIR/TAA, not a newly allocated texture.
     pub fresh: bool,
 }
 
@@ -135,7 +148,7 @@ impl RgResources for RecordingRg {
                 resource: id,
                 desc: *desc,
             },
-            flag: known.is_none() as u8,
+            flag: known.is_some() as u8,
         })
     }
     fn get_or_create_temporal_texture_pair(
@@ -162,7 +175,7 @@ impl RgResources for RecordingRg {
                 resource: id + 1,
                 desc: *desc,
             },
-            fresh: known.is_none(),
+            fresh: known.is_some(),
         })
     }
     fn get_or_create_temporal_buffer(
@@ -181,7 +194,7 @@ impl RgResources for RecordingRg {
         };
         Ok(TemporalBuffer {
             buffer: RgBuffer { resource: id },
-            flag: known.is_none() as u8,
+            flag: known.is_some() as u8,
         })
     }
 }
@@ -203,22 +216,48 @@ mod tests {
     }
 
     #[test]
-    fn temporal_resources_are_reused_by_name_and_flag_the_first_creation() {
+    fn temporal_resources_are_reused_by_name_and_flag_valid_history() {
         let mut rg = RecordingRg::default();
         let d = TextureDesc::new_2d([8, 8], 9);
         let first = rg.get_or_create_temporal_texture("h", &d).unwrap();
         let again = rg.get_or_create_temporal_texture("h", &d).unwrap();
-        assert_eq!((first.flag, again.flag), (1, 0));
+        assert_eq!((first.flag, again.flag), (0, 1));
         assert_eq!(first.texture.resource, again.texture.resource);
         let p = rg
             .get_or_create_temporal_texture_pair("ssgi_history", &d)
             .unwrap();
-        assert!(p.fresh);
+        assert!(!p.fresh);
         assert_eq!(p.previous.resource, p.current.resource + 1);
         assert!(
-            !rg.get_or_create_temporal_texture_pair("ssgi_history", &d)
+            rg.get_or_create_temporal_texture_pair("ssgi_history", &d)
                 .unwrap()
                 .fresh
         );
+    }
+
+    #[test]
+    fn named_backend_errors_keep_categories_through_context() {
+        for error in [
+            rhapsody::Error::DeviceLost,
+            rhapsody::Error::OutOfHostMemory,
+            rhapsody::Error::OutOfDeviceMemory,
+            rhapsody::Error::Timeout,
+            rhapsody::Error::unsupported("missing capability"),
+        ] {
+            let kind = error.kind();
+            let message = error.to_string();
+            let recovered =
+                into_backend_error(anyhow::Error::new(error).context("history allocation"));
+            assert_eq!(recovered.kind(), kind);
+            assert_eq!(recovered.to_string(), message);
+        }
+        let error = into_backend_error(anyhow::Error::msg("wrong resource type"));
+        assert!(matches!(
+            error,
+            rhapsody::Error::InvalidUsage {
+                source: Some(_),
+                ..
+            }
+        ));
     }
 }

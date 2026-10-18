@@ -61,7 +61,7 @@ pub mod boundary {
             &self,
             name: &str,
             compiled: Arc<CompiledShaderPipeline>,
-        ) -> ComputePipeline;
+        ) -> rhapsody::Result<ComputePipeline>;
         /// `GraphicsDevice::create_raster_pipeline`（O 0x1416a3720；调用点 `Result::unwrap`）。
         fn create_raster_pipeline(
             &self,
@@ -86,18 +86,30 @@ pub struct ComputeShaderProgram {
 impl ComputeShaderProgram {
     /// O 0x140937e10。
     pub fn new(name: &'static str, desc: ComputePipelineDesc, device: &dyn ShaderBackend) -> Self {
-        // shader.rs:72 —— `load_compiled(&desc).unwrap()`。
-        let compiled = device
-            .load_compiled_compute(&desc)
-            .expect("called `Result::unwrap()` on an `Err` value");
-        // 日志级别立即数 5 = Trace；行 74。
+        Self::try_new(name, desc, device).expect("called `Result::unwrap()` on an `Err` value")
+    }
+
+    /// Production allocation/compile admission preserves Timeout, OOM and DeviceLost.
+    /// The recovered business wrapper above retains its original fatal policy.
+    pub fn try_new(
+        name: &'static str,
+        desc: ComputePipelineDesc,
+        device: &dyn ShaderBackend,
+    ) -> rhapsody::Result<Self> {
+        let compiled =
+            device
+                .load_compiled_compute(&desc)
+                .map_err(|error| rhapsody::Error::InvalidUsage {
+                    what: "compiled compute shader artifact".into(),
+                    source: Some(error.into()),
+                })?;
         log::trace!(target: "country_core::render::shader", "Creating pipeline {}", name);
-        let pipeline = device.create_compute_pipeline(name, Arc::new(compiled));
-        Self {
+        let pipeline = device.create_compute_pipeline(name, Arc::new(compiled))?;
+        Ok(Self {
             desc,
             pipeline,
             name,
-        }
+        })
     }
 }
 
@@ -127,24 +139,25 @@ impl RasterShaderProgramVariant {
         &self,
         device: &dyn ShaderBackend,
         key: RasterPipelineKey,
-    ) -> &RasterPipeline {
+    ) -> Result<&RasterPipeline, Error> {
         if let Some(hit) = self.cache.read().get(&key) {
-            return unsafe { &*(&**hit as *const RasterPipeline) };
+            return Ok(unsafe { &*(&**hit as *const RasterPipeline) });
         }
         let mut map = self.cache.write();
+        if map.len() >= 256 && !map.contains_key(&key) {
+            return Err(rhapsody::Error::Timeout.into());
+        }
         let slot = match map.entry(key) {
             std::collections::hash_map::Entry::Occupied(o) => o.into_mut(),
             std::collections::hash_map::Entry::Vacant(v) => {
                 let compiled = Arc::clone(&self.compiled);
                 // shader.rs:190 —— `create_raster_pipeline(..).unwrap()`。
-                let pipeline = device
-                    .create_raster_pipeline(compiled, v.key())
-                    .expect("called `Result::unwrap()` on an `Err` value");
+                let pipeline = device.create_raster_pipeline(compiled, v.key())?;
                 v.insert(Box::new(pipeline))
             }
         };
         // 表项是 `Box`，永不删除、搬动哈希表不会移动其内容，故可在解锁后继续引用。
-        unsafe { &*(&**slot as *const RasterPipeline) }
+        Ok(unsafe { &*(&**slot as *const RasterPipeline) })
     }
 }
 
@@ -239,18 +252,22 @@ impl ShaderBackend for crate::rhapsody_contract::GraphicsDevice {
     fn raster_shader_variants(&self, _desc: &RasterPipelineDesc) -> [RasterPipelineDesc; 2] {
         // 登记缺口 §4.9：shader-pipeline 无 `shader_variants` 模块；原 O 0x1417388a0
         // `get_raster_shader_variants`（两份 desc）待取证。不补造、不假成功。
-        panic!("registered gap (WIRING §4.9): shader_variants::get_raster_shader_variants (O 0x1417388a0) is not recovered")
+        panic!(
+            "registered gap (WIRING §4.9): shader_variants::get_raster_shader_variants (O 0x1417388a0) is not recovered"
+        )
     }
     fn create_compute_pipeline(
         &self,
         _name: &str,
         _compiled: Arc<CompiledShaderPipeline>,
-    ) -> ComputePipeline {
+    ) -> rhapsody::Result<ComputePipeline> {
         // 登记缺口 §2.2：真实路径 = `ShaderLibrary::register_compiled_compute(key, bytes)` →
         // `create_compute_pipeline(key, samplers) -> Arc<VulkanPipeline>`（raw/shader.rs:1220）；
         // 游戏侧 `ComputePipeline { id: u64 }` 装不下 `Arc<VulkanPipeline>`（§4.8 类型缝）。
         // ShaderLibrary 需持有实例 + sampler 表，未恢复。不补造、不假成功。
-        panic!("registered gap (WIRING §2.2): create_compute_pipeline needs ShaderLibrary instance; game-side ComputePipeline cannot hold Arc<VulkanPipeline> (O 0x1416a4b20)")
+        Err(rhapsody::Error::unsupported(
+            "compute pipeline creation requires the renderer-owned ShaderHost",
+        ))
     }
     fn create_raster_pipeline(
         &self,
@@ -288,8 +305,9 @@ impl ShaderBackend for crate::rhapsody_contract::GraphicsDevice {
         &self,
         _name: &str,
         _compiled: Arc<CompiledShaderPipeline>,
-    ) -> ComputePipeline {
-        ComputePipeline { id: self.0 }
+    ) -> rhapsody::Result<ComputePipeline> {
+        // CPU 测试不构造 rhapsody_contract 类型（统一用 `render::test_device::TestDevice`），id 取 0。
+        Ok(ComputePipeline { id: 0 })
     }
     fn create_raster_pipeline(
         &self,
@@ -313,6 +331,7 @@ mod tests {
         log: RefCell<Vec<String>>,
         fail_load: RefCell<Option<String>>,
         fail_pipeline: bool,
+        fail_compute: RefCell<Option<rhapsody::Error>>,
     }
 
     impl ShaderBackend for Mock {
@@ -347,9 +366,12 @@ mod tests {
             &self,
             name: &str,
             _c: Arc<CompiledShaderPipeline>,
-        ) -> ComputePipeline {
+        ) -> rhapsody::Result<ComputePipeline> {
             self.log.borrow_mut().push(format!("create_c {name}"));
-            ComputePipeline { id: 1 }
+            if let Some(error) = self.fail_compute.borrow_mut().take() {
+                return Err(error);
+            }
+            Ok(ComputePipeline { id: 1 })
         }
         fn create_raster_pipeline(
             &self,
@@ -404,6 +426,24 @@ mod tests {
     }
 
     #[test]
+    fn try_compute_program_preserves_pipeline_admission_errors() {
+        for error in [
+            rhapsody::Error::Timeout,
+            rhapsody::Error::OutOfHostMemory,
+            rhapsody::Error::OutOfDeviceMemory,
+            rhapsody::Error::DeviceLost,
+        ] {
+            let expected = core::mem::discriminant(&error);
+            let mock = Mock::default();
+            *mock.fail_compute.borrow_mut() = Some(error);
+            let actual = ComputeShaderProgram::try_new("try", cdesc(), &mock)
+                .err()
+                .unwrap();
+            assert_eq!(core::mem::discriminant(&actual), expected);
+        }
+    }
+
+    #[test]
     fn variants_load_in_order_and_start_empty() {
         let m = Mock::default();
         let v = compile_shader_variants(&rdesc(), &m).unwrap();
@@ -429,17 +469,19 @@ mod tests {
             handle: 9,
             selector: 1,
         };
-        let a = v[0].get_or_generate(&m, k1) as *const RasterPipeline;
-        let b = v[0].get_or_generate(&m, k1) as *const RasterPipeline;
+        let a = v[0].get_or_generate(&m, k1).unwrap() as *const RasterPipeline;
+        let b = v[0].get_or_generate(&m, k1).unwrap() as *const RasterPipeline;
         assert_eq!(a, b);
         assert_eq!(*m.log.borrow(), ["create_r 1"]); // 第二次命中，不再创建
-        let c = v[0].get_or_generate(
-            &m,
-            RasterPipelineKey {
-                handle: 9,
-                selector: 2,
-            },
-        );
+        let c = v[0]
+            .get_or_generate(
+                &m,
+                RasterPipelineKey {
+                    handle: 9,
+                    selector: 2,
+                },
+            )
+            .unwrap();
         assert_eq!(c.id, 2);
         assert_eq!(v[0].cached(), 2);
         assert_eq!(v[1].cached(), 0); // 两个变体的缓存互相独立
@@ -447,20 +489,23 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value")]
-    fn pipeline_creation_failure_panics() {
+    fn pipeline_creation_failure_is_returned_without_caching() {
         let m = Mock {
             fail_pipeline: true,
             ..Default::default()
         };
         let v = compile_shader_variants(&rdesc(), &m).unwrap();
-        v[0].get_or_generate(
-            &m,
-            RasterPipelineKey {
-                handle: 1,
-                selector: 1,
-            },
+        assert!(
+            v[0].get_or_generate(
+                &m,
+                RasterPipelineKey {
+                    handle: 1,
+                    selector: 1
+                },
+            )
+            .is_err()
         );
+        assert_eq!(v[0].cached(), 0);
     }
 
     #[test]
@@ -475,15 +520,17 @@ mod tests {
 
     #[test]
     fn contract_device_is_a_shader_backend() {
-        let dev = crate::rhapsody_contract::GraphicsDevice(3);
+        let dev = crate::render::test_device::TestDevice(3);
         let v = compile_shader_variants(&rdesc(), &dev).unwrap();
-        let p = v[0].get_or_generate(
-            &dev,
-            RasterPipelineKey {
-                handle: 1,
-                selector: 5,
-            },
-        );
+        let p = v[0]
+            .get_or_generate(
+                &dev,
+                RasterPipelineKey {
+                    handle: 1,
+                    selector: 5,
+                },
+            )
+            .unwrap();
         assert_eq!(p.id, 5);
         let c = ComputeShaderProgram::new("c", cdesc(), &dev);
         assert_eq!(c.pipeline.id, 3);

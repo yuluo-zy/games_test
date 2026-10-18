@@ -86,7 +86,19 @@ pub struct StairsStructuralGraph {
 }
 
 impl StairsStructuralGraph {
-    /// `clear`（0x140869a30，O）：清全部表（图节点/边 + 双向映射 + 高 + connections + 边索引）。
+    /// `clear`（0x140869a30，fresh 2026-10-17）：清空整张结构图。
+    ///
+    /// **地址判定**：0x140869a30 的 Ghidra 符号=`StairsStructuralGraph::clear`，函数体=
+    /// 8 张 hashbrown 表的 `memset(ctrl,0xff)+items/growth 归零`（表头
+    /// +0x18/+0x60/+0x90/+0xc0/+0xf0/+0x120/+0x150/+0x180）+ 一个 0x30-stride 条目 Vec
+    /// （+0x08 data / +0x10 len，逐条 `dealloc(size<<4)`）+ 标量 +0x58=0。
+    /// （LOGIC §5 / 任务说明里的"0x140869a30=MagicSupports::clear"经 fresh 反编译驳回；
+    /// MagicSupports::clear 唯一地址 0x140aa8210。）
+    ///
+    /// 本实现清 6 个建模集合：petgraph `UnGraphMap`（内部 = 2 张 IndexMap 表 + 2 个
+    /// Bucket Vec，对应 +0x18/+0x60 与 +0x08/+0x58）+ 4 个显式映射
+    /// （+0x90/+0xc0/+0xf0/+0x150）+ `edge_index`。**U 登记**：+0x120/+0x180 两张未建模表
+    /// 的语义，以及 `edge_index` 的原生落点（+0x48 未见独立表头）。
     pub fn clear(&mut self) {
         self.graph.clear();
         self.collider_to_span.clear();
@@ -182,16 +194,19 @@ impl StairsStructuralGraph {
     }
 
     /// `disconnect_node_by_collider`（0x14086a4c0，O）：枚举邻边移除（保留节点），
-    /// 每条边端点入 connections。
+    /// 每条边只往 connections 插**一个**端点 = **邻接端点 b**（fresh 机器码 0x14086a58e..a5a8：
+    /// petgraph `EdgeMap::edges(node)` 输出 `(a=node, b, &w)`，`[RBP-0x2c]` = b，
+    /// `HashMap::insert<SubworldColliderHandle,()>` 插入 b；Vec 收集 `(node,b)` 后逐边
+    /// `remove_edge(node,b)`）。边权重字节==0 的邻边跳过（机器码 `*edge_weight != '\0'`；
+    /// `StructuralGraphConnection` 未建模，`()` 恒过）。
     pub fn disconnect_node_by_collider(&mut self, collider: StairColliderHandle) {
         let incident: Vec<_> = self
             .graph
             .edges(collider)
             .map(|(a, b, _)| (a, b))
             .collect();
-        for (a, b) in &incident {
-            // 每条边入连接集合（端点之一；端点序语义 U）。
-            self.connections.insert(*a);
+        for (_a, b) in &incident {
+            // 机器码：每邻边插邻接端点 b（`[R13]` = 边迭代输出第二分量）。
             self.connections.insert(*b);
         }
         for (a, b) in incident {
@@ -227,6 +242,12 @@ impl StairsStructuralGraph {
     /// +0x48 边索引表（写 0 语义：装配侧标记；精确类型 IndexMap U）。
     fn edge_index(&mut self) -> &mut HashMap<(StairColliderHandle, StairColliderHandle), u8> {
         &mut self.edge_index
+    }
+
+    /// 测试辅助：清空 connections，以便验证 disconnect 插入的端点来源。
+    #[cfg(test)]
+    pub(crate) fn clear_connections_for_test(&mut self) {
+        self.connections.clear();
     }
 }
 
@@ -295,9 +316,13 @@ mod tests {
             (),
         );
         assert!(graph.graph().contains_edge(collider(5), collider(9)));
+        // 清空 connections 后断开节点 5：机器码只插入邻接端点 9（单端点，非查询节点）。
+        graph.clear_connections_for_test();
         graph.disconnect_node_by_collider(collider(5));
         assert!(!graph.graph().contains_edge(collider(5), collider(9)));
         assert!(graph.graph().contains_node(collider(5)));
         assert!(graph.graph().contains_node(collider(9)));
+        assert!(graph.connections().contains(&collider(9)));
+        assert!(!graph.connections().contains(&collider(5)));
     }
 }

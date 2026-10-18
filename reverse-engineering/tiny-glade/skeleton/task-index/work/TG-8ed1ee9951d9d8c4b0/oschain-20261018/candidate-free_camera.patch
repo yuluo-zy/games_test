@@ -1,0 +1,75 @@
+--- games_test/tiny-glade/crates/country-core/src/systems/camera_rig/free_camera.rs
++++ games_test/tiny-glade/crates/country-core/src/systems/camera_rig/free_camera.rs
+@@ -12,7 +12,7 @@
+ //! | `FreeCamera::update` | 0x140993d30 | O：从单位变换起逐个 driver 更新，结果写回 `final_transform` 并返回 |
+ //!
+ //! 单位变换（0x142aece40）：旋转 `(0,0,0,1)` + 零位置，与 dolly 的 `Transform::IDENTITY` 一致。
+-//! `translate_screen_space`（0x1409938b0）依赖未解的地形采样函数 0x1409e9640，不在这里。
++//! translate_screen_space1409938b0 is restored below against the actual CPU height owner.
+ //!
+ //! dolly 0.6.0 依赖 glam 0.27（原版 `Cargo.lock` 如此），与工作区的 glam 0.29 是两个类型；
+ //! 数值在边界处按分量转换。
+@@ -105,3 +105,63 @@
+         assert!(position.x > 0.0 && position.x < 10.0);
+     }
+ }
++
++/// B Free/Walk share this original driver operation@140993750.
++/// Dolly owns the yaw720 remainder/pitch90 clamp and missing-driver panic.
++pub(crate) fn rotate_rig_yaw_pitch(rig: &mut CameraRig, yaw: f32, pitch: f32) {
++    rig.driver_mut::<YawPitch>()
++        .rotate_yaw_pitch(yaw * 0.5, pitch * 0.5);
++}
++
++pub(crate) fn rig_position(rig: &CameraRig) -> Vec3 {
++    let p = rig.driver::<Position>().position;
++    Vec3::new(p.x, p.y, p.z)
++}
++pub(crate) fn rig_rotation(rig: &CameraRig) -> Quat {
++    let q = rig.final_transform.rotation;
++    Quat::from_xyzw(q.v.x, q.v.y, q.v.z, q.s)
++}
++pub(crate) fn set_rig_position(rig: &mut CameraRig, p: Vec3) {
++    rig.driver_mut::<Position>().position = [p.x, p.y, p.z].into();
++}
++
++/// B FreeCamera::translate_screen_space@1409938b0, full1146B.
++/// Uses the real existing Dolly rig and the same CPU height owner. The floor
++/// is sampled at the smoothed horizontal target, not at the hard-clamped point.
++pub(crate) fn translate_rig_screen_space(
++    rig: &mut CameraRig,
++    movement: Vec3,
++    dt: f32,
++    heights: &crate::resources::terrain_height::TerrainHeightsData,
++) {
++    let p = rig_position(rig);
++    let rotated = rig_rotation(rig) * movement;
++    let target = p + rotated;
++    let alpha = 1.0 - (dt * -8.0).exp();
++    let max = |a: f32, b: f32| if a > b { a } else { b };
++    let min = |a: f32, b: f32| if a < b { a } else { b };
++    let x = target.x + (min(91.0, max(-91.0, target.x)) - target.x) * alpha;
++    let z = target.z + (min(91.0, max(-91.0, target.z)) - target.z) * alpha;
++    let floor = max(heights.sample_at_world_xz(x, z), 0.0) + 0.75;
++    let y = target.y + (min(91.0, max(0.0, target.y)) - target.y) * alpha;
++    let y = if y.is_nan() { floor } else { max(floor, y) };
++    let delta = Vec3::new(
++        (x - p.x) * 20.0 / 60.0,
++        (y - p.y) * 20.0 / 60.0,
++        (z - p.z) * 20.0 / 60.0,
++    );
++    let driver = rig.driver_mut::<Position>();
++    driver.translate([delta.x, delta.y, delta.z]);
++}
++
++#[cfg(test)]
++mod original_motion_tests {
++    use super::*;
++    #[test]
++    fn original_free_translation_samples_the_same_height_grid() {
++        let heights = crate::resources::terrain_height::TerrainHeightsData::new();
++        let mut free = FreeCamera::match_normal(Vec3::new(0.0, 0.0, 0.0), 0.0, 0.0);
++        translate_rig_screen_space(&mut free.rig, Vec3::ZERO, 0.0, &heights);
++        assert_eq!(free.get_position(), Vec3::new(0.0, 0.25, 0.0));
++    }
++}

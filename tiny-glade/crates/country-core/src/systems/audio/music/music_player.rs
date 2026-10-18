@@ -126,19 +126,33 @@ impl<E: MusicEvent> MusicPlayer<E> {
             glade_theme_flag: 0.0,
         }
     }
-    /// 0x1408b6b10: creation errors panic; disabled instances and callback failures
-    /// are dropped. Existing playlist/current index are intentionally retained.
-    pub fn load_tracks<B: MusicBackend<Event = E>>(&mut self, backend: &B, paths: &[String]) {
-        self.track_names.clear();
+    /// 先创建替代曲库，再停止旧曲目并整体替换，避免部分新曲目污染旧状态。
+    /// 字符串切片与 String 共用入口，启动常量无需先分配 Vec<String>。
+    pub fn load_tracks<B: MusicBackend<Event = E>, P: AsRef<str>>(
+        &mut self,
+        backend: &B,
+        paths: &[P],
+    ) {
+        let mut tracks = Vec::with_capacity(paths.len());
+        let mut track_names = Vec::with_capacity(paths.len());
         for path in paths {
+            let path = path.as_ref();
             let mut instance = MusicInstance::create(backend, path);
             if let Some(event) = instance.event_mut() {
                 if event.install_beat_callback().is_ok() {
-                    self.tracks.push(instance);
-                    self.track_names.push(path.clone());
+                    tracks.push(instance);
+                    track_names.push(path.to_owned());
                 }
             }
         }
+        if !self.tracks.is_empty() {
+            self.stop_immediately();
+        }
+        self.current_track = None;
+        self.tracks = tracks;
+        self.track_names = track_names;
+        self.playlist.clear();
+        self.last_timeline_position = 0;
         self.state = PlayerState::SwitchTrack;
     }
     /// Native compares element zero before popping the end, including for one track.
@@ -398,7 +412,7 @@ mod tests {
             position: position.clone(),
         };
         let mut player = MusicPlayer::init(&backend);
-        player.load_tracks(&backend, &["track".into()]);
+        player.load_tracks(&backend, &["track"]);
         let take = || std::mem::take(&mut *calls.lock().unwrap());
         player.update_with_random(100.0, || panic!("not sampled before first loop"));
         assert_eq!(player.state, PlayerState::Playing { elapsed_time: 0.0 });

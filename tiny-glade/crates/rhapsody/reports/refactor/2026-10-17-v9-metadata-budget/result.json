@@ -1,0 +1,96 @@
+{
+  "build": "CARGO_INCREMENTAL=0 cargo test -p rhapsody --all-features --locked --test managed --test managed_alignment --test managed_view_cache --test rg_fixes_vulkan --test device_budget --test suballocation_native --no-run -j 2",
+  "env": {
+    "DYLD_FALLBACK_LIBRARY_PATH": "/opt/homebrew/lib",
+    "RHAPSODY_REQUIRE_VULKAN": "1",
+    "VK_INSTANCE_LAYERS": "VK_LAYER_KHRONOS_validation",
+    "VK_LAYER_VALIDATE_SYNC": "1"
+  },
+  "results": [
+    {
+      "name": "device_budget",
+      "source_binary": "target/debug/deps/device_budget-79c24519268ce063",
+      "binary": "/private/tmp/rhapsody-metadata-device_budget-test-20261017",
+      "sha256": "c0dc2e916a3f7b5ac8289b40d60a285ccde193e2b204b461bf7b87a87cd2583b",
+      "log": "device_budget.log",
+      "exit_code": 0,
+      "passed": 3,
+      "validation_errors": 0,
+      "skips": 0
+    },
+    {
+      "name": "managed",
+      "source_binary": "target/debug/deps/managed-7bf72c50e8117c34",
+      "binary": "/private/tmp/rhapsody-metadata-managed-test-20261017",
+      "sha256": "ec7e366277eb32ed4ac3414a202984dfe99351453f8e9e36fe10d90d5f868772",
+      "log": "managed.log",
+      "exit_code": 0,
+      "passed": 5,
+      "validation_errors": 0,
+      "skips": 0
+    },
+    {
+      "name": "managed_alignment",
+      "source_binary": "target/debug/deps/managed_alignment-8db10fd23dd0953a",
+      "binary": "/private/tmp/rhapsody-metadata-managed_alignment-test-20261017",
+      "sha256": "a845129c7d8aa313b191e3ae4d79ba80564810619f71634ee746974f102c56ca",
+      "log": "managed_alignment.log",
+      "exit_code": 0,
+      "passed": 3,
+      "validation_errors": 0,
+      "skips": 0
+    },
+    {
+      "name": "managed_view_cache",
+      "source_binary": "target/debug/deps/managed_view_cache-b1450fee0bd0895b",
+      "binary": "/private/tmp/rhapsody-metadata-managed_view_cache-test-20261017",
+      "sha256": "25cdcafe65af6f308c2a72fd5f4c339ee3248cb5d930e64607d1610d3fe4cb47",
+      "log": "managed_view_cache.log",
+      "exit_code": 0,
+      "passed": 2,
+      "validation_errors": 0,
+      "skips": 0
+    },
+    {
+      "name": "rg_fixes_vulkan",
+      "source_binary": "target/debug/deps/rg_fixes_vulkan-f2f87dc6f5ee7474",
+      "binary": "/private/tmp/rhapsody-metadata-rg_fixes_vulkan-test-20261017",
+      "sha256": "7ba94df8bfe4332700c919a544e77544fa6adaead6c118ca95c74a8e3c9b46de",
+      "log": "rg_fixes_vulkan.log",
+      "exit_code": 0,
+      "passed": 10,
+      "validation_errors": 0,
+      "skips": 0
+    },
+    {
+      "name": "suballocation_native",
+      "source_binary": "target/debug/deps/suballocation_native-8ee3609df7f49a1a",
+      "binary": "/private/tmp/rhapsody-metadata-suballocation_native-test-20261017",
+      "sha256": "e75e29d92935aa15d1aacfc4161d8efa6e22425ff5d112bdc221454203a45119",
+      "log": "suballocation_native.log",
+      "exit_code": 0,
+      "passed": 4,
+      "validation_errors": 0,
+      "skips": 0
+    }
+  ],
+  "passed": 27,
+  "gpu_cases": 20,
+  "cpu_cases": 7,
+  "source_subset_sha256": {
+    "Cargo.toml": "13fca13cfb202d1228253317be285b5d3b677a49a4b674df5173ac755b7fff57",
+    "Cargo.lock": "17e2fb11e7c05cd98d03ff7255aecbb156fd6dd89aaf5391ee80e522bbe0c26d",
+    "crates/country-core/Cargo.toml": "4da9b45f7470e22ec37e615b1f01af1bc2e2f7ecf51e9e76053db06ff7fe96d9",
+    "crates/rhapsody/src/resource/handle.rs": "173f004167e1697a3d35550f9e180b757997b52bb5e2b16e68e37718591117b7",
+    "crates/rhapsody/src/raw/managed/resources.rs": "1f8c5c23d6f453777f236d5ef7c5ead61e236e35b72bdcf9d06175e4cc8ece24",
+    "crates/rhapsody/src/raw/managed/handle.rs": "d8ce130d599a4f5984a48f6907c3989824ab689a9903be0f558ac2904717b086",
+    "crates/rhapsody/src/raw/buffer.rs": "ee9f1996bca915b06c3cd2387f446676bd3664c870cfae43abb0417c25448cd8",
+    "crates/rhapsody/src/raw/texture.rs": "a8f2b23a8daac03a31e5682be3f4c5e53af42145cf84843880a2546af9b14f62",
+    "crates/rhapsody/src/raw/device.rs": "00ae11c760f063025793243b5adacb5f399ed5b5ee1d2138146ce90f64d95625",
+    "crates/rhapsody/src/rg/transient_resources.rs": "294a7d548d0d60cbed7214046699b12ec888d6043ed6875348698925d5098781",
+    "crates/rhapsody/tests/device_budget.rs": "8dc9d90e2e090bd2a26dabc575ec8e636211dc31a49b04563012b8158aab439d",
+    "crates/rhapsody/tests/suballocation_native.rs": "41ebcaadb11f420baee3f43b87fbb5993600f74bac8c30a8046edf82bff81cc8"
+  },
+  "library_cpu": "247/247 PASS including ten managed index accounting/lifetime tests; separate shared V4 log copied",
+  "scope_note": "Executed copied binaries identify this source closure before subsequent PGO/Window script changes; integrating final matrix rechecks later shared source."
+}

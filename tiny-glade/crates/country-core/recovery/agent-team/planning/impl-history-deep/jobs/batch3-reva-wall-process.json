@@ -1,0 +1,10 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\naddr = currentProgram.getAddressFactory().getAddress(\"140abfb30\")\nf = currentProgram.getFunctionManager().getFunctionAt(addr)\nif f is None:\n    f = currentProgram.getFunctionManager().getFunctionContaining(addr)\nd = DecompInterface()\ntry:\n    d.openProgram(currentProgram)\n    res = d.decompileFunction(f, 180, monitor)\n    if not res.decompileCompleted():\n        print(json.dumps({\"error\": str(res.getErrorMessage())}))\n    else:\n        print(json.dumps({\"func\": str(f.getName()), \"entry\": str(f.getEntryPoint()),\n                          \"size\": int(f.getBody().getNumAddresses()),\n                          \"decomp\": res.getDecompiledFunction().getC()}))\nfinally:\n    d.dispose()\n"
+    },
+    "timeout_seconds": 180
+  }
+]

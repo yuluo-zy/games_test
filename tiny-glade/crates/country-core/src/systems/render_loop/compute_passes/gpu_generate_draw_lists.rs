@@ -20,11 +20,15 @@
 //! * 主函数 RG 资源：`"Nani list sorting histogram"`（`0x6c000` B）、`"Nani filtered instance meta"`、
 //!   `"Dispatch args"`（`0x10 * n`）等名字与创建顺序（[`GPU_GENERATE_RG_RESOURCES`]）。
 //!
-//! # 未恢复 / typed gap（U）
-//! * `GpuWorldSubsetKind` 的 27 个变体与每子集的 `PushConstants` 5 个 u32 的含义、`gpu_world_subset` 的跳表目的地
-//!   （`0x14156b970` 等 `FnOnce` 闭包）——依赖 `render::nani::gpu_world`（他人所有）。
-//! * `RenderSublistsIter` 内部的 sublist 迭代与 `dispatch_indirect_with` 偏移（由 `IndirectArgsType::buffer_offset` 决定，U）。
-//! * 墙实例经 `UnsafeWorldCell::get_entity` 的收集与 `SparseInstanceBuffer::{hide,show}`（属 `geometry::instanced_wall`）。
+//! # 完整编排与边界（B，原范围 fresh RNE）
+//! [`gpu_generate_draw_lists`] 恢复原主函数全部业务阶段：首轮/遮挡补绘、19类主剔除、
+//! 4类 owned-custom、4类 external、4平面间接参数、细/粗排序与最终 draw/indirection。
+//! 原 FilteredInstance 绑定实际复用 NaniInstanceIndirectionSsbo，原 shader族 payload
+//! 分别为8/12/16/20B；不能用统一20B代替。旧显式batch/单次叶接口仍供独立调用，
+//! 顶层使用下方真实 RenderSublists 参数驱动的循环。
+//! 此函数要求原 startup_nani 已生产真实 subset/atlas/visibility 库资源；缺失仍失败。
+//! 原生产调用由 render_world 首轮及 HZB 后各一次；完整 FramePasses 场景闭包尚未安装。
+//! C 同族存在；这里仅声明已绑定 B RNE 的恢复，不宣称跨版行为等价。
 
 // Preserve the original instruction-level expression order/NaN policy, API call shapes, and evidence/test transcription. See README.md.
 #![allow(clippy::redundant_closure, clippy::too_many_arguments)]
@@ -51,8 +55,8 @@ pub const DRAW_TO_DISPATCH_THREADS: u32 = 1;
 /// `cull_and_bucket` 的每子集 push constants（O：20 B = 5 个 u32，`push_constants(.., 0x14)`）。
 pub const PUSH_CONSTANTS_BYTES: usize = 20;
 /// 间接参数槽编号（O：`draw_indexed_indirect_to_dispatch` 前的立即数 `0x400000000b` / `0x400000000a`：低 32 位）。
-pub const ARGS_SLOT_WOODEN_PLANK: u32 = 0xb;
-pub const ARGS_SLOT_ROOF_TILE: u32 = 0xa;
+pub const ARGS_SLOT_FLOWER: u32 = 0xb;
+pub const ARGS_SLOT_BUSH: u32 = 0xa;
 /// 全局"每类使能"字节（O：`cmp byte ptr [0x143634d9c], 0`，`generate_draw_lists` 跳表分支）。
 pub const KIND_ENABLE_FLAG_ADDR: u64 = 0x1_4363_4d9c;
 /// W27/W28 的门控（O：`*0x14362c0d8 == 0`）。
@@ -111,18 +115,18 @@ pub const CULL_WRITE_GROUP: u32 = 1;
 /// 间接 args 槽（O：`IndirectArgsType::buffer_offset`；变体 U，只固化已观测的两个槽号）。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum IndirectArgsType {
-    /// `0x400000000b`：WoodenPlank 外部 cull 后的 `draw_indexed_indirect_to_dispatch`。
-    WoodenPlank,
-    /// `0x400000000a`：RoofTile。
-    RoofTile,
+    /// `0x400000000b`：Flower 外部 GPU cull 前的 `draw_indexed_indirect_to_dispatch`。
+    Flower,
+    /// `0x400000000a`：Bush。
+    Bush,
 }
 
 impl IndirectArgsType {
     /// 槽号（O 立即数低 32 位）。
     pub fn slot(self) -> u32 {
         match self {
-            IndirectArgsType::WoodenPlank => ARGS_SLOT_WOODEN_PLANK,
-            IndirectArgsType::RoofTile => ARGS_SLOT_ROOF_TILE,
+            IndirectArgsType::Flower => ARGS_SLOT_FLOWER,
+            IndirectArgsType::Bush => ARGS_SLOT_BUSH,
         }
     }
     /// 槽的字节偏移：每槽 16 B（`DispatchIndirectCommand`，I）。
@@ -165,7 +169,7 @@ pub trait NaniSsbos {
     type PrevVisibility: LibrarySsbo;
     /// `NaniNextVisibilityBitmaskSsbo`。
     type NextVisibility: LibrarySsbo;
-    /// `indirect_params::DrawIndirectBuffer`（`draw_buffer`，只读）。
+    /// `indirect_params::DrawIndexedIndirectBuffer`（`draw_buffer`，只读）。
     type DrawBuffer: LibrarySsbo;
 }
 
@@ -197,7 +201,7 @@ pub fn draw_indexed_indirect_to_dispatch<S: NaniSsbos>(
 ) -> RecordedComputePass {
     let mut pc = [0u8; 8];
     pc[..4].copy_from_slice(&slot.slot().to_le_bytes());
-    pc[4..].copy_from_slice(&4u32.to_le_bytes());
+    pc[4..].copy_from_slice(&64u32.to_le_bytes());
     env.new_pass(
         "Draw -> dispatch args",
         &"/nani/draw_indexed_indirect_to_dispatch.cs.hlsl",
@@ -215,6 +219,7 @@ pub fn histogram_prefix_sum(env: &mut PassEnv<'_>, inout: &RgBuffer) -> Recorded
         &"/nani/histogram_prefix_sum.cs.hlsl",
     )
     .write_rg_storage_buffer(H_INOUT_BUF, inout)
+    .preserve_storage_buffer_contents(H_INOUT_BUF)
     .dispatch_1d(HISTOGRAM_PREFIX_THREADS)
 }
 
@@ -281,8 +286,25 @@ pub fn create_cull_and_bucket_pass<T: AsComputeShaderSource, S: NaniSsbos>(
         )
         .bind_external_storage_buffer(H_ATLAS_PART_INFO, res.atlas_part_info)
         .bind_external_storage_buffer(H_DRAW_LIST_INFO, res.draw_list_info)
-        .read_storage_buffer::<S::PrevVisibility>(H_PREV_VISIBILITY)
-        .write_storage_buffer_concurrent::<S::NextVisibility>(H_NEXT_VISIBILITY, CULL_WRITE_GROUP);
+        // Original SPIR-V atomics consume these original clear producers.
+        .preserve_storage_buffer_contents(H_FILTERED_INSTANCE_ALLOCATOR)
+        .preserve_storage_buffer_contents(H_OUTPUT_HISTOGRAM);
+    if res.hzb.is_some() {
+        pass = pass
+            .read_storage_buffer::<S::NextVisibility>(H_PREV_VISIBILITY)
+            .write_storage_buffer_concurrent::<S::PrevVisibility>(
+                H_NEXT_VISIBILITY,
+                CULL_WRITE_GROUP,
+            );
+    } else {
+        pass = pass
+            .read_storage_buffer::<S::PrevVisibility>(H_PREV_VISIBILITY)
+            .write_storage_buffer_concurrent::<S::NextVisibility>(
+                H_NEXT_VISIBILITY,
+                CULL_WRITE_GROUP,
+            );
+    }
+    pass = pass.preserve_storage_buffer_contents(H_NEXT_VISIBILITY);
     if let Some(hzb) = res.hzb {
         pass = pass
             .bind_texture(H_HZB_TEX, &hzb, ACCESS_READ)
@@ -331,10 +353,10 @@ pub const FRAME_PASS_ORDER: [&str; 13] = [
     "clear_rg_buffer(NaniNextVisibilityBitmask)",
     "Nani prepare unsorted draw lists",
     "Nani cull & bucket*",
-    "Draw -> dispatch args (WoodenPlank, slot 0xb)",
-    "Nani cull & bucket (WoodenPlank, external)",
-    "Draw -> dispatch args (RoofTile, slot 0xa)",
-    "Nani cull & bucket (RoofTile, external)",
+    "Draw -> dispatch args (Flower, slot 0xb)",
+    "Nani cull & bucket (Flower, external GPU count)",
+    "Draw -> dispatch args (Bush, slot 0xa)",
+    "Nani cull & bucket (Bush, external GPU count)",
     "Nani histogram prefix",
     "Nani unsorted atlas idx prefix sum / fill / generate draws (RenderSublistsIter)",
     "Nani draw cmd histogram prefix / subtotal prefix",
@@ -369,9 +391,7 @@ pub fn generate_draw_lists_pass<S: NaniSsbos>(
         .read_rg_storage_buffer(H_THREAD_GROUP_DRAW_CMD_HISTOGRAM, thread_group_histogram)
         .read_rg_storage_buffer(H_THREAD_GROUP_DRAW_CMD_SUBTOTALS, thread_group_subtotals)
         .read_rg_storage_buffer(H_THREAD_COUNT_BUFFER, thread_count)
-        .dispatch_indirect_with(dispatch_args, move |_api| {
-            let _ = args_offset;
-        })
+        .dispatch_indirect_with(dispatch_args, move |api| api.dispatch_indirect(args_offset))
 }
 
 /// `"Nani draw cmd histogram prefix"` + `"Nani draw cmd subtotal prefix"`（O 0x140a297b0）。
@@ -391,8 +411,8 @@ pub fn group_draw_cmd_prefix_sum<S: NaniSsbos>(
         .write_storage_buffer::<S::DrawListLength>(H_DRAW_LIST_LENGTH_BUFFER)
         .write_rg_storage_buffer(H_INOUT_BUF, inout)
         .write_rg_storage_buffer(H_SUBTOTALS_BUF, subtotals)
-        .dispatch_indirect_with(dispatch_args, move |_| {
-            let _ = histogram_args_offset;
+        .dispatch_indirect_with(dispatch_args, move |api| {
+            api.dispatch_indirect(histogram_args_offset)
         });
     let subtotal = env
         .new_pass(
@@ -400,8 +420,8 @@ pub fn group_draw_cmd_prefix_sum<S: NaniSsbos>(
             &"/nani/subtotal_prefix_sum.cs.hlsl",
         )
         .write_rg_storage_buffer(H_INOUT_BUF, subtotals)
-        .dispatch_indirect_with(dispatch_args, move |_| {
-            let _ = subtotal_args_offset;
+        .dispatch_indirect_with(dispatch_args, move |api| {
+            api.dispatch_indirect(subtotal_args_offset)
         });
     [histogram, subtotal]
 }
@@ -450,7 +470,7 @@ pub fn fill_sorted_instance_list<S: NaniSsbos>(
         .write_rg_storage_buffer_concurrent(H_HISTOGRAM, histogram, CULL_WRITE_GROUP)
         .write_rg_storage_buffer_concurrent(H_SORTED_INSTANCES_BUFFER, &sorted, CULL_WRITE_GROUP)
         .write_storage_buffer_concurrent::<S::DrawList>(H_DRAW_LIST_BUFFER, CULL_WRITE_GROUP)
-        .dispatch_indirect_with(dispatch_args, |_| {});
+        .dispatch_indirect_with(dispatch_args, |api| api.dispatch_indirect(0));
     let sorted_pass = env
         .new_pass(
             "Nani fill sorted instance list",
@@ -462,7 +482,7 @@ pub fn fill_sorted_instance_list<S: NaniSsbos>(
         .read_rg_storage_buffer(H_FILTERED_INSTANCE_META_BUFFER, filtered_meta)
         .write_rg_storage_buffer_concurrent(H_HISTOGRAM, histogram, CULL_WRITE_GROUP)
         .write_rg_storage_buffer_concurrent(H_SORTED_INSTANCES_BUFFER, &sorted, CULL_WRITE_GROUP)
-        .dispatch_indirect_with(dispatch_args, |_| {});
+        .dispatch_indirect_with(dispatch_args, |api| api.dispatch_indirect(0));
     (sorted, [unsorted, sorted_pass])
 }
 
@@ -478,12 +498,30 @@ pub trait WallSsbos {
     type DrawCommands: LibrarySsbo;
 }
 
+/// The two original Vec<(first,count)> captures are independent from Nani's
+/// 20-byte push constants. Highlighted ranges set the count's high bit only in
+/// the shader payload; dispatch still receives the original unflagged count.
+#[derive(Default, Clone, Debug)]
+pub struct WallDrawBatches {
+    pub normal: Vec<crate::render::sparse_instance_buffer::DrawRange>,
+    pub highlighted: Vec<crate::render::sparse_instance_buffer::DrawRange>,
+}
+
+pub fn wall_draw_dispatch(api: &mut dyn ComputeDispatchApi, batches: &WallDrawBatches) {
+    for (ranges, flag) in [(&batches.normal, 0), (&batches.highlighted, 0x8000_0000)] {
+        for &(first, count) in ranges {
+            api.push_constants(&word_bytes(&[first, count | flag]));
+            api.dispatch_3d(DispatchArgs { x: count, y: 1, z: 1, indirect_index: None });
+        }
+    }
+}
+
 /// W21 — `"Generate wall draw lists"`（O 0x14098aaf0，`/wall/generate_draw_lists.cs.hlsl:cs_pass1`）。
 /// 之前：RG 清 `BrickNextVisibilityBitmask`；`SparseInstanceBuffer::{hide,show}`（他人域）。
 pub fn generate_wall_draw_lists<W: WallSsbos>(
     env: &mut PassEnv<'_>,
     draw_indirect_offset: i32,
-    batches: Vec<(PushConstants, u32)>,
+    batches: WallDrawBatches,
 ) -> RecordedComputePass {
     env.new_pass(
         "Generate wall draw lists",
@@ -492,10 +530,12 @@ pub fn generate_wall_draw_lists<W: WallSsbos>(
     .read_storage_buffer::<W::BrickTransform>(H_BRICK_INSTANCE_DATA)
     .read_storage_buffer::<W::BrickPrevVisibility>(H_PREV_VISIBILITY)
     .write_storage_buffer::<W::BrickNextVisibility>(H_NEXT_VISIBILITY)
+    .preserve_storage_buffer_contents(H_NEXT_VISIBILITY)
     .write_storage_buffer::<W::BrickDrawList>(H_BRICK_DRAW_LIST)
     .write_storage_buffer_concurrent::<W::DrawCommands>(H_DRAW_COMMANDS, 1)
+    .preserve_storage_buffer_contents(H_DRAW_COMMANDS)
     .uniform(H_DRAW_INDIRECT_BUFFER_OFFSET, draw_indirect_offset)
-    .dispatch_with(move |api| cull_and_bucket_dispatch(api, &batches))
+    .dispatch_with(move |api| wall_draw_dispatch(api, &batches))
 }
 
 /// W27 — `"Wall pass2 reset inst counts"`（`/wall/reset_pass2_inst_counts.cs.hlsl`，`dispatch_1d`，`.rdata 0x142ab8400`）+
@@ -506,17 +546,33 @@ pub fn generate_wall_draw_lists_pass2<W: WallSsbos>(
     hzb_dims: [u32; 2],
     reset_offset: i32,
     draw_indirect_offset: i32,
-    batches: Vec<(PushConstants, u32)>,
+    batches: WallDrawBatches,
 ) -> [RecordedComputePass; 2] {
-    let reset = env
+    let reset = reset_wall_pass2_inst_counts::<W>(env, reset_offset);
+    let pass2 = wall_draw_lists_pass2::<W>(env, hzb, hzb_dims, draw_indirect_offset, batches);
+    [reset, pass2]
+}
+
+pub fn reset_wall_pass2_inst_counts<W: WallSsbos>(
+    env: &mut PassEnv<'_>, reset_offset: i32,
+) -> RecordedComputePass {
+    env
         .new_pass(
             "Wall pass2 reset inst counts",
             &"/wall/reset_pass2_inst_counts.cs.hlsl",
         )
         .write_storage_buffer::<W::DrawCommands>(H_DRAW_COMMANDS)
+        .preserve_storage_buffer_contents(H_DRAW_COMMANDS)
         .uniform(H_DRAW_INDIRECT_BUFFER_OFFSET, reset_offset)
-        .dispatch_1d(1);
-    let pass2 = env
+        .dispatch_1d(1)
+}
+
+/// Original second round reads the just-written Next and clears/writes Prev.
+pub fn wall_draw_lists_pass2<W: WallSsbos>(
+    env: &mut PassEnv<'_>, hzb: &RgTexture, hzb_dims: [u32; 2],
+    draw_indirect_offset: i32, batches: WallDrawBatches,
+) -> RecordedComputePass {
+    env
         .new_pass(
             "Generate wall draw lists OC/2",
             &"/wall/generate_draw_lists.cs.hlsl:cs_pass2",
@@ -524,13 +580,745 @@ pub fn generate_wall_draw_lists_pass2<W: WallSsbos>(
         .read_storage_buffer::<W::BrickTransform>(H_BRICK_INSTANCE_DATA)
         .bind_texture(H_HZB_TEX, &hzb, ACCESS_READ)
         .uniform(H_HZB_DIMS, hzb_dims)
-        .read_storage_buffer::<W::BrickPrevVisibility>(H_PREV_VISIBILITY)
-        .write_storage_buffer::<W::BrickNextVisibility>(H_NEXT_VISIBILITY)
+        .read_storage_buffer::<W::BrickNextVisibility>(H_PREV_VISIBILITY)
+        .write_storage_buffer::<W::BrickPrevVisibility>(H_NEXT_VISIBILITY)
+        .preserve_storage_buffer_contents(H_NEXT_VISIBILITY)
         .write_storage_buffer::<W::BrickDrawList>(H_BRICK_DRAW_LIST)
         .write_storage_buffer_concurrent::<W::DrawCommands>(H_DRAW_COMMANDS, 1)
+    .preserve_storage_buffer_contents(H_DRAW_COMMANDS)
         .uniform(H_DRAW_INDIRECT_BUFFER_OFFSET, draw_indirect_offset)
-        .dispatch_with(move |api| cull_and_bucket_dispatch(api, &batches));
-    [reset, pass2]
+        .dispatch_with(move |api| wall_draw_dispatch(api, &batches))
+}
+
+// Original B gpu_generate_draw_lists@140987dd0 and its complete callback family.
+// This is source-host integration over the current core PassEnv / graph APIs.
+// The caller provides the real GpuWorld, same-device buffer owner and optional
+// HZB. It neither manufactures a scene nor substitutes CPU counts for GPU args.
+
+use crate::render::nani::{
+    buffers as nani_buffers,
+    cull_shaders::NaniCullAndBucketFamily,
+    gpu_world::{GpuWorld, GpuWorldSubset, GpuWorldSubsetKind},
+};
+use crate::render::pass_builder::compute_pass_builder::{ComputeDispatchIndirectApi, ComputePass};
+use crate::render::ssbo::rhapsody_boundary::GraphicsDevice;
+
+/// The old `FilteredInstance` name is a binding role, not an original SSBO
+/// type. Native 141608260/14160c630 both name NaniInstanceIndirectionSsbo.
+pub struct GameNaniSsbos;
+impl NaniSsbos for GameNaniSsbos {
+    type DrawListOffsets = nani_buffers::NaniDrawListOffsetDefaults;
+    type DrawListLength = nani_buffers::NaniDrawListLengthSsbo;
+    type InstanceIndirectionAllocator = nani_buffers::NaniInstanceIndirectionAllocatorSsbo;
+    type FilteredInstanceAllocator = nani_buffers::NaniFilteredInstanceAllocatorSsbo;
+    type DrawList = nani_buffers::NaniDrawListSsbo;
+    type InstanceIndirection = nani_buffers::NaniInstanceIndirectionSsbo;
+    type FilteredInstance = nani_buffers::NaniInstanceIndirectionSsbo;
+    type PrevVisibility = nani_buffers::NaniPrevVisibilityBitmaskSsbo;
+    type NextVisibility = nani_buffers::NaniNextVisibilityBitmaskSsbo;
+    type DrawBuffer = super::super::indirect_params::DrawIndexedIndirectBuffer;
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct NaniHzb {
+    pub texture: RgTexture,
+    /// Native HZB tuple prefix, not the padded backing image extent.
+    pub inner_dims: [u32; 2],
+}
+
+/// Snapshot of one actual RenderSublistsIter item. All offsets come from the
+/// same GpuWorld NaniDrawListParams; no second allocator/cache is introduced.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct NaniSublist {
+    pub kind: GpuWorldSubsetKind,
+    pub list_index: u32,
+    pub instance_offset: u32,
+    pub command_offset: u32,
+    pub histogram_offset: u32,
+    pub histogram_end: u32,
+    pub subtotal_offset: u32,
+    pub subtotal_end: u32,
+}
+
+pub fn render_sublists(
+    params: &nani_buffers::NaniDrawListParams,
+    fine: bool,
+    range: core::ops::Range<u8>,
+) -> Vec<NaniSublist> {
+    assert!(range.start <= range.end && range.end <= 4);
+    let mut result = Vec::new();
+    for kind in GpuWorldSubsetKind::all() {
+        if kind.use_fine_grained_sorting() != fine {
+            continue;
+        }
+        for lane in range.clone() {
+            let index = kind as usize * 4 + lane as usize;
+            result.push(NaniSublist {
+                kind,
+                list_index: index as u32,
+                instance_offset: params.cmd_offsets[index],
+                command_offset: params.max_instance_offsets[index],
+                histogram_offset: params.fine_grained_offsets[index],
+                histogram_end: params
+                    .fine_grained_offsets
+                    .get(index + 1)
+                    .copied()
+                    .unwrap_or(params.total_fine_grained),
+                subtotal_offset: params.batch_offsets[index],
+                subtotal_end: params
+                    .batch_offsets
+                    .get(index + 1)
+                    .copied()
+                    .unwrap_or(params.total_batches),
+            });
+        }
+    }
+    result
+}
+
+fn word_bytes(words: &[u32]) -> Vec<u8> {
+    words.iter().flat_map(|v| v.to_le_bytes()).collect()
+}
+
+/// A dispatch-argument plane has 108 aligned uint4 records. Native callbacks
+/// select plane 0/1/2/3 for 64/32/32768/subtotal work, respectively.
+pub fn nani_dispatch_offset(plane: u32, list_index: u32) -> u64 {
+    assert!(plane < 4 && list_index < 108);
+    u64::from(plane * 108 + list_index) * 16
+}
+
+fn indirect_commands(
+    pass: ComputePass,
+    args: &RgBuffer,
+    commands: Vec<(Vec<u8>, u64)>,
+) -> RecordedComputePass {
+    pass.dispatch_indirect_with(args, move |api: &mut dyn ComputeDispatchIndirectApi| {
+        for (constants, offset) in commands {
+            api.push_constants(&constants);
+            api.dispatch_indirect(offset);
+        }
+    })
+}
+
+#[derive(Clone, Copy)]
+struct NaniCullSource {
+    family: NaniCullAndBucketFamily,
+    oc_pass: i32,
+}
+impl AsComputeShaderSource for NaniCullSource {
+    fn source_hash(&self) -> u64 {
+        crate::render::utils::calculate_hash(&(self.family.source_uri().as_str(), &self.oc_pass))
+    }
+    fn as_compute_pipeline(
+        &self,
+    ) -> crate::render::pass_builder::shader_uri::ComputeShaderSource<'_> {
+        use crate::render::pass_builder::shader_uri::{
+            ComputeShaderSource, ShaderDefValue, ShaderUri,
+        };
+        ComputeShaderSource {
+            uri: ShaderUri::parse(self.family.path()),
+            defs: ShaderDefValue::default(),
+        }
+    }
+    fn pipeline_defines(&self) -> Vec<(String, String)> {
+        vec![("PERM_oc_pass".to_owned(), self.oc_pass.to_string())]
+    }
+}
+
+fn is_special_cull(kind: GpuWorldSubsetKind) -> bool {
+    matches!(
+        kind,
+        GpuWorldSubsetKind::RoofTile
+            | GpuWorldSubsetKind::Flower
+            | GpuWorldSubsetKind::Bush
+            | GpuWorldSubsetKind::WoodenPlank
+            | GpuWorldSubsetKind::Plaster
+            | GpuWorldSubsetKind::Smoke
+            | GpuWorldSubsetKind::CurvedHalfTimber
+            | GpuWorldSubsetKind::StairsFloor
+    )
+}
+
+fn owned_cull_batch(
+    gpu_world: &GpuWorld,
+    device: &dyn GraphicsDevice,
+) -> Vec<(PushConstants, u32)> {
+    let mut result = Vec::new();
+    for kind in GpuWorldSubsetKind::all() {
+        if is_special_cull(kind) {
+            continue;
+        }
+        let slot = gpu_world.get_subset(kind);
+        let Some(GpuWorldSubset::Owned(subset)) = &*slot else {
+            panic!("Nani generic cull subset {kind:?} is not owned");
+        };
+        let count = subset.instance_count() as u32;
+        if count == 0 {
+            continue;
+        }
+        let address = device.device_address(&subset.cull_buffer().buffer);
+        assert_ne!(address, 0, "Nani cull input has no GPU device address");
+        // Multiunzip@140b2b8f5 writes address@0, kind@8, count@c, list@10.
+        result.push((
+            PushConstants([
+                address as u32,
+                (address >> 32) as u32,
+                kind as u32,
+                count,
+                kind as u32 * 4,
+            ]),
+            count,
+        ));
+    }
+    result
+}
+
+fn record_empty_unsorted(
+    env: &mut PassEnv<'_>,
+    atlas: &ExternalBufferHandle,
+    lists: &[NaniSublist],
+) {
+    let constants: Vec<_> = lists
+        .iter()
+        .map(|s| word_bytes(&[s.kind as u32, s.command_offset]))
+        .collect();
+    let pass = env
+        .new_pass(
+            "Nani prepare unsorted draw lists",
+            &"/nani/prepare_unsorted_draw_lists.cs.hlsl",
+        )
+        .bind_external_storage_buffer(H_ATLAS_PART_INFO, atlas)
+        .write_storage_buffer::<nani_buffers::NaniDrawListSsbo>(H_DRAW_LIST_BUFFER)
+        .dispatch_with(move |api| {
+            for constants in constants {
+                api.push_constants(&constants);
+                api.dispatch_1d(64);
+            }
+        });
+    env.record(pass);
+}
+
+fn record_sparse_cull<
+    T: crate::render::sparse_instance_buffer::SparseSsbo
+        + LibrarySsbo<Storage = crate::render::sparse_instance_buffer::SparseInstanceBuffer<T>>,
+>(
+    env: &mut PassEnv<'_>,
+    source: NaniCullSource,
+    res: &CullBucketResources<'_>,
+    kind: GpuWorldSubsetKind,
+) {
+    let resources = env.pass_resources();
+    let sparse = resources
+        .ssbo_library()
+        .get::<T>()
+        .expect("Nani external sparse instance buffer is missing");
+    let ranges = sparse.to_draw_multi_instanced();
+    let pass = create_cull_and_bucket_pass::<_, GameNaniSsbos>(env, &source, res)
+        // Other cull passes already appended their subset's disjoint payload.
+        .preserve_storage_buffer_contents(H_FILTERED_INSTANCE_BUFFER)
+        .preserve_storage_buffer_contents(H_FILTERED_INSTANCE_META_BUFFER)
+        .read_storage_buffer::<T>(H_INSTANCE_BUFFER)
+        .dispatch_with(move |api| {
+            for (first, count) in ranges {
+                // Original 1415f9630: exactly 16 B, not the main 20 B payload.
+                api.push_constants(&word_bytes(&[kind as u32, first, count, kind as u32 * 4]));
+                api.dispatch_1d(count);
+            }
+        });
+    env.record(pass);
+}
+
+fn record_external_gpu_cull<T: LibrarySsbo>(
+    env: &mut PassEnv<'_>,
+    source: NaniCullSource,
+    res: &CullBucketResources<'_>,
+    kind: GpuWorldSubsetKind,
+    draw_index: u32,
+) {
+    let args = env.create_buffer("Dispatch args", 16, 0);
+    let pass = env
+        .new_pass(
+            "Draw -> dispatch args",
+            &"/nani/draw_indexed_indirect_to_dispatch.cs.hlsl",
+        )
+        .read_storage_buffer::<super::super::indirect_params::DrawIndexedIndirectBuffer>(
+            H_DRAW_BUFFER,
+        )
+        .write_rg_storage_buffer(H_ARGS_BUFFER, &args)
+        .push_constants(&word_bytes(&[draw_index, 64]))
+        .dispatch_1d(1);
+    env.record(pass);
+    let pass = create_cull_and_bucket_pass::<_, GameNaniSsbos>(env, &source, res)
+        // Other cull passes already appended their subset's disjoint payload.
+        .preserve_storage_buffer_contents(H_FILTERED_INSTANCE_BUFFER)
+        .preserve_storage_buffer_contents(H_FILTERED_INSTANCE_META_BUFFER)
+        .push_constants(&word_bytes(&[kind as u32, kind as u32 * 4]))
+        .read_rg_storage_buffer(binding_hash("dispatch_args_buffer"), &args)
+        .read_storage_buffer::<T>(H_INSTANCE_BUFFER)
+        .dispatch_indirect_raw(&args, 0);
+    env.record(pass);
+}
+
+#[derive(Clone, Debug)]
+pub struct NaniGraphOutputs {
+    pub sorting_histogram: RgBuffer,
+    pub filtered_instance_meta: RgBuffer,
+    pub dispatch_args: RgBuffer,
+    pub thread_count: RgBuffer,
+    pub sorted_instances: RgBuffer,
+    pub unsorted_atlas_prefix: RgBuffer,
+    pub draw_cmd_histogram: RgBuffer,
+    pub draw_cmd_subtotals: RgBuffer,
+}
+
+/// Original top-level business orchestration. `None` is the first cull round;
+/// `Some(HZB)` swaps the visibility roles and emits main-camera-only work.
+pub fn gpu_generate_draw_lists(
+    env: &mut PassEnv<'_>,
+    gpu_world: &GpuWorld,
+    device: &dyn GraphicsDevice,
+    hzb: Option<NaniHzb>,
+) -> NaniGraphOutputs {
+    let params = gpu_world.draw_list_params();
+    let range = 0..if hzb.is_some() { 1 } else { 4 };
+    let unsorted = render_sublists(params, false, range.clone());
+    let fine = render_sublists(params, true, range);
+    let histogram = env.create_buffer("Nani list sorting histogram", 0x6c000, 0);
+    let filtered_meta = env.create_buffer(
+        "Nani filtered instance meta",
+        params.total_cmd_offset * 4,
+        0,
+    );
+    let pass = clear_draw_lists::<GameNaniSsbos>(env);
+    env.record(pass);
+    let pass = clear_histogram(env, &histogram);
+    env.record(pass);
+
+    let resources = env.pass_resources();
+    let mut graph = env.world.resource_graph();
+    let visibility = if hzb.is_some() {
+        resources
+            .ssbo_library()
+            .get_rg_buffer::<nani_buffers::NaniPrevVisibilityBitmaskSsbo>(&mut graph)
+    } else {
+        resources
+            .ssbo_library()
+            .get_rg_buffer::<nani_buffers::NaniNextVisibilityBitmaskSsbo>(&mut graph)
+    };
+    crate::render::rg_helpers::clear_rg_buffer(
+        env.frame,
+        u32::try_from(visibility.resource).expect("Nani graph resource exceeds u32"),
+    );
+
+    // Host handles resolve only through the same device's live owner table.
+    let atlas = crate::rhapsody_contract::ManagedHandle(gpu_world.mesh_atlas_info_buf().buffer.id);
+    let draw_info =
+        crate::rhapsody_contract::ManagedHandle(gpu_world.draw_list_info_buf().buffer.id);
+    record_empty_unsorted(env, &atlas, &unsorted);
+    let res = CullBucketResources {
+        filtered_instance_meta: &filtered_meta,
+        output_histogram: &histogram,
+        atlas_part_info: &atlas,
+        draw_list_info: &draw_info,
+        hzb: hzb.as_ref().map(|v| &v.texture),
+        hzb_dims: hzb.as_ref().map(|v| v.inner_dims).unwrap_or([0, 0]),
+    };
+    let oc_pass = i32::from(hzb.is_some());
+    let main = owned_cull_batch(gpu_world, device);
+    let source = NaniCullSource {
+        family: NaniCullAndBucketFamily::Main,
+        oc_pass,
+    };
+    let pass = create_cull_and_bucket_pass::<_, GameNaniSsbos>(env, &source, &res)
+        .dispatch_with(move |api| cull_and_bucket_dispatch(api, &main));
+    env.record(pass);
+
+    // Native second loop distinguishes absent, externally-owned and internally
+    // owned/custom subsets. Unsupported ownership is a native panic, not skip.
+    for kind in GpuWorldSubsetKind::all() {
+        let slot = gpu_world.get_subset(kind);
+        let Some(subset) = &*slot else {
+            continue;
+        };
+        let source = NaniCullSource {
+            family: NaniCullAndBucketFamily::for_kind(kind),
+            oc_pass,
+        };
+        match subset {
+            GpuWorldSubset::External(_) => match kind {
+                GpuWorldSubsetKind::RoofTile => record_sparse_cull::<
+                    crate::resources::roofs::roof_tile_ssbo::RoofTileSsbo,
+                >(env, source, &res, kind),
+                GpuWorldSubsetKind::WoodenPlank => record_sparse_cull::<
+                    crate::resources::roofs::roof_buffers::WoodenPlankSsbo,
+                >(env, source, &res, kind),
+                GpuWorldSubsetKind::Flower => record_external_gpu_cull::<
+                    super::compute_garden::FlowerSsbo,
+                >(env, source, &res, kind, 11),
+                GpuWorldSubsetKind::Bush => record_external_gpu_cull::<
+                    super::compute_garden::BushSsbo,
+                >(env, source, &res, kind, 10),
+                _ => panic!("Nani external subset {kind:?} has no original cull consumer"),
+            },
+            GpuWorldSubset::Owned(subset) => {
+                if matches!(
+                    kind,
+                    GpuWorldSubsetKind::RoofTile
+                        | GpuWorldSubsetKind::WoodenPlank
+                        | GpuWorldSubsetKind::Flower
+                        | GpuWorldSubsetKind::Bush
+                ) {
+                    panic!("Nani subset {kind:?} must be external");
+                }
+                if !is_special_cull(kind) {
+                    continue;
+                }
+                let count = subset.instance_count() as u32;
+                if count == 0 {
+                    continue;
+                }
+                let address = device.device_address(&subset.cull_buffer().buffer);
+                assert_ne!(
+                    address, 0,
+                    "Nani custom cull input has no GPU device address"
+                );
+                // Custom callback payload order differs from Main at words3/4.
+                let constants = word_bytes(&[
+                    address as u32,
+                    (address >> 32) as u32,
+                    kind as u32,
+                    kind as u32 * 4,
+                    count,
+                ]);
+                let imported = subset.data().rg_handle();
+                let buffer = RgBuffer {
+                    resource: u32::try_from(imported.resource)
+                        .expect("Nani graph resource exceeds u32"),
+                };
+                let pass = create_cull_and_bucket_pass::<_, GameNaniSsbos>(env, &source, &res)
+                    .preserve_storage_buffer_contents(H_FILTERED_INSTANCE_BUFFER)
+                    .preserve_storage_buffer_contents(H_FILTERED_INSTANCE_META_BUFFER)
+                    .push_constants(&constants)
+                    .read_rg_storage_buffer(H_INSTANCE_BUFFER, &buffer)
+                    .dispatch_1d(count);
+                env.record(pass);
+            }
+        }
+    }
+    let pass = histogram_prefix_sum(env, &histogram);
+    env.record(pass);
+
+    // 4 argument planes * 108 uint4 commands; this allocation is not one
+    // command per actual CPU instance or only one plane per active subset.
+    let args = env.create_buffer("Nani dispatch args", 0x1b00, 0);
+    let thread_count = env.create_buffer("Nani dispatch thread count", 0x1b0, 0);
+    let pass = env
+        .new_pass(
+            "Nani generate dispatch args",
+            &"/nani/generate_dispatch_args.cs.hlsl",
+        )
+        .read_storage_buffer::<nani_buffers::NaniDrawListOffsetDefaults>(H_INSTANCE_LIST_OFFSET)
+        .read_storage_buffer::<nani_buffers::NaniFilteredInstanceAllocatorSsbo>(
+            H_FILTERED_INSTANCE_ALLOCATOR,
+        )
+        .write_rg_storage_buffer(binding_hash("dispatch_args_buffer"), &args)
+        .write_rg_storage_buffer(H_THREAD_COUNT_BUFFER, &thread_count)
+        .dispatch_1d(108);
+    env.record(pass);
+    let sorted = record_sorted_lists(
+        env,
+        params,
+        &unsorted,
+        &fine,
+        &thread_count,
+        &filtered_meta,
+        &histogram,
+        &args,
+    );
+    // The temporary filtered-index role of the shared indirection buffer ends
+    // here. Original code resets allocators again before emitting final draws.
+    let pass = clear_draw_lists::<GameNaniSsbos>(env);
+    env.record(pass);
+    let histogram_words = params.total_fine_grained.max(1).div_ceil(64) * 64;
+    let subtotals_words = params.total_batches.max(1);
+    let cmd_histogram = env.create_buffer(
+        "Nani draw count per thread group",
+        histogram_words * 4,
+        0x20,
+    );
+    let subtotals = env.create_buffer("Nani group draw subtotals", subtotals_words * 4, 0x20);
+    let pass = env
+        .new_pass(
+            "Nani draw cmd histogram clear",
+            &"/nani/clear_histogram.cs.hlsl",
+        )
+        .write_rg_storage_buffer(H_HISTOGRAM, &cmd_histogram)
+        .dispatch_1d(histogram_words);
+    env.record(pass);
+    let pass = env
+        .new_pass(
+            "Nani draw cmd subtotals clear",
+            &"/nani/clear_subtotals.cs.hlsl",
+        )
+        .write_rg_storage_buffer(binding_hash("subtotals"), &subtotals)
+        .push_constants(&word_bytes(&[subtotals_words]))
+        .dispatch_1d(subtotals_words);
+    env.record(pass);
+    let prefix = record_unsorted_prefix(env, &unsorted);
+    record_final_draw_commands(
+        env,
+        &atlas,
+        &fine,
+        &unsorted,
+        &sorted,
+        &thread_count,
+        &args,
+        &cmd_histogram,
+        &subtotals,
+        &prefix,
+    );
+    NaniGraphOutputs {
+        sorting_histogram: histogram,
+        filtered_instance_meta: filtered_meta,
+        dispatch_args: args,
+        thread_count,
+        sorted_instances: sorted,
+        unsorted_atlas_prefix: prefix,
+        draw_cmd_histogram: cmd_histogram,
+        draw_cmd_subtotals: subtotals,
+    }
+}
+
+fn record_sorted_lists(
+    env: &mut PassEnv<'_>,
+    params: &nani_buffers::NaniDrawListParams,
+    unsorted: &[NaniSublist],
+    fine: &[NaniSublist],
+    thread_count: &RgBuffer,
+    filtered_meta: &RgBuffer,
+    histogram: &RgBuffer,
+    args: &RgBuffer,
+) -> RgBuffer {
+    let sorted = env.create_buffer("Nani sorted instances", params.total_cmd_offset * 4, 0x20);
+    for (is_fine, lists) in [(false, unsorted), (true, fine)] {
+        let (name, path) = if is_fine {
+            (
+                "Nani fill sorted instance list",
+                "/nani/fill_sorted_instance_list.cs.hlsl",
+            )
+        } else {
+            (
+                "Nani fill unsorted instance list",
+                "/nani/fill_unsorted_instance_list.cs.hlsl",
+            )
+        };
+        let mut pass = env
+            .new_pass(name, &path)
+            .read_storage_buffer::<nani_buffers::NaniDrawListOffsetDefaults>(H_INSTANCE_LIST_OFFSET)
+            .read_rg_storage_buffer(H_THREAD_COUNT_BUFFER, thread_count)
+            .read_storage_buffer::<nani_buffers::NaniInstanceIndirectionSsbo>(
+                H_FILTERED_INSTANCE_BUFFER,
+            )
+            .read_rg_storage_buffer(H_FILTERED_INSTANCE_META_BUFFER, filtered_meta)
+            .write_rg_storage_buffer_concurrent(H_HISTOGRAM, histogram, 1)
+            .write_rg_storage_buffer_concurrent(H_SORTED_INSTANCES_BUFFER, &sorted, 1)
+            .preserve_storage_buffer_contents(H_HISTOGRAM);
+        if is_fine {
+            // Same shared buffer, fine and non-fine list_instance_offset regions.
+            pass = pass.preserve_storage_buffer_contents(H_SORTED_INSTANCES_BUFFER);
+        }
+        if !is_fine {
+            pass = pass
+                .write_storage_buffer_concurrent::<nani_buffers::NaniDrawListSsbo>(
+                    H_DRAW_LIST_BUFFER,
+                    1,
+                )
+                .preserve_storage_buffer_contents(H_DRAW_LIST_BUFFER);
+        }
+        let commands = lists
+            .iter()
+            .map(|s| {
+                let mut words = vec![s.list_index, s.instance_offset];
+                if !is_fine {
+                    words.push(s.command_offset);
+                }
+                (word_bytes(&words), nani_dispatch_offset(0, s.list_index))
+            })
+            .collect();
+        let pass = indirect_commands(pass, args, commands);
+        env.record(pass);
+    }
+    sorted
+}
+
+fn record_unsorted_prefix(env: &mut PassEnv<'_>, lists: &[NaniSublist]) -> RgBuffer {
+    let prefix = env.create_buffer("Nani unsorted atlas idx prefix", 0x6c00, 0x20);
+    let constants: Vec<_> = lists
+        .iter()
+        .map(|s| word_bytes(&[s.list_index, s.command_offset]))
+        .collect();
+    let pass = env
+        .new_pass(
+            "Nani unsorted atlas idx prefix sum",
+            &"/nani/prefix_sum_unsorted_instances_per_atlas_entry.cs.hlsl",
+        )
+        .read_storage_buffer::<nani_buffers::NaniDrawListOffsetDefaults>(H_INSTANCE_LIST_OFFSET)
+        .write_storage_buffer::<nani_buffers::NaniDrawListSsbo>(H_DRAW_LIST_BUFFER)
+        .write_rg_storage_buffer(H_UNSORTED_ATLAS_PREFIX, &prefix)
+        .preserve_storage_buffer_contents(H_DRAW_LIST_BUFFER)
+        .dispatch_with(move |api| {
+            for constants in constants {
+                api.push_constants(&constants);
+                api.dispatch_1d(64);
+            }
+        });
+    env.record(pass);
+    prefix
+}
+
+fn record_final_draw_commands(
+    env: &mut PassEnv<'_>,
+    atlas: &ExternalBufferHandle,
+    fine: &[NaniSublist],
+    unsorted: &[NaniSublist],
+    sorted: &RgBuffer,
+    thread_count: &RgBuffer,
+    args: &RgBuffer,
+    histogram: &RgBuffer,
+    subtotals: &RgBuffer,
+    prefix: &RgBuffer,
+) {
+    let pass = env
+        .new_pass(
+            "Nani allocate draws",
+            &"/nani/allocate_draw_commands.cs.hlsl",
+        )
+        .read_rg_storage_buffer(H_SORTED_INSTANCES_BUFFER, sorted)
+        .read_storage_buffer::<nani_buffers::NaniDrawListOffsetDefaults>(H_INSTANCE_LIST_OFFSET)
+        .write_rg_storage_buffer(H_THREAD_GROUP_DRAW_CMD_HISTOGRAM, histogram)
+        // Writes live groups only; following scan reads its fixed maximum range.
+        .preserve_storage_buffer_contents(H_THREAD_GROUP_DRAW_CMD_HISTOGRAM)
+        .read_rg_storage_buffer(H_THREAD_COUNT_BUFFER, thread_count);
+    let commands = fine
+        .iter()
+        .map(|s| {
+            (
+                word_bytes(&[s.list_index, s.histogram_offset]),
+                nani_dispatch_offset(1, s.list_index),
+            )
+        })
+        .collect();
+    let pass = indirect_commands(pass, args, commands);
+    env.record(pass);
+    let pass = env
+        .new_pass(
+            "Nani draw cmd histogram prefix",
+            &"/nani/group_draw_cmd_prefix_sum.cs.hlsl",
+        )
+        .write_storage_buffer::<nani_buffers::NaniDrawListLengthSsbo>(H_DRAW_LIST_LENGTH_BUFFER)
+        .write_rg_storage_buffer(H_INOUT_BUF, histogram)
+        .write_rg_storage_buffer(H_SUBTOTALS_BUF, subtotals)
+        .preserve_storage_buffer_contents(H_DRAW_LIST_LENGTH_BUFFER)
+        .preserve_storage_buffer_contents(H_INOUT_BUF)
+        .preserve_storage_buffer_contents(H_SUBTOTALS_BUF);
+    let commands = fine
+        .iter()
+        .map(|s| {
+            (
+                word_bytes(&[
+                    s.histogram_offset,
+                    s.histogram_end,
+                    s.subtotal_offset,
+                    s.subtotal_end,
+                    s.list_index,
+                ]),
+                nani_dispatch_offset(2, s.list_index),
+            )
+        })
+        .collect();
+    let pass = indirect_commands(pass, args, commands);
+    env.record(pass);
+    let pass = env
+        .new_pass(
+            "Nani draw cmd subtotal prefix",
+            &"/nani/subtotal_prefix_sum.cs.hlsl",
+        )
+        .write_rg_storage_buffer(H_INOUT_BUF, subtotals)
+        .preserve_storage_buffer_contents(H_INOUT_BUF);
+    let commands = fine
+        .iter()
+        .map(|s| {
+            (
+                word_bytes(&[s.subtotal_offset, s.subtotal_end]),
+                nani_dispatch_offset(3, s.list_index),
+            )
+        })
+        .collect();
+    let pass = indirect_commands(pass, args, commands);
+    env.record(pass);
+    let pass = env
+        .new_pass("Nani generate draws", &"/nani/generate_draw_lists.cs.hlsl")
+        .bind_external_storage_buffer(H_ATLAS_PART_INFO, atlas)
+        .read_rg_storage_buffer(H_SORTED_INSTANCES_BUFFER, sorted)
+        .read_storage_buffer::<nani_buffers::NaniDrawListOffsetDefaults>(H_INSTANCE_LIST_OFFSET)
+        .write_storage_buffer_concurrent::<nani_buffers::NaniDrawListSsbo>(H_DRAW_LIST_BUFFER, 1)
+        .write_storage_buffer_concurrent::<nani_buffers::NaniInstanceIndirectionSsbo>(
+            H_INSTANCE_INDIRECTION_BUFFER,
+            1,
+        )
+        .write_storage_buffer_concurrent::<nani_buffers::NaniInstanceIndirectionAllocatorSsbo>(
+            H_INSTANCE_INDIRECTION_ALLOCATOR,
+            1,
+        )
+        .preserve_storage_buffer_contents(H_DRAW_LIST_BUFFER)
+        .preserve_storage_buffer_contents(H_INSTANCE_INDIRECTION_ALLOCATOR)
+        .read_rg_storage_buffer(H_THREAD_GROUP_DRAW_CMD_HISTOGRAM, histogram)
+        .read_rg_storage_buffer(H_THREAD_GROUP_DRAW_CMD_SUBTOTALS, subtotals)
+        .read_rg_storage_buffer(H_THREAD_COUNT_BUFFER, thread_count);
+    let commands = fine
+        .iter()
+        .map(|s| {
+            (
+                word_bytes(&[
+                    s.kind as u32,
+                    s.list_index,
+                    s.command_offset,
+                    s.histogram_offset,
+                    s.subtotal_offset,
+                ]),
+                nani_dispatch_offset(1, s.list_index),
+            )
+        })
+        .collect();
+    let pass = indirect_commands(pass, args, commands);
+    env.record(pass);
+    let pass = env
+        .new_pass(
+            "Nani fill unsorted instance indirection",
+            &"/nani/fill_unsorted_instance_indirection.cs.hlsl",
+        )
+        .read_rg_storage_buffer(H_SORTED_INSTANCES_BUFFER, sorted)
+        .read_storage_buffer::<nani_buffers::NaniDrawListOffsetDefaults>(H_INSTANCE_LIST_OFFSET)
+        .read_rg_storage_buffer(H_THREAD_COUNT_BUFFER, thread_count)
+        .write_rg_storage_buffer_concurrent(H_UNSORTED_ATLAS_PREFIX, prefix, 1)
+        .write_storage_buffer_concurrent::<nani_buffers::NaniInstanceIndirectionSsbo>(
+            H_INSTANCE_INDIRECTION_BUFFER,
+            1,
+        )
+        .preserve_storage_buffer_contents(H_UNSORTED_ATLAS_PREFIX)
+        // Non-fine output occupies a different original range from fine draws.
+        .preserve_storage_buffer_contents(H_INSTANCE_INDIRECTION_BUFFER);
+    let commands = unsorted
+        .iter()
+        .map(|s| {
+            (
+                word_bytes(&[s.list_index]),
+                nani_dispatch_offset(0, s.list_index),
+            )
+        })
+        .collect();
+    let pass = indirect_commands(pass, args, commands);
+    env.record(pass);
 }
 
 #[cfg(test)]
@@ -540,6 +1328,39 @@ mod tests {
     use crate::render::pass_builder::pass_resource_access::PassBinding;
     use crate::rhapsody_types::TextureDesc;
     use crate::systems::render_loop::compute_passes::pass_kit::test_env::*;
+
+    #[test]
+    fn original_sublists_keep_all_four_lanes_and_separate_fine_from_unsorted() {
+        let params = nani_buffers::nani_calculate_draw_list_params();
+        let fine = render_sublists(&params, true, 0..4);
+        let unsorted = render_sublists(&params, false, 0..4);
+        assert_eq!(
+            fine.iter().map(|s| s.list_index).collect::<Vec<_>>(),
+            (0..8).collect::<Vec<_>>()
+        );
+        assert_eq!(unsorted.len(), 100);
+        assert_eq!(unsorted[0].list_index, 8);
+        assert_eq!(unsorted[0].instance_offset, 65_536);
+        assert_eq!(unsorted[0].command_offset, 65_536);
+        assert_eq!(unsorted.last().unwrap().list_index, 107);
+        assert_eq!(unsorted.last().unwrap().command_offset, 71_872);
+        assert_eq!(fine.last().unwrap().histogram_end, 2_048);
+        assert_eq!(fine.last().unwrap().subtotal_end, 8);
+        assert_eq!(
+            render_sublists(&params, true, 0..1)
+                .iter()
+                .map(|s| s.list_index)
+                .collect::<Vec<_>>(),
+            [0, 4]
+        );
+        assert_eq!(render_sublists(&params, false, 0..1).len(), 25);
+        // Exact original callback constants: these are byte offsets into
+        // four 108-entry uint4 argument planes, not offsets into CPU vectors.
+        assert_eq!(nani_dispatch_offset(0, 7), 0x70);
+        assert_eq!(nani_dispatch_offset(1, 7), 0x730);
+        assert_eq!(nani_dispatch_offset(2, 7), 0xdf0);
+        assert_eq!(nani_dispatch_offset(3, 7), 0x14b0);
+    }
 
     macro_rules! carriers {
         ($($n:ident),*) => {$(
@@ -703,13 +1524,13 @@ mod tests {
             }
         ));
         let p = e.run(|penv| {
-            draw_indexed_indirect_to_dispatch::<N>(penv, &buf, IndirectArgsType::WoodenPlank)
+            draw_indexed_indirect_to_dispatch::<N>(penv, &buf, IndirectArgsType::Flower)
         });
         assert!(matches!(
             p.dispatch,
             DispatchMode::Threads { x: 1, y: 1, z: 1 }
         ));
-        assert_eq!(p.push_constants, [0xb, 0, 0, 0, 4, 0, 0, 0]);
+        assert_eq!(p.push_constants, [0xb, 0, 0, 0, 64, 0, 0, 0]);
         assert_eq!(
             e.world.backend.paths.borrow().as_slice(),
             [
@@ -818,6 +1639,29 @@ mod tests {
     }
 
     #[test]
+    fn wall_dispatch_keeps_the_original_eight_bytes_and_unflagged_thread_count() {
+        #[derive(Default)]
+        struct WallApi { payloads: Vec<Vec<u8>>, threads: Vec<u32> }
+        impl ComputeDispatchApi for WallApi {
+            fn dispatch_1d(&mut self, _: u32) { unreachable!() }
+            fn dispatch_2d(&mut self, _: u32, _: u32) { unreachable!() }
+            fn dispatch_3d(&mut self, args: DispatchArgs) {
+                assert_eq!((args.y, args.z, args.indirect_index), (1, 1, None));
+                self.threads.push(args.x);
+            }
+            fn push_constants(&mut self, bytes: &[u8]) { self.payloads.push(bytes.to_vec()); }
+            fn track_gpu_lifetime(&mut self) {}
+        }
+        let mut api = WallApi::default();
+        wall_draw_dispatch(&mut api, &WallDrawBatches {
+            normal: vec![(64, 33), (160, 0)], highlighted: vec![(1024, 65)],
+        });
+        assert_eq!(api.payloads, vec![word_bytes(&[64, 33]), word_bytes(&[160, 0]),
+            word_bytes(&[1024, 0x8000_0041])]);
+        assert_eq!(api.threads, [33, 0, 65]);
+    }
+
+    #[test]
     fn cull_and_bucket_binding_order_and_hzb_variant() {
         let mut e = make_env();
         let meta = RgBuffer { resource: 41 };
@@ -865,7 +1709,7 @@ mod tests {
     fn wall_passes_declare_the_original_names_and_entries() {
         let mut e = make_env();
         let p1 = e.run(|penv| {
-            generate_wall_draw_lists::<W>(penv, 3, vec![(PushConstants::default(), 4)])
+            generate_wall_draw_lists::<W>(penv, 3, WallDrawBatches { normal: vec![(0, 4)], highlighted: vec![] })
         });
         assert_eq!(p1.name, "Generate wall draw lists");
         assert!(matches!(p1.dispatch, DispatchMode::With(_)));
@@ -874,7 +1718,7 @@ mod tests {
             desc: TextureDesc::new([4, 4, 1], 0, 0),
         };
         let [reset, p2] =
-            e.run(|penv| generate_wall_draw_lists_pass2::<W>(penv, &hzb, [4, 4], 1, 2, vec![]));
+            e.run(|penv| generate_wall_draw_lists_pass2::<W>(penv, &hzb, [4, 4], 1, 2, WallDrawBatches::default()));
         assert_eq!(
             (reset.name, p2.name),
             (

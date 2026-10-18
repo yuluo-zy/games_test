@@ -1,0 +1,230 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/ui_clutter/ui_autoclutter.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/ui_clutter/ui_autoclutter.rs
+@@ -19,8 +19,8 @@
+ //!   ∧ 标签字节 0x0c）→ `DecoratorStorage` 探测 → `UiState::add` → 0x60 记录类型
+ //!   3..5 子跳表 `&DAT_142abbcdc`（UNRECOVERED_JUMPTABLE）。
+ //!
+-//! **早期 Rust 的 `InstaCreateDeco` / `InstaCreateStairPoint` 事件系编造**（fresh 无这些
+-//! 事件/命令），已删。宿主实体表（0xa0B/0x60/0x30 记录）由 [`AutoClutterChildTable`]
++//! B 完整 FunctionSystem 与真实 producer/consumer 已确认 `InstaCreateDeco` /
++//! `InstaCreateStairPoint` 是创建命令；早前以 show_decorator_icon 地址排除它们的结论撤回。宿主实体表（0xa0B/0x60/0x30 记录）由 [`AutoClutterChildTable`]
+ //! 适配承载，尾部 raycast/UI 注册路径登记待接。
+ use bevy_ecs::prelude::*;
+ use hashbrown::HashMap;
+@@ -28,6 +28,41 @@
+ use crate::systems::mode_manager::{AppMode, EraserLayer};
+ 
+ use super::rmb_autoclutter::EvRightClickedAutoClutter;
++
++/// Original B InstaCreateDeco: an actual creation command, not the right-click
++/// input. Native EventId and inactive extra/padding bytes are not business data.
++#[derive(Event, Debug)]
++pub struct InstaCreateDeco {
++    /// Existing source component's 24-byte destination union. Semantic decoding
++    /// remains with placement; never synthesize it from an auto-clutter ID.
++    pub destination: [u64; 3],
++    pub extra: Option<crate::resources::walls::decorator::DecoratorExtraInfo>,
++    pub rotation: f32,
++    pub position: glam::Vec3,
++    pub ty: crate::systems::mode_manager::ClutterMeshTy,
++}
++
++/// Original B fixed-size stair creation business value. Its typed native Events
++/// destructor releases only two 120-byte-stride buffers, with no element/Arc/Vec
++/// destruction. No native pointer is converted to a Rust reference or owner.
++/// Destination enums and seven color bytes still need semantic recovery; the
++/// original placement consumer is not reconstructed by this transport type.
++/// No Default/Clone/Copy is supplied for unknown active application data.
++#[derive(Event, Debug)]
++pub struct InstaCreateStairPoint {
++    observed: [u8; 0x70],
++}
++impl InstaCreateStairPoint {
++    /// Accept a complete already observed payload, excluding its EventId.
++    /// The writer always supplies kind0x3f, also checked by original placement.
++    pub fn from_observed(observed: [u8; 0x70]) -> Self {
++        assert_eq!(observed[0x68], 0x3f, "original stair creation kind");
++        Self { observed }
++    }
++    pub fn observed(&self) -> &[u8; 0x70] {
++        &self.observed
++    }
++}
+ 
+ /// DisplayChildAutoClutterInfo（O：0x60 B；`grow_one<DisplayChildAutoClutterInfo>`）。
+ #[repr(C)]
+@@ -59,9 +94,7 @@
+ /// clutter→parent 映射（O：`HashMap<DecoratorId, Vec<DisplayChildAutoClutterInfo>>`；
+ /// `maintain_autoclutter_parent_hashmap` 在函数内维护）。
+ #[derive(Resource, Clone, Debug, Default)]
+-pub struct AutoClutterParentMap(
+-    pub HashMap<u32, Vec<DisplayChildAutoClutterInfo>>,
+-);
++pub struct AutoClutterParentMap(pub HashMap<u32, Vec<DisplayChildAutoClutterInfo>>);
+ 
+ impl AutoClutterParentMap {
+     /// 维护一条记录（已有键 push，新键新建 Vec）。
+@@ -79,9 +112,16 @@
+     mut right_clicks: EventReader<EvRightClickedAutoClutter>,
+     children: Res<AutoClutterChildTable>,
+     mut parents: ResMut<AutoClutterParentMap>,
++    index: Res<super::AutoClutterEntityIndex>,
++    mut hits: EventWriter<super::rmb_autoclutter::RmbAutoClutterHit>,
+ ) {
+     // **主循环**：点击 → 查 clutter 记录 → 逐子项维护 parent 映射。
++    // Preserve the existing parent-map adapter, but forward only the newest
++    // click. B @14099d6c8..d7ca consumes the complete reader and validates that
++    // latest generation-bearing entity ID before invoking the RMB helper.
++    let mut latest = None;
+     for click in right_clicks.read() {
++        latest = Some(click.entity);
+         let Some(list) = children.0.get(&click.entity) else {
+             continue;
+         };
+@@ -93,14 +133,17 @@
+         }
+     }
+ 
++    if let Some(entity) = latest.filter(|entity| index.0.contains_key(entity)) {
++        hits.write(super::rmb_autoclutter::RmbAutoClutterHit(entity));
++    }
++
+     // **第二事件队列**（O：d2s 索引 + 位图命中 → 调 `handle_rmb_autoclutter`）。
+     // crate 以产出 RmbAutoClutterHit 事件承载（宿主实体表命中判定在宿主侧，I）。
+ 
+     // **尾部模式门**（O：`disc-6 < 0xf → disc-5`，否则 0；接受 disc==0 或
+     // disc==9 ∧ payload 低字节==3）。
+     let disc = mode.native_tag();
+-    let accepted = disc == 0
+-        || matches!(*mode, AppMode::Eraser(EraserLayer::Bulldoze));
++    let accepted = disc == 0 || matches!(*mode, AppMode::Eraser(EraserLayer::Bulldoze));
+     if !accepted {
+         return;
+     }
+@@ -108,3 +151,126 @@
+     // `UiState::add` → 0x60 记录类型 3..5 子跳表（&DAT_142abbcdc，UNRECOVERED_JUMPTABLE）。
+     // 宿主射线/装饰存储/UI 名队列未接入，登记待接（不伪造实体/事件）。
+ }
++
++#[cfg(test)]
++mod lifecycle_integration_tests {
++    use super::*;
++    use crate::{
++        resources::history::{EditType, History, auto_clutter_edit::AutoClutterEdit},
++        systems::{
++            backend::input::input_record_replay::InputReplayCommand,
++            history::recording::{history_finish_recording_system, register_recording_events},
++            mode_manager::ClutterMeshTy,
++            ui_clutter::{
++                AutoClutterEntityIndex, AutoClutterRecord,
++                registration::register_ui_clutter_resources,
++                rmb_autoclutter::handle_rmb_autoclutter,
++            },
++        },
++    };
++
++    fn record() -> AutoClutterRecord {
++        AutoClutterRecord {
++            clutter_id: 73,
++            // Source destination observed in native writer fixture deco[0].
++            // Its placement enum semantics are outside this arrival test.
++            destination: [0x75dd10c75433c8db, 0xe038d51dca8bf380, 0xecd9fb9341459e0e],
++            position: glam::Vec3::new(1.0, 2.0, 3.0),
++            w: 1.0,
++            x: 0.0,
++            y: 0.0,
++            z: 0.0,
++            entry_angle: 0.0,
++            roof_space: false,
++            local_x: 1.0,
++            local_y: 0.0,
++            ty: ClutterMeshTy::Bench,
++        }
++    }
++    fn world() -> World {
++        let mut world = World::new();
++        register_ui_clutter_resources(&mut world);
++        register_recording_events(&mut world);
++        world.insert_resource(AppMode::default());
++        world.insert_resource(History::<()>::empty_glade());
++        world
++            .resource_mut::<AutoClutterEntityIndex>()
++            .0
++            .insert(42, record());
++        world
++    }
++
++    #[test]
++    fn actual_latest_right_click_emits_creation_and_commits_its_history() {
++        let mut world = world();
++        assert!(!world.resource::<History>().is_recording());
++        world.send_event(EvRightClickedAutoClutter { entity: 42 });
++        let mut schedule = Schedule::default();
++        schedule.add_systems(
++            (
++                ui_convert_autoclutter_to_decoclutter,
++                handle_rmb_autoclutter::<()>,
++                history_finish_recording_system::<()>,
++            )
++                .chain(),
++        );
++        schedule.run(&mut world);
++        let history = world.resource::<History>();
++        assert!(!history.is_recording());
++        assert_eq!(history.ledger().entries.len(), 1);
++        assert!(
++            world
++                .resource::<crate::systems::ui_clutter::DeletedAutoClutter>()
++                .is_deleted(73)
++        );
++        assert!(
++            !world
++                .resource::<crate::systems::ui_clutter::DeletedAutoClutter>()
++                .is_deleted(42)
++        );
++        assert!(
++            matches!(&history.ledger().entries[0].edits[..], [EditType::AutoClutter(edit)] if **edit == (AutoClutterEdit::Delete { id: 73 }))
++        );
++        let events = world.resource::<Events<InstaCreateDeco>>();
++        let output = events.get_cursor().read(events).next().unwrap();
++        assert_eq!(output.destination, record().destination);
++        assert!(output.extra.is_none());
++        assert_eq!(output.position, record().position);
++        assert_eq!(output.ty, record().ty);
++        let sync = world.resource::<Events<InputReplayCommand>>();
++        assert_eq!(
++            sync.get_cursor().read(sync).cloned().collect::<Vec<_>>(),
++            [InputReplayCommand::Sync { record: true }]
++        );
++        // Actual placement consumption remains an explicit upper-module gap.
++    }
++
++    #[test]
++    fn latest_invalid_entity_suppresses_earlier_valid_click_and_consumes_reader() {
++        let mut world = world();
++        // A Direct record has no entity identity and cannot bypass the native
++        // generation-bearing entity guard on the ui_convert input path.
++        world
++            .resource_mut::<super::super::rmb_autoclutter::RmbAutoClutterDirect>()
++            .0 = Some(record());
++        world.send_event(EvRightClickedAutoClutter { entity: 42 });
++        world.send_event(EvRightClickedAutoClutter { entity: 999 });
++        let mut schedule = Schedule::default();
++        schedule.add_systems(
++            (
++                ui_convert_autoclutter_to_decoclutter,
++                handle_rmb_autoclutter::<()>,
++            )
++                .chain(),
++        );
++        schedule.run(&mut world);
++        assert!(world.resource::<Events<InstaCreateDeco>>().is_empty());
++        assert!(!world.resource::<History>().is_recording());
++        schedule.run(&mut world);
++        assert!(world.resource::<Events<InstaCreateDeco>>().is_empty());
++        world.send_event(EvRightClickedAutoClutter { entity: 999 });
++        world.send_event(EvRightClickedAutoClutter { entity: 42 });
++        schedule.run(&mut world);
++        assert_eq!(world.resource::<Events<InstaCreateDeco>>().len(), 1);
++    }
++}

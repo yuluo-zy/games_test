@@ -1,0 +1,49 @@
+{
+  "scope": "B-only native semantics; new safe phase/host adapter candidates; not C equivalence or completed Surface GPU claim",
+  "original_native_manifest_sha256": "b1da2a786c1de73fa452e12a032aca0200e234bc40dfae58ebc9648d5b21ae0f",
+  "phase_order": [
+    "prepare under shared WorldAccess + existing PassEnv.frame",
+    "drop compute facade and immutable World borrow",
+    "original raster list callbacks under DrawPassCtx &mut World",
+    "drop raster context",
+    "finish under shared WorldAccess + same frame/session"
+  ],
+  "files": [
+    {
+      "patch": "01-surface-owned-raster-trace.patch",
+      "sha256": "25a79846a8300a468a0cd4bb9db1180810104c0d10ad6cb73a187b95cbe701aa",
+      "dry_run_exit": 0,
+      "dry_run_output": "patching file 'crates/country-core/src/systems/render_loop/draw_passes/transparency_pass/surface_support.rs'\n"
+    },
+    {
+      "patch": "02-water-sequential-phases.patch",
+      "sha256": "d1e5a456fafb56caa5962a6bd89f8928c64a0832536dea6b7c337dcdb8ce0a89",
+      "dry_run_exit": 0,
+      "dry_run_output": "patching file 'crates/country-core/src/systems/render_loop/draw_passes/transparency_pass/surface_water.rs'\n"
+    },
+    {
+      "patch": "03-ice-sequential-phases.patch",
+      "sha256": "1382505e19d86e2957fcec98785d9935cd877a8a34b7f318914fa4f18a9c9ad8",
+      "dry_run_exit": 0,
+      "dry_run_output": "patching file 'crates/country-core/src/systems/render_loop/draw_passes/transparency_pass/surface_ice.rs'\n"
+    },
+    {
+      "patch": "04-world-surface-host.patch",
+      "sha256": "422b678239358921b6918ff3a112d51c13c08c06dcede99b6364f3db0cc6227a",
+      "dry_run_exit": 0,
+      "dry_run_output": "patching file 'crates/tiny-glade/src/world_surface.rs'\n"
+    },
+    {
+      "patch": "05-surface-phase-regression.patch",
+      "sha256": "e685201d1b27393e6515d7974be881d91306d8f9400d7669f2dc4d311f3b278b",
+      "dry_run_exit": 0,
+      "dry_run_output": "patching file 'crates/country-core/src/systems/render_loop/draw_passes/transparency_pass/surface_tests.rs'\n"
+    }
+  ],
+  "root_calling_boundary": "inside existing main FrameSetup after build_world_lighting W43, call world_surface::build_world_surface with actual GladeType/process-byte controls, then current build_world_postprocess W47",
+  "still_required": [
+    "core canonical texture flags0x108 and exact mutable format image producer",
+    "fragment atomics and per-buffer/texture preserving metadata",
+    "original Surface shader first-history content facts and actual full Surface GPU tests"
+  ]
+}

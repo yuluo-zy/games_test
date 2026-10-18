@@ -1,0 +1,163 @@
+
+void __cdecl country_core::systems::ui_clutter::debug_spawn_clutter::debug_spawn_all_clutter(void)
+
+{
+  undefined1 uVar1;
+  undefined4 uVar2;
+  ulonglong *puVar3;
+  ulonglong uVar4;
+  undefined8 uVar5;
+  undefined4 *puVar6;
+  longlong lVar7;
+  undefined8 *in_RCX;
+  ulonglong uVar8;
+  undefined8 *in_RDX;
+  longlong lVar9;
+  longlong *in_R8;
+  ulonglong uVar10;
+  ulonglong uVar11;
+  ulonglong uVar12;
+  longlong lVar13;
+  ulonglong uVar14;
+  ulonglong uVar15;
+  longlong lVar16;
+  float fVar17;
+  undefined4 extraout_XMM0_Da;
+  float fVar18;
+  float fVar19;
+  longlong in_stack_00000028;
+  ushort uStack_9a;
+  
+  puVar3 = (ulonglong *)*in_RDX;
+  lVar16 = in_RDX[1];
+  uVar4 = *puVar3;
+  uVar11 = 0;
+  uVar12 = uVar4 - *(ulonglong *)(lVar16 + 0x18);
+  if (uVar4 < *(ulonglong *)(lVar16 + 0x18)) {
+    uVar12 = uVar11;
+  }
+  uVar8 = uVar4 - *(ulonglong *)(lVar16 + 0x38);
+  if (uVar4 < *(ulonglong *)(lVar16 + 0x38)) {
+    uVar8 = uVar11;
+  }
+  uVar4 = *(ulonglong *)(lVar16 + 0x10);
+  uVar14 = *(ulonglong *)(lVar16 + 0x30);
+  uVar10 = uVar14 - uVar8;
+  if (uVar14 < uVar8) {
+    uVar10 = uVar11;
+  }
+  uVar15 = uVar4 - uVar12;
+  if (uVar4 < uVar12) {
+    uVar15 = uVar11;
+  }
+  uVar11 = *(ulonglong *)(lVar16 + 0x40);
+  lVar9 = *(longlong *)(lVar16 + 8);
+  lVar16 = *(longlong *)(lVar16 + 0x28);
+  *puVar3 = (uVar11 - uVar10) - uVar15;
+  if (uVar4 >= uVar12 && uVar4 - uVar12 != 0 || uVar14 >= uVar8 && uVar14 - uVar8 != 0) {
+    lVar16 = lVar16 + uVar8 * 0x10;
+    lVar9 = lVar9 + uVar12 * 0x10;
+    if (uVar4 < uVar12) {
+      lVar9 = 8;
+    }
+    lVar13 = 0;
+    if (uVar12 < uVar4) {
+      lVar13 = lVar9 + -0x10 + uVar15 * 0x10;
+    }
+    if (uVar14 < uVar8) {
+      lVar16 = 8;
+    }
+    lVar16 = lVar16 + -0x10 + uVar10 * 0x10;
+    if (uVar14 <= uVar8) {
+      lVar16 = lVar13;
+    }
+    *puVar3 = uVar11;
+    **(undefined4 **)(in_stack_00000028 + 0x10) = *(undefined4 *)(in_stack_00000028 + 0x1c);
+    resources::history::History::start_input_recording();
+    uVar1 = *(undefined1 *)(lVar16 + 8);
+    *(undefined4 *)in_R8[2] = *(undefined4 *)((longlong)in_R8 + 0x1c);
+    lVar16 = *in_R8;
+    lVar9 = *(longlong *)(lVar16 + 0x30);
+    uVar5 = *(undefined8 *)(lVar16 + 0x40);
+    if (lVar9 == *(longlong *)(lVar16 + 0x20)) {
+      alloc::raw_vec::RawVec::
+      grow_one<indexmap::Bucket<tuple_<country_core::systems::collision::world::SubworldColliderHandle,country_core::systems::collision::world::SubworldColliderHandle>,country_core::systems::collision::intersect_meshes::MeshIntersectionArtifacts>,alloc::alloc::Global>
+                ();
+    }
+    lVar13 = *(longlong *)(lVar16 + 0x28);
+    *(undefined4 *)(lVar13 + lVar9 * 0x48) = 2;
+    *(undefined1 *)(lVar13 + 0x29 + lVar9 * 0x48) = 3;
+    puVar3 = (ulonglong *)(lVar13 + 0x2a + lVar9 * 0x48);
+    *puVar3 = (ulonglong)uStack_9a;
+    puVar3[1] = 0;
+    *(undefined2 *)(lVar13 + 0x3a + lVar9 * 0x48) = 0;
+    *(undefined1 *)(lVar13 + 0x3c + lVar9 * 0x48) = uVar1;
+    *(undefined8 *)(lVar13 + 0x40 + lVar9 * 0x48) = uVar5;
+    *(longlong *)(lVar16 + 0x30) = lVar9 + 1;
+    *(longlong *)(lVar16 + 0x40) = *(longlong *)(lVar16 + 0x40) + 1;
+  }
+  puVar3 = (ulonglong *)*in_RCX;
+  lVar16 = in_RCX[1];
+  uVar4 = *puVar3;
+  uVar11 = 0;
+  uVar12 = uVar4 - *(ulonglong *)(lVar16 + 0x18);
+  if (uVar4 < *(ulonglong *)(lVar16 + 0x18)) {
+    uVar12 = uVar11;
+  }
+  uVar8 = uVar4 - *(ulonglong *)(lVar16 + 0x38);
+  if (uVar4 < *(ulonglong *)(lVar16 + 0x38)) {
+    uVar8 = uVar11;
+  }
+  uVar4 = *(ulonglong *)(lVar16 + 0x30);
+  uVar14 = uVar4 - uVar8;
+  if (uVar8 > uVar4) {
+    uVar14 = uVar11;
+  }
+  uVar10 = *(ulonglong *)(lVar16 + 0x10);
+  uVar15 = uVar10 - uVar12;
+  if (uVar12 > uVar10) {
+    uVar15 = uVar11;
+  }
+  uVar11 = *(ulonglong *)(lVar16 + 0x40);
+  *puVar3 = uVar11 - (uVar15 + uVar14);
+  if (uVar12 <= uVar10 && uVar10 - uVar12 != 0 || uVar8 <= uVar4 && uVar4 - uVar8 != 0) {
+    *puVar3 = uVar11;
+    **(undefined4 **)(in_stack_00000028 + 0x10) = *(undefined4 *)(in_stack_00000028 + 0x1c);
+    resources::history::History::start_input_recording();
+    uVar2 = *(undefined4 *)((longlong)in_R8 + 0x1c);
+    lVar16 = *in_R8;
+    puVar6 = (undefined4 *)in_R8[2];
+    lVar9 = 0;
+    do {
+      fVar19 = SQRT((float)lVar9);
+      fVar18 = (float)lVar9 * 2.3998277;
+      fVar17 = cosf(fVar18);
+      fVar18 = sinf(fVar18);
+      resources::terrain_height::TerrainHeightsData::
+      sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>();
+      uVar1 = (&resources::clutter_meshes::AVAILABLE_DECOCLUTTER)[lVar9];
+      *puVar6 = uVar2;
+      lVar13 = *(longlong *)(lVar16 + 0x30);
+      uVar5 = *(undefined8 *)(lVar16 + 0x40);
+      if (lVar13 == *(longlong *)(lVar16 + 0x20)) {
+        alloc::raw_vec::RawVec::
+        grow_one<indexmap::Bucket<tuple_<country_core::systems::collision::world::SubworldColliderHandle,country_core::systems::collision::world::SubworldColliderHandle>,country_core::systems::collision::intersect_meshes::MeshIntersectionArtifacts>,alloc::alloc::Global>
+                  ();
+      }
+      lVar9 = lVar9 + 1;
+      lVar7 = *(longlong *)(lVar16 + 0x28);
+      *(undefined4 *)(lVar7 + lVar13 * 0x48) = 2;
+      *(undefined1 *)(lVar7 + 0x29 + lVar13 * 0x48) = 3;
+      *(undefined4 *)(lVar7 + 0x2c + lVar13 * 0x48) = 0;
+      *(float *)(lVar7 + 0x30 + lVar13 * 0x48) = fVar17 * fVar19;
+      *(undefined4 *)(lVar7 + 0x34 + lVar13 * 0x48) = extraout_XMM0_Da;
+      *(float *)(lVar7 + 0x38 + lVar13 * 0x48) = fVar18 * fVar19;
+      *(undefined1 *)(lVar7 + 0x3c + lVar13 * 0x48) = uVar1;
+      *(undefined8 *)(lVar7 + 0x40 + lVar13 * 0x48) = uVar5;
+      *(longlong *)(lVar16 + 0x30) = lVar13 + 1;
+      *(longlong *)(lVar16 + 0x40) = *(longlong *)(lVar16 + 0x40) + 1;
+    } while (lVar9 != 0x2a);
+  }
+  return;
+}
+

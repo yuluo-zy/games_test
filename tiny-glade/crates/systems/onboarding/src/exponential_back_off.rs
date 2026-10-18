@@ -1,59 +1,119 @@
-//! exponential_back_off（0x142284800，源码 L0）。
+//! exponential_back_off（O 0x142284800，1294）：提示重复触发的指数退避。
 //!
-//! 证据（skeleton PDB）：raw_vec + f32::_ —— 资源化退避计时。语义：提示重复触发
-//! 的指数退避（触发间隔逐次加倍，封顶后复位）。
+//! 真逻辑（evidence/batch3-core.txt fresh 反编译）：
+//! - `Local<TimeSinceMouseMoved>` 累加 dt；`CursorMovedScreenSpace` 有事件 → 归零。
+//! - 每帧 `GameProfile[0x1f0] += dt`（累加器；仅当鼠标事件或 local<30.0 时）。
+//! - 两对 (计时,冷却)：A=0x1e0/0x1e4、B=0x1e8/0x1ec；冷却缺省 720.0（0x44340000）。
+//! - 对 A：读事件（**读者类型 U**，本重建以 DisplayHintRequest 承载）→ 计时归零、
+//!   `cooldown=clamp(old*1.5,720,10800)` 写回、写 WriteSettingsFileCmd。
+//! - 对 B：读 `ModeJustChanged`（0x28B 步长，首载荷工具 id ∈ {1,2} 才触发）→ 同上。
+//! - 标志 A（profile[0x1f4]）/ B（profile[0x1f5]）：`local<10.0` 才计时+=dt、
+//!   `clamp[0,cooldown]`（cooldown<0 走 f32::clamp panic）；`timer>=cooldown` →
+//!   写 WriteSettingsFileCmd + 清对应条件资源（10B）+ 清标志。
+//!
+//! **已重建（2026-10-17，coregap-2 GameProfile 计时区 + WriteSettingsFileCmd 落库）**；
+//! 分歧点：对 A 读者事件类型 U（候选 DisplayHintRequest，stride 无取证）。
 
 use bevy_ecs::prelude::*;
+use country_core::game_profile::TutorialCooldowns;
 use country_core::resources::time::GameTime;
 
-/// 指数退避计时（资源）。
-#[derive(Resource, Clone, Debug)]
-pub struct ExponentialBackOff {
-    /// 各提示类型的退避剩余时间。
-    pub remaining: [f32; 16],
-    /// 各提示类型的触发计数（决定退避底数）。
-    pub strikes: [u32; 16],
-}
+/// 自上次鼠标移动的时间（O：`Local<TimeSinceMouseMoved>`，f32 累加器）。
+#[derive(Clone, Copy, Debug, Default)]
+pub struct TimeSinceMouseMoved(pub f32);
 
-impl Default for ExponentialBackOff {
-    fn default() -> Self {
-        Self {
-            remaining: [0.0; 16],
-            strikes: [0; 16],
-        }
-    }
-}
-
-/// 退避底数（O 语义：触发间隔 2^n 指数加倍；基础 0.5s）。
-pub const BACKOFF_BASE_S: f32 = 0.5;
-
-/// exponential_back_off（0x142284800）：计时推进 + 查询门控。
+/// exponential_back_off（O 0x142284800）：见模块头真逻辑。**重建**（2026-10-17）。
 pub fn exponential_back_off(
+    mut local: Local<TimeSinceMouseMoved>,
+    mut mouse: EventReader<country_core::resources::window::CursorMovedScreenSpace>,
     time: Res<GameTime>,
-    mut back_off: ResMut<ExponentialBackOff>,
+    mut profile: ResMut<country_core::game_profile::GameProfile>,
+    mut writer: EventWriter<country_core::resources::events::WriteSettingsFileCmd>,
+    mut trigger_a: EventReader<crate::DisplayHintRequest>,
+    mut mode_b: EventReader<country_core::resources::events::ModeJustChanged>,
+    mut deselect: ResMut<crate::hint_deselect_tool::DeselectToolHintConditions>,
+    mut focused: ResMut<crate::hint_focused_edit::FocusedEditHintConditions>,
 ) {
     let dt = time.delta;
-    for r in &mut back_off.remaining {
-        *r = (*r - dt).max(0.0);
+    local.0 += dt;
+    // O：鼠标事件 → local 归零且本帧累加 profile[0x1f0]；无事件仅 local<30.0 累加。
+    let mouse_moved = mouse.read().next().is_some();
+    let accumulate = if mouse_moved {
+        local.0 = 0.0;
+        true
+    } else {
+        local.0 < 30.0
+    };
+    if accumulate {
+        profile.tutorial_cooldowns.time_since_mouse_moved += dt;
+    }
+    let flag_a = profile.tutorial; // 0x1f4
+    let flag_b = profile.focused_edit_completed; // 0x1f5
+
+    // ---- 对 A（0x1e0/0x1e4，tutorial 标志 0x1f4）----
+    let mut cooldown_a = profile.tutorial_cooldowns.cooldown_a;
+    if cooldown_a == 0.0 && !cooldown_a.is_nan() {
+        cooldown_a = TutorialCooldowns::DEFAULT_COOLDOWN;
+        profile.tutorial_cooldowns.cooldown_a = cooldown_a;
+    }
+    if trigger_a.read().next().is_some() {
+        profile.tutorial_cooldowns.timer_a = 0.0;
+        cooldown_a = (cooldown_a * 1.5).clamp(720.0, 10800.0);
+        profile.tutorial_cooldowns.cooldown_a = cooldown_a;
+        writer.write(country_core::resources::events::WriteSettingsFileCmd);
+    }
+    if flag_a {
+        if local.0 < 10.0 {
+            let mut timer = profile.tutorial_cooldowns.timer_a + dt;
+            timer = timer.clamp(0.0, cooldown_a); // cooldown<0 → f32::clamp panic（O）
+            profile.tutorial_cooldowns.timer_a = timer;
+        }
+        if cooldown_a <= profile.tutorial_cooldowns.timer_a {
+            writer.write(country_core::resources::events::WriteSettingsFileCmd);
+            *deselect = crate::hint_deselect_tool::DeselectToolHintConditions::default();
+            profile.tutorial = false;
+        }
+    }
+
+    // ---- 对 B（0x1e8/0x1ec，focused_edit 标志 0x1f5）----
+    let mut cooldown_b = profile.tutorial_cooldowns.cooldown_b;
+    if cooldown_b == 0.0 && !cooldown_b.is_nan() {
+        cooldown_b = TutorialCooldowns::DEFAULT_COOLDOWN;
+        profile.tutorial_cooldowns.cooldown_b = cooldown_b;
+    }
+    // O：B 读者（ModeJustChanged 0x28B）首事件载荷 u32 ∈ {1,2}（`*piVar11-1U<2`）。
+    let mode_triggered = mode_b
+        .read()
+        .next()
+        .is_some_and(|e| (1..=2).contains(&e.tool));
+    if mode_triggered {
+        profile.tutorial_cooldowns.timer_b = 0.0;
+        cooldown_b = (cooldown_b * 1.5).clamp(720.0, 10800.0);
+        profile.tutorial_cooldowns.cooldown_b = cooldown_b;
+        writer.write(country_core::resources::events::WriteSettingsFileCmd);
+    }
+    if flag_b {
+        if local.0 < 10.0 {
+            let mut timer = profile.tutorial_cooldowns.timer_b + dt;
+            timer = timer.clamp(0.0, cooldown_b);
+            profile.tutorial_cooldowns.timer_b = timer;
+        }
+        if cooldown_b <= profile.tutorial_cooldowns.timer_b {
+            writer.write(country_core::resources::events::WriteSettingsFileCmd);
+            *focused = crate::hint_focused_edit::FocusedEditHintConditions::default();
+            profile.focused_edit_completed = false;
+        }
     }
 }
 
-impl ExponentialBackOff {
-    /// 触发（返回是否允许显示：退避已过）。
-    pub fn trigger(&mut self, hint: usize) -> bool {
-        let hint = hint.min(15);
-        if self.remaining[hint] > 0.0 {
-            return false;
-        }
-        self.strikes[hint] += 1;
-        let base = BACKOFF_BASE_S * (1u64 << self.strikes[hint].min(6)) as f32;
-        self.remaining[hint] = base;
-        true
-    }
-    /// 重置（提示完成后）。
-    pub fn reset(&mut self, hint: usize) {
-        let hint = hint.min(15);
-        self.remaining[hint] = 0.0;
-        self.strikes[hint] = 0;
-    }
+/// inline helper（O 133）：冷却已过（对 A：timer >= cooldown）。语义 I。
+pub fn has_cooldown_elapsed(profile: &country_core::game_profile::GameProfile) -> bool {
+    let tc = &profile.tutorial_cooldowns;
+    tc.timer_a >= tc.cooldown_a
+}
+
+/// inline helper（O 137）：推进退避计时（对 A：clamp 到 [0, cooldown]）。语义 I。
+pub fn advance_exp_backoff(profile: &mut country_core::game_profile::GameProfile) {
+    let tc = &mut profile.tutorial_cooldowns;
+    tc.timer_a = tc.timer_a.clamp(0.0, tc.cooldown_a);
 }

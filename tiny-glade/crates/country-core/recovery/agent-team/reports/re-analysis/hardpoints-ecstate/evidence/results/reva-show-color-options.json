@@ -1,0 +1,532 @@
+{
+  "backend": "reva",
+  "worker": "hdpts-ecstate",
+  "access": "write",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x14229a7f0\")\nf = prog.getFunctionManager().getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at 0x14229a7f0\")\nout[\"name\"]=str(f.getName()); out[\"body\"]=str(f.getBody()); out[\"signature\"]=str(f.getSignature())\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 600, monitor)\n    if not res.decompileCompleted():\n        out[\"error\"]=str(res.getErrorMessage())\n    else:\n        out[\"decompiled\"]=res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))",
+        "timeoutSeconds": 700
+      },
+      "args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x14229a7f0\")\nf = prog.getFunctionManager().getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at 0x14229a7f0\")\nout[\"name\"]=str(f.getName()); out[\"body\"]=str(f.getBody()); out[\"signature\"]=str(f.getSignature())\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 600, monitor)\n    if not res.decompileCompleted():\n        out[\"error\"]=str(res.getErrorMessage())\n    else:\n        out[\"decompiled\"]=res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))",
+        "timeoutSeconds": 700
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"name\\\": \\\"show_color_options\\\", \\\"body\\\": \\\"[[14229a7f0, 14229a9d4] [14229a9f8, 14229aa21] [14229aa30, 14229aa6d] [1422a0db7, 1422a0e18]]\\\", \\\"signature\\\": \\\"void __cdecl show_color_options(void)\\\", \\\"decompiled\\\": \\\"\\\\n/* WARNING: Instruction at (ram,0x0001422ae473) overlaps instruction at (ram,0x0001422ae470)\\\\n    */\\\\n/* WARNING: Control flow encountered bad instruction data */\\\\n/* WARNING: This function may have set the stack pointer */\\\\n/* WARNING: Type propagation algorithm not settling */\\\\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\\\\n\\\\nvoid __cdecl system_color::show_color_menu::show_color_options(void)\\\\n\\\\n{\\\\n  uint *puVar1;\\\\n  undefined1 auVar2 [16];\\\\n  longlong lVar3;\\\\n  longlong lVar4;\\\\n  ushort uVar5;\\\\n  undefined8 uVar6;\\\\n  char extraout_AL;\\\\n  byte bVar7;\\\\n  char extraout_AL_00;\\\\n  char extraout_AL_01;\\\\n  char cVar8;\\\\n  byte extraout_AL_02;\\\\n  char extraout_AL_03;\\\\n  char extraout_AL_04;\\\\n  char extraout_AL_05;\\\\n  char extraout_AL_06;\\\\n  int iVar9;\\\\n  int *piVar10;\\\\n  undefined1 (*extraout_RAX) [16];\\\\n  undefined8 *extraout_RAX_00;\\\\n  undefined8 *extraout_RAX_01;\\\\n  undefined8 *extraout_RAX_02;\\\\n  undefined8 *extraout_RAX_03;\\\\n  undefined8 *extraout_RAX_04;\\\\n  undefined8 *extraout_RAX_05;\\\\n  undefined1 (*extraout_RAX_06) [16];\\\\n  undefined8 *extraout_RAX_07;\\\\n  undefined8 *extraout_RAX_08;\\\\n  undefined1 (*extraout_RAX_09) [16];\\\\n  longlong extraout_RAX_10;\\\\n  longlong extraout_RAX_11;\\\\n  undefined1 (*extraout_RAX_12) [16];\\\\n  undefined8 *extraout_RAX_13;\\\\n  ulonglong extraout_RAX_14;\\\\n  ulonglong extraout_RAX_15;\\\\n  ulonglong extraout_RAX_16;\\\\n  undefined1 (*extraout_RAX_17) [16];\\\\n  undefined8 *extraout_RAX_18;\\\\n  undefined8 *extraout_RAX_19;\\\\n  undefined8 *extraout_RAX_20;\\\\n  undefined1 (*extraout_RAX_21) [16];\\\\n  char *extraout_RAX_22;\\\\n  char *extraout_RAX_23;\\\\n  undefined8 *extraout_RAX_24;\\\\n  undefined8 *extraout_RAX_25;\\\\n  undefined8 *extraout_RAX_26;\\\\n  undefined8 *extraout_RAX_27;\\\\n  longlong extraout_RAX_28;\\\\n  undefined1 (*extraout_RAX_29) [16];\\\\n  undefined1 (*extraout_RAX_30) [16];\\\\n  undefined1 (*extraout_RAX_31) [16];\\\\n  undefined8 *extraout_RAX_32;\\\\n  undefined8 *extraout_RAX_33;\\\\n  undefined8 *extraout_RAX_34;\\\\n  undefined8 *extraout_RAX_35;\\\\n  undefined8 *extraout_RAX_36;\\\\n  undefined1 (*extraout_RAX_37) [16];\\\\n  undefined8 *extraout_RAX_38;\\\\n  undefined1 (*extraout_RAX_39) [16];\\\\n  char *extraout_RAX_40;\\\\n  char *extraout_RAX_41;\\\\n  undefined8 *extraout_RAX_42;\\\\n  undefined8 *extraout_RAX_43;\\\\n  undefined8 *extraout_RAX_44;\\\\n  undefined8 *extraout_RAX_45;\\\\n  undefined8 *extraout_RAX_46;\\\\n  undefined8 *extraout_RAX_47;\\\\n  undefined1 (*extraout_RAX_48) [16];\\\\n  undefined8 *extraout_RAX_49;\\\\n  undefined8 *extraout_RAX_50;\\\\n  undefined8 *extraout_RAX_51;\\\\n  undefined8 *extraout_RAX_52;\\\\n  undefined8 *extraout_RAX_53;\\\\n  undefined1 (*extraout_RAX_54) [16];\\\\n  undefined8 *extraout_RAX_55;\\\\n  undefined1 (*extraout_RAX_56) [16];\\\\n  undefined8 *extraout_RAX_57;\\\\n  undefined1 (*extraout_RAX_58) [16];\\\\n  undefined8 *extraout_RAX_59;\\\\n  undefined8 *extraout_RAX_60;\\\\n  undefined8 *extraout_RAX_61;\\\\n  undefined8 *extraout_RAX_62;\\\\n  undefined8 *extraout_RAX_63;\\\\n  undefined8 *extraout_RAX_64;\\\\n  undefined1 (*extraout_RAX_65) [16];\\\\n  char *extraout_RAX_66;\\\\n  undefined8 *extraout_RAX_67;\\\\n  undefined8 *extraout_RAX_68;\\\\n  undefined1 (*extraout_RAX_69) [16];\\\\n  undefined8 *extraout_RAX_70;\\\\n  undefined8 *extraout_RAX_71;\\\\n  undefined8 *extraout_RAX_72;\\\\n  undefined8 *extraout_RAX_73;\\\\n  undefined8 *extraout_RAX_74;\\\\n  undefined1 (*_Src) [16];\\\\n  undefined4 *extraout_RAX_75;\\\\n  char *extraout_RAX_76;\\\\n  char *extraout_RAX_77;\\\\n  undefined1 (*extraout_RAX_78) [16];\\\\n  char *extraout_RAX_79;\\\\n  char *extraout_RAX_80;\\\\n  char *extraout_RAX_81;\\\\n  longlong extraout_RAX_82;\\\\n  undefined1 (*extraout_RAX_83) [16];\\\\n  undefined8 *extraout_RAX_84;\\\\n  undefined8 *extraout_RAX_85;\\\\n  undefined1 (*extraout_RAX_86) [16];\\\\n  undefined8 *extraout_RAX_87;\\\\n  undefined1 (*extraout_RAX_88) [16];\\\\n  char *extraout_RAX_89;\\\\n  char *extraout_RAX_90;\\\\n  undefined8 *extraout_RAX_91;\\\\n  undefined8 *extraout_RAX_92;\\\\n  undefined8 *extraout_RAX_93;\\\\n  undefined8 *extraout_RAX_94;\\\\n  undefined8 *extraout_RAX_95;\\\\n  undefined8 *extraout_RAX_96;\\\\n  ulonglong extraout_RAX_97;\\\\n  undefined1 (*_Src_00) [16];\\\\n  undefined4 *extraout_RAX_98;\\\\n  undefined8 *extraout_RAX_99;\\\\n  undefined8 *extraout_RAX_x00100;\\\\n  undefined8 *extraout_RAX_x00101;\\\\n  undefined1 (*_Src_01) [16];\\\\n  undefined4 *extraout_RAX_x00102;\\\\n  undefined8 *extraout_RAX_x00103;\\\\n  undefined8 *extraout_RAX_x00104;\\\\n  undefined8 *extraout_RAX_x00105;\\\\n  ulonglong extraout_RAX_x00106;\\\\n  undefined1 (*extraout_RAX_x00107) [16];\\\\n  undefined8 *extraout_RAX_x00108;\\\\n  undefined8 *extraout_RAX_x00109;\\\\n  undefined8 *extraout_RAX_x00110;\\\\n  undefined8 *extraout_RAX_x00111;\\\\n  undefined8 *extraout_RAX_x00112;\\\\n  undefined1 (*extraout_RAX_x00113) [16];\\\\n  undefined8 *extraout_RAX_x00114;\\\\n  undefined1 (*extraout_RAX_x00115) [16];\\\\n  char *extraout_RAX_x00116;\\\\n  char *extraout_RAX_x00117;\\\\n  char *extraout_RAX_x00118;\\\\n  undefined1 (*extraout_RAX_x00119) [16];\\\\n  undefined8 *extraout_RAX_x00120;\\\\n  undefined8 *extraout_RAX_x00121;\\\\n  undefined8 *extraout_RAX_x00122;\\\\n  undefined8 *extraout_RAX_x00123;\\\\n  undefined1 (*extraout_RAX_x00124) [16];\\\\n  undefined8 *extraout_RAX_x00125;\\\\n  undefined8 *extraout_RAX_x00126;\\\\n  undefined1 (*extraout_RAX_x00127) [16];\\\\n  undefined8 *extraout_RAX_x00128;\\\\n  undefined8 *extraout_RAX_x00129;\\\\n  undefined1 (*extraout_RAX_x00130) [16];\\\\n  undefined8 *extraout_RAX_x00131;\\\\n  undefined1 (*extraout_RAX_x00132) [16];\\\\n  char *extraout_RAX_x00133;\\\\n  char *extraout_RAX_x00134;\\\\n  undefined8 *extraout_RAX_x00135;\\\\n  undefined8 *extraout_RAX_x00136;\\\\n  undefined8 *extraout_RAX_x00137;\\\\n  longlong extraout_RAX_x00138;\\\\n  char *extraout_RAX_x00139;\\\\n  undefined8 *extraout_RAX_x00140;\\\\n  undefined8 *extraout_RAX_x00141;\\\\n  undefined1 (*extraout_RAX_x00142) [16];\\\\n  undefined8 *extraout_RAX_x00143;\\\\n  undefined1 (*extraout_RAX_x00144) [16];\\\\n  char *extraout_RAX_x00145;\\\\n  char *extraout_RAX_x00146;\\\\n  undefined8 *extraout_RAX_x00147;\\\\n  undefined4 *extraout_RAX_x00148;\\\\n  undefined1 (*extraout_RAX_x00149) [16];\\\\n  undefined1 (*extraout_RAX_x00150) [16];\\\\n  undefined8 *extraout_RAX_x00151;\\\\n  undefined8 *puVar11;\\\\n  ulonglong extraout_RAX_x00152;\\\\n  ulonglong extraout_RAX_x00153;\\\\n  longlong extraout_RAX_x00154;\\\\n  longlong extraout_RAX_x00155;\\\\n  longlong extraout_RAX_x00156;\\\\n  ulonglong extraout_RAX_x00157;\\\\n  longlong extraout_RAX_x00158;\\\\n  longlong extraout_RAX_x00159;\\\\n  longlong extraout_RAX_x00160;\\\\n  longlong extraout_RAX_x00161;\\\\n  ulonglong extraout_RAX_x00162;\\\\n  longlong extraout_RAX_x00163;\\\\n  longlong extraout_RAX_x00164;\\\\n  longlong extraout_RAX_x00165;\\\\n  longlong extraout_RAX_x00166;\\\\n  longlong extraout_RAX_x00167;\\\\n  byte *extraout_RAX_x00168;\\\\n  longlong extraout_RAX_x00169;\\\\n  undefined4 *extraout_RAX_x00170;\\\\n  longlong extraout_RAX_x00171;\\\\n  ulonglong extraout_RAX_x00172;\\\\n  ulonglong extraout_RAX_x00173;\\\\n  longlong extraout_RAX_x00174;\\\\n  longlong extraout_RAX_x00175;\\\\n  undefined1 (*extraout_RAX_x00176) [16];\\\\n  undefined1 (*extraout_RAX_x00177) [16];\\\\n  undefined8 *extraout_RAX_x00178;\\\\n  undefined1 (*extraout_RAX_x00179) [16];\\\\n  undefined8 *extraout_RAX_x00180;\\\\n  undefined8 *extraout_RAX_x00181;\\\\n  longlong extraout_RAX_x00182;\\\\n  undefined4 *extraout_RAX_x00183;\\\\n  undefined1 (*extraout_RAX_x00184) [16];\\\\n  undefined1 (*extraout_RAX_x00185) [16];\\\\n  undefined8 *extraout_RAX_x00186;\\\\n  undefined1 (*extraout_RAX_x00187) [16];\\\\n  undefined1 (*extraout_RAX_x00188) [16];\\\\n  undefined8 *extraout_RAX_x00189;\\\\n  char *extraout_RAX_x00190;\\\\n  longlong extraout_RAX_x00191;\\\\n  longlong extraout_RAX_x00192;\\\\n  undefined1 (*_Src_02) [16];\\\\n  undefined8 *extraout_RAX_x00193;\\\\n  undefined8 *extraout_RAX_x00194;\\\\n  undefined1 (*extraout_RAX_x00195) [16];\\\\n  undefined1 (*extraout_RAX_x00196) [16];\\\\n  undefined8 *extraout_RAX_x00197;\\\\n  char *extraout_RAX_x00198;\\\\n  undefined1 (*extraout_RAX_x00199) [16];\\\\n  longlong extraout_RAX_x00200;\\\\n  undefined1 (*extraout_RAX_x00201) [16];\\\\n  int *piVar13;\\\\n  undefined4 *puVar14;\\\\n  char *pcVar15;\\\\n  char cVar16;\\\\n  undefined8 *in_RCX;\\\\n  undefined1 (*pauVar17) [16];\\\\n  undefined8 uVar18;\\\\n  undefined1 *puVar19;\\\\n  ulonglong uVar20;\\\\n  longlong lVar21;\\\\n  ulonglong *in_RDX;\\\\n  undefined1 (*pauVar22) [16];\\\\n  undefined1 (*pauVar23) [16];\\\\n  longlong lVar24;\\\\n  undefined1 (*pauVar25) [16];\\\\n  undefined1 (*pauVar26) [16];\\\\n  undefined1 uVar27;\\\\n  uint uVar28;\\\\n  undefined1 *puVar29;\\\\n  undefined1 uVar30;\\\\n  ulonglong uVar31;\\\\n  undefined4 uVar32;\\\\n  undefined1 (*pauVar33) [16];\\\\n  undefined1 (*in_R8) [16];\\\\n  undefined1 uVar34;\\\\n  undefined4 uVar35;\\\\n  undefined1 (*in_R9) [16];\\\\n  ulonglong uVar36;\\\\n  uint uVar37;\\\\n  undefined1 (*pauVar38) [16];\\\\n  undefined4 uVar39;\\\\n  undefined1 (*unaff_R13) [16];\\\\n  longlong lVar40;\\\\n  longlong lVar41;\\\\n  uint *puVar42;\\\\n  undefined1 (*pauVar43) [16];\\\\n  ulonglong uVar44;\\\\n  undefined2 in_FS;\\\\n  bool bVar45;\\\\n  undefined4 extraout_XMM0_Da;\\\\n  undefined4 extraout_XMM0_Da_00;\\\\n  undefined4 extraout_XMM0_Da_01;\\\\n  undefined4 extraout_XMM0_Da_02;\\\\n  float unaff_XMM6_Da;\\\\n  float unaff_XMM9_Da;\\\\n  float fVar46;\\\\n  float unaff_XMM10_Da;\\\\n  undefined4 uVar47;\\\\n  float fVar48;\\\\n  undefined4 unaff_XMM15_Da;\\\\n  longlong *in_stack_00000028;\\\\n  undefined8 *in_stack_00000030;\\\\n  undefined8 *in_stack_00000038;\\\\n  undefined8 *in_stack_00000040;\\\\n  undefined1 (*in_stack_00000048) [16];\\\\n  undefined8 *in_stack_00000050;\\\\n  longlong *in_stack_00000058;\\\\n  undefined8 *in_stack_00000068;\\\\n  undefined8 *in_stack_00000070;\\\\n  longlong in_stack_00000078;\\\\n  undefined1 auStack_378 [116];\\\\n  undefined1 auStack_304 [12];\\\\n  longlong local_2f8;\\\\n  undefined1 (*local_2f0) [16];\\\\n  longlong local_2e8;\\\\n  undefined4 *local_2e0;\\\\n  undefined1 (*local_2d8) [16];\\\\n  undefined8 local_2d0;\\\\n  undefined7 uStack_2c8;\\\\n  undefined4 uStack_2c1;\\\\n  undefined8 uStack_2b8;\\\\n  ulonglong *local_2b0;\\\\n  undefined1 (*local_2a8) [16];\\\\n  undefined8 local_2a0;\\\\n  undefined1 (*local_298) [16];\\\\n  undefined4 uStack_28c;\\\\n  undefined4 uStack_288;\\\\n  undefined4 local_284;\\\\n  undefined1 (*pauStack_280) [16];\\\\n  undefined8 uStack_278;\\\\n  longlong local_270;\\\\n  ulonglong local_268;\\\\n  undefined1 auStack_260 [8];\\\\n  undefined1 (*pauStack_258) [16];\\\\n  undefined8 *puStack_250;\\\\n  undefined8 uStack_248;\\\\n  undefined1 (*pauStack_240) [16];\\\\n  undefined1 (*pauStack_238) [16];\\\\n  undefined8 *puStack_230;\\\\n  undefined8 *puStack_228;\\\\n  undefined1 (*pauStack_220) [16];\\\\n  undefined1 (*pauStack_218) [16];\\\\n  undefined1 (*pauStack_210) [16];\\\\n  undefined8 uStack_208;\\\\n  undefined8 uStack_200;\\\\n  undefined8 *puStack_1f8;\\\\n  undefined1 (*local_1f0) [16];\\\\n  undefined1 (*pauStack_1e8) [16];\\\\n  undefined1 (*pauStack_1e0) [16];\\\\n  undefined1 (*pauStack_1d8) [16];\\\\n  longlong local_1d0;\\\\n  undefined1 (*pauStack_1c8) [16];\\\\n  undefined1 (*pauStack_1c0) [16];\\\\n  undefined1 (*pauStack_1b8) [16];\\\\n  undefined8 *puStack_1b0;\\\\n  char *pcStack_1a8;\\\\n  undefined8 uStack_1a0;\\\\n  undefined1 (*pauStack_198) [16];\\\\n  undefined1 (*pauStack_190) [16];\\\\n  undefined1 uStack_181;\\\\n  ulonglong local_180;\\\\n  undefined8 uStack_178;\\\\n  undefined8 uStack_170;\\\\n  undefined1 uStack_168;\\\\n  undefined7 uStack_167;\\\\n  undefined4 uStack_160;\\\\n  undefined1 uStack_15c;\\\\n  undefined1 uStack_15b;\\\\n  undefined1 uStack_15a;\\\\n  undefined1 uStack_159;\\\\n  undefined1 uStack_158;\\\\n  undefined1 uStack_157;\\\\n  undefined6 uStack_156;\\\\n  undefined6 uStack_150;\\\\n  undefined1 uStack_14a;\\\\n  undefined1 uStack_149;\\\\n  ulonglong local_148;\\\\n  undefined1 uStack_139;\\\\n  char *pcStack_138;\\\\n  undefined1 (*local_130) [16];\\\\n  undefined1 uStack_121;\\\\n  undefined1 (*pauStack_120) [16];\\\\n  undefined1 (*pauStack_118) [16];\\\\n  undefined8 uStack_110;\\\\n  undefined1 (*pauStack_108) [16];\\\\n  undefined8 local_100;\\\\n  undefined8 local_f8;\\\\n  undefined8 local_f0;\\\\n  char *pcVar12;\\\\n  \\\\n  puVar29 = auStack_378;\\\\n  local_f0 = 0xfffffffffffffffe;\\\\n  local_2b0 = (ulonglong *)*in_RCX;\\\\n  lVar24 = in_RCX[1];\\\\n  uVar31 = *local_2b0;\\\\n  uVar20 = 0;\\\\n  uVar44 = uVar31 - *(ulonglong *)(lVar24 + 0x18);\\\\n  if (uVar31 < *(ulonglong *)(lVar24 + 0x18)) {\\\\n    uVar44 = uVar20;\\\\n  }\\\\n  uVar36 = uVar31 - *(ulonglong *)(lVar24 + 0x38);\\\\n  if (uVar31 < *(ulonglong *)(lVar24 + 0x38)) {\\\\n    uVar36 = uVar20;\\\\n  }\\\\n  pauVar38 = (undefined1 (*) [16])(uVar44 * 0x20 + *(longlong *)(lVar24 + 8));\\\\n  uVar31 = *(ulonglong *)(lVar24 + 0x10) - uVar44;\\\\n  if (*(ulonglong *)(lVar24 + 0x10) < uVar44) {\\\\n    pauVar38 = (undefined1 (*) [16])&DAT_00000008;\\\\n    uVar31 = uVar20;\\\\n  }\\\\n  local_2a8 = (undefined1 (*) [16])(uVar36 * 0x20 + *(longlong *)(lVar24 + 0x28));\\\\n  uVar44 = *(ulonglong *)(lVar24 + 0x30) - uVar36;\\\\n  if (*(ulonglong *)(lVar24 + 0x30) < uVar36) {\\\\n    local_2a8 = (undefined1 (*) [16])&DAT_00000008;\\\\n    uVar44 = uVar20;\\\\n  }\\\\n  *local_2b0 = (*(longlong *)(lVar24 + 0x40) - uVar44) - uVar31;\\\\n  uVar35 = __real_3f800000;\\\\n  pauVar23 = pauVar38 + uVar31 * 2;\\\\n  local_2f0 = pauVar23;\\\\n  pauVar25 = local_2a8 + uVar44 * 2;\\\\n  local_2d8 = pauVar25;\\\\n  local_f8 = *in_stack_00000030;\\\\n  local_268 = *(ulonglong *)*in_R9;\\\\n  local_1d0 = in_stack_00000040[1];\\\\n  local_2f8 = *(longlong *)*in_stack_00000048;\\\\n  local_2d0 = *(undefined8 *)*in_R8;\\\\n  local_270 = *in_stack_00000028;\\\\n  local_148 = in_stack_00000028[1];\\\\n  local_130 = (undefined1 (*) [16])*in_stack_00000050;\\\\n  local_2a0 = *in_stack_00000070;\\\\n  local_298 = (undefined1 (*) [16])*in_stack_00000068;\\\\n  local_284 = *(undefined4 *)((longlong)in_stack_00000058 + 0x1c);\\\\n  local_2e8 = *in_stack_00000058;\\\\n  local_2e0 = (undefined4 *)in_stack_00000058[2];\\\\n  local_100 = *in_stack_00000038;\\\\n  local_180 = *in_RDX;\\\\n  local_1f0 = (undefined1 (*) [16])*in_stack_00000040;\\\\n  pauVar26 = pauVar38;\\\\nLAB_14229a9f8:\\\\n  uVar31 = local_180;\\\\n  pauVar43 = local_2a8;\\\\n  pauVar33 = (undefined1 (*) [16])0x73726f6c6f635f72;\\\\n  if ((pauVar26 == (undefined1 (*) [16])0x0) || (pauVar26 == local_2f0)) {\\\\n    if (local_2a8 == (undefined1 (*) [16])0x0) {\\\\n      return;\\\\n    }\\\\n    if (local_2a8 == local_2d8) {\\\\n      return;\\\\n    }\\\\n    *local_2b0 = *local_2b0 + 1;\\\\n    puVar19 = *local_2a8;\\\\n    pauVar17 = local_2a8 + 2;\\\\n    piVar10 = (int *)(&DAT_14303ca70 + *(int *)(&DAT_14303ca70 + (ulonglong)(byte)*puVar19 * 4));\\\\n    pauVar22 = (undefined1 (*) [16])0x0;\\\\n    bVar45 = true;\\\\n    local_2a8 = pauVar17;\\\\n                    /* WARNING (jumptable): Sanity check requires truncation of jumptable */\\\\n                    /* WARNING: Could not find normalized switch variable to match jumptable */\\\\n    switch(*puVar19) {\\\\n    case 0:\\\\ncode_r0x00014229b725:\\\\n      uStack_2b8 = *(undefined8 *)(*pauVar43 + 8);\\\\n      pauStack_118 = pauVar22;\\\\n      if (*__imp__ZN12country_core26_DEV_OVERRIDE_IS_DEMO_MODE17h6f2a49c135369f5aE == '\\\\\\\\0') {\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229cc4a;\\\\n        country_core::resources::walls::public_walls::PublicWalls::get();\\\\n        if (extraout_RAX_82 == 0) {\\\\n          return;\\\\n        }\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229cc6c;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        if (extraout_RAX_83 == (undefined1 (*) [16])0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a27b2;\\\\n          alloc::alloc::handle_alloc_error();\\\\n        }\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229cc8e;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        uVar18 = _UNK_14303c160;\\\\n        if (extraout_RAX_84 == (undefined8 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a27cf;\\\\n          alloc::raw_vec::handle_error();\\\\n        }\\\\n        *extraout_RAX_84 = _UNK_14303c158;\\\\n        extraout_RAX_84[1] = uVar18;\\\\n        *(undefined8 *)((longlong)extraout_RAX_84 + 0xf) = 0x65676965625f736b;\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229ccc8;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        uVar18 = _UNK_14303c177;\\\\n        if (extraout_RAX_85 == (undefined8 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a27f8;\\\\n          alloc::raw_vec::handle_error();\\\\n        }\\\\n        *extraout_RAX_85 = _UNK_14303c16f;\\\\n        extraout_RAX_85[1] = uVar18;\\\\n        extraout_RAX_85[2] = 0x776f6c6c65795f73;\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229cd02;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        uVar18 = _UNK_14303c18f;\\\\n        if (extraout_RAX_86 == (undefined1 (*) [16])0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a2828;\\\\n          alloc::raw_vec::handle_error();\\\\n        }\\\\n        *(undefined8 *)*extraout_RAX_86 = _UNK_14303c187;\\\\n        *(undefined8 *)(*extraout_RAX_86 + 8) = uVar18;\\\\n        *(undefined8 *)(*extraout_RAX_86 + 0xf) = 0x746867696c5f736b;\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229cd3c;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        uVar18 = _UNK_14303c1a6;\\\\n        if (extraout_RAX_87 == (undefined8 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a2858;\\\\n          alloc::raw_vec::handle_error();\\\\n        }\\\\n        *extraout_RAX_87 = _UNK_14303c19e;\\\\n        extraout_RAX_87[1] = uVar18;\\\\n        *(undefined8 *)((longlong)extraout_RAX_87 + 0xe) = 0x796572675f736b63;\\\\n        uStack_110 = extraout_RAX_87;\\\\n        pauStack_108 = extraout_RAX_86;\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229cd84;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        uVar18 = _UNK_14303c1bc;\\\\n        if (extraout_RAX_88 == (undefined1 (*) [16])0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a278a;\\\\n          alloc::raw_vec::handle_error();\\\\n        }\\\\n        *(undefined8 *)*extraout_RAX_88 = _UNK_14303c1b4;\\\\n        *(undefined8 *)(*extraout_RAX_88 + 8) = uVar18;\\\\n        *(undefined8 *)(*extraout_RAX_88 + 0xe) = 0x6b7261645f736b63;\\\\n        pauStack_120 = extraout_RAX_88;\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229cdc5;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        if (extraout_RAX_89 == (char *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a26fa;\\\\n          alloc::raw_vec::handle_error();\\\\n        }\\\\n        builtin_strncpy(extraout_RAX_89,\\\\\\\"plaster_colors\\\\\\\",0xe);\\\\n        pcStack_138 = extraout_RAX_89;\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229cdfc;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        if (extraout_RAX_90 == (char *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a294f;\\\\n          alloc::raw_vec::handle_error();\\\\n        }\\\\n        builtin_strncpy(extraout_RAX_90,\\\\\\\"plaster_colors\\\\\\\",0xe);\\\\n        pcStack_1a8 = extraout_RAX_90;\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229ce29;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        if (extraout_RAX_91 == (undefined8 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a28e8;\\\\n          alloc::raw_vec::handle_error();\\\\n        }\\\\n        *(undefined8 *)((longlong)extraout_RAX_91 + 6) = 0x73726f6c6f635f72;\\\\n        *extraout_RAX_91 = 0x5f72657473616c70;\\\\n        puStack_1b0 = extraout_RAX_91;\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229ce56;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        if (extraout_RAX_92 == (undefined8 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a28b8;\\\\n          alloc::raw_vec::handle_error();\\\\n        }\\\\n        *(undefined8 *)((longlong)extraout_RAX_92 + 6) = 0x73726f6c6f635f72;\\\\n        *extraout_RAX_92 = 0x5f72657473616c70;\\\\n        puStack_1f8 = extraout_RAX_92;\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229ce83;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        if (extraout_RAX_93 == (undefined8 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a2888;\\\\n          alloc::raw_vec::handle_error();\\\\n        }\\\\n        *(undefined8 *)((longlong)extraout_RAX_93 + 6) = 0x73726f6c6f635f72;\\\\n        *extraout_RAX_93 = 0x5f72657473616c70;\\\\n        puStack_228 = extraout_RAX_93;\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229ceb0;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        if (extraout_RAX_94 == (undefined8 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a275a;\\\\n          alloc::raw_vec::handle_error();\\\\n        }\\\\n        *(undefined8 *)((longlong)extraout_RAX_94 + 6) = 0x73726f6c6f635f72;\\\\n        *extraout_RAX_94 = 0x5f72657473616c70;\\\\n        puStack_250 = (undefined8 *)extraout_RAX_82;\\\\n        puStack_230 = extraout_RAX_94;\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229cee4;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        if (extraout_RAX_95 == (undefined8 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a272a;\\\\n          alloc::raw_vec::handle_error();\\\\n        }\\\\n        *(undefined8 *)((longlong)extraout_RAX_95 + 6) = 0x73726f6c6f635f72;\\\\n        *extraout_RAX_95 = 0x5f72657473616c70;\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229cf0d;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        if (extraout_RAX_96 == (undefined8 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a291f;\\\\n          alloc::raw_vec::handle_error();\\\\n        }\\\\n        *(undefined8 *)*extraout_RAX_83 = 0x17;\\\\n        *(undefined8 **)(*extraout_RAX_83 + 8) = extraout_RAX_84;\\\\n        *(undefined8 *)extraout_RAX_83[1] = 0x17;\\\\n        extraout_RAX_83[1][8] = 3;\\\\n        *(undefined4 *)(extraout_RAX_83[1] + 0xc) = 0;\\\\n        *(undefined4 *)(extraout_RAX_83[2] + 4) = 0;\\\\n        *(undefined8 *)(extraout_RAX_83[2] + 8) = 0x18;\\\\n        *(undefined8 **)extraout_RAX_83[3] = extraout_RAX_85;\\\\n        *(undefined8 *)(extraout_RAX_83[3] + 8) = 0x18;\\\\n        extraout_RAX_83[4][0] = 3;\\\\n        *(undefined4 *)(extraout_RAX_83[4] + 4) = 1;\\\\n        *(undefined4 *)(extraout_RAX_83[4] + 0xc) = 0;\\\\n        *(undefined8 *)extraout_RAX_83[5] = 0x17;\\\\n        *(undefined1 (**) [16])(extraout_RAX_83[5] + 8) = pauStack_108;\\\\n        *(undefined8 *)extraout_RAX_83[6] = 0x17;\\\\n        extraout_RAX_83[6][8] = 3;\\\\n        *(undefined4 *)(extraout_RAX_83[6] + 0xc) = 3;\\\\n        *(undefined4 *)(extraout_RAX_83[7] + 4) = 0;\\\\n        *(undefined8 *)(extraout_RAX_83[7] + 8) = 0x16;\\\\n        *(undefined8 **)extraout_RAX_83[8] = uStack_110;\\\\n        *(undefined8 *)(extraout_RAX_83[8] + 8) = 0x16;\\\\n        extraout_RAX_83[9][0] = 3;\\\\n        *(undefined4 *)(extraout_RAX_83[9] + 4) = 0xb;\\\\n        *(undefined4 *)(extraout_RAX_83[9] + 0xc) = 0;\\\\n        *(undefined8 *)extraout_RAX_83[10] = 0x16;\\\\n        *(undefined1 (**) [16])(extraout_RAX_83[10] + 8) = pauStack_120;\\\\n        *(undefined8 *)extraout_RAX_83[0xb] = 0x16;\\\\n        extraout_RAX_83[0xb][8] = 3;\\\\n        *(undefined4 *)(extraout_RAX_83[0xb] + 0xc) = 2;\\\\n        *(undefined4 *)(extraout_RAX_83[0xc] + 4) = 0;\\\\n        *(undefined8 *)(extraout_RAX_83[0xc] + 8) = 0xe;\\\\n        *(char **)extraout_RAX_83[0xd] = pcStack_138;\\\\n        *(undefined8 *)(extraout_RAX_83[0xd] + 8) = 0xe;\\\\n        extraout_RAX_83[0xe][0] = 3;\\\\n        *(undefined4 *)(extraout_RAX_83[0xe] + 4) = 4;\\\\n        *(undefined4 *)(extraout_RAX_83[0xe] + 0xc) = 0;\\\\n        *(undefined8 *)extraout_RAX_83[0xf] = 0xe;\\\\n        *(char **)(extraout_RAX_83[0xf] + 8) = pcStack_1a8;\\\\n        *(undefined8 *)extraout_RAX_83[0x10] = 0xe;\\\\n        extraout_RAX_83[0x10][8] = 3;\\\\n        *(undefined4 *)(extraout_RAX_83[0x10] + 0xc) = 0xc;\\\\n        *(undefined4 *)(extraout_RAX_83[0x11] + 4) = 7;\\\\n        *(undefined8 *)(extraout_RAX_83[0x11] + 8) = 0xe;\\\\n        *(undefined8 **)extraout_RAX_83[0x12] = puStack_1b0;\\\\n        *(undefined8 *)(extraout_RAX_83[0x12] + 8) = 0xe;\\\\n        extraout_RAX_83[0x13][0] = 3;\\\\n        *(undefined4 *)(extraout_RAX_83[0x13] + 4) = 5;\\\\n        *(undefined4 *)(extraout_RAX_83[0x13] + 0xc) = 1;\\\\n        *(undefined8 *)extraout_RAX_83[0x14] = 0xe;\\\\n        *(undefined8 **)(extraout_RAX_83[0x14] + 8) = puStack_1f8;\\\\n        *(undefined8 *)extraout_RAX_83[0x15] = 0xe;\\\\n        extraout_RAX_83[0x15][8] = 3;\\\\n        *(undefined4 *)(extraout_RAX_83[0x15] + 0xc) = 10;\\\\n        *(undefined4 *)(extraout_RAX_83[0x16] + 4) = 6;\\\\n        *(undefined8 *)(extraout_RAX_83[0x16] + 8) = 0xe;\\\\n        *(undefined8 **)extraout_RAX_83[0x17] = puStack_228;\\\\n        *(undefined8 *)(extraout_RAX_83[0x17] + 8) = 0xe;\\\\n        extraout_RAX_83[0x18][0] = 3;\\\\n        *(undefined4 *)(extraout_RAX_83[0x18] + 4) = 8;\\\\n        *(undefined4 *)(extraout_RAX_83[0x18] + 0xc) = 4;\\\\n        *(undefined8 *)extraout_RAX_83[0x19] = 0xe;\\\\n        *(undefined8 **)(extraout_RAX_83[0x19] + 8) = puStack_230;\\\\n        *(undefined8 *)extraout_RAX_83[0x1a] = 0xe;\\\\n        extraout_RAX_83[0x1a][8] = 3;\\\\n        *(undefined4 *)(extraout_RAX_83[0x1a] + 0xc) = 9;\\\\n        *(undefined4 *)(extraout_RAX_83[0x1b] + 4) = 5;\\\\n        *(undefined8 *)(extraout_RAX_83[0x1b] + 8) = 0xe;\\\\n        *(undefined8 **)extraout_RAX_83[0x1c] = extraout_RAX_95;\\\\n        *(undefined8 *)((longlong)extraout_RAX_96 + 6) = 0x73726f6c6f635f72;\\\\n        *extraout_RAX_96 = 0x5f72657473616c70;\\\\n        *(undefined8 *)(extraout_RAX_83[0x1c] + 8) = 0xe;\\\\n        extraout_RAX_83[0x1d][0] = 3;\\\\n        *(undefined4 *)(extraout_RAX_83[0x1d] + 4) = 6;\\\\n        *(undefined4 *)(extraout_RAX_83[0x1d] + 0xc) = 2;\\\\n        *(undefined8 *)extraout_RAX_83[0x1e] = 0xe;\\\\n        *(undefined8 **)(extraout_RAX_83[0x1e] + 8) = extraout_RAX_96;\\\\n        *(undefined8 *)extraout_RAX_83[0x1f] = 0xe;\\\\n        extraout_RAX_83[0x1f][8] = 3;\\\\n        *(undefined4 *)(extraout_RAX_83[0x1f] + 0xc) = 7;\\\\n        *(undefined4 *)(extraout_RAX_83[0x20] + 4) = 3;\\\\n        uStack_1a0 = (undefined1 (*) [16])&DAT_0000000d;\\\\n        pauStack_190 = (undefined1 (*) [16])0xd;\\\\n        pauStack_198 = extraout_RAX_83;\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229d220;\\\\n        minidump_unwind::instruction_seems_valid_by_symbols::async_fn$0::impl$0::get_instruction();\\\\n        if (*(ulonglong *)(local_180 + 0x10) <= extraout_RAX_97) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a279e;\\\\n          core::panicking::panic_bounds_check();\\\\n        }\\\\n        iVar9 = *(int *)(*(longlong *)(local_180 + 8) + extraout_RAX_97 * 4);\\\\n        if ((iVar9 - 4U < 7) || (iVar9 == 0xc)) {\\\\n          *(undefined **)(puVar29 + -8) = &UNK_14229d264;\\\\n          std::alloc::__default_lib_allocator::__rust_alloc();\\\\n          if (_Src_00 == (undefined1 (*) [16])0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n            *(undefined **)(puVar29 + -8) = &UNK_1422a2a15;\\\\n            alloc::alloc::handle_alloc_error();\\\\n          }\\\\n          *(undefined **)(puVar29 + -8) = &UNK_14229d286;\\\\n          std::alloc::__default_lib_allocator::__rust_alloc();\\\\n          if (extraout_RAX_98 == (undefined4 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n            *(undefined **)(puVar29 + -8) = &UNK_1422a2a01;\\\\n            alloc::raw_vec::handle_error();\\\\n          }\\\\n          *(char *)(extraout_RAX_98 + 1) = UNK_143136d57;\\\\n          *extraout_RAX_98 = _anon_ca3d65a414162b87f9c37b5fcde039ed_7_llvm_12275225767445047014;\\\\n          *(undefined **)(puVar29 + -8) = &UNK_14229d2ba;\\\\n          std::alloc::__default_lib_allocator::__rust_alloc();\\\\n          uVar18 = _UNK_14303c1fb;\\\\n          if (extraout_RAX_99 == (undefined8 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n            *(undefined **)(puVar29 + -8) = &UNK_1422a29af;\\\\n            alloc::raw_vec::handle_error();\\\\n          }\\\\n          *(ulonglong *)((longlong)extraout_RAX_99 + 0xb) = CONCAT35(_UNK_14303c1f8,_UNK_14303c1f3);\\\\n          *(undefined8 *)((longlong)extraout_RAX_99 + 0x13) = uVar18;\\\\n          uVar18 = CONCAT53(_UNK_14303c1f3,_UNK_14303c1f0);\\\\n          *extraout_RAX_99 = _UNK_14303c1e8;\\\\n          extraout_RAX_99[1] = uVar18;\\\\n          *(undefined **)(puVar29 + -8) = &UNK_14229d2f1;\\\\n          std::alloc::__default_lib_allocator::__rust_alloc();\\\\n          uVar18 = _UNK_14303c219;\\\\n          if (extraout_RAX_x00100 == (undefined8 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n            *(undefined **)(puVar29 + -8) = &UNK_1422a29df;\\\\n            alloc::raw_vec::handle_error();\\\\n          }\\\\n          *(ulonglong *)((longlong)extraout_RAX_x00100 + 0xe) =\\\\n               CONCAT62(_UNK_14303c213,_UNK_14303c211);\\\\n          *(undefined8 *)((longlong)extraout_RAX_x00100 + 0x16) = uVar18;\\\\n          uVar18 = CONCAT26(_UNK_14303c211,_UNK_14303c20b);\\\\n          *extraout_RAX_x00100 = _UNK_14303c203;\\\\n          extraout_RAX_x00100[1] = uVar18;\\\\n          *(undefined **)(puVar29 + -8) = &UNK_14229d328;\\\\n          std::alloc::__default_lib_allocator::__rust_alloc();\\\\n          uVar18 = _UNK_14303c235;\\\\n          if (extraout_RAX_x00101 == (undefined8 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n            *(undefined **)(puVar29 + -8) = &UNK_1422a2986;\\\\n            alloc::raw_vec::handle_error();\\\\n          }\\\\n          *(ulonglong *)((longlong)extraout_RAX_x00101 + 0xc) =\\\\n               CONCAT44(_UNK_14303c231,_UNK_14303c22d);\\\\n          *(undefined8 *)((longlong)extraout_RAX_x00101 + 0x14) = uVar18;\\\\n          uVar18 = CONCAT44(_UNK_14303c22d,_UNK_14303c229);\\\\n          *extraout_RAX_x00101 = _UNK_14303c221;\\\\n          extraout_RAX_x00101[1] = uVar18;\\\\n          *(undefined8 *)*_Src_00 = 5;\\\\n          *(undefined4 **)(*_Src_00 + 8) = extraout_RAX_98;\\\\n          *(undefined8 *)_Src_00[1] = 5;\\\\n          _Src_00[1][8] = 5;\\\\n          *(undefined4 *)(_Src_00[2] + 4) = 0;\\\\n          *(undefined8 *)(_Src_00[2] + 8) = 0x1b;\\\\n          *(undefined8 **)_Src_00[3] = extraout_RAX_99;\\\\n          *(undefined8 *)(_Src_00[3] + 8) = 0x1b;\\\\n          _Src_00[4][0] = 0xc;\\\\n          *(undefined4 *)(_Src_00[4] + 4) = 0;\\\\n          *(undefined4 *)(_Src_00[4] + 0xc) = 0;\\\\n          *(undefined8 *)_Src_00[5] = 0x1e;\\\\n          *(undefined8 **)(_Src_00[5] + 8) = extraout_RAX_x00100;\\\\n          *(undefined8 *)_Src_00[6] = 0x1e;\\\\n          _Src_00[6][8] = 0xc;\\\\n          *(undefined4 *)(_Src_00[6] + 0xc) = 0x3f000000;\\\\n          *(undefined4 *)(_Src_00[7] + 4) = 0;\\\\n          *(undefined8 *)(_Src_00[7] + 8) = 0x1c;\\\\n          *(undefined8 **)_Src_00[8] = extraout_RAX_x00101;\\\\n          *(undefined8 *)(_Src_00[8] + 8) = 0x1c;\\\\n          _Src_00[9][0] = 0xc;\\\\n          *(undefined4 *)(_Src_00[9] + 4) = 0x3f800000;\\\\n          *(undefined4 *)(_Src_00[9] + 0xc) = 0;\\\\n          pauVar38 = _Src_00 + 10;\\\\n          uStack_168 = 4;\\\\n          uStack_167 = 0;\\\\n          uStack_160 = SUB84(pauVar38,0);\\\\n          uStack_15c = (undefined1)((ulonglong)pauVar38 >> 0x20);\\\\n          uStack_15b = (undefined1)((ulonglong)pauVar38 >> 0x28);\\\\n          uStack_15a = (undefined1)((ulonglong)pauVar38 >> 0x30);\\\\n          uStack_159 = (undefined1)((ulonglong)pauVar38 >> 0x38);\\\\n          uStack_178 = _Src_00;\\\\n          uStack_170 = _Src_00;\\\\n          if ((ulonglong)((longlong)uStack_1a0 - (longlong)pauStack_190) < 4) {\\\\n            *(undefined8 *)(puVar29 + 0x20) = 0x28;\\\\n            *(undefined **)(puVar29 + -8) = &UNK_1422a0d4b;\\\\n            alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();\\\\n          }\\\\n          pauVar38 = pauStack_190;\\\\n          puVar19 = (undefined1 *)((longlong)pauStack_190 * 0x28 + (longlong)pauStack_198);\\\\n          *(undefined **)(puVar29 + -8) = &UNK_14229d446;\\\\n          memcpy(puVar19,_Src_00,0xa0);\\\\n          pauStack_190 = (undefined1 (*) [16])((longlong)pauVar38 + 4);\\\\n          *(undefined **)(puVar29 + -8) = &UNK_14229d464;\\\\n          std::alloc::__default_lib_allocator::__rust_dealloc();\\\\n        }\\\\n        if (*(uint *)((longlong)puStack_250 + 600) < 2) {\\\\n          *(undefined **)(puVar29 + -8) = &UNK_14229d488;\\\\n          std::alloc::__default_lib_allocator::__rust_alloc();\\\\n          if (_Src_01 == (undefined1 (*) [16])0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n            *(undefined **)(puVar29 + -8) = &UNK_1422a2ba0;\\\\n            alloc::alloc::handle_alloc_error();\\\\n          }\\\\n          *(undefined **)(puVar29 + -8) = &UNK_14229d4aa;\\\\n          std::alloc::__default_lib_allocator::__rust_alloc();\\\\n          if (extraout_RAX_x00102 == (undefined4 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n            *(undefined **)(puVar29 + -8) = &UNK_1422a2b8c;\\\\n            alloc::raw_vec::handle_error();\\\\n          }\\\\n          *(char *)(extraout_RAX_x00102 + 1) = UNK_143136d57;\\\\n          *extraout_RAX_x00102 = _anon_ca3d65a414162b87f9c37b5fcde039ed_7_llvm_12275225767445047014;\\\\n          *(undefined **)(puVar29 + -8) = &UNK_14229d4de;\\\\n          std::alloc::__default_lib_allocator::__rust_alloc();\\\\n          uVar18 = _UNK_14303c268;\\\\n          if (extraout_RAX_x00103 == (undefined8 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n            *(undefined **)(puVar29 + -8) = &UNK_1422a2b6a;\\\\n            alloc::raw_vec::handle_error();\\\\n          }\\\\n          *extraout_RAX_x00103 = _UNK_14303c260;\\\\n          extraout_RAX_x00103[1] = uVar18;\\\\n          *(undefined8 *)((longlong)extraout_RAX_x00103 + 0xd) = 0x7265626d6974666c;\\\\n          *(undefined **)(puVar29 + -8) = &UNK_14229d518;\\\\n          std::alloc::__default_lib_allocator::__rust_alloc();\\\\n          uVar18 = _UNK_14303c245;\\\\n          if (extraout_RAX_x00104 == (undefined8 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n            *(undefined **)(puVar29 + -8) = &UNK_1422a2c22;\\\\n            alloc::raw_vec::handle_error();\\\\n          }\\\\n          *extraout_RAX_x00104 = _UNK_14303c23d;\\\\n          extraout_RAX_x00104[1] = uVar18;\\\\n          *(undefined **)(puVar29 + -8) = &UNK_14229d544;\\\\n          std::alloc::__default_lib_allocator::__rust_alloc();\\\\n          uVar18 = _UNK_14303c255;\\\\n          if (extraout_RAX_x00105 == (undefined8 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n            *(undefined **)(puVar29 + -8) = &UNK_1422a2bd7;\\\\n            alloc::raw_vec::handle_error();\\\\n          }\\\\n          *extraout_RAX_x00105 = _UNK_14303c24d;\\\\n          extraout_RAX_x00105[1] = uVar18;\\\\n          *(undefined4 *)((longlong)extraout_RAX_x00105 + 0xf) = 0x7472696b;\\\\n          *(undefined8 *)*_Src_01 = 5;\\\\n          *(undefined4 **)(*_Src_01 + 8) = extraout_RAX_x00102;\\\\n          *(undefined8 *)_Src_01[1] = 5;\\\\n          _Src_01[1][8] = 5;\\\\n          *(undefined4 *)(_Src_01[2] + 4) = 0;\\\\n          *(undefined8 *)(_Src_01[2] + 8) = 0x15;\\\\n          *(undefined8 **)_Src_01[3] = extraout_RAX_x00103;\\\\n          *(undefined8 *)(_Src_01[3] + 8) = 0x15;\\\\n          *(undefined2 *)_Src_01[4] = 0x204;\\\\n          *(undefined4 *)(_Src_01[4] + 0xc) = 0;\\\\n          *(undefined8 *)_Src_01[5] = 0x10;\\\\n          *(undefined8 **)(_Src_01[5] + 8) = extraout_RAX_x00104;\\\\n          *(undefined8 *)_Src_01[6] = 0x10;\\\\n          *(undefined2 *)(_Src_01[6] + 8) = 0x104;\\\\n          *(undefined4 *)(_Src_01[7] + 4) = 0;\\\\n          *(undefined8 *)(_Src_01[7] + 8) = 0x13;\\\\n          *(undefined8 **)_Src_01[8] = extraout_RAX_x00105;\\\\n          *(undefined8 *)(_Src_01[8] + 8) = 0x13;\\\\n          *(undefined2 *)_Src_01[9] = 4;\\\\n          *(undefined4 *)(_Src_01[9] + 0xc) = 0;\\\\n          pauVar38 = _Src_01 + 10;\\\\n          uStack_168 = 4;\\\\n          uStack_167 = 0;\\\\n          uStack_160 = SUB84(pauVar38,0);\\\\n          uStack_15c = (undefined1)((ulonglong)pauVar38 >> 0x20);\\\\n          uStack_15b = (undefined1)((ulonglong)pauVar38 >> 0x28);\\\\n          uStack_15a = (undefined1)((ulonglong)pauVar38 >> 0x30);\\\\n          uStack_159 = (undefined1)((ulonglong)pauVar38 >> 0x38);\\\\n          uStack_178 = _Src_01;\\\\n          uStack_170 = _Src_01;\\\\n          if ((ulonglong)((longlong)uStack_1a0 - (longlong)pauStack_190) < 4) {\\\\n            *(undefined8 *)(puVar29 + 0x20) = 0x28;\\\\n            *(undefined **)(puVar29 + -8) = &UNK_1422a0d7b;\\\\n            alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();\\\\n          }\\\\n          pauVar38 = pauStack_190;\\\\n          puVar19 = (undefined1 *)((longlong)pauStack_190 * 0x28 + (longlong)pauStack_198);\\\\n          *(undefined **)(puVar29 + -8) = &UNK_14229d64c;\\\\n          memcpy(puVar19,_Src_01,0xa0);\\\\n          pauStack_190 = (undefined1 (*) [16])((longlong)pauVar38 + 4);\\\\n          *(undefined **)(puVar29 + -8) = &UNK_14229d66a;\\\\n          std::alloc::__default_lib_allocator::__rust_dealloc();\\\\n          *(undefined **)(puVar29 + -8) = &UNK_14229d67a;\\\\n          country_core::resources::walls::public_walls::PublicWalls::roof_entity();\\\\n          if (((extraout_RAX_x00106 >> 0x20 != 0) &&\\\\n              (uVar31 = extraout_RAX_x00106 & 0xffffffff, uVar31 < *(ulonglong *)(local_1d0 + 0x10))\\\\n              ) && (*(int *)(*(longlong *)(local_1d0 + 8) + uVar31 * 0x14) ==\\\\n                    (int)(extraout_RAX_x00106 >> 0x20))) {\\\\n            uVar28 = *(uint *)(*(longlong *)(local_1d0 + 8) + uVar31 * 0x14 + 4);\\\\n            uVar31 = (ulonglong)uVar28;\\\\n            if (((uVar31 != 0xffffffff) && (uVar31 < *(ulonglong *)(local_1f0[3] + 8))) &&\\\\n               ((*(ulonglong *)(*(longlong *)(local_1f0[2] + 8) + (ulonglong)(uVar28 >> 6) * 8) >>\\\\n                 (uVar31 & 0x3f) & 1) != 0)) {\\\\n              *(undefined **)(puVar29 + -8) = &UNK_1422a0bb5;\\\\n              country_core::resources::roofs::roof_shape::Roof::is_flat();\\\\n              if (extraout_AL_06 != '\\\\\\\\0') {\\\\n                *(undefined **)(puVar29 + -8) = &UNK_1422a0bd3;\\\\n                std::alloc::__default_lib_allocator::__rust_alloc();\\\\n                if (extraout_RAX_x00201 == (undefined1 (*) [16])0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n                  *(undefined **)(puVar29 + -8) = &UNK_1422a2ea6;\\\\n                  alloc::alloc::handle_alloc_error();\\\\n                }\\\\n                pauStack_108 = extraout_RAX_x00201;\\\\n                *(undefined **)(puVar29 + -8) = &UNK_1422a0bef;\\\\n                radial_menu::IconInfo::new_separator();\\\\n                *(undefined **)(puVar29 + -8) = &UNK_1422a0c02;\\\\n                radial_menu::IconInfo::new_flat_roof_rim_ty();\\\\n                *(undefined8 *)pauStack_108[2] = uStack_200;\\\\n                *(undefined1 (**) [16])pauStack_108[1] = pauStack_210;\\\\n                *(undefined8 *)(pauStack_108[1] + 8) = uStack_208;\\\\n                *(undefined1 (**) [16])*pauStack_108 = pauStack_220;\\\\n                *(undefined1 (**) [16])(*pauStack_108 + 8) = pauStack_218;\\\\n                *(undefined1 (**) [16])(pauStack_108[2] + 8) = uStack_178;\\\\n                *(undefined1 (**) [16])pauStack_108[3] = uStack_170;\\\\n                *(ulonglong *)(pauStack_108[3] + 8) = CONCAT71(uStack_167,uStack_168);\\\\n                *(ulonglong *)pauStack_108[4] =\\\\n                     CONCAT17(uStack_159,\\\\n                              CONCAT16(uStack_15a,\\\\n                                       CONCAT15(uStack_15b,CONCAT14(uStack_15c,uStack_160))));\\\\n                *(ulonglong *)(pauStack_108[4] + 8) =\\\\n                     CONCAT62(uStack_156,CONCAT11(uStack_157,uStack_158));\\\\n                pauVar38 = pauStack_108 + 5;\\\\n                uStack_178 = pauStack_108;\\\\n                uStack_168 = 2;\\\\n                uStack_167 = 0;\\\\n                uStack_170 = pauStack_108;\\\\n                uStack_160 = SUB84(pauVar38,0);\\\\n                uStack_15c = (undefined1)((ulonglong)pauVar38 >> 0x20);\\\\n                uStack_15b = (undefined1)((ulonglong)pauVar38 >> 0x28);\\\\n                uStack_15a = (undefined1)((ulonglong)pauVar38 >> 0x30);\\\\n                uStack_159 = (undefined1)((ulonglong)pauVar38 >> 0x38);\\\\n                *(undefined **)(puVar29 + -8) = &UNK_1422a0c87;\\\\n                alloc::vec::spec_extend::impl$2::\\\\n                spec_extend<system_color::radial_menu::IconInfo,alloc::alloc::Global>();\\\\n              }\\\\n            }\\\\n          }\\\\n        }\\\\n        else {\\\\n          *(undefined **)(puVar29 + -8) = &UNK_14229e534;\\\\n          std::alloc::__default_lib_allocator::__rust_alloc();\\\\n          if (extraout_RAX_x00142 == (undefined1 (*) [16])0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n            *(undefined **)(puVar29 + -8) = &UNK_1422a2c6c;\\\\n            alloc::alloc::handle_alloc_error();\\\\n          }\\\\n          *(undefined **)(puVar29 + -8) = &UNK_14229e55d;\\\\n          std::alloc::__default_lib_allocator::__rust_alloc();\\\\n          cVar8 = UNK_143136d57;\\\\n          if (extraout_RAX_x00143 == (undefined8 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n            *(undefined **)(puVar29 + -8) = &UNK_1422a2c3d;\\\\n            alloc::raw_vec::handle_error();\\\\n          }\\\\n          *(char *)((longlong)extraout_RAX_x00143 + 4) = UNK_143136d57;\\\\n          uVar35 = _anon_ca3d65a414162b87f9c37b5fcde039ed_7_llvm_12275225767445047014;\\\\n          *(undefined4 *)extraout_RAX_x00143 =\\\\n               _anon_ca3d65a414162b87f9c37b5fcde039ed_7_llvm_12275225767445047014;\\\\n          uStack_110 = extraout_RAX_x00143;\\\\n          pauStack_108 = extraout_RAX_x00142;\\\\n          *(undefined **)(puVar29 + -8) = &UNK_14229e59c;\\\\n          std::alloc::__default_lib_allocator::__rust_alloc();\\\\n          uVar18 = _UNK_14303c245;\\\\n          if (extraout_RAX_x00144 == (undefined1 (*) [16])0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n            *(undefined **)(puVar29 + -8) = &UNK_1422a2bf2;\\\\n            alloc::raw_vec::handle_error();\\\\n          }\\\\n          *(undefined8 *)*extraout_RAX_x00144 = _UNK_14303c23d;\\\\n          *(undefined8 *)(*extraout_RAX_x00144 + 8) = uVar18;\\\\n          pauStack_120 = extraout_RAX_x00144;\\\\n          *(undefined **)(puVar29 + -8) = &UNK_14229e5cc;\\\\n          std::alloc::__default_lib_allocator::__rust_alloc();\\\\n          uVar18 = _UNK_14303c255;\\\\n          if (extraout_RAX_x00145 == (char *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n            *(undefined **)(puVar29 + -8) = &UNK_1422a2c87;\\\\n            alloc::raw_vec::handle_error();\\\\n          }\\\\n          *(undefined8 *)extraout_RAX_x00145 = _UNK_14303c24d;\\\\n          *(undefined8 *)(extraout_RAX_x00145 + 8) = uVar18;\\\\n          extraout_RAX_x00145[0xf] = 'k';\\\\n          extraout_RAX_x00145[0x10] = 'i';\\\\n          extraout_RAX_x00145[0x11] = 'r';\\\\n          extraout_RAX_x00145[0x12] = 't';\\\\n          pcStack_138 = extraout_RAX_x00145;\\\\n          *(undefined **)(puVar29 + -8) = &UNK_14229e603;\\\\n          std::alloc::__default_lib_allocator::__rust_alloc();\\\\n          if (extraout_RAX_x00146 == (char *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n            *(undefined **)(puVar29 + -8) = &UNK_1422a2c58;\\\\n            alloc::raw_vec::handle_error();\\\\n          }\\\\n          extraout_RAX_x00146[4] = cVar8;\\\\n          *(undefined4 *)extraout_RAX_x00146 = uVar35;\\\\n          uStack_178 = (undefined1 (*) [16])\\\\n                       CONCAT71(uStack_178._1_7_,*(undefined1 *)((longlong)puStack_250 + 0x295));\\\\n          pcStack_1a8 = extraout_RAX_x00146;\\\\n          *(undefined **)(puVar29 + -8) = &UNK_14229e62e;\\\\n          country_core::resources::walls::decorator::ClutterVersion::is_initial();\\\\n          if (extraout_AL_01 == '\\\\\\\\0') {\\\\n            *(undefined **)(puVar29 + -8) = &UNK_14229e84b;\\\\n            std::alloc::__default_lib_allocator::__rust_alloc();\\\\n            uVar18 = _UNK_143136e36;\\\\n            if (extraout_RAX_x00151 == (undefined8 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n              *(undefined **)(puVar29 + -8) = &UNK_1422a2ca2;\\\\n              alloc::raw_vec::handle_error();\\\\n            }\\\\n            *(ulonglong *)((longlong)extraout_RAX_x00151 + 0xf) =\\\\n                 CONCAT71(_UNK_143136e2f,DAT_143136e2e);\\\\n            *(undefined8 *)((longlong)extraout_RAX_x00151 + 0x17) = uVar18;\\\\n            uVar18 = CONCAT17(DAT_143136e2e,_UNK_143136e27);\\\\n            *extraout_RAX_x00151 =\\\\n                 _anon_ca3d65a414162b87f9c37b5fcde039ed_16_llvm_12275225767445047014;\\\\n            extraout_RAX_x00151[1] = uVar18;\\\\n            uVar18 = 0x1f;\\\\n            puVar11 = extraout_RAX_x00151;\\\\n          }\\\\n          else {\\\\n            *(undefined **)(puVar29 + -8) = &UNK_14229e64c;\\\\n            std::alloc::__default_lib_allocator::__rust_alloc();\\\\n            uVar18 = s_ehand_ty_terrain_143136e4c._8_8_;\\\\n            if (extraout_RAX_x00147 == (undefined8 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n              *(undefined **)(puVar29 + -8) = &UNK_1422a2cbd;\\\\n              alloc::raw_vec::handle_error();\\\\n            }\\\\n            *(ulonglong *)((longlong)extraout_RAX_x00147 + 0xe) =\\\\n                 CONCAT62(s_ehand_ty_terrain_143136e4c._2_6_,s_ehand_ty_terrain_143136e4c._0_2_);\\\\n            *(undefined8 *)((longlong)extraout_RAX_x00147 + 0x16) = uVar18;\\\\n            uVar18 = CONCAT26(s_ehand_ty_terrain_143136e4c._0_2_,_UNK_143136e46);\\\\n            *extraout_RAX_x00147 =\\\\n                 _anon_ca3d65a414162b87f9c37b5fcde039ed_17_llvm_12275225767445047014;\\\\n            extraout_RAX_x00147[1] = uVar18;\\\\n            uVar18 = 0x1e;\\\\n            puVar11 = extraout_RAX_x00147;\\\\n          }\\\\n          pauVar38 = pauStack_108;\\\\n          *(undefined8 *)*pauStack_108 = 5;\\\\n          *(undefined8 **)(*pauStack_108 + 8) = uStack_110;\\\\n          *(undefined8 *)pauStack_108[1] = 5;\\\\n          pauStack_108[1][8] = 5;\\\\n          *(undefined4 *)(pauStack_108[2] + 4) = 0;\\\\n          *(undefined8 *)(pauStack_108[2] + 8) = 0x10;\\\\n          *(undefined1 (**) [16])pauStack_108[3] = pauStack_120;\\\\n          *(undefined8 *)(pauStack_108[3] + 8) = 0x10;\\\\n          *(undefined2 *)pauStack_108[4] = 0x104;\\\\n          *(undefined4 *)(pauStack_108[4] + 0xc) = 0;\\\\n          *(undefined8 *)pauStack_108[5] = 0x13;\\\\n          *(char **)(pauStack_108[5] + 8) = pcStack_138;\\\\n          *(undefined8 *)pauStack_108[6] = 0x13;\\\\n          *(undefined2 *)(pauStack_108[6] + 8) = 4;\\\\n          *(undefined4 *)(pauStack_108[7] + 4) = 0;\\\\n          *(undefined8 *)(pauStack_108[7] + 8) = 5;\\\\n          *(char **)pauStack_108[8] = pcStack_1a8;\\\\n          *(undefined8 *)(pauStack_108[8] + 8) = 5;\\\\n          pauStack_108[9][0] = 5;\\\\n          *(undefined4 *)(pauStack_108[9] + 0xc) = 0;\\\\n          *(undefined8 *)pauStack_108[10] = uVar18;\\\\n          *(undefined8 **)(pauStack_108[10] + 8) = puVar11;\\\\n          *(undefined8 *)pauStack_108[0xb] = uVar18;\\\\n          pauStack_108[0xb][8] = 7;\\\\n          *(undefined4 *)(pauStack_108[0xc] + 4) = 0;\\\\n          puVar19 = pauStack_108[0xc] + 8;\\\\n          uStack_178 = pauStack_108;\\\\n          uStack_168 = 5;\\\\n          uStack_167 = 0;\\\\n          uStack_170 = pauStack_108;\\\\n          uStack_160 = SUB84(puVar19,0);\\\\n          uStack_15c = (undefined1)((ulonglong)puVar19 >> 0x20);\\\\n          uStack_15b = (undefined1)((ulonglong)puVar19 >> 0x28);\\\\n          uStack_15a = (undefined1)((ulonglong)puVar19 >> 0x30);\\\\n          uStack_159 = (undefined1)((ulonglong)puVar19 >> 0x38);\\\\n          if ((ulonglong)((longlong)uStack_1a0 - (longlong)pauStack_190) < 5) {\\\\n            *(undefined8 *)(puVar29 + 0x20) = 0x28;\\\\n            *(undefined **)(puVar29 + -8) = &UNK_1422a0dab;\\\\n            alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();\\\\n          }\\\\n          pauVar25 = pauStack_190;\\\\n          puVar19 = (undefined1 *)((longlong)pauStack_190 * 0x28 + (longlong)pauStack_198);\\\\n          *(undefined **)(puVar29 + -8) = &UNK_14229e9a3;\\\\n          memcpy(puVar19,pauVar38,200);\\\\n          pauStack_190 = (undefined1 (*) [16])((longlong)pauVar25 + 5);\\\\n          *(undefined **)(puVar29 + -8) = &UNK_14229e9c1;\\\\n          std::alloc::__default_lib_allocator::__rust_dealloc();\\\\n        }\\\\n        pauStack_1d8 = pauStack_190;\\\\n        pauStack_1e8 = uStack_1a0;\\\\n        pauStack_1e0 = pauStack_198;\\\\n      }\\\\n      else {\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229b75a;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        if (extraout_RAX_31 == (undefined1 (*) [16])0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a2418;\\\\n          alloc::alloc::handle_alloc_error();\\\\n        }\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229b77c;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        uVar18 = _UNK_14303c1a6;\\\\n        if (extraout_RAX_32 == (undefined8 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a1f75;\\\\n          alloc::raw_vec::handle_error();\\\\n        }\\\\n        *extraout_RAX_32 = _UNK_14303c19e;\\\\n        extraout_RAX_32[1] = uVar18;\\\\n        *(undefined8 *)((longlong)extraout_RAX_32 + 0xe) = 0x796572675f736b63;\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229b7b6;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        if (extraout_RAX_33 == (undefined8 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a1d33;\\\\n          alloc::raw_vec::handle_error();\\\\n        }\\\\n        *(undefined8 *)((longlong)extraout_RAX_33 + 6) = 0x73726f6c6f635f72;\\\\n        *extraout_RAX_33 = 0x5f72657473616c70;\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229b7e9;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        if (extraout_RAX_34 == (undefined8 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a2685;\\\\n          alloc::raw_vec::handle_error();\\\\n        }\\\\n        *(undefined8 *)((longlong)extraout_RAX_34 + 6) = 0x73726f6c6f635f72;\\\\n        *extraout_RAX_34 = 0x5f72657473616c70;\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229b812;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        uVar6 = _UNK_14303c298;\\\\n        uVar18 = _DAT_14303c290;\\\\n        if (extraout_RAX_35 == (undefined8 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a25a9;\\\\n          alloc::raw_vec::handle_error();\\\\n        }\\\\n        *extraout_RAX_35 = _DAT_14303c290;\\\\n        extraout_RAX_35[1] = uVar6;\\\\n        *(undefined1 *)(extraout_RAX_35 + 2) = 100;\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229b842;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        if (extraout_RAX_36 == (undefined8 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a2496;\\\\n          alloc::raw_vec::handle_error();\\\\n        }\\\\n        *extraout_RAX_36 = uVar18;\\\\n        extraout_RAX_36[1] = uVar6;\\\\n        *(undefined1 *)(extraout_RAX_36 + 2) = 100;\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229b86b;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        if (extraout_RAX_37 == (undefined1 (*) [16])0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a2311;\\\\n          alloc::raw_vec::handle_error();\\\\n        }\\\\n        *(undefined8 *)*extraout_RAX_37 = uVar18;\\\\n        *(undefined8 *)(*extraout_RAX_37 + 8) = uVar6;\\\\n        extraout_RAX_37[1][0] = 100;\\\\n        pauStack_108 = extraout_RAX_37;\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229b898;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        if (extraout_RAX_38 == (undefined8 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a1ec3;\\\\n          alloc::raw_vec::handle_error();\\\\n        }\\\\n        *extraout_RAX_38 = uVar18;\\\\n        extraout_RAX_38[1] = uVar6;\\\\n        *(undefined1 *)(extraout_RAX_38 + 2) = 100;\\\\n        uStack_110 = extraout_RAX_38;\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229b8c5;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        if (extraout_RAX_39 == (undefined1 (*) [16])0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a1dbd;\\\\n          alloc::raw_vec::handle_error();\\\\n        }\\\\n        *(undefined8 *)*extraout_RAX_39 = uVar18;\\\\n        *(undefined8 *)(*extraout_RAX_39 + 8) = uVar6;\\\\n        extraout_RAX_39[1][0] = 100;\\\\n        pauStack_120 = extraout_RAX_39;\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229b8f2;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        if (extraout_RAX_40 == (char *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a20c8;\\\\n          alloc::raw_vec::handle_error();\\\\n        }\\\\n        *(undefined8 *)extraout_RAX_40 = uVar18;\\\\n        *(undefined8 *)(extraout_RAX_40 + 8) = uVar6;\\\\n        extraout_RAX_40[0x10] = 'd';\\\\n        pcStack_138 = extraout_RAX_40;\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229b91f;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        if (extraout_RAX_41 == (char *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a26ca;\\\\n          alloc::raw_vec::handle_error();\\\\n        }\\\\n        *(undefined8 *)extraout_RAX_41 = uVar18;\\\\n        *(undefined8 *)(extraout_RAX_41 + 8) = uVar6;\\\\n        extraout_RAX_41[0x10] = 'd';\\\\n        pcStack_1a8 = extraout_RAX_41;\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229b94c;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        if (extraout_RAX_42 == (undefined8 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a25ee;\\\\n          alloc::raw_vec::handle_error();\\\\n        }\\\\n        *extraout_RAX_42 = uVar18;\\\\n        extraout_RAX_42[1] = uVar6;\\\\n        *(undefined1 *)(extraout_RAX_42 + 2) = 100;\\\\n        puStack_1b0 = extraout_RAX_42;\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229b979;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        if (extraout_RAX_43 == (undefined8 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a24db;\\\\n          alloc::raw_vec::handle_error();\\\\n        }\\\\n        *extraout_RAX_43 = uVar18;\\\\n        extraout_RAX_43[1] = uVar6;\\\\n        *(undefined1 *)(extraout_RAX_43 + 2) = 100;\\\\n        puStack_1f8 = extraout_RAX_43;\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229b9a6;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        if (extraout_RAX_44 == (undefined8 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a2257;\\\\n          alloc::raw_vec::handle_error();\\\\n        }\\\\n        *(char *)((longlong)extraout_RAX_44 + 4) = UNK_143136d57;\\\\n        *(undefined4 *)extraout_RAX_44 =\\\\n             _anon_ca3d65a414162b87f9c37b5fcde039ed_7_llvm_12275225767445047014;\\\\n        puStack_228 = extraout_RAX_44;\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229b9de;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        if (extraout_RAX_45 == (undefined8 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a21b9;\\\\n          alloc::raw_vec::handle_error();\\\\n        }\\\\n        *extraout_RAX_45 = uVar18;\\\\n        extraout_RAX_45[1] = uVar6;\\\\n        *(undefined1 *)(extraout_RAX_45 + 2) = 100;\\\\n        puStack_230 = extraout_RAX_45;\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229ba0b;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        uVar18 = _UNK_14303c245;\\\\n        if (extraout_RAX_46 == (undefined8 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a210d;\\\\n          alloc::raw_vec::handle_error();\\\\n        }\\\\n        *extraout_RAX_46 = _UNK_14303c23d;\\\\n        extraout_RAX_46[1] = uVar18;\\\\n        puStack_250 = extraout_RAX_46;\\\\n        *(undefined **)(puVar29 + -8) = &UNK_14229ba3b;\\\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\\\n        if (extraout_RAX_47 == (undefined8 *)0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          *(undefined **)(puVar29 + -8) = &UNK_1422a200e;\\\\n          alloc::raw_vec::handle_error();\\\\n        }\\\\n        *(undefined8 *)*extraout_RAX_31 = 0x16;\\\\n        *(undefined8 **)(*extraout_RAX_31 + 8) = extraout_RAX_32;\\\\n        *(undefined8 *)extraout_RAX_31[1] = 0x16;\\\\n        extraout_RAX_31[1][8] = 3;\\\\n        *(undefined4 *)(extraout_RAX_31[1] + 0xc) = 3;\\\\n        *(undefined4 *)(extraout_RAX_31[2] + 4) = 0;\\\\n        *(undefined8 *)(extraout_RAX_31[2] + 8) = 0xe;\\\\n        *(undefined8 **)extraout_RAX_31[3] = extraout_RAX_33;\\\\n        *(undefined8 *)(extraout_RAX_31[3] + 8) = 0xe;\\\\n        extraout_RAX_31[4][0] = 3;\\\\n        *(undefined4 *)(extraout_RAX_31[4] + 4) = 5;\\\\n        *(undefined4 *)(extraout_RAX_31[4] + 0xc) = 1;\\\\n        *(undefined8 *)extraout_RAX_31[5] = 0xe;\\\\n        *(undefined8 **)(extraout_RAX_31[5] + 8) = extraout_RAX_34;\\\\n        *(undefined8 *)extraout_RAX_31[6] = 0xe;\\\\n        extraout_RAX_31[6][8] = 3;\\\\n        *(undefined4 *)(extraout_RAX_31[6] + 0xc) = 8;\\\\n        *(undefined4 *)(extraout_RAX_31[7] + 4) = 4;\\\\n        *(undefined8 *)(extraout_RAX_31[7] + 8) = 0x11;\\\\n        *(undefined8 **)extraout_RAX_31[8] = extraout_RAX_35;\\\\n        *(undefined8 *)(extraout_RAX_31[8] + 8) = 0x11;\\\\n        extraout_RAX_31[9][0] = 3;\\\\n        *(undefined4 *)(extraout_RAX_31[9] + 4) = 0x309;\\\\n        *(undefined4 *)(extraout_RAX_31[9] + 0xc) = 0;\\\\n        *(undefined8 *)extraout_RAX_31[10] = 0x11;\\\\n        *(undefined8 **)(extraout_RAX_31[10] + 8) = extraout_RAX_36;\\\\n        *(undefined8 *)extraout_RAX_31[0xb] = 0x11;\\\\n        extraout_RAX_31[0xb][8] = 3;\\\\n        *(undefined4 *)(extraout_RAX_31[0xb] + 0xc) = 0x309;\\\\n        *(undefined4 *)(extraout_RAX_31[0xc] + 4) = 0;\\\\n        *(undefined8 *)(extraout_RAX_31[0xc] + 8) = 0x11;\\\\n        *(undefined1 (**) [16])extraout_RAX_31[0xd] = pauStack_108;\\\\n        *(undefined8 *)(extraout_RAX_31[0xd] + 8) = 0x11;\\\\n        extraout_RAX_31[0xe][0] = 3;\\\\n        *(undefined4 *)(extraout_RAX_31[0xe] + 4) = 0x309;\\\\n        *(undefined4 *)(extraout_RAX_31[0xe] + 0xc) = 0;\\\\n        *(undefined8 *)extraout_RAX_31[0xf] = 0x11;\\\\n        *(undefined8 **)(extraout_RAX_31[0xf] + 8) = uStack_110;\\\\n        *(undefined8 *)extraout_RAX_31[0x10] = 0x11;\\\\n        extraout_RAX_31[0x10][8] = 3;\\\\n        *(undefined4 *)(extraout_RAX_31[0x10] + 0xc) = 0x309;\\\\n        *(undefined4 *)(extraout_RAX_31[0x11] + 4) = 0;\\\\n        *(undefined8 *)(extraout_RAX_31[0x11] + 8) = 0x11;\\\\n        *(undefined1 (**) [16])extraout_RAX_31[0x12] = pauStack_120;\\\\n        *(undefined8 *)(extraout_RAX_31[0x12] + 8) = 0x11;\\\\n        extraout_RAX_31[0x13][0] = 3;\\\\n        *(undefined4 *)(extraout_RAX_31[0x13] + 4) = 0x309;\\\\n        *(undefined4 *)(extraout_RAX_31[0x13] + 0xc) = 0;\\\\n        *(undefined8 *)extraout_RAX_31[0x14] = 0x11;\\\\n        *(char **)(extraout_RAX_31[0x14] + 8) = pcStack_138;\\\\n        *(undefined8 *)extraout_RAX_31[0x15] = 0x11;\\\\n        extraout_RAX_31[0x15][8] = 3;\\\\n        *(undefined4 *)(extraout_RAX_31[0x15] + 0xc) = 0x309;\\\\n        *(undefined4 *)(extraout_RAX_31[0x16] + 4) = 0;\\\\n        *(undefined8 *)(extraout_RAX_31[0x16] + 8) = 0x11;\\\\n        *(char **)extraout_RAX_31[0x17] = pcStack_1a8;\\\\n        *(undefined8 *)(extraout_RAX_31[0x17] + 8) = 0x11;\\\\n        extraout_RAX_31[0x18][0] = 3;\\\\n        *(undefined4 *)(extraout_RAX_31[0x18] + 4) = 0x309;\\\\n        *(undefined4 *)(extraout_RAX_31[0x18] + 0xc) = 0;\\\\n        *(undefined8 *)extraout_RAX_31[0x19] = 0x11;\\\\n        *(undefined8 **)(extraout_RAX_31[0x19] + 8) = puStack_1b0;\\\\n        *(undefined8 *)extraout_RAX_31[0x1a] = 0x11;\\\\n        extraout_RAX_31[0x1a][8] = 3;\\\\n        *(undefined4 *)(extraout_RAX_31[0x1a] + 0xc) = 0x309;\\\\n        *(undefined4 *)(extraout_RAX_31[0x1b] + 4) = 0;\\\\n        *(undefined8 *)(extraout_RAX_31[0x1b] + 8) = 0x11;\\\\n        *(undefined8 **)extraout_RAX_31[0x1c] = puStack_1f8;\\\\n        *(undefined8 *)(extraout_RAX_31[0x1c] + 8) = 0x11;\\\\n        extraout_RAX_31[0x1d][0] = 3;\\\\n        *(undefined4 *)(extraout_RAX_31[0x1d] + 4) = 0x309;\\\\n        *(undefined4 *)(extraout_RAX_31[0x1d] + 0xc) = 0;\\\\n        *(undefined8 *)extraout_RAX_31[0x1e] = 5;\\\\n        *(undefined8 **)(extraout_RAX_31[0x1e] + 8) = puStack_228;\\\\n        *(undefined8 *)extraout_RAX_31[0x1f] = 5;\\\\n        extraout_RAX_31[0x1f][8] = 5;\\\\n        *(undefined4 *)(extraout_RAX_31[0x20] + 4) = 0;\\\\n        *(undefined8 *)(extraout_RAX_31[0x20] + 8) = 0x11;\\\\n        *(undefined8 **)extraout_RAX_31[0x21] = puStack_230;\\\\n        *(undefined8 *)(extraout_RAX_31[0x21] + 8) = 0x11;\\\\n        extraout_RAX_31[0x22][0] = 3;\\\\n        *(undefined4 *)(extraout_RAX_31[0x22] + 4) = 0x309;\\\\n        *(undefined4 *)(extraout_RAX_31[0x22] + 0xc) = 0;\\\\n        *(undefined8 *)extraout_RAX_31[0x23] = 0x10;\\\\n        *(undefined8 **)(extraout_RAX_31[0x23] + 8) = puStack_250;\\\\n        uVar18 = _UNK_14303c255;\\\\n        *extraout_RAX_47 = _UNK_14303c24d;\\\\n        extraout_RAX_47[1] = uVar18;\\\\n        *(undefined4 *)((longlong)extraout_RAX_47 + 0xf) = 0x7472696b;\\\\n        *(undefined8 *)extraout_RAX_31[0x24] = 0x10;\\\\n        *(undefined2 *)(extraout_RAX_31[0x24] + 8) = 0x104;\\\\n        *(undefined4 *)(extraout_RAX_31[0x25] + 4) = 0;\\\\n        *(undefined8 *)(extraout_RAX_31[0x25] + 8) = 0x13;\\\\n        *(undefined8 **)extraout_RAX_31[0x26] = extraout_RAX_47;\\\\n        *(undefined8 *)(extraout_RAX_31[0x26] + 8) = 0x13;\\\\n        *(undefined2 *)extraout_RAX_31[0x27] = 4;\\\\n        *(undefined4 *)(extraout_RAX_31[0x27] + 0xc) = 0;\\\\n        pauStack_1e8 = (undefined1 (*) [16])&DAT_00000010;\\\\n        pauStack_1d8 = (undefined1 (*) [16])&DAT_00000010;\\\\n        pauStack_1e0 = extraout_RAX_31;\\\\n      }\\\\n      goto code_r0x00014229e9e0;\\\\n    case 1:\\\\n      goto code_r0x00014229bde9;\\\\n    case 2:\\\\n      goto code_r0x00014229af43;\\\\n    case 3:\\\\n      goto code_r0x00014229b5fd;\\\\n    case 4:\\\\n    case 7:\\\\n      goto code_r0x0001422a0f96;\\\\n    case 5:\\\\n    case 8:\\\\n    case 0xc:\\\\n      goto code_r0x00014229aa6e;\\\\n    case 6:\\\\n      goto code_r0x00014229b5b9;\\\\n    case 9:\\\\n      goto code_r0x00014229aa86;\\\\n    case 10:\\\\n      goto code_r0x00014229ae6e;\\\\n    case 0xb:\\\\n      goto code_r0x00014229c1b3;\\\\n    case 0xd:\\\\n      goto code_r0x00014229eb2b;\\\\n    case 0xe:\\\\n      goto code_r0x00014229eb5b;\\\\n    case 0xf:\\\\n      goto code_r0x00014229ea98;\\\\n    default:\\\\n      goto code_r0x00014229ea47;\\\\n    case 0x11:\\\\n    case 0x14:\\\\n      goto code_r0x0001422a0f7a;\\\\n    case 0x12:\\\\n      goto code_r0x00014229eff5;\\\\n    case 0x15:\\\\n      goto code_r0x00014229ea68;\\\\n    case 0x19:\\\\n      goto code_r0x00014229efc4;\\\\n    case 0x1a:\\\\n      goto code_r0x0001422ae84a;\\\\n    case 0x1b:\\\\n      goto code_r0x0001422aea87;\\\\n    case 0x1c:\\\\n      goto code_r0x0001422ae724;\\\\n    case 0x1d:\\\\n      goto code_r0x0001422ae7d5;\\\\n    case 0x1e:\\\\n      goto code_r0x0001422ae4d3;\\\\n    case 0x1f:\\\\n      goto code_r0x0001422aeaed;\\\\n    case 0x20:\\\\n      goto code_r0x0001422aeb71;\\\\n    case 0x21:\\\\n    case 0x22:\\\\n      goto code_r0x0001422ae391;\\\\n    case 0x23:\\\\n      goto code_r0x0001422ae630;\\\\n    case 0x24:\\\\n      goto code_r0x0001422aec61;\\\\n    case 0x25:\\\\n      goto code_r0x0001422ae46f;\\\\n    case 0x26:\\\\n      goto code_r0x0001422ae53c;\\\\n    }\\\\n  }\\\\n  *local_2b0 = *local_2b0 + 1;\\\\n  pauVar22 = pauVar26 + 2;\\\\n  pauVar17 = (undefined1 (*) [16])&DAT_14303ca70;\\\\n  piVar10 = (int *)(&DAT_14303ca70 + *(int *)(&DAT_14303ca70 + (ulonglong)(byte)(*pauVar26)[0] * 4))\\\\n  ;\\\\n  bVar45 = piVar10 == (int *)0x0;\\\\n  pauVar43 = pauVar26;\\\\n                    /* WARNING (jumptable): Sanity check requires truncation of jumptable */\\\\n                    /* WARNING: Could not find normalized switch variable to match jumptable */\\\\n  switch((*pauVar26)[0]) {\\\\n  case 0:\\\\n    goto code_r0x00014229b725;\\\\n  case 1:\\\\ncode_r0x00014229bde9:\\\\n    pauStack_118 = pauVar22;\\\\n    if (*__imp__ZN12country_core26_DEV_OVERRIDE_IS_DEMO_MODE17h6f2a49c135369f5aE == '\\\\\\\\0') {\\\\n      *(undefined **)(puVar29 + -8) = &UNK_14229d763;\\\\n      std::alloc::__default_lib_allocator::__rust_alloc();\\\\n      if (extraout_RAX_x00107 == (undefined1 (*) [16])0x0) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n        *(undefined **)(puVar29 + -8) = &UNK_1422a2325;\\\\n        alloc::alloc::handle_alloc_error();\\\\n      }\\\\n      *(undefined \",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":true,\"stderr\":\"\",\"durationMs\":154505}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "get-function-count",
+        "title": "Get Function Count",
+        "description": "Get the total count of functions in the program (use this before calling get-functions to plan pagination)",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "programPath": {
+              "description": "Path in the Ghidra Project to the program to get functions from",
+              "type": "string"
+            },
+            "filterDefaultNames": {
+              "description": "Whether to filter out default Ghidra generated names like FUN_, DAT_, etc.",
+              "type": "boolean",
+              "default": true
+            }
+          },
+          "required": [
+            "programPath"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "set-function-prototype",
+        "title": "Set Function Prototype",
+        "description": "Set or update a function prototype using C-style function signatures. Can create new functions or update existing ones.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "programPath": {
+              "description": "Path in the Ghidra Project to the program",
+              "type": "string"
+            },
+            "signature": {
+              "description": "C-style function signature (e.g., 'int main(int argc, char** argv)')",
+              "type": "string"
+            },
+            "location": {
+              "description": "Address or symbol name where the function is located",
+              "type": "string"
+            },
+            "createIfNotExists": {
+              "description": "Create function if it doesn't exist at the location",
+              "type": "boolean",
+              "default": true
+            }
+          },
+          "required": [
+            "programPath",
+            "location",
+            "signature"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get-decompilation",
+        "title": "Get Function Decompilation",
+        "description": "Get decompiled code for a function with line range support. Defaults to 50 lines to conserve context - start with small chunks (10-20 lines) then expand as needed using offset/limit. Updating variable data types and names can significantly improve decompilation quality. Use includeCallers/includeCallees to get caller/callee lists in one call (avoids separate tool invocations).",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "functionNameOrAddress": {
+              "description": "Function name, address, or symbol to decompile (e.g. 'main', '0x00401000', or 'start'). For addresses pointing inside a function, the containing function will be decompiled.",
+              "type": "string"
+            },
+            "includeCallers": {
+              "description": "Include list of functions that call this one (name, address, signature). Use for understanding function usage without bulk decompilation.",
+              "type": "boolean",
+              "default": false
+            },
+            "programPath": {
+              "description": "Path in the Ghidra Project to the program containing the function",
+              "type": "string"
+            },
+            "offset": {
+              "description": "Line number to start reading from (1-based). Defaults to 1.",
+              "type": "integer",
+              "default": 1
+            },
+            "includeDisassembly": {
+              "description": "Whether to include assembly listing alongside decompilation for sync",
+              "type": "boolean",
+              "default": false
+            },
+            "includeIncomingReferences": {
+              "description": "Whether to include incoming cross references to this function on the function declaration line",
+              "type": "boolean",
+              "default": false
+            },
+            "limit": {
+              "description": "Number of lines to return. Defaults to 50 lines to conserve context. Use smaller chunks (10-20 lines) for initial exploration, then expand as needed.",
+              "type": "integer",
+              "default": 50
+            },
+            "includeReferenceContext": {
+              "description": "Whether to include code context snippets from calling functions (requires includeIncomingReferences)",
+              "type": "boolean",
+              "default": false
+            },
+            "includeComments": {
+              "description": "Whether to include comments in the decompilation output",
+              "type": "boolean",
+              "default": false
+            },
+            "includeCallees": {
+              "description": "Include list of functions this one calls (name, address, signature). Use for understanding function dependencies without bulk decompilation.",
+              "type": "boolean",
+              "default": false
+            },
+            "signatureOnly": {
+              "description": "Return only signature/metadata without decompiled code. Saves output tokens.",
+              "type": "boolean",
+              "default": false
+            }
+          },
+          "required": [
+            "programPath",
+            "functionNameOrAddress"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find-cross-references",
+        "title": "Find Cross References",
+        "description": "Find all references to or from a memory location, symbol, or function. Returns incoming and/or outgoing references with optional decompilation context.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "includeContext": {
+              "description": "Include decompilation context snippets for code references",
+              "type": "boolean",
+              "default": false
+            },
+            "contextLines": {
+              "description": "Number of lines before and after to include in context snippets",
+              "type": "integer",
+              "default": 2
+            },
+            "programPath": {
+              "description": "Path in the Ghidra Project to the program to get references from",
+              "type": "string"
+            },
+            "offset": {
+              "description": "Starting offset for pagination (0-based)",
+              "type": "integer",
+              "default": 0
+            },
+            "includeFlow": {
+              "description": "Include flow references (calls, jumps, branches)",
+              "type": "boolean",
+              "default": true
+            },
+            "limit": {
+              "description": "Maximum number of references to return per direction",
+              "type": "integer",
+              "default": 100
+            },
+            "location": {
+              "description": "Address or symbol name to get references for (e.g., '0x00400123', 'main', 'FUN_00401000')",
+              "type": "string"
+            },
+            "includeData": {
+              "description": "Include data references (reads, writes)",
+              "type": "boolean",
+              "default": true
+            },
+            "direction": {
+              "type": "string",
+              "enum": [
+                "to",
+                "from",
+                "both"
+              ],
+              "description": "Direction of references to retrieve: 'to' (incoming), 'from' (outgoing), or 'both' (default)",
+              "default": "both"
+            }
+          },
+          "required": [
+            "programPath",
+            "location"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get-data-type-by-string",
+        "title": "Get Data Type by String",
+        "description": "Get a data type by its string representation",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "programPath": {
+              "description": "Path in the Ghidra Project to the program",
+              "type": "string"
+            },
+            "dataTypeString": {
+              "description": "String representation of the data type (e.g., 'char**', 'int[10]')",
+              "type": "string"
+            },
+            "archiveName": {
+              "description": "Optional name of the data type archive to search in. If not provided, all archives will be searched.",
+              "type": "string",
+              "default": ""
+            }
+          },
+          "required": [
+            "programPath",
+            "dataTypeString"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "run-script",
+        "title": "Run Python Script",
+        "description": "Execute a Python script in the Ghidra PyGhidra runtime against a specific program. Requires Ghidra to be launched via PyGhidra (mcp-reva or pyghidra-gui). Returns captured stdout/stderr, duration, and timeout flag. Script failures appear in stderr with success=false; tool failures (bad args, PyGhidra unavailable) are MCP errors. Cancellation is cooperative: long-running scripts should periodically check monitor.isCancelled() so the timeout can fire on tight loops.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "description": "Absolute path to an existing .py script to run.",
+              "type": "string"
+            },
+            "programPath": {
+              "description": "Path to the program in the Ghidra Project",
+              "type": "string"
+            },
+            "code": {
+              "description": "Inline Python source. The script runs as a Ghidra script with currentProgram, FlatProgramAPI helpers, and monitor available. Wrap state changes in currentProgram.startTransaction(...) / endTransaction(...) yourself \u2014 the tool does not open a transaction. Provide exactly one of: code, scriptPath, scriptName.",
+              "type": "string"
+            },
+            "scriptName": {
+              "description": "Name of a script (e.g., 'MyAnalysis.py') resolved across registered Ghidra script directories.",
+              "type": "string"
+            },
+            "timeoutSeconds": {
+              "description": "Per-call timeout override in seconds. Defaults to the configured script timeout.",
+              "type": "integer",
+              "default": 60
+            }
+          },
+          "required": [
+            "programPath"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list-scripts",
+        "title": "List Scripts",
+        "description": "List Python scripts visible to Ghidra across all registered script directories (user dir + system dirs + bundle dirs). Filterable by path or name; supports pagination.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "pathFilter": {
+              "description": "Optional substring filter on script absolute path",
+              "type": "string",
+              "default": ""
+            },
+            "startIndex": {
+              "description": "Pagination start (0-indexed)",
+              "type": "integer",
+              "default": 0
+            },
+            "nameFilter": {
+              "description": "Optional substring filter on script file name",
+              "type": "string",
+              "default": ""
+            },
+            "maxCount": {
+              "description": "Maximum entries to return",
+              "type": "integer",
+              "default": 100
+            }
+          },
+          "required": []
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "read-script",
+        "title": "Read Script",
+        "description": "Read a script's source, returned with cat -n style line numbers so you can reference exact lines in edit-script. Supports chunked reads via offset/limit. Sets truncated=true if more lines remain.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "description": "Absolute path to the script. Provide either scriptPath or scriptName.",
+              "type": "string"
+            },
+            "offset": {
+              "description": "1-indexed starting line",
+              "type": "integer",
+              "default": 1
+            },
+            "limit": {
+              "description": "Maximum lines to return",
+              "type": "integer",
+              "default": 2000
+            },
+            "scriptName": {
+              "description": "Script file name resolved across registered script directories.",
+              "type": "string"
+            }
+          },
+          "required": []
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "write-script",
+        "title": "Write Script",
+        "description": "Create a new script or fully replace an existing one in a writeable script directory. System directories are read-only. Use edit-script for targeted changes instead of full rewrites.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "description": "Absolute path; must resolve under a writeable script directory.",
+              "type": "string"
+            },
+            "code": {
+              "description": "Script source to write.",
+              "type": "string"
+            },
+            "scriptName": {
+              "description": "File name (e.g., 'MyAnalysis.py') \u2014 written to the default writeable scripts directory.",
+              "type": "string"
+            },
+            "overwrite": {
+              "description": "Overwrite existing file. Default false: errors if file exists.",
+              "type": "boolean",
+              "default": false
+            }
+          },
+          "required": [
+            "code"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "edit-script",
+        "title": "Edit Script",
+        "description": "Replace exact old_string with new_string in a script. Errors if old_string isn't found, or if it matches multiple locations and replace_all is false. Use this instead of write-script when iterating on an existing script.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "description": "Absolute path to the script to edit (must be writeable).",
+              "type": "string"
+            },
+            "old_string": {
+              "description": "Exact text to find. Must occur exactly once unless replace_all is true; surround with enough context to make it unique.",
+              "type": "string"
+            },
+            "scriptName": {
+              "description": "Script file name resolved under the default writeable scripts directory.",
+              "type": "string"
+            },
+            "replace_all": {
+              "description": "Replace every occurrence. Default false: errors if old_string matches more than one location.",
+              "type": "boolean",
+              "default": false
+            },
+            "new_string": {
+              "description": "Replacement text. Must differ from old_string.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "old_string",
+            "new_string"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 1,
+  "ok": true
+}

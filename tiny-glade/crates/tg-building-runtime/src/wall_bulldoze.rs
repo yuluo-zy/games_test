@@ -1,17 +1,16 @@
-//! Actual bulldoze snapshot producer and animation connected to authority owners.
-//! Original UI hit/range selection and GameTime+58 remain explicit source inputs.
+//! Records wall/roof removal history and advances wall shrink animations.
+//! The caller supplies the selected range, anchor, and animation time step.
 use crate::{
     BuildingReport, DeleteRoof, RemoveWall, Roof, UpsertRawWall, WallCollectionState, WallRoofMap,
     history::{BuildingHistoryRequests, WallHistoryReplayAudio},
     wall_authoring::WallAuthoringState,
 };
 use bevy_ecs::prelude::*;
-use country_core::recovered_building::{
-    building_history_transactions::BuildingEdit,
-    building_wall_bulldoze::{WallBulldozeCommand, record_wall_bulldoze},
-    building_wall_history_edit::WallAuthoritySnapshot,
-    building_wall_state::WallId,
-};
+use country_core::resources::history::building_transactions::BuildingEdit;
+use country_core::systems::wall::eraser::bulldoze::WallBulldozeCommand;
+use country_core::systems::wall::eraser::bulldoze::record_wall_bulldoze;
+use country_core::resources::history::wall_edit::WallAuthoritySnapshot;
+use country_core::resources::walls::publication_fields::WallId;
 #[derive(Event, Clone, Copy, Debug)]
 pub struct BulldozeWall {
     pub wall: WallId,
@@ -25,6 +24,8 @@ pub struct WallBulldozeState {
     pub roof_owners_this_frame: std::collections::HashSet<WallId>,
     pub updated_this_frame: Vec<WallId>,
     pub removed_this_frame: Vec<WallId>,
+    /// Authority inputs copied for this update; idle updates copy no sources.
+    pub authority_snapshots_this_frame: usize,
 }
 #[derive(Resource, Default)]
 pub struct WallBulldozeTiming {
@@ -53,18 +54,37 @@ pub(crate) fn consume_and_animate(
     state.roof_owners_this_frame.clear();
     state.updated_this_frame.clear();
     state.removed_this_frame.clear();
-    let mut sources = std::collections::HashMap::new();
-    for (wall, source) in collection
-        .raw_sources
+    state.authority_snapshots_this_frame = 0;
+    let requests: Vec<_> = requests.read().copied().collect();
+    if requests.is_empty() && state.commands.is_empty() {
+        return;
+    }
+    // Each command only accesses its own wall. Snapshot the union of request
+    // and animation targets so unrelated curves never enter the working map.
+    let targets: std::collections::HashSet<_> = requests
         .iter()
-        .chain(authoring.staged_sources.iter())
-    {
-        if authoring.removed_sources.contains(wall) {
+        .map(|request| request.wall)
+        .chain(
+            state
+                .commands
+                .iter()
+                .filter(|command| !command.finished)
+                .map(|command| command.wall),
+        )
+        .collect();
+    let mut sources = std::collections::HashMap::with_capacity(targets.len());
+    for wall in targets {
+        if authoring.removed_sources.contains(&wall) {
             continue;
         }
-        if let Some(metadata) = authoring.history_metadata.get(wall) {
+        if let Some((source, metadata)) = authoring
+            .staged_sources
+            .get(&wall)
+            .or_else(|| collection.raw_sources.get(&wall))
+            .zip(authoring.history_metadata.get(&wall))
+        {
             sources.insert(
-                *wall,
+                wall,
                 WallAuthoritySnapshot {
                     source: source.clone(),
                     metadata: *metadata,
@@ -72,7 +92,25 @@ pub(crate) fn consume_and_animate(
             );
         }
     }
-    for request in requests.read() {
+    state.authority_snapshots_this_frame = sources.len();
+    for request in &requests {
+        if !request.anchor.into_iter().all(f32::is_finite) {
+            report
+                .faults
+                .push(format!("Bulldoze {} has invalid anchor", request.wall.0));
+            continue;
+        }
+        if state
+            .commands
+            .iter()
+            .any(|command| command.wall == request.wall && !command.finished)
+        {
+            report.faults.push(format!(
+                "Bulldoze {} already has an active command",
+                request.wall.0
+            ));
+            continue;
+        }
         let Some(snapshot) = sources.get(&request.wall) else {
             report.faults.push(format!(
                 "Bulldoze {} requires actual authority/metadata",
@@ -143,6 +181,12 @@ pub(crate) fn consume_and_animate(
             .push("Bulldoze requires observed GameTime+58 step".into());
         return;
     };
+    if !dt.is_finite() || dt < 0.0 {
+        report
+            .faults
+            .push("Bulldoze requires a finite nonnegative time step".into());
+        return;
+    }
     let mut updated = Vec::new();
     let mut removed = Vec::new();
     for command in &mut state.commands {

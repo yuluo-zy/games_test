@@ -52,11 +52,12 @@ pub struct PresetTexture {
 const fn row(extent: [u32; 2], format: u32, hash: u64) -> (TextureDesc, u64) {
     (
         TextureDesc {
+            flags: 0,
             extent: [extent[0], extent[1], 1],
-            kind: 0,
+            kind: 2,
             sampled: true,
-            mip_levels: 0,
-            array_elements: 0,
+            mip_levels: 1,
+            array_elements: 1,
             storage: true,
             color_attachment: false,
             depth_stencil_attachment: false,
@@ -141,6 +142,8 @@ impl TexturePreset {
         };
         // `row()` 已按"sampled + storage"建；2D 数组两项（0x11/0x12）与用途位互斥的项在上面单独处理。
         desc.sampled = true;
+        desc.mip_levels = desc.mip_levels.max(1);
+        desc.array_elements = desc.array_elements.max(1);
         PresetTexture { desc, name_hash }
     }
 
@@ -240,13 +243,13 @@ mod tests {
     }
 
     #[test]
-    fn only_preset_8_has_mips_and_only_the_two_arrays_have_layers() {
+    fn only_preset_8_has_multiple_mips_and_only_arrays_have_multiple_layers() {
         for p in 0..25u8 {
             let d = TexturePreset(p).texture().desc;
-            assert_eq!(d.mip_levels, if p == 8 { 5 } else { 0 }, "mips of {p:#x}");
+            assert_eq!(d.mip_levels, if p == 8 { 5 } else { 1 }, "mips of {p:#x}");
             assert_eq!(
                 d.array_elements,
-                if matches!(p, 0x11 | 0x12) { 3 } else { 0 },
+                if matches!(p, 0x11 | 0x12) { 3 } else { 1 },
                 "layers of {p:#x}"
             );
         }

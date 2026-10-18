@@ -1,0 +1,702 @@
+{
+  "scope": "B packaged original shader content facts; flags and content intent are current host metadata, not invented native ABI",
+  "records": [
+    {
+      "shader": "_water_calc_deferred_rt_args.cs.hlsl_cs_main_0.bin.0",
+      "spv_sha256": "13ac89b668bb898688d3d337db78a46f52464938670b130163e7ec91aaf3ad7d",
+      "intent": "preserve buffer water_rt_count_buffer",
+      "glsl_context": [
+        {
+          "line": 11,
+          "lines": [
+            "",
+            "layout(set = 0, binding = 13, std430) buffer type_RWStructuredBuffer_v4uint",
+            "{",
+            "    uvec4 _m0[];",
+            "} water_rt_count_buffer;",
+            "",
+            "void main()",
+            "{",
+            "    water_rt_count_buffer._m0[0u] = uvec4((water_rt_count_buffer._m0[0u].x + 63u) / 64u, 1u, 1u, water_rt_count_buffer._m0[0u].x);",
+            "}",
+            ""
+          ]
+        }
+      ],
+      "direct_spirv_operations": []
+    },
+    {
+      "shader": "_water_plane.raster.hlsl_b903e43ffb3da915.bin.1",
+      "spv_sha256": "a5700e8000d2934327830d00277322d7e69748ccc5df449b45537085d7f6b555",
+      "intent": "preserve raster count only; TAA history inactive when history_valid0",
+      "glsl_context": [
+        {
+          "line": 1078,
+          "lines": [
+            "        }",
+            "        uint _1594 = subgroupQuadSwapHorizontal(_1593);",
+            "        uint _1595 = _1593 + _1594;",
+            "        uint _1596 = subgroupQuadSwapVertical(_1595);",
+            "        uint _1597 = _1595 + _1596;",
+            "        uvec2 _1598 = _302 & uvec2(1u);",
+            "        if ((_1598.x + (_1598.y * 2u)) == uint(findMSB(_1597)))",
+            "        {",
+            "            uint _1608 = atomicAdd(_alias_water_rt_count_buffer._m0[0u], 1u);",
+            "            vec3 _1620 = _634 / vec3((abs(_634.x) + abs(_634.y)) + abs(_634.z));",
+            "            vec3 _1634;",
+            "            if (_1620.z < 0.0)",
+            "            {",
+            "                vec2 _1632 = (vec2(1.0) - abs(_1620.yx)) * ((step(vec2(0.0), _1620.xy) * 2.0) - vec2(1.0));",
+            "                _1634 = vec3(_1632.x, _1632.y, _1620.z);",
+            "            }",
+            "            else",
+            "            {"
+          ]
+        }
+      ],
+      "direct_spirv_operations": [
+        {
+          "line": 18841,
+          "operation": "       %1608 = OpAtomicIAdd %uint %1607 %uint_1 %uint_0 %uint_1"
+        }
+      ]
+    },
+    {
+      "shader": "_ice_plane.raster.hlsl_b903e43ffb3da915.bin.1",
+      "spv_sha256": "aa339b8a1c5f627830bcc3e053fd226be8795bdc2f73248e2cf7904e6be8a201",
+      "intent": "preserve raster count initialized[0,1,1,0]; shadows_history inactive when configured flag0",
+      "glsl_context": [
+        {
+          "line": 822,
+          "lines": [
+            "    {",
+            "        uvec2 _1327 = _248 & uvec2(1u);",
+            "        _1334 = 1u << ((_1327.x + (_1327.y * 2u)) & 31u);",
+            "    }",
+            "    uint _1336 = _1334 + subgroupQuadSwapHorizontal(_1334);",
+            "    uvec2 _1339 = _248 & uvec2(1u);",
+            "    if ((_1339.x + (_1339.y * 2u)) == uint(findMSB(_1336 + subgroupQuadSwapVertical(_1336))))",
+            "    {",
+            "        uint _1349 = atomicAdd(_alias_ice_refl_count_buffer._m0[3u], 1u);",
+            "        _alias_ice_refl_px_buffer_1._m0[_1349] = _249.x + (_249.y * 65536u);",
+            "        if ((_1349 & 63u) == 0u)",
+            "        {",
+            "            uint _1360 = atomicAdd(_alias_ice_refl_count_buffer._m0[0u], 1u);",
+            "        }",
+            "    }",
+            "    float _1363;",
+            "    vec3 _1415;",
+            "    do"
+          ]
+        },
+        {
+          "line": 826,
+          "lines": [
+            "    uint _1336 = _1334 + subgroupQuadSwapHorizontal(_1334);",
+            "    uvec2 _1339 = _248 & uvec2(1u);",
+            "    if ((_1339.x + (_1339.y * 2u)) == uint(findMSB(_1336 + subgroupQuadSwapVertical(_1336))))",
+            "    {",
+            "        uint _1349 = atomicAdd(_alias_ice_refl_count_buffer._m0[3u], 1u);",
+            "        _alias_ice_refl_px_buffer_1._m0[_1349] = _249.x + (_249.y * 65536u);",
+            "        if ((_1349 & 63u) == 0u)",
+            "        {",
+            "            uint _1360 = atomicAdd(_alias_ice_refl_count_buffer._m0[0u], 1u);",
+            "        }",
+            "    }",
+            "    float _1363;",
+            "    vec3 _1415;",
+            "    do",
+            "    {",
+            "        _1363 = _275.y;",
+            "        bool _1369;",
+            "        if (!(_1363 <= 0.0))"
+          ]
+        }
+      ],
+      "direct_spirv_operations": [
+        {
+          "line": 12967,
+          "operation": "       %1349 = OpAtomicIAdd %uint %1348 %uint_1 %uint_0 %uint_1"
+        },
+        {
+          "line": 12989,
+          "operation": "       %1360 = OpAtomicIAdd %uint %1359 %uint_1 %uint_0 %uint_1"
+        }
+      ]
+    },
+    {
+      "shader": "_water_deferred_rt.cs.hlsl_cs_main_0.bin.0",
+      "spv_sha256": "7269cb321e470091596e4239c4022ab2c6e123c78a80135e01384c17ccdb724c",
+      "intent": "preserve in-place color; TAA inactive when history_valid0",
+      "glsl_context": [
+        {
+          "line": 808,
+          "lines": [
+            "            }",
+            "            else",
+            "            {",
+            "                _1314 = false;",
+            "            }",
+            "            if (_1314 ? all(equal(vec4(1.0), textureGatherOffset(sampler2D(reprojection_tex, sampler_lnc), _245, ivec2(0), 2))) : false)",
+            "            {",
+            "                vec3 _1329 = textureLod(sampler2D(taa_history_tex, sampler_lnc), _245 + texelFetch(reprojection_tex, ivec2(_1190), int(0u)).xy, 0.0).xyz;",
+            "                vec4 _1331 = imageLoad(color_tex, ivec2(_1190));",
+            "                vec3 _1333 = _1331.xyz + _1294;",
+            "                float _1334 = dot(_1329, vec3(0.2125999927520751953125, 0.715200006961822509765625, 0.072200000286102294921875));",
+            "                float _1335 = dot(_1333, vec3(0.2125999927520751953125, 0.715200006961822509765625, 0.072200000286102294921875));",
+            "                float _1338 = clamp(_1335, 0.4000000059604644775390625 * _1334, 2.5 * _1334);",
+            "                if (_1335 > _1334)",
+            "                {",
+            "                    imageStore(color_tex, ivec2(_1190), (_1333 * (_1338 / spvNMax(9.9999999392252902907785028219223e-09, _1335))).xyzz);",
+            "                }",
+            "                else"
+          ]
+        },
+        {
+          "line": 824,
+          "lines": [
+            "                }",
+            "                else",
+            "                {",
+            "                    imageStore(color_tex, ivec2(_1190), (_1329 * (_1338 / spvNMax(9.9999999392252902907785028219223e-09, _1334))).xyzz);",
+            "                }",
+            "            }",
+            "            else",
+            "            {",
+            "                imageStore(color_tex, ivec2(_1190), (imageLoad(color_tex, ivec2(_1190)).xyz + _1294).xyzz);",
+            "            }",
+            "        }",
+            "        if ((2u & _269) != 0u)",
+            "        {",
+            "            uvec2 _1356 = (_238 * uvec2(2u)) + uvec2(1u, 0u);",
+            "            vec4 _1369 = (vec4(_310 + (_308 * _1185.w), 1.0) * frame_constants.view_constants[0u].world_to_view) * frame_constants.view_constants[0u].view_to_sample;",
+            "            vec3 _1373 = _1369.xyz / vec3(_1369.w);",
+            "            vec2 _1376 = (_1373.xy * vec2(0.5, -0.5)) + vec2(0.5);",
+            "            vec4 _1380 = textureLod(sampler2D(reprojection_tex, sampler_nnc), _1376, 0.0);"
+          ]
+        },
+        {
+          "line": 916,
+          "lines": [
+            "            }",
+            "            else",
+            "            {",
+            "                _1480 = false;",
+            "            }",
+            "            if (_1480 ? all(equal(vec4(1.0), textureGatherOffset(sampler2D(reprojection_tex, sampler_lnc), _245, ivec2(0), 2))) : false)",
+            "            {",
+            "                vec3 _1495 = textureLod(sampler2D(taa_history_tex, sampler_lnc), _245 + texelFetch(reprojection_tex, ivec2(_1356), int(0u)).xy, 0.0).xyz;",
+            "                vec4 _1497 = imageLoad(color_tex, ivec2(_1356));",
+            "                vec3 _1499 = _1497.xyz + _1460;",
+            "                float _1500 = dot(_1495, vec3(0.2125999927520751953125, 0.715200006961822509765625, 0.072200000286102294921875));",
+            "                float _1501 = dot(_1499, vec3(0.2125999927520751953125, 0.715200006961822509765625, 0.072200000286102294921875));",
+            "                float _1504 = clamp(_1501, 0.4000000059604644775390625 * _1500, 2.5 * _1500);",
+            "                if (_1501 > _1500)",
+            "                {",
+            "                    imageStore(color_tex, ivec2(_1356), (_1499 * (_1504 / spvNMax(9.9999999392252902907785028219223e-09, _1501))).xyzz);",
+            "                }",
+            "                else"
+          ]
+        },
+        {
+          "line": 932,
+          "lines": [
+            "                }",
+            "                else",
+            "                {",
+            "                    imageStore(color_tex, ivec2(_1356), (_1495 * (_1504 / spvNMax(9.9999999392252902907785028219223e-09, _1500))).xyzz);",
+            "                }",
+            "            }",
+            "            else",
+            "            {",
+            "                imageStore(color_tex, ivec2(_1356), (imageLoad(color_tex, ivec2(_1356)).xyz + _1460).xyzz);",
+            "            }",
+            "        }",
+            "        if ((4u & _269) != 0u)",
+            "        {",
+            "            uvec2 _1522 = (_238 * uvec2(2u)) + uvec2(0u, 1u);",
+            "            vec4 _1535 = (vec4(_310 + (_308 * _1185.w), 1.0) * frame_constants.view_constants[0u].world_to_view) * frame_constants.view_constants[0u].view_to_sample;",
+            "            vec3 _1539 = _1535.xyz / vec3(_1535.w);",
+            "            vec2 _1542 = (_1539.xy * vec2(0.5, -0.5)) + vec2(0.5);",
+            "            vec4 _1546 = textureLod(sampler2D(reprojection_tex, sampler_nnc), _1542, 0.0);"
+          ]
+        },
+        {
+          "line": 1024,
+          "lines": [
+            "            }",
+            "            else",
+            "            {",
+            "                _1646 = false;",
+            "            }",
+            "            if (_1646 ? all(equal(vec4(1.0), textureGatherOffset(sampler2D(reprojection_tex, sampler_lnc), _245, ivec2(0), 2))) : false)",
+            "            {",
+            "                vec3 _1661 = textureLod(sampler2D(taa_history_tex, sampler_lnc), _245 + texelFetch(reprojection_tex, ivec2(_1522), int(0u)).xy, 0.0).xyz;",
+            "                vec4 _1663 = imageLoad(color_tex, ivec2(_1522));",
+            "                vec3 _1665 = _1663.xyz + _1626;",
+            "                float _1666 = dot(_1661, vec3(0.2125999927520751953125, 0.715200006961822509765625, 0.072200000286102294921875));",
+            "                float _1667 = dot(_1665, vec3(0.2125999927520751953125, 0.715200006961822509765625, 0.072200000286102294921875));",
+            "                float _1670 = clamp(_1667, 0.4000000059604644775390625 * _1666, 2.5 * _1666);",
+            "                if (_1667 > _1666)",
+            "                {",
+            "                    imageStore(color_tex, ivec2(_1522), (_1665 * (_1670 / spvNMax(9.9999999392252902907785028219223e-09, _1667))).xyzz);",
+            "                }",
+            "                else"
+          ]
+        },
+        {
+          "line": 1040,
+          "lines": [
+            "                }",
+            "                else",
+            "                {",
+            "                    imageStore(color_tex, ivec2(_1522), (_1661 * (_1670 / spvNMax(9.9999999392252902907785028219223e-09, _1666))).xyzz);",
+            "                }",
+            "            }",
+            "            else",
+            "            {",
+            "                imageStore(color_tex, ivec2(_1522), (imageLoad(color_tex, ivec2(_1522)).xyz + _1626).xyzz);",
+            "            }",
+            "        }",
+            "        if ((8u & _269) != 0u)",
+            "        {",
+            "            uvec2 _1688 = (_238 * uvec2(2u)) + uvec2(1u);",
+            "            vec4 _1701 = (vec4(_310 + (_308 * _1185.w), 1.0) * frame_constants.view_constants[0u].world_to_view) * frame_constants.view_constants[0u].view_to_sample;",
+            "            vec3 _1705 = _1701.xyz / vec3(_1701.w);",
+            "            vec2 _1708 = (_1705.xy * vec2(0.5, -0.5)) + vec2(0.5);",
+            "            vec4 _1712 = textureLod(sampler2D(reprojection_tex, sampler_nnc), _1708, 0.0);"
+          ]
+        },
+        {
+          "line": 1132,
+          "lines": [
+            "            }",
+            "            else",
+            "            {",
+            "                _1812 = false;",
+            "            }",
+            "            if (_1812 ? all(equal(vec4(1.0), textureGatherOffset(sampler2D(reprojection_tex, sampler_lnc), _245, ivec2(0), 2))) : false)",
+            "            {",
+            "                vec3 _1827 = textureLod(sampler2D(taa_history_tex, sampler_lnc), _245 + texelFetch(reprojection_tex, ivec2(_1688), int(0u)).xy, 0.0).xyz;",
+            "                vec4 _1829 = imageLoad(color_tex, ivec2(_1688));",
+            "                vec3 _1831 = _1829.xyz + _1792;",
+            "                float _1832 = dot(_1827, vec3(0.2125999927520751953125, 0.715200006961822509765625, 0.072200000286102294921875));",
+            "                float _1833 = dot(_1831, vec3(0.2125999927520751953125, 0.715200006961822509765625, 0.072200000286102294921875));",
+            "                float _1836 = clamp(_1833, 0.4000000059604644775390625 * _1832, 2.5 * _1832);",
+            "                if (_1833 > _1832)",
+            "                {",
+            "                    imageStore(color_tex, ivec2(_1688), (_1831 * (_1836 / spvNMax(9.9999999392252902907785028219223e-09, _1833))).xyzz);",
+            "                }",
+            "                else"
+          ]
+        },
+        {
+          "line": 1148,
+          "lines": [
+            "                }",
+            "                else",
+            "                {",
+            "                    imageStore(color_tex, ivec2(_1688), (_1827 * (_1836 / spvNMax(9.9999999392252902907785028219223e-09, _1832))).xyzz);",
+            "                }",
+            "            }",
+            "            else",
+            "            {",
+            "                imageStore(color_tex, ivec2(_1688), (imageLoad(color_tex, ivec2(_1688)).xyz + _1792).xyzz);",
+            "            }",
+            "        }",
+            "        break;",
+            "    } while(false);",
+            "}",
+            ""
+          ]
+        }
+      ],
+      "direct_spirv_operations": [
+        {
+          "line": 14718,
+          "operation": "       %1320 = OpImageRead %v4float %1319 %1190 None"
+        },
+        {
+          "line": 14724,
+          "operation": "               OpImageWrite %1323 %1190 %1322 None"
+        },
+        {
+          "line": 14740,
+          "operation": "       %1331 = OpImageRead %v4float %1330 %1190 None"
+        },
+        {
+          "line": 14767,
+          "operation": "               OpImageWrite %1346 %1190 %1345 None"
+        },
+        {
+          "line": 14779,
+          "operation": "               OpImageWrite %1350 %1190 %1349 None"
+        },
+        {
+          "line": 15042,
+          "operation": "       %1486 = OpImageRead %v4float %1485 %1356 None"
+        },
+        {
+          "line": 15048,
+          "operation": "               OpImageWrite %1489 %1356 %1488 None"
+        },
+        {
+          "line": 15064,
+          "operation": "       %1497 = OpImageRead %v4float %1496 %1356 None"
+        },
+        {
+          "line": 15091,
+          "operation": "               OpImageWrite %1512 %1356 %1511 None"
+        },
+        {
+          "line": 15103,
+          "operation": "               OpImageWrite %1516 %1356 %1515 None"
+        },
+        {
+          "line": 15366,
+          "operation": "       %1652 = OpImageRead %v4float %1651 %1522 None"
+        },
+        {
+          "line": 15372,
+          "operation": "               OpImageWrite %1655 %1522 %1654 None"
+        },
+        {
+          "line": 15388,
+          "operation": "       %1663 = OpImageRead %v4float %1662 %1522 None"
+        },
+        {
+          "line": 15415,
+          "operation": "               OpImageWrite %1678 %1522 %1677 None"
+        },
+        {
+          "line": 15427,
+          "operation": "               OpImageWrite %1682 %1522 %1681 None"
+        },
+        {
+          "line": 15690,
+          "operation": "       %1818 = OpImageRead %v4float %1817 %1688 None"
+        },
+        {
+          "line": 15696,
+          "operation": "               OpImageWrite %1821 %1688 %1820 None"
+        },
+        {
+          "line": 15712,
+          "operation": "       %1829 = OpImageRead %v4float %1828 %1688 None"
+        },
+        {
+          "line": 15739,
+          "operation": "               OpImageWrite %1844 %1688 %1843 None"
+        },
+        {
+          "line": 15751,
+          "operation": "               OpImageWrite %1848 %1688 %1847 None"
+        }
+      ]
+    },
+    {
+      "shader": "_water_ice_refl_march.cs.hlsl_cs_main_0.bin.0",
+      "spv_sha256": "2476d65da90ab3237629bad8f83046662404405cb478a060cf5dd82ab5c28017",
+      "intent": "preserve clear refl_hits over partial writes and initial rt_count over atomics",
+      "glsl_context": [
+        {
+          "line": 530,
+          "lines": [
+            "            vec4 _716 = (_646 * _456) * frame_constants.view_constants[0u].view_to_world;",
+            "            _722 = distance(_716.xyz / vec3(_716.w), _224);",
+            "            _723 = _714;",
+            "        }",
+            "        else",
+            "        {",
+            "            vec4 _651 = (_646 * frame_constants.view_constants[0u].sample_to_view) * frame_constants.view_constants[0u].view_to_world;",
+            "            vec3 _655 = _651.xyz / vec3(_651.w);",
+            "            uint _657 = atomicAdd(_alias_ice_rt_count_buffer._m0[3u], 1u);",
+            "            vec3 _658 = _655 - _218;",
+            "            _alias_ice_rt_ray_buffer._m0[_657] = uvec4(_188 + (_190 * 65536u), packHalf2x16(vec2(_658.x, 0.0)) | (packHalf2x16(vec2(_393.x, 0.0)) << 16u), packHalf2x16(vec2(_658.y, 0.0)) | (packHalf2x16(vec2(_393.y, 0.0)) << 16u), packHalf2x16(vec2(_658.z, 0.0)) | (packHalf2x16(vec2(_393.z, 0.0)) << 16u));",
+            "            if ((_657 & 63u) == 0u)",
+            "            {",
+            "                uint _689 = atomicAdd(_alias_ice_rt_count_buffer._m0[0u], 1u);",
+            "            }",
+            "            _722 = distance(_655, _224);",
+            "            _723 = vec3(0.0);",
+            "        }"
+          ]
+        },
+        {
+          "line": 535,
+          "lines": [
+            "        {",
+            "            vec4 _651 = (_646 * frame_constants.view_constants[0u].sample_to_view) * frame_constants.view_constants[0u].view_to_world;",
+            "            vec3 _655 = _651.xyz / vec3(_651.w);",
+            "            uint _657 = atomicAdd(_alias_ice_rt_count_buffer._m0[3u], 1u);",
+            "            vec3 _658 = _655 - _218;",
+            "            _alias_ice_rt_ray_buffer._m0[_657] = uvec4(_188 + (_190 * 65536u), packHalf2x16(vec2(_658.x, 0.0)) | (packHalf2x16(vec2(_393.x, 0.0)) << 16u), packHalf2x16(vec2(_658.y, 0.0)) | (packHalf2x16(vec2(_393.y, 0.0)) << 16u), packHalf2x16(vec2(_658.z, 0.0)) | (packHalf2x16(vec2(_393.z, 0.0)) << 16u));",
+            "            if ((_657 & 63u) == 0u)",
+            "            {",
+            "                uint _689 = atomicAdd(_alias_ice_rt_count_buffer._m0[0u], 1u);",
+            "            }",
+            "            _722 = distance(_655, _224);",
+            "            _723 = vec3(0.0);",
+            "        }",
+            "        imageStore(refl_hit_tex, ivec2(_191), vec2(_722, _260).xyyy);",
+            "        vec3 _726 = clamp(_723, vec3(0.0), vec3(65408.0));",
+            "        float _736 = uintBitsToFloat((floatBitsToUint(spvNMax(spvNMax(1.52587890625e-05, _726.x), spvNMax(_726.y, _726.z))) + 125845504u) & 2139095040u);",
+            "        uvec3 _739 = floatBitsToUint(_726 + vec3(_736));",
+            "        imageStore(refl_hit_radiance_tex, ivec2(_191), uvec4(((((floatBitsToUint(_736) << 4u) + 268435456u) | (_739.z << 18u)) | (_739.y << 9u)) | (_739.x & 511u)));"
+          ]
+        }
+      ],
+      "direct_spirv_operations": [
+        {
+          "line": 14946,
+          "operation": "        %657 = OpAtomicIAdd %uint %656 %uint_1 %uint_0 %uint_1"
+        },
+        {
+          "line": 15005,
+          "operation": "        %689 = OpAtomicIAdd %uint %688 %uint_1 %uint_0 %uint_1"
+        },
+        {
+          "line": 15079,
+          "operation": "               OpImageWrite %725 %191 %724 None"
+        },
+        {
+          "line": 15134,
+          "operation": "               OpImageWrite %752 %191 %751 None"
+        }
+      ]
+    },
+    {
+      "shader": "_water_ice_deferred_rt.cs.hlsl_cs_main_0.bin.0",
+      "spv_sha256": "0199ac28055ddc5ac38df47476bc08251abcc97621301a24c6584376b911d367",
+      "intent": "preserve earlier hit and radiance pixels while tracing selected subset",
+      "glsl_context": [
+        {
+          "line": 703,
+          "lines": [
+            "                _1138 = _265;",
+            "                break;",
+            "            }",
+            "        }",
+            "        vec4 _1151 = (vec4(_250 + (_263 * _1138.w), 1.0) * frame_constants.view_constants[0u].world_to_view) * frame_constants.view_constants[0u].view_to_sample;",
+            "        vec3 _1155 = _1151.xyz / vec3(_1151.w);",
+            "        vec2 _1158 = (_1155.xy * vec2(0.5, -0.5)) + vec2(0.5);",
+            "        vec4 _1162 = textureLod(sampler2D(reprojection_tex, sampler_nnc), _1158, 0.0);",
+            "        vec4 _1164 = imageLoad(refl_hit_tex, ivec2(_229));",
+            "        bool _1175;",
+            "        if (all(lessThan(abs(_1155), vec3(1.0))))",
+            "        {",
+            "            _1175 = _1155.z > 0.0;",
+            "        }",
+            "        else",
+            "        {",
+            "            _1175 = false;",
+            "        }"
+          ]
+        }
+      ],
+      "direct_spirv_operations": [
+        {
+          "line": 14404,
+          "operation": "       %1164 = OpImageRead %v4float %1163 %229 None"
+        },
+        {
+          "line": 14555,
+          "operation": "               OpImageWrite %1240 %229 %1239 None"
+        },
+        {
+          "line": 14610,
+          "operation": "               OpImageWrite %1267 %229 %1266 None"
+        }
+      ]
+    },
+    {
+      "shader": "_water_ice_refl_resolve.cs.hlsl_cs_main_0.bin.0",
+      "spv_sha256": "c3274831c35055b2ff45af5a9089c0f71bacfd3905c4e34583e5eca320d15175",
+      "intent": "original undefined ray_len history; separate gated refl/rfr history and RMW outputs",
+      "glsl_context": [
+        {
+          "line": 149,
+          "lines": [
+            "        float _248 = spvNMax(9.9999997473787516355514526367188e-06, _243);",
+            "        float _249 = 16.0 / _248;",
+            "        vec4 _258 = ((_199 * frame_constants.view_constants[0u].clip_to_view) * frame_constants.view_constants[0u].view_to_clip) * frame_constants.view_constants[0u].clip_to_prev_clip;",
+            "        vec2 _264 = ((_258.xy / vec2(_258.w)) * vec2(0.5, -0.5)) + vec2(0.5);",
+            "        float _272 = float(all(equal(clamp(_264, vec2(0.0), vec2(1.0)), _264)));",
+            "        vec2 _279 = _168 + vec4(_264 - ((_199.xy * vec2(0.5, -0.5)) + vec2(0.5)), _272, 1.0).xy;",
+            "        float _290 = exp2(-clamp(_249 * length(_215.x), 0.0, 100.0));",
+            "        float _292 = (-0.0625) * _248;",
+            "        float _296 = spvNMax(0.0, _292 * log2(1.0000000031710768509710513471353e-30 + mix(exp2(-clamp(_249 * textureLod(sampler2D(ray_len_history_tex, sampler_lnc), _279, 0.0).y, 0.0, 100.0)), _290, 0.100000001490116119384765625)));",
+            "        float _306 = spvNMax(_296, (((_243 / _247) * frame_constants.view_constants[0u].clip_to_view[1].y) * 0.20000000298023223876953125) * smoothstep(0.0, 0.0500000007450580596923828125 * _243, _296));",
+            "        float _313 = (_243 * _247) * frame_constants.view_constants[0u].clip_to_view[1].y;",
+            "        float _323 = 1.0 - _221;",
+            "        vec3 _327 = vec3(_323 * (sqrt(_323) + _221));",
+            "        vec3 _331 = reflect(-normalize(mix(vec3(0.0, 1.0, 0.0), reflect(_224, vec3(0.0, 1.0, 0.0)), _327)), vec3(0.0, 1.0, 0.0));",
+            "        vec3 _334 = normalize(cross(vec3(0.0, 1.0, 0.0), _331)) * spvNMax(spvNMin((((_306 / (_306 + _243)) * _243) * _247) * (sqrt(_221) * 0.25), 0.100000001490116119384765625 * _313), (4.0 / float(_Globals.color_tex_dims.y)) * _313);",
+            "        vec3 _335 = cross(_331, _334);",
+            "        float _339 = float((frame_constants.frame_index * 59u) % 128u) * 1.324717998504638671875;",
+            "        vec4 _341;"
+          ]
+        }
+      ],
+      "direct_spirv_operations": [
+        {
+          "line": 6667,
+          "operation": "               OpImageWrite %160 %151 %67 None"
+        },
+        {
+          "line": 7215,
+          "operation": "        %452 = OpImageRead %v4float %451 %151 None"
+        },
+        {
+          "line": 7277,
+          "operation": "               OpImageWrite %486 %151 %485 None"
+        },
+        {
+          "line": 7280,
+          "operation": "        %488 = OpImageRead %v4float %487 %151 None"
+        },
+        {
+          "line": 7286,
+          "operation": "               OpImageWrite %491 %151 %490 None"
+        },
+        {
+          "line": 7291,
+          "operation": "               OpImageWrite %493 %151 %492 None"
+        }
+      ]
+    }
+  ],
+  "history_gates": [
+    {
+      "shader": "_water_plane.raster.hlsl_b903e43ffb3da915.bin.1",
+      "contexts": [
+        {
+          "line": 1038,
+          "lines": [
+            "    vec3 _1685;",
+            "    if (_1565 ? true : _1555)",
+            "    {",
+            "        vec2 _1662 = (mix(_1341, _1353, vec3(_1566)).xy * vec2(0.5, -0.5)) + vec2(0.5);",
+            "        bool _1675;",
+            "        if (_Globals.history_valid != 0u)",
+            "        {",
+            "            _1675 = !(0u == frame_constants.frame_index);",
+            "        }",
+            "        else",
+            "        {",
+            "            _1675 = false;",
+            "        }",
+            "        vec3 _1684;",
+            "        if (_1675)",
+            "        {",
+            "            _1684 = textureLod(sampler2D(taa_history_tex, sampler_lnc), textureLod(sampler2D(reprojection_tex, sampler_nnc), _1662, 0.0).xy + _1662, 0.0).xyz;",
+            "        }",
+            "        else",
+            "        {",
+            "            _1684 = vec3(0.0);",
+            "        }",
+            "        _1685 = _1684;",
+            "    }",
+            "    else",
+            "    {",
+            "        vec3 _1572 = mix(_1341, _1353, vec3(_1566));",
+            "        vec4 _1578 = (vec4(_1572, 1.0) * frame_constants.view_constants[0u].sample_to_view) * frame_constants.view_constants[0u].view_to_world;",
+            "        uint _1593;"
+          ]
+        }
+      ]
+    },
+    {
+      "shader": "_ice_plane.raster.hlsl_b903e43ffb3da915.bin.1",
+      "contexts": [
+        {
+          "line": 583,
+          "lines": [
+            "    float _1085 = _1082.z;",
+            "    bool _1099;",
+            "    if (_1085 > 0.0)",
+            "    {",
+            "        bool _1098;",
+            "        if (_Globals.history_valid != 0u)",
+            "        {",
+            "            _1098 = !(0u == frame_constants.frame_index);",
+            "        }",
+            "        else",
+            "        {",
+            "            _1098 = false;",
+            "        }",
+            "        _1099 = _1098;",
+            "    }",
+            "    else",
+            "    {",
+            "        _1099 = false;",
+            "    }",
+            "    float _1107;",
+            "    if (_1099)",
+            "    {",
+            "        _1107 = textureLod(sampler2D(shadows_history_tex, sampler_lnc), _1046 + _1082.xy, 0.0).x;",
+            "    }",
+            "    else",
+            "    {",
+            "        _1107 = _1027;",
+            "    }",
+            "    float _1112 = mix(clamp(_1107, _1040.x, _1040.y), _1027, mix(1.0, 0.125, _1085));"
+          ]
+        }
+      ]
+    },
+    {
+      "shader": "_water_ice_refl_resolve.cs.hlsl_cs_main_0.bin.0",
+      "contexts": [
+        {
+          "line": 190,
+          "lines": [
+            "        }",
+            "        float _428 = spvNMax(9.9999998245167004418121337039338e-15, _341.w);",
+            "        vec3 _441 = normalize(mix(vec3(0.0, 0.0, 1.0), reflect(-_234, vec3(0.0, 0.0, 1.0)), _327));",
+            "        vec3 _454 = (((_341.xyz / vec3(_428)).xyz * mix(0.100000001490116119384765625, 1.0, exp2((-1.0) - (8.656169891357421875 * dot(_441, _234 + _441))))) * (1.0 + _221)) + imageLoad(refl_refr_radiance_out_tex, ivec2(gl_GlobalInvocationID.xy)).xyz;",
+            "        bool _464;",
+            "        if (_Globals.history_valid != 0u)",
+            "        {",
+            "            _464 = !(0u == frame_constants.frame_index);",
+            "        }",
+            "        else",
+            "        {",
+            "            _464 = false;",
+            "        }",
+            "        vec3 _479;",
+            "        if (_464)",
+            "        {",
+            "            vec3 _470 = textureLod(sampler2D(refl_refr_radiance_history_tex, sampler_lnc), _279, 0.0).xyz;",
+            "            vec3 _478;",
+            "            if (all(greaterThan(_470, vec3(0.0))))",
+            "            {",
+            "                _478 = mix(_470, _454, vec3(mix(1.0, 0.25, _272)));",
+            "            }",
+            "            else",
+            "            {",
+            "                _478 = _454;",
+            "            }",
+            "            _479 = _478;",
+            "        }",
+            "        else"
+          ]
+        }
+      ]
+    }
+  ],
+  "flags": {
+    "value": "0x108",
+    "bits": [
+      "MUTABLE_FORMAT0x8",
+      "EXTENDED_USAGE0x100"
+    ]
+  },
+  "omitted_preserve": [
+    "new ray/pixel-list allocations have no prior initializer and are consumed only below actual count; do not demand fictional prior content"
+  ],
+  "native_phase_edges": [
+    "water resource prep1409bf84b..9cf -> native raster1409bf9cf..fe7a -> compute1409bfeb7..",
+    "ice resource prep1409c0909..f2d -> native raster1409c0f2d..1479 -> compute/new resources1409c1479.."
+  ]
+}

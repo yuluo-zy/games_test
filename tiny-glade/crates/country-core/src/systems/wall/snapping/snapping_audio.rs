@@ -19,13 +19,13 @@ pub fn snapping_audio(
 ) {
     let (kind, position) = match mode.mode {
         SNAP_MODE_END => {
-            if mode.last_published_mode == SNAP_MODE_END {
+            if mode.published.mode == SNAP_MODE_END {
                 return;
             }
             (1, Vec3::new(mode.snap.y, mode.snap.x, mode.snap.z))
         }
         SNAP_MODE_SEGMENT => {
-            if mode.last_published_mode > SNAP_MODE_END {
+            if mode.published.mode > SNAP_MODE_END {
                 return;
             }
             (2, Vec3::new(mode.snap.y, mode.snap.x, mode.snap.z))
@@ -35,7 +35,8 @@ pub fn snapping_audio(
     sounds.write(PlayWallUiSound {
         kind,
         position,
-        flag: 0,
+        selector: 0,
+        value: 0.0,
     });
 }
 
@@ -48,7 +49,7 @@ mod tests {
         world.insert_resource(SnappingMode::new());
         world.init_resource::<Events<PlayWallUiSound>>();
         world.resource_mut::<SnappingMode>().mode = mode;
-        world.resource_mut::<SnappingMode>().last_published_mode = last_published;
+        world.resource_mut::<SnappingMode>().published.mode = last_published;
         world.resource_mut::<SnappingMode>().snap = Vec3::new(1.0, 2.0, 3.0);
         let mut schedule = Schedule::default();
         schedule.add_systems(snapping_audio);
@@ -67,7 +68,8 @@ mod tests {
             vec![PlayWallUiSound {
                 kind: 1,
                 position: Vec3::new(2.0, 1.0, 3.0),
-                flag: 0
+                selector: 0,
+                value: 0.0,
             }]
         );
     }
@@ -80,7 +82,8 @@ mod tests {
             vec![PlayWallUiSound {
                 kind: 2,
                 position: Vec3::new(2.0, 1.0, 3.0),
-                flag: 0
+                selector: 0,
+                value: 0.0,
             }]
         );
     }

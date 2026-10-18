@@ -17,6 +17,7 @@ description: "Coordinate Tiny Glade native-to-Rust recovery and independent revi
 - 有界取证：使用 `evidence` 模板和项目工具说明；复用原始证据，不重新扫描全 PDB。
 - 还原：先应用 [native-rust-reconstruction](/Users/yuluo/.codex/skills/native-rust-reconstruction/SKILL.md) 与项目依赖排除，按函数范围选择 `restore-tools / restore-business / restore-core` 模板。
 - `rhapsody`/私有渲染框架：读 [rhapsody 工作包模式](references/rhapsody-work-packages.md)，先生成确定性工作图，按共享类型和状态流恢复，不按单函数逐项翻译。
+- 修正现有手写算法、连接启动或真实 GPU 链：读 [原证驱动的增量恢复经验](references/original-driven-integration.md)。保留用户已重构的架构，直接重构有原证反例的简化算法，并修复同链消费者。
 - 审查、验证、整合：读 [交付与门槛](references/delivery-and-gates.md)，分别使用 `reviewer / validator / integrator` 模板。reviewer 独立核对原始事实，不以作者解释作为唯一依据。
 
 模板位于 `assets/tasks/`，只读当前角色。`scripts/workflow.py prepare` 从真实 SQLite 索引生成角色任务包；默认 stdout 预览、禁止实现、暂停验证，不领取、不启动 MCP。命令详见 project-entry。
@@ -39,4 +40,4 @@ description: "Coordinate Tiny Glade native-to-Rust recovery and independent revi
 
 `workflow.py freeze/check` 只检查明确列举文件的内容指纹，不检查 ABI 真伪、验证覆盖或游戏等价；完整依赖闭包由交付者声明、reviewer 复核。handoff 使用原有四种 link 状态和原审计器，不用新阶段替代其 schema。代码、合同、证据或依赖变化使相关旧报告失效。
 
-完整设计见 [项目方案](../LLM_RECONSTRUCTION_WORKFLOW.md)。按消费者缺口推进完整建筑链，GPU/场景后置。完成时分别报告新增事实、候选实现、审查范围、目标版本验证范围及剩余消费者；索引/工具/audit 成功不计作游戏恢复完成。
+完整设计见 [项目方案](../LLM_RECONSTRUCTION_WORKFLOW.md)。按真实消费者缺口推进，CPU、GPU 与场景的先后服从用户当前授权和任务重点，不沿用历史暂停范围。完成时分别报告新增事实、候选实现、审查范围、目标版本验证范围及剩余消费者；索引/工具/audit 成功不计作游戏恢复完成。

@@ -483,8 +483,14 @@ pub struct Texture {
     pub device: Arc<Device>,
     pub handle: vk::Image,
     pub desc: TextureDesc,
-    allocation: std::mem::ManuallyDrop<MemoryBlock>,
+    storage: TextureStorage,
     _memory: super::allocator::CpuMemoryReservation,
+}
+enum TextureStorage {
+    Allocated(std::mem::ManuallyDrop<MemoryBlock>),
+    // The swapchain, not this texture wrapper, destroys the VkImage. A strong
+    // owner also protects the image while graph imports and views retain it.
+    Swapchain(Arc<super::swapchain::Swapchain>),
 }
 impl Texture {
     pub(crate) fn ownership_range(desc: &TextureDesc) -> Result<crate::resource::OwnershipRange> {
@@ -497,7 +503,10 @@ impl Texture {
         })
     }
     pub(crate) fn allocation_id(&self) -> u64 {
-        self.allocation.accounting_id()
+        match &self.storage {
+            TextureStorage::Allocated(allocation) => allocation.accounting_id(),
+            TextureStorage::Swapchain(_) => panic!("swapchain images have no allocator allocation; they must never enter the transient/result resource pool"),
+        }
     }
     /// The caller owns an already-bound handle and transfers its sole raw-object ownership.
     pub(crate) unsafe fn from_bound_transient(
@@ -529,8 +538,30 @@ impl Texture {
             device,
             handle,
             desc,
-            allocation: std::mem::ManuallyDrop::new(allocation),
+            storage: TextureStorage::Allocated(std::mem::ManuallyDrop::new(allocation)),
         }
+    }
+    /// The WSI lease is the only producer of this non-owning image wrapper.
+    /// It retains the actual swapchain generation, never allocates image memory
+    /// and never calls vkDestroyImage. Native B import_unowned (0x140bd60a0)
+    /// likewise retains the managed owner; the Rust representation is a host
+    /// adapter rather than the original managed-handle ABI.
+    pub(crate) fn from_swapchain_image(
+        owner: Arc<super::swapchain::Swapchain>, handle: vk::Image,
+        desc: TextureDesc,
+    ) -> Result<Self> {
+        if handle == vk::Image::null() {
+            return Err(Error::invalid_usage("cannot borrow a null swapchain image"));
+        }
+        let device = owner.device.clone();
+        let range = Self::ownership_range(&desc)?;
+        let synchronization = crate::resource::SyncCell::reserve_arc_storage(&device.allocator_stats)?;
+        let memory = super::allocator::reserve_shared_cpu_metadata::<Self>(&device.allocator_stats, 0)?;
+        Ok(Self { sharing: crate::resource::ResourceSharing::Exclusive,
+            allocation_use: None,
+            last_use: crate::resource::SyncCell::for_device(device.generation())
+                .with_ownership_range(range).into_reserved_arc(synchronization),
+            device, handle, desc, storage: TextureStorage::Swapchain(owner), _memory: memory })
     }
     pub fn new(device: Arc<Device>, desc: &TextureDesc) -> Result<Self> {
         Self::new_with_initial_data(device, desc, false)
@@ -666,7 +697,7 @@ impl Texture {
             device,
             handle,
             desc: *desc,
-            allocation: std::mem::ManuallyDrop::new(allocation),
+            storage: TextureStorage::Allocated(std::mem::ManuallyDrop::new(allocation)),
         })
     }
     pub fn image_view(self: &Arc<Self>, desc: &TextureViewDesc) -> Result<TextureView> {
@@ -709,17 +740,19 @@ impl Texture {
         })
     }
     pub fn allocation_bytes(&self) -> u64 {
-        self.allocation.size
+        match &self.storage {
+            TextureStorage::Allocated(allocation) => allocation.size,
+            TextureStorage::Swapchain(_) => 0,
+        }
     }
 }
 impl Drop for Texture {
     fn drop(&mut self) {
-        // SAFETY: allocation 只在此处取出一次，之后不会再被访问。
-        let memory = unsafe { std::mem::ManuallyDrop::take(&mut self.allocation) }.into_deferred();
-        self.device.retire(
-            self.last_use.snapshot(),
-            super::graveyard::Doomed::Image(self.handle, memory),
-        );
+        if let TextureStorage::Allocated(allocation) = &mut self.storage {
+            // SAFETY: this owned allocation is taken exactly once.
+            let memory = unsafe { std::mem::ManuallyDrop::take(allocation) }.into_deferred();
+            self.device.retire(self.last_use.snapshot(), super::graveyard::Doomed::Image(self.handle, memory));
+        }
     }
 }
 pub struct TextureView {

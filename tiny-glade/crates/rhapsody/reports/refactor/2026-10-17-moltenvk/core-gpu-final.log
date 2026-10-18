@@ -1,0 +1,68 @@
+    Blocking waiting for file lock on build directory
+   Compiling rhapsody v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 29.89s
+     Running tests/device_config.rs (target/debug/deps/device_config-c586e185388a5faf)
+
+running 4 tests
+test an_independent_compute_queue_submits_while_the_graphics_queue_lock_is_held ... ok
+test configured_device_reports_actual_enabled_capabilities_and_allocation_mode ... ok
+test configured_frames_in_flight_controls_the_session ... ok
+test device_submission_rejects_future_waits_without_advancing_timeline ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.95s
+
+     Running tests/import_contract.rs (target/debug/deps/import_contract-378106e3c6dbcc4f)
+
+running 2 tests
+test foreign_device_imports_fail_without_replacing_bindings ... ok
+test invalid_import_is_rejected_before_recording_and_next_frame_remains_usable ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.95s
+
+     Running tests/p0_stability.rs (target/debug/deps/p0_stability-533f2925ac5890fd)
+
+running 2 tests
+test lifecycle_metadata_stays_bounded_over_many_frames ... ok
+test session_bookkeeping_stays_bounded_over_many_frames ... warm=Bookkeeping { retirement_pending: 0, pending_frames: 2, resources: 7, commands: 2, pending_commands: 2, completed_commands: 0, recording_commands: 0, submission_captures: 1, imports_waiting_release: 3 }
+end =Bookkeeping { retirement_pending: 0, pending_frames: 2, resources: 7, commands: 2, pending_commands: 2, completed_commands: 0, recording_commands: 0, submission_captures: 1, imports_waiting_release: 3 }
+warm=Bookkeeping { retirement_pending: 0, pending_frames: 0, resources: 0, commands: 2, pending_commands: 0, completed_commands: 0, recording_commands: 0, submission_captures: 1, imports_waiting_release: 0 }
+end =Bookkeeping { retirement_pending: 0, pending_frames: 0, resources: 0, commands: 2, pending_commands: 0, completed_commands: 0, recording_commands: 0, submission_captures: 1, imports_waiting_release: 0 }
+ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.47s
+
+     Running tests/rg_fixes_vulkan.rs (target/debug/deps/rg_fixes_vulkan-64f15eaa64b2ce97)
+
+running 9 tests
+test a_rejected_export_only_resource_keeps_the_session_usable_and_returns_resources ... ok
+test a_temporal_pair_ping_pongs_through_the_session_frame_path ... ok
+test device_lost_is_visible_to_every_session ... ok
+test partial_submission_failure_recycles_all_commands_and_runs_retire_once ... ok
+test raw_submission_cannot_signal_the_owned_device_timeline ... ok
+test recording_failures_and_panics_roll_back_and_allow_the_next_frame ... 
+thread 'recording_failures_and_panics_roll_back_and_allow_the_next_frame' (20084305) panicked at crates/rhapsody/tests/rg_fixes_vulkan.rs:62:17:
+injected callback panic
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'recording_failures_and_panics_roll_back_and_allow_the_next_frame' (20084305) panicked at crates/rhapsody/tests/rg_fixes_vulkan.rs:62:17:
+injected callback panic
+
+thread 'recording_failures_and_panics_roll_back_and_allow_the_next_frame' (20084305) panicked at crates/rhapsody/tests/rg_fixes_vulkan.rs:62:17:
+injected callback panic
+
+thread 'recording_failures_and_panics_roll_back_and_allow_the_next_frame' (20084305) panicked at crates/rhapsody/tests/rg_fixes_vulkan.rs:62:17:
+injected callback panic
+ok
+test submission_captures_stay_bounded_without_begin_frame ... ok
+test two_sessions_share_the_device_submission_timeline ... ok
+test wait_frame_retires_resources_and_runs_callbacks ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.13s
+
+     Running tests/sync_timeline_vulkan.rs (target/debug/deps/sync_timeline_vulkan-e59c624650cb9187)
+
+running 1 test
+test timelines_on_a_real_queue ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.87s
+

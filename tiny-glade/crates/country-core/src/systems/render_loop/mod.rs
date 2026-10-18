@@ -29,14 +29,19 @@ pub mod session_selection;
 pub mod vermeer;
 
 use crate::render::rg_helpers;
-use crate::render::rg_helpers::rg_boundary::{RenderFn, RenderGraph, StagingAlloc};
+use crate::render::rg_helpers::rg_boundary::{RenderFn, RenderGraph, StagingAlloc, StagingCopy};
+
+pub enum RecordedRgCommand {
+    Callback(RenderFn),
+    StagingCopies(Vec<StagingCopy>),
+}
 
 /// 一个已登记的 pass（O：`RenderContext+0x90` 的元素，0x40 B）。
 pub struct RecordedRgPass {
     pub name: &'static str,
     pub resource: u32,
     pub access: u8,
-    pub render: RenderFn,
+    pub command: RecordedRgCommand,
 }
 
 /// RG 缓冲句柄：资源号（`+0x10`，O）+ 描述里的字节数（`copy_from_slice` 的断言用）。
@@ -66,7 +71,7 @@ pub struct RenderContext {
 /// Actual dynamic-constant allocation belongs to rhapsody. The recovered
 /// buffer-copy helpers use this caller-supplied allocation boundary.
 pub trait DynamicStagingAllocator {
-    fn allocate_dynamic(&mut self, size: usize) -> StagingAlloc;
+    fn allocate_dynamic(&mut self, size: usize) -> rhapsody::Result<StagingAlloc>;
 }
 
 impl RenderGraph for RenderContext {
@@ -75,12 +80,29 @@ impl RenderGraph for RenderContext {
             name,
             resource,
             access,
-            render,
+            command: RecordedRgCommand::Callback(render),
         });
+    }
+    fn copy_from_staging(
+        &mut self,
+        name: &'static str,
+        copies: Vec<StagingCopy>,
+    ) -> rhapsody::Result<()> {
+        let target = copies
+            .first()
+            .ok_or_else(|| rhapsody::Error::invalid_usage("empty staging copy batch"))?
+            .target;
+        self.passes.push(RecordedRgPass {
+            name,
+            resource: target,
+            access: rg_helpers::rg_boundary::ACCESS_TRANSFER_WRITE,
+            command: RecordedRgCommand::StagingCopies(copies),
+        });
+        Ok(())
     }
 
     /// `DynamicConstants::allocate(size)`（外部库，U）：按 4 字节对齐推进游标，返回零填充暂存区。
-    fn allocate_dynamic(&mut self, size: usize) -> StagingAlloc {
+    fn allocate_dynamic(&mut self, size: usize) -> rhapsody::Result<StagingAlloc> {
         if let Some(allocator) = &mut self.staging {
             return allocator.allocate_dynamic(size);
         }
@@ -88,14 +110,17 @@ impl RenderGraph for RenderContext {
         {
             let offset = self.dynamic_cursor;
             self.dynamic_cursor += ((size as u32) + 3) & !3;
-            StagingAlloc {
+            Ok(StagingAlloc {
                 buffer: 0,
                 offset,
                 bytes: vec![0; size],
-            }
+                lease: None,
+            })
         }
         #[cfg(not(test))]
-        panic!("Dynamic staging allocator is required")
+        Err(rhapsody::Error::Unsupported(
+            "dynamic staging allocator is required".into(),
+        ))
     }
 }
 
@@ -124,14 +149,24 @@ pub fn clear_rg_color_image(ctx: &mut RenderContext, image: &RgImageInfo) {
 
 /// `rg_buffer_copy_from_slice<u32>`（0x14090d9a0）：唯一观测到的实例是 `u32`。
 /// `data.len() * 4 > buffer.size` → 断言失败；其余见 `rg_helpers::rg_buffer_copy_from_slice_u32`。
-pub fn rg_buffer_copy_from_slice(ctx: &mut RenderContext, buffer: &RgBufferInfo, data: &[u32]) {
-    rg_helpers::rg_buffer_copy_from_slice_u32(ctx, buffer.resource, buffer.size, data);
+pub fn rg_buffer_copy_from_slice(
+    ctx: &mut RenderContext,
+    buffer: &RgBufferInfo,
+    data: &[u32],
+) -> rhapsody::Result<()> {
+    rg_helpers::rg_buffer_copy_from_slice_u32(
+        ctx,
+        buffer.resource,
+        buffer.size,
+        data,
+        rg_helpers::rg_boundary::UploadContentVersion::Unknown,
+    )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::rg_helpers::rg_boundary::{CopyRegion, RenderPassApi};
+    use crate::render::rg_helpers::rg_boundary::RenderPassApi;
 
     #[derive(Default)]
     struct Api(Vec<String>);
@@ -141,13 +176,6 @@ mod tests {
         }
         fn clear_color_image(&mut self, i: u32) {
             self.0.push(format!("clear {i}"));
-        }
-        fn copy_buffer(&mut self, s: &StagingAlloc, d: u32, r: &[CopyRegion]) {
-            self.0.push(format!(
-                "copy off={} len={} ->{d} {r:?}",
-                s.offset,
-                s.bytes.len()
-            ));
         }
     }
 
@@ -169,7 +197,8 @@ mod tests {
                 size: 64,
             },
             &[1, 2],
-        );
+        )
+        .unwrap();
         let passes = ctx.finish();
         let names: Vec<_> = passes
             .iter()
@@ -185,7 +214,19 @@ mod tests {
         );
         let mut api = Api::default();
         for p in passes {
-            (p.render)(&mut api);
+            match p.command {
+                RecordedRgCommand::Callback(render) => render(&mut api),
+                RecordedRgCommand::StagingCopies(copies) => {
+                    for copy in copies {
+                        api.0.push(format!(
+                            "copy off={} len={} ->{}",
+                            copy.source.offset,
+                            copy.source.bytes.len(),
+                            copy.target
+                        ));
+                    }
+                }
+            }
         }
         assert_eq!(api.0[0], "fill 4 None 0");
         assert_eq!(api.0[1], "clear 9");
@@ -199,23 +240,25 @@ mod tests {
     #[test]
     fn dynamic_allocations_advance_the_cursor() {
         let mut ctx = RenderContext::default();
-        let a = ctx.allocate_dynamic(8);
-        let b = ctx.allocate_dynamic(5);
-        let c = ctx.allocate_dynamic(4);
+        let a = ctx.allocate_dynamic(8).unwrap();
+        let b = ctx.allocate_dynamic(5).unwrap();
+        let c = ctx.allocate_dynamic(4).unwrap();
         assert_eq!((a.offset, b.offset, c.offset), (0, 8, 16));
     }
 
     #[test]
-    #[should_panic(expected = "assertion failed: data.len() <= buffer.desc().size")]
     fn oversized_copy_is_rejected_before_any_pass_is_registered() {
         let mut ctx = RenderContext::default();
-        rg_buffer_copy_from_slice(
+        let error = rg_buffer_copy_from_slice(
             &mut ctx,
             &RgBufferInfo {
                 resource: 1,
                 size: 4,
             },
             &[1, 2],
-        );
+        )
+        .unwrap_err();
+        assert_eq!(error.kind(), rhapsody::ErrorKind::InvalidUsage);
+        assert!(ctx.passes.is_empty());
     }
 }

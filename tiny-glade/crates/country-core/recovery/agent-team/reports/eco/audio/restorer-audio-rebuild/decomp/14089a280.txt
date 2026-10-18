@@ -1,0 +1,30 @@
+// VA 0x14089a280 drop
+// SIG void __cdecl drop(void)
+
+void __cdecl country_core::resources::audio_resources::impl$13::drop(void)
+
+{
+  longlong lVar1;
+  longlong *in_RCX;
+  longlong local_90;
+  longlong local_58;
+  
+  lVar1 = *in_RCX;
+  *in_RCX = 0;
+  if (lVar1 != 0) {
+    if ((char)in_RCX[5] != '\x02') {
+      libfmod::EventInstance::stop();
+      if (local_58 != -0x7ffffffffffffffc) {
+        core::ptr::drop_in_place<enum2_<libfmod::Error>_>();
+      }
+    }
+    libfmod::EventInstance::release();
+    if (local_90 != -0x7ffffffffffffffc) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+  }
+  return;
+}
+
+

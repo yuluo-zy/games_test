@@ -5,11 +5,12 @@
 //! hot caller 0x140765ddc 对 Pub296==1 调 emit_fences（building-fences
 //! findings）。
 //!
-//! W-B1 接线：`construct_fences_cpu`（recovered_building/fences.rs 冻结链：
+//! W-B1 接线：`construct_fences_cpu`（systems/wall/construction/fences.rs 冻结链：
 //! split_fence_angles 40° 切段 → 每段 FenceSegmentInput → 64B 木板 +
 //! 柱 + 种子累计）→ 输出资源写回。
 use country_core::asset_libraries::ssbo_library::AssetSsboLibrary;
-use country_core::recovered_building::fences::{FenceConstructionInput, construct_fences_cpu};
+use country_core::systems::wall::construction::fences::FenceConstructionInput;
+use country_core::systems::wall::construction::fences::construct_fences_cpu;
 use country_core::resources::walls::public_walls::{OnWallChanged, PublicWalls};
 use bevy_ecs::prelude::*;
 use glam::Vec3;
@@ -37,7 +38,7 @@ pub fn construct_fences(
         let prepared_positions: Vec<[f32; 3]> =
             curve.points.iter().map(|p| [p[0], p[1], 0.0]).collect();
         let input = FenceConstructionInput {
-            wall: country_core::recovered_building::wall_state::WallId(event.0 .0),
+            wall: country_core::resources::walls::publication_fields::WallId(event.0 .0),
             raw_positions: &raw_positions,
             prepared_positions: &prepared_positions,
             segment_values: &curve.points.iter().map(|p| p[1]).collect::<Vec<f32>>(),
@@ -62,11 +63,11 @@ pub fn construct_fences(
 }
 
 /// B `split_curve_based_on_angle`（0x141fdf9e0）：40 度角阈值切段
-/// （= recovered_building::fences::split_fence_angles）。
+/// （= systems::wall::construction::fences::split_fence_angles）。
 pub fn split_curve_based_on_angle(points: &[Vec3]) -> Vec<Vec<Vec3>> {
     let xz: Vec<[f32; 3]> = points.iter().map(|p| p.to_array()).collect();
     let mut segments = Vec::new();
-    if let Ok(indices) = country_core::recovered_building::fences::split_fence_angles(&xz) {
+    if let Ok(indices) = country_core::systems::wall::construction::fences::split_fence_angles(&xz) {
         let mut start = 0usize;
         for &end in &indices {
             if end > start {

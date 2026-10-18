@@ -7,19 +7,18 @@
 //!   `DrawIndexedIndirectBuffer`）= `pub use indirect_params::*`（旧 `(Gap)` 占位已删）。
 //! * [`LanternSsbo`]、[`MouseDepthValueSsbo`]：按机器码补齐 `StorageElement` + 库侧 `SsboType`（下文逐项 O）。
 //! * `DofAutofocusSsbo`、`DofFocusReadbackSsbo`、`ShadowMaskHistogramSsbo`、`ShadowMaskMeanSsbo` 已迁到它们原版 NAME 路径所在的
-//!   `compute_passes::{dof_autofocus, apply_screen_shadows}`（真实元素布局）；这里只剩 `WallColorIdSsbo` 的 typed gap。
+//!   `compute_passes::{dof_autofocus, apply_screen_shadows}`（真实元素布局）。
+//! * `WallColorIdSsbo` typed-gap 已由 `resources::color_id::WallColorIdSsbo` 落库
+//!   （coregap-2，2026-10-17；本处占位移除）。
 
-use glam::Vec4;
 use xxhash_rust::xxh3::xxh3_64;
 
 use crate::asset_libraries::ssbo_library::SsboType as LibrarySsbo;
 use crate::render::pass_builder::pass_resource_access::SsboType;
 use crate::render::ssbo::rhapsody_boundary::GraphicsDevice;
-use crate::render::ssbo::{
-    InstanceBuffer, MAPPED_MEMORY_READBACK, MappedStorageBuffer, StorageElement,
-};
-use crate::typed_gap::Gap;
+use crate::render::ssbo::{InstanceBuffer, StorageElement, TypedStorageBuffer};
 
+pub use crate::resources::compute_mouse_depth_value::MouseDepthValueSsbo;
 pub use crate::resources::render::spatial_resolve_offsets::SpatialResolveOffsetsSsbo;
 pub use crate::systems::render_loop::indirect_params::*;
 
@@ -33,7 +32,7 @@ pub use crate::systems::render_loop::indirect_params::*;
 /// * 存储是 `InstanceBuffer<LanternSsbo>`（`type_id<InstanceBuffer<LanternSsbo>>` 0x14160ec30；`bin_lights` / `restir_di` 读它的实例数）。
 /// * `SsboId` = `xxh3_64("LanternSsbo")` = 0x8b2da1ef1bff9619（`get_rg_buffer<LanternSsbo>` 0x1412d5470 立即数）。
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Zeroable, bytemuck::Pod)]
 pub struct LanternSsbo {
     pub position: [f32; 3],
     pub intensity_color_id: u32,
@@ -48,7 +47,12 @@ impl StorageElement for LanternSsbo {
 impl LibrarySsbo for LanternSsbo {
     type Storage = InstanceBuffer<LanternSsbo>;
     fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
-        InstanceBuffer::<LanternSsbo>::new_storage_buffer(device, initial)
+        // This type's native None branch does not upload default bytes.
+        let buffer = TypedStorageBuffer::<LanternSsbo>::new_storage_buffer(device, initial);
+        InstanceBuffer {
+            instance_count: initial.map_or(0, |bytes| bytes.len() / core::mem::size_of::<Self>()),
+            buffer,
+        }
     }
 }
 
@@ -58,45 +62,11 @@ impl SsboType for LanternSsbo {
     }
 }
 
-/// 鼠标处的世界坐标 + 深度（O：`resources::compute_mouse_depth_value::MouseDepthValueSsbo`；`read_mouse_depth_value.cs` 的
-/// `out_buffer.Store<float4>(0, float4(mouse_world.xyz / w, mouse_depth))`，16 B，16 字节对齐）。
-///
-/// 机器码（O 0x14161e8f0，`impl$4::new_storage_buffer`，映射缓冲）：`BufferDesc::new(0x40, 0x22, 4).alignment(4)`，名
-/// "MouseDepthValue"（0xf B）；元素大小 16（上限 `cmp rbx, 0x50` = 0x40 + 0x10）→ 4 个元素；无初始数据写全零 0x40 B（`xorps` + 4 个 `movups`）；
-/// 数据指针按 16 对齐断言（`and rax, 0xf`）、按 4 对齐断言（`and rax, 3`）；memory = 4（回读，I）。
-/// 与 A3 `MappedStorageBuffer` 的出入（报告）：`BufferDesc::alignment` 的实参恒为 4，而 A3 用 `align_of::<T>()`（此处 16）。
-#[repr(C, align(16))]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct MouseDepthValueSsbo(pub Vec4);
-
-impl StorageElement for MouseDepthValueSsbo {
-    const NAME: &'static str = "MouseDepthValue";
-    /// 0x40 / 16。
-    const BUFFER_LEN: usize = 4;
-    const MAPPED_MEMORY: u8 = MAPPED_MEMORY_READBACK;
-}
-
-impl LibrarySsbo for MouseDepthValueSsbo {
-    type Storage = MappedStorageBuffer<'static, MouseDepthValueSsbo>;
-    fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
-        MappedStorageBuffer::<MouseDepthValueSsbo>::new_storage_buffer(device, initial)
-    }
-}
-
-impl SsboType for MouseDepthValueSsbo {
-    fn rg_buffer_hash() -> u64 {
-        xxh3_64(<Self as StorageElement>::NAME.as_bytes())
-    }
-}
-
-// ---- 仍是 typed gap 的载体
-pub struct WallColorIdSsbo(pub Gap);
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::asset_libraries::ssbo_library::AssetSsboLibrary;
-    use crate::rhapsody_contract::GraphicsDevice as Device;
+    use crate::render::test_device::TestDevice as Device;
     use core::mem::{align_of, size_of};
 
     #[test]
@@ -104,7 +74,7 @@ mod tests {
         assert_eq!(size_of::<LanternSsbo>(), 16);
         assert_eq!(LanternSsbo::BUFFER_LEN * size_of::<LanternSsbo>(), 0x80000);
         assert_eq!(size_of::<MouseDepthValueSsbo>(), 16);
-        assert_eq!(align_of::<MouseDepthValueSsbo>(), 16);
+        assert_eq!(align_of::<MouseDepthValueSsbo>(), 4);
         assert_eq!(
             MouseDepthValueSsbo::BUFFER_LEN * size_of::<MouseDepthValueSsbo>(),
             0x40

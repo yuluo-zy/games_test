@@ -1,0 +1,35 @@
+   Compiling rhapsody v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody)
+error[E0308]: mismatched types
+   --> crates/rhapsody/tests/transfers.rs:333:27
+    |
+333 |     let release = Release(semaphore.clone());
+    |                   ------- ^^^^^^^^^^^^^^^^^ expected `Arc<TimelineSemaphore>`, found `Arc<Arc<TimelineSemaphore>>`
+    |                   |
+    |                   arguments to this struct are incorrect
+    |
+    = note: expected struct `Arc<rhapsody::raw::semaphore::TimelineSemaphore>`
+               found struct `Arc<Arc<rhapsody::raw::semaphore::TimelineSemaphore>>`
+note: tuple struct defined here
+   --> crates/rhapsody/tests/transfers.rs:327:12
+    |
+327 |     struct Release(Arc<TimelineSemaphore>);
+    |            ^^^^^^^
+
+error[E0308]: mismatched types
+   --> crates/rhapsody/tests/transfers.rs:346:16
+    |
+346 |             &[(semaphore, 1, vk::PipelineStageFlags::ALL_COMMANDS)],
+    |                ^^^^^^^^^ expected `Arc<TimelineSemaphore>`, found `Arc<Arc<TimelineSemaphore>>`
+    |
+    = note: expected struct `Arc<rhapsody::raw::semaphore::TimelineSemaphore>`
+               found struct `Arc<Arc<rhapsody::raw::semaphore::TimelineSemaphore>>`
+
+error[E0599]: no method named `signal` found for struct `Arc<rhapsody::raw::semaphore::TimelineSemaphore>` in the current scope
+   --> crates/rhapsody/tests/transfers.rs:330:28
+    |
+330 |             let _ = self.0.signal(1);
+    |                            ^^^^^^ method not found in `Arc<rhapsody::raw::semaphore::TimelineSemaphore>`
+
+Some errors have detailed explanations: E0308, E0599.
+For more information about an error, try `rustc --explain E0308`.
+error: could not compile `rhapsody` (test "transfers") due to 3 previous errors

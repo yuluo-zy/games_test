@@ -5,7 +5,7 @@
 ## 证据身份
 
 - 基线：Tiny Glade B patched 程序 SHA256 `cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323`；发行 RNE oracle SHA256 `f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03`。
-- 已保存的原函数范围、反编译和字节哈希见 `reverse-engineering/tiny-glade/evidence/foundation-unstarted-2026-10-13/ui/`；原 GPU/workaround update 叶分支输出见 `original-message-cases.json`，本地映射见 `src/fixtures/message_cases.rs`。
+- 已保存的原函数范围、反编译和字节哈希见 `reverse-engineering/tiny-glade/evidence/foundation-unstarted-2026-10-13/ui/`；原 GPU/workaround update 叶分支输出见 `original-message-cases.json`，旧版本曾将其映射到生成式 fixture；当前源码改用业务测试，不再保留要求非法输入成功的 fixture。
 - 函数原型记录有 Ghidra `void()` 占位，不将它当作 Rust ABI。本文只认代码体、实际调用点和受控原指令案例支持的行为。
 
 ## 已恢复的 B 版规则
@@ -23,6 +23,10 @@
 - allowlist 条目带有 Layer/Vendor 区分。toggle 会删除所有与被切换的同一变体相等的条目；若一个也没删，则追加该条目。不同变体即使字符串相同也互不影响。Apply 克隆当前完整 configuration（包括目前语义不明的 `policy_word` 和六个开关）；Cancel 请求关闭窗口。
 - 六项 workaround 的固定索引/标签顺序：sync before each render graph pass、sync before each draw、sync before each compute shader dispatch、serial command buffer recording、skip loading screen、vendor-specific crash breadcrumbs (NVIDIA Aftermath)。B 原消息叶案例验证每个索引分别异或对应 bool；默认候选值为 false。
 - 原 update 对 workaround 索引直接按消息 payload 定位字节，调用方生成的六个 checkbox 只产生 `0..6`。候选实现对越界索引安全忽略；不把无效手造消息当成正常原作输入合同。
+
+## 当前工程化规则（源码审查后）
+
+上述 B 版叶分支是历史证据，不是当前安全 API 对非法消息的承诺。当前选择使用 `DeviceId`，仅接受列表内且无初始化错误的设备；有效选择与 Close 都关闭状态机。Vulkan 使用 `Workaround` 枚举，Apply/Cancel 后停止编辑。两套 Controls 的状态为只读视图，后续消息不能重写结果或重新执行外部 IO。分组使用保序 Vec 和 vendor 到组索引的 HashMap，避免反复线性扫描。原始 driver/error 映射保留；展示数据明确区分最低版本、推荐可用版本和未知 vendor ID。
 
 ## 当前 Rust 表示
 

@@ -1,0 +1,12 @@
+--- games_test/tiny-glade/crates/country-core/src/components/rendering.rs
++++ games_test/tiny-glade/crates/country-core/src/components/rendering.rs
+@@ -39,3 +39,9 @@
+ pub struct StairsStep {
+     pub flags: u8,
+ }
++
++/// B FollowMouse: one native bool read by1408efbaf/1408efcff.
++/// True follows the camera ray at45 units; false uses the actual terrain hit.
++/// Original default ECS clone policy is retained (no Clone/Copy).
++#[derive(Component, Debug)]
++pub struct FollowMouse(pub bool);

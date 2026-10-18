@@ -36,6 +36,7 @@ use crate::render::pass_builder::framebuffer_binding::{
     ColorAttachment, ColorViewWords, DepthAttachment, DepthClear,
 };
 use crate::render::pass_builder::rg_resources::RgResources;
+use crate::render::rg_helpers::rg_boundary::ResourceLease;
 use crate::render::shader::RasterShaderProgram;
 use crate::rhapsody_contract::{Handle, ManagedHandle, ReadOnlyHandle, RenderPassBinding};
 use crate::rhapsody_types::{Texture, TextureViewDesc};
@@ -78,7 +79,11 @@ pub enum DescriptorSetBinding {
     },
     /// `DynamicConstantsChunk::into_uniform_buffer_binding_and_data` 产出的 uniform 缓冲绑定
     /// （`DrawBuilder::new` 插入；判别值与载荷字段 U，只知它不是 0xa 这个 `None` niche）。
-    UniformBuffer { size: u32, keepalive: ManagedHandle },
+    UniformBuffer {
+        size: u32,
+        keepalive: ManagedHandle,
+        lease: Option<ResourceLease>,
+    },
 }
 
 /// `GpuOwned<DescriptorSetBinding>`（0x48 B 桶里的 `+0x40` 状态字节：0 = 持有，2 = 已 `discard` 解除）。
@@ -194,6 +199,11 @@ pub struct DrawPacket {
     pub variant: u8,
     /// `+0xb1`。
     pub unknown_b1: u8,
+    /// Current graph-host metadata, not additional native DrawPacket fields.
+    /// Binding indices refer to the actual packet accesses below the original
+    /// shader reflection; ordinary packets retain strict content checks.
+    pub preserving_buffer_bindings: Vec<u32>,
+    pub inactive_texture_bindings: Vec<u32>,
 }
 
 impl DrawPacket {
@@ -214,6 +224,8 @@ impl DrawPacket {
             blend: 1.0,
             variant: 0,
             unknown_b1: 0,
+            preserving_buffer_bindings: Vec::new(),
+            inactive_texture_bindings: Vec::new(),
         }
     }
 
@@ -322,6 +334,7 @@ pub struct DynamicConstantsBinding {
     /// `HashMap::insert(BindingIndex, GpuOwned<_>)` 的键（`reflection.+0x140`）。
     pub binding_index: u32,
     pub keepalive: ManagedHandle,
+    pub lease: Option<ResourceLease>,
 }
 
 /// `rhapsody::raw::shader::RenderPassAttachmentDesc`（0x10 B）的最小替身。
@@ -420,6 +433,15 @@ pub trait PassHost {
     ) -> Option<DynamicConstantsBinding>;
     /// `AssetSsboLibrary::get_rg_buffer<T>`：SSBO 类型的 rg 缓冲资源下标（`resource_index`）。
     fn rg_buffer_resource(&self, rg_buffer_hash: u64) -> Option<u32>;
+    /// Preserve the original get_rg_buffer<T> full-type assertion in source
+    /// hosts whose dynamic dispatch otherwise only receives the NAME hash.
+    fn rg_buffer_resource_typed(
+        &self,
+        rg_buffer_hash: u64,
+        _type_name: &'static str,
+    ) -> Option<u32> {
+        self.rg_buffer_resource(rg_buffer_hash)
+    }
     /// `PlacementDataSsboLibrary` 表（`PassResources +0x1c8`）：`GlobalId` → `(缓冲句柄, flag)`。
     fn placement_buffer(&self, id: u64) -> Option<(ManagedHandle, u32)>;
     /// `GraphicsDevice::get_vk_buffer`。
@@ -452,9 +474,18 @@ pub trait PassHost {
 
     // ---- B 阶段追加（i_api）：均为带缺省实现的“可选能力”，已有实现者（`RecHost` 等）无需改动 ----
 
-    /// `AssetSsboLibrary::get_buffer::<T>()` 的缓冲首字低 32 位（`bind_ray_tracing<DrawBuilder>` 的两个 `write_uniform<u32>` 的值）。
+    /// `InstanceBuffer<T>::instance_count` 的低 32 位（`bind_ray_tracing<DrawBuilder>` 的两个 `write_uniform<u32>` 的值）。
     /// `rg_buffer_hash` = `SsboId`（`xxh3_64(NAME)`）；宿主负责 `assert_eq!(state.name, type_name::<T>())`。缺省 `None`
     /// （调用点随后 `Option::unwrap` panic，与原版“库里没有该缓冲”同一路径）。
+    fn ssbo_instance_count(&self, _rg_buffer_hash: u64) -> Option<u32> {
+        None
+    }
+    fn ssbo_instance_count_typed(&self, hash: u64, _type_name: &'static str) -> Option<u32> {
+        self.ssbo_instance_count(hash)
+    }
+
+    /// Compatibility for consumers outside the independently recovered RT
+    /// count contract. RT binding exclusively uses ssbo_instance_count.
     fn ssbo_buffer_word(&self, _rg_buffer_hash: u64) -> Option<u32> {
         None
     }
@@ -713,7 +744,7 @@ pub(crate) mod test_host {
         pub cache: HashMap<RasterRenderPassDesc, ManagedHandle>,
         pub next_handle: u64,
         pub constants: Option<usize>,
-        /// `ssbo_buffer_word`（`SsboId` → 缓冲首字低 32 位）。
+        /// `ssbo_instance_count`（`SsboId` → 实际实例数量）。
         pub buffer_words: HashMap<u64, u32>,
         /// `rg_resources`：记录型渲染图（`None` = 不接渲染图）。
         pub rg: Option<crate::render::pass_builder::rg_resources::RecordingRg>,
@@ -763,6 +794,7 @@ pub(crate) mod test_host {
                 data: alloc::vec![0u8; size],
                 binding_index: r.uniform_block_binding,
                 keepalive: ManagedHandle(7),
+                lease: None,
             })
         }
         fn rg_buffer_resource(&self, h: u64) -> Option<u32> {
@@ -811,6 +843,9 @@ pub(crate) mod test_host {
                 .borrow_mut()
                 .flushed_constants
                 .push((c.keepalive.0, c.data.clone()));
+        }
+        fn ssbo_instance_count(&self, h: u64) -> Option<u32> {
+            self.buffer_words.get(&h).copied()
         }
         fn ssbo_buffer_word(&self, h: u64) -> Option<u32> {
             self.buffer_words.get(&h).copied()
@@ -1151,7 +1186,7 @@ mod tests {
     fn host_without_a_render_graph_reports_it() {
         let (mut host, _l) = MockHost::new();
         assert!(host.rg_resources().is_none());
-        assert_eq!(host.ssbo_buffer_word(1), None);
+        assert_eq!(host.ssbo_instance_count(1), None);
         let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             let _ = require_rg_resources(&mut host);
         }));

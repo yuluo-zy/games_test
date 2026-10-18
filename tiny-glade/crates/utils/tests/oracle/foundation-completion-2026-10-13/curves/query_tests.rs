@@ -77,6 +77,7 @@ fn original_completion_queries() {
                     false,
                 )
                 .unwrap();
+                let before = c.clone();
                 let result = c.try_extend(
                     &r["suffix"]
                         .as_array()
@@ -94,6 +95,13 @@ fn original_completion_queries() {
                     _ => panic!("unexpected error"),
                 };
                 assert_eq!(result, expected, "case {case}");
+                if result.is_err() {
+                    // Failed edits now preserve valid points and parameter caches.
+                    assert_eq!(c.points, before.points);
+                    assert_eq!(c.points_u, before.points_u);
+                    assert_eq!(c.length, before.length);
+                    continue;
+                }
                 assert_eq!(
                     c.points
                         .iter()
@@ -131,8 +139,11 @@ fn original_completion_queries() {
                         serde::de::value::F64Deserializer::<serde::de::value::Error>::new(value),
                     )
                 });
-                if r["panic"].as_bool().unwrap() {
-                    assert!(got.is_err(), "case {case}");
+                if !value.is_finite() {
+                    assert!(got.unwrap().is_err(), "case {case}");
+                } else if r["panic"].as_bool().unwrap() {
+                    // Finite f64 overflow is clamped before narrowing.
+                    assert_eq!(got.unwrap().unwrap().get(), value.clamp(0.0, 1.0) as f32);
                 } else {
                     assert_eq!(
                         got.unwrap().unwrap().get().to_bits(),

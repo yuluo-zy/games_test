@@ -2,108 +2,103 @@
 //! random-root pass, both validated against the nearest wall segment before
 //! `IvyStorage::spawn_ivy` (0x1408696f0) commits the root.
 //!
-//! O-level gates (2026-10-15 re-analyst, chapters ivy_spawner.rs.md +
-//! RE-ANALYSIS2):
-//! - **mode gate**: `if (*(byte)(*AppMode + 0x1c) != 0x01) return;` — the ivy
-//!   spawner runs only in wall-editing mode (`AppMode::Editing(Wall)`, native
-//!   tag 1). The exact +0x1c byte offset is 待取证; `native_tag == 1` is the
-//!   resolved semantic.
-//! - **ActionSet pressed gate**: `DigitalActionState::pressed` on the
-//!   `ivy_spawn` action (SPEC G2.4; slot 37, binding 待取证).
-//! - **point budget**: `total_point_count + 0x13 < 0x9c40` → return, i.e. the
-//!   stored point total stays under 40,000; plus a per-frame `min(0x46,
-//!   0x9c41 - total)` point cap.
-//! - **pass dispatch**: `count = *(u32*)(IvyStorage + 0x120)` — below 3 the
-//!   cursor pass (`try_ivy_root_next_to_cursor`) runs, at 3+ the random pass
-//!   (`try_random_ivy_root`) runs.
+//! Native signature (add_ivy_systems 0x140944070, 7 params, 2026-10-17 fresh):
+//! `(ResMut<IvyStorage>, Res<IvySpawnNoise>, Res<PublicWalls>,
+//!  Res<CursorTerrainRaycast>, Res<ActionSetStates>, Res<WallSpatialHash>,
+//!  Res<GladeSettings>)`.
 //!
-//! Cursor pass (path A, count < 3): cursor position → RNG-sampled spatial-hash
-//! cell (world→cell scale 0.492307693 = 32/65, offset 32.0) → nearest segment
-//! (`closest_segment_index`, max height 0.5 = 0x3f000000) → root offset ±0.34
-//! (0.68 × 0.5) along the wall normal → reject when within 0.5 (0.25²) of an
-//! existing root → vertical height `(rand*1.5 − 0.75)/wall_height +
-//! segment_height` clamped to [0.0, 1.0] (VERTICAL_MIN = 0x142960690 = 0.0,
-//! ① T3 定案；旧 0.000928482 为编造值，其字节 0x3a73655f 在整 EXE 0 次出现).
-//! Up to 3 attempts.
+//! Gates and dispatch (2026-10-17 fresh decomp 0x14094cf90):
+//! - **First gate** 0x14094cffb..d00a: `[GladeSettings+0x1c] == 1`, i.e. the
+//!   spawner runs only while `GladeSettings::ivy_leaves` is enabled. The
+//!   former `AppMode` gate was wrong — AppMode is not a parameter.
+//! - **Point budget** 0x14094d09b..a7: iterate the storage map, accumulating
+//!   each ivy's point count with a `-1` per subsequent step (`acc = total -
+//!   (n-1)`); return when `acc + 0x12 > 39999` (`0x9c40 - 1`).
+//! - **Pass dispatch** 0x14094d2e7: `MainActionSet.digital[36].disc < 3`
+//!   (the `ivy_spawn` action, `pressed()`) selects the cursor pass; otherwise
+//!   the random pass. There is no separate `pressed` gate in the original.
 //!
-//! Random pass (path B, count >= 3): pick a random wall
-//! (`usize_less_than(wall_count)`, @0x14094d2e7), sample `u ∈ [0,1)`
-//! (`uniform_f32`, @0x14094d394), gate on the spawn FastNoise density
-//! (`noise >= res+0x78`, threshold 待取证), offset the root laterally by the
-//! `perchance get_bool` side (`true → −0.68, false → +0.68`, @0x14094d6b0),
-//! reject roots within 1.6 (2.56²) of an existing root, and set the vertical
-//! spawn u to `(uniform_f32×1.5 − 0.75)/curve_length + u_on_curve` (exact
-//! `get_approx_u_from_pos` projection), clamped. Attempts = `2 +
-//! usize_less_than(3)` ∈ {2,3,4}.
+//! Cursor pass (path A, digital action): cursor position → spatial-hash cell
+//! (world→cell scale 0.492307693 = 32/65, offset +dim·0.5, `floorf` ×2) →
+//! nearest segment (`closest_segment_index`, max height 0.5) → owning wall →
+//! lateral ±0.34 by `Curve::is_on_right_side` → separation (`facing dot ≥ 0`
+//! and dist² < 0.25) → vertical u `(rand*1.5 − 0.75)/curve_length +
+//! clamp(approx_u)`, rejected when outside [0,1] → grid `is_inside_bbx`
+//! re-check → spawn.
 //!
-//! `func_0x000140c9cdc0` is `glam Vec2::x0y` (S_PUB32 swizzle) — the
-//! "wall-segment geometry helper" is the Vec2 → (x, 0, y) lift used for every
-//! sampled point. The spatial-hash cell sampling of path A is modeled with the
-//! crate's `WallSpatialHash` / `wall_segments_from_state` helpers (待取证 for
-//! exact cell equivalence).
+//! Random pass (path B): random wall (`usize_less_than`) → random `u ∈ [0,1)`
+//! (`uniform_f32`) → FastNoise density gate (strictly greater than
+//! `res+0x78`) → lateral ±0.34, `get_bool` only when the wall subtype > 1
+//! (`[wall-0x48]`), else fixed +0.34 → separation (`facing dot ≥ 0` and
+//! dist² < 2.56) → vertical u (same formula, addend = clamp(approx_u)) →
+//! grid `is_inside_bbx` re-check → spawn. Attempts are shared with path A:
+//! `2 + usize_less_than(3)`.
+//!
+//! Per-attempt frame budget (0x14094db6e..b9e): `uVar11 = 0x9c41 - acc`,
+//! `cap = min(0x46, uVar11)`, `acc = acc + cap - 1`; spawn only while
+//! `0x13 < uVar11` and the new `acc < 0x9c41`.
+//!
+//! `func_0x000140c9cdc0` is `glam Vec2::x0y` — the (x, 0, y) lift used for
+//! every sampled point and direction.
 
 use crate::input::action_set::MainActionSet;
+use crate::resources::walls::spatial_index::cell_index_of_world_point;
 use crate::resources::{
     cursor_terrain_raycast::CursorTerrainRaycast,
+    glade_settings::GladeSettings,
     ivy::{IvyId, IvySpawnNoise, IvyStorage},
     walls::public_walls::PublicWalls,
     walls::WallId,
 };
-use crate::systems::mode_manager::AppMode;
+use crate::systems::ivy::ivy_grower::{
+    curve_is_on_right_side, wall_length, wall_segment_from_spatial,
+};
+use crate::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash;
 use bevy_ecs::prelude::*;
 use glam::{Vec2, Vec3};
 
-use super::{WallSegment, closest_segment_index, ivy_grower::wall_segments_from_state};
+use super::{WallSegment, closest_segment_index};
 
 /// Verified max-height filter (0x3f000000 = 0.5) passed to
 /// closest_segment_index in both the cursor pass and the pruner.
 const MAX_IVY_GROW_HEIGHT: f32 = 0.5;
-/// Total-point budget ceiling: native `total_point_count + 0x13 < 0x9c40`
-/// (0x14094d09b..a7) — the spawner returns when the stored point count would
-/// reach 40,000.
+/// Point-budget gate constant: return when `acc + 0x12 > 39999`
+/// (0x14094d09b..a7).
+const BUDGET_GATE: usize = 39999;
+/// Budget accumulation addend (0x14094d09b..a7).
+const BUDGET_ADD: usize = 0x12;
+/// Total-point ceiling 0x9c40 = 40000.
 const TOTAL_POINT_CEILING: usize = 40_000;
-/// Per-frame point cap: `eax = 0x9c41 - total; rsi = min(0x46, eax); rbp += rsi`
-/// (0x14094db6e..b9e) — at most 0x46 (70) points are scheduled each frame,
-/// bounded by the 40001 total ceiling.
+/// Per-attempt point cap 0x46 = 70 (0x14094db6e..b9e).
 const FRAME_POINT_CAP: usize = 0x46;
-/// Spawned ivy point-count range start: native stack param 0x14 (20) at
-/// [rsp+0x28] (SPEC G2.3). The upper bound is 待取证 (the second stack word
-/// is a storage pointer, not a count); 40 stands in so maximum_point_count is
-/// sampled from [20, 40).
+/// Per-attempt spawn lower bound 0x13 = 19 (0x14094db6e..b9e).
+const BUDGET_SPAWN_MIN: usize = 0x13;
+/// Spawned ivy point-count range start (native stack param 0x14 at
+/// [rsp+0x28]); the upper bound is 待取证 (40 stands in for the second word).
 const SPAWN_COUNT_RANGE: std::ops::Range<usize> = 20..40;
 /// Initial growth cooldown scalar range per path: cursor → [0, 3.0], random →
-/// [0, 1.0] (table 0x142ab3218 = 3.0, 1.0; SPEC G2.3).
+/// [0, 1.0] (table 0x142ab3218 = 3.0, 1.0).
 const SCALAR_RANGE_CURSOR: std::ops::Range<f32> = 0.0..3.0;
 const SCALAR_RANGE_RANDOM: std::ops::Range<f32> = 0.0..1.0;
-/// Digital action slot for `ivy_spawn` (DIGITAL_NAMES[36]): the spawner's
-/// ActionSet pressed gate (SPEC G2.4). The exact button binding is 待取证.
+/// Digital action slot for `ivy_spawn` (DIGITAL_NAMES[36]); its discriminant
+/// `< 3` selects the cursor pass (0x14094d2e7).
 const IVY_SPAWN_ACTION_SLOT: usize = 36;
-/// Cursor-pass root-offset half-width: 0.68 × 0.5 = 0.34 (constants
-/// 0x142ab31e0 / 0x142ab3200 multiplied by 0.5 at 0x142925870/8e0/e4).
+/// Root-offset half-width: the original multiplies the normal by ±0.68 × 0.5
+/// = ±0.34 (0x14094d6..b6b / 0x14094d..f86, constants 0x142ab31e0/0x142ab3200
+/// scaled by 0.5).
 const ROOT_OFFSET: f32 = 0.34;
-/// Random-pass root-offset magnitude: 0.68, selected directly by `get_bool`
-/// (RE-ANALYSIS2: true → −0.68, false → +0.68; call 0x14094d6b0).
-/// ① T3 定案：0x142ab31f0 = `7b142e3f` = 0.68f（capstone 直接引用）；0x142ab3210 =
-/// `7b142ebf` = −0.68f。0x1429258d4 = 0.63f 是**不同常量**（非根偏移，用途待定）。
-const RANDOM_ROOT_OFFSET: f32 = 0.68;
-/// Cursor-pass minimum separation from existing roots: 0.25 (distance 0.5,
-/// constant 0x142925950).
+/// Cursor-pass minimum separation from existing roots: dist² < 0.25.
 const MIN_ROOT_DISTANCE_SQ: f32 = 0.25;
-/// Random-pass minimum separation from existing roots: 2.56 (distance 1.6,
-/// constant 0x142ab3214).
+/// Random-pass minimum separation from existing roots: dist² < 2.56.
 const RANDOM_ROOT_DISTANCE_SQ: f32 = 2.56;
-/// Vertical-height sample clamp lower bound (0x142960690 = f32 0.0, ① T3 定案；
-/// 旧 0.000928482 为编造值，字节 0x3a73655f 整 EXE 0 次出现)。
+/// Vertical-height sample clamp bounds (0.0 at 0x142960690, 1.0 at
+/// 0x142925904).
 const VERTICAL_MIN: f32 = 0.0;
-/// Vertical-height sample clamp upper bound (1.0 at 0x142925904).
 const VERTICAL_MAX: f32 = 1.0;
-/// Cursor-pass spawn attempt ceiling (0x142ab3218 = 3).
-const SPAWN_ATTEMPTS: usize = 3;
 
 /// `is_point_inside_wall_segment` (line 294, inline). Predicate: a point is
 /// inside the wall segment when its perpendicular distance to the segment's
-/// infinite line is below the root half-width, matching where a root would be
-/// placed.
+/// infinite line is below the root half-width.
 pub fn is_point_inside_wall_segment(point: Vec3, segment: &WallSegment) -> bool {
     let p = Vec2::new(point.x, point.z);
     let a = segment.p0;
@@ -118,43 +113,8 @@ pub fn is_point_inside_wall_segment(point: Vec3, segment: &WallSegment) -> bool 
     (p - on_segment).length() <= ROOT_OFFSET
 }
 
-/// Reject roots that land too close to an existing ivy root. The native check
-/// is a facing dot (`0.0 <= existing_dir·(new − existing)`) plus the squared
-/// distance threshold (0.25 for the cursor pass, 2.56 for the random pass).
-fn root_too_close(storage: &IvyStorage, position: Vec3, threshold_sq: f32) -> bool {
-    storage
-        .roots()
-        .any(|root| (root - position).length_squared() < threshold_sq)
-}
-
-/// Wall double-sided normal at the nearest segment under `point`, together
-/// with the owning wall id, the segment and the hit's interpolated value
-/// (lerp of the segment height pair at the clamped hit `t`).
-fn nearest_wall_normal(
-    walls: &PublicWalls,
-    point: Vec2,
-) -> Option<(WallId, Vec2, WallSegment, f32)> {
-    let mut best: Option<(f32, WallId, Vec2, WallSegment, f32)> = None;
-    for (id, state) in walls.all() {
-        let segments = wall_segments_from_state(state);
-        let Ok(Some(hit)) = closest_segment_index(point, &segments, MAX_IVY_GROW_HEIGHT) else {
-            continue;
-        };
-        let seg = &segments[hit.index];
-        let dir = seg.p1 - seg.p0;
-        let len = dir.length().max(1e-20);
-        let normal = Vec2::new(-dir.y, dir.x) / len;
-        match best {
-            Some((d, _, _, _, _)) if d <= hit.distance => {}
-            _ => best = Some((hit.distance, id, normal, *seg, hit.interpolated)),
-        }
-    }
-    best.map(|(_, id, normal, seg, interpolated)| (id, normal, seg, interpolated))
-}
-
-/// `Curve::get_approx_u_from_pos` (FUN_141469a20, S_PUB32): the exact `u`
-/// parameter of the closest point on the curve. Shared-utils cross-domain;
-/// the projection below walks the polyline and interpolates `points_u`.
+/// `Curve::get_approx_u_from_pos` (utils 0x141469a20): the exact `u`
+/// parameter of the closest point on the curve.
 fn approx_u_from_pos(curve: &crate::resources::roofs::geometry::surface::Curve2, pos: Vec2) -> f32 {
     let mut best = (f32::MAX, 0usize, 0.0f32);
     for i in 0..curve.points.len().saturating_sub(1) {
@@ -178,69 +138,199 @@ fn approx_u_from_pos(curve: &crate::resources::roofs::geometry::surface::Curve2,
     u.clamp(0.0, 1.0)
 }
 
-/// Vertical spawn `u`: `(rand*1.5 − 0.75)/divisor + addend`, clamped to
-/// [0.0, 1.0] (VERTICAL_MIN = 0.0, ① T3). For the cursor pass the divisor is the
-/// wall's max ivy grow height (待取证 for the getter; 1.0 stands in) and the
-/// addend is the hit segment's interpolated height. For the random pass the
-/// divisor is the wall curve length and the addend is `u_on_curve` (exact
-/// projection).
-fn vertical_u(storage: &mut IvyStorage, divisor: f32, addend: f32) -> f32 {
+/// Vertical spawn `u`: `(rand*1.5 − 0.75)/curve_length + clamp(approx_u)`
+/// (0x14094db..: divisor = `[wall-0x270]` = the wall curve length, addend =
+/// clamped `get_approx_u`). The native then **rejects the attempt** when the
+/// result falls outside `[0,1]` and panics on NaN/inf (0x14094dc..); it does
+/// not clamp the final value. Both paths share the formula.
+fn vertical_u(storage: &mut IvyStorage, wall_length: f32, u: f32) -> Option<f32> {
     let rand = storage.rng_mut().uniform_f32();
-    let value = (rand * 1.5 - 0.75) / divisor.max(1e-20) + addend;
-    value.clamp(VERTICAL_MIN, VERTICAL_MAX)
+    let value = (rand * 1.5 - 0.75) / wall_length + u;
+    assert!(
+        value.is_finite(),
+        "ivy_spawner: vertical spawn coordinate was not finite"
+    );
+    (VERTICAL_MIN..=VERTICAL_MAX).contains(&value).then_some(value)
+}
+
+/// Reject roots that land too close to an existing ivy root. The native check
+/// is a facing dot (`0.0 <= existing_dir·direction`) **plus** the squared
+/// distance threshold (0.25 cursor, 2.56 random); the former implementation
+/// only tested the distance.
+fn root_too_close(storage: &IvyStorage, root: Vec3, direction: Vec3, threshold_sq: f32) -> bool {
+    storage.iter().any(|(_, ivy)| {
+        let r = &ivy.root;
+        let facing =
+            r.direction.x * direction.x + r.direction.y * direction.y + r.direction.z * direction.z;
+        facing >= 0.0 && (r.position - root).length_squared() < threshold_sq
+    })
+}
+
+/// Grid `is_inside_bbx` re-check (0x14094d..): the root must NOT be inside any
+/// wall-segment AABB in its own spatial-hash cell. The exact native test
+/// rotates the point into the segment frame (`from_rotation_arc` + utils
+/// `is_inside_bbx`); the axis-aligned XZ containment below is the recovered
+/// equivalent (the rotation's Y-axis alignment leaves the XZ plane unchanged).
+fn root_in_wall_cell(root: Vec3, spatial: &WallSpatialHash) -> bool {
+    let cell = cell_index_of_world_point([root.x, root.z]);
+    spatial.segments_in_cell(cell).any(|seg| {
+        let a = seg.endpoints[0];
+        let b = seg.endpoints[1];
+        let min_x = a[0].min(b[0]);
+        let max_x = a[0].max(b[0]);
+        let min_z = a[1].min(b[1]);
+        let max_z = a[1].max(b[1]);
+        root.x >= min_x && root.x <= max_x && root.z >= min_z && root.z <= max_z
+    })
+}
+
+/// Per-attempt frame budget (0x14094db6e..b9e): advance `acc` by
+/// `min(0x46, 0x9c41 - acc) - 1` and allow the spawn only while
+/// `0x13 < 0x9c41 - acc` and the new count stays under `0x9c41`.
+fn budget_advance(acc: &mut usize) -> bool {
+    let remaining = TOTAL_POINT_CEILING + 1 - *acc;
+    let cap = FRAME_POINT_CAP.min(remaining);
+    *acc = (*acc + cap) - 1;
+    BUDGET_SPAWN_MIN < remaining && *acc < TOTAL_POINT_CEILING + 1
+}
+
+/// Outcome of one root attempt. The native consumes frame budget per attempt
+/// even when the candidate is rejected; only an exhausted budget stops the
+/// attempt loop.
+enum CommitOutcome {
+    Spawned(IvyId),
+    Rejected,
+    Exhausted,
+}
+
+/// Shared root commit (0x14094d4dd..db6e): wall validity (panic), ±0.34
+/// lateral offset, facing-dot + distance separation, vertical u (reject when
+/// outside [0,1]), grid `is_inside_bbx` re-check, then `spawn_ivy`.
+#[allow(clippy::too_many_arguments)]
+fn commit_root(
+    storage: &mut IvyStorage,
+    walls: &PublicWalls,
+    spatial: &WallSpatialHash,
+    wall_id: WallId,
+    interp: Vec2,
+    normal: Vec2,
+    side: f32,
+    scalar_range: std::ops::Range<f32>,
+    threshold_sq: f32,
+    acc: &mut usize,
+) -> CommitOutcome {
+    if !budget_advance(acc) {
+        return CommitOutcome::Exhausted;
+    }
+    let Some(state) = walls.get(wall_id) else {
+        return CommitOutcome::Rejected;
+    };
+    let curve = state.simplified_curve_2d();
+    // Wall validity: the original **panics** when the owning wall has fewer
+    // than 2 points or a non-positive curve length (0x14094d4f4..501).
+    if curve.points.len() < 2 || wall_length(state) <= 0.0 {
+        panic!("ivy_spawner: root proposed on an invalid wall");
+    }
+    let root_xz = interp + normal * side;
+    let direction = Vec3::new(normal.x, 0.0, normal.y);
+    let root = Vec3::new(root_xz.x, 0.0, root_xz.y);
+    if root_too_close(storage, root, direction, threshold_sq) {
+        return CommitOutcome::Rejected;
+    }
+    let u = approx_u_from_pos(curve, interp).clamp(0.0, 1.0);
+    let Some(height) = vertical_u(storage, wall_length(state), u) else {
+        return CommitOutcome::Rejected;
+    };
+    let root = Vec3::new(root.x, height, root.z);
+    if root_in_wall_cell(root, spatial) {
+        return CommitOutcome::Rejected;
+    }
+    let id = storage.spawn_ivy(root, direction, scalar_range, SPAWN_COUNT_RANGE, wall_id.0);
+    CommitOutcome::Spawned(id)
 }
 
 /// `try_ivy_root_next_to_cursor` (line 245, inline, path A): place a root next
-/// to the cursor. Nearest wall segment under the cursor → root offset ±0.34 →
-/// separation check → vertical height → `spawn_ivy`. Up to `SPAWN_ATTEMPTS`
-/// tries. `budget` is the frame point cap, decremented by each spawn.
+/// to the cursor through the spatial hash. Cursor → cell → closest segment →
+/// owning wall → `is_on_right_side` lateral (±0.34) → separation → vertical u
+/// → grid re-check → `spawn_ivy`.
 pub fn try_ivy_root_next_to_cursor(
     storage: &mut IvyStorage,
     cursor: &CursorTerrainRaycast,
     walls: &PublicWalls,
-    budget: &mut usize,
+    spatial: &WallSpatialHash,
+    attempts: usize,
+    acc: &mut usize,
 ) -> Option<IvyId> {
     let position = cursor.position();
     let point = Vec2::new(position.x, position.z);
-    for _ in 0..SPAWN_ATTEMPTS {
-        let Some((wall_id, normal, _, interpolated)) = nearest_wall_normal(walls, point) else {
-            continue;
-        };
-        let root = Vec3::new(point.x, 0.0, point.y) + Vec3::new(normal.x, 0.0, normal.y) * ROOT_OFFSET;
-        if root_too_close(storage, root, MIN_ROOT_DISTANCE_SQ) {
+    let cell = cell_index_of_world_point([point.x, point.y]);
+    let rows: Vec<(WallSegment, WallId)> = spatial
+        .segments_in_cell(cell)
+        .map(|s| (wall_segment_from_spatial(s), s.wall))
+        .collect();
+    let mut last = None;
+    for _ in 0..attempts {
+        if rows.is_empty() {
             continue;
         }
-        let direction = Vec3::new(normal.x, 0.0, normal.y);
-        let height = vertical_u(storage, 1.0, interpolated);
-        return spawn_validated_root(
+        let segments: Vec<WallSegment> = rows.iter().map(|(s, _)| *s).collect();
+        let Ok(Some(hit)) = closest_segment_index(point, &segments, MAX_IVY_GROW_HEIGHT) else {
+            continue;
+        };
+        let seg = &segments[hit.index];
+        let wall_id = rows[hit.index].1;
+        let Some(state) = walls.get(wall_id) else {
+            continue;
+        };
+        let curve = state.simplified_curve_2d();
+        // Lateral side: `Curve::is_on_right_side` → −0.34, else +0.34.
+        let side = if curve_is_on_right_side(curve, point) {
+            -ROOT_OFFSET
+        } else {
+            ROOT_OFFSET
+        };
+        let dir = seg.p1 - seg.p0;
+        let len = dir.length().max(1e-20);
+        let normal = Vec2::new(-dir.y, dir.x) / len;
+        let dir_len_sq = dir.length_squared().max(1e-20);
+        let t = ((point - seg.p0).dot(dir) / dir_len_sq).clamp(0.0, 1.0);
+        let interp = seg.p0 + dir * t;
+        match commit_root(
             storage,
-            Vec3::new(root.x, height, root.z),
-            direction,
+            walls,
+            spatial,
             wall_id,
+            interp,
+            normal,
+            side,
             SCALAR_RANGE_CURSOR,
-            budget,
-        );
+            MIN_ROOT_DISTANCE_SQ,
+            acc,
+        ) {
+            CommitOutcome::Spawned(id) => last = Some(id),
+            CommitOutcome::Rejected => {}
+            CommitOutcome::Exhausted => break,
+        }
     }
-    None
+    last
 }
 
 /// `try_random_ivy_root` (line 212, inline, path B): pick a random wall, sample
-/// a random `u ∈ [0,1)`, gate on the spawn FastNoise density, place a root at
-/// the wall curve point offset laterally by the `get_bool` side (±0.34),
-/// reject roots within 1.6 of an existing root (2.56²), set the vertical `u`,
-/// and spawn. Attempts = 2..4 (re-analyst RE-ANALYSIS2). `budget` is the frame
-/// point cap, decremented by each spawn.
+/// a random `u ∈ [0,1)`, gate on the spawn FastNoise density, place a root
+/// offset laterally by ±0.34 (`get_bool` only when the wall subtype > 1, else
+/// +0.34), separate, set the vertical u, and spawn.
 pub fn try_random_ivy_root(
     storage: &mut IvyStorage,
     walls: &PublicWalls,
     noise: &IvySpawnNoise,
-    budget: &mut usize,
+    spatial: &WallSpatialHash,
+    attempts: usize,
+    acc: &mut usize,
 ) -> Option<IvyId> {
     let wall_rows: Vec<_> = walls.all().collect();
     if wall_rows.is_empty() {
         return None;
     }
-    let attempts = 2 + storage.rng_mut().usize_less_than(3);
     let mut last = None;
     for _ in 0..attempts {
         let (wall_id, wall) = wall_rows[storage.rng_mut().usize_less_than(wall_rows.len())];
@@ -252,100 +342,80 @@ pub fn try_random_ivy_root(
         let (index, t) = curve.coord_at_u(u);
         let a = curve.points[index];
         let b = curve.points[index + 1];
-        let x = t * b[0] + (1.0 - t) * a[0];
-        let z = t * b[1] + (1.0 - t) * a[1];
-        let dx = b[0] - a[0];
-        let dz = b[1] - a[1];
-        let reciprocal = 1.0 / (dz * dz + dx * dx).sqrt().max(1e-20);
-        // FastNoise density gate: the noise must be strictly greater than the
-        // threshold at res+0x78 (0x14094cf90: `if noise < t || noise == t →
-        // return`); threshold value 待取证.
-        let density = noise.noise.get_noise3d(x, 0.0, z);
+        let interp = Vec2::new(t * b[0] + (1.0 - t) * a[0], t * b[1] + (1.0 - t) * a[1]);
+        // FastNoise density gate (strictly greater; 0x14094cf90).
+        let density = noise.noise.get_noise3d(interp.x, 0.0, interp.y);
         if density <= noise.threshold {
             continue;
         }
-        // Lateral side: `perchance get_bool` — true → −0.68, false → +0.68
-        // (RE-ANALYSIS2, call 0x14094d6b0). Path A uses 0.68 × 0.5 = 0.34.
-        let side = if storage.rng_mut().get_bool() { -1.0 } else { 1.0 };
-        let offset_x = (-dz * reciprocal) * RANDOM_ROOT_OFFSET * side;
-        let offset_z = (dx * reciprocal) * RANDOM_ROOT_OFFSET * side;
-        let root = Vec3::new(x + offset_x, 0.0, z + offset_z);
-        if root_too_close(storage, root, RANDOM_ROOT_DISTANCE_SQ) {
-            continue;
-        }
-        let u_on_curve = approx_u_from_pos(curve, Vec2::new(x, z));
-        let height = vertical_u(storage, curve.length, u_on_curve);
-        let direction = Vec3::new(-dz * reciprocal, 0.0, dx * reciprocal);
-        let Some(id) = spawn_validated_root(
-            storage,
-            Vec3::new(root.x, height, root.z),
-            direction,
-            wall_id,
-            SCALAR_RANGE_RANDOM,
-            budget,
-        ) else {
-            break; // frame point budget exhausted (0x14094db6e..b9e)
+        let dx = b[0] - a[0];
+        let dz = b[1] - a[1];
+        let reciprocal = 1.0 / (dz * dz + dx * dx).sqrt().max(1e-20);
+        let normal = Vec2::new(-dz * reciprocal, dx * reciprocal);
+        // Lateral side: `get_bool` only when the wall subtype > 1
+        // (`1 < [wall-0x48]`); otherwise the +0.34 branch (0x14094d6b0).
+        let side = if (wall.authority.arch_type() as u32) > 1 && storage.rng_mut().get_bool() {
+            -ROOT_OFFSET
+        } else {
+            ROOT_OFFSET
         };
-        last = Some(id);
+        match commit_root(
+            storage,
+            walls,
+            spatial,
+            wall_id,
+            interp,
+            normal,
+            side,
+            SCALAR_RANGE_RANDOM,
+            RANDOM_ROOT_DISTANCE_SQ,
+            acc,
+        ) {
+            CommitOutcome::Spawned(id) => last = Some(id),
+            CommitOutcome::Rejected => {}
+            CommitOutcome::Exhausted => break,
+        }
     }
     last
 }
 
-/// Shared spawn commit: root position/direction with the point budget sampled
-/// from 20..40 (native stack param 0x14; upper bound 待取证) and the owning
-/// wall id forwarded to the leaf storage (`source_60` = wall id, [rsp+0xf8]).
-/// Returns `None` once the per-frame point budget is spent.
-fn spawn_validated_root(
-    storage: &mut IvyStorage,
-    position: Vec3,
-    direction: Vec3,
-    wall_id: WallId,
-    scalar_range: std::ops::Range<f32>,
-    budget: &mut usize,
-) -> Option<IvyId> {
-    if *budget == 0 {
-        return None;
-    }
-    let id = storage.spawn_ivy(position, direction, scalar_range, SPAWN_COUNT_RANGE, wall_id.0);
-    // The ivy's sampled point ceiling counts against this frame's cap.
-    *budget = budget.saturating_sub(
-        storage
-            .get(id)
-            .map_or(0, |ivy| ivy.maximum_point_count),
-    );
-    Some(id)
-}
-
-/// `ivy_spawner` (0x14094cf90). Mode gate + ActionSet pressed gate + point
-/// budget + pass dispatch per the O analysis.
+/// `ivy_spawner` (0x14094cf90). 7-param native signature; `GladeSettings`
+/// gate, point budget, `MainActionSet` digital[36] dispatch.
 pub fn ivy_spawner(
     mut storage: ResMut<IvyStorage>,
-    mode: Res<AppMode>,
-    cursor: Res<CursorTerrainRaycast>,
-    walls: Res<PublicWalls>,
     noise: Res<IvySpawnNoise>,
+    walls: Res<PublicWalls>,
+    cursor: Res<CursorTerrainRaycast>,
     actions: Res<MainActionSet>,
+    spatial: Res<WallSpatialHash>,
+    settings: Res<GladeSettings>,
 ) {
-    if mode.native_tag() != 1 {
+    // First gate (0x14094cffb..d00a): `[GladeSettings+0x1c] == 1`.
+    if !settings.ivy_leaves {
         return;
     }
-    // ActionSet pressed gate (SPEC G2.4): roots are only attempted while the
-    // `ivy_spawn` digital action (slot 37) is pressed. The exact button
-    // binding is 待取证.
-    if !actions.digital[IVY_SPAWN_ACTION_SLOT].pressed() {
+    // Point budget (0x14094d09b..a7): `acc = total - (n-1)`, return when
+    // `acc + 0x12 > 39999`.
+    let mut acc = 0usize;
+    let mut first = true;
+    for (_, ivy) in storage.iter() {
+        if first {
+            acc = ivy.point_count();
+            first = false;
+        } else {
+            acc = acc + ivy.point_count() - 1;
+        }
+    }
+    if !first && acc + BUDGET_ADD > BUDGET_GATE {
         return;
     }
-    // Total-point budget (0x14094d09b..a7): `total_point_count + 0x13 <
-    // 0x9c40`, i.e. the stored point total stays under 40,000.
-    if storage.total_point_count() + 0x13 >= TOTAL_POINT_CEILING {
-        return;
-    }
-    // Per-frame point cap (0x14094db6e..b9e): min(0x46, 0x9c41 - total).
-    let mut budget = FRAME_POINT_CAP.min((TOTAL_POINT_CEILING + 1).saturating_sub(storage.total_point_count()));
-    if storage.next_id() < 3 {
-        try_ivy_root_next_to_cursor(&mut storage, &cursor, &walls, &mut budget);
+    // Shared attempts: `2 + usize_less_than(3)` (0x14094d2e7).
+    let attempts = 2 + storage.rng_mut().usize_less_than(3);
+    // Pass dispatch: `MainActionSet.digital[36].disc < 3` (0x14094d2e7).
+    if actions.digital[IVY_SPAWN_ACTION_SLOT].pressed() {
+        try_ivy_root_next_to_cursor(&mut storage, &cursor, &walls, &spatial, attempts, &mut acc);
     } else {
-        try_random_ivy_root(&mut storage, &walls, &noise, &mut budget);
+        try_random_ivy_root(&mut storage, &walls, &noise, &spatial, attempts, &mut acc);
     }
 }
 
@@ -371,12 +441,38 @@ mod tests {
     }
 
     #[test]
-    fn vertical_u_clamps_to_the_machine_constant() {
+    fn vertical_u_rejects_values_outside_the_unit_interval() {
         let mut storage = IvyStorage::new();
-        for _ in 0..32 {
-            let value = vertical_u(&mut storage, 1.0, 0.0);
-            assert!((VERTICAL_MIN..=VERTICAL_MAX).contains(&value), "height {value}");
+        let mut some = 0;
+        let mut none = 0;
+        for _ in 0..64 {
+            match vertical_u(&mut storage, 1.0, 0.0) {
+                Some(value) => {
+                    assert!((VERTICAL_MIN..=VERTICAL_MAX).contains(&value), "height {value}");
+                    some += 1;
+                }
+                None => none += 1,
+            }
         }
+        // (rand*1.5-0.75)/length spans [-0.75, 0.75] at length 1.0, so both
+        // the accepted and the rejected branch occur; the native rejects
+        // rather than clamping.
+        assert!(some > 0 && none > 0, "some={some} none={none}");
+    }
+
+    #[test]
+    fn budget_advance_obeys_the_frame_point_cap() {
+        let mut acc = 10;
+        let mut spawned = 0;
+        for _ in 0..10_000 {
+            if budget_advance(&mut acc) {
+                spawned += 1;
+            }
+        }
+        // The gate is a bound check, not a hard counter; it must simply stay
+        // within the 0x9c41 ceiling and report a finite number of spawns.
+        assert!(acc < TOTAL_POINT_CEILING + 1);
+        assert!(spawned > 0);
     }
 
     #[test]

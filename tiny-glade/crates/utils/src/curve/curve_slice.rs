@@ -1,5 +1,4 @@
-//! B 0x140154b60/0x14126a8f0 clip a polyline retaining interior vertices.
-//! Stateful CurveSlice remap/extend iterator variants remain separately tracked.
+//! Borrowed, optionally remapped polyline intervals and owned clipping.
 use super::{Curve, CurveError, CurveInternalCoord, CurveMetric, CurvePoint, CurveU};
 use itertools::Itertools;
 use std::{
@@ -8,7 +7,7 @@ use std::{
 };
 use take_until::TakeUntilExt;
 
-/// Original point access policy, with ordinary and logical-loop implementations.
+/// Point access shared by ordinary and logical-loop views.
 pub trait CurvePoints<T> {
     fn len(&self) -> usize;
     fn point(&self, index: usize) -> &T;
@@ -36,7 +35,7 @@ impl<T> CurvePoints<T> for &[T] {
         <[T]>::iter(self)
     }
 }
-/// Reuse the game's restored LoopRange; logical enumeration is local to the view.
+/// A logical loop range over a borrowed point set.
 pub struct LoopCurvePoints<'a, T> {
     pub points: &'a [T],
     pub range: crate::loop_range::LoopRange,
@@ -96,8 +95,17 @@ impl<T: CurvePoint, Points: CurvePoints<T>, S> CurveSlice<T, Points, S> {
         first: CurveInternalCoord,
         last: CurveInternalCoord,
     ) -> Self {
-        let span = (last.t - first.t) + (last.segment as isize - first.segment as isize) as f32;
-        assert!(span >= 0.0, "reversed or unordered curve slice");
+        for coord in [first, last] {
+            assert!(
+                coord.segment < points.len().saturating_sub(1),
+                "segment outside point set"
+            );
+            assert!((0.0..=1.0).contains(&coord.t), "invalid segment parameter");
+        }
+        assert!(
+            first.segment < last.segment || (first.segment == last.segment && first.t <= last.t),
+            "reversed or unordered curve slice"
+        );
         Self {
             points,
             first,
@@ -159,7 +167,7 @@ impl<T: CurvePoint, Points: CurvePoints<T>, S, R: CurvePoint, F: Fn(usize, &T) -
             .map(|coord| self.sample_at_coord(coord))
             .tuple_windows::<(_, _)>()
             .fold(0.0, |length, (a, b)| {
-                length + (b - a).metric_squared().sqrt()
+                length + b.metric_distance_f64(a) as f32
             })
     }
     pub fn extend_right(&mut self, distance: f32) {
@@ -168,32 +176,42 @@ impl<T: CurvePoint, Points: CurvePoints<T>, S, R: CurvePoint, F: Fn(usize, &T) -
     pub fn extend_left(&mut self, distance: f32) {
         self.extend_left_until(distance, |_| false)
     }
-    /// The original take-until dependency includes the stopping vertex.
+    /// Include the vertex selected by the stopping predicate.
     pub fn extend_right_until(&mut self, distance: f32, stop: impl FnMut(&usize) -> bool) {
         assert!(distance >= 0.0, "invalid extension distance");
-        let mut remaining = distance;
+        if distance == 0.0 {
+            return;
+        }
+        let mut remaining = f64::from(distance);
         let windows = (self.last.segment..self.points.len())
             .take_until(stop)
             .map(|i| (i, self.mapped_point(i)))
             .tuple_windows::<(_, _)>();
         let mut updated = None;
         for ((i, a), (_, b)) in windows {
-            let length = (b - a).metric_squared().sqrt();
-            let available = if updated.is_none() {
-                (1.0 - self.last.t) * length
+            let length = b.metric_distance_f64(a);
+            if length == 0.0 {
+                if remaining == 0.0 {
+                    break;
+                }
+                updated = Some(CurveInternalCoord { segment: i, t: 1.0 });
+                continue;
+            }
+            let start_t = if updated.is_none() {
+                f64::from(self.last.t)
             } else {
-                length
+                0.0
             };
-            remaining = available - remaining;
-            if remaining >= 0.0 {
+            let available = (1.0 - start_t) * length;
+            if remaining <= available {
                 updated = Some(CurveInternalCoord {
                     segment: i,
-                    t: 1.0 - remaining / length,
+                    t: (start_t + remaining / length).min(1.0) as f32,
                 });
                 break;
             }
             updated = Some(CurveInternalCoord { segment: i, t: 1.0 });
-            remaining = -remaining;
+            remaining -= available;
         }
         if let Some(end) = updated {
             self.last = end;
@@ -201,7 +219,10 @@ impl<T: CurvePoint, Points: CurvePoints<T>, S, R: CurvePoint, F: Fn(usize, &T) -
     }
     pub fn extend_left_until(&mut self, distance: f32, stop: impl FnMut(&usize) -> bool) {
         assert!(distance >= 0.0, "invalid extension distance");
-        let mut remaining = distance;
+        if distance == 0.0 {
+            return;
+        }
+        let mut remaining = f64::from(distance);
         let windows = (0..=self.first.segment + 1)
             .rev()
             .take_until(stop)
@@ -209,23 +230,29 @@ impl<T: CurvePoint, Points: CurvePoints<T>, S, R: CurvePoint, F: Fn(usize, &T) -
             .tuple_windows::<(_, _)>();
         let mut updated = None;
         for ((_, b), (i, a)) in windows {
-            let length = (b - a).metric_squared().sqrt();
-            // Original subtraction then addition round separately near t=0.
-            let available = if updated.is_none() {
-                ((self.first.t - 1.0) + 1.0) * length
+            let length = b.metric_distance_f64(a);
+            if length == 0.0 {
+                if remaining == 0.0 {
+                    break;
+                }
+                updated = Some(CurveInternalCoord { segment: i, t: 0.0 });
+                continue;
+            }
+            let start_t = if updated.is_none() {
+                f64::from(self.first.t)
             } else {
-                length
+                1.0
             };
-            remaining = available - remaining;
-            if remaining >= 0.0 {
+            let available = start_t * length;
+            if remaining <= available {
                 updated = Some(CurveInternalCoord {
                     segment: i,
-                    t: remaining / length,
+                    t: (start_t - remaining / length).max(0.0) as f32,
                 });
                 break;
             }
             updated = Some(CurveInternalCoord { segment: i, t: 0.0 });
-            remaining = -remaining;
+            remaining -= available;
         }
         if let Some(start) = updated {
             self.first = start;
@@ -266,7 +293,7 @@ impl<T: CurvePoint, S: CurveMetric<T>> Curve<T, S> {
     pub fn crashy_slice(&self, start: f32, end: f32) -> Self {
         self.try_slice(start, end).unwrap()
     }
-    /// B circular_slice joins end to start, removing one junction point.
+    /// Join the tail and head of a closed curve, removing the seam vertex.
     pub fn circular_slice(&self, start: f32, end: f32) -> Result<Self, CurveError> {
         let _ = CurveU::<S>::new(start);
         let _ = CurveU::<S>::new(end);

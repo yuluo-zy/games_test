@@ -31,10 +31,10 @@ fn inherited_explicit_values_precede_deep_defaults_and_none_remains_disabled() {
     assert!(part.audio.as_concrete().is_none());
 }
 #[test]
-#[should_panic(expected="cannot finalize an exhausted audio trigger")]
-fn original_exhausted_trigger_object_is_rejected() {
+fn exhausted_trigger_is_preserved_for_fallible_validation() {
     let mut audio=Some(PrefabAudioConfig {trigger:Inheritable::MissingDefault});
     audio.inherit_from(&None);
+    assert!(audio.unwrap().trigger.try_as_concrete().is_err());
 }
 
 mod native_completion {include!("prefab_native_tests.rs");}

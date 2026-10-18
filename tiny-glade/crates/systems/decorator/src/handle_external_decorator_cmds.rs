@@ -24,7 +24,7 @@ use country_core::resources::walls::decorator_storage::{
     DecoratorStorage, DecoratorStorageAddr,
 };
 use country_core::resources::walls::decorator::{
-    DecoratorInfo, DeferredDecoratorOpEvents,
+    DecoratorInfo,
 };
 use country_core::resources::walls::decorator_archivist::DecoratorArchivist;
 
@@ -33,11 +33,8 @@ use crate::deferred_decorator_history::{
     record_to_history_edit, DeferredDecoratorEditHistory,
 };
 
-/// 装饰操作事件资源包装（core `DeferredDecoratorOpEvents` 未派生
-/// Resource；本 crate 提供注册面——producer/consumer 统一经 `Res<
-/// DecoratorOpEvents>` 访问 `.0`）。
-#[derive(Resource, Clone, Debug, Default)]
-pub struct DecoratorOpEvents(pub DeferredDecoratorOpEvents);
+/// Compatibility name for the authoritative core queue; no second resource.
+pub use country_core::resources::walls::decorator::DeferredDecoratorOpEvents as DecoratorOpEvents;
 
 /// 外部装饰命令（I：两条流模型；0x28B 墙 remove / 0x30B 屋顶命令）。
 #[derive(Event, Clone, Debug)]
@@ -88,7 +85,7 @@ pub fn handle_external_decorator_cmds<C: Send + Sync + 'static>(
             &mut storage,
             Some(&mut archivist),
             Some(&mut deferred),
-            &events.0,
+            &events,
         );
         let edit = record_to_history_edit(&record);
         let _ = history.add(EditType::DecoratorV5(Arc::new(edit)));
@@ -104,7 +101,7 @@ fn build_external_record(cmd: &ExternalDecoratorCmd) -> Option<crate::deferred_d
     };
     Some(crate::deferred_decorator_history::DeferredDecoratorRecord {
         kind,
-        a: cmd.decorator_id,
+        f1: u64::from(cmd.decorator_id),
         ..crate::deferred_decorator_history::DeferredDecoratorRecord::default()
     })
 }

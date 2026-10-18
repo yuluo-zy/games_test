@@ -1,29 +1,58 @@
-//! feedback_input_out_of_border.rs — 越界输入反馈（B 行 12，PDB inlinee，无独立
-//! VA；re-analyst-A 契约 §1：逻辑并入调用点，本 crate 按 BASELINE 参数面落地）。
+//! feedback_input_out_of_border.rs — 越界输入反馈（B 行 12，PDB inlinee，无独立 VA；
+//! 宿主 `run_unsafe<FunctionSystem<feedback_input_out_of_border,..>>` 0x141be2280，
+//! 2026-10-17 fresh 反编译重建 + wave3 落库音效写面）。
 //!
-//! 参数面（O，BASELINE 候选接口）：`(EventReader<FeedbackInputOutOfBorder>,
-//! EventWriter<PlayUiSound>, Local<InputOfOutBorderCache>)`——读越界反馈事件 →
-//! 发射 UI 声音（防抖缓存 Local，语义 I）。
+//! 内联系统体（O，0x141be2280 disasm）：
+//! ```
+//! has_feedback = feedback.read().last().is_some();      // EventReader 记账
+//! if has_feedback {
+//!     if state[+0x158] == 0 { sounds.write(PlayUiSound 变体 #4); }   // 上升沿一次
+//!     state[+0x158] = 1;
+//! } else {
+//!     state[+0x158] = 0;
+//! }
+//! state[+0x130] = change_tick;   // last_run（bevy 胶水）
+//! ```
+//! `state[+0x158]` = `Local<InputOfOutBorderCache>`（1 字节 bool）——上一帧是否有越界反馈；
+//! 音效在「反馈事件首次出现」的上升沿播放一次，连续越界帧不再重复。
+//!
+//! ## wave3 落库
+//! 音效写面**已判等**：`PlayUiSound` 变体 #4（coregap-1 落库
+//! `{kind u32 @+0=4, 载荷区 @+8..0x17, id u64 @+0x18}`，事件步长 0x20B）。disasm
+//! 0x141be2280 行 92-93：`*(lVar7 + lVar11*0x20) = 4`（判别值 4）、
+//! `*(lVar7 + 0x18 + lVar11*0x20) = uVar6`（`uVar6 = *(lVar4+0x40)` =
+//! EventWriter 计数，bevy 胶水）。crate `EventWriter::write` 自动补实例 id；
+//! `PlayUiSound::variant4(0)` 的 id@+0x18 由 bevy 记账填充（游戏逻辑无差异）。
 
 use bevy_ecs::prelude::*;
 
 use country_core::resources::glade_border::FeedbackInputOutOfBorder;
 use country_core::systems::ui::resources::widget_params::PlayUiSound;
 
-/// 越界反馈防抖缓存（I：内联体语义；字段 U）。
+/// 越界反馈去抖缓存（O：宿主 `state+0x158` 字节 = 上一帧是否有未读越界反馈）。
 #[derive(Default)]
 pub struct InputOfOutBorderCache {
-    /// 上次反馈帧/时间（U）。
-    pub last: u64,
+    /// O：上一帧系统运行时有未读 `FeedbackInputOutOfBorder`（读末条事件后置 true/false）。
+    pub had_feedback_last_run: bool,
 }
 
-/// `feedback_input_out_of_border`（O 面：`EventReader::read().last()` + 事件写入）。
+/// `feedback_input_out_of_border`（O 面：`EventReader::read().last()` + 上升沿去抖；
+/// wave3 落库 `PlayUiSound::variant4` 写面）。
 pub fn feedback_input_out_of_border(
     mut feedback: EventReader<FeedbackInputOutOfBorder>,
     mut sounds: EventWriter<PlayUiSound>,
-    _cache: Local<InputOfOutBorderCache>,
+    mut cache: Local<InputOfOutBorderCache>,
 ) {
-    if feedback.read().last().is_some() {
-        sounds.write(PlayUiSound);
+    let has_feedback = feedback.read().last().is_some();
+    if has_feedback {
+        // O：宿主 `[state+0x158] == 0`（上一帧无反馈）才写音效——上升沿触发一次。
+        if !cache.had_feedback_last_run {
+            // O：写 `PlayUiSound` 变体 #4（判别值 4 @+0，事件步长 0x20B，id @+0x18）。
+            // id = 宿主 EventWriter 计数（bevy 胶水）；crate 以 0 承载。
+            sounds.write(PlayUiSound::variant4(0));
+        }
+        cache.had_feedback_last_run = true;
+    } else {
+        cache.had_feedback_last_run = false;
     }
 }

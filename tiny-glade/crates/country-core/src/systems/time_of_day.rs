@@ -1,103 +1,56 @@
-//! `systems/time_of_day.rs` — 昼夜系统（B 0x140a73460，O）。
-//!
-//! 证据：`chapters/systems/time_of_day.rs.md`、`camera-time/ALGORITHMS.md`（22KB 反编译全析）：
-//! - **angle 插值**：向 `2π − angle`（6.28319@0x142934674），wrap ±π，`1−exp(−3·dt)`
-//!   （−3@0x142ad58e8），收敛 < 0.01 清标志；
-//! - **hour 插值**：wrap ±0.5，`exp(−3·dt·max(speed,1))`，收敛 < 0.001 清标志；
-//! - **播放状态机**：dev 关 `0→progress=0→2；2→progress+=dt/−5`（倒带）；dev 开
-//!   `0→progress=0→1；1→progress+=dt/3`（前进）；
-//! - **小时推进**：`target_hour = fmodf(progress·24 + 8 + dt·TIME_OF_DAY_SPEED·speed·trig, 24)`；
-//!   `hour = fmodf(target·24 + 8, 24)` → `remap_hour_to_fmod_hour(hour, winter)`；
-//! - **suncalc 太阳位置**：`day_of_year ∈ 1..365`（越界 unwrap panic）；
-//!   `encoded = day_of_year | 0xFCE00`（2023<<9）；`unix_ms = decode·1000 + hour·3600000`；
-//!   `suncalc::get_position(ms, lat=state@+0x10, lon=0)` → colatitude → 3D 太阳方向 →
-//!   写光照资源（`TodLightingSnapshot` 插值、`SunSkyColors` 两套）+ 音频上报
-//!   （"TOD-Enabled"(0xb)/"Timetravel"(10)/"DayNight"(8)）。
-//!
-//! 本实现：`TimeOfDayState` 资源（衔接卡0 TimeOfDay 节载荷/save 节）+ 纯算法
-//! （插值/播放机/小时推进/remap）+ [`suncalc_pos_to_vec`]。suncalc 的
-//! `get_position` 与光照/音频写盘依赖 suncalc crate / FMOD / 光照资源，登记待接。
+//! B TOD system canonical resources and full atmosphere writer.
+//! Fresh native evidence: time_of_day @140a73460, GUI TOD @1405cc7f0,
+//! circle drag @140505780, insert_resources @140940ed0.
+//! KeyButtonInput is the existing explicit host projection of original
+//! ButtonInput<KeyCode>; no second input Resource identity is introduced.
 use bevy_ecs::prelude::*;
-use glam::Vec3;
-use serde::{Deserialize, Serialize};
+use glam::{Quat, Vec3};
+use std::sync::atomic::{AtomicU32, Ordering};
 
-use crate::resources::time_of_day::remap_hour_to_fmod_hour;
+use crate::{
+    render::{atmosphere::DerivedAtmosphere, directional_light::DirectionalLight},
+    resources::session::NewSessionStartedCmd,
+    resources::{
+        audio_resources::{AudioCore, Studio},
+        session::ActiveSession,
+        time::GameTime,
+        time_of_day::{
+            inverse_lerp, remap_hour_to_fmod_hour, time_continuous_lerp_mut, TimeOfDay,
+            TodLightingSnapshot, TodPlaybackState, TodSequence, TIME_OF_DAY_SPEED,
+        },
+    },
+    systems::save::load_game::LoadingGameComplete,
+};
 
-/// `2π`（O：6.28319@0x142934674）。
+/// `2π`（O：6.2831855 @0x142934674）。
 const TWO_PI: f32 = 6.283_185_5;
-/// `−3`（O：0x142ad58e8，angle/hour 插值平滑）。
+/// `-3`（O：0x142ad58e8）。
 const SMOOTH_K: f32 = -3.0;
-/// `24`/`8`（O：0x142934600/0x142934604，小时模/偏移）。
+/// `24` / `8`（O：0x142934600 / 0x142934604）。
 const HOUR_MOD: f32 = 24.0;
 const HOUR_OFFSET: f32 = 8.0;
-/// `3600000`（O：0x142ad58f0，时→毫秒）。
+/// `3600000`（O：0x142ad58f0）。
 const HOUR_TO_MS: f32 = 3_600_000.0;
-/// `0xFCE00` = 2023<<9（O：日期编码）。
-const YEAR_2023_BITS: u64 = 0x0fce00;
+/// 2023-01-01 的 Unix epoch 日序（time crate `Date::from_ordinal_date(2023, d)` 等价）。
+const YEAR_2023_EPOCH_DAYS: i64 = 19_358;
+/// 2023 << 9（O：0xfce00，`time::Date` 打包编码；仅作证据常量）。
+const YEAR_2023_BITS: u32 = 0x0fce00;
 
-/// 播放状态（O：dev 关/开 状态机判别）。
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub enum TodPlaybackState {
-    #[default]
-    Idle = 0,
-    Playing = 1,
-    Rewinding = 2,
+/// 帧间全局 `f32`（O：静态 0x143634d84）：上一帧 `snapshot.speed_bias`，
+/// 下一帧作为 `exp2f` 输入。
+static SPEED_BIAS_GLOBAL: AtomicU32 = AtomicU32::new(0);
+
+#[inline]
+fn load_speed_bias() -> f32 {
+    f32::from_bits(SPEED_BIAS_GLOBAL.load(Ordering::Relaxed))
 }
 
-/// 昼夜状态资源（O 资源面：当前态 {hour, angle, 角度过渡@+3, 小时过渡@+0xa, 瞬时@+0xb}；
-/// 播放态 {state, progress, target_hour, 纬度@+0x10, 日出@+0x14, 日落@+0x18,
-/// day_of_year@+0x28}；dev 态 {小时倍率@+0x23}）。
-#[derive(Resource, Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct TimeOfDayState {
-    /// 当前小时（0..24）。
-    pub hour: f32,
-    /// 太阳角度。
-    pub angle: f32,
-    /// 角度过渡中（@+3）。
-    pub angle_transitioning: bool,
-    /// 小时过渡中（@+0xa）。
-    pub hour_transitioning: bool,
-    /// 瞬时吸附（@+0xb）。
-    pub instant: bool,
-    /// 播放状态。
-    pub playback: TodPlaybackState,
-    /// 播放进度（0..1）。
-    pub progress: f32,
-    /// 目标小时。
-    pub target_hour: f32,
-    /// 纬度（@+0x10，suncalc lat）。
-    pub latitude: f32,
-    /// 日出小时（@+0x14）。
-    pub sunrise: f32,
-    /// 日落小时（@+0x18）。
-    pub sunset: f32,
-    /// 一年中的第几天（1..365；越界 unwrap panic）。
-    pub day_of_year: u32,
-    /// dev 小时倍率（@+0x23）。
-    pub dev_speed_mult: f32,
+#[inline]
+fn store_speed_bias(v: f32) {
+    SPEED_BIAS_GLOBAL.store(v.to_bits(), Ordering::Relaxed);
 }
 
-impl Default for TimeOfDayState {
-    fn default() -> Self {
-        Self {
-            hour: HOUR_OFFSET,
-            angle: 0.0,
-            angle_transitioning: false,
-            hour_transitioning: false,
-            instant: false,
-            playback: TodPlaybackState::Idle,
-            progress: 0.0,
-            target_hour: HOUR_OFFSET,
-            latitude: 0.0,
-            sunrise: 6.0,
-            sunset: 20.0,
-            day_of_year: 1,
-            dev_speed_mult: 1.0,
-        }
-    }
-}
-
-/// 角度插值（O：`1−exp(−3·dt)`、wrap ±π、收敛 < 0.01）。
+/// 角度插值（判等函数，红线不动）。
 pub fn advance_angle(current: f32, target: f32, dt: f32) -> (f32, bool) {
     let diff = (target - current).rem_euclid(TWO_PI);
     let wrapped = if diff > core::f32::consts::PI {
@@ -110,11 +63,9 @@ pub fn advance_angle(current: f32, target: f32, dt: f32) -> (f32, bool) {
     (if converged { target } else { next }, !converged)
 }
 
-/// 小时插值（O：wrap ±0.5 **天**（= ±12 小时，24 小时圆上取最短路径）、
-/// `exp(−3·dt·max(speed,1))`、收敛 < 0.001）。
+/// 小时插值（判等函数，红线不动）。
 pub fn advance_hour(current: f32, target: f32, dt: f32, speed: f32) -> (f32, bool) {
     let diff = target - current;
-    // 24 小时圆最短路径：half-day = 0.5 天 = 12 小时（O：0.5@0x142925870）。
     let wrapped = if diff > 12.0 {
         diff - 24.0
     } else if diff < -12.0 {
@@ -128,167 +79,474 @@ pub fn advance_hour(current: f32, target: f32, dt: f32, speed: f32) -> (f32, boo
     (if converged { target } else { next }, !converged)
 }
 
-/// 播放状态推进（O：dev 关 `0→2 倒带 dt/−5`；dev 开 `0→1 前进 dt/3`）。
+/// 播放状态推进（O 0x140a73460：dev 关恒 `Rewinding(2)`、dev 开恒 `Playing(1)`；
+/// 旧 state 只决定 progress 变化）。
+///
+/// | 旧 state | dev 关（`+0xe3==0`） | dev 开 |
+/// |---|---|---|
+/// | Idle(0) | state=2、progress=0 | state=1、progress=0 |
+/// | Playing(1) | state=2、progress 不变 | state=1、`progress+=dt/3` clamp≤1 |
+/// | Rewinding(2) | state=2、`progress+=dt/−5` clamp≥0 | state=1、progress 不变 |
 pub fn advance_playback(state: &mut TodPlaybackState, progress: &mut f32, dev_on: bool, dt: f32) {
-    match *state {
-        TodPlaybackState::Idle => {
-            *progress = 0.0;
-            *state = if dev_on {
-                TodPlaybackState::Playing
-            } else {
-                TodPlaybackState::Rewinding
-            };
+    let old = *state;
+    if !dev_on {
+        *state = TodPlaybackState::Rewinding;
+        match old {
+            TodPlaybackState::Idle => *progress = 0.0,
+            TodPlaybackState::Playing => {}
+            TodPlaybackState::Rewinding => {
+                *progress = (*progress + dt / -5.0).max(0.0);
+            }
         }
-        TodPlaybackState::Playing => {
-            *progress = (*progress + dt / 3.0).min(1.0);
-        }
-        TodPlaybackState::Rewinding => {
-            *progress = (*progress - dt / 5.0).max(0.0);
+    } else {
+        *state = TodPlaybackState::Playing;
+        match old {
+            TodPlaybackState::Idle => *progress = 0.0,
+            TodPlaybackState::Playing => {
+                *progress = (*progress + dt / 3.0).min(1.0);
+            }
+            TodPlaybackState::Rewinding => {}
         }
     }
 }
 
-/// 小时推进（O：`target = fmodf(progress·24 + 8 + dt·speed·trig, 24)`；
-/// `hour = fmodf(target·24 + 8, 24)` → remap）。
+/// 小时推进（O 0xa73c53..0xa73cc3）：
+/// ```
+/// dt_speed = dt * TIME_OF_DAY_SPEED
+/// inc = exp2f(speed_bias_global) * (progress * dt_speed) * dev_speed_mult
+/// target = fmodf(inc + target + 1.0, 1.0) → rem_euclid(1.0)
+/// ```
+/// 调用点另有门：`screen.visible && screen.time_input_active` 时保持 target 不变。
+/// `speed_bias_global` 是上一帧 `TodLightingSnapshot.speed_bias`（静态 0x143634d84）。
 pub fn advance_tod_hour(
     progress: f32,
     dt: f32,
-    speed: f32,
-    time_of_day_speed: f32,
-    winter: bool,
-) -> (f32, f32) {
-    let target = (progress * HOUR_MOD + HOUR_OFFSET + dt * time_of_day_speed * speed)
-        .rem_euclid(HOUR_MOD);
-    let hour = (target * HOUR_MOD + HOUR_OFFSET).rem_euclid(HOUR_MOD);
-    (target, remap_hour_to_fmod_hour(hour, winter))
+    dev_speed_mult: f32,
+    target_hour: f32,
+    speed_bias_global: f32,
+) -> f32 {
+    let dt_speed = dt * TIME_OF_DAY_SPEED;
+    let progress_dt = progress * dt_speed;
+    let mut inc = speed_bias_global.exp2() * progress_dt;
+    inc *= dev_speed_mult;
+    (inc + target_hour + 1.0).rem_euclid(1.0)
 }
 
-/// 正交基常量（O：RNE 直读 0x142ad590c..5984；`suncalc_pos_to_vec` 的 3×3 旋转矩阵元）。
-///
-/// 布局为 `{f32, f32, 0, 0}` 8 组 + 首项 0x590c（9 个非零元）。各元按反编译
-/// `decomp-0x140a73460.txt` 行 390..402 的矩阵方程命名 A..P。
+/// `suncalc::get_position(ms, lat, lng) -> (azimuth, altitude)`（O 0x1417ab4b0，
+/// 628 B）逐语句等价实现（`suncalc` 0.4.0 未入当前依赖）。
+pub fn sun_position_at(unix_ms: i64, latitude_deg: f64, longitude_deg: f64) -> (f64, f64) {
+    const DEG2RAD: f64 = 0.017_453_292_519_943_295;
+    let d5 = (unix_ms as f64) / 86_400_000.0 + -0.5 + 2_440_588.0 + -2_451_545.0;
+    let mut d4 = (d5 * 0.985_600_28 + 357.5291) * DEG2RAD;
+    let d1 = d4.sin();
+    let d2 = (d4 + d4).sin();
+    let d3 = (d4 * 3.0).sin();
+    d4 = (d3 * 0.000_3 + d2 * 0.02 + d1 * 1.914_8) * DEG2RAD
+        + d4
+        + 1.796_593_062_783_907
+        + core::f64::consts::PI;
+    let sin_ecl = d4.sin();
+    let declination = (sin_ecl * 0.397_783_703_493_422_74 + 0.0).asin();
+    let cos_ecl = d4.cos();
+    let right_ascension = (sin_ecl * 0.917_479_223_326_096_2).atan2(cos_ecl);
+    let hour_angle =
+        ((d5 * 360.985_623_5 + 280.16) * DEG2RAD + longitude_deg * DEG2RAD) - right_ascension;
+    let sin_ha = hour_angle.sin();
+    let cos_ha = hour_angle.cos();
+    let sin_lat = (latitude_deg * DEG2RAD).sin();
+    let cos_lat = (latitude_deg * DEG2RAD).cos();
+    let tan_decl = declination.tan();
+    let azimuth = sin_ha.atan2(sin_lat * cos_ha - tan_decl * cos_lat);
+    let sin_decl = declination.sin();
+    let cos_decl = declination.cos();
+    let altitude = (cos_decl * cos_lat * cos_ha + sin_decl * sin_lat).asin();
+    (azimuth, altitude)
+}
+
+/// 正交基常量（O：常量池 0x142ad590c..0x142ad5984 直读，逐位一致）。
 mod basis {
-    /// `_UNK_142ad590c` = 0.581319
-    pub const C: f32 = 0.581_319_9;
-    /// `_UNK_142ad5910` = -0.762443
-    pub const A: f32 = -0.762_443_1;
-    /// `_UNK_142ad5914` = 0.647056
-    pub const B: f32 = 0.647_056;
-    /// `_UNK_142ad5920` = 0.418681
-    pub const D: f32 = 0.418_681;
-    /// `_UNK_142ad5924` = -0.493343
-    pub const E: f32 = -0.493_343_2;
-    /// `_UNK_142ad5930` = 0.551646
-    pub const F: f32 = 0.551_646;
-    /// `_UNK_142ad5934` = 0.551646
-    pub const G: f32 = 0.551_646;
-    /// `_UNK_142ad5940` = 0.551646
-    pub const H: f32 = 0.551_646;
-    /// `_UNK_142ad5950` = 0.834078
-    pub const I: f32 = 0.834_078;
-    /// `_UNK_142ad5954` = 0.834078
-    pub const J: f32 = 0.834_078;
-    /// `_UNK_142ad5960` = 0.0
-    pub const K: f32 = 0.0;
-    /// `_UNK_142ad5964` = 0.834078
-    pub const L: f32 = 0.834_078;
-    /// `_UNK_142ad5970` = 0.806015
-    pub const M: f32 = 0.806_015;
-    /// `_UNK_142ad5974` = 0.591895
-    pub const N: f32 = 0.591_895;
-    /// `_UNK_142ad5980` = 0.0
-    pub const O: f32 = 0.0;
-    /// `_UNK_142ad5984` = 0.806015
-    pub const P: f32 = 0.806_015;
+    pub const C: f32 = 0.581_318_6; // 0x3f14d14c
+    pub const A: f32 = -0.762_442_5; // 0xbf432f6f
+    pub const B: f32 = 0.647_056; // 0x3f25a576
+    pub const D: f32 = 0.418_681_44; // 0x3ed65d6a
+    pub const E: f32 = -0.493_343; // 0xbefc9774
+    pub const F: f32 = 0.551_645_8; // 0x3f0d38a9
+    pub const G: f32 = 0.551_645_8; // 0x3f0d38a9
+    pub const I: f32 = 0.834_078_5; // 0x3f55862b
+    pub const J: f32 = 0.834_078_5; // 0x3f55862b
+    pub const M: f32 = 0.806_015_4; // 0x3f4e5706
+    pub const N: f32 = 0.591_894_6; // 0x3f178668
 }
 
-/// `suncalc_pos_to_vec`（行 348 内联，O：方位/高度 → 3D 方向；colatitude =
-/// `π/2 − (azimuth + π)`，正交基常量 @0x142ad5910..5984 直读）。
+/// `suncalc_pos_to_vec`（O 0x140a73460 内联，source line 348）：
+/// 方位/高度 → (主太阳方向, 次级方向)，均未再次归一化（次级方向原样）。
 ///
-/// 结构（O，decomp 0x140a73460 行 348..424，两级旋转 + 归一化）：
-/// 1. 高度/方位经 sin/cos 组合（`sin(colat)·sin(alt)` 等）；
-/// 2. 正交基矩阵（A..P）第一段 → 第二段（N/M/P 旋转）→ 高度双角四元数旋转
-///    （`sin(2·alt)·z + cos(2·alt)·x` 结构）→ 输出 Vec3。
+/// 主方向：`colatitude = π/2 − (azimuth + π)`；
+/// `f44=-sin(colat)·cos(elev)`、`f43=sin(elev)`、`f29=cos(colat)·cos(elev)`；
+/// 用 `orbit_angle` 的半角做 Y 轴旋转（`cos_a=c²−s²`、`sin_a=2cs`），
+/// `y += -0.15`，再 `1/sqrt(z²+y²+x²)` 归一化。
 ///
-/// 分量→语义映射（x=东/前、y=高、z=北，I）与 get_position 输出序
-/// （@0x140=高度、@0x148=方位，I）登记待取证；矩阵方程逐项对应机器码（O）。
-pub fn suncalc_pos_to_vec(azimuth: f64, elevation: f64) -> Vec3 {
-    // colatitude = π/2 − (azimuth + π)（O：`dVar61 = _UNK_142ad5900 − (… + _UNK_142ad58f8)`）。
+/// 次级方向：正交基 A..P 第一/二段（`basis_angle` 的 sin/cos）后同样做半角 Y 旋转；
+/// 原样写 DerivedAtmosphere（不归一化）。
+pub fn suncalc_pos_to_vec(
+    azimuth: f64,
+    elevation: f64,
+    basis_angle: f32,
+    orbit_angle: f32,
+) -> (Vec3, Vec3) {
     let colatitude = core::f64::consts::FRAC_PI_2 - (azimuth + core::f64::consts::PI);
-    let s_colat = colatitude.sin();
-    let c_colat = colatitude.cos();
-    let s_alt = elevation.sin();
-    let c_alt = elevation.cos();
+    let cos_colat = colatitude.cos() as f32;
+    let sin_colat = colatitude.sin() as f32;
+    let cos_elev = elevation.cos() as f32;
+    let sin_elev = elevation.sin() as f32;
 
-    // f32 输入（O：行 383..389）。
-    let sin_alt = s_alt as f32;
-    let cos_alt = c_alt as f32;
-    let one_m_cos = 1.0_f32 - cos_alt;
-    // `sin(colat)·sin(alt)` 与 `−cos(colat)·sin(alt)` 仅进入 uVar63 次级输出（行 409..419，
-    // 归一化经 `+ _UNK_1429edc00`（-0.15）——非光照方向），本实现按主输出（fStack_168 族）
-    // 落地，次级向量登记待接。
-    let _ = (s_colat, c_colat);
+    let f44 = -sin_colat * cos_elev;
+    let f43 = sin_elev;
+    let f29 = cos_colat * cos_elev;
 
-    // 第一段：正交基矩阵（O：行 390..398；fVar56=0、fVar58=-0、K=0）。
-    let x0 = one_m_cos * basis::E * basis::I + (cos_alt + one_m_cos * basis::D) * basis::F;
-    let y0 = (one_m_cos * basis::C + cos_alt) * basis::J + one_m_cos * basis::E * basis::G;
-    let z0 = sin_alt * basis::B * basis::L - sin_alt * basis::A * basis::H;
+    // 第一段：basis_angle 的 sin/cos + A..P 正交基。
+    let s = basis_angle.sin();
+    let c = basis_angle.cos();
+    let m = 1.0 - c;
+    let f41_a = m * basis::E * basis::I + (c + m * basis::D) * basis::F;
+    let f42 = (m * basis::C + c) * basis::J + m * basis::E * basis::G;
+    // O：`(0.0 - s·(-0.7624425))·0.5516458 + (s·0.647056)·0.8340785`
+    let f32s = s * basis::B * basis::I + s * 0.762_442_5 * basis::F;
 
-    // 第二段（O：行 399..402；fVar38=0、O=0）。
-    let x2 = basis::N * z0 - basis::M * x0;
-    let y2 = y0;
-    let z2 = -basis::N * x0 - basis::P * z0;
+    // 第二段（N/M）。
+    let f45 = f32s * basis::N - f41_a * basis::M;
+    let f49 = f42;
+    let f41_b = -f41_a * basis::N - f32s * basis::M;
 
-    // 高度双角四元数旋转（O：行 413..416：`q_s*z2*2*c + (c²−s²)*x2` 等）。
-    let c2 = cos_alt * cos_alt;
-    let s2 = sin_alt * sin_alt;
-    let two_sc = 2.0 * sin_alt * cos_alt;
-    let out_x = sin_alt * z2 * two_sc + (c2 - s2) * x2;
-    let out_y = 2.0 * s2 * y2 + (c2 - s2) * y2;
-    let out_z = -x2 * sin_alt * two_sc + (c2 - s2) * z2;
+    // 末段：orbit_angle 半角 Y 轴旋转。
+    let sa = (orbit_angle * 0.5).sin();
+    let ca = (orbit_angle * 0.5).cos();
 
-    Vec3::new(out_x, out_y, out_z)
+    // Original primary vector x=cos(colat)*cos(elev), z=-sin(colat)*cos(elev).
+    // Keep the original glam quaternion multiplication, including its y
+    // arithmetic; replacing it with a simplified 2D rotation changes rounding.
+    let rotation = Quat::from_xyzw(0.0, sa, 0.0, ca);
+    let rotated_sun = rotation * Vec3::new(f29, f43, f44);
+    let shifted_sun = Vec3::new(rotated_sun.x, rotated_sun.y + -0.15, rotated_sun.z);
+    let inv = 1.0
+        / (shifted_sun.z * shifted_sun.z
+            + shifted_sun.y * shifted_sun.y
+            + shifted_sun.x * shifted_sun.x)
+            .sqrt();
+    let main = shifted_sun * inv;
+    let secondary = rotation * Vec3::new(f45, f49, f41_b);
+
+    (main, secondary)
 }
 
-/// `time_of_day` @0x140a73460（O 结构；suncalc 与光照/音频写盘待接）。
-pub fn time_of_day(
-    time: Res<crate::resources::time::GameTime>,
-    mut state: ResMut<TimeOfDayState>,
-    _lighting: Res<TimeOfDayLightingSink>,
+/// `time_of_day` @0x140a73460. PDB's thirteen parameters consume the canonical
+/// game/config/weather/GUI resources and publish DerivedAtmosphere directly.
+/// KeyButtonInput is the source host's shared projection of original Bevy input.
+#[allow(clippy::too_many_arguments)]
+pub fn time_of_day<S: Studio + Send + Sync + 'static>(
+    audio: Res<AudioCore<S>>,
+    tod_sequence: Res<TodSequence>,
+    weather: Res<crate::resources::weather::Weather>,
+    time: Res<GameTime>,
+    button_input: Res<crate::systems::backend::input::button_input::KeyButtonInput>,
+    mut directional_light: ResMut<DirectionalLight>,
+    mut tod: ResMut<TimeOfDay>,
+    mut lighting: ResMut<DerivedAtmosphere>,
+    mut config: ResMut<crate::game_config::GameConfig>,
+    mut new_session_evt: EventReader<NewSessionStartedCmd>,
+    mut loading_complete_evt: EventReader<LoadingGameComplete>,
+    mut screen: ResMut<crate::resources::gui::TimeOfDayScreen>,
+    active_session: Res<ActiveSession>,
+) {
+    run_time_of_day(
+        Some(&*audio),
+        &tod_sequence,
+        &weather,
+        &time,
+        &button_input,
+        &mut directional_light,
+        &mut tod,
+        &mut lighting,
+        &mut config,
+        &mut new_session_evt,
+        &mut loading_complete_evt,
+        &mut screen,
+        &active_session,
+    );
+}
+
+/// Explicit host selection for a target without the FMOD Studio backend.
+/// Native AudioCore::None skips three parameter calls; the remaining original
+/// TOD/light/atmosphere body still executes. This wrapper constructs no SDK,
+/// audio resource or successful playback result.
+#[allow(clippy::too_many_arguments)]
+pub fn time_of_day_audio_disabled(
+    tod_sequence: Res<TodSequence>,
+    weather: Res<crate::resources::weather::Weather>,
+    time: Res<GameTime>,
+    button_input: Res<crate::systems::backend::input::button_input::KeyButtonInput>,
+    mut directional_light: ResMut<DirectionalLight>,
+    mut tod: ResMut<TimeOfDay>,
+    mut lighting: ResMut<DerivedAtmosphere>,
+    mut config: ResMut<crate::game_config::GameConfig>,
+    mut new_session_evt: EventReader<NewSessionStartedCmd>,
+    mut loading_complete_evt: EventReader<LoadingGameComplete>,
+    mut screen: ResMut<crate::resources::gui::TimeOfDayScreen>,
+    active_session: Res<ActiveSession>,
+) {
+    run_time_of_day(
+        None,
+        &tod_sequence,
+        &weather,
+        &time,
+        &button_input,
+        &mut directional_light,
+        &mut tod,
+        &mut lighting,
+        &mut config,
+        &mut new_session_evt,
+        &mut loading_complete_evt,
+        &mut screen,
+        &active_session,
+    );
+}
+
+// Object-safe source adapter around the existing AudioCore, not a replacement
+// Studio implementation or a new ECS resource identity. Its setter retains
+// AudioCore's original failure logging and the caller's ignored Result.
+trait TodAudioParameters {
+    fn is_connected(&self) -> bool;
+    fn set_parameter(&self, name: &str, value: f32);
+}
+impl<S: Studio> TodAudioParameters for AudioCore<S> {
+    fn is_connected(&self) -> bool {
+        AudioCore::is_connected(self)
+    }
+    fn set_parameter(&self, name: &str, value: f32) {
+        let _ = AudioCore::set_parameter(self, name, value);
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn run_time_of_day(
+    audio: Option<&dyn TodAudioParameters>,
+    tod_sequence: &TodSequence,
+    weather: &crate::resources::weather::Weather,
+    time: &GameTime,
+    button_input: &crate::systems::backend::input::button_input::KeyButtonInput,
+    directional_light: &mut DirectionalLight,
+    tod: &mut TimeOfDay,
+    lighting: &mut DerivedAtmosphere,
+    config: &mut crate::game_config::GameConfig,
+    new_session_evt: &mut EventReader<NewSessionStartedCmd>,
+    loading_complete_evt: &mut EventReader<LoadingGameComplete>,
+    screen: &mut crate::resources::gui::TimeOfDayScreen,
+    active_session: &ActiveSession,
 ) {
     let dt = time.delta;
-    // 角度/小时插值（瞬时吸附直接对齐 fmod 后小时）。
-    let (angle, angle_tr) = advance_angle(state.angle, TWO_PI - state.angle, dt);
-    state.angle = angle;
-    state.angle_transitioning = angle_tr;
-    // 播放状态机。
-    let dev_on = state.dev_speed_mult != 0.0;
-    let tod: &mut TimeOfDayState = &mut state;
-    let (playback, progress) = (&mut tod.playback, &mut tod.progress);
-    advance_playback(playback, progress, dev_on, dt);
-    // 小时推进（TIME_OF_DAY_SPEED 全局 0x14362c0b8；本实现用 1.0 默认，待取证）。
-    let (target, remapped) = advance_tod_hour(
-        state.progress,
-        dt,
-        state.dev_speed_mult,
-        1.0,
-        false,
+
+    // 1. 音频门 ×2（O 0xa7373c..0xa737ba）。
+    if let Some(audio) = audio.filter(|audio| audio.is_connected()) {
+        let v = if config.dev.day_night_cycle { 1.0 } else { 0.0 };
+        audio.set_parameter("TOD-Enabled", v);
+    }
+    if let Some(audio) = audio.filter(|audio| audio.is_connected()) {
+        let v = if screen.time_input_active { 1.0 } else { 0.0 };
+        audio.set_parameter("Timetravel", v);
+    }
+
+    // 2. angle 块（O 0xa737c1..0xa738d2）。
+    if !screen.angle_input_active {
+        if !screen.visible {
+            screen.sun_xz_rotation = TWO_PI - tod.sun_xz_rotation;
+        }
+    } else {
+        let current = tod.sun_xz_rotation.rem_euclid(TWO_PI);
+        let target = TWO_PI - screen.sun_xz_rotation;
+        let factor = (SMOOTH_K * dt).exp();
+        let mut diff = target - current;
+        if -core::f32::consts::PI <= diff {
+            if core::f32::consts::PI <= diff {
+                diff -= TWO_PI;
+            }
+        } else {
+            diff += TWO_PI;
+        }
+        let next = (1.0 - factor) * diff + current;
+        tod.sun_xz_rotation = next;
+        if (next - target).abs() < 0.01 {
+            screen.angle_input_active = false;
+        }
+    }
+
+    // 3. hour 块（O 0xa738d2..0xa73aaa）。
+    if !screen.visible {
+        screen.time_of_day = tod.time_of_day;
+    } else if !screen.time_input_active {
+        let old = screen.time_of_day;
+        let wrapped = old.rem_euclid(1.0);
+        let target = tod.time_of_day;
+        let speed = config.game.tod_speed.max(1.0);
+        let factor = (speed * (dt * SMOOTH_K)).exp();
+        let mut diff = target - wrapped;
+        if -0.5 <= diff {
+            if 0.5 <= diff {
+                diff -= 1.0;
+            }
+        } else {
+            diff += 1.0;
+        }
+        let next = (1.0 - factor) * diff + wrapped;
+        screen.time_of_day = next;
+        // 原生比较对象是写入前的 screen 值（`subss xmm2,[rsi]`）。
+        if (next - old).abs() < 0.001 {
+            screen.time_input_active = false;
+        }
+    } else {
+        // instant：直接朝屏幕小时吸附，写回 TimeOfDay 相位。
+        let target = tod.time_of_day;
+        let mut diff = screen.time_of_day - target;
+        let factor = (-dt).exp();
+        if -0.5 <= diff {
+            if 0.5 <= diff {
+                diff -= 1.0;
+            }
+        } else {
+            diff += 1.0;
+        }
+        let next = (target + (1.0 - factor) * diff).rem_euclid(1.0);
+        tod.time_of_day = next;
+        if (next - screen.time_of_day).abs() < 0.001 {
+            screen.time_input_active = false;
+        }
+    }
+
+    // 4. 事件读取器（O 0xa73aaa..0xa73b4f）：两个 read().last()，只取 is_some。
+    let session_event = new_session_evt.read().last().is_some();
+    let load_event = loading_complete_evt.read().last().is_some();
+
+    // 5. dev 热键（O 0xa73b52..0xa73b9d）：全局门 + ButtonInput::just_pressed(F10)。
+    if crate::game_config::developer_hotkeys_enabled() && button_input.just_pressed(0xa9) {
+        config.dev.day_night_cycle ^= true;
+    }
+
+    // 6. 播放状态机（O 0xa73b9d..0xa73c39）；dev 门 = GameConfig+0xe3。
+    {
+        let tod = &mut *tod;
+        advance_playback(
+            &mut tod.state,
+            &mut tod.progress,
+            config.dev.day_night_cycle,
+            dt,
+        );
+    }
+
+    // 7. 小时推进（O 0xa73c39..0xa73cf0）。
+    if !(screen.visible && screen.time_input_active) {
+        tod.time_of_day = advance_tod_hour(
+            tod.progress,
+            dt,
+            config.game.tod_speed,
+            tod.time_of_day,
+            load_speed_bias(),
+        );
+    }
+    let hour = (tod.time_of_day * HOUR_MOD + HOUR_OFFSET).rem_euclid(HOUR_MOD);
+    let remapped = remap_hour_to_fmod_hour(hour, active_session.is_winter());
+    if let Some(audio) = audio.filter(|audio| audio.is_connected()) {
+        audio.set_parameter("DayNight", remapped);
+    }
+
+    // 8. 日期/太阳（O 0xa73d17..0xa73e5f）。
+    let day = tod.day_of_year;
+    assert!(day != 0 && day <= 365, "day_of_year out of range");
+    let encoded = (day as u32) | YEAR_2023_BITS;
+    let _ = encoded; // 证据常量；实际日期用等价的 epoch 日序。
+    let date_ms = (YEAR_2023_EPOCH_DAYS + (day as i64 - 1)) * 86_400_000;
+    let hour_ms = (hour * HOUR_TO_MS) as i64;
+    let unix_ms = date_ms + hour_ms;
+    let (azimuth, elevation) = sun_position_at(unix_ms, tod.latitude_degrees as f64, 0.0);
+
+    let basis_angle = tod.time_of_day * TWO_PI + 3.45;
+    let (sun_dir, moon_dir) =
+        suncalc_pos_to_vec(azimuth, elevation, basis_angle, tod.sun_xz_rotation);
+
+    // snapshot_at_tod（O 0xa73e5f）+ 全局 speed_bias 写回（O 0xa73ed0）。
+    let snapshot = tod_sequence.snapshot_at_tod(tod.time_of_day);
+    store_speed_bias(snapshot.speed_bias);
+
+    // 9. 昼/夜段与连续值（O 0xa73ed8..0xa73f62）。
+    let in_night = tod.sunrise <= tod.time_of_day && tod.time_of_day < tod.sunset;
+    tod.day_night_factor = if in_night {
+        inverse_lerp(tod.sunrise, tod.sunset, tod.time_of_day)
+    } else {
+        0.0
+    };
+    let target = if in_night { 1.0 } else { 0.0 };
+    if !session_event && !load_event {
+        time_continuous_lerp_mut(&mut tod.day_night_continuous, target, dt, 1.0);
+    } else {
+        tod.day_night_continuous = target;
+    }
+
+    // Original complete final writer; do not leave data in a lighting seam.
+    write_derived_atmosphere(
+        lighting,
+        directional_light,
+        &snapshot,
+        sun_dir,
+        moon_dir,
+        tod.day_night_continuous,
+        tod.day_night_continuous_prev,
+        weather.weather_fog,
     );
-    state.target_hour = target;
-    state.hour = remapped;
-    // 日期/太阳：day_of_year ∈ 1..365（越界 unwrap panic）；suncalc::get_position +
-    // 光照写盘（TodLightingSnapshot/SunSkyColors）与音频上报依赖 suncalc/FMOD，登记待接。
-    assert!(
-        (1..=365).contains(&state.day_of_year),
-        "day_of_year out of range"
-    );
-    let _encoded = state.day_of_year as u64 | YEAR_2023_BITS;
 }
 
-/// 光照写盘接缝（I：TodLightingSnapshot 插值/SunSkyColors 两套；宿主接线）。
-#[derive(Resource, Clone, Copy, Debug, Default)]
-pub struct TimeOfDayLightingSink {
-    pub updated: bool,
+pub fn write_derived_atmosphere(
+    output: &mut DerivedAtmosphere,
+    light: &mut DirectionalLight,
+    snapshot: &TodLightingSnapshot,
+    sun: Vec3,
+    moon: Vec3,
+    continuous: f32,
+    previous: f32,
+    weather: f32,
+) {
+    // Existing SunSkyColors a/b/c preserve twelve contiguous floats; original
+    // serde fields are four Vec3. Project without changing resource identity.
+    let a = snapshot.sun_sky.a.to_array();
+    let b = snapshot.sun_sky.b.to_array();
+    let c = snapshot.sun_sky.c.to_array();
+    let sun_tint = Vec3::new(a[0], a[1], a[2]);
+    let moon_tint = Vec3::new(a[3], b[0], b[1]);
+    let sky_low = Vec3::new(b[2], b[3], c[0]);
+    let sky_high = Vec3::new(c[1], c[2], c[3]);
+
+    // Original cmp: ucomiss xmm0(0.5),xmm6(continuous); jbe high.
+    // Preserve the unordered/NaN destination: NaN also takes this high branch.
+    let (selected, fake_sun, fake_moon) = if !(0.5 > continuous) {
+        light.set_direction_towards_light(moon);
+        let twice = continuous + -0.5;
+        let weight = (1.0 - previous) * (twice + twice);
+        (moon_tint * weight, sun_tint, moon_tint * (1.0 - weight))
+    } else {
+        light.set_direction_towards_light(sun);
+        let weight = (1.0 - previous) * (1.0 - (continuous + continuous));
+        (sun_tint * weight, sun_tint * (1.0 - weight), moon_tint)
+    };
+    *output = DerivedAtmosphere {
+        sun_tint: selected,
+        fake_light_color: fake_sun,
+        fake_light_dir: sun,
+        fake_light2_color: fake_moon,
+        fake_light2_dir: moon,
+        sky_low_color: sky_low,
+        sky_high_color: sky_high,
+        fog_thickness: snapshot.base_fog_thickness + weather,
+        fog_tint: snapshot.fog_tint,
+        dir_to_sun: sun,
+        dir_to_moon: moon,
+    };
 }
 
 #[cfg(test)]
@@ -296,70 +554,183 @@ mod tests {
     use super::*;
 
     #[test]
-    fn angle_interpolation_converges_to_target() {
-        // 目标 = 2π − angle，收敛 < 0.01 清标志。
-        let (angle, transitioning) = advance_angle(0.0, TWO_PI, 1.0);
-        assert!((angle - TWO_PI).abs() < 1e-3);
-        assert!(angle > 0.0);
-        let _ = transitioning;
+    fn audio_disabled_ecs_still_produces_actual_atmosphere_without_studio_resource() {
+        use crate::resources::{
+            gui::TimeOfDayScreen,
+            session::{SessionId, SessionMeta},
+            time_of_day::TodSequenceEntry,
+            weather::Weather,
+        };
+        // A bounded excerpt from original assets/tod/default.json, entry0.
+        // The native one-entry sequence branch is exercised explicitly; this
+        // fixture does not stand in for the production asset loader.
+        let entry: TodSequenceEntry = serde_json::from_str(
+            r#"{
+                "time_of_day": 0.0,
+                "snapshot": {
+                    "sun_sky": {
+                        "sun_tint_color": [0.32866657, 0.2976653, 0.19989444],
+                        "moon_tint_color": [0.0, 0.0, 0.0],
+                        "sky_low_color": [0.17390057, 0.27138948, 0.32448062],
+                        "sky_high_color": [0.107430175, 0.12669688, 0.27529913]
+                    },
+                    "base_fog_thickness": 0.046,
+                    "fog_tint": [0.76491785, 1.0672204, 1.0263494],
+                    "speed_bias": -1.0
+                },
+                "temp_ui_id": 11309646118622107426
+            }"#,
+        )
+        .unwrap();
+        let expected_fog = entry.snapshot.fog_tint;
+        let mut world = World::new();
+        world.insert_resource(TodSequence {
+            entries: vec![entry],
+        });
+        world.insert_resource(Weather::default());
+        world.insert_resource(GameTime::default());
+        world.init_resource::<crate::systems::backend::input::button_input::KeyButtonInput>();
+        // Actual insert_resources@14094108c..10e2 constructor parameters.
+        world.insert_resource(DirectionalLight::look_at(
+            Vec3::new(24.0, 48.0, 24.0),
+            Vec3::ZERO,
+        ));
+        world.insert_resource(TimeOfDay::default());
+        world.insert_resource(DerivedAtmosphere::default());
+        world.insert_resource(crate::game_config::GameConfig::default());
+        world.init_resource::<Events<NewSessionStartedCmd>>();
+        world.init_resource::<Events<LoadingGameComplete>>();
+        world.insert_resource(TimeOfDayScreen::default());
+        // State field from original 09-garden/meta.json, as in prepare's
+        // canonical file-loader integration test. No FMOD type is constructed.
+        world.insert_resource(ActiveSession::new(
+            SessionId::new(),
+            serde_json::from_str::<SessionMeta>(r#"{"glade":"Autumn"}"#).unwrap(),
+        ));
+        let mut schedule = Schedule::default();
+        schedule.add_systems(time_of_day_audio_disabled);
+        schedule.run(&mut world);
+        let output = world.resource::<DerivedAtmosphere>();
+        assert!(output.sun_tint.min_element() > 0.0);
+        assert_eq!(output.fog_tint, expected_fog);
+        assert_eq!(output.fog_thickness, 0.046);
+        assert!(output.dir_to_sun.is_finite());
+        assert!((output.dir_to_sun.length() - 1.0).abs() < 1e-5);
+        assert!(world.resource::<DirectionalLight>().view.is_finite());
+        assert_eq!(
+            world.resource::<TimeOfDay>().state,
+            TodPlaybackState::Playing
+        );
     }
 
     #[test]
-    fn hour_interpolation_wraps_and_converges() {
-        let (hour, _) = advance_hour(23.9, 0.1, 1.0, 1.0);
-        assert!((hour - 0.1).abs() < 1e-3 || hour < 0.5);
-        let (same, done) = advance_hour(10.0, 10.0, 0.0, 1.0);
-        assert_eq!(same, 10.0);
-        assert!(!done);
-    }
-
-    #[test]
-    fn playback_state_machine_advances_and_rewinds() {
+    fn playback_state_machine_forces_the_dev_direction_each_frame() {
         let mut state = TodPlaybackState::Idle;
         let mut progress = 0.0;
         advance_playback(&mut state, &mut progress, true, 0.3);
         assert_eq!(state, TodPlaybackState::Playing);
+        assert_eq!(progress, 0.0);
         advance_playback(&mut state, &mut progress, true, 0.6);
-        assert!((progress - 0.2).abs() < 1e-4); // 0 + 0.6/3
+        assert!((progress - 0.2).abs() < 1e-4);
+        let mut state = TodPlaybackState::Rewinding;
+        let mut progress = 0.7;
+        advance_playback(&mut state, &mut progress, true, 1.0);
+        assert_eq!(state, TodPlaybackState::Playing);
+        assert_eq!(progress, 0.7);
+
         let mut state = TodPlaybackState::Idle;
         let mut progress = 0.5;
         advance_playback(&mut state, &mut progress, false, 2.0);
         assert_eq!(state, TodPlaybackState::Rewinding);
+        assert_eq!(progress, 0.0);
+        let mut state = TodPlaybackState::Playing;
+        let mut progress = 0.4;
         advance_playback(&mut state, &mut progress, false, 5.0);
-        assert_eq!(progress, 0.0); // 0.5 - 5/5 → clamp 0
+        assert_eq!(state, TodPlaybackState::Rewinding);
+        assert_eq!(progress, 0.4);
+        advance_playback(&mut state, &mut progress, false, 5.0);
+        assert_eq!(progress, 0.0);
     }
 
     #[test]
-    fn tod_hour_advance_remaps_to_the_summer_curve() {
-        // target = progress·24 + 8；hour = target·24 + 8 mod 24 → remap。
-        let (target, remapped) = advance_tod_hour(0.0, 0.0, 1.0, 1.0, false);
-        assert_eq!(target, 8.0);
-        // remap(8) → 在 [3.5, 9) 段 → ((8-3.5)/5.5)·8 + 3 ≈ 9.55。
-        assert!((remapped - 9.545).abs() < 0.01);
+    fn tod_hour_advance_uses_exp2_speed_bias_and_tod_speed() {
+        // bias=0 → exp2=1；progress=0.5、dt=1、dev=1、speed=1/600 →
+        // inc = 1 * (0.5 * (1/600)) = 1/1200。
+        let target = advance_tod_hour(0.5, 1.0, 1.0, 0.25, 0.0);
+        let expected = (0.5 * TIME_OF_DAY_SPEED + 0.25 + 1.0).rem_euclid(1.0);
+        assert!((target - expected).abs() < 1e-6, "{target} vs {expected}");
+        // 参数为 1 时 exp2(1)=2，增量翻倍。
+        let target2 = advance_tod_hour(0.5, 1.0, 1.0, 0.25, 1.0);
+        let expected2 = (2.0 * 0.5 * TIME_OF_DAY_SPEED + 0.25 + 1.0).rem_euclid(1.0);
+        assert!((target2 - expected2).abs() < 1e-6);
+        // dev 倍率作用于增量。
+        let target3 = advance_tod_hour(0.5, 1.0, 3.0, 0.25, 0.0);
+        let expected3 = (3.0 * 0.5 * TIME_OF_DAY_SPEED + 0.25 + 1.0).rem_euclid(1.0);
+        assert!((target3 - expected3).abs() < 1e-6);
+        // TIME_OF_DAY_SPEED 原生值 = 1/600（0x3ada740d）。
+        assert_eq!(TIME_OF_DAY_SPEED.to_bits(), 0x3ada740d);
     }
 
     #[test]
-    fn day_of_year_out_of_range_panics_like_unwrap() {
-        let mut state = TimeOfDayState::default();
+    fn day_of_year_out_of_range_panics() {
+        let mut state = TimeOfDay::default();
         state.day_of_year = 366;
         let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            let _encoded = state.day_of_year as u64 | YEAR_2023_BITS;
-            assert!((1..=365).contains(&state.day_of_year));
+            let day = state.day_of_year;
+            assert!(day != 0 && day <= 365);
         }));
         assert!(res.is_err());
     }
 
     #[test]
-    fn suncalc_pos_to_vec_is_finite_and_follows_the_constant_matrix() {
-        // 正午（azimuth 向南、elevation 高）→ 有限方向；矩阵方程逐项对应机器码。
-        let v = suncalc_pos_to_vec(core::f64::consts::PI, 0.75);
+    fn original_primary_vector_pack_has_cosine_x_and_negative_sine_z() {
+        // colatitude=pi/2. Native zero-rotation vector before y offset=(0,0,-1).
+        let (sun, _) = suncalc_pos_to_vec(-core::f64::consts::PI, 0.0, 0.0, 0.0);
+        let inv = 1.0f32 / (1.0f32 + 0.15f32 * 0.15f32).sqrt();
+        assert!(sun.x.abs() < 1e-6);
+        assert!((sun.y - -0.15 * inv).abs() < 1e-6);
+        assert!((sun.z - -inv).abs() < 1e-6);
+    }
+
+    #[test]
+    fn suncalc_pos_to_vec_matches_native_half_angle_and_normalization() {
+        let (v, sec) = suncalc_pos_to_vec(core::f64::consts::PI, 0.75, 0.0, 0.0);
         assert!(v.is_finite());
-        assert!(v.length_squared() > 0.0);
-        // 高纬度正午太阳应指向上方为主（y 分量显著）。
-        assert!(v.y.abs() > 0.1);
-        // 零高度太阳（地平线）→ 方向仍有限且不退化。
-        let horizon = suncalc_pos_to_vec(1.0, 0.0);
+        assert!((v.length() - 1.0).abs() < 1e-5, "{}", v.length());
+        assert!(sec.is_finite());
+        // 非零轨道角改变主方向。
+        let (rotated, _) = suncalc_pos_to_vec(core::f64::consts::PI, 0.75, 0.0, 1.0);
+        assert_ne!((rotated.x * 1000.0) as i32, (v.x * 1000.0) as i32);
+        // 地平线不退化。
+        let (horizon, _) = suncalc_pos_to_vec(1.0, 0.0, 0.0, 0.0);
         assert!(horizon.is_finite());
-        assert!(horizon.length_squared() > 0.5);
+        assert!(horizon.length() > 0.1);
+    }
+
+    #[test]
+    fn suncalc_position_is_finite_and_has_expected_noon_shape() {
+        // 2023-06-21 12:00 UTC（ordinal 172）在纬度 0：太阳高度应接近正。
+        let date_ms = (YEAR_2023_EPOCH_DAYS + 171) * 86_400_000 + 12 * 3_600_000;
+        let (az, alt) = sun_position_at(date_ms, 0.0, 0.0);
+        assert!(az.is_finite() && alt.is_finite());
+        assert!(alt > 0.3, "altitude {alt}");
+        // 午夜高度为负。
+        let midnight = (YEAR_2023_EPOCH_DAYS + 171) * 86_400_000;
+        let (_, alt_mid) = sun_position_at(midnight, 0.0, 0.0);
+        assert!(alt_mid < 0.0, "altitude {alt_mid}");
+    }
+
+    #[test]
+    fn angle_and_hour_blocks_clear_flags_on_convergence() {
+        // angle：目标 2π - t；收敛 < 0.01 清标志（红线判等函数）。
+        let (a, tr) = advance_angle(0.0, TWO_PI, 1.0);
+        assert!(a > 0.0);
+        let _ = tr;
+        // hour：±0.5 wrap 的判等函数保持原语义。
+        let (h, _) = advance_hour(23.9, 0.1, 1.0, 1.0);
+        assert!((h - 0.1).abs() < 1e-3 || h < 0.5);
+        let (same, done) = advance_hour(10.0, 10.0, 0.0, 1.0);
+        assert_eq!(same, 10.0);
+        assert!(!done);
     }
 }

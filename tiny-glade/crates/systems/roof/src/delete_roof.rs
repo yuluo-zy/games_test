@@ -3,13 +3,11 @@
 //! - `process_invalid_roof_notifications`（0x14062eb80）
 //! - `mark_roof_for_deletion`（0x14062f3d0）
 //! - `delete_roofs`（0x14062f8c0）
-use country_core::recovered_building::{
-    roof_deletion::{match_deletion_request, should_despawn},
-    roof_invalid_notifications::{
-        InvalidRoofRow, process_invalid_roof_notifications as invalid_roofs,
-    },
-    wall_state::WallId as ObservedWallId,
-};
+use country_core::resources::roofs::deletion::match_deletion_request;
+use country_core::resources::roofs::deletion::should_despawn;
+use country_core::resources::roofs::invalid_notifications::InvalidRoofRow;
+use country_core::resources::roofs::invalid_notifications::process_invalid_roof_notifications as invalid_roofs;
+use country_core::resources::walls::publication_fields::WallId as ObservedWallId;
 use country_core::resources::{
     roofs::{Roof, RoofAnimation, RoofMarkedForDeletion, commands::*},
     walls::{WallId, public_walls::PublicWalls},

@@ -1,0 +1,662 @@
+// timberframe_audio @ 0x140a67b90
+
+// WARNING: Control flow encountered bad instruction data
+// WARNING: Instruction at (ram,0x000140a6a26c) overlaps instruction at (ram,0x000140a6a266)
+// 
+
+void __cdecl country_core::systems::audio::timberframe_audio::timberframe_audio(void)
+
+{
+  byte bVar1;
+  uint uVar2;
+  ulonglong *puVar3;
+  longlong *plVar4;
+  undefined4 *puVar5;
+  char cVar6;
+  byte *pbVar7;
+  undefined8 extraout_RAX;
+  undefined8 extraout_RAX_00;
+  undefined8 extraout_RAX_01;
+  longlong *extraout_RAX_02;
+  longlong *extraout_RAX_03;
+  code *UNRECOVERED_JUMPTABLE;
+  longlong lVar8;
+  ulonglong uVar9;
+  longlong *plVar10;
+  longlong *in_RDX;
+  int *piVar11;
+  longlong *plVar12;
+  ulonglong uVar13;
+  longlong lVar14;
+  undefined4 uVar15;
+  longlong lVar16;
+  int *piVar17;
+  byte *pbVar18;
+  longlong lVar19;
+  byte *pbVar20;
+  byte *pbVar21;
+  longlong lVar22;
+  int *piVar23;
+  code *pcVar24;
+  undefined8 *in_R8;
+  longlong *plVar25;
+  undefined8 *in_R9;
+  int *piVar26;
+  ulonglong uVar27;
+  uint *puVar28;
+  uint *puVar29;
+  longlong *plVar30;
+  byte *pbVar31;
+  ulonglong uVar32;
+  undefined *puVar33;
+  int *piVar34;
+  byte *pbVar35;
+  byte *pbVar36;
+  byte *pbVar37;
+  ulonglong uVar38;
+  bool bVar39;
+  bool bVar40;
+  bool bVar41;
+  bool bVar42;
+  float fVar43;
+  float fVar44;
+  undefined8 *in_stack_00000028;
+  undefined8 *in_stack_00000030;
+  longlong local_148;
+  undefined4 local_140;
+  ulonglong local_138;
+  ulonglong local_130;
+  ulonglong local_128;
+  ulonglong local_120;
+  undefined8 local_118;
+  longlong local_110;
+  undefined4 local_108;
+  longlong local_100;
+  undefined4 local_f8;
+  longlong local_f0;
+  undefined4 local_e8;
+  longlong *local_e0;
+  
+  lVar19 = in_R9[1];
+  uVar32 = *(ulonglong *)*in_R9;
+  piVar26 = (int *)0x0;
+  piVar34 = (int *)(uVar32 - *(ulonglong *)(lVar19 + 0x18));
+  if (uVar32 < *(ulonglong *)(lVar19 + 0x18)) {
+    piVar34 = piVar26;
+  }
+  piVar17 = (int *)(uVar32 - *(ulonglong *)(lVar19 + 0x38));
+  if (uVar32 < *(ulonglong *)(lVar19 + 0x38)) {
+    piVar17 = piVar26;
+  }
+  lVar16 = (longlong)piVar34 * 0x28 + *(longlong *)(lVar19 + 8);
+  lVar22 = (longlong)piVar17 * 0x28 + *(longlong *)(lVar19 + 0x28);
+  bVar39 = *(int **)(lVar19 + 0x10) < piVar34;
+  piVar34 = (int *)((longlong)*(int **)(lVar19 + 0x10) - (longlong)piVar34);
+  bVar41 = piVar34 == (int *)0x0;
+  if (bVar39) {
+    lVar16 = 8;
+    piVar34 = piVar26;
+  }
+  piVar11 = (int *)(lVar16 + -0x28 + (longlong)piVar34 * 0x28);
+  if (bVar39 || bVar41) {
+    piVar11 = piVar26;
+  }
+  bVar40 = *(int **)(lVar19 + 0x30) < piVar17;
+  piVar17 = (int *)((longlong)*(int **)(lVar19 + 0x30) - (longlong)piVar17);
+  bVar42 = piVar17 == (int *)0x0;
+  if (bVar40) {
+    lVar22 = 8;
+    piVar17 = piVar26;
+  }
+  puVar29 = (uint *)((longlong)piVar17 * 5);
+  piVar23 = (int *)(lVar22 + -0x28 + (longlong)piVar17 * 0x28);
+  if (bVar40 || bVar42) {
+    piVar23 = piVar11;
+  }
+  piVar34 = (int *)((longlong)piVar17 + (longlong)piVar34);
+  if (!bVar39 && !bVar41 || !bVar40 && !bVar42) {
+    piVar34 = piVar26;
+  }
+  puVar28 = (uint *)(*(longlong *)(lVar19 + 0x40) - (longlong)piVar34);
+  *(ulonglong *)*in_R9 = (ulonglong)puVar28;
+  local_e0 = in_RDX;
+  if ((bVar39 || bVar41) && (bVar40 || bVar42)) goto LAB_140a67de0;
+  if (*piVar23 == 6) {
+    cVar6 = (char)piVar23[1];
+    if (cVar6 == '\x02') {
+      pbVar18 = (byte *)*in_stack_00000028;
+      if ((*pbVar18 & 1) == 0) {
+        local_140 = 0;
+        local_148 = 0;
+      }
+      else {
+        local_140 = *(undefined4 *)(pbVar18 + 0xc);
+        local_148 = *(longlong *)(pbVar18 + 4);
+      }
+      roof_audio::instantiate_audio_w_position();
+      if (*piVar23 != 6) goto LAB_140a67d76;
+      cVar6 = (char)piVar23[1];
+    }
+    if (cVar6 == '\x01') {
+      pbVar18 = (byte *)*in_stack_00000028;
+      if ((*pbVar18 & 1) == 0) {
+        local_140 = 0;
+        local_148 = 0;
+      }
+      else {
+        local_140 = *(undefined4 *)(pbVar18 + 0xc);
+        local_148 = *(longlong *)(pbVar18 + 4);
+      }
+      roof_audio::instantiate_audio_w_position();
+    }
+  }
+LAB_140a67d76:
+  if ((piVar23[4] == 6) && ((byte)((char)piVar23[5] - 1U) < 2)) {
+    pbVar18 = (byte *)*in_stack_00000028;
+    if ((*pbVar18 & 1) == 0) {
+      local_140 = 0;
+      local_148 = 0;
+    }
+    else {
+      local_140 = *(undefined4 *)(pbVar18 + 0xc);
+      local_148 = *(longlong *)(pbVar18 + 4);
+    }
+    roof_audio::instantiate_audio_w_position();
+  }
+LAB_140a67de0:
+  puVar3 = (ulonglong *)*in_R8;
+  lVar19 = in_R8[1];
+  uVar32 = *puVar3;
+  plVar10 = (longlong *)0x0;
+  plVar25 = (longlong *)(uVar32 - *(ulonglong *)(lVar19 + 0x18));
+  if (uVar32 < *(ulonglong *)(lVar19 + 0x18)) {
+    plVar25 = plVar10;
+  }
+  plVar12 = (longlong *)(uVar32 - *(ulonglong *)(lVar19 + 0x38));
+  if (uVar32 < *(ulonglong *)(lVar19 + 0x38)) {
+    plVar12 = plVar10;
+  }
+  pbVar18 = (byte *)((longlong)plVar25 * 0x20 + *(longlong *)(lVar19 + 8));
+  plVar4 = *(longlong **)(lVar19 + 0x10);
+  plVar30 = (longlong *)((longlong)plVar4 - (longlong)plVar25);
+  if (plVar4 < plVar25) {
+    plVar30 = plVar10;
+  }
+  if (plVar4 < plVar25) {
+    pbVar18 = &DAT_00000008;
+  }
+  pbVar36 = (byte *)((longlong)plVar12 * 0x20 + *(longlong *)(lVar19 + 0x28));
+  local_138 = 0;
+  plVar4 = (longlong *)((longlong)*(longlong **)(lVar19 + 0x30) - (longlong)plVar12);
+  if (*(longlong **)(lVar19 + 0x30) < plVar12) {
+    pbVar36 = &DAT_00000008;
+    plVar4 = plVar10;
+  }
+  *puVar3 = (*(longlong *)(lVar19 + 0x40) - (longlong)plVar4) - (longlong)plVar30;
+  pbVar31 = pbVar18 + (longlong)plVar30 * 0x20;
+  pbVar21 = pbVar36 + (longlong)plVar4 * 0x20;
+  pcVar24 = *(code **)UNRECOVERED_JUMPTABLE;
+  local_118 = *in_stack_00000030;
+  puVar33 = &DAT_142ad558c;
+  local_130 = 0;
+  local_128 = 0;
+  local_120 = 0;
+LAB_140a67ecf:
+  do {
+    if ((pbVar18 == (byte *)0x0) || (pbVar18 == pbVar31)) {
+      if ((pbVar36 == (byte *)0x0) || (pbVar36 == pbVar21)) {
+        uVar15 = *(undefined4 *)((longlong)local_e0 + 0x1c);
+        puVar5 = (undefined4 *)local_e0[2];
+        *puVar5 = uVar15;
+        lVar19 = *local_e0;
+        if ((local_120 & 1) == 0) {
+          country_core::utils::audio_utils::AudioLoop::stop();
+          *puVar5 = uVar15;
+          if ((local_128 & 1) == 0) goto LAB_140a6818c;
+LAB_140a682fb:
+          local_140 = local_f8;
+          local_148 = local_100;
+          country_core::utils::audio_utils::AudioLoop::start_if_not_playing();
+          if (((*(ulonglong *)(lVar19 + 0x48) <= *(ulonglong *)(lVar19 + 0x60)) ||
+              (resources::audio_resources::impl$10::set_position(),
+              *(ulonglong *)(lVar19 + 0x48) <= *(ulonglong *)(lVar19 + 0x60))) ||
+             (resources::audio_resources::impl$10::set_parameter(),
+             *(ulonglong *)(lVar19 + 0x48) <= *(ulonglong *)(lVar19 + 0x60))) goto LAB_140a68416;
+          resources::audio_resources::impl$10::set_parameter();
+          *puVar5 = uVar15;
+        }
+        else {
+          local_140 = local_108;
+          local_148 = local_110;
+          country_core::utils::audio_utils::AudioLoop::start_if_not_playing();
+          if (((*(ulonglong *)(lVar19 + 0x80) <= *(ulonglong *)(lVar19 + 0x98)) ||
+              (resources::audio_resources::impl$10::set_position(),
+              *(ulonglong *)(lVar19 + 0x80) <= *(ulonglong *)(lVar19 + 0x98))) ||
+             (resources::audio_resources::impl$10::set_parameter(),
+             *(ulonglong *)(lVar19 + 0x80) <= *(ulonglong *)(lVar19 + 0x98))) goto LAB_140a68416;
+          resources::audio_resources::impl$10::set_parameter();
+          *puVar5 = uVar15;
+          if ((local_128 & 1) != 0) goto LAB_140a682fb;
+LAB_140a6818c:
+          country_core::utils::audio_utils::AudioLoop::stop();
+          *puVar5 = uVar15;
+        }
+        if ((local_130 & 1) == 0) {
+          country_core::utils::audio_utils::AudioLoop::stop();
+          return;
+        }
+        local_148 = local_f0;
+        local_140 = local_e8;
+        country_core::utils::audio_utils::AudioLoop::start_if_not_playing();
+        if (((*(ulonglong *)(lVar19 + 0x28) < *(ulonglong *)(lVar19 + 0x10)) &&
+            (resources::audio_resources::impl$10::set_position(),
+            *(ulonglong *)(lVar19 + 0x28) < *(ulonglong *)(lVar19 + 0x10))) &&
+           ((resources::audio_resources::impl$10::set_parameter(),
+            *(ulonglong *)(lVar19 + 0x28) < *(ulonglong *)(lVar19 + 0x10) &&
+            (resources::audio_resources::impl$10::set_parameter(),
+            *(ulonglong *)(lVar19 + 0x28) < *(ulonglong *)(lVar19 + 0x10))))) {
+          resources::audio_resources::impl$10::set_parameter();
+          return;
+        }
+LAB_140a68416:
+                    // WARNING: Subroutine does not return
+        core::panicking::panic_bounds_check();
+      }
+      *puVar3 = *puVar3 + 1;
+      pbVar37 = pbVar36 + 0x20;
+      pbVar7 = &DAT_142ad558c + *(int *)(&DAT_142ad558c + (ulonglong)*pbVar36 * 4);
+      pbVar35 = (byte *)0x0;
+      pbVar20 = pbVar36;
+      pbVar18 = pbVar35;
+                    // WARNING (jumptable): Sanity check requires truncation of jumptable
+                    // WARNING: Could not find normalized switch variable to match jumptable
+      switch(*pbVar36) {
+      case 0:
+        goto code_r0x000140a67f1d;
+      case 1:
+        goto code_r0x000140a68008;
+      case 2:
+        goto code_r0x000140a67f6d;
+      case 3:
+        goto code_r0x000140a67f92;
+      case 4:
+        goto code_r0x000140a67ea2;
+      case 5:
+        goto code_r0x000140a68058;
+      case 6:
+        goto code_r0x000140a6807d;
+      case 7:
+        goto code_r0x000140a67fe3;
+      case 8:
+        goto code_r0x000140a6a265;
+      case 9:
+        goto code_r0x000140a6a27d;
+      default:
+        goto code_r0x000140a69ecc;
+      case 0xe:
+        goto code_r0x000140a6a26c;
+      case 0x10:
+        goto code_r0x000140a6acdb;
+      case 0x11:
+        goto code_r0x000140a6ad0c;
+      case 0x12:
+code_r0x000140a6acdd:
+        do {
+        } while( true );
+      case 0x13:
+        goto code_r0x000140a6acf7;
+      case 0x14:
+        goto code_r0x000142ad558c;
+      case 0x15:
+      case 0x18:
+        goto code_r0x000142ad558d;
+      case 0x16:
+      case 0x17:
+        goto DAT_142ad55cc;
+      }
+    }
+    *puVar3 = *puVar3 + 1;
+    pbVar35 = pbVar18 + 0x20;
+    bVar1 = *pbVar18;
+    pbVar7 = &DAT_142ad558c + *(int *)(&DAT_142ad558c + (ulonglong)bVar1 * 4);
+    pbVar20 = pbVar18;
+    pbVar18 = pbVar35;
+    pbVar37 = pbVar36;
+                    // WARNING (jumptable): Sanity check requires truncation of jumptable
+                    // WARNING: Could not find normalized switch variable to match jumptable
+    switch(bVar1) {
+    case 0:
+code_r0x000140a67f1d:
+      local_f8 = *(undefined4 *)(pbVar20 + 0x10);
+      local_100 = *(longlong *)(pbVar20 + 8);
+      ::utils::inverse_lerp();
+      local_128 = CONCAT71((int7)((ulonglong)extraout_RAX >> 8),1);
+      pbVar36 = pbVar37;
+      goto LAB_140a67ecf;
+    case 1:
+code_r0x000140a68008:
+      local_108 = *(undefined4 *)(pbVar20 + 0x10);
+      local_110 = *(longlong *)(pbVar20 + 8);
+      ::utils::inverse_lerp();
+      local_120 = CONCAT71((int7)((ulonglong)extraout_RAX_01 >> 8),1);
+      pbVar36 = pbVar37;
+      goto LAB_140a67ecf;
+    case 2:
+code_r0x000140a67f6d:
+      local_140 = *(undefined4 *)(pbVar20 + 0x10);
+      local_148 = *(longlong *)(pbVar20 + 8);
+      plVar25 = (longlong *)&DAT_0000001f;
+      pbVar18 = pbVar35;
+      break;
+    case 3:
+      goto code_r0x000140a67f92;
+    case 4:
+code_r0x000140a67ea2:
+      local_140 = *(undefined4 *)(pbVar20 + 0x10);
+      local_148 = *(longlong *)(pbVar20 + 8);
+      plVar25 = (longlong *)&DAT_0000001c;
+      pbVar18 = pbVar35;
+      break;
+    case 5:
+code_r0x000140a68058:
+      local_140 = *(undefined4 *)(pbVar20 + 0x10);
+      local_148 = *(longlong *)(pbVar20 + 8);
+      plVar25 = (longlong *)&DAT_0000001f;
+      pbVar18 = pbVar35;
+      break;
+    case 6:
+code_r0x000140a6807d:
+      local_140 = *(undefined4 *)(pbVar20 + 0x10);
+      local_148 = *(longlong *)(pbVar20 + 8);
+      plVar25 = (longlong *)&DAT_0000001a;
+      pbVar18 = pbVar35;
+      break;
+    case 7:
+code_r0x000140a67fe3:
+      local_140 = *(undefined4 *)(pbVar20 + 0x10);
+      local_148 = *(longlong *)(pbVar20 + 8);
+      plVar25 = (longlong *)&DAT_00000022;
+      pbVar18 = pbVar35;
+      break;
+    case 8:
+      goto code_r0x000140a6a265;
+    case 9:
+      goto code_r0x000140a6a27d;
+    default:
+code_r0x000140a69ecc:
+      *pbVar7 = *pbVar7 | (byte)pbVar7;
+      *pbVar7 = *pbVar7 + (byte)pbVar7;
+      lVar19 = 0;
+      uVar13 = 0;
+      lVar16 = 0;
+      uVar38 = 0;
+      uVar32 = 0;
+      pbVar21[0x10] = 0;
+      pbVar21[0x11] = 0;
+      pbVar21[0x12] = 0;
+      pbVar21[0x13] = 0;
+      pbVar21[0x14] = 0;
+      pbVar21[0x15] = 0;
+      pbVar21[0x16] = 0;
+      pbVar21[0x17] = 0;
+      pbVar21[0x2c] = 0;
+      pbVar21[0x2d] = 0;
+      pbVar21[0x2e] = 0;
+      pbVar21[0x2f] = 0;
+      goto LAB_140a69eec;
+    case 0xe:
+code_r0x000140a6a26c:
+      uVar15 = SUB84(pbVar20,0);
+      goto code_r0x000140a6a24b;
+    case 0x10:
+code_r0x000140a6acdb:
+                    // WARNING: Subroutine does not return
+      core::panicking::panic();
+    case 0x11:
+code_r0x000140a6ad0c:
+                    // WARNING: Could not recover jumptable at 0x000140a6ad18. Too many branches
+                    // WARNING: Treating indirect jump as call
+      (*(code *)((longlong)*(int *)((longlong)plVar10 + (longlong)plVar25 * 4) + (longlong)plVar10))
+                ();
+      return;
+    case 0x12:
+      goto code_r0x000140a6acdd;
+    case 0x13:
+code_r0x000140a6acf7:
+      pcVar24 = (code *)swi(3);
+      (*pcVar24)();
+      return;
+    case 0x14:
+code_r0x000142ad558c:
+      UNRECOVERED_JUMPTABLE = (code *)((ulonglong)pbVar7 & 0xffffffff);
+    case 0x15:
+    case 0x18:
+      goto code_r0x000142ad558d;
+    case 0x16:
+    case 0x17:
+DAT_142ad55cc:
+      pcVar24[-7] = (code)((char)pcVar24[-7] + -2);
+      cVar6 = (char)pbVar7;
+      *pbVar7 = *pbVar7 + cVar6;
+      *pbVar7 = *pbVar7 + cVar6;
+      *(int *)pbVar7 = *(int *)pbVar7 + (int)pbVar7;
+      *pbVar7 = *pbVar7 + cVar6;
+      *pbVar7 = *pbVar7 + cVar6;
+      *pbVar7 = *pbVar7 + cVar6;
+      *pbVar7 = *pbVar7 + cVar6;
+      *(int *)pbVar7 = *(int *)pbVar7 + (int)pbVar7;
+      *pbVar7 = *pbVar7 + cVar6;
+                    // WARNING: Bad instruction - Truncating control flow here
+      halt_baddata();
+    }
+    plVar10 = &local_148;
+    UNRECOVERED_JUMPTABLE = pcVar24;
+    roof_audio::instantiate_audio_w_position();
+    pbVar36 = pbVar37;
+  } while( true );
+LAB_140a69eec:
+  if (pbVar21[0x20] == 0) {
+    if (uVar38 == uVar32) {
+      do {
+        if (puVar28 == puVar29) goto LAB_140a6a2ee;
+        uVar2 = *puVar28;
+        puVar28 = puVar28 + 1;
+        uVar32 = *(ulonglong *)(plVar25[0x20] + 0x58 + (ulonglong)uVar2 * 0xa0);
+      } while (uVar32 == 0);
+      lVar8 = plVar25[0x20] + (ulonglong)uVar2 * 0xa0;
+      uVar13 = (ulonglong)*(uint *)(lVar8 + 0x94);
+      lVar22 = plVar25[0x35];
+      lVar19 = lVar22 + uVar13 * 0x48;
+      lVar14 = *(longlong *)(lVar22 + 0x38 + uVar13 * 0x48);
+      uVar38 = *(ulonglong *)(lVar22 + 0x40 + uVar13 * 0x48);
+      if (*(ulonglong *)(pbVar7 + 0x110) < uVar38) {
+        uVar13 = *(ulonglong *)(lVar14 + *(ulonglong *)(pbVar7 + 0x110) * 8);
+        lVar22 = *(longlong *)(lVar19 + 0x18);
+        if (uVar13 == 0) goto LAB_140a6a03b;
+        lVar19 = *(longlong *)(lVar22 + 0x10 + ~uVar13 * 0x30);
+        uVar9 = *(ulonglong *)(pbVar7 + 0x120);
+        uVar27 = *(ulonglong *)(lVar8 + 0x88);
+        if (uVar9 < uVar27) goto LAB_140a6a051;
+LAB_140a6a08e:
+        uVar13 = 0;
+        uVar38 = *(ulonglong *)(pbVar7 + 0x128);
+        if (uVar38 < uVar27) goto LAB_140a6a09c;
+LAB_140a6a0c1:
+        pbVar21[0x2c] = 0;
+        pbVar21[0x2d] = 0;
+        pbVar21[0x2e] = 0;
+        pbVar21[0x2f] = 0;
+      }
+      else {
+        lVar22 = *(longlong *)(lVar19 + 0x18);
+LAB_140a6a03b:
+        lVar19 = 0;
+        uVar9 = *(ulonglong *)(pbVar7 + 0x120);
+        uVar27 = *(ulonglong *)(lVar8 + 0x88);
+        if (uVar27 <= uVar9) goto LAB_140a6a08e;
+LAB_140a6a051:
+        if (*(longlong *)(*(longlong *)(lVar8 + 0x80) + uVar9 * 8) == 0) goto LAB_140a6a08e;
+        uVar13 = CONCAT71((int7)((ulonglong)*(longlong *)(lVar8 + 0x80) >> 8),1);
+        if ((uVar9 < uVar38) && (uVar38 = *(ulonglong *)(lVar14 + uVar9 * 8), uVar38 != 0)) {
+          lVar16 = *(longlong *)(lVar22 + 0x10 + ~uVar38 * 0x30);
+          uVar38 = *(ulonglong *)(pbVar7 + 0x128);
+          if (uVar38 < uVar27) goto LAB_140a6a09c;
+          goto LAB_140a6a0c1;
+        }
+        lVar16 = 0;
+        uVar38 = *(ulonglong *)(pbVar7 + 0x128);
+        if (uVar27 <= uVar38) goto LAB_140a6a0c1;
+LAB_140a6a09c:
+        *(int *)(pbVar21 + 0x2c) =
+             (int)CONCAT71((int7)((ulonglong)*(longlong *)(lVar8 + 0x80) >> 8),
+                           *(longlong *)(*(longlong *)(lVar8 + 0x80) + uVar38 * 8) != 0);
+      }
+      lVar14 = ~*(ulonglong *)(lVar14 + *(longlong *)(pbVar7 + 0x118) * 8) * 0x30;
+      *(longlong *)(pbVar21 + 0x10) = *(longlong *)(lVar22 + 0x10 + lVar14);
+      *(longlong *)(pbVar21 + 8) = *(longlong *)(lVar22 + 0x28 + lVar14);
+      pbVar35 = *(byte **)(lVar8 + 0x50);
+      uVar38 = 0;
+      uVar13 = uVar13 & 0xffffffff;
+    }
+    uVar9 = (ulonglong)*(uint *)(pbVar35 + uVar38 * 0x10 + 8);
+  }
+  else {
+    if (uVar38 == uVar32) {
+      do {
+        if (puVar28 == puVar29) {
+LAB_140a6a2ee:
+          if (*(longlong *)(pbVar21 + -0x18) != 0) {
+            puffin::impl$6::call::THREAD_PROFILER::constant$0::closure$0::VAL();
+            if (*extraout_RAX_02 == 1) {
+              plVar10 = extraout_RAX_02 + 1;
+            }
+            else if ((*extraout_RAX_02 != 0) ||
+                    (std::sys::thread_local::native::lazy::Storage::
+                     initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple_<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>
+                               (), plVar10 = extraout_RAX_03, extraout_RAX_03 == (longlong *)0x0)) {
+                    // WARNING: Subroutine does not return
+              std::thread::local::panic_access_error();
+            }
+            if (*plVar10 != 0) {
+                    // WARNING: Subroutine does not return
+              core::cell::panic_already_borrowed();
+            }
+            *plVar10 = -1;
+            *(longlong **)(pbVar21 + 0x20) = plVar10;
+            puffin::ThreadProfiler::end_scope();
+            **(longlong **)(pbVar21 + 0x20) = **(longlong **)(pbVar21 + 0x20) + 1;
+          }
+          return;
+        }
+        uVar2 = *puVar28;
+        puVar28 = puVar28 + 1;
+        uVar32 = *(ulonglong *)(plVar25[0x35] + 0x10 + (ulonglong)uVar2 * 0x48);
+      } while (uVar32 == 0);
+      lVar19 = plVar25[0x35] + (ulonglong)uVar2 * 0x48;
+      lVar22 = *(longlong *)(lVar19 + 0x38);
+      uVar38 = *(ulonglong *)(lVar19 + 0x40);
+      if (*(ulonglong *)(pbVar7 + 0x110) < uVar38) {
+        uVar13 = *(ulonglong *)(lVar22 + *(ulonglong *)(pbVar7 + 0x110) * 8);
+        lVar14 = *(longlong *)(lVar19 + 0x18);
+        if (uVar13 == 0) {
+          uVar13 = *(ulonglong *)(pbVar7 + 0x120);
+          goto joined_r0x000140a6a02c;
+        }
+        lVar19 = *(longlong *)(lVar14 + 0x10 + ~uVar13 * 0x30);
+        uVar13 = *(ulonglong *)(pbVar7 + 0x120);
+        if (uVar13 < uVar38) goto LAB_140a6a11e;
+LAB_140a6a14f:
+        uVar13 = 0;
+        uVar9 = *(ulonglong *)(pbVar7 + 0x128);
+        if (uVar9 < uVar38) goto LAB_140a6a15e;
+LAB_140a6a146:
+        pbVar21[0x2c] = 0;
+        pbVar21[0x2d] = 0;
+        pbVar21[0x2e] = 0;
+        pbVar21[0x2f] = 0;
+      }
+      else {
+        lVar14 = *(longlong *)(lVar19 + 0x18);
+        uVar13 = *(ulonglong *)(pbVar7 + 0x120);
+joined_r0x000140a6a02c:
+        lVar19 = 0;
+        if (uVar38 <= uVar13) goto LAB_140a6a14f;
+LAB_140a6a11e:
+        uVar13 = *(ulonglong *)(lVar22 + uVar13 * 8);
+        if (uVar13 == 0) goto LAB_140a6a14f;
+        lVar16 = *(longlong *)(lVar14 + 0x10 + ~uVar13 * 0x30);
+        uVar13 = CONCAT71((int7)((ulonglong)puVar33 >> 8),1);
+        uVar9 = *(ulonglong *)(pbVar7 + 0x128);
+        if (uVar38 <= uVar9) goto LAB_140a6a146;
+LAB_140a6a15e:
+        *(int *)(pbVar21 + 0x2c) =
+             (int)CONCAT71((int7)(uVar38 >> 8),*(longlong *)(lVar22 + uVar9 * 8) != 0);
+      }
+      lVar22 = ~*(ulonglong *)(lVar22 + *(longlong *)(pbVar7 + 0x118) * 8) * 0x30;
+      *(longlong *)(pbVar21 + 0x10) = *(longlong *)(lVar14 + 0x10 + lVar22);
+      *(longlong *)(pbVar21 + 8) = *(longlong *)(lVar14 + 0x28 + lVar22);
+      uVar38 = 0;
+      uVar13 = uVar13 & 0xffffffff;
+    }
+    uVar9 = uVar38 & 0xffffffff;
+  }
+  uVar15 = (undefined4)uVar13;
+  puVar33 = (undefined *)(uVar9 * 0x1c + lVar19);
+  lVar14 = uVar9 * 0x30 + *(longlong *)(pbVar21 + 0x10);
+  *(ulonglong *)pbVar21 = *(longlong *)(pbVar21 + 8) + uVar9 * 4;
+  lVar22 = uVar9 * 0x10 + lVar16;
+  if ((uVar13 & 1) == 0) {
+    lVar22 = 0;
+  }
+  if (puVar33[8] == '\0') {
+    fVar43 = *(float *)(puVar33 + 0x18) * *(float *)(puVar33 + 0xc);
+    fVar44 = fVar43;
+    if (puVar33[9] == '\0') {
+      fVar44 = *(float *)(puVar33 + 0xc);
+    }
+    puVar33 = (undefined *)(ulonglong)*(uint *)(pbVar21 + 0x1c);
+    **(uint **)pbVar21 = *(uint *)(pbVar21 + 0x1c);
+    *(float *)(lVar14 + 0x1c) = fVar44;
+    *(float *)(lVar14 + 0x20) = fVar43;
+    *(float *)(lVar14 + 0x24) = fVar44;
+  }
+  uVar38 = uVar38 + 1;
+  pcVar24 = *(code **)(pbVar21 + -0x30);
+  if ((((lVar22 != 0) && ((pbVar21[0x2c] & 1) != 0)) && (pcVar24[0x18] != (code)0x0)) &&
+     (puVar33 = *(undefined **)(pcVar24 + 0x38), puVar33 == *(undefined **)(lVar22 + 8))) {
+code_r0x000140a6a24b:
+    bVar1 = *(byte *)(*(longlong *)(pcVar24 + 0x20) + 0x98);
+    *(undefined4 *)(pbVar21 + -4) = uVar15;
+    UNRECOVERED_JUMPTABLE =
+         (code *)(&DAT_142ad55ac + *(int *)(&DAT_142ad55ac + (ulonglong)bVar1 * 4));
+code_r0x000140a6a27d:
+                    // WARNING: Could not recover jumptable at 0x000140a6a283. Too many branches
+                    // WARNING: Treating indirect jump as call
+    (*UNRECOVERED_JUMPTABLE)();
+    return;
+  }
+  goto LAB_140a69eec;
+code_r0x000140a67f92:
+  local_138 = (ulonglong)pbVar20[1];
+  local_e8 = *(undefined4 *)(pbVar20 + 0x10);
+  local_f0 = *(longlong *)(pbVar20 + 8);
+  ::utils::inverse_lerp();
+  local_130 = CONCAT71((int7)((ulonglong)extraout_RAX_00 >> 8),1);
+  pbVar36 = pbVar37;
+  goto LAB_140a67ecf;
+code_r0x000140a6a265:
+                    // WARNING: Bad instruction - Truncating control flow here
+  halt_baddata();
+code_r0x000142ad558d:
+  if ((int)UNRECOVERED_JUMPTABLE < (int)pcVar24) {
+                    // WARNING: Bad instruction - Truncating control flow here
+    halt_baddata();
+  }
+  if ((int)UNRECOVERED_JUMPTABLE != (int)pcVar24) {
+                    // WARNING: Bad instruction - Truncating control flow here
+    halt_baddata();
+  }
+                    // WARNING: Bad instruction - Truncating control flow here
+  halt_baddata();
+}
+

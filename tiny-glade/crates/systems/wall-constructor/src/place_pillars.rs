@@ -30,38 +30,28 @@ pub struct PillarProposals {
 }
 
 impl PillarProposals {
-    /// B `add_proposal`（0x1407534d0）：装配一条支柱提议。
-    pub fn add_proposal(&mut self, index: i32, height: f32) {
-        let mut record = [0u8; 8];
-        record[..4].copy_from_slice(&index.to_le_bytes());
-        record[4..].copy_from_slice(&height.to_le_bytes());
-        self.proposals.push(record);
+    /// B `add_proposal`（0x1407534d0）。**未实现（近似体）**：真实逻辑为
+    /// `PillarProposals{Vec<PillarPlacementProposal 0x1cB>, Vec<f32> scores,
+    /// Vec<usize> keys}` 三向量；新 key 三向量 push；同 key score NaN-aware
+    /// min，新 score 更小则替换末提案 = 每墙最优。现有 8B 记录实现不匹配。
+    pub fn add_proposal(&mut self, _index: i32, _height: f32) {
+        todo!("未实现: PillarProposals::add_proposal 0x1407534d0")
     }
 }
 
-/// B `assemble_stone_pillar`（0x14120d670）：石柱 96B 记录装配。
-/// 常量（O）：0.2/0.2 十字偏移、1.2 砖长、0.01 ε、0.5×3、−0.2、2.1、
-/// ±0.25、0.56、1.26。
+/// B `assemble_stone_pillar`（0x14120d670）。**未实现（近似体）**：真实逻辑含
+/// bottom+0.2≤1.26 单段否则双段且 1.2<|Δ| 标记、span=(top−bottom)−0.25、
+/// count=ceil(span/0.56)、random_splits、−0.2 偏移+fastrand jitter
+/// （0.42/0.7 或顶段固定 0.7/0.84）、bottom+0.2>2.1 盖砖、closure$4 发 96B。
+/// 现有装配不匹配。
 pub fn assemble_stone_pillar(
-    x: f32,
-    z: f32,
-    height: f32,
-    seed: u32,
-    out: &mut Vec<[u8; 96]>,
+    _x: f32,
+    _z: f32,
+    _height: f32,
+    _seed: u32,
+    _out: &mut Vec<[u8; 96]>,
 ) {
-    const HALF: f32 = 0.2;
-    const BRICK_LEN: f32 = 1.2;
-    const ROW_GAP: f32 = 0.56;
-    const HEIGHT_LIMIT: f32 = 2.1;
-    let mut record = [0u8; 96];
-    let base = [x + HALF, z + HALF];
-    // 行距 0.25/0.56（re-analyst §5.2）；高度限 2.1。
-    let rows = ((height / ROW_GAP).ceil() as u32).min((HEIGHT_LIMIT / ROW_GAP) as u32);
-    record[..8].copy_from_slice(&base.map(f32::to_le_bytes).concat());
-    record[8..12].copy_from_slice(&(BRICK_LEN).to_le_bytes());
-    record[12..16].copy_from_slice(&(rows as f32).to_le_bytes());
-    record[16..20].copy_from_slice(&seed.to_le_bytes());
-    out.push(record);
+    todo!("未实现: assemble_stone_pillar 0x14120d670")
 }
 
 /// B 0x140753670。

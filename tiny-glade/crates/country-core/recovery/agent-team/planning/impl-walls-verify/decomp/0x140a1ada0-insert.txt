@@ -1,0 +1,40 @@
+// 0x140a1ada0 insert size=256
+
+void __cdecl
+country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms::insert(void)
+
+{
+  undefined4 extraout_EAX;
+  int iVar1;
+  longlong in_R8;
+  undefined1 local_68 [16];
+  
+  if (((0x7f7fffff < (*(uint *)(in_R8 + 0x10) & 0x7fffffff)) ||
+      (0x7f7fffff < (*(uint *)(in_R8 + 0x14) & 0x7fffffff))) ||
+     (0x7f7fffff < (*(uint *)(in_R8 + 0x18) & 0x7fffffff))) {
+                    // WARNING: Subroutine does not return
+    core::panicking::panic();
+  }
+  glam::f32::sse2::vec4::Vec4::is_finite_mask();
+  iVar1 = movmskps(extraout_EAX,local_68);
+  if (iVar1 != 0xf) {
+                    // WARNING: Subroutine does not return
+    core::panicking::panic();
+  }
+  if ((((*(uint *)(in_R8 + 0x1c) & 0x7fffffff) < 0x7f800000) &&
+      ((*(uint *)(in_R8 + 0x20) & 0x7fffffff) < 0x7f800000)) &&
+     ((*(uint *)(in_R8 + 0x24) & 0x7fffffff) < 0x7f800000)) {
+    hashbrown::map::HashMap::
+    insert<country_core::resources::walls::decorator::DecoratorId,utils::components::transform::Transform,std::hash::random::RandomState,alloc::alloc::Global>
+              ();
+    return;
+  }
+                    // WARNING: Subroutine does not return
+  core::panicking::panic();
+}
+
+
+// CALLEES:
+{'name': 'insert<country_core::resources::walls::decorator::DecoratorId,utils::components::transform::Transform,std::hash::random::RandomState,alloc::alloc::Global>', 'address': '14152aee0'}
+{'name': 'is_finite_mask', 'address': '1412b7f50'}
+{'name': 'panic', 'address': '1428d9430'}

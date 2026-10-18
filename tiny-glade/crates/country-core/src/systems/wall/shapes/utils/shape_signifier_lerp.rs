@@ -5,20 +5,14 @@
 //! (O, 0x1409ef010). During shape drag the preview radius (circle) or
 //! dimensions (rectangle) exponentially chase the target; cross-shape
 //! interpolation panics (shape_signifier_lerp.rs:40).
+//!
+//! 2026-10-17 fresh 反编译 0x1409ef010 定案（非 cubic ease）：平滑项
+//! `v1 = (1 - expf(-20·t)) · Δ`（指数收敛，速率 **20**）；线性钳项
+//! `v2 = sign(Δ) · min(2t, |Δ|)`（**保留 Δ 符号**）；增量 = **|v1|/|v2| 较大者**
+//! （两候选均受 |Δ| 约束，不越界）。此前 Rust 用 cubic ease(rate 10)、v2 无符号、
+//! 取较小者——已重建。
 
 use glam::Vec2;
-
-/// Smooth-step chase (B func_0x142923ec0; CubicInOut family).
-fn ease(t: f32) -> f32 {
-    let t = t.clamp(0.0, 1.0);
-    if t < 0.5 {
-        let x = t + t;
-        x * x * x * 0.5
-    } else {
-        let x = t + t - 2.0;
-        x * x * x * 0.5 + 1.0
-    }
-}
 
 /// B ShapeVal: 12 B record `{tag u32@+0, val f32@+4, val2 f32@+8}`.
 /// Circle uses val as radius; rectangle uses val/val2 as dimensions.
@@ -54,18 +48,16 @@ impl ShapeVal {
 }
 
 /// B 0x1409ef010 `ShapeSignifierLerp::lerp_radius` = `ShapeVal::interpolate`.
-/// The chase rate (0x14295c698) and the exact min-selection rule are 待取证;
-/// the observed structure (ease chase + clamped increment, cross-shape panic)
-/// is preserved.
+/// fresh 反编译 0x1409ef010：平滑项指数 `1 - expf(-20·t)`、钳项 `sign(Δ)·min(2t,|Δ|)`、
+/// 增量取两候选 **较大绝对值**（均受 |Δ| 界，不越界）。逐轴同构。
 pub fn lerp_shape(prev: ShapeVal, cur: ShapeVal, t: f32) -> ShapeVal {
-    const RATE: f32 = 10.0;
     match prev {
         ShapeVal::Circle(prev_r) => match cur {
             ShapeVal::Circle(cur_r) => {
-                let eased = ease(RATE * t);
-                let v1 = (1.0 - eased) * (cur_r - prev_r);
-                let v2 = (t * 2.0).min((cur_r - prev_r).abs());
-                let increment = if v1.abs() < v2.abs() { v1 } else { v2 };
+                let delta = cur_r - prev_r;
+                let v1 = (1.0 - (-20.0 * t).exp()) * delta;
+                let v2 = delta.signum() * (t * 2.0).min(delta.abs());
+                let increment = if v1.abs() < v2.abs() { v2 } else { v1 };
                 ShapeVal::Circle(prev_r + increment)
             }
             ShapeVal::Rectangle(_) => {
@@ -75,10 +67,10 @@ pub fn lerp_shape(prev: ShapeVal, cur: ShapeVal, t: f32) -> ShapeVal {
         ShapeVal::Rectangle(prev_d) => match cur {
             ShapeVal::Rectangle(cur_d) => {
                 let lerp_axis = |a: f32, b: f32| {
-                    let eased = ease(RATE * t);
-                    let v1 = (1.0 - eased) * (b - a);
-                    let v2 = (t * 2.0).min((b - a).abs());
-                    let increment = if v1.abs() < v2.abs() { v1 } else { v2 };
+                    let delta = b - a;
+                    let v1 = (1.0 - (-20.0 * t).exp()) * delta;
+                    let v2 = delta.signum() * (t * 2.0).min(delta.abs());
+                    let increment = if v1.abs() < v2.abs() { v2 } else { v1 };
                     a + increment
                 };
                 ShapeVal::Rectangle(Vec2::new(

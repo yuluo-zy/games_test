@@ -1,0 +1,184 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/ui/resources/widget_params.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/ui/resources/widget_params.rs
+@@ -2,8 +2,9 @@
+ //!
+ //! 证据：`chapters/systems/ui/resources/widget_params.rs.md`、`ui-input/DIGEST.md` §2.4：
+ //! - 默认 u32 组 `{0, 8, 0, 1, 0, 2, 3, 3}` @ `{0, 8, 0x10, 0x18, 0x20, 0x30, 0x48, 0x60}`；
+-//! - `UiSounds` 4×24 B @0x18..0x78；`WidgetVolumeShape` 32 B {tag u8@0, layer u8@1,
+-//!   size Vec2@0x10}；
++//! - `UiSounds` 4×24 B @0x18..0x78；原volume为32字节枚举，字段因variant而异：
++//!   canvas的layer@1/size@4，sphere的radius@4/XYZ@8（byte1是padding）；
++//!   当前逻辑类型保留旧canvas字段，新增sphere center，不强行复制native union ABI；
+ //! - u16 @0xa8 = 0x101；flags 字节 @0xa9（**bit0 = record_history_when_used、bit2 =
+ //!   allow_negative_distance**；默认 flags=0x01；`no_history_recording` 清 bit0——
+ //!   2026-10-17 fresh 反编译纠错，早前 RESTORE 记反）；`occlude_by_world` = 字节 @0xa8
+@@ -15,7 +16,7 @@
+ //! system_color/system_glade_border/system_tree 消费）与 `UiNavState`（同上插入的
+ //! 资源）落位本模块。
+ use bevy_ecs::prelude::*;
+-use glam::Vec2;
++use glam::{Vec2, Vec3};
+ 
+ /// UI 声音播放事件（O：`add_ui` 0x140945c60 `register_event<PlayUiSound>`；
+ /// PDB 判别 = `enum2$`，**0x20B 步长事件记录**——2026-10-17 coregap-1 fresh 反编译
+@@ -170,24 +171,31 @@
+     }
+ }
+ 
+-/// 音量形状（O 布局：tag u8@0、layer u8@1、size Vec2@4；`clearing_canvas`
+-/// 0x1409a9110 写 `byte[+0]=4`、`byte[+1]=layer`、`qword[+4]=130.0|130.0`）。
+-/// 旧文档写 size@0x10 有误（2026-10-17 fresh 纠错）。
++/// Widget volume payload. Retain existing canvas tag/layer/size while adding
++/// the original sphere's world-space center. `size.x` carries sphere radius;
++/// `layer` is only meaningful for variants whose original producer writes it.
+ #[repr(C)]
+ #[derive(Clone, Copy, Debug, Default, PartialEq)]
+ pub struct WidgetVolumeShape {
+     pub tag: u8,
+     pub layer: u8,
+     pub size: Vec2,
++    pub center: Vec3,
+ }
+ 
+ impl WidgetVolumeShape {
++    /// B ui_continue_wall: tag0, radius@+4, XYZ@+8. Native byte1 is padding.
++    pub fn sphere(center: Vec3, radius: f32) -> Self {
++        Self { tag: 0, layer: 0, size: Vec2::new(radius, 0.0), center }
++    }
++
+     /// 0x1409a9110：`clearing_canvas` = {tag 4, layer, 130×130}。
+     pub fn clearing_canvas(layer: u8) -> Self {
+         Self {
+             tag: 4,
+             layer,
+             size: Vec2::splat(130.0),
++            center: Vec3::ZERO,
+         }
+     }
+ }
+@@ -322,6 +330,7 @@
+             tag: 5,
+             layer: 7,
+             size: Vec2::new(1.5, 2.5),
++            ..Default::default()
+         };
+         let params = WidgetParams::new(volume, [0x11, 0x22]);
+         assert_eq!(params.fields, [0, 8, 0, 1, 0, 2, 3, 3]);
+--- a/games_test/tiny-glade/crates/country-core/src/resources/walls/public_wall_state.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/walls/public_wall_state.rs
+@@ -43,9 +43,21 @@
+     /// prepared segment-owner count (+d0), not the source point count.
+     pub segment_heights: Vec<f32>,
+     pub gable_heights: Option<GableArchHeights>,
++    /// Derived at publication, from the actual bulldoze animation queue.
++    being_bulldozed: bool,
+ }
+ 
+ impl PublicWallState {
++    pub fn is_being_bulldozed(&self) -> bool {
++        self.being_bulldozed
++    }
++
++    /// The publication owner captures this value when rebuilding the row.
++    /// UI consumers must not substitute the later queue's current membership.
++    pub(crate) fn set_being_bulldozed(&mut self, value: bool) {
++        self.being_bulldozed = value;
++    }
++
+     pub fn collect(
+         authority: &WallState,
+         terrain: &TerrainHeightGrid512,
+@@ -65,6 +77,7 @@
+             freeform_heights: None,
+             segment_heights: Vec::new(),
+             gable_heights: None,
++            being_bulldozed: false,
+         })
+     }
+ 
+@@ -262,6 +275,7 @@
+         .write_projection(&mut bytes);
+         bytes[0x295] = self.authority.freehand_ty();
+         bytes[0x296] = self.authority.source_flag_65();
++        bytes[0x297] = self.being_bulldozed as u8;
+         if let Some(base) = self.calculated_max_y() {
+             bytes[0x108..0x10c].copy_from_slice(&1u32.to_le_bytes());
+             bytes[0x10c..0x110].copy_from_slice(&base.to_le_bytes());
+--- a/games_test/tiny-glade/crates/country-core/src/systems/ui_edit_focus.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/ui_edit_focus.rs
+@@ -305,6 +305,7 @@
+                 tag: 5,
+                 layer: 0,
+                 size: glam::Vec2::new(f32::MAX, 0.0),
++                ..Default::default()
+             },
+         )
+         .occlude_by_world(false),
+--- a/games_test/tiny-glade/crates/country-core/src/systems/terrain/ui_edit_terrain.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/terrain/ui_edit_terrain.rs
+@@ -215,6 +215,7 @@
+                     tag: ty,
+                     layer: 0,
+                     size: Vec2::splat(130.0),
++                    ..Default::default()
+                 },
+                 [0; 2],
+             ),
+--- a/games_test/tiny-glade/crates/systems/decorator/src/ui_systems/ui_decorator_affordance_dispatch.rs
++++ b/games_test/tiny-glade/crates/systems/decorator/src/ui_systems/ui_decorator_affordance_dispatch.rs
+@@ -118,6 +118,7 @@
+             tag: 5,
+             layer: layer as u8,
+             size: Default::default(),
++            ..Default::default()
+         })
+         .sounds(sounds)
+         .occlude_by_world(false);
+@@ -140,6 +141,7 @@
+             tag: 5,
+             layer: layer as u8,
+             size: Default::default(),
++            ..Default::default()
+         })
+         .sounds(sounds)
+         .occlude_by_world(false);
+--- a/games_test/tiny-glade/crates/systems/toolbar/src/ui_interaction.rs
++++ b/games_test/tiny-glade/crates/systems/toolbar/src/ui_interaction.rs
+@@ -286,6 +286,7 @@
+                 tag: 3,
+                 layer: interaction.state,
+                 size: rect_size,
++                ..Default::default()
+             },
+             [0; 2],
+         )
+--- a/games_test/tiny-glade/crates/systems/toolbar/src/mei/systems.rs
++++ b/games_test/tiny-glade/crates/systems/toolbar/src/mei/systems.rs
+@@ -232,6 +232,7 @@
+                     tag: 3,
+                     layer: node_state,
+                     size: rect_size,
++                    ..Default::default()
+                 },
+                 [0; 2],
+             )
+--- a/games_test/tiny-glade/crates/systems/tree-tool/src/ui_place_tree.rs
++++ b/games_test/tiny-glade/crates/systems/tree-tool/src/ui_place_tree.rs
+@@ -202,6 +202,7 @@
+         tag: 5,
+         layer: 0,
+         size: Vec2::new(f32::MAX, 0.0),
++        ..Default::default()
+     };
+     let ctx = ui.add(
+         "tree_canvas",
+--- a/games_test/tiny-glade/crates/systems/roof/src/ui_edit_roof_ridge_length.rs
++++ b/games_test/tiny-glade/crates/systems/roof/src/ui_edit_roof_ridge_length.rs
+@@ -121,6 +121,7 @@
+             tag: 0,
+             layer: 0,
+             size: glam::Vec2::ZERO,
++            ..Default::default()
+         },
+         [0; 2],
+     );

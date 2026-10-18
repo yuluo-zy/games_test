@@ -52,6 +52,7 @@ use crate::render::pass_builder::pass_resource_access::SsboType;
 use crate::resources::color_id::ColorId;
 use crate::resources::cursor_terrain_raycast::CursorTerrainRaycast;
 use crate::resources::glade_settings::GladeSettings;
+use crate::resources::sparkle::SparkleSsbo;
 use crate::resources::walls::WallHighlight;
 use crate::rhapsody_contract::ManagedHandle;
 use crate::rhapsody_types::RenderGraph;
@@ -130,7 +131,9 @@ ssbo_tag!(
     0x0cf3b7d1045fdc98
 );
 ssbo_tag!(
-    /// `resources::sparkle::SparkleSsbo`（0x141631990；类型名长 0x2d，Env36 里 `bcmp` 比对）。
+    /// `resources::sparkle::SparkleSsbo`（元素 = `SparseInstanceBuffer<SparkleSsbo>`；Env36 的
+    /// `read_storage_buffer<SparkleSsbo>` 实例 0x141631990。SsboId 0x2bf3b1a4ac675864 =
+    /// xxh3_64("SparkleSsbo")，Env36 的 `FrozenMap::get` 键；类型名长 0x2d，Env36 里 `memcmp` 比对）。
     SparkleTag,
     "country_core::resources::sparkle::SparkleSsbo",
     "SparkleSsbo",
@@ -237,11 +240,6 @@ pub struct InstancedDrawFromPlacementData(pub u64);
 #[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct RockyTerrainMeshVertCountView(pub u32);
 
-/// Env36 的稀疏实例缓冲：`SparseInstanceBuffer<SparkleSsbo>::to_draw_multi_instanced()` 的结果。`SparkleSsbo` 在 crate 里是
-/// `(pub Gap)`，没有 `SparseSsbo` 实现，无法经 `AssetSsboLibrary::get` 取到真实缓冲，故由视图携带（U）。
-#[derive(Resource, Clone, Debug, Default, PartialEq, Eq)]
-pub struct SparkleDrawRangesView(pub Vec<[u32; 2]>);
-
 /// `water_planes_draw` 的进程级布尔（`.data` 0x143634d90，O：为真 → `discard`）。
 pub static WATER_PLANES_DISABLED: AtomicBool = AtomicBool::new(false);
 
@@ -269,6 +267,12 @@ pub fn nani_draw_world(b: DrawBuilder<'_>, kind: GpuWorldSubsetKind, w: &World) 
 pub struct LibView<'a>(pub &'a AssetSsboLibrary);
 
 impl SsboInstanceView for LibView<'_> {
+    fn lookup_buffer(&self, ssbo_id: u64) -> Option<(&str, ManagedHandle)> {
+        self.0
+            .lookup_buffer(SsboId(NameHash(ssbo_id)))
+            .map(|(name, handle)| (name, ManagedHandle(handle.0)))
+    }
+
     fn lookup(&self, ssbo_id: u64) -> Option<(&str, Option<InstanceBufferView>)> {
         self.0
             .lookup(SsboId(NameHash(ssbo_id)))
@@ -651,12 +655,12 @@ pub fn env38_bind(b: DrawBuilder<'_>, f8: f32, f10: f32) -> DrawBuilder<'_> {
     b.uniform(0x1986361629359548, f10)
 }
 pub fn env38(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
-    let l = *res::<LogoAnimationView>(w);
-    env38_bind(b, l.f8, l.f10).draw();
+    let logo = res::<crate::resources::logo_animation::LogoAnimation>(w);
+    env38_bind(b, logo.progress[2], logo.progress[4]).draw();
 }
 
 /// closure_env$36（0x1409b7fa0）：`AssetSsboLibrary` → `SparkleSsbo` 状态（缺失 → `Option::unwrap` panic；名字不符 →
-/// `assert_eq!` 失败）→ 稀疏缓冲 `to_draw_multi_instanced` → `read_storage_buffer<SparkleSsbo>(0xc3483cd70105de2f)` →
+/// `assert_eq!` 失败）→ 稀疏缓冲 `to_draw_multi_instanced`（每帧现算 ranges）→ `read_storage_buffer<SparkleSsbo>(0xc3483cd70105de2f)` →
 /// `draw_multi_instanced(ranges)`。
 pub fn env36_body(b: DrawBuilder<'_>, ranges: Vec<[u32; 2]>) {
     let b = b.read_ssbo::<SparkleTag>(0xc3483cd70105de2f);
@@ -664,11 +668,17 @@ pub fn env36_body(b: DrawBuilder<'_>, ranges: Vec<[u32; 2]>) {
 }
 pub fn env36(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
     let lib = res::<AssetSsboLibrary>(w);
-    let (name, _info) = lib
-        .lookup(SsboId(NameHash(SparkleTag::rg_buffer_hash())))
-        .expect(UNWRAP_NONE);
-    assert_eq!(name, SparkleTag::TYPE_NAME);
-    let ranges = res::<SparkleDrawRangesView>(w).0.clone();
+    // O：`FrozenMap::get(SsboId(0x2bf3b1a4ac675864))` → 名字断言 → `as_any`（虚表 +0x18）取
+    // `SparseInstanceBuffer<SparkleSsbo>` → `to_draw_multi_instanced`（0x1412e4250，与 `<RoofTileSsbo>` 同形，
+    // ICF 合并为同名符号）每帧现算绘制区间。`Vec<DrawRange>` = 8 B 一对 `(first_instance, instance_count)`。
+    let ranges = lib
+        .get::<SparkleSsbo>()
+        .expect(UNWRAP_NONE)
+        .to_draw_multi_instanced();
+    let ranges: Vec<[u32; 2]> = ranges
+        .into_iter()
+        .map(|(first, count)| [first, count])
+        .collect();
     env36_body(b, ranges);
 }
 
@@ -794,6 +804,7 @@ mod tests {
     use super::*;
     use crate::render::pass_builder::draw_builder::DrawTransform;
     use crate::render::pass_builder::draw_stream::DrawKind;
+    use crate::render::test_device::TestDevice;
     use crate::systems::render_loop::draw_passes::draw_shaders::common_includes::{
         TERRAIN_HEIGHTMAP_NAME, TERRAIN_LIGHTING_NAME,
     };
@@ -1187,7 +1198,10 @@ mod tests {
             ..Default::default()
         });
         w.insert_resource(EraserSizeMultiplier(2.5));
-        w.insert_resource(DebugGuiView { suppress: true, ..Default::default() });
+        w.insert_resource(DebugGuiView {
+            suppress: true,
+            ..Default::default()
+        });
         let i = brick_erase_inputs(&w);
         assert!(i.enabled && i.suppress);
         assert_eq!(i.cursor_position, Some(Vec3::new(1.0, 2.0, 3.0)));
@@ -1374,7 +1388,10 @@ mod tests {
         assert_eq!(rig.calls().len(), 4);
         rig.finish();
         let mut w = World::new();
-        w.insert_resource(LogoAnimationView { f8: 1.0, f10: 2.0 });
+        let mut logo = crate::resources::logo_animation::LogoAnimation::default();
+        logo.progress[2] = 1.0;
+        logo.progress[4] = 2.0;
+        w.insert_resource(logo);
         let p = params(w.spawn_empty().id());
         let (_, d) = run(&[], &[], |b| env38(b, &p, &mut w));
         assert_eq!(d.len(), 1);
@@ -1390,6 +1407,39 @@ mod tests {
             d[0].kind,
             DrawKind::MultiInstanced {
                 ranges: vec![[0, 37], [64, 6]]
+            }
+        );
+    }
+
+    #[test]
+    fn env36_computes_ranges_each_frame_from_the_sparkle_sparse_buffer() {
+        let mut w = World::new();
+        {
+            let lib = AssetSsboLibrary::new();
+            lib.add_new::<SparkleSsbo>(&TestDevice(1));
+            w.insert_resource(lib);
+        }
+        // 写 35 个实例（chunk 0 满 + chunk 1 3 个）。分配销毁只把句柄送回 waste，active 位图保留到 take_out_waste，
+        // 故 `to_draw_multi_instanced` 仍能看到这两个 chunk → 合并区间 (0, 35)。
+        {
+            let mut lib = w.get_resource_mut::<AssetSsboLibrary>().unwrap();
+            let b = lib.get_mut::<SparkleSsbo>().unwrap();
+            let a = b.new_allocation();
+            {
+                let mut wr = b.writer(&a);
+                for _ in 0..35 {
+                    wr.push(&SparkleSsbo::default()).unwrap();
+                }
+            }
+            drop(a);
+        }
+        let p = params(w.spawn_empty().id());
+        let (calls, d) = run(&[0xc3483cd70105de2f], &[], |b| env36(b, &p, &mut w));
+        assert_eq!(calls, vec![rg::<SparkleTag>()]);
+        assert_eq!(
+            d[0].kind,
+            DrawKind::MultiInstanced {
+                ranges: vec![[0, 35]]
             }
         );
     }

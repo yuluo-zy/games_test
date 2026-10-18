@@ -1,6 +1,6 @@
-//! Consumer adapter for the shared recovered index contract. B insert inline
-//! IPI0x74ee rejects occupied IDs; get/removal repair stale hints. The original
-//! typed marker remains local, while ID/state policy lives in the utils crate.
+//! 稳定 ID 到稠密索引的类型化适配；存储和过期提示修复复用共享 utils。
+//!
+//! 删除会将末项交换到空槽。调用方需同步交换其并行实例数组。
 use ::utils::index_condenser::{Condex, IndexCondenser as SharedCondenser};
 use core::{cell::Cell, marker::PhantomData};
 
@@ -26,6 +26,11 @@ impl<T> IndexCondenser<T> {
     pub fn is_empty(&self) -> bool {
         self.shared.is_empty()
     }
+    /// Session unload delegates to the existing shared capacity-retaining
+    /// clear; no duplicate condenser storage/algorithm is introduced.
+    pub fn clear(&mut self) {
+        self.shared.clear();
+    }
     pub fn contains_id(&self, id: u32) -> bool {
         self.shared.contains_key(&id)
     }
@@ -34,12 +39,12 @@ impl<T> IndexCondenser<T> {
             .insert(id)
             .map(|key| key.last_known_index() as usize)
     }
-    /// Compatibility for callers that already established an unoccupied ID.
+    /// 调用方已确认 ID 未占用时的便捷入口；重复插入会报错。
     pub fn push(&mut self, id: u32) -> usize {
         self.insert(id).expect("ID already occupied")
     }
-    pub fn id_at(&self, dense: usize) -> Option<u32> {
-        self.shared.keys().get(dense).copied()
+    pub fn id_at(&self, dense_index: usize) -> Option<u32> {
+        self.shared.keys().get(dense_index).copied()
     }
     pub fn resolve(&self, id: u32, hint: &mut u32) -> Option<usize> {
         let key = Condex {
@@ -48,7 +53,7 @@ impl<T> IndexCondenser<T> {
         };
         let resolved = self.shared.get(&key);
         *hint = key.last_known_index();
-        resolved.map(|i| i as usize)
+        resolved.map(|index| index as usize)
     }
     pub fn remove(&mut self, id: u32, hint: &mut u32) -> Option<usize> {
         let key = Condex {
@@ -57,7 +62,7 @@ impl<T> IndexCondenser<T> {
         };
         let removed = self.shared.remove_index(&key);
         *hint = key.last_known_index();
-        removed.map(|i| i as usize)
+        removed.map(|index| index as usize)
     }
 }
 

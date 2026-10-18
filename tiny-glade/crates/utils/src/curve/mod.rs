@@ -1,5 +1,5 @@
-//! B private polyline algorithms. Allocation identity and Rust ABI are not APIs.
-//! Vec3 has both XYZ and projected-XZ arc-length semantics in the original.
+//! Polyline construction, queries, smoothing and coordinate conversion.
+//! The semantic marker selects full spatial or projected arc length.
 pub mod curve_slice;
 pub mod curve_u;
 pub mod curve_u_circular;
@@ -14,17 +14,35 @@ use std::{
 pub struct CurveCoordSemantic2D;
 #[derive(Clone, Copy, Debug)]
 pub struct CurveCoordSemantic3D;
-/// The observed B Thresholded3D constructor uses full XYZ arc length.
-/// Keep the semantic marker distinct; its name is not an XZ metric policy.
+/// Full XYZ arc length with a distinct marker for thresholded consumers.
 #[derive(Clone, Copy, Debug)]
 pub struct CurveCoordSemanticThresholded3D;
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CurveError {
     TooFewPoints(u8),
     NonFiniteLength,
     DuplicateSegment(usize),
+    InvalidSpacing,
+    InvalidSampleCount,
+    AllocationFailed,
 }
-/// Point arithmetic uses glam; explicit metric sums preserve game operation order.
+impl std::fmt::Display for CurveError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::TooFewPoints(count) => write!(f, "curve needs at least two points, got {count}"),
+            Self::NonFiniteLength => f.write_str("curve length must be finite and positive"),
+            Self::DuplicateSegment(index) => write!(f, "duplicate points at segment {index}"),
+            Self::InvalidSpacing => f.write_str("sample spacing must be finite and positive"),
+            Self::InvalidSampleCount => {
+                f.write_str("sample count is outside the representable range")
+            }
+            Self::AllocationFailed => f.write_str("unable to allocate curve samples"),
+        }
+    }
+}
+impl std::error::Error for CurveError {}
+
+/// Vector operations needed by polyline algorithms.
 pub trait CurvePoint:
     Copy
     + PartialEq
@@ -34,20 +52,54 @@ pub trait CurvePoint:
     + Div<f32, Output = Self>
 {
     fn metric_squared(self) -> f32;
+    /// Euclidean length, with a default for existing custom point types.
+    fn metric_length(self) -> f32 {
+        self.metric_squared().sqrt()
+    }
+    /// Wider distance for slices whose finite endpoints can span more than f32::MAX.
+    fn metric_distance_f64(self, other: Self) -> f64 {
+        f64::from((self - other).metric_length())
+    }
+    fn is_finite(self) -> bool {
+        self.metric_squared().is_finite()
+    }
     fn normalized(self) -> Self;
     fn projected(self) -> Vec2;
 }
 impl CurvePoint for Vec2 {
+    fn is_finite(self) -> bool {
+        self.is_finite()
+    }
     fn metric_squared(self) -> f32 {
         self.length_squared()
     }
-    fn normalized(self) -> Self {
-        // Repeated points are permitted. Construct the undefined tangent
-        // directly: arithmetic-generated NaN signs depend on the hardware.
-        if self == Self::ZERO {
-            Self::splat(f32::from_bits(0xffc0_0000))
+    fn metric_length(self) -> f32 {
+        let squared = self.length_squared();
+        if squared.is_normal() || self == Self::ZERO {
+            squared.sqrt()
         } else {
-            self.normalize()
+            self.as_dvec2().length() as f32
+        }
+    }
+    fn metric_distance_f64(self, other: Self) -> f64 {
+        let squared = (self - other).length_squared();
+        if squared.is_normal() || self == other {
+            f64::from(squared.sqrt())
+        } else {
+            self.as_dvec2().distance(other.as_dvec2())
+        }
+    }
+    fn normalized(self) -> Self {
+        let norm_squared = self.length_squared();
+        if norm_squared.is_normal() {
+            return self.normalize();
+        }
+        // Scale only extreme magnitudes; squaring may underflow or overflow.
+        let scale = self.abs().max_element();
+        if scale.is_finite() && scale > 0.0 {
+            Vec2::new(self.x / scale, self.y / scale).normalize()
+        } else {
+            Self::ZERO
         }
     }
     fn projected(self) -> Vec2 {
@@ -55,16 +107,39 @@ impl CurvePoint for Vec2 {
     }
 }
 impl CurvePoint for Vec3 {
+    fn is_finite(self) -> bool {
+        self.is_finite()
+    }
     fn metric_squared(self) -> f32 {
         self.length_squared()
     }
-    fn normalized(self) -> Self {
-        // Repeated points are permitted. Construct the undefined tangent
-        // directly: arithmetic-generated NaN signs depend on the hardware.
-        if self == Self::ZERO {
-            Self::splat(f32::from_bits(0xffc0_0000))
+    fn metric_length(self) -> f32 {
+        let squared = self.length_squared();
+        if squared.is_normal() || self == Self::ZERO {
+            squared.sqrt()
         } else {
-            self.normalize()
+            self.as_dvec3().length() as f32
+        }
+    }
+    fn metric_distance_f64(self, other: Self) -> f64 {
+        let squared = (self - other).length_squared();
+        if squared.is_normal() || self == other {
+            f64::from(squared.sqrt())
+        } else {
+            self.as_dvec3().distance(other.as_dvec3())
+        }
+    }
+    fn normalized(self) -> Self {
+        let norm_squared = self.length_squared();
+        if norm_squared.is_normal() {
+            return self.normalize();
+        }
+        // Scale only extreme magnitudes; squaring may underflow or overflow.
+        let scale = self.abs().max_element();
+        if scale.is_finite() && scale > 0.0 {
+            Vec3::new(self.x / scale, self.y / scale, self.z / scale).normalize()
+        } else {
+            Self::ZERO
         }
     }
     fn projected(self) -> Vec2 {
@@ -77,17 +152,17 @@ pub trait CurveMetric<T: CurvePoint> {
 impl<T: CurvePoint> CurveMetric<T> for CurveCoordSemantic2D {
     fn segment_length(delta: T) -> f32 {
         let p = delta.projected();
-        p.length()
+        p.metric_length()
     }
 }
 impl<T: CurvePoint> CurveMetric<T> for CurveCoordSemantic3D {
     fn segment_length(delta: T) -> f32 {
-        delta.metric_squared().sqrt()
+        delta.metric_length()
     }
 }
 impl<T: CurvePoint> CurveMetric<T> for CurveCoordSemanticThresholded3D {
     fn segment_length(delta: T) -> f32 {
-        delta.metric_squared().sqrt()
+        delta.metric_length()
     }
 }
 #[derive(Clone, Debug)]
@@ -107,10 +182,9 @@ pub struct CurveInternalCoord {
     pub t: f32,
 }
 impl CurveInternalCoord {
-    /// B 0x1411fb2b0: the last point at t=0 maps to previous segment at t=1.
-    #[allow(clippy::manual_range_contains)] // Original internal-coordinate guard permits NaN t.
+    /// Represent the final vertex as the preceding segment at `t = 1`.
     pub fn new_for_point_count(segment: usize, t: f32, point_count: usize) -> Self {
-        assert!(!(t < 0.0 || t > 1.0));
+        assert!((0.0..=1.0).contains(&t), "invalid segment parameter");
         assert!(segment < point_count);
         if segment + 1 < point_count {
             Self { segment, t }
@@ -128,7 +202,7 @@ fn clamp01(value: f32) -> f32 {
     if lo <= 1.0 { lo } else { 1.0 }
 }
 impl<T: CurvePoint, S: CurveMetric<T>> Curve<T, S> {
-    /// B 0x141469430 / 0x141269ce0 / 0x1412699d0.
+    /// Build normalized cumulative arc lengths, optionally rejecting repeated points.
     pub fn try_new_from_points(
         points: Vec<T>,
         reject_duplicates: bool,
@@ -148,6 +222,9 @@ impl<T: CurvePoint, S: CurveMetric<T>> Curve<T, S> {
         if points.len() < 2 {
             return Err(CurveError::TooFewPoints(points.len() as u8));
         }
+        if points.iter().any(|point| !point.is_finite()) {
+            return Err(CurveError::NonFiniteLength);
+        }
         let mut previous = points[0];
         let mut length = 0.0;
         let mut points_u = Vec::with_capacity(points.len());
@@ -156,7 +233,7 @@ impl<T: CurvePoint, S: CurveMetric<T>> Curve<T, S> {
             points_u.push(length);
             previous = point;
         }
-        if length == 0.0 {
+        if !length.is_finite() || length <= 0.0 {
             return Err(CurveError::NonFiniteLength);
         }
         for u in &mut points_u {
@@ -177,8 +254,7 @@ impl<T: CurvePoint, S: CurveMetric<T>> Curve<T, S> {
     pub fn try_new(points: Vec<T>, reject_duplicates: bool) -> Result<Self, CurveError> {
         Self::try_new_from_points(points, reject_duplicates)
     }
-    /// B inline retain predicate compares each point to the previously retained
-    /// point. Repeated endpoints of a loop are not adjacent and are preserved.
+    /// Remove adjacent duplicates while preserving repeated endpoints of a loop.
     pub fn try_new_from_points_remove_duplicates(mut points: Vec<T>) -> Result<Self, CurveError> {
         points.dedup();
         Self::try_new_from_points(points, false)
@@ -186,7 +262,7 @@ impl<T: CurvePoint, S: CurveMetric<T>> Curve<T, S> {
     pub fn crashy_new_from_points(points: Vec<T>, reject_duplicates: bool) -> Self {
         Self::try_new_from_points(points, reject_duplicates).unwrap()
     }
-    /// Finite unbounded input, endpoint clamp, right-biased search (0x141467ce0).
+    /// Clamp a finite coordinate and select the segment after repeated knots.
     pub fn get_coord_at_u(&self, u: f32) -> CurveInternalCoord {
         assert!(u.is_finite());
         if u >= 1.0 {
@@ -225,7 +301,7 @@ impl<T: CurvePoint, S: CurveMetric<T>> Curve<T, S> {
     pub fn get_unnormalized_tangent_at_coord(&self, c: CurveInternalCoord) -> T {
         self.points[c.segment + 1] - self.points[c.segment]
     }
-    /// B caller inline uses saturating_sub(i0,1) and min(i0+2,last).
+    /// Estimate the tangent using the outer neighboring vertices.
     pub fn get_unnormalized_central_tangent_at_coord(&self, c: CurveInternalCoord) -> T {
         self.points[(c.segment + 2).min(self.points.len() - 1)]
             - self.points[c.segment.saturating_sub(1)]
@@ -236,6 +312,7 @@ impl<T: CurvePoint, S: CurveMetric<T>> Curve<T, S> {
     pub fn pos_at_u(&self, u: f32) -> T {
         self.get_pos_at_u(u)
     }
+    /// Degenerate segments have a zero tangent.
     pub fn get_tangent_at_coord(&self, c: CurveInternalCoord) -> T {
         (self.points[c.segment + 1] - self.points[c.segment]).normalized()
     }
@@ -245,7 +322,7 @@ impl<T: CurvePoint, S: CurveMetric<T>> Curve<T, S> {
     pub fn tangent_at_u(&self, u: f32) -> T {
         self.get_tangent_at_u(u)
     }
-    /// B 0x14146a060/0x141469e00 compare XZ for Vec3, XY for Vec2.
+    /// Find the nearest segment in XZ for Vec3 or XY for Vec2.
     /// Equal-distance ties retain the first segment; near-zero denominator 1e-8.
     pub fn get_approx_coord_from_pos(&self, point: Vec2) -> CurveInternalCoord {
         let mut best = CurveInternalCoord { segment: 0, t: 0.0 };
@@ -274,18 +351,24 @@ impl<T: CurvePoint, S: CurveMetric<T>> Curve<T, S> {
         assert!(u.is_finite());
         u
     }
-    /// B reverse rebuilds the cumulative lengths instead of subtracting from 1.
+    /// Reverse the points and rebuild cumulative lengths to avoid subtraction drift.
     pub fn reverse(&mut self) {
         self.points.reverse();
         let (points_u, length) = Self::parameters_for_points(&self.points, false).unwrap();
         self.points_u = points_u;
         self.length = length;
     }
-    /// The original appends before validation. On error, appended points remain
-    /// in the donor while its old parameter cache remains unchanged.
+    /// Append points atomically: a validation error preserves the curve and its cache.
     pub fn try_extend(&mut self, points: &[T]) -> Result<(), CurveError> {
+        let original_len = self.points.len();
         self.points.extend_from_slice(points);
-        let (points_u, length) = Self::parameters_for_points(&self.points, true)?;
+        let (points_u, length) = match Self::parameters_for_points(&self.points, true) {
+            Ok(parameters) => parameters,
+            Err(error) => {
+                self.points.truncate(original_len);
+                return Err(error);
+            }
+        };
         self.points_u = points_u;
         self.length = length;
         Ok(())
@@ -309,7 +392,7 @@ impl<T: CurvePoint, S: CurveMetric<T>> Curve<T, S> {
         smooth_in_place(&mut self.points, iterations, false);
         Self::try_new_from_points(self.points, false)
     }
-    /// Weighted B smoothing gives each neighbor weight 0.5 and the center its
+    /// Weighted smoothing gives each neighbor weight 0.5 and the center its
     /// supplied integer weight, with unchanged open endpoints.
     pub fn smooth_weighted(
         mut self,
@@ -337,8 +420,13 @@ impl<T: CurvePoint, S: CurveMetric<T>> Curve<T, S> {
         Self::try_new_from_points(self.points, false)
     }
     pub fn smooth_in_place(&mut self, iterations: usize, closed: bool) -> Result<(), CurveError> {
-        smooth_in_place(&mut self.points, iterations, closed);
-        let (points_u, length) = Self::parameters_for_points(&self.points, false)?;
+        if iterations == 0 {
+            return Ok(());
+        }
+        let mut points = self.points.clone();
+        smooth_in_place(&mut points, iterations, closed);
+        let (points_u, length) = Self::parameters_for_points(&points, false)?;
+        self.points = points;
         self.points_u = points_u;
         self.length = length;
         Ok(())
@@ -352,7 +440,7 @@ impl<T: CurvePoint, S: CurveMetric<T>> Curve<T, S> {
     pub fn get_coord_at_wall_space(&self, distance: f32) -> CurveInternalCoord {
         self.get_coord_at_2d_ws_distance(distance.max(0.0))
     }
-    /// B nearest segment selection and separately normalized vectors; zero
+    /// Nearest segment selection and separately normalized vectors; zero
     /// vectors produce NaNs and consequently return false.
     pub fn is_on_right_side(&self, point: Vec2) -> bool {
         let coord = self.get_approx_coord_from_pos(point);
@@ -363,7 +451,7 @@ impl<T: CurvePoint, S: CurveMetric<T>> Curve<T, S> {
         reverse_segment.y * from_start.x < reverse_segment.x * from_start.y
     }
 }
-/// B free smoother: previous values are carried to prevent Gauss-Seidel bias.
+/// Carry previous values so each pass uses the original neighbors.
 /// For a closed donor the last point duplicates the first; update it each pass.
 pub fn smooth_in_place<T: CurvePoint>(points: &mut [T], iterations: usize, closed: bool) {
     if points.len() <= 2 {
@@ -384,7 +472,7 @@ pub fn smooth_in_place<T: CurvePoint>(points: &mut [T], iterations: usize, close
     }
 }
 impl<S: CurveMetric<Vec3>> Curve<Vec3, S> {
-    /// B inline projects point coordinates and copies parameter/length caches.
+    /// Project point coordinates while preserving parameter and length caches.
     /// This differs from try_to_curve2, which recalculates projected lengths.
     pub fn reinterpret_as_curve2(&self) -> Curve2 {
         Curve2 {
@@ -402,7 +490,7 @@ impl<S: CurveMetric<Vec3>> Curve<Vec3, S> {
     }
 }
 impl Curve3XZ {
-    /// B 0x140c9cc60 moves caches unchanged; it does not rebuild XYZ lengths.
+    /// Change the marker while retaining the existing projected-length cache.
     pub fn into_curve3(self) -> Curve3 {
         Curve3 {
             points: self.points,
@@ -444,6 +532,21 @@ impl crate::wall_space::CurveSampling for Curve2 {
     }
     fn approximate_u(&self, point: Vec2) -> f32 {
         self.get_approx_u_from_pos(point)
+    }
+    fn start_tangent(&self) -> Vec2 {
+        self.points
+            .windows(2)
+            .map(|pair| (pair[1] - pair[0]).normalized())
+            .find(|&tangent| tangent != Vec2::ZERO)
+            .unwrap_or(Vec2::ZERO)
+    }
+    fn end_tangent(&self) -> Vec2 {
+        self.points
+            .windows(2)
+            .rev()
+            .map(|pair| (pair[1] - pair[0]).normalized())
+            .find(|&tangent| tangent != Vec2::ZERO)
+            .unwrap_or(Vec2::ZERO)
     }
 }
 #[cfg(test)]

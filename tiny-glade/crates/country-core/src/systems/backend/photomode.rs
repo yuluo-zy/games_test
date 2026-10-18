@@ -63,7 +63,10 @@ mod tests {
         world.insert_resource(EscMenuState::Main);
         world.insert_resource(AppMode::Photomode);
         let mut actions = MainActionSet::default();
-        actions.digital[32] = DigitalActionState { disc: 0, val: 0.0 };
+        actions.digital[32] = DigitalActionState {
+            phase: crate::input::action_set::DigitalActionPhase::JustPressed,
+            timer_seconds: 0.0,
+        };
         world.insert_resource(actions);
         configure_photomode_visibility(&mut world, &mut schedule, true);
         assert_eq!(world.resource::<PhotomodeState>().scalar, 1.0);
@@ -90,7 +93,10 @@ mod tests {
         world.insert_resource(EscMenuState::Closed);
         world.insert_resource(AppMode::Photomode);
         let mut actions = MainActionSet::default();
-        actions.digital[32] = DigitalActionState { disc: 2, val: 0.5 };
+        actions.digital[32] = DigitalActionState {
+            phase: crate::input::action_set::DigitalActionPhase::Repeating,
+            timer_seconds: 0.5,
+        };
         world.insert_resource(actions);
         configure_photomode_visibility(&mut world, &mut schedule, false);
         world.resource_mut::<PhotomodeState>().hide_ui = true;

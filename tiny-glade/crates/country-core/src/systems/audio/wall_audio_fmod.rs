@@ -2,7 +2,7 @@
 //! dispatch + frame-end start/stop.
 //!
 //! O-level facts (chapter wall_audio_fmod.rs.md, multi-baseline §1/§3, the
-//! verified WALL_KIND_TABLE in recovered_systems::audio):
+//! verified WALL_KIND_TABLE in systems::audio::wall_kinds):
 //! - init: 10 × `instantiate_loop` (desc {count=3, max=50}) in the order
 //!   Wall Draw / Wall Change Height / FenceExtend / LintelExtend /
 //!   StoneArchExtend / WideningGate / PlatformStairsExtend / SewerGateWiden /
@@ -14,20 +14,16 @@
 //!   stops by its should-play flag and the state volume is modulated by
 //!   `powf(0.1, speed × 5.0)`.
 
-use crate::{
-    recovered_systems::audio::{WallKind, wall_kind},
-    resources::{
-        audio_instance::AudioLoopPlayer,
-        audio_resources::{AudioCore, AudioInstance, EventInstance, Studio},
-    },
-    systems::{
-        audio::{
-            roof_audio::instantiate_audio_w_position_and_volume,
-            wall_audio_utils::WALL_LOOP_EVENTS,
-        },
-        mode_manager::AppMode,
-    },
-};
+use crate::systems::audio::wall_kinds::WallKind;
+use crate::systems::audio::wall_kinds::wall_kind;
+use crate::resources::audio_instance::AudioLoopPlayer;
+use crate::resources::audio_resources::AudioCore;
+use crate::resources::audio_resources::AudioInstance;
+use crate::resources::audio_resources::EventInstance;
+use crate::resources::audio_resources::Studio;
+use crate::systems::audio::roof_audio::instantiate_audio_w_position_and_volume;
+use crate::systems::audio::wall_audio_utils::WALL_LOOP_EVENTS;
+use crate::systems::mode_manager::AppMode;
 use crate::systems::audio::PlayWallAudio;
 use bevy_ecs::prelude::*;
 
@@ -62,11 +58,16 @@ pub fn wall_audio_init_system<S: Studio + Send + Sync + 'static>(
 }
 
 /// `wall_audio_fmod` (0x140950920): the wall audio event system.
+///
+/// The native reads the `+0x58` editing speed (the shared
+/// [`crate::systems::audio::audio_update::EditingSpeed`], host 待接线) for the
+/// frame-end volume modulation; an absent source keeps the previous behaviour.
 pub fn wall_audio_fmod<S: Studio + Send + Sync + 'static>(
     mode: Res<AppMode>,
     core: Res<AudioCore<S>>,
     mut events: EventReader<PlayWallAudio>,
     mut state: ResMut<WallAudioState<S::Event>>,
+    speed: Option<Res<crate::systems::audio::audio_update::EditingSpeed>>,
 ) {
     // O: volume source — AppMode==0xd uses constant 1.0, else the stack
     // resource's +0x1c / 60.0 normalization. The per-event `volume` field feeds
@@ -108,11 +109,18 @@ pub fn wall_audio_fmod<S: Studio + Send + Sync + 'static>(
     for loop_player in state.loops.iter_mut() {
         let _ = loop_player.frame_end();
     }
+    // O (decomp-0x140950920 line 564): the state volume is modulated at frame
+    // end by `powf(0.1, speed × 5.0)` where speed is the +0x58 editing speed.
+    if let Some(speed) = speed {
+        state.volume *= 0.1_f32.powf(speed.0 * 5.0);
+    }
 }
 
-/// `inverse_lerp` (shared utils, 0x140c904a0): value in [min,max] → [0,1].
+/// `inverse_lerp` (shared utils, 0x140c904a0): value in [min,max] → [0,1]
+/// **unclamped** — the native `inverse_lerp` extrapolates past the bounds (the
+/// garden draw template documents the same native unclamped behaviour).
 pub fn inverse_lerp(min: f32, max: f32, value: f32) -> f32 {
-    ((value - min) / (max - min)).clamp(0.0, 1.0)
+    (value - min) / (max - min)
 }
 
 #[cfg(test)]
@@ -120,9 +128,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn inverse_lerp_clamps_to_unit_range() {
+    fn inverse_lerp_is_unclamped_like_the_native_0x140c904a0() {
         assert_eq!(inverse_lerp(0.0, 10.0, 5.0), 0.5);
-        assert_eq!(inverse_lerp(0.0, 10.0, -5.0), 0.0);
-        assert_eq!(inverse_lerp(0.0, 10.0, 15.0), 1.0);
+        assert_eq!(inverse_lerp(0.0, 10.0, -5.0), -0.5);
+        assert_eq!(inverse_lerp(0.0, 10.0, 15.0), 1.5);
     }
 }

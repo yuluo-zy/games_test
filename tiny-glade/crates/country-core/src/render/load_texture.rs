@@ -1,27 +1,6 @@
-//! `load_compiled_texture_image` — 加载预编译的纹理文件（layer A1）。
-//!
-//! 证据（O，逐条核对 0x140917860，3178 B，见 `evidence/country-core-audit/L0_NOTES.md`）：
-//!  * 路径：`Path::new("compiled-assets/textures").join(name).with_extension("texture")`。
-//!    旧版把它写成 `with_extension("bin")` 且不加目录，是错的。
-//!  * 日志：`trace!("Loading compiled image {} from {}", name, path.display())`（级别立即数 5，target
-//!    `country_core::render::load_texture`）。
-//!  * 打开失败 → `panic!("Error opening {}: {}", path.display(), io_error)`；`file_len` 或 mmap 失败 →
-//!    `.expect("image mmap")`。文件用 `memmap2` 只读映射。
-//!  * 校验顺序：长度 ≥ 8（否则 `&data[..8]` 越界 panic）→ **`ptr % 4 == 0`**（assert_eq，不是 8）→
-//!    `u32 @0 == 0x48502183`，消息 `"Image {path} has an incorrect magic identifier"` → `u32 @4 == 8`，消息
-//!    `"Image {path} has incorrect version"`。旧版的 "mip 计数 < 0xff"、"长度 %8" 等检查并不存在。
-//!  * 尾部 0x1c 字节的描述（相对文件末尾）：
-//!      −0x1c i32 数据相对偏移（相对**该字段自身地址**）  −0x18 u32 数据长度
-//!      −0x14 u32×3 extent(w,h,d)   −0x08 u16 mip 数   −0x06 u16 数组层数
-//!      −0x04 u8（`TextureDesc::new` 第 4 参 = format）   −0x03 u8（第 3 参 = kind）   末 2 字节未读取
-//!    `TextureDesc::new(extent, kind(−3), format(−4)).sampled().mip_levels(u8::try_from(mips).unwrap()).array_elements(layers)`。
-//!  * `create_texture(device, Ustr::from(name), desc, data)`；Err → `Result::unwrap` panic。返回 0x38 B 的 `Texture`。
-//!  * puffin 作用域 "load_compiled_texture_image"（库行为，省略）。
-//!
-//! 偏离：原版对 `len < 0x1c` 或偏移越界直接读裸指针（UB），这里改为带边界检查的 panic。
+//! 编译纹理文件加载。边界检查和整数转换失败通过 Result 返回，供启动与热重载共用。
+//! 二进制格式来源保留在项目证据，运行期不依赖 Rust 对象布局或指针对齐。
 
-// Preserve the original instruction-level expression order/NaN policy, API call shapes, and evidence/test transcription. See README.md.
-#![allow(clippy::doc_overindented_list_items)]
 use std::path::{Path, PathBuf};
 
 /// 预编译纹理的目录与扩展名（O：字符串常量 `compiled-assets/textures` / `texture`）。
@@ -36,6 +15,8 @@ pub mod boundary {
     pub use crate::rhapsody_types::{BackendError, Texture, TextureDesc};
 
     pub trait TextureDevice {
+        /// 释放同一宿主创建的纹理身份；GPU 使用由托管资源延迟回收。
+        fn release_texture(&self, _texture: &Texture) {}
         fn create_texture(
             &self,
             name: &str,
@@ -63,7 +44,9 @@ impl boundary::TextureDevice for crate::rhapsody_contract::GraphicsDevice {
             "create_texture({name}): registered gap (WIRING §4.8), game-side Texture cannot hold ManagedTexture; real desc = {:?}",
             crate::rhapsody_types::convert_texture_desc(desc)
         );
-        Err(BackendError("Texture backend is not connected (registered gap WIRING §4.8)".to_owned()))
+        Err(BackendError::unsupported(
+            "Texture backend is not connected (registered gap WIRING §4.8)",
+        ))
     }
 }
 
@@ -75,8 +58,10 @@ impl boundary::TextureDevice for crate::rhapsody_contract::GraphicsDevice {
         desc: &TextureDesc,
         _data: &[u8],
     ) -> Result<Texture, BackendError> {
+        // 常开 `TextureLibraryDevice: TextureDevice` 超 trait 要求 rhapsody_contract 类型实现
+        // 本 trait；CPU 测试不构造该类型（统一用 `render::test_device::TestDevice`），id 取 0。
         Ok(Texture {
-            id: self.0,
+            id: 0,
             width: desc.extent[0],
             height: desc.extent[1],
             format: 0,
@@ -95,43 +80,62 @@ pub struct CompiledImage<'a> {
 
 /// 校验并解析映射后的文件内容（O：`ptr % 4`、魔数、版本、尾部字段）。`shown` 仅用于 panic 消息中的路径。
 pub fn parse_compiled_image<'a>(bytes: &'a [u8], shown: &Path) -> CompiledImage<'a> {
-    let len = bytes.len();
-    let _ = &bytes[..8];
-    assert_eq!((bytes.as_ptr() as usize) % 4, 0);
-    let magic = u32::from_le_bytes(bytes[0..4].try_into().unwrap());
-    assert_eq!(
-        magic,
-        MAGIC,
+    try_parse_compiled_image(bytes, shown).expect("编译纹理解析失败")
+}
+
+/// 热重载使用 Result，截断文件、非法偏移和尺寸不会中断游戏循环。
+pub fn try_parse_compiled_image<'a>(
+    bytes: &'a [u8],
+    shown: &Path,
+) -> anyhow::Result<CompiledImage<'a>> {
+    anyhow::ensure!(
+        bytes.len() >= 8 + FOOTER,
+        "纹理文件不完整：{}",
+        shown.display()
+    );
+    let magic = u32::from_le_bytes(bytes[0..4].try_into()?);
+    let version = u32::from_le_bytes(bytes[4..8].try_into()?);
+    anyhow::ensure!(
+        magic == MAGIC,
         "Image {} has an incorrect magic identifier",
         shown.display()
     );
-    let version = u32::from_le_bytes(bytes[4..8].try_into().unwrap());
-    assert_eq!(
-        version,
-        VERSION,
+    anyhow::ensure!(
+        version == VERSION,
         "Image {} has incorrect version",
         shown.display()
     );
-
-    let foot = &bytes[len - FOOTER..];
-    let u32_at = |o: usize| u32::from_le_bytes(foot[o..o + 4].try_into().unwrap());
-    let u16_at = |o: usize| u16::from_le_bytes(foot[o..o + 2].try_into().unwrap());
-    let rel = u32_at(0) as i32 as isize;
-    let data_len = u32_at(4) as usize;
-    let extent = [u32_at(8), u32_at(12), u32_at(16)];
-    let mips = u16_at(20);
-    let layers = u16_at(22);
-    let (format, kind) = (foot[24], foot[25]);
-
-    let desc = TextureDesc::new(extent, kind, format)
-        .sampled()
-        .mip_levels(u8::try_from(mips).unwrap())
-        .array_elements(layers);
-    // 数据偏移相对“尾部块起点”（= len − 0x1c）。
-    let start =
-        usize::try_from((len - FOOTER) as isize + rel).expect("image data offset out of range");
-    let data = &bytes[start..start + data_len];
-    CompiledImage { desc, data }
+    let footer_start = bytes.len() - FOOTER;
+    let footer = &bytes[footer_start..];
+    let read_u32 =
+        |offset: usize| u32::from_le_bytes(footer[offset..offset + 4].try_into().unwrap());
+    let read_u16 =
+        |offset: usize| u16::from_le_bytes(footer[offset..offset + 2].try_into().unwrap());
+    let relative_offset = read_u32(0) as i32;
+    let data_length = read_u32(4) as usize;
+    let extent = [read_u32(8), read_u32(12), read_u32(16)];
+    let mip_levels = u8::try_from(read_u16(20))?;
+    anyhow::ensure!(
+        extent.iter().all(|dimension| *dimension > 0) && mip_levels > 0,
+        "纹理尺寸或 mip 数为零"
+    );
+    let start = footer_start
+        .checked_add_signed(relative_offset as isize)
+        .ok_or_else(|| anyhow::anyhow!("纹理数据偏移越界"))?;
+    let end = start
+        .checked_add(data_length)
+        .ok_or_else(|| anyhow::anyhow!("纹理数据长度溢出"))?;
+    anyhow::ensure!(
+        start >= 8 && end <= footer_start,
+        "纹理数据与文件头/尾部重叠"
+    );
+    Ok(CompiledImage {
+        desc: TextureDesc::new(extent, footer[25], footer[24])
+            .sampled()
+            .mip_levels(mip_levels)
+            .array_elements(read_u16(22)),
+        data: &bytes[start..end],
+    })
 }
 
 /// `Path::new(dir).join(name).with_extension("texture")`（O）。
@@ -141,26 +145,16 @@ pub fn compiled_texture_path(name: &str) -> PathBuf {
         .with_extension(COMPILED_TEXTURE_EXT)
 }
 
-/// 4 字节对齐的文件缓冲（`memmap2` 映射天然页对齐；这里用 u32 存储保证同样的对齐）。
+/// 文件字节拥有者。保留调用接口，解析器不再要求额外的对齐拷贝。
 pub struct AlignedFile {
-    words: Vec<u32>,
-    len: usize,
+    bytes: Vec<u8>,
 }
 impl AlignedFile {
     pub fn read(path: &Path) -> std::io::Result<Self> {
-        let raw = std::fs::read(path)?;
-        let mut words = vec![0u32; raw.len().div_ceil(4)];
-        let bytes = unsafe {
-            core::slice::from_raw_parts_mut(words.as_mut_ptr() as *mut u8, words.len() * 4)
-        };
-        bytes[..raw.len()].copy_from_slice(&raw);
-        Ok(Self {
-            words,
-            len: raw.len(),
-        })
+        std::fs::read(path).map(|bytes| Self { bytes })
     }
     pub fn bytes(&self) -> &[u8] {
-        unsafe { core::slice::from_raw_parts(self.words.as_ptr() as *const u8, self.len) }
+        &self.bytes
     }
 }
 
@@ -215,7 +209,7 @@ mod tests {
 
     #[test]
     fn contract_device_creates_texture_from_desc() {
-        let dev = crate::rhapsody_contract::GraphicsDevice(7);
+        let dev = crate::render::test_device::TestDevice(7);
         let t = load_via(&dev, TextureDesc::new([64, 32, 1], 0, 0));
         assert_eq!((t.id, t.width, t.height), (7, 64, 32));
     }

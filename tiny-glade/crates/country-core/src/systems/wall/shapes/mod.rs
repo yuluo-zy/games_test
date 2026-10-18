@@ -98,11 +98,16 @@ pub struct CreateCircleCmd {
 
 /// CreateRectangleCmd (B payload `{cmd u64×2, center@+0x20, dims@+0x30,
 /// orientation@+0x40, ...}`).
+///
+/// `previous_wall` is the native event's `GlobalId` at record `+0x8`
+/// (fresh 0x140a93790: `MOV RSI,[RDI+0x8]`), the wall whose roof supplies the
+/// inherited style/pitch.
 #[derive(Event, Clone, Copy, Debug, PartialEq)]
 pub struct CreateRectangleCmd {
     pub center: Vec2,
     pub dimensions: Vec2,
     pub orientation: Vec2,
+    pub previous_wall: Option<WallId>,
 }
 
 /// EditCircleCmd (radius / rotation edit transport).
@@ -172,6 +177,7 @@ pub fn register_shape_resources(world: &mut World) {
     world.init_resource::<Events<FinishEditCircleCmd>>();
     world.init_resource::<Events<FinishEditRectangleCmd>>();
     world.init_resource::<Events<RotateCircleCmd>>();
+    world.init_resource::<crate::resources::walls::shape_alignment::WallShapeAlignmentWrites>();
     world.init_resource::<circle::ui_create_circle::CircleCanvasInput>();
     world.init_resource::<rectangle::ui_create_rectangle::RectangleCanvasInput>();
     world.init_resource::<rectangle::ui_edit_rectangle_dims::RectangleDimsEditInput>();
@@ -181,11 +187,12 @@ pub fn register_shape_resources(world: &mut World) {
 }
 
 /// Build the 64 B CreateRoofCmd request record consumed by
-/// [`crate::recovered_building::roof_creation::initialize_resolved_roof`].
-/// Layout (O, create_circle/create_rectangle chapters + roof_shape
-/// `new_observed`): wall id @+8, roof shape params @+0x20..0x3c
-/// (tip_offset_01[2], profile_01, height_01, ridge_length_01, eave_length_01,
-/// ridge_dir_bit), style in the ridge_dir_bit second byte.
+/// [`crate::resources::roofs::creation::initialize_resolved_roof`].
+/// Layout (O, create_circle/create_rectangle fresh disasm 2026-10-17): wall id
+/// @+8, selected roof colour @+0x10, roof appearance @+0x14..0x20 (flag2 +
+/// 11-byte pair from `get_building_and_roof_colors`), tip_offset_01[2] @+0x20,
+/// profile_01 @+0x28, height_01 @+0x2c, ridge_length_01 @+0x30,
+/// eave_length_01 @+0x34, ridge_dir bool @+0x38, style @+0x39.
 pub fn build_roof_create_request(
     wall: WallId,
     profile_01: f32,
@@ -193,16 +200,23 @@ pub fn build_roof_create_request(
     ridge_length_01: f32,
     eave_length_01: f32,
     style: u8,
+    ridge_dir: bool,
+    roof_color_id: u32,
+    roof_appearance: [u8; 12],
 ) -> crate::resources::roofs::commands::CreateRoofCmd {
     let mut record = [0u8; 64];
     record[8..16].copy_from_slice(&wall.0.to_le_bytes());
+    record[0x10..0x14].copy_from_slice(&roof_color_id.to_le_bytes());
+    record[0x14..0x20].copy_from_slice(&roof_appearance);
     record[0x28..0x2c].copy_from_slice(&profile_01.to_le_bytes());
     record[0x2c..0x30].copy_from_slice(&height_01.to_le_bytes());
     record[0x30..0x34].copy_from_slice(&ridge_length_01.to_le_bytes());
     record[0x34..0x38].copy_from_slice(&eave_length_01.to_le_bytes());
-    let ridge_dir_bit = (style as u32) << 8;
-    record[0x38..0x3c].copy_from_slice(&ridge_dir_bit.to_le_bytes());
+    record[0x38] = u8::from(ridge_dir);
+    record[0x39] = style;
     crate::resources::roofs::commands::CreateRoofCmd(
-        crate::recovered_building::roof_creation::RoofCreateRequestObserved::from_observed(record),
+        crate::resources::roofs::creation::RoofCreateRequestObserved::from_observed(record),
     )
 }
+
+pub mod authoring;

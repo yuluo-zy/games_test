@@ -133,6 +133,23 @@ impl StorageElement for SpatialResolveOffsetsSsbo {
     }
 }
 
+impl crate::asset_libraries::ssbo_library::SsboType for SpatialResolveOffsetsSsbo {
+    type Storage = crate::render::ssbo::TypedStorageBuffer<Self>;
+    fn new_storage_buffer(
+        device: &dyn crate::render::ssbo::rhapsody_boundary::GraphicsDevice,
+        initial: Option<&[u8]>,
+    ) -> Self::Storage {
+        // Original 141611380 uses the existing single-struct uniform/storage
+        // constructor: 0x2000 bytes, usage0x12, alignment4, original default table.
+        crate::render::ssbo::TypedStorageBuffer::new_storage_buffer(device, initial)
+    }
+}
+impl crate::render::pass_builder::pass_resource_access::SsboType for SpatialResolveOffsetsSsbo {
+    fn rg_buffer_hash() -> u64 {
+        crate::name_hash::NameHash::compute(Self::NAME).0
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

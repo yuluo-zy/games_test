@@ -1,0 +1,62 @@
+0x141e4e5f3      mov rax, qword [rbp + 0x210]
+0x141e4e5fa      mov rcx, qword [rax + 8]
+0x141e4e5fe      mov rax, qword [rax + 0x10]
+0x141e4e602      lea rdx, [rbp + 0x1d0]
+0x141e4e609      mov qword [rbp + 0x218], rcx
+0x141e4e610      mov qword [rbp + 0x228], rax
+; 24
+   ; 0x18(0x0, 0x0, 0x1d0, -1)
+0x141e4e617      call qword [rax + 0x18]
+0x141e4e61a      mov rax, qword [rbp + 0x228]
+0x141e4e621      mov rdx, qword [rax + 8]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x141e4e625      test rdx, rdx
+   ; unlikely
+0x141e4e628      je 0x141e4e63a
+0x141e4e62a      mov r8, qword [rax + 0x10]
+0x141e4e62e      mov rcx, qword [rbp + 0x218]
+   ; 0x140613c20(0x0, 0x0, -1, -1)
+0x141e4e635      call 0x140613c20
+0x141e4e63a      mov rsi, qword [rbp + 0x1d8]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x141e4e641      test rsi, rsi
+   ; likely
+0x141e4e644      jne 0x141e4e64d
+0x141e4e646      mov rsi, qword [rbp + 0x1e0]
+0x141e4e64d      mov rbx, qword [rbp + 0x1f0]
+0x141e4e654      mov rax, qword [rsi]
+0x141e4e657      mov rdi, qword [rsi + 0x10]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x141e4e65b      sub rax, rdi
+; '_'
+; 95
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x141e4e65e      cmp rax, 0x5f
+   ; likely
+0x141e4e662      jbe 0x141e4ed05
+0x141e4e668      mov rax, qword [rsi + 8]
+0x141e4e66c      lea rcx, [0x140fdf9a0]
+0x141e4e673      mov qword [rax + rdi], rcx
+0x141e4e677      mov qword [rax + rdi + 8], 0
+0x141e4e680      mov qword [rax + rdi + 0x18], 0
+0x141e4e689      mov qword [rax + rdi + 0x28], 0
+0x141e4e692      mov qword [rax + rdi + 0x38], 0
+0x141e4e69b      mov byte [rax + rdi + 0x48], 0
+0x141e4e6a0      mov qword [rax + rdi + 0x50], rbx
+0x141e4e6a5      mov qword [rax + rdi + 0x58], r13
+; 96
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x141e4e6aa      add rdi, 0x60
+0x141e4e6ae      mov qword [rsi + 0x10], rdi
+0x141e4e6b2      mov r12, qword [rbp + 0x1f0]
+0x141e4e6b9      mov r15, qword [rbp + 0x1d8]
+0x141e4e6c0      mov rsi, qword [rbp + 0x1e0]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x141e4e6c7      xor eax, eax

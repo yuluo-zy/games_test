@@ -1,15 +1,13 @@
-//! Real special-wall masks -> complete lintel instances and public third cache.
+//! Builds special-wall lintel instances and derived segment heights.
 use crate::{
     BuildingStage, PublicWalls, WallCollectionState, wall_paths::WallPreparedPaths,
     wall_segments::WallProcessedMaskRegistry,
 };
 use bevy_ecs::{prelude::*, schedule::ApplyDeferred};
-use country_core::recovered_building::{
-    building_wall_state::WallId,
-    building_wall_structures::{
-        WallSegmentSource, WallWoodenPlankInstance64B, construct_lintel_supports,
-    },
-};
+use country_core::resources::walls::publication_fields::WallId;
+use country_core::systems::wall::construction::structures::WallSegmentSource;
+use country_core::systems::wall::construction::structures::WallWoodenPlankInstance64B;
+use country_core::systems::wall::construction::structures::construct_lintel_supports;
 use std::collections::{HashMap, HashSet};
 #[derive(Component, Clone, Debug)]
 pub struct WallCpuLintels {
@@ -22,6 +20,7 @@ pub struct WallLintelEntities(pub HashMap<WallId, Entity>);
 #[derive(Resource, Default)]
 pub struct WallLintelBuildState {
     fingerprints: HashMap<WallId, Vec<u8>>,
+    derived_heights: HashMap<WallId, Vec<f32>>,
     pub pending: Vec<WallId>,
     pub rebuilt: Vec<WallId>,
 }
@@ -56,7 +55,7 @@ fn rebuild(
             walls
                 .walls
                 .get(wall)
-                .is_some_and(|host| host.projection[0x296] != 0)
+                .is_some_and(|host| host.state.observed_296() != 0)
         })
         .collect();
     let stale: Vec<_> = entities
@@ -70,6 +69,7 @@ fn rebuild(
             commands.entity(entity).despawn();
         }
         state.fingerprints.remove(&wall);
+        state.derived_heights.remove(&wall);
         if let Some(host) = walls.walls.get_mut(&wall) {
             host.segment_heights = host.base_segment_heights.clone();
         }
@@ -88,6 +88,7 @@ fn rebuild(
                 commands.entity(entity).despawn();
             }
             state.fingerprints.remove(&wall);
+            state.derived_heights.remove(&wall);
             host.segment_heights = host.base_segment_heights.clone();
             state.pending.push(wall);
             continue;
@@ -104,15 +105,26 @@ fn rebuild(
             fingerprint.extend(value.to_le_bytes());
         }
         if state.fingerprints.get(&wall) == Some(&fingerprint) {
-            continue;
+            // Redundant base-cache invalidation can clear this writer's array
+            // while leaving every construction input unchanged.
+            if let Some(segment_heights) = state.derived_heights.get(&wall) {
+                if !host
+                    .segment_heights
+                    .iter()
+                    .map(|value| value.to_bits())
+                    .eq(segment_heights.iter().map(|value| value.to_bits()))
+                {
+                    host.segment_heights.clone_from(segment_heights);
+                }
+                continue;
+            }
         }
-        // Initialize once per source rebuild, then accumulate across all masks.
-        // Other original writers (arches) remain a separate recovery milestone.
-        let mut third = host.base_segment_heights.clone();
+        // Accumulate every mask into one fresh copy of the base heights.
+        let mut segment_heights = host.base_segment_heights.clone();
         let mut instances = Vec::new();
         let mut failed = None;
-        let p284 = f32::from_le_bytes(host.projection[0x284..0x288].try_into().unwrap());
-        let p288 = f32::from_le_bytes(host.projection[0x288..0x28c].try_into().unwrap());
+        let wall_height_parameter = host.state.float_0x284();
+        let path_scalar = host.state.float_0x288();
         for mask in &masks.output.processed_masks {
             match construct_lintel_supports(
                 WallSegmentSource {
@@ -124,10 +136,10 @@ fn rebuild(
                     regular: host.source.shape.tag() < 2,
                     closed: host.source.shape.tag() != 2,
                 },
-                p284,
-                p288,
+                wall_height_parameter,
+                path_scalar,
                 wall.0,
-                &mut third,
+                &mut segment_heights,
             ) {
                 Ok(records) => instances.extend(records),
                 Err(error) => {
@@ -141,6 +153,7 @@ fn rebuild(
                 commands.entity(entity).despawn();
             }
             state.fingerprints.remove(&wall);
+            state.derived_heights.remove(&wall);
             host.segment_heights = host.base_segment_heights.clone();
             state.pending.push(wall);
             report
@@ -148,7 +161,8 @@ fn rebuild(
                 .push(format!("Wall lintel {}: {error:?}", wall.0));
             continue;
         }
-        host.segment_heights = third;
+        state.derived_heights.insert(wall, segment_heights.clone());
+        host.segment_heights = segment_heights;
         let generation = entities
             .0
             .get(&wall)

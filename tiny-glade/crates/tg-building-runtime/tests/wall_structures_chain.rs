@@ -1,10 +1,10 @@
 use bevy_ecs::prelude::*;
-use country_core::recovered_building::{
-    building_wall_collection::{RawWallPublicationSource, TerrainHeightGrid512},
-    building_wall_path_preparation::PathRasters512,
-    building_wall_state::{WallId, WallShapeSnapshot},
-    surface::Curve2,
-};
+use country_core::resources::walls::publication_source::RawWallPublicationSource;
+use country_core::resources::walls::publication_source::TerrainHeightGrid512;
+use country_core::systems::wall::wall_state::path_preparation::PathRasters512;
+use country_core::resources::walls::publication_fields::WallId;
+use country_core::resources::walls::publication_fields::WallShapeSnapshot;
+use country_core::resources::roofs::geometry::surface::Curve2;
 use std::sync::Arc;
 use tg_building_runtime::{wall_paths::*, wall_structures::*, *};
 fn emit<T: Event>(app: &mut bevy_app::App, event: T) {
@@ -112,6 +112,13 @@ fn actual_masks_generate_lintels_and_lowering_source_resets_third_then_removal_c
         .segment_heights
         .clone();
     assert!(high.iter().any(|height| *height > 0.));
+    step(&mut app);
+    assert_eq!(cpu(&app, wall), produced);
+    assert_eq!(
+        app.world().resource::<PublicWalls>().walls[&wall].segment_heights,
+        high
+    );
+    emit(&mut app, WallSpatialDirty(wall));
     step(&mut app);
     assert_eq!(cpu(&app, wall), produced);
     assert_eq!(

@@ -46,7 +46,7 @@ use crate::render::ssbo::{
 /// 元素 0x40（`cmp rbx, 0x240` = 0x200 + 0x40）→ `BUFFER_LEN` = 8；`SsboId` 立即数 0x530b5658f3632b30 = xxh3("DofAutofocusSsbo")。
 /// 完整类型路径（`get_rg_buffer` 里的断言串，0x53 B）：`country_core::systems::render_loop::compute_passes::dof_autofocus::DofAutofocusSsbo`。
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::NoUninit)]
 pub struct DofAutofocusSsbo {
     pub focus0: f32,
     pub focus1: f32,
@@ -71,7 +71,18 @@ impl StorageElement for DofAutofocusSsbo {
 impl LibrarySsbo for DofAutofocusSsbo {
     type Storage = TypedStorageBuffer<DofAutofocusSsbo>;
     fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
-        TypedStorageBuffer::<DofAutofocusSsbo>::new_storage_buffer(device, initial)
+        // Original None@14161025c allocates0x200B and repeats the exact
+        //16B constant142ac7e60 ([0x41f00000;4]) through14161034a.
+        // This is128 f32 bit-patterns for30.0, not a zero Default record.
+        let native_defaults;
+        let data = match initial {
+            Some(bytes) => Some(bytes),
+            None => {
+                native_defaults = [0x41f00000u32; 128];
+                Some(bytemuck::cast_slice(&native_defaults))
+            }
+        };
+        TypedStorageBuffer::<DofAutofocusSsbo>::new_storage_buffer(device, data)
     }
 }
 
@@ -249,6 +260,8 @@ pub fn calculate_dof_autofocus<A: LibrarySsbo, R: LibrarySsbo>(
         .uniform(H_USE_TILT_SHIFT, u.use_tilt_shift)
         .uniform(H_APERTURE_SIZE, u.aperture_size)
         .write_storage_buffer::<A>(H_AUTOFOCUS_BUF)
+        // Original SPV reads the previous DofFocus before updating the row.
+        .preserve_storage_buffer_contents(H_AUTOFOCUS_BUF)
         .write_storage_buffer::<R>(H_FOCUS_READBACK_BUF)
         .bind_texture(H_DEPTH_TEX, &depth_tex, ACCESS_SAMPLED_READ)
         .dispatch_2d(8, 8)
@@ -469,9 +482,13 @@ mod ssbo_layout_tests {
             (0x200, 0x22, 1, 4)
         );
         assert_eq!(name, "DofAutofocusSsbo");
+        let data = data
+            .as_ref()
+            .expect("native autofocus None uploads defaults");
+        assert_eq!(data.len(), 0x200);
         assert!(
-            data.is_none(),
-            "BUFFER_LEN > 0 without data uploads nothing (O)"
+            data.chunks_exact(4)
+                .all(|word| u32::from_le_bytes(word.try_into().unwrap()) == 0x41f00000)
         );
         assert_eq!(
             DofAutofocusSsbo::BUFFER_LEN * size_of::<DofAutofocusSsbo>(),

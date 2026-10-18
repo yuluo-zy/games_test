@@ -1,0 +1,163 @@
+// loading_audio @ 0x140b1b1b0
+
+void __cdecl country_core::systems::audio::game_loading_audio::loading_audio(void)
+
+{
+  longlong lVar1;
+  ulonglong uVar2;
+  ulonglong uVar3;
+  char *extraout_RAX;
+  undefined8 *in_RCX;
+  undefined8 *in_RDX;
+  ulonglong uVar4;
+  ulonglong uVar5;
+  ulonglong *puVar6;
+  undefined4 uVar7;
+  undefined8 *in_R8;
+  ulonglong uVar8;
+  undefined8 *in_R9;
+  ulonglong uVar9;
+  ulonglong uVar10;
+  undefined4 *puVar11;
+  float fVar12;
+  longlong *in_stack_00000028;
+  longlong local_e0;
+  longlong local_a8;
+  longlong local_98;
+  int local_68;
+  
+  puVar6 = (ulonglong *)*in_R8;
+  lVar1 = in_R8[1];
+  uVar2 = *puVar6;
+  uVar8 = 0;
+  uVar9 = uVar2 - *(ulonglong *)(lVar1 + 0x18);
+  if (uVar2 < *(ulonglong *)(lVar1 + 0x18)) {
+    uVar9 = uVar8;
+  }
+  uVar4 = uVar2 - *(ulonglong *)(lVar1 + 0x38);
+  if (uVar2 < *(ulonglong *)(lVar1 + 0x38)) {
+    uVar4 = uVar8;
+  }
+  uVar2 = *(ulonglong *)(lVar1 + 0x30);
+  uVar10 = uVar2 - uVar4;
+  if (uVar2 < uVar4) {
+    uVar10 = uVar8;
+  }
+  uVar3 = *(ulonglong *)(lVar1 + 0x10);
+  uVar5 = uVar3 - uVar9;
+  if (uVar3 < uVar9) {
+    uVar5 = uVar8;
+  }
+  uVar8 = *(ulonglong *)(lVar1 + 0x40);
+  *puVar6 = uVar8 - (uVar5 + uVar10);
+  if (uVar3 >= uVar9 && uVar3 - uVar9 != 0 || uVar2 >= uVar4 && uVar2 - uVar4 != 0) {
+    *puVar6 = uVar8;
+    if (*(longlong *)*in_RCX == 0) {
+      std::alloc::__default_lib_allocator::__rust_alloc();
+      if (extraout_RAX == (char *)0x0) {
+                    // WARNING: Subroutine does not return
+        alloc::raw_vec::handle_error();
+      }
+      builtin_strncpy(extraout_RAX,"event:/UI/Loading",0x11);
+      local_a8 = 0;
+      local_98 = 0x11;
+    }
+    else {
+      resources::audio_resources::AudioCoreInner::instantiate_audio();
+      if (local_a8 == 2) {
+                    // WARNING: Subroutine does not return
+        core::result::unwrap_failed();
+      }
+    }
+    local_68 = (int)local_a8;
+    if (local_68 == 1) {
+      libfmod::EventInstance::start();
+      if (local_e0 != -0x7ffffffffffffffc) {
+                    // WARNING: Subroutine does not return
+        core::result::unwrap_failed();
+      }
+    }
+    resources::audio_resources::impl$13::drop();
+    if (local_98 != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+  }
+  puVar6 = (ulonglong *)*in_R9;
+  lVar1 = in_R9[1];
+  uVar2 = *puVar6;
+  uVar8 = 0;
+  uVar9 = uVar2 - *(ulonglong *)(lVar1 + 0x18);
+  if (uVar2 < *(ulonglong *)(lVar1 + 0x18)) {
+    uVar9 = uVar8;
+  }
+  uVar4 = uVar2 - *(ulonglong *)(lVar1 + 0x38);
+  if (uVar2 < *(ulonglong *)(lVar1 + 0x38)) {
+    uVar4 = uVar8;
+  }
+  uVar2 = *(ulonglong *)(lVar1 + 0x30);
+  uVar10 = uVar2 - uVar4;
+  if (uVar4 > uVar2) {
+    uVar10 = uVar8;
+  }
+  uVar3 = *(ulonglong *)(lVar1 + 0x10);
+  uVar5 = uVar3 - uVar9;
+  if (uVar9 > uVar3) {
+    uVar5 = uVar8;
+  }
+  uVar8 = *(ulonglong *)(lVar1 + 0x40);
+  *puVar6 = uVar8 - (uVar5 + uVar10);
+  if (uVar9 <= uVar3 && uVar3 - uVar9 != 0 || uVar4 <= uVar2 && uVar2 - uVar4 != 0) {
+    *puVar6 = uVar8;
+    uVar7 = *(undefined4 *)((longlong)in_RDX + 0x1c);
+    puVar11 = (undefined4 *)in_RDX[2];
+    *puVar11 = uVar7;
+    puVar6 = (ulonglong *)*in_RDX;
+    uVar2 = *puVar6;
+    uVar9 = puVar6[2];
+    *puVar6 = 2;
+    if (uVar2 != 2) {
+      if ((uVar2 & 1) != 0) {
+        libfmod::EventInstance::stop();
+        if (local_e0 != -0x7ffffffffffffffc) {
+                    // WARNING: Subroutine does not return
+          core::result::unwrap_failed();
+        }
+      }
+      resources::audio_resources::impl$13::drop();
+      if (uVar9 != 0) {
+        std::alloc::__default_lib_allocator::__rust_dealloc();
+      }
+    }
+  }
+  else {
+    uVar7 = *(undefined4 *)((longlong)in_RDX + 0x1c);
+    puVar6 = (ulonglong *)*in_RDX;
+    puVar11 = (undefined4 *)in_RDX[2];
+  }
+  *puVar11 = uVar7;
+  if (((puVar6[6] & 1) != 0) &&
+     (fVar12 = *(float *)(*in_stack_00000028 + 0x28) + *(float *)((longlong)puVar6 + 0x34),
+     *(float *)((longlong)puVar6 + 0x34) = fVar12, 1.0 < fVar12)) {
+    *puVar11 = uVar7;
+    uVar2 = *puVar6;
+    uVar9 = puVar6[2];
+    *puVar6 = 2;
+    if (uVar2 != 2) {
+      if ((uVar2 & 1) != 0) {
+        libfmod::EventInstance::stop();
+        if (local_e0 != -0x7ffffffffffffffc) {
+                    // WARNING: Subroutine does not return
+          core::result::unwrap_failed();
+        }
+      }
+      resources::audio_resources::impl$13::drop();
+      if (uVar9 != 0) {
+        std::alloc::__default_lib_allocator::__rust_dealloc();
+      }
+    }
+    *puVar11 = uVar7;
+    *(undefined4 *)(puVar6 + 6) = 0;
+  }
+  return;
+}
+

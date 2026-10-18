@@ -1,0 +1,120 @@
+NAME: solidify_fluid_into
+SIGNATURE: void __cdecl solidify_fluid_into(void)
+SIZE: 559
+CALLEES: __rust_dealloc,crashy_resample<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D>,do_reserve_and_handle<alloc::alloc::Global>,from_iter<glam::f32::vec3::Vec3,core::iter::adapters::filter::Filter<core::iter::adapters::copied::Copied<core::slice::iter::Iter<glam::f32::vec3::Vec3>_>,country_core::resources::active_raster_stroke::impl$4::solidify_fluid_into::closure_env$0>_>,memcpy,spec_extend<glam::f32::vec3::Vec3,core::iter::adapters::skip::Skip<alloc::vec::into_iter::IntoIter<glam::f32::vec3::Vec3,alloc::alloc::Global>_>,alloc::alloc::Global>,try_new_from_points<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D>,unwrap_failed
+----DECOMP----
+
+void __cdecl
+country_core::resources::active_raster_stroke::InProgressRasterStroke::solidify_fluid_into(void)
+
+{
+  undefined4 *puVar1;
+  void *pvVar2;
+  longlong in_RCX;
+  longlong in_RDX;
+  ulonglong uVar3;
+  ulonglong *in_R8;
+  void *pvVar4;
+  undefined4 local_e0 [4];
+  longlong local_d0;
+  void *pvStack_c8;
+  undefined4 *local_c0;
+  void *local_b8;
+  undefined4 *puStack_b0;
+  undefined4 *local_a8;
+  longlong lStack_a0;
+  undefined8 local_98;
+  undefined8 uStack_90;
+  undefined8 local_88;
+  void *local_80;
+  void *local_78;
+  void *pvStack_70;
+  undefined4 *local_68;
+  void *pvStack_60;
+  undefined8 local_58;
+  undefined8 uStack_50;
+  undefined8 local_48;
+  longlong local_40;
+  undefined8 local_38;
+  
+  local_38 = 0xfffffffffffffffe;
+  local_e0[0] = 0;
+  pvStack_70 = (void *)(in_RCX + in_RDX * 0xc);
+  local_68 = local_e0;
+  local_78 = (void *)in_RCX;
+  alloc::vec::spec_from_iter::impl$0::
+  from_iter<glam::f32::vec3::Vec3,core::iter::adapters::filter::Filter<core::iter::adapters::copied::Copied<core::slice::iter::Iter<glam::f32::vec3::Vec3>_>,country_core::resources::active_raster_stroke::impl_4::solidify_fluid_into::closure_env_0>_>
+            ();
+  if (local_c0 < (undefined4 *)0x2) {
+    uVar3 = in_R8[2];
+    local_40 = local_d0;
+    pvVar4 = pvStack_c8;
+    puVar1 = local_c0;
+    pvVar2 = local_80;
+  }
+  else {
+    local_a8 = local_c0;
+    local_b8 = (void *)local_d0;
+    puStack_b0 = pvStack_c8;
+    ::utils::curve::Curve::
+    try_new_from_points<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D>();
+    if (SBORROW8(0,(longlong)local_78)) {
+      local_b8 = pvStack_70;
+      puStack_b0 = local_68;
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+    local_88 = local_48;
+    local_98 = local_58;
+    uStack_90 = uStack_50;
+    local_a8 = local_68;
+    lStack_a0 = (longlong)pvStack_60;
+    local_b8 = local_78;
+    puStack_b0 = pvStack_70;
+    ::utils::curve::Curve::crashy_resample<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D>
+              ();
+    puVar1 = local_68;
+    pvVar4 = pvStack_70;
+    if (pvStack_60 != (void *)0x0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    if (local_b8 != (void *)0x0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    if (lStack_a0 != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    uVar3 = in_R8[2];
+    local_40 = (longlong)local_78;
+    pvVar2 = local_80;
+  }
+  local_80 = pvVar4;
+  if (uVar3 == 0) {
+    if ((undefined4 *)*in_R8 < puVar1) {
+      alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+      uVar3 = in_R8[2];
+      pvVar4 = local_80;
+    }
+    else {
+      uVar3 = 0;
+      pvVar4 = local_80;
+      local_80 = pvVar2;
+    }
+    memcpy((void *)(uVar3 * 0xc + in_R8[1]),pvVar4,(longlong)puVar1 * 0xc);
+    in_R8[2] = uVar3 + (longlong)puVar1;
+    if (local_40 != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+  }
+  else {
+    pvStack_60 = (void *)((longlong)local_80 + (longlong)puVar1 * 0xc);
+    local_58 = 1;
+    local_78 = local_80;
+    pvStack_70 = local_80;
+    alloc::vec::spec_extend::impl$0::
+    spec_extend<glam::f32::vec3::Vec3,core::iter::adapters::skip::Skip<alloc::vec::into_iter::IntoIter<glam::f32::vec3::Vec3,alloc::alloc::Global>_>,alloc::alloc::Global>
+              ();
+  }
+  return;
+}
+

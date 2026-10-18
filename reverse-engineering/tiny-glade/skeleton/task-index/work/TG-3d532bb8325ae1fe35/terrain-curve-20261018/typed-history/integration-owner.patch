@@ -1,0 +1,31 @@
+--- a/games_test/tiny-glade/crates/country-core/src/resources/history/mod.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/history/mod.rs
+@@ -9,6 +9,7 @@
+ pub mod serialized;
+ pub mod stairs_history_edit;
+ pub mod tree_edit;
++pub mod terrain_edit;
+ 
+ pub use crate::resources::history::building_transactions::RoofHistoryEdit;
+ use crate::resources::history::transactions::HistoryRecordingValidation;
+--- a/games_test/tiny-glade/crates/country-core/src/resources/history/replay_cmd_buffer.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/history/replay_cmd_buffer.rs
+@@ -253,13 +253,11 @@
+                 EditType::Decorator(_) => {
+                     unreachable!("internal error: entered unreachable code")
+                 }
+-                edit @ EditType::Terrain(_) => {
+-                    // 共享 TerrainEdit（{pending, previous_state}）无点集载荷；桶展开
+-                    // 暂不支持（revert/reapply 0x140858d30/0x1408592d0 属共享 owner）。
+-                    // 真实点集 TerrainReplayCmd 由地形回放 producer 直接入桶
+-                    // （CPU 侧模型，中央仲裁接入 ReplayCommand::Terrain）。
+-                    return Err(HistoryReplayError::UnrestoredReplayOwner(edit.native_tag()));
+-                }
++                EditType::Terrain(edit) => ReplayCommand::Terrain(
++                    crate::systems::terrain::replay_terrain::TerrainReplayCmd::expanded(
++                        edit.clone(), undo, instant,
++                    ),
++                ),
+                 // 光栅族（tag 1..6）已在上方 `edit.raster()` 分支消费。
+                 EditType::Path(_)
+                 | EditType::Cobblestone1(_)

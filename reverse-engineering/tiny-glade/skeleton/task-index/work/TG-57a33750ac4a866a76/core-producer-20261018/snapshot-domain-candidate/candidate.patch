@@ -1,0 +1,1112 @@
+--- a/crates/country-core/src/systems/save/snapshot.rs
++++ b/crates/country-core/src/systems/save/snapshot.rs
+@@ -1,9 +1,9 @@
+ //! B `systems/save/snapshot.rs` — 快照捕获/加载。
+ //!
+-//! 快照 schema 为 **JSON + deflate**（非 rkyv/ron）：节序
+-//! `Version → Walls → Roofs → Decorators → WallColors → GateColors → Terrain →
+-//! Trees → Raster`（O：0x1417a6e50 的节跳表 @0x142cdca80/98/b0）。Terrain 载荷
+-//! 用 flate2-1.0.24 deflate（O："decompressing terrain data" @0x142cdc800）。
++//! 快照 schema 为 **Motomoto chunks + JSON + deflate**：元数据字段
++//! 共十四项，格式 Version=2。Snapshot chunk 保存 JSON；之后为命名 Raster
++//! chunks（u64 原长 + deflate6）和 Terrain chunk（仅 deflate6）。
++//! 旧 JSON-only 加载入口仍是局部兼容面，不代表完整 chunk 解码/世界恢复。
+ //!
+ //! - `capture_game_snapshot_save_data` 0x1417a0430：从世界数据构建快照结构并返回 **Arc**。
+ //!   各节载荷由所属域序列化器提供（StairsSnapshot{edges,checksum}、
+@@ -19,11 +19,13 @@
+     color_id::ColorId,
+     roofs::roof_shape::Roof,
+     session::SessionId,
+-    stairs::stairs_state::{StairsSnapshot, StairsState},
++    stairs::{
++        stairs_removed_supports::StairsRemovedSupports,
++        stairs_state::{StairsSnapshot, StairsState},
++    },
+     terrain_editing::TerrainEditingData,
+     walls::{
+         WallId,
+-        decorator::DecoratorInfo,
+         decorator_storage::{
+             DecoratorAddrSnapshot, DecoratorStorage, DecoratorStorageAddr, DecoratorStorageSnapshot,
+         },
+@@ -32,7 +34,11 @@
+     world_raster_defs::{AllWorldRasterWrite, NamedRasterData},
+ };
+ use serde_json::Value;
+-use std::sync::Arc;
++use std::{
++    io::{Cursor, Write},
++    ops::Range,
++    sync::Arc,
++};
+ 
+ /// 装饰存储地址排序键（O：decorator_storage::impl_18::sort；枚举判别序
+ /// 0=Wall/1=Terrain/2=Stair，Wall 附 payload）。用于快照采集排序。
+@@ -48,10 +54,24 @@
+ /// 快照 Trees 节条目（X5，RE-X5X7 §1：Trees = `Query<(&PrefabInstanceData,&PrefabInstance,
+ /// &TreeComponent)>` → map 出 `(TreeStorageIndex, TreeData)`）。`TreeData` 原类型待域恢复；
+ /// 以 `tree_edit::TreeEditData`（id/position/scale/rotation/prefab_name/is_preplaced）登记。
+-#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
++#[derive(Clone, Debug, PartialEq)]
+ pub struct SnapshotTreesEntry {
+     pub index: crate::resources::tree_storage::TreeStorageIndex,
+     pub tree: crate::resources::history::tree_edit::TreeEditData,
++}
++
++// B collect_seq<Vec<(TreeStorageIndex, TreeData)>>: the public struct remains
++// convenient for collectors, while the file contains a two-element tuple.
++impl serde::Serialize for SnapshotTreesEntry {
++    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
++        serde::Serialize::serialize(&(&self.index, &self.tree), serializer)
++    }
++}
++impl<'de> serde::Deserialize<'de> for SnapshotTreesEntry {
++    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
++        let (index, tree) = serde::Deserialize::deserialize(deserializer)?;
++        Ok(Self { index, tree })
++    }
+ }
+ 
+ /// 快照 Trees 节收集器（O：capture_game_snapshot_save_data closure_env$0 逐字）。
+@@ -92,12 +112,19 @@
+     "Walls",
+     "Roofs",
+     "Decorators",
++    "Raster",
+     "WallColors",
+     "GateColors",
++    "HalftimberColors",
+     "Terrain",
++    "TerrainHeightRange",
+     "Trees",
+-    "Raster",
++    "AutoClutter",
++    "Stairs",
++    "StairsRemovedSupports",
+ ];
++/// B snapshot format version, independent of the enclosing game-save version.
++pub const SNAPSHOT_FORMAT_VERSION: i32 = 2;
+ 
+ /// 快照域收集数据（O：capture_game_snapshot_save_data 0x1417a0430 的 ~9 组世界数据）。
+ ///
+@@ -134,15 +161,22 @@
+     pub terrain: TerrainEditingData,
+     /// Trees 节：树 Query 投影条目。
+     pub trees: Vec<SnapshotTreesEntry>,
+-    /// Stairs 快照（非 JSON 节；备份校验 + 链条快照）。
++    /// Stairs metadata: original edges plus the optional cached checksum.
+     pub stairs: StairsSnapshot,
+     /// Raster 节 6 组 `(键, 载荷)`（O：capture_game_snapshot_save_data fold 6 entries）。
+     pub raster: Vec<(&'static str, Vec<u8>)>,
+-    /// u64 集合采集器输出（O：from_iter<u64, Copied<HashSet::Iter<u64>>>）。
++    /// Actual DeletedAutoClutter IDs, serialized as AutoClutter.
+     pub ids: Vec<u64>,
+     /// 调用方注入的 JSON 节载荷（域序列化器未就绪的节；与 typed 序列化输出合并，
+     /// 键名即快照 JSON 键）。
+     pub section_values: Vec<(&'static str, Value)>,
++    /// Raw terrain bytes captured from the actual height-buffer owner. These
++    /// are compressed into the final Terrain chunk, not the Terrain JSON field.
++    pub terrain_data: Option<Vec<u8>>,
++    /// The actual height resource's range; no bounds are inferred from strokes.
++    pub terrain_height_range: Option<Range<f32>>,
++    /// Actual removed-support set, including the legitimate empty set.
++    pub removed_supports: Option<StairsRemovedSupports>,
+ }
+ 
+ impl SnapshotDomainData {
+@@ -182,10 +216,13 @@
+             halftimber_colors: colors.2.into_iter().collect(),
+             terrain,
+             trees: trees.into_iter().collect(),
+-            stairs: stairs.unwrap_or_else(|| StairsSnapshot::new(Vec::new())),
++            stairs: stairs.expect("snapshot capture requires an accurate StairsSnapshot"),
+             raster: raster.into_iter().collect(),
+             ids: ids.into_iter().collect(),
+             section_values: Vec::new(),
++            terrain_data: None,
++            terrain_height_range: None,
++            removed_supports: None,
+         }
+     }
+ 
+@@ -202,41 +239,320 @@
+         self.roofs.sort_unstable_by_key(|roof| roof.wall_id().0);
+         self.decorators
+             .sort_unstable_by_key(|(addr, _)| addr_sort_key(*addr));
++        for (_, bucket) in &mut self.decorators {
++            bucket.states.sort_unstable_by_key(|(id, _)| *id);
++        }
+         self.trees.sort_unstable_by_key(|entry| entry.index.0);
+         self.ids.sort_unstable();
+         self
+     }
+ 
+-    /// 按 `SNAPSHOT_SECTION_ORDER` 节序产出 JSON 节载荷。
+-    ///
+-    /// 域序列化器已就绪的节直接序列化；未就绪节保持缺席（不伪造节载荷），由域所有者
+-    /// 经 `section_values` 注入。Terrain 节为 JSON 明文 strokes（flate2 只用于栅格尾，
+-    /// 见 [`TerrainSectionJson`]）。
++    /// Supplies the three captures absent from the older collector signature.
++    /// Keeping them optional distinguishes an actual empty capture from a
++    /// caller that has not supplied the original resource at all.
++    pub fn with_terrain_and_supports(
++        mut self,
++        terrain_data: Vec<u8>,
++        terrain_height_range: Range<f32>,
++        removed_supports: StairsRemovedSupports,
++    ) -> Self {
++        self.terrain_data = Some(terrain_data);
++        self.terrain_height_range = Some(terrain_height_range);
++        self.removed_supports = Some(removed_supports);
++        self
++    }
++
++    /// B capture_game_snapshot@1417a1d00 writes all fourteen fields. Sort
++    /// borrowed domain rows, retaining the caller's buffers without copying.
++    pub fn try_to_section_values(&self) -> anyhow::Result<Vec<(&'static str, Value)>> {
++        use serde_json::json;
++        let range = self
++            .terrain_height_range
++            .as_ref()
++            .ok_or_else(|| anyhow::anyhow!("snapshot capture has no TerrainHeightRange"))?;
++        let removed = self
++            .removed_supports
++            .as_ref()
++            .ok_or_else(|| anyhow::anyhow!("snapshot capture has no StairsRemovedSupports"))?;
++        let mut walls: Vec<_> = self.walls.iter().collect();
++        walls.sort_unstable_by_key(|(id, _)| id.0);
++        let mut roofs: Vec<_> = self.roofs.iter().collect();
++        roofs.sort_unstable_by_key(|roof| roof.wall_id().0);
++        let mut decorators: Vec<_> = self.decorators.iter().collect();
++        decorators.sort_unstable_by_key(|(addr, _)| addr_sort_key(*addr));
++        let states = decorators
++            .into_iter()
++            .map(|(addr, bucket)| {
++                let mut entries: Vec<_> = bucket.states.iter().collect();
++                entries.sort_unstable_by_key(|(id, _)| *id);
++                let state = entries
++                    .into_iter()
++                    .map(|(id, state)| Ok(json!([id.0, decorator_history_state_json(state)?])))
++                    .collect::<anyhow::Result<Vec<Value>>>()?;
++                Ok(json!([decorator_storage_addr_json(*addr), {"state": state}]))
++            })
++            .collect::<anyhow::Result<Vec<Value>>>()?;
++        let mut trees: Vec<_> = self.trees.iter().collect();
++        trees.sort_unstable_by_key(|entry| entry.index.0);
++        let mut ids = self.ids.clone();
++        ids.sort_unstable();
++        let mut sections = vec![
++            ("Version", json!(SNAPSHOT_FORMAT_VERSION)),
++            ("Walls", serde_json::to_value(walls)?),
++            ("Roofs", serde_json::to_value(roofs)?),
++            ("Decorators", json!({"states": states})),
++            (
++                "Raster",
++                json!(
++                    self.raster
++                        .iter()
++                        .map(|(name, _)| *name)
++                        .collect::<Vec<_>>()
++                ),
++            ),
++            ("WallColors", serde_json::to_value(&self.wall_colors)?),
++            ("GateColors", serde_json::to_value(&self.gate_colors)?),
++            (
++                "HalftimberColors",
++                serde_json::to_value(&self.halftimber_colors)?,
++            ),
++            (
++                "Terrain",
++                json!({"strokes": self.terrain.0.strokes,
++                "next_stroke_id": self.terrain.0.next_index as usize}),
++            ),
++            ("TerrainHeightRange", serde_json::to_value(range)?),
++            ("Trees", serde_json::to_value(trees)?),
++            ("AutoClutter", json!(ids)),
++            (
++                "Stairs",
++                json!({"edges": self.stairs.edges(),
++                "checksum": self.stairs.cached_checksum()}),
++            ),
++            (
++                "StairsRemovedSupports",
++                json!({"edges": removed.edges.keys()
++                .map(|edge| edge.nodes()).collect::<Vec<_>>()}),
++            ),
++        ];
++        // Old extension callers may add independent keys, but cannot replace a
++        // captured native domain or hide missing data behind injected JSON.
++        for (key, value) in &self.section_values {
++            anyhow::ensure!(
++                !sections.iter().any(|(name, _)| name == key),
++                "snapshot section extension duplicates {key}"
++            );
++            sections.push((*key, value.clone()));
++        }
++        Ok(sections)
++    }
++
++    /// Compatibility entry for callers requiring an infallible projection.
++    /// File writers should call encode_game_snapshot and propagate its Result.
+     pub fn to_section_values(&self) -> Vec<(&'static str, Value)> {
+-        let mut sections: Vec<(&'static str, Value)> = Vec::new();
+-        // Trees：SnapshotTreesEntry 已具备 derive serde（X5：树 Query 投影条目）。
+-        if !self.trees.is_empty() {
+-            sections.push((
+-                "Trees",
+-                serde_json::to_value(&self.trees).unwrap_or(Value::Null),
+-            ));
+-        }
+-        // Walls/Roofs/Decorators/WallColors/GateColors/Terrain/Raster 的域序列化器
+-        // 未实现（WallState/DecoratorStorageAddr/Roof 等无 serde），保持缺席；由域
+-        // 所有者经 section_values 注入。
+-        if !self.section_values.is_empty() {
+-            sections.extend(self.section_values.iter().cloned());
+-        }
+-        sections
+-    }
+-}
+-
+-/// 快照存档数据（PDB：`snapshot::SnapshotSaveData`）。
+-///
+-/// 原版为 0x198B 结构（fresh 反编译 0x1417a0430 `memcpy(_Dst,…,0x198)`；RE-X5X7 曾估
+-/// ~0x400B 已由 fresh 纠正）+ 0xc0B 头部（域描述符），返回 Arc（alloc 0x18 {strong,
+-/// weak} + LOCK inc）。本结构承载域收集数据 [`SnapshotDomainData`] 与 Arc 语义，
+-/// 不代造 Walls/Roofs 等域载荷。
++        self.try_to_section_values()
++            .expect("snapshot domain serialization failed")
++    }
++
++    pub fn try_to_json(&self) -> anyhow::Result<Value> {
++        let object = self
++            .try_to_section_values()?
++            .into_iter()
++            .map(|(key, value)| (key.to_owned(), value))
++            .collect();
++        Ok(Value::Object(object))
++    }
++}
++
++// Native serde adapters over the canonical owned HistoryState projection.
++// They do not decode process pointers or manufacture DecoratorInfo values.
++fn decorator_storage_addr_json(addr: DecoratorStorageAddr) -> Value {
++    match addr {
++        DecoratorStorageAddr::Wall(id) => serde_json::json!({"Wall": id.0}),
++        DecoratorStorageAddr::Terrain => Value::String("Terrain".into()),
++        DecoratorStorageAddr::Stair => Value::String("Stairs".into()),
++    }
++}
++
++const CLUTTER_MESH_NAMES: [&str; 56] = [
++    "plant_pot_v1",
++    "ladder",
++    "wheel",
++    "pitchfork",
++    "shovel",
++    "box_w_stuff",
++    "watering_can",
++    "firewood",
++    "bucket",
++    "birdnest",
++    "bench",
++    "bench_w_basket",
++    "bench_short",
++    "barrel_w_plantpot",
++    "haystack",
++    "plant_pot_v2",
++    "birdhouse",
++    "basket",
++    "basket_w_food",
++    "barrel_w_food_basket",
++    "potato_sack",
++    "road_sign",
++    "sunflower",
++    "cart",
++    "cart2",
++    "crates_w_tools",
++    "crates_w_flowers",
++    "window_flowerpot",
++    "window_shutter",
++    "window_flowerbeds",
++    "reed",
++    "lilypad",
++    "fallen_leaves",
++    "fallen_petals",
++    "olden_rock",
++    "olden_tree_log",
++    "olden_tree_stump",
++    "pumpkin",
++    "pumpkin2",
++    "pumpkin_w_face",
++    "cart_w_pumpkins",
++    "crates_w_pumpkins",
++    "olden_tree_stump_autumn",
++    "barrel_w_candles",
++    "anvil",
++    "fabric_rolls",
++    "stall_bread",
++    "stall_veggies",
++    "crate_fish",
++    "rack_brooms",
++    "flowerbox",
++    "door_bell",
++    "door_krans",
++    "door_krans_autumn",
++    "cart_w_pumpkins_regular",
++    "crates_w_pumpkins_regular",
++];
++
++fn decorator_history_state_json(
++    state: &crate::resources::history::decorator_edit::DecoratorHistoryState,
++) -> anyhow::Result<Value> {
++    use serde_json::json;
++    let b = state.to_bytes();
++    let u32_at = |at| u32::from_le_bytes(b[at..at + 4].try_into().unwrap());
++    let u64_at = |at| u64::from_le_bytes(b[at..at + 8].try_into().unwrap());
++    let f = |at| f32::from_bits(u32_at(at));
++    let mut dst = serde_json::Map::new();
++    match b[0x22] {
++        0 | 1 => {
++            let mut anchor = serde_json::Map::new();
++            if f(0x10) != 0.0 {
++                anchor.insert("wall_height_relative_y".into(), json!(f(0x10)));
++            }
++            let xyz = [f(0x14), f(0x18), f(0x1c)];
++            if xyz.iter().any(|v| *v != 0.0) {
++                anchor.insert("anchor_ws".into(), json!(xyz));
++            }
++            anchor.insert("corner".into(), json!(b[0x20]));
++            if u64_at(8) != 0 {
++                anchor.insert("platform".into(), json!(u64_at(8)));
++            }
++            if b[0x21] != 0 {
++                anchor.insert("is_bottom_door".into(), json!(true));
++            }
++            if b[0x22] == 0 {
++                anchor.insert("side".into(), json!("Inner"));
++            }
++            dst.insert(
++                "Wall".into(),
++                json!({"coord": {"x": f(0), "y": f(4)}, "anchor": anchor}),
++            );
++        }
++        2 | 3 => {
++            let mut attachment = serde_json::Map::new();
++            let (variant, position, yaw) = if b[0x22] == 2 {
++                ("Roof", "mesh_uv", "relative_yaw_radians")
++            } else {
++                ("Terrain", "pos_xz", "yaw_radians")
++            };
++            attachment.insert(position.into(), json!([f(0), f(4)]));
++            if f(8) != 0.0 {
++                attachment.insert(yaw.into(), json!(f(8)));
++            }
++            dst.insert(variant.into(), Value::Object(attachment));
++        }
++        4 => {
++            let mut attachment = serde_json::Map::new();
++            attachment.insert("graph_edge".into(), json!([u32_at(0), u32_at(4)]));
++            attachment.insert("uv".into(), json!([f(8), f(0xc)]));
++            if f(0x10) != 0.0 {
++                attachment.insert("yaw_radians".into(), json!(f(0x10)));
++            }
++            dst.insert("Stair".into(), Value::Object(attachment));
++        }
++        other => anyhow::bail!("invalid DecoratorDst niche {other}"),
++    }
++    let ty = match b[0x4a] {
++        index @ 0..=55 => json!({"Clutter": {"ty": CLUTTER_MESH_NAMES[index as usize]}}),
++        56 => json!("CottageWindow"),
++        57 => json!("GothicWindow"),
++        58 => json!("ArrowSlit"),
++        59 => json!("Chimney"),
++        60 => json!("Lantern"),
++        61 => json!("Flag"),
++        63 => json!("Stairs"),
++        other => anyhow::bail!("invalid DecoratorType {other}"),
++    };
++    let mut value = serde_json::Map::new();
++    value.insert("dst".into(), Value::Object(dst));
++    value.insert("ty".into(), ty);
++    value.insert("rank".into(), json!({"x": b[0x48]}));
++    value.insert("seed".into(), json!(u32_at(0x2c)));
++    for (name, offset) in [
++        ("color_id", 0x28),
++        ("window_light_color", 0x34),
++        ("ladder_color", 0x40),
++        ("magic_color", 0x44),
++    ] {
++        if u32_at(offset) != 0 {
++            value.insert(name.into(), json!(u32_at(offset)));
++        }
++    }
++    if b[0x49] != 0 {
++        value.insert("clv".into(), json!(b[0x49]));
++    }
++    for (name, offset, default) in [
++        ("h_offset", 0x30, 0.0),
++        ("lantern_brightness", 0x38, 1.0),
++        ("stair_width", 0x3c, 1.0),
++    ] {
++        if f(offset) != default {
++            value.insert(name.into(), json!(f(offset)));
++        }
++    }
++    if b[0x4c] == 0 {
++        value.insert("allow_connection".into(), json!(false));
++    }
++    if b[0x4d] == 0 {
++        value.insert("chimney_smoke".into(), json!(false));
++    }
++    if b[0x4b] != 0 {
++        let railing = match b[0x4b] {
++            1 => "Low",
++            2 => "High",
++            3 => "Wooden",
++            other => anyhow::bail!("invalid RailingType {other}"),
++        };
++        value.insert("railing".into(), json!(railing));
++    }
++    if b[0x4e] != 0 {
++        value.insert("stairs_supports".into(), json!("None"));
++    }
++    Ok(Value::Object(value))
++}
++
++/// Owned snapshot capture used by the current Rust save-thread interface.
++/// The native SnapshotSaveData has a Box-owned 0x198-byte payload; retaining Arc
++/// here is an existing architecture adapter, not an assertion of native ABI.
+ #[derive(Clone, Debug)]
+ pub struct SnapshotSaveData {
+     /// 所属会话。
+@@ -249,13 +565,16 @@
+ }
+ 
+ impl SnapshotSaveData {
+-    /// 构建完整快照 JSON 文档（按 `SNAPSHOT_SECTION_ORDER` 节序）。
++    /// JSON metadata only; the saved file also needs the compressed chunks.
++    pub fn try_to_json(&self) -> anyhow::Result<Value> {
++        self.domain.try_to_json()
++    }
+     pub fn to_json(&self) -> Value {
+-        let mut object = serde_json::Map::new();
+-        for (key, value) in self.domain.to_section_values() {
+-            object.insert(key.to_string(), value);
+-        }
+-        Value::Object(object)
++        self.try_to_json()
++            .expect("snapshot domain serialization failed")
++    }
++    pub fn encode(&self) -> anyhow::Result<Vec<u8>> {
++        encode_game_snapshot(&self.domain)
+     }
+ }
+ 
+@@ -281,27 +600,9 @@
+     pub loaded: Option<LoadedSnapshotData>,
+ }
+ 
+-/// `capture_game_snapshot_save_data` 0x1417a0430（fresh 反编译 2026-10-17，672 行）：
+-/// 组装快照结构并返回 **Arc**（alloc 0x18 {strong=1,weak=1} + LOCK inc）。
+-///
+-/// 原生体（SystemParam bundle 0x28 qword 槽，puffin scope）：
+-/// ① `assert!(res.stairs.backup_accurate())`（"assertion failed: res.stairs.
+-/// backup_accurate()"）；② `_DEV_SKIP_TREE_SERIALIZATION` 门控收集 Trees
+-/// `Query<(&PrefabInstanceData,&PrefabInstance,&TreeComponent)>`→
+-/// `Vec<(TreeStorageIndex, TreeData)>`（0x141305170）；③ `inner_walls::all()`→
+-/// `Vec<(WallId, WallState)>`（0x141308b40）；④ `HashSet<u64>`→`Vec<u64>`
+-/// （0x141309840）；⑤ `StairsState::iter_edges_and_stubs`+`StairsSnapshot::new`
+-/// （0x14157d200/0x140901120）；⑥ `DecoratorStorage::take_snapshot`（0x1412fbcd0，
+-/// Chain<wall iter + terrain + stair option>）；⑦ 6 色表资源（bundle[5/9/0xd/0x11/0x15/
+-/// 0x19]，每 4 qword，+0x298 判别选 +0x20/+0x28 或 +8/+0x10 字段对）；⑧ Raster 6 组
+-/// `(str, &[u8])` fold（0x141477c30，串 "GardenRaster" 等）；⑨ 三色 iter_nondefault
+-/// `(WallId, ColorId)`（0x141306570）；⑩ Terrain strokes hashbrown clone + 地形高度
+-/// Vec（4B/元素）；⑪ bundle[0x27] 又一 hashbrown clone。最终 `memcpy(_Dst, …, 0x198)`
+-/// 落 0x198B 结构。
+-///
+-/// 本实现以 [`SnapshotDomainData`] 承载各收集器输出（域 Query/资源采集由调用方喂入），
+-/// 不在此构造假 Walls/Roofs；`take_stairs_snapshot` 即 ① 断言 + ⑤ 采集入口。
+-/// 返回 Arc（O 语义）。
++/// Retains the current shared capture API. The caller supplies actual domain
++/// captures; metadata serialization and file framing happen only in encode.
++/// The native capture is 6,343 bytes and independently asserts accurate stairs.
+ pub fn capture_game_snapshot_save_data(
+     session: SessionId,
+     snapshot_id: u64,
+@@ -321,37 +622,320 @@
+ /// 0x80000 = 512 KiB，分配失败走 handle_alloc_error）。
+ pub const SNAPSHOT_JSON_BUFFER_CAPACITY: usize = 0x80000;
+ 
+-/// `capture_game_snapshot` 0x1417a1d00（fresh disasm 2026-10-17：6947+ B 巨型系统，
+-/// 非空反编译；旧 0 字节 decomp 为提取失败）。
+-///
+-/// 机器码/callee 证据（可直接对应的部分）：
+-/// - 入口把 SystemParam bundle（RDX +0x00..+0x190）整块搬到栈；
+-/// - `__rust_alloc(0x80000)` 建 JSON 缓冲；
+-/// - 收集结果**函数内排序**：walls `sort_unstable_by_key(closure_env$0 / WallId)`、
+-///   roofs `(closure_env$1 / Roof::wall_id)`、trees `(closure_env$2 / TreeStorageIndex)`、
+-///   decorators `decorator_storage::impl$18::sort`、ids `ipnsort<u64>`；
+-/// - `collect_seq<serde_json::value::ser::Serializer, …>` 把 Walls/Roofs/Trees/
+-///   三色(u32)/ids 转 `Value`，`Map::insert` 按节序组装，再
+-///   `serialize<CompactFormatter>` 写入缓冲（`add_chunk<Cursor<&mut Vec<u8>>, &str>`）。
+-///
+-/// 本实现：先 [`SnapshotDomainData::sorted`]，再按 [`SNAPSHOT_SECTION_ORDER`] 逐节
+-/// 插入 JSON 文档并序列化到 0x80000 初容量缓冲（serde_json Map 的键输出序由
+-/// `preserve_order` 特性决定；本 crate 为 BTreeMap 字典序，语义相同）。域序列化器
+-/// 未就绪的节保持缺席（由 `section_values` 注入），不伪造节载荷。
++/// Compatibility wrapper around the Result file encoder. B's full original
++/// procedure is 20,581 bytes (PDB 1722:19228), not the older 6,947-byte extract.
++/// The original fourteen-domain metadata and compressed chunks are emitted by
++/// one implementation; asynchronous writers must propagate encode's Result.
+ pub fn capture_game_snapshot(domain: SnapshotDomainData) -> Vec<u8> {
+-    let domain = domain.sorted();
+-    let mut object = serde_json::Map::new();
+-    // to_section_values 已含调用方注入的节；按其键集合按节序插入。
+-    let values = domain.to_section_values();
+-    for key in SNAPSHOT_SECTION_ORDER {
+-        if let Some((_, value)) = values.iter().find(|(name, _)| name == key) {
+-            object.insert((*key).to_string(), value.clone());
+-        }
+-    }
+-    let mut buffer = Vec::with_capacity(SNAPSHOT_JSON_BUFFER_CAPACITY);
+-    serde_json::to_writer(&mut buffer, &Value::Object(object))
+-        .expect("snapshot JSON serialization cannot fail (native unwrap_failed)");
+-    buffer
++    encode_game_snapshot(&domain).expect("snapshot serialization failed (native unwrap_failed)")
++}
++
++/// The single file encoder for both explicit and automatic snapshot saves.
++/// B@1417a31e2: Snapshot JSON chunk; @1417a35e7: each named raster chunk;
++/// @1417a3a38: Terrain chunk. Existing motomoto owns the chunk framing.
++pub fn encode_game_snapshot(domain: &SnapshotDomainData) -> anyhow::Result<Vec<u8>> {
++    let terrain = domain
++        .terrain_data
++        .as_deref()
++        .ok_or_else(|| anyhow::anyhow!("snapshot capture has no raw Terrain data"))?;
++    let document = domain.try_to_json()?;
++    let mut writer = motomoto::Writer::new(Cursor::new(Vec::with_capacity(
++        SNAPSHOT_JSON_BUFFER_CAPACITY,
++    )));
++    {
++        let mut chunk = writer.add_chunk("Snapshot")?;
++        serde_json::to_writer(&mut chunk, &document)?;
++        chunk.finish()?;
++    }
++    for (name, bytes) in &domain.raster {
++        let mut chunk = writer.add_chunk(motomoto::tag_from_str_trunc(name))?;
++        // Raster chunks alone prepend the uncompressed byte count.
++        chunk.write_all(&(bytes.len() as u64).to_le_bytes())?;
++        let mut compressed =
++            flate2::write::DeflateEncoder::new(&mut chunk, flate2::Compression::new(6));
++        compressed.write_all(bytes)?;
++        compressed.finish()?;
++        chunk.finish()?;
++    }
++    {
++        let mut chunk = writer.add_chunk("Terrain")?;
++        let mut compressed =
++            flate2::write::DeflateEncoder::new(&mut chunk, flate2::Compression::new(6));
++        compressed.write_all(terrain)?;
++        compressed.finish()?;
++        chunk.finish()?;
++    }
++    Ok(writer.finish()?.into_inner())
++}
++
++#[cfg(test)]
++mod snapshot_encode_tests {
++    use super::*;
++    use crate::resources::{
++        history::{decorator_edit::DecoratorHistoryState, tree_edit::TreeEditData},
++        stairs::stairs_state::StairGraphEdge,
++        tree_storage::TreeStorageIndex,
++        walls::decorator::DecoratorId,
++    };
++    use serde_json::json;
++
++    fn domain() -> SnapshotDomainData {
++        SnapshotDomainData::collect(
++            Vec::new(),
++            Vec::new(),
++            Vec::new(),
++            Some(StairsSnapshot::new(Vec::new())),
++            Vec::new(),
++            (Vec::new(), Vec::new(), Vec::new()),
++            TerrainEditingData(tg_terrain::stroke::TerrainEditingData::default()),
++            Vec::new(),
++            Vec::new(),
++        )
++        .with_terrain_and_supports(Vec::new(), -2.0..7.0, StairsRemovedSupports::default())
++    }
++
++    fn state() -> DecoratorHistoryState {
++        DecoratorHistoryState {
++            // The destination niche byte +0x22 is Terrain; +0/+4 are pos_xz.
++            dst_wall: (2.0f32.to_bits() as u64) << 32 | 1.0f32.to_bits() as u64,
++            u20: 3 << 16,
++            u28: 0x1234_5678u64 << 32,
++            u38: 1.0f32.to_bits(),
++            u3c: 1.0f32.to_bits(),
++            rank: 2,
++            ty: 56,
++            u4c: 1,
++            u4d: 1,
++            ..Default::default()
++        }
++    }
++
++    #[test]
++    fn fourteen_native_domains_keep_nonempty_owned_payloads() {
++        let mut d = domain();
++        let wall: WallState = serde_json::from_value(json!({
++            "curve": {"points": [[0.0,0.0,0.0],[1.0,0.0,0.0]],
++                "points_u": [0.0,1.0], "length": 1.0},
++            "height": 3.9, "is_enclosed": "No", "style": "HalfTimbered"
++        }))
++        .unwrap();
++        d.walls.push((WallId(0x100000007), wall));
++        let mut roof = [0u8; 88];
++        roof[..8].copy_from_slice(&0x100000007u64.to_le_bytes());
++        d.roofs.push(Roof::from_observed(roof));
++        d.decorators.push((
++            DecoratorStorageAddr::Terrain,
++            DecoratorAddrSnapshot {
++                states: vec![(DecoratorId(23), state())],
++            },
++        ));
++        d.decorators.push((
++            DecoratorStorageAddr::Stair,
++            DecoratorAddrSnapshot { states: Vec::new() },
++        ));
++        d.wall_colors.push((0x100000007usize, ColorId(9)));
++        d.gate_colors.push((10, ColorId(11)));
++        d.halftimber_colors.push((12, ColorId(13)));
++        let stroke = tg_terrain::stroke::TerrainStroke {
++            points: vec![[1.0, 2.0, 3.0]],
++            falloff: 0.4,
++            index: tg_terrain::stroke::StrokeId(4),
++            height_ws: 6.0,
++        };
++        d.terrain.0.strokes.insert(stroke.index, stroke);
++        d.terrain.0.next_index = 5;
++        d.trees.push(SnapshotTreesEntry {
++            index: TreeStorageIndex(31),
++            tree: TreeEditData {
++                id: -8,
++                scale: 1.5,
++                prefab_name: "tree_a".into(),
++                ..Default::default()
++            },
++        });
++        d.stairs = StairsSnapshot::new(vec![(7, 8)]);
++        d.removed_supports
++            .as_mut()
++            .unwrap()
++            .record(StairGraphEdge::new(11, 12));
++        d.ids = vec![0x100000000, 7];
++        d.raster.push(("PathRaster", vec![1, 2, 3]));
++        let v = d.try_to_json().unwrap();
++        assert_eq!(v.as_object().unwrap().len(), 14);
++        assert_eq!(v["Version"], 2);
++        assert_eq!(v["Walls"][0][0], 0x100000007u64);
++        assert_eq!(v["Walls"][0][1]["style"], "HalfTimbered");
++        assert_eq!(v["Roofs"][0]["id"], 0x100000007u64);
++        assert_eq!(v["Roofs"][0].as_object().unwrap().len(), 7);
++        assert_eq!(v["Decorators"]["states"][0][1]["state"][0][0], 23);
++        assert_eq!(
++            v["Decorators"]["states"][1],
++            json!(["Stairs", {"state": []}])
++        );
++        assert_eq!(v["WallColors"], json!([[0x100000007u64, 9]]));
++        assert_eq!(v["GateColors"], json!([[10, 11]]));
++        assert_eq!(v["HalftimberColors"], json!([[12, 13]]));
++        assert_eq!(v["Terrain"]["next_stroke_id"], 5);
++        assert!(v["Terrain"].get("rasterized").is_none());
++        assert_eq!(v["Terrain"]["strokes"]["4"]["height_ws"], 6.0);
++        assert_eq!(v["TerrainHeightRange"], json!({"start":-2.0,"end":7.0}));
++        assert_eq!(v["Trees"][0][0], 31);
++        assert_eq!(v["Trees"][0][1]["id"], -8);
++        assert_eq!(v["AutoClutter"], json!([7, 0x100000000u64]));
++        assert_eq!(v["Raster"], json!(["PathRaster"]));
++        assert_eq!(v["Stairs"]["edges"], json!([[7, 8]]));
++        assert_eq!(v["Stairs"]["checksum"], json!(d.stairs.cached_checksum()));
++        assert_eq!(v["StairsRemovedSupports"], json!({"edges":[[11,12]]}));
++    }
++
++    #[test]
++    fn archive_uses_existing_motomoto_and_distinct_compression_payloads() {
++        let mut d = domain();
++        d.raster = vec![("PathRaster", vec![0, 1, 2, 3, 254, 255])];
++        d.terrain_data = Some(vec![7, 6, 5, 4, 3, 2, 1]);
++        let encoded = encode_game_snapshot(&d).unwrap();
++        let chunks = motomoto::Reader::new(&encoded)
++            .iter()
++            .collect::<std::io::Result<Vec<_>>>()
++            .unwrap();
++        assert_eq!(chunks.len(), 3);
++        assert_eq!(chunks[0].tag, motomoto::tag_from_str("Snapshot"));
++        let metadata: Value = serde_json::from_slice(chunks[0].data).unwrap();
++        assert_eq!(metadata["Raster"], json!(["PathRaster"]));
++        assert_eq!(chunks[1].tag, motomoto::tag_from_str_trunc("PathRaster"));
++        assert_eq!(
++            u64::from_le_bytes(chunks[1].data[..8].try_into().unwrap()),
++            6
++        );
++        assert_eq!(
++            inflate_terrain(&chunks[1].data[8..]).unwrap(),
++            d.raster[0].1
++        );
++        assert_eq!(chunks[2].tag, motomoto::tag_from_str("Terrain"));
++        // No raster-length prefix is inserted before the Terrain deflate data.
++        assert_eq!(
++            inflate_terrain(chunks[2].data).unwrap(),
++            d.terrain_data.unwrap()
++        );
++    }
++
++    #[test]
++    fn missing_captures_and_native_key_overrides_are_errors() {
++        let mut d = domain();
++        d.terrain_data = None;
++        assert!(
++            encode_game_snapshot(&d)
++                .unwrap_err()
++                .to_string()
++                .contains("raw Terrain")
++        );
++        d.terrain_data = Some(Vec::new());
++        d.terrain_height_range = None;
++        assert!(
++            encode_game_snapshot(&d)
++                .unwrap_err()
++                .to_string()
++                .contains("TerrainHeightRange")
++        );
++        d.terrain_height_range = Some(0.0..1.0);
++        d.removed_supports = None;
++        assert!(
++            encode_game_snapshot(&d)
++                .unwrap_err()
++                .to_string()
++                .contains("StairsRemovedSupports")
++        );
++        d.removed_supports = Some(StairsRemovedSupports::default());
++        d.section_values.push(("Version", json!(27)));
++        assert!(
++            encode_game_snapshot(&d)
++                .unwrap_err()
++                .to_string()
++                .contains("duplicates Version")
++        );
++    }
++
++    #[test]
++    fn state_defaults_nan_and_all_destination_variants_follow_native_fields() {
++        let mut s = state();
++        let v = decorator_history_state_json(&s).unwrap();
++        assert_eq!(
++            v,
++            json!({"dst":{"Terrain":{"pos_xz":[1.0,2.0]}},
++            "ty":"CottageWindow","rank":{"x":2},"seed":0x12345678u32})
++        );
++        s.u30 = (-0.0f32).to_bits();
++        assert!(
++            decorator_history_state_json(&s)
++                .unwrap()
++                .get("h_offset")
++                .is_none()
++        );
++        s.u30 = f32::NAN.to_bits();
++        s.u38 = f32::NAN.to_bits();
++        s.u4c = 0;
++        s.u4d = 0;
++        s.u4b = 3;
++        s.style = 1;
++        let v = decorator_history_state_json(&s).unwrap();
++        assert!(v["h_offset"].is_null());
++        assert!(v["lantern_brightness"].is_null());
++        assert_eq!(v["allow_connection"], false);
++        assert_eq!(v["chimney_smoke"], false);
++        assert_eq!(v["railing"], "Wooden");
++        assert_eq!(v["stairs_supports"], "None");
++        s = state();
++        s.u20 = 2 << 16;
++        assert_eq!(
++            decorator_history_state_json(&s).unwrap()["dst"],
++            json!({"Roof":{"mesh_uv":[1.0,2.0]}})
++        );
++        s.u20 = 4 << 16;
++        s.dst_wall = (8u64 << 32) | 7;
++        s.dst_secondary = (0.75f32.to_bits() as u64) << 32 | 0.25f32.to_bits() as u64;
++        assert_eq!(
++            decorator_history_state_json(&s).unwrap()["dst"],
++            json!({"Stair":{"graph_edge":[7,8],"uv":[0.25,0.75]}})
++        );
++        s = state();
++        s.u20 = 0;
++        assert_eq!(
++            decorator_history_state_json(&s).unwrap()["dst"],
++            json!({"Wall":{"coord":{"x":1.0,"y":2.0},"anchor":{"corner":0,"side":"Inner"}}})
++        );
++        s.u20 = 1 << 16;
++        assert!(
++            decorator_history_state_json(&s).unwrap()["dst"]["Wall"]["anchor"]
++                .get("side")
++                .is_none()
++        );
++        s.ty = 62;
++        assert!(decorator_history_state_json(&s).is_err());
++    }
++
++    #[test]
++    fn trees_keep_tuple_wire_shape_and_existing_six_field_data() {
++        let entry = SnapshotTreesEntry {
++            index: TreeStorageIndex(44),
++            tree: TreeEditData {
++                id: -3,
++                prefab_name: "tree".into(),
++                ..Default::default()
++            },
++        };
++        let v = serde_json::to_value(&entry).unwrap();
++        assert_eq!(v[0], 44);
++        assert_eq!(v[1].as_object().unwrap().len(), 6);
++        let decoded: SnapshotTreesEntry = serde_json::from_value(v).unwrap();
++        assert_eq!(decoded.index, entry.index);
++        assert_eq!(decoded.tree.id, -3);
++        assert!(decoded.tree.storage_index.is_none());
++        assert!(
++            serde_json::from_value::<SnapshotTreesEntry>(json!({
++            "index":44, "tree":serde_json::to_value(&entry.tree).unwrap()}))
++            .is_err()
++        );
++    }
+ }
+ 
+ /// Stairs 快照采集（O：capture_game_snapshot_save_data 0x1417a0430 的
+@@ -525,7 +1109,7 @@
+     pub count: u32,
+ }
+ 
+-/// 快照头部（O：`memcpy(&local_2c8, in_R8, 0xc0)`）。
++/// Legacy native-memory projection (not a Motomoto file header).
+ pub const SNAPSHOT_HEADER_SIZE: usize = 0xc0;
+ /// 域描述符个数（O：14 个 0x20B 块，+0xc0..+0x27c）。
+ pub const SNAPSHOT_DOMAIN_COUNT: usize = 14;
+@@ -677,10 +1261,10 @@
+                 //   state 字节语义 / 0x28B/0x16B 逐槽打包待①。
+                 if let Ok(section) = serde_json::from_value::<DecoratorsSectionJson>(value.clone())
+                 {
+-                    let snapshot = section.into_storage_snapshot();
+-                    let count = snapshot.states.len();
+-                    decorators.restore_snapshot(&snapshot);
+-                    log::trace!("apply Decorators: restore {count} snapshot entries");
++                    match section.into_storage_snapshot() {
++                        Ok(snapshot) => decorators.restore_snapshot(&snapshot),
++                        Err(error) => log::error!("apply Decorators: {error}"),
++                    }
+                 } else {
+                     log::trace!("apply Decorators: JSON→DecoratorsSectionJson 解析失败");
+                 }
+@@ -946,7 +1530,7 @@
+ /// **纠偏**：strokes 为 **JSON 明文**（非 flate2 deflate；flate2 只用于二进制栅格尾）。
+ #[derive(Clone, Debug, serde::Deserialize)]
+ pub struct TerrainSectionJson {
+-    #[serde(default)]
++    #[serde(default, alias = "next_stroke_id")]
+     pub next_stroke_index: u32,
+     #[serde(default)]
+     pub strokes: std::collections::HashMap<String, TerrainStrokeJson>,
+@@ -1104,24 +1688,8 @@
+     /// 内嵌 map insert(info) + d2s insert（冲突 panic）。
+     ///
+     /// 这是 `apply_loaded_snapshot` "Decorators" 分支的真实写回输入面。
+-    pub fn into_storage_snapshot(&self) -> DecoratorStorageSnapshot {
+-        let mut states = Vec::new();
+-        for (addr_json, list) in &self.states {
+-            let addr = addr_json.to_storage_addr();
+-            for (id, _info) in &list.state {
+-                states.push(DecoratorAddrSnapshot {
+-                    encoded_id: encode_snapshot_id(*id),
+-                    addr,
+-                    // U：原生状态字节判别（0x142ac9bdc/0x142ac9bfc 跳表）待①。
+-                    state: 0,
+-                    // U：DecoratorInfoJson → 0x48B DecoratorInfo 逐字段映射待①
+-                    // （c-apply-api-formats 契约）；当前以默认 info 承载，restore
+-                    // 机制已按 fresh 重建，字段映射待①补齐。
+-                    info: DecoratorInfo::default(),
+-                });
+-            }
+-        }
+-        DecoratorStorageSnapshot { states }
++    pub fn into_storage_snapshot(&self) -> anyhow::Result<DecoratorStorageSnapshot> {
++        anyhow::bail!("legacy DecoratorInfo JSON is not the native DecoratorHistoryState schema")
+     }
+ }
+ 
+@@ -1225,11 +1793,20 @@
+             raster: Vec::new(),
+             ids: Vec::new(),
+             // 注入一个 Version 节（域序列化器未就绪的节由宿主注入）。
+-            section_values: vec![("Version", json!(27))],
++            section_values: Vec::new(),
++            terrain_data: Some(vec![0, 1, 2, 3]),
++            terrain_height_range: Some(-2.0..4.0),
++            removed_supports: Some(StairsRemovedSupports::default()),
+         };
+         let bytes = capture_game_snapshot(domain);
+         assert!(bytes.len() <= SNAPSHOT_JSON_BUFFER_CAPACITY);
+-        let parsed: Value = serde_json::from_slice(&bytes).unwrap();
++        let first = motomoto::Reader::new(&bytes)
++            .iter()
++            .next()
++            .unwrap()
++            .unwrap();
++        assert_eq!(first.tag, motomoto::tag_from_str("Snapshot"));
++        let parsed: Value = serde_json::from_slice(first.data).unwrap();
+         let object = parsed.as_object().unwrap();
+         // 原生经 serde_json::Map<String, Value>::insert 组装后 serialize；本 crate 的
+         // serde_json 未启用 preserve_order，Map = BTreeMap → 键按字典序输出
+@@ -1237,7 +1814,7 @@
+         // Version → … → Raster（见 validate）。
+         assert!(object.contains_key("Version"));
+         assert!(object.contains_key("Trees"));
+-        assert_eq!(object["Version"], json!(27));
++        assert_eq!(object["Version"], json!(2));
+         assert_eq!(object["Trees"].as_array().unwrap().len(), 1);
+     }
+ 
+@@ -1320,39 +1897,19 @@
+         let decorators = vec![
+             (
+                 DecoratorStorageAddr::Wall(WallId(2)),
+-                DecoratorAddrSnapshot {
+-                    encoded_id: 0,
+-                    addr: DecoratorStorageAddr::Wall(WallId(2)),
+-                    state: 0,
+-                    info: DecoratorInfo::default(),
+-                },
++                DecoratorAddrSnapshot { states: Vec::new() },
+             ),
+             (
+                 DecoratorStorageAddr::Terrain,
+-                DecoratorAddrSnapshot {
+-                    encoded_id: 0,
+-                    addr: DecoratorStorageAddr::Terrain,
+-                    state: 0,
+-                    info: DecoratorInfo::default(),
+-                },
++                DecoratorAddrSnapshot { states: Vec::new() },
+             ),
+             (
+                 DecoratorStorageAddr::Stair,
+-                DecoratorAddrSnapshot {
+-                    encoded_id: 0,
+-                    addr: DecoratorStorageAddr::Stair,
+-                    state: 0,
+-                    info: DecoratorInfo::default(),
+-                },
++                DecoratorAddrSnapshot { states: Vec::new() },
+             ),
+             (
+                 DecoratorStorageAddr::Wall(WallId(1)),
+-                DecoratorAddrSnapshot {
+-                    encoded_id: 0,
+-                    addr: DecoratorStorageAddr::Wall(WallId(1)),
+-                    state: 0,
+-                    info: DecoratorInfo::default(),
+-                },
++                DecoratorAddrSnapshot { states: Vec::new() },
+             ),
+         ];
+         let trees = vec![
+@@ -1379,6 +1936,9 @@
+             raster: Vec::new(),
+             ids,
+             section_values: Vec::new(),
++            terrain_data: Some(Vec::new()),
++            terrain_height_range: Some(0.0..0.0),
++            removed_supports: Some(StairsRemovedSupports::default()),
+         }
+         .sorted();
+         assert_eq!(
+@@ -1407,75 +1967,9 @@
+     }
+ 
+     #[test]
+-    fn decorators_json_into_storage_snapshot_and_apply_restore() {
+-        let json = json!({
+-            "states": [
+-                [{"Wall": 5}, {"state": [
+-                    [10, {"allow_connection": false, "clv": 3, "color_id": 1,
+-                          "dst": {"Terrain": {"pos_xz": [1.0, 2.0], "yaw_radians": 0.5}},
+-                          "rank": {"x": 0}, "seed": 7, "stair_width": 0.0, "ty": "CottageWindow"}],
+-                    [11, {"allow_connection": true, "clv": 4, "color_id": 2,
+-                          "dst": {"Wall": {"anchor": {"anchor_ws": [0.0,1.0,2.0], "corner": 0,
+-                                                       "platform": 0, "wall_height_relative_y": 0.5},
+-                                            "coord": {"x": 0.1, "y": 0.2}}},
+-                          "rank": {"x": 1}, "seed": 8, "stair_width": 1.0, "ty": "Stairs"}]
+-                ]}],
+-                ["Terrain", {"state": [
+-                    [12, {"allow_connection": true, "clv": 9, "color_id": 0,
+-                          "dst": {"Terrain": {"pos_xz": [3.0, 4.0], "yaw_radians": 1.0}},
+-                          "rank": {"x": 2}, "seed": 5, "stair_width": 0.0, "ty": "CottageWindow"}]
+-                ]}]
+-            ]
+-        });
+-        let section: DecoratorsSectionJson = serde_json::from_value(json.clone()).unwrap();
+-        let snapshot = section.into_storage_snapshot();
+-        assert_eq!(snapshot.states.len(), 3);
+-        assert_eq!(
+-            snapshot.states[0].addr,
+-            DecoratorStorageAddr::Wall(WallId(5))
+-        );
+-        assert_eq!(decode_snapshot_id(snapshot.states[0].encoded_id), 10);
+-        assert_eq!(
+-            snapshot.states[1].addr,
+-            DecoratorStorageAddr::Wall(WallId(5))
+-        );
+-        assert_eq!(snapshot.states[2].addr, DecoratorStorageAddr::Terrain);
+-
+-        // apply_loaded_snapshot "Decorators" 分支真写回（restore_snapshot）。
+-        let loaded = LoadedSnapshotData {
+-            version: 1,
+-            sections: vec![("Decorators", json)],
+-            terrain: Vec::new(),
+-            rasters: Vec::new(),
+-        };
+-        let mut resources = SnapshotLoadResources {
+-            loaded: Some(loaded),
+-        };
+-        let mut walls = InnerWalls::default();
+-        let mut decorators = DecoratorStorage::default();
+-        let mut terrain = TerrainEditingData(tg_terrain::stroke::TerrainEditingData::default());
+-        apply_loaded_snapshot(
+-            &mut resources,
+-            &mut walls,
+-            &mut decorators,
+-            &mut terrain,
+-            None,
+-        );
+-        assert_eq!(
+-            decorators.lookup_storage(DecoratorId(10)),
+-            Some(DecoratorStorageAddr::Wall(WallId(5)))
+-        );
+-        let wall_bucket = decorators
+-            .get(DecoratorStorageAddr::Wall(WallId(5)))
+-            .unwrap();
+-        // fresh restore_snapshot：内嵌 map 回填 info（removed_ids.remove +
+-        // modified_ids.insert + decorators.insert + d2s insert）。
+-        assert!(wall_bucket.decorators.contains_key(&10));
+-        assert!(wall_bucket.decorators.contains_key(&11));
+-        assert!(wall_bucket.modified_ids.contains(&10));
+-        assert!(wall_bucket.modified_ids.contains(&11));
+-        let terrain_bucket = decorators.get(DecoratorStorageAddr::Terrain).unwrap();
+-        assert!(terrain_bucket.decorators.contains_key(&12));
++    fn legacy_decorator_json_does_not_fabricate_default_info() {
++        let section: DecoratorsSectionJson = serde_json::from_value(json!({"states": []})).unwrap();
++        assert!(section.into_storage_snapshot().is_err());
+     }
+ 
+     #[test]

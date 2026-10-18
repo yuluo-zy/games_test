@@ -1,0 +1,55 @@
+// instantiate_audio_w_position_and_volume @ 0x140aa3590
+
+
+void __cdecl country_core::systems::audio::roof_audio::instantiate_audio_w_position_and_volume(void)
+
+{
+  void *extraout_RAX;
+  longlong *in_RCX;
+  void *in_RDX;
+  size_t in_R8;
+  void *_Dst;
+  longlong local_e0;
+  int local_a8;
+  longlong local_78;
+  size_t local_68;
+  
+  if (*in_RCX == 0) {
+    if ((longlong)in_R8 < 0) {
+LAB_140aa377d:
+                    // WARNING: Subroutine does not return
+      alloc::raw_vec::handle_error();
+    }
+    if (in_R8 == 0) {
+      _Dst = (void *)0x1;
+    }
+    else {
+      std::alloc::__default_lib_allocator::__rust_alloc();
+      _Dst = extraout_RAX;
+      if (extraout_RAX == (void *)0x0) goto LAB_140aa377d;
+    }
+    memcpy(_Dst,in_RDX,in_R8);
+    local_78 = 0;
+    local_68 = in_R8;
+  }
+  else {
+    resources::audio_resources::AudioCoreInner::instantiate_audio();
+    if (local_78 == 2) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+  }
+  resources::audio_resources::impl$10::set_position();
+  resources::audio_resources::AudioInstance::start_if_not_playing();
+  local_a8 = (int)local_78;
+  if ((local_a8 == 1) && (libfmod::EventInstance::set_volume(), local_e0 != -0x7ffffffffffffffc)) {
+                    // WARNING: Subroutine does not return
+    core::result::unwrap_failed();
+  }
+  resources::audio_resources::impl$13::drop();
+  if (local_68 != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  return;
+}
+

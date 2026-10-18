@@ -1,0 +1,114 @@
+
+void __cdecl
+country_core::systems::save::save_game::AutoSaveState::create_backup_of<std::path::PathBuf>(void)
+
+{
+  char **ppcVar1;
+  undefined8 *in_RDX;
+  undefined8 *in_R8;
+  undefined *local_118;
+  undefined8 local_110;
+  undefined8 **local_108;
+  undefined8 local_100;
+  undefined8 local_f8;
+  undefined **local_e8;
+  code *local_e0;
+  undefined **local_d8;
+  code *pcStack_d0;
+  char **local_c8;
+  undefined8 uStack_c0;
+  undefined8 local_b8;
+  undefined8 uStack_b0;
+  undefined8 local_a8;
+  undefined8 uStack_a0;
+  longlong local_98;
+  undefined8 local_90;
+  char *local_88;
+  undefined8 uStack_80;
+  char **local_78;
+  undefined8 uStack_70;
+  undefined8 local_68;
+  undefined8 uStack_60;
+  undefined8 local_58;
+  undefined8 uStack_50;
+  undefined8 *local_48;
+  undefined1 local_39;
+  undefined8 local_38;
+  
+  local_38 = 0xfffffffffffffffe;
+  local_39 = 1;
+  local_48 = in_R8;
+  std::sync::mpmc::sync_channel<enum2_<core::result::Result<tuple_<>,anyhow::Error>_>_>();
+  ppcVar1 = local_78;
+  local_98 = (longlong)local_78;
+  local_90 = uStack_70;
+  local_78 = (char **)*local_48;
+  uStack_70 = local_48[1];
+  local_68 = local_48[2];
+  uStack_60 = local_48[3];
+  local_58 = *in_RDX;
+  uStack_50 = in_RDX[1];
+  std::sync::mpmc::Sender::send<enum2_<country_core::systems::save::save_game::AsyncSaveCmd>_>();
+  if ((int)local_d8 == 0xb) {
+    if (ppcVar1 == (char **)0x0) {
+      std::sync::mpmc::array::Channel::recv<enum2_<core::result::Result<tuple_<>,anyhow::Error>_>_>
+                ();
+    }
+    else if ((int)ppcVar1 == 1) {
+      std::sync::mpmc::list::Channel::recv<enum2_<core::result::Result<tuple_<>,anyhow::Error>_>_>()
+      ;
+    }
+    else {
+      std::sync::mpmc::zero::Channel::recv<enum2_<core::result::Result<tuple_<>,anyhow::Error>_>_>()
+      ;
+    }
+    if ((char)local_88 != '\x01') {
+      local_39 = 0;
+      core::ptr::
+      drop_in_place<std::sync::mpsc::Receiver<enum2_<core::result::Result<tuple_<>,anyhow::Error>_>_>_>
+                ();
+      return;
+    }
+    local_d8 = &local_118;
+    pcStack_d0 = std::sync::mpsc::impl$46::fmt;
+    local_88 = "\x01";
+    uStack_80 = 1;
+    local_68 = 0;
+    uStack_70 = 1;
+    local_78 = (char **)&local_d8;
+    anyhow::__private::format_err();
+    local_d8 = (undefined **)0x142f92c33;
+    pcStack_d0 = (code *)0x22;
+    local_88 = (char *)0x3;
+    anyhow::Error::construct<anyhow::error::ContextError<ref_<str_>,anyhow::Error>_>();
+  }
+  else {
+    local_58 = local_a8;
+    uStack_50 = uStack_a0;
+    local_68 = local_b8;
+    uStack_60 = uStack_b0;
+    local_78 = local_c8;
+    uStack_70 = uStack_c0;
+    local_88 = (char *)local_d8;
+    uStack_80 = pcStack_d0;
+    local_e0 = std::sync::mpsc::impl$18::fmt<tuple_<>_>;
+    local_118 = &DAT_142f92c58;
+    local_110 = 1;
+    local_f8 = 0;
+    local_108 = &local_e8;
+    local_100 = 1;
+    local_e8 = &local_88;
+    anyhow::__private::format_err();
+    core::ptr::drop_in_place<enum2_<country_core::systems::save::save_game::AsyncSaveCmd>_>();
+    local_d8 = (undefined **)&DAT_142f92c10;
+    pcStack_d0 = (code *)0x23;
+    local_88 = (char *)0x3;
+    anyhow::Error::construct<anyhow::error::ContextError<ref_<str_>,anyhow::Error>_>();
+  }
+  local_39 = 0;
+  core::ptr::
+  drop_in_place<std::sync::mpsc::Receiver<enum2_<core::result::Result<tuple_<>,anyhow::Error>_>_>_>
+            ();
+  return;
+}
+

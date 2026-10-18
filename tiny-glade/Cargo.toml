@@ -18,6 +18,7 @@ members = [
     "crates/systems/critters",
     "crates/systems/clutter",
     "crates/systems/onboarding",
+    "crates/systems/toolbar",
     "crates/rhapsody",
     "crates/rhapsody/crates/shader-pipeline",
     "crates/utils",
@@ -26,17 +27,16 @@ members = [
     "crates/tabloid",
     "crates/motomoto",
     "crates/tg-package-integrity",
-    "crates/theme-defs",
+    "crates/tg-theme",
     "crates/tg-text",
     "crates/asset",
     "crates/asset-pipe",
     "crates/tg-iced",
     "crates/tg-gpu-selector",
-    "crates/theme-fetcher",
-    "crates/theme-server-proto",
     "crates/rhapsody/crates/shader-compiler",
 ]
 default-members = ["crates/tiny-glade"]
+exclude = ["third_party/obvhs-a3f3b3bf"]
 
 [workspace.package]
 version = "0.1.0"
@@ -50,6 +50,7 @@ tg-terrain = { path = "crates/systems/terrain" }
 tg-building-runtime = { path = "crates/tg-building-runtime" }
 tg-history = { path = "crates/tg-history" }
 country-core = { path = "crates/country-core" }
+obvhs = { path = "third_party/obvhs-a3f3b3bf" }
 system-roof = { path = "crates/systems/roof" }
 system-wall-constructor = { path = "crates/systems/wall-constructor" }
 system-decorator = { path = "crates/systems/decorator" }
@@ -62,6 +63,7 @@ system-color = { path = "crates/systems/color" }
 system-critters = { path = "crates/systems/critters" }
 system-clutter = { path = "crates/systems/clutter" }
 system-onboarding = { path = "crates/systems/onboarding" }
+toolbar = { path = "crates/systems/toolbar" }
 tabloid = { path = "crates/tabloid" }
 rhapsody = { path = "crates/rhapsody" }
 shader-pipeline = { path = "crates/rhapsody/crates/shader-pipeline" }
@@ -77,9 +79,14 @@ arc-swap = { version = "=1.7.1", features = ["weak"] }
 ash = "=0.38.0"
 blake3 = "=1.5.3"
 byteorder = "=1.5.0"
+# B `tiny-glade` CLI/logging deps (provenance/original-Cargo.lock):
+# clap 4.4.6, fern 0.6.1, colored 1.9.3.
+clap = { version = "=4.4.6", features = ["derive"] }
+colored = "=1.9.3"
 const-fnv1a-hash = "=1.1.0"
 easy-parallel = "=3.2.0"
 fastrand = "=1.8.0"
+fern = "=0.6.1"
 fnv = "=1.0.7"
 glam = "=0.29.3"
 half = "=2.4.1"
@@ -97,13 +104,13 @@ serde_json = "=1.0.85"
 speedy = "=0.8.6"
 take-until = "=0.2.0"
 thiserror = "=1.0.60"
-time = "=0.3.36"
+time = { version = "=0.3.36", features = ["formatting", "macros", "local-offset"] }
 xxhash-rust = "=0.8.10"
 yaml-rust2 = "=0.8.0"
 
 bytemuck = { version = "=1.16.0", features = ["derive"] }
 hashbrown = "=0.14.5"
-slotmap = "=1.0.6"
+slotmap = "=1.1.1"
 bevy_app = { version = "=0.16.0", default-features = false, features = ["std"] }
 bevy_ecs = { version = "=0.16.0", default-features = false, features = ["std"] }
 bevy_tasks = { version = "=0.16.0", default-features = false, features = ["std", "async_executor", "multi_threaded"] }
@@ -119,6 +126,39 @@ spirq = { git = "https://github.com/h3r2tic/spirq-rs.git", rev = "4f22e6f1497504
 
 append-only-vec = { git = "https://github.com/h3r2tic/append-only-vec.git", rev = "4031d674025f4765ad8fdd7fd41ef3bc7bea65e8" }
 hotwatch = { git = "https://github.com/h3r2tic/hotwatch.git", rev = "7576ad4ab2535f20d3c59d65b334355d4170cb97" }
+
+# External-dep ledger (§3 external-dep, 2026-10-17-unimplemented-ledger.md).
+# Versions/identities follow the original B Cargo.lock (provenance/original-Cargo.lock).
+# image features chosen to reproduce B's resolved set {png, tiff, zune-core, zune-jpeg}
+# (B lock records image 0.25.1 without gif/exr/color_quant).
+taffy = "=0.3.13"
+tiny_http = "=0.12.0"
+image = { version = "=0.25.1", default-features = false, features = ["png", "jpeg", "tiff"] }
+open = "=5.0.0"
+webbrowser = "=0.8.10"
+
+# Platform dependencies (unlock-tinyglade-deps, 2026-10-17).
+# Exact identities from provenance/original-Cargo.lock:
+#  * sentry/sentry-types 0.31.7 (registry; checksums in original lock)
+#  * egui-winit 0.27.2 (registry; pairs with the patched winit 0.29.15)
+#  * egui_extras 0.27.2 (registry)
+#  * rfd 0.10.0 (registry; note: main.rs comment "0.15" was wrong)
+#  * minidump 0.21.1 / minidump-common 0.21.1 (registry)
+#  * steamworks + steamworks-sys (git PounceLight/steamworks-rs rev d05eaa60)
+#  * minidumper + crash-handler (git PounceLight/crash-handling rev acd03d69)
+# Entries are workspace-level only: Cargo does not resolve unused
+# workspace.dependencies, so `cargo check` stays offline-safe until a member
+# actually enables them.
+sentry = "=0.31.7"
+sentry-types = "=0.31.7"
+egui-winit = "=0.27.2"
+egui_extras = "=0.27.2"
+rfd = "=0.10.0"
+minidump = "=0.21.1"
+minidump-common = "=0.21.1"
+steamworks = { git = "https://github.com/PounceLight/steamworks-rs.git", rev = "d05eaa60db328156aeee172b0b157f3f69c70b30" }
+minidumper = { git = "https://github.com/PounceLight/crash-handling.git", rev = "acd03d6967e428100f37454766110e82118f5d7c" }
+crash-handler = { git = "https://github.com/PounceLight/crash-handling.git", rev = "acd03d6967e428100f37454766110e82118f5d7c" }
 
 [patch.crates-io]
 winit = { git = "https://github.com/PounceLight/winit.git", rev = "d03de0a0a881be9422c360083151b0e7a8a2582e" }
@@ -142,6 +182,14 @@ debug = "line-tables-only"
 
 [profile.dev.package."*"]
 debug = false
+
+# The original pinned winit uses icrate/objc2 0.4.1. Current macOS Swift-backed
+# NSScreen arrays encode the same-width NSFastEnumeration count as q rather
+# than Q. That version's debug verifier rejects the ABI-equivalent call and
+# has no later relax-sign-encoding feature. Keep this one legacy bridge's
+# release verification behavior without changing winit or game logic.
+[profile.dev.package."objc2:0.4.1"]
+debug-assertions = false
 
 [profile.release]
 lto = "thin"

@@ -1,8 +1,7 @@
 use bevy_ecs::prelude::*;
-use country_core::recovered_building::{
-    building_roof_creation::RoofCreateRequestObserved,
-    building_wall_state::{WallId, WallShapeSnapshot},
-};
+use country_core::resources::roofs::creation::RoofCreateRequestObserved;
+use country_core::resources::walls::publication_fields::WallId;
+use country_core::resources::walls::publication_fields::WallShapeSnapshot;
 use std::sync::Arc;
 use tg_building_runtime::*;
 fn input(tag: u32, style: u8, y: f32) -> WallPublicationInput {
@@ -276,7 +275,7 @@ fn gable_creation_updates_second_cache_and_removal_reverts_it() {
     let wall = &app.world().resource::<PublicWalls>().walls[&id];
     let roof = &app.world().get::<Roof>(entity).unwrap().0;
     let expected = wall.state.max_y().unwrap()
-        + country_core::recovered_building::surface::height(roof)
+        + country_core::resources::roofs::geometry::surface::height(roof)
         + 0.46f32;
     assert_eq!(
         wall.state.max_y_gable().unwrap().to_bits(),
@@ -291,4 +290,169 @@ fn gable_creation_updates_second_cache_and_removal_reverts_it() {
     let wall = &app.world().resource::<PublicWalls>().walls[&id];
     assert_eq!(wall.state.max_y_gable(), wall.state.max_y());
     assert!(!wall.gable_profile_pending);
+}
+
+#[test]
+fn duplicate_create_requests_preserve_one_live_roof_and_future_associations() {
+    let mut app = building_app();
+    let id = WallId(90);
+    emit(
+        &mut app,
+        PublishWall {
+            wall: id,
+            input: input(1, 0, 2.),
+        },
+    );
+    emit(&mut app, create(id, 0.5));
+    emit(&mut app, create(id, 0.5));
+    app.update();
+    assert_eq!(app.world().resource::<BuildingReport>().faults.len(), 1);
+    let entity = app.world().resource::<WallRoofMap>().entity(id).unwrap();
+    assert_eq!(
+        app.world_mut().query::<&Roof>().iter(app.world()).count(),
+        1
+    );
+    emit(&mut app, create(id, 0.5));
+    app.update();
+    assert_eq!(app.world().resource::<BuildingReport>().faults.len(), 1);
+    assert_eq!(
+        app.world().resource::<WallRoofMap>().entity(id),
+        Some(entity)
+    );
+    app.update();
+    clean(&app);
+}
+
+#[test]
+fn invalid_publications_do_not_replace_the_last_valid_wall_or_block_valid_inputs() {
+    let mut app = building_app();
+    let id = WallId(91);
+    emit(
+        &mut app,
+        PublishWall {
+            wall: id,
+            input: input(1, 0, 2.),
+        },
+    );
+    app.update();
+    clean(&app);
+    for case in 0..7 {
+        let mut invalid = input(1, 0, 2.);
+        match case {
+            0 => {
+                invalid.outline = Arc::new(Vec::new());
+                invalid.terrain_y.clear();
+            }
+            1 => invalid.source_curve_length = f32::INFINITY,
+            2 => invalid.extra = f32::NAN,
+            3 => Arc::make_mut(&mut invalid.outline)[0][0] = f32::INFINITY,
+            4 => invalid.terrain_y[0] = f32::NAN,
+            5 => {
+                Arc::make_mut(&mut invalid.outline)[0][1] = f32::MAX;
+                invalid.terrain_y[0] = -f32::MAX;
+            }
+            _ => {
+                let mut bytes = *invalid.shape.bytes();
+                bytes[4..8].copy_from_slice(&f32::NAN.to_le_bytes());
+                invalid.shape = WallShapeSnapshot::from_observed(bytes);
+            }
+        }
+        emit(
+            &mut app,
+            PublishWall {
+                wall: id,
+                input: invalid,
+            },
+        );
+    }
+    emit(
+        &mut app,
+        PublishWall {
+            wall: WallId(92),
+            input: input(0, 0, 2.),
+        },
+    );
+    app.update();
+    assert_eq!(app.world().resource::<BuildingReport>().faults.len(), 7);
+    let walls = app.world().resource::<PublicWalls>();
+    assert_eq!(walls.walls[&id].publication_revision, 1);
+    assert!(walls.walls.contains_key(&WallId(92)));
+}
+
+#[test]
+fn invalid_roof_creation_does_not_admit_nonfinite_geometry_or_consume_valid_requests() {
+    let mut app = building_app();
+    let wall = WallId(93);
+    emit(
+        &mut app,
+        PublishWall {
+            wall,
+            input: input(1, 0, 2.),
+        },
+    );
+    let CreateRoof(valid) = create(wall, 0.5);
+    for offset in [32, 36, 40, 44, 48, 52] {
+        for invalid in [f32::NAN, f32::INFINITY] {
+            let mut record = *valid.record();
+            record[offset..offset + 4].copy_from_slice(&invalid.to_le_bytes());
+            emit(
+                &mut app,
+                CreateRoof(RoofCreateRequestObserved::from_observed(record)),
+            );
+        }
+    }
+    let mut bad_direction = *valid.record();
+    bad_direction[56] = 2;
+    emit(
+        &mut app,
+        CreateRoof(RoofCreateRequestObserved::from_observed(bad_direction)),
+    );
+    emit(&mut app, CreateRoof(valid));
+    app.update();
+    assert_eq!(app.world().resource::<BuildingReport>().faults.len(), 13);
+    assert_eq!(app.world().resource::<BuildingReport>().created.len(), 1);
+    let entity = app.world().resource::<WallRoofMap>().entity(wall).unwrap();
+    assert!(app.world().get::<RoofCpuTiles>(entity).is_some());
+    assert!(
+        app.world()
+            .resource::<nani::NaniCpuStagingState>()
+            .contains(entity)
+    );
+}
+
+#[test]
+fn roofs_created_and_deleted_in_one_update_do_not_allocate_backend_instances() {
+    let mut app = building_app();
+    let wall = WallId(94);
+    emit(
+        &mut app,
+        PublishWall {
+            wall,
+            input: input(1, 0, 2.),
+        },
+    );
+    emit(&mut app, create(wall, 0.5));
+    emit(&mut app, DeleteRoof(wall));
+    dt(&mut app, 1.);
+    app.update();
+    clean(&app);
+    assert_eq!(app.world().resource::<BuildingReport>().created.len(), 1);
+    assert_eq!(app.world().resource::<BuildingReport>().despawned.len(), 1);
+    assert!(
+        app.world()
+            .resource::<nani::DeferredNaniRequests>()
+            .0
+            .is_empty()
+    );
+    assert!(
+        app.world()
+            .resource::<nani::NaniCpuStagingState>()
+            .is_empty()
+    );
+    assert!(
+        app.world()
+            .resource::<nani::NaniBackendConfirmations>()
+            .0
+            .is_empty()
+    );
 }

@@ -1,37 +1,43 @@
-//! ui_delete_tree.rs — 删除树 UI（B 0x141bd2510，O；re-analyst-A 契约 §2）。
-//!
-//! 语义（O）：门禁 `mode==9 && submode==6`（AppMode::Eraser(EraserLayer::Tree)）；
-//! clearing_canvas_w_layer（0x14092e340，层 10）+ widget 'tree_erase'
-//! （0x142ef5fe9）；**删除半径 = brush_size × 3.0**（0x1429cd078=3.0）；空间哈希
-//! 圆内（0x20B 条目 {flag@+0x18, pos@+8, r@+0x14}）→ TreeStorage 全遍历收集
-//! `dist < r×3` → 删除列表 + History::add（变体 2）。
+//! B ui_delete_tree: preserve the existing UI/path flow, query live placement
+//! and prefab ownership, and record the actual storage index independently of
+//! the placement variant. Invalid stored entities preserve the original
+//! QueryEntityError unwrap failure instead of emitting a guessed deletion.
 
 use bevy_ecs::prelude::*;
 use glam::Vec2;
 
 use country_core::components::TreeComponent;
 use country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast;
-use country_core::resources::history::tree_edit::DeleteTreeCmd;
+use country_core::resources::history::tree_edit::{DeleteTreeCmd, TreeEdit, TreeEditData};
 use country_core::resources::history::{EditType, History};
 use country_core::resources::path_stroke::PathDrawEvent;
 use country_core::resources::prefab::PrefabInstance;
 use country_core::resources::tree_storage::TreeStorage;
 use country_core::resources::walls::EraserSizeMultiplier;
-use country_core::systems::mode_manager::AppMode;
+use country_core::systems::mode_manager::{AppMode, EraserLayer};
 use country_core::systems::prefab::PrefabInstanceData;
 use country_core::systems::ui::resources::ui_state::UiState;
 use country_core::systems::ui::signifiers::signifier_create::UiSignifierStream;
 
+use crate::ui_place_tree::DEV_OVERRIDE_IS_DEMO_MODE;
+
 /// 删除半径系数（O：0x1429cd078 = 3.0）。
 pub const DELETE_RADIUS_SCALE: f32 = 3.0;
 
-/// `ui_delete_tree` @0x141bd2510（O 面）。
+/// 清除画布 widget 名（O：0x142ef5fe9 实读 10 B `"tree_erase"`）。
+pub const TREE_ERASE_WIDGET: &str = "tree_erase";
+/// `clearing_canvas_w_layer_and_sound` 的 `argument_79`（O：R9B = 0x0a）。
+pub const TREE_ERASE_ARGUMENT_79: u8 = 0x0a;
+/// 清除画布 layer（O：栈参 byte = 3）。
+pub const TREE_ERASE_LAYER: u8 = 3;
+
+/// `ui_delete_tree` @0x141bd2510（O 面；见模块文档）。
 #[allow(clippy::too_many_arguments)]
 pub fn ui_delete_tree<S: Send + Sync + 'static>(
     mode: Res<AppMode>,
-    _ui: Res<UiState>,
+    ui: Res<UiState>,
     trees: Query<(&PrefabInstanceData, &PrefabInstance, &TreeComponent)>,
-    _strokes: EventReader<PathDrawEvent>,
+    mut strokes: EventReader<PathDrawEvent>,
     mut deletes: EventWriter<DeleteTreeCmd>,
     storage: Res<TreeStorage>,
     cursor: Res<CursorTerrainRaycast>,
@@ -39,34 +45,61 @@ pub fn ui_delete_tree<S: Send + Sync + 'static>(
     _signifiers: Res<UiSignifierStream>,
     brush: Res<EraserSizeMultiplier>,
 ) {
-    // 门禁（O：mode==9 && submode==6 = AppMode::Eraser(EraserLayer::Tree)）。
-    if !matches!(*mode, AppMode::Eraser(country_core::systems::mode_manager::EraserLayer::Tree)) {
+    if DEV_OVERRIDE_IS_DEMO_MODE {
         return;
     }
-    // O：删除半径 = brush × 3.0（0x1429cd078=3.0 字节 ✓）；光标圈内树收集
-    // （TreeStorage 全遍历，`dist < r×3`）→ 真实树 id 删除命令 + History::add
-    // （变体 2 Delete）。
-    let radius = brush.0 * DELETE_RADIUS_SCALE;
-    let center = Vec2::new(cursor.position().x, cursor.position().z);
-    // 实体 → 位置（O：树记录位置面；Query 按实体配对——TreeStorageEntry.entity）。
-    for (index, entry) in storage.iter() {
-        let pos = trees
-            .iter()
-            .find(|(data, _p, _c)| data.position != glam::Vec3::ZERO)
-            .map(|(data, _p, _c)| Vec2::new(data.position.x, data.position.z))
-            .unwrap_or(center);
-        let _ = entry;
-        if (pos - center).length() < radius {
-            deletes.write(DeleteTreeCmd { id: index.0 });
-            let edit = EditType::Tree(std::sync::Arc::new(
-                country_core::resources::history::tree_edit::TreeEdit::Delete(
-                    country_core::resources::history::tree_edit::TreeEditData {
-                        id: index.0,
-                        ..Default::default()
-                    },
-                ),
-            ));
-            let _ = history.add(edit);
+    let mut active = false;
+    let mut center = Vec2::ZERO;
+    let mut radius = 0.0;
+    // Only UI acquisition is mode-gated. Paths can request tree clearing
+    // from another mode (B 141bd2579/2582 both branch to the path reader).
+    if matches!(*mode, AppMode::Eraser(EraserLayer::Tree)) {
+        let ctx = ui.clearing_canvas_w_layer_and_sound(
+            TREE_ERASE_WIDGET,
+            TREE_ERASE_ARGUMENT_79,
+            TREE_ERASE_LAYER,
+        );
+        if ctx.dragged() != 2 {
+            active = true;
+            let p = cursor.position();
+            center = Vec2::new(p.x, p.z);
+            radius = brush.0 * DELETE_RADIUS_SCALE;
         }
+    }
+    // Drain the complete reader; the last unobserved path wins. An observed
+    // event does not cancel an earlier unobserved event in the same batch.
+    for ev in strokes.read() {
+        if !ev.observed_flag {
+            center = Vec2::new(ev.position.x, ev.position.z);
+            radius = ev.radius * 2.0;
+            active = true;
+        }
+    }
+    if !active {
+        return;
+    }
+
+    // O：逐 TreeStorage 条目；`sqrt(dx²+dz²) < radius` → DeleteTreeCmd + History。
+    for (&index, entry) in storage.iter() {
+        let (data, prefab, tree) = trees
+            .get(entry.entity)
+            .expect("TreeStorage entry is missing the tree placement query components");
+        let pos = Vec2::new(prefab.0.position.x, prefab.0.position.z);
+        let delta = pos - center;
+        if !((delta.y * delta.y + delta.x * delta.x).sqrt() < radius) {
+            continue;
+        }
+        deletes.write(DeleteTreeCmd { id: index.0 });
+        let edit = EditType::Tree(std::sync::Arc::new(TreeEdit::Delete(
+            TreeEditData::from_placement(
+                index,
+                &prefab.0,
+                data.prefab_name.as_name_ref().to_string(),
+                tree.is_preplaced,
+            ),
+        )));
+        history
+            .add(edit)
+            .expect("tree deletion requires an active history recording");
     }
 }

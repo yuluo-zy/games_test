@@ -1,33 +1,7 @@
-//! `AssetTextureLibrary` — 纹理注册表 + bindless 描述符表 + 渲染图“预设纹理”（layer A3，已逐函数对照机器码）。
-//!
-//! 证据全文见 `evidence/country-core-audit/A3_texture.md`；O = 机器码直接观察，I = 推断，U = 未知。
-//!
-//! 结构体布局（O，`AssetTextureLibrary::new` 0x14093bb10 的逐字段写入，总大小 0xc8）：
-//! ```text
-//! +0x00 textures : Vec<Texture>                       (stride 0x38；`add` 里 imul 0x38)
-//! +0x18 dset     : DescriptorSet                      (0x18 B 托管句柄；new 里由 create_persistent_descriptor_set 写入)
-//! +0x30 by_name  : HashMap<NameHash, NamedTexture, NoHashHasher>   (hashbrown 桶 0x18 B：hash 8 + NamedTexture 16)
-//! +0x50 presets  : HashMap<TexturePreset, PresetTextureState, RandomState>  (桶 0x68 B)
-//! +0x70           RandomState 的 (k0, k1)
-//! +0x80 bindless : std::sync::RwLock<DescriptorMap>   (futex 字 @0x80，poison 字节 @0x88，数据 @0x90)
-//!        DescriptorMap { pending: Vec<AssetIndex> @0x90, indices: Vec<Option<DescriptorIndex>> @0xa8, next: u32 @0xc0 }
-//! ```
-//! 旧版（本文件上一版）的错误：把 `by_name` 当成 `HashMap<NameHash, NamedTexture{name,texture}>`（实际值只是
-//! `{ handle: AssetIndex, is_virtual: bool }`，纹理本体只存在 `textures` 向量里）；`NameHash` 用 FNV 私造；
-//! `bindless` 用 parking_lot 且上限写成 0x1fdf、复用逻辑与 “pending/dirty” 全是臆造；`get_*_by_name` 取 `&str`
-//! 而原版取预先算好的 `NameHash`；预设纹理四个函数全是空桩（实际是 26 个预设的创建/清零/导入/导出）。
-//!
-//! 偏离（占位）：
-//!  * `nohash_hasher` 外部库 → 本文件内的 `NoHashHasher`（write_u64 直接存值）；
-//!  * rhapsody 设备调用面（`update_texture` / `get_vk_image_view` / `update_persistent_descriptor_set` /
-//!    `create_persistent_descriptor_set`）→ `TextureLibraryDevice` trait，`GraphicsDevice` 上给空实现；
-//!  * `TexturePreset -> TextureDesc` 的 `From`（0xa59890，1933 B）已在 `resources/texture_presets.rs` 恢复；
-//!    `create_preset_textures` 直接用它，`create_preset_textures_with` 保留为测试注入点；
-//!  * `rhapsody::raw::format::vk_format_info` 的 “每像素字节数” → `format_bytes_per_texel`（只覆盖预设用到的格式）。
+//! 纹理资产、预设与描述符发布。设备失败保留待更新队列，完整描述随资产传递。
+//! 原作来源见项目 evidence；当前接口、行为变化与验证范围见 README.md。
 
-// Rust 1.88 enables newer style suggestions; retain original nested branches and modulo expressions.
 #![allow(clippy::collapsible_if)]
-// Preserve the original instruction-level expression order/NaN policy, API call shapes, and evidence/test transcription. See README.md.
 #![allow(clippy::doc_lazy_continuation)]
 use std::collections::HashMap;
 use std::hash::BuildHasherDefault;
@@ -39,96 +13,76 @@ use crate::resources::texture_presets::TexturePreset;
 use crate::rhapsody_contract::{DescriptorSet, GraphicsDevice};
 use crate::rhapsody_types::{BackendError, ImportedBuffer, RenderGraph, Texture, TextureDesc};
 
-// ------------------------------------------------------------------ 常量（O）
-
-/// bindless 描述符表里可分配的索引个数上限（O：`handle_to_bindless_index` 里 `cmp r14d, 0x1fe0; jae panic`）。
-/// 源码断言 `descriptor_index.0 < GraphicsDevice::REQUIRED_BINDLESS_DESCRIPTOR_COUNT as u32 - RESERVED_DESCRIPTOR_COUNT as u32`
-/// 的差值是 0x1fe0；两个常量各自的值 U（按 0x2000 - 0x20 拆分，仅差值是 O）。
 pub const REQUIRED_BINDLESS_DESCRIPTOR_COUNT: u32 = 0x2000;
 pub const RESERVED_DESCRIPTOR_COUNT: u32 = 0x20;
 
-/// 预设纹理个数：`enum_iterator::All<TexturePreset>` 的折叠函数 0x141474b90 状态 0..=24 依次产出预设，状态 25 是结束标记，
-/// 共 **25** 个（O）。**纠错**：此前写成 26（0..=0x19），把结束标记也算成了变体。
 pub const PRESET_COUNT: u8 = TexturePreset::COUNT;
 
-/// 渲染图导入/导出预设纹理的访问类型字节（O：`mov r9b, 0x22` / `mov r8b, 0x22`）。
 pub const RG_TEXTURE_ACCESS: u8 = 0x22;
 
-/// `NameHash::debug_name()`（O 0x140c9cdb0）返回的常量串；`create_preset_textures` 用它给预设纹理命名。
 pub const PRESET_TEXTURE_DEBUG_NAME: &str = "(NameHash)";
 
-// ------------------------------------------------------------------ nohash 占位
-
-/// Original nohash-hasher dependency; NameHash hashes its single u64 field.
 pub type NoHashHasher = nohash_hasher::NoHashHasher<u64>;
 pub type NoHashBuildHasher = BuildHasherDefault<NoHashHasher>;
 
-// ------------------------------------------------------------------ 数据类型
-
-/// `texture_library::AssetIndex`：`textures` 向量里的下标（O：`add` 返回 `Vec::len()`；`get_by_name` 用它做
-/// `imul 0x38` 取址）。Debug 形态 U（原版经 `asset_libraries::impl$11::fmt<Texture>` 打印）。
+/// 纹理向量下标，不是全局 HandleId。
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub struct AssetIndex(pub usize);
 
-/// `texture_library::NamedTexture`（O，16 B）：by_name 表的值。源码断言文本里的字段名 `handle` / `is_virtual`
-/// 直接来自 panic 字符串。`is_virtual` = 这是 `create_name_mapping` 建的别名，不是真纹理。
+/// 名字指向的纹理身份；虚拟名字可以重新映射。
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct NamedTexture {
     pub handle: AssetIndex,
     pub is_virtual: bool,
 }
 
-/// `texture_library::DescriptorIndex`（O：u32，`Option<DescriptorIndex>` 以 u32 标签 + u32 值存放，8 B）。
+/// 采样描述符槽位，不能与纹理向量下标混用。
 #[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd, Ord, Hash)]
 pub struct DescriptorIndex(pub u32);
 
-/// `rhapsody::rg::import_export` 导入纹理后的句柄（O：0x24 B，`PresetTextureState.rg_handle` 的 `Option` 以
-/// 第 0x22 字节 == 7 表示 None）。字段含义 U，仅保留可比较标识。
+/// 图资源身份及其权威描述。
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct ImportedTexture {
     pub resource: u64,
     pub generation: u64,
     pub access: u8,
-    /// B 阶段追加（i_api）：`get_rg_texture` 的返回值是 36 B `{id: u32, desc: TextureDesc(32 B)}`
-    /// （O 0x140a59800：`impl$0::as_texture` 把 `[rsp+0x2c..0x50]` 整块搬进结果，并对 `+4` 处的 desc 调 `extent_2d`）。
     pub desc: TextureDesc,
 }
 
-/// `texture_library::PresetTextureState`（O，0x60 B）：`texture` @+0（0x38 B）+ `rg_handle: Option<ImportedTexture>` @+0x38。
-/// 桶内偏移（桶 0x68 B，键 `TexturePreset` 1 B @0，状态 @8）：Texture @8..0x40，`rg_handle` @0x40..0x64，标签字节 @0x62。
+/// 预设的物理资产、完整描述和当前图句柄。
 #[derive(Clone, Debug)]
 pub struct PresetTextureState {
     pub texture: Texture,
+    /// 创建资源时使用的完整描述，导入时不能从宽高重新猜测。
+    pub desc: TextureDesc,
     pub rg_handle: Option<ImportedTexture>,
 }
 
-/// `DescriptorMap`（RwLock 内的数据，O）。
+/// 并发采样请求的索引与待发布队列。
 #[derive(Default, Debug)]
 pub struct DescriptorMap {
-    /// 已分配、尚未写进描述符集的资产（O：`handle_to_bindless_index` 里 push；`bindless_textures_dset` 里 drain）。
     pub pending: Vec<AssetIndex>,
     /// `AssetIndex -> Option<DescriptorIndex>`，`assign_auto_resize` 维护（缺口填 None）。
     pub indices: Vec<Option<DescriptorIndex>>,
-    /// 下一个要发的描述符索引（O：@0xc0，先自增再断言）。
     pub next: u32,
 }
 
-/// `update_persistent_descriptor_set` 迭代器的元素（O：closure 0x140a96740 在 bump 里分配 0x20 B：
-/// `{0u32, 0u64, image_view, 5u64}`，返回 `{0u32, DescriptorIndex, &entry}`）。含义 U：binding 0、布局值 5。
+/// 向宿主提交的只读采样描述符更新。
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct DescriptorImageUpdate {
     pub binding: u32,
     pub index: DescriptorIndex,
     pub image_view: ImageView,
+    /// 宿主纹理表身份，用于验证视图所有权。
+    pub texture_id: u64,
     pub layout: u64,
 }
 
-/// `vk::ImageView`（`get_vk_image_view` 的返回）。
+/// 经过宿主验证的原生视图身份。
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct ImageView(pub u64);
 
-/// `GraphicsDevice::update_texture` 的更新描述（O：clear_preset_texture 里 0x58..0x90 的结构）。
-/// 数据是全 0 的 `w*h*d*bpp` 字节；mip 0；extent = 纹理自身 extent；另有两个标量实参 1 与 0x22（含义 U）。
+/// 一个 mip 的连续数组层像素更新。
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct TextureUpdate {
     pub data: Vec<u8>,
@@ -139,67 +93,67 @@ pub struct TextureUpdate {
     pub access: u8,
 }
 
-/// 库用到的 rhapsody 设备调用面（外部库占位；调用形态来自机器码）。
+/// 纹理宿主能力；创建、上传和描述符更新都必须报告失败。
 pub trait TextureLibraryDevice: TextureDevice {
-    /// `create_persistent_descriptor_set(name = "bindless_textures", 1, 4)`（O：new 里传 `{String, u32 1, u8 4}` 与 r9d=1，含义 U）。
-    fn create_persistent_descriptor_set(&self, name: &str) -> DescriptorSet;
-    /// `update_persistent_descriptor_set(dset, iterator)`。
+    fn create_persistent_descriptor_set(&self, name: &str) -> Result<DescriptorSet, BackendError>;
     fn update_persistent_descriptor_set(
         &self,
         dset: &DescriptorSet,
         updates: &[DescriptorImageUpdate],
-    );
-    /// `get_vk_image_view(texture, 0)`（O：第 4 参为 0）。
+    ) -> Result<(), BackendError>;
     fn get_vk_image_view(&self, texture: &Texture, mip: u32) -> Result<ImageView, BackendError>;
-    /// `update_texture(texture, &update, 1, 0x22)`。
+    /// 提交指定 mip 的像素更新。
     fn update_texture(&self, texture: &Texture, update: &TextureUpdate)
     -> Result<(), BackendError>;
 }
 
 impl TextureLibraryDevice for GraphicsDevice {
-    fn create_persistent_descriptor_set(&self, name: &str) -> DescriptorSet {
-        // D 组接入（WIRING §3.1 #1 / §4.1）：真实 `create_persistent_descriptor_set` 的签名是
-        // `(state: &DescriptorSetState, writes: &[DescriptorWrite])`（device.rs:941），已接到
-        // `GraphicsDevice::create_persistent_descriptor_set`；游戏侧 bindless `DescriptorSetState`
-        // 构造未恢复，先登记缺口（bridge 记录日志并返回占位，不 panic、不假成功）。
-        GraphicsDevice::bindless_create_persistent_descriptor_set(self, name)
+    fn create_persistent_descriptor_set(&self, _name: &str) -> Result<DescriptorSet, BackendError> {
+        Err(BackendError::unsupported("纹理资产库需要连接 TextureHost"))
     }
     fn update_persistent_descriptor_set(
         &self,
-        _dset: &DescriptorSet,
+        _descriptor_set: &DescriptorSet,
         _updates: &[DescriptorImageUpdate],
-    ) {
-        // 登记缺口 §4.2：rhapsody 无 `update_persistent_descriptor_set` 方法身份
-        // （只有 bind 语义的 `bind_persistent_descriptor_set`）；真实更新路径未接，记录日志。
-        GraphicsDevice::update_persistent_descriptor_set(self);
+    ) -> Result<(), BackendError> {
+        Err(BackendError::unsupported("描述符更新需要连接 TextureHost"))
     }
-    fn get_vk_image_view(&self, texture: &Texture, _mip: u32) -> Result<ImageView, BackendError> {
-        Ok(ImageView(texture.id))
+    fn get_vk_image_view(&self, _texture: &Texture, _mip: u32) -> Result<ImageView, BackendError> {
+        Err(BackendError::unsupported(
+            "资产 ID 不能作为原生 image view 使用",
+        ))
     }
     fn update_texture(
         &self,
         _texture: &Texture,
         _update: &TextureUpdate,
     ) -> Result<(), BackendError> {
-        Ok(())
+        Err(BackendError::unsupported("纹理上传需要连接 TextureHost"))
     }
 }
 
-/// 渲染图的纹理导入/导出（`rhapsody::rg::import_export::impl$0::{import_unowned, export}`，O 0x140bd60a0 / 0x140bd6380）。
+/// 物理纹理与渲染图之间的导入、导出接口。
 pub trait TextureRenderGraph {
-    fn import_unowned_texture(&mut self, texture: &Texture, access: u8) -> ImportedTexture;
+    fn import_texture(
+        &mut self,
+        texture: &Texture,
+        desc: TextureDesc,
+        access: u8,
+    ) -> ImportedTexture;
     fn export_texture(&mut self, handle: ImportedTexture, access: u8);
 }
 
-/// 占位 `RenderGraph`：复用缓冲导入/导出的记录向量（资源号取纹理 id），便于测试观察调用。
 impl TextureRenderGraph for RenderGraph {
-    fn import_unowned_texture(&mut self, texture: &Texture, access: u8) -> ImportedTexture {
-        let b = self.import_unowned(texture.id, access);
-        // desc：占位 `Texture` 只有 width/height/format（真实 `Texture+0x18` 是整块 `TextureDesc`，U）。
-        let desc = TextureDesc::new_2d([texture.width, texture.height], texture.format);
+    fn import_texture(
+        &mut self,
+        texture: &Texture,
+        desc: TextureDesc,
+        access: u8,
+    ) -> ImportedTexture {
+        let imported = self.import_unowned(texture.id, access);
         ImportedTexture {
-            resource: b.resource,
-            generation: b.generation,
+            resource: imported.resource,
+            generation: imported.generation,
             access,
             desc,
         }
@@ -216,67 +170,59 @@ impl TextureRenderGraph for RenderGraph {
     }
 }
 
-/// `rhapsody::raw::format::vk_format_info(format).bytes_per_texel`（外部库；O：取返回结构 +4 的 u32）。
-/// 只覆盖 `TexturePreset` 用到的格式（0x09/0x25/0x46/0x4c/0x4d/0x53/0x61/0x63）；其余按 4 字节（U）。
+/// 复用已恢复的 rhapsody 格式表，未知格式显式失败。
 pub fn format_bytes_per_texel(format: u32) -> u32 {
-    match format {
-        9 => 1,
-        0x46 | 0x4c => 2,
-        0x25 | 0x53 | 0x63 => 4,
-        0x61 => 8,
-        _ => 4,
-    }
+    rhapsody::raw::format::observed::try_vk_format_info(ash::vk::Format::from_raw(format as i32))
+        .expect("不支持的纹理格式")
+        .word_at_04()
 }
 
-// ------------------------------------------------------------------ 库本体
-
-/// `AssetTextureLibrary`（O：`Res<AssetTextureLibrary>` 被 nani_update_* 系统使用）。
+/// 拥有普通纹理、名字别名、预设状态和延迟描述符更新。
 pub struct AssetTextureLibrary {
     textures: Vec<Texture>,
-    dset: DescriptorSet,
+    descriptor_set: DescriptorSet,
     by_name: HashMap<NameHash, NamedTexture, NoHashBuildHasher>,
-    presets: HashMap<TexturePreset, PresetTextureState>,
+    presets: Vec<PresetTextureState>,
     bindless: RwLock<DescriptorMap>,
 }
 
 impl bevy_ecs::resource::Resource for AssetTextureLibrary {}
 
-/// `utils::impl$4::assign_auto_resize`（O 0x1412f8f60，泛型实例 `Option<DescriptorIndex>`）：
-/// `idx == len` → push；`idx < len` → 覆盖；`idx > len` → 先用 `Default`（None，全 0）补到 `idx` 再 push。
-pub fn assign_auto_resize<T: Default + Clone>(v: &mut Vec<T>, idx: usize, value: T) {
-    if idx >= v.len() {
-        v.resize(idx, T::default());
-        v.push(value);
+/// 写入向量指定位置，用默认值填充中间空位。
+pub fn assign_auto_resize<T: Default + Clone>(values: &mut Vec<T>, index: usize, value: T) {
+    if index >= values.len() {
+        values.resize(index, T::default());
+        values.push(value);
     } else {
-        v[idx] = value;
+        values[index] = value;
     }
 }
 
 impl AssetTextureLibrary {
-    /// `new`（O 0x14093bb10）：只做一件事——创建名为 `"bindless_textures"` 的持久描述符集；其余字段全部空。
-    /// `presets` 的 `RandomState` 取线程局部 KEYS（k0 自增，hashmap_random_keys）。
-    pub fn new(device: &impl TextureLibraryDevice) -> Self {
-        let dset = device.create_persistent_descriptor_set("bindless_textures");
-        AssetTextureLibrary {
-            textures: Vec::new(),
-            dset,
-            by_name: HashMap::default(),
-            presets: HashMap::new(),
-            bindless: RwLock::new(DescriptorMap::default()),
-        }
+    /// 创建初始状态。
+    pub fn new(device: &(impl TextureLibraryDevice + ?Sized)) -> Self {
+        Self::try_new(device).expect("创建纹理描述符表失败")
     }
 
-    /// `add(name, texture) -> AssetIndex`（O 0x14093c200）。
-    ///  1. `name` 为 Some：先查 by_name，已有 → `panic!("AssetTextureLibrary: the name {name} is already taken")`
-    ///     （此时什么都没改）；
-    ///  2. `textures.push(texture)`，`handle = 旧 len`；
-    ///  3. `trace!("Loaded texture {:?} as {:?}", name, handle)`（对 None 名字同样打印，且在 by_name 之前）；
-    ///  4. `name` 为 Some：`assert!(by_name.insert(NameHash::compute(&n), NamedTexture{handle, is_virtual:false}).is_none())`。
-    ///  None 名字只入向量不入表。
+    pub fn try_new(device: &(impl TextureLibraryDevice + ?Sized)) -> Result<Self, BackendError> {
+        let descriptor_set = device.create_persistent_descriptor_set("bindless_textures")?;
+        Ok(AssetTextureLibrary {
+            textures: Vec::new(),
+            descriptor_set,
+            by_name: HashMap::default(),
+            presets: Vec::new(),
+            bindless: RwLock::new(DescriptorMap::default()),
+        })
+    }
+
+    /// 注册资产并返回稳定身份。
     pub fn add(&mut self, name: Option<String>, texture: Texture) -> AssetIndex {
-        if let Some(n) = &name {
-            if self.by_name.contains_key(&NameHash::compute(n)) {
-                panic!("AssetTextureLibrary: the name {} is already taken", n);
+        if let Some(texture_name) = &name {
+            if self.by_name.contains_key(&NameHash::compute(texture_name)) {
+                panic!(
+                    "AssetTextureLibrary: the name {} is already taken",
+                    texture_name
+                );
             }
         }
         let handle = AssetIndex(self.textures.len());
@@ -287,9 +233,9 @@ impl AssetTextureLibrary {
             name,
             handle
         );
-        if let Some(n) = name {
+        if let Some(texture_name) = name {
             let old = self.by_name.insert(
-                NameHash::compute(&n),
+                NameHash::compute(&texture_name),
                 NamedTexture {
                     handle,
                     is_virtual: false,
@@ -297,54 +243,47 @@ impl AssetTextureLibrary {
             );
             assert!(
                 old.is_none(),
-                "assertion failed: self.by_name.insert(NameHash::compute(&n),\n        NamedTexture {{ handle, is_virtual: false }}).is_none()"
+                "assertion failed: self.by_name.insert(NameHash::compute(&texture_name),\n        NamedTexture {{ handle, is_virtual: false }}).is_none()"
             );
         }
         handle
     }
 
-    /// `create_name_mapping(name, target)`（O 0x14093c720）：给已存在的纹理 `target` 起别名 `name`。
-    ///  1. 查 `target`，缺失 → `panic!("Was asked to map {name} to {target}, but the latter does not exist as a named texture")`；
-    ///  2. `by_name.insert(NameHash(name), NamedTexture{ handle: target.handle, is_virtual: true })`；
-    ///  3. 若旧值存在且 `!is_virtual`（即 name 本来是真纹理）→ panic `"Onoz, {name} already exists, and is a real
-    ///     texture. Create a new (arbitrary) name, and map it to a real texture instead, like 'imaginary/pony' ->
-    ///     'the_real_texture_asset'."`。**注意：insert 已经发生**，panic 前真纹理的表项已被别名覆盖（O：panic 在 insert 之后）。
-    ///     旧值为别名则静默覆盖。
     pub fn create_name_mapping(&mut self, name: &str, target: &str) {
         let target_entry = match self.by_name.get(&NameHash::compute(target)) {
-            Some(e) => *e,
+            Some(entry) => *entry,
             None => panic!(
                 "Was asked to map {} to {}, but the latter does not exist as a named texture",
                 name, target
             ),
         };
-        let old = self.by_name.insert(
+        if self
+            .by_name
+            .get(&NameHash::compute(name))
+            .is_some_and(|entry| !entry.is_virtual)
+        {
+            panic!(
+                "Onoz, {} already exists, and is a real texture. Create a new (arbitrary) name, and map it to a real texture instead, like 'imaginary/pony' -> 'the_real_texture_asset'.",
+                name
+            );
+        }
+        self.by_name.insert(
             NameHash::compute(name),
             NamedTexture {
                 handle: target_entry.handle,
                 is_virtual: true,
             },
         );
-        if let Some(old) = old {
-            if !old.is_virtual {
-                panic!(
-                    "Onoz, {} already exists, and is a real texture. Create a new (arbitrary) name, and map it to a real texture instead, like 'imaginary/pony' -> 'the_real_texture_asset'.",
-                    name
-                );
-            }
-        }
     }
 
-    /// `get_handle_and_texture_by_name(hash)`（O 0x14093c970）：未命中 → None；命中但下标越界（`cmp rax,[len]; cmovb`）→ None。
     pub fn get_handle_and_texture_by_name(&self, hash: NameHash) -> Option<(AssetIndex, &Texture)> {
         let entry = self.by_name.get(&hash)?;
-        self.textures.get(entry.handle.0).map(|t| (entry.handle, t))
+        self.textures
+            .get(entry.handle.0)
+            .map(|texture| (entry.handle, texture))
     }
 
-    /// `get_by_name(hash) -> &Texture`（O 0x14093ca90）：
-    ///  * 未命中 → `panic!("No such texture: {hash:?}. Available: {all_keys:?}")`（`all_keys` 是 `Vec<&NameHash>`）；
-    ///  * 命中但下标 >= len → `panic!("Texture not loaded: {hash:?}")`。
-    ///  NameHash 的格式化特征（`utils::name_hash::impl$7::fmt`）是 Debug 还是 Display：U（这里用 Debug）。
+    /// 按业务名字读取已注册资产。
     pub fn get_by_name(&self, hash: NameHash) -> &Texture {
         match self.by_name.get(&hash) {
             None => {
@@ -352,13 +291,12 @@ impl AssetTextureLibrary {
                 panic!("No such texture: {:?}. Available: {:?}", hash, available)
             }
             Some(entry) => match self.textures.get(entry.handle.0) {
-                Some(t) => t,
+                Some(texture) => texture,
                 None => panic!("Texture not loaded: {:?}", hash),
             },
         }
     }
 
-    /// 只读访问：按 `AssetIndex` 取纹理（O：closure 0x140a96740 里的 `textures[idx]`，越界即 `panic_bounds_check`）。
     pub fn texture(&self, handle: AssetIndex) -> &Texture {
         &self.textures[handle.0]
     }
@@ -371,160 +309,231 @@ impl AssetTextureLibrary {
         self.textures.is_empty()
     }
 
-    // ---------------------------------------------------------------- 预设纹理
-
-    /// `create_preset_textures(device)`（O 0x14093bd80）：对 `enum_iterator::All<TexturePreset>`（0..=0x18，共 25 个）逐个：
-    /// `TextureDesc::from(preset)`（0x140a59890，见 [`TexturePreset::texture`]）→ `device.create_texture(name = "(NameHash)", desc,
-    /// TextureInitialData::None)`（Err → `Result::unwrap` panic）→ `PresetTextureState { texture, rg_handle: None }`，收集进一张**新**
-    /// HashMap（新的 RandomState）后整体替换 `self.presets`（旧表连同其纹理句柄被 drop）。
-    /// 原版经 `ResMut<AssetTextureLibrary>` 的 DerefMut 调用，会把 changed tick 置为 this_run（O：末尾 `[rcx]=[rsi+0x1c]`），
-    /// 在 ECS 之外无对应物。
-    pub fn create_preset_textures<D: TextureDevice>(&mut self, device: &D) {
-        self.create_preset_textures_with(device, |p| p.texture().desc);
+    /// 按预设描述创建资源，全部成功后替换预设表。
+    pub fn create_preset_textures<D: TextureDevice + ?Sized>(&mut self, device: &D) {
+        self.try_create_preset_textures(device)
+            .expect("创建预设纹理失败");
     }
 
-    /// 同 [`Self::create_preset_textures`]，但每个预设的描述由 `desc_of` 给出（测试注入点：让 `TestWorld` 等按格式分支）。
-    pub fn create_preset_textures_with<D: TextureDevice>(
+    pub fn try_create_preset_textures<D: TextureDevice + ?Sized>(
         &mut self,
         device: &D,
-        desc_of: impl Fn(TexturePreset) -> TextureDesc,
+    ) -> Result<(), BackendError> {
+        self.try_create_preset_textures_with(device, |preset| preset.texture().desc)
+    }
+
+    pub fn create_preset_textures_with<D: TextureDevice + ?Sized>(
+        &mut self,
+        device: &D,
+        describe: impl Fn(TexturePreset) -> TextureDesc,
     ) {
-        let mut presets = HashMap::new();
-        for p in 0..PRESET_COUNT {
-            let preset = TexturePreset(p);
-            let desc = desc_of(preset);
-            let texture = device
-                .create_texture(PRESET_TEXTURE_DEBUG_NAME, &desc, &[])
-                .expect("called `Result::unwrap()` on an `Err` value");
-            presets.insert(
-                preset,
-                PresetTextureState {
-                    texture,
-                    rg_handle: None,
-                },
-            );
+        self.try_create_preset_textures_with(device, describe)
+            .expect("创建预设纹理失败");
+    }
+
+    fn try_create_preset_textures_with<D: TextureDevice + ?Sized>(
+        &mut self,
+        device: &D,
+        describe: impl Fn(TexturePreset) -> TextureDesc,
+    ) -> Result<(), BackendError> {
+        if self.presets.iter().any(|preset| preset.rg_handle.is_some()) {
+            return Err(BackendError::invalid_usage("预设仍在图中使用，不能重建"));
         }
-        self.presets = presets;
+        let mut replacements: Vec<PresetTextureState> = Vec::with_capacity(PRESET_COUNT as usize);
+        for preset in 0..PRESET_COUNT {
+            let desc = describe(TexturePreset(preset));
+            match device.create_texture(PRESET_TEXTURE_DEBUG_NAME, &desc, &[]) {
+                Ok(texture) => replacements.push(PresetTextureState {
+                    texture,
+                    desc,
+                    rg_handle: None,
+                }),
+                Err(error) => {
+                    for created in replacements {
+                        device.release_texture(&created.texture);
+                    }
+                    return Err(error);
+                }
+            }
+        }
+        for previous in std::mem::replace(&mut self.presets, replacements) {
+            device.release_texture(&previous.texture);
+        }
+        Ok(())
     }
 
-    /// 按预设取状态；缺失 → `expect("no entry found for key")`（O：`HashMap` 的 Index 语义，三个函数共用此文案）。
     fn preset_state(&self, preset: TexturePreset) -> &PresetTextureState {
-        self.presets.get(&preset).expect("no entry found for key")
+        self.presets
+            .get(preset.0 as usize)
+            .expect("no entry found for key")
     }
 
-    /// `clear_preset_texture(device, preset)`（O 0x14093bee0）：把预设纹理整张写成 0。
-    /// `size = bytes_per_texel(format) * (w*h*d as u32)`（宽高深的乘积按 **u32 回绕**，再扩到 u64；O：`imul edi,ebx; imul edi,r13d`），
-    /// 以全 0 的 `size` 字节、mip 0、extent = 纹理 extent 调 `device.update_texture(texture, update, 1, 0x22)`；Err → `Result::unwrap` panic。
-    pub fn clear_preset_texture(&self, device: &impl TextureLibraryDevice, preset: TexturePreset) {
-        let state = self.preset_state(preset);
-        let tex = &state.texture;
-        let extent = [tex.width, tex.height, texture_depth(tex)];
-        let texels = extent[0].wrapping_mul(extent[1]).wrapping_mul(extent[2]);
-        let size = u64::from(format_bytes_per_texel(tex.format)) * u64::from(texels);
-        let update = TextureUpdate {
-            data: vec![0u8; size as usize],
-            buffer_offset: 0,
-            mip_level: 0,
-            extent,
-            array_layers: 1,
-            access: RG_TEXTURE_ACCESS,
-        };
-        device
-            .update_texture(tex, &update)
-            .expect("called `Result::unwrap()` on an `Err` value");
+    pub fn clear_preset_texture(
+        &self,
+        device: &(impl TextureLibraryDevice + ?Sized),
+        preset: TexturePreset,
+    ) {
+        self.try_clear_preset_texture(device, preset)
+            .expect("预设纹理清零失败");
     }
 
-    /// `import_texture_presets_to_rg(rg)`（O 0x14093cd30）：遍历全部预设；每个先 `assert!(preset.rg_handle.is_none())`
-    /// （否则 panic `"assertion failed: preset.rg_handle.is_none()"`），再 `rg_handle = Some(rg.import_unowned(&texture, 0x22))`。
-    /// 空表直接返回。遍历顺序为哈希表顺序（原版随机）；断言失败发生在已导入若干预设之后（无回滚）。
+    /// 清零 mip 0 的所有数组层；使用完整描述和受检查长度，禁止整数回绕。
+    pub fn try_clear_preset_texture(
+        &self,
+        device: &(impl TextureLibraryDevice + ?Sized),
+        preset: TexturePreset,
+    ) -> Result<(), BackendError> {
+        let state = self
+            .presets
+            .get(preset.0 as usize)
+            .ok_or_else(|| BackendError::invalid_usage("预设纹理未创建"))?;
+        let desc = state.desc;
+        let format = rhapsody::raw::format::observed::try_vk_format_info(
+            ash::vk::Format::from_raw(desc.format as i32),
+        )
+        .map_err(|_| BackendError::unsupported("预设纹理格式未知"))?;
+        if format.byte_at_08() != 1 {
+            return Err(BackendError::unsupported("压缩纹理不支持按像素清零"));
+        }
+        let layers = u64::from(desc.array_elements.max(1));
+        let size = desc
+            .extent
+            .iter()
+            .try_fold(u64::from(format.word_at_04()) * layers, |size, extent| {
+                size.checked_mul(u64::from(*extent))
+            })
+            .and_then(|size| usize::try_from(size).ok())
+            .ok_or(BackendError::OutOfHostMemory)?;
+        let mut data = Vec::new();
+        data.try_reserve_exact(size)
+            .map_err(|_| BackendError::OutOfHostMemory)?;
+        data.resize(size, 0);
+        device.update_texture(
+            &state.texture,
+            &TextureUpdate {
+                data,
+                buffer_offset: 0,
+                mip_level: 0,
+                extent: desc.extent,
+                array_layers: layers,
+                access: RG_TEXTURE_ACCESS,
+            },
+        )
+    }
+
     pub fn import_texture_presets_to_rg(&mut self, rg: &mut impl TextureRenderGraph) {
-        for preset in self.presets.values_mut() {
+        for preset in self.presets.iter_mut() {
             assert!(
                 preset.rg_handle.is_none(),
                 "assertion failed: preset.rg_handle.is_none()"
             );
-            preset.rg_handle = Some(rg.import_unowned_texture(&preset.texture, RG_TEXTURE_ACCESS));
+            preset.rg_handle =
+                Some(rg.import_texture(&preset.texture, preset.desc, RG_TEXTURE_ACCESS));
         }
     }
 
-    /// `export_preset_textures_from_rg(rg)`（O 0x14093ce30）：遍历全部预设；每个 `rg_handle.take().unwrap()`
-    /// （None → `Option::unwrap` panic，**句柄已先被置 None**）再 `rg.export(handle, 0x22)`。
     pub fn export_preset_textures_from_rg(&mut self, rg: &mut impl TextureRenderGraph) {
-        for preset in self.presets.values_mut() {
+        for preset in self.presets.iter_mut() {
             let handle = preset.rg_handle.take().unwrap();
             rg.export_texture(handle, RG_TEXTURE_ACCESS);
         }
     }
 
-    /// `get_rg_texture(preset) -> ImportedTexture`（O 0x14093cf30）：缺失 → `expect("no entry found for key")`；
-    /// 句柄为 None → `Option::unwrap` panic。
     pub fn get_rg_texture(&self, preset: TexturePreset) -> ImportedTexture {
         self.preset_state(preset).rg_handle.unwrap()
     }
 
-    /// 只读：预设状态（测试/调用方观察用；原版无此函数）。
     pub fn preset(&self, preset: TexturePreset) -> Option<&PresetTextureState> {
-        self.presets.get(&preset)
+        self.presets.get(preset.0 as usize)
     }
 
-    // ---------------------------------------------------------------- bindless
-
-    /// `handle_to_bindless_index(asset) -> DescriptorIndex`（O 0x14093d310；`&self`，经 RwLock）：
-    ///  1. 读锁（poison → `Result::unwrap` panic）；`indices[asset]` 存在且为 Some → 返回它；
-    ///  2. 否则释放读锁，取写锁（poison 同上）。**不重新检查**（O：写锁后直接分配，并发时可能重复分配）；
-    ///  3. `idx = next; next += 1`（先自增），然后 `assert!(idx < REQUIRED - RESERVED)`（0x1fe0；失败时写锁持有中，
-    ///     锁因 panic 被毒化），`pending.push(asset)`，`assign_auto_resize(indices, asset, Some(idx))`。
+    /// 首次查询分配采样槽位；并发请求共享同一结果。
     pub fn handle_to_bindless_index(&self, asset: AssetIndex) -> DescriptorIndex {
+        self.try_handle_to_bindless_index(asset)
+            .expect("分配纹理描述符失败")
+    }
+
+    /// 容量不足或资产无效时返回错误，不消耗槽位，也不毒化索引锁。
+    pub fn try_handle_to_bindless_index(
+        &self,
+        asset: AssetIndex,
+    ) -> Result<DescriptorIndex, BackendError> {
+        if asset.0 >= self.textures.len() {
+            return Err(BackendError::invalid_usage("纹理资产下标越界"));
+        }
+        if let Some(Some(index)) = self.bindless.read().unwrap().indices.get(asset.0) {
+            return Ok(*index);
+        }
+        let mut descriptors = self.bindless.write().unwrap();
+        if let Some(Some(index)) = descriptors.indices.get(asset.0) {
+            return Ok(*index);
+        }
+        let index = if let Some(index) = self
+            .descriptor_set
+            .allocate_texture(&self.textures[asset.0])?
         {
-            let map = self.bindless.read().unwrap();
-            if let Some(Some(idx)) = map.indices.get(asset.0) {
-                return *idx;
+            DescriptorIndex(index)
+        } else {
+            let capacity = self
+                .descriptor_set
+                .sampled_capacity()
+                .min(REQUIRED_BINDLESS_DESCRIPTOR_COUNT - RESERVED_DESCRIPTOR_COUNT);
+            if descriptors.next >= capacity {
+                return Err(BackendError::unsupported("纹理描述符容量已耗尽"));
             }
-        }
-        let mut map = self.bindless.write().unwrap();
-        let idx = map.next;
-        map.next = idx.wrapping_add(1);
-        assert!(
-            idx < REQUIRED_BINDLESS_DESCRIPTOR_COUNT - RESERVED_DESCRIPTOR_COUNT,
-            "assertion failed: descriptor_index.0 <\n    GraphicsDevice::REQUIRED_BINDLESS_DESCRIPTOR_COUNT as u32 -\n        RESERVED_DESCRIPTOR_COUNT as u32"
-        );
-        let descriptor = DescriptorIndex(idx);
-        map.pending.push(asset);
-        assign_auto_resize(&mut map.indices, asset.0, Some(descriptor));
-        descriptor
+            let index = DescriptorIndex(descriptors.next);
+            descriptors.next += 1;
+            descriptors.pending.push(asset);
+            index
+        };
+        assign_auto_resize(&mut descriptors.indices, asset.0, Some(index));
+        Ok(index)
     }
 
-    /// `bindless_textures_dset(device) -> &DescriptorSet`（O 0x14093d040；内联了 `update_bindless_texture_table`）：
-    /// 取写锁（poison → unwrap panic）；`pending` 非空才更新：把 `pending` 整体 drain（长度置 0），逐项映射成
-    /// `{ binding 0, descriptor = indices[asset].expect("asset descriptor index"), view = device.get_vk_image_view(&textures[asset], 0).unwrap(), layout 5 }`
-    /// 后调 `device.update_persistent_descriptor_set(&dset, ..)`。`pending` 为空则什么都不调。最后返回持久描述符集 `&self.dset`。
-    /// （原版用 bumpalo 分配每个 0x20 B 的更新项，这里用 Vec。）
-    pub fn bindless_textures_dset(&self, device: &impl TextureLibraryDevice) -> &DescriptorSet {
-        let mut map = self.bindless.write().unwrap();
-        if !map.pending.is_empty() {
-            let pending = std::mem::take(&mut map.pending);
-            let updates: Vec<DescriptorImageUpdate> = pending
-                .into_iter()
-                .map(|asset| {
-                    let index = map.indices[asset.0].expect("asset descriptor index");
-                    let texture = &self.textures[asset.0];
-                    let view = device.get_vk_image_view(texture, 0).unwrap();
-                    DescriptorImageUpdate {
-                        binding: 0,
-                        index,
-                        image_view: view,
-                        layout: 5,
-                    }
+    pub fn bindless_textures_dset(
+        &self,
+        device: &(impl TextureLibraryDevice + ?Sized),
+    ) -> &DescriptorSet {
+        self.try_bindless_textures_dset(device)
+            .expect("提交纹理描述符失败")
+    }
+
+    /// 更新失败时保留队列，下次调用继续提交；成功后清空并复用容量。
+    pub fn try_bindless_textures_dset(
+        &self,
+        device: &(impl TextureLibraryDevice + ?Sized),
+    ) -> Result<&DescriptorSet, BackendError> {
+        let mut descriptors = self.bindless.write().unwrap();
+        if descriptors.pending.is_empty() {
+            return Ok(&self.descriptor_set);
+        }
+        let updates = descriptors
+            .pending
+            .iter()
+            .map(|asset| {
+                Ok(DescriptorImageUpdate {
+                    binding: 0,
+                    index: descriptors.indices[asset.0].expect("资产缺少描述符索引"),
+                    image_view: device.get_vk_image_view(&self.textures[asset.0], 0)?,
+                    texture_id: self.textures[asset.0].id,
+                    layout: ash::vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL.as_raw() as u64,
                 })
-                .collect();
-            device.update_persistent_descriptor_set(&self.dset, &updates);
-        }
-        &self.dset
+            })
+            .collect::<Result<Vec<_>, BackendError>>()?;
+        device.update_persistent_descriptor_set(&self.descriptor_set, &updates)?;
+        descriptors.pending.clear();
+        Ok(&self.descriptor_set)
     }
 
-    /// `impl$2::image_name_to_index(name)`（O 0x14093d690，某 trait 的实现）：`by_name` 里按 `NameHash::compute(name)` 查，
-    /// 未命中 → `panic!("No such texture: {name}")`；命中则 `handle_to_bindless_index(entry.handle)`。
-    /// （注意：不检查 `handle` 是否越界，也不看 `is_virtual`。）
+    /// 按名字发布只读纹理视图，包含别名；复用现有索引而不复制资产。
+    pub fn named_textures(&self) -> impl Iterator<Item = (NameHash, &Texture)> {
+        self.by_name.iter().filter_map(|(name, entry)| {
+            self.textures
+                .get(entry.handle.0)
+                .map(|texture| (*name, texture))
+        })
+    }
+
     pub fn image_name_to_index(&self, name: &str) -> DescriptorIndex {
         match self.by_name.get(&NameHash::compute(name)) {
             Some(entry) => self.handle_to_bindless_index(entry.handle),
@@ -532,20 +541,40 @@ impl AssetTextureLibrary {
         }
     }
 
+    /// 替换已有纹理，所有别名继续指向同一资产；采样者下次查询获得新描述符。
+    pub fn replace(&mut self, name: NameHash, texture: Texture) -> Result<Texture, BackendError> {
+        let asset = self
+            .by_name
+            .get(&name)
+            .ok_or_else(|| BackendError::invalid_usage("待重载纹理未注册"))?
+            .handle;
+        let previous = std::mem::replace(&mut self.textures[asset.0], texture);
+        let descriptors = self.bindless.get_mut().unwrap();
+        if self.descriptor_set.heap().is_ok() {
+            if let Some(index) = descriptors.indices.get_mut(asset.0).and_then(Option::take) {
+                self.descriptor_set.retire(index.0);
+            }
+        } else if descriptors
+            .indices
+            .get(asset.0)
+            .is_some_and(Option::is_some)
+            && !descriptors.pending.contains(&asset)
+        {
+            // 延迟后端更新已有槽位；没有 GPU 租约的记录表不能在每次重载时永久消耗容量。
+            // 已在队列中的资产直接使用最新纹理，尚未请求过描述符的资产仍保持惰性。
+            descriptors.pending.push(asset);
+        }
+        Ok(previous)
+    }
+
     /// 只读观察：当前待写入的 bindless 资产（测试用）。
     pub fn pending_bindless(&self) -> Vec<AssetIndex> {
         self.bindless.read().unwrap().pending.clone()
     }
 
-    /// 只读观察：持久描述符集（O：`bindless_textures_dset` 的返回值就是它）。
     pub fn dset(&self) -> &DescriptorSet {
-        &self.dset
+        &self.descriptor_set
     }
-}
-
-/// 纹理深度（O：`Texture + 0x2c`，占位 `Texture` 无此字段 → 2D 取 1，U）。
-fn texture_depth(_t: &Texture) -> u32 {
-    1
 }
 
 #[cfg(test)]
@@ -568,7 +597,7 @@ mod tests {
             _data: &[u8],
         ) -> Result<Texture, BackendError> {
             if self.fail_create {
-                return Err(BackendError("boom".into()));
+                return Err(BackendError::OutOfDeviceMemory);
             }
             let id = self.created.borrow().len() as u64 + 100;
             self.created.borrow_mut().push((name.to_owned(), *desc));
@@ -581,15 +610,19 @@ mod tests {
         }
     }
     impl TextureLibraryDevice for MockDevice {
-        fn create_persistent_descriptor_set(&self, _name: &str) -> DescriptorSet {
-            DescriptorSet
+        fn create_persistent_descriptor_set(
+            &self,
+            _name: &str,
+        ) -> Result<DescriptorSet, BackendError> {
+            Ok(DescriptorSet::default())
         }
         fn update_persistent_descriptor_set(
             &self,
             _d: &DescriptorSet,
             u: &[DescriptorImageUpdate],
-        ) {
+        ) -> Result<(), BackendError> {
             self.dset_updates.borrow_mut().push(u.to_vec());
+            Ok(())
         }
         fn get_vk_image_view(&self, t: &Texture, mip: u32) -> Result<ImageView, BackendError> {
             assert_eq!(mip, 0);
@@ -687,16 +720,16 @@ mod tests {
     }
 
     #[test]
-    fn create_name_mapping_over_real_overwrites_before_panicking() {
+    fn create_name_mapping_over_real_preserves_original_on_failure() {
         let mut l = lib();
         l.add(Some("real".into()), tex(1));
         l.add(Some("other".into()), tex(2));
         let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             l.create_name_mapping("real", "other")
         }));
-        // O：insert 在 panic 之前已发生
-        assert!(l.by_name[&NameHash::compute("real")].is_virtual);
-        assert_eq!(l.get_by_name(NameHash::compute("real")).id, 2);
+        // 冲突必须在发布别名之前发现，保留原来的真实资产。
+        assert!(!l.by_name[&NameHash::compute("real")].is_virtual);
+        assert_eq!(l.get_by_name(NameHash::compute("real")).id, 1);
     }
 
     #[test]
@@ -765,35 +798,36 @@ mod tests {
     }
 
     #[test]
-    fn bindless_limit_is_0x1fe0_and_next_already_incremented() {
-        let l = lib();
-        for i in 0..0x1fe0usize {
+    fn bindless_capacity_failure_does_not_consume_or_poison_slots() {
+        let mut library = lib();
+        for index in 0..=0x1fe0usize {
+            library.add(None, tex(index as u64));
+        }
+        for index in 0..0x1fe0usize {
             assert_eq!(
-                l.handle_to_bindless_index(AssetIndex(i)),
-                DescriptorIndex(i as u32)
+                library
+                    .try_handle_to_bindless_index(AssetIndex(index))
+                    .unwrap(),
+                DescriptorIndex(index as u32)
             );
         }
-        let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            l.handle_to_bindless_index(AssetIndex(0x1fe0))
-        }));
-        let err = r.unwrap_err();
-        let msg = err
-            .downcast_ref::<String>()
-            .cloned()
-            .or_else(|| err.downcast_ref::<&str>().map(|s| s.to_string()))
-            .unwrap();
         assert!(
-            msg.starts_with("assertion failed: descriptor_index.0 <"),
-            "{msg}"
+            library
+                .try_handle_to_bindless_index(AssetIndex(0x1fe0))
+                .is_err()
         );
-        // 写锁持有时 panic -> 锁被毒化，next 已自增
-        assert!(l.bindless.is_poisoned());
+        assert_eq!(library.bindless.read().unwrap().next, 0x1fe0);
+        assert_eq!(
+            library.handle_to_bindless_index(AssetIndex(0)),
+            DescriptorIndex(0)
+        );
     }
 
     #[test]
     #[should_panic(expected = "PoisonError")]
     fn bindless_poisoned_lock_unwraps() {
-        let l = lib();
+        let mut l = lib();
+        l.add(None, tex(0));
         let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             let _g = l.bindless.write().unwrap();
             panic!("poison it");
@@ -821,12 +855,14 @@ mod tests {
                         binding: 0,
                         index: DescriptorIndex(0),
                         image_view: ImageView(1002),
+                        texture_id: 2,
                         layout: 5
                     },
                     DescriptorImageUpdate {
                         binding: 0,
                         index: DescriptorIndex(1),
                         image_view: ImageView(1001),
+                        texture_id: 1,
                         layout: 5
                     },
                 ]
@@ -882,7 +918,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value")]
+    #[should_panic(expected = "创建预设纹理失败")]
     fn create_preset_textures_unwraps_error() {
         let dev = MockDevice {
             fail_create: true,
@@ -910,7 +946,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "no entry found for key")]
+    #[should_panic(expected = "预设纹理未创建")]
     fn clear_preset_texture_missing_panics() {
         let dev = MockDevice::default();
         lib().clear_preset_texture(&dev, TexturePreset(1));

@@ -1,10 +1,14 @@
 //! B session owners. Metadata field names follow the original serializers.
 use super::image_formation::ImageFormationConfig;
 use crate::meta_commander::MetaCommand;
+use bevy_ecs::prelude::{EventReader, Res, ResMut};
 use bevy_ecs::resource::Resource;
+use relative_path::RelativePathBuf;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
+
+use crate::systems::save::save_game::{DeleteSessionCmd, SavingGameComplete};
 
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -22,14 +26,14 @@ impl SessionId {
     pub fn snapshots_folder_path(&self) -> PathBuf {
         self.save_folder_path().join("snapshots")
     }
-    /// B 0x140b46300 returns these paths in this order.
-    pub fn session_file_list(&self) -> [PathBuf; 3] {
-        let folder = self.save_folder_path();
-        [
-            folder.join("history.json"),
-            folder.join("screenshot.jpg"),
-            folder.join("meta.json"),
-        ]
+    /// B 0x140b46300 returns `Vec<RelativePathBuf>`（相对路径，**不** join save_folder）。
+    /// 顺序经 rdata 确认：history.json / screenshot.jpg / meta.json（0x142aef4f7/0x503/0x511）。
+    #[allow(clippy::unused_self)]
+    pub fn session_file_list(&self) -> Vec<RelativePathBuf> {
+        ["history.json", "screenshot.jpg", "meta.json"]
+            .into_iter()
+            .map(RelativePathBuf::from)
+            .collect()
     }
 }
 
@@ -178,7 +182,9 @@ impl SessionMeta {
     pub fn write_to_path(&self, path: impl AsRef<Path>) -> anyhow::Result<()> {
         use std::io::Write;
         let path = path.as_ref();
-        let envelope = serde_json::json!({"version": 1, "state": self});
+        // 0x1417522e0：外层 envelope `{"version": 2, "state": SessionMeta}`（BTreeMap
+        // insert "version"→2 + "state"→serialize）。Rust 此前误写 version=1。
+        let envelope = serde_json::json!({"version": 2, "state": self});
         // 0x1417522e0: ensure parent, compact Value display, write/sync the
         // sibling with extension "tmp", close it, then rename to the target.
         if let Some(parent) = path.parent() {
@@ -271,8 +277,11 @@ pub enum SessionMetaSource {
     New,
 }
 
-/// `copy_dir_all<PathBuf,PathBuf>` 0x141740c00：递归目录复制；**"intro" 子目录跳过**
-/// （O：名 5 字符 == "intro" 0x72746e69+o）。load_game_session 新会话起始 build 使用。
+/// `copy_dir_all<PathBuf,PathBuf>` 0x141740c00：**纯递归复制**——`create_dir_all` →
+/// `read_dir` → 目录条目递归 `copy_dir_all` / 文件条目 `std::fs::copy`。原生 disasm
+/// 全 CALL 清单**无排序、无 "intro" 比较**（旧描述"intro 跳过"已按 fresh 作废）。
+/// `load_game_session` 新会话起始 build 使用。注意 `startup/startup_session` 的
+/// `copy_dir_all` 才是 0x141740c00 锚点；本函数不重复锚定该 VA。
 pub fn copy_dir_all(from: &Path, to: &Path) -> std::io::Result<()> {
     std::fs::create_dir_all(to)?;
     for entry in std::fs::read_dir(from)? {
@@ -280,10 +289,6 @@ pub fn copy_dir_all(from: &Path, to: &Path) -> std::io::Result<()> {
         let file_type = entry.file_type()?;
         let name = entry.file_name();
         if file_type.is_dir() {
-            // "intro" 子目录跳过（O：0x141740c00 名比较）。
-            if name.as_encoded_bytes() == b"intro" {
-                continue;
-            }
             copy_dir_all(&entry.path(), &to.join(name))?;
         } else {
             std::fs::copy(entry.path(), to.join(name))?;
@@ -315,20 +320,28 @@ impl NextSessionKind {
     }
 }
 
-/// 会话 on_load 条目（PDB：`SessionOnLoadCmd`；**0x20B = {tag qword, payload qword}**，
-/// re-analyst RNE 原字节修正）。
+/// 会话 on_load 条目（PDB：`SessionOnLoadCmd`；**0x20B = 4 qword
+/// `{tag, payload_a, payload_b, payload_c}`**，fresh 反编译 0x14146d030 逐条目 +0x20 步进
+/// 与 append_on_load 0x141328ac0 的 `+len*0x20` 写入互证）。
 ///
 /// - `append_on_load<MetaCommandFence>` 0x141328ac0 写
-///   `Command{tag=0x8000000000000000, payload=0x8000000000000003}`；
+///   `Command{tag=0x8000000000000000, payload_a=fence Arc}`；
 /// - `append_on_load<[MetaCommand;3]>` 0x1403b5150 写 **批量条目 `{tag=3, Box<0xa8B>}`**
-///   （reviewer 二轮修正：tag=3，非 ON_LOAD_VARIANT_MASK|1；载荷为 0xa8B 批量缓冲，
-///   非单条 payload）；
-/// - load_game 两遍回放以 fence 终止（fence 值 0x8000000000000003）。
-/// 变体解码 `tag ^ 0x8000000000000000`，`min(·,2)`。
+///   （reviewer 二轮修正：tag=3，非 ON_LOAD_VARIANT_MASK|1；载荷为 0xa8B 批量缓冲）；
+/// - load_game 两遍回放以 fence 终止（tag 0x8000000000000003 break）。
+/// 变体解码 `decoded = tag ^ 0x8000000000000000`，**`decoded > 2 → 1`**（非 min(·,2)）。
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum OnLoadEntry {
-    /// 单命令条目：0x20B = {tag, payload}。
-    Command { tag: u64, payload: u64 },
+    /// 加载完成信号；持有 Arc，复制、取消或重试不会泄漏引用或解引用裸地址。
+    Fence(crate::meta_commander::MetaCommandFence),
+
+    /// 单命令条目：0x20B = {tag, payload_a, payload_b, payload_c}。
+    Command {
+        tag: u64,
+        payload_a: u64,
+        payload_b: u64,
+        payload_c: u64,
+    },
     /// 批量条目（机器码 tag=3）：0x20B = {tag=3, Box<0xa8B>}，展开为 3 条 MetaCommand。
     Batch { commands: Vec<MetaCommand> },
 }
@@ -339,36 +352,77 @@ pub const ON_LOAD_VARIANT_MASK: u64 = 0x8000_0000_0000_0000;
 pub const ON_LOAD_FENCE: u64 = 0x8000_0000_0000_0003;
 
 /// 下一个会话请求资源（PDB：`NextSession`；0xa0B：on_load Vec + kind niche +
-/// uuid + ignore_snapshot bool）。
+/// uuid + 模板/尾部载荷 + ignore_snapshot bool）。
+///
+/// 原生布局（O 0x140b46920 load / 0x140b46960 create）：
+/// - `+0x0` on_load Vec{ptr,cap,len}（create 置 cap=8）；
+/// - `+0x18` kind；`+0x20` id（16B）；
+/// - `+0x30..+0x78` **模板载荷** 9 qword（create 从 96B 模板 rdx[3..0xb] 复制）；
+/// - `+0x78..+0x98` **尾部载荷** 4 qword（create 从 32B 尾部 r8[0..4] 复制）；
+/// - `+0x98` ignore_snapshot bool。
 #[derive(Resource, Clone, Debug)]
 pub struct NextSession {
     pub on_load: Vec<OnLoadEntry>,
     pub kind: NextSessionKind,
     pub id: SessionId,
+    /// +0x30..+0x78：`create` 的 96B 模板中 kind/id 之后的 9 qword 载荷（字段语义 U，原样复制）。
+    pub template_payload: [u64; 9],
+    /// +0x78..+0x98：`create` 的 32B 尾部载荷（4 qword，字段语义 U，原样复制）。
+    pub tail_payload: [u64; 4],
     pub ignore_snapshot: bool,
 }
+
+/// `NextSession::create` 的 96B 模板（O 0x140b46960 rdx 12 qword：`[0]`=kind、
+/// `[1..3]`=id、`[3..0xb]`=载荷）。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct NextSessionTemplate {
+    pub kind: NextSessionKind,
+    pub id: SessionId,
+    /// 载荷（9 qword，字段语义 U；build/测试等默认零）。
+    pub payload: [u64; 9],
+}
+impl NextSessionTemplate {
+    pub fn new(id: SessionId, kind: NextSessionKind) -> Self {
+        Self {
+            kind,
+            id,
+            payload: [0; 9],
+        }
+    }
+}
+
+/// `NextSession::create` 的 32B 尾部（O 0x140b46960 r8 4 qword：`+0x78..+0x98`）。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct NextSessionTail {
+    /// 尾部载荷（4 qword，字段语义 U）。
+    pub words: [u64; 4],
+}
+impl NextSessionTail {
+    pub const EMPTY: Self = Self { words: [0; 4] };
+}
+
 impl NextSession {
     /// `NextSession::load` 0x140b46920：{cap-first 空 Vec(cap=8),
-    /// kind=0x8000000000000002, uuid, ignore_snapshot=false}。
+    /// kind=0x8000000000000002, uuid, 载荷零, ignore_snapshot=false}。
     pub fn load(id: SessionId) -> Self {
         Self {
             on_load: Vec::new(),
             kind: NextSessionKind::LoadOnLoad,
             id,
+            template_payload: [0; 9],
+            tail_payload: [0; 4],
             ignore_snapshot: false,
         }
     }
-    /// `NextSession::create` 0x140b46960：kind 由调用方模板决定。
-    ///
-    /// **载荷面（O 调用点 0x141ebb5ad）**：`create(out NextSession, meta_template96B,
-    /// option32B)`——96B 模板（rdx）+ 32B 尾部（r8）构造；kind@+0x18 = 模板首 qword；
-    /// Vec 清空；另有 24B 可选串/路径 + 字节旗标随模板传递。模板/选项的精确字段语义
-    /// U（待取证，不编造），本实现仅保留语义入口 `id + kind`。
-    pub fn create(id: SessionId, kind: NextSessionKind) -> Self {
+    /// `NextSession::create` 0x140b46960：从 96B 模板（kind/id/载荷）与 32B 尾部构造；
+    /// Vec 清空（cap=8）；+0x98=0。**载荷字段 +0x30..+0x98 原样复制**（非仅 id+kind）。
+    pub fn create(template: &NextSessionTemplate, tail: &NextSessionTail) -> Self {
         Self {
             on_load: Vec::new(),
-            kind,
-            id,
+            kind: template.kind,
+            id: template.id,
+            template_payload: template.payload,
+            tail_payload: tail.words,
             ignore_snapshot: false,
         }
     }
@@ -387,22 +441,23 @@ impl NextSession {
             None => Self::load(SessionId::new()),
         }
     }
-    /// `append_on_load<MetaCommandFence>` 0x141328ac0：追加**变体 0 会话加载命令**
-    /// 条目 `{tag=0x8000000000000000, payload=fence}`（RE-SESSION-SWITCH 定案：
-    /// payload 是 fence Arc，**非** 0x8000000000000003；fence 释放走变体 2 条目）。
+    /// 加载完成后释放信号。请求、管理器和调用方各自持有安全的 Arc 引用。
     pub fn append_fence(&mut self, fence: crate::meta_commander::MetaCommandFence) {
-        self.on_load.push(OnLoadEntry::Command {
-            tag: ON_LOAD_VARIANT_MASK,
-            payload: fence.as_payload(),
-        });
+        self.on_load.push(OnLoadEntry::Fence(fence));
     }
-    /// 追加两遍回放终止哨兵 `{tag=0x8000000000000003, payload=0}`（0x8000000000000003 =
+    /// 追加两遍回放终止哨兵 `{tag=0x8000000000000003}`（0x8000000000000003 =
     /// 回放 break 条件；生产者写入残留待追源，RE-SESSION-SWITCH）。
     pub fn append_replay_terminator(&mut self) {
         self.on_load.push(OnLoadEntry::Command {
             tag: ON_LOAD_FENCE,
-            payload: 0,
+            payload_a: 0,
+            payload_b: 0,
+            payload_c: 0,
         });
+    }
+    /// 兼容旧接口，统一使用拥有所有权的加载完成信号。
+    pub fn append_fence_release(&mut self, fence: crate::meta_commander::MetaCommandFence) {
+        self.append_fence(fence);
     }
     /// `append_on_load<[MetaCommand;3]>` 0x1403b5150：追加**批量条目**（机器码 tag=3，
     /// 载荷 = Box<0xa8B>；reviewer 二轮修正，非单条 payload）。
@@ -483,27 +538,16 @@ pub fn refresh_session_list(list: &mut SavedSessionList) {
     list.sessions = load_saved_session_list();
 }
 
-/// `delete_session` 0x140b46d60：deleted_saves()/uuid 标记文件 → rename 移动 →
-/// 两段删除；失败 log "Error deleting glade: "。
+/// `delete_session` 0x140b46d60：构 source+deleted(uuid) 路径 → exists() 冲突检查 →
+/// 冲突时重生成 uuid → rename(source,deleted) → 失败 log "Error deleting glade: "。
+/// **无 create_dir_all / 写 ".deleted" 标记 / remove_dir_all**（Rust 旧实现自造三段，已删）。
 pub fn delete_session(id: SessionId) {
     let source = id.save_folder_path();
-    let deleted = paths::deleted_saves().join(Uuid::new_v4().to_string());
-    if let Err(error) = std::fs::create_dir_all(paths::deleted_saves()) {
-        log::error!("Error deleting glade: {error}");
-        return;
+    let mut deleted = paths::deleted_saves().join(id.0.to_string());
+    if deleted.exists() {
+        deleted = paths::deleted_saves().join(Uuid::new_v4().to_string());
     }
-    // 第一段：写标记文件（rename 的原子前置）。
-    if let Err(error) = std::fs::write(deleted.with_extension("deleted"), b"") {
-        log::error!("Error deleting glade: {error}");
-        return;
-    }
-    // rename 移动进 deleted-saves。
     if let Err(error) = std::fs::rename(&source, &deleted) {
-        log::error!("Error deleting glade: {error}");
-        return;
-    }
-    // 第二段：删除已移动的会话目录。
-    if let Err(error) = std::fs::remove_dir_all(&deleted) {
         log::error!("Error deleting glade: {error}");
     }
 }
@@ -515,22 +559,71 @@ pub struct NewSessionStartedCmd;
 pub struct SessionLoadedCmd;
 
 /// `SessionFlowPlugin`（PDB：`session::SessionFlowPlugin`；Bevy Plugin）。
-/// country-core 不依赖 bevy_app；`build` 登记资源插入与事件注册合同，由宿主 App 装配。
+/// country-core 不依赖 bevy_app；`build` 登记资源插入与事件注册合同，系统经
+/// [`configure_session_flow_systems`] 由宿主接 Schedule。
 #[derive(Clone, Copy, Debug, Default)]
 pub struct SessionFlowPlugin;
 impl SessionFlowPlugin {
-    /// 原 build 0x140b47840：插入 ActiveSession/SavedSessionList/NextSession/
-    /// AutoSaveState 资源并注册会话事件。ActiveSession 为占位默认，真实会话启动后替换。
+    /// 原 build 0x140b47840（fresh 2026-10-17）：
+    /// 1. insert **空** SavedSessionList（Vec 空；**不急切 refresh**——刷新由 Startup 系统做）；
+    /// 2. insert NextSession::create（kind=`0x8000000000000001`=LoadSavedGame，nil uuid，零载荷）；
+    /// 3. Startup `refresh_session_list_system`（`ResMut<SavedSessionList>,
+    ///    Option<Res<AutoSaveState>>`；build **不插入** AutoSaveState）；
+    /// 4. Update `delete_session_system.run_if(on_event<DeleteSessionCmd>)` +
+    ///    `refresh_session_list_system.run_if(or(on_event<SavingGameComplete>,
+    ///    on_event<DeleteSessionCmd>))`（见 [`configure_session_flow_systems`]）；
+    /// 5. register_event NewSessionStartedCmd / SessionLoadedCmd / DeleteSessionCmd。
+    /// **不插 ActiveSession**（原版无此资源；ActiveSession 由 load_game_session 生产）。
     pub fn build(&self, world: &mut bevy_ecs::world::World) {
-        let mut list = SavedSessionList::default();
-        refresh_session_list(&mut list);
-        world.insert_resource(list);
-        world.insert_resource(NextSession::load_latest(world.resource::<SavedSessionList>()));
-        world.init_resource::<crate::systems::save::save_game::AutoSaveState>();
-        world.insert_resource(ActiveSession::new(SessionId::new(), SessionMeta::default()));
+        world.insert_resource(SavedSessionList::default());
+        world.insert_resource(NextSession::create(
+            &NextSessionTemplate::new(SessionId(Uuid::nil()), NextSessionKind::LoadSavedGame),
+            &NextSessionTail::EMPTY,
+        ));
         world.init_resource::<bevy_ecs::event::Events<NewSessionStartedCmd>>();
         world.init_resource::<bevy_ecs::event::Events<SessionLoadedCmd>>();
+        world.init_resource::<bevy_ecs::event::Events<DeleteSessionCmd>>();
     }
+}
+
+/// SessionFlowPlugin 的 Startup 刷新系统（O build `add_systems<Startup,
+/// fn(ResMut<SavedSessionList>, Option<Res<AutoSaveState>>)>`）。AutoSaveState 为可选参
+/// 匹配原生签名（crate 内刷新逻辑不消费它）。
+pub fn refresh_session_list_system(
+    mut list: ResMut<SavedSessionList>,
+    _auto_save: Option<Res<crate::systems::save::save_game::AutoSaveState>>,
+) {
+    refresh_session_list(&mut list);
+}
+
+/// DeleteSessionCmd 处理器（O：`fn(EventReader<DeleteSessionCmd>)`）。
+///
+/// Fresh 反编译 0x140b46d60（2026-10-17）：函数开头把 reader 游标写成 events 总计数
+/// （完整消费），随后只取**最末**事件的 16 B 载荷（`read().last()`，事件步进 0x18 =
+/// event_id + SessionId）执行一次删除。旧实现 `for ... in reader.read()` 会删除本帧
+/// 每个事件，与原生只删最末一个不符。
+pub fn delete_session_system(mut reader: EventReader<DeleteSessionCmd>) {
+    if let Some(cmd) = reader.read().last() {
+        delete_session(cmd.session);
+    }
+}
+
+/// 装配 SessionFlowPlugin 的系统（O 0x140b47840，fresh 2026-10-17）：
+/// - Startup 刷新系统（`refresh_session_list_system`）；
+/// - Update `(delete_session_system.run_if(on_event::<DeleteSessionCmd>),
+///   refresh_session_list_system.run_if(or(on_event<SavingGameComplete>,
+///   on_event<DeleteSessionCmd>)))`。
+/// crate 无 bevy_app 的 Startup/Update 分表，宿主按运行期语义接入同一 Schedule。
+pub fn configure_session_flow_systems(schedule: &mut bevy_ecs::schedule::Schedule) {
+    use bevy_ecs::schedule::Condition as _;
+    use bevy_ecs::schedule::IntoScheduleConfigs as _;
+    use bevy_ecs::schedule::common_conditions::on_event;
+    schedule.add_systems(refresh_session_list_system);
+    schedule.add_systems((
+        delete_session_system.run_if(on_event::<DeleteSessionCmd>),
+        refresh_session_list_system
+            .run_if(on_event::<DeleteSessionCmd>.or(on_event::<SavingGameComplete>)),
+    ));
 }
 
 #[cfg(test)]
@@ -602,7 +695,7 @@ mod tests {
         let saved: serde_json::Value =
             serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
         assert_eq!(saved.as_object().unwrap().len(), 2);
-        assert_eq!(saved["version"], 1);
+        assert_eq!(saved["version"], 2);
         assert_eq!(
             serde_json::from_value::<SessionMeta>(saved["state"].clone()).unwrap(),
             meta

@@ -1,0 +1,328 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/history.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/history.rs
+@@ -56,7 +56,8 @@
+     }
+ }
+ 
+-/// 第二事件流待处理队列（产生端 U；仅处理端在录）。
++/// Legacy captured-EventInstance transport adapter. This is not a second
++/// original event stream: B's DebugHistoryMsg parameter is unused in this body.
+ #[derive(Resource, Default, Debug)]
+ pub struct PendingHistoryControl(pub VecDeque<HistoryControlRecord>);
+ 
+@@ -114,16 +115,9 @@
+     accept_history_command_effects(command, pending, replay).audio
+ }
+ 
+-/// 第二事件流跳表 0x142ae5420 的**可解码分支**（fresh decomp-0x140af5b30，
+-/// `switch(*(byte *)(_Src + 9))`）：
+-/// - case 0：队尾 `HistoryCmd` 第二字节==1（redo）→ 写事件 + 清队（code_r0x000140af5df8）
+-/// - case 1：队尾第二字节==0（undo）→ 写事件 + 清队
+-/// - case 2：无条件 → 写事件 + 清队
+-/// - case 3：`ReplayBuffer::make_animations_instant` + 写事件 + 清队
+-/// 其余 case（0xb..0x18+：校验/动画即时化/移除）反编译不收敛，登记 U
+-/// （REBUILD-REMAINDER §2.1）。**默认路径**（未清队）：记录 @+8 的 u32
+-/// （机器码 `_Src[2]`）压入 [`PendingHistoryCommands`]；每条记录处理后按 @+0xb
+-/// 字节写事件（==3 跳过），本系统以 [`HistoryControlProcessed`] 承载。
++/// Decode old captured EventInstance bytes with the same entry-effects body.
++/// Original @+9 is HistoryCmd byte1 after its EventId, not another stream's
++/// discriminant. Runtime uses history_process_system with the typed event.
+ pub fn process_history_control_stream(
+     mut pending: ResMut<PendingHistoryCommands>,
+     mut controls: ResMut<PendingHistoryControl>,
+@@ -164,6 +158,8 @@
+     Record,
+ }
+ 
++/// Isolated transport adapter. It has no History owner and cannot implement
++/// the original recording return; runtime uses history_process_system.
+ pub fn enqueue_history_commands(
+     mut events: EventReader<HistoryCommand>,
+     mut pending: ResMut<PendingHistoryCommands>,
+@@ -182,8 +178,54 @@
+     }
+ }
+ 
++/// Original B `history_process` @140af5b30. The entry event iterator and
++/// queued replay selection are one system: recording consumes the current
++/// event and returns from the whole function, leaving later events unread.
++/// With no new event, the original proceeds directly to queue selection.
++pub fn history_process_system<S: Send + Sync + 'static>(
++    mut history: ResMut<History<S>>,
++    mut pending: ResMut<PendingHistoryCommands>,
++    mut replay: ResMut<ReplayBuffer>,
++    mut events: EventReader<HistoryCommand>,
++    _debug: EventReader<history_process::DebugHistoryMsg>,
++    mut audio: EventWriter<crate::systems::audio::PlayReplayAudio>,
++    mut started: EventWriter<history_process::NewReplayCommandEvent>,
++    mut interrupts: EventWriter<crate::systems::timelapse_replay::InterruptTimelapse>,
++    bulldoze: Res<crate::systems::wall::eraser::animate_wall_bulldoze::AnimateWallBulldozeBuffer>,
++    mut failures: EventWriter<HistoryReplayFailed>,
++) {
++    for command in events.read().copied() {
++        // @5ce9 increments this event reader before @5cf3 tests the same
++        // pending owner as History::is_recording @140a86970. The taken branch
++        // @5ea8 ends at @5f9c, before both entry effects and queue pop.
++        if history.is_recording() {
++            log::warn!(
++                target: "country_core::systems::history::history_process",
++                "Can't process History while recording a new edit is active!"
++            );
++            return;
++        }
++        let effects = accept_history_command_effects(command, &mut pending, &mut replay);
++        if effects.interrupt_timelapse {
++            interrupts.write(crate::systems::timelapse_replay::InterruptTimelapse);
++        }
++        if let Some(event) = effects.audio {
++            audio.write(event);
++        }
++    }
++    advance_history_cursor(
++        &mut history,
++        &mut replay,
++        &mut pending,
++        &bulldoze,
++        &mut failures,
++        &mut started,
++    );
++}
++
+ /// Verified ordinary Undo/Redo branch at B 0x140af5f81..0x140af6134.
+ /// Native load commands enter through the same four-byte event transport.
++/// Isolated queue-consumer adapter; runtime registers history_process_system.
+ pub fn process_history_cursor_commands<S: Send + Sync + 'static>(
+     mut history: ResMut<History<S>>,
+     mut replay: ResMut<ReplayBuffer>,
+@@ -191,6 +233,24 @@
+     bulldoze: Res<crate::systems::wall::eraser::animate_wall_bulldoze::AnimateWallBulldozeBuffer>,
+     mut failures: EventWriter<HistoryReplayFailed>,
+     mut started: EventWriter<history_process::NewReplayCommandEvent>,
++) {
++    advance_history_cursor(
++        &mut history,
++        &mut replay,
++        &mut pending,
++        &bulldoze,
++        &mut failures,
++        &mut started,
++    );
++}
++
++fn advance_history_cursor<S: Send + Sync + 'static>(
++    history: &mut History<S>,
++    replay: &mut ReplayBuffer,
++    pending: &mut PendingHistoryCommands,
++    bulldoze: &crate::systems::wall::eraser::animate_wall_bulldoze::AnimateWallBulldozeBuffer,
++    failures: &mut EventWriter<HistoryReplayFailed>,
++    started: &mut EventWriter<history_process::NewReplayCommandEvent>,
+ ) {
+     // B @140af5f81..f9a: a live replay bucket OR a live wall bulldoze
+     // animation blocks taking the next queued history command.
+@@ -457,15 +517,7 @@
+         )
+             .chain(),
+     );
+-    schedule.add_systems(
+-        (
+-            enqueue_history_commands,
+-            process_history_control_stream,
+-            process_history_cursor_commands::<S>,
+-        )
+-            .chain()
+-            .in_set(HistoryCpuStage::Cursor),
+-    );
++    schedule.add_systems(history_process_system::<S>.in_set(HistoryCpuStage::Cursor));
+     schedule.add_systems(replay_stairs::replay_stairs.in_set(HistoryCpuStage::Replay));
+     schedule.add_systems(replay_auto_clutter::replay_auto_clutter.in_set(HistoryCpuStage::Replay));
+     schedule.add_systems(replay_wall::replay_wall.in_set(HistoryCpuStage::Replay));
+--- a/games_test/tiny-glade/crates/country-core/src/resources/history/transactions.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/history/transactions.rs
+@@ -164,15 +164,14 @@
+     /// cursor. Expansion owns command reversal: reversing edits is incorrect
+     /// for edits which expand into several commands. A failed expansion keeps
+     /// the ledger unchanged so unresolved owners cannot silently lose history.
++    /// The recording check belongs to each newly read HistoryCmd, not cursor
++    /// selection: B @140af5f81..6134 has no recording gate on an existing queue.
+     pub fn cursor_step_expanding<T, E: From<HistoryTransactionError>>(
+         &mut self,
+         step: HistoryCursorStep,
+         instant: bool,
+         expand: impl FnOnce(usize, &HistoryEntry<M>, bool, bool) -> Result<T, E>,
+     ) -> Result<Option<T>, E> {
+-        if self.is_recording() {
+-            return Ok(None);
+-        }
+         let target = match step {
+             HistoryCursorStep::Undo => {
+                 if self.ledger.cursor < 0 || self.ledger.cursor <= self.ledger.undo_anchor {
+--- a/games_test/tiny-glade/crates/country-core/src/systems/history/tests.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/history/tests.rs
+@@ -44,7 +44,7 @@
+ }
+ 
+ #[test]
+-fn second_stream_control_records_dispatch_and_push_default_commands() {
++fn captured_event_records_dispatch_the_same_entry_effects() {
+     let mut world = World::new();
+     world.init_resource::<PendingHistoryCommands>();
+     world.init_resource::<PendingHistoryControl>();
+@@ -363,13 +363,7 @@
+             bytes: [1, 1, 1, 3],
+         });
+     let mut schedule = Schedule::default();
+-    schedule.add_systems(
+-        (
+-            enqueue_history_commands,
+-            process_history_cursor_commands::<()>,
+-        )
+-            .chain(),
+-    );
++    schedule.add_systems(history_process_system::<()>);
+     schedule.run(&mut world);
+     assert!(
+         world
+@@ -394,6 +388,7 @@
+ fn clear_interrupts_timelapse_and_emits_the_distinct_audio_kind() {
+     let mut world = World::new();
+     register_history_events(&mut world);
++    world.insert_resource(empty_history());
+     world.insert_resource(ReplayBuffer::new(1.0));
+     world
+         .resource_mut::<PendingHistoryCommands>()
+@@ -405,7 +400,7 @@
+             bytes: [0, 0, 0, 2],
+         });
+     let mut schedule = Schedule::default();
+-    schedule.add_systems(enqueue_history_commands);
++    schedule.add_systems(history_process_system::<()>);
+     schedule.run(&mut world);
+     assert!(world.resource::<PendingHistoryCommands>().0.is_empty());
+     assert_eq!(
+@@ -429,3 +424,106 @@
+             .is_empty()
+     );
+ }
++
++#[test]
++fn recording_consumes_only_current_event_and_returns_before_queue_pop() {
++    let mut world = World::new();
++    register_history_events(&mut world);
++    let mut history = empty_history();
++    history
++        .ledger_mut()
++        .entries
++        .push(HistoryEntry::from_edits(Vec::new()));
++    history.start_input_recording(0).unwrap();
++    world.insert_resource(history);
++    world.insert_resource(ReplayBuffer::new(1.0));
++    world
++        .resource_mut::<PendingHistoryCommands>()
++        .0
++        .push_back(HistoryCommand::REDO);
++    let quiet_redo = HistoryCommand {
++        bytes: [1, 1, 1, 3],
++    };
++    // Native consumes this first event while recording, then returns. If it
++    // were retained, the next run would clear the old pending command.
++    world
++        .resource_mut::<Events<HistoryCommand>>()
++        .send(HistoryCommand {
++            bytes: [0, 3, 0, 0],
++        });
++    world
++        .resource_mut::<Events<HistoryCommand>>()
++        .send(quiet_redo);
++    let mut schedule = Schedule::default();
++    schedule.add_systems(history_process_system::<()>);
++    schedule.run(&mut world);
++    assert_eq!(world.resource::<PendingHistoryCommands>().0.len(), 1);
++    assert_eq!(world.resource::<History>().ledger().cursor, -1);
++    assert!(world.resource::<ReplayBuffer>().is_empty());
++    assert!(
++        world
++            .resource::<Events<crate::systems::audio::PlayReplayAudio>>()
++            .is_empty()
++    );
++    assert!(
++        world
++            .resource::<Events<crate::systems::timelapse_replay::InterruptTimelapse>>()
++            .is_empty()
++    );
++    assert!(
++        world
++            .resource::<Events<history_process::NewReplayCommandEvent>>()
++            .is_empty()
++    );
++    // No Events::update/clear between runs: the same system's EventReader
++    // must retain the second event and must not reread the first one.
++    world
++        .resource_mut::<History>()
++        .finish_input_recording()
++        .unwrap();
++    schedule.run(&mut world);
++    assert_eq!(world.resource::<History>().ledger().cursor, 0);
++    assert_eq!(world.resource::<PendingHistoryCommands>().0.len(), 1);
++    assert_eq!(
++        world.resource::<PendingHistoryCommands>().0.front(),
++        Some(&quiet_redo)
++    );
++    assert_eq!(world.resource::<ReplayBuffer>().buckets.len(), 1);
++    assert_eq!(
++        world
++            .resource::<Events<history_process::NewReplayCommandEvent>>()
++            .len(),
++        1
++    );
++}
++
++#[test]
++fn recording_without_new_event_does_not_gate_existing_queue_selection() {
++    let mut world = World::new();
++    register_history_events(&mut world);
++    let mut history = empty_history();
++    history
++        .ledger_mut()
++        .entries
++        .push(HistoryEntry::from_edits(Vec::new()));
++    history.start_input_recording(0).unwrap();
++    world.insert_resource(history);
++    world.insert_resource(ReplayBuffer::new(1.0));
++    world
++        .resource_mut::<PendingHistoryCommands>()
++        .0
++        .push_back(HistoryCommand::REDO);
++    let mut schedule = Schedule::default();
++    schedule.add_systems(history_process_system::<()>);
++    schedule.run(&mut world);
++    assert!(world.resource::<History>().is_recording());
++    assert_eq!(world.resource::<History>().ledger().cursor, 0);
++    assert!(world.resource::<PendingHistoryCommands>().0.is_empty());
++    assert_eq!(world.resource::<ReplayBuffer>().buckets.len(), 1);
++    assert_eq!(
++        world
++            .resource::<Events<history_process::NewReplayCommandEvent>>()
++            .len(),
++        1
++    );
++}
+--- a/games_test/tiny-glade/crates/tiny-glade/src/run_game.rs
++++ b/games_test/tiny-glade/crates/tiny-glade/src/run_game.rs
+@@ -564,6 +564,7 @@
+     app.insert_resource(ui);
+     app.insert_resource(country_core::resources::toolbar::Toolbar::new(demo));
+     app.add_event::<history::history_process::NewReplayCommandEvent>();
++    app.add_event::<history::history_process::DebugHistoryMsg>();
+     app.add_event::<country_core::systems::audio::PlayReplayAudio>();
+     app.add_event::<country_core::systems::timelapse_replay::InterruptTimelapse>();
+     app.add_event::<history::HistoryReplayFailed>();
+@@ -614,8 +615,7 @@
+     app.add_systems(
+         bevy_app::Update,
+         (
+-            history::enqueue_history_commands,
+-            history::process_history_cursor_commands::<()>,
++            history::history_process_system::<()>,
+             history::history_clear_previous_state,
+             history::replay_mode::replay_mode,
+             history::finish_replay::finish_replay,

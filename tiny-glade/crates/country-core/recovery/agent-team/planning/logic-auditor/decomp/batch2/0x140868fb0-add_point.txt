@@ -1,0 +1,121 @@
+
+void __cdecl country_core::resources::active_raster_stroke::InProgressRasterStroke::add_point(void)
+
+{
+  longlong lVar1;
+  ulonglong uVar2;
+  undefined8 *puVar3;
+  longlong lVar4;
+  byte *in_RCX;
+  float *in_RDX;
+  longlong lVar5;
+  ulonglong uVar6;
+  float fVar7;
+  float fVar8;
+  float fVar9;
+  
+  lVar5 = *(longlong *)(in_RCX + 0x38);
+  if (lVar5 == 0) {
+    if (*(ulonglong *)(in_RCX + 0x28) == 0) {
+      alloc::raw_vec::RawVec::grow_one<glam::f32::vec3::Vec3,alloc::alloc::Global>();
+    }
+    puVar3 = *(undefined8 **)(in_RCX + 0x30);
+    *(float *)(puVar3 + 1) = in_RDX[2];
+    *puVar3 = *(undefined8 *)in_RDX;
+    in_RCX[0x38] = 1;
+    in_RCX[0x39] = 0;
+    in_RCX[0x3a] = 0;
+    in_RCX[0x3b] = 0;
+    in_RCX[0x3c] = 0;
+    in_RCX[0x3d] = 0;
+    in_RCX[0x3e] = 0;
+    in_RCX[0x3f] = 0;
+  }
+  else {
+    lVar4 = *(longlong *)(in_RCX + 0x30);
+    lVar1 = lVar4 + lVar5 * 0xc;
+    if (lVar1 == 0xc) {
+                    // WARNING: Subroutine does not return
+      core::option::unwrap_failed();
+    }
+    fVar7 = *(float *)(lVar1 + -8) - in_RDX[1];
+    fVar8 = *(float *)(lVar1 + -0xc) - *in_RDX;
+    fVar9 = *(float *)(lVar1 + -4) - in_RDX[2];
+    *(float *)(in_RCX + 0x40) =
+         SQRT(fVar9 * fVar9 + fVar7 * fVar7 + fVar8 * fVar8) + *(float *)(in_RCX + 0x40);
+    if (lVar5 == *(longlong *)(in_RCX + 0x28)) {
+      alloc::raw_vec::RawVec::grow_one<glam::f32::vec3::Vec3,alloc::alloc::Global>();
+      lVar4 = *(longlong *)(in_RCX + 0x30);
+    }
+    *(float *)(lVar4 + 8 + lVar5 * 0xc) = in_RDX[2];
+    *(undefined8 *)(lVar4 + lVar5 * 0xc) = *(undefined8 *)in_RDX;
+    uVar2 = lVar5 + 1;
+    *(ulonglong *)(in_RCX + 0x38) = uVar2;
+    if (1.0 < *(float *)(in_RCX + 0x40)) {
+      uVar6 = *(ulonglong *)(in_RCX + 8);
+      if ((1 < uVar6 & *in_RCX) == 1) {
+        if (uVar2 < uVar6) {
+                    // WARNING: Subroutine does not return
+          core::slice::index::slice_end_index_len_fail();
+        }
+        solidify_fluid_into();
+        uVar6 = uVar6 - 1;
+        uVar2 = *(ulonglong *)(in_RCX + 0x38);
+        if (uVar2 < uVar6) {
+                    // WARNING: Subroutine does not return
+          core::slice::index::slice_end_index_len_fail();
+        }
+        in_RCX[0x38] = 0;
+        in_RCX[0x39] = 0;
+        in_RCX[0x3a] = 0;
+        in_RCX[0x3b] = 0;
+        in_RCX[0x3c] = 0;
+        in_RCX[0x3d] = 0;
+        in_RCX[0x3e] = 0;
+        in_RCX[0x3f] = 0;
+        lVar5 = uVar2 - uVar6;
+        if (lVar5 == 0) {
+          lVar5 = 0;
+        }
+        else {
+          memmove(*(void **)(in_RCX + 0x30),
+                  (void *)((longlong)*(void **)(in_RCX + 0x30) + uVar6 * 0xc),lVar5 * 0xc);
+          *(longlong *)(in_RCX + 0x38) = lVar5;
+        }
+        in_RCX[0] = 1;
+        in_RCX[1] = 0;
+        in_RCX[2] = 0;
+        in_RCX[3] = 0;
+        in_RCX[4] = 0;
+        in_RCX[5] = 0;
+        in_RCX[6] = 0;
+        in_RCX[7] = 0;
+        *(longlong *)(in_RCX + 8) = lVar5;
+      }
+      else {
+        if (uVar2 == *(ulonglong *)(in_RCX + 0x28)) {
+          alloc::raw_vec::RawVec::grow_one<glam::f32::vec3::Vec3,alloc::alloc::Global>();
+        }
+        lVar1 = *(longlong *)(in_RCX + 0x30);
+        *(float *)(lVar1 + 8 + uVar2 * 0xc) = in_RDX[2];
+        *(undefined8 *)(lVar1 + uVar2 * 0xc) = *(undefined8 *)in_RDX;
+        *(longlong *)(in_RCX + 0x38) = lVar5 + 2;
+        in_RCX[0] = 1;
+        in_RCX[1] = 0;
+        in_RCX[2] = 0;
+        in_RCX[3] = 0;
+        in_RCX[4] = 0;
+        in_RCX[5] = 0;
+        in_RCX[6] = 0;
+        in_RCX[7] = 0;
+        *(longlong *)(in_RCX + 8) = lVar5 + 2;
+        in_RCX[0x40] = 0;
+        in_RCX[0x41] = 0;
+        in_RCX[0x42] = 0;
+        in_RCX[0x43] = 0;
+      }
+    }
+  }
+  return;
+}
+

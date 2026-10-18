@@ -1,222 +1,164 @@
 //! color_menu.rs — 径向调色菜单交互主系统（B 0x142291230 color_menu /
-//! 0x1422979b0 color_button_animations / 0x142297ff0 delete_color_icon_entities，
-//! O 结构级；reviewer-A 复验 + 组 A 修复）。
+//! 0x1422979b0 color_button_animations / 0x142297ff0 delete_color_icon_entities；
+//! restorer-wave2-color 2026-10-17）。
 //!
-//! `color_menu`：15 参系统（137KB 机器码已解出）——每图标块
-//! `is_active`（0x14092e680）×11 + `clicked`（0x14092e5f0）×11 门控 →
-//! 应用（对应事件通道）+ `History::add` ×13（0x140a84ec0）+ 音效；
-//! `DigitalActionState::just_pressed`（0x14093fa90）×14（径向菜单选择/确认/
-//! 取消动作族）；`ColorMenuBrightnessValue::to_f32`（0x140b06770）×3（亮度
-//! 0.25/1.0/4.0）；图标角度布局（cartesian_to_polar + polar_to_cartesian +
-//! AngleRange::clamp 0x1425f24d0）。图标↔目标类型映射表 U（re-analyst §6）。
+//! # color_menu（0x142291230，136KB 全量反编译已解）
+//!
+//! 本轮（RE-ANALYSIS §2.1 + wave2）ReVa 专属写 worker（fresh clone + 600s 定点）
+//! 产出全量反编译 `decomp/color_menu_142291230_full.c`（shared DB codelen=0 为
+//! overlay 损坏，实现以写 worker clone 为基）。**逐语句判等受 core typed-gap 阻断
+//! → 标未实现**；本文件登记完整解出的逻辑与字段布局，供 core 侧 CustomizationIcon
+//! 落库后逐语句重建。
+//!
+//! ## 系统 ABI（Bevy system，~12 参数，RCX/RDX/R8/R9 + stack）
+//! - 参数经寄存器 + 栈传入；`in_stack_00000040` = 64 qword 事件写者阵列
+//!   （`Events<*>` 0x20B 头 + buffer 0x28/0x30/0x40 光标）。
+//! - 事件写者族：6×`Events<(&str, SettingsMenuState)>`（stride 0x18：
+//!   {event_id u64, str_ptr u64, enum_tag u32, byte}）、3×`Events<WindowFocusEvent>`
+//!   （stride 0x10：{event_id u64, payload u64}）、`Events<(DecoratorId,
+//!   Vec<PreferredNodeAlignment>)>`（stride 0x20）、`Events<WriteSettingsFileCmd>`
+//!   （stride 8）等。
+//!
+//! ## CustomizationIcon 0xa0B 图标状态条目（逐图标 state 记录；core typed-gap）
+//! | 偏移 | 类型 | 语义 |
+//! |---|---|---|
+//! | +0x00 | u8 | used/已处理标志（`*local_100 & 1`；`just_pressed` 双动作命中置 1 并保存 +0x60） |
+//! | +0x08 | u64 | Option 选中 id（`*(local_100+8)`，`*local_100==0` → None） |
+//! | +0x18 | ptr | 图标列表 buffer（`*(local_100+0x18)`，kind@+0x18+idx*0x28） |
+//! | +0x20 | u64 | 图标列表 len |
+//! | +0x28/+0x2c | u32×2 | 值 A/B（部分菜单态写 0） |
+//! | +0x30 | u8 | **menu state byte（主 switch 变量）** |
+//! | +0x34 | u32 | payload（如 selected 值） |
+//! | +0x38 | u64 | 载荷 str（事件 str_ptr 源） |
+//! | +0x40/+0x48 | ptr/len | 菜单图标 buffer + len（`panic_bounds_check` 边界） |
+//! | +0x50 | Vec2 | 菜单中心（`*(local_100+0x50)`） |
+//! | +0x60 | u64 | 保存态（used 置位时保存） |
+//! | +0x68 | u32 | kind/当前值（switch 的 `uVar33` 源） |
+//! | +0x6c | u32 | 值 B |
+//! | +0x86/0x87/0x89 | u8 | 子状态标志（+0x89=亮度 toggler 门） |
+//! | +0x90 | f32 | 半径 |
+//!
+//! ## 主循环结构
+//! 1. 遍历图标实体（`local_4f8` 实体表 → 0xa0 记录 = CustomizationIcon）；`local_189`
+//!    （`local_2e0+0x108`）分流两套实体/索引表（stride 0xa0 与 0x48）。
+//! 2. **双 `DigitalActionState::just_pressed()`**（0x142291a30/0x142291a4a）：命中且
+//!    图标未 used → 置 used、保存 +0x60 态。
+//! 3. **选中推进**（`local_4d0[2]==1` 门）：`icons` 列表（+0x18/+0x20）内按
+//!    方向步进跳过 kind==5 分隔符，`panic_bounds_check` 保护；写
+//!    `local_158[0x20]=1`（高亮）+ 值记录 `local_138[+idx*4]=local_110`。
+//! 4. **每图标 widget 交互**（重复块 ×N）：`format_inner`（格式串哈希 0x4303b728/
+//!    0x4303b758/0x4303b800/0x4303b898/0x4303b938…）+ `WidgetParams::new()` +
+//!    `UiState::add<String>()` + `UiWidgetContext::is_active()/clicked()` +
+//!    `DigitalActionState::just_pressed()`；格式串为图标 widget id（如
+//!    "color_menu_*"）。
+//! 5. **菜单态收尾**（0x142294b44 区）：state 6 → `WindowFocusEvent` 写 +
+//!    `History::add` 记录 tag 0xa；state 9 → `SettingsMenuState` 事件写 +
+//!    `History::add` tag 0xb（`ColorMenuBrightnessValue::to_f32` 载荷）；state 10 →
+//!    `History::add` tag 0xc；`History::try_start_input_recording()` 门 → 否则
+//!    `WriteSettingsFileCmd`。
+//! 6. **菜单布局**（0x142294f60 区）：`utils::cartesian_to_polar` +
+//!    `AngleRange::clamp` + `polar_to_cartesian`，`WidgetParams::new` +
+//!    `UiSounds::empty` + `UiSounds::sounds` + `UiState::add<String>`（菜单中心 +
+//!    半径 +0x50/+0x90）。
+//! 7. **主 switch**（0x1422960f5，`pcVar30=&DAT_14303ba18 + *(int*)…`）——menu
+//!    state byte 分派，见下表。
+//!
+//! ## 主 switch case 表（menu state → 行为）
+//! | case | 事件写（Events） | 图标值记录写（local_180[+off]） | History::add 记录 tag |
+//! |---|---|---|---|
+//! | 0 | `Events<(&str,SettingsMenuState)>` + `PublicWalls::get` 面 | +0x18/+0x1c/+0x42（halftimbered 门） | 3 |
+//! | 1 | 同上 | +0x20 | 5 |
+//! | 2 | = code_r0x000142295d8c（状态保持） | — | — |
+//! | 4 | 同上 + WindowFocusEvent | +0x30 | 8 |
+//! | 5 | 同上 | +0x38 | 4 |
+//! | 7/8 | 同上 | +0x24（7）/ +0x2c（8） | 9（8 字节记录 `{1,0,..,1,..,0x9}`） |
+//! | 0xc | 同上 | +0xc | 0xd |
+//! | 0xd | 嵌套 switch（icon 子类型 3/6/9/0xb） | +0x0 / +0x34 / +0x28 / +0x8 | 7 |
+//! | 0xe/0xf/0x11/0x12/0x14 | `WriteSettingsFileCmd` 面 | — | — |
+//! | 0x10/0x13 | History 直接 add | +0x2c | （pcVar30 载荷） |
+//! | 0x15 | — | +0x28（+字节自增） | — |
+//! | default | WindowFocusEvent（code_r0x000142295d9b） | — | — |
+//!
+//! 图标值记录 `local_180`（`*in_R8`，独立于 CustomizationIcon）为 per-kind 值槽：
+//! `[0x0, 0x8, 0xc, 0x18, 0x1c, 0x20, 0x24, 0x28, 0x2c, 0x30, 0x34, 0x38, 0x40, 0x42]`。
+//! `History::add` 记录布局 `{1, 1, <tag u8 @+3>, <u32/u8 载荷>, …}`，第二参
+//! `local_2d8={9,0}` = `EditType::Color` tag 9。
+//!
+//! **未实现根因**：per-icon 状态机（CustomizationIcon 0xa0 布局）、图标值记录、
+//! `Events<(&str, SettingsMenuState)>`、History Color 字节记录、~12 参数系统 ABI
+//! 均 core typed-gap → 无法逐语句判等编译。待 core 落库后按本文件布局重建。
+//!
+//! # color_button_animations / delete_color_icon_entities
+//! 同前：`CustomizationIcon+0x18 + icon_index*0x24` 动画进度、`Ui2dExtent` 缩放
+//! 数学已解出（删除态 `+= dt/-0.15`，否则 `+= dt*4.0`，clamp 1.0；二次缓动
+//! `(1-e)*0.8+e` 混合 + `rot(clamp[0,1])` 缓动 `*0.2+1.0`），core typed-gap 阻断。
 
 use bevy_ecs::prelude::*;
-use glam::Vec2;
 
-use country_core::components::{Ui2dExtent, Ui2dImage, UiDrawOrder};
-use country_core::resources::color_icon::CustomizationIcon;
-use country_core::input::action_set::ActionSetStates;
-use country_core::resources::color_icon::{
-    ColorIcon, CustomizationIconMarkedForDeletion, WallStyleIcon,
-};
-use country_core::resources::color_id::{
-    GateColorIds, HalftimberColorIds, SetGateColorIdCmd, SetHalftimberColorIdCmd, SetWallColorIdCmd,
-    WallColorIds,
-};
-use country_core::resources::glade_color_customization::GladeColorCustomization;
-use country_core::resources::mouse_terrain_raycast::CursorPositionSS;
-use country_core::resources::roofs::roof_shape::Roof;
-use country_core::resources::time::GameTime;
-use country_core::resources::walls::decorator::{SetChimneySmokeCmd, SetFlagConnectionCmd};
-use country_core::resources::walls::public_walls::PublicWalls;
-use country_core::systems::mode_manager::AppMode;
-use country_core::systems::ui::resources::widget_params::{PlayUiSound, UiNavState};
-use country_core::systems::ui::resources::ui_state::UiState;
-use country_core::resources::history::History;
-use country_core::resources::color_icon::ColorMenuBrightnessValue;
-use country_core::game_config::GameConfig;
+use country_core::resources::color_icon::{CustomizationIcon, CustomizationIconMarkedForDeletion};
 
-use crate::radial_menu::{ColorRadialMenu, IconInfo};
-use crate::{
-    HideColorMenuCmd, SetDecoratorBrightnessCmd, SetDecoratorColorIdCmd, SetLadderColorIdCmd,
-    SetMagicColorIdCmd, SetRoofColorIdCmd, SetStairRailingCmd, SetWindowLightCmd,
-};
-use country_core::systems::wall::{SetFreehandHeightTypeCmd, SetPlasterPeelAmountCmd, SetWallStyleCmd};
-use country_core::resources::roofs::commands::{SetFlatRoofRimStyleCmd, SetFlatRoofStyleCmd};
-use country_core::resources::glade_border::NotInDemoHint;
-use country_core::resources::events::{FinishInputRecordingCmd, LightLanternCmd, LightWindowCmd};
-
-/// 菜单交互状态（O：Local<Option<(usize, usize)>>——上次选中图标/菜单对）。
+/// 菜单交互状态（O：`Local<Option<(usize,usize)>>`——上次选中图标/菜单对）。
 #[derive(Default)]
 pub struct ColorMenuSelection(pub Option<(usize, usize)>);
 
-/// `color_button_animations` @0x1422979b0（O 面：easing 驱动的按钮缩放/透明度
-/// 动画；easing 数据 0x14303b9f0/0x14303b9f8）。
+/// `color_button_animations` @0x1422979b0（1577B，未实现——CustomizationIcon/
+/// Ui2dExtent typed-gap 阻断）。
 pub fn color_button_animations(
     mut icons: Query<(
         &mut CustomizationIcon,
-        &mut Ui2dExtent,
-        &mut UiDrawOrder,
+        &mut country_core::components::Ui2dExtent,
+        &mut country_core::components::UiDrawOrder,
         Option<&CustomizationIconMarkedForDeletion>,
     )>,
-    _time: Res<GameTime>,
+    _time: Res<country_core::resources::time::GameTime>,
 ) {
-    for (mut icon, mut extent, mut order, marked) in icons.iter_mut() {
-        let _ = (&mut *icon, &mut *extent, &mut *order);
-        if marked.is_some() {
-            continue;
-        }
-        // O：EasingFunction::apply（0x140c95ef0）×3 → 缩放/透明度（字段 U——
-        // CustomizationIcon 0xa0B 条目族，re-analyst §2）。
+    for (_icon, _extent, _order, _marked) in icons.iter_mut() {
+        // O：progress(icon+0x18+idx*0x24) 推进（删除态 dt/-0.15，否则 dt*4.0）、
+        // clamp 1.0、EasingFunction::apply 缩放、二次缓动 0.8/0.2 混合。
+        // —— GAP：字段 typed-gap。
     }
 }
 
-/// `color_menu` @0x142291230（O 结构级：15 参交互主系统；图标↔目标类型映射表
-/// U——本实现按机器码门控链（is_active/clicked/just_pressed）+ 历史/音效/亮度
-/// 三变体落地，逐图标应用通道映射登记待补证）。
+/// `color_menu` @0x142291230（136KB 全量反编译已解——本文件模块头登记完整结构/
+/// 字段布局/switch 表；**未实现**：per-icon 状态机依赖 core `CustomizationIcon`
+/// 0xa0 布局 + `Events<(&str,SettingsMenuState)>` + History Color 字节记录 +
+/// ~12 参数系统 ABI，均为 typed-gap，无法逐语句判等编译）。
+///
+/// 签名保持 PDB 候选面（icons/menus/Local/sounds/history）；未构造近似控制流——
+/// 反编译证明真实逻辑以 per-icon 字节状态机为主，typed 面仅能表达外环。
 #[allow(clippy::too_many_arguments)]
 pub fn color_menu<S: Send + Sync + 'static>(
     mut icons: Query<(
         &mut CustomizationIcon,
-        Option<&ColorIcon>,
-        Option<&WallStyleIcon>,
-        &Ui2dExtent,
-        &mut Ui2dImage,
+        Option<&country_core::resources::color_icon::ColorIcon>,
+        Option<&country_core::resources::color_icon::WallStyleIcon>,
+        &country_core::components::Ui2dExtent,
+        &mut country_core::components::Ui2dImage,
     )>,
-    mut menus: Query<(Entity, &mut ColorRadialMenu)>,
-    mut customization: ResMut<GladeColorCustomization>,
-    mut nav: ResMut<UiNavState>,
+    mut menus: Query<(Entity, &mut crate::radial_menu::ColorRadialMenu)>,
     mut selection: Local<ColorMenuSelection>,
-    (
-        _mode,
-        _cursor,
-        _config,
-        wall_colors,
-        half_colors,
-        _walls,
-        _roofs,
-        actions,
-    ): (
-        Res<AppMode>,
-        Res<CursorPositionSS>,
-        Res<GameConfig>,
-        Res<WallColorIds>,
-        Res<HalftimberColorIds>,
-        Res<PublicWalls>,
-        Query<&Roof>,
-        Res<ActionSetStates>,
-    ),
-    (mut history, _ui): (ResMut<History<S>>, Res<UiState>),
-    (
-        mut wall_cmds,
-        mut roof_cmds,
-        mut decorator_cmds,
-        mut gate_cmds,
-        mut half_cmds,
-        mut flag_cmds,
-        mut brightness_cmds,
-        mut freehand_cmds,
-        mut window_cmds,
-        mut rim_cmds,
-        mut not_in_demo,
-        mut style_cmds,
-        mut hides,
-        mut lantern_cmds,
-        mut light_window_cmds,
-        mut finish_record,
-    ): (
-        EventWriter<SetWallColorIdCmd>,
-        EventWriter<SetRoofColorIdCmd>,
-        EventWriter<SetDecoratorColorIdCmd>,
-        EventWriter<SetGateColorIdCmd>,
-        EventWriter<SetHalftimberColorIdCmd>,
-        EventWriter<SetFlagConnectionCmd>,
-        EventWriter<SetDecoratorBrightnessCmd>,
-        EventWriter<SetFreehandHeightTypeCmd>,
-        EventWriter<SetWindowLightCmd>,
-        EventWriter<SetFlatRoofRimStyleCmd>,
-        EventWriter<NotInDemoHint>,
-        EventWriter<SetWallStyleCmd>,
-        EventWriter<HideColorMenuCmd>,
-        EventWriter<LightLanternCmd>,
-        EventWriter<LightWindowCmd>,
-        EventWriter<FinishInputRecordingCmd>,
-    ),
-    mut smoke_cmds: EventWriter<SetChimneySmokeCmd>,
-    mut sounds: EventWriter<PlayUiSound>,
-    mut flat_style_cmds: EventWriter<SetFlatRoofStyleCmd>,
-    mut plaster_cmds: EventWriter<SetPlasterPeelAmountCmd>,
-    mut ladder_cmds: EventWriter<SetLadderColorIdCmd>,
-    mut railing_cmds: EventWriter<SetStairRailingCmd>,
-    mut magic_cmds: EventWriter<SetMagicColorIdCmd>,
+    mut sounds: EventWriter<country_core::systems::ui::resources::widget_params::PlayUiSound>,
+    _history: ResMut<country_core::resources::history::History<S>>,
 ) {
-
-    // O：每图标块门控链（is_active 0x14092e680 / clicked 0x14092e5f0——
-    // widget 交互面，ui_input 域接线）；本处落地动作面 + 历史/音效/亮度面。
-    for (index, icon) in menus.iter_mut().enumerate() {
-        for (icon_index, _info) in icon.1.icons.iter().enumerate() {
-            let _ = (index, icon_index);
-            // O：just_pressed 动作面（0x14093fa90 ×14——径向菜单动作族；
-            // 槽号→动作映射 U，re-analyst §6）。
-            let _ = actions.digital[0].just_pressed();
-        }
-    }
-    // O：亮度图标 ×3 → to_f32（0x140b06770 判别表——coordinator 契约 #1：
-    // 三变体 {0.25, 1.0, 4.0}，无 Custom 载荷）。
-    for tag in 0..3 {
-        if let Some(brightness) = ColorMenuBrightnessValue::from_tag(tag) {
-            let _ = brightness.to_f32();
-            brightness_cmds.write(SetDecoratorBrightnessCmd { _gap: u64::from(tag) });
-        }
-    }
-    // O：History::add ×13（0x140a84ec0）——每次颜色选择记录编辑（载荷面 U）；
-    // 本处登记历史记录面。
-    let _ = (
-        &mut wall_cmds,
-        &mut roof_cmds,
-        &mut decorator_cmds,
-        &mut gate_cmds,
-        &mut half_cmds,
-        &mut flag_cmds,
-        &mut freehand_cmds,
-        &mut window_cmds,
-        &mut rim_cmds,
-        &mut not_in_demo,
-        &mut style_cmds,
-        &mut hides,
-        &mut lantern_cmds,
-        &mut light_window_cmds,
-        &mut finish_record,
-        &mut smoke_cmds,
-        &mut sounds,
-        &mut flat_style_cmds,
-        &mut plaster_cmds,
-        &mut ladder_cmds,
-        &mut railing_cmds,
-        &mut magic_cmds,
-    );
-    let _ = (wall_colors, half_colors);
+    // 未实现：反编译主循环 = 逐图标 0xa0 状态机（menu state switch 0..0x15、
+    // 双 just_pressed 门、选中推进、widget 交互、History/事件写）。
+    // 保持读取面（避免未使用告警），不构造近似控制流。
+    let _ = (icons.iter_mut().count(), menus.iter_mut().count(), selection.0, &mut sounds);
     selection.0 = None;
 }
 
-/// `delete_color_icon_entities` @0x142297ff0（O：图标删除标记 → despawn）。
+/// `delete_color_icon_entities` @0x142297ff0（611B，未实现——`CustomizationIcon`
+/// 动画进度 `+0x18+idx*0x24` typed-gap）。
+///
+/// FIX-1（reviewer-state-color）：原逻辑为**仅 `progress(+0x18+icon_index*0x24) <= 0.0`
+/// 才 `despawn`**；进度字段 typed-gap 无法读取 → 本实现**不做无条件 despawn**（留空
+/// 循环体，登记 GAP），而非近似无条件销毁。
 pub fn delete_color_icon_entities(
     icons: Query<(Entity, &CustomizationIcon, &CustomizationIconMarkedForDeletion)>,
-    mut commands: Commands,
+    _commands: Commands,
 ) {
-    for (entity, _icon, _marked) in icons.iter() {
-        commands.entity(entity).despawn();
-    }
-}
-
-/// 图标名字辅助（O：IconInfo 名字面）。
-impl IconInfo {
-    /// 图标是否为亮度族（O：亮度图标名族）。
-    pub fn is_brightness(&self) -> bool {
-        self.name.starts_with("brightness")
-    }
-    /// 图标角度（O：AngleRange::clamp 0x1425f24d0 族；布局 I）。
-    pub fn angle(&self) -> f32 {
-        0.0
+    for (_entity, _icon, _marked) in icons.iter() {
+        // O：`progress(+0x18+icon_index*0x24) <= 0.0` → despawn（字段 typed-gap，
+        // 未解前留空——不产生与原行为不符的副作用）。
     }
 }

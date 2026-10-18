@@ -1,11 +1,7 @@
-//! Game coordinate adapters; construction and storage remain original glam.
+//! Coordinate adapters between horizontal XZ space and three-dimensional vectors.
 use glam::{Vec2, Vec3, Vec3Swizzles};
 
-/// Owned XZ projection used by B's Curve::reinterpret_as_curve2/try_to_curve2
-/// consumers: 12-byte Vec3 inputs become packed 8-byte Vec2 outputs. The axes
-/// are evidenced in the map/collect specialization 0x1402ba9e0; std allocation
-/// and glam swizzling are reused. This is distinct from the folded as_vec2
-/// identity entry, whose actual receiver and return type are still unresolved.
+/// Copies XZ coordinates into a packed, independently owned vector.
 pub fn project_vec3_slice_xz(source: &[Vec3]) -> Vec<Vec2> {
     source.iter().map(|p| p.xz()).collect()
 }
@@ -56,10 +52,8 @@ pub fn x0z(xyz: Vec3) -> Vec3 {
     xyz.x0z()
 }
 
-/// Safe borrowed transport chosen by the reconstruction. B's folded identity
-/// entry only establishes RCX -> RAX; unchanged RDX cannot prove a fat-pointer
-/// length or even a slice receiver. The author's as_vec2 type remains unknown.
-/// Source storage remains Vec3 rather than an unsafe packed Vec2 slice cast.
+/// A zero-allocation view retaining the source vectors and their layout.
+/// Use `project_vec3_slice_xz` when a packed `Vec2` buffer is needed.
 #[derive(Clone, Copy, Debug)]
 pub struct Vec3SliceView2<'a> {
     source: &'a [Vec3],

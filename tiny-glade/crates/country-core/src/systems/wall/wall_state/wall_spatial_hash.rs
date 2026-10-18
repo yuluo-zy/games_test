@@ -3,11 +3,14 @@
 
 use bevy_ecs::prelude::*;
 use hashbrown::{HashMap, HashSet};
+use utils::geometry::Rectangle2d;
 
-use crate::recovered_building::{
-    decorator_subtype::nearest_segment,
-    wall_spatial_index::{CELL_COUNT, WALL_SEGMENT_RADIUS, segment_cells},
-};
+use crate::resources::walls::decorator_subtype::placement::nearest_segment;
+use crate::resources::walls::spatial_index::CELL_COUNT;
+use crate::resources::walls::spatial_index::GRID_SIDE;
+use crate::resources::walls::spatial_index::WALL_SEGMENT_RADIUS;
+use crate::resources::walls::spatial_index::WORLD_SIZE;
+use crate::resources::walls::spatial_index::segment_cells;
 use crate::resources::walls::{
     WallId,
     public_walls::{OnWallChanged, OnWallDeleted, PublicWallState, PublicWalls},
@@ -24,6 +27,38 @@ pub struct WallSpatialSegment {
     pub relative_heights: [f32; 2],
     pub terrain_heights: [f32; 2],
     pub wall: WallId,
+}
+
+impl WallSpatialSegment {
+    /// 0x140aa50e0（fresh disasm 2026-10-17，25 指令）：
+    /// `t = clamp01(dot(p − a, b − a) / max(|b − a|², 1e-20))`，
+    /// 返回 `(1 − t)·h0 + t·h1`。
+    /// **偏移**：原生读 `WallSegment+0x18` 的两 f32；本结构按已证布局把 +0x18
+    /// 映射到 `relative_heights`（`ivy_grower::wall_segment_from_spatial` 同锚：
+    /// `h0@+0x18`）。PDB 名称为 terrain_height，与 +0x18 语义的最终确认登记
+    /// （add_segment 形参顺序未逐槽取证）。
+    /// SSE 有序语义：`MAXSS 0` / `MINSS 1` 在未排序（含 NaN）时取源操作数。
+    pub fn terrain_height_closest_to_ws_pos(&self, p: [f32; 2]) -> f32 {
+        let a = self.endpoints[0];
+        let b = self.endpoints[1];
+        let d = [b[0] - a[0], b[1] - a[1]];
+        let q = [p[0] - a[0], p[1] - a[1]];
+        let dot = q[0] * d[0] + q[1] * d[1];
+        let length_squared = d[0] * d[0] + d[1] * d[1];
+        // MAXSS XMM1, [1e-20]：dst>src ? dst : src。
+        let denominator = if length_squared > 1e-20 {
+            length_squared
+        } else {
+            1e-20
+        };
+        let ratio = dot / denominator;
+        // MAXSS 0, ratio → dst>src ? dst : src。
+        let t = if 0.0 > ratio { 0.0 } else { ratio };
+        // MINSS 1, t → dst<src ? dst : src。
+        let t = if 1.0 < t { 1.0 } else { t };
+        let (h0, h1) = (self.relative_heights[0], self.relative_heights[1]);
+        (1.0 - t) * h0 + t * h1
+    }
 }
 
 #[derive(Resource, Debug)]
@@ -107,14 +142,23 @@ impl WallSpatialHash {
         result
     }
 
-    /// B 0x140aa5a10 (snapping_to_segments): AABB query returning every
-    /// segment endpoint whose cell lies within the clamped world bounds, as
-    /// `(candidate point, wall)` pairs. Endpoints outside the strict (-65,65)
-    /// grid are clamped to the border cells, matching the world->grid clamp.
+    /// B 0x140aa5a10 (snapping_to_segments): AABB query returning, per segment
+    /// whose cell lies within the clamped world bounds, **the segment's closest
+    /// point to the AABB center** as `(candidate point, wall)` pairs. The
+    /// consumer (`snapping_to_segments::closest_segment_to_snap_to`) computes
+    /// each proposal from a WallSegment's closest point to the query reference
+    /// (fresh 0x140b16500 closure: `get_approx_coord_from_pos<Vec3,
+    /// Thresholded3D>` + `lerp(point[i], point[i+1], t)`); since segments are
+    /// straight edges of the simplified curve, the closest point on the edge
+    /// equals the native snap point. Points outside the strict (-65,65) grid
+    /// are clamped to the border cells, matching the world->grid clamp.
+    /// fresh 反编译：`get_cells_from_aabb` 后 **`sort_unstable_by` 按距离比较器
+    /// 排序（复用 query_with_circle 比较器）** + 相邻同墙去重（keep 最近）；消费者
+    /// 依赖最近优先。Rust 此前直接遍历 cell 收集段端点（非最近点），已重建为最近点。
     pub fn query_with_aabb_clamped(&self, min: [f32; 2], max: [f32; 2]) -> Vec<([f32; 2], WallId)> {
-        use crate::recovered_building::wall_spatial_index::{
-            GRID_SIDE, grid_coord_to_cell_index, world_space_to_grid_coord_unclamped,
-        };
+        use crate::resources::walls::spatial_index::GRID_SIDE;
+        use crate::resources::walls::spatial_index::grid_coord_to_cell_index;
+        use crate::resources::walls::spatial_index::world_space_to_grid_coord_unclamped;
         let clamp_to_cell = |p: [f32; 2]| {
             let g = world_space_to_grid_coord_unclamped(p);
             let g = [g[0].clamp(0, GRID_SIDE as i32 - 1), g[1].clamp(0, GRID_SIDE as i32 - 1)];
@@ -124,30 +168,47 @@ impl WallSpatialHash {
         let hi = clamp_to_cell(max);
         let (min_x, max_x) = (lo % GRID_SIDE, hi % GRID_SIDE);
         let (min_z, max_z) = (lo / GRID_SIDE, hi / GRID_SIDE);
+        // 排序/最近点参考点 = AABB 中心（fresh 0x140aa5a10 复用圆查询比较器）。
+        let center = [(min[0] + max[0]) * 0.5, (min[1] + max[1]) * 0.5];
         let mut seen = HashSet::new();
         let mut out = Vec::new();
         for z in min_z..=max_z {
             for x in min_x..=max_x {
                 let cell = z * GRID_SIDE + x;
                 for segment in self.segments_in_cell(cell) {
-                    for endpoint in segment.endpoints {
-                        // [f32;2] is not Eq/Hash; dedup on bit patterns.
-                        let key = (
-                            [endpoint[0].to_bits(), endpoint[1].to_bits()],
-                            segment.wall,
-                        );
-                        if seen.insert(key) {
-                            out.push((endpoint, segment.wall));
-                        }
+                    // 每段取到参考点的最近点（fresh 消费端 SnapProposal 语义）。
+                    let closest = segment_closest_point_to(segment, center);
+                    // [f32;2] is not Eq/Hash; dedup on bit patterns.
+                    let key = (
+                        [closest[0].to_bits(), closest[1].to_bits()],
+                        segment.wall,
+                    );
+                    if seen.insert(key) {
+                        out.push((closest, segment.wall));
                     }
                 }
             }
         }
-        out
+        // 原按距离比较器排序（最近优先），再相邻同墙去重（keep 最近）。
+        out.sort_by(|a, b| {
+            endpoint_distance2_to(center, a.0).total_cmp(&endpoint_distance2_to(center, b.0))
+        });
+        let mut seen_walls = HashSet::new();
+        let mut deduped = Vec::with_capacity(out.len());
+        for item in out {
+            if seen_walls.insert(item.1) {
+                deduped.push(item);
+            }
+        }
+        deduped
     }
 
-    /// `query_with_circle`（O：0x1425defd0/0x1425df320/0x1422785d0 单态族——
-    /// 树域与墙共享的圆查询：圆 AABB 单元内端点，按圆心距离 ≤ 半径筛后回调。
+    /// `query_with_circle`（O：0x140aa5940 + 0x1425defd0/0x1425df320/0x1422785d0
+    /// 单态族——树域与墙共享的圆查询）。fresh 反编译 0x140aa5940：`get_cells_from_circle`
+    /// 收集 WallSegment 指针后 **`sort_unstable_by`（smallsort/ipnsort，圆查询比较器）**
+    /// + **相邻同墙去重（keep 最近，按 +0x30 wall id）**；半径筛在回调单态内
+    /// （0x1422785d0 等：`d <= radius` 才调用用户回调）。Rust 此前直接遍历 cell
+    /// 无序回调——补排序 + 同墙去重（与 query_with_aabb_clamped 重建一致）。
     /// 森林候选评估与树放置共用（间距 7.0 规则）。
     pub fn query_with_circle<F: FnMut(&WallSpatialSegment, f32)>(
         &self,
@@ -157,9 +218,9 @@ impl WallSpatialHash {
     ) {
         let min = [center.x - radius, center.y - radius];
         let max = [center.x + radius, center.y + radius];
-        use crate::recovered_building::wall_spatial_index::{
-            GRID_SIDE, grid_coord_to_cell_index, world_space_to_grid_coord_unclamped,
-        };
+        use crate::resources::walls::spatial_index::GRID_SIDE;
+        use crate::resources::walls::spatial_index::grid_coord_to_cell_index;
+        use crate::resources::walls::spatial_index::world_space_to_grid_coord_unclamped;
         let clamp_to_cell = |p: [f32; 2]| {
             let g = world_space_to_grid_coord_unclamped(p);
             let g = [g[0].clamp(0, GRID_SIDE as i32 - 1), g[1].clamp(0, GRID_SIDE as i32 - 1)];
@@ -167,17 +228,97 @@ impl WallSpatialHash {
         };
         let lo = clamp_to_cell(min);
         let hi = clamp_to_cell(max);
+        let mut candidates: Vec<(&WallSpatialSegment, f32)> = Vec::new();
         for z in lo / GRID_SIDE..=hi / GRID_SIDE {
             for x in lo % GRID_SIDE..=hi % GRID_SIDE {
                 let cell = z * GRID_SIDE + x;
                 for segment in self.segments_in_cell(cell) {
                     let d = segment_distance_to_point(segment, center);
-                    if d <= radius {
-                        on_hit(segment, d);
-                    }
+                    candidates.push((segment, d));
                 }
             }
         }
+        // 原按圆心距离排序（最近优先），相邻同墙去重 keep 最近；半径筛随后（同
+        // 0x1422785d0 回调单态：d <= radius 才回调）。同墙最近段在半径外则该墙
+        // 不回调（与原生 dedup-then-filter 顺序一致）。
+        candidates.sort_by(|a, b| a.1.total_cmp(&b.1));
+        let mut seen_walls = HashSet::new();
+        for (segment, d) in candidates {
+            if seen_walls.insert(segment.wall) && d <= radius {
+                on_hit(segment, d);
+            }
+        }
+    }
+
+    /// B 0x140aa5850 (native-only variant): query with a world-space segment.
+    /// fresh 反编译：`get_cells_from_segment`（0x1409eff80）收集覆盖格 →
+    /// `sort_unstable_by`（smallsort/ipnsort，query_with_circle 比较器）+ 相邻
+    /// 同墙去重（keep 最近）。与 query_with_circle 同骨架。
+    pub fn query_with_segment(
+        &self,
+        a: [f32; 2],
+        b: [f32; 2],
+        radius: f32,
+    ) -> Vec<&WallSpatialSegment> {
+        let mut candidates: Vec<&WallSpatialSegment> = Vec::new();
+        let reference = [(a[0] + b[0]) * 0.5, (a[1] + b[1]) * 0.5];
+        for &cell in &segment_cells(a, b, radius) {
+            for segment in self.segments_in_cell(cell) {
+                candidates.push(segment);
+            }
+        }
+        candidates.sort_by(|x, y| {
+            segment_distance2_to_point(x, reference).total_cmp(&segment_distance2_to_point(y, reference))
+        });
+        // 相邻同墙去重（排序后同墙相邻，keep 最近）。
+        let mut seen_walls = HashSet::new();
+        candidates.retain(|segment| seen_walls.insert(segment.wall));
+        candidates
+    }
+
+    /// B 0x140aa5ba0 (native-only variant): query with a Rectangle2d.
+    /// fresh 反编译：`get_cells_from_rectangle2d`（0x1409ef210）收集覆盖格 →
+    /// 排序 + 相邻同墙去重。与 query_with_circle 同骨架。
+    pub fn query_with_rectangle2d(&self, rect: Rectangle2d) -> Vec<&WallSpatialSegment> {
+        let mut candidates: Vec<&WallSpatialSegment> = Vec::new();
+        let reference = [rect.center.x, rect.center.y];
+        for &cell in &rectangle_cells(rect) {
+            for segment in self.segments_in_cell(cell) {
+                candidates.push(segment);
+            }
+        }
+        candidates.sort_by(|x, y| {
+            segment_distance2_to_point(x, reference).total_cmp(&segment_distance2_to_point(y, reference))
+        });
+        let mut seen_walls = HashSet::new();
+        candidates.retain(|segment| seen_walls.insert(segment.wall));
+        candidates
+    }
+
+    /// B 0x140aa5c70 (native-only): world-space center of a cell index.
+    /// fresh 反编译：`dims==0 → panic_const_rem_by_zero`；index/dims 拆分
+    /// （col = index % dims.x, row = index / dims.x）；中心换算
+    /// `(coord + 0.5) * cell - 0.5 * extent`。dims 从 +0x48 读（64），
+    /// extent 从 +0x50 读（130），与 shared building modules GRID_SIDE/WORLD_SIZE 一致。
+    pub fn cell_center(&self, index: usize) -> [f32; 2] {
+        let dims_x = GRID_SIDE as f32;
+        if dims_x == 0.0 {
+            panic!("attempt to divide by zero");
+        }
+        let col = index % GRID_SIDE;
+        let row = index / GRID_SIDE;
+        let cell = WORLD_SIZE / dims_x;
+        let center = |coord: usize| (coord as f32 + 0.5) * cell - WORLD_SIZE * 0.5;
+        [center(col), center(row)]
+    }
+
+    /// B 0x140aa6600 (native-only, 19B): world AABB from extent.
+    /// fresh 反编译：读 +0x50 extent（打包两 f32）→ 输出
+    /// `{-extent/2, -extent.y/2, +extent.x/2, +extent.y/2}`。extent=130 →
+    /// `{-65, -65, 65, 65}`。
+    pub fn bounds_ws(&self) -> [f32; 4] {
+        let half = WORLD_SIZE * 0.5;
+        [-half, -half, half, half]
     }
 
     pub fn replace_wall(&mut self, id: WallId, state: &PublicWallState) {
@@ -237,4 +378,148 @@ fn segment_distance_to_point(segment: &WallSpatialSegment, point: glam::Vec2) ->
     let ab = b - a;
     let t = ((point - a).dot(ab) / ab.length_squared()).clamp(0.0, 1.0);
     (a + ab * t - point).length()
+}
+
+/// 端点到参考点距离平方（query_with_aabb_clamped 排序键，fresh 复用圆查询比较器）。
+fn endpoint_distance2_to(reference: [f32; 2], endpoint: [f32; 2]) -> f32 {
+    let dx = endpoint[0] - reference[0];
+    let dy = endpoint[1] - reference[1];
+    dx * dx + dy * dy
+}
+
+/// 段上到参考点的最近点（fresh 0x140aa5a10 消费端 SnapProposal 语义：段为简化
+/// 曲线直边，最近点即原生 `get_approx_coord_from_pos` 的 snap 点）。
+fn segment_closest_point_to(segment: &WallSpatialSegment, point: [f32; 2]) -> [f32; 2] {
+    let a = glam::Vec2::new(segment.endpoints[0][0], segment.endpoints[0][1]);
+    let b = glam::Vec2::new(segment.endpoints[1][0], segment.endpoints[1][1]);
+    let p = glam::Vec2::new(point[0], point[1]);
+    let ab = b - a;
+    let t = ((p - a).dot(ab) / ab.length_squared()).clamp(0.0, 1.0);
+    let nearest = a + ab * t;
+    [nearest.x, nearest.y]
+}
+
+/// 点到线段最近距离平方（query_with_segment/rectangle2d 排序键；圆查询比较器
+/// 语义复用——机器码以 segment 最近点距离判定）。
+fn segment_distance2_to_point(segment: &WallSpatialSegment, point: [f32; 2]) -> f32 {
+    let a = glam::Vec2::new(segment.endpoints[0][0], segment.endpoints[0][1]);
+    let b = glam::Vec2::new(segment.endpoints[1][0], segment.endpoints[1][1]);
+    let p = glam::Vec2::new(point[0], point[1]);
+    let ab = b - a;
+    let t = ((p - a).dot(ab) / ab.length_squared()).clamp(0.0, 1.0);
+    let nearest = a + ab * t;
+    let dx = nearest.x - p.x;
+    let dy = nearest.y - p.y;
+    dx * dx + dy * dy
+}
+
+/// 矩形覆盖格（query_with_rectangle2d 用）。
+///
+/// 0x1409ef210（fresh 反编译 2026-10-17）：查询矩形 `Rectangle2d::aabb`（轴对齐
+/// 包围盒）→ 网格坐标区间（`min=max(min,0)`、`max=min(max,dims-1)`，不反向钳制，
+/// 区间空即无格）→ **逐格构造格矩形 `Rectangle2d::new` + `aabb` +
+/// `Aabb2::intersects(查询 AABB)` 才算命中**。Rust 此前只按包围盒铺格（未逐格
+/// intersects），已补逐格筛。
+fn rectangle_cells(rect: Rectangle2d) -> Vec<usize> {
+    use crate::resources::walls::spatial_index::GRID_SIDE;
+    use crate::resources::walls::spatial_index::grid_coord_to_cell_index;
+    use crate::resources::walls::spatial_index::world_space_to_grid_coord_unclamped;
+    use utils::geometry::Aabb2;
+    let bounds = rect.aabb();
+    let corners = [
+        glam::Vec2::new(bounds.min.x, bounds.min.y),
+        glam::Vec2::new(bounds.max.x, bounds.min.y),
+        glam::Vec2::new(bounds.min.x, bounds.max.y),
+        glam::Vec2::new(bounds.max.x, bounds.max.y),
+    ];
+    let mut min = [i32::MAX, i32::MAX];
+    let mut max = [i32::MIN, i32::MIN];
+    for c in corners {
+        let g = world_space_to_grid_coord_unclamped([c.x, c.y]);
+        min[0] = min[0].min(g[0]);
+        min[1] = min[1].min(g[1]);
+        max[0] = max[0].max(g[0]);
+        max[1] = max[1].max(g[1]);
+    }
+    // 原生：min 只做 `max(0)`，max 只做 `min(dims-1)`；越界矩形的空区间保持空。
+    let min = [min[0].max(0), min[1].max(0)];
+    let max = [
+        max[0].min(GRID_SIDE as i32 - 1),
+        max[1].min(GRID_SIDE as i32 - 1),
+    ];
+    if min[0] > max[0] || min[1] > max[1] {
+        return Vec::new();
+    }
+    let cell = WORLD_SIZE / GRID_SIDE as f32;
+    let half = cell * 0.5;
+    let mut out = Vec::new();
+    for z in min[1]..=max[1] {
+        for x in min[0]..=max[0] {
+            let center = [
+                (x as f32 + 0.5) * cell - WORLD_SIZE * 0.5,
+                (z as f32 + 0.5) * cell - WORLD_SIZE * 0.5,
+            ];
+            let cell_bounds = Aabb2 {
+                min: glam::Vec2::new(center[0] - half, center[1] - half),
+                max: glam::Vec2::new(center[0] + half, center[1] + half),
+            };
+            if cell_bounds.intersects(bounds) {
+                out.push(grid_coord_to_cell_index([x, z]) as usize);
+            }
+        }
+    }
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn segment(heights: [f32; 2]) -> WallSpatialSegment {
+        WallSpatialSegment {
+            endpoints: [[0.0, 0.0], [10.0, 0.0]],
+            source_u: [0.0, 1.0],
+            relative_heights: heights,
+            terrain_heights: [100.0, 200.0],
+            wall: WallId(1),
+        }
+    }
+
+    #[test]
+    fn terrain_height_closest_to_ws_pos_interpolates_and_clamps() {
+        let seg = segment([1.0, 3.0]);
+        assert!((seg.terrain_height_closest_to_ws_pos([5.0, 2.0]) - 2.0).abs() < 1e-6);
+        assert!((seg.terrain_height_closest_to_ws_pos([-5.0, 0.0]) - 1.0).abs() < 1e-6);
+        assert!((seg.terrain_height_closest_to_ws_pos([20.0, 0.0]) - 3.0).abs() < 1e-6);
+        // 零长段：t = 0（MAXSS/MINSS 源操作数语义），返回 h0。
+        let zero = WallSpatialSegment {
+            endpoints: [[0.0, 0.0], [0.0, 0.0]],
+            ..segment([1.0, 3.0])
+        };
+        assert_eq!(zero.terrain_height_closest_to_ws_pos([1.0, 1.0]), 1.0);
+    }
+
+    #[test]
+    fn rectangle_cells_empty_when_rect_lies_outside_world() {
+        let rect = Rectangle2d {
+            axis: glam::Vec2::X,
+            center: glam::Vec2::new(-100.0, 0.0),
+            size: glam::Vec2::splat(2.0),
+        };
+        assert!(rectangle_cells(rect).is_empty());
+    }
+
+    #[test]
+    fn rectangle_cells_fills_cell_range_with_intersection_filter() {
+        let rect = Rectangle2d {
+            axis: glam::Vec2::X,
+            center: glam::Vec2::ZERO,
+            size: glam::Vec2::splat(2.0),
+        };
+        // 格宽 130/64 = 2.03125；±1 覆盖 31、32 两行/列。
+        assert_eq!(
+            rectangle_cells(rect),
+            vec![31 * 64 + 31, 31 * 64 + 32, 32 * 64 + 31, 32 * 64 + 32]
+        );
+    }
 }

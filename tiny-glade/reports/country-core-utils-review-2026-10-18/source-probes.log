@@ -1,0 +1,53 @@
+$ rustc --edition=2024 --test /var/folders/nn/2ymzgfd16j96wv2_mj2bpsfm0000gn/T/country-utils-source-review-497oz1a2/main.rs -L dependency=/tmp/tg-country-core-utils-review-20261018-target/debug/deps --extern glam=/tmp/tg-country-core-utils-review-20261018-target/debug/deps/libglam-39981a410562b125.rlib --extern serde=/tmp/tg-country-core-utils-review-20261018-target/debug/deps/libserde-786e34224983ef47.rlib --extern serde_json=/tmp/tg-country-core-utils-review-20261018-target/debug/deps/libserde_json-57a2800a1410d1e0.rlib --extern anyhow=/tmp/tg-country-core-utils-review-20261018-target/debug/deps/libanyhow-19c0c2cd6065c249.rlib --extern bevy_ecs=/tmp/tg-country-core-utils-review-20261018-target/debug/deps/libbevy_ecs-970865816ef8625b.rlib --extern parking_lot=/tmp/tg-country-core-utils-review-20261018-target/debug/deps/libparking_lot-732da42b5256ef94.rlib --extern tempfile=/tmp/tg-country-core-utils-review-20261018-target/debug/deps/libtempfile-f058422402f53425.rlib --extern log=/tmp/tg-country-core-utils-review-20261018-target/debug/deps/liblog-1d332159fdb7033f.rlib --extern utils=/tmp/tg-country-core-utils-review-20261018-target/debug/deps/libutils-afe98ab5d1248165.rlib -o /var/folders/nn/2ymzgfd16j96wv2_mj2bpsfm0000gn/T/country-utils-source-review-497oz1a2/probes
+
+running 47 tests
+test asset_libraries::mesh_library::tests::add_allocates_distinct_increasing_handles_and_registers_name ... ok
+test asset_libraries::mesh_library::tests::add_registers_source_path_only_when_present ... ok
+test asset_libraries::mesh_library::tests::add_same_name_overwrites_previous_mapping ... ok
+test asset_libraries::mesh_library::tests::add_without_name_registers_no_name ... ok
+test asset_libraries::mesh_library::tests::get_by_name_panics_when_name_missing - should panic ... ok
+test asset_libraries::mesh_library::tests::get_by_name_returns_none_when_mesh_removed_but_name_kept ... ok
+test asset_libraries::mesh_library::tests::get_handle_by_name_panics_with_debug_quoted_name - should panic ... ok
+test asset_libraries::mesh_library::tests::get_mut_pushes_handle_before_lookup_even_when_missing ... ok
+test asset_libraries::mesh_library::tests::get_unknown_handle_is_none ... ok
+test asset_libraries::mesh_library::tests::new_library_is_empty ... ok
+test asset_libraries::mesh_library::tests::reload_failure_keeps_old_mesh_without_marking_modified ... ok
+test asset_libraries::mesh_library::tests::reload_non_json_does_not_touch_modified_list ... ok
+test asset_libraries::mesh_library::tests::reload_non_json_extension_asserts_and_does_not_mark_modified - should panic ... ok
+test asset_libraries::mesh_library::tests::reload_path_without_extension_asserts ... ok
+test asset_libraries::mesh_library::tests::reload_replaces_mesh_in_place_and_marks_modified ... ok
+test asset_libraries::mesh_library::tests::reload_unknown_path_panics - should panic ... ok
+test asset_libraries::mesh_library::tests::reload_with_empty_path_table_panics - should panic ... ok
+test asset_libraries::mesh_library::tests::remove_drops_mesh_and_every_name_pointing_at_it_but_keeps_path ... ok
+test asset_libraries::mesh_library::tests::remove_unknown_handle_is_noop ... ok
+test asset_libraries::mesh_library::tests::shared_handle_counter_is_monotonic_across_types ... ok
+test hot_reload_accepts_position_type_that_panics_when_read_as_positions ... ok
+test recoverable_loader_returns_errors_for_missing_files_and_bad_json ... ok
+test render::mesh::tests::add_color_and_builder ... ok
+test render::mesh::tests::append_mismatch_panics_with_discriminants - should panic ... ok
+test render::mesh::tests::append_same_kind ... ok
+test render::mesh::tests::bounds_and_collision ... ok
+test render::mesh::tests::empty_positions_give_inverted_box ... ok
+test render::mesh::tests::from_vec_rejects_empty - should panic ... ok
+test render::mesh::tests::missing_or_wrong_attribute_panics ... ok
+test render::mesh::tests::retain_vertices_out_of_range_index_panics - should panic ... ok
+test render::mesh::tests::retain_vertices_remaps_flags_and_indices ... ok
+test render::mesh::tests::set_attribute_replaces_in_place ... ok
+test render::mesh::tests::tags_and_strides ... ok
+test render::mesh::tests::triangles_and_arrayed_indices_drop_remainder ... ok
+test utils::load_json::tests::a_non_string_attribute_name_panics_before_any_attribute_is_read - should panic ... ok
+test utils::load_json::tests::an_empty_attribute_buffer_panics_even_with_empty_indices - should panic ... ok
+test utils::load_json::tests::builds_every_attribute_kind ... ok
+test utils::load_json::tests::empty_indices_use_minus_one_as_max ... ok
+test utils::load_json::tests::extra_float_components_are_rejected ... ok
+test utils::load_json::tests::index_beyond_attribute_length_asserts - should panic ... ok
+test utils::load_json::tests::loaded_meshes_remember_their_source_path ... ok
+test utils::load_json::tests::loads_from_disk ... ok
+test utils::load_json::tests::missing_file_panics_with_the_path - should panic ... ok
+test utils::load_json::tests::too_few_float_components_returns_an_error ... ok
+test utils::load_json::tests::unknown_type_fails_before_the_buffer_is_read ... ok
+test utils::load_json::tests::unknown_type_in_a_mesh_panics_through_unwrap - should panic ... ok
+test utils::load_json::tests::unknown_type_is_an_err_with_the_type_text ... ok
+
+test result: ok. 47 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.18s
+

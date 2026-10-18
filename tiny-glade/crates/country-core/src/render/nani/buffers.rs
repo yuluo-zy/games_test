@@ -118,7 +118,7 @@ pub fn calculate_with_flags(force_fine: bool, force_no_fine: bool) -> NaniDrawLi
 /// `NaniDrawListOffsetDefaults`（0x1b0B = `[u32; 108]`，O）：每 kind 4 个偏移（27 × 4）。
 /// `BUFFER_LEN == 1`（uniform/单结构体）；`default_value` 即 0x1408bb650。
 #[repr(C)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, bytemuck::NoUninit)]
 pub struct NaniDrawListOffsetDefaults {
     pub offsets: [u32; 108],
 }
@@ -147,69 +147,347 @@ impl StorageElement for NaniDrawListOffsetDefaults {
     }
 }
 
-/// SSBO 载体宏：把仅有名字的载体接入两套 SSBO trait。
-///  * `StorageElement`：`NAME` = 类型名（O：`read_access_buffer<NaniInstanceIndirectionSsbo>` 0x140972320 的槽名
-///    字符串即 `"NaniInstanceIndirectionSsbo"`，0x142c8151d）；`BUFFER_LEN = 1`、`default_value = Some(Self)`
-///    （I：真实元素布局 U，沿用 `bind_resources::carrier!` 的做法）。
-///  * `asset_libraries::ssbo_library::SsboType`（`AssetSsboLibrary::get_rg_buffer<T>` 的约束，O：nani_draw 调用
-///    `get_rg_buffer<NaniDrawListLengthSsbo>` / `<NaniDrawListSsbo>`）。
-///  * `pass_resource_access::SsboType`（`DrawBuilder::read_storage_buffer<T>` 的约束）：`rg_buffer_hash()` =
-///    库里的 `SsboId::of::<T>()`（I：RG 缓冲按库键解析，`PassHost::rg_buffer_resource(hash)`）。
-macro_rules! nani_ssbo_carrier {
-    ($($(#[$doc:meta])* $name:ident),+ $(,)?) => {$(
-        $(#[$doc])*
-        #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-        pub struct $name;
+/// Original add_new<NaniDrawListOffsetDefaults>@1412bdff0 allocates 48B,
+/// unlike the three fixed counters' 40B TypedStorageBuffer. Default producer
+/// @1408bb650 supplies one actual 432B prefix-offset record, count=1.
+impl crate::asset_libraries::ssbo_library::SsboType for NaniDrawListOffsetDefaults {
+    type Storage = crate::render::ssbo::InstanceBuffer<Self>;
+    fn new_storage_buffer(
+        device: &dyn crate::render::ssbo::rhapsody_boundary::GraphicsDevice,
+        initial: Option<&[u8]>,
+    ) -> Self::Storage {
+        crate::render::ssbo::InstanceBuffer::new_storage_buffer(device, initial)
+    }
+}
+impl crate::render::pass_builder::pass_resource_access::SsboType for NaniDrawListOffsetDefaults {
+    fn rg_buffer_hash() -> u64 {
+        crate::asset_libraries::ssbo_library::SsboId::of::<Self>()
+            .0
+             .0
+    }
+}
 
+// Original B byte constructors are retained in this file family's evidence
+// pack. This source adapter uses the current device API; it does not reproduce
+// rhapsody's internal representation. None on a fixed counter uploads nothing.
+fn create_nani_storage<T: StorageElement>(
+    device: &dyn crate::render::ssbo::rhapsody_boundary::GraphicsDevice,
+    initial: Option<&[u8]>,
+    usage: u32,
+) -> crate::render::ssbo::TypedStorageBuffer<T> {
+    use crate::render::ssbo::{rhapsody_boundary::BufferDesc, TypedStorageBuffer};
+    let element_size = core::mem::size_of::<T>();
+    if let Some(bytes) = initial {
+        assert_eq!(bytes.len() % element_size, 0);
+        assert_eq!(bytes.as_ptr() as usize % 4, 0);
+        if T::BUFFER_LEN != 0 && bytes.len() / element_size > T::BUFFER_LEN {
+            panic!(
+                "Excessive data size supplied for buffer {}",
+                core::any::type_name::<T>()
+            );
+        }
+    } else if T::BUFFER_LEN == 0 {
+        panic!("Storage buffer {} (type {}) has `BUFFER_LEN` of zero. Such buffers must be created with initial data.", T::NAME, core::any::type_name::<T>());
+    }
+    let size = if T::BUFFER_LEN == 0 {
+        initial
+            .expect("dynamic buffer requires original initial data")
+            .len()
+    } else {
+        T::BUFFER_LEN * element_size
+    };
+    let desc = BufferDesc::new(size, usage, 1).alignment(4);
+    let buffer = device
+        .create_buffer(&desc, T::NAME, initial)
+        .expect("called `Result::unwrap()` on an `Err` value: create_buffer");
+    TypedStorageBuffer::from_created_buffer(buffer)
+}
+
+macro_rules! nani_storage {
+    ($(#[$doc:meta])* $name:ident($words:literal), $len:literal, $usage:literal) => {
+        $(#[$doc])*
+        #[repr(C)]
+        #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, bytemuck::NoUninit)]
+        pub struct $name(pub [u32; $words]);
         impl StorageElement for $name {
             const NAME: &'static str = stringify!($name);
-            const BUFFER_LEN: usize = 1;
-            fn default_value() -> Option<Self> {
-                Some($name)
-            }
+            const BUFFER_LEN: usize = $len;
         }
-
         impl crate::asset_libraries::ssbo_library::SsboType for $name {
-            type Storage = crate::render::ssbo::TypedStorageBuffer<$name>;
+            type Storage = crate::render::ssbo::TypedStorageBuffer<Self>;
             fn new_storage_buffer(
                 device: &dyn crate::render::ssbo::rhapsody_boundary::GraphicsDevice,
                 initial: Option<&[u8]>,
             ) -> Self::Storage {
-                match initial {
-                    None => crate::render::ssbo::TypedStorageBuffer::<$name>::new(device, None),
-                    Some(bytes) => {
-                        crate::render::ssbo::TypedStorageBuffer::<$name>::new_storage_buffer(device, Some(bytes))
-                    }
-                }
+                create_nani_storage::<Self>(device, initial, $usage)
             }
         }
-
         impl crate::render::pass_builder::pass_resource_access::SsboType for $name {
             fn rg_buffer_hash() -> u64 {
-                crate::asset_libraries::ssbo_library::SsboId::of::<$name>().0.0
+                crate::asset_libraries::ssbo_library::SsboId::of::<Self>().0.0
             }
         }
-    )+};
+    };
 }
 
-nani_ssbo_carrier! {
-    /// SSBO 载体：draw-list 长度（PDB：`write_access_buffer<NaniDrawListLengthSsbo>` 0x140975920）。
-    NaniDrawListLengthSsbo,
-    /// SSBO 载体：间接 draw 列表（PDB：`write_access_buffer<NaniDrawListSsbo>` 0x140973e20）。
-    NaniDrawListSsbo,
-    /// SSBO 载体：实例间接寻址表（PDB：`read_access_buffer<NaniInstanceIndirectionSsbo>` 0x140972320）。
-    NaniInstanceIndirectionSsbo,
-    /// 以下四个 SSBO 载体只在 PDB 的 `pass_resource_access::*_access_buffer<T>` / `AssetSsboLibrary` 单态化名里出现
-    /// （O 名称，字段 U）。
-    NaniInstanceIndirectionAllocatorSsbo,
-    NaniFilteredInstanceAllocatorSsbo,
-    NaniNextVisibilityBitmaskSsbo,
-    NaniPrevVisibilityBitmaskSsbo,
+nani_storage!(
+    /// Original constructor@141612870: 108 u32 slots, 432B, usage0x122;
+    /// None creates uninitialized storage, not a fabricated zero upload.
+    NaniDrawListLengthSsbo(1), 108, 0x122
+);
+nani_storage!(
+    /// Original constructor@141613500: 108 u32 allocator slots, usage0x22.
+    NaniInstanceIndirectionAllocatorSsbo(1), 108, 0x22
+);
+nani_storage!(
+    /// Original constructor@141612650: 108 u32 allocator slots, usage0x22.
+    NaniFilteredInstanceAllocatorSsbo(1), 108, 0x22
+);
+nani_storage!(
+    /// Original add_new_with_data@1412bb2f0 scales element count by20.
+    /// Preserve five words without guessing unrecovered native field names.
+    /// Constructor@141613940 requires initial bytes and usage0x122.
+    NaniDrawListSsbo(5), 0, 0x122
+);
+nani_storage!(
+    /// Original@14160ffc0: dynamic u32 table, actual params' second Vec.
+    NaniListDrawCmdOffsets(1), 0, 0x22
+);
+nani_storage!(
+    /// Original@1416132d0: dynamic u32 table, initial zero records supplied
+    /// by init_populate rather than a fixed-capacity constructor default.
+    NaniInstanceIndirectionSsbo(1), 0, 0x22
+);
+
+/// Bounded Nani portion of init_populate_ssbo_library@140909e80. The full
+/// original function also registers 65 other entries and maps CustomCursor;
+/// this explicit subset is not a replacement for that full startup system.
+/// Actual data: draw-list zeros[params+64], offsets=params second Vec,
+/// indirection zeros[params+60]. No empty vector stands in for these lengths.
+pub fn populate_nani_ssbo_library(
+    library: &crate::asset_libraries::ssbo_library::AssetSsboLibrary,
+    device: &dyn crate::render::ssbo::rhapsody_boundary::GraphicsDevice,
+) {
+    library.add_new::<NaniDrawListLengthSsbo>(device);
+    library.add_new::<NaniDrawListOffsetDefaults>(device);
+    library.add_new::<NaniInstanceIndirectionAllocatorSsbo>(device);
+    library.add_new::<NaniFilteredInstanceAllocatorSsbo>(device);
+    let params = nani_calculate_draw_list_params();
+    let draw_list = vec![NaniDrawListSsbo::default(); params.total_max_instances as usize];
+    library.add_new_with_data(device, &draw_list);
+    let offsets: Vec<_> = params
+        .max_instance_offsets
+        .iter()
+        .map(|&word| NaniListDrawCmdOffsets([word]))
+        .collect();
+    library.add_new_with_data(device, &offsets);
+    let indirection =
+        vec![NaniInstanceIndirectionSsbo::default(); params.total_cmd_offset as usize];
+    library.add_new_with_data(device, &indirection);
 }
+
+// Original startup_nani@140a395ab/5c0 registers these independently of the
+// 72-entry SSBO population. Both use a dynamic u32 vector; None is rejected,
+// including on an otherwise empty World. The producer supplies zero words
+// [GpuWorld.params.total_cmd_offset >> 5], in Prev then Next order.
+nani_storage!(
+    /// Native byte constructor14160fd90: actual byte length, usage22/mem1/align4.
+    NaniPrevVisibilityBitmaskSsbo(1), 0, 0x22
+);
+nani_storage!(
+    /// Native byte constructor141614b00: same policy, independent library key.
+    NaniNextVisibilityBitmaskSsbo(1), 0, 0x22
+);
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_nani_storage_layouts_replace_zero_sized_carriers() {
+        use crate::render::ssbo::{InstanceBuffer, TypedStorageBuffer};
+        use core::mem::{align_of, size_of};
+        assert_eq!(size_of::<NaniDrawListLengthSsbo>(), 4);
+        assert_eq!(size_of::<NaniInstanceIndirectionAllocatorSsbo>(), 4);
+        assert_eq!(size_of::<NaniFilteredInstanceAllocatorSsbo>(), 4);
+        assert_eq!(size_of::<NaniDrawListSsbo>(), 20);
+        assert_eq!(size_of::<NaniListDrawCmdOffsets>(), 4);
+        assert_eq!(size_of::<NaniInstanceIndirectionSsbo>(), 4);
+        assert_eq!(size_of::<NaniPrevVisibilityBitmaskSsbo>(), 4);
+        assert_eq!(size_of::<NaniNextVisibilityBitmaskSsbo>(), 4);
+        assert_eq!(align_of::<NaniDrawListSsbo>(), 4);
+        assert_eq!(size_of::<TypedStorageBuffer<NaniDrawListLengthSsbo>>(), 40);
+        assert_eq!(size_of::<InstanceBuffer<NaniDrawListOffsetDefaults>>(), 48);
+        assert_eq!(NaniDrawListLengthSsbo::BUFFER_LEN, 108);
+        assert_eq!(NaniDrawListSsbo::BUFFER_LEN, 0);
+        assert_eq!(NaniPrevVisibilityBitmaskSsbo::BUFFER_LEN, 0);
+        assert_eq!(NaniNextVisibilityBitmaskSsbo::BUFFER_LEN, 0);
+    }
+
+    #[test]
+    fn native_visibility_constructors_size_the_real_word_vectors() {
+        use crate::{
+            asset_libraries::ssbo_library::AssetSsboLibrary, render::test_device::TestDevice,
+        };
+        let words = (nani_calculate_draw_list_params().total_cmd_offset >> 5) as usize;
+        assert_eq!(words, 118400);
+        let library = AssetSsboLibrary::new();
+        let prev = vec![NaniPrevVisibilityBitmaskSsbo([0]); words];
+        let next = vec![NaniNextVisibilityBitmaskSsbo([0]); words];
+        library.add_new_with_data(&TestDevice(1), &prev);
+        library.add_new_with_data(&TestDevice(1), &next);
+        assert_eq!(
+            library
+                .get::<NaniPrevVisibilityBitmaskSsbo>()
+                .unwrap()
+                .buffer
+                .byte_size,
+            473600
+        );
+        assert_eq!(
+            library
+                .get::<NaniNextVisibilityBitmaskSsbo>()
+                .unwrap()
+                .buffer
+                .byte_size,
+            473600
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "BUFFER_LEN")]
+    fn native_visibility_rejects_absent_initial_data() {
+        let library = crate::asset_libraries::ssbo_library::AssetSsboLibrary::new();
+        library
+            .add_new::<NaniPrevVisibilityBitmaskSsbo>(&crate::render::test_device::TestDevice(1));
+    }
+
+    #[test]
+    fn native_nani_startup_publishes_real_lengths_offsets_and_constructor_policies() {
+        use crate::{
+            asset_libraries::ssbo_library::AssetSsboLibrary,
+            render::ssbo::rhapsody_boundary::{BackendError, Buffer, BufferDesc, GraphicsDevice},
+        };
+        use core::ops::Range;
+        use std::cell::RefCell;
+        #[derive(Debug)]
+        struct Creation {
+            name: String,
+            desc: BufferDesc,
+            data_len: Option<usize>,
+            first_words: Vec<u32>,
+            all_zero: bool,
+        }
+        // CPU boundary recorder: it confirms calls/data and owns no GPU memory.
+        #[derive(Default)]
+        struct Device(RefCell<Vec<Creation>>);
+        impl GraphicsDevice for Device {
+            fn create_buffer(
+                &self,
+                desc: &BufferDesc,
+                name: &str,
+                data: Option<&[u8]>,
+            ) -> Result<Buffer, BackendError> {
+                let mut calls = self.0.borrow_mut();
+                calls.push(Creation {
+                    name: name.into(),
+                    desc: *desc,
+                    data_len: data.map(<[u8]>::len),
+                    first_words: data.map_or_else(Vec::new, |bytes| {
+                        bytes
+                            .chunks_exact(4)
+                            .take(108)
+                            .map(|word| u32::from_le_bytes(word.try_into().unwrap()))
+                            .collect()
+                    }),
+                    all_zero: data.is_some_and(|bytes| bytes.iter().all(|byte| *byte == 0)),
+                });
+                Ok(Buffer {
+                    id: calls.len() as u64,
+                    byte_size: desc.size as u64,
+                    ..Default::default()
+                })
+            }
+            fn update_buffer_bytes(
+                &self,
+                _: &Buffer,
+                _: &[u8],
+                _: &[Range<usize>],
+                _: usize,
+            ) -> Result<(), BackendError> {
+                unreachable!("original Nani startup supplies bytes at creation")
+            }
+        }
+        let device = Device::default();
+        let library = AssetSsboLibrary::new();
+        populate_nani_ssbo_library(&library, &device);
+        let calls = device.0.borrow();
+        assert_eq!(calls.len(), 7);
+        assert_eq!(
+            calls
+                .iter()
+                .map(|call| call.name.as_str())
+                .collect::<Vec<_>>(),
+            [
+                "NaniDrawListLengthSsbo",
+                "NaniDrawListOffsetDefaults",
+                "NaniInstanceIndirectionAllocatorSsbo",
+                "NaniFilteredInstanceAllocatorSsbo",
+                "NaniDrawListSsbo",
+                "NaniListDrawCmdOffsets",
+                "NaniInstanceIndirectionSsbo",
+            ]
+        );
+        for (index, size, usage, initial) in [
+            (0, 432, 0x122, None),
+            (1, 432, 0x12, Some(432)),
+            (2, 432, 0x22, None),
+            (3, 432, 0x22, None),
+            (4, 71_936 * 20, 0x122, Some(71_936 * 20)),
+            (5, 108 * 4, 0x22, Some(108 * 4)),
+            (6, 3_788_800 * 4, 0x22, Some(3_788_800 * 4)),
+        ] {
+            let call = &calls[index];
+            assert_eq!(
+                (
+                    call.desc.size,
+                    call.desc.usage,
+                    call.desc.memory,
+                    call.desc.alignment
+                ),
+                (size, usage, 1, 4)
+            );
+            assert_eq!(call.data_len, initial);
+        }
+        assert_eq!(
+            calls[1].first_words,
+            NaniDrawListOffsetDefaults::compute().offsets
+        );
+        assert_eq!(
+            calls[5].first_words,
+            nani_calculate_draw_list_params().max_instance_offsets
+        );
+        assert_ne!(calls[5].first_words[9], calls[1].first_words[9]);
+        assert!(calls[4].all_zero && calls[6].all_zero);
+        assert_eq!(
+            library
+                .get::<NaniDrawListOffsetDefaults>()
+                .unwrap()
+                .instance_count,
+            1
+        );
+        assert_eq!(
+            library.get_buffer::<NaniDrawListSsbo>().unwrap().byte_size,
+            71_936 * 20
+        );
+        assert_eq!(
+            library
+                .get_buffer::<NaniInstanceIndirectionSsbo>()
+                .unwrap()
+                .byte_size,
+            3_788_800 * 4
+        );
+    }
 
     #[test]
     fn table_matches_exe_constants() {

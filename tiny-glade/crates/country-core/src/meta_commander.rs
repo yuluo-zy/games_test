@@ -17,9 +17,10 @@
 //! 会话加载链（case 0）：AppMode 门控 → 新 fence → 建临时 on_load Vec →
 //! append_on_load<Fence> → 应用 → 命令带 fence 重入队；on_load 回放见
 //! `systems::save::load_game::advance_load_game`。
-use crate::resources::session::{OnLoadEntry, ON_LOAD_FENCE, ON_LOAD_VARIANT_MASK};
+
+use crate::resources::session::ON_LOAD_VARIANT_MASK;
 use ahash::RandomState;
-use bevy_ecs::prelude::{Local, Res, ResMut};
+use bevy_ecs::prelude::{Commands, Local, Res, ResMut};
 use hashbrown::HashMap;
 use std::collections::VecDeque;
 use std::path::PathBuf;
@@ -42,9 +43,7 @@ impl MetaCommand {
 #[derive(Clone, Debug)]
 pub struct MetaCommandFence(pub Arc<Mutex<(bool, bool)>>);
 impl MetaCommandFence {
-    /// 0x14091ef90：分配 0x18B Arc（strong=2）；+0x10 单字节显式写 true（阻塞）。
-    /// RE-SESSION-SWITCH 定案：**fence 标志偏移 = +0x10**（0x14091f450 movzx [rax+0x10]；
-    /// 旧"两 flag true"的 +0x11 由 alloc 残留，"变体 2 unblock +2"为 Ghidra 伪影）。
+    /// 创建拥有完整所有权的阻塞信号；克隆和取消均由 Arc 自动管理。
     pub fn new_pair_blocked() -> Self {
         Self(Arc::new(Mutex::new((true, true))))
     }
@@ -56,11 +55,18 @@ impl MetaCommandFence {
     pub fn is_blocked(&self) -> bool {
         self.0.lock().expect("fence poisoned").0
     }
-    /// 载荷编码（on_load 条目 / MetaCommand +0x18 携带的 Arc 指针值）。
+    /// 非拥有的身份标记，只用于命令判别；禁止从该整数重新构造 Arc。
     pub fn as_payload(&self) -> u64 {
         Arc::as_ptr(&self.0) as usize as u64
     }
 }
+
+impl PartialEq for MetaCommandFence {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.0, &other.0)
+    }
+}
+impl Eq for MetaCommandFence {}
 
 /// 元命令器（PDB：`MetaCommander`；80B：commands VecDeque + profiler_sinks HashMap +
 /// RandomState）。为 Bevy 资源（commander_update 系统消费）。
@@ -113,13 +119,14 @@ impl MetaCommander {
 /// case 0..0x13 分派；需游戏资源的 case 由宿主按 outcome 应用。
 #[derive(Clone, Debug)]
 pub enum CommanderOutcome {
-    /// case 0 **路径 A**（+0x18==0 首调）会话加载：宿主按 AppMode 门控
-    /// `Commands::insert_resource<NextSession>`（on_load 含变体 0 会话加载命令，
-    /// payload = fence；FUN_1412e0b90 语义）。fence 由宿主跟踪，切换完成后释放。
-    SessionLoad {
-        on_load: Vec<OnLoadEntry>,
-        fence: MetaCommandFence,
-    },
+    /// case 0 **路径 A**（+0x18==0 首调）会话加载。
+    ///
+    /// **fence 只在门控未命中时分配**（O：fresh 0x14091f180 case 0 的 else 分支才
+    /// `new_pair_blocked`）。宿主按 AppMode 门控：`mode ∈ {13,14}` → 用 `original`
+    /// **原样重入队等待**（不分配 fence，不建会话）；`mode ∉ {13,14}` →
+    /// `MetaCommandFence::new_pair_blocked` + on_load 变体 0 + `NextSession(kind=2)` +
+    /// `Commands::insert_resource<NextSession>` + 带 fence 重入队。
+    SessionLoad { original: MetaCommand },
     /// case 0 **路径 B**（+0x18!=0 重入队到达）：fence 阻塞则宿主重入队等待；
     /// `+0x10` 已释放 → Arc drop 完成。
     SessionLoadWait,
@@ -204,20 +211,15 @@ impl MetaCommander {
 
     /// case 0 会话加载（RE-SESSION-SWITCH 两路径状态机）：
     ///
-    /// - **路径 A**（`+0x18==0` 首调）：新 fence（`MetaCommandFence::new_pair_blocked`）→
-    ///   建临时 on_load（变体 0 会话加载命令，payload = fence）。宿主按 AppMode 门控
-    ///   `insert_resource<NextSession>`（FUN_1412e0b90），再经 `reenqueue_session_load`
-    ///   把命令带 fence 重入队。
+    /// - **路径 A**（`+0x18==0` 首调）：先返回原始命令给宿主做 AppMode 门控。
+    ///   `mode ∈ {13,14}` → `original` **原样重入队等待**（原生不分配 fence）；
+    ///   `mode ∉ {13,14}` → 新 fence（`new_pair_blocked`）→ on_load 变体 0
+    ///   （payload = fence）→ `insert_resource<NextSession>` → 带 fence 重入队。
     /// - **路径 B**（`+0x18!=0` 重入队到达）：`SessionLoadWait`——宿主查 fence `+0x10`
     ///   标志：阻塞 → 再重入队等待；已释放 → Arc drop 完成。
     fn handle_session_load(&mut self, command: &MetaCommand) -> CommanderOutcome {
         if command.payloads[3] == 0 {
-            let fence = MetaCommandFence::new_pair_blocked();
-            let on_load = vec![OnLoadEntry::Command {
-                tag: ON_LOAD_VARIANT_MASK,
-                payload: fence.as_payload(),
-            }];
-            CommanderOutcome::SessionLoad { on_load, fence }
+            CommanderOutcome::SessionLoad { original: *command }
         } else {
             CommanderOutcome::SessionLoadWait
         }
@@ -238,27 +240,42 @@ impl MetaCommander {
 /// 的会话加载分支）。case 0 会话加载按 AppMode 门控写入 NextSession
 /// （FUN_1412e0b90 = `Commands::insert_resource<NextSession>` 语义）；两路径状态机由
 /// `Local<Option<MetaCommandFence>>` 跟踪（路径 B 按 fence +0x10 判定阻塞/释放）。
+///
+/// **门控极性（O：fresh 反编译 0x14091f180 case0）**：`mode ∈ {13,14}`（Replay/LoadGame）
+/// → **原样重入队等待**（`push_front` 原始命令，不建会话不消费）；`mode ∉ {13,14}`
+/// → 新 fence + on_load + `insert_resource<NextSession>` + 带 fence 重入队。
 pub fn commander_update_system(
     mut commander: ResMut<MetaCommander>,
-    mut next_session: ResMut<crate::resources::session::NextSession>,
+    next_session: Option<Res<crate::resources::session::NextSession>>,
+    active_session: Option<Res<crate::resources::session::ActiveSession>>,
     app_mode: Res<crate::systems::mode_manager::AppMode>,
     mut fence_state: Local<Option<MetaCommandFence>>,
+    mut commands: Commands,
 ) {
     let Some(outcome) = commander.update() else {
         return;
     };
     match outcome {
-        CommanderOutcome::SessionLoad { on_load, fence } => {
-            // AppMode 门控（RE-SESSION-SWITCH §1 机器码 `mode-6<0xf && mode-0xd<2`
-            // → {13,14}={Replay,LoadGame}；reviewer 卡2 FIX-1。load_game 自己的门才是
-            // ==LoadGame(14)）。
-            if !matches!(app_mode.native_tag(), 13 | 14) {
-                // 门控失败：幂等重入队等待（原版无 panic）。
+        CommanderOutcome::SessionLoad { original } => {
+            // AppMode 门控（fresh 反编译 `mode-6<0xf && mode-0xd<2` → {13,14}）。
+            if matches!(app_mode.native_tag(), 13 | 14) {
+                // 门控命中 {13,14}：原样重入队等待（原版 push_front，不消费不建会话，
+                // 且**不分配 fence**——fence 分配在 else 分支内）。
+                commander.undo_consume(original);
                 return;
             }
-            // 置 NextSession（kind=LoadOnLoad + on_load 含变体 0 + fence）。
-            next_session.on_load = on_load;
-            next_session.kind = crate::resources::session::NextSessionKind::LoadOnLoad;
+            // 门控未命中（正常游戏态）：新 fence + on_load + insert_resource + 重入队。
+            let fence = MetaCommandFence::new_pair_blocked();
+            let mut session = next_session.as_deref().cloned().unwrap_or_else(|| {
+                active_session.as_deref().map_or_else(
+                    || crate::resources::session::NextSession::load_latest(&Default::default()),
+                    |active| crate::resources::session::NextSession::load(active.id),
+                )
+            });
+            session.on_load.clear();
+            session.append_fence_release(fence.clone());
+            session.kind = crate::resources::session::NextSessionKind::LoadOnLoad;
+            commands.insert_resource(session);
             *fence_state = Some(fence.clone());
             // 路径 A：命令带 fence 重入队。
             commander.reenqueue_session_load(&fence);
@@ -340,7 +357,6 @@ mod tests {
 
     #[test]
     fn update_dispatch_session_load_two_paths_and_unknown() {
-        use crate::resources::session::{ON_LOAD_FENCE, ON_LOAD_VARIANT_MASK};
         let mut commander = MetaCommander::new();
         assert!(commander.update().is_none());
 
@@ -350,11 +366,10 @@ mod tests {
             payloads: [1, 2, 3, 0, 0, 0],
         }]);
         match commander.update() {
-            Some(CommanderOutcome::SessionLoad { on_load, fence }) => {
-                assert!(fence.is_blocked());
-                // 变体 0 会话加载命令条目（payload = fence）。
-                assert_eq!(on_load.len(), 1);
-                assert!(matches!(on_load[0], OnLoadEntry::Command { tag: ON_LOAD_VARIANT_MASK, .. }));
+            Some(CommanderOutcome::SessionLoad { original }) => {
+                // 原生只在门控未命中分支才分配 fence；outcome 只带原始命令。
+                assert_eq!(original.tag, ON_LOAD_VARIANT_MASK);
+                assert_eq!(original.payloads[3], 0);
             }
             other => panic!("expected SessionLoad, got {other:?}"),
         }
@@ -362,14 +377,19 @@ mod tests {
         // 重入队后到达：+0x18 != 0 → 路径 B。
         let fence = MetaCommandFence::new_pair_blocked();
         commander.reenqueue_session_load(&fence);
-        assert!(matches!(commander.update(), Some(CommanderOutcome::SessionLoadWait)));
+        assert!(matches!(
+            commander.update(),
+            Some(CommanderOutcome::SessionLoadWait)
+        ));
 
         // 未知命令 → Unknown。
         commander.extend_script([MetaCommand {
             tag: 0x8000_0000_0000_0099,
             payloads: [0; 6],
         }]);
-        assert!(matches!(commander.update(), Some(CommanderOutcome::Unknown)));
-        let _ = ON_LOAD_FENCE;
+        assert!(matches!(
+            commander.update(),
+            Some(CommanderOutcome::Unknown)
+        ));
     }
 }

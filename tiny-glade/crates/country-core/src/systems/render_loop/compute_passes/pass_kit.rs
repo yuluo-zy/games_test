@@ -189,7 +189,18 @@ impl<'a> PassEnv<'a> {
         name: &'static str,
         source: &T,
     ) -> ComputePass {
-        ComputePass::new(
+        self.try_new_pass(name, source)
+            .expect("compute pass creation failed")
+    }
+    pub fn try_pass(&mut self, name: &'static str, uri: &str) -> rhapsody::Result<ComputePass> {
+        self.try_new_pass(name, &uri)
+    }
+    pub fn try_new_pass<T: AsComputeShaderSource>(
+        &mut self,
+        name: &'static str,
+        source: &T,
+    ) -> rhapsody::Result<ComputePass> {
+        ComputePass::try_new(
             name,
             source,
             ComputePassInit {
@@ -254,18 +265,42 @@ impl<'a> PassEnv<'a> {
             .create_raw_buffer(name, &BufferDesc::new_gpu_only(size as usize, usage))
     }
 
-    /// `get_or_create_temporal_pair(name, desc)` + `Result::unwrap`（O：调用点一律 unwrap）。
+    /// Recovered business entry retains its original fatal-error policy.
     pub fn temporal_pair(&mut self, name: &str, desc: TextureDesc) -> TemporalTexturePair {
+        self.try_temporal_pair(name, desc)
+            .expect("called `Result::unwrap()` on an `Err` value")
+    }
+    pub fn try_temporal_pair(
+        &mut self,
+        name: &str,
+        desc: TextureDesc,
+    ) -> rhapsody::Result<TemporalTexturePair> {
         self.frame
             .get_or_create_temporal_texture_pair(name, &desc)
-            .unwrap_or_else(|e| panic!("called `Result::unwrap()` on an `Err` value: {e:?}"))
+            .map_err(crate::render::pass_builder::rg_resources::into_backend_error)
     }
-
-    /// `get_or_create_temporal(name, BufferDesc::new_gpu_only(size, usage))` + `Result::unwrap`。
+    pub fn try_temporal_texture(
+        &mut self,
+        name: &str,
+        desc: TextureDesc,
+    ) -> rhapsody::Result<crate::render::pass_builder::rg_resources::TemporalTexture> {
+        self.frame
+            .get_or_create_temporal_texture(name, &desc)
+            .map_err(crate::render::pass_builder::rg_resources::into_backend_error)
+    }
     pub fn temporal_buffer(&mut self, name: &str, size: u32, usage: u32) -> TemporalBuffer {
+        self.try_temporal_buffer(name, size, usage)
+            .expect("called `Result::unwrap()` on an `Err` value")
+    }
+    pub fn try_temporal_buffer(
+        &mut self,
+        name: &str,
+        size: u32,
+        usage: u32,
+    ) -> rhapsody::Result<TemporalBuffer> {
         self.frame
             .get_or_create_temporal_buffer(name, &BufferDesc::new_gpu_only(size as usize, usage))
-            .unwrap_or_else(|e| panic!("called `Result::unwrap()` on an `Err` value: {e:?}"))
+            .map_err(crate::render::pass_builder::rg_resources::into_backend_error)
     }
 
     /// `PassBuilder::render`：登记 pass（c2 风格；c1 / c3 的函数改为把 `RecordedComputePass` 返回给调用方）。
@@ -404,12 +439,9 @@ pub fn fixed_len_typed_storage<T: crate::render::ssbo::StorageElement>(
     }
 }
 
-foreign_carrier!(
-    /// `resources::water::RippleSourceSsbo`（O：SsboId = xxh3("RippleSourceSsbo") = 0x28351c5dbc9c80fb；原类型非 `Copy`，
-    /// 真实类型是 typed gap 且没有库侧 `SsboType`，故仍用载体）。
-    RippleSourceBuf,
-    "RippleSourceSsbo"
-);
+// Same canonical producer identity as init_populate. A foreign zero-size
+// carrier with the same NAME fails the library's full-type assertion.
+pub use crate::resources::water::RippleSourceSsbo as RippleSourceBuf;
 foreign_carrier!(
     /// `resources::rocky_terrain::RockyTerrainVertexSSBO`（O：0x1c5c4204bf6436bb = xxh3("Rocky Terrain Vertices")）。
     RockyTerrainVertexBuf,
@@ -420,11 +452,7 @@ foreign_carrier!(
     RockyTerrainTriangleBuf,
     "Rocky Terrain Triangles"
 );
-foreign_carrier!(
-    /// `systems::audio::terrain_stairs_audio::StairsCounterSsbo`（O：0x0e13781d72713b06 = xxh3("Stairs Counter")）。
-    StairsCounterBuf,
-    "Stairs Counter"
-);
+pub use crate::systems::audio::terrain_stairs_audio::StairsCounterSsbo as StairsCounterBuf;
 
 #[cfg(test)]
 #[path = "pass_kit/test_env.rs"]
@@ -500,6 +528,52 @@ mod tests {
     fn blue_noise_constant_is_namehash_of_blue_noise() {
         // O：xxh3_64("blue_noise")；harness 的 xxh3 是真实 crate，这里只断言常量本身。
         assert_eq!(BLUE_NOISE.0, 0x579f_39ab_91a0_1865);
+    }
+
+    #[test]
+    fn fallible_temporal_entries_keep_allocation_and_device_errors() {
+        for entry in 0..3 {
+            for error in [
+                rhapsody::Error::OutOfDeviceMemory,
+                rhapsody::Error::DeviceLost,
+                rhapsody::Error::Timeout,
+            ] {
+                let expected = error.kind();
+                let mut environment = test_env::env(&[], &[]);
+                environment.frame.temporal_failure = Some(error);
+                let failure = environment
+                    .run(|environment| match entry {
+                        0 => environment
+                            .try_temporal_pair("history", TextureDesc::new_2d([4, 4], 1))
+                            .map(|_| ()),
+                        1 => environment
+                            .try_temporal_texture("history", TextureDesc::new_2d([4, 4], 1))
+                            .map(|_| ()),
+                        _ => environment
+                            .try_temporal_buffer("history", 64, 0x20)
+                            .map(|_| ()),
+                    })
+                    .unwrap_err();
+                assert_eq!(failure.kind(), expected);
+                assert!(environment.frame.passes.is_empty());
+            }
+        }
+    }
+
+    #[test]
+    fn fallible_pass_factory_records_through_the_existing_frame_adapter() {
+        let mut environment = test_env::env(&[], &[]);
+        environment
+            .run(|environment| -> rhapsody::Result<()> {
+                let pass = environment
+                    .try_pass("fallible", "/test/fallible.cs.hlsl")?
+                    .dispatch_1d(4);
+                environment.record(pass);
+                rhapsody::Result::Ok(())
+            })
+            .unwrap();
+        assert_eq!(environment.frame.passes.len(), 1);
+        assert_eq!(environment.frame.passes[0].name, "fallible");
     }
 
     #[test]

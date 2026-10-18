@@ -1,0 +1,600 @@
+--- a/crates/country-core/src/resources/critters/sheep.rs
++++ b/crates/country-core/src/resources/critters/sheep.rs
+@@ -1,33 +1,20 @@
+-//! B Sheep's recovered movement state, stored in the utils `Transform`
+-//! translation slot (O: capture 0x1412f03f0 / apply 0x1416f24f0).
++//! 羊群的移动状态和快照所需字段。B 原版将移动状态保存在 Sheep+0x30，
++//! 世界位置仍由 Transform.translation 持有；完整原生 Sheep 为 104 字节，
++//! 此类型仅表示已恢复的语义字段，不声明原生布局。
+ pub mod control;
+ 
+ use crate::resources::walls::WallId;
+-use bevy_ecs::component::Component;
+-use bevy_ecs::event::Event;
+-use glam::Vec3;
++use bevy_ecs::{component::Component, event::Event};
+ use serde::{Deserialize, Serialize};
+ 
+-/// Native `resources::critters::sheep::CmdCheckForSheepInsideBuilding`
+-/// (16 B). The ivy pruner (`ivy_pruner` 0x140997410) consumes it as one of its
+-/// two dirty-wall event readers and reads the owning wall id at event +0x08.
+-/// The +0x00 word is not read by that consumer (待取证; no field is invented).
++/// 原事件的墙ID位于+8；ivy_pruner只消费该字段。
+ #[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
+ pub struct CmdCheckForSheepInsideBuilding {
+-    /// Event `+0x08`, looked up in `PublicWalls` by the ivy pruner.
+     pub wall: WallId,
+ }
+ 
+-/// Original externally tagged wire shape, verified by 0x1413ff520 and
+-/// Debug 0x1416f2800. This is embedded state, not a separate ECS component.
+-///
+-/// Native memory layout (re-analyst, 2026-10-15): discriminant byte at +0,
+-/// `Idle { timeout_s }` when 0, otherwise `Walking { goal_change_timeout,
+-/// timeout_s, force_reach_goal }`. The *serde* order (what the save wire
+-/// carries) is timeout_s, goal_change_timeout, force_reach_goal — the current
+-/// declaration matches that order; the memory order of the Walking fields is
+-/// `goal_change_timeout, <f32>, force_reach_goal` with the middle field name
+-/// 待取证.
++/// B 0x1413ff520 的外部标签协议。原内存 timeout_s@+4、
++/// goal_change_timeout@+8、force_reach_goal@+1；无需位转换坐标。
+ #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+ pub enum SheepMoveState {
+     Idle {
+@@ -40,107 +27,16 @@
+     },
+ }
+ 
+-impl SheepMoveState {
+-    /// Native stores `SheepMoveState` in the utils `Transform` translation slot
+-    /// (O: capture 0x1412f03f0 / apply 0x1416f24f0 copy the 12 B at
+-    /// `Transform +0x10/+0x18` — the translation). The 12-byte repr is
+-    /// consistent with the serde discriminant byte at +0 (0x1413ff520
+-    /// `*in_RCX == 0` → Idle) and the picking tag `0x101` = Walking +
+-    /// force_reach_goal (sheep_controls 0x1416f11a0 note):
+-    ///
+-    /// ```text
+-    /// +0x00 u32 tag       0 = Idle, 1 = Walking, 0x101 = Walking+force_reach_goal
+-    /// +0x04 f32 a         Idle: timeout_s;        Walking: goal_change_timeout
+-    /// +0x08 f32 b         Idle: 0.0;              Walking: timeout_s
+-    /// ```
+-    ///
+-    /// Encoded as `translation.x = f32::from_bits(tag)`, `translation.y = a`,
+-    /// `translation.z = b`. The functions are a bijection, so capture/apply
+-    /// (which only copy the 12 bytes) round-trip exactly.
+-    pub fn to_translation(self) -> Vec3 {
+-        let (tag, a, b) = match self {
+-            SheepMoveState::Idle { timeout_s } => (0u32, timeout_s, 0.0),
+-            SheepMoveState::Walking {
+-                timeout_s,
+-                goal_change_timeout,
+-                force_reach_goal,
+-            } => (
+-                if force_reach_goal { 0x101 } else { 0x1 },
+-                goal_change_timeout,
+-                timeout_s,
+-            ),
+-        };
+-        Vec3::new(f32::from_bits(tag), a, b)
+-    }
+-
+-    /// Inverse of [`Self::to_translation`] (O memory order: Walking = tag,
+-    /// goal_change_timeout, timeout_s; `force_reach_goal` = tag bit 0x100).
+-    pub fn from_translation(v: Vec3) -> Self {
+-        let tag = v.x.to_bits();
+-        match tag {
+-            0 => SheepMoveState::Idle { timeout_s: v.y },
+-            _ => SheepMoveState::Walking {
+-                timeout_s: v.z,
+-                goal_change_timeout: v.y,
+-                force_reach_goal: tag & 0x100 != 0,
+-            },
+-        }
+-    }
+-}
+-
+-/// Native `Sheep` ECS component (stride 0x68 = 104 B). Only the fields with
+-/// assembly evidence are declared; the rest of the native layout is 待取证
+-/// (no consumer function reads those offsets — see sheep-SPEC §2.1).
+-///
+-/// Recovered offsets (O, ① r6-sheep-layout 契约确认, **2026-10-17 修正**):
+-/// - `+0x30` 12 B **goal Vec3 payload**（快照 Option tag 在 `CritterGoal@+0x0c`，
+-///   O capture 0x1412f03f0 / apply 0x1416f24f0 读写 `Sheep+0x30/+0x38`。旧注释
+-///   "+0x30 = 内嵌 SheepMoveState" 被 fresh 反编译否定：move_state 存于
+-///   `utils Transform` 的 translation 槽 `@+0x10`）。
+-/// - `+0x58` f32 read by `Sheep::being_petted` 0x14089d4c0（`[+0x58] > 0.01`，
+-///   常量 0x142960674=0.01）。
+-/// movement 状态机（Idle↔Walking 转移 + picking 分支 move_state=0x101）与 X4 活羊
+-/// Query 待①（r6 契约 §2/§3，中优先）；现源不造。
+-///
+-/// ① T3 sheep register_required_components（procs.tsv 0x14089f340 impl$7）：原生
+-/// `resources::critters::sheep` 有 **5 个 ECS 组件**（Sheep/SheepAudio 0x14089ec50 /
+-/// UmbrellaHolder 0x14089fa30 / SheepAccessory 0x1408a0120 / FloatieHolder 0x1408a0810，
+-/// 组件名串 0x142c3652c/384ea/36a9f/37bb5/36fd6）。当前仅 `Sheep` 落地，其余 4 宿主组件
+-/// 待恢复（字段/结构 U）。
+-///
+-/// **required 集冲突登记（定案 = 空集）**：① 契约 §2 推断 `Sheep >= require(Transform,
+-/// CritterLocomotion)`（sheep_unstuck Query 证据，标注 I，**Query 需求 ≠ #[require]**）；但
+-/// crate 自有恢复 `components/registry.rs`（0x6f0/0x700 单态模板，151 个注册函数无跨组件
+-/// 调用）断言原版 required=空集。**③ REVIEW.md §7 独立证实**：5 个 sheep
+-/// `register_required_components`（0x14089ec50/0x14089f340/0x14089fa30/0x1408a0120/
+-/// 0x1408a0810）全为 1776B=0x6f0，与空模板 `FollowMouse`（0x140844f20=1776B）同尺寸 →
+-/// **required = 空集**。按此本组件**不补 #[require]**（Transform/可见性由外部
+-/// bundle/spawn 显式插入，O）。
+-///
+-/// 待取证: `+0x00..0x2f` / `+0x3c..0x57` / `+0x5c..0x67` — no machine-code
+-/// evidence (possibly animation state; GPU side `SheepAnimationSsbo` is
+-/// deferred). Do not invent field names or defaults for these ranges.
++/// B capture/apply读取+0x30移动状态；being_petted读取+0x58。
++/// 未恢复的动画/附件字段不填充猜测默认值。
+ #[derive(Component, Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+ pub struct Sheep {
+-    /// Native `+0x30` (12 B): the goal Vec3 payload. The goal's `Option` tag is
+-    /// **not** here — it lives in `CritterGoal.goal_tag @ +0x0c` (O capture
+-    /// 0x1412f03f0 / apply 0x1416f24f0).
+-    pub goal: Vec3,
+-    /// Native `+0x58` (being-petted timer, compared against 0x142960674 = 0.01).
++    pub move_state: SheepMoveState,
+     pub being_petted_timer: f32,
+ }
+ 
+ impl Sheep {
+-    /// `Sheep::being_petted` 0x14089d4c0:
+-    /// `movss xmm0,[rcx+0x58]; ucomiss xmm0,[rip+0x20c31a8]; seta al; ret`.
+-    ///
+-    /// Constant VA = 0x14089d4c0 + 5 + 7 + 0x20c31a8 = **0x142960674**, raw
+-    /// bytes `0a d7 23 3c` = `f32::from_bits(0x3c23d70a)` = **0.01**.
+-    /// (2026-10-16 correction: the earlier 0x142930f74 / `2f 29 00 00` was a
+-    /// rip-relative base miscalculation; 0x142930f74 bytes belong to the
+-    /// adjacent string region, not this function's constant.)
+-    /// `ucomiss` + `seta` is *strictly greater*, which (like `>`) is false for
+-    /// NaN operands.
++    /// B 0x14089d4c0：严格大于0.01；NaN返回false。
+     pub fn being_petted(&self) -> bool {
+         self.being_petted_timer > f32::from_bits(0x3c23_d70a)
+     }
+@@ -151,83 +47,18 @@
+     use super::*;
+ 
+     #[test]
+-    fn being_petted_uses_the_original_threshold_bytes() {
+-        // Native constant 0x142960674 = raw `0a d7 23 3c` = 0.01.
+-        assert_eq!(f32::from_bits(0x3c23_d70a).to_bits(), 0x3c23_d70a);
+-        let pet = Sheep {
+-            goal: Vec3::ZERO,
+-            being_petted_timer: 0.011,
+-        };
+-        assert!(pet.being_petted());
+-        let just_under = Sheep {
+-            goal: Vec3::ZERO,
+-            being_petted_timer: 0.009,
+-        };
+-        assert!(!just_under.being_petted());
+-        let idle = Sheep {
+-            goal: Vec3::ZERO,
+-            being_petted_timer: 0.0,
+-        };
+-        assert!(!idle.being_petted());
+-        // NaN is unordered: ucomiss+seta yields false, matching `>`.
+-        let nan = Sheep {
+-            goal: Vec3::ZERO,
+-            being_petted_timer: f32::NAN,
+-        };
+-        assert!(!nan.being_petted());
+-    }
+-
+-    #[test]
+-    fn wire_shape_roundtrips_through_serde() {
+-        let sheep = Sheep {
+-            goal: Vec3::new(1.0, 2.0, 3.0),
+-            being_petted_timer: 2.5,
+-        };
+-        let json = serde_json::to_string(&sheep).unwrap();
+-        let back: Sheep = serde_json::from_str(&json).unwrap();
+-        assert_eq!(back, sheep);
+-        assert_eq!(
+-            json,
+-            r#"{"goal":[1.0,2.0,3.0],"being_petted_timer":2.5}"#
+-        );
+-    }
+-
+-    #[test]
+-    fn move_state_roundtrips_through_the_transform_translation_slot() {
+-        let states = [
+-            SheepMoveState::Idle { timeout_s: 2.5 },
+-            SheepMoveState::Walking {
+-                timeout_s: 4.0,
+-                goal_change_timeout: 5.0,
+-                force_reach_goal: false,
+-            },
+-            SheepMoveState::Walking {
+-                timeout_s: 6.0,
+-                goal_change_timeout: 7.0,
+-                force_reach_goal: true,
+-            },
+-        ];
+-        for s in states {
+-            let v = SheepMoveState::to_translation(s);
+-            assert_eq!(SheepMoveState::from_translation(v), s, "bijection");
++    fn being_petted_keeps_the_original_strict_threshold() {
++        for (value, expected) in [
++            (0.009, false),
++            (0.01, false),
++            (0.011, true),
++            (f32::NAN, false),
++        ] {
++            let sheep = Sheep {
++                move_state: SheepMoveState::Idle { timeout_s: 0.0 },
++                being_petted_timer: value,
++            };
++            assert_eq!(sheep.being_petted(), expected);
+         }
+-        // O repr: Idle tag byte 0 at translation.x byte0; Walking tag = 1,
+-        // Walking+force tag = 0x101 (serde discriminant / picking note).
+-        let idle = SheepMoveState::to_translation(SheepMoveState::Idle { timeout_s: 3.0 });
+-        assert_eq!(idle.x.to_bits(), 0);
+-        assert_eq!(idle.y, 3.0);
+-        let walk = SheepMoveState::to_translation(SheepMoveState::Walking {
+-            timeout_s: 8.0,
+-            goal_change_timeout: 9.0,
+-            force_reach_goal: false,
+-        });
+-        assert_eq!(walk.x.to_bits(), 0x1);
+-        assert_eq!((walk.y, walk.z), (9.0, 8.0));
+-        let forced = SheepMoveState::to_translation(SheepMoveState::Walking {
+-            timeout_s: 8.0,
+-            goal_change_timeout: 9.0,
+-            force_reach_goal: true,
+-        });
+-        assert_eq!(forced.x.to_bits(), 0x101);
+     }
+ }
+--- a/crates/country-core/src/resources/critters/mod.rs
++++ b/crates/country-core/src/resources/critters/mod.rs
+@@ -1,23 +1,15 @@
+-//! Original B critter data. Species owners are added only with recovered fields.
++//! 已恢复的小生物共享目标和物种资源。
+ pub mod sheep;
+ 
+ use bevy_ecs::component::Component;
+ use glam::Vec3;
+ use serde::{Deserialize, Serialize};
+ 
+-/// Native 16-byte critter component (O: stride 0x10 in the sheep control
+-/// query; capture 0x1412f03f0 / apply 0x1416f24f0 copy its full 16 bytes as
+-/// the snapshot's `position` + the goal `Option` tag).
+-///
+-/// Layout: `position: Vec3 @ +0x00` — the sheep's position, **not**
+-/// `Transform.translation` (which stores `SheepMoveState`, O); and
+-/// `goal_tag: u32 @ +0x0c` — the goal `Option<Vec3>` tag (0 = `None`,
+-/// non-zero = `Some`). The goal's Vec3 payload lives in `Sheep @ +0x30`.
++/// B CritterGoal是Option<Vec3>：tag@+0、目标坐标@+4（16B）。
++/// 它不持有小生物当前位置；当前位置来自Transform.translation。
++#[repr(C)]
+ #[derive(Component, Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+ pub struct CritterGoal {
+-    /// Native `+0x00` (O).
++    pub goal_tag: u32,
+     pub position: Vec3,
+-    /// Native `+0x0c` (O): goal `Option` tag (0 = `None`, 1 = `Some`).
+-    pub goal_tag: u32,
+ }
+-
+--- a/crates/country-core/src/resources/critters/sheep/control.rs
++++ b/crates/country-core/src/resources/critters/sheep/control.rs
+@@ -1,16 +1,6 @@
+-//! B control snapshots: native serializer 0x1416f9eb0/0x1416f9fd0,
+-//! capture iterator 0x1412f03f0, restore consumer 0x1416f24f0.
+-//!
+-//! 2026-10-17 component-binding correction (fresh decompilation): the original
+-//! query is `(Entity, &mut Transform, &mut Sheep, &mut CritterGoal)` and the
+-//! native field binding is:
+-//! - `position` ← `CritterGoal @ +0x00` (NOT `Transform.translation`);
+-//! - `goal` ← `Sheep @ +0x30` payload + `CritterGoal @ +0x0c` tag;
+-//! - `move_state` ← `utils Transform` translation slot @ +0x10 (12 B).
+-//! The old Rust triplet `(&Transform, &CritterGoal, &SheepMoveState)` bound
+-//! position←transform.translation / goal←CritterGoal / move_state←SheepMoveState,
+-//! a shifted binding (move_state actually lives in the translation slot, and
+-//! position in CritterGoal) — corrected here.
++//! 羊群控制快照。B capture 0x1412f03f0 与 serializer 0x1416f9eb0
++//! 共同确认：position=Transform.translation，goal=CritterGoal，
++//! move_state=Sheep+0x30。声明顺序不代表原生内存顺序。
+ use super::{Sheep, SheepMoveState};
+ use crate::resources::critters::CritterGoal;
+ use crate::utils::components::transform::Transform;
+@@ -35,10 +25,7 @@
+     pub sheep: Vec<SheepSnapshot>,
+ }
+ 
+-/// Caller passes rows in actual query order: `(Transform, Sheep, CritterGoal)`.
+-/// Native capture stores no entity ID and does not sort; per-field binding
+-/// (O): `position` ← `CritterGoal @ +0x00`, `goal` ← `Sheep @ +0x30` payload +
+-/// `CritterGoal @ +0x0c` tag, `move_state` ← `Transform.translation` @ +0x10.
++/// 按实际查询顺序捕获三个权威字段，不排序或保存实体ID。
+ pub fn capture_sheep_snapshot<'a>(
+     rows: impl IntoIterator<Item = (&'a Transform, &'a Sheep, &'a CritterGoal)>,
+ ) -> SheepControlSnapshot {
+@@ -46,34 +33,35 @@
+         sheep: rows
+             .into_iter()
+             .map(|(transform, sheep, critter_goal)| SheepSnapshot {
+-                position: critter_goal.position,
+-                goal: (critter_goal.goal_tag != 0).then_some(sheep.goal),
+-                move_state: SheepMoveState::from_translation(transform.translation),
++                position: transform.translation,
++                goal: (critter_goal.goal_tag != 0).then_some(critter_goal.position),
++                move_state: sheep.move_state,
+             })
+             .collect(),
+     }
+ }
+ 
+-/// Original restore zips query order with saved order, stops at the shorter
+-/// input and overwrites exactly these three fields. It neither creates nor
+-/// removes sheep, and preserves transform rotation/scale and other sheep state.
+-/// Per-field binding (O): `Transform.translation` ← `move_state`,
+-/// `Sheep @ +0x30` ← `goal` payload, `CritterGoal` ← `{position, goal_tag}`.
++/// 单行恢复供纯函数与ECS消费者共用；不修改旋转、缩放或抚摸状态。
++pub(crate) fn apply_row(
++    saved: &SheepSnapshot,
++    transform: &mut Transform,
++    sheep: &mut Sheep,
++    goal: &mut CritterGoal,
++) {
++    transform.translation = saved.position;
++    sheep.move_state = saved.move_state;
++    goal.position = saved.goal.unwrap_or_default();
++    goal.goal_tag = saved.goal.is_some() as u32;
++}
++
++/// 原apply按查询顺序zip到较短一侧，只恢复位置、目标和移动状态。
++/// rotation/scale、抚摸计时和额外实体保持原值。
+ pub fn apply_sheep_snapshot<'a>(
+     snapshot: &SheepControlSnapshot,
+-    rows: impl IntoIterator<
+-        Item = (
+-            &'a mut Transform,
+-            &'a mut Sheep,
+-            &'a mut CritterGoal,
+-        ),
+-    >,
++    rows: impl IntoIterator<Item = (&'a mut Transform, &'a mut Sheep, &'a mut CritterGoal)>,
+ ) {
+     for ((transform, sheep, critter_goal), saved) in rows.into_iter().zip(&snapshot.sheep) {
+-        transform.translation = SheepMoveState::to_translation(saved.move_state);
+-        sheep.goal = saved.goal.unwrap_or_default();
+-        critter_goal.position = saved.position;
+-        critter_goal.goal_tag = saved.goal.is_some() as u32;
++        apply_row(saved, transform, sheep, critter_goal);
+     }
+ }
+ 
+@@ -117,99 +105,77 @@
+     }
+ 
+     #[test]
+-    fn capture_and_apply_use_query_order_and_preserve_other_fields() {
+-        let original_sheep = Sheep {
+-            goal: Vec3::new(4., 5., 6.),
+-            being_petted_timer: 9.0,
+-        };
+-        let original_goal = CritterGoal {
+-            position: Vec3::new(7., 8., 9.),
+-            goal_tag: 1,
+-        };
+-        let original_move = SheepMoveState::Walking {
++    fn capture_and_apply_bind_real_positions_goals_and_movement() {
++        let position = Vec3::new(1., 2., 3.);
++        let target = Vec3::new(7., 8., 9.);
++        let movement = SheepMoveState::Walking {
+             timeout_s: 4.,
+             goal_change_timeout: 5.,
+             force_reach_goal: true,
+         };
+-        // Capture: position←CritterGoal@0, goal←Sheep@+0x30(+tag),
+-        // move_state←Transform.translation (O binding).
+         let snapshot = capture_sheep_snapshot([(
+-            &Transform::from_translation(SheepMoveState::to_translation(original_move)),
+-            &original_sheep,
+-            &original_goal,
++            &Transform::from_translation(position),
++            &Sheep {
++                move_state: movement,
++                being_petted_timer: 9.,
++            },
++            &CritterGoal {
++                position: target,
++                goal_tag: 1,
++            },
+         )]);
+-        let row = &snapshot.sheep[0];
+-        assert_eq!(row.position, original_goal.position);
+-        assert_eq!(row.goal, Some(original_sheep.goal));
+-        assert_eq!(row.move_state, original_move);
+-
++        assert_eq!(snapshot.sheep[0].position, position);
++        assert_eq!(snapshot.sheep[0].goal, Some(target));
++        assert_eq!(snapshot.sheep[0].move_state, movement);
+         let mut transforms = [
+             Transform::from_scale(Vec3::splat(3.)),
+             Transform::identity(),
+         ];
+-        let mut sheeps = [
+-            Sheep {
+-                goal: Vec3::ZERO,
+-                being_petted_timer: 0.,
+-            },
+-            Sheep {
+-                goal: Vec3::ZERO,
+-                being_petted_timer: 0.,
+-            },
+-        ];
+-        let mut goals = [
+-            CritterGoal {
+-                position: Vec3::ZERO,
+-                goal_tag: 0,
+-            },
+-            CritterGoal {
+-                position: Vec3::ZERO,
+-                goal_tag: 0,
+-            },
+-        ];
++        let initial_sheep = Sheep {
++            move_state: SheepMoveState::Idle { timeout_s: 17. },
++            being_petted_timer: 19.,
++        };
++        let mut sheeps = [initial_sheep; 2];
++        let initial_goal = CritterGoal {
++            position: Vec3::ZERO,
++            goal_tag: 0,
++        };
++        let mut goals = [initial_goal; 2];
+         apply_sheep_snapshot(
+             &snapshot,
+             transforms
+                 .iter_mut()
+                 .zip(sheeps.iter_mut())
+                 .zip(goals.iter_mut())
+-                .map(|((a, b), c)| (a, b, c)),
++                .map(|((t, s), g)| (t, s, g)),
+         );
+-        // move_state goes to Transform.translation (not position).
+-        assert_eq!(
+-            transforms[0].translation,
+-            SheepMoveState::to_translation(original_move)
+-        );
+-        assert_eq!(transforms[0].scale, Vec3::splat(3.), "rotation/scale preserved");
+-        assert_eq!(sheeps[0].goal, original_sheep.goal);
+-        assert_eq!(sheeps[0].being_petted_timer, 0., "other sheep state preserved");
+-        assert_eq!(goals[0].position, original_goal.position);
++        assert_eq!(transforms[0].translation, position);
++        assert_eq!(transforms[0].scale, Vec3::splat(3.));
++        assert_eq!(sheeps[0].move_state, movement);
++        assert_eq!(sheeps[0].being_petted_timer, 19.);
++        assert_eq!(goals[0].position, target);
+         assert_eq!(goals[0].goal_tag, 1);
+-        // Second row (beyond the snapshot) is untouched.
+         assert_eq!(transforms[1], Transform::identity());
+-        assert_eq!(sheeps[1].goal, Vec3::ZERO);
+-        assert_eq!(goals[1].goal_tag, 0);
++        assert_eq!(sheeps[1], initial_sheep);
++        assert_eq!(goals[1], initial_goal);
+     }
+ 
+     #[test]
+     fn sheep_section_is_option_json_none_to_null() {
+         assert_eq!(sheep_section_json(None), "null");
+         let snapshot = capture_sheep_snapshot([(
+-            &Transform::from_translation(SheepMoveState::to_translation(
+-                SheepMoveState::Idle { timeout_s: 2. },
+-            )),
++            &Transform::from_translation(Vec3::new(1., 2., 3.)),
+             &Sheep {
+-                goal: Vec3::ZERO,
++                move_state: SheepMoveState::Idle { timeout_s: 2. },
+                 being_petted_timer: 0.,
+             },
+             &CritterGoal {
+-                position: Vec3::new(1., 2., 3.),
++                position: Vec3::new(7., 8., 9.),
+                 goal_tag: 0,
+             },
+         )]);
+-        let json = sheep_section_json(Some(&snapshot));
+         assert_eq!(
+-            json,
++            sheep_section_json(Some(&snapshot)),
+             r#"{"sheep":[{"position":[1.0,2.0,3.0],"goal":null,"move_state":{"Idle":{"timeout_s":2.0}}}]}"#
+         );
+     }
+--- a/crates/country-core/src/systems/debug/sheep_controls.rs
++++ b/crates/country-core/src/systems/debug/sheep_controls.rs
+@@ -1,63 +1,33 @@
+-//! `systems/debug/sheep_controls.rs` — B 真实 Sheep query 所有者。
+-//!
+-//! 证据：
+-//! - `sheep_controls` @0x1416f11a0（query `(Entity, &mut Transform, &mut Sheep,
+-//!   &mut CritterGoal)`；步进 `uVar9 * 0x68` = Sheep stride；调用 capture iterator
+-//!   0x1412f03f0 / apply 0x1416f24f0）——[O，sheep-SPEC §2.5]。
+-//! - `SheepControl` 调试资源 @0x1416f0ea0（native 持有 `Vec<SheepSnapshot>`
+-//!   cap-first + 跟随位置；本模型用 `Option<SheepControlSnapshot>` 表示捕获输出）。
+-//! - 原生系统还内联 picking/相机以驱动 UI 交互（`PickingMode::is_some`、拾取后写
+-//!   move_state `= 0x101`（Walking+force_reach_goal，写入 **Transform.translation 槽**，
+-//!   非 `Sheep+0x30`——2026-10-17 fresh 反编译修正：`+0x30` 是 goal payload）与
+-//!   `_UNK_142abcb20` timeout_s）——那些触发条件属 picking/UI 域，待取证，本文件不伪造。
+-//! - 中央 agent（a8a2e9731c4957436）2026-10-16 仲裁批准落 `systems/debug/*`。
+-
+-use crate::resources::critters::{
+-    CritterGoal,
+-    sheep::{
+-        Sheep, SheepMoveState,
+-        control::{SheepControlSnapshot, SheepSnapshot},
++//! 羊群调试快照的ECS所有者；字段绑定复用资源层的同一实现。
++//! B原apply按查询序zip，不生成或删除实体。完整拾取/UI分支仍独立待恢复。
++use crate::{
++    resources::critters::{
++        CritterGoal,
++        sheep::{
++            Sheep,
++            control::{self, SheepControlSnapshot},
++        },
+     },
++    utils::components::transform::Transform,
+ };
+-use crate::utils::components::transform::Transform;
+ use bevy_ecs::prelude::*;
+ 
+-/// `SheepControl` 调试资源（@0x1416f0ea0）：捕获的 `Option<SheepControlSnapshot>`
+-/// （无羊 → None，与 save "Sheep" 节同为 None→null 语义）。
+ #[derive(Resource, Clone, Debug, Default)]
+ pub struct SheepControl {
+     pub snapshot: Option<SheepControlSnapshot>,
+ }
+ 
+-/// `sheep_controls` @0x1416f11a0 — 真实 query 所有者（capture 生产者）。
+-///
+-/// 按 query 实际顺序捕获 `(Transform.translation, CritterGoal, Sheep)` 的
+-/// **原生绑定**（O，2026-10-17 修正）：`position ← CritterGoal@+0x00`、
+-/// `goal ← Sheep@+0x30 payload + CritterGoal@+0x0c tag`、
+-/// `move_state ← utils Transform.translation@+0x10`，存进 [`SheepControl`]。
+-/// 原生不存 Entity、不排序（O）。拾取后写 move_state 的交互分支
+-/// （0x1416f11a0 行 547..548）依赖 picking，待取证，此处只做捕获。
+ pub fn sheep_controls(
+     sheep: Query<(Entity, &mut Transform, &mut Sheep, &mut CritterGoal)>,
+     mut control: ResMut<SheepControl>,
+ ) {
+-    control.snapshot = Some(SheepControlSnapshot {
+-        sheep: sheep
++    control.snapshot = Some(control::capture_sheep_snapshot(
++        sheep
+             .iter()
+-            .map(|(_, transform, sheep, goal)| SheepSnapshot {
+-                position: goal.position,
+-                goal: (goal.goal_tag != 0).then_some(sheep.goal),
+-                move_state: SheepMoveState::from_translation(transform.translation),
+-            })
+-            .collect(),
+-    });
++            .map(|(_, transform, sheep, goal)| (transform, sheep, goal)),
++    ));
+ }
+ 
+-/// `apply_sheep_snapshot` @0x1416f24f0 — restore 消费者。
+-///
+-/// 按 query 序 zip 快照、短路到较短一侧；只写 `Transform.translation`、
+-/// `Sheep@+0x30`、`CritterGoal`，不动 rotation/scale/其它字段（O）。
+-/// 原生 0x1416f11a0 内联调用它；本系统把它暴露为独立 ECS 消费者接口。
+ pub fn apply_sheep_snapshot(
+     mut sheep: Query<(Entity, &mut Transform, &mut Sheep, &mut CritterGoal)>,
+     control: Res<SheepControl>,
+@@ -66,9 +36,6 @@
+         return;
+     };
+     for ((_, mut transform, mut sheep, mut goal), saved) in sheep.iter_mut().zip(&snapshot.sheep) {
+-        transform.translation = SheepMoveState::to_translation(saved.move_state);
+-        sheep.goal = saved.goal.unwrap_or_default();
+-        goal.position = saved.position;
+-        goal.goal_tag = saved.goal.is_some() as u32;
++        control::apply_row(saved, &mut transform, &mut sheep, &mut goal);
+     }
+ }

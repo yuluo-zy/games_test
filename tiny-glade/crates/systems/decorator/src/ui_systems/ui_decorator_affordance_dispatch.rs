@@ -92,7 +92,7 @@ pub fn ui_dispatch_decorator_affordance(
         return;
     }
     // O：WidgetParams::new + UiSounds::empty + occlude_by_world(0) + add。
-    let params = WidgetParams::new()
+    let params = WidgetParams::new(WidgetVolumeShape::default(), [0; 2])
         .sounds(UiSounds::empty())
         .occlude_by_world(false);
     ui.add(DECIDE_DECORATOR_INTERACTION_WIDGET, params);
@@ -113,11 +113,12 @@ pub fn create_decorator_widget(
     if is_question_mark {
         flags |= 1 << 3; // O：`param_5 == '?'` → bit3。
     }
-    let params = WidgetParams::new()
+    let params = WidgetParams::new(WidgetVolumeShape::default(), [0; 2])
         .volume(WidgetVolumeShape {
             tag: 5,
             layer: layer as u8,
             size: Default::default(),
+            ..Default::default()
         })
         .sounds(sounds)
         .occlude_by_world(false);
@@ -135,11 +136,12 @@ pub fn create_decorator_widget_handle(
     is_question_mark: bool,
     sounds: UiSounds,
 ) {
-    let params = WidgetParams::new()
+    let params = WidgetParams::new(WidgetVolumeShape::default(), [0; 2])
         .volume(WidgetVolumeShape {
             tag: 5,
             layer: layer as u8,
             size: Default::default(),
+            ..Default::default()
         })
         .sounds(sounds)
         .occlude_by_world(false);

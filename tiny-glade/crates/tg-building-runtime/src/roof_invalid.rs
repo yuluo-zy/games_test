@@ -1,11 +1,10 @@
-//! Actual invalid-notification consumer, between association and deletion.
+//! Converts invalid associations into deletion requests and history input.
 use crate::{BuildingStage, DeleteRoof, Roof, RoofMarkedForDeletion};
 use bevy_ecs::prelude::*;
-use country_core::recovered_building::{
-    building_history_transactions::RoofHistoryEdit,
-    building_roof_invalid_notifications::{InvalidRoofRow, process_invalid_roof_notifications},
-    building_wall_state::WallId,
-};
+use country_core::resources::history::building_transactions::RoofHistoryEdit;
+use country_core::resources::roofs::invalid_notifications::InvalidRoofRow;
+use country_core::resources::roofs::invalid_notifications::process_invalid_roof_notifications;
+use country_core::resources::walls::publication_fields::WallId;
 #[derive(Event, Clone, Copy)]
 pub struct RoofIsInvalid(pub WallId);
 #[derive(Event, Clone, Copy)]
@@ -13,8 +12,8 @@ pub struct ResetRoofNotifications;
 #[derive(Resource, Default)]
 pub struct RoofInvalidNotificationState {
     pub emitted_this_frame: Vec<WallId>,
-    /// Actual original History.add output, retained until full Wall compound
-    /// history can encode/replay its other owner. This is not a commit receipt.
+    /// Produced roof deletions retained for observation. Active-recording
+    /// mutations are admitted separately and removed from this list on commit.
     pub history_pending: Vec<RoofHistoryEdit>,
     /// Only operations produced during this active recording are admitted;
     /// retained observations from earlier unrecorded updates are not replayed.

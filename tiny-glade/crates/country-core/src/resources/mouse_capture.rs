@@ -1,7 +1,194 @@
-use bevy_ecs::prelude::Resource;
+use bevy_ecs::prelude::*;
+use bevy_ecs::system::SystemParam;
 use glam::Vec2;
 
 /// Native Option<Vec2>; the translator tests its discriminant, and keeps the
 /// capture anchor owned by mouse capture rather than moving the window cursor.
-#[derive(Resource, Clone, Copy, Debug, PartialEq)]
+#[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
 pub struct CursorCapturedPosition(pub Option<Vec2>);
+
+/// 回放在本帧内拥有捕获状态；晚于输入消费的实时请求不能覆盖它。
+#[derive(Resource, Clone, Copy, Debug, Default)]
+pub(crate) enum CursorCapturePolicy {
+    #[default]
+    Live,
+    Replay(Option<Vec2>),
+}
+
+/// Native command byte: 0 captures; any nonzero byte releases (0x140b17830).
+#[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CursorCaptureCmd(pub bool);
+
+/// Semantic names for native tags 0/1/2; names are not recovered source text.
+#[derive(Event, Clone, Copy, Debug, PartialEq)]
+pub enum OsCursorCaptureCmd {
+    Capture(Vec2),
+    Release,
+    SetPosition(Vec2),
+}
+
+/// The OS combines suppression sources with bitwise OR/AND-NOT.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct OsCursorVisibilityCmdOrigin(pub u32);
+
+impl OsCursorVisibilityCmdOrigin {
+    /// 0x140b17830 emits packed 0x200000002/0x200000003.
+    pub const MOUSE_CAPTURE: Self = Self(2);
+}
+
+/// Semantic projection of the four native modes handled at 0x14026f50e.
+#[derive(Event, Clone, Copy, Debug, PartialEq)]
+pub enum OsCursorVisibilityCmd {
+    Standard,
+    /// Native payload is the size_px f32 bit pattern, not a cursor ID.
+    Custom(f32),
+    Suppress(OsCursorVisibilityCmdOrigin),
+    Unsuppress(OsCursorVisibilityCmdOrigin),
+}
+
+/// 捕获状态的统一写入入口，同时维护窗口捕获和显隐来源位。
+#[derive(SystemParam)]
+pub struct CursorCaptureState<'w> {
+    captured: ResMut<'w, CursorCapturedPosition>,
+    policy: ResMut<'w, CursorCapturePolicy>,
+    os_capture: EventWriter<'w, OsCursorCaptureCmd>,
+    os_visibility: EventWriter<'w, OsCursorVisibilityCmd>,
+}
+impl CursorCaptureState<'_> {
+    pub fn position(&self) -> Option<Vec2> {
+        self.captured.0
+    }
+
+    pub(crate) fn restore_for_replay(&mut self, position: Option<Vec2>) {
+        *self.policy = CursorCapturePolicy::Replay(position);
+        self.set_position(position);
+    }
+
+    fn set_position(&mut self, position: Option<Vec2>) {
+        if self.captured.0 == position {
+            return;
+        }
+        self.captured.0 = position;
+        match position {
+            Some(anchor) => {
+                self.os_capture.write(OsCursorCaptureCmd::Capture(anchor));
+                self.os_visibility.write(OsCursorVisibilityCmd::Suppress(
+                    OsCursorVisibilityCmdOrigin::MOUSE_CAPTURE,
+                ));
+            }
+            None => {
+                self.os_capture.write(OsCursorCaptureCmd::Release);
+                self.os_visibility.write(OsCursorVisibilityCmd::Unsuppress(
+                    OsCursorVisibilityCmdOrigin::MOUSE_CAPTURE,
+                ));
+            }
+        }
+    }
+}
+
+/// 实时模式消费最后一个请求；回放模式使用该帧的录制策略并丢弃实时请求。
+pub fn mouse_capture(
+    mut capture: CursorCaptureState,
+    mut requests: EventReader<CursorCaptureCmd>,
+    cursor: Res<super::mouse_terrain_raycast::CursorPositionSS>,
+) {
+    // 无论是否回放都推进读取器，避免回放结束后执行积压的实时请求。
+    let request = requests.read().last().copied();
+    let position = match *capture.policy {
+        CursorCapturePolicy::Replay(position) => position,
+        CursorCapturePolicy::Live => {
+            let Some(request) = request else {
+                return;
+            };
+            if request.0 {
+                None
+            } else {
+                Some(cursor.0)
+            }
+        }
+    };
+    capture.set_position(position);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn last_request_controls_anchor_and_emits_matching_os_commands() {
+        let mut world = World::new();
+        world.init_resource::<CursorCapturedPosition>();
+        world.init_resource::<CursorCapturePolicy>();
+        world.insert_resource(super::super::mouse_terrain_raycast::CursorPositionSS(
+            Vec2::new(17.0, 29.0),
+        ));
+        world.init_resource::<Events<CursorCaptureCmd>>();
+        world.init_resource::<Events<OsCursorCaptureCmd>>();
+        world.init_resource::<Events<OsCursorVisibilityCmd>>();
+        let mut schedule = Schedule::default();
+        schedule.add_systems(mouse_capture);
+        world.send_event(CursorCaptureCmd(true));
+        world.send_event(CursorCaptureCmd(false));
+        schedule.run(&mut world);
+        assert_eq!(
+            world.resource::<CursorCapturedPosition>().0,
+            Some(Vec2::new(17.0, 29.0))
+        );
+        let capture: Vec<_> = world
+            .resource_mut::<Events<OsCursorCaptureCmd>>()
+            .drain()
+            .collect();
+        let visibility: Vec<_> = world
+            .resource_mut::<Events<OsCursorVisibilityCmd>>()
+            .drain()
+            .collect();
+        assert_eq!(
+            capture,
+            [OsCursorCaptureCmd::Capture(Vec2::new(17.0, 29.0))]
+        );
+        assert_eq!(
+            visibility,
+            [OsCursorVisibilityCmd::Suppress(
+                OsCursorVisibilityCmdOrigin(2)
+            )]
+        );
+        world.send_event(CursorCaptureCmd(true));
+        schedule.run(&mut world);
+        assert_eq!(world.resource::<CursorCapturedPosition>().0, None);
+        assert_eq!(
+            world
+                .resource_mut::<Events<OsCursorCaptureCmd>>()
+                .drain()
+                .collect::<Vec<_>>(),
+            [OsCursorCaptureCmd::Release]
+        );
+        assert_eq!(
+            world
+                .resource_mut::<Events<OsCursorVisibilityCmd>>()
+                .drain()
+                .collect::<Vec<_>>(),
+            [OsCursorVisibilityCmd::Unsuppress(
+                OsCursorVisibilityCmdOrigin(2)
+            )]
+        );
+    }
+}
+
+/// Original init_populate sends one real mapped CustomCursor pointer; the
+/// native EventInstance stride is16 (payload8 + EventId8). Holding this event
+/// does not by itself keep GPU memory alive. The OS adapter must resolve the
+/// canonical buffer through its same live BufferHost, verify this address,
+/// and retain that ManagedBuffer lease before any dereference.
+#[repr(transparent)]
+#[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CustomCursorSsboCreatedCmd(
+    pub  core::ptr::NonNull<
+        crate::systems::render_loop::draw_passes::custom_cursor_pass::CustomCursorSsbo,
+    >,
+);
+
+// SAFETY: this event transports an address only, just like the original OS
+// channel payload. It exposes no safe dereference. The sole OS writer needs
+// the same actual buffer lease and must satisfy host/GPU synchronization.
+unsafe impl Send for CustomCursorSsboCreatedCmd {}
+unsafe impl Sync for CustomCursorSsboCreatedCmd {}

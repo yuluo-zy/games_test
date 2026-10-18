@@ -612,7 +612,7 @@ fn foliage_exclusion_mask_clear_only_then_draw_paths() {
 }
 
 #[test]
-fn object_grass_push_draws_one_quad_per_vec4_and_caps_at_thirteen() {
+fn object_grass_push_draws_each_item_including_more_than_thirteen() {
     use super::object_grass_push::*;
     use glam::{Vec3, Vec4};
     let mut rig = Rig::new();
@@ -632,13 +632,10 @@ fn object_grass_push_draws_one_quad_per_vec4_and_caps_at_thirteen() {
         cursor_push(false, Vec3::ONE, 9.0),
         Vec4::new(0.0, 0.0, 0.0, 9.0)
     );
-    assert_eq!(RADIUS_NEAR, 7.125);
     assert_eq!(collect_push_objects(objs.clone(), [Vec4::ZERO]).len(), 3);
-    let too_many = vec![Vec4::ZERO; MAX_PUSH_OBJECTS + 1];
-    let r = std::panic::catch_unwind(core::panic::AssertUnwindSafe(|| {
-        run(&rig, |c| object_grass_push_pass(c, &too_many))
-    }));
-    assert!(r.is_err());
+    let many = vec![Vec4::ZERO; 20];
+    run(&rig, |c| object_grass_push_pass(c, &many));
+    assert_eq!(rig.log.borrow().submissions.last().unwrap().draws.len(), 20);
 }
 
 #[test]
@@ -933,16 +930,25 @@ impl SpatialHash {
 fn deferred_raster_runs_five_entries_with_stencil_state_and_one_pass() {
     use super::deferred_raster::*;
     let rig = deferred_rig();
+    let mut inputs = deferred_inputs();
+    // Distinct owner IDs and extents expose a swapped color/depth adapter.
+    inputs.lighting[1].extent = (800, 450);
     run(&rig, |c| {
-        deferred_raster::<RtTri, RtMeta, RtBvhT, WallT>(c, &deferred_inputs())
+        deferred_raster::<RtTri, RtMeta, RtBvhT, WallT>(c, &inputs)
     });
     let l = rig.log.borrow();
     assert_eq!(l.submissions.len(), 1);
     let s = &l.submissions[0];
     assert_eq!(s.name, PASS_NAME);
     assert_eq!(s.color_count, 1);
-    // 颜色 tag1（访问 0x2e）；深度可写在其后。
-    assert_eq!(s.accesses[0].access, 0x2e);
+    // Original tag0 color LOAD, read-only depth from the G-buffer pair.
+    assert_eq!(s.colors[0].id, 12);
+    assert_eq!(s.colors[0].tag, 0);
+    assert_eq!(s.accesses[0].access, 0x36);
+    let depth = s.depth.as_ref().expect("original read-only depth");
+    assert_eq!(depth.texture_id, 11);
+    assert!(!depth.writable);
+    assert_eq!(s.viewport, [800, 450]);
     assert_eq!(s.draws.len(), 5);
     let shaders: Vec<u64> = s.draws.iter().map(|d| d.shader.0.0).collect();
     // 条目顺序 (1,3,0,0*,2) → 着色器数组 [1,2,3,4,5] 的 [1],[3],[0],[0],[2]

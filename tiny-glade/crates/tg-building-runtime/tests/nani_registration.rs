@@ -197,3 +197,86 @@ fn named_atlas_resolution_is_consumed_by_the_real_staging_system() {
         matches!(&world.resource::<DeferredNaniRequests>().0[0],DeferredNaniRequest::Remove{entity:e} if *e==entity)
     );
 }
+
+#[test]
+fn atlas_remapping_marks_mesh_updates_for_both_staging_consumers() {
+    let mut app = bevy_app::App::new();
+    app.init_resource::<DeferredNaniRequests>()
+        .init_resource::<NaniCpuStagingState>()
+        .init_resource::<NaniMeshAtlas>()
+        .init_resource::<NaniBackendConfirmations>()
+        .init_resource::<NaniCpuDiagnostics>()
+        .init_resource::<SolidNaniCpuChanges>()
+        .init_resource::<SolidNaniCpuStaging>()
+        .init_resource::<SolidNaniCpuDiagnostics>()
+        .add_systems(
+            bevy_app::Update,
+            (stage_roof_nani_updates, stage_solid_nani_updates).chain(),
+        );
+    let mut roof = [0; 88];
+    roof[8..12].copy_from_slice(&1u32.to_le_bytes());
+    let descriptor = NaniInstanceDesc {
+        mesh: NaniInstanceMeshDesc::Named(42),
+        subset_kind: 9,
+    };
+    let floor = app
+        .world_mut()
+        .spawn((
+            Roof(roof),
+            Animation::default(),
+            NaniStoneFloorBundle {
+                descriptor,
+                ..Default::default()
+            },
+        ))
+        .id();
+    let solid = app
+        .world_mut()
+        .spawn(NaniSolidVertexColorBundle {
+            descriptor,
+            transform: ObjectTransform::default(),
+            marker: SolidVertexColorInstanceDataMarker,
+        })
+        .id();
+    app.world_mut().resource_mut::<NaniMeshAtlas>().0.insert(
+        42,
+        vec![NaniMeshAtlasEntry {
+            atlas_part: 1,
+            subset_kind: 9,
+        }],
+    );
+    app.update();
+    app.world_mut()
+        .resource_mut::<DeferredNaniRequests>()
+        .0
+        .clear();
+    app.world_mut()
+        .resource_mut::<SolidNaniCpuChanges>()
+        .0
+        .clear();
+    app.world_mut()
+        .resource_mut::<NaniMeshAtlas>()
+        .0
+        .get_mut(&42)
+        .unwrap()[0]
+        .atlas_part = 2;
+    app.update();
+    assert!(app.world().resource::<DeferredNaniRequests>().0.iter().any(|change| matches!(change, DeferredNaniRequest::Update { entity, mesh_changed: true, .. } if *entity == floor)));
+    assert!(app.world().resource::<SolidNaniCpuChanges>().0.iter().any(|change| matches!(change, SolidNaniCpuChange::Update { entity, mesh_changed: true, .. } if *entity == solid)));
+}
+
+#[test]
+fn nonfinite_roof_uploads_are_rejected_before_staging() {
+    let mut roof = [0; 88];
+    roof[8..12].copy_from_slice(&1u32.to_le_bytes());
+    roof[0x4c..0x50].copy_from_slice(&f32::INFINITY.to_le_bytes());
+    assert_eq!(
+        project_roof_stone_floor(&roof, 0.),
+        Err(StoneFloorProjectionError::NonfiniteGeometry)
+    );
+    roof[0x4c..0x50].fill(0);
+    assert_eq!(
+        project_roof_stone_floor(&roof, f32::NAN),
+        Err(StoneFloorProjectionError::NonfiniteGeometry)
+    );
+}

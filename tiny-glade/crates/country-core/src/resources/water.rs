@@ -16,7 +16,6 @@ use bevy_ecs::event::Event;
 use glam::Vec3;
 
 use crate::render::pass_builder::pass_resource_access::SsboType as PassSsboType;
-use crate::typed_gap::Gap;
 
 /// 波纹源 SSBO（O：`resources::water::RippleSourceSsbo`）。
 ///
@@ -24,20 +23,54 @@ use crate::typed_gap::Gap;
 /// `_water_plane.raster.hlsl` / `_waterfall.raster.hlsl`（bin names
 /// `RippleSourceSsbo` / `ripple_source_buffer`）。生产者（O，跨 crate）：
 /// `system_critters::duck::update_duck_ripples`（0x2314b70，鸭子入水波纹）。
-/// 布局 U（typed gap）。
-#[derive(Clone, Copy, Debug, Default)]
-pub struct RippleSourceSsbo(pub Gap);
+/// B ctor@1416150a0 accepts exactly one 528-byte aggregate. Raw words retain
+/// its real layout without inventing fields for the unresolved CPU producer.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct RippleSourceSsbo {
+    pub first_words: [u32; 4],
+    pub remaining_words: [[u32; 4]; 32],
+}
 
 impl PassSsboType for RippleSourceSsbo {
-    /// typed gap：原值 = `utils::name_hash("…RippleSourceSsbo")`（AssetSsboLibrary 注册键）。
     fn rg_buffer_hash() -> u64 {
-        0
+        crate::asset_libraries::ssbo_library::SsboId::of::<Self>()
+            .0
+            .0
     }
 }
 
 impl crate::render::ssbo::StorageElement for RippleSourceSsbo {
     const NAME: &'static str = "RippleSourceSsbo";
-    // BUFFER_LEN/MAPPED_MEMORY：布局 U（typed gap），保持 trait 默认（0 / 上传种类）。
+    const BUFFER_LEN: usize = 1;
+}
+
+impl crate::asset_libraries::ssbo_library::SsboType for RippleSourceSsbo {
+    type Storage = crate::render::ssbo::TypedStorageBuffer<Self>;
+    fn new_storage_buffer(
+        device: &dyn crate::render::ssbo::rhapsody_boundary::GraphicsDevice,
+        initial: Option<&[u8]>,
+    ) -> Self::Storage {
+        use crate::render::ssbo::rhapsody_boundary::BufferDesc;
+        if let Some(bytes) = initial {
+            assert_eq!(bytes.len() % 0x210, 0);
+            assert_eq!(bytes.as_ptr() as usize % 4, 0);
+            assert!(
+                bytes.len() < 0x420,
+                "Excessive data size supplied for RippleSourceSsbo"
+            );
+        }
+        // This one-element storage is still usage0x22; the ordinary uniform
+        // default path would change the native descriptor and None policy.
+        let buffer = device
+            .create_buffer(
+                &BufferDesc::new(0x210, 0x22, 1).alignment(4),
+                "RippleSourceSsbo",
+                initial,
+            )
+            .expect("creating original RippleSourceSsbo");
+        crate::render::ssbo::TypedStorageBuffer::from_created_buffer(buffer)
+    }
 }
 
 /// 水面绘制事件（O：`WaterPlugin::build` 0x1406501d0 `register_event<WaterDrawEvent>`）。

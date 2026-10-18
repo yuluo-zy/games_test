@@ -1,0 +1,160 @@
+
+void __cdecl
+country_core::startup::startup_session::copy_dir_all<std::path::PathBuf,std::path::PathBuf>(void)
+
+{
+  longlong *plVar1;
+  longlong lVar2;
+  longlong extraout_RAX;
+  longlong extraout_RAX_00;
+  longlong extraout_RAX_01;
+  longlong *in_RCX;
+  longlong *in_RDX;
+  byte local_7e8 [8];
+  longlong *local_7e0;
+  longlong local_7d8;
+  undefined1 local_7d0 [584];
+  longlong *local_588;
+  longlong lStack_580;
+  longlong local_578;
+  longlong lStack_570;
+  longlong local_310;
+  longlong *local_300 [80];
+  uint local_80;
+  uint uStack_7c;
+  uint local_78;
+  longlong *local_60;
+  longlong *local_58;
+  undefined1 local_4b;
+  undefined1 local_4a;
+  undefined1 local_49;
+  undefined8 local_48;
+  
+  local_48 = 0xfffffffffffffffe;
+  local_310 = CONCAT71(local_310._1_7_,1);
+  local_49 = 1;
+  local_60 = in_RCX;
+  local_58 = in_RDX;
+  std::sys::os_str::wtf8::Buf::as_mut_slice();
+  local_49 = 1;
+  std::fs::DirBuilder::_create();
+  if (extraout_RAX == 0) {
+    local_588 = (longlong *)*local_60;
+    lStack_580 = local_60[1];
+    local_578 = local_60[2];
+    lStack_570 = local_60[3];
+    std::sys::os_str::wtf8::Buf::as_mut_slice();
+    std::sys::pal::windows::fs::readdir();
+    lVar2 = local_310;
+    if (local_310 != 2) {
+      memcpy(local_7e8,local_300,0x260);
+    }
+    if (local_588 != (longlong *)0x0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    if ((int)lVar2 != 2) {
+      memcpy(local_300,local_7e8,0x260);
+      local_310 = lVar2;
+      while (std::fs::impl$30::next(), lVar2 = local_7d8, plVar1 = local_7e0,
+            (local_7e8[0] & 1) != 0) {
+        if (local_7e0 == (longlong *)0x0) {
+LAB_141740f8b:
+          if (local_310 != 0) {
+            std::sys::pal::windows::fs::impl$7::drop();
+          }
+          LOCK();
+          *local_300[0] = *local_300[0] + -1;
+          UNLOCK();
+          if (*local_300[0] == 0) {
+            local_49 = 0;
+            alloc::sync::Arc::drop_slow<std::path::PathBuf,alloc::alloc::Global>();
+          }
+          goto LAB_141740fc1;
+        }
+        memcpy(&local_578,local_7d0,0x248);
+        local_588 = plVar1;
+        lStack_580 = lVar2;
+        std::fs::DirEntry::file_type();
+        if ((local_80 & 1) != 0) {
+LAB_141740f72:
+          LOCK();
+          *local_588 = *local_588 + -1;
+          UNLOCK();
+          if (*local_588 == 0) {
+LAB_141740f7f:
+            alloc::sync::Arc::drop_slow<std::path::PathBuf,alloc::alloc::Global>();
+          }
+          goto LAB_141740f8b;
+        }
+        if (((uStack_7c & 0x10) == 0) || ((uStack_7c & 0x400) != 0 && (local_78 & 0x20000000) != 0))
+        {
+          std::fs::DirEntry::path();
+          local_4a = 1;
+          std::sys::os_str::wtf8::Buf::as_mut_slice();
+          local_4a = 1;
+          std::fs::DirEntry::file_name();
+          std::sys::os_str::wtf8::Buf::as_mut_slice();
+          std::path::Path::_join();
+          if (CONCAT44(uStack_7c,local_80) != 0) {
+            std::alloc::__default_lib_allocator::__rust_dealloc();
+          }
+          local_4a = 0;
+          std::fs::copy<std::path::PathBuf,std::path::PathBuf>();
+          if (extraout_RAX_01 != 0) {
+            LOCK();
+            *local_588 = *local_588 + -1;
+            UNLOCK();
+            if (*local_588 != 0) goto LAB_141740f8b;
+            goto LAB_141740f7f;
+          }
+        }
+        else {
+          std::fs::DirEntry::path();
+          local_4b = 1;
+          std::sys::os_str::wtf8::Buf::as_mut_slice();
+          local_4b = 1;
+          std::fs::DirEntry::file_name();
+          std::sys::os_str::wtf8::Buf::as_mut_slice();
+          std::path::Path::_join();
+          if (CONCAT44(uStack_7c,local_80) != 0) {
+            std::alloc::__default_lib_allocator::__rust_dealloc();
+          }
+          local_4b = 0;
+          copy_dir_all<std::path::PathBuf,std::path::PathBuf>();
+          if (extraout_RAX_00 != 0) goto LAB_141740f72;
+        }
+        LOCK();
+        *local_588 = *local_588 + -1;
+        UNLOCK();
+        if (*local_588 == 0) {
+          alloc::sync::Arc::drop_slow<std::path::PathBuf,alloc::alloc::Global>();
+        }
+      }
+      if (local_310 != 0) {
+        std::sys::pal::windows::fs::impl$7::drop();
+      }
+      LOCK();
+      *local_300[0] = *local_300[0] + -1;
+      UNLOCK();
+      if (*local_300[0] == 0) {
+        local_49 = 0;
+        alloc::sync::Arc::drop_slow<std::path::PathBuf,alloc::alloc::Global>();
+      }
+      if (*local_58 == 0) {
+        return;
+      }
+      goto LAB_141740ff9;
+    }
+  }
+LAB_141740fc1:
+  if (*local_58 != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  if (*local_60 == 0 || extraout_RAX == 0) {
+    return;
+  }
+LAB_141740ff9:
+  std::alloc::__default_lib_allocator::__rust_dealloc();
+  return;
+}
+

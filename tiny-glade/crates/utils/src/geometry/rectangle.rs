@@ -1,6 +1,6 @@
 //! B Rectangle2d：axis@0、center@8、size@16，共24B观察字段。
 use super::{Aabb2, Circle2d, Ray2};
-use glam::{Affine2, Mat2, Vec2, Vec3};
+use glam::{Affine2, DVec2, Mat2, Mat3, Vec2, Vec3};
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Rectangle2d {
     pub axis: Vec2,
@@ -49,6 +49,14 @@ impl RectangleSliceState {
 impl Rectangle2d {
     pub fn orientation_mat2(self) -> Mat2 {
         Mat2::from_cols(self.axis, Vec2::new(-self.axis.y, self.axis.x))
+    }
+    /// Embeds the local 2D orientation in the XZ plane.
+    pub fn orientation_mat3(self) -> Mat3 {
+        Mat3::from_cols(
+            Vec3::new(self.axis.x, 0.0, self.axis.y),
+            Vec3::Y,
+            Vec3::new(-self.axis.y, 0.0, self.axis.x),
+        )
     }
     /// B inverse-matrix projection is intentionally not replaced by a transpose:
     /// public mutable fields can hold a nearly unit axis.
@@ -232,7 +240,7 @@ impl Rectangle2d {
     }
     pub fn get_closest_edge_id(self, point: Vec2) -> usize {
         // B 0x140c9acb0: for each edge, clamp the point's projection onto the
-        // segment, take the sqrt distance, and keep the first edge that is
+        // segment, compare squared distances, and keep the first edge that is
         // strictly closest. Ties retain the earlier edge index.
         let hx = self.size.x * 0.5;
         let hy = self.size.y * 0.5;
@@ -255,7 +263,7 @@ impl Rectangle2d {
             }
             let t = (((point - e1).dot(edge)) / len2).clamp(0.0, 1.0);
             let closest = e2 * t + e1 * (1.0 - t);
-            let d = (point - closest).length();
+            let d = (point - closest).length_squared();
             if d < best_d {
                 best_d = d;
                 best = i;
@@ -263,11 +271,9 @@ impl Rectangle2d {
         }
         best
     }
-    /// B's directed local-edge query, not a symmetric box SDF: negative local
-    /// coordinates are not folded with abs. The 80 existing snapshots cover
-    /// both sides of the origin; zero/degenerate axes retain IEEE results.
+    /// Signed distance to the rectangle perimeter, negative in the interior.
     pub fn signed_distance_to_closest_edge(self, point: Vec2) -> f32 {
-        let q = self.perimeter_local_point(point) - self.size * 0.5;
+        let q = self.perimeter_local_point(point).abs() - self.size * 0.5;
         if q.x < 0.0 || q.y < 0.0 {
             q.x.max(q.y)
         } else {
@@ -419,28 +425,58 @@ impl Rectangle2d {
             })
         })
     }
-    /// B 0x140c9b990 visits the other rectangle's boundary in self-local space.
+    /// Test whether the closed rectangle boundaries intersect. Strictly
+    /// contained contours do not intersect; shared edges and vertices do.
     pub fn intersects(self, other: Self) -> bool {
-        let inverse = self.orientation_mat2().inverse();
-        let relative_axis = inverse * other.axis;
-        let relative_y = inverse * Vec2::new(-other.axis.y, other.axis.x);
-        let relative_center = inverse * other.center - inverse * self.center;
-        let transform = Affine2::from_mat2_translation(
-            Mat2::from_cols(relative_axis, relative_y),
-            relative_center,
-        );
-        let points = other
-            .as_points2_centered_aligned()
-            .map(|p| transform.transform_point2(p));
-        let half = self.size * 0.5;
-        (0..4).any(|i| {
-            let start = points[i];
-            let direction = points[(i + 1) % 4] - start;
-            let a = (half - start) / direction;
-            let b = (-half - start) / direction;
-            let near = a.min(b).max_element();
-            let far = a.max(b).min_element();
-            near <= far && far >= 0.0 && (far <= 1.0 || (0.0..=1.0).contains(&near))
+        if [self, other].iter().any(|rectangle| {
+            !rectangle.axis.is_finite()
+                || !rectangle.center.is_finite()
+                || !rectangle.size.is_finite()
+                || rectangle.size.min_element() < 0.0
+                || rectangle.axis == Vec2::ZERO
+        }) {
+            return false;
+        }
+        let axis = self.axis.as_dvec2();
+        let perpendicular = DVec2::new(-axis.y, axis.x);
+        let scale_squared = axis.length_squared();
+        let to_local =
+            |delta: DVec2| DVec2::new(delta.dot(axis), delta.dot(perpendicular)) / scale_squared;
+        let relative_center = to_local(other.center.as_dvec2() - self.center.as_dvec2());
+        let relative_x = to_local(other.axis.as_dvec2());
+        let relative_y = DVec2::new(-relative_x.y, relative_x.x);
+        let other_half = other.size.as_dvec2() * 0.5;
+        let points = [
+            DVec2::new(-other_half.x, -other_half.y),
+            DVec2::new(other_half.x, -other_half.y),
+            DVec2::new(other_half.x, other_half.y),
+            DVec2::new(-other_half.x, other_half.y),
+        ]
+        .map(|p| relative_center + relative_x * p.x + relative_y * p.y);
+        let half = self.size.as_dvec2() * 0.5;
+        (0..4).any(|index| {
+            let start = points[index];
+            let direction = points[(index + 1) % 4] - start;
+            let mut near = f64::NEG_INFINITY;
+            let mut far = f64::INFINITY;
+            let mut on_boundary = false;
+            for dimension in 0..2 {
+                if direction[dimension] == 0.0 {
+                    if start[dimension].abs() > half[dimension] {
+                        return false;
+                    }
+                    on_boundary |= start[dimension].abs() == half[dimension];
+                } else {
+                    let first = (-half[dimension] - start[dimension]) / direction[dimension];
+                    let last = (half[dimension] - start[dimension]) / direction[dimension];
+                    near = near.max(first.min(last));
+                    far = far.min(first.max(last));
+                }
+            }
+            near <= far
+                && far >= 0.0
+                && near <= 1.0
+                && (on_boundary || (0.0..=1.0).contains(&near) || (0.0..=1.0).contains(&far))
         })
     }
     /// Clamp the selected dimension and move its named edge while retaining the
@@ -611,15 +647,15 @@ mod normal_regressions {
         );
     }
     #[test]
-    fn directed_edge_distance_preserves_negative_local_coordinates() {
+    fn edge_distance_is_symmetric_in_local_coordinates() {
         let rectangle = Rectangle2d::new_centered_axis_aligned(Vec2::splat(2.0));
         assert_eq!(
             rectangle.signed_distance_to_closest_edge(Vec2::new(-3.0, -2.0)),
-            -3.0
+            2.0f32.hypot(1.0)
         );
         assert_eq!(
             rectangle.distance_to_closest_edge(Vec2::new(-3.0, -2.0)),
-            0.0
+            2.0f32.hypot(1.0)
         );
         assert_eq!(
             rectangle.signed_distance_to_closest_edge(Vec2::new(3.0, 2.0)),

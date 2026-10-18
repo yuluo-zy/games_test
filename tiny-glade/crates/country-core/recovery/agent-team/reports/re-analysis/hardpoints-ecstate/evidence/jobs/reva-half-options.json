@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface, DecompileOptions\nfrom ghidra.util.task import ConsoleTaskMonitor\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x141218e30\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent\")\nout[\"signature\"] = str(f.getSignature())\n# try multiple option combos\ndef try_decompile(timeout, style=None, aggressive=False):\n    d = DecompInterface()\n    try:\n        d.openProgram(prog)\n        o = DecompileOptions()\n        if style:\n            o.setSimplificationStyle(style)\n        if aggressive:\n            o.setMaxPayload(0)\n        d.setOptions(o)\n        res = d.decompileFunction(f, timeout, monitor)\n        if res.decompileCompleted():\n            return {\"ok\": True, \"code\": res.getDecompiledFunction().getC()}\n        return {\"ok\": False, \"err\": str(res.getErrorMessage())}\n    finally:\n        d.dispose()\nfor attempt, args in enumerate([\n    (120, None, False),\n    (120, \"normalize\", False),\n    (180, \"normalize\", True),\n    (300, None, True),\n]):\n    out[\"attempt_%d\" % attempt] = try_decompile(*args)\nprint(json.dumps(out))",
+      "timeoutSeconds": 800
+    },
+    "timeout_seconds": 900
+  }
+]

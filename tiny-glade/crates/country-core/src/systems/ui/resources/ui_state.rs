@@ -13,6 +13,54 @@ use std::{
 
 use super::widget_params::WidgetParams;
 
+/// 拖拽状态（O：`country_core::systems::ui::resources::ui_state::DragState`，
+/// **1 B 判别枚举**）。
+///
+/// 2026-10-17 fresh 机器码（B patched, shared worker）：
+/// - `is_some`   0x14092e6b0：`cmp byte [rcx],2; setne al` → 判别 != 2；
+/// - `is_started` 0x14092e6c0：`cmp byte [rcx],3; sete al` → 判别 == 3；
+/// - `is_finished` 0x14092e6d0：`cmp byte [rcx],2; setb al` → 判别 < 2（0 或 1）。
+///
+/// 因此判别值：`0/1` = 两种 finished 变体（`UiWidgetContext::clicked`
+/// 0x14092e5f0 只认 1，即 `<2 && &1`），`2` = None，`3` = Started。
+/// 原生是 Rust enum；用 1 B 透明新类型承载，保留任意原始判别值（`into_drag_state`
+/// 0x14092df10 直接把 `UiState+0x19` 字节作为返回值）。
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct DragState(pub u8);
+
+impl DragState {
+    /// 判别 0：finished 变体（`is_finished` 真、`clicked` 假）。
+    pub const CANCELLED: Self = Self(0);
+    /// 判别 1：finished 变体（`clicked` 只认此值，`0x14092e5f0` `&1`）。
+    pub const FINISHED: Self = Self(1);
+    /// 判别 2：无拖拽（`dragged` 未命中时返回）。
+    pub const NONE: Self = Self(2);
+    /// 判别 3：拖拽已开始。
+    pub const STARTED: Self = Self(3);
+
+    /// 0x14092e6b0：`byte != 2`。
+    pub fn is_some(self) -> bool {
+        self.0 != 2
+    }
+
+    /// 0x14092e6c0：`byte == 3`。
+    pub fn is_started(self) -> bool {
+        self.0 == 3
+    }
+
+    /// 0x14092e6d0：`byte < 2`（无符号）。
+    pub fn is_finished(self) -> bool {
+        self.0 < 2
+    }
+}
+
+impl Default for DragState {
+    fn default() -> Self {
+        Self::NONE
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct WidgetId(pub u64);
 impl WidgetId {
@@ -32,8 +80,11 @@ impl WidgetId {
 /// supply these explicitly; missing input must not imply a dragging widget.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct UiInteraction {
+    /// +0x18: hover byte (`CMP byte [state+0x18],1/2` in 0x14092e5f0/620/680).
     pub native_tag: u8,
+    /// +0x19: click byte (returned by `hovered`; tested by `clicked`).
     pub native_phase: u8,
+    /// +0x38: active widget id compared against `UiWidgetContext` id.
     pub widget: WidgetId,
 }
 
@@ -53,15 +104,35 @@ pub struct ClearingCanvasWidget {
 #[derive(Resource)]
 pub struct UiState {
     interaction: UiInteraction,
+    /// +0x28: intersection payload discriminant. `is_active` 0x14092e680
+    /// rejects value 2 (`CMP dword ptr [RAX+0x28],2; SETNZ`). The remaining
+    /// intersection bytes are host-owned and not modelled here.
+    intersection_tag: u32,
     clearing_canvases: RwLock<HashMap<WidgetId, Arc<ClearingCanvasWidget>>>,
     /// +0x68：`HashMap<WidgetId, Arc<WidgetParams>>`（O：ui_state 章/DI-§2.4；
-    /// `add` 0x1409236d0 / `add_with_id` 0x14092e3e0 插表）。
+    /// `add` 0x1409236d0 / `add_with_id` 0x14092e3e0 插表）。The parking-lot
+    /// `RwLock` at native +0x60 guards this map (0x14092e3e0 LOCK word at
+    /// `[state+0x60]`, `memcpy` 0xb0 params, `Arc` 0xc0 insertion).
     widgets: RwLock<HashMap<WidgetId, Arc<WidgetParams>>>,
 }
 impl UiState {
+    /// B add_ui @140945d25..d70 installs empty registries and an inactive
+    /// interaction (native +0x18=0). Inactive payload bytes are not initialized
+    /// by that constructor; NONE/id0 below are safe owned projections only.
+    pub fn at_startup() -> Self {
+        let mut state = Self::new(UiInteraction {
+            native_tag: 0,
+            native_phase: DragState::NONE.0,
+            widget: WidgetId(0),
+        });
+        state.intersection_tag = 2;
+        state
+    }
+
     pub fn new(interaction: UiInteraction) -> Self {
         Self {
             interaction,
+            intersection_tag: 0,
             clearing_canvases: RwLock::new(HashMap::new()),
             widgets: RwLock::new(HashMap::new()),
         }
@@ -71,6 +142,31 @@ impl UiState {
     }
     pub fn interaction(&self) -> UiInteraction {
         self.interaction
+    }
+
+    /// +0x18 hover byte.
+    pub fn hover_byte(&self) -> u8 {
+        self.interaction.native_tag
+    }
+
+    /// +0x19 click byte.
+    pub fn click_byte(&self) -> u8 {
+        self.interaction.native_phase
+    }
+
+    /// +0x28 intersection discriminant (read by `is_active`).
+    pub fn intersection_tag(&self) -> u32 {
+        self.intersection_tag
+    }
+
+    /// Writes the +0x28 intersection discriminant (input owner).
+    pub fn set_intersection_tag(&mut self, tag: u32) {
+        self.intersection_tag = tag;
+    }
+
+    /// +0x38 active widget id.
+    pub fn active_widget(&self) -> WidgetId {
+        self.interaction.widget
     }
 
     /// `UiState::add<&str>` @0x1409236d0（O）：名字 → WidgetId::from_name →
@@ -113,7 +209,7 @@ impl UiState {
                 layer,
                 extent: Vec2::splat(130.0),
                 occlude_by_world: false,
-                no_history_recording: true,
+                no_history_recording: false,
             }),
         );
         UiWidgetContext { state: self, id }
@@ -128,13 +224,21 @@ pub struct UiWidgetContext<'a> {
     pub id: WidgetId,
 }
 impl UiWidgetContext<'_> {
-    pub fn dragged(&self) -> u8 {
+    /// `dragged` 0x14092df10（与 `slider3d::impl$1::into_drag_state` 同址 ICF 折叠）：
+    /// `byte[state+0x18] >= 2 && qword[state+0x38] == id` → `byte[state+0x19]`，
+    /// 否则 `2`（None）。
+    pub(crate) fn drag_state_raw(&self) -> DragState {
         let active = self.state.interaction;
         if active.native_tag >= 2 && active.widget == self.id {
-            active.native_phase
+            DragState(active.native_phase)
         } else {
-            2
+            DragState::NONE
         }
+    }
+
+    /// 原始字节视图（历史调用方仍按 `u8` 比较；原生返回即该字节）。
+    pub fn dragged(&self) -> u8 {
+        self.drag_state_raw().0
     }
 
     /// `clicked` @0x14092e5f0（O，ui_state 章）：`hover>1 && click<2 && click&1`
@@ -159,13 +263,120 @@ impl UiWidgetContext<'_> {
         }
     }
 
-    /// `is_active` @0x14092e680（O，review-audit 纠错：含 [+0x28]!=2 门控）：
-    /// `hover!=0 && id 匹配 && 交点载荷判别 != 2`（交点判别 = native_tag 面近似；
-    /// 原交点载荷 @+0x28..0x58 7 qword 由宿主写入，U）。
+    /// `is_active` @0x14092e680 (fresh disassembly 2026-10-17):
+    /// `byte[state+0x18] != 0 && qword[state+0x38] == id &&
+    /// dword[state+0x28] != 2` → `SETNZ AL`. The intersection discriminant is
+    /// the +0x28 dword, not the hover byte (the previous approximation compared
+    /// `native_tag != 2`).
     pub fn is_active(&self) -> bool {
         let active = self.state.interaction;
-        active.native_tag != 0
-            && active.widget == self.id
-            && active.native_tag != 2
+        active.native_tag != 0 && active.widget == self.id && self.state.intersection_tag != 2
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn state(hover: u8, click: u8, widget: WidgetId, intersection: u32) -> UiState {
+        let mut state = UiState::new(UiInteraction {
+            native_tag: hover,
+            native_phase: click,
+            widget,
+        });
+        state.set_intersection_tag(intersection);
+        state
+    }
+
+    /// 0x14092e5f0: `hover >= 2 && click <= 1 && click & 1 && id match`.
+    #[test]
+    fn clicked_matches_fresh_bytes() {
+        let id = WidgetId(5);
+        assert!(state(2, 1, id, 0).widget_context(id).clicked());
+        assert!(!state(2, 0, id, 0).widget_context(id).clicked());
+        assert!(!state(1, 1, id, 0).widget_context(id).clicked());
+        assert!(!state(2, 1, WidgetId(6), 0).widget_context(id).clicked());
+    }
+
+    /// 0x14092e620: `hover == 1 && id match` returns the click byte.
+    #[test]
+    fn hovered_returns_the_click_byte() {
+        let id = WidgetId(5);
+        assert_eq!(state(1, 7, id, 0).widget_context(id).hovered(), 7);
+        assert_eq!(state(1, 7, WidgetId(6), 0).widget_context(id).hovered(), 0);
+        assert_eq!(state(2, 7, id, 0).widget_context(id).hovered(), 0);
+    }
+
+    /// 0x14092e680: hover != 0, id match and intersection tag != 2.
+    #[test]
+    fn is_active_reads_the_intersection_tag_at_0x28() {
+        let id = WidgetId(5);
+        assert!(state(3, 0, id, 0).widget_context(id).is_active());
+        assert!(state(3, 0, id, 1).widget_context(id).is_active());
+        assert!(!state(3, 0, id, 2).widget_context(id).is_active());
+        assert!(!state(0, 0, id, 0).widget_context(id).is_active());
+        assert!(!state(3, 0, WidgetId(6), 0).widget_context(id).is_active());
+    }
+
+    /// `add_with_id` stores the WidgetId → Arc<WidgetParams> entry in the
+    /// +0x68 map (0x14092e3e0).
+    #[test]
+    fn widget_map_round_trips_by_id() {
+        let state = UiState::new(UiInteraction {
+            native_tag: 0,
+            native_phase: 0,
+            widget: WidgetId(0),
+        });
+        let id = WidgetId::from_name("wheel");
+        let context = state.add("wheel", WidgetParams::default());
+        assert_eq!(context.id, id);
+        assert!(state.widget(id).is_some());
+        assert!(state.widget(WidgetId(999)).is_none());
+    }
+
+    /// 0x14092e6b0 / 0x14092e6c0 / 0x14092e6d0 的逐判别行为。
+    #[test]
+    fn drag_state_methods_match_fresh_bytes() {
+        let cases = [
+            (0, true, false, true),
+            (1, true, false, true),
+            (2, false, false, false),
+            (3, true, true, false),
+            (9, true, false, false),
+        ];
+        for (raw, some, started, finished) in cases {
+            let d = DragState(raw);
+            assert_eq!(d.is_some(), some, "raw={raw}");
+            assert_eq!(d.is_started(), started, "raw={raw}");
+            assert_eq!(d.is_finished(), finished, "raw={raw}");
+        }
+        assert_eq!(DragState::default(), DragState::NONE);
+    }
+
+    /// 0x14092df10：`native_tag >= 2` 且 id 匹配时返回 +0x19 原字节，否则 None(2)。
+    #[test]
+    fn into_drag_state_returns_raw_phase_or_none() {
+        let id = WidgetId(5);
+        assert_eq!(
+            state(2, 3, id, 0).widget_context(id).drag_state_raw(),
+            DragState::STARTED
+        );
+        assert_eq!(
+            state(3, 0, id, 0).widget_context(id).drag_state_raw(),
+            DragState(0)
+        );
+        assert_eq!(
+            state(1, 3, id, 0).widget_context(id).drag_state_raw(),
+            DragState::NONE
+        );
+        assert_eq!(
+            state(2, 3, WidgetId(6), 0)
+                .widget_context(id)
+                .drag_state_raw(),
+            DragState::NONE
+        );
+        // 兼容视图。
+        assert_eq!(state(2, 3, id, 0).widget_context(id).dragged(), 3);
+        assert_eq!(state(1, 3, id, 0).widget_context(id).dragged(), 2);
     }
 }

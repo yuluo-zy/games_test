@@ -1,4 +1,4 @@
-//! B Circle2d实际还存rotation@12，旧12B局部投影不能表示所有圆采样。
+//! Circle geometry and perimeter sampling.
 use super::{Aabb2, Ray2};
 use crate::circular_f32::CircularF32;
 use crate::curve::{Curve2, Curve3XZ, CurveError, CurveU};
@@ -91,7 +91,7 @@ impl Circle2d {
     }
     pub fn closest_point_on_perimeter(self, p: Vec2) -> Vec2 {
         let d = p - self.center;
-        d.normalize() * self.radius + self.center
+        d.normalize_or(Vec2::X) * self.radius + self.center
     }
     pub fn with_expanded_diameter(self, delta: f32) -> Self {
         Self {
@@ -128,11 +128,14 @@ impl Circle2d {
         {
             return None;
         }
-        // 同心等半径允许走0/0，不能添加原入口没有的None分支。
+        // Concentric circles have either zero or infinitely many intersections.
+        if distance == 0.0 || !distance.is_finite() {
+            return None;
+        }
         let a = (distance * distance + (self.radius * self.radius - other.radius * other.radius))
             / (distance + distance);
         let delta = other.center - self.center;
-        let factor = (self.radius * self.radius - a * a).sqrt() / distance;
+        let factor = (self.radius * self.radius - a * a).max(0.0).sqrt() / distance;
         let mid = delta * (a / distance) + self.center;
         let offset = Vec2::new(-delta.y * factor, delta.x * factor);
         Some((mid + offset, mid - offset))
@@ -145,8 +148,23 @@ impl Circle2d {
             back: count,
         }
     }
+    fn sample_count(self, max_step: f32, span: f32) -> Result<usize, CurveError> {
+        if !max_step.is_finite() || max_step <= 0.0 {
+            return Err(CurveError::InvalidSpacing);
+        }
+        let count = (span * (self.perimeter() / max_step)).ceil().max(3.0);
+        if !count.is_finite() || count >= isize::MAX as f32 || !self.radius.is_finite() {
+            return Err(CurveError::InvalidSampleCount);
+        }
+        Ok(count as usize)
+    }
+    /// Samples both endpoints. Panics if the step is not finite and positive,
+    /// or if the requested sample count cannot fit in a collection.
     pub fn as_points2(&self, max_step: f32) -> CirclePoints2<'_> {
-        self.as_points2_ptcount((self.perimeter() / max_step).ceil().max(3.0) as usize)
+        let count = self
+            .sample_count(max_step, 1.0)
+            .expect("invalid circle sampling parameters");
+        self.as_points2_ptcount(count)
     }
     pub fn as_points3(
         &self,
@@ -157,7 +175,13 @@ impl Circle2d {
             .map(move |p| Vec3::new(p.x, height, p.y))
     }
     pub fn try_as_curve2(self, max_step: f32) -> Result<Curve2, CurveError> {
-        Curve2::try_new(self.as_points2(max_step).collect(), false)
+        let count = self.sample_count(max_step, 1.0)?;
+        let mut points = Vec::new();
+        points
+            .try_reserve_exact(count)
+            .map_err(|_| CurveError::AllocationFailed)?;
+        points.extend(self.as_points2_ptcount(count));
+        Curve2::try_new(points, false)
     }
     /// The B sampler includes both endpoints. It does not copy the first vertex
     /// to close the curve: sin(TAU) and sin(0) may leave slightly different points.
@@ -169,7 +193,9 @@ impl Circle2d {
     }
     /// B 0x140c97f50 uses the directed numeric range, without circular unwrapping.
     pub fn as_curve2_range(self, max_step: f32, start: f32, end: f32) -> Curve2 {
-        let count = (((end - start) * (self.perimeter() / max_step)).ceil() as usize).max(3);
+        let count = self
+            .sample_count(max_step, end - start)
+            .expect("invalid circle sampling parameters");
         let points = (0..count)
             .map(|index| {
                 let t = index as f32 / (count - 1) as f32;
@@ -186,6 +212,12 @@ pub struct CirclePoints2<'a> {
     pub front: usize,
     pub back: usize,
 }
+impl CirclePoints2<'_> {
+    fn point(&self, index: usize) -> Vec2 {
+        let denominator = self.count.saturating_sub(1).max(1) as f32;
+        self.circle.get_pos_at_u(index as f32 / denominator)
+    }
+}
 impl Iterator for CirclePoints2<'_> {
     type Item = Vec2;
     fn next(&mut self) -> Option<Vec2> {
@@ -194,12 +226,10 @@ impl Iterator for CirclePoints2<'_> {
         }
         let i = self.front;
         self.front += 1;
-        let u =
-            CurveU::<crate::curve::CurveCoordSemantic2D>::new(i as f32 / (self.count as f32 - 1.0));
-        Some(self.circle.get_pos_at_u(u.get()))
+        Some(self.point(i))
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let n = self.back - self.front;
+        let n = self.back.saturating_sub(self.front);
         (n, Some(n))
     }
 }
@@ -209,10 +239,8 @@ impl DoubleEndedIterator for CirclePoints2<'_> {
             return None;
         }
         self.back -= 1;
-        let u = CurveU::<crate::curve::CurveCoordSemantic2D>::new(
-            self.back as f32 / (self.count as f32 - 1.0),
-        );
-        Some(self.circle.get_pos_at_u(u.get()))
+        Some(self.point(self.back))
     }
 }
 impl ExactSizeIterator for CirclePoints2<'_> {}
+impl std::iter::FusedIterator for CirclePoints2<'_> {}

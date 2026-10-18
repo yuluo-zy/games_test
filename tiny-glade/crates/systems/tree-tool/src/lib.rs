@@ -2,8 +2,9 @@
 //!
 //! 原 crate（B skeleton）：`crates/systems/tree-tool/`（11 文件；24 符号 =
 //! 业务 13 / 内联 3 / 胶水 8）。
-//! 门禁（O，re-analyst-A 契约 §5）：ui_place_tree `mode==0x10`、
-//! ui_delete_tree `mode==9 && submode==6`、ui_move_tree `mode==0xb`；
+//! 门禁（O，2026-10-17 fresh 反编译）：ui_place_tree `mode==0x10`（Tree）、
+//! ui_delete_tree `mode==9 && submode==6`（Eraser(Tree)）、ui_move_tree
+//! `mode_native==0x10`（Tree，`uVar8-5==0xb` 即 0x10；re-analyst 记 0xb 误）；
 //! 进程全局 0x14362c098 共用（非 0 早退）。
 
 pub mod convert_preplaced_trees;
@@ -30,26 +31,26 @@ use crate::ui_move_tree::ui_move_tree;
 use crate::ui_place_tree::{place_tree, ui_place_tree};
 
 /// 放置树命令（O：`system_tree::ui_place_tree::PlaceTreeCmd`；ui_place_tree
-/// 0x142269170 发射（0x18B 命令记录 {u64 id?, u64 打包位置, u32}，re-analyst
-/// §2）、place_tree 0x142269970 消费）。
+/// 0x142269170 发射、place_tree 0x142269970 消费）。
+///
+/// Fresh 反编译（2026-10-17）：事件槽 stride **0x18** = bevy EventInstance
+/// （u64 id @+0）+ 载荷 Vec3 位置（x @+8、y @+0xc、z @+0x10）。写者：
+/// `*(slot+8) = CONCAT44(remapped_y, x)`、`*(slot+0x10) = z`（decomp
+/// ui_place_tree 0x142269170 行 155-167）。载荷**仅位置**，无 id/打包字段。
 #[derive(Event, Clone, Copy, Debug, Default)]
 pub struct PlaceTreeCmd {
-    /// 命令 id 槽（I：0x18B 首槽；place_tree 以 next_index 定实际 id）。
-    pub id: u64,
-    /// 打包位置（O：pack_2x16f_uint——点击位置打包面）。
-    pub packed_position: u64,
-    /// 0x18B 记录载荷（I）。
-    pub extra: u32,
+    /// 点击位置（世界；y 为地形高度，水下重映射后）。
+    pub position: glam::Vec3,
 }
 
-/// `system_tree::impl$0::build` @0x140650520（O 面：注册树系统族 + 8 个
-/// TypeId 检查/插入的资源 init，类型名 U）。
+/// `system_tree::impl$0::build` @0x140650520（O 面：注册树系统族 + 7 个
+/// 事件 init——PlaceTreeCmd/MoveTreeCmd/DeleteTreeCmd/InsertTreeCmd/
+/// SpawnPreplacedTrees/HideTreesinAreaCmd/HideTreesNextToWallCmd；TypeId 守卫。
+/// PathDrawEvent/SpawnPrefabCmd/DespawnPrefabCmd/OnTerrainChange 属其它插件域
+/// （terrain/prefab），不在此注册）。
 pub fn register_tree_tool_events(world: &mut World) {
     use country_core::resources::history::tree_edit::{DeleteTreeCmd, InsertTreeCmd, SpawnPreplacedTrees};
-    use country_core::resources::path_stroke::PathDrawEvent;
     use country_core::resources::tree_storage::{HideTreesinAreaCmd, HideTreesNextToWallCmd, MoveTreeCmd};
-    use country_core::systems::prefab::{DespawnPrefabCmd, SpawnPrefabCmd};
-    use country_core::systems::terrain::delayed_terrain_changed_msg::OnTerrainChange;
     world.init_resource::<Events<PlaceTreeCmd>>();
     world.init_resource::<Events<InsertTreeCmd>>();
     world.init_resource::<Events<DeleteTreeCmd>>();
@@ -57,10 +58,6 @@ pub fn register_tree_tool_events(world: &mut World) {
     world.init_resource::<Events<SpawnPreplacedTrees>>();
     world.init_resource::<Events<HideTreesinAreaCmd>>();
     world.init_resource::<Events<HideTreesNextToWallCmd>>();
-    world.init_resource::<Events<PathDrawEvent>>();
-    world.init_resource::<Events<SpawnPrefabCmd>>();
-    world.init_resource::<Events<DespawnPrefabCmd>>();
-    world.init_resource::<Events<OnTerrainChange>>();
 }
 
 /// 注册 CPU 系统（O：build 0x140650520 的 add_systems 面）。

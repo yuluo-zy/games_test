@@ -1,5 +1,7 @@
 use super::*;
+use crate::{Chunk, Reader, tag_from_str};
 use std::fs::{File, OpenOptions};
+use std::io::Cursor;
 use std::io::{BufWriter, Read};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -31,7 +33,7 @@ impl Drop for ScratchFile {
 fn disk_roundtrip<W: Write + Seek>(mut stream: W, scratch: &ScratchFile) {
     stream.write_all(b"prefix").unwrap();
     let mut writer = Writer::new(stream);
-    writer.add_chunk("empty").unwrap();
+    drop(writer.add_chunk("empty").unwrap());
     {
         let mut chunk = writer.add_chunk("data").unwrap();
         chunk.write_all(&vec![0x5a; 131_073]).unwrap();
@@ -39,7 +41,7 @@ fn disk_roundtrip<W: Write + Seek>(mut stream: W, scratch: &ScratchFile) {
         chunk.write_all(b"tail").unwrap();
     }
     writer.add_chunk(99u64).unwrap().write_all(b"end").unwrap();
-    writer.add_chunk("lastzero").unwrap();
+    drop(writer.add_chunk("lastzero").unwrap());
     let mut stream = writer.finish().unwrap();
     let end = stream.stream_position().unwrap();
     stream.flush().unwrap();
@@ -55,7 +57,14 @@ fn disk_roundtrip<W: Write + Seek>(mut stream: W, scratch: &ScratchFile) {
         .iter()
         .collect::<io::Result<Vec<_>>>()
         .unwrap();
-    assert_eq!(chunks.len(), 3); // 原规则忽略末尾恰好 16 字节的空段。
+    assert_eq!(chunks.len(), 4);
+    assert_eq!(
+        chunks[3],
+        Chunk {
+            tag: tag_from_str("lastzero"),
+            data: b""
+        }
+    );
     assert_eq!(
         chunks[0],
         Chunk {
@@ -96,12 +105,15 @@ enum Operation {
     Payload,
     PatchSeek,
     PatchWrite,
+    PatchPosition,
     Restore,
     Flush,
 }
 struct FaultIo {
     cursor: Cursor<Vec<u8>>,
     fault: Option<Operation>,
+    fault_kind: io::ErrorKind,
+    write_zero: bool,
     patching: bool,
     writes: usize,
     log: Vec<Operation>,
@@ -111,6 +123,8 @@ impl FaultIo {
         Self {
             cursor: Cursor::new(Vec::new()),
             fault: None,
+            fault_kind: io::ErrorKind::Other,
+            write_zero: false,
             patching: false,
             writes: 0,
             log: Vec::new(),
@@ -120,7 +134,7 @@ impl FaultIo {
         self.log.push(op);
         if self.fault == Some(op) {
             self.fault = None;
-            return Err(io::Error::other(format!("injected {op:?}")));
+            return Err(io::Error::new(self.fault_kind, format!("injected {op:?}")));
         }
         Ok(())
     }
@@ -137,6 +151,9 @@ impl Write for FaultIo {
             }
         };
         self.visit(op)?;
+        if self.write_zero {
+            return Ok(0);
+        }
         self.writes += 1;
         self.cursor.write(data)
     }
@@ -147,6 +164,7 @@ impl Write for FaultIo {
 impl Seek for FaultIo {
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         let op = match pos {
+            SeekFrom::Current(0) if self.patching => Operation::PatchPosition,
             SeekFrom::Current(0) => Operation::Position,
             SeekFrom::Start(8) => Operation::PatchSeek,
             _ => Operation::Restore,
@@ -157,66 +175,61 @@ impl Seek for FaultIo {
     }
 }
 #[test]
-fn header_and_payload_failures_are_not_silently_successful() {
+fn every_io_failure_poisoned_writer_without_followup_io() {
     for fault in [Operation::Position, Operation::Tag, Operation::Length] {
         let mut stream = FaultIo::new();
         stream.fault = Some(fault);
         let mut writer = Writer::new(stream);
         assert!(writer.add_chunk(7u64).is_err(), "{fault:?}");
-        assert!(writer.deferred_error.is_none());
-        assert_eq!(writer.inner.log.last(), Some(&fault));
+        let operations = writer.inner.log.len();
+        // Health checks precede tag validation, including after repeated errors.
+        assert!(writer.add_chunk("longerthan8").is_err());
+        assert!(writer.add_chunk(8u64).is_err());
+        assert_eq!(writer.inner.log.len(), operations);
+        assert!(writer.finish().is_err());
     }
-    let mut writer = Writer::new(FaultIo::new());
-    {
-        let mut chunk = writer.add_chunk(7u64).unwrap();
-        chunk.write_all(b"ok").unwrap();
-        chunk.parent.inner.fault = Some(Operation::Payload);
-        assert!(chunk.write_all(b"failed").is_err());
-    }
-    // payload 错误由调用者处理；Drop 只回填已经成功写入的字节。
-    let stream = writer.finish().unwrap();
-    assert_eq!(
-        Reader::new(stream.cursor.get_ref())
-            .iter()
-            .next()
-            .unwrap()
-            .unwrap()
-            .data,
-        b"ok"
-    );
-}
-#[test]
-fn all_drop_failures_surface_at_finish_without_later_io() {
     for fault in [
+        Operation::Payload,
+        Operation::Flush,
         Operation::Position,
         Operation::PatchSeek,
         Operation::PatchWrite,
+        Operation::PatchPosition,
         Operation::Restore,
     ] {
-        let mut writer = Writer::new(FaultIo::new());
-        {
+        for explicit_finish in [false, true] {
+            let mut writer = Writer::new(FaultIo::new());
             let mut chunk = writer.add_chunk(7u64).unwrap();
-            chunk.write_all(b"payload").unwrap();
+            chunk.write_all(b"ok").unwrap();
             chunk.parent.inner.fault = Some(fault);
+            match fault {
+                Operation::Payload => assert!(chunk.write_all(b"failed").is_err()),
+                Operation::Flush => assert!(chunk.flush().is_err()),
+                _ => {}
+            }
+            if explicit_finish {
+                assert!(chunk.finish().is_err(), "{fault:?}");
+            } else {
+                drop(chunk);
+            }
+            assert_eq!(writer.inner.log.last(), Some(&fault));
+            let operations = writer.inner.log.len();
+            assert!(writer.add_chunk(8u64).is_err());
+            assert_eq!(writer.inner.log.len(), operations);
+            assert!(writer.finish().is_err(), "{fault:?}");
         }
-        assert_eq!(writer.inner.log.last(), Some(&fault));
-        assert!(writer.deferred_error.is_some());
-        assert!(writer.finish().is_err(), "{fault:?}");
     }
 }
+
 #[test]
-fn flush_delegates_failure_and_does_not_finalize_chunk() {
+fn flush_keeps_chunk_open_until_explicit_finish() {
     let mut writer = Writer::new(FaultIo::new());
-    {
-        let mut chunk = writer.add_chunk(7u64).unwrap();
-        chunk.write_all(b"x").unwrap();
-        chunk.parent.inner.fault = Some(Operation::Flush);
-        assert!(chunk.flush().is_err());
-        assert!(chunk.parent.deferred_error.is_none());
-        assert_eq!(&chunk.parent.inner.cursor.get_ref()[8..16], &[0; 8]);
-        chunk.flush().unwrap();
-        chunk.write_all(b"y").unwrap();
-    }
+    let mut chunk = writer.add_chunk(7u64).unwrap();
+    chunk.write_all(b"x").unwrap();
+    chunk.flush().unwrap();
+    assert_eq!(&chunk.parent.inner.cursor.get_ref()[8..16], &[0; 8]);
+    chunk.write_all(b"y").unwrap();
+    chunk.finish().unwrap();
     let stream = writer.finish().unwrap();
     assert_eq!(
         Reader::new(stream.cursor.get_ref())
@@ -227,4 +240,101 @@ fn flush_delegates_failure_and_does_not_finalize_chunk() {
             .data,
         b"xy"
     );
+}
+
+#[test]
+fn checked_positions_reject_overflow_and_backward_stream() {
+    let mut stream = FaultIo::new();
+    stream.cursor.set_position(u64::MAX - 15);
+    let mut writer = Writer::new(stream);
+    assert_eq!(
+        writer.add_chunk(7u64).err().unwrap().kind(),
+        io::ErrorKind::InvalidInput
+    );
+    assert_eq!(writer.inner.log, [Operation::Position]);
+    assert!(writer.finish().is_err());
+
+    let mut writer = Writer::new(FaultIo::new());
+    let chunk = writer.add_chunk(7u64).unwrap();
+    chunk.parent.inner.cursor.set_position(0);
+    assert_eq!(
+        chunk.finish().unwrap_err().kind(),
+        io::ErrorKind::InvalidData
+    );
+    assert!(writer.finish().is_err());
+}
+
+#[test]
+fn interrupted_payload_writes_retry_and_write_zero_is_terminal() {
+    let mut writer = Writer::new(FaultIo::new());
+    let mut chunk = writer.add_chunk(7u64).unwrap();
+    chunk.parent.inner.fault = Some(Operation::Payload);
+    chunk.parent.inner.fault_kind = io::ErrorKind::Interrupted;
+    assert_eq!(
+        chunk.write(b"x").unwrap_err().kind(),
+        io::ErrorKind::Interrupted
+    );
+    chunk.parent.inner.fault = Some(Operation::Payload);
+    chunk.write_all(b"x").unwrap();
+    chunk.finish().unwrap();
+    assert!(writer.finish().is_ok());
+
+    let mut writer = Writer::new(FaultIo::new());
+    let mut chunk = writer.add_chunk(7u64).unwrap();
+    chunk.parent.inner.write_zero = true;
+    assert_eq!(
+        chunk.write_all(b"x").unwrap_err().kind(),
+        io::ErrorKind::WriteZero
+    );
+    let operations = chunk.parent.inner.log.len();
+    assert!(chunk.finish().is_err());
+    assert_eq!(writer.inner.log.len(), operations);
+    assert!(writer.finish().is_err());
+}
+
+#[test]
+fn forgotten_chunk_cannot_be_reported_as_complete() {
+    for payload in [b"".as_slice(), b"payload"] {
+        for start_another in [false, true] {
+            let mut writer = Writer::new(FaultIo::new());
+            let mut chunk = writer.add_chunk(7u64).unwrap();
+            chunk.write_all(payload).unwrap();
+            std::mem::forget(chunk);
+            if start_another {
+                let operations = writer.inner.log.len();
+                assert_eq!(
+                    writer.add_chunk(8u64).err().unwrap().kind(),
+                    io::ErrorKind::InvalidData
+                );
+                assert_eq!(writer.inner.log.len(), operations);
+            }
+            assert_eq!(
+                writer.finish().err().unwrap().kind(),
+                io::ErrorKind::InvalidData
+            );
+        }
+    }
+}
+
+#[test]
+fn append_only_files_cannot_silently_corrupt_backfilled_lengths() {
+    fn reject_append<W: Write + Seek>(stream: W) {
+        let mut writer = Writer::new(stream);
+        let mut chunk = writer.add_chunk(7u64).unwrap();
+        chunk.write_all(b"payload").unwrap();
+        assert_eq!(
+            chunk.finish().unwrap_err().kind(),
+            io::ErrorKind::InvalidData
+        );
+        assert!(writer.finish().is_err());
+    }
+
+    let (scratch, file) = ScratchFile::new();
+    drop(file);
+    reject_append(OpenOptions::new().append(true).open(&scratch.0).unwrap());
+    let (scratch, file) = ScratchFile::new();
+    drop(file);
+    reject_append(BufWriter::new(
+        OpenOptions::new().append(true).open(&scratch.0).unwrap(),
+    ));
 }

@@ -38,3 +38,12 @@ pub struct SetPlasterPeelAmountCmd {
     /// typed gap。
     pub _gap: u64,
 }
+
+pub mod construction;
+
+pub mod height_command;
+pub mod draw_wall;
+pub mod deferred_wall_history;
+pub mod ui_draw_wall;
+pub mod finish_wall;
+pub mod ui_continue_wall;

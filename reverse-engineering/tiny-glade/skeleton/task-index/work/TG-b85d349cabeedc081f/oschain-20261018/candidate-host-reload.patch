@@ -1,0 +1,22 @@
+--- a/crates/tiny-glade/src/run_game.rs
++++ b/crates/tiny-glade/src/run_game.rs
+@@ -355,6 +355,19 @@
+         (
+             country_core::resources::mouse_capture::mouse_capture,
+             country_core::resources::shutdown::initiate_game_shutdown,
++            // Original add_wall_systems closure @1403bf630: Reload(2)
++            // requests Game(1) during PostUpdate. OnEnter(Game) then consumes
++            // the canonical NextSession on the following state transition.
++            |state: bevy_ecs::prelude::Res<
++                bevy_state::state::State<country_core::app_loading_state::AppLoadingState>,
++            >,
++             mut next: bevy_ecs::prelude::ResMut<
++                bevy_state::state::NextState<country_core::app_loading_state::AppLoadingState>,
++            >| {
++                if *state.get() == country_core::app_loading_state::AppLoadingState::Reload {
++                    next.set(country_core::app_loading_state::AppLoadingState::Game);
++                }
++            },
+         ),
+     );
+     // Original in_set @0x14168c0e0 chooses GameSystemSet discriminant 3.

@@ -1,0 +1,10 @@
+--- games_test/tiny-glade/crates/country-core/tests/input_pipeline.rs
++++ games_test/tiny-glade/crates/country-core/tests/input_pipeline.rs
+@@ -32,6 +32,7 @@
+ fn fixture() -> (World, Schedule) {
+     let mut world = World::new();
+     input::register_input_events(&mut world);
++    world.insert_resource(country_core::game_profile::GameProfile::default());
+     let mut toolbar = Toolbar::default();
+     toolbar.switch_mode(&AppMode::Path);
+     world.insert_resource(toolbar);

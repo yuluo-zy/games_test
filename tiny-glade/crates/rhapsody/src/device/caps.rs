@@ -71,6 +71,12 @@ pub enum Feature {
     ShaderStorageImageArrayDynamicIndexing = 26,
     /// Core `imageCubeArray` for cube-array views.
     ImageCubeArray = 27,
+    /// Core `multiDrawIndirect`; more than one command per indirect call.
+    MultiDrawIndirect = 28,
+    /// Core `drawIndirectFirstInstance`; GPU commands may carry firstInstance.
+    DrawIndirectFirstInstance = 29,
+    /// Vulkan 1.2 `drawIndirectCount`; the count is read from a GPU buffer.
+    DrawIndirectCount = 30,
 }
 
 impl Feature {
@@ -80,7 +86,7 @@ impl Feature {
     }
 
     /// 全部已建模能力。位下标必须与 `repr(u8)` 判别值一一对应。
-    pub const ALL: [Feature; 28] = [
+    pub const ALL: [Feature; 31] = [
         Self::TimelineSemaphore,
         Self::Synchronization2,
         Self::DynamicRendering,
@@ -109,6 +115,9 @@ impl Feature {
         Self::ShaderSampledImageArrayDynamicIndexing,
         Self::ShaderStorageImageArrayDynamicIndexing,
         Self::ImageCubeArray,
+        Self::MultiDrawIndirect,
+        Self::DrawIndirectFirstInstance,
+        Self::DrawIndirectCount,
     ];
 }
 

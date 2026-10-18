@@ -1,0 +1,755 @@
+{
+  "backend": "ghidra",
+  "worker": "shared",
+  "access": "read",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "get_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x1409ae900,0x1409af390,0x1409afcc0,0x1409b0570,0x1409b07f0,0x1409b0b20,0x1409b0fa0,0x1409b12b0,0x1409b1ab0,0x1409b1b00,0x1409b1e90,0x1409b1ee0,0x1409b2120,0x1409b2290,0x1409b2580,0x1409b2800,0x1409b28c0,0x1409b2f40,0x1409b3220,0x1409b3270",
+        "fields": "signature,decompiled_code,callees",
+        "include_call_context": false
+      },
+      "args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x1409ae900,0x1409af390,0x1409afcc0,0x1409b0570,0x1409b07f0,0x1409b0b20,0x1409b0fa0,0x1409b12b0,0x1409b1ab0,0x1409b1b00,0x1409b1e90,0x1409b1ee0,0x1409b2120,0x1409b2290,0x1409b2580,0x1409b2800,0x1409b28c0,0x1409b2f40,0x1409b3220,0x1409b3270",
+        "fields": "signature,decompiled_code,callees",
+        "include_call_context": false
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program\":\"tiny-glade.exe\",\"functions\":{\"0x1409ae900\":{\"name\":\"call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$6,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\",\"size\":1718,\"address\":\"1409ae900\",\"signature\":\"void __cdecl call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$6,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncore::ops::function::FnOnce::\\ncall_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env_6,tuple_<country_core::render::pass_builder::draw_builder::DrawBuilder,ref_<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\\n          (void)\\n\\n{\\n  longlong lVar1;\\n  uint uVar2;\\n  ulonglong uVar3;\\n  undefined4 uVar4;\\n  ulonglong uVar5;\\n  longlong extraout_RAX;\\n  undefined8 *extraout_RAX_00;\\n  longlong extraout_RAX_01;\\n  undefined8 *extraout_RAX_02;\\n  longlong extraout_RAX_03;\\n  undefined8 *extraout_RAX_04;\\n  void *in_RCX;\\n  longlong in_RDX;\\n  undefined8 *puVar6;\\n  longlong in_R8;\\n  ulonglong uVar7;\\n  undefined8 *puVar8;\\n  int iVar9;\\n  undefined1 local_450 [264];\\n  undefined8 local_348 [31];\\n  undefined4 local_250 [62];\\n  undefined8 local_158;\\n  char local_7a;\\n  undefined8 *local_60;\\n  ulonglong local_58;\\n  undefined1 local_4a;\\n  undefined1 local_49;\\n  undefined8 local_48;\\n  \\n  local_48 = 0xfffffffffffffffe;\\n  memcpy(local_450,in_RCX,0xf8);\\n  local_58 = *(ulonglong *)(in_RDX + 8);\\n  uVar7 = local_58 & 0xffffffff;\\n  if (uVar7 < *(ulonglong *)(in_R8 + 0x10)) {\\n    iVar9 = (int)(local_58 >> 0x20);\\n    if ((*(int *)(*(longlong *)(in_R8 + 8) + uVar7 * 0x14) == iVar9) &&\\n       (lVar1 = *(longlong *)(in_R8 + 8) + uVar7 * 0x14, *(int *)(lVar1 + 4) != -1)) {\\n      uVar2 = *(uint *)(lVar1 + 0xc);\\n      local_49 = 1;\\n      bevy_ecs::component::Components::get_id();\\n      if ((extraout_RAX != 0) && ((ulonglong)uVar2 < *(ulonglong *)(in_R8 + 0x1b0))) {\\n        local_49 = 1;\\n        bevy_ecs::storage::table::Table::get_component();\\n        if (extraout_RAX_00 != (undefined8 *)0x0) {\\n          if (((*(ulonglong *)(in_R8 + 0x10) <= uVar7) ||\\n              (*(int *)(*(longlong *)(in_R8 + 8) + uVar7 * 0x14) != iVar9)) ||\\n             (lVar1 = *(longlong *)(in_R8 + 8) + uVar7 * 0x14, *(int *)(lVar1 + 4) == -1)) {\\n            local_158 = local_58;\\n            local_49 = 1;\\n                    // WARNING: Subroutine does not return\\n            result::unwrap_failed();\\n          }\\n          uVar2 = *(uint *)(lVar1 + 0xc);\\n          local_49 = 1;\\n          local_60 = extraout_RAX_00;\\n          bevy_ecs::component::Components::get_id();\\n          if ((extraout_RAX_01 == 0) || (*(ulonglong *)(in_R8 + 0x1b0) <= (ulonglong)uVar2)) {\\n            puVar8 = (undefined8 *)0x0;\\n            uVar3 = *(ulonglong *)(in_R8 + 0x10);\\n            uVar5 = local_58;\\n            uVar4 = local_158._4_4_;\\n          }\\n          else {\\n            local_49 = 1;\\n            bevy_ecs::storage::table::Table::get_component();\\n            uVar3 = *(ulonglong *)(in_R8 + 0x10);\\n            puVar8 = extraout_RAX_02;\\n            uVar5 = local_58;\\n            uVar4 = local_158._4_4_;\\n          }\\n          local_158 = uVar5;\\n          local_58 = local_158;\\n          if (((uVar7 < uVar3) && (*(int *)(*(longlong *)(in_R8 + 8) + uVar7 * 0x14) == iVar9)) &&\\n             (lVar1 = *(longlong *)(in_R8 + 8) + uVar7 * 0x14, *(int *)(lVar1 + 4) != -1)) {\\n            uVar2 = *(uint *)(lVar1 + 0xc);\\n            local_49 = 1;\\n            local_158._4_4_ = uVar4;\\n            bevy_ecs::component::Components::get_id();\\n            if ((extraout_RAX_03 == 0) || (*(ulonglong *)(in_R8 + 0x1b0) <= (ulonglong)uVar2)) {\\n              puVar6 = (undefined8 *)0x0;\\n            }\\n            else {\\n              local_49 = 1;\\n              bevy_ecs::storage::table::Table::get_component();\\n              puVar6 = extraout_RAX_04;\\n            }\\n            memcpy(&local_158,local_450,0xf8);\\n            local_348[0] = *local_60;\\n            local_250[0] = 2;\\n            country_core::render::pass_builder::draw_builder::impl$3::\\n            bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>\\n                      ();\\n            memcpy(local_250,&local_158,0xf8);\\n            if (puVar8 == (undefined8 *)0x0) {\\n              local_348[0] = 0x4b2c611c0a80f895;\\n            }\\n            else {\\n              local_348[0] = *puVar8;\\n            }\\n            local_158 = CONCAT44(local_158._4_4_,2);\\n            country_core::render::pass_builder::draw_builder::impl$3::\\n            bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>\\n                      ();\\n            memcpy(&local_158,local_250,0xf8);\\n            if (local_7a != '\\\\b') {\\n              country_core::render::pass_builder::uniform_binder::UniformBinder::\\n              write_uniform<country_core::render::pass_builder::draw_builder::impl_2::uniform::closure_env_0<bool>,bool>\\n                        ();\\n            }\\n            memcpy(local_250,&local_158,0xf8);\\n            if (puVar6 == (undefined8 *)0x0) {\\n              local_348[0] = 0xe410c6c6901dbb51;\\n            }\\n            else {\\n              local_348[0] = *puVar6;\\n            }\\n            local_158._0_4_ = 2;\\n            country_core::render::pass_builder::draw_builder::impl$3::\\n            bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>\\n                      ();\\n            memcpy(&local_158,local_250,0xf8);\\n            local_348[0] = 0xe6d1a603f18a02b7;\\n            local_250[0] = 2;\\n            country_core::render::pass_builder::draw_builder::impl$3::\\n            bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>\\n                      ();\\n            memcpy(local_250,&local_158,0xf8);\\n            local_348[0]._0_1_ = 0xf;\\n            local_158._0_4_ = 2;\\n            country_core::render::pass_builder::draw_builder::impl$3::\\n            bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();\\n            memcpy(&local_158,local_250,0xf8);\\n            local_348[0]._0_1_ = 5;\\n            local_250[0] = 2;\\n            country_core::render::pass_builder::draw_builder::impl$3::\\n            bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();\\n            memcpy(local_250,&local_158,0xf8);\\n            local_348[0]._0_1_ = 0xe;\\n            local_158._0_4_ = 2;\\n            country_core::render::pass_builder::draw_builder::impl$3::\\n            bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();\\n            memcpy(&local_158,local_250,0xf8);\\n            local_348[0]._0_1_ = 0x13;\\n            local_250[0] = 2;\\n            country_core::render::pass_builder::draw_builder::impl$3::\\n            bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();\\n            memcpy(local_250,&local_158,0xf8);\\n            local_348[0] = CONCAT71(local_348[0]._1_7_,9);\\n            local_158 = CONCAT44(local_158._4_4_,2);\\n            country_core::render::pass_builder::draw_builder::impl$3::\\n            bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();\\n            memcpy(&local_158,local_250,0xf8);\\n            local_4a = 10;\\n            local_348[0] = CONCAT44(local_348[0]._4_4_,2);\\n            country_core::render::pass_builder::draw_builder::impl$3::\\n            bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();\\n            memcpy(local_348,&local_158,0xf8);\\n            local_49 = 0;\\n            country_core::render::pass_builder::draw_builder::DrawBuilder::draw();\\n            return;\\n          }\\n          local_49 = 1;\\n                    // WARNING: Subroutine does not return\\n          result::unwrap_failed();\\n        }\\n      }\\n      local_49 = 1;\\n                    // WARNING: Subroutine does not return\\n      option::unwrap_failed();\\n    }\\n  }\\n  local_49 = 1;\\n  local_158 = local_58;\\n                    // WARNING: Subroutine does not return\\n  result::unwrap_failed();\\n}\\n\\n\",\"callee_count\":9,\"callees\":[{\"name\":\"bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>\",\"address\":\"140908610\"},{\"name\":\"bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>\",\"address\":\"140908c50\"},{\"name\":\"draw\",\"address\":\"140906f40\"},{\"name\":\"get_component\",\"address\":\"140d00b50\"},{\"name\":\"get_id\",\"address\":\"1409871a0\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9310\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9760\"},{\"name\":\"write_uniform<country_core::render::pass_builder::draw_builder::impl$2::uniform::closure_env$0<bool>,bool>\",\"address\":\"14096b850\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1409af390\":{\"name\":\"call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$27,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\",\"size\":1766,\"address\":\"1409af390\",\"signature\":\"void __cdecl call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$27,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncore::ops::function::FnOnce::\\ncall_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env_27,tuple_<country_core::render::pass_builder::draw_builder::DrawBuilder,ref_<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\\n          (void)\\n\\n{\\n  uint uVar1;\\n  longlong lVar2;\\n  undefined8 *puVar3;\\n  longlong extraout_RAX;\\n  longlong extraout_RAX_00;\\n  undefined8 *extraout_RAX_01;\\n  longlong extraout_RAX_02;\\n  longlong extraout_RAX_03;\\n  longlong extraout_RAX_04;\\n  void *in_RCX;\\n  longlong in_RDX;\\n  ulonglong uVar4;\\n  ulonglong uVar5;\\n  longlong in_R8;\\n  int iVar6;\\n  ulonglong uVar7;\\n  bool bVar8;\\n  undefined1 local_380 [264];\\n  undefined4 local_278 [55];\\n  char local_19a;\\n  ulonglong local_180 [27];\\n  char local_a2;\\n  undefined8 local_88;\\n  longlong local_80;\\n  ulonglong local_78;\\n  undefined8 *local_70;\\n  undefined4 local_68;\\n  undefined1 local_61;\\n  undefined8 local_60;\\n  \\n  local_60 = 0xfffffffffffffffe;\\n  memcpy(local_380,in_RCX,0xf8);\\n  local_180[0] = *(ulonglong *)(in_RDX + 8);\\n  uVar7 = local_180[0] & 0xffffffff;\\n  if (*(ulonglong *)(in_R8 + 0x10) <= uVar7) {\\nLAB_1409af90b:\\n    local_61 = 1;\\n                    // WARNING: Subroutine does not return\\n    result::unwrap_failed();\\n  }\\n  iVar6 = (int)(local_180[0] >> 0x20);\\n  if ((*(int *)(*(longlong *)(in_R8 + 8) + uVar7 * 0x14) != iVar6) ||\\n     (uVar5 = (ulonglong)*(uint *)(*(longlong *)(in_R8 + 8) + uVar7 * 0x14 + 4), uVar5 == 0xffffffff\\n     )) goto LAB_1409af90b;\\n  local_80 = in_R8 + 0x38;\\n  local_61 = 1;\\n  uVar4 = 0xe8fca894de8d2f65;\\n  local_78 = local_180[0];\\n  bevy_ecs::component::Components::get_id();\\n  if (extraout_RAX == 1) {\\n    if (*(ulonglong *)(in_R8 + 0x108) <= uVar5) {\\n      local_61 = 1;\\n                    // WARNING: Subroutine does not return\\n      panicking::panic_bounds_check();\\n    }\\n    if (*(ulonglong *)(*(longlong *)(in_R8 + 0x100) + 0x88 + uVar5 * 0xa0) <= uVar4)\\n    goto LAB_1409af4af;\\n    lVar2 = *(longlong *)(*(longlong *)(in_R8 + 0x100) + uVar5 * 0xa0 + 0x80);\\n    local_68 = (undefined4)\\n               CONCAT71((int7)((ulonglong)lVar2 >> 8),*(longlong *)(lVar2 + uVar4 * 8) != 0);\\n    uVar5 = *(ulonglong *)(in_R8 + 0x10);\\n  }\\n  else {\\nLAB_1409af4af:\\n    local_68 = 0;\\n    uVar5 = *(ulonglong *)(in_R8 + 0x10);\\n  }\\n  if (((uVar5 <= uVar7) || (*(int *)(*(longlong *)(in_R8 + 8) + uVar7 * 0x14) != iVar6)) ||\\n     (lVar2 = *(longlong *)(in_R8 + 8) + uVar7 * 0x14, *(int *)(lVar2 + 4) == -1)) {\\n    local_180[0] = local_78;\\n    local_61 = 1;\\n                    // WARNING: Subroutine does not return\\n    result::unwrap_failed();\\n  }\\n  uVar1 = *(uint *)(lVar2 + 0xc);\\n  local_61 = 1;\\n  bevy_ecs::component::Components::get_id();\\n  if (extraout_RAX_00 == 0) {\\n    local_70 = (undefined8 *)0x0;\\nLAB_1409af54d:\\n    uVar5 = *(ulonglong *)(in_R8 + 0x10);\\n    local_180[0] = local_78;\\n  }\\n  else {\\n    if ((ulonglong)uVar1 < *(ulonglong *)(in_R8 + 0x1b0)) {\\n      local_61 = 1;\\n      bevy_ecs::storage::table::Table::get_component();\\n      local_70 = extraout_RAX_01;\\n      goto LAB_1409af54d;\\n    }\\n    local_70 = (undefined8 *)0x0;\\n    uVar5 = *(ulonglong *)(in_R8 + 0x10);\\n    local_180[0] = local_78;\\n  }\\n  local_78 = local_180[0];\\n  if (((uVar5 <= uVar7) || (*(int *)(*(longlong *)(in_R8 + 8) + uVar7 * 0x14) != iVar6)) ||\\n     (uVar5 = (ulonglong)*(uint *)(*(longlong *)(in_R8 + 8) + uVar7 * 0x14 + 4), uVar5 == 0xffffffff\\n     )) {\\n    local_61 = 1;\\n                    // WARNING: Subroutine does not return\\n    result::unwrap_failed();\\n  }\\n  local_61 = 1;\\n  uVar4 = 0x66476a13bbcc5e41;\\n  bevy_ecs::component::Components::get_id();\\n  if (extraout_RAX_02 == 1) {\\n    if (*(ulonglong *)(in_R8 + 0x108) <= uVar5) {\\n      local_61 = 1;\\n                    // WARNING: Subroutine does not return\\n      panicking::panic_bounds_check();\\n    }\\n    if (uVar4 < *(ulonglong *)(*(longlong *)(in_R8 + 0x100) + 0x88 + uVar5 * 0xa0)) {\\n      bVar8 = *(longlong *)\\n               (*(longlong *)(*(longlong *)(in_R8 + 0x100) + uVar5 * 0xa0 + 0x80) + uVar4 * 8) != 0;\\n      uVar5 = *(ulonglong *)(in_R8 + 0x10);\\n      goto joined_r0x0001409af60e;\\n    }\\n  }\\n  bVar8 = false;\\n  uVar5 = *(ulonglong *)(in_R8 + 0x10);\\njoined_r0x0001409af60e:\\n  if (((uVar5 <= uVar7) || (*(int *)(*(longlong *)(in_R8 + 8) + uVar7 * 0x14) != iVar6)) ||\\n     (lVar2 = *(longlong *)(in_R8 + 8) + uVar7 * 0x14, *(int *)(lVar2 + 4) == -1)) {\\n    local_180[0] = local_78;\\n    local_61 = 1;\\n                    // WARNING: Subroutine does not return\\n    result::unwrap_failed();\\n  }\\n  uVar1 = *(uint *)(lVar2 + 0xc);\\n  local_61 = 1;\\n  bevy_ecs::component::Components::get_id();\\n  if ((extraout_RAX_03 != 0) && ((ulonglong)uVar1 < *(ulonglong *)(in_R8 + 0x1b0))) {\\n    local_61 = 1;\\n    bevy_ecs::storage::table::Table::get_component();\\n  }\\n  if (((uVar7 < *(ulonglong *)(in_R8 + 0x10)) &&\\n      (*(int *)(*(longlong *)(in_R8 + 8) + uVar7 * 0x14) == iVar6)) &&\\n     (lVar2 = *(longlong *)(in_R8 + 8) + uVar7 * 0x14, *(int *)(lVar2 + 4) != -1)) {\\n    uVar1 = *(uint *)(lVar2 + 0xc);\\n    local_61 = 1;\\n    bevy_ecs::component::Components::get_id();\\n    if ((extraout_RAX_04 != 0) && ((ulonglong)uVar1 < *(ulonglong *)(in_R8 + 0x1b0))) {\\n      local_61 = 1;\\n      bevy_ecs::storage::table::Table::get_component();\\n    }\\n    puVar3 = local_70;\\n    memcpy(local_180,local_380,0xf8);\\n    if (bVar8) {\\n      local_88 = 0xbd39551337285fb6;\\n    }\\n    else if (puVar3 == (undefined8 *)0x0) {\\n      local_88 = 0x68a65811a5851b4b;\\n    }\\n    else {\\n      local_88 = *puVar3;\\n    }\\n    local_278[0] = 2;\\n    country_core::render::pass_builder::draw_builder::impl$3::\\n    bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n    memcpy(local_278,local_180,0xf8);\\n    if (local_19a != '\\\\b') {\\n      country_core::render::pass_builder::uniform_binder::UniformBinder::\\n      write_uniform<country_core::render::pass_builder::draw_builder::impl_2::uniform::closure_env_0<bool>,bool>\\n                ();\\n    }\\n    memcpy(local_180,local_278,0xf8);\\n    if (local_a2 != '\\\\b') {\\n      country_core::render::pass_builder::uniform_binder::UniformBinder::\\n      write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<f32>,f32>\\n                ();\\n    }\\n    memcpy(local_278,local_180,0xf8);\\n    if (local_19a != '\\\\b') {\\n      country_core::render::pass_builder::uniform_binder::UniformBinder::\\n      write_uniform<country_core::render::pass_builder::draw_builder::impl_2::uniform::closure_env_0<bool>,bool>\\n                ();\\n    }\\n    memcpy(local_180,local_278,0xf8);\\n    if (local_a2 != '\\\\b') {\\n      country_core::render::pass_builder::uniform_binder::UniformBinder::\\n      write_uniform<country_core::render::pass_builder::draw_builder::impl_2::uniform::closure_env_0<bool>,bool>\\n                ();\\n    }\\n    memcpy(local_278,local_180,0xf8);\\n    local_61 = 0;\\n    country_core::render::pass_builder::draw_builder::DrawBuilder::draw();\\n    return;\\n  }\\n  local_180[0] = local_78;\\n  local_61 = 1;\\n                    // WARNING: Subroutine does not return\\n  result::unwrap_failed();\\n}\\n\\n\",\"callee_count\":9,\"callees\":[{\"name\":\"bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>\",\"address\":\"140908610\"},{\"name\":\"draw\",\"address\":\"140906f40\"},{\"name\":\"get_component\",\"address\":\"140d00b50\"},{\"name\":\"get_id\",\"address\":\"1409871a0\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"panic_bounds_check\",\"address\":\"1428d9518\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9760\"},{\"name\":\"write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<f32>,f32>\",\"address\":\"14096ba30\"},{\"name\":\"write_uniform<country_core::render::pass_builder::draw_builder::impl$2::uniform::closure_env$0<bool>,bool>\",\"address\":\"14096b850\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1409afcc0\":{\"name\":\"call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$2,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\",\"size\":1259,\"address\":\"1409afcc0\",\"signature\":\"void __cdecl call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$2,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncore::ops::function::FnOnce::\\ncall_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env_2,tuple_<country_core::render::pass_builder::draw_builder::DrawBuilder,ref_<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\\n          (void)\\n\\n{\\n  longlong lVar1;\\n  float fVar2;\\n  float fVar3;\\n  float fVar4;\\n  float fVar5;\\n  longlong extraout_RAX;\\n  longlong extraout_RAX_00;\\n  longlong extraout_RAX_01;\\n  float *extraout_RAX_02;\\n  void *in_RCX;\\n  ulonglong uVar6;\\n  longlong in_RDX;\\n  longlong in_R8;\\n  ulonglong uVar7;\\n  float fVar8;\\n  float fVar9;\\n  float fVar10;\\n  float fVar11;\\n  undefined1 local_3c8 [264];\\n  undefined1 local_2c0 [222];\\n  char local_1e2;\\n  undefined8 local_1c8;\\n  float fStack_1c0;\\n  float fStack_1bc;\\n  float local_1b8;\\n  float fStack_1b4;\\n  float fStack_1b0;\\n  float fStack_1ac;\\n  float local_1a8;\\n  float fStack_1a4;\\n  float fStack_1a0;\\n  float fStack_19c;\\n  float local_198;\\n  float fStack_194;\\n  undefined4 uStack_190;\\n  undefined4 uStack_18c;\\n  char local_ea;\\n  undefined1 local_c1;\\n  undefined8 local_c0;\\n  \\n  local_c0 = 0xfffffffffffffffe;\\n  memcpy(local_3c8,in_RCX,0xf8);\\n  uVar7 = *(ulonglong *)(in_RDX + 8);\\n  uVar6 = uVar7 & 0xffffffff;\\n  if (((uVar6 < *(ulonglong *)(in_R8 + 0x10)) &&\\n      (*(int *)(*(longlong *)(in_R8 + 8) + uVar6 * 0x14) == (int)(uVar7 >> 0x20))) &&\\n     (lVar1 = *(longlong *)(in_R8 + 8) + uVar6 * 0x14, *(int *)(lVar1 + 4) != -1)) {\\n    uVar7 = (ulonglong)*(uint *)(lVar1 + 0xc);\\n    local_c1 = 1;\\n    bevy_ecs::component::Components::get_id();\\n    if ((extraout_RAX != 0) && (uVar7 < *(ulonglong *)(in_R8 + 0x1b0))) {\\n      local_c1 = 1;\\n      bevy_ecs::storage::table::Table::get_component();\\n      if (extraout_RAX_00 != 0) {\\n        local_c1 = 1;\\n        bevy_ecs::component::Components::get_id();\\n        if ((extraout_RAX_01 != 0) && (uVar7 < *(ulonglong *)(in_R8 + 0x1b0))) {\\n          local_c1 = 1;\\n          bevy_ecs::storage::table::Table::get_component();\\n          if (extraout_RAX_02 != (float *)0x0) {\\n            memcpy(&local_1c8,local_3c8,0xf8);\\n            if (local_ea != '\\\\b') {\\n              country_core::render::pass_builder::uniform_binder::UniformBinder::\\n              write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<i32>,i32>\\n                        ();\\n            }\\n            memcpy(local_2c0,&local_1c8,0xf8);\\n            if (local_1e2 != '\\\\b') {\\n              country_core::render::pass_builder::uniform_binder::UniformBinder::\\n              write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<f32>,f32>\\n                        ();\\n            }\\n            memcpy(&local_1c8,local_2c0,0xf8);\\n            if (local_ea != '\\\\b') {\\n              country_core::render::pass_builder::uniform_binder::UniformBinder::\\n              write_uniform<country_core::render::pass_builder::draw_builder::impl_2::uniform::closure_env_0<bool>,bool>\\n                        ();\\n            }\\n            memcpy(local_2c0,&local_1c8,0xf8);\\n            if (local_1e2 != '\\\\b') {\\n              fVar2 = *extraout_RAX_02;\\n              fVar3 = extraout_RAX_02[1];\\n              fVar4 = extraout_RAX_02[2];\\n              fVar5 = extraout_RAX_02[3];\\n              local_198 = extraout_RAX_02[4];\\n              fStack_194 = extraout_RAX_02[5];\\n              uStack_190 = (undefined4)((ulonglong)*(undefined8 *)(extraout_RAX_02 + 5) >> 0x20);\\n              fVar8 = fVar3 + fVar3;\\n              fVar9 = fVar4 + fVar4;\\n              fVar10 = fVar5 * (fVar2 + fVar2);\\n              fVar11 = fVar2 * (fVar2 + fVar2);\\n              fStack_1ac = extraout_RAX_02[8];\\n              fStack_19c = extraout_RAX_02[9];\\n              local_1a8 = (fVar2 * fVar9 + fVar5 * fVar8) * fStack_19c;\\n              fStack_1a4 = (fVar3 * fVar9 - fVar10) * fStack_19c;\\n              fStack_1a0 = (1.0 - (fVar11 + fVar3 * fVar8)) * fStack_19c;\\n              fStack_19c = fStack_19c * 0.0;\\n              local_1b8 = (fVar2 * fVar8 - fVar9 * fVar5) * fStack_1ac;\\n              fStack_1b4 = (1.0 - (fVar11 + fVar4 * fVar9)) * fStack_1ac;\\n              fStack_1b0 = (fVar3 * fVar9 + fVar10) * fStack_1ac;\\n              fStack_1ac = fStack_1ac * 0.0;\\n              fVar10 = extraout_RAX_02[7];\\n              fStack_1c0 = (fVar2 * fVar9 - fVar5 * fVar8) * fVar10;\\n              fStack_1bc = fVar10 * 0.0;\\n              local_1c8 = CONCAT44((fVar9 * fVar5 + fVar2 * fVar8) * fVar10,\\n                                   (1.0 - (fVar4 * fVar9 + fVar3 * fVar8)) * fVar10);\\n              uStack_18c = 0x3f800000;\\n              country_core::render::pass_builder::uniform_binder::UniformBinder::\\n              write_uniform<country_core::render::pass_builder::draw_builder::impl_2::uniform::closure_env_0<glam::f32::sse2::mat4::Mat4>,glam::f32::sse2::mat4::Mat4>\\n                        ();\\n            }\\n            memcpy(&local_1c8,local_2c0,0xf8);\\n            local_c1 = 0;\\n            country_core::render::pass_builder::draw_builder::impl$2::\\n            read_storage_buffer<country_core::systems::render_loop::resources::critters::SheepAnimationSsbo>\\n                      ();\\n            local_c1 = 0;\\n            country_core::render::pass_builder::draw_builder::DrawBuilder::draw();\\n            return;\\n          }\\n        }\\n        local_c1 = 1;\\n                    // WARNING: Subroutine does not return\\n        option::unwrap_failed();\\n      }\\n    }\\n    local_c1 = 1;\\n                    // WARNING: Subroutine does not return\\n    option::unwrap_failed();\\n  }\\n  local_c1 = 1;\\n  local_1c8 = uVar7;\\n                    // WARNING: Subroutine does not return\\n  result::unwrap_failed();\\n}\\n\\n\",\"callee_count\":11,\"callees\":[{\"name\":\"draw\",\"address\":\"140906f40\"},{\"name\":\"get_component\",\"address\":\"140d00b50\"},{\"name\":\"get_id\",\"address\":\"1409871a0\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"read_storage_buffer<country_core::systems::render_loop::resources::critters::SheepAnimationSsbo>\",\"address\":\"14162c890\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9310\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9760\"},{\"name\":\"write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<f32>,f32>\",\"address\":\"14096ba30\"},{\"name\":\"write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<i32>,i32>\",\"address\":\"14096b570\"},{\"name\":\"write_uniform<country_core::render::pass_builder::draw_builder::impl$2::uniform::closure_env$0<bool>,bool>\",\"address\":\"14096b850\"},{\"name\":\"write_uniform<country_core::render::pass_builder::draw_builder::impl$2::uniform::closure_env$0<glam::f32::sse2::mat4::Mat4>,glam::f32::sse2::mat4::Mat4>\",\"address\":\"14096bc10\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1409b0570\":{\"name\":\"call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$48,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\",\"size\":448,\"address\":\"1409b0570\",\"signature\":\"void __cdecl call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$48,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncore::ops::function::FnOnce::\\ncall_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env_48,tuple_<country_core::render::pass_builder::draw_builder::DrawBuilder,ref_<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\\n          (void)\\n\\n{\\n  void *in_RCX;\\n  undefined1 local_328 [264];\\n  undefined8 local_220 [31];\\n  undefined4 local_128 [62];\\n  undefined8 local_30;\\n  undefined8 local_28;\\n  \\n  local_28 = 0xfffffffffffffffe;\\n  memcpy(local_328,in_RCX,0xf8);\\n  local_220[0] = 0x82c4e0fd167a78c8;\\n  local_128[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(local_128,local_328,0xf8);\\n  local_30 = 0x3cc121b8971f81ab;\\n  local_220[0]._0_4_ = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(local_220,local_128,0xf8);\\n  local_30 = 0x376bc596d76ccb4f;\\n  local_128[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(local_128,local_220,0xf8);\\n  local_30 = 0xa24bda8c91da535b;\\n  local_220[0] = CONCAT44(local_220[0]._4_4_,2);\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(local_220,local_128,0xf8);\\n  country_core::render::pass_builder::draw_builder::DrawBuilder::draw_instanced_w_gl_draw_flag();\\n  return;\\n}\\n\\n\",\"callee_count\":3,\"callees\":[{\"name\":\"bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>\",\"address\":\"140908610\"},{\"name\":\"draw_instanced_w_gl_draw_flag\",\"address\":\"140907490\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1409b07f0\":{\"name\":\"call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$52,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\",\"size\":549,\"address\":\"1409b07f0\",\"signature\":\"void __cdecl call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$52,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncore::ops::function::FnOnce::\\ncall_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env_52,tuple_<country_core::render::pass_builder::draw_builder::DrawBuilder,ref_<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\\n          (void)\\n\\n{\\n  longlong extraout_RAX;\\n  void *in_RCX;\\n  longlong lVar1;\\n  ulonglong uVar2;\\n  longlong in_R8;\\n  undefined4 local_418 [62];\\n  undefined1 local_320 [264];\\n  undefined8 local_218 [31];\\n  undefined4 local_120 [63];\\n  undefined1 local_22;\\n  undefined1 local_21;\\n  undefined8 local_20;\\n  \\n  local_20 = 0xfffffffffffffffe;\\n  memcpy(local_320,in_RCX,0xf8);\\n  local_21 = 1;\\n  uVar2 = 0x5eaaca67868e0174;\\n  bevy_ecs::component::Components::get_resource_id();\\n  if (((extraout_RAX != 0) && (uVar2 < *(ulonglong *)(in_R8 + 0x218))) &&\\n     (uVar2 = *(ulonglong *)(*(longlong *)(in_R8 + 0x210) + uVar2 * 8), uVar2 != 0)) {\\n    lVar1 = ~uVar2 * 0x60;\\n    if (*(longlong *)(*(longlong *)(in_R8 + 0x1e0) + 0x20 + lVar1) != 0) {\\n      lVar1 = *(longlong *)(*(longlong *)(in_R8 + 0x1e0) + lVar1 + 0x10);\\n      if (*(longlong *)(lVar1 + 0x30) == 0 && *(longlong *)(lVar1 + 0x10) == 0) {\\n        memcpy(local_120,local_320,0xf8);\\n        local_21 = 0;\\n        country_core::render::pass_builder::draw_builder::DrawBuilder::discard();\\n      }\\n      else {\\n        memcpy(local_120,local_320,0xf8);\\n        local_218[0] = 0xbf45421ffcbffbb9;\\n        local_418[0] = 2;\\n        country_core::render::pass_builder::draw_builder::impl$3::\\n        bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n        memcpy(local_418,local_120,0xf8);\\n        local_218[0] = CONCAT71(local_218[0]._1_7_,9);\\n        local_120[0] = 2;\\n        country_core::render::pass_builder::draw_builder::impl$3::\\n        bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();\\n        memcpy(local_120,local_418,0xf8);\\n        local_22 = 10;\\n        local_218[0] = CONCAT44(local_218[0]._4_4_,2);\\n        country_core::render::pass_builder::draw_builder::impl$3::\\n        bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();\\n        memcpy(local_218,local_120,0xf8);\\n        local_21 = 0;\\n        country_core::render::pass_builder::draw_builder::DrawBuilder::draw();\\n      }\\n      return;\\n    }\\n  }\\n  local_21 = 1;\\n                    // WARNING: Subroutine does not return\\n  option::unwrap_failed();\\n}\\n\\n\",\"callee_count\":7,\"callees\":[{\"name\":\"bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>\",\"address\":\"140908610\"},{\"name\":\"bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>\",\"address\":\"140908c50\"},{\"name\":\"discard\",\"address\":\"1409082c0\"},{\"name\":\"draw\",\"address\":\"140906f40\"},{\"name\":\"get_resource_id\",\"address\":\"1400dd6f0\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9310\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1409b0b20\":{\"name\":\"call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$57,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\",\"size\":888,\"address\":\"1409b0b20\",\"signature\":\"void __cdecl call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$57,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncore::ops::function::FnOnce::\\ncall_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env_57,tuple_<country_core::render::pass_builder::draw_builder::DrawBuilder,ref_<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\\n          (void)\\n\\n{\\n  longlong lVar1;\\n  longlong extraout_RAX;\\n  longlong extraout_RAX_00;\\n  ulonglong *extraout_RAX_01;\\n  longlong extraout_RAX_02;\\n  longlong extraout_RAX_03;\\n  longlong extraout_RAX_04;\\n  void *in_RCX;\\n  int *in_RDX;\\n  ulonglong uVar2;\\n  longlong in_R8;\\n  ulonglong uVar3;\\n  undefined1 local_350 [222];\\n  char local_272;\\n  undefined1 local_258 [168];\\n  byte local_1b0;\\n  int local_1ac;\\n  ulonglong local_150 [27];\\n  char local_72;\\n  undefined1 local_51;\\n  undefined8 local_50;\\n  \\n  local_50 = 0xfffffffffffffffe;\\n  memcpy(local_258,in_RCX,0xf8);\\n  if (*in_RDX == 1) {\\n    local_1ac = in_RDX[1];\\n    local_1b0 = local_1b0 & 0xfc | 2;\\n  }\\n  local_150[0] = *(ulonglong *)(in_RDX + 2);\\n  uVar2 = local_150[0] & 0xffffffff;\\n  if (((uVar2 < *(ulonglong *)(in_R8 + 0x10)) &&\\n      (*(int *)(*(longlong *)(in_R8 + 8) + uVar2 * 0x14) == (int)(local_150[0] >> 0x20))) &&\\n     (lVar1 = *(longlong *)(in_R8 + 8) + uVar2 * 0x14, *(int *)(lVar1 + 4) != -1)) {\\n    uVar3 = (ulonglong)*(uint *)(lVar1 + 0xc);\\n    local_51 = 1;\\n    uVar2 = 0xd455e4bbfd4f066e;\\n    bevy_ecs::component::Components::get_resource_id();\\n    if (((extraout_RAX != 0) && (uVar2 < *(ulonglong *)(in_R8 + 0x218))) &&\\n       ((uVar2 = *(ulonglong *)(*(longlong *)(in_R8 + 0x210) + uVar2 * 8), uVar2 != 0 &&\\n        (*(longlong *)(*(longlong *)(in_R8 + 0x1e0) + 0x20 + ~uVar2 * 0x60) != 0)))) {\\n      local_51 = 1;\\n      bevy_ecs::component::Components::get_id();\\n      if ((extraout_RAX_00 != 0) && (uVar3 < *(ulonglong *)(in_R8 + 0x1b0))) {\\n        local_51 = 1;\\n        bevy_ecs::storage::table::Table::get_component();\\n        if (extraout_RAX_01 != (ulonglong *)0x0) {\\n          local_150[0] = *extraout_RAX_01;\\n          local_51 = 1;\\n          frozen::FrozenMap::\\n          get<country_core::asset_libraries::Handle<country_core::render::mesh::Mesh>,alloc::boxed::Box<country_core::render::mesh::Mesh,alloc::alloc::Global>,std::hash::random::RandomState,country_core::asset_libraries::Handle<country_core::render::mesh::Mesh>_>\\n                    ();\\n          if (extraout_RAX_02 == 0) {\\n            local_51 = 1;\\n                    // WARNING: Subroutine does not return\\n            option::unwrap_failed();\\n          }\\n          local_51 = 1;\\n          bevy_ecs::component::Components::get_id();\\n          if ((extraout_RAX_03 != 0) && (uVar3 < *(ulonglong *)(in_R8 + 0x1b0))) {\\n            local_51 = 1;\\n            bevy_ecs::storage::table::Table::get_component();\\n            if (extraout_RAX_04 != 0) {\\n              memcpy(local_150,local_258,0xf8);\\n              if (local_72 != '\\\\b') {\\n                country_core::render::pass_builder::uniform_binder::UniformBinder::\\n                write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<i32>,i32>\\n                          ();\\n              }\\n              memcpy(local_350,local_150,0xf8);\\n              if (local_272 != '\\\\b') {\\n                country_core::render::pass_builder::uniform_binder::UniformBinder::\\n                write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<f32>,f32>\\n                          ();\\n              }\\n              memcpy(local_150,local_350,0xf8);\\n              local_51 = 0;\\n              country_core::render::pass_builder::draw_builder::DrawBuilder::draw();\\n              return;\\n            }\\n          }\\n          local_51 = 1;\\n                    // WARNING: Subroutine does not return\\n          option::expect_failed();\\n        }\\n      }\\n      local_51 = 1;\\n                    // WARNING: Subroutine does not return\\n      option::unwrap_failed();\\n    }\\n    local_51 = 1;\\n                    // WARNING: Subroutine does not return\\n    option::unwrap_failed();\\n  }\\n  local_51 = 1;\\n                    // WARNING: Subroutine does not return\\n  result::unwrap_failed();\\n}\\n\\n\",\"callee_count\":11,\"callees\":[{\"name\":\"draw\",\"address\":\"140906f40\"},{\"name\":\"expect_failed\",\"address\":\"1428d9330\"},{\"name\":\"get<country_core::asset_libraries::Handle<country_core::render::mesh::Mesh>,alloc::boxed::Box<country_core::render::mesh::Mesh,alloc::alloc::Global>,std::hash::random::RandomState,country_core::asset_libraries::Handle<country_core::render::mesh::Mesh>_>\",\"address\":\"140969550\"},{\"name\":\"get_component\",\"address\":\"140d00b50\"},{\"name\":\"get_id\",\"address\":\"1409871a0\"},{\"name\":\"get_resource_id\",\"address\":\"1400dd6f0\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9310\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9760\"},{\"name\":\"write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<f32>,f32>\",\"address\":\"14096ba30\"},{\"name\":\"write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<i32>,i32>\",\"address\":\"14096b570\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1409b0fa0\":{\"name\":\"call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$45,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\",\"size\":534,\"address\":\"1409b0fa0\",\"signature\":\"void __cdecl call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$45,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncore::ops::function::FnOnce::\\ncall_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env_45,tuple_<country_core::render::pass_builder::draw_builder::DrawBuilder,ref_<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\\n          (void)\\n\\n{\\n  void *in_RCX;\\n  undefined1 local_328 [264];\\n  undefined8 local_220 [31];\\n  undefined4 local_128 [62];\\n  undefined8 local_30;\\n  undefined8 local_28;\\n  \\n  local_28 = 0xfffffffffffffffe;\\n  memcpy(local_328,in_RCX,0xf8);\\n  local_220[0] = 0x7ba52a63128ed90f;\\n  local_128[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(local_128,local_328,0xf8);\\n  local_30 = 0xa2411d7a77d11653;\\n  local_220[0]._0_4_ = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(local_220,local_128,0xf8);\\n  local_30 = 0x76802419cebb9371;\\n  local_128[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(local_128,local_220,0xf8);\\n  local_30 = 0xe7d038698437b5d0;\\n  local_220[0] = CONCAT44(local_220[0]._4_4_,2);\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(local_220,local_128,0xf8);\\n  local_30 = 0xbd39551337285fb6;\\n  local_128[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(local_128,local_220,0xf8);\\n  country_core::render::pass_builder::draw_builder::DrawBuilder::draw();\\n  return;\\n}\\n\\n\",\"callee_count\":3,\"callees\":[{\"name\":\"bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>\",\"address\":\"140908610\"},{\"name\":\"draw\",\"address\":\"140906f40\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1409b12b0\":{\"name\":\"call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$0,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\",\"size\":1325,\"address\":\"1409b12b0\",\"signature\":\"void __cdecl call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$0,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncore::ops::function::FnOnce::\\ncall_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env_0,tuple_<country_core::render::pass_builder::draw_builder::DrawBuilder,ref_<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\\n          (void)\\n\\n{\\n  byte *pbVar1;\\n  longlong extraout_RAX;\\n  longlong extraout_RAX_00;\\n  longlong extraout_RAX_01;\\n  void *in_RCX;\\n  longlong lVar2;\\n  ulonglong uVar3;\\n  longlong in_R8;\\n  undefined1 local_440 [168];\\n  byte local_398;\\n  undefined8 local_338 [31];\\n  undefined4 local_240 [55];\\n  char local_162;\\n  undefined8 local_148;\\n  undefined4 local_140;\\n  char local_6a;\\n  undefined8 local_50;\\n  undefined4 local_48;\\n  undefined1 local_42;\\n  undefined1 local_41;\\n  undefined8 local_40;\\n  \\n  local_40 = 0xfffffffffffffffe;\\n  memcpy(local_440,in_RCX,0xf8);\\n  local_41 = 1;\\n  uVar3 = 0x6efcda1c77e106b4;\\n  bevy_ecs::component::Components::get_resource_id();\\n  if ((((extraout_RAX == 0) || (*(ulonglong *)(in_R8 + 0x218) <= uVar3)) ||\\n      (uVar3 = *(ulonglong *)(*(longlong *)(in_R8 + 0x210) + uVar3 * 8), uVar3 == 0)) ||\\n     (*(longlong *)(*(longlong *)(in_R8 + 0x1e0) + 0x20 + ~uVar3 * 0x60) == 0)) {\\n    local_41 = 1;\\n                    // WARNING: Subroutine does not return\\n    option::unwrap_failed();\\n  }\\n  local_41 = 1;\\n  uVar3 = 0x62dfe8f62b6fcc5;\\n  bevy_ecs::component::Components::get_resource_id();\\n  if (((extraout_RAX_00 != 0) && (uVar3 < *(ulonglong *)(in_R8 + 0x218))) &&\\n     (uVar3 = *(ulonglong *)(*(longlong *)(in_R8 + 0x210) + uVar3 * 8), uVar3 != 0)) {\\n    lVar2 = ~uVar3 * 0x60;\\n    if (*(longlong *)(*(longlong *)(in_R8 + 0x1e0) + 0x20 + lVar2) != 0) {\\n      pbVar1 = *(byte **)(*(longlong *)(in_R8 + 0x1e0) + lVar2 + 0x10);\\n      if ((*pbVar1 & 1) == 0) {\\n        local_48 = 0;\\n        local_50 = 0;\\n      }\\n      else {\\n        local_48 = *(undefined4 *)(pbVar1 + 0xc);\\n        local_50 = *(undefined8 *)(pbVar1 + 4);\\n      }\\n      local_41 = 1;\\n      uVar3 = 0xae77a86a2c6cefc;\\n      bevy_ecs::component::Components::get_resource_id();\\n      if (((extraout_RAX_01 != 0) && (uVar3 < *(ulonglong *)(in_R8 + 0x218))) &&\\n         ((uVar3 = *(ulonglong *)(*(longlong *)(in_R8 + 0x210) + uVar3 * 8), uVar3 != 0 &&\\n          (*(longlong *)(*(longlong *)(in_R8 + 0x1e0) + 0x20 + ~uVar3 * 0x60) != 0)))) {\\n        local_398 = local_398 & 0xf3 | 4;\\n        memcpy(local_240,local_440,0xf8);\\n        local_338[0] = CONCAT71(local_338[0]._1_7_,9);\\n        local_148._0_4_ = 2;\\n        country_core::render::pass_builder::draw_builder::impl$3::\\n        bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();\\n        memcpy(&local_148,local_240,0xf8);\\n        local_42 = 10;\\n        local_338[0] = CONCAT44(local_338[0]._4_4_,2);\\n        country_core::render::pass_builder::draw_builder::impl$3::\\n        bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();\\n        memcpy(local_338,&local_148,0xf8);\\n        local_41 = 0;\\n        country_core::render::pass_builder::draw_builder::impl$2::\\n        read_storage_buffer<country_core::resources::roofs::roof_buffers::WoodenPlankSsbo>();\\n        local_338[0] = 0x5b9a9defbd41da38;\\n        local_240[0] = 2;\\n        country_core::render::pass_builder::draw_builder::impl$3::\\n        bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n        memcpy(local_240,&local_148,0xf8);\\n        local_41 = 0;\\n        country_core::render::pass_builder::draw_builder::impl$2::\\n        read_storage_buffer<country_core::resources::color_id::HalftimberColorIdSsbo>();\\n        local_338[0] = 0x4a2b687d0c1ecf58;\\n        local_240[0] = 2;\\n        country_core::render::pass_builder::draw_builder::impl$3::\\n        bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n        memcpy(local_240,&local_148,0xf8);\\n        local_338[0] = 0x1b611d8a07dfd6ba;\\n        local_148 = CONCAT44(local_148._4_4_,2);\\n        country_core::render::pass_builder::draw_builder::impl$3::\\n        bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n        memcpy(&local_148,local_240,0xf8);\\n        if (local_6a != '\\\\b') {\\n          country_core::render::pass_builder::uniform_binder::UniformBinder::\\n          write_uniform<country_core::render::pass_builder::draw_builder::impl_2::uniform::closure_env_0<bool>,bool>\\n                    ();\\n        }\\n        memcpy(local_240,&local_148,0xf8);\\n        if (local_162 != '\\\\b') {\\n          local_140 = local_48;\\n          local_148 = local_50;\\n          country_core::render::pass_builder::uniform_binder::UniformBinder::\\n          write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<glam::f32::vec3::Vec3>,glam::f32::vec3::Vec3>\\n                    ();\\n        }\\n        memcpy(&local_148,local_240,0xf8);\\n        if (local_6a != '\\\\b') {\\n          country_core::render::pass_builder::uniform_binder::UniformBinder::\\n          write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<f32>,f32>\\n                    ();\\n        }\\n        memcpy(local_240,&local_148,0xf8);\\n        local_41 = 0;\\n        country_core::render::nani::draw_ext::impl$0::nani_draw();\\n        return;\\n      }\\n      local_41 = 1;\\n                    // WARNING: Subroutine does not return\\n      option::unwrap_failed();\\n    }\\n  }\\n  local_41 = 1;\\n                    // WARNING: Subroutine does not return\\n  option::unwrap_failed();\\n}\\n\\n\",\"callee_count\":11,\"callees\":[{\"name\":\"bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>\",\"address\":\"140908610\"},{\"name\":\"bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>\",\"address\":\"140908c50\"},{\"name\":\"get_resource_id\",\"address\":\"1400dd6f0\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"nani_draw\",\"address\":\"140904ae0\"},{\"name\":\"read_storage_buffer<country_core::resources::color_id::HalftimberColorIdSsbo>\",\"address\":\"141630190\"},{\"name\":\"read_storage_buffer<country_core::resources::roofs::roof_buffers::WoodenPlankSsbo>\",\"address\":\"141631c90\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9310\"},{\"name\":\"write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<f32>,f32>\",\"address\":\"14096ba30\"},{\"name\":\"write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<glam::f32::vec3::Vec3>,glam::f32::vec3::Vec3>\",\"address\":\"14096b660\"},{\"name\":\"write_uniform<country_core::render::pass_builder::draw_builder::impl$2::uniform::closure_env$0<bool>,bool>\",\"address\":\"14096b850\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1409b1ab0\":{\"name\":\"call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$42,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\",\"size\":74,\"address\":\"1409b1ab0\",\"signature\":\"void __cdecl call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$42,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncore::ops::function::FnOnce::\\ncall_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env_42,tuple_<country_core::render::pass_builder::draw_builder::DrawBuilder,ref_<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\\n          (void)\\n\\n{\\n  void *in_RCX;\\n  undefined1 local_120 [264];\\n  \\n  memcpy(local_120,in_RCX,0xf8);\\n  country_core::render::pass_builder::draw_builder::DrawBuilder::draw();\\n  return;\\n}\\n\\n\",\"callee_count\":2,\"callees\":[{\"name\":\"draw\",\"address\":\"140906f40\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1409b1b00\":{\"name\":\"call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$37,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\",\"size\":586,\"address\":\"1409b1b00\",\"signature\":\"void __cdecl call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$37,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncore::ops::function::FnOnce::\\ncall_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env_37,tuple_<country_core::render::pass_builder::draw_builder::DrawBuilder,ref_<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\\n          (void)\\n\\n{\\n  longlong extraout_RAX;\\n  void *in_RCX;\\n  ulonglong uVar1;\\n  longlong in_R8;\\n  undefined1 local_330 [264];\\n  undefined4 local_228 [55];\\n  char local_14a;\\n  undefined4 local_130 [55];\\n  char local_52;\\n  undefined8 local_38;\\n  undefined1 local_29;\\n  undefined8 local_28;\\n  \\n  local_28 = 0xfffffffffffffffe;\\n  memcpy(local_330,in_RCX,0xf8);\\n  local_29 = 1;\\n  uVar1 = 0x98df08dcfa7ea5ba;\\n  bevy_ecs::component::Components::get_resource_id();\\n  if ((((extraout_RAX != 0) && (uVar1 < *(ulonglong *)(in_R8 + 0x218))) &&\\n      (uVar1 = *(ulonglong *)(*(longlong *)(in_R8 + 0x210) + uVar1 * 8), uVar1 != 0)) &&\\n     (*(longlong *)(*(longlong *)(in_R8 + 0x1e0) + 0x20 + ~uVar1 * 0x60) != 0)) {\\n    memcpy(local_228,local_330,0xf8);\\n    local_38 = 0x4d8cada36b5efdb4;\\n    local_130[0] = 2;\\n    country_core::render::pass_builder::draw_builder::impl$3::\\n    bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n    memcpy(local_130,local_228,0xf8);\\n    local_38 = 0xf1fc76d000c67928;\\n    local_228[0] = 2;\\n    country_core::render::pass_builder::draw_builder::impl$3::\\n    bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n    memcpy(local_228,local_130,0xf8);\\n    if (local_14a != '\\\\b') {\\n      country_core::render::pass_builder::uniform_binder::UniformBinder::\\n      write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<f32>,f32>\\n                ();\\n    }\\n    memcpy(local_130,local_228,0xf8);\\n    if (local_52 != '\\\\b') {\\n      country_core::render::pass_builder::uniform_binder::UniformBinder::\\n      write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<f32>,f32>\\n                ();\\n    }\\n    memcpy(local_228,local_130,0xf8);\\n    local_29 = 0;\\n    country_core::render::pass_builder::draw_builder::DrawBuilder::draw();\\n    return;\\n  }\\n  local_29 = 1;\\n                    // WARNING: Subroutine does not return\\n  option::unwrap_failed();\\n}\\n\\n\",\"callee_count\":6,\"callees\":[{\"name\":\"bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>\",\"address\":\"140908610\"},{\"name\":\"draw\",\"address\":\"140906f40\"},{\"name\":\"get_resource_id\",\"address\":\"1400dd6f0\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9310\"},{\"name\":\"write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<f32>,f32>\",\"address\":\"14096ba30\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1409b1e90\":{\"name\":\"call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$39,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\",\"size\":76,\"address\":\"1409b1e90\",\"signature\":\"void __cdecl call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$39,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncore::ops::function::FnOnce::\\ncall_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env_39,tuple_<country_core::render::pass_builder::draw_builder::DrawBuilder,ref_<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\\n          (void)\\n\\n{\\n  void *in_RCX;\\n  undefined1 local_120 [264];\\n  \\n  memcpy(local_120,in_RCX,0xf8);\\n  country_core::render::nani::draw_ext::impl$0::nani_draw();\\n  return;\\n}\\n\\n\",\"callee_count\":2,\"callees\":[{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"nani_draw\",\"address\":\"140904ae0\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1409b1ee0\":{\"name\":\"call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$19,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\",\"size\":434,\"address\":\"1409b1ee0\",\"signature\":\"void __cdecl call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$19,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncore::ops::function::FnOnce::\\ncall_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env_19,tuple_<country_core::render::pass_builder::draw_builder::DrawBuilder,ref_<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\\n          (void)\\n\\n{\\n  longlong lVar1;\\n  uint uVar2;\\n  longlong extraout_RAX;\\n  longlong extraout_RAX_00;\\n  void *in_RCX;\\n  ulonglong uVar3;\\n  longlong in_RDX;\\n  longlong in_R8;\\n  undefined1 local_328 [248];\\n  undefined1 local_230 [264];\\n  ulonglong local_128 [27];\\n  char local_4a;\\n  undefined1 local_29;\\n  undefined8 local_28;\\n  \\n  local_28 = 0xfffffffffffffffe;\\n  memcpy(local_230,in_RCX,0xf8);\\n  local_128[0] = *(ulonglong *)(in_RDX + 8);\\n  uVar3 = local_128[0] & 0xffffffff;\\n  if (((uVar3 < *(ulonglong *)(in_R8 + 0x10)) &&\\n      (*(int *)(*(longlong *)(in_R8 + 8) + uVar3 * 0x14) == (int)(local_128[0] >> 0x20))) &&\\n     (lVar1 = *(longlong *)(in_R8 + 8) + uVar3 * 0x14, *(int *)(lVar1 + 4) != -1)) {\\n    uVar2 = *(uint *)(lVar1 + 0xc);\\n    local_29 = 1;\\n    bevy_ecs::component::Components::get_id();\\n    if ((extraout_RAX != 0) && ((ulonglong)uVar2 < *(ulonglong *)(in_R8 + 0x1b0))) {\\n      local_29 = 1;\\n      bevy_ecs::storage::table::Table::get_component();\\n      if (extraout_RAX_00 != 0) {\\n        memcpy(local_128,local_230,0xf8);\\n        if (local_4a != '\\\\b') {\\n          country_core::render::pass_builder::uniform_binder::UniformBinder::\\n          write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<f32>,f32>\\n                    ();\\n        }\\n        memcpy(local_328,local_128,0xf8);\\n        local_29 = 0;\\n        country_core::render::pass_builder::draw_builder::DrawBuilder::draw();\\n        return;\\n      }\\n    }\\n    local_29 = 1;\\n                    // WARNING: Subroutine does not return\\n    option::unwrap_failed();\\n  }\\n  local_29 = 1;\\n                    // WARNING: Subroutine does not return\\n  result::unwrap_failed();\\n}\\n\\n\",\"callee_count\":7,\"callees\":[{\"name\":\"draw\",\"address\":\"140906f40\"},{\"name\":\"get_component\",\"address\":\"140d00b50\"},{\"name\":\"get_id\",\"address\":\"1409871a0\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9310\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9760\"},{\"name\":\"write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<f32>,f32>\",\"address\":\"14096ba30\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1409b2120\":{\"name\":\"call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$32,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\",\"size\":267,\"address\":\"1409b2120\",\"signature\":\"void __cdecl call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$32,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncore::ops::function::FnOnce::\\ncall_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env_32,tuple_<country_core::render::pass_builder::draw_builder::DrawBuilder,ref_<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\\n          (void)\\n\\n{\\n  void *in_RCX;\\n  undefined8 local_328 [31];\\n  undefined1 local_230 [264];\\n  undefined4 local_128 [62];\\n  undefined8 local_30;\\n  undefined8 local_28;\\n  \\n  local_28 = 0xfffffffffffffffe;\\n  memcpy(local_230,in_RCX,0xf8);\\n  local_328[0] = 0x5b9a9defbd41da38;\\n  local_128[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(local_128,local_230,0xf8);\\n  local_30 = 0xa041c59f6ca9394d;\\n  local_328[0] = CONCAT44(local_328[0]._4_4_,2);\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(local_328,local_128,0xf8);\\n  country_core::render::nani::draw_ext::impl$0::nani_draw();\\n  return;\\n}\\n\\n\",\"callee_count\":3,\"callees\":[{\"name\":\"bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>\",\"address\":\"140908610\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"nani_draw\",\"address\":\"140904ae0\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1409b2290\":{\"name\":\"call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$41,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\",\"size\":504,\"address\":\"1409b2290\",\"signature\":\"void __cdecl call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$41,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncore::ops::function::FnOnce::\\ncall_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env_41,tuple_<country_core::render::pass_builder::draw_builder::DrawBuilder,ref_<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\\n          (void)\\n\\n{\\n  longlong extraout_RAX;\\n  void *in_RCX;\\n  ulonglong uVar1;\\n  longlong in_R8;\\n  undefined1 local_328 [171];\\n  byte local_27d;\\n  undefined1 local_220 [222];\\n  char local_142;\\n  undefined4 local_128 [55];\\n  char local_4a;\\n  undefined8 local_30;\\n  undefined1 local_21;\\n  undefined8 local_20;\\n  \\n  local_20 = 0xfffffffffffffffe;\\n  memcpy(local_328,in_RCX,0xf8);\\n  local_21 = 1;\\n  uVar1 = 0x5628183cc22697bc;\\n  bevy_ecs::component::Components::get_resource_id();\\n  if ((((extraout_RAX != 0) && (uVar1 < *(ulonglong *)(in_R8 + 0x218))) &&\\n      (uVar1 = *(ulonglong *)(*(longlong *)(in_R8 + 0x210) + uVar1 * 8), uVar1 != 0)) &&\\n     (*(longlong *)(*(longlong *)(in_R8 + 0x1e0) + 0x20 + ~uVar1 * 0x60) != 0)) {\\n    local_27d = local_27d & 0x9f | 0x40;\\n    memcpy(local_220,local_328,0xf8);\\n    local_30 = 0x6b1c7ef67821ce66;\\n    local_128[0] = 2;\\n    country_core::render::pass_builder::draw_builder::impl$3::\\n    bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n    memcpy(local_128,local_220,0xf8);\\n    if (local_4a != '\\\\b') {\\n      country_core::render::pass_builder::uniform_binder::UniformBinder::\\n      write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<f32>,f32>\\n                ();\\n    }\\n    memcpy(local_220,local_128,0xf8);\\n    if (local_142 != '\\\\b') {\\n      country_core::render::pass_builder::uniform_binder::UniformBinder::\\n      write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<f32>,f32>\\n                ();\\n    }\\n    memcpy(local_128,local_220,0xf8);\\n    local_21 = 0;\\n    country_core::render::pass_builder::draw_builder::DrawBuilder::draw();\\n    return;\\n  }\\n  local_21 = 1;\\n                    // WARNING: Subroutine does not return\\n  option::unwrap_failed();\\n}\\n\\n\",\"callee_count\":6,\"callees\":[{\"name\":\"bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>\",\"address\":\"140908610\"},{\"name\":\"draw\",\"address\":\"140906f40\"},{\"name\":\"get_resource_id\",\"address\":\"1400dd6f0\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9310\"},{\"name\":\"write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<f32>,f32>\",\"address\":\"14096ba30\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1409b2580\":{\"name\":\"call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$53,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\",\"size\":448,\"address\":\"1409b2580\",\"signature\":\"void __cdecl call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$53,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncore::ops::function::FnOnce::\\ncall_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env_53,tuple_<country_core::render::pass_builder::draw_builder::DrawBuilder,ref_<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\\n          (void)\\n\\n{\\n  void *in_RCX;\\n  undefined1 local_328 [264];\\n  undefined8 local_220 [31];\\n  undefined4 local_128 [62];\\n  undefined8 local_30;\\n  undefined8 local_28;\\n  \\n  local_28 = 0xfffffffffffffffe;\\n  memcpy(local_328,in_RCX,0xf8);\\n  local_220[0] = 0x82c4e0fd167a78c8;\\n  local_128[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(local_128,local_328,0xf8);\\n  local_30 = 0x3cc121b8971f81ab;\\n  local_220[0]._0_4_ = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(local_220,local_128,0xf8);\\n  local_30 = 0x376bc596d76ccb4f;\\n  local_128[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(local_128,local_220,0xf8);\\n  local_30 = 0xa24bda8c91da535b;\\n  local_220[0] = CONCAT44(local_220[0]._4_4_,2);\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(local_220,local_128,0xf8);\\n  country_core::render::pass_builder::draw_builder::DrawBuilder::draw_instanced_w_gl_draw_flag();\\n  return;\\n}\\n\\n\",\"callee_count\":3,\"callees\":[{\"name\":\"bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>\",\"address\":\"140908610\"},{\"name\":\"draw_instanced_w_gl_draw_flag\",\"address\":\"140907490\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1409b2800\":{\"name\":\"call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$58,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\",\"size\":135,\"address\":\"1409b2800\",\"signature\":\"noreturn void __cdecl call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$58,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncore::ops::function::FnOnce::\\ncall_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env_58,tuple_<country_core::render::pass_builder::draw_builder::DrawBuilder,ref_<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\\n          (void)\\n\\n{\\n  void *in_RCX;\\n  undefined1 local_160 [264];\\n  undefined **local_58;\\n  undefined8 local_50;\\n  undefined1 *local_48;\\n  undefined8 local_40;\\n  undefined8 uStack_38;\\n  undefined1 local_28 [8];\\n  undefined8 local_20;\\n  \\n  local_20 = 0xfffffffffffffffe;\\n  memcpy(local_160,in_RCX,0xf8);\\n  local_58 = &PTR_s_not_yet_implemented__TODO_vulkan_142abf318;\\n  local_50 = 1;\\n  local_48 = local_28;\\n  local_40 = 0;\\n  uStack_38 = 0;\\n                    // WARNING: Subroutine does not return\\n  panicking::panic_fmt();\\n}\\n\\n\",\"callee_count\":2,\"callees\":[{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"panic_fmt\",\"address\":\"1428d9390\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1409b28c0\":{\"name\":\"call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$23,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\",\"size\":1088,\"address\":\"1409b28c0\",\"signature\":\"void __cdecl call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$23,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncore::ops::function::FnOnce::\\ncall_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env_23,tuple_<country_core::render::pass_builder::draw_builder::DrawBuilder,ref_<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\\n          (void)\\n\\n{\\n  byte *pbVar1;\\n  longlong lVar2;\\n  longlong extraout_RAX;\\n  longlong extraout_RAX_00;\\n  longlong extraout_RAX_01;\\n  longlong extraout_RAX_02;\\n  longlong extraout_RAX_03;\\n  void *in_RCX;\\n  ulonglong uVar3;\\n  longlong lVar4;\\n  longlong in_RDX;\\n  ulonglong uVar5;\\n  longlong in_R8;\\n  undefined1 local_348 [264];\\n  undefined4 local_240 [62];\\n  ulonglong local_148 [27];\\n  char local_6a;\\n  undefined8 local_50;\\n  undefined1 local_42;\\n  undefined1 local_41;\\n  undefined8 local_40;\\n  \\n  local_40 = 0xfffffffffffffffe;\\n  memcpy(local_348,in_RCX,0xf8);\\n  uVar5 = *(ulonglong *)(in_RDX + 8);\\n  uVar3 = uVar5 & 0xffffffff;\\n  if (((*(ulonglong *)(in_R8 + 0x10) <= uVar3) ||\\n      (*(int *)(*(longlong *)(in_R8 + 8) + uVar3 * 0x14) != (int)(uVar5 >> 0x20))) ||\\n     (lVar4 = *(longlong *)(in_R8 + 8) + uVar3 * 0x14, *(int *)(lVar4 + 4) == -1)) {\\n    local_41 = 1;\\n    local_148[0] = uVar5;\\n                    // WARNING: Subroutine does not return\\n    result::unwrap_failed();\\n  }\\n  uVar5 = (ulonglong)*(uint *)(lVar4 + 0xc);\\n  local_41 = 1;\\n  bevy_ecs::component::Components::get_id();\\n  if ((extraout_RAX != 0) && (uVar5 < *(ulonglong *)(in_R8 + 0x1b0))) {\\n    local_41 = 1;\\n    bevy_ecs::storage::table::Table::get_component();\\n    if (extraout_RAX_00 != 0) {\\n      local_41 = 1;\\n      bevy_ecs::component::Components::get_id();\\n      if ((extraout_RAX_01 != 0) && (uVar5 < *(ulonglong *)(in_R8 + 0x1b0))) {\\n        local_41 = 1;\\n        bevy_ecs::storage::table::Table::get_component();\\n        if (extraout_RAX_02 != 0) {\\n          memcpy(local_148,local_348,0xf8);\\n          if (local_6a != '\\\\b') {\\n            country_core::render::pass_builder::uniform_binder::UniformBinder::\\n            write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<i32>,i32>\\n                      ();\\n          }\\n          memcpy(local_240,local_148,0xf8);\\n          local_50 = 0x1f769c5a85050876;\\n          local_148[0]._0_4_ = 2;\\n          country_core::render::pass_builder::draw_builder::impl$3::\\n          bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n          memcpy(local_148,local_240,0xf8);\\n          local_50 = 0xb72fba719985a58c;\\n          local_240[0] = 2;\\n          country_core::render::pass_builder::draw_builder::impl$3::\\n          bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n          memcpy(local_240,local_148,0xf8);\\n          local_42 = 1;\\n          uVar5 = 0x74430dfcc6d8719b;\\n          bevy_ecs::component::Components::get_resource_id();\\n          if (((extraout_RAX_03 != 0) && (uVar5 < *(ulonglong *)(in_R8 + 0x218))) &&\\n             (uVar5 = *(ulonglong *)(*(longlong *)(in_R8 + 0x210) + uVar5 * 8), uVar5 != 0)) {\\n            lVar4 = ~uVar5 * 0x60;\\n            if (*(longlong *)(*(longlong *)(in_R8 + 0x1e0) + 0x20 + lVar4) != 0) {\\n              lVar2 = *(longlong *)(*(longlong *)(in_R8 + 0x1e0) + lVar4 + 0x10);\\n              lVar4 = 0;\\n              local_50 = 0xe52375bc32a964a4;\\n              do {\\n                if (*(longlong *)(lVar2 + 0x10) == lVar4) goto LAB_1409b2bd3;\\n                pbVar1 = (byte *)(*(longlong *)(lVar2 + 8) + lVar4);\\n                lVar4 = lVar4 + 1;\\n              } while (1 < *pbVar1);\\n              local_50 = 0x4c58d4d61ec450d2;\\nLAB_1409b2bd3:\\n              local_148[0] = CONCAT44(local_148[0]._4_4_,2);\\n              country_core::render::pass_builder::draw_builder::impl$3::\\n              bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>\\n                        ();\\n              memcpy(local_148,local_240,0xf8);\\n              if (local_6a != '\\\\b') {\\n                country_core::render::pass_builder::uniform_binder::UniformBinder::\\n                write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<i32>,i32>\\n                          ();\\n              }\\n              memcpy(local_240,local_148,0xf8);\\n              local_41 = 0;\\n              country_core::render::pass_builder::draw_builder::DrawBuilder::draw();\\n              return;\\n            }\\n          }\\n          local_42 = 1;\\n                    // WARNING: Subroutine does not return\\n          option::unwrap_failed();\\n        }\\n      }\\n      local_41 = 1;\\n                    // WARNING: Subroutine does not return\\n      option::unwrap_failed();\\n    }\\n  }\\n  local_41 = 1;\\n                    // WARNING: Subroutine does not return\\n  option::unwrap_failed();\\n}\\n\\n\",\"callee_count\":9,\"callees\":[{\"name\":\"bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>\",\"address\":\"140908610\"},{\"name\":\"draw\",\"address\":\"140906f40\"},{\"name\":\"get_component\",\"address\":\"140d00b50\"},{\"name\":\"get_id\",\"address\":\"1409871a0\"},{\"name\":\"get_resource_id\",\"address\":\"1400dd6f0\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9760\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9310\"},{\"name\":\"write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<i32>,i32>\",\"address\":\"14096b570\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1409b2f40\":{\"name\":\"call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$8,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\",\"size\":496,\"address\":\"1409b2f40\",\"signature\":\"void __cdecl call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$8,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncore::ops::function::FnOnce::\\ncall_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env_8,tuple_<country_core::render::pass_builder::draw_builder::DrawBuilder,ref_<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\\n          (void)\\n\\n{\\n  void *in_RCX;\\n  undefined1 local_328 [264];\\n  undefined4 local_220 [62];\\n  undefined4 local_128 [62];\\n  undefined8 local_30;\\n  undefined8 local_28;\\n  \\n  local_28 = 0xfffffffffffffffe;\\n  memcpy(local_328,in_RCX,0xf8);\\n  local_220[0] = CONCAT31(local_220[0]._1_3_,9);\\n  local_128[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();\\n  memcpy(local_128,local_328,0xf8);\\n  local_30._0_1_ = 10;\\n  local_220[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();\\n  memcpy(local_220,local_128,0xf8);\\n  local_30 = CONCAT71(local_30._1_7_,0xf);\\n  local_128[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();\\n  memcpy(local_128,local_220,0xf8);\\n  local_30 = 0x177adf5a3a02ba5e;\\n  local_220[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(local_220,local_128,0xf8);\\n  local_30 = CONCAT71(local_30._1_7_,0x16);\\n  local_128[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();\\n  memcpy(local_128,local_220,0xf8);\\n  country_core::render::nani::draw_ext::impl$0::nani_draw();\\n  return;\\n}\\n\\n\",\"callee_count\":4,\"callees\":[{\"name\":\"bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>\",\"address\":\"140908610\"},{\"name\":\"bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>\",\"address\":\"140908c50\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"nani_draw\",\"address\":\"140904ae0\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1409b3220\":{\"name\":\"call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$28,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\",\"size\":76,\"address\":\"1409b3220\",\"signature\":\"void __cdecl call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$28,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncore::ops::function::FnOnce::\\ncall_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env_28,tuple_<country_core::render::pass_builder::draw_builder::DrawBuilder,ref_<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\\n          (void)\\n\\n{\\n  void *in_RCX;\\n  undefined1 local_120 [264];\\n  \\n  memcpy(local_120,in_RCX,0xf8);\\n  country_core::render::nani::draw_ext::impl$0::nani_draw();\\n  return;\\n}\\n\\n\",\"callee_count\":2,\"callees\":[{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"nani_draw\",\"address\":\"140904ae0\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1409b3270\":{\"name\":\"call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$16,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\",\"size\":899,\"address\":\"1409b3270\",\"signature\":\"void __cdecl call_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$16,tuple$<country_core::render::pass_builder::draw_builder::DrawBuilder,ref$<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncore::ops::function::FnOnce::\\ncall_once<country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env_16,tuple_<country_core::render::pass_builder::draw_builder::DrawBuilder,ref_<country_core::render::pass_builder::draw_list::EntityDrawParams>,bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell>_>\\n          (void)\\n\\n{\\n  longlong extraout_RAX;\\n  void *in_RCX;\\n  ulonglong uVar1;\\n  longlong in_R8;\\n  undefined1 local_420 [168];\\n  byte local_378;\\n  undefined8 local_318 [31];\\n  undefined8 local_220 [27];\\n  char local_142;\\n  undefined4 local_128 [55];\\n  char local_4a;\\n  undefined1 local_29;\\n  undefined8 local_28;\\n  \\n  local_28 = 0xfffffffffffffffe;\\n  memcpy(local_420,in_RCX,0xf8);\\n  local_378 = local_378 & 0xf3 | 8;\\n  local_29 = 1;\\n  uVar1 = 0x9311cf2688353878;\\n  bevy_ecs::component::Components::get_resource_id();\\n  if ((((extraout_RAX != 0) && (uVar1 < *(ulonglong *)(in_R8 + 0x218))) &&\\n      (uVar1 = *(ulonglong *)(*(longlong *)(in_R8 + 0x210) + uVar1 * 8), uVar1 != 0)) &&\\n     (*(longlong *)(*(longlong *)(in_R8 + 0x1e0) + 0x20 + ~uVar1 * 0x60) != 0)) {\\n    memcpy(local_128,local_420,0xf8);\\n    local_318[0] = 0x4a2b687d0c1ecf58;\\n    local_220[0] = CONCAT44(local_220[0]._4_4_,2);\\n    country_core::render::pass_builder::draw_builder::impl$3::\\n    bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n    memcpy(local_220,local_128,0xf8);\\n    local_29 = 0;\\n    country_core::render::pass_builder::draw_builder::impl$2::\\n    read_storage_buffer<country_core::resources::walls::dormers::DormerHoleSsbo>();\\n    local_29 = 0;\\n    country_core::render::pass_builder::draw_builder::impl$2::\\n    read_storage_buffer<country_core::resources::walls::dormers::DormerHoleCountPerCellSsbo>();\\n    local_29 = 0;\\n    country_core::render::pass_builder::draw_builder::DrawBuilder::bind_wall_color_customization();\\n    local_220[0] = 0x7db9e7483fa24078;\\n    local_128[0] = 2;\\n    country_core::render::pass_builder::draw_builder::impl$3::\\n    bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n    memcpy(local_128,local_318,0xf8);\\n    local_29 = 0;\\n    country_core::render::pass_builder::draw_builder::impl$2::\\n    read_storage_buffer<country_core::resources::color_id_roof::RoofColorIdSsbo>();\\n    if (local_142 != '\\\\b') {\\n      country_core::render::pass_builder::uniform_binder::UniformBinder::\\n      write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<i32>,i32>\\n                ();\\n    }\\n    memcpy(local_128,local_220,0xf8);\\n    if (local_4a != '\\\\b') {\\n      country_core::render::pass_builder::uniform_binder::UniformBinder::\\n      write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<i32>,i32>\\n                ();\\n    }\\n    memcpy(local_220,local_128,0xf8);\\n    local_29 = 0;\\n    country_core::render::pass_builder::draw_builder::DrawBuilder::bind_stone_floor_textures();\\n    local_29 = 0;\\n    country_core::render::pass_builder::draw_builder::DrawBuilder::bind_wooden_floor_textures();\\n    local_29 = 0;\\n    country_core::render::pass_builder::draw_builder::impl$2::\\n    read_storage_buffer<country_core::resources::color_id::HalftimberColorIdSsbo>();\\n    local_318[0] = 0x5b9a9defbd41da38;\\n    local_220[0] = CONCAT44(local_220[0]._4_4_,2);\\n    country_core::render::pass_builder::draw_builder::impl$3::\\n    bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n    memcpy(local_220,local_128,0xf8);\\n    local_29 = 0;\\n    country_core::render::nani::draw_ext::impl$0::nani_draw();\\n    return;\\n  }\\n  local_29 = 1;\\n                    // WARNING: Subroutine does not return\\n  option::unwrap_failed();\\n}\\n\\n\",\"callee_count\":13,\"callees\":[{\"name\":\"bind_stone_floor_textures\",\"address\":\"14090c300\"},{\"name\":\"bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>\",\"address\":\"140908610\"},{\"name\":\"bind_wall_color_customization\",\"address\":\"14090bb70\"},{\"name\":\"bind_wooden_floor_textures\",\"address\":\"14090c980\"},{\"name\":\"get_resource_id\",\"address\":\"1400dd6f0\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"nani_draw\",\"address\":\"140904ae0\"},{\"name\":\"read_storage_buffer<country_core::resources::color_id::HalftimberColorIdSsbo>\",\"address\":\"141630190\"},{\"name\":\"read_storage_buffer<country_core::resources::color_id_roof::RoofColorIdSsbo>\",\"address\":\"14162ad90\"},{\"name\":\"read_storage_buffer<country_core::resources::walls::dormers::DormerHoleCountPerCellSsbo>\",\"address\":\"14162bc90\"},{\"name\":\"read_storage_buffer<country_core::resources::walls::dormers::DormerHoleSsbo>\",\"address\":\"141631090\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9310\"},{\"name\":\"write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<i32>,i32>\",\"address\":\"14096b570\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}}},\"count\":20,\"requested\":20}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "list_instances",
+        "title": null,
+        "description": "\nList known Ghidra instances from UDS discovery and the active TCP fallback.\n\nReturns JSON with each instance's project name, PID, open programs, and\nsocket path or TCP URL. Also shows which instance is currently connected.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "_list_instances_toolArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "connect_instance",
+        "title": null,
+        "description": "\nSwitch the MCP bridge to a different Ghidra instance by project name.\n\nIMPORTANT: Before calling this function only the static bridge tools are\nexposed (list_instances, connect_instance, tool-group management,\ndebugger proxy). After a successful connect the bridge fetches the\ninstance's /mcp/schema and registers Ghidra analysis tools dynamically.\nBy default all tool groups are loaded on connect. When started with\n--lazy, only the default groups are loaded initially and clients may need\nto call load_tool_group() for additional categories. Clients that cache\nthe initial tools/list and don't honor tools/list_changed must re-list\ntools after this call.\n\nUse list_instances() first to see available instances.\n\nArgs:\n    project: Project name (or substring) to connect to\n",
+        "inputSchema": {
+          "properties": {
+            "project": {
+              "description": "Project name (or substring) to connect to",
+              "title": "Project",
+              "type": "string"
+            }
+          },
+          "required": [
+            "project"
+          ],
+          "title": "connect_instanceArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_tool_groups",
+        "title": null,
+        "description": "\nList all available tool groups with their tool counts and loaded status.\n\nReturns each category with: tool count, loaded status, and tool names.\nUse load_tool_group(group) to load a group's tools.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "list_tool_groupsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "load_tool_group",
+        "title": null,
+        "description": "\nLoad all tools in a category. Accepts a category name or \"all\" to load everything.\n\nUse list_tool_groups() to see available categories.\n\nArgs:\n    group: Category name (e.g. \"function\", \"datatype\") or \"all\"\n",
+        "inputSchema": {
+          "properties": {
+            "group": {
+              "description": "Category name (e.g. \"function\", \"datatype\") or \"all\"",
+              "title": "Group",
+              "type": "string"
+            }
+          },
+          "required": [
+            "group"
+          ],
+          "title": "load_tool_groupArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "search_tools",
+        "title": null,
+        "description": "\nSearch the full Ghidra tool catalog by keyword \u2014 including tools whose group\nis not currently loaded. Use this to discover the right tool without paying\nthe context cost of loading all groups (run the bridge with --lazy and search\non demand). Matches against tool name, description, and category.\n\nEach result reports whether the tool is callable right now; if not, it\nincludes the exact load_tool_group(...) call needed to make it callable.\n\nArgs:\n    query: Space-separated keywords, e.g. \"rename function\" or \"xref struct\".\n    limit: Maximum number of results to return (default 15).\n",
+        "inputSchema": {
+          "properties": {
+            "query": {
+              "description": "Space-separated keywords, e.g. \"rename function\" or \"xref struct\".",
+              "title": "Query",
+              "type": "string"
+            },
+            "limit": {
+              "default": 15,
+              "description": "Maximum number of results to return (default 15).",
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "title": "search_toolsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "disassemble_function",
+        "title": null,
+        "description": "Get assembly listing of function. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution. When Ghidra's stored function body is degenerate (body_end == body_start, which would truncate the listing to a single instruction), the listing is instead bounded by the next function or the containing memory block and the response adds body_degenerate=true, bounded_by (next_function | memory_block | function_body) and a warning; do not trust this function's stored extent in that case.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "disassemble_functionArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_data_types",
+        "title": null,
+        "description": "Find data types by name or path pattern, category and kind, one record per type (name, kind, category, size, path). With categories=true, list the category paths instead. With no filter it lists every type.",
+        "inputSchema": {
+          "properties": {
+            "pattern": {
+              "default": "",
+              "description": "Case-insensitive substring of the type's name or full path; omit for no name filter.",
+              "title": "Pattern",
+              "type": "string"
+            },
+            "category": {
+              "default": "",
+              "description": "Case-insensitive substring of the category path (e.g. Windows, /MyTypes); omit for any category.",
+              "title": "Category",
+              "type": "string"
+            },
+            "kind": {
+              "default": "",
+              "description": "Only this kind: struct, union, enum, typedef, pointer, array, function or primitive. Omit for all kinds.",
+              "title": "Kind",
+              "type": "string"
+            },
+            "categories": {
+              "default": "false",
+              "description": "True lists the category paths (filtered by pattern) instead of types; category and kind do not apply.",
+              "title": "Categories",
+              "type": "boolean"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "find_data_typesArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_functions",
+        "title": null,
+        "description": "Find functions: every filter is optional, so with none it lists the whole program a page at a time. Filter by name (substring or regex=true), xref count, calling convention, whether the name is user-given, thunk or external, or by tag (tag=a,b keeps functions carrying ANY of them); each result lists its tags; sort by address, name or xref_count. Replaces list_functions, list_functions_enhanced, search_functions and search_functions_enhanced, which returned four different shapes for the same question.",
+        "inputSchema": {
+          "properties": {
+            "name_pattern": {
+              "default": "",
+              "description": "Substring to match, or a regex when regex=true. Omit to match every function.",
+              "title": "Name Pattern",
+              "type": "string"
+            },
+            "regex": {
+              "default": "false",
+              "description": "Treat name_pattern as a regular expression.",
+              "title": "Regex",
+              "type": "boolean"
+            },
+            "min_xrefs": {
+              "default": "",
+              "description": "Only functions with at least this many references to them.",
+              "title": "Min Xrefs",
+              "type": "integer"
+            },
+            "max_xrefs": {
+              "default": "",
+              "description": "Only functions with at most this many references to them.",
+              "title": "Max Xrefs",
+              "type": "integer"
+            },
+            "calling_convention": {
+              "default": "",
+              "description": "Only functions with this calling convention (e.g. __stdcall).",
+              "title": "Calling Convention",
+              "type": "string"
+            },
+            "has_custom_name": {
+              "default": "",
+              "description": "true = only functions somebody has named; false = only auto-generated names (FUN_*, thunk_*).",
+              "title": "Has Custom Name",
+              "type": "boolean"
+            },
+            "is_thunk": {
+              "default": "",
+              "description": "true = only thunks, false = exclude them, omit for both.",
+              "title": "Is Thunk",
+              "type": "boolean"
+            },
+            "is_external": {
+              "default": "",
+              "description": "true = only external functions, false = exclude them.",
+              "title": "Is External",
+              "type": "boolean"
+            },
+            "tag": {
+              "default": "",
+              "description": "Only functions carrying any of these tags: one name or a comma-separated list. A name that is not a defined tag is an error (list_function_tags shows the definitions).",
+              "title": "Tag",
+              "type": "string"
+            },
+            "sort_by": {
+              "default": "address",
+              "description": "address | name | xref_count.",
+              "title": "Sort By",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Page size. 0 means no limit, which on a large binary is a megabytes-long response \u2014 the old list_functions had no pagination at all and returned 1.7MB on a stripped `ls`.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "pattern": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Pattern"
+            },
+            "query": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Query"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            }
+          },
+          "title": "find_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_functions",
+        "title": null,
+        "description": "Everything about one or many functions in a single call. Pass functions= as a comma-separated list of names or addresses for bulk mode (up to 20); omit it and pass function=/name=/address= for one. Pass fields= as a comma-separated subset to skip work you do not need \u2014 omitted or empty returns everything. When the requested fields need no decompiled text (e.g. fields=callers,callees,signature,labels,entry_point), the target function is NOT decompiled (238 ms cold / 5\u201310 ms warm per function); only decompiled_code (and call_context when enabled) pays that cost. Decompiled text renders EOL comments (// style), so comments written with set_comment are visible in the code. Replaces get_function_by_address, get_function_variables, get_function_xrefs, decompile_function, and the former get_function_callers/callees/labels/signature tools. Completeness scoring is NOT included \u2014 call analyze_function_completeness for that.",
+        "inputSchema": {
+          "properties": {
+            "function": {
+              "default": "",
+              "description": "Single mode: function name or address (0x<hex> or <space>:<hex>). Ignored when functions= is set.",
+              "title": "Function",
+              "type": "string"
+            },
+            "functions": {
+              "default": "",
+              "description": "Bulk mode: comma-separated function references (names or addresses). When set, function= is ignored. Returns a map keyed by the reference asked for.",
+              "title": "Functions",
+              "type": "string"
+            },
+            "fields": {
+              "default": "",
+              "description": "Comma-separated subset: signature, classification, return_type, entry_point, body_start, body_end, decompiled_code, plate_comment, comments, labels, tags, parameters, locals, callers, call_context, callees, xrefs, disassembly, jump_targets, refs (the absolute addresses the function uses: data references, the values of literal-pool words, and the memory the decompiled code reads and writes, so a register reached as base + offset is listed by its own address; a pool value is written value<word; asking for refs decompiles). Omit or leave empty for the full bundle.",
+              "title": "Fields",
+              "type": "string"
+            },
+            "include_call_context": {
+              "default": "true",
+              "description": "Include each caller's decompiled call-site line. Costs one decompilation per unique caller (~43ms); set false for the cheapest possible bundle. Ignored unless call_context is requested (explicitly or via an empty fields=).",
+              "title": "Include Call Context",
+              "type": "boolean"
+            },
+            "call_context_limit": {
+              "default": "6",
+              "description": "Maximum number of UNIQUE callers to decompile for call context.",
+              "title": "Call Context Limit",
+              "type": "integer"
+            },
+            "call_context_lines": {
+              "default": "3",
+              "description": "Lines of the caller's decompilation to return per call site, centred on the call. 1 is the call line alone; the default 3 adds the line above and below, which is usually where the guard and the use of the result live. Clamped to 1-21; costs no extra decompilation.",
+              "title": "Call Context Lines",
+              "type": "integer"
+            },
+            "include_disasm": {
+              "default": "false",
+              "description": "Include the raw instruction listing. Off by default: it roughly doubles the payload and agents rarely read it.",
+              "title": "Include Disasm",
+              "type": "boolean"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Address"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "function_address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Address"
+            },
+            "function_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Name"
+            },
+            "call_context_window": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Call Context Window"
+            }
+          },
+          "title": "get_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_metadata",
+        "title": null,
+        "description": "Get program metadata",
+        "inputSchema": {
+          "properties": {
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_metadataArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_struct_layout",
+        "title": null,
+        "description": "Get structure field layout",
+        "inputSchema": {
+          "properties": {
+            "struct_name": {
+              "description": "Structure name",
+              "title": "Struct Name",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "struct_name"
+          ],
+          "title": "get_struct_layoutArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_from",
+        "title": null,
+        "description": "Get cross-references from an address. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "get_xrefs_fromArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_to",
+        "title": null,
+        "description": "Get cross-references to ONE address, or to MANY at once (addresses=comma-separated), which returns a map keyed by the address you asked for. Replaces the former get_bulk_xrefs. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "default": "",
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "addresses": {
+              "default": "",
+              "description": "Comma-separated addresses for the many-at-once form. The result is a map of address to its reference list, and an address that does not resolve gets an empty list rather than failing the whole call.",
+              "title": "Addresses",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_xrefs_toArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "read_memory",
+        "title": null,
+        "description": "Read raw memory bytes. Always pass the 'program' argument to target the correct binary \u2014 especially when multiple programs are open. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "length": {
+              "default": "16",
+              "description": "Number of bytes",
+              "title": "Length",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "read_memoryArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 1,
+  "ok": true
+}

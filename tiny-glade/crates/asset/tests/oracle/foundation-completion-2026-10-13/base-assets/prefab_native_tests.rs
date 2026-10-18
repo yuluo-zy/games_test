@@ -1238,13 +1238,13 @@ fn original_b_audio_option_defaults_and_required_markers() {
 {let mut audio=Some(PrefabAudioConfig {trigger:Inheritable::Inherit});audio.inherit_from(&None);let audio=audio.unwrap();let trigger=audio.trigger.as_concrete();assert!(matches!(trigger.kind,Inheritable::MissingDefault));check_value(&trigger.shape_scale,2,[1065353216, 1065353216, 1065353216]);assert!(matches!(trigger.shape,Inheritable::MissingDefault));}
 {let mut audio=Some(PrefabAudioConfig {trigger:Inheritable::Inherit});audio.inherit_from(&None);let audio=audio.unwrap();let trigger=audio.trigger.as_concrete();assert!(matches!(trigger.kind,Inheritable::MissingDefault));check_value(&trigger.shape_scale,2,[1065353216, 1065353216, 1065353216]);assert!(matches!(trigger.shape,Inheritable::MissingDefault));}
 {let mut audio=Some(PrefabAudioConfig {trigger:Inheritable::Inherit});audio.inherit_from(&None);let audio=audio.unwrap();let trigger=audio.trigger.as_concrete();assert!(matches!(trigger.kind,Inheritable::MissingDefault));check_value(&trigger.shape_scale,2,[1065353216, 1065353216, 1065353216]);assert!(matches!(trigger.shape,Inheritable::MissingDefault));}
-{let mut audio=Some(PrefabAudioConfig {trigger:Inheritable::MissingDefault});assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||audio.inherit_from(&None))).is_err());}
-{let mut audio=Some(PrefabAudioConfig {trigger:Inheritable::MissingDefault});assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||audio.inherit_from(&None))).is_err());}
-{let mut audio=Some(PrefabAudioConfig {trigger:Inheritable::MissingDefault});assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||audio.inherit_from(&None))).is_err());}
-{let mut audio=Some(PrefabAudioConfig {trigger:Inheritable::MissingDefault});assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||audio.inherit_from(&None))).is_err());}
-{let mut audio=Some(PrefabAudioConfig {trigger:Inheritable::MissingDefault});assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||audio.inherit_from(&None))).is_err());}
-{let mut audio=Some(PrefabAudioConfig {trigger:Inheritable::MissingDefault});assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||audio.inherit_from(&None))).is_err());}
-{let mut audio=Some(PrefabAudioConfig {trigger:Inheritable::MissingDefault});assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||audio.inherit_from(&None))).is_err());}
-{let mut audio=Some(PrefabAudioConfig {trigger:Inheritable::MissingDefault});assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||audio.inherit_from(&None))).is_err());}
-{let mut audio=Some(PrefabAudioConfig {trigger:Inheritable::MissingDefault});assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||audio.inherit_from(&None))).is_err());}
+{let mut audio=Some(PrefabAudioConfig {trigger:Inheritable::MissingDefault});audio.inherit_from(&None);assert!(audio.as_ref().unwrap().trigger.try_as_concrete().is_err());}
+{let mut audio=Some(PrefabAudioConfig {trigger:Inheritable::MissingDefault});audio.inherit_from(&None);assert!(audio.as_ref().unwrap().trigger.try_as_concrete().is_err());}
+{let mut audio=Some(PrefabAudioConfig {trigger:Inheritable::MissingDefault});audio.inherit_from(&None);assert!(audio.as_ref().unwrap().trigger.try_as_concrete().is_err());}
+{let mut audio=Some(PrefabAudioConfig {trigger:Inheritable::MissingDefault});audio.inherit_from(&None);assert!(audio.as_ref().unwrap().trigger.try_as_concrete().is_err());}
+{let mut audio=Some(PrefabAudioConfig {trigger:Inheritable::MissingDefault});audio.inherit_from(&None);assert!(audio.as_ref().unwrap().trigger.try_as_concrete().is_err());}
+{let mut audio=Some(PrefabAudioConfig {trigger:Inheritable::MissingDefault});audio.inherit_from(&None);assert!(audio.as_ref().unwrap().trigger.try_as_concrete().is_err());}
+{let mut audio=Some(PrefabAudioConfig {trigger:Inheritable::MissingDefault});audio.inherit_from(&None);assert!(audio.as_ref().unwrap().trigger.try_as_concrete().is_err());}
+{let mut audio=Some(PrefabAudioConfig {trigger:Inheritable::MissingDefault});audio.inherit_from(&None);assert!(audio.as_ref().unwrap().trigger.try_as_concrete().is_err());}
+{let mut audio=Some(PrefabAudioConfig {trigger:Inheritable::MissingDefault});audio.inherit_from(&None);assert!(audio.as_ref().unwrap().trigger.try_as_concrete().is_err());}
 }

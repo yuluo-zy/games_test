@@ -1,0 +1,11 @@
+--- a/games_test/tiny-glade/crates/tiny-glade/src/scene_compute.rs
++++ b/games_test/tiny-glade/crates/tiny-glade/src/scene_compute.rs
+@@ -50,7 +50,7 @@
+ 
+ /// Build a real compute consumer with the six confirmed PassResources owners.
+ /// No compiler-specific Bevy TypeId or source-build resource layout is cast.
+-fn with_env<T>(
++pub(crate) fn with_env<T>(
+     frame: &mut CoreGraphFrame<'_>,
+     world: &World,
+     build: impl FnOnce(&mut PassEnv<'_>) -> rhapsody::Result<T>,

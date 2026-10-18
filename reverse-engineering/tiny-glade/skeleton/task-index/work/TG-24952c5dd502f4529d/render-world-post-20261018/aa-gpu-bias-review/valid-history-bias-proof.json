@@ -1,0 +1,41 @@
+{
+  "original_first_proof": "bias-proof.json",
+  "constant_input_rgb": [
+    1,
+    0,
+    0
+  ],
+  "current_yuv": [
+    0.2125999927520752,
+    -0.11460000276565552,
+    0.5
+  ],
+  "broad_3x3_weights": "exp2(-(x*x+y*y)); output/input scale1, sample_offset0",
+  "broad_weight_sum": 4.0,
+  "current_mean": [
+    0.2125999927520752,
+    -0.11460000276565552,
+    0.5
+  ],
+  "current_variance": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "clamped_history_yuv": "any finite original reprojected history clamps to mean exactly because sigma0",
+  "narrow_3x3_weight_sum": 1.0039100646972656,
+  "narrow_current_filtered_yuv": [
+    0.2126000076532364,
+    -0.11460001021623611,
+    0.5
+  ],
+  "blue_of_both_mix_endpoints": [
+    -5.176663398742676e-05,
+    -5.176663398742676e-05
+  ],
+  "mixing": "aux output normalized nonnegative; _561=NMin(4,_540); blend weight _561/(positive_current_weight+_561) lies[0,1]",
+  "after_inverse_blue": "all convex blends remain strictly negative; NMax0 makes exact blue0 for valid history too",
+  "original_bias": 0.0078125,
+  "resolve_unorm_rounded": 22,
+  "scope": "center of this constant current-color fixture, first and valid second frame; not a general TGSR pixel guarantee"
+}

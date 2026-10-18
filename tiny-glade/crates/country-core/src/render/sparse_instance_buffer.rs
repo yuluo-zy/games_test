@@ -1,32 +1,7 @@
-//! `SparseInstanceBuffer<T>` / `SparseInstanceBufferWriter<T>` / `SparseInstanceBufferAllocation<T>`（layer A2）。
+//! 按 32 个实例分块管理的共享缓冲。
 //!
-//! 32 个实例为一个 chunk；每个 chunk 有“已写入数量”字节表、active / dirty 两张位图；释放的分配经
-//! `Arc<Mutex<Vec<AllocationHandle>>>` 回收到 `take_out_waste`。
-//!
-//! 证据（O，逐条核对机器码，见 `evidence/country-core-audit/L0_NOTES.md` “A2 第一批”）：
-//!  * `new_storage_buffer`        0x1412e4a90（RoofTile）/ 0x1412e5800（BrickTransform）等 4 个单态化
-//!  * `take_out_waste`            0x1412e3d00    * `gpu_flush`  0x1412e2f10（BrickTransform）
-//!  * `hide` 0x1412e3c00 / `show` 0x1412e3c80
-//!  * `allocation_to_draw_multi_instanced` 0x1412e3a60 / `impl$3::to_draw_multi_instanced` 0x1412e4250
-//!  * `SparseInstanceBufferWriter::push` 0x1412e4450 / `clear` 0x1412e4760
-//!  * `drop_in_place<SparseInstanceBufferAllocation>` 0x1405de840、`drop_in_place<Writer>` 0x1405dec30
-//!
-//! 与旧版的主要差异：
-//!  1. **布局**（0x90 B）：`free_chunks: RwLock<Vec<u32>>` @0、`byte_map: Box<[u8]>` @0x20、`active: Box<[AtomicUsize]>` @0x30、
-//!     **CPU 影子 `Box<[T]>`** @0x40（零初始化，长度 = chunks*32）、`dirty: Box<[AtomicUsize]>` @0x50、
-//!     `waste: Arc<Mutex<Vec<AllocationHandle>>>` @0x60、`TypedStorageBuffer<T>` @0x68。旧版的
-//!     `pending_resource_handles`、`chunk_count`、`slot_meta` 都不存在；`gpu_flush` 的数据源是 CPU 影子，不是“映射指针”。
-//!  2. `Allocation` 是 0x20 B 的 `Mutex<Vec<ChunkId>>`（Vec @0、RawMutex 字节 @0x18），装在 `Box` 里；
-//!     `AllocationHandle` 就是 `Option<Box<Allocation>>`。旧版把 Vec 的 capacity 当“待释放指针”，是错的。
-//!  3. `SparseInstanceBufferAllocation<T>` = `{ waste: Weak<…> @0, handle: AllocationHandle @8 }`；`Drop`：句柄非空且
-//!     `Weak::upgrade` 成功 → 锁 waste，把句柄 `take` 后 push。`hide/show` 取的就是它（`+8` 为空 → `Option::unwrap` panic）。
-//!  4. `Writer`（0x58 B）全是借用：`byte_map`、`active`、`MutexGuard<Vec<ChunkId>>`（该分配的 chunk 表）、`data: &mut [T]`、
-//!     `&RwLock<Vec<u32>>`、`dirty`、`current_chunk`。`push` 返回 bool（**true = 没有空闲 chunk**），按值整块拷贝 `T`。
-//!  5. `allocation_to_draw_multi_instanced` / `to_draw_multi_instanced` 返回 `Vec<(first_instance, instance_count)>`
-//!     （8 B 一项），长度为 0 的 run 不输出；旧版返回 `(0,4,len)` 三元组，是编的。
-//!  6. `gpu_flush` 无“runs 为空就返回”：原版无条件调用 `gpu_write_ranges_nonoverlapping`（空区间在其内部返回）。
-//!     puffin 作用域（函数名 + 区间数）是库行为，省略。
-
+//! 分配对象持有 chunk 列表，析构时进入延迟回收队列；批量替换先检查容量，
+//! GPU 上传只提交合并后的脏区间，成功后清除标记。原作布局证据保存在历史报告。
 use core::any::Any;
 use core::sync::atomic::{AtomicUsize, Ordering};
 use std::marker::PhantomData;
@@ -41,12 +16,17 @@ use crate::render::ssbo::{StorageElement, TypedStorageBuffer};
 /// 每个 chunk 的实例数（O：`shl 5` / 哨兵字节 0x20）。
 pub const SLOTS_PER_CHUNK: usize = 32;
 
-/// 稀疏缓冲的元素类型。`CHUNK_COUNT` 为 O（RoofTile=0x2000，Brick/Plank 0x800 起，各类型不同），且应满足
-/// `BUFFER_LEN == CHUNK_COUNT * 32`（O：影子数组长度 0x40000 = 0x2000*32）。
+/// 稀疏缓冲的元素类型。`CHUNK_COUNT` 为 O（RoofTile=0x2000，Brick=0x10000，Sparkle=0x300，各类型不同），且应满足
+/// `BUFFER_LEN == CHUNK_COUNT * 32`（O：Brick 影子数组 0x200000 = 0x10000*32）。
+///
+/// 影子数组用 `vec![T::default(); CHUNK_COUNT*32]` 填充（O：`new_storage_buffer<BrickTransformSsbo>`
+/// 0x1412e5800 的元素初值循环写 `deformation=0、surface=[-100;3]、flags=0`，即 `BrickTransformSsbo::default()`
+/// 的 0x60 B 模式；PDB inline 记录含 `alloc::vec::from_elem`/`Vec::extend_with` → `vec![elem; n]`）。
+/// 因此实现者必须提供正确的 `Default`——它不是“零值”的同义词。
 ///
 /// # Safety
-/// 影子数组用全零字节初始化（O：`new_storage_buffer` 里的 memset 循环），实现者须保证全零是合法的 `T`。
-pub unsafe trait SparseSsbo: StorageElement {
+/// 元素不得包含填充或未初始化字节，所有字段必须可按字节上传；容量须等于 chunk 数乘 32。
+pub unsafe trait SparseSsbo: StorageElement + Default {
     const CHUNK_COUNT: usize;
 }
 
@@ -73,6 +53,7 @@ impl AllocationHandle {
 }
 
 /// 释放时把句柄还给缓冲的 `waste` 列表（O：`drop_in_place` 0x1405de840）。
+#[derive(Debug)]
 pub struct SparseInstanceBufferAllocation<T> {
     /// +0x00。`Weak::new()` 的哨兵（-1）在 `upgrade` 时直接失败。
     waste: Weak<Mutex<Vec<AllocationHandle>>>,
@@ -99,7 +80,68 @@ impl<T> SparseInstanceBufferAllocation<T> {
     }
 }
 
-/// `SparseInstanceBuffer<T>` — 0x90 B（O）。
+/// 类型擦除的“分离分配” = 原生 `MagicSupports` 的 `+0x20/+0x28`（第一写面）、
+/// `+0x30/+0x38`（第二写面）以及 `StairsEdgeVisualState` 每边两个槽的存储形态。
+///
+/// fresh 0x140aa8210（`MagicSupports::clear`）逐指令：
+///  * 槽为空 → `Arc::downgrade(*(buffer+0x60))`（= `SparseInstanceBuffer::waste` 的 Weak，
+///    原子增 `[ArcInner+8]`）存 `+0x20`；另 `__rust_alloc(0x20,8)` 得新块
+///    `{0,4,0,0}`（Vec 空 = cap 0 / dangling ptr 4 / len 0，RawMutex @+0x18）存 `+0x28`；
+///  * 非空槽直接 `lock [alloc+0x18]`；用 `buffer` 的 `+0x20..+0x58`（byte_map/active/data/
+///    dirty 的 ptr+len）与分配指针拼出 `SparseInstanceBufferWriter<BrickTransformSsbo>`，
+///    调 `clear<BrickTransformSsbo>`。元素类型不进入分配表——故此处以 `Allocation` 擦除。
+#[derive(Debug, Default)]
+pub struct MeshAtlasAllocation {
+    /// 原生 `+0x20`：`Arc::downgrade(&buffer.waste)`。
+    pub waste: Weak<Mutex<Vec<AllocationHandle>>>,
+    /// 原生 `+0x28`：0x20 B `Allocation`（`Mutex<Vec<ChunkId>>`）。`Option` 仅为 Drop 搬出。
+    allocation: Option<Box<Allocation>>,
+}
+
+impl MeshAtlasAllocation {
+    /// 原生懒初始化：`Arc::downgrade(buffer.waste)` + `Box::new(Allocation::default())`。
+    pub fn new<T: SparseSsbo>(buffer: &SparseInstanceBuffer<T>) -> Self {
+        Self {
+            waste: Arc::downgrade(&buffer.waste),
+            allocation: Some(Box::new(Allocation::default())),
+        }
+    }
+
+    /// 供 `SparseInstanceBuffer::writer_for` 使用（原生直接解引用 `+0x28`）。
+    pub fn allocation(&self) -> &Allocation {
+        self.allocation
+            .as_deref()
+            .expect("separated allocation handle is null")
+    }
+}
+
+/// O：`SparseInstanceBufferAllocation::drop` 0x1405de840 的同一回收语义——句柄非空且
+/// `Weak::upgrade` 成功 → 把 `Box<Allocation>` 推进 `waste` 列表。
+impl Drop for MeshAtlasAllocation {
+    fn drop(&mut self) {
+        let Some(allocation) = self.allocation.take() else {
+            return;
+        };
+        if let Some(waste) = self.waste.upgrade() {
+            waste.lock().push(AllocationHandle(Some(allocation)));
+        }
+    }
+}
+
+/// 独占设备分配；句柄副本只用于查询，不延长资源寿命。
+/// 宿主负责让尚在执行的 GPU 命令持有底层资源，释放时无需阻塞等待设备。
+struct OwnedSparseBuffer {
+    device: Arc<dyn GraphicsDevice + Send + Sync>,
+    buffer: rhapsody_boundary::Buffer,
+}
+
+impl Drop for OwnedSparseBuffer {
+    fn drop(&mut self) {
+        self.device.release_buffer(&self.buffer);
+    }
+}
+
+/// 共享稀疏实例存储。生产构造使用 `try_new_owned` 闭合设备缓冲的生命周期。
 pub struct SparseInstanceBuffer<T: SparseSsbo> {
     /// +0x00：空闲 chunk 栈，初始降序 `[n-1 ..= 0]`（O：`psubd` 填充循环），栈顶 = 最小编号。
     pub free_chunks: RwLock<Vec<ChunkId>>,
@@ -107,7 +149,7 @@ pub struct SparseInstanceBuffer<T: SparseSsbo> {
     pub byte_map: Box<[u8]>,
     /// +0x30：active 位图，n/64 个字。
     pub active_bitset: Box<[AtomicUsize]>,
-    /// +0x40：CPU 影子，n*32 个 `T`，全零。`Writer` 写它，`gpu_flush` 上传它。
+    /// CPU 影子，按 `T::default()` 初始化；仅上传 dirty chunk。
     pub data: Box<[T]>,
     /// +0x50：dirty 位图。
     pub dirty_bitset: Box<[AtomicUsize]>,
@@ -115,6 +157,8 @@ pub struct SparseInstanceBuffer<T: SparseSsbo> {
     pub waste: Arc<Mutex<Vec<AllocationHandle>>>,
     /// +0x68。
     pub buffer: TypedStorageBuffer<T>,
+    // 保留创建宿主及原始代际句柄，避免依赖 ECS 资源的析构顺序。
+    _buffer_owner: Option<OwnedSparseBuffer>,
 }
 
 fn zeroed_bitset(words: usize) -> Box<[AtomicUsize]> {
@@ -125,21 +169,52 @@ impl<T: SparseSsbo> SparseInstanceBuffer<T> {
     /// O — `impl$10::new_storage_buffer<T>`。第二参数必须为 `None`（`assertion failed: data.is_none()`）。
     pub fn new_storage_buffer(device: &dyn GraphicsDevice, data: Option<&[u8]>) -> Self {
         assert!(data.is_none(), "assertion failed: data.is_none()");
-        let chunks = T::CHUNK_COUNT;
-        debug_assert_eq!(T::BUFFER_LEN, chunks * SLOTS_PER_CHUNK);
+        Self::try_new(device).expect("创建稀疏实例缓冲失败")
+    }
 
+    /// 借用设备的兼容入口；调用方负责最终释放设备缓冲。
+    /// 生产资源应使用 `try_new_owned`，让存储自动归还宿主句柄。
+    pub fn try_new(device: &dyn GraphicsDevice) -> Result<Self, rhapsody_boundary::BackendError> {
+        Self::try_new_with_owner(device, None)
+    }
+
+    /// 独占设备缓冲，销毁存储即归还宿主；创建失败不产生释放操作。
+    /// 未使用的 GPU 槽不初始化，也不会进入绘制区间。
+    pub fn try_new_owned(
+        device: Arc<dyn GraphicsDevice + Send + Sync>,
+    ) -> Result<Self, rhapsody_boundary::BackendError> {
+        Self::try_new_with_owner(device.as_ref(), Some(device.clone()))
+    }
+
+    fn try_new_with_owner(
+        device: &dyn GraphicsDevice,
+        owner: Option<Arc<dyn GraphicsDevice + Send + Sync>>,
+    ) -> Result<Self, rhapsody_boundary::BackendError> {
+        let chunks = T::CHUNK_COUNT;
+        if chunks == 0
+            || chunks > u32::MAX as usize / SLOTS_PER_CHUNK
+            || chunks.checked_mul(SLOTS_PER_CHUNK) != Some(T::BUFFER_LEN)
+        {
+            return Err(rhapsody_boundary::BackendError::invalid_usage(
+                "稀疏缓冲容量与 chunk 数不匹配",
+            ));
+        }
+
+        let buffer = TypedStorageBuffer::try_new_uninitialized(device)?;
+        // 先建立释放守卫，后续 CPU 初始化即使发生 unwind 也不会泄漏设备分配。
+        let buffer_owner = owner.map(|device| OwnedSparseBuffer {
+            device,
+            buffer: buffer.buffer,
+        });
         let mut byte_map = vec![0u8; chunks + 1].into_boxed_slice();
         byte_map[chunks] = SLOTS_PER_CHUNK as u8;
-        // SAFETY: `SparseSsbo` 的契约——全零是合法值。
-        let shadow: Box<[T]> = (0..chunks * SLOTS_PER_CHUNK)
-            .map(|_| unsafe { core::mem::zeroed::<T>() })
-            .collect();
+        // O：影子按 `T::default()` 逐元素填充（`vec![elem; n]`；Brick 的默认 surface=-100）。
+        let shadow: Box<[T]> = vec![T::default(); chunks * SLOTS_PER_CHUNK].into_boxed_slice();
         let free: Vec<ChunkId> = (0..chunks as u32).rev().collect();
-        let buffer = TypedStorageBuffer::new(device, None);
-        let active_bitset = zeroed_bitset(chunks / usize::BITS as usize);
-        let dirty_bitset = zeroed_bitset(chunks / usize::BITS as usize);
+        let active_bitset = zeroed_bitset(chunks.div_ceil(usize::BITS as usize));
+        let dirty_bitset = zeroed_bitset(chunks.div_ceil(usize::BITS as usize));
 
-        Self {
+        Ok(Self {
             free_chunks: RwLock::new(free),
             byte_map,
             active_bitset,
@@ -147,7 +222,8 @@ impl<T: SparseSsbo> SparseInstanceBuffer<T> {
             dirty_bitset,
             waste: Arc::new(Mutex::new(Vec::new())),
             buffer,
-        }
+            _buffer_owner: buffer_owner,
+        })
     }
 
     /// O — 5 字节桩 0x140005c50：返回内嵌的 `TypedStorageBuffer`（@0x68）。
@@ -170,7 +246,26 @@ impl<T: SparseSsbo> SparseInstanceBuffer<T> {
         &'a mut self,
         allocation: &'a SparseInstanceBufferAllocation<T>,
     ) -> SparseInstanceBufferWriter<'a, T> {
-        let chunks = allocation.chunk_ids().chunk_ids.lock();
+        assert!(self.owns_allocation(allocation), "分配不属于当前稀疏缓冲");
+        self.writer_for(allocation.chunk_ids())
+    }
+
+    /// 防止相同元素类型的两个缓冲误用彼此的 chunk 编号。
+    pub fn owns_allocation(&self, allocation: &SparseInstanceBufferAllocation<T>) -> bool {
+        Weak::ptr_eq(&allocation.waste, &Arc::downgrade(&self.waste))
+    }
+
+    /// 原生 `SparseInstanceBufferWriter` 的构造面：`MagicSupports::clear`
+    /// （0x140aa8210）与 `StairsVisualState::reset_edge`（0x140aa8a60）都**不**持有
+    /// `SparseInstanceBufferAllocation<T>`，而是直接从资源里的裸 `Allocation`
+    /// （`Mutex<Vec<ChunkId>>`，块 `{0,4,0,0}` 语义 = 空 chunk 表 + RawMutex @+0x18）
+    /// 拼出 writer：byte_map/active/data/free/dirty 取自缓冲、`+0x20` 直接存分配指针。
+    /// 起始 chunk = 哨兵（`byte_map.len()-1`），与 `clear` 入口写回的值一致。
+    pub fn writer_for<'a>(
+        &'a mut self,
+        allocation: &'a Allocation,
+    ) -> SparseInstanceBufferWriter<'a, T> {
+        let chunks = allocation.chunk_ids.lock();
         let Self {
             free_chunks,
             byte_map,
@@ -192,7 +287,7 @@ impl<T: SparseSsbo> SparseInstanceBuffer<T> {
 
     /// O — `hide` 0x1412e3c00：清掉该分配所有 chunk 的 active 位。
     pub fn hide(&self, allocation: &SparseInstanceBufferAllocation<T>) {
-        for &id in chunk_list(allocation.chunk_ids()) {
+        for &id in chunk_list(allocation.chunk_ids()).iter() {
             self.active_bitset[id as usize >> 6]
                 .fetch_and(!(1usize << (id & 63)), Ordering::Relaxed);
         }
@@ -200,7 +295,7 @@ impl<T: SparseSsbo> SparseInstanceBuffer<T> {
 
     /// O — `show` 0x1412e3c80：置上该分配所有 chunk 的 active 位。
     pub fn show(&self, allocation: &SparseInstanceBufferAllocation<T>) {
-        for &id in chunk_list(allocation.chunk_ids()) {
+        for &id in chunk_list(allocation.chunk_ids()).iter() {
             self.active_bitset[id as usize >> 6].fetch_or(1usize << (id & 63), Ordering::Relaxed);
         }
     }
@@ -214,7 +309,7 @@ impl<T: SparseSsbo> SparseInstanceBuffer<T> {
         for handle in waste.drain(..) {
             let allocation = handle.0.as_ref().unwrap();
             let ids = chunk_list(allocation);
-            for &id in ids {
+            for &id in ids.iter() {
                 self.byte_map[id as usize] = 0;
                 bitmap_unset(&self.active_bitset, id as usize);
             }
@@ -222,33 +317,48 @@ impl<T: SparseSsbo> SparseInstanceBuffer<T> {
         }
     }
 
-    /// O — `gpu_flush` 0x1412e2f10：先回收，再把 dirty 的 chunk 合并成连续区间上传 CPU 影子。
-    /// dirty 字被读后**非原子地**清零（`&mut self`）；区间以元素为单位 `[start*32, end*32)`。
-    pub fn gpu_flush(&mut self, device: &dyn GraphicsDevice) {
+    /// 将脏 chunk 合并后批量上传；失败保留 dirty 标记，下一帧可重试。
+    pub fn try_gpu_flush(
+        &mut self,
+        device: &dyn GraphicsDevice,
+    ) -> Result<(), rhapsody_boundary::BackendError> {
         self.take_out_waste();
-        let mut runs: Vec<core::ops::Range<usize>> = Vec::new();
-        let (mut run_start, mut run_end) = (0u32, 0u32);
-        for (w, word) in self.dirty_bitset.iter_mut().enumerate() {
-            let mut bits = core::mem::take(word.get_mut());
-            while bits != 0 {
-                let chunk = (w * 64) as u32 + bits.trailing_zeros();
-                if run_end == chunk {
-                    run_end = chunk + 1;
+        let element_size = core::mem::size_of::<T>();
+        let mut byte_ranges: Vec<core::ops::Range<usize>> = Vec::new();
+        for (word_index, word) in self.dirty_bitset.iter().enumerate() {
+            let mut dirty_chunks = word.load(Ordering::Relaxed);
+            while dirty_chunks != 0 {
+                let chunk_index =
+                    word_index * usize::BITS as usize + dirty_chunks.trailing_zeros() as usize;
+                let start = chunk_index * SLOTS_PER_CHUNK * element_size;
+                let end = start + SLOTS_PER_CHUNK * element_size;
+                if let Some(previous) = byte_ranges.last_mut().filter(|range| range.end == start) {
+                    previous.end = end;
                 } else {
-                    if run_start < run_end {
-                        runs.push((run_start as usize) << 5..(run_end as usize) << 5);
-                    }
-                    run_start = chunk;
-                    run_end = chunk + 1;
+                    byte_ranges.push(start..end);
                 }
-                bits &= bits - 1;
+                dirty_chunks &= dirty_chunks - 1;
             }
         }
-        if run_start < run_end {
-            runs.push((run_start as usize) << 5..(run_end as usize) << 5);
+        if byte_ranges.is_empty() {
+            return Ok(());
         }
-        self.buffer
-            .gpu_write_ranges_nonoverlapping(device, &self.data, &runs, 0);
+        // SparseSsbo 的安全合同保证元素没有填充和未初始化字节。
+        device.update_buffer_bytes(
+            &self.buffer.buffer,
+            rhapsody_boundary::slice_as_bytes(&self.data),
+            &byte_ranges,
+            0,
+        )?;
+        for word in &mut self.dirty_bitset {
+            *word.get_mut() = 0;
+        }
+        Ok(())
+    }
+
+    /// 兼容旧调用方；需要恢复失败的运行期代码应使用 try_gpu_flush。
+    pub fn gpu_flush(&mut self, device: &dyn GraphicsDevice) {
+        self.try_gpu_flush(device).expect("上传稀疏实例缓冲失败");
     }
 
     /// O — `allocation_to_draw_multi_instanced` 0x1412e3a60：按该分配的 chunk 顺序合并绘制区间。
@@ -266,22 +376,29 @@ impl<T: SparseSsbo> SparseInstanceBuffer<T> {
 
     /// O — `impl$3::to_draw_multi_instanced` 0x1412e4250：对整张 active 位图做同样的合并。
     pub fn to_draw_multi_instanced(&self) -> Vec<DrawRange> {
-        let mut chunks = Vec::new();
-        for (w, word) in self.active_bitset.iter().enumerate() {
-            let mut bits = word.load(Ordering::Relaxed);
-            while bits != 0 {
-                chunks.push(w * 64 + bits.trailing_zeros() as usize);
-                bits &= bits - 1;
-            }
-        }
-        merge_draw_runs(chunks.into_iter(), &self.byte_map)
+        let chunks = self
+            .active_bitset
+            .iter()
+            .enumerate()
+            .flat_map(|(word_index, word)| {
+                let mut active_chunks = word.load(Ordering::Relaxed);
+                std::iter::from_fn(move || {
+                    if active_chunks == 0 {
+                        return None;
+                    }
+                    let chunk_index =
+                        word_index * usize::BITS as usize + active_chunks.trailing_zeros() as usize;
+                    active_chunks &= active_chunks - 1;
+                    Some(chunk_index)
+                })
+            });
+        merge_draw_runs(chunks, &self.byte_map)
     }
 }
 
-/// 不加锁读取 chunk 表（O：`hide/show/take_out_waste` 都直接读 `[alloc+8]/[alloc+0x10]`，无 RawMutex 操作）。
-fn chunk_list(allocation: &Allocation) -> &[ChunkId] {
-    // SAFETY: 调用方持有对分配的共享/独占引用；与原版一样不取锁。写入器存活期间不应同时调用。
-    unsafe { &*allocation.chunk_ids.data_ptr() }
+/// 通过库提供的锁守卫读取分配表，避免共享引用下读取可变 Vec。
+fn chunk_list(allocation: &Allocation) -> MutexGuard<'_, Vec<ChunkId>> {
+    allocation.chunk_ids.lock()
 }
 
 /// 合并连续 chunk：`prev_end == start` 则延伸，否则收尾上一段（长度为 0 不输出）并开新段；
@@ -329,6 +446,47 @@ pub struct SparseInstanceBufferWriter<'a, T: SparseSsbo> {
 }
 
 impl<T: SparseSsbo> SparseInstanceBufferWriter<'_, T> {
+    /// 整批替换。容量不足时不修改原分配；成功时复用旧 chunk，只领取增长部分。
+    pub fn replace_all(&mut self, instances: &[T]) -> Result<(), NoFreeChunks> {
+        let required_chunks = instances.len().div_ceil(SLOTS_PER_CHUNK);
+        let mut free_chunks = self.free_chunks.write();
+        if required_chunks > self.allocation_chunks.len() + free_chunks.len() {
+            return Err(NoFreeChunks);
+        }
+        if required_chunks > self.allocation_chunks.len() {
+            let additional = required_chunks - self.allocation_chunks.len();
+            self.allocation_chunks.reserve(additional);
+            while self.allocation_chunks.len() < required_chunks {
+                self.allocation_chunks
+                    .push(free_chunks.pop().expect("已检查空闲 chunk 数"));
+            }
+        }
+        for chunk_id in self.allocation_chunks.drain(required_chunks..).rev() {
+            self.byte_map[chunk_id as usize] = 0;
+            bitmap_unset(self.active, chunk_id as usize);
+            free_chunks.push(chunk_id);
+        }
+        drop(free_chunks);
+        for (&chunk_id, values) in self
+            .allocation_chunks
+            .iter()
+            .zip(instances.chunks(SLOTS_PER_CHUNK))
+        {
+            let chunk_index = chunk_id as usize;
+            let first_slot = chunk_index * SLOTS_PER_CHUNK;
+            self.data[first_slot..first_slot + values.len()].copy_from_slice(values);
+            self.byte_map[chunk_index] = values.len() as u8;
+            bitmap_set(self.active, chunk_index);
+            bitmap_set(self.dirty, chunk_index);
+        }
+        self.current_chunk = self
+            .allocation_chunks
+            .last()
+            .copied()
+            .unwrap_or((self.byte_map.len() - 1) as u32);
+        Ok(())
+    }
+
     /// O — `push` 0x1412e4450。当前 chunk 未满：槽位 `chunk<<5 | count`，计数 +1，写入并置 dirty；
     /// 已满：写锁下弹出空闲栈顶（空 → `Err`），记入分配的 chunk 表，`byte_map[id]=1`，写槽 `id<<5`，
     /// 置 active + dirty，`current_chunk=id`。所有下标均带边界检查（panic 文案为 `index out of bounds`）。
@@ -380,11 +538,8 @@ impl<T: SparseSsbo + Send + Sync + 'static> Ssbo for SparseInstanceBuffer<T> {
     fn buffer(&self) -> &rhapsody_boundary::Buffer {
         &self.buffer.buffer
     }
-    fn handle(&self) -> &ResourceHandle {
-        // O — 5 字节桩 0x140005c50 返回内嵌缓冲（@0x68）的句柄；`Buffer` 首部即句柄字，类型转换 I。
-        unsafe {
-            &*(&self.buffer.buffer as *const rhapsody_boundary::Buffer as *const ResourceHandle)
-        }
+    fn handle(&self) -> ResourceHandle {
+        ResourceHandle(self.buffer.buffer.id, self.buffer.buffer.generation)
     }
 }
 
@@ -405,7 +560,7 @@ mod tests {
     use std::cell::RefCell;
     use std::ops::Range;
 
-    #[derive(Clone, Copy, Debug, PartialEq)]
+    #[derive(Clone, Copy, Debug, Default, PartialEq)]
     struct Elem(u32);
     impl StorageElement for Elem {
         const NAME: &'static str = "Elem";
@@ -413,6 +568,22 @@ mod tests {
     }
     unsafe impl SparseSsbo for Elem {
         const CHUNK_COUNT: usize = 128;
+    }
+
+    /// 非零默认值类型：验证影子不是 `zeroed::<T>()`，而取 `T::default()`。
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    struct NonZero(u32, f32);
+    impl Default for NonZero {
+        fn default() -> Self {
+            Self(7, -100.0)
+        }
+    }
+    impl StorageElement for NonZero {
+        const NAME: &'static str = "NonZero";
+        const BUFFER_LEN: usize = 2 * SLOTS_PER_CHUNK;
+    }
+    unsafe impl SparseSsbo for NonZero {
+        const CHUNK_COUNT: usize = 2;
     }
 
     #[derive(Default)]
@@ -461,6 +632,17 @@ mod tests {
         let free = b.free_chunks.read();
         assert_eq!(free.len(), 128);
         assert_eq!((free[0], free[127]), (127, 0)); // 降序，栈顶 = 0
+    }
+
+    #[test]
+    fn shadow_is_filled_with_default_values_not_zeroes() {
+        // O：`new_storage_buffer<BrickTransformSsbo>` 逐元素写 Default 模式（surface=-100），
+        // 不是 memset 0 —— 因此影子必须是 `T::default()`。
+        let dev = Rec::default();
+        let b = SparseInstanceBuffer::<NonZero>::new_storage_buffer(&dev, None);
+        assert_eq!(b.data.len(), 2 * SLOTS_PER_CHUNK);
+        assert!(b.data.iter().all(|&v| v == NonZero::default()));
+        assert_eq!(b.data[0], NonZero(7, -100.0));
     }
 
     #[test]
@@ -639,5 +821,38 @@ mod tests {
     fn is_null_follows_option() {
         assert!(AllocationHandle(None).is_null());
         assert!(!AllocationHandle(Some(Box::default())).is_null());
+    }
+
+    #[test]
+    fn writer_for_uses_a_detached_allocation_like_magic_supports() {
+        // 原生 0x140aa8210 / 0x140aa8a60 从资源里的裸 Allocation 直接拼 writer，
+        // 起始 chunk = byte_map.len()-1；clear 后 chunk 逆序回空闲栈。
+        let (_d, mut b) = new_buf();
+        let detached = MeshAtlasAllocation::new(&b);
+        {
+            let mut w = b.writer_for(detached.allocation());
+            assert_eq!(w.current_chunk, 128);
+            w.push(&Elem(7)).unwrap();
+            assert_eq!(w.allocation_chunks.as_slice(), &[0]);
+            w.clear();
+        }
+        assert_eq!(b.byte_map[0], 0);
+        assert_eq!(b.active_bitset[0].load(Ordering::Relaxed), 0);
+        assert_eq!(b.free_chunks.read().len(), 128);
+    }
+
+    #[test]
+    fn detached_allocation_drop_returns_chunks_to_waste() {
+        let (_d, mut b) = new_buf();
+        let detached = MeshAtlasAllocation::new(&b);
+        {
+            let mut w = b.writer_for(detached.allocation());
+            w.push(&Elem(1)).unwrap();
+        }
+        drop(detached);
+        assert_eq!(b.waste.lock().len(), 1);
+        b.take_out_waste();
+        assert!(b.waste.lock().is_empty());
+        assert_eq!(b.free_chunks.read().len(), 128);
     }
 }

@@ -1,0 +1,779 @@
+{
+  "backend": "ghidra",
+  "worker": "shared",
+  "access": "read",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "get_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x14089d8b0,0x140b2cf90,0x141be1080",
+        "fields": "signature,decompiled_code,callees",
+        "include_call_context": false
+      },
+      "args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x14089d8b0,0x140b2cf90,0x141be1080",
+        "fields": "signature,decompiled_code,callees",
+        "include_call_context": false
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program\":\"tiny-glade.exe\",\"functions\":{\"0x14089d8b0\":{\"name\":\"new\",\"size\":179,\"address\":\"14089d8b0\",\"signature\":\"void __cdecl new(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::systems::ui::signifiers::SignifierFactory::new(void)\\n\\n{\\n  void *extraout_RAX;\\n  size_t *in_RCX;\\n  void *in_RDX;\\n  void *_Dst;\\n  size_t in_R8;\\n  size_t in_R9;\\n  size_t in_stack_00000028;\\n  \\n  if ((longlong)in_R8 < 0) {\\nLAB_14089d94d:\\n                    // WARNING: Subroutine does not return\\n    alloc::raw_vec::handle_error();\\n  }\\n  if (in_R8 == 0) {\\n    _Dst = (void *)0x1;\\n  }\\n  else {\\n    std::alloc::__default_lib_allocator::__rust_alloc();\\n    _Dst = extraout_RAX;\\n    if (extraout_RAX == (void *)0x0) goto LAB_14089d94d;\\n  }\\n  memcpy(_Dst,in_RDX,in_R8);\\n  *in_RCX = in_R8;\\n  in_RCX[1] = (size_t)_Dst;\\n  in_RCX[2] = in_R8;\\n  in_RCX[3] = in_R9;\\n  in_RCX[4] = in_stack_00000028;\\n  return;\\n}\\n\\n\",\"callee_count\":3,\"callees\":[{\"name\":\"__rust_alloc\",\"address\":\"140613c10\"},{\"name\":\"handle_error\",\"address\":\"1428d8fe3\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140b2cf90\":{\"name\":\"write\",\"size\":5,\"address\":\"140b2cf90\",\"signature\":\"void __cdecl write(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::systems::ui::signifiers::signifier_create::UiSignifierStream::write(void)\\n\\n{\\n  longlong lVar1;\\n  longlong *plVar2;\\n  undefined8 *puVar3;\\n  longlong lVar4;\\n  ulonglong uVar5;\\n  undefined8 uVar6;\\n  undefined8 uVar7;\\n  undefined8 uVar8;\\n  undefined8 uVar9;\\n  uint extraout_EAX;\\n  longlong lVar10;\\n  longlong extraout_RAX;\\n  longlong in_RCX;\\n  undefined8 *in_RDX;\\n  undefined8 *puVar11;\\n  bool bVar12;\\n  \\n  LOCK();\\n  plVar2 = (longlong *)(in_RCX + 0x168);\\n  lVar4 = *plVar2;\\n  *plVar2 = *plVar2 + 1;\\n  UNLOCK();\\n  puVar11 = in_RDX;\\n  append_only_vec::indices();\\n  lVar1 = lVar4 + 1;\\n  if (*(ulonglong *)(in_RCX + 0x160) < (ulonglong)(lVar1 - (longlong)puVar11)) {\\n    if (puVar11 == (undefined8 *)0x0) {\\n      if (0x333333333333333 < (ulonglong)(8L << ((byte)extraout_EAX & 0x3f))) {\\n                    // WARNING: Subroutine does not return\\n        core::result::unwrap_failed();\\n      }\\n      std::alloc::__default_lib_allocator::__rust_alloc();\\n      if (0x2b < extraout_EAX) {\\n                    // WARNING: Subroutine does not return\\n        core::panicking::panic_bounds_check();\\n      }\\n      *(longlong *)(in_RCX + (ulonglong)extraout_EAX * 8) = extraout_RAX;\\n      lVar10 = extraout_RAX;\\n      goto LAB_14146c926;\\n    }\\n    uVar5 = *(ulonglong *)(in_RCX + 0x160);\\n    while (uVar5 < (ulonglong)(lVar1 - (longlong)puVar11)) {\\n      uVar5 = *(ulonglong *)(in_RCX + 0x160);\\n    }\\n    if (0x2b < extraout_EAX) {\\n                    // WARNING: Subroutine does not return\\n      core::panicking::panic_bounds_check();\\n    }\\n  }\\n  else if (0x2b < extraout_EAX) {\\n                    // WARNING: Subroutine does not return\\n    core::panicking::panic_bounds_check();\\n  }\\n  lVar10 = *(longlong *)(in_RCX + (ulonglong)extraout_EAX * 8);\\nLAB_14146c926:\\n  uVar6 = *in_RDX;\\n  uVar7 = in_RDX[1];\\n  uVar8 = in_RDX[2];\\n  uVar9 = in_RDX[3];\\n  *(undefined8 *)(lVar10 + 0x20 + (longlong)puVar11 * 0x28) = in_RDX[4];\\n  puVar3 = (undefined8 *)(lVar10 + 0x10 + (longlong)puVar11 * 0x28);\\n  *puVar3 = uVar8;\\n  puVar3[1] = uVar9;\\n  puVar11 = (undefined8 *)(lVar10 + (longlong)puVar11 * 0x28);\\n  *puVar11 = uVar6;\\n  puVar11[1] = uVar7;\\n  LOCK();\\n  bVar12 = lVar4 == *(longlong *)(in_RCX + 0x160);\\n  if (bVar12) {\\n    *(longlong *)(in_RCX + 0x160) = lVar1;\\n  }\\n  UNLOCK();\\n  while (!bVar12) {\\n    LOCK();\\n    bVar12 = lVar4 == *(longlong *)(in_RCX + 0x160);\\n    if (bVar12) {\\n      *(longlong *)(in_RCX + 0x160) = lVar1;\\n    }\\n    UNLOCK();\\n  }\\n  return;\\n}\\n\\n\",\"callee_count\":0,\"callees\":[],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x141be1080\":{\"name\":\"closure$1\",\"size\":700,\"address\":\"141be1080\",\"signature\":\"void __cdecl closure$1(void)\",\"decompiled_code\":\"\\nvoid __cdecl system_glade_border::display_glade_border::display_glade_border::closure_1(void)\\n\\n{\\n  float fVar1;\\n  void *_Src;\\n  longlong lVar2;\\n  longlong lVar3;\\n  undefined1 auVar4 [16];\\n  undefined8 *extraout_RAX;\\n  ulonglong _Size;\\n  undefined1 *extraout_RAX_00;\\n  undefined8 *in_RCX;\\n  longlong in_RDX;\\n  undefined1 *_Dst;\\n  longlong *local_190;\\n  longlong *local_188;\\n  undefined8 local_178;\\n  \\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX == (undefined8 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  auVar4._8_8_ = 0;\\n  auVar4._0_8_ = *(ulonglong *)(in_RDX + 0x10);\\n  _Size = SUB168(auVar4 * ZEXT816(0xc),0);\\n  if ((SUB168(auVar4 * ZEXT816(0xc),8) == 0) && (_Size < 0x7ffffffffffffffd)) {\\n    _Src = *(void **)(in_RDX + 8);\\n    if (_Size == 0) {\\n      _Dst = &DAT_00000004;\\n    }\\n    else {\\n      std::alloc::__default_lib_allocator::__rust_alloc();\\n      _Dst = extraout_RAX_00;\\n      if (extraout_RAX_00 == (undefined1 *)0x0) goto LAB_141be131b;\\n    }\\n    memcpy(_Dst,_Src,_Size);\\n    country_core::systems::ui::signifiers::SignifierEntityBuilder::new();\\n    country_core::systems::ui::signifiers::SignifierEntityBuilder::set_ui_pass();\\n    country_core::systems::ui::signifiers::SignifierEntityBuilder::animation_duration();\\n    country_core::systems::ui::signifiers::SignifierEntityBuilder::custom_shader();\\n    country_core::systems::ui::signifiers::SignifierEntityBuilder::build();\\n    if (local_190 == (longlong *)0x0) {\\n      local_190 = local_188;\\n    }\\n    lVar2 = local_190[2];\\n    if ((ulonglong)(*local_190 - lVar2) < 0x28) {\\n      alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();\\n    }\\n    lVar3 = local_190[1];\\n    *(code **)(lVar3 + lVar2) =\\n         core::ops::function::FnOnce::\\n         call_once<bevy_ecs::world::command_queue::impl_4::push::closure_env_0<bevy_ecs::error::command_handling::impl_0::handle_error_with::closure_env_0<bevy_ecs::error::command_handling::impl_3::with_entity::closure_env_0<bevy_ecs::system::commands::entity_command::insert::closure_env_0<enum2_<country_core::components::drawable::DrawTopology>_>_>,tuple_<>,enum2_<bevy_ecs::world::error::EntityMutableFetchError>_>_>,tuple_<bevy_ptr::OwningPtr<bevy_ptr::Unaligned>,enum2_<core::option::Option<core::ptr::non_null::NonNull<bevy_ecs::world::World>_>_>,ref_mut_<usize>_>_>\\n    ;\\n    *(undefined8 *)(lVar3 + 8 + lVar2) = local_178;\\n    *(undefined8 *)(lVar3 + 0x10 + lVar2) = 0x4000000000000001;\\n    *(undefined1 *)(lVar3 + 0x18 + lVar2) = 0;\\n    *(code **)(lVar3 + 0x20 + lVar2) = bevy_ecs::error::handler::panic;\\n    local_190[2] = lVar2 + 0x28;\\n    fVar1 = *(float *)(in_RDX + 0x18);\\n    if ((ulonglong)(*local_190 - (lVar2 + 0x28)) < 0x20) {\\n      alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();\\n    }\\n    lVar3 = local_190[1];\\n    *(code **)(lVar3 + 0x28 + lVar2) =\\n         core::ops::function::FnOnce::\\n         call_once<bevy_ecs::world::command_queue::impl_4::push::closure_env_0<bevy_ecs::error::command_handling::impl_0::handle_error_with::closure_env_0<bevy_ecs::error::command_handling::impl_3::with_entity::closure_env_0<bevy_ecs::system::commands::entity_command::insert::closure_env_0<country_core::components::DashedLineLength>_>,tuple_<>,enum2_<bevy_ecs::world::error::EntityMutableFetchError>_>_>,tuple_<bevy_ptr::OwningPtr<bevy_ptr::Unaligned>,enum2_<core::option::Option<core::ptr::non_null::NonNull<bevy_ecs::world::World>_>_>,ref_mut_<usize>_>_>\\n    ;\\n    *(code **)(lVar3 + 0x30 + lVar2) = bevy_ecs::error::handler::panic;\\n    *(undefined8 *)(lVar3 + 0x38 + lVar2) = local_178;\\n    *(float *)(lVar3 + 0x40 + lVar2) = fVar1 * 0.7;\\n    *(undefined1 *)(lVar3 + 0x44 + lVar2) = 0;\\n    local_190[2] = lVar2 + 0x48;\\n    *extraout_RAX = local_178;\\n    *in_RCX = 1;\\n    in_RCX[1] = extraout_RAX;\\n    in_RCX[2] = 1;\\n    return;\\n  }\\nLAB_141be131b:\\n                    // WARNING: Subroutine does not return\\n  alloc::raw_vec::handle_error();\\n}\\n\\n\",\"callee_count\":10,\"callees\":[{\"name\":\"__rust_alloc\",\"address\":\"140613c10\"},{\"name\":\"animation_duration\",\"address\":\"14089dc90\"},{\"name\":\"build\",\"address\":\"14089dd50\"},{\"name\":\"custom_shader\",\"address\":\"14089db00\"},{\"name\":\"do_reserve_and_handle<alloc::alloc::Global>\",\"address\":\"14291a460\"},{\"name\":\"handle_alloc_error\",\"address\":\"1428d9000\"},{\"name\":\"handle_error\",\"address\":\"1428d8fe3\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"new\",\"address\":\"14089d9b0\"},{\"name\":\"set_ui_pass\",\"address\":\"14089dad0\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}}},\"count\":3,\"requested\":3}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "disassemble_function",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "address": "0x141be0ad0"
+      },
+      "args": {
+        "program": "tiny-glade.exe",
+        "address": "0x141be0ad0"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program\":\"tiny-glade.exe\",\"instructions\":[{\"address\":\"141be0ad0\",\"instruction\":\"PUSH RBP\"},{\"address\":\"141be0ad1\",\"instruction\":\"PUSH R15\"},{\"address\":\"141be0ad3\",\"instruction\":\"PUSH R14\"},{\"address\":\"141be0ad5\",\"instruction\":\"PUSH R13\"},{\"address\":\"141be0ad7\",\"instruction\":\"PUSH R12\"},{\"address\":\"141be0ad9\",\"instruction\":\"PUSH RSI\"},{\"address\":\"141be0ada\",\"instruction\":\"PUSH RDI\"},{\"address\":\"141be0adb\",\"instruction\":\"PUSH RBX\"},{\"address\":\"141be0adc\",\"instruction\":\"SUB RSP,0x148\"},{\"address\":\"141be0ae3\",\"instruction\":\"LEA RBP,[RSP + 0x80]\"},{\"address\":\"141be0aeb\",\"instruction\":\"MOVAPS xmmword ptr [RBP + 0xb0],XMM6\"},{\"address\":\"141be0af2\",\"instruction\":\"MOV qword ptr [RBP + 0xa8],-0x2\"},{\"address\":\"141be0afd\",\"instruction\":\"MOV RAX,qword ptr [RCX]\"},{\"address\":\"141be0b00\",\"instruction\":\"CMP dword ptr [RAX],0x13\"},{\"address\":\"141be0b03\",\"instruction\":\"JZ 0x141be0eb7\"},{\"address\":\"141be0b09\",\"instruction\":\"MOV RDI,R9\"},{\"address\":\"141be0b0c\",\"instruction\":\"MOV RSI,R8\"},{\"address\":\"141be0b0f\",\"instruction\":\"MOV RBX,qword ptr [RDX]\"},{\"address\":\"141be0b12\",\"instruction\":\"LEA RCX,[RBP + 0x28]\"},{\"address\":\"141be0b16\",\"instruction\":\"MOV RDX,RBX\"},{\"address\":\"141be0b19\",\"instruction\":\"CALL 0x1411ff2b0\"},{\"address\":\"141be0b1e\",\"instruction\":\"MOV R14,qword ptr [RBP + 0x30]\"},{\"address\":\"141be0b22\",\"instruction\":\"MOV RAX,qword ptr [RBP + 0x38]\"},{\"address\":\"141be0b26\",\"instruction\":\"LEA RAX,[R14 + RAX*0x8]\"},{\"address\":\"141be0b2a\",\"instruction\":\"MOV qword ptr [RBP + -0x20],R14\"},{\"address\":\"141be0b2e\",\"instruction\":\"MOV qword ptr [RBP + -0x18],RAX\"},{\"address\":\"141be0b32\",\"instruction\":\"MOV qword ptr [RBP + -0x10],RDI\"},{\"address\":\"141be0b36\",\"instruction\":\"LEA R8,[0x142efa118]\"},{\"address\":\"141be0b3d\",\"instruction\":\"LEA RCX,[RBP + 0x80]\"},{\"address\":\"141be0b44\",\"instruction\":\"LEA R12,[RBP + -0x20]\"},{\"address\":\"141be0b48\",\"instruction\":\"MOV RDX,R12\"},{\"address\":\"141be0b4b\",\"instruction\":\"CALL 0x141be6110\"},{\"address\":\"141be0b50\",\"instruction\":\"MOV RDX,qword ptr [RBP + 0x28]\"},{\"address\":\"141be0b54\",\"instruction\":\"TEST RDX,RDX\"},{\"address\":\"141be0b57\",\"instruction\":\"JZ 0x141be0b6b\"},{\"address\":\"141be0b59\",\"instruction\":\"SHL RDX,0x3\"},{\"address\":\"141be0b5d\",\"instruction\":\"MOV R8D,0x4\"},{\"address\":\"141be0b63\",\"instruction\":\"MOV RCX,R14\"},{\"address\":\"141be0b66\",\"instruction\":\"CALL 0x140613c20\"},{\"address\":\"141be0b6b\",\"instruction\":\"MOV RDI,qword ptr [RBP + 0x138]\"},{\"address\":\"141be0b72\",\"instruction\":\"MOV RDX,qword ptr [RBP + 0x40]\"},{\"address\":\"141be0b76\",\"instruction\":\"TEST RDX,RDX\"},{\"address\":\"141be0b79\",\"instruction\":\"JZ 0x141be0b8e\"},{\"address\":\"141be0b7b\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0x48]\"},{\"address\":\"141be0b7f\",\"instruction\":\"SHL RDX,0x2\"},{\"address\":\"141be0b83\",\"instruction\":\"MOV R8D,0x4\"},{\"address\":\"141be0b89\",\"instruction\":\"CALL 0x140613c20\"},{\"address\":\"141be0b8e\",\"instruction\":\"MOV RAX,qword ptr [RDI]\"},{\"address\":\"141be0b91\",\"instruction\":\"MOV RCX,qword ptr [RDI + 0x8]\"},{\"address\":\"141be0b95\",\"instruction\":\"MOV RDX,qword ptr [RAX]\"},{\"address\":\"141be0b98\",\"instruction\":\"XOR R8D,R8D\"},{\"address\":\"141be0b9b\",\"instruction\":\"MOV R9,RDX\"},{\"address\":\"141be0b9e\",\"instruction\":\"SUB R9,qword ptr [RCX + 0x18]\"},{\"address\":\"141be0ba2\",\"instruction\":\"CMOVC R9,R8\"},{\"address\":\"141be0ba6\",\"instruction\":\"SUB RDX,qword ptr [RCX + 0x38]\"},{\"address\":\"141be0baa\",\"instruction\":\"CMOVC RDX,R8\"},{\"address\":\"141be0bae\",\"instruction\":\"MOV R10,qword ptr [RCX + 0x30]\"},{\"address\":\"141be0bb2\",\"instruction\":\"SUB R10,RDX\"},{\"address\":\"141be0bb5\",\"instruction\":\"CMOVC R10,R8\"},{\"address\":\"141be0bb9\",\"instruction\":\"SETBE DL\"},{\"address\":\"141be0bbc\",\"instruction\":\"MOV R11,qword ptr [RCX + 0x10]\"},{\"address\":\"141be0bc0\",\"instruction\":\"SUB R11,R9\"},{\"address\":\"141be0bc3\",\"instruction\":\"CMOVC R11,R8\"},{\"address\":\"141be0bc7\",\"instruction\":\"MOV RCX,qword ptr [RCX + 0x40]\"},{\"address\":\"141be0bcb\",\"instruction\":\"SETBE R8B\"},{\"address\":\"141be0bcf\",\"instruction\":\"ADD R11,R10\"},{\"address\":\"141be0bd2\",\"instruction\":\"MOV R9,RCX\"},{\"address\":\"141be0bd5\",\"instruction\":\"SUB R9,R11\"},{\"address\":\"141be0bd8\",\"instruction\":\"MOV qword ptr [RAX],R9\"},{\"address\":\"141be0bdb\",\"instruction\":\"TEST R8B,DL\"},{\"address\":\"141be0bde\",\"instruction\":\"JNZ 0x141be0d45\"},{\"address\":\"141be0be4\",\"instruction\":\"MOV qword ptr [RAX],RCX\"},{\"address\":\"141be0be7\",\"instruction\":\"MOV R15,qword ptr [RBP + 0x90]\"},{\"address\":\"141be0bee\",\"instruction\":\"XOR R13D,R13D\"},{\"address\":\"141be0bf1\",\"instruction\":\"MOV ECX,0xc\"},{\"address\":\"141be0bf6\",\"instruction\":\"MOV RAX,R15\"},{\"address\":\"141be0bf9\",\"instruction\":\"MUL RCX\"},{\"address\":\"141be0bfc\",\"instruction\":\"MOV R14,RAX\"},{\"address\":\"141be0bff\",\"instruction\":\"JO 0x141be0ed2\"},{\"address\":\"141be0c05\",\"instruction\":\"MOV RAX,0x7ffffffffffffffc\"},{\"address\":\"141be0c0f\",\"instruction\":\"CMP R14,RAX\"},{\"address\":\"141be0c12\",\"instruction\":\"JA 0x141be0ed2\"},{\"address\":\"141be0c18\",\"instruction\":\"MOV R12,qword ptr [RBP + 0x88]\"},{\"address\":\"141be0c1f\",\"instruction\":\"TEST R14,R14\"},{\"address\":\"141be0c22\",\"instruction\":\"JZ 0x141be0c4f\"},{\"address\":\"141be0c24\",\"instruction\":\"MOVZX EAX,byte ptr [0x143634c09]\"},{\"address\":\"141be0c2b\",\"instruction\":\"MOV R13D,0x4\"},{\"address\":\"141be0c31\",\"instruction\":\"MOV EDX,0x4\"},{\"address\":\"141be0c36\",\"instruction\":\"MOV RCX,R14\"},{\"address\":\"141be0c39\",\"instruction\":\"CALL 0x140613c10\"},{\"address\":\"141be0c3e\",\"instruction\":\"TEST RAX,RAX\"},{\"address\":\"141be0c41\",\"instruction\":\"JZ 0x141be0ed2\"},{\"address\":\"141be0c47\",\"instruction\":\"MOV RDI,RAX\"},{\"address\":\"141be0c4a\",\"instruction\":\"MOV R13,R15\"},{\"address\":\"141be0c4d\",\"instruction\":\"JMP 0x141be0c57\"},{\"address\":\"141be0c4f\",\"instruction\":\"MOV EDI,0x4\"},{\"address\":\"141be0c54\",\"instruction\":\"XOR R13D,R13D\"},{\"address\":\"141be0c57\",\"instruction\":\"MOV RCX,RDI\"},{\"address\":\"141be0c5a\",\"instruction\":\"MOV RDX,R12\"},{\"address\":\"141be0c5d\",\"instruction\":\"MOV R8,R14\"},{\"address\":\"141be0c60\",\"instruction\":\"CALL 0x142923c00\"},{\"address\":\"141be0c65\",\"instruction\":\"MOV qword ptr [RBP + -0x20],R13\"},{\"address\":\"141be0c69\",\"instruction\":\"MOV qword ptr [RBP + -0x18],RDI\"},{\"address\":\"141be0c6d\",\"instruction\":\"MOV qword ptr [RBP + -0x10],R15\"},{\"address\":\"141be0c71\",\"instruction\":\"MOV byte ptr [RBP + 0xa7],0x1\"},{\"address\":\"141be0c78\",\"instruction\":\"LEA RCX,[RBP + 0x28]\"},{\"address\":\"141be0c7c\",\"instruction\":\"LEA RDX,[RBP + -0x20]\"},{\"address\":\"141be0c80\",\"instruction\":\"CALL 0x140b04e70\"},{\"address\":\"141be0c85\",\"instruction\":\"LEA R12,[RBP + -0x20]\"},{\"address\":\"141be0c89\",\"instruction\":\"MOV dword ptr [RBP + -0x50],0x1\"},{\"address\":\"141be0c90\",\"instruction\":\"MOV byte ptr [RBP + 0xa7],0x1\"},{\"address\":\"141be0c97\",\"instruction\":\"LEA RCX,[RBP + -0x20]\"},{\"address\":\"141be0c9b\",\"instruction\":\"LEA RDX,[RBP + 0x28]\"},{\"address\":\"141be0c9f\",\"instruction\":\"LEA R8,[RBP + -0x50]\"},{\"address\":\"141be0ca3\",\"instruction\":\"CALL 0x140b04eb0\"},{\"address\":\"141be0ca8\",\"instruction\":\"MOV byte ptr [RBP + 0xa7],0x1\"},{\"address\":\"141be0caf\",\"instruction\":\"LEA RCX,[RBP + 0x28]\"},{\"address\":\"141be0cb3\",\"instruction\":\"LEA RDX,[RBP + -0x20]\"},{\"address\":\"141be0cb7\",\"instruction\":\"MOVSS XMM2,dword ptr [0x142934694]\"},{\"address\":\"141be0cbf\",\"instruction\":\"CALL 0x140b04f40\"},{\"address\":\"141be0cc4\",\"instruction\":\"MOV byte ptr [RBP + 0xa7],0x1\"},{\"address\":\"141be0ccb\",\"instruction\":\"LEA RCX,[RBP + -0x20]\"},{\"address\":\"141be0ccf\",\"instruction\":\"LEA RDX,[RBP + 0x28]\"},{\"address\":\"141be0cd3\",\"instruction\":\"XOR R8D,R8D\"},{\"address\":\"141be0cd6\",\"instruction\":\"CALL 0x140b04ee0\"},{\"address\":\"141be0cdb\",\"instruction\":\"MOV RDX,qword ptr [RSI]\"},{\"address\":\"141be0cde\",\"instruction\":\"MOV byte ptr [RBP + 0xa7],0x1\"},{\"address\":\"141be0ce5\",\"instruction\":\"LEA RCX,[RBP + -0x20]\"},{\"address\":\"141be0ce9\",\"instruction\":\"CALL 0x140b04f70\"},{\"address\":\"141be0cee\",\"instruction\":\"MOV RAX,qword ptr [0x14362c098]\"},{\"address\":\"141be0cf5\",\"instruction\":\"CMP byte ptr [RAX],0x1\"},{\"address\":\"141be0cf8\",\"instruction\":\"JNZ 0x141be0d45\"},{\"address\":\"141be0cfa\",\"instruction\":\"MOV RAX,qword ptr [RBP + 0x140]\"},{\"address\":\"141be0d01\",\"instruction\":\"MOV ECX,dword ptr [RAX + 0x1c]\"},{\"address\":\"141be0d04\",\"instruction\":\"MOV RDX,qword ptr [RAX + 0x10]\"},{\"address\":\"141be0d08\",\"instruction\":\"MOV dword ptr [RDX],ECX\"},{\"address\":\"141be0d0a\",\"instruction\":\"MOV RDI,qword ptr [RAX]\"},{\"address\":\"141be0d0d\",\"instruction\":\"MOV R14,qword ptr [RDI + 0x30]\"},{\"address\":\"141be0d11\",\"instruction\":\"MOV R15,qword ptr [RDI + 0x40]\"},{\"address\":\"141be0d15\",\"instruction\":\"CMP R14,qword ptr [RDI + 0x20]\"},{\"address\":\"141be0d19\",\"instruction\":\"JNZ 0x141be0d32\"},{\"address\":\"141be0d1b\",\"instruction\":\"LEA RCX,[RDI + 0x20]\"},{\"address\":\"141be0d1f\",\"instruction\":\"MOV byte ptr [RBP + 0xa7],0x1\"},{\"address\":\"141be0d26\",\"instruction\":\"LEA RDX,[0x143036258]\"},{\"address\":\"141be0d2d\",\"instruction\":\"CALL 0x140562870\"},{\"address\":\"141be0d32\",\"instruction\":\"MOV RAX,qword ptr [RDI + 0x28]\"},{\"address\":\"141be0d36\",\"instruction\":\"MOV qword ptr [RAX + R14*0x8],R15\"},{\"address\":\"141be0d3a\",\"instruction\":\"INC R14\"},{\"address\":\"141be0d3d\",\"instruction\":\"MOV qword ptr [RDI + 0x30],R14\"},{\"address\":\"141be0d41\",\"instruction\":\"INC qword ptr [RDI + 0x40]\"},{\"address\":\"141be0d45\",\"instruction\":\"MOV RAX,qword ptr [RBP + 0x148]\"},{\"address\":\"141be0d4c\",\"instruction\":\"MOV RAX,qword ptr [RAX]\"},{\"address\":\"141be0d4f\",\"instruction\":\"CMP byte ptr [RAX + 0x121],0x0\"},{\"address\":\"141be0d56\",\"instruction\":\"JZ 0x141be0d82\"},{\"address\":\"141be0d58\",\"instruction\":\"MOV RAX,qword ptr [RBP + 0x80]\"},{\"address\":\"141be0d5f\",\"instruction\":\"TEST RAX,RAX\"},{\"address\":\"141be0d62\",\"instruction\":\"JZ 0x141be0eb7\"},{\"address\":\"141be0d68\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0x88]\"},{\"address\":\"141be0d6f\",\"instruction\":\"SHL RAX,0x2\"},{\"address\":\"141be0d73\",\"instruction\":\"LEA RDX,[RAX + RAX*0x2]\"},{\"address\":\"141be0d77\",\"instruction\":\"MOV R8D,0x4\"},{\"address\":\"141be0d7d\",\"instruction\":\"JMP 0x141be0eb2\"},{\"address\":\"141be0d82\",\"instruction\":\"MOV byte ptr [RBP + 0xa7],0x1\"},{\"address\":\"141be0d89\",\"instruction\":\"MOV RCX,RBX\"},{\"address\":\"141be0d8c\",\"instruction\":\"CALL 0x1411ff640\"},{\"address\":\"141be0d91\",\"instruction\":\"MOVAPS XMM6,XMM0\"},{\"address\":\"141be0d94\",\"instruction\":\"MOV RAX,qword ptr [RBP + 0x130]\"},{\"address\":\"141be0d9b\",\"instruction\":\"MOV RSI,qword ptr [RSI]\"},{\"address\":\"141be0d9e\",\"instruction\":\"MOV RAX,qword ptr [RAX]\"},{\"address\":\"141be0da1\",\"instruction\":\"ADD RAX,0x2c\"},{\"address\":\"141be0da5\",\"instruction\":\"MOV qword ptr [RBP + -0x20],RAX\"},{\"address\":\"141be0da9\",\"instruction\":\"LEA RAX,[0x140d8d560]\"},{\"address\":\"141be0db0\",\"instruction\":\"MOV qword ptr [RBP + -0x18],RAX\"},{\"address\":\"141be0db4\",\"instruction\":\"LEA RAX,[0x142efa140]\"},{\"address\":\"141be0dbb\",\"instruction\":\"MOV qword ptr [RBP + 0x28],RAX\"},{\"address\":\"141be0dbf\",\"instruction\":\"MOV qword ptr [RBP + 0x30],0x1\"},{\"address\":\"141be0dc7\",\"instruction\":\"MOV qword ptr [RBP + 0x38],R12\"},{\"address\":\"141be0dcb\",\"instruction\":\"MOV qword ptr [RBP + 0x40],0x1\"},{\"address\":\"141be0dd3\",\"instruction\":\"MOV qword ptr [RBP + 0x48],0x0\"},{\"address\":\"141be0ddb\",\"instruction\":\"MOV byte ptr [RBP + 0xa7],0x1\"},{\"address\":\"141be0de2\",\"instruction\":\"LEA RCX,[RBP + -0x40]\"},{\"address\":\"141be0de6\",\"instruction\":\"LEA RDX,[RBP + 0x28]\"},{\"address\":\"141be0dea\",\"instruction\":\"CALL 0x140d79f90\"},{\"address\":\"141be0def\",\"instruction\":\"MOV RAX,qword ptr [RBP + -0x40]\"},{\"address\":\"141be0df3\",\"instruction\":\"MOV qword ptr [RBP + 0x98],RAX\"},{\"address\":\"141be0dfa\",\"instruction\":\"MOV R14,qword ptr [RBP + -0x38]\"},{\"address\":\"141be0dfe\",\"instruction\":\"MOV RDI,qword ptr [RBP + -0x30]\"},{\"address\":\"141be0e02\",\"instruction\":\"MOV R12,qword ptr [RBP + 0x80]\"},{\"address\":\"141be0e09\",\"instruction\":\"MOV R15,qword ptr [RBP + 0x88]\"},{\"address\":\"141be0e10\",\"instruction\":\"MOV RBX,qword ptr [RBP + 0x90]\"},{\"address\":\"141be0e17\",\"instruction\":\"MOVZX EAX,byte ptr [0x143634c09]\"},{\"address\":\"141be0e1e\",\"instruction\":\"MOV ECX,0x30\"},{\"address\":\"141be0e23\",\"instruction\":\"MOV EDX,0x8\"},{\"address\":\"141be0e28\",\"instruction\":\"CALL 0x140613c10\"},{\"address\":\"141be0e2d\",\"instruction\":\"TEST RAX,RAX\"},{\"address\":\"141be0e30\",\"instruction\":\"MOV qword ptr [RBP + 0x70],R14\"},{\"address\":\"141be0e34\",\"instruction\":\"JZ 0x141be0eed\"},{\"address\":\"141be0e3a\",\"instruction\":\"MOV qword ptr [RAX],0x1\"},{\"address\":\"141be0e41\",\"instruction\":\"MOV qword ptr [RAX + 0x8],0x1\"},{\"address\":\"141be0e49\",\"instruction\":\"MOV qword ptr [RAX + 0x10],R12\"},{\"address\":\"141be0e4d\",\"instruction\":\"MOV qword ptr [RAX + 0x18],R15\"},{\"address\":\"141be0e51\",\"instruction\":\"MOV qword ptr [RAX + 0x20],RBX\"},{\"address\":\"141be0e55\",\"instruction\":\"MOVSS dword ptr [RAX + 0x28],XMM6\"},{\"address\":\"141be0e5a\",\"instruction\":\"LEA RCX,[0x142efa150]\"},{\"address\":\"141be0e61\",\"instruction\":\"MOV qword ptr [RSP + 0x20],RCX\"},{\"address\":\"141be0e66\",\"instruction\":\"LEA RCX,[RBP + 0x28]\"},{\"address\":\"141be0e6a\",\"instruction\":\"MOV RDX,R14\"},{\"address\":\"141be0e6d\",\"instruction\":\"MOV R8,RDI\"},{\"address\":\"141be0e70\",\"instruction\":\"MOV R9,RAX\"},{\"address\":\"141be0e73\",\"instruction\":\"CALL 0x14089d8b0\"},{\"address\":\"141be0e78\",\"instruction\":\"MOV RAX,qword ptr [RBP + 0x48]\"},{\"address\":\"141be0e7c\",\"instruction\":\"MOV qword ptr [RBP],RAX\"},{\"address\":\"141be0e80\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [RBP + 0x28]\"},{\"address\":\"141be0e84\",\"instruction\":\"MOVUPS XMM1,xmmword ptr [RBP + 0x38]\"},{\"address\":\"141be0e88\",\"instruction\":\"MOVAPS xmmword ptr [RBP + -0x10],XMM1\"},{\"address\":\"141be0e8c\",\"instruction\":\"MOVAPS xmmword ptr [RBP + -0x20],XMM0\"},{\"address\":\"141be0e90\",\"instruction\":\"LEA RDX,[RBP + -0x20]\"},{\"address\":\"141be0e94\",\"instruction\":\"MOV RCX,RSI\"},{\"address\":\"141be0e97\",\"instruction\":\"CALL 0x140b2cf90\"},{\"address\":\"141be0e9c\",\"instruction\":\"MOV RDX,qword ptr [RBP + 0x98]\"},{\"address\":\"141be0ea3\",\"instruction\":\"TEST RDX,RDX\"},{\"address\":\"141be0ea6\",\"instruction\":\"JZ 0x141be0eb7\"},{\"address\":\"141be0ea8\",\"instruction\":\"MOV R8D,0x1\"},{\"address\":\"141be0eae\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0x70]\"},{\"address\":\"141be0eb2\",\"instruction\":\"CALL 0x140613c20\"},{\"address\":\"141be0eb7\",\"instruction\":\"MOVAPS XMM6,xmmword ptr [RBP + 0xb0]\"},{\"address\":\"141be0ebe\",\"instruction\":\"ADD RSP,0x148\"},{\"address\":\"141be0ec5\",\"instruction\":\"POP RBX\"},{\"address\":\"141be0ec6\",\"instruction\":\"POP RDI\"},{\"address\":\"141be0ec7\",\"instruction\":\"POP RSI\"},{\"address\":\"141be0ec8\",\"instruction\":\"POP R12\"},{\"address\":\"141be0eca\",\"instruction\":\"POP R13\"},{\"address\":\"141be0ecc\",\"instruction\":\"POP R14\"},{\"address\":\"141be0ece\",\"instruction\":\"POP R15\"},{\"address\":\"141be0ed0\",\"instruction\":\"POP RBP\"},{\"address\":\"141be0ed1\",\"instruction\":\"RET\"},{\"address\":\"141be0ed2\",\"instruction\":\"MOV byte ptr [RBP + 0xa7],0x1\"},{\"address\":\"141be0ed9\",\"instruction\":\"LEA R8,[0x142efc1c0]\"},{\"address\":\"141be0ee0\",\"instruction\":\"MOV RCX,R13\"},{\"address\":\"141be0ee3\",\"instruction\":\"MOV RDX,R14\"},{\"address\":\"141be0ee6\",\"instruction\":\"CALL 0x1428d8fe3\"},{\"address\":\"141be0eed\",\"instruction\":\"MOV qword ptr [RBP + 0x78],R12\"},{\"address\":\"141be0ef1\",\"instruction\":\"MOV qword ptr [RBP + -0x28],R15\"},{\"address\":\"141be0ef5\",\"instruction\":\"MOV ECX,0x8\"},{\"address\":\"141be0efa\",\"instruction\":\"MOV EDX,0x30\"},{\"address\":\"141be0eff\",\"instruction\":\"CALL 0x1428d9000\"}],\"count\":246}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "list_instances",
+        "title": null,
+        "description": "\nList known Ghidra instances from UDS discovery and the active TCP fallback.\n\nReturns JSON with each instance's project name, PID, open programs, and\nsocket path or TCP URL. Also shows which instance is currently connected.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "_list_instances_toolArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "connect_instance",
+        "title": null,
+        "description": "\nSwitch the MCP bridge to a different Ghidra instance by project name.\n\nIMPORTANT: Before calling this function only the static bridge tools are\nexposed (list_instances, connect_instance, tool-group management,\ndebugger proxy). After a successful connect the bridge fetches the\ninstance's /mcp/schema and registers Ghidra analysis tools dynamically.\nBy default all tool groups are loaded on connect. When started with\n--lazy, only the default groups are loaded initially and clients may need\nto call load_tool_group() for additional categories. Clients that cache\nthe initial tools/list and don't honor tools/list_changed must re-list\ntools after this call.\n\nUse list_instances() first to see available instances.\n\nArgs:\n    project: Project name (or substring) to connect to\n",
+        "inputSchema": {
+          "properties": {
+            "project": {
+              "description": "Project name (or substring) to connect to",
+              "title": "Project",
+              "type": "string"
+            }
+          },
+          "required": [
+            "project"
+          ],
+          "title": "connect_instanceArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_tool_groups",
+        "title": null,
+        "description": "\nList all available tool groups with their tool counts and loaded status.\n\nReturns each category with: tool count, loaded status, and tool names.\nUse load_tool_group(group) to load a group's tools.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "list_tool_groupsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "load_tool_group",
+        "title": null,
+        "description": "\nLoad all tools in a category. Accepts a category name or \"all\" to load everything.\n\nUse list_tool_groups() to see available categories.\n\nArgs:\n    group: Category name (e.g. \"function\", \"datatype\") or \"all\"\n",
+        "inputSchema": {
+          "properties": {
+            "group": {
+              "description": "Category name (e.g. \"function\", \"datatype\") or \"all\"",
+              "title": "Group",
+              "type": "string"
+            }
+          },
+          "required": [
+            "group"
+          ],
+          "title": "load_tool_groupArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "search_tools",
+        "title": null,
+        "description": "\nSearch the full Ghidra tool catalog by keyword \u2014 including tools whose group\nis not currently loaded. Use this to discover the right tool without paying\nthe context cost of loading all groups (run the bridge with --lazy and search\non demand). Matches against tool name, description, and category.\n\nEach result reports whether the tool is callable right now; if not, it\nincludes the exact load_tool_group(...) call needed to make it callable.\n\nArgs:\n    query: Space-separated keywords, e.g. \"rename function\" or \"xref struct\".\n    limit: Maximum number of results to return (default 15).\n",
+        "inputSchema": {
+          "properties": {
+            "query": {
+              "description": "Space-separated keywords, e.g. \"rename function\" or \"xref struct\".",
+              "title": "Query",
+              "type": "string"
+            },
+            "limit": {
+              "default": 15,
+              "description": "Maximum number of results to return (default 15).",
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "title": "search_toolsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "disassemble_function",
+        "title": null,
+        "description": "Get assembly listing of function. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution. When Ghidra's stored function body is degenerate (body_end == body_start, which would truncate the listing to a single instruction), the listing is instead bounded by the next function or the containing memory block and the response adds body_degenerate=true, bounded_by (next_function | memory_block | function_body) and a warning; do not trust this function's stored extent in that case.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "disassemble_functionArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_data_types",
+        "title": null,
+        "description": "Find data types by name or path pattern, category and kind, one record per type (name, kind, category, size, path). With categories=true, list the category paths instead. With no filter it lists every type.",
+        "inputSchema": {
+          "properties": {
+            "pattern": {
+              "default": "",
+              "description": "Case-insensitive substring of the type's name or full path; omit for no name filter.",
+              "title": "Pattern",
+              "type": "string"
+            },
+            "category": {
+              "default": "",
+              "description": "Case-insensitive substring of the category path (e.g. Windows, /MyTypes); omit for any category.",
+              "title": "Category",
+              "type": "string"
+            },
+            "kind": {
+              "default": "",
+              "description": "Only this kind: struct, union, enum, typedef, pointer, array, function or primitive. Omit for all kinds.",
+              "title": "Kind",
+              "type": "string"
+            },
+            "categories": {
+              "default": "false",
+              "description": "True lists the category paths (filtered by pattern) instead of types; category and kind do not apply.",
+              "title": "Categories",
+              "type": "boolean"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "find_data_typesArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_functions",
+        "title": null,
+        "description": "Find functions: every filter is optional, so with none it lists the whole program a page at a time. Filter by name (substring or regex=true), xref count, calling convention, whether the name is user-given, thunk or external, or by tag (tag=a,b keeps functions carrying ANY of them); each result lists its tags; sort by address, name or xref_count. Replaces list_functions, list_functions_enhanced, search_functions and search_functions_enhanced, which returned four different shapes for the same question.",
+        "inputSchema": {
+          "properties": {
+            "name_pattern": {
+              "default": "",
+              "description": "Substring to match, or a regex when regex=true. Omit to match every function.",
+              "title": "Name Pattern",
+              "type": "string"
+            },
+            "regex": {
+              "default": "false",
+              "description": "Treat name_pattern as a regular expression.",
+              "title": "Regex",
+              "type": "boolean"
+            },
+            "min_xrefs": {
+              "default": "",
+              "description": "Only functions with at least this many references to them.",
+              "title": "Min Xrefs",
+              "type": "integer"
+            },
+            "max_xrefs": {
+              "default": "",
+              "description": "Only functions with at most this many references to them.",
+              "title": "Max Xrefs",
+              "type": "integer"
+            },
+            "calling_convention": {
+              "default": "",
+              "description": "Only functions with this calling convention (e.g. __stdcall).",
+              "title": "Calling Convention",
+              "type": "string"
+            },
+            "has_custom_name": {
+              "default": "",
+              "description": "true = only functions somebody has named; false = only auto-generated names (FUN_*, thunk_*).",
+              "title": "Has Custom Name",
+              "type": "boolean"
+            },
+            "is_thunk": {
+              "default": "",
+              "description": "true = only thunks, false = exclude them, omit for both.",
+              "title": "Is Thunk",
+              "type": "boolean"
+            },
+            "is_external": {
+              "default": "",
+              "description": "true = only external functions, false = exclude them.",
+              "title": "Is External",
+              "type": "boolean"
+            },
+            "tag": {
+              "default": "",
+              "description": "Only functions carrying any of these tags: one name or a comma-separated list. A name that is not a defined tag is an error (list_function_tags shows the definitions).",
+              "title": "Tag",
+              "type": "string"
+            },
+            "sort_by": {
+              "default": "address",
+              "description": "address | name | xref_count.",
+              "title": "Sort By",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Page size. 0 means no limit, which on a large binary is a megabytes-long response \u2014 the old list_functions had no pagination at all and returned 1.7MB on a stripped `ls`.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "pattern": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Pattern"
+            },
+            "query": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Query"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            }
+          },
+          "title": "find_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_functions",
+        "title": null,
+        "description": "Everything about one or many functions in a single call. Pass functions= as a comma-separated list of names or addresses for bulk mode (up to 20); omit it and pass function=/name=/address= for one. Pass fields= as a comma-separated subset to skip work you do not need \u2014 omitted or empty returns everything. When the requested fields need no decompiled text (e.g. fields=callers,callees,signature,labels,entry_point), the target function is NOT decompiled (238 ms cold / 5\u201310 ms warm per function); only decompiled_code (and call_context when enabled) pays that cost. Decompiled text renders EOL comments (// style), so comments written with set_comment are visible in the code. Replaces get_function_by_address, get_function_variables, get_function_xrefs, decompile_function, and the former get_function_callers/callees/labels/signature tools. Completeness scoring is NOT included \u2014 call analyze_function_completeness for that.",
+        "inputSchema": {
+          "properties": {
+            "function": {
+              "default": "",
+              "description": "Single mode: function name or address (0x<hex> or <space>:<hex>). Ignored when functions= is set.",
+              "title": "Function",
+              "type": "string"
+            },
+            "functions": {
+              "default": "",
+              "description": "Bulk mode: comma-separated function references (names or addresses). When set, function= is ignored. Returns a map keyed by the reference asked for.",
+              "title": "Functions",
+              "type": "string"
+            },
+            "fields": {
+              "default": "",
+              "description": "Comma-separated subset: signature, classification, return_type, entry_point, body_start, body_end, decompiled_code, plate_comment, comments, labels, tags, parameters, locals, callers, call_context, callees, xrefs, disassembly, jump_targets, refs (the absolute addresses the function uses: data references, the values of literal-pool words, and the memory the decompiled code reads and writes, so a register reached as base + offset is listed by its own address; a pool value is written value<word; asking for refs decompiles). Omit or leave empty for the full bundle.",
+              "title": "Fields",
+              "type": "string"
+            },
+            "include_call_context": {
+              "default": "true",
+              "description": "Include each caller's decompiled call-site line. Costs one decompilation per unique caller (~43ms); set false for the cheapest possible bundle. Ignored unless call_context is requested (explicitly or via an empty fields=).",
+              "title": "Include Call Context",
+              "type": "boolean"
+            },
+            "call_context_limit": {
+              "default": "6",
+              "description": "Maximum number of UNIQUE callers to decompile for call context.",
+              "title": "Call Context Limit",
+              "type": "integer"
+            },
+            "call_context_lines": {
+              "default": "3",
+              "description": "Lines of the caller's decompilation to return per call site, centred on the call. 1 is the call line alone; the default 3 adds the line above and below, which is usually where the guard and the use of the result live. Clamped to 1-21; costs no extra decompilation.",
+              "title": "Call Context Lines",
+              "type": "integer"
+            },
+            "include_disasm": {
+              "default": "false",
+              "description": "Include the raw instruction listing. Off by default: it roughly doubles the payload and agents rarely read it.",
+              "title": "Include Disasm",
+              "type": "boolean"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Address"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "function_address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Address"
+            },
+            "function_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Name"
+            },
+            "call_context_window": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Call Context Window"
+            }
+          },
+          "title": "get_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_metadata",
+        "title": null,
+        "description": "Get program metadata",
+        "inputSchema": {
+          "properties": {
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_metadataArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_struct_layout",
+        "title": null,
+        "description": "Get structure field layout",
+        "inputSchema": {
+          "properties": {
+            "struct_name": {
+              "description": "Structure name",
+              "title": "Struct Name",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "struct_name"
+          ],
+          "title": "get_struct_layoutArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_from",
+        "title": null,
+        "description": "Get cross-references from an address. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "get_xrefs_fromArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_to",
+        "title": null,
+        "description": "Get cross-references to ONE address, or to MANY at once (addresses=comma-separated), which returns a map keyed by the address you asked for. Replaces the former get_bulk_xrefs. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "default": "",
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "addresses": {
+              "default": "",
+              "description": "Comma-separated addresses for the many-at-once form. The result is a map of address to its reference list, and an address that does not resolve gets an empty list rather than failing the whole call.",
+              "title": "Addresses",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_xrefs_toArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "read_memory",
+        "title": null,
+        "description": "Read raw memory bytes. Always pass the 'program' argument to target the correct binary \u2014 especially when multiple programs are open. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "length": {
+              "default": "16",
+              "description": "Number of bytes",
+              "title": "Length",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "read_memoryArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 1,
+  "ok": true
+}

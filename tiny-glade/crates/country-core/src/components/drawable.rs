@@ -1,17 +1,22 @@
-//! `drawable.rs` — nani 可绘制组件族里已恢复的部分（B `components::drawable`）。
+//! 可绘制实体的网格描述与显式组件组合。
 //!
-//! - `NaniInstanceMeshDesc::from<MeshAtlasPart>`（`impl$1::from`，0x14082bd60，机器码 `mov [rcx+4], edx; mov dword [rcx], 1`）：
-//!   判别 `1`（AtlasPart）+ 值 `edx`（part 索引**原样保留**）。此前重建里的 `AtlasPart(0)` 与证据不符。
-//!   另一个变体 `Named(NameHash)` 由 `From<&str>` 之类内联构造（判别 0，I）。
-//! - `DrawableMeshBundle::build`（`impl$2::build`，0x14082bd70）：`mov rcx, rdx; jmp 0x140b66340`，纯尾调用到共享的
-//!   Bundle build，没有自己的逻辑。
+//! NaniBundle 用于实例化渲染，DrawableMeshBundle 用于普通网格绘制。
+//! 使用 Bevy Bundle 派生完成插入，不另实现原作的库转发胶水。
+//! 原生字段复制范围与本机 Rust 分配大小分别记录在布局测试中。
 //!
-//! 未做：`cache_prev_object_transforms`（0x14082bd80，依赖稀疏实例缓冲两种布局与 `PrevTransform` 槽，见
-//! `components-geometry/ALGORITHMS.md` §3）；`NaniActiveInstance`、`AlbedoMap`、`AlphaMap`、`NaniSolidTexture`、
-//! `PrevTransform` 的字段。
-use bevy_ecs::component::Component;
+//! 当前仍未在本文件恢复 cache_prev_object_transforms 系统和完整的材质组件族；
+//! 详见 recovery/components-2026-10-18.md。
+use bevy_ecs::bundle::Bundle;
 
+use crate::asset_libraries::Handle;
 use crate::name_hash::NameHash;
+use crate::render::mesh::Mesh;
+use crate::render::nani::gpu_world::InstanceDataMarker;
+use crate::render::shader::RasterShaderProgram;
+use crate::utils::components::transform::Transform;
+
+/// 共享实例描述组件的原模块入口，保持同一 ECS 类型身份。
+pub use crate::render::nani::systems::NaniInstanceDesc;
 
 /// 图集里的 part 索引（O：`From<MeshAtlasPart>` 存 `edx`，一个 u32）。
 ///
@@ -19,7 +24,7 @@ use crate::name_hash::NameHash;
 pub type AtlasPartIndex = u32;
 
 /// 网格描述：按名字或按图集 part 选择（O：`u32` 判别 @0）。
-#[derive(Component, Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NaniInstanceMeshDesc {
     /// 判别 0（I）。
     Named(NameHash),
@@ -44,6 +49,35 @@ impl From<AtlasPartIndex> for NaniInstanceMeshDesc {
     }
 }
 
+/// 实例渲染实体：网格描述、世界变换和实例数据类型标记。
+///
+/// B component_ids 注册序为 desc → transform → marker；字段物理顺序由 Rust
+/// 布局决定。本机 transform@0、desc@0x30、marker@0x48，尾部对齐后大小 0x50。
+/// 原作写入器的有效复制范围至 0x48；不能将其当作本机分配大小。
+#[derive(Bundle)]
+pub struct NaniBundle<T: Send + Sync + 'static> {
+    /// `NaniInstanceDesc`（+0x30，O）。
+    pub desc: NaniInstanceDesc,
+    /// 游戏自有 `Transform`（+0x00，O）。
+    pub transform: Transform,
+    /// 实例数据类型的 ECS marker（+0x48，ZST，O）。
+    pub marker: InstanceDataMarker<T>,
+}
+
+/// 普通网格实体：网格句柄、光栅着色器句柄和世界变换。
+///
+/// B component_ids 注册序为 mesh → shader → transform；本机物理偏移见测试。
+/// Bundle 载荷不含 bool，旧证据中的 bool 属于外层命令闭包。
+#[derive(Bundle)]
+pub struct DrawableMeshBundle {
+    /// 网格句柄（+0x30，O）。
+    pub mesh: Handle<Mesh>,
+    /// raster shader 句柄（+0x38，O）。
+    pub shader: Handle<RasterShaderProgram>,
+    /// 游戏自有 `Transform`（+0x00，O）。
+    pub transform: Transform,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -58,5 +92,41 @@ mod tests {
     #[test]
     fn named_descriptors_use_tag_zero() {
         assert_eq!(NaniInstanceMeshDesc::Named(NameHash(7)).tag(), 0);
+    }
+
+    /// O：`component_ids` 0x14267a9e0 的三个组件 + `write_components` 0x141a07f20 的读偏移。
+    #[test]
+    fn nani_bundle_layout_matches_write_components() {
+        use crate::render::nani::instance_data::StoneFloorInstanceData;
+        use core::mem::{align_of, offset_of, size_of};
+
+        assert_eq!(
+            offset_of!(NaniBundle<StoneFloorInstanceData>, transform),
+            0x00
+        );
+        assert_eq!(offset_of!(NaniBundle<StoneFloorInstanceData>, desc), 0x30);
+        assert_eq!(offset_of!(NaniBundle<StoneFloorInstanceData>, marker), 0x48);
+        // `Transform` 对齐 16 → 结构体尾部补齐到 16 的倍数：0x48 补齐为 0x50。
+        // `write_components` 只读 +0x30..0x48（desc），尾部 padding 不参与拷贝。
+        assert_eq!(size_of::<NaniBundle<StoneFloorInstanceData>>(), 0x50);
+        assert_eq!(size_of::<NaniInstanceDesc>(), 0x18);
+        assert_eq!(size_of::<Transform>(), 0x30);
+        assert_eq!(
+            align_of::<NaniBundle<StoneFloorInstanceData>>(),
+            align_of::<Transform>()
+        );
+    }
+
+    /// O：`component_ids` 0x14267c2a0 的三个组件 + `write_components` 0x141fe7aa0 的读偏移。
+    #[test]
+    fn drawable_mesh_bundle_layout_matches_write_components() {
+        use core::mem::{offset_of, size_of};
+
+        assert_eq!(offset_of!(DrawableMeshBundle, transform), 0x00);
+        assert_eq!(offset_of!(DrawableMeshBundle, mesh), 0x30);
+        assert_eq!(offset_of!(DrawableMeshBundle, shader), 0x38);
+        assert_eq!(size_of::<DrawableMeshBundle>(), 0x40);
+        assert_eq!(size_of::<Handle<Mesh>>(), 8);
+        assert_eq!(size_of::<Handle<RasterShaderProgram>>(), 8);
     }
 }

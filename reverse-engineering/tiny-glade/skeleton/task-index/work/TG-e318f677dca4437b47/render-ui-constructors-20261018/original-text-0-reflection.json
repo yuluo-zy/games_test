@@ -1,0 +1,133 @@
+{
+  "entryPoints": [
+    {
+      "name": "vs_main",
+      "mode": "vert"
+    }
+  ],
+  "types": {
+    "_29": {
+      "name": "type.$Globals",
+      "members": [
+        {
+          "name": "blue_noise_texture_dims",
+          "type": "uvec2",
+          "offset": 0
+        },
+        {
+          "name": "window_size_pixels",
+          "type": "vec2",
+          "offset": 8
+        },
+        {
+          "name": "font_atlas_tex_dims",
+          "type": "uvec2",
+          "offset": 16
+        }
+      ]
+    },
+    "_32": {
+      "name": "PrimPacked",
+      "members": [
+        {
+          "name": "pos_min",
+          "type": "vec2",
+          "offset": 0
+        },
+        {
+          "name": "pos_extent",
+          "type": "vec2",
+          "offset": 8
+        },
+        {
+          "name": "uv_min",
+          "type": "vec2",
+          "offset": 16
+        },
+        {
+          "name": "uv_extent",
+          "type": "vec2",
+          "offset": 24
+        },
+        {
+          "name": "color",
+          "type": "uint",
+          "offset": 32
+        },
+        {
+          "name": "stream",
+          "type": "uint",
+          "offset": 36
+        },
+        {
+          "name": "pad0",
+          "type": "uint",
+          "offset": 40
+        },
+        {
+          "name": "pad1",
+          "type": "uint",
+          "offset": 44
+        }
+      ]
+    },
+    "_31": {
+      "name": "type.StructuredBuffer.PrimPacked",
+      "members": [
+        {
+          "name": "_m0",
+          "type": "_32",
+          "array": [
+            0
+          ],
+          "array_size_is_literal": [
+            true
+          ],
+          "offset": 0,
+          "array_stride": 48
+        }
+      ]
+    }
+  },
+  "outputs": [
+    {
+      "type": "vec2",
+      "name": "out.var.C0",
+      "location": 0
+    },
+    {
+      "type": "vec4",
+      "name": "out.var.C1",
+      "location": 1
+    },
+    {
+      "type": "vec4",
+      "name": "out.var.C2",
+      "location": 2
+    },
+    {
+      "type": "uint",
+      "name": "out.var.C3",
+      "location": 3
+    }
+  ],
+  "ssbos": [
+    {
+      "type": "_31",
+      "name": "primitives",
+      "readonly": true,
+      "block_size": 0,
+      "set": 0,
+      "binding": 15
+    }
+  ],
+  "ubos": [
+    {
+      "type": "_29",
+      "name": "type.$Globals",
+      "block_size": 24,
+      "set": 0,
+      "binding": 13
+    }
+  ]
+}

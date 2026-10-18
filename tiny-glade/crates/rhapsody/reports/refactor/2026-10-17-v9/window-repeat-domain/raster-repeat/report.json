@@ -1,0 +1,395 @@
+{
+  "multi_queue_scene": null,
+  "actual_queues": [
+    {
+      "family": 0,
+      "index": 0
+    }
+  ],
+  "class_queue_indices": [
+    0,
+    0,
+    0
+  ],
+  "gpu_timing": {
+    "pending": 0,
+    "peak_pending": 1,
+    "completed": 900,
+    "capacity_skips": 0,
+    "retained_samples": 1
+  },
+  "application_gpu_memory": {
+    "scope": "Application VkDeviceMemory: native suballocator blocks including free space, plus dedicated allocations. Excludes driver-internal allocations and swapchain memory. Sampled at graph submission and frame completion.",
+    "current": {
+      "resource_range_bytes": 1214512,
+      "suballocated_used_bytes": 1214512,
+      "suballocator_reserved_bytes": 335544320,
+      "suballocator_unused_bytes": 334329808,
+      "suballocator_peak_reserved_bytes": 335544320,
+      "dedicated_bytes": 0,
+      "application_vk_memory_bytes": 335544320,
+      "native_memory_blocks": 2
+    },
+    "sampled_peak_application_vk_memory_bytes": 335544320,
+    "sampled_peak_native_memory_blocks": 2
+  },
+  "performance": {
+    "cold_start": {
+      "maximum_frames": 300,
+      "scope": "First up to 300 presented frames, independent of warmup and steady samples. Initialization/prewarm and first-present delay are separate top-level measurements. Framework percentiles use each frame's compile+record+submit sum.",
+      "total_frame": {
+        "samples": 300,
+        "min_ms": 10.607,
+        "mean_ms": 17.165362356666677,
+        "p50_ms": 16.257917,
+        "p95_ms": 18.728541,
+        "p99_ms": 62.470375,
+        "max_ms": 130.184916
+      },
+      "graph_framework": {
+        "samples": 300,
+        "min_ms": 0.82675,
+        "mean_ms": 1.1161043466666671,
+        "p50_ms": 1.035125,
+        "p95_ms": 1.370249,
+        "p99_ms": 2.044709,
+        "max_ms": 17.110543
+      },
+      "gpu_command_spans_by_queue": [
+        {
+          "queue_index": 0,
+          "sum_of_command_spans_per_frame": {
+            "samples": 300,
+            "min_ms": 0.052209,
+            "mean_ms": 0.11887542333333335,
+            "p50_ms": 0.063833,
+            "p95_ms": 0.078708,
+            "p99_ms": 0.352209,
+            "max_ms": 13.509458
+          }
+        }
+      ]
+    },
+    "gpu_command_spans_by_queue": [
+      {
+        "queue_index": 0,
+        "sum_of_command_spans_per_frame": {
+          "samples": 900,
+          "min_ms": 0.036,
+          "mean_ms": 0.0969381088888888,
+          "p50_ms": 0.063709,
+          "p95_ms": 0.206334,
+          "p99_ms": 0.352209,
+          "max_ms": 13.509458
+        }
+      }
+    ],
+    "acquire_call": {
+      "samples": 900,
+      "min_ms": 0.043,
+      "mean_ms": 0.11718586555555544,
+      "p50_ms": 0.112834,
+      "p95_ms": 0.175042,
+      "p99_ms": 0.210833,
+      "max_ms": 1.307666
+    },
+    "display_record": {
+      "samples": 900,
+      "min_ms": 0.047375,
+      "mean_ms": 0.07452440444444444,
+      "p50_ms": 0.069584,
+      "p95_ms": 0.106,
+      "p99_ms": 0.157625,
+      "max_ms": 0.997208
+    },
+    "display_submit_present": {
+      "samples": 900,
+      "min_ms": 0.159875,
+      "mean_ms": 3.478656566666667,
+      "p50_ms": 3.984375,
+      "p95_ms": 6.197375,
+      "p99_ms": 6.985916,
+      "max_ms": 24.778666
+    },
+    "warmup_frames": 0,
+    "requested_samples": null,
+    "samples_seen_after_warmup": 900,
+    "sampling": "latest bounded 10000 samples after warmup",
+    "scope": "CPU wall time. Graph framework is compile+record+submit; framework_including_declarations also includes graph building and begin_frame. Frame protocol also includes acquire/present/display recording; completion wait and CPU reference are separate. GPU values are sums of command timestamp spans per physical queue; spans can overlap and exclude idle gaps, display work and WSI. Their sum is not frame latency, GPU active time, or pure vsync latency. Missing GPU measurements remain absent.",
+    "total_frame": {
+      "samples": 900,
+      "min_ms": 10.603375,
+      "mean_ms": 16.76528510222222,
+      "p50_ms": 16.327292,
+      "p95_ms": 20.604084,
+      "p99_ms": 36.387833,
+      "max_ms": 130.184916
+    },
+    "build_and_begin_frame": {
+      "samples": 900,
+      "min_ms": 0.041542,
+      "mean_ms": 0.07696513888888891,
+      "p50_ms": 0.07325,
+      "p95_ms": 0.1145,
+      "p99_ms": 0.15525,
+      "max_ms": 0.349958
+    },
+    "graph_compile": {
+      "samples": 900,
+      "min_ms": 0.087291,
+      "mean_ms": 0.13049318222222217,
+      "p50_ms": 0.123583,
+      "p95_ms": 0.172,
+      "p99_ms": 0.233291,
+      "max_ms": 2.122334
+    },
+    "graph_record": {
+      "samples": 900,
+      "min_ms": 0.290125,
+      "mean_ms": 0.4594854677777778,
+      "p50_ms": 0.441208,
+      "p95_ms": 0.608458,
+      "p99_ms": 0.761625,
+      "max_ms": 5.249125
+    },
+    "graph_submit": {
+      "samples": 900,
+      "min_ms": 0.274459,
+      "mean_ms": 0.4433130655555557,
+      "p50_ms": 0.425667,
+      "p95_ms": 0.55625,
+      "p99_ms": 0.702917,
+      "max_ms": 9.739084
+    },
+    "graph_framework": {
+      "samples": 900,
+      "min_ms": 0.654834,
+      "mean_ms": 1.0332917155555552,
+      "p50_ms": 0.996835,
+      "p95_ms": 1.316334,
+      "p99_ms": 1.579124,
+      "max_ms": 17.110543
+    },
+    "framework_including_declarations": {
+      "samples": 900,
+      "min_ms": 0.700668,
+      "mean_ms": 1.110256854444444,
+      "p50_ms": 1.072416,
+      "p95_ms": 1.430291,
+      "p99_ms": 1.704833,
+      "max_ms": 17.460501
+    },
+    "frame_protocol_including_wsi": {
+      "samples": 900,
+      "min_ms": 1.26175,
+      "mean_ms": 5.001673886666674,
+      "p50_ms": 5.547292,
+      "p95_ms": 7.511292,
+      "p99_ms": 8.249917,
+      "max_ms": 27.488792
+    },
+    "completion_wait": {
+      "samples": 900,
+      "min_ms": 0.522916,
+      "mean_ms": 2.593037905555556,
+      "p50_ms": 1.043542,
+      "p95_ms": 8.45575,
+      "p99_ms": 24.023709,
+      "max_ms": 88.026667
+    },
+    "host_readback": {
+      "samples": 900,
+      "min_ms": 0.009334,
+      "mean_ms": 0.017261061111111118,
+      "p50_ms": 0.015834,
+      "p95_ms": 0.027375,
+      "p99_ms": 0.040875,
+      "max_ms": 0.07925
+    },
+    "cpu_reference": {
+      "samples": 900,
+      "min_ms": 7.250875,
+      "mean_ms": 8.98939684333333,
+      "p50_ms": 8.736958,
+      "p95_ms": 10.494833,
+      "p99_ms": 11.683916,
+      "max_ms": 13.9415
+    }
+  },
+  "plan_cache_enabled": true,
+  "subgraph_cache_enabled": true,
+  "result_cache_enabled": true,
+  "schema_version": 1,
+  "milestone": "M3 / S03 raster and S04 temporal acceptance",
+  "platform": "macos",
+  "window_backend": "AppKit / CAMetalLayer / Vulkan",
+  "status": "pass",
+  "command": [
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/reports/refactor/2026-10-17-v9/window-repeat-domain/window_lab",
+    "--scene",
+    "raster",
+    "--rendering",
+    "dynamic",
+    "--shader-script",
+    "--repeat-script",
+    "--frames",
+    "900",
+    "--fps",
+    "240",
+    "--gpu-timing",
+    "on",
+    "--report",
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/reports/refactor/2026-10-17-v9/window-repeat-domain/raster-repeat/report.json",
+    "--capture",
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/reports/refactor/2026-10-17-v9/window-repeat-domain/raster-repeat/readback.ppm",
+    "--pipeline-cache",
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/reports/refactor/2026-10-17-v9/window-repeat-domain/raster-repeat/pipeline.cache",
+    "--require-validation"
+  ],
+  "git_revision_at_launch": "400900f6531f5dbe66b6c800fcccd000febb9411",
+  "git_dirty_at_launch": true,
+  "device": "Apple M3",
+  "driver_version_raw": 10402,
+  "api_version_raw": 4202853,
+  "instance_api_version_raw": 4202496,
+  "physical_api_version_raw": 4202853,
+  "enabled_device_extensions": [
+    "VK_EXT_memory_budget",
+    "VK_EXT_swapchain_maintenance1",
+    "VK_KHR_dynamic_rendering",
+    "VK_KHR_portability_subset",
+    "VK_KHR_swapchain",
+    "VK_KHR_synchronization2"
+  ],
+  "validation_enabled": true,
+  "validation_errors": [],
+  "validation_warnings": [],
+  "validation_error_count": 0,
+  "validation_warning_count": 0,
+  "fixture_hash": "fnv1a64:6b486145f1998eca",
+  "requested_frames": 900,
+  "presented_frames": 900,
+  "pixel_verified_frames": 900,
+  "source_hash": "dd4301e032718c41",
+  "readback_hash": "6927227cfcefd805",
+  "visited_clips": [
+    "S03 GPU raster + compute postprocess"
+  ],
+  "resize_events": 0,
+  "recreate_events": 0,
+  "minimized_iterations": 0,
+  "script_completed": false,
+  "presentation_shutdown_complete": true,
+  "retained_wsi_generations": 0,
+  "wsi_stress": null,
+  "scene": {
+    "scene": "raster",
+    "rendering": "dynamic",
+    "bindless_enabled": true,
+    "bindless_verified_frames": 900,
+    "bindless_capacity": 136,
+    "bindless_peak_live": 4,
+    "bindless_peak_retiring": 4,
+    "dynamic_rendering_frames": 900,
+    "attachment_cache_views": 1,
+    "gpu_program_hash": "b0ad441063a4d425",
+    "pipeline_cache_status": "missing",
+    "pipeline_cache_saved": true,
+    "pipeline_compiled_requests": 6,
+    "pipeline_merged_requests": 2,
+    "pipeline_peak_pending": 1,
+    "pipeline_peak_request_bytes": 1604,
+    "shader_rejected_edits": 3,
+    "shader_completed_rounds": 3,
+    "shader_frame_boundary_publications": 3,
+    "shader_preserved_frames": 107,
+    "shader_reloaded_verified_frames": 525,
+    "shader_initial_implementation_hash": "6a03da4af7fa550d",
+    "shader_published_implementation_hash": "8b942180da52e60d",
+    "rasterized_frames": 900,
+    "postprocessed_frames": 900,
+    "reference_verified_frames": 900,
+    "worst_reference_mismatches": 2,
+    "worst_boundary_pixels": 680,
+    "history_verified_frames": 0,
+    "history_reset_count": 0,
+    "history_initializations": 0,
+    "history_reset_reasons": [],
+    "injected_failed_frames": 0,
+    "failure_recovery_verified_frames": 0
+  },
+  "transfer": null,
+  "transient": null,
+  "result_cache_scene": null,
+  "pause_actions": 0,
+  "next_actions": 0,
+  "step_actions": 0,
+  "cpu_frame_ms_p50": 16.327292,
+  "cpu_frame_ms_p95": 20.604084,
+  "cpu_frame_ms_p99": 36.387833,
+  "elapsed_seconds": 17.317560291,
+  "initialization_seconds": 0.793347166,
+  "first_present_seconds": 1.90830575,
+  "script_drain_seconds": 0.0,
+  "repeat_script": true,
+  "gpu_time_ms": null,
+  "peak_gpu_bytes": null,
+  "memory_budget_usage": {
+    "known_cpu_live_bytes": 377374,
+    "known_cpu_cache_bytes": 83208,
+    "known_cpu_peak_bytes": 524622,
+    "scope": "Known resource ranges/backings and reserved CPU arenas/compiler payload bounds; excludes suballocator block slack, unregistered CPU containers and opaque driver allocations. Native reservations are reported separately.",
+    "live_bytes": 1346126,
+    "in_flight_bytes": 0,
+    "cache_bytes": 334658776,
+    "retiring_bytes": 0,
+    "total_bytes": 336004902,
+    "sampled_peak_total_bytes": 336004902
+  },
+  "stability_samples": [
+    {
+      "presented_frames": 300,
+      "elapsed_seconds": 5.953494417,
+      "phase": "frame_complete",
+      "graph_resources": 5,
+      "graph_commands": 2,
+      "graph_command_pools": 2,
+      "pending_graph_frames": 0,
+      "named_resources": 0,
+      "registered_budget_bytes": 336004902,
+      "known_cpu_bytes": 460582,
+      "application_vk_memory_bytes": 335544320,
+      "native_memory_blocks": 2
+    },
+    {
+      "presented_frames": 900,
+      "elapsed_seconds": 16.152420667,
+      "phase": "before_lab_drop",
+      "graph_resources": 5,
+      "graph_commands": 2,
+      "graph_command_pools": 2,
+      "pending_graph_frames": 0,
+      "named_resources": 0,
+      "registered_budget_bytes": 336004902,
+      "known_cpu_bytes": 460582,
+      "application_vk_memory_bytes": 335544320,
+      "native_memory_blocks": 2
+    }
+  ],
+  "stability_samples_dropped": 0,
+  "teardown_memory": {
+    "scope": "Registered resource ranges and budgeted CPU storage after Lab/device owners drop; excludes opaque driver and operating-system allocations.",
+    "registered_allocations": 0,
+    "registered_resource_bytes": 0,
+    "known_cpu_bytes": 0,
+    "registered_budget_bytes": 0
+  },
+  "window_visual_check": "pending; offscreen readback is verified separately",
+  "limitations": [
+    "Production FrameLoop submits the offscreen graph and display work with timeline dependencies",
+    "Per-frame CPU fixture generation and GPU readback are correctness checks, not renderer benchmarks",
+    "Production presentation requires maintenance1 and waits actual presentation fences at shutdown",
+    "GPU command timestamps require --gpu-timing on; opaque driver pool/pipeline memory is unavailable"
+  ],
+  "failure": null
+}

@@ -1,0 +1,86 @@
+{
+  "started_utc": "2026-10-17T05:04:24.154003+00:00",
+  "source_start": "12ecb218e8399c59d31ef1d6be640b2f5697b189bfc66244d8b80e166540689f",
+  "steps": [
+    {
+      "step": "core_raster_draw",
+      "exit_code": 0,
+      "binary_sha256": "4fb4b2f93c44a93531caf8aac643aa07634baed843cc44633c95cb3565962553",
+      "source_before": "12ecb218e8399c59d31ef1d6be640b2f5697b189bfc66244d8b80e166540689f",
+      "source_after": "12ecb218e8399c59d31ef1d6be640b2f5697b189bfc66244d8b80e166540689f",
+      "source_stable": true,
+      "validation_errors": 0,
+      "skips": []
+    },
+    {
+      "step": "render_host",
+      "exit_code": 0,
+      "binary_sha256": "3aa5c30d8b268251f1ec1b0ccfe39f9c8e921353da0ba434d54c077cfe9ee155",
+      "source_before": "12ecb218e8399c59d31ef1d6be640b2f5697b189bfc66244d8b80e166540689f",
+      "source_after": "12ecb218e8399c59d31ef1d6be640b2f5697b189bfc66244d8b80e166540689f",
+      "source_stable": true,
+      "validation_errors": 0,
+      "skips": []
+    },
+    {
+      "step": "gpu_pipeline",
+      "exit_code": 0,
+      "binary_sha256": "3aed962ca3b0234dd8c46cf0ff86875eacfb4cc9d617c0cffa8f4744bb47a289",
+      "source_before": "12ecb218e8399c59d31ef1d6be640b2f5697b189bfc66244d8b80e166540689f",
+      "source_after": "12ecb218e8399c59d31ef1d6be640b2f5697b189bfc66244d8b80e166540689f",
+      "source_stable": true,
+      "validation_errors": 0,
+      "skips": []
+    }
+  ],
+  "builds": [
+    {
+      "package": "tiny-glade",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "tiny-glade",
+        "--all-features",
+        "--test",
+        "render_host",
+        "--test",
+        "core_raster_draw",
+        "--no-run",
+        "--message-format=json",
+        "--offline",
+        "--locked",
+        "-j",
+        "2"
+      ],
+      "exit_code": 0,
+      "source_before": "12ecb218e8399c59d31ef1d6be640b2f5697b189bfc66244d8b80e166540689f",
+      "source_after": "12ecb218e8399c59d31ef1d6be640b2f5697b189bfc66244d8b80e166540689f",
+      "source_stable": true
+    },
+    {
+      "package": "tg-text",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "tg-text",
+        "--all-features",
+        "--test",
+        "gpu_pipeline",
+        "--no-run",
+        "--message-format=json",
+        "--offline",
+        "--locked",
+        "-j",
+        "2"
+      ],
+      "exit_code": 0,
+      "source_before": "12ecb218e8399c59d31ef1d6be640b2f5697b189bfc66244d8b80e166540689f",
+      "source_after": "12ecb218e8399c59d31ef1d6be640b2f5697b189bfc66244d8b80e166540689f",
+      "source_stable": true
+    }
+  ],
+  "source_end": "12ecb218e8399c59d31ef1d6be640b2f5697b189bfc66244d8b80e166540689f",
+  "finished_utc": "2026-10-17T05:05:12.824094+00:00"
+}

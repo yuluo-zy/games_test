@@ -21,7 +21,9 @@ use country_core::resources::walls::cached_decorator_transforms::CachedDecorator
 use country_core::resources::walls::decorator_storage::DecoratorStorage;
 use country_core::systems::audio::PlayStairsAudioCmd;
 use country_core::systems::ui::resources::ui_state::UiState;
-use country_core::systems::ui::resources::widget_params::{UiSounds, WidgetParams};
+use country_core::systems::ui::resources::widget_params::{
+    UiSounds, WidgetParams, WidgetVolumeShape,
+};
 use country_core::systems::ui::signifiers::signifier_create::UiSignifierStream;
 use country_core::systems::ui::signifiers::UiAppendSignifier;
 
@@ -42,7 +44,8 @@ pub fn ui_focus_stairs(
     _storage: Res<DecoratorStorage>,
     stairs: Res<StairsState>,
     mut _rotates: EventWriter<RequestRotateDecorator>,
-    mut _points: EventWriter<country_core::systems::ui_clutter::ui_autoclutter::InstaCreateStairPoint>,
+    // InstaCreateStairPoint 为早期编造事件（core ui_autoclutter 已删除）——
+    // 不伪造参数，登记待真事件取证。
     mut _stairs_audio: EventWriter<PlayStairsAudioCmd>,
     mut _border_feedback: EventWriter<FeedbackInputOutOfBorder>,
     mut _border_display: EventWriter<DisplayOutOfBorder>,
@@ -53,7 +56,8 @@ pub fn ui_focus_stairs(
     }
     let node = endpoint.node();
     // O：每个连接节点注册旋转 widget + 指示符。
-    let params = WidgetParams::new().sounds(UiSounds::empty());
+    let params = WidgetParams::new(WidgetVolumeShape::default(), [0; 2])
+        .sounds(UiSounds::empty());
     ui.add(ROTATE_SINGLE_NODE_STAIRS_WIDGET, params);
     for connected in stairs.get_all_connected_nodes(node) {
         let _ = connected;

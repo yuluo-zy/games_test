@@ -7,6 +7,7 @@ pub mod roof_noise;
 pub mod roof_ridge;
 pub mod roof_shape;
 pub mod roof_tile_sim;
+pub mod roof_tile_ssbo;
 pub mod roof_tiles;
 pub mod roof_trigger_volume;
 pub mod roof_visual_shape;
@@ -24,6 +25,7 @@ pub use roof_shape::{
     RoofIntersectionSection, RoofShapeParams,
 };
 pub use roof_tile_sim::RoofTileSimulation;
+pub use roof_tile_ssbo::RoofTileSsbo;
 pub use roof_tiles::{RoofTile, RoofTiles};
 pub use roof_trigger_volume::RoofTriggerVolume;
 pub use roof_visual_shape::{get_roof_expanded_top_and_bottom, RoofBoundsDims};
@@ -52,3 +54,21 @@ pub fn register_roof_events(world: &mut bevy_ecs::world::World) {
     world.init_resource::<Events<commands::RoofEditFeedback>>();
     world.init_resource::<Events<commands::ReplayRoofEvent>>();
 }
+
+pub mod associations;
+
+pub mod components;
+
+pub mod creation;
+
+pub mod customization;
+
+pub mod deletion;
+
+pub mod direction;
+
+pub mod invalid_notifications;
+
+pub mod lifecycle;
+
+pub mod spatial;

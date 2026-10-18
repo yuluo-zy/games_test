@@ -1,21 +1,13 @@
-//! `displace_rocky_terrain.rs` — W4 岩质地层位移（O：`displace_rocky_terrain` 0x140a3ee80，1518 B）。
-//!
-//! 流程（逐条对照机器码）：
-//! 1. `get_resource_id(0xfa44538b95ae76c6, 0x12146c4ea814069b)`（`RockyTerrainMesh`，缺失 → `Option::unwrap` panic）。
-//!    取其首个 qword，`/ 3`（`mul 0xAAAAAAAAAAAAAAAB; shr 1`）后截成 u32 = `groups`（I：三角形数）。
-//! 2. `ComputePass::new("Displace Rocky Terrain", "/rocky_terrain/displace_rocky_terrain.cs.hlsl")`。
-//! 3. `write_storage_buffer<RockyTerrainVertexSSBO>`（`vertices`）→ `write_storage_buffer<RockyTerrainTriangleSSBO>`（`triangles`）。
-//! 4. 五个纹理（访问码均 0x19）：preset 9 `terrain_heightmap`、0xa `visual_terrain_heightmap`、
-//!    0xe `rocky_terrain`、5 `path_mask`、0x13 `water_mask`。
-//! 5. push constants：4 字节，内容 = `groups`（小端 u32）；`dispatch_1d(groups)`（模式 1）。
-//!
-//! SSBO 名（O，SsboId 立即数与 xxh3_64 一致）：顶点 "Rocky Terrain Vertices"、三角形 "Rocky Terrain Triangles"。
+//! Original B W4 @140a3ee80/1518B, canonical vertex-count and GPU owners.
+//! The original count resource is RockyTerrainMeshVertCount. Its value / 3,
+//! truncated to u32, feeds both push constants and dispatch; it is not the
+//! current retained CPU mesh layout or a ResourceView of a native header.
 
-use crate::render::pass_builder::pass_resources::TypeId128;
-use crate::resources::texture_presets::TexturePreset;
-use crate::systems::render_loop::compute_passes::pass_kit::{
-    PassEnv, ResourceView, RockyTerrainTriangleBuf, RockyTerrainVertexBuf, TEX_READ, binding_hash,
+use crate::resources::rocky_terrain::{
+    RockyTerrainMeshVertCount, RockyTerrainTriangleSsbo, RockyTerrainVertexSsbo,
 };
+use crate::resources::texture_presets::TexturePreset;
+use crate::systems::render_loop::compute_passes::pass_kit::{PassEnv, TEX_READ, binding_hash};
 
 pub const PASS_NAME: &str = "Displace Rocky Terrain";
 pub const SHADER_URI: &str = "/rocky_terrain/displace_rocky_terrain.cs.hlsl";
@@ -30,31 +22,18 @@ pub const TEXTURES: [(u64, u8); 5] = [
     (binding_hash("water_mask"), 0x13),
 ];
 
-/// `RockyTerrainMesh` 资源的可见头部（O：只读首个 qword；其余布局 U）。
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct RockyTerrainMeshHead(pub u64);
-
-// SAFETY: 首个 qword 被读取（O：`mul qword ptr [rcx]`）。
-unsafe impl ResourceView for RockyTerrainMeshHead {
-    const TYPE_ID: TypeId128 = TypeId128 {
-        lo: 0xfa44538b95ae76c6,
-        hi: 0x12146c4ea814069b,
-    };
-}
-
 /// `x / 3` 截成 u32（O：`mul` 魔数 + `shr` 取高半，再 `mov [rax], esi` 只写低 32 位）。
 pub fn group_count(first_word: u64) -> u32 {
     (first_word / 3) as u32
 }
 
 /// W4 系统（O 0x140a3ee80）。
-pub fn displace_rocky_terrain(env: &mut PassEnv<'_>) {
-    let groups = group_count(env.resource::<RockyTerrainMeshHead>().0);
+pub fn displace_rocky_terrain(env: &mut PassEnv<'_>, vertices: &RockyTerrainMeshVertCount) {
+    let groups = group_count(vertices.0 as u64);
     let mut pass = env
         .pass(PASS_NAME, SHADER_URI)
-        .write_storage_buffer::<RockyTerrainVertexBuf>(HASH_VERTICES)
-        .write_storage_buffer::<RockyTerrainTriangleBuf>(HASH_TRIANGLES);
+        .write_storage_buffer::<RockyTerrainVertexSsbo>(HASH_VERTICES)
+        .write_storage_buffer::<RockyTerrainTriangleSsbo>(HASH_TRIANGLES);
     for (hash, preset) in TEXTURES {
         pass = pass.bind_texture(hash, &TexturePreset(preset), TEX_READ);
     }
@@ -71,13 +50,12 @@ mod tests {
     use crate::render::pass_builder::pass_resource_access::PassBinding;
     use crate::systems::render_loop::compute_passes::pass_kit::test_env::*;
 
-    fn world(first_word: u64) -> TestWorld {
+    fn world() -> TestWorld {
         let mut hashes = vec![HASH_VERTICES, HASH_TRIANGLES];
         hashes.extend(TEXTURES.iter().map(|t| t.0));
         TestWorld::new(Reflection::new().bind(&hashes))
-            .with_ssbo::<RockyTerrainVertexBuf>()
-            .with_ssbo::<RockyTerrainTriangleBuf>()
-            .with_resource(RockyTerrainMeshHead(first_word))
+            .with_ssbo::<RockyTerrainVertexSsbo>()
+            .with_ssbo::<RockyTerrainTriangleSsbo>()
     }
 
     #[test]
@@ -95,9 +73,11 @@ mod tests {
 
     #[test]
     fn records_one_pass_with_declared_resources_in_order() {
-        let w = world(3 * 77);
+        let w = world();
         let mut f = TestFrame::default();
-        with_env(&w, &mut f, displace_rocky_terrain);
+        with_env(&w, &mut f, |env| {
+            displace_rocky_terrain(env, &RockyTerrainMeshVertCount(3 * 77))
+        });
         assert_eq!(f.passes.len(), 1);
         let p = &f.passes[0];
         assert_eq!(p.name, "Displace Rocky Terrain");
@@ -130,25 +110,15 @@ mod tests {
         assert_eq!(HASH_VERTICES, 0x12ef39a9447f1f0e);
         assert_eq!(HASH_TRIANGLES, 0x480a6146ae76b082);
         assert_eq!(TEXTURES[3].0, (-0x12afd000923bfde1_i64) as u64);
-        assert_eq!(
-            <RockyTerrainMeshHead as ResourceView>::TYPE_ID.lo,
-            (-0x5bbac746a51893a_i64) as u64
-        );
-    }
-
-    #[test]
-    #[should_panic(expected = "called `Option::unwrap()` on a `None` value")]
-    fn missing_mesh_resource_unwraps() {
-        let w = TestWorld::new(Reflection::new());
-        let mut f = TestFrame::default();
-        with_env(&w, &mut f, displace_rocky_terrain);
     }
 
     #[test]
     fn zero_triangles_still_records_a_zero_sized_dispatch() {
-        let w = world(0);
+        let w = world();
         let mut f = TestFrame::default();
-        with_env(&w, &mut f, displace_rocky_terrain);
+        with_env(&w, &mut f, |env| {
+            displace_rocky_terrain(env, &RockyTerrainMeshVertCount(0))
+        });
         assert!(matches!(
             f.passes[0].dispatch,
             DispatchMode::Threads { x: 0, .. }

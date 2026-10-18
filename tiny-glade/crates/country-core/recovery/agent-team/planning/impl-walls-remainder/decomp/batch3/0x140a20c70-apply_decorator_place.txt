@@ -1,0 +1,19 @@
+# apply_decorator_place @ 0x140a20c70
+sig: void __cdecl apply_decorator_place(void)
+callees: [{'name': 'get_or_insert_default', 'address': '140a1cf30'}, {'name': 'insert<country_core::resources::walls::decorator_storage::DecoMoveToStorage>', 'address': '14155afe0'}, {'name': 'panic', 'address': '1428d9430'}]
+
+void __cdecl
+country_core::resources::walls::decorator_storage::DecoratorStorage::apply_decorator_place(void)
+
+{
+  longlong in_RCX;
+  
+  if (*(char *)(in_RCX + 0x1b0) == '\0') {
+    get_or_insert_default();
+    Decorators::insert<country_core::resources::walls::decorator_storage::DecoMoveToStorage>();
+    return;
+  }
+                    // WARNING: Subroutine does not return
+  core::panicking::panic();
+}
+

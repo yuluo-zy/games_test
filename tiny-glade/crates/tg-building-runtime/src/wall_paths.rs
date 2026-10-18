@@ -1,12 +1,11 @@
-//! Actual path-raster resource -> original prepared wall curve owner.
+//! Prepares wall curves and tracks their publication and raster dependencies.
 use crate::{PublicWalls, WallCollectionState, WallSpatialDirty};
 use bevy_ecs::prelude::*;
-use country_core::recovered_building::{
-    building_wall_path_preparation::{
-        PathPreparationError, PathRasters512, PreparedWallPath, prepare_wall_path,
-    },
-    building_wall_state::WallId,
-};
+use country_core::systems::wall::wall_state::path_preparation::PathPreparationError;
+use country_core::systems::wall::wall_state::path_preparation::PathRasters512;
+use country_core::systems::wall::wall_state::path_preparation::PreparedWallPath;
+use country_core::systems::wall::wall_state::path_preparation::prepare_wall_path;
+use country_core::resources::walls::publication_fields::WallId;
 use std::collections::HashMap;
 
 #[derive(Event, Clone)]

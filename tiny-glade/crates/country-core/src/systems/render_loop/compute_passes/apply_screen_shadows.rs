@@ -57,7 +57,17 @@ impl StorageElement for ShadowMaskMeanSsbo {
 impl LibrarySsbo for ShadowMaskHistogramSsbo {
     type Storage = TypedStorageBuffer<ShadowMaskHistogramSsbo>;
     fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
-        TypedStorageBuffer::<ShadowMaskHistogramSsbo>::new_storage_buffer(device, initial)
+        // Original None@1416121dc: xorps xmm0 then all64 stores fill the
+        // complete0x400B histogram. ShadowMaskMean's None is different.
+        let native_defaults;
+        let data = match initial {
+            Some(bytes) => Some(bytes),
+            None => {
+                native_defaults = [0u32; 256];
+                Some(bytemuck::cast_slice(&native_defaults))
+            }
+        };
+        TypedStorageBuffer::<ShadowMaskHistogramSsbo>::new_storage_buffer(device, data)
     }
 }
 impl LibrarySsbo for ShadowMaskMeanSsbo {
@@ -354,6 +364,15 @@ mod ssbo_layout_tests {
         );
         assert_eq!(created[0].1, "ShadowMaskHistogramSsbo");
         assert_eq!(created[1].1, "ShadowMaskMeanSsbo");
-        assert!(created[0].2.is_none() && created[1].2.is_none());
+        let histogram = created[0]
+            .2
+            .as_ref()
+            .expect("native histogram None uploads zeroes");
+        assert_eq!(histogram.len(), 0x400);
+        assert!(histogram.iter().all(|byte| *byte == 0));
+        assert!(
+            created[1].2.is_none(),
+            "native mean None performs no upload"
+        );
     }
 }

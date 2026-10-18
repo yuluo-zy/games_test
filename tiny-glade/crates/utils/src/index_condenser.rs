@@ -1,13 +1,15 @@
-//! B's insertion, cache repair and swap-removal policy. Original ID storage is
-//! u32; K is a safe key adapter, not a claim about the author's generic ABI.
-use std::{cell::Cell, collections::HashMap, hash::Hash};
+//! Dense indices for stable keys, with self-repairing cached handles.
+use std::{
+    cell::Cell,
+    collections::{HashMap, hash_map::Entry},
+    hash::Hash,
+};
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct IndexHandle<K> {
     pub key: K,
     pub cached_index: Cell<u32>,
 }
-/// Original private handle name; the cache can be refreshed through a shared
-/// borrow, matching the original Cell and its get/update consumers.
+/// A handle whose cached index can be refreshed through a shared borrow.
 pub type Condex<K> = IndexHandle<K>;
 impl<K> IndexHandle<K> {
     pub fn last_known_index(&self) -> u32 {
@@ -36,21 +38,22 @@ impl<K: Eq + Hash + Clone> IndexCondenser<K> {
     pub fn contains_key(&self, key: &K) -> bool {
         self.indices.contains_key(key)
     }
-    /// IPI 0x74ee, B consumers 0x140992280 and 0x14156d0d0: an occupied
-    /// key fails before any append/map write; a new key gets the old Vec length.
-    /// Both consumers retry their next ID on failure. Option is a semantic
-    /// adapter for that branch; no independent Rust return ABI was emitted.
+    /// Inserts a new key, returning `None` when it already exists or no further
+    /// index fits in `u32`. Existing handles follow keys through swap removal.
     pub fn insert(&mut self, key: K) -> Option<Condex<K>> {
-        if self.indices.contains_key(&key) {
-            return None;
+        let index = u32::try_from(self.keys.len()).ok()?;
+        match self.indices.entry(key) {
+            Entry::Occupied(_) => None,
+            Entry::Vacant(entry) => {
+                let key = entry.key().clone();
+                self.keys.push(key.clone());
+                entry.insert(index);
+                Some(Condex {
+                    key,
+                    cached_index: Cell::new(index),
+                })
+            }
         }
-        let index = self.keys.len() as u32;
-        self.keys.push(key.clone());
-        self.indices.insert(key.clone(), index);
-        Some(Condex {
-            key,
-            cached_index: Cell::new(index),
-        })
     }
     pub fn keys(&self) -> &[K] {
         &self.keys
@@ -58,10 +61,9 @@ impl<K: Eq + Hash + Clone> IndexCondenser<K> {
     pub fn remove(&mut self, handle: &mut IndexHandle<K>) -> bool {
         self.remove_index(handle).is_some()
     }
-    /// The complete B remove body returns the old dense index on success.
-    /// Keep it available to the consumer that swaps its parallel payload arrays.
+    /// Removes a key and returns its old index so parallel payload arrays can
+    /// apply the same swap removal.
     pub fn remove_index(&mut self, handle: &Condex<K>) -> Option<u32> {
-        // Original remove inlines the same private get interface (IPI0x74E3).
         let index = self.get(handle)?;
         let index = index as usize;
         let removed = self.keys.swap_remove(index);
@@ -84,8 +86,7 @@ impl<K: Eq + Hash + Clone> IndexCondenser<K> {
         Some(index)
     }
     pub fn clear(&mut self) {
-        // Original inline clear delegates to HashMap::clear and Vec::clear.
-        // Retain allocation capacity; cached handles repair/fail through get.
+        // Retain capacity. Cached handles repair or fail on their next lookup.
         self.indices.clear();
         self.keys.clear();
     }
@@ -95,8 +96,7 @@ mod tests {
     use super::*;
     #[test]
     fn stale_cached_index_is_repaired_before_swap_removal() {
-        // Direct fixture setup exercises the recovered remove/get bodies without
-        // claiming an original insertion API or its unknown producer policy.
+        // Arrange stale caches left behind by swap removal.
         let mut c = IndexCondenser {
             keys: vec![10, 20, 30],
             indices: [(10, 0), (20, 1), (30, 2)].into_iter().collect(),

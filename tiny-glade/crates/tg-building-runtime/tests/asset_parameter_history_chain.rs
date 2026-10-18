@@ -1,15 +1,16 @@
 use bevy_ecs::prelude::*;
-use country_core::recovered_building::{
-    building_decorator_placement::WallDecoratorRequest,
-    building_history_transactions::{RoofHistoryEdit, RoofVisualHistoryRecord},
-    building_opening_rules::OpeningFamily,
-    building_roof_creation::RoofCreateRequestObserved,
-    building_roof_direction::RoofDirectionRequest,
-    building_wall_collection::{RawWallPublicationSource, TerrainHeightGrid512},
-    building_wall_state::{WallId, WallShapeSnapshot},
-    roof_edit_rules::RoofEditEvent,
-    surface::Curve2,
-};
+use country_core::resources::walls::decorator::placement::WallDecoratorRequest;
+use country_core::resources::history::building_transactions::RoofHistoryEdit;
+use country_core::resources::history::building_transactions::RoofVisualHistoryRecord;
+use country_core::resources::walls::wall_holes::opening_rules::OpeningFamily;
+use country_core::resources::roofs::creation::RoofCreateRequestObserved;
+use country_core::resources::roofs::direction::RoofDirectionRequest;
+use country_core::resources::walls::publication_source::RawWallPublicationSource;
+use country_core::resources::walls::publication_source::TerrainHeightGrid512;
+use country_core::resources::walls::publication_fields::WallId;
+use country_core::resources::walls::publication_fields::WallShapeSnapshot;
+use country_core::resources::roofs::geometry::edit_rules::RoofEditEvent;
+use country_core::resources::roofs::geometry::surface::Curve2;
 use std::{path::PathBuf, sync::Arc};
 use tg_building_runtime::{
     decorator_assets::*, decorator_placement::*, history::*, openings::*, roof_edits::*, *,
@@ -19,7 +20,7 @@ fn emit<T: Event>(app: &mut bevy_app::App, event: T) {
     app.world_mut().resource_mut::<Events<T>>().send(event);
 }
 fn configure_clear_path_resources(app: &mut bevy_app::App) {
-    use country_core::recovered_building::building_wall_path_preparation::PathRasters512;
+    use country_core::systems::wall::wall_state::path_preparation::PathRasters512;
     emit(
         app,
         tg_building_runtime::wall_paths::SetWallPathRasters(
@@ -261,7 +262,8 @@ fn parameter_type_crossing_replaces_tiles_and_recomputes_gable_then_restores() {
 }
 
 #[test]
-fn last_visual_producer_and_timed_bucket_reach_actual_roof_without_recording_echo() {
+fn every_visual_change_reaches_replay_and_undo_restores_the_batch_start_reach_actual_roof_without_recording_echo()
+ {
     let (mut app, wall, entity) = scene();
     emit(&mut app, HistoryAction::ResetAfterFutureClear);
     emit(&mut app, HistoryAction::Start);
@@ -294,15 +296,44 @@ fn last_visual_producer_and_timed_bucket_reach_actual_roof_without_recording_ech
         .as_ref()
         .unwrap();
     assert_eq!(transaction.ledger().entries.len(), 1);
-    assert_eq!(transaction.ledger().entries[0].edits.len(), 1);
+    assert_eq!(transaction.ledger().entries[0].edits.len(), 2);
     emit(&mut app, HistoryAction::Undo { instant: false });
     step(&mut app, 0.05);
     assert!(height(&app, entity) < 0.9 && height(&app, entity) > 0.7);
-    assert_eq!(app.world().resource::<RoofHistoryReplay>().buckets.len(), 1);
+    assert_eq!(app.world().resource::<RoofHistoryReplay>().buckets.len(), 2);
+    for action in [HistoryAction::Start, HistoryAction::TryStart] {
+        emit(&mut app, action);
+        app.world_mut().resource_mut::<BuildingFrame>().delta_time = 0.0;
+        app.update();
+        assert!(
+            app.world()
+                .resource::<BuildingReport>()
+                .faults
+                .iter()
+                .any(|fault| fault
+                    .contains("History recording requested during an active replay bucket"))
+        );
+        assert!(
+            !app.world()
+                .resource::<BuildingHistory>()
+                .transactions
+                .as_ref()
+                .unwrap()
+                .is_recording()
+        );
+        assert_eq!(app.world().resource::<RoofHistoryReplay>().buckets.len(), 2);
+    }
     for _ in 0..3 {
         step(&mut app, 0.05);
     }
     assert_eq!(height(&app, entity), 0.7);
+    for _ in 0..4 {
+        step(&mut app, 0.05);
+    }
+    assert_eq!(
+        height(&app, entity),
+        f32::from_le_bytes(initial[0x30..0x34].try_into().unwrap())
+    );
     assert!(
         app.world()
             .resource::<RoofHistoryReplay>()
@@ -327,6 +358,7 @@ fn last_visual_producer_and_timed_bucket_reach_actual_roof_without_recording_ech
         1
     );
     emit(&mut app, HistoryAction::Redo { instant: true });
+    step(&mut app, 0.);
     step(&mut app, 0.);
     assert_eq!(height(&app, entity), 0.9);
     assert!(
@@ -488,7 +520,7 @@ fn observed_presence_history_recreates_all_components_and_cleans_deleted_entitie
     emit(&mut app, HistoryAction::Start);
     emit(&mut app, RecordRoofOwner(creation.clone()));
     let mut replay =
-        country_core::recovered_building::roof_replay::VisualReplayState::from_observed([0; 24]);
+        country_core::resources::roofs::geometry::replay::VisualReplayState::from_observed([0; 24]);
     emit(
         &mut app,
         ReplayRoofEvent(
@@ -565,7 +597,7 @@ fn actual_half_window_assets_follow_roof_direction_and_flat_type_changes() {
         .input
         .collision;
     let half_key =
-        country_core::recovered_building::building_decorator_placement::DecoratorLibKey {
+        country_core::resources::walls::decorator::placement::DecoratorLibKey {
             subtype: 1,
             rank: 1,
         };
@@ -690,12 +722,12 @@ fn raw_wall_production_rebuilds_for_holes_and_height_and_cleans_owned_entities()
         UpsertOpening(OpeningAuthority {
             id: OpeningId(1),
             wall,
-            input: country_core::recovered_building::building_opening_rules::DecoratorOpeningInput {
+            input: country_core::resources::walls::wall_holes::opening_rules::DecoratorOpeningInput {
                 family: OpeningFamily::CottageWindow,
                 size_variant: 1,
                 center: [4., 1.],
                 collision:
-                    country_core::recovered_building::building_opening_rules::DecoratorCollisionMetrics {
+                    country_core::resources::walls::wall_holes::opening_rules::DecoratorCollisionMetrics {
                         extent_xz: [1., 0.2],
                         vertical_bounds: [-0.5, 0.5],
                     },
@@ -739,9 +771,8 @@ fn raw_wall_production_rebuilds_for_holes_and_height_and_cleans_owned_entities()
 
 #[test]
 fn actual_height_command_and_recovered_history_request_drive_the_owned_source() {
-    use country_core::recovered_building::building_wall_height_command::{
-        AdjustWallHeightRequest, WallHeightFeedback,
-    };
+    use country_core::systems::wall::height_command::AdjustWallHeightRequest;
+    use country_core::systems::wall::height_command::WallHeightFeedback;
     use tg_building_runtime::wall_height::*;
     let (mut app, wall, entity) = scene();
     emit(
@@ -799,7 +830,7 @@ fn actual_height_command_and_recovered_history_request_drive_the_owned_source() 
         2
     );
     let edit =
-        country_core::recovered_building::building_history_transactions::WallHeightHistoryEdit {
+        country_core::resources::history::building_transactions::WallHeightHistoryEdit {
             wall_id: wall.0,
             from: 3.,
             to: 0.7,
@@ -880,7 +911,7 @@ fn actual_height_command_and_recovered_history_request_drive_the_owned_source() 
 
 #[test]
 fn height_command_reads_published_special_flag_from_the_real_source() {
-    use country_core::recovered_building::building_wall_height_command::AdjustWallHeightRequest;
+    use country_core::systems::wall::height_command::AdjustWallHeightRequest;
     use tg_building_runtime::wall_height::AdjustWallHeight;
     let mut app = building_app();
     configure_clear_path_resources(&mut app);
@@ -933,7 +964,7 @@ fn height_command_reads_published_special_flag_from_the_real_source() {
 
 #[test]
 fn failed_height_commands_do_not_block_wall_removal_or_republish_deleted_sources() {
-    use country_core::recovered_building::building_wall_height_command::AdjustWallHeightRequest;
+    use country_core::systems::wall::height_command::AdjustWallHeightRequest;
     use tg_building_runtime::wall_height::*;
     let (mut app, wall, _) = scene();
     emit(&mut app, SetWallSourceHeight { wall, height: 4. });
@@ -1122,5 +1153,188 @@ fn roof_removal_finishes_opening_and_brick_updates_in_the_same_adapter_frame() {
             .finalized_holes()
             .unwrap(),
         holes
+    );
+}
+
+#[test]
+fn a_bad_roof_edit_does_not_block_later_edits_and_final_crossing_wins() {
+    let (mut app, wall, entity) = scene();
+    emit(&mut app, set_height(WallId(999), 0.));
+    emit(&mut app, set_height(wall, 0.));
+    emit(&mut app, set_height(wall, 0.5));
+    app.update();
+    assert_eq!(app.world().resource::<BuildingReport>().faults.len(), 1);
+    assert_eq!(height(&app, entity), 0.5);
+    let applied = &app.world().resource::<RoofTypeTransitions>().applied;
+    assert_eq!(applied.len(), 1);
+    assert_eq!(
+        applied[0].crossing,
+        country_core::resources::roofs::geometry::edit_rules::HeightCrossing::Up
+    );
+    assert!(app.world().get::<RoofCpuTiles>(entity).is_some());
+    assert_eq!(app.world().resource::<BuildingReport>().sounds[0].kind, 0);
+    step(&mut app, 0.);
+}
+
+#[test]
+fn visual_history_keeps_changes_to_distinct_roofs_in_the_same_update() {
+    let (mut app, wall, entity) = scene();
+    let initial = app.world().get::<Roof>(entity).unwrap().0;
+    let mut changed = initial;
+    changed[0x30..0x34].copy_from_slice(&0.9f32.to_le_bytes());
+    emit(&mut app, HistoryAction::ResetAfterFutureClear);
+    emit(&mut app, HistoryAction::Start);
+    for wall_id in [wall.0, wall.0 + 1] {
+        emit(
+            &mut app,
+            RecordRoofVisualChange(RoofVisualHistoryRecord::from_before_after(
+                wall_id, &initial, &changed,
+            )),
+        );
+    }
+    emit(&mut app, HistoryAction::Finish);
+    step(&mut app, 0.);
+    let transaction = app
+        .world()
+        .resource::<BuildingHistory>()
+        .transactions
+        .as_ref()
+        .unwrap();
+    let walls: Vec<_> = transaction.ledger().entries[0]
+        .edits
+        .iter()
+        .map(|edit| {
+            let country_core::resources::history::building_transactions::BuildingEdit::Roof(
+                edit,
+            ) = edit
+            else {
+                panic!("expected roof edit")
+            };
+            edit.wall_id()
+        })
+        .collect();
+    assert_eq!(walls, vec![wall.0, wall.0 + 1]);
+}
+
+#[test]
+fn unsupported_wall_history_is_rejected_before_ledger_mutation() {
+    use country_core::resources::history::building_transactions::BuildingEdit;
+    use country_core::resources::history::wall_edit::UnresolvedWallEditPayload;
+    use country_core::resources::history::wall_edit::WallCompoundHistoryEdit;
+    use country_core::resources::history::wall_edit::WallHistoryEdit;
+    let mut app = building_app();
+    emit(&mut app, HistoryAction::ResetAfterFutureClear);
+    emit(&mut app, HistoryAction::Start);
+    step(&mut app, 0.0);
+    app.world_mut()
+        .resource_mut::<BuildingHistoryRequests>()
+        .0
+        .push(BuildingEdit::Wall(Arc::new(WallCompoundHistoryEdit {
+            groups: vec![vec![WallHistoryEdit::Unresolved15(
+                UnresolvedWallEditPayload,
+            )]],
+        })));
+    emit(&mut app, HistoryAction::Finish);
+    app.update();
+    assert!(
+        app.world()
+            .resource::<BuildingReport>()
+            .faults
+            .iter()
+            .any(|fault| fault.contains("unsupported wall operation"))
+    );
+    assert_eq!(app.world().resource::<BuildingHistoryRequests>().0.len(), 1);
+    let history = app.world().resource::<BuildingHistory>();
+    let ledger = history.transactions.as_ref().unwrap();
+    assert!(ledger.ledger().entries.is_empty());
+    assert!(ledger.is_recording());
+}
+
+#[test]
+fn rejected_cursor_and_reset_actions_do_not_stall_an_active_replay() {
+    let (mut app, wall, entity) = scene();
+    let initial = app.world().get::<Roof>(entity).unwrap().0;
+    let mut changed = initial;
+    changed[0x30..0x34].copy_from_slice(&0.9f32.to_le_bytes());
+    emit(&mut app, HistoryAction::ResetAfterFutureClear);
+    emit(&mut app, HistoryAction::Start);
+    emit(
+        &mut app,
+        RecordRoofVisualChange(RoofVisualHistoryRecord::from_before_after(
+            wall.0, &initial, &changed,
+        )),
+    );
+    emit(&mut app, set_height(wall, 0.9));
+    emit(&mut app, HistoryAction::Finish);
+    step(&mut app, 0.);
+    emit(&mut app, HistoryAction::Undo { instant: false });
+    step(&mut app, 0.02);
+    for action in [
+        HistoryAction::Undo { instant: false },
+        HistoryAction::Redo { instant: false },
+        HistoryAction::ResetAfterFutureClear,
+    ] {
+        let previous = height(&app, entity);
+        emit(&mut app, action);
+        app.world_mut().resource_mut::<BuildingFrame>().delta_time = 0.02;
+        app.update();
+        assert!(!app.world().resource::<BuildingReport>().faults.is_empty());
+        assert!(
+            height(&app, entity) < previous,
+            "rejected action must not prevent replay progress"
+        );
+        assert!(
+            app.world()
+                .resource::<BuildingHistory>()
+                .replayed_this_frame
+                > 0
+        );
+    }
+}
+
+#[test]
+fn withdrawn_world_opening_recovers_when_prior_valid_roof_state_returns() {
+    let (mut app, wall, roof_entity) = scene();
+    let asset_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/assets");
+    app.world_mut()
+        .resource_mut::<DecoratorAssetLibrary>()
+        .load_b_wall_opening_assets(&asset_root)
+        .unwrap();
+    let id = OpeningId(7001);
+    emit(
+        &mut app,
+        PlaceWallOpening {
+            id,
+            wall,
+            request: WallDecoratorRequest {
+                family: OpeningFamily::CottageWindow,
+                rank: 1,
+                world_position: [-3., 2., 0.],
+            },
+        },
+    );
+    step(&mut app, 0.);
+    assert!(
+        app.world()
+            .resource::<OpeningEntities>()
+            .0
+            .contains_key(&id)
+    );
+    let valid_roof = app.world().get::<Roof>(roof_entity).unwrap().0;
+    app.world_mut().get_mut::<Roof>(roof_entity).unwrap().0[0x3c] = 2;
+    app.update();
+    assert!(
+        !app.world()
+            .resource::<OpeningEntities>()
+            .0
+            .contains_key(&id)
+    );
+    app.world_mut().get_mut::<Roof>(roof_entity).unwrap().0 = valid_roof;
+    step(&mut app, 0.);
+    assert!(
+        app.world()
+            .resource::<OpeningEntities>()
+            .0
+            .contains_key(&id)
     );
 }

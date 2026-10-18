@@ -1,0 +1,38 @@
+{
+  "recorded_utc": "2026-10-18T12:33:29.539375+00:00",
+  "scope": "Actual Vulkan dynamic BDA chunk owner/range/cancel/submit/completion lifetime only, not W3 terrain shader equivalence",
+  "device": "Apple M3; Vulkan loader /opt/homebrew/lib/libvulkan.dylib; strict RHAPSODY_REQUIRE_VULKAN=1",
+  "binary": {
+    "binary": "/private/tmp/tg-render-host-v44-tests",
+    "sha256": "100643c50a93f886ecadb05a2e5965c7d58f28e17a268c2e503fffd3f477fb7c",
+    "binary_hash_matches_manifest": true
+  },
+  "gpu": {
+    "exit_code": 0,
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0,
+    "test": "device_address_chunks_keep_same_page_ranges_until_cancel_or_real_completion",
+    "log": "logs/bda-owner-v44-gpu.log",
+    "log_sha256": "a35e509d6be4cc645a23fb91467dcf27ec2cf6f69f23654b88bab3d93c542a3b"
+  },
+  "verified": [
+    "zero logical chunk retains true nonzero physical page and device address",
+    "two exact ranges from same page retain same real owner after CPU chunks and recorded pass are dropped",
+    "cancel releases graph owners; submit keeps owner through real completion",
+    "constrained page cannot reset while owned; same page reused after release",
+    "actual GPU output [100,101,102,103], readback and SyncCell receipt/completion"
+  ],
+  "not_verified": [
+    "diagnostic shader does not dereference BDA input ranges",
+    "original W3 algorithm/full gameplay graph/OS handoff not tested"
+  ],
+  "current_drift_from_v44_snapshot": [
+    {
+      "file": "crates/country-core/src/systems/render_loop/compute_passes/ssgi.rs",
+      "before": "7fc9a724e13ae3cc7acbe20de3cbbe28d3646d49a8205fc5b7f3ddd3e77ea70b",
+      "after": "d952ae1c42c07b38ac24ba2c4abf97301960604962c1ed9e342ca716325b1aa3"
+    }
+  ],
+  "drift_note": "Retrospective bounded-source comparison; not full dependency freeze. Later SSGI test-only edit is separate."
+}

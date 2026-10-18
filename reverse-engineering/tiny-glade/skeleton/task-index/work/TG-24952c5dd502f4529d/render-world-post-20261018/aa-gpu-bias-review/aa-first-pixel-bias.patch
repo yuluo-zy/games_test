@@ -1,0 +1,19 @@
+--- a/crates/tiny-glade/tests/original_scene_compute_gpu.rs
++++ b/crates/tiny-glade/tests/original_scene_compute_gpu.rs
+@@ -1068,7 +1068,15 @@
+             let mut bytes = vec![0; 16 * 16 * 4];
+             readback_buffer.read_bytes(0, &mut bytes).unwrap();
+             let pixel = &bytes[(8 * 16 + 8) * 4..][..4];
+-            assert!(pixel[0] >= 250 && pixel[1] <= 3 && pixel[2] <= 3 && pixel[3] == 255,
++            // Original TGSR main writes RGB + exp2(frexp(RGB).exponent-[8,8,7])
++            // to BOTH output/history. Its first-frame clamped-zero B becomes
++            // 2^-7, exactly representable in B10G11R11; original resolve then
++            // encodes it to UNORM22. TAA applies that bias only to history.
++            // Keep the later-frame check separate: it consumes real history.
++            let blue_matches = if use_tgsr && frame_index == 0 {
++                pixel[2] == 22
++            } else { pixel[2] <= 3 };
++            assert!(pixel[0] >= 250 && pixel[1] <= 3 && blue_matches && pixel[3] == 255,
+                 "original AA constant red center, TGSR={use_tgsr} frame={frame_index} prev={history_resource}: {pixel:?}");
+         }
+     }

@@ -1,10 +1,11 @@
 use crate::inheritable::{Inherit, Inheritable, deserialize_inheritable_option};
+use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::collections::HashMap;
-/// Original prefab vector fields use RON sequence syntax, unlike texture resize tuples.
+/// Prefab vectors use RON sequence syntax; texture resize uses tuples.
 fn deserialize_float3<'de, D: serde::Deserializer<'de>>(
     d: D,
-) -> Result<Inheritable<[f32; 3]>, D::Error> {
+) -> std::result::Result<Inheritable<[f32; 3]>, D::Error> {
     let value = Vec::<f32>::deserialize(d)?;
     let value: [f32; 3] = value.try_into().map_err(|v: Vec<f32>| {
         serde::de::Error::invalid_length(v.len(), &"three float components")
@@ -19,11 +20,50 @@ pub struct PrefabConfig {
 impl Inherit for PrefabConfig {
     fn inherit_from(&mut self, parent: &Self) {
         self.parts.inherit_from(&parent.parts);
-        // B 0x142424d90 performs a second default-resolution pass over the child map.
+        // Parent parts may still be incomplete directory defaults.
         for part in self.parts.values_mut() {
             part.inherit_from(&PrefabPartConfig::resolved_defaults());
         }
     }
+}
+impl PrefabConfig {
+    /// Check required fields after inheritance, including enabled RT/audio objects.
+    /// Deleted parts are removal directives and do not require render data.
+    pub fn validate(&self) -> Result<()> {
+        for (name, part) in &self.parts {
+            validate_part(part).with_context(|| format!("part {name:?}"))?;
+        }
+        Ok(())
+    }
+}
+
+fn required<'a, T>(field: &'a Inheritable<T>, name: &'static str) -> Result<&'a T> {
+    field.try_as_concrete().with_context(|| name)
+}
+
+fn validate_part(part: &PrefabPartConfig) -> Result<()> {
+    if *required(&part.delete, "delete")? {
+        return Ok(());
+    }
+    let render = required(&part.render, "render")?;
+    required(&render.mesh, "render.mesh")?;
+    required(&render.shader, "render.shader")?;
+    required(&render.mesh_processor, "render.mesh_processor")?;
+    if let Some(rt) = required(&part.rt, "rt")? {
+        required(&rt.mesh, "rt.mesh")?;
+        required(&rt.mesh_scale, "rt.mesh_scale")?;
+        required(&rt.summer_albedo, "rt.summer_albedo")?;
+        required(&rt.autumn_albedo, "rt.autumn_albedo")?;
+        required(&rt.winter_albedo, "rt.winter_albedo")?;
+        required(&rt.semantic, "rt.semantic")?;
+    }
+    if let Some(audio) = required(&part.audio, "audio")? {
+        let trigger = required(&audio.trigger, "audio.trigger")?;
+        required(&trigger.shape, "audio.trigger.shape")?;
+        required(&trigger.shape_scale, "audio.trigger.shape_scale")?;
+        required(&trigger.kind, "audio.trigger.kind")?;
+    }
+    Ok(())
 }
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default)]
@@ -46,11 +86,11 @@ impl PrefabPartConfig {
     }
 }
 impl Inherit for PrefabPartConfig {
-    fn inherit_from(&mut self, p: &Self) {
-        self.delete.inherit_from(&p.delete);
-        self.render.inherit_from(&p.render);
-        self.rt.inherit_from(&p.rt);
-        self.audio.inherit_from(&p.audio);
+    fn inherit_from(&mut self, parent: &Self) {
+        self.delete.inherit_from(&parent.delete);
+        self.render.inherit_from(&parent.render);
+        self.rt.inherit_from(&parent.rt);
+        self.audio.inherit_from(&parent.audio);
     }
 }
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -71,10 +111,10 @@ impl PrefabRenderConfig {
     }
 }
 impl Inherit for PrefabRenderConfig {
-    fn inherit_from(&mut self, p: &Self) {
-        self.mesh.inherit_from(&p.mesh);
-        self.mesh_processor.inherit_from(&p.mesh_processor);
-        self.shader.inherit_from(&p.shader);
+    fn inherit_from(&mut self, parent: &Self) {
+        self.mesh.inherit_from(&parent.mesh);
+        self.mesh_processor.inherit_from(&parent.mesh_processor);
+        self.shader.inherit_from(&parent.shader);
     }
 }
 #[derive(Clone, Debug, Deserialize)]
@@ -121,8 +161,7 @@ pub struct PrefabRtConfig {
     pub semantic: Inheritable<RtMeshSemantic>,
 }
 impl PrefabRtConfig {
-    /// Original option finalizer 0x14268a42f..0x14268a4d7. Mesh is required;
-    /// scale and all three seasonal albedos default to one, semantic to None.
+    /// Required mesh, unit scale/albedos and no special semantic.
     pub fn concrete_default() -> Self {
         Self {
             mesh: Inheritable::MissingDefault,
@@ -135,13 +174,13 @@ impl PrefabRtConfig {
     }
 }
 impl Inherit for PrefabRtConfig {
-    fn inherit_from(&mut self, p: &Self) {
-        self.mesh.inherit_from(&p.mesh);
-        self.mesh_scale.inherit_from(&p.mesh_scale);
-        self.summer_albedo.inherit_from(&p.summer_albedo);
-        self.autumn_albedo.inherit_from(&p.autumn_albedo);
-        self.winter_albedo.inherit_from(&p.winter_albedo);
-        self.semantic.inherit_from(&p.semantic);
+    fn inherit_from(&mut self, parent: &Self) {
+        self.mesh.inherit_from(&parent.mesh);
+        self.mesh_scale.inherit_from(&parent.mesh_scale);
+        self.summer_albedo.inherit_from(&parent.summer_albedo);
+        self.autumn_albedo.inherit_from(&parent.autumn_albedo);
+        self.winter_albedo.inherit_from(&parent.winter_albedo);
+        self.semantic.inherit_from(&parent.semantic);
     }
     fn finish_inheritance(&mut self) {
         self.inherit_from(&Self::concrete_default());
@@ -160,17 +199,11 @@ impl PrefabAudioConfig {
     }
 }
 impl Inherit for PrefabAudioConfig {
-    fn inherit_from(&mut self, p: &Self) {
-        self.trigger.inherit_from(&p.trigger);
+    fn inherit_from(&mut self, parent: &Self) {
+        self.trigger.inherit_from(&parent.trigger);
     }
     fn finish_inheritance(&mut self) {
-        // Original trigger wrapper rejects an already exhausted outer object
-        // marker; required fields inside a concrete trigger remain unresolved
-        // until extraction, which is a different state.
-        assert!(
-            !matches!(self.trigger, Inheritable::MissingDefault),
-            "cannot finalize an exhausted audio trigger"
-        );
+        // Preserve unresolved required fields for the fallible validation boundary.
         self.inherit_from(&Self::concrete_default());
     }
 }
@@ -183,7 +216,7 @@ pub struct AudioTriggerConfig {
     pub kind: Inheritable<String>,
 }
 impl AudioTriggerConfig {
-    /// Original inline 0x14268a790: required shape/kind markers, unit scale.
+    /// Required shape/kind and unit scale.
     pub fn concrete_default() -> Self {
         Self {
             shape: Inheritable::MissingDefault,
@@ -193,10 +226,10 @@ impl AudioTriggerConfig {
     }
 }
 impl Inherit for AudioTriggerConfig {
-    fn inherit_from(&mut self, p: &Self) {
-        self.shape.inherit_from(&p.shape);
-        self.shape_scale.inherit_from(&p.shape_scale);
-        self.kind.inherit_from(&p.kind);
+    fn inherit_from(&mut self, parent: &Self) {
+        self.shape.inherit_from(&parent.shape);
+        self.shape_scale.inherit_from(&parent.shape_scale);
+        self.kind.inherit_from(&parent.kind);
     }
 }
 

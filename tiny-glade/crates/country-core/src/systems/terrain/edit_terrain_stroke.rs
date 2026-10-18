@@ -1,8 +1,9 @@
-//! B 0x14094e000 consumes point replacements before parameter edits. Missing
-//! IDs are logged and skipped; old chapter's "missing stroke panic" was wrong.
+//! B0x14094e000 point/parameter edits. The original FunctionSystem declares
+//! EventWriter<PlayTerrainSound>; folded grow_one aliases do not identify stairs.
+//! Reuse current tg_terrain::edit::apply_resolved numeric/audio observations.
 use super::{
-    delayed_terrain_changed_msg::ScheduledTerrainReadback, PlayTerrainSound,
-    RecalculateHeightMapCmd,
+    PlayTerrainSound, RecalculateHeightMapCmd,
+    delayed_terrain_changed_msg::ScheduledTerrainReadback,
 };
 use crate::resources::{
     terrain_editing::{StrokeId, TerrainEditingData},
@@ -10,7 +11,7 @@ use crate::resources::{
 };
 use bevy_ecs::prelude::*;
 use glam::Vec3;
-use tg_terrain::edit::{apply_resolved, EditCommand, StrokeParameters};
+use tg_terrain::edit::{EditCommand, StrokeParameters, apply_resolved};
 
 #[derive(Event, Clone, Copy, Debug)]
 pub struct EditTerrainStrokeCmd(pub EditCommand);
@@ -27,15 +28,17 @@ pub fn edit_terrain_stroke(
     mut edits: EventReader<EditTerrainStrokeCmd>,
     mut point_sets: EventReader<SetTerrainStrokePtsCmd>,
     mut terrain: ResMut<TerrainEditingData>,
-    mut audio: EventWriter<PlayTerrainSound>,
+    mut sounds: EventWriter<PlayTerrainSound>,
     readback: Res<ScheduledTerrainReadback>,
     mut recalculate: EventWriter<RecalculateHeightMapCmd>,
     time: Res<GameTime>,
 ) {
     for command in point_sets.read() {
         let Some(stroke) = terrain.strokes.get_mut(&command.id) else {
+            // fresh 第一循环错误串（@0x142ab3a20）："Was requested to set points of
+            // terrain stroke {} that doesnt exist"（第二循环才是 "edit a terrain stroke"）。
             log::error!(
-                "Was requested to edit a terrain stroke {} that doesnt exist",
+                "Was requested to set points of terrain stroke {} that doesnt exist",
                 command.id.0
             );
             continue;
@@ -50,7 +53,7 @@ pub fn edit_terrain_stroke(
         let magnitude =
             (time.delta * (dz * dz + (dy * dy + dx * dx)).sqrt()) / f32::from_bits(0x3a83126f);
         stroke.points.clone_from(&command.points);
-        audio.write(PlayTerrainSound::Points {
+        sounds.write(PlayTerrainSound::Points {
             position: command.position,
             falloff: stroke.falloff,
             height: stroke.height_ws,
@@ -80,7 +83,7 @@ pub fn edit_terrain_stroke(
         stroke.height_ws = outcome.state.height;
         let position = Vec3::from_array(command.position);
         for sample in outcome.audio {
-            audio.write(match sample.tag {
+            sounds.write(match sample.tag {
                 1 => PlayTerrainSound::Falloff {
                     position,
                     falloff: sample.falloff,
@@ -88,16 +91,16 @@ pub fn edit_terrain_stroke(
                 },
                 2 => PlayTerrainSound::Height {
                     position,
-                    falloff: sample.falloff,
+                    falloff: stroke.falloff,
                     height: sample.height.expect("height audio payload"),
                     magnitude: sample.magnitude,
                 },
                 4 => PlayTerrainSound::Removed {
                     position,
-                    falloff: sample.falloff,
+                    falloff: stroke.falloff,
                     magnitude: sample.magnitude,
                 },
-                _ => unreachable!("apply_resolved returned an unknown terrain sound tag"),
+                _ => unreachable!("apply_resolved returned an unknown terrain audio tag"),
             });
         }
         recalculate.write(RecalculateHeightMapCmd);

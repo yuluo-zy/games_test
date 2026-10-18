@@ -1,9 +1,7 @@
 //! Game-owned Nani creation, atlas selection, and CPU update boundary.
 //!
-//! B's StoneFloor bundle explicitly contains descriptor, Transform and a typed
-//! zero-size marker. None has required components. Bevy performs registration,
-//! insertion, change/removal tracking and allocation; GPU handles remain owned
-//! by the deferred backend and are never synthesized here.
+//! Typed bundles select the floor or solid upload consumer. Staging emits CPU
+//! snapshots; only the renderer may confirm backend instance activation.
 use crate::{Animation, ObjectTransform, Roof};
 use bevy_ecs::prelude::*;
 use std::collections::HashMap;
@@ -28,16 +26,15 @@ impl Default for NaniInstanceDesc {
     }
 }
 
-/// Original InstanceDataMarker<StoneFloorInstanceData>. No payload or handle.
+/// Selects the stone-floor CPU upload consumer.
 #[derive(Component, Clone, Copy, Debug, Default)]
 pub struct StoneFloorInstanceDataMarker;
 
-/// The gate's original bundle uses SolidVertexColor, separately from floors.
+/// Selects the solid vertex-color CPU upload consumer used by gates.
 #[derive(Component, Clone, Copy, Debug, Default)]
 pub struct SolidVertexColorInstanceDataMarker;
 
-/// Presence projections of the original optional components. The Solid writer
-/// reads presence only; no unknown component payload is invented.
+/// Enables semi-transparency in the solid instance payload.
 #[derive(Component, Clone, Copy, Debug)]
 pub struct SemiTransparent;
 #[derive(Component, Clone, Copy, Debug)]
@@ -115,13 +112,14 @@ pub struct StoneFloorCpuProjection {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StoneFloorProjectionError {
     UnsupportedRoofShape,
+    NonfiniteGeometry,
 }
 
 fn read_f32(bytes: &[u8], offset: usize) -> f32 {
     f32::from_le_bytes(bytes[offset..offset + 4].try_into().unwrap())
 }
-// The original calls sinf and cosf separately. Keep that dependency boundary;
-// combining them into host sincosf can change an output by one ULP.
+// Keep separate calls: combining them into sin_cos can change serialized
+// projection values by one ULP on some platforms.
 #[inline(never)]
 fn circle_sin(value: f32) -> f32 {
     value.sin()
@@ -131,11 +129,9 @@ fn circle_cos(value: f32) -> f32 {
     value.cos()
 }
 
-/// Roof branch of B nani_update_stone_floor, ending at the GPU writer call.
-/// Transform is the fallback for ordinary Floor entities; a Roof supplies the
-/// authoritative pivot/height, so its branch does not use Transform translation.
-// Preserve the original unordered height comparison.
-#[allow(clippy::neg_cmp_op_on_partial_ord)]
+/// Builds the serialized stone-floor payload from roof geometry and animation.
+/// The roof supplies the pivot and height, independently of entity translation.
+/// Rejects unsupported shapes and nonfinite input or derived geometry.
 pub fn project_roof_stone_floor(
     roof: &[u8; 88],
     animation_first: f32,
@@ -144,8 +140,11 @@ pub fn project_roof_stone_floor(
     if shape > 1 {
         return Err(StoneFloorProjectionError::UnsupportedRoofShape);
     }
+    if !animation_first.is_finite() || !crate::roof_geometry_is_finite(roof) {
+        return Err(StoneFloorProjectionError::NonfiniteGeometry);
+    }
     let height = read_f32(roof, 0x30);
-    let pitched = !(height <= 0.1);
+    let pitched = height > 0.1;
     let mut margin = if pitched {
         read_f32(roof, 0x2c) * 0.5 + 0.63
     } else {
@@ -169,12 +168,11 @@ pub fn project_roof_stone_floor(
             ],
         )
     } else {
-        // Circle2d::get_tangent_at_u(0). The Windows CRT calls are dependency
-        // boundaries; Rust's matching f32 math APIs are used, not reimplemented.
+        // Sample the circle tangent at its start using the stored phase.
         let tau = std::f32::consts::TAU;
         let angle = read_f32(roof, 0x18) % tau;
         let positive = if angle < 0.0 { angle + tau } else { angle };
-        let phase = positive + (1.0_f32 - 0.0) * tau;
+        let phase = positive + tau;
         margin += read_f32(roof, 0x14) * 2.0;
         ([-circle_sin(phase), circle_cos(phase)], [margin, margin])
     };
@@ -227,18 +225,19 @@ pub fn project_roof_stone_floor(
         0,
     ];
     let mut record = [0; 64];
-    for (word, target) in words.iter().zip(record.chunks_exact_mut(4)) {
+    for (word, target) in words.iter().zip(record.as_chunks_mut::<4>().0) {
         target.copy_from_slice(&word.to_le_bytes());
     }
-    let a = dimensions[0].abs();
-    let b = dimensions[1].abs();
-    let radius = if a.is_nan() {
-        b
-    } else if b.is_nan() {
-        a
-    } else {
-        a.max(b)
-    };
+    let radius = dimensions[0].abs().max(dimensions[1].abs());
+    if !center
+        .into_iter()
+        .chain(orientation)
+        .chain(dimensions)
+        .chain([radius])
+        .all(f32::is_finite)
+    {
+        return Err(StoneFloorProjectionError::NonfiniteGeometry);
+    }
     Ok(StoneFloorCpuProjection {
         record,
         bounds_center: center,
@@ -287,8 +286,8 @@ impl NaniCpuStagingState {
     }
 }
 
-/// Recovered CPU upload parameters, staged after roof state/animation changes.
-/// This explicit backend adapter runs even when no graphics device is supplied.
+/// Stages floor creation, updates, and removals after roof and animation changes.
+/// Invalid atlas changes retain the last valid snapshot and emit diagnostics.
 pub fn stage_roof_nani_updates(
     roofs: Query<
         (
@@ -349,7 +348,8 @@ pub fn stage_roof_nani_updates(
             Some(previous) if previous != &snapshot => {
                 deferred.0.push(DeferredNaniRequest::Update {
                     entity,
-                    mesh_changed: previous.descriptor != snapshot.descriptor,
+                    mesh_changed: previous.descriptor != snapshot.descriptor
+                        || previous.resolved_atlas_part != snapshot.resolved_atlas_part,
                     snapshot: snapshot.clone(),
                 })
             }
@@ -374,14 +374,14 @@ pub fn stage_roof_nani_updates(
     staging.snapshots = current;
 }
 
-/// CPU component snapshot, not a recovered GPU upload record. Implementation
-/// is pending joint review in the current parallel batch.
+/// Complete CPU component snapshot passed to the solid-instance backend adapter.
+/// The payload describes upload data without allocating a GPU instance handle.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SolidNaniCpuSnapshot {
     pub descriptor: NaniInstanceDesc,
     pub resolved_atlas_part: u32,
     pub transform: [u8; 48],
-    pub payload: country_core::recovered_building::building_nani_solid_vertex_color::SolidVertexColorCpuProjection,
+    pub payload: country_core::render::nani::solid_vertex_color::SolidVertexColorCpuProjection,
 }
 
 #[derive(Clone, Debug)]
@@ -411,8 +411,8 @@ pub struct SolidNaniCpuStaging {
 #[derive(Resource, Default, Debug)]
 pub struct SolidNaniCpuDiagnostics(pub Vec<(Entity, NaniAtlasError)>);
 
-/// Genuine Bevy typed component/atlas lifecycle. The original SolidVertexColor
-/// GPU writer remains a separate unresolved consumer; no activation is made.
+/// Stages solid instance changes for the renderer to consume.
+/// Invalid atlas changes retain the last valid snapshot and emit diagnostics.
 pub fn stage_solid_nani_updates(
     entities: Query<
         (
@@ -458,7 +458,7 @@ pub fn stage_solid_nani_updates(
             descriptor: *descriptor,
             resolved_atlas_part,
             transform: transform.0,
-            payload: country_core::recovered_building::building_nani_solid_vertex_color::project_solid_vertex_color(
+            payload: country_core::render::nani::solid_vertex_color::project_solid_vertex_color(
                 &transform.0, semi_transparent.is_some(), flat_lighting.is_some(),
             ),
         };
@@ -469,7 +469,8 @@ pub fn stage_solid_nani_updates(
             }),
             Some(previous) if previous != &snapshot => changes.0.push(SolidNaniCpuChange::Update {
                 entity,
-                mesh_changed: previous.descriptor != snapshot.descriptor,
+                mesh_changed: previous.descriptor != snapshot.descriptor
+                    || previous.resolved_atlas_part != snapshot.resolved_atlas_part,
                 snapshot: snapshot.clone(),
             }),
             Some(_) => {}
@@ -487,8 +488,7 @@ pub fn stage_solid_nani_updates(
     staging.snapshots = current;
 }
 
-/// Atlas metadata is supplied by its asset owner; Vec/HashMap decoding and
-/// lookup remain library boundaries. Default AtlasPart(0) needs no name scan.
+/// Named-mesh atlas metadata supplied by the asset owner.
 #[derive(Resource, Default)]
 pub struct NaniMeshAtlas(pub HashMap<u64, Vec<NaniMeshAtlasEntry>>);
 /// Only a real renderer backend may confirm activation. This adapter never

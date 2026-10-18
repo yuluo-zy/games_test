@@ -1,0 +1,154 @@
+--- a/games_test/tiny-glade/crates/country-core/src/resources/events.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/events.rs
+@@ -90,3 +90,4 @@
+ /// 写盘）。落库位置同 `WriteSettingsFileCmd`（app_config 域，I）。
+ #[derive(Event, Clone, Copy, Debug, Default)]
+ pub struct SaveGameProfileCmd;
++pub use crate::systems::wall::{draw_wall::RecordMouseInputIntoWall, finish_wall::FinishWall};
+--- a/games_test/tiny-glade/crates/country-core/src/resources/in_progress_curve.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/in_progress_curve.rs
+@@ -16,6 +16,8 @@
+     pub current_wall: WallId,
+     pub flags: u8,
+     pub final_curve: Option<Curve2>,
++    /// Live draw metadata; shares this curve and wall ID with existing snapping.
++    pub drawing: Option<crate::resources::walls::in_progress_wall::WallDrawingMetadata>,
+     point_weights: Vec<usize>,
+     raw_curve: Option<InputCurve>,
+     simplified: Option<Rdp<Vec2>>,
+--- a/games_test/tiny-glade/crates/country-core/src/resources/mod.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/mod.rs
+@@ -69,3 +69,4 @@
+ pub mod shader_refactoring_state;
+ 
+ pub mod weather;
++pub mod drawing_input_smoother;
+--- a/games_test/tiny-glade/crates/country-core/src/resources/walls/mod.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/walls/mod.rs
+@@ -110,3 +110,4 @@
+ pub mod spatial_index;
+ 
+ pub mod publication_fields;
++pub mod in_progress_wall;
+--- a/games_test/tiny-glade/crates/country-core/src/startup/run_game.rs
++++ b/games_test/tiny-glade/crates/country-core/src/startup/run_game.rs
+@@ -183,6 +183,7 @@
+     add_terrain_cpu_systems(schedule);
+     add_terrain_tool_systems::<()>(schedule);
+     add_wall_cpu_systems(schedule);
++    crate::systems::wall::registration::add_wall_drawing_cpu_systems::<()>(schedule);
+     add_ivy_systems(schedule);
+     add_garden_cpu_systems::<(), ()>(schedule);
+     add_input_cpu_consumers(schedule);
+--- a/games_test/tiny-glade/crates/country-core/src/systems/wall/mod.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/wall/mod.rs
+@@ -42,3 +42,7 @@
+ pub mod construction;
+ 
+ pub mod height_command;
++pub mod draw_wall;
++pub mod ui_draw_wall;
++pub mod finish_wall;
++pub mod ui_continue_wall;
+--- a/games_test/tiny-glade/crates/country-core/src/systems/wall/registration.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/wall/registration.rs
+@@ -124,6 +124,67 @@
+     world.init_resource::<crate::resources::terrain_height::TerrainHeightsData<
+         crate::resources::terrain_height::TerrainHeightSsbo,
+     >>();
++    register_wall_drawing_resources(world);
++}
++
++/// Preserve live owners. Camera, window, border and clock are supplied by their
++/// actual owners; this does not synthesize successful input/render resources.
++pub fn register_wall_drawing_resources(world: &mut World) {
++    use super::{
++        draw_wall::{CurveNursery, RecordMouseInputIntoWall, WallDrawingIssues},
++        finish_wall::{ContinueWallOriginalState, FinishWall},
++        ui_continue_wall::SuppressContinueWall,
++        ui_draw_wall::WallDrawState,
++    };
++    use crate::resources::{
++        color_id::{SetHalftimberColorIdCmd, SetWallColorIdCmd},
++        glade_border::{DisplayOutOfBorder, FeedbackInputOutOfBorder},
++        onboarding::NotifyHintSystemToolWasJustUsed,
++        tree_storage::HideTreesNextToWallCmd,
++        walls::decorator_archivist::LiveDecoratorArchivist,
++    };
++    world.init_resource::<InProgressCurve>();
++    world.init_resource::<CurveNursery>();
++    world.init_resource::<WallDrawState>();
++    world.init_resource::<WallDrawingIssues>();
++    world.init_resource::<ContinueWallOriginalState>();
++    world.init_resource::<SuppressContinueWall>();
++    world.init_resource::<LiveDecoratorArchivist>();
++    world.init_resource::<Events<RecordMouseInputIntoWall>>();
++    world.init_resource::<Events<FinishWall>>();
++    world.init_resource::<Events<SetWallColorIdCmd>>();
++    world.init_resource::<Events<SetHalftimberColorIdCmd>>();
++    world.init_resource::<Events<HideTreesNextToWallCmd>>();
++    world.init_resource::<Events<DisplayOutOfBorder>>();
++    world.init_resource::<Events<FeedbackInputOutOfBorder>>();
++    world.init_resource::<Events<NotifyHintSystemToolWasJustUsed>>();
++    world.init_resource::<Events<crate::systems::history::history_process::DebugHistoryMsg>>();
++    world.init_resource::<Events<crate::systems::audio::WallBendAudioParamReset>>();
++    world.init_resource::<Events<crate::systems::audio::RequestWallMaterialAudio>>();
++}
++
++/// Local input closure. UI must register the first canvas before recording
++/// starts; completion must be recorded before the existing history finish.
++/// This joins existing consumers, without registering another history owner.
++pub fn add_wall_drawing_cpu_systems<S: Send + Sync + 'static>(schedule: &mut Schedule) {
++    use super::{draw_wall::draw_wall, finish_wall::finish_wall, ui_draw_wall::ui_draw_wall};
++    use crate::systems::{
++        backend::input::InputSystemSet,
++        history::{HistoryCpuStage, recording::history_start_recording},
++        mode_manager::ModeChangePublication,
++    };
++    schedule.add_systems(
++        (
++            ui_draw_wall.before(history_start_recording::<S>),
++            draw_wall.after(history_start_recording::<S>),
++            finish_wall.after(adjust_wall_height),
++        )
++            .chain()
++            .in_set(WallCpuStage::Edit)
++            .after(InputSystemSet::Derive)
++            .after(ModeChangePublication)
++            .before(HistoryCpuStage::Record),
++    );
+ }
+ 
+ /// Roof association/spatial/gable systems belong in RoofDependencies. Actual
+@@ -142,7 +203,11 @@
+         )
+             .chain(),
+     );
+-    schedule.add_systems(adjust_wall_height.in_set(WallCpuStage::Edit));
++    schedule.add_systems(
++        adjust_wall_height
++            .after(super::draw_wall::draw_wall)
++            .in_set(WallCpuStage::Edit),
++    );
+     // R4+R5 edit systems: snapping candidates, eraser and shape creation/editing
+     // all mutate InnerWalls before publication.
+     schedule.add_systems(
+--- a/games_test/tiny-glade/crates/country-core/tests/core_editing_schedule.rs
++++ b/games_test/tiny-glade/crates/country-core/tests/core_editing_schedule.rs
+@@ -7,7 +7,7 @@
+     history::add_history_cpu_systems,
+     mode_manager::configure_mode_manager,
+     terrain::{add_terrain_cpu_systems, add_terrain_tool_systems},
+-    wall::registration::add_wall_cpu_systems,
++    wall::registration::{add_wall_cpu_systems, add_wall_drawing_cpu_systems},
+ };
+ 
+ #[test]
+@@ -24,6 +24,7 @@
+     add_terrain_cpu_systems(&mut schedule);
+     add_terrain_tool_systems::<()>(&mut schedule);
+     add_wall_cpu_systems(&mut schedule);
++    add_wall_drawing_cpu_systems::<()>(&mut schedule);
+     schedule
+         .initialize(&mut world)
+         .expect("editing schedule graph");

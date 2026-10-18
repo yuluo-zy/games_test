@@ -16,7 +16,7 @@
 
 ## 还差什么
 
-原始墙/屋顶完整资产与 ECS 接线、全部 freeform/结构生产者、全历史游标、GPU backend、引擎 fork 调度和场景画面对照。建筑生命周期位于 country-core/recovered_building，开发 Bevy 适配位于 tg-building-runtime。
+原始墙/屋顶完整资产与 ECS 接线、全部 freeform/结构生产者、全历史游标、GPU backend、引擎 fork 调度和场景画面对照。建筑生命周期位于 country-core/resources/roofs 与 systems/wall/construction，开发 Bevy 适配位于 tg-building-runtime。
 
 ## 验证与开发
 

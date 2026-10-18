@@ -40,8 +40,9 @@ impl RoofRidgeDims {
     pub fn to_world_space(self, roof: &Roof) -> Result<RidgeGeometry, RidgeError> {
         crate::resources::roofs::geometry::ridge::ridge_to_world_space_observed(self.0, roof.observed())
     }
-    /// `RoofRidgeDims::get_inner`（0x1400885d0，O）：内侧脊线尺寸（原 `return *param_1`
-    /// 即首字段拷贝）。
+    /// `RoofRidgeDims::get_inner`：内侧脊线尺寸（原 `return *param_1` 即首字段拷贝）。
+    /// **地址错标更正**：旧注释 0x1400885d0 = `decorator_storage::get`（混名 WallId::get_inner，
+    /// decorator_storage.rs:114）非本函数；本函数无 fresh 地址（NotFound），语义=首字段拷贝。
     pub fn get_inner(self) -> Self {
         Self(self.0)
     }

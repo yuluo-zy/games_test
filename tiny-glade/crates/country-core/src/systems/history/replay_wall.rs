@@ -1,26 +1,22 @@
 //! Original wall replay groups applied to the one live wall authority.
-use crate::{
-    recovered_building::{
-        wall_height_command::AdjustWallHeightRequest,
-        wall_history_edit::{
-            WallAuthoritySnapshot, WallHistoryEdit, WallReplayAudio, WallRestoreColorRequest,
-        },
-        wall_history_replay::{WallReplayError, advance_wall_groups_observed},
-        wall_state::WallId as RecoveredWallId,
-    },
-    resources::{
-        history::{HistoryReplayError, ReplayBuffer, ReplayCommand},
-        time::GameTime,
-        walls::{InnerWalls, WallId, WallState},
-    },
-    systems::{
-        history::HistoryReplayFailed,
-        wall::{
-            adjust_wall_height::AdjustWallHeightCmd,
-            wall_state::publish_public_wall_state::WallPublicationTerrain,
-        },
-    },
-};
+use crate::resources::history::HistoryReplayError;
+use crate::resources::history::ReplayBuffer;
+use crate::resources::history::ReplayCommand;
+use crate::resources::history::wall_edit::WallAuthoritySnapshot;
+use crate::resources::history::wall_edit::WallHistoryEdit;
+use crate::resources::history::wall_edit::WallReplayAudio;
+use crate::resources::history::wall_edit::WallRestoreColorRequest;
+use crate::resources::time::GameTime;
+use crate::resources::walls::InnerWalls;
+use crate::resources::walls::WallId;
+use crate::resources::walls::WallState;
+use crate::resources::walls::publication_fields::WallId as RecoveredWallId;
+use crate::systems::history::HistoryReplayFailed;
+use crate::systems::history::wall_replay_interpreter::WallReplayError;
+use crate::systems::history::wall_replay_interpreter::advance_wall_groups_observed;
+use crate::systems::wall::adjust_wall_height::AdjustWallHeightCmd;
+use crate::systems::wall::height_command::AdjustWallHeightRequest;
+use crate::systems::wall::wall_state::publish_public_wall_state::WallPublicationTerrain;
 use bevy_ecs::prelude::*;
 use std::collections::HashMap;
 
@@ -38,12 +34,12 @@ pub fn register_wall_replay_events(world: &mut World) {
 }
 
 fn command_wall(edit: &WallHistoryEdit) -> RecoveredWallId {
-    match edit {
-        WallHistoryEdit::Create { wall, .. }
-        | WallHistoryEdit::Delete { wall, .. }
-        | WallHistoryEdit::StateChange { wall, .. }
-        | WallHistoryEdit::EnclosureChange { wall, .. } => *wall,
-    }
+    RecoveredWallId(
+        edit.wall_id()
+            .map(|wall| wall.0)
+            // 未恢复载荷变体（5..16）无 wall 字段，当前 producer 不产生，哨兵不参与实际判定。
+            .unwrap_or(u64::MAX),
+    )
 }
 
 fn restored_state(
@@ -193,15 +189,14 @@ pub fn replay_wall(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        recovered_building::{
-            wall_collection::TerrainHeightGrid512,
-            wall_history_edit::{WallCompoundHistoryEdit, record_deleted_wall, record_new_wall},
-            wall_history_replay::expand_wall_compound,
-        },
-        resources::history::ReplayBucket,
-        systems::history::{ReplayBucketFinished, pop_empty_replay_bucket},
-    };
+    use crate::resources::history::ReplayBucket;
+    use crate::resources::history::wall_edit::WallCompoundHistoryEdit;
+    use crate::resources::history::wall_edit::record_deleted_wall;
+    use crate::resources::history::wall_edit::record_new_wall;
+    use crate::resources::walls::publication_source::TerrainHeightGrid512;
+    use crate::systems::history::ReplayBucketFinished;
+    use crate::systems::history::pop_empty_replay_bucket;
+    use crate::systems::history::wall_replay_interpreter::expand_wall_compound;
 
     fn fixture() -> (World, Schedule, WallState) {
         let mut world = World::new();
@@ -220,8 +215,11 @@ mod tests {
             maximum_y: 4.0,
             sampling_fix: true,
         }));
-        let curve =
-            crate::resources::roofs::geometry::surface::Curve2::try_new(vec![[0.0, 0.0], [4.0, 0.0]], false).unwrap();
+        let curve = crate::resources::roofs::geometry::surface::Curve2::try_new(
+            vec![[0.0, 0.0], [4.0, 0.0]],
+            false,
+        )
+        .unwrap();
         let mut state = WallState::new(curve, 2.0, 3, 0, false);
         state.snapshot.metadata.source_66 = Some(1);
         state.snapshot.metadata.source_60_bits = 0x3f123456;
@@ -243,6 +241,7 @@ mod tests {
             commands: vec![ReplayCommand::Wall(
                 expand_wall_compound(edit, undo, instant).unwrap(),
             )],
+            timing: vec![Default::default(); 1],
         });
     }
 
@@ -310,6 +309,7 @@ mod tests {
                     wall: RecoveredWallId(9),
                     source: state.snapshot().clone(),
                     color_id: 0,
+                    restored_height: state.snapshot().source.extra,
                 }],
             ],
         };
@@ -337,4 +337,24 @@ mod tests {
         assert_eq!(world.resource::<ReplayBuffer>().len(), 1);
         assert_eq!(world.resource::<Events<HistoryReplayFailed>>().len(), 1);
     }
+    #[test]
+    fn delete_undo_uses_before_height_even_when_saved_fallback_height_differs() {
+        let (mut world, mut schedule, state) = fixture();
+        let edit = crate::resources::history::wall_edit::record_deleted_wall_with_height(
+            RecoveredWallId(9), state.snapshot(), 7, 7.0,
+        );
+        push(&mut world, 0, &edit, true, true);
+        schedule.run(&mut world);
+        assert_eq!(
+            world.resource::<InnerWalls>().get_unwrapped(WallId(9)).height().to_bits(),
+            state.height().to_bits(),
+        );
+        assert!(world.resource::<Events<HistoryReplayFailed>>().is_empty());
+        assert_eq!(world.resource::<Events<WallHistoryRestoreColor>>().len(), 1);
+        push(&mut world, 1, &edit, false, true);
+        schedule.run(&mut world);
+        assert!(!world.resource::<InnerWalls>().contains(WallId(9)));
+        assert!(world.resource::<Events<HistoryReplayFailed>>().is_empty());
+    }
+
 }

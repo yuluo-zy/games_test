@@ -9,9 +9,14 @@
 //!  * `should_reset_temporal`（0x140976880）= `cmp dword [self+0x80], 0 ; sete al`，即该 u32 **等于 0**
 //!    时为真（旧实现读 bool 字段，语义相反）。
 //!
-//! 未恢复（U）：其余 0xf0 − 4 字节的头部字段（含 UBO 的 light/time 等）；`views` 起始偏移
-//! 取 0xf0（I：+0x80 落在头部，视图数组只能在 [0xf0,0x1090)）。该结构由更高层系统
-//! `prepare_frame_constants` 填充，其余字段待该系统恢复时补全。
+//! Fresh B verification (2026-10-18): `prepare_frame_constants` 0x140af40b0
+//! writes all header words and copies 4000 bytes of views at +0xf0. Field
+//! names/types also match original SPIR-V's FrameConstants reflection (27
+//! members, view array stride 800). Native run_game_thread 0x1405a4f30..4ff0
+//! zeroes the startup header, then 0x1405a4f87 calls the five-view constructor.
+//! The per-frame producer and its fourteen input resources remain a separate
+//! recovery task; knowing the layout does not make a zero startup block a
+//! populated gameplay frame.
 
 // Preserve the original instruction-level expression order/NaN policy, API call shapes, and evidence/test transcription. See README.md.
 #![allow(clippy::field_reassign_with_default)]
@@ -20,50 +25,82 @@ use crate::render::view_constants::ViewConstants;
 /// 视图数量（O：`[ViewConstants; 5]`）。
 pub const VIEW_COUNT: usize = 5;
 
-/// 视图槽位索引。`MAIN_VIEW = 0` 为 I（`prepare_frame_constants` 里唯一一次 `set_pixel_offset`
-/// 对应的视图，其余 4 个视图不抖动）；`is_shadow_view`/`sun_cascade` 的 PDB 名称为 O，语义 I。
+/// View slots: jittered main, unjittered main, then three sun cascades.
+/// B draw_bricks<0> @0x1408a53f2 compares the view index against 2;
+/// shadow_pass @0x1409cc270 supplies cascade + 2. The original memcpy chain
+/// in prepare_frame_constants confirms both main views precede the cascades.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RenderViewIndex(pub u32);
 
 impl RenderViewIndex {
     pub const MAIN_VIEW: RenderViewIndex = RenderViewIndex(0);
-    pub const SUN_CASCADE_0: RenderViewIndex = RenderViewIndex(1);
+    pub const SUN_CASCADE_0: RenderViewIndex = RenderViewIndex(2);
 
-    /// I：非主视图即阴影视图。
+    /// Original `is_shadow_view`: index >= 2.
     pub fn is_shadow_view(self) -> bool {
-        self.0 != Self::MAIN_VIEW.0
+        self.0 >= 2
     }
 
-    /// I：阴影视图的级联序号；主视图为 `None`（旧实现返回 -1，已改为 `Option`）。
+    /// Rust projection of the confirmed cascade slots; this Option-returning
+    /// helper is not an original PDB interface.
     pub fn sun_cascade(self) -> Option<u32> {
-        self.is_shadow_view().then(|| self.0 - 1)
+        self.is_shadow_view().then(|| self.0 - 2)
     }
 }
 
 /// 逐帧常量块（0x1090 字节）。
 #[repr(C, align(16))]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, bevy_ecs::resource::Resource)]
 pub struct FrameConstants {
-    /// +0x00..+0x80，U。
-    head0: [u32; 0x20],
+    pub sun_color: [f32; 4],
+    pub sky_low_color: [f32; 4],
+    pub sky_high_color: [f32; 4],
+    pub fog_tint_thickness: [f32; 4],
+    pub fake_light_color: [f32; 4],
+    pub fake_light_dir: [f32; 4],
+    pub fake_light2_color: [f32; 4],
+    pub fake_light2_dir: [f32; 4],
     /// +0x80，O：`should_reset_temporal() == (value == 0)`。
     /// 取名 I：`frame_counter`——首帧（计数 0）重置时域累积。
     pub frame_counter: u32,
-    /// +0x84..+0xf0，U。
-    head1: [u32; 0x1b],
-    /// +0xf0，I（偏移）；O（数量与元素类型）。
+    pub delta_time_seconds: f32,
+    pub ev_mult: f32,
+    pub glade_theme_id: u32,
+    pub inner_rendering_resolution: [u32; 2],
+    pub game_time_sec: u32,
+    pub game_time_frac: f32,
+    pub editing_highlight_color: [f32; 3],
+    pub time_of_day: f32,
+    pub dir_to_sun: [f32; 3],
+    pub camera_idx: u32,
+    pub dir_to_moon: [f32; 3],
+    pub render_overrides: u32,
+    pub global_mip_bias: f32,
+    pub highlighted_transient_stair_edge_id: u32,
+    pub pad1: u32,
+    pub pad2: u32,
+    pub debug_tweakers: [f32; 4],
+    /// +0xf0, confirmed by the native memcpy destination and SPIR-V reflection.
     pub views: [ViewConstants; VIEW_COUNT],
 }
 
 const _: () = assert!(core::mem::size_of::<FrameConstants>() == 0x1090);
 
 impl Default for FrameConstants {
-    /// `views` 为 O（`array::default<ViewConstants>`：单位矩阵、偏移 0）；头部为 U，暂置 0。
+    /// Original startup header is zero; all five views have identity matrices
+    /// and zero offsets (`array::default<ViewConstants>` 0x1400ef490).
     fn default() -> Self {
         Self {
-            head0: [0; 0x20],
+            sun_color: [0.0; 4], sky_low_color: [0.0; 4], sky_high_color: [0.0; 4],
+            fog_tint_thickness: [0.0; 4], fake_light_color: [0.0; 4], fake_light_dir: [0.0; 4],
+            fake_light2_color: [0.0; 4], fake_light2_dir: [0.0; 4],
             frame_counter: 0,
-            head1: [0; 0x1b],
+            delta_time_seconds: 0.0, ev_mult: 0.0, glade_theme_id: 0,
+            inner_rendering_resolution: [0; 2], game_time_sec: 0, game_time_frac: 0.0,
+            editing_highlight_color: [0.0; 3], time_of_day: 0.0,
+            dir_to_sun: [0.0; 3], camera_idx: 0, dir_to_moon: [0.0; 3], render_overrides: 0,
+            global_mip_bias: 0.0, highlighted_transient_stair_edge_id: 0,
+            pad1: 0, pad2: 0, debug_tweakers: [0.0; 4],
             views: [ViewConstants::default(); VIEW_COUNT],
         }
     }
@@ -80,14 +117,14 @@ impl FrameConstants {
         &self.views[index.0 as usize]
     }
 
-    /// `main_view`（O 名称）。
+    /// Rust accessor for the original jittered-main slot.
     pub fn main_view(&self) -> &ViewConstants {
         self.view(RenderViewIndex::MAIN_VIEW)
     }
 
-    /// `sun_view`（O 名称；I：返回指定级联）。
+    /// Rust accessor: the original shadow consumer supplies cascade + 2.
     pub fn sun_view(&self, cascade: u32) -> &ViewConstants {
-        self.view(RenderViewIndex(cascade + 1))
+        self.view(RenderViewIndex(cascade + 2))
     }
 
     /// `TREE_SEE_THROUGH`（O：`impl$15::fmt` 的字符串；值 U）。
@@ -118,9 +155,12 @@ mod tests {
     #[test]
     fn view_indexing() {
         assert_eq!(RenderViewIndex::MAIN_VIEW.sun_cascade(), None);
-        assert_eq!(RenderViewIndex(3).sun_cascade(), Some(2));
+        assert_eq!(RenderViewIndex(1).sun_cascade(), None);
+        assert!(!RenderViewIndex(1).is_shadow_view());
+        assert!(RenderViewIndex(2).is_shadow_view());
+        assert_eq!(RenderViewIndex(3).sun_cascade(), Some(1));
         let mut f = FrameConstants::default();
-        f.views[2].pixel_offset.x = 1.5;
+        f.views[3].pixel_offset.x = 1.5;
         assert_eq!(f.sun_view(1).pixel_offset.x, 1.5);
     }
 }

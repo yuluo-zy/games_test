@@ -1,0 +1,9 @@
+# Empty terrain before snapshot: two caller corrections
+
+This minimal delta follows the separately frozen endpoint20 inputs and the current integrated fresh ui_draw_wall source. Keep all previous freezes unchanged. In both callers, if storage.terrain is None, call the existing archive_storage_decorators(1, &Decorators::default(), None). Its existing first-capture guard produces Some(empty) exactly once; do not create a terrain bucket in live storage. When Some exists, preserve the existing archive and allowed-ID logic. No shared schema, renderer or registration change is included.
+
+Independent original evidence is archive-empty-evidence/frozen-inputs.json (SHA87e5719b9c73d0ec0f9e431ebd740ed37587385b1ebe6d011c2d6f51ccd61934) from history_audit. UI continue phase4/state1 calls original archive_current at0x140aaea47..a5d. Fresh state1 calls the same leaf unconditionally at0x140ab0601..614; its later storage+90 read is for allowed IDs only. Original leaf0x1413e7230 None branch constructs an empty Decorators at736e and invokes archive_storage0x1413e6150 at7545, which first preserves an existing before at61c1 then copies the empty owner into Some at653e..654b. Thus missing live owner cannot mean unarchived before.
+
+Two actual World/Schedule regression sources verify initial terrain=None yields archivist.special1=Some(empty), live terrain remainsNone, then creating a real terrain bucket and invoking the start archive again keeps the original empty before while adding its actual ID17 to culling permission. Fresh also starts with no canvas registered. Root is separately adding actual first-input automatic history lifecycle coverage; no duplicate prestarted-transaction test is added here.
+
+Validation: rustfmt parsed both candidates; this exact patch applies to isolated baseline copies and yields both source files byte-for-byte. No Cargo or original target execution was performed. Parent integration/test and independent review remain required.

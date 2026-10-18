@@ -1,12 +1,16 @@
-//! Original B critter data. Species owners are added only with recovered fields.
+//! 已恢复的小生物共享目标和物种资源。
 pub mod sheep;
+pub mod butterfly;
+pub use butterfly::Butterfly;
 
 use bevy_ecs::component::Component;
 use glam::Vec3;
 use serde::{Deserialize, Serialize};
 
-/// Native 16-byte component; the snapshot serializer proves Option<Vec3>.
-/// An absent goal has no invented position payload.
+/// B CritterGoal语义是Option<Vec3>；原内存tag@+0、目标坐标@+4。
+/// 这里保留现有类型和字段顺序，不声明原生ABI。它不持有小生物当前位置。
 #[derive(Component, Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct CritterGoal(pub Option<Vec3>);
+pub struct CritterGoal {
+    pub position: Vec3,
+    pub goal_tag: u32,
+}

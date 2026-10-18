@@ -1,27 +1,47 @@
-//! 独立文本 GPU 适配。直接读取发行 SPIR-V；资源与管线复用 rhapsody。
-//! 离屏接口每帧统一提交/等待一次，属于独立验收适配，不声称原 toolbar 的异步调度已恢复。
+//! Bounded offscreen text rendering over the shared rhapsody resource and pipeline APIs.
+mod frame;
+mod input;
 use crate::renderer::{AtlasDescriptor, PendingGlyphUpload, RenderBatch};
+use crate::validation::{RenderLimits, validate_batch};
 use ash::vk;
+use input::{Globals, PackedGlyphUploads};
 use rhapsody::{
+    bindless::{
+        BindlessConfig, BindlessHeap, BindlessLease, BindlessParameters, BindlessResource,
+        BindlessShaderAbi, BindlessShaderPackage,
+    },
+    pipeline::{
+        AsyncPipelineCompiler, CompilerConfig, CompilerStats, PersistentPipelineCache,
+        PipelineTicket,
+    },
     raw::{
-        binding::{DescriptorSetBinding, bind_persistent_descriptor_set},
         buffer::{Buffer, BufferDesc},
         command_buffer::VulkanCommandPool,
-        descriptor_set::VulkanDescriptorPool,
-        device::VulkanDevice,
+        device::Device,
+        dynamic_constants::DynamicConstants,
+        resource_access::{buffer_access, image_access},
         sampler::Sampler,
-        shader::{RasterPipelineDesc, ShaderLibrary, VulkanPipeline, get_vk_blend_mode},
+        shader::{
+            DynamicRenderingFormats, PipelineCache, RasterPipelineDesc, ShaderModule,
+            get_vk_blend_mode,
+        },
         texture::{Texture, TextureDesc, TextureViewDesc},
-        texture_upload::record_texture_regions,
+        texture_upload::{record_texture_regions, record_texture_zero_fill},
     },
+    resource::{OwnershipRange, range_state::AccessScope},
     rg::{
-        attachments::{Attachment, AttachmentCache},
+        attachments::{Attachment, AttachmentCache, RenderingPolicy},
         pass_api::{AshCommandBackend, RenderPassApi},
     },
-    shader_pipeline::compiled::CompiledShaderPipeline,
+    shader_pipeline::{
+        compiled::{CompiledShaderPipeline, ShaderStage},
+        reflection::{BindingKind, BindingLocation, ShaderReflection},
+    },
 };
-use std::{collections::BTreeMap, ffi::CString, sync::Arc};
+use std::{ffi::CString, path::PathBuf, sync::Arc, time::Duration};
+/// GPU operations preserve CPU validation and rhapsody errors as their original error objects.
 pub type GpuResult<T> = Result<T, Box<dyn std::error::Error>>;
+/// Per-frame draw/upload totals and cumulative snapshots of this adapter's resource counters.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct GpuTextStats {
     pub primitives: usize,
@@ -29,150 +49,362 @@ pub struct GpuTextStats {
     pub upload_bytes: usize,
     pub draw_calls: u32,
     pub submits: u32,
+    /// Completed pool resets since adapter creation.
+    pub command_pool_resets: u64,
+    /// Pipeline requests actually compiled by this adapter's compiler.
+    pub compiled_pipeline_requests: u64,
+    pub dynamic_rendering: bool,
+    /// Live slots in the heap, including other consumers when the heap is shared.
+    pub bindless_live_slots: usize,
+    /// Cumulative parameter-storage backing page creations.
+    pub dynamic_constant_page_creations: u64,
+    /// Cumulative staging/readback buffer creations; warm frames reuse these.
+    pub transfer_buffer_creations: u64,
 }
+/// Completed offscreen image. `rgba` holds tightly packed, top-to-bottom RGBA8 pixels.
+/// No submission is left pending when this value is returned.
 pub struct RenderedText {
     pub width: u32,
     pub height: u32,
     pub rgba: Vec<u8>,
     pub stats: GpuTextStats,
 }
-/// 只接受已初始化的采样纹理；保持资源至本帧 GPU 完成。
+#[derive(Clone, Copy)]
+struct TextBindings {
+    globals: BindingLocation,
+    primitives: BindingLocation,
+    shape: BindingLocation,
+    atlas: BindingLocation,
+    blue: BindingLocation,
+    images: BindingLocation,
+    samplers: [BindingLocation; 2],
+}
+impl TextBindings {
+    fn resolve(reflection: &ShaderReflection) -> GpuResult<Self> {
+        let sets = reflection.effective_descriptor_sets();
+        let slot = |name: &str, kind: BindingKind| -> GpuResult<BindingLocation> {
+            let location = reflection.binding_by_name(name).ok_or_else(|| {
+                rhapsody::Error::invalid_usage(format!("text shader binding absent: {name}"))
+            })?;
+            let actual = sets
+                .get(location.set as usize)
+                .and_then(|set| set.get(&location.binding))
+                .ok_or_else(|| {
+                    rhapsody::Error::invalid_usage(format!(
+                        "text shader binding location absent: {name}"
+                    ))
+                })?;
+            if actual.kind != kind {
+                return Err(rhapsody::Error::invalid_usage(format!(
+                    "text shader binding kind differs: {name}"
+                ))
+                .into());
+            }
+            Ok(location)
+        };
+        Ok(Self {
+            globals: slot("$Globals", BindingKind::UniformBuffer)?,
+            primitives: slot("primitives", BindingKind::StorageBuffer)?,
+            shape: slot("shape_stream", BindingKind::StorageBuffer)?,
+            atlas: slot("font_atlas_tex", BindingKind::SampledImage)?,
+            blue: slot("blue_noise_texture", BindingKind::SampledImage)?,
+            images: slot("bindless_textures_dyn", BindingKind::SampledImage)?,
+            samplers: [
+                slot("sampler_lnc", BindingKind::Sampler)?,
+                slot("sampler_llc", BindingKind::Sampler)?,
+            ],
+        })
+    }
+}
+/// Startup and per-frame limits for an offscreen adapter.
+/// Constructors reject zero budgets, resolver capacity outside `1..=65536`,
+/// and completion timeouts outside `(0, 300 seconds]`.
+#[derive(Clone, Debug)]
+pub struct GpuTextConfig {
+    /// Optional device-specific pipeline cache file, read and saved during startup.
+    pub pipeline_cache_path: Option<PathBuf>,
+    /// Capacity used when lowering the shader’s runtime sampled-image array.
+    pub max_resolver_images: u32,
+    /// CPU validation and GPU allocation budgets for each submission.
+    pub limits: RenderLimits,
+    /// Bounded wait after submission; timeout does not imply GPU completion.
+    pub completion_timeout: Duration,
+}
+impl Default for GpuTextConfig {
+    fn default() -> Self {
+        Self {
+            pipeline_cache_path: None,
+            max_resolver_images: 64,
+            limits: RenderLimits::default(),
+            completion_timeout: Duration::from_secs(30),
+        }
+    }
+}
+/// Serial offscreen renderer with reusable atlas, target, descriptors and mapped buffers.
+/// External sampled textures remain caller-owned; submission methods state their
+/// immutability contract. A timed-out submission retains its resources until completion.
 pub struct GpuTextRenderer {
-    device: Arc<VulkanDevice>,
-    library: ShaderLibrary,
+    device: Arc<Device>,
+    heap: Arc<BindlessHeap>,
+    abi: Arc<BindlessShaderAbi>,
+    sampler_leases: Vec<(BindingLocation, Arc<BindlessLease>)>,
+    parameters: DynamicConstants,
+    bindings: TextBindings,
+    compiler: AsyncPipelineCompiler,
+    pipeline: PipelineTicket,
+    disk_cache: Option<PersistentPipelineCache>,
+    command_pool: Arc<VulkanCommandPool>,
     attachments: AttachmentCache,
     blue_noise: Arc<Texture>,
-    samplers: BTreeMap<String, Arc<Sampler>>,
     atlas: Option<(AtlasDescriptor, Arc<Texture>)>,
-    buffers: [Option<Arc<Buffer>>; 3],
+    buffers: frame::InputBufferCache,
     target: Option<([u32; 2], Arc<Texture>)>,
+    staging: Option<Arc<Buffer>>,
+    readback: Option<Arc<Buffer>>,
+    transfer_buffer_creations: u64,
+    limits: RenderLimits,
+    completion_timeout: Duration,
 }
 fn sampled_2d(texture: &Texture) -> bool {
     texture.desc.image_type() == vk::ImageType::TYPE_2D
-        && texture.desc.array_layers() == 1
+        && matches!(texture.desc.array_layers(), Ok(1))
         && texture.desc.samples() == vk::SampleCountFlags::TYPE_1
+        && TextureViewDesc::new(&texture.desc)
+            .is_ok_and(|view| view.view_type == vk::ImageViewType::TYPE_2D)
         && texture.desc.usage.contains(vk::ImageUsageFlags::SAMPLED)
         && rhapsody::raw::format::vk_format_info(texture.desc.format)
             .is_some_and(|f| f.aspect == vk::ImageAspectFlags::COLOR)
 }
 impl GpuTextRenderer {
+    /// Create an adapter with default budgets and a private bindless heap.
+    /// Shader bytes must use the text globals/binding/primitive ABI; blue-noise must
+    /// be a sampled, single-layer 2D color texture on `device`.
+    ///
+    /// # Errors
+    /// Returns shader/ABI, device capability, allocation or startup compilation errors.
     pub fn new(
-        device: Arc<VulkanDevice>,
+        device: Arc<Device>,
         compiled_bytes: &[u8],
         blue_noise: Arc<Texture>,
     ) -> GpuResult<Self> {
+        Self::new_with_config(device, compiled_bytes, blue_noise, GpuTextConfig::default())
+    }
+    /// Create with explicit budgets and optional disk cache using a private heap.
+    /// In addition to [`Self::new`] errors, invalid budgets and cache I/O fail construction.
+    pub fn new_with_config(
+        device: Arc<Device>,
+        compiled_bytes: &[u8],
+        blue_noise: Arc<Texture>,
+        config: GpuTextConfig,
+    ) -> GpuResult<Self> {
+        let heap = BindlessHeap::new(device.clone(), BindlessConfig::default())?;
+        Self::new_with_heap(device, compiled_bytes, blue_noise, heap, config)
+    }
+    /// Share an existing bindless heap across text and scene pipelines.
+    /// The heap and blue-noise texture must belong to `device`; the shader ABI
+    /// and configuration are validated before pipeline creation. The pipeline ticket
+    /// wait has a five-second timeout; dropping its compiler may still wait for an
+    /// in-progress driver compilation. Errors include device/ABI mismatch, invalid
+    /// budgets, allocation, compilation and disk-cache I/O failures.
+    pub fn new_with_heap(
+        device: Arc<Device>,
+        compiled_bytes: &[u8],
+        blue_noise: Arc<Texture>,
+        heap: Arc<BindlessHeap>,
+        config: GpuTextConfig,
+    ) -> GpuResult<Self> {
+        if config.max_resolver_images == 0
+            || config.max_resolver_images > 65_536
+            || config.completion_timeout.is_zero()
+            || config.completion_timeout > Duration::from_secs(300)
+            || config.limits.max_target_bytes == 0
+            || config.limits.max_primitives == 0
+            || config.limits.max_shape_words == 0
+            || config.limits.max_upload_bytes == 0
+            || config.limits.max_upload_regions == 0
+            || config.limits.max_atlas_bytes == 0
+            || config.limits.max_coverage_checks == 0
+        {
+            return Err("invalid text GPU budgets, resolver capacity or completion timeout".into());
+        }
+        if !Arc::ptr_eq(&device, &heap.layout.device) {
+            return Err(
+                rhapsody::Error::invalid_usage("text heap belongs to another device").into(),
+            );
+        }
         if !Arc::ptr_eq(&device, &blue_noise.device) || !sampled_2d(&blue_noise) {
             return Err("blue-noise texture must be sampled and use this device".into());
         }
         let compiled = CompiledShaderPipeline::decode(compiled_bytes)?;
-        for (name, set, binding) in [
-            ("$Globals", 0, 13),
-            ("primitives", 0, 15),
-            ("shape_stream", 0, 16),
-            ("font_atlas_tex", 0, 17),
-            ("blue_noise_texture", 0, 14),
-            ("bindless_textures_dyn", 2, 0),
-        ] {
-            let slot = compiled
-                .reflection
-                .binding_by_name(name)
-                .ok_or("text shader binding absent")?;
-            if (slot.set, slot.binding) != (set, binding) {
-                return Err("text shader binding differs from verified contract".into());
-            }
-        }
-        let uniform = compiled
-            .reflection
-            .uniform_block
-            .as_ref()
-            .ok_or("text globals absent")?;
-        if uniform.byte_size != 24
-            || ![
-                ("blue_noise_texture_dims", 0),
-                ("window_size_pixels", 8),
-                ("font_atlas_tex_dims", 16),
-            ]
-            .iter()
-            .all(|(name, offset)| {
-                uniform
-                    .name_offsets
-                    .iter()
-                    .any(|(n, o)| n == name && o == offset)
-            })
+        let bindings = TextBindings::resolve(&compiled.reflection)?;
+        Globals::validate_layout(&compiled.reflection, bindings.globals)?;
+        let package = BindlessShaderPackage::new(&heap, &compiled, config.max_resolver_images)?;
+        let mut sampler_leases = Vec::with_capacity(2);
+        for (location, name) in bindings
+            .samplers
+            .into_iter()
+            .zip(["sampler_lnc", "sampler_llc"])
         {
-            return Err("text globals layout differs from verified contract".into());
-        }
-        if !device
-            .capabilities
-            .shader_sampled_image_array_non_uniform_indexing
-            || !device.capabilities.runtime_descriptor_array
-            || !device.capabilities.descriptor_binding_partially_bound
-            || !device.capabilities.sampled_image_update_after_bind
-            || !device
-                .capabilities
-                .descriptor_binding_variable_descriptor_count
-        {
-            return Err("device lacks enabled text bindless features".into());
-        }
-        let mut samplers = BTreeMap::new();
-        for name in ["sampler_lnc", "sampler_llc"] {
-            let filter = vk::Filter::LINEAR;
-            let mipmap = if name == "sampler_lnc" {
-                vk::SamplerMipmapMode::NEAREST
-            } else {
-                vk::SamplerMipmapMode::LINEAR
-            };
-            let sampler = Sampler::new(
+            let sampler = Arc::new(Sampler::new(
                 device.clone(),
                 &vk::SamplerCreateInfo::default()
-                    .mag_filter(filter)
-                    .min_filter(filter)
-                    .mipmap_mode(mipmap)
+                    .mag_filter(vk::Filter::LINEAR)
+                    .min_filter(vk::Filter::LINEAR)
+                    .mipmap_mode(if name == "sampler_lnc" {
+                        vk::SamplerMipmapMode::NEAREST
+                    } else {
+                        vk::SamplerMipmapMode::LINEAR
+                    })
                     .address_mode_u(vk::SamplerAddressMode::CLAMP_TO_EDGE)
                     .address_mode_v(vk::SamplerAddressMode::CLAMP_TO_EDGE)
                     .address_mode_w(vk::SamplerAddressMode::CLAMP_TO_EDGE),
-            )?;
-            samplers.insert(name.to_owned(), Arc::new(sampler));
+            )?);
+            sampler_leases.push((location, heap.sampler(sampler)?));
         }
-        let mut library = ShaderLibrary::new(device.clone())?;
-        library.register_compiled_raster(
-            "tg-text-vs".into(),
-            "tg-text-ps".into(),
-            compiled_bytes,
+        let vertex = package
+            .stages
+            .iter()
+            .find(|stage| stage.stage == ShaderStage::Vertex)
+            .ok_or_else(|| rhapsody::Error::invalid_usage("text vertex stage is absent"))?;
+        let fragment = package
+            .stages
+            .iter()
+            .find(|stage| stage.stage == ShaderStage::Fragment)
+            .ok_or_else(|| rhapsody::Error::invalid_usage("text fragment stage is absent"))?;
+        let vertex_module = ShaderModule::from_spirv(device.clone(), &vertex.spirv_bytes())?;
+        let fragment_module = ShaderModule::from_spirv(device.clone(), &fragment.spirv_bytes())?;
+        let disk_cache = config
+            .pipeline_cache_path
+            .map(|path| PersistentPipelineCache::open(device.clone(), path, 32))
+            .transpose()?;
+        let cache = if let Some(cache) = &disk_cache {
+            cache.cache.clone()
+        } else {
+            Arc::new(PipelineCache::new(device.clone(), &[])?)
+        };
+        let compiler = AsyncPipelineCompiler::new(
+            cache,
+            CompilerConfig {
+                workers: 1,
+                max_pending: 8,
+                max_request_bytes: 1 << 20,
+                max_cached_requests: 32,
+            },
         )?;
+        let mut state = RasterPipelineDesc::new(vertex_module, package.layout.clone());
+        state.fragment = Some(fragment_module);
+        state.fragment_entry = Some(CString::new(fragment.entry_point.as_str())?);
+        state.use_dynamic_rendering(DynamicRenderingFormats::color(vk::Format::R8G8B8A8_UNORM));
+        state.entry = CString::new(vertex.entry_point.as_str())?;
+        state.depth_test = false;
+        state.depth_write = false;
+        state.cull_mode = vk::CullModeFlags::NONE;
+        state.topology = vk::PrimitiveTopology::TRIANGLE_LIST;
+        const TEXT_RASTER_BLEND_FLAGS: u8 = 64;
+        state.blend_attachments = vec![get_vk_blend_mode(TEXT_RASTER_BLEND_FLAGS)];
+        let pipeline = compiler.request_raster(state)?;
+        // Fixed output format and samples are known at construction. Compile
+        // before any frame is recorded, never wait inside render_offscreen.
+        pipeline
+            .wait(Duration::from_secs(5))
+            .map_err(rhapsody::Error::from)?;
+        if let Some(cache) = &disk_cache {
+            cache.save()?;
+        }
+        let command_pool = VulkanCommandPool::new(device.clone())?;
+        let parameters = DynamicConstants::new(device.clone())?;
         Ok(Self {
-            attachments: AttachmentCache::new(device.clone()),
+            attachments: AttachmentCache::new(device.clone())?,
             device,
-            library,
+            heap,
+            abi: package.abi,
+            sampler_leases,
+            parameters,
+            bindings,
+            compiler,
+            pipeline,
+            disk_cache,
+            command_pool,
             blue_noise,
-            samplers,
             atlas: None,
-            buffers: [None, None, None],
+            buffers: frame::InputBufferCache::default(),
             target: None,
+            staging: None,
+            readback: None,
+            transfer_buffer_creations: 0,
+            limits: config.limits,
+            completion_timeout: config.completion_timeout,
         })
     }
-    fn data_buffer(
-        &mut self,
-        index: usize,
-        bytes: &[u8],
-        usage: vk::BufferUsageFlags,
-    ) -> GpuResult<Arc<Buffer>> {
-        let size = bytes.len().max(16) as u64;
-        if self.buffers[index].as_ref().is_none_or(|b| b.size < size) {
-            self.buffers[index] = Some(Arc::new(Buffer::new(
-                self.device.clone(),
-                &BufferDesc::new_cpu_to_gpu(size.next_power_of_two(), usage),
-            )?));
-        }
-        let buffer = self.buffers[index].as_ref().unwrap().clone();
-        // 本对象的离屏帧串行执行，前一帧已经等待完成；当前 GPU 尚未读取这些字节。
-        buffer.write_bytes_unsynchronized(0, bytes)?;
-        Ok(buffer)
+    /// Snapshot compiler counters without requesting or waiting for compilation.
+    pub fn pipeline_stats(&self) -> CompilerStats {
+        self.compiler.stats()
     }
-    /// 独立完整链：批量上传→真实 shader 绘制→像素读回。
+    /// Persist the configured disk cache; no configured cache is a successful no-op.
+    /// File/driver cache-export failures propagate to the caller.
+    pub fn save_pipeline_cache(&self) -> GpuResult<()> {
+        if let Some(cache) = &self.disk_cache {
+            cache.save()?;
+        }
+        Ok(())
+    }
+    fn transfer_buffer(&mut self, size: u64, readback: bool) -> GpuResult<Arc<Buffer>> {
+        let slot = if readback {
+            &mut self.readback
+        } else {
+            &mut self.staging
+        };
+        if slot.as_ref().is_none_or(|buffer| buffer.size < size) {
+            let capacity = size
+                .max(16)
+                .checked_next_power_of_two()
+                .ok_or("transfer capacity overflow")?;
+            let desc = if readback {
+                BufferDesc::new_gpu_to_cpu(capacity, vk::BufferUsageFlags::TRANSFER_DST)
+            } else {
+                BufferDesc::new_cpu_to_gpu(capacity, vk::BufferUsageFlags::TRANSFER_SRC)
+            };
+            *slot = Some(Arc::new(Buffer::new(self.device.clone(), &desc)?));
+            self.transfer_buffer_creations = self.transfer_buffer_creations.saturating_add(1);
+        }
+        slot.as_ref()
+            .cloned()
+            .ok_or_else(|| "missing text transfer buffer".into())
+    }
+
+    /// Draw a CPU-produced batch using its owned glyph uploads and return RGBA8 pixels.
+    /// Target dimensions must be nonzero and within configured/device limits.
+    /// Errors and resource lifetimes follow [`Self::render_offscreen`]; the batch
+    /// remains borrowed, so a failed submission does not consume CPU data.
     ///
     /// # Safety
-    /// blue_noise/images 必须处于 SHADER_READ_ONLY_OPTIMAL，同属本设备且在调用期间不被并发修改。
+    /// Blue-noise and resolver images must belong to this device, be shader-readable
+    /// and remain immutable until actual submission completion, including after timeout.
+    pub unsafe fn render_batch_offscreen(
+        &mut self,
+        width: u32,
+        height: u32,
+        batch: &RenderBatch,
+        atlas: AtlasDescriptor,
+        images: &[Arc<Texture>],
+    ) -> GpuResult<RenderedText> {
+        unsafe { self.render_offscreen(width, height, batch, atlas, &batch.glyph_uploads, images) }
+    }
+
+    /// Upload, draw and read pixels using explicitly supplied glyph updates.
+    /// `uploads` replaces `batch.glyph_uploads`. A fresh GPU atlas requires pixel
+    /// coverage for every referenced glyph; stale uploads and malformed batches fail
+    /// before mapped writes. Successful completion publishes the reusable atlas/target.
+    ///
+    /// # Errors
+    /// Returns CPU validation, shader/device, allocation, command or completion errors.
+    /// After timeout, retain external texture contents until completion; a subsequent
+    /// call refuses mapped-buffer reuse while the earlier submission is pending.
+    ///
+    /// # Safety
+    /// Blue-noise and resolver images must be shader-readable, use this device,
+    /// and remain immutable until GPU completion. After a timeout, the owner must
+    /// keep external images immutable until device submission completion is known.
     pub unsafe fn render_offscreen(
         &mut self,
         width: u32,
@@ -182,433 +414,59 @@ impl GpuTextRenderer {
         uploads: &[PendingGlyphUpload],
         images: &[Arc<Texture>],
     ) -> GpuResult<RenderedText> {
-        if width == 0 || height == 0 || atlas_desc.width == 0 || atlas_desc.height == 0 {
-            return Err("zero extent".into());
-        }
-        if images
-            .iter()
-            .any(|image| !Arc::ptr_eq(&image.device, &self.device) || !sampled_2d(image))
-        {
-            return Err("image resolver resource uses wrong device or usage".into());
-        }
-        for p in &batch.primitives {
-            if p.stream != 0 && p.stream != u32::MAX {
-                let start = (p.stream >> 8) as usize;
-                let len = (p.stream & 255) as usize;
-                let words = batch
-                    .shape_words
-                    .get(start..start.checked_add(len).ok_or("shape offset overflow")?)
-                    .ok_or("shape stream range outside batch")?;
-                let mut i = 0;
-                while i < words.len() {
-                    match words[i] & 255 {
-                        0 => {
-                            if i + 1 >= words.len() {
-                                return Err("truncated fill operation".into());
-                            }
-                            i += 2;
-                        }
-                        1 => {
-                            if ((words[i] >> 8) & 65535) as usize >= images.len() {
-                                return Err("image index outside resolver resources".into());
-                            }
-                            i += 1;
-                        }
-                        2 => i += 1,
-                        _ => break,
-                    }
-                }
-            }
-        }
-        let fresh = self.atlas.as_ref().is_none_or(|(a, _)| *a != atlas_desc);
-        if fresh
-            && batch.primitives.iter().filter(|p| p.stream == 0).any(|p| {
-                !uploads.iter().any(|u| {
-                    u.generation == atlas_desc.generation
-                        && p.uv_min[0] >= u.x as f32
-                        && p.uv_min[1] >= u.y as f32
-                        && p.uv_min[0] + p.uv_extent[0] <= (u.x as f64 + u.width as f64) as f32
-                        && p.uv_min[1] + p.uv_extent[1] <= (u.y as f64 + u.height as f64) as f32
-                })
-            })
-        {
-            return Err("fresh GPU atlas lacks cached glyph pixels; reset_glyph_cache then prepare and upload again".into());
-        }
-        let atlas = if fresh {
-            let desc = TextureDesc::new_2d(
-                atlas_desc.width,
-                atlas_desc.height,
-                vk::Format::R8G8B8A8_UNORM,
-            )
-            .usage(vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED);
-            Arc::new(Texture::new(self.device.clone(), &desc)?)
-        } else {
-            self.atlas.as_ref().unwrap().1.clone()
-        };
-        let mut upload_data = Vec::new();
-        let mut regions = Vec::new();
-        for upload in uploads {
-            if upload.generation != atlas_desc.generation
-                || Some(upload.rgba.len())
-                    != usize::try_from(upload.width)?
-                        .checked_mul(usize::try_from(upload.height)?)
-                        .and_then(|n| n.checked_mul(4))
-            {
-                return Err("stale or invalid glyph upload".into());
-            }
-            regions.push(
-                vk::BufferImageCopy::default()
-                    .buffer_offset(upload_data.len() as u64)
-                    .image_subresource(
-                        vk::ImageSubresourceLayers::default()
-                            .aspect_mask(vk::ImageAspectFlags::COLOR)
-                            .layer_count(1),
-                    )
-                    .image_offset(vk::Offset3D {
-                        x: upload.x.try_into()?,
-                        y: upload.y.try_into()?,
-                        z: 0,
-                    })
-                    .image_extent(vk::Extent3D {
-                        width: upload.width,
-                        height: upload.height,
-                        depth: 1,
-                    }),
-            );
-            upload_data.extend_from_slice(&upload.rgba);
-        }
-        let mut globals = Vec::with_capacity(24);
-        for bytes in [
-            self.blue_noise.desc.extent().width.to_le_bytes(),
-            self.blue_noise.desc.extent().height.to_le_bytes(),
-            (width as f32).to_le_bytes(),
-            (height as f32).to_le_bytes(),
-            atlas_desc.width.to_le_bytes(),
-            atlas_desc.height.to_le_bytes(),
-        ] {
-            globals.extend_from_slice(&bytes);
-        }
-        let primitive = self.data_buffer(
-            0,
-            batch.primitive_bytes(),
-            vk::BufferUsageFlags::STORAGE_BUFFER,
-        )?;
-        let shape = self.data_buffer(
-            1,
-            bytemuck::cast_slice(&batch.shape_words),
-            vk::BufferUsageFlags::STORAGE_BUFFER,
-        )?;
-        let uniform = self.data_buffer(2, &globals, vk::BufferUsageFlags::UNIFORM_BUFFER)?;
-        let desc = TextureDesc::new_2d(width, height, vk::Format::R8G8B8A8_UNORM)
-            .usage(vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::TRANSFER_SRC);
-        let fresh_target = self
-            .target
-            .as_ref()
-            .is_none_or(|(extent, _)| *extent != [width, height]);
-        let target = if fresh_target {
-            self.attachments.clear();
-            self.library.cache.invalidate();
-            Arc::new(Texture::new(self.device.clone(), &desc)?)
-        } else {
-            self.target.as_ref().unwrap().1.clone()
-        };
-        let mut attachment = Attachment::color(target.clone(), 1, Some([0.; 4]));
-        attachment.initial_layout = if fresh_target {
-            vk::ImageLayout::UNDEFINED
-        } else {
-            vk::ImageLayout::TRANSFER_SRC_OPTIMAL
-        };
-        let prepared = self
-            .attachments
-            .prepare(&[attachment], desc.extent_2d(), 1)?;
-        let program =
-            self.library
-                .prepare_raster_program("tg-text-vs", "tg-text-ps", &self.samplers)?;
-        let mut state =
-            RasterPipelineDesc::new(program.vertex.module.clone(), program.layout.clone());
-        state.render_pass = prepared.framebuffer.render_pass.handle;
-        state.render_pass_owner = prepared.framebuffer.render_pass.clone();
-        state.entry = CString::new("vs_main")?;
-        state.depth_test = false;
-        state.depth_write = false;
-        state.cull_mode = vk::CullModeFlags::NONE;
-        state.topology = vk::PrimitiveTopology::TRIANGLE_LIST;
-        state.blend_attachments = vec![get_vk_blend_mode(64)];
-
-        let pipeline = VulkanPipeline::create_raster_pipeline(
-            &self.library.cache,
-            program.pipeline_desc(state)?,
-        )?;
-
-        let mut sets = Vec::new();
-        for (set_index, layout) in program.layout.sets.iter().enumerate() {
-            if layout.plan.bindings.is_empty() {
-                continue;
-            }
-
-            let pool = VulkanDescriptorPool::new(self.device.clone(), &layout.plan, 1)?;
-            let mut set = pool.allocate(layout.clone())?;
-            for binding in &layout.plan.bindings {
-                let ty = vk::DescriptorType::from_raw(binding.descriptor_type);
-                if set_index == 0 {
-                    if let Some(buffer) = match binding.binding {
-                        13 => Some(&uniform),
-                        15 => Some(&primitive),
-                        16 => Some(&shape),
-                        _ => None,
-                    } {
-                        unsafe {
-                            set.update(
-                                binding.binding,
-                                0,
-                                &DescriptorSetBinding::Buffer {
-                                    ty,
-                                    info: vk::DescriptorBufferInfo::default()
-                                        .buffer(buffer.handle)
-                                        .range(buffer.size),
-                                    owner: buffer.clone(),
-                                },
-                            )?;
-                        }
-                    } else if binding.binding == 14 || binding.binding == 17 {
-                        let image = if binding.binding == 14 {
-                            self.blue_noise.clone()
-                        } else {
-                            atlas.clone()
-                        };
-                        let view = Arc::new(image.image_view(&TextureViewDesc::new(&image.desc))?);
-                        unsafe {
-                            set.update(
-                                binding.binding,
-                                0,
-                                &DescriptorSetBinding::Image {
-                                    ty,
-                                    info: vk::DescriptorImageInfo::default()
-                                        .image_view(view.handle)
-                                        .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL),
-                                    owners: vec![view],
-                                },
-                            )?;
-                        }
-                    }
-                } else if set_index == 2 && binding.binding == 0 {
-                    if images.len() > binding.descriptor_count as usize {
-                        return Err("too many resolver images".into());
-                    }
-                    for (index, image) in images.iter().enumerate() {
-                        let view = Arc::new(image.image_view(&TextureViewDesc::new(&image.desc))?);
-                        unsafe {
-                            set.update(
-                                0,
-                                index as u32,
-                                &DescriptorSetBinding::Image {
-                                    ty,
-                                    info: vk::DescriptorImageInfo::default()
-                                        .image_view(view.handle)
-                                        .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL),
-                                    owners: vec![view],
-                                },
-                            )?;
-                        }
-                    }
-                }
-            }
-            sets.push((set_index as u32, Arc::new(set)));
-        }
-        let length = u64::from(width)
-            .checked_mul(u64::from(height))
-            .and_then(|n| n.checked_mul(4))
-            .ok_or("target byte size overflow")?;
-        let readback = Arc::new(Buffer::new(
-            self.device.clone(),
-            &BufferDesc::new_gpu_to_cpu(length, vk::BufferUsageFlags::TRANSFER_DST),
-        )?);
-
-        let pool = VulkanCommandPool::new(self.device.clone())?;
-        let mut command = pool.allocate()?;
+        let input = self.validate_inputs(width, height, batch, atlas_desc, uploads, images)?;
+        let pipeline = self.pipeline.try_get()?;
+        // Completion is a gate before any mapped write, including after a timeout.
+        self.device.try_collect_garbage()?;
+        self.command_pool.reset_completed(&mut [])?;
+        self.heap.collect()?;
+        let packed_uploads = PackedGlyphUploads::new(input.uploads)?;
+        let frame = self.prepare_frame(&input, pipeline)?;
+        let mut command = self.command_pool.allocate()?;
         command.begin()?;
-        prepared.keep_alive(&mut command);
-        command.keep_alive(pipeline.clone());
-        command.keep_alive(readback.clone());
-        for (_, set) in &sets {
-            command.keep_alive(set.clone());
-        }
-        if fresh {
-            let range = vk::ImageSubresourceRange::default()
-                .aspect_mask(vk::ImageAspectFlags::COLOR)
-                .level_count(1)
-                .layer_count(1);
-            unsafe {
-                self.device.device.cmd_pipeline_barrier(
-                    command.handle,
-                    vk::PipelineStageFlags::TOP_OF_PIPE,
-                    vk::PipelineStageFlags::TRANSFER,
-                    vk::DependencyFlags::empty(),
-                    &[],
-                    &[],
-                    &[vk::ImageMemoryBarrier::default()
-                        .old_layout(vk::ImageLayout::UNDEFINED)
-                        .new_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
-                        .dst_access_mask(vk::AccessFlags::TRANSFER_WRITE)
-                        .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                        .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                        .image(atlas.handle)
-                        .subresource_range(range)],
-                );
-                self.device.device.cmd_clear_color_image(
-                    command.handle,
-                    atlas.handle,
-                    vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-                    &vk::ClearColorValue { float32: [0.; 4] },
-                    &[range],
-                );
-                self.device.device.cmd_pipeline_barrier(
-                    command.handle,
-                    vk::PipelineStageFlags::TRANSFER,
-                    vk::PipelineStageFlags::FRAGMENT_SHADER,
-                    vk::DependencyFlags::empty(),
-                    &[],
-                    &[],
-                    &[vk::ImageMemoryBarrier::default()
-                        .old_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
-                        .new_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-                        .src_access_mask(vk::AccessFlags::TRANSFER_WRITE)
-                        .dst_access_mask(vk::AccessFlags::SHADER_READ)
-                        .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                        .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                        .image(atlas.handle)
-                        .subresource_range(range)],
-                );
-            }
-        }
-        command.keep_alive(atlas.clone());
-
-        if !regions.is_empty() {
-            let staging = Arc::new(Buffer::new(
-                self.device.clone(),
-                &BufferDesc::new_cpu_to_gpu(
-                    upload_data.len() as u64,
-                    vk::BufferUsageFlags::TRANSFER_SRC,
-                ),
-            )?);
-            staging.write_bytes_unsynchronized(0, &upload_data)?;
-            unsafe {
-                record_texture_regions(
-                    &mut command,
-                    atlas.clone(),
-                    staging,
-                    &regions,
-                    vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
-                )?;
-            }
-        }
-        {
-            let mut backend = unsafe { AshCommandBackend::new(&self.device.device) };
-            let mut api = RenderPassApi::new(&mut backend, command.handle, 0, false);
-            api.begin_attachments(&prepared);
-            api.set_default_view_and_scissor(desc.extent_2d());
-            unsafe {
-                pipeline.bind_pipeline(command.handle);
-                for (set_index, set) in &sets {
-                    bind_persistent_descriptor_set(
-                        &self.device,
-                        command.handle,
-                        vk::PipelineBindPoint::GRAPHICS,
-                        program.layout.handle,
-                        *set_index,
-                        &[set.handle],
-                        &[],
-                    );
-                }
-                self.device.device.cmd_draw(
-                    command.handle,
-                    (batch
-                        .primitives
-                        .len()
-                        .checked_mul(6)
-                        .ok_or("draw count overflow")?)
-                    .try_into()?,
-                    1,
-                    0,
-                    0,
-                );
-            }
-            api.end_render_pass();
-        }
         unsafe {
-            self.device.device.cmd_pipeline_barrier(
-                command.handle,
-                vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
-                vk::PipelineStageFlags::TRANSFER,
-                vk::DependencyFlags::empty(),
-                &[],
-                &[],
-                &[vk::ImageMemoryBarrier::default()
-                    .src_access_mask(vk::AccessFlags::COLOR_ATTACHMENT_WRITE)
-                    .dst_access_mask(vk::AccessFlags::TRANSFER_READ)
-                    .old_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
-                    .new_layout(vk::ImageLayout::TRANSFER_SRC_OPTIMAL)
-                    .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                    .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                    .image(target.handle)
-                    .subresource_range(
-                        vk::ImageSubresourceRange::default()
-                            .aspect_mask(vk::ImageAspectFlags::COLOR)
-                            .level_count(1)
-                            .layer_count(1),
-                    )],
-            );
-            self.device.device.cmd_copy_image_to_buffer(
-                command.handle,
-                target.handle,
-                vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                readback.handle,
-                &[vk::BufferImageCopy::default()
-                    .image_subresource(
-                        vk::ImageSubresourceLayers::default()
-                            .aspect_mask(vk::ImageAspectFlags::COLOR)
-                            .layer_count(1),
-                    )
-                    .image_extent(desc.extent())],
-            );
-            self.device.device.cmd_pipeline_barrier(
-                command.handle,
-                vk::PipelineStageFlags::TRANSFER,
-                vk::PipelineStageFlags::HOST,
-                vk::DependencyFlags::empty(),
-                &[],
-                &[vk::BufferMemoryBarrier::default()
-                    .src_access_mask(vk::AccessFlags::TRANSFER_WRITE)
-                    .dst_access_mask(vk::AccessFlags::HOST_READ)
-                    .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                    .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                    .buffer(readback.handle)
-                    .size(length)],
-                &[],
-            );
+            self.record_frame(&mut command, &frame, &packed_uploads, &input)?;
         }
-
         command.end()?;
         let pending = command.submit()?;
-        pending.wait(u64::MAX)?;
-        let mut rgba = vec![0; length.try_into()?];
+        pending.wait(self.completion_timeout.as_nanos().try_into()?)?;
+        let mut rgba = vec![0; input.readback_bytes.try_into()?];
         unsafe {
-            readback.read_bytes_after_completion(0, &mut rgba)?;
+            frame.readback.read_bytes_after_completion(0, &mut rgba)?;
         }
-        // 复用同尺寸的目标及附件，避免每帧新增 renderpass/pipeline cache 键。
-        self.target = Some(([width, height], target));
-        self.atlas = Some((atlas_desc, atlas));
+        // Publish reusable images only after successful completion and readback.
+        self.target = Some(([width, height], frame.target));
+        self.atlas = Some((atlas_desc, frame.atlas));
         Ok(RenderedText {
             width,
             height,
             rgba,
             stats: GpuTextStats {
                 primitives: batch.primitives.len(),
-                upload_regions: regions.len(),
-                upload_bytes: upload_data.len(),
+                upload_regions: packed_uploads.regions.len(),
+                upload_bytes: packed_uploads.bytes.len(),
                 draw_calls: 1,
                 submits: 1,
+                command_pool_resets: self.command_pool.reset_count(),
+                compiled_pipeline_requests: self.compiler.stats().compiled,
+                dynamic_rendering: frame.pipeline.dynamic_rendering_formats().is_some(),
+                bindless_live_slots: self.heap.stats().live,
+                dynamic_constant_page_creations: self.parameters.stats().page_creations,
+                transfer_buffer_creations: self.transfer_buffer_creations,
             },
         })
     }
+}
+
+fn texture_range(texture: &Texture) -> rhapsody::Result<OwnershipRange> {
+    let aspect = rhapsody::raw::format::vk_format_info(texture.desc.format)
+        .ok_or_else(|| rhapsody::Error::unsupported("text texture has no native aspect"))?
+        .aspect;
+    Ok(OwnershipRange::Image {
+        aspects: aspect.as_raw(),
+        base_mip: 0,
+        mip_count: u32::from(texture.desc.mip_levels),
+        base_layer: 0,
+        layer_count: texture.desc.array_layers()?,
+    })
 }

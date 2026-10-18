@@ -1,25 +1,39 @@
-//! draw_water.rs — 水面绘制 / 水面橡皮（B 0x141ba9130，O；re-analyst-A 契约
-//! `systems-recovery/groupA/water/RE-ANALYSIS.md` §2/§3）。
+//! draw_water.rs — 水面绘制 / 水面橡皮（B 0x141ba9130，O；fresh 2026-10-17 逐语句重建）。
 //!
-//! 模式分发（O）：`AppMode::Eraser(EraserLayer::All | EraserLayer::Water)`（tag 9）
-//! = 水面橡皮；`AppMode::Water`（tag 15）= 画水。其余模式早退。
-//! 两者共用尾部：`DrawState::update`（0x140ae4bd0）→ 命令状态机
-//! {0 Idle, 1 开始, 2 延伸, 3 提交} → `RecalculateHeightMapCmd` →
-//! `ScheduledTerrainReadback::on_terrain_modified`（0x140aabdc0，LOCK INC）→
-//! `draw_raster<WaterRasterStagingSsbo>`（0x142260ae0 等价族）。
+//! 模式分发（O）：`sel = mode_tag - 5`；`sel==4`（tag 9 = 橡皮，层掩码 `&3==0` →
+//! `EraserLayer::All | Water`）、`sel==10`（tag 15 = 水）；其余早退。
+//! 共用尾部（O）：`DrawState::update`（0x140ae4bd0）→ 4 相位 switch（0x142eebcb0
+//! jumptable：0→return、1→begin(0)、2→extend(2)、3→commit(3)）→
+//! `RecalculateHeightMapCmd` 事件 → `ScheduledTerrainReadback::on_terrain_modified`
+//! （0x140aabdc0）→ `draw_raster<WaterRasterStagingSsbo, WorldRaster<512>>`（0x142260ae0）。
 //!
-//! 常量（O，字节直读）：橡皮半径 `t = (eraser - 0.3)/(2.0 - 0.3)` 后 `t*4 + (1-t)`
-//! （inverse_lerp 0x140c904a0 无钳制，同 core draw_garden）；画水半径 =
-//! `BrushSizes.water`；界内圈半径 = `0.8 * radius`（0x142a16cb8 = 0.8，
-//! 与 core `systems/paths.rs::BRUSH_RECT_SCALE` 一致；re-analyst 记 0.15 与字节
-//! 直读不符，以字节为准）；橡皮 signifier 缩放 = `0.5 * radius`（0x142925870）；
-//! 图钉高度 = `pos.y + 1.5`（0x1429258d0）。
+//! 常量（O，字节直读）：橡皮半径 `t = inverse_lerp(0.3, 2.0, eraser_size)`（0x1429258d8 /
+//! 0x14292e6f0，无钳制）后 `t*4 + (1-t)`（0x142934694 / 0x142925904）；水半径 =
+//! `BrushSizes.water`；界内圈半径 = `0.8 * brush_size`（0x142a16cb8）；橡皮指示符缩放 =
+//! `0.5 * brush_size`（0x142925870）；图钉高度 = `pos.y + 1.5`（0x1429258d0）；
+//! 图钉载荷标志 `0x100`。`assert!(brush_size.is_finite())`（panic 串 0x142eebba0 =
+//! `'assertion failed: brush_size.is_finite()'`）。
+//!
+//! ## `closure$0`（0x141ba9700，2026-10-17 晚 restorer-consume-debugline 落库）
+//! 橡皮指示符的 `SignifierFactory` 闭包（PDB `closure_env$0`）。fresh disasm 逐指令：
+//! env = ArcInner data `{position: Vec3 @0, scale: f32 @0xc}`（读 `[RDX]`/`[RDX+8]`/
+//! `[RDX+0xc]`）；体为 `"brush_circle_scribble"`（0x15 B）→
+//! `SignifierEntityBuilder::new(payload {0x8000000000000000, len, ptr, len, 0, 0})` →
+//! `animation_duration(0.0)` → `position(env.position)`（0x14089dc00 写 `+0x7c/+0x84`）→
+//! `scale(env.scale)`（0x14089dc60 写 `+0x50=1/+0x54`）→ `set_ui_pass(0)` → `build` →
+//! 返回 1 元素 `Vec<Entity>`。**更正**：PDB `closure_env$0` 的
+//! `(AssetMeshLibrary, AssetShaderLibrary, Commands)` 是闭包**实参**（vtable call 面），
+//! 不是捕获；真实捕获只有 `{position, scale}`。
+
+use std::sync::Arc;
 
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::SystemParam;
-use glam::Vec2;
+use glam::{Vec2, Vec3};
 use utils::geometry::Circle2d;
 
+use country_core::asset_libraries::mesh_library::AssetMeshLibrary;
+use country_core::asset_libraries::shader_library::AssetShaderLibrary;
 use country_core::asset_libraries::ssbo_library::AssetSsboLibrary;
 use country_core::resources::active_raster_stroke::ActiveRasterStrokesStorage;
 use country_core::resources::brush_sizes::BrushSizes;
@@ -39,12 +53,12 @@ use country_core::systems::render_loop::compute_passes::rasterize_terrain_stroke
 use country_core::systems::terrain::delayed_terrain_changed_msg::ScheduledTerrainReadback;
 use country_core::systems::ui::resources::ui_state::UiState;
 use country_core::systems::ui::signifiers::signifier_create::UiSignifierStream;
-use country_core::systems::ui::signifiers::UiAppendSignifier;
+use country_core::systems::ui::signifiers::{SignifierEntityBuilder, SignifierFactory};
 use country_core::systems::world_raster::{draw_raster, RasterDrawResources, RasterStrokeCmd};
 
-use crate::{water_systems_enabled, record_water_history::RecordWaterEditToHistoryCmd};
+use crate::{record_water_history::RecordWaterEditToHistoryCmd, water_systems_enabled};
 
-/// 橡皮半径 inverse_lerp 端点（O：0x1429258d8 / 0x14292e6f0）。
+/// 橡皮半径 inverse_lerp 端点（O：0x1429258d8 = 0.3 / 0x14292e6f0 = 2.0）。
 const ERASER_LERP_MIN: f32 = 0.3;
 const ERASER_LERP_MAX: f32 = 2.0;
 /// 橡皮半径重映射（O：`x * 0x142934694 + (0x142925904 - x)` = `x*4 + (1-x)`）。
@@ -53,21 +67,23 @@ const ERASER_RADIUS_SCALE: f32 = 4.0;
 const WATER_BORDER_CIRCLE_SCALE: f32 = 0.8;
 /// 橡皮笔刷指示符缩放（O：0x142925870 = 0.5）。
 const ERASER_SIGNIFIER_SCALE: f32 = 0.5;
+/// 橡皮指示符名（O：原版 `format!` 生成，模板 "eraser_water_"@0x142eebc2d，13 字节；
+/// 经 `SignifierFactory::new`(0x14089d8b0) 把名字串拷贝进 40 B 记录
+/// `{name_len, name_ptr, name_len, &ArcInner, vtable}`）。crate 侧以
+/// `SignifierFactory::from_closure` 承载同名记录（闭包 = [`closure_0`]）。
+const ERASER_SIGNIFIER_NAME: &str = "eraser_water_";
+/// `closure$0` 的网格名（O：0x15 = 21 B，@0x142eebc98 拷贝源）。
+const BRUSH_CIRCLE_SCRIBBLE: &str = "brush_circle_scribble";
 /// 图钉高度抬升（O：0x1429258d0 = 1.5）。
 const PIN_HEIGHT_OFFSET: f32 = 1.5;
-/// WaterRaster 的栅格槽位（O：0x140868cf0 `ActiveRasterStrokesStorage::index`，
-/// `idx * 0x470`；garden = 5）。
+/// WaterRaster 的栅格槽位（O：`ActiveRasterStrokesStorage::index`，`idx * 0x470`；
+/// water = 4，与 `ORDERED_NAMES` 第 5 位一致）。
 const WATER_RASTER_SLOT: u8 = 4;
 
-/// Water 的圈/高图钉变体（O：事件记录 = {Circle2d, height, union 载荷 0x100 标志}——
-/// 机器码低 u16 = 0x100（reviewer FIX §3.1：载荷带出标志，不再只登记 U）。
-///
-/// 原版事件为 `ShowPinnedDecoClutter`（56B union）的圈/高变体（BASELINE 参数面
-/// `EventWriter<enum2$<ShowPinnedDecoClutter>>`）；core `ui_clutter` 域未恢复完整
-/// union，按 core garden 域惯例（`GardenPinnedClutterCircle`）以本 crate 专名表达
-/// O 载荷。机器码事件写入 = 0x142260a60（re-analyst 记为 WaterDrawEvent 写入，
-/// 与 BASELINE 参数面 ShowPinnedDecoClutter 不符——以 BASELINE 参数面为准，此处
-/// 登记分歧）。
+/// Water 的圈/高图钉变体（O：机器码事件写入 0x142260a60 载荷 = {Circle2d, height,
+/// union 标志 0x100}）。原版事件为 core `ui_clutter::ShowPinnedDecoClutter`（56 B union）
+/// 的圈/高变体（BASELINE 参数面 `EventWriter<ShowPinnedDecoClutter>`）；core ui_clutter
+/// 未恢复完整 union，按 core garden 域惯例以本 crate 专名表达 O 载荷（差登记 RESTORE.md）。
 #[derive(Event, Clone, Copy, Debug)]
 pub struct WaterPinnedClutterCircle {
     pub circle: Circle2d,
@@ -76,9 +92,9 @@ pub struct WaterPinnedClutterCircle {
     pub flag: u16,
 }
 
-/// SystemParam 束（同 core `GardenRasterResources` 模式；原版为
-/// `RasterDrawResources` SystemParam——core 侧 `init_state` 0x140958040 已登记
-/// 类型面，SystemParam impl 待接线，本 crate 以派生束 + 借用组装等价落地）。
+/// SystemParam 束（同 core `GardenRasterResources` 模式；原版为 `RasterDrawResources`
+/// SystemParam——core 侧仅登记类型面，SystemParam impl 待接线，本 crate 以派生束 +
+/// 借用组装等价落地；`library` 与槽位原版内嵌于该 SystemParam，本 crate 显式传入）。
 #[derive(SystemParam)]
 pub struct WaterRasterResources<'w, C: Send + Sync + 'static> {
     strokes: ResMut<'w, ActiveRasterStrokesStorage>,
@@ -88,7 +104,7 @@ pub struct WaterRasterResources<'w, C: Send + Sync + 'static> {
     debug_history: ResMut<'w, Events<DebugHistoryMsg>>,
 }
 
-/// `draw_water` @0x141ba9130（O）。
+/// `draw_water` @0x141ba9130（O，fresh 重建）。
 #[allow(clippy::too_many_arguments)]
 pub fn draw_water<C: Send + Sync + 'static>(
     mode: Res<AppMode>,
@@ -112,97 +128,122 @@ pub fn draw_water<C: Send + Sync + 'static>(
     brush: (Res<EraserSizeMultiplier>, Res<BrushSizes>),
     mut pins: EventWriter<WaterPinnedClutterCircle>,
 ) {
-    // 门禁（O：`*0x14362c098 != 0 → return`）。
+    // 门禁（O：`cmp byte ptr [0x14362c098], 0`；非 0 → 早退 0x141ba9640）。
     if !water_systems_enabled() {
         return;
     }
-    let (radius, draw, canvas, argument_79, layer) = match *mode {
+    // 模式分派（O：sel = tag - 5；`sel==4` 橡皮、`sel==10` 水、其余 return）。
+    let (brush_size, draw, widget, point, inside) = match *mode {
         AppMode::Eraser(EraserLayer::All | EraserLayer::Water) => {
-            // O：inverse_lerp(0.3, 2.0, eraser_size) 无钳制（0x140c904a0），
-            // 再 `t*4 + (1-t)`。同 core draw_garden 橡皮半径。
-            let t = (brush.0 .0 - ERASER_LERP_MIN) / (ERASER_LERP_MAX - ERASER_LERP_MIN);
-            (
-                t * ERASER_RADIUS_SCALE + (1.0 - t),
-                false,
-                "eraser",
-                6u8,
-                0u8,
-            )
+            // O：`utils::inverse_lerp(0.3, 2.0, eraser_size)` 无钳制（0x140c904a0），
+            //     再 `t*4 + (1-t)`。随后 `assert!(brush_size.is_finite())`
+            //     （0x141ba967c：panic 串 0x142eebba0）。
+            let brush_size = {
+                let t = (brush.0 .0 - ERASER_LERP_MIN) / (ERASER_LERP_MAX - ERASER_LERP_MIN);
+                t * ERASER_RADIUS_SCALE + (1.0 - t)
+            };
+            assert!(brush_size.is_finite());
+            // O：`UiState::clearing_canvas("eraser", argument=6, layer=0)`
+            //     （0x142eebc08，R8=6、R9=0）。
+            let widget = ui.clearing_canvas_w_layer_and_sound("eraser", 6, 0);
+            // O：`CursorTerrainRaycast::position()`（0x140a12650）——死调用，
+            //     结果被下一句 `intersect_with_xz_plane` 覆盖（0x141ba930a→0x141ba9318）。
+            cursor.position();
+            // O：`CameraCursorRay::intersect_with_xz_plane(0.0)`（0x1408ef180，XMM2=0）。
+            let point = camera_ray.intersect_with_xz_plane(0.0);
+            // O：`UiSignifierStream::write`（0x140b2cf90）写 40 B 记录。原版：
+            //    `format!` 生成名字串 "eraser_water_"（13 字节）→ `SignifierFactory::new`
+            //    （0x14089d8b0）= `{name_len, name_ptr(拷贝), name_len, &ArcInner, vtable}`；
+            //    ArcInner<closure_env$0> = `{strong=1@0, weak=1@8, data@+0x10}`（alloc 0x20），
+            //    data = `{position: Vec3 @+0x10, scale: f32 @+0x1c = 0.5×brush_size}`
+            //    （fresh disasm 0x141ba9384-0x141ba93ce）；临时名字串随后 `__rust_dealloc`。
+            //    crate 侧以 `from_closure` 表达同一记录，`signifier_create` 唤醒
+            //    [`closure_0`] 装配 `brush_circle_scribble` 实体。
+            let scale = ERASER_SIGNIFIER_SCALE * brush_size;
+            let factory = SignifierFactory::from_closure(
+                ERASER_SIGNIFIER_NAME,
+                Arc::new(
+                    move |_mesh_library: &AssetMeshLibrary,
+                          _shader_library: &AssetShaderLibrary,
+                          commands: &mut Commands| closure_0(point, scale, commands),
+                ),
+            );
+            signifiers.write_factory(&factory);
+            (brush_size, false, widget, point, true)
         }
-        AppMode::Water => (brush.1.water, true, "water", 5u8, 4u8),
+        AppMode::Water => {
+            // O：`brush_size = BrushSizes.water`（Res 束 +0x20 链，偏移 4）。
+            let brush_size = brush.1.water;
+            assert!(brush_size.is_finite());
+            // O：`clearing_canvas("watereraser_water_", argument=5, layer=4)`
+            //     （0x142eebc28，R8=5、R9=4）。
+            let widget = ui.clearing_canvas_w_layer_and_sound("watereraser_water_", 5, 4);
+            // O：两次 `position()`——第一次（RBP+0x18）为 draw_raster 点，
+            //     第二次（RBP+0x28）为界内圈圆心。
+            let point = cursor.position();
+            let center = {
+                let pos = cursor.position();
+                Vec2::new(pos.x, pos.z)
+            };
+            // O：界内圈 = `Circle2d::new(center, 0.8*brush_size)`（0x140c97540，
+            //     XMM3 = 0x142a16cb8*brush_size），`GladeBorder::is_shape_inside`
+            //     （0x140ad2970）。
+            let inside = border
+                .0
+                .is_shape_inside(BorderShape::Circle(Circle2d::new(
+                    center,
+                    WATER_BORDER_CIRCLE_SCALE * brush_size,
+                )));
+            // O：界外 → `DisplayOutOfBorder`（0x141ba9432 事件 push）；随后
+            //     `into_drag_state().is_some()`（0x14092df10→0x14092e6b0，= `dragged()!=2`）
+            //     拖拽中 → `FeedbackInputOutOfBorder`（0x141ba9480 push）。
+            if !inside {
+                border.1.write(DisplayOutOfBorder);
+                if widget.dragged() != 2 {
+                    border.2.write(FeedbackInputOutOfBorder);
+                }
+            }
+            (brush_size, true, widget, point, inside)
+        }
         _ => return,
     };
-    // O：panic 串 'assertion failed: brush_size.is_finite()'（0x142eebba0）。
-    assert!(radius.is_finite(), "water brush radius must be finite");
-    let widget = ui.clearing_canvas_w_layer_and_sound(canvas, argument_79, layer);
-    let position = cursor.position();
 
-    let inside = if draw {
-        // 画水分支（O）：界内圈 = Circle2d(center, 0.8 * radius)；
-        // `GladeBorder::is_shape_inside`（0x140ad2970）。
-        let center = Vec2::new(position.x, position.z);
-        border
-            .0
-            .is_shape_inside(BorderShape::Circle(Circle2d::new(
-                center,
-                WATER_BORDER_CIRCLE_SCALE * radius,
-            )))
-    } else {
-        true
-    };
-
-    // 画水分支的界外反馈（O）：圈外 → DisplayOutOfBorder；未释放（机器码
-    // 0x14092e6b0 = `byte[record] != 2`，record 布局 U；同 garden 的
-    // `phase != 2` 语义）→ FeedbackInputOutOfBorder。
-    if !inside {
-        border.1.write(DisplayOutOfBorder);
-        if widget.dragged() != 2 {
-            border.2.write(FeedbackInputOutOfBorder);
-        }
-    }
-
-    // 尾部状态机（O：0x140ae4bd0 `DrawState::update` + switch）。
+    // O：`DrawState::update(mode_id = dragged(), raw = inside)`（0x140ae4bd0，
+    //     R14=&state、EDX=dragged、R8D=inside）。
     let phase = widget.dragged();
     state.update(phase, u8::from(inside));
+
+    // O：4 相位 switch（0x142eebcb0 jumptable，case0→0x141ba9640 return、
+    //     case1→discriminant 0、case2→extend、case3→commit）。
     let command = match state.0 {
         0 => return,
-        1 => 0, // 开始（记录圈数据；draw_raster discriminant 0 = begin）
+        1 => 0,
         2 => {
-            // 延伸要求界内（O：`if uVar13 == 0 return`；uVar13 = inside）。
+            // O：`test bl,bl; je 0x141ba9640`（!inside → return）。
             if !inside {
                 return;
             }
+            // O：`test r12b,r12b; je 0x141ba9658`（!draw → 仅 discriminant=2）。
             if draw {
-                // O：事件写入 0x142260a60，记录 = {Circle2d, height = pos.y + 1.5,
-                // union 载荷 0x100 标志（U）}。
+                // O：重取 `cursor.position()`（0x141ba9521）+ `Circle2d::new`（0x141ba9537，
+                //     半径 = brush_size）+ 高度 = pos.y+1.5（0x141ba954d，RIP+0xd7c37b
+                //     = 0x1429258d0）+ union 载荷 0x100（0x141ba9569），
+                //     `EventWriter::write<ShowPinnedDecoClutter>`（0x142260a60）。
+                let pos = cursor.position();
                 pins.write(WaterPinnedClutterCircle {
-                    circle: Circle2d::new(Vec2::new(position.x, position.z), radius),
-                    height: position.y + PIN_HEIGHT_OFFSET,
+                    circle: Circle2d::new(Vec2::new(pos.x, pos.z), brush_size),
+                    height: pos.y + PIN_HEIGHT_OFFSET,
                     flag: 0x100,
                 });
             }
             2
         }
-        _ => 3, // 提交
+        _ => 3,
     };
 
-    // 橡皮分支：笔刷大小 signifier（O：记录名 'eraser_water_'（0x142eebc40
-    // fat），位置 = xz 平面交点（`intersect_with_xz_plane(0.0)`，0x1408ef180），
-    // 缩放 = 0.5 * radius；`UiSignifierStream::write` 0x140b2cf90）。
-    if !draw {
-        let point = camera_ray.intersect_with_xz_plane(0.0);
-        // O：0x20B 记录族 = {1, 1, Vec3, f32}（40B 布局中央裁决：
-        // tag@0/kind@8/pos@0x10/scale@0x1c）；scale = 0.5×radius（0x142925870）。
-        signifiers.write(UiAppendSignifier {
-            tag: 1,
-            kind: 1,
-            position: point,
-            scale: ERASER_SIGNIFIER_SCALE * radius,
-            name: 0,
-        });
-    }
-
-    // O 尾部：RecalculateHeightMapCmd → 地形回读调度 → draw_raster。
+    // O 尾部：`RecalculateHeightMapCmd` 单元事件 push（0x141ba9599）→
+    // `ScheduledTerrainReadback::on_terrain_modified`（0x140aabdc0）→
+    // `draw_raster<WaterRasterStagingSsbo, WorldRaster<512>>`（0x142260ae0）。
     recalc.write(RecalculateHeightMapCmd);
     readback.on_terrain_modified();
     let mut borrowed = RasterDrawResources {
@@ -214,15 +255,18 @@ pub fn draw_water<C: Send + Sync + 'static>(
     };
     draw_raster::<WaterRasterStagingSsbo, C>(
         RasterStrokeCmd {
+            // O：discriminant 0/2/3（begin/extend/commit）；原版该结构无 strength 字段
+            //   （case1 只写 discriminant/radius/draw，strength@-0x2c 未初始化）——
+            //   core 当前 RasterStrokeCmd 带 strength，按 begin 记录常数 1.0（差登记）。
             discriminant: command,
-            strength: 1.0, // I：橡皮分支记录常数 1；water 分支 U
-            radius,
+            strength: 1.0,
+            radius: brush_size,
             draw,
         },
-        position,
+        point,
         WATER_RASTER_SLOT,
         &mut borrowed,
-        &mut **water,
+        &mut water,
         &mut resources.library,
         |point, radius, _observed_flag| {
             draws.write(WaterDrawEvent {
@@ -240,4 +284,46 @@ pub fn draw_water<C: Send + Sync + 'static>(
             record.write(RecordWaterEditToHistoryCmd);
         },
     );
+}
+
+/// `draw_water::closure$0` @0x141ba9700（O，fresh disasm 0x141ba9700..0x141ba9853）：
+/// 橡皮笔刷指示符的唤醒闭包。环境 = `{position: Vec3, scale: f32}`（原生 ArcInner data
+/// 0x10 B）；唤醒实参 = `(&AssetMeshLibrary, &AssetShaderLibrary, &mut Commands)`
+/// （vtable call 面，**非捕获**）。返回 1 元素 `Vec<Entity>`。
+///
+/// 逐指令对应：
+/// 1. `alloc 0x15` + 拷贝 `"brush_circle_scribble"`（21 B，0x142eebc98 源）；
+/// 2. 载荷 `[0x8000000000000000, 0x15, name_ptr, 0x15, ?, ?]` → `new`
+///    （0x14089d9b0；尾 2 qword 原生为栈未初始化——取 0，I）；
+/// 3. `animation_duration(0.0)`（0x14089dc90，XORPS XMM2）；
+/// 4. `position(env+0)`（0x14089dc00：`+0x7c = [pos]`（x,y）、`+0x84 = [pos+8]`（z））；
+/// 5. `scale(env+0xc)`（0x14089dc60：`+0x50 = 1`、`+0x54 = scale`）；
+/// 6. `set_ui_pass(0)`（0x14089dad0，R8D=0）→ `build`（0x14089dd50）；
+/// 7. sret 写 `{cap=1, ptr=heap(Entity), len=1}`。
+///
+/// GAP（既有，core 侧登记）：`build` 的 mesh/shader 解析面（`AssetMeshLibrary::
+/// try_get_handle_by_name` / `AssetShaderLibrary::get_raster_handle_by_name`）未落库；
+/// 两个库参数保留以维持原生闭包实参形状。
+pub fn closure_0(position: Vec3, scale: f32, commands: &mut Commands) -> Vec<Entity> {
+    let name = BRUSH_CIRCLE_SCRIBBLE;
+    // O：new 的 6-qword 载荷（0x141ba9771-0x141ba9795）：
+    //    {mesh_kind=0x8000000000000000, len, ptr, len, 未初始化, 未初始化}。
+    let payload: [u64; 6] = [
+        0x8000_0000_0000_0000,
+        name.len() as u64,
+        name.as_ptr() as u64,
+        name.len() as u64,
+        0,
+        0,
+    ];
+    let mut builder = SignifierEntityBuilder::new(&payload).animation_duration(0.0);
+    // O：position（0x14089dc00）——[RDX+0x7c] = qword [R8]（x,y）、[RDX+0x84] = dword [R8+8]。
+    builder.u7c =
+        (position.x.to_bits() as u64) | (((position.y.to_bits() as u64) & 0xffff_ffff) << 32);
+    builder.u84 = position.z.to_bits();
+    // O：scale（0x14089dc60）——[RDX+0x50] = 1、[RDX+0x54] = XMM2。
+    builder.flag50 = 1;
+    builder.f54 = scale;
+    let entity = builder.set_ui_pass(0).build(commands);
+    vec![entity]
 }

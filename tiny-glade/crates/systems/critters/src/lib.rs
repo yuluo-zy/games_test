@@ -48,7 +48,6 @@ pub mod wren;
 pub mod wren_boids;
 
 use bevy_ecs::prelude::*;
-use bevy_ecs::resource::Resource;
 use bevy_ecs::schedule::Schedule;
 
 use components::{CritterControlState, DuckSpawnLocations, FishSpawnLocations};
@@ -58,38 +57,25 @@ pub const CRITTER_RNG_SEED_B: u128 = 0x606f;
 
 /// 注册全部 critters 系统与资源（B 0x14067d440 `CritterPlugin::build` 语义）。
 ///
-/// 证据（lib.rs build 依赖注解）：`App::insert_resource`（FishSpawnLocations::new /
-/// DuckSpawnLocations::new）、`EventRegistry::register_event`（DespawnDuckCmd 等）、
-/// `Schedules::add_systems` + `chain_ignore_deferred` + `in_set`。
+/// fresh 反编译（evidence/restorer-eco-critters/decomp/14067d440.c）证据：
+/// - Update 上两组 `add_systems`：GROUP_1（chain_ignore_deferred×2 + in_set，确切清单 U）
+///   与 GROUP_2 = `(butterflies_send_to_gpu, fireflies_send_to_gpu).in_set<GameSystemSet>()`；
+/// - 资源（插入顺序 O）：`insert_resource<CritterRng>`、`<WrenBoids>`、`<CritterControl
+///   (::default)>`、`<DuckTrajectoryPlanner>`、`<DuckSpawnLocations(::new)>`、
+///   `<BirdSpotManager>`、`<FishBoids>`、`<FishSpawnLocations(::new)>`；
+/// - 事件（O）：`register_event<DespawnDuckCmd>`、`<SpawnSplashParticle>`
+///   （各带 get_resource_id 幂等门：不存在才注册）；
+/// - `Schedules::add_systems(OnExit<AppLoadingState>, (wren_cleanup: ResMut<WrenBoids>,
+///   despawn_fish: ResMut<FishBoids>+ResMut<FishSpawnLocations>))`——本 crate 无
+///   AppLoadingState 生命周期，未接线（DIVERGE）；
+/// - 前置 require 资源（TypeId 0x8e1bd251962ba784，身份 U）缺省 panic_fmt（DIVERGE）。
+///
 /// 本重建沿用 country-core 的 World/Schedule 装配约定；宿主 App 负责把
 /// `GameTime`/`MainCamera`/`CursorTerrainRaycast`/`WorldRaster<512>`/`TerrainHeightsData`/
 /// `RaycastWorld`/`WallSpatialHash`/`PublicWalls` 与音频源注入。
 pub fn configure(world: &mut World, schedule: &mut Schedule) {
-    world.init_resource::<FishSpawnLocations>();
-    world.init_resource::<DuckSpawnLocations>();
-    world.init_resource::<CritterControlState>();
-    world.init_resource::<duck::CritterRng>();
-    world.init_resource::<duck::DevHotkeys>();
-    world.init_resource::<duck::DuckTrajectoryPlanner>();
-    world.init_resource::<duck::DuckRipples>();
-    world.init_resource::<fish::FishRng>();
-    world.init_resource::<wren::WrenRng>();
-    world.init_resource::<wren_boids::WrenRng2>();
-    world.init_resource::<wren_boids::WrenEnabled>();
-    world.init_resource::<shared::TerrainRockMask>();
-    world.init_resource::<butterfly::ButterflyProximity>();
-    world.init_resource::<butterfly::ButterflyGpuData>();
-    world.init_resource::<firefly::FireflyGpuData>();
-    world.init_resource::<ui_pet_ducks::PetDuckTarget>();
-    world.init_resource::<sheep::ui_pet_sheep::PetSheepTarget>();
-    world.init_resource::<sheep::sheep_umbrella::Raining>();
-    world.init_resource::<bird_spots::BirdSpotManager>();
-    world.init_resource::<Events<spawn_ducks::DespawnDuckCmd>>();
-    world.init_resource::<Events<sheep::sheep_input_record_replay::SheepInputReplayCmd>>();
-    world.init_resource::<Events<sheep::sheep_pet_animation::PlaySheepPet>>();
-    world.init_resource::<Events<duck_splash_particle::DuckSplash>>();
-
-    // 数据流顺序（证据）：目标 → 速度 → 平滑 → 避让 → 移动。
+    // ── GROUP_1（近似）：行为系统数据流链。decompile 只显示由 chain_ignore_deferred×2 +
+    // in_set 装配（确切系统清单 U）。数据流顺序：目标 → 速度 → 平滑 → 避让 → 移动。
     schedule.add_systems(
         (
             (
@@ -102,16 +88,16 @@ pub fn configure(world: &mut World, schedule: &mut Schedule) {
             duck::update_duck_ripples,
             firefly::update_firefly_goals,
             firefly::set_firefly_velocities_towards_goals,
-            firefly::fireflies_send_to_gpu,
             butterfly::update_butterfly_states,
             butterfly::update_butterfly_goals,
         ).chain(),
         (
             butterfly::set_butterfly_velocities_towards_goals,
             butterfly::update_butterfly_audio,
-            butterfly::butterflies_send_to_gpu,
             fish::fish,
-            fish::despawn_fish,
+            // 真实注册面：`OnExit<AppLoadingState>` 上的资源重置（0x14067d440），
+            // 非 Update 系统。crate 无 bevy_state，宿主在退出加载态时调用
+            // `fish::despawn_fish`；不得每帧执行（资源布局重建）。
             sheep::sheep_behavior::update_sheep_goals,
             sheep::sheep_behavior::set_sheep_velocities_towards_goals,
             sheep::sheep_behavior::update_sheep_audio,
@@ -143,4 +129,58 @@ pub fn configure(world: &mut World, schedule: &mut Schedule) {
         )
             .chain(),
     );
+
+    // ── GROUP_2（O 0x14067d440）：蝴蝶/萤火虫 SSBO 上传，独立 add_systems +
+    // `in_set<GameSystemSet>`（SSBO 上传与行为系统分属两注册组）。
+    schedule.add_systems(
+        (
+            butterfly::butterflies_send_to_gpu,
+            firefly::fireflies_send_to_gpu,
+        )
+            .chain(),
+    );
+
+    // ── 资源注册（O 0x14067d440 顺序：8 个 insert_resource）────────────────────────
+    // ① insert_resource<critters::CritterRng>（DIVERGE：crate 落位 duck.rs）。
+    world.init_resource::<duck::CritterRng>();
+    // ② insert_resource<wren_boids::WrenBoids>（B 符号 0x140f85470）。
+    world.init_resource::<wren_boids::WrenBoids>();
+    // ③ insert_resource<critters::CritterControl> —— crate 用 CritterControlState 承载
+    //   +0 intensity / +4 firefly enabled / +5 wren enabled（B 类型符号未取）。
+    world.init_resource::<CritterControlState>();
+    // ④ insert_resource<DuckTrajectoryPlanner>。
+    world.init_resource::<duck::DuckTrajectoryPlanner>();
+    // ⑤ spawn_ducks::DuckSpawnLocations::new + insert_resource。
+    world.insert_resource(DuckSpawnLocations::new());
+    // ⑥ insert_resource<critters::BirdSpotManager> —— DIVERGE：B 内联初值 [1,1,0,0,8,0]，
+    //   crate 用 bird_spots.rs 池模型 Default。
+    world.init_resource::<bird_spots::BirdSpotManager>();
+    // ⑦ insert_resource<fish::FishBoids>——B 符号实证为 Resource（0x140f84e80）。
+    world.init_resource::<components::FishBoids>();
+    // ⑧ fish::FishSpawnLocations::new + insert_resource。
+    world.insert_resource(FishSpawnLocations::new());
+
+    // ── 事件注册（O 0x14067d440：register_event，各带 get_resource_id 幂等门）────────
+    world.init_resource::<Events<spawn_ducks::DespawnDuckCmd>>();
+    // `register_event<SpawnSplashParticle>`（O 0x140f94300；载荷 = Entity，EventInstance 16B）.
+    world.init_resource::<Events<duck_splash_particle::SpawnSplashParticle>>();
+
+    // ── 近似依赖资源（非 B build 注册集；crate 现有系统消费，待各模块恢复后移除）────────
+    world.init_resource::<duck::DevHotkeys>();
+    world.init_resource::<duck::DuckRipples>();
+    world.init_resource::<fish::FishRng>();
+    world.init_resource::<wren::WrenRng>();
+    world.init_resource::<wren_boids::WrenRng2>();
+    world.init_resource::<wren_boids::WrenEnabled>();
+    world.init_resource::<shared::TerrainRockMask>();
+    world.init_resource::<butterfly::ButterflyProximity>();
+    world.init_resource::<butterfly::ButterflyGpuData>();
+    world.init_resource::<firefly::FireflyGpuData>();
+    world.init_resource::<sheep::ui_pet_sheep::PetSheepTarget>();
+    world.init_resource::<sheep::sheep_umbrella::Raining>();
+    world.init_resource::<Events<sheep::sheep_input_record_replay::SheepInputReplayCmd>>();
+    world.init_resource::<Events<sheep::sheep_pet_animation::PlaySheepPet>>();
+    // update_roof_bird_spots 消费的屋顶/墙变更事件（宿主亦发布；缺失时 EventReader 初始化失败）。
+    world.init_resource::<Events<country_core::resources::roofs::commands::RecalculateRoofCmd>>();
+    world.init_resource::<Events<country_core::resources::walls::public_walls::OnWallChanged>>();
 }

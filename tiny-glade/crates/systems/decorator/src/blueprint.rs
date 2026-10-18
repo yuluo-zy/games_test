@@ -16,17 +16,32 @@ use std::sync::Arc;
 use bevy_ecs::resource::Resource;
 use country_core::geometry::instanced_wall::BrickSourceId;
 use country_core::resources::walls::decorator_subtype::DecoratorCollision;
+use country_core::systems::collision::world::RaycastMeshData;
+use glam::{Quat, Vec3};
 use hashbrown::HashMap;
 
 /// 交互网格记录（O：0x1408255e0 写入面 +0x80..+0xb0）。
-#[derive(Clone, Debug)]
+///
+/// 机器码布局：`+0x80` 判别 0（Some）、`+0x84` Vec3（xyz）、`+0x90`
+/// `Arc<RaycastMeshData>`、`+0xa0` 四元数（16B）。
+#[derive(Clone)]
 pub struct InteractionMesh {
-    /// 三浮点载荷（NaN 校验通过后存 ptr@+0x84 + f32@+0x8c）。
-    pub xyz: [f32; 3],
-    /// Arc 网格句柄（+0x90）。
-    pub mesh: Arc<()>,
-    /// 网格切片（+0xa0/+0xa8，U：载荷语义待取证）。
-    pub data: (usize, usize),
+    /// `+0x84`：位置（三个 f32）。
+    pub xyz: Vec3,
+    /// `+0x90`：碰撞网格 Arc。
+    pub mesh: Arc<RaycastMeshData>,
+    /// `+0xa0`：旋转四元数（四个 f32）。
+    pub rotation: Quat,
+}
+
+impl std::fmt::Debug for InteractionMesh {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("InteractionMesh")
+            .field("xyz", &self.xyz)
+            .field("mesh", &Arc::as_ptr(&self.mesh))
+            .field("rotation", &self.rotation)
+            .finish()
+    }
 }
 
 /// B DecoratorBlueprint：装饰蓝图记录（原 0x140B=320B 结构体）。
@@ -71,16 +86,26 @@ impl DecoratorBlueprint {
         self.colliders = colliders;
     }
 
-    /// set_interaction_mesh 0x1408255e0（O）：交互网格写 +0x80 区域。NaN 校验
-    /// （3 个 f32 指数位 < 0x7f800000）失败则保持原值。
-    pub fn set_interaction_mesh(&mut self, xyz: [f32; 3], data: (usize, usize)) {
-        if xyz.iter().all(|v| (v.to_bits() & 0x7fff_ffff) < 0x7f80_0000) {
-            self.interaction = Some(InteractionMesh {
-                xyz,
-                mesh: Arc::new(()),
-                data,
-            });
-        }
+    /// set_interaction_mesh 0x1408255e0（O，逐语句）：写 +0x80 区域。
+    ///
+    /// fresh 2026-10-17：`xyz` 三个 f32 与 `rotation` 四个 f32 都必须有限，
+    /// **否则 panic**（`assert!` → panic_fmt；早期实现"非有限则保持原值"与
+    /// 机器码相反，已修）。旧 Arc 在覆盖前释放（Rust `Option` 赋值等价）。
+    /// 机器码参数面：`(self, mesh: Arc<RaycastMeshData>, xyz: &Vec3,
+    /// rotation: &Quat)`；`+0x80=0` 为 Some 判别。
+    pub fn set_interaction_mesh(
+        &mut self,
+        mesh: Arc<RaycastMeshData>,
+        xyz: &Vec3,
+        rotation: &Quat,
+    ) {
+        assert!(xyz.is_finite(), "interaction mesh position must be finite");
+        assert!(rotation.is_finite(), "interaction mesh rotation must be finite");
+        self.interaction = Some(InteractionMesh {
+            xyz: *xyz,
+            mesh,
+            rotation: *rotation,
+        });
     }
 
     /// set_outline（内联，I）：描边网格（载荷 U）。

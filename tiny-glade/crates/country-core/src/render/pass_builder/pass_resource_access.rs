@@ -490,7 +490,7 @@ mod tests {
         fn get_vk_image_view(&self, h: &ManagedHandle) -> Result<u64, BackendError> {
             self.asked.borrow_mut().push(h.0);
             if self.fail {
-                Err(BackendError("lost".into()))
+                Err(BackendError::DeviceLost)
             } else {
                 Ok(0xABC0 + h.0)
             }
@@ -586,7 +586,7 @@ mod tests {
     #[test]
     fn read_write_concurrent_register_access_and_binding() {
         let lib = AssetSsboLibrary::new();
-        lib.add_new::<Probe>(&crate::rhapsody_contract::GraphicsDevice(1));
+        lib.add_new::<Probe>(&crate::render::test_device::TestDevice(1));
         let mut res = PassResources::default();
         res.ssbo_library = &lib;
         let mut b = RecordingPassBuilder::default();
@@ -632,7 +632,7 @@ mod tests {
     #[test]
     fn access_is_registered_before_the_binding_limit_check() {
         let lib = AssetSsboLibrary::new();
-        lib.add_new::<Probe>(&crate::rhapsody_contract::GraphicsDevice(1));
+        lib.add_new::<Probe>(&crate::render::test_device::TestDevice(1));
         let mut res = PassResources::default();
         res.ssbo_library = &lib;
         let mut b = RecordingPassBuilder::default();

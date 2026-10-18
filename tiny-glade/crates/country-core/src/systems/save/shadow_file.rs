@@ -1,7 +1,7 @@
 //! B 0x1409184d0 / 0x1409193d0 / 0x14091a230.
 //! Creation eagerly writes a same-directory NamedTempFile and persists it. On
 //! failure the full memory image survives, all blocks stay dirty and flush retries.
-use crate::resources::save_file::{ShadowBuffer, DIRTY_BLOCK_SIZE};
+use crate::resources::save_file::{DIRTY_BLOCK_SIZE, ShadowBuffer};
 use anyhow::{Context, Result};
 use std::{
     fs::File,

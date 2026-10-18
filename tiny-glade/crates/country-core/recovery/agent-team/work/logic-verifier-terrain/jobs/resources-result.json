@@ -1,0 +1,755 @@
+{
+  "backend": "ghidra",
+  "worker": "shared",
+  "access": "read",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "get_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x1408bbf50,0x1409e9640,0x140257960,0x1409e9a20,0x1409ea020,0x1408b54c0,0x1409ea800,0x140924900,0x140924a10,0x140a97880",
+        "fields": "signature,decompiled_code,callees",
+        "include_call_context": false
+      },
+      "args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x1408bbf50,0x1409e9640,0x140257960,0x1409e9a20,0x1409ea020,0x1408b54c0,0x1409ea800,0x140924900,0x140924a10,0x140a97880",
+        "fields": "signature,decompiled_code,callees",
+        "include_call_context": false
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program\":\"tiny-glade.exe\",\"functions\":{\"0x1408bbf50\":{\"name\":\"load\",\"size\":984,\"address\":\"1408bbf50\",\"signature\":\"void __cdecl load(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::resources::rocky_terrain::RockyTerrainMesh::load(void)\\n\\n{\\n  undefined8 *puVar1;\\n  undefined4 uVar2;\\n  undefined4 uVar3;\\n  undefined4 uVar4;\\n  undefined1 auVar5 [16];\\n  ulonglong uVar6;\\n  longlong extraout_RAX;\\n  undefined4 *puVar7;\\n  longlong extraout_RAX_00;\\n  longlong lVar8;\\n  longlong lVar9;\\n  longlong lVar10;\\n  longlong local_e0;\\n  undefined8 *local_d8;\\n  ulonglong local_d0;\\n  longlong lStack_c8;\\n  longlong local_c0;\\n  ulonglong uStack_b8;\\n  ulonglong local_60;\\n  ulonglong local_58;\\n  \\n  std::fs::read_to_string::inner();\\n  if (SBORROW8(0,local_e0)) {\\n    anyhow::error::impl$1::from<std::io::error::Error>();\\n  }\\n  else {\\n    serde_json::de::from_str<country_core::resources::rocky_terrain::RockyTerrainMesh>();\\n    if (SBORROW8(0,local_e0)) {\\n      anyhow::error::impl$1::from<serde_json::error::Error>();\\n      if (local_e0 != 0) {\\n        std::alloc::__default_lib_allocator::__rust_dealloc();\\n      }\\n    }\\n    else {\\n      auVar5._8_8_ = 0;\\n      auVar5._0_8_ = local_d0;\\n      uVar6 = SUB168(auVar5 * ZEXT816(0x30),0);\\n      if ((SUB168(auVar5 * ZEXT816(0x30),8) != 0) || (0x7ffffffffffffffc < uVar6)) {\\nLAB_1408bc2fb:\\n                    // WARNING: Subroutine does not return\\n        alloc::raw_vec::handle_error();\\n      }\\n      if (uVar6 == 0) {\\n        lVar9 = 4;\\n        local_60 = 0;\\n      }\\n      else {\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\n        lVar9 = extraout_RAX;\\n        local_60 = local_d0;\\n        if (extraout_RAX == 0) goto LAB_1408bc2fb;\\n      }\\n      if (local_d0 != 0) {\\n        puVar7 = (undefined4 *)(lVar9 + 0x2c);\\n        do {\\n          uVar4 = *(undefined4 *)((longlong)local_d8 + 0xc);\\n          uVar2 = *(undefined4 *)(local_d8 + 2);\\n          uVar3 = *(undefined4 *)(local_d8 + 4);\\n          puVar7[-9] = *(undefined4 *)(local_d8 + 1);\\n          *(undefined8 *)(puVar7 + -0xb) = *local_d8;\\n          puVar7[-8] = uVar4;\\n          *(undefined8 *)(puVar7 + -7) = *local_d8;\\n          puVar7[-5] = *(undefined4 *)(local_d8 + 1);\\n          puVar7[-4] = uVar2;\\n          *(undefined8 *)(puVar7 + -3) = *(undefined8 *)((longlong)local_d8 + 0x14);\\n          puVar7[-1] = *(undefined4 *)((longlong)local_d8 + 0x1c);\\n          *puVar7 = uVar3;\\n          puVar7 = puVar7 + 0xc;\\n          local_d8 = (undefined8 *)((longlong)local_d8 + 0x24);\\n          local_d0 = local_d0 - 1;\\n        } while (local_d0 != 0);\\n      }\\n      asset_libraries::ssbo_library::AssetSsboLibrary::\\n      add_new_with_data<country_core::resources::rocky_terrain::RockyTerrainVertexSSBO>();\\n      if (0x7ffffffffffffffc < uStack_b8 << 5) {\\nLAB_1408bc317:\\n                    // WARNING: Subroutine does not return\\n        alloc::raw_vec::handle_error();\\n      }\\n      if (uStack_b8 << 5 == 0) {\\n        lVar9 = 4;\\n        local_58 = 0;\\n      }\\n      else {\\n        std::alloc::__default_lib_allocator::__rust_alloc();\\n        if (extraout_RAX_00 == 0) goto LAB_1408bc317;\\n        local_58 = uStack_b8;\\n        lVar9 = extraout_RAX_00;\\n      }\\n      if (uStack_b8 != 0) {\\n        if (uStack_b8 == 1) {\\n          uVar6 = 0;\\n        }\\n        else {\\n          lVar8 = 0;\\n          uVar6 = 0;\\n          do {\\n            uVar4 = *(undefined4 *)(local_c0 + 0xc + lVar8);\\n            *(undefined4 *)(lVar9 + 8 + lVar8 * 2) = *(undefined4 *)(local_c0 + 8 + lVar8);\\n            *(undefined8 *)(lVar9 + lVar8 * 2) = *(undefined8 *)(local_c0 + lVar8);\\n            *(undefined4 *)(lVar9 + 0xc + lVar8 * 2) = uVar4;\\n            puVar1 = (undefined8 *)(lVar9 + 0x10 + lVar8 * 2);\\n            *puVar1 = 0;\\n            puVar1[1] = 0;\\n            uVar4 = *(undefined4 *)(local_c0 + 0x1c + lVar8);\\n            *(undefined4 *)(lVar9 + 0x28 + lVar8 * 2) = *(undefined4 *)(local_c0 + 0x18 + lVar8);\\n            *(undefined8 *)(lVar9 + 0x20 + lVar8 * 2) = *(undefined8 *)(local_c0 + 0x10 + lVar8);\\n            *(undefined4 *)(lVar9 + 0x2c + lVar8 * 2) = uVar4;\\n            uVar6 = uVar6 + 2;\\n            puVar1 = (undefined8 *)(lVar9 + 0x30 + lVar8 * 2);\\n            *puVar1 = 0;\\n            puVar1[1] = 0;\\n            lVar8 = lVar8 + 0x20;\\n          } while ((uStack_b8 & 0xfffffffffffffffe) != uVar6);\\n        }\\n        if ((uStack_b8 & 1) != 0) {\\n          lVar10 = uVar6 * 0x10;\\n          uVar4 = *(undefined4 *)(local_c0 + 0xc + lVar10);\\n          lVar8 = uVar6 * 0x20;\\n          *(undefined4 *)(lVar9 + 8 + lVar8) = *(undefined4 *)(local_c0 + 8 + lVar10);\\n          *(undefined8 *)(lVar9 + lVar8) = *(undefined8 *)(local_c0 + lVar10);\\n          *(undefined4 *)(lVar9 + 0xc + lVar8) = uVar4;\\n          puVar1 = (undefined8 *)(lVar9 + 0x10 + lVar8);\\n          *puVar1 = 0;\\n          puVar1[1] = 0;\\n        }\\n      }\\n      asset_libraries::ssbo_library::AssetSsboLibrary::\\n      add_new_with_data<country_core::resources::rocky_terrain::RockyTerrainTriangleSSBO>();\\n      if (local_58 != 0) {\\n        std::alloc::__default_lib_allocator::__rust_dealloc();\\n      }\\n      if (local_60 != 0) {\\n        std::alloc::__default_lib_allocator::__rust_dealloc();\\n      }\\n      if (local_e0 != 0) {\\n        std::alloc::__default_lib_allocator::__rust_dealloc();\\n      }\\n      if (lStack_c8 != 0) {\\n        std::alloc::__default_lib_allocator::__rust_dealloc();\\n      }\\n      if (local_e0 != 0) {\\n        std::alloc::__default_lib_allocator::__rust_dealloc();\\n      }\\n    }\\n  }\\n  return;\\n}\\n\\n\",\"callee_count\":9,\"callees\":[{\"name\":\"__rust_alloc\",\"address\":\"140613c10\"},{\"name\":\"__rust_dealloc\",\"address\":\"140613c20\"},{\"name\":\"add_new_with_data<country_core::resources::rocky_terrain::RockyTerrainTriangleSSBO>\",\"address\":\"1412bba70\"},{\"name\":\"add_new_with_data<country_core::resources::rocky_terrain::RockyTerrainVertexSSBO>\",\"address\":\"1412bc1f0\"},{\"name\":\"from<serde_json::error::Error>\",\"address\":\"1428a9850\"},{\"name\":\"from<std::io::error::Error>\",\"address\":\"1428a9590\"},{\"name\":\"from_str<country_core::resources::rocky_terrain::RockyTerrainMesh>\",\"address\":\"141405b00\"},{\"name\":\"handle_error\",\"address\":\"1428d8fe3\"},{\"name\":\"inner\",\"address\":\"140d59140\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1409e9640\":{\"name\":\"sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>\",\"size\":983,\"address\":\"1409e9640\",\"signature\":\"void __cdecl sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>(void)\",\"decompiled_code\":\"\\n// WARNING: Globals starting with '_' overlap smaller symbols at the same address\\n\\nvoid __cdecl\\ncountry_core::resources::terrain_height::TerrainHeightsData::\\nsample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>(void)\\n\\n{\\n  undefined4 in_XMM1_Da;\\n  undefined4 in_XMM1_Db;\\n  undefined1 in_XMM2 [16];\\n  undefined1 auVar1 [16];\\n  undefined1 auVar2 [16];\\n  undefined1 auVar3 [16];\\n  undefined1 auVar4 [16];\\n  \\n  auVar1._0_8_ = in_XMM2._0_8_;\\n  auVar1._8_4_ = in_XMM2._4_4_;\\n  auVar1._12_4_ = in_XMM1_Db;\\n  auVar2._8_8_ = auVar1._8_8_;\\n  auVar2._0_4_ = in_XMM2._0_4_;\\n  auVar2._4_4_ = in_XMM1_Da;\\n  auVar2 = divps(auVar2,___xmm_00000000000000004302000043020000);\\n  auVar3._0_4_ = auVar2._0_4_ + 0.5;\\n  auVar3._4_4_ = auVar2._4_4_ + 0.5;\\n  auVar3._8_4_ = auVar2._8_4_ + 0.0;\\n  auVar3._12_4_ = auVar2._12_4_ + 0.0;\\n  if (*__imp__ZN5utils10float_grid27USE_FLOAT_GRID_SAMPLING_FIX17h1da07c56e07a6074E == '\\\\0') {\\n    auVar2 = maxps(ZEXT816(0),auVar3);\\n    auVar4._0_4_ = -(uint)!NAN(auVar3._0_4_) & auVar2._0_4_;\\n    auVar4._4_4_ = -(uint)!NAN(auVar3._4_4_) & auVar2._4_4_;\\n    auVar4._8_4_ = -(uint)!NAN(auVar3._8_4_) & auVar2._8_4_;\\n    auVar4._12_4_ = -(uint)!NAN(auVar3._12_4_) & auVar2._12_4_;\\n    minps(___xmm_00000000000000003f8000003f800000,auVar4);\\n  }\\n  ::utils::lerp();\\n  ::utils::lerp();\\n  ::utils::lerp();\\n  return;\\n}\\n\\n\",\"callee_count\":1,\"callees\":[{\"name\":\"lerp\",\"address\":\"140c904d0\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140257960\":{\"name\":\"sample_at_world_xz<country_core::resources::terrain_height::VisualTerrainHeightSsbo>\",\"size\":52,\"address\":\"140257960\",\"signature\":\"void __cdecl sample_at_world_xz<country_core::resources::terrain_height::VisualTerrainHeightSsbo>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncountry_core::resources::terrain_height::TerrainHeightsData::\\nsample_at_world_xz<country_core::resources::terrain_height::VisualTerrainHeightSsbo>(void)\\n\\n{\\n  ::utils::float_grid::impl$0::\\n  bilinear_sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightFloatGrid>();\\n  return;\\n}\\n\\n\",\"callee_count\":1,\"callees\":[{\"name\":\"bilinear_sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightFloatGrid>\",\"address\":\"140257ba0\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1409e9a20\":{\"name\":\"intersect_ray<country_core::resources::terrain_height::TerrainHeightSsbo>\",\"size\":1527,\"address\":\"1409e9a20\",\"signature\":\"void __cdecl intersect_ray<country_core::resources::terrain_height::TerrainHeightSsbo>(void)\",\"decompiled_code\":\"\\n// WARNING: Removing unreachable block (ram,0x0001409e9f0c)\\n// WARNING: Removing unreachable block (ram,0x0001409e9f17)\\n// WARNING: Removing unreachable block (ram,0x0001409e9f3d)\\n// WARNING: Removing unreachable block (ram,0x0001409e9f84)\\n// WARNING: Removing unreachable block (ram,0x0001409e9f51)\\n// WARNING: Removing unreachable block (ram,0x0001409e9f5a)\\n// WARNING: Removing unreachable block (ram,0x0001409ea013)\\n\\nvoid __cdecl\\ncountry_core::resources::terrain_height::TerrainHeightsData::\\nintersect_ray<country_core::resources::terrain_height::TerrainHeightSsbo>(void)\\n\\n{\\n  float fVar1;\\n  undefined8 uVar2;\\n  undefined4 *in_RCX;\\n  bool bVar3;\\n  undefined8 *in_R8;\\n  longlong lVar4;\\n  uint uVar5;\\n  float fVar6;\\n  float extraout_XMM0_Da;\\n  float extraout_XMM0_Da_00;\\n  float extraout_XMM0_Da_01;\\n  float extraout_XMM0_Da_02;\\n  float extraout_XMM0_Da_03;\\n  float extraout_XMM0_Da_04;\\n  float extraout_XMM0_Da_05;\\n  float extraout_XMM0_Da_06;\\n  float extraout_XMM0_Da_07;\\n  float in_XMM3_Da;\\n  float unaff_XMM7_Da;\\n  float unaff_XMM8_Da;\\n  float unaff_XMM8_Db;\\n  float unaff_XMM9_Da;\\n  float fVar7;\\n  float fVar8;\\n  float fVar9;\\n  float fVar10;\\n  int local_e4;\\n  float local_e0;\\n  float local_dc;\\n  \\n  ::utils::geometry::aabb::Aabb3::classify_ray_intersection();\\n  if (local_e4 != 0) {\\n    unaff_XMM9_Da = local_e0;\\n    if ((local_e4 == 1) && (local_e0 <= 0.0)) {\\n      unaff_XMM9_Da = 0.0;\\n    }\\n    if (unaff_XMM9_Da <= in_XMM3_Da) {\\n      fVar6 = in_XMM3_Da;\\n      if (local_dc <= in_XMM3_Da) {\\n        fVar6 = local_dc;\\n      }\\n      fVar8 = (float)(~-(uint)NAN(local_dc) & (uint)fVar6 | -(uint)NAN(local_dc) & (uint)in_XMM3_Da)\\n              - unaff_XMM9_Da;\\n      fVar6 = *(float *)(in_R8 + 1);\\n      unaff_XMM8_Da = (float)*in_R8;\\n      unaff_XMM8_Db = (float)((ulonglong)*in_R8 >> 0x20);\\n      uVar2 = *(undefined8 *)((longlong)in_R8 + 0xc);\\n      fVar7 = (float)((ulonglong)uVar2 >> 0x20);\\n      fVar1 = *(float *)((longlong)in_R8 + 0x14);\\n      lVar4 = 0x20;\\n      do {\\n        fVar10 = fVar8 * 0.03125 + unaff_XMM9_Da;\\n        sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>();\\n        if (fVar7 * fVar10 + unaff_XMM8_Db < extraout_XMM0_Da) {\\n          if (unaff_XMM9_Da < fVar10) {\\n            fVar8 = (unaff_XMM9_Da + fVar10) * 0.5;\\n            fVar9 = fVar7 * fVar8 + unaff_XMM8_Db;\\n            sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>();\\n            uVar5 = -(uint)(fVar9 < extraout_XMM0_Da_00);\\n            fVar10 = (float)(~uVar5 & (uint)fVar10 | uVar5 & (uint)fVar8);\\n            if (extraout_XMM0_Da_00 <= fVar9) {\\n              unaff_XMM9_Da = fVar8;\\n            }\\n            fVar8 = (fVar10 + unaff_XMM9_Da) * 0.5;\\n            fVar9 = fVar7 * fVar8 + unaff_XMM8_Db;\\n            sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>();\\n            uVar5 = -(uint)(fVar9 < extraout_XMM0_Da_01);\\n            fVar10 = (float)(~uVar5 & (uint)fVar10 | uVar5 & (uint)fVar8);\\n            if (extraout_XMM0_Da_01 <= fVar9) {\\n              unaff_XMM9_Da = fVar8;\\n            }\\n            fVar8 = (fVar10 + unaff_XMM9_Da) * 0.5;\\n            fVar9 = fVar7 * fVar8 + unaff_XMM8_Db;\\n            sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>();\\n            uVar5 = -(uint)(fVar9 < extraout_XMM0_Da_02);\\n            fVar10 = (float)(~uVar5 & (uint)fVar10 | uVar5 & (uint)fVar8);\\n            if (extraout_XMM0_Da_02 <= fVar9) {\\n              unaff_XMM9_Da = fVar8;\\n            }\\n            fVar8 = (fVar10 + unaff_XMM9_Da) * 0.5;\\n            fVar9 = fVar7 * fVar8 + unaff_XMM8_Db;\\n            sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>();\\n            uVar5 = -(uint)(fVar9 < extraout_XMM0_Da_03);\\n            fVar10 = (float)(~uVar5 & (uint)fVar10 | uVar5 & (uint)fVar8);\\n            if (extraout_XMM0_Da_03 <= fVar9) {\\n              unaff_XMM9_Da = fVar8;\\n            }\\n            fVar8 = (fVar10 + unaff_XMM9_Da) * 0.5;\\n            fVar9 = fVar7 * fVar8 + unaff_XMM8_Db;\\n            sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>();\\n            uVar5 = -(uint)(fVar9 < extraout_XMM0_Da_04);\\n            fVar10 = (float)(~uVar5 & (uint)fVar10 | uVar5 & (uint)fVar8);\\n            if (extraout_XMM0_Da_04 <= fVar9) {\\n              unaff_XMM9_Da = fVar8;\\n            }\\n            fVar8 = (fVar10 + unaff_XMM9_Da) * 0.5;\\n            fVar9 = fVar7 * fVar8 + unaff_XMM8_Db;\\n            sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>();\\n            uVar5 = -(uint)(fVar9 < extraout_XMM0_Da_05);\\n            fVar10 = (float)(~uVar5 & (uint)fVar10 | uVar5 & (uint)fVar8);\\n            if (extraout_XMM0_Da_05 <= fVar9) {\\n              unaff_XMM9_Da = fVar8;\\n            }\\n            fVar8 = (fVar10 + unaff_XMM9_Da) * 0.5;\\n            fVar9 = fVar7 * fVar8 + unaff_XMM8_Db;\\n            sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>();\\n            uVar5 = -(uint)(fVar9 < extraout_XMM0_Da_06);\\n            if (extraout_XMM0_Da_06 <= fVar9) {\\n              unaff_XMM9_Da = fVar8;\\n            }\\n            fVar8 = ((float)(~uVar5 & (uint)fVar10 | uVar5 & (uint)fVar8) + unaff_XMM9_Da) * 0.5;\\n            sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>();\\n            uVar5 = -(uint)(unaff_XMM8_Db + fVar7 * fVar8 < extraout_XMM0_Da_07);\\n            unaff_XMM7_Da = (float)(~uVar5 & (uint)fVar8 | (uint)unaff_XMM9_Da & uVar5);\\n            unaff_XMM8_Da = unaff_XMM8_Da + (float)uVar2 * unaff_XMM7_Da;\\n            unaff_XMM8_Db = unaff_XMM8_Db + fVar7 * unaff_XMM7_Da;\\n            unaff_XMM9_Da = unaff_XMM7_Da * fVar1 + fVar6;\\n            bVar3 = true;\\n            goto LAB_1409e9eec;\\n          }\\n          break;\\n        }\\n        lVar4 = lVar4 + -1;\\n        unaff_XMM9_Da = fVar10;\\n      } while (lVar4 != 0);\\n      bVar3 = false;\\n      unaff_XMM7_Da = unaff_XMM8_Db;\\n      goto LAB_1409e9eec;\\n    }\\n  }\\n  bVar3 = false;\\nLAB_1409e9eec:\\n  ::utils::geometry::plane::Plane::intersect_ray();\\n  if (bVar3) {\\n    *in_RCX = 1;\\n    in_RCX[1] = unaff_XMM7_Da;\\n    in_RCX[2] = unaff_XMM8_Da;\\n    in_RCX[3] = unaff_XMM8_Db;\\n    in_RCX[4] = unaff_XMM9_Da;\\n  }\\n  else {\\n    *in_RCX = 0;\\n  }\\n  return;\\n}\\n\\n\",\"callee_count\":3,\"callees\":[{\"name\":\"classify_ray_intersection\",\"address\":\"141240860\"},{\"name\":\"intersect_ray\",\"address\":\"1412803f0\"},{\"name\":\"sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>\",\"address\":\"1409e9640\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1409ea020\":{\"name\":\"copy_from_gpu<country_core::resources::terrain_height::TerrainHeightSsbo>\",\"size\":1614,\"address\":\"1409ea020\",\"signature\":\"void __cdecl copy_from_gpu<country_core::resources::terrain_height::TerrainHeightSsbo>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncountry_core::resources::terrain_height::TerrainHeightsData::\\ncopy_from_gpu<country_core::resources::terrain_height::TerrainHeightSsbo>(void)\\n\\n{\\n  byte *pbVar1;\\n  byte bVar2;\\n  byte bVar3;\\n  byte bVar4;\\n  bool bVar5;\\n  bool bVar6;\\n  bool bVar7;\\n  char extraout_AL;\\n  longlong extraout_RAX;\\n  longlong extraout_RAX_00;\\n  undefined *puVar8;\\n  longlong *extraout_RAX_01;\\n  longlong lVar9;\\n  longlong *extraout_RAX_02;\\n  longlong *extraout_RAX_03;\\n  longlong *extraout_RAX_04;\\n  uint uVar10;\\n  longlong in_RCX;\\n  longlong lVar11;\\n  longlong *plVar12;\\n  longlong in_RDX;\\n  ulonglong uVar13;\\n  undefined8 uVar14;\\n  longlong lVar15;\\n  longlong lVar16;\\n  char cVar17;\\n  undefined1 local_470 [512];\\n  ulonglong local_270 [64];\\n  undefined8 local_70;\\n  longlong *local_50;\\n  undefined8 local_48;\\n  \\n  local_48 = 0xfffffffffffffffe;\\n  puffin::are_scopes_on();\\n  if (extraout_AL == '\\\\0') {\\n    local_70 = 0;\\n  }\\n  else {\\n    uVar13 = 0x4d;\\n    core::str::impl$0::rfind<ref_<str_>_>();\\n    if (extraout_RAX == 1) {\\n      if (uVar13 != 0) {\\n        if (uVar13 < 0x4d) {\\n          if ((char)(&DAT_142ac4ee9)[uVar13] < -0x40) {\\nLAB_1409ea097:\\n                    // WARNING: Subroutine does not return\\n            core::str::slice_error_fail();\\n          }\\n        }\\n        else if (uVar13 != 0x4d) goto LAB_1409ea097;\\n      }\\n      core::str::impl$0::rfind<ref_<str_>_>();\\n      if ((extraout_RAX_00 == 1) && (uVar13 != 0xfffffffffffffffe)) {\\n        if (uVar13 + 2 < 0x4d) {\\n          if ((char)(&UNK_142ac4eeb)[uVar13] < -0x40) {\\nLAB_1409ea0f5:\\n                    // WARNING: Subroutine does not return\\n            core::str::slice_error_fail();\\n          }\\n        }\\n        else if (uVar13 + 2 != 0x4d) goto LAB_1409ea0f5;\\n      }\\n    }\\n    puVar8 = &DAT_142ac503b;\\n    do {\\n      bVar2 = puVar8[-1];\\n      uVar10 = (uint)(char)bVar2;\\n      if ((char)bVar2 < '\\\\0') {\\n        bVar3 = puVar8[-2];\\n        if ((char)bVar3 < -0x40) {\\n          bVar4 = puVar8[-3];\\n          if ((char)bVar4 < -0x40) {\\n            pbVar1 = puVar8 + -4;\\n            puVar8 = puVar8 + -4;\\n            uVar10 = bVar4 & 0x3f | (*pbVar1 & 7) << 6;\\n          }\\n          else {\\n            puVar8 = puVar8 + -3;\\n            uVar10 = bVar4 & 0xf;\\n          }\\n          uVar10 = bVar3 & 0x3f | uVar10 << 6;\\n        }\\n        else {\\n          puVar8 = puVar8 + -2;\\n          uVar10 = bVar3 & 0x1f;\\n        }\\n        uVar10 = (uint)(bVar2 & 0x3f) | uVar10 << 6;\\n        if (uVar10 != 0x5c) goto LAB_1409ea1b9;\\nLAB_1409ea1cf:\\n        if (puVar8 == &UNK_142ac5007) break;\\n        if (puVar8 + -0x142ac5007 < (undefined *)0x33) {\\n          if (-0x41 < (char)puVar8[1]) break;\\n        }\\n        else if (puVar8 + -0x142ac5007 == (undefined *)0x33) break;\\n                    // WARNING: Subroutine does not return\\n        core::str::slice_error_fail();\\n      }\\n      puVar8 = puVar8 + -1;\\n      if (uVar10 == 0x5c) goto LAB_1409ea1cf;\\nLAB_1409ea1b9:\\n      if (uVar10 == 0x2f) goto LAB_1409ea1cf;\\n    } while (puVar8 != &DAT_142ac5008);\\n    puffin::impl$6::call::THREAD_PROFILER::constant$0::closure$0::VAL();\\n    if (*extraout_RAX_01 == 1) {\\n      plVar12 = extraout_RAX_01 + 1;\\n    }\\n    else if ((*extraout_RAX_01 != 0) ||\\n            (std::sys::thread_local::native::lazy::Storage::\\n             initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple_<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>\\n                       (), plVar12 = extraout_RAX_03, extraout_RAX_03 == (longlong *)0x0))\\n    goto LAB_1409ea6ed;\\n    if (*plVar12 != 0) goto LAB_1409ea6f9;\\n    *plVar12 = -1;\\n    local_50 = plVar12;\\n    puffin::ThreadProfiler::begin_scope();\\n    *local_50 = *local_50 + 1;\\n    local_70 = 1;\\n  }\\n  uVar14 = 0;\\n  memset(local_270,0,0x200);\\n  bVar5 = *(float *)(in_RCX + 0x50) != -2.5;\\n  bVar6 = *(float *)(in_RCX + 0x54) != 24.0;\\n  bVar7 = bVar5 || bVar6;\\n  if (bVar5 || bVar6) {\\n    *(undefined8 *)(in_RCX + 0x50) = 0x41c00000c0200000;\\n    memset(local_270,(int)CONCAT71((int7)((ulonglong)uVar14 >> 8),0xff),0x200);\\n  }\\n  lVar9 = *(longlong *)(in_RCX + 8);\\n  lVar15 = 0;\\n  do {\\n    lVar16 = 0;\\n    lVar11 = 0;\\n    do {\\n      if ((*(longlong *)(in_RDX + lVar16) != *(longlong *)(lVar9 + lVar16)) ||\\n         (*(longlong *)(in_RDX + 8 + lVar16) != *(longlong *)(lVar9 + 8 + lVar16))) {\\n        uVar14 = ((undefined8 *)(in_RDX + lVar16))[1];\\n        *(undefined8 *)(lVar9 + lVar16) = *(undefined8 *)(in_RDX + lVar16);\\n        ((undefined8 *)(lVar9 + lVar16))[1] = uVar14;\\n        local_270[lVar15] = local_270[lVar15] | 1L << ((byte)lVar11 & 0x3f);\\n        bVar7 = true;\\n      }\\n      lVar11 = lVar11 + 1;\\n      lVar16 = lVar16 + 0x10;\\n    } while (lVar11 != 0x40);\\n    lVar16 = 0x400;\\n    lVar11 = 0;\\n    do {\\n      if ((*(longlong *)(in_RDX + lVar16) != *(longlong *)(lVar9 + lVar16)) ||\\n         (*(longlong *)(in_RDX + 8 + lVar16) != *(longlong *)(lVar9 + 8 + lVar16))) {\\n        uVar14 = ((undefined8 *)(in_RDX + lVar16))[1];\\n        *(undefined8 *)(lVar9 + lVar16) = *(undefined8 *)(in_RDX + lVar16);\\n        ((undefined8 *)(lVar9 + lVar16))[1] = uVar14;\\n        local_270[lVar15] = local_270[lVar15] | 1L << ((byte)lVar11 & 0x3f);\\n        bVar7 = true;\\n      }\\n      lVar11 = lVar11 + 1;\\n      lVar16 = lVar16 + 0x10;\\n    } while (lVar11 != 0x40);\\n    lVar16 = 0x800;\\n    lVar11 = 0;\\n    do {\\n      if ((*(longlong *)(in_RDX + lVar16) != *(longlong *)(lVar9 + lVar16)) ||\\n         (*(longlong *)(in_RDX + 8 + lVar16) != *(longlong *)(lVar9 + 8 + lVar16))) {\\n        uVar14 = ((undefined8 *)(in_RDX + lVar16))[1];\\n        *(undefined8 *)(lVar9 + lVar16) = *(undefined8 *)(in_RDX + lVar16);\\n        ((undefined8 *)(lVar9 + lVar16))[1] = uVar14;\\n        local_270[lVar15] = local_270[lVar15] | 1L << ((byte)lVar11 & 0x3f);\\n        bVar7 = true;\\n      }\\n      lVar11 = lVar11 + 1;\\n      lVar16 = lVar16 + 0x10;\\n    } while (lVar11 != 0x40);\\n    lVar16 = 0xc00;\\n    lVar11 = 0;\\n    do {\\n      if ((*(longlong *)(in_RDX + lVar16) != *(longlong *)(lVar9 + lVar16)) ||\\n         (*(longlong *)(in_RDX + 8 + lVar16) != *(longlong *)(lVar9 + 8 + lVar16))) {\\n        uVar14 = ((undefined8 *)(in_RDX + lVar16))[1];\\n        *(undefined8 *)(lVar9 + lVar16) = *(undefined8 *)(in_RDX + lVar16);\\n        ((undefined8 *)(lVar9 + lVar16))[1] = uVar14;\\n        local_270[lVar15] = local_270[lVar15] | 1L << ((byte)lVar11 & 0x3f);\\n        bVar7 = true;\\n      }\\n      lVar11 = lVar11 + 1;\\n      lVar16 = lVar16 + 0x10;\\n    } while (lVar11 != 0x40);\\n    lVar16 = 0x1000;\\n    lVar11 = 0;\\n    do {\\n      if ((*(longlong *)(in_RDX + lVar16) != *(longlong *)(lVar9 + lVar16)) ||\\n         (*(longlong *)(in_RDX + 8 + lVar16) != *(longlong *)(lVar9 + 8 + lVar16))) {\\n        uVar14 = ((undefined8 *)(in_RDX + lVar16))[1];\\n        *(undefined8 *)(lVar9 + lVar16) = *(undefined8 *)(in_RDX + lVar16);\\n        ((undefined8 *)(lVar9 + lVar16))[1] = uVar14;\\n        local_270[lVar15] = local_270[lVar15] | 1L << ((byte)lVar11 & 0x3f);\\n        bVar7 = true;\\n      }\\n      lVar11 = lVar11 + 1;\\n      lVar16 = lVar16 + 0x10;\\n    } while (lVar11 != 0x40);\\n    lVar16 = 0x1400;\\n    lVar11 = 0;\\n    do {\\n      if ((*(longlong *)(in_RDX + lVar16) != *(longlong *)(lVar9 + lVar16)) ||\\n         (*(longlong *)(in_RDX + 8 + lVar16) != *(longlong *)(lVar9 + 8 + lVar16))) {\\n        uVar14 = ((undefined8 *)(in_RDX + lVar16))[1];\\n        *(undefined8 *)(lVar9 + lVar16) = *(undefined8 *)(in_RDX + lVar16);\\n        ((undefined8 *)(lVar9 + lVar16))[1] = uVar14;\\n        local_270[lVar15] = local_270[lVar15] | 1L << ((byte)lVar11 & 0x3f);\\n        bVar7 = true;\\n      }\\n      lVar11 = lVar11 + 1;\\n      lVar16 = lVar16 + 0x10;\\n    } while (lVar11 != 0x40);\\n    lVar16 = 0x1800;\\n    lVar11 = 0;\\n    do {\\n      if ((*(longlong *)(in_RDX + lVar16) != *(longlong *)(lVar9 + lVar16)) ||\\n         (*(longlong *)(in_RDX + 8 + lVar16) != *(longlong *)(lVar9 + 8 + lVar16))) {\\n        uVar14 = ((undefined8 *)(in_RDX + lVar16))[1];\\n        *(undefined8 *)(lVar9 + lVar16) = *(undefined8 *)(in_RDX + lVar16);\\n        ((undefined8 *)(lVar9 + lVar16))[1] = uVar14;\\n        local_270[lVar15] = local_270[lVar15] | 1L << ((byte)lVar11 & 0x3f);\\n        bVar7 = true;\\n      }\\n      lVar11 = lVar11 + 1;\\n      lVar16 = lVar16 + 0x10;\\n    } while (lVar11 != 0x40);\\n    lVar16 = 0x1c00;\\n    lVar11 = 0;\\n    do {\\n      if ((*(longlong *)(in_RDX + lVar16) != *(longlong *)(lVar9 + lVar16)) ||\\n         (*(longlong *)(in_RDX + 8 + lVar16) != *(longlong *)(lVar9 + 8 + lVar16))) {\\n        uVar14 = ((undefined8 *)(in_RDX + lVar16))[1];\\n        *(undefined8 *)(lVar9 + lVar16) = *(undefined8 *)(in_RDX + lVar16);\\n        ((undefined8 *)(lVar9 + lVar16))[1] = uVar14;\\n        local_270[lVar15] = local_270[lVar15] | 1L << ((byte)lVar11 & 0x3f);\\n        bVar7 = true;\\n      }\\n      lVar11 = lVar11 + 1;\\n      lVar16 = lVar16 + 0x10;\\n    } while (lVar11 != 0x40);\\n    lVar15 = lVar15 + 1;\\n    in_RDX = in_RDX + 0x2000;\\n    lVar9 = lVar9 + 0x2000;\\n  } while (lVar15 != 0x40);\\n  cVar17 = extraout_AL;\\n  if (bVar7) {\\n    local_50 = (longlong *)CONCAT71(local_50._1_7_,extraout_AL);\\n    memcpy(local_470,local_270,0x200);\\n    tabloid::Publisher::\\n    publish<country_core::utils::dirty_tiles::DirtyTiles,country_core::utils::dirty_tiles::DirtyTiles>\\n              ();\\n    cVar17 = (char)local_50;\\n  }\\n  if (cVar17 != '\\\\0') {\\n    puffin::impl$6::call::THREAD_PROFILER::constant$0::closure$0::VAL();\\n    if (*extraout_RAX_02 == 1) {\\n      plVar12 = extraout_RAX_02 + 1;\\n    }\\n    else if ((*extraout_RAX_02 != 0) ||\\n            (std::sys::thread_local::native::lazy::Storage::\\n             initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple_<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>\\n                       (), plVar12 = extraout_RAX_04, extraout_RAX_04 == (longlong *)0x0)) {\\nLAB_1409ea6ed:\\n                    // WARNING: Subroutine does not return\\n      std::thread::local::panic_access_error();\\n    }\\n    if (*plVar12 != 0) {\\nLAB_1409ea6f9:\\n                    // WARNING: Subroutine does not return\\n      core::cell::panic_already_borrowed();\\n    }\\n    *plVar12 = -1;\\n    local_50 = plVar12;\\n    puffin::ThreadProfiler::end_scope();\\n    *local_50 = *local_50 + 1;\\n  }\\n  return;\\n}\\n\\n\",\"callee_count\":12,\"callees\":[{\"name\":\"VAL\",\"address\":\"140c18130\"},{\"name\":\"are_scopes_on\",\"address\":\"140c16a00\"},{\"name\":\"begin_scope\",\"address\":\"140c16d40\"},{\"name\":\"end_scope\",\"address\":\"140c170f0\"},{\"name\":\"initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple$<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>\",\"address\":\"1428f87d0\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"memset\",\"address\":\"142923c20\"},{\"name\":\"panic_access_error\",\"address\":\"1428d80d0\"},{\"name\":\"panic_already_borrowed\",\"address\":\"1428d9250\"},{\"name\":\"publish<country_core::utils::dirty_tiles::DirtyTiles,country_core::utils::dirty_tiles::DirtyTiles>\",\"address\":\"141453350\"},{\"name\":\"rfind<ref$<str$>_>\",\"address\":\"1409e9220\"},{\"name\":\"slice_error_fail\",\"address\":\"1428d9940\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1408b54c0\":{\"name\":\"load_index_unchecked\",\"size\":51,\"address\":\"1408b54c0\",\"signature\":\"void __cdecl load_index_unchecked(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::resources::terrain_height::impl$7::load_index_unchecked(void)\\n\\n{\\n  return;\\n}\\n\\n\",\"callee_count\":0,\"callees\":[],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1409ea800\":{\"name\":\"sample_at_world_xz\",\"size\":204,\"address\":\"1409ea800\",\"signature\":\"void __cdecl sample_at_world_xz(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::resources::terrain_rock_mask::impl$1::sample_at_world_xz(void)\\n\\n{\\n  uint uVar1;\\n  ulonglong in_RDX;\\n  uint uVar2;\\n  float in_XMM2_Da;\\n  float fVar3;\\n  float in_XMM3_Da;\\n  float fVar4;\\n  \\n  fVar3 = in_XMM2_Da / 130.0 + 0.5;\\n  fVar4 = in_XMM3_Da / 130.0 + 0.5;\\n  if (fVar3 <= 0.0) {\\n    fVar3 = 0.0;\\n  }\\n  if (fVar4 <= 0.0) {\\n    fVar4 = 0.0;\\n  }\\n  if (1.0 <= fVar3) {\\n    fVar3 = 1.0;\\n  }\\n  if (1.0 <= fVar4) {\\n    fVar4 = 1.0;\\n  }\\n  fVar3 = fVar3 * 512.0;\\n  uVar2 = (uint)(longlong)fVar3;\\n  if (fVar3 < 0.0) {\\n    uVar2 = 0;\\n  }\\n  fVar4 = fVar4 * 512.0;\\n  if (4.294967e+09 < fVar3) {\\n    uVar2 = 0xffffffff;\\n  }\\n  uVar1 = (uint)(longlong)fVar4;\\n  if (fVar4 < 0.0) {\\n    uVar1 = 0;\\n  }\\n  if (4.294967e+09 < fVar4) {\\n    uVar1 = 0xffffffff;\\n  }\\n  if (0x1fe < uVar2) {\\n    uVar2 = 0x1ff;\\n  }\\n  if (0x1fe < uVar1) {\\n    uVar1 = 0x1ff;\\n  }\\n  if ((uVar1 << 9 | uVar2) >> 5 < in_RDX) {\\n    return;\\n  }\\n                    // WARNING: Subroutine does not return\\n  core::panicking::panic_bounds_check();\\n}\\n\\n\",\"callee_count\":1,\"callees\":[{\"name\":\"panic_bounds_check\",\"address\":\"1428d9518\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140924900\":{\"name\":\"get_last_mut_stroke\",\"size\":257,\"address\":\"140924900\",\"signature\":\"void __cdecl get_last_mut_stroke(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::resources::terrain_editing::TerrainEditingData::get_last_mut_stroke(void)\\n\\n{\\n  char *pcVar1;\\n  longlong lVar2;\\n  uint uVar3;\\n  uint uVar4;\\n  ulonglong extraout_RAX;\\n  longlong in_RCX;\\n  ushort uVar5;\\n  ulonglong uVar6;\\n  longlong lVar7;\\n  uint uVar8;\\n  byte bVar9;\\n  char cVar10;\\n  char cVar12;\\n  char cVar13;\\n  char cVar14;\\n  undefined1 auVar11 [16];\\n  undefined1 auVar15 [16];\\n  undefined1 auVar16 [16];\\n  \\n  lVar2 = *(longlong *)(in_RCX + 0x38);\\n  if (lVar2 == 0) {\\n                    // WARNING: Subroutine does not return\\n    core::option::unwrap_failed();\\n  }\\n  if (*(longlong *)(in_RCX + 0x20) != 0) {\\n    core::hash::BuildHasher::\\n    hash_one<std::hash::random::RandomState,ref_<shader_pipeline::reflection::BindingIndex>_>();\\n    bVar9 = (byte)(extraout_RAX >> 0x39);\\n    auVar11 = ZEXT216(CONCAT11(bVar9,bVar9));\\n    auVar11 = pshuflw(auVar11,auVar11,0);\\n    lVar7 = 0;\\n    uVar6 = extraout_RAX;\\n    while( true ) {\\n      uVar6 = *(ulonglong *)(in_RCX + 0x10) & uVar6;\\n      pcVar1 = (char *)(*(longlong *)(in_RCX + 8) + uVar6);\\n      cVar10 = auVar11[0];\\n      auVar16[0] = -(*pcVar1 == cVar10);\\n      cVar12 = auVar11[1];\\n      auVar16[1] = -(pcVar1[1] == cVar12);\\n      cVar13 = auVar11[2];\\n      auVar16[2] = -(pcVar1[2] == cVar13);\\n      cVar14 = auVar11[3];\\n      auVar16[3] = -(pcVar1[3] == cVar14);\\n      auVar16[4] = -(pcVar1[4] == cVar10);\\n      auVar16[5] = -(pcVar1[5] == cVar12);\\n      auVar16[6] = -(pcVar1[6] == cVar13);\\n      auVar16[7] = -(pcVar1[7] == cVar14);\\n      auVar16[8] = -(pcVar1[8] == cVar10);\\n      auVar16[9] = -(pcVar1[9] == cVar12);\\n      auVar16[10] = -(pcVar1[10] == cVar13);\\n      auVar16[0xb] = -(pcVar1[0xb] == cVar14);\\n      auVar16[0xc] = -(pcVar1[0xc] == cVar10);\\n      auVar16[0xd] = -(pcVar1[0xd] == cVar12);\\n      auVar16[0xe] = -(pcVar1[0xe] == cVar13);\\n      auVar16[0xf] = -(pcVar1[0xf] == cVar14);\\n      uVar5 = (ushort)(SUB161(auVar16 >> 7,0) & 1) | (ushort)(SUB161(auVar16 >> 0xf,0) & 1) << 1 |\\n              (ushort)(SUB161(auVar16 >> 0x17,0) & 1) << 2 |\\n              (ushort)(SUB161(auVar16 >> 0x1f,0) & 1) << 3 |\\n              (ushort)(SUB161(auVar16 >> 0x27,0) & 1) << 4 |\\n              (ushort)(SUB161(auVar16 >> 0x2f,0) & 1) << 5 |\\n              (ushort)(SUB161(auVar16 >> 0x37,0) & 1) << 6 |\\n              (ushort)(SUB161(auVar16 >> 0x3f,0) & 1) << 7 |\\n              (ushort)(SUB161(auVar16 >> 0x47,0) & 1) << 8 |\\n              (ushort)(SUB161(auVar16 >> 0x4f,0) & 1) << 9 |\\n              (ushort)(SUB161(auVar16 >> 0x57,0) & 1) << 10 |\\n              (ushort)(SUB161(auVar16 >> 0x5f,0) & 1) << 0xb |\\n              (ushort)(SUB161(auVar16 >> 0x67,0) & 1) << 0xc |\\n              (ushort)(SUB161(auVar16 >> 0x6f,0) & 1) << 0xd |\\n              (ushort)(SUB161(auVar16 >> 0x77,0) & 1) << 0xe | (ushort)(auVar16[0xf] >> 7) << 0xf;\\n      uVar8 = (uint)uVar5;\\n      while (uVar5 != 0) {\\n        uVar3 = 0;\\n        for (uVar4 = uVar8; (uVar4 & 1) == 0; uVar4 = uVar4 >> 1 | 0x80000000) {\\n          uVar3 = uVar3 + 1;\\n        }\\n        if ((int)lVar2 + -1 ==\\n            *(int *)(*(longlong *)(in_RCX + 8) + -0x30 +\\n                    (uVar3 + uVar6 & *(ulonglong *)(in_RCX + 0x10)) * -0x30)) {\\n          return;\\n        }\\n        uVar5 = (ushort)(uVar8 - 1) & (ushort)uVar8;\\n        uVar8 = CONCAT22((short)(uVar8 - 1 >> 0x10),uVar5);\\n      }\\n      auVar15[0] = -(*pcVar1 == -1);\\n      auVar15[1] = -(pcVar1[1] == -1);\\n      auVar15[2] = -(pcVar1[2] == -1);\\n      auVar15[3] = -(pcVar1[3] == -1);\\n      auVar15[4] = -(pcVar1[4] == -1);\\n      auVar15[5] = -(pcVar1[5] == -1);\\n      auVar15[6] = -(pcVar1[6] == -1);\\n      auVar15[7] = -(pcVar1[7] == -1);\\n      auVar15[8] = -(pcVar1[8] == -1);\\n      auVar15[9] = -(pcVar1[9] == -1);\\n      auVar15[10] = -(pcVar1[10] == -1);\\n      auVar15[0xb] = -(pcVar1[0xb] == -1);\\n      auVar15[0xc] = -(pcVar1[0xc] == -1);\\n      auVar15[0xd] = -(pcVar1[0xd] == -1);\\n      auVar15[0xe] = -(pcVar1[0xe] == -1);\\n      auVar15[0xf] = -(pcVar1[0xf] == -1);\\n      if ((((((((((((((((SUB161(auVar15 >> 7,0) & 1) != 0 || (SUB161(auVar15 >> 0xf,0) & 1) != 0) ||\\n                      (SUB161(auVar15 >> 0x17,0) & 1) != 0) || (SUB161(auVar15 >> 0x1f,0) & 1) != 0)\\n                    || (SUB161(auVar15 >> 0x27,0) & 1) != 0) || (SUB161(auVar15 >> 0x2f,0) & 1) != 0\\n                   ) || (SUB161(auVar15 >> 0x37,0) & 1) != 0) ||\\n                 (SUB161(auVar15 >> 0x3f,0) & 1) != 0) || (SUB161(auVar15 >> 0x47,0) & 1) != 0) ||\\n               (SUB161(auVar15 >> 0x4f,0) & 1) != 0) || (SUB161(auVar15 >> 0x57,0) & 1) != 0) ||\\n             (SUB161(auVar15 >> 0x5f,0) & 1) != 0) || (SUB161(auVar15 >> 0x67,0) & 1) != 0) ||\\n           (SUB161(auVar15 >> 0x6f,0) & 1) != 0) || (SUB161(auVar15 >> 0x77,0) & 1) != 0) ||\\n          auVar15[0xf] < '\\\\0') break;\\n      uVar6 = uVar6 + lVar7 + 0x10;\\n      lVar7 = lVar7 + 0x10;\\n    }\\n  }\\n  return;\\n}\\n\\n\",\"callee_count\":2,\"callees\":[{\"name\":\"hash_one<std::hash::random::RandomState,ref$<shader_pipeline::reflection::BindingIndex>_>\",\"address\":\"1405b0ed0\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9310\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140924a10\":{\"name\":\"new_stroke\",\"size\":301,\"address\":\"140924a10\",\"signature\":\"void __cdecl new_stroke(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::resources::terrain_editing::TerrainEditingData::new_stroke(void)\\n\\n{\\n  undefined8 *extraout_RAX;\\n  longlong in_RCX;\\n  undefined8 *in_RDX;\\n  longlong local_88;\\n  \\n  if (*(ulonglong *)(in_RCX + 0x38) < 0x3fffff) {\\n    *(ulonglong *)(in_RCX + 0x38) = *(ulonglong *)(in_RCX + 0x38) + 1;\\n    std::alloc::__default_lib_allocator::__rust_alloc();\\n    if (extraout_RAX == (undefined8 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n      alloc::alloc::handle_alloc_error();\\n    }\\n    *(undefined4 *)(extraout_RAX + 1) = *(undefined4 *)(in_RDX + 1);\\n    *extraout_RAX = *in_RDX;\\n    hashbrown::map::HashMap::\\n    insert<country_core::resources::terrain_editing::TerrainStrokeId,country_core::resources::terrain_stroke::TerrainStroke,std::hash::random::RandomState,alloc::alloc::Global>\\n              ();\\n    if (!SBORROW8(0,local_88)) {\\n      core::ptr::\\n      drop_in_place<enum2_<core::option::Option<country_core::resources::terrain_stroke::TerrainStroke>_>_>\\n                ();\\n                    // WARNING: Subroutine does not return\\n      core::panicking::panic_fmt();\\n    }\\n  }\\n  return;\\n}\\n\\n\",\"callee_count\":5,\"callees\":[{\"name\":\"__rust_alloc\",\"address\":\"140613c10\"},{\"name\":\"drop_in_place<enum2$<core::option::Option<country_core::resources::terrain_stroke::TerrainStroke>_>_>\",\"address\":\"1409238f0\"},{\"name\":\"handle_alloc_error\",\"address\":\"1428d9000\"},{\"name\":\"insert<country_core::resources::terrain_editing::TerrainStrokeId,country_core::resources::terrain_stroke::TerrainStroke,std::hash::random::RandomState,alloc::alloc::Global>\",\"address\":\"141526d10\"},{\"name\":\"panic_fmt\",\"address\":\"1428d9390\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140a97880\":{\"name\":\"insert_or_morph_last_point\",\"size\":421,\"address\":\"140a97880\",\"signature\":\"void __cdecl insert_or_morph_last_point(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncountry_core::resources::terrain_stroke::TerrainStroke::insert_or_morph_last_point(void)\\n\\n{\\n  longlong lVar1;\\n  ulonglong uVar2;\\n  undefined8 *puVar3;\\n  float *pfVar4;\\n  ulonglong uVar5;\\n  ulonglong *in_RCX;\\n  float *in_RDX;\\n  float fVar6;\\n  float in_XMM2_Da;\\n  float fVar7;\\n  float fVar8;\\n  \\n  uVar2 = in_RCX[2];\\n  if (uVar2 == 1) {\\n    pfVar4 = (float *)in_RCX[1];\\n    if (0.001 < SQRT((in_RDX[2] - pfVar4[2]) * (in_RDX[2] - pfVar4[2]) +\\n                     (in_RDX[1] - pfVar4[1]) * (in_RDX[1] - pfVar4[1]) +\\n                     (*in_RDX - *pfVar4) * (*in_RDX - *pfVar4))) {\\n      if (*in_RCX == 1) {\\n        alloc::raw_vec::RawVec::grow_one<glam::f32::vec3::Vec3,alloc::alloc::Global>();\\n        pfVar4 = (float *)in_RCX[1];\\n      }\\n      pfVar4[5] = in_RDX[2];\\n      *(undefined8 *)(pfVar4 + 3) = *(undefined8 *)in_RDX;\\n      in_RCX[2] = 2;\\n    }\\n  }\\n  else if (uVar2 == 0) {\\n    if (*in_RCX == 0) {\\n      alloc::raw_vec::RawVec::grow_one<glam::f32::vec3::Vec3,alloc::alloc::Global>();\\n    }\\n    puVar3 = (undefined8 *)in_RCX[1];\\n    *(float *)(puVar3 + 1) = in_RDX[2];\\n    *puVar3 = *(undefined8 *)in_RDX;\\n    in_RCX[2] = 1;\\n  }\\n  else {\\n    uVar5 = in_RCX[1];\\n    fVar6 = *(float *)((uVar5 - 0x14) + uVar2 * 0xc) - *(float *)((uVar5 - 8) + uVar2 * 0xc);\\n    fVar7 = *(float *)((uVar5 - 0x18) + uVar2 * 0xc) - *(float *)((uVar5 - 0xc) + uVar2 * 0xc);\\n    fVar8 = *(float *)((uVar5 - 0x10) + uVar2 * 0xc) - *(float *)((uVar5 - 4) + uVar2 * 0xc);\\n    if (in_XMM2_Da <= SQRT(fVar8 * fVar8 + fVar6 * fVar6 + fVar7 * fVar7)) {\\n      if (uVar2 < 0x400) {\\n        if (uVar2 == *in_RCX) {\\n          alloc::raw_vec::RawVec::grow_one<glam::f32::vec3::Vec3,alloc::alloc::Global>();\\n          uVar5 = in_RCX[1];\\n        }\\n        *(float *)(uVar5 + 8 + uVar2 * 0xc) = in_RDX[2];\\n        *(undefined8 *)(uVar5 + uVar2 * 0xc) = *(undefined8 *)in_RDX;\\n        in_RCX[2] = uVar2 + 1;\\n      }\\n    }\\n    else {\\n      lVar1 = uVar5 + uVar2 * 0xc;\\n      *(float *)(lVar1 + -4) = in_RDX[2];\\n      *(undefined8 *)(lVar1 + -0xc) = *(undefined8 *)in_RDX;\\n    }\\n  }\\n  return;\\n}\\n\\n\",\"callee_count\":1,\"callees\":[{\"name\":\"grow_one<glam::f32::vec3::Vec3,alloc::alloc::Global>\",\"address\":\"140b9f180\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}}},\"count\":10,\"requested\":10}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "list_instances",
+        "title": null,
+        "description": "\nList known Ghidra instances from UDS discovery and the active TCP fallback.\n\nReturns JSON with each instance's project name, PID, open programs, and\nsocket path or TCP URL. Also shows which instance is currently connected.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "_list_instances_toolArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "connect_instance",
+        "title": null,
+        "description": "\nSwitch the MCP bridge to a different Ghidra instance by project name.\n\nIMPORTANT: Before calling this function only the static bridge tools are\nexposed (list_instances, connect_instance, tool-group management,\ndebugger proxy). After a successful connect the bridge fetches the\ninstance's /mcp/schema and registers Ghidra analysis tools dynamically.\nBy default all tool groups are loaded on connect. When started with\n--lazy, only the default groups are loaded initially and clients may need\nto call load_tool_group() for additional categories. Clients that cache\nthe initial tools/list and don't honor tools/list_changed must re-list\ntools after this call.\n\nUse list_instances() first to see available instances.\n\nArgs:\n    project: Project name (or substring) to connect to\n",
+        "inputSchema": {
+          "properties": {
+            "project": {
+              "description": "Project name (or substring) to connect to",
+              "title": "Project",
+              "type": "string"
+            }
+          },
+          "required": [
+            "project"
+          ],
+          "title": "connect_instanceArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_tool_groups",
+        "title": null,
+        "description": "\nList all available tool groups with their tool counts and loaded status.\n\nReturns each category with: tool count, loaded status, and tool names.\nUse load_tool_group(group) to load a group's tools.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "list_tool_groupsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "load_tool_group",
+        "title": null,
+        "description": "\nLoad all tools in a category. Accepts a category name or \"all\" to load everything.\n\nUse list_tool_groups() to see available categories.\n\nArgs:\n    group: Category name (e.g. \"function\", \"datatype\") or \"all\"\n",
+        "inputSchema": {
+          "properties": {
+            "group": {
+              "description": "Category name (e.g. \"function\", \"datatype\") or \"all\"",
+              "title": "Group",
+              "type": "string"
+            }
+          },
+          "required": [
+            "group"
+          ],
+          "title": "load_tool_groupArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "search_tools",
+        "title": null,
+        "description": "\nSearch the full Ghidra tool catalog by keyword \u2014 including tools whose group\nis not currently loaded. Use this to discover the right tool without paying\nthe context cost of loading all groups (run the bridge with --lazy and search\non demand). Matches against tool name, description, and category.\n\nEach result reports whether the tool is callable right now; if not, it\nincludes the exact load_tool_group(...) call needed to make it callable.\n\nArgs:\n    query: Space-separated keywords, e.g. \"rename function\" or \"xref struct\".\n    limit: Maximum number of results to return (default 15).\n",
+        "inputSchema": {
+          "properties": {
+            "query": {
+              "description": "Space-separated keywords, e.g. \"rename function\" or \"xref struct\".",
+              "title": "Query",
+              "type": "string"
+            },
+            "limit": {
+              "default": 15,
+              "description": "Maximum number of results to return (default 15).",
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "title": "search_toolsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "disassemble_function",
+        "title": null,
+        "description": "Get assembly listing of function. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution. When Ghidra's stored function body is degenerate (body_end == body_start, which would truncate the listing to a single instruction), the listing is instead bounded by the next function or the containing memory block and the response adds body_degenerate=true, bounded_by (next_function | memory_block | function_body) and a warning; do not trust this function's stored extent in that case.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "disassemble_functionArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_data_types",
+        "title": null,
+        "description": "Find data types by name or path pattern, category and kind, one record per type (name, kind, category, size, path). With categories=true, list the category paths instead. With no filter it lists every type.",
+        "inputSchema": {
+          "properties": {
+            "pattern": {
+              "default": "",
+              "description": "Case-insensitive substring of the type's name or full path; omit for no name filter.",
+              "title": "Pattern",
+              "type": "string"
+            },
+            "category": {
+              "default": "",
+              "description": "Case-insensitive substring of the category path (e.g. Windows, /MyTypes); omit for any category.",
+              "title": "Category",
+              "type": "string"
+            },
+            "kind": {
+              "default": "",
+              "description": "Only this kind: struct, union, enum, typedef, pointer, array, function or primitive. Omit for all kinds.",
+              "title": "Kind",
+              "type": "string"
+            },
+            "categories": {
+              "default": "false",
+              "description": "True lists the category paths (filtered by pattern) instead of types; category and kind do not apply.",
+              "title": "Categories",
+              "type": "boolean"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "find_data_typesArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_functions",
+        "title": null,
+        "description": "Find functions: every filter is optional, so with none it lists the whole program a page at a time. Filter by name (substring or regex=true), xref count, calling convention, whether the name is user-given, thunk or external, or by tag (tag=a,b keeps functions carrying ANY of them); each result lists its tags; sort by address, name or xref_count. Replaces list_functions, list_functions_enhanced, search_functions and search_functions_enhanced, which returned four different shapes for the same question.",
+        "inputSchema": {
+          "properties": {
+            "name_pattern": {
+              "default": "",
+              "description": "Substring to match, or a regex when regex=true. Omit to match every function.",
+              "title": "Name Pattern",
+              "type": "string"
+            },
+            "regex": {
+              "default": "false",
+              "description": "Treat name_pattern as a regular expression.",
+              "title": "Regex",
+              "type": "boolean"
+            },
+            "min_xrefs": {
+              "default": "",
+              "description": "Only functions with at least this many references to them.",
+              "title": "Min Xrefs",
+              "type": "integer"
+            },
+            "max_xrefs": {
+              "default": "",
+              "description": "Only functions with at most this many references to them.",
+              "title": "Max Xrefs",
+              "type": "integer"
+            },
+            "calling_convention": {
+              "default": "",
+              "description": "Only functions with this calling convention (e.g. __stdcall).",
+              "title": "Calling Convention",
+              "type": "string"
+            },
+            "has_custom_name": {
+              "default": "",
+              "description": "true = only functions somebody has named; false = only auto-generated names (FUN_*, thunk_*).",
+              "title": "Has Custom Name",
+              "type": "boolean"
+            },
+            "is_thunk": {
+              "default": "",
+              "description": "true = only thunks, false = exclude them, omit for both.",
+              "title": "Is Thunk",
+              "type": "boolean"
+            },
+            "is_external": {
+              "default": "",
+              "description": "true = only external functions, false = exclude them.",
+              "title": "Is External",
+              "type": "boolean"
+            },
+            "tag": {
+              "default": "",
+              "description": "Only functions carrying any of these tags: one name or a comma-separated list. A name that is not a defined tag is an error (list_function_tags shows the definitions).",
+              "title": "Tag",
+              "type": "string"
+            },
+            "sort_by": {
+              "default": "address",
+              "description": "address | name | xref_count.",
+              "title": "Sort By",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Page size. 0 means no limit, which on a large binary is a megabytes-long response \u2014 the old list_functions had no pagination at all and returned 1.7MB on a stripped `ls`.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "pattern": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Pattern"
+            },
+            "query": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Query"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            }
+          },
+          "title": "find_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_functions",
+        "title": null,
+        "description": "Everything about one or many functions in a single call. Pass functions= as a comma-separated list of names or addresses for bulk mode (up to 20); omit it and pass function=/name=/address= for one. Pass fields= as a comma-separated subset to skip work you do not need \u2014 omitted or empty returns everything. When the requested fields need no decompiled text (e.g. fields=callers,callees,signature,labels,entry_point), the target function is NOT decompiled (238 ms cold / 5\u201310 ms warm per function); only decompiled_code (and call_context when enabled) pays that cost. Decompiled text renders EOL comments (// style), so comments written with set_comment are visible in the code. Replaces get_function_by_address, get_function_variables, get_function_xrefs, decompile_function, and the former get_function_callers/callees/labels/signature tools. Completeness scoring is NOT included \u2014 call analyze_function_completeness for that.",
+        "inputSchema": {
+          "properties": {
+            "function": {
+              "default": "",
+              "description": "Single mode: function name or address (0x<hex> or <space>:<hex>). Ignored when functions= is set.",
+              "title": "Function",
+              "type": "string"
+            },
+            "functions": {
+              "default": "",
+              "description": "Bulk mode: comma-separated function references (names or addresses). When set, function= is ignored. Returns a map keyed by the reference asked for.",
+              "title": "Functions",
+              "type": "string"
+            },
+            "fields": {
+              "default": "",
+              "description": "Comma-separated subset: signature, classification, return_type, entry_point, body_start, body_end, decompiled_code, plate_comment, comments, labels, tags, parameters, locals, callers, call_context, callees, xrefs, disassembly, jump_targets, refs (the absolute addresses the function uses: data references, the values of literal-pool words, and the memory the decompiled code reads and writes, so a register reached as base + offset is listed by its own address; a pool value is written value<word; asking for refs decompiles). Omit or leave empty for the full bundle.",
+              "title": "Fields",
+              "type": "string"
+            },
+            "include_call_context": {
+              "default": "true",
+              "description": "Include each caller's decompiled call-site line. Costs one decompilation per unique caller (~43ms); set false for the cheapest possible bundle. Ignored unless call_context is requested (explicitly or via an empty fields=).",
+              "title": "Include Call Context",
+              "type": "boolean"
+            },
+            "call_context_limit": {
+              "default": "6",
+              "description": "Maximum number of UNIQUE callers to decompile for call context.",
+              "title": "Call Context Limit",
+              "type": "integer"
+            },
+            "call_context_lines": {
+              "default": "3",
+              "description": "Lines of the caller's decompilation to return per call site, centred on the call. 1 is the call line alone; the default 3 adds the line above and below, which is usually where the guard and the use of the result live. Clamped to 1-21; costs no extra decompilation.",
+              "title": "Call Context Lines",
+              "type": "integer"
+            },
+            "include_disasm": {
+              "default": "false",
+              "description": "Include the raw instruction listing. Off by default: it roughly doubles the payload and agents rarely read it.",
+              "title": "Include Disasm",
+              "type": "boolean"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Address"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "function_address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Address"
+            },
+            "function_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Name"
+            },
+            "call_context_window": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Call Context Window"
+            }
+          },
+          "title": "get_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_metadata",
+        "title": null,
+        "description": "Get program metadata",
+        "inputSchema": {
+          "properties": {
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_metadataArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_struct_layout",
+        "title": null,
+        "description": "Get structure field layout",
+        "inputSchema": {
+          "properties": {
+            "struct_name": {
+              "description": "Structure name",
+              "title": "Struct Name",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "struct_name"
+          ],
+          "title": "get_struct_layoutArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_from",
+        "title": null,
+        "description": "Get cross-references from an address. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "get_xrefs_fromArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_to",
+        "title": null,
+        "description": "Get cross-references to ONE address, or to MANY at once (addresses=comma-separated), which returns a map keyed by the address you asked for. Replaces the former get_bulk_xrefs. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "default": "",
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "addresses": {
+              "default": "",
+              "description": "Comma-separated addresses for the many-at-once form. The result is a map of address to its reference list, and an address that does not resolve gets an empty list rather than failing the whole call.",
+              "title": "Addresses",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_xrefs_toArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "read_memory",
+        "title": null,
+        "description": "Read raw memory bytes. Always pass the 'program' argument to target the correct binary \u2014 especially when multiple programs are open. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "length": {
+              "default": "16",
+              "description": "Number of bytes",
+              "title": "Length",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "read_memoryArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 1,
+  "ok": true
+}

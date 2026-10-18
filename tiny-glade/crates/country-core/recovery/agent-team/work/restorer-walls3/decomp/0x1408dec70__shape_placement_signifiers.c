@@ -1,0 +1,359 @@
+// shape_placement_signifiers  size=1823
+// void __cdecl shape_placement_signifiers(void)
+
+void __cdecl
+country_core::systems::wall::shapes::shape_placement_signifiers::shape_placement_signifiers(void)
+
+{
+  char *pcVar1;
+  undefined8 uVar2;
+  undefined8 uVar3;
+  float fVar4;
+  longlong lVar5;
+  longlong *plVar6;
+  longlong lVar7;
+  longlong lVar8;
+  uint uVar9;
+  uint uVar10;
+  code *pcVar11;
+  undefined **ppuVar12;
+  float fVar13;
+  uint extraout_EAX;
+  ulonglong extraout_RAX;
+  undefined8 *extraout_RAX_00;
+  void *extraout_RAX_01;
+  undefined8 *extraout_RAX_02;
+  void *extraout_RAX_03;
+  undefined8 *extraout_RAX_04;
+  void *extraout_RAX_05;
+  undefined8 *in_RCX;
+  longlong *in_RDX;
+  void *pvVar14;
+  ulonglong uVar15;
+  longlong *in_R9;
+  longlong lVar16;
+  uint uVar17;
+  ushort uVar18;
+  longlong lVar19;
+  byte bVar20;
+  char cVar21;
+  char cVar23;
+  char cVar24;
+  char cVar25;
+  undefined1 auVar22 [16];
+  float fVar26;
+  float fVar27;
+  float fVar28;
+  undefined1 auVar29 [16];
+  undefined1 auVar30 [16];
+  undefined8 *local_128;
+  void *local_120;
+  size_t local_118;
+  undefined8 local_110;
+  undefined4 local_108;
+  undefined8 *local_f8;
+  code *local_f0;
+  undefined8 *local_e0;
+  undefined8 *local_d8;
+  code *local_d0;
+  size_t local_c8;
+  undefined8 *local_c0;
+  undefined **local_b8;
+  undefined **local_b0;
+  undefined8 **local_a8;
+  undefined8 *local_a0;
+  undefined **local_98;
+  undefined8 *local_88;
+  undefined8 local_80;
+  float local_78;
+  undefined1 local_71;
+  undefined8 local_70;
+  
+  local_70 = 0xfffffffffffffffe;
+  if (((*(int *)*in_RCX == 6) && ((byte)((char)((int *)*in_RCX)[1] - 1U) < 2)) &&
+     (lVar5 = *in_RDX, *(char *)(lVar5 + 0x2c) != '\x02')) {
+    local_108 = *(undefined4 *)(lVar5 + 0x4c);
+    local_110 = *(undefined8 *)(lVar5 + 0x44);
+    if (*(int *)(lVar5 + 8) == 2) {
+      local_78 = *(float *)(lVar5 + 0x14);
+      local_80 = *(undefined8 **)(lVar5 + 0xc);
+      local_f8 = &local_110;
+      local_f0 = glam::f32::vec3::impl$93::fmt;
+      local_b8 = &PTR_s_snap_signifier__142aa4e28;
+      local_b0 = (undefined **)0x1;
+      local_a8 = &local_f8;
+      local_a0 = (undefined8 *)0x1;
+      local_98 = (undefined **)0x0;
+      alloc::fmt::format::format_inner();
+      pcVar11 = local_d0;
+      std::alloc::__default_lib_allocator::__rust_alloc();
+      if (extraout_RAX_00 == (undefined8 *)0x0) {
+                    // WARNING: Subroutine does not return
+        alloc::alloc::handle_alloc_error();
+      }
+      *extraout_RAX_00 = 1;
+      extraout_RAX_00[1] = 1;
+      extraout_RAX_00[2] = local_80;
+      *(float *)(extraout_RAX_00 + 3) = local_78;
+      local_b0 = (undefined **)&DAT_142aa4ec0;
+      if ((longlong)local_c8 < 0) {
+LAB_1408df31d:
+                    // WARNING: Subroutine does not return
+        alloc::raw_vec::handle_error();
+      }
+      if (local_c8 == 0) {
+        pvVar14 = (void *)0x1;
+      }
+      else {
+        std::alloc::__default_lib_allocator::__rust_alloc();
+        pvVar14 = extraout_RAX_01;
+        if (extraout_RAX_01 == (void *)0x0) goto LAB_1408df31d;
+      }
+      memcpy(pvVar14,pcVar11,local_c8);
+      local_b8 = (undefined **)local_c8;
+      local_a8 = (undefined8 **)local_c8;
+      local_98 = (undefined **)&DAT_142aa4ec0;
+      local_b0 = pvVar14;
+      append_only_vec::AppendOnlyVec::
+      push<country_core::systems::ui::signifiers::signifier_create::UiAppendSignifier>();
+      local_e0 = local_d8;
+joined_r0x0001408df0c4:
+      if (local_e0 != (undefined8 *)0x0) {
+        std::alloc::__default_lib_allocator::__rust_dealloc();
+      }
+    }
+    else if (*(int *)(lVar5 + 8) == 1) {
+      plVar6 = (longlong *)*in_R9;
+      lVar7 = *(longlong *)(lVar5 + 0x20);
+      local_b8 = (undefined **)lVar7;
+      if (plVar6[3] != 0) {
+        core::hash::BuildHasher::
+        hash_one<std::hash::random::RandomState,ref_<country_core::systems::ui::GlobalId>_>();
+        lVar8 = *plVar6;
+        bVar20 = (byte)(extraout_RAX >> 0x39);
+        auVar22 = ZEXT216(CONCAT11(bVar20,bVar20));
+        auVar22 = pshuflw(auVar22,auVar22,0);
+        lVar16 = 0;
+        uVar15 = extraout_RAX;
+        do {
+          uVar15 = plVar6[1] & uVar15;
+          pcVar1 = (char *)(lVar8 + uVar15);
+          cVar21 = auVar22[0];
+          auVar30[0] = -(*pcVar1 == cVar21);
+          cVar23 = auVar22[1];
+          auVar30[1] = -(pcVar1[1] == cVar23);
+          cVar24 = auVar22[2];
+          auVar30[2] = -(pcVar1[2] == cVar24);
+          cVar25 = auVar22[3];
+          auVar30[3] = -(pcVar1[3] == cVar25);
+          auVar30[4] = -(pcVar1[4] == cVar21);
+          auVar30[5] = -(pcVar1[5] == cVar23);
+          auVar30[6] = -(pcVar1[6] == cVar24);
+          auVar30[7] = -(pcVar1[7] == cVar25);
+          auVar30[8] = -(pcVar1[8] == cVar21);
+          auVar30[9] = -(pcVar1[9] == cVar23);
+          auVar30[10] = -(pcVar1[10] == cVar24);
+          auVar30[0xb] = -(pcVar1[0xb] == cVar25);
+          auVar30[0xc] = -(pcVar1[0xc] == cVar21);
+          auVar30[0xd] = -(pcVar1[0xd] == cVar23);
+          auVar30[0xe] = -(pcVar1[0xe] == cVar24);
+          auVar30[0xf] = -(pcVar1[0xf] == cVar25);
+          uVar18 = (ushort)(SUB161(auVar30 >> 7,0) & 1) |
+                   (ushort)(SUB161(auVar30 >> 0xf,0) & 1) << 1 |
+                   (ushort)(SUB161(auVar30 >> 0x17,0) & 1) << 2 |
+                   (ushort)(SUB161(auVar30 >> 0x1f,0) & 1) << 3 |
+                   (ushort)(SUB161(auVar30 >> 0x27,0) & 1) << 4 |
+                   (ushort)(SUB161(auVar30 >> 0x2f,0) & 1) << 5 |
+                   (ushort)(SUB161(auVar30 >> 0x37,0) & 1) << 6 |
+                   (ushort)(SUB161(auVar30 >> 0x3f,0) & 1) << 7 |
+                   (ushort)(SUB161(auVar30 >> 0x47,0) & 1) << 8 |
+                   (ushort)(SUB161(auVar30 >> 0x4f,0) & 1) << 9 |
+                   (ushort)(SUB161(auVar30 >> 0x57,0) & 1) << 10 |
+                   (ushort)(SUB161(auVar30 >> 0x5f,0) & 1) << 0xb |
+                   (ushort)(SUB161(auVar30 >> 0x67,0) & 1) << 0xc |
+                   (ushort)(SUB161(auVar30 >> 0x6f,0) & 1) << 0xd |
+                   (ushort)(SUB161(auVar30 >> 0x77,0) & 1) << 0xe |
+                   (ushort)(auVar30[0xf] >> 7) << 0xf;
+          uVar17 = (uint)uVar18;
+          while (uVar18 != 0) {
+            uVar9 = 0;
+            for (uVar10 = uVar17; (uVar10 & 1) == 0; uVar10 = uVar10 >> 1 | 0x80000000) {
+              uVar9 = uVar9 + 1;
+            }
+            lVar19 = (uVar9 + uVar15 & plVar6[1]) * -0x2a8;
+            if (*(longlong *)(lVar8 + -0x2a8 + lVar19) == lVar7) {
+              if ((*(ulonglong *)(lVar8 + -0x290 + lVar19) < 2) ||
+                 (*(float *)(lVar8 + -0x270 + lVar19) <= 0.0)) {
+                    // WARNING: Subroutine does not return
+                core::panicking::panic();
+              }
+              lVar8 = lVar8 + lVar19;
+              fVar4 = *(float *)(lVar5 + 0x4c);
+              local_80 = *(undefined8 **)(lVar5 + 0x44);
+              local_78 = fVar4;
+              if (*(uint *)(lVar8 + -0x48) < 2) {
+                fVar13 = (float)local_80;
+                ::utils::curve::Curve::
+                get_approx_coord_from_pos<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D>
+                          ();
+                uVar15 = (ulonglong)extraout_EAX;
+                if (*(ulonglong *)(lVar8 + -0x290) <= uVar15 + 1) {
+                    // WARNING: Subroutine does not return
+                  core::panicking::panic_bounds_check();
+                }
+                uVar2 = *(undefined8 *)(*(longlong *)(lVar8 + -0x298) + uVar15 * 8);
+                uVar3 = *(undefined8 *)(*(longlong *)(lVar8 + -0x298) + 8 + uVar15 * 8);
+                fVar26 = (float)uVar3 - (float)uVar2;
+                fVar27 = (float)((ulonglong)uVar3 >> 0x20) - (float)((ulonglong)uVar2 >> 0x20);
+                fVar28 = 1.0 / SQRT(fVar27 * fVar27 + fVar26 * fVar26);
+                local_d8 = (undefined8 *)
+                           CONCAT44(fVar26 * fVar28 * 0.63 * 0.5,fVar27 * fVar28 * -0.63 * 0.5);
+                ::utils::swizzlers::impl$0::x0y();
+                local_80 = (undefined8 *)
+                           CONCAT44(local_80._4_4_ + (float)((ulonglong)local_b8 >> 0x20),
+                                    fVar13 + SUB84(local_b8,0));
+                local_78 = fVar4 + local_b0._0_4_;
+              }
+              local_f8 = &local_80;
+              local_f0 = glam::f32::vec3::impl$93::fmt;
+              local_b8 = &PTR_s_snap_signifier__142aa4e28;
+              local_b0 = (undefined **)0x1;
+              local_a8 = &local_f8;
+              local_a0 = (undefined8 *)0x1;
+              local_98 = (undefined **)0x0;
+              alloc::fmt::format::format_inner();
+              pcVar11 = local_d0;
+              local_b0 = (undefined **)CONCAT44(local_b0._4_4_,local_78);
+              local_b8 = (undefined **)local_80;
+              std::alloc::__default_lib_allocator::__rust_alloc();
+              if (extraout_RAX_02 == (undefined8 *)0x0) {
+                    // WARNING: Subroutine does not return
+                alloc::alloc::handle_alloc_error();
+              }
+              *extraout_RAX_02 = 1;
+              extraout_RAX_02[1] = 1;
+              extraout_RAX_02[2] = local_b8;
+              *(float *)(extraout_RAX_02 + 3) = local_b0._0_4_;
+              local_b0 = (undefined **)&DAT_142aa4e38;
+              if ((longlong)local_c8 < 0) {
+                local_c0 = (undefined8 *)0x0;
+LAB_1408df34e:
+                    // WARNING: Subroutine does not return
+                alloc::raw_vec::handle_error();
+              }
+              local_88 = extraout_RAX_02;
+              if (local_c8 == 0) {
+                pvVar14 = (void *)0x1;
+              }
+              else {
+                local_c0 = (undefined8 *)0x1;
+                std::alloc::__default_lib_allocator::__rust_alloc();
+                pvVar14 = extraout_RAX_03;
+                if (extraout_RAX_03 == (void *)0x0) goto LAB_1408df34e;
+              }
+              memcpy(pvVar14,pcVar11,local_c8);
+              local_b8 = (undefined **)local_c8;
+              local_a8 = (undefined8 **)local_c8;
+              local_a0 = local_88;
+              local_98 = (undefined **)&DAT_142aa4e38;
+              local_b0 = pvVar14;
+              append_only_vec::AppendOnlyVec::
+              push<country_core::systems::ui::signifiers::signifier_create::UiAppendSignifier>();
+              if (local_d8 != (undefined8 *)0x0) {
+                std::alloc::__default_lib_allocator::__rust_dealloc();
+              }
+              local_d0 = (code *)CONCAT44(local_d0._4_4_,local_78);
+              local_d8 = local_80;
+              preview_snapping_line();
+              ppuVar12 = local_98;
+              local_88 = local_a8;
+              if (SBORROW8(0,(longlong)local_a8)) {
+                return;
+              }
+              local_c0 = local_a0;
+              local_d8 = &local_80;
+              local_d0 = glam::f32::vec3::impl$93::fmt;
+              local_b8 = &PTR_s_snap_signifier_curve__142aa4e80;
+              local_b0 = (undefined **)0x1;
+              local_a0 = (undefined8 *)0x1;
+              local_98 = (undefined **)0x0;
+              local_71 = 1;
+              local_a8 = &local_d8;
+              alloc::fmt::format::format_inner();
+              std::alloc::__default_lib_allocator::__rust_alloc();
+              local_e0 = local_128;
+              if (extraout_RAX_04 == (undefined8 *)0x0) {
+                    // WARNING: Subroutine does not return
+                alloc::alloc::handle_alloc_error();
+              }
+              *extraout_RAX_04 = 1;
+              extraout_RAX_04[1] = 1;
+              extraout_RAX_04[2] = local_88;
+              extraout_RAX_04[3] = local_c0;
+              extraout_RAX_04[4] = ppuVar12;
+              local_b0 = &PTR_drop_ptr<country_core::components::WoodenGate>_142aa4e90;
+              if ((longlong)local_118 < 0) {
+LAB_1408df383:
+                    // WARNING: Subroutine does not return
+                alloc::raw_vec::handle_error();
+              }
+              if (local_118 == 0) {
+                pvVar14 = (void *)0x1;
+              }
+              else {
+                std::alloc::__default_lib_allocator::__rust_alloc();
+                pvVar14 = extraout_RAX_05;
+                if (extraout_RAX_05 == (void *)0x0) goto LAB_1408df383;
+              }
+              memcpy(pvVar14,local_120,local_118);
+              local_b8 = (undefined **)local_118;
+              local_a8 = (undefined8 **)local_118;
+              local_98 = &PTR_drop_ptr<country_core::components::WoodenGate>_142aa4e90;
+              local_b0 = pvVar14;
+              append_only_vec::AppendOnlyVec::
+              push<country_core::systems::ui::signifiers::signifier_create::UiAppendSignifier>();
+              goto joined_r0x0001408df0c4;
+            }
+            uVar18 = (ushort)(uVar17 - 1) & (ushort)uVar17;
+            uVar17 = CONCAT22((short)(uVar17 - 1 >> 0x10),uVar18);
+          }
+          auVar29[0] = -(*pcVar1 == -1);
+          auVar29[1] = -(pcVar1[1] == -1);
+          auVar29[2] = -(pcVar1[2] == -1);
+          auVar29[3] = -(pcVar1[3] == -1);
+          auVar29[4] = -(pcVar1[4] == -1);
+          auVar29[5] = -(pcVar1[5] == -1);
+          auVar29[6] = -(pcVar1[6] == -1);
+          auVar29[7] = -(pcVar1[7] == -1);
+          auVar29[8] = -(pcVar1[8] == -1);
+          auVar29[9] = -(pcVar1[9] == -1);
+          auVar29[10] = -(pcVar1[10] == -1);
+          auVar29[0xb] = -(pcVar1[0xb] == -1);
+          auVar29[0xc] = -(pcVar1[0xc] == -1);
+          auVar29[0xd] = -(pcVar1[0xd] == -1);
+          auVar29[0xe] = -(pcVar1[0xe] == -1);
+          auVar29[0xf] = -(pcVar1[0xf] == -1);
+          if ((((((((((((((((SUB161(auVar29 >> 7,0) & 1) != 0 || (SUB161(auVar29 >> 0xf,0) & 1) != 0
+                           ) || (SUB161(auVar29 >> 0x17,0) & 1) != 0) ||
+                         (SUB161(auVar29 >> 0x1f,0) & 1) != 0) ||
+                        (SUB161(auVar29 >> 0x27,0) & 1) != 0) ||
+                       (SUB161(auVar29 >> 0x2f,0) & 1) != 0) || (SUB161(auVar29 >> 0x37,0) & 1) != 0
+                      ) || (SUB161(auVar29 >> 0x3f,0) & 1) != 0) ||
+                    (SUB161(auVar29 >> 0x47,0) & 1) != 0) || (SUB161(auVar29 >> 0x4f,0) & 1) != 0)
+                  || (SUB161(auVar29 >> 0x57,0) & 1) != 0) || (SUB161(auVar29 >> 0x5f,0) & 1) != 0)
+                || (SUB161(auVar29 >> 0x67,0) & 1) != 0) || (SUB161(auVar29 >> 0x6f,0) & 1) != 0) ||
+              (SUB161(auVar29 >> 0x77,0) & 1) != 0) || auVar29[0xf] < '\0') break;
+          uVar15 = uVar15 + lVar16 + 0x10;
+          lVar16 = lVar16 + 0x10;
+        } while( true );
+      }
+                    // WARNING: Subroutine does not return
+      core::option::unwrap_failed();
+    }
+  }
+  return;
+}
+
+
+
+// CALLEES: [{'name': '__rust_alloc', 'address': '140613c10'}, {'name': '__rust_dealloc', 'address': '140613c20'}, {'name': 'format_inner', 'address': '140d79f90'}, {'name': 'get_approx_coord_from_pos<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D>', 'address': '14146a060'}, {'name': 'handle_alloc_error', 'address': '1428d9000'}, {'name': 'handle_error', 'address': '1428d8fe3'}, {'name': 'hash_one<std::hash::random::RandomState,ref$<country_core::systems::ui::GlobalId>_>', 'address': '1405b0d70'}, {'name': 'memcpy', 'address': '142923c00'}, {'name': 'panic', 'address': '1428d9430'}, {'name': 'panic_bounds_check', 'address': '1428d9518'}, {'name': 'preview_snapping_line', 'address': '1408dfc60'}, {'name': 'push<country_core::systems::ui::signifiers::signifier_create::UiAppendSignifier>', 'address': '14146c880'}, {'name': 'unwrap_failed', 'address': '1428d9310'}, {'name': 'x0y', 'address': '140c9cdc0'}]

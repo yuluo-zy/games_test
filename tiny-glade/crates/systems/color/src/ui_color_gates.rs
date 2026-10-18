@@ -1,45 +1,38 @@
-//! ui_color_gates.rs — 门 UI（B 0x1422afe70，O；re-analyst-A 契约 §2）。
+//! ui_color_gates.rs — 门颜色 UI（B 0x1422afe70，2600B；restorer-state-color
+//! 2026-10-17 fresh 反编译）。
 //!
-//! 语义（O）：AssetMeshLibrary::get（0x14092d2e0）→ Mesh::positions（0x140a07b30）
-//! → 门网孔位置（菜单锚点/图标布局）；widget（0x1422bd120）+ clicked 门 →
-//! 菜单事件；signifier 生成（0x14089d8b0）+ UiSignifierStream::write
-//! （0x140b2cf90）。
+//! **未实现**（分歧点）：真实控制流 = 模式 12 守卫 → 稀疏墙实体位集（每 0x20B
+//! 一组 16×16）迭代 → `PublicWalls`（stride 0x14）→ `AssetMeshLibrary::get` →
+//! `Mesh::positions`（顶点/3=三角形数）→ `fold` 产出 `Triangle` 列表（拾取用）→
+//! `format!("color_gates_"+WallId)` → 控件构建（WidgetParams + `UiState::add
+//! <String>`）→ `is_active` 时 `SignifierFactory::new` + `UiSignifierStream::write`
+//! （mesh 顶点数据）→ 点击写命令（tag=5）。core mesh/signifier/widget 面未对齐。
 
 use bevy_ecs::prelude::*;
 
-use country_core::asset_libraries::mesh_library::AssetMeshLibrary;
 use country_core::resources::mouse_terrain_raycast::CursorPositionSS;
 use country_core::resources::walls::wooden_gates::Gates;
 use country_core::systems::mode_manager::AppMode;
 use country_core::systems::ui::resources::ui_state::UiState;
 use country_core::systems::ui::signifiers::signifier_create::UiSignifierStream;
-use country_core::systems::ui::signifiers::UiAppendSignifier;
 
 use crate::{HideColorMenuCmd, ShowColorMenuCmd};
 
-/// `ui_color_gates` @0x1422afe70（O 面：门网孔位置 → 菜单锚点；clicked 门 →
-/// 菜单事件 + 锚点 signifier）。
+/// `ui_color_gates` @0x1422afe70（2600B，未实现）。
 #[allow(clippy::too_many_arguments)]
 pub fn ui_color_gates(
-    _mode: Res<AppMode>,
+    mode: Res<AppMode>,
     _ui: Res<UiState>,
-    mut signifiers: ResMut<UiSignifierStream>,
-    gates: Res<Gates>,
-    _handles: Query<&country_core::asset_libraries::Handle<country_core::render::mesh::Mesh>>,
-    _mesh_library: Res<AssetMeshLibrary>,
-    mut shows: EventWriter<ShowColorMenuCmd>,
-    mut hides: EventWriter<HideColorMenuCmd>,
+    _signifiers: ResMut<UiSignifierStream>,
+    _gates: Res<Gates>,
+    _mesh_library: Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>,
+    _shows: EventWriter<ShowColorMenuCmd>,
+    _hides: EventWriter<HideColorMenuCmd>,
     _cursor: Res<CursorPositionSS>,
 ) {
-    let _ = &*gates;
-    // O：门锚点 signifier（0x14089d8b0 + UiSignifierStream::write；锚点 = 门
-    // 网孔位置，I——Mesh::positions 0x140a07b30 消费，位布局 U）。
-    signifiers.write(UiAppendSignifier {
-        tag: 1,
-        kind: 0,
-        position: glam::Vec3::ZERO,
-        scale: 0.0,
-        name: 0,
-    });
-    let _ = (&mut shows, &mut hides);
+    // O：模式 12 守卫。
+    if mode.native_tag() == 0xc {
+        // O：稀疏墙位集 → mesh 三角形 → 点击写 tag-5 命令（widget/signifier
+        // 面 GAP，未恢复）。
+    }
 }

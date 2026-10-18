@@ -1,0 +1,66 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/wall/wall_state/wall_spatial_hash.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/wall/wall_state/wall_spatial_hash.rs
+@@ -113,6 +113,39 @@
+         self.segment_cells.insert(id, cells);
+         self.segments.insert(id, segment);
+         id
++    }
++
++    /// B query_with_circle_callback<forest closure>@1422785d0/837B.
++    /// This original specialization rejects a tree when an occupied spatial
++    /// cell overlaps its circle. It does not replace a cell by a segment
++    /// midpoint or require the segment's nearest distance to be below radius.
++    pub fn any_occupied_cell_in_circle(&self, center: glam::Vec2, radius: f32) -> bool {
++        use crate::resources::walls::spatial_index::world_space_to_grid_coord_unclamped;
++        let bounds = self.bounds_ws();
++        let min = [(center.x - radius).max(bounds[0]),
++            (center.y - radius).max(bounds[1])];
++        let max = [(center.x + radius).min(bounds[2]),
++            (center.y + radius).min(bounds[3])];
++        // The native asserts containment after clamping, but not min<=max;
++        // an entirely outside circle therefore yields an empty grid range.
++        assert!(bounds[0] <= min[0] && bounds[1] <= min[1]);
++        assert!(max[0] <= bounds[2] && max[1] <= bounds[3]);
++        let lo = world_space_to_grid_coord_unclamped(min).map(|v| v.max(0));
++        let hi = world_space_to_grid_coord_unclamped(max)
++            .map(|v| v.min(GRID_SIDE as i32 - 1));
++        let cell_radius = ((WORLD_SIZE / GRID_SIDE as f32) * 0.5)
++            * f32::from_bits(0x3fb5_04f3);
++        let threshold = radius + cell_radius;
++        for z in lo[1]..=hi[1] {
++            for x in lo[0]..=hi[0] {
++                let cell = z as usize * GRID_SIDE + x as usize;
++                let point = glam::Vec2::from_array(self.cell_center(cell));
++                if threshold > point.distance(center) && !self.cells[cell].is_empty() {
++                    return true;
++                }
++            }
++        }
++        false
+     }
+ 
+     pub fn segments_for_wall(&self, wall: WallId) -> impl Iterator<Item = &WallSpatialSegment> {
+@@ -523,3 +556,23 @@
+         );
+     }
+ }
++
++#[cfg(test)]
++mod original_forest_circle_tests {
++    use super::*;
++    #[test]
++    fn actual_occupied_cells_extend_beyond_the_nearest_segment_radius() {
++        let mut spatial = WallSpatialHash::default();
++        let id = WallId(41);
++        spatial.add_segment(WallSpatialSegment {
++            endpoints: [[0.0, 0.0], [0.0, 20.0]], source_u: [0.0, 1.0],
++            relative_heights: [1.0; 2], terrain_heights: [0.0; 2], wall: id,
++        });
++        // Original uses occupied cells + their half diagonal: this tree is
++        // eight units from the wall, yet overlaps a live nearby cell.
++        assert!(spatial.any_occupied_cell_in_circle(glam::Vec2::new(8.0, 1.0), 7.0));
++        assert!(!spatial.any_occupied_cell_in_circle(glam::Vec2::new(30.0, 1.0), 7.0));
++        spatial.remove_wall_id(id);
++        assert!(!spatial.any_occupied_cell_in_circle(glam::Vec2::new(8.0, 1.0), 7.0));
++    }
++}

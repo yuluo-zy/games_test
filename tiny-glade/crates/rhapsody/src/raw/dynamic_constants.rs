@@ -39,7 +39,7 @@ impl DynamicConstantsChunk {
         self.buffer
             .device_address()?
             .checked_add(self.offset)
-            .ok_or(Error::invalid_usage("设备地址溢出"))
+            .ok_or_else(|| Error::invalid_usage("设备地址溢出"))
     }
     pub fn into_gpu_lifetime_tracker(self) -> ResourceOwner {
         self.buffer
@@ -485,8 +485,10 @@ fn allocation_offset(
     requested: Option<u64>,
     device_alignment: u64,
 ) -> Result<Option<u64>> {
-    if size == 0 || size > DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES {
-        return Err(Error::invalid_usage("常量区段大小必须在页范围内且非零"));
+    // B allocate@140c02759 rejects only bytes >0x40000. Empty chunks retain
+    // a real aligned page/address; they do not allocate a zero-sized VkBuffer.
+    if size > DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES {
+        return Err(Error::invalid_usage("常量区段大小不能超过页范围"));
     }
     let requested = requested.unwrap_or(DEFAULT_ALIGNMENT);
     if !requested.is_power_of_two() || !device_alignment.is_power_of_two() {
@@ -503,7 +505,7 @@ fn align_up(value: u64, alignment: u64) -> Result<u64> {
     value
         .checked_add(alignment - 1)
         .map(|v| v & !(alignment - 1))
-        .ok_or(Error::invalid_usage("常量区段对齐溢出"))
+        .ok_or_else(|| Error::invalid_usage("常量区段对齐溢出"))
 }
 
 #[cfg(test)]
@@ -702,7 +704,6 @@ mod tests {
     #[test]
     fn invalid_allocation_requests_fail_before_page_creation() {
         for (size, alignment) in [
-            (0, None),
             (DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES + 1, None),
             (1, Some(0)),
             (1, Some(3)),
@@ -715,6 +716,34 @@ mod tests {
             );
         }
         assert!(allocation_offset(u64::MAX, 1, None, 256).is_err());
+    }
+
+    #[test]
+    fn native_empty_chunks_keep_real_pages_and_the_aligned_cursor() {
+        let budget = Arc::new(super::super::allocator::AllocatorStats::default());
+        let mut ring = PageRing::new(config(1), &budget).unwrap();
+        let (empty, offset) = ring.allocate(0, None, 16, cpu_page).unwrap();
+        assert_eq!(offset, 0);
+        assert_eq!(ring.pages[0].cursor, 0);
+        let (payload, payload_offset) = ring.allocate(17, None, 16, cpu_page).unwrap();
+        assert!(Arc::ptr_eq(&empty, &payload));
+        assert_eq!(payload_offset, 0);
+        let (aligned_empty, aligned_offset) = ring.allocate(0, Some(64), 16, cpu_page).unwrap();
+        assert!(Arc::ptr_eq(&empty, &aligned_empty));
+        assert_eq!(aligned_offset, 64);
+        assert_eq!(ring.pages[0].cursor, 64);
+        let (next, next_offset) = ring.allocate(1, None, 16, cpu_page).unwrap();
+        assert!(Arc::ptr_eq(&empty, &next));
+        assert_eq!(next_offset, 64);
+        assert_eq!(ring.stats().page_creations, 1);
+        // A retained empty chunk is still a genuine CPU owner of this page.
+        drop(payload);
+        drop(aligned_empty);
+        drop(next);
+        assert!(matches!(ring.allocate(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES, None, 16, cpu_page), Err(Error::Timeout)));
+        drop(empty);
+        assert!(ring.allocate(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES, None, 16, cpu_page).is_ok());
+        assert_eq!(allocation_offset(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES, 0, None, 16).unwrap(), Some(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES));
     }
 
     #[test]

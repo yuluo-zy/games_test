@@ -1,0 +1,68 @@
+[
+  {
+    "case": "missing-argument",
+    "exit": 2,
+    "stdout": "",
+    "stderr": "usage: inspect_package <package-root>"
+  },
+  {
+    "case": "extra-argument",
+    "exit": 2,
+    "stdout": "",
+    "stderr": "usage: inspect_package <package-root>"
+  },
+  {
+    "case": "missing-root",
+    "exit": 1,
+    "stdout": "{\n  \"error\": \"read\",\n  \"message\": \"No such file or directory (os error 2)\",\n  \"ok\": false\n}",
+    "stderr": ""
+  },
+  {
+    "case": "valid-package",
+    "exit": 0,
+    "stdout": "{\n  \"ok\": true\n}",
+    "stderr": ""
+  },
+  {
+    "case": "extra-file",
+    "exit": 1,
+    "stdout": "{\n  \"corrupt\": [],\n  \"error\": \"files\",\n  \"extra\": [\n    \"extra\"\n  ],\n  \"missing\": [],\n  \"ok\": false\n}",
+    "stderr": ""
+  },
+  {
+    "case": "symlink-scan",
+    "exit": 1,
+    "stdout": "{\n  \"error\": \"filesystem\",\n  \"message\": \"not a regular package file: /var/folders/nn/2ymzgfd16j96wv2_mj2bpsfm0000gn/T/tg-integrity-cli-iflu78jo/link\",\n  \"ok\": false\n}",
+    "stderr": ""
+  },
+  {
+    "case": "invalid-checksum",
+    "exit": 1,
+    "stdout": "{\n  \"error\": \"checksum\",\n  \"ok\": false\n}",
+    "stderr": ""
+  },
+  {
+    "case": "invalid-json",
+    "exit": 1,
+    "stdout": "{\n  \"error\": \"parse\",\n  \"message\": \"expected ident at line 1 column 2\",\n  \"ok\": false\n}",
+    "stderr": ""
+  },
+  {
+    "case": "unsupported-version",
+    "exit": 1,
+    "stdout": "{\n  \"error\": \"version\",\n  \"ok\": false,\n  \"version\": 2\n}",
+    "stderr": ""
+  },
+  {
+    "case": "invalid-entry",
+    "exit": 1,
+    "stdout": "{\n  \"error\": \"entry\",\n  \"message\": \"expected a lowercase 64-digit BLAKE3 hash\",\n  \"ok\": false,\n  \"path\": \"bad\"\n}",
+    "stderr": ""
+  },
+  {
+    "case": "invalid-path",
+    "exit": 1,
+    "stdout": "{\n  \"error\": \"path\",\n  \"ok\": false,\n  \"path\": \"./good\"\n}",
+    "stderr": ""
+  }
+]

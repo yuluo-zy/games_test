@@ -1,0 +1,2487 @@
+; SPIR-V
+; Version: 1.3
+; Generator: Google rspirv; 0
+; Bound: 168
+; Schema: 0
+               OpCapability Shader
+          %1 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel Logical GLSL450
+               OpEntryPoint GLCompute %cs_main "cs_main" %gl_GlobalInvocationID %gl_LocalInvocationIndex
+               OpExecutionMode %cs_main LocalSize 128 1 1
+          %5 = OpString "/tmp/.tmpPKaNbm"
+          %6 = OpString "shaders/inc/common.hlsl"
+          %7 = OpString "shaders/inc/samplers.hlsl"
+          %8 = OpString "shaders/inc/debug_utils.hlsl"
+          %9 = OpString "shaders/inc/tracked_buffer.hlsl"
+         %10 = OpString "shaders/grass/bundles_prefix.cs.hlsl"
+         %11 = OpString "shaders/grass/grass_common.inc.hlsl"
+         %12 = OpString "shaders/inc/consts.hlsl"
+         %13 = OpString "shaders/inc/prefix_scan.hlsl"
+               OpSource HLSL 640 %5 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %6 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %7 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %8 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %9 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %10 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %11 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %12 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %13 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpName %shared_data2x "shared_data2x"
+               OpName %type_RWByteAddressBuffer "type.RWByteAddressBuffer"
+               OpName %__alias_tile_bundle_subtotal_buffer "__alias_tile_bundle_subtotal_buffer"
+               OpName %cs_main "cs_main"
+               OpModuleProcessed "dxc-commit-hash: 16ceb560"
+               OpModuleProcessed "dxc-cl-option: /tmp/.tmpPKaNbm -E cs_main -T cs_6_4 -spirv -WX -Ges -fspv-target-env=vulkan1.1 -HV 2021 -Zi -Fo /tmp/.tmpK7Rftj -Qembed_debug"
+               OpDecorate %gl_GlobalInvocationID BuiltIn GlobalInvocationId
+               OpDecorate %gl_LocalInvocationIndex BuiltIn LocalInvocationIndex
+               OpDecorate %__alias_tile_bundle_subtotal_buffer DescriptorSet 0
+               OpDecorate %__alias_tile_bundle_subtotal_buffer Binding 13
+               OpDecorate %_runtimearr_uint ArrayStride 4
+               OpMemberDecorate %type_RWByteAddressBuffer 0 Offset 0
+               OpDecorate %type_RWByteAddressBuffer BufferBlock
+        %int = OpTypeInt 32 1
+       %uint = OpTypeInt 32 0
+     %uint_0 = OpConstant %uint 0
+   %uint_256 = OpConstant %uint 256
+     %uint_1 = OpConstant %uint 1
+     %uint_2 = OpConstant %uint 2
+    %uint_31 = OpConstant %uint 31
+     %uint_4 = OpConstant %uint 4
+%_arr_uint_uint_256 = OpTypeArray %uint %uint_256
+%_ptr_Workgroup__arr_uint_uint_256 = OpTypePointer Workgroup %_arr_uint_uint_256
+%_runtimearr_uint = OpTypeRuntimeArray %uint
+%type_RWByteAddressBuffer = OpTypeStruct %_runtimearr_uint
+%_ptr_Uniform_type_RWByteAddressBuffer = OpTypePointer Uniform %type_RWByteAddressBuffer
+     %v3uint = OpTypeVector %uint 3
+%_ptr_Input_v3uint = OpTypePointer Input %v3uint
+%_ptr_Input_uint = OpTypePointer Input %uint
+       %void = OpTypeVoid
+         %33 = OpTypeFunction %void
+       %bool = OpTypeBool
+%_ptr_Workgroup_uint = OpTypePointer Workgroup %uint
+   %uint_264 = OpConstant %uint 264
+%_ptr_Uniform_uint = OpTypePointer Uniform %uint
+%shared_data2x = OpVariable %_ptr_Workgroup__arr_uint_uint_256 Workgroup
+%__alias_tile_bundle_subtotal_buffer = OpVariable %_ptr_Uniform_type_RWByteAddressBuffer Uniform
+%gl_GlobalInvocationID = OpVariable %_ptr_Input_v3uint Input
+%gl_LocalInvocationIndex = OpVariable %_ptr_Input_uint Input
+     %uint_7 = OpConstant %uint 7
+     %uint_8 = OpConstant %uint 8
+    %int_255 = OpConstant %int 255
+     %uint_3 = OpConstant %uint 3
+    %uint_16 = OpConstant %uint 16
+    %uint_15 = OpConstant %uint 15
+     %uint_5 = OpConstant %uint 5
+    %uint_32 = OpConstant %uint 32
+     %uint_6 = OpConstant %uint 6
+    %uint_64 = OpConstant %uint 64
+    %uint_63 = OpConstant %uint 63
+   %uint_128 = OpConstant %uint 128
+   %uint_127 = OpConstant %uint 127
+               OpLine %10 11 1
+               OpNoLine
+    %cs_main = OpFunction %void None %33
+         %51 = OpLabel
+               OpLine %10 11 1
+         %52 = OpLoad %v3uint %gl_GlobalInvocationID
+         %53 = OpCompositeExtract %uint %52 0
+         %54 = OpLoad %uint %gl_LocalInvocationIndex
+               OpLine %13 67 39
+         %55 = OpIMul %uint %53 %uint_2
+               OpLine %13 17 47
+         %56 = OpBitcast %uint %55
+               OpLine %13 17 45
+         %57 = OpIMul %uint %uint_4 %56
+               OpLine %13 17 32
+         %58 = OpBitcast %uint %57
+               OpLine %9 93 16
+         %59 = OpShiftRightLogical %uint %58 %uint_2
+         %60 = OpAccessChain %_ptr_Uniform_uint %__alias_tile_bundle_subtotal_buffer %uint_0 %59
+               OpLine %9 93 27
+         %61 = OpLoad %uint %60
+         %62 = OpIAdd %uint %59 %uint_1
+               OpLine %9 93 16
+         %63 = OpAccessChain %_ptr_Uniform_uint %__alias_tile_bundle_subtotal_buffer %uint_0 %62
+               OpLine %9 93 27
+         %64 = OpLoad %uint %63
+               OpLine %13 68 5
+         %65 = OpAccessChain %_ptr_Workgroup_uint %shared_data2x %55
+               OpStore %65 %61
+               OpLine %13 69 27
+         %66 = OpIAdd %uint %55 %uint_1
+               OpLine %13 69 5
+         %67 = OpAccessChain %_ptr_Workgroup_uint %shared_data2x %66
+               OpStore %67 %64
+               OpLine %13 71 5
+               OpControlBarrier %uint_2 %uint_2 %uint_264
+               OpLine %13 76 29
+         %68 = OpShiftRightLogical %uint %53 %uint_0
+               OpLine %13 76 38
+         %69 = OpShiftLeftLogical %uint %68 %uint_1
+               OpLine %13 77 30
+         %70 = OpIAdd %uint %69 %uint_1
+               OpLine %13 81 34
+         %71 = OpAccessChain %_ptr_Workgroup_uint %shared_data2x %69
+         %72 = OpLoad %uint %71
+               OpLine %13 81 9
+         %73 = OpAccessChain %_ptr_Workgroup_uint %shared_data2x %70
+         %74 = OpLoad %uint %73
+               OpLine %13 81 31
+         %75 = OpIAdd %uint %74 %72
+               OpLine %13 81 9
+               OpStore %73 %75
+               OpLine %13 83 9
+               OpControlBarrier %uint_2 %uint_2 %uint_264
+               OpLine %13 76 29
+         %76 = OpShiftRightLogical %uint %53 %uint_1
+               OpLine %13 76 38
+         %77 = OpShiftLeftLogical %uint %76 %uint_2
+               OpLine %13 76 53
+         %78 = OpIAdd %uint %77 %uint_1
+               OpLine %13 77 30
+         %79 = OpIAdd %uint %77 %uint_2
+               OpLine %13 77 41
+         %80 = OpBitwiseAnd %uint %53 %uint_1
+               OpLine %13 77 34
+         %81 = OpIAdd %uint %79 %80
+               OpLine %13 81 34
+         %82 = OpAccessChain %_ptr_Workgroup_uint %shared_data2x %78
+         %83 = OpLoad %uint %82
+               OpLine %13 81 9
+         %84 = OpAccessChain %_ptr_Workgroup_uint %shared_data2x %81
+         %85 = OpLoad %uint %84
+               OpLine %13 81 31
+         %86 = OpIAdd %uint %85 %83
+               OpLine %13 81 9
+               OpStore %84 %86
+               OpLine %13 83 9
+               OpControlBarrier %uint_2 %uint_2 %uint_264
+               OpLine %13 76 29
+         %87 = OpShiftRightLogical %uint %53 %uint_2
+               OpLine %13 76 38
+         %88 = OpShiftLeftLogical %uint %87 %uint_3
+               OpLine %13 76 53
+         %89 = OpIAdd %uint %88 %uint_3
+               OpLine %13 77 30
+         %90 = OpIAdd %uint %88 %uint_4
+               OpLine %13 77 41
+         %91 = OpBitwiseAnd %uint %53 %uint_3
+               OpLine %13 77 34
+         %92 = OpIAdd %uint %90 %91
+               OpLine %13 81 34
+         %93 = OpAccessChain %_ptr_Workgroup_uint %shared_data2x %89
+         %94 = OpLoad %uint %93
+               OpLine %13 81 9
+         %95 = OpAccessChain %_ptr_Workgroup_uint %shared_data2x %92
+         %96 = OpLoad %uint %95
+               OpLine %13 81 31
+         %97 = OpIAdd %uint %96 %94
+               OpLine %13 81 9
+               OpStore %95 %97
+               OpLine %13 83 9
+               OpControlBarrier %uint_2 %uint_2 %uint_264
+               OpLine %13 76 29
+         %98 = OpShiftRightLogical %uint %53 %uint_3
+               OpLine %13 76 38
+         %99 = OpShiftLeftLogical %uint %98 %uint_4
+               OpLine %13 76 53
+        %100 = OpIAdd %uint %99 %uint_7
+               OpLine %13 77 30
+        %101 = OpIAdd %uint %99 %uint_8
+               OpLine %13 77 41
+        %102 = OpBitwiseAnd %uint %53 %uint_7
+               OpLine %13 77 34
+        %103 = OpIAdd %uint %101 %102
+               OpLine %13 81 34
+        %104 = OpAccessChain %_ptr_Workgroup_uint %shared_data2x %100
+        %105 = OpLoad %uint %104
+               OpLine %13 81 9
+        %106 = OpAccessChain %_ptr_Workgroup_uint %shared_data2x %103
+        %107 = OpLoad %uint %106
+               OpLine %13 81 31
+        %108 = OpIAdd %uint %107 %105
+               OpLine %13 81 9
+               OpStore %106 %108
+               OpLine %13 83 9
+               OpControlBarrier %uint_2 %uint_2 %uint_264
+               OpLine %13 76 29
+        %109 = OpShiftRightLogical %uint %53 %uint_4
+               OpLine %13 76 38
+        %110 = OpShiftLeftLogical %uint %109 %uint_5
+               OpLine %13 76 53
+        %111 = OpIAdd %uint %110 %uint_15
+               OpLine %13 77 30
+        %112 = OpIAdd %uint %110 %uint_16
+               OpLine %13 77 41
+        %113 = OpBitwiseAnd %uint %53 %uint_15
+               OpLine %13 77 34
+        %114 = OpIAdd %uint %112 %113
+               OpLine %13 81 34
+        %115 = OpAccessChain %_ptr_Workgroup_uint %shared_data2x %111
+        %116 = OpLoad %uint %115
+               OpLine %13 81 9
+        %117 = OpAccessChain %_ptr_Workgroup_uint %shared_data2x %114
+        %118 = OpLoad %uint %117
+               OpLine %13 81 31
+        %119 = OpIAdd %uint %118 %116
+               OpLine %13 81 9
+               OpStore %117 %119
+               OpLine %13 83 9
+               OpControlBarrier %uint_2 %uint_2 %uint_264
+               OpLine %13 76 29
+        %120 = OpShiftRightLogical %uint %53 %uint_5
+               OpLine %13 76 38
+        %121 = OpShiftLeftLogical %uint %120 %uint_6
+               OpLine %13 76 53
+        %122 = OpIAdd %uint %121 %uint_31
+               OpLine %13 77 30
+        %123 = OpIAdd %uint %121 %uint_32
+               OpLine %13 77 41
+        %124 = OpBitwiseAnd %uint %53 %uint_31
+               OpLine %13 77 34
+        %125 = OpIAdd %uint %123 %124
+               OpLine %13 81 34
+        %126 = OpAccessChain %_ptr_Workgroup_uint %shared_data2x %122
+        %127 = OpLoad %uint %126
+               OpLine %13 81 9
+        %128 = OpAccessChain %_ptr_Workgroup_uint %shared_data2x %125
+        %129 = OpLoad %uint %128
+               OpLine %13 81 31
+        %130 = OpIAdd %uint %129 %127
+               OpLine %13 81 9
+               OpStore %128 %130
+               OpLine %13 83 9
+               OpControlBarrier %uint_2 %uint_2 %uint_264
+               OpLine %13 76 29
+        %131 = OpShiftRightLogical %uint %53 %uint_6
+               OpLine %13 76 38
+        %132 = OpShiftLeftLogical %uint %131 %uint_7
+               OpLine %13 76 53
+        %133 = OpIAdd %uint %132 %uint_63
+               OpLine %13 77 30
+        %134 = OpIAdd %uint %132 %uint_64
+               OpLine %13 77 41
+        %135 = OpBitwiseAnd %uint %53 %uint_63
+               OpLine %13 77 34
+        %136 = OpIAdd %uint %134 %135
+               OpLine %13 81 34
+        %137 = OpAccessChain %_ptr_Workgroup_uint %shared_data2x %133
+        %138 = OpLoad %uint %137
+               OpLine %13 81 9
+        %139 = OpAccessChain %_ptr_Workgroup_uint %shared_data2x %136
+        %140 = OpLoad %uint %139
+               OpLine %13 81 31
+        %141 = OpIAdd %uint %140 %138
+               OpLine %13 81 9
+               OpStore %139 %141
+               OpLine %13 83 9
+               OpControlBarrier %uint_2 %uint_2 %uint_264
+               OpLine %13 76 29
+        %142 = OpShiftRightLogical %uint %53 %uint_7
+               OpLine %13 76 38
+        %143 = OpShiftLeftLogical %uint %142 %uint_8
+               OpLine %13 76 53
+        %144 = OpIAdd %uint %143 %uint_127
+               OpLine %13 77 30
+        %145 = OpIAdd %uint %143 %uint_128
+               OpLine %13 77 41
+        %146 = OpBitwiseAnd %uint %53 %uint_127
+               OpLine %13 77 34
+        %147 = OpIAdd %uint %145 %146
+               OpLine %13 81 34
+        %148 = OpAccessChain %_ptr_Workgroup_uint %shared_data2x %144
+        %149 = OpLoad %uint %148
+               OpLine %13 81 9
+        %150 = OpAccessChain %_ptr_Workgroup_uint %shared_data2x %147
+        %151 = OpLoad %uint %150
+               OpLine %13 81 31
+        %152 = OpIAdd %uint %151 %149
+               OpLine %13 81 9
+               OpStore %150 %152
+               OpLine %13 83 9
+               OpControlBarrier %uint_2 %uint_2 %uint_264
+               OpLine %13 91 17
+        %153 = OpUGreaterThan %bool %53 %uint_0
+               OpLine %13 91 13
+               OpSelectionMerge %154 None
+               OpBranchConditional %153 %155 %156
+        %155 = OpLabel
+               OpLine %13 91 45
+        %157 = OpISub %uint %55 %uint_1
+               OpLine %13 91 23
+        %158 = OpAccessChain %_ptr_Workgroup_uint %shared_data2x %157
+        %159 = OpLoad %uint %158
+               OpLine %13 91 48
+               OpBranch %154
+        %156 = OpLabel
+               OpLine %13 91 52
+               OpBranch %154
+        %154 = OpLabel
+        %160 = OpPhi %uint %159 %155 %uint_0 %156
+               OpLine %13 92 13
+        %161 = OpLoad %uint %65
+               OpLine %9 133 20
+               OpStore %60 %160
+               OpStore %63 %161
+               OpLine %13 96 12
+        %162 = OpAccessChain %_ptr_Workgroup_uint %shared_data2x %int_255
+        %163 = OpLoad %uint %162
+               OpLine %10 14 11
+        %164 = OpIEqual %bool %uint_0 %54
+               OpLine %10 14 32
+               OpSelectionMerge %165 None
+               OpBranchConditional %164 %166 %165
+        %166 = OpLabel
+               OpLine %9 123 9
+        %167 = OpAccessChain %_ptr_Uniform_uint %__alias_tile_bundle_subtotal_buffer %uint_0 %uint_256
+               OpLine %9 123 20
+               OpStore %167 %163
+               OpLine %10 16 5
+               OpBranch %165
+        %165 = OpLabel
+               OpLine %10 17 1
+               OpReturn
+               OpFunctionEnd

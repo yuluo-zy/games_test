@@ -1,0 +1,579 @@
+--- /dev/null
++++ b/games_test/tiny-glade/crates/country-core/src/systems/wall/deferred_wall_history.rs
+@@ -0,0 +1,113 @@
++//! B deferred freehand wall expansion, using the existing typed compound
++//! history and its recording consumer. Merge history remains a separate branch.
++use std::sync::Arc;
++
++use bevy_ecs::prelude::*;
++use glam::Vec2;
++use utils::curve::Curve2 as InputCurve;
++
++use crate::{
++    resources::{
++        history::wall_edit::{WallAuthoritySnapshot, WallCompoundHistoryEdit, WallHistoryEdit},
++        roofs::geometry::surface::Curve2,
++        walls::WallId,
++    },
++    systems::wall::history_recording::RecordWallHistory,
++};
++
++#[derive(Clone, Debug)]
++pub struct PendingWallChanged {
++    pub wall: WallId,
++    pub previous: WallAuthoritySnapshot,
++    pub next: WallAuthoritySnapshot,
++    pub observed_operation: [u8; 12],
++}
++
++/// This is the same pending owner written by FinishWall and drained by the
++/// deferred history system. No parallel source or default previous wall exists.
++#[derive(Resource, Clone, Debug, Default)]
++pub struct PendingWallHistory {
++    pub wall_changed: Option<PendingWallChanged>,
++}
++
++/// Adapt only representation: retain original authority points_u/length rather
++/// than replacing its stored parameterization with newly computed values.
++fn input_curve(curve: &Curve2) -> InputCurve {
++    let mut input = InputCurve::crashy_new_from_points(
++        curve.points.iter().copied().map(Vec2::from_array).collect(),
++        false,
++    );
++    input.points_u.clone_from(&curve.points_u);
++    input.length = curve.length;
++    input
++}
++
++impl PendingWallChanged {
++    /// Original 0x1408dc9f0. A direction byte chooses the previous first/last
++    /// endpoint, projected onto the next curve; only a strict old subrange exists.
++    pub fn try_new(
++        wall: WallId,
++        previous: WallAuthoritySnapshot,
++        next: WallAuthoritySnapshot,
++        extend_start: bool,
++    ) -> Option<Self> {
++        assert!(
++            !previous.source.curve.points.is_empty(),
++            "!before.curve.is_empty()"
++        );
++        assert!(
++            !next.source.curve.points.is_empty(),
++            "!after.curve.is_empty()"
++        );
++        let endpoint = if extend_start {
++            previous.source.curve.points[0]
++        } else {
++            *previous.source.curve.points.last().unwrap()
++        };
++        // Reuse the recovered original strict-distance / first-tie projection.
++        // The existing geometry API asserts its final parameter is finite.
++        let coordinate =
++            input_curve(&next.source.curve).get_approx_u_from_pos(Vec2::from_array(endpoint));
++        let coordinate = coordinate.clamp(0.0, 1.0);
++        let (low, high) = if extend_start {
++            (coordinate, 1.0)
++        } else {
++            (0.0, coordinate)
++        };
++        if !(low < high) {
++            return None;
++        }
++        let mut observed_operation = [0; 12];
++        observed_operation[4..8].copy_from_slice(&low.to_le_bytes());
++        observed_operation[8..12].copy_from_slice(&high.to_le_bytes());
++        Some(Self {
++            wall,
++            previous,
++            next,
++            observed_operation,
++        })
++    }
++
++    pub fn into_compound(self) -> WallCompoundHistoryEdit {
++        WallCompoundHistoryEdit {
++            groups: vec![vec![WallHistoryEdit::StateChange {
++                wall: crate::resources::walls::publication_fields::WallId(self.wall.0),
++                previous: self.previous,
++                next: self.next,
++                observed_operation: self.observed_operation,
++            }]],
++        }
++    }
++}
++
++/// Original 0x1408dccf0 drains once into one concurrent-edit group. Feed the
++/// already installed RecordWallHistory consumer so its transaction/error path
++/// remains shared with other live wall edits.
++pub fn history_record_wall_changed(
++    mut pending: ResMut<PendingWallHistory>,
++    mut records: EventWriter<RecordWallHistory>,
++) {
++    if let Some(changed) = pending.wall_changed.take() {
++        records.write(RecordWallHistory(Arc::new(changed.into_compound())));
++    }
++}
+--- a/games_test/tiny-glade/crates/country-core/src/systems/wall/finish_wall.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/wall/finish_wall.rs
+@@ -1,14 +1,16 @@
+-//! B FinishWall(true), fresh unsnapped wall/fence completion. The existing
+-//! compound-history producer retains seed-create and full-growth groups.
++//! B FinishWall distinguishes new-wall completion (true) from existing-wall
++//! continuation completion (false); false is not a generic cancellation flag.
+ use bevy_ecs::prelude::*;
+ 
+ use crate::{
+     resources::{
++        color_id::{HalftimberColorIds, WallColorIds},
+         in_progress_curve::InProgressCurve,
+         onboarding::NotifyHintSystemToolWasJustUsed,
+         walls::{InnerWalls, WallId, WallState},
+     },
+     systems::wall::{
++        deferred_wall_history::{PendingWallChanged, PendingWallHistory},
+         draw_wall::{WallDrawingIssue, WallDrawingIssues},
+         history_recording::RecordWallHistory,
+         snapping::SnappingMode,
+@@ -37,11 +39,14 @@
+     mut events: EventReader<FinishWall>,
+     mut walls: ResMut<InnerWalls>,
+     mut progress: ResMut<InProgressCurve>,
+-    continuation: Res<ContinueWallOriginalState>,
++    mut continuation: ResMut<ContinueWallOriginalState>,
+     snap: Res<SnappingMode>,
+     mut records: EventWriter<RecordWallHistory>,
+     mut used: EventWriter<NotifyHintSystemToolWasJustUsed>,
+     mut issues: ResMut<WallDrawingIssues>,
++    mut pending: ResMut<PendingWallHistory>,
++    wall_colors: Res<WallColorIds>,
++    fence_colors: Res<HalftimberColorIds>,
+ ) {
+     // Original consumes every pending event and uses the final bool, rather
+     // than replaying completion once for each unread event.
+@@ -51,7 +56,76 @@
+     let Some(wall) = progress.wall else {
+         return;
+     };
+-    if !event.0 || continuation.previous.is_some() || snap.mode > 1 {
++    if !event.0 {
++        // ui_continue_wall writes false; its captured source selects this
++        // family. There is no rollback/delete when no previous source exists.
++        let Some(state) = walls.get(wall) else {
++            progress.clear();
++            return;
++        };
++        if continuation.previous.is_none() {
++            progress.clear();
++            return;
++        }
++        // Premade-shape enclosure and snapped merges have additional original
++        // producers/consumers. Retain both owners until those paths are ready.
++        if snap.mode > 1 || state.source().curve_kind_tag < 2 {
++            issues.0.push(WallDrawingIssue::UnsupportedFinish {
++                wall,
++                commit: event.0,
++                snapped_mode: snap.mode,
++                continued: true,
++            });
++            return;
++        }
++        let Some(metadata) = progress.drawing.as_ref() else {
++            issues.0.push(WallDrawingIssue::MissingFinishMetadata {
++                wall,
++                commit: event.0,
++            });
++            return;
++        };
++        let previous = continuation.previous.take().unwrap();
++        let mut captured = state.snapshot().clone();
++        captured.source.extra = metadata.desired_height;
++        let valid = is_valid_finished_wall(
++            captured.source.curve.points.len(),
++            captured.source.curve.length,
++        );
++        if valid {
++            if let Some(changed) = PendingWallChanged::try_new(
++                wall,
++                previous.snapshot().clone(),
++                captured,
++                progress.flags & 1 != 0,
++            ) {
++                // Original replace happens before its collision assertion.
++                assert!(
++                    pending.wall_changed.replace(changed).is_none(),
++                    "pending_wall_history.wall_changed.replace(expand).is_none()"
++                );
++                progress.clear();
++                return;
++            }
++        }
++        // Invalid continuation removes the live wall but records the actual
++        // original source and the current color owner for undo restoration.
++        let color = if metadata.kind == 0 {
++            wall_colors.0[wall.0 as usize]
++        } else {
++            fence_colors.0[wall.0 as usize]
++        };
++        walls.remove(wall);
++        records.write(RecordWallHistory::deleted_wall_with_height(
++            wall,
++            &previous,
++            color,
++            metadata.desired_height,
++        ));
++        progress.clear();
++        return;
++    }
++    if continuation.previous.is_some() || snap.mode > 1 {
+         issues.0.push(WallDrawingIssue::UnsupportedFinish {
+             wall,
+             commit: event.0,
+@@ -90,6 +164,188 @@
+ #[cfg(test)]
+ mod tests {
+     use super::*;
++
++    fn complete(previous: bool, extend_start: bool, invalid: bool) -> World {
++        use crate::{
++            resources::{
++                history::History, roofs::geometry::surface::Curve2,
++                walls::in_progress_wall::WallDrawingMetadata,
++            },
++            systems::{
++                history::recording::HistoryRecordingFailed,
++                wall::{
++                    deferred_wall_history::history_record_wall_changed,
++                    history_recording::record_wall_history,
++                },
++            },
++        };
++        let mut world = World::new();
++        let before = WallState::new(
++            Curve2::try_new(vec![[0.0, 0.0], [1.0, 0.0]], false).unwrap(),
++            3.9,
++            0,
++            0,
++            false,
++        );
++        let points = if invalid {
++            vec![[0.0, 0.0], [0.1, 0.0]]
++        } else if extend_start {
++            vec![[-1.0, 0.0], [1.0, 0.0]]
++        } else {
++            vec![[0.0, 0.0], [2.0, 0.0]]
++        };
++        let live = WallState::new(Curve2::try_new(points, false).unwrap(), 2.0, 0, 0, false);
++        let mut walls = InnerWalls::new();
++        let wall = walls.new_wall_from_curve(live);
++        world.insert_resource(walls);
++        let mut progress = InProgressCurve::default();
++        progress.wall = Some(wall);
++        progress.current_wall = wall;
++        progress.flags = u8::from(extend_start);
++        progress.drawing = Some(WallDrawingMetadata {
++            first_unsnapped_cursor: None,
++            desired_height: 7.0,
++            color_id: 99,
++            kind: 0,
++            freehand_ty: 0,
++        });
++        world.insert_resource(progress);
++        world.insert_resource(ContinueWallOriginalState {
++            previous: previous.then_some(before),
++        });
++        world.init_resource::<SnappingMode>();
++        world.init_resource::<WallDrawingIssues>();
++        world.init_resource::<PendingWallHistory>();
++        let mut colors = WallColorIds::new();
++        colors.0[wall.0 as usize] = 17;
++        world.insert_resource(colors);
++        world.init_resource::<HalftimberColorIds>();
++        world.init_resource::<Events<FinishWall>>();
++        world.init_resource::<Events<RecordWallHistory>>();
++        world.init_resource::<Events<NotifyHintSystemToolWasJustUsed>>();
++        world.init_resource::<Events<HistoryRecordingFailed>>();
++        let mut history = History::<()>::empty_glade();
++        history.start_input_recording(12).unwrap();
++        world.insert_resource(history);
++        world
++            .resource_mut::<Events<FinishWall>>()
++            .send(FinishWall(false));
++        let mut schedule = Schedule::default();
++        schedule.add_systems(
++            (
++                finish_wall,
++                history_record_wall_changed,
++                record_wall_history::<()>,
++            )
++                .chain(),
++        );
++        schedule.run(&mut world);
++        schedule.run(&mut world); // drained pending/event cursors must not record twice
++        world
++    }
++
++    #[test]
++    fn false_finishes_existing_wall_and_records_exact_old_subrange_once() {
++        use crate::resources::history::{EditType, History, wall_edit::WallHistoryEdit};
++        for extend_start in [false, true] {
++            let world = complete(true, extend_start, false);
++            let wall = WallId(1);
++            assert!(
++                world
++                    .resource::<ContinueWallOriginalState>()
++                    .previous
++                    .is_none()
++            );
++            assert!(world.resource::<InProgressCurve>().wall.is_none());
++            assert!(
++                world
++                    .resource::<PendingWallHistory>()
++                    .wall_changed
++                    .is_none()
++            );
++            assert_eq!(
++                world.resource::<InnerWalls>().get_unwrapped(wall).height(),
++                2.0
++            );
++            assert!(
++                world
++                    .resource::<Events<NotifyHintSystemToolWasJustUsed>>()
++                    .is_empty()
++            );
++            assert!(world.resource::<WallDrawingIssues>().0.is_empty());
++            let edits = &world.resource::<History>().pending().unwrap().edits;
++            assert_eq!(edits.len(), 1);
++            let EditType::Wall(compound) = &edits[0] else {
++                panic!("wall history");
++            };
++            assert_eq!((compound.groups.len(), compound.groups[0].len()), (1, 1));
++            let WallHistoryEdit::StateChange {
++                previous,
++                next,
++                observed_operation,
++                ..
++            } = &compound.groups[0][0]
++            else {
++                panic!("expanded wall");
++            };
++            assert_eq!(previous.source.extra, 3.9);
++            assert_eq!(next.source.extra, 7.0);
++            let low = f32::from_le_bytes(observed_operation[4..8].try_into().unwrap());
++            let high = f32::from_le_bytes(observed_operation[8..12].try_into().unwrap());
++            assert_eq!(
++                (low, high),
++                if extend_start { (0.5, 1.0) } else { (0.0, 0.5) }
++            );
++        }
++    }
++
++    #[test]
++    fn invalid_continuation_records_previous_source_and_actual_color_before_removal() {
++        use crate::resources::history::{EditType, History, wall_edit::WallHistoryEdit};
++        let world = complete(true, false, true);
++        assert!(!world.resource::<InnerWalls>().contains(WallId(1)));
++        assert!(
++            world
++                .resource::<ContinueWallOriginalState>()
++                .previous
++                .is_none()
++        );
++        assert!(world.resource::<InProgressCurve>().wall.is_none());
++        let edits = &world.resource::<History>().pending().unwrap().edits;
++        let EditType::Wall(compound) = &edits[0] else {
++            panic!("wall history");
++        };
++        let WallHistoryEdit::Delete {
++            source,
++            color_id,
++            restored_height,
++            ..
++        } = &compound.groups[0][0]
++        else {
++            panic!("previous source delete");
++        };
++        assert_eq!(source.source.curve.points, [[0.0, 0.0], [1.0, 0.0]]);
++        assert_eq!(source.source.extra, 3.9);
++        assert_eq!(*restored_height, 7.0);
++        assert_eq!(*color_id, 17); // captured draw color was 99
++    }
++
++    #[test]
++    fn false_without_previous_drops_progress_but_keeps_actual_live_wall() {
++        use crate::resources::history::History;
++        let world = complete(false, false, false);
++        assert!(world.resource::<InnerWalls>().contains(WallId(1)));
++        assert!(world.resource::<InProgressCurve>().wall.is_none());
++        assert!(
++            world
++                .resource::<History>()
++                .pending()
++                .unwrap()
++                .edits
++                .is_empty()
++        );
++        assert!(world.resource::<WallDrawingIssues>().0.is_empty());
++    }
+ 
+     #[test]
+     fn original_finish_point_length_and_unordered_gates() {
+--- a/games_test/tiny-glade/crates/country-core/src/systems/wall/ui_continue_wall.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/wall/ui_continue_wall.rs
+@@ -1,10 +1,88 @@
+-//! Existing-wall continuation is a separate original producer. Only its
+-//! suppression flag written by ui_draw_wall is restored in this batch.
+-use bevy_ecs::prelude::Resource;
++//! B continuation suppression, 0x140aadbb0 (375B). The endpoint UI producer
++//! is separate; this resource retains its actual release flag and reset inputs.
++use crate::{
++    resources::{time::GameTime, window::CursorMovedScreenSpace},
++    systems::backend::input::mod_key::Modifiers,
++};
++use bevy_ecs::prelude::*;
+ 
+ #[derive(Resource, Clone, Copy, Debug, Default)]
+ pub struct SuppressContinueWall {
+-    /// Original +8: set on draw completion; its later reset belongs to the
+-    /// original continuation input consumer, not to a fabricated UI timeout.
++    pub elapsed: f32,
++    pub distance: f32,
+     pub suppressed: bool,
+ }
++
++pub fn suppress_continue_wall(
++    modifiers: Res<Modifiers>,
++    mut state: ResMut<SuppressContinueWall>,
++    time: Res<GameTime>,
++    mut motion: EventReader<CursorMovedScreenSpace>,
++) {
++    if state.suppressed {
++        state.elapsed += time.delta;
++        // Original clears every pending event, then measures only the last
++        // payload. Events remain unread while suppression is inactive.
++        if let Some(motion) = motion.read().last() {
++            let point = motion.0;
++            state.distance += (point.y * point.y + point.x * point.x).sqrt();
++        }
++        if state.elapsed >= 1.0 || state.distance >= 50.0 {
++            state.suppressed = false;
++            state.elapsed = 0.0;
++            state.distance = 0.0;
++        }
++    }
++    // This check is after the thresholds: holding the modifier re-arms the
++    // flag in the same frame, without changing either accumulator here.
++    if modifiers.disable_snapping() {
++        state.suppressed = true;
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use glam::Vec2;
++
++    #[test]
++    fn last_movement_only_and_modifier_rearm_keep_original_event_cursor_order() {
++        let mut world = World::new();
++        world.insert_resource(Modifiers { flags: 1 });
++        world.init_resource::<SuppressContinueWall>();
++        world.insert_resource(GameTime {
++            delta: 0.2,
++            ..Default::default()
++        });
++        world.init_resource::<Events<CursorMovedScreenSpace>>();
++        let mut schedule = Schedule::default();
++        schedule.add_systems(suppress_continue_wall);
++        // Inactive suppression does not consume this event.
++        world
++            .resource_mut::<Events<CursorMovedScreenSpace>>()
++            .send(CursorMovedScreenSpace(Vec2::new(50.0, 0.0)));
++        schedule.run(&mut world);
++        let state = world.resource::<SuppressContinueWall>();
++        assert!(state.suppressed);
++        assert_eq!((state.elapsed, state.distance), (0.0, 0.0));
++        world.resource_mut::<Modifiers>().flags = 0;
++        schedule.run(&mut world);
++        let state = world.resource::<SuppressContinueWall>();
++        assert!(!state.suppressed);
++        assert_eq!((state.elapsed, state.distance), (0.0, 0.0));
++        world.resource_mut::<SuppressContinueWall>().suppressed = true;
++        let mut motion = world.resource_mut::<Events<CursorMovedScreenSpace>>();
++        motion.send(CursorMovedScreenSpace(Vec2::new(30.0, 40.0)));
++        motion.send(CursorMovedScreenSpace(Vec2::new(3.0, 4.0)));
++        schedule.run(&mut world);
++        let state = world.resource::<SuppressContinueWall>();
++        assert!(state.suppressed);
++        assert_eq!((state.elapsed, state.distance), (0.2, 5.0));
++        world.resource_mut::<SuppressContinueWall>().elapsed = 0.9;
++        world.resource_mut::<Modifiers>().flags = 1;
++        schedule.run(&mut world);
++        let state = world.resource::<SuppressContinueWall>();
++        assert!(state.suppressed);
++        assert_eq!((state.elapsed, state.distance), (0.0, 0.0));
++    }
++}
+--- a/games_test/tiny-glade/crates/country-core/src/systems/wall/draw_wall.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/wall/draw_wall.rs
+@@ -201,9 +201,13 @@
+         added
+     };
+     if kind == 0 {
+-        commands.wall_color.write(SetWallColorIdCmd::new(wall, color_id, 0));
++        commands
++            .wall_color
++            .write(SetWallColorIdCmd::new(wall, color_id, 0));
+     } else {
+-        commands.fence_color.write(SetHalftimberColorIdCmd::new(wall, color_id, 0));
++        commands
++            .fence_color
++            .write(SetHalftimberColorIdCmd::new(wall, color_id, 0));
+     }
+     walls.update_freehand_ty(wall, freehand_ty);
+     let old_height = walls.get_unwrapped(wall).height();
+@@ -312,6 +316,9 @@
+         world.init_resource::<SuppressContinueWall>();
+         world.init_resource::<SnappingMode>();
+         world.init_resource::<WallDrawingIssues>();
++        world.init_resource::<crate::systems::wall::deferred_wall_history::PendingWallHistory>();
++        world.init_resource::<crate::resources::color_id::WallColorIds>();
++        world.init_resource::<crate::resources::color_id::HalftimberColorIds>();
+         world.init_resource::<LiveDecoratorArchivist>();
+         world.init_resource::<DecoratorStorage>();
+         world.init_resource::<GameConfig>();
+@@ -587,7 +594,7 @@
+         );
+     }
+     #[test]
+-    fn unsupported_snap_and_cancel_keep_the_live_curve_and_exact_request() {
++    fn unsupported_snap_keeps_the_live_curve_and_exact_last_finish_request() {
+         let mut world = world(false);
+         let input = InputCurve::crashy_new_from_points(vec![Vec2::ZERO, Vec2::X], false);
+         let wall = world.resource_mut::<InnerWalls>().new_wall_w_params(
+@@ -625,20 +632,20 @@
+         assert!(
+             matches!(world.resource::<WallDrawingIssues>().0.as_slice(), [WallDrawingIssue::SnappedTopology { wall: id, mode: 2, point }] if *id == wall && *point == Vec3::new(4.0,2.0,3.0))
+         );
+-        world.resource_mut::<SnappingMode>().mode = 0;
++        world.resource_mut::<SnappingMode>().mode = 2;
++        world
++            .resource_mut::<Events<FinishWall>>()
++            .send(FinishWall(false));
+         world
+             .resource_mut::<Events<FinishWall>>()
+             .send(FinishWall(true));
+-        world
+-            .resource_mut::<Events<FinishWall>>()
+-            .send(FinishWall(false));
+         let mut finish = Schedule::default();
+         finish.add_systems(finish_wall);
+         finish.run(&mut world);
+         assert_eq!(world.resource::<InProgressCurve>().wall, Some(wall));
+         assert!(world.resource::<InnerWalls>().contains(wall));
+         assert!(
+-            matches!(world.resource::<WallDrawingIssues>().0.last(), Some(WallDrawingIssue::UnsupportedFinish { wall: id, commit: false, snapped_mode: 0, continued: false }) if *id == wall)
++            matches!(world.resource::<WallDrawingIssues>().0.last(), Some(WallDrawingIssue::UnsupportedFinish { wall: id, commit: true, snapped_mode: 2, continued: false }) if *id == wall)
+         );
+         assert!(world.resource::<Events<RecordWallHistory>>().is_empty());
+     }

@@ -1,0 +1,42 @@
+// 0x1408336b0 send size=224
+
+void __cdecl country_core::resources::walls::decorator::DeferredDecoratorOpEvents::send(void)
+
+{
+  longlong lVar1;
+  longlong *in_RCX;
+  void *in_RDX;
+  
+  LOCK();
+  lVar1 = *in_RCX;
+  if (lVar1 == 0) {
+    *in_RCX = 8;
+  }
+  UNLOCK();
+  if (lVar1 != 0) {
+    parking_lot::raw_rwlock::RawRwLock::lock_exclusive_slow();
+  }
+  parking_lot_core::parking_lot::deadlock_impl::acquire_resource();
+  parking_lot_core::parking_lot::deadlock_impl::acquire_resource();
+  lVar1 = in_RCX[3];
+  if (lVar1 == in_RCX[1]) {
+    alloc::raw_vec::RawVec::
+    grow_one<enum2_<tiny_glade::event_loop::OsWindowEvent>,alloc::alloc::Global>();
+  }
+  memcpy((void *)(lVar1 * 0x88 + in_RCX[2]),in_RDX,0x88);
+  in_RCX[3] = lVar1 + 1;
+  parking_lot_core::parking_lot::deadlock_impl::release_resource();
+  parking_lot_core::parking_lot::deadlock_impl::release_resource();
+  LOCK();
+  lVar1 = *in_RCX;
+  if (lVar1 == 8) {
+    *in_RCX = 0;
+  }
+  UNLOCK();
+  if (lVar1 != 8) {
+    parking_lot::raw_rwlock::RawRwLock::unlock_exclusive_slow();
+    return;
+  }
+  return;
+}
+

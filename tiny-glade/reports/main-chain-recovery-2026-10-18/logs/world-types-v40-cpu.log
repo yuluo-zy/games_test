@@ -1,0 +1,48 @@
+
+running 18 tests
+
+thread 'systems::render_loop::render_world::tests::missing_world_config_resource_panics' (24398710) panicked at crates/country-core/src/systems/render_loop/render_world.rs:454:35:
+called `Option::unwrap()` on a `None` value
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'systems::render_loop::render_world::tests::prev_depth_error_emits_no_pass' (24398712) panicked at crates/country-core/src/systems/render_loop/render_world.rs:463:10:
+called `Result::unwrap()` on an `Err` value: "boom"
+
+thread 'systems::render_loop::render_world::tests::prev_depth_temporal_error_panics_before_uploads' (24398713) panicked at crates/country-core/src/systems/render_loop/render_world.rs:463:10:
+called `Result::unwrap()` on an `Err` value: "boom"
+test systems::render_loop::render_world::tests::panic_line_table_matches_location_statics ... ok
+
+thread 'systems::render_loop::render_world::tests::history_pair_error_panics' (24398708) panicked at crates/country-core/src/systems/render_loop/render_world.rs:543:10:
+called `Result::unwrap()` on an `Err` value: "pair"
+
+thread 'systems::render_loop::render_world::tests::missing_dof_resource_panics' (24398709) panicked at crates/country-core/src/systems/render_loop/render_world.rs:600:33:
+called `Option::unwrap()` on a `None` value
+test systems::render_loop::render_world::tests::dof_flag_index_follows_multires_mode ... ok
+test systems::render_loop::render_world::tests::missing_world_config_resource_panics - should panic ... ok
+test systems::render_loop::render_world::tests::refraction_and_surface_skipped_when_flag_c098_set ... ok
+test systems::render_loop::render_world::tests::prev_depth_temporal_error_panics_before_uploads - should panic ... ok
+test systems::render_loop::render_world::tests::history_pair_error_panics - should panic ... ok
+test systems::render_loop::render_world::tests::missing_dof_resource_panics - should panic ... ok
+
+thread 'systems::render_loop::render_world::tests::tgsr_without_display_resource_panics' (24398719) panicked at crates/country-core/src/systems/render_loop/render_world.rs:534:48:
+called `Option::unwrap()` on a `None` value
+test systems::render_loop::render_world::tests::second_cull_round_skipped_when_flag_c0d8_set ... ok
+test systems::render_loop::render_world::tests::full_world_frame_order_taa_path ... ok
+test systems::render_loop::render_world::tests::taa_output_extent_follows_dof_result ... ok
+test systems::render_loop::render_world::tests::texture_desc_matches_rhapsody_bytes ... ok
+
+thread 'systems::render_loop::render_world::tests::zero_height_dims_panic' (24398722) panicked at crates/country-core/src/systems/render_loop/render_world.rs:445:5:
+assertion failed: world_render_dims[0] > 0 && world_render_dims[1] > 0
+test systems::render_loop::render_world::tests::prev_depth_error_emits_no_pass ... 
+thread 'systems::render_loop::render_world::tests::zero_width_dims_panic_before_any_pass' (24398723) panicked at crates/country-core/src/systems/render_loop/render_world.rs:445:5:
+assertion failed: world_render_dims[0] > 0 && world_render_dims[1] > 0
+ok
+test systems::render_loop::render_world::tests::tgsr_path_uses_display_dims_and_other_pass ... ok
+test systems::render_loop::render_world::tests::tgsr_without_display_resource_panics - should panic ... ok
+test systems::render_loop::render_world::tests::winter_selects_ice_surface ... ok
+test systems::render_loop::render_world::tests::upload_slots_and_temporal_constants ... ok
+test systems::render_loop::render_world::tests::zero_height_dims_panic - should panic ... ok
+test systems::render_loop::render_world::tests::zero_width_dims_panic_before_any_pass - should panic ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 2366 filtered out; finished in 0.00s
+

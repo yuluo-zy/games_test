@@ -1,0 +1,82 @@
+--- games_test/tiny-glade/crates/tiny-glade/src/run_game.rs
++++ games_test/tiny-glade/crates/tiny-glade/src/run_game.rs
+@@ -338,6 +338,33 @@
+     // resources::insert_resources @0x140940dce..0x140940dd7 passes two
+     // zero floats to the named CursorPositionSS insertion @0x14153cc00.
+     app.insert_resource(CursorPositionSS([0.0, 0.0].into()));
++    // B backend constructor140940db1..e30: cursor hit tag0/delta0/speed0,
++    // actual world ray(-0,-0,-1), and56B zero CPU mouse-depth value.
++    app.insert_resource(country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast::new());
++    app.insert_resource(country_core::resources::mouse_terrain_raycast::CameraCursorRay::new());
++    app.insert_resource(country_core::resources::read_mouse_depth_value::MouseDepthValue::new());
++    app.init_resource::<country_core::systems::main_camera::CameraSnapshot>();
++    app.add_event::<country_core::systems::main_camera::MainCameraMoved>();
++    app.add_event::<country_core::resources::window::AudioCursorMoved>();
++    // Original MainCameraPlugin::build1409125e0, Update set9. The .before
++    // target is camera_snapshot's SystemTypeSet at142c96f70, not only update.
++    app.add_systems(
++        bevy_app::Update,
++        country_core::systems::main_camera::reset_camera
++            .in_set(GameSystemSet(9))
++            .before(country_core::systems::main_camera::camera_snapshot)
++            .run_if(bevy_ecs::schedule::common_conditions::on_event::<country_core::resources::session::NewSessionStartedCmd>),
++    );
++    app.add_systems(
++        bevy_app::Update,
++        (
++            country_core::systems::main_camera::camera_snapshot.run_if(is_gameplay_active),
++            (
++                country_core::systems::main_camera::main_camera_update.run_if(is_gameplay_active),
++                country_core::systems::main_camera::paused_main_camera_update.run_if(bevy_ecs::schedule::common_conditions::not(is_gameplay_active)),
++            ),
++        ).chain_ignore_deferred().in_set(GameSystemSet(9)),
++    );
+     app.init_resource::<country_core::resources::shader_refactoring_state::ShaderRefactoringState>(
+     );
+     register_input_events(app.world_mut());
+@@ -356,10 +383,7 @@
+     app.add_event::<country_core::resources::mouse_capture::OsCursorVisibilityCmd>();
+     app.add_systems(
+         bevy_app::PostUpdate,
+-        (
+-            country_core::resources::mouse_capture::mouse_capture,
+-            country_core::resources::shutdown::initiate_game_shutdown,
+-        ),
++        country_core::resources::shutdown::initiate_game_shutdown,
+     );
+     app.add_event::<country_core::game_profile::SaveGameProfileCmd>();
+     app.add_systems(
+@@ -625,16 +649,26 @@
+     app.add_event::<mode_manager::ClearCanvasCmd>();
+     app.add_event::<mode_manager::AppModeChanged>();
+     app.add_event::<history::finish_replay::CmdUnfreezeSheep>();
+-    // run_game_thread @14059fb02 selects set10 for the UI/mode tuple.
++    // B run_game_thread14059f9d9 builds the real camera/raycast chain,
++    //14059f9e5 builds the independent UI/mode chain; their tuple shares set10
++    //at14059fb02 and one is_gameplay_active gate at14059fb57.
+     app.add_systems(
+         bevy_app::Update,
+         (
+-            mode_manager::synchronize_mode_manager_ui_context,
+-            mode_manager::mode_manager::<country_core::resources::history::EditType, country_core::resources::history::MaybePendingSnapshotId>,
+-            mode_manager::send_mode_just_changed_event.in_set(mode_manager::ModeChangePublication),
+-        )
+-            .chain_ignore_deferred()
+-            .in_set(GameSystemSet(10)),
++            (
++                country_core::resources::mouse_terrain_raycast::camera_mouse_ray,
++                country_core::resources::mouse_terrain_raycast::mouse_terrain_raycast,
++                (
++                    country_core::resources::mouse_capture::mouse_capture,
++                    country_core::resources::read_mouse_depth_value::read_mouse_depth_value_from_gpu,
++                ),
++            ).chain_ignore_deferred(),
++            (
++                mode_manager::synchronize_mode_manager_ui_context,
++                mode_manager::mode_manager::<country_core::resources::history::EditType, country_core::resources::history::MaybePendingSnapshotId>,
++                mode_manager::send_mode_just_changed_event.in_set(mode_manager::ModeChangePublication),
++            ).chain_ignore_deferred(),
++        ).in_set(GameSystemSet(10)).run_if(is_gameplay_active),
+     );
+     // add_wall_systems @140493197/3246: adjust precedes publication inside
+     // the set19 chain. Replay set40 therefore becomes visible next frame.

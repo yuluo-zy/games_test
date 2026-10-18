@@ -1,0 +1,40 @@
+0x14093f900 4889c8 mov rax, rcx
+0x14093f903 0f280526c51502 movaps xmm0, xmmword ptr [rip + 0x215c526]
+0x14093f90a 0f1101 movups xmmword ptr [rcx], xmm0
+0x14093f90d 0f114110 movups xmmword ptr [rcx + 0x10], xmm0
+0x14093f911 0f114120 movups xmmword ptr [rcx + 0x20], xmm0
+0x14093f915 0f114130 movups xmmword ptr [rcx + 0x30], xmm0
+0x14093f919 0f114140 movups xmmword ptr [rcx + 0x40], xmm0
+0x14093f91d 0f114150 movups xmmword ptr [rcx + 0x50], xmm0
+0x14093f921 0f114160 movups xmmword ptr [rcx + 0x60], xmm0
+0x14093f925 0f114170 movups xmmword ptr [rcx + 0x70], xmm0
+0x14093f929 0f118180000000 movups xmmword ptr [rcx + 0x80], xmm0
+0x14093f930 0f118190000000 movups xmmword ptr [rcx + 0x90], xmm0
+0x14093f937 0f1181a0000000 movups xmmword ptr [rcx + 0xa0], xmm0
+0x14093f93e 0f1181b0000000 movups xmmword ptr [rcx + 0xb0], xmm0
+0x14093f945 0f1181c0000000 movups xmmword ptr [rcx + 0xc0], xmm0
+0x14093f94c 0f1181d0000000 movups xmmword ptr [rcx + 0xd0], xmm0
+0x14093f953 0f1181e0000000 movups xmmword ptr [rcx + 0xe0], xmm0
+0x14093f95a 0f1181f0000000 movups xmmword ptr [rcx + 0xf0], xmm0
+0x14093f961 0f118100010000 movups xmmword ptr [rcx + 0x100], xmm0
+0x14093f968 0f118110010000 movups xmmword ptr [rcx + 0x110], xmm0
+0x14093f96f 0f118120010000 movups xmmword ptr [rcx + 0x120], xmm0
+0x14093f976 0f118130010000 movups xmmword ptr [rcx + 0x130], xmm0
+0x14093f97d 0f118140010000 movups xmmword ptr [rcx + 0x140], xmm0
+0x14093f984 0f118150010000 movups xmmword ptr [rcx + 0x150], xmm0
+0x14093f98b 0f118160010000 movups xmmword ptr [rcx + 0x160], xmm0
+0x14093f992 0f118170010000 movups xmmword ptr [rcx + 0x170], xmm0
+0x14093f999 0f118180010000 movups xmmword ptr [rcx + 0x180], xmm0
+0x14093f9a0 0f118190010000 movups xmmword ptr [rcx + 0x190], xmm0
+0x14093f9a7 0f1181a0010000 movups xmmword ptr [rcx + 0x1a0], xmm0
+0x14093f9ae 0f1181b0010000 movups xmmword ptr [rcx + 0x1b0], xmm0
+0x14093f9b5 0f1181c0010000 movups xmmword ptr [rcx + 0x1c0], xmm0
+0x14093f9bc 0f1181d0010000 movups xmmword ptr [rcx + 0x1d0], xmm0
+0x14093f9c3 0f1181e0010000 movups xmmword ptr [rcx + 0x1e0], xmm0
+0x14093f9ca 0f1181f0010000 movups xmmword ptr [rcx + 0x1f0], xmm0
+0x14093f9d1 0f118100020000 movups xmmword ptr [rcx + 0x200], xmm0
+0x14093f9d8 0f118110020000 movups xmmword ptr [rcx + 0x210], xmm0
+0x14093f9df 0f118120020000 movups xmmword ptr [rcx + 0x220], xmm0
+0x14093f9e6 0f118130020000 movups xmmword ptr [rcx + 0x230], xmm0
+0x14093f9ed 0f118140020000 movups xmmword ptr [rcx + 0x240], xmm0
+0x14093f9f4 c3 ret 

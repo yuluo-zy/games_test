@@ -1,0 +1,103 @@
+--- games_test/tiny-glade/crates/country-core/tests/input_pipeline.rs
++++ games_test/tiny-glade/crates/country-core/tests/input_pipeline.rs
+@@ -2,9 +2,9 @@
+ use bevy_ecs::prelude::*;
+ use country_core::{
+     input::{
+-        InputRecordReplayMode,
+         action_set::{ActionSetStates, ActionSetValues, MainActionSet},
+         input_stream::InputSnapshot,
++        InputRecordReplayMode,
+     },
+     resources::{
+         gui::EscMenuState, mouse_capture::CursorCapturedPosition,
+@@ -13,10 +13,11 @@
+     },
+     systems::{
+         backend::input::{
+-            self, InputSystemSet,
++            self,
+             button_input::MouseButtonInput,
+-            input_record_replay::{InputRecordReplayState, InputReplayCommand, save_recording},
++            input_record_replay::{save_recording, InputRecordReplayState, InputReplayCommand},
+             translate_input_to_cursor_moved::InputCursorMoved,
++            InputSystemSet,
+         },
+         camera_rig::main_camera::{MainCamera, NORMAL_POSITION_OFFSET},
+         mode_manager::{AppMode, AppModeChanged},
+@@ -31,6 +32,7 @@
+ }
+ fn fixture() -> (World, Schedule) {
+     let mut world = World::new();
++    world.init_resource::<country_core::resources::read_mouse_depth_value::MouseDepthValue>();
+     input::register_input_events(&mut world);
+     let mut toolbar = Toolbar::default();
+     toolbar.switch_mode(&AppMode::Path);
+@@ -119,12 +121,10 @@
+             .frame_count(),
+         3
+     );
+-    assert!(
+-        world
+-            .resource::<InputRecordReplayState>()
+-            .last_error
+-            .is_none()
+-    );
++    assert!(world
++        .resource::<InputRecordReplayState>()
++        .last_error
++        .is_none());
+ }
+ 
+ #[test]
+@@ -140,12 +140,10 @@
+     });
+     schedule.run(&mut world);
+     assert_eq!(world.resource::<InputRecordReplayState>().stream, stream);
+-    assert!(
+-        world
+-            .resource::<InputRecordReplayState>()
+-            .last_error
+-            .is_some()
+-    );
++    assert!(world
++        .resource::<InputRecordReplayState>()
++        .last_error
++        .is_some());
+     world.send_event(InputReplayCommand::Replay { rewind: u64::MAX });
+     schedule.run(&mut world);
+     assert_eq!(world.resource::<InputRecordReplayState>().stream, stream);
+@@ -457,12 +455,10 @@
+         *world.resource::<ActionSetStates>(),
+         MainActionSet::default()
+     );
+-    assert!(
+-        world
+-            .resource::<InputRecordReplayState>()
+-            .last_error
+-            .is_some()
+-    );
++    assert!(world
++        .resource::<InputRecordReplayState>()
++        .last_error
++        .is_some());
+ }
+ 
+ #[test]
+@@ -521,12 +517,10 @@
+     assert_eq!(replay.stream.sync_point_count(), 2);
+     world.send_event(InputReplayCommand::Replay { rewind: 1 });
+     schedule.run(&mut world);
+-    assert!(
+-        world
+-            .resource::<InputRecordReplayState>()
+-            .last_error
+-            .is_some()
+-    );
++    assert!(world
++        .resource::<InputRecordReplayState>()
++        .last_error
++        .is_some());
+ }
+ 
+ fn capture_commands(

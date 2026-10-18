@@ -1,24 +1,29 @@
-//! UNVERIFIED B native Info72 → actual asset/context → authoritative openings.
-//! Native ID→adapter OpeningId identity is explicit; no position/family sidecar.
+//! Resolves serialized decorator storage and asset context into wall openings.
+//! Native decorator IDs are explicitly bound to unique adapter opening IDs.
 use crate::{
     BuildingReport, PublicWalls, Roof, WallCollectionState, WallRoofMap,
     decorator_assets::DecoratorAssetLibrary,
-    openings::{OpeningAuthority, OpeningId, RemoveOpening, UpsertOpening, WithdrawOpening},
+    openings::{
+        OpeningAuthority, OpeningEntities, OpeningId, RemoveOpening, UpsertOpening, WithdrawOpening,
+    },
     wall_decorator_archivist::WallDecoratorArchiveState,
 };
 use bevy_ecs::prelude::*;
-use country_core::recovered_building::{
-    building_decorator_info::{
-        DecoratorInfoObserved, DecoratorPlaceRequestObserved, decorator_source_from_place,
-        insert_decorator_source,
-    },
-    building_decorator_placement::{DecoratorLibKey, wall_decorator_key},
-    building_decorator_subtype::{
-        WallDecoratorSubtypeContext, WallWindowKind, derive_wall_subtype, wall_attachment_subtype,
-        wall_opening_family,
-    },
-    building_opening_rules::{DecoratorOpeningInput, OpeningFamily},
-};
+use country_core::resources::walls::decorator::anchors::DecoratorInfoError;
+use country_core::resources::walls::decorator::anchors::DecoratorInfoObserved;
+use country_core::resources::walls::decorator::anchors::DecoratorPlaceInsertError;
+use country_core::resources::walls::decorator::anchors::DecoratorPlaceRequestObserved;
+use country_core::resources::walls::decorator::anchors::decorator_source_from_place;
+use country_core::resources::walls::decorator::anchors::insert_decorator_source;
+use country_core::resources::walls::decorator::placement::DecoratorLibKey;
+use country_core::resources::walls::decorator::placement::wall_decorator_key;
+use country_core::resources::walls::decorator_subtype::placement::WallDecoratorSubtypeContext;
+use country_core::resources::walls::decorator_subtype::placement::WallWindowKind;
+use country_core::resources::walls::decorator_subtype::placement::derive_wall_subtype;
+use country_core::resources::walls::decorator_subtype::placement::wall_attachment_subtype;
+use country_core::resources::walls::decorator_subtype::placement::wall_opening_family;
+use country_core::resources::walls::wall_holes::opening_rules::DecoratorOpeningInput;
+use country_core::resources::walls::wall_holes::opening_rules::OpeningFamily;
 use std::collections::{HashMap, HashSet};
 #[derive(Resource, Default)]
 pub struct NativeDecoratorOpeningIds(pub HashMap<u32, OpeningId>);
@@ -50,8 +55,9 @@ pub struct NativeDecoratorPlaceState {
     pub queued: std::collections::VecDeque<ApplyObservedDecoratorPlace>,
     pub applied_this_frame: Vec<u32>,
     pub previous_records:
-        Vec<country_core::recovered_building::building_decorator_info::StoredDecoratorPlace>,
+        Vec<country_core::resources::walls::decorator::anchors::StoredDecoratorPlace>,
     pub pending_reason: Option<String>,
+    pub rejected_this_frame: usize,
 }
 #[derive(Resource, Default)]
 pub struct NativeDecoratorOpeningState {
@@ -70,11 +76,17 @@ pub fn register(app: &mut bevy_app::App) {
         .add_event::<ForgetNativeDecoratorOpeningId>()
         .add_systems(
             bevy_app::Update,
-            consume_ids.before(crate::BuildingStage::Authoring),
+            consume_ids
+                .after(crate::BuildingStage::Begin)
+                .before(crate::BuildingStage::Authoring),
         )
         .add_systems(
             bevy_app::Update,
-            consume_places
+            (
+                consume_places,
+                crate::wall_decorator_archivist::publish_projection,
+            )
+                .chain()
                 .after(crate::BuildingStage::Authoring)
                 .before(crate::BuildingStage::CollectRaw),
         )
@@ -89,12 +101,46 @@ fn consume_ids(
     mut additions: EventReader<ObserveNativeDecoratorOpeningId>,
     mut removals: EventReader<ForgetNativeDecoratorOpeningId>,
     mut ids: ResMut<NativeDecoratorOpeningIds>,
+    mut report: ResMut<BuildingReport>,
 ) {
-    for event in additions.read() {
-        ids.0.insert(event.decorator_id, event.opening_id);
+    let removed: HashSet<_> = removals.read().map(|event| event.0).collect();
+    if !removed.is_empty() {
+        ids.0.retain(|native, _| !removed.contains(native));
     }
-    for event in removals.read() {
-        ids.0.remove(&event.0);
+    // Removing a native ID dominates a simultaneous observation of that same
+    // native ID. Its opening identity is available to other IDs in this batch.
+    let additions: Vec<_> = additions
+        .read()
+        .copied()
+        .filter(|event| !removed.contains(&event.decorator_id))
+        .collect();
+    if additions.is_empty() {
+        return;
+    }
+    let mut desired = ids.0.clone();
+    for event in &additions {
+        desired.insert(event.decorator_id, event.opening_id);
+    }
+    let mut seen = HashSet::new();
+    if desired.values().all(|opening| seen.insert(*opening)) {
+        // Validate the final map so two bindings may exchange identities.
+        ids.0 = desired;
+        return;
+    }
+    // A malformed observation does not discard unrelated valid observations.
+    for event in additions {
+        if ids
+            .0
+            .iter()
+            .any(|(native, opening)| *native != event.decorator_id && *opening == event.opening_id)
+        {
+            report.faults.push(format!(
+                "Opening {} is already bound to another native decorator",
+                event.opening_id.0
+            ));
+            continue;
+        }
+        ids.0.insert(event.decorator_id, event.opening_id);
     }
 }
 fn consume_places(
@@ -107,6 +153,7 @@ fn consume_places(
 ) {
     state.applied_this_frame.clear();
     state.pending_reason = None;
+    state.rejected_this_frame = 0;
     for event in readonly.read() {
         state.observed_storage_readonly = Some(event.0);
     }
@@ -134,17 +181,32 @@ fn consume_places(
             readonly,
         ) {
             Ok(value) => value,
-            Err(error) => {
-                let fault = format!("Decorator placement pending: {error:?}");
+            Err(DecoratorInfoError::ReadonlyStorage) => {
+                let fault = "Decorator placement pending: ReadonlyStorage".to_string();
                 state.pending_reason = Some(fault.clone());
                 report.faults.push(fault);
                 break;
+            }
+            Err(error) => {
+                report
+                    .faults
+                    .push(format!("Decorator placement rejected: {error:?}"));
+                state.rejected_this_frame += 1;
+                state.queued.pop_front();
+                continue;
             }
         };
         match insert_decorator_source(storage, &source) {
             Ok(out) => {
                 state.applied_this_frame.push(out.decorator_id.0);
                 state.previous_records.push(out);
+                state.queued.pop_front();
+            }
+            Err(error @ DecoratorPlaceInsertError::InvalidLiveNiche(_)) => {
+                report
+                    .faults
+                    .push(format!("Decorator placement rejected: {error:?}"));
+                state.rejected_this_frame += 1;
                 state.queued.pop_front();
             }
             Err(error) => {
@@ -155,6 +217,9 @@ fn consume_places(
             }
         }
     }
+    if !state.applied_this_frame.is_empty() {
+        archive.projection_dirty = true;
+    }
 }
 fn derive_input(
     info: &DecoratorInfoObserved,
@@ -162,12 +227,12 @@ fn derive_input(
     assets: &DecoratorAssetLibrary,
 ) -> Result<DecoratorOpeningInput, String> {
     let policy = info.wall_opening_policy().map_err(|e| format!("{e:?}"))?;
-    let subtype = if let Some(s) = wall_attachment_subtype(
+    let subtype = if let Some(attached_subtype) = wall_attachment_subtype(
         policy.kind,
         policy.platform_is_valid,
         policy.corner_attached,
     ) {
-        s
+        attached_subtype
     } else {
         let plain_family = match policy.kind {
             WallWindowKind::Cottage => OpeningFamily::CottageWindow,
@@ -205,8 +270,22 @@ fn derive_input(
         collision: collision.bounding_box.metrics(),
     })
 }
+fn same_opening_authority(previous: &OpeningAuthority, next: &OpeningAuthority) -> bool {
+    previous.id == next.id
+        && previous.wall == next.wall
+        && previous.input.family == next.input.family
+        && previous.input.size_variant == next.input.size_variant
+        && previous.input.center.map(f32::to_bits) == next.input.center.map(f32::to_bits)
+        && previous.input.collision.extent_xz.map(f32::to_bits)
+            == next.input.collision.extent_xz.map(f32::to_bits)
+        && previous.input.collision.vertical_bounds.map(f32::to_bits)
+            == next.input.collision.vertical_bounds.map(f32::to_bits)
+}
+
 fn resolve(
     ids: Res<NativeDecoratorOpeningIds>,
+    opening_entities: Res<OpeningEntities>,
+    existing_openings: Query<&OpeningAuthority>,
     mut state: ResMut<NativeDecoratorOpeningState>,
     archive: Res<WallDecoratorArchiveState>,
     collection: Res<WallCollectionState>,
@@ -237,9 +316,36 @@ fn resolve(
         }
         return;
     };
+    let mut seen = HashSet::new();
+    let conflicts: HashSet<_> = ids
+        .0
+        .values()
+        .filter(|opening| !seen.insert(**opening))
+        .copied()
+        .collect();
     let mut live_openings = HashSet::new();
     for (id, opening_id) in &ids.0 {
-        let wall=match storage.id_to_address.get(id){Some(country_core::recovered_building::building_wall_decorator_archivist::DecoratorStorageAddress::Wall(w))=>*w,Some(_)=>{state.pending.insert(*id,"Non-wall destination renderer/attachment owner remains unresolved".into());withdraw.write(WithdrawOpening(*opening_id));live_openings.insert(*opening_id);continue;},None=>continue};
+        if conflicts.contains(opening_id) {
+            let reason = format!(
+                "Opening {} is bound to multiple native decorators",
+                opening_id.0
+            );
+            state.pending.insert(*id, reason.clone());
+            report.faults.push(reason);
+            withdraw.write(WithdrawOpening(*opening_id));
+            live_openings.insert(*opening_id);
+            continue;
+        }
+        let wall = match storage.id_to_address.get(id) {
+            Some(country_core::resources::walls::decorator_archivist::changes::DecoratorStorageAddress::Wall(wall)) => *wall,
+            Some(_) => {
+                state.pending.insert(*id, "Non-wall destination renderer/attachment owner remains unresolved".into());
+                withdraw.write(WithdrawOpening(*opening_id));
+                live_openings.insert(*opening_id);
+                continue;
+            }
+            None => continue,
+        };
         live_openings.insert(*opening_id);
         let result = (|| {
             let stored = storage
@@ -281,7 +387,17 @@ fn resolve(
         })();
         match result {
             Ok(input) => {
-                upsert.write(UpsertOpening(input));
+                // Host publication and explicit gable invalidation already
+                // reach the opening producer. Only changed authority needs an
+                // upsert; equal values must not mark every opening dirty.
+                let unchanged = opening_entities
+                    .0
+                    .get(&input.id)
+                    .and_then(|entity| existing_openings.get(*entity).ok())
+                    .is_some_and(|previous| same_opening_authority(previous, &input));
+                if !unchanged {
+                    upsert.write(UpsertOpening(input));
+                }
                 state.authoritative_inputs.insert(*id, input);
                 state.resolved_this_frame.push(*id);
             }

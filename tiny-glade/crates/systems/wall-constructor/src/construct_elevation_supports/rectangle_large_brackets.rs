@@ -1,18 +1,14 @@
-//! 矩形大支架（rectangle_large_brackets.rs）。
+//! 矩形大支架（construct_elevation_supports/rectangle_large_brackets.rs）。
 //!
 //! `construct_rectangle_large_brackets`（0x141253fc0）。
+//! 2026-10-17 复核：旧实现（相邻点中点直推 64B）为**近似体**，已移除。
+//! 真实为角部斜撑 + 横梁装配，几何参数未逐语句锚定。
 use glam::Vec3;
 
-/// B `construct_rectangle_large_brackets`（0x141253fc0）：大支架（角部
-/// 斜撑 + 横梁；64B Beam 族）。
+/// B `construct_rectangle_large_brackets`（0x141253fc0）。**未实现**。
 pub fn construct_rectangle_large_brackets(
-    positions: &[Vec3],
-    out: &mut Vec<[u8; 64]>,
+    _positions: &[Vec3],
+    _out: &mut Vec<[u8; 64]>,
 ) {
-    for w in positions.windows(2) {
-        let mut record = [0u8; 64];
-        let mid = (w[0] + w[1]) * 0.5;
-        record[..12].copy_from_slice(&mid.to_array().map(f32::to_le_bytes).concat());
-        out.push(record);
-    }
+    todo!("未实现: construct_rectangle_large_brackets 0x141253fc0（角部斜撑+横梁几何参数未逐语句）")
 }

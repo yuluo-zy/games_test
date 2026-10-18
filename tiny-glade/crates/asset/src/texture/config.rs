@@ -1,5 +1,6 @@
 use super::desc::{CompressionMethod, Gamma, MipChain, TextureOpts};
 use crate::inheritable::{Inherit, Inheritable, deserialize_inheritable_option};
+use anyhow::Context;
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -22,7 +23,6 @@ impl Inherit for InheritableTextureOpts {
 }
 impl InheritableTextureOpts {
     /// Resolved root defaults, unlike `Default`'s missing-input markers.
-    /// B inlinee 0x1a65f at 0x1420d8c24 writes all four concrete zero tags.
     pub fn concrete_default() -> Self {
         Self::from_concrete(TextureOpts {
             resize: None,
@@ -40,7 +40,21 @@ impl InheritableTextureOpts {
             compression: Inheritable::Value(value.compression),
         }
     }
-    /// B 0x142456250: fields resolved independently; unknown defaults panic, no invented fallbacks.
+    /// Resolve all fields, attaching the failing option's name to any error.
+    pub fn try_into_concrete(self) -> anyhow::Result<TextureOpts> {
+        Ok(TextureOpts {
+            resize: self.resize.try_into_concrete().context("resize")?,
+            gamma: self.gamma.try_into_concrete().context("gamma")?,
+            mips: self.mips.try_into_concrete().context("mips")?,
+            compression: self
+                .compression
+                .try_into_concrete()
+                .context("compression")?,
+        })
+    }
+
+    /// Consume resolved options, panicking on fields that still need inheritance.
+    /// Prefer [`Self::try_into_concrete`] for externally supplied configuration.
     pub fn into_concrete(self) -> TextureOpts {
         TextureOpts {
             resize: self.resize.into_concrete(),

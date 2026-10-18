@@ -41,14 +41,25 @@ pub fn update_firefly_goals(
     let mut rng_ctx = rng.0.lock().unwrap();
     for (transform, mut firefly, velocity, mut goal, _sheep) in &mut query {
         let pos = transform.translation;
+        // CritterGoal 桥接（country-core {position,goal_tag}，DIVERGE 见 shared.rs 头）。
+        let mut goal_opt = if goal.goal_tag != 0 { Some(goal.position) } else { None };
         update_firefly_goal_core(
             &mut firefly.goal_timer,
-            &mut goal.0,
+            &mut goal_opt,
             pos,
             velocity.0,
             dt,
             &mut rng_ctx,
         );
+        match goal_opt {
+            Some(p) => {
+                goal.goal_tag = 1;
+                goal.position = p;
+            }
+            None => {
+                goal.goal_tag = 0;
+            }
+        }
     }
 }
 
@@ -109,7 +120,12 @@ pub fn set_firefly_velocities_towards_goals(
 ) {
     for (transform, _sheep, goal, mut target, mut multiplier) in &mut query {
         let pos = transform.translation;
-        let d = goal.0.unwrap_or(pos) - pos;
+        // CritterGoal 桥接：goal_tag!=0 → goal.position；否则零方向。
+        let d = if goal.goal_tag != 0 {
+            goal.position - pos
+        } else {
+            Vec3::ZERO
+        };
         target.direction = d.normalize_or_zero();
         multiplier.0 = 1.0;
         if pos.y < 1.0 {

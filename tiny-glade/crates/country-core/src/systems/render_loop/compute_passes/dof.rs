@@ -35,8 +35,8 @@ use crate::render::pass_builder::shader_uri::{
     AsComputeShaderSource, ComputeShaderSource, ShaderDefValue, ShaderDefine, ShaderUri,
     perm_define,
 };
-use crate::rhapsody_contract::PassResourceSlot;
 use crate::rhapsody_types::TextureDesc;
+use std::sync::Arc;
 
 use super::pass_kit::{
     BLUE_NOISE, DynSource, PassEnv, binding_hash, div_up_extent, extent_xy, half_res, imm,
@@ -144,9 +144,9 @@ dof_source!(
 /// `dispatch_indirect_raw` 的偏移 = `0x10 * 下标`：upsample 0x30、halfres 0x40、halfres all 0x50、clear 0x60）。
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum IndirectArgsType {
+    FullRes,
     FullResAllLod0,
     FullResAllLod1,
-    FullRes,
     FullResUpsample,
     HalfRes,
     HalfResAll,
@@ -156,9 +156,9 @@ pub enum IndirectArgsType {
 impl IndirectArgsType {
     /// `enum_iterator::all()`（O：跳表码 1..=7）。
     pub const ALL: [IndirectArgsType; 7] = [
+        IndirectArgsType::FullRes,
         IndirectArgsType::FullResAllLod0,
         IndirectArgsType::FullResAllLod1,
-        IndirectArgsType::FullRes,
         IndirectArgsType::FullResUpsample,
         IndirectArgsType::HalfRes,
         IndirectArgsType::HalfResAll,
@@ -237,11 +237,21 @@ pub struct DofConfig {
 }
 
 /// 输出：DoF 结果纹理 + 声明好的 pass 序列。
+/// Real intermediate graph buffers, retained as typed source-host metadata.
+/// This is not a claim that the native color-only sret included these handles.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct DofTileBuffers {
+    pub offsets: crate::render::pass_builder::compute_pass_builder::RgBuffer,
+    pub coordinates: crate::render::pass_builder::compute_pass_builder::RgBuffer,
+    pub dispatch: crate::render::pass_builder::compute_pass_builder::RgBuffer,
+}
+
 pub struct DofOutput {
     pub output: RgTexture,
     pub passes: Vec<RecordedComputePass>,
     /// multires 路径里推到 `DynamicConstants` 的 `tile_offsets_initial_values`（fused 路径为空）。
     pub tile_offsets_initial: Vec<u32>,
+    pub tile_buffers: Option<DofTileBuffers>,
 }
 
 /// W51 — `calc_dof`（O 0x140a5a570）。`multires` = `*0x14362c080`；`quality` = 栈参数字节
@@ -291,6 +301,7 @@ pub fn calc_dof_fullres(
         output,
         passes: vec![rec],
         tile_offsets_initial: vec![],
+        tile_buffers: None,
     }
 }
 
@@ -332,14 +343,20 @@ pub fn calc_dof_multires<S: LibrarySsbo>(
         0,
     );
 
-    // DynamicConstants::allocate(4n) + push_slice（O：`copy_from_slice` 长度校验 → "len_mismatch_fail"）。
-    let mut constants = env.uniforms.allocate_uniform((offsets.len() * 4) as u32);
+    // Original 140a5affd..5b035 clones the seven prefix words then appends
+    // zeros until length is a multiple of four. The packaged init shader loads
+    // two complete uvec4s; native allocate/copy @5b094/5b0b6 therefore uses32B.
+    let mut initial = offsets.clone();
+    while initial.len() % 4 != 0 {
+        initial.push(0);
+    }
+    let mut constants = env.uniforms.allocate_uniform((initial.len() * 4) as u32);
     assert_eq!(
         constants.len(),
-        offsets.len() * 4,
+        initial.len() * 4,
         "source slice length does not match destination slice length"
     );
-    for (dst, v) in constants.chunks_exact_mut(4).zip(&offsets) {
+    for (dst, v) in constants.chunks_exact_mut(4).zip(&initial) {
         dst.copy_from_slice(&v.to_le_bytes());
     }
 
@@ -351,9 +368,12 @@ pub fn calc_dof_multires<S: LibrarySsbo>(
             .write_rg_storage_buffer(H_DISPATCH_ARGS_BUFFER, &dispatch_args)
             .bind_external_raw(
                 H_TILE_OFFSETS_INITIAL,
-                // O：`DynamicConstantsChunk::into_uniform_buffer_binding`；缓冲号属 rhapsody（U），占位 0。
-                ExternalSlot::Other(PassResourceSlot::UniformBuffer { resource: 0 }),
+                // Current host lowers immutable declaration bytes to one
+                // actual DynamicConstantsChunk and retains its physical range.
+                ExternalSlot::UniformBytes(Arc::from(constants)),
             )
+            // Original 140a5b298 stores the seven-slot count in a4B payload.
+            .push_constants(&(n as u32).to_le_bytes())
             .dispatch_1d(n as u32),
     );
 
@@ -363,6 +383,7 @@ pub fn calc_dof_multires<S: LibrarySsbo>(
             .bind_texture(H_COC_TILES_DILATED_TEX, &&dilated, ACCESS_WRITE)
             .read_rg_storage_buffer(H_TILE_OFFSETS_BUFFER, &tile_offsets)
             .write_rg_storage_buffer(H_DISPATCH_ARGS_BUFFER, &dispatch_args)
+            .preserve_storage_buffer_contents(H_DISPATCH_ARGS_BUFFER)
             .write_rg_storage_buffer(H_TILE_COORDS_BUFFER, &tile_coords)
             .dispatch_2d(tw, th),
     );
@@ -411,6 +432,7 @@ pub fn calc_dof_multires<S: LibrarySsbo>(
                 .bind_texture(H_BLUE_NOISE, &BLUE_NOISE, ACCESS_READ)
                 .uniform(H_BOKEH_ANISOTROPY, cfg.bokeh_anisotropy)
                 .bind_texture(H_IMG_OUTPUT, &&halfres, ACCESS_WRITE)
+                .preserve_storage_texture_contents(H_IMG_OUTPUT)
                 .dispatch_indirect_raw(&dispatch_args, slot.buffer_offset()),
         );
     }
@@ -432,9 +454,8 @@ pub fn calc_dof_multires<S: LibrarySsbo>(
         ),
         ("DoF Fullres", &full, IndirectArgsType::FullRes),
     ];
-    for (name, source, slot) in fullres {
-        passes.push(
-            env.new_pass(name, &DynSource(source))
+    for (index, (name, source, slot)) in fullres.into_iter().enumerate() {
+        let pass = env.new_pass(name, &DynSource(source))
                 .read_rg_storage_buffer(H_TILE_OFFSETS_BUFFER, &tile_offsets)
                 .read_rg_storage_buffer(H_TILE_COORDS_BUFFER, &tile_coords)
                 .bind_texture(H_COLOR_TEX, &color, ACCESS_READ)
@@ -445,9 +466,13 @@ pub fn calc_dof_multires<S: LibrarySsbo>(
                 .uniform(H_BOKEH_ANISOTROPY, cfg.bokeh_anisotropy)
                 .read_storage_buffer::<S>(H_SPATIAL_RESOLVE_OFFSETS)
                 .bind_texture(H_HALFRES_TEX, &&halfres, ACCESS_READ)
-                .bind_texture(H_IMG_OUTPUT, &&output, ACCESS_WRITE)
-                .dispatch_indirect_raw(&dispatch_args, slot.buffer_offset()),
-        );
+                .bind_texture(H_IMG_OUTPUT, &&output, ACCESS_WRITE);
+        // Each variant writes its own tile partition. The first establishes
+        // native undefined+written output; later partitions retain predecessors.
+        let pass = if index == 0 { pass } else {
+            pass.preserve_storage_texture_contents(H_IMG_OUTPUT)
+        };
+        passes.push(pass.dispatch_indirect_raw(&dispatch_args, slot.buffer_offset()));
     }
 
     passes.push(
@@ -459,6 +484,7 @@ pub fn calc_dof_multires<S: LibrarySsbo>(
             .bind_texture(H_HALFRES_TEX, &&halfres, ACCESS_READ)
             .bind_texture(H_COC_TEX, &&coc.coc, ACCESS_READ)
             .bind_texture(H_IMG_OUTPUT, &&output, ACCESS_WRITE)
+            .preserve_storage_texture_contents(H_IMG_OUTPUT)
             .dispatch_indirect_raw(
                 &dispatch_args,
                 IndirectArgsType::FullResUpsample.buffer_offset(),
@@ -468,7 +494,10 @@ pub fn calc_dof_multires<S: LibrarySsbo>(
     DofOutput {
         output,
         passes,
-        tile_offsets_initial: offsets,
+        tile_offsets_initial: initial,
+        tile_buffers: Some(DofTileBuffers {
+            offsets: tile_offsets, coordinates: tile_coords, dispatch: dispatch_args,
+        }),
     }
 }
 
@@ -513,7 +542,9 @@ mod tests {
         assert_eq!(IndirectArgsType::HalfRes.buffer_offset(), 0x40);
         assert_eq!(IndirectArgsType::HalfResAll.buffer_offset(), 0x50);
         assert_eq!(IndirectArgsType::FullResUpsample.buffer_offset(), 0x30);
-        assert_eq!(IndirectArgsType::FullResAllLod0.buffer_offset(), 0);
+        assert_eq!(IndirectArgsType::FullResAllLod0.buffer_offset(), 0x10);
+        assert_eq!(IndirectArgsType::FullResAllLod1.buffer_offset(), 0x20);
+        assert_eq!(IndirectArgsType::FullRes.buffer_offset(), 0);
     }
 
     #[test]
@@ -738,7 +769,15 @@ mod tests {
         assert_eq!(order, [101, 105, 106, 102, 103, 104]);
         assert_eq!(e.frame.textures[0].1.format, 0x4c);
         // tiles 8x4: full = 32, half = 4*2 = 8 → prefix [0,32,64,96,104,112,120], total 128。
-        assert_eq!(out.tile_offsets_initial, [0, 32, 64, 96, 104, 112, 120]);
+        assert_eq!(out.tile_offsets_initial, [0, 32, 64, 96, 104, 112, 120, 0]);
+        assert_eq!(out.passes[0].push_constants, 7u32.to_le_bytes());
+        match &out.passes[0].external_bindings.last().unwrap().slot {
+            ExternalSlot::UniformBytes(bytes) => assert_eq!(bytes.as_ref(), bytemuck::cast_slice::<u32, u8>(&out.tile_offsets_initial)),
+            _ => panic!("DoF initial offsets must carry the original owned bytes"),
+        }
+        assert_eq!(out.passes[1].preserving_buffers, [out.tile_buffers.unwrap().dispatch.resource]);
+        assert!(!out.passes[3].preserving_texture_bindings.is_empty());
+        assert!(!out.passes[4].preserving_texture_bindings.is_empty());
         assert_eq!(e.frame.buffers[0].1.size, 32); // (12 + 28) & !0xf
         assert_eq!(e.frame.buffers[1].1.size, 128 * 8);
         assert_eq!(e.frame.buffers[2].1.size, 0x70);
@@ -760,20 +799,20 @@ mod tests {
                 _ => panic!("not indirect"),
             })
             .collect();
-        assert_eq!(offs, [0x60, 0x40, 0x50, 0x00, 0x10, 0x20, 0x30]);
+        assert_eq!(offs, [0x60, 0x40, 0x50, 0x10, 0x20, 0x00, 0x30]);
         // 着色器 URI（含入口）
         let uris = e.world.backend.paths.borrow().clone();
         assert!(uris.contains(&"/dof/halfres.cs.hlsl:cs_halfres".to_owned()));
         assert!(uris.contains(&"/dof/halfres.cs.hlsl:cs_halfres_all".to_owned()));
         assert!(uris.contains(&"/dof/fullres_upsample.cs.hlsl:cs_main".to_owned()));
-        // 常量块大小 = 4 * 7。
+        // Original padded constant block is two uvec4s (32B).
         assert!(
-            e.world.pool.borrow().0.contains(&28),
-            "DynamicConstants::allocate(4 * 7)"
+            e.world.pool.borrow().0.contains(&32),
+            "DynamicConstants::allocate(padded8words)"
         );
         assert_eq!(
             e.world.pool.borrow().0[0],
-            28,
+            32,
             "常量块先于任何 pass 的 uniform 块分配"
         );
         // blue_noise 走磁盘外部描述符（不登记 RG 访问）：每个用到它的 pass 都带一条外部绑定。

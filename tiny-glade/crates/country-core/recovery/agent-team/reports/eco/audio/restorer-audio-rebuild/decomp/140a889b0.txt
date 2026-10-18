@@ -1,0 +1,155 @@
+// VA 0x140a889b0 firstperson_steps
+// SIG void __cdecl firstperson_steps(void)
+
+void __cdecl country_core::systems::audio::firstperson_steps::firstperson_steps(void)
+
+{
+  undefined8 uVar1;
+  longlong *plVar2;
+  longlong lVar3;
+  ulonglong uVar4;
+  char cVar5;
+  int iVar6;
+  uint uVar7;
+  undefined8 *extraout_RAX;
+  longlong *plVar8;
+  uint uVar9;
+  undefined8 *in_RCX;
+  ulonglong uVar10;
+  longlong *in_RDX;
+  float extraout_XMM0_Da;
+  float extraout_XMM0_Da_00;
+  float extraout_XMM0_Da_01;
+  float extraout_XMM0_Da_02;
+  float extraout_XMM0_Da_03;
+  float fVar11;
+  float fVar12;
+  longlong in_stack_00000028;
+  longlong *in_stack_00000040;
+  float local_104;
+  float local_fc;
+  
+  plVar2 = (longlong *)*in_RCX;
+  lVar3 = *in_RDX;
+  cVar5 = *(char *)(lVar3 + 0x4d0);
+  if (*plVar2 != 0) {
+    resources::audio_resources::AudioCoreInner::set_parameter();
+    cVar5 = *(char *)(lVar3 + 0x4d0);
+  }
+  if ((cVar5 == '\x03') &&
+     ((*(uint *)(*in_stack_00000040 + 0x18) < 3 ||
+      (uVar1 = *(undefined8 *)(*in_stack_00000040 + 0x150), fVar12 = (float)uVar1,
+      fVar11 = (float)((ulonglong)uVar1 >> 0x20), 0.0 < SQRT(fVar11 * fVar11 + fVar12 * fVar12)))))
+  {
+    cVar5 = *(char *)(lVar3 + 0x344);
+    if (*(char *)(lVar3 + 0x328) == '\v') {
+      frozen::FrozenMap::
+      get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>
+                ();
+      if (extraout_RAX == (undefined8 *)0x0) {
+LAB_140a88f7c:
+                    // WARNING: Subroutine does not return
+        core::option::unwrap_failed();
+      }
+      if ((extraout_RAX[3] != 0x3f) ||
+         (iVar6 = memcmp(&anon_107183261458dea85466985370debbb6_23_llvm_3641509820080252961,
+                         (void *)extraout_RAX[2],0x3f), iVar6 != 0)) {
+                    // WARNING: Subroutine does not return
+        core::panicking::assert_failed<ref_<str_>,ref_<str_>_>();
+      }
+      plVar8 = (longlong *)(**(code **)(extraout_RAX[1] + 0x18))(*extraout_RAX);
+      if (plVar8 == (longlong *)0x0) goto LAB_140a88f7c;
+      lVar3 = *plVar8;
+      uVar4 = plVar8[1];
+      ::utils::camera::CameraMatrices::eye_position();
+      ::utils::float_grid::impl$0::
+      bilinear_sample_at_world_xz<country_core::resources::world_raster::RasterBufferRef<512>_>();
+      if (extraout_XMM0_Da <= 0.1) {
+        ::utils::float_grid::impl$0::
+        bilinear_sample_at_world_xz<country_core::resources::world_raster::RasterBufferRef<512>_>();
+        ::utils::float_grid::impl$0::
+        bilinear_sample_at_world_xz<country_core::resources::world_raster::RasterBufferRef<512>_>();
+        ::utils::float_grid::impl$0::
+        bilinear_sample_at_world_xz<country_core::resources::world_raster::RasterBufferRef<512>_>();
+        ::utils::float_grid::impl$0::
+        bilinear_sample_at_world_xz<country_core::resources::world_raster::RasterBufferRef<512>_>();
+        fVar11 = extraout_XMM0_Da_03 +
+                 extraout_XMM0_Da_02 + extraout_XMM0_Da_01 + extraout_XMM0_Da_00;
+        fVar12 = 0.0;
+        if (0.0 <= fVar11) {
+          fVar12 = fVar11;
+        }
+        fVar11 = 1.0;
+        if (fVar12 <= 1.0) {
+          fVar11 = fVar12;
+        }
+        if (fVar11 <= 0.1) {
+          fVar11 = local_104 / 130.0 + 0.5;
+          fVar12 = local_fc / 130.0 + 0.5;
+          if (fVar11 <= 0.0) {
+            fVar11 = 0.0;
+          }
+          if (fVar12 <= 0.0) {
+            fVar12 = 0.0;
+          }
+          if (1.0 <= fVar11) {
+            fVar11 = 1.0;
+          }
+          if (1.0 <= fVar12) {
+            fVar12 = 1.0;
+          }
+          fVar11 = fVar11 * 512.0;
+          uVar7 = (uint)(longlong)fVar11;
+          if (fVar11 < 0.0) {
+            uVar7 = 0;
+          }
+          fVar12 = fVar12 * 512.0;
+          if (4.294967e+09 < fVar11) {
+            uVar7 = 0xffffffff;
+          }
+          uVar9 = (uint)(longlong)fVar12;
+          if (fVar12 < 0.0) {
+            uVar9 = 0;
+          }
+          if (4.294967e+09 < fVar12) {
+            uVar9 = 0xffffffff;
+          }
+          if (0x1fe < uVar7) {
+            uVar7 = 0x1ff;
+          }
+          if (0x1fe < uVar9) {
+            uVar9 = 0x1ff;
+          }
+          uVar10 = (ulonglong)((uVar9 << 9 | uVar7) >> 5);
+          if (uVar4 <= uVar10) {
+                    // WARNING: Subroutine does not return
+            core::panicking::panic_bounds_check();
+          }
+          if ((*(uint *)(lVar3 + uVar10 * 4) >> (uVar7 & 0x1f) & 1) == 0) {
+            ::utils::float_grid::impl$0::
+            bilinear_sample_at_world_xz<country_core::resources::world_raster::RasterBufferRef<512>_>
+                      ();
+          }
+        }
+        else {
+          ::utils::float_grid::impl$0::
+          bilinear_sample_at_world_xz<country_core::resources::world_raster::RasterBufferRef<512>_>
+                    ();
+        }
+      }
+    }
+    if (*plVar2 != 0) {
+      resources::audio_resources::AudioCoreInner::set_parameter();
+    }
+    if (cVar5 == '\0') {
+      **(undefined4 **)(in_stack_00000028 + 0x10) = *(undefined4 *)(in_stack_00000028 + 0x1c);
+      country_core::utils::audio_utils::AudioLoop::start_if_not_playing();
+      return;
+    }
+  }
+  **(undefined4 **)(in_stack_00000028 + 0x10) = *(undefined4 *)(in_stack_00000028 + 0x1c);
+  country_core::utils::audio_utils::AudioLoop::stop();
+  return;
+}
+
+

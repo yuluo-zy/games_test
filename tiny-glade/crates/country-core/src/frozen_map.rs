@@ -77,4 +77,13 @@ impl<K: Eq + Hash, V> FrozenMap<K, V> {
             f(unsafe { &*ptr });
         }
     }
+
+    /// Source-host metadata snapshots need the existing key as well as its
+    /// stable value. This does not clone/move entries or change map ownership.
+    pub fn for_each_entry(&self, mut f: impl FnMut(&K, &V)) {
+        let guard = self.map.read();
+        for (key, value) in guard.iter() {
+            f(key, value);
+        }
+    }
 }

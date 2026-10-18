@@ -1,0 +1,159 @@
+--- a/crates/rhapsody/src/rg/temporal.rs
++++ b/crates/rhapsody/src/rg/temporal.rs
+@@ -101,6 +101,11 @@
+ pub(crate) trait TemporalResourceOwner {
+     fn create_temporal(&mut self, name: &str, descriptor: Descriptor) -> Result<u64, BuildError>;
+     fn release_temporal(&mut self, token: u64);
++    /// True only when this owner actually uploaded the complete allocation
++    /// during creation. This does not publish reusable frame history.
++    fn initial_contents_defined(&self, _token: u64) -> bool {
++        false
++    }
+     fn temporal_sharing(&self, _name: &str) -> crate::resource::ResourceSharing {
+         crate::resource::ResourceSharing::Exclusive
+     }
+@@ -118,6 +123,10 @@
+     /// have overwritten only part of existing contents. Keep the allocation
+     /// and layout, but require initialization before using it as history.
+     history_invalid: bool,
++    /// Physical creation may upload known contents even though no frame has
++    /// published history yet (native temporal buffers upload a zero slice).
++    /// Reset/partial submission revoke this one-allocation initialization fact.
++    allocation_contents_defined: bool,
+ }
+ #[derive(Clone)]
+ struct PendingParity {
+@@ -162,6 +171,7 @@
+         for (key, record) in &mut self.resources {
+             if matches(key.as_ref()) {
+                 record.history_invalid = true;
++                record.allocation_contents_defined = false;
+             }
+         }
+         self.parity.remove(name);
+@@ -265,6 +275,7 @@
+         for key in &self.frame_requested {
+             if let Some(record) = self.resources.get_mut(key) {
+                 record.history_invalid = true;
++                record.allocation_contents_defined = false;
+             }
+         }
+         self.abandon_frame();
+@@ -376,6 +387,7 @@
+                 state: raw_state(descriptor, handle),
+                 confirmed_access: 0,
+                 history_invalid: true,
++                allocation_contents_defined: false,
+             },
+         ) {
+             self.retired_tokens.push(old.resource.token);
+@@ -423,8 +435,11 @@
+         } else {
+             None
+         };
++        let mut created = false;
+         let result = self.get_or_create_temporal(graph, name, descriptor, || {
+-            owner.create_temporal(name, descriptor)
++            let token = owner.create_temporal(name, descriptor)?;
++            created = true;
++            Ok(token)
+         });
+         if let Some(old) = replaced {
+             if result.is_ok() {
+@@ -434,6 +449,13 @@
+             }
+         }
+         if let Ok(lookup) = &result {
++            if created {
++                self.resources
++                    .get_mut(&key)
++                    .expect("created temporal record")
++                    .allocation_contents_defined =
++                    owner.initial_contents_defined(lookup.resource.token);
++            }
+             graph
+                 .set_resource_sharing(lookup.handle, sharing)
+                 .map_err(TemporalError::Backend)?;
+@@ -564,9 +586,11 @@
+     }
+     pub fn export_temporal(&mut self, graph: &mut RenderGraph) -> Result<(), TemporalError> {
+         // Physical allocation and valid history are different contracts. In
+-        // particular, imported buffers normally have defined version zero, but
+-        // a newly allocated temporal buffer does not. Replay invalid members
+-        // as logical Create resources while preserving their physical imports.
++        // particular, plain allocations do not establish initialized contents.
++        // Native temporal buffers instead upload a complete zero slice during
++        // creation; preserve that actual producer independently of history.
++        // Replay other invalid members as logical Create resources while
++        // preserving their physical imports.
+         let mut logical = graph.declaration.clone();
+         for key in &self.frame_requested {
+             let record = &self.resources[key];
+@@ -576,7 +600,7 @@
+                 TemporalRecordState::Exported => self.frame_exports[key],
+             };
+             graph.check_handle(handle).map_err(TemporalError::Backend)?;
+-            if record.history_invalid {
++            if record.history_invalid && !record.allocation_contents_defined {
+                 logical.resources[handle.raw() as usize].source =
+                     super::graph::OriginSource::Create;
+             }
+@@ -1160,6 +1184,58 @@
+                 .reused
+         );
+     }
++    #[test]
++    fn uploaded_initial_contents_are_readable_without_publishing_history_and_survive_cancel() {
++        struct UploadedOwner { next: u64 }
++        impl TemporalResourceOwner for UploadedOwner {
++            fn create_temporal(&mut self, _: &str, _: Descriptor) -> Result<u64, BuildError> {
++                self.next += 1;
++                Ok(self.next)
++            }
++            fn release_temporal(&mut self, _: u64) {}
++            fn initial_contents_defined(&self, _: u64) -> bool { true }
++        }
++        fn reader(graph: &mut RenderGraph, lookup: TemporalLookup) {
++            let mut pass = graph.add_pass("read actually uploaded bytes");
++            pass.add_resource_access(lookup.handle, 0x25, 0).unwrap();
++            pass.render(|_| true);
++        }
++        let mut owner = UploadedOwner { next: 0 };
++        let mut state = TemporalRenderGraphState::default();
++        let mut graph = RenderGraph::new();
++        let first = state.get_or_create_owned(&mut graph, "uploaded", buffer(), &mut owner).unwrap();
++        assert!(!first.reused, "an upload is not preceding frame history");
++        reader(&mut graph, first);
++        state.export_temporal(&mut graph).unwrap();
++        assert_eq!(graph.declaration.exports.len(), 1);
++        state.abandon_frame();
++        let mut graph = RenderGraph::new();
++        let cancelled = state.get_or_create_owned(&mut graph, "uploaded", buffer(), &mut owner).unwrap();
++        assert!(!cancelled.reused);
++        assert_eq!(cancelled.resource.token, first.resource.token);
++        reader(&mut graph, cancelled);
++        state.export_temporal(&mut graph).unwrap();
++        state.confirm_exports();
++        let mut graph = RenderGraph::new();
++        let confirmed = state.get_or_create_owned(&mut graph, "uploaded", buffer(), &mut owner).unwrap();
++        assert!(confirmed.reused);
++        state.invalidate_submitted_frame();
++        let mut graph = RenderGraph::new();
++        let failed = state.get_or_create_owned(&mut graph, "uploaded", buffer(), &mut owner).unwrap();
++        assert!(!failed.reused);
++        reader(&mut graph, failed);
++        assert!(matches!(state.export_temporal(&mut graph),
++            Err(TemporalError::Backend(BuildError::Contract(
++                super::super::resource::ResourceContractError::UninitializedRead { .. })))));
++        state.abandon_frame();
++        state.reset("uploaded").unwrap();
++        let mut graph = RenderGraph::new();
++        let reset = state.get_or_create_owned(&mut graph, "uploaded", buffer(), &mut owner).unwrap();
++        reader(&mut graph, reset);
++        assert!(state.export_temporal(&mut graph).is_err());
++        assert_eq!(owner.next, 1, "reset/cancel do not secretly allocate or reupload");
++    }
++
+     // ---------------------------------------------------------------- 5. temporal 记录放弃 / 确认
+ 
+     #[test]

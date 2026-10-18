@@ -1,0 +1,552 @@
+--- games_test/tiny-glade/crates/country-core/src/game_profile.rs
++++ games_test/tiny-glade/crates/country-core/src/game_profile.rs
+@@ -15,89 +15,426 @@
+ use serde::{Deserialize, Serialize};
+ use uuid::Uuid;
+ 
+-/// 12B 键位槽（① r6-gamekeybindings-modkey 契约 §1，O：`{key u32@0, value u64@4}`，
+-/// 槽 stride 0xc = **packed 压缩布局**，③ 复审要求 `#[repr(C, packed)]` 使结构真为 12B，
+-/// 否则 Rust 默认布局 16B 注释冒充）。`value` 动作 id 语义待①（默认 0 = 未绑定）。
+-/// serde/Debug 手工实现（packed 字段不可被引用）。
+-#[repr(C, packed)]
+-#[derive(Clone, Copy, Default, PartialEq)]
+-pub struct KeyBinding {
+-    /// 键码（u32 @0；bevy 风格 KeyCode）。
+-    pub key: u32,
+-    /// 动作 id（u64 @4；语义待①，默认 0 = 未绑定）。
+-    pub value: u64,
+-}
+-
+-impl core::fmt::Debug for KeyBinding {
+-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+-        let key = self.key;
+-        let value = self.value;
+-        f.debug_struct("KeyBinding")
+-            .field("key", &key)
+-            .field("value", &value)
+-            .finish()
+-    }
+-}
+-
+-impl serde::Serialize for KeyBinding {
+-    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+-        // packed 字段按值读取（Copy），不产生未对齐引用。
+-        let key = self.key;
+-        let value = self.value;
+-        serde::Serialize::serialize(&(key, value), serializer)
+-    }
+-}
+-
+-impl<'de> serde::Deserialize<'de> for KeyBinding {
+-    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+-        let (key, value): (u32, u64) = serde::Deserialize::deserialize(deserializer)?;
+-        Ok(Self { key, value })
+-    }
+-}
+-
+-/// 键位映射（原 game_key_bindings；**40 槽 × 12B 固定数组**）。
+-/// ① r6-gamekeybindings-modkey 契约 §1（O：capstone default 构建器 0x14089b110）：
+-/// 槽 0..35 键码 + 槽 36 `[0x1b0]=0xc3`（未绑哨兵）+ 槽 37/38/39 鼠标绑定；`value`
+-/// 动作 id 语义待①。
+-/// serde 经 Vec 中转（`[KeyBinding; 40]` 无标准 serde/Default impl，N>32 限制）。
++/// A configured keyboard binding is the original Option<KeyCode>, not a key/action pair.
++/// B serialize @140831740 calls the locked dependency's Option<KeyCode> serializer.
++pub type KeyBinding = Option<bevy_input::keyboard::KeyCode>;
++
++/// Keyboard and mouse bindings share the loaded profile authority. The array
++/// representation is retained for the current input pipeline; persistence uses
++/// the original forty named fields (37 keyboard and three mouse).
+ #[derive(Clone, Debug, PartialEq)]
+ pub struct GameKeyBindings {
+-    /// 40 槽 × 12B（键/动作）。
+-    pub bindings: [KeyBinding; 40],
+-}
+-
++    pub bindings: [KeyBinding; 37],
++    pub mouse: [Option<bevy_input::mouse::MouseButton>; 3],
++}
+ impl Default for GameKeyBindings {
+     fn default() -> Self {
+-        // ① r6 契约 §2 default 键码（capstone 0x14089b110 逐槽；与 BindingsTable
+-        // translate_input.rs KEYS 一致）：槽 0..35 键码 + 槽 36=0xc3（未绑）；
+-        // 槽 37/38/39 鼠标绑定 value 待①。
+-        const KEYS: [u32; 40] = [
+-            0x2a, 0x26, 0x14, 0x17, 0x18, 0x24, 0xc3, 0xc3, 0xc3, 0xc3, // 0..9
+-            0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x23, // 10..19
+-            0x27, 0x2d, 0x2b, 0xc3, 0x38, 0xab, 0xa5, 0x1b, 0x49, 0x3a, // 20..29
+-            0x51, 0x52, 0x50, 0x53, 0x4f, 0x4e, 0xc3, 0, 0, 0, // 30..39
+-        ];
++        use bevy_input::keyboard::KeyCode::*;
++        use bevy_input::mouse::MouseButton;
+         Self {
+-            bindings: KEYS.map(|key| KeyBinding { key, value: 0 }),
++            bindings: [
++                Some(KeyW),
++                Some(KeyS),
++                Some(KeyA),
++                Some(KeyD),
++                Some(KeyE),
++                Some(KeyQ),
++                None,
++                None,
++                None,
++                None,
++                Some(Digit1),
++                Some(Digit2),
++                Some(Digit3),
++                Some(Digit4),
++                Some(Digit5),
++                Some(Digit6),
++                Some(Digit7),
++                Some(Digit8),
++                Some(Digit9),
++                Some(KeyP),
++                Some(KeyT),
++                Some(KeyZ),
++                Some(KeyX),
++                None,
++                Some(ControlLeft),
++                Some(F12),
++                Some(F6),
++                Some(KeyH),
++                Some(Delete),
++                Some(Enter),
++                Some(ArrowLeft),
++                Some(ArrowRight),
++                Some(ArrowDown),
++                Some(ArrowUp),
++                Some(PageUp),
++                Some(PageDown),
++                None,
++            ],
++            mouse: [
++                Some(MouseButton::Right),
++                Some(MouseButton::Middle),
++                Some(MouseButton::Right),
++            ],
+         }
+     }
+ }
+ 
+-impl serde::Serialize for GameKeyBindings {
++// A serde projection reuses Bevy's enum implementation. Native discriminants
++// and uninitialized padding are never reinterpreted as a new wire protocol.
++#[derive(Serialize, Deserialize)]
++#[serde(rename = "KeyBindings")]
++struct SerializedKeyBindings {
++    move_forward: KeyBinding,
++    move_back: KeyBinding,
++    move_left: KeyBinding,
++    move_right: KeyBinding,
++    move_up: KeyBinding,
++    move_down: KeyBinding,
++    rotate_left: KeyBinding,
++    rotate_right: KeyBinding,
++    zoom_in: KeyBinding,
++    zoom_out: KeyBinding,
++    building: KeyBinding,
++    path: KeyBinding,
++    decorators: KeyBinding,
++    customize: KeyBinding,
++    eraser: KeyBinding,
++    terrain: KeyBinding,
++    garden: KeyBinding,
++    tree: KeyBinding,
++    water: KeyBinding,
++    photomode: KeyBinding,
++    time_of_day: KeyBinding,
++    undo: KeyBinding,
++    redo: KeyBinding,
++    focus_edit: KeyBinding,
++    disable_snapping: KeyBinding,
++    screenshot: KeyBinding,
++    feedback: KeyBinding,
++    hide_ui_photomode: KeyBinding,
++    ui_cancel: KeyBinding,
++    ui_confirm: KeyBinding,
++    ui_left: KeyBinding,
++    ui_right: KeyBinding,
++    ui_down: KeyBinding,
++    ui_up: KeyBinding,
++    ui_tab_prev: KeyBinding,
++    ui_tab_next: KeyBinding,
++    mouse_rotate: Option<bevy_input::mouse::MouseButton>,
++    mouse_pan: Option<bevy_input::mouse::MouseButton>,
++    mouse_focus_edit: Option<bevy_input::mouse::MouseButton>,
++    experimental_camera: KeyBinding,
++}
++impl Serialize for GameKeyBindings {
+     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+-        serde::Serialize::serialize(&self.bindings.as_slice(), serializer)
+-    }
+-}
+-
+-impl<'de> serde::Deserialize<'de> for GameKeyBindings {
++        SerializedKeyBindings {
++            move_forward: self.bindings[0],
++            move_back: self.bindings[1],
++            move_left: self.bindings[2],
++            move_right: self.bindings[3],
++            move_up: self.bindings[4],
++            move_down: self.bindings[5],
++            rotate_left: self.bindings[6],
++            rotate_right: self.bindings[7],
++            zoom_in: self.bindings[8],
++            zoom_out: self.bindings[9],
++            building: self.bindings[10],
++            path: self.bindings[11],
++            decorators: self.bindings[12],
++            customize: self.bindings[13],
++            eraser: self.bindings[14],
++            terrain: self.bindings[15],
++            garden: self.bindings[16],
++            tree: self.bindings[17],
++            water: self.bindings[18],
++            photomode: self.bindings[19],
++            time_of_day: self.bindings[20],
++            undo: self.bindings[21],
++            redo: self.bindings[22],
++            focus_edit: self.bindings[23],
++            disable_snapping: self.bindings[24],
++            screenshot: self.bindings[25],
++            feedback: self.bindings[26],
++            hide_ui_photomode: self.bindings[27],
++            ui_cancel: self.bindings[28],
++            ui_confirm: self.bindings[29],
++            ui_left: self.bindings[30],
++            ui_right: self.bindings[31],
++            ui_down: self.bindings[32],
++            ui_up: self.bindings[33],
++            ui_tab_prev: self.bindings[34],
++            ui_tab_next: self.bindings[35],
++            mouse_rotate: self.mouse[0],
++            mouse_pan: self.mouse[1],
++            mouse_focus_edit: self.mouse[2],
++            experimental_camera: self.bindings[36],
++        }
++        .serialize(serializer)
++    }
++}
++impl<'de> Deserialize<'de> for GameKeyBindings {
+     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+-        let bindings: Vec<KeyBinding> = serde::Deserialize::deserialize(deserializer)?;
+-        let mut array = [KeyBinding::default(); 40];
+-        for (i, binding) in bindings.into_iter().enumerate().take(40) {
+-            array[i] = binding;
+-        }
+-        Ok(Self { bindings: array })
+-    }
++        let fields = SerializedKeyBindings::deserialize(deserializer)?;
++        Ok(Self {
++            bindings: [
++                fields.move_forward,
++                fields.move_back,
++                fields.move_left,
++                fields.move_right,
++                fields.move_up,
++                fields.move_down,
++                fields.rotate_left,
++                fields.rotate_right,
++                fields.zoom_in,
++                fields.zoom_out,
++                fields.building,
++                fields.path,
++                fields.decorators,
++                fields.customize,
++                fields.eraser,
++                fields.terrain,
++                fields.garden,
++                fields.tree,
++                fields.water,
++                fields.photomode,
++                fields.time_of_day,
++                fields.undo,
++                fields.redo,
++                fields.focus_edit,
++                fields.disable_snapping,
++                fields.screenshot,
++                fields.feedback,
++                fields.hide_ui_photomode,
++                fields.ui_cancel,
++                fields.ui_confirm,
++                fields.ui_left,
++                fields.ui_right,
++                fields.ui_down,
++                fields.ui_up,
++                fields.ui_tab_prev,
++                fields.ui_tab_next,
++                fields.experimental_camera,
++            ],
++            mouse: [
++                fields.mouse_rotate,
++                fields.mouse_pan,
++                fields.mouse_focus_edit,
++            ],
++        })
++    }
++}
++
++/// Numeric adapter used by the existing u16 desktop input facade. The order is
++/// the locked Bevy 0.16 KeyCode order (B native table 14294c58c). Native-specific
++/// scan codes have no u16 identity in that facade and are rejected explicitly.
++pub fn desktop_keycode_index(key: bevy_input::keyboard::KeyCode) -> anyhow::Result<u16> {
++    use bevy_input::keyboard::KeyCode;
++    const IDENTIFIED: [KeyCode; 194] = [
++        KeyCode::Backquote,
++        KeyCode::Backslash,
++        KeyCode::BracketLeft,
++        KeyCode::BracketRight,
++        KeyCode::Comma,
++        KeyCode::Digit0,
++        KeyCode::Digit1,
++        KeyCode::Digit2,
++        KeyCode::Digit3,
++        KeyCode::Digit4,
++        KeyCode::Digit5,
++        KeyCode::Digit6,
++        KeyCode::Digit7,
++        KeyCode::Digit8,
++        KeyCode::Digit9,
++        KeyCode::Equal,
++        KeyCode::IntlBackslash,
++        KeyCode::IntlRo,
++        KeyCode::IntlYen,
++        KeyCode::KeyA,
++        KeyCode::KeyB,
++        KeyCode::KeyC,
++        KeyCode::KeyD,
++        KeyCode::KeyE,
++        KeyCode::KeyF,
++        KeyCode::KeyG,
++        KeyCode::KeyH,
++        KeyCode::KeyI,
++        KeyCode::KeyJ,
++        KeyCode::KeyK,
++        KeyCode::KeyL,
++        KeyCode::KeyM,
++        KeyCode::KeyN,
++        KeyCode::KeyO,
++        KeyCode::KeyP,
++        KeyCode::KeyQ,
++        KeyCode::KeyR,
++        KeyCode::KeyS,
++        KeyCode::KeyT,
++        KeyCode::KeyU,
++        KeyCode::KeyV,
++        KeyCode::KeyW,
++        KeyCode::KeyX,
++        KeyCode::KeyY,
++        KeyCode::KeyZ,
++        KeyCode::Minus,
++        KeyCode::Period,
++        KeyCode::Quote,
++        KeyCode::Semicolon,
++        KeyCode::Slash,
++        KeyCode::AltLeft,
++        KeyCode::AltRight,
++        KeyCode::Backspace,
++        KeyCode::CapsLock,
++        KeyCode::ContextMenu,
++        KeyCode::ControlLeft,
++        KeyCode::ControlRight,
++        KeyCode::Enter,
++        KeyCode::SuperLeft,
++        KeyCode::SuperRight,
++        KeyCode::ShiftLeft,
++        KeyCode::ShiftRight,
++        KeyCode::Space,
++        KeyCode::Tab,
++        KeyCode::Convert,
++        KeyCode::KanaMode,
++        KeyCode::Lang1,
++        KeyCode::Lang2,
++        KeyCode::Lang3,
++        KeyCode::Lang4,
++        KeyCode::Lang5,
++        KeyCode::NonConvert,
++        KeyCode::Delete,
++        KeyCode::End,
++        KeyCode::Help,
++        KeyCode::Home,
++        KeyCode::Insert,
++        KeyCode::PageDown,
++        KeyCode::PageUp,
++        KeyCode::ArrowDown,
++        KeyCode::ArrowLeft,
++        KeyCode::ArrowRight,
++        KeyCode::ArrowUp,
++        KeyCode::NumLock,
++        KeyCode::Numpad0,
++        KeyCode::Numpad1,
++        KeyCode::Numpad2,
++        KeyCode::Numpad3,
++        KeyCode::Numpad4,
++        KeyCode::Numpad5,
++        KeyCode::Numpad6,
++        KeyCode::Numpad7,
++        KeyCode::Numpad8,
++        KeyCode::Numpad9,
++        KeyCode::NumpadAdd,
++        KeyCode::NumpadBackspace,
++        KeyCode::NumpadClear,
++        KeyCode::NumpadClearEntry,
++        KeyCode::NumpadComma,
++        KeyCode::NumpadDecimal,
++        KeyCode::NumpadDivide,
++        KeyCode::NumpadEnter,
++        KeyCode::NumpadEqual,
++        KeyCode::NumpadHash,
++        KeyCode::NumpadMemoryAdd,
++        KeyCode::NumpadMemoryClear,
++        KeyCode::NumpadMemoryRecall,
++        KeyCode::NumpadMemoryStore,
++        KeyCode::NumpadMemorySubtract,
++        KeyCode::NumpadMultiply,
++        KeyCode::NumpadParenLeft,
++        KeyCode::NumpadParenRight,
++        KeyCode::NumpadStar,
++        KeyCode::NumpadSubtract,
++        KeyCode::Escape,
++        KeyCode::Fn,
++        KeyCode::FnLock,
++        KeyCode::PrintScreen,
++        KeyCode::ScrollLock,
++        KeyCode::Pause,
++        KeyCode::BrowserBack,
++        KeyCode::BrowserFavorites,
++        KeyCode::BrowserForward,
++        KeyCode::BrowserHome,
++        KeyCode::BrowserRefresh,
++        KeyCode::BrowserSearch,
++        KeyCode::BrowserStop,
++        KeyCode::Eject,
++        KeyCode::LaunchApp1,
++        KeyCode::LaunchApp2,
++        KeyCode::LaunchMail,
++        KeyCode::MediaPlayPause,
++        KeyCode::MediaSelect,
++        KeyCode::MediaStop,
++        KeyCode::MediaTrackNext,
++        KeyCode::MediaTrackPrevious,
++        KeyCode::Power,
++        KeyCode::Sleep,
++        KeyCode::AudioVolumeDown,
++        KeyCode::AudioVolumeMute,
++        KeyCode::AudioVolumeUp,
++        KeyCode::WakeUp,
++        KeyCode::Meta,
++        KeyCode::Hyper,
++        KeyCode::Turbo,
++        KeyCode::Abort,
++        KeyCode::Resume,
++        KeyCode::Suspend,
++        KeyCode::Again,
++        KeyCode::Copy,
++        KeyCode::Cut,
++        KeyCode::Find,
++        KeyCode::Open,
++        KeyCode::Paste,
++        KeyCode::Props,
++        KeyCode::Select,
++        KeyCode::Undo,
++        KeyCode::Hiragana,
++        KeyCode::Katakana,
++        KeyCode::F1,
++        KeyCode::F2,
++        KeyCode::F3,
++        KeyCode::F4,
++        KeyCode::F5,
++        KeyCode::F6,
++        KeyCode::F7,
++        KeyCode::F8,
++        KeyCode::F9,
++        KeyCode::F10,
++        KeyCode::F11,
++        KeyCode::F12,
++        KeyCode::F13,
++        KeyCode::F14,
++        KeyCode::F15,
++        KeyCode::F16,
++        KeyCode::F17,
++        KeyCode::F18,
++        KeyCode::F19,
++        KeyCode::F20,
++        KeyCode::F21,
++        KeyCode::F22,
++        KeyCode::F23,
++        KeyCode::F24,
++        KeyCode::F25,
++        KeyCode::F26,
++        KeyCode::F27,
++        KeyCode::F28,
++        KeyCode::F29,
++        KeyCode::F30,
++        KeyCode::F31,
++        KeyCode::F32,
++        KeyCode::F33,
++        KeyCode::F34,
++        KeyCode::F35,
++    ];
++    IDENTIFIED
++        .iter()
++        .position(|candidate| *candidate == key)
++        .map(|index| index as u16 + 1)
++        .ok_or_else(|| {
++            anyhow::anyhow!(
++                "native scan-code binding {key:?} is not supported by the desktop u16 input facade"
++            )
++        })
+ }
+ 
+ /// 教学/提示计时区（20B @+0x1e0..+0x1f4，O：`exponential_back_off` 0x142284800 写面 +
+@@ -404,11 +741,47 @@
+     use super::*;
+ 
+     #[test]
++    fn native_binding_schema_preserves_unbound_keys_and_left_mouse() {
++        use bevy_input::{keyboard::KeyCode, mouse::MouseButton};
++        let mut bindings = GameKeyBindings::default();
++        bindings.bindings[21] = Some(KeyCode::KeyU);
++        bindings.bindings[36] = None;
++        bindings.mouse = [Some(MouseButton::Left), None, Some(MouseButton::Other(12))];
++        let text = ron::to_string(&bindings).unwrap();
++        assert!(text.contains("undo:Some(KeyU)"));
++        assert!(text.contains("mouse_rotate:Some(Left)"));
++        assert!(text.contains("mouse_pan:None"));
++        assert!(text.contains("experimental_camera:None"));
++        assert_eq!(ron::from_str::<GameKeyBindings>(&text).unwrap(), bindings);
++        assert!(ron::from_str::<GameKeyBindings>("[(42,0)]").is_err());
++    }
++
++    #[test]
++    fn native_default_binding_identifiers_match_the_desktop_input_codes() {
++        let bindings = GameKeyBindings::default();
++        assert_eq!(
++            desktop_keycode_index(bindings.bindings[0].unwrap()).unwrap(),
++            0x2a
++        );
++        assert_eq!(
++            desktop_keycode_index(bindings.bindings[21].unwrap()).unwrap(),
++            0x2d
++        );
++        assert!(bindings.bindings[36].is_none());
++        assert!(
++            desktop_keycode_index(bevy_input::keyboard::KeyCode::Unidentified(
++                bevy_input::keyboard::NativeKeyCode::MacOS(12)
++            ))
++            .is_err()
++        );
++    }
++
++    #[test]
+     fn profile_ron_writes_player_id_and_aliases_legacy_installation_id() {
+-        let mut bindings = [KeyBinding::default(); 40];
+-        bindings[0] = KeyBinding { key: 1, value: 2 };
++        let mut bindings = GameKeyBindings::default();
++        bindings.bindings[0] = Some(bevy_input::keyboard::KeyCode::KeyX);
+         let profile = GameProfile {
+-            key_bindings: GameKeyBindings { bindings },
++            key_bindings: bindings,
+             new_glade_count: 3,
+             tutorial_cooldowns: TutorialCooldowns::default_cooldowns(),
+             tutorial: true,

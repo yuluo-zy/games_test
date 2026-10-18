@@ -1,4 +1,4 @@
-//! UNVERIFIED parallel UI80 → finish/Enclosure history/cancel runtime bridge.
+//! Completes observed rectangle edit sessions, including history and cancellation.
 use crate::{
     BuildingReport, WallCollectionState,
     history::{BuildingHistory, BuildingHistoryRequests},
@@ -6,12 +6,11 @@ use crate::{
     wall_decorator_archivist::{WallDecoratorArchiveState, restore_for_cancel},
 };
 use bevy_ecs::prelude::*;
-use country_core::recovered_building::{
-    building_history_transactions::BuildingEdit,
-    building_wall_history_edit::WallCompoundHistoryEdit,
-    building_wall_rectangle_edit::{RectangleEditState, finish_rectangle_edit_decision},
-    building_wall_state::WallId,
-};
+use country_core::resources::history::building_transactions::BuildingEdit;
+use country_core::resources::history::wall_edit::WallCompoundHistoryEdit;
+use country_core::systems::wall::shapes::rectangle::edit_decision::RectangleEditState;
+use country_core::systems::wall::shapes::rectangle::edit_decision::finish_rectangle_edit_decision;
+use country_core::resources::walls::publication_fields::WallId;
 #[derive(Event, Clone, Copy)]
 pub struct ObserveRectangleEditUi(pub [u8; 80]);
 #[derive(Event, Clone, Copy)]

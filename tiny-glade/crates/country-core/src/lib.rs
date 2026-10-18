@@ -11,6 +11,7 @@ pub mod utils_contract;
 pub mod asset_libraries;
 pub mod frozen_map;
 pub mod game_config;
+pub mod app_loading_state;
 pub mod game_profile;
 pub mod geometry;
 pub mod input;
@@ -35,12 +36,14 @@ pub mod utils;
 
 pub mod systems {
     pub mod audio;
+    pub mod arrow_gizmo_animation;
     pub mod backend;
     pub mod brush_preview;
     pub mod debug;
     pub mod camera_rig;
     pub mod collision;
     pub mod ivy;
+    pub mod main_camera;
     pub mod mode_manager;
     pub mod paths;
     pub mod render_loop;
@@ -50,12 +53,13 @@ pub mod systems {
     pub mod garden;
     pub mod ui;
     pub mod ui_clutter;
+    pub mod ui_edit_focus;
     pub mod prefab;
     pub mod terrain;
     pub mod time_of_day;
+    pub mod time_update;
+    pub mod timelapse_replay;
     pub mod save;
+    pub mod steam;
     pub mod wall;
 }
-
-pub mod recovered_building;
-pub mod recovered_systems;

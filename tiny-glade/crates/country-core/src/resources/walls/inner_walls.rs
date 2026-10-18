@@ -6,7 +6,7 @@ use hashbrown::{HashMap, HashSet};
 use crate::resources::roofs::geometry::surface::Curve2;
 
 use super::{WallId, inner_wall_state::WallState};
-use crate::recovered_building::wall_state::WallShapeSnapshot;
+use crate::resources::walls::publication_fields::WallShapeSnapshot;
 
 #[derive(Default, Debug)]
 pub struct WallChanges {
@@ -40,6 +40,11 @@ impl InnerWallStateRecord {
     /// WallState 0x70B（record qword[1..15]，O）。
     pub fn wall_state_bytes(&self) -> &[u8; 0x70] {
         self.0[8..].try_into().unwrap()
+    }
+
+    /// 记录内 WallState 0x70B → 权威 WallState（`load_state` 0x14085ad80 消费）。
+    pub fn wall_state(&self) -> WallState {
+        WallState::from_record_bytes(self.wall_state_bytes())
     }
 
     /// WallState `+0x54` height f32（O：update_wall_state_height 0x14085ad60 写 +0x54）。
@@ -121,30 +126,42 @@ impl InnerWalls {
         id
     }
 
-    /// `load_state` 0x14085ad80（① r6-walls-0x78b 契约 §1/§2，O 签名）：从 0x78B
-    /// 墙状态记录数组恢复（`*param_2` = 记录数、`param_2[1]` = 记录数组 ptr、元素
-    /// 0x78B = `{WallId u64@0, WallState 0x70B@8}`）。
-    /// 逐记录：record[0]=WallId + WallState O 字段（+0x54 height / +0x60 freehand /
-    /// +0x64 arch / +0x67 removed_supports）解码；**曲线区（WallState +0x00..0x53）待①**，
-    /// WallState 完整构造待①——本实现解码 O 字段 + 登记曲线区待①，不伪造。
+    /// `load_state` 0x14085ad80（fresh 反编译/反汇编 2026-10-17 逐分支）：
+    /// 1. **前置 3 panic**：walls / changes.updated / changes.removed 非空即 panic；
+    ///    **不检查 changes.created**（`in_RCX[3]`/`[0xf]`/`[0x15]` 三个 items 探针）。
+    /// 2. 记录数 0：仅释放入参 Vec 后 return；max_id 与各集合保持不变。
+    /// 3. 逐 0x78B 记录：id 插 `changes.created`。
+    /// 4. `HashMap::from_iter<(WallId, WallState)>` 重建 walls（旧表丢弃）。
+    /// 5. `max_id = 记录 id 最大值`（解引用记录首 qword，从首元素起 max）。
+    ///
+    /// 记录内 WallState 曲线点列不可由 0x70B 字节重建（见
+    /// `WallState::from_record_bytes` 登记）。
     pub fn load_state(&mut self, records: &[InnerWallStateRecord]) {
-        // 前置（O）：各内层 Vec 空。crate InnerWalls 内层为 walls HashMap——
-        // 以 walls 空表达等价前置（原生 assert，本实现登记语义）。
-        if !self.walls.is_empty() {
-            log::warn!("InnerWalls::load_state precondition: walls not empty");
+        assert!(
+            self.walls.is_empty(),
+            "assertion failed: self.walls.is_empty()"
+        );
+        assert!(
+            self.changes.updated.is_empty(),
+            "assertion failed: self.changes.updated.is_empty()"
+        );
+        assert!(
+            self.changes.removed.is_empty(),
+            "assertion failed: self.changes.removed.is_empty()"
+        );
+        if records.is_empty() {
+            return;
         }
-        // 逐记录：record[0]=WallId + WallState O 字段解码（曲线区→WallState 构造待①）。
+        let mut walls = HashMap::with_capacity(records.len());
+        let mut max_id = 0u64;
         for record in records {
             let id = record.wall_id();
-            let height = record.height();
-            let freehand = record.freehand_type();
-            let arch = record.arch_type();
-            let removed = record.removed_supports();
-            log::trace!(
-                "load_state: wall {:?} height={height} freehand={freehand} arch={arch} removed={removed} (曲线区→WallState 构造待①)",
-                id
-            );
+            self.changes.created.insert(id);
+            walls.insert(id, record.wall_state());
+            max_id = max_id.max(id.0);
         }
+        self.walls = walls;
+        self.max_id = max_id;
     }
 
     pub fn new_wall_w_params(
@@ -156,6 +173,13 @@ impl InnerWalls {
         demo: bool,
     ) -> WallId {
         self.new_wall(WallState::new(curve, height, style, clutter_version, demo))
+    }
+
+    /// 0x14085a200（fresh 反编译 2026-10-17）：与 `new_wall_w_params` 同构的
+    /// 三操作序列——`max_id += 1` → walls insert（旧值 drop）→ created insert。
+    /// 构造 WallState 的工作由其调用方完成（函数体不含状态装配）。
+    pub fn new_wall_from_curve(&mut self, state: WallState) -> WallId {
+        self.new_wall(state)
     }
 
     /// B 0x14085a4a0 inserts, then panics if an old row was displaced.
@@ -260,5 +284,103 @@ impl InnerWalls {
 
     pub fn update_supports(&mut self, id: WallId, supports: u8) -> bool {
         self.try_update(id, |state| state.snapshot.metadata.source_67 = supports)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn record(id: u64, height: f32, style: u8) -> InnerWallStateRecord {
+        let mut bytes = [0u8; 0x78];
+        bytes[..8].copy_from_slice(&id.to_le_bytes());
+        // WallState +0x54 height / +0x68 style（0x78B 记录内偏移 8 + 字段）。
+        bytes[8 + 0x54..8 + 0x58].copy_from_slice(&height.to_le_bytes());
+        bytes[8 + 0x68] = style;
+        InnerWallStateRecord(bytes)
+    }
+
+    fn wall_state() -> WallState {
+        WallState::new(
+            Curve2 {
+                points: vec![[0.0, 0.0], [1.0, 0.0]],
+                points_u: vec![0.0, 1.0],
+                length: 1.0,
+            },
+            1.0,
+            0,
+            0,
+            false,
+        )
+    }
+
+    #[test]
+    fn load_state_rebuilds_map_created_and_max_id() {
+        let mut walls = InnerWalls::new();
+        walls.load_state(&[record(4, 1.5, 2), record(9, 2.5, 0), record(2, 0.5, 1)]);
+        assert_eq!(walls.max_id(), 9);
+        assert_eq!(walls.get(WallId(4)).unwrap().height(), 1.5);
+        assert_eq!(walls.get(WallId(4)).unwrap().style(), 2);
+        assert_eq!(walls.get(WallId(2)).unwrap().style(), 1);
+        assert_eq!(walls.changes().created.len(), 3);
+        assert!(walls.changes().created.contains(&WallId(2)));
+        assert!(walls.changes().updated.is_empty());
+        assert!(walls.changes().removed.is_empty());
+        // created 集合不再作为"表"使用：重复 load 前置会 panic（walls 非空）。
+    }
+
+    #[test]
+    fn load_state_empty_records_keeps_max_id() {
+        let mut walls = InnerWalls::new();
+        walls.set_max_id(7);
+        walls.load_state(&[]);
+        assert_eq!(walls.max_id(), 7);
+        assert!(walls.all().next().is_none());
+    }
+
+    #[test]
+    #[should_panic(expected = "self.walls.is_empty()")]
+    fn load_state_requires_empty_walls() {
+        let mut walls = InnerWalls::new();
+        walls.new_wall(wall_state());
+        walls.load_state(&[record(1, 1.0, 0)]);
+    }
+
+    #[test]
+    #[should_panic(expected = "self.changes.updated.is_empty()")]
+    fn load_state_requires_empty_updated_set() {
+        // updated 非空仅可能来自已存在的墙；故直接构造资源表达前置（同模块可见私有字段）。
+        let mut changes = WallChanges::default();
+        changes.updated.insert(WallId(1));
+        let mut walls = InnerWalls {
+            walls: HashMap::new(),
+            changes,
+            max_id: 0,
+        };
+        walls.load_state(&[record(1, 1.0, 0)]);
+    }
+
+    #[test]
+    #[should_panic(expected = "self.changes.removed.is_empty()")]
+    fn load_state_requires_empty_removed_set() {
+        let mut changes = WallChanges::default();
+        changes.removed.insert(WallId(1));
+        let mut walls = InnerWalls {
+            walls: HashMap::new(),
+            changes,
+            max_id: 0,
+        };
+        walls.load_state(&[record(1, 1.0, 0)]);
+    }
+
+    #[test]
+    fn new_wall_from_curve_uses_new_wall_sequence() {
+        let mut walls = InnerWalls::new();
+        let first = walls.new_wall_from_curve(wall_state());
+        let second = walls.new_wall_from_curve(wall_state());
+        assert_eq!((first.0, second.0), (1, 2));
+        assert_eq!(walls.max_id(), 2);
+        assert!(walls.changes().created.contains(&first));
+        assert!(walls.changes().created.contains(&second));
     }
 }

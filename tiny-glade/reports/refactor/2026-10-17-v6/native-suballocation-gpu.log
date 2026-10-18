@@ -1,0 +1,42 @@
+   Compiling rhapsody v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 17.78s
+     Running tests/suballocation_native.rs (target/debug/deps/suballocation_native-957699c19095c6ab)
+
+running 4 tests
+test budgets_below_the_dependency_minimum_use_the_existing_dedicated_fallback ... ok
+test native_capacity_is_shared_charged_trimmed_and_has_no_device_back_edge ... ok
+test rejected_first_block_leaves_no_native_capacity_or_range_record ... ok
+test rejected_native_growth_rolls_back_the_real_range_and_native_block ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.37s
+
+     Running tests/transient_aliasing.rs (target/debug/deps/transient_aliasing-6cfafc00a548a48a)
+
+running 5 tests
+test partial_submit_does_not_publish_an_unreached_alias_initial_layout ... ok
+test s05_default_suballocator_reuses_native_blocks_for_shared_alias_backings ... alias=false policy=PreserveParallelism added_edges=0 planned_bytes=0 unaliased=0 saved=0 allocations=0
+
+alias=true policy=PreserveParallelism added_edges=0 planned_bytes=16768 unaliased=33280 saved=16512 allocations=2
+backing=0 size=16512 alignment=128 memory_bits=0x3 flags=0x0 allocation_id=Some(2) memory_type=Some(0)
+  resource=0 offset=0 size=16512 alignment=128 uses=[0, 1] dedicated=false preferred=false
+  resource=1 offset=0 size=16512 alignment=128 uses=[2, 3] dedicated=false preferred=false
+backing=1 size=256 alignment=256 memory_bits=0x3 flags=0x0 allocation_id=None memory_type=None
+  resource=2 offset=0 size=16 alignment=256 uses=[1, 2] dedicated=false preferred=false
+
+ok
+test s05_real_alias_binding_matches_pixels_and_reduces_committed_bytes ... alias=false policy=PreserveParallelism added_edges=0 planned_bytes=0 unaliased=0 saved=0 allocations=0
+
+alias=true policy=PreserveParallelism added_edges=0 planned_bytes=16768 unaliased=33280 saved=16512 allocations=2
+backing=0 size=16512 alignment=128 memory_bits=0x3 flags=0x0 allocation_id=Some(2) memory_type=Some(0)
+  resource=0 offset=0 size=16512 alignment=128 uses=[0, 1] dedicated=false preferred=false
+  resource=1 offset=0 size=16512 alignment=128 uses=[2, 3] dedicated=false preferred=false
+backing=1 size=256 alignment=256 memory_bits=0x3 flags=0x0 allocation_id=None memory_type=None
+  resource=2 offset=0 size=16 alignment=256 uses=[1, 2] dedicated=false preferred=false
+
+S05 committed baseline=65808 colored=49296 saved=16512 actual_backings=1 freed=1
+ok
+test simultaneously_pending_frames_allocate_distinct_backings_and_release_once ... ok
+test unrelated_passes_do_not_alias_even_when_recording_indices_are_disjoint ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.30s
+

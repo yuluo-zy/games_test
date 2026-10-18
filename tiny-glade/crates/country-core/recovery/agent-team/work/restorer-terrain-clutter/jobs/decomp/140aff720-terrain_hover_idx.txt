@@ -1,0 +1,69 @@
+
+void __cdecl country_core::systems::terrain::terrain_hover_idx::terrain_hover_idx(void)
+
+{
+  undefined4 uVar1;
+  byte *pbVar2;
+  undefined4 *puVar3;
+  undefined8 *puVar4;
+  int iVar5;
+  undefined8 *extraout_RAX;
+  longlong *plVar6;
+  undefined8 *in_RCX;
+  longlong in_RDX;
+  int iVar7;
+  undefined8 *in_R8;
+  float extraout_XMM0_Da;
+  
+  pbVar2 = *(byte **)(in_RDX + 0x40);
+  uVar1 = *(undefined4 *)((longlong)in_R8 + 0x1c);
+  puVar3 = (undefined4 *)in_R8[2];
+  *puVar3 = uVar1;
+  puVar4 = (undefined8 *)*in_R8;
+  *puVar4 = 0;
+  if ((*(uint *)*in_RCX < 0xb) && ((0x421U >> (*(uint *)*in_RCX & 0x1f) & 1) != 0)) {
+    frozen::FrozenMap::
+    get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>
+              ();
+    iVar7 = -1;
+    if (extraout_RAX != (undefined8 *)0x0) {
+      if ((extraout_RAX[3] != 0x6c) ||
+         (iVar5 = memcmp(&anon_107183261458dea85466985370debbb6_64_llvm_3641509820080252961,
+                         (void *)extraout_RAX[2],0x6c), iVar5 != 0)) {
+                    // WARNING: Subroutine does not return
+        core::panicking::assert_failed<ref_<str_>,ref_<str_>_>();
+      }
+      plVar6 = (longlong *)(**(code **)(extraout_RAX[1] + 0x18))(*extraout_RAX);
+      if (plVar6 != (longlong *)0x0) {
+        if (plVar6[1] == 0) {
+                    // WARNING: Subroutine does not return
+          core::panicking::panic_bounds_check();
+        }
+        iVar7 = *(int *)(*plVar6 + 0x10);
+      }
+    }
+    ::utils::float_grid::impl$0::
+    bilinear_sample_at_world_xz<country_core::resources::world_raster::RasterBufferRef<512>_>();
+    if (extraout_XMM0_Da <= 0.0) {
+      if (iVar7 == -1) {
+        return;
+      }
+    }
+    else {
+      if ((*pbVar2 & 1) == 0) {
+        return;
+      }
+      if (iVar7 == -1) {
+        return;
+      }
+      if (*(float *)(pbVar2 + 8) <= 0.5) {
+        return;
+      }
+    }
+    *puVar3 = uVar1;
+    *puVar4 = 1;
+    puVar4[1] = (longlong)iVar7;
+  }
+  return;
+}
+

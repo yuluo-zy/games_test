@@ -12,12 +12,18 @@ native-physics = ["dep:rapier3d"]
 native-audio = ["dep:libfmod"]
 
 [dependencies]
+motomoto = { path = "../motomoto" }
+bevy_app.workspace = true
 ahash = "=0.8.11"
 petgraph = "=0.8.1"
 rhapsody.workspace = true
+obvhs.workspace = true
+# Constrain the reused fork's radix sorter to the original B lock identity.
+rdst = { version = "=0.20.14", default-features = false }
 tabloid.workspace = true
 tg-history.workspace = true
 tg-terrain.workspace = true
+tg-text = { path = "../tg-text" }
 paths.workspace = true
 tempfile = "=3.20.0"
 crossbeam-channel = "=0.5.6"
@@ -25,13 +31,16 @@ fastrand.workspace = true
 perchance.workspace = true
 rapier3d = { workspace = true, optional = true }
 anyhow.workspace = true
+asset = { path = "../asset" }
 ash.workspace = true
 bevy_ecs = { version = "=0.16.0", default-features = false }
+bevy_input = { version = "=0.16.0", default-features = false, features = ["std", "serialize"] }
 bevy_time = { version = "=0.16.0", default-features = false }
+bevy_state = { version = "=0.16.0", default-features = false, features = ["std", "bevy_app"] }
 libfmod = { version = "=2.222.6", optional = true }
 bitvec = "=1.0.1"
 hexasphere = "=12.0.0"
-bytemuck = "=1.16.0"
+bytemuck = { workspace = true, features = ["min_const_generics"] }
 bracket-noise = "=0.8.2"
 fnv.workspace = true
 glam = { workspace = true, features = ["serde", "bytemuck"] }
@@ -47,7 +56,7 @@ relative-path.workspace = true
 ron.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-slotmap = "=1.0.6"
+slotmap.workspace = true
 utils.workspace = true
 uuid = { version = "=1.15.1", features = ["v4", "serde"] }
 xxhash-rust = { workspace = true, features = ["xxh3"] }
@@ -55,6 +64,7 @@ zeno = "=0.2.2"
 dolly = "=0.6.0"
 egui = "=0.27.2"
 enum-iterator = "=1.2.0"
+image.workspace = true
 
 [lints]
 workspace = true

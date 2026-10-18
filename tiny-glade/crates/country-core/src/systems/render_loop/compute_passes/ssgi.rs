@@ -105,6 +105,15 @@ pub fn calculate_ssgi(
             &WriteTextureUnchecked(pair.current),
             0x32,
         );
+    // Original packaged SSGI temporal SPV: history_valid==0 takes the
+    // input-only branch; its sole history_tex sample is unreachable.
+    // Keep this exact read binding and synchronization, skipping only the
+    // previous-content requirement while the temporal pair is invalid.
+    let p3 = if !pair.fresh {
+        p3.inactive_texture_contents(binding::HISTORY_TEX)
+    } else {
+        p3
+    };
     let p3 = dispatch_extent(p3, &temporal_out);
 
     Ssgi {
@@ -211,6 +220,33 @@ mod tests {
         assert_eq!(e.uniform_u32(&out.passes[2], binding::HISTORY_VALID), 1);
         let (e, out) = run(false);
         assert_eq!(e.uniform_u32(&out.passes[2], binding::HISTORY_VALID), 0);
+    }
+
+    #[test]
+    fn only_invalid_ssgi_history_skips_previous_contents() {
+        for valid in [false, true] {
+            let (e, out) = run(valid);
+            let pass = &out.passes[2];
+            assert_eq!(e.uniform_u32(pass, binding::HISTORY_VALID), u32::from(valid));
+            assert_eq!(pass.inactive_texture_bindings.len(), usize::from(!valid));
+            if !valid {
+                // This test reflection also auto-binds ColorLibrary before
+                // the images. Check the actual history owner, not a hardcoded
+                // binding-table offset that ignores the extra buffer.
+                let history_resource = accesses(pass)[1].0;
+                let index = pass.inactive_texture_bindings[0] as usize;
+                assert!(matches!(pass.bindings[index],
+                    crate::render::pass_builder::pass_resource_access::PassBinding::ImageView {
+                        resource, write: false, ..
+                    } if resource == history_resource));
+            }
+            // This is the original five-access sequence, including both
+            // writes and the still-declared history read, not a removed slot.
+            assert_eq!(accesses(pass).iter().map(|a| (a.1, a.2)).collect::<Vec<_>>(),
+                [(0x19, 1), (0x19, 1), (0x19, 1), (0x32, 0), (0x32, 0)]);
+            assert!(out.passes[0].inactive_texture_bindings.is_empty());
+            assert!(out.passes[1].inactive_texture_bindings.is_empty());
+        }
     }
 
     #[test]

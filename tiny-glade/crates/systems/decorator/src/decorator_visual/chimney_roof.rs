@@ -36,7 +36,7 @@ pub fn generate_roof_chimneys(
                 // 屋顶烟囱只看屋顶目的地（O 分支；U 精确判别）。
                 continue;
             }
-            let _height = info.extra().as_chimney().0; // U：f32 载荷语义。
+            let _height = info.extra().as_chimney().f; // U：f32 载荷语义。
             let _transform = cached_transforms.transform(id);
             let _subtype = derived.get(id).subtype();
             // O：立方体碰撞（RaycastMeshData::new_cuboid）。

@@ -86,11 +86,10 @@ pub mod rhapsody_boundary {
         }
     }
 
-    /// `rhapsody::raw::error::BackendError`（占位；原版 Ok 标签为 0xb，错误载荷 U）。
-    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-    pub struct BackendError;
+    /// Preserve the renderer's concrete failure category across the host boundary.
+    pub use rhapsody::Error as BackendError;
 
-    /// 占位：`rhapsody::raw::device::GraphicsDevice`（只含本层用到的两个调用）。
+    /// 占位：`rhapsody::device::Device`（只含本层用到的两个调用）。
     pub trait GraphicsDevice {
         fn create_buffer(
             &self,
@@ -98,6 +97,9 @@ pub mod rhapsody_boundary {
             name: &str,
             data: Option<&[u8]>,
         ) -> Result<Buffer, BackendError>;
+
+        /// 释放由同一设备创建的缓冲；CPU 记录设备不拥有物理资源。
+        fn release_buffer(&self, _buffer: &Buffer) {}
 
         /// 把 `data[r]` 写到缓冲区 `offset + r` 处，`ranges` 互不重叠（O：来自两个调用点的实参）。
         fn update_buffer_bytes(
@@ -121,6 +123,15 @@ pub mod rhapsody_boundary {
         /// 占位默认值 0（真实实现 = `vkGetBufferDeviceAddress`，由 rhapsody 持有；不自造行为）。
         fn device_address(&self, _buffer: &Buffer) -> u64 {
             panic!("Buffer device-address backend is not connected")
+        }
+
+        /// Native ivy leaf element scale (0x1408c1631 / 0x1408c181d): when the
+        /// GraphicsDevice byte `[device+0x1d]` is nonzero the packed leaf
+        /// `size` is scaled to 0.85 (`0x3f59999a`), otherwise 1.0
+        /// (`0x3f800000`). The crate models the factor with this hook; the
+        /// D-group render backend reads the device byte.
+        fn ivy_leaf_scale(&self) -> f32 {
+            1.0
         }
     }
 
@@ -168,37 +179,55 @@ pub fn convert_buffer_desc(
 /// 返回未接错误，不补造、不假成功。`convert_buffer_desc` 是真实 desc 换算（WIRING §2.3 映射表）。
 #[cfg(not(test))]
 impl GraphicsDevice for crate::rhapsody_contract::GraphicsDevice {
+    fn release_buffer(&self, buffer: &Buffer) {
+        if let Some(host) = self.buffer_host() {
+            host.release_buffer(buffer);
+        }
+    }
     fn create_buffer(
         &self,
         desc: &BufferDesc,
         name: &str,
-        _data: Option<&[u8]>,
+        data: Option<&[u8]>,
     ) -> Result<Buffer, rhapsody_boundary::BackendError> {
+        if let Some(host) = self.buffer_host() {
+            return host.create_buffer(desc, name, data);
+        }
         log::warn!(
             target: "country_core::render::ssbo",
             "create_buffer({name}): registered gap (WIRING §4.8), game-side 40B Buffer cannot hold ManagedBuffer; real desc = {:?}",
             convert_buffer_desc(desc)
         );
-        Err(rhapsody_boundary::BackendError)
+        Err(rhapsody_boundary::BackendError::unsupported(
+            "SSBO backend requires a connected managed-buffer host",
+        ))
     }
 
     fn update_buffer_bytes(
         &self,
-        _buffer: &Buffer,
-        _data: &[u8],
-        _ranges: &[Range<usize>],
-        _offset: usize,
+        buffer: &Buffer,
+        data: &[u8],
+        ranges: &[Range<usize>],
+        offset: usize,
     ) -> Result<(), rhapsody_boundary::BackendError> {
+        if let Some(host) = self.buffer_host() {
+            return host.update_buffer_bytes(buffer, data, ranges, offset);
+        }
         log::warn!(
             target: "country_core::render::ssbo",
             "update_buffer_bytes: registered gap (WIRING §4.8), needs ManagedBuffer; real path = device_api::update_buffer_bytes"
         );
-        Err(rhapsody_boundary::BackendError)
+        Err(rhapsody_boundary::BackendError::unsupported(
+            "SSBO backend requires a connected managed-buffer host",
+        ))
     }
 
     /// 登记缺口 §4.8：真实 `buffer_mapped_slice_mut(&ManagedBuffer)`（device_api.rs:137）。
     /// 保持占位默认 `None`（调用方 `Option::unwrap` 即 panic，诚实未接）。
-    fn mapped_slice_mut(&self, _buffer: &Buffer) -> Option<&mut [u8]> {
+    fn mapped_slice_mut(&self, buffer: &Buffer) -> Option<&mut [u8]> {
+        if let Some(host) = self.buffer_host() {
+            return host.mapped_slice_mut(buffer);
+        }
         log::warn!(
             target: "country_core::render::ssbo",
             "mapped_slice_mut: registered gap (WIRING §4.8), needs ManagedBuffer"
@@ -207,7 +236,10 @@ impl GraphicsDevice for crate::rhapsody_contract::GraphicsDevice {
     }
 
     /// 登记缺口 §4.8：真实 `buffer_device_address(&ManagedBuffer)`（device_api.rs:144）。
-    fn device_address(&self, _buffer: &Buffer) -> u64 {
+    fn device_address(&self, buffer: &Buffer) -> u64 {
+        if let Some(host) = self.buffer_host() {
+            return host.device_address(buffer);
+        }
         log::warn!(
             target: "country_core::render::ssbo",
             "device_address: registered gap (WIRING §4.8), needs ManagedBuffer; real path = device_api::buffer_device_address"
@@ -305,6 +337,33 @@ pub struct TypedStorageBuffer<T> {
 }
 
 impl<T: StorageElement> TypedStorageBuffer<T> {
+    /// Source-host carrier for a buffer created by a specialized original
+    /// producer (for example indirect arguments with usage 0x122). This does
+    /// not allocate, upload, choose usage, or change `new`'s native policy.
+    pub fn from_created_buffer(buffer: Buffer) -> Self {
+        Self {
+            buffer,
+            _marker: PhantomData,
+        }
+    }
+
+    /// 创建固定容量设备缓冲，不分配临时清零数组；调用方只发布已写入的槽位。
+    pub fn try_new_uninitialized(
+        device: &dyn GraphicsDevice,
+    ) -> Result<Self, rhapsody_boundary::BackendError> {
+        let byte_size = T::BUFFER_LEN
+            .checked_mul(core::mem::size_of::<T>())
+            .filter(|&size| size > 0)
+            .ok_or_else(|| rhapsody_boundary::BackendError::invalid_usage("缓冲容量无效或溢出"))?;
+        let description =
+            BufferDesc::new(byte_size, usage::STORAGE_BUFFER | usage::TRANSFER_DST, 1).alignment(4);
+        let buffer = device.create_buffer(&description, T::NAME, None)?;
+        Ok(Self {
+            buffer,
+            _marker: PhantomData,
+        })
+    }
+
     /// `TypedStorageBuffer::new<T>`（O）。
     ///  * 有初始数据：`BUFFER_LEN > 0 && len > BUFFER_LEN` → panic `Excessive data size supplied for buffer {type}`；
     ///  * 无初始数据：`BUFFER_LEN == 0` → panic `Storage buffer {name} (type {type}) has \`BUFFER_LEN\` of zero. …`；
@@ -1066,7 +1125,7 @@ mod contract_device_tests {
 
     #[test]
     fn contract_device_is_a_ssbo_device() {
-        let dev = crate::rhapsody_contract::GraphicsDevice::default();
+        let dev = crate::render::test_device::TestDevice::default();
         let d: &dyn GraphicsDevice = &dev;
         let b = d
             .create_buffer(&BufferDesc::new(64, usage::STORAGE_BUFFER, 1), "t", None)

@@ -1,5 +1,7 @@
-//! Tiny Glade B 游戏自有工具恢复；原公开库实现直接复用。
-//! 原名和ABI尚未核实的边界由模块合同单列，不由编译通过推定等价。
+//! Shared geometry, curves, sampling, compact storage and filesystem utilities.
+//!
+//! Numerical policies and input requirements are documented at their API boundaries.
+//! Historical provenance and validation scope are recorded in the package README.
 
 pub mod angle_range;
 pub mod camera;
@@ -13,6 +15,7 @@ pub mod float_grid;
 pub mod geometry;
 pub mod halver;
 pub mod index_condenser;
+pub mod iso_transform;
 pub mod local_time;
 pub mod loop_range;
 pub mod name_hash;
@@ -26,3 +29,5 @@ pub mod swizzlers;
 pub mod threshold_range;
 pub mod timer;
 pub mod wall_space;
+pub use geometry::rotation_from_normal;
+pub use iso_transform::IsoTransform;

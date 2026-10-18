@@ -1,0 +1,37 @@
+//! B 0x140a03ba0 coalesces all unread stroke changes into one notification.
+//!
+//! fresh 反编译（terrain-systems-0x140a03ba0）：
+//! - 有未读 `EvTerrainStrokeChanged` 事件才处理；
+//! - 写 8 B unit 事件（`grow_one<EventInstance<WriteSettingsFileCmd>>`，in_R8）——
+//!   crate 以 [`RecalculateHeightMapCmd`]（8 B unit）承载；
+//! - `LOCK INC` readback.pending（`on_terrain_modified`）；
+//! - **另写一条 StairsPlacementBucket 记录 tag=0**（`grow_one<indexmap::Bucket<(DecoratorId,
+//!   DecoratorId),AlignKind>>`，0x28B，仅写 `{count u64@+0, tag u32@+8=0}`），in_R9——
+//!   早期 Rust 写 `PlayTerrainSound::StrokeChanged` 系**编造**（原版无音频载荷事件），已删。
+use super::{
+    delayed_terrain_changed_msg::ScheduledTerrainReadback, RecalculateHeightMapCmd,
+    ui_edit_terrain::{StairsPlacementBucket, StairsPlacementEntry},
+};
+use crate::resources::terrain_editing::StrokeId;
+use bevy_ecs::prelude::*;
+
+/// B TerrainEdit::reapply 0x1408592d0 writes the source stroke ID as payload.
+#[derive(Event, Clone, Copy, Debug)]
+pub struct EvTerrainStrokeChanged(pub StrokeId);
+
+pub fn terrain_stroke_changed(
+    mut changed: EventReader<EvTerrainStrokeChanged>,
+    readback: Res<ScheduledTerrainReadback>,
+    mut recalculate: EventWriter<RecalculateHeightMapCmd>,
+    mut stairs: ResMut<StairsPlacementBucket>,
+) {
+    if changed.read().last().is_some() {
+        // 原版顺序（in_R8 8B 事件 → readback LOCK INC → in_R9 stairs 桶 tag=0）。
+        recalculate.write(RecalculateHeightMapCmd);
+        readback.on_terrain_modified();
+        stairs.entries.push(StairsPlacementEntry {
+            tag: 0,
+            ..Default::default()
+        });
+    }
+}

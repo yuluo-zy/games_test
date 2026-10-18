@@ -1,0 +1,378 @@
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x141461d50      cmp byte [rax - 0x75], cl
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x141461d53      adc byte [rax - 0x7b], cl
+0x141461d56      ror byte [rdi], cl
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x141461d58      test byte [rdi + 1], bl
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x141461d5b      add byte [rax], al
+; reloc.WS2_32.dll_recv
+0x141461d5d      add rdx, 0x10
+; 26
+0x141461d61      mov r9d, 0x1a
+0x141461d67      lea rcx, [rbp + 0x50]
+; "event:/SFX/TerrainLowPoint"
+0x141461d6b      lea r8, [0x142c62d58]
+   ; 0x140a54440(0x0, 0x0, 0x10, 0x50)
+0x141461d72      call 0x140a54440
+   ; reloc.WS2_32.dll_accept
+0x141461d77      cmp qword [rbp + 0x50], 2
+   ; likely
+0x141461d7c      jne 0x141461f10
+0x141461d82      jmp 0x1414626a3
+0x141461d87      nop word [rax + rax]
+0x141461d90      mov rax, qword [rbp + 0x38]
+0x141461d94      mov rdx, qword [rax]
+0x141461d97      test rdx, rdx
+   ; unlikely
+0x141461d9a      je 0x141461dc2
+; reloc.WS2_32.dll_recv
+0x141461d9c      add rdx, 0x10
+; 29
+0x141461da0      mov r9d, 0x1d
+0x141461da6      lea rcx, [rbp + 0x50]
+; "event:/SFX/TerrainCreateChunk"
+0x141461daa      lea r8, [0x142c62d90]
+   ; 0x140a54440(0x0, 0x0, 0x20, 0x50)
+0x141461db1      call 0x140a54440
+   ; reloc.WS2_32.dll_accept
+0x141461db6      cmp qword [rbp + 0x50], 2
+   ; likely
+0x141461dbb      jne 0x141461e16
+0x141461dbd      jmp 0x14146266f
+; [0x143634c09:1]=0
+0x141461dc2      movzx eax, byte [0x143634c09]
+; 29
+0x141461dc9      mov ecx, 0x1d
+   ; reloc.WS2_32.dll_accept
+0x141461dce      mov edx, 1
+   ; 0x140613c10(0x0, 0x0, 0x1, 0x1d)
+0x141461dd3      call 0x140613c10
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x141461dd8      test rax, rax
+   ; likely
+0x141461ddb      je 0x1414626d7
+; [0x142c62d9d:16]=-1
+0x141461de1      movups xmm0, xmmword [0x142c62d9d]
+0x141461de8      movups xmmword [rax + 0xd], xmm0
+; [0x142c62d90:16]=-1
+; "event:/SFX/TerrainCreateChunk"
+0x141461dec      movups xmm0, xmmword [0x142c62d90]
+0x141461df3      movups xmmword [rax], xmm0
+0x141461df6      mov qword [rbp + 0x50], 0
+; 29
+0x141461dfe      mov qword [rbp + 0x60], 0x1d
+0x141461e06      mov qword [rbp + 0x68], rax
+; 29
+0x141461e0a      mov qword [rbp + 0x70], 0x1d
+0x141461e12      mov byte [rbp + 0x78], 2
+0x141461e16      mov rax, qword [rbp + 0x50]
+0x141461e1a      mov rcx, qword [rbp + 0x58]
+0x141461e1e      mov rdx, qword [rbp + 0x60]
+0x141461e22      mov r8, qword [rbp + 0x68]
+0x141461e26      mov r9, qword [rbp + 0x70]
+0x141461e2a      mov qword [rbp + 0x20], r9
+0x141461e2e      movzx r9d, byte [rbp + 0x78]
+0x141461e33      mov byte [rbp + 0x28], r9b
+0x141461e37      mov r9d, dword [rbp + 0x79]
+0x141461e3b      mov dword [rbp + 0x29], r9d
+0x141461e3f      movzx r9d, word [rbp + 0x7d]
+0x141461e44      mov word [rbp + 0x2d], r9w
+0x141461e49      movzx r9d, byte [rbp + 0x7f]
+0x141461e4e      mov byte [rbp + 0x2f], r9b
+0x141461e52      mov qword [rbp + 0x10], rdx
+0x141461e56      mov qword [rbp + 0x18], r8
+0x141461e5a      mov qword [rbp], rax
+0x141461e5e      mov qword [rbp + 8], rcx
+0x141461e62      mov eax, dword [r15 + 0x14]
+0x141461e66      mov dword [rbp + 0x58], eax
+0x141461e69      mov rax, qword [r15 + 0xc]
+0x141461e6d      mov qword [rbp + 0x50], rax
+0x141461e71      mov rcx, r13
+0x141461e74      lea rdx, [rbp + 0x50]
+   ; 0x140a57da0(0x0, 0x0, 0x50, 0x0)
+0x141461e78      call 0x140a57da0
+0x141461e7d      mov rcx, r13
+   ; 0x140a57300(0x0, 0x0, 0x50, 0x0)
+0x141461e80      call 0x140a57300
+0x141461e85      movss xmm2, dword [r15 + 0x18]
+0x141461e8b      xorps xmm0, xmm0
+0x141461e8e      movaps xmm1, xmm11
+   ; 0x140c904a0(0x0, 0x0, 0x50, 0x0)
+0x141461e92      call 0x140c904a0
+; 0xe
+; 14
+0x141461e97      mov r8d, recv
+0x141461e9d      mov rcx, r13
+; "terrain_heightevent:/SFX/TerrainLowPoint"
+0x141461ea0      lea rdx, [0x142c62d4a]
+0x141461ea7      movaps xmm3, xmm0
+   ; 0x140a57670(0x0, 0x0, 0x142c62d4a, 0x0)
+0x141461eaa      call 0x140a57670
+0x141461eaf      mov rcx, r13
+   ; 0x14089a280(0x0, 0x0, 0x142c62d4a, 0x0)
+0x141461eb2      call 0x14089a280
+0x141461eb7      jmp 0x141461fe1
+; [0x143634c09:1]=0
+0x141461ebc      movzx eax, byte [0x143634c09]
+; 26
+0x141461ec3      mov ecx, 0x1a
+   ; reloc.WS2_32.dll_accept
+0x141461ec8      mov edx, 1
+   ; 0x140613c10(0x0, 0x0, 0x1, 0x1a)
+0x141461ecd      call 0x140613c10
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x141461ed2      test rax, rax
+   ; likely
+0x141461ed5      je 0x1414626f2
+; [0x142c62d62:16]=-1
+0x141461edb      movups xmm0, xmmword [0x142c62d62]
+0x141461ee2      movups xmmword [rax + 0xa], xmm0
+; [0x142c62d58:16]=-1
+; "event:/SFX/TerrainLowPoint"
+0x141461ee6      movups xmm0, xmmword [0x142c62d58]
+0x141461eed      movups xmmword [rax], xmm0
+0x141461ef0      mov qword [rbp + 0x50], 0
+; 26
+0x141461ef8      mov qword [rbp + 0x60], 0x1a
+0x141461f00      mov qword [rbp + 0x68], rax
+; 26
+0x141461f04      mov qword [rbp + 0x70], 0x1a
+0x141461f0c      mov byte [rbp + 0x78], 2
+0x141461f10      mov rax, qword [rbp + 0x50]
+0x141461f14      mov rcx, qword [rbp + 0x58]
+0x141461f18      mov rdx, qword [rbp + 0x60]
+0x141461f1c      mov r8, qword [rbp + 0x68]
+0x141461f20      mov r9, qword [rbp + 0x70]
+0x141461f24      mov qword [rbp + 0x20], r9
+0x141461f28      movzx r9d, byte [rbp + 0x78]
+0x141461f2d      mov byte [rbp + 0x28], r9b
+0x141461f31      mov r9d, dword [rbp + 0x79]
+0x141461f35      mov dword [rbp + 0x29], r9d
+0x141461f39      movzx r9d, word [rbp + 0x7d]
+0x141461f3e      mov word [rbp + 0x2d], r9w
+0x141461f43      movzx r9d, byte [rbp + 0x7f]
+0x141461f48      mov byte [rbp + 0x2f], r9b
+0x141461f4c      mov qword [rbp + 0x10], rdx
+0x141461f50      mov qword [rbp + 0x18], r8
+0x141461f54      mov qword [rbp], rax
+0x141461f58      mov qword [rbp + 8], rcx
+0x141461f5c      mov eax, dword [r15 + 0x14]
+0x141461f60      mov dword [rbp + 0x58], eax
+0x141461f63      mov rax, qword [r15 + 0xc]
+0x141461f67      mov qword [rbp + 0x50], rax
+0x141461f6b      mov rcx, r13
+0x141461f6e      lea rdx, [rbp + 0x50]
+   ; 0x140a57da0(0x0, 0x0, 0x50, 0x0)
+0x141461f72      call 0x140a57da0
+0x141461f77      mov rcx, r13
+   ; 0x140a57300(0x0, 0x0, 0x50, 0x0)
+0x141461f7a      call 0x140a57300
+0x141461f7f      movss xmm3, dword [r15 + 0x18]
+; 0x12
+; 18
+0x141461f85      mov r8d, send
+0x141461f8b      mov rcx, r13
+; "terrain_smoothnessterrain_heightevent:/SFX/TerrainLowPoint"
+0x141461f8e      lea rdx, [0x142c62d38]
+   ; 0x140a57670(0x0, 0x0, 0x142c62d38, 0x0)
+0x141461f95      call 0x140a57670
+0x141461f9a      movss xmm2, dword [r15 + 0x1c]
+0x141461fa0      mov rax, qword [rbp - 8]
+0x141461fa4      divss xmm2, dword [rax + 0x58]
+0x141461fa9      xorps xmm0, xmm0
+0x141461fac      movaps xmm1, xmm10
+   ; 0x140c904a0(0x0, 0x0, 0x142c62d38, 0x0)
+0x141461fb0      call 0x140c904a0
+0x141461fb5      xorps xmm1, xmm1
+0x141461fb8      maxss xmm1, xmm0
+0x141461fbc      movaps xmm3, xmm12
+0x141461fc0      minss xmm3, xmm1
+; 0xd
+   ; reloc.WS2_32.dll_listen
+0x141461fc4      mov r8d, reloc.WS2_32.dll_listen
+0x141461fca      mov rcx, r13
+; "editing_speedWallHeightevent:/SFX/WindowChangeSeedevent:/SFX/WindowHoverevent:/SFX/WindowSplitevent:/SFX/Lantern/PlaceBuildinge"
+0x141461fcd      lea rdx, [0x142c62943]
+   ; 0x140a57670(0x0, 0x0, 0x142c62943, 0x0)
+0x141461fd4      call 0x140a57670
+0x141461fd9      mov rcx, r13
+   ; 0x14089a280(0x0, 0x0, 0x142c62943, 0x0)
+0x141461fdc      call 0x14089a280
+0x141461fe1      mov rdx, qword [rbp + 0x10]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x141461fe5      test rdx, rdx
+   ; unlikely
+0x141461fe8      je 0x141461cfd
+0x141461fee      mov rcx, qword [rbp + 0x18]
+   ; reloc.WS2_32.dll_accept
+0x141461ff2      mov r8d, 1
+   ; 0x140613c20(0x0, 0x0, -1, -1)
+0x141461ff8      call 0x140613c20
+0x141461ffd      jmp 0x141461cfd
+0x141462002      mov eax, dword [r15 + 0x14]
+0x141462006      mov dword [rbp + 0x90], eax
+0x14146200c      mov rax, qword [r15 + 0xc]
+0x141462010      mov qword [rbp + 0x88], rax
+0x141462017      mov eax, dword [rbp + 0x94]
+0x14146201d      mov rcx, qword [rbp + 0x80]
+0x141462024      mov dword [rcx], eax
+0x141462026      mov rax, qword [rbp + 0x98]
+0x14146202d      mov byte [rax + 0xf8], 1
+0x141462034      movss xmm2, dword [r15 + 0x20]
+0x14146203a      mov rax, qword [rbp - 8]
+0x14146203e      divss xmm2, dword [rax + 0x58]
+0x141462043      xorps xmm0, xmm0
+0x141462046      movaps xmm1, xmm10
+   ; 0x140c904a0(0x0, 0x0, -1, -1)
+0x14146204a      call 0x140c904a0
+0x14146204f      mov rax, qword [rbp + 0x98]
+0x141462056      mov rdx, qword [rax + 0xd0]
+0x14146205d      mov rcx, qword [rax + 0xe8]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x141462064      cmp rcx, rdx
+   ; likely
+0x141462067      jae 0x14146270d
+0x14146206d      movaps xmm6, xmm0
+0x141462070      lea rcx, [rcx + rcx*2]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x141462074      shl rcx, 4
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x141462078      add rcx, qword [rax + 0xc8]
+0x14146207f      movss xmm3, dword [r15 + 0x18]
+; 0x12
+; 18
+0x141462085      mov r8d, send
+; "terrain_smoothnessterrain_heightevent:/SFX/TerrainLowPoint"
+0x14146208b      lea rdx, [0x142c62d38]
+   ; 0x140a57670(0x0, 0x0, 0x142c62d38, 0xffffffffffffffcf)
+0x141462092      call 0x140a57670
+0x141462097      mov rax, qword [rbp + 0x98]
+0x14146209e      mov rdx, qword [rax + 0xd0]
+0x1414620a5      mov r8, qword [rax + 0xe8]
+0x1414620ac      mov qword [rbp + 0x40], r8
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1414620b0      cmp r8, rdx
+   ; likely
+0x1414620b3      jae 0x14146271e
+0x1414620b9      mov r14, qword [rax + 0xc8]
+0x1414620c0      movss xmm2, dword [r15 + 0x1c]
+0x1414620c6      xorps xmm0, xmm0
+0x1414620c9      movaps xmm1, xmm11
+   ; 0x140c904a0(0x0, 0x0, -1, 0xffffffffffffffcf)
+0x1414620cd      call 0x140c904a0
+0x1414620d2      xorps xmm1, xmm1
+0x1414620d5      maxss xmm1, xmm6
+0x1414620d9      movaps xmm6, xmm12
+0x1414620dd      minss xmm6, xmm1
+0x1414620e1      mov rax, qword [rbp + 0x40]
+0x1414620e5      lea rax, [rax + rax*2]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1414620e9      shl rax, 4
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1414620ed      add r14, rax
+; 0xe
+; 14
+0x1414620f0      mov r8d, recv
+0x1414620f6      mov rcx, r14
+; "terrain_heightevent:/SFX/TerrainLowPoint"
+0x1414620f9      lea rdx, [0x142c62d4a]
+0x141462100      movaps xmm3, xmm0
+   ; 0x140a57670(0x0, 0x0, 0x142c62d4a, 0xffffffffffffffcf)
+0x141462103      call 0x140a57670
+0x141462108      jmp 0x141461cfd
+0x14146210d      mov eax, dword [r15 + 0x14]
+0x141462111      mov dword [rbp + 0x90], eax
+0x141462117      mov rax, qword [r15 + 0xc]
+0x14146211b      mov qword [rbp + 0x88], rax
+0x141462122      mov eax, dword [rbp + 0x94]
+0x141462128      mov rcx, qword [rbp + 0x80]
+0x14146212f      mov dword [rcx], eax
+0x141462131      mov rax, qword [rbp + 0x98]
+0x141462138      mov byte [rax + 0x38], 1
+0x14146213c      movss xmm2, dword [r15 + 0x1c]
+0x141462142      mov rax, qword [rbp - 8]
+0x141462146      divss xmm2, dword [rax + 0x58]
+0x14146214b      xorps xmm0, xmm0
+0x14146214e      movaps xmm1, xmm10
+   ; 0x140c904a0(0x0, 0x0, 0x142c62d4a, -1)
+0x141462152      call 0x140c904a0
+0x141462157      mov rax, qword [rbp + 0x98]
+0x14146215e      mov rdx, qword [rax + 0x10]
+0x141462162      mov rcx, qword [rax + 0x28]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x141462166      cmp rcx, rdx
+   ; likely
+0x141462169      jae 0x141462756
+0x14146216f      lea rcx, [rcx + rcx*2]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x141462173      shl rcx, 4
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x141462177      add rcx, qword [rax + 8]
+0x14146217b      xorps xmm1, xmm1
+0x14146217e      maxss xmm1, xmm0
+0x141462182      movaps xmm7, xmm12
+0x141462186      minss xmm7, xmm1
+0x14146218a      movss xmm3, dword [r15 + 0x18]
+; 0x12
+; 18
+0x141462190      mov r8d, send
+; "terrain_smoothnessterrain_heightevent:/SFX/TerrainLowPoint"
+0x141462196      lea rdx, [0x142c62d38]
+   ; 0x140a57670(0x0, 0x0, 0x142c62d38, 0xffffffffffffffcf)
+0x14146219d      call 0x140a57670
+0x1414621a2      jmp 0x141461cfd
+0x1414621a7      mov eax, dword [r15 + 0x14]
+0x1414621ab      mov dword [rbp + 0x90], eax
+0x1414621b1      mov rax, qword [r15 + 0xc]
+0x1414621b5      mov qword [rbp + 0x88], rax
+0x1414621bc      mov eax, dword [rbp + 0x94]
+0x1414621c2      mov rcx, qword [rbp + 0x80]
+0x1414621c9      mov dword [rcx], eax
+0x1414621cb      mov rax, qword [rbp + 0x98]
+0x1414621d2      mov byte [rax + 0x78], 1
+0x1414621d6      movss xmm2, dword [r15 + 0x20]
+0x1414621dc      mov rax, qword [rbp - 8]
+0x1414621e0      divss xmm2, dword [rax + 0x58]
+0x1414621e5      xorps xmm0, xmm0
+0x1414621e8      movaps xmm1, xmm10
+   ; 0x140c904a0(0x0, 0x0, 0x142c62d38, -1)
+0x1414621ec      call 0x140c904a0
+0x1414621f1      mov rax, qword [rbp + 0x98]
+0x1414621f8      mov rdx, qword [rax + 0x50]
+0x1414621fc      mov rcx, qword [rax + 0x68]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x141462200      cmp rcx, rdx
+   ; likely
+0x141462203      jae 0x141462733
+0x141462209      movaps xmm9, xmm0
+0x14146220d      lea rcx, [rcx + rcx*2]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x141462211      shl rcx, 4
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x141462215      add rcx, qword [rax + 0x48]
+0x141462219      movss xmm3, dword [r15 + 0x18]

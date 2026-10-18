@@ -3,10 +3,8 @@
 //! - `update_roof_spatial`（0x1421a7710）
 //! - `update_wall_gable_heights`（gable 高度缓存维护；原
 //!   `RecalculateGableRoofWallHeights` 通知的消费面）
-use country_core::recovered_building::{
-    roof_spatial::synchronize_resolved_roof,
-    wall_state::WallId as ObservedWallId,
-};
+use country_core::resources::roofs::spatial::synchronize_resolved_roof;
+use country_core::resources::walls::publication_fields::WallId as ObservedWallId;
 use country_core::resources::{
     roofs::{
         Roof, RoofMarkedForDeletion,

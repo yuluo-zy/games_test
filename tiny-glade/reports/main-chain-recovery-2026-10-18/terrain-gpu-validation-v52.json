@@ -1,0 +1,69 @@
+{
+  "recorded_utc": "2026-10-18T13:01:11.865907+00:00",
+  "scope": "Original B W3 actual shaders in three real Vulkan frames; not full terrain image oracle or W4..W11/fullworld",
+  "binaries": [
+    {
+      "label": "tiny_glade",
+      "binary": "/private/tmp/tg-tiny_glade-v52-tests",
+      "sha256": "b58f4df7d1825d8590e837adef40a5672064ad6d2cf5fe52a607a29298afcb1b"
+    },
+    {
+      "label": "original_scene_compute_gpu",
+      "binary": "/private/tmp/tg-original_scene_compute_gpu-v52-tests",
+      "sha256": "0ff569e19b537be3d0cd2b307bd077ad0ba01ab03530fca520bc0e31c823f7d5"
+    },
+    {
+      "label": "country_core",
+      "binary": "/private/tmp/tg-country_core-v52-tests",
+      "sha256": "07b78a5409d605c36301501a55abaeea8f9a51026c14eaa0236066ac3685c3f2"
+    }
+  ],
+  "cpu": {
+    "passed": 3,
+    "failed": 0,
+    "log": "logs/terrain-v52-cpu.log"
+  },
+  "gpu": {
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0,
+    "log": "logs/terrain-v52-gpu.log",
+    "frames": [
+      {
+        "case": "empty canonical stroke map, rasterized false",
+        "original_passes": 4,
+        "resolved_checksum_observed": 91001741
+      },
+      {
+        "case": "same owner clean, unconditional changed tick",
+        "original_passes": 0,
+        "resolved_checksum_observed": 91001741
+      },
+      {
+        "case": "same canonical owner odd3 XZ stroke + actual Recalculate event",
+        "original_passes": 4,
+        "resolved_checksum_observed": 91002950
+      }
+    ],
+    "real_submission_completion_readback_and_import_retirement": true,
+    "checksum_is_oracle": false
+  },
+  "prior_failure": {
+    "v51": "No tests passed; first Gauss artifact load failed. Original format pieces include literal quotes. Exact actual artifact keys b9dd0465835cd591/dc5fd7e4b9bf9935 now verified; no alternate shader substitution.",
+    "log": "logs/terrain-v51-gpu.log"
+  },
+  "source_drift_from_v51_before_gpu": [
+    {
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/rasterize_terrain_stroke.rs",
+      "before": "144f29ea7bc6b24b48c2f93291176069001149e7bc79a34464ae7ab4e4dd4692",
+      "after": "38d4a963d72aedc0cf35ef79618e1f6375443656e5c4d94b0b183dd8f9c1153c"
+    }
+  ],
+  "drift_note": "W3 core changed only by original-quote correction and exact native artifact-key unit assertions after v51 failed. Snapshot excludes full dependency closure.",
+  "w10_cpu": {
+    "passed": 2,
+    "failed": 0,
+    "log": "logs/path-contract-v51-cpu.log",
+    "gpu_verified": false
+  }
+}

@@ -417,7 +417,7 @@ fn validate_boundary(
     {
         let resource = &definition.resources[access.resource_index as usize];
         let write = definition.is_write(access.access_code);
-        if !write || access.reads_previous {
+        if access.reads_contents(write) {
             let available = written
                 .get(&access.resource_index)
                 .into_iter()

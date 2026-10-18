@@ -1,54 +1,85 @@
-use glam::{Mat4, Vec3};
-pub(crate) const PLANE_EPS: f32 = 1e-10;
-pub(crate) fn degenerate(t: [Vec3; 3]) -> bool {
-    let n = (t[0] - t[1]).cross(t[0] - t[2]);
-    n.x.abs() < PLANE_EPS && n.y.abs() < PLANE_EPS && n.z.abs() < PLANE_EPS
-}
-/// Original calls glam Mat4::determinant; reuse its dependency implementation.
-pub(crate) fn side(triangle: [Vec3; 3], point: Vec3) -> i8 {
-    let d = determinant([triangle[0], triangle[1], triangle[2], point]);
-    if d > PLANE_EPS {
-        1
-    } else if d < -PLANE_EPS {
-        -1
+use glam::DVec3;
+
+/// Unit normal and the longest edge. Relative arithmetic avoids the cancellation
+/// in a homogeneous determinant when triangles are far from the origin.
+pub(super) fn plane(triangle: [DVec3; 3]) -> Option<(DVec3, f64)> {
+    let edges = [
+        triangle[1] - triangle[0],
+        triangle[2] - triangle[0],
+        triangle[2] - triangle[1],
+    ];
+    let scale = edges.iter().map(|edge| edge.length()).fold(0.0, f64::max);
+    let normal = edges[0].cross(edges[1]);
+    let length = normal.length();
+    if length == 0.0 {
+        None
     } else {
-        0
+        Some((normal / length, scale))
     }
 }
-pub(crate) fn determinant(points: [Vec3; 4]) -> f32 {
-    Mat4::from_cols(
-        points[0].extend(1.0),
-        points[1].extend(1.0),
-        points[2].extend(1.0),
-        points[3].extend(1.0),
-    )
-    .determinant()
-}
-/// Put the isolated side vertex first without changing winding. The original
-/// has a separate rule for the (-1,0,+1) case: put the positive vertex first.
-pub(crate) fn canonicalize(mut triangle: [Vec3; 3], signs: [i8; 3]) -> [Vec3; 3] {
-    if signs[0] == signs[1] {
-        triangle.rotate_right(1);
-    } else if signs[0] == signs[2] {
-        triangle.rotate_left(1);
-    } else if signs[1] != signs[2] {
-        if signs[1] > 0 {
-            triangle.rotate_left(1);
-        } else if signs[2] > 0 {
-            triangle.rotate_right(1);
+
+/// Intersect a triangle with a plane, retaining vertices on the plane. There are
+/// at most three distinct candidates; fixed storage keeps this query allocation free.
+pub(super) fn plane_slice(
+    triangle: [DVec3; 3],
+    distances: [f64; 3],
+    axis: DVec3,
+) -> Option<[DVec3; 2]> {
+    let mut points = [DVec3::ZERO; 3];
+    let mut count = 0;
+    for index in 0..3 {
+        let next = (index + 1) % 3;
+        let distance = distances[index];
+        if distance == 0.0 {
+            points[count] = triangle[index];
+            count += 1;
+        } else if (distance < 0.0 && distances[next] > 0.0)
+            || (distance > 0.0 && distances[next] < 0.0)
+        {
+            let t = distance / (distance - distances[next]);
+            points[count] = triangle[index] + (triangle[next] - triangle[index]) * t;
+            count += 1;
         }
     }
-    triangle
-}
-/// B private helper 0x142418dc0 swaps vertices 1/2 when the opposite first
-/// vertex is on the negative determinant side; glam computes the determinant.
-pub(crate) fn orient(triangle: &mut [Vec3; 3], point: Vec3) {
-    if side(*triangle, point) < 0 {
-        triangle.swap(1, 2);
+    let first = *points.first().filter(|_| count > 0)?;
+    // Compare in the section's own frame. A far-away triangle vertex can erase
+    // a tiny but representable section when subtracted from both endpoints.
+    let mut bounds = [(0.0, first); 2];
+    for &point in &points[1..count] {
+        let coordinate = (point - first).dot(axis);
+        if coordinate < bounds[0].0 {
+            bounds[0] = (coordinate, point);
+        }
+        if coordinate > bounds[1].0 {
+            bounds[1] = (coordinate, point);
+        }
     }
+    Some(bounds.map(|(_, point)| point))
 }
-pub(crate) fn edge_plane_intersection(a: Vec3, b: Vec3, plane: [Vec3; 3]) -> Vec3 {
-    let n = (plane[1] - plane[0]).cross(plane[2] - plane[1]).normalize();
-    let delta = b - a;
-    delta * (-n.dot(a - plane[0]) / n.dot(delta)) + a
+
+/// Signed distances with a roundoff bound for the scalar triple product. The
+/// bound depends on the actual products, so a short but representable altitude
+/// is not erased merely because another edge or triangle is much larger.
+pub(super) fn plane_distances(triangle: [DVec3; 3], supporting: [DVec3; 3]) -> [f64; 3] {
+    let edge_a = supporting[1] - supporting[0];
+    let edge_b = supporting[2] - supporting[0];
+    let normal = edge_a.cross(edge_b);
+    let length = normal.length();
+    let absolute_a = edge_a.abs();
+    let absolute_b = edge_b.abs();
+    let product_bounds = DVec3::new(
+        absolute_a.y * absolute_b.z + absolute_a.z * absolute_b.y,
+        absolute_a.z * absolute_b.x + absolute_a.x * absolute_b.z,
+        absolute_a.x * absolute_b.y + absolute_a.y * absolute_b.x,
+    );
+    triangle.map(|point| {
+        let delta = point - supporting[0];
+        let determinant = normal.dot(delta);
+        let error = 16.0 * f64::EPSILON * product_bounds.dot(delta.abs());
+        if determinant.abs() <= error {
+            0.0
+        } else {
+            determinant / length
+        }
+    })
 }

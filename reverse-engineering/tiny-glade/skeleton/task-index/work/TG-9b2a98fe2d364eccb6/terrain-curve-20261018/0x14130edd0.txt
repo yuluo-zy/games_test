@@ -1,0 +1,66 @@
+
+void __cdecl
+alloc::vec::spec_from_iter::impl$0::
+from_iter<glam::f32::vec3::Vec3,core::iter::adapters::map::Map<core::slice::iter::Iter<glam::f32::vec3::Vec3>,country_core::resources::history::terrain_edit::impl_1::revert::closure_env_2>_>
+          (void)
+
+{
+  float fVar1;
+  float fVar2;
+  undefined8 uVar3;
+  longlong lVar4;
+  float *pfVar5;
+  ulonglong extraout_RAX;
+  ulonglong uVar6;
+  ulonglong *in_RCX;
+  longlong *in_RDX;
+  ulonglong uVar7;
+  longlong lVar8;
+  ulonglong uVar9;
+  float fVar10;
+  float fVar11;
+  float fVar12;
+  undefined8 local_b0;
+  float local_a8;
+  
+  lVar4 = *in_RDX;
+  uVar7 = in_RDX[1] - lVar4;
+  if (0x7ffffffffffffffc < uVar7) {
+LAB_14130ef53:
+                    // WARNING: Subroutine does not return
+    raw_vec::handle_error();
+  }
+  if (in_RDX[1] == lVar4) {
+    uVar6 = 4;
+    uVar7 = 0;
+  }
+  else {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX == 0) goto LAB_14130ef53;
+    uVar7 = uVar7 / 0xc;
+    pfVar5 = (float *)in_RDX[3];
+    lVar8 = 8;
+    uVar9 = uVar7;
+    do {
+      uVar3 = *(undefined8 *)(lVar4 + -8 + lVar8);
+      fVar11 = (float)uVar3;
+      fVar12 = (float)((ulonglong)uVar3 >> 0x20);
+      fVar1 = *(float *)(lVar4 + lVar8);
+      ::utils::swizzlers::impl$0::x0y();
+      fVar2 = *pfVar5;
+      fVar10 = 1.0 - fVar2;
+      *(ulonglong *)((extraout_RAX - 8) + lVar8) =
+           CONCAT44(fVar2 * fVar12 + fVar10 * ((float)((ulonglong)local_b0 >> 0x20) + fVar12),
+                    fVar2 * fVar11 + fVar10 * ((float)local_b0 + fVar11));
+      *(float *)(extraout_RAX + lVar8) = fVar1 * fVar2 + fVar10 * (local_a8 + fVar1);
+      lVar8 = lVar8 + 0xc;
+      uVar9 = uVar9 - 1;
+      uVar6 = extraout_RAX;
+    } while (uVar9 != 0);
+  }
+  *in_RCX = uVar7;
+  in_RCX[1] = uVar6;
+  in_RCX[2] = uVar7;
+  return;
+}
+

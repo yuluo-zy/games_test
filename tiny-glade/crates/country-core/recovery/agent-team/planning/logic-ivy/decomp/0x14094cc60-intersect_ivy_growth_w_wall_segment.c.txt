@@ -1,0 +1,88 @@
+
+void __cdecl country_core::systems::ivy::ivy_grower::intersect_ivy_growth_w_wall_segment(void)
+
+{
+  undefined4 uVar1;
+  undefined4 *in_RCX;
+  undefined8 *in_RDX;
+  float fVar2;
+  float fVar3;
+  float fVar4;
+  float fVar7;
+  undefined1 auVar5 [16];
+  undefined1 auVar6 [16];
+  float in_XMM2_Da;
+  float fVar8;
+  uint uVar9;
+  float fVar10;
+  uint uVar11;
+  float in_XMM3_Da;
+  float fVar12;
+  float fVar13;
+  float fVar14;
+  float fVar15;
+  int local_ac;
+  undefined8 local_a8;
+  
+  fVar7 = (float)*in_RDX;
+  fVar12 = (float)((ulonglong)*in_RDX >> 0x20);
+  fVar3 = (float)in_RDX[1];
+  fVar4 = (float)((ulonglong)in_RDX[1] >> 0x20);
+  fVar14 = fVar3 - fVar7;
+  fVar15 = fVar4 - fVar12;
+  fVar13 = fVar15 * fVar15 + fVar14 * fVar14;
+  auVar5._4_4_ = fVar15;
+  auVar5._0_4_ = fVar14;
+  auVar5._8_8_ = 0;
+  auVar6._4_4_ = SQRT(fVar13);
+  auVar6._0_4_ = SQRT(fVar13);
+  auVar6._8_8_ = 0;
+  auVar6 = divps(auVar5,auVar6);
+  ::utils::geometry::aabb::intersection_aabb_segment2();
+  if (local_ac == 1) {
+    fVar10 = (float)local_a8;
+    fVar2 = (float)((ulonglong)local_a8 >> 0x20);
+    ::utils::swizzlers::impl$0::x0y();
+    fVar8 = fVar2 * 0.0 + fVar10 * 0.70710677 + 0.0;
+    fVar8 = (fVar8 + fVar8) * 0.0;
+    if (fVar13 <= 1e-20) {
+      fVar13 = 1e-20;
+    }
+    fVar13 = ((((fVar12 + fVar4) * 0.5 + auVar6._4_4_ * fVar2 + auVar6._0_4_ * fVar10) - fVar12) *
+              fVar15 + (((fVar7 + fVar3) * 0.5 + auVar6._0_4_ * fVar2 + -auVar6._4_4_ * fVar10) -
+                       fVar7) * fVar14) / fVar13;
+    fVar14 = 0.0;
+    if (0.0 <= fVar13) {
+      fVar14 = fVar13;
+    }
+    fVar13 = 1.0;
+    if (fVar14 <= 1.0) {
+      fVar13 = fVar14;
+    }
+    fVar14 = fVar3 * fVar13 + (1.0 - fVar13) * fVar7;
+    fVar12 = fVar4 * fVar13 + (1.0 - fVar13) * fVar12;
+    fVar13 = ((fVar2 * 0.70710677 - fVar10 * 0.0) * 1.4142135 + fVar8 + 0.0) * 0.63 * 0.5;
+    fVar3 = ((fVar10 * 0.0 - 1.4013e-45) * 1.4142135 + fVar2 * 0.0 + fVar8) * 0.63 * 0.5;
+    fVar4 = fVar14 - fVar13;
+    fVar7 = fVar12 - fVar3;
+    fVar13 = fVar13 + fVar14;
+    fVar3 = fVar3 + fVar12;
+    fVar12 = fVar4 - in_XMM2_Da;
+    fVar15 = fVar7 - in_XMM3_Da;
+    fVar14 = fVar13 - in_XMM2_Da;
+    fVar10 = fVar3 - in_XMM3_Da;
+    uVar11 = (uint)(fVar15 * fVar15 + fVar12 * fVar12 < fVar10 * fVar10 + fVar14 * fVar14);
+    uVar9 = (int)(uVar11 << 0x1f) >> 0x1f;
+    uVar11 = (int)(uVar11 << 0x1f) >> 0x1f;
+    *(ulonglong *)(in_RCX + 1) =
+         CONCAT44(~uVar11 & (uint)fVar3,~uVar9 & (uint)fVar13) |
+         CONCAT44((uint)fVar7 & uVar11,(uint)fVar4 & uVar9);
+    uVar1 = 1;
+  }
+  else {
+    uVar1 = 0;
+  }
+  *in_RCX = uVar1;
+  return;
+}
+

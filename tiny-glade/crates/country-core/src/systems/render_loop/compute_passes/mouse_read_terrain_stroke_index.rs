@@ -9,17 +9,16 @@
 //!    （闭包状态 `{1,1,1,1}`，0x142958fe0）。
 //!
 //! `MouseTerrainRaycastSsbo`：`new_storage_buffer`（0x14161cd80）是 `MappedStorageBuffer`；`SsboId` 立即数
-//! 0x50787cf1536c7500 = xxh3_64("MouseTerrainRaycast")（已复算）；元素布局 U。存储用 `TypedStorageBuffer`（理由同 bush_cpu）。
+//! 0x50787cf1536c7500 = xxh3_64("MouseTerrainRaycast")；32-byte mapped element, index@16, native miss=-1.
 
-use crate::asset_libraries::ssbo_library::SsboType;
+use crate::asset_libraries::ssbo_library::{AssetSsboLibrary, SsboType};
 use crate::render::pass_builder::compute_pass_builder::RecordedComputePass;
 use crate::render::pass_builder::pass_resources::TypeId128;
 use crate::render::ssbo::rhapsody_boundary::GraphicsDevice;
-use crate::render::ssbo::{StorageElement, TypedStorageBuffer};
+use crate::render::ssbo::{MAPPED_MEMORY_UPLOAD, MappedStorageBuffer, StorageElement};
 use crate::resources::cursor_terrain_raycast::CursorTerrainRaycast;
 use crate::resources::texture_presets::TexturePreset;
 use crate::systems::render_loop::compute_passes::pass_kit::{PassEnv, binding, binding_hash};
-use crate::typed_gap::Gap;
 
 pub const NAME: &str = "Read terrain stroke";
 pub const URI: &str = "/read_terrain_stroke.cs.hlsl";
@@ -31,29 +30,53 @@ pub const CURSOR_RAYCAST_TYPE_ID: TypeId128 = TypeId128 {
 };
 pub const STROKE_INDICES_PRESET: u8 = 0xb;
 
-/// 鼠标地形射线回读缓冲（O 名；布局 U）。
-#[derive(Clone, Copy, Debug, Default)]
-pub struct MouseTerrainRaycastSsbo(pub Gap);
-
+/// B 0x14161cd80: one 32-byte, 16-aligned mapped element. The producer
+/// initializes the first16 bytes to zero and index@16 to-1; trailing bytes are
+/// padding, explicitly represented here so typed uploads never read Rust padding.
+#[repr(C, align(16))]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct MouseTerrainRaycastSsbo {
+    pub leading_words: [u32; 4],
+    pub terrain_stroke_index: i32,
+    pub reserved_words: [u32; 3],
+}
+unsafe impl bytemuck::Zeroable for MouseTerrainRaycastSsbo {}
+unsafe impl bytemuck::Pod for MouseTerrainRaycastSsbo {}
+impl Default for MouseTerrainRaycastSsbo {
+    fn default() -> Self {
+        Self {
+            leading_words: [0; 4],
+            terrain_stroke_index: -1,
+            reserved_words: [0; 3],
+        }
+    }
+}
 impl StorageElement for MouseTerrainRaycastSsbo {
     const NAME: &'static str = "MouseTerrainRaycast";
-    /// I：原版是固定 0x40000 B 的映射缓冲（`BUFFER_LEN` 概念不适用）；这里用 1 个元素让存储可建（偏差，U）。
     const BUFFER_LEN: usize = 1;
+    const MAPPED_MEMORY: u8 = MAPPED_MEMORY_UPLOAD;
     fn default_value() -> Option<Self> {
         Some(Self::default())
     }
 }
-
 impl SsboType for MouseTerrainRaycastSsbo {
-    type Storage = TypedStorageBuffer<MouseTerrainRaycastSsbo>;
+    type Storage = MappedStorageBuffer<'static, Self>;
     fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
-        match initial {
-            None => TypedStorageBuffer::<MouseTerrainRaycastSsbo>::new(device, None),
-            Some(b) => {
-                TypedStorageBuffer::<MouseTerrainRaycastSsbo>::new_storage_buffer(device, Some(b))
-            }
-        }
+        MappedStorageBuffer::new_storage_buffer(device, initial)
     }
+}
+
+/// The original optional lookup tolerates an unregistered mouse buffer, but a
+/// registered empty mapped slice is an invariant failure. AssetSsboLibrary owns
+/// type/name checks and the real mapped storage; no separate success flag exists.
+pub fn read_terrain_stroke_index(library: &AssetSsboLibrary) -> Option<i32> {
+    library.get::<MouseTerrainRaycastSsbo>().map(|buffer| {
+        buffer
+            .mapped
+            .first()
+            .expect("original mouse terrain mapped slice is empty")
+            .terrain_stroke_index
+    })
 }
 
 /// push constants：`[x, z]` 的 f32 位模式（O：tag 位 0 为 0 → 两个 0）。
@@ -140,5 +163,65 @@ mod tests {
         assert_eq!(pass.push_constants, push_constants_for(&ray));
         let codes: Vec<u8> = accesses(&pass).iter().map(|a| a.1).collect();
         assert_eq!(codes, [0x32, 0x19]);
+    }
+}
+
+#[cfg(test)]
+mod mapped_readback_tests {
+    use super::*;
+
+    /// The generic TestDevice intentionally ignores initial upload bytes.
+    /// This provider test needs a mapped page backed by the constructor's
+    /// actual upload, so reuse the recording device's captured contents.
+    #[derive(Default)]
+    struct InitializedMappedDevice(crate::render::ssbo::tests::MockDevice);
+    impl GraphicsDevice for InitializedMappedDevice {
+        fn create_buffer(
+            &self,
+            desc: &crate::render::ssbo::rhapsody_boundary::BufferDesc,
+            name: &str,
+            initial: Option<&[u8]>,
+        ) -> Result<
+            crate::render::ssbo::rhapsody_boundary::Buffer,
+            crate::render::ssbo::rhapsody_boundary::BackendError,
+        > {
+            self.0.create_buffer(desc, name, initial)
+        }
+        fn update_buffer_bytes(
+            &self,
+            buffer: &crate::render::ssbo::rhapsody_boundary::Buffer,
+            data: &[u8],
+            ranges: &[core::ops::Range<usize>],
+            offset: usize,
+        ) -> Result<(), crate::render::ssbo::rhapsody_boundary::BackendError> {
+            self.0.update_buffer_bytes(buffer, data, ranges, offset)
+        }
+        fn mapped_slice_mut(
+            &self,
+            buffer: &crate::render::ssbo::rhapsody_boundary::Buffer,
+        ) -> Option<&mut [u8]> {
+            let size = buffer.byte_size as usize;
+            let page = Box::leak(vec![0_u128; size.div_ceil(16)].into_boxed_slice());
+            // The recording backend owns a suitably aligned, leaked test page.
+            let bytes =
+                unsafe { core::slice::from_raw_parts_mut(page.as_mut_ptr().cast::<u8>(), size) };
+            bytes.copy_from_slice(&self.0.mem.borrow());
+            Some(bytes)
+        }
+    }
+    #[test]
+    fn mapped_provider_preserves_native_default_and_reads_live_index() {
+        assert_eq!(core::mem::size_of::<MouseTerrainRaycastSsbo>(), 32);
+        assert_eq!(core::mem::align_of::<MouseTerrainRaycastSsbo>(), 16);
+        assert_eq!(
+            core::mem::offset_of!(MouseTerrainRaycastSsbo, terrain_stroke_index),
+            16
+        );
+        let mut library = AssetSsboLibrary::new();
+        assert_eq!(read_terrain_stroke_index(&library), None);
+        library.add_new::<MouseTerrainRaycastSsbo>(&InitializedMappedDevice::default());
+        assert_eq!(read_terrain_stroke_index(&library), Some(-1));
+        library.get_mut::<MouseTerrainRaycastSsbo>().unwrap().mapped[0].terrain_stroke_index = 17;
+        assert_eq!(read_terrain_stroke_index(&library), Some(17));
     }
 }

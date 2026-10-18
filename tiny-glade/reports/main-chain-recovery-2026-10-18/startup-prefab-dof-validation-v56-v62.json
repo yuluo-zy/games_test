@@ -1,0 +1,83 @@
+{
+  "scope": "B original only, C unverified; bounded tests, not full world/gameplay validation",
+  "full72_cpu": {
+    "passed": 1,
+    "physical_buffers": 72,
+    "bytes": 380772588,
+    "log": "logs/tg-full-startup-v56-cpu.log"
+  },
+  "publisher_cpu": {
+    "passed": 1,
+    "log": "logs/tg-publisher-v56-cpu.log"
+  },
+  "full72_gpu": {
+    "passed": 1,
+    "log": "logs/tg-full-startup-v58-gpu.log",
+    "proves": "72 physical buffer/device owners; one actual cursor mapping event; second update does not recreate",
+    "does_not_prove": "GPU_ONLY initial contents or shader execution; direct-map v56 failed and was removed from this fixture"
+  },
+  "prefab_dof_cpu": [
+    {
+      "filter": "systems::render_loop::compute_passes::dof::tests",
+      "exit_code": 0,
+      "log": "/private/tmp/tg-v61-systems-render_loop-compute_passes-dof-tests.log"
+    },
+    {
+      "filter": "startup::load_prefabs::tests",
+      "exit_code": 0,
+      "log": "/private/tmp/tg-v61-startup-load_prefabs-tests.log"
+    },
+    {
+      "filter": "startup::tests",
+      "exit_code": 0,
+      "log": "/private/tmp/tg-v61-startup-tests.log"
+    },
+    {
+      "filter": "systems::prefab::tests",
+      "exit_code": 0,
+      "log": "/private/tmp/tg-v61-systems-prefab-tests.log"
+    }
+  ],
+  "dof_gpu_v62": {
+    "passed": 0,
+    "failed": 1,
+    "error": "private upload read overlaps a declared or opaque native access",
+    "fix": "exact32B UniformBytes was also automatically classified as private uniform upload; now use existing write_lease with native storage-buffer role, preserving the native graph declaration. No guard disabled. Revalidation pending."
+  },
+  "binaries": {
+    "tg-full-startup-v56-binaries.json": {
+      "country_core": {
+        "path": "/private/tmp/tg-country_core-v56-tests",
+        "sha256": "dd94585f551a131e679a7c4c6d1c91721b7387be24e790b5d914d4917306c5db"
+      },
+      "tiny_glade": {
+        "path": "/private/tmp/tg-tiny_glade-v56-tests",
+        "sha256": "34fe4b61615ae76cb54b8dc94480958b303031f3795a94e5a9e211c959e05913"
+      },
+      "original_startup_gpu": {
+        "path": "/private/tmp/tg-original_startup_gpu-v56-tests",
+        "sha256": "a58fc42a24d8c97c97095f0a133adb3228bba6160ec4aac7ce2c35acdd12a1e0"
+      }
+    },
+    "tg-dof-startup-v58-binaries.json": {
+      "tiny_glade": {
+        "path": "/private/tmp/tg-tiny_glade-v58-tests",
+        "sha256": "daa382910ca65110c05c3ca57209a18c9f4db4b42355dff8d42754c8352b9c51"
+      },
+      "original_startup_gpu": {
+        "path": "/private/tmp/tg-original_startup_gpu-v58-tests",
+        "sha256": "18f6a78cd9a261afe38a1ae042904d97a872203b79d6809c7774312f6fd929af"
+      },
+      "country_core": {
+        "path": "/private/tmp/tg-country_core-v58-tests",
+        "sha256": "651c7fbe627465bd056afe5f103a0bab156b3675596c361fc568470018e9a178"
+      }
+    },
+    "tg-dof-v62-binary.json": [
+      {
+        "path": "/private/tmp/tg-original_scene_compute_gpu-v62-tests",
+        "sha256": "254b2162803c178f7e4b4f7acb19b66f143b0c9ee98482e2ed75a3f5ac622899"
+      }
+    ]
+  }
+}

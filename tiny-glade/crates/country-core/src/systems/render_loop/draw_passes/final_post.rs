@@ -10,7 +10,7 @@
 //! 第 5 个（栈）参数 = 一个字节 `flag`。`name = sample_count != 1 ? "raster_resolve_msaa_to_swapchain"(32) : "raster_resolve_to_swapchain"(27)`；
 //! `Res<AssetShaderLibrary>::get_raster_handle_by_name(name)`（未命中 `expect`）；
 //! `raster_single_object::<1>("Resolve to swapchain"(0x14), [tag0 = 交换链], shader, 闭包)`；闭包（0x1409d00a0）：
-//! `bind_texture_to_draw_builder(&Handle<Texture> = 源, 0x11ba5697cc40b3dd, 0x1d, 无 view)` → `write_uniform<u32>(0x7b01c6bb382d8849, flag)`；
+//! `optional_uniform(framebuffer_dims, swapchain.extent)` → `bind_texture_to_draw_builder(&Handle<Texture> = 源, 0x11ba5697cc40b3dd, 0x1d, 无 view)` → `write_uniform<u32>(0x7b01c6bb382d8849, flag)`；
 //! 随后 `draw_no_vao(3)` + `render`（raster_single 公共骨架）。
 //!
 //! # `final_post` 参数（O：Win64；栈参数 `[rbp + 0x1b0 + 8*i]`，`rbp = rsp + 0x80`，`sub rsp, 0x1c8`）
@@ -360,7 +360,11 @@ pub fn resolve_to_swapchain(
         shader,
         host,
         |b| {
-            b.bind_texture_to_draw_builder(
+            // B 0x14090d875/0x14090d935 capture the output extent; the
+            // specialized closure writes it at 0x1409d04f6/0x1409d0506.
+            // MEI's specialization has no such write: keep it in this closure.
+            b.optional_uniform(U_DIMS, [swapchain.extent.0, swapchain.extent.1])
+            .bind_texture_to_draw_builder(
                 BindTexture::RgHandle(source),
                 RESOLVE_SOURCE_BINDING,
                 ACCESS_SAMPLED_IMAGE,

@@ -29,26 +29,25 @@
 //! 值 = 10/11/14/16（I：该 pass 在 `DrawIndexedIndirectBuffer` 里的槽位）。
 //!
 //! SSBO 名（O：SsboId 与 xxh3_64 比对）：BushSsbo → "Bushes"、FlowerSsbo → "FlowerSsbo"、GardenStoneSsbo → "Garden Stone"；
-//! `BushSsbo` / `FlowerSsbo` 是真实库侧类型（元素 48 / 64 B，固定容量，见各类型文档），`GardenStoneSsbo` / `Flower03Ssbo` 仍是载体；
-//! `Flower03Ssbo` 的 NAME 未能核实（U，占位 "Flower03Ssbo"）。
+//! 四个类型均保留实际库侧存储：Bush/Flower 为Typed40，Flower03/GardenStone为Instance48、初始count0。
+//! Flower03原NAME="Small lowpoly flowers"，由原descriptor字符串与add_new哈希独立确认。
 
 // Preserve the original instruction-level expression order/NaN policy, API call shapes, and evidence/test transcription. See README.md.
 #![allow(clippy::manual_repeat_n, clippy::useless_vec)]
 use crate::asset_libraries::ssbo_library::SsboType as LibrarySsbo;
 use crate::render::pass_builder::compute_pass_builder::ComputePass;
-use crate::render::pass_builder::pass_resource_access::RgTexture;
-use crate::render::ssbo::rhapsody_boundary::GraphicsDevice;
-use crate::render::ssbo::{StorageElement, TypedStorageBuffer};
+use crate::render::pass_builder::pass_resource_access::{RgTexture, SsboType};
+use crate::render::ssbo::rhapsody_boundary::{BufferDesc, GraphicsDevice};
+use crate::render::ssbo::{InstanceBuffer, StorageElement, TypedStorageBuffer};
 use crate::resources::render::Affine3Packed;
 use crate::resources::texture_presets::TexturePreset;
 use crate::rhapsody_types::TextureDesc;
 use crate::systems::render_loop::compute_passes::pass_kit::{
-    PassEnv, TEX_READ, TEX_WRITE, binding_hash, fixed_len_typed_storage, ssbo_carrier,
+    PassEnv, TEX_READ, TEX_WRITE, binding_hash,
 };
 use crate::systems::render_loop::compute_passes::upload_world_raster::GardenRaster;
 use crate::systems::render_loop::draw_passes::draw_shaders::common_includes_compute::bind_garden_exclusion_compute;
 use crate::systems::render_loop::indirect_params::DrawIndexedIndirectBuffer;
-use crate::typed_gap::Gap;
 use glam::Vec3;
 
 /// 灌木实例（O：`compute_garden::BushSsbo`；着色器 `BushXform { Affine3Packed transform }`，48 B = 12 个 f32）。
@@ -86,23 +85,106 @@ impl StorageElement for FlowerSsbo {
 impl LibrarySsbo for BushSsbo {
     type Storage = TypedStorageBuffer<BushSsbo>;
     fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
-        fixed_len_typed_storage::<BushSsbo>(device, initial)
+        TypedStorageBuffer::<BushSsbo>::new_storage_buffer(device, initial)
     }
 }
 impl LibrarySsbo for FlowerSsbo {
     type Storage = TypedStorageBuffer<FlowerSsbo>;
     fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
-        fixed_len_typed_storage::<FlowerSsbo>(device, initial)
+        TypedStorageBuffer::<FlowerSsbo>::new_storage_buffer(device, initial)
     }
 }
 
-/// 其余两个花园 SSBO 仍是载体（元素布局 U；`Flower03Ssbo` 的 NAME 也未核实）。
-#[derive(Clone, Copy, Debug, Default)]
-pub struct Flower03Ssbo(pub Gap);
-#[derive(Clone, Copy, Debug, Default)]
-pub struct GardenStoneSsbo(pub Gap);
-ssbo_carrier!(Flower03Ssbo, "Flower03Ssbo");
-ssbo_carrier!(GardenStoneSsbo, "Garden Stone");
+/// Original Flower03Xform position float4; native allocation alignment is4.
+/// NAME is the actual descriptor/SSBO key, not the Rust type debug name.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Flower03Ssbo {
+    pub position: [f32; 4],
+}
+
+/// Original GPU GardenStone record: compact affine48B + color16B; native
+/// constructor independently confirms64B row size and alignment16.
+#[repr(C, align(16))]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct GardenStoneSsbo {
+    pub transform: Affine3Packed,
+    pub color: [f32; 4],
+}
+
+impl StorageElement for Flower03Ssbo {
+    const NAME: &'static str = "Small lowpoly flowers";
+    const BUFFER_LEN: usize = 160000;
+}
+impl SsboType for Flower03Ssbo {
+    fn rg_buffer_hash() -> u64 {
+        0xf7c8_c9c2_eb9e_16fb
+    }
+}
+impl LibrarySsbo for Flower03Ssbo {
+    type Storage = InstanceBuffer<Self>;
+    fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
+        let element_size = core::mem::size_of::<Self>();
+        let instance_count = initial.map_or(0, |bytes| {
+            assert_eq!(bytes.len() % element_size, 0);
+            assert_eq!((bytes.as_ptr() as usize) % 4, 0);
+            let count = bytes.len() / element_size;
+            assert!(
+                count <= Self::BUFFER_LEN,
+                "Excessive data size supplied for buffer {}",
+                core::any::type_name::<Self>()
+            );
+            count
+        });
+        // Original typed constructor: fixed capacity, no payload on None.
+        // The library owns the InstanceBuffer and publishes its actual count.
+        let desc = BufferDesc::new(Self::BUFFER_LEN * element_size, 0x22, 1).alignment(4);
+        let buffer = device
+            .create_buffer(&desc, Self::NAME, initial)
+            .expect("called `Result::unwrap()` on an `Err` value: create_buffer");
+        InstanceBuffer {
+            instance_count,
+            buffer: TypedStorageBuffer::from_created_buffer(buffer),
+        }
+    }
+}
+
+impl StorageElement for GardenStoneSsbo {
+    const NAME: &'static str = "Garden Stone";
+    const BUFFER_LEN: usize = 32400;
+}
+impl SsboType for GardenStoneSsbo {
+    fn rg_buffer_hash() -> u64 {
+        0x45a9_2b71_a96e_360f
+    }
+}
+impl LibrarySsbo for GardenStoneSsbo {
+    type Storage = InstanceBuffer<Self>;
+    fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
+        let element_size = core::mem::size_of::<Self>();
+        let instance_count = initial.map_or(0, |bytes| {
+            assert_eq!(bytes.len() % element_size, 0);
+            assert_eq!((bytes.as_ptr() as usize) % 4, 0);
+            let count = bytes.len() / element_size;
+            assert!(
+                count <= Self::BUFFER_LEN,
+                "Excessive data size supplied for buffer {}",
+                core::any::type_name::<Self>()
+            );
+            count
+        });
+        // Original typed constructor: fixed capacity, no payload on None.
+        // The library owns the InstanceBuffer and publishes its actual count.
+        let desc = BufferDesc::new(Self::BUFFER_LEN * element_size, 0x22, 1).alignment(16);
+        let buffer = device
+            .create_buffer(&desc, Self::NAME, initial)
+            .expect("called `Result::unwrap()` on an `Err` value: create_buffer");
+        InstanceBuffer {
+            instance_count,
+            buffer: TypedStorageBuffer::from_created_buffer(buffer),
+        }
+    }
+}
 
 // ------------------------------------------------------------------ rasterize
 
@@ -134,6 +216,11 @@ fn blur_pass(env: &mut PassEnv<'_>, horizontal: bool, temp_is_dst: bool, temp: &
         pass.bind_texture(HASH_SRC, &temp, TEX_READ)
             .bind_texture(HASH_DST, &mask, TEX_WRITE)
     };
+    // Original image RMW keeps the uploaded red and other preset channels.
+    // The temporary's first write has no live old channels.
+    let pass = if temp_is_dst { pass } else {
+        pass.preserve_storage_texture_contents(HASH_DST)
+    };
     let recorded = pass
         .uniform(KEY_SIGMA, BLUR_SIGMA)
         .uniform(KEY_OUTPUT_CHANNEL, 1i32)
@@ -148,11 +235,30 @@ pub fn garden_rasterize_from_cpu(env: &mut PassEnv<'_>, world_change_tick: u32) 
         return None;
     }
     raster.0.consume_mask_dirty();
+    declare_garden_blur(env);
+    Some(world_change_tick)
+}
+
+/// Real ECS mask and tick adapter; no cast to a different compiler's layout.
+/// B140a221ee..22207 marks the row and consumes +29b/bitmap before pass creation.
+pub fn garden_rasterize_live(
+    env: &mut PassEnv<'_>,
+    raster: &mut bevy_ecs::change_detection::Mut<'_, crate::resources::world_raster_defs::GardenRaster>,
+    world_change_tick: u32,
+) -> Option<u32> {
+    use bevy_ecs::change_detection::DetectChangesMut;
+    if !raster.bypass_change_detection().reupload_pending() { return None; }
+    raster.set_changed();
+    raster.bypass_change_detection().consume_reupload();
+    declare_garden_blur(env);
+    Some(world_change_tick)
+}
+
+fn declare_garden_blur(env: &mut PassEnv<'_>) {
     let desc = TextureDesc::new_2d([MASK_GRID, MASK_GRID], TEMP_FORMAT).mip_levels(1);
     let temp_tex = env.create_texture(TEMP_NAME, desc);
     blur_pass(env, true, true, &temp_tex);
     blur_pass(env, false, false, &temp_tex);
-    Some(world_change_tick)
 }
 
 // ------------------------------------------------------------------ spawn
@@ -185,17 +291,35 @@ fn indirect_and_slot(pass: ComputePass, slot: i32) -> ComputePass {
         HASH_INDIRECT,
         CONCURRENT_GROUP,
     )
+    // Actual instanceCount atomics retain original command words/other slots.
+    .preserve_storage_buffer_contents(HASH_INDIRECT)
     .uniform(KEY_SLOT, slot)
 }
 
 /// W16（O 0x140a22b80）：四个 pass。
 pub fn garden_spawn_vegetation(env: &mut PassEnv<'_>) {
+    garden_spawn_vegetation_with_building_prefix(env, true);
+}
+
+/// Original building gate controls whether the shared slot10/11 prefixes
+/// exist before this stage. A false gate makes this the first producer.
+/// The real main prelude must have reset those instanceCount words to zero.
+pub fn garden_spawn_vegetation_with_building_prefix(
+    env: &mut PassEnv<'_>,
+    has_building_prefix: bool,
+) {
     // 1. bushes（90×90）
     let pass = env
         .pass("Spawn bushes", "/garden/spawn_bushes_garden.cs.hlsl")
         .write_storage_buffer_concurrent::<BushSsbo>(HASH_BUSH_BUFFER, CONCURRENT_GROUP)
         .write_storage_buffer_concurrent::<FlowerSsbo>(HASH_BUSH_FLOWERS, CONCURRENT_GROUP)
         .uniform(KEY_GRID, [90u32, 90]);
+    let pass = if has_building_prefix {
+        pass.preserve_storage_buffer_contents(HASH_BUSH_BUFFER)
+            .preserve_storage_buffer_contents(HASH_BUSH_FLOWERS)
+    } else {
+        pass
+    };
     let pass = bind_garden_exclusion_compute(presets_9_a(pass))
         .bind_texture(HASH_PRESET_14, &TexturePreset(0x14), TEX_READ)
         .bind_texture(HASH_PRESET_16, &TexturePreset(0x16), TEX_READ);
@@ -206,6 +330,7 @@ pub fn garden_spawn_vegetation(env: &mut PassEnv<'_>) {
     let pass = env
         .pass("Spawn flowers", "/garden/spawn_flowers_garden.cs.hlsl")
         .write_storage_buffer_concurrent::<FlowerSsbo>(HASH_FLOWER_BUFFER, CONCURRENT_GROUP)
+        .preserve_storage_buffer_contents(HASH_FLOWER_BUFFER)
         .uniform(KEY_GRID, [150u32, 150]);
     let pass = bind_garden_exclusion_compute(presets_9_a(pass))
         .bind_texture(HASH_PRESET_14, &TexturePreset(0x14), TEX_READ)
@@ -431,6 +556,24 @@ mod tests {
         want.extend(std::iter::repeat((0x19, 1)).take(2 + 4 + 2));
         want.push((0x37, 1));
         assert_eq!(acc(0), want);
+        // Prefix-producing buffers retain preceding stages; first-producer
+        // stones/small flowers retain only the atomically updated draw packet.
+        let resources = |i: usize| f.passes[i].builder.accesses.iter()
+            .map(|a| a.resource).collect::<Vec<_>>();
+        let r0 = resources(0);
+        // This fixture aliases buffer bindings to one graph resource. The
+        // content-intent list contains each resource once, not each binding.
+        let mut expected = vec![r0[1], r0[2], *r0.last().unwrap()];
+        expected.dedup();
+        assert_eq!(f.passes[0].preserving_buffers, expected);
+        let r1 = resources(1);
+        let mut expected = vec![r1[1], *r1.last().unwrap()];
+        expected.dedup();
+        assert_eq!(f.passes[1].preserving_buffers, expected);
+        for i in [2, 3] {
+            let r = resources(i);
+            assert_eq!(f.passes[i].preserving_buffers, [*r.last().unwrap()]);
+        }
         // stones：exclusion×4、0x14 先于 GardenStone 写(0x32,0 = 非并发)。
         let a2 = acc(2);
         assert_eq!(
@@ -449,6 +592,27 @@ mod tests {
         let a3 = acc(3);
         assert_eq!(a3[1], (0x32, 0));
         assert_eq!(*a3.last().unwrap(), (0x37, 1));
+    }
+
+    #[test]
+    fn disabled_building_stage_makes_garden_bushes_the_first_position_producer() {
+        let w = spawn_world();
+        let mut f = TestFrame::default();
+        with_env(&w, &mut f, |env| {
+            garden_spawn_vegetation_with_building_prefix(env, false)
+        });
+        let first = &f.passes[0];
+        assert_eq!(first.preserving_buffers,
+            [first.builder.accesses.last().unwrap().resource]);
+        // Flower pass still continues flowers from this frame's bushes pass.
+        let flowers = &f.passes[1];
+        let mut expected = vec![
+            flowers.builder.accesses[1].resource,
+            flowers.builder.accesses.last().unwrap().resource,
+        ];
+        expected.dedup();
+        assert_eq!(flowers.preserving_buffers, expected);
+        assert_eq!(f.passes.len(), 4);
     }
 
     #[test]
@@ -492,7 +656,7 @@ mod tests {
     #[test]
     fn bush_and_flower_buffers_are_fixed_size_in_the_library() {
         use crate::asset_libraries::ssbo_library::AssetSsboLibrary;
-        use crate::rhapsody_contract::GraphicsDevice as Device;
+        use crate::render::test_device::TestDevice as Device;
         let lib = AssetSsboLibrary::new();
         lib.add_new::<BushSsbo>(&Device(1));
         lib.add_new::<FlowerSsbo>(&Device(1));
@@ -503,7 +667,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Excessive data size supplied for buffer")]
     fn bush_initial_data_above_capacity_panics() {
-        use crate::rhapsody_contract::GraphicsDevice as Device;
+        use crate::render::test_device::TestDevice as Device;
         // 9601 个元素（`len >= 0x70830` → panic）；u32 向量保证 4 字节对齐。
         let words = vec![0u32; (BushSsbo::BUFFER_LEN + 1) * 12];
         let bytes =
@@ -514,9 +678,74 @@ mod tests {
     #[test]
     #[should_panic(expected = "assertion `left == right` failed")]
     fn flower_initial_data_must_be_a_whole_number_of_elements() {
-        use crate::rhapsody_contract::GraphicsDevice as Device;
+        use crate::render::test_device::TestDevice as Device;
         let words = vec![0u32; 17];
         let bytes = unsafe { core::slice::from_raw_parts(words.as_ptr() as *const u8, 17 * 4) };
         let _ = <FlowerSsbo as LibrarySsbo>::new_storage_buffer(&Device(1), Some(bytes));
+    }
+    #[test]
+    fn native_garden_factories_preserve_none_and_distinct_storage_kinds() {
+        use crate::asset_libraries::ssbo_library::AssetSsboLibrary;
+        use crate::render::ssbo::tests::MockDevice;
+        let device = MockDevice::default();
+        let library = AssetSsboLibrary::new();
+        library.add_new::<BushSsbo>(&device);
+        library.add_new::<FlowerSsbo>(&device);
+        library.add_new::<Flower03Ssbo>(&device);
+        library.add_new::<GardenStoneSsbo>(&device);
+        // Compile-time field accesses also distinguish Typed40 from Instance48.
+        assert_eq!(library.get::<BushSsbo>().unwrap().buffer.byte_size, 0x70800);
+        assert_eq!(
+            library.get::<FlowerSsbo>().unwrap().buffer.byte_size,
+            0x33e000
+        );
+        assert_eq!(library.get::<Flower03Ssbo>().unwrap().instance_count, 0);
+        assert_eq!(library.get::<GardenStoneSsbo>().unwrap().instance_count, 0);
+        let rows = device.created.borrow();
+        for (row, (name, size, alignment)) in rows.iter().zip([
+            ("Bushes", 0x70800, 4),
+            ("FlowerSsbo", 0x33e000, 4),
+            ("Small lowpoly flowers", 0x271000, 4),
+            ("Garden Stone", 0x1fa400, 16),
+        ]) {
+            assert_eq!(
+                (row.1.as_str(), row.0.size, row.0.alignment),
+                (name, size, alignment)
+            );
+            assert_eq!((row.0.usage, row.0.memory), (0x22, 1));
+            assert!(row.2.is_none(), "None must not upload zero defaults");
+        }
+        assert_eq!(rows.len(), 4);
+        assert_eq!(
+            Flower03Ssbo::rg_buffer_hash(),
+            utils::name_hash::NameHash::compute("Small lowpoly flowers").0
+        );
+        assert_eq!(
+            GardenStoneSsbo::rg_buffer_hash(),
+            utils::name_hash::NameHash::compute("Garden Stone").0
+        );
+        assert_eq!(core::mem::size_of::<Flower03Ssbo>(), 16);
+        assert_eq!(core::mem::align_of::<Flower03Ssbo>(), 4);
+        assert_eq!(core::mem::size_of::<GardenStoneSsbo>(), 64);
+        assert_eq!(core::mem::align_of::<GardenStoneSsbo>(), 16);
+    }
+
+    #[test]
+    fn native_garden_instance_factories_publish_count_and_real_initial_bytes() {
+        use crate::render::ssbo::{
+            InstanceCounted, rhapsody_boundary::slice_as_bytes, tests::MockDevice,
+        };
+        fn check<T: LibrarySsbo<Storage = InstanceBuffer<T>> + Default>() {
+            let device = MockDevice::default();
+            let initial = [T::default(); 2];
+            let bytes = slice_as_bytes(&initial);
+            let storage = T::new_storage_buffer(&device, Some(bytes));
+            assert_eq!(storage.instance_count(), 2);
+            let rows = device.created.borrow();
+            assert_eq!(rows[0].2.as_deref(), Some(bytes));
+            assert_eq!(rows[0].0.size, T::BUFFER_LEN * core::mem::size_of::<T>());
+        }
+        check::<Flower03Ssbo>();
+        check::<GardenStoneSsbo>();
     }
 }

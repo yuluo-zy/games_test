@@ -1,18 +1,24 @@
-//! Accepted creation events -> original authority source -> existing World chain.
-//! Startup IDs/settings are required inputs. New rectangle/decorator/pending
-//! bridges below are parallel implementation and have not been built or verified.
+//! Creates and edits authoritative walls, appearance, and deferred history input.
+//! Startup IDs and creation settings are supplied explicitly by the caller.
 use crate::{
     BuildingReport, BuildingStage, CreateRoof, PublicWalls, RemoveWall, Roof, UpsertRawWall,
     WallCollectionState, WallRoofMap,
 };
 use bevy_ecs::prelude::*;
-use country_core::recovered_building::{
-    building_wall_authoring::{
-        AuthoredBuilding, AuthoringShape, CreationSettingsObserved, PreviousBuildingObserved,
-        SelectedCreationAppearance, create_building_from_placement,
-    },
-    building_wall_state::WallId,
-};
+use country_core::systems::wall::shapes::authoring::AuthoredBuilding;
+use country_core::systems::wall::shapes::authoring::AuthoringShape;
+use country_core::systems::wall::shapes::authoring::CreationSettingsObserved;
+use country_core::systems::wall::shapes::authoring::PreviousBuildingObserved;
+use country_core::systems::wall::shapes::authoring::RectangleEditOutcome;
+use country_core::systems::wall::shapes::authoring::SelectedCreationAppearance;
+use country_core::systems::wall::shapes::authoring::create_building_from_placement;
+use country_core::systems::wall::shapes::authoring::edit_rectangle_source;
+use country_core::resources::walls::publication_source::RawWallPublicationSource;
+use country_core::resources::history::wall_edit::WallAuthoritySnapshot;
+use country_core::resources::history::wall_edit::WallCompoundHistoryEdit;
+use country_core::resources::history::wall_edit::WallHistoryMetadata;
+use country_core::resources::history::wall_edit::record_deleted_wall;
+use country_core::resources::walls::publication_fields::WallId;
 use std::collections::{HashMap, HashSet};
 
 #[derive(Event, Clone)]
@@ -27,33 +33,25 @@ pub struct EditAuthoredRectangle(pub [u8; 64]);
 
 #[derive(Resource, Default)]
 pub struct WallAuthoringState {
-    /// The original startup/reset-max-ID consumer is not yet reconstructed.
+    /// Last allocated ID. Callers must initialize this before creating walls.
     pub id_counter: Option<u64>,
     pub settings: Option<CreationSettingsObserved>,
     pub dev_override_is_demo_mode: Option<bool>,
-    pub history_metadata: HashMap<
-        WallId,
-        country_core::recovered_building::building_wall_history_edit::WallHistoryMetadata,
-    >,
-    /// CPU adapter retains actual creation colors; the historical timber owner remains unresolved.
+    pub history_metadata: HashMap<WallId, WallHistoryMetadata>,
+    /// Last known colors retained across deletion for history restoration.
     pub retained_appearance: HashMap<WallId, SelectedCreationAppearance>,
-    pub pending_deletion_history:
-        Vec<country_core::recovered_building::building_wall_history_edit::WallCompoundHistoryEdit>,
+    pub pending_deletion_history: Vec<WallCompoundHistoryEdit>,
     pub appearance: HashMap<WallId, SelectedCreationAppearance>,
-    /// Separate observed source collections, drained each adapter update.
+    /// Source notifications scoped to the current update.
     pub new_sources: HashSet<WallId>,
     pub updated_sources: HashSet<WallId>,
     pub removed_sources: HashSet<WallId>,
-    /// Real creation generates Wall and Roof history requests. Preserve the
-    /// authority result until the full Wall owner can encode/replay the pair.
+    /// Snapshots accepted during active recording, awaiting wall/roof history.
+    /// Unrecorded creation does not retain duplicate authority here.
     pub pending_creation_history: Vec<AuthoredBuilding>,
     pub created_this_frame: Vec<WallId>,
-    pub rectangle_edits_this_frame:
-        Vec<country_core::recovered_building::building_wall_authoring::RectangleEditOutcome>,
-    pub(crate) staged_sources: HashMap<
-        WallId,
-        country_core::recovered_building::building_wall_collection::RawWallPublicationSource,
-    >,
+    pub rectangle_edits_this_frame: Vec<RectangleEditOutcome>,
+    pub(crate) staged_sources: HashMap<WallId, RawWallPublicationSource>,
 }
 
 pub fn register(app: &mut bevy_app::App) {
@@ -68,7 +66,6 @@ pub fn register(app: &mut bevy_app::App) {
                 edit_rectangles,
                 crate::wall_decorator_archivist::consume_observed,
                 crate::wall_rectangle_edit::consume_and_finish,
-                crate::wall_decorator_archivist::publish_projection,
                 crate::wall_pending_changed::consume,
                 crate::wall_bulldoze::consume_and_animate,
                 cleanup_removed,
@@ -104,8 +101,18 @@ fn consume(
     state.removed_sources.clear();
     state.created_this_frame.clear();
     state.staged_sources.clear();
+    let recording = history
+        .transactions
+        .as_ref()
+        .is_some_and(|transaction| transaction.is_recording());
     let mut created = Vec::new();
     for event in creates.read() {
+        if recording && state.dev_override_is_demo_mode.is_none() {
+            report
+                .faults
+                .push("Wall creation history requires demo-mode metadata".into());
+            continue;
+        }
         let Some(settings) = state.settings else {
             report
                 .faults
@@ -118,6 +125,12 @@ fn consume(
                 .push("Wall creation requires an observed ID counter".into());
             continue;
         };
+        if counter.checked_add(1).is_none() {
+            report
+                .faults
+                .push("Wall creation ID space is exhausted".into());
+            continue;
+        }
         let hint = (event.placement[0x2c] != 2).then(|| {
             WallId(u64::from_le_bytes(
                 event.placement[0x20..0x28].try_into().unwrap(),
@@ -162,8 +175,26 @@ fn consume(
             prior_roof.map(|roof| &roof.0),
         ) {
             Ok(building) => {
-                state.id_counter = Some(counter);
                 let wall = building.wall.wall_id;
+                if !crate::raw_source_is_valid(&building.wall.source)
+                    || !crate::roof_runtime::roof_request_is_finite(&building.roof_request)
+                {
+                    report
+                        .faults
+                        .push(format!("Invalid authored building geometry {}", wall.0));
+                    continue;
+                }
+                if source.raw_sources.contains_key(&wall)
+                    || walls.walls.contains_key(&wall)
+                    || state.new_sources.contains(&wall)
+                {
+                    report.faults.push(format!(
+                        "Wall creation counter selects an existing wall {}",
+                        wall.0
+                    ));
+                    continue;
+                }
+                state.id_counter = Some(counter);
                 state
                     .new_sources
                     .insert(building.wall.new_source_notification);
@@ -174,9 +205,13 @@ fn consume(
                 state.appearance.insert(wall, building.appearance);
                 state.retained_appearance.insert(wall, building.appearance);
                 if let Some(demo) = state.dev_override_is_demo_mode {
-                    state.history_metadata.insert(wall,country_core::recovered_building::building_wall_history_edit::WallHistoryMetadata::for_new_wall(demo));
+                    state
+                        .history_metadata
+                        .insert(wall, WallHistoryMetadata::for_new_wall(demo));
                 }
-                state.pending_creation_history.push(building.clone());
+                if recording {
+                    state.pending_creation_history.push(building.clone());
+                }
                 created.push(building);
             }
             Err(error) => report.faults.push(format!("Wall create: {error:?}")),
@@ -208,32 +243,26 @@ fn consume(
                 state.history_metadata.get(&event.0),
                 state.appearance.get(&event.0),
             ) {
-                let snapshot =
-                    country_core::recovered_building::building_wall_history_edit::WallAuthoritySnapshot {
-                        source: raw.clone(),
-                        metadata: *metadata,
-                    };
-                let edit =
-                    country_core::recovered_building::building_wall_history_edit::record_deleted_wall(
-                        event.0,
-                        &snapshot,
-                        appearance.wall_color_id,
-                    );
+                let snapshot = WallAuthoritySnapshot {
+                    source: raw.clone(),
+                    metadata: *metadata,
+                };
+                let edit = record_deleted_wall(event.0, &snapshot, appearance.wall_color_id);
                 state.pending_deletion_history.push(edit);
             } else {
                 report.faults.push(format!(
                     "Wall {} deletion history lacks observed source metadata/colors",
                     event.0.0
                 ));
+                continue;
             }
         }
         state.removed_sources.insert(event.0);
         state.appearance.remove(&event.0);
         remove_wall.write(RemoveWall(event.0));
     }
-    // Adapter commit ordering: same-update removals consume newly inserted
-    // authority IDs before derived geometry admission. ID and history remain.
-    // This is not evidence of the original fork's cross-system execution order.
+    // A same-update removal suppresses publication of newly created geometry;
+    // the allocated ID and history still describe the accepted user action.
     for building in created {
         if state.removed_sources.contains(&building.wall.wall_id) {
             continue;
@@ -258,32 +287,34 @@ fn edit_rectangles(
     mut report: ResMut<BuildingReport>,
 ) {
     state.rectangle_edits_this_frame.clear();
-    let Some(event) = events.read().last() else {
-        return;
-    };
-    let wall = WallId(u64::from_le_bytes(event.0[8..16].try_into().unwrap()));
-    let mut source = if state.removed_sources.contains(&wall) {
-        None
-    } else {
-        state
-            .staged_sources
-            .get(&wall)
-            .or_else(|| collection.raw_sources.get(&wall))
-            .cloned()
-    };
-    match country_core::recovered_building::building_wall_authoring::edit_rectangle_source(
-        source.as_mut(),
-        &event.0,
-        frame.delta_time,
-    ) {
-        Ok(outcome) => {
-            if let Some(source) = source {
-                state.updated_sources.insert(wall);
-                state.staged_sources.insert(wall, source.clone());
-                upsert.write(UpsertRawWall { wall, source });
+    for event in events.read() {
+        let wall = WallId(u64::from_le_bytes(event.0[8..16].try_into().unwrap()));
+        let mut source = if state.removed_sources.contains(&wall) {
+            None
+        } else {
+            state
+                .staged_sources
+                .get(&wall)
+                .or_else(|| collection.raw_sources.get(&wall))
+                .cloned()
+        };
+        match edit_rectangle_source(source.as_mut(), &event.0, frame.delta_time) {
+            Ok(outcome) => {
+                if let Some(source) = source {
+                    if !crate::raw_source_is_valid(&source) {
+                        report.faults.push(format!(
+                            "Rectangle edit produced invalid authority {}",
+                            wall.0
+                        ));
+                        continue;
+                    }
+                    state.updated_sources.insert(wall);
+                    state.staged_sources.insert(wall, source.clone());
+                    upsert.write(UpsertRawWall { wall, source });
+                }
+                state.rectangle_edits_this_frame.push(outcome);
             }
-            state.rectangle_edits_this_frame.push(outcome);
+            Err(error) => report.faults.push(format!("Rectangle edit: {error:?}")),
         }
-        Err(error) => report.faults.push(format!("Rectangle edit: {error:?}")),
     }
 }

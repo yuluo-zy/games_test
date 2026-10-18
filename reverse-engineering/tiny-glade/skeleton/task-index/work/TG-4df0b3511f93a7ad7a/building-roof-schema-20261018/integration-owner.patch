@@ -1,0 +1,82 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/wall/valid_enclosure/mod.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/wall/valid_enclosure/mod.rs
+@@ -328,7 +328,11 @@
+     Circle {
+         center: Vec2,
+         radius: f32,
+-        #[serde(default, skip_serializing_if = "zero_rotation")]
++        #[serde(
++            default,
++            skip_serializing_if = "zero_rotation",
++            with = "saved_circle_rotation"
++        )]
+         rotation: f32,
+     },
+     Rectangle {
+@@ -337,6 +341,25 @@
+         length: f32,
+         center: Vec2,
+     },
++}
++// B Circle2d -> CircularF32 serialization (0x1416e7a5b -> 0x140a44a00):
++// the existing f32 field uses a named {val} projection only at the Serde boundary.
++mod saved_circle_rotation {
++    use serde::{Deserialize, Deserializer, Serialize, Serializer};
++
++    #[derive(Serialize, Deserialize)]
++    #[serde(rename = "CircularF32")]
++    struct SavedRotation {
++        val: f32,
++    }
++
++    pub fn serialize<S: Serializer>(value: &f32, serializer: S) -> Result<S::Ok, S::Error> {
++        SavedRotation { val: *value }.serialize(serializer)
++    }
++
++    pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<f32, D::Error> {
++        Ok(SavedRotation::deserialize(deserializer)?.val)
++    }
+ }
+ fn zero_rotation(value: &f32) -> bool {
+     *value == 0.0
+@@ -473,6 +496,40 @@
+     }
+ 
+     #[test]
++    fn shape_circle_rotation_uses_original_circular_value_object() {
++        for rotation in [0.0_f32, -0.0, 0.75, -7.0] {
++            let shape = ShapeParameters::from_shape(Shape::Circle(Circle2d {
++                center: Vec2::ZERO,
++                radius: 2.0,
++                rotation,
++            }));
++            let value = serde_json::to_value(shape).unwrap();
++            if rotation == 0.0 {
++                assert!(value["Circle"].get("rotation").is_none());
++            } else {
++                assert_eq!(
++                    value["Circle"]["rotation"],
++                    serde_json::json!({"val": rotation})
++                );
++            }
++            let restored: ShapeParameters = serde_json::from_value(value).unwrap();
++            assert_eq!(restored.as_circle().rotation, rotation);
++        }
++        assert!(
++            serde_json::from_value::<ShapeParameters>(serde_json::json!({
++                "Circle": {"center": [0.0, 0.0], "radius": 2.0, "rotation": {}}
++            }))
++            .is_err()
++        );
++        assert!(
++            serde_json::from_value::<ShapeParameters>(serde_json::json!({
++                "Circle": {"center": [0.0, 0.0], "radius": 2.0, "rotation": 0.75}
++            }))
++            .is_err()
++        );
++    }
++
++    #[test]
+     fn expand_grows_circle_radius_and_rectangle_grows_dimensions() {
+         let circle = ShapeParameters::from_shape(Shape::Circle(Circle2d {
+             center: Vec2::ZERO,

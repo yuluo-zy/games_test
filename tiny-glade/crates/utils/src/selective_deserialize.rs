@@ -1,6 +1,6 @@
-//! Wrapper policy observed in both B deserializer monomorphizations: execute a
-//! selected field visitor, discard its error, and default the output if the
-//! visitor never produced a value. The field selector is an explicit type input.
+//! Best-effort extraction of one selected field from a serialized map.
+//! Parse errors are deliberately suppressed: the last completely decoded value
+//! survives a later error, and an absent or unreadable field uses its default.
 use serde::de::{Deserialize, Deserializer, Error, IgnoredAny, MapAccess, Unexpected, Visitor};
 use std::{fmt, marker::PhantomData};
 pub trait FieldSelector {
@@ -38,8 +38,7 @@ impl<'de, F: FieldSelector> Deserialize<'de> for SelectedKey<F> {
         deserializer.deserialize_string(MatchField(PhantomData))
     }
 }
-/// Original B save-file selectors; the outer visitor delegates to the nested
-/// selector, so completed inner values survive a later outer parse error.
+/// Field selecting the history section of a save file.
 pub enum HistoryField {}
 impl FieldSelector for HistoryField {
     const FIELD: &'static str = "History";
@@ -48,8 +47,7 @@ pub enum SnapshotsField {}
 impl FieldSelector for SnapshotsField {
     const FIELD: &'static str = "snapshots";
 }
-/// Original save-GC nesting, with the snapshot payload type supplied by caller.
-/// This alias describes the recovered selector contract, not the author's name.
+/// Extracts snapshot payloads nested inside save-file history.
 pub type SaveHistorySnapshots<T> =
     SelectiveDeserialize<HistoryField, SelectiveDeserialize<SnapshotsField, T>>;
 #[derive(Clone, Debug, PartialEq)]
@@ -111,16 +109,5 @@ impl<'de, F: FieldSelector, T: Deserialize<'de> + Default> Deserialize<'de>
 }
 
 #[cfg(test)]
-mod review_tests {
-    use super::*;
-    #[test]
-    fn borrowed_key_selection_preserves_nested_partial_success() {
-        let input=br#"{"unknown":{"deep":[1,2]},"History":{"snap\u0073hots":[7,9],"snapshots":"bad"},"broken": }"#;
-        let mut deserializer = serde_json::Deserializer::from_slice(input);
-        let value = SaveHistorySnapshots::<Vec<u64>>::deserialize(&mut deserializer).unwrap();
-        assert_eq!(value.value.value, vec![7, 9]);
-        let key =
-            serde::de::value::BorrowedStrDeserializer::<serde::de::value::Error>::new("History");
-        assert!(SelectedKey::<HistoryField>::deserialize(key).unwrap().0);
-    }
-}
+#[path = "oracle/selective_deserialize_review_tests.rs"]
+mod review_tests;

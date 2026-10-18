@@ -27,7 +27,8 @@
 //!
 //! **状态更新**（`ResMut` 写回；第二张跳转表 0x142aba004，`disc ∈ {1,2,3,4}`；`tick` 写入条目）：
 //! `1` → `{2, 0}`；`2` → `payload < 4 ? {2, payload+1} : {3, 0}`；`3|4` → `{disc, payload+1}`，并且
-//! `frame.desc[+0x20 处的 u32] = feedback 纹理句柄的同一偏移`（U：该字段语义未知，返回标志 `desc_tail_copied`）。
+//! 原1409905f0..609把feedback的完整36B RgTexture替换frame（先尾4B，再两次16B），
+//! 返回真实 `replacement_frame`，包含资源号与完整描述；不是只改desc尾字。
 //!
 //! 两个 temporal 在原版是**单个** `Temporal<Texture>`（`get_or_create_temporal`，非 `_pair`）；这里用 `RgResources::get_or_create_temporal_texture`（单张）。
 
@@ -86,18 +87,13 @@ pub struct FrameHandle {
 
 pub struct RefactoringRun {
     pub passes: Vec<RecordedComputePass>,
-    /// 状态 3/4：把 feedback 纹理 desc 尾字拷进 `frame`（U：语义未知）。
-    pub desc_tail_copied: bool,
+    /// Original1409905f0..609: states3/4 replace the ENTIRE36B frame
+    /// with the actual feedback texture, including resource ID and description.
+    pub replacement_frame: Option<RgTexture>,
 }
 
 /// 第一层 `match`：返回 `Some(kind)`（`kind ∈ {0,1,2}`），`None` = 直接返回（disc 0 / 6..=9）。`5` → panic。
 /// `get_or_create_temporal(name, TextureDesc)` + `Result::unwrap`（O：单个 `Temporal<Texture>`，非 `_pair`）。
-fn temporal_texture(env: &mut PassEnv<'_>, name: &str, desc: TextureDesc) -> RgTexture {
-    env.frame
-        .get_or_create_temporal_texture(name, &desc)
-        .unwrap_or_else(|e| panic!("called `Result::unwrap()` on an `Err` value: {e:?}"))
-        .texture
-}
 
 pub fn classify(state: RefactoringState) -> Option<u32> {
     let phase = |al: u32| if state.payload & 3 == 3 { al } else { 2 };
@@ -120,7 +116,7 @@ pub fn next_state(state: RefactoringState) -> RefactoringState {
         },
         2 if state.payload < 4 => RefactoringState {
             disc: 2,
-            payload: state.payload + 1,
+            payload: state.payload.wrapping_add(1),
         },
         2 => RefactoringState {
             disc: 3,
@@ -128,7 +124,7 @@ pub fn next_state(state: RefactoringState) -> RefactoringState {
         },
         3 | 4 => RefactoringState {
             disc: state.disc,
-            payload: state.payload + 1,
+            payload: state.payload.wrapping_add(1),
         },
         _ => panic!("{UNREACHABLE_PANIC}"),
     }
@@ -141,36 +137,53 @@ pub fn render_shader_refactoring(
     world_tick: u32,
     frame: &FrameHandle,
 ) -> RefactoringRun {
+    try_render_shader_refactoring(env, state, world_tick, frame)
+        .expect("called `Result::unwrap()` on an `Err` value")
+}
+/// Fallible production entry: allocation failure leaves the CPU history state untouched.
+pub fn try_render_shader_refactoring(
+    env: &mut PassEnv<'_>,
+    state: &mut StateMut,
+    world_tick: u32,
+    frame: &FrameHandle,
+) -> rhapsody::Result<RefactoringRun> {
     let Some(kind) = classify(state.state) else {
-        return RefactoringRun {
+        return Ok(RefactoringRun {
             passes: Vec::new(),
-            desc_tail_copied: false,
-        };
+            replacement_frame: None,
+        });
     };
     let ext = extent_of(&frame.texture);
     let ext = [ext.width, ext.height];
     let spec = |format| TextureDesc::new_2d(ext, format).storage().sampled();
-    let feedback = temporal_texture(env, FEEDBACK_NAME, spec(frame.format));
+    let feedback = env
+        .try_temporal_texture(FEEDBACK_NAME, spec(frame.format))?
+        .texture;
 
     let mut passes = Vec::new();
     if kind != 2 {
-        let reference = temporal_texture(env, REF_NAME, spec(REF_FORMAT));
+        let reference = env
+            .try_temporal_texture(REF_NAME, spec(REF_FORMAT))?
+            .texture;
         if kind == 1 {
             let captured = env.create_texture(CAPTURE_NAME, TextureDesc::new_2d(ext, REF_FORMAT));
             let pass = env
-                .pass(CAPTURE.0, CAPTURE.1)
+                .try_pass(CAPTURE.0, CAPTURE.1)?
                 .bind_texture(RENDERED_TEX, &&frame.texture, 0x19)
                 .bind_texture(REFERENCE_TEX, &WriteTextureUnchecked(captured), 0x32);
             passes.push(dispatch_extent(pass, &frame.texture));
             let pass = env
-                .pass(COMPARE.0, COMPARE.1)
+                .try_pass(COMPARE.0, COMPARE.1)?
                 .bind_texture(RENDERED_TEX, &&captured, 0x19)
                 .bind_texture(REFERENCE_TEX, &WriteTextureUnchecked(reference), 0x32)
-                .bind_texture(FEEDBACK_TEX, &WriteTextureUnchecked(feedback), 0x32);
+                .bind_texture(FEEDBACK_TEX, &WriteTextureUnchecked(feedback), 0x32)
+                // Packaged compare uses OpImageRead(reference_tex). Original
+                // legacy32 remains, but retain the actual reference producer.
+                .preserve_storage_texture_contents(REFERENCE_TEX);
             passes.push(dispatch_extent(pass, &frame.texture));
         } else {
             let pass = env
-                .pass(CAPTURE.0, CAPTURE.1)
+                .try_pass(CAPTURE.0, CAPTURE.1)?
                 .bind_texture(RENDERED_TEX, &&frame.texture, 0x19)
                 .bind_texture(REFERENCE_TEX, &WriteTextureUnchecked(reference), 0x32);
             passes.push(dispatch_extent(pass, &frame.texture));
@@ -178,12 +191,12 @@ pub fn render_shader_refactoring(
     }
 
     state.changed_tick = world_tick;
-    let desc_tail_copied = matches!(state.state.disc, 3 | 4);
+    let replacement_frame = matches!(state.state.disc, 3 | 4).then_some(feedback);
     state.state = next_state(state.state);
-    RefactoringRun {
+    Ok(RefactoringRun {
         passes,
-        desc_tail_copied,
-    }
+        replacement_frame,
+    })
 }
 
 #[cfg(test)]
@@ -352,7 +365,7 @@ mod tests {
             }
         );
         assert_eq!(s.changed_tick, 777);
-        assert!(!out.desc_tail_copied);
+        assert_eq!(out.replacement_frame, None);
     }
 
     #[test]
@@ -403,7 +416,10 @@ mod tests {
             cmp[1].0, cmp[2].0,
             "reference and feedback are different textures"
         );
-        assert!(out.desc_tail_copied);
+        let replacement = out.replacement_frame.expect("state3 replaces the full frame");
+        assert_eq!(replacement.resource, 101, "actual first feedback allocation");
+        assert_eq!(replacement.desc, TextureDesc::new_2d([320, 200], 0x30).storage().sampled());
+        assert_eq!(out.passes[1].preserving_texture_bindings, [2]);
         assert_eq!(
             s.state,
             RefactoringState {
@@ -412,7 +428,7 @@ mod tests {
             }
         );
         let (_, s4, out4) = run(st(4, 3));
-        assert!(out4.desc_tail_copied);
+        assert_eq!(out4.replacement_frame, Some(replacement));
         assert_eq!(
             s4.state,
             RefactoringState {
@@ -429,6 +445,19 @@ mod tests {
             assert!(out.passes.is_empty(), "disc {d} payload {p}");
             assert_eq!(e.frame.temporal_textures.len(), 1);
             assert_eq!(s.changed_tick, 777);
+            assert_eq!(out.replacement_frame.is_some(), d == 3 || d == 4);
+        }
+    }
+
+    #[test]
+    fn original_payload_increment_wraps_and_feedback_replaces_even_off_beat_frames() {
+        for disc in [3, 4] {
+            assert_eq!(next_state(RefactoringState { disc, payload: u32::MAX }),
+                RefactoringState { disc, payload: 0 });
+            let (_, state, out) = run(st(disc, 0));
+            assert_eq!(state.state.payload, 1);
+            assert!(out.passes.is_empty());
+            assert_eq!(out.replacement_frame.unwrap().resource, 101);
         }
     }
 
@@ -443,5 +472,24 @@ mod tests {
             format: 1,
         };
         e.run(|env| render_shader_refactoring(env, &mut s, 1, &f));
+    }
+
+    #[test]
+    fn fallible_temporal_failure_retains_original_error_and_state() {
+        let mut environment = env(&[], &[]);
+        environment.frame.temporal_failure = Some(rhapsody::Error::DeviceLost);
+        let mut state = st(2, 3);
+        let original = state;
+        let frame = FrameHandle {
+            texture: rgtex(5, 8, 8),
+            format: 1,
+        };
+        let error = environment
+            .run(|env| try_render_shader_refactoring(env, &mut state, 777, &frame))
+            .err()
+            .expect("allocation must fail");
+        assert!(matches!(error, rhapsody::Error::DeviceLost));
+        assert_eq!(state, original);
+        assert!(environment.frame.passes.is_empty());
     }
 }

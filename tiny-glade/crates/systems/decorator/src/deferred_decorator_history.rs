@@ -30,27 +30,27 @@
 //! 与 deferred_terrain_history 同模式）。
 
 use bevy_ecs::prelude::*;
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use country_core::resources::history::decorator_edit::DecoratorHistoryEdit;
 use country_core::resources::history::{EditType, History};
+use country_core::resources::walls::decorator::DecoratorLocator;
 
-/// ① 延迟装饰历史记录（32B；布局 O，字段语义 U——见文件头）。
+/// ① 延迟装饰历史记录（**32B，O 布局 = `{kind u64 @0, f1 u64 @8, f2 u64
+/// @0x10, f3 u64 @0x18}`**——decorator_record_history 0x140817850 以
+/// `plVar10[0..3]` 读取，2026-10-17 reviewer-state 复核证实；旧 `{kind, a u32,
+/// b u32, c u32, d u32, e u64}` 布局与二进制读面不符，已修）。
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct DeferredDecoratorRecord {
     /// +0x00：操作 kind（O：3=change/move、4=place、5=remove；6=排空终止）。
     pub kind: u64,
-    /// +0x08：u32（U：候选 decorator id）。
-    pub a: u32,
-    /// +0x0c：u32（U）。
-    pub b: u32,
-    /// +0x10：u32（U）。
-    pub c: u32,
-    /// +0x14：u32（U）。
-    pub d: u32,
-    /// +0x18：u64（U）。
-    pub e: u64,
+    /// +0x08：载荷 1（O：装饰 id 候选，u64 读面；f1=plVar10[1]）。
+    pub f1: u64,
+    /// +0x10：载荷 2（plVar10[2]；语义 U）。
+    pub f2: u64,
+    /// +0x18：载荷 3（plVar10[3]；语义 U）。
+    pub f3: u64,
 }
 
 impl DeferredDecoratorRecord {
@@ -67,8 +67,11 @@ impl DeferredDecoratorRecord {
 pub struct DeferredDecoratorEditHistory {
     /// +0x00：待提交记录（cap-first Vec，元素 0x20B）。
     pub records: Vec<DeferredDecoratorRecord>,
-    /// +0x18：潜在存续受影响装饰 id 集合。
-    pub potentially_surviving_affected_decorators: HashSet<u32>,
+    /// +0x18：潜在存续受影响装饰定位集合（**HashMap<DecoratorLocator, ()>**，
+    /// O：apply_decorator_op 0x141276e30 的 `DecoratorLocator::new` +
+    /// `HashMap<DecoratorLocator,()>::insert`；decorator_record_history 排空
+    /// 时清空）。
+    pub potentially_surviving_affected_decorators: HashMap<DecoratorLocator, ()>,
     /// +0x48：待处理标志（apply_decorator_op 置位；decorator_record_history 清零）。
     pub pending: bool,
 }
@@ -80,16 +83,17 @@ impl DeferredDecoratorEditHistory {
         self.records.push(record);
     }
 
-    /// 行 40（内联，O）：潜在存续受影响装饰 id 迭代。
+    /// 行 40（内联，O）：潜在存续受影响装饰定位迭代。
     #[inline]
-    pub fn potentially_surviving_affected_decorators(&self) -> impl Iterator<Item = u32> + '_ {
-        self.potentially_surviving_affected_decorators.iter().copied()
+    pub fn potentially_surviving_affected_decorators(&self) -> impl Iterator<Item = &DecoratorLocator> + '_ {
+        self.potentially_surviving_affected_decorators.keys()
     }
 
-    /// 行 48（内联，O）：登记潜在存续受影响装饰 id（HashSet insert）。
+    /// 行 48（内联，O）：登记潜在存续受影响装饰定位（
+    /// `HashMap<DecoratorLocator,()>::insert`）。
     #[inline]
-    pub fn add_potentially_surviving_affected_decorator(&mut self, decorator_id: u32) {
-        self.potentially_surviving_affected_decorators.insert(decorator_id);
+    pub fn add_potentially_surviving_affected_decorator(&mut self, locator: DecoratorLocator) {
+        self.potentially_surviving_affected_decorators.insert(locator, ());
     }
 }
 
@@ -169,42 +173,46 @@ impl DeferredDecoratorOpQueue {
 
 /// 32B 记录 → core 存档模型 `DecoratorHistoryEdit` 的映射。
 ///
-/// 模型适配登记：原生 HistoryEdit 载荷 = 32B 记录（tag 10），core
-/// `DecoratorHistoryEdit{id, before, after}`（56B）为存档格式模型。映射仅取
-/// 机器码证实的位置：`id` ← 记录 `a`（+0x08）。before/after 状态由 archivist
-/// before/after 表消费方（extract_diff）持有；**不得把 @0 kind 当作 id**。
-pub(crate) fn record_to_history_edit(record: &DeferredDecoratorRecord) -> DecoratorHistoryEdit {
-    DecoratorHistoryEdit {
-        id: u64::from(record.a),
-        // U：before/after 状态语义待 archivist extract_diff 链取证。
-        ..DecoratorHistoryEdit::default()
-    }
+/// 模型适配登记（2026-10-17 consume-types 复核）：原生运行时载荷 = **48B
+/// `{1,1,kind,f1,f2,f3}`**（0x140817850：`*p=1,[1]=1,[2]=kind,[3]=f1,[4]=f2,
+/// [5]=f3`）随 `History::add`（kind=10）提交；core 现模型
+/// `DecoratorHistoryEdit { diffs: HashMap<DecoratorStorageAddr, Diff> }`
+/// （0x30B diff map，0x1404f46e0）无法承载该 48B 记录的 kind/f1/f2/f3。
+/// **未实现（登记）**：需 core 落 48B 运行时载荷模型或证实 diffs 等价，
+/// 在此之前返回空 edit（不把 @0 kind/f1 冒充 diff 地址）。
+pub(crate) fn record_to_history_edit(_record: &DeferredDecoratorRecord) -> DecoratorHistoryEdit {
+    DecoratorHistoryEdit::default()
 }
 
 /// `decorator_record_history` @0x140817850（O）。
 ///
-/// 每帧：待处理标志非零 → 排空记录并逐条 `History::add(EditType::DecoratorV5)`；
-/// 随后清空潜在存续集合。flag 清零在读取时完成。
+/// 每帧（**无论待处理标志**，O）：①读 +0x48 待处理标志并清零；②非零则
+/// 逐记录（0x20B 步长，kind==6 提前终止）分配 48B 载荷 `{1,1,kind,f1,f2,f3}`
+/// 调 `History::add`（kind 10）；③清空记录 Vec（len=0）；④清空
+/// HashMap<DecoratorLocator,()>（control 字节 0xff 重置 + growth_left 重算）。
 pub fn decorator_record_history<S: Send + Sync + 'static>(
     mut history: ResMut<History<S>>,
     mut deferred: ResMut<DeferredDecoratorEditHistory>,
 ) {
-    if !deferred.pending {
-        return;
-    }
+    // O：+0x48 标志读取即清零（无条件）。
+    let pending = deferred.pending;
     deferred.pending = false;
-    let records = std::mem::take(&mut deferred.records);
-    for record in &records {
-        if record.kind == DeferredDecoratorRecord::KIND_TERMINATE {
-            // O 读取面：kind==6 提前终止排空。
-            break;
-        }
-        let edit = record_to_history_edit(record);
-        if let Err(error) = history.add(EditType::DecoratorV5(Arc::new(edit))) {
-            // 原生 FUN_140a84ec0 失败路径未显式记录（历史合同适配，同地形族）。
-            log::warn!(target: LOG_TARGET, "decorator history add failed: {error:?}");
+    if pending {
+        let records = std::mem::take(&mut deferred.records);
+        for record in &records {
+            if record.kind == DeferredDecoratorRecord::KIND_TERMINATE {
+                // O 读取面：kind==6 提前终止排空。
+                break;
+            }
+            let edit = record_to_history_edit(record);
+            if let Err(error) = history.add(EditType::DecoratorV5(Arc::new(edit))) {
+                // 原生 FUN_140a84ec0 失败路径未显式记录（历史合同适配，同地形族）。
+                log::warn!(target: LOG_TARGET, "decorator history add failed: {error:?}");
+            }
         }
     }
+    // O：排空记录 Vec + 清空潜在存续集合（无条件，见文件头）。
+    deferred.records.clear();
     deferred.potentially_surviving_affected_decorators.clear();
 }
 

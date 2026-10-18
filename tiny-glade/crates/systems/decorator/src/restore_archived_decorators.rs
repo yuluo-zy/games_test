@@ -17,7 +17,7 @@
 //! 6. 游标条件 → `extract_diff`（0x140b2cb30）+ 0x70B 记录冲刷
 //!    （FUN_140b743e0）。
 //!
-//! core 对接：`restore_archived_decorators`（recovered_building，等价
+//! core 对接：`restore_archived_decorators`（shared building modules，等价
 //! extract_and_restore_to_storage 0x140b2c4b0）+ `DecoratorStorage` 桶 API +
 //! `StairsState::restore_backup` + `InnerWalls::get`（机器码调用面）。
 //! core 缺口登记：archivist `all_storages/all_decorators/extract_diff` 未在
@@ -35,7 +35,7 @@ use country_core::resources::walls::decorator_storage::{
 use country_core::resources::walls::decorator::DecoratorId;
 use country_core::resources::walls::inner_walls::InnerWalls;
 use country_core::resources::walls::WallId;
-use country_core::recovered_building::wall_decorator_archivist::DecoratorStorageAddress;
+use country_core::resources::walls::decorator_archivist::changes::DecoratorStorageAddress;
 
 /// archivist 全存储地址迭代（等价 `all_storages` 0x140b2bb80；core 模型面）。
 pub fn archivist_all_storages<C: Send + Sync + 'static>(
@@ -82,7 +82,7 @@ pub fn archivist_all_decorators<C: Send + Sync + 'static>(
 pub(crate) fn tracked_at<C: Send + Sync + 'static>(
     archivist: &DecoratorArchivist<C>,
     address: DecoratorStorageAddress,
-) -> Option<&country_core::recovered_building::wall_decorator_archivist::TrackedDecorators> {
+) -> Option<&country_core::resources::walls::decorator_archivist::changes::TrackedDecorators> {
     match address {
         DecoratorStorageAddress::Wall(w) => archivist.walls.get(&w),
         DecoratorStorageAddress::ObservedSpecial1 => archivist.special1.as_ref(),

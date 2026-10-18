@@ -18,7 +18,9 @@
 //! 栅格资源的可见布局（O，各类型相同）：脏行表 `+0x98`（0x200 B，由 `compute_path_masks` / `garden_rasterize_from_cpu` 清零）、
 //! 上传标志 `+0x29a`、遮罩标志 `+0x29b`。其余布局 U。
 //!
-//! 暂存 SSBO 名（O：`PathRasterStagingSsbo` / `GardenRasterStagingSsbo` 的 SsboId = xxh3(类型名)，其余按同一命名推断 I）。
+//! 暂存 SSBO 泛型身份（O，B PDB `read_storage_buffer` 六实例 0x140588650..0x140588f60）均为
+//! `resources::world_raster_defs::*RasterStagingSsbo`。直接复用真实 producer 的 512×512 u8 mapped buffer；
+//! 不能用同 NAME 的零大小标记另建一份，否则库的完整类型名校验会拒绝。
 
 use std::cell::Cell;
 
@@ -26,7 +28,15 @@ use crate::asset_libraries::ssbo_library::SsboType as LibrarySsbo;
 use crate::render::pass_builder::pass_resources::TypeId128;
 use crate::resources::texture_presets::TexturePreset;
 use crate::systems::render_loop::compute_passes::pass_kit::{
-    PassEnv, ResourceView, TEX_WRITE, binding_hash, ssbo_carrier,
+    PassEnv, ResourceView, TEX_WRITE, binding_hash,
+};
+
+pub use crate::resources::world_raster_defs::{
+    Cobblestone1RasterStagingSsbo as Cobblestone1RasterStagingBuf,
+    Cobblestone2RasterStagingSsbo as Cobblestone2RasterStagingBuf,
+    Cobblestone3RasterStagingSsbo as Cobblestone3RasterStagingBuf,
+    GardenRasterStagingSsbo as GardenRasterStagingBuf,
+    PathRasterStagingSsbo as PathRasterStagingBuf, WaterRasterStagingSsbo as WaterRasterStagingBuf,
 };
 
 pub const PASS_NAME: &str = "Upload cpu raster";
@@ -85,6 +95,15 @@ pub trait RasterKind: ResourceView {
     fn flags(&self) -> &RasterFlags;
 }
 
+/// A source-build ECS resource and its native upload-view identity. The pair
+/// fixes the staging type without claiming that the two Rust layouts match.
+pub trait LiveRasterKind:
+    bevy_ecs::resource::Resource
+    + core::ops::DerefMut<Target = crate::resources::world_raster::WorldRaster<512>>
+{
+    type View: RasterKind;
+}
+
 macro_rules! raster_kinds {
     ($($raster:ident, $staging:ident, $name:literal, $lo:literal, $hi:literal;)*) => {$(
         /// `resources::world_raster_defs` 同名栅格资源的可见头部（布局见 [`RasterFlags`]）。
@@ -96,16 +115,15 @@ macro_rules! raster_kinds {
             const TYPE_ID: TypeId128 = TypeId128 { lo: $lo, hi: $hi };
         }
 
-        /// 暂存 SSBO 载体。
-        #[derive(Clone, Copy, Debug, Default)]
-        pub struct $staging;
-        ssbo_carrier!($staging, $name);
-
         impl RasterKind for $raster {
             type Staging = $staging;
             fn flags(&self) -> &RasterFlags {
                 &self.0
             }
+        }
+
+        impl LiveRasterKind for crate::resources::world_raster_defs::$raster {
+            type View = $raster;
         }
     )*};
 }
@@ -140,19 +158,53 @@ pub fn upload_world_raster<'a, R: RasterKind + 'a>(
     if !flags.upload_pending.get() {
         return None;
     }
+    declare_upload::<R::Staging>(env, preset, || {
+        flags.upload_pending.set(false);
+        flags.mask_dirty.set(true);
+    });
+    Some(world_change_tick)
+}
+
+/// Source-build host adapter for the actual ECS raster producer. The caller
+/// resolves the mandatory, correctly named Path/Cobblestone/Water/Garden
+/// resource and supplies its actual Bevy Mut, never a pointer cast to the old
+/// compiler's RasterFlags layout. The first pending read does not mark it
+/// changed; original 0x1403d8cd7 marks changed only after format validation,
+/// immediately before 0x1403d8ce3 writes +29a/+29b. Keep that order even when
+/// subsequent pass construction fails.
+pub fn upload_live_world_raster<R: LiveRasterKind>(
+    env: &mut PassEnv<'_>,
+    raster: &mut bevy_ecs::change_detection::Mut<'_, R>,
+    world_change_tick: u32,
+    preset: u8,
+) -> Option<u32> {
+    use bevy_ecs::change_detection::DetectChangesMut;
+    if !raster.bypass_change_detection().published() {
+        return None;
+    }
+    declare_upload::<<R::View as RasterKind>::Staging>(env, preset, || {
+        raster.set_changed();
+        raster.bypass_change_detection().mark_staging_uploaded();
+    });
+    Some(world_change_tick)
+}
+
+fn declare_upload<Staging: LibrarySsbo>(
+    env: &mut PassEnv<'_>,
+    preset: u8,
+    mark_uploaded: impl FnOnce(),
+) {
     let suffix = format_suffix(env.preset_desc(preset).format);
-    flags.upload_pending.set(false);
-    flags.mask_dirty.set(true);
+    mark_uploaded();
     let uri = format!("{URI_PREFIX}{suffix}");
     let name_hash = binding_hash(&format!("{BINDING_PREFIX}{suffix}"));
     let recorded = env
         .pass(PASS_NAME, &uri)
-        .read_storage_buffer::<R::Staging>(HASH_CPU_RASTER)
+        .read_storage_buffer::<Staging>(HASH_CPU_RASTER)
         .bind_texture(name_hash, &TexturePreset(preset), TEX_WRITE)
         .uniform(KEY_WIDTH, WIDTH_VALUE)
         .dispatch_2d(DISPATCH.0, DISPATCH.1);
     env.record(recorded);
-    Some(world_change_tick)
 }
 
 #[cfg(test)]
@@ -199,6 +251,73 @@ mod tests {
         );
         assert!(f.passes.is_empty());
         assert_eq!(w.backend.loads.get(), 0);
+    }
+
+    #[test]
+    fn live_ecs_producer_and_upload_consumer_share_flags_and_precise_change_tick() {
+        use crate::resources::{
+            world_raster::DirtyTilePublisher, world_raster_defs::PathRaster as LivePathRaster,
+        };
+        use bevy_ecs::{change_detection::DetectChanges, world::World};
+        let valid = world(
+            PathRaster(RasterFlags::new(false, false)),
+            "r16f",
+            FORMAT_R16F,
+        );
+        let invalid = world(PathRaster(RasterFlags::new(false, false)), "r16f", 0);
+        let mut ecs = World::new();
+        ecs.insert_resource(LivePathRaster::new(DirtyTilePublisher::unique()));
+        ecs.clear_trackers();
+        let mut frame = TestFrame::default();
+        assert_eq!(
+            with_env(&valid, &mut frame, |env| upload_live_world_raster(
+                env,
+                &mut ecs.resource_mut::<LivePathRaster>(),
+                7,
+                3
+            )),
+            None
+        );
+        assert!(
+            !ecs.get_resource_ref::<LivePathRaster>()
+                .unwrap()
+                .is_changed()
+        );
+        assert!(frame.passes.is_empty());
+
+        // This is the actual CPU producer, not a copied RasterFlags object.
+        ecs.resource_mut::<LivePathRaster>()
+            .copy_to_staging(0, &mut vec![0; 512 * 512]);
+        ecs.clear_trackers();
+        let bad = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            with_env(&invalid, &mut frame, |env| {
+                upload_live_world_raster(env, &mut ecs.resource_mut::<LivePathRaster>(), 8, 3)
+            });
+        }));
+        assert!(bad.is_err());
+        let live = ecs.get_resource_ref::<LivePathRaster>().unwrap();
+        assert!(
+            !live.is_changed(),
+            "unsupported format fails before original changed_tick write"
+        );
+        assert!(live.published());
+        assert!(!live.reupload_pending());
+        assert!(frame.passes.is_empty());
+
+        assert_eq!(
+            with_env(&valid, &mut frame, |env| upload_live_world_raster(
+                env,
+                &mut ecs.resource_mut::<LivePathRaster>(),
+                9,
+                3
+            )),
+            Some(9)
+        );
+        let live = ecs.get_resource_ref::<LivePathRaster>().unwrap();
+        assert!(live.is_changed());
+        assert!(!live.published());
+        assert!(live.reupload_pending());
+        assert_eq!(frame.passes.len(), 1);
     }
 
     #[test]

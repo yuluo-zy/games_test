@@ -1,0 +1,124 @@
+--- a/crates/tiny-glade/src/render_bridge.rs
++++ b/crates/tiny-glade/src/render_bridge.rs
+@@ -37,6 +37,24 @@
+     tables: HostTables,
+     raster: Arc<RasterShared>,
+     shaders: Arc<AssetShaderLibrary>,
++}
++
++/// This App's exact physical handle namespaces and their retained owners.
++/// The worker creates its Rc frame driver locally from the same tables.
++#[derive(Clone)]
++pub struct CoreRenderOwners {
++    tables: HostTables,
++    raster: Arc<RasterShared>,
++    shaders: Arc<AssetShaderLibrary>,
++}
++
++/// Sent back with the actual gameplay SubApp after a fully completed original
++/// world render. The current session's named GPU owners preserve its first
++/// frame history; Mutex permits the single main-thread adoption through &World.
++#[derive(bevy_ecs::resource::Resource)]
++pub struct CompletedGameplayWarmup {
++    owners: CoreRenderOwners,
++    named: parking_lot::Mutex<Option<rhapsody::rg::vulkan::CompletedNamedResources>>,
+ }
+ 
+ impl CoreRenderBridge {
+@@ -68,6 +86,54 @@
+             raster,
+             shaders,
+         })
++    }
++
++    /// Captured before moving the original gameplay SubApp to its worker.
++    pub fn warmup_owners(&self) -> rhapsody::Result<CoreRenderOwners> {
++        if self.session.borrow().named_resource_count() != 0 {
++            return Err(rhapsody::Error::invalid_usage("gameplay warmup cannot fork an existing temporal owner"));
++        }
++        Ok(CoreRenderOwners { tables: self.tables.clone(), raster: self.raster.clone(),
++            shaders: self.shaders.clone() })
++    }
++
++    pub fn from_owners(owners: CoreRenderOwners) -> rhapsody::Result<Self> {
++        let device = owners.tables.buffers.graphics_device().clone();
++        // Current VulkanGraphBackend implementation, one thread-local session;
++        // no new BufferHost/TextureHost/ShaderHost, descriptor heap or library.
++        let session = VulkanGraphSession::new(VulkanGraphBackend::new(device, AccessTable::original())?);
++        Ok(Self { session: Rc::new(RefCell::new(session)), tables: owners.tables,
++            raster: owners.raster, shaders: owners.shaders })
++    }
++
++    /// Call only after the actual full compile_main builder was compiled and
++    /// executed. This validates actual GPU completion, not a synthetic ready bit.
++    pub fn complete_gameplay_warmup(&mut self, timeout_ns: u64)
++        -> rhapsody::Result<CompletedGameplayWarmup> {
++        if Rc::strong_count(&self.session) != 1 {
++            return Err(rhapsody::Error::invalid_usage("warmup has live graph/declarer leases"));
++        }
++        let named = self.session.borrow_mut().take_completed_named_resources(timeout_ns)?;
++        Ok(CompletedGameplayWarmup {
++            owners: CoreRenderOwners { tables: self.tables.clone(), raster: self.raster.clone(),
++                shaders: self.shaders.clone() }, named: parking_lot::Mutex::new(Some(named)),
++        })
++    }
++
++    pub fn accept_gameplay_warmup(&mut self, completed: &CompletedGameplayWarmup)
++        -> rhapsody::Result<()> {
++        if !Arc::ptr_eq(&self.tables.buffers, &completed.owners.tables.buffers)
++            || !Arc::ptr_eq(&self.tables.textures, &completed.owners.tables.textures)
++            || !Arc::ptr_eq(&self.tables.shaders, &completed.owners.tables.shaders)
++            || !Arc::ptr_eq(&self.raster, &completed.owners.raster)
++            || !Arc::ptr_eq(&self.shaders, &completed.owners.shaders) {
++            return Err(rhapsody::Error::invalid_usage("completed gameplay warmup has different App owners"));
++        }
++        let mut named = completed.named.lock();
++        if let Some(named) = named.take() {
++            self.session.borrow_mut().adopt_completed_named_resources(named)?;
++        }
++        Ok(())
+     }
+ 
+     /// 将同一设备的资产表安装到游戏世界；每帧维护由 GameFrameDriver 调度。
+@@ -812,3 +878,41 @@
+         assert!(scope.validate(&graph).is_err());
+     }
+ }
++
++
++/// Actual full-world builder seam. The caller supplies the recovered complete
++/// compile_main graph (including its original final22 export), not a prefix.
++/// Actual ECS draw-list construction and every render phase use the same App
++/// owners. Sending the SubApp is allowed only after this function returns Ok.
++pub fn warm_up_gameplay_with_world_builder(
++    owners: CoreRenderOwners,
++    world: &mut bevy_ecs::world::World,
++    build_world: impl FnOnce(
++        &mut CoreGraphFrame<'_>, &mut bevy_ecs::world::World,
++        &country_core::systems::render_loop::draw_passes::draw_lists::DrawLists,
++    ) -> rhapsody::Result<country_core::render::pass_builder::pass_resource_access::RgTexture>,
++) -> rhapsody::Result<()> {
++    use country_core::systems::render_loop::draw_passes::draw_lists::{build_draw_lists, DrawLists};
++    let mut bridge = CoreRenderBridge::from_owners(owners)?;
++    let mut lists = DrawLists::new();
++    build_draw_lists(world, bridge.shader_library().as_ref(), &mut lists);
++    lists.sort();
++    bridge.raster_resources().refresh_draw_vaos(world, &lists)?;
++    let (output, built) = bridge.build_frame(|frame| build_world(frame, world, &lists))?;
++    if let Err(error) = bridge.shader_backend().prewarm(std::time::Duration::from_secs(10)) {
++        if let Err(cleanup) = bridge.cancel_built(built) {
++            log::warn!("failed gameplay warmup prewarm cancellation: {cleanup}");
++        }
++        return Err(error);
++    }
++    let compiled = bridge.compile_built(built)?;
++    let receipt = bridge.execute_compiled(compiled)?;
++    // Real final export, physical allocation and retained native owner are
++    // required; neither a logical texture number nor a ready flag suffices.
++    let actual_output = bridge.exported_texture(&receipt, output.resource)?;
++    let completed = bridge.complete_gameplay_warmup(10_000_000_000)?;
++    drop(bridge.take_exported_texture(&receipt, output.resource)?);
++    drop(actual_output);
++    world.insert_resource(completed);
++    Ok(())
++}

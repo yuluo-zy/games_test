@@ -1,0 +1,25 @@
+{
+  "status": "candidate_only_not_applied",
+  "reason": "await actual Nani GPU graph/readback failure; raw access37 remains unchanged; no rhapsody source change",
+  "inputs": [
+    {
+      "path": "games_test/tiny-glade/crates/country-core/src/render/pass_builder/compute_pass_builder.rs",
+      "sha256": "70685948b016c2df5f8f0c4051b849d1ebc63b9660f5f950221769b669897d87"
+    },
+    {
+      "path": "games_test/tiny-glade/crates/tiny-glade/src/render_host.rs",
+      "sha256": "b90e4de49c229f7296d9865a7926c0bd5353b0245ec6382deb6ed8f271649b33"
+    },
+    {
+      "path": "games_test/tiny-glade/crates/tiny-glade/src/compute_frame.rs",
+      "sha256": "ed34935f362a91a3d25035d1f00ffb1ed3ab555f91b3d0f9f3af68de727d556a"
+    },
+    {
+      "path": "games_test/tiny-glade/crates/tiny-glade/tests/render_host.rs",
+      "sha256": "45840fbd9f7e6185d2561a57044d522add6806bb6260d9878a9f538a95d992fa"
+    }
+  ],
+  "parser_check": "rustfmt --edition 2024 --config skip_children=true; all four candidate files parsed successfully; no Cargo",
+  "patch_sha256": "fa7d64350a0d16d36fd5afd958c32d67737b88c89dbf592e39d01868e9813f52",
+  "write_guard": "preserve only if current rhapsody raw::access_table::is_write(a.access); independent read/indirect entries retain ordinary access registration"
+}

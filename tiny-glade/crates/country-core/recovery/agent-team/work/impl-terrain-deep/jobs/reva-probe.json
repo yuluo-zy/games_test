@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\naddr = currentProgram.getAddressFactory().getAddress(\"140aef1f0\")\nf = currentProgram.getFunctionManager().getFunctionAt(addr)\nprint(json.dumps({\"sha256\": str(currentProgram.getExecutableSHA256()), \"program\": str(currentProgram.getName()), \"function\": str(f.getSignature()) if f else None}))",
+      "timeoutSeconds": 60
+    },
+    "timeout_seconds": 90
+  }
+]

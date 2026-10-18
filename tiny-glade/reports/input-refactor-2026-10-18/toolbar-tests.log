@@ -1,0 +1,242 @@
+    Blocking waiting for file lock on build directory
+warning: field `0` is never read
+   --> crates/rhapsody/src/raw/texture.rs:493:15
+    |
+493 |     Swapchain(Arc<super::swapchain::Swapchain>),
+    |     --------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     |
+    |     field in this variant
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+help: consider changing the field to be of unit type to suppress this warning while preserving the field numbering, or remove the field
+    |
+493 -     Swapchain(Arc<super::swapchain::Swapchain>),
+493 +     Swapchain(()),
+    |
+
+warning: `rhapsody` (lib) generated 1 warning
+   Compiling country-core v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core)
+warning: unused import: `crate::resources::color_id::ColorId`
+  --> crates/country-core/src/resources/history/color_edit.rs:43:5
+   |
+43 | use crate::resources::color_id::ColorId;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `SubworldColliderHandle`
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:44:54
+   |
+44 | use crate::systems::collision::world::{RaycastWorld, SubworldColliderHandle};
+   |                                                      ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `DebugColor`
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:45:31
+   |
+45 | use crate::utils::debug_viz::{DebugColor, DebugLine, DebugSphere};
+   |                               ^^^^^^^^^^
+
+warning: unused import: `glam::Vec3`
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:46:5
+   |
+46 | use glam::Vec3;
+   |     ^^^^^^^^^^
+
+warning: unused import: `DecoratorStorage`
+  --> crates/country-core/src/systems/save/snapshot.rs:28:36
+   |
+28 |             DecoratorAddrSnapshot, DecoratorStorage, DecoratorStorageAddr, DecoratorStorageSnapshot,
+   |                                    ^^^^^^^^^^^^^^^^
+
+warning: unused import: `bevy_ecs::schedule::IntoScheduleConfigs`
+  --> crates/country-core/src/systems/save/mod.rs:61:5
+   |
+61 | use bevy_ecs::schedule::IntoScheduleConfigs;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: variable does not need to be mutable
+   --> crates/country-core/src/resources/history/color_edit.rs:331:39
+    |
+331 |         let serde_json::Value::Object(mut outer) = value else {
+    |                                       ----^^^^^
+    |                                       |
+    |                                       help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `aux`
+   --> crates/country-core/src/resources/history/replay_cmd_buffer.rs:179:9
+    |
+179 |         aux: ReplayBucketAux,
+    |         ^^^ help: if this is intentional, prefix it with an underscore: `_aux`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `0` is never read
+  --> crates/country-core/src/asset_libraries/color_library.rs:62:12
+   |
+62 | pub struct ColorLibrarySsbo {
+   |            ^^^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `check` is never used
+  --> crates/country-core/src/asset_libraries/color_library.rs:59:1
+   |
+59 | /// 37 个 RGBA 槽，布局与 GPU 调色板保持一致。
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+   --> crates/country-core/src/geometry/instanced_wall.rs:146:12
+    |
+146 | pub struct BrickTransformSsbo {
+    |            ^^^^^^^^^^^^^^^^^^ field in this struct
+    |
+    = help: consider removing this field
+
+warning: function `check` is never used
+   --> crates/country-core/src/geometry/instanced_wall.rs:143:1
+    |
+143 | /// CPU 生产者和 GPU 缓冲共用的砖实例格式。字段按 shader 合同固定，不能随意重排。
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+   --> crates/country-core/src/resources/rt.rs:325:12
+    |
+325 | pub struct RtTriangleSsbo {
+    |            ^^^^^^^^^^^^^^ field in this struct
+    |
+    = help: consider removing this field
+
+warning: function `check` is never used
+   --> crates/country-core/src/resources/rt.rs:321:1
+    |
+321 | /// `RtTriangleSsbo`（O：0x18 B/元素；`upload_rt_world` 的 `RtTrianglesSsbo` 上传面，
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+   --> crates/country-core/src/resources/rt.rs:344:12
+    |
+344 | pub struct RtTriangleMetaSsbo {
+    |            ^^^^^^^^^^^^^^^^^^ field in this struct
+    |
+    = help: consider removing this field
+
+warning: function `check` is never used
+   --> crates/country-core/src/resources/rt.rs:341:1
+    |
+341 | /// `RtTriangleMetaSsbo`（O：4 B/元素 = u32 三角数；类型名断言长度 0x2f）。
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+   --> crates/country-core/src/resources/rt.rs:364:12
+    |
+364 | pub struct RtBvhRecord {
+    |            ^^^^^^^^^^^ field in this struct
+    |
+    = help: consider removing this field
+
+warning: function `check` is never used
+   --> crates/country-core/src/resources/rt.rs:360:1
+    |
+360 | /// `RtBvhRecord`（O：`RtBvhSsbo` 的 0x50 B 元素；`upload_rt_world` 断言
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+   --> crates/country-core/src/resources/rt.rs:378:12
+    |
+378 | pub struct RtBvhSsbo {
+    |            ^^^^^^^^^ field in this struct
+    |
+    = help: consider removing this field
+
+warning: function `check` is never used
+   --> crates/country-core/src/resources/rt.rs:375:1
+    |
+375 | /// `RtBvhSsbo`（O：0x50 B/元素 = [`RtBvhRecord`]；类型名断言长度 0x26）。
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `kind_filtered` is never used
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:60:4
+   |
+60 | fn kind_filtered(kind: u8, gui_byte: u8) -> bool {
+   |    ^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates/country-core/src/systems/render_loop/compute_passes/dof_autofocus.rs:50:12
+   |
+50 | pub struct DofAutofocusSsbo {
+   |            ^^^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates/country-core/src/systems/render_loop/compute_passes/dof_autofocus.rs:39:1
+   |
+39 | /// 每相机自动对焦参数（O：`resources` 里 `DofAutofocusSsbo`，着色器侧 `DofFocus`，`inc/coc.hlsl:12`，64 B）。
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `A` is never used
+   --> crates/country-core/src/systems/time_of_day.rs:237:15
+    |
+237 |     pub const A: f32 = -0.762_442_5; // 0xbf432f6f
+    |               ^
+
+warning: structure field `Wall` should have a snake case name
+   --> crates/country-core/src/systems/save/snapshot.rs:967:12
+    |
+967 |     Wall { Wall: u64 },
+    |            ^^^^ help: convert the identifier to snake case (notice the capitalization): `wall`
+    |
+    = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default
+
+warning: structure field `Stair` should have a snake case name
+   --> crates/country-core/src/systems/save/snapshot.rs:969:13
+    |
+969 |     Stair { Stair: u64 },
+    |             ^^^^^ help: convert the identifier to snake case (notice the capitalization): `stair`
+
+warning: structure field `Wall` should have a snake case name
+    --> crates/country-core/src/systems/save/snapshot.rs:1057:12
+     |
+1057 |     Wall { Wall: DecoratorWallDstJson },
+     |            ^^^^ help: convert the identifier to snake case (notice the capitalization): `wall`
+
+warning: structure field `Terrain` should have a snake case name
+    --> crates/country-core/src/systems/save/snapshot.rs:1058:15
+     |
+1058 |     Terrain { Terrain: DecoratorTerrainDstJson },
+     |               ^^^^^^^ help: convert the identifier to snake case: `terrain`
+
+warning: `country-core` (lib) generated 52 warnings (24 duplicates) (run `cargo fix --lib -p country-core` to apply 8 suggestions)
+   Compiling toolbar v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/toolbar)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3m 04s
+     Running unittests src/lib.rs (target/debug/deps/toolbar-d9dc431ad35b80b0)
+
+running 22 tests
+test mei::core::tests::scroll_input_event_tag_and_payload ... ok
+test mei::layout::native_layout_tests::expand_uses_remaining_space_and_axes_transpose ... ok
+test mei::core::tests::frame_begin_clears_parent_table ... ok
+test mei::core::tests::frame_events_drive_root_anchor_and_child_minimum_layout ... ok
+test mei::core::tests::build_parent_links_maps_child_to_parent ... ok
+test mei::systems::tests::update_nav_moves_to_next_sibling_right ... ok
+test mei::layout::native_layout_tests::minimum_ignores_percentages_and_retains_padding_and_content ... ok
+test mei::core::tests::roots_enqueue_once_per_frame_and_recycle_content_and_geometry ... ok
+test mei::systems::tests::pack_srgba_white_and_alpha ... ok
+test mei::systems::tests::update_nav_clears_missing_focus ... ok
+test mei::systems::tests::update_nav_moves_to_previous_sibling_left ... ok
+test mei::systems::tests::update_nav_requires_exactly_one_direction ... ok
+test menu::splash::tests::splash_produces_original_assets_and_retains_exact_layout ... ok
+test resouces_and_components::tests::link_up_nav_writes_expected_slots ... ok
+test resouces_and_components::tests::param_to_value_log_mapping ... ok
+test resouces_and_components::tests::shared_ui_component_sizes_match_fresh_descriptors ... ok
+test resouces_and_components::tests::ui_interaction_state_layout_and_accessors ... ok
+test resouces_and_components::taffy_layout::tests::anchors_use_original_side_tags_gap_scale_and_reference_origin ... ok
+test toolbar_systems::tests::alignment_closures_write_expected_style_fields ... ok
+test toolbar_systems::tests::alignment_case_zero_applies_four_setters ... ok
+test mei::config::native_template_tests::shipped_tuple_template_builds_real_frames_and_labels ... ok
+test ui_interaction::native_debug_hide_tests::toolbar_producer_and_core_consumer_share_interactable_identity ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+

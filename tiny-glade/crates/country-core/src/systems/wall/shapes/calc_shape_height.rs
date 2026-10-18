@@ -197,10 +197,17 @@ mod tests {
 
 /// 木框架构造参数缓存（O：`calc_shape_height::TimberframeConstructionParamsCache`；
 /// `timberframe` crate 两构造系统（0x1421b67a0/0x141a41ba0）以
-/// `Res<TimberframeConstructionParamsCache>` 读取墙形状→屋顶参数。字段明细 U
-/// （re-analyst-A 契约 §2：ShapeParameters 域 + 屋顶参数族，typed gap）。
+/// `Res<TimberframeConstructionParamsCache>` 读取墙形状→屋顶参数。
+/// 布局（O，restorer-wave3-timber-roof fresh 0x141a41ba0/0x1421b67a0）：`+0x00` 墙形状/
+/// 屋顶参数族（语义 U，typed gap）、`+0x08` 裙层偏移、`+0x0c` 主高——两 f32 被
+/// rect/circle 构造系统直接读取（`fVar33=*(cache+0xc)` 主环高、`fVar33+*(cache+8)`
+/// 裙层高），本处按机器码面暴露字段名（原 `{_gap: u64}` 8B 占位扩展为 16B 对齐原布局）。
 #[derive(bevy_ecs::resource::Resource, Clone, Debug, Default)]
 pub struct TimberframeConstructionParamsCache {
-    /// typed gap。
+    /// @+0x00：墙形状/屋顶参数族（语义 U，typed gap）。
     pub _gap: u64,
+    /// @+0x08：裙层高度偏移（O：rect/circle 裙层 `h + *(cache+8)`）。
+    pub skirt_offset: f32,
+    /// @+0x0c：主高（O：rect 垂直梁/circle 主环高度）。
+    pub main_height: f32,
 }

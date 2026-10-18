@@ -1,0 +1,73 @@
+// 0x1409ba340 new size=366
+
+void __cdecl country_core::systems::render_loop::draw_passes::draw_lists::DrawLists::new(void)
+
+{
+  undefined8 *in_RCX;
+  
+  *in_RCX = 0;
+  in_RCX[1] = 0x10;
+  in_RCX[2] = 0;
+  in_RCX[3] = 0;
+  in_RCX[4] = 0x10;
+  in_RCX[5] = 0;
+  in_RCX[6] = 0;
+  in_RCX[7] = 0x10;
+  in_RCX[8] = 0;
+  in_RCX[9] = 0;
+  in_RCX[10] = 0x10;
+  in_RCX[0xb] = 0;
+  in_RCX[0xc] = 0;
+  in_RCX[0xd] = 0x10;
+  in_RCX[0xe] = 0;
+  in_RCX[0xf] = 0;
+  in_RCX[0x10] = 0x10;
+  in_RCX[0x11] = 0;
+  in_RCX[0x12] = 0;
+  in_RCX[0x13] = 0x10;
+  in_RCX[0x14] = 0;
+  in_RCX[0x15] = 0;
+  in_RCX[0x16] = 0x10;
+  in_RCX[0x17] = 0;
+  in_RCX[0x18] = 0;
+  in_RCX[0x19] = 0x10;
+  in_RCX[0x1a] = 0;
+  in_RCX[0x1b] = 0;
+  in_RCX[0x1c] = 0x10;
+  in_RCX[0x1d] = 0;
+  in_RCX[0x1e] = 0;
+  in_RCX[0x1f] = 0x10;
+  in_RCX[0x20] = 0;
+  in_RCX[0x21] = 0;
+  in_RCX[0x22] = 0x10;
+  in_RCX[0x23] = 0;
+  in_RCX[0x24] = 0;
+  in_RCX[0x25] = 0x10;
+  in_RCX[0x26] = 0;
+  in_RCX[0x27] = 0;
+  in_RCX[0x28] = 0x10;
+  in_RCX[0x29] = 0;
+  in_RCX[0x2a] = 0;
+  in_RCX[0x2b] = 0x10;
+  in_RCX[0x2c] = 0;
+  in_RCX[0x2d] = 0;
+  in_RCX[0x2e] = 0x10;
+  in_RCX[0x2f] = 0;
+  in_RCX[0x30] = 0;
+  in_RCX[0x31] = 0x10;
+  in_RCX[0x32] = 0;
+  in_RCX[0x33] = 0;
+  in_RCX[0x34] = 0x10;
+  in_RCX[0x35] = 0;
+  in_RCX[0x36] = 0;
+  in_RCX[0x37] = 0x10;
+  in_RCX[0x38] = 0;
+  in_RCX[0x39] = 0;
+  in_RCX[0x3a] = 0x10;
+  in_RCX[0x3b] = 0;
+  in_RCX[0x3c] = 0;
+  in_RCX[0x3d] = 0x10;
+  in_RCX[0x3e] = 0;
+  return;
+}
+

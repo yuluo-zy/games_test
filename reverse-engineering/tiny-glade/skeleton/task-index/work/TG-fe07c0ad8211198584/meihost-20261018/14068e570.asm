@@ -1,0 +1,17 @@
+0x14068e570 push rsi
+0x14068e571 push rdi
+0x14068e572 sub rsp, 0x98
+0x14068e579 mov rsi, rdx
+0x14068e57c lea r8, [rip + 0x2389e15] ; 0x142a18398 5883a142010000002600000000000000 f32=80.75653076171875 str=b'X\x83\xa1B\x01'
+0x14068e583 lea rdi, [rsp + 0x28]
+0x14068e588 mov rcx, rdi
+0x14068e58b mov dl, 0x24
+0x14068e58d call 0x140ffbe60
+0x14068e592 mov rcx, rsi
+0x14068e595 mov rdx, rdi
+0x14068e598 call 0x140fd2dd0
+0x14068e59d nop 
+0x14068e59e add rsp, 0x98
+0x14068e5a5 pop rdi
+0x14068e5a6 pop rsi
+0x14068e5a7 ret 

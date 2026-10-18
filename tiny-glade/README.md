@@ -7,8 +7,8 @@
 | 内容 | 工程目录 |
 | --- | --- |
 | 渲染资源、Nani、pass builder、帧与 compute/draw 调度 | [country-core](crates/country-core/README.md) |
-| 建筑权威状态、生命周期、几何、洞口、附着与历史 CPU 业务 | [recovered_building](crates/country-core/src/recovered_building/README.md) |
-| 树、水、小生物、音频和 clutter 的已完成独立 CPU 函数 | [recovered_systems](crates/country-core/src/recovered_systems/README.md) |
+| 建筑权威状态、生命周期、几何、洞口、附着与历史 CPU 业务 | [墙系统与资源](crates/country-core/recovery/README.md) |
+| 树、水、小生物、音频和 clutter 的已完成独立 CPU 函数 | [各资源和系统模块](crates/country-core/recovery/module-migration-2026-10-18.json) |
 | 屋顶表面、脊、瓦片、编辑和回放 | [system-roof](crates/systems/roof/README.md) |
 | 真实 Bevy headless 建筑开发接线 | [tg-building-runtime](crates/tg-building-runtime/README.md) |
 | 历史 schema 和地形编辑 | [tg-history](crates/tg-history/README.md)、[tg-terrain](crates/systems/terrain/README.md) |
@@ -17,6 +17,8 @@
 | 415个 HLSL 文件与638个原 stage 配置 | [shaders](shaders/README.md) |
 | 自有数学、曲线、几何和网格工具 | [utils](crates/utils/README.md) |
 | 资产、路径、语言、文字、主题、完整性、GUI和平台支持 | 对应 crates/*/README.md，完整包表见 [审计](provenance/AUDIT.md) |
+
+2026-10-17：主题三包合并为 [tg-theme](crates/tg-theme/README.md)，提供经过验证的活动列表、事务缓存与可取消订阅；本包最低 Rust 1.89，其余 workspace 包继续采用各自声明。 [tg-iced](crates/tg-iced/README.md) 已按对话框策略、原生运行及截图拆分，原生命令适配错误由调用方处理。历史导入快照保留，不再代表当前重构代码逐文件一致。
 
 按函数体和证据边界收纳，不能因完整系统尚有缺口就丢掉它已恢复的子模块。旧 country-core 570文件覆盖快照含大量骨架；文件数量不代表恢复完成。未知方法不填猜测默认值；未恢复服务保留明确输入/后端接口。草稿原目录保留，并列出未纳入原因。
 

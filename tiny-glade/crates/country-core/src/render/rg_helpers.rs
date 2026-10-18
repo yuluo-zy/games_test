@@ -11,7 +11,32 @@
 
 /// 占位：`rhapsody::rg::{pass_builder, pass_api, resource_registry}`。
 pub mod rg_boundary {
-    use core::ops::Range;
+    use alloc::sync::Arc;
+    use core::{any::Any, fmt, ops::Range};
+
+    /// Host-owned resource retained while a declaration or draw is unsubmitted.
+    /// The backend transfers its GPU owners into the recorded command on use.
+    #[derive(Clone)]
+    pub struct ResourceLease(Arc<dyn Any + Send + Sync>);
+    impl ResourceLease {
+        pub fn new<T: Any + Send + Sync>(owner: Arc<T>) -> Self {
+            Self(owner)
+        }
+        pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
+            self.0.downcast_ref()
+        }
+    }
+    impl fmt::Debug for ResourceLease {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.debug_struct("ResourceLease").finish_non_exhaustive()
+        }
+    }
+    impl PartialEq for ResourceLease {
+        fn eq(&self, other: &Self) -> bool {
+            Arc::ptr_eq(&self.0, &other.0)
+        }
+    }
+    impl Eq for ResourceLease {}
 
     /// `add_resource_access` 的访问码（O：立即数 0x34；位含义 U，按“传输写”使用）。
     pub const ACCESS_TRANSFER_WRITE: u8 = 0x34;
@@ -22,8 +47,6 @@ pub mod rg_boundary {
         fn fill_buffer(&mut self, buffer: u32, range: Option<Range<u64>>, value: u32);
         /// 闭包 0x140904a30：`clear_color_image(image)`（无颜色参数）。
         fn clear_color_image(&mut self, image: u32);
-        /// 闭包 0x14169a650：`copy_buffer(src, dst, regions)`，`regions` 恰一项（O：栈参数 =1）。
-        fn copy_buffer(&mut self, src: &StagingAlloc, dst: u32, regions: &[CopyRegion]);
     }
 
     /// 动态常量（逐帧环形上传缓冲）中的一次分配。
@@ -32,24 +55,60 @@ pub mod rg_boundary {
         pub buffer: u64,
         pub offset: u32,
         pub bytes: Vec<u8>,
+        pub lease: Option<ResourceLease>,
     }
 
-    /// `copy_buffer` 的区间：闭包里 `[+0x2c]` 读到的 u32 作源偏移，目的偏移 0（O）。
-    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-    pub struct CopyRegion {
-        pub src_offset: u64,
+    /// Complete source allocation, declared before command recording. The host
+    /// imports its actual buffer and declares both physical access ranges.
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub struct StagingCopy {
+        pub source: StagingAlloc,
+        pub target: u32,
         pub dst_offset: u64,
     }
 
     /// `Send`：rhapsody 的回调可能在并行录制线程上执行；这些闭包只捕获资源号/数值。
     pub type RenderFn = Box<dyn FnOnce(&mut dyn RenderPassApi) + Send>;
 
+    /// A version belongs to an explicit, stable CPU content source. The host
+    /// also keys the complete uploaded bytes, so a missed version bump cannot
+    /// return stale data. Unknown content always uses the uncached path.
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+    pub enum UploadContentVersion {
+        #[default]
+        Unknown,
+        Complete {
+            source: u64,
+            version: u64,
+        },
+    }
+
     /// 渲染图上下文（`RenderContext`，pass 登记表在 +0x90 的 Vec 里，每项 0x40 B）。
     pub trait RenderGraph {
         /// `PassBuilder::new(name)` + `add_resource_access(id, access, 0)` + 登记回调。
         fn add_pass(&mut self, name: &'static str, resource: u32, access: u8, render: RenderFn);
         /// `DynamicConstants::allocate(size)`；失败（无该资源）原版 `Option::unwrap` panic。
-        fn allocate_dynamic(&mut self, size: usize) -> StagingAlloc;
+        fn allocate_dynamic(&mut self, size: usize) -> rhapsody::Result<StagingAlloc>;
+        fn copy_from_staging(
+            &mut self,
+            _name: &'static str,
+            _copies: Vec<StagingCopy>,
+        ) -> rhapsody::Result<()> {
+            Err(rhapsody::Error::unsupported(
+                "declared staging imports are not supported by this graph host",
+            ))
+        }
+        /// Optional persistent immutable upload source. `false` explicitly
+        /// selects the ordinary staging route; it does not publish a cache hit.
+        fn upload_complete_bytes(
+            &mut self,
+            _buffer: u32,
+            _bytes: &[u8],
+            _source: u64,
+            _version: u64,
+        ) -> rhapsody::Result<bool> {
+            Ok(false)
+        }
     }
 }
 
@@ -84,53 +143,139 @@ pub fn rg_buffer_copy_from_slice_u32(
     buffer: u32,
     buffer_size: u64,
     data: &[u32],
-) {
-    let bytes = data.len() * 4;
-    assert!(
-        bytes as u64 <= buffer_size,
-        "assertion failed: data.len() <= buffer.desc().size"
-    );
-    let mut staging = graph.allocate_dynamic(bytes);
-    assert_eq!(staging.bytes.len(), bytes);
+    content: UploadContentVersion,
+) -> rhapsody::Result<()> {
+    let bytes = data
+        .len()
+        .checked_mul(4)
+        .ok_or_else(|| rhapsody::Error::invalid_usage("buffer upload byte count overflows"))?;
+    if bytes as u64 > buffer_size {
+        return Err(rhapsody::Error::invalid_usage(
+            "buffer upload exceeds the target",
+        ));
+    }
+    if bytes == 0 {
+        return Ok(());
+    }
+    if let UploadContentVersion::Complete { source, version } = content {
+        let mut contents = Vec::new();
+        contents
+            .try_reserve_exact(bytes)
+            .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
+        contents.extend(data.iter().flat_map(|word| word.to_ne_bytes()));
+        if graph.upload_complete_bytes(buffer, &contents, source, version)? {
+            return Ok(());
+        }
+    }
+    let mut staging = graph.allocate_dynamic(bytes)?;
+    if staging.bytes.len() != bytes {
+        return Err(rhapsody::Error::invalid_usage(
+            "staging allocation has the wrong length",
+        ));
+    }
     for (dst, v) in staging.bytes.chunks_exact_mut(4).zip(data) {
         dst.copy_from_slice(&v.to_ne_bytes());
     }
-    let src_offset = staging.offset as u64;
-    graph.add_pass(
+    graph.copy_from_staging(
         "Buffer memcpy",
-        buffer,
-        ACCESS_TRANSFER_WRITE,
-        Box::new(move |api| {
-            api.copy_buffer(
-                &staging,
-                buffer,
-                &[CopyRegion {
-                    src_offset,
-                    dst_offset: 0,
-                }],
-            )
-        }),
-    );
+        vec![StagingCopy {
+            source: staging,
+            target: buffer,
+            dst_offset: 0,
+        }],
+    )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    #[test]
+    fn complete_upload_contract_carries_every_byte_and_unknown_never_uses_cache() {
+        #[derive(Default)]
+        struct Probe {
+            cached: usize,
+            staging: usize,
+        }
+        impl RenderGraph for Probe {
+            fn add_pass(&mut self, _: &'static str, _: u32, _: u8, _: RenderFn) {}
+            fn copy_from_staging(
+                &mut self,
+                _: &'static str,
+                copies: Vec<StagingCopy>,
+            ) -> rhapsody::Result<()> {
+                assert_eq!(copies.len(), 1);
+                assert_eq!(copies[0].target, 7);
+                assert_eq!(
+                    copies[0].source.bytes,
+                    [5_u32.to_ne_bytes(), 9_u32.to_ne_bytes()].concat()
+                );
+                Ok(())
+            }
+            fn allocate_dynamic(&mut self, size: usize) -> rhapsody::Result<StagingAlloc> {
+                self.staging += 1;
+                Ok(StagingAlloc {
+                    buffer: 1,
+                    offset: 0,
+                    bytes: vec![0; size],
+                    lease: None,
+                })
+            }
+            fn upload_complete_bytes(
+                &mut self,
+                target: u32,
+                bytes: &[u8],
+                source: u64,
+                version: u64,
+            ) -> rhapsody::Result<bool> {
+                assert_eq!((target, source, version), (7, 19, 3));
+                assert_eq!(bytes, [5_u32.to_ne_bytes(), 9_u32.to_ne_bytes()].concat());
+                self.cached += 1;
+                Ok(true)
+            }
+        }
+        let mut graph = Probe::default();
+        rg_buffer_copy_from_slice_u32(
+            &mut graph,
+            7,
+            8,
+            &[5, 9],
+            UploadContentVersion::Complete {
+                source: 19,
+                version: 3,
+            },
+        )
+        .unwrap();
+        assert_eq!((graph.cached, graph.staging), (1, 0));
+        rg_buffer_copy_from_slice_u32(&mut graph, 7, 8, &[5, 9], UploadContentVersion::Unknown)
+            .unwrap();
+        assert_eq!((graph.cached, graph.staging), (1, 1));
+    }
+
     #[derive(Default)]
     struct Rec {
         passes: Vec<(&'static str, u32, u8, RenderFn)>,
+        copies: Vec<(&'static str, Vec<StagingCopy>)>,
     }
     impl RenderGraph for Rec {
         fn add_pass(&mut self, name: &'static str, r: u32, a: u8, f: RenderFn) {
             self.passes.push((name, r, a, f));
         }
-        fn allocate_dynamic(&mut self, size: usize) -> StagingAlloc {
-            StagingAlloc {
+        fn allocate_dynamic(&mut self, size: usize) -> rhapsody::Result<StagingAlloc> {
+            Ok(StagingAlloc {
                 buffer: 3,
                 offset: 256,
                 bytes: vec![0; size],
-            }
+                lease: None,
+            })
+        }
+        fn copy_from_staging(
+            &mut self,
+            name: &'static str,
+            copies: Vec<StagingCopy>,
+        ) -> rhapsody::Result<()> {
+            self.copies.push((name, copies));
+            Ok(())
         }
     }
     #[derive(Default)]
@@ -142,9 +287,65 @@ mod tests {
         fn clear_color_image(&mut self, i: u32) {
             self.0.push(format!("clear {i}"));
         }
-        fn copy_buffer(&mut self, s: &StagingAlloc, d: u32, r: &[CopyRegion]) {
-            self.0.push(format!("copy {:?}->{d} {r:?}", s.bytes));
+    }
+
+    #[test]
+    fn staging_failure_preserves_the_backend_error_without_registering_a_pass() {
+        struct FailedGraph(Option<rhapsody::Error>);
+        impl RenderGraph for FailedGraph {
+            fn add_pass(&mut self, _: &'static str, _: u32, _: u8, _: RenderFn) {
+                panic!("failed allocation must not declare a copy pass");
+            }
+            fn allocate_dynamic(&mut self, _: usize) -> rhapsody::Result<StagingAlloc> {
+                Err(self.0.take().unwrap())
+            }
         }
+        for error in [
+            rhapsody::Error::Timeout,
+            rhapsody::Error::OutOfHostMemory,
+            rhapsody::Error::OutOfDeviceMemory,
+            rhapsody::Error::DeviceLost,
+        ] {
+            let discriminant = core::mem::discriminant(&error);
+            let actual = rg_buffer_copy_from_slice_u32(
+                &mut FailedGraph(Some(error)),
+                1,
+                4,
+                &[7],
+                UploadContentVersion::Unknown,
+            )
+            .unwrap_err();
+            assert_eq!(core::mem::discriminant(&actual), discriminant);
+        }
+    }
+
+    #[test]
+    fn unsubmitted_staging_clones_retain_the_resource_until_consumed_or_cancelled() {
+        use alloc::sync::Arc;
+        let owner = Arc::new(17_u64);
+        let weak = Arc::downgrade(&owner);
+        let staging = StagingAlloc {
+            buffer: 3,
+            offset: 0,
+            bytes: vec![1, 2, 3, 4],
+            lease: Some(ResourceLease::new(owner.clone())),
+        };
+        assert_eq!(
+            staging.lease.as_ref().unwrap().downcast_ref::<u64>(),
+            Some(&17)
+        );
+        let retained = staging.clone();
+        let packet = StagingCopy {
+            source: staging,
+            target: 7,
+            dst_offset: 0,
+        };
+        drop(owner);
+        assert!(weak.upgrade().is_some());
+        drop(packet); // Cancellation drops its lease, but a cloned packet still owns it.
+        assert!(weak.upgrade().is_some());
+        drop(retained);
+        assert!(weak.upgrade().is_none());
     }
 
     #[test]
@@ -164,18 +365,41 @@ mod tests {
     #[test]
     fn copy_stages_data_then_copies() {
         let mut g = Rec::default();
-        rg_buffer_copy_from_slice_u32(&mut g, 7, 16, &[1, 2, 3]);
-        let (n, r, _, f) = g.passes.pop().unwrap();
-        assert_eq!((n, r), ("Buffer memcpy", 7));
-        let mut api = Api::default();
-        f(&mut api);
-        assert!(api.0[0].contains("->7") && api.0[0].contains("src_offset: 256"));
-        assert!(api.0[0].starts_with("copy [1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0]"));
+        rg_buffer_copy_from_slice_u32(&mut g, 7, 16, &[1, 2, 3], UploadContentVersion::Unknown)
+            .unwrap();
+        let (name, copies) = g.copies.pop().unwrap();
+        assert_eq!(name, "Buffer memcpy");
+        assert_eq!(copies.len(), 1);
+        assert_eq!(
+            (
+                copies[0].target,
+                copies[0].dst_offset,
+                copies[0].source.offset
+            ),
+            (7, 0, 256)
+        );
+        assert_eq!(
+            copies[0].source.bytes,
+            [
+                1_u32.to_ne_bytes(),
+                2_u32.to_ne_bytes(),
+                3_u32.to_ne_bytes()
+            ]
+            .concat()
+        );
+        assert!(g.passes.is_empty());
     }
 
     #[test]
-    #[should_panic(expected = "assertion failed: data.len() <= buffer.desc().size")]
     fn copy_rejects_oversized_data() {
-        rg_buffer_copy_from_slice_u32(&mut Rec::default(), 7, 8, &[1, 2, 3]);
+        let error = rg_buffer_copy_from_slice_u32(
+            &mut Rec::default(),
+            7,
+            8,
+            &[1, 2, 3],
+            UploadContentVersion::Unknown,
+        )
+        .unwrap_err();
+        assert_eq!(error.kind(), rhapsody::ErrorKind::InvalidUsage);
     }
 }

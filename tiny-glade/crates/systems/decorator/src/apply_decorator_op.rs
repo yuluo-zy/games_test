@@ -40,15 +40,14 @@
 //! [`archive_decorator_state`]）；预览标签桶（special）登记 U。
 
 use country_core::resources::walls::decorator::{
-    DecoratorId, DecoratorInfo, DecoratorOpEventKind, DeferredDecoratorOpEvents,
+    DecoratorId, DecoratorInfo, DecoratorLocator, DeferredDecoratorOpEvents,
 };
 use country_core::resources::walls::decorator_archivist::DecoratorArchivist;
 use country_core::resources::walls::decorator_storage::{
     DecoratorStorage, DecoratorStorageAddr,
 };
-use country_core::recovered_building::wall_decorator_archivist::{
-    ObservedDecoratorInfo, TrackedDecorators,
-};
+use country_core::resources::walls::decorator_archivist::changes::ObservedDecoratorInfo;
+use country_core::resources::walls::decorator_archivist::changes::TrackedDecorators;
 
 use crate::deferred_decorator_history::{
     DeferredDecoratorEditHistory, DeferredDecoratorRecord,
@@ -104,19 +103,21 @@ pub const LABEL_REMOVE: &str = "remove preview";
 pub const LABEL_MOVE_SRC: &str = "move preview src";
 pub const LABEL_MOVE_DST: &str = "move preview dst";
 
-/// `write_place_op_history`（PDB 行 156，内联）：延迟记录 kind=4 + 存续登记。
+/// `write_place_op_history`（PDB 行 156，内联）：延迟记录 kind=4 + 存续登记
+/// （O：records.push(kind) + `DecoratorLocator::new` +
+/// `HashMap<DecoratorLocator,()>::insert`；locator 构造参 U，以 dst 承载）。
 #[inline]
 pub fn write_place_op_history(
     history: &mut DeferredDecoratorEditHistory,
-    _op: &DecoratorOp,
-    decorator_id: u32,
+    op: &DecoratorOp,
+    dst: DecoratorStorageAddr,
 ) {
     history.add(DeferredDecoratorRecord {
         kind: DeferredDecoratorRecord::KIND_PLACE,
-        a: decorator_id,
+        f1: u64::from(op.info.decorator_id),
         ..DeferredDecoratorRecord::default()
     });
-    history.add_potentially_surviving_affected_decorator(decorator_id);
+    history.add_potentially_surviving_affected_decorator(DecoratorLocator::new(dst));
     history.pending = true;
 }
 
@@ -124,31 +125,33 @@ pub fn write_place_op_history(
 #[inline]
 pub fn write_change_op_history(
     history: &mut DeferredDecoratorEditHistory,
-    _op: &DecoratorOp,
-    decorator_id: u32,
+    op: &DecoratorOp,
+    dst: DecoratorStorageAddr,
 ) {
     history.add(DeferredDecoratorRecord {
         kind: DeferredDecoratorRecord::KIND_CHANGE,
-        a: decorator_id,
+        f1: u64::from(op.info.decorator_id),
         ..DeferredDecoratorRecord::default()
     });
-    history.add_potentially_surviving_affected_decorator(decorator_id);
+    history.add_potentially_surviving_affected_decorator(DecoratorLocator::new(dst));
     history.pending = true;
 }
 
 /// `write_remove_op_history`（PDB 行 182，内联）：kind=5。
+///
+/// fresh 0x141276e30（2026-10-17）：remove 分支**只有**记录 push（kind=5），
+/// **没有** `DecoratorLocator::new` + `HashMap::insert`（仅 place/change 分支有）。
+/// 早期版本对 remove 也登记 locator，与机器码不符，已删。
 #[inline]
 pub fn write_remove_op_history(
     history: &mut DeferredDecoratorEditHistory,
-    _op: &DecoratorOp,
-    decorator_id: u32,
+    op: &DecoratorOp,
 ) {
     history.add(DeferredDecoratorRecord {
         kind: DeferredDecoratorRecord::KIND_REMOVE,
-        a: decorator_id,
+        f1: u64::from(op.info.decorator_id),
         ..DeferredDecoratorRecord::default()
     });
-    history.add_potentially_surviving_affected_decorator(decorator_id);
     history.pending = true;
 }
 
@@ -176,9 +179,9 @@ pub fn archive_decorator_state<C: Send + Sync + 'static>(
     let Some(source) = storage.wall_decorators(wall) else {
         return;
     };
-    // archivist 桶键 = recovered_building WallId（与 resources WallId 双类型；
+    // archivist 桶键 = shared building modules WallId（与 resources WallId 双类型；
     // 以 u64 桥接）。
-    let archivist_wall = country_core::recovered_building::wall_state::WallId(wall.0);
+    let archivist_wall = country_core::resources::walls::publication_fields::WallId(wall.0);
     let tracked = archivist.walls.entry(archivist_wall).or_default();
     tracked.removed.clone_from(&source.removed_ids);
     tracked.items.clear();
@@ -282,7 +285,23 @@ pub fn build_op_event(
     event
 }
 
-/// `apply_decorator_op` @0x141276e30（O 结构）。
+/// `apply_decorator_op` @0x141276e30（O 结构，2026-10-17 fresh 反编译逐分支核）。
+///
+/// fresh 控制流（0x141276e30）：
+/// ```
+/// if (archivist.is_none() && kind_byte != 0) → panic   // assert 串
+///   "assertion failed: decorator_archivist.is_some()"（0x142c23510，行 50）
+/// kind 顶层判别：`(kind-3)<2` → 3=place(lVar1=1)/4=remove(lVar1=2)；
+///   其余(0/1/2/5..)=change(lVar1=0)
+/// change: 子判别 op[+0x10]（U：子字段语义）→ archive 无条件一次，
+///   子判别 !=3 时二次 archive → history(有则) push kind=3 +
+///   DecoratorLocator::new + HashMap<DecoratorLocator,()>::insert →
+///   apply_decorator_change
+/// place:  archive 一次 → history push kind=4 + locator+map insert →
+///   apply_decorator_place
+/// remove: archive 一次 → history push kind=5 → apply_decorator_remove
+/// 末尾 DeferredDecoratorOpEvents::send
+/// ```
 ///
 /// core 对接：`DecoratorStorage::apply_decorator_place/remove/change` +
 /// `DeferredDecoratorOpEvents::send`（0x1408336b0）。历史经
@@ -293,46 +312,54 @@ pub fn apply_decorator_op<C: Send + Sync + 'static>(
     kind_byte: u8,
     dst: DecoratorStorageAddr,
     storage: &mut DecoratorStorage,
-    archivist: Option<&mut DecoratorArchivist<C>>,
+    decorator_archivist: Option<&mut DecoratorArchivist<C>>,
     history: Option<&mut DeferredDecoratorEditHistory>,
     events: &DeferredDecoratorOpEvents,
 ) {
-    // O：panic_str 0x142c23510 line 0x2f —— archivist 缺失且 kind 非 0。
-    if archivist.is_none() && kind_byte != 0 {
-        panic!(
-            "assertion failed: decorator_archivist.is_some() (crates/systems/decorator/src/apply_decorator_op.rs:47)"
-        );
+    // O：panic_str 0x142c23510 行 50 —— `assert!(decorator_archivist.is_some())`
+    // 在 kind_byte != 0 门控下（非 change 类必须带归档）。消息串与文件/行已
+    // read_memory 核验；本仓源码路径/行不同，消息文本保持一致。
+    if kind_byte != 0 {
+        assert!(decorator_archivist.is_some());
     }
+    // O：三个分派分支各自对 archivist None 执行 `core::option::unwrap_failed`
+    // （0x141276e30 change/place/remove 内 `if (stack28==0) unwrap_failed`）——
+    // 镜像 `Option::unwrap`，不静默跳过（reviewer-state FIX-7）。
+    let decorator_archivist = decorator_archivist.unwrap();
 
     let kind = op.op_kind();
-    let decorator_id = op.info.decorator_id;
-    let id = DecoratorId(decorator_id);
 
-    // 历史（O：每分支先写；record kind 5/4/3）。
+    // 归档 + 历史（O 顺序：**归档在前，历史在后**；历史经 write_*_op_history）。
     let label = match kind {
         DecoratorOpKind::Place => LABEL_PLACE,
         DecoratorOpKind::Remove => LABEL_REMOVE,
         DecoratorOpKind::Change => LABEL_MOVE_SRC,
     };
-    if let Some(mut history) = history {
-        match kind {
-            DecoratorOpKind::Place => write_place_op_history(&mut history, op, decorator_id),
-            DecoratorOpKind::Remove => write_remove_op_history(&mut history, op, decorator_id),
-            DecoratorOpKind::Change => {
-                write_change_op_history(&mut history, op, decorator_id);
-                // 机器码 change 分支二次归档（move preview dst，条件 lVar1!=3；
-                // 条件语义 U——此处按无条件归档登记）。
-                let _ = LABEL_MOVE_DST;
+    match kind {
+        DecoratorOpKind::Place | DecoratorOpKind::Remove => {
+            archive_decorator_state(&mut *decorator_archivist, storage, dst, label);
+            if let Some(mut history) = history {
+                match kind {
+                    DecoratorOpKind::Place => write_place_op_history(&mut history, op, dst),
+                    _ => write_remove_op_history(&mut history, op),
+                }
+            }
+        }
+        DecoratorOpKind::Change => {
+            archive_decorator_state(&mut *decorator_archivist, storage, dst, label);
+            // O：change 分支二次归档，条件 = op[+0x10] 子判别 != 3
+            // （move preview dst；子判别字段语义 U，见文件头）。
+            if op.info.dst_secondary != 3 {
+                archive_decorator_state(&mut *decorator_archivist, storage, dst, LABEL_MOVE_DST);
+            }
+            if let Some(mut history) = history {
+                write_change_op_history(&mut history, op, dst);
             }
         }
     }
 
-    // 归档（O：FUN_1412b4a40 别名集；身份 U）。
-    if let Some(archivist) = archivist {
-        archive_decorator_state(archivist, storage, dst, label);
-    }
-
-    // 存储应用（O）。
+    // 存储应用（O，在历史之后）。
+    let id = DecoratorId(op.info.decorator_id);
     match kind {
         DecoratorOpKind::Place => {
             storage.apply_decorator_place(dst, id, &op.info);
@@ -347,16 +374,6 @@ pub fn apply_decorator_op<C: Send + Sync + 'static>(
 
     // 0x88B 事件（O：FUN_1408336b0 send；kind 映射 3/4）。
     events.send(build_op_event(kind, op, dst, kind_byte));
-}
-
-/// `DecoratorOpEventKind` 桥（core 类型；本模块分派等价映射）。
-#[allow(dead_code)]
-pub(crate) fn op_event_kind(kind: DecoratorOpKind) -> DecoratorOpEventKind {
-    match kind {
-        DecoratorOpKind::Place => DecoratorOpEventKind::Place,
-        DecoratorOpKind::Remove => DecoratorOpEventKind::Remove,
-        DecoratorOpKind::Change => DecoratorOpEventKind::Change,
-    }
 }
 
 /// 归档索引面：TrackedDecorators 往返保留（backup/restore 共享）。

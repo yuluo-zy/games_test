@@ -8,9 +8,9 @@
 //!
 //! | 类型 | `get_rg_buffer` 的 SsboId 立即数 | = xxh3_64(NAME) | 缓冲字节（`BufferDesc::new`） | 元素 × 个数 |
 //! |---|---|---|---|---|
-//! | `AtomicCounterBuffer` (0x1412cb1e0) | 0x564703083181a121 | "AtomicCounterBuffer" | 8（0x1416148e0） | 8 B × 1 |
+//! | `AtomicCounterBuffer` (0x1412cb1e0) | 0x564703083181a121 | "AtomicCounterBuffer" | 8（0x1416148e0） | 4 B × 2 |
 //! | `DrawIndirectBuffer` (0x1412d6130) | 0x324747c4b06c07f2 | "DrawIndirectBuffer" | 0x10（0x141610820） | 16 B × 1 |
-//! | `DispatchIndirectBuffer` (0x1412d2170) | 0xfb06797fe67b2c94 | "DispatchIndirectBuffer" | 0x80（0x141613db0） | 16 B × 8 (I) |
+//! | `DispatchIndirectBuffer` (0x1412d2170) | 0xfb06797fe67b2c94 | "DispatchIndirectBuffer" | 0x80（0x141613db0） | 16 B × 8 |
 //! | `DrawIndexedIndirectBuffer` (0x1412d5ad0) | 0xf4a562f8a5a7ece7 | "DrawIndexedIndirectBuffer" | 0x1e0（0x141614d30） | 20 B × 24 |
 //!
 //! 用法/usage 常量 `0x122`（STORAGE|INDIRECT|TRANSFER_DST，I）、内存类型 1、对齐 4 在四者中一致（O）。
@@ -23,12 +23,46 @@
 //! 实例（O：procs.tsv 无），因此它们不是库 SSBO；保持旧占位（U）。
 
 use crate::asset_libraries::ssbo_library::SsboType as LibrarySsbo;
-use crate::render::ssbo::rhapsody_boundary::GraphicsDevice;
+use crate::render::ssbo::rhapsody_boundary::{BufferDesc, GraphicsDevice, slice_as_bytes};
 use crate::render::ssbo::{StorageElement, TypedStorageBuffer};
 
-/// 声明一个固定个数的 SSBO 元素类型（`TypedStorageBuffer<T>` 存储；`default_value` 为全零首元素以外无逻辑）。
+/// Original producer usage, not the generic `TypedStorageBuffer::new` policy.
+pub const INDIRECT_USAGE: u32 = 0x122;
+
+fn create_indirect<T: StorageElement>(
+    device: &dyn GraphicsDevice,
+    initial: Option<&[u8]>,
+    defaults: impl FnOnce() -> Option<Vec<u32>>,
+) -> TypedStorageBuffer<T> {
+    let element_size = core::mem::size_of::<T>();
+    let size = element_size * T::BUFFER_LEN;
+    if let Some(bytes) = initial {
+        // Native order: element-byte divisibility, pointer alignment, capacity.
+        assert_eq!(bytes.len() % element_size, 0);
+        assert_eq!(bytes.as_ptr() as usize % 4, 0);
+        assert!(
+            bytes.len() / element_size <= T::BUFFER_LEN,
+            "Excessive data size supplied for buffer {}",
+            core::any::type_name::<T>()
+        );
+    }
+    let owned;
+    let data = match initial {
+        Some(bytes) => Some(bytes),
+        None => {
+            owned = defaults();
+            owned.as_deref().map(slice_as_bytes)
+        }
+    };
+    let desc = BufferDesc::new(size, INDIRECT_USAGE, 1).alignment(4);
+    let buffer = device
+        .create_buffer(&desc, T::NAME, data)
+        .expect("called `Result::unwrap()` on an `Err` value: create_buffer");
+    TypedStorageBuffer::from_created_buffer(buffer)
+}
+
 macro_rules! indirect_ssbo {
-    ($(#[$m:meta])* $name:ident($words:literal), $short:literal, $len:literal) => {
+    ($(#[$m:meta])* $name:ident($words:literal), $short:literal, $len:literal, $defaults:expr) => {
         $(#[$m])*
         #[repr(C)]
         #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -38,14 +72,10 @@ macro_rules! indirect_ssbo {
             const NAME: &'static str = $short;
             const BUFFER_LEN: usize = $len;
         }
-
         impl LibrarySsbo for $name {
             type Storage = TypedStorageBuffer<$name>;
             fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
-                match initial {
-                    None => TypedStorageBuffer::<$name>::new(device, None),
-                    Some(bytes) => TypedStorageBuffer::<$name>::new_storage_buffer(device, Some(bytes)),
-                }
+                create_indirect::<Self>(device, initial, $defaults)
             }
         }
     };
@@ -54,20 +84,26 @@ macro_rules! indirect_ssbo {
 pub(crate) use indirect_ssbo;
 
 indirect_ssbo!(
-    /// 原子计数缓冲：8 B（两个 u32；`reset_indirect_args` 写入 `[0, 0x90000]`）。
-    AtomicCounterBuffer(2), "AtomicCounterBuffer", 1
+    /// Two u32 counter slots. Original None leaves contents uninitialized;
+    /// reset_indirect_args subsequently writes [0, 0x90000].
+    AtomicCounterBuffer(1), "AtomicCounterBuffer", 2, || None
 );
 indirect_ssbo!(
-    /// `VkDrawIndirectCommand` 缓冲：16 B（`reset_indirect_args` 写入 `[0,1,0,0]`）。
-    DrawIndirectBuffer(4), "DrawIndirectBuffer", 1
+    /// 16-byte VkDrawIndirectCommand. Original startup uploads all zeros;
+    /// per-frame reset subsequently supplies instance_count=1.
+    DrawIndirectBuffer(4), "DrawIndirectBuffer", 1, || Some(vec![0; 4])
 );
 indirect_ssbo!(
-    /// `VkDispatchIndirectCommand` 缓冲：8 个 16 B 槽（`x,y,z` + 填充；`reset_indirect_args` 写入 8×`[0,1,1,0]`）。
-    DispatchIndirectBuffer(4), "DispatchIndirectBuffer", 8
+    /// Eight 16-byte dispatch slots. Native startup uploads [0,1,1,0] x8
+    /// (141613e40 loads the original constant at142aaa1e0).
+    DispatchIndirectBuffer(4), "DispatchIndirectBuffer", 8,
+    || Some((0..8).flat_map(|_| [0, 1, 1, 0]).collect())
 );
 indirect_ssbo!(
-    /// `VkDrawIndexedIndirectCommand` 缓冲：24 条 × 20 B。
-    DrawIndexedIndirectBuffer(5), "DrawIndexedIndirectBuffer", 24
+    /// 24 x20-byte indexed commands. Native startup zeros this array; the
+    /// per-frame reset copies original index counts from142aaaa78 later.
+    DrawIndexedIndirectBuffer(5), "DrawIndexedIndirectBuffer", 24,
+    || Some(vec![0; 120])
 );
 
 /// `get_rg_buffer<T>` 里的 SsboId 立即数（O；= `NameHash::compute(T::NAME)`，xxh3_64 已离线复算吻合）。
@@ -85,6 +121,75 @@ mod tests {
 
     fn total<T: StorageElement>() -> usize {
         size_of::<T>() * T::BUFFER_LEN
+    }
+
+    /// RNE producer evidence distinguishes startup bytes from the later reset.
+    #[test]
+    fn native_indirect_startup_uses_indirect_usage_and_exact_optional_uploads() {
+        use crate::render::ssbo::rhapsody_boundary::{BackendError, Buffer};
+        use std::{ops::Range, sync::Mutex};
+        #[derive(Default)]
+        struct Device(Mutex<Vec<(BufferDesc, Option<Vec<u8>>)>>);
+        impl GraphicsDevice for Device {
+            fn create_buffer(
+                &self,
+                desc: &BufferDesc,
+                _: &str,
+                data: Option<&[u8]>,
+            ) -> Result<Buffer, BackendError> {
+                self.0
+                    .lock()
+                    .unwrap()
+                    .push((*desc, data.map(<[u8]>::to_vec)));
+                Ok(Buffer {
+                    byte_size: desc.size as u64,
+                    ..Default::default()
+                })
+            }
+            fn update_buffer_bytes(
+                &self,
+                _: &Buffer,
+                _: &[u8],
+                _: &[Range<usize>],
+                _: usize,
+            ) -> Result<(), BackendError> {
+                unreachable!("startup passes initial bytes to create_buffer")
+            }
+        }
+        let device = Device::default();
+        let _ = <AtomicCounterBuffer as LibrarySsbo>::new_storage_buffer(&device, None);
+        let _ = <DrawIndirectBuffer as LibrarySsbo>::new_storage_buffer(&device, None);
+        let _ = <DispatchIndirectBuffer as LibrarySsbo>::new_storage_buffer(&device, None);
+        let _ = <DrawIndexedIndirectBuffer as LibrarySsbo>::new_storage_buffer(&device, None);
+        let calls = device.0.lock().unwrap();
+        for (desc, _) in &*calls {
+            assert_eq!((desc.usage, desc.memory, desc.alignment), (0x122, 1, 4));
+        }
+        assert_eq!(calls[0].1, None, "atomic has no startup upload");
+        assert_eq!(
+            calls[1].1.as_deref(),
+            Some(&[0; 16][..]),
+            "startup draw instance_count is zero"
+        );
+        assert_eq!(
+            calls[2].1.as_deref(),
+            Some(
+                crate::systems::render_loop::compute_passes::reset_indirect_args::dispatch_init()
+                    .as_slice()
+            )
+        );
+        assert_eq!(
+            calls[3].1.as_deref(),
+            Some(&[0; 0x1e0][..]),
+            "startup indexed counts are zero before reset"
+        );
+        assert_eq!(
+            (
+                core::mem::size_of::<AtomicCounterBuffer>(),
+                AtomicCounterBuffer::BUFFER_LEN
+            ),
+            (4, 2)
+        );
     }
 
     /// 缓冲总字节 = `BufferDesc::new(size, 0x122, 1)` 的 size 实参（O）。

@@ -4,3 +4,9 @@ test-all = "test --workspace --all-targets --locked"
 lint = "clippy --workspace --all-targets --locked -- -D warnings"
 check-features = "check --workspace --all-targets --all-features --locked"
 lint-features = "clippy --workspace --all-targets --all-features --locked -- -D warnings"
+
+[env]
+# This workspace's macOS/Homebrew loader. Caller overrides stay authoritative.
+# Use an explicit application path: Cargo rewrites dyld paths for test processes.
+# If unavailable on another host, the loader still falls back to ash's system path.
+RHAPSODY_VULKAN_LIBRARY = { value = "/opt/homebrew/lib/libvulkan.dylib", force = false }

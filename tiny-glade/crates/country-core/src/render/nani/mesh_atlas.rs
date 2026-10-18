@@ -187,13 +187,11 @@ impl MeshAtlas {
     }
 }
 
-/// 每 atlas part 的 mesh 信息（`TypedStorageBuffer` 元素；GPU `atlas_part_info` SSBO 布局；字段 U）。
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Default)]
-pub struct NaniMeshAtlasPartInfo {
-    /// typed gap：{base_vertex, vertex_count, index_offset, ...} 字段 U。
-    pub _gap: [u32; 8],
-}
+/// The original upload copies the existing 16-byte atlas layouts directly:
+/// `startup_nani@140a3932f` shifts layout count by four, and the original
+/// typed-buffer constructor allocates `0x6c0 * 16 = 0x6c00` bytes. Keep the
+/// same payload identity instead of introducing a different GPU-only record.
+pub type NaniMeshAtlasPartInfo = MeshAtlasPart;
 
 #[cfg(test)]
 mod tests {

@@ -36,6 +36,16 @@ impl Default for GladeAudio {
 }
 
 impl GladeAudio {
+    /// 严格读取主题配置，供热切换使用；出错时调用者保留当前播放状态。
+    pub fn try_load_path(glade_dir: &std::path::Path) -> anyhow::Result<Self> {
+        use anyhow::Context;
+        let path = glade_dir.join("audio.json");
+        let input = std::fs::File::open(&path)
+            .with_context(|| format!("读取音频配置：{}", path.display()))?;
+        serde_json::from_reader(std::io::BufReader::new(input))
+            .with_context(|| format!("解析音频配置：{}", path.display()))
+    }
+
     /// `GladeAudio::load` @0x1408bf460：读 `{glade_dir}/audio.json`，反序列化；
     /// 读文件或反序列化失败 → default 回退（不 panic，O）。
     pub fn load(glade_dir: &str) -> Self {
@@ -110,6 +120,9 @@ mod tests {
         assert_eq!(loaded.ambience, "event:/Amb/amb_Olden");
         assert_eq!(loaded.music, ["event:/Music/Olden/A"]);
         // 缺失目录 → default 回退（O：失败 → 0x1408bf2c0）。
-        assert_eq!(GladeAudio::load(dir.path().join("missing").to_str().unwrap()), GladeAudio::default());
+        assert_eq!(
+            GladeAudio::load(dir.path().join("missing").to_str().unwrap()),
+            GladeAudio::default()
+        );
     }
 }

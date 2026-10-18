@@ -1,0 +1,106 @@
+
+void __cdecl
+country_core::systems::save::save_game::impl$2::
+to_json_string<country_core::resources::history::HistoryIdentity>(void)
+
+{
+  bool bVar1;
+  longlong lVar2;
+  void *_Dst;
+  longlong lVar3;
+  longlong *in_RCX;
+  ulonglong *in_RDX;
+  ulonglong uVar4;
+  ulonglong uVar5;
+  int iVar6;
+  uint uVar7;
+  longlong lVar8;
+  undefined8 local_88;
+  undefined1 auStack_80 [40];
+  longlong local_58;
+  void *local_50;
+  longlong local_48;
+  undefined8 local_40;
+  
+  local_40 = 0xfffffffffffffffe;
+  uVar4 = *in_RDX;
+  std::alloc::__default_lib_allocator::__rust_alloc();
+  if (_Dst == (void *)0x0) {
+                    // WARNING: Subroutine does not return
+    alloc::raw_vec::handle_error();
+  }
+  local_58 = 0x80;
+  local_48 = 0;
+  lVar3 = 0x14;
+  if (9999 < uVar4) {
+    uVar5 = uVar4;
+    lVar8 = 0x14;
+    do {
+      uVar4 = uVar5 / 10000;
+      iVar6 = (int)uVar5 + (int)uVar4 * -10000;
+      uVar7 = (uint)(iVar6 * 0x147b) >> 0x13;
+      lVar3 = lVar8 + -4;
+      *(undefined2 *)(auStack_80 + lVar8 + -4) =
+           *(undefined2 *)
+            (
+            "00010203040506070809101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899"
+            + (ulonglong)uVar7 * 2);
+      *(undefined2 *)(auStack_80 + lVar8 + -2) =
+           *(undefined2 *)
+            (
+            "00010203040506070809101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899"
+            + (ulonglong)(iVar6 + uVar7 * -100 & 0xffff) * 2);
+      bVar1 = 99999999 < uVar5;
+      uVar5 = uVar4;
+      lVar8 = lVar3;
+    } while (bVar1);
+  }
+  uVar5 = uVar4;
+  if (99 < uVar4) {
+    uVar7 = (uint)((uVar4 & 0xffff) >> 2) / 0x19;
+    uVar5 = (ulonglong)uVar7;
+    *(undefined2 *)(auStack_80 + lVar3 + -2) =
+         *(undefined2 *)
+          (
+          "00010203040506070809101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899"
+          + (ulonglong)((int)uVar4 + uVar7 * -100 & 0xffff) * 2);
+    lVar3 = lVar3 + -2;
+  }
+  local_50 = _Dst;
+  if (uVar5 < 10) {
+    auStack_80[lVar3 + -1] = (byte)uVar5 | 0x30;
+    lVar3 = lVar3 + -1;
+  }
+  else {
+    *(undefined2 *)(auStack_80 + lVar3 + -2) =
+         *(undefined2 *)
+          (
+          "00010203040506070809101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899"
+          + uVar5 * 2);
+    lVar3 = lVar3 + -2;
+  }
+  uVar4 = 0x14 - lVar3;
+  if (uVar4 < 0x81) {
+    memcpy(_Dst,auStack_80 + lVar3,uVar4);
+    lVar8 = 0x80;
+    local_50 = _Dst;
+  }
+  else {
+    local_88 = 1;
+    alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+    lVar2 = local_48;
+    lVar8 = local_58;
+    memcpy((void *)((longlong)local_50 + local_48),auStack_80 + lVar3,uVar4);
+    if (SBORROW8(0,lVar8)) {
+      lVar8 = -0x8000000000000000;
+      goto LAB_140b38743;
+    }
+    uVar4 = uVar4 + lVar2;
+  }
+  in_RCX[2] = uVar4;
+LAB_140b38743:
+  in_RCX[1] = (longlong)local_50;
+  *in_RCX = lVar8;
+  return;
+}
+

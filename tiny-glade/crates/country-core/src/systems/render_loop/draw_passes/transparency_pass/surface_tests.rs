@@ -40,7 +40,8 @@ use crate::render::shader::boundary::{
     CompiledShaderPipeline, ComputePipeline, RasterPipeline, RasterPipelineDesc, RasterPipelineKey,
     ShaderBackend,
 };
-use crate::rhapsody_contract::{GraphicsDevice, Handle, ManagedHandle};
+use crate::render::test_device::TestDevice;
+use crate::rhapsody_contract::{Handle, ManagedHandle};
 use crate::rhapsody_types::{BackendError, Error, Texture, TextureDesc};
 use crate::systems::render_loop::draw_passes::d_main_support::{DrawPassCtx, ShaderLookup};
 use crate::systems::render_loop::draw_passes::draw_lists::{DrawItem, DrawLists, EntityDrawParams};
@@ -164,8 +165,12 @@ impl ShaderBackend for Backend {
     fn raster_shader_variants(&self, _: &RasterPipelineDesc) -> [RasterPipelineDesc; 2] {
         unreachable!()
     }
-    fn create_compute_pipeline(&self, _: &str, _: Arc<CompiledShaderPipeline>) -> ComputePipeline {
-        ComputePipeline { id: 1 }
+    fn create_compute_pipeline(
+        &self,
+        _: &str,
+        _: Arc<CompiledShaderPipeline>,
+    ) -> rhapsody::Result<ComputePipeline> {
+        Ok(ComputePipeline { id: 1 })
     }
     fn create_raster_pipeline(
         &self,
@@ -203,7 +208,7 @@ impl WorldAccess for CEnv {
 }
 
 fn cenv() -> CEnv {
-    let dev = GraphicsDevice(1);
+    let dev = TestDevice(1);
     let shaders = Box::new(AssetShaderLibrary::new());
     let mut textures = Box::new(AssetTextureLibrary::new(&dev));
     let ssbos = Box::new(AssetSsboLibrary::new());
@@ -278,15 +283,30 @@ struct Graph {
     passes: Vec<(&'static str, u32, u8)>,
 }
 impl RenderGraph for Graph {
+    fn copy_from_staging(
+        &mut self,
+        name: &'static str,
+        copies: Vec<crate::render::rg_helpers::rg_boundary::StagingCopy>,
+    ) -> rhapsody::Result<()> {
+        for copy in copies {
+            self.passes.push((
+                name,
+                copy.target,
+                crate::render::rg_helpers::rg_boundary::ACCESS_TRANSFER_WRITE,
+            ));
+        }
+        Ok(())
+    }
     fn add_pass(&mut self, name: &'static str, resource: u32, access: u8, _render: RenderFn) {
         self.passes.push((name, resource, access));
     }
-    fn allocate_dynamic(&mut self, size: usize) -> StagingAlloc {
-        StagingAlloc {
+    fn allocate_dynamic(&mut self, size: usize) -> rhapsody::Result<StagingAlloc> {
+        Ok(StagingAlloc {
             buffer: 0,
             offset: 0,
             bytes: vec![0; size],
-        }
+            lease: None,
+        })
     }
 }
 
@@ -388,6 +408,9 @@ struct Run {
 }
 
 fn run(water: bool, s: &Scene, history_valid: u8) -> Run {
+    run_with_phases(water, s, history_valid, false)
+}
+fn run_with_phases(water: bool, s: &Scene, history_valid: u8, phased: bool) -> Run {
     let log = Rc::new(RefCell::new(Log::default()));
     let mut world = World::new();
     let mut factory = || mock_host(&log);
@@ -421,9 +444,19 @@ fn run(water: bool, s: &Scene, history_valid: u8) -> Run {
             lists: &s.lists,
         };
         if water {
-            water_surface_pass(&mut ctx, &mut env, &inputs);
+            if phased {
+                let prepared = super::surface_water::prepare_water_surface(&mut env, &inputs);
+                super::surface_water::raster_water_surface(&mut ctx, &prepared, &inputs);
+                super::surface_water::finish_water_surface(&mut env, prepared, &inputs);
+            } else {
+                water_surface_pass(&mut ctx, &mut env, &inputs);
+            }
+        } else if phased {
+            let prepared = super::surface_ice::prepare_ice_surface(&mut env, &inputs).unwrap();
+            super::surface_ice::raster_ice_surface(&mut ctx, &prepared, &inputs);
+            super::surface_ice::finish_ice_surface(&mut env, prepared, &inputs).unwrap();
         } else {
-            ice_surface_pass(&mut ctx, &mut env, &inputs);
+            ice_surface_pass(&mut ctx, &mut env, &inputs).unwrap();
         }
         let t = env
             .trace
@@ -847,17 +880,18 @@ fn ice_compute_passes_names_uris_dispatches_and_resources() {
     // refr resolve 写 water refr temporal 当前帧（RecordingRg 的 pair 占连续两个资源号）。
     let refr = acc(&r.compute[2]);
     assert!(refr.iter().any(|a| a.1 == 0x32), "{refr:?}");
-    // history_valid：march / trace = 输入 u8；refl resolve = (flag1 & flag2) & 1（RecordingRg 首次创建标志 = 1）。
+    // history_valid：march / trace = 输入 u8；refl resolve = 两张 temporal history 有效标志相与。
+    // 每次 run 都新建 RecordingRg；首次 pair 没有可复用 history，因此 resolve 为 0。
     assert_eq!(uniform(&r.compute[0], HISTORY_VALID_OFFSET), 1);
     assert_eq!(uniform(&r.compute[1], HISTORY_VALID_OFFSET), 1);
-    assert_eq!(uniform(&r.compute[3], HISTORY_VALID_OFFSET), 1);
+    assert_eq!(uniform(&r.compute[3], HISTORY_VALID_OFFSET), 0);
     // refr resolve 没有 history_valid。
     assert_eq!(uniform(&r.compute[2], HISTORY_VALID_OFFSET), 0);
     // 输入 u8 = 0 → march / trace 为 0，resolve 仍由 temporal 标志决定。
     let z = run(false, &s, 0);
     assert_eq!(uniform(&z.compute[0], HISTORY_VALID_OFFSET), 0);
     assert_eq!(uniform(&z.compute[1], HISTORY_VALID_OFFSET), 0);
-    assert_eq!(uniform(&z.compute[3], HISTORY_VALID_OFFSET), 1);
+    assert_eq!(uniform(&z.compute[3], HISTORY_VALID_OFFSET), 0);
 }
 
 #[test]
@@ -886,4 +920,28 @@ fn att_maps_rg_textures_to_attachments() {
         (a.id, a.extent, a.format, a.sample_count),
         (7, (64, 32), 44, 1)
     );
+}
+
+
+#[test]
+fn explicit_surface_phases_keep_original_resource_ids_bindings_and_call_order() {
+    let scene = scene(1);
+    for water in [true, false] {
+        for valid in [0, 1] {
+            let original = run(water, &scene, valid);
+            let phased = run_with_phases(water, &scene, valid, true);
+            assert_eq!(phased.trace, original.trace);
+            assert_eq!(phased.extra, original.extra);
+            assert_eq!(phased.paths, original.paths);
+            assert_eq!(phased.graph.passes, original.graph.passes);
+            assert_eq!(phased.compute.len(), original.compute.len());
+            for (a, b) in phased.compute.iter().zip(&original.compute) {
+                assert_eq!(a.name, b.name);
+                assert_eq!(a.bindings, b.bindings);
+                assert_eq!(a.builder.accesses, b.builder.accesses);
+                assert_eq!(a.push_constants, b.push_constants);
+                assert_eq!(a.uniform_binder.as_ref().map(|v| v.data()), b.uniform_binder.as_ref().map(|v| v.data()));
+            }
+        }
+    }
 }

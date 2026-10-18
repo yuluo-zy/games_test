@@ -9,7 +9,7 @@
 //! `read_storage_buffer<CustomCursorSsbo>(槽 "CustomCursorSsbo", 0x19ce7a8f29cef00d)` → 状态 `byte0 &= 0x7f`、
 //! `byte3 = (byte3 & 0x9f) | 0x40` → `draw_no_vao(6)` → `render`。
 
-use crate::render::pass_builder::draw_builder::{ACCESS_SAMPLED_IMAGE, BindTexture, DrawBuilder};
+use crate::render::pass_builder::draw_builder::{BindTexture, DrawBuilder, ACCESS_SAMPLED_IMAGE};
 use crate::render::pass_builder::draw_stream::{DrawPacket, RasterState};
 use crate::render::pass_builder::framebuffer_binding::AttachmentTexture;
 use crate::render::pass_builder::pass_resource_access::SsboType;
@@ -17,8 +17,71 @@ use crate::resources::texture_presets::TextureFromDisk;
 use crate::rhapsody_contract::{Handle, ManagedHandle};
 use crate::systems::render_loop::draw_passes::d_main_support::{ColorSpec, DepthSpec, DrawPassCtx};
 
-/// 光标 SSBO（O：`read_access_buffer<CustomCursorSsbo>` 0x140971a20；布局 U）。
-pub struct CustomCursorSsbo(pub crate::typed_gap::Gap);
+/// B original shader CustomCursor: pos@0, enabled@8, size_px@12. The
+/// constructor@1416146c0 uses 16B, host-visible memory2, no None upload.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct CustomCursorSsbo {
+    pub pos: [f32; 2],
+    pub enabled: u32,
+    pub size_px: f32,
+}
+
+impl crate::render::ssbo::StorageElement for CustomCursorSsbo {
+    const NAME: &'static str = "CustomCursorSsbo";
+    const BUFFER_LEN: usize = 1;
+}
+
+impl crate::asset_libraries::ssbo_library::SsboType for CustomCursorSsbo {
+    type Storage = crate::render::ssbo::TypedStorageBuffer<Self>;
+
+    fn new_storage_buffer(
+        device: &dyn crate::render::ssbo::rhapsody_boundary::GraphicsDevice,
+        initial: Option<&[u8]>,
+    ) -> Self::Storage {
+        use crate::render::ssbo::{rhapsody_boundary::BufferDesc, StorageElement};
+        if let Some(bytes) = initial {
+            // Native order: element divisibility, pointer alignment, capacity.
+            assert_eq!(bytes.len() % 16, 0);
+            assert_eq!(bytes.as_ptr() as usize % 4, 0);
+            assert!(
+                bytes.len() < 32,
+                "Excessive data size supplied for buffer {}",
+                core::any::type_name::<Self>()
+            );
+        }
+        let desc = BufferDesc::new(16, 0x22, 2).alignment(4);
+        let buffer = device
+            .create_buffer(&desc, Self::NAME, initial)
+            .expect("called `Result::unwrap()` on an `Err` value: create_buffer");
+        crate::render::ssbo::TypedStorageBuffer::from_created_buffer(buffer)
+    }
+}
+
+/// Only the final entry of native init_populate_ssbo_library@140909e80.
+/// The caller must retain its actual device/buffer owner; the OS consumer
+/// resolves and retains a real managed-buffer lease before using this pointer.
+/// This does not replace the preceding71 registrations or send a fake event.
+pub fn create_custom_cursor_ssbo(
+    library: &crate::asset_libraries::ssbo_library::AssetSsboLibrary,
+    device: &dyn crate::render::ssbo::rhapsody_boundary::GraphicsDevice,
+) -> crate::resources::mouse_capture::CustomCursorSsboCreatedCmd {
+    use crate::resources::mouse_capture::CustomCursorSsboCreatedCmd;
+    library.add_new::<CustomCursorSsbo>(device);
+    let buffer = library
+        .get_buffer::<CustomCursorSsbo>()
+        .expect("called `Option::unwrap()` on a `None` value");
+    let mapped = device
+        .mapped_slice_mut(buffer)
+        .expect("called `Option::unwrap()` on a `None` value");
+    assert_eq!(mapped.as_ptr() as usize % 4, 0);
+    assert_eq!(mapped.len() % 16, 0);
+    assert_eq!(mapped.len(), 16);
+    CustomCursorSsboCreatedCmd(
+        core::ptr::NonNull::new(mapped.as_mut_ptr().cast())
+            .expect("mapped Vulkan buffer pointer must be non-null"),
+    )
+}
 
 impl SsboType for CustomCursorSsbo {
     /// O：`get_rg_buffer<CustomCursorSsbo>`（0x1412c7550）里的 `SsboId` 立即数 `-0x2f0f7d81800dd867`。

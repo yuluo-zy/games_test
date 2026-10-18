@@ -1,0 +1,130 @@
+0x140a74340      movlps qword [rax + 0x18], xmm0
+0x140a74344      movlps qword [rax + 0x24], xmm5
+0x140a74348      movss dword [rax + 0x2c], xmm4
+0x140a7434d      movss dword [rax + 0x38], xmm9
+0x140a74353      movlps qword [rax + 0x30], xmm7
+0x140a74357      mov rcx, qword [rbp + 0x20]
+0x140a7435b      mov qword [rax + 0x3c], rcx
+0x140a7435f      mov ecx, dword [rbp + 0x28]
+0x140a74362      mov dword [rax + 0x44], ecx
+0x140a74365      mov rcx, qword [rbp + 0x10]
+0x140a74369      mov qword [rax + 0x48], rcx
+0x140a7436d      mov ecx, dword [rbp + 0x18]
+0x140a74370      mov dword [rax + 0x50], ecx
+0x140a74373      movss dword [rax + 0x54], xmm3
+0x140a74378      mov rcx, qword [rbp + 0x30]
+0x140a7437c      mov qword [rax + 0x58], rcx
+0x140a74380      mov ecx, dword [rbp + 0x38]
+0x140a74383      mov dword [rax + 0x60], ecx
+0x140a74386      movss dword [rax + 0x6c], xmm11
+0x140a7438c      movlps qword [rax + 0x64], xmm8
+0x140a74391      movss dword [rax + 0x78], xmm9
+0x140a74397      movlps qword [rax + 0x70], xmm7
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140a7439b      cmp qword [rbp + 0x40], 0
+   ; unlikely
+0x140a743a0      je 0x140a743ea
+   ; 0x140c18130(0x0, 0x0, 0x0, -1)
+0x140a743a2      call 0x140c18130
+0x140a743a7      mov rcx, rax
+0x140a743aa      mov rax, qword [rax]
+; reloc.WS2_32.dll_accept
+0x140a743ad      cmp rax, 1
+   ; likely
+0x140a743b1      jne 0x140a7444c
+0x140a743b7      add rcx, 8
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140a743bb      cmp qword [rcx], 0
+   ; likely
+0x140a743bf      jne 0x140a7448a
+0x140a743c5      mov qword [rcx], 0xffffffffffffffff
+0x140a743cc      mov qword [rbp + 0xb8], rcx
+   ; reloc.WS2_32.dll_recv
+   ; reloc.WS2_32.dll_accept
+0x140a743d3      add rcx, 8
+0x140a743d7      mov rdx, qword [rbp + 0x48]
+   ; 0x140c170f0(0x0, 0x0, -1, 0x10)
+0x140a743db      call 0x140c170f0
+0x140a743e0      mov rax, qword [rbp + 0xb8]
+0x140a743e7      inc qword [rax]
+0x140a743ea      movaps xmm6, xmmword [rbp + 0xd0]
+0x140a743f1      movaps xmm7, xmmword [rbp + 0xe0]
+0x140a743f8      movaps xmm8, xmmword [rbp + 0xf0]
+0x140a74400      movaps xmm9, xmmword [rbp + 0x100]
+0x140a74408      movaps xmm10, xmmword [rbp + 0x110]
+0x140a74410      movaps xmm11, xmmword [rbp + 0x120]
+0x140a74418      movaps xmm12, xmmword [rbp + 0x130]
+0x140a74420      movaps xmm13, xmmword [rbp + 0x140]
+0x140a74428      movaps xmm14, xmmword [rbp + 0x150]
+0x140a74430      movaps xmm15, xmmword [rbp + 0x160]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140a74438      add rsp, 0x1f8
+0x140a7443f      pop rbx
+0x140a74440      pop rdi
+0x140a74441      pop rsi
+0x140a74442      pop r12
+0x140a74444      pop r13
+0x140a74446      pop r14
+0x140a74448      pop r15
+0x140a7444a      pop rbp
+0x140a7444b      ret
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140a7444c      test rax, rax
+   ; likely
+0x140a7444f      jne 0x140a7447e
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140a74451      xor edx, edx
+   ; 0x1428f87d0(-1, -1, 0x0, 0x10)
+0x140a74453      call 0x1428f87d0
+0x140a74458      mov rcx, rax
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140a7445b      test rax, rax
+   ; likely
+0x140a7445e      jne 0x140a743bb
+0x140a74464      jmp 0x140a7447e
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140a74466      test rax, rax
+   ; likely
+0x140a74469      jne 0x140a7447e
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140a7446b      xor edx, edx
+   ; 0x1428f87d0(-1, -1, 0x0, -1)
+0x140a7446d      call 0x1428f87d0
+0x140a74472      mov rcx, rax
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140a74475      test rax, rax
+   ; likely
+0x140a74478      jne 0x140a736d6
+   ; (pstr 0x142c3aa50) "/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\std\src"
+0x140a7447e      lea rcx, [0x142c3aaa0]
+   ; 0x1428d80d0(-1, -1, 0x0, 0x142c3aaa0)
+0x140a74485      call 0x1428d80d0
+   ; (pstr 0x142c3ab18) "/home/h3/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/p"
+0x140a7448a      lea rcx, [0x142c3ab70]
+   ; 0x1428d9250(-1, -1, 0x0, 0x142c3ab70)
+0x140a74491      call 0x1428d9250
+; "ordinal/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\alloc\src\slice.rs"
+0x140a74496      lea rcx, [0x142ad5f38]
+0x140a7449d      mov qword [rbp + 0x50], rcx
+0x140a744a1      mov qword [rbp + 0x58], 7
+0x140a744a9      mov qword [rbp + 0x60], 1
+; 365
+0x140a744b1      mov qword [rbp + 0x68], 0x16d
+0x140a744b9      mov qword [rbp + 0x70], rax
+0x140a744bd      mov byte [rbp + 0x78], 1
+   ; (pstr 0x142ad63c1) "crates/country-core/src/systems/time_of_day.rsTOD-EnabledTimetr"
+0x140a744c1      lea rax, [0x142ad6410]
+0x140a744c8      mov qword [rsp + 0x20], rax
+; "called `Result::unwrap()` on an `Err` value"
+0x140a744cd      lea rcx, [0x142ad5ee8]
+0x140a744d4      lea r9, [0x142ad5f18]
+0x140a744db      lea r8, [rbp + 0x50]

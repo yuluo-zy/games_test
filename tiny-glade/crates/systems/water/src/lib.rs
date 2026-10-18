@@ -1,4 +1,4 @@
-//! system_water — 水面编辑系统族（组 A restorer，2026-10-16）。
+//! system_water — 水面编辑系统族（组 A restorer，2026-10-16；fresh 重建 2026-10-17）。
 //!
 //! 原 crate（B skeleton）：`crates/systems/water/`（4 文件；16 符号 = 业务 10 /
 //! 内联 1 / 胶水 5；本 crate 只承载独立业务过程，zeno 7 项与 `TwoWaySearcher`
@@ -6,11 +6,16 @@
 //!
 //! - `draw_water`（0x141ba9130）：水/水面橡皮双模式绘制（AppMode::Water /
 //!   AppMode::Eraser(All|Water)），经 `world_raster::draw_raster` 写 WaterRaster，
-//!   发射 `WaterDrawEvent`/`WaterEraseEvent`（core `resources::water`）。
-//! - `update_water_audio_grid`（0x141baefe0）：相机周围 64 帧滚动活动位集 ×
-//!   遮挡射线，填充 core `WaterAudioGrid`。
+//!   发射 `WaterDrawEvent`/`WaterEraseEvent`（core `resources::water`）。fresh：
+//!   橡皮分支 `clearing_canvas("eraser",6,0)` + 光标交点指示符 + draw_raster 点 =
+//!   交点；水分支 `clearing_canvas("watereraser_water_",5,4)` + 界内圈 + 图钉（case2）。
+//! - `update_water_audio_grid`（0x141baefe0）：相机周围 64 帧滚动活动位集 × 抖动
+//!   增量计数器，填充 core `WaterAudioGrid`（语义投影）。fresh：采样点含每帧抖动
+//!   `d*0.0625*13.0`；计数器按增量对 ±d（非 ±1，core 叶子 `apply_audio_bit` 已修正为
+//!   原 PADDW/PSUBW 语义）。
 //! - `record_water_history`（行 12，PDB inlinee）：`RecordWaterEditToHistoryCmd`
-//!   → `EditType::Water` 历史记录（与 core garden 域 record 惯例同构）。
+//!   `read().last()` 未读 → `record_raster_history`（槽位 4 / `EditType::Water`）。
+//!   fresh：无 `HistoryRecordingFailed` 发射（删除先前 garden 惯例近似）。
 //!
 //! 共享门禁：进程全局 `*0x14362c098`（非 0 时水面编辑/音频格更新早退；render 域
 //! 章节记为 demo 开关，re-analyst 记为输入/UI 抢占——两种语义都要求"非 0 跳过"，
@@ -26,7 +31,7 @@ use country_core::resources::world_raster::DirtyTilePublisher;
 use country_core::resources::world_raster_defs::WaterRaster;
 
 use crate::draw_water::draw_water;
-use crate::record_water_history::record_water_history;
+use crate::record_water_history::{record_water_history, RecordWaterEditToHistoryCmd};
 use crate::water_audio_grid::update_water_audio_grid;
 
 /// 进程全局门禁地址（O：`cmp byte ptr [0x14362c098], 0`；非 0 → 早退）。
@@ -49,33 +54,41 @@ pub enum WaterCpuStage {
     Record,
 }
 
-/// 事件与资源注册（O：`build` 0x1406501d0 `register_event`×2 = WaterDrawEvent /
-/// WaterEraseEvent；`insert_resource<WaterRaster>`（`WaterRaster::new(DirtyTilePublisher::unique())`，
-/// 0x14083eaf0/0x140e93590 段）+ `init_resource`×3（TypeId 映射 U，re-analyst §6）。
+/// 事件与资源注册（O：`build` 0x1406501d0，glue-legitimate：`register_event`×3 =
+/// `RecordWaterEditToHistoryCmd` / `WaterDrawEvent` / `WaterEraseEvent`（各带
+/// "已存在则跳过"判空）；`insert_resource<WaterRaster>`（`DirtyTilePublisher::unique()`
+/// 0x140e93590 + `PathRaster::new()` 0x14083eaf0，单态内联进构造；插槽仅 WaterRaster）。
+///
+/// 本 crate 追加注册自身系统写出的其余事件（core 全游戏由其它插件注册）——
+/// crate 独立可运行的自足接线，非原 build 面（差登记 RESTORE.md）。
 pub fn register_water_events(world: &mut World) {
     use country_core::resources::glade_border::{DisplayOutOfBorder, FeedbackInputOutOfBorder};
     use country_core::resources::onboarding::NotifyHintSystemToolWasJustUsed;
     use country_core::resources::water::{WaterDrawEvent, WaterEraseEvent};
-    use country_core::systems::history::{history_process::DebugHistoryMsg, recording::HistoryRecordingFailed};
+    use country_core::systems::history::history_process::DebugHistoryMsg;
     use country_core::systems::render_loop::compute_passes::rasterize_terrain_stroke::RecalculateHeightMapCmd;
     use country_core::systems::terrain::delayed_terrain_changed_msg::OnTerrainChange;
 
     // O：insert_resource<WaterRaster>（`WaterRaster::new(DirtyTilePublisher::unique())`）。
     world.insert_resource(WaterRaster::new(DirtyTilePublisher::unique()));
+    world.init_resource::<Events<RecordWaterEditToHistoryCmd>>();
     world.init_resource::<Events<WaterDrawEvent>>();
     world.init_resource::<Events<WaterEraseEvent>>();
-    world.init_resource::<Events<record_water_history::RecordWaterEditToHistoryCmd>>();
     world.init_resource::<Events<RecalculateHeightMapCmd>>();
     world.init_resource::<Events<DisplayOutOfBorder>>();
     world.init_resource::<Events<FeedbackInputOutOfBorder>>();
     world.init_resource::<Events<NotifyHintSystemToolWasJustUsed>>();
     world.init_resource::<Events<DebugHistoryMsg>>();
-    world.init_resource::<Events<HistoryRecordingFailed>>();
     world.init_resource::<Events<OnTerrainChange>>();
     world.init_resource::<Events<draw_water::WaterPinnedClutterCircle>>();
 }
 
 /// 注册 CPU 水面系统（O：build 0x1406501d0 的 add_systems 面；集合名 I）。
+///
+/// 原 build 只 add **两个**系统：`record_water_history.in_set(GameSystemSet)` 与
+/// `update_water_audio_grid.run_if(Option<Res<WaterAudioGrid>>.is_some()).in_set(<dyn set>)`
+/// ——`draw_water` 不由本插件注册（其注册在别的插件/集成层，模块外接线）。本 crate 为
+/// 独立库自足运行而追加 `draw_water`（差登记 RESTORE.md）。
 pub fn add_water_cpu_systems<C: Send + Sync + 'static, S: Send + Sync + 'static>(
     schedule: &mut Schedule,
 ) {
@@ -91,11 +104,12 @@ pub fn add_water_cpu_systems<C: Send + Sync + 'static, S: Send + Sync + 'static>
     schedule.add_systems(record_water_history::<S>.in_set(WaterCpuStage::Record));
 }
 
-/// `system_water::impl$0::build`（0x1406501d0，O 面）。
+/// `system_water::impl$0::build`（0x1406501d0，O 面，glue-legitimate）。
 ///
-/// 原实现经 Bevy App 机制注册（`App::add_event`×2、`insert_resource<WaterRaster>`、
-/// `add_systems`×2）；本 crate 按 core garden 域既有约定以 `(world, schedule)` 落地，
-/// App 接线由宿主（tiny-glade crate）负责。
+/// 原实现经 Bevy App 机制注册（`add_systems`×2 = record_water_history /
+/// update_water_audio_grid、`insert_resource<WaterRaster>`、`register_event`×3）；
+/// 本 crate 按 core garden 域既有约定以 `(world, schedule)` 落地，App 接线由宿主
+/// （tiny-glade crate）负责。
 pub fn build<C: Send + Sync + 'static, S: Send + Sync + 'static>(
     world: &mut World,
     schedule: &mut Schedule,

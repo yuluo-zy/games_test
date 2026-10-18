@@ -1,26 +1,38 @@
-//! `replay_decorator.rs` — 装饰回放（0x14080c8d0，O）。
+//! `replay_decorator.rs` — 装饰回放（0x14080c8d0，fresh Ghidra shared 反编译
+//! `work/wave3-decorator-visual/jobs/decomp_0x14080c8d0.c`，997B）。
 //!
-//! 机器码证据（fresh RE-MCP `groupD/decomp/decomp-0x14080c8d0-*.txt`）：
-//! `(ResMut<ReplayBuffer>, ResMut<DecoratorStorage/Archivist>, ResMut<Time>)`。
+//! 参数面（O，寄存器）：in_RCX = ResMut<GameTime>（delta `*+0x28`）、in_RDX =
+//! ResMut<ReplayBuffer>（speed `*+0x28`、tick 回写 +0x10/+0x1c）、in_R8 =
+//! ResMut<DecoratorArchivist>（cull-allow 集合 + tick 回写 +0x10/+0x1c）。
 //!
-//! 行为（O）：
-//! 1. 取 ReplayBuffer 前端桶（`front_mut_bucket` 0x1409f1a80）；
-//! 2. 取出桶的命令 Vec（Arc drop 语义），逐条取命令 `+0x10` 的 u32 decorator
-//!    id → `DecoratorArchivist::decorator_cull_allow`（FUN_1402c9200 =
-//!    HashSet insert；archivist+0x30 区域，U：cull 集合布局）；
-//! 3. 扫描命令（0x30B ReplayCmd 布局 `{tag@0, flags@+8, duration f32@+0xc,
-//!    payload@+0x10, elapsed f32@+0x18, undo@+0x1c}`；tag==7 = 装饰命令）：
-//!    flags bit0==0 → 立即完成（记移除索引）；否则 `required =
-//!    max(duration/speed, 0.1)`（_UNK_142930d70 floor）；required < elapsed →
-//!    完成记索引；随后 `elapsed += dt`；
-//! 4. 完成索引列表反转后逐条移除命令（0x30B memmove 右移），按 tag 判别
-//!    释放载荷（Arc dec/drop 跳表 tag 0..9+）；
-//! 5. 释放索引列表。
+//! 行为（O，fresh）：
+//! 1. 取 ReplayBuffer 前端桶（`front_mut_bucket`）；
+//! 2. 取桶 `+0x18/+0x20` 的 **`Arc<[DecoratorId]>` cull-allow id 表**（指针置
+//!    0 = 取出），逐 id 入 `HashMap<DecoratorId,()>`（archivist cull 集合）→
+//!    Arc drop；
+//! 3. 扫描命令（桶 `+0x8` 指针 / `+0x10` 长度，**每条 0x30B**，布局
+//!    `{tag u8@0, flags@+8, duration f32@+0xc, payload@+0x10, elapsed
+//!    f32@+0x18}`；**跳过非 tag-7 命令**，只处理 tag==7 装饰命令）：
+//!    - `flags bit0==0` → 立即完成（记移除索引）；
+//!    - 否则 `required = max(duration/speed, 0.05)`（**0.05 为 O floor**——
+//!      fresh `if (fVar22 <= 0.05) fVar22 = 0.05`，旧模型 0.1 不符已修）；
+//!      `required < elapsed` → 完成记索引；
+//!    - 未完成命令 `elapsed += delta`；
+//! 4. 完成索引**反转**后逐条 `Vec::remove`（0x30B memmove 右移），按 tag 判别
+//!    释放载荷（Arc dec/drop 跳表）：0/1/2=RasterEdit Arc、3=TerrainEdit Arc、
+//!    4=`drop_in_place<WallReplayCmd>`、5=RoofEdit Arc、6/7=
+//!    DecoratorHistoryEdit Arc、8=TreeEdit Arc、9=CrashMiscInfo Mutex、
+//!    default=winit PhysicalSize Mutex。
 //!
-//! core 缺口登记：core `ReplayCommand` 无 Decorator 变体（bucket 展开
-//! `DecoratorV5` → `UnrestoredReplayOwner`）；本系统按核心 ReplayBuffer API
-//! 面实现结构（front_mut_bucket + 命令推进），装饰命令变体由集成 owner 在
-//! core 接线后启用。
+//! core 缺口登记（未实现，逐点）：
+//! - core `ReplayCommand` 枚举无 **Decorator 变体**（bucket 展开
+//!   `DecoratorV5` → `UnrestoredReplayOwner`）——tag-7 命令无可承载类型；
+//! - core `ReplayBucket`（{entry_index, undo, commands, timing}）**无
+//!   `Arc<[DecoratorId]>` cull-allow 表字段**（二进制桶 `+0x18/+0x20`）；
+//! - 二进制命令时序内嵌于 0x30B 记录（+8/+0xc/+0x18），非 core
+//!   `ReplayBucket.timing: Vec<CommandTiming>` 分离模型。
+//! 上述缺口闭合后（core 接线 Decorator 命令 + cull 表）本系统即可重建为
+//! 判等；当前以结构模型承载并诚实登记，不伪造 tag-7 处理。
 
 use bevy_ecs::prelude::*;
 
@@ -47,11 +59,12 @@ pub struct DecoratorReplayCmd {
 impl DecoratorReplayCmd {
     /// 装饰命令 tag（O）。
     pub const TAG_DECORATOR: u8 = 7;
-    /// 动画门控下限（B `_UNK_142930d70`，O 读取面；数值 0.1 与 stairs 族一致）。
-    pub const DURATION_FLOOR: f32 = 0.1;
+    /// 动画门控下限（**O = 0.05**：fresh `replay_decorator` 0x14080c8d0
+    /// `if (fVar22 <= 0.05) fVar22 = 0.05`；旧模型 0.1 不符，2026-10-17 修正）。
+    pub const DURATION_FLOOR: f32 = 0.05;
 
-    /// 完成判定 + 推进（O：`required = max(duration/speed, 0.1)`；
-    /// `required < elapsed` → 完成；`elapsed += dt`）。
+    /// 完成判定 + 推进（O：`required = max(duration/speed, 0.05)`；
+    /// `required < elapsed` → 完成；未完成 `elapsed += delta`）。
     pub fn advance(&mut self, dt: f32, speed: f32) -> bool {
         if self.flags & 1 == 0 {
             return true;
@@ -63,11 +76,13 @@ impl DecoratorReplayCmd {
     }
 }
 
-/// `replay_decorator` @0x14080c8d0（O 结构）。
+/// `replay_decorator` @0x14080c8d0（O 结构，fresh 反编译）。
 ///
 /// core 缺口登记：命令载荷按 [`DecoratorReplayCmd`] 模型推进；`ReplayCommand`
-/// Decorator 变体未在 core 接线（见文件头）——本系统对前端桶按该模型处理，
-/// 未识别的命令原样保留。
+/// Decorator 变体与桶内 `Arc<[DecoratorId]>` cull-allow 表均未在 core 接线
+/// （见文件头）——本系统对前端桶按该模型处理，未识别的命令原样保留。
+/// **未实现**（core-type-gap，诚实登记）：tag-7 处理/cull-allow/0x30B 命令
+/// 布局依赖 core ReplayCommand Decorator 变体 + 桶 cull 表；当前为结构壳。
 pub fn replay_decorator<C: Send + Sync + 'static>(
     mut replay: ResMut<ReplayBuffer>,
     mut storage: ResMut<DecoratorStorage>,

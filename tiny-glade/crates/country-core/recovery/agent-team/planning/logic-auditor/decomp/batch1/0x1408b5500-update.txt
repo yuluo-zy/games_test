@@ -1,0 +1,102 @@
+
+// WARNING: Globals starting with '_' overlap smaller symbols at the same address
+
+void __cdecl country_core::systems::audio::music::music_player::MusicPlayer::update(void)
+
+{
+  int iVar1;
+  ulonglong uVar2;
+  longlong *in_RCX;
+  longlong lVar3;
+  int iVar4;
+  ulonglong *puVar5;
+  longlong local_e8;
+  int iStack_e0;
+  longlong local_68;
+  char cStack_60;
+  
+  iVar4 = 0;
+  if ((*in_RCX != 0) && ((ulonglong)in_RCX[1] < (ulonglong)in_RCX[0x1f])) {
+    lVar3 = in_RCX[1] * 0x30;
+    iVar1 = 0;
+    if (*(int *)(in_RCX[0x1e] + lVar3) == 1) {
+      local_68 = *(longlong *)(in_RCX[0x1e] + lVar3 + 8);
+      libfmod::EventInstance::get_timeline_position();
+      iVar1 = iStack_e0;
+      if (local_e8 != -0x7ffffffffffffffc) {
+        core::ptr::drop_in_place<enum2_<libfmod::Error>_>();
+        iVar1 = 0;
+      }
+    }
+    iVar4 = 0;
+    if (0 < iVar1) {
+      iVar4 = iVar1;
+    }
+  }
+  iVar1 = (int)in_RCX[0x23];
+  if (iVar1 != 0) {
+    if (iVar4 < (int)in_RCX[0x25]) {
+      _BAR_COUNT = 0;
+      *(int *)(in_RCX + 0x25) = iVar4;
+                    // WARNING: Could not recover jumptable at 0x0001408b55d0. Too many branches
+                    // WARNING: Treating indirect jump as call
+      (*(code *)(&DAT_142a9fa34 + *(int *)(&DAT_142a9fa34 + (ulonglong)(iVar1 - 1) * 4)))();
+      return;
+    }
+    *(int *)(in_RCX + 0x25) = iVar4;
+                    // WARNING: Could not recover jumptable at 0x0001408b56ed. Too many branches
+                    // WARNING: Treating indirect jump as call
+    (*(code *)(&DAT_142a9fa24 + *(int *)(&DAT_142a9fa24 + (ulonglong)(iVar1 - 1) * 4)))();
+    return;
+  }
+  *(undefined4 *)(in_RCX + 0x25) = 0;
+  _BAR_COUNT = 0;
+  switch_track();
+  if ((*in_RCX == 0) || (uVar2 = in_RCX[1], (ulonglong)in_RCX[0x1f] <= uVar2)) {
+    if (4 < *(ulonglong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E) {
+      toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();
+      ::log::__private_api::impl$2::log();
+    }
+  }
+  else {
+    lVar3 = in_RCX[0x1e];
+    if (((int)in_RCX[8] == 1) && (libfmod::EventInstance::start(), local_68 != -0x7ffffffffffffffc))
+    {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+    if ((*(int *)(uVar2 * 0x30 + lVar3) == 1) &&
+       (libfmod::EventInstance::start(), local_68 != -0x7ffffffffffffffc)) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+    in_RCX[0x23] = 1;
+  }
+  if ((*in_RCX != 0) && ((ulonglong)in_RCX[1] < (ulonglong)in_RCX[0x1f])) {
+    puVar5 = (ulonglong *)(in_RCX[1] * 0x30 + in_RCX[0x1e]);
+    uVar2 = *puVar5;
+    if (uVar2 == 1) {
+      libfmod::EventInstance::get_paused();
+      if (local_68 != -0x7ffffffffffffffc) {
+                    // WARNING: Subroutine does not return
+        core::result::unwrap_failed();
+      }
+      if (cStack_60 != '\x01') {
+        return;
+      }
+      uVar2 = *puVar5;
+    }
+    if (((uVar2 & 1) != 0) &&
+       (libfmod::EventInstance::set_paused(), local_68 != -0x7ffffffffffffffc)) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+    if (((int)in_RCX[2] == 1) &&
+       (libfmod::EventInstance::set_paused(), local_68 != -0x7ffffffffffffffc)) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+  }
+  return;
+}
+

@@ -1,0 +1,379 @@
+# DecoMoveToStorage> @ 0x141256e40
+sig: void __cdecl tracked_clone_from<country_core::resources::walls::decorator_storage::DecoMoveToStorage>(void)
+callees: [{'name': 'clone_from<tuple$<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorInfo>,alloc::alloc::Global>', 'address': '141263600'}, {'name': 'clone_from<tuple$<country_core::resources::walls::decorator::DecoratorId,tuple$<>_>,alloc::alloc::Global>', 'address': '141262d50'}, {'name': 'hash_one<std::hash::random::RandomState,ref$<shader_pipeline::reflection::BindingIndex>_>', 'address': '1405b0ed0'}, {'name': 'insert', 'address': '140a1b4e0'}, {'name': 'insert<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorInfo,std::hash::random::RandomState,alloc::alloc::Global>', 'address': '1411fbfa0'}, {'name': 'insert<country_core::resources::walls::decorator::DecoratorId,tuple$<>,std::hash::random::RandomState,alloc::alloc::Global>', 'address': '1402c9200'}, {'name': 'memset', 'address': '142923c20'}, {'name': 'remove', 'address': '140a1b440'}, {'name': 'remove_entry<tuple$<country_core::resources::walls::decorator::DecoratorId,tuple$<>_>,alloc::alloc::Global,hashbrown::map::equivalent_key::closure_env$0<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId,tuple$<>_>_>', 'address': '140b776d0'}]
+
+void __cdecl
+country_core::resources::walls::decorator_storage::Decorators::
+tracked_clone_from<country_core::resources::walls::decorator_storage::DecoMoveToStorage>(void)
+
+{
+  ulonglong uVar1;
+  ushort uVar2;
+  uint uVar3;
+  undefined8 uVar4;
+  uint uVar5;
+  ulonglong uVar6;
+  longlong in_RCX;
+  undefined8 *in_RDX;
+  undefined1 (*pauVar7) [16];
+  undefined1 (*pauVar8) [16];
+  longlong lVar9;
+  uint uVar10;
+  undefined1 (*pauVar11) [16];
+  undefined1 (*pauVar12) [16];
+  bool bVar13;
+  undefined1 auVar14 [16];
+  
+  lVar9 = *(longlong *)(in_RCX + 0x48);
+  if ((*(longlong *)(in_RCX + 0x18) == 0 && *(longlong *)(in_RCX + 0x78) == 0) && lVar9 == 0) {
+    hashbrown::raw::impl$13::
+    clone_from<tuple_<country_core::resources::walls::decorator::DecoratorId,tuple_<>_>,alloc::alloc::Global>
+              ();
+    uVar4 = in_RDX[0x11];
+    *(undefined8 *)(in_RCX + 0x80) = in_RDX[0x10];
+    *(undefined8 *)(in_RCX + 0x88) = uVar4;
+    hashbrown::raw::impl$13::
+    clone_from<tuple_<country_core::resources::walls::decorator::DecoratorId,tuple_<>_>,alloc::alloc::Global>
+              ();
+    uVar4 = in_RDX[5];
+    *(undefined8 *)(in_RCX + 0x20) = in_RDX[4];
+    *(undefined8 *)(in_RCX + 0x28) = uVar4;
+    hashbrown::raw::impl$13::
+    clone_from<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorInfo>,alloc::alloc::Global>
+              ();
+    uVar4 = in_RDX[0xb];
+    *(undefined8 *)(in_RCX + 0x50) = in_RDX[10];
+    *(undefined8 *)(in_RCX + 0x58) = uVar4;
+  }
+  else {
+    if (*(longlong *)(in_RCX + 0x78) != 0) {
+      uVar1 = *(ulonglong *)(in_RCX + 0x68);
+      if (uVar1 != 0) {
+        memset(*(void **)(in_RCX + 0x60),(int)CONCAT71((int7)((ulonglong)in_RDX >> 8),0xff),
+               uVar1 + 0x11);
+        lVar9 = *(longlong *)(in_RCX + 0x48);
+      }
+      *(undefined8 *)(in_RCX + 0x78) = 0;
+      uVar6 = (uVar1 + 1 & 0xfffffffffffffff8) - (uVar1 + 1 >> 3);
+      if (uVar1 < 8) {
+        uVar6 = uVar1;
+      }
+      *(ulonglong *)(in_RCX + 0x70) = uVar6;
+    }
+    pauVar7 = *(undefined1 (**) [16])(in_RCX + 0x30);
+    auVar14 = *pauVar7;
+    if (lVar9 == 0) {
+      lVar9 = 0;
+    }
+    else {
+      pauVar7 = pauVar7 + 1;
+      uVar5 = ~(uint)(ushort)((ushort)(SUB161(auVar14 >> 7,0) & 1) |
+                              (ushort)(SUB161(auVar14 >> 0xf,0) & 1) << 1 |
+                              (ushort)(SUB161(auVar14 >> 0x17,0) & 1) << 2 |
+                              (ushort)(SUB161(auVar14 >> 0x1f,0) & 1) << 3 |
+                              (ushort)(SUB161(auVar14 >> 0x27,0) & 1) << 4 |
+                              (ushort)(SUB161(auVar14 >> 0x2f,0) & 1) << 5 |
+                              (ushort)(SUB161(auVar14 >> 0x37,0) & 1) << 6 |
+                              (ushort)(SUB161(auVar14 >> 0x3f,0) & 1) << 7 |
+                              (ushort)(SUB161(auVar14 >> 0x47,0) & 1) << 8 |
+                              (ushort)(SUB161(auVar14 >> 0x4f,0) & 1) << 9 |
+                              (ushort)(SUB161(auVar14 >> 0x57,0) & 1) << 10 |
+                              (ushort)(SUB161(auVar14 >> 0x5f,0) & 1) << 0xb |
+                              (ushort)(SUB161(auVar14 >> 0x67,0) & 1) << 0xc |
+                              (ushort)(SUB161(auVar14 >> 0x6f,0) & 1) << 0xd |
+                              (ushort)(SUB161(auVar14 >> 0x77,0) & 1) << 0xe |
+                             (ushort)(byte)(auVar14[0xf] >> 7) << 0xf);
+      do {
+        if ((short)uVar5 == 0) {
+          do {
+            auVar14 = *pauVar7;
+            uVar2 = (ushort)(SUB161(auVar14 >> 7,0) & 1) |
+                    (ushort)(SUB161(auVar14 >> 0xf,0) & 1) << 1 |
+                    (ushort)(SUB161(auVar14 >> 0x17,0) & 1) << 2 |
+                    (ushort)(SUB161(auVar14 >> 0x1f,0) & 1) << 3 |
+                    (ushort)(SUB161(auVar14 >> 0x27,0) & 1) << 4 |
+                    (ushort)(SUB161(auVar14 >> 0x2f,0) & 1) << 5 |
+                    (ushort)(SUB161(auVar14 >> 0x37,0) & 1) << 6 |
+                    (ushort)(SUB161(auVar14 >> 0x3f,0) & 1) << 7 |
+                    (ushort)(SUB161(auVar14 >> 0x47,0) & 1) << 8 |
+                    (ushort)(SUB161(auVar14 >> 0x4f,0) & 1) << 9 |
+                    (ushort)(SUB161(auVar14 >> 0x57,0) & 1) << 10 |
+                    (ushort)(SUB161(auVar14 >> 0x5f,0) & 1) << 0xb |
+                    (ushort)(SUB161(auVar14 >> 0x67,0) & 1) << 0xc |
+                    (ushort)(SUB161(auVar14 >> 0x6f,0) & 1) << 0xd |
+                    (ushort)(SUB161(auVar14 >> 0x77,0) & 1) << 0xe |
+                    (ushort)(byte)(auVar14[0xf] >> 7) << 0xf;
+            pauVar7 = pauVar7 + 1;
+          } while (uVar2 == 0xffff);
+          uVar5 = ~(uint)uVar2;
+          uVar10 = uVar5 & -(uint)uVar2 - 2;
+        }
+        else {
+          uVar10 = uVar5 - 1 & uVar5;
+        }
+        for (; (uVar5 & 1) == 0; uVar5 = uVar5 >> 1 | 0x80000000) {
+        }
+        hashbrown::map::HashMap::
+        insert<country_core::resources::walls::decorator::DecoratorId,tuple_<>,std::hash::random::RandomState,alloc::alloc::Global>
+                  ();
+        lVar9 = lVar9 + -1;
+        uVar5 = uVar10;
+      } while (lVar9 != 0);
+      pauVar7 = *(undefined1 (**) [16])(in_RCX + 0x30);
+      lVar9 = *(longlong *)(in_RCX + 0x48);
+      auVar14 = *pauVar7;
+    }
+    uVar1 = *(ulonglong *)(in_RCX + 0x38);
+    pauVar11 = pauVar7 + 1;
+    *(undefined8 *)(in_RCX + 0x40) = 0;
+    *(undefined8 *)(in_RCX + 0x48) = 0;
+    *(undefined **)(in_RCX + 0x30) =
+         &anon_4e7f1218742912fb20d1cab74f57dfe2_0_llvm_16591663493409836454;
+    *(undefined8 *)(in_RCX + 0x38) = 0;
+    pauVar8 = pauVar7;
+    pauVar12 = pauVar7;
+    uVar5 = ~(uint)(ushort)((ushort)(SUB161(auVar14 >> 7,0) & 1) |
+                            (ushort)(SUB161(auVar14 >> 0xf,0) & 1) << 1 |
+                            (ushort)(SUB161(auVar14 >> 0x17,0) & 1) << 2 |
+                            (ushort)(SUB161(auVar14 >> 0x1f,0) & 1) << 3 |
+                            (ushort)(SUB161(auVar14 >> 0x27,0) & 1) << 4 |
+                            (ushort)(SUB161(auVar14 >> 0x2f,0) & 1) << 5 |
+                            (ushort)(SUB161(auVar14 >> 0x37,0) & 1) << 6 |
+                            (ushort)(SUB161(auVar14 >> 0x3f,0) & 1) << 7 |
+                            (ushort)(SUB161(auVar14 >> 0x47,0) & 1) << 8 |
+                            (ushort)(SUB161(auVar14 >> 0x4f,0) & 1) << 9 |
+                            (ushort)(SUB161(auVar14 >> 0x57,0) & 1) << 10 |
+                            (ushort)(SUB161(auVar14 >> 0x5f,0) & 1) << 0xb |
+                            (ushort)(SUB161(auVar14 >> 0x67,0) & 1) << 0xc |
+                            (ushort)(SUB161(auVar14 >> 0x6f,0) & 1) << 0xd |
+                            (ushort)(SUB161(auVar14 >> 0x77,0) & 1) << 0xe |
+                           (ushort)(byte)(auVar14[0xf] >> 7) << 0xf);
+    while (bVar13 = lVar9 != 0, lVar9 = lVar9 + -1, bVar13) {
+      if ((short)uVar5 == 0) {
+        do {
+          auVar14 = *pauVar11;
+          uVar2 = (ushort)(SUB161(auVar14 >> 7,0) & 1) | (ushort)(SUB161(auVar14 >> 0xf,0) & 1) << 1
+                  | (ushort)(SUB161(auVar14 >> 0x17,0) & 1) << 2 |
+                  (ushort)(SUB161(auVar14 >> 0x1f,0) & 1) << 3 |
+                  (ushort)(SUB161(auVar14 >> 0x27,0) & 1) << 4 |
+                  (ushort)(SUB161(auVar14 >> 0x2f,0) & 1) << 5 |
+                  (ushort)(SUB161(auVar14 >> 0x37,0) & 1) << 6 |
+                  (ushort)(SUB161(auVar14 >> 0x3f,0) & 1) << 7 |
+                  (ushort)(SUB161(auVar14 >> 0x47,0) & 1) << 8 |
+                  (ushort)(SUB161(auVar14 >> 0x4f,0) & 1) << 9 |
+                  (ushort)(SUB161(auVar14 >> 0x57,0) & 1) << 10 |
+                  (ushort)(SUB161(auVar14 >> 0x5f,0) & 1) << 0xb |
+                  (ushort)(SUB161(auVar14 >> 0x67,0) & 1) << 0xc |
+                  (ushort)(SUB161(auVar14 >> 0x6f,0) & 1) << 0xd |
+                  (ushort)(SUB161(auVar14 >> 0x77,0) & 1) << 0xe |
+                  (ushort)(byte)(auVar14[0xf] >> 7) << 0xf;
+          pauVar12 = pauVar12 + -0x50;
+          pauVar11 = pauVar11 + 1;
+        } while (uVar2 == 0xffff);
+        uVar5 = ~(uint)uVar2;
+        uVar10 = uVar5 & -(uint)uVar2 - 2;
+      }
+      else {
+        uVar10 = uVar5 - 1 & uVar5;
+      }
+      uVar3 = 0;
+      for (; (uVar5 & 1) == 0; uVar5 = uVar5 >> 1 | 0x80000000) {
+        uVar3 = uVar3 + 1;
+      }
+      if (pauVar12[(ulonglong)uVar3 * -5 + -1][0xf] == '\x02') break;
+      pauVar8 = (undefined1 (*) [16])(ulonglong)*(uint *)pauVar12[(ulonglong)uVar3 * -5 + -5];
+      decorator_storage::impl$8::remove();
+      uVar5 = uVar10;
+    }
+    if (uVar1 == 0) {
+      uVar6 = 0;
+    }
+    else {
+      memset(pauVar7,(int)CONCAT71((int7)((ulonglong)pauVar8 >> 8),0xff),uVar1 + 0x11);
+      uVar6 = (uVar1 + 1 & 0xfffffffffffffff8) - (uVar1 + 1 >> 3);
+      if (uVar1 < 8) {
+        uVar6 = uVar1;
+      }
+    }
+    *(undefined1 (**) [16])(in_RCX + 0x30) = pauVar7;
+    *(ulonglong *)(in_RCX + 0x38) = uVar1;
+    *(ulonglong *)(in_RCX + 0x40) = uVar6;
+    *(undefined8 *)(in_RCX + 0x48) = 0;
+    lVar9 = in_RDX[3];
+    if (lVar9 != 0) {
+      pauVar7 = (undefined1 (*) [16])*in_RDX + 1;
+      auVar14 = *(undefined1 (*) [16])*in_RDX;
+      uVar5 = ~(uint)(ushort)((ushort)(SUB161(auVar14 >> 7,0) & 1) |
+                              (ushort)(SUB161(auVar14 >> 0xf,0) & 1) << 1 |
+                              (ushort)(SUB161(auVar14 >> 0x17,0) & 1) << 2 |
+                              (ushort)(SUB161(auVar14 >> 0x1f,0) & 1) << 3 |
+                              (ushort)(SUB161(auVar14 >> 0x27,0) & 1) << 4 |
+                              (ushort)(SUB161(auVar14 >> 0x2f,0) & 1) << 5 |
+                              (ushort)(SUB161(auVar14 >> 0x37,0) & 1) << 6 |
+                              (ushort)(SUB161(auVar14 >> 0x3f,0) & 1) << 7 |
+                              (ushort)(SUB161(auVar14 >> 0x47,0) & 1) << 8 |
+                              (ushort)(SUB161(auVar14 >> 0x4f,0) & 1) << 9 |
+                              (ushort)(SUB161(auVar14 >> 0x57,0) & 1) << 10 |
+                              (ushort)(SUB161(auVar14 >> 0x5f,0) & 1) << 0xb |
+                              (ushort)(SUB161(auVar14 >> 0x67,0) & 1) << 0xc |
+                              (ushort)(SUB161(auVar14 >> 0x6f,0) & 1) << 0xd |
+                              (ushort)(SUB161(auVar14 >> 0x77,0) & 1) << 0xe |
+                             (ushort)(byte)(auVar14[0xf] >> 7) << 0xf);
+      do {
+        uVar10 = uVar5;
+        if ((short)uVar5 == 0) {
+          do {
+            auVar14 = *pauVar7;
+            pauVar7 = pauVar7 + 1;
+            uVar5 = (uint)(ushort)((ushort)(SUB161(auVar14 >> 7,0) & 1) |
+                                   (ushort)(SUB161(auVar14 >> 0xf,0) & 1) << 1 |
+                                   (ushort)(SUB161(auVar14 >> 0x17,0) & 1) << 2 |
+                                   (ushort)(SUB161(auVar14 >> 0x1f,0) & 1) << 3 |
+                                   (ushort)(SUB161(auVar14 >> 0x27,0) & 1) << 4 |
+                                   (ushort)(SUB161(auVar14 >> 0x2f,0) & 1) << 5 |
+                                   (ushort)(SUB161(auVar14 >> 0x37,0) & 1) << 6 |
+                                   (ushort)(SUB161(auVar14 >> 0x3f,0) & 1) << 7 |
+                                   (ushort)(SUB161(auVar14 >> 0x47,0) & 1) << 8 |
+                                   (ushort)(SUB161(auVar14 >> 0x4f,0) & 1) << 9 |
+                                   (ushort)(SUB161(auVar14 >> 0x57,0) & 1) << 10 |
+                                   (ushort)(SUB161(auVar14 >> 0x5f,0) & 1) << 0xb |
+                                   (ushort)(SUB161(auVar14 >> 0x67,0) & 1) << 0xc |
+                                   (ushort)(SUB161(auVar14 >> 0x6f,0) & 1) << 0xd |
+                                   (ushort)(SUB161(auVar14 >> 0x77,0) & 1) << 0xe |
+                                  (ushort)(byte)(auVar14[0xf] >> 7) << 0xf);
+          } while (uVar5 == 0xffff);
+          uVar5 = ~uVar5;
+          uVar10 = uVar5;
+        }
+        for (; (uVar5 & 1) == 0; uVar5 = uVar5 >> 1 | 0x80000000) {
+        }
+        uVar5 = uVar10 - 1 & uVar10;
+        hashbrown::map::HashMap::
+        insert<country_core::resources::walls::decorator::DecoratorId,tuple_<>,std::hash::random::RandomState,alloc::alloc::Global>
+                  ();
+        lVar9 = lVar9 + -1;
+      } while (lVar9 != 0);
+    }
+    lVar9 = in_RDX[9];
+    if (lVar9 != 0) {
+      pauVar7 = (undefined1 (*) [16])in_RDX[6] + 1;
+      auVar14 = *(undefined1 (*) [16])in_RDX[6];
+      uVar5 = ~(uint)(ushort)((ushort)(SUB161(auVar14 >> 7,0) & 1) |
+                              (ushort)(SUB161(auVar14 >> 0xf,0) & 1) << 1 |
+                              (ushort)(SUB161(auVar14 >> 0x17,0) & 1) << 2 |
+                              (ushort)(SUB161(auVar14 >> 0x1f,0) & 1) << 3 |
+                              (ushort)(SUB161(auVar14 >> 0x27,0) & 1) << 4 |
+                              (ushort)(SUB161(auVar14 >> 0x2f,0) & 1) << 5 |
+                              (ushort)(SUB161(auVar14 >> 0x37,0) & 1) << 6 |
+                              (ushort)(SUB161(auVar14 >> 0x3f,0) & 1) << 7 |
+                              (ushort)(SUB161(auVar14 >> 0x47,0) & 1) << 8 |
+                              (ushort)(SUB161(auVar14 >> 0x4f,0) & 1) << 9 |
+                              (ushort)(SUB161(auVar14 >> 0x57,0) & 1) << 10 |
+                              (ushort)(SUB161(auVar14 >> 0x5f,0) & 1) << 0xb |
+                              (ushort)(SUB161(auVar14 >> 0x67,0) & 1) << 0xc |
+                              (ushort)(SUB161(auVar14 >> 0x6f,0) & 1) << 0xd |
+                              (ushort)(SUB161(auVar14 >> 0x77,0) & 1) << 0xe |
+                             (ushort)(byte)(auVar14[0xf] >> 7) << 0xf);
+      do {
+        if ((short)uVar5 == 0) {
+          do {
+            auVar14 = *pauVar7;
+            uVar2 = (ushort)(SUB161(auVar14 >> 7,0) & 1) |
+                    (ushort)(SUB161(auVar14 >> 0xf,0) & 1) << 1 |
+                    (ushort)(SUB161(auVar14 >> 0x17,0) & 1) << 2 |
+                    (ushort)(SUB161(auVar14 >> 0x1f,0) & 1) << 3 |
+                    (ushort)(SUB161(auVar14 >> 0x27,0) & 1) << 4 |
+                    (ushort)(SUB161(auVar14 >> 0x2f,0) & 1) << 5 |
+                    (ushort)(SUB161(auVar14 >> 0x37,0) & 1) << 6 |
+                    (ushort)(SUB161(auVar14 >> 0x3f,0) & 1) << 7 |
+                    (ushort)(SUB161(auVar14 >> 0x47,0) & 1) << 8 |
+                    (ushort)(SUB161(auVar14 >> 0x4f,0) & 1) << 9 |
+                    (ushort)(SUB161(auVar14 >> 0x57,0) & 1) << 10 |
+                    (ushort)(SUB161(auVar14 >> 0x5f,0) & 1) << 0xb |
+                    (ushort)(SUB161(auVar14 >> 0x67,0) & 1) << 0xc |
+                    (ushort)(SUB161(auVar14 >> 0x6f,0) & 1) << 0xd |
+                    (ushort)(SUB161(auVar14 >> 0x77,0) & 1) << 0xe |
+                    (ushort)(byte)(auVar14[0xf] >> 7) << 0xf;
+            pauVar7 = pauVar7 + 1;
+          } while (uVar2 == 0xffff);
+          uVar5 = ~(uint)uVar2;
+          uVar10 = uVar5 & -(uint)uVar2 - 2;
+        }
+        else {
+          uVar10 = uVar5 - 1 & uVar5;
+        }
+        for (; (uVar5 & 1) == 0; uVar5 = uVar5 >> 1 | 0x80000000) {
+        }
+        hashbrown::map::HashMap::
+        insert<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorInfo,std::hash::random::RandomState,alloc::alloc::Global>
+                  ();
+        core::hash::BuildHasher::
+        hash_one<std::hash::random::RandomState,ref_<shader_pipeline::reflection::BindingIndex>_>();
+        hashbrown::raw::RawTable::
+        remove_entry<tuple_<country_core::resources::walls::decorator::DecoratorId,tuple_<>_>,alloc::alloc::Global,hashbrown::map::equivalent_key::closure_env_0<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId,tuple_<>_>_>
+                  ();
+        hashbrown::map::HashMap::
+        insert<country_core::resources::walls::decorator::DecoratorId,tuple_<>,std::hash::random::RandomState,alloc::alloc::Global>
+                  ();
+        lVar9 = lVar9 + -1;
+        uVar5 = uVar10;
+      } while (lVar9 != 0);
+    }
+  }
+  lVar9 = in_RDX[9];
+  if (lVar9 != 0) {
+    pauVar7 = (undefined1 (*) [16])in_RDX[6] + 1;
+    auVar14 = *(undefined1 (*) [16])in_RDX[6];
+    uVar5 = ~(uint)(ushort)((ushort)(SUB161(auVar14 >> 7,0) & 1) |
+                            (ushort)(SUB161(auVar14 >> 0xf,0) & 1) << 1 |
+                            (ushort)(SUB161(auVar14 >> 0x17,0) & 1) << 2 |
+                            (ushort)(SUB161(auVar14 >> 0x1f,0) & 1) << 3 |
+                            (ushort)(SUB161(auVar14 >> 0x27,0) & 1) << 4 |
+                            (ushort)(SUB161(auVar14 >> 0x2f,0) & 1) << 5 |
+                            (ushort)(SUB161(auVar14 >> 0x37,0) & 1) << 6 |
+                            (ushort)(SUB161(auVar14 >> 0x3f,0) & 1) << 7 |
+                            (ushort)(SUB161(auVar14 >> 0x47,0) & 1) << 8 |
+                            (ushort)(SUB161(auVar14 >> 0x4f,0) & 1) << 9 |
+                            (ushort)(SUB161(auVar14 >> 0x57,0) & 1) << 10 |
+                            (ushort)(SUB161(auVar14 >> 0x5f,0) & 1) << 0xb |
+                            (ushort)(SUB161(auVar14 >> 0x67,0) & 1) << 0xc |
+                            (ushort)(SUB161(auVar14 >> 0x6f,0) & 1) << 0xd |
+                            (ushort)(SUB161(auVar14 >> 0x77,0) & 1) << 0xe |
+                           (ushort)(byte)(auVar14[0xf] >> 7) << 0xf);
+    do {
+      if ((short)uVar5 == 0) {
+        do {
+          auVar14 = *pauVar7;
+          uVar2 = (ushort)(SUB161(auVar14 >> 7,0) & 1) | (ushort)(SUB161(auVar14 >> 0xf,0) & 1) << 1
+                  | (ushort)(SUB161(auVar14 >> 0x17,0) & 1) << 2 |
+                  (ushort)(SUB161(auVar14 >> 0x1f,0) & 1) << 3 |
+                  (ushort)(SUB161(auVar14 >> 0x27,0) & 1) << 4 |
+                  (ushort)(SUB161(auVar14 >> 0x2f,0) & 1) << 5 |
+                  (ushort)(SUB161(auVar14 >> 0x37,0) & 1) << 6 |
+                  (ushort)(SUB161(auVar14 >> 0x3f,0) & 1) << 7 |
+                  (ushort)(SUB161(auVar14 >> 0x47,0) & 1) << 8 |
+                  (ushort)(SUB161(auVar14 >> 0x4f,0) & 1) << 9 |
+                  (ushort)(SUB161(auVar14 >> 0x57,0) & 1) << 10 |
+                  (ushort)(SUB161(auVar14 >> 0x5f,0) & 1) << 0xb |
+                  (ushort)(SUB161(auVar14 >> 0x67,0) & 1) << 0xc |
+                  (ushort)(SUB161(auVar14 >> 0x6f,0) & 1) << 0xd |
+                  (ushort)(SUB161(auVar14 >> 0x77,0) & 1) << 0xe |
+                  (ushort)(byte)(auVar14[0xf] >> 7) << 0xf;
+          pauVar7 = pauVar7 + 1;
+        } while (uVar2 == 0xffff);
+        uVar5 = ~(uint)uVar2;
+        uVar10 = uVar5 & -(uint)uVar2 - 2;
+      }
+      else {
+        uVar10 = uVar5 - 1 & uVar5;
+      }
+      for (; (uVar5 & 1) == 0; uVar5 = uVar5 >> 1 | 0x80000000) {
+      }
+      decorator_storage::impl$8::insert();
+      lVar9 = lVar9 + -1;
+      uVar5 = uVar10;
+    } while (lVar9 != 0);
+  }
+  return;
+}
+

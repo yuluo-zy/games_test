@@ -1,0 +1,234 @@
+--- a/games_test/tiny-glade/crates/country-core/src/resources/render_ssbo.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/render_ssbo.rs
+@@ -16,7 +16,7 @@
+ use crate::asset_libraries::ssbo_library::SsboType as LibrarySsbo;
+ use crate::render::pass_builder::pass_resource_access::SsboType;
+ use crate::render::ssbo::rhapsody_boundary::GraphicsDevice;
+-use crate::render::ssbo::{InstanceBuffer, StorageElement};
++use crate::render::ssbo::{InstanceBuffer, StorageElement, TypedStorageBuffer};
+ 
+ pub use crate::resources::compute_mouse_depth_value::MouseDepthValueSsbo;
+ pub use crate::resources::render::spatial_resolve_offsets::SpatialResolveOffsetsSsbo;
+@@ -32,7 +32,7 @@
+ /// * 存储是 `InstanceBuffer<LanternSsbo>`（`type_id<InstanceBuffer<LanternSsbo>>` 0x14160ec30；`bin_lights` / `restir_di` 读它的实例数）。
+ /// * `SsboId` = `xxh3_64("LanternSsbo")` = 0x8b2da1ef1bff9619（`get_rg_buffer<LanternSsbo>` 0x1412d5470 立即数）。
+ #[repr(C)]
+-#[derive(Clone, Copy, Debug, Default, PartialEq)]
++#[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Zeroable, bytemuck::Pod)]
+ pub struct LanternSsbo {
+     pub position: [f32; 3],
+     pub intensity_color_id: u32,
+@@ -47,7 +47,12 @@
+ impl LibrarySsbo for LanternSsbo {
+     type Storage = InstanceBuffer<LanternSsbo>;
+     fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
+-        InstanceBuffer::<LanternSsbo>::new_storage_buffer(device, initial)
++        // This type's native None branch does not upload default bytes.
++        let buffer = TypedStorageBuffer::<LanternSsbo>::new_storage_buffer(device, initial);
++        InstanceBuffer {
++            instance_count: initial.map_or(0, |bytes| bytes.len() / core::mem::size_of::<Self>()),
++            buffer,
++        }
+     }
+ }
+ 
+--- a/games_test/tiny-glade/crates/country-core/src/systems/audio/terrain_stairs_audio.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/audio/terrain_stairs_audio.rs
+@@ -31,6 +31,54 @@
+     utils::audio_utils::AudioLoop,
+ };
+ use bevy_ecs::prelude::*;
++/// Original B14161ddb0 mapped counter: one u32, explicit zero upload for None.
++/// The pass alias and startup library use this same canonical element.
++#[repr(transparent)]
++#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, bytemuck::Zeroable, bytemuck::Pod)]
++pub struct StairsCounterSsbo(pub u32);
++
++impl crate::render::ssbo::StorageElement for StairsCounterSsbo {
++    const NAME: &'static str = "Stairs Counter";
++    const BUFFER_LEN: usize = 1;
++    const MAPPED_MEMORY: u8 = crate::render::ssbo::MAPPED_MEMORY_READBACK;
++}
++impl crate::asset_libraries::ssbo_library::SsboType for StairsCounterSsbo {
++    type Storage = crate::render::ssbo::MappedStorageBuffer<'static, Self>;
++    fn new_storage_buffer(
++        device: &dyn crate::render::ssbo::rhapsody_boundary::GraphicsDevice,
++        initial: Option<&[u8]>,
++    ) -> Self::Storage {
++        use crate::render::ssbo::{MappedStorageBuffer, StorageElement};
++        use crate::render::ssbo::rhapsody_boundary::BufferDesc;
++        let zero = [0u32];
++        let data = if let Some(bytes) = initial {
++            assert_eq!(bytes.len() % 4, 0);
++            assert_eq!(bytes.as_ptr() as usize % 4, 0);
++            if bytes.len() >= 8 {
++                panic!("Excessive data size supplied for buffer {}", core::any::type_name::<Self>());
++            }
++            bytes
++        } else {
++            bytemuck::cast_slice(&zero)
++        };
++        let buffer = device.create_buffer(&BufferDesc::new(4, 0x22, 4).alignment(4), Self::NAME, Some(data))
++            .expect("called `Result::unwrap()` on an `Err` value: create_buffer");
++        let bytes = device.mapped_slice_mut(&buffer).expect("called `Option::unwrap()` on a `None` value");
++        assert!(bytes.len() as u64 >= buffer.byte_size, "assertion failed: data.len() >= buffer.buffer.desc.size");
++        assert_eq!(bytes.len() % 4, 0);
++        assert_eq!(bytes.as_ptr() as usize % 4, 0);
++        let ptr = bytes.as_mut_ptr().cast::<Self>();
++        let count = bytes.len() / 4;
++        // SAFETY: Self is Pod and length/alignment were checked. Retain the
++        // current device/library's persistent mapped owner, as for BushCPU.
++        let mapped = unsafe { core::slice::from_raw_parts_mut(ptr, count) };
++        MappedStorageBuffer { mapped, buffer }
++    }
++}
++impl crate::render::pass_builder::pass_resource_access::SsboType for StairsCounterSsbo {
++    fn rg_buffer_hash() -> u64 { 0x0e13_781d_7271_3b06 }
++}
++
+ /// `event:/SFX/StairDraw_OneShot` (O: 0x142c62e70).
+ pub const STAIR_DRAW_ONE_SHOT: &str = "event:/SFX/StairDraw_OneShot";
+ /// Instance parameter (O: 0x142c62943).
+@@ -167,3 +215,78 @@
+         assert_eq!(STAIR_EDITING_SPEED_PARAM, "editing_speed");
+     }
+ }
++
++#[cfg(test)]
++mod canonical_producer_tests {
++    use super::StairsCounterSsbo;
++    use crate::{
++        asset_libraries::ssbo_library::{AssetSsboLibrary, SsboId},
++        render::ssbo::{StorageElement, tests::MockDevice},
++        resources::render_ssbo::LanternSsbo,
++        systems::render_loop::compute_passes::rasterize_buildings::GroundedBuildingsSsbo,
++    };
++    #[test]
++    fn actual_startup_library_keeps_counter_mapped_and_instance_none_unuploaded() {
++        let device = MockDevice::default();
++        let library = AssetSsboLibrary::new();
++        library.add_new::<StairsCounterSsbo>(&device);
++        library.add_new::<LanternSsbo>(&device);
++        library.add_new::<GroundedBuildingsSsbo>(&device);
++        let counter = library.get::<StairsCounterSsbo>().unwrap();
++        assert_eq!(counter.mapped.len(), 1);
++        assert_eq!(counter.buffer.byte_size, 4);
++        assert_eq!(library.instance_count::<LanternSsbo>(), 0);
++        assert_eq!(library.instance_count::<GroundedBuildingsSsbo>(), 0);
++        assert_eq!(SsboId::of::<StairsCounterSsbo>().0.0, 0x0e13781d72713b06);
++        assert_eq!(SsboId::of::<GroundedBuildingsSsbo>().0.0, 0x1c53e91811919db1);
++        let calls = device.created.borrow();
++        assert_eq!(calls.len(), 3);
++        assert_eq!((calls[0].0.size, calls[0].0.usage, calls[0].0.memory, calls[0].0.alignment), (4, 0x22, 4, 4));
++        assert_eq!(calls[0].1, "Stairs Counter");
++        assert_eq!(calls[0].2.as_deref(), Some([0u8; 4].as_slice()));
++        for (index, size, name) in [(1, 0x80000, "LanternSsbo"), (2, 0x27100, "Building Shapes")] {
++            assert_eq!((calls[index].0.size, calls[index].0.usage, calls[index].0.memory, calls[index].0.alignment), (size, 0x22, 1, 4));
++            assert_eq!(calls[index].1, name);
++            assert!(calls[index].2.is_none());
++        }
++        assert_eq!(core::mem::size_of::<crate::systems::render_loop::compute_passes::pass_kit::StairsCounterBuf>(), 4);
++        assert_eq!(StairsCounterSsbo::NAME, "Stairs Counter");
++    }
++    #[test]
++    fn actual_initial_rows_keep_payload_and_instance_counts() {
++        let device = MockDevice::default();
++        let library = AssetSsboLibrary::new();
++        let lanterns = [LanternSsbo { position:[1.0, -0.0, 3.0], intensity_color_id:0x12345678 };2];
++        let buildings = [GroundedBuildingsSsbo([0x7fc12345;8]);3];
++        library.add_new_with_data::<StairsCounterSsbo>(&device, &[StairsCounterSsbo(71)]);
++        library.add_new_with_data::<LanternSsbo>(&device, &lanterns);
++        library.add_new_with_data::<GroundedBuildingsSsbo>(&device, &buildings);
++        assert_eq!(library.instance_count::<LanternSsbo>(), 2);
++        assert_eq!(library.instance_count::<GroundedBuildingsSsbo>(), 3);
++        let calls = device.created.borrow();
++        assert_eq!(calls[0].2.as_deref(), Some(71u32.to_le_bytes().as_slice()));
++        assert_eq!(calls[1].2.as_deref(), Some(bytemuck::cast_slice(&lanterns)));
++        assert_eq!(calls[2].2.as_deref(), Some(bytemuck::cast_slice(&buildings)));
++    }
++    #[test]
++    #[should_panic(expected = "data.len() >= buffer.buffer.desc.size")]
++    fn mapped_page_must_cover_the_returned_descriptor_not_only_the_request() {
++        use crate::render::ssbo::rhapsody_boundary::{BackendError, Buffer, BufferDesc, GraphicsDevice};
++        struct ReturnedLargerDescriptor(MockDevice);
++        impl GraphicsDevice for ReturnedLargerDescriptor {
++            fn create_buffer(&self, desc: &BufferDesc, name: &str, initial: Option<&[u8]>) -> Result<Buffer, BackendError> {
++                let mut buffer = self.0.create_buffer(desc, name, initial)?;
++                buffer.byte_size = 8;
++                Ok(buffer)
++            }
++            fn update_buffer_bytes(&self, buffer: &Buffer, bytes: &[u8], ranges: &[core::ops::Range<usize>], offset: usize) -> Result<(), BackendError> {
++                self.0.update_buffer_bytes(buffer, bytes, ranges, offset)
++            }
++            fn mapped_slice_mut(&self, buffer: &Buffer) -> Option<&mut [u8]> { self.0.mapped_slice_mut(buffer) }
++        }
++        let device = ReturnedLargerDescriptor(MockDevice::default());
++        device.0.map.borrow_mut().resize(4, 0);
++        let _ = <StairsCounterSsbo as crate::asset_libraries::ssbo_library::SsboType>::new_storage_buffer(&device, None);
++    }
++
++}
+--- a/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/rasterize_buildings.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/rasterize_buildings.rs
+@@ -20,7 +20,7 @@
+ //! 8. **"Animate buildings mask"** `/rasterize_buildings_animate.cs.hlsl`（名长 0x16、URI 长 0x24）：`out_mask`（预设 0x15，写 0x32）→
+ //!    `dispatch_2d(mask_extent)`。
+ //!
+-//! `GroundedBuildingsSsbo`：`SsboId` 立即数 0x1c53e91811919db1（与 NAME 的 xxh3 不吻合，NAME U）；缓冲 0x27100 B = 5000 × 32，
++//! `GroundedBuildingsSsbo`：`SsboId` 立即数 0x1c53e91811919db1（NAME = "Building Shapes"）；缓冲 0x27100 B = 5000 × 32，
+ //! `InstanceBuffer` 存储。源记录 `V` 的字段名全部 U（只知偏移与用法）。
+ 
+ use crate::rhapsody_types::TextureDesc;
+@@ -31,7 +31,7 @@
+ use crate::render::pass_builder::pass_resource_access::WriteTextureUnchecked;
+ use crate::render::pass_builder::pass_resources::TypeId128;
+ use crate::render::ssbo::rhapsody_boundary::GraphicsDevice;
+-use crate::render::ssbo::{InstanceBuffer, StorageElement};
++use crate::render::ssbo::{InstanceBuffer, StorageElement, TypedStorageBuffer};
+ use crate::resources::texture_presets::TexturePreset;
+ use crate::systems::render_loop::compute_passes::pass_kit::{PassEnv, binding, binding_hash};
+ 
+@@ -71,19 +71,24 @@
+ 
+ /// GPU 端建筑元素（O：32 B；字段 U，以 u32 位模式保存）。
+ #[repr(C)]
+-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
++#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, bytemuck::Zeroable, bytemuck::Pod)]
+ pub struct GroundedBuildingsSsbo(pub [u32; 8]);
+ 
+ impl StorageElement for GroundedBuildingsSsbo {
+-    /// U：真实 `T::NAME` 与 SsboId 不吻合，这里用类型名。
+-    const NAME: &'static str = "GroundedBuildingsSsbo";
++    /// B141617840 actual registration name.
++    const NAME: &'static str = "Building Shapes";
+     const BUFFER_LEN: usize = MAX_BUILDINGS;
+ }
+ 
+ impl SsboType for GroundedBuildingsSsbo {
+     type Storage = InstanceBuffer<GroundedBuildingsSsbo>;
+     fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
+-        InstanceBuffer::<GroundedBuildingsSsbo>::new_storage_buffer(device, initial)
++        // This type's native None branch does not upload default bytes.
++        let buffer = TypedStorageBuffer::<GroundedBuildingsSsbo>::new_storage_buffer(device, initial);
++        InstanceBuffer {
++            instance_count: initial.map_or(0, |bytes| bytes.len() / core::mem::size_of::<Self>()),
++            buffer,
++        }
+     }
+ }
+ 
+--- a/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/pass_kit.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/pass_kit.rs
+@@ -452,11 +452,7 @@
+     RockyTerrainTriangleBuf,
+     "Rocky Terrain Triangles"
+ );
+-foreign_carrier!(
+-    /// `systems::audio::terrain_stairs_audio::StairsCounterSsbo`（O：0x0e13781d72713b06 = xxh3("Stairs Counter")）。
+-    StairsCounterBuf,
+-    "Stairs Counter"
+-);
++pub use crate::systems::audio::terrain_stairs_audio::StairsCounterSsbo as StairsCounterBuf;
+ 
+ #[cfg(test)]
+ #[path = "pass_kit/test_env.rs"]

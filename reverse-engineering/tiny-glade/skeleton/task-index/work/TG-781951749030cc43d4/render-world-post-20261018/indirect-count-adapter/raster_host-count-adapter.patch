@@ -1,0 +1,75 @@
+--- a/crates/tiny-glade/src/raster_host.rs
++++ b/crates/tiny-glade/src/raster_host.rs
+@@ -834,7 +834,6 @@
+         let prepared: rhapsody::Result<Vec<PreparedDraw>> = draws
+             .into_iter()
+             .map(|packet| {
+-                admit_draw_kind(&packet.kind, &shared.device)?;
+                 let entry = shared
+                     .programs
+                     .with_program(packet.shader.0.0, |program| {
+@@ -922,6 +921,64 @@
+                     ));
+                 }
+                 validate_indirect_ranges(&graph, &draw.packet.kind)?;
++                // Native DrawIndirectCount stays native on enabled devices.
++                // A physically supported but unenabled feature is a configuration
++                // error; only unsupported devices use the GPU platform lowering.
++                if let DrawKind::IndexedIndirectCount { buffer, count_buffer, args } = draw.packet.kind.clone() {
++                    use rhapsody::device::Feature;
++                    if !shared.device.caps().is_enabled(Feature::DrawIndirectCount) {
++                        if shared.device.caps().is_supported(Feature::DrawIndirectCount) {
++                            shared.device.caps().require_enabled(Feature::DrawIndirectCount)?;
++                        }
++                        // Moving a counter snapshot before this render pass
++                        // is equivalent only while its commands/counter remain
++                        // read-only throughout the pass (true for original Nani).
++                        if accesses.iter().any(|a| (a.resource == buffer || a.resource == count_buffer)
++                            && country_core::render::pass_builder::draw_stream::access_is_write(a.access)) {
++                            return Err(rhapsody::Error::unsupported("indirect count source/counter is modified inside the raster pass"));
++                        }
++                        let maximum = args[3] as u32;
++                        let (target, offset, stride) = if maximum == 0 {
++                            (buffer, args[0], args[1])
++                        } else {
++                            let request = rhapsody::rg::indirect_count::IndexedCountRequest {
++                                command_offset: args[0], command_stride: args[1] as u32,
++                                count_offset: args[2], maximum_draws: maximum,
++                            };
++                            // Validate native command limits before allocating.
++                            if maximum > shared.device.max_draw_indirect_count() {
++                                return Err(rhapsody::Error::invalid_usage("indexed count maximum exceeds device draw limit"));
++                            }
++                            if maximum > 1 { shared.device.caps().require_enabled(Feature::MultiDrawIndirect)?; }
++                            let declarer = &self.rg.as_ref().ok_or_else(||
++                                rhapsody::Error::invalid_usage("indirect count lowering requires the frame declarer"))?.declarer;
++                            let commands = graph.resource_handle(buffer)?;
++                            let counter = graph.resource_handle(count_buffer)?;
++                            // Each packet owns independent scratch in this same graph.
++                            // The resource-index scope advances with every declaration;
++                            // existing names are checked before allocation as well.
++                            let mut scope = graph.declaration().resources.len();
++                            let scratch_name = loop {
++                                let candidate = format!("platform indexed indirect count commands [{name}:{scope}]");
++                                if !graph.declaration().resources.iter().any(|r| r.name == candidate) {
++                                    break candidate;
++                                }
++                                scope = scope.checked_add(1).ok_or_else(||
++                                    rhapsody::Error::invalid_usage("indirect scratch scope overflow"))?;
++                            };
++                            let scratch = declarer.declare(&mut graph, &scratch_name,
++                                ResourceSpec::Buffer(request.scratch_desc()?))?;
++                            shared.shaders.indexed_count_adapter()?.add_pass(&mut graph,
++                                commands, counter, scratch, request, shared.dynamic.clone())?;
++                            (scratch.raw(), 0, 20)
++                        };
++                        draw.packet.kind = DrawKind::IndexedIndirect {
++                            buffer: target, arg_48: offset, arg_50: u64::from(maximum),
++                            arg_58: stride, first_index_count: None,
++                        };
++                    }
++                }
++                admit_draw_kind(&draw.packet.kind, &shared.device)?;
+                 if matches!(
+                     draw.packet.kind,
+                     DrawKind::InstancedGlDrawFlag { .. }

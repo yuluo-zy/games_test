@@ -1,4 +1,4 @@
-//! Allocation regression probe for cached lookups and repeated pack lifetimes.
+//! Allocation regression probe for translation/cache hits and repeated pack lifetimes.
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -33,7 +33,28 @@ unsafe impl GlobalAlloc for CountedSystem {
 static ALLOCATOR: CountedSystem = CountedSystem;
 
 fn main() {
-    let library = lang_lib::LanguageLibrary::new("allocation-probe".into(), Default::default());
+    let library = lang_lib::LanguageLibrary::new(
+        "allocation-probe".into(),
+        std::collections::HashMap::from([(
+            "review.present.translation".to_owned(),
+            std::sync::Arc::from("Translated text"),
+        )]),
+    );
+    let translated = library.get("review.present.translation");
+    let before = ALLOCATIONS.load(Ordering::Relaxed);
+    for _ in 0..10_000 {
+        assert!(std::sync::Arc::ptr_eq(
+            &std::hint::black_box(library.get("review.present.translation")),
+            &translated,
+        ));
+    }
+    let allocations = ALLOCATIONS.load(Ordering::Relaxed) - before;
+    println!("{{\"translation_hits\":10000,\"allocations\":{allocations}}}");
+    assert_eq!(
+        allocations, 0,
+        "translation hits must share their owned string"
+    );
+
     let key = "review.missing.translation";
     let first = library.get(key);
     let before = ALLOCATIONS.load(Ordering::Relaxed);

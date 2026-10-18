@@ -1,0 +1,154 @@
+//! B manage_tree_prefabs@141bf16c0/5342B on actual clearing placements.
+//! Evaluates every placement before mutation, then issues real entity/prefab
+//! commands; the original chain deliberately does not flush deferred commands.
+use bevy_ecs::prelude::*;
+use country_core::{
+    asset_libraries::ssbo_library::AssetSsboLibrary,
+    components::TreeMarkedForDeletion,
+    render::nani::instance_updates::pack_2x16f_uint,
+    resources::{
+        events::ConstructTimberframeCmd,
+        terrain_height::{TerrainHeightSsbo, TerrainHeightsData},
+        terrain_rock_mask::{TerrainRockMaskSsbo, sample_at_world_xz},
+        time::GameTime,
+        tree_storage::{InteractableForestPlacements, InteractableForestTree},
+        world_raster_defs::{GardenRaster, WaterRaster},
+    },
+    systems::{
+        audio::tree_audio::TreeAmbience, paths::PathRastersResources, prefab::SpawnPrefabCmd,
+        ui::signifiers::signifier_create::UiSignifierStream,
+        wall::wall_state::wall_spatial_hash::WallSpatialHash,
+    },
+};
+use glam::Vec2;
+use utils::geometry::Rectangle2d;
+
+pub const WORLD_BOUND: f32 = 65.0;
+pub const TREE_SHAPE_GAP: f32 = 7.0;
+
+#[derive(Default)]
+pub struct MemCache {
+    pub candidates: Vec<(Option<Entity>, bool)>,
+}
+
+fn shape_blocks(position: Vec2, bytes: &[u8; 28]) -> bool {
+    let f = |at: usize| f32::from_le_bytes(bytes[at..at + 4].try_into().unwrap());
+    if bytes[0] & 1 == 0 {
+        f(12) + TREE_SHAPE_GAP > position.distance(Vec2::new(f(4), f(8)))
+    } else {
+        let rect = Rectangle2d {
+            axis: Vec2::new(f(4), f(8)),
+            center: Vec2::new(f(12), f(16)),
+            size: Vec2::new(f(20), f(24)),
+        };
+        TREE_SHAPE_GAP > position.distance(rect.closest_point_on_perimeter(position))
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn manage_tree_prefabs<C: Send + Sync + 'static>(
+    _signifiers: Res<UiSignifierStream>,
+    ssbos: Res<AssetSsboLibrary>,
+    mut placements: ResMut<InteractableForestPlacements>,
+    mut commands: Commands,
+    mut spawns: EventWriter<SpawnPrefabCmd>,
+    marked: Query<&TreeMarkedForDeletion>,
+    mut constructs: EventReader<ConstructTimberframeCmd>,
+    walls: Res<WallSpatialHash>,
+    time: Res<GameTime>,
+    heights: Res<TerrainHeightsData<TerrainHeightSsbo>>,
+    paths: PathRastersResources,
+    water: Res<WaterRaster>,
+    garden: Res<GardenRaster>,
+    mut cache: Local<MemCache>,
+) {
+    cache.candidates.clear();
+    let grids = paths.as_float_grid();
+    let water = (**water).as_ref();
+    let garden = (**garden).as_ref();
+    // Original requires the canonical mapped rock mask, even with no trees.
+    let rock = ssbos.get::<TerrainRockMaskSsbo>().unwrap();
+    let rock_words: &[u32] = bytemuck::cast_slice(rock.mapped);
+    let last_shape = constructs.read().last();
+    for tree in &placements.records {
+        let p = tree.placement.position;
+        let xz = Vec2::new(p.x, p.z);
+        let keep = if xz.x.abs() > WORLD_BOUND || xz.y.abs() > WORLD_BOUND {
+            true
+        } else {
+            let p0 = grids[0].bilinear_sample_at_world_xz(xz.x, xz.y, 130.0, 130.0);
+            let p1 = grids[1].bilinear_sample_at_world_xz(xz.x, xz.y, 130.0, 130.0);
+            let p2 = grids[2].bilinear_sample_at_world_xz(xz.x, xz.y, 130.0, 130.0);
+            let p3 = grids[3].bilinear_sample_at_world_xz(xz.x, xz.y, 130.0, 130.0);
+            let wet = water.bilinear_sample_at_world_xz(xz.x, xz.y, 130.0, 130.0);
+            let garden = garden.bilinear_sample_at_world_xz(xz.x, xz.y, 130.0, 130.0);
+            if wet > 0.0 || garden > 0.0 {
+                false
+            } else {
+                let on_rock = sample_at_world_xz(rock_words, xz.x, xz.y) != 0;
+                let sum = ((p0 + p1) + p2) + p3;
+                let lower = if 0.0 > sum { 0.0 } else { sum };
+                let density = if 1.0 < lower { 1.0 } else { lower };
+                !(density > 0.0
+                    || on_rock
+                    || last_shape.is_some_and(|shape| shape_blocks(xz, &shape.shape))
+                    || walls.any_occupied_cell_in_circle(xz, TREE_SHAPE_GAP))
+            }
+        };
+        cache.candidates.push((tree.entity, keep));
+    }
+    let mut rng = fastrand::Rng::with_seed(utils::rng::init_rng(time.frame_count));
+    let first = !placements.initialized;
+    for (index, &(entity, keep)) in cache.candidates.iter().enumerate() {
+        // Original computes this RNG/initial data before each keep branch.
+        let (delay, progress, initial_scale) = if first {
+            (0.0, 1.0, placements.records[index].placement.scale)
+        } else {
+            let r = rng.f32();
+            (r * 0.75 + (1.0 - r) * 0.3, 0.0, 0.0)
+        };
+        if keep {
+            if let Some(entity) = entity {
+                if marked.contains(entity) {
+                    commands.entity(entity).remove::<TreeMarkedForDeletion>();
+                }
+                continue;
+            }
+            let record = &mut placements.records[index];
+            let mut placement = record.placement;
+            let p = placement.position;
+            if -WORLD_BOUND <= p.x && p.x < WORLD_BOUND && -WORLD_BOUND <= p.z && p.z < WORLD_BOUND
+            {
+                placement.position.y = heights.sample_at_world_xz(p.x, p.z);
+            }
+            let entity = commands
+                .spawn((
+                    InteractableForestTree {
+                        placement_index: index,
+                        amplitude: record.placement.scale,
+                        progress,
+                        delay,
+                    },
+                    TreeAmbience {
+                        position: placement.position
+                            + glam::Vec3::new(0.0, initial_scale * 10.0, 0.0),
+                    },
+                ))
+                .id();
+            placement.scale = initial_scale;
+            placement.custom0 = record.billboard_expansion_scale.to_bits();
+            placement.anim_t_packed = pack_2x16f_uint(1.0, 1.0);
+            spawns.write(SpawnPrefabCmd {
+                prefab_name: Some(record.prefab.clone()),
+                entity: Some(entity),
+                placement,
+            });
+            record.entity = Some(entity);
+        } else if let Some(entity) = entity {
+            if !marked.contains(entity) {
+                commands.entity(entity).insert(TreeMarkedForDeletion);
+            }
+        }
+    }
+    placements.initialized = true;
+}

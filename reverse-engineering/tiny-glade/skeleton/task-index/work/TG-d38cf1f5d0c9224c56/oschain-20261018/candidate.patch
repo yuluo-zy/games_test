@@ -1,0 +1,298 @@
+--- games_test/tiny-glade/crates/country-core/src/systems/backend/input/mod_key.rs
++++ games_test/tiny-glade/crates/country-core/src/systems/backend/input/mod_key.rs
+@@ -1,162 +1,159 @@
+-//! `mod_key.rs` — 修饰键状态与吸附禁用开关（B `systems::mod_key`）。
+-//!
+-//! 证据：
+-//! - `Modifiers::disable_snapping` @0x1408c5680（ICF 折叠，与 `ActiveInputMode::is_controller`
+-//!   同码）：`movzx eax, byte ptr [rcx]; ret` —— 读位标志组第 0 字节（[O，mod-key 手解]）。
+-//! - `is_disable_snapping_just_pressed` @0x140af9bf0：`movzx eax, byte ptr [rcx + 1]; ret`
+-//!   —— 读位标志组第 1 字节（[O，0x140af9bf0.asm]；按 PDB 名差异分属 just-pressed 沿 vs
+-//!   稳态，机器码同形 U）。
+-//! - `update_mod_key_state` @0x140af9c00（① T3 契约 t3-input-update_mod_key_state）：
+-//!   `setb 字节@0` 门（状态 `[config+0x78] < 3`）+ 表1 跳表（0x142ae5f50，8 条目）分派写
+-//!   字节@1：组 0=强制 ON / 1,3,4=强制 OFF / 2=阈值 `ucomiss xmm0,[+0x7c]` setae /
+-//!   5,6,7=动作键组（键码映射待取证）。config 资源身份（`+0x78` 状态 / `+0x7c` 阈值）
+-//!   待①取证，以注册适配 [`ModKeyConfig`] 承载（不伪造）。
+-//!
+-//! 布局：`{u32 @+0, 字节@+1}`（位标志字节组，非 4 个独立 bool）。字节@0 = `disable_snapping`，
+-//! 字节@1 = just-pressed 沿；其余位待取证。
++//! B update_mod_key_state @140af9c00, complete506B. The two original
++//! ActionSetStates reads project digital15/snapping_disable and
++//! digital39/toggle_snapping; no ModKeyConfig resource exists in that contract.
++use crate::{
++    input::action_set::{ActionSetStates, DigitalActionState},
++    resources::walls::decorator::DecoratorOpEvent,
++    systems::mode_manager::AppMode,
++};
++use bevy_ecs::prelude::*;
+ 
+-use bevy_ecs::resource::Resource;
+-use bevy_ecs::system::{Res, ResMut};
+-
+-/// `Modifiers`（原 `systems::mod_key::Modifiers`）。
+ #[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
+ pub struct Modifiers {
+-    /// Native u32 @+0：位标志字节组 { 0 = disable_snapping, 1 = just_pressed 沿, … 待取证 }。
+     pub flags: u32,
+ }
+-
+ impl Modifiers {
+-    /// `Modifiers::disable_snapping` @0x1408c5680：读位标志组第 0 字节非零。
+     pub fn disable_snapping(self) -> bool {
+-        (self.flags & 0xff) != 0
++        self.flags as u8 != 0
+     }
+-
+-    /// `is_disable_snapping_just_pressed` @0x140af9bf0：读位标志组第 1 字节非零。
+     pub fn is_disable_snapping_just_pressed(self) -> bool {
+-        ((self.flags >> 8) & 0xff) != 0
++        (self.flags >> 8) as u8 != 0
+     }
+ }
+ 
+-/// 注册适配资源：native `update_mod_key_state` 读 `[config+0x78]` 状态 u32（键组选择器，
+-/// 0..7）+ `[config+0x7c]` 阈值 f32（组 2 ucomiss 比较）。config 资源身份待①取证；
+-/// 本适配承载状态/阈值两读面，宿主接线（① 定身份后替换为真资源）。
+-#[derive(Resource, Clone, Copy, Debug, Default)]
+-pub struct ModKeyConfig {
+-    /// Native `[config+0x78]`：状态 u32（表1 键组选择器 0..7）。
+-    pub state: u32,
+-    /// Native `[config+0x7c]`：阈值 f32（组 2 `ucomiss xmm0,[+0x7c]` setae 比较）。
+-    pub threshold: f32,
++/// Original Local owner: previous AppMode16B plus toggled byte@+10.
++/// Native zero/default state corresponds to Editing(None), toggled=false.
++#[derive(Clone, Copy, Debug, Default)]
++pub struct ToggleSnapping {
++    pub previous_mode: AppMode,
++    pub toggled: bool,
+ }
+ 
+-/// `update_mod_key_state` 0x140af9c00 producer（① T3 契约 §1/§2/§5 可直接落地部分）：
+-/// - `setb 字节@0` 门（0x140af9c0b）：状态 `< 3` → disable_snapping 位置 1。
+-/// - 表1 跳表（0x142ae5f50，8 条目）分派写字节@1（just-pressed 沿）：
+-///   组 0（0x140af9c4b）= 强制 ON；组 1/3/4（0x140af9c38）= 强制 OFF；
+-///   组 2（0x140af9c3d）= `0.0 >= [+0x7c]` setae；组 5/6/7（0x140af9ca0/8c/d24）
+-///   = 动作/按键组 handler，**键码映射待取证**，缺键状态源时按 OFF 登记（不造）。
+-pub fn update_mod_key_state(config: Res<ModKeyConfig>, mut modifiers: ResMut<Modifiers>) {
+-    let mut flags = modifiers.flags;
+-    // O: setb 字节@0 —— 状态 < 3 → disable_snapping 位。
+-    flags = (flags & !0xff) | u32::from(config.state < 3);
+-    // O: 表1 分派 —— byte@1 = just-pressed 沿。
+-    let just_pressed = match config.state {
+-        0 => true,
+-        1 | 3 | 4 => false,
+-        2 => 0.0 >= config.threshold,
+-        _ => false,
+-    };
+-    flags = (flags & !0x100) | (u32::from(just_pressed) << 8);
+-    modifiers.flags = flags;
++/// Typed equal AppModes compare the same active payloads as original tables
++/// (wall shape, cobblestone index, eraser layer, decorator kind, editing id).
++fn update_state(
++    disable: DigitalActionState,
++    toggle: DigitalActionState,
++    mode: AppMode,
++    local: &mut ToggleSnapping,
++    modifiers: &mut Modifiers,
++    mut consume_decorator_events: impl FnMut() -> bool,
++) {
++    let disabled = disable.pressed();
++    let pressed = disable.just_pressed();
++    modifiers.flags = (modifiers.flags & !0xffff) | u32::from(disabled) | (u32::from(pressed) << 8);
++    // Original short circuit: when the mode changes the reader is not advanced
++    // this frame. Otherwise it clears all unread events and tests nonempty.
++    if local.previous_mode != mode || consume_decorator_events() {
++        local.toggled = false;
++    }
++    local.previous_mode = mode;
++    if toggle.just_pressed() {
++        local.toggled = !local.toggled;
++    }
++    if local.toggled {
++        modifiers.flags = (modifiers.flags & !0xff) | 1;
++    }
++}
++
++pub fn update_mod_key_state(
++    actions: Res<ActionSetStates>,
++    mut modifiers: ResMut<Modifiers>,
++    // The duplicate original Res has the same identity; the current public
++    // array API shares its read-only borrow instead of copying either owner.
++    toggle_actions: Res<ActionSetStates>,
++    mut local: Local<ToggleSnapping>,
++    mut decorator_events: EventReader<DecoratorOpEvent>,
++    mode: Res<AppMode>,
++) {
++    update_state(
++        actions.digital[15],
++        toggle_actions.digital[39],
++        *mode,
++        &mut local,
++        &mut modifiers,
++        || decorator_events.read().last().is_some(),
++    );
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+-
++    use crate::input::action_set::DigitalActionPhase as P;
++    fn action(phase: P, timer_seconds: f32) -> DigitalActionState {
++        DigitalActionState {
++            phase,
++            timer_seconds,
++        }
++    }
+     #[test]
+-    fn predicates_read_the_flag_bytes() {
+-        // byte@0 = disable_snapping；byte@1 = just-pressed。
+-        let steady = Modifiers { flags: 0x01 };
+-        assert!(steady.disable_snapping());
+-        assert!(!steady.is_disable_snapping_just_pressed());
+-        let edge = Modifiers { flags: 0x1_00 };
+-        assert!(!edge.disable_snapping());
+-        assert!(edge.is_disable_snapping_just_pressed());
+-        let both = Modifiers { flags: 0x1_01 };
+-        assert!(both.disable_snapping());
+-        assert!(both.is_disable_snapping_just_pressed());
+-        // 高位字节不影响这两个谓词（待取证位不猜语义）。
+-        let high = Modifiers { flags: 0x00ff_0000 };
+-        assert!(!high.disable_snapping());
+-        assert!(!high.is_disable_snapping_just_pressed());
++    fn native_toggle_state_is_reset_by_mode_or_decorator_and_preserves_unread_on_mode_change() {
++        let idle = action(P::Idle, 0.0);
++        let pressed = action(P::JustPressed, 0.0);
++        let mut local = ToggleSnapping::default();
++        let mut modifiers = Modifiers { flags: 0xabcd_0000 };
++        update_state(
++            idle,
++            pressed,
++            AppMode::default(),
++            &mut local,
++            &mut modifiers,
++            || false,
++        );
++        assert!(modifiers.disable_snapping());
++        assert!(!modifiers.is_disable_snapping_just_pressed());
++        let mut calls = 0;
++        update_state(
++            idle,
++            idle,
++            AppMode::Path,
++            &mut local,
++            &mut modifiers,
++            || {
++                calls += 1;
++                true
++            },
++        );
++        assert_eq!(calls, 0);
++        assert!(!local.toggled);
++        update_state(
++            idle,
++            pressed,
++            AppMode::Path,
++            &mut local,
++            &mut modifiers,
++            || {
++                calls += 1;
++                true
++            },
++        );
++        assert_eq!(calls, 1);
++        assert!(local.toggled);
++        assert_eq!(modifiers.flags & 0xffff_0000, 0xabcd_0000);
+     }
+-
+-    /// 测试适配：`update_mod_key_state` 现按 Bevy 系统签名消费 `Res<ModKeyConfig>` /
+-    /// `ResMut<Modifiers>`，测试经临时 `World` + `Schedule` 走一遍再回写。
+-    fn apply_mod_key_state(config: ModKeyConfig, out: &mut Modifiers) {
+-        use bevy_ecs::schedule::Schedule;
+-        use bevy_ecs::world::World;
+-        let mut world = World::new();
+-        world.insert_resource(config);
+-        world.insert_resource(*out);
+-        let mut schedule = Schedule::default();
+-        schedule.add_systems(update_mod_key_state);
+-        schedule.run(&mut world);
+-        *out = world.remove_resource::<Modifiers>().unwrap();
+-    }
+-
+     #[test]
+-    fn update_writes_flag_bytes_per_table_one() {
+-        // 组 0：强制 ON（byte@1 = 1）+ 状态 <3 → byte@0 = 1。
+-        let mut m = Modifiers::default();
+-        apply_mod_key_state(
+-            ModKeyConfig {
+-                state: 0,
+-                threshold: 0.0,
+-            },
+-            &mut m,
++    fn native_disable_and_toggle_have_independent_edge_bytes() {
++        let mut local = ToggleSnapping::default();
++        let mut out = Modifiers::default();
++        update_state(
++            action(P::Repeating, -0.01),
++            action(P::Idle, 0.0),
++            AppMode::default(),
++            &mut local,
++            &mut out,
++            || false,
+         );
+-        assert!(m.disable_snapping());
+-        assert!(m.is_disable_snapping_just_pressed());
+-        // 组 1/3/4：强制 OFF（byte@1 = 0）。
+-        let mut m = Modifiers { flags: 0x1_00 };
+-        apply_mod_key_state(
+-            ModKeyConfig {
+-                state: 4,
+-                threshold: 0.0,
+-            },
+-            &mut m,
++        assert!(out.disable_snapping());
++        assert!(out.is_disable_snapping_just_pressed());
++        update_state(
++            action(P::Repeating, f32::NAN),
++            action(P::Idle, 0.0),
++            AppMode::default(),
++            &mut local,
++            &mut out,
++            || false,
+         );
+-        assert!(!m.is_disable_snapping_just_pressed());
+-        // 组 2：阈值 setae = 0.0 >= threshold。
+-        let mut m = Modifiers::default();
+-        apply_mod_key_state(
+-            ModKeyConfig {
+-                state: 2,
+-                threshold: -1.0,
+-            },
+-            &mut m,
+-        );
+-        assert!(m.is_disable_snapping_just_pressed());
+-        let mut m = Modifiers::default();
+-        apply_mod_key_state(
+-            ModKeyConfig {
+-                state: 2,
+-                threshold: 0.5,
+-            },
+-            &mut m,
+-        );
+-        assert!(!m.is_disable_snapping_just_pressed());
+-        // 状态 >=3 → byte@0 = 0（disable_snapping 关）。
+-        let mut m = Modifiers { flags: 0x1 };
+-        apply_mod_key_state(
+-            ModKeyConfig {
+-                state: 5,
+-                threshold: 0.0,
+-            },
+-            &mut m,
+-        );
+-        assert!(!m.disable_snapping());
+-        assert!(!m.is_disable_snapping_just_pressed());
++        assert!(out.disable_snapping());
++        assert!(!out.is_disable_snapping_just_pressed());
+     }
+ }

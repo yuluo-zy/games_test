@@ -1,0 +1,83 @@
+
+void __cdecl country_core::input::input_stream::InputStream::on_history_sync(void)
+
+{
+  undefined8 *puVar1;
+  undefined8 uVar2;
+  ulonglong uVar3;
+  undefined8 uVar4;
+  undefined8 uVar5;
+  undefined8 uVar6;
+  undefined8 uVar7;
+  undefined8 uVar8;
+  undefined8 uVar9;
+  undefined8 uVar10;
+  undefined8 uVar11;
+  undefined8 uVar12;
+  undefined8 uVar13;
+  ulonglong uVar14;
+  longlong lVar15;
+  ulonglong *in_RCX;
+  ulonglong uVar16;
+  undefined8 *in_RDX;
+  ulonglong uVar17;
+  char in_R8B;
+  
+  if (in_R8B == '\0') {
+    alloc::collections::vec_deque::VecDeque::
+    truncate<country_core::input::input_stream::InputFrame,alloc::alloc::Global>();
+    in_RCX[6] = 0;
+    alloc::collections::vec_deque::VecDeque::
+    truncate<country_core::input::input_stream::InputStreamSyncPoint,alloc::alloc::Global>();
+    in_RCX[2] = 0;
+  }
+  else if ((in_RCX[3] - 9 < 0xfffffffffffffff6) || (in_RCX[7] - 10000 < 0xffffffffffffd8ef)) {
+    drop_oldest_sync_point();
+  }
+  uVar2 = in_RDX[10];
+  uVar4 = in_RDX[8];
+  uVar5 = in_RDX[9];
+  uVar6 = *in_RDX;
+  uVar7 = in_RDX[1];
+  uVar8 = in_RDX[2];
+  uVar9 = in_RDX[3];
+  uVar10 = in_RDX[4];
+  uVar11 = in_RDX[5];
+  uVar12 = in_RDX[6];
+  uVar13 = in_RDX[7];
+  uVar3 = in_RCX[7];
+  uVar16 = *in_RCX;
+  uVar14 = in_RCX[3];
+  if (uVar14 == uVar16) {
+    alloc::collections::vec_deque::VecDeque::
+    grow<country_core::input::input_stream::InputStreamSyncPoint,alloc::alloc::Global>();
+    uVar16 = *in_RCX;
+    uVar14 = in_RCX[3];
+  }
+  uVar17 = 0;
+  if (uVar16 <= uVar14 + in_RCX[2]) {
+    uVar17 = uVar16;
+  }
+  uVar16 = in_RCX[1];
+  lVar15 = ((uVar14 + in_RCX[2]) - uVar17) * 0x60;
+  puVar1 = (undefined8 *)(uVar16 + 0x50 + lVar15);
+  *puVar1 = uVar2;
+  puVar1[1] = uVar3;
+  puVar1 = (undefined8 *)(uVar16 + 0x40 + lVar15);
+  *puVar1 = uVar4;
+  puVar1[1] = uVar5;
+  puVar1 = (undefined8 *)(uVar16 + 0x30 + lVar15);
+  *puVar1 = uVar12;
+  puVar1[1] = uVar13;
+  puVar1 = (undefined8 *)(uVar16 + 0x20 + lVar15);
+  *puVar1 = uVar10;
+  puVar1[1] = uVar11;
+  puVar1 = (undefined8 *)(uVar16 + 0x10 + lVar15);
+  *puVar1 = uVar8;
+  puVar1[1] = uVar9;
+  *(undefined8 *)(uVar16 + lVar15) = uVar6;
+  ((undefined8 *)(uVar16 + lVar15))[1] = uVar7;
+  in_RCX[3] = in_RCX[3] + 1;
+  return;
+}
+

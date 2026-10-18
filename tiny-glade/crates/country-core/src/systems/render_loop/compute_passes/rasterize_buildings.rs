@@ -20,7 +20,7 @@
 //! 8. **"Animate buildings mask"** `/rasterize_buildings_animate.cs.hlsl`（名长 0x16、URI 长 0x24）：`out_mask`（预设 0x15，写 0x32）→
 //!    `dispatch_2d(mask_extent)`。
 //!
-//! `GroundedBuildingsSsbo`：`SsboId` 立即数 0x1c53e91811919db1（与 NAME 的 xxh3 不吻合，NAME U）；缓冲 0x27100 B = 5000 × 32，
+//! `GroundedBuildingsSsbo`：`SsboId` 立即数 0x1c53e91811919db1（NAME = "Building Shapes"）；缓冲 0x27100 B = 5000 × 32，
 //! `InstanceBuffer` 存储。源记录 `V` 的字段名全部 U（只知偏移与用法）。
 
 use crate::rhapsody_types::TextureDesc;
@@ -31,7 +31,7 @@ use crate::render::pass_builder::compute_pass_builder::RecordedComputePass;
 use crate::render::pass_builder::pass_resource_access::WriteTextureUnchecked;
 use crate::render::pass_builder::pass_resources::TypeId128;
 use crate::render::ssbo::rhapsody_boundary::GraphicsDevice;
-use crate::render::ssbo::{InstanceBuffer, StorageElement};
+use crate::render::ssbo::{InstanceBuffer, StorageElement, TypedStorageBuffer};
 use crate::resources::texture_presets::TexturePreset;
 use crate::systems::render_loop::compute_passes::pass_kit::{PassEnv, binding, binding_hash};
 
@@ -71,19 +71,24 @@ pub const SKIP_ABOVE: f32 = 0.05;
 
 /// GPU 端建筑元素（O：32 B；字段 U，以 u32 位模式保存）。
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, bytemuck::Zeroable, bytemuck::Pod)]
 pub struct GroundedBuildingsSsbo(pub [u32; 8]);
 
 impl StorageElement for GroundedBuildingsSsbo {
-    /// U：真实 `T::NAME` 与 SsboId 不吻合，这里用类型名。
-    const NAME: &'static str = "GroundedBuildingsSsbo";
+    /// B141617840 actual registration name.
+    const NAME: &'static str = "Building Shapes";
     const BUFFER_LEN: usize = MAX_BUILDINGS;
 }
 
 impl SsboType for GroundedBuildingsSsbo {
     type Storage = InstanceBuffer<GroundedBuildingsSsbo>;
     fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
-        InstanceBuffer::<GroundedBuildingsSsbo>::new_storage_buffer(device, initial)
+        // This type's native None branch does not upload default bytes.
+        let buffer = TypedStorageBuffer::<GroundedBuildingsSsbo>::new_storage_buffer(device, initial);
+        InstanceBuffer {
+            instance_count: initial.map_or(0, |bytes| bytes.len() / core::mem::size_of::<Self>()),
+            buffer,
+        }
     }
 }
 
@@ -201,6 +206,9 @@ pub fn declare_passes(
     passes.push(
         env.pass(ANIMATE.0, ANIMATE.1)
             .bind_texture(OUT_MASK, &TexturePreset(0x15), 0x32)
+            // Original SPV loads both channels before replacing the animated
+            // second channel; the blur producer must remain live.
+            .preserve_storage_texture_contents(OUT_MASK)
             .dispatch_2d(w, h),
     );
     passes

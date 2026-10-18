@@ -77,7 +77,7 @@ pub fn forest_audio_system<S: Studio + Send + Sync + 'static>(
             let _ = current.set_position(position);
         }
     } else {
-        let _ = state.loop_player.stop(std::time::Duration::ZERO);
+        let _ = state.loop_player.stop_now();
     }
 }
 

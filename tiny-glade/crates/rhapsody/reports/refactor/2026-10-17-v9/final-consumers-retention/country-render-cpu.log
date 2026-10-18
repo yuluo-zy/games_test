@@ -1,0 +1,828 @@
+   Compiling utils v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/utils)
+   Compiling tg-terrain v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/terrain)
+   Compiling country-core v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core)
+warning: unused import: `bevy_ecs::prelude::*`
+  --> crates/country-core/src/resources/stairs/invalidate.rs:49:9
+   |
+49 |     use bevy_ecs::prelude::*;
+   |         ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `AudioInstance`
+  --> crates/country-core/src/systems/audio/wall_audio_orchestrator.rs:12:45
+   |
+12 |     resources::audio_resources::{AudioCore, AudioInstance, Studio},
+   |                                             ^^^^^^^^^^^^^
+
+warning: unused import: `AudioInstance`
+  --> crates/country-core/src/systems/audio/wall_audio_path.rs:11:45
+   |
+11 |     resources::audio_resources::{AudioCore, AudioInstance, Studio},
+   |                                             ^^^^^^^^^^^^^
+
+warning: unused import: `SubworldColliderHandle`
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:44:54
+   |
+44 | use crate::systems::collision::world::{RaycastWorld, SubworldColliderHandle};
+   |                                                      ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `DebugColor`
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:45:31
+   |
+45 | use crate::utils::debug_viz::{DebugColor, DebugLine, DebugSphere};
+   |                               ^^^^^^^^^^
+
+warning: unused import: `glam::Vec3`
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:46:5
+   |
+46 | use glam::Vec3;
+   |     ^^^^^^^^^^
+
+warning: unused imports: `Roof`, `WallId`, `commands::*`, `public_walls::PublicWalls`, `roof_customization::FlatRoofRimRequest`, `time::GameTime`, and `wall_state::WallId as ObservedWallId`
+  --> crates/country-core/src/systems/history/tests.rs:5:9
+   |
+ 5 |         roof_customization::FlatRoofRimRequest,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 6 |         wall_state::WallId as ObservedWallId,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+10 |         roofs::{Roof, commands::*},
+   |                 ^^^^  ^^^^^^^^^^^
+11 |         time::GameTime,
+   |         ^^^^^^^^^^^^^^
+12 |         walls::{WallId, public_walls::PublicWalls},
+   |                 ^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `bevy_ecs::schedule::IntoScheduleConfigs`
+  --> crates/country-core/src/systems/save/mod.rs:53:5
+   |
+53 | use bevy_ecs::schedule::IntoScheduleConfigs;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `WallId`
+  --> crates/country-core/src/systems/wall/snapping/snapping_init.rs:91:17
+   |
+91 |         walls::{WallId, WallState},
+   |                 ^^^^^^
+
+warning: unused variable: `emit`
+   --> crates/country-core/src/systems/ivy/ivy_grower.rs:454:5
+    |
+454 |     emit: &mut impl FnMut(IvySegmentDoneGrowingMsg),
+    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_emit`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `name` is never read
+  --> crates/country-core/src/systems/audio/music/load_glade_audio.rs:89:9
+   |
+88 |     struct Event {
+   |            ----- field in this struct
+89 |         name: String,
+   |         ^^^^
+   |
+   = note: `Event` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `kind_filtered` is never used
+  --> crates/country-core/src/systems/collision/visualize_colliders.rs:60:4
+   |
+60 | fn kind_filtered(kind: u8, gui_byte: u8) -> bool {
+   |    ^^^^^^^^^^^^^
+
+warning: function `empty_history` is never used
+  --> crates/country-core/src/systems/history/tests.rs:16:4
+   |
+16 | fn empty_history() -> History {
+   |    ^^^^^^^^^^^^^
+
+warning: structure field `Wall` should have a snake case name
+   --> crates/country-core/src/systems/save/snapshot.rs:687:12
+    |
+687 |     Wall { Wall: u64 },
+    |            ^^^^ help: convert the identifier to snake case (notice the capitalization): `wall`
+    |
+    = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default
+
+warning: structure field `Stair` should have a snake case name
+   --> crates/country-core/src/systems/save/snapshot.rs:689:13
+    |
+689 |     Stair { Stair: u64 },
+    |             ^^^^^ help: convert the identifier to snake case (notice the capitalization): `stair`
+
+warning: structure field `Wall` should have a snake case name
+   --> crates/country-core/src/systems/save/snapshot.rs:721:12
+    |
+721 |     Wall { Wall: DecoratorWallDstJson },
+    |            ^^^^ help: convert the identifier to snake case (notice the capitalization): `wall`
+
+warning: structure field `Terrain` should have a snake case name
+   --> crates/country-core/src/systems/save/snapshot.rs:722:15
+    |
+722 |     Terrain { Terrain: DecoratorTerrainDstJson },
+    |               ^^^^^^^ help: convert the identifier to snake case: `terrain`
+
+warning: `country-core` (lib test) generated 17 warnings (run `cargo fix --lib -p country-core --tests` to apply 10 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 41.33s
+     Running unittests src/lib.rs (target/debug/deps/country_core-8ae16c4d1c1dd423)
+
+running 393 tests
+test render::atmosphere::tests::lerp_endpoints_are_exact ... ok
+test render::directional_light::tests::layout_matches_original ... ok
+test render::directional_light::tests::look_at_maps_eye_to_origin_and_target_down_minus_z ... ok
+test render::directional_light::tests::set_direction_keeps_distance_and_target ... ok
+test render::dirty_index_range::tests::add_is_inclusive_end_and_merges ... ok
+test render::dirty_index_range::tests::empty_sentinel ... ok
+test render::frame_constants::tests::reset_flag_is_zero_test ... ok
+test render::frame_constants::tests::size_and_default ... ok
+test render::frame_constants::tests::view_indexing ... ok
+test render::load_texture::tests::bad_magic_panics_with_path - should panic ... 
+thread 'render::load_texture::tests::bad_magic_panics_with_path' (21519785) panicked at crates/country-core/src/render/load_texture.rs:106:5:
+assertion `left == right` failed: Image q has an incorrect magic identifier
+  left: 1213211004
+ right: 1213211011
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+ok
+test render::load_texture::tests::bad_version_panics_with_path - should panic ... 
+thread 'render::load_texture::tests::bad_version_panics_with_path' (21519786) panicked at crates/country-core/src/render/load_texture.rs:113:5:
+assertion `left == right` failed: Image q has incorrect version
+  left: 9
+ right: 8
+ok
+test render::load_texture::tests::contract_device_creates_texture_from_desc ... ok
+test render::load_texture::tests::mip_count_over_255_panics - should panic ... 
+thread 'render::load_texture::tests::mip_count_over_255_panics' (21519788) panicked at crates/country-core/src/render/load_texture.rs:132:40:
+called `Result::unwrap()` on an `Err` value: TryFromIntError(PosOverflow)
+ok
+test render::load_texture::tests::misaligned_pointer_panics - should panic ... 
+thread 'render::load_texture::tests::misaligned_pointer_panics' (21519789) panicked at crates/country-core/src/render/load_texture.rs:104:5:
+assertion `left == right` failed
+  left: 1
+ right: 0
+ok
+test render::load_texture::tests::parses_footer_fields_and_data_slice ... ok
+test render::load_texture::tests::path_has_dir_and_texture_extension ... ok
+test render::load_texture::tests::shorter_than_header_panics - should panic ... 
+thread 'render::load_texture::tests::shorter_than_header_panics' (21519792) panicked at crates/country-core/src/render/load_texture.rs:103:19:
+range end index 8 out of range for slice of length 4
+ok
+test render::mesh::tests::add_color_and_builder ... ok
+test render::mesh::tests::append_mismatch_panics_with_discriminants - should panic ... 
+thread 'render::mesh::tests::append_mismatch_panics_with_discriminants' (21519794) panicked at crates/country-core/src/render/mesh.rs:74:18:
+vertex attribute mismatch: self: Discriminant(2), src: Discriminant(3)
+ok
+test render::mesh::tests::append_same_kind ... ok
+test render::mesh::tests::bounds_and_collision ... ok
+test render::mesh::tests::empty_positions_give_inverted_box ... ok
+test render::mesh::tests::from_vec_rejects_empty - should panic ... 
+thread 'render::mesh::tests::from_vec_rejects_empty' (21519798) panicked at crates/country-core/src/render/mesh.rs:113:1:
+assertion failed: !v.is_empty()
+ok
+test render::mesh::tests::missing_or_wrong_attribute_panics ... 
+thread 'render::mesh::tests::missing_or_wrong_attribute_panics' (21519799) panicked at crates/country-core/src/render/mesh.rs:194:14:
+called `Option::unwrap()` on a `None` value
+
+thread 'render::mesh::tests::missing_or_wrong_attribute_panics' (21519799) panicked at crates/country-core/src/render/mesh.rs:223:18:
+incorrect attribute type
+ok
+test render::mesh::tests::retain_vertices_out_of_range_index_panics - should panic ... 
+thread 'render::mesh::tests::retain_vertices_out_of_range_index_panics' (21519800) panicked at crates/country-core/src/render/mesh.rs:295:34:
+index out of bounds: the len is 4 but the index is 7
+ok
+test render::mesh::tests::retain_vertices_remaps_flags_and_indices ... ok
+test render::mesh::tests::set_attribute_replaces_in_place ... ok
+test render::mesh::tests::tags_and_strides ... ok
+test render::mesh::tests::triangles_and_arrayed_indices_drop_remainder ... ok
+test render::nani::buffers::tests::batch_mask_is_3fe_not_3ff ... ok
+test render::nani::buffers::tests::cmd_offsets_equal_offset_defaults ... ok
+test render::nani::buffers::tests::draw_list_params_default_flags ... ok
+test render::nani::buffers::tests::draw_list_params_force_flags ... ok
+test render::nani::buffers::tests::offset_defaults_is_uniform_with_default_value ... ok
+test render::nani::buffers::tests::offset_defaults_layout ... ok
+test render::nani::buffers::tests::table_matches_exe_constants ... ok
+test render::nani::cull_shaders::tests::kind_to_family ... ok
+test render::nani::cull_shaders::tests::path_lengths_match_machine_code_allocations ... ok
+test render::nani::cull_shaders::tests::pipeline_desc_shape ... ok
+test render::nani::cull_shaders::tests::source_hash_depends_on_family_and_pass ... ok
+test render::nani::cull_shaders::tests::source_uri_lengths_match_source_hash_immediates ... ok
+test render::nani::draw_ext::tests::dispatch_branching ... ok
+test render::nani::draw_ext::tests::list_index_packs_kind_and_variant ... ok
+test render::nani::draw_ext::tests::max_draws_table_is_27_entries_from_rdata ... ok
+test render::nani::draw_ext::tests::nani_draw_count_path_packs_max_draw_count_and_count_offset ... ok
+test render::nani::draw_ext::tests::nani_draw_raw_path_uses_draw_count_stride_and_rg_handle ... ok
+test render::nani::draw_ext::tests::nani_draw_with_empty_slot_panics - should panic ... 
+thread 'render::nani::draw_ext::tests::nani_draw_with_empty_slot_panics' (21519822) panicked at crates/country-core/src/render/nani/draw_ext.rs:173:14:
+called `Option::unwrap()` on a `None` value
+ok
+test render::nani::draw_ext::tests::pass_variant_table_matches_immediate ... ok
+test render::nani::draw_ext::tests::plan_offsets_and_max_count ... ok
+test render::nani::gpu_world::tests::buffer_copy_checks_src_then_dst_and_marks_dst_dirty ... ok
+test render::nani::gpu_world::tests::capacity_is_warn_once_and_skip_not_panic ... ok
+test render::nani::gpu_world::tests::create_instances_records_pending_and_total_counts_requested ... ok
+test render::nani::gpu_world::tests::double_import_asserts - should panic ... 
+thread 'render::nani::gpu_world::tests::double_import_asserts' (21519828) panicked at crates/country-core/src/render/nani/gpu_world.rs:310:9:
+assertion failed: self.rg_handle.is_none()
+ok
+test render::nani::gpu_world::tests::empty_slot_unwraps_none - should panic ... 
+thread 'render::nani::gpu_world::tests::empty_slot_unwraps_none' (21519830) panicked at crates/country-core/src/render/nani/gpu_world.rs:592:21:
+called `Option::unwrap()` on a `None` value
+ok
+test render::nani::gpu_world::tests::extend_no_data_allocates_ids_and_calls_back_before_cull_write ... ok
+test render::nani::gpu_world::tests::external_subset_is_not_owned - should panic ... 
+thread 'render::nani::gpu_world::tests::external_subset_is_not_owned' (21519832) panicked at crates/country-core/src/render/nani/gpu_world.rs:591:50:
+Subset Canopy is not owned
+ok
+test render::nani::gpu_world::tests::id_allocation_skips_taken_ids ... ok
+test render::nani::gpu_world::tests::instance_key_is_12_bytes_and_cull_data_16 ... ok
+test render::nani::gpu_world::tests::kind_deserializes_from_variant_name ... ok
+test render::nani::gpu_world::tests::kind_limits_follow_exe_tables ... ok
+test render::nani::gpu_world::tests::kind_table_is_the_real_27_names ... ok
+test render::nani::gpu_world::tests::new_creates_buffers_in_machine_code_order ... ok
+test render::nani::gpu_world::tests::remove_instance_swaps_last_into_hole ... ok
+test render::nani::gpu_world::tests::rg_handle_before_import_panics - should panic ... 
+thread 'render::nani::gpu_world::tests::rg_handle_before_import_panics' (21519841) panicked at crates/country-core/src/render/nani/gpu_world.rs:307:14:
+this can only be called within the render loop, atfer import_to_rg!
+ok
+test render::nani::gpu_world::tests::rg_import_export_skip_external_and_follow_assert ... ok
+test render::nani::gpu_world::tests::stale_hint_falls_back_to_hash_and_rewrites_it ... ok
+test render::nani::gpu_world::tests::unknown_key_unwraps_none - should panic ... 
+thread 'render::nani::gpu_world::tests::unknown_key_unwraps_none' (21519844) panicked at crates/country-core/src/render/nani/gpu_world.rs:445:14:
+called `Option::unwrap()` on a `None` value
+ok
+test render::nani::gpu_world::tests::update_instance_data_writes_cull_and_typed_data ... ok
+test render::nani::gpu_world::tests::wrong_data_type_panics_with_exe_message - should panic ... 
+thread 'render::nani::gpu_world::tests::wrong_data_type_panics_with_exe_message' (21519848) panicked at crates/country-core/src/render/nani/gpu_world.rs:460:21:
+The instance data for Cloth is not country_core::render::nani::gpu_world::tests::Other but country_core::render::nani::gpu_world::tests::Elem40
+ok
+test render::nani::instance_data::tests::curved_level_clamps_to_2_and_5 ... ok
+test render::nani::instance_data::tests::curved_xy_layout_and_pow2_level ... ok
+test render::nani::instance_data::tests::curved_xz_differs_only_in_w24_and_w2c ... ok
+test render::nani::instance_data::tests::element_sizes_match_exe_strides ... ok
+test render::nani::instance_data::tests::registers_markers_in_world ... ok
+test render::nani::instance_data::tests::storage_names_are_type_names ... ok
+test render::nani::instance_data::tests::straight_layout_is_byte_exact ... ok
+test render::nani::instance_updates::gb_tests::affine_identity_and_scale ... ok
+test render::nani::instance_updates::gb_tests::flower_cell_math ... ok
+test render::nani::instance_updates::gb_tests::flower_mask_bounds_checked - should panic ... 
+thread 'render::nani::instance_updates::gb_tests::flower_mask_bounds_checked' (21519858) panicked at crates/country-core/src/render/nani/instance_updates.rs:565:9:
+index out of bounds: the len is 4 but the index is 4104
+ok
+test render::nani::instance_updates::gb_tests::flower_payloads ... ok
+test render::nani::instance_updates::gb_tests::flower_visibility_branches ... ok
+test render::nani::instance_updates::gb_tests::gothic_layout ... ok
+test render::nani::instance_updates::gb_tests::halftimber_colour_selection ... ok
+test render::nani::instance_updates::gb_tests::halftimber_missing_id_panics - should panic ... 
+thread 'render::nani::instance_updates::gb_tests::halftimber_missing_id_panics' (21519863) panicked at crates/country-core/src/render/nani/instance_updates.rs:626:32:
+index out of bounds: HalftimberColorIds[5]
+ok
+test render::nani::instance_updates::gb_tests::halftimber_payload ... ok
+test render::nani::instance_updates::gb_tests::max_abs_scale_nan_and_neg ... ok
+test render::nani::instance_updates::gb_tests::pack_2x16f_matches_half ... ok
+test render::nani::instance_updates::gb_tests::rock_mask_name_assert - should panic ... 
+thread 'render::nani::instance_updates::gb_tests::rock_mask_name_assert' (21519867) panicked at crates/country-core/src/render/nani/instance_updates.rs:605:5:
+assertion `left == right` failed
+  left: "nope"
+ right: "country_core::resources::terrain_rock_mask::TerrainRockMaskSsbo"
+ok
+test render::nani::instance_updates::gb_tests::stone_floor_discriminants ... ok
+test render::nani::instance_updates::gb_tests::stone_floor_floor_only ... ok
+test render::nani::instance_updates::gb_tests::stone_floor_requires_roof_or_floor - should panic ... 
+thread 'render::nani::instance_updates::gb_tests::stone_floor_requires_roof_or_floor' (21519870) panicked at crates/country-core/src/render/nani/instance_updates.rs:763:24:
+called `Option::unwrap()` on a `None` value
+ok
+test render::nani::instance_updates::gb_tests::stone_floor_roof_curved ... ok
+test render::nani::instance_updates::gb_tests::stone_floor_roof_straight_axis_select ... ok
+test render::nani::instance_updates::gb_tests::stone_floor_roof_straight_low ... ok
+test render::nani::instance_updates::gb_tests::stone_floor_roof_straight_tall ... ok
+test render::nani::instance_updates::gb_tests::wren_layout ... ok
+test render::nani::instance_updates::group_a_tests::albedo_table_matches_binary ... ok
+test render::nani::instance_updates::group_a_tests::albedo_texture_out_of_range_panics - should panic ... 
+thread 'render::nani::instance_updates::group_a_tests::albedo_texture_out_of_range_panics' (21519877) panicked at crates/country-core/src/render/nani/instance_updates.rs:214:34:
+index out of bounds: the len is 9 but the index is 9
+ok
+test render::nani::instance_updates::group_a_tests::bricks_packing ... ok
+test render::nani::instance_updates::group_a_tests::glass_color_id_bit31_panics - should panic ... 
+thread 'render::nani::instance_updates::group_a_tests::glass_color_id_bit31_panics' (21519879) panicked at crates/country-core/src/render/nani/instance_updates.rs:239:9:
+value out of bounds for field WindowGlassFlags.color_id: OutOfBounds
+ok
+test render::nani::instance_updates::group_a_tests::glass_packs_color_semi_bit_and_albedo ... ok
+test render::nani::instance_updates::group_a_tests::pack_2x16f_order ... ok
+test render::nani::instance_updates::group_a_tests::solid_vertex_color_flags ... ok
+test render::nani::instance_updates::group_a_tests::trs_identity_and_scale_translation ... ok
+test render::nani::instance_updates::group_a_tests::trs_rotation_90deg_z_scales_columns ... ok
+test render::nani::instance_updates::group_a_tests::window_color_id_word13 ... ok
+test render::nani::instance_updates::group_c_tests::balcony_layout ... ok
+test render::nani::instance_updates::group_c_tests::cloth_layout ... ok
+test render::nani::instance_updates::group_c_tests::lantern_flags_and_packing ... ok
+test render::nani::instance_updates::group_c_tests::pack_2x16f_low_is_first_arg ... ok
+test render::nani::instance_updates::group_c_tests::plaster_invalid_curve_few_points - should panic ... 
+thread 'render::nani::instance_updates::group_c_tests::plaster_invalid_curve_few_points' (21519890) panicked at crates/country-core/src/render/nani/instance_updates.rs:1325:5:
+assertion failed: w.simplified_curve_2d.is_valid()
+ok
+test render::nani::instance_updates::group_c_tests::plaster_invalid_curve_nan_length - should panic ... 
+thread 'render::nani::instance_updates::group_c_tests::plaster_invalid_curve_nan_length' (21519891) panicked at crates/country-core/src/render/nani/instance_updates.rs:1325:5:
+assertion failed: w.simplified_curve_2d.is_valid()
+ok
+test render::nani::instance_updates::group_c_tests::plaster_invalid_curve_zero_length - should panic ... 
+thread 'render::nani::instance_updates::group_c_tests::plaster_invalid_curve_zero_length' (21519892) panicked at crates/country-core/src/render/nani/instance_updates.rs:1325:5:
+assertion failed: w.simplified_curve_2d.is_valid()
+ok
+test render::nani::instance_updates::group_c_tests::plaster_layout_and_constants ... ok
+test render::nani::instance_updates::group_c_tests::plaster_peel_override_and_freehand ... ok
+test render::nani::instance_updates::group_c_tests::plaster_view_from_words ... ok
+test render::nani::instance_updates::group_c_tests::smoke_layout ... ok
+test render::nani::instance_updates::group_c_tests::trs_identity_layout ... ok
+test render::nani::instance_updates::group_c_tests::trs_rotation_90_about_z ... ok
+test render::nani::instance_updates::group_c_tests::trs_sort_key_is_max_abs_scale ... ok
+test render::nani::instance_updates::group_d_tests::affine_identity_layout ... ok
+test render::nani::instance_updates::group_d_tests::affine_rot_z_90 ... ok
+test render::nani::instance_updates::group_d_tests::max_abs_uses_abs_and_ignores_nan ... ok
+test render::nani::instance_updates::group_d_tests::stairs_floor_zero_tail_unit_key ... ok
+test render::nani::instance_updates::group_d_tests::uber_flags_and_index ... ok
+test render::nani::instance_updates::group_d_tests::velocity_only_two_affines_key_from_current ... ok
+test render::nani::mesh_atlas::tests::attribute_mismatch_errors_after_indices_were_already_extended ... ok
+test render::nani::mesh_atlas::tests::duplicate_name_panics - should panic ... 
+thread 'render::nani::mesh_atlas::tests::duplicate_name_panics' (21519907) panicked at crates/country-core/src/render/nani/mesh_atlas.rs:156:13:
+Duplicate atlas mesh name: AtlassedMeshName(NameHash { hash: 1 })
+ok
+test render::nani::mesh_atlas::tests::empty_indices_panic_with_debug_name - should panic ... 
+thread 'render::nani::mesh_atlas::tests::empty_indices_panic_with_debug_name' (21519908) panicked at crates/country-core/src/render/nani/mesh_atlas.rs:101:13:
+invalid mesh: AtlassedMeshName(NameHash { hash: 7 })
+ok
+test render::nani::mesh_atlas::tests::first_mesh_is_cloned_and_gets_part_zero ... ok
+test render::nani::mesh_atlas::tests::non_float3_position_panics - should panic ... 
+thread 'render::nani::mesh_atlas::tests::non_float3_position_panics' (21519910) panicked at crates/country-core/src/render/nani/mesh_atlas.rs:168:18:
+incorrect attribute type
+ok
+test render::nani::mesh_atlas::tests::radius_ignores_nan_like_f32_max ... ok
+test render::nani::mesh_atlas::tests::second_mesh_offsets_indices_by_vertex_count_and_appends_attributes ... ok
+test render::nani::mesh_atlas::tests::sixty_fifth_part_is_rejected - should panic ... 
+thread 'render::nani::mesh_atlas::tests::sixty_fifth_part_is_rejected' (21519913) panicked at crates/country-core/src/render/nani/mesh_atlas.rs:112:9:
+assertion failed: mesh_idx_within_atlas
+ok
+test render::nani::systems::tests::flush_rolls_the_instance_counter ... ok
+test render::nani::systems::tests::maintain_creates_then_updates_then_removes ... ok
+test render::nani::systems::tests::named_mesh_for_another_shader_panics - should panic ... 
+thread 'render::nani::systems::tests::named_mesh_for_another_shader_panics' (21519916) panicked at crates/country-core/src/render/nani/systems.rs:80:5:
+NaniInstanceDesc requested mesh NameHash { hash: 7924106211769986191 } and shader Plant,
+but this mesh is not registered for that shader in nani_meshes.ron
+ok
+test render::nani::systems::tests::named_mesh_resolves_through_the_atlas_for_that_shader ... ok
+test render::nani::systems::tests::removing_an_unknown_entity_panics_like_the_original - should panic ... 
+thread 'render::nani::systems::tests::removing_an_unknown_entity_panics_like_the_original' (21519918) panicked at crates/country-core/src/render/nani/systems.rs:100:14:
+called `Option::unwrap()` on a `None` value
+ok
+test render::nani::systems::tests::update_wrapper_writes_the_builder_payload ... ok
+test render::nani::systems::tests::writing_with_the_wrong_instance_type_panics - should panic ... 
+thread 'render::nani::systems::tests::writing_with_the_wrong_instance_type_panics' (21519920) panicked at crates/country-core/src/render/nani/gpu_world.rs:460:21:
+The instance data for Plant is not country_core::render::nani::instance_data::PlantInstanceData but country_core::render::nani::instance_data::SolidVertexColorInstanceData
+ok
+test render::nani::trimesh::tests::attrib_alignment_must_descend - should panic ... 
+thread 'render::nani::trimesh::tests::attrib_alignment_must_descend' (21519921) panicked at crates/country-core/src/render/nani/trimesh.rs:198:17:
+Attributes must be added in the order of descending alignment
+ok
+test render::nani::trimesh::tests::attrib_descending_alignment_is_allowed ... ok
+test render::nani::trimesh::tests::attrib_rejects_empty - should panic ... 
+thread 'render::nani::trimesh::tests::attrib_rejects_empty' (21519923) panicked at crates/country-core/src/render/nani/trimesh.rs:186:9:
+assertion failed: !data.is_empty()
+ok
+test render::nani::trimesh::tests::attrib_requires_covering_the_max_index - should panic ... 
+thread 'render::nani::trimesh::tests::attrib_requires_covering_the_max_index' (21519924) panicked at crates/country-core/src/render/nani/trimesh.rs:187:9:
+assertion failed: self.input_max_index < data.len() as isize
+ok
+test render::nani::trimesh::tests::attrib_vertex_count_must_match - should panic ... 
+thread 'render::nani::trimesh::tests::attrib_vertex_count_must_match' (21519925) panicked at crates/country-core/src/render/nani/trimesh.rs:194:13:
+assertion `left == right` failed
+  left: 4
+ right: 5
+ok
+test render::nani::trimesh::tests::build_chunk_offsets_are_back_to_back ... ok
+test render::nani::trimesh::tests::build_packs_triangles_then_gathered_attributes ... ok
+test render::nani::trimesh::tests::build_requires_positions - should panic ... 
+thread 'render::nani::trimesh::tests::build_requires_positions' (21519928) panicked at crates/country-core/src/render/nani/trimesh.rs:270:14:
+Don't forget to call positions()
+ok
+test render::nani::trimesh::tests::builder_dedups_vertices_into_local_indices ... ok
+test render::nani::trimesh::tests::builder_empty_input ... ok
+test render::nani::trimesh::tests::builder_splits_at_64_triangles_and_drops_remainder ... ok
+test render::nani::trimesh::tests::positions_records_attrib_index ... ok
+test render::pass_builder::bind_resources::tests::binding_name_hashes_are_the_exe_immediates ... ok
+test render::pass_builder::bind_resources::tests::generic_color_library_path_reuses_the_slot_and_appends_range_on_hit ... ok
+test render::pass_builder::bind_resources::tests::generic_color_library_path_without_registry_entry_adds_no_range ... ok
+test render::pass_builder::bind_resources::tests::generic_ray_tracing_path_walks_three_slots_then_wall_colors ... ok
+test render::pass_builder::bind_resources::tests::ssbo_hash_trait_is_the_library_ssbo_id ... ok
+test render::pass_builder::compute_pass_builder::tests::bind_external_raw_overwrites_binding_and_drops_on_miss ... ok
+test render::pass_builder::compute_pass_builder::tests::bind_external_storage_buffer_builds_tag5_record ... ok
+test render::pass_builder::compute_pass_builder::tests::bind_external_storage_buffer_missing_vk_buffer_unwraps - should panic ... 
+thread 'render::pass_builder::compute_pass_builder::tests::bind_external_storage_buffer_missing_vk_buffer_unwraps' (21519941) panicked at crates/country-core/src/render/pass_builder/compute_pass_builder.rs:522:59:
+called `Option::unwrap()` on a `None` value
+ok
+test render::pass_builder::compute_pass_builder::tests::bind_external_storage_buffer_set_index_asserts_before_vk_lookup - should panic ... 
+thread 'render::pass_builder::compute_pass_builder::tests::bind_external_storage_buffer_set_index_asserts_before_vk_lookup' (21519942) panicked at crates/country-core/src/render/pass_builder/compute_pass_builder.rs:456:9:
+assertion `left == right` failed
+  left: 1
+ right: 0
+ok
+test render::pass_builder::compute_pass_builder::tests::bind_texture_from_disk_is_an_external_image_binding_not_an_rg_access ... ok
+test render::pass_builder::compute_pass_builder::tests::bind_texture_from_disk_registry_miss_only_writes_dims ... ok
+test render::pass_builder::compute_pass_builder::tests::bind_texture_miss_only_writes_dims_uniform_lazily ... ok
+test render::pass_builder::compute_pass_builder::tests::bind_texture_preset_resolves_through_the_texture_library ... ok
+test render::pass_builder::compute_pass_builder::tests::bind_texture_read_and_write_groups_views_and_dims_uniform ... ok
+test render::pass_builder::compute_pass_builder::tests::bind_texture_rg_handle_uses_handle_value ... ok
+test render::pass_builder::compute_pass_builder::tests::bind_texture_with_view_stores_the_view_desc_in_the_image_binding ... ok
+test render::pass_builder::compute_pass_builder::tests::dispatch_modes_and_discriminants ... ok
+test render::pass_builder::compute_pass_builder::tests::execute_groups_skips_division_and_pushes_constants_first ... ok
+test render::pass_builder::compute_pass_builder::tests::execute_indirect_and_closure_modes ... ok
+test render::pass_builder::compute_pass_builder::tests::execute_indirect_with_missing_buffer_panics - should panic ... 
+thread 'render::pass_builder::compute_pass_builder::tests::execute_indirect_with_missing_buffer_panics' (21519953) panicked at crates/country-core/src/render/pass_builder/compute_pass_builder.rs:328:22:
+Resource does not exist
+ok
+test render::pass_builder::compute_pass_builder::tests::execute_threads_divides_by_local_size_rounding_up_with_barrier_first ... ok
+test render::pass_builder::compute_pass_builder::tests::execute_threads_with_zero_local_size_panics_before_the_barrier - should panic ... 
+thread 'render::pass_builder::compute_pass_builder::tests::execute_threads_with_zero_local_size_panics_before_the_barrier' (21519955) panicked at crates/country-core/src/render/pass_builder/compute_pass_builder.rs:261:17:
+attempt to divide by zero
+ok
+test render::pass_builder::compute_pass_builder::tests::external_branch_asserts_read_only_and_rejects_views ... 
+thread 'render::pass_builder::compute_pass_builder::tests::external_branch_asserts_read_only_and_rejects_views' (21519956) panicked at crates/country-core/src/render/pass_builder/compute_pass_builder.rs:695:17:
+assertion failed: !access.is_write()
+
+thread 'render::pass_builder::compute_pass_builder::tests::external_branch_asserts_read_only_and_rejects_views' (21519956) panicked at crates/country-core/src/render/pass_builder/compute_pass_builder.rs:697:21:
+TODO?
+
+thread 'render::pass_builder::compute_pass_builder::tests::external_branch_asserts_read_only_and_rejects_views' (21519956) panicked at crates/country-core/src/render/pass_builder/compute_pass_builder.rs:697:21:
+TODO?
+ok
+test render::pass_builder::compute_pass_builder::tests::indirect_dispatch_registers_0x02_group1_before_recording ... ok
+test render::pass_builder::compute_pass_builder::tests::new_allocates_uniform_block_of_reflected_size ... ok
+test render::pass_builder::compute_pass_builder::tests::new_binds_color_library_read_access_and_range ... ok
+test render::pass_builder::compute_pass_builder::tests::new_compiles_once_per_source_hash_then_reuses_the_library_program ... ok
+test render::pass_builder::compute_pass_builder::tests::new_with_empty_registry_skips_range_lookup_entirely ... ok
+test render::pass_builder::compute_pass_builder::tests::new_without_color_binding_still_registers_access_but_no_range ... ok
+test render::pass_builder::compute_pass_builder::tests::perm_defines_reach_the_shader_backend_in_order ... ok
+test render::pass_builder::compute_pass_builder::tests::ray_tracing_reads_four_ssbos_in_order_and_writes_two_uniforms ... ok
+test render::pass_builder::compute_pass_builder::tests::read_and_write_storage_buffer_use_0x1a_and_0x32 ... ok
+test render::pass_builder::compute_pass_builder::tests::read_only_types_panic_before_the_registry_lookup_when_written ... 
+thread 'render::pass_builder::compute_pass_builder::tests::read_only_types_panic_before_the_registry_lookup_when_written' (21519966) panicked at crates/country-core/src/render/pass_builder/compute_pass_builder.rs:657:17:
+Trying to bind TextureFromDisk(13416371543346072552) for writing, but it's not writable
+
+thread 'render::pass_builder::compute_pass_builder::tests::read_only_types_panic_before_the_registry_lookup_when_written' (21519966) panicked at crates/country-core/src/render/pass_builder/compute_pass_builder.rs:657:17:
+Trying to bind Handle(ManagedHandle(31)) for writing, but it's not writable
+ok
+test render::pass_builder::compute_pass_builder::tests::rg_binding_table_overflow_unwraps_after_access_registration - should panic ... 
+thread 'render::pass_builder::compute_pass_builder::tests::rg_binding_table_overflow_unwraps_after_access_registration' (21519967) panicked at crates/country-core/src/render/pass_builder/pass_resource_access.rs:143:9:
+called `Result::unwrap()` on an `Err` value: TryFromIntError(())
+ok
+test render::pass_builder::compute_pass_builder::tests::rg_nonzero_set_index_asserts - should panic ... 
+thread 'render::pass_builder::compute_pass_builder::tests::rg_nonzero_set_index_asserts' (21519968) panicked at crates/country-core/src/render/pass_builder/compute_pass_builder.rs:456:9:
+assertion `left == right` failed
+  left: 1
+ right: 0
+ok
+test render::pass_builder::compute_pass_builder::tests::rg_read_write_concurrent_constants_groups_and_tags ... ok
+test render::pass_builder::compute_pass_builder::tests::rg_unknown_hash_is_a_silent_noop ... ok
+test render::pass_builder::compute_pass_builder::tests::try_pass_does_not_publish_a_program_when_pipeline_admission_fails ... ok
+test render::pass_builder::compute_pass_builder::tests::uniform_writes_at_reflected_offset ... ok
+test render::pass_builder::compute_pass_builder::tests::unregistered_ssbo_panics_inside_get_rg_buffer - should panic ... 
+thread 'render::pass_builder::compute_pass_builder::tests::unregistered_ssbo_panics_inside_get_rg_buffer' (21519973) panicked at crates/country-core/src/asset_libraries/ssbo_library.rs:289:13:
+Buffer Unregistered (type: country_core::render::pass_builder::compute_pass_builder::tests::unregistered_ssbo_panics_inside_get_rg_buffer::Unregistered) is not available in the library. Forgot to register it?
+ok
+test render::pass_builder::compute_pass_builder::tests::with_suffix_dims_is_plus_one ... ok
+test render::pass_builder::compute_pass_builder::tests::world_without_graphics_device_resource_unwraps ... 
+thread 'render::pass_builder::compute_pass_builder::tests::world_without_graphics_device_resource_unwraps' (21519975) panicked at crates/country-core/src/render/pass_builder/compute_pass_builder.rs:417:51:
+called `Option::unwrap()` on a `None` value
+ok
+test render::pass_builder::compute_pass_builder::tests::write_storage_buffer_concurrent_uses_0x37_and_the_callers_group ... ok
+test render::pass_builder::draw_builder::tests::bind_brick_erase_highlight_is_silent_without_constants ... ok
+test render::pass_builder::draw_builder::tests::bind_brick_erase_highlight_writes_three_uniforms ... ok
+test render::pass_builder::draw_builder::tests::bind_common_flag_selects_preset_and_writes_uniforms ... ok
+test render::pass_builder::draw_builder::tests::bind_common_skips_flag_uniforms_without_constants ... ok
+test render::pass_builder::draw_builder::tests::bind_disk_texture_groups_bind_every_table_entry ... ok
+test render::pass_builder::draw_builder::tests::bind_external_storage_buffer_inserts_whole_buffer_binding ... ok
+test render::pass_builder::draw_builder::tests::bind_external_storage_buffer_without_vk_buffer_panics - should panic ... 
+thread 'render::pass_builder::draw_builder::tests::bind_external_storage_buffer_without_vk_buffer_panics' (21519983) panicked at crates/country-core/src/render/pass_builder/draw_builder.rs:525:18:
+called `Option::unwrap()` on a `None` value
+ok
+test render::pass_builder::draw_builder::tests::bind_ray_tracing_draw_reads_four_slots_then_writes_the_two_buffer_words ... ok
+test render::pass_builder::draw_builder::tests::bind_ray_tracing_draw_reuses_existing_slots_and_unwraps_missing_buffers ... 
+thread 'render::pass_builder::draw_builder::tests::bind_ray_tracing_draw_reuses_existing_slots_and_unwraps_missing_buffers' (21519985) panicked at crates/country-core/src/render/pass_builder/draw_builder.rs:990:14:
+called `Option::unwrap()` on a `None` value
+ok
+test render::pass_builder::draw_builder::tests::bind_tables_have_observed_shape ... ok
+test render::pass_builder::draw_builder::tests::color_attachment_pass_is_unaffected_by_builder ... ok
+test render::pass_builder::draw_builder::tests::common_draw_flag_bytes_are_0_to_4_and_shadow_is_cascade_plus_two ... ok
+test render::pass_builder::draw_builder::tests::constants_match_binary_immediates ... ok
+test render::pass_builder::draw_builder::tests::discard_disarms_every_binding ... ok
+test render::pass_builder::draw_builder::tests::disk_texture_rejects_write_access - should panic ... 
+thread 'render::pass_builder::draw_builder::tests::disk_texture_rejects_write_access' (21519991) panicked at crates/country-core/src/render/pass_builder/draw_builder.rs:611:17:
+assertion failed: !access.is_write()
+ok
+test render::pass_builder::draw_builder::tests::draw_kinds_and_payloads ... ok
+test render::pass_builder::draw_builder::tests::drawn_or_discarded_builders_drop_silently ... ok
+test render::pass_builder::draw_builder::tests::dropping_an_undrawn_builder_panics_with_program_name - should panic ... 
+thread 'render::pass_builder::draw_builder::tests::dropping_an_undrawn_builder_panics_with_program_name' (21519994) panicked at crates/country-core/src/render/pass_builder/draw_builder.rs:1014:13:
+The DrawBuilder for test_prog was not drawn or discarded.
+ok
+test render::pass_builder::draw_builder::tests::entity_draw_params_exposes_the_entity ... ok
+test render::pass_builder::draw_builder::tests::finishing_a_draw_flushes_the_uniform_bytes_to_the_host ... ok
+test render::pass_builder::draw_builder::tests::indexed_indirect_table_has_the_24_exe_entries ... ok
+test render::pass_builder::draw_builder::tests::indexed_indirect_table_matches_binary ... ok
+test render::pass_builder::draw_builder::tests::indirect_draws_register_accesses_and_fields ... ok
+test render::pass_builder::draw_builder::tests::later_draw_overwrites_kind_payload ... ok
+test render::pass_builder::draw_builder::tests::more_than_256_pass_bindings_panic - should panic ... 
+thread 'render::pass_builder::draw_builder::tests::more_than_256_pass_bindings_panic' (21520001) panicked at crates/country-core/src/render/pass_builder/draw_builder.rs:427:14:
+called `Result::unwrap()` on an `Err` value: TryFromIntError(()): TryFromIntError(PosOverflow)
+ok
+test render::pass_builder::draw_builder::tests::new_sets_variant_allocates_constants_and_inserts_uniform_binding ... ok
+test render::pass_builder::draw_builder::tests::new_with_unknown_shader_panics - should panic ... 
+thread 'render::pass_builder::draw_builder::tests::new_with_unknown_shader_panics' (21520003) panicked at crates/country-core/src/render/pass_builder/draw_builder.rs:364:14:
+called `Option::unwrap()` on a `None` value
+ok
+test render::pass_builder::draw_builder::tests::new_without_uniform_block_skips_allocation ... ok
+test render::pass_builder::draw_builder::tests::no_drop_only_take_semantics ... ok
+test render::pass_builder::draw_builder::tests::no_drop_only_take_take_twice_panics - should panic ... 
+thread 'render::pass_builder::draw_builder::tests::no_drop_only_take_take_twice_panics' (21520006) panicked at crates/country-core/src/render/pass_builder/draw_builder.rs:158:14:
+called `Option::unwrap()` on a `None` value
+ok
+test render::pass_builder::draw_builder::tests::optional_uniform_mat4_is_64_bytes_column_major ... ok
+test render::pass_builder::draw_builder::tests::optional_uniform_writes_at_offset_and_ignores_misses ... ok
+test render::pass_builder::draw_builder::tests::placement_data_binds_buffer_then_draws_with_stored_flag ... ok
+test render::pass_builder::draw_builder::tests::placement_data_missing_entry_panics_with_original_text - should panic ... 
+thread 'render::pass_builder::draw_builder::tests::placement_data_missing_entry_panics_with_original_text' (21520010) panicked at crates/country-core/src/render/pass_builder/draw_builder.rs:844:14:
+This Handle for PlacementDataSSBO doesn't have a corresponding buffer
+ok
+test render::pass_builder::draw_builder::tests::placement_message_length_matches_expect_failed_arg ... ok
+test render::pass_builder::draw_builder::tests::preset_texture_allows_write_with_group_zero ... ok
+test render::pass_builder::draw_builder::tests::raw_and_disk_textures_insert_sampled_image_bindings ... ok
+test render::pass_builder::draw_builder::tests::raw_texture_rejects_views - should panic ... 
+thread 'render::pass_builder::draw_builder::tests::raw_texture_rejects_views' (21520014) panicked at crates/country-core/src/render/pass_builder/draw_builder.rs:624:17:
+assertion failed: view.is_none()
+ok
+test render::pass_builder::draw_builder::tests::raw_texture_rejects_write_access - should panic ... 
+thread 'render::pass_builder::draw_builder::tests::raw_texture_rejects_write_access' (21520015) panicked at crates/country-core/src/render/pass_builder/draw_builder.rs:620:17:
+assertion failed: !access.is_write()
+ok
+test render::pass_builder::draw_builder::tests::read_storage_buffer_reuses_slot_by_name ... ok
+test render::pass_builder::draw_builder::tests::read_storage_buffer_unknown_binding_still_registers_slot ... ok
+test render::pass_builder::draw_builder::tests::rg_handle_write_access_panics - should panic ... 
+thread 'render::pass_builder::draw_builder::tests::rg_handle_write_access_panics' (21520018) panicked at crates/country-core/src/render/pass_builder/draw_builder.rs:600:21:
+Trying to bind AttachmentTexture { id: 1, extent: (16, 8), format: 1, sample_count: 1 } for writing, but it's not writable
+ok
+test render::pass_builder::draw_builder::tests::rg_storage_buffer_access_types_and_groups ... ok
+test render::pass_builder::draw_builder::tests::rg_storage_buffer_missing_name_is_noop ... ok
+test render::pass_builder::draw_builder::tests::rg_storage_buffer_nonzero_set_asserts - should panic ... 
+thread 'render::pass_builder::draw_builder::tests::rg_storage_buffer_nonzero_set_asserts' (21520021) panicked at crates/country-core/src/render/pass_builder/draw_builder.rs:419:9:
+assertion `left == right` failed: assertion `left == right` failed
+  left: 0
+ right: 1
+ok
+test render::pass_builder::draw_builder::tests::rg_texture_binding_keeps_the_requested_view_desc ... ok
+test render::pass_builder::draw_builder::tests::rg_texture_binds_once_per_key_and_writes_dims ... ok
+test render::pass_builder::draw_builder::tests::rg_texture_unknown_name_only_writes_dims ... ok
+test render::pass_builder::draw_builder::tests::rg_texture_with_view_gets_a_distinct_key ... ok
+test render::pass_builder::draw_builder::tests::uniform_noop_without_block_or_offsets_or_constants ... ok
+test render::pass_builder::draw_builder::tests::uniform_write_past_block_end_panics - should panic ... 
+thread 'render::pass_builder::draw_builder::tests::uniform_write_past_block_end_panics' (21520027) panicked at crates/country-core/src/render/pass_builder/draw_builder.rs:455:13:
+range end index 8 out of range for slice of length 4
+ok
+test render::pass_builder::draw_list::tests::sort_is_stable_on_the_signed_i32_key ... ok
+test render::pass_builder::draw_list::tests::to_draw_packet_uses_head_one_vao_and_the_item_shader ... ok
+test render::pass_builder::draw_list::tests::topology_tag_and_payload_match_the_element_layout ... ok
+test render::pass_builder::draw_stream::tests::access_is_write_range_matches_0x140c10e10 ... ok
+test render::pass_builder::draw_stream::tests::draw_packet_new_defaults_match_0x140867850 ... ok
+test render::pass_builder::draw_stream::tests::dropping_an_unrendered_pass_panics - should panic ... 
+thread 'render::pass_builder::draw_stream::tests::dropping_an_unrendered_pass_panics' (21520033) panicked at crates/country-core/src/render/pass_builder/draw_stream.rs:294:13:
+RasterPass dropped without a call to render()
+ok
+test render::pass_builder::draw_stream::tests::host_provides_rg_resources_before_a_pass_exists ... ok
+test render::pass_builder::draw_stream::tests::host_without_a_render_graph_reports_it ... 
+thread 'render::pass_builder::draw_stream::tests::host_without_a_render_graph_reports_it' (21520035) panicked at crates/country-core/src/render/pass_builder/draw_stream.rs:486:10:
+PassHost does not provide RG resources (no render graph attached)
+ok
+test render::pass_builder::draw_stream::tests::invalid_color_format_stops_collection ... ok
+test render::pass_builder::draw_stream::tests::kind_discriminants_are_the_observed_values ... ok
+test render::pass_builder::draw_stream::tests::more_than_five_color_attachments_panic - should panic ... 
+thread 'render::pass_builder::draw_stream::tests::more_than_five_color_attachments_panic' (21520038) panicked at crates/country-core/src/render/pass_builder/draw_stream.rs:549:9:
+ArrayVec: capacity exceeded in extend/from_iter
+ok
+test render::pass_builder::draw_stream::tests::new_registers_color_and_depth_accesses ... ok
+test render::pass_builder::draw_stream::tests::raster_state_bit_edits_match_raster_single ... ok
+test render::pass_builder::draw_stream::tests::raw_texture_key_conversion_panics - should panic ... 
+thread 'render::pass_builder::draw_stream::tests::raw_texture_key_conversion_panics' (21520041) panicked at crates/country-core/src/render/pass_builder/draw_stream.rs:266:9:
+internal error: entered unreachable code: Raw textures must not be used as rg resources
+ok
+test render::pass_builder::draw_stream::tests::render_check_panics_when_not_rendered - should panic ... 
+thread 'render::pass_builder::draw_stream::tests::render_check_panics_when_not_rendered' (21520042) panicked at crates/country-core/src/render/pass_builder/draw_stream.rs:294:13:
+RasterPass dropped without a call to render()
+ok
+test render::pass_builder::draw_stream::tests::render_check_silent_when_rendered ... ok
+test render::pass_builder::draw_stream::tests::render_creates_and_caches_on_miss_and_flags_rendered ... ok
+test render::pass_builder::draw_stream::tests::render_dedupes_render_passes_via_the_device_cache ... ok
+test render::pass_builder::draw_stream::tests::rg_handle_keys_use_the_tagged_id ... ok
+test render::pass_builder::draw_stream::tests::tag2_color_registers_view_access_and_overrides_the_description_tag ... ok
+test render::pass_builder::draw_stream::tests::texture_binding_key_tag_and_view_xor ... ok
+test render::pass_builder::framebuffer_binding::tests::color_access_types_match_from_iter ... ok
+test render::pass_builder::framebuffer_binding::tests::color_desc_returns_texture_for_both_variants ... ok
+test render::pass_builder::framebuffer_binding::tests::depth_tags_and_access ... ok
+test render::pass_builder::framebuffer_binding::tests::from_placeholder_texture_maps_fields ... ok
+test render::pass_builder::framebuffer_binding::tests::handle_mut_edits_the_referenced_texture_id ... ok
+test render::pass_builder::framebuffer_binding::tests::tag2_has_view_access_no_view_words_and_texture_at_plus8 ... ok
+test render::pass_builder::pass_resource_access::tests::access_is_registered_before_the_binding_limit_check ... 
+thread 'render::pass_builder::pass_resource_access::tests::access_is_registered_before_the_binding_limit_check' (21520055) panicked at crates/country-core/src/render/pass_builder/pass_resource_access.rs:143:9:
+called `Result::unwrap()` on an `Err` value: TryFromIntError(())
+ok
+test render::pass_builder::pass_resource_access::tests::binding_index_limit_is_0x100 ... 
+thread 'render::pass_builder::pass_resource_access::tests::binding_index_limit_is_0x100' (21520056) panicked at crates/country-core/src/render/pass_builder/pass_resource_access.rs:143:9:
+called `Result::unwrap()` on an `Err` value: TryFromIntError(())
+ok
+test render::pass_builder::pass_resource_access::tests::binding_tags_match_the_two_bind_constructors ... ok
+test render::pass_builder::pass_resource_access::tests::is_write_is_the_0x28_to_0x37_window ... ok
+test render::pass_builder::pass_resource_access::tests::managed_handle_tag_1_clones_handle_and_keeps_view ... ok
+test render::pass_builder::pass_resource_access::tests::managed_handle_view_failure_unwraps - should panic ... 
+thread 'render::pass_builder::pass_resource_access::tests::managed_handle_view_failure_unwraps' (21520060) panicked at crates/country-core/src/render/pass_builder/pass_resource_access.rs:345:33:
+called `Result::unwrap()` on an `Err` value: DeviceLost
+ok
+test render::pass_builder::pass_resource_access::tests::observed_access_constants ... ok
+test render::pass_builder::pass_resource_access::tests::read_write_concurrent_register_access_and_binding ... ok
+test render::pass_builder::pass_resource_access::tests::rg_texture_dims_and_tag ... ok
+test render::pass_builder::pass_resources::tests::layout_is_56_bytes_like_the_original ... ok
+test render::pass_builder::pass_resources::tests::lookup_order_is_a_b_c_d_e_f_g ... ok
+test render::pass_builder::pass_resources::tests::mandatory_missing_panics_with_unwrap_failed - should panic ... 
+thread 'render::pass_builder::pass_resources::tests::mandatory_missing_panics_with_unwrap_failed' (21520066) panicked at crates/country-core/src/render/pass_builder/pass_resources.rs:177:33:
+called `Option::unwrap()` on a `None` value
+ok
+test render::pass_builder::pass_resources::tests::optional_b_missing_is_null_not_an_error ... ok
+test render::pass_builder::pass_resources::tests::typeid_constants_match_exe_immediates ... ok
+test render::pass_builder::rg_resources::tests::named_backend_errors_keep_categories_through_context ... ok
+test render::pass_builder::rg_resources::tests::raw_resources_get_distinct_ids_and_keep_their_desc ... ok
+test render::pass_builder::rg_resources::tests::temporal_resources_are_reused_by_name_and_flag_the_first_creation ... ok
+test render::pass_builder::shader_uri::tests::defines_default_to_empty_and_with_define_formats_display ... ok
+test render::pass_builder::shader_uri::tests::desc_defaults_entry ... ok
+test render::pass_builder::shader_uri::tests::hash_is_siphash13_key0 ... ok
+test render::pass_builder::shader_uri::tests::parse_with_entry ... ok
+test render::pass_builder::shader_uri::tests::parse_without_dot_panics - should panic ... 
+thread 'render::pass_builder::shader_uri::tests::parse_without_dot_panics' (21520076) panicked at crates/country-core/src/render/pass_builder/shader_uri.rs:43:35:
+called `Option::unwrap()` on a `None` value
+ok
+test render::pass_builder::shader_uri::tests::parse_without_entry_and_dir ... ok
+test render::pass_builder::uniform_binder::tests::bool_is_written_as_u32 ... ok
+test render::pass_builder::uniform_binder::tests::guards_return_silently ... ok
+test render::pass_builder::uniform_binder::tests::mat4_and_vec3_bytes ... ok
+test render::pass_builder::uniform_binder::tests::new_allocates_reflection_size_and_keeps_set_index ... ok
+test render::pass_builder::uniform_binder::tests::new_without_uniform_block_is_none_and_does_not_allocate ... ok
+test render::pass_builder::uniform_binder::tests::offset_equal_to_len_passes_the_start_check_like_the_original ... 
+thread 'render::pass_builder::uniform_binder::tests::offset_equal_to_len_passes_the_start_check_like_the_original' (21520083) panicked at crates/country-core/src/render/pass_builder/uniform_binder.rs:126:35:
+range end index 4 out of range for slice of length 0
+ok
+test render::pass_builder::uniform_binder::tests::offset_past_end_is_slice_start_index_len_fail - should panic ... 
+thread 'render::pass_builder::uniform_binder::tests::offset_past_end_is_slice_start_index_len_fail' (21520084) panicked at crates/country-core/src/render/pass_builder/uniform_binder.rs:123:13:
+range start index 9 out of range for slice of length 8
+ok
+test render::pass_builder::uniform_binder::tests::optional_closure_runs_only_on_hit_and_reports_bool ... ok
+test render::pass_builder::uniform_binder::tests::write_widths_match_the_nine_instances ... ok
+test render::raster_single::tests::closure_that_drops_the_builder_panics_via_drop_check - should panic ... 
+thread 'render::raster_single::tests::closure_that_drops_the_builder_panics_via_drop_check' (21520087) panicked at crates/country-core/src/render/pass_builder/draw_builder.rs:1014:13:
+The DrawBuilder for fs was not drawn or discarded.
+ok
+test render::raster_single::tests::runs_closure_then_fullscreen_triangle_then_render ... ok
+test render::raster_single::tests::viewport_is_the_first_attachment_extent ... ok
+test render::render_config::tests::display_keys ... ok
+test render::render_config::tests::last_known_graphics_device_formats_physical_device_first_then_uuid ... ok
+test render::render_config::tests::previous_walks_down_and_stops_at_zero ... ok
+test render::render_config::tests::resolution_only_for_discriminant_one ... ok
+test render::render_config::tests::scale_table_matches_binary_bytes ... ok
+test render::rg_helpers::tests::clear_passes_have_original_names_and_calls ... ok
+test render::rg_helpers::tests::complete_upload_contract_carries_every_byte_and_unknown_never_uses_cache ... ok
+test render::rg_helpers::tests::copy_rejects_oversized_data ... ok
+test render::rg_helpers::tests::copy_stages_data_then_copies ... ok
+test render::rg_helpers::tests::staging_failure_preserves_the_backend_error_without_registering_a_pass ... ok
+test render::rg_helpers::tests::unsubmitted_staging_clones_retain_the_resource_until_consumed_or_cancelled ... ok
+test render::shader::tests::compute_program_loads_then_creates ... ok
+test render::shader::tests::compute_program_panics_when_artifact_missing - should panic ... 
+thread 'render::shader::tests::compute_program_panics_when_artifact_missing' (21520102) panicked at crates/country-core/src/render/shader.rs:89:43:
+called `Result::unwrap()` on an `Err` value: InvalidUsage { what: "compiled compute shader artifact", source: Some(boom) }
+ok
+test render::shader::tests::contract_device_is_a_shader_backend ... ok
+test render::shader::tests::get_or_generate_caches_per_key ... ok
+test render::shader::tests::new_draw_keeps_desc_name_and_two_variants ... ok
+test render::shader::tests::pipeline_creation_failure_is_returned_without_caching ... ok
+test render::shader::tests::second_variant_failure_is_an_error_not_a_panic ... ok
+test render::shader::tests::try_compute_program_preserves_pipeline_admission_errors ... ok
+test render::shader::tests::variants_load_in_order_and_start_empty ... ok
+test render::shadowed_buffer::tests::copy_within_shadow_is_marked_dirty ... ok
+test render::shadowed_buffer::tests::flush_without_dirty_is_noop ... ok
+test render::shadowed_buffer::tests::get_mut_marks_everything_and_flush_does_not_overrun ... ok
+test render::shadowed_buffer::tests::new_keeps_the_initial_data_in_the_shadow ... ok
+test render::shadowed_buffer::tests::write_then_flush_uploads_only_the_dirty_window ... ok
+test render::sparse_instance_buffer::tests::draw_runs_merge_only_full_adjacent_chunks_and_skip_empty ... ok
+test render::sparse_instance_buffer::tests::dropping_allocation_after_buffer_is_a_noop ... ok
+test render::sparse_instance_buffer::tests::dropping_allocation_feeds_waste_and_take_out_waste_reclaims ... ok
+test render::sparse_instance_buffer::tests::gpu_flush_reclaims_waste_before_uploading ... ok
+test render::sparse_instance_buffer::tests::gpu_flush_uploads_merged_dirty_runs_and_clears_them ... ok
+test render::sparse_instance_buffer::tests::hide_and_show_toggle_active_bits ... ok
+test render::sparse_instance_buffer::tests::hide_with_null_handle_panics - should panic ... 
+thread 'render::sparse_instance_buffer::tests::hide_with_null_handle_panics' (21520121) panicked at crates/country-core/src/render/sparse_instance_buffer.rs:98:32:
+called `Option::unwrap()` on a `None` value
+ok
+test render::sparse_instance_buffer::tests::initial_data_is_rejected - should panic ... 
+thread 'render::sparse_instance_buffer::tests::initial_data_is_rejected' (21520122) panicked at crates/country-core/src/render/sparse_instance_buffer.rs:127:9:
+assertion failed: data.is_none()
+ok
+test render::sparse_instance_buffer::tests::initial_state_matches_binary ... ok
+test render::sparse_instance_buffer::tests::is_null_follows_option ... ok
+test render::sparse_instance_buffer::tests::push_claims_chunks_in_order_and_fills_32_per_chunk ... ok
+test render::sparse_instance_buffer::tests::push_reports_exhaustion_with_err ... ok
+test render::sparse_instance_buffer::tests::writer_clear_returns_chunks_in_reverse_and_keeps_dirty ... ok
+test render::ssbo::contract_device_tests::contract_device_is_a_ssbo_device ... ok
+test render::ssbo::tests::byte_creator_rejects_partial_element - should panic ... 
+thread 'render::ssbo::tests::byte_creator_rejects_partial_element' (21520129) panicked at crates/country-core/src/render/ssbo.rs:506:5:
+assertion `left == right` failed
+  left: 12
+ right: 0
+ok
+test render::ssbo::tests::byte_creator_uses_memory2_and_byte_len ... ok
+test render::ssbo::tests::byte_creator_without_data_panics - should panic ... 
+thread 'render::ssbo::tests::byte_creator_without_data_panics' (21520131) panicked at crates/country-core/src/render/ssbo.rs:387:13:
+Storage buffer Dyn (type country_core::render::ssbo::tests::Dyn) has `BUFFER_LEN` of zero. Such buffers must be created with initial data.
+ok
+test render::ssbo::tests::cpu_write_copies_prefix_and_rejects_longer_slices ... 
+thread 'render::ssbo::tests::cpu_write_copies_prefix_and_rejects_longer_slices' (21520132) panicked at crates/country-core/src/render/ssbo.rs:654:26:
+copy_from_slice: source slice length (25) does not match destination slice length (24)
+ok
+test render::ssbo::tests::dynamic_buffer_sizes_and_usage ... ok
+test render::ssbo::tests::dynamic_buffer_without_data_panics - should panic ... 
+thread 'render::ssbo::tests::dynamic_buffer_without_data_panics' (21520134) panicked at crates/country-core/src/render/ssbo.rs:340:22:
+Storage buffer Dyn (type country_core::render::ssbo::tests::Dyn) has `BUFFER_LEN` of zero. Such buffers must be created with initial data.
+ok
+test render::ssbo::tests::fixed_len_buffer_zero_fills_and_keeps_full_size ... ok
+test render::ssbo::tests::instance_buffer_counts ... ok
+test render::ssbo::tests::instance_buffer_rejects_partial_element - should panic ... 
+thread 'render::ssbo::tests::instance_buffer_rejects_partial_element' (21520137) panicked at crates/country-core/src/render/ssbo.rs:506:5:
+assertion `left == right` failed
+  left: 4
+ right: 0
+ok
+test render::ssbo::tests::instance_buffer_reports_its_count_through_the_trait ... ok
+test render::ssbo::tests::mapped_data_limit_is_buffer_len_elements_and_partial_elements_assert ... 
+thread 'render::ssbo::tests::mapped_data_limit_is_buffer_len_elements_and_partial_elements_assert' (21520139) panicked at crates/country-core/src/render/ssbo.rs:603:21:
+Excessive data size supplied for buffer country_core::render::ssbo::tests::Height
+
+thread 'render::ssbo::tests::mapped_data_limit_is_buffer_len_elements_and_partial_elements_assert' (21520139) panicked at crates/country-core/src/render/ssbo.rs:597:21:
+assertion `left == right` failed
+  left: 2
+ right: 0
+ok
+test render::ssbo::tests::mapped_size_is_buffer_len_times_element_size_not_a_constant ... ok
+test render::ssbo::tests::mapped_staging_family_is_0x40000_bytes_align1_memory2 ... ok
+test render::ssbo::tests::mapped_without_data_fills_the_default_element ... ok
+test render::ssbo::tests::mapped_without_device_mapping_unwraps_none ... 
+thread 'render::ssbo::tests::mapped_without_device_mapping_unwraps_none' (21520143) panicked at crates/country-core/src/render/ssbo.rs:631:14:
+called `Option::unwrap()` on a `None` value
+ok
+test render::ssbo::tests::ranges_are_scaled_to_bytes_and_empty_is_noop ... ok
+test render::ssbo::tests::single_element_buffer_uses_default_and_uniform_usage ... ok
+test render::ssbo::tests::too_many_elements_panics - should panic ... 
+thread 'render::ssbo::tests::too_many_elements_panics' (21520146) panicked at crates/country-core/src/render/ssbo.rs:332:21:
+Excessive data size supplied for buffer country_core::render::ssbo::tests::One
+ok
+test render::vao::tests::index_and_vertex_buffers_are_created_with_original_flags ... ok
+test render::vao::tests::layout_sizes ... ok
+test render::view_constants::tests::clip_from_world_jittered_is_product ... ok
+test render::view_constants::tests::jittered_inverse_is_inverse ... ok
+test render::view_constants::tests::jittered_projection_shifts_ndc_by_jitter ... ok
+test render::view_constants::tests::layout_matches_original ... ok
+test render::view_constants::tests::reprojection_identity_when_static ... ok
+test render::view_constants::tests::set_pixel_offset_agrees_with_build ... ok
+test resources::render::mesh_atlas_library::tests::add_error_panics_with_alternate_error - should panic ... 
+thread 'resources::render::mesh_atlas_library::tests::add_error_panics_with_alternate_error' (21520155) panicked at crates/country-core/src/resources/render/mesh_atlas_library.rs:198:23:
+Error adding prefab AtlassedMeshName(NameHash { hash: 1 }) to atlas of shader Canopy: Mesh attribute mismatch.
+    Existing: ["Vertex_Position"]
+    Incoming: ["Vertex_Color", "Vertex_Position"]
+ok
+test resources::render::mesh_atlas_library::tests::add_then_lookup_by_each_name_form ... ok
+test resources::render::mesh_atlas_library::tests::clear_by_name_keeps_key_and_forgets_parts ... ok
+test resources::render::mesh_atlas_library::tests::clear_subset_empties_atlas_and_filters_prefab_lists ... ok
+test resources::render::mesh_atlas_library::tests::conversions_prefix_only_for_prefab_names ... ok
+test resources::render::mesh_atlas_library::tests::debug_matches_original_format ... ok
+test resources::render::mesh_atlas_library::tests::default_has_all_27_subsets ... ok
+test resources::render::mesh_atlas_library::tests::register_meshes_adds_then_updates_in_place ... ok
+test resources::render::mesh_atlas_library::tests::unknown_prefab_panics - should panic ... 
+thread 'resources::render::mesh_atlas_library::tests::unknown_prefab_panics' (21520163) panicked at crates/country-core/src/resources/render/mesh_atlas_library.rs:214:21:
+Atlas library: unknown prefab AtlassedMeshName(NameHash { hash: 9 })
+ok
+test resources::render::mesh_atlas_library::tests::unknown_subworld_panics - should panic ... 
+thread 'resources::render::mesh_atlas_library::tests::unknown_subworld_panics' (21520164) panicked at crates/country-core/src/resources/render/mesh_atlas_library.rs:227:21:
+Atlas library: unknown subworld Canopy. Make sure to register some meshes in nani_meshes.ron
+ok
+test resources::render::spatial_resolve_offsets::tests::first_entries_and_group_structure ... ok
+test resources::render::spatial_resolve_offsets::tests::last_entry_and_extent ... ok
+test resources::render::spatial_resolve_offsets::tests::payload_bytes_hash_matches_machine_code_replay ... ok
+test resources::render::spatial_resolve_offsets::tests::size_and_alignment_match_option_layout ... ok
+test resources::render::spatial_resolve_offsets::tests::storage_element_contract ... ok
+test resources::render::tests::from_affine3a_drops_padding ... ok
+test resources::render::tests::from_cols_and_add_y ... ok
+test resources::render::tests::from_mat3_translation_layout ... ok
+test resources::render::tests::layout_is_twelve_floats ... ok
+
+test result: ok. 393 passed; 0 failed; 0 ignored; 0 measured; 1444 filtered out; finished in 0.08s
+

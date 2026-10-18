@@ -3,9 +3,10 @@
 //! History::is_recording 0x140a86970 is the guard (not an event-queue length).
 //! Event/audio/history payload ownership is explicit at the integration boundary.
 use crate::input::action_set::MainActionSet;
-use crate::recovered_building::history_transactions::HistoryTransactions;
 use crate::resources::gui::TimeOfDayScreen;
+use crate::resources::history::transactions::HistoryTransactions;
 use crate::resources::toolbar::{Toolbar, ToolbarCategory};
+use crate::resources::window::WindowFocusEvent;
 use bevy_ecs::event::{Event, EventReader, EventWriter, Events};
 use bevy_ecs::prelude::{Res, ResMut, Resource, World};
 use bevy_ecs::schedule::{IntoScheduleConfigs, Schedule};
@@ -13,19 +14,24 @@ use bevy_ecs::schedule::{IntoScheduleConfigs, Schedule};
 mod types;
 pub use types::{AppMode, ClutterMeshTy, DecoratorType, EditSubject, EraserLayer, WallShape};
 
-impl Resource for MainActionSet {}
 impl<M: Send + Sync + 'static, S: Send + Sync + 'static> Resource for HistoryTransactions<M, S> {}
 
+/// B `RequestAppModeChange` 载荷 = `AppMode`（16B）。switch_app_mode_button
+/// 0x142341fe0 热路径写 `{16B payload@+0, event_id@+0x10}`（`EventInstance<AppMode>`
+/// stride 0x18）；消费 closure 0x140afa2c0 把 16B 整块写回 AppMode resource 并按
+/// tag 分派（0..5=Editing、0x14=CloneClutter→toolbar 特路，其余 switch_mode）。
+/// 注：`grow_one<tuple<ref<str>,SettingsMenuState>>` 为 ICF 折叠符号（同码），
+/// caller mangled 名为名义类型 `RequestAppModeChange`（struct，非 alias）。
 #[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
-pub struct RequestAppModeChange {
-    pub mode: AppMode,
-}
+pub struct RequestAppModeChange(pub AppMode);
+
+/// B `RequestToolbarCategoryChange` 承载 `WindowFocusEvent`（存为
+/// `EventInstance<WindowFocusEvent>`，stride 0x10）。switch_toolbar_category_button
+/// 0x1423427f0 写 `{id u64@+0, 载荷字节@+8}`；载荷字节 = 目标类别字节（I）。
 #[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
-pub struct RequestToolbarCategoryChange(pub ToolbarCategory);
-#[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
-pub struct LoadingGameComplete {
-    pub restore_to: AppMode,
-}
+pub struct RequestToolbarCategoryChange(pub WindowFocusEvent);
+// B mode_manager reads the save owner's identical event type.
+pub use crate::systems::save::load_game::LoadingGameComplete;
 #[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct RestoreAppTo(pub AppMode);
 
@@ -75,6 +81,32 @@ pub struct ModeManagerUiContext {
     pub probe: EscMenuProbe,
     pub esc_menu_canvas_id: u64,
 }
+impl ModeManagerUiContext {
+    /// B mode_manager @140a86b80 hashes the original 15-byte name at
+    /// 142ad8501, then reads hover+0x18/widget+0x38/intersection+0x28.
+    pub fn from_ui_state(ui: &crate::systems::ui::resources::ui_state::UiState) -> Self {
+        Self {
+            probe: EscMenuProbe {
+                hovered: ui.hover_byte() != 0,
+                widget_id: ui.active_widget().0,
+                hit_tag: ui.intersection_tag(),
+            },
+            esc_menu_canvas_id: crate::systems::ui::resources::ui_state::WidgetId::from_name(
+                "esc_menu_canvas",
+            )
+            .0,
+        }
+    }
+}
+
+/// The current API stores a derived view; always refresh it from the one live
+/// UiState before mode_manager rather than manufacturing an unhovered probe.
+pub fn synchronize_mode_manager_ui_context(
+    ui: Res<crate::systems::ui::resources::ui_state::UiState>,
+    mut view: ResMut<ModeManagerUiContext>,
+) {
+    *view = ModeManagerUiContext::from_ui_state(&ui);
+}
 pub fn esc_menu_blocks(probe: EscMenuProbe, esc_menu_canvas_id: u64) -> bool {
     probe.hovered && probe.widget_id == esc_menu_canvas_id && probe.hit_tag != 2
 }
@@ -86,6 +118,12 @@ pub struct AppModeChanged {
 }
 #[derive(Resource, Clone, Copy, Debug, Default)]
 pub struct PreviousAppMode(pub AppMode);
+
+/// The mode manager's publication instance. Input replay also invokes the
+/// publisher earlier, so function-type ordering would be ambiguous when both
+/// public CPU installers are joined in one schedule.
+#[derive(bevy_ecs::schedule::SystemSet, Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct ModeChangePublication;
 pub fn send_mode_just_changed_event(
     current: Res<AppMode>,
     mut previous: ResMut<PreviousAppMode>,
@@ -195,15 +233,17 @@ pub fn mode_manager<M: Send + Sync + 'static, S: Send + Sync + 'static>(
         if blocked {
             sounds.write(ModeManagerSound::SwitchBlocked);
         } else {
-            select_app_mode(request.mode, &mut toolbar, &mut mode);
+            // O：closure 0x140afa2c0 把 16B 载荷整块写回 AppMode 并按 tag 分派。
+            select_app_mode(request.0, &mut toolbar, &mut mode);
         }
     }
     if let Some(request) = requested_categories.read().last().copied() {
         if blocked {
             sounds.write(ModeManagerSound::SwitchBlocked);
-        } else {
-            category_advance(request.0, &mut toolbar, &mut mode);
+        } else if let Some(category) = ToolbarCategory::from_index(request.0.0 as usize) {
+            category_advance(category, &mut toolbar, &mut mode);
         }
+        // 载荷字节 → 类别索引面 I；未命中 from_index → None（不伪造类别）。
     }
     // Native order: eraser (+48) precedes terrain (+40), then garden/tree/water.
     for (slot, category) in [
@@ -270,14 +310,20 @@ pub fn configure_mode_manager<M: Send + Sync + 'static, S: Send + Sync + 'static
     world.init_resource::<Events<ModeManagerSound>>();
     world.init_resource::<Events<ClearCanvasCmd>>();
     world.init_resource::<Events<AppModeChanged>>();
-    schedule.add_systems((mode_manager::<M, S>, send_mode_just_changed_event).chain());
+    schedule.add_systems(
+        (
+            mode_manager::<M, S>,
+            send_mode_just_changed_event.in_set(ModeChangePublication),
+        )
+            .chain(),
+    );
 }
 
 #[cfg(test)]
 mod recovery_tests {
     use super::*;
     use crate::input::action_set::DigitalActionState;
-    use crate::recovered_building::history_transactions::ObservedHistoryLedger;
+    use crate::resources::history::transactions::ObservedHistoryLedger;
     fn fixture() -> (World, Schedule) {
         let mut world = World::new();
         world.insert_resource(HistoryTransactions::<(), ()>::from_observed(
@@ -299,37 +345,47 @@ mod recovery_tests {
             esc_menu_canvas_id: 55,
         });
         world.insert_resource(MainActionSet::default());
-        world.insert_resource(TimeOfDayScreen { visible: false });
+        world.insert_resource(TimeOfDayScreen {
+            visible: false,
+            ..Default::default()
+        });
         let mut schedule = Schedule::default();
         configure_mode_manager::<(), ()>(&mut world, &mut schedule, false);
         (world, schedule)
+    }
+    /// O：`EventInstance<AppMode>` stride 0x18 = 8 (event_id) + 16 (AppMode)。
+    /// WindowFocusEvent / RequestToolbarCategoryChange 均为 1B 载荷（EventInstance 0x10）。
+    #[test]
+    fn event_payload_sizes_match_the_original_strides() {
+        assert_eq!(core::mem::size_of::<RequestAppModeChange>(), 16);
+        assert_eq!(core::mem::size_of::<WindowFocusEvent>(), 1);
+        assert_eq!(core::mem::size_of::<RequestToolbarCategoryChange>(), 1);
     }
     fn events<T: Event + Clone>(world: &World) -> Vec<T> {
         let events = world.resource::<Events<T>>();
         events.get_cursor().read(events).cloned().collect()
     }
     fn press(world: &mut World, slot: usize) {
-        world.resource_mut::<MainActionSet>().digital[slot] =
-            DigitalActionState { disc: 0, val: 0.0 };
+        world.resource_mut::<MainActionSet>().digital[slot] = DigitalActionState {
+            phase: crate::input::action_set::DigitalActionPhase::JustPressed,
+            timer_seconds: 0.0,
+        };
     }
     #[test]
     fn last_mode_request_and_full_payload_event() {
         let (mut w, mut s) = fixture();
-        let target = AppMode::Editing(EditSubject::Roof(0x123456789));
         w.resource_mut::<Events<RequestAppModeChange>>()
-            .send(RequestAppModeChange {
-                mode: AppMode::Path,
-            });
+            .send(RequestAppModeChange(AppMode::Path));
         w.resource_mut::<Events<RequestAppModeChange>>()
-            .send(RequestAppModeChange { mode: target });
+            .send(RequestAppModeChange(AppMode::Garden));
         s.run(&mut w);
-        assert_eq!(*w.resource::<AppMode>(), target);
-        assert_eq!(w.resource::<Toolbar>().current, ToolbarCategory::Editing);
+        assert_eq!(*w.resource::<AppMode>(), AppMode::Garden);
+        assert_eq!(w.resource::<Toolbar>().current, ToolbarCategory::Garden);
         assert_eq!(
             events::<AppModeChanged>(&w),
             [AppModeChanged {
                 previous: AppMode::default(),
-                current: target
+                current: AppMode::Garden
             }]
         );
     }
@@ -357,9 +413,7 @@ mod recovery_tests {
         let (mut w, mut s) = fixture();
         press(&mut w, 16);
         w.resource_mut::<Events<RequestAppModeChange>>()
-            .send(RequestAppModeChange {
-                mode: AppMode::Tree,
-            });
+            .send(RequestAppModeChange(AppMode::Tree));
         s.run(&mut w);
         assert_eq!(*w.resource::<AppMode>(), AppMode::Replay);
         assert_eq!(events::<HistoryCommand>(&w), [HistoryCommand::UNDO]);
@@ -401,7 +455,10 @@ mod recovery_tests {
         assert_eq!(*w.resource::<AppMode>(), AppMode::default());
         assert_eq!(w.resource::<Toolbar>().current, ToolbarCategory::Editing);
         press(&mut w, 4);
-        w.resource_mut::<MainActionSet>().digital[26] = DigitalActionState { disc: 2, val: 99.0 };
+        w.resource_mut::<MainActionSet>().digital[26] = DigitalActionState {
+            phase: crate::input::action_set::DigitalActionPhase::Repeating,
+            timer_seconds: 99.0,
+        };
         s.run(&mut w);
         assert_eq!(*w.resource::<AppMode>(), AppMode::default());
         assert_eq!(events::<ClearCanvasCmd>(&w), [ClearCanvasCmd(false)]);

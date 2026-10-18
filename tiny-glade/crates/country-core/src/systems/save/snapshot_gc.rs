@@ -2,8 +2,8 @@
 use crossbeam_channel::Sender;
 use hashbrown::HashSet;
 use serde::{
-    de::{DeserializeSeed, IgnoredAny, MapAccess, Visitor},
     Deserialize,
+    de::{DeserializeSeed, IgnoredAny, MapAccess, Visitor},
 };
 use std::{
     fmt, fs,

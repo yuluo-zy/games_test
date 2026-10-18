@@ -41,7 +41,7 @@ impl LogoAudioEvent {
 }
 
 /// logo 动画资源。
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(bevy_ecs::prelude::Resource, Clone, Copy, Debug, PartialEq)]
 pub struct LogoAnimation {
     pub progress: [f32; LOGO_STAGES],
     pub durations: [f32; LOGO_STAGES],
@@ -101,6 +101,113 @@ impl LogoAnimation {
         self.progress[stage] = if floored <= 1.0 { floored } else { 1.0 };
         event
     }
+}
+
+/// B AnimatedLogo's Startup consumer @0x140b19d90. The backend and library
+/// belong to the active App on the actual graphics device. Relative asset
+/// names and shader names are read from the original RNE string arguments.
+pub fn startup_animated_logo(
+    world: &mut bevy_ecs::world::World,
+    backend: &dyn crate::render::shader::boundary::ShaderBackend,
+    shaders: &crate::asset_libraries::shader_library::AssetShaderLibrary,
+) -> anyhow::Result<()> {
+    use crate::{
+        asset_libraries::{
+            mesh_library::{AssetMeshLibrary, MeshAsset},
+            meshwatch::MeshWatch,
+        },
+        components::{KeepOnLevelUnload, drawable::DrawableMeshBundle},
+        systems::render_loop::draw_passes::draw_lists::{DesignatedRenderPass, DontCastShadow},
+        utils::{components::transform::Transform, load_json::try_load_json_as_mesh},
+    };
+    for (path, mesh_name, shader_path, shader_name) in [
+        (
+            "assets/meshes/tiny_glade_logo.json",
+            "tiny_glade_logo",
+            "/logo_animation.raster.hlsl",
+            "logo_animation",
+        ),
+        (
+            "assets/meshes/logo_branches.json",
+            "logo_branches",
+            "/logo_branches_animation.raster.hlsl",
+            "logo_branches_animation",
+        ),
+    ] {
+        let mesh = try_load_json_as_mesh(path)?;
+        world
+            .get_resource::<MeshWatch>()
+            .ok_or_else(|| anyhow::anyhow!("AnimatedLogo: MeshWatch missing"))?
+            .watch(&mesh);
+        let mesh = world
+            .get_resource::<AssetMeshLibrary>()
+            .ok_or_else(|| anyhow::anyhow!("AnimatedLogo: AssetMeshLibrary missing"))?
+            .add(MeshAsset::new(mesh, Some(mesh_name.to_owned())));
+        let shader = crate::startup::load_shaders::load_shader_into_library(
+            shaders,
+            backend,
+            shader_path,
+            shader_name,
+        );
+        world.spawn((
+            KeepOnLevelUnload,
+            DrawableMeshBundle {
+                mesh,
+                shader,
+                transform: Transform::from_translation_scale(
+                    glam::Vec3::new(0.0, 6.0, 0.0),
+                    glam::Vec3::splat(5.0),
+                ),
+            },
+            DesignatedRenderPass(0x12),
+            DontCastShadow,
+        ));
+    }
+    Ok(())
+}
+
+/// Original Update consumer @0x140b1a6b0. Creation errors abort before writing
+/// the stage progress, as the native unwrap does. A real Studio type is
+/// supplied by the audio host; no substitute FMOD implementation is created.
+pub fn animate_logo_system<S>(
+    mut logo: bevy_ecs::change_detection::ResMut<LogoAnimation>,
+    time: bevy_ecs::change_detection::Res<bevy_time::Time>,
+    audio: bevy_ecs::change_detection::Res<crate::resources::audio_resources::AudioCore<S>>,
+) where
+    S: crate::resources::audio_resources::Studio + Send + Sync + 'static,
+{
+    use bevy_ecs::change_detection::DetectChangesMut;
+    if !logo.progress.iter().any(|p| p.is_nan() || *p < 1.0) {
+        return;
+    }
+    let mut next = *logo;
+    let sound = next.animate(time.delta_secs());
+    logo.set_changed();
+    if let Some(sound) = sound {
+        let mut instance = audio.instantiate_audio(sound.path());
+        if let crate::resources::audio_resources::AudioInstance::Err(error) = &instance {
+            panic!("{error}");
+        }
+        instance
+            .start_if_not_playing()
+            .unwrap_or_else(|error| panic!("{error}"));
+    }
+    *logo = next;
+}
+
+/// Explicit macOS host adaptation of AudioCore's actual None branch. It
+/// advances the original animation while sound requests have no FMOD owner.
+/// The normal FMOD-backed consumer above remains separate and callable.
+pub fn animate_logo_with_disabled_audio(
+    mut logo: bevy_ecs::change_detection::ResMut<LogoAnimation>,
+    time: bevy_ecs::change_detection::Res<bevy_time::Time>,
+) {
+    if !logo.progress.iter().any(|p| p.is_nan() || *p < 1.0) {
+        return;
+    }
+    let mut next = *logo;
+    next.animate(time.delta_secs());
+    *logo = next;
 }
 
 #[cfg(test)]

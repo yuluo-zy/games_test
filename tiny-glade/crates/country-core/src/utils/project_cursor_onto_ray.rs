@@ -1,22 +1,12 @@
-//! project_cursor_onto_ray.rs — 屏幕比例空间与“把光标投回射线”。
-//!
-//! | 函数 | 地址 | 级别 |
-//! |---|---|---|
-//! | `ProportionalScreenSpace::from_window_size` | 0x140ac8420 | O |
-//! | `ProportionalScreenSpace::transform_screen_space` | 0x140ac8450（helper 0x140c906d0） | O |
-//! | `ProportionalScreenSpaceCoord::project_onto_ray` | 0x140ac84a0 | O |
-//!
-//! 与 DIGEST 不同：`transform_screen_space` 的 helper 0x140c906d0 这次读全了
-//! （DIGEST 记为“语义未吃透”），见 [`ProportionalScreenSpace::transform_screen_space`]。
+//! 三维编辑滑块的坐标转换与透视校正。矩阵运算复用 glam。
 
-use glam::{Mat4, Vec2, Vec3, Vec4};
+use glam::{Mat4, Vec2, Vec3};
 use utils::geometry::Ray;
 
-/// `maxss` 的下限常量，按 EXE 位模式（0x142a7baa0 / 0x142abaa00）。
-const DOT_FLOOR: f32 = f32::from_bits(0x1e3c_e508);
-const WEIGHT_FLOOR: f32 = f32::from_bits(0x2edb_e6ff);
+const MIN_PROJECTED_LENGTH_SQUARED: f32 = 1e-20;
+const MIN_CLIP_WEIGHT: f32 = 1e-10;
 
-/// 16 B：`{ size: Vec2 @0, aspect: f32 @8, 1.0 @0xc }`（O：0x140ac8420）。
+/// 比例屏幕空间：X 乘宽高比，Y 保持单位尺度。
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ProportionalScreenSpace {
@@ -26,107 +16,102 @@ pub struct ProportionalScreenSpace {
 }
 
 impl ProportionalScreenSpace {
-    /// O：0x140ac8420。`u32 → f32` 经 64 位 `cvtsi2ss`（零扩展），`aspect = w / h`。
+    /// 最小化窗口的零尺寸按 1 像素处理，避免产生无穷宽高比。
     pub fn from_window_size(size: [u32; 2]) -> Self {
-        let width = size[0] as f32;
-        let height = size[1] as f32;
+        let size = Vec2::new(size[0].max(1) as f32, size[1].max(1) as f32);
         Self {
-            size: Vec2::new(width, height),
-            aspect: crate::resources::window::aspect_ratio_observed(size[0], size[1]),
+            size,
+            aspect: size.x / size.y,
             unit: 1.0,
         }
     }
 
-    /// O：0x140ac8450。helper 0x140c906d0 把 `(a, b)` 换成
-    /// `x' = a / size.x * 2 + (-1.0)`、`y' = (1.0 - b) / size.y * 2 + 1.0`
-    /// （乘 2 用的是自加；常量 -1.0 在 0x14295a0e4），随后 `x' * aspect`、`y' * 1.0`。
-    /// `y'` 的形式照原样保留，没有按“看起来应该是”的公式改写。
-    pub fn transform_screen_space(&self, a: f32, b: f32) -> Vec2 {
-        let x = a / self.size.x;
-        let x = x + x + -1.0;
-        let y = (1.0 - b) / self.size.y;
-        let y = y + y + 1.0;
-        Vec2::new(x * self.aspect, y * self.unit)
+    /// 像素原点在左上；屏幕中心映射到零点，上方为正 Y。
+    pub fn transform_screen_space(&self, screen_x: f32, screen_y: f32) -> Vec2 {
+        let normalized = Vec2::new(screen_x, screen_y) / self.size;
+        Vec2::new(
+            (normalized.x * 2.0 - 1.0) * self.aspect,
+            (1.0 - normalized.y * 2.0) * self.unit,
+        )
     }
 }
 
-/// `x' = col0*x + col1*y + col2*z + col3`，加法顺序与 0x140ac84a0 的 `mulps/addps` 序列一致：
-/// `((y*col1 + x*col0) + z*col2) + col3`。
-fn affine(m: &Mat4, p: Vec3) -> Vec4 {
-    m.y_axis * p.y + m.x_axis * p.x + m.z_axis * p.z + m.w_axis
-}
-
-fn lerp(a: f32, b: f32, t: f32) -> f32 {
-    a + (b - a) * t
-}
-
-/// 屏幕比例坐标（已经过 `transform_screen_space`）。
+/// 已转换的比例屏幕坐标。
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ProportionalScreenSpaceCoord(pub Vec2);
 
 impl ProportionalScreenSpaceCoord {
-    /// O：0x140ac84a0。
-    ///
-    /// 射线的近点 = 起点、远点 = 起点 + 方向，各自先过 `first`（原版结构 +0x80 处的矩阵）
-    /// 再过 `second`（+0x00 处的矩阵，第二次**不重新取 w**，直接用第一次的 xyz 补 w = 1），
-    /// 取 `xy / w` 再乘 `(aspect, 1.0)`。`t = ((c - near)·d) / max(d·d, 1e-20)`，
-    /// 限制在 `range`（`min > max` 或含 NaN 时 `f32::clamp` panic）。最后按透视校正插值回世界点：
-    /// `num = lerp(0/w_near, 1/w_far, t)`、`den = max(lerp(1/w_near, 1/w_far, t), 1e-10)`、
-    /// `s = num / den`，结果 `near * (1 - s) + far * s`。
+    /// 投影失败时保持射线起点，避免无效窗口或相机参数污染编辑状态。
+    /// 新调用方可使用 try_project_onto_ray 区分投影失败。
     pub fn project_onto_ray(
         self,
-        pss: &ProportionalScreenSpace,
-        first: &Mat4,
-        second: &Mat4,
+        screen: &ProportionalScreenSpace,
+        world_to_view: &Mat4,
+        view_to_clip: &Mat4,
         ray: Ray,
         range: [f32; 2],
     ) -> Vec3 {
-        let [min, max] = range;
-        // 原版先检查 `min <= max`，不成立走 `f32::clamp` 的 panic。
-        assert!(
-            min <= max,
-            "min > max, or either was NaN. min = {min:?}, max = {max:?}"
-        );
-        let near = ray.origin;
-        let far = Vec3::new(
-            ray.direction.x + ray.origin.x,
-            ray.direction.y + ray.origin.y,
-            ray.direction.z + ray.origin.z,
-        );
-        let near_clip = affine(second, affine(first, near).truncate());
-        let far_clip = affine(second, affine(first, far).truncate());
-        let pair = Vec2::new(pss.aspect, pss.unit);
-        let near_ndc = Vec2::new(near_clip.x / near_clip.w, near_clip.y / near_clip.w) * pair;
-        let far_ndc = Vec2::new(far_clip.x / far_clip.w, far_clip.y / far_clip.w) * pair;
-        let to_cursor = self.0 - near_ndc;
-        let along = far_ndc - near_ndc;
-        let product = to_cursor * along;
-        let numerator = product.y + product.x;
-        let squared = along * along;
-        let denominator = squared.y + squared.x;
-        // `maxss denominator, 1e-20`：NaN 取常量。
-        let denominator = if denominator > DOT_FLOOR {
-            denominator
-        } else {
-            DOT_FLOOR
-        };
-        let t = (numerator / denominator).clamp(min, max);
+        assert!(range[0] <= range[1], "投影范围逆序或包含 NaN：{range:?}");
+        self.try_project_onto_ray(screen, world_to_view, view_to_clip, ray, range)
+            .unwrap_or(ray.origin)
+    }
 
-        let inv_far = 1.0 / far_clip.w;
-        let numerator = lerp(0.0 / near_clip.w, inv_far, t);
-        let denominator = lerp(1.0 / near_clip.w, inv_far, t);
-        let denominator = if denominator > WEIGHT_FLOOR {
-            denominator
-        } else {
-            WEIGHT_FLOOR
-        };
-        let s = numerator / denominator;
-        let one_minus_s = 1.0 - s;
-        Vec3::new(
-            s * far.x + one_minus_s * near.x,
-            s * far.y + one_minus_s * near.y,
-            s * far.z + one_minus_s * near.z,
-        )
+    /// 将光标投影到射线的屏幕方向，再使用裁剪 w 校正为世界空间插值参数。
+    /// range 限制的是屏幕参数；零投影长度保持起点，视点后方或奇异透视返回 None。
+    pub fn try_project_onto_ray(
+        self,
+        screen: &ProportionalScreenSpace,
+        world_to_view: &Mat4,
+        view_to_clip: &Mat4,
+        ray: Ray,
+        range: [f32; 2],
+    ) -> Option<Vec3> {
+        let [minimum, maximum] = range;
+        if !(minimum.is_finite() && maximum.is_finite() && minimum <= maximum)
+            || !self.0.is_finite()
+            || !ray.origin.is_finite()
+            || !ray.direction.is_finite()
+            || !screen.aspect.is_finite()
+            || !screen.unit.is_finite()
+        {
+            return None;
+        }
+        let near_clip = *view_to_clip * (*world_to_view * ray.origin.extend(1.0));
+        let far_clip = *view_to_clip * (*world_to_view * (ray.origin + ray.direction).extend(1.0));
+        if !near_clip.is_finite()
+            || !far_clip.is_finite()
+            || near_clip.w <= MIN_CLIP_WEIGHT
+            || far_clip.w <= MIN_CLIP_WEIGHT
+        {
+            return None;
+        }
+        let screen_scale = Vec2::new(screen.aspect, screen.unit);
+        let near_screen = near_clip.truncate().truncate() / near_clip.w * screen_scale;
+        let far_screen = far_clip.truncate().truncate() / far_clip.w * screen_scale;
+        let projected_direction = far_screen - near_screen;
+        let length_squared = projected_direction.length_squared();
+        if !length_squared.is_finite() {
+            return None;
+        }
+        if length_squared <= MIN_PROJECTED_LENGTH_SQUARED {
+            return Some(ray.origin);
+        }
+        let screen_parameter = ((self.0 - near_screen).dot(projected_direction) / length_squared)
+            .clamp(minimum, maximum);
+        let near_weight = (1.0 - screen_parameter) / near_clip.w;
+        let far_weight = screen_parameter / far_clip.w;
+        let total_weight = near_weight + far_weight;
+        // 外推可能跨过透视奇点；负权重对应相机背后的另一条分支。
+        if !total_weight.is_finite() || total_weight <= MIN_CLIP_WEIGHT {
+            return None;
+        }
+        let world_parameter = far_weight / total_weight;
+        let position = ray.origin + ray.direction * world_parameter;
+        if !position.is_finite() {
+            return None;
+        }
+        let clip = *view_to_clip * (*world_to_view * position.extend(1.0));
+        (clip.is_finite() && clip.w > MIN_CLIP_WEIGHT).then_some(position)
     }
 }
 
@@ -144,15 +129,15 @@ mod tests {
     }
 
     #[test]
-    fn transform_screen_space_follows_the_helper_exactly() {
+    fn screen_coordinates_have_a_centered_origin_and_upward_y() {
         let pss = ProportionalScreenSpace::from_window_size([200, 100]);
-        // x' = 100/200*2 - 1 = 0, y' = (1 - 25)/100*2 + 1 = 0.52。
+        // 屏幕四分之一高度映射到 y=0.5，屏幕顶部映射到 y=1。
         let v = pss.transform_screen_space(100.0, 25.0);
         assert_eq!(v.x, 0.0);
-        assert!((v.y - 0.52).abs() < 1e-6, "{v:?}");
+        assert!((v.y - 0.5).abs() < 1e-6, "{v:?}");
         let v = pss.transform_screen_space(0.0, 0.0);
         assert_eq!(v.x, -2.0);
-        assert!((v.y - 1.02).abs() < 1e-6);
+        assert!((v.y - 1.0).abs() < 1e-6);
     }
 
     fn ray(origin: Vec3, direction: Vec3) -> Ray {
@@ -198,7 +183,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "min > max, or either was NaN")]
+    #[should_panic(expected = "投影范围逆序")]
     fn reversed_range_panics_like_f32_clamp() {
         let id = Mat4::IDENTITY;
         ProportionalScreenSpaceCoord(Vec2::ZERO).project_onto_ray(
@@ -242,5 +227,71 @@ mod tests {
             [0.0, 1.0],
         );
         assert!(p.is_finite());
+    }
+
+    #[test]
+    fn perspective_extrapolation_rejects_the_horizon_and_the_branch_behind_camera() {
+        use crate::systems::ui::resources::slider3d::{Slider3dMatrices, Slider3dState};
+
+        let projection = Mat4::perspective_rh_gl(std::f32::consts::FRAC_PI_2, 1.0, 0.1, 100.0);
+        let ray = ray(Vec3::new(0.0, 0.0, -1.0), Vec3::new(0.2, 0.0, -1.0));
+        // 两个采样点均在相机前方；屏幕 x=0.2 是世界直线的透视渐近线。
+        for screen_x in [0.2, 0.25] {
+            let coord = ProportionalScreenSpaceCoord(Vec2::new(screen_x, 0.0));
+            assert_eq!(
+                coord.try_project_onto_ray(
+                    &unit_pss(),
+                    &Mat4::IDENTITY,
+                    &projection,
+                    ray,
+                    [-1e10, 1e10]
+                ),
+                None
+            );
+        }
+        // 奇点之前的正常外推仍有效，避免修复时禁用全部屏幕区间外推。
+        let position = ProportionalScreenSpaceCoord(Vec2::new(0.15, 0.0))
+            .try_project_onto_ray(
+                &unit_pss(),
+                &Mat4::IDENTITY,
+                &projection,
+                ray,
+                [-1e10, 1e10],
+            )
+            .unwrap();
+        assert!(position.is_finite() && position.z < -2.0);
+        let clip = projection * position.extend(1.0);
+        assert!(clip.w > 0.0);
+        assert!((clip.x / clip.w - 0.15).abs() < 1e-6);
+
+        let matrices = Slider3dMatrices {
+            second: projection,
+            ..Default::default()
+        };
+        let slider = Slider3dState {
+            origin: ray.origin,
+            direction: ray.direction,
+        };
+        assert_eq!(
+            slider.project_cursor_onto_line(Vec2::new(62.5, 50.0), [100, 100], &matrices),
+            ray.origin
+        );
+    }
+
+    #[test]
+    fn viewport_center_and_invalid_perspective_are_safe() {
+        let screen = ProportionalScreenSpace::from_window_size([0, 0]);
+        assert_eq!(screen.transform_screen_space(0.5, 0.5), Vec2::ZERO);
+        let ray = ray(Vec3::ONE, Vec3::X);
+        assert_eq!(
+            ProportionalScreenSpaceCoord(Vec2::ZERO).try_project_onto_ray(
+                &screen,
+                &Mat4::IDENTITY,
+                &Mat4::ZERO,
+                ray,
+                [0.0, 1.0]
+            ),
+            None
+        );
     }
 }

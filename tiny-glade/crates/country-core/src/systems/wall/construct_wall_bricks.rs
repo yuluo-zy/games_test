@@ -1,36 +1,36 @@
 //! CPU brick section of the original external system-wall-constructor owner
 //! (B 0x140757800), exposed here so restored authority has an executable consumer.
-//! The seeded producer and trigger geometry are real. GPU storage and RT side
-//! effects are not represented by manufactured handles.
-use crate::{
-    geometry::instanced_wall::InstancedWall,
-    recovered_building::{
-        wall_construction_sources::{
-            ConstructionSourceError, ConstructionTopPolicy, construction_policy,
-            prepared_construction_arrays,
-        },
-        wall_constructor::WallBrickInstance,
-        wall_production::{
-            PlainWallProductionInput, WallProductionBranch, WallProductionError, WallTopBounds,
-            produce_wall,
-        },
-        wall_state::WallId as ObservedWallId,
-    },
-    resources::{
-        roofs::{
-            Roof,
-            commands::{RoofGeometryChanged, WallGableChanged, WallRoofPresenceChanged},
-        },
-        walls::{
-            WallId,
-            public_walls::{
-                OnWallChanged, OnWallDeleted, PublicWallState, PublicWalls, WallEntities,
-            },
-            wall_holes::{HoleStorageError, HoleStoragePhase, WallHoles},
-            wall_trigger_volume::{WallTriggerError, WallTriggerVolume},
-        },
-    },
-};
+//! The seeded producer, trigger geometry and original trigger→RT mesh output
+//! are real. GPU allocation/upload remains with the existing InstancedWall
+//! consumer; the complete external corner/skirt/signifier owner is separate.
+use crate::geometry::instanced_wall::InstancedWall;
+use crate::resources::roofs::Roof;
+use crate::resources::roofs::commands::RoofGeometryChanged;
+use crate::resources::roofs::commands::WallGableChanged;
+use crate::resources::roofs::commands::WallRoofPresenceChanged;
+use crate::resources::rt::{RtMeshHandle, RtWorld, UpdateRtWorldEvent};
+use crate::resources::walls::WallId;
+use crate::resources::walls::public_walls::OnWallChanged;
+use crate::resources::walls::public_walls::OnWallDeleted;
+use crate::resources::walls::public_walls::PublicWallState;
+use crate::resources::walls::public_walls::PublicWalls;
+use crate::resources::walls::public_walls::WallEntities;
+use crate::resources::walls::publication_fields::WallId as ObservedWallId;
+use crate::resources::walls::wall_holes::HoleStorageError;
+use crate::resources::walls::wall_holes::HoleStoragePhase;
+use crate::resources::walls::wall_holes::WallHoles;
+use crate::resources::walls::wall_trigger_volume::WallTriggerError;
+use crate::resources::walls::wall_trigger_volume::WallTriggerVolume;
+use crate::systems::wall::construction::bricks::WallBrickInstance;
+use crate::systems::wall::construction::parameters::ConstructionSourceError;
+use crate::systems::wall::construction::parameters::ConstructionTopPolicy;
+use crate::systems::wall::construction::parameters::construction_policy;
+use crate::systems::wall::construction::parameters::prepared_construction_arrays;
+use crate::systems::wall::construction::production::PlainWallProductionInput;
+use crate::systems::wall::construction::production::WallProductionBranch;
+use crate::systems::wall::construction::production::WallProductionError;
+use crate::systems::wall::construction::production::WallTopBounds;
+use crate::systems::wall::construction::production::produce_wall;
 use bevy_ecs::prelude::*;
 use hashbrown::{HashMap, HashSet};
 
@@ -184,6 +184,21 @@ pub struct WallBrickRequests<'w, 's> {
     deleted: EventReader<'w, 's, OnWallDeleted>,
 }
 
+/// B @140759669..96cf / @1407599c6..9a28. Keep the existing mesh transform,
+/// replace its albedo and complete triangle list from the actual trigger
+/// cache. Reusing a wall must not append its previous geometry a second time.
+pub fn update_wall_rt_mesh(id: WallId, trigger: &WallTriggerVolume, world: &mut RtWorld) {
+    let mesh = world.get_mut(RtMeshHandle::from_wall_id(id));
+    mesh.set_wall_albedo(id);
+    mesh.positions.clear();
+    mesh.positions.extend(
+        trigger
+            .default_tris()
+            .iter()
+            .flat_map(|triangle| triangle.points),
+    );
+}
+
 pub fn construct_wall_bricks(
     mut requests: WallBrickRequests,
     public: Res<PublicWalls>,
@@ -197,6 +212,8 @@ pub fn construct_wall_bricks(
     mut commands: Commands,
     mut state: ResMut<WallBrickBuildState>,
     mut output: EventWriter<WallBricksChanged>,
+    mut rt_world: ResMut<RtWorld>,
+    mut rt_updates: EventWriter<UpdateRtWorldEvent>,
 ) {
     let mut ids = HashSet::new();
     ids.extend(requests.changed.read().map(|event| event.0));
@@ -235,6 +252,8 @@ pub fn construct_wall_bricks(
                 continue;
             }
             value.update(instances);
+            update_wall_rt_mesh(id, &trigger, &mut rt_world);
+            rt_updates.write(UpdateRtWorldEvent);
             entity
         } else {
             let mut trigger = WallTriggerVolume::default();
@@ -244,6 +263,8 @@ pub fn construct_wall_bricks(
                     .insert(id, WallBrickBuildError::Trigger(error));
                 continue;
             }
+            update_wall_rt_mesh(id, &trigger, &mut rt_world);
+            rt_updates.write(UpdateRtWorldEvent);
             let entity = commands
                 .spawn((InstancedWall::new(id.0, instances), trigger))
                 .id();

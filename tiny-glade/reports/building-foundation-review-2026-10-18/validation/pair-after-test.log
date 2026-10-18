@@ -1,0 +1,62 @@
+warning: patch `cosmic-text v0.11.2 (https://github.com/PounceLight/cosmic-text.git?rev=3da2a14ea3d063875fdc55695431e74405302b0f#3da2a14e)` was not used in the crate graph
+warning: patch `winit v0.29.15 (https://github.com/PounceLight/winit.git?rev=d03de0a0a881be9422c360083151b0e7a8a2582e#d03de0a0)` was not used in the crate graph
+help: Check that the patched package version and available features are compatible
+      with the dependency requirements. If the patch has a different version from
+      what is locked in the Cargo.lock file, run `cargo update` to use the new
+      version. This may also occur with an optional dependency that is not enabled.
+   Compiling tabloid v0.1.0 (/private/var/folders/nn/2ymzgfd16j96wv2_mj2bpsfm0000gn/T/tg-pair-rereview-rneviev6/crates/tabloid)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.75s
+     Running unittests src/lib.rs (/private/tmp/tg-foundation-refactor-target/debug/deps/tabloid-03e1bd59a05de53c)
+
+running 8 tests
+test tests::exhaustion_is_transactional ... ok
+test tests::retired_states_are_dropped_after_unlocking ... ok
+test tests::each_pending_batch_is_applied_once ... ok
+test tests::independent_boundaries_and_stable_readers ... ok
+test tests::cloned_subscribers_share_take ... ok
+test tests::abandoned_subscription_and_batch_are_reclaimed ... ok
+test tests::failed_preparation_drops_candidates_after_unlocking ... ok
+test tests::concurrent_consumption_preserves_every_delta_once ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/dirty_tiles.rs (/private/tmp/tg-foundation-refactor-target/debug/deps/dirty_tiles-73b449af8ac736ce)
+
+running 4 tests
+test cloned_subscription_shares_take_state ... ok
+test held_grid_reader_is_a_nonblocking_immutable_snapshot ... ok
+test dirty_grid_batches_or_accumulate_per_subscriber ... ok
+test late_subscriber_only_receives_subsequent_batches ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/review_publication_cost.rs (/private/tmp/tg-foundation-refactor-target/debug/examples/review_publication_cost-39439bc1a7bcb438)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/private/tmp/tg-foundation-refactor-target/debug/deps/tg_package_integrity-5ed37d9872beccaf)
+
+running 12 tests
+test tests::manifest_entries_reject_ambiguous_paths_and_malformed_hashes ... ok
+test tests::package_links_cannot_be_followed_or_silently_accepted ... ok
+test tests::schema_contract_matches_saved_manifest_cases ... ok
+test tests::synthetic_manifest_schema_and_raw_checksum ... ok
+test tests::mixed_file_issues_preserve_manifest_order_and_extra_policy ... ok
+test tests::stable_disk_aggregates_errors_and_skips_self_digest ... ok
+test tests::deep_scan_uses_bounded_directory_descriptors ... ok
+test tests::incomplete_scans_fail_verification ... ok
+test tests::manifest_self_entry_requires_a_regular_file ... ok
+test tests::manifest_read_gate_parse_version_and_full_success ... ok
+test tests::unknown_fields_are_ignored_and_version_must_be_u32 ... ok
+test tests::manifest_paths_cannot_escape_or_use_platform_aliases ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.73s
+
+     Running unittests examples/inspect_package.rs (/private/tmp/tg-foundation-refactor-target/debug/examples/inspect_package-e1c7cd2a16726655)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

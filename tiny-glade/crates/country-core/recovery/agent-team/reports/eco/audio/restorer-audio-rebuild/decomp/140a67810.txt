@@ -1,0 +1,27 @@
+// VA 0x140a67810 timberframe_audio_init_system
+// SIG void __cdecl timberframe_audio_init_system(void)
+
+// WARNING: Removing unreachable block (ram,0x000140a67a5e)
+
+void __cdecl country_core::systems::audio::timberframe_audio::timberframe_audio_init_system(void)
+
+{
+  undefined8 local_108;
+  
+  resources::audio_resources::AudioCore::instantiate_loop();
+  if (SBORROW8(0,local_108)) {
+                    // WARNING: Subroutine does not return
+    core::result::unwrap_failed();
+  }
+  resources::audio_resources::AudioCore::instantiate_loop();
+  if (SBORROW8(0,local_108)) {
+                    // WARNING: Subroutine does not return
+    core::result::unwrap_failed();
+  }
+  resources::audio_resources::AudioCore::instantiate_loop();
+  bevy_ecs::system::commands::Commands::
+  insert_resource<country_core::systems::audio::timberframe_audio::TimberframeAudioState>();
+  return;
+}
+
+

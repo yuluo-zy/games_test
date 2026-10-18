@@ -1,14 +1,14 @@
-//! Actual wall-scoped decorator rows -> stair segments, collider cells and holes.
-//! Render rows are a separate in-progress native consumer, never a fabricated mesh.
+//! Produces platform stair cells, wall holes, and CPU render records from wall masks.
+//! Decorator rows and terrain are explicit inputs; graphics upload stays external.
 use crate::{
     BuildingStage, PublicWalls, WallCollectionState, wall_paths::WallPreparedPaths,
     wall_segments::WallProcessedMaskRegistry,
 };
 use bevy_ecs::{prelude::*, schedule::ApplyDeferred};
-use country_core::recovered_building::{
-    building_wall_holes::RawWallHole, building_wall_platform_stairs::*, building_wall_state::WallId,
-};
-use std::collections::HashMap;
+use country_core::resources::walls::wall_holes::geometry::RawWallHole;
+use country_core::systems::wall::construction::platform_stairs::*;
+use country_core::resources::walls::publication_fields::WallId;
+use std::{collections::HashMap, sync::Arc};
 #[derive(Event, Clone)]
 pub struct SetPlatformDecoratorRows {
     pub wall: WallId,
@@ -17,7 +17,6 @@ pub struct SetPlatformDecoratorRows {
 #[derive(Resource, Default)]
 pub struct PlatformDecoratorRows {
     pub rows: HashMap<WallId, Vec<WallPlatformDecoratorObserved>>,
-    revision: HashMap<WallId, u64>,
 }
 #[derive(Component, Clone, Debug)]
 pub struct WallCpuPlatformStairs {
@@ -36,6 +35,9 @@ pub struct WallPlatformStairState {
     pub pending: Vec<WallId>,
     pub rebuilt: Vec<WallId>,
     fingerprints: HashMap<WallId, Vec<u8>>,
+    // Keep fingerprinted allocation identities alive across updates. Public
+    // Arc::make_mut then uses copy-on-write instead of changing cached data.
+    terrain_snapshot: Option<Arc<[u16]>>,
 }
 pub fn register(app: &mut bevy_app::App) {
     app.init_resource::<PlatformDecoratorRows>()
@@ -56,11 +58,9 @@ fn consume(
 ) {
     for event in events.read() {
         rows.rows.insert(event.wall, event.rows.clone());
-        *rows.revision.entry(event.wall).or_default() += 1;
     }
     for event in removes.read() {
         rows.rows.remove(&event.0);
-        rows.revision.remove(&event.0);
     }
 }
 fn rebuild(
@@ -77,7 +77,7 @@ fn rebuild(
 ) {
     state.pending.clear();
     state.rebuilt.clear();
-    let mut ready = HashMap::new();
+    let mut ready = std::collections::HashSet::new();
     let mut ids: Vec<_> = collection.raw_sources.keys().copied().collect();
     ids.sort_unstable_by_key(|w| w.0);
     for wall in ids {
@@ -106,7 +106,12 @@ fn rebuild(
         key.extend(host.publication_revision.to_le_bytes());
         key.extend(path.generation.to_le_bytes());
         key.extend(processed.generation.to_le_bytes());
-        key.extend(rows.revision[&wall].to_le_bytes());
+        // Rows are publicly editable; fingerprint their contents rather than
+        // relying on a revision that only the event consumer can update.
+        key.extend(decorators.len().to_le_bytes());
+        for decorator in decorators {
+            key.extend(decorator.0);
+        }
         for h in &host.structural_arch_segment_heights {
             key.extend(h.to_le_bytes());
         }
@@ -115,7 +120,7 @@ fn rebuild(
         key.push(terrain.sampling_fix as u8);
         key.extend((terrain.encoded.as_ptr() as usize).to_le_bytes());
         if state.fingerprints.get(&wall) == Some(&key) {
-            ready.insert(wall, ());
+            ready.insert(wall);
             continue;
         }
         let result = (|| {
@@ -155,7 +160,7 @@ fn rebuild(
                 let mut render_records = Vec::new();
                 let mut render_error = None;
                 for cell in &geometry.cells {
-                    match country_core::recovered_building::building_wall_platform_stair_rows::platform_stair_rows(&host.source.shape,wall,cell) {
+                    match country_core::systems::wall::construction::platform_stair_rows::platform_stair_rows(&host.source.shape,wall,cell) {
                         Ok(records)=>render_records.extend(records),
                         Err(error)=>{render_error=Some(error);break;},
                     }
@@ -172,7 +177,7 @@ fn rebuild(
                     .0
                     .get(&wall)
                     .and_then(|e| previous.get(*e).ok())
-                    .map_or(1, |s| s.generation + 1);
+                    .map_or(1, |previous| previous.generation.wrapping_add(1));
                 state.stairs_lengths.insert(wall, geometry.stairs_length);
                 let component = WallCpuPlatformStairs {
                     wall,
@@ -190,7 +195,7 @@ fn rebuild(
                 state.holes.insert(wall, holes);
                 state.fingerprints.insert(wall, key);
                 state.rebuilt.push(wall);
-                ready.insert(wall, ());
+                ready.insert(wall);
             }
             Err(error) => {
                 report
@@ -203,7 +208,7 @@ fn rebuild(
     let stale: Vec<_> = entities
         .0
         .keys()
-        .filter(|wall| !ready.contains_key(wall))
+        .filter(|wall| !ready.contains(wall))
         .copied()
         .collect();
     for wall in stale {
@@ -214,6 +219,10 @@ fn rebuild(
         state.stairs_lengths.remove(&wall);
         state.fingerprints.remove(&wall);
     }
+    state.terrain_snapshot = collection
+        .terrain
+        .as_ref()
+        .map(|terrain| terrain.encoded.clone());
 }
 
 fn finalize_stats(
@@ -231,7 +240,7 @@ fn finalize_stats(
             continue;
         };
         let mut update =
-            country_core::recovered_building::building_wall_segmentation::material_stats_for_update(
+            country_core::systems::wall::construction::segmentation::material_stats_for_update(
                 path.path.length,
                 u8::from(source.special),
                 masks.masks.len(),

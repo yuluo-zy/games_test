@@ -1,0 +1,779 @@
+
+===== 0x1416bffe0 traverse_bvtt<u32,u32,parry3d::query::visitors::bounding_volume_intersections_simultaneous_visitor::BoundingVolumeIntersectionsSimultaneousVisitor<u32,u32,country_core::systems::collision::intersect_meshes::intersect_mesh_mesh::closure_env$0>_> size=3176 =====
+
+void __cdecl
+parry3d::partitioning::qbvh::qbvh::Qbvh::
+traverse_bvtt<u32,u32,parry3d::query::visitors::bounding_volume_intersections_simultaneous_visitor::BoundingVolumeIntersectionsSimultaneousVisitor<u32,u32,country_core::systems::collision::intersect_meshes::intersect_mesh_mesh::closure_env_0>_>
+          (void)
+
+{
+  longlong lVar1;
+  longlong lVar2;
+  byte bVar3;
+  byte bVar4;
+  byte bVar5;
+  undefined4 uVar6;
+  undefined4 uVar7;
+  uint uVar8;
+  uint uVar9;
+  longlong *plVar10;
+  longlong lVar11;
+  longlong lVar12;
+  longlong in_RCX;
+  undefined4 *puVar13;
+  longlong in_RDX;
+  ulonglong uVar14;
+  ulonglong uVar15;
+  byte bVar16;
+  byte *in_R8;
+  longlong lVar17;
+  longlong local_250 [4];
+  longlong local_230;
+  ulonglong local_220;
+  byte local_218;
+  undefined8 local_217;
+  undefined8 uStack_20f;
+  undefined8 local_207;
+  undefined8 uStack_1ff;
+  undefined8 local_1f7;
+  byte bStack_1e8;
+  undefined7 uStack_1e7;
+  undefined8 uStack_1e0;
+  ulonglong local_1d8;
+  undefined8 uStack_1d0;
+  undefined8 local_1c8;
+  undefined8 uStack_1c0;
+  undefined8 local_1b8;
+  undefined8 uStack_1a1;
+  longlong local_190;
+  ulonglong local_188;
+  longlong local_180;
+  longlong local_178;
+  longlong local_170;
+  longlong local_168;
+  longlong local_160;
+  longlong local_158;
+  longlong local_150;
+  longlong local_148;
+  longlong local_140;
+  longlong local_138;
+  longlong local_130;
+  longlong local_128;
+  ulonglong local_120;
+  ulonglong local_118;
+  byte *local_110;
+  byte local_108 [4];
+  undefined4 uStack_104;
+  undefined1 uStack_100;
+  undefined7 uStack_ff;
+  byte bStack_f8;
+  char cStack_f7;
+  byte bStack_f6;
+  byte bStack_f5;
+  undefined4 uStack_f4;
+  undefined1 uStack_f0;
+  undefined7 uStack_ef;
+  byte local_e8;
+  char cStack_e7;
+  byte bStack_e6;
+  byte bStack_e5;
+  undefined4 uStack_e4;
+  undefined1 uStack_e0;
+  byte bStack_d8;
+  char cStack_d7;
+  byte bStack_d6;
+  byte bStack_d5;
+  undefined4 uStack_d4;
+  undefined8 uStack_d0;
+  undefined4 *local_a0;
+  byte *local_98;
+  undefined4 *local_90;
+  ulonglong local_88;
+  ulonglong local_80;
+  undefined4 *local_78;
+  longlong local_70;
+  longlong local_68;
+  longlong local_60;
+  undefined8 *local_58;
+  longlong local_50;
+  undefined8 local_48;
+  
+  local_48 = 0xfffffffffffffffe;
+  local_60 = 0;
+  local_58 = (undefined8 *)&DAT_00000004;
+  local_50 = 0;
+  local_80 = *(ulonglong *)(in_RCX + 0x28);
+  local_78 = *(undefined4 **)(in_RDX + 0x28);
+  local_98 = in_R8;
+  if (local_80 == 0) {
+    lVar11 = 0;
+  }
+  else if (local_78 == (undefined4 *)0x0) {
+    lVar11 = 0;
+    local_78 = (undefined4 *)0x0;
+  }
+  else {
+    alloc::raw_vec::RawVec::grow_one<tuple_<u32,u32>,alloc::alloc::Global>();
+    *local_58 = 0;
+    local_50 = 1;
+    lVar11 = 1;
+  }
+  local_140 = *(longlong *)(in_RCX + 0x20);
+  local_130 = *(longlong *)(in_RCX + 0x68);
+  local_138 = *(longlong *)(in_RDX + 0x20);
+  local_128 = *(longlong *)(in_RDX + 0x68);
+  local_120 = *(ulonglong *)(in_RCX + 0x70);
+  local_118 = *(ulonglong *)(in_RDX + 0x70);
+  local_110 = local_98 + 0x10;
+LAB_1416c0127:
+  while (lVar11 != 0) {
+    local_50 = lVar11 + -1;
+    local_88 = (ulonglong)*(uint *)(local_58 + lVar11 + -1);
+    if (local_80 <= local_88) {
+                    // WARNING: Subroutine does not return
+      core::panicking::panic_bounds_check();
+    }
+    puVar13 = (undefined4 *)(ulonglong)*(uint *)((longlong)local_58 + lVar11 * 8 + -4);
+    if (local_78 <= puVar13) {
+                    // WARNING: Subroutine does not return
+      core::panicking::panic_bounds_check();
+    }
+    local_70 = local_88 * 0x80 + local_140;
+    bVar16 = *(byte *)(local_70 + 0x78) & 1;
+    if (bVar16 != 0) {
+      local_160 = local_130 + 8 + (ulonglong)*(uint *)(local_70 + 0x60) * 0xc;
+      if (local_120 <= *(uint *)(local_70 + 0x60)) {
+        local_160 = 0;
+      }
+      local_158 = local_130 + 8 + (ulonglong)*(uint *)(local_70 + 100) * 0xc;
+      if (local_120 <= *(uint *)(local_70 + 100)) {
+        local_158 = 0;
+      }
+      local_150 = local_130 + 8 + (ulonglong)*(uint *)(local_70 + 0x68) * 0xc;
+      if (local_120 <= *(uint *)(local_70 + 0x68)) {
+        local_150 = 0;
+      }
+      local_148 = local_130 + 8 + (ulonglong)*(uint *)(local_70 + 0x6c) * 0xc;
+      if (local_120 <= *(uint *)(local_70 + 0x6c)) {
+        local_148 = 0;
+      }
+    }
+    local_68 = (longlong)puVar13 * 0x80 + local_138;
+    bVar3 = *(byte *)(local_68 + 0x78);
+    if ((bVar3 & 1) != 0) {
+      local_180 = local_128 + 8 + (ulonglong)*(uint *)(local_68 + 0x60) * 0xc;
+      if (local_118 <= *(uint *)(local_68 + 0x60)) {
+        local_180 = 0;
+      }
+      local_178 = local_128 + 8 + (ulonglong)*(uint *)(local_68 + 100) * 0xc;
+      if (local_118 <= *(uint *)(local_68 + 100)) {
+        local_178 = 0;
+      }
+      local_170 = local_128 + 8 + (ulonglong)*(uint *)(local_68 + 0x68) * 0xc;
+      if (local_118 <= *(uint *)(local_68 + 0x68)) {
+        local_170 = 0;
+      }
+      local_168 = local_128 + 8 + (ulonglong)*(uint *)(local_68 + 0x6c) * 0xc;
+      if (local_118 <= *(uint *)(local_68 + 0x6c)) {
+        local_168 = 0;
+      }
+    }
+    local_90 = puVar13;
+    if ((*local_98 & 1) == 0) {
+      bounding_volume::simd_aabb::SimdAabb::intersects_permutations();
+    }
+    else {
+      bounding_volume::simd_aabb::SimdAabb::transform_by();
+      bounding_volume::simd_aabb::SimdAabb::intersects_permutations();
+    }
+    if ((bVar3 & bVar16) != 0) {
+      local_250[0] = local_160;
+      local_250[1] = local_158;
+      local_250[2] = local_150;
+      local_250[3] = local_148;
+      lVar11 = 0;
+      uVar15 = 0;
+      while (uVar14 = uVar15, lVar11 != 4) {
+        plVar10 = local_250 + lVar11;
+        lVar11 = lVar11 + 1;
+        uVar15 = uVar14 + 1;
+        local_a0 = (undefined4 *)*plVar10;
+        if ((undefined4 *)*plVar10 != (undefined4 *)0x0) {
+          local_230 = lVar11;
+          local_220 = uVar15;
+          if (3 < uVar14) {
+                    // WARNING: Subroutine does not return
+            core::panicking::panic_bounds_check();
+          }
+          local_188 = uVar15;
+          local_190 = lVar11;
+          lVar11 = uVar14 * 0x10;
+          bVar16 = *(byte *)(&local_217 + uVar14 * 2);
+          bVar3 = *(byte *)((longlong)&local_217 + lVar11 + 1);
+          bVar4 = *(byte *)((longlong)&local_217 + lVar11 + 2);
+          bVar5 = (&local_218)[lVar11];
+          local_108[0] = (byte)local_180;
+          local_108[1] = (byte)((ulonglong)local_180 >> 8);
+          local_108[2] = (byte)((ulonglong)local_180 >> 0x10);
+          local_108[3] = (byte)((ulonglong)local_180 >> 0x18);
+          uStack_104 = (undefined4)((ulonglong)local_180 >> 0x20);
+          uStack_100 = (undefined1)local_178;
+          uStack_ff = (undefined7)((ulonglong)local_178 >> 8);
+          bStack_f8 = (byte)local_170;
+          cStack_f7 = (char)((ulonglong)local_170 >> 8);
+          bStack_f6 = (byte)((ulonglong)local_170 >> 0x10);
+          bStack_f5 = (byte)((ulonglong)local_170 >> 0x18);
+          uStack_f4 = (undefined4)((ulonglong)local_170 >> 0x20);
+          uStack_f0 = (undefined1)local_168;
+          uStack_ef = (undefined7)((ulonglong)local_168 >> 8);
+          lVar17 = 0;
+          lVar11 = 0;
+          while (lVar12 = lVar11, lVar11 = local_190, uVar15 = local_188, lVar17 != 4) {
+            lVar1 = lVar17 + 1;
+            local_e8 = (byte)lVar1;
+            cStack_e7 = (char)((ulonglong)lVar1 >> 8);
+            bStack_e6 = (byte)((ulonglong)lVar1 >> 0x10);
+            bStack_e5 = (byte)((ulonglong)lVar1 >> 0x18);
+            uStack_e4 = (undefined4)((ulonglong)lVar1 >> 0x20);
+            lVar2 = lVar17 * 8;
+            lVar11 = lVar12 + 1;
+            bStack_d8 = (byte)lVar11;
+            cStack_d7 = (char)((ulonglong)lVar11 >> 8);
+            bStack_d6 = (byte)((ulonglong)lVar11 >> 0x10);
+            bStack_d5 = (byte)((ulonglong)lVar11 >> 0x18);
+            uStack_d4 = (undefined4)((ulonglong)lVar11 >> 0x20);
+            lVar17 = lVar1;
+            if ((*(undefined4 **)(local_108 + lVar2) != (undefined4 *)0x0) &&
+               (((uint)(1L << ((byte)lVar12 & 0x3f)) &
+                (bVar5 & 1) + (bVar16 & 1) * 2 + (bVar3 & 1) * 4 + (bVar4 & 1) * 8) != 0)) {
+              plVar10 = *(longlong **)(local_98 + 0x80);
+              uVar6 = *local_a0;
+              uVar7 = **(undefined4 **)(local_108 + lVar2);
+              lVar12 = plVar10[2];
+              if (lVar12 == *plVar10) {
+                alloc::raw_vec::RawVec::grow_one<tuple_<u32,u32>,alloc::alloc::Global>();
+              }
+              lVar1 = plVar10[1];
+              *(undefined4 *)(lVar1 + lVar12 * 8) = uVar6;
+              *(undefined4 *)(lVar1 + 4 + lVar12 * 8) = uVar7;
+              plVar10[2] = lVar12 + 1;
+            }
+          }
+        }
+      }
+    }
+    lVar11 = local_50;
+    local_1d8 = local_217;
+    uStack_1d0 = uStack_20f;
+    local_1c8 = local_207;
+    uStack_1c0 = uStack_1ff;
+    local_1b8 = local_1f7;
+    uStack_1a1 = uStack_1e0;
+    if (local_218 == 2) break;
+    local_108[0] = local_218;
+    cStack_d7 = (char)uStack_1e7;
+    bStack_d6 = (byte)((uint7)uStack_1e7 >> 8);
+    bStack_d5 = (byte)((uint7)uStack_1e7 >> 0x10);
+    uStack_d4 = (undefined4)((uint7)uStack_1e7 >> 0x18);
+    uStack_d0 = uStack_1e0;
+    cStack_e7 = (char)local_1f7;
+    bStack_e6 = (byte)((ulonglong)local_1f7 >> 8);
+    bStack_e5 = (byte)((ulonglong)local_1f7 >> 0x10);
+    uStack_e4 = (undefined4)((ulonglong)local_1f7 >> 0x18);
+    uStack_e0 = (undefined1)((ulonglong)local_1f7 >> 0x38);
+    bStack_d8 = bStack_1e8;
+    cStack_f7 = (char)local_207;
+    bStack_f6 = (byte)((ulonglong)local_207 >> 8);
+    bStack_f5 = (byte)((ulonglong)local_207 >> 0x10);
+    uStack_f4 = (undefined4)((ulonglong)local_207 >> 0x18);
+    uStack_f0 = (undefined1)((ulonglong)local_207 >> 0x38);
+    uStack_ef = (undefined7)uStack_1ff;
+    local_e8 = (byte)((ulonglong)uStack_1ff >> 0x38);
+    local_108[1] = (byte)local_217;
+    local_108[2] = (byte)(local_217 >> 8);
+    local_108[3] = (byte)(local_217 >> 0x10);
+    uStack_104 = (undefined4)(local_217 >> 0x18);
+    uStack_100 = (undefined1)(local_217 >> 0x38);
+    uStack_ff = (undefined7)uStack_20f;
+    bStack_f8 = (byte)((ulonglong)uStack_20f >> 0x38);
+    if ((*(byte *)(local_70 + 0x78) & 1) != 0) goto LAB_1416c0780;
+    if ((*(byte *)(local_68 + 0x78) & 1) == 0) {
+      lVar17 = 0;
+      do {
+        lVar11 = local_50;
+        lVar12 = lVar17 * 0x10;
+        bVar16 = local_108[lVar12 + 1];
+        bVar3 = local_108[lVar12 + 2];
+        bVar4 = local_108[lVar12 + 3];
+        bVar5 = local_108[lVar12];
+        if ((((bVar5 & 1) != 0) &&
+            (uVar8 = *(uint *)(local_70 + 0x60 + lVar17 * 4), uVar8 <= local_80)) &&
+           ((undefined4 *)(ulonglong)*(uint *)(local_68 + 0x60) <= local_78)) {
+          local_a0 = (undefined4 *)(ulonglong)*(uint *)(local_68 + 0x60);
+          if (local_50 == local_60) {
+            alloc::raw_vec::RawVec::grow_one<tuple_<u32,u32>,alloc::alloc::Global>();
+          }
+          *(uint *)(local_58 + lVar11) = uVar8;
+          *(int *)((longlong)local_58 + lVar11 * 8 + 4) = (int)local_a0;
+          local_50 = lVar11 + 1;
+        }
+        lVar11 = local_50;
+        bVar16 = (bVar5 & 1) + (bVar16 & 1) * '\x02' + (bVar3 & 1) * '\x04';
+        if ((((bVar16 & 2) != 0) &&
+            (uVar8 = *(uint *)(local_70 + 0x60 + lVar17 * 4), uVar8 <= local_80)) &&
+           (uVar9 = *(uint *)(local_68 + 100), (undefined4 *)(ulonglong)uVar9 <= local_78)) {
+          if (local_50 == local_60) {
+            alloc::raw_vec::RawVec::grow_one<tuple_<u32,u32>,alloc::alloc::Global>();
+          }
+          *(uint *)(local_58 + lVar11) = uVar8;
+          *(uint *)((longlong)local_58 + lVar11 * 8 + 4) = uVar9;
+          local_50 = lVar11 + 1;
+        }
+        lVar11 = local_50;
+        if ((((bVar16 & 4) != 0) &&
+            (uVar8 = *(uint *)(local_70 + 0x60 + lVar17 * 4), uVar8 <= local_80)) &&
+           (uVar9 = *(uint *)(local_68 + 0x68), (undefined4 *)(ulonglong)uVar9 <= local_78)) {
+          if (local_50 == local_60) {
+            alloc::raw_vec::RawVec::grow_one<tuple_<u32,u32>,alloc::alloc::Global>();
+          }
+          *(uint *)(local_58 + lVar11) = uVar8;
+          *(uint *)((longlong)local_58 + lVar11 * 8 + 4) = uVar9;
+          local_50 = lVar11 + 1;
+        }
+        lVar11 = local_50;
+        if ((((bVar4 & 1) != 0) &&
+            (uVar8 = *(uint *)(local_70 + 0x60 + lVar17 * 4), uVar8 <= local_80)) &&
+           (uVar9 = *(uint *)(local_68 + 0x6c), (undefined4 *)(ulonglong)uVar9 <= local_78)) {
+          if (local_50 == local_60) {
+            alloc::raw_vec::RawVec::grow_one<tuple_<u32,u32>,alloc::alloc::Global>();
+          }
+          *(uint *)(local_58 + lVar11) = uVar8;
+          *(uint *)((longlong)local_58 + lVar11 * 8 + 4) = uVar9;
+          local_50 = lVar11 + 1;
+        }
+        lVar17 = lVar17 + 1;
+        lVar11 = local_50;
+      } while (lVar17 != 4);
+    }
+    else {
+      if (((local_217 & 0x10000) != 0 ||
+           ((local_217 & 0x100) != 0 || ((local_108[1] * '\x02' & 2) != 0 || (local_218 & 1) != 0)))
+         && (uVar8 = *(uint *)(local_70 + 0x60), uVar8 <= local_80)) {
+        if (local_50 == local_60) {
+          alloc::raw_vec::RawVec::grow_one<tuple_<u32,u32>,alloc::alloc::Global>();
+        }
+        *(uint *)(local_58 + lVar11) = uVar8;
+        *(int *)((longlong)local_58 + lVar11 * 8 + 4) = (int)local_90;
+        local_50 = lVar11 + 1;
+      }
+      lVar11 = local_50;
+      if (((bStack_f5 & 1) != 0 ||
+           ((bStack_f6 & 1) != 0 || ((cStack_f7 * '\x02' & 2U) != 0 || (bStack_f8 & 1) != 0))) &&
+         (uVar8 = *(uint *)(local_70 + 100), uVar8 <= local_80)) {
+        if (local_50 == local_60) {
+          alloc::raw_vec::RawVec::grow_one<tuple_<u32,u32>,alloc::alloc::Global>();
+        }
+        *(uint *)(local_58 + lVar11) = uVar8;
+        *(int *)((longlong)local_58 + lVar11 * 8 + 4) = (int)local_90;
+        local_50 = lVar11 + 1;
+      }
+      lVar11 = local_50;
+      if (((bStack_e5 & 1) != 0 ||
+           ((bStack_e6 & 1) != 0 || ((cStack_e7 * '\x02' & 2U) != 0 || (local_e8 & 1) != 0))) &&
+         (uVar8 = *(uint *)(local_70 + 0x68), uVar8 <= local_80)) {
+        if (local_50 == local_60) {
+          alloc::raw_vec::RawVec::grow_one<tuple_<u32,u32>,alloc::alloc::Global>();
+        }
+        *(uint *)(local_58 + lVar11) = uVar8;
+        *(int *)((longlong)local_58 + lVar11 * 8 + 4) = (int)local_90;
+        local_50 = lVar11 + 1;
+      }
+      lVar11 = local_50;
+      if (((bStack_d5 & 1) != 0 ||
+           ((bStack_d6 & 1) != 0 || ((cStack_d7 * '\x02' & 2U) != 0 || (bStack_d8 & 1) != 0))) &&
+         (local_88 = (ulonglong)*(uint *)(local_70 + 0x6c), local_88 <= local_80)) {
+        if (local_50 == local_60) goto LAB_1416c0c01;
+        goto LAB_1416c00f5;
+      }
+    }
+  }
+  if (local_60 != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  return;
+LAB_1416c0780:
+  if ((*(byte *)(local_68 + 0x78) & 1) == 0) {
+    bVar16 = (local_218 & 1) + (local_108[1] & 1) * '\x02' + (local_108[2] & 1) * '\x04' +
+             (local_108[3] & 1) * '\b' |
+             (bStack_f6 & 1) << 2 | cStack_f7 * '\x02' & 2U | bStack_f8 & 1 |
+             (bStack_e6 & 1) << 2 | cStack_e7 * '\x02' & 2U | local_e8 & 1 | (bStack_f5 & 1) << 3 |
+             (bStack_d5 & 1) << 3 |
+             (bStack_d6 & 1) << 2 | cStack_d7 * '\x02' & 2U | bStack_1e8 & 1 | (bStack_e5 & 1) << 3;
+    if (((bVar16 & 1) != 0) &&
+       (uVar8 = *(uint *)(local_68 + 0x60), (undefined4 *)(ulonglong)uVar8 <= local_78)) {
+      if (local_50 == local_60) {
+        alloc::raw_vec::RawVec::grow_one<tuple_<u32,u32>,alloc::alloc::Global>();
+      }
+      *(int *)(local_58 + lVar11) = (int)local_88;
+      *(uint *)((longlong)local_58 + lVar11 * 8 + 4) = uVar8;
+      local_50 = lVar11 + 1;
+    }
+    lVar11 = local_50;
+    if (((bVar16 & 2) != 0) &&
+       (uVar8 = *(uint *)(local_68 + 100), (undefined4 *)(ulonglong)uVar8 <= local_78)) {
+      if (local_50 == local_60) {
+        alloc::raw_vec::RawVec::grow_one<tuple_<u32,u32>,alloc::alloc::Global>();
+      }
+      *(int *)(local_58 + lVar11) = (int)local_88;
+      *(uint *)((longlong)local_58 + lVar11 * 8 + 4) = uVar8;
+      local_50 = lVar11 + 1;
+    }
+    lVar11 = local_50;
+    if (((bVar16 & 4) != 0) &&
+       (uVar8 = *(uint *)(local_68 + 0x68), (undefined4 *)(ulonglong)uVar8 <= local_78)) {
+      if (local_50 == local_60) {
+        alloc::raw_vec::RawVec::grow_one<tuple_<u32,u32>,alloc::alloc::Global>();
+      }
+      *(int *)(local_58 + lVar11) = (int)local_88;
+      *(uint *)((longlong)local_58 + lVar11 * 8 + 4) = uVar8;
+      local_50 = lVar11 + 1;
+    }
+    lVar11 = local_50;
+    if (((bVar16 & 8) != 0) &&
+       (local_90 = (undefined4 *)(ulonglong)*(uint *)(local_68 + 0x6c), local_90 <= local_78)) {
+      if (local_50 == local_60) {
+LAB_1416c0c01:
+        lVar11 = local_50;
+        alloc::raw_vec::RawVec::grow_one<tuple_<u32,u32>,alloc::alloc::Global>();
+        local_50 = lVar11;
+      }
+LAB_1416c00f5:
+      *(int *)(local_58 + local_50) = (int)local_88;
+      *(int *)((longlong)local_58 + local_50 * 8 + 4) = (int)local_90;
+      local_50 = local_50 + 1;
+      lVar11 = local_50;
+    }
+  }
+  goto LAB_1416c0127;
+}
+
+
+--- callees ---
+[{'name': '__rust_dealloc', 'address': '140613c20'}, {'name': 'grow_one<tuple$<u32,u32>,alloc::alloc::Global>', 'address': '140744e90'}, {'name': 'intersects_permutations', 'address': '140b97670'}, {'name': 'panic_bounds_check', 'address': '1428d9518'}, {'name': 'transform_by', 'address': '140b94e20'}]
+
+
+===== 0x141618890 new<country_core::geometry::instanced_wall::BrickTransformSsbo> size=395 =====
+
+void __cdecl
+country_core::render::ssbo::TypedStorageBuffer::
+new<country_core::geometry::instanced_wall::BrickTransformSsbo>(void)
+
+{
+  undefined8 *in_RCX;
+  longlong in_R8;
+  ulonglong in_R9;
+  undefined *local_f8;
+  undefined8 uStack_f0;
+  undefined8 uStack_e8;
+  undefined8 uStack_e0;
+  undefined8 uStack_d8;
+  undefined8 local_d0;
+  undefined8 local_c8;
+  undefined8 uStack_c0;
+  undefined8 local_b8;
+  undefined8 uStack_b0;
+  undefined **local_a8;
+  undefined8 uStack_a0;
+  undefined8 **local_98;
+  undefined8 uStack_90;
+  undefined8 local_88;
+  undefined8 uStack_80;
+  undefined8 local_78;
+  undefined8 uStack_70;
+  undefined8 local_68;
+  undefined8 uStack_60;
+  undefined **local_50;
+  code *local_48;
+  undefined8 local_40;
+  
+  local_40 = 0xfffffffffffffffe;
+  if (0x200000 < in_R9 && in_R8 != 0) {
+    local_f8 = &anon_107183261458dea85466985370debbb6_35_llvm_3641509820080252961;
+    uStack_f0 = 0x3a;
+    local_50 = &local_f8;
+    local_48 = anyhow::context::impl$3::fmt<ref_<str_>,alloc::ffi::c_str::FromVecWithNulError>;
+    local_a8 = &PTR_DAT_142c7f7c8;
+    uStack_a0 = 1;
+    local_88 = 0;
+    local_98 = &local_50;
+    uStack_90 = 1;
+                    // WARNING: Subroutine does not return
+    core::panicking::panic_fmt();
+  }
+  rhapsody::raw::buffer::BufferDesc::new();
+  rhapsody::raw::buffer::BufferDesc::alignment();
+  rhapsody::raw::device::GraphicsDevice::
+  create_buffer<enum2_<core::option::Option<ref_<slice2_<u8>_>_>_>_>();
+  if ((int)local_f8 == 0xb) {
+    in_RCX[4] = local_d0;
+    in_RCX[2] = uStack_e0;
+    in_RCX[3] = uStack_d8;
+    *in_RCX = uStack_f0;
+    in_RCX[1] = uStack_e8;
+    return;
+  }
+  local_68 = local_b8;
+  uStack_60 = uStack_b0;
+  local_78 = local_c8;
+  uStack_70 = uStack_c0;
+  local_88 = uStack_d8;
+  uStack_80 = local_d0;
+  local_98 = (undefined8 **)uStack_e8;
+  uStack_90 = uStack_e0;
+  local_a8 = (undefined **)local_f8;
+  uStack_a0 = uStack_f0;
+                    // WARNING: Subroutine does not return
+  core::result::unwrap_failed();
+}
+
+
+--- callees ---
+[{'name': 'alignment', 'address': '140bd4f20'}, {'name': 'create_buffer<enum2$<core::option::Option<ref$<slice2$<u8>_>_>_>_>', 'address': '1416a2dc0'}, {'name': 'new', 'address': '140bd4de0'}, {'name': 'panic_fmt', 'address': '1428d9390'}, {'name': 'unwrap_failed', 'address': '1428d9760'}]
+
+
+===== 0x14078cac0 grow_one<country_core::geometry::instanced_wall::BrickTransformSsbo,alloc::alloc::Global> size=191 =====
+
+void __cdecl
+alloc::raw_vec::RawVec::
+grow_one<country_core::geometry::instanced_wall::BrickTransformSsbo,alloc::alloc::Global>(void)
+
+{
+  undefined1 auVar1 [16];
+  ulonglong *in_RCX;
+  ulonglong uVar2;
+  ulonglong uVar3;
+  int local_48;
+  ulonglong local_40;
+  
+  uVar3 = *in_RCX + 1;
+  uVar2 = *in_RCX * 2;
+  if (uVar2 < uVar3) {
+    uVar2 = uVar3;
+  }
+  uVar3 = 4;
+  if (4 < uVar2) {
+    uVar3 = uVar2;
+  }
+  auVar1._8_8_ = 0;
+  auVar1._0_8_ = uVar3;
+  if (SUB168(auVar1 * ZEXT816(0x60),8) == 0) {
+    if ((SUB168(auVar1 * ZEXT816(0x60),0) < 0x7ffffffffffffffd) &&
+       (finish_grow<alloc::alloc::Global>(), local_48 != 1)) {
+      in_RCX[1] = local_40;
+      *in_RCX = uVar3;
+      return;
+    }
+                    // WARNING: Subroutine does not return
+    handle_error();
+  }
+                    // WARNING: Subroutine does not return
+  handle_error();
+}
+
+
+--- callees ---
+[{'name': 'finish_grow<alloc::alloc::Global>', 'address': '1428a2970'}, {'name': 'handle_error', 'address': '1428d8fe3'}]
+
+
+===== 0x1412e4450 push<country_core::geometry::instanced_wall::BrickTransformSsbo> size=718 =====
+
+void __cdecl
+country_core::render::sparse_instance_buffer::SparseInstanceBufferWriter::
+push<country_core::geometry::instanced_wall::BrickTransformSsbo>(void)
+
+{
+  ulonglong *puVar1;
+  undefined8 *puVar2;
+  byte bVar3;
+  uint uVar4;
+  longlong lVar5;
+  longlong *plVar6;
+  longlong *plVar7;
+  undefined8 uVar8;
+  undefined8 uVar9;
+  undefined8 uVar10;
+  undefined8 uVar11;
+  undefined8 uVar12;
+  undefined8 uVar13;
+  undefined8 uVar14;
+  ulonglong uVar15;
+  longlong lVar16;
+  ulonglong uVar17;
+  longlong *in_RCX;
+  undefined8 *in_RDX;
+  bool bVar18;
+  
+  uVar4 = *(uint *)(in_RCX + 10);
+  uVar17 = (ulonglong)uVar4;
+  if ((ulonglong)in_RCX[1] <= uVar17) {
+                    // WARNING: Subroutine does not return
+    core::panicking::panic_bounds_check();
+  }
+  bVar3 = *(byte *)(*in_RCX + uVar17);
+  if ((ulonglong)bVar3 < 0x20) {
+    uVar15 = uVar17 << 5 | (ulonglong)bVar3;
+    *(byte *)(*in_RCX + uVar17) = bVar3 + 1;
+    if ((ulonglong)in_RCX[6] <= uVar15) {
+                    // WARNING: Subroutine does not return
+      core::panicking::panic_bounds_check();
+    }
+    lVar5 = in_RCX[5];
+    lVar16 = uVar15 * 0x60;
+    uVar8 = in_RDX[0xb];
+    puVar2 = (undefined8 *)(lVar5 + 0x50 + lVar16);
+    *puVar2 = in_RDX[10];
+    puVar2[1] = uVar8;
+    uVar8 = in_RDX[9];
+    puVar2 = (undefined8 *)(lVar5 + 0x40 + lVar16);
+    *puVar2 = in_RDX[8];
+    puVar2[1] = uVar8;
+    uVar8 = *in_RDX;
+    uVar9 = in_RDX[1];
+    uVar10 = in_RDX[2];
+    uVar11 = in_RDX[3];
+    uVar12 = in_RDX[4];
+    uVar13 = in_RDX[5];
+    uVar14 = in_RDX[7];
+    puVar2 = (undefined8 *)(lVar5 + 0x30 + lVar16);
+    *puVar2 = in_RDX[6];
+    puVar2[1] = uVar14;
+    puVar2 = (undefined8 *)(lVar5 + 0x20 + lVar16);
+    *puVar2 = uVar12;
+    puVar2[1] = uVar13;
+    puVar2 = (undefined8 *)(lVar5 + 0x10 + lVar16);
+    *puVar2 = uVar10;
+    puVar2[1] = uVar11;
+    *(undefined8 *)(lVar5 + lVar16) = uVar8;
+    ((undefined8 *)(lVar5 + lVar16))[1] = uVar9;
+    if ((ulonglong)in_RCX[9] <= (ulonglong)(uVar4 >> 6)) {
+                    // WARNING: Subroutine does not return
+      core::panicking::panic_bounds_check();
+    }
+    LOCK();
+    puVar1 = (ulonglong *)(in_RCX[8] + (ulonglong)(uVar4 >> 6) * 8);
+    *puVar1 = *puVar1 | 1L << ((byte)uVar4 & 0x3f);
+    UNLOCK();
+  }
+  else {
+    plVar6 = (longlong *)in_RCX[7];
+    LOCK();
+    lVar5 = *plVar6;
+    if (lVar5 == 0) {
+      *plVar6 = 8;
+    }
+    UNLOCK();
+    if (lVar5 != 0) {
+      parking_lot::raw_rwlock::RawRwLock::lock_exclusive_slow();
+    }
+    parking_lot_core::parking_lot::deadlock_impl::acquire_resource();
+    parking_lot_core::parking_lot::deadlock_impl::acquire_resource();
+    lVar5 = plVar6[3];
+    if (lVar5 == 0) {
+      parking_lot_core::parking_lot::deadlock_impl::release_resource();
+      parking_lot_core::parking_lot::deadlock_impl::release_resource();
+      LOCK();
+      bVar18 = *plVar6 == 8;
+      if (bVar18) {
+        *plVar6 = 0;
+      }
+      UNLOCK();
+    }
+    else {
+      plVar6[3] = lVar5 + -1;
+      uVar4 = *(uint *)(plVar6[2] + -4 + lVar5 * 4);
+      uVar17 = (ulonglong)uVar4;
+      plVar7 = (longlong *)in_RCX[4];
+      lVar5 = plVar7[2];
+      if (lVar5 == *plVar7) {
+        alloc::raw_vec::RawVec::
+        grow_one<country_core::render::sparse_instance_buffer::ChunkId,alloc::alloc::Global>();
+      }
+      *(uint *)(plVar7[1] + lVar5 * 4) = uVar4;
+      plVar7[2] = lVar5 + 1;
+      if ((ulonglong)in_RCX[1] <= uVar17) {
+                    // WARNING: Subroutine does not return
+        core::panicking::panic_bounds_check();
+      }
+      *(undefined1 *)(*in_RCX + uVar17) = 1;
+      if ((ulonglong)in_RCX[6] <= uVar17 * 0x20) {
+                    // WARNING: Subroutine does not return
+        core::panicking::panic_bounds_check();
+      }
+      lVar5 = in_RCX[5];
+      lVar16 = uVar17 * 0xc00;
+      uVar8 = in_RDX[0xb];
+      puVar2 = (undefined8 *)(lVar5 + 0x50 + lVar16);
+      *puVar2 = in_RDX[10];
+      puVar2[1] = uVar8;
+      uVar8 = in_RDX[9];
+      puVar2 = (undefined8 *)(lVar5 + 0x40 + lVar16);
+      *puVar2 = in_RDX[8];
+      puVar2[1] = uVar8;
+      uVar8 = *in_RDX;
+      uVar9 = in_RDX[1];
+      uVar10 = in_RDX[2];
+      uVar11 = in_RDX[3];
+      uVar12 = in_RDX[4];
+      uVar13 = in_RDX[5];
+      uVar14 = in_RDX[7];
+      puVar2 = (undefined8 *)(lVar5 + 0x30 + lVar16);
+      *puVar2 = in_RDX[6];
+      puVar2[1] = uVar14;
+      puVar2 = (undefined8 *)(lVar5 + 0x20 + lVar16);
+      *puVar2 = uVar12;
+      puVar2[1] = uVar13;
+      puVar2 = (undefined8 *)(lVar5 + 0x10 + lVar16);
+      *puVar2 = uVar10;
+      puVar2[1] = uVar11;
+      *(undefined8 *)(lVar5 + lVar16) = uVar8;
+      ((undefined8 *)(lVar5 + lVar16))[1] = uVar9;
+      uVar17 = (ulonglong)(uVar4 >> 6);
+      if ((ulonglong)in_RCX[3] <= uVar17) {
+                    // WARNING: Subroutine does not return
+        core::panicking::panic_bounds_check();
+      }
+      uVar15 = 1L << ((byte)uVar4 & 0x3f);
+      LOCK();
+      puVar1 = (ulonglong *)(in_RCX[2] + uVar17 * 8);
+      *puVar1 = *puVar1 | uVar15;
+      UNLOCK();
+      if ((ulonglong)in_RCX[9] <= uVar17) {
+                    // WARNING: Subroutine does not return
+        core::panicking::panic_bounds_check();
+      }
+      LOCK();
+      puVar1 = (ulonglong *)(in_RCX[8] + uVar17 * 8);
+      *puVar1 = *puVar1 | uVar15;
+      UNLOCK();
+      *(uint *)(in_RCX + 10) = uVar4;
+      parking_lot_core::parking_lot::deadlock_impl::release_resource();
+      parking_lot_core::parking_lot::deadlock_impl::release_resource();
+      LOCK();
+      bVar18 = *plVar6 == 8;
+      if (bVar18) {
+        *plVar6 = 0;
+      }
+      UNLOCK();
+    }
+    if (!bVar18) {
+      parking_lot::raw_rwlock::RawRwLock::unlock_exclusive_slow();
+    }
+  }
+  return;
+}
+
+
+--- callees ---
+[{'name': 'acquire_resource', 'address': '140c81c70'}, {'name': 'grow_one<country_core::render::sparse_instance_buffer::ChunkId,alloc::alloc::Global>', 'address': '140b5f870'}, {'name': 'lock_exclusive_slow', 'address': '1428cb5f0'}, {'name': 'panic_bounds_check', 'address': '1428d9518'}, {'name': 'release_resource', 'address': '140c81e10'}, {'name': 'unlock_exclusive_slow', 'address': '1428cbf60'}]
+
+{"program": "tiny-glade.exe", "functions": [], "count": 0, "offset": 0, "limit": 20, "total": 0}

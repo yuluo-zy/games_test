@@ -1,12 +1,12 @@
-//! Authoritative source+54 update; original owner marks dirty even on equal bits.
+//! Applies source height updates and exposes height-command feedback.
+//! Direct assignments invalidate publication even when their value is unchanged.
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::SystemParam;
-use country_core::recovered_building::building_wall_height_command::{
-    AdjustWallHeightRequest, WallHeightCommandOutcome, WallHeightFeedback,
-};
-use country_core::recovered_building::{
-    building_wall_height_authority::WallHeightAuthorityOutcome, building_wall_state::WallId,
-};
+use country_core::systems::wall::height_command::AdjustWallHeightRequest;
+use country_core::systems::wall::height_command::WallHeightCommandOutcome;
+use country_core::systems::wall::height_command::WallHeightFeedback;
+use country_core::systems::wall::wall_state::height_authority::WallHeightAuthorityOutcome;
+use country_core::resources::walls::publication_fields::WallId;
 
 #[derive(Event, Clone, Copy, Debug)]
 pub struct SetWallSourceHeight {

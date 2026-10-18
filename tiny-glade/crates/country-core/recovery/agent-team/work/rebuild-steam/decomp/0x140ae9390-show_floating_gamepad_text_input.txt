@@ -1,0 +1,68 @@
+NAME: show_floating_gamepad_text_input
+VA: 0x140ae9390
+SIZE: 176
+SIGNATURE: void __cdecl show_floating_gamepad_text_input(void)
+CALLEES:
+  {'name': 'SteamAPI_ISteamUtils_ShowFloatingGamepadTextInput', 'address': '142923620'}
+  {'name': 'SteamAPI_SteamUtils_v010', 'address': '142923570'}
+  {'name': '__rust_dealloc', 'address': '140613c20'}
+  {'name': 'drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>', 'address': '140b85350'}
+  {'name': 'register_callback<steamworks::utils::FloatingGamepadTextInputDismissed,steamworks::utils::impl$5::show_floating_gamepad_text_input::closure_env$0<steamworks::ClientManager,country_core::systems::steam::impl$0::show_floating_gamepad_text_input::closure_env$0>,steamworks::ClientManager>', 'address': '14091a7e0'}
+DECOMP:
+
+void __cdecl
+country_core::systems::steam::SteamClientResource::show_floating_gamepad_text_input(void)
+
+{
+  longlong *plVar1;
+  longlong lVar2;
+  code *pcVar3;
+  char cVar4;
+  undefined8 uVar5;
+  longlong extraout_RAX;
+  undefined8 *in_RCX;
+  longlong *plVar6;
+  longlong *plVar7;
+  undefined8 uVar8;
+  
+  uVar8 = 0xfffffffffffffffe;
+  cVar4 = FLOATING_GAMEPAD_TEXT_INPUT_OPEN;
+  if (FLOATING_GAMEPAD_TEXT_INPUT_OPEN == '\0') {
+    uVar5 = SteamAPI_SteamUtils_v010();
+    plVar6 = (longlong *)*in_RCX;
+    LOCK();
+    lVar2 = *plVar6;
+    *plVar6 = *plVar6 + 1;
+    UNLOCK();
+    if (*plVar6 == 0 || SCARRY8(lVar2,1) != *plVar6 < 0) {
+                    // WARNING: Does not return
+      pcVar3 = (code *)invalidInstructionException();
+      (*pcVar3)();
+    }
+    plVar7 = plVar6;
+    steamworks::callback::
+    register_callback<steamworks::utils::FloatingGamepadTextInputDismissed,steamworks::utils::impl_5::show_floating_gamepad_text_input::closure_env_0<steamworks::ClientManager,country_core::systems::steam::impl_0::show_floating_gamepad_text_input::closure_env_0>,steamworks::ClientManager>
+              ();
+    if (extraout_RAX != -1) {
+      LOCK();
+      plVar1 = (longlong *)(extraout_RAX + 8);
+      *plVar1 = *plVar1 + -1;
+      UNLOCK();
+      if (*plVar1 == 0) {
+        std::alloc::__default_lib_allocator::__rust_dealloc();
+      }
+    }
+    cVar4 = SteamAPI_ISteamUtils_ShowFloatingGamepadTextInput
+                      (uVar5,1,0,0,0x500,400,plVar6,plVar7,uVar5,uVar8);
+    LOCK();
+    *plVar7 = *plVar7 + -1;
+    UNLOCK();
+    if (*plVar7 == 0) {
+      alloc::sync::Arc::drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>
+                ();
+    }
+  }
+  FLOATING_GAMEPAD_TEXT_INPUT_OPEN = cVar4;
+  return;
+}
+

@@ -1,8 +1,18 @@
 # country-core 按源码目录恢复
 
-目标是 B 版完整 core 的业务和算法一致。所有新增游戏逻辑放在本 crate；原始文件、章节、旧纠错表保持为历史证据，不用其 O/FIX 标签直接宣布完成。
+目标是 B 版完整 core 的业务和算法一致。核心资源与系统合同放在本 crate；按 2026-10-18 用户最新要求，系统专属逻辑归入工作区已有的对应 crate。原始文件、章节、旧纠错表保持为历史证据，不用其 O/FIX 标签直接宣布完成。
 
 本目录是当前进度入口：[逐目录/逐文件清单](DIRECTORIES.md)、[机器清单](inventory.json)、[逐文件核验合同](contracts.json)。源文件是主键；报告、函数地址、当前代码位置、真实消费者都是它的附属信息。`README.md` 中更早的模块介绍保留为历史说明，以这里的限定核验状态为准。
+
+## 2026-10-18 恢复集合迁入领域模块
+
+早期两个恢复集合目录已经删除。建筑实现分别归入 `resources/walls`、`resources/roofs`、`resources/history`、`systems/wall/construction`、`systems/history` 和碰撞/渲染所属模块；树、小生物、水音频的专属函数归入工作区已有的 `system-tree`、`system-critters`、`system-water` crate；核心音频与栅格策略归入各自 core 模块。所有生产代码和测试引用已改为新路径，旧根模块不再导出。树与小生物的重复判定已合并到对应系统 crate 的实现。
+
+逐文件来源、迁移前指纹和新位置见 [迁移清单](module-migration-2026-10-18.json)。旧迁移说明保留在 [建筑历史说明](building-cpu-history.md) 和 [系统历史说明](system-cpu-history.md)。目录迁移不补全原有的矩形历史回放、水音频、全局注册及 GPU 缺口，也不扩大既有原码验收范围。
+
+## components 本轮增量（2026-10-18）
+
+[组件审查与字段恢复](components-2026-10-18.md)：三个现有 `_gap` 已恢复，拆分 UI/渲染/树类型并修正直接消费者；限定检查与整游戏验收分开。
 
 ## 依赖关系
 
@@ -62,14 +72,14 @@ flowchart TD
 | 0 | `lib.rs`、各 `mod.rs`、Cargo | 核对真实导出、共享依赖、旧实现位置；编译可达不作为业务完成 |
 | 1 | `utils/`、`resources/` 基础文件、`components/` | 当前阶段；按消费者恢复类型/default/serde/事件/坐标；未知字段回查原码 |
 | 2 | `resources/walls/`、`systems/wall/` | 将已有墙权威和 CPU 发布实现扩展为完整 PublicWalls、增改删与脏区传播 |
-| 3 | `resources/roofs/`、`resources/stairs/`、碰撞目录 | 接回原资源所有者与实体关系；复核已有 recovered_building 算法后再复用 |
+| 3 | `resources/roofs/`、`resources/stairs/`、碰撞目录 | 接回原资源所有者与实体关系；复核已有共享建筑算法后再复用 |
 | 4 | `resources/world_raster*`、地形/水相关 systems | 补真实状态机、掩码、脏格与历史输入，逐算法复核 |
 | 5 | 历史、存档、会话、预制件目录 | 编辑/undo/redo/replay/删除/保存往返的完整状态传播 |
 | 6 | 相机/时间/天气、输入/UI/模式目录 | 恢复原模式与转换分支、真实资源消费 |
 | 7 | 生态/装饰/音频目录 | 消费上述权威状态，补完整更新和清理链 |
 | 8 | `startup/`、系统注册、渲染消费桥 | 核对原初始化/调度顺序；消除假资源与手工装配输入，再验整条 core 链 |
 
-目录间存在相互依赖时，只向前补当前消费者必需的合同，回到当前目录继续。既有 `recovered_building` / `recovered_systems` 先登记映射和验证边界；没有语义证据时不搬文件凑“原目录完成”。
+目录间存在相互依赖时，只向前补当前消费者必需的合同，回到当前目录继续。既有共享领域算法 先登记映射和验证边界；没有语义证据时不搬文件凑“原目录完成”。
 
 ## 当前断点
 

@@ -1,0 +1,31 @@
+{
+  "status": "candidate only; no production integration; no Cargo/GPU",
+  "canonical_field_dependency": "TerrainEditingData::rasterization_parts -> same map and original bool initially false. Foreign owner informed by root; candidate does not invent ActiveStrokes to compile.",
+  "core": {
+    "path": "games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/rasterize_terrain_stroke.rs",
+    "before_sha256": "032890cb6b1e43376921356887b2b50689d63985d8b8380a8bd4b9d4b22be77c",
+    "current_sha256": "032890cb6b1e43376921356887b2b50689d63985d8b8380a8bd4b9d4b22be77c",
+    "candidate_sha256": "144f29ea7bc6b24b48c2f93291176069001149e7bc79a34464ae7ab4e4dd4692"
+  },
+  "host": {
+    "path": "games_test/tiny-glade/crates/tiny-glade/src/world_terrain.rs",
+    "candidate_sha256": "c225bf64f9ba553e00d9c3664e4004cca78598cb52be7ddfd69d9372d6112912",
+    "shared_env_before_sha256": "0f81afab7bc31d0c8e857f709c8a4d65ffe8c5bfc9cd4af89653a3fc27c810e3",
+    "requires_export": "root adds pub mod world_terrain; after canonical field ready"
+  },
+  "behavior": [
+    "XZ copy, exact rounded-even point allocations, unknown padding not initialized",
+    "Original size0 infos allocation, no zero range metadata because exact original shader does not read when count0",
+    "GaussBlur vec4 bool controls float4/float defines and derived source hash",
+    "Actual NormalDebugSsbo identity; no generic substitute SSBO",
+    "unconditional Bevy changed tick, actual Recalculate events, four pass record before rasterized=true",
+    "W6 canonical CursorTerrainRaycast and existing mapped SSBO",
+    "W8 canonical AppMode/DebugGui and fresh cursor retained last event"
+  ],
+  "other_dependencies": [
+    "root integrated actual DynamicConstantsChunk metadata owner/session patch",
+    "root original DynamicConstants allocate0 patch",
+    "existing actual texture presets imported by FrameSetup; missing producers remain errors"
+  ],
+  "validation": "rustfmt parse only; 3 pure unit tests in direct core candidate; root owns compile/GPU. W4/5/7/9/10/11 not declared complete."
+}

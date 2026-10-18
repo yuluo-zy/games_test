@@ -1,14 +1,14 @@
-//! Two original sampling policies: texel-center fix and legacy corner sampling.
+//! Bilinear sampling with texel-center and legacy corner coordinate policies.
 use glam::Vec2;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 pub const GRID_SIDE: usize = 512;
 pub const DEFAULT_WORLD_EXTENT: f32 = 130.0;
-/// Mirror of B byte 0x143638fac (pointer slot 0x14362c308). Its producer is `load_game`
-/// (`version >= 0x1a`); default zero selects the legacy branch. The explicit sampler accepts a bool.
+/// Global compatibility policy. New save versions select centered sampling;
+/// explicit-mode sampling avoids changing this shared process state.
 pub static CENTERED_PATH: AtomicBool = AtomicBool::new(false);
 
-/// Fixed-size consumer contract recovered from RasterBufferRef<512>.
+/// Row-major cell access for a fixed 512-by-512 raster.
 pub trait FloatGridCells {
     fn cell(&self, index: usize) -> f32;
 }
@@ -40,8 +40,7 @@ pub fn bilinear_sample_at_world_xz<G: FloatGridCells + ?Sized>(
     )
 }
 
-/// Explicit adapter for the original branch byte; useful for deterministic
-/// callers/tests without mutating process-global state.
+/// Samples using an explicit policy, independently of the global setting.
 pub fn bilinear_sample_at_world_xz_with_mode<G: FloatGridCells + ?Sized>(
     grid: &G,
     x: f32,
@@ -73,27 +72,34 @@ pub trait FloatGrid {
     fn load_index_unchecked(&self, index: usize) -> f32;
 }
 pub trait FloatGridSampler: FloatGrid {
-    // B's max/min sequence converts NaN to zero. Rust `f32::max/min` also return the non-NaN
-    // operand, so the chains below reproduce that; `f32::clamp` would propagate NaN instead.
+    /// Samples row-major cells in a world rectangle centered at the origin.
+    /// Dimensions must be at least two and their product must fit in `usize`.
+    /// Centered sampling clamps to edge texels. Legacy sampling deliberately
+    /// extrapolates at the positive edge; changing it would alter existing saves.
+    // Keep max/min rather than clamp: their NaN policies differ.
     #[allow(clippy::manual_clamp)]
     fn bilinear_sample_at_world_xz(&self, xz: Vec2, world_extent: Vec2, sampling_fix: bool) -> f32 {
         let [width, height] = self.dimensions();
         assert!(width >= 2 && height >= 2);
+        assert!(
+            width.checked_mul(height).is_some(),
+            "grid dimensions overflow"
+        );
         let normalized = xz / world_extent + Vec2::splat(0.5);
         let axis = |v: f32, n: usize| -> (usize, usize, f32) {
             if sampling_fix {
                 let v = if v < 1.0 { v } else { 1.0 };
                 let texel = (v * n as f32 - 0.5).max(0.0);
-                let floor = texel as u32;
+                let floor = texel as usize;
                 let fraction = texel - floor as f32;
                 (
-                    (floor as usize).min(n - 1),
-                    (floor.wrapping_add(1) as usize).min(n - 1),
+                    floor.min(n - 1),
+                    floor.saturating_add(1).min(n - 1),
                     fraction,
                 )
             } else {
                 let texel = v.max(0.0).min(1.0) * n as f32;
-                let floor = (texel as u32 as usize).min(n - 2);
+                let floor = (texel as usize).min(n - 2);
                 (floor, floor + 1, texel - floor as f32)
             }
         };
@@ -109,7 +115,7 @@ pub trait FloatGridSampler: FloatGrid {
     }
 }
 impl<T: FloatGrid + ?Sized> FloatGridSampler for T {}
-/// Explicit normalized-byte storage adapter observed in B's 512x512 variants.
+/// Row-major unsigned-byte cells normalized to the interval `[0, 1]`.
 pub struct ByteFloatGrid<'a> {
     pub values: &'a [u8],
     pub width: usize,

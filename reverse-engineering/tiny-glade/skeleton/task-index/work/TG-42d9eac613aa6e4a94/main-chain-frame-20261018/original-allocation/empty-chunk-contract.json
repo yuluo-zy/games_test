@@ -1,0 +1,8 @@
+{
+  "before_sha256": "a94018bb6c91ff102be5e11d18902e140fede6585962f85150ccde146800760f",
+  "after_sha256": "045b70624be19a9be0853c8c8a25660085e0921221f641999adfd90963159b9b",
+  "original": "allocate full685B:140c02759 size <=0x40000 only;140c0288a permits end==start;140c028e0/28eb returns original size including0;real Arc page is retained",
+  "scope": "Allow empty logical chunks and honor their alignment/cursor/owner; physical VkBuffer remains the existing nonzero page; empty chunks are not valid nonempty shader read ranges.",
+  "consumer": "Original terrain count0 never dereferences infos/points, per original shader control flow in boot handoff; nonempty BDA ranges must be graph-declared.",
+  "additional_diagnostic_only": "Checked device-address addition now lazily constructs the unchanged InvalidUsage error."
+}

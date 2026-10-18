@@ -1,0 +1,9 @@
+# Stair command payload ownership boundary
+
+Additive evidence, frozen 23-file parent pack unchanged.
+
+B typed `ComponentDescriptor::drop_ptr<Events<InstaCreateStairPoint>>` is 0x14014aec0, 75 bytes, repeated aliases in modules55/1584/2622. The complete function reads only the two Events vector capacities and pointers. For nonzero capacity it calls/tailcalls the allocator deallocator 0x140613c20 with `size=cap*120, alignment=8`. It never reads vector len or any event element; there is no element destructor, Arc refcount decrement or nested Vec deallocation. Therefore the original command payload has no standard Rust owned Arc/Vec fields requiring a destructor. This is stronger than inferring ownership from copies alone.
+
+`native_stair_drop_probe.py` executes this exact original drop on 20 capacity/population/poison combinations. Each payload buffer is all zeros or all ff, including any hypothetical nested pointer positions. All executions return and call exactly the two buffer deallocations expected from capacities. Only the allocator deallocator is bridged/logged, not a business destructor. Original bytes and exact typed PDB aliases are retained.
+
+This proves absence of ordinary nested ownership/drop work in the native payload. It does not establish semantic names or validity of arbitrary enum discriminants, make native addresses portable, or prove a fully recovered placement consumer. Keep the payload construction boundary explicit. A `[u8;112]` transport wrapper does not acquire native allocations; `Clone` of bytes is memory-safe, but should not be sold as a typed semantic recovery of unresolved variants. A non-Clone wrapper is a conservative current API choice; typed known scalar projections remain preferred. Do not dereference unresolved words, synthesize active fields, or use this evidence to default missing producer data.

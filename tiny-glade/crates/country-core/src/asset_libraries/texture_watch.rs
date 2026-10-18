@@ -1,31 +1,11 @@
-//! `TextureWatch` — 纹理文件热重载监视器（layer A3，已逐函数对照机器码；证据见 `evidence/country-core-audit/A3_texture.md`）。
-//!
-//! 结构体（O，`TextureWatch::new` 0x1408bab30，0x38 B）：
-//! ```text
-//! +0x00 hotwatch : Option<hotwatch::GenericHotwatch<notify::windows::ReadDirectoryChangesWatcher>>  (0x28 B，标签 3 = None)
-//! +0x30 changed  : Arc<Mutex<HashSet<RelativePathBuf, RandomState>>>   (Arc 块 0x48 B：强/弱计数、futex Mutex@+0x10、poison@+0x11、表@+0x18、RandomState)
-//! ```
-//! 三个过程：
-//!  * `new(use_watch)`（0x1408bab30）：`use_watch` 为真 → `GenericHotwatch::new_with_custom_delay(Duration::new(0, 100_000_000))`
-//!    （**100 ms**，O：`edx=0; r8d=0x5f5e100`），失败 → `expect("hotwatch failed to initialize")`；否则 None。
-//!    `changed` 为新建的空集合（`Arc` 强弱计数都是 1，RandomState 取线程局部 KEYS）。
-//!  * `watch(&self, name: String, path: &Path)`（0x1408bad70）：先 clone `changed` 的 Arc；hotwatch 为 None → 丢弃 Arc 与 `name`，直接返回；
-//!    否则 `hotwatch.watch(path, 闭包{name, arc})`，失败 → `expect("failed to watch file!")`。
-//!    **旧版把 `watch(path)` 当成“读文件字节入队”并且丢了 `name` 参数**——原版回调只记录 *名字*，不读文件。
-//!  * 回调 `impl$0::watch::closure$0`（0x14091edb0）：收到 `notify::DebouncedEvent`，只有 `Create(2) / Write(3) / Rename(6)`
-//!    三种（notify 4.0.17 的变体序号，位掩码 0x4c）才处理：取 `changed` 的 Mutex（poison → `Result::unwrap` panic），
-//!    `insert(RelativePathBuf::from(name.clone()))`，解锁；其余事件（NoticeWrite/NoticeRemove/Chmod/Remove/Rescan/Error）忽略。
-//!    注意插入的是 **监视时给定的名字**，不是事件里的路径。消费端（把集合里的名字重新加载成纹理）不在这三个过程里。
-//!
-//! Runtime reuses the original hotwatch fork/notify and relative-path dependency.
-//! The injected callback recorder is confined to cfg(test).
+//! 纹理热重载通知。监听路径与逻辑名字分开，回调只登记变更名字。
+//! 原作来源见项目 evidence；当前接口、行为变化与验证范围见 README.md。
 
 use std::collections::HashSet;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-/// `notify::windows::ReadDirectoryChangesWatcher` 的防抖间隔（O：100 ms）。
 pub const WATCH_DELAY: Duration = Duration::from_millis(100);
 
 #[cfg(not(test))]
@@ -34,7 +14,6 @@ pub mod hotwatch_contract {
     pub use hotwatch::Event as DebouncedEvent;
 }
 
-/// Test callback recorder; does not replace the production watcher dependency.
 #[cfg(test)]
 pub mod hotwatch_contract {
     use std::path::{Path, PathBuf};
@@ -42,7 +21,6 @@ pub mod hotwatch_contract {
     use std::time::Duration;
 
     /// `notify::DebouncedEvent`（notify 4.0.17 的变体顺序：NoticeWrite=0, NoticeRemove=1, Create=2, Write=3,
-    /// Chmod=4, Remove=5, Rename=6, Rescan=7, Error=8）。
     #[derive(Clone, Debug, PartialEq, Eq)]
     pub enum DebouncedEvent {
         NoticeWrite(PathBuf),
@@ -61,7 +39,6 @@ pub mod hotwatch_contract {
 
     type Handler = Box<dyn Fn(DebouncedEvent) + Send + 'static>;
 
-    /// `hotwatch::GenericHotwatch`（占位：存下回调，由测试 `fire` 触发）。
     pub struct GenericHotwatch {
         pub delay: Duration,
         handlers: Mutex<Vec<(PathBuf, Handler)>>,
@@ -106,7 +83,7 @@ pub use relative_path::RelativePathBuf;
 /// 变更名字集合（`Arc<Mutex<HashSet<RelativePathBuf>>>`，O）。
 pub type ChangedSet = Arc<Mutex<HashSet<RelativePathBuf>>>;
 
-/// `TextureWatch`（O：`Res<TextureWatch>`）。
+/// 逻辑纹理名字通知；不在文件线程中访问 GPU。
 pub struct TextureWatch {
     hotwatch: Option<GenericHotwatch>,
     changed: ChangedSet,
@@ -114,7 +91,7 @@ pub struct TextureWatch {
 
 impl bevy_ecs::resource::Resource for TextureWatch {}
 
-/// 回调体（O 0x14091edb0）：只处理 Create / Write / Rename，把 `name` 放进集合；Mutex 毒化 → `Result::unwrap` panic。
+/// 只接收创建、写入和重命名事件。
 pub fn on_texture_event(
     changed: &Mutex<HashSet<RelativePathBuf>>,
     name: &str,
@@ -130,7 +107,7 @@ pub fn on_texture_event(
 }
 
 impl TextureWatch {
-    /// `new(use_watch)`（O 0x1408bab30）。
+    /// 创建初始状态。
     pub fn new(use_watch: bool) -> Self {
         let hotwatch = if use_watch {
             Some(
@@ -146,7 +123,7 @@ impl TextureWatch {
         }
     }
 
-    /// `watch(name, path)`（O 0x1408bad70）：hotwatch 为 None 时什么也不做（名字被丢弃）。
+    /// 注册文件通知；未启用监听时直接返回。
     pub fn watch(&self, name: String, path: &Path) {
         let changed = Arc::clone(&self.changed);
         if let Some(hotwatch) = &self.hotwatch {
@@ -168,7 +145,6 @@ impl TextureWatch {
         self.hotwatch.is_some()
     }
 
-    /// 测试/整合用：访问底层 hotwatch（占位）。
     pub fn hotwatch(&self) -> Option<&GenericHotwatch> {
         self.hotwatch.as_ref()
     }

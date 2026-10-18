@@ -1,0 +1,32 @@
+0x141e4e7e0      mov rax, qword [rdi]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x141e4e7e3      sub rax, rbx
+; 31
+   ; reloc.WS2_32.dll_accept
+0x141e4e7e6      cmp rax, 0x1f
+   ; unlikely
+0x141e4e7ea      jbe 0x141e4eba8
+0x141e4e7f0      mov rax, qword [rdi + 8]
+0x141e4e7f4      lea rcx, [0x140fdf500]
+0x141e4e7fb      mov qword [rax + rbx], rcx
+0x141e4e7ff      mov qword [rax + rbx + 8], r13
+0x141e4e804      mov qword [rax + rbx + 0x10], r12
+0x141e4e809      mov byte [rax + rbx + 0x18], 0
+; 32
+0x141e4e80e      add rbx, 0x20
+0x141e4e812      jmp 0x141e4eaa7
+0x141e4e817      mov rax, qword [rbp + 0x210]
+0x141e4e81e      movzx r14d, byte [rax + 1]
+0x141e4e823      lea eax, [r14*4]
+0x141e4e82b      lea rcx, [0x142f8f6d8]
+0x141e4e832      movss xmm0, dword [rax + rcx]
+0x141e4e837      lea rcx, [0x142f8f70c]
+0x141e4e83e      movss xmm1, dword [rax + rcx]
+0x141e4e843      lea rcx, [0x142f8f740]
+0x141e4e84a      movss xmm2, dword [rax + rcx]
+0x141e4e84f      mov byte [rbp + 0x237], 1
+   ; 0x140c904a0(0x0, 0x0, 0x0, 0x142f8f740)
+0x141e4e856      call 0x140c904a0
+0x141e4e85b      mov rax, qword [rdi]
+0x141e4e85e      mov rbx, qword [rdi + 0x10]

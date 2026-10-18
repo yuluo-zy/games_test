@@ -1,0 +1,22 @@
+
+running 1 test
+test production_text_pipeline_is_prewarmed_and_frame_descriptors_are_reset ... Validation Error: [ VUID-vkCreateDescriptorSetLayout-support-09582 ] | MessageID = 0xdf058cf0
+vkCreateDescriptorSetLayout(): pCreateInfo was passed to vkGetDescriptorSetLayoutSupport which reported this layout is not supported.
+The layout has 8192 total descriptors which is more than maxPerSetDescriptors (1212).
+The Vulkan spec states: If the descriptor layout exceeds the limits reported through the physical device limits, then vkGetDescriptorSetLayoutSupport must have returned VkDescriptorSetLayoutSupport with support equal to VK_TRUE for pCreateInfo (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCreateDescriptorSetLayout-support-09582)
+
+
+thread 'production_text_pipeline_is_prewarmed_and_frame_descriptors_are_reset' (20736216) panicked at crates/tg-text/tests/gpu_pipeline.rs:106:13:
+assertion `left == right` failed
+  left: [0, 0, 0, 0]
+ right: [255, 255, 255, 255]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+FAILED
+
+failures:
+
+failures:
+    production_text_pipeline_is_prewarmed_and_frame_descriptors_are_reset
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.89s
+

@@ -64,34 +64,52 @@ fn attribute_bytes(attr: &VertexAttributeValues) -> &[u8] {
 
 /// `build_vao`（O）。创建失败时原版 `Result::unwrap` → panic。
 pub fn build_vao(device: &dyn GraphicsDevice, mesh: &Mesh) -> Vao {
-    let index_bytes = slice_as_bytes(&mesh.indices);
-    let desc = BufferDesc::new_gpu_only(mesh.indices.len() * 4, usage::INDEX_BUFFER);
-    let index_buffer = device
-        .create_buffer(&desc, "Index buffer", Some(index_bytes))
-        .expect("called `Result::unwrap()` on an `Err` value: create_buffer(Index buffer)");
+    try_build_vao(device, mesh).expect("创建网格 GPU 缓冲失败")
+}
 
-    let bindings = mesh
-        .attributes
-        .iter()
-        .map(|(name, attr)| {
-            let bytes = attribute_bytes(attr);
-            let desc = BufferDesc::new_gpu_only(bytes.len(), usage::VERTEX_BUFFER);
-            let buffer = device
-                .create_buffer(&desc, "Vertex buffer", Some(bytes))
-                .expect(
-                    "called `Result::unwrap()` on an `Err` value: create_buffer(Vertex buffer)",
-                );
-            VaoBinding {
+/// 分配失败时释放本次已创建的缓冲，不发布半成品 VAO。
+pub fn try_build_vao(device: &dyn GraphicsDevice, mesh: &Mesh) -> anyhow::Result<Vao> {
+    let largest_index = mesh.indices.iter().copied().max();
+    for (name, attribute) in &mesh.attributes {
+        anyhow::ensure!(attribute.array_length() > 0, "顶点属性 {name} 不能为空");
+        anyhow::ensure!(
+            largest_index.is_none_or(|index| (index as usize) < attribute.array_length()),
+            "顶点属性 {name} 无法覆盖网格索引"
+        );
+    }
+    let index_bytes = slice_as_bytes(&mesh.indices);
+    let desc = BufferDesc::new_gpu_only(index_bytes.len(), usage::INDEX_BUFFER);
+    let index_buffer = device.create_buffer(&desc, "Index buffer", Some(index_bytes))?;
+    let mut bindings: Vec<VaoBinding> = Vec::with_capacity(mesh.attributes.len());
+    for (name, attribute) in &mesh.attributes {
+        let bytes = attribute_bytes(attribute);
+        let desc = BufferDesc::new_gpu_only(bytes.len(), usage::VERTEX_BUFFER);
+        match device.create_buffer(&desc, "Vertex buffer", Some(bytes)) {
+            Ok(buffer) => bindings.push(VaoBinding {
                 name: Arc::from(name.as_str()),
                 buffer,
+            }),
+            Err(error) => {
+                device.release_buffer(&index_buffer);
+                for binding in bindings {
+                    device.release_buffer(&binding.buffer);
+                }
+                return Err(error.into());
             }
-        })
-        .collect();
-
-    Vao {
+        }
+    }
+    Ok(Vao {
         bindings,
         index_buffer,
+    })
+}
+
+/// CPU 句柄本身不拥有设备资源，释放必须回到创建它的宿主表。
+pub fn release_vao(device: &dyn GraphicsDevice, vao: &Vao) {
+    for binding in &vao.bindings {
+        device.release_buffer(&binding.buffer);
     }
+    device.release_buffer(&vao.index_buffer);
 }
 
 #[cfg(test)]

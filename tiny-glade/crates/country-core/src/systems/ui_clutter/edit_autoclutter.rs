@@ -1,12 +1,11 @@
 //! Resolved-ID adapter for the real deletion and deferred recording owners.
 //! This is not the still-unrestored native RMB picking/conversion function.
 use super::{DeletedAutoClutter, defered_autoclutter_history::RecordAutoClutterHistory};
-use crate::{
-    recovered_building::history_transactions::HistoryTransactionError,
-    recovered_systems::clutter::AutoClutterEdit,
-    resources::history::{EditType, History},
-    systems::history::recording::HistoryRecordingFailed,
-};
+use crate::resources::history::transactions::HistoryTransactionError;
+use crate::resources::history::auto_clutter_edit::AutoClutterEdit;
+use crate::resources::history::EditType;
+use crate::resources::history::History;
+use crate::systems::history::recording::HistoryRecordingFailed;
 use bevy_ecs::prelude::*;
 use std::sync::Arc;
 

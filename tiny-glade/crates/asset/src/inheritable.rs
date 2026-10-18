@@ -2,7 +2,8 @@ use serde::{Deserialize, Deserializer};
 use std::collections::HashMap;
 use std::hash::Hash;
 
-/// Missing input and an exhausted default are distinct in the original `into_concrete`.
+/// A field awaiting inheritance, a required field without a default, or a value.
+/// `Value(None)` explicitly disables an optional field and never inherits it.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub enum Inheritable<T> {
     #[default]
@@ -10,6 +11,25 @@ pub enum Inheritable<T> {
     MissingDefault,
     Value(T),
 }
+
+/// Why a field could not be resolved after configuration inheritance.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum UnresolvedField {
+    InheritanceRequired,
+    MissingDefault,
+}
+
+impl std::fmt::Display for UnresolvedField {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(match self {
+            Self::InheritanceRequired => "field still requires inheritance",
+            Self::MissingDefault => "required field has no value or default",
+        })
+    }
+}
+
+impl std::error::Error for UnresolvedField {}
+
 pub trait Inherit {
     fn inherit_from(&mut self, parent: &Self);
     /// Optional game-owned finalization after merging an enabled optional
@@ -26,8 +46,29 @@ impl<T: Clone + Inherit> Inherit for Inheritable<T> {
     }
 }
 impl<T> Inheritable<T> {
+    /// Borrow a resolved field; suitable for validating externally supplied data.
+    pub fn try_as_concrete(&self) -> Result<&T, UnresolvedField> {
+        match self {
+            Self::Value(value) => Ok(value),
+            Self::Inherit => Err(UnresolvedField::InheritanceRequired),
+            Self::MissingDefault => Err(UnresolvedField::MissingDefault),
+        }
+    }
+
+    /// Consume a resolved field without cloning its contents.
+    pub fn try_into_concrete(self) -> Result<T, UnresolvedField> {
+        match self {
+            Self::Value(value) => Ok(value),
+            Self::Inherit => Err(UnresolvedField::InheritanceRequired),
+            Self::MissingDefault => Err(UnresolvedField::MissingDefault),
+        }
+    }
+
     /// Borrow the resolved value without cloning or consuming it.
-    /// B inlinee 0x7bf7 in load_prefabs_impl distinguishes both unresolved states.
+    ///
+    /// # Panics
+    /// Panics if inheritance has not resolved this field. For external data, use
+    /// [`Self::try_as_concrete`] and attach the configuration field's name.
     pub fn as_concrete(&self) -> &T {
         match self {
             Self::Value(value) => value,
@@ -42,7 +83,6 @@ impl<T> Inheritable<T> {
     }
 
     /// Resolve only the outer missing-input marker; concrete children are atomic.
-    /// B scanner inlinee 0x1a669 copies even an unresolved parent marker.
     pub fn inherit_shallow(&mut self, parent: &Self)
     where
         T: Clone,
@@ -52,6 +92,10 @@ impl<T> Inheritable<T> {
         }
     }
 
+    /// Consume a resolved field.
+    ///
+    /// # Panics
+    /// Panics if the field is unresolved; use [`Self::try_into_concrete`] at input boundaries.
     pub fn into_concrete(self) -> T {
         match self {
             Self::Value(value) => value,
@@ -71,7 +115,6 @@ impl<'de, T: Deserialize<'de>> Deserialize<'de> for Inheritable<T> {
     }
 }
 /// An explicit field always becomes a concrete value; missing fields use serde's default.
-/// B inlinee 0x20bb7 delegates the typed serde call and propagates its original error.
 pub fn deserialize_inheritable<'de, D, T>(d: D) -> Result<Inheritable<T>, D::Error>
 where
     D: Deserializer<'de>,
@@ -79,15 +122,13 @@ where
 {
     T::deserialize(d).map(Inheritable::Value)
 }
-/// Original accepts either a bare value or explicit Some/None (`MaybeOption` in PDB/strings).
+/// Accept a bare value, explicit `Some`/`None`, or `()` as an explicit `None`.
 pub fn deserialize_inheritable_option<'de, D, T>(d: D) -> Result<Inheritable<Option<T>>, D::Error>
 where
     D: Deserializer<'de>,
     T: serde::de::DeserializeOwned,
 {
-    // The original fork's serde Content type-name check no longer matches Rust 1.97's
-    // lifetime suffix. Preserve its RON input rules by delegating typed parsing directly
-    // to the same fork; do not discard enum identifiers in untagged Content buffering.
+    // Parse typed RON directly so enum identifiers survive optional-value buffering.
     let raw = Box::<ron::value::RawValue>::deserialize(d)?;
     if ron::from_str::<()>(raw.get_ron()).is_ok() {
         return Ok(Inheritable::Value(None));
@@ -104,8 +145,7 @@ impl<T: Inherit> Inherit for Option<T> {
             if let Some(parent) = parent {
                 child.inherit_from(parent);
             }
-            // Original prefab RT/audio option specializations always finalize
-            // a present child, including when the parent option is None.
+            // An enabled child still needs its own defaults when its parent is disabled.
             child.finish_inheritance();
         }
     }

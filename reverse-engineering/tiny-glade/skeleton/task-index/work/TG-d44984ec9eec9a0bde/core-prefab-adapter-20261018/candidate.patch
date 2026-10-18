@@ -1,0 +1,254 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/prefab.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/prefab.rs
+@@ -63,15 +63,13 @@
+ use crate::asset_libraries::audio_trigger_library::{
+     AudioTriggerHandle, AudioTriggerKind, AudioTriggerLibrary,
+ };
+-use crate::geometry::cube::{cube_mesh, CubeBox};
++use crate::geometry::cube::{CubeBox, cube_mesh};
+ use crate::render::mesh::Mesh;
+-use crate::render::nani::gpu_world::{
+-    GpuWorld, GpuWorldSubsetKind, InstanceCullData, InstanceKey,
+-};
++use crate::render::nani::gpu_world::{GpuWorld, GpuWorldSubsetKind, InstanceCullData, InstanceKey};
+ use crate::resources::placement_data::PlacementDataSsbo;
+ use crate::resources::prefab::{Prefab, PrefabLibrary};
+ use crate::resources::render::mesh_atlas_library::{MeshAtlasLibrary, PrefabName, PrefabNameRef};
+-use crate::resources::rt::{color_to_u32, RtMeshHandle, RtWorld};
++use crate::resources::rt::{RtMeshHandle, RtWorld, color_to_u32};
+ use crate::utils_contract::Aabb3;
+ 
+ /// 日志 target（O：`spawn_prefabs`/`create_prefab_gpu_instances` 的 `&str` 长 0x1d = 29）。
+@@ -80,8 +78,9 @@
+ /// 预制体实例引用（权威定义在 `resources::prefab`）。
+ pub use crate::resources::prefab::PrefabInstance;
+ 
+-/// 实例变换（O：独立 0x30 B 组件的语义模型：`+0x00` 平移、`+0x0c` 缩放、`+0x10` 旋转弧度。
+-/// 其余 0x14 字节未读，登记）。
++/// Existing transform projection of PlacementDataSsbo's first five floats.
++/// GPU consumers retain the full placement record, including its id, custom
++/// values, animation channels and bend vector.
+ #[derive(Clone, Copy, Debug, Default, PartialEq)]
+ pub struct PrefabTransform {
+     /// `+0x00` 世界平移（O：`create_prefab_rt` 矩阵 `+0x30..0x3c` 的源）。
+@@ -448,12 +447,15 @@
+         placement,
+         pending,
+     );
+-    data.gpu_instances
+-        .extend(pending[start..].iter().map(|(id, index, kind)| GpuInstanceRecord {
+-            id: *id,
+-            index: *index,
+-            kind: *kind,
+-        }));
++    data.gpu_instances.extend(
++        pending[start..]
++            .iter()
++            .map(|(id, index, kind)| GpuInstanceRecord {
++                id: *id,
++                index: *index,
++                kind: *kind,
++            }),
++    );
+ 
+     let mut rt_commands = Vec::new();
+     for part in &prefab.parts {
+@@ -465,7 +467,8 @@
+                     data.prefab_name.as_name_ref()
+                 );
+             }
+-            let shape = part.bounds
++            let shape = part
++                .bounds
+                 .scaled(Vec3::splat(transform.scale))
+                 .translated(transform.translation);
+             let handle = audio.add_trigger(AudioTriggerKind::Primary, shape);
+@@ -476,12 +479,7 @@
+         }
+         if let Some(update) = create_prefab_rt(part, transform, season) {
+             let handle = rt_world.alloc_prefab_handle();
+-            rt_world.write_prefab_mesh(
+-                handle,
+-                update.matrix,
+-                update.positions,
+-                update.color,
+-            );
++            rt_world.write_prefab_mesh(handle, update.matrix, update.positions, update.color);
+             data.rt_meshes.push(handle);
+             if let Some(radius) = update.radius {
+                 rt_commands.push((handle, radius));
+@@ -667,7 +665,7 @@
+ /// 返回被重建的实体列表。
+ #[allow(clippy::too_many_arguments, clippy::type_complexity)]
+ pub fn hot_reload_prefabs(
+-    instances: &mut [(Entity, PrefabTransform, PrefabInstanceData)],
++    instances: &mut [(Entity, PlacementDataSsbo, PrefabInstanceData)],
+     modified_prefabs: &HashSet<PrefabName>,
+     modified_subsets: &HashSet<GpuWorldSubsetKind>,
+     library: &PrefabLibrary,
+@@ -679,7 +677,7 @@
+     season: usize,
+ ) -> Vec<Entity> {
+     let mut reloaded = Vec::new();
+-    for (entity, transform, data) in instances.iter_mut() {
++    for (entity, placement, data) in instances.iter_mut() {
+         let name_hit = modified_prefabs.contains(&data.prefab_name);
+         let subset_hit = data.gpu_instances.iter().any(|record| {
+             GpuWorldSubsetKind::from_u8(record.kind)
+@@ -694,12 +692,22 @@
+             reloaded.push(*entity);
+             continue;
+         };
+-        let cull = CullInstanceSource::default();
+-        let placement = PlacementDataSsbo { position: Vec3::ZERO, scale: 1.0, ..Default::default() };
++        // B @140843ed5..ee4 selects the actual 48-byte component; @140844174
++        // forwards that same pointer to create_prefab_gpu_instances. Its first
++        // sixteen bytes also supply the cull position and scale/radius.
++        let transform = PrefabTransform {
++            translation: placement.position,
++            scale: placement.scale,
++            rotation: placement.rotation_angle,
++        };
++        let cull = CullInstanceSource {
++            position: placement.position,
++            radius: placement.scale,
++        };
+         let _rt_commands = build_prefab_contents(
+             data,
+             prefab,
+-            transform,
++            &transform,
+             mesh_atlases,
+             gpu_world,
+             rt_world,
+@@ -707,7 +715,7 @@
+             pending,
+             season,
+             cull,
+-            placement,
++            *placement,
+         );
+         reloaded.push(*entity);
+     }
+@@ -720,6 +728,20 @@
+     use crate::render::nani::gpu_world::{GpuWorldSubset, OwnedGpuWorldSubset};
+     use crate::render::test_device::TestDevice;
+     use crate::resources::prefab::{PrefabAudioTrigger, PrefabPart};
++
++    fn test_placement() -> PlacementDataSsbo {
++        PlacementDataSsbo {
++            position: Vec3::new(1.0, 2.0, 3.0),
++            scale: 2.0,
++            rotation_angle: 0.75,
++            id: -7,
++            custom0: 0x0102_0304,
++            custom1: 0x0506_0708,
++            anim_t_packed: 0x3c00_3800,
++            bend_vector: glam::Vec2::new(0.5, -0.25),
++            pad0: -6,
++        }
++    }
+ 
+     fn approx(a: [f32; 16], b: [f32; 16]) {
+         for (x, y) in a.iter().zip(b.iter()) {
+@@ -893,14 +915,22 @@
+                 global_id: 7,
+                 transform: PrefabTransform::default(),
+                 cull: CullInstanceSource::default(),
+-                placement: PlacementDataSsbo { position: Vec3::ZERO, scale: 1.0, ..Default::default() },
++                placement: PlacementDataSsbo {
++                    position: Vec3::ZERO,
++                    scale: 1.0,
++                    ..Default::default()
++                },
+             },
+             PrefabSpawnRequest {
+                 prefab: PrefabName::new("tree/a"),
+                 global_id: 7,
+                 transform: PrefabTransform::default(),
+                 cull: CullInstanceSource::default(),
+-                placement: PlacementDataSsbo { position: Vec3::ZERO, scale: 1.0, ..Default::default() },
++                placement: PlacementDataSsbo {
++                    position: Vec3::ZERO,
++                    scale: 1.0,
++                    ..Default::default()
++                },
+             },
+         ];
+         let issued = HashSet::new();
+@@ -972,7 +1002,7 @@
+         let mut instances = vec![
+             (
+                 Entity::from_raw(1),
+-                PrefabTransform::default(),
++                test_placement(),
+                 PrefabInstanceData {
+                     prefab_name: PrefabName::new("tree/a"),
+                     ..PrefabInstanceData::default()
+@@ -980,7 +1010,7 @@
+             ),
+             (
+                 Entity::from_raw(2),
+-                PrefabTransform::default(),
++                test_placement(),
+                 PrefabInstanceData {
+                     prefab_name: PrefabName::new("tree/b"),
+                     ..PrefabInstanceData::default()
+@@ -1002,6 +1032,21 @@
+         assert_eq!(reloaded, vec![Entity::from_raw(1)]);
+         assert_eq!(instances[0].2.rt_meshes.len(), 1);
+         assert!(instances[1].2.rt_meshes.is_empty());
++        let subset = gpu_world.owned_subset_mut(kind);
++        let data = subset
++            .data()
++            .as_any()
++            .downcast_ref::<crate::render::nani::gpu_world::InstanceDataBuffer<PlacementDataSsbo>>()
++            .unwrap();
++        assert_eq!(
++            bytemuck::bytes_of(&data.shadow.data[0]),
++            bytemuck::bytes_of(&instances[0].1),
++            "reload must preserve all 48 placement bytes, including animation/custom fields"
++        );
++        assert_eq!(subset.positions()[0].position, Vec3::new(1.0, 2.0, 3.0));
++        assert_eq!(subset.positions()[0].radius.to_f32(), 2.0);
++        let mesh = rt_world.get(instances[0].2.rt_meshes[0]).unwrap();
++        assert_eq!(&mesh.matrix[12..16], &[1.0, 2.0, 3.0, 3.0]);
+     }
+ 
+     #[test]
+@@ -1041,7 +1086,11 @@
+             &mut gpu_world,
+             &mut rt_world,
+             &mut audio,
+-            PlacementDataSsbo { position: Vec3::ZERO, scale: 1.0, ..Default::default() },
++            PlacementDataSsbo {
++                position: Vec3::ZERO,
++                scale: 1.0,
++                ..Default::default()
++            },
+         );
+         assert_eq!(updated, vec![rt_handle]);
+         assert_eq!(rt_world.get(rt_handle).unwrap().matrix[0], 2.0);
+@@ -1053,7 +1102,11 @@
+             &mut gpu_world,
+             &mut rt_world,
+             &mut audio,
+-            PlacementDataSsbo { position: Vec3::ZERO, scale: 1.0, ..Default::default() },
++            PlacementDataSsbo {
++                position: Vec3::ZERO,
++                scale: 1.0,
++                ..Default::default()
++            },
+         );
+         assert!(updated.is_empty());
+         let shape = audio
+@@ -1086,8 +1139,7 @@
+         approx(
+             m,
+             [
+-                1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0,
+-                0.0,
++                1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0,
+             ],
+         );
+     }

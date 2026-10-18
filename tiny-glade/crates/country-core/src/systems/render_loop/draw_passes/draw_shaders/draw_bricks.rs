@@ -43,7 +43,7 @@ use crate::systems::render_loop::draw_passes::draw_shaders::common_includes::{
 };
 use crate::systems::render_loop::draw_passes::draw_shaders::ssbo_tags::{
     BrickDrawListTag, BrickTransformTag, ReadSsboExt, RoofColorIdTag, SsboInstanceView,
-    instance_buffer,
+    storage_buffer,
 };
 
 pub const BRICK_TRANSFORM_BINDING: u64 = 0xac77_ba3d_3596_98bc;
@@ -188,9 +188,9 @@ pub fn indirect_draw_bricks_with_mode<'p, const LOD: u8>(
     let p = b.packet_mut();
     p.state.0 = (p.state.0 & !0x0c) | cull_or;
 
-    let transform = instance_buffer::<BrickTransformTag>(lib)
+    let transform_handle = storage_buffer::<BrickTransformTag>(lib)
         .expect("called `Option::unwrap()` on a `None` value");
-    let b = b.bind_external_storage_buffer(BRICK_TRANSFORM_BINDING, &transform.handle);
+    let b = b.bind_external_storage_buffer(BRICK_TRANSFORM_BINDING, &transform_handle);
     let b = b.read_ssbo::<BrickDrawListTag>(BRICK_DRAW_LIST_BINDING);
 
     if let Some(idx) = proxy_index {
@@ -412,6 +412,23 @@ mod tests {
             d[0].bindings.len(),
             1 + 4 + 1 + 1,
             "BrickTransform（外部缓冲）+ 4 张墙色磁盘纹理 + 砖纹理 + 常量块"
+        );
+    }
+
+    #[test]
+    fn lod0_binds_the_real_sparse_brick_library() {
+        use crate::{
+            asset_libraries::ssbo_library::AssetSsboLibrary,
+            geometry::instanced_wall::BrickTransformSsbo, render::test_device::TestDevice,
+            systems::render_loop::draw_passes::draw_callbacks_a::LibView,
+        };
+        let library = AssetSsboLibrary::new();
+        library.add_new::<BrickTransformSsbo>(&TestDevice(1));
+        let (_, packets) = run::<0>(BrickEntity::Proxy(p(0, 0, 0)), 0, &LibView(&library));
+        assert_eq!(
+            packets.len(),
+            1,
+            "真实稀疏缓冲可以进入砖绘制，不再因实例视图缺失而 panic"
         );
     }
 

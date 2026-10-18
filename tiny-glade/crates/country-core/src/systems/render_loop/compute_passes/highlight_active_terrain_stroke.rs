@@ -53,7 +53,7 @@ pub const SUPPRESS_TYPE_ID: TypeId128 = TypeId128 {
 pub const SUPPRESS_BYTE_OFFSET: usize = 0xf9;
 
 /// 高亮笔画事件（O 名；载荷 `i32 @+8`）。
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct AddTerrainHighlightCmd(pub i32);
 
 /// 选择高亮的笔画下标（O：见模块文档；默认 -1）。

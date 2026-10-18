@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-18",
+  "scope": "端到端可玩主链",
+  "kind": "人工工程估算，不是已验收完成率/代码覆盖率",
+  "estimate_percent_rounded": 40,
+  "weighted_estimate_raw": 39.75,
+  "uncertainty": "约±10个百分点；权重与分项为当前实现和实机证据下的人工判断",
+  "rows": [
+    {
+      "name": "窗口 / OS 事件 / 加载呈现",
+      "value": 80,
+      "weight": 10,
+      "note": "原生窗口、事件循环、loading present 已实机运行"
+    },
+    {
+      "name": "Rhapsody ↔ Core GPU 接口",
+      "value": 65,
+      "weight": 25,
+      "note": "Nani、栅格、首帧历史与遮罩已通过真实 GPU"
+    },
+    {
+      "name": "启动资源 / 原版资产",
+      "value": 40,
+      "weight": 25,
+      "note": "图集真实资产已验；72 项资源完整注册仍待接齐"
+    },
+    {
+      "name": "生产世界整帧渲染",
+      "value": 15,
+      "weight": 30,
+      "note": "局部真实 consumer 已接；compile_main 仍未闭合"
+    },
+    {
+      "name": "可玩交互 / 存档整链",
+      "value": 10,
+      "weight": 10,
+      "note": "CPU 业务链已局部验证，尚未进入完整可玩场景"
+    }
+  ],
+  "evidence": "gpu-and-source-validation-v40.json；ORIGINAL-FIRST-REVIEW.md；最新完整OS尝试为v37，未成功交接gameplay SubApp",
+  "not_claimed": "完整游戏恢复、全部原版算法等价、完整可玩闭环"
+}

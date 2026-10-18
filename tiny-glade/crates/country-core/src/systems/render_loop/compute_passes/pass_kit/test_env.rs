@@ -18,9 +18,7 @@ use std::sync::Arc;
 use crate::asset_libraries::color_library::ColorLibrarySsbo;
 use crate::asset_libraries::shader_library::AssetShaderLibrary;
 use crate::asset_libraries::ssbo_library::{AssetSsboLibrary, SsboType as LibrarySsbo};
-use crate::asset_libraries::texture_library::{
-    AssetTextureLibrary, ImportedTexture, TextureRenderGraph,
-};
+use crate::asset_libraries::texture_library::AssetTextureLibrary;
 use crate::render::load_texture::boundary::TextureDevice as PresetTextureDevice;
 use crate::render::pass_builder::bind_resources::*;
 use crate::render::pass_builder::compute_pass_builder::{
@@ -43,8 +41,9 @@ use crate::render::shader::boundary::{
     ShaderBackend,
 };
 use crate::render::ssbo::rhapsody_boundary::BufferDesc;
+use crate::render::test_device::TestDevice;
 use crate::resources::texture_presets::TexturePreset;
-use crate::rhapsody_contract::{GraphicsDevice, ManagedHandle};
+use crate::rhapsody_contract::ManagedHandle;
 use crate::rhapsody_types::{BackendError, Error, Texture, TextureDesc};
 use crate::systems::render_loop::compute_passes::pass_kit::{PassEnv, PassFrame, ResourceView};
 
@@ -179,8 +178,12 @@ impl ShaderBackend for Backend {
     fn raster_shader_variants(&self, _: &RasterPipelineDesc) -> [RasterPipelineDesc; 2] {
         unreachable!()
     }
-    fn create_compute_pipeline(&self, _: &str, _: Arc<CompiledShaderPipeline>) -> ComputePipeline {
-        ComputePipeline { id: 1 }
+    fn create_compute_pipeline(
+        &self,
+        _: &str,
+        _: Arc<CompiledShaderPipeline>,
+    ) -> rhapsody::Result<ComputePipeline> {
+        Ok(ComputePipeline { id: 1 })
     }
     fn create_raster_pipeline(
         &self,
@@ -200,10 +203,9 @@ impl UniformAllocator for Pool {
     }
 }
 
-/// 预设纹理创建设备：保留 desc 的格式（契约设备恒写 `format: 0`），并按纹理 id 记下完整 desc，供 [`PresetRg`] 回填
+/// 测试纹理设备只生成物理身份；完整描述由生产资产库保留。
 /// `ImportedTexture.desc`（真实 `Texture+0x18` 是整块 `TextureDesc`，占位 `Texture` 装不下）。
 struct PresetDevice {
-    descs: RefCell<HashMap<u64, TextureDesc>>,
     next: Cell<u64>,
 }
 impl PresetTextureDevice for PresetDevice {
@@ -215,7 +217,6 @@ impl PresetTextureDevice for PresetDevice {
     ) -> Result<Texture, BackendError> {
         let id = 1000 + self.next.get();
         self.next.set(self.next.get() + 1);
-        self.descs.borrow_mut().insert(id, *desc);
         Ok(Texture {
             id,
             width: desc.extent[0],
@@ -224,24 +225,9 @@ impl PresetTextureDevice for PresetDevice {
         })
     }
 }
-/// 预设导入 RG：沿用占位 `RenderGraph` 的导入记录，把 `desc` 换成创建时的整块描述。
-struct PresetRg<'a> {
-    descs: &'a HashMap<u64, TextureDesc>,
-    inner: crate::rhapsody_types::RenderGraph,
-}
-impl TextureRenderGraph for PresetRg<'_> {
-    fn import_unowned_texture(&mut self, texture: &Texture, access: u8) -> ImportedTexture {
-        let mut t = self.inner.import_unowned_texture(texture, access);
-        t.desc = self.descs[&texture.id];
-        t
-    }
-    fn export_texture(&mut self, handle: ImportedTexture, access: u8) {
-        self.inner.export_texture(handle, access);
-    }
-}
-
 /// 预设纹理缺省 desc（`create_preset_textures` 的闭包返回值；`preset_desc` 读回）。
 pub const DEFAULT_PRESET_DESC: TextureDesc = TextureDesc {
+    flags: 0,
     extent: [8, 4, 1],
     kind: 2,
     sampled: false,
@@ -284,7 +270,7 @@ impl TestWorld {
         reflection: Reflection,
         preset_desc: impl Fn(TexturePreset) -> TextureDesc,
     ) -> Self {
-        let dev = GraphicsDevice(1);
+        let dev = TestDevice(1);
         let shaders = Box::new(AssetShaderLibrary::new());
         let mut textures = Box::new(AssetTextureLibrary::new(&dev));
         let ssbos = Box::new(AssetSsboLibrary::new());
@@ -293,16 +279,9 @@ impl TestWorld {
         ssbos.add_new::<RtTriangleMetaSsbo>(&dev);
         ssbos.add_new::<RtBvhSsbo>(&dev);
         ssbos.add_new::<WallColorIdSsbo>(&dev);
-        let preset_dev = PresetDevice {
-            descs: RefCell::new(HashMap::new()),
-            next: Cell::new(0),
-        };
+        let preset_dev = PresetDevice { next: Cell::new(0) };
         textures.create_preset_textures_with(&preset_dev, preset_desc);
-        let descs = preset_dev.descs.into_inner();
-        textures.import_texture_presets_to_rg(&mut PresetRg {
-            descs: &descs,
-            inner: crate::rhapsody_types::RenderGraph::default(),
-        });
+        textures.import_texture_presets_to_rg(&mut crate::rhapsody_types::RenderGraph::default());
         // 磁盘纹理 `blue_noise`（`BLUE_NOISE` 的库键）。
         textures.add(
             Some("blue_noise".to_string()),
@@ -343,7 +322,7 @@ impl TestWorld {
 
     /// 注册一个 SSBO 到库里（`AssetSsboLibrary::add_new<T>`）。
     pub fn with_ssbo<T: LibrarySsbo>(self) -> Self {
-        self.ssbos.add_new::<T>(&GraphicsDevice(1));
+        self.ssbos.add_new::<T>(&TestDevice(1));
         self
     }
 
@@ -377,6 +356,7 @@ pub struct TestFrame {
     pub temporal_buffers: Vec<(String, BufferDesc, RgBuffer)>,
     /// 置位后所有 temporal 调用返回 `Err`（调用点 `Result::unwrap` panic）。
     pub fail_temporal: bool,
+    pub temporal_failure: Option<rhapsody::Error>,
     /// `get_or_create_temporal_pair` / 单张 temporal 结果里的标志字节（A4 命名 `fresh`）。
     pub pair_fresh: bool,
     pub next: u32,
@@ -394,16 +374,32 @@ impl TestFrame {
 }
 
 impl RenderGraph for TestFrame {
+    fn copy_from_staging(
+        &mut self,
+        name: &'static str,
+        copies: Vec<crate::render::rg_helpers::rg_boundary::StagingCopy>,
+    ) -> rhapsody::Result<()> {
+        self.order.push(name.to_string());
+        for copy in copies {
+            self.rg_passes.push((
+                name,
+                copy.target,
+                crate::render::rg_helpers::rg_boundary::ACCESS_TRANSFER_WRITE,
+            ));
+        }
+        Ok(())
+    }
     fn add_pass(&mut self, name: &'static str, resource: u32, access: u8, _render: RenderFn) {
         self.order.push(name.to_string());
         self.rg_passes.push((name, resource, access));
     }
-    fn allocate_dynamic(&mut self, size: usize) -> StagingAlloc {
-        StagingAlloc {
+    fn allocate_dynamic(&mut self, size: usize) -> rhapsody::Result<StagingAlloc> {
+        Ok(StagingAlloc {
             buffer: 0,
             offset: 0,
             bytes: vec![0; size],
-        }
+            lease: None,
+        })
     }
 }
 
@@ -429,8 +425,11 @@ impl RgResources for TestFrame {
         desc: &TextureDesc,
     ) -> Result<TemporalTexture, RgError> {
         self.temporal_textures.push((name.to_string(), *desc));
+        if let Some(error) = self.temporal_failure.take() {
+            return Err(error.into());
+        }
         if self.fail_temporal {
-            return Err(RgError("temporal failed".to_string()));
+            return Err(RgError::msg("temporal failed"));
         }
         Ok(TemporalTexture {
             texture: RgTexture {
@@ -446,8 +445,11 @@ impl RgResources for TestFrame {
         desc: &TextureDesc,
     ) -> Result<TemporalTexturePair, RgError> {
         self.temporal_pairs.push((name.to_string(), *desc));
+        if let Some(error) = self.temporal_failure.take() {
+            return Err(error.into());
+        }
         if self.fail_temporal {
-            return Err(RgError("temporal failed".to_string()));
+            return Err(RgError::msg("temporal failed"));
         }
         let current = RgTexture {
             resource: self.fresh(),
@@ -468,10 +470,13 @@ impl RgResources for TestFrame {
         name: &str,
         desc: &BufferDesc,
     ) -> Result<TemporalBuffer, RgError> {
+        if let Some(error) = self.temporal_failure.take() {
+            return Err(error.into());
+        }
         if self.fail_temporal {
             self.temporal_buffers
                 .push((name.to_string(), *desc, RgBuffer { resource: 0 }));
-            return Err(RgError("temporal failed".to_string()));
+            return Err(RgError::msg("temporal failed"));
         }
         let b = RgBuffer {
             resource: self.fresh(),
@@ -533,11 +538,11 @@ pub fn env(bindings: &[u64], uniforms: &[u64]) -> Env {
 pub fn env_with(
     bindings: &[u64],
     uniforms: &[u64],
-    reg: impl FnOnce(&AssetSsboLibrary, &GraphicsDevice),
+    reg: impl FnOnce(&AssetSsboLibrary, &TestDevice),
 ) -> Env {
     let (reflection, uniform_offsets) = Reflection::for_names(bindings, uniforms);
     let world = TestWorld::new(reflection);
-    reg(&world.ssbos, &GraphicsDevice(1));
+    reg(&world.ssbos, &TestDevice(1));
     Env {
         world,
         frame: TestFrame::default(),

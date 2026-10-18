@@ -31,11 +31,27 @@ use crate::resources::audio_instance::{
 };
 use crate::utils::audio_utils::{AudioLoop, LoopEntry};
 use bevy_ecs::prelude::Resource;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
+use std::sync::Mutex;
+
+/// Native global error-report slot `0x143634d60`: a `BTreeMap<String, ()>`
+/// that `AudioCoreInner::set_parameter` (0x140a53db0) inserts the formatted
+/// "Couldn't set global FMOD parameter: …" message into before logging. The
+/// crate keeps the same map (a `BTreeMap<String, ()>`) so callers/tests can
+/// observe the registered failures.
+static GLOBAL_AUDIO_PARAM_ERRORS: Mutex<BTreeMap<String, ()>> = Mutex::new(BTreeMap::new());
+
+/// Snapshot of the native global parameter-error report slot.
+pub fn global_parameter_errors() -> BTreeMap<String, ()> {
+    GLOBAL_AUDIO_PARAM_ERRORS
+        .lock()
+        .map(|m| m.clone())
+        .unwrap_or_default()
+}
 
 /// FMOD EventInstance handle interface (injected; real binding via libfmod).
 pub trait EventInstance {
-    type Error;
+    type Error: std::fmt::Debug;
     fn start(&mut self) -> Result<(), Self::Error>;
     fn stop(&mut self, mode: i32) -> Result<(), Self::Error>;
     fn get_playback_state(&self) -> Result<PlaybackState, Self::Error>;
@@ -54,6 +70,12 @@ pub trait EventInstance {
     /// TIMELINE_BEAT 回调安装（中央 agent 2026-10-16 仲裁批准补此方法；native.rs
     /// `set_callback(TIMELINE_BEAT)` 已存在，`MusicEvent::install_beat_callback` 依赖它）。
     fn install_beat_callback(&mut self) -> Result<(), Self::Error>;
+    /// `EventInstance::release`（AudioInstance Drop，0x14089a280）：FMOD 实例释放。
+    /// 默认空实现保持既有 binding 编译兼容；真实 libfmod binding 覆写它，原生 Drop
+    /// 对失败 unwrap（panic）。
+    fn release(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
 
 /// AudioInstance. Native discriminant u64@+0: 0=Disabled, 1=Active, 2=Err.
@@ -161,13 +183,28 @@ impl<E: EventInstance> AudioInstance<E> {
             Ok(0)
         }
     }
+
+    /// `stop_on_drop` (0x140a57540): clear the Active arm's stop-on-drop state
+    /// (state@+0x28 = 0) so the Drop impl stops the FMOD event when the instance
+    /// is dropped. The initial state is 2 ("fire-and-forget": the native Drop
+    /// leaves a started one-shot playing and only releases the handle).
+    pub fn stop_on_drop(&mut self) {
+        if let AudioInstance::Active { state, .. } = self {
+            *state = 0;
+        }
+    }
 }
 
-/// `stop_on_drop` (0x140a57540): the Active arm stops when dropped.
+/// Drop (0x14089a280). Native: set the discriminant to Disabled, then when the
+/// arm was Active and its stop_on_drop state (@+0x28) != 2, `stop()` (failure is
+/// dropped, not unwrapped); `release()` is then unwrapped (failure panics).
 impl<E: EventInstance> Drop for AudioInstance<E> {
     fn drop(&mut self) {
-        if let AudioInstance::Active { event, .. } = self {
-            let _ = event.stop(0);
+        if let AudioInstance::Active { event, state, .. } = self {
+            if *state != 2 {
+                let _ = event.stop(0);
+            }
+            event.release().unwrap();
         }
     }
 }
@@ -292,25 +329,33 @@ impl Bank {
         self.loaded = true;
     }
 
-    /// `load_sample_data` (0x140a53870).
+    /// `load_sample_data` (0x140a53870). Native asserts the bank is loaded first
+    /// (`*loaded & 1 == 0 → unwrap_failed`), logs at trace level
+    /// (`MAX_LOG_LEVEL_FILTER > 4`) "Loading sample data of FMOD bank: {path}",
+    /// then calls FMOD `Bank::load_sample_data` and unwraps it.
     pub fn load_sample_data<S: Studio>(&mut self, studio: &mut S) {
-        log::info!(target: "country_core::resources::audio_resources", "Loading sample data of FMOD bank {}", self.path);
-        studio.load_sample_data();
+        assert!(self.loaded, "Bank::load_sample_data called before the bank is loaded");
+        log::trace!(target: "country_core::resources::audio_resources", "Loading sample data of FMOD bank: {}", self.path);
+        studio.load_sample_data().unwrap();
     }
 }
 
 /// FMOD Studio handle interface (injected).
 pub trait Studio {
-    type Error: std::fmt::Display;
+    type Error: std::fmt::Display + std::fmt::Debug;
     /// The injected FMOD event-instance type (`AudioInstance`'s `E`).
     type Event: EventInstance<Error = Self::Error> + Send + Sync + 'static;
+    /// The injected FMOD VCA handle (`set_vca_volume` 0x140a54810).
+    type Vca: VcaHandle<Error = Self::Error>;
     fn load_bank_file(&mut self, path: &str) -> Result<(), Self::Error>;
-    fn load_sample_data(&mut self);
-    /// `set_vca_volume` (0x140a54810): get_vca → Vca::set_volume.
-    fn set_vca_volume(&mut self, name: &str, volume: f32) -> Result<(), Self::Error>;
-    /// `AudioCoreInner::update` (0x140a53a00): listener attributes →
-    /// set_listener_attributes(0) → Studio::update.
-    fn update(&mut self, listener: ListenerAttributes) -> Result<(), Self::Error>;
+    fn load_sample_data(&mut self) -> Result<(), Self::Error>;
+    /// `get_vca` (0x140a54810): resolve the VCA by name; the caller logs and
+    /// continues on failure (native), then unwraps `Vca::set_volume`.
+    fn get_vca(&self, name: &str) -> Result<Self::Vca, Self::Error>;
+    /// `AudioCoreInner::update` (0x140a53a00): set the 3D listener (index 0).
+    fn set_listener_attributes(&mut self, listener: ListenerAttributes) -> Result<(), Self::Error>;
+    /// Studio::update (0x140a53a00 continuation): advance the FMOD Studio.
+    fn update(&mut self) -> Result<(), Self::Error>;
     /// `AudioCoreInner::set_parameter` (0x140a53db0): global FMOD parameter
     /// (libfmod `Studio::set_parameter_by_name` is `&self`).
     fn set_parameter_by_name(&self, name: &str, value: f32) -> Result<(), Self::Error>;
@@ -320,6 +365,13 @@ pub trait Studio {
         &self,
         name: &str,
     ) -> Result<Option<Self::Event>, Self::Error>;
+}
+
+/// The injected FMOD VCA handle (native `libfmod::Vca`).
+pub trait VcaHandle {
+    type Error: std::fmt::Debug;
+    /// `Vca::set_volume` (0x140a54810 continuation); native unwraps the failure.
+    fn set_volume(&self, volume: f32) -> Result<(), Self::Error>;
 }
 
 /// 3D listener attributes passed to Studio::update (O: camera rotation+position
@@ -380,18 +432,44 @@ impl<S: Studio> AudioCore<S> {
         self.studio.as_mut()
     }
 
-    /// `set_vca_volume` (0x140a54810).
+    /// `set_vca_volume` (0x140a54810). Native: `get_vca` failure → log + continue;
+    /// `Vca::set_volume` failure → unwrap (panic). Both paths return normally.
     pub fn set_vca_volume(&mut self, name: &str, volume: f32) -> Result<(), S::Error> {
         if let Some(studio) = &mut self.studio {
-            studio.set_vca_volume(name, volume)?;
+            match studio.get_vca(name) {
+                Ok(vca) => {
+                    vca.set_volume(volume).unwrap();
+                }
+                Err(err) => {
+                    log::error!(target: "country_core::resources::audio_resources", "Failed to get VCA {}: {}", name, err);
+                }
+            }
         }
         Ok(())
     }
 
-    /// `AudioCoreInner::update` (0x140a53a00).
+    /// `AudioCoreInner::update` (0x140a53a00). Native first asserts the listener
+    /// orientation is near-orthonormal (`|forward| - 1.0 < 0.001`,
+    /// `|up| - 1.0 < 0.001`, `|forward·up| < 0.001`, panics otherwise), then
+    /// unwraps `set_listener_attributes`, and on a Studio::update failure logs
+    /// "FMOD update error: …" and continues (the Rust result is always `Ok`).
     pub fn update(&mut self, listener: ListenerAttributes) -> Result<(), S::Error> {
+        let forward = listener.forward;
+        let up = listener.up;
+        let fwd_len = (forward[0] * forward[0] + forward[1] * forward[1] + forward[2] * forward[2])
+            .sqrt();
+        let up_len = (up[0] * up[0] + up[1] * up[1] + up[2] * up[2]).sqrt();
+        assert!(!(0.001 <= fwd_len - 1.0), "listener forward must be normalized");
+        assert!(!(0.001 <= up_len - 1.0), "listener up must be normalized");
+        let dot = forward[0] * up[0] + forward[1] * up[1] + forward[2] * up[2];
+        assert!(!(0.001 <= dot.abs()), "listener forward and up must be orthogonal");
         if let Some(studio) = &mut self.studio {
-            studio.update(listener)?;
+            if let Err(err) = studio.set_listener_attributes(listener) {
+                panic!("FMOD set_listener_attributes failed: {err}");
+            }
+            if let Err(err) = studio.update() {
+                log::error!(target: "country_core::resources::audio_resources", "FMOD update error: {err}");
+            }
         }
         Ok(())
     }
@@ -436,9 +514,21 @@ impl<S: Studio> AudioCore<S> {
     }
 
     /// `AudioCoreInner::set_parameter` (0x140a53db0): global FMOD parameter.
+    /// Native on failure formats "Couldn't set global FMOD parameter: {name} …",
+    /// inserts that message into the global report map (slot 0x143634d60) and
+    /// logs it, then continues (no propagation). The `Err` is returned so the
+    /// caller can observe it; normal callers discard it (`let _ =`).
     pub fn set_parameter(&self, name: &str, value: f32) -> Result<(), S::Error> {
         if let Some(studio) = &self.studio {
-            studio.set_parameter_by_name(name, value)?;
+            if let Err(err) = studio.set_parameter_by_name(name, value) {
+                let message =
+                    format!("Couldn't set global FMOD parameter: {name} ({err:?})");
+                if let Ok(mut report) = GLOBAL_AUDIO_PARAM_ERRORS.lock() {
+                    report.insert(message.clone(), ());
+                }
+                log::error!(target: "country_core::resources::audio_resources", "{message}");
+                return Err(err);
+            }
         }
         Ok(())
     }
@@ -532,6 +622,10 @@ mod tests {
     struct FakeEvent {
         calls: Vec<String>,
         state: PlaybackState,
+        /// Shared post-drop call log (the value's own `calls` is moved into
+        /// `Drop`, so drop-tests observe this handle instead). Arc so FakeEvent
+        /// stays Send + Sync (Studio::Event requires it).
+        log: Option<std::sync::Arc<std::sync::Mutex<Vec<String>>>>,
     }
 
     impl Default for FakeEvent {
@@ -539,6 +633,23 @@ mod tests {
             FakeEvent {
                 calls: Vec::new(),
                 state: PlaybackState::Stopped,
+                log: None,
+            }
+        }
+    }
+
+    impl FakeEvent {
+        fn with_log(log: std::sync::Arc<std::sync::Mutex<Vec<String>>>) -> Self {
+            FakeEvent {
+                log: Some(log),
+                ..Default::default()
+            }
+        }
+
+        fn record(&mut self, call: &str) {
+            self.calls.push(call.into());
+            if let Some(log) = &self.log {
+                log.lock().unwrap().push(call.into());
             }
         }
     }
@@ -546,12 +657,12 @@ mod tests {
     impl EventInstance for FakeEvent {
         type Error = String;
         fn start(&mut self) -> Result<(), Self::Error> {
-            self.calls.push("start".into());
+            self.record("start");
             self.state = PlaybackState::Playing;
             Ok(())
         }
         fn stop(&mut self, _mode: i32) -> Result<(), Self::Error> {
-            self.calls.push("stop".into());
+            self.record("stop");
             self.state = PlaybackState::Stopped;
             Ok(())
         }
@@ -585,21 +696,38 @@ mod tests {
         fn install_beat_callback(&mut self) -> Result<(), Self::Error> {
             Ok(())
         }
+        fn release(&mut self) -> Result<(), Self::Error> {
+            self.record("release");
+            Ok(())
+        }
     }
 
     #[derive(Default)]
     struct FakeStudio;
+    struct FakeVca;
+    impl VcaHandle for FakeVca {
+        type Error = String;
+        fn set_volume(&self, _v: f32) -> Result<(), Self::Error> {
+            Ok(())
+        }
+    }
     impl Studio for FakeStudio {
         type Error = String;
         type Event = FakeEvent;
+        type Vca = FakeVca;
         fn load_bank_file(&mut self, _p: &str) -> Result<(), Self::Error> {
             Ok(())
         }
-        fn load_sample_data(&mut self) {}
-        fn set_vca_volume(&mut self, _n: &str, _v: f32) -> Result<(), Self::Error> {
+        fn load_sample_data(&mut self) -> Result<(), Self::Error> {
             Ok(())
         }
-        fn update(&mut self, _l: ListenerAttributes) -> Result<(), Self::Error> {
+        fn get_vca(&self, _n: &str) -> Result<Self::Vca, Self::Error> {
+            Ok(FakeVca)
+        }
+        fn set_listener_attributes(&mut self, _l: ListenerAttributes) -> Result<(), Self::Error> {
+            Ok(())
+        }
+        fn update(&mut self) -> Result<(), Self::Error> {
             Ok(())
         }
         fn set_parameter_by_name(&self, _n: &str, _v: f32) -> Result<(), Self::Error> {
@@ -660,6 +788,110 @@ mod tests {
         };
         bank.load(&mut FakeStudio::default());
         assert!(bank.loaded);
+    }
+
+    #[test]
+    #[should_panic]
+    fn load_sample_data_panics_before_the_bank_is_loaded() {
+        let mut bank = Bank {
+            loaded: false,
+            path: "a.bank".into(),
+        };
+        bank.load_sample_data(&mut FakeStudio::default());
+    }
+
+    #[test]
+    fn load_sample_data_after_load_is_accepted() {
+        let mut bank = Bank {
+            loaded: false,
+            path: "a.bank".into(),
+        };
+        bank.load(&mut FakeStudio::default());
+        bank.load_sample_data(&mut FakeStudio::default());
+        assert!(bank.loaded);
+    }
+
+    #[test]
+    fn drop_leaves_a_fire_and_forget_one_shot_playing_but_releases_the_handle() {
+        // state == 2 (initial): native Drop does not stop, but releases.
+        let log = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let instance =
+            AudioInstance::<FakeEvent>::active(FakeEvent::with_log(log.clone()), "e");
+        drop(instance);
+        assert_eq!(*log.lock().unwrap(), ["release"]);
+    }
+
+    #[test]
+    fn drop_stops_when_stop_on_drop_was_requested() {
+        let log = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let mut instance =
+            AudioInstance::<FakeEvent>::active(FakeEvent::with_log(log.clone()), "e");
+        instance.stop_on_drop();
+        drop(instance);
+        assert_eq!(*log.lock().unwrap(), ["stop", "release"]);
+    }
+
+    #[test]
+    fn stop_on_drop_clears_the_state_flag() {
+        let mut instance = AudioInstance::<FakeEvent>::active(FakeEvent::default(), "e");
+        let before = match &instance {
+            AudioInstance::Active { state, .. } => *state,
+            _ => 99,
+        };
+        assert_eq!(before, 2);
+        instance.stop_on_drop();
+        let after = match &instance {
+            AudioInstance::Active { state, .. } => *state,
+            _ => 99,
+        };
+        assert_eq!(after, 0);
+    }
+
+    #[test]
+    fn update_asserts_an_orthonormal_listener() {
+        let mut core = AudioCore {
+            studio: Some(FakeStudio::default()),
+            banks: HashMap::new(),
+        };
+        let ok = ListenerAttributes {
+            position: [0.0, 0.0, 0.0],
+            forward: [0.0, 0.0, -1.0],
+            up: [0.0, 1.0, 0.0],
+            velocity: [0.0, 0.0, 0.0],
+        };
+        core.update(ok).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn update_rejects_a_non_unit_forward() {
+        let mut core = AudioCore {
+            studio: Some(FakeStudio::default()),
+            banks: HashMap::new(),
+        };
+        core.update(ListenerAttributes {
+            position: [0.0, 0.0, 0.0],
+            forward: [0.0, 0.0, -2.0],
+            up: [0.0, 1.0, 0.0],
+            velocity: [0.0, 0.0, 0.0],
+        })
+        .unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn update_rejects_non_orthogonal_axes() {
+        let mut core = AudioCore {
+            studio: Some(FakeStudio::default()),
+            banks: HashMap::new(),
+        };
+        core.update(ListenerAttributes {
+            position: [0.0, 0.0, 0.0],
+            forward: [1.0, 0.0, 0.0],
+            up: [1.0, 0.0, 0.0],
+            velocity: [0.0, 0.0, 0.0],
+        })
+        .unwrap();
     }
 
     #[test]

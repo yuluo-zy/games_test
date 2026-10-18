@@ -1,0 +1,49 @@
+{
+  "date": "2026-10-18",
+  "finding": "R1",
+  "status": "fixed in production wall-brick upload path",
+  "checks": [
+    {
+      "command": "cargo test -p country-core --lib geometry:: --locked --offline",
+      "exit_code": 0,
+      "passed": 37,
+      "ignored": 0,
+      "log": "cpu-geometry.log"
+    },
+    {
+      "command": "target/debug/deps/country_core-f31a3a8efe254b09 --test-threads=4",
+      "description": "运行上一命令构建的完整单测二进制，避免重复编译共享 workspace",
+      "exit_code": 0,
+      "passed": 2102,
+      "ignored": 0,
+      "log": "core-lib.log",
+      "binary_sha256": "7461b278db2d479fcbe251f22f49440e664920b4cc348675247f509bc6f74b87"
+    },
+    {
+      "command": "RHAPSODY_REQUIRE_VULKAN=1 cargo test -p tiny-glade --test geometry_gpu --locked --offline -- --nocapture",
+      "exit_code": 0,
+      "passed": 1,
+      "ignored": 0,
+      "strict_gpu_required": true,
+      "log": "gpu-geometry.log"
+    },
+    {
+      "command": "rustfmt --check --edition 2024 crates/country-core/src/render/sparse_instance_buffer.rs crates/country-core/src/geometry/runtime.rs crates/country-core/src/geometry/tests/runtime.rs crates/tiny-glade/tests/geometry_gpu.rs",
+      "exit_code": 0,
+      "log": "fmt.log"
+    }
+  ],
+  "source_sha256": {
+    "crates/country-core/src/render/sparse_instance_buffer.rs": "01febd902b9f9fa2c4adf9c22c9721dc23bf21f3d4976dd68e308f140eed7d92",
+    "crates/country-core/src/geometry/runtime.rs": "d4869546556f501dc5de80de380a6f76c535ab1b8d45fc82cc56cade08d3a87c",
+    "crates/country-core/src/geometry/tests/runtime.rs": "774b61fb1a0c853d6e981907efb6a20a5fb93ca2d68f9da6c48fc7e622c9a9d1",
+    "crates/tiny-glade/tests/geometry_gpu.rs": "86ffc24e42c93f0a8236fd580112f683303ac2a4b5dca27930eb32287243be49",
+    "crates/country-core/src/geometry/README.md": "1ca63108848852770292ea6ca84ec1845e0a9f98080ddd25afb4ff3c720a47f4",
+    "crates/country-core/src/geometry/REVIEW.md": "f6ee7a6d3f52ff0a0b68a0bbf7139159a7eec66b8c892c362d53b36fd4109c3f"
+  },
+  "limits": [
+    "借用设备的 try_new/new_storage_buffer 兼容接口仍要求调用方释放；本次生产墙砖路径改用 try_new_owned。",
+    "本轮是 Rust 生产发布链与真实 GPU 上传/资源生命周期验证，不是原进程行为差分或完整游戏画面验收。"
+  ],
+  "cache_cleanup": "cache-cleanup.json"
+}

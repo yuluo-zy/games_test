@@ -1,0 +1,37 @@
+
+// WARNING: Removing unreachable block (ram,0x000141286805)
+
+void __cdecl
+country_core::systems::save::snapshot_gc::
+parse_save_file_snapshots<std::io::buffered::bufreader::BufReader<std::fs::File>_>(void)
+
+{
+  longlong lVar1;
+  HANDLE hObject;
+  longlong *in_RCX;
+  longlong in_RDX;
+  longlong local_a0;
+  longlong local_98;
+  longlong local_90;
+  
+  lVar1 = *(longlong *)(in_RDX + 8);
+  hObject = *(HANDLE *)(in_RDX + 0x28);
+  ::utils::selective_deserialize::impl$1::
+  deserialize<utils::selective_deserialize::SelectiveDeserialize<country_core::systems::save::snapshot_gc::SnapshotsKey,alloc::vec::Vec<country_core::resources::history::ResolvedHistoryChainSnapshot,alloc::alloc::Global>_>,country_core::systems::save::snapshot_gc::HistoryKey,ref_mut_<serde_json::de::Deserializer<serde_json::read::IoRead<std::io::buffered::bufreader::BufReader<std::fs::File>_>_>_>_>
+            ();
+  if (SBORROW8(0,local_a0)) {
+    in_RCX[1] = local_98;
+    *in_RCX = -0x8000000000000000;
+  }
+  else {
+    *in_RCX = local_a0;
+    in_RCX[1] = local_98;
+    in_RCX[2] = local_90;
+  }
+  if (lVar1 != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  CloseHandle(hObject);
+  return;
+}
+

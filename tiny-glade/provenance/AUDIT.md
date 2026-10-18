@@ -40,14 +40,11 @@ paths/lang-lib/tabloid保留最新产品修复，而不再回滚旧快照。未�
 | `tabloid` | [README](../crates/tabloid/README.md) |
 | `motomoto` | [README](../crates/motomoto/README.md) |
 | `tg-package-integrity` | [README](../crates/tg-package-integrity/README.md) |
-| `theme-defs` | [README](../crates/theme-defs/README.md) |
 | `tg-text` | [README](../crates/tg-text/README.md) |
 | `asset` | [README](../crates/asset/README.md) |
 | `asset-pipe` | [README](../crates/asset-pipe/README.md) |
 | `tg-iced` | [README](../crates/tg-iced/README.md) |
 | `tg-gpu-selector` | [README](../crates/tg-gpu-selector/README.md) |
-| `theme-fetcher` | [README](../crates/theme-fetcher/README.md) |
-| `theme-server-proto` | [README](../crates/theme-server-proto/README.md) |
 | `shader-compiler` | [README](../crates/rhapsody/crates/shader-compiler/README.md) |
 
 ## 未纳入的内容
@@ -69,3 +66,5 @@ paths/lang-lib/tabloid保留最新产品修复，而不再回滚旧快照。未�
 最终仅文档收尾期间，workspace成员从先前验证的27个变为25个，`crates/tg-integrity-report` 和 `crates/crash-reporter-gui` 的目录及成员被移除。原来源位于 `reverse-engineering/tiny-glade/reconstruction/shared-foundation/crates/tg-integrity-report` 和 `crash-reporter-gui`，旧审计映射仍作为历史记录保留。三个审计agent未报告执行这项删除，操作来源和原因尚未确认；当前不能将这两个包写成已存在或已完成集成。
 
 按照用户要求，此时不恢复源码、不更新依赖锁或重跑编译测试，仅登记实际状态。上述完整workspace编译/测试记录对应删除前的27成员状态，不代表当前25成员及最终依赖闭包已经重新验证。后续开发需确认这两包移除意图及其GUI/完整性报告/崩溃上报功能归宿。
+
+2026-10-17：主题三包合并为 [tg-theme](../crates/tg-theme/README.md)，采用源码重构后的实现；历史快照与原报告保留，不代表新实现继续保持原缺陷行为。

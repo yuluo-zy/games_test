@@ -1,31 +1,5 @@
-//! `AssetMeshLibrary` — 网格注册表（layer A3，逐函数对照原版机器码重写）。
-//!
-//! 证据全文：`evidence/country-core-audit/A3_mesh.md`。标记：O＝机器码直接观察，I＝推断，U＝未知。
-//!
-//! # 布局（O：`new` 0x14092c920 的各字段写入，总大小 0xd0）
-//! | 偏移 | 字段 | 说明 |
-//! |---|---|---|
-//! | +0x00 | `modified_meshes: Vec<Handle<Mesh>>` | `get_mut` 每次调用先 `push(handle)`；`vao_update::rebuild_vaos` 遍历后整体替换为“重建失败”的子集（O）。名字 I |
-//! | +0x18 | `transient_meshes: Arc<Mutex<Vec<_>>>` | ArcInner 0x30 B：强/弱计数 1、std `Mutex`（futex 字节@+0x10、poison 字节@+0x11）、`Vec`@+0x18（O）。访问器 `transient_meshes()` = `lea rax,[rcx+0x18]`（0x140002450，与别的 ICF 合并）。元素类型 U |
-//! | +0x20 | `mesh_entries: FrozenMap<Handle<Mesh>, Box<Mesh>>` | 0x40 B：`[+0x28]` “借用中”字节、hashbrown 表@+0x30（桶 16 B = 键 + `Box` 指针；Box 大小 0x78 = `Mesh`）、`RandomState`@+0x50（O）。panic 文案里的字段名 `self.mesh_entries`（O） |
-//! | +0x60 | `names: RwLock<HashMap<String, Handle<Mesh>>>` | parking_lot 锁字@+0x60、表@+0x68、items@+0x80、`RandomState`@+0x88；桶 0x20 B = `String`(0x18)+handle（O） |
-//! | +0x98 | `paths: RwLock<HashMap<PathBuf, Handle<Mesh>>>` | 同上，桶 0x28 B = Windows `PathBuf`(0x20，含 `is_known_utf8` 字节)+handle（O） |
-//!
-//! `Handle<Mesh>` 的 id 来自全局原子计数器 `HANDLE_COUNT`（0x143634cd0，`lock xadd`，与 `AssetVAOLibrary::add`
-//! 共用同一个计数器，O），即 `Handle::new()`。
-//!
-//! # 旧版错误（已修）
-//! * `meshes: HashMap` 不是 `FrozenMap`；`remove`/`reload_mesh_src` 里的 `disposed` 标志不存在——那个字节是 FrozenMap 的
-//!   “借用中”标志（命中则 `Result::unwrap` panic，来自 `frozen/src/lib.rs`）。
-//! * `add(name, mesh)` 的签名错：原函数只取一个 0x90 B 的 `{ asset: Mesh, name: Option<String> }`；名字是**可选**的，
-//!   插入失败走 `assert!(self.mesh_entries.insert(..).is_ok())`；源文件路径取自 `Mesh.source_file`（旧版 `mesh_source_file`
-//!   恒返回 `None`，路径表永远是空的）。
-//! * `get_mut` 会把 handle 压入 `modified_meshes`（旧版没有，VAO 重建列表因此永远为空）。
-//! * `get_by_name` 返回 `Option<&Mesh>`（不 unwrap），缺名字时 panic 文案是 `Mesh {:?} does not exist in the library`，
-//!   旧版是 `mesh {:?} not found`。
-//! * `remove` 只清名字表（`retain(|_, h| *h != handle)`），**不**清路径表；旧版同样只清名字表但多了假的 disposed 断言。
-//! * `reload_mesh_src` 的失败路径：路径表里查不到 → panic（文案见下）；扩展名断言是 `assert_eq!(ext, Some("json"))`；
-//!   `get_mut`（压入 modified）发生在加载**之前**；加载失败只 `log::error!`，保留旧网格。旧版把失败静默吞掉并先检查扩展名。
+//! CPU 网格注册表。名字和源路径定位资产，可变访问登记后续 VAO 更新。
+//! 原作来源见项目 evidence；当前接口、行为变化与验证范围见 README.md。
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -38,10 +12,9 @@ use crate::asset_libraries::Handle;
 use crate::frozen_map::FrozenMap;
 use crate::render::mesh::Mesh;
 
-/// `add` 的唯一入参（O：0x90 B，`Mesh`@0、`Option<String>`@0x78；panic 文案里的 `asset.asset`）。
+/// 待注册网格及其可选名字。
 pub struct MeshAsset {
     pub asset: Mesh,
-    /// `None` 时不登记名字（O：`cap == i64::MIN` 的 niche 判断，跳过 `names.insert`）。
     pub name: Option<String>,
 }
 
@@ -51,26 +24,24 @@ impl MeshAsset {
     }
 }
 
-/// 网格注册表。
+/// 拥有 CPU 网格及其名字、源路径索引。
 #[derive(Resource)]
 pub struct AssetMeshLibrary {
-    /// +0x00（O）。`get_mut` 压入，`rebuild_vaos` 消费。
     pub modified_meshes: Vec<Handle<Mesh>>,
-    /// +0x18（O 布局 / U 元素类型）。
+    /// CPU 删除先登记身份，维护阶段再通过创建设备释放派生 GPU 资源。
+    removed_meshes: Vec<Handle<Mesh>>,
     transient_meshes: Arc<Mutex<Vec<Handle<Mesh>>>>,
-    /// +0x20（O）。
     pub mesh_entries: FrozenMap<Handle<Mesh>, Mesh>,
-    /// +0x60（O）。
     names: RwLock<HashMap<String, Handle<Mesh>>>,
-    /// +0x98（O）。
     paths: RwLock<HashMap<PathBuf, Handle<Mesh>>>,
 }
 
 impl AssetMeshLibrary {
-    /// `new`（O 0x14092c920）：五个字段全为空表，各 `RandomState` 取线程局部随机密钥。
+    /// 创建初始状态。
     pub fn new() -> Self {
         AssetMeshLibrary {
             modified_meshes: Vec::new(),
+            removed_meshes: Vec::new(),
             transient_meshes: Arc::new(Mutex::new(Vec::new())),
             mesh_entries: FrozenMap::new(),
             names: RwLock::new(HashMap::new()),
@@ -78,17 +49,11 @@ impl AssetMeshLibrary {
         }
     }
 
-    /// `transient_meshes`（O 0x140002450：`lea rax,[rcx+0x18]`）。
     pub fn transient_meshes(&self) -> &Arc<Mutex<Vec<Handle<Mesh>>>> {
         &self.transient_meshes
     }
 
-    /// `add`（O 0x14092cc60）。顺序：
-    /// 1. `HANDLE_COUNT.fetch_add(1)` 取新 handle；
-    /// 2. 若 `source_file` 为 `Some`，克隆其路径（在装箱之前）；
-    /// 3. `Box::new(asset.asset)`（0x78 B）→ `assert!(self.mesh_entries.insert(mesh_handle, Box::new(asset.asset)).is_ok())`；
-    /// 4. `name` 为 `Some` → 写锁 `names.insert(name, handle)`（同名覆盖，旧值丢弃）；
-    /// 5. 路径克隆为 `Some` → 写锁 `paths.insert(path, handle)`。
+    /// 注册资产并返回稳定身份。
     pub fn add(&self, asset: MeshAsset) -> Handle<Mesh> {
         let mesh_handle = Handle::<Mesh>::new();
         let source_path = asset
@@ -111,21 +76,18 @@ impl AssetMeshLibrary {
         mesh_handle
     }
 
-    /// `get`（O 0x14092d2e0）：就是 `FrozenMap::get`。
     pub fn get(&self, handle: Handle<Mesh>) -> Option<&Mesh> {
         self.mesh_entries.get(&handle)
     }
 
-    /// `get_mut`（O 0x14092d300）：**先**把 handle 压入 `modified_meshes`（无条件，哪怕 handle 不存在），
-    /// 再查表。原版对 FrozenMap 的“借用中”字节做 `unwrap`（`&mut self` 下不会触发，占位不建模）。
+    /// 取得可变资产并登记派生资源更新。
     pub fn get_mut(&mut self, handle: Handle<Mesh>) -> Option<&mut Mesh> {
+        let mesh = self.mesh_entries.get_mut(&handle)?;
         self.modified_meshes.push(handle);
-        self.mesh_entries.get_mut(&handle)
+        Some(mesh)
     }
 
-    /// `get_by_name`（O 0x14092d450）：`get_handle_by_name` 失败 panic；之后 `FrozenMap::get` 的结果**原样返回**
-    /// （`Option<&Mesh>`，没有 unwrap）。panic 文案 `Mesh {:?} does not exist in the library`（`{:?}` 因为
-    /// 实参格式化函数是 `str` 的 Debug：0x1405338a0 → `core::fmt::impl$19`，900 B 的转义实现）。
+    /// 按业务名字读取已注册资产。
     pub fn get_by_name(&self, name: &str) -> Option<&Mesh> {
         match self.try_get_handle_by_name(name) {
             Some(handle) => self.get(handle),
@@ -133,7 +95,7 @@ impl AssetMeshLibrary {
         }
     }
 
-    /// `get_handle_by_name`（O 0x14092d4f0）。
+    /// 按业务名字取得资产句柄。
     pub fn get_handle_by_name(&self, name: &str) -> Handle<Mesh> {
         match self.try_get_handle_by_name(name) {
             Some(handle) => handle,
@@ -145,7 +107,6 @@ impl AssetMeshLibrary {
         panic!("Mesh {:?} does not exist in the library", name)
     }
 
-    /// `try_get_handle_by_name`（O 0x14092d570）：读锁；表空时直接 `None`（不算哈希）。
     pub fn try_get_handle_by_name(&self, name: &str) -> Option<Handle<Mesh>> {
         let names = self.names.read();
         if names.is_empty() {
@@ -154,22 +115,26 @@ impl AssetMeshLibrary {
         names.get(name).copied()
     }
 
-    /// `remove`（O 0x14092d750）：FrozenMap 表上 `remove_entry`，命中则 drop `Mesh` 并释放 0x78 B 的 Box；
-    /// 然后写锁 `names.retain(|_, h| *h != handle)`（O：`retain` 里 `[bucket-8] == handle` 才删）。
-    /// 路径表**不**清理（O）。
+    /// 移除资产及关联索引。
     pub fn remove(&mut self, handle: Handle<Mesh>) {
-        drop(self.mesh_entries.remove(&handle));
-        self.names.write().retain(|_, h| *h != handle);
+        if self.mesh_entries.remove(&handle).is_some() {
+            self.removed_meshes.push(handle);
+        }
+        self.names
+            .write()
+            .retain(|_, registered| *registered != handle);
+        self.paths
+            .write()
+            .retain(|_, registered| *registered != handle);
+        self.modified_meshes.retain(|modified| *modified != handle);
     }
 
-    /// `reload_mesh_src`（0x14092d8d0）：加载器为 `utils::load_json::try_load_json_as_mesh`。
-    ///
-    /// 1. 读锁 `paths`：表空或查不到 → `panic!("Asset Mesh library was requested to reload a non-existing mesh path {:?}", path)`
-    ///    （`{:?}`：格式化函数 0x14002e8d0 尾调 `std::path::impl$69::fmt` = `Path` 的 Debug，10 B）；
-    /// 2. `assert_eq!(path.extension().and_then(OsStr::to_str), Some("json"))`；
-    /// 3. `self.get_mut(handle).unwrap()`（压入 `modified_meshes`，缺失则 `Option::unwrap` panic）；
-    /// 4. `load_json_as_mesh(path)`：`Ok(m)` → drop 旧 `Mesh` 并就地覆盖；`Err(e)` →
-    ///    `log::error!("Asset mesh library couldnt reload a mesh: {}", e)`（`{}` = anyhow `ErrorImpl::display`），旧网格保留。
+    /// 仅由有设备的维护阶段消费；没有宿主时保留通知，避免遗留孤立 VAO。
+    pub(crate) fn drain_removed_meshes(&mut self) -> impl Iterator<Item = Handle<Mesh>> + '_ {
+        self.removed_meshes.drain(..)
+    }
+
+    /// 重新读取源文件；失败时保留旧网格。
     pub fn reload_mesh_src(&mut self, path: &str) {
         self.reload_mesh_src_with(path, crate::utils::load_json::try_load_json_as_mesh);
     }
@@ -180,29 +145,49 @@ impl AssetMeshLibrary {
         path: &str,
         load: impl FnOnce(&str) -> anyhow::Result<Mesh>,
     ) {
-        let as_path = Path::new(path);
+        let source_path = Path::new(path);
         let handle = {
             let paths = self.paths.read();
             let found = if paths.is_empty() {
                 None
             } else {
-                paths.get(as_path).copied()
+                paths.get(source_path).copied()
             };
             match found {
                 Some(handle) => handle,
                 None => panic!(
                     "Asset Mesh library was requested to reload a non-existing mesh path {:?}",
-                    as_path
+                    source_path
                 ),
             }
         };
-        let extension = as_path.extension().and_then(|e| e.to_str());
+        let extension = source_path.extension().and_then(|e| e.to_str());
         assert_eq!(extension, Some("json"));
-        let slot = self.get_mut(handle).unwrap();
         match load(path) {
-            Ok(mesh) => *slot = mesh,
-            Err(error) => log::error!("Asset mesh library couldnt reload a mesh: {}", error),
+            Ok(mesh) => *self.get_mut(handle).expect("源路径映射到不存在的网格") = mesh,
+            Err(error) => log::error!("网格重载失败，保留旧资产：{}", error),
         }
+    }
+    /// 热重载使用可恢复错误；加载成功后才替换并登记修改。
+    pub fn try_reload_mesh_src(&mut self, path: &Path) -> anyhow::Result<()> {
+        let handle = self
+            .paths
+            .read()
+            .get(path)
+            .copied()
+            .ok_or_else(|| anyhow::anyhow!("未注册网格源文件：{}", path.display()))?;
+        anyhow::ensure!(
+            path.extension().and_then(|extension| extension.to_str()) == Some("json"),
+            "网格源必须为 JSON"
+        );
+        let path_text = path
+            .to_str()
+            .ok_or_else(|| anyhow::anyhow!("网格源路径不是 UTF-8"))?;
+        let mesh = crate::utils::load_json::try_load_json_as_mesh(path_text)?;
+        *self
+            .get_mut(handle)
+            .ok_or_else(|| anyhow::anyhow!("网格已经删除"))? = mesh;
+        Ok(())
     }
 }
 
@@ -309,7 +294,7 @@ mod tests {
         assert!(lib.get_mut(ghost).is_none());
         lib.get_mut(h).unwrap().label = "changed";
         lib.get_mut(h).unwrap();
-        assert_eq!(lib.modified_meshes, vec![ghost, h, h]);
+        assert_eq!(lib.modified_meshes, vec![h, h]);
         assert_eq!(lib.get(h).unwrap().label, "changed");
     }
 
@@ -337,7 +322,7 @@ mod tests {
     }
 
     #[test]
-    fn remove_drops_mesh_and_every_name_pointing_at_it_but_keeps_path() {
+    fn remove_drops_mesh_and_clears_names_and_source_path() {
         let mut lib = AssetMeshLibrary::new();
         let a = lib.add(MeshAsset::new(
             mesh_with_source("a", "a.json"),
@@ -350,7 +335,7 @@ mod tests {
         assert_eq!(lib.try_get_handle_by_name("a1"), None);
         assert_eq!(lib.try_get_handle_by_name("a2"), None);
         assert_eq!(lib.try_get_handle_by_name("b"), Some(b));
-        assert_eq!(lib.paths.read().len(), 1, "原版不清路径表");
+        assert!(lib.paths.read().is_empty());
     }
 
     #[test]
@@ -374,12 +359,12 @@ mod tests {
     }
 
     #[test]
-    fn reload_failure_keeps_old_mesh_but_still_marks_modified() {
+    fn reload_failure_keeps_old_mesh_without_marking_modified() {
         let mut lib = AssetMeshLibrary::new();
         let h = lib.add(MeshAsset::new(mesh_with_source("old", "m/a.json"), None));
         lib.reload_mesh_src_with("m/a.json", |_| Err(anyhow::anyhow!("bad json")));
         assert_eq!(lib.get(h).unwrap().label, "old");
-        assert_eq!(lib.modified_meshes, vec![h]);
+        assert!(lib.modified_meshes.is_empty());
     }
 
     #[test]

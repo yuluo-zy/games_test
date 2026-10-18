@@ -1,0 +1,19 @@
+{
+  "run": "endpoints-r1",
+  "passed": 2416,
+  "failed": 2,
+  "source_drift": 0,
+  "failure_details": [
+    {
+      "test": "first_wall_and_fence_ui_operation_commits_through_actual_history_lifecycle",
+      "cause": "new endpoint registration requires PublicWalls and MainCameraMoved events; standalone drawing registrar had not initialized these",
+      "fix": "init_resource on same canonical owners in register_wall_drawing_resources; preserve existing values"
+    },
+    {
+      "test": "systems::render_loop::compute_passes::dof::tests::indirect_offsets_match_the_exe_immediates",
+      "cause": "dof.rs:545 actual16 expected0; independently owned render code",
+      "action": "not edited by root; owner handoff; endpoints-r2 excludes this single known failure and cannot claim whole core pass"
+    }
+  ],
+  "retry": "endpoints-r2 running; no result assumed"
+}

@@ -1,0 +1,224 @@
+--- a/crates/country-core/src/systems/render_loop/render_world.rs
++++ b/crates/country-core/src/systems/render_loop/render_world.rs
+@@ -134,10 +134,10 @@
+ pub type PassHandle = crate::render::pass_builder::pass_resource_access::RgTexture;
+ 
+ /// `param_6` 指向的设置字节（O 偏移；仅读取这几项）。
+-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
++#[derive(Clone, Copy, Debug, Default, PartialEq)]
+ pub struct WorldRenderSettings {
+-    /// `+0x9c`：传给 `calculate_taa`/`calculate_tgsr` 的末参（语义 U）。
+-    pub taa_param: u32,
++    /// VideoSettings `+0x9c`: original sharpen float bits forwarded to AA.
++    pub sharpen_amount: f32,
+     /// `+0xa9`、`+0xaa`：景深开关，下标 `(dof_mode == 0x13) as usize`。
+     pub dof_enabled: [bool; 2],
+     /// `+0xab`：非 0 → TGSR，否则 TAA。
+@@ -181,8 +181,9 @@
+ 
+ /// `TextureDesc::usage(0xc)` = sampled | storage（0x1404ec239）。
+ pub const PREV_DEPTH_USAGE: u32 = 0xc;
+-/// `DoF` 模式值：与 `0x13` 比较决定设置字节下标与 `calc_dof` 的 bool 末参（0x1404ecca5）。
+-pub const DOF_MODE_MULTIRES: u32 = 0x13;
++/// Original AppMode::Photomode tag. It selects the photomode setting and
++/// quality byte; calc_dof reads its separate global multires switch internally.
++pub const DOF_PHOTOMODE_TAG: u32 = 0x13;
+ 
+ /// 名字常量（O，.rdata 0x1429ebf98…0x1429ec060）。
+ pub mod names {
+@@ -197,9 +198,6 @@
+     pub const TAA_OUTPUT: &str = "taa_output";
+ }
+ 
+-/// `generate_mips` 的 mip 数参数（O：`mov [rsp+0x28], 0x8`）。
+-pub const DOF_MIP_COUNT: u64 = 8;
+-
+ /// `upload_raster_staging_to_texture<…>` 的 6 个单态（O：`r8b` = 光栅槽，依次 1/2/3/4/0x13/0x14）。
+ pub const UPLOAD_RASTER_SLOTS: [u8; 6] = [1, 2, 3, 4, 0x13, 0x14];
+ 
+@@ -227,7 +225,7 @@
+     fn is_winter(&mut self) -> Option<bool>;
+     /// 分辨率资源（TypeId 0xa4c02661e67b048b/0xeae761e6aa2a67ec）的显示尺寸（`+8` 处 u64）。
+     fn display_dims(&mut self) -> Option<[u32; 2]>;
+-    /// DoF 资源（TypeId 0xc2b8e941c91a6428/0x59f3c6d1d3da43a0）的首个 u32（模式值）。
++    /// Canonical AppMode native tag (TypeId c2b8e941c91a6428/59f3c6d1d3da43a0).
+     fn dof_mode(&mut self) -> Option<u32>;
+     /// `*0x14362c0d8` → 0x143634da0：**`freeze_occlusion_culling` 调试开关**（O，grass `B_c2.md` 已命名该地址；`.data` 指针 →
+     /// 零填充区字节，加载时 0）。非 0 → 跳过 `generate_wall_draw_lists_pass2` 与 `gpu_generate_draw_lists`（`render-gap/DIGEST.md §3.4`）。
+@@ -393,15 +391,16 @@
+     fn dof_prepare(&mut self, depth: &RgTexture) -> DofTargets;
+ 
+     // ---- W50-W54：DoF / TAA|TGSR / 收尾 ----
+-    /// `generate_mips<WriteTexture…>(rg, world, &color.desc, &color, "dof_mips", 8)`。
+-    fn generate_mips(&mut self, color: &RgTexture, name: &str, mip_count: u64);
+-    /// `calc_dof(out, rg, world, &color, &depth, &dof_prepare, multires)`；返回的 36 B 即后续 TAA 的颜色输入。
++    /// Original final stack8 is `name.len()`, not a separate mip count.
++    /// Actual mip levels always come from color.desc.
++    fn generate_mips(&mut self, color: &RgTexture, name: &str);
++    /// `calc_dof(out, rg, world, &color, &depth, &dof_prepare, photomode)`；返回的 36 B 即后续 TAA 的颜色输入。
+     fn calc_dof(
+         &mut self,
+         color: &RgTexture,
+         depth: &RgTexture,
+         dof_prepare: &DofTargets,
+-        multires: bool,
++        photomode: bool,
+     ) -> RgTexture;
+     #[allow(clippy::too_many_arguments)]
+     fn calculate_taa(
+@@ -411,7 +410,7 @@
+         reprojection: &PassHandle,
+         cur: &RgTexture,
+         prev: &RgTexture,
+-        param: u32,
++        sharpen_amount: f32,
+     ) -> PassHandle;
+     #[allow(clippy::too_many_arguments)]
+     fn calculate_tgsr(
+@@ -422,7 +421,7 @@
+         reprojection: &PassHandle,
+         cur: &RgTexture,
+         prev: &RgTexture,
+-        param: u32,
++        sharpen_amount: f32,
+     ) -> PassHandle;
+     fn post_taa_transparency_pass(&mut self, taa: &PassHandle);
+     fn render_shader_refactoring(&mut self, taa: &PassHandle);
+@@ -598,10 +597,10 @@
+ 
+     // W50/W51：DoF（设置字节下标 = 0xa9 + (mode == 0x13)）
+     let dof_mode = p.dof_mode().unwrap();
+-    let multires = dof_mode == DOF_MODE_MULTIRES;
+-    let taa_input = if settings.dof_enabled[multires as usize] {
+-        p.generate_mips(&color, names::DOF_MIPS, DOF_MIP_COUNT);
+-        p.calc_dof(&color, &depth, &dof_prepare, multires)
++    let photomode = dof_mode == DOF_PHOTOMODE_TAG;
++    let taa_input = if settings.dof_enabled[photomode as usize] {
++        p.generate_mips(&color, names::DOF_MIPS);
++        p.calc_dof(&color, &depth, &dof_prepare, photomode)
+     } else {
+         color
+     };
+@@ -616,7 +615,7 @@
+             &reprojection,
+             &pair.cur,
+             &pair.prev,
+-            settings.taa_param,
++            settings.sharpen_amount,
+         )
+     } else {
+         let output_dims = p.display_dims().unwrap();
+@@ -629,7 +628,7 @@
+             &reprojection,
+             &pair.cur,
+             &pair.prev,
+-            settings.taa_param,
++            settings.sharpen_amount,
+         )
+     };
+ 
+@@ -1012,19 +1011,19 @@
+                 coc_tiles: core_tex(80),
+             }
+         }
+-        fn generate_mips(&mut self, _c: &RgTexture, name: &str, n: u64) {
+-            self.p(format!("generate_mips {name} {n}"));
++        fn generate_mips(&mut self, _c: &RgTexture, name: &str) {
++            self.p(format!("generate_mips {name}"));
+         }
+         fn calc_dof(
+             &mut self,
+             c: &RgTexture,
+             _d: &RgTexture,
+             _p: &DofTargets,
+-            multires: bool,
++            photomode: bool,
+         ) -> RgTexture {
+             assert_eq!(_p.coc, core_tex(8));
+             assert_eq!(_p.coc_tiles, core_tex(80));
+-            self.p(format!("calc_dof multires={multires}"));
++            self.p(format!("calc_dof photomode={photomode}"));
+             RgTexture {
+                 id: c.id + 1000,
+                 desc: c.desc,
+@@ -1037,7 +1036,7 @@
+             _r: &PassHandle,
+             cur: &RgTexture,
+             prev: &RgTexture,
+-            param: u32,
++            param: f32,
+         ) -> PassHandle {
+             self.p(format!(
+                 "calculate_taa in={} out={} cur={} prev={} param={param}",
+@@ -1053,7 +1052,7 @@
+             _r: &PassHandle,
+             cur: &RgTexture,
+             prev: &RgTexture,
+-            param: u32,
++            param: f32,
+         ) -> PassHandle {
+             self.p(format!(
+                 "calculate_tgsr in={} out={} {:?} cur={} prev={} param={param}",
+@@ -1073,7 +1072,7 @@
+         RenderWorldArgs {
+             world_render_dims: [1280, 720],
+             settings: WorldRenderSettings {
+-                taa_param: 0xabcd,
++                sharpen_amount: 0.375,
+                 dof_enabled: [true, false],
+                 tgsr: false,
+             },
+@@ -1228,7 +1227,7 @@
+             p.log
+                 .contains(&"pair taa_history [1280, 720] usage=0xc".to_string())
+         );
+-        assert!(p.log.contains(&"generate_mips dof_mips 8".to_string()));
++        assert!(p.log.contains(&"generate_mips dof_mips".to_string()));
+         assert!(
+             p.log
+                 .iter()
+@@ -1286,14 +1285,14 @@
+     }
+ 
+     #[test]
+-    fn dof_flag_index_follows_multires_mode() {
++    fn dof_flag_index_follows_actual_photomode_tag() {
+         // dof_enabled = [true, false]：mode != 0x13 → 用下标 0（开）；mode == 0x13 → 下标 1（关）
+         let mut p = Rec::new();
+         p.dof_mode = Some(0x12);
+         render_world(&mut p, &args());
+-        assert!(p.log.contains(&"calc_dof multires=false".to_string()));
+-        let mut p = Rec::new();
+-        p.dof_mode = Some(DOF_MODE_MULTIRES);
++        assert!(p.log.contains(&"calc_dof photomode=false".to_string()));
++        let mut p = Rec::new();
++        p.dof_mode = Some(DOF_PHOTOMODE_TAG);
+         render_world(&mut p, &args());
+         assert!(
+             !p.log
+@@ -1302,13 +1301,13 @@
+         );
+         // 未做 DoF 时 TAA 输入 = 原颜色（id 2），而不是 calc_dof 的结果
+         assert!(p.log.iter().any(|l| l.starts_with("calculate_taa in=2 ")));
+-        // 打开 multires 下标
++        // 打开 photomode 下标
+         let mut a = args();
+         a.settings.dof_enabled = [false, true];
+         let mut p = Rec::new();
+-        p.dof_mode = Some(DOF_MODE_MULTIRES);
++        p.dof_mode = Some(DOF_PHOTOMODE_TAG);
+         render_world(&mut p, &a);
+-        assert!(p.log.contains(&"calc_dof multires=true".to_string()));
++        assert!(p.log.contains(&"calc_dof photomode=true".to_string()));
+         assert!(
+             p.log
+                 .iter()
+@@ -1337,7 +1336,7 @@
+             .find(|l| l.starts_with("calculate_tgsr"))
+             .unwrap();
+         assert!(
+-            tgsr.contains("[1920, 1080]") && tgsr.contains("param=43981"),
++            tgsr.contains("[1920, 1080]") && tgsr.contains("param=0.375"),
+             "{tgsr}"
+         );
+         assert!(!p.log.iter().any(|l| l.starts_with("calculate_taa")));

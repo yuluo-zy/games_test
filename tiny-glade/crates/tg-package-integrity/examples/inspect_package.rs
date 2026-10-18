@@ -1,18 +1,20 @@
-use std::{env, fs};
-use tg_package_integrity::{
-    MANIFEST_PATH, PackageManifest, PackageVerificationError, is_valid_manifest_checksum,
-    verify_package_manifest,
-};
-fn main() {
-    let root = env::args_os()
-        .nth(1)
-        .expect("usage: inspect_package <package-root>");
-    // Run the original read -> checksum -> parse -> version -> files chain first.
-    // Optional metadata must not panic or parse ungated bytes before this result.
-    let result = match verify_package_manifest(&root) {
+//! Print machine-readable diagnostics and return a failing status for invalid packages.
+use std::{env, process::ExitCode};
+use tg_package_integrity::{PackageVerificationError, verify_package_manifest};
+
+fn main() -> ExitCode {
+    let mut args = env::args_os().skip(1);
+    let Some(root) = args.next().filter(|_| args.next().is_none()) else {
+        eprintln!("usage: inspect_package <package-root>");
+        return ExitCode::from(2);
+    };
+    let verification = verify_package_manifest(root);
+    let success = verification.is_ok();
+    let diagnostic = match verification {
         Ok(()) => serde_json::json!({"ok": true}),
         Err(PackageVerificationError::Files(issues)) => serde_json::json!({
-            "ok": false, "error": "files", "missing": issues.missing, "corrupt": issues.corrupt, "extra": issues.extra
+            "ok": false, "error": "files", "missing": issues.missing,
+            "corrupt": issues.corrupt, "extra": issues.extra,
         }),
         Err(PackageVerificationError::InvalidManifestChecksum) => {
             serde_json::json!({"ok": false, "error": "checksum"})
@@ -23,27 +25,23 @@ fn main() {
         Err(PackageVerificationError::ManifestParse(message)) => {
             serde_json::json!({"ok": false, "error": "parse", "message": message})
         }
+        Err(PackageVerificationError::InvalidManifestPath(path)) => {
+            serde_json::json!({"ok": false, "error": "path", "path": path})
+        }
+        Err(PackageVerificationError::InvalidManifestEntry { path, reason }) => {
+            serde_json::json!({"ok": false, "error": "entry", "path": path, "message": reason})
+        }
+        Err(PackageVerificationError::Filesystem(message)) => {
+            serde_json::json!({"ok": false, "error": "filesystem", "message": message})
+        }
         Err(PackageVerificationError::UnsupportedVersion(version)) => {
             serde_json::json!({"ok": false, "error": "version", "version": version})
         }
     };
-    let bytes = fs::read(std::path::Path::new(&root).join(MANIFEST_PATH)).ok();
-    let checksum = bytes.as_deref().map(is_valid_manifest_checksum);
-    let manifest: Option<PackageManifest> = if checksum == Some(true) {
-        bytes
-            .as_deref()
-            .and_then(|bytes| serde_json::from_slice(bytes).ok())
+    println!("{diagnostic:#}");
+    if success {
+        ExitCode::SUCCESS
     } else {
-        None
-    };
-    println!(
-        "{}",
-        serde_json::to_string_pretty(&serde_json::json!({
-            "candidate_execution": true, "original_function_execution": false,
-            "manifest_checksum_valid": checksum,
-            "version": manifest.as_ref().map(|manifest| manifest.version),
-            "file_entries": manifest.as_ref().map(|manifest| manifest.files.len()), "result": result
-        }))
-        .unwrap()
-    );
+        ExitCode::FAILURE
+    }
 }

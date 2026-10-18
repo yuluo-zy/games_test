@@ -1,0 +1,21 @@
+    Blocking waiting for file lock on build directory
+    Checking rhapsody v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody)
+error: this `if` statement can be collapsed
+    --> crates/rhapsody/examples/window_lab/app.rs:1296:13
+     |
+1296 | /             if options.repeat_script && options.frames.is_some_and(|n| n.saturating_sub(report.presented_frames) <= 16) {
+1297 | |                 if let Some(stress) = &mut stress { stress.stop_new_actions(); }
+1298 | |             }
+     | |_____________^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#collapsible_if
+     = note: `-D clippy::collapsible-if` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(clippy::collapsible_if)]`
+help: collapse nested if block
+     |
+1296 ~             if options.repeat_script && options.frames.is_some_and(|n| n.saturating_sub(report.presented_frames) <= 16)
+1297 ~                 && let Some(stress) = &mut stress { stress.stop_new_actions(); }
+     |
+
+error: could not compile `rhapsody` (example "window_lab") due to 1 previous error
+warning: build failed, waiting for other jobs to finish...

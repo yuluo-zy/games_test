@@ -1,0 +1,413 @@
+--- a/games_test/tiny-glade/crates/country-core/src/resources/rocky_terrain.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/rocky_terrain.rs
+@@ -1,31 +1,36 @@
+-//! `rocky_terrain.rs` — 岩质地层网格资源（B 0x1408bbf50 `RockyTerrainMesh::load`，O）。
++//! 岩质地层网格的 JSON 加载、GPU 记录和共享顶点数资源。
+ //!
+-//! 证据：`chapters/resources/rocky_terrain.rs.md`、`terrain-water/DIGEST.md`：
+-//! `load` = `fs::read_to_string` → `serde_json` 解析 → `add_new_with_data<VertexSSBO/
+-//! TriangleSSBO>`（顶点源记录 0x24 B→0x30 B、三角形 0x10 B→0x20 B GPU 填充）。
+-//! SSBO 名（O，SsboId 立即数）：顶点 "Rocky Terrain Vertices"、三角形 "Rocky Terrain
+-//! Triangles"；`displace_rocky_terrain` 每帧 GPU 变形。
++//! B 原证：load 0x1408bbf50（1292B），Vertex/Triangle typed buffer
++//! constructors 0x141611ba0（579B）/0x1416144a0（531B）。源 JSON 记录
++//! 分别为 36B/16B，GPU 记录为 48B/32B；保留当前类型化库和 load API。
+ use std::path::Path;
+ 
+ use bevy_ecs::prelude::*;
+ use serde::Deserialize;
+ 
+ use crate::asset_libraries::ssbo_library::{AssetSsboLibrary, SsboType};
+-use crate::render::ssbo::{StorageElement, MAPPED_MEMORY_READBACK};
+-
+-/// JSON 中间顶点（O：source 0x24 B → GPU 0x30 B；字段语义 I）。
++use crate::render::ssbo::StorageElement;
++
++/// Fixed capacities in the B typed buffer constructors.
++pub const ROCKY_TERRAIN_VERTEX_CAPACITY: usize = 148_794;
++pub const ROCKY_TERRAIN_TRIANGLE_CAPACITY: usize = 49_598;
++
++/// Original JSON fields; source 36 bytes become a 48-byte GPU record.
+ #[derive(Clone, Copy, Debug, Deserialize)]
+ pub struct LoadedRockyTerrainVertex {
+     /// 位置（+0）。
+     pub position: [f32; 3],
+-    /// 法线/UV 等剩余字段（I：JSON 字段名待取证，先按位型记录）。
+-    pub extra: [f32; 6],
+-}
+-
+-/// JSON 中间三角形（O：source 0x10 B → GPU 0x20 B；三个顶点索引）。
++    pub cell_bby: f32,
++    pub cell_id: i32,
++    pub dir_to_centroid: [f32; 3],
++    pub is_corner: i32,
++}
++
++/// Original triangle adjacency fields, including signed boundary neighbours.
+ #[derive(Clone, Copy, Debug, Deserialize)]
+ pub struct LoadedRockyTerrainTriangle {
+-    pub indices: [u32; 4],
++    pub neighbours: [i32; 3],
++    pub is_top: i32,
+ }
+ 
+ /// 顶点 SSBO 元素（O：GPU 0x30 B）。
+@@ -38,8 +43,7 @@
+ 
+ impl StorageElement for RockyTerrainVertexSsbo {
+     const NAME: &'static str = "Rocky Terrain Vertices";
+-    const BUFFER_LEN: usize = 0;
+-    const MAPPED_MEMORY: u8 = MAPPED_MEMORY_READBACK;
++    const BUFFER_LEN: usize = ROCKY_TERRAIN_VERTEX_CAPACITY;
+ }
+ 
+ impl SsboType for RockyTerrainVertexSsbo {
+@@ -62,8 +66,7 @@
+ 
+ impl StorageElement for RockyTerrainTriangleSsbo {
+     const NAME: &'static str = "Rocky Terrain Triangles";
+-    const BUFFER_LEN: usize = 0;
+-    const MAPPED_MEMORY: u8 = MAPPED_MEMORY_READBACK;
++    const BUFFER_LEN: usize = ROCKY_TERRAIN_TRIANGLE_CAPACITY;
+ }
+ 
+ impl SsboType for RockyTerrainTriangleSsbo {
+@@ -76,10 +79,19 @@
+     }
+ }
+ 
+-/// 岩质地层网格资源（O：`RockyTerrainMesh`，首 qword = 三角形数 / 3）。
++/// Actual startup metadata consumed by both rocky displacement and drawing.
++/// B Commands payload is one 64-bit vertex count, not the CPU mesh's layout.
++/// Construct this from a successfully loaded mesh; no startup default is inferred.
++#[repr(transparent)]
++#[derive(Resource, Clone, Copy, Debug, PartialEq, Eq)]
++pub struct RockyTerrainMeshVertCount(pub usize);
++
++/// Keep the current CPU mesh/API for callers that inspect loaded data.
++/// The original startup retains only RockyTerrainMeshVertCount after upload.
+ #[derive(Resource, Clone, Debug, Default)]
+ pub struct RockyTerrainMesh {
+-    /// 三角形组数（O：`displace_rocky_terrain` 首 qword / 3）。
++    /// Compatibility derived dispatch groups: loaded vertex count / 3.
++    /// This field is not the original VertCount ECS resource.
+     pub triangle_groups: u32,
+     /// 顶点缓冲（GPU 0x30 B）。
+     pub vertices: Vec<RockyTerrainVertexSsbo>,
+@@ -88,6 +100,16 @@
+ }
+ 
+ impl RockyTerrainMesh {
++    pub fn vertex_count(&self) -> usize {
++        self.vertices.len()
++    }
++
++    /// Original startup keeps this metadata after the two successful uploads.
++    /// Consuming the current CPU mesh drops its retained inspection vectors.
++    pub fn into_vertex_count(self) -> RockyTerrainMeshVertCount {
++        RockyTerrainMeshVertCount(self.vertices.len())
++    }
++
+     /// `RockyTerrainMesh::load`（0x1408bbf50，O 结构）：读 JSON → serde 解析 →
+     /// 转换 GPU 记录 → `add_new_with_data` 注册两 SSBO。
+     ///
+@@ -106,44 +128,280 @@
+             .iter()
+             .map(|v| RockyTerrainVertexSsbo(packed_vertex(v)))
+             .collect();
++        // Original publishes vertices before constructing/uploading triangles.
++        library.add_new_with_data(device, &vertices);
+         let triangles: Vec<RockyTerrainTriangleSsbo> = data
+             .triangles
+             .iter()
+             .map(|t| RockyTerrainTriangleSsbo(packed_triangle(t)))
+             .collect();
+-        library.add_new_with_data(device, &vertices);
+         library.add_new_with_data(device, &triangles);
+         Ok(Self {
+-            triangle_groups: (triangles.len() / 3) as u32,
++            triangle_groups: (vertices.len() / 3) as u32,
+             vertices,
+             triangles,
+         })
+     }
+ }
+ 
+-/// JSON 根结构（I：字段名待取证，按章节字段名登记）。
++/// Root fields of the actual B assets/data/rocky_terrain.json.
+ #[derive(Clone, Debug, Deserialize)]
+ pub struct RockyTerrainJson {
+     pub vertices: Vec<LoadedRockyTerrainVertex>,
+     pub triangles: Vec<LoadedRockyTerrainTriangle>,
+ }
+ 
+-/// 顶点 0x24 B → GPU 0x30 B 打包（I：源布局待取证，前 12 项透传）。
++/// B load1408bc090: duplicate position; integer fields remain raw words.
+ fn packed_vertex(v: &LoadedRockyTerrainVertex) -> [u32; 12] {
+-    let mut out = [0u32; 12];
+-    for (slot, value) in v.position.iter().chain(v.extra.iter()).enumerate() {
+-        if slot < 12 {
+-            out[slot] = f32::to_bits(*value);
++    [
++        v.position[0].to_bits(),
++        v.position[1].to_bits(),
++        v.position[2].to_bits(),
++        v.cell_bby.to_bits(),
++        v.position[0].to_bits(),
++        v.position[1].to_bits(),
++        v.position[2].to_bits(),
++        v.cell_id as u32,
++        v.dir_to_centroid[0].to_bits(),
++        v.dir_to_centroid[1].to_bits(),
++        v.dir_to_centroid[2].to_bits(),
++        v.is_corner as u32,
++    ]
++}
++
++/// B load1408bc1b0/214: four meaningful words then explicit 16-byte zero pad.
++fn packed_triangle(t: &LoadedRockyTerrainTriangle) -> [u32; 8] {
++    [
++        t.neighbours[0] as u32,
++        t.neighbours[1] as u32,
++        t.neighbours[2] as u32,
++        t.is_top as u32,
++        0,
++        0,
++        0,
++        0,
++    ]
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use crate::asset_libraries::ssbo_library::SsboId;
++    use crate::render::ssbo::{rhapsody_boundary::BufferDesc, tests::MockDevice};
++    use std::panic::{AssertUnwindSafe, catch_unwind};
++
++    #[test]
++    fn native_pack_duplicates_position_and_preserves_integer_and_float_bits() {
++        let v = LoadedRockyTerrainVertex {
++            position: [1.0, -0.0, f32::from_bits(0x7fc12345)],
++            cell_bby: 2.0,
++            cell_id: 0xfedcba98u32 as i32,
++            dir_to_centroid: [-1.0, 0.0, 0.5],
++            is_corner: 0x12345678,
++        };
++        assert_eq!(
++            packed_vertex(&v),
++            [
++                0x3f800000, 0x80000000, 0x7fc12345, 0x40000000, 0x3f800000, 0x80000000, 0x7fc12345,
++                0xfedcba98, 0xbf800000, 0, 0x3f000000, 0x12345678
++            ]
++        );
++        assert_eq!(
++            packed_triangle(&LoadedRockyTerrainTriangle {
++                neighbours: [-1, i32::MIN, 7],
++                is_top: 9,
++            }),
++            [0xffffffff, 0x80000000, 7, 9, 0, 0, 0, 0]
++        );
++    }
++
++    #[test]
++    fn json_integer_fields_use_native_signed_i32_and_pack_raw_words() {
++        let vertex: LoadedRockyTerrainVertex = serde_json::from_str(
++            r#"{"is_corner":-2147483648,"dir_to_centroid":[4,5,6],"cell_id":-1,"position":[1,2,3],"cell_bby":7}"#,
++        ).unwrap();
++        assert_eq!(vertex.cell_id, -1);
++        assert_eq!(vertex.is_corner, i32::MIN);
++        assert_eq!(packed_vertex(&vertex)[7], u32::MAX);
++        assert_eq!(packed_vertex(&vertex)[11], 0x80000000);
++        let triangle: LoadedRockyTerrainTriangle =
++            serde_json::from_str(r#"{"is_top":-1,"neighbours":[-2147483648,0,2147483647]}"#)
++                .unwrap();
++        assert_eq!(
++            packed_triangle(&triangle),
++            [0x80000000, 0, 0x7fffffff, u32::MAX, 0, 0, 0, 0]
++        );
++        for out_of_range in [2147483648_i64, 4294967295_i64] {
++            for field in ["cell_id", "is_corner"] {
++                let mut invalid = serde_json::json!({"position":[0,0,0],"cell_bby":0,
++                    "cell_id":0,"dir_to_centroid":[0,0,0],"is_corner":0});
++                invalid[field] = serde_json::json!(out_of_range);
++                assert!(serde_json::from_value::<LoadedRockyTerrainVertex>(invalid).is_err());
++            }
++            let invalid = serde_json::json!({"neighbours":[0,0,0],"is_top":out_of_range});
++            assert!(serde_json::from_value::<LoadedRockyTerrainTriangle>(invalid).is_err());
+         }
+     }
+-    out
+-}
+-
+-/// 三角形 0x10 B → GPU 0x20 B 打包（I：3 索引 + pad）。
+-fn packed_triangle(t: &LoadedRockyTerrainTriangle) -> [u32; 8] {
+-    let mut out = [0u32; 8];
+-    for (slot, value) in t.indices.iter().take(3).enumerate() {
+-        out[slot] = *value;
+-    }
+-    out
+-}
++
++    #[test]
++    fn canonical_typed_buffers_keep_fixed_capacity_and_no_initial_upload() {
++        let device = MockDevice::default();
++        let vertex = RockyTerrainVertexSsbo::new_storage_buffer(&device, None);
++        let triangle = RockyTerrainTriangleSsbo::new_storage_buffer(&device, None);
++        assert_eq!(core::mem::size_of::<RockyTerrainVertexSsbo>(), 48);
++        assert_eq!(core::mem::size_of::<RockyTerrainTriangleSsbo>(), 32);
++        assert_eq!(core::mem::align_of::<RockyTerrainVertexSsbo>(), 4);
++        assert_eq!(core::mem::align_of::<RockyTerrainTriangleSsbo>(), 4);
++        let calls = device.created.borrow();
++        assert_eq!(calls.len(), 2);
++        assert_eq!(calls[0].0, BufferDesc::new(0x6cfae0, 0x22, 1).alignment(4));
++        assert_eq!(calls[1].0, BufferDesc::new(0x1837c0, 0x22, 1).alignment(4));
++        assert_eq!(calls[0].1, "Rocky Terrain Vertices");
++        assert_eq!(calls[1].1, "Rocky Terrain Triangles");
++        assert!(calls.iter().all(|call| call.2.is_none()));
++        assert_eq!(vertex.buffer.byte_size, 0x6cfae0);
++        assert_eq!(triangle.buffer.byte_size, 0x1837c0);
++        assert_eq!(
++            SsboId::of::<RockyTerrainVertexSsbo>().0.0,
++            0x1c5c4204bf6436bb
++        );
++        assert_eq!(
++            SsboId::of::<RockyTerrainTriangleSsbo>().0.0,
++            0x2a397285cdc5c9db
++        );
++    }
++
++    #[test]
++    fn typed_initial_validation_happens_before_device_creation() {
++        let device = MockDevice::default();
++        let bad_vertex = [0u32; 13];
++        let bad_triangle = [0u32; 9];
++        let unaligned = [0u32; 24];
++        let unaligned = &bytemuck::cast_slice(&unaligned)[1..49];
++        for (vertex, bytes) in [
++            (true, bytemuck::cast_slice(&bad_vertex)),
++            (false, bytemuck::cast_slice(&bad_triangle)),
++            (true, unaligned),
++        ] {
++            let failure = catch_unwind(AssertUnwindSafe(|| {
++                if vertex {
++                    let _ = RockyTerrainVertexSsbo::new_storage_buffer(&device, Some(bytes));
++                } else {
++                    let _ = RockyTerrainTriangleSsbo::new_storage_buffer(&device, Some(bytes));
++                }
++            }));
++            assert!(failure.is_err());
++            assert!(device.created.borrow().is_empty());
++        }
++        let too_many = vec![RockyTerrainVertexSsbo::default(); ROCKY_TERRAIN_VERTEX_CAPACITY + 1];
++        assert!(
++            catch_unwind(AssertUnwindSafe(|| {
++                RockyTerrainVertexSsbo::new_storage_buffer(
++                    &device,
++                    Some(bytemuck::cast_slice(&too_many)),
++                )
++            }))
++            .is_err()
++        );
++        let too_many =
++            vec![RockyTerrainTriangleSsbo::default(); ROCKY_TERRAIN_TRIANGLE_CAPACITY + 1];
++        assert!(
++            catch_unwind(AssertUnwindSafe(|| {
++                RockyTerrainTriangleSsbo::new_storage_buffer(
++                    &device,
++                    Some(bytemuck::cast_slice(&too_many)),
++                )
++            }))
++            .is_err()
++        );
++        assert!(device.created.borrow().is_empty());
++    }
++
++    #[test]
++    fn actual_b_asset_loads_through_the_real_library_and_native_record_layouts() {
++        // This recovery regression intentionally reads the separately hash-bound
++        // original B asset, not a fabricated DTO fixture or a GPU simulation.
++        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
++            .join("../../../../ljxsj_92385/Tiny Glade/assets/data/rocky_terrain.json");
++        let library = AssetSsboLibrary::new();
++        let device = MockDevice::default();
++        let mesh = RockyTerrainMesh::load(&path, &library, &device).unwrap();
++        assert_eq!(mesh.vertex_count(), 148794);
++        assert_eq!(mesh.triangles.len(), 49598);
++        assert_eq!(mesh.triangle_groups, 49598);
++        assert_eq!(
++            mesh.vertices[0].0,
++            [
++                1047544600, 1027906470, 1052294028, 1065353216, 1047544600, 1027906470, 1052294028,
++                0, 1057341816, 0, 3210364733, 0
++            ]
++        );
++        assert_eq!(
++            mesh.vertices[1].0,
++            [
++                1047047523, 1027906470, 1052734662, 1065353216, 1047047523, 1027906470, 1052734662,
++                0, 1057206576, 0, 3210446730, 1
++            ]
++        );
++        assert_eq!(
++            mesh.vertices[74397].0,
++            [
++                1062477650, 0, 1062806502, 0, 1062477650, 0, 1062806502, 337, 1058707185, 0,
++                3209432533, 0
++            ]
++        );
++        assert_eq!(
++            mesh.vertices[148793].0,
++            [
++                1061393090, 1027906470, 1064637947, 1065353216, 1061393090, 1027906470, 1064637947,
++                608, 3199635257, 0, 1064250481, 0
++            ]
++        );
++        assert_eq!(mesh.triangles[0].0, [21, 38, 1, 1, 0, 0, 0, 0]);
++        assert_eq!(mesh.triangles[1].0, [30, 0, 25, 1, 0, 0, 0, 0]);
++        assert_eq!(
++            mesh.triangles[24799].0,
++            [24817, 24760, 24818, 0, 0, 0, 0, 0]
++        );
++        assert_eq!(
++            mesh.triangles[49597].0,
++            [46639, 49562, 49580, 0, 0, 0, 0, 0]
++        );
++        assert_eq!(
++            mesh.triangles[36760].0,
++            [4294967295, 36759, 36751, 0, 0, 0, 0, 0]
++        );
++        assert_eq!(
++            library
++                .get::<RockyTerrainVertexSsbo>()
++                .unwrap()
++                .buffer
++                .byte_size,
++            0x6cfae0
++        );
++        assert_eq!(
++            library
++                .get::<RockyTerrainTriangleSsbo>()
++                .unwrap()
++                .buffer
++                .byte_size,
++            0x1837c0
++        );
++        let calls = device.created.borrow();
++        assert_eq!(calls.len(), 2);
++        assert_eq!(calls[0].1, "Rocky Terrain Vertices");
++        assert_eq!(calls[1].1, "Rocky Terrain Triangles");
++        assert_eq!(
++            calls[0].2.as_deref().unwrap(),
++            bytemuck::cast_slice(&mesh.vertices)
++        );
++        assert_eq!(
++            calls[1].2.as_deref().unwrap(),
++            bytemuck::cast_slice(&mesh.triangles)
++        );
++        assert_eq!(calls[0].0, BufferDesc::new(0x6cfae0, 0x22, 1).alignment(4));
++        assert_eq!(calls[1].0, BufferDesc::new(0x1837c0, 0x22, 1).alignment(4));
++        assert_eq!(mesh.into_vertex_count(), RockyTerrainMeshVertCount(148794));
++        assert_eq!(core::mem::size_of::<RockyTerrainMeshVertCount>(), 8);
++    }
++}

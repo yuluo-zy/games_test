@@ -56,6 +56,17 @@ impl SaveBackupMetronome {
     pub fn set_active_game_threshold(&mut self, threshold: f32) {
         self.active_game_threshold = threshold;
     }
+    /// `AutoSaveState::close_file` 0x140a43840 的字段重置（O：fresh disasm 尾部
+    /// `+0x140 = 0`、`+0x144..0x14c = 0x501502f900000000`）：
+    /// - `+0x140` counter = 0；
+    /// - `+0x144` 累计活动时间 f32 = 0.0（低 32 位 0）；
+    /// - `+0x148` 阈值 f32 = `0x501502f9` = **1e10**（高 32 位；> 60.0 使阈值门关闭，
+    ///   关闭文件后不再累计活动时间，直到下一次打开档重新配置）。
+    pub fn reset_after_close(&mut self) {
+        self.counter = 0;
+        self.active_game_time = 0.0;
+        self.active_game_threshold = f32::from_bits(0x5015_02f9);
+    }
     pub fn add_active_game_time(&mut self, delta: f32) {
         // ucomiss/jb rejects negative and unordered inputs.
         assert!(delta >= 0.0, "active_game_delta_seconds >= 0.0");

@@ -15,7 +15,44 @@ use crate::typed_gap::Gap;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-/// 墙历史编辑操作（O：enum2$；观察 JSON 内层操作）。负载字段 U。
+/// 预制形状（O：`MorphPremadeShape::{before,after}` 的 serde 载荷，观察
+/// starting-builds `WallNewSystem`/`Wall` 历史 JSON 80+85 条）。
+///
+/// 外部标签枚举：`{"Circle":{...}}` / `{"Rectangle":{...}}`。
+/// - `Circle { center: [f32;2], radius: f32 }`
+/// - `Rectangle { center: [f32;2], length: f32, width: f32,
+///   orientation: [f32;2] }`
+///
+/// 运行时内存布局 U；这里按 serde schema 合同恢复（JSON 字段全覆盖）。
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub enum PremadeShape {
+    /// 圆形：center 数组 + radius。
+    Circle {
+        center: [f32; 2],
+        radius: f32,
+    },
+    /// 矩形：center/orientation 数组 + length/width。
+    Rectangle {
+        center: [f32; 2],
+        length: f32,
+        width: f32,
+        orientation: [f32; 2],
+    },
+}
+
+/// `MorphPremadeShape`（O：观察 JSON 字段 `wall_index/before/after`，
+/// 80 条 WallNewSystem + 85 条 Wall 记录，`present_in_every_observed_object`）。
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct MorphPremadeShape {
+    /// O：`wall_index`（JSON integer）。
+    pub wall_index: u32,
+    /// O：变更前形状。
+    pub before: PremadeShape,
+    /// O：变更后形状。
+    pub after: PremadeShape,
+}
+
+/// 墙历史编辑操作（O：enum2$；观察 JSON 内层操作）。未证负载字段 U。
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub enum WallHistoryEdit {
     /// CreateWall（wall_index / wall_height / elevation / color_id / after）。
@@ -27,8 +64,9 @@ pub enum WallHistoryEdit {
     DeleteWall,
     /// AdjustHeight（wall_index / before / after）。
     AdjustHeight,
-    /// MorphPremadeShape（wall_index / before / after）。
-    MorphPremadeShape,
+    /// MorphPremadeShape（`wall_index / before / after`；O schema 见
+    /// [`MorphPremadeShape`]）。
+    MorphPremadeShape(MorphPremadeShape),
     /// ChangeStyle / ChangeElevation / ChangeArchHeight / MorphFreehandWall /
     /// ChangeIsEnclosedState / ChangeFreehandHeightType / ChangeArchType。
     MorphFreehandWall,
@@ -106,5 +144,37 @@ impl CompoundEditBuilder {
     /// O：`panic_deprecated_operation` 0x140a83120。
     pub fn panic_deprecated_operation() -> ! {
         panic!("Deprecated wall compound edit operation")
+    }
+}
+
+#[cfg(test)]
+mod morph_premade_shape_tests {
+    use super::*;
+
+    #[test]
+    fn morph_premade_shape_serde_schema_matches_observed_json() {
+        let edit = WallHistoryEdit::MorphPremadeShape(MorphPremadeShape {
+            wall_index: 7,
+            before: PremadeShape::Rectangle {
+                center: [1.0, 2.0],
+                length: 3.0,
+                width: 4.0,
+                orientation: [1.0, 0.0],
+            },
+            after: PremadeShape::Circle {
+                center: [5.0, 6.0],
+                radius: 2.5,
+            },
+        });
+        let v: serde_json::Value = serde_json::to_value(&edit).unwrap();
+        let m = &v["MorphPremadeShape"];
+        assert_eq!(m["wall_index"], 7);
+        assert_eq!(m["before"]["Rectangle"]["center"][0], 1.0);
+        assert_eq!(m["before"]["Rectangle"]["length"], 3.0);
+        assert_eq!(m["before"]["Rectangle"]["width"], 4.0);
+        assert_eq!(m["before"]["Rectangle"]["orientation"][1], 0.0);
+        assert_eq!(m["after"]["Circle"]["radius"], 2.5);
+        let back: WallHistoryEdit = serde_json::from_value(v).unwrap();
+        assert_eq!(back, edit);
     }
 }

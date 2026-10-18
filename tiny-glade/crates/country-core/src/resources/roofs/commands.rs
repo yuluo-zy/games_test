@@ -1,9 +1,8 @@
 //! Roof commands and downstream notifications. Bevy owns event retention.
-use crate::recovered_building::{
-    building_history_transactions::RoofHistoryEdit,
-    roof_creation::RoofCreateRequestObserved,
-    roof_customization::{FlatRoofRimRequest, FlatRoofStyleRequest},
-};
+use crate::resources::history::building_transactions::RoofHistoryEdit;
+use crate::resources::roofs::creation::RoofCreateRequestObserved;
+use crate::resources::roofs::customization::FlatRoofRimRequest;
+use crate::resources::roofs::customization::FlatRoofStyleRequest;
 use crate::resources::walls::WallId;
 use bevy_ecs::{entity::Entity, event::Event};
 
@@ -75,4 +74,29 @@ pub struct RoofEditFeedback {
 }
 
 #[derive(Event, Clone, Debug)]
-pub struct ReplayRoofEvent(pub crate::recovered_building::roof_replay::ObservedReplayEvent);
+pub struct ReplayRoofEvent(pub crate::resources::roofs::geometry::replay::ObservedReplayEvent);
+
+/// 屋顶高亮命令（O：`highlight_roof` 0x141a284b0/0x141a31280 消费；事件 stride 0x18：
+/// `wall u64@+8`、`color 判别 u8@+0x10`，首 qword@+0 语义 U）。颜色经
+/// `resources::walls::HighlightColor::to_rgb` 落到 `RoofHighlight`。
+#[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(C)]
+pub struct HighlightRoofCmd {
+    /// @+0：记录首部（O：stride 0x18 首 qword；语义 U）。
+    pub _head: u64,
+    /// @+8：墙 id。
+    pub wall: crate::resources::walls::WallId,
+    /// @+0x10：颜色判别。
+    pub color: crate::resources::walls::HighlightColor,
+}
+
+impl HighlightRoofCmd {
+    /// 便捷构造（I：头部留 0）。
+    pub fn new(wall: crate::resources::walls::WallId, color: crate::resources::walls::HighlightColor) -> Self {
+        Self {
+            _head: 0,
+            wall,
+            color,
+        }
+    }
+}

@@ -119,6 +119,13 @@ impl Domain {
     }
 
     fn sources(&self, range: AccessRange) -> crate::Result<BTreeSet<usize>> {
+        self.sources_with_undefined(range, false)
+    }
+
+    // Independent checker still collects all available writers. Only a caller's
+    // explicit undefined-content read may leave cells without a content source.
+    fn sources_with_undefined(&self, range: AccessRange, allow_undefined: bool)
+        -> crate::Result<BTreeSet<usize>> {
         let mut missing = self.cells(range)?;
         let mut sources = BTreeSet::new();
         for &(defined, writer) in &self.content {
@@ -130,7 +137,7 @@ impl Domain {
                 .flat_map(|cell| cell.without(defined))
                 .collect();
         }
-        if missing.is_empty() {
+        if missing.is_empty() || allow_undefined {
             Ok(sources)
         } else {
             Err(invalid("plan reads content without an initialized source"))
@@ -238,6 +245,15 @@ fn inspect_definition(definition: &GraphDefinition) -> crate::Result<Provenance>
                 .ok_or_else(|| invalid("graph access has no classification"))?;
             usage_flags(domain.descriptor, semantic.mask)?;
             domain.cells(access.range)?;
+            if access.contents_unused && (semantic.write || access.reads_previous) {
+                return Err(invalid(
+                    "inactive contents intent requires a non-writing access",
+                ));
+            }
+            if access.allow_undefined_contents
+                && (semantic.write || access.reads_previous || access.contents_unused) {
+                return Err(invalid("undefined contents permission requires a real non-writing read"));
+            }
             if access.reads_previous {
                 if !semantic.write {
                     return Err(invalid(
@@ -259,12 +275,14 @@ fn inspect_definition(definition: &GraphDefinition) -> crate::Result<Provenance>
                     domain.version = current;
                 }
                 (false, AccessVersion::Read(version)) if version == domain.version => {
-                    dependencies[index].extend(
-                        domain
-                            .sources(access.range)?
-                            .into_iter()
-                            .filter(|&source| source != index),
-                    );
+                    if !access.contents_unused {
+                        dependencies[index].extend(
+                            domain
+                                .sources_with_undefined(access.range, access.allow_undefined_contents)?
+                                .into_iter()
+                                .filter(|&source| source != index),
+                        );
+                    }
                 }
                 _ => {
                     return Err(invalid(

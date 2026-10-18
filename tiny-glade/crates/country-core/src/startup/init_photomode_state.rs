@@ -1,25 +1,24 @@
-//! B PhotomodeState constructor (0x1408705b0) and enable reset (0x140870570).
-//! Offsets document native provenance; this type does not promise its Rust ABI.
+//! 拍照模式状态初始化与进入时的字段重置。未知字段不假定业务含义。
 use crate::resources::photo_mode::PhotoModeCameraMode;
 use bevy_ecs::resource::Resource;
 
 #[derive(Resource, Clone, Copy, Debug, PartialEq)]
 pub struct PhotomodeState {
-    /// B +0, initialized to 1 in demo and 3 in full game.
+    /// 拍照标量；demo 初值为 1，完整版为 3。
     pub scalar: f32,
-    /// B +4; do_photomode writes the focus camera tag or u32::MAX.
+    /// 焦点相机标签；u32::MAX 表示未选择。
     pub index: u32,
-    /// B +8; meaning not yet established by a recovered consumer.
+    /// 尚未确认含义的状态位；只保留已知重置行为。
     pub flag_08: bool,
-    /// B +9; preserved across enabling photomode.
+    /// 相机模式；再次进入拍照模式时保留。
     pub camera_mode: PhotoModeCameraMode,
-    /// B +0xa; consumed by hide_ui.
+    /// 隐藏界面开关。
     pub hide_ui: bool,
-    /// B +0xb; match_free_camera_to_normal is called only while false.
+    /// 自由相机是否已从普通相机初始化。
     pub free_camera_initialized: bool,
-    /// B +0xc; reset on each entry; init_walk_camera sets it true.
+    /// 漫游相机是否初始化；每次进入拍照模式时重新初始化。
     pub walk_camera_initialized: bool,
-    /// B +0xd; gates focus-marker drawing in do_photomode.
+    /// 是否显示焦点标记。
     pub show_focus_marker: bool,
 }
 
@@ -30,7 +29,7 @@ impl Default for PhotomodeState {
 }
 
 impl PhotomodeState {
-    /// B 0x1408705b0: +4..+0xb is 0x00000000ffffffff; +0xc..+0xd is 0x0100.
+    /// 构造初始状态，demo 只影响拍照标量。
     pub fn new(demo: bool) -> Self {
         Self {
             scalar: if demo { 1.0 } else { 3.0 },
@@ -44,8 +43,7 @@ impl PhotomodeState {
         }
     }
 
-    /// B 0x140870570. Camera selection, free-camera initialization and marker
-    /// visibility survive; the walk camera is initialized again on next use.
+    /// 重置本次拍照状态，保留相机模式、自由相机初始化状态和标记开关。
     pub fn on_enable_photomode(&mut self, demo: bool) {
         self.scalar = if demo { 1.0 } else { 3.0 };
         self.index = u32::MAX;

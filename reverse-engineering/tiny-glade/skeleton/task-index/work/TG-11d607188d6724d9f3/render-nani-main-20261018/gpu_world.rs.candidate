@@ -1,0 +1,1175 @@
+//! gpu_world.rs — Nani GPU-driven 实例世界的 CPU 侧管理（B 阶段按机器码重写，n_world）。
+//!
+//! 机器码锚点（B patched EXE cf048e27…；O = 机器码观测，I = 推断，U = 未知）：
+//! * `GpuWorld::new` 0x1409917d0（1148B）；`owned_subset_mut` 0x140991c50；`update_instance_mesh` 0x140991d60；
+//!   `remove_instance` 0x140991f60；`import_to_rg`/`export_from_rg` 0x1409921c0/0x140992220（85B 对称）。
+//! * `OwnedGpuWorldSubset::extend_no_data` 0x140992280（2007B）；`update_instance_data<T>` 0x14156db40 系（×21）；
+//!   `GpuWorld::create_instances<PlacementDataSsbo,…>` 0x14156d0d0（2657B）。
+//! * `impl$14`（`NaniInstanceData` 的 vtable 实现，×21）：`type_name` 0x141572130 系、`as_any(_mut)` 0x141572280、
+//!   `gpu_flush` 0x1415723d0、`rg_handle` 0x141572410、`import_to_rg` 0x141572440、`export_from_rg` 0x1415724a0、
+//!   `copy` 0x1415724f0/0x1415725b0/0x141572660/0x141572760（按元素大小 0x40/0x30/0x70/0x60 分组）。
+//! * `impl$17::fmt` 0x140992a60 = `GpuWorldSubsetKind` 的 `Debug`（27 个变体名，逐个从 0x142aba940 读出，O）；
+//!   `impl$36::register_required_components` 0x141572d80 系（×19）= `InstanceDataMarker<T>` 的 `Component`；
+//!   `_::impl$0::deserialize::visit_str` 0x141572870 = `GpuWorldSubsetKind` 的 serde 派生（变体名字符串）。
+//!
+//! 相对旧骨架的更正（均由机器码证实）：
+//! 1. `GpuWorldSubsetKind` 的 27 个变体名是 `Canopy, TreeTrunk, BackgroundTree, SolidVertexColor, …, StairsFloor`，
+//!    旧骨架的 `Main/Bush/…` 九个名字与 `Unknown9..26` 全是编造。
+//! 2. `InstanceKey` 是 12B `{ id: u32, index: u32（稠密下标提示）, kind: u8 }`，不是 16B `{chunk_id, instance_index, sort_key}`；
+//!    16B 的是 `InstanceCullData`（每实例的位置 + f16 半径 + 网格索引），存放在 subset 的 `positions` 数组里。
+//! 3. `GpuWorld` 布局：27 个 `RwLock<Option<GpuWorldSubset>>`（0x1440B）+ 两个 u64 + `Box<NaniDrawListParams>`(+0x1450)
+//!    + 两个 `TypedStorageBuffer`（+0x1458/+0x1480，各 40B）；旧骨架的“7 个主 subset 锁数组”不存在。
+//! 4. `extend_no_data`/`create_instances` 容量用尽时是 **warn-once 并跳过**，不是 panic。
+//! 5. `GpuWorld::new` 带 `device` 参数（rdx），按 `max_instance_offsets` 创建 `NaniDrawListInfo` 缓冲。
+
+// Preserve the original instruction-level expression order/NaN policy, API call shapes, and evidence/test transcription. See README.md.
+#![allow(clippy::doc_lazy_continuation)]
+#![allow(dead_code, unused_imports)]
+
+use alloc::boxed::Box;
+use alloc::string::String;
+use alloc::vec::Vec;
+use core::any::Any;
+use core::sync::atomic::Ordering;
+use std::collections::BTreeSet;
+use std::sync::{Mutex, OnceLock};
+
+use bevy_ecs::component::Component;
+use bevy_ecs::resource::Resource;
+use glam::Vec3;
+use half::f16;
+use parking_lot::{MappedRwLockWriteGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use serde::Deserialize;
+
+use crate::render::dirty_index_range::DirtyIndexRange;
+use crate::render::nani::buffers::{
+    MAX_DRAWS_PER_LIST, NaniDrawListParams, nani_calculate_draw_list_params,
+};
+use crate::render::nani::mesh_atlas::NaniMeshAtlasPartInfo;
+use crate::render::shadowed_buffer::ShadowedBuffer;
+use crate::render::ssbo::rhapsody_boundary::GraphicsDevice;
+use crate::render::ssbo::{StorageElement, TypedStorageBuffer};
+use crate::rhapsody_types::{ImportedBuffer, RenderGraph};
+use crate::utils::index_condenser::IndexCondenser;
+
+/// `rg.import_unowned(..., 0x37)` / `export(..., 0x37)` 的访问码（O：`mov r9b, 0x37` / `mov r8b, 0x37`）。
+const RG_BUFFER_ACCESS: u8 = 0x37;
+
+/// `log` 的 target（O：`0x142aba578` = "country_core::render::nani::gpu_world"，len 0x25）。
+const LOG_TARGET: &str = "country_core::render::nani::gpu_world";
+
+/// 每实例数据类型的 ECS marker 组件（`impl$36::register_required_components` ×19，O）。
+/// PDB：`ComponentsRegistrator::register_component<InstanceDataMarker<T>>`；组件名字符串以
+/// `country_core::render::nani::gpu_world::I…` 开头（`ComponentInfo::new` 的名字，O）。
+#[derive(Component, Clone, Copy, Debug, Default)]
+pub struct InstanceDataMarker<D> {
+    _marker: core::marker::PhantomData<D>,
+}
+
+/// 实例句柄（Local `HashMap<Entity, InstanceHandle>` 的值；I：`{kind, index}`）。
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct InstanceHandle {
+    pub kind: GpuWorldSubsetKind,
+    pub index: u32,
+}
+
+/// 实例键（12B，O）：`{ id: u32 @0, index: u32 @4, kind: u8 @8 }`。
+/// `id` 是稳定 id（`extend_no_data` 里 `next_id++`，撞车则继续）；`index` 是稠密下标**提示**，
+/// `IndexCondenser::resolve` 命中哈希回退时会回写（所以 `update_instance_data` / `remove_instance` 取 `&mut key`，O）。
+///
+/// 机器码里 `NaniActiveInstance`（ECS 组件，maintain 的 `Insert<NaniActiveInstance>`、各 `nani_update_*` 的
+/// `&NaniActiveInstance`）与本 key 是同一个 12B 记录（`extend_no_data` 回调给出的就是它），故直接让 `InstanceKey`
+/// 成为组件；`components::drawable::NaniActiveInstance` 是它的重导出别名。
+#[repr(C)]
+#[derive(Component, Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct InstanceKey {
+    pub id: u32,
+    pub index: u32,
+    pub kind: GpuWorldSubsetKind,
+}
+
+/// subset 种类（u8 判别；**27 个变体**，名字由 `impl$17::fmt` 的字符串表读出，O）。
+/// serde 名字即变体名（`visit_str` 0x141572870 是派生的变体名匹配，O）。
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[repr(u8)]
+pub enum GpuWorldSubsetKind {
+    Canopy = 0,
+    TreeTrunk = 1,
+    BackgroundTree = 2,
+    SolidVertexColor = 3,
+    SolidVertexColorWindow = 4,
+    SolidVertexColorWindowGlass = 5,
+    SolidVertexColorBricks = 6,
+    GothicWindowBricks = 7,
+    RoofTile = 8,
+    RoofFloor = 9,
+    Plant = 10,
+    Flower = 11,
+    Bush = 12,
+    WoodenPlank = 13,
+    PreplacedFlower = 14,
+    SolidAlbedoMap = 15,
+    SolidAlbedoMapEmissive = 16,
+    Wren = 17,
+    LanternEmissive = 18,
+    Plaster = 19,
+    Cloth = 20,
+    Smoke = 21,
+    BalconyDoor = 22,
+    Uber = 23,
+    CurvedHalfTimber = 24,
+    VelocityOnly = 25,
+    StairsFloor = 26,
+}
+
+#[allow(non_upper_case_globals)]
+impl GpuWorldSubsetKind {
+    /// 旧骨架里的拼写（`Halftimber`）；真名 `CurvedHalfTimber`（O）。
+    pub const CurvedHalftimber: Self = Self::CurvedHalfTimber;
+
+    /// 全部 27 个变体，按判别顺序（O：`enum_iterator::All` 的跳表逐项 `next = k + 1`）。
+    pub const ALL: [GpuWorldSubsetKind; 27] = [
+        Self::Canopy,
+        Self::TreeTrunk,
+        Self::BackgroundTree,
+        Self::SolidVertexColor,
+        Self::SolidVertexColorWindow,
+        Self::SolidVertexColorWindowGlass,
+        Self::SolidVertexColorBricks,
+        Self::GothicWindowBricks,
+        Self::RoofTile,
+        Self::RoofFloor,
+        Self::Plant,
+        Self::Flower,
+        Self::Bush,
+        Self::WoodenPlank,
+        Self::PreplacedFlower,
+        Self::SolidAlbedoMap,
+        Self::SolidAlbedoMapEmissive,
+        Self::Wren,
+        Self::LanternEmissive,
+        Self::Plaster,
+        Self::Cloth,
+        Self::Smoke,
+        Self::BalconyDoor,
+        Self::Uber,
+        Self::CurvedHalfTimber,
+        Self::VelocityOnly,
+        Self::StairsFloor,
+    ];
+
+    /// 判别值 → 变体（`u8 >= 27` → `None`）。
+    pub fn from_u8(v: u8) -> Option<Self> {
+        Self::ALL.get(v as usize).copied()
+    }
+
+    /// 每 kind 最大实例数（O：`DAT_142aba790[kind]` / `DAT_142c77010[kind]`，与 `MAX_DRAWS_PER_LIST` 逐值相同）。
+    pub fn max_instances(self) -> usize {
+        MAX_DRAWS_PER_LIST[self as usize] as usize
+    }
+
+    /// 每 kind 每 draw-list 最大 draw 数（O：`DAT_142aa14c0[kind]`）。
+    pub fn max_draws_per_list(self) -> u32 {
+        MAX_DRAWS_PER_LIST[self as usize]
+    }
+
+    /// 是否使用细粒度排序（O：与 `nani_calculate_draw_list_params` 的 `fine` 分支一致：
+    /// `FORCE_FINE || (!FORCE_NO_FINE && kind < 2)`）。
+    pub fn use_fine_grained_sorting(self) -> bool {
+        if crate::render::nani::NANI_FORCE_FINE_GRAINED_SORTING {
+            return true;
+        }
+        (self as u8) < 2 && !crate::render::nani::NANI_FORCE_NO_FINE_GRAINED_SORTING
+    }
+
+    /// draw-list 索引（内联；O：判别值即下标）。
+    pub fn draw_list_index(self) -> usize {
+        self as usize
+    }
+
+    /// 遍历全部 27 种 subset kind（原版 `enum_iterator::All`；crate 离线缓存缺 enum-iterator，手写）。
+    pub fn all() -> impl Iterator<Item = GpuWorldSubsetKind> {
+        Self::ALL.into_iter()
+    }
+}
+
+/// subset 描述（`gpu_world_subset_desc::{owned, external, owned_custom}` 只在 PDB 的 LF_FUNC_ID 里出现，
+/// 机器码已内联；字段 U，仅保留 owned/external 判别）。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct GpuWorldSubsetDesc {
+    pub owned: bool,
+}
+
+/// 外部 subset（`GpuWorldSubset` 的第二个变体：`owned_subset_mut` 对它 panic "Subset {kind:?} is not owned"，
+/// `import_to_rg`/`export_from_rg` 跳过它；其余字段 U）。
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ExternalGpuWorldSubset;
+
+/// 槽内的 subset。机器码的 `Option<GpuWorldSubset>` 用首个 u64 的 niche 区分：
+/// `0x8000000000000000` = External，`0x8000000000000001` = None，其余 = Owned（O，`owned_subset_mut` 0x140991c50）。
+pub enum GpuWorldSubset {
+    Owned(OwnedGpuWorldSubset),
+    External(ExternalGpuWorldSubset),
+}
+
+/// 每实例的剔除数据（16B，O）：`positions` 数组元素。
+/// `update_instance_data` 写 `{pos(12B @0), f16::from_f32(radius) @0xc}`；`update_instance_mesh` 写 `u16 @0xe`。
+/// 字段名 `radius`/`mesh_index` 为 I（只有偏移与类型是 O）。
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct InstanceCullData {
+    pub position: Vec3,
+    pub radius: f16,
+    pub mesh_index: u16,
+}
+
+impl StorageElement for InstanceCullData {
+    const NAME: &'static str = "GpuInstance";
+}
+
+impl Default for InstanceCullData {
+    fn default() -> Self {
+        Self {
+            position: Vec3::ZERO,
+            radius: f16::from_f32(0.0),
+            mesh_index: 0,
+        }
+    }
+}
+
+impl InstanceCullData {
+    pub fn new(position: Vec3, radius: f32, mesh_index: u16) -> Self {
+        Self {
+            position,
+            radius: f16::from_f32(radius),
+            mesh_index,
+        }
+    }
+}
+
+/// `NaniInstanceData`（`impl$14` 的 vtable，O）：类型擦除的“每 subset 实例数据缓冲”。
+/// vtable 槽序（O）：+0x18 `type_name`、+0x20 `as_any`、+0x28 `as_any_mut`、+0x30 `gpu_flush`、
+/// +0x38 `rg_handle`、+0x40 `import_to_rg`、+0x48 `export_from_rg`、+0x50 `copy`。
+/// 偏差：原版 `gpu_flush` 不带 device 参数（从全局取）；此处沿用 `ShadowedBuffer::gpu_flush(device)` 的既有签名。
+pub trait NaniInstanceData: Any + Send + Sync {
+    fn type_name(&self) -> &'static str;
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+    fn gpu_flush(&mut self, device: &dyn GraphicsDevice);
+    /// 未导入（`rg_handle` tag 字节 == 5）→ `expect` panic（O 文案见实现）。
+    fn rg_handle(&self) -> &ImportedBuffer;
+    fn import_to_rg(&mut self, rg: &mut RenderGraph);
+    fn export_from_rg(&mut self, rg: &mut RenderGraph);
+    /// `data[dst] = data[src]`，并把 `dst` 并入脏窗口（O：`0x1415724f0`；先检查 src 再检查 dst）。
+    fn copy(&mut self, dst: usize, src: usize);
+}
+
+/// 可放进 `InstanceDataBuffer` 的元素：GPU 缓冲元素 + 零初始化。
+pub trait InstanceElement: StorageElement + Default + Send + Sync + 'static {}
+impl<T: StorageElement + Default + Send + Sync + 'static> InstanceElement for T {}
+
+/// `impl$14` 的 Self 类型（O，布局来自 `rg_handle`/`import_to_rg`/`copy` 的偏移）：
+/// `rg_handle: Option<ImportedBuffer>`（+0x00..0x18，`+0xe == 5` 为 None）+ `ShadowedBuffer<T>`（+0x18：
+/// 脏窗口 +0x18/+0x20、影子数组 +0x28/+0x30、`TypedStorageBuffer` +0x38）。
+pub struct InstanceDataBuffer<T: StorageElement> {
+    pub rg_handle: Option<ImportedBuffer>,
+    pub shadow: ShadowedBuffer<T>,
+}
+
+impl<T: InstanceElement> InstanceDataBuffer<T> {
+    /// 以 `len` 个默认元素创建（I：`OwnedGpuWorldSubset::new` 内联；容量 = `kind.max_instances()`）。
+    pub fn new(device: &dyn GraphicsDevice, len: usize) -> Self {
+        let data: Vec<T> = (0..len).map(|_| T::default()).collect();
+        Self {
+            rg_handle: None,
+            shadow: ShadowedBuffer::new(device, data),
+        }
+    }
+
+    /// 单元素写（O：`update_instance_data` 末段：`data[dense] = value` + 脏窗口 min/max）。
+    pub fn set(&mut self, dense: usize, value: T) {
+        self.shadow.write(dense, core::slice::from_ref(&value));
+    }
+}
+
+impl<T: InstanceElement> NaniInstanceData for InstanceDataBuffer<T> {
+    fn type_name(&self) -> &'static str {
+        core::any::type_name::<T>()
+    }
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+    fn gpu_flush(&mut self, device: &dyn GraphicsDevice) {
+        self.shadow.gpu_flush(device);
+    }
+    fn rg_handle(&self) -> &ImportedBuffer {
+        self.rg_handle
+            .as_ref()
+            .expect("this can only be called within the render loop, atfer import_to_rg!")
+    }
+    fn import_to_rg(&mut self, rg: &mut RenderGraph) {
+        assert!(
+            self.rg_handle.is_none(),
+            "assertion failed: self.rg_handle.is_none()"
+        );
+        self.rg_handle = Some(rg.import_unowned(self.shadow.buffer.buffer.id, RG_BUFFER_ACCESS));
+    }
+    fn export_from_rg(&mut self, rg: &mut RenderGraph) {
+        // O：先把 tag 字节置 5（None）再导出旧句柄。
+        if let Some(handle) = self.rg_handle.take() {
+            rg.export(handle, RG_BUFFER_ACCESS);
+        }
+    }
+    fn copy(&mut self, dst: usize, src: usize) {
+        let data = &mut self.shadow.data;
+        let value = data[src];
+        data[dst] = value;
+        self.shadow.dirty.add(dst..dst + 1);
+    }
+}
+
+/// Owned subset（O，偏移相对槽内数据起点 = 槽 + 8）：
+/// * +0x00..0x48 `IndexCondenser<InstanceKey>`（稠密数组 + id→稠密哈希表）；
+/// * +0x48/+0x50 稠密下标的 min/max（`DirtyIndexRange`，每次写 CAS 更新）；
+/// * +0x58 `positions: Vec<InstanceCullData>`（16B/元素，容量 = `max_instances[kind]`，按稠密下标直写）；
+/// * +0x90/+0x98 `Box<dyn NaniInstanceData>`；
+/// * +0xa0 `instance_count: usize`；+0xb0 `next_id: u32`。
+pub struct OwnedGpuWorldSubset {
+    condenser: IndexCondenser<InstanceKey>,
+    positions: ShadowedBuffer<InstanceCullData>,
+    data: Box<dyn NaniInstanceData>,
+    instance_count: usize,
+    next_id: u32,
+}
+
+/// 容量用尽的一次性告警（O：`extend_no_data`/`create_instances` 里内联的 warn-once 宏展开；
+/// 展开逻辑见 `nani::warn_once_in`）。
+fn warn_once(message: String) {
+    nani_warn_once!(LOG_TARGET, message);
+}
+
+impl OwnedGpuWorldSubset {
+    /// 新 owned subset（I：机器码里内联 21 处；容量按 `kind.max_instances()`，数据缓冲元素为 `T`）。
+    pub fn new<T: InstanceElement>(device: &dyn GraphicsDevice, kind: GpuWorldSubsetKind) -> Self {
+        let cap = kind.max_instances();
+        Self {
+            condenser: IndexCondenser::new(),
+            positions: Self::create_cull_buffer(device, cap),
+            data: Box::new(InstanceDataBuffer::<T>::new(device, cap)),
+            instance_count: 0,
+            next_id: 0,
+        }
+    }
+
+    // Native TypedStorageBuffer<GpuInstance>@141616f30 uses 0x20022,
+    // unlike ordinary storage data: its pointer is consumed via buffer BDA.
+    // Retain the current ShadowedBuffer implementation and real Buffer owner.
+    fn create_cull_buffer(
+        device: &dyn GraphicsDevice,
+        cap: usize,
+    ) -> ShadowedBuffer<InstanceCullData> {
+        use crate::render::ssbo::rhapsody_boundary::{BufferDesc, slice_as_bytes};
+        let data = vec![InstanceCullData::default(); cap];
+        let bytes = slice_as_bytes(&data);
+        let desc = BufferDesc::new(bytes.len(), 0x20022, 1).alignment(4);
+        let buffer = device
+            .create_buffer(&desc, "GpuInstance", Some(bytes))
+            .expect("GpuInstance buffer creation failed");
+        ShadowedBuffer {
+            dirty: DirtyIndexRange::empty(),
+            data: data.into_boxed_slice(),
+            buffer: TypedStorageBuffer::from_created_buffer(buffer),
+        }
+    }
+
+    /// Real owned cull payload. The returned Buffer is resolved through the
+    /// same device host; its ID is never interpreted as a Vulkan address.
+    pub fn cull_buffer(&self) -> &TypedStorageBuffer<InstanceCullData> {
+        &self.positions.buffer
+    }
+
+    /// 实例数（O：`[+0xa0]`）。
+    pub fn instance_count(&self) -> usize {
+        self.instance_count
+    }
+
+    /// 剔除数据数组（O：`[+0x58]`；长度 = 容量）。
+    pub fn positions(&self) -> &[InstanceCullData] {
+        &self.positions.data
+    }
+
+    /// 稠密下标 min/max 窗口（O：`[+0x48]/[+0x50]`）。
+    pub fn positions_dirty(&self) -> &DirtyIndexRange {
+        &self.positions.dirty
+    }
+
+    /// 类型擦除的实例数据缓冲（O：`[+0x90]/[+0x98]`）。
+    pub fn data(&self) -> &dyn NaniInstanceData {
+        &*self.data
+    }
+
+    pub fn data_mut(&mut self) -> &mut dyn NaniInstanceData {
+        &mut *self.data
+    }
+
+    /// 把实例数据缓冲上传 GPU（I：`gpu_generate_draw_lists` 之前的 flush，转发 `NaniInstanceData::gpu_flush`）。
+    pub fn gpu_flush(&mut self, device: &dyn GraphicsDevice) {
+        self.positions.gpu_flush(device);
+        self.data.gpu_flush(device);
+    }
+
+    /// 分配一个槽（`extend_no_data` / `create_instances` 共用的前半段，O）：
+    /// 容量检查（`instance_count >= max_instances[kind]` → warn-once，返回 `None`）；
+    /// `id = next_id++`（撞车则继续）；`dense = condenser.push(id)`。
+    fn allocate(&mut self, kind: GpuWorldSubsetKind) -> Option<InstanceKey> {
+        if self.instance_count >= kind.max_instances() {
+            warn_once(format!("Max instance count reached for {kind:?}"));
+            return None;
+        }
+        loop {
+            let id = self.next_id;
+            self.next_id = self.next_id.wrapping_add(1);
+            if let Some(dense) = self.condenser.insert(id) {
+                return Some(InstanceKey {
+                    id,
+                    index: dense as u32,
+                    kind,
+                });
+            }
+        }
+    }
+
+    /// 写剔除数据并更新 min/max（O：`positions[dense] = item`，越界 → `panic_bounds_check`）。
+    fn write_cull(&mut self, dense: usize, item: InstanceCullData) {
+        self.positions.data[dense] = item;
+        self.positions.dirty.add(dense..dense + 1);
+    }
+
+    /// 无数据扩展（0x140992280，O）：对每个 `items[i]`——
+    /// 容量满则 warn-once 并跳过；否则分配 id/稠密下标、调用 `callback(key)`（原版在写 positions 之前调用）、
+    /// 写 `positions[dense] = item`、更新 min/max、`instance_count += 1`。
+    /// 实例数据 `T` 由调用方事后经 `update_instance_data` 写入（"no data"）。
+    pub fn extend_no_data(
+        &mut self,
+        kind: GpuWorldSubsetKind,
+        items: &[InstanceCullData],
+        mut callback: impl FnMut(InstanceKey),
+    ) {
+        for item in items {
+            let Some(key) = self.allocate(kind) else {
+                continue;
+            };
+            callback(key);
+            self.write_cull(key.index as usize, *item);
+            self.instance_count += 1;
+        }
+    }
+
+    /// 解析 key 到稠密下标（快路径 + 哈希回退）；失败 → `unwrap_failed`（O）。
+    fn resolve(&self, key: &mut InstanceKey) -> usize {
+        self.condenser
+            .resolve(key.id, &mut key.index)
+            .expect("called `Option::unwrap()` on a `None` value")
+    }
+
+    /// 取 `T` 类型的数据缓冲；类型不符 → panic（O 文案：3 个片段 + 3 个实参，见 0x142c76920）。
+    fn typed_data<T: InstanceElement>(
+        &mut self,
+        kind: GpuWorldSubsetKind,
+    ) -> &mut InstanceDataBuffer<T> {
+        let actual = self.data.type_name();
+        match self
+            .data
+            .as_any_mut()
+            .downcast_mut::<InstanceDataBuffer<T>>()
+        {
+            Some(buffer) => buffer,
+            None => panic!(
+                "The instance data for {:?} is not {} but {}",
+                kind,
+                core::any::type_name::<T>(),
+                actual
+            ),
+        }
+    }
+
+    /// 更新单个实例（`update_instance_data<T>` 0x14156db40 系，O）：
+    /// 1. 解析 key（失败 → unwrap panic），回写稠密下标提示；
+    /// 2. `positions_dirty.add(dense)`；
+    /// 3. `positions[dense] = {position, f16::from_f32(radius)}`（只写 +0x0..+0xe；`mesh_index` 保持）；
+    /// 4. 取 `InstanceDataBuffer<T>`（类型不符 → panic），`data[dense] = data`，脏窗口 min/max。
+    pub fn update_instance_data<T: InstanceElement>(
+        &mut self,
+        key: &mut InstanceKey,
+        position: Vec3,
+        radius: f32,
+        data: T,
+    ) {
+        let dense = self.resolve(key);
+        self.positions.dirty.add(dense..dense + 1);
+        let cull = &mut self.positions.data[dense];
+        cull.position = position;
+        cull.radius = f16::from_f32(radius);
+        self.typed_data::<T>(key.kind).set(dense, data);
+    }
+
+    /// 更新实例的 mesh 索引（`update_instance_mesh` 0x140991d60 的 subset 侧，O）：
+    /// 解析 key，min/max，`positions[dense].mesh_index = mesh_index`（越界 → `panic_bounds_check`）。
+    pub fn update_instance_mesh(&mut self, key: &mut InstanceKey, mesh_index: u16) {
+        let dense = self.resolve(key);
+        self.positions.dirty.add(dense..dense + 1);
+        self.positions.data[dense].mesh_index = mesh_index;
+    }
+
+    /// 删除（`GpuWorld::remove_instance` 0x140991f60 的 subset 侧，O）：
+    /// `condenser.remove` 命中 → `instance_count - 1`（`checked_sub` + `expect("instance_count > 0")`）；
+    /// `positions[dense] = positions[count]`（先检查 `count` 再检查 `dense`）；min/max(dense)；
+    /// `data.copy(dense, count)`。未命中 → 返回 `false`（调用方记 trace 日志）。
+    fn remove(&mut self, key: &mut InstanceKey) -> bool {
+        let Some(dense) = self.condenser.remove(key.id, &mut key.index) else {
+            return false;
+        };
+        let count = self
+            .instance_count
+            .checked_sub(1)
+            .expect("instance_count > 0");
+        self.instance_count = count;
+        let last = self.positions.data[count];
+        self.positions.data[dense] = last;
+        self.positions.dirty.add(dense..dense + 1);
+        self.data.copy(dense, count);
+        true
+    }
+}
+
+/// GPU 世界（O，布局见模块文档）：27 个 subset 槽 + 计数 + draw-list 参数 + 两个 `TypedStorageBuffer`。
+/// `impl Resource`：`nani_*` 系统以 `Res<GpuWorld>` / `ResMut<GpuWorld>` 使用。
+#[derive(Resource)]
+pub struct GpuWorld {
+    /// +0x0000..+0x1440：27 × 0xc0B（`RawRwLock` 8B + `Option<GpuWorldSubset>`）。
+    subsets: [RwLock<Option<GpuWorldSubset>>; 27],
+    /// +0x1440：`create_instances` 尾部 `+= cull.len()`（O）。
+    pub total_instance_count: u64,
+    /// +0x1448：`new` 置 0，其余引用点 U。
+    reserved: u64,
+    /// +0x1450：`Box<NaniDrawListParams>`（0x70B 堆分配，O）。
+    params: Box<NaniDrawListParams>,
+    /// +0x1458：`TypedStorageBuffer<NaniMeshAtlasPartInfo>`（`BUFFER_LEN` = 0x6c0，无初始数据）。
+    mesh_atlas_info: TypedStorageBuffer<NaniMeshAtlasPartInfo>,
+    /// +0x1480：`TypedStorageBuffer<NaniDrawListInfo>`（初始数据 = `params.max_instance_offsets` 的克隆）。
+    draw_list_info: TypedStorageBuffer<NaniDrawListInfo>,
+}
+
+/// `NaniDrawListInfo`（O：4B 元素，`TypedStorageBuffer::new<NaniDrawListInfo>` 0x141615810 的字节数 = `len * 4`，
+/// 调试名 "NaniDrawListInfo"，usage 0x22，对齐 4；`BUFFER_LEN == 0` → 必须带初始数据）。
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct NaniDrawListInfo(pub u32);
+
+impl StorageElement for NaniDrawListInfo {
+    const NAME: &'static str = "NaniDrawListInfo";
+}
+
+/// `TypedStorageBuffer::new<NaniMeshAtlasPartInfo>` 0x141616c00：`BUFFER_LEN` = 0x6c0（O）。
+impl StorageElement for NaniMeshAtlasPartInfo {
+    const NAME: &'static str = "NaniMeshAtlasPartInfo";
+    const BUFFER_LEN: usize = 0x6c0;
+}
+
+impl GpuWorld {
+    /// 构造（0x1409917d0，O）：
+    /// 1. `nani_calculate_draw_list_params()`；克隆 `max_instance_offsets`；
+    /// 2. 27 槽默认值（`array::default<RwLock<Option<GpuWorldSubset>>>`）；
+    /// 3. `Box::new(params)`；
+    /// 4. 先建 `TypedStorageBuffer<NaniMeshAtlasPartInfo>`（无初始数据），再建 `TypedStorageBuffer<NaniDrawListInfo>`
+    ///    （初始数据 = 克隆的偏移）；
+    /// 5. 两个计数清零。
+    pub fn new(device: &dyn GraphicsDevice) -> Self {
+        let params = nani_calculate_draw_list_params();
+        let infos: Vec<NaniDrawListInfo> = params
+            .max_instance_offsets
+            .iter()
+            .copied()
+            .map(NaniDrawListInfo)
+            .collect();
+        let subsets = core::array::from_fn(|_| RwLock::new(None));
+        let params = Box::new(params);
+        let mesh_atlas_info = TypedStorageBuffer::new(device, None);
+        let draw_list_info = TypedStorageBuffer::new(device, Some(&infos));
+        Self {
+            subsets,
+            total_instance_count: 0,
+            reserved: 0,
+            params,
+            mesh_atlas_info,
+            draw_list_info,
+        }
+    }
+
+    /// 取 owned subset 的写锁映射（0x140991c50，O）：独占加锁；`External` → panic "Subset {kind:?} is not owned"
+    /// （line 0x1ac）；空槽 → `Option::unwrap` 失败（O，位置 gpu_world.rs:428:34）。
+    /// API 变更：旧骨架返回 `&RwLock<Option<GpuWorldSubset>>`；机器码返回 `MappedRwLockWriteGuard`（rax = 锁、rdx = 数据）。
+    pub fn owned_subset_mut(
+        &self,
+        kind: GpuWorldSubsetKind,
+    ) -> MappedRwLockWriteGuard<'_, OwnedGpuWorldSubset> {
+        RwLockWriteGuard::map(self.subsets[kind as usize].write(), |slot| match slot {
+            Some(GpuWorldSubset::Owned(subset)) => subset,
+            Some(GpuWorldSubset::External(_)) => panic!("Subset {:?} is not owned", kind),
+            None => panic!("called `Option::unwrap()` on a `None` value"),
+        })
+    }
+
+    /// 共享读（`get_subset`，PDB LF_FUNC_ID，机器码内联；I）。
+    pub fn get_subset(
+        &self,
+        kind: GpuWorldSubsetKind,
+    ) -> RwLockReadGuard<'_, Option<GpuWorldSubset>> {
+        self.subsets[kind as usize].read()
+    }
+
+    /// 尝试独占写（`try_get_subset_mut`，内联 2 处；I：`try_write`，`gpu_generate_draw_lists` 逐 kind 使用）。
+    pub fn try_get_subset_mut(
+        &self,
+        kind: GpuWorldSubsetKind,
+    ) -> Option<RwLockWriteGuard<'_, Option<GpuWorldSubset>>> {
+        self.subsets[kind as usize].try_write()
+    }
+
+    /// `&mut self` 下免锁取 owned subset（`owned_subset_exclusive_mut`，内联 1 处 = `update_instance_mesh` 的
+    /// 前缀：O 里它读 `[slot+8]` 的 niche 而不拿锁）。External → panic，空槽 → unwrap 失败（line 0x1ba）。
+    pub fn owned_subset_exclusive_mut(
+        &mut self,
+        kind: GpuWorldSubsetKind,
+    ) -> &mut OwnedGpuWorldSubset {
+        match self.subsets[kind as usize].get_mut() {
+            Some(GpuWorldSubset::Owned(subset)) => subset,
+            Some(GpuWorldSubset::External(_)) => panic!("Subset {:?} is not owned", kind),
+            None => panic!("called `Option::unwrap()` on a `None` value"),
+        }
+    }
+
+    /// 安装 subset（`assign_subset`，内联 1 处；I）。
+    pub fn assign_subset(&mut self, kind: GpuWorldSubsetKind, subset: GpuWorldSubset) {
+        *self.subsets[kind as usize].get_mut() = Some(subset);
+    }
+
+    /// 创建实例（0x14156d0d0，O；原版是单态化 `<PlacementDataSsbo, create_prefab_gpu_instances::closure_env$0>`）：
+    /// 1. `owned_subset_mut(kind)`；
+    /// 2. `count = min(cull.len(), data.len())`；对 `i < count`：容量满 → warn-once 并跳过；
+    ///    否则分配 id/稠密下标，`pending.push((id, dense, kind))`，`positions[dense] = cull[i]`，min/max，
+    ///    取 `InstanceDataBuffer<T>`（类型不符 panic）写 `data[dense] = data[i]`，`instance_count += 1`；
+    /// 3. 解锁后 `total_instance_count += cull.len()`（注意：加的是请求数，不是实际创建数，O）。
+    /// 偏差：旧骨架有 `create: F` 闭包与 `cap` 参数；机器码里第 5/6 参数是数据切片 (ptr, len)，无闭包调用。
+    pub fn create_instances<T: InstanceElement>(
+        &mut self,
+        kind: GpuWorldSubsetKind,
+        cull: &[InstanceCullData],
+        data: &[T],
+        pending: &mut Vec<(u32, u32, u8)>,
+    ) {
+        {
+            let mut subset = self.owned_subset_mut(kind);
+            let count = cull.len().min(data.len());
+            for i in 0..count {
+                let Some(key) = subset.allocate(kind) else {
+                    continue;
+                };
+                pending.push((key.id, key.index, kind as u8));
+                let dense = key.index as usize;
+                subset.write_cull(dense, cull[i]);
+                subset.typed_data::<T>(kind).set(dense, data[i]);
+                subset.instance_count += 1;
+            }
+        }
+        self.total_instance_count += cull.len() as u64;
+    }
+
+    /// 更新实例 mesh（0x140991d60，O）：`&mut self` 免锁访问 subset，转发 `update_instance_mesh`。
+    /// 偏差：旧骨架参数是 `Entity`；机器码为 `(key: &mut InstanceKey, mesh_index: u16)`（r8d 的低 16 位写入 `+0xe`）。
+    pub fn update_instance_mesh(&mut self, key: &mut InstanceKey, mesh_index: u16) {
+        let kind = key.kind;
+        self.owned_subset_exclusive_mut(kind)
+            .update_instance_mesh(key, mesh_index);
+    }
+
+    /// 移除实例（0x140991f60，O）：`owned_subset_mut(key.kind)`（`key+8` 的 kind 字节）；命中则 swap-remove；
+    /// 未命中 → `max_level >= Trace` 时记 "Failed to remove GPU instance {key:?}"（O：行 0x311，`log` 级别字段 = 5）。
+    pub fn remove_instance(&self, key: &mut InstanceKey) {
+        let removed = self.owned_subset_mut(key.kind).remove(key);
+        if !removed && log::max_level() >= log::LevelFilter::Trace {
+            log::trace!(target: LOG_TARGET, "Failed to remove GPU instance {:?}", key);
+        }
+    }
+
+    /// `nani_flush_instance_updates`（0x142080640）里对 `total_instance_count`（+0x1440）的滚动：
+    /// `+0x1448 = +0x1440; +0x1440 = 0`（O）。+0x1448 的其它引用点仍为 U。
+    pub fn roll_instance_counts(&mut self) {
+        self.reserved = self.total_instance_count;
+        self.total_instance_count = 0;
+    }
+
+    /// `+0x1448`（上一帧滚入的计数，O：只有 `roll_instance_counts` 写它）。
+    pub fn previous_instance_count(&self) -> u64 {
+        self.reserved
+    }
+
+    /// 冲刷（`nani_flush_instance_updates` 0x142080640，O）：遍历 27 个槽，仅 Owned 的调其 GPU 冲刷
+    /// （`ShadowedBuffer<GpuInstance>::gpu_flush(device)` + 数据缓冲 vtable `+0x30`）。
+    pub fn flush_instance_buffers(&mut self, device: &dyn GraphicsDevice) {
+        for slot in &mut self.subsets {
+            if let Some(GpuWorldSubset::Owned(subset)) = slot.get_mut() {
+                subset.gpu_flush(device);
+            }
+        }
+    }
+
+    /// 导入 RG（0x1409921c0，O）：遍历 27 槽，仅 Owned subset 调其数据缓冲的 `import_to_rg`（vtable +0x40）。
+    pub fn import_to_rg(&mut self, rg: &mut RenderGraph) {
+        for slot in &mut self.subsets {
+            if let Some(GpuWorldSubset::Owned(subset)) = slot.get_mut() {
+                subset.data.import_to_rg(rg);
+            }
+        }
+    }
+
+    /// 导出 RG（0x140992220，O，与 import 对称，vtable +0x48）。
+    pub fn export_from_rg(&mut self, rg: &mut RenderGraph) {
+        for slot in &mut self.subsets {
+            if let Some(GpuWorldSubset::Owned(subset)) = slot.get_mut() {
+                subset.data.export_from_rg(rg);
+            }
+        }
+    }
+
+    /// list 索引 → cmd 偏移（`list_index_to_cmd_offset`，内联于 `nani_draw` 0x140904c98..0x140904cb3，O）：
+    /// `params` 的第二个 Vec（`+0x18` cap、`+0x20` ptr、`+0x28` len，即 `max_instance_offsets`）按
+    /// `list_index = kind*4 | 变体` 取元素，越界 → `panic_bounds_check`（0x140904f71）。
+    /// （旧实现取的是 `cmd_offsets`（+0x00），与机器码读的 `[params+0x20]` 不符。）
+    pub fn list_index_to_cmd_offset(&self, list: usize) -> u32 {
+        self.params.max_instance_offsets[list]
+    }
+
+    /// `+0x1450` 的 draw-list 参数（O）。
+    pub fn draw_list_params(&self) -> &NaniDrawListParams {
+        &self.params
+    }
+
+    /// mesh atlas 信息缓冲句柄（`mesh_atlas_info_buf`，内联 2 处）。
+    pub fn mesh_atlas_info_buf(&self) -> &TypedStorageBuffer<NaniMeshAtlasPartInfo> {
+        &self.mesh_atlas_info
+    }
+
+    /// draw-list 信息缓冲句柄（`draw_list_info_buf`，内联 1 处）。
+    pub fn draw_list_info_buf(&self) -> &TypedStorageBuffer<NaniDrawListInfo> {
+        &self.draw_list_info
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::render::ssbo::tests::MockDevice;
+
+    #[derive(Clone, Copy, Debug, Default, PartialEq)]
+    #[repr(C)]
+    struct Elem40(pub [u32; 16]);
+    impl StorageElement for Elem40 {
+        const NAME: &'static str = "Elem40";
+    }
+    #[derive(Clone, Copy, Debug, Default, PartialEq)]
+    #[repr(C)]
+    struct Other(pub [u32; 12]);
+    impl StorageElement for Other {
+        const NAME: &'static str = "Other";
+    }
+
+    fn world_with(kind: GpuWorldSubsetKind, dev: &MockDevice) -> GpuWorld {
+        let mut w = GpuWorld::new(dev);
+        w.assign_subset(
+            kind,
+            GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<Elem40>(dev, kind)),
+        );
+        w
+    }
+
+    fn cull(x: f32) -> InstanceCullData {
+        InstanceCullData::new(Vec3::new(x, 0.0, 0.0), 1.0, 7)
+    }
+
+    #[test]
+    fn kind_table_is_the_real_27_names() {
+        assert_eq!(GpuWorldSubsetKind::ALL.len(), 27);
+        let names: Vec<String> = GpuWorldSubsetKind::all()
+            .map(|k| format!("{k:?}"))
+            .collect();
+        assert_eq!(names[0], "Canopy");
+        assert_eq!(names[3], "SolidVertexColor");
+        assert_eq!(names[8], "RoofTile");
+        assert_eq!(names[24], "CurvedHalfTimber");
+        assert_eq!(names[26], "StairsFloor");
+        for (i, k) in GpuWorldSubsetKind::all().enumerate() {
+            assert_eq!(k as usize, i);
+            assert_eq!(GpuWorldSubsetKind::from_u8(i as u8), Some(k));
+        }
+        assert_eq!(GpuWorldSubsetKind::from_u8(27), None);
+        assert_eq!(
+            GpuWorldSubsetKind::CurvedHalftimber,
+            GpuWorldSubsetKind::CurvedHalfTimber
+        );
+    }
+
+    #[test]
+    fn kind_limits_follow_exe_tables() {
+        assert_eq!(GpuWorldSubsetKind::Canopy.max_instances(), 8192);
+        assert_eq!(GpuWorldSubsetKind::RoofTile.max_instances(), 262_144);
+        assert_eq!(GpuWorldSubsetKind::Flower.max_draws_per_list(), 53_120);
+        assert_eq!(GpuWorldSubsetKind::VelocityOnly.max_instances(), 256);
+        assert!(GpuWorldSubsetKind::Canopy.use_fine_grained_sorting());
+        assert!(GpuWorldSubsetKind::TreeTrunk.use_fine_grained_sorting());
+        assert!(!GpuWorldSubsetKind::BackgroundTree.use_fine_grained_sorting());
+        assert_eq!(GpuWorldSubsetKind::Uber.draw_list_index(), 23);
+    }
+
+    #[test]
+    fn kind_deserializes_from_variant_name() {
+        use serde::de::IntoDeserializer;
+        use serde::de::value::{Error as DeError, StrDeserializer};
+        let de: StrDeserializer<DeError> = "SolidAlbedoMapEmissive".into_deserializer();
+        let k = GpuWorldSubsetKind::deserialize(de).unwrap();
+        assert_eq!(k, GpuWorldSubsetKind::SolidAlbedoMapEmissive);
+        // 旧骨架的名字不再被接受；错误文案是 serde 派生的 "unknown variant"，并列出 27 个真名。
+        let de: StrDeserializer<DeError> = "Main".into_deserializer();
+        let err = GpuWorldSubsetKind::deserialize(de).unwrap_err().to_string();
+        assert!(err.contains("unknown variant `Main`"), "{err}");
+        assert!(
+            err.contains("`Canopy`") && err.contains("`StairsFloor`"),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn new_creates_buffers_in_machine_code_order() {
+        let dev = MockDevice::default();
+        let w = GpuWorld::new(&dev);
+        let created = dev.created.borrow();
+        assert_eq!(created.len(), 2);
+        // 先 NaniMeshAtlasPartInfo（BUFFER_LEN 0x6c0 全零初始化，usage 0x22），后 NaniDrawListInfo。
+        assert_eq!(created[0].1, "NaniMeshAtlasPartInfo");
+        assert_eq!(
+            created[0].0.size,
+            0x6c0 * core::mem::size_of::<NaniMeshAtlasPartInfo>()
+        );
+        assert_eq!(created[1].1, "NaniDrawListInfo");
+        assert_eq!(created[1].0.usage, 0x22);
+        assert_eq!(created[1].0.alignment, 4);
+        // 初始数据 = max_instance_offsets（27 kind * 4 list = 108 个 u32 = 0x1b0 B）。
+        assert_eq!(created[1].0.size, 108 * 4);
+        assert_eq!(w.draw_list_params().max_instance_offsets.len(), 108);
+        assert_eq!(w.total_instance_count, 0);
+        assert_eq!(w.list_index_to_cmd_offset(1), 8192);
+    }
+
+    #[test]
+    fn owned_subset_keeps_real_bda_cull_payload_and_flushes_dirty_record() {
+        let dev = MockDevice::default();
+        let kind = GpuWorldSubsetKind::VelocityOnly;
+        let mut subset = OwnedGpuWorldSubset::new::<Elem40>(&dev, kind);
+        {
+            let created = dev.created.borrow();
+            assert_eq!(created[0].1, "GpuInstance");
+            assert_eq!(created[0].0.usage, 0x20022);
+            assert_eq!(created[0].0.alignment, 4);
+            assert_eq!(created[0].0.size, kind.max_instances() * 16);
+            assert_eq!(
+                created[0].2.as_ref().unwrap().len(),
+                kind.max_instances() * 16
+            );
+        }
+        let cull = InstanceCullData::new(Vec3::new(1.25, -2.0, 7.5), 0.75, 19);
+        subset.extend_no_data(kind, &[cull], |_| {});
+        assert_eq!(subset.positions_dirty().to_range(), Some(0..1));
+        subset.gpu_flush(&dev);
+        assert!(subset.positions_dirty().is_empty());
+        assert!(
+            dev.writes
+                .borrow()
+                .iter()
+                .any(|(ranges, offset, len)| ranges == &[0..16] && *offset == 0 && *len == 16)
+        );
+    }
+
+    #[test]
+    fn extend_no_data_allocates_ids_and_calls_back_before_cull_write() {
+        let dev = MockDevice::default();
+        let w = world_with(GpuWorldSubsetKind::SolidVertexColor, &dev);
+        let kind = GpuWorldSubsetKind::SolidVertexColor;
+        let mut keys = Vec::new();
+        {
+            let mut s = w.owned_subset_mut(kind);
+            s.extend_no_data(kind, &[cull(1.0), cull(2.0), cull(3.0)], |k| keys.push(k));
+            assert_eq!(s.instance_count(), 3);
+            assert_eq!(s.positions()[2].position.x, 3.0);
+            assert_eq!(s.positions_dirty().to_range(), Some(0..3));
+        }
+        assert_eq!(
+            keys.iter().map(|k| (k.id, k.index)).collect::<Vec<_>>(),
+            [(0, 0), (1, 1), (2, 2)]
+        );
+        assert!(keys.iter().all(|k| k.kind == kind));
+    }
+
+    #[test]
+    fn id_allocation_skips_taken_ids() {
+        let dev = MockDevice::default();
+        let w = world_with(GpuWorldSubsetKind::Cloth, &dev);
+        let kind = GpuWorldSubsetKind::Cloth;
+        let mut s = w.owned_subset_mut(kind);
+        s.next_id = 0;
+        s.extend_no_data(kind, &[cull(0.0), cull(0.0)], |_| {});
+        // 手动回绕 next_id：0 与 1 已被占用 → 下一个 id 应为 2。
+        s.next_id = 0;
+        let mut got = None;
+        s.extend_no_data(kind, &[cull(0.0)], |k| got = Some(k));
+        assert_eq!(got.unwrap().id, 2);
+    }
+
+    #[test]
+    fn capacity_is_warn_once_and_skip_not_panic() {
+        let dev = MockDevice::default();
+        let kind = GpuWorldSubsetKind::VelocityOnly; // 256
+        let mut w = GpuWorld::new(&dev);
+        w.assign_subset(
+            kind,
+            GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<Elem40>(&dev, kind)),
+        );
+        let items: Vec<_> = (0..300).map(|i| cull(i as f32)).collect();
+        let mut n = 0;
+        let mut s = w.owned_subset_mut(kind);
+        s.extend_no_data(kind, &items, |_| n += 1);
+        assert_eq!(n, 256);
+        assert_eq!(s.instance_count(), 256);
+    }
+
+    #[test]
+    fn update_instance_data_writes_cull_and_typed_data() {
+        let dev = MockDevice::default();
+        let w = world_with(GpuWorldSubsetKind::Uber, &dev);
+        let kind = GpuWorldSubsetKind::Uber;
+        let mut keys = Vec::new();
+        let mut s = w.owned_subset_mut(kind);
+        s.extend_no_data(kind, &[cull(0.0), cull(0.0)], |k| keys.push(k));
+        let mut k1 = keys[1];
+        s.update_instance_data(&mut k1, Vec3::new(4.0, 5.0, 6.0), 2.5, Elem40([9; 16]));
+        assert_eq!(s.positions()[1].position, Vec3::new(4.0, 5.0, 6.0));
+        assert_eq!(s.positions()[1].radius, f16::from_f32(2.5));
+        // mesh_index（+0xe）保持 extend 时写入的 7。
+        assert_eq!(s.positions()[1].mesh_index, 7);
+        let buf = s
+            .data()
+            .as_any()
+            .downcast_ref::<InstanceDataBuffer<Elem40>>()
+            .unwrap();
+        assert_eq!(buf.shadow.data[1], Elem40([9; 16]));
+        assert_eq!(buf.shadow.dirty.to_range(), Some(1..2));
+    }
+
+    #[test]
+    fn stale_hint_falls_back_to_hash_and_rewrites_it() {
+        let dev = MockDevice::default();
+        let w = world_with(GpuWorldSubsetKind::Cloth, &dev);
+        let kind = GpuWorldSubsetKind::Cloth;
+        let mut s = w.owned_subset_mut(kind);
+        let mut keys = Vec::new();
+        s.extend_no_data(kind, &[cull(0.0), cull(0.0)], |k| keys.push(k));
+        let mut stale = InstanceKey {
+            id: keys[1].id,
+            index: 0,
+            kind,
+        };
+        s.update_instance_mesh(&mut stale, 33);
+        assert_eq!(stale.index, 1, "哈希回退后提示被回写");
+        assert_eq!(s.positions()[1].mesh_index, 33);
+        assert_eq!(s.positions()[0].mesh_index, 7);
+    }
+
+    #[test]
+    #[should_panic(expected = "called `Option::unwrap()` on a `None` value")]
+    fn unknown_key_unwraps_none() {
+        let dev = MockDevice::default();
+        let w = world_with(GpuWorldSubsetKind::Cloth, &dev);
+        let mut s = w.owned_subset_mut(GpuWorldSubsetKind::Cloth);
+        let mut k = InstanceKey {
+            id: 123,
+            index: 0,
+            kind: GpuWorldSubsetKind::Cloth,
+        };
+        s.update_instance_mesh(&mut k, 1);
+    }
+
+    #[test]
+    #[should_panic(expected = "The instance data for Cloth is not")]
+    fn wrong_data_type_panics_with_exe_message() {
+        let dev = MockDevice::default();
+        let w = world_with(GpuWorldSubsetKind::Cloth, &dev);
+        let kind = GpuWorldSubsetKind::Cloth;
+        let mut s = w.owned_subset_mut(kind);
+        let mut keys = Vec::new();
+        s.extend_no_data(kind, &[cull(0.0)], |k| keys.push(k));
+        let mut k = keys[0];
+        s.update_instance_data(&mut k, Vec3::ZERO, 1.0, Other([0; 12]));
+    }
+
+    #[test]
+    fn remove_instance_swaps_last_into_hole() {
+        let dev = MockDevice::default();
+        let mut w = world_with(GpuWorldSubsetKind::Smoke, &dev);
+        let kind = GpuWorldSubsetKind::Smoke;
+        let mut keys = Vec::new();
+        {
+            let mut s = w.owned_subset_mut(kind);
+            s.extend_no_data(kind, &[cull(10.0), cull(11.0), cull(12.0)], |k| {
+                keys.push(k)
+            });
+            for (i, k) in keys.iter_mut().enumerate() {
+                s.update_instance_data(
+                    k,
+                    Vec3::new(10.0 + i as f32, 0.0, 0.0),
+                    1.0,
+                    Elem40([i as u32 + 1; 16]),
+                );
+            }
+        }
+        let mut first = keys[0];
+        w.remove_instance(&mut first);
+        {
+            let s = w.owned_subset_mut(kind);
+            assert_eq!(s.instance_count(), 2);
+            // 末元素（x = 12）补到下标 0；数据缓冲同步搬动。
+            assert_eq!(s.positions()[0].position.x, 12.0);
+            let buf = s
+                .data()
+                .as_any()
+                .downcast_ref::<InstanceDataBuffer<Elem40>>()
+                .unwrap();
+            assert_eq!(buf.shadow.data[0], Elem40([3; 16]));
+        }
+        // 被搬动的实例（id 2）仍可经原 key 寻址（哈希回退 + 回写提示）。
+        let mut moved = keys[2];
+        w.update_instance_mesh(&mut moved, 99);
+        assert_eq!(moved.index, 0);
+        assert_eq!(w.owned_subset_mut(kind).positions()[0].mesh_index, 99);
+        // 再次删除同一 key：未命中，不 panic。
+        w.remove_instance(&mut first);
+        assert_eq!(w.owned_subset_mut(kind).instance_count(), 2);
+    }
+
+    #[test]
+    fn create_instances_records_pending_and_total_counts_requested() {
+        let dev = MockDevice::default();
+        let kind = GpuWorldSubsetKind::VelocityOnly; // 容量 256
+        let mut w = world_with(kind, &dev);
+        let cull_items = [cull(1.0), cull(2.0), cull(3.0)];
+        let data = [Elem40([1; 16]), Elem40([2; 16])]; // 少一个：count = min(3, 2)
+        let mut pending = Vec::new();
+        w.create_instances(kind, &cull_items, &data, &mut pending);
+        assert_eq!(pending, vec![(0, 0, kind as u8), (1, 1, kind as u8)]);
+        assert_eq!(w.total_instance_count, 3, "加的是请求数 cull.len()");
+        let s = w.owned_subset_mut(kind);
+        assert_eq!(s.instance_count(), 2);
+        let buf = s
+            .data()
+            .as_any()
+            .downcast_ref::<InstanceDataBuffer<Elem40>>()
+            .unwrap();
+        assert_eq!(buf.shadow.data[1], Elem40([2; 16]));
+    }
+
+    #[test]
+    #[should_panic(expected = "Subset Canopy is not owned")]
+    fn external_subset_is_not_owned() {
+        let dev = MockDevice::default();
+        let mut w = GpuWorld::new(&dev);
+        w.assign_subset(
+            GpuWorldSubsetKind::Canopy,
+            GpuWorldSubset::External(ExternalGpuWorldSubset),
+        );
+        let _ = w.owned_subset_mut(GpuWorldSubsetKind::Canopy);
+    }
+
+    #[test]
+    #[should_panic(expected = "called `Option::unwrap()` on a `None` value")]
+    fn empty_slot_unwraps_none() {
+        let dev = MockDevice::default();
+        let w = GpuWorld::new(&dev);
+        let _ = w.owned_subset_mut(GpuWorldSubsetKind::Canopy);
+    }
+
+    #[test]
+    fn rg_import_export_skip_external_and_follow_assert() {
+        let dev = MockDevice::default();
+        let mut w = world_with(GpuWorldSubsetKind::Plant, &dev);
+        w.assign_subset(
+            GpuWorldSubsetKind::Canopy,
+            GpuWorldSubset::External(ExternalGpuWorldSubset),
+        );
+        let mut rg = RenderGraph::default();
+        w.import_to_rg(&mut rg);
+        assert_eq!(rg.imports.len(), 1, "只导入 Owned subset 的数据缓冲");
+        assert_eq!(rg.imports[0].1, 0x37);
+        {
+            let s = w.owned_subset_mut(GpuWorldSubsetKind::Plant);
+            // 已导入 → rg_handle 可用。
+            let _ = s.data().rg_handle();
+        }
+        w.export_from_rg(&mut rg);
+        assert_eq!(rg.exports.len(), 1);
+        assert_eq!(rg.exports[0].1, 0x37);
+        // 导出后再导出：no-op（tag 已为 None）。
+        w.export_from_rg(&mut rg);
+        assert_eq!(rg.exports.len(), 1);
+    }
+
+    #[test]
+    #[should_panic(expected = "assertion failed: self.rg_handle.is_none()")]
+    fn double_import_asserts() {
+        let dev = MockDevice::default();
+        let mut w = world_with(GpuWorldSubsetKind::Plant, &dev);
+        let mut rg = RenderGraph::default();
+        w.import_to_rg(&mut rg);
+        w.import_to_rg(&mut rg);
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "this can only be called within the render loop, atfer import_to_rg!"
+    )]
+    fn rg_handle_before_import_panics() {
+        let dev = MockDevice::default();
+        let w = world_with(GpuWorldSubsetKind::Plant, &dev);
+        let s = w.owned_subset_mut(GpuWorldSubsetKind::Plant);
+        let _ = s.data().rg_handle();
+    }
+
+    #[test]
+    fn buffer_copy_checks_src_then_dst_and_marks_dst_dirty() {
+        let dev = MockDevice::default();
+        let mut b = InstanceDataBuffer::<Elem40>::new(&dev, 4);
+        b.set(3, Elem40([5; 16]));
+        b.shadow.dirty.clear();
+        b.copy(0, 3);
+        assert_eq!(b.shadow.data[0], Elem40([5; 16]));
+        assert_eq!(b.shadow.dirty.to_range(), Some(0..1));
+        assert_eq!(b.type_name(), core::any::type_name::<Elem40>());
+    }
+
+    #[test]
+    fn instance_key_is_12_bytes_and_cull_data_16() {
+        assert_eq!(core::mem::size_of::<InstanceKey>(), 12);
+        assert_eq!(core::mem::size_of::<InstanceCullData>(), 16);
+        assert_eq!(core::mem::size_of::<NaniDrawListInfo>(), 4);
+    }
+}

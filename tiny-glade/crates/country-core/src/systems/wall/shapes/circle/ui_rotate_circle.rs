@@ -9,7 +9,7 @@
 use bevy_ecs::prelude::*;
 
 use super::super::{RotateCircleCmd, to_authority_curve};
-use crate::recovered_building::wall_state::WallShapeSnapshot;
+use crate::resources::walls::publication_fields::WallShapeSnapshot;
 use crate::resources::walls::InnerWalls;
 use crate::systems::wall::valid_enclosure::{Shape, ShapeParameters};
 

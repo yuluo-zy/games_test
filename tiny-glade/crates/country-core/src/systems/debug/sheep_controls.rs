@@ -1,59 +1,44 @@
-//! `systems/debug/sheep_controls.rs` — B 真实 Sheep query 所有者。
-//!
-//! 证据：
-//! - `sheep_controls` @0x1416f11a0（query `(Entity, &mut Transform, &mut Sheep,
-//!   &mut CritterGoal)`；步进 `uVar9 * 0x68` = Sheep stride；调用 capture iterator
-//!   0x1412f03f0 / apply 0x1416f24f0）——[O，sheep-SPEC §2.5]。
-//! - `SheepControl` 调试资源 @0x1416f0ea0（native 持有 `Vec<SheepSnapshot>`
-//!   cap-first + 跟随位置；本模型用 `Option<SheepControlSnapshot>` 表示捕获输出）。
-//! - 原生系统还内联 picking/相机以驱动 UI 交互（`PickingMode::is_some`、拾取后写
-//!   `Sheep+0x30 = 0x101`（Walking+force_reach_goal）与 `+0x34` 的 `_UNK_142abcb20`
-//!   timeout_s）——那些触发条件属 picking/UI 域，待取证，本文件不伪造。
-//! - 中央 agent（a8a2e9731c4957436）2026-10-16 仲裁批准落 `systems/debug/*`。
-
-use crate::resources::critters::{
-    CritterGoal,
-    sheep::{
-        Sheep,
-        control::{SheepControlSnapshot, SheepSnapshot},
+//! SheepControl keeps a frozen snapshot and restores it each frame.
+//! B0x1416f11a0 applies the owned snapshot before its trailing unit-event
+//! reader clears that snapshot. Picking and the debug freeze toggle remain
+//! with their actual UI owner; this system does not capture every frame.
+use crate::{
+    resources::critters::{
+        CritterGoal,
+        sheep::{
+            Sheep,
+            control::{self, SheepControlSnapshot},
+        },
     },
+    systems::history::finish_replay::CmdUnfreezeSheep,
+    utils::components::transform::Transform,
 };
-use crate::utils::components::transform::Transform;
 use bevy_ecs::prelude::*;
 
-/// `SheepControl` 调试资源（@0x1416f0ea0）：捕获的 `Option<SheepControlSnapshot>`
-/// （无羊 → None，与 save "Sheep" 节同为 None→null 语义）。
 #[derive(Resource, Clone, Debug, Default)]
 pub struct SheepControl {
     pub snapshot: Option<SheepControlSnapshot>,
 }
 
-/// `sheep_controls` @0x1416f11a0 — 真实 query 所有者（capture 生产者）。
-///
-/// 按 query 实际顺序捕获 `(Transform.translation, CritterGoal, Sheep.move_state)`，
-/// 存进 [`SheepControl`]。原生不存 Entity、不排序（O）。拾取后写 move_state 的
-/// 交互分支（0x1416f11a0 行 547..548）依赖 picking，待取证，此处只做捕获。
 pub fn sheep_controls(
-    sheep: Query<(Entity, &mut Transform, &mut Sheep, &mut CritterGoal)>,
+    mut sheep: Query<(Entity, &mut Transform, &mut Sheep, &mut CritterGoal)>,
     mut control: ResMut<SheepControl>,
+    mut unfreeze: EventReader<CmdUnfreezeSheep>,
 ) {
-    control.snapshot = Some(SheepControlSnapshot {
-        sheep: sheep
-            .iter()
-            .map(|(_, transform, sheep, goal)| SheepSnapshot {
-                position: transform.translation,
-                goal: goal.0,
-                move_state: sheep.move_state,
-            })
-            .collect(),
-    });
+    if let Some(snapshot) = &control.snapshot {
+        for ((_, mut transform, mut sheep, mut goal), saved) in
+            sheep.iter_mut().zip(&snapshot.sheep)
+        {
+            control::apply_row(saved, &mut transform, &mut sheep, &mut goal);
+        }
+    }
+    // B0x1416f19e8..1a70 consumes all unread unit events. Clearing occurs
+    // after the current frame's restore, including a snapshot of zero sheep.
+    if unfreeze.read().count() != 0 {
+        control.snapshot = None;
+    }
 }
 
-/// `apply_sheep_snapshot` @0x1416f24f0 — restore 消费者。
-///
-/// 按 query 序 zip 快照、短路到较短一侧；只写 `Transform.translation`、
-/// `CritterGoal`、`Sheep.move_state`，不动 rotation/scale/其它字段（O）。
-/// 原生 0x1416f11a0 内联调用它；本系统把它暴露为独立 ECS 消费者接口。
 pub fn apply_sheep_snapshot(
     mut sheep: Query<(Entity, &mut Transform, &mut Sheep, &mut CritterGoal)>,
     control: Res<SheepControl>,
@@ -62,8 +47,66 @@ pub fn apply_sheep_snapshot(
         return;
     };
     for ((_, mut transform, mut sheep, mut goal), saved) in sheep.iter_mut().zip(&snapshot.sheep) {
-        transform.translation = saved.position;
-        goal.0 = saved.goal;
-        sheep.move_state = saved.move_state;
+        control::apply_row(saved, &mut transform, &mut sheep, &mut goal);
+    }
+}
+
+#[cfg(test)]
+mod replay_unfreeze_tests {
+    use super::*;
+    use crate::resources::critters::sheep::{SheepMoveState, control::SheepSnapshot};
+    use glam::Vec3;
+
+    #[test]
+    fn frozen_snapshot_restores_before_unfreeze_then_stays_released() {
+        let mut world = World::new();
+        world.init_resource::<Events<CmdUnfreezeSheep>>();
+        let saved = SheepSnapshot {
+            position: Vec3::X,
+            goal: None,
+            move_state: SheepMoveState::Idle { timeout_s: 2.0 },
+        };
+        world.insert_resource(SheepControl {
+            snapshot: Some(SheepControlSnapshot { sheep: vec![saved] }),
+        });
+        let entity = world
+            .spawn((
+                Transform::from_translation(Vec3::splat(9.0)),
+                Sheep {
+                    behavior_state: 0,
+                    goal_timer: 0.0,
+                    pet_phase: 0,
+                    pet_progress: 0.0,
+                    pet_target: 0,
+                    control_flag: 0,
+                    move_state: SheepMoveState::Idle { timeout_s: 9.0 },
+                    amplitude: 5.0,
+                },
+                CritterGoal {
+                    goal_tag: 1,
+                    position: Vec3::splat(9.0),
+                },
+            ))
+            .id();
+        let mut schedule = Schedule::default();
+        schedule.add_systems(sheep_controls);
+        schedule.run(&mut world);
+        assert_eq!(world.get::<Transform>(entity).unwrap().translation, Vec3::X);
+        assert!(world.resource::<SheepControl>().snapshot.is_some());
+        world.get_mut::<Transform>(entity).unwrap().translation = Vec3::splat(3.0);
+        world
+            .resource_mut::<Events<CmdUnfreezeSheep>>()
+            .send(CmdUnfreezeSheep);
+        schedule.run(&mut world);
+        assert_eq!(world.get::<Transform>(entity).unwrap().translation, Vec3::X);
+        assert!(world.resource::<SheepControl>().snapshot.is_none());
+        world.get_mut::<Transform>(entity).unwrap().translation = Vec3::splat(4.0);
+        schedule.run(&mut world);
+        assert_eq!(
+            world.get::<Transform>(entity).unwrap().translation,
+            Vec3::splat(4.0)
+        );
+        assert!(world.resource::<SheepControl>().snapshot.is_none());
+        assert_eq!(world.get::<Sheep>(entity).unwrap().amplitude, 5.0);
     }
 }

@@ -14,7 +14,11 @@ use crate::{
         cursor_terrain_raycast::CursorTerrainRaycast,
         session::ActiveSession,
     },
-    systems::mode_manager::AppMode,
+    systems::{
+        audio::garden_audio::update_draw_audio_volume,
+        backend::input::translate_input::DemoModeEnabled,
+        mode_manager::AppMode,
+    },
     utils::audio_utils::AudioLoop,
 };
 use bevy_ecs::prelude::*;
@@ -50,44 +54,52 @@ impl<E: EventInstance> WaterAudioState<E> {
 }
 
 /// `water_audio_init_system` (0x140873140): creates the four loops unless the
-/// build is demo mode (O: `_DEV_OVERRIDE_IS_DEMO_MODE` gate).
+/// build is demo mode (O: `_DEV_OVERRIDE_IS_DEMO_MODE == 0` gate).
 pub fn water_audio_init_system<S: Studio + Send + Sync + 'static>(
     core: Res<AudioCore<S>>,
     mut commands: Commands,
+    demo: Option<Res<DemoModeEnabled>>,
 ) {
+    // O (decomp-0x140873140): `if (_DEV_OVERRIDE_IS_DEMO_MODE == 0)` before the
+    // four instantiate_loop calls — demo builds insert no water state.
+    if demo.is_some_and(|d| d.0) {
+        return;
+    }
     let state = WaterAudioState::<S::Event>::new(&core);
     commands.insert_resource(state);
 }
 
-/// `water_audio_system` (0x140873630): drive the draw / erase loop pairs by
-/// the draw/erase events. The ice loops and the AppMode/ActiveSession gating
-/// are 待接线 (native drives them by water-raster ice sampling; that raster
-/// consumer is the water domain).
+/// `water_audio_system` (0x140873630): drive the draw / erase loop pair by the
+/// draw/erase events (via the shared garden draw template), then unconditionally
+/// stop the two ice loops (the decomp shows the two AppMode branches both end
+/// with two `AudioLoop::stop()` calls). The volume is the garden editing-speed
+/// source (Replay → 1.0, else `CursorTerrainRaycast.speed / 60.0`).
+#[allow(clippy::too_many_arguments)]
 pub fn water_audio_system<S: Studio + Send + Sync + 'static>(
-    _mode: Res<AppMode>,
+    mode: Res<AppMode>,
     mut state: ResMut<WaterAudioState<S::Event>>,
     mut draws: EventReader<WaterDrawEvent>,
     mut erases: EventReader<WaterEraseEvent>,
-    _raycast: Res<CursorTerrainRaycast>,
+    raycast: Res<CursorTerrainRaycast>,
     _session: Res<ActiveSession>,
 ) {
-    let drawing = draws.read().next().is_some();
-    let erasing = erases.read().next().is_some();
-    let draw_position = draws.read().last().map_or(Vec3::ZERO, |e| e.position);
-    let erase_position = erases.read().last().map_or(Vec3::ZERO, |e| e.position);
-
-    drive(&mut state.loops[0], drawing, draw_position);
-    drive(&mut state.loops[1], erasing, erase_position);
-}
-
-fn drive<E: EventInstance>(loop_player: &mut AudioLoop<AudioInstance<E>>, play: bool, position: Vec3) {
-    if play {
-        let _ = loop_player.start_if_not_playing();
-        let current = &mut loop_player.entries[loop_player.cursor];
-        let _ = current.set_position([position.x, position.y, position.z]);
+    let volume = if mode.native_tag() == 0xd {
+        crate::systems::audio::garden_audio::REPLAY_VOLUME
     } else {
-        let _ = loop_player.stop(std::time::Duration::ZERO);
-    }
+        raycast.speed / crate::systems::audio::garden_audio::VOLUME_NORMALIZER
+    };
+    let draw_last = draws.read().last().copied();
+    let erase_last = erases.read().last().copied();
+    let (draw_pos, draw_radius) =
+        draw_last.map_or((Vec3::ZERO, 0.0), |e| (e.position, e.radius));
+    let (erase_pos, erase_radius) =
+        erase_last.map_or((Vec3::ZERO, 0.0), |e| (e.position, e.radius));
+
+    update_draw_audio_volume(&mut state.loops[0], draw_last.is_some(), draw_pos, draw_radius, volume);
+    update_draw_audio_volume(&mut state.loops[1], erase_last.is_some(), erase_pos, erase_radius, volume);
+    // O (decomp-0x140873630): unconditionally stop the two ice loops.
+    let _ = state.loops[2].stop_now();
+    let _ = state.loops[3].stop_now();
 }
 
 #[cfg(test)]

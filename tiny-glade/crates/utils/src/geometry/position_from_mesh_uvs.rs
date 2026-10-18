@@ -15,13 +15,14 @@ pub fn get_triangle_coords_from_mesh_uv(
     None
 }
 /// B 0x1416f34a0 visits UV triangles in input order and returns first match.
-/// UV and position triangle arrays are parallel; degenerate NaN weights are skipped.
+/// UV and position triangle arrays are parallel; missing positions and degenerate
+/// UV triangles do not produce a position.
 pub fn get_position_from_mesh_uv(
     position_triangles: &[[Vec3; 3]],
     uv_triangles: &[[Vec2; 3]],
     uv: Vec2,
 ) -> Option<Vec3> {
     let (index, weights) = get_triangle_coords_from_mesh_uv(uv_triangles, uv)?;
-    let p = position_triangles[index];
+    let p = position_triangles.get(index)?;
     Some(p[1] * weights.y + p[0] * weights.x + p[2] * weights.z)
 }

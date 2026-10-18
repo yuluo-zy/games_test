@@ -1,5 +1,4 @@
-/// Semantic side chosen by the original ordered `< 0` branch. This safe enum
-/// expresses the recovered decision; it does not claim the author's enum ABI.
+/// The sign of a displacement. Unordered (NaN) displacements are nonnegative.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ComparativeSide {
     Negative,
@@ -14,8 +13,7 @@ pub trait ComparativeSpace {
     fn lerp_clamp(&self, a: f32, b: f32, t: f32) -> f32 {
         self.project_clamp(a + self.subtract(b, a) * t)
     }
-    /// Extents are radii/half-widths. Original callers use a strict comparison:
-    /// touching endpoints do not intersect. Full-width conversion is caller policy.
+    /// Extents are radii or half-widths. Touching endpoints do not intersect.
     fn regions_intersect(
         &self,
         a_center: f32,
@@ -33,8 +31,7 @@ pub trait ComparativeSpace {
         }
     }
 }
-/// The original zero-bounded linear strategy, observed in WallSpace's non-loop
-/// specializations. Field spelling is reconstructed; no native layout is implied.
+/// A linear coordinate space bounded by zero and `upper_bound`.
 #[derive(Clone, Copy, Debug)]
 pub struct ZeroBoundedComparativeSpace {
     pub upper_bound: f32,
@@ -60,14 +57,36 @@ impl ComparativeSpace for ZeroBoundedComparativeSpace {
         a - b
     }
 }
+/// A circular coordinate space with a finite, strictly positive period.
 #[derive(Clone, Copy, Debug)]
 pub struct CircularComparativeSpace {
     pub period: f32,
 }
 impl ComparativeSpace for CircularComparativeSpace {
+    fn lerp_clamp(&self, a: f32, b: f32, t: f32) -> f32 {
+        // Reduce the travel before adding the starting phase. Both the
+        // unbounded coordinate and a large finite extrapolation can otherwise
+        // absorb a short displacement, and f32 products may underflow.
+        let period = f64::from(self.period);
+        let start = f64::from(a) % period;
+        let displacement = f64::from(self.subtract(b, a));
+        let travel = (displacement * f64::from(t)) % period;
+        let remainder = (start + travel) % period;
+        let phase = if remainder < 0.0 {
+            remainder + period
+        } else {
+            remainder
+        };
+        let projected = phase as f32;
+        // A phase just below the period may round up to it in f32.
+        if projected == self.period {
+            0.0
+        } else {
+            projected
+        }
+    }
     fn distance(&self, a: f32, b: f32) -> f32 {
-        let d = (a - b).abs();
-        d.min((self.period - d).abs())
+        self.subtract(a, b).abs()
     }
     fn project(&self, value: f32) -> Option<f32> {
         Some(self.project_clamp(value))
@@ -81,6 +100,27 @@ impl ComparativeSpace for CircularComparativeSpace {
     }
     fn subtract(&self, a: f32, b: f32) -> f32 {
         let d = a - b;
+        // Projected coordinates are the hot path. Wider arithmetic is needed
+        // for multi-turn inputs: subtracting first can lose the smaller phase
+        // even when the f32 difference does not overflow.
+        if a.abs() > self.period
+            || b.abs() > self.period
+            || d.abs() > self.period
+            || d.abs() == self.period * 0.5
+            || !d.is_finite()
+            || self.period < f32::MIN_POSITIVE
+        {
+            let period = f64::from(self.period);
+            let mut displacement = (f64::from(a) % period - f64::from(b) % period) % period;
+            let half_period = period * 0.5;
+            if displacement < -half_period {
+                displacement += period;
+            } else if displacement >= half_period {
+                displacement -= period;
+            }
+            return displacement as f32;
+        }
+
         if d < -0.5 * self.period {
             d + self.period
         } else if d >= 0.5 * self.period {

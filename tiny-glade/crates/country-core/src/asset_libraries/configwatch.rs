@@ -1,34 +1,6 @@
-//! `ConfigWatch` —— 配置文件热重载监视器（layer A3）。
-//!
-//! 证据（O = 机器码直接观察；I = 推断；U = 未知；详见 `evidence/country-core-audit/A3_shader.md`）。
-//! 原版 3 个过程：
-//!  * `ConfigWatch::new`        0x1408ba0f0（405 B）
-//!  * `ConfigWatch::watch`      0x1408ba290（499 B）
-//!  * `watch::{closure#0}`      0x14091e430（875 B）——注册给 hotwatch 的事件处理器
-//!
-//! 布局（O，0x38 B）：`+0x00..0x30` = `Option<hotwatch::GenericHotwatch<ReadDirectoryChangesWatcher>>`
-//! （首个 dword == 3 即 None）；`+0x30` = `Arc<std::sync::Mutex<Option<String>>>`
-//! （`Arc` 块 0x30 B：强/弱计数 = 1/1，`Mutex` futex 字节 +0x10 = 0、poison 字节 +0x11 = 0，
-//! `Option<String>` +0x18 = 容量 niche `i64::MIN` = None）。
-//!
-//! 与旧版（臆造）的主要差异：
-//!  1. 待处理队列是 `Mutex<Option<String>>`——**变更文件的路径字符串（注册时的路径）**，不是 `Option<Vec<u8>>` 文件字节；
-//!     处理器**不读文件**，只记录路径（`system::backend::configwatch` 取走后调用 `update_color_library`）；
-//!  2. `new(use_watch)`：延迟参数 `Duration { secs: 0, nanos: 0x5f5e100 }` = **100 ms**（旧版写 50 ms）；
-//!     `new_with_custom_delay` 失败 → `expect("hotwatch failed to initialize")`（旧版 `unwrap_or_else` 吞错误并造空壳）；
-//!     `use_watch == false` → `None`，不创建 watcher；
-//!  3. `watch(path: String)`：`Arc` 克隆（计数溢出即 abort，标准库行为）+ `String::clone`；watcher 为 `None` →
-//!     静默丢弃（不报错）；否则 `hotwatch.watch(path, closure).expect("failed to watch file!")`，
-//!     闭包捕获 `{ watched: String（路径克隆）, pending: Arc }`；
-//!  4. 处理器只对 `notify::DebouncedEvent` 的 **第 4 个变体（`Write`）** 起作用（判别量 `0x8000000000000003`，I：notify 4.x
-//!     变体序 NoticeWrite/NoticeRemove/Create/Write/…，`Rename` 带两个 PathBuf 占据 niche 载体），其余变体直接 drop。
-//!     `Write` 时：先 `info!("Configwatch: {watched} has changed")`（target = 模块路径，pieces `"Configwatch: "` +
-//!     `" has changed"`），再 `pending.lock().unwrap()`（poison → `Result::unwrap` panic），
-//!     `*guard = Some(watched.clone())`（旧值 drop），最后 drop 事件里的 PathBuf（**事件自带的路径不使用**）。
-//!
-//! 外部库：`hotwatch` / `notify` 在 `crate::reused::watch`（占位，其回调只给 `PathBuf`，这里把它当作 `Write` 事件）。
+//! 配置热重载通知。回调只保存注册路径，文件读取在游戏线程执行。
+//! 原作来源见项目 evidence；当前接口、行为变化与验证范围见 README.md。
 
-// Preserve the original instruction-level expression order/NaN policy, API call shapes, and evidence/test transcription. See README.md.
 #![allow(clippy::single_match)]
 #![allow(dead_code)]
 
@@ -41,43 +13,37 @@ use bevy_ecs::resource::Resource;
 
 use crate::reused::watch;
 
-/// `watch` 处理器日志用的 target（O：模块路径，长 0x2a）。
 pub const LOG_TARGET: &str = "country_core::asset_libraries::configwatch";
 
-/// 注册给 hotwatch 的去抖延迟（O：`r8d = 0x5f5e100` ns）。
 pub const DEBOUNCE_DELAY: Duration = Duration::from_millis(100);
 
-/// Original notify event type, re-exported by the original hotwatch fork.
 pub use hotwatch::Event as DebouncedEvent;
 
-/// 待处理队列：最近一次变更文件的路径（O：`Arc<Mutex<Option<String>>>`）。
 pub type Pending = Arc<Mutex<Option<String>>>;
 
-/// 配置监视器（O：`Res<ConfigWatch>`，0x38 B）。
+/// 单槽配置通知；同批多次变化只需重新读取最终文件。
 #[derive(Resource)]
 pub struct ConfigWatch {
-    /// `+0x00`：`Option<GenericHotwatch>`（`use_watch` 为假时 None）。
     pub hotwatch: Option<watch::GenericHotwatch>,
-    /// `+0x30`。
     pub pending: Pending,
 }
 
-/// 处理器闭包体（O 0x14091e430）。`watched` 是闭包捕获的注册路径。
+/// 写入事件记录注册路径；其他事件不触发配置更新。
 pub fn on_event(event: DebouncedEvent, watched: &str, pending: &Mutex<Option<String>>) {
     match event {
-        DebouncedEvent::Write(_event_path) => {
+        DebouncedEvent::Write(_event_path)
+        | DebouncedEvent::Create(_event_path)
+        | DebouncedEvent::Rename(_, _event_path) => {
             log::info!(target: LOG_TARGET, "Configwatch: {} has changed", watched);
-            // O：`lock()` 之后 poison 字节非 0 → `unwrap_failed("called `Result::unwrap()` on an `Err` value")`。
             let mut guard = pending.lock().unwrap();
             *guard = Some(watched.to_owned());
         }
-        // O：其余变体只 `drop_in_place<DebouncedEvent>`。
         _ => {}
     }
 }
 
 impl ConfigWatch {
-    /// `new(use_watch)`（O 0x1408ba0f0）。
+    /// 创建初始状态。
     pub fn new(use_watch: bool) -> Self {
         let hotwatch = if use_watch {
             Some(
@@ -93,12 +59,11 @@ impl ConfigWatch {
         }
     }
 
-    /// `watch(path)`（O 0x1408ba290）：见模块注释第 3 点。
+    /// 注册文件通知；未启用监听时直接返回。
     pub fn watch(&mut self, path: String) {
         let pending = Arc::clone(&self.pending);
         let watched = path.clone();
         let Some(hotwatch) = &self.hotwatch else {
-            // O：`cmp dword [self], 3` 命中 → 释放克隆出的 String / Arc / 入参，直接返回。
             return;
         };
         hotwatch
@@ -108,8 +73,6 @@ impl ConfigWatch {
             .expect("failed to watch file!");
     }
 
-    /// 取走待处理路径（I：消费者 `systems::backend::configwatch`（0x14085b1c0）对同一把锁做
-    /// `lock().unwrap()` + `Option::take`；非 `ConfigWatch` 自有过程）。
     pub fn take_pending(&self) -> Option<String> {
         self.pending.lock().unwrap().take()
     }
@@ -176,10 +139,8 @@ mod tests {
         for ev in [
             DebouncedEvent::NoticeWrite("a".into()),
             DebouncedEvent::NoticeRemove("a".into()),
-            DebouncedEvent::Create("a".into()),
             DebouncedEvent::Chmod("a".into()),
             DebouncedEvent::Remove("a".into()),
-            DebouncedEvent::Rename("a".into(), "b".into()),
             DebouncedEvent::Rescan,
             DebouncedEvent::Error(
                 hotwatch::notify::Error::Io(std::io::Error::other("e")),

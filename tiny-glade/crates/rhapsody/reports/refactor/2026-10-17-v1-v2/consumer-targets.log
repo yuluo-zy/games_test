@@ -1,0 +1,157 @@
+    Checking country-core v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core)
+warning: type alias `Result` is never used
+ --> crates/rhapsody/examples/window_lab/fixture.rs:4:10
+  |
+4 | pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+  |          ^^^^^^
+  |
+  = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: constant `WIDTH` is never used
+ --> crates/rhapsody/examples/window_lab/fixture.rs:5:11
+  |
+5 | pub const WIDTH: u32 = 320;
+  |           ^^^^^
+
+warning: constant `HEIGHT` is never used
+ --> crates/rhapsody/examples/window_lab/fixture.rs:6:11
+  |
+6 | pub const HEIGHT: u32 = 180;
+  |           ^^^^^^
+
+warning: function `default_playlist` is never used
+ --> crates/rhapsody/examples/window_lab/fixture.rs:8:8
+  |
+8 | pub fn default_playlist() -> PathBuf {
+  |        ^^^^^^^^^^^^^^^^
+
+warning: struct `Manifest` is never constructed
+  --> crates/rhapsody/examples/window_lab/fixture.rs:21:8
+   |
+21 | struct Manifest {
+   |        ^^^^^^^^
+
+warning: struct `Clip` is never constructed
+  --> crates/rhapsody/examples/window_lab/fixture.rs:26:12
+   |
+26 | pub struct Clip {
+   |            ^^^^
+
+warning: enum `Source` is never used
+  --> crates/rhapsody/examples/window_lab/fixture.rs:36:6
+   |
+36 | enum Source {
+   |      ^^^^^^
+
+warning: struct `Playlist` is never constructed
+  --> crates/rhapsody/examples/window_lab/fixture.rs:42:12
+   |
+42 | pub struct Playlist {
+   |            ^^^^^^^^
+
+warning: struct `Ppm` is never constructed
+  --> crates/rhapsody/examples/window_lab/fixture.rs:46:12
+   |
+46 | pub struct Ppm {
+   |            ^^^
+
+warning: function `hash` is never used
+  --> crates/rhapsody/examples/window_lab/fixture.rs:52:8
+   |
+52 | pub fn hash(bytes: &[u8]) -> u64 {
+   |        ^^^^
+
+warning: associated items `load` and `render` are never used
+  --> crates/rhapsody/examples/window_lab/fixture.rs:59:12
+   |
+58 | impl Playlist {
+   | ------------- associated items in this implementation
+59 |     pub fn load(path: &Path) -> Result<Self> {
+   |            ^^^^
+...
+89 |     pub fn render(&self, index: usize, frame: u32, output: &mut [u8]) {
+   |            ^^^^^^
+
+warning: associated function `parse` is never used
+   --> crates/rhapsody/examples/window_lab/fixture.rs:160:12
+    |
+159 | impl Ppm {
+    | -------- associated function in this implementation
+160 |     pub fn parse(bytes: &[u8]) -> Result<Self> {
+    |            ^^^^^
+
+warning: function `write_ppm` is never used
+   --> crates/rhapsody/examples/window_lab/fixture.rs:229:8
+    |
+229 | pub fn write_ppm(path: &Path, rgba: &[u8]) -> Result<()> {
+    |        ^^^^^^^^^
+
+warning: `rhapsody` (example "window_lab") generated 13 warnings
+    Checking rhapsody v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody)
+error[E0603]: function `point_inside_wall_terrain_samples` is private
+   --> crates/country-core/src/systems/ivy/ivy_pruner.rs:19:18
+    |
+ 19 |     ivy_spawner::point_inside_wall_terrain_samples,
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ private function
+    |
+note: the function `point_inside_wall_terrain_samples` is defined here
+   --> crates/country-core/src/systems/ivy/ivy_spawner.rs:200:1
+    |
+200 | / fn point_inside_wall_terrain_samples(
+201 | |     wall: &crate::resources::walls::public_wall_state::PublicWallState,
+202 | |     point: Vec2,
+203 | | ) -> bool {
+...   |
+225 | |     false
+226 | | }
+    | |_^
+
+warning: unused import: `ON_LOAD_FENCE`
+  --> crates/country-core/src/meta_commander.rs:20:46
+   |
+20 | use crate::resources::session::{OnLoadEntry, ON_LOAD_FENCE, ON_LOAD_VARIANT_MASK};
+   |                                              ^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `utils::geometry::Ray as TerrainRay`
+  --> crates/country-core/src/systems/collision/world.rs:31:5
+   |
+31 | use utils::geometry::Ray as TerrainRay;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `SUBWORLD_SLOT_COUNT`
+  --> crates/country-core/src/systems/collision/world.rs:34:60
+   |
+34 | use crate::systems::collision::{EMPTY_COLLIDER_HANDLE_TAG, SUBWORLD_SLOT_COUNT};
+   |                                                            ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `LoadUpgradeFlags`
+  --> crates/country-core/src/systems/save/load_game.rs:18:9
+   |
+18 |         LoadUpgradeFlags, LoadVersionGates, arrow_slit_record_applies, upgrade_arrow_slit_color_id,
+   |         ^^^^^^^^^^^^^^^^
+
+warning: unused import: `save_backup_list::BackupSaveFileKind`
+  --> crates/country-core/src/systems/save/save_thread.rs:15:5
+   |
+15 |     save_backup_list::BackupSaveFileKind,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `bevy_ecs::schedule::IntoScheduleConfigs`
+  --> crates/country-core/src/systems/save/mod.rs:53:5
+   |
+53 | use bevy_ecs::schedule::IntoScheduleConfigs;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused variable: `emit`
+   --> crates/country-core/src/systems/ivy/ivy_grower.rs:454:5
+    |
+454 |     emit: &mut impl FnMut(IvySegmentDoneGrowingMsg),
+    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_emit`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+For more information about this error, try `rustc --explain E0603`.
+warning: `country-core` (lib) generated 7 warnings
+error: could not compile `country-core` (lib) due to 1 previous error; 7 warnings emitted

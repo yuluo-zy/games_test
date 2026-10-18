@@ -1,0 +1,38 @@
+--- a/games_test/tiny-glade/crates/tiny-glade/src/raster_host.rs
++++ b/games_test/tiny-glade/crates/tiny-glade/src/raster_host.rs
+@@ -373,14 +373,31 @@
+             .filter(|handle| wanted.contains(&handle.id().raw()))
+             .map(|handle| (handle.id().raw(), *handle))
+             .collect::<HashMap<_, _>>();
++        let handles = wanted
++            .into_iter()
++            .map(|id| {
++                handles.get(&id).copied().ok_or_else(|| {
++                    rhapsody::Error::invalid_usage("draw-list VAO has no matching typed ECS handle")
++                })
++            })
++            .collect::<rhapsody::Result<Vec<_>>>()?;
++        self.refresh_vao_handles(world, &handles)
++    }
++
++    /// Snapshot actual typed VAO owners used by a direct-entity raster pass.
++    /// This shares the same physical buffer validation as list-driven draws.
++    pub fn refresh_vao_handles(
++        &self,
++        world: &bevy_ecs::world::World,
++        handles: &[country_core::asset_libraries::Handle<country_core::render::vao::Vao>],
++    ) -> rhapsody::Result<()> {
++        use country_core::asset_libraries::vao_library::AssetVAOLibrary;
+         let vaos = world.get_resource::<AssetVAOLibrary>().ok_or_else(|| {
+             rhapsody::Error::invalid_usage("AssetVAOLibrary producer has not run")
+         })?;
+         let mut snapshots = HashMap::new();
+-        for id in wanted {
+-            let handle = handles.get(&id).ok_or_else(|| {
+-                rhapsody::Error::invalid_usage("draw-list VAO has no matching typed ECS handle")
+-            })?;
++        for handle in handles {
++            let id = handle.id().raw();
+             let entry = vaos.get_by_handle(*handle).ok_or_else(|| {
+                 rhapsody::Error::invalid_usage("draw-list VAO is not live in this App")
+             })?;

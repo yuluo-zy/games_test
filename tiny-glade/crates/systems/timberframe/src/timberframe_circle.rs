@@ -1,114 +1,91 @@
-//! timberframe_circle.rs — 圆顶木框架梁构建（B 0x1421b67a0，O；re-analyst-A
-//! 契约 `systems-recovery/groupA/timberframe/RE-ANALYSIS.md` §2）。
-//!
-//! 算法骨架（O）：输入墙形状（ShapeParameters 域）→ `Circle2d::perimeter`
-//! （0x140c97970）+ `as_points2_ptcount`/`get_pos_at_u`（0x140c97ba0/0x140c975a0，
-//! u 采样梁位置）→ `roof_height_ws_from_wall_shape`（0x1408e3c70）+ 法向旋转
-//! （0x140c90a40）→ 梁实例写往 `TimberframeInstanceBuffer`（GPU 侧
-//! `WoodenPlankSsbo`）。常量：0.2 间距（0x142a8c6f0 ×2）、-1.0/-0.5
-//! （0x14295a0e4）、0.4922/1.0（0x142925874/0x142925904）。构造后刷新
-//! `TimberframeBeamCount.current`（+0x2c 读取面）。
-
+//! B construct_timberframe_circle@1421b67a0, complete5102B RNE range.
+//! Verticals use main-height scale at the cached base. Skirt tuple-windows
+//! emit count-1 segments; roof beams run from the perimeter to the roof tip.
+use crate::timberframe_beam_count_change_audio::TimberframeBeamCount;
+use crate::timberframe_rectangle::segment_plank;
+use crate::TimberframeInstanceBuffer;
 use bevy_ecs::prelude::*;
-use glam::Vec3;
-use utils::geometry::Circle2d;
-
 use country_core::asset_libraries::ssbo_library::AssetSsboLibrary;
 use country_core::resources::events::ConstructTimberframeCmd;
-use country_core::resources::roofs::roof_shape::roof_height_ws_from_wall_shape;
+use country_core::resources::roofs::roof_buffers::WoodenPlankSsbo;
 use country_core::systems::wall::shapes::calc_shape_height::TimberframeConstructionParamsCache;
 use country_core::systems::wall::valid_enclosure::{Shape, ShapeParameters};
+use glam::{Affine3A, Quat, Vec3};
 
-use crate::timberframe_beam_count_change_audio::TimberframeBeamCount;
-use crate::TimberframeInstanceBuffer;
+pub const CIRCLE_COUNT_DIVISOR: f32 = 1.5;
+pub const MIN_CIRCLE_SEGMENTS: usize = 6;
+pub const BEAM_SECTION: f32 = 0.2;
 
-/// 梁间距（O：0x142a8c6f0 = 0.2，圆/矩形共用）。
-pub const BEAM_SPACING: f32 = 0.2;
-/// 梁长度缩放（O：0x142925874 = 0.4922；re-analyst 记为 0x142925870 区）。
-pub const PLANK_LENGTH_SCALE: f32 = 0.4922;
-/// 高度符号（O：-1.0/-0.5 @ 0x14295a0e4；语义 I——梁高/偏移方向族）。
-pub const HEIGHT_SIGN: f32 = -1.0;
-pub const HEIGHT_HALF: f32 = -0.5;
-
-/// 梁实例记录（O：0x20B 条目，写往 WoodenPlankSsbo；字段明细 U——
-/// {位置, 朝向, 长度} 语义 I，按机器码输出面）。
-#[derive(Clone, Copy, Debug)]
-pub struct TimberframePlank {
-    /// 世界位置。
-    pub position: Vec3,
-    /// 朝向（法向旋转；I）。
-    pub orientation: Vec3,
-    /// 梁长。
-    pub length: f32,
-    /// 填充（0x20B 对齐；U）。
-    pub _pad: [u8; 4],
-}
-
-impl Default for TimberframePlank {
-    fn default() -> Self {
-        Self {
-            position: Vec3::ZERO,
-            orientation: Vec3::Z,
-            length: 1.0,
-            _pad: [0; 4],
-        }
-    }
-}
-
-/// `construct_timberframe_circle` @0x1421b67a0（O 面）。
-///
-/// 参数面（reviewer-A FIX）：param_2 = `Res<TimberframeInstanceBuffer>` **只读**
-/// （机器码无 tick 回写；`if (cap == 0) goto` 门控 + 条目基址只读）——梁构建
-/// 的写路径非 buffer（re-analyst §3.2：输出路径待补证），本实现按只读门控
-/// 落地，输出面登记 GAP。
 pub fn construct_timberframe_circle(
     mut constructs: EventReader<ConstructTimberframeCmd>,
     buffer: Res<TimberframeInstanceBuffer>,
-    _library: Res<AssetSsboLibrary>,
-    _params: Res<TimberframeConstructionParamsCache>,
+    mut library: ResMut<AssetSsboLibrary>,
+    params: Res<TimberframeConstructionParamsCache>,
     mut beams: ResMut<TimberframeBeamCount>,
 ) {
-    // O：`if (*(longlong *)*param_2 == 0) goto …`——cap==0 门控（只读）。
-    if buffer.0.is_empty() {
-        return;
-    }
+    let ssbo = library
+        .get_mut::<WoodenPlankSsbo>()
+        .expect("called `Option::unwrap()` on a `None` value");
+    // Rectangle runs first and creates/clears the one shared allocation.
+    let allocation = buffer
+        .allocation
+        .as_ref()
+        .expect("called `Option::unwrap()` on a `None` value");
+    let mut writer = ssbo.writer(allocation);
+    let mut exhausted = false;
     for cmd in constructs.read() {
-        if cmd.shape.len() < 28 {
+        let shape = ShapeParameters::from_observed(cmd.shape);
+        let Some(Shape::Circle(circle)) = shape.get_shape() else {
             continue;
+        };
+        let n = ((circle.perimeter() / CIRCLE_COUNT_DIVISOR) as usize).max(MIN_CIRCLE_SEGMENTS);
+        let mut count = 0i64;
+        for point in circle.as_points2_ptcount(n) {
+            let plank = WoodenPlankSsbo::timberframe(Affine3A::from_scale_rotation_translation(
+                Vec3::new(BEAM_SECTION, params.main_height, BEAM_SECTION),
+                Quat::IDENTITY,
+                Vec3::new(point.x, params.skirt_offset, point.y),
+            ));
+            exhausted |= writer.push(&plank).is_err();
+            count = count.wrapping_add(1);
         }
-        let params = ShapeParameters::from_observed(cmd.shape[..28].try_into().unwrap());
-        match params.get_shape() {
-            Some(Shape::Circle(circle)) => {
-                // O：梁实例构建（几何环 0x140c97ba0/0x140c975a0/0x140c9cdc0——
-                // 输出路径 re-analyst §3.2 待补证；本处计算后登记，不 push）。
-                let _ = build_circle_beams(circle, &cmd.shape);
+        let skirts = country_core::resources::walls::split_height_into_skirts(params.main_height);
+        for ring in skirts.into_iter().chain([0.0, params.main_height]) {
+            let height = ring + params.skirt_offset;
+            let offset = Vec3::new(height * 0.0, height, height * 0.0);
+            // Original itertools::tuple_windows over the mapped point iterator,
+            // not modulo wrapping the already closed sample sequence.
+            let mut points = circle.as_points2_ptcount(n);
+            let mut previous = points.next().map(|p| Vec3::new(p.x, 0.0, p.y));
+            for p in points {
+                let b = Vec3::new(p.x, 0.0, p.y);
+                if let Some(a) = previous {
+                    exhausted |= writer
+                        .push(&segment_plank(a, b, (a + b) * 0.5 + offset))
+                        .is_err();
+                    count = count.wrapping_add(1);
+                }
+                previous = Some(b);
             }
-            _ => {}
         }
-        beams.current = buffer.0.len() as i32;
-        beams.non_empty = !buffer.0.is_empty();
+        if cmd.roof_gate == 0 {
+            let base = params.skirt_offset + params.main_height;
+            let peak = country_core::resources::roofs::roof_shape::roof_height_ws_from_wall_shape(
+                &cmd.shape,
+            ) + base;
+            let zero = base * 0.0;
+            let tip = Vec3::new(circle.center.x, peak, circle.center.y);
+            for p in circle.as_points2_ptcount(n) {
+                let a = Vec3::new(p.x + zero, base, p.y + zero);
+                exhausted |= writer
+                    .push(&segment_plank(a, tip, (a + tip) * 0.5))
+                    .is_err();
+                count = count.wrapping_add(1);
+            }
+        }
+        beams.count = count;
     }
-}
-
-/// 圆周长采样梁（O 骨架：perimeter + u 采样 + 屋顶高 + 法向；输出路径
-/// re-analyst §3.2 待补证——返回梁序列供调用方登记）。
-fn build_circle_beams(circle: Circle2d, wall_shape: &[u8]) -> Vec<TimberframePlank> {
-    let perimeter = circle.perimeter();
-    let count = (perimeter / BEAM_SPACING).ceil().max(1.0) as usize;
-    // O：屋顶世界高度（0x1408e3c70）。
-    let height = roof_height_ws_from_wall_shape(wall_shape);
-    let mut out = Vec::with_capacity(count);
-    for index in 0..count {
-        // I：u 采样（机器码 get_pos_at_u ×3 的采样族；相位细分 U）。
-        let u = index as f32 / count as f32;
-        let pos = circle.get_pos_at_u(u);
-        let normal = circle.get_normal_at_u(u);
-        out.push(TimberframePlank {
-            position: Vec3::new(pos.x, height * HEIGHT_SIGN, pos.y),
-            orientation: Vec3::new(normal.x, 0.0, normal.y),
-            length: PLANK_LENGTH_SCALE * circle.radius * 2.0,
-            _pad: [0; 4],
-        });
+    if exhausted {
+        eprintln!("Timberframe constructor ran out of memory");
     }
-    out
 }

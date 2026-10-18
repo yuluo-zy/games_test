@@ -1,0 +1,37 @@
+{
+  "report": "RE-ANALYSIS.md",
+  "worker": "hdpts-ecstate",
+  "identity": {
+    "program": "tiny-glade.exe",
+    "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "radare2_input": "tiny-glade.rne sha256 f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+  },
+  "jump_tables": {
+    "update_wrens": {"table": "0x14304b638", "index_field": "spot+0x30 (stride 0x50)", "handlers": ["0x14231ebf8", "0x14231e930", "0x14231e9a9", "0x14231ec82", "0x14231edf4"]},
+    "sheep_walk_animation": {"table": "0x14304b0f8", "index_field": "spot+0x10 (state)", "handlers": ["0x14231a729", "0x14231aa29", "0x14231aade", "0x14231a729"]},
+    "sheep_pet_animation": {"table": "0x14304b178", "index_field": "spot+0x18 (state)", "handlers": ["0x14231afe4", "0x14231b0b3", "0x14231b022", "0x14231b068", "0x14231b006"]},
+    "update_butterfly_states": {"table": "0x142f68008", "index_field": "*puVar2 (state)", "handlers": ["0x141d85983", "0x141d85a22", "0x141d85ada", "0x141d85b08", "0x141d86dd5", "0x141d86e29", "0x141d86df9", "0x141d86e1a"], "note": "state>=4 转发到 vel 表"},
+    "set_butterfly_velocities_towards_goals": {"table": "0x142f68018", "index_field": "*puVar1", "handlers": ["0x141d86de5", "0x141d86e39", "0x141d86e09", "0x141d86e2a"]},
+    "add_autoclutter_on_windows": {"table": "0x143042370", "index_field": "kind byte", "handlers": ["0x1422cd9b7", "0x1422cdbd8", "0x1422cdac7", "0x1422cdb50", "0x1422cda3f", "0x1422cdc72"]}
+  },
+  "decompiled_full": {
+    "color_menu": {"address": "0x142291230", "file": "decomp/color_menu_142291230_full.c", "size": 136201, "method": "ReVa write worker 600s"},
+    "show_color_options": {"address": "0x14229a7f0", "file": "decomp/show_color_options_14229a7f0_full.c", "size": 267500, "method": "ReVa write worker 600s"},
+    "chimney_smoke_anim_thickness": {"address": "0x140818df0", "file": "decomp/reva_chimney_smoke_140818df0.c", "size": 31234, "method": "ReVa write worker"},
+    "half_timbering": {"address": "0x141218e30", "file": "decomp/r2_half_timbering_full_141218e30.c", "size": 13592, "method": "radare2 aa + pdg"},
+    "populate_autoclutter_regions": {"address": "0x1422d6ed0", "file": "decomp/populate_autoclutter_regions_1422d6ed0.c", "size": 120000, "method": "Ghidra shared"},
+    "construct_playermade_stairs_arches_n_walls_true": {"address": "0x140496800", "file": "decomp/construct_playermade_stairs_arches_n_walls_140496800.c", "size": 97628, "method": "Ghidra shared"},
+    "from_curve_host_for_sine_wave": {"address": "0x140769760", "file": "decomp/from_curve_140769760.c", "size": 55970, "method": "Ghidra shared"},
+    "calc_gothic_half_dormer_profile_ws": {"address": "0x1407eb160", "file": "decomp/calc_gothic_half_dormer_profile_ws_1407eb160.c", "size": 1775, "method": "Ghidra shared"},
+    "move_critters": {"address": "0x142318fa0", "file": "decomp/move_critters_142318fa0.c", "size": 27501, "method": "Ghidra shared"},
+    "critters_avoid_collisions": {"address": "0x1423179a0", "file": "decomp/critters_avoid_collisions_1423179a0.c", "size": 20990, "method": "Ghidra shared"},
+    "manage_tree_prefabs": {"address": "0x141bf16c0", "file": "decomp/manage_tree_prefabs_141bf16c0.c", "size": 24940, "method": "Ghidra shared"}
+  },
+  "handler_disasm": {
+    "critters": "decomp/handlers-batch1.json (sheep_pet+wrens) + decomp/handlers-butterfly.json",
+    "wrens_asm": "decomp/0x14231e390_update_wrens.asm",
+    "sheep_asm": "decomp/0x14231a630_sheep_walk.asm, decomp/0x14231ac20_sheep_pet.asm",
+    "butterfly_asm": "decomp/0x141d84d40_update_butterfly_states.asm, decomp/0x141d867b0_set_butterfly_vel.asm"
+  },
+  "results": "results/*.json 全部 operator 报告（可复核）"
+}

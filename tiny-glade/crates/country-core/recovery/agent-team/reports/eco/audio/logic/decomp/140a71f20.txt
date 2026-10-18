@@ -1,0 +1,261 @@
+// music_audio_init_system @ 0x140a71f20
+
+void __cdecl country_core::systems::audio::music::music_system::music_audio_init_system(void)
+
+{
+  longlong *plVar1;
+  undefined1 *_Src;
+  void *extraout_RAX;
+  char *extraout_RAX_00;
+  char *extraout_RAX_01;
+  undefined8 *in_RCX;
+  longlong lVar2;
+  void *_Dst;
+  size_t sVar3;
+  longlong local_408;
+  undefined8 uStack_400;
+  size_t local_3f8;
+  void *pvStack_3f0;
+  size_t local_3e8;
+  undefined1 uStack_3e0;
+  undefined4 uStack_3df;
+  undefined2 uStack_3db;
+  undefined1 uStack_3d9;
+  undefined8 local_3d8;
+  longlong local_2d8;
+  longlong lStack_2d0;
+  size_t local_2c8;
+  char *pcStack_2c0;
+  undefined1 *local_2b8;
+  undefined8 uStack_2b0;
+  longlong local_2a8;
+  longlong local_1a8;
+  undefined8 uStack_1a0;
+  size_t local_198;
+  void *pvStack_190;
+  size_t local_188;
+  undefined8 uStack_180;
+  longlong local_178;
+  longlong lStack_170;
+  longlong local_168;
+  char *pcStack_160;
+  undefined1 *local_158;
+  undefined8 uStack_150;
+  longlong local_148;
+  longlong lStack_140;
+  longlong local_138;
+  char *pcStack_130;
+  undefined1 *local_128;
+  undefined8 uStack_120;
+  undefined8 local_118;
+  undefined4 local_110;
+  undefined1 local_10c;
+  longlong local_108;
+  undefined8 uStack_100;
+  size_t local_f8;
+  void *pvStack_f0;
+  size_t local_e8;
+  undefined8 uStack_e0;
+  longlong local_d8;
+  longlong lStack_d0;
+  longlong local_c8;
+  char *pcStack_c0;
+  undefined1 *local_b8;
+  undefined1 uStack_b0;
+  undefined4 uStack_af;
+  undefined2 uStack_ab;
+  undefined1 uStack_a9;
+  longlong local_a8;
+  undefined8 uStack_a0;
+  size_t local_98;
+  void *pvStack_90;
+  size_t local_88;
+  undefined1 uStack_80;
+  undefined4 uStack_7f;
+  undefined2 uStack_7b;
+  undefined1 uStack_79;
+  longlong local_78;
+  longlong lStack_70;
+  longlong local_68;
+  char *pcStack_60;
+  undefined1 *local_58;
+  undefined1 uStack_50;
+  undefined4 uStack_4f;
+  undefined2 uStack_4b;
+  undefined1 uStack_49;
+  undefined1 local_41;
+  undefined8 local_40;
+  
+  local_40 = 0xfffffffffffffffe;
+  plVar1 = (longlong *)*in_RCX;
+  startup::load_glade_audio::impl$0::default();
+  sVar3 = uStack_2b0;
+  _Src = local_2b8;
+  if (*plVar1 == 0) {
+    if ((longlong)uStack_2b0 < 0) {
+LAB_140a7257b:
+                    // WARNING: Subroutine does not return
+      alloc::raw_vec::handle_error();
+    }
+    if (uStack_2b0 == 0) {
+      _Dst = (void *)0x1;
+    }
+    else {
+      std::alloc::__default_lib_allocator::__rust_alloc();
+      _Dst = extraout_RAX;
+      if (extraout_RAX == (void *)0x0) goto LAB_140a7257b;
+    }
+    memcpy(_Dst,_Src,sVar3);
+    local_408 = 0;
+    local_3f8 = sVar3;
+    local_3e8 = sVar3;
+    uStack_3e0 = 2;
+    pvStack_3f0 = _Dst;
+  }
+  else {
+    resources::audio_resources::AudioCoreInner::instantiate_audio();
+    if (local_408 == 2) {
+      local_78 = uStack_400;
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+  }
+  local_88 = local_3e8;
+  uStack_80 = uStack_3e0;
+  uStack_7f = uStack_3df;
+  uStack_7b = uStack_3db;
+  uStack_79 = uStack_3d9;
+  local_98 = local_3f8;
+  pvStack_90 = pvStack_3f0;
+  local_a8 = local_408;
+  uStack_a0 = uStack_400;
+  if (local_2c8 != 0) {
+    lVar2 = lStack_2d0 + 8;
+    sVar3 = local_2c8;
+    do {
+      if (*(longlong *)(lVar2 + -8) != 0) {
+        std::alloc::__default_lib_allocator::__rust_dealloc();
+      }
+      lVar2 = lVar2 + 0x18;
+      sVar3 = sVar3 + -1;
+    } while (sVar3 != 0);
+  }
+  if (local_2d8 != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  if (pcStack_2c0 != (char *)0x0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  if ((!SBORROW8(0,local_2a8)) && (local_2a8 != 0)) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  if ((int)local_a8 == 1) {
+    local_41 = 1;
+    libfmod::EventInstance::start();
+    if (local_408 != -0x7ffffffffffffffc) {
+      local_2a8 = local_3d8;
+      uStack_2b0 = CONCAT17(uStack_3d9,CONCAT25(uStack_3db,CONCAT41(uStack_3df,uStack_3e0)));
+      local_2b8 = (undefined1 *)local_3e8;
+      local_2c8 = local_3f8;
+      pcStack_2c0 = pvStack_3f0;
+      local_2d8 = local_408;
+      lStack_2d0 = uStack_400;
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+  }
+  uStack_e0 = CONCAT17(uStack_79,CONCAT25(uStack_7b,CONCAT41(uStack_7f,uStack_80)));
+  local_e8 = local_88;
+  local_f8 = local_98;
+  pvStack_f0 = pvStack_90;
+  local_108 = local_a8;
+  uStack_100 = uStack_a0;
+  if (*plVar1 == 0) {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX_00 == (char *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::raw_vec::handle_error();
+    }
+    builtin_strncpy(extraout_RAX_00,"event:/Music/mus_GladePreview",0x1d);
+    local_2d8 = 0;
+    local_2c8 = 0x1d;
+    local_2b8 = &DAT_0000001d;
+    uStack_2b0 = CONCAT71(uStack_2b0._1_7_,2);
+    pcStack_2c0 = extraout_RAX_00;
+  }
+  else {
+    resources::audio_resources::AudioCoreInner::instantiate_audio();
+    if (local_2d8 == 2) {
+      local_408 = lStack_2d0;
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+  }
+  local_b8 = local_2b8;
+  uStack_b0 = (undefined1)uStack_2b0;
+  uStack_af = uStack_2b0._1_4_;
+  uStack_ab = uStack_2b0._5_2_;
+  uStack_a9 = uStack_2b0._7_1_;
+  local_c8 = local_2c8;
+  pcStack_c0 = pcStack_2c0;
+  local_d8 = local_2d8;
+  lStack_d0 = lStack_2d0;
+  if (*plVar1 == 0) {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX_01 == (char *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::raw_vec::handle_error();
+    }
+    builtin_strncpy(extraout_RAX_01,"event:/Amb/GladePreview",0x17);
+    local_2d8 = 0;
+    local_2c8 = 0x17;
+    local_2b8 = &DAT_00000017;
+    uStack_2b0 = CONCAT71(uStack_2b0._1_7_,2);
+    pcStack_2c0 = extraout_RAX_01;
+  }
+  else {
+    resources::audio_resources::AudioCoreInner::instantiate_audio();
+    if (local_2d8 == 2) {
+      local_408 = lStack_2d0;
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+  }
+  local_58 = local_2b8;
+  uStack_50 = (undefined1)uStack_2b0;
+  uStack_4f = uStack_2b0._1_4_;
+  uStack_4b = uStack_2b0._5_2_;
+  uStack_49 = uStack_2b0._7_1_;
+  local_68 = local_2c8;
+  pcStack_60 = pcStack_2c0;
+  local_78 = local_2d8;
+  lStack_70 = lStack_2d0;
+  music_player::MusicPlayer::init();
+  memcpy(&local_2d8,&local_408,0x130);
+  local_1a8 = local_108;
+  uStack_1a0 = uStack_100;
+  local_198 = local_f8;
+  pvStack_190 = pvStack_f0;
+  local_188 = local_e8;
+  uStack_180 = uStack_e0;
+  local_10c = 5;
+  uStack_150 = CONCAT17(uStack_a9,CONCAT25(uStack_ab,CONCAT41(uStack_af,uStack_b0)));
+  local_178 = local_d8;
+  lStack_170 = lStack_d0;
+  local_168 = local_c8;
+  pcStack_160 = pcStack_c0;
+  local_158 = local_b8;
+  uStack_120 = CONCAT17(uStack_49,CONCAT25(uStack_4b,CONCAT41(uStack_4f,uStack_50)));
+  local_148 = local_78;
+  lStack_140 = lStack_70;
+  local_138 = local_68;
+  pcStack_130 = pcStack_60;
+  local_128 = local_58;
+  local_118 = 0;
+  local_110 = 0;
+  local_41 = 0;
+  bevy_ecs::system::commands::Commands::
+  insert_resource<country_core::systems::audio::music::music_system::MusicAudioState>();
+  return;
+}
+

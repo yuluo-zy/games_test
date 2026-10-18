@@ -1,0 +1,39 @@
+--- 
++++ 
+@@ -665,6 +665,7 @@
+     raster: Mutex<Vec<Arc<RasterEntry>>>,
+     passes: Arc<RenderPassHost>,
+     frame_globals: Arc<Mutex<Option<Arc<crate::frame_setup::FrameGlobals>>>>,
++    indexed_count_adapter: Mutex<Option<Arc<rhapsody::rg::indirect_count::IndexedCountAdapter>>>,
+ }
+ 
+ /// Bounded attachment signatures used to request dynamic-rendering pipelines.
+@@ -901,7 +902,18 @@
+             raster: Mutex::new(Vec::new()),
+             passes: Arc::new(RenderPassHost::default()),
+             frame_globals: Arc::new(Mutex::new(None)),
++            indexed_count_adapter: Mutex::new(None),
+         })
++    }
++    /// Uses this host's existing heap/compiler. Device support policy is
++    /// selected by the raster host; no second descriptor backend is created.
++    pub fn indexed_count_adapter(&self) -> rhapsody::Result<Arc<rhapsody::rg::indirect_count::IndexedCountAdapter>> {
++        let mut cached = self.indexed_count_adapter.lock();
++        if let Some(adapter) = cached.as_ref() { return Ok(adapter.clone()); }
++        let adapter = rhapsody::rg::indirect_count::IndexedCountAdapter::new(
++            self.device.clone(), self.heap.clone(), &self.compiler)?;
++        *cached = Some(adapter.clone());
++        Ok(adapter)
+     }
+     pub fn set_frame_globals(&self, globals: Arc<crate::frame_setup::FrameGlobals>) {
+         *self.frame_globals.lock() = Some(globals);
+@@ -923,6 +935,9 @@
+                 .iter()
+                 .map(|entry| entry.pipeline.clone()),
+         );
++        if let Some(adapter) = self.indexed_count_adapter.lock().as_ref() {
++            tickets.push(adapter.ticket());
++        }
+         for ticket in tickets {
+             let remaining = deadline
+                 .checked_duration_since(Instant::now())

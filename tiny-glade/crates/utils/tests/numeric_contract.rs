@@ -6,12 +6,12 @@ use utils::{
 };
 
 #[test]
-fn repeated_point_tangents_have_stable_negative_quiet_nan() {
+fn repeated_and_subnormal_point_tangents_remain_finite() {
     let curve = Curve2::try_new(vec![Vec2::ZERO, Vec2::ZERO, Vec2::X], false).unwrap();
     for u in [-2.0, 0.0] {
         assert_eq!(
             curve.get_tangent_at_u(u).to_array().map(f32::to_bits),
-            [0xffc0_0000; 2]
+            [0; 2]
         );
     }
     assert_eq!(curve.get_tangent_at_u(0.5), Vec2::X);
@@ -21,7 +21,7 @@ fn repeated_point_tangents_have_stable_negative_quiet_nan() {
             .get_tangent_at_coord(CurveInternalCoord { segment: 0, t: 0.5 })
             .to_array()
             .map(f32::to_bits),
-        [0xffc0_0000; 3]
+        [0; 3]
     );
     // The zero check must not classify a nonzero subnormal displacement as zero.
     let curve = Curve2::try_new(
@@ -29,7 +29,13 @@ fn repeated_point_tangents_have_stable_negative_quiet_nan() {
         false,
     )
     .unwrap();
-    assert!(curve.get_tangent_at_u(0.0).x.is_infinite());
+    assert_eq!(curve.get_tangent_at_u(0.0), Vec2::X);
+    let curve = Curve3::try_new(
+        vec![Vec3::ZERO, Vec3::new(0.0, f32::from_bits(1), 0.0), Vec3::X],
+        false,
+    )
+    .unwrap();
+    assert_eq!(curve.get_tangent_at_u(0.0), Vec3::Y);
 }
 
 #[test]

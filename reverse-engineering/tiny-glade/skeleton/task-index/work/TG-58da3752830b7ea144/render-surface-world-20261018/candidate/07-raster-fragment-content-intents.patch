@@ -1,0 +1,215 @@
+--- a/crates/country-core/src/render/pass_builder/draw_stream.rs
++++ b/crates/country-core/src/render/pass_builder/draw_stream.rs
+@@ -199,6 +199,11 @@
+     pub variant: u8,
+     /// `+0xb1`。
+     pub unknown_b1: u8,
++    /// Current graph-host metadata, not additional native DrawPacket fields.
++    /// Binding indices refer to the actual packet accesses below the original
++    /// shader reflection; ordinary packets retain strict content checks.
++    pub preserving_buffer_bindings: Vec<u32>,
++    pub inactive_texture_bindings: Vec<u32>,
+ }
+ 
+ impl DrawPacket {
+@@ -219,6 +224,8 @@
+             blend: 1.0,
+             variant: 0,
+             unknown_b1: 0,
++            preserving_buffer_bindings: Vec::new(),
++            inactive_texture_bindings: Vec::new(),
+         }
+     }
+ 
+--- a/crates/country-core/src/render/pass_builder/draw_builder.rs
++++ b/crates/country-core/src/render/pass_builder/draw_builder.rs
+@@ -512,6 +512,40 @@
+     /// `write_rg_storage_buffer`（0x1409067e0）：访问 0x37、同步组 0。
+     pub fn write_rg_storage_buffer(self, name_hash: u64, buffer_resource: u32) -> Self {
+         self.rg_storage_access(name_hash, buffer_resource, ACCESS_RG_STORAGE_WRITE, 0)
++    }
++
++    /// Current-host content intent for an original fragment atomic/RMW.
++    /// It keeps the native access and real clear/upload dependency intact.
++    pub fn preserve_storage_buffer_contents(mut self, hash: u64) -> Self {
++        let Some(binding) = self.lookup_binding(hash) else { return self; };
++        let access = self.packet.get().accesses.iter().rev()
++            .find(|access| access.binding_index == binding)
++            .expect("preserving raster buffer requires its actual graph binding");
++        let actual = &self.pass.bindings[access.slot as usize];
++        assert!(!self.pass.texture_slots.values().any(|slot| *slot == access.slot) && access_is_write(actual.access_type),
++            "preserving raster buffer requires a buffer write");
++        let packet = self.packet.get_mut();
++        if !packet.preserving_buffer_bindings.contains(&binding) {
++            packet.preserving_buffer_bindings.push(binding);
++        }
++        self
++    }
++
++    /// A proven uniform configuration prevents all texel fetches from this
++    /// binding. Preserve the actual descriptor, owner and native sync access.
++    pub fn inactive_texture_contents(mut self, hash: u64) -> Self {
++        let Some(binding) = self.lookup_binding(hash) else { return self; };
++        let access = self.packet.get().accesses.iter().rev()
++            .find(|access| access.binding_index == binding)
++            .expect("inactive raster texture requires its actual graph binding");
++        let actual = &self.pass.bindings[access.slot as usize];
++        assert!(self.pass.texture_slots.values().any(|slot| *slot == access.slot) && !access_is_write(actual.access_type),
++            "inactive raster texture requires a non-writing image binding");
++        let packet = self.packet.get_mut();
++        if !packet.inactive_texture_bindings.contains(&binding) {
++            packet.inactive_texture_bindings.push(binding);
++        }
++        self
+     }
+ 
+     /// `bind_external_storage_buffer`（0x140906400）：名字命中后取 `get_vk_buffer`（`None` → `Option::unwrap`
+@@ -1460,6 +1494,25 @@
+         // offset 0x3c 处写 8 字节越过 0x40 块 → 越界（slice 索引失败）。
+         let (mut pass, _l) = make_pass();
+         let _ = builder(&mut pass).optional_uniform(0x23, [1u32, 2u32]);
++    }
++
++    #[test]
++    fn raster_content_intents_only_tag_actual_reflected_bindings() {
++        let (mut pass, _) = make_pass();
++        let texture = AttachmentTexture { id: 50, extent: (4,4), format: 37, sample_count: 1 };
++        let b = builder(&mut pass)
++            .bind_texture_to_draw_builder(BindTexture::RgHandle(&texture), 0x10, ACCESS_SAMPLED_IMAGE, None)
++            .inactive_texture_contents(0x10).inactive_texture_contents(0x10)
++            .write_rg_storage_buffer(0x11, 60)
++            .preserve_storage_buffer_contents(0x11).preserve_storage_buffer_contents(0x11)
++            .inactive_texture_contents(0xdead).preserve_storage_buffer_contents(0xdead);
++        assert_eq!(b.packet().inactive_texture_bindings, [3]);
++        assert_eq!(b.packet().preserving_buffer_bindings, [4]);
++        assert_eq!(b.packet().accesses.len(), 2);
++        b.discard();
++        assert_eq!(pass.accesses[0].access, ACCESS_SAMPLED_IMAGE);
++        assert_eq!(pass.accesses[1].access, ACCESS_RG_STORAGE_WRITE);
++        finish_pass(pass);
+     }
+ 
+     #[test]
+--- a/crates/tiny-glade/src/raster_host.rs
++++ b/crates/tiny-glade/src/raster_host.rs
+@@ -1090,6 +1090,20 @@
+             declared.render_with_result_context(move |_| Err(error));
+             return;
+         }
++        let (preserving_buffers, inactive_reads) = match raster_content_intents(
++            prepared.iter().map(|draw| &draw.packet), &bindings,
++            |resource| graph.declaration().resources.get(resource as usize)
++                .map(|resource| matches!(resource.descriptor, rhapsody::rg::graph::Descriptor::Image(_)))
++                .ok_or_else(|| rhapsody::Error::invalid_usage("raster metadata resource is outside the graph")),
++        ) {
++            Ok(intents) => intents,
++            Err(error) => {
++                let mut declared = graph.add_pass(name);
++                declared.side_effect();
++                declared.render_with_result_context(move |_| Err(error));
++                return;
++            }
++        };
+         // Native attachment LOAD preserves an existing producer. A newly
+         // created/imported-undefined target may still use native LOAD (the
+         // original fullscreen combine/resolve does so); that does not invent
+@@ -1197,14 +1211,22 @@
+             let resource = declared
+                 .resource_handle(a.resource)
+                 .expect("add_resource_access: resource does not belong to this graph");
+-            let result = if preserving_attachments.contains(&a.resource)
+-                && country_core::render::pass_builder::draw_stream::access_is_write(a.access)
++            let writes = country_core::render::pass_builder::draw_stream::access_is_write(a.access);
++            let result = if (preserving_attachments.contains(&a.resource) || preserving_buffers.contains(&a.resource))
++                && writes
+             {
+                 declared.add_preserving_resource_access_range(
+                     resource,
+                     a.access,
+                     a.group,
+                     rhapsody::rg::resource::AccessRange::Whole,
++                )
++            } else if !writes && inactive_reads.get(&a.resource) == Some(&true)
++                && !colors.iter().any(|color| color.id == a.resource)
++                && depth.as_ref().is_none_or(|depth| depth.texture_id != a.resource)
++            {
++                declared.add_inactive_resource_read_range(
++                    resource, a.access, a.group, rhapsody::rg::resource::AccessRange::Whole,
+                 )
+             } else {
+                 declared.add_resource_access(resource, a.access, a.group)
+@@ -1870,3 +1892,74 @@
+         );
+     }
+ }
++
++
++/// Resolve packet-local evidence onto the real graph resource. Any active
++/// alias in any draw tightens an inactive binding back into a content read.
++fn raster_content_intents<'a>(
++    packets: impl IntoIterator<Item = &'a DrawPacket>,
++    bindings: &[RenderPassBinding],
++    mut is_texture: impl FnMut(u32) -> rhapsody::Result<bool>,
++) -> rhapsody::Result<(Vec<u32>, std::collections::BTreeMap<u32, bool>)> {
++    use country_core::render::pass_builder::draw_stream::access_is_write;
++    let mut preserving = Vec::new();
++    let mut inactive = std::collections::BTreeMap::new();
++    for packet in packets {
++        for binding in packet.preserving_buffer_bindings.iter().chain(&packet.inactive_texture_bindings) {
++            if !packet.accesses.iter().any(|access| access.binding_index == *binding) {
++                return Err(rhapsody::Error::invalid_usage("raster contents metadata lacks its actual binding"));
++            }
++        }
++        for access in &packet.accesses {
++            let actual = bindings.get(access.slot as usize).ok_or_else(||
++                rhapsody::Error::invalid_usage("raster contents metadata has a stale pass slot"))?;
++            let texture = is_texture(actual.resource_index)?;
++            let preserves = packet.preserving_buffer_bindings.contains(&access.binding_index);
++            let unused = packet.inactive_texture_bindings.contains(&access.binding_index);
++            if preserves {
++                if texture || !access_is_write(actual.access_type) || unused {
++                    return Err(rhapsody::Error::invalid_usage("raster preserving metadata requires an actual buffer write"));
++                }
++                if !preserving.contains(&actual.resource_index) { preserving.push(actual.resource_index); }
++            }
++            if unused && (!texture || access_is_write(actual.access_type)) {
++                return Err(rhapsody::Error::invalid_usage("raster inactive metadata requires an actual texture read"));
++            }
++            if !access_is_write(actual.access_type) {
++                inactive.entry(actual.resource_index).and_modify(|all| *all &= unused).or_insert(unused);
++            }
++        }
++    }
++    Ok((preserving, inactive))
++}
++
++#[cfg(test)]
++mod original_surface_raster_intent_tests {
++    use super::*;
++    use country_core::render::pass_builder::draw_stream::ResourceAccess;
++    fn packet() -> DrawPacket {
++        DrawPacket::new(country_core::rhapsody_contract::Handle(
++            country_core::rhapsody_contract::ManagedHandle(1), std::marker::PhantomData,
++        ), [0,0], RasterState::default())
++    }
++    #[test]
++    fn active_aliases_tighten_reads_and_atomic_preserving_is_explicit() {
++        let bindings = vec![
++            RenderPassBinding { resource_index: 42, access_type: 0x1d, view: Some(Default::default()) },
++            RenderPassBinding { resource_index: 43, access_type: 0x37, view: None },
++        ];
++        let mut first = packet();
++        first.accesses = vec![ResourceAccess { binding_index: 0, slot: 0 }, ResourceAccess { binding_index: 1, slot: 1 }];
++        first.inactive_texture_bindings.push(0);
++        first.preserving_buffer_bindings.push(1);
++        let (preserving, inactive) = raster_content_intents([&first], &bindings, |id| Ok(id == 42)).unwrap();
++        assert_eq!(preserving, [43]);
++        assert_eq!(inactive[&42], true);
++        let mut active = packet();
++        active.accesses.push(ResourceAccess { binding_index: 0, slot: 0 });
++        let (_, inactive) = raster_content_intents([&first, &active], &bindings, |id| Ok(id == 42)).unwrap();
++        assert_eq!(inactive[&42], false);
++        first.inactive_texture_bindings.push(1);
++        assert!(raster_content_intents([&first], &bindings, |id| Ok(id == 42)).is_err());
++    }
++}

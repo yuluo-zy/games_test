@@ -1,0 +1,11 @@
+[
+ {
+  "tool": "run-script",
+  "args": {
+   "programPath": "/tiny-glade.exe",
+   "code": "\nimport json\nfrom ghidra.app.decompiler import DecompInterface\noutdir = \"/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/recovery/agent-team/work/restorer-tinyglade-E/\"\ntargets = [(\"140593b70\",\"0x140593b70_run_game.c\"), (\"14059d450\",\"0x14059d450_run_game_thread.c\")]\nsummary = []\nfor a, fn in targets:\n    addr = currentProgram.getAddressFactory().getAddress(a)\n    f = currentProgram.getFunctionManager().getFunctionAt(addr)\n    if f is None:\n        summary.append({\"address\": a, \"error\": \"function absent\"})\n        continue\n    d = DecompInterface()\n    try:\n        d.openProgram(currentProgram)\n        result = d.decompileFunction(f, 300, monitor)\n        if not result.decompileCompleted():\n            summary.append({\"address\": a, \"error\": str(result.getErrorMessage())})\n            continue\n        c = result.getDecompiledFunction().getC()\n        fh = open(outdir + fn, \"w\")\n        fh.write(c)\n        fh.close()\n        summary.append({\"address\": a, \"signature\": str(f.getSignature()), \"chars\": len(c), \"lines\": c.count(\"\\n\")})\n    finally:\n        d.dispose()\nprint(json.dumps({\"sha256\": str(currentProgram.getExecutableSHA256()), \"summary\": summary}))\n",
+   "timeoutSeconds": 600
+  },
+  "timeout_seconds": 700
+ }
+]

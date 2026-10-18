@@ -1,48 +1,45 @@
-//! Owned language packs with fallible schema validation and bounded missing-key caches.
+//! Owned language packs with fallible, flat string-to-string YAML validation.
+use crate::missing_cache::MissingCache;
 use anyhow::{Context, Result, ensure};
-use std::{
-    cell::Cell,
-    collections::HashMap,
-    path::Path,
-    sync::{Arc, Mutex},
+use std::{collections::HashMap, path::Path, sync::Arc};
+use yaml_rust2::{
+    YamlLoader,
+    parser::{Event, MarkedEventReceiver, Parser},
+    scanner::Marker,
 };
-use yaml_rust2::YamlLoader;
 
-const MISSING_LIMIT: usize = 1024;
-thread_local! { static LOGGING_MISSING: Cell<bool> = const { Cell::new(false) }; }
-#[derive(Debug, Default)]
-pub(crate) struct MissingCache(Mutex<HashMap<String, Arc<str>>>);
-impl MissingCache {
-    pub(crate) fn get(&self, key: &str) -> Arc<str> {
-        let (value, notify) = {
-            let mut cache = self.0.lock().unwrap_or_else(|e| e.into_inner());
-            if let Some(value) = cache.get(key) {
-                return Arc::clone(value);
-            }
-            let value: Arc<str> = format!("?_{key}").into();
-            let notify = cache.len() < MISSING_LIMIT;
-            if notify {
-                cache.insert(key.to_owned(), Arc::clone(&value));
-            }
-            (value, notify)
-        };
-        // Insert before notifying, and suppress recursive logger lookups. No cache
-        // lock is held while calling external logging code, including on panic.
-        if notify {
-            LOGGING_MISSING.with(|logging| {
-                if !logging.replace(true) {
-                    struct Reset<'a>(&'a Cell<bool>);
-                    impl Drop for Reset<'_> {
-                        fn drop(&mut self) {
-                            self.0.set(false);
-                        }
-                    }
-                    let _reset = Reset(logging);
-                    log::warn!("LanguageLibrary: missing key {key}");
+// YamlLoader overwrites duplicate mapping keys. Count the root entries before
+// that information is lost, while leaving YAML typing and aliases to the loader.
+#[derive(Default)]
+struct PackLoader {
+    yaml: YamlLoader,
+    depth: usize,
+    expecting_value: bool,
+    entries: usize,
+}
+
+impl MarkedEventReceiver for PackLoader {
+    fn on_event(&mut self, event: Event, marker: Marker) {
+        match &event {
+            Event::Scalar(..)
+            | Event::Alias(..)
+            | Event::MappingStart(..)
+            | Event::SequenceStart(..)
+                if self.depth == 1 =>
+            {
+                if !self.expecting_value {
+                    self.entries += 1;
                 }
-            });
+                self.expecting_value = !self.expecting_value;
+            }
+            _ => {}
         }
-        value
+        match &event {
+            Event::MappingStart(..) | Event::SequenceStart(..) => self.depth += 1,
+            Event::MappingEnd | Event::SequenceEnd => self.depth -= 1,
+            _ => {}
+        }
+        self.yaml.on_event(event, marker);
     }
 }
 
@@ -56,6 +53,7 @@ pub(crate) fn validate_locale(locale: &str) -> Result<()> {
     );
     Ok(())
 }
+/// An owned locale and translation table. Lookups clone only the string's `Arc`.
 #[derive(Debug)]
 pub struct LanguageLibrary {
     locale: Arc<str>,
@@ -71,6 +69,7 @@ impl LanguageLibrary {
             missing: MissingCache::default(),
         }
     }
+    /// Read a UTF-8 pack, reporting its file path on I/O or schema errors.
     pub fn try_from_yml(path: impl AsRef<Path>, locale: String) -> Result<Self> {
         let path = path.as_ref();
         let text = std::fs::read_to_string(path)
@@ -81,7 +80,11 @@ impl LanguageLibrary {
     /// Accept an empty file or one flat string-to-string mapping.
     pub fn parse_yml(text: &str, locale: String) -> Result<Self> {
         validate_locale(&locale)?;
-        let documents = YamlLoader::load_from_str(text).context("Parsing YAML")?;
+        let mut loader = PackLoader::default();
+        Parser::new_from_str(text)
+            .load(&mut loader, true)
+            .context("Parsing YAML")?;
+        let documents = loader.yaml.documents();
         ensure!(
             documents.len() <= 1,
             "Language pack must contain at most one YAML document"
@@ -91,6 +94,11 @@ impl LanguageLibrary {
             let mapping = document
                 .as_hash()
                 .context("Language pack root must be a mapping")?;
+            ensure!(
+                mapping.len() == loader.entries,
+                "Language pack contains duplicate mapping keys or invalid entries"
+            );
+            entries.reserve(mapping.len());
             for (index, (key, value)) in mapping.iter().enumerate() {
                 let key = key.as_str().with_context(|| {
                     format!("Language entry {} has a non-string key", index + 1)
@@ -106,9 +114,11 @@ impl LanguageLibrary {
     pub fn locale(&self) -> Arc<str> {
         Arc::clone(&self.locale)
     }
+    /// Return a shared owned value without generating missing-key diagnostics.
     pub fn try_get(&self, key: &str) -> Option<Arc<str>> {
         self.entries.get(key).map(Arc::clone)
     }
+    /// Return a translation or a bounded, cached `?_<key>` marker.
     pub fn get(&self, key: &str) -> Arc<str> {
         self.try_get(key).unwrap_or_else(|| self.missing.get(key))
     }
@@ -130,6 +140,10 @@ mod tests {
         drop(missing);
         drop(lib);
         assert!(weak.upgrade().is_none());
+        let aliases =
+            LanguageLibrary::parse_yml("anchor: &key name\n? *key\n: value", "test".into())
+                .unwrap();
+        assert_eq!(&*aliases.get("name"), "value");
     }
     #[test]
     fn schema_errors_return_errors() {
@@ -140,6 +154,11 @@ mod tests {
             "123: text",
             "a: text\n---\na: another",
             "null",
+            "key: first\nkey: second",
+            "key: 123\nkey: second",
+            "key: {nested: value}\nkey: second",
+            "key: first\n\"key\": second",
+            "anchor: &key name\nname: first\n? *key\n: second",
         ] {
             assert!(
                 LanguageLibrary::parse_yml(text, "test".into()).is_err(),
@@ -155,20 +174,6 @@ mod tests {
         for locale in ["", "../en-US", "/en-US", "a\\b", "a.b"] {
             assert!(LanguageLibrary::parse_yml("", locale.into()).is_err());
         }
-    }
-    #[test]
-    fn missing_cache_is_bounded_and_cached_lookups_reuse_allocation() {
-        let cache = MissingCache::default();
-        let first = cache.get("key");
-        assert!(Arc::ptr_eq(&first, &cache.get("key")));
-        for i in 0..2000 {
-            cache.get(&i.to_string());
-        }
-        assert_eq!(cache.0.lock().unwrap().len(), MISSING_LIMIT);
-        let value = cache.get("uncached");
-        let weak = Arc::downgrade(&value);
-        drop(value);
-        assert!(weak.upgrade().is_none());
     }
     #[test]
     fn pack_strings_are_reclaimed_after_last_reader() {

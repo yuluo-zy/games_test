@@ -68,8 +68,100 @@ impl PassBuilder<'_> {
             synchronization_group,
             range,
             super::resource::AccessVersion::Automatic,
-            matches!(access_code, 0x36 | 0x37),
+            // Legacy resource/ref bindings retain original synchronization
+            // codes. Content-preserving typed writes and explicit read→write
+            // upgrades declare their previous-content dependency separately.
+            false,
         )?;
+        Ok(self)
+    }
+
+    /// Source-host adapter for a confirmed content-preserving operation, such
+    /// as an attachment LOAD. The original synchronization code alone cannot
+    /// express that extra content contract; the actual consumer supplies it.
+    pub fn add_preserving_resource_access_range(
+        &mut self,
+        resource: ResourceHandle,
+        access_code: u8,
+        synchronization_group: u32,
+        range: super::resource::AccessRange,
+    ) -> Result<&mut Self, BuildError> {
+        self.add_versioned_access(
+            resource,
+            access_code,
+            synchronization_group,
+            range,
+            super::resource::AccessVersion::Automatic,
+            true,
+        )?;
+        Ok(self)
+    }
+
+    /// Keep the real binding/synchronization access for a shader read whose
+    /// uniformly disabled branch cannot read resource contents in this pass.
+    /// This neither initializes the resource nor suppresses later active reads.
+    pub fn add_inactive_resource_read_range(
+        &mut self,
+        resource: ResourceHandle,
+        access_code: u8,
+        synchronization_group: u32,
+        range: super::resource::AccessRange,
+    ) -> Result<&mut Self, BuildError> {
+        self.graph.check_pass_capacity()?;
+        self.graph.check_handle(resource)?;
+        if usize::from(access_code) >= crate::raw::access_table::ACCESS_CODE_COUNT {
+            return Err(BuildError::Contract(
+                super::resource::ResourceContractError::InvalidAccessCode(access_code),
+            ));
+        }
+        if crate::raw::access_table::is_write(access_code) {
+            return Err(BuildError::Contract(
+                super::resource::ResourceContractError::WrongAccessMode {
+                    resource: resource.raw(),
+                    access_code,
+                },
+            ));
+        }
+        range
+            .validate(self.graph.declaration.resources[resource.raw() as usize].descriptor)
+            .map_err(|error| super::resource_contracts::range_error(resource.raw(), error))?;
+        super::access_ledger::collect_resource_access_range_with_contents(
+            &mut self.declaration.accesses,
+            resource.raw(),
+            access_code,
+            synchronization_group,
+            range,
+            super::resource::AccessVersion::Automatic,
+            false,
+            true,
+        )
+        .map_err(BuildError::IncompatibleAccess)?;
+        Ok(self)
+    }
+
+    /// Preserve a real shader content read even when its original caller
+    /// explicitly permits undefined initial texels. Ordinary reads and exports
+    /// stay strict; existing producers still remain data dependencies.
+    pub fn add_undefined_content_read_range(
+        &mut self, resource: ResourceHandle, access_code: u8,
+        synchronization_group: u32, range: super::resource::AccessRange,
+    ) -> Result<&mut Self, BuildError> {
+        self.graph.check_pass_capacity()?;
+        self.graph.check_handle(resource)?;
+        if usize::from(access_code) >= crate::raw::access_table::ACCESS_CODE_COUNT {
+            return Err(BuildError::Contract(super::resource::ResourceContractError::InvalidAccessCode(access_code)));
+        }
+        if crate::raw::access_table::is_write(access_code) {
+            return Err(BuildError::Contract(super::resource::ResourceContractError::WrongAccessMode {
+                resource: resource.raw(), access_code,
+            }));
+        }
+        range.validate(self.graph.declaration.resources[resource.raw() as usize].descriptor)
+            .map_err(|error| super::resource_contracts::range_error(resource.raw(), error))?;
+        super::access_ledger::collect_resource_access_range_with_policy(
+            &mut self.declaration.accesses, resource.raw(), access_code, synchronization_group,
+            range, super::resource::AccessVersion::Automatic, false, false, true,
+        ).map_err(BuildError::IncompatibleAccess)?;
         Ok(self)
     }
 

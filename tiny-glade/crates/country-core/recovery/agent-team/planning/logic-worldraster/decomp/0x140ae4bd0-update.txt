@@ -1,0 +1,35 @@
+NAME: update
+SIGNATURE: void __cdecl update(void)
+SIZE: 74
+CALLEES: 
+----DECOMP----
+
+void __cdecl country_core::systems::paths::draw_path::DrawState::update(void)
+
+{
+  char cVar1;
+  uint uVar2;
+  char *in_RCX;
+  char in_DL;
+  char in_R8B;
+  
+  uVar2 = 3;
+  if ((byte)(in_DL - 2U) < 3) {
+    uVar2 = (uint)(byte)(in_DL - 2U);
+  }
+  if (uVar2 - 1 < 2) {
+    cVar1 = '\x02';
+    if (1 < (byte)(*in_RCX - 1U)) {
+      cVar1 = in_R8B;
+    }
+    *in_RCX = cVar1;
+    return;
+  }
+  cVar1 = '\0';
+  if (uVar2 != 0) {
+    cVar1 = ((byte)(*in_RCX - 1U) < 2) * '\x03';
+  }
+  *in_RCX = cVar1;
+  return;
+}
+

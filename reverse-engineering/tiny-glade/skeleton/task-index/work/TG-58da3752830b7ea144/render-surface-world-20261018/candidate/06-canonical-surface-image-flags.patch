@@ -1,0 +1,102 @@
+--- a/crates/country-core/src/rhapsody_types.rs
++++ b/crates/country-core/src/rhapsody_types.rs
+@@ -17,6 +17,8 @@
+ /// `r9d → +8`）；纹理文件尾 −3 字节是 `kind`（0 1D … 2 2D、3 2D 数组、4 3D、5 立方体、6 立方体数组），−4 字节是 `format`（原始 VkFormat，零扩展）。
+ #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+ pub struct TextureDesc {
++    /// Native TextureDesc+4 image-create flags; independent of usage bits.
++    pub flags: u32,
+     pub extent: [u32; 3],
+     /// `TextureDesc+0x1e`：图像种类枚举（O）。
+     pub kind: u8,
+@@ -45,6 +47,14 @@
+     }
+     pub fn sampled(mut self) -> Self {
+         self.sampled = true;
++        self
++    }
++    /// Native 0x140bd5410 ORs usage4 and image-create flags0x108.
++    /// Mutable format and block-texel view compatibility must reach the actual
++    /// image producer before the ice radiance0x62 -> sampled0x7b view is made.
++    pub fn sampled_with_different_format(mut self) -> Self {
++        self.sampled = true;
++        self.flags |= 0x108;
+         self
+     }
+     pub fn mip_levels(mut self, n: u8) -> Self {
+--- a/crates/country-core/src/resources/texture_presets.rs
++++ b/crates/country-core/src/resources/texture_presets.rs
+@@ -52,6 +52,7 @@
+ const fn row(extent: [u32; 2], format: u32, hash: u64) -> (TextureDesc, u64) {
+     (
+         TextureDesc {
++            flags: 0,
+             extent: [extent[0], extent[1], 1],
+             kind: 2,
+             sampled: true,
+--- a/crates/country-core/src/systems/render_loop/compute_passes/pass_kit/test_env.rs
++++ b/crates/country-core/src/systems/render_loop/compute_passes/pass_kit/test_env.rs
+@@ -227,6 +227,7 @@
+ }
+ /// 预设纹理缺省 desc（`create_preset_textures` 的闭包返回值；`preset_desc` 读回）。
+ pub const DEFAULT_PRESET_DESC: TextureDesc = TextureDesc {
++    flags: 0,
+     extent: [8, 4, 1],
+     kind: 2,
+     sampled: false,
+--- a/crates/tiny-glade/src/render_host.rs
++++ b/crates/tiny-glade/src/render_host.rs
+@@ -347,6 +347,7 @@
+     pub fn core_desc(texture: &ManagedTexture) -> TextureDesc {
+         let d = &texture.desc;
+         TextureDesc {
++            flags: d.flags.as_raw(),
+             extent: [d.width, d.height, d.depth],
+             kind: d.kind as u8,
+             sampled: d.usage.contains(vk::ImageUsageFlags::SAMPLED),
+@@ -409,6 +410,7 @@
+         let mut out = RhTextureDesc::new(extent, kind, vk::Format::from_raw(desc.format as i32))
+             .mip_levels(desc.mip_levels.max(1))
+             .array_elements(u32::from(desc.array_elements).max(1))?;
++        out.flags = vk::ImageCreateFlags::from_raw(desc.flags);
+         if desc.sampled {
+             out = out.sampled();
+         }
+@@ -2948,3 +2950,22 @@
+         assert!(project_view_desc(&desc, &source.level_count(Some(9))).is_err());
+     }
+ }
++
++
++#[cfg(test)]
++mod original_surface_texture_flags_tests {
++    use super::*;
++    #[test]
++    fn ice_radiance_flags_survive_the_actual_canonical_descriptor_projection() {
++        let original = TextureDesc::new_2d([64, 32], 0x62).sampled_with_different_format();
++        assert_eq!(original.flags, 0x108);
++        assert!(original.sampled);
++        let native = TextureHost::convert(&original).unwrap();
++        assert_eq!(native.flags.as_raw(), 0x108);
++        assert_eq!(native.format, vk::Format::R32_UINT);
++        assert_eq!(native.width, 64);
++        assert_eq!(native.height, 32);
++        assert!(native.usage.contains(vk::ImageUsageFlags::SAMPLED));
++        assert_eq!(TextureHost::convert(&TextureDesc::new_2d([64, 32], 0x62)).unwrap().flags.as_raw(), 0);
++    }
++}
+--- a/crates/country-core/src/systems/render_loop/draw_passes/transparency_pass/surface_support.rs
++++ b/crates/country-core/src/systems/render_loop/draw_passes/transparency_pass/surface_support.rs
+@@ -273,9 +273,10 @@
+ }
+ 
+ /// `TextureDesc::sampled_with_different_format`（O 0x140bd5410：`first_qword |= 0x10800000004`，即 usage |= 4 且 dword@+4 |= 0x108）。
+-/// U：`rhapsody_types::TextureDesc` 没有“可变格式视图”字段，只能表达 `sampled`；见 B_d_water.md 请求。
++/// The canonical descriptor preserves both original image-create flags and
++/// usage; the production TextureHost passes them to the same graph allocation.
+ pub fn sampled_with_different_format(desc: TextureDesc) -> TextureDesc {
+-    desc.sampled()
++    desc.sampled_with_different_format()
+ }
+ 
+ /// 射线缓冲的像素数 `n = w * h`（32 位乘，回绕）与 `n + (n >> 4)`（32 位加）。

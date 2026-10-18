@@ -1,0 +1,239 @@
+    fn endpoint_world(fence: bool) -> (World, WallId) {
+        use crate::resources::{
+            history::History, roofs::geometry::surface::Curve2,
+            walls::{WallState, publication_source::TerrainHeightGrid512},
+        };
+        let mut world = World::new();
+        world.insert_resource(if fence { AppMode::Fences } else {
+            AppMode::Wall(WallShape::Freeform)
+        });
+        world.insert_resource(UiState::at_startup());
+        world.insert_resource(GladeBorder(crate::resources::glade_border::BorderShape::Circle(
+            utils::geometry::Circle2d::new(Vec2::ZERO, 10.0),
+        )));
+        let mut walls = InnerWalls::new();
+        let source = WallState::new(
+            Curve2::try_new(vec![[0.0, 0.0], [1.0, 0.0]], false).unwrap(),
+            4.0, 2, u8::from(fence), false,
+        );
+        let wall = walls.new_wall_from_curve(source);
+        walls.update_freehand_ty(wall, 1);
+        let mut public = PublicWalls::default();
+        public.consume(&mut walls, &TerrainHeightGrid512 {
+            encoded: vec![0; 512 * 512].into(), minimum_y: -2.0,
+            maximum_y: -2.0, sampling_fix: false,
+        });
+        world.insert_resource(walls);
+        world.insert_resource(public);
+        let mut colors = WallColorIds::new();
+        colors.0[wall.0 as usize] = 23;
+        world.insert_resource(colors);
+        let mut colors = HalftimberColorIds::new();
+        colors.0[wall.0 as usize] = 42;
+        world.insert_resource(colors);
+        world.init_resource::<InProgressCurve>();
+        world.init_resource::<ContinueWallOriginalState>();
+        world.init_resource::<WallContinueState>();
+        world.init_resource::<SuppressContinueWall>();
+        world.init_resource::<CursorTerrainRaycast>();
+        world.init_resource::<LiveDecoratorArchivist>();
+        world.init_resource::<DecoratorStorage>();
+        world.init_resource::<Events<MainCameraMoved>>();
+        world.init_resource::<Events<RecordMouseInputIntoWall>>();
+        world.init_resource::<Events<FinishWall>>();
+        world.init_resource::<Events<DisplayOutOfBorder>>();
+        world.init_resource::<Events<FeedbackInputOutOfBorder>>();
+        let mut history = History::<()>::empty_glade();
+        history.start_input_recording(5).unwrap();
+        world.insert_resource(history);
+        (world, wall)
+    }
+
+    fn endpoint_frame(world: &mut World, schedule: &mut Schedule, wall: WallId,
+        extend_start: bool, phase: u8, point: Vec3) {
+        use crate::systems::ui::resources::ui_state::{UiInteraction, WidgetId};
+        world.resource_mut::<UiState>().replace_interaction(UiInteraction {
+            native_tag: 2, native_phase: phase,
+            widget: WidgetId::from_name(&continuation_widget_name(wall, extend_start)),
+        });
+        world.resource_mut::<CursorTerrainRaycast>().update(Some(point));
+        schedule.run(world);
+    }
+
+    #[test]
+    fn endpoint_select_captures_actual_authority_colors_and_both_directions() {
+        for fence in [false, true] {
+            for extend_start in [false, true] {
+                let (mut world, wall) = endpoint_world(fence);
+                let before = world.resource::<InnerWalls>().get_unwrapped(wall).clone();
+                let mut schedule = Schedule::default();
+                schedule.add_systems(ui_continue_wall);
+                // Outside still captures/selects, but does not record a point.
+                endpoint_frame(&mut world, &mut schedule, wall, extend_start, 3,
+                    Vec3::new(20.0, 0.0, 0.0));
+                assert_eq!(world.resource::<WallContinueState>().state, 1);
+                let previous = world.resource::<ContinueWallOriginalState>().previous.as_ref().unwrap();
+                assert_eq!(previous.source().curve.points, before.source().curve.points);
+                assert_eq!(previous.height(), 4.0);
+                assert_eq!(previous.style(), 2);
+                assert_eq!(previous.freehand_ty(), 1);
+                let progress = world.resource::<InProgressCurve>();
+                assert_eq!((progress.wall, progress.flags), (Some(wall), u8::from(extend_start)));
+                assert_eq!(progress.raw_input_points,
+                    if extend_start { vec![Vec2::new(1.0, 0.0), Vec2::ZERO] }
+                    else { vec![Vec2::ZERO, Vec2::new(1.0, 0.0)] });
+                let metadata = progress.drawing.as_ref().unwrap();
+                assert_eq!((metadata.desired_height, metadata.color_id, metadata.kind, metadata.freehand_ty),
+                    (4.0, if fence {42} else {23}, u8::from(fence), 1));
+                assert!(metadata.first_unsnapped_cursor.is_none());
+                assert!(world.resource::<Events<RecordMouseInputIntoWall>>().is_empty());
+                assert_eq!(world.resource::<Events<DisplayOutOfBorder>>().len(), 1);
+                assert_eq!(world.resource::<Events<FeedbackInputOutOfBorder>>().len(), 1);
+                let ui = world.resource::<UiState>();
+                for endpoint in [false, true] {
+                    use crate::systems::ui::resources::ui_state::WidgetId;
+                    let params = ui.widget(WidgetId::from_name(&continuation_widget_name(wall, endpoint))).unwrap();
+                    assert_eq!(params.volume.tag, 0);
+                    assert_eq!(params.volume.size.x, 1.0);
+                    assert_eq!(params.volume.center.y.to_bits(), 0.0f32.to_bits());
+                    assert!(params.occlude_by_world);
+                    assert!(!params.flags.no_history_recording());
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn active_drag_uses_border_gate_but_keeps_state_two_and_bypasses_idle_gates() {
+        let (mut world, wall) = endpoint_world(false);
+        let mut schedule = Schedule::default();
+        schedule.add_systems(ui_continue_wall);
+        endpoint_frame(&mut world, &mut schedule, wall, false, 3, Vec3::X);
+        world.resource_mut::<SuppressContinueWall>().suppressed = true;
+        world.resource_mut::<Events<MainCameraMoved>>().send(MainCameraMoved(Vec3::X));
+        endpoint_frame(&mut world, &mut schedule, wall, false, 4, Vec3::new(20.0, 0.0, 0.0));
+        assert_eq!(world.resource::<WallContinueState>().state, 2);
+        assert!(world.resource::<Events<RecordMouseInputIntoWall>>().is_empty());
+        assert_eq!(world.resource::<Events<FeedbackInputOutOfBorder>>().len(), 1);
+        endpoint_frame(&mut world, &mut schedule, wall, false, 4, Vec3::new(2.0, 0.0, 0.0));
+        assert_eq!(world.resource::<Events<RecordMouseInputIntoWall>>().len(), 1);
+        endpoint_frame(&mut world, &mut schedule, wall, false, 1, Vec3::new(2.0, 0.0, 0.0));
+        assert_eq!(world.resource::<WallContinueState>().state, 3);
+        let events = world.resource::<Events<FinishWall>>();
+        assert_eq!(events.get_cursor().read(events).map(|event| event.0).collect::<Vec<_>>(), [false]);
+    }
+
+    #[test]
+    fn idle_suppression_leaves_camera_unread_then_camera_blocks_only_one_invocation() {
+        let (mut world, wall) = endpoint_world(false);
+        world.resource_mut::<WallContinueState>().state = 3;
+        world.resource_mut::<SuppressContinueWall>().suppressed = true;
+        world.resource_mut::<Events<MainCameraMoved>>().send(MainCameraMoved(Vec3::X));
+        let mut schedule = Schedule::default();
+        schedule.add_systems(ui_continue_wall);
+        endpoint_frame(&mut world, &mut schedule, wall, false, 3, Vec3::X);
+        assert_eq!(world.resource::<WallContinueState>().state, 0);
+        assert!(world.resource::<InProgressCurve>().wall.is_none());
+        world.resource_mut::<SuppressContinueWall>().suppressed = false;
+        endpoint_frame(&mut world, &mut schedule, wall, false, 3, Vec3::X);
+        assert!(world.resource::<InProgressCurve>().wall.is_none());
+        endpoint_frame(&mut world, &mut schedule, wall, false, 3, Vec3::X);
+        assert_eq!(world.resource::<InProgressCurve>().wall, Some(wall));
+    }
+
+    #[test]
+    fn missing_live_authority_emits_false_finish_without_fabricating_a_source() {
+        let (mut world, wall) = endpoint_world(false);
+        world.resource_mut::<WallContinueState>().state = 2;
+        world.resource_mut::<InnerWalls>().remove(wall);
+        let mut schedule = Schedule::default();
+        schedule.add_systems(ui_continue_wall);
+        schedule.run(&mut world);
+        assert_eq!(world.resource::<WallContinueState>().state, 3);
+        assert!(world.resource::<ContinueWallOriginalState>().previous.is_none());
+        let events = world.resource::<Events<FinishWall>>();
+        assert_eq!(events.get_cursor().read(events).map(|event| event.0).collect::<Vec<_>>(), [false]);
+    }
+
+    #[test]
+    fn actual_endpoint_ui_draw_reverse_finish_and_deferred_history_share_one_owner() {
+        use crate::{
+            game_config::GameConfig,
+            resources::{
+                color_id::{SetHalftimberColorIdCmd, SetWallColorIdCmd},
+                glade_color_customization::GladeColorCustomization,
+                history::{EditType, History, wall_edit::WallHistoryEdit},
+                onboarding::NotifyHintSystemToolWasJustUsed,
+                window::WindowSize,
+            },
+            systems::{
+                audio::RequestWallMaterialAudio,
+                camera_rig::main_camera::MainCamera,
+                history::recording::HistoryRecordingFailed,
+                wall::{
+                    adjust_wall_height::AdjustWallHeightCmd,
+                    deferred_wall_history::{PendingWallHistory, history_record_wall_changed},
+                    draw_wall::{CurveNursery, WallDrawingIssues, draw_wall},
+                    finish_wall::finish_wall,
+                    history_recording::{RecordWallHistory, record_wall_history},
+                    snapping::SnappingMode,
+                },
+            },
+        };
+        for fence in [false, true] {
+            for extend_start in [false, true] {
+                let (mut world, wall) = endpoint_world(fence);
+                world.init_resource::<CurveNursery>();
+                world.init_resource::<SnappingMode>();
+                world.init_resource::<PendingWallHistory>();
+                world.init_resource::<WallDrawingIssues>();
+                world.init_resource::<GameConfig>();
+                world.init_resource::<GladeColorCustomization>();
+                world.insert_resource(GameTime { ticks_60: 1, delta: 1.0 / 60.0, ..Default::default() });
+                world.insert_resource(WindowSize::new(1920, 1080));
+                let mut camera = MainCamera::default();
+                camera.write_f32(0x14, 1.0);
+                camera.write_f32(0xb8, -10.0);
+                world.insert_resource(camera);
+                world.init_resource::<Events<RecordWallHistory>>();
+                world.init_resource::<Events<HistoryRecordingFailed>>();
+                world.init_resource::<Events<NotifyHintSystemToolWasJustUsed>>();
+                world.init_resource::<Events<SetWallColorIdCmd>>();
+                world.init_resource::<Events<SetHalftimberColorIdCmd>>();
+                world.init_resource::<Events<AdjustWallHeightCmd>>();
+                world.init_resource::<Events<RequestWallMaterialAudio>>();
+                let mut schedule = Schedule::default();
+                schedule.add_systems((ui_continue_wall, draw_wall, finish_wall,
+                    history_record_wall_changed, record_wall_history::<()>).chain());
+                let start = if extend_start { Vec3::ZERO } else { Vec3::X };
+                let next = if extend_start { -Vec3::X } else { 2.0 * Vec3::X };
+                endpoint_frame(&mut world, &mut schedule, wall, extend_start, 3, start);
+                assert!(world.resource::<Events<RequestWallMaterialAudio>>().is_empty());
+                endpoint_frame(&mut world, &mut schedule, wall, extend_start, 4, start);
+                endpoint_frame(&mut world, &mut schedule, wall, extend_start, 4, next);
+                let live = world.resource::<InnerWalls>().get_unwrapped(wall);
+                assert_eq!(live.source().curve.points.first().copied(), Some(if extend_start {[-1.0, 0.0]} else {[0.0, 0.0]}));
+                assert_eq!(live.source().curve.points.last().copied(), Some(if extend_start {[1.0, 0.0]} else {[2.0, 0.0]}));
+                assert_eq!(world.resource::<Events<RequestWallMaterialAudio>>().len(), 1);
+                // Captured desired height remains distinct from live authority.
+                world.resource_mut::<InnerWalls>().update_wall_state_height(wall, 2.0);
+                endpoint_frame(&mut world, &mut schedule, wall, extend_start, 1, next);
+                assert!(world.resource::<ContinueWallOriginalState>().previous.is_none());
+                assert!(world.resource::<InProgressCurve>().wall.is_none());
+                assert_eq!(world.resource::<InnerWalls>().get_unwrapped(wall).height(), 2.0);
+                assert!(world.resource::<WallDrawingIssues>().0.is_empty());
+                assert!(world.resource::<Events<HistoryRecordingFailed>>().is_empty());
+                let edits = &world.resource::<History>().pending().unwrap().edits;
+                assert_eq!(edits.len(), 1);
+                let EditType::Wall(compound) = &edits[0] else { panic!("wall edit"); };
+                assert_eq!((compound.groups.len(), compound.groups[0].len()), (1, 1));
+                let WallHistoryEdit::StateChange { previous, next, observed_operation, .. } = &compound.groups[0][0]
+                    else { panic!("real captured expansion"); };
+                assert_eq!(previous.source.curve.points, [[0.0, 0.0], [1.0, 0.0]]);
+                assert_eq!((previous.source.extra, next.source.extra), (4.0, 4.0));
+                let lo = f32::from_le_bytes(observed_operation[4..8].try_into().unwrap());
+                let hi = f32::from_le_bytes(observed_operation[8..12].try_into().unwrap());
+                assert_eq!((lo, hi), if extend_start {(0.5, 1.0)} else {(0.0, 0.5)});
+            }
+        }
+    }

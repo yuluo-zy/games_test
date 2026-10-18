@@ -1,0 +1,62 @@
+{
+  "date": "2026-10-18",
+  "scope": "current Rust source review; no production source changes",
+  "checks": [
+    {
+      "command": "cargo test -p country-core --lib geometry:: --locked --offline",
+      "exit_code": 0,
+      "passed": 28,
+      "failed": 0,
+      "ignored": 0,
+      "log": "lib-tests.log"
+    },
+    {
+      "command": "cargo test -p country-core --test geometry_review_probe_20261018 --locked --offline",
+      "source": "probe.rs",
+      "temporary_target_removed": true,
+      "exit_code": 0,
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "log": "probe.log",
+      "kind": "diagnostics include confirmations of current defects and limitations"
+    }
+  ],
+  "findings": [
+    {
+      "id": "G1",
+      "priority": "P1",
+      "status": "open",
+      "description": "Sparse brick storage has no instance view; draw lookup returns None"
+    },
+    {
+      "id": "G2",
+      "priority": "P1",
+      "status": "open",
+      "description": "CPU wall instance type has no conversion/upload/scheduling closure"
+    }
+  ],
+  "reviewed_source_sha256": {
+    "crates/country-core/src/asset_libraries/ssbo_library.rs": "612fcb5e675d2d0da768b56b821203fb4a0a3f2fe427697ee8a009091daeb9f5",
+    "crates/country-core/src/geometry/cube.rs": "78fa96fcdc24940b8579b172ae5b0a41e1140bcc5581f1ed8b1073b2f7d0ad6d",
+    "crates/country-core/src/geometry/instanced_wall.rs": "223facafa31e10f60683aec773a904180cc62fa5d23f87855649e29bf112da76",
+    "crates/country-core/src/geometry/mod.rs": "c2ea6ff643f7939a0935f72cae9c55e59be6e418407e8089edb6a0cb71c3254a",
+    "crates/country-core/src/geometry/plane.rs": "1f537204f3dfef94de4f4d38f94760836cb56ff07ae137ef5d4f71a31d029733",
+    "crates/country-core/src/geometry/sphere.rs": "35bf018a55566a457b09d8d64eb0349cced3df1c2c927a0e5ee9b5cc18a529fe",
+    "crates/country-core/src/recovered_building/wall_constructor.rs": "44bdc4b83afc5c80a75fcd53726fc940b2b874635d74d02fe588b27472af8458",
+    "crates/country-core/src/render/mesh.rs": "d66a87ea20b163a12f06806cd09785ff42f2a21f86e65bcf28deeb948f9362d3",
+    "crates/country-core/src/render/sparse_instance_buffer.rs": "303f354f0e2698ba41bc34d4f7acaca1489d204e63cbce6b82e6574414b5054d",
+    "crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_b.rs": "9b444cad4f13c94a1ac94611c374f6f95391b3087f0da1fe430086a38278889d",
+    "crates/country-core/src/systems/render_loop/draw_passes/draw_shaders/draw_bricks.rs": "f02af4bb5e1afe557ee2c821a691086078465576d5f007450c3fae86e852e7db",
+    "crates/country-core/src/systems/render_loop/draw_passes/draw_shaders/ssbo_tags.rs": "e87ad864866fd4534bef7336e9df6c9a97bc0884328b59d65f8fef4fd6469eff",
+    "crates/country-core/src/systems/wall/construct_wall_bricks.rs": "adaa001ac64cb3ce74d23e5e7ca681e3d7d8f888ae0876f165ace49e9440f982",
+    "crates/tiny-glade/src/app_systems.rs": "32d2c17d2d823d33a08afff345c91881ea5e3545eed17a3b0696685ffcfd84fb"
+  },
+  "boundaries": [
+    "CPU-only",
+    "no new original binary oracle",
+    "no GPU execution",
+    "not whole crate or workspace validation",
+    "existing warnings retained"
+  ]
+}

@@ -1,0 +1,55 @@
+        %211 = OpAccessChain %_ptr_Uniform_uint %_Globals %int_2
+        %212 = OpLoad %uint %211
+        %213 = OpINotEqual %bool %212 %uint_0
+               OpSelectionMerge %214 None
+               OpBranchConditional %213 %215 %214
+        %215 = OpLabel
+        %216 = OpAccessChain %_ptr_Uniform_uint %frame_constants %uint_8
+        %217 = OpLoad %uint %216
+               OpLine %10 196 18
+        %218 = OpIEqual %bool %uint_0 %217
+               OpLine %9 101 32
+        %219 = OpLogicalNot %bool %218
+               OpBranch %214
+        %214 = OpLabel
+        %220 = OpPhi %bool %false %132 %219 %215
+               OpLine %9 101 75
+               OpSelectionMerge %221 None
+               OpBranchConditional %220 %222 %221
+        %222 = OpLabel
+               OpLine %9 112 22
+        %223 = OpFAdd %v2float %113 %210
+               OpLine %9 112 32
+        %224 = OpFAdd %v2float %223 %164
+               OpLine %9 114 27
+        %225 = OpVectorTimesMatrix %v4float %199 %123
+               OpLine %9 115 21
+        %226 = OpCompositeExtract %float %225 3
+        %227 = OpCompositeConstruct %v4float %226 %226 %226 %226
+               OpLine %9 115 18
+        %228 = OpFDiv %v4float %225 %227
+               OpLine %9 129 36
+        %229 = OpExtInst %float %1 NMin %float_n0_200000003 %float_1
+               OpLine %9 132 72
+        %230 = OpAccessChain %_ptr_Uniform_v2uint %_Globals %int_4
+        %231 = OpLoad %v2uint %230
+        %232 = OpConvertUToF %v2float %231
+               OpLine %15 26 27
+        %233 = OpFMul %v2float %224 %232
+               OpLine %15 26 38
+        %234 = OpFSub %v2float %233 %49
+               OpLine %15 26 18
+        %235 = OpExtInst %v2float %1 Trunc %234
+               OpLine %9 133 58
+        %236 = OpFAdd %v2float %235 %54
+               OpLine %9 133 65
+        %237 = OpFDiv %v2float %236 %232
+               OpLine %9 134 29
+        %238 = OpLoad %type_2d_image %prev_depth_tex
+               OpLine %9 134 54
+        %239 = OpLoad %type_sampler %sampler_nnc
+               OpLine %9 134 44
+        %240 = OpSampledImage %type_sampled_image %238 %239
+        %241 = OpImageGather %v4float %240 %237 %int_0 None
+               OpLine %9 134 29
+        %242 = OpVectorShuffle %v4float %241 %241 3 2 0 1

@@ -5,6 +5,10 @@ use super::{
     error::{Error, Result},
     instance::VulkanInstance,
 };
+mod fullscreen;
+use fullscreen::FullscreenState;
+pub use fullscreen::{FullscreenFallback, FullscreenStatus, WindowMode};
+
 use ash::vk;
 use parking_lot::{Mutex, RwLock};
 use std::sync::Arc;
@@ -149,6 +153,7 @@ pub struct Surface {
     pub handle: vk::SurfaceKHR,
     pub loader: ash::khr::surface::Instance,
     owned: bool,
+    win32: bool,
 }
 impl Surface {
     /// # Safety
@@ -164,7 +169,22 @@ impl Surface {
             handle,
             loader,
             owned,
+            win32: false,
         }
+    }
+    /// Wrap an existing Win32 Vulkan surface, allowing explicit fullscreen.
+    ///
+    /// # Safety
+    /// In addition to from_raw's requirements, handle must have been created
+    /// with vkCreateWin32SurfaceKHR and its HWND must outlive this surface.
+    pub unsafe fn from_win32_raw(
+        instance: Arc<VulkanInstance>,
+        handle: vk::SurfaceKHR,
+        owned: bool,
+    ) -> Self {
+        let mut surface = unsafe { Self::from_raw(instance, handle, owned) };
+        surface.win32 = true;
+        surface
     }
     /// # Safety
     /// Windows 句柄必须有效，且实例已经启用 surface 与 win32_surface 扩展。
@@ -178,7 +198,9 @@ impl Surface {
             .hinstance(hinstance)
             .hwnd(hwnd);
         let handle = unsafe { loader.create_win32_surface(&info, None) }?;
-        Ok(Arc::new(unsafe { Self::from_raw(instance, handle, true) }))
+        Ok(Arc::new(unsafe {
+            Self::from_win32_raw(instance, handle, true)
+        }))
     }
 }
 impl Drop for Surface {
@@ -208,6 +230,7 @@ impl Drop for Surface {
 /// 句柄/格式/图像/视图在创建后不变（重建产生新 `Swapchain`），仍是 `Swapchain` 的公开字段。
 pub(crate) struct SwapchainInner {
     desc: SwapchainDesc,
+    fullscreen: FullscreenState,
     state: SwapchainState,
     leases: Vec<Arc<FrameSemaphores>>,
     presentations: Vec<Arc<ImagePresentation>>,
@@ -234,6 +257,15 @@ impl SwapchainInner {
         if self.closing {
             return Err(Error::invalid_usage("交换链正在关闭"));
         }
+        if !self.fullscreen.status.focused
+            || self.desc.extent.width == 0
+            || self.desc.extent.height == 0
+        {
+            return Err(vk::Result::NOT_READY.into());
+        }
+        if self.fullscreen.monitor.is_some() && !self.fullscreen.status.acquired {
+            return Err(Error::SurfaceOutOfDate);
+        }
         if self.stale || self.state != SwapchainState::Created {
             return Err(Error::SurfaceOutOfDate);
         }
@@ -257,6 +289,9 @@ impl SwapchainInner {
         present: impl FnOnce() -> std::result::Result<bool, vk::Result>,
     ) -> Result<bool> {
         let result = present();
+        if result == Err(vk::Result::ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT) {
+            self.fullscreen.lost();
+        }
         progress.record_result(&result, has_fence);
         match present_result(result) {
             Ok((suboptimal, stale)) => {
@@ -285,6 +320,7 @@ impl SwapchainInner {
     fn new(desc: SwapchainDesc) -> Self {
         Self {
             desc,
+            fullscreen: FullscreenState::default(),
             state: SwapchainState::NotCreated,
             leases: Vec::new(),
             presentations: Vec::new(),
@@ -344,6 +380,7 @@ impl Swapchain {
         self.generation
     }
     pub fn collect_presentations(&self) -> Result<()> {
+        self.maintain_fullscreen()?;
         let inner = self.inner.read();
         for slot in &inner.leases {
             let mut state = slot.state.lock();
@@ -405,6 +442,7 @@ impl Swapchain {
             return Err(vk::Result::NOT_READY.into());
         }
         inner.closing = true;
+        self.release_fullscreen(&mut inner)?;
         if inner.unproven_external_acquire {
             return Err(Error::Timeout);
         }
@@ -500,23 +538,32 @@ impl Swapchain {
             Self::new_with_old(
                 device,
                 surface,
-                extent,
-                vsync,
-                usage,
+                SwapchainDesc {
+                    extent,
+                    vsync,
+                    usage,
+                },
                 vk::SwapchainKHR::null(),
                 policy,
+                FullscreenState::default(),
+                &mut false,
             )
         }
     }
     unsafe fn new_with_old(
         device: Arc<Device>,
         surface: Arc<Surface>,
-        extent: vk::Extent2D,
-        vsync: bool,
-        usage: vk::ImageUsageFlags,
+        desc: SwapchainDesc,
         old: vk::SwapchainKHR,
         policy: SwapchainPolicy,
+        fullscreen: FullscreenState,
+        old_retired: &mut bool,
     ) -> Result<Self> {
+        let SwapchainDesc {
+            extent,
+            vsync,
+            usage,
+        } = desc;
         if !Arc::ptr_eq(&device.instance, &surface.instance) {
             return Err(Error::invalid_usage("交换链表面属于其他实例"));
         }
@@ -532,11 +579,9 @@ impl Swapchain {
         // Reserve the ancestry holder before vkCreateSwapchain can retire old.
         // Publishing the successful replacement must not allocate afterward.
         let mut retired_generations = Vec::new();
-        if old != vk::SwapchainKHR::null() {
-            retired_generations
-                .try_reserve(1)
-                .map_err(|_| Error::OutOfHostMemory)?;
-        }
+        retired_generations
+            .try_reserve(1)
+            .map_err(|_| Error::OutOfHostMemory)?;
         let loader = ash::khr::swapchain::Device::new(&device.instance.instance, &device.device);
         let mut result = Self {
             retired_generations: Mutex::new(retired_generations),
@@ -559,7 +604,9 @@ impl Swapchain {
                 usage,
             })),
         };
-        result.recreate(extent, old)?;
+        result.inner.get_mut().fullscreen =
+            fullscreen.replacement(result.fullscreen_extension_enabled());
+        result.recreate(extent, old, old_retired)?;
         Ok(result)
     }
     pub fn enumerate_surface_formats(&self) -> Result<Vec<vk::SurfaceFormatKHR>> {
@@ -589,20 +636,20 @@ impl Swapchain {
             Err(error) => Err(error),
         }
     }
-    fn recreate(&mut self, requested: vk::Extent2D, old: vk::SwapchainKHR) -> Result<()> {
+    fn recreate(
+        &mut self,
+        requested: vk::Extent2D,
+        old: vk::SwapchainKHR,
+        old_retired: &mut bool,
+    ) -> Result<()> {
         if requested.width == 0 || requested.height == 0 {
             self.mark_stale();
             return Err(Error::invalid_usage(ZERO_WINDOW_EXTENT));
         }
-        let caps = wsi_call(&self.device.timelines, || unsafe {
-            self.surface
-                .loader
-                .get_physical_device_surface_capabilities(self.device.physical, self.surface.handle)
-        })?;
+        let (caps, formats, modes) = self.fullscreen_surface_configuration()?;
         if !caps.supported_usage_flags.contains(self.usage) {
             return Err(Error::unsupported("表面不支持请求的图片用途"));
         }
-        let formats = self.enumerate_surface_formats()?;
         // 首选 B8G8R8A8_SRGB；回退时只取支持请求用途（OPTIMAL 2D 图像）的格式，不盲取第一个。
         let preferred = formats.iter().find(|format| {
             format.format == vk::Format::B8G8R8A8_SRGB
@@ -621,14 +668,6 @@ impl Swapchain {
         if format.format == vk::Format::UNDEFINED {
             format.format = vk::Format::B8G8R8A8_SRGB;
         }
-        let modes = wsi_call(&self.device.timelines, || unsafe {
-            self.surface
-                .loader
-                .get_physical_device_surface_present_modes(
-                    self.device.physical,
-                    self.surface.handle,
-                )
-        })?;
         let present_mode = if !self.vsync && modes.contains(&vk::PresentModeKHR::MAILBOX) {
             vk::PresentModeKHR::MAILBOX
         } else if !self.vsync && modes.contains(&vk::PresentModeKHR::IMMEDIATE) {
@@ -666,7 +705,7 @@ impl Swapchain {
         .into_iter()
         .find(|flag| caps.supported_composite_alpha.contains(*flag))
         .ok_or(Error::unsupported("没有合成透明度模式"))?;
-        let info = vk::SwapchainCreateInfoKHR::default()
+        let mut info = vk::SwapchainCreateInfoKHR::default()
             .surface(self.surface.handle)
             .min_image_count(count)
             .image_format(format.format)
@@ -680,11 +719,38 @@ impl Swapchain {
             .present_mode(present_mode)
             .clipped(true)
             .old_swapchain(old);
+        let mut exclusive_info = vk::SurfaceFullScreenExclusiveInfoEXT::default()
+            .full_screen_exclusive(if self.inner.get_mut().fullscreen.monitor.is_some() {
+                vk::FullScreenExclusiveEXT::APPLICATION_CONTROLLED
+            } else {
+                vk::FullScreenExclusiveEXT::DISALLOWED
+            });
+        let mut monitor_info = vk::SurfaceFullScreenExclusiveWin32InfoEXT::default()
+            .hmonitor(self.inner.get_mut().fullscreen.monitor.unwrap_or(0));
+        if self.fullscreen_extension_enabled() {
+            info = info.push_next(&mut exclusive_info);
+            if self.inner.get_mut().fullscreen.monitor.is_some() {
+                info = info.push_next(&mut monitor_info);
+            }
+        }
         // 成功建立新交换链后旧对象可能已被驱动退役；任何后续失败都不得继续获取旧图像。
         self.inner.get_mut().stale = true;
-        let handle = wsi_call(&self.device.timelines, || unsafe {
+        let handle = match wsi_call(&self.device.timelines, || unsafe {
+            *old_retired |= old != vk::SwapchainKHR::null();
             self.loader.create_swapchain(&info, None)
-        })?;
+        }) {
+            Ok(handle) => handle,
+            Err(Error::Vulkan(vk::Result::ERROR_INITIALIZATION_FAILED))
+                if self.inner.get_mut().fullscreen.monitor.is_some() =>
+            {
+                self.inner.get_mut().fullscreen.monitor = None;
+                self.inner.get_mut().fullscreen.status.fallback =
+                    Some(FullscreenFallback::CreationFailed);
+                // The first attempt retired oldSwapchain even though it failed.
+                return self.recreate(requested, vk::SwapchainKHR::null(), old_retired);
+            }
+            Err(error) => return Err(error),
+        };
         let images = match wsi_call(&self.device.timelines, || unsafe {
             self.loader.get_swapchain_images(handle)
         }) {
@@ -800,16 +866,22 @@ impl Swapchain {
             return Err(vk::Result::NOT_READY.into());
         }
         inner.stale = true;
+        self.release_fullscreen(&mut inner)?;
+        let fullscreen = inner.fullscreen;
         let desc = inner.desc;
         unsafe {
             Self::new_with_old(
                 self.device.clone(),
                 self.surface.clone(),
-                desc.extent,
-                desc.vsync,
-                desc.usage,
-                self.handle,
+                desc,
+                if inner.fullscreen.retired {
+                    vk::SwapchainKHR::null()
+                } else {
+                    self.handle
+                },
                 self.policy,
+                fullscreen,
+                &mut inner.fullscreen.retired,
             )
         }
     }
@@ -876,6 +948,13 @@ impl Swapchain {
     }
     /// 一次获取 + 原版结果分类（见 [`Self::validate_swapchain_and_acquire_image`]）。
     fn acquire_classified(chain: &Arc<Self>) -> Acquired {
+        if let Err(error) = chain.maintain_fullscreen() {
+            return Acquired::Failed(error);
+        }
+        let desc = chain.desc();
+        if !chain.fullscreen_status().focused || desc.extent.width == 0 || desc.extent.height == 0 {
+            return Acquired::NoImage;
+        }
         if chain.is_stale() {
             return Acquired::Stale;
         }
@@ -895,10 +974,6 @@ impl Swapchain {
     }
     pub fn is_stale(&self) -> bool {
         self.inner.read().stale
-    }
-    /// 原 `ManagedSwapchain::on_focus`（内联 `RwLock::write` + `SwapchainInner::on_focus`）。
-    pub fn on_focus(&self) {
-        self.inner.write().stale = true;
     }
     /// 宿主入口：`timeout`（纳秒）照实传给 `vkAcquireNextImageKHR`；原版固定 3 s 的路径是 [`Self::acquire_frame`]。
     /// Acquire using caller-owned synchronization. Prefer [`Self::acquire_frame`]
@@ -923,6 +998,7 @@ impl Swapchain {
             return Err(Error::invalid_usage("底层获取租约需要有效的获取完成栅栏"));
         }
         // 0x1418cb520：整个 acquire 持写锁（CAS 0→8）。
+        self.maintain_fullscreen()?;
         let mut inner = self.inner.write();
         self.acquire_image_locked(&mut inner, timeout, semaphore, fence)
     }
@@ -940,12 +1016,22 @@ impl Swapchain {
         if self.device.is_device_lost() {
             return Err(Error::DeviceLost);
         }
-        let (index, suboptimal) = inner.acquire_with(|| {
-            wsi_call(&self.device.timelines, || unsafe {
-                self.loader
-                    .acquire_next_image(self.handle, timeout, semaphore, fence)
+        let mut exclusive_lost = false;
+        let acquired = inner.acquire_with(|| {
+            wsi_call(&self.device.timelines, || {
+                let native = unsafe {
+                    self.loader
+                        .acquire_next_image(self.handle, timeout, semaphore, fence)
+                };
+                exclusive_lost =
+                    native == Err(vk::Result::ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT);
+                native
             })
-        })?;
+        });
+        if exclusive_lost {
+            inner.fullscreen.lost();
+        }
+        let (index, suboptimal) = acquired?;
         Ok(SwapchainImageLease {
             swapchain: Arc::clone(self),
             index,
@@ -956,6 +1042,7 @@ impl Swapchain {
     }
     /// 槽游标只在 acquire 成功后递增；信号量和 fence 在交换链创建时按槽分配。
     pub fn acquire_frame(self: &Arc<Self>, timeout: u64) -> Result<AcquiredImageLease> {
+        self.maintain_fullscreen()?;
         let mut inner = self.inner.write();
         if inner.stale || inner.state != SwapchainState::Created {
             return Err(vk::Result::ERROR_OUT_OF_DATE_KHR.into());
@@ -1481,6 +1568,34 @@ impl AcquiredImageLease {
     pub fn extent(&self) -> vk::Extent2D {
         self.lease.as_ref().unwrap().swapchain.extent
     }
+    /// A graph can borrow this actual acquired image while its generation is
+    /// retained. Acquisition and present remain owned by the linear WSI lease.
+    pub fn texture(&self) -> Result<Arc<super::texture::Texture>> {
+        let lease = self.lease.as_ref().expect("live acquisition");
+        let desc = super::texture::TextureDesc::new_2d(lease.swapchain.extent.width,
+            lease.swapchain.extent.height, lease.swapchain.format)
+            .usage(lease.swapchain.desc().usage);
+        Ok(Arc::new(super::texture::Texture::from_swapchain_image(
+            lease.swapchain.clone(), lease.image(), desc)?))
+    }
+    /// Arm one graph submission, keeping `present` as a later explicit phase.
+    /// The backend must submit the original resolve graph on the graphics queue
+    /// with this acquisition's binary wait, rendered signal and submission fence.
+    pub fn into_graph_submission(mut self) -> Result<GraphImageLease> {
+        let lease = self.lease.as_ref().expect("live acquisition");
+        lease.swapchain.policy.allow_present()?;
+        if let Err(error) = self.presentation.prepare(ACQUIRE_TIMEOUT_NS) {
+            self.recover_on_drop &= !error.is_device_lost();
+            return Err(error);
+        }
+        if let Err(error) = wsi_call(&lease.swapchain.device.timelines, || unsafe {
+            lease.swapchain.device.device.reset_fences(&[self.sync.fence])
+        }) {
+            self.recover_on_drop &= !error.is_device_lost();
+            return Err(error);
+        }
+        Ok(GraphImageLease { acquisition: Some(self), point: None })
+    }
     /// Cancel before any submit has consumed the acquire semaphore. With
     /// maintenance1, wait for acquisition and release the image; the signaled
     /// acquire semaphore is discarded independently. Otherwise submit a real
@@ -1575,7 +1690,9 @@ impl AcquiredImageLease {
     ) -> Result<PresentTicket> {
         self.submit_after(command, wait_stage, crate::sync::SyncSet::EMPTY)
     }
-    pub(crate) fn submit_after(
+    /// Submit display work after the graph's real timeline receipts. External
+    /// game render hosts use this when they retain the graph session themselves.
+    pub fn submit_after(
         mut self,
         mut command: VulkanCommandBuffer,
         wait_stage: vk::PipelineStageFlags,
@@ -1656,10 +1773,18 @@ impl AcquiredImageLease {
             .record_gpu_submission(point);
         command.record_submission(point);
         self.sync.state.lock().submitted = true;
+        self.present_submitted(point, Some(command))
+    }
+    fn present_submitted(&mut self, point: crate::sync::SyncPoint,
+        command: Option<VulkanCommandBuffer>) -> Result<PresentTicket> {
+        let lease = self.lease.as_ref().expect("live submitted acquisition");
+        // acquire has already been consumed. Drop must never rescue it by
+        // waiting on the binary semaphore a second time.
+        self.recover_on_drop = false;
         // 提交成功后，无论 present 成功与否，都先建立持有者以保护未完成的命令。
         let serial = self.presentation.progress.lock().issued + 1;
         let mut pending = PresentTicket {
-            command: Some(command),
+            command,
             sync: self.sync.clone(),
             point,
             swapchain: lease.swapchain.clone(),
@@ -1675,7 +1800,7 @@ impl AcquiredImageLease {
         let lease_swapchain = lease.swapchain.clone();
         // The submitted command owns the layout transition; its binary signal
         // and generation are retained by `pending` and the image protocol.
-        match unsafe { lease.present(&signals) } {
+        match unsafe { lease.present(&[self.presentation.rendered]) } {
             Ok(suboptimal) => {
                 pending.suboptimal |= suboptimal;
                 Ok(pending)
@@ -1710,6 +1835,87 @@ impl Drop for AcquiredImageLease {
             state.abandoned = true;
             state.reserved = false;
         }
+    }
+}
+
+/// Linear acquired -> graph GPU submission -> present owner. The graph session
+/// owns command retirement; this owner protects the WSI synchronization domains.
+/// It accepts exactly one queue submission, as used by B compile-present's
+/// single resolve pass (0x140166b07) and present export 0x27 (0x140166b4c).
+pub struct GraphImageLease {
+    acquisition: Option<AcquiredImageLease>,
+    point: Option<crate::sync::SyncPoint>,
+}
+impl GraphImageLease {
+    pub fn submitted_point(&self) -> Option<crate::sync::SyncPoint> { self.point }
+    pub(crate) fn check_device(&self, device: &Arc<Device>) -> Result<()> {
+        let image = self.acquisition.as_ref().ok_or_else(|| Error::invalid_usage("WSI graph lease already presented"))?;
+        if !Arc::ptr_eq(&image.sync.device, device) {
+            return Err(Error::invalid_usage("WSI graph lease belongs to another device"));
+        }
+        Ok(())
+    }
+    pub(crate) fn amend_submission(&self, queue: vk::Queue,
+        batches: &mut [super::submit::PreparedSubmit]) -> Result<()> {
+        let image = self.acquisition.as_ref().ok_or_else(|| Error::invalid_usage("WSI graph lease already presented"))?;
+        let lease = image.lease.as_ref().expect("live graph acquisition");
+        if self.point.is_some() || queue != lease.swapchain.device.queue || batches.is_empty()
+            || batches.iter().all(|batch| batch.commands.is_empty()) {
+            return Err(Error::invalid_usage("present graph requires one nonempty graphics-queue submission"));
+        }
+        let first = batches.first_mut().expect("nonempty");
+        first.wait_semaphores.try_reserve_exact(1).map_err(|_| Error::OutOfHostMemory)?;
+        first.wait_values.try_reserve_exact(1).map_err(|_| Error::OutOfHostMemory)?;
+        first.wait_stages.try_reserve_exact(1).map_err(|_| Error::OutOfHostMemory)?;
+        first.wait_semaphores.push(image.sync.acquired);
+        first.wait_values.push(0);
+        // The native graph may sample the main image before writing the target.
+        // All its accesses must begin after acquisition and tracked dependencies.
+        first.wait_stages.push(vk::PipelineStageFlags::ALL_COMMANDS);
+        let last = batches.last_mut().expect("nonempty");
+        last.signal_semaphores.try_reserve_exact(1).map_err(|_| Error::OutOfHostMemory)?;
+        last.signal_values.try_reserve_exact(1).map_err(|_| Error::OutOfHostMemory)?;
+        last.signal_semaphores.push(image.presentation.rendered);
+        last.signal_values.push(0);
+        Ok(())
+    }
+    pub(crate) fn submit(&mut self, queue: vk::Queue,
+        batches: &[super::submit::PreparedSubmit]) -> Result<crate::sync::SyncPoint> {
+        let image = self.acquisition.as_mut().ok_or_else(|| Error::invalid_usage("WSI graph lease already presented"))?;
+        let lease = image.lease.as_ref().expect("live graph acquisition");
+        if self.point.is_some() || queue != lease.swapchain.device.queue {
+            return Err(Error::invalid_usage("WSI graph submission already consumed or wrong queue"));
+        }
+        match lease.swapchain.device.submit_prepared(queue, batches, image.sync.fence) {
+            Ok(point) => {
+                self.point = Some(point);
+                image.recover_on_drop = false;
+                image.sync.state.lock().submitted = true;
+                image.presentation.progress.lock().record_gpu_submission(point);
+                Ok(point)
+            }
+            Err(error) => {
+                image.recover_on_drop &= !error.is_device_lost();
+                Err(error)
+            }
+        }
+    }
+    /// Present the exact image after its graph submission; no second acquire
+    /// wait and no empty surrogate GPU submission are introduced here.
+    pub fn present(&mut self) -> Result<PresentTicket> {
+        let point = self.point.ok_or_else(|| Error::invalid_usage("present graph has not submitted"))?;
+        let mut image = self.acquisition.take().ok_or_else(|| Error::invalid_usage("WSI graph image already presented"))?;
+        image.present_submitted(point, None)
+    }
+}
+impl Drop for GraphImageLease {
+    fn drop(&mut self) {
+        if self.point.is_some() && self.acquisition.is_some() {
+            if let Err(error) = self.present() {
+                log::warn!(target: "rhapsody::raw::swapchain", "submitted graph acquisition cleanup: {error}");
+            }
+        }
+        // Unsubmitted acquisition follows the existing cancellation protocol.
     }
 }
 
@@ -1815,6 +2021,65 @@ mod tests {
         state.state = SwapchainState::Created;
         state.stale = false;
         state
+    }
+
+    #[test]
+    fn fullscreen_focus_loss_blocks_new_acquire_but_allows_owned_frame_to_present() {
+        let mut state = created_state();
+        state.acquire_with(|| Ok((0, false))).unwrap();
+        state.fullscreen.status.focused = false;
+        assert!(!state.can_replace());
+        assert!(matches!(
+            state.acquire_with(|| panic!("unfocused acquire")),
+            Err(Error::Vulkan(vk::Result::NOT_READY))
+        ));
+        let mut progress = PresentProgress::default();
+        assert!(
+            !state
+                .present_with(&mut progress, true, || Ok(false))
+                .unwrap()
+        );
+        state.return_acquisition(true);
+        assert!(state.can_replace());
+        state.fullscreen.status.focused = true;
+        assert_eq!(state.acquire_with(|| Ok((1, false))).unwrap(), (1, false));
+    }
+
+    #[test]
+    fn fullscreen_present_loss_latches_fallback_and_keeps_wait_consumption_proof() {
+        let mut state = created_state();
+        state.fullscreen.status.requested = WindowMode::Exclusive { monitor: 42 };
+        state.fullscreen.monitor = Some(42);
+        state.fullscreen.status.acquired = true;
+        let mut progress = PresentProgress::default();
+        assert!(
+            !state
+                .present_with(&mut progress, true, || Err(
+                    vk::Result::ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT
+                ))
+                .unwrap()
+        );
+        assert!(state.stale);
+        assert!(!state.fullscreen.status.acquired);
+        assert_eq!(
+            state.fullscreen.status.fallback,
+            Some(FullscreenFallback::ExclusiveLost)
+        );
+        assert_eq!(progress.issued, 1);
+        assert_eq!(progress.completed, 0);
+    }
+
+    #[test]
+    fn fullscreen_minimized_and_released_generations_cannot_acquire() {
+        let mut state = created_state();
+        state.desc.extent.width = 0;
+        assert!(state.acquire_with(|| panic!("minimized acquire")).is_err());
+        state.desc.extent.width = 4;
+        state.fullscreen.monitor = Some(42);
+        assert!(matches!(
+            state.acquire_with(|| panic!("released exclusive acquire")),
+            Err(Error::SurfaceOutOfDate)
+        ));
     }
 
     #[derive(Debug, PartialEq, Eq)]

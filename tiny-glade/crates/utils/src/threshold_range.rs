@@ -1,6 +1,6 @@
-//! The three B specializations partition values into contiguous <= and > runs.
+//! Partitions values into contiguous low (`<=`) and high (`>`) runs.
 //! Callers decide whether to retain singleton runs. NaN begins the high branch
-//! but terminates either ordered comparison, matching the original scans.
+//! but terminates either ordered comparison.
 use std::ops::Range;
 pub fn threshold_range(
     values: &[f32],

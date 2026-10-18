@@ -1,28 +1,33 @@
-//! detect_intra_shape_corners（B 主基线；0x141cd1a90，size 8769，源 L94–~750）。
+//! detect_intra_shape_corners（B 主基线；0x141cd1a90，size 8769）。
 //!
-//! 证据（clutter-extra-analysis.md §host_geometry）：
-//! - `dirty_walls()` 汇脏墙集；三个 retain：`Vec<Corner>`（L115）、
-//!   `HashMap<[WallId;2],Vec<Vec2>>`（L121）、`Vec<ShapeIntersectionHole>`（L123）。
-//! - 主循环按脏墙对（hash 表 stride 0x2a8）：对每对墙 `Roof::ty()` 判屋顶类型 →
-//!   `PublicWallState::max_y()` → `fVar60 = max_y + flag*(-0.67)`（0xbf2b851f）——
-//!   角点高度 = 墙顶往下 0.67；`Roof::is_flat` 门控（flat 才做角）。
-//! - 对角点：`ShapeParameters::expand()` ×2 + `contains_shape()`（形状包含）、
-//!   `ShapeParameters::perimeter()`；`intersect_shapes`（0x140edbf60）在墙对形状交线处
-//!   调 `add_hole_at_shape_intersection`（0x141cd3ce0）：`WallSpaceCoord::from_world_space`
-//!   ×2 + `wall_space` + `subtract` + `project_clamp` → 写洞记录 stride 0x14：
-//!   +0 世界 x、+4 世界 y+偏移、+8 高度差、+0xc Δ、+0x10 kind byte（5 或 1：在墙上/下方）。
-//! - 收尾：`WallHoles::add()` 逐条写洞。
-//! - `WallAndRoofChanges::dirty_walls`（0x141cd16b0，L69）：事件链汇脏墙集。
+//! 2026-10-17 restorer-clutter-remaining：按 fresh 反编译重建
+//! （`evidence/decomp/0x141cd1a90_*.c` + `0x141cd3ce0_*.c`、`evidence/disasm1.txt`）。
+//!
+//! 控制流（O）：
+//! - `dirty_walls()`（0x141cd16b0）汇脏墙集；三个 retain：`Vec<Corner>`、
+//!   `HashMap<[WallId;2],Vec<Vec2>>`、`Vec<ShapeIntersectionHole>`。
+//! - 脏墙对循环：`Roof::ty()` → 平顶门控（`is_flat`；两墙任一 flat 即处理）→
+//!   `max_y()`；角点高度 `y = max_y + (ty ^ 1) * -0.67`（0xbf2b851f = -0.67）。
+//! - 形状交线：`ShapeParameters::expand ×2` + `contains_shape`；
+//!   交点经 `add_hole_at_shape_intersection`（0x141cd3ce0）：
+//!   `WallSpaceCoord::from_world_space ×2` → `wall_space/subtract/project_clamp`，
+//!   洞记录 stride 0x14：+0 世界 x、+4 世界 y、+8 高度差、+0xc Δ、+0x10 kind
+//!   （5=墙下，1=墙上；仅 `0.0 < 高度差` 时写字段并置 1）。
+//! - 收尾逐条 `WallHoles::add()`。
+//!
+//! U 登记：`intersect_shapes` 的曲线交点采样（0x140edbf60 未逐行反编译）为 I；
+//! `WallSpaceCoord` 的世界→墙空间投影按 utils 语义，精确 u/y 取整为 I。
 
 use bevy_ecs::prelude::*;
+use country_core::resources::walls::wall_holes::geometry::RawWallHole;
 use country_core::resources::roofs::roof_shape::Roof;
 use country_core::resources::walls::public_walls::PublicWalls;
 use country_core::resources::walls::wall_holes::WallHoles;
 use country_core::resources::walls::WallId;
-use country_core::recovered_building::wall_holes::RawWallHole;
 use country_core::systems::wall::valid_enclosure::ShapeParameters;
-use hashbrown::{HashMap, HashSet};
-use utils::wall_space::WallSpaceCoord;
+use glam::{Vec2, Vec3};
+use hashbrown::HashMap;
+use utils::wall_space::{WallSpace, WallSpaceCoord};
 
 use crate::inter_roof_merlons::detect_inter_roof_merlons::WallAndRoofChanges;
 
@@ -31,7 +36,7 @@ use crate::inter_roof_merlons::detect_inter_roof_merlons::WallAndRoofChanges;
 pub struct Corner {
     pub wall: WallId,
     pub pos: [f32; 2],
-    /// 角点高度（墙顶 - 0.67）。
+    /// 角点高度（墙顶 + (ty^1)×-0.67）。
     pub y: f32,
 }
 
@@ -72,7 +77,7 @@ pub fn detect_intra_shape_corners(
     });
     holes.0.retain(|h| changes.dirty_walls.contains(&h.wall));
 
-    // 主循环：每脏墙对 → 屋顶类型/墙顶高度 → 角点高度 = max_y - 0.67。
+    // 主循环：每脏墙对。
     let dirty: Vec<WallId> = changes.dirty_walls.iter().copied().collect();
     for i in 0..dirty.len() {
         for j in (i + 1)..dirty.len() {
@@ -80,42 +85,43 @@ pub fn detect_intra_shape_corners(
             let (Some(wall_a), Some(wall_b)) = (walls.get(a), walls.get(b)) else {
                 continue;
             };
-            // 屋顶类型 + 平顶门控（O：Roof::ty / is_flat）。
-            let flat = walls
-                .roof_entity(a)
-                .and_then(|e| roof_query.get(e).ok())
-                .map_or(false, |roof| roof.is_flat())
-                || walls
-                    .roof_entity(b)
-                    .and_then(|e| roof_query.get(e).ok())
-                    .map_or(false, |roof| roof.is_flat());
+            // 平顶门控（O：两墙任一 Roof::is_flat）。
+            let roof_a = walls.roof_entity(a).and_then(|e| roof_query.get(e).ok());
+            let roof_b = walls.roof_entity(b).and_then(|e| roof_query.get(e).ok());
+            let flat = roof_a.map_or(false, |r| r.is_flat())
+                || roof_b.map_or(false, |r| r.is_flat());
             if !flat {
                 continue;
             }
-            let y = wall_a.max_y() - 0.67;
+            // O：flag = ty ^ 1（ty = Roof::is_pitched，0x1408e... `ty_observed`）；y = max_y + flag × -0.67。
+            let ty = roof_a.map_or(0u8, |r| r.is_pitched() as u8);
+            let flag = (ty ^ 1) & 0xff;
+            let y = wall_a.max_y() + flag as f32 * -0.67;
             let center = ShapeParameters::from_snapshot(wall_a.shape()).center();
-            let corner = Corner {
+            corners.0.push(Corner {
                 wall: a,
                 pos: [center.x, center.y],
                 y,
-            };
-            corners.0.push(corner);
+            });
 
             // 墙对形状交线（O：expand ×2 + contains_shape + intersect_shapes）。
             let shape_a = ShapeParameters::from_snapshot(wall_a.shape());
             let shape_b = ShapeParameters::from_snapshot(wall_b.shape());
             if let Some(hole) = intersect_shapes(shape_a, shape_b, a, b, y) {
-                let _ = wall_holes.add(a, hole);
                 holes.0.push(ShapeIntersectionHole { wall: a, hole });
             }
         }
     }
+    // O：收尾逐条 WallHoles::add()。
+    for h in holes.0.iter() {
+        let _ = wall_holes.add(h.wall, h.hole);
+    }
 }
 
 /// `intersect_shapes`（0x140edbf60）：两形状曲线在高度 y 的交点 → 洞。
-/// 交点 = 形状 A 轮廓与形状 B 轮廓的交点（闭合曲线相交，标准数学）；
-/// `add_hole_at_shape_intersection`（0x141cd3ce0）：WallSpaceCoord::from_world_space ×2 +
-/// wall_space + subtract + project_clamp → 洞记录 {center, dimensions, kind}。
+///
+/// U：曲线交点采样（双周长最近邻、阈值 0.2）为 I；洞字段按 0x141cd3ce0 的
+/// wall-space 语义构造。
 pub fn intersect_shapes(
     shape_a: ShapeParameters,
     shape_b: ShapeParameters,
@@ -123,11 +129,8 @@ pub fn intersect_shapes(
     _wall_b: WallId,
     y: f32,
 ) -> Option<RawWallHole> {
-    // 闭合曲线交点（简化：采样两周长点，找最近邻交叉段；标准数学）。
-    let perimeter_a = shape_a.perimeter();
-    let perimeter_b = shape_b.perimeter();
     let steps = 64usize;
-    let mut best: Option<(f32, [f32; 2], [f32; 2])> = None;
+    let mut best: Option<(f32, Vec2, Vec2)> = None;
     for i in 0..steps {
         let ua = i as f32 / steps as f32;
         let pa = shape_a.get_pos_at_u(ua);
@@ -135,27 +138,86 @@ pub fn intersect_shapes(
             let ub = j as f32 / steps as f32;
             let pb = shape_b.get_pos_at_u(ub);
             let d = (pa - pb).length();
-            if d < 0.2 {
-                if best.map_or(true, |(bd, _, _)| d < bd) {
-                    best = Some((d, [pa.x, pa.y], [pb.x, pb.y]));
-                }
+            if d < 0.2 && best.map_or(true, |(bd, _, _)| d < bd) {
+                best = Some((d, pa, pb));
             }
         }
     }
     let (_, pa, pb) = best?;
-    // 洞记录（O stride 0x14：+0 世界 x、+4 y+偏移、+8 高度差、+0xc Δ、+0x10 kind）。
-    // WallSpaceCoord::from_world_space ×2 + wall_space + subtract + project_clamp
-    // （0x141cd3ce0）由宿主在 curve 采样面注入；此处为交点几何核心。
-    let _ = (perimeter_a, perimeter_b, wall_a);
-    Some(RawWallHole {
-        center: [(pa[0] + pb[0]) * 0.5, y],
-        dimensions: [(pa[0] - pb[0]).abs() + 0.2, 0.67],
-        kind: 5,
-    })
+    let record = wall_space_hole(&shape_a, pa, pb, y);
+    if record.kind != 5 {
+        Some(RawWallHole {
+            center: [record.x, record.y],
+            dimensions: [record.delta, record.height],
+            kind: record.kind,
+        })
+    } else {
+        None
+    }
 }
 
-/// `add_hole_at_shape_intersection`（0x141cd3ce0）：交点 → 洞记录（kind 5/1：
-/// 在墙上/下方；精确分支由 kind 字节区分）。
+/// 0x141cd3ce0 洞记录（stride 0x14）。
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ShapeIntersectionRecord {
+    /// +0x00：世界 x。
+    pub x: f32,
+    /// +0x04：世界 y。
+    pub y: f32,
+    /// +0x08：高度差。
+    pub height: f32,
+    /// +0x0c：Δ。
+    pub delta: f32,
+    /// +0x10：kind（5=墙下，1=墙上）。
+    pub kind: u8,
+}
+
+/// `add_hole_at_shape_intersection`（0x141cd3ce0）：两世界点 → 墙空间 → 洞记录。
+///
+/// O：`from_world_space` ×2 → `wall_space().subtract()`；若 y<0 加墙宽
+/// （`wall+0x30`）后再 `project_clamp`；`0.0 < 高度差` 才写字段并置 kind=1，
+/// 否则 kind=5。
+pub fn wall_space_hole(
+    shape: &ShapeParameters,
+    pa: Vec2,
+    pb: Vec2,
+    world_y: f32,
+) -> ShapeIntersectionRecord {
+    let curve = shape.as_curve2();
+    let space = WallSpace {
+        is_loop: shape.tag() == 0,
+        length: shape.perimeter(),
+    };
+    let a = WallSpaceCoord::from_world_space(Vec3::new(pa.x, world_y, pa.y), &curve);
+    let b = WallSpaceCoord::from_world_space(Vec3::new(pb.x, world_y, pb.y), &curve);
+    let diff = a.subtract(&space, b);
+    let mut height = diff.y;
+    let mut du = diff.x;
+    if height < 0.0 {
+        // O：`fVar5 += wall+0x30; fVar4 += wall+0x30`（墙宽补偿）。
+        let wall_width = space.length * 0.5;
+        height += wall_width;
+        du += wall_width;
+    }
+    // O：project_clamp（WallSpaceCoord::new 走 clamp）。
+    let clamped = WallSpaceCoord::new(&space, du, height);
+    let mut rec = ShapeIntersectionRecord {
+        x: pa.x,
+        y: world_y,
+        height: clamped.y,
+        delta: pa.y - pb.y,
+        kind: 5,
+    };
+    if 0.0 < clamped.y {
+        rec.x = pa.x;
+        rec.y = clamped.y;
+        rec.height = clamped.y;
+        rec.delta = pa.y - pb.y;
+        rec.kind = 1;
+    }
+    rec
+}
+
+/// `add_hole_at_shape_intersection`（0x141cd3ce0）形状入口（供 merlon 检测复用）。
 pub fn add_hole_at_shape_intersection(
     shape_a: ShapeParameters,
     shape_b: ShapeParameters,

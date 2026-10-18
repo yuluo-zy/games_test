@@ -1,16 +1,14 @@
-//! Shipped collision asset + raw Curve2 input feeding the real opening chain.
-//! Keeping a world request across host changes is an explicit CPU adapter;
-//! original anchor dragging, roof morph and visual bundles are separate owners.
+//! Projects retained world-space placement requests into wall opening authority.
+//! Host, roof, asset, and height changes invalidate the cached projection.
 use crate::decorator_assets::DecoratorAssetLibrary;
 use crate::openings::{OpeningAuthority, OpeningId, RemoveOpening, UpsertOpening, WithdrawOpening};
 use crate::{BuildingReport, PublicWalls, Roof, WallCollectionState, WallRoofMap};
 use bevy_ecs::prelude::*;
-use country_core::recovered_building::{
-    building_decorator_placement::WallDecoratorRequest,
-    building_decorator_subtype::WallDecoratorSubtypeContext, building_opening_rules::OpeningFamily,
-    building_wall_state::WallId,
-};
-use std::collections::HashMap;
+use country_core::resources::walls::decorator::placement::WallDecoratorRequest;
+use country_core::resources::walls::decorator_subtype::placement::WallDecoratorSubtypeContext;
+use country_core::resources::walls::wall_holes::opening_rules::OpeningFamily;
+use country_core::resources::walls::publication_fields::WallId;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Event, Clone, Copy, Debug)]
 pub struct PlaceWallOpening {
@@ -58,9 +56,10 @@ fn resolve(
 ) {
     // Native storage owns bound identities. Retire the old adapter intent
     // without removing the actual replacement opening or its contribution.
-    intents.0.retain(|id, _| !native_ids.owns(*id));
+    let native_openings: HashSet<_> = native_ids.0.values().copied().collect();
+    intents.0.retain(|id, _| !native_openings.contains(id));
     for event in input.read() {
-        if native_ids.owns(event.id) {
+        if native_openings.contains(&event.id) {
             continue;
         }
         intents.0.insert(
@@ -96,33 +95,32 @@ fn resolve(
             intent.dirty = true;
             continue;
         };
-        let roof_state = associations
-            .entity(intent.source.wall)
-            .and_then(|entity| roofs.get(entity).ok())
-            .map(|roof| roof.0);
-        let arch_height_bits: Vec<_> = host
-            .arch_segment_heights
-            .iter()
-            .map(|height| height.to_bits())
-            .collect();
-        if !intent.dirty
-            && intent.host_revision == Some(host.publication_revision)
-            && intent.asset_revision == assets.revision
-            && intent.roof_state == roof_state
-            && intent.arch_height_bits == arch_height_bits
-            && intent.prepared_generation == Some(path.generation)
-        {
-            continue;
-        }
         let Some(raw) = collection.raw_sources.get(&intent.source.wall) else {
             withdraw.write(WithdrawOpening(intent.source.id));
             intent.projected_world_position = None;
+            intent.dirty = true;
             report.faults.push(format!(
                 "World opening {} requires the original raw Curve2",
                 intent.source.id.0
             ));
             continue;
         };
+        let roof_state = associations
+            .entity(intent.source.wall)
+            .and_then(|entity| roofs.get(entity).ok())
+            .map(|roof| roof.0);
+        if !intent.dirty
+            && intent.host_revision == Some(host.publication_revision)
+            && intent.asset_revision == assets.revision
+            && intent.roof_state == roof_state
+            && intent.arch_height_bits.iter().copied().eq(host
+                .arch_segment_heights
+                .iter()
+                .map(|height| height.to_bits()))
+            && intent.prepared_generation == Some(path.generation)
+        {
+            continue;
+        }
         let door = matches!(
             intent.source.request.family,
             OpeningFamily::CottageBalconyDoor | OpeningFamily::GothicBalconyDoor
@@ -146,10 +144,18 @@ fn resolve(
                 intent.asset_revision = assets.revision;
                 intent.dirty = false;
                 intent.roof_state = roof_state;
-                intent.arch_height_bits = arch_height_bits;
+                intent.arch_height_bits.clear();
+                intent.arch_height_bits.extend(
+                    host.arch_segment_heights
+                        .iter()
+                        .map(|height| height.to_bits()),
+                );
                 intent.prepared_generation = Some(path.generation);
             }
             Err(error) => {
+                // Withdrawing destroys the projected entity. Even if inputs
+                // return to the last successful values, it must be recreated.
+                intent.dirty = true;
                 withdraw.write(WithdrawOpening(intent.source.id));
                 intent.projected_world_position = None;
                 report

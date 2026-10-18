@@ -1,15 +1,4 @@
-//! 顶层 `input` 模块（B `input::{action_set, input_stream, mod, panic_repro_state}`）。
-//!
-//! 证据（`input/ALGORITHMS.md` §2.6、§3，汇编逐条核对）：
-//! - `ActiveInputModeTracker`（0x20 B）= `controller_deadline: Instant @0` + `mouse_keyboard_deadline: Instant @0x10`；
-//!   `new_default_controller` 0x140958eb0 = `{controller: now + 250ms, mouse_keyboard: now}`，
-//!   `new_default_mouse_keyboard` 0x140958ef0 对调；冷却常量是 `Duration { secs: 0, nanos: 0x0ee6b280 }`；
-//!   `mode` 0x140958f30 = `controller_deadline > mouse_keyboard_deadline`（先比秒再比纳秒）；
-//! - `ActiveInputMode`（u8）：`MouseKeyboard = 0`、`Controller = 1`；`is_controller` 0x1408c5680 返回判别字节；
-//! - `InputRecordReplayMode` 5 个变体名取自 `Display`（0x14094f2d0）：`AutoRecordPanicRepro`、`Records`、`Replay`、
-//!   `DisableInput`、`None`（此前文档的 Idle/Replaying/Recording/Finished 命名不对）。
-//!
-//! `Instant` 在原版里是 Windows 的 `{secs, nanos}`；这里用相对某个起点的 `Duration`，由调用方提供 `now`，便于测试。
+//! 游戏输入的动作模型、同步快照和完整录制协议。
 use core::fmt;
 use core::time::Duration;
 
@@ -18,11 +7,12 @@ use bevy_ecs::resource::Resource;
 pub mod action_set;
 pub mod input_stream;
 pub mod panic_repro_state;
+pub mod recording;
 
-/// 控制器/键鼠切换的冷却时间（O：`0x0ee6b280` ns = 250 ms）。
-pub const INPUT_MODE_COOLDOWN: Duration = Duration::from_nanos(0x0ee6_b280);
+/// 避免设备提示在短时间内来回跳动。
+pub const INPUT_MODE_COOLDOWN: Duration = Duration::from_millis(250);
 
-/// 当前输入方式（O：u8 判别）。
+/// 当前输入方式。
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[repr(u8)]
 pub enum ActiveInputMode {
@@ -32,13 +22,13 @@ pub enum ActiveInputMode {
 }
 
 impl ActiveInputMode {
-    /// 0x1408c5680。
+    /// 是否使用手柄提示。
     pub fn is_controller(self) -> bool {
         self == Self::Controller
     }
 }
 
-/// 输入方式跟踪器（原版为 ECS 资源：`translate_input` 0x1417cd0a0 以 `ResMut` 更新）。
+/// 同一单调时间起点上的设备活动记录；相等时优先键鼠。
 #[derive(Resource, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ActiveInputModeTracker {
     pub controller_deadline: Duration,
@@ -46,23 +36,23 @@ pub struct ActiveInputModeTracker {
 }
 
 impl ActiveInputModeTracker {
-    /// 0x140958eb0。
+    /// 默认显示手柄提示。
     pub fn new_default_controller(now: Duration) -> Self {
         Self {
-            controller_deadline: now + INPUT_MODE_COOLDOWN,
+            controller_deadline: now.saturating_add(INPUT_MODE_COOLDOWN),
             mouse_keyboard_deadline: now,
         }
     }
 
-    /// 0x140958ef0。
+    /// 默认显示键鼠提示。
     pub fn new_default_mouse_keyboard(now: Duration) -> Self {
         Self {
             controller_deadline: now,
-            mouse_keyboard_deadline: now + INPUT_MODE_COOLDOWN,
+            mouse_keyboard_deadline: now.saturating_add(INPUT_MODE_COOLDOWN),
         }
     }
 
-    /// 0x140958f30：截止更晚的一方是当前输入方式；相等时是键鼠。
+    /// 最近获得优先权的输入设备。
     pub fn mode(&self) -> ActiveInputMode {
         if self.controller_deadline > self.mouse_keyboard_deadline {
             ActiveInputMode::Controller
@@ -72,7 +62,7 @@ impl ActiveInputModeTracker {
     }
 }
 
-/// 输入录制/回放模式（O：niche 存储，变体 i = `i64::MIN + i`）。
+/// 输入录制/回放模式。原生编码转换只保留为兼容工具，不用作 Rust 内存布局。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum InputRecordReplayMode {
     AutoRecordPanicRepro = 0,

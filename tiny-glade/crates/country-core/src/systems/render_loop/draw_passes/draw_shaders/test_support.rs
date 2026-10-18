@@ -68,9 +68,9 @@ impl PassHost for RecHost {
     ) -> Option<DynamicConstantsBinding> {
         self.inner.allocate_dynamic_constants(r)
     }
-    fn ssbo_buffer_word(&self, h: u64) -> Option<u32> {
-        // `bind_ray_tracing<DrawBuilder>` 取 Tri / Bvh 缓冲字（不记 `Call`：原版里是库查询，不是 `get_rg_buffer`）。
-        self.inner.ssbo_buffer_word(h)
+    fn ssbo_instance_count(&self, h: u64) -> Option<u32> {
+        // `bind_ray_tracing<DrawBuilder>` 读取 Tri / Bvh 实例数量（不记 `Call`：原版里是库查询，不是 `get_rg_buffer`）。
+        self.inner.ssbo_instance_count(h)
     }
     fn rg_buffer_resource(&self, h: u64) -> Option<u32> {
         self.calls.borrow_mut().push(Call::RgBuffer(h));

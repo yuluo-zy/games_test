@@ -66,10 +66,36 @@ pub struct AutoClutterRegion {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ClutterRegionId(pub u64);
 
-/// 自动杂物对象（实体组件；字段布局 unknown，manage 用其键建集合）。
+/// 自动杂物对象（实体组件）。
+///
+/// Fresh B evidence（2026-10-17）：
+/// - `RawVec::grow_one<AutoClutterObject>`（PDB @0x14078c880，ICF 与
+///   `WallPathSegment` 同址）按 **0x68=104B** stride 倍增。
+/// - `std::collections::HashMap::from_iter<u64, &AutoClutterObject, _>`
+///   @0x142612aa0：循环 `imul rax,r15,0x68`、`mov rdx,[rdi+rax+0x40]`
+///   ⇒ 映射键 u64 @+0x40，元素 0x68B。
+///
+/// 其余字段 U（+0x00..+0x40、+0x48..+0x68）。
+#[repr(C)]
 pub struct AutoClutterObject {
-    /// unknown 字段；仅确认键类型 u64。
+    /// +0x00..+0x40 unknown。
+    pub unknown_00: [u8; 0x40],
+    /// +0x40 集合键（O：u64）。
     pub key: u64,
+    /// +0x48..+0x68 unknown。
+    pub unknown_48: [u8; 0x20],
+}
+
+#[cfg(test)]
+mod auto_clutter_object_layout_tests {
+    use super::*;
+    use core::mem::{offset_of, size_of};
+
+    #[test]
+    fn auto_clutter_object_layout_is_0x68_key_at_0x40() {
+        assert_eq!(size_of::<AutoClutterObject>(), 0x68);
+        assert_eq!(offset_of!(AutoClutterObject, key), 0x40);
+    }
 }
 
 /// 自动杂物状态资源（AutoClutterState，build 里 insert_resource）。

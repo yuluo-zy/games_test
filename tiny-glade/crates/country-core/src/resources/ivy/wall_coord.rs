@@ -33,13 +33,15 @@ impl WallCoord {
         let reciprocal = 1.0 / (dz * dz + dx * dx).sqrt();
         let offset_x = (-dz * reciprocal) * 0.63 * 0.5;
         let offset_z = (dx * reciprocal) * 0.63 * 0.5;
-        // RNE 0x140b19acd/b72..ba7: the normal's second component offsets both
-        // the Y and Z outputs — out.y = v ± offset_z, out.z = z ± offset_z.
-        // The earlier draft added the offset to Z only.
+        // RNE 0x140b19b72..ba7: the normal is lifted by `x0y` into
+        // `(nx, 0, nz)`, so the offset vector's middle slot is always 0 —
+        // `unpcklps xmm3, xmm8` places the WallCoord v (xmm8) into out.y and
+        // only the x/z outputs receive `± offset`. The earlier draft
+        // incorrectly applied `± offset_z` to the Y slot as well.
         if side {
-            Vec3::new(x - offset_x, self.v - offset_z, z - offset_z)
+            Vec3::new(x - offset_x, self.v, z - offset_z)
         } else {
-            Vec3::new(x + offset_x, self.v + offset_z, z + offset_z)
+            Vec3::new(x + offset_x, self.v, z + offset_z)
         }
     }
 }

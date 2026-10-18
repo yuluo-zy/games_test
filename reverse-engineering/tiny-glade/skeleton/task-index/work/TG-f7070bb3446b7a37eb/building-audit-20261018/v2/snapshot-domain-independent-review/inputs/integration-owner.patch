@@ -1,0 +1,24 @@
+--- a/crates/country-core/src/resources/stairs/stairs_state.rs
++++ b/crates/country-core/src/resources/stairs/stairs_state.rs
+@@ -105,6 +105,11 @@
+     }
+     pub fn edges(&self) -> &[(u32, u32)] {
+         &self.edges
++    }
++    /// Preserve the original Option<u64> when serializing a snapshot; reading
++    /// its metadata must not populate a missing cached checksum.
++    pub fn cached_checksum(&self) -> Option<u64> {
++        self.checksum
+     }
+     pub fn compute_checksum(&mut self) -> u64 {
+         *self.checksum.get_or_insert_with(|| hash_edges(&self.edges))
+--- a/crates/country-core/Cargo.toml
++++ b/crates/country-core/Cargo.toml
+@@ -12,6 +12,7 @@
+ native-audio = ["dep:libfmod"]
+ 
+ [dependencies]
++motomoto = { path = "../motomoto" }
+ bevy_app.workspace = true
+ ahash = "=0.8.11"
+ petgraph = "=0.8.1"

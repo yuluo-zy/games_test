@@ -67,26 +67,21 @@ fn shallow_inheritance_preserves_concrete_children_and_unresolved_markers() {
 }
 
 #[test]
-fn concrete_borrow_preserves_identity_and_original_unresolved_failures() {
+fn concrete_borrow_preserves_identity_and_unresolved_fields_return_errors() {
+    use asset::inheritable::UnresolvedField;
     let input = Inheritable::Value(String::from("borrowed"));
     let Inheritable::Value(value) = &input else {
         unreachable!()
     };
+    assert!(std::ptr::eq(input.try_as_concrete().unwrap(), value));
     assert!(std::ptr::eq(input.as_concrete(), value));
-    fn panic_text(value: Inheritable<bool>) -> String {
-        let error = std::panic::catch_unwind(|| value.as_concrete()).unwrap_err();
-        error
-            .downcast_ref::<String>()
-            .cloned()
-            .unwrap_or_else(|| (*error.downcast_ref::<&str>().unwrap()).to_owned())
-    }
     assert_eq!(
-        panic_text(Inheritable::Inherit),
-        "as_concrete() called on an Inheritable value without a prior call to inherit()"
+        Inheritable::<bool>::Inherit.try_as_concrete(),
+        Err(UnresolvedField::InheritanceRequired)
     );
     assert_eq!(
-        panic_text(Inheritable::MissingDefault),
-        "Unable to resolve: a default value bool was not provided."
+        Inheritable::<bool>::MissingDefault.try_as_concrete(),
+        Err(UnresolvedField::MissingDefault)
     );
 }
 

@@ -1,11 +1,10 @@
-//! system_color — 调色系统族（组 A restorer，2026-10-16）。
+//! system_color — 调色系统族（restorer-state-color，2026-10-17 fresh 反编译重建）。
 //!
-//! 原 crate（B skeleton）：`crates/systems/color/`（17 文件；77 符号 = 业务 26 /
-//! 内联 11 / 胶水 40；rhapsody `GraphicsDevice::create_buffer` 0x14288e990 判
-//! dependency_reuse 不恢复）。
-//! 契约：`systems-recovery/groupA/color/RE-ANALYSIS.md`（SSBO 写链、实体颜色
-//! 记录 0x20B {id, 打包中心, max_y×0.4922, tag}（tag 6 墙/7 门/0xc 半木/10 装饰）、
-//! 图标网格路径全表、IconInfo{String, kind@+0x18, u32@+0x24}）。
+//! 原 crate（B skeleton）：`crates/systems/color/`（17 文件；21 业务函数）。
+//! 事件族布局按 fresh 反编译消费面恢复（`EventInstance = {event_id u64, event E}`，
+//! bevy 0.16 fork 的 `EventInstance` 为 id 前置，见 base.rs:181）：
+//! - 墙/门/半木事件（country_core 已定义）：E={u64 id, u32 色, u8 custom}，stride 0x18。
+//! - 本模块事件：见下方各结构注释。
 
 pub mod autoclose_color_menu;
 pub mod color_menu;
@@ -28,13 +27,15 @@ use bevy_ecs::prelude::*;
 
 // ---------------------------------------------------------------- 事件族
 
-/// 显示颜色菜单命令（O：`system_color::show_color_menu::ShowColorMenuCmd`；
-/// ui_color_wall_and_roof / ui_color_gates / ui_color_windows_and_flags 发射、
-/// show_color_options 0x14229a7f0 消费）。
+/// 显示颜色菜单命令（O：`show_color_menu::ShowColorMenuCmd`；ui_color_* 发射、
+/// show_color_options 0x14229a7f0 消费）。字段名 U（show_color_options 反编译失败）；
+/// autoclose_color_menu 0x142298d30 读 kind 字段：`kind == 0xc` 直接关闭。
 #[derive(Event, Clone, Copy, Debug, Default)]
 pub struct ShowColorMenuCmd {
-    /// typed gap。
-    pub _gap: u64,
+    /// kind（O：autoclose 读 `*event == 0xc`）。
+    pub kind: u32,
+    /// 载荷（U）。
+    pub payload: u64,
 }
 
 /// 隐藏颜色菜单命令（O：`show_color_menu::HideColorMenuCmd`；hide_color_menu
@@ -44,10 +45,16 @@ pub struct HideColorMenuCmd;
 
 /// 屋顶颜色命令（O：`set_roof_customization::SetRoofColorIdCmd`；消费
 /// set_roof_customization 0x142299dd0 / write_roof_color_id_to_gpu 0x142298520）。
+/// E={id u64, color u32, custom u8}，stride 0x18（set_roof_customization 外循环
+/// 读 event+0x10 色、+0x14 custom）。
 #[derive(Event, Clone, Copy, Debug, Default)]
 pub struct SetRoofColorIdCmd {
-    /// typed gap。
-    pub _gap: u64,
+    /// 目标 id。
+    pub id: u64,
+    /// 颜色 id。
+    pub color: u32,
+    /// custom 标志（+0x12 触发布局重算）。
+    pub custom: u8,
 }
 
 /// 平顶样式命令（权威定义在 `roofs::commands::SetFlatRoofStyleCmd`——
@@ -55,59 +62,117 @@ pub struct SetRoofColorIdCmd {
 pub use country_core::resources::roofs::commands::SetFlatRoofStyleCmd;
 
 /// 装饰物颜色命令（O：`set_decorator_color_id::SetDecoratorColorIdCmd`；
-/// 消费 set_decorator_color_id 0x1422af0c0）。
+/// 消费 set_decorator_color_id 0x1422af0c0 外循环）。E={id u32, color u32,
+/// custom u8}，stride 0x18（读 event+0xc 色、+0x10 custom）。
 #[derive(Event, Clone, Copy, Debug, Default)]
 pub struct SetDecoratorColorIdCmd {
-    /// typed gap。
-    pub _gap: u64,
+    /// 装饰 id。
+    pub id: u32,
+    /// 颜色 id（写 DecoratorInfo+0x28）。
+    pub color: u32,
+    /// custom 标志。
+    pub custom: u8,
 }
 
 /// 装饰亮度命令（O：`SetDecoratorBrightnessCmd`；ColorMenuBrightnessValue
 /// 三变体 {0.25, 1.0, 4.0}（0x140b06770 判别表，coordinator 契约 #1））。
+/// E={id u32, value u32, custom u8}，stride 0x18（set_decorator_color_id 第 2 层
+/// 写灯笼 +0x0、tag 0xe）。
 #[derive(Event, Clone, Copy, Debug, Default)]
 pub struct SetDecoratorBrightnessCmd {
-    /// typed gap。
-    pub _gap: u64,
+    /// 装饰 id。
+    pub id: u32,
+    /// 亮度值。
+    pub value: u32,
+    /// custom 标志。
+    pub custom: u8,
 }
 
-/// 梯子颜色命令（O：`SetLadderColorIdCmd`）。
+/// 梯子颜色命令（O：`SetLadderColorIdCmd`；set_decorator_color_id 第 3 层写
+/// 楼梯连接节点 +0x8、tag 10）。
 #[derive(Event, Clone, Copy, Debug, Default)]
 pub struct SetLadderColorIdCmd {
-    /// typed gap。
-    pub _gap: u64,
+    /// 楼梯装饰 id。
+    pub id: u32,
+    /// 颜色值。
+    pub value: u32,
+    /// custom 标志。
+    pub custom: u8,
 }
 
-/// 楼梯扶手命令（O：`SetStairRailingCmd`）。
+/// 楼梯扶手命令（O：`SetStairRailingCmd`；set_decorator_color_id 第 4 层
+/// （stride 0x10）写楼梯连接节点 +0x10、tag 10）。E={id u32, value u8, custom u8}
+/// = 8B → EventInstance stride 0x10。
 #[derive(Event, Clone, Copy, Debug, Default)]
 pub struct SetStairRailingCmd {
-    /// typed gap。
-    pub _gap: u64,
+    /// 楼梯装饰 id。
+    pub id: u32,
+    /// 扶手值。
+    pub value: u8,
+    /// custom 标志。
+    pub custom: u8,
 }
 
-/// 魔法颜色命令（O：`SetMagicColorIdCmd`）。
+/// 魔法颜色命令（O：`SetMagicColorIdCmd`；set_decorator_color_id 最内层写
+/// 楼梯连接节点 +0xc、tag 10）。
 #[derive(Event, Clone, Copy, Debug, Default)]
 pub struct SetMagicColorIdCmd {
-    /// typed gap。
-    pub _gap: u64,
+    /// 楼梯装饰 id。
+    pub id: u32,
+    /// 颜色值。
+    pub value: u32,
+    /// custom 标志。
+    pub custom: u8,
 }
 
 /// 窗灯命令（O：`set_window_light::SetWindowLightCmd`；消费 set_window_light
-/// 0x142298260）。
+/// 0x142298260）。E={id u32, value u32, custom u8}，stride 0x18（读 event+0xc 值、
+/// +0x10 custom）。
 #[derive(Event, Clone, Copy, Debug, Default)]
 pub struct SetWindowLightCmd {
-    /// typed gap。
-    pub _gap: u64,
+    /// 装饰 id。
+    pub id: u32,
+    /// 窗灯值（u32，写 WindowExtra.f 位模式）。
+    pub value: u32,
+    /// custom 标志。
+    pub custom: u8,
 }
 
-/// `system_color::impl$0::add_color` @0x140651870（O 面：17 系统注册 + 资源/
-/// 事件注册；re-analyst §6：17 个 0x140ecxxx 注册调用的系统名映射 U）。
+/// 旗连接命令（O：`walls::decorator::SetFlagConnectionCmd`；set_flag_connection_
+/// and_chimney_smoke 0x142298970 消费）。E={id u32, value u8, custom u8} = 8B →
+/// stride 0x10（读 event+0xc 值、+0xd custom）。**core `walls::decorator` 同名
+/// 占位（`_gap: u64`）未恢复字段——本模块按消费面重建，登记分歧。**
+#[derive(Event, Clone, Copy, Debug, Default)]
+pub struct SetFlagConnectionCmd {
+    /// 装饰 id。
+    pub id: u32,
+    /// 旗连接值。
+    pub value: u8,
+    /// custom 标志。
+    pub custom: u8,
+}
+
+/// 烟囱烟开关命令（O：`walls::decorator::SetChimneySmokeCmd`；同族消费）。
+/// E={id u32, value u8, custom u8}，stride 0x10。
+#[derive(Event, Clone, Copy, Debug, Default)]
+pub struct SetChimneySmokeCmd {
+    /// 装饰 id。
+    pub id: u32,
+    /// 烟开关值。
+    pub value: u8,
+    /// custom 标志。
+    pub custom: u8,
+}
+
+/// `system_color::impl$0::add_color` @0x140651870（注册面；FIX-4 reviewer：
+/// 事件**集合**一致 15 个，注册面按 workspace 约定 `init_resource` 胶水落地——
+/// 未逐事件对齐反编译的 `register_event` 顺序，另含本模块系统写出的他域事件）。
 pub fn register_color_events(world: &mut World) {
     use country_core::resources::color_id::{
         GateColorIds, HalftimberColorIds, RoofColorIds, SetGateColorIdCmd,
         SetHalftimberColorIdCmd, SetWallColorIdCmd, WallColorIds,
     };
     use country_core::resources::glade_border::NotInDemoHint;
-    use country_core::resources::walls::decorator::{SetChimneySmokeCmd, SetFlagConnectionCmd};
     use country_core::systems::ui::resources::widget_params::PlayUiSound;
     use country_core::systems::wall::{SetFreehandHeightTypeCmd, SetPlasterPeelAmountCmd, SetWallStyleCmd};
     use country_core::resources::roofs::commands::SetFlatRoofRimStyleCmd;

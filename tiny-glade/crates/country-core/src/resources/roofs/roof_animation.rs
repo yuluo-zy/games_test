@@ -4,15 +4,15 @@
 use bevy_ecs::component::Component;
 
 #[derive(Component, Clone, Debug, Default)]
-pub struct RoofAnimation(pub(crate) crate::recovered_building::roof_components::RoofAnimation);
+pub struct RoofAnimation(pub(crate) crate::resources::roofs::components::RoofAnimation);
 
 impl RoofAnimation {
     /// 观测内层（create_roof 装配）。
-    pub fn from_inner(inner: crate::recovered_building::roof_components::RoofAnimation) -> Self {
+    pub fn from_inner(inner: crate::resources::roofs::components::RoofAnimation) -> Self {
         Self(inner)
     }
     /// 观测内层引用（delete_roofs 完成判定）。
-    pub fn inner(&self) -> &crate::recovered_building::roof_components::RoofAnimation {
+    pub fn inner(&self) -> &crate::resources::roofs::components::RoofAnimation {
         &self.0
     }
     /// 动画推进（system-roof `roof_animation` 消费；行为 = 内层 `advance`）。

@@ -1,12 +1,11 @@
-use country_core::recovered_building::{
-    wall_freeform_cache::{PreviewRectangleObserved, rectangle_curve},
-    wall_state::WallShapeSnapshot,
-};
+use country_core::resources::walls::freeform_height_cache::PreviewRectangleObserved;
+use country_core::resources::walls::freeform_height_cache::rectangle_curve;
+use country_core::resources::walls::publication_fields::WallShapeSnapshot;
 use country_core::resources::walls::{
     InnerWalls, WallId, WallState, inner_wall_state::is_default_arch_height,
 };
 use serde_json::Value;
-use system_roof::surface::Curve2;
+use country_core::resources::roofs::geometry::surface::Curve2;
 
 fn curve() -> Curve2 {
     Curve2::try_new(vec![[0.0, 0.0], [1.0, 0.0]], false).unwrap()
@@ -193,7 +192,7 @@ fn removing_all_preserves_counter_and_both_prior_notice_sets() {
 #[test]
 fn core_world_consumes_create_edit_delete_and_restoration_without_upper_runtime() {
     use bevy_ecs::prelude::*;
-    use country_core::recovered_building::wall_collection::TerrainHeightGrid512;
+    use country_core::resources::walls::publication_source::TerrainHeightGrid512;
     use country_core::systems::wall::wall_state::publish_public_wall_state::{
         WallPublicationState, WallPublicationTerrain, publish_wall_sources,
     };
@@ -300,7 +299,7 @@ fn core_world_consumes_create_edit_delete_and_restoration_without_upper_runtime(
 
 #[test]
 fn a_failed_core_publication_is_visible_and_is_cleared_by_delete() {
-    use country_core::recovered_building::wall_collection::TerrainHeightGrid512;
+    use country_core::resources::walls::publication_source::TerrainHeightGrid512;
     use country_core::systems::wall::wall_state::publish_public_wall_state::WallPublicationState;
     let terrain = TerrainHeightGrid512 {
         encoded: vec![0; 512 * 512].into(),

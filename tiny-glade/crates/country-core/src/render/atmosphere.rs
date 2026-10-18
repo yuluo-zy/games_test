@@ -7,11 +7,13 @@
 //! Named Vec4 slots (I): sun tint day/dusk, sky base/high/low/horizon/clouds —
 //! exact mapping is a typed gap.
 
-use glam::Vec4;
+use bevy_ecs::resource::Resource;
+use glam::{Vec3, Vec4};
 use serde::{Deserialize, Serialize};
 
 /// Sun + sky color palette (48 bytes / 3 × Vec4, O).
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(from = "SunSkyColorsData", into = "SunSkyColorsData")]
 pub struct SunSkyColors {
     /// Vec4 slot 0 (O).
     pub a: Vec4,
@@ -34,6 +36,73 @@ impl SunSkyColors {
         }
     }
 }
+
+// DTO restores the original four Vec3 JSON fields while retaining the current
+// twelve-float arithmetic container; this is a serialization projection only.
+#[derive(Serialize, Deserialize)]
+struct SunSkyColorsData {
+    sun_tint_color: Vec3,
+    moon_tint_color: Vec3,
+    sky_low_color: Vec3,
+    sky_high_color: Vec3,
+}
+impl From<SunSkyColorsData> for SunSkyColors {
+    fn from(v: SunSkyColorsData) -> Self {
+        Self {
+            a: Vec4::new(
+                v.sun_tint_color.x,
+                v.sun_tint_color.y,
+                v.sun_tint_color.z,
+                v.moon_tint_color.x,
+            ),
+            b: Vec4::new(
+                v.moon_tint_color.y,
+                v.moon_tint_color.z,
+                v.sky_low_color.x,
+                v.sky_low_color.y,
+            ),
+            c: Vec4::new(
+                v.sky_low_color.z,
+                v.sky_high_color.x,
+                v.sky_high_color.y,
+                v.sky_high_color.z,
+            ),
+        }
+    }
+}
+impl From<SunSkyColors> for SunSkyColorsData {
+    fn from(v: SunSkyColors) -> Self {
+        Self {
+            sun_tint_color: v.a.truncate(),
+            moon_tint_color: Vec3::new(v.a.w, v.b.x, v.b.y),
+            sky_low_color: Vec3::new(v.b.z, v.b.w, v.c.x),
+            sky_high_color: Vec3::new(v.c.y, v.c.z, v.c.w),
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
+pub struct DerivedAtmosphere {
+    pub sun_tint: Vec3,          // +00
+    pub fake_light_color: Vec3,  // +0c
+    pub fake_light_dir: Vec3,    // +18
+    pub fake_light2_color: Vec3, // +24
+    pub fake_light2_dir: Vec3,   // +30
+    pub sky_low_color: Vec3,     // +3c
+    pub sky_high_color: Vec3,    // +48
+    pub fog_thickness: f32,      // +54
+    pub fog_tint: Vec3,          // +58
+    pub dir_to_sun: Vec3,        // +64
+    pub dir_to_moon: Vec3,       // +70
+}
+
+// Default is original startup only: insert_resources @140940f83..fb9 zeroes
+// 0x7c bytes. Runtime consumer must run the original TOD producer first.
+const _: () = assert!(core::mem::size_of::<DerivedAtmosphere>() == 0x7c);
+const _: () = assert!(core::mem::offset_of!(DerivedAtmosphere, fog_thickness) == 0x54);
+const _: () = assert!(core::mem::offset_of!(DerivedAtmosphere, dir_to_sun) == 0x64);
+const _: () = assert!(core::mem::offset_of!(DerivedAtmosphere, dir_to_moon) == 0x70);
 
 #[cfg(test)]
 mod tests {

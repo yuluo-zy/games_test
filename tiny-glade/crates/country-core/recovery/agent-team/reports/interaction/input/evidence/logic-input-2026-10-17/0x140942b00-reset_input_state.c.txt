@@ -1,0 +1,129 @@
+
+void __cdecl country_core::systems::backend::input::reset_input_state::reset_input_state(void)
+
+{
+  undefined4 uVar1;
+  undefined4 *puVar2;
+  undefined8 *puVar3;
+  undefined8 uVar4;
+  longlong lVar5;
+  ulonglong uVar6;
+  ulonglong uVar7;
+  undefined8 uVar8;
+  undefined8 uVar9;
+  undefined8 uVar10;
+  undefined8 uVar11;
+  undefined8 uVar12;
+  undefined8 uVar13;
+  undefined8 uVar14;
+  undefined8 uVar15;
+  undefined8 uVar16;
+  undefined8 uVar17;
+  ulonglong *puVar18;
+  longlong *in_RCX;
+  ulonglong uVar19;
+  undefined8 *in_RDX;
+  ulonglong uVar20;
+  ulonglong uVar21;
+  ulonglong uVar22;
+  undefined8 *in_R8;
+  longlong in_R9;
+  ulonglong uVar23;
+  
+  uVar1 = *(undefined4 *)((longlong)in_RCX + 0x1c);
+  puVar2 = (undefined4 *)in_RCX[2];
+  *puVar2 = uVar1;
+  puVar3 = (undefined8 *)*in_RCX;
+  uVar4 = puVar3[0x15];
+  uVar8 = puVar3[0x13];
+  uVar9 = puVar3[0x14];
+  uVar10 = puVar3[0xb];
+  uVar11 = puVar3[0xc];
+  uVar12 = puVar3[0xd];
+  uVar13 = puVar3[0xe];
+  uVar14 = puVar3[0xf];
+  uVar15 = puVar3[0x10];
+  uVar16 = puVar3[0x11];
+  uVar17 = puVar3[0x12];
+  puVar3[0xb] = 0;
+  puVar3[0xc] = 0;
+  puVar3[0xd] = 0;
+  puVar3[0xe] = 0;
+  puVar3[0xf] = 0;
+  puVar3[0x10] = 0;
+  puVar3[0x11] = 0;
+  puVar3[0x12] = 0;
+  puVar3[0x13] = 0;
+  puVar3[0x14] = 0;
+  puVar3[0x15] = 0;
+  *puVar2 = uVar1;
+  puVar3[10] = uVar4;
+  puVar3[8] = uVar8;
+  puVar3[9] = uVar9;
+  puVar3[6] = uVar16;
+  puVar3[7] = uVar17;
+  puVar3[4] = uVar14;
+  puVar3[5] = uVar15;
+  puVar3[2] = uVar12;
+  puVar3[3] = uVar13;
+  *puVar3 = uVar10;
+  puVar3[1] = uVar11;
+  puVar18 = (ulonglong *)*in_RDX;
+  lVar5 = in_RDX[1];
+  uVar6 = *puVar18;
+  uVar19 = 0;
+  uVar23 = uVar6 - *(ulonglong *)(lVar5 + 0x18);
+  if (uVar6 < *(ulonglong *)(lVar5 + 0x18)) {
+    uVar23 = uVar19;
+  }
+  uVar20 = uVar6 - *(ulonglong *)(lVar5 + 0x38);
+  if (uVar6 < *(ulonglong *)(lVar5 + 0x38)) {
+    uVar20 = uVar19;
+  }
+  uVar6 = *(ulonglong *)(lVar5 + 0x30);
+  uVar21 = uVar6 - uVar20;
+  if (uVar6 < uVar20) {
+    uVar21 = uVar19;
+  }
+  uVar7 = *(ulonglong *)(lVar5 + 0x10);
+  uVar22 = uVar7 - uVar23;
+  if (uVar7 < uVar23) {
+    uVar22 = uVar19;
+  }
+  uVar19 = *(ulonglong *)(lVar5 + 0x40);
+  *puVar18 = uVar19 - (uVar22 + uVar21);
+  if ((uVar7 < uVar23 || uVar7 - uVar23 == 0) && (uVar6 < uVar20 || uVar6 - uVar20 == 0)) {
+    puVar18 = (ulonglong *)*in_R8;
+    lVar5 = in_R8[1];
+    uVar6 = *puVar18;
+    uVar19 = 0;
+    uVar23 = uVar6 - *(ulonglong *)(lVar5 + 0x18);
+    if (uVar6 < *(ulonglong *)(lVar5 + 0x18)) {
+      uVar23 = uVar19;
+    }
+    uVar20 = uVar6 - *(ulonglong *)(lVar5 + 0x38);
+    if (uVar6 < *(ulonglong *)(lVar5 + 0x38)) {
+      uVar20 = uVar19;
+    }
+    uVar6 = *(ulonglong *)(lVar5 + 0x30);
+    uVar21 = uVar6 - uVar20;
+    if (uVar6 < uVar20) {
+      uVar21 = uVar19;
+    }
+    uVar7 = *(ulonglong *)(lVar5 + 0x10);
+    uVar22 = uVar7 - uVar23;
+    if (uVar7 < uVar23) {
+      uVar22 = uVar19;
+    }
+    uVar19 = *(ulonglong *)(lVar5 + 0x40);
+    *puVar18 = uVar19 - (uVar22 + uVar21);
+    if ((uVar7 < uVar23 || uVar7 - uVar23 == 0) && (uVar6 < uVar20 || uVar6 - uVar20 == 0)) {
+      return;
+    }
+  }
+  *puVar18 = uVar19;
+  **(undefined4 **)(in_R9 + 0x10) = *(undefined4 *)(in_R9 + 0x1c);
+  bevy_input::button_input::ButtonInput::reset_all<enum2_<bevy_input::keyboard::KeyCode>_>();
+  return;
+}
+

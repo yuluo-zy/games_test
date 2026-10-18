@@ -1,22 +1,23 @@
 //! 屋顶回放/平顶檐历史链集成测试（自 country-core history tests 迁入：
 //! replay_roof/route_roof_replay/set_flat_roof_rim_style 落位 system-roof）。
-use country_core::{
-    recovered_building::{
-        history_transactions::{HistoryCursorStep, HistoryEntry, ObservedHistoryLedger},
-        roof_customization::FlatRoofRimRequest,
-        wall_state::WallId as ObservedWallId,
-    },
-    resources::{
-        history::EditType,
-        roofs::{Roof, commands::*},
-        time::GameTime,
-        walls::{WallId, public_walls::PublicWalls},
-    },
-    systems::{
-        history::{HistoryCpuStage, HistoryReplayFailed, enqueue_history_commands, pop_empty_replay_bucket, process_history_cursor_commands, recording},
-        mode_manager::HistoryCommand,
-    },
-};
+use country_core::resources::history::transactions::HistoryCursorStep;
+use country_core::resources::history::transactions::HistoryEntry;
+use country_core::resources::history::transactions::ObservedHistoryLedger;
+use country_core::resources::roofs::customization::FlatRoofRimRequest;
+use country_core::resources::walls::publication_fields::WallId as ObservedWallId;
+use country_core::resources::history::EditType;
+use country_core::resources::roofs::Roof;
+use country_core::resources::roofs::commands::*;
+use country_core::resources::time::GameTime;
+use country_core::resources::walls::WallId;
+use country_core::resources::walls::public_walls::PublicWalls;
+use country_core::systems::history::HistoryCpuStage;
+use country_core::systems::history::HistoryReplayFailed;
+use country_core::systems::history::enqueue_history_commands;
+use country_core::systems::history::pop_empty_replay_bucket;
+use country_core::systems::history::process_history_cursor_commands;
+use country_core::systems::history::recording;
+use country_core::systems::mode_manager::HistoryCommand;
 use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::Schedule;
 use country_core::resources::history::{History, ReplayBucket, ReplayBuffer};

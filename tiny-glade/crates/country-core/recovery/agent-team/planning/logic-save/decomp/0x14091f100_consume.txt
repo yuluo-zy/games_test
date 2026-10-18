@@ -1,0 +1,47 @@
+
+void __cdecl country_core::meta_commander::MetaCommander::consume(void)
+
+{
+  undefined8 *puVar1;
+  ulonglong uVar2;
+  ulonglong uVar3;
+  undefined8 uVar4;
+  undefined8 uVar5;
+  undefined8 uVar6;
+  undefined8 uVar7;
+  undefined8 uVar8;
+  undefined8 *in_RCX;
+  longlong lVar9;
+  ulonglong *in_RDX;
+  ulonglong uVar10;
+  
+  if (in_RDX[3] != 0) {
+    uVar2 = in_RDX[2];
+    uVar10 = 0;
+    if (*in_RDX <= uVar2 + 1) {
+      uVar10 = *in_RDX;
+    }
+    uVar3 = in_RDX[1];
+    in_RDX[2] = (uVar2 - uVar10) + 1;
+    in_RDX[3] = in_RDX[3] - 1;
+    lVar9 = uVar2 * 0x38;
+    uVar4 = ((undefined8 *)(uVar3 + lVar9))[1];
+    puVar1 = (undefined8 *)(uVar3 + 0x10 + lVar9);
+    uVar5 = *puVar1;
+    uVar6 = puVar1[1];
+    puVar1 = (undefined8 *)(uVar3 + 0x20 + lVar9);
+    uVar7 = *puVar1;
+    uVar8 = puVar1[1];
+    *in_RCX = *(undefined8 *)(uVar3 + lVar9);
+    in_RCX[1] = uVar4;
+    in_RCX[6] = *(undefined8 *)(uVar3 + 0x30 + lVar9);
+    in_RCX[4] = uVar7;
+    in_RCX[5] = uVar8;
+    in_RCX[2] = uVar5;
+    in_RCX[3] = uVar6;
+    return;
+  }
+  *in_RCX = 0x8000000000000014;
+  return;
+}
+

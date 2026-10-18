@@ -1,0 +1,69 @@
+{
+  "target": "B",
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "outer_serializer": "0x140316660",
+  "terrain_serializer": "0x1404f41b0",
+  "variant_visitor": "0x140b3b630",
+  "visitor_Terrain": {
+    "success_tag": 0,
+    "variant_index": 0
+  },
+  "cases": [
+    {
+      "kind": "new",
+      "json": "{\"Terrain\":{\"NewTerrainStroke\":{\"index\":9,\"stroke_pts\":[[1.0,2.0,3.0],[4.0,5.0,6.0]],\"height_ws\":2.5}}}",
+      "value": {
+        "Terrain": {
+          "NewTerrainStroke": {
+            "index": 9,
+            "stroke_pts": [
+              [
+                1.0,
+                2.0,
+                3.0
+              ],
+              [
+                4.0,
+                5.0,
+                6.0
+              ]
+            ],
+            "height_ws": 2.5
+          }
+        }
+      }
+    },
+    {
+      "kind": "edit",
+      "json": "{\"Terrain\":{\"EditTerrainStroke\":{\"index\":7,\"prev_height_ws\":1.0,\"new_height_ws\":2.0,\"prev_falloff\":0.25,\"new_falloff\":0.5}}}",
+      "value": {
+        "Terrain": {
+          "EditTerrainStroke": {
+            "index": 7,
+            "prev_height_ws": 1.0,
+            "new_height_ws": 2.0,
+            "prev_falloff": 0.25,
+            "new_falloff": 0.5
+          }
+        }
+      }
+    },
+    {
+      "kind": "move",
+      "json": "{\"Terrain\":{\"MoveTerrainStroke\":{\"id\":3,\"original_stroke_pts\":[],\"move_vec\":[1.25,-2.0]}}}",
+      "value": {
+        "Terrain": {
+          "MoveTerrainStroke": {
+            "id": 3,
+            "original_stroke_pts": [],
+            "move_vec": [
+              1.25,
+              -2.0
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "boundary": "Original outer Arc<TerrainEdit> and all three terrain JSON serializers execute, with original Serde and Vec code. Only allocator/CRT are bridged. Native JSON parser and whole History save-file/reload are outside this leaf probe."
+}

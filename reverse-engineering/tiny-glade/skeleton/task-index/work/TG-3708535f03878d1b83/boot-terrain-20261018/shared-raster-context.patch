@@ -1,0 +1,52 @@
+--- a/games_test/tiny-glade/crates/tiny-glade/src/scene_raster.rs
++++ b/games_test/tiny-glade/crates/tiny-glade/src/scene_raster.rs
+@@ -37,6 +37,27 @@
+     }
+ }
+ 
++/// Shared current-world raster adapter; direct query passes do not need DrawLists.
++pub(crate) fn with_draw_context<T>(
++    frame: &mut CoreGraphFrame<'_>,
++    world: &mut World,
++    build: impl FnOnce(&mut DrawPassCtx<'_>) -> T,
++) -> rhapsody::Result<T> {
++    let shaders = frame.shader_library();
++    let lookup = Shaders(&shaders);
++    let elapsed = world
++        .get_resource::<bevy_time::Time>()
++        .ok_or_else(|| {
++            rhapsody::Error::invalid_usage("original world raster pass: missing Time producer")
++        })?
++        .elapsed();
++    frame.with_raster(|host| {
++        let mut factory = || -> Box<dyn PassHost> { Box::new(host.sibling()) };
++        let mut ctx = DrawPassCtx::new(world, elapsed, &mut factory, &lookup);
++        Ok(build(&mut ctx))
++    })
++}
++
+ pub struct SceneRasterHost<'f, 's, 'w, 'l> {
+     frame: &'f mut CoreGraphFrame<'s>,
+     world: &'w mut World,
+@@ -60,20 +81,7 @@
+         &mut self,
+         build: impl FnOnce(&mut DrawPassCtx<'_>, &DrawLists) -> T,
+     ) -> rhapsody::Result<T> {
+-        let shaders = self.frame.shader_library();
+-        let lookup = Shaders(&shaders);
+-        let elapsed = self
+-            .world
+-            .get_resource::<bevy_time::Time>()
+-            .ok_or_else(|| {
+-                rhapsody::Error::invalid_usage("original world raster pass: missing Time producer")
+-            })?
+-            .elapsed();
+-        self.frame.with_raster(|host| {
+-            let mut factory = || -> Box<dyn PassHost> { Box::new(host.sibling()) };
+-            let mut ctx = DrawPassCtx::new(self.world, elapsed, &mut factory, &lookup);
+-            Ok(build(&mut ctx, self.lists))
+-        })
++        with_draw_context(self.frame, self.world, |ctx| build(ctx, self.lists))
+     }
+ 
+     pub fn main_pass(

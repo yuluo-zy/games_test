@@ -1,0 +1,23 @@
+NAME: bounds_ws
+SIZE: 19
+SIG: void __cdecl bounds_ws(void)
+
+
+void __cdecl
+country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash::bounds_ws(void)
+
+{
+  undefined8 uVar1;
+  float *in_RCX;
+  longlong in_RDX;
+  undefined8 uVar2;
+  
+  uVar1 = *(undefined8 *)(in_RDX + 0x50);
+  uVar2 = *(undefined8 *)(in_RDX + 0x50);
+  *in_RCX = (float)uVar1 * -0.5;
+  in_RCX[1] = (float)((ulonglong)uVar1 >> 0x20) * -0.5;
+  in_RCX[2] = (float)uVar2 * 0.5;
+  in_RCX[3] = (float)((ulonglong)uVar2 >> 0x20) * 0.5;
+  return;
+}
+

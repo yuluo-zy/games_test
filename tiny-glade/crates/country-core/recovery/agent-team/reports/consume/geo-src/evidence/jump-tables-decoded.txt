@@ -1,0 +1,19 @@
+# hint_focused_edit_hint jump table decode (B patched, base 0x1430386a0)
+# entries little-endian int32; target = base + i*4 + sign_extend(offset)
+# raw 0x1430386a0: 73 5a 24 ff | ff 59 24 ff | 21 5a 24 ff | 73 5a 24 ff | 73 5a 24 ff | 73 5a 24 ff
+# (0x1430386b8 begins the rustc path string, so exactly 6 entries)
+i=0 off=0xff245a73 (-0x00dba58d) target=0x14227e113  -> epilogue, no hint
+i=1 off=0xff2459ff (-0x00dba601) target=0x14227e09f  -> Wall: PublicWalls::get + shape@0x258<2 -> fallthrough 0x14227e0c1
+i=2 off=0xff245a21 (-0x00dba5df) target=0x14227e0c1  -> Roof/common write face
+i=3 off=0xff245a73 (-0x00dba58d) target=0x14227e113  -> epilogue
+i=4 off=0xff245a73 (-0x00dba58d) target=0x14227e113  -> epilogue
+i=5 off=0xff245a73 (-0x00dba58d) target=0x14227e113  -> epilogue
+# geo_src EditSubject discriminants: 0 None / 1 Wall(u64@+8) / 2 Roof(u64@+8) /
+#   3 DecoClutter(u32@+4) / 4 StairPoint(u32@+4) / 5 Terrain(u32@+4)
+# write face common 0x14227e0c1:
+#   make_focus_or_camera_binding_hint(profile)
+#   placement = subject 16B + word 0x0101 @+0x10
+#   word 0x0100 @ flags/id  => flags=0 id=1 (HintType::FocusedEdit)
+# hint_clutter_focused_edit_hint 0x141c3db80:
+#   placement = 3 + decorator_id@+4 + word 0x0100 @+0x10
+#   word 0x0100 @ flags/id  => flags=0 id=1

@@ -12,7 +12,7 @@
 
 ## 还差什么
 
-完整地形生命周期、ID/异常边界、ECS 与音频消费、原高度 raster、GPU、存档联接。旧 readback.rs 的证据明确记为 proposed、未接线且未原码验收，暂不搬入；water 整链仍有推测，只有完成的独立函数纳入 country-core/recovered_systems/water.rs。
+完整地形生命周期、ID/异常边界、ECS 与音频消费、原高度 raster、GPU、存档联接。旧 readback.rs 的证据明确记为 proposed、未接线且未原码验收，暂不搬入；water 整链仍有推测，只有完成的独立函数纳入 country-core/systems/audio/water_grid_bits.rs。
 
 ## 验证与开发差异
 

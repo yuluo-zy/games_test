@@ -65,6 +65,14 @@ pub fn calculate_reprojection_map(
         .bind_texture(PREV_DEPTH_TEX, &&prev.texture, 0x19)
         .bind_texture(VELOCITY_TEX, &velocity, 0x19)
         .bind_texture(binding::OUTPUT_TEX, &WriteTextureUnchecked(map), 0x32);
+    // The original packaged shader's history_valid==0 branch cannot reach
+    // prev_depth_tex's sole ImageGather. Keep its original binding/sync while
+    // informing the current graph that this configuration reads no texels.
+    let pass = if prev.valid == 0 {
+        pass.inactive_texture_contents(PREV_DEPTH_TEX)
+    } else {
+        pass
+    };
     let map_pass = dispatch_extent(pass, &map);
 
     let copy = env
@@ -166,7 +174,9 @@ mod tests {
     fn history_valid_flag_passes_through_unmodified() {
         let (e, out) = run(0);
         assert_eq!(e.uniform_u32(&out.map_pass, binding::HISTORY_VALID), 0);
+        assert_eq!(out.map_pass.inactive_texture_bindings.len(), 1);
         let (e, out) = run(7);
+        assert!(out.map_pass.inactive_texture_bindings.is_empty());
         assert_eq!(
             e.uniform_u32(&out.map_pass, binding::HISTORY_VALID),
             7,

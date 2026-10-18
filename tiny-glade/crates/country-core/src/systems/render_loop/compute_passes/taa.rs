@@ -145,7 +145,7 @@ pub struct TaaInputs<'a> {
 /// W52 TAA（O 0x140a3b2f0）。返回 `output` 与声明好的 pass。
 pub fn calculate_taa(env: &mut PassEnv<'_>, i: &TaaInputs<'_>) -> (RgTexture, RecordedComputePass) {
     let (w, h) = extent_xy(&i.history_output.desc);
-    let rec = env
+    let pass = env
         .new_pass("TAA", &"/taa.cs.hlsl")
         .uniform(
             H_HISTORY_VALID,
@@ -157,8 +157,11 @@ pub fn calculate_taa(env: &mut PassEnv<'_>, i: &TaaInputs<'_>) -> (RgTexture, Re
         .bind_texture(H_HISTORY_OUTPUT_TEX, &i.history_output, ACCESS_WRITE)
         .bind_texture(H_OUTPUT_TEX, &i.output, ACCESS_WRITE)
         .uniform(H_BYPASS_CLAMP, i.bypass_clamp as i32)
-        .uniform(H_SHARPEN, i.sharpen_amount)
-        .dispatch_2d(w, h);
+        .uniform(H_SHARPEN, i.sharpen_amount);
+    // Original shader samples history before its validity branch. Native
+    // temporal creation passes TextureInitialData::None; no clear is invented.
+    let pass = if !i.history.valid { pass.allow_undefined_texture_contents(H_HISTORY_TEX) } else { pass };
+    let rec = pass.dispatch_2d(w, h);
     (*i.output, rec)
 }
 
@@ -208,8 +211,7 @@ pub fn calculate_tgsr(
             .bind_texture(H_OUTPUT_TEX, &&blurred, ACCESS_WRITE)
             .dispatch_2d(cw, ch),
     );
-    passes.push(
-        env.new_pass("TGSR reproject", &"/tgsr_reproject.cs.hlsl")
+    let reproject = env.new_pass("TGSR reproject", &"/tgsr_reproject.cs.hlsl")
             .uniform(
                 H_HISTORY_VALID,
                 history_valid_uniform(i.history.valid, i.history_global),
@@ -218,12 +220,11 @@ pub fn calculate_tgsr(
             .bind_texture(H_REPROJECTION_TEX, &i.reprojection, ACCESS_READ)
             .bind_texture(H_DEPTH_TEX, &i.depth, ACCESS_READ)
             .bind_texture(H_OUTPUT_LUM_TEX, &&lum, ACCESS_WRITE)
-            .bind_texture(H_OUTPUT_CHROM_TEX, &&chroma, ACCESS_WRITE)
-            .dispatch_2d(ow, oh),
-    );
+            .bind_texture(H_OUTPUT_CHROM_TEX, &&chroma, ACCESS_WRITE);
+    let reproject = if !i.history.valid { reproject.allow_undefined_texture_contents(H_HISTORY_TEX) } else { reproject };
+    passes.push(reproject.dispatch_2d(ow, oh));
     let main = TgsrMain::new(i.min_subgroup_size, i.sharpen_amount);
-    passes.push(
-        env.new_pass("TGSR", &main)
+    let pass = env.new_pass("TGSR", &main)
             .uniform(
                 H_HISTORY_VALID,
                 history_valid_uniform(i.history.valid && aux.fresh, i.history_global),
@@ -239,9 +240,13 @@ pub fn calculate_tgsr(
             .bind_texture(H_OUTPUT_TEX, &i.output, ACCESS_WRITE)
             .bind_texture(H_AUX_OUTPUT_TEX, &&aux.current, ACCESS_WRITE)
             .uniform(H_BYPASS_CLAMP, i.bypass_clamp as i32)
-            .uniform(H_SHARPEN, i.sharpen_amount)
-            .dispatch_2d(ow, oh),
-    );
+            .uniform(H_SHARPEN, i.sharpen_amount);
+    // All four packaged TGSR main permutations gate actual aux sampling by
+    // this uniform; unlike the preceding reproject history reads it is inactive.
+    let pass = if history_valid_uniform(i.history.valid && aux.fresh, i.history_global) == 0 {
+        pass.inactive_texture_contents(H_AUX_TEX)
+    } else { pass };
+    passes.push(pass.dispatch_2d(ow, oh));
     (*i.output, passes)
 }
 

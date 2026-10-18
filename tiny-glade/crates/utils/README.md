@@ -1,12 +1,60 @@
 # utils
 
-游戏自有的几何、曲线、坐标、数值与缓存辅助库，供建筑、相机和渲染数据生产使用。向量、随机数、半精度、容器和序列化直接复用原版本依赖。
+共享几何、曲线、采样、紧凑索引、数值与文件辅助库。依赖提供的向量、哈希、随机数、半精度和序列化能力直接复用。
 
-## 功能与目录
+## 当前维护状态
 
-geometry/（AABB、圆、矩形、射线、三角形、高度图）；curve/（Curve2/3、参数化、采样、切片）；natural_cubic.rs、wall_space.rs、loop_range.rs；easing_functions.rs、rng.rs、rgb9e5.rs、index_condenser.rs；其余命名/文件/计时工具。
+2026-10-17 至 18 对所有生产模块完成源码审查与重构，并根据第二轮复审补充随机差分和复杂状态测试，修复非终止循环、失败状态不一致、退化几何、错误变换、周期精度和备份覆盖等问题。保持现有公开模块路径与有效序列化格式；新增 fallible 样条构造器。正常输入的既有数值样例继续运行，错误行为的测试改为产品正确性合同。
 
-## 来源
+**当前版本包含有意的行为修复，历史原指令等价报告不能自动覆盖新源码。** 本轮没有调用逆向工具，不据测试通过声称与原程序所有边界等价。逐项审查、性能证据和验证结果见 [REVIEW.md](REVIEW.md)。
+
+## 模块职责
+
+| 模块 | 职责与约束 |
+| --- | --- |
+| `geometry/` | AABB、圆、矩形、线/射线/平面/三角交集、重心坐标、UV定位、高度阈值分段 |
+| `camera`、`components::transform`、`iso_transform` | 投影、视图、屏幕反投影、SRT及父子刚体变换；旋转要求单位四元数 |
+| `curve/` | 折线参数化、投影、裁剪、重采样、平滑；失败的可变操作保持旧状态 |
+| `natural_cubic`、`rdp` | 自然/周期样条与迭代折线简化；非法控制点、容差或步长明确拒绝 |
+| `loop_range`、`wall_space`、`comparative_space` | 环形索引、借用视图、墙坐标与最短周期位移 |
+| `angle_range`、`circular_f32`、`threshold_range`、`subtractive_1d_boolean` | 角度夹取、环形插值、连续阈值分段、保留几何端点的区间裁剪 |
+| `float_grid`、`index_condenser` | 双线性采样、稠密索引与句柄缓存修复 |
+| `easing_functions`、`timer` | 缓动与四样本时间过滤 |
+| `rgb9e5`、`halver`、`swizzlers`、`name_hash`、`rng` | 紧凑颜色、半精度、坐标投影、名称哈希与确定性随机种子 |
+| `selective_deserialize` | 选择性读取嵌套字段；有意保留完成的局部结果并忽略后续解析错误，不用于完整文件校验 |
+| `file`、`local_time` | 时间戳文件名、不会覆盖既有目标的备份、缓存固定时区偏移 |
+
+## 错误与边界合同
+
+- 外部数值反序列化通过 `Result` 返回错误。带 `try_` 的采样/样条入口返回结构化错误；`crashy_` 与要求合法索引/尺寸的便捷构造器仍可能 panic。
+- 重复曲线点允许存在，墙坐标外推寻找首尾非零段；全退化曲线不外推。零距离切片扩展严格保持原坐标，极短/极长非零段采用稳定长度计算。普通零切线返回零；最小次正规非零方向使用缩放归一化。直接修改公开点集、参数缓存或样条字段后，调用方必须自行维持一致性。
+- `LoopSlice` 越界索引会 panic，逻辑索引绕回不意味着视图索引可以越界；空尾切片合法。
+- AABB 的线段交集采用闭边界。`Aabb2::intersect_ray` 返回有符号 slab 进入参数，单独的返回值不能充当完整命中判定。
+- 重心坐标退化输入仍返回 IEEE 非有限值，UV查询会跳过这类三角形。三角交集使用 f64 相对坐标；共面要求法线近似平行，双方点到平面的距离各不超过自身最长边的 `1e-10`；非共面截段使用舍入误差界，不以长边容差吞掉短交段。零面积三角形返回 `Disjoint`，`Segment` 两端顺序不作保证。`Coplanar` 只表示共面，不保证有限区域相交。矩形 `intersects` 判断闭合轮廓接触，严格包含但边界不接触时返回 false。
+- RDP 按有限线段距离检查所有子链，保证被省略顶点的误差不超过 `epsilon`；端点间距是软偏好，不会阻止必要的细分。准备省略顶点时用带舍入误差界的距离上界复核，数值不确定时保守保留。与旧实现的选点结果可能不同。
+- 周期距离先保留各输入的相位，半周期相等时选择负方向；周期插值从归一化相位起算，避免大坐标吞掉短位移。
+- 网格 legacy 模式保留正边界外插，centered 模式夹取到边缘。区间裁剪保留切口端点，不等价于数学集合差；空半开区间是空操作，重复裁剪不会复制零宽碎片。
+- `rotation_from_normal` 的单位输入产生旋转；任意非单位有限法向的输出不保证单位四元数。相机的未锚定 `field_*` 字段保留原有名称，避免误导性的语义重命名。
+- 时间使用启动时缓存的固定 UTC 偏移，未初始化或发现失败时用 UTC；不是历史时区/DST转换器。备份名称冲突通过原子 `create_new` 加编号处理，失败尽力清理部分输出；不保证对并发修改的源文件生成一致性快照。
+
+## 测试与验证
+
+```sh
+cargo fmt -p utils -- --check
+cargo clippy --offline -p utils --lib --test core_properties --test curve_properties --test geometry_properties --test integration_properties -- -D warnings
+cargo test --offline -p utils --all-targets
+cargo test --offline -p utils --all-targets --release
+cargo check --offline -p country-core --lib
+```
+
+新增回归集中在 `tests/{core,curve,geometry}_review.rs`、`tests/{core,curve,geometry,integration}_properties.rs` 与文件/时间模块测试，按不变量和故障类型聚合。复杂测试包含独立 f64 参考、顶点排列/交换/变换不变量、固定种子随机输入、长序列状态机及并发 IO。原数值 fixture 保留，运行实现中的大段样例移动至 `src/oracle/`、`camera/tests.rs`、`natural_cubic/native_tests.rs`、`rdp/native_tests.rs`，不通过删除或忽略整组测试掩盖失败。具体运行结果与未验范围见审查报告。
+
+## 未补造的能力
+
+本轮是源码维护，没有新增原语义未知的墙边界转换、Spline2D全局查询或原始Vec3借用投影ABI。`Vec3SliceView2` 仍是安全传输适配器，有所有权的投影明确使用XZ轴。跨平台位级差异和完整游戏/GPU运行不在本轮源码测试结论内。
+
+## 历史来源
+
 
 - 恢复源码：[shared-foundation/utils](../../../reverse-engineering/tiny-glade/reconstruction/shared-foundation/crates/utils/)，完整源路径为 `reverse-engineering/tiny-glade/reconstruction/shared-foundation/crates/utils/`。
 - 原 B 包/PDB 归属：`crates/utils/src/`；这是行为恢复源码，不是取得作者原始 Rust 文本。
@@ -15,31 +63,3 @@ geometry/（AABB、圆、矩形、射线、三角形、高度图）；curve/（C
 - 逆向/验收报告：[REPORT.md](../../../reverse-engineering/tiny-glade/evidence/foundation-completion-2026-10-13/utils-gaps-2026-10-13/REPORT.md)；[REPORT.md](../../../reverse-engineering/tiny-glade/evidence/foundation-review-fixes-2026-10-14/REPORT.md)；[REPORT.md](../../../reverse-engineering/tiny-glade/evidence/foundation-review-fixes-2026-10-14/numeric-followup/REPORT.md)。
 - 2026-10-14 原码补全与消费者合并：[本轮报告](../../../reverse-engineering/tiny-glade/evidence/utils-gap-recovery-2026-10-14/REPORT.md)。本轮源码修改及输入 SHA 另列于 `provenance/utils-gap-audit.json`；导入提交只表示历史来源。
 - 2026-10-14 B 深挖：[消费者与行号证据](../../../reverse-engineering/tiny-glade/evidence/utils-deep-followup-2026-10-14/REPORT.md)，当前新增源码验收见 `provenance/utils-deep-audit.json`。后续范围按用户要求仅 B。
-
-## 已完成
-
-已恢复几何与曲线数值规则、自然样条构造和局部求值、3D 全局样条查询、墙空间转换、范围切片、缓动、随机分割、颜色打包与索引缓存 insert/get/remove/clear。insert 遇到重复 key 返回 None，不改动状态；新 key 使用原数组长度作为稠密下标。remove_index 返回移除前的下标，供实例消费者同步交换载荷。
-
-country-core 的索引压缩和 FloatGridCells 采样已改为共享 utils 的适配器；OwnedGpuWorldSubset 的 ID 重试、缓存修复、移除与载荷搬动通过该入口。512×512 字节网格两条分支新增 100 组原指令逐位样例；插入 52 组、完整移除 78 组，fixture 保存在本包内。原采样开关名为 USE_FLOAT_GRID_SAMPLING_FIX，指针槽 `0x14362c308` 指向字节 `0x143638fac`。
-
-B 原楼梯消费者 `densely_sample_spline_segment`（`0x140809ad0`）已恢复为 `Spline2D::densely_sample_segment`：每段至少两点，数量为 ceil(2×跨度)，包含末端；输出首切线及取负的末切线。143 组原构造→采样样例含 7 组越界分支，系数及数值输出逐位核对。原标量构造先对每段差值乘 3、再乘倒数；已修复旧容差测试漏掉的运算顺序差异，20 组原 3D 构造与 120 组全局查询也逐位通过。
-
-Curve 的有所有权转换已证明 XZ 投影：原 map/collect 单态化 `0x1402ba9e0` 读取输入偏移 0/8、输入 stride 12、输出 stride 8。`reinterpret_as_curve2/try_to_curve2` 共用 `project_vec3_slice_xz`，继续复用 glam 与 std。10 组数组共 166 个点（含 NaN payload 与有符号零）逐位核对。
-
-## 尚差的功能与验收
-
-| 项目 | 本轮取证结论 | 当前边界 |
-|---|---|---|
-| WallSpaceCoord::bound/is_bounded/to_affine3 | 4894 模块过程/内联与 85322 段 C13 行号记录交叉查找；声明起始行 272/265/198 没有可定位机器码。另查 WallBoundCoord 同名声明，未形成正面映射 | 保持未实现；缺记录不能证明死代码或确定未编译 |
-| Spline2D 全局段查询/位置/切线 | IPI 声明仍未映射到原码；段选择声明行 164，无对应行号地址。真实楼梯消费链使用已恢复的分段采样 | 全局 API 仍未恢复，分段消费链已验；两者分别记账 |
-| Vec3SliceView2 / 原 as_vec2 借用类型 | 四字节入口只证明 RCX→RAX；未变化的 RDX 不证明长度或 slice 接收者。106 个几何域同址调用候选仍有折叠歧义 | 安全借用接口是重建适配选择；原借用类型/投影仍未知。有所有权 Curve XZ 投影轴与 stride 已证明 |
-| IndexCondenser 与实例消费者 | 两处原 insert 内联和完整 remove 已差分；共享逻辑已接线 | K/Option 是安全语义适配，不宣称作者原始 Rust 泛型/返回 ABI；分配失败、超大索引和原完整 GPU 进程未验收 |
-| FloatGridCells 与世界栅格 | 512×512 字节入口两分支逐位验证并合并 | 开关写入者、其余网格单态化和完整游戏运行仍需验收 |
-
-包内没有 experimental-reconstruction 特性；未知墙方法、2D 全局查询和借用投影访问未进入正式包。借用传输作为显式重建适配器保留。Windows 的现有数值样例逐位验证与其他平台的容差合同分开，不代表跨平台所有输入逐位等价或全部游戏消费者完成。
-
-## 持续开发差异
-
-源工作树数值修复按导入时哈希登记，不能将最后 Git 提交当作这些修复的验收。正式包仅留已恢复内容，已删除此前实验门控的猜测 API 与 feature。原 get/remove/clear 测试直接初始化已观察到的私有数据状态，不借用猜测 insert 生产实现；未改研究目录。geometry/native_tests.rs 选择与已验收报告输入 SHA497528a3 相同的 Git fixture，未选用工作树中反向覆盖已确认 expand 下界和新增未验收样例的改动；两份哈希与选择理由均保留在审计清单。
-
-在 workspace 根执行 `cargo test --locked --offline -p utils --all-targets` 验证正式恢复范围；Release 加 `--release`。消费者回归运行 `cargo test --locked --offline -p country-core --lib`。本轮具体结果和保留的失败记录见上方报告。

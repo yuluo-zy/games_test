@@ -1,0 +1,604 @@
+--- before/systems/render_loop/draw_passes/draw_callbacks_a_views.rs
++++ crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_a_views.rs
+@@ -60,9 +60,8 @@
+     pub f4: f32,
+ }
+ 
+-/// `components::DashedLineLength`（TypeId 0x4782fcee8a8c578b/0x8dfbde843e1dee9d）：`f32 @+0`。
+-#[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
+-pub struct DashedLineLengthView(pub f32);
++// 保留旧导出名，绘制端与创建端必须使用同一个 ECS 组件身份。
++pub use crate::components::DashedLineLength as DashedLineLengthView;
+ 
+ /// `resources::critters::sheep::Sheep`（TypeId 0x60556123d75da34f/0x847d370ca9cbbae9；crate 里不存在）：
+ /// `qword @+0x28`（取低 32 位写 `i32`）、`f32 @+0x58`、`u8 @+0x60`（写 `bool`）。
+--- before/systems/ui/signifiers/mod.rs
++++ crates/country-core/src/systems/ui/signifiers/mod.rs
+@@ -10,6 +10,9 @@
+ pub mod signifier_create;
+ pub mod signifier_factory;
+ pub mod signifier_mark_for_delete;
++
++#[cfg(test)]
++mod tests;
+ 
+ use bevy_ecs::prelude::*;
+ 
+@@ -25,13 +28,17 @@
+     world.init_resource::<UiSignifierStream>();
+ }
+ 
+-/// 本地可运行顺序（仅接本模块内部可自持的组件；host 插入 SignifierAnimation 实体）。
++/// 请求生产者应在本组之前执行；创建、动画、标记和销毁按顺序执行。
++/// chain 同时保证延迟命令在后续查询前提交。
+ pub fn add_signifier_systems(schedule: &mut Schedule) {
+-    schedule.add_systems((
+-        signifier_create::signifier_create,
+-        animation::signifier_animation_t,
+-        animation::signifier_animation,
+-        signifier_mark_for_delete::signfier_mark_for_delete,
+-        signifier_mark_for_delete::despawn_marked,
+-    ));
++    schedule.add_systems(
++        (
++            signifier_create::signifier_create,
++            animation::signifier_animation_t,
++            animation::signifier_animation,
++            signifier_mark_for_delete::signfier_mark_for_delete,
++            signifier_mark_for_delete::despawn_marked,
++        )
++            .chain(),
++    );
+ }
+--- before/systems/ui/signifiers/signifier_create.rs
++++ crates/country-core/src/systems/ui/signifiers/signifier_create.rs
+@@ -1,31 +1,10 @@
+-//! `signifier_create.rs` — UiSignifierStream + signifier_create（B 0x140b2cf90/0x140b2cfa0，O）。
++//! 指示符的逐帧请求、去重和实体创建。
+ //!
+-//! 证据（2026-10-17 fresh 反编译/机器码）：
+-//! - `UiSignifierStream::write`（0x140b2cf90 是 5 B thunk，实体在
+-//!   `append_only_vec::AppendOnlyVec::push` 0x14146c880）：**无锁 append-only 流**，
+-//!   不是环形缓冲——`LOCK xadd` 预留槽位（计数器 @+0x168），按桶分配后写 0x28 B
+-//!   记录，再自旋等到 `committed(@+0x160) == 预留槽`，最后提交 `committed = 槽+1`。
+-//!   满时**不丢记录**，也**不回绕**。
+-//! - `signifier_create`（0x140b2cfa0）系统签名（PDB）：
+-//!   `ResMut<UiState>`, `Res<AssetMeshLibrary>`, `Res<AssetShaderLibrary>`,
+-//!   `Commands`, `Query<&SignifierId, Without<SignifierMarkedForDeletion>>`,
+-//!   `ResMut<UiSignifierStream>`。流程：Query 建 `HashSet<u64>` 去重 →
+-//!   `UiState+0x18 != 0` 时把流整块 `mem::take`（0x170 B memcpy + memset 0）→
+-//!   逐条 `calculate_hash<(WidgetId, Option<&str>)>`；已在 seen 中则跳过，否则经
+-//!   UiState 配置表的工厂（+ AssetMeshLibrary/AssetShaderLibrary）生成实体并
+-//!   `insert<SignifierId>`。
+-//!
+-//! GAP（登记，不编造）：
+-//! - 原生 `signifier_create` 先把每条记录的 `{String, Arc<closure>}` 克隆进
+-//!   `UiState` 的配置表（+0x20 的 0x28 B indexmap），再遍历该表唤醒闭包；crate 的
+-//!   `UiState` 尚未落库该表，因此直接遍历本帧流记录（可观察的 spawn 效果一致）。
+-//! - `SignifierEntityBuilder::build` 的 mesh/shader 解析面（`AssetMeshLibrary::add`、
+-//!   `try_get_handle_by_name`、`AssetShaderLibrary::get_raster_handle_by_name`、
+-//!   `mesh_from_pts`）仍未落库。
+-//! - 解锁记录：`SignifierFactory` 现带 `Arc<dyn Fn(..) -> Vec<Entity> + Send + Sync>`
+-//!   闭包槽（vtable 0x142ae70d0/0x142efa150），`write_factory` 以
+-//!   [`UiSignifierEntry::Factory`] 入流，本系统按 `(WidgetId, Option<&str>)` 哈希去重后
+-//!   唤醒（`AssetMeshLibrary`/`AssetShaderLibrary` 作为 `Res` 参数）。
++//! 请求生产者每帧提交需要显示的指示符；创建系统消费整批请求，更新活动集合，
++//! 删除系统复用该集合判断哪些实体已不再需要。相同标识复用既有实体。
++//! 原生取证记录保留在历史报告中，本模块描述当前 ECS 实现的生命周期合同。
++use std::collections::HashSet;
++
+ use bevy_ecs::prelude::*;
+ use glam::Vec3;
+ 
+@@ -110,46 +89,20 @@
+     Factory(SignifierFactory),
+ }
+ 
+-/// 无锁 append-only 流（O：0x170 B，`committed@+0x160`、`next@+0x168`、0x28 B 槽）。
++/// 待消费的指示符请求及本帧活动标识。
+ ///
+-/// 原版用原子预留 + 提交：`next` 先自增拿到槽号，等前序写者提交（自旋），
+-/// 写记录后把 `committed` 推到槽号+1。**没有回绕/容量上限/丢弃旧记录**。
+-#[derive(Resource, Clone, Debug)]
++/// 独占可变访问由 Bevy 资源借用保证；活动集合在创建系统每次执行时重建。
++#[derive(Resource, Clone, Debug, Default)]
+ pub struct UiSignifierStream {
+     slots: Vec<UiSignifierEntry>,
+-    /// +0x160：已提交长度（consumer 只读到这里）。
+-    committed: u64,
+-    /// +0x168：写者预留计数器。
+-    next: u64,
+-}
+-
+-impl Default for UiSignifierStream {
+-    fn default() -> Self {
+-        Self {
+-            slots: Vec::new(),
+-            committed: 0,
+-            next: 0,
+-        }
+-    }
++    /// 本帧请求的标识，供删除系统读取，包含被去重复用的实体。
++    active_ids: HashSet<u64>,
+ }
+ 
+ impl UiSignifierStream {
+-    /// 预留槽并提交一条槽位记录（O：`AppendOnlyVec::push` 0x14146c880 的预留 →
+-    /// 写 0x28 B → 自旋等前序 → 提交）。语义上永不丢记录。
++    /// 资源已经被独占借用，直接追加，不模拟原生并发队列的预留和自旋。
+     fn push_entry(&mut self, entry: UiSignifierEntry) {
+-        let slot = self.next;
+-        self.next = self.next.wrapping_add(1);
+-        // O：`indices()` 按桶扩展；crate 用连续 Vec 承载同一 append-only 语义。
+-        while self.slots.len() as u64 <= slot {
+-            self.slots
+-                .push(UiSignifierEntry::Raw(UiAppendSignifier::default()));
+-        }
+-        self.slots[slot as usize] = entry;
+-        // O：`while (committed != slot) spin`——等待前序写者把提交游标推进到本槽。
+-        while self.committed != slot {
+-            std::hint::spin_loop();
+-        }
+-        self.committed = slot.wrapping_add(1);
++        self.slots.push(entry);
+     }
+ 
+     /// `write`/`push`（0x14146c880，O）：crate 旧 5-qword 记录入流。语义上永不丢记录。
+@@ -183,15 +136,9 @@
+         ]);
+     }
+ 
+-    /// 排空并**重置**整个流（O `signifier_create`：`mem::take` 0x170 B + 源 memset 0），
+-    /// 返回全部槽位（raw + factory）。流回到空态。
++    /// 移出全部待消费请求，不克隆名字或闭包，也不改变本帧活动集合。
+     pub fn take_entries(&mut self) -> Vec<UiSignifierEntry> {
+-        let n = (self.committed as usize).min(self.slots.len());
+-        let out = self.slots[..n].to_vec();
+-        self.slots.clear();
+-        self.committed = 0;
+-        self.next = 0;
+-        out
++        std::mem::take(&mut self.slots)
+     }
+ 
+     /// 排空并**重置**整个流，只返回旧 5-qword 记录（crate 旧消费面兼容）。
+@@ -215,9 +162,14 @@
+         self.take_all().into_iter()
+     }
+ 
++    /// 是否在最近一次创建阶段收到该标识的有效请求。
++    pub(super) fn is_active(&self, id: SignifierId) -> bool {
++        self.active_ids.contains(&id.0)
++    }
++
+     /// 已提交长度（调试/判等用）。
+     pub fn committed_len(&self) -> u64 {
+-        self.committed
++        self.slots.len() as u64
+     }
+ }
+ 
+@@ -239,34 +191,27 @@
+     hash
+ }
+ 
+-/// `signifier_create` @0x140b2cfa0（O）：drain（mem::take）流 + Query 迭代
+-/// `SignifierId`（Without<MarkedForDeletion>）建 hashset 去重 + 逐条生成实体。
+-///
+-/// 原生系统参数（PDB）：`ResMut<UiState>`, `Res<AssetMeshLibrary>`,
+-/// `Res<AssetShaderLibrary>`, `Commands`, `Query<&SignifierId, Without<..>>`,
+-/// `ResMut<UiSignifierStream>`。去重键 = `calculate_hash<(WidgetId, Option<&str>)>`
+-/// （`UiState+0x38` 的 widget id + 记录名字；0x1405bdda0 零键 SipHash-1-3）。
+-/// 未命中去重时唤醒记录的 vtable（闭包返回 `Vec<Entity>`），并给每个实体插
+-/// `SignifierId(hash)`；已在集中则跳过。
++/// 消费本帧请求，记录全部活动标识，仅为尚不存在的指示符唤醒工厂。
++/// 交互停用时丢弃本批请求，避免恢复交互后重放过期几何。
+ pub fn signifier_create(
+-    ui_state: ResMut<UiState>,
++    ui_state: Res<UiState>,
+     mesh_library: Res<AssetMeshLibrary>,
+     shader_library: Res<AssetShaderLibrary>,
+     mut commands: Commands,
+     existing: Query<&SignifierId, Without<SignifierMarkedForDeletion>>,
+     mut stream: ResMut<UiSignifierStream>,
+ ) {
+-    // O：Query 迭代建 hashset 去重（Without<MarkedForDeletion>）。
+-    let mut seen: std::collections::HashSet<u64> = existing.iter().map(|id| id.0).collect();
+-    // O：`UiState+0x18 != 0` 门（ui_state.interaction().native_tag）；为 0 时流不排空。
++    stream.active_ids.clear();
++    let entries = stream.take_entries();
+     if ui_state.interaction().native_tag == 0 {
+         return;
+     }
+-    let entries = stream.take_entries();
++    let mut seen: HashSet<u64> = existing.iter().map(|id| id.0).collect();
+     for entry in entries {
+         match entry {
+             UiSignifierEntry::Raw(record) => {
+                 let id = record_id(&record);
++                stream.active_ids.insert(id);
+                 if !seen.insert(id) {
+                     continue;
+                 }
+@@ -275,10 +220,9 @@
+             }
+             UiSignifierEntry::Factory(factory) => {
+                 // O：`calculate_hash<(WidgetId, Option<&str>)>`；名字 = 记录载荷。
+-                let id = crate::utils::calculate_hash(&(
+-                    ui_state.interaction().widget,
+-                    factory.name(),
+-                ));
++                let id =
++                    crate::utils::calculate_hash(&(ui_state.interaction().widget, factory.name()));
++                stream.active_ids.insert(id);
+                 if !seen.insert(id) {
+                     continue;
+                 }
+@@ -327,7 +271,11 @@
+     #[test]
+     fn write_factory_carries_the_signifier_factory_record_into_the_stream() {
+         let mut stream = UiSignifierStream::default();
+-        let factory = SignifierFactory::new(b"perimeter".as_slice(), &42u32 as *const u32 as *const u8, 0x142efa150);
++        let factory = SignifierFactory::new(
++            b"perimeter".as_slice(),
++            &42u32 as *const u32 as *const u8,
++            0x142efa150,
++        );
+         stream.write_factory(&factory);
+         let q = slot_qwords(&stream);
+         assert_eq!(q[0], factory.name_len as u64);
+--- before/systems/ui/signifiers/signifier_mark_for_delete.rs
++++ crates/country-core/src/systems/ui/signifiers/signifier_mark_for_delete.rs
+@@ -1,27 +1,8 @@
+-//! `signifier_mark_for_delete.rs` — 指示符删除（B 0x140929160 `signfier_mark_for_delete`
+-//! / 0x140929a90 `despawn_marked`，O；PDB 拼写 `signfier`）。
+-//!
+-//! 证据（2026-10-17 fresh 反编译/机器码 0x140929160）：
+-//! - 系统签名（PDB）：
+-//!   `Res<UiState>`,
+-//!   `Query<(Entity, &SignifierId, Option<&SignifierMinimumLifespan>),
+-//!           Without<SignifierMarkedForDeletion>>`,
+-//!   `Commands`；
+-//! - `UiState+0x18 != 0` 时，遍历 `*(UiState+0x20)+0x18` 的 0x28 B 条目，逐条
+-//!   `calculate_hash<(WidgetId, Option<&str>)>` 并 `insert<WallId,()>` 建 hash 表；
+-//! - 遍历查询实体：把实体 `SignifierId`（`&GlobalId`）hash 后做 hashbrown
+-//!   `contains`——**不在表中**且（无 `SignifierMinimumLifespan`，或
+-//!   `min_lifespan@+4 <= t@+0`）时 `insert(SignifierMarkedForDeletion)`；
+-//! - `despawn_marked` @0x140929a90：遍历带标记实体 `Commands::despawn`（已判等）。
+-//!
+-//! GAP（登记）：crate `UiState` 未落库 signifier 配置表（`*(+0x20)` 的
+-//! `(WidgetId, Option<&str>)` 列表），因此 live-hash 集合只能以空集参与判等；
+-//! 解锁条件：UiState 暴露该配置表的 hash 迭代面。
++//! 指示符回收：本帧不再请求且已满足最短寿命时，标记并销毁实体。
++//! 活动集合由创建系统统一维护；保留历史拼写 signfier 以兼容现有调用。
+ use bevy_ecs::prelude::*;
+ 
+-use crate::systems::ui::resources::ui_state::UiState;
+-
+-use super::signifier_create::SignifierId;
++use super::signifier_create::{SignifierId, UiSignifierStream};
+ 
+ /// 已标记删除的指示符实体（O：`SignifierMarkedForDeletion` 组件标记）。
+ #[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
+@@ -42,27 +23,17 @@
+ 
+ /// `signfier_mark_for_delete` @0x140929160（O）：按 live-hash 表 + 寿命对匹配实体打标记。
+ pub fn signfier_mark_for_delete(
+-    ui_state: Res<UiState>,
++    stream: Res<UiSignifierStream>,
+     query: Query<
+         (Entity, &SignifierId, Option<&SignifierMinimumLifespan>),
+         Without<SignifierMarkedForDeletion>,
+     >,
+     mut commands: Commands,
+ ) {
+-    // O：`UiState+0x18 != 0` 时重建 live-hash 表。
+-    // GAP：UiState 的 `(WidgetId, Option<&str>)` 配置表未落库 → 集合恒为空（见模块文档）。
+-    let rebuild = ui_state.interaction().native_tag != 0;
+-    let live: std::collections::HashSet<u64> = if rebuild {
+-        std::collections::HashSet::new()
+-    } else {
+-        std::collections::HashSet::new()
+-    };
+-
+     for (entity, id, lifespan) in &query {
+-        // O：`contains(hash(&SignifierId))`；不在表中（或表为空）才继续。
+-        let is_live = live.contains(&id.0);
++        let is_live = stream.is_active(*id);
+         // O：`RDI == None`（无最短寿命组件）→ 命中；否则 `min_lifespan <= t` 才命中。
+-        let expired = lifespan.map_or(true, |l| l.min_lifespan <= l.t);
++        let expired = lifespan.is_none_or(|lifespan| lifespan.min_lifespan <= lifespan.t);
+         if !is_live && expired {
+             commands.entity(entity).insert(SignifierMarkedForDeletion);
+         }
+@@ -70,10 +41,7 @@
+ }
+ 
+ /// `despawn_marked` @0x140929a90（O）：销毁所有带删除标记的指示符实体。
+-pub fn despawn_marked(
+-    query: Query<(Entity, &SignifierMarkedForDeletion)>,
+-    mut commands: Commands,
+-) {
++pub fn despawn_marked(query: Query<(Entity, &SignifierMarkedForDeletion)>, mut commands: Commands) {
+     for (entity, _) in &query {
+         commands.entity(entity).despawn();
+     }
+--- before/utils/README.md
++++ crates/country-core/src/utils/README.md
+@@ -58,7 +58,7 @@
+ 
+ 像素原点在左上，比例屏幕空间原点在屏幕中心，上方为正 Y。窗口宽高最小按 1 像素处理。投影统一使用 glam 齐次矩阵乘法，保持第一个矩阵产生的 w。
+ 
+-`try_world_space_to_screen_space` 和 `try_project_onto_ray` 返回 Option，显式处理不可投影点。兼容的点投屏入口返回 NaN 坐标；射线投影入口失败时保持起点。range 限制屏幕插值参数，随后按裁剪 w 转成世界参数；非法 range 在便捷入口报错，在 try 入口返回 None。
++`try_world_space_to_screen_space` 和 `try_project_onto_ray` 返回 Option，显式处理不可投影点。兼容的点投屏入口返回 NaN 坐标；射线投影入口失败时保持起点。range 限制屏幕插值参数，随后按裁剪 w 转成世界参数；非法 range 在便捷入口报错，在 try 入口返回 None。外推时拒绝零或负透视权重，并复核最终裁剪 w，避免跨过透视奇点后返回相机背后的编辑位置。
+ 
+ 子墙保留区间方向，切片校验插值结果属于 `[0,1]`。闭合曲线重接先检查分割与闭合前提，过短或无效结果返回 None，复用切片结果的 Vec。折线网格的空点集属于调用错误。
+ 
+@@ -67,6 +67,10 @@
+ `DebugLine::try_show` 校验点、线宽和逐点颜色后提交工厂；`show` 对无效输入告警并跳过。名字使用标准哈希，包含实际颜色、UI 通道和虚线模式，避免错误去重。
+ 
+ 唤醒时查找已注册 shader，将类型化 Mesh 放入现有资产库，创建带网格/shader/Transform、绘制拓扑及瞬态回收凭据的实体。虚线参数为总长×4，UI 请求带 UiPass；普通请求进入世界绘制路径。shader 缺失时不创建空壳实体，实体销毁后复用瞬态资产维护系统回收网格。
++
++虚线创建端与绘制回调复用同一个 `DashedLineLength` 组件，旧 `DashedLineLengthView` 名称仅为再导出别名。
++
++请求生产者须在 `add_signifier_systems` 注册的系统组之前逐帧提交。创建阶段更新共享活动标识，相同请求复用实体；本帧未再提交且已满足最短寿命的实体进入删除链。系统组按创建、动画、标记、销毁顺序运行并提交延迟命令，瞬态网格只在销毁后进入回收队列。交互停用时清空本批请求和活动集合，恢复后不重放过期请求。
+ 
+ 球和三维矩形继续提供请求构造器，本轮没有添加它们的绘制 API；其他调用方使用的原生布局构建器仍有恢复边界。CPU 实体链通过不等于真实 GPU 画面验收。
+ 
+--- before/utils/REVIEW.md
++++ crates/country-core/src/utils/REVIEW.md
+@@ -1,11 +1,14 @@
+ # utils 修复与重构复核
+ 
+-**再次审查结论：changes_required。** 新增确认 1 项 P1、2 项 P2：虚线绘制组件身份不一致导致 panic、射线外推返回相机背后的点、活动调试线被删除链立即回收。三项均已复现，详见 [再次审查报告](../../../../reports/country-core-utils-rereview-2026-10-18/README.md)。下表保留上一轮已实施的修复范围，不表示完整消费者链已通过。
++**再次审查发现的 3 项问题已修复。** 虚线创建和绘制共用 ECS 组件身份；射线外推拒绝相机背后的透视分支；创建和删除共享逐帧活动集合，且按固定顺序提交命令。新增真实绘制回调、滑块投影及多帧 World 生命周期回归，当前全量单元测试 2106 项通过。详见 [本次修复报告](../../../../reports/country-core-utils-review-fixes-2026-10-18/README.md)。[再次审查报告](../../../../reports/country-core-utils-rereview-2026-10-18/README.md) 保留修复前反例，不作为当前未修复清单。
+ 
+ 2026-10-18 按用户要求，以功能正确性、可维护性和有界性能优先。历史发现保存在 [前次审查](../../../../reports/country-core-utils-refactor-2026-10-18/previous-REVIEW.md)，本文件描述当前实现。
+ 
+ | 项目 | 当前处理 | 回归检查 |
+ |---|---|---|
++| R1 虚线绘制组件身份不一致 | `DashedLineLengthView` 再导出真实组件，移除重复类型 | 实际工厂生成虚线后调用 `read_env57`，验证虚线长度和网格索引数 |
++| R2 外推落在相机背后 | 拒绝非正透视权重并复核最终裁剪 w | 奇点、背面拒绝、前方正常外推、Slider3dState 失败保持起点 |
++| R3 活动指示符被立即回收 | 共享本帧活动标识，创建/动画/标记/销毁 chain 调度 | 重复提交、跨帧复用、部分撤销、单次网格回收、停用/恢复和最短寿命阈值 |
+ | F1 栅格计数回绕/漏格 | 删除 wrapping 循环，先裁剪再用标准闭区间迭代，范围计算使用 f64 | 极端端点、负坐标、超大半径、巨大跨世界笔画及有界/完整输出一致性 |
+ | F2 热重载发布错误位置类型 | 发布前验证保留属性、位置存在性、等长顶点、有限数值、重复名字和索引 | 坏文件返回 Err，旧网格及修改列表保持原状 |
+ | G1 采样策略未应用 | 有效存档辅助加载路径应用共享开关，准备阶段不改策略 | 完整 World 读档仍受加载域实现范围限制 |
+--- before/utils/debug_viz.rs
++++ crates/country-core/src/utils/debug_viz.rs
+@@ -471,6 +471,19 @@
+         let mut dashed = world.query::<&DashedLineLength>();
+         let lengths: Vec<f32> = dashed.iter(&world).map(|d| d.0).collect();
+         assert_eq!(lengths, vec![20.0], "|(3,4,0)| = 5.0, x4.0");
++        // 走真实绘制回调，防止创建端和消费端再次定义不同身份的组件。
++        let draw_input =
++            crate::systems::render_loop::draw_passes::draw_callbacks_a::read_env57(&world, entity);
++        assert_eq!(draw_input.dashed_len, 20.0);
++        assert_eq!(
++            draw_input.index_count,
++            world
++                .resource::<AssetMeshLibrary>()
++                .get(mesh_handle)
++                .unwrap()
++                .indices
++                .len() as u64
++        );
+ 
+         let mut topology = world.query::<&DrawTopology>();
+         let topologies: Vec<DrawTopology> = topology.iter(&world).copied().collect();
+--- before/utils/project_cursor_onto_ray.rs
++++ crates/country-core/src/utils/project_cursor_onto_ray.rs
+@@ -101,12 +101,17 @@
+         let near_weight = (1.0 - screen_parameter) / near_clip.w;
+         let far_weight = screen_parameter / far_clip.w;
+         let total_weight = near_weight + far_weight;
+-        if !total_weight.is_finite() || total_weight.abs() <= MIN_CLIP_WEIGHT {
++        // 外推可能跨过透视奇点；负权重对应相机背后的另一条分支。
++        if !total_weight.is_finite() || total_weight <= MIN_CLIP_WEIGHT {
+             return None;
+         }
+         let world_parameter = far_weight / total_weight;
+         let position = ray.origin + ray.direction * world_parameter;
+-        position.is_finite().then_some(position)
++        if !position.is_finite() {
++            return None;
++        }
++        let clip = *view_to_clip * (*world_to_view * position.extend(1.0));
++        (clip.is_finite() && clip.w > MIN_CLIP_WEIGHT).then_some(position)
+     }
+ }
+ 
+@@ -225,6 +230,55 @@
+     }
+ 
+     #[test]
++    fn perspective_extrapolation_rejects_the_horizon_and_the_branch_behind_camera() {
++        use crate::systems::ui::resources::slider3d::{Slider3dMatrices, Slider3dState};
++
++        let projection = Mat4::perspective_rh_gl(std::f32::consts::FRAC_PI_2, 1.0, 0.1, 100.0);
++        let ray = ray(Vec3::new(0.0, 0.0, -1.0), Vec3::new(0.2, 0.0, -1.0));
++        // 两个采样点均在相机前方；屏幕 x=0.2 是世界直线的透视渐近线。
++        for screen_x in [0.2, 0.25] {
++            let coord = ProportionalScreenSpaceCoord(Vec2::new(screen_x, 0.0));
++            assert_eq!(
++                coord.try_project_onto_ray(
++                    &unit_pss(),
++                    &Mat4::IDENTITY,
++                    &projection,
++                    ray,
++                    [-1e10, 1e10]
++                ),
++                None
++            );
++        }
++        // 奇点之前的正常外推仍有效，避免修复时禁用全部屏幕区间外推。
++        let position = ProportionalScreenSpaceCoord(Vec2::new(0.15, 0.0))
++            .try_project_onto_ray(
++                &unit_pss(),
++                &Mat4::IDENTITY,
++                &projection,
++                ray,
++                [-1e10, 1e10],
++            )
++            .unwrap();
++        assert!(position.is_finite() && position.z < -2.0);
++        let clip = projection * position.extend(1.0);
++        assert!(clip.w > 0.0);
++        assert!((clip.x / clip.w - 0.15).abs() < 1e-6);
++
++        let matrices = Slider3dMatrices {
++            second: projection,
++            ..Default::default()
++        };
++        let slider = Slider3dState {
++            origin: ray.origin,
++            direction: ray.direction,
++        };
++        assert_eq!(
++            slider.project_cursor_onto_line(Vec2::new(62.5, 50.0), [100, 100], &matrices),
++            ray.origin
++        );
++    }
++
++    #[test]
+     fn viewport_center_and_invalid_perspective_are_safe() {
+         let screen = ProportionalScreenSpace::from_window_size([0, 0]);
+         assert_eq!(screen.transform_screen_space(0.5, 0.5), Vec2::ZERO);
+--- /dev/null
++++ crates/country-core/src/systems/ui/signifiers/tests.rs
+@@ -0,0 +1,136 @@
++//! 真实 World 多帧回归：创建、去重、保活、撤销及瞬态网格回收。
++
++use super::*;
++use crate::{
++    asset_libraries::{Handle, mesh_library::AssetMeshLibrary, shader_library::AssetShaderLibrary},
++    render::{mesh::Mesh, shader::RasterShaderProgram, test_device::TestDevice},
++    resources::time::GameTime,
++    systems::ui::resources::ui_state::{UiInteraction, UiState, WidgetId},
++    utils::debug_viz::DebugLine,
++};
++use glam::Vec3;
++
++fn setup() -> (World, Schedule) {
++    let mut world = World::new();
++    register_signifier_resources(&mut world);
++    world.init_resource::<AssetMeshLibrary>();
++    world.init_resource::<GameTime>();
++    let shaders = AssetShaderLibrary::new();
++    shaders.add_raster(
++        RasterShaderProgram::new_draw("vertex_color_shader", Default::default(), &TestDevice(1)),
++        false,
++    );
++    world.insert_resource(shaders);
++    world.insert_resource(UiState::new(UiInteraction {
++        native_tag: 1,
++        native_phase: 0,
++        widget: WidgetId::from_name("signifier_lifecycle"),
++    }));
++    let mut schedule = Schedule::default();
++    add_signifier_systems(&mut schedule);
++    (world, schedule)
++}
++
++fn submit(world: &mut World, line: &DebugLine) {
++    line.try_show(&mut world.resource_mut::<UiSignifierStream>())
++        .unwrap();
++}
++
++fn entities(world: &mut World) -> Vec<Entity> {
++    world
++        .query_filtered::<Entity, With<SignifierId>>()
++        .iter(world)
++        .collect()
++}
++
++#[test]
++fn requested_lines_are_reused_and_only_withdrawn_lines_are_reclaimed() {
++    let (mut world, mut schedule) = setup();
++    let first = DebugLine::new(vec![Vec3::ZERO, Vec3::X]);
++    let second = DebugLine::new(vec![Vec3::ZERO, Vec3::Y]);
++    submit(&mut world, &first);
++    submit(&mut world, &first);
++    schedule.run(&mut world);
++    let first_entity = entities(&mut world)[0];
++    let first_mesh = *world.get::<Handle<Mesh>>(first_entity).unwrap();
++    assert_eq!(entities(&mut world).len(), 1);
++    let registry = world
++        .resource::<AssetMeshLibrary>()
++        .transient_meshes()
++        .clone();
++    assert!(registry.lock().unwrap().is_empty());
++
++    submit(&mut world, &first);
++    submit(&mut world, &second);
++    schedule.run(&mut world);
++    assert_eq!(entities(&mut world).len(), 2);
++    assert_eq!(
++        *world.get::<Handle<Mesh>>(first_entity).unwrap(),
++        first_mesh
++    );
++    let second_entity = entities(&mut world)
++        .into_iter()
++        .find(|entity| *entity != first_entity)
++        .unwrap();
++    let second_mesh = *world.get::<Handle<Mesh>>(second_entity).unwrap();
++
++    submit(&mut world, &second);
++    schedule.run(&mut world);
++    assert!(world.get_entity(first_entity).is_err());
++    assert_eq!(entities(&mut world), vec![second_entity]);
++    assert_eq!(*registry.lock().unwrap(), vec![first_mesh]);
++
++    schedule.run(&mut world);
++    assert!(entities(&mut world).is_empty());
++    assert_eq!(*registry.lock().unwrap(), vec![first_mesh, second_mesh]);
++    schedule.run(&mut world);
++    assert_eq!(*registry.lock().unwrap(), vec![first_mesh, second_mesh]);
++}
++
++#[test]
++fn inactive_interaction_discards_requests_without_replaying_them_on_reactivation() {
++    let (mut world, mut schedule) = setup();
++    let line = DebugLine::new(vec![Vec3::ZERO, Vec3::X]);
++    submit(&mut world, &line);
++    schedule.run(&mut world);
++    let mut interaction = world.resource::<UiState>().interaction();
++    interaction.native_tag = 0;
++    world
++        .resource_mut::<UiState>()
++        .replace_interaction(interaction);
++    submit(&mut world, &line);
++    schedule.run(&mut world);
++    assert!(entities(&mut world).is_empty());
++    assert_eq!(world.resource::<UiSignifierStream>().committed_len(), 0);
++    interaction.native_tag = 1;
++    world
++        .resource_mut::<UiState>()
++        .replace_interaction(interaction);
++    schedule.run(&mut world);
++    assert!(entities(&mut world).is_empty());
++    submit(&mut world, &line);
++    schedule.run(&mut world);
++    assert_eq!(entities(&mut world).len(), 1);
++}
++
++#[test]
++fn withdrawn_line_respects_minimum_lifespan_and_can_be_requested_again() {
++    let (mut world, mut schedule) = setup();
++    let line = DebugLine::new(vec![Vec3::ZERO, Vec3::X]);
++    submit(&mut world, &line);
++    schedule.run(&mut world);
++    let entity = entities(&mut world)[0];
++    world.entity_mut(entity).insert(SignifierMinimumLifespan {
++        t: 0.0,
++        min_lifespan: 1.0,
++    });
++    schedule.run(&mut world);
++    assert!(world.get_entity(entity).is_ok());
++    // 模拟寿命达到阈值：本测试只验证回收条件，仍有请求时必须继续保留。
++    world.get_mut::<SignifierMinimumLifespan>(entity).unwrap().t = 1.0;
++    submit(&mut world, &line);
++    schedule.run(&mut world);
++    assert_eq!(entities(&mut world), vec![entity]);
++    schedule.run(&mut world);
++    assert!(world.get_entity(entity).is_err());
++}

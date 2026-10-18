@@ -240,9 +240,10 @@ pub enum VideoSettingsSubMenu {
 }
 
 impl VideoSettingsSubMenu {
-    /// B 0x14093fcd0 is exactly tag == 0, despite the counterintuitive name.
+    /// B 0x14093fcd0 machine: `cmp byte [rcx],0; setne al; ret` — returns
+    /// `tag != 0`, i.e. any submenu other than the top-level Menu.
     pub fn is_in_submenu(self) -> bool {
-        matches!(self, Self::Menu)
+        !matches!(self, Self::Menu)
     }
 }
 
@@ -714,9 +715,26 @@ mod recovery_tests {
     }
 }
 
-/// Visibility consumed by mode_manager (original TimeOfDayScreen +0xa).
-/// Other snapshot/editor fields remain in their owning GUI recovery.
-#[derive(bevy_ecs::resource::Resource, Clone, Copy, Debug, PartialEq, Eq)]
+/// Shared GUI and time-of-day state. B `do_time_of_day_screen` @1405cc7f0
+/// writes the open edge at +08, remembers visibility at +09, and uses +0a
+/// for visibility. Its circle callback @140505780 publishes targets at +00/+04
+/// and input flags at +0b/+0c; the actual TOD system consumes those same slots.
+/// Startup clears all thirteen value bytes; Bevy registers size 16, alignment 4.
+#[repr(C)]
+#[derive(bevy_ecs::resource::Resource, Clone, Copy, Debug, Default, PartialEq)]
 pub struct TimeOfDayScreen {
+    pub time_of_day: f32,
+    pub sun_xz_rotation: f32,
+    pub just_opened: bool,
+    pub was_visible: bool,
     pub visible: bool,
+    pub time_input_active: bool,
+    pub angle_input_active: bool,
 }
+const _: () = assert!(core::mem::size_of::<TimeOfDayScreen>() == 16);
+const _: () = assert!(core::mem::align_of::<TimeOfDayScreen>() == 4);
+const _: () = assert!(core::mem::offset_of!(TimeOfDayScreen, just_opened) == 8);
+const _: () = assert!(core::mem::offset_of!(TimeOfDayScreen, was_visible) == 9);
+const _: () = assert!(core::mem::offset_of!(TimeOfDayScreen, visible) == 10);
+const _: () = assert!(core::mem::offset_of!(TimeOfDayScreen, time_input_active) == 11);
+const _: () = assert!(core::mem::offset_of!(TimeOfDayScreen, angle_input_active) == 12);

@@ -1,6 +1,16 @@
-# rhapsody 重构进度（2026-10-17）
+# rhapsody 重构进度（2026-10-18）
 
 本文件是当前实现与验收状态的唯一登记入口。范围/门槛见 [DELIVERY_PLAN.md](DELIVERY_PLAN.md)，下一步工作见 [REFACTOR_PLAN.md](REFACTOR_PLAN.md)。用户提供 Vulkan/MoltenVK 环境后，已恢复本机 Apple M3 的 GPU 与 macOS 窗口验证；Windows 运行验收仍后置。硬件验证不阻止其余源码重构。
+
+## 2026-10-18 焦点与独占全屏
+
+库内接入 `WindowMode` / `FullscreenStatus` / `FullscreenFallback`，`Swapchain` 与生产 `FrameLoop` 提供 `set_focused(bool)`、`set_window_mode`。Windows 按扩展依赖自动启用 FSE，同一 monitor/policy 用于 capabilities2、formats2、presentModes2 及交换链创建；Win32 raw surface 必须显式标注平台。失焦/零尺寸暂停新获取，已有图像租约先完成，随后释放独占；模式/焦点意图跨代际保留。能力不足、创建/获取拒绝和原生独占丢失重建为普通呈现，降级锁存以避免每帧重试；OOM、SurfaceLost、DeviceLost 不吞掉。旧 `on_focus()` 单纯 stale 接口已删除，无兼容别名。
+
+同时修复创建失败也会退役 oldSwapchain 的后续重试：只有实际进入 native 创建时登记退役，重试使用空 oldSwapchain；独占释放不再作用于已经退役的代际。资源回收仍使用原有真实 acquire/render/present 完成证明。
+
+本轮检查与平台边界记录于 [报告](reports/refactor/2026-10-18-fullscreen/README.md)。Windows 原生独占获取/释放、显示器切换及失焦驱动行为保留 BLOCKED；不据 CPU 状态机或 macOS 普通呈现提升 M2/M9 为 PASS。
+
+本轮全特性库单测 322 项、严格全目标 Clippy、无默认特性全目标检查通过。最终 macOS 窗口 64/64 帧呈现与像素验证通过，validation error/warning 0，关闭完成且保留 WSI 代际 0；四个实现文件在最终检查前后保持同一指纹。
 
 ## 交付状态总表
 

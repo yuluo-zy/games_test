@@ -23,11 +23,7 @@ pub struct DecoratorType(pub u8);
 impl DecoratorType {
     /// 0x140833130：`(t+0xc8)<3 → 3 否则 1`（u8 回绕）。窗族 max_rank=3，其余 1。
     pub fn max_rank(self) -> u8 {
-        if self.0.wrapping_add(0xc8) < 3 {
-            3
-        } else {
-            1
-        }
+        if self.0.wrapping_add(0xc8) < 3 { 3 } else { 1 }
     }
 
     /// 0x140833150：`(t+0xc8)<8 && ((0x27 >> (t&7)) & 1) != 0` → t∈{0x38,0x39,0x3a,0x3d}。
@@ -69,7 +65,9 @@ impl DecoratorType {
 
 /// B DecoratorId：装饰唯一 id。serde = u32 十进制化（newtype serde，0x1402ddd20）。
 /// `new` 0x14067dd80 = 恒等返回；`Display` 0x1408331d0。
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize,
+)]
 pub struct DecoratorId(pub u32);
 
 impl DecoratorId {
@@ -95,17 +93,21 @@ impl std::fmt::Display for DecoratorId {
 
 /// B DecoratorIdGen：顺序 id 生成器。`reserve`/`generate` 行 806/811（内联）。
 /// 结构 I：`next: u32`；generate 递增返回。
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(bevy_ecs::resource::Resource, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct DecoratorIdGen {
     /// I：下一个待分配 id。
     next: u32,
 }
 
 impl DecoratorIdGen {
-    /// 行 806（内联）：预留（直接使用当前游标值）。
+    /// 行 806（内联）：预留到至少 `id`。fresh `restore_decorators` 0x14155c4e1 逐句：
+    /// `next = max(u32(next), u32(id) + 1)`（`MOV RDX,id; INC RDX; CMP RDX,next;
+    /// CMOVBE RDX,next; MOV [gen],EDX`——64 位加/比较后截断存 u32）。用于历史回放
+    /// 重插装饰后防止后续 generate 复用已存在 id。
     #[inline]
-    pub fn reserve(&mut self) -> DecoratorId {
-        DecoratorId(self.next)
+    pub fn reserve(&mut self, id: DecoratorId) {
+        let next = u64::from(self.next).max(u64::from(id.0) + 1);
+        self.next = next as u32;
     }
 
     /// 行 811（内联）：分配下一个 id。
@@ -220,26 +222,33 @@ impl ClutterVersion {
 
 /// B DecoratorExtraInfo：装饰附加信息联合，判别字节位于 DecoratorInfo+0x11。
 ///
-/// From 变体 4..8（0x140839520..560，手解 O）：
-/// - disc 4：`{f32@+0, u8@+4}`（窗）
-/// - disc 5：`{u8@+0}`（旗）
-/// - disc 6：`{u32@+0}`（灯）
-/// - disc 7：`{f32@+0}`（烟囱）
-/// - disc 0/1：楼梯（`as_stair` 0x1408394b0 = `(disc|0xf8)<0xfa` ⇔ disc∈{0,1}；载荷
-///   20B {16B@+0, u32@+0x10}，对照 impl$97 0x140839560 无判别写入的整载荷拷贝）
+/// 判别值（2026-10-17 fresh disasm 定案，与既有注释的 Window/Lantern/Chimney
+/// 值错位已修正）：
+/// - **disc 0/1：楼梯**（`as_stair` 0x1408394b0 = `(disc|0xf8)<0xfa` ⇔ disc∈{0,1}；
+///   载荷 20B {16B@+0, u32@+0x10}，对照 impl$97 0x140839560 无判别写入的整载荷拷贝）
+/// - **disc 4：烟囱**（`as_chimney` 0x1408392d0 `cmp byte[+0x11],0x4`；载荷 {f32@+0,
+///   u8@+4}，From 0x140839520 写 f32+u8）
+/// - **disc 5：旗**（`as_flag` 0x140839340 `cmp,0x5`；载荷 {u8@+0}）
+/// - **disc 6：窗**（`as_window` 0x1408393b0 `cmp,0x6`；载荷 {u32@+0}，From
+///   0x140839540 写 EDX u32——非 {f32,u8}）
+/// - **disc 7：灯**（`as_lantern` 0x140839420 `cmp,0x7`；载荷 {f32@+0}，From
+///   0x140839550 写 XMM1 f32——非 {u32}）
+///
+/// From 变体地址映射（fresh disasm）：0x140839520=Chimney、0x140839530=Flag、
+/// 0x140839540=Window、0x140839550=Lantern、0x140839560=Stair。
 ///
 /// 载荷含 f32（窗/烟囱），只派生 PartialEq。
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum DecoratorExtraInfo {
     /// disc 0/1：楼梯附加信息（20B 载荷，字段语义 U）。
     Stair(StairExtra),
-    /// disc 4：窗附加信息 {f32, u8}。
+    /// disc 6：窗附加信息 {u32@+0}。
     Window(WindowExtra),
-    /// disc 5：旗附加信息 {u8}。
+    /// disc 5：旗附加信息 {u8@+0}。
     Flag(FlagExtra),
-    /// disc 6：灯附加信息 {u32}。
+    /// disc 7：灯附加信息 {f32@+0}。
     Lantern(LanternExtra),
-    /// disc 7：烟囱附加信息 {f32}。
+    /// disc 4：烟囱附加信息 {f32@+0, u8@+4}。
     Chimney(ChimneyExtra),
 }
 
@@ -247,34 +256,38 @@ pub enum DecoratorExtraInfo {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct StairExtra(pub [u8; 20]);
 
-/// 窗附加信息（disc 4：{f32@+0, u8@+4}）。
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct WindowExtra {
-    pub f: f32,
-    pub b: u8,
-}
+/// 窗附加信息（disc 6：{u32@+0}）。
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct WindowExtra(pub u32);
 
 /// 旗附加信息（disc 5：{u8@+0}）。
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct FlagExtra(pub u8);
 
-/// 灯附加信息（disc 6：{u32@+0}）。
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct LanternExtra(pub u32);
-
-/// 烟囱附加信息（disc 7：{f32@+0}）。
+/// 灯附加信息（disc 7：{f32@+0}）。
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct ChimneyExtra(pub f32);
+pub struct LanternExtra(pub f32);
+
+/// 烟囱附加信息（disc 4：{f32@+0, u8@+4}，O：`set_flag_connection_and_chimney_smoke`
+/// 0x142298970 经 `as_chimney()` 后写 `*(u8*)(+4) = 事件值`——烟值建模 +4 字段）。
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct ChimneyExtra {
+    /// +0：f32 载荷（判别访问 as_chimney 返回）。
+    pub f: f32,
+    /// +4：烟开关/浓度字节。
+    pub smoke: u8,
+}
 
 impl DecoratorExtraInfo {
-    /// 判别字节 +0x11 值。
+    /// 判别字节 +0x11 值（fresh 0x1408392d0/340/3b0/420/4b0 定案：烟囱=4、旗=5、
+    /// 窗=6、灯=7、楼梯=0/1）。
     pub fn disc(self) -> u8 {
         match self {
             DecoratorExtraInfo::Stair(_) => 0,
-            DecoratorExtraInfo::Window(_) => 4,
+            DecoratorExtraInfo::Window(_) => 6,
             DecoratorExtraInfo::Flag(_) => 5,
-            DecoratorExtraInfo::Lantern(_) => 6,
-            DecoratorExtraInfo::Chimney(_) => 7,
+            DecoratorExtraInfo::Lantern(_) => 7,
+            DecoratorExtraInfo::Chimney(_) => 4,
         }
     }
 
@@ -318,9 +331,10 @@ impl DecoratorExtraInfo {
         }
     }
 
-    /// 0x1408392d0（O）：烟囱访问，非烟囱 fmt panic。
+    /// 0x1408392d0（O）：烟囱访问（disc==4），非烟囱 fmt panic。
     pub fn as_chimney(self) -> ChimneyExtra {
-        self.try_as_chimney().expect("DecoratorExtraInfo::as_chimney: not a chimney")
+        self.try_as_chimney()
+            .expect("DecoratorExtraInfo::as_chimney: not a chimney")
     }
 
     /// 0x1408392d0（O，mut 同址）。
@@ -333,7 +347,8 @@ impl DecoratorExtraInfo {
 
     /// 0x140839340（O）：旗访问，非旗 fmt panic。
     pub fn as_flag(self) -> FlagExtra {
-        self.try_as_flag().expect("DecoratorExtraInfo::as_flag: not a flag")
+        self.try_as_flag()
+            .expect("DecoratorExtraInfo::as_flag: not a flag")
     }
 
     /// 0x140839340（O，mut 同址）。
@@ -344,9 +359,10 @@ impl DecoratorExtraInfo {
         }
     }
 
-    /// 0x1408393b0（I）：窗访问。
+    /// 0x1408393b0（O）：窗访问（disc==6）。
     pub fn as_window(self) -> WindowExtra {
-        self.try_as_window().expect("DecoratorExtraInfo::as_window: not a window")
+        self.try_as_window()
+            .expect("DecoratorExtraInfo::as_window: not a window")
     }
 
     /// 0x1408393b0（I，mut 同址）。
@@ -357,9 +373,10 @@ impl DecoratorExtraInfo {
         }
     }
 
-    /// 0x140839420（I）：灯访问。
+    /// 0x140839420（O）：灯访问（disc==7）。
     pub fn as_lantern(self) -> LanternExtra {
-        self.try_as_lantern().expect("DecoratorExtraInfo::as_lantern: not a lantern")
+        self.try_as_lantern()
+            .expect("DecoratorExtraInfo::as_lantern: not a lantern")
     }
 
     /// 0x140839420（I，mut 同址）。
@@ -372,7 +389,8 @@ impl DecoratorExtraInfo {
 
     /// 0x1408394b0（O）：楼梯访问，非楼梯 fmt panic。
     pub fn as_stair(self) -> StairExtra {
-        self.try_as_stair().expect("DecoratorExtraInfo::as_stair: not a stair")
+        self.try_as_stair()
+            .expect("DecoratorExtraInfo::as_stair: not a stair")
     }
 
     /// 0x1408394b0（O，mut 同址）。
@@ -384,34 +402,34 @@ impl DecoratorExtraInfo {
     }
 }
 
-// From 变体（手解 O）。判别值写入原 +0x11；Rust 枚举判别即变体序。
+// From 变体（fresh disasm 2026-10-17）。判别值写入原 +0x11；Rust 枚举判别即变体序。
 impl From<StairExtra> for DecoratorExtraInfo {
-    /// 变体 8（0x140839560）：整载荷拷贝（16B@+0 + u32@+0x10），判别不重写
-    /// （源载荷已带正确判别，round3 复查修正）。
+    /// 0x140839560（Stair）：整载荷拷贝（16B@+0 + u32@+0x10），判别不重写
+    /// （源载荷已带正确判别）。
     fn from(v: StairExtra) -> Self {
         DecoratorExtraInfo::Stair(v)
     }
 }
 impl From<WindowExtra> for DecoratorExtraInfo {
-    /// 变体 4（0x140839520）：disc=4，载荷 {f32@+0, u8@+4}。
+    /// 0x140839540（Window，disc=6）：u32 载荷写 +0（EDX）。
     fn from(v: WindowExtra) -> Self {
         DecoratorExtraInfo::Window(v)
     }
 }
 impl From<FlagExtra> for DecoratorExtraInfo {
-    /// 变体 5（0x140839530）：disc=5，载荷 {u8@+0}。
+    /// 0x140839530（Flag，disc=5）：u8 载荷写 +0（DL）。
     fn from(v: FlagExtra) -> Self {
         DecoratorExtraInfo::Flag(v)
     }
 }
 impl From<LanternExtra> for DecoratorExtraInfo {
-    /// 变体 6（0x140839540）：disc=6，载荷 {u32@+0}。
+    /// 0x140839550（Lantern，disc=7）：f32 载荷写 +0（XMM1）。
     fn from(v: LanternExtra) -> Self {
         DecoratorExtraInfo::Lantern(v)
     }
 }
 impl From<ChimneyExtra> for DecoratorExtraInfo {
-    /// 变体 7（0x140839550）：disc=7，载荷 {f32@+0}。
+    /// 0x140839520（Chimney，disc=4）：{f32@+0, u8@+4} 载荷写（XMM1 + R8B）。
     fn from(v: ChimneyExtra) -> Self {
         DecoratorExtraInfo::Chimney(v)
     }
@@ -545,6 +563,17 @@ pub struct DecoratorInfo {
 }
 
 impl DecoratorInfo {
+    /// +0x41：style/判别字节（`u40` 的 byte1）。
+    ///
+    /// `DecoratorHistoryState::from`（0x140b3f930）与
+    /// `convert_before_after_states_to_changes`（0x140b3fab0）以该字节分变体
+    /// （2..8 夹取；style==4 Chimney{ f32,u8 }、5 Flag{ u8 }、6 Window{ u32 }、
+    /// 7 Lantern{ f32 }、8+ 默认簇）。机器码 `mov r?,[rdx+0x41]` 直读 byte1 of +0x40。
+    #[inline]
+    pub fn extra_style(self) -> u8 {
+        ((self.u40 >> 8) & 0xff) as u8
+    }
+
     /// +0x22：目的 tag。
     #[inline]
     pub fn dst_tag(self) -> u8 {
@@ -650,6 +679,7 @@ impl DecoratorInfo {
 
     /// 解码 DecoratorExtraInfo（判别存于 dst_payload 高位字节；载荷 +0x10..）。
     /// 楼梯 20B 载荷跨 dst_payload(+0x10..0x18) 与 u18(+0x18..0x20)、u20(+0x20..0x24)。
+    /// 判别值按 fresh 0x1408392d0/340/3b0/420/4b0：烟囱=4、旗=5、窗=6、灯=7。
     pub fn extra(self) -> DecoratorExtraInfo {
         match self.extra_disc() {
             0 | 1 => {
@@ -661,9 +691,9 @@ impl DecoratorInfo {
             }
             4 => {
                 let bytes = self.dst_payload.to_le_bytes();
-                DecoratorExtraInfo::Window(WindowExtra {
+                DecoratorExtraInfo::Chimney(ChimneyExtra {
                     f: f32::from_le_bytes(bytes[0..4].try_into().unwrap()),
-                    b: bytes[4],
+                    smoke: bytes[4],
                 })
             }
             5 => {
@@ -672,13 +702,13 @@ impl DecoratorInfo {
             }
             6 => {
                 let bytes = self.dst_payload.to_le_bytes();
-                DecoratorExtraInfo::Lantern(LanternExtra(u32::from_le_bytes(
+                DecoratorExtraInfo::Window(WindowExtra(u32::from_le_bytes(
                     bytes[0..4].try_into().unwrap(),
                 )))
             }
             7 => {
                 let bytes = self.dst_payload.to_le_bytes();
-                DecoratorExtraInfo::Chimney(ChimneyExtra(f32::from_le_bytes(
+                DecoratorExtraInfo::Lantern(LanternExtra(f32::from_le_bytes(
                     bytes[0..4].try_into().unwrap(),
                 )))
             }
@@ -697,10 +727,10 @@ impl DecoratorInfo {
     pub fn set_extra(&mut self, extra: DecoratorExtraInfo) {
         let disc = match extra {
             DecoratorExtraInfo::Stair(_) => 0u8,
-            DecoratorExtraInfo::Window(_) => 4,
+            DecoratorExtraInfo::Window(_) => 6,
             DecoratorExtraInfo::Flag(_) => 5,
-            DecoratorExtraInfo::Lantern(_) => 6,
-            DecoratorExtraInfo::Chimney(_) => 7,
+            DecoratorExtraInfo::Lantern(_) => 7,
+            DecoratorExtraInfo::Chimney(_) => 4,
         };
         let mut payload = [0u8; 8];
         match extra {
@@ -714,13 +744,13 @@ impl DecoratorInfo {
                 self.u18 = u64::from_le_bytes(u18);
                 self.u20 = u32::from_le_bytes(u20);
             }
-            DecoratorExtraInfo::Window(v) => {
-                payload[0..4].copy_from_slice(&v.f.to_le_bytes());
-                payload[4] = v.b;
-            }
+            DecoratorExtraInfo::Window(v) => payload[0..4].copy_from_slice(&v.0.to_le_bytes()),
             DecoratorExtraInfo::Flag(v) => payload[0] = v.0,
             DecoratorExtraInfo::Lantern(v) => payload[0..4].copy_from_slice(&v.0.to_le_bytes()),
-            DecoratorExtraInfo::Chimney(v) => payload[0..4].copy_from_slice(&v.0.to_le_bytes()),
+            DecoratorExtraInfo::Chimney(v) => {
+                payload[0..4].copy_from_slice(&v.f.to_le_bytes());
+                payload[4] = v.smoke;
+            }
         }
         // 判别存于高位字节（见 extra_disc 注释：偏离原 +0x11 以避免载荷字节 1
         // 被判别覆盖）。
@@ -734,27 +764,70 @@ impl DecoratorInfo {
     }
 }
 
-/// B DecoratorOpEventKind：装饰操作事件种类。`id` 0x140833570 返回 u32。
-/// 变体集与 id 值 I（U：具体枚举/载荷待取证，关联 DeferredDecoratorOpEvents
-/// 0x88B 事件与 apply_decorator_place/remove/change）。
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum DecoratorOpEventKind {
-    /// 放置。
-    Place,
-    /// 移除。
-    Remove,
-    /// 变更。
-    Change,
+/// B DecoratorOpEventKind：装饰操作事件种类（0x88B 事件记录的判别视图）。
+///
+/// `id` 0x140833570（fresh disasm，2026-10-17）：
+/// ```
+/// MOV RAX,[RCX]            ; 读事件记录判别 @+0
+/// LEA RDX,[RAX-3]; ADD RAX,-2; XOR R8D,R8D; CMP RDX,2; CMOVC R8,RAX
+///                          ; disc∈{3,4} → R8=disc-2 ∈ {1,2}，其余 → R8=0
+/// LEA RAX,[0x142a92e78]; MOV RAX,[RAX+R8*8]   ; 跳表 {0x68,0x40,0x60}
+/// MOV EAX,[RCX+RAX]; RET  ; 读 [RCX + offset] 的 u32
+/// ```
+/// 跳表实测（`read_memory 0x142a92e78`）= {0x68, 0x40, 0x60}：
+/// disc==3 → +0x40；disc==4 → +0x60；其余 → +0x68。即从事件记录按判别
+/// 取不同字段偏移的 u32，**非** 固定变体→0/1/2。旧 Place/Remove/Change 三变体
+/// 近似已弃（载荷待取证，U：disc 0/1/2 的变体名/语义未单解）。
+#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct DecoratorOpEventKind(pub [u8; 0x88]);
+
+/// Original EventWriter consumes this same136B payload; keep a single event
+/// identity rather than copying it into a second host-only wrapper.
+pub use DecoratorOpEventKind as DecoratorOpEvent;
+
+#[cfg(test)]
+mod canonical_event_owner_tests {
+    use super::*;
+
+    #[test]
+    fn real_event_counter_survives_rotation_and_the_sentinel_discards_the_remaining_batch() {
+        let queue = DeferredDecoratorOpEvents::default();
+        let mut events = bevy_ecs::event::Events::<DecoratorOpEvent>::default();
+        let payload = |tag: u64, id: u32| {
+            let mut raw = [0u8; 0x88];
+            raw[..8].copy_from_slice(&tag.to_le_bytes());
+            raw[0x68..0x6c].copy_from_slice(&id.to_le_bytes());
+            raw
+        };
+        queue.send(payload(0, 10));
+        queue.send(payload(5, 0));
+        queue.send(payload(0, 99));
+        queue.unleash_to_events(&mut events);
+        let mut reader = events.get_cursor();
+        assert_eq!(reader.read_with_id(&events).map(|(e, id)| (e.id(), id.id))
+            .collect::<Vec<_>>(), [(10, 0)]);
+        events.update();
+        events.update();
+        assert!(events.is_empty());
+        queue.send(payload(0, 20));
+        queue.unleash_to_events(&mut events);
+        assert_eq!(reader.read_with_id(&events).map(|(e, id)| (e.id(), id.id))
+            .collect::<Vec<_>>(), [(20, 1)]);
+        queue.unleash_to_events(&mut events);
+        assert_eq!(events.len(), 1, "drained and sentinel-tail events must not reappear");
+    }
 }
 
 impl DecoratorOpEventKind {
-    /// 0x140833570（O：返回 u32 id；变体→id 映射 I）。
-    pub fn id(self) -> u32 {
-        match self {
-            DecoratorOpEventKind::Place => 0,
-            DecoratorOpEventKind::Remove => 1,
-            DecoratorOpEventKind::Change => 2,
-        }
+    /// 0x140833570：事件判别 → 跳表偏移 → 返回该字段 u32。
+    pub fn id(&self) -> u32 {
+        let disc = u64::from_le_bytes(self.0[0..8].try_into().unwrap());
+        let offset = match disc {
+            3 => 0x40,
+            4 => 0x60,
+            _ => 0x68,
+        };
+        u32::from_le_bytes(self.0[offset..offset + 4].try_into().unwrap())
     }
 }
 
@@ -764,7 +837,7 @@ impl DecoratorOpEventKind {
 /// 原实现为 futex 等待队列（send 争用时 park 1e9ns，唤醒全局等待队列
 /// plRam00000001436308f0）；Rust 侧以 Mutex+Condvar 提供语义等价（推送/冲刷
 /// 顺序一致）。载荷字段语义 U。
-#[derive(Debug, Default)]
+#[derive(bevy_ecs::resource::Resource, Debug, Default)]
 pub struct DeferredDecoratorOpEvents {
     inner: Mutex<Vec<[u8; 0x88]>>,
     wake: Condvar,
@@ -795,10 +868,44 @@ impl DeferredDecoratorOpEvents {
         self.wake.notify_all();
     }
 
-    /// 0x1408337c0（O）：冲刷（drain）待发事件到 out，len 归 0。
-    pub fn unleash(&self, out: &mut Vec<[u8; 0x88]>) {
+    /// 0x1408337c0（O，fresh 2026-10-17）：逐条 drain 待发事件到 out。
+    ///
+    /// fresh 结构：
+    /// 1. 队列 len 清零（`*(inner+0x18)=0`）后遍历旧元素；
+    /// 2. 每条读 tag@+0（u64）；**tag==5 哨兵 → 提前 return**（剩余已清空元素
+    ///    不再输出）；
+    /// 3. 其余元素拷贝为 **0x90B 输出记录**：tag@+0 + 0x80B 载荷 @+8..+0x88 +
+    ///    计数器 @+0x88（`out+0x40` 递增的下一事件号，BeVy Events 缓冲区语义）。
+    ///
+    /// 载荷字段（16 qword @+8..+0x88）由 send 方填写，本函数原样搬运；
+    /// 计数器在 Rust 侧以 `out.len()` 为当前序号（无 BeVy Events 结构，登记 U）。
+    pub fn unleash(&self, out: &mut Vec<[u8; 0x90]>) {
+        self.drain_events(|event| {
+            let mut record = [0u8; 0x90];
+            record[..0x88].copy_from_slice(&event);
+            record[0x88..0x90].copy_from_slice(&(out.len() as u64).to_le_bytes());
+            out.push(record);
+        });
+    }
+
+    /// B @1408337c0/511B writes the real Bevy event counter, not the current
+    /// retained buffer length. The dependency owns IDs across rotations.
+    pub fn unleash_to_events(&self, out: &mut bevy_ecs::event::Events<DecoratorOpEvent>) {
+        self.drain_events(|event| { out.send(DecoratorOpEventKind(event)); });
+    }
+
+    fn drain_events(&self, mut emit: impl FnMut([u8; 0x88])) {
         let mut g = self.inner.lock().unwrap();
-        out.extend(g.drain(..));
+        let drained = std::mem::take(&mut *g);
+        drop(g);
+        for event in drained {
+            let tag = u64::from_le_bytes(event[0..8].try_into().unwrap());
+            if tag == 5 {
+                // 哨兵：后续已清空元素不再输出。
+                return;
+            }
+            emit(event);
+        }
     }
 
     /// 挂起至队列非空（帧末等待装饰操作到达）。
@@ -810,20 +917,30 @@ impl DeferredDecoratorOpEvents {
     }
 }
 
-/// B DecoratorRotationXZ：XZ 平面旋转（角度编码，O）。
+/// B 0x1408337c0: drain the authoritative deferred resource into the canonical
+/// EventWriter. Reuse the owner's existing drain/sentinel implementation.
+pub fn unleash_decorator_op_events(
+    mut deferred: bevy_ecs::prelude::ResMut<DeferredDecoratorOpEvents>,
+    mut writer: bevy_ecs::event::EventWriter<DecoratorOpEvent>,
+) {
+    // Original mutable resource access updates its change tick even if empty.
+    let deferred = &mut *deferred;
+    deferred.drain_events(|event| { writer.write(DecoratorOpEvent(event)); });
+}
+
+/// B DecoratorRotationXZ：XZ 平面旋转（角度编码，O，2026-10-17 fresh disasm）。
 ///
-/// - `from_xz_forward_vector` 0x140833a00（I：符号约定待取证）
-/// - `from_quat` 0x140833a20（O 结构）
-/// - `to_quat` 0x140833ac0（O）：(x=0, y=cos(a·k), z=0, w=sin(a·k))
-/// - `to_projective_xz_mat2` 0x140833b20（O）：4 浮点 (sin, -cos | cos, sin)
-/// - `offset` 0x140833b80（I）
-/// - `to_xz_forward_vector` 行 883（内联，I）
+/// - `from_xz_forward_vector` 0x140833a00（O）：`MOVAPS XMM2,[0x1429258f0]`
+///   （符号掩码 0x80000000×4）+ `XORPS XMM0/XMM1`（**取负 x、y 两分量**）→
+///   `JMP atan2`——即 `atan2(-x, -y)`，非既有 `atan2(x,y)`。
+/// - `from_quat` 0x140833a20（O）：`atan2(2(wy+zx), w²+z²-x²-y²)`（通用公式）。
+/// - `to_quat` 0x140833ac0（O）：(x=0, **y=sin(a/2)**, z=0, **w=cos(a/2)`)——
+///   非既有 (y=cos, w=sin)。
+/// - `to_projective_xz_mat2` 0x140833b20（O）：列 = {cos, sin} / {-sin, cos}——
+///   即旋转阵 [[cos,-sin],[sin,cos]]，非既有 {sin,-cos}/{cos,sin}。
+/// - `offset` 0x140833b80（O）：`fmodf(a+amount, 6.2831855f)`（2π 回绕）。
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct DecoratorRotationXZ(pub f32);
-
-/// to_quat 角度乘数 _UNK_142925870（U：数值待取证；此处取 0.5 使 y/w 构成
-/// 绕 Y 轴旋转的 sin/cos 半角）。
-const TO_QUAT_SCALE: f32 = 0.5;
 
 impl DecoratorRotationXZ {
     /// 行 883（内联，I）：XZ 前向向量。
@@ -831,34 +948,37 @@ impl DecoratorRotationXZ {
         Vec3::new(self.0.sin(), 0.0, self.0.cos())
     }
 
-    /// 0x140833a00（I）：由 XZ 前向向量构造（角度编码）。
+    /// 0x140833a00（O）：`atan2f(-x, -y)`（fresh disasm 符号掩码取负两分量后
+    /// 转 atan2）。
     pub fn from_xz_forward_vector(v: Vec2) -> Self {
-        Self(v.x.atan2(v.y))
+        Self((-v.x).atan2(-v.y))
     }
 
-    /// 0x140833a20（O 结构）：由四元数构造。to_quat 写 (0, cos, 0, sin)，
-    /// 反解 `a = atan2(w, y) / k`。
+    /// 0x140833a20（O）：`atan2(2(wy+zx), w²+z²-x²-y²)`（fresh 反编译展开；
+    /// 对纯 Y 旋转 {y=sin(a/2), w=cos(a/2)} 退化为 a）。
     pub fn from_quat(q: Quat) -> Self {
-        Self(q.w.atan2(q.y) / TO_QUAT_SCALE)
+        let y_arg = 2.0 * (q.w * q.y + q.z * q.x);
+        let x_arg = q.w * q.w + q.z * q.z - q.x * q.x - q.y * q.y;
+        Self(y_arg.atan2(x_arg))
     }
 
-    /// 0x140833ac0（O）：(x=0, y=cos(a·k), z=0, w=sin(a·k))。
+    /// 0x140833ac0（O）：(x=0, y=sin(a·0.5), z=0, w=cos(a·0.5))。
     pub fn to_quat(self) -> Quat {
-        let a = self.0 * TO_QUAT_SCALE;
-        Quat::from_xyzw(0.0, a.cos(), 0.0, a.sin())
+        let a = self.0 * 0.5;
+        Quat::from_xyzw(0.0, a.sin(), 0.0, a.cos())
     }
 
-    /// 0x140833b20（O）：4 浮点 (sin, -cos | cos, sin) 的 XZ 投影矩阵。
+    /// 0x140833b20（O）：旋转矩阵列 {cos, sin} / {-sin, cos}（[[cos,-sin],[sin,cos]]）。
     pub fn to_projective_xz_mat2(self) -> Mat2 {
         Mat2::from_cols(
-            Vec2::new(self.0.sin(), -self.0.cos()),
             Vec2::new(self.0.cos(), self.0.sin()),
+            Vec2::new(-self.0.sin(), self.0.cos()),
         )
     }
 
-    /// 0x140833b80（I）：旋转偏移（语义待取证）。
+    /// 0x140833b80（O）：`fmod(a+amount, 2π)`（C fmod 语义，可负）。
     pub fn offset(self, amount: f32) -> Self {
-        Self(self.0 + amount)
+        Self((self.0 + amount) % std::f32::consts::TAU)
     }
 }
 
@@ -884,33 +1004,75 @@ mod tests {
         // 原始位运算对全 u8 匹配更多值）。
         for t in 0u8..=0xff {
             let ty = DecoratorType(t);
-            assert_eq!(ty.max_rank(), if t.wrapping_add(0xc8) < 3 { 3 } else { 1 }, "max_rank t={:#x}", t);
+            assert_eq!(
+                ty.max_rank(),
+                if t.wrapping_add(0xc8) < 3 { 3 } else { 1 },
+                "max_rank t={:#x}",
+                t
+            );
             assert_eq!(
                 ty.can_change_seed(),
                 (t.wrapping_add(0xc8) < 8) && ((0x27u8 >> (t & 7)) & 1) != 0,
                 "can_change_seed t={:#x}",
                 t
             );
-            assert_eq!(ty.is_window(), t.wrapping_add(0xc8) < 3, "is_window t={:#x}", t);
-            assert_eq!(ty.spawns_clutter(), (t & 0x3e) == 0x38, "spawns_clutter t={:#x}", t);
-            assert_eq!(ty.can_place_on_roof(), t != 0x3a, "can_place_on_roof t={:#x}", t);
-            assert_eq!(ty.can_place_on_terrain(), (t & 0x3c) != 0x38, "can_place_on_terrain t={:#x}", t);
+            assert_eq!(
+                ty.is_window(),
+                t.wrapping_add(0xc8) < 3,
+                "is_window t={:#x}",
+                t
+            );
+            assert_eq!(
+                ty.spawns_clutter(),
+                (t & 0x3e) == 0x38,
+                "spawns_clutter t={:#x}",
+                t
+            );
+            assert_eq!(
+                ty.can_place_on_roof(),
+                t != 0x3a,
+                "can_place_on_roof t={:#x}",
+                t
+            );
+            assert_eq!(
+                ty.can_place_on_terrain(),
+                (t & 0x3c) != 0x38,
+                "can_place_on_terrain t={:#x}",
+                t
+            );
             assert_eq!(
                 ty.can_place_on_stair_top(),
                 (t.wrapping_add(0xc4) < 3) || (t & 0x38) != 0x38,
                 "can_place_on_stair_top t={:#x}",
                 t
             );
-            assert_eq!(ty.should_offer_snap_to_corner(), t != 0x3f, "snap_to_corner t={:#x}", t);
+            assert_eq!(
+                ty.should_offer_snap_to_corner(),
+                t != 0x3f,
+                "snap_to_corner t={:#x}",
+                t
+            );
         }
         // 类型值域 {0x38..0x3f} 内：窗族 {0x38..0x3b} 不可放楼梯顶；{0x3c,0x3d,0x3e}
         // 可放；0x3f（角吸附）同样不可放（RNE 手解位运算证实，章节"仅窗族"为近似）。
         for t in 0x38u8..=0x3b {
-            assert!(!DecoratorType(t).can_place_on_stair_top(), "window t={:#x} on stair top", t);
-            assert!(!DecoratorType(t).can_place_on_terrain(), "window t={:#x} on terrain", t);
+            assert!(
+                !DecoratorType(t).can_place_on_stair_top(),
+                "window t={:#x} on stair top",
+                t
+            );
+            assert!(
+                !DecoratorType(t).can_place_on_terrain(),
+                "window t={:#x} on terrain",
+                t
+            );
         }
         for t in [0x3cu8, 0x3d, 0x3e] {
-            assert!(DecoratorType(t).can_place_on_stair_top(), "stair-top t={:#x}", t);
+            assert!(
+                DecoratorType(t).can_place_on_stair_top(),
+                "stair-top t={:#x}",
+                t
+            );
         }
         assert!(!DecoratorType(0x3f).can_place_on_stair_top());
         assert!(DecoratorType(0x38).spawns_clutter());
@@ -958,12 +1120,35 @@ mod tests {
         assert_eq!(info.extra_disc(), 5);
         assert_eq!(info.extra(), DecoratorExtraInfo::Flag(FlagExtra(0xab)));
 
-        info.set_extra(DecoratorExtraInfo::Chimney(ChimneyExtra(1.5)));
-        assert_eq!(info.extra_disc(), 7);
-        assert_eq!(info.extra(), DecoratorExtraInfo::Chimney(ChimneyExtra(1.5)));
+        // 原生判别：烟囱=4（fresh 0x1408392d0 `cmp byte[+0x11],0x4`）。
+        info.set_extra(DecoratorExtraInfo::Chimney(ChimneyExtra {
+            f: 1.5,
+            smoke: 0xab,
+        }));
+        assert_eq!(info.extra_disc(), 4);
+        assert_eq!(
+            info.extra(),
+            DecoratorExtraInfo::Chimney(ChimneyExtra {
+                f: 1.5,
+                smoke: 0xab
+            })
+        );
 
-        info.set_extra(DecoratorExtraInfo::Lantern(LanternExtra(0x1234)));
-        assert_eq!(info.extra(), DecoratorExtraInfo::Lantern(LanternExtra(0x1234)));
+        // 原生判别：灯=7（fresh 0x140839420 `cmp,0x7`；载荷 f32）。
+        info.set_extra(DecoratorExtraInfo::Lantern(LanternExtra(4660.0)));
+        assert_eq!(info.extra_disc(), 7);
+        assert_eq!(
+            info.extra(),
+            DecoratorExtraInfo::Lantern(LanternExtra(4660.0))
+        );
+
+        // 原生判别：窗=6（fresh 0x1408393b0 `cmp,0x6`；载荷 u32）。
+        info.set_extra(DecoratorExtraInfo::Window(WindowExtra(0x1234)));
+        assert_eq!(info.extra_disc(), 6);
+        assert_eq!(
+            info.extra(),
+            DecoratorExtraInfo::Window(WindowExtra(0x1234))
+        );
     }
 
     #[test]
@@ -994,18 +1179,157 @@ mod tests {
 
 // ---------------------------------------------------------------- 组 A 接线
 
-/// 旗连接设置命令（O：`walls::decorator::SetFlagConnectionCmd`；
-/// color_menu 0x142291230 的 EventWriter 面、set_flag_connection_and_chimney_smoke
-/// 0x142298970 消费。载荷语义 U）。
+/// 旗连接设置命令（O：`walls::decorator::SetFlagConnectionCmd`；color_menu
+/// 0x142291230 的 EventWriter 面、set_flag_connection_and_chimney_smoke 0x142298970
+/// 消费）。载荷 `{id u32@+8, value u8@+0xc, custom u8@+0xd}`（0x10B EventInstance，
+/// RESTORE 纠错 #4；`repr(C)` 对齐 0x8B 载荷）。
+#[repr(C)]
 #[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default)]
 pub struct SetFlagConnectionCmd {
-    /// typed gap。
-    pub _gap: u64,
+    /// 目标装饰 id（u32 @+8）。
+    pub id: u32,
+    /// 旗值（u8 @+0xc，写入 FlagExtra.0）。
+    pub value: u8,
+    /// 自定义标志（u8 @+0xd，`!= 0`，O）。
+    pub custom: u8,
+    /// +0xe..+0x10 对齐填充。
+    pub _pad: [u8; 2],
 }
 
 /// 烟囱烟开关命令（O：`walls::decorator::SetChimneySmokeCmd`；同族消费）。
+/// 载荷 `{id u32@+8, value u8@+0xc, custom u8@+0xd}`（0x10B；`value` 写入
+/// ChimneyExtra+4，custom `== 1`，O）。
+#[repr(C)]
 #[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default)]
 pub struct SetChimneySmokeCmd {
-    /// typed gap。
-    pub _gap: u64,
+    /// 目标装饰 id（u32 @+8）。
+    pub id: u32,
+    /// 烟值（u8 @+0xc，写入 ChimneyExtra+4）。
+    pub value: u8,
+    /// 自定义标志（u8 @+0xd，`== 1`，O）。
+    pub custom: u8,
+    /// +0xe..+0x10 对齐填充。
+    pub _pad: [u8; 2],
+}
+
+pub mod anchors;
+
+pub mod placement;
+
+#[cfg(test)]
+mod canonical_decorator_event_tests {
+    use super::*;
+    use bevy_ecs::{event::Events, prelude::{Schedule, World}};
+    use crate::resources::history::decorator_edit::DecoratorDiffEvent;
+
+    fn payload(tag: u64, fill: u8) -> [u8; 0x88] {
+        let mut event = [fill; 0x88];
+        event[..8].copy_from_slice(&tag.to_le_bytes());
+        event
+    }
+
+    #[test]
+    fn canonical_aliases_share_type_id_and_tuple_constructor() {
+        use std::any::TypeId;
+        assert_eq!(TypeId::of::<DecoratorOpEvent>(), TypeId::of::<DecoratorOpEventKind>());
+        assert_eq!(TypeId::of::<DecoratorOpEvent>(), TypeId::of::<DecoratorDiffEvent>());
+        assert_eq!(DecoratorOpEventKind([0; 0x88]), DecoratorDiffEvent([0; 0x88]));
+        // Native id dispatch compares the full u64 tag, not its lower dword.
+        let mut event = payload((1_u64 << 32) | 3, 0);
+        event[0x40..0x44].copy_from_slice(&7_u32.to_le_bytes());
+        event[0x68..0x6c].copy_from_slice(&9_u32.to_le_bytes());
+        assert_eq!(DecoratorDiffEvent(event).decorator_id(), 9);
+    }
+
+    #[test]
+    fn actual_world_drain_preserves_payloads_and_bevy_ids_across_frames() {
+        let mut world = World::new();
+        world.init_resource::<DeferredDecoratorOpEvents>();
+        world.init_resource::<Events<DecoratorOpEvent>>();
+        let mut schedule = Schedule::default();
+        schedule.add_systems(unleash_decorator_op_events);
+        let a = payload(3, 0xa1);
+        let b = payload(4, 0xb2);
+        let c = payload(2, 0xc3);
+        world.resource::<DeferredDecoratorOpEvents>().send(a);
+        world.resource::<DeferredDecoratorOpEvents>().send(b);
+        schedule.run(&mut world);
+        let mut cursor = world.resource::<Events<DecoratorOpEvent>>().get_cursor();
+        let first: Vec<_> = cursor.read_with_id(world.resource::<Events<DecoratorOpEvent>>())
+            .map(|(event, id)| (event.0, id.id)).collect();
+        assert_eq!(first, vec![(a, 0), (b, 1)]);
+        schedule.run(&mut world);
+        assert_eq!(cursor.read(world.resource::<Events<DecoratorOpEvent>>()).count(), 0);
+        world.resource_mut::<Events<DecoratorOpEvent>>().update();
+        world.resource::<DeferredDecoratorOpEvents>().send(c);
+        schedule.run(&mut world);
+        let next: Vec<_> = cursor.read_with_id(world.resource::<Events<DecoratorOpEvent>>())
+            .map(|(event, id)| (event.0, id.id)).collect();
+        assert_eq!(next, vec![(c, 2)]);
+    }
+
+    #[test]
+    fn empty_unleash_still_marks_the_deferred_resource_changed() {
+        use bevy_ecs::change_detection::DetectChanges;
+        let mut world = World::new();
+        world.init_resource::<DeferredDecoratorOpEvents>();
+        world.init_resource::<Events<DecoratorOpEvent>>();
+        world.clear_trackers();
+        let mut schedule = Schedule::default();
+        schedule.add_systems(unleash_decorator_op_events);
+        schedule.run(&mut world);
+        assert!(world.get_resource_ref::<DeferredDecoratorOpEvents>().unwrap().is_changed());
+        assert!(world.resource::<Events<DecoratorOpEvent>>().is_empty());
+    }
+
+    #[test]
+    fn existing_history_diff_producer_reaches_the_canonical_stream() {
+        use crate::resources::history::decorator_edit::{
+            send_state_diff_events, DecoratorBeforeAfterWithStorage,
+            DecoratorHistoryState, DecoratorStateWithStorage,
+        };
+        let mut world = World::new();
+        world.init_resource::<DeferredDecoratorOpEvents>();
+        world.init_resource::<Events<DecoratorOpEvent>>();
+        let after = DecoratorStateWithStorage {
+            storage_disc: 1, storage_payload: 0,
+            state: DecoratorHistoryState { ty: 0x3c, ..Default::default() },
+        };
+        let diffs = std::collections::HashMap::from([(
+            DecoratorId(71), DecoratorBeforeAfterWithStorage {
+                before: DecoratorStateWithStorage { storage_disc: 3, ..Default::default() },
+                after,
+            },
+        )]);
+        send_state_diff_events(&diffs, world.resource::<DeferredDecoratorOpEvents>());
+        let mut schedule = Schedule::default();
+        schedule.add_systems(unleash_decorator_op_events);
+        schedule.run(&mut world);
+        let events = world.resource::<Events<DecoratorOpEvent>>();
+        let actual: Vec<_> = events.get_cursor().read(events).copied().collect();
+        assert_eq!(actual, vec![DecoratorDiffEvent::from_added(DecoratorId(71), &after)]);
+        assert_eq!(actual[0].decorator_id(), 71);
+    }
+
+    #[test]
+    fn sentinel_discards_current_remainder_and_allows_later_batch() {
+        let mut world = World::new();
+        world.init_resource::<DeferredDecoratorOpEvents>();
+        world.init_resource::<Events<DecoratorOpEvent>>();
+        let mut schedule = Schedule::default();
+        schedule.add_systems(unleash_decorator_op_events);
+        let a = payload(1, 10);
+        let b = payload(0, 20);
+        for value in [a, payload(5, 0), payload(3, 30)] {
+            world.resource::<DeferredDecoratorOpEvents>().send(value);
+        }
+        schedule.run(&mut world);
+        let mut cursor = world.resource::<Events<DecoratorOpEvent>>().get_cursor();
+        let first: Vec<_> = cursor.read(world.resource::<Events<DecoratorOpEvent>>()).map(|e| e.0).collect();
+        assert_eq!(first, vec![a]);
+        world.resource::<DeferredDecoratorOpEvents>().send(b);
+        schedule.run(&mut world);
+        let next: Vec<_> = cursor.read(world.resource::<Events<DecoratorOpEvent>>()).map(|e| e.0).collect();
+        assert_eq!(next, vec![b]);
+    }
 }

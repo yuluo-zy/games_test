@@ -1,17 +1,26 @@
 //! B authoritative player stairs graph (0x1408fe7b0..0x140901260).
 //! petgraph 0.8.1 owns the graph. The game's self-pair represents an *isolated*
 //! node, not an additional persistent edge table. +0x148 is only a dirty set.
-//! Original endpoint names/remaining payload schema and startup defaults remain
-//! unproven; the 24-byte endpoint value is preserved without invented variants.
+//! Original endpoint names/remaining active payload schema remain unproven;
+//! the 24-byte endpoint value is preserved without invented variants. Startup
+//! writes the unset tag3; its inactive payload bytes have no original value.
 use bevy_ecs::resource::Resource;
 use hashbrown::{HashMap, HashSet};
 use petgraph::{graphmap::UnGraphMap, visit::Bfs};
 use std::{
     collections::hash_map::DefaultHasher,
     hash::{Hash, Hasher},
+    sync::atomic::AtomicBool,
 };
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+/// Original B release byte@14362c011 is 01 in initialized .data (RVA362b000,
+/// raw size9c00; byte offset1011). load_game applies the actual save-version
+/// gate later. Keep one canonical static for its producer and consumers.
+pub static VERIFY_STAIR_CHECKSUMS: AtomicBool = AtomicBool::new(true);
+
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub struct StairGraphEdge {
     a: u32,
     b: u32,
@@ -54,6 +63,14 @@ impl TransientStairEdgeIdAllocator {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ObservedStairEndpoint([u8; 24]);
 impl ObservedStairEndpoint {
+    /// B DecoratorPlugin::build@140344287 writes only tag3. Zeroing the
+    /// inactive host bytes makes this owned projection initialized; it does
+    /// not assert that the native enum's inactive payload was zero-filled.
+    pub fn unset_value() -> Self {
+        let mut bytes = [0; 24];
+        bytes[..8].copy_from_slice(&3u64.to_le_bytes());
+        Self(bytes)
+    }
     pub fn from_observed(bytes: [u8; 24]) -> Self {
         Self(bytes)
     }
@@ -89,6 +106,11 @@ impl StairsSnapshot {
     pub fn edges(&self) -> &[(u32, u32)] {
         &self.edges
     }
+    /// Preserve the original Option<u64> when serializing a snapshot; reading
+    /// its metadata must not populate a missing cached checksum.
+    pub fn cached_checksum(&self) -> Option<u64> {
+        self.checksum
+    }
     pub fn compute_checksum(&mut self) -> u64 {
         *self.checksum.get_or_insert_with(|| hash_edges(&self.edges))
     }
@@ -118,8 +140,15 @@ pub struct StairsState {
     backed_up: bool,
 }
 impl StairsState {
-    /// Explicit construction keeps the unproven original endpoint default out
-    /// of the API. The two empty graph owners are ordinary dependency values.
+    /// B DecoratorPlugin::build@14034420e/21a constructs two empty graph maps;
+    /// @140344275/27c/287 initializes backed_up=false, checksum=None and the
+    /// unset endpoint tag3, then @1403442b4 inserts this resource. The dirty
+    /// set is empty with a real fresh RandomState, not a fabricated entry.
+    pub fn new() -> Self {
+        Self::empty(ObservedStairEndpoint::unset_value())
+    }
+
+    /// Explicit endpoint construction is retained for known active payloads.
     pub fn empty(endpoint: ObservedStairEndpoint) -> Self {
         Self {
             graph: UnGraphMap::new(),
@@ -321,6 +350,12 @@ impl StairsState {
     }
 }
 
+impl Default for StairsState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 fn contains(graph: &UnGraphMap<u32, ()>, a: u32, b: u32) -> bool {
     if a == b {
         graph.contains_node(a) && graph.neighbors(a).next().is_none()
@@ -364,3 +399,33 @@ fn hash_edges(edges: &[(u32, u32)]) -> u64 {
     edges.hash(&mut state);
     state.finish()
 }
+
+use crate::resources::walls::decorator::DecoratorId;
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct StairSegment {
+    a: DecoratorId,
+    b: DecoratorId,
+}
+impl StairSegment {
+    /// B @140901260, alias shared with StairGraphEdge::new: unsigned min/max.
+    pub fn new(a: DecoratorId, b: DecoratorId) -> Self {
+        Self {
+            a: DecoratorId(a.0.min(b.0)),
+            b: DecoratorId(a.0.max(b.0)),
+        }
+    }
+    pub fn nodes(self) -> (DecoratorId, DecoratorId) {
+        (self.a, self.b)
+    }
+}
+impl From<StairSegment> for StairGraphEdge {
+    /// Native prepare hashes the same two endpoint words as StairGraphEdge.
+    fn from(segment: StairSegment) -> Self {
+        Self::new(segment.a.0, segment.b.0)
+    }
+}
+// Same original resource identity; no wrapper/new map is inserted.
+impl bevy_ecs::resource::Resource for TransientStairEdgeIdAllocator {}
+const _: () = assert!(core::mem::size_of::<StairSegment>() == 8);

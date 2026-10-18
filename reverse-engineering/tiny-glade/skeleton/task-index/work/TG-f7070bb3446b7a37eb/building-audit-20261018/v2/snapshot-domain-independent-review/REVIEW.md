@@ -1,0 +1,48 @@
+# Independent review: B snapshot writer61 + API deltas
+
+The bounded writer is ready for owner integration **with** test API v2 and WallId v3. No remaining blocking codec/logic finding was found after these deltas. Frozen61 alone has a confirmed compile-time Serialize bound error for current WallId; v3 resolves it without changing that canonical type. No Cargo/Rust test or original/JIT execution was performed by this reviewer, so this is not a compiled/runtime pass or full snapshot-module acceptance.
+
+Reviewed manifests:
+
+- writer61: 84b47e0273a84b1a987eee51af9cb6ebe5e99268b99a7ff00033ac491756c0e1.
+- test API v2, four inputs: 3d1dcd44537c8955a08c79b43d6fb8abe35880550b12f2cf012f231f9d34e3ee.
+- Wall ID v3, five inputs: 124b35acd4c922760c466abb6265bb4e74c16ee22a109f3afa34e035d05f8d14.
+
+All70 original input hashes and sizes are independently checked. Inputs were copied into this review directory, and the author's default read-only verifier was run on that independent mirror: 19 ranges / 34,113 bytes / 8,142 instructions passed original PE bytes, text, whole B binary/PDB identities, seventeen complete procedure sizes and two explicitly bounded snippets, declared dependencies and both original patches' isolated exact application. The original freeze files were not modified. One attempted copy of an absolute v2 path correctly raised SameFileError before writing; all four originals were reverified and copied under explicit review-relative destinations.
+
+Additional independent checks in verify_additional.py strengthen the schema binding: all40 field-key sites now match their actual RIP-derived pointers **and actual R8D encoded lengths**; every one of the56 Clutter cases is walked through its actual unconditional control flow to recover the original string pointer/length and compare it with the candidate's name table. The actual destination, special type and railing switch tables match PE data. An additional complete678B PDB-bound WallAttachmentSide serializer141593c80 (1628:95800) confirms Inner byte0 / Outer byte1; its original raw/text/PDB are under side-native. This is dependency/schema evidence, not additional custom business restoration. The existing frozen69 State serializer is reused as a declared dependency, not re-mined as a new function.
+
+## Original-first semantic checks
+
+I read the original chunk/capture code and domain/State serializers before assessing the candidate's mapping.
+
+- Original capture1417a1d00 is the full20,581B source/PDB procedure; capture-data1417a0430 is6,343B. The older3,927B .pdata main-body span is not the complete source procedure. Sorting remains by true wall ID / Roof first qword / storage address / tree storage index / numeric AutoClutter ID. No new ID encoding or process pointer interpretation is introduced.
+- All fourteen native metadata keys are present even for captured empty collections: Version2, Walls, Roofs, Decorators, Raster names, three color lists, Terrain, TerrainHeightRange, Trees, AutoClutter, Stairs and removed supports. Candidate defaults do not silently erase typed nonempty domains. Extension keys remain a current compatibility surface; duplicate native/previous keys fail, preventing replacement of Version2 or a captured domain.
+- Native Roof and WallState are reused. The Roof139 plus its ShapeParameters rotation adapter is a real required dependency. v3 represents Walls as `(id.0, &WallState)` after sorting, preserving native full u64 identity while avoiding a global WallId serde change. Current ColorId, TreeStorageIndex, TerrainStroke and StrokeId do implement the needed existing Serde interfaces; current WallId does not. Their relevant current API source checkpoints are retained.
+- Trees are two-element `(TreeStorageIndex, six-field TreeData)` tuples; the public SnapshotTreesEntry struct remains the API. Its runtime TreeData.storage_index field is not fabricated into a seventh JSON field. Decorator outer `states` / inner `state` buckets match the correctly identified native serializers and preserve absent-versus-present-empty owners and actual u32 IDs. Source storage69 is a mandatory model dependency.
+- Native Terrain serializer1408e6b70 writes strokes and next_stroke_id, with a usize helper for the latter. Candidate widens the current u32 counter instead of manufacturing a second owner. The runtime rasterized bool stays out of JSON. Its current manual counter's u32 domain and the separate actual f32 height-buffer capture remain explicit adapter limits.
+- Stairs metadata keeps canonical edge pairs and the cached **Option<u64>** checksum. The added getter only copies the Option; it does not compute/cache a missing checksum. Removed supports borrow the actual set-like map keys and emit their full two-node edge tuples; no normalized graph, fabricated supports or object-shaped edge codec is introduced.
+
+## Decorator State wire
+
+Mandatory dst/ty/rank{x}/seed and every optional field's offsets/default gates agree with native State serializer1417c0cf0. Integers preserve full u32/u64 widths. Ordered equality to ±0 or1 omits the respective float; unordered NaN includes it and Value serde yields null. False connection/smoke bytes are written as false; nonzero defaults are omitted. Railing and supports names follow the original dispatch. Invalid unrepresentable raw enum/niche bytes are host errors, not claims of defined original invalid-Rust-memory behavior.
+
+The first40B of current HistoryState are decoded as its existing owned destination bytes, not process addresses. Wall coord is x/y; anchor platform u64, relative height, optional nonzero/NaN XYZ, corner byte, bottom-door and side retain their actual offsets. Anchor's side is included only for Inner0, while Outer1 is omitted. Roof / Terrain / Stair attachments retain their UV/position/edge/yaw fields. Their yaw serializers use the f32 helper; the unrelated Circle `{val}` rotation rule is not incorrectly generalized to these attachments. Numeric Clutter IDs select all56 actual names through original case bodies. Types56..61 and63 match their unit variants, while type62 cannot be represented as a valid Clutter mesh enum index.
+
+## Framing and error flow
+
+Candidate uses one existing Motomoto Writer. Original1417a31e2 names the8-byte Snapshot tag, and its JSON is uncompressed. Every raster uses tag_from_str_trunc, writes little-endian u64 **raw byte length**, then raw Deflate level6. Terrain tag has7 content bytes padded by the format helper and contains only raw Deflate6, without the raster size prefix. The existing Writer owns16B header/length backfill; explicit compressor/chunk/writer finish calls propagate failure. No second manual archive engine or header projection was added.
+
+The concrete raster collector's original cached PDB fold identity1610:69784 is Vec<(str, Vec<u8>)>, matching the candidate's current shape. Its compiler moved/drop sentinel must not be mistaken for an unproven Option-raster channel. Metadata names and chunk iteration retain caller collection order. Genuine Some(empty) terrain/range/support captures can encode; absent captures return Err. The old optional-stairs collector signature preserves the signature but requires Some, aligning with the original accurate-stairs invariant rather than supplying a fabricated empty snapshot.
+
+## API delta audit and exact application
+
+Test v2 changes only the private import use `tg_terrain::stroke::StrokeId` to the existing public `tg_terrain::schema::StrokeId`; its JSON assertions and production logic are unchanged. Wall v3 fixes the independently confirmed missing Serialize trait on WallId by a local borrowed u64 tuple projection. Applying frozen61, then v2, then v3 exactly yields snapshot.rs SHA8508fceddfca138c2621a95d19f08ee6e125d6b8b5b0622b69225a4074210835. The added Cargo dependency points at the existing sibling motomoto crate; no crate/engine is created. The Stairs getter changes no mutability or checksum algorithm.
+
+Five new Rust test sources are meaningful but unexecuted here: all14 nonempty typed domains, chunk Reader round trips with distinct compression payloads, source presence/errors, native defaults/NaN/destination variants, and tuple Trees. Native binary execution is not inferred from these tests or instruction counts.
+
+## Required actual-owner handoff
+
+Current captured production save_game.rs still supplies empty placeholders for Trees/IDs/Decorators/colors/rasters, defaults missing Terrain, and drops unbacked/missing stairs. It does not supply actual terrain bytes/range/removed supports. Current save_thread.rs:362 still writes `snapshot.to_json().to_string()` to a caller-provided ID filename. **These current sources are not accepted as a live native save chain.** The save owner must collect real resources, call encode's Result, write the archive, compute its actual blob hash, and resolve the same pending ID stored by canonical History (success actual ID / failure invalid1). Do not integrate only this encoder while counting those old paths as complete.
+
+The legacy JSON-only decoder, zero-record wall/decorator scaffolds, native State/Roof loading, accurate world restoration and GPU capture synchronization remain outside this bounded writer. The old fabricated Default DecoratorInfo conversion now fails explicitly and cannot pretend to restore a native State. That is an honest failure boundary, not full load recovery. Existing source comments about only nine sections, no Stairs JSON, JSON Terrain tail and native Arc ownership are stale compatibility comments; this report and the frozen native contract override those claims, and the owner should remove them during incremental integration. They do not alter the reviewed encoder behavior.

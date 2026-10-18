@@ -1,126 +1,207 @@
-//! `update_cursor_position.rs` — 游标位置合并（B PDB 签名 @0x1413ee760，正文全内联）。
-//!
-//! 权威签名（O，`cursor-update-procedures.json` into_configs @0x1413ee760）：
-//! `(Res<ActionSetStates>, Res<CursorCapturedPosition>, ResMut<CursorPositionSS>,
-//!  EventWriter<CursorMovedScreenSpace>)` —— 消费 `ActionSetStates.analog[0]`
-//! （`input_space_cursor_move`，由 `translate_input_to_cursor_moved` 折叠写
-//! `ActionSetValues.current.analog[0]` 再经 `calculate_input_delta` 拷贝而来），
-//! 累加进 f32 屏幕空间游标 `CursorPositionSS`，非负 clamp 写回，并产出
-//! `CursorMovedScreenSpace` 窗口空间事件。
-//!
-//! `CursorPosition`（u32）仍是 `input_record_replay`（0x1409423d0 param_6）回放写回的
-//! 像素游标资源，保留；本系统按 PDB 签名只写 `CursorPositionSS`。
-//!
-//! 语义标记：非负 clamp 与捕获（`CursorCapturedPosition`）交互为 I（章节"非负 clamp 后
-//! 写回"）；`EventWriter<CursorMovedScreenSpace>` 载荷形状 I（待取证）。
+//! 将窗口位移应用到游标；捕获保持锚点，另将原始输入位移交给工具消费者。
 use bevy_ecs::prelude::*;
 use glam::Vec2;
 
+use super::translate_input_to_cursor_moved::clamp_window_position;
 use crate::{
     input::action_set::ActionSetStates,
     resources::{
-        mouse_capture::CursorCapturedPosition, mouse_terrain_raycast::CursorPositionSS,
-        window::CursorMovedScreenSpace,
+        mouse_capture::CursorCapturedPosition,
+        mouse_terrain_raycast::CursorPositionSS,
+        window::{CursorMovedScreenSpace, WindowSize},
     },
 };
 
-use super::translate_input_to_cursor_moved::InputCursorMoved;
-
-/// 像素游标位置（O：0x1409423d0 case 2 写 `CONCAT44(y, x)`；input_record_replay 消费）。
-/// 注意：`update_cursor_position` 的 PDB 签名写 f32 `CursorPositionSS`，不写本 u32 资源。
+/// 录制和回放使用的整数像素位置。
 #[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct CursorPosition {
     pub x: u32,
     pub y: u32,
 }
-
 impl CursorPosition {
-    /// 两 u32 游标（输入顺序 x, y）。
     pub fn new(x: u32, y: u32) -> Self {
         Self { x, y }
     }
-
-    /// `input_record_replay` 录制的游标 f32 对（O：0x1409423d0 default 分支）。
     pub fn as_vec2(self) -> Vec2 {
         Vec2::new(self.x as f32, self.y as f32)
     }
 }
 
-/// 非负 clamp 累加（I：章节"非负 clamp 后写回"；Absolute 直接替换。
-/// RelativeWhileCaptured 与同帧 translate_input_to_cursor_moved 捕获路径一致累加——
-/// reviewer 二轮复核）。供旧 I 级近似与测试保留。
-pub fn fold_cursor_moved(start: Vec2, events: impl IntoIterator<Item = InputCursorMoved>) -> Vec2 {
-    let mut position = start;
-    for event in events {
-        match event {
-            InputCursorMoved::Relative(value) | InputCursorMoved::RelativeWhileCaptured(value) => {
-                position += value;
-            }
-            InputCursorMoved::Absolute(value) => {
-                position = value;
-            }
-        }
-        position.x = if position.x.is_nan() || position.x < 0.0 { 0.0 } else { position.x };
-        position.y = if position.y.is_nan() || position.y < 0.0 { 0.0 } else { position.y };
-    }
-    position
-}
-
-/// 每帧折叠：`CursorPositionSS + analog[0]`（input_space_cursor_move），非负 clamp（I）。
-pub fn fold_cursor_state(start: Vec2, input_space_delta: Vec2) -> Vec2 {
-    let next = start + input_space_delta;
-    Vec2::new(
-        if next.x.is_nan() || next.x < 0.0 { 0.0 } else { next.x },
-        if next.y.is_nan() || next.y < 0.0 { 0.0 } else { next.y },
-    )
-}
-
-/// `update_cursor_position`（O 签名 @0x1413ee760；正文全内联 I）：
-/// 读 `ActionSetStates`（含 `translate_input_to_cursor_moved` 折叠的 input-space 增量）
-/// 与 `CursorCapturedPosition`，累加进 `CursorPositionSS`，发 `CursorMovedScreenSpace`。
-/// 与 `translate_input_to_cursor_moved` 同帧不同 stage 消费同一增量流（顺序依赖）。
+/// 在游戏消费者之前生成本帧屏幕坐标和工具位移事件。
 pub fn update_cursor_position(
     states: Res<ActionSetStates>,
     captured: Res<CursorCapturedPosition>,
+    window: Res<WindowSize>,
     mut cursor: ResMut<CursorPositionSS>,
     mut events: EventWriter<CursorMovedScreenSpace>,
 ) {
-    let _ = captured.0; // 捕获锚点由 mouse_capture 保有；本系统只读其判别（语义 I）。
-    let next = fold_cursor_state(cursor.0, states.analog[0]);
+    let next = captured.0.unwrap_or(cursor.0 + states.analog[1]);
+    let next = clamp_window_position(next, window.as_vec2());
     cursor.0 = next;
-    events.write(CursorMovedScreenSpace(next));
+    // Position and tool motion use different existing action slots. Native
+    // +0x148 updates the window cursor, while +0x140 is the event payload;
+    // capture retains tool motion and zero motion produces no event.
+    let movement = states.analog[0];
+    if movement != Vec2::ZERO {
+        events.write(CursorMovedScreenSpace(movement));
+    }
 }
 
 #[cfg(test)]
-mod tests {
+mod native_event_tests {
     use super::*;
+    use crate::{
+        resources::terrain_editing::StrokeId,
+        systems::terrain::ui_edit_terrain::edit_command_for_drag,
+    };
+    use glam::Vec3;
+    use tg_terrain::edit::{Adjustment, EditCommand};
 
-    #[test]
-    fn relative_accumulates_and_absolute_replaces() {
-        let merged = fold_cursor_moved(
-            Vec2::new(3.0, 4.0),
-            [
-                InputCursorMoved::Relative(Vec2::new(1.0, -2.0)),
-                InputCursorMoved::Absolute(Vec2::new(50.0, 60.0)),
-                InputCursorMoved::RelativeWhileCaptured(Vec2::new(5.0, 5.0)),
-            ],
-        );
-        // RelativeWhileCaptured 与捕获路径一致累加（reviewer 二轮复核）。
-        assert_eq!(merged, Vec2::new(55.0, 65.0));
+    fn world(input: [u32; 2], hardware: [u32; 2], captured: bool) -> World {
+        let mut world = World::new();
+        let mut states = ActionSetStates::default();
+        states.analog[0] = Vec2::from_array(input.map(f32::from_bits));
+        states.analog[1] = Vec2::from_array(hardware.map(f32::from_bits));
+        world.insert_resource(states);
+        world.insert_resource(CursorPositionSS(Vec2::new(50.0, 20.0)));
+        world.insert_resource(CursorCapturedPosition(
+            captured.then_some(Vec2::new(50.0, 20.0)),
+        ));
+        world.insert_resource(WindowSize::new(100, 100));
+        world.init_resource::<Events<CursorMovedScreenSpace>>();
+        world
     }
 
     #[test]
-    fn negatives_and_nan_clamp_to_zero() {
-        let merged = fold_cursor_moved(
-            Vec2::ZERO,
-            [InputCursorMoved::Relative(Vec2::new(-5.0, f32::NAN))],
-        );
-        assert_eq!(merged, Vec2::ZERO);
+    fn original_event_payload_and_nonzero_gate() {
+        // Executed original B inline fixtures. Position assertions are limited
+        // to inputs compatible with the retained current clamp/anchor policy.
+        for (input, hardware, captured, expected_position, expected_payload) in [
+            (
+                [0x0, 0x0],
+                [0x0, 0x0],
+                false,
+                [0x42480000, 0x41a00000],
+                None,
+            ), // idle
+            (
+                [0x40400000, 0x41a00000],
+                [0x3f800000, 0xc0000000],
+                false,
+                [0x424c0000, 0x41900000],
+                Some([0x40400000, 0x41a00000]),
+            ), // raw_differs_from_hardware
+            (
+                [0x40400000, 0x41a00000],
+                [0x42c60000, 0x42c60000],
+                true,
+                [0x42480000, 0x41a00000],
+                Some([0x40400000, 0x41a00000]),
+            ), // captured_still_emits_raw
+            (
+                [0x0, 0x0],
+                [0x3f800000, 0xc0000000],
+                false,
+                [0x424c0000, 0x41900000],
+                None,
+            ), // hardware_without_raw
+            (
+                [0x80000000, 0x80000000],
+                [0x0, 0x0],
+                false,
+                [0x42480000, 0x41a00000],
+                None,
+            ), // negative_zero_is_zero
+            (
+                [0x7fc01234, 0x3f800000],
+                [0x0, 0x0],
+                false,
+                [0x42480000, 0x41a00000],
+                Some([0x7fc01234, 0x3f800000]),
+            ), // nan_x_is_nonzero
+            (
+                [0x7f800000, 0xff800000],
+                [0x0, 0x0],
+                false,
+                [0x42480000, 0x41a00000],
+                Some([0x7f800000, 0xff800000]),
+            ), // infinities_are_nonzero
+            (
+                [0x1, 0x80000001],
+                [0x0, 0x0],
+                false,
+                [0x42480000, 0x41a00000],
+                Some([0x1, 0x80000001]),
+            ), // subnormals_are_nonzero
+            (
+                [0x0, 0x7fc00000],
+                [0x0, 0x0],
+                false,
+                [0x42480000, 0x41a00000],
+                Some([0x0, 0x7fc00000]),
+            ), // nan_y_is_nonzero
+            (
+                [0xc0400000, 0xc1a00000],
+                [0xbf800000, 0x40000000],
+                false,
+                [0x42440000, 0x41b00000],
+                Some([0xc0400000, 0xc1a00000]),
+            ), // negative_raw
+        ] {
+            let mut world = world(input, hardware, captured);
+            let mut schedule = Schedule::default();
+            schedule.add_systems(update_cursor_position);
+            schedule.run(&mut world);
+            assert_eq!(
+                world
+                    .resource::<CursorPositionSS>()
+                    .0
+                    .to_array()
+                    .map(f32::to_bits),
+                expected_position
+            );
+            let payloads: Vec<_> = world
+                .resource_mut::<Events<CursorMovedScreenSpace>>()
+                .drain()
+                .map(|event| event.0.to_array().map(f32::to_bits))
+                .collect();
+            assert_eq!(payloads, expected_payload.into_iter().collect::<Vec<_>>());
+        }
+    }
+
+    #[derive(Resource, Default)]
+    struct DragCommands(Vec<EditCommand>);
+
+    fn consume_drag(
+        mut events: EventReader<CursorMovedScreenSpace>,
+        mut commands: ResMut<DragCommands>,
+    ) {
+        for event in events.read() {
+            if let Some(command) = edit_command_for_drag(StrokeId(7), 5.0, Vec3::ZERO, event.0) {
+                commands.0.push(command);
+            }
+        }
     }
 
     #[test]
-    fn cursor_state_folds_the_input_space_delta_and_clamps() {
-        assert_eq!(fold_cursor_state(Vec2::new(8.0, 5.0), Vec2::new(1.0, -2.0)), Vec2::new(9.0, 3.0));
-        assert_eq!(fold_cursor_state(Vec2::new(8.0, 5.0), Vec2::new(-20.0, f32::NAN)), Vec2::ZERO);
+    fn captured_tool_motion_reaches_existing_terrain_drag_consumer_once() {
+        let mut world = world([1.0_f32.to_bits(), 0], [0, 0], true);
+        world.init_resource::<DragCommands>();
+        let mut schedule = Schedule::default();
+        schedule.add_systems((update_cursor_position, consume_drag).chain());
+        schedule.run(&mut world);
+        let commands = &world.resource::<DragCommands>().0;
+        assert_eq!(commands.len(), 1);
+        assert_eq!(commands[0].id, StrokeId(7));
+        assert_eq!(commands[0].falloff, Adjustment::Delta(0.002));
+        assert_eq!(commands[0].height, Adjustment::Keep);
+        assert_eq!(
+            world.resource::<CursorPositionSS>().0,
+            Vec2::new(50.0, 20.0)
+        );
+
+        world.resource_mut::<ActionSetStates>().analog[0] = Vec2::ZERO;
+        schedule.run(&mut world);
+        assert_eq!(world.resource::<DragCommands>().0.len(), 1);
     }
 }

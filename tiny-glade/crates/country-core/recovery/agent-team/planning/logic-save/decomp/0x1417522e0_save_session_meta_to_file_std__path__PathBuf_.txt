@@ -1,0 +1,134 @@
+
+// WARNING: Removing unreachable block (ram,0x000141752724)
+// WARNING: Removing unreachable block (ram,0x000141752741)
+// WARNING: Removing unreachable block (ram,0x0001417524e6)
+// WARNING: Removing unreachable block (ram,0x000141752754)
+// WARNING: Removing unreachable block (ram,0x00014175275d)
+// WARNING: Removing unreachable block (ram,0x000141752767)
+// WARNING: Removing unreachable block (ram,0x000141752775)
+// WARNING: Removing unreachable block (ram,0x000141752871)
+// WARNING: Removing unreachable block (ram,0x0001417527c2)
+// WARNING: Removing unreachable block (ram,0x0001417526ea)
+
+void __cdecl
+country_core::systems::save::save_game::save_session_meta_to_file<std::path::PathBuf>(void)
+
+{
+  longlong lVar1;
+  char extraout_AL;
+  undefined4 *extraout_RAX;
+  undefined4 *extraout_RAX_00;
+  longlong extraout_RAX_01;
+  longlong extraout_RAX_02;
+  HANDLE extraout_RAX_03;
+  longlong extraout_RAX_04;
+  longlong extraout_RAX_05;
+  longlong extraout_RAX_06;
+  longlong extraout_RAX_07;
+  longlong *in_RCX;
+  HANDLE hObject;
+  longlong local_d0;
+  undefined1 local_88;
+  longlong lStack_80;
+  
+  std::alloc::__default_lib_allocator::__rust_alloc();
+  if (extraout_RAX == (undefined4 *)0x0) {
+                    // WARNING: Subroutine does not return
+    alloc::raw_vec::handle_error();
+  }
+  *(undefined4 *)((longlong)extraout_RAX + 3) = 0x6e6f6973;
+  *extraout_RAX = 0x73726576;
+  local_d0 = CONCAT71(local_d0._1_7_,2);
+  alloc::collections::btree::map::BTreeMap::
+  insert<alloc::string::String,enum2_<serde_json::value::Value>,alloc::alloc::Global>();
+  switch(local_88) {
+  case 0:
+  case 1:
+  case 2:
+  case 6:
+    break;
+  case 3:
+    goto joined_r0x0001417523d3;
+  case 4:
+    core::ptr::drop_in_place<slice2_<enum2_<serde_json::value::Value>_>_>();
+joined_r0x0001417523d3:
+    if (lStack_80 != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    break;
+  default:
+    core::ptr::
+    drop_in_place<serde_json::map::Map<alloc::string::String,enum2_<serde_json::value::Value>_>_>();
+  }
+  std::alloc::__default_lib_allocator::__rust_alloc();
+  if (extraout_RAX_00 == (undefined4 *)0x0) {
+                    // WARNING: Subroutine does not return
+    alloc::raw_vec::handle_error();
+  }
+  *(undefined1 *)(extraout_RAX_00 + 1) = 0x65;
+  *extraout_RAX_00 = 0x74617473;
+  resources::session::_::impl$0::serialize<serde_json::value::ser::Serializer>();
+  alloc::collections::btree::map::BTreeMap::
+  insert<alloc::string::String,enum2_<serde_json::value::Value>,alloc::alloc::Global>();
+  lVar1 = *in_RCX;
+  std::sys::os_str::wtf8::Buf::as_mut_slice();
+  std::path::Path::parent();
+  if ((extraout_RAX_01 == 0) || (std::fs::DirBuilder::_create(), extraout_RAX_02 == 0)) {
+    std::path::Path::_with_extension();
+    std::sys::os_str::wtf8::Buf::as_mut_slice();
+    serde_json::value::impl$1::fmt();
+    if (extraout_AL != '\0') {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+    hObject = extraout_RAX_03;
+    std::fs::OpenOptions::_open();
+    anyhow::context::impl$0::
+    with_context<std::fs::File,std::io::error::Error,alloc::string::String,country_core::systems::save::save_game::save_json_through_tmp_file::closure_env_0<std::path::PathBuf>_>
+              ();
+    if (extraout_RAX_04 == 0) {
+      std::io::Write::write_all<std::fs::File>();
+      anyhow::context::impl$0::
+      with_context<tuple_<>,std::io::error::Error,alloc::string::String,country_core::systems::save::save_game::save_json_through_tmp_file::closure_env_1<std::path::PathBuf>_>
+                ();
+      if (extraout_RAX_05 == 0) {
+        std::fs::File::sync_all();
+        anyhow::context::impl$0::
+        with_context<tuple_<>,std::io::error::Error,alloc::string::String,country_core::systems::save::save_game::save_json_through_tmp_file::closure_env_2<std::path::PathBuf>_>
+                  ();
+        if (extraout_RAX_06 == 0) {
+          CloseHandle(hObject);
+          std::sys::os_str::wtf8::Buf::as_mut_slice();
+          std::sys::pal::windows::fs::rename();
+          anyhow::context::impl$0::
+          with_context<tuple_<>,std::io::error::Error,alloc::string::String,country_core::systems::save::save_game::save_json_through_tmp_file::closure_env_3<std::path::PathBuf>_>
+                    ();
+          if (extraout_RAX_07 == 0) {
+            if (local_d0 != 0) {
+              std::alloc::__default_lib_allocator::__rust_dealloc();
+            }
+            core::ptr::drop_in_place<enum2_<serde_json::value::Value>_>();
+            goto joined_r0x000141752836;
+          }
+          goto LAB_1417526fc;
+        }
+      }
+      CloseHandle(hObject);
+    }
+LAB_1417526fc:
+    if (local_d0 != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+  }
+  else {
+    anyhow::error::impl$1::from<std::io::error::Error>();
+  }
+  core::ptr::
+  drop_in_place<serde_json::map::Map<alloc::string::String,enum2_<serde_json::value::Value>_>_>();
+joined_r0x000141752836:
+  if (lVar1 != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  return;
+}
+

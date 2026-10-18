@@ -1,0 +1,38 @@
+{
+ "name": "get_wall_attachment_height",
+ "size": 432,
+ "address": "140b2a890",
+ "signature": "void __cdecl get_wall_attachment_height(void)",
+ "decompiled_code": "\nvoid __cdecl\ncountry_core::resources::walls::public_wall_state::PublicWallState::get_wall_attachment_height(void)\n\n{\n  uint extraout_EAX;\n  uint extraout_EAX_00;\n  longlong in_RCX;\n  float in_XMM1_Da;\n  float fVar1;\n  \n  if ((*(byte *)(in_RCX + 0x108) & 1) == 0) {\n                    // WARNING: Subroutine does not return\n    core::panicking::panic_fmt();\n  }\n  if (1 < *(uint *)(in_RCX + 600)) {\n    fVar1 = in_XMM1_Da * *(float *)(in_RCX + 0x30);\n    if (NAN(fVar1)) {\n                    // WARNING: Subroutine does not return\n      core::panicking::panic();\n    }\n    if (ABS(fVar1) == INFINITY) {\n                    // WARNING: Subroutine does not return\n      core::panicking::panic();\n    }\n    ::utils::curve::Curve::\n    get_coord_at_u<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D,utils::curve::curve_u::CurveU<utils::curve::CurveCoordSemantic2D>_>\n              ();\n    if (*(ulonglong *)(in_RCX + 0x10) <= (ulonglong)extraout_EAX) {\n                    // WARNING: Subroutine does not return\n      core::panicking::panic_bounds_check();\n    }\n    if (*(ulonglong *)(in_RCX + 0x10) <= (ulonglong)extraout_EAX + 1) {\n                    // WARNING: Subroutine does not return\n      core::panicking::panic_bounds_check();\n    }\n    ::utils::curve::Curve::\n    get_approx_coord_from_pos<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemanticThresholded3D>()\n    ;\n    if (*(ulonglong *)(in_RCX + 0xe8) <= (ulonglong)extraout_EAX_00) {\n                    // WARNING: Subroutine does not return\n      core::panicking::panic_bounds_check();\n    }\n    if (*(ulonglong *)(in_RCX + 0xe8) <= (ulonglong)extraout_EAX_00 + 1) {\n                    // WARNING: Subroutine does not return\n      core::panicking::panic_bounds_check();\n    }\n  }\n  return;\n}\n\n",
+ "callee_count": 5,
+ "callees": [
+  {
+   "name": "get_approx_coord_from_pos<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemanticThresholded3D>",
+   "address": "141469e00"
+  },
+  {
+   "name": "get_coord_at_u<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D,utils::curve::curve_u::CurveU<utils::curve::CurveCoordSemantic2D>_>",
+   "address": "141467ce0"
+  },
+  {
+   "name": "panic",
+   "address": "1428d9430"
+  },
+  {
+   "name": "panic_bounds_check",
+   "address": "1428d9518"
+  },
+  {
+   "name": "panic_fmt",
+   "address": "1428d9390"
+  }
+ ],
+ "revision": {
+  "token": "1791719479858:b17d372d:3",
+  "epoch": "b17d372d",
+  "modification_number": 3,
+  "saved_time": 1791719479858,
+  "unsaved_changes": false,
+  "decompiled": true
+ }
+}

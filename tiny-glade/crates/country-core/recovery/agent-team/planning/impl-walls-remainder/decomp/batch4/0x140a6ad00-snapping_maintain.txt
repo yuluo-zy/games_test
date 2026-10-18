@@ -1,0 +1,77 @@
+# snapping_maintain @ 0x140a6ad00
+sig: void __cdecl snapping_maintain(void)
+callees: []
+
+// WARNING: Control flow encountered bad instruction data
+
+void __cdecl country_core::systems::wall::snapping::snapping_maintain::snapping_maintain(void)
+
+{
+  byte bVar1;
+  byte *pbVar2;
+  char cVar3;
+  undefined8 *in_RCX;
+  longlong unaff_RDI;
+  undefined *puVar4;
+  byte bVar5;
+  byte in_R10B;
+  int in_XMM0_Da;
+  undefined8 in_XMM1_Qa;
+  
+  pbVar2 = (byte *)*in_RCX;
+  bVar1 = *pbVar2;
+  bVar5 = 0xcc;
+  puVar4 = &DAT_142ad55cc + *(int *)(&DAT_142ad55cc + (ulonglong)bVar1 * 4);
+                    // WARNING (jumptable): Sanity check requires truncation of jumptable
+                    // WARNING: Could not find normalized switch variable to match jumptable
+  switch(bVar1) {
+  case 0:
+    break;
+  case 1:
+    bVar5 = pbVar2[1];
+    break;
+  case 2:
+    in_XMM1_Qa = *(undefined8 *)(pbVar2 + 4);
+    in_XMM0_Da = *(int *)(pbVar2 + 0xc);
+    puVar4 = *(undefined **)(pbVar2 + 0x10);
+    in_R10B = pbVar2[0x18];
+    bVar5 = pbVar2[1];
+    break;
+  case 3:
+    in_XMM1_Qa = *(undefined8 *)(pbVar2 + 4);
+    in_XMM0_Da = *(int *)(pbVar2 + 0xc);
+    bVar5 = pbVar2[1];
+    puVar4 = *(undefined **)(pbVar2 + 0x10);
+    break;
+  case 4:
+    goto code_r0x000142ad55ce;
+  default:
+code_r0x000142ad55ce:
+    *(char *)(unaff_RDI + -7) = *(char *)(unaff_RDI + -7) + -2;
+    cVar3 = (char)pbVar2;
+    *pbVar2 = *pbVar2 + cVar3;
+    *pbVar2 = *pbVar2 + cVar3;
+    *(int *)pbVar2 = *(int *)pbVar2 + (int)pbVar2;
+    *pbVar2 = *pbVar2 + cVar3;
+    *pbVar2 = *pbVar2 + cVar3;
+    *pbVar2 = *pbVar2 + cVar3;
+    *pbVar2 = *pbVar2 + cVar3;
+    *(int *)pbVar2 = *(int *)pbVar2 + (int)pbVar2;
+    *pbVar2 = *pbVar2 + cVar3;
+                    // WARNING: Bad instruction - Truncating control flow here
+    halt_baddata();
+  case 6:
+  case 7:
+                    // WARNING: Bad instruction - Truncating control flow here
+    halt_baddata();
+  }
+  *(undefined4 *)in_RCX[2] = *(undefined4 *)((longlong)in_RCX + 0x1c);
+  pbVar2[0x20] = bVar1;
+  pbVar2[0x21] = bVar5;
+  *(undefined8 *)(pbVar2 + 0x24) = in_XMM1_Qa;
+  *(int *)(pbVar2 + 0x2c) = in_XMM0_Da;
+  *(undefined **)(pbVar2 + 0x30) = puVar4;
+  pbVar2[0x38] = in_R10B;
+  return;
+}
+

@@ -1,0 +1,22 @@
+{
+  "status": "implemented_unverified",
+  "target_version": "B",
+  "source_sha256": "ecd9226e076f81e3dc19fe291cd6537a36b7838a01165058fe64105c67d6bbbb",
+  "native_evidence": "present-import-original.json",
+  "native_calls": {
+    "source_owned_import": "0x140166aa6 access0x22",
+    "acquired_unowned_import": "0x140166aca access0",
+    "resolve": "0x140166b07 -> 0x14090d850",
+    "present_export": "0x140166b4c access0x27",
+    "unowned_clone": "0x140bd60a0",
+    "owned_move": "0x140bd6220"
+  },
+  "host_representation": "TextureStorage::Allocated or TextureStorage::Swapchain(real Arc<Swapchain>); borrowed image never destroyed by Texture and owns no allocator memory",
+  "consumer": "CoreGraphFrame::import_native_texture[_owned] -> native core resolve_to_swapchain -> VulkanGraphBackend GraphImageLease actual queue submit -> explicit later present",
+  "unknown": [
+    "native original managed-handle ABI not reproduced",
+    "full preset/SSBO/temporal compile-present resource setup remains integration audit",
+    "world compile_main consumer and screenshot GPU-request association not restored"
+  ],
+  "validation": "parent integration agent runs unified cargo check and strict actual GPU tests; no source-only completion claim"
+}

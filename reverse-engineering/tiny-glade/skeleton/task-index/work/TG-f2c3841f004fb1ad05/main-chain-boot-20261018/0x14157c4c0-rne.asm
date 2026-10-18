@@ -1,0 +1,68 @@
+0x14157c4c0 push rsi
+0x14157c4c1 push rdi
+0x14157c4c2 push rbx
+0x14157c4c3 sub rsp, 0x40
+0x14157c4c7 mov rsi, rcx
+0x14157c4ca mov rdi, qword ptr [rdx]
+0x14157c4cd mov rax, qword ptr [rdi + 0x10]
+0x14157c4d1 cmp qword ptr [rdi], rax
+0x14157c4d4 je 0x14157c5ab
+0x14157c4da mov rcx, qword ptr [rdi + 8]
+0x14157c4de mov byte ptr [rcx + rax], 0x7b
+0x14157c4e2 inc rax
+0x14157c4e5 mov qword ptr [rdi + 0x10], rax
+0x14157c4e9 mov qword ptr [rsp + 0x30], rdx
+0x14157c4ee mov byte ptr [rsp + 0x38], 1
+0x14157c4f3 lea rdx, [rip + 0x16fae76]
+0x14157c4fa lea rcx, [rsp + 0x30]
+0x14157c4ff mov r8d, 0xb
+0x14157c505 mov r9, rsi
+0x14157c508 call 0x14158ce20
+0x14157c50d test rax, rax
+0x14157c510 jne 0x14157c5a3
+0x14157c516 lea r9, [rsi + 0x10]
+0x14157c51a lea rdx, [rip + 0x16fae5a]
+0x14157c521 lea rcx, [rsp + 0x30]
+0x14157c526 mov r8d, 5
+0x14157c52c call 0x141586090
+0x14157c531 test rax, rax
+0x14157c534 jne 0x14157c5a3
+0x14157c536 lea r9, [rsi + 0x14]
+0x14157c53a lea rdx, [rip + 0x16fae3f]
+0x14157c541 lea rcx, [rsp + 0x30]
+0x14157c546 mov r8d, 6
+0x14157c54c call 0x141586090
+0x14157c551 test rax, rax
+0x14157c554 jne 0x14157c5a3
+0x14157c556 add rsi, 8
+0x14157c55a lea rdx, [rip + 0x16fae25]
+0x14157c561 lea rcx, [rsp + 0x30]
+0x14157c566 mov r8d, 6
+0x14157c56c mov r9, rsi
+0x14157c56f call 0x14158ce20
+0x14157c574 test rax, rax
+0x14157c577 jne 0x14157c5a3
+0x14157c579 cmp byte ptr [rsp + 0x38], 0
+0x14157c57e je 0x14157c5a1
+0x14157c580 mov rax, qword ptr [rsp + 0x30]
+0x14157c585 mov rcx, qword ptr [rax]
+0x14157c588 lea rdx, [rip + 0x16fad69]
+0x14157c58f lea r9, [rip + 0x16fae4a]
+0x14157c596 mov r8d, 1
+0x14157c59c call 0x1412f4520
+0x14157c5a1 xor eax, eax
+0x14157c5a3 add rsp, 0x40
+0x14157c5a7 pop rbx
+0x14157c5a8 pop rdi
+0x14157c5a9 pop rsi
+0x14157c5aa ret 
+0x14157c5ab mov qword ptr [rsp + 0x20], 1
+0x14157c5b4 mov r8d, 1
+0x14157c5ba mov r9d, 1
+0x14157c5c0 mov rcx, rdi
+0x14157c5c3 mov rbx, rdx
+0x14157c5c6 mov rdx, rax
+0x14157c5c9 call 0x1428a9a60
+0x14157c5ce mov rdx, rbx
+0x14157c5d1 mov rax, qword ptr [rdi + 0x10]
+0x14157c5d5 jmp 0x14157c4da

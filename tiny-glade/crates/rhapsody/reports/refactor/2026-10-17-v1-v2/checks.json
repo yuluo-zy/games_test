@@ -1,0 +1,248 @@
+{
+  "recorded_at": "2026-10-16T17:16:04.541322+00:00",
+  "source_sha256_start": "19fbfd8c43af6ded52162daeeb453036d6b3174a77295546a0de82fba565e234",
+  "git_head": "400900f6531f5dbe66b6c800fcccd000febb9411",
+  "git_dirty": true,
+  "fingerprint_scope": "rhapsody Rust src/tests/examples and nested shader crates, plus manifest; actual consumer files; workspace manifest and lockfile",
+  "checks": [
+    {
+      "name": "all-tests",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "rhapsody",
+        "--offline",
+        "--all-features",
+        "--lib",
+        "--tests",
+        "--no-fail-fast",
+        "-j",
+        "2",
+        "--",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "log": "all-tests.log",
+      "source_sha256_before": "19fbfd8c43af6ded52162daeeb453036d6b3174a77295546a0de82fba565e234",
+      "source_sha256_after": "19fbfd8c43af6ded52162daeeb453036d6b3174a77295546a0de82fba565e234",
+      "process_results": {
+        "suites": 43,
+        "passed": 390,
+        "failed": 0,
+        "ignored": 1,
+        "includes_gpu_skips": true,
+        "includes_environment_skips": true
+      }
+    },
+    {
+      "name": "default-tests",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "rhapsody",
+        "--offline",
+        "--lib",
+        "--tests",
+        "--no-fail-fast",
+        "-j",
+        "2",
+        "--",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "log": "default-tests.log",
+      "source_sha256_before": "19fbfd8c43af6ded52162daeeb453036d6b3174a77295546a0de82fba565e234",
+      "source_sha256_after": "19fbfd8c43af6ded52162daeeb453036d6b3174a77295546a0de82fba565e234",
+      "process_results": {
+        "suites": 43,
+        "passed": 387,
+        "failed": 0,
+        "ignored": 1,
+        "includes_gpu_skips": true,
+        "includes_environment_skips": true
+      }
+    },
+    {
+      "name": "shader-tests",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "shader-compiler",
+        "-p",
+        "shader-pipeline",
+        "--offline",
+        "--all-features",
+        "--lib",
+        "--tests",
+        "--no-fail-fast",
+        "-j",
+        "2",
+        "--",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "log": "shader-tests.log",
+      "source_sha256_before": "19fbfd8c43af6ded52162daeeb453036d6b3174a77295546a0de82fba565e234",
+      "source_sha256_after": "19fbfd8c43af6ded52162daeeb453036d6b3174a77295546a0de82fba565e234",
+      "process_results": {
+        "suites": 4,
+        "passed": 22,
+        "failed": 0,
+        "ignored": 0,
+        "includes_gpu_skips": false,
+        "includes_environment_skips": true
+      }
+    },
+    {
+      "name": "default-check",
+      "command": [
+        "cargo",
+        "check",
+        "-p",
+        "rhapsody",
+        "--offline",
+        "--all-targets",
+        "-j",
+        "2"
+      ],
+      "exit_code": 0,
+      "log": "default-check.log",
+      "source_sha256_before": "19fbfd8c43af6ded52162daeeb453036d6b3174a77295546a0de82fba565e234",
+      "source_sha256_after": "6b04477f3807eb17e3049201cd753c26d62abd11735a5f5ee990dafd27a7d020"
+    },
+    {
+      "name": "no-default-check",
+      "command": [
+        "cargo",
+        "check",
+        "-p",
+        "rhapsody",
+        "--offline",
+        "--no-default-features",
+        "--all-targets",
+        "-j",
+        "2"
+      ],
+      "exit_code": 0,
+      "log": "no-default-check.log",
+      "source_sha256_before": "6b04477f3807eb17e3049201cd753c26d62abd11735a5f5ee990dafd27a7d020",
+      "source_sha256_after": "6b04477f3807eb17e3049201cd753c26d62abd11735a5f5ee990dafd27a7d020"
+    },
+    {
+      "name": "gpu-text-targets",
+      "command": [
+        "cargo",
+        "check",
+        "-p",
+        "rhapsody",
+        "-p",
+        "tg-text",
+        "--offline",
+        "--all-features",
+        "--all-targets",
+        "-j",
+        "2"
+      ],
+      "exit_code": 0,
+      "log": "gpu-text-targets.log",
+      "source_sha256_before": "6b04477f3807eb17e3049201cd753c26d62abd11735a5f5ee990dafd27a7d020",
+      "source_sha256_after": "6b04477f3807eb17e3049201cd753c26d62abd11735a5f5ee990dafd27a7d020"
+    },
+    {
+      "name": "consumer-targets",
+      "command": [
+        "cargo",
+        "check",
+        "-p",
+        "rhapsody",
+        "-p",
+        "tg-text",
+        "-p",
+        "tiny-glade",
+        "--offline",
+        "--all-features",
+        "--all-targets",
+        "-j",
+        "2"
+      ],
+      "exit_code": 101,
+      "log": "consumer-targets.log",
+      "source_sha256_before": "6b04477f3807eb17e3049201cd753c26d62abd11735a5f5ee990dafd27a7d020",
+      "source_sha256_after": "6b04477f3807eb17e3049201cd753c26d62abd11735a5f5ee990dafd27a7d020"
+    },
+    {
+      "name": "country-core-lib",
+      "command": [
+        "cargo",
+        "check",
+        "-p",
+        "rhapsody",
+        "-p",
+        "tg-text",
+        "-p",
+        "tiny-glade",
+        "-p",
+        "country-core",
+        "--offline",
+        "--all-features",
+        "--lib",
+        "-j",
+        "2"
+      ],
+      "exit_code": 101,
+      "log": "country-core-lib.log",
+      "source_sha256_before": "6b04477f3807eb17e3049201cd753c26d62abd11735a5f5ee990dafd27a7d020",
+      "source_sha256_after": "6b04477f3807eb17e3049201cd753c26d62abd11735a5f5ee990dafd27a7d020"
+    },
+    {
+      "name": "window-source-check",
+      "command": [
+        "cargo",
+        "check",
+        "-p",
+        "rhapsody",
+        "--offline",
+        "--all-features",
+        "--example",
+        "__window_lab_sourcecheck",
+        "-j",
+        "2"
+      ],
+      "exit_code": 0,
+      "log": "window-source-check.log",
+      "source_sha256_before": "6b04477f3807eb17e3049201cd753c26d62abd11735a5f5ee990dafd27a7d020",
+      "source_sha256_after": "6b04477f3807eb17e3049201cd753c26d62abd11735a5f5ee990dafd27a7d020",
+      "limitation": "temporary wrapper type-checks Windows host sources on macOS; does not validate Windows target ABI, linking, or runtime"
+    },
+    {
+      "name": "strict-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "rhapsody",
+        "--offline",
+        "--all-features",
+        "--lib",
+        "--tests",
+        "--no-deps",
+        "-j",
+        "2",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "log": "strict-clippy.log",
+      "source_sha256_before": "6b04477f3807eb17e3049201cd753c26d62abd11735a5f5ee990dafd27a7d020",
+      "source_sha256_after": "6b04477f3807eb17e3049201cd753c26d62abd11735a5f5ee990dafd27a7d020"
+    }
+  ],
+  "hardware": "BLOCKED/deferred by user; no Windows or Vulkan runtime validation; test early returns are not GPU PASS",
+  "source_sha256_end": "6b04477f3807eb17e3049201cd753c26d62abd11735a5f5ee990dafd27a7d020",
+  "source_unchanged_during_matrix": false,
+  "toolchain": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: aarch64-apple-darwin\nrelease: 1.98.1\nLLVM version: 22.1.8"
+}

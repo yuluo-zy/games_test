@@ -1,0 +1,110 @@
+--- a/crates/country-core/src/systems/render_loop/draw_passes/transparency_pass/surface_support.rs
++++ b/crates/country-core/src/systems/render_loop/draw_passes/transparency_pass/surface_support.rs
+@@ -124,6 +124,16 @@
+     pub lists: &'a DrawLists,
+ }
+ 
++/// Owned declaration trace for the raster phase. It keeps the original
++/// operation log without retaining the compute environment or its World borrow.
++#[derive(Clone)]
++pub struct SurfaceRasterTrace(Rc<RefCell<Vec<PlanOp>>>);
++impl SurfaceRasterTrace {
++    pub fn op(&self, kind: PlanKind, key: Option<u64>) {
++        self.0.borrow_mut().push(PlanOp { kind, key });
++    }
++}
++
+ /// 运行环境：RG 创建面、图（清除/拷贝）、计算接缝 + 黄金序列 trace。
+ pub struct SurfaceEnv<'a> {
+     pub rg: &'a mut dyn RgResources,
+@@ -133,6 +143,11 @@
+     pub trace: Rc<RefCell<Vec<PlanOp>>>,
+     /// `PlanKind` 之外的步骤名（按调用顺序）。
+     pub extra: RefCell<Vec<&'static str>>,
++    raster_trace: SurfaceRasterTrace,
++}
++impl core::ops::Deref for SurfaceEnv<'_> {
++    type Target = SurfaceRasterTrace;
++    fn deref(&self) -> &Self::Target { &self.raster_trace }
+ }
+ 
+ impl<'a> SurfaceEnv<'a> {
+@@ -141,17 +156,23 @@
+         graph: &'a mut dyn RenderGraph,
+         compute: &'a mut dyn SurfaceCompute,
+     ) -> SurfaceEnv<'a> {
++        let trace = Rc::new(RefCell::new(Vec::new()));
+         SurfaceEnv {
+             rg,
+             graph,
+             compute,
+-            trace: Rc::new(RefCell::new(Vec::new())),
++            raster_trace: SurfaceRasterTrace(Rc::clone(&trace)),
++            trace,
+             extra: RefCell::new(Vec::new()),
+         }
+     }
+ 
+     pub fn op(&self, kind: PlanKind, key: Option<u64>) {
+         self.trace.borrow_mut().push(PlanOp { kind, key });
++    }
++
++    pub fn raster_trace(&self) -> SurfaceRasterTrace {
++        self.raster_trace.clone()
+     }
+ 
+     fn note(&self, what: &'static str) {
+@@ -274,7 +295,7 @@
+ /// `state.byte3 = (byte3 & 0x9f) | 0x40`（`set_byte3_field_2`；**没有** `byte0 &= 0xbf`，与 pre/post-TAA 不同）→ 回调 `(item+0x70)(builder, item, world)`。
+ pub fn run_surface_raster(
+     ctx: &mut DrawPassCtx<'_>,
+-    env: &SurfaceEnv<'_>,
++    env: &SurfaceRasterTrace,
+     name: &'static str,
+     colors: &[ColorAttachment],
+     depth: &RgTexture,
+@@ -312,7 +333,7 @@
+ 
+ /// `bind_texture_to_draw_builder<&Handle<Texture>>`（访问 0x1d）。
+ pub fn d_sampled<'p>(
+-    env: &SurfaceEnv<'_>,
++    env: &SurfaceRasterTrace,
+     b: DrawBuilder<'p>,
+     t: &RgTexture,
+     hash: u64,
+@@ -324,7 +345,7 @@
+ 
+ /// `bind_texture_to_draw_builder<TexturePreset>`（访问 0x1d）。
+ pub fn d_preset<'p>(
+-    env: &SurfaceEnv<'_>,
++    env: &SurfaceRasterTrace,
+     b: DrawBuilder<'p>,
+     preset: u8,
+     hash: u64,
+@@ -340,7 +361,7 @@
+ 
+ /// `UniformBinder::write_uniform<u32>`（栅格：未命中静默忽略）。
+ pub fn d_uniform_u32<'p>(
+-    env: &SurfaceEnv<'_>,
++    env: &SurfaceRasterTrace,
+     b: DrawBuilder<'p>,
+     hash: u64,
+     v: u32,
+@@ -351,7 +372,7 @@
+ 
+ /// `UniformBinder::write_uniform<bool>`。
+ pub fn d_uniform_bool<'p>(
+-    env: &SurfaceEnv<'_>,
++    env: &SurfaceRasterTrace,
+     b: DrawBuilder<'p>,
+     hash: u64,
+     v: bool,
+@@ -362,7 +383,7 @@
+ 
+ /// `DrawBuilder::write_rg_storage_buffer`（访问 0x37）。
+ pub fn d_write_rg<'p>(
+-    env: &SurfaceEnv<'_>,
++    env: &SurfaceRasterTrace,
+     b: DrawBuilder<'p>,
+     hash: u64,
+     buf: &RgBuffer,

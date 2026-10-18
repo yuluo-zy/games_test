@@ -1,13 +1,14 @@
-//! UNVERIFIED actual prepared-wall fence CPU consumer and ownership lifecycle.
-//! GPU SparseWriter quota/upload is a later boundary, never a synthetic handle.
+//! Prepared wall paths produce CPU fences with wall-scoped entity ownership.
+//! Rendering uploads are handled by the consuming backend.
 use crate::{
     BuildingReport, BuildingStage, PublicWalls, WallCollectionState, wall_paths::WallPreparedPaths,
 };
 use bevy_ecs::{prelude::*, schedule::ApplyDeferred};
-use country_core::recovered_building::{
-    building_fences::{FenceConstructionInput, FenceCpuOutput, FenceError, construct_fences_cpu},
-    building_wall_state::WallId,
-};
+use country_core::systems::wall::construction::fences::FenceConstructionInput;
+use country_core::systems::wall::construction::fences::FenceCpuOutput;
+use country_core::systems::wall::construction::fences::FenceError;
+use country_core::systems::wall::construction::fences::construct_fences_cpu;
+use country_core::resources::walls::publication_fields::WallId;
 use std::collections::{HashMap, HashSet};
 #[derive(Component, Clone, Debug)]
 pub struct WallCpuFences {
@@ -63,7 +64,7 @@ fn rebuild(
             walls
                 .walls
                 .get(wall)
-                .is_some_and(|host| host.observed_projection()[0x296] == 1)
+                .is_some_and(|host| host.state.observed_296() == 1)
         })
         .collect();
     let mut stale: Vec<_> = entities
@@ -102,10 +103,8 @@ fn rebuild(
             prepared_positions: &path.path.positions,
             segment_values: &path.path.segment_values,
             raw_positions: &raw.curve.points,
-            observed_public_284: f32::from_le_bytes(
-                host.observed_projection()[0x284..0x288].try_into().unwrap(),
-            ),
-            observed_public_296: host.observed_projection()[0x296],
+            observed_public_284: host.state.float_0x284(),
+            observed_public_296: host.state.observed_296(),
         };
         let output = match construct_fences_cpu(input) {
             Ok(output) => output,

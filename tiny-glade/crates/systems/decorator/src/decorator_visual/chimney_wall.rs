@@ -37,7 +37,7 @@ pub fn generate_wall_chimneys(
             if !is_valid_body_placement(info) {
                 continue;
             }
-            let _height = info.extra().as_chimney().0;
+            let _height = info.extra().as_chimney().f;
             let _transform = cached_transforms.transform(id);
             let _subtype = derived.get(id).subtype();
             let _wall_space = 0.0f32; // U：wall_space::distance 消费面。

@@ -1,0 +1,369 @@
+--- a/games_test/tiny-glade/crates/systems/clutter/src/autoclutter/read_bush_positions_from_gpu.rs
++++ b/games_test/tiny-glade/crates/systems/clutter/src/autoclutter/read_bush_positions_from_gpu.rs
+@@ -1,34 +1,11 @@
+-//! read_bush_positions_from_gpu（B 主基线；0x140eebaa0，size 745）。
+-//!
+-//! 2026-10-17 restorer-clutter-remaining：按 fresh 反编译 + 逐指令反汇编重建
+-//! （`work/restorer-clutter-remaining/evidence/decomp/0x140eebaa0_*.c`、
+-//! `evidence/disasm0.txt`、`evidence/disasm3-result.json`、`evidence/disasm4-result.json`）。
+-//!
+-//! 真实控制流（O）：
+-//! 1. `FrozenMap<SsboId, Box<BufferState>>::get(SsboId=0x0deff5ab6a35972a)`；命中后断言
+-//!    类型名 `country_core::systems::render_loop::compute_passes::read_bush_positions_for_cpu::BushCpuSsbo`
+-//!    长度 0x5c，否则 `assert_failed`（0x142f3b328；SsboId 常量实读 0x142f3b268）。
+-//! 2. 取回读数据 `{ data ptr, len }`；`len==0` → `panic_bounds_check`；
+-//!    `count = *(u32*)data`；`len <= count` → `slice_end_index_len_fail`。
+-//!    （GPU 回读缓冲头：前 4 B 为 count，位置数组从 +8 起、stride 8 的 Vec2。）
+-//! 3. 写 change tick（ResMut 管道），随后把懒网格每格 `positions` 长度清零
+-//!    （记录 stride 0x20：Vec {cap@0,ptr@8,len@0x10} + hash@0x18）。
+-//! 4. 对每个 bush 位置：`Aabb2::from_center_radius(center, 0.7)`（半径常量 0x1429cd030）
+-//!    → `iter_world_space_rect_cells`（0x141cf3ee0）。该遍历对矩形覆盖的每个格
+-//!    `idx = x*64 + y`（0x140aac630：`((cell>>26)&0xffffffc0)+cell`）把 **bush 位置**
+-//!    追加进 `grid[idx].positions`。
+-//! 5. 逐格：`positions.len()>1` → 排序（len<0x15 插入排序、否则 ipnsort；`sort_unstable`
+-//!    的两种分派），`hash = calculate_hash<&[Vec2]>`（0x141cf7270，SipHash-1-3 零键：
+-//!    写 len、随后每点写 2 与两个 f32 位型），hash 变化 → 置脏位 **idx**（0x140833250
+-//!    为恒等：位号=记录下标；0x1000 越界 panic）并标记 changed。
+-//! 6. changed → 把 0x200B 位图 `Publisher<DirtyTiles>::publish`（0x141cf6500）。
+-//!
+-//! U 登记：GPU 回读本身（FrozenMap/设备类型断言）为宿主渲染边界，本模块以
+-//! [`BushCpuSsbo`] 资源承载已回读数据；缓冲头偏移（+0 为 count）按机器码建模，
+-//! 资源→真实 GPU 映射不在本 crate。
+-
++//! B mapped BushCpuSsbo -> per-cell raw-position lists -> normalized dirty hashes.
++//! Original reader140eebaa0 is750B (PDB1081:260); old745B evidence ended inside
++//! the final panic CALL. Original raw lexicographic u32 order and low32 hash XOR
++//! empty hash are retained. The current shared geometry/raster owners are reused.
+ use bevy_ecs::prelude::*;
+-use country_core::utils::dirty_tiles::{world_rect_cells, DirtyTiles};
++use country_core::asset_libraries::ssbo_library::AssetSsboLibrary;
++pub use country_core::systems::render_loop::compute_passes::read_bush_positions_for_cpu::BushCpuSsbo;
++use country_core::utils::dirty_tiles::{DirtyTiles, world_rect_cells};
+ use glam::Vec2;
+ use std::collections::hash_map::DefaultHasher;
+ use std::hash::{Hash, Hasher};
+@@ -45,27 +22,8 @@
+ /// 懒网格格数（64×64；位图 0x200 B / 0x1000 位）。
+ pub const BUSH_GRID_CELLS: usize = 64 * 64;
+ 
+-/// 灌木 CPU 回读缓冲（GPU→CPU 契约；宿主 render_loop 填充）。
+-///
+-/// 二进制布局：`data[0]=count(u32)`，位置数组自 `data+8` 起（stride 8 的 Vec2）。
+-/// 本资源按该布局建模：`count` 为头部计数，`positions.len()` 为切片长度。
+-#[derive(Resource, Clone, Debug, Default)]
+-pub struct BushCpuSsbo {
+-    pub count: u32,
+-    pub positions: Vec<Vec2>,
+-}
+-
+-impl BushCpuSsbo {
+-    /// 头部类型断言（O：len==0x5c && memcmp 名称）。
+-    pub fn assert_type(len: usize, name: &str) {
+-        assert!(
+-            len == BUSH_CPU_SSBO_NAME.len() && name == BUSH_CPU_SSBO_NAME,
+-            "read_bush_positions_from_gpu: BushCpuSsbo type assertion failed"
+-        );
+-    }
+-}
+-
+-/// 兼容旧名（宿主装配）。
++/// Compatibility import now names the canonical mapped element, not an
++/// unfilled parallel Resource containing count/Vec data.
+ pub type BushPositions = BushCpuSsbo;
+ 
+ /// 懒网格单格：本帧 bush 位置表 + 上一帧哈希（O 记录 stride 0x20）。
+@@ -89,31 +47,42 @@
+     }
+ }
+ 
+-/// Vec2 序列哈希（O 0x141cf7270：SipHash-1-3 零键，写 len，再逐点写 2 与两个 f32 位型）。
++/// Original array<u32,2> ordering, preserving signed-zero and NaN payload bits.
++fn sort_bush_positions(positions: &mut [Vec2]) {
++    positions.sort_unstable_by_key(|point| [point.x.to_bits(), point.y.to_bits()]);
++}
++
++/// Native calculate_hash141cf7270 hashes a slice of [u32;2]. The caller stores
++/// only low32(hash ^ empty_hash), making every empty cell's initial hash zero.
++/// Keep the current u64 API, widening that observed u32 rather than extra bits.
+ pub fn hash_bush_positions(positions: &[Vec2]) -> u64 {
+-    let mut h = DefaultHasher::new();
+-    positions.len().hash(&mut h);
+-    for p in positions {
+-        2usize.hash(&mut h);
+-        p.x.to_bits().hash(&mut h);
+-        p.y.to_bits().hash(&mut h);
+-    }
+-    h.finish()
++    let mut hash = DefaultHasher::new();
++    positions.len().hash(&mut hash);
++    for point in positions {
++        [point.x.to_bits(), point.y.to_bits()].hash(&mut hash);
++    }
++    let mut empty = DefaultHasher::new();
++    0usize.hash(&mut empty);
++    u64::from((hash.finish() ^ empty.finish()) as u32)
+ }
+ 
+ /// read_bush_positions_from_gpu（0x140eebaa0）：GPU 回读灌木位置 → 懒网格分桶 →
+ /// 哈希去重 → 发布 DirtyTiles。
+ pub fn read_bush_positions_from_gpu(
+-    bush: Res<BushCpuSsbo>,
++    ssbos: Res<AssetSsboLibrary>,
+     mut grid: ResMut<BushGrid>,
+     mut publisher: ResMut<DirtyTilesPublisher>,
+ ) {
+-    // 2. 切片边界（O：puVar3[1]==0 → panic_bounds_check；len<=count → slice_end_index_len_fail）。
+-    let len = bush.positions.len();
++    // The canonical library performs the native full-type check. Missing
++    // registration returns before touching BushGrid or its change tick.
++    let Some(bush) = ssbos.get::<BushCpuSsbo>() else {
++        return;
++    };
++    let len = bush.mapped.len();
+     if len == 0 {
+         panic!("read_bush_positions_from_gpu: panic_bounds_check (empty buffer)");
+     }
+-    let count = bush.count as usize;
++    let count = bush.mapped[0].0[0] as usize;
+     if len <= count {
+         panic!("read_bush_positions_from_gpu: slice_end_index_len_fail");
+     }
+@@ -124,7 +93,8 @@
+     }
+ 
+     // 3. 逐 bush：Aabb2::from_center_radius(center, 0.7) → 每覆盖格追加 bush 位置。
+-    for pos in bush.positions.iter().take(count) {
++    for row in &bush.mapped[1..count + 1] {
++        let pos = Vec2::new(f32::from_bits(row.0[0]), f32::from_bits(row.0[1]));
+         let rect = [
+             pos.x - BUSH_CELL_RADIUS,
+             pos.y - BUSH_CELL_RADIUS,
+@@ -138,7 +108,7 @@
+         for y in cells.minimum[1]..cells.end[1] {
+             for x in cells.minimum[0]..cells.end[0] {
+                 let idx = x as usize * 64 + y as usize;
+-                grid.cells[idx].positions.push(*pos);
++                grid.cells[idx].positions.push(pos);
+             }
+         }
+     }
+@@ -148,15 +118,16 @@
+     let mut changed = false;
+     for (idx, cell) in grid.cells.iter_mut().enumerate() {
+         if cell.positions.len() > 1 {
+-            // O：`sort_unstable`（len<0x15 insertion_sort_shift_left，否则 ipnsort）；
+-            // comparator 为 `[f32;2]` 序（I：本实现按 total order，等价于同一确定性全序）。
+-            cell.positions.sort_unstable_by(|a, b| {
+-                a.x.total_cmp(&b.x).then_with(|| a.y.total_cmp(&b.y))
+-            });
++            sort_bush_positions(&mut cell.positions);
+         }
+         let hash = hash_bush_positions(&cell.positions);
+         if cell.hash != hash {
+             cell.hash = hash;
++            // Native stores the new hash before its dirty-bit bounds check.
++            assert!(
++                idx < BUSH_GRID_CELLS,
++                "read_bush_positions_from_gpu: dirty tile index"
++            );
+             // 位号 = 记录下标：DirtyTiles 位图行 = idx/64、列 = idx%64。
+             dirty.set_cell((idx % 64) as i32, (idx / 64) as i32);
+             changed = true;
+@@ -167,3 +138,197 @@
+         let _ = publisher.0.publish(dirty);
+     }
+ }
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use country_core::render::ssbo::{MappedStorageBuffer, rhapsody_boundary::Buffer};
++
++    /// Actual canonical typed storage/library, with a test-owned mapped page.
++    /// This represents completed host readback; it does not emulate GPU work.
++    fn fixture(rows: Option<Vec<[u32; 2]>>) -> (World, Schedule, tabloid::Subscriber<DirtyTiles>) {
++        let mut world = World::new();
++        let library = AssetSsboLibrary::new();
++        if let Some(rows) = rows {
++            let size = rows.len() * 8;
++            let mapped = Box::leak(
++                rows.into_iter()
++                    .map(BushCpuSsbo)
++                    .collect::<Vec<_>>()
++                    .into_boxed_slice(),
++            );
++            library.register::<BushCpuSsbo>(MappedStorageBuffer {
++                mapped,
++                buffer: Buffer {
++                    id: 71,
++                    generation: 1,
++                    _gap10: 0,
++                    byte_size: size as u64,
++                    _gap20: 0,
++                },
++            });
++        }
++        let mut publisher = DirtyTilesPublisher::default();
++        let subscriber = publisher.0.subscribe();
++        world.insert_resource(library);
++        world.init_resource::<BushGrid>();
++        world.insert_resource(publisher);
++        let mut schedule = Schedule::default();
++        schedule.add_systems(read_bush_positions_from_gpu);
++        (world, schedule, subscriber)
++    }
++    fn bits(point: Vec2) -> [u32; 2] {
++        [point.x.to_bits(), point.y.to_bits()]
++    }
++    fn mapped(world: &mut World, change: impl FnOnce(&mut [BushCpuSsbo])) {
++        change(
++            &mut world
++                .resource_mut::<AssetSsboLibrary>()
++                .get_mut::<BushCpuSsbo>()
++                .unwrap()
++                .mapped,
++        );
++    }
++
++    #[test]
++    fn missing_canonical_buffer_keeps_existing_grid_and_publisher_untouched() {
++        let (mut world, mut schedule, mut subscriber) = fixture(None);
++        world.resource_mut::<BushGrid>().cells[0]
++            .positions
++            .push(Vec2::ONE);
++        world.resource_mut::<BushGrid>().cells[0].hash = 17;
++        schedule.run(&mut world);
++        assert_eq!(world.resource::<BushGrid>().cells[0].positions, [Vec2::ONE]);
++        assert_eq!(world.resource::<BushGrid>().cells[0].hash, 17);
++        assert!(subscriber.take().is_none());
++        assert_eq!(world.resource::<DirtyTilesPublisher>().0.sequence(), 0);
++    }
++    #[test]
++    fn empty_mapped_header_is_valid_and_does_not_dirty_all_initial_cells() {
++        let (mut world, mut schedule, mut subscriber) = fixture(Some(vec![[0, 0x7fc12345]]));
++        schedule.run(&mut world);
++        assert!(
++            world
++                .resource::<BushGrid>()
++                .cells
++                .iter()
++                .all(|cell| cell.hash == 0 && cell.positions.is_empty())
++        );
++        assert!(subscriber.take().is_none());
++    }
++    #[test]
++    fn actual_mapped_reader_preserves_raw_sort_reordering_and_dirty_clear_lifecycle() {
++        let negative = Vec2::splat(-0.25);
++        let positive = Vec2::splat(0.25);
++        let rows = vec![
++            [3, 0x7fc12345],
++            bits(negative),
++            bits(positive),
++            bits(negative),
++            [0xffc12345, 0x7fc45678],
++        ];
++        let (mut world, mut schedule, mut subscriber) = fixture(Some(rows));
++        schedule.run(&mut world);
++        let index = 31 * 64 + 31;
++        let expected = [positive, negative, negative];
++        let cell = &world.resource::<BushGrid>().cells[index];
++        assert_eq!(cell.positions, expected);
++        assert_eq!(cell.hash, hash_bush_positions(&expected));
++        assert_eq!(cell.hash >> 32, 0);
++        let dirty = subscriber.take().unwrap();
++        assert_eq!(
++            dirty.rows().iter().map(|row| row.count_ones()).sum::<u32>(),
++            4
++        );
++        for x in [31, 32] {
++            for y in [31, 32] {
++                assert!(dirty.contains(x, y));
++            }
++        }
++        drop(dirty);
++        mapped(&mut world, |rows| rows.swap(1, 2));
++        schedule.run(&mut world);
++        assert!(subscriber.take().is_none());
++        assert_eq!(world.resource::<DirtyTilesPublisher>().0.sequence(), 1);
++        mapped(&mut world, |rows| rows[1].0 = bits(Vec2::splat(-0.5)));
++        schedule.run(&mut world);
++        assert!(subscriber.take().is_some());
++        assert_eq!(world.resource::<DirtyTilesPublisher>().0.sequence(), 2);
++        mapped(&mut world, |rows| rows[0].0[0] = 0);
++        schedule.run(&mut world);
++        assert!(subscriber.take().is_some());
++        assert!(
++            world
++                .resource::<BushGrid>()
++                .cells
++                .iter()
++                .all(|cell| cell.hash == 0 && cell.positions.is_empty())
++        );
++        schedule.run(&mut world);
++        assert!(subscriber.take().is_none());
++        assert_eq!(world.resource::<DirtyTilesPublisher>().0.sequence(), 3);
++    }
++    #[test]
++    fn raw_array_order_and_normalized_hash_preserve_nan_and_negative_zero_bits() {
++        let raw = [
++            [0xffc00002, 1],
++            [0x80000000, 0],
++            [0x7fc00002, 0],
++            [0x40000000, 1],
++            [0, 0],
++            [0xc0000000, 0],
++            [0x7fc00001, 0],
++            [0x40000000, 0],
++        ];
++        let mut positions: Vec<_> = raw
++            .into_iter()
++            .map(|p| Vec2::new(f32::from_bits(p[0]), f32::from_bits(p[1])))
++            .collect();
++        sort_bush_positions(&mut positions);
++        let actual: Vec<_> = positions.iter().copied().map(bits).collect();
++        assert_eq!(
++            actual,
++            [
++                [0, 0],
++                [0x40000000, 0],
++                [0x40000000, 1],
++                [0x7fc00001, 0],
++                [0x7fc00002, 0],
++                [0x80000000, 0],
++                [0xc0000000, 0],
++                [0xffc00002, 1]
++            ]
++        );
++        let mut reference = DefaultHasher::new();
++        actual.as_slice().hash(&mut reference);
++        let mut empty = DefaultHasher::new();
++        (&[] as &[[u32; 2]]).hash(&mut empty);
++        assert_eq!(
++            hash_bush_positions(&positions),
++            u64::from((reference.finish() ^ empty.finish()) as u32)
++        );
++        assert_eq!(hash_bush_positions(&[]), 0);
++    }
++    #[test]
++    #[should_panic(expected = "empty buffer")]
++    fn empty_actual_mapped_span_panics() {
++        let (mut world, mut schedule, _) = fixture(Some(vec![]));
++        schedule.run(&mut world);
++    }
++    #[test]
++    #[should_panic(expected = "slice_end_index_len_fail")]
++    fn count_cannot_include_the_mapped_header() {
++        let (mut world, mut schedule, _) = fixture(Some(vec![[1, 0]]));
++        schedule.run(&mut world);
++    }
++    #[test]
++    #[should_panic(expected = "dirty tile index")]
++    fn changed_grid_cell_beyond_original_bit_capacity_panics() {
++        let (mut world, mut schedule, _) = fixture(Some(vec![[0, 0]]));
++        world.resource_mut::<BushGrid>().cells.push(BushGridCell {
++            positions: Vec::new(),
++            hash: 17,
++        });
++        schedule.run(&mut world);
++    }
++}

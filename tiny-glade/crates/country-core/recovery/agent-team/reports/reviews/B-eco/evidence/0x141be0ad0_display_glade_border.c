@@ -1,0 +1,181 @@
+
+void __cdecl system_glade_border::display_glade_border::display_glade_border(void)
+
+{
+  ulonglong *puVar1;
+  longlong lVar2;
+  ulonglong uVar3;
+  longlong lVar4;
+  undefined8 uVar5;
+  undefined1 auVar6 [16];
+  void *_Src;
+  undefined8 ****ppppuVar7;
+  ulonglong uVar8;
+  undefined8 *****extraout_RAX;
+  undefined8 *extraout_RAX_00;
+  undefined8 *in_RCX;
+  ulonglong uVar9;
+  undefined8 *****_Dst;
+  ulonglong uVar10;
+  undefined8 *****in_R9;
+  ulonglong uVar11;
+  ulonglong uVar12;
+  ulonglong uVar13;
+  undefined8 *****pppppuVar14;
+  undefined4 extraout_XMM0_Da;
+  longlong *in_stack_00000028;
+  undefined8 *in_stack_00000030;
+  longlong *in_stack_00000038;
+  longlong *in_stack_00000040;
+  longlong local_148;
+  undefined8 ****local_128;
+  undefined8 ****ppppuStack_120;
+  undefined8 ****local_118;
+  longlong lStack_110;
+  undefined8 local_108;
+  undefined8 ****local_e0;
+  undefined8 ****ppppuStack_d8;
+  undefined8 ****local_d0;
+  longlong lStack_c8;
+  undefined8 local_c0;
+  longlong local_90;
+  longlong local_88;
+  void *local_80;
+  undefined8 ****local_78;
+  longlong local_70;
+  undefined1 local_61;
+  undefined8 local_60;
+  
+  local_60 = 0xfffffffffffffffe;
+  if (*(int *)*in_RCX != 0x13) {
+    country_core::systems::wall::valid_enclosure::ShapeParameters::as_curve2();
+    ppppuStack_120 = ppppuStack_d8 + (longlong)local_d0;
+    local_128 = ppppuStack_d8;
+    local_118 = in_R9;
+    alloc::vec::spec_from_iter::impl$0::
+    from_iter<glam::f32::vec3::Vec3,core::iter::adapters::map::Map<core::slice::iter::Iter<glam::f32::vec2::Vec2>,system_glade_border::display_glade_border::display_glade_border::closure_env_0>_>
+              ();
+    if ((undefined8 *****)local_e0 != (undefined8 *****)0x0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    if (lStack_c8 != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    ppppuVar7 = local_78;
+    _Src = local_80;
+    puVar1 = (ulonglong *)*in_stack_00000030;
+    lVar2 = in_stack_00000030[1];
+    uVar8 = *puVar1;
+    uVar10 = 0;
+    uVar11 = uVar8 - *(ulonglong *)(lVar2 + 0x18);
+    if (uVar8 < *(ulonglong *)(lVar2 + 0x18)) {
+      uVar11 = uVar10;
+    }
+    uVar9 = uVar8 - *(ulonglong *)(lVar2 + 0x38);
+    if (uVar8 < *(ulonglong *)(lVar2 + 0x38)) {
+      uVar9 = uVar10;
+    }
+    uVar8 = *(ulonglong *)(lVar2 + 0x30);
+    uVar12 = uVar8 - uVar9;
+    if (uVar8 < uVar9) {
+      uVar12 = uVar10;
+    }
+    uVar3 = *(ulonglong *)(lVar2 + 0x10);
+    uVar13 = uVar3 - uVar11;
+    if (uVar3 < uVar11) {
+      uVar13 = uVar10;
+    }
+    uVar10 = *(ulonglong *)(lVar2 + 0x40);
+    *puVar1 = uVar10 - (uVar13 + uVar12);
+    if (uVar3 >= uVar11 && uVar3 - uVar11 != 0 || uVar8 >= uVar9 && uVar8 - uVar9 != 0) {
+      *puVar1 = uVar10;
+      auVar6._8_8_ = 0;
+      auVar6._0_8_ = local_78;
+      uVar8 = SUB168(auVar6 * ZEXT816(0xc),0);
+      if ((SUB168(auVar6 * ZEXT816(0xc),8) != 0) || (0x7ffffffffffffffc < uVar8)) {
+LAB_141be0ed2:
+        local_61 = 1;
+                    // WARNING: Subroutine does not return
+        alloc::raw_vec::handle_error();
+      }
+      if (uVar8 == 0) {
+        _Dst = (undefined8 *****)&DAT_00000004;
+        pppppuVar14 = (undefined8 *****)0x0;
+      }
+      else {
+        std::alloc::__default_lib_allocator::__rust_alloc();
+        _Dst = extraout_RAX;
+        pppppuVar14 = (undefined8 *****)ppppuVar7;
+        if (extraout_RAX == (undefined8 *****)0x0) goto LAB_141be0ed2;
+      }
+      memcpy(_Dst,_Src,uVar8);
+      local_118 = ppppuVar7;
+      local_61 = 1;
+      local_128 = pppppuVar14;
+      ppppuStack_120 = _Dst;
+      country_core::utils::debug_viz::DebugLine::new();
+      local_61 = 1;
+      country_core::utils::debug_viz::DebugLine::color();
+      local_61 = 1;
+      country_core::utils::debug_viz::DebugLine::line_width();
+      local_61 = 1;
+      country_core::utils::debug_viz::DebugLine::set_ui_pass();
+      local_61 = 1;
+      country_core::utils::debug_viz::DebugLine::show();
+      if (*__imp__ZN12country_core26_DEV_OVERRIDE_IS_DEMO_MODE17h6f2a49c135369f5aE == '\x01') {
+        *(undefined4 *)in_stack_00000038[2] = *(undefined4 *)((longlong)in_stack_00000038 + 0x1c);
+        lVar2 = *in_stack_00000038;
+        lVar4 = *(longlong *)(lVar2 + 0x30);
+        uVar5 = *(undefined8 *)(lVar2 + 0x40);
+        if (lVar4 == *(longlong *)(lVar2 + 0x20)) {
+          local_61 = 1;
+          alloc::raw_vec::RawVec::
+          grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>
+                    ();
+        }
+        *(undefined8 *)(*(longlong *)(lVar2 + 0x28) + lVar4 * 8) = uVar5;
+        *(longlong *)(lVar2 + 0x30) = lVar4 + 1;
+        *(longlong *)(lVar2 + 0x40) = *(longlong *)(lVar2 + 0x40) + 1;
+      }
+    }
+    local_70 = local_88;
+    if (*(char *)(*in_stack_00000040 + 0x121) == '\0') {
+      local_61 = 1;
+      country_core::systems::wall::valid_enclosure::ShapeParameters::perimeter();
+      local_128 = (undefined8 ****)(*in_stack_00000028 + 0x2c);
+      ppppuStack_120 = (undefined8 ****)core::fmt::num::imp::impl$6::fmt;
+      local_e0 = (undefined8 ****)&DAT_142efa140;
+      ppppuStack_d8 = (undefined8 *****)0x1;
+      lStack_c8 = 1;
+      local_c0 = 0;
+      local_61 = 1;
+      local_d0 = &local_128;
+      alloc::fmt::format::format_inner();
+      local_70 = local_148;
+      std::alloc::__default_lib_allocator::__rust_alloc();
+      if (extraout_RAX_00 == (undefined8 *)0x0) {
+        local_90 = local_88;
+                    // WARNING: Subroutine does not return
+        alloc::alloc::handle_alloc_error();
+      }
+      *extraout_RAX_00 = 1;
+      extraout_RAX_00[1] = 1;
+      extraout_RAX_00[2] = local_88;
+      extraout_RAX_00[3] = local_80;
+      extraout_RAX_00[4] = local_78;
+      *(undefined4 *)(extraout_RAX_00 + 5) = extraout_XMM0_Da;
+      country_core::systems::ui::signifiers::SignifierFactory::new();
+      local_108 = local_c0;
+      local_118 = local_d0;
+      lStack_110 = lStack_c8;
+      local_128 = local_e0;
+      ppppuStack_120 = ppppuStack_d8;
+      country_core::systems::ui::signifiers::signifier_create::UiSignifierStream::write();
+    }
+    if (local_70 != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+  }
+  return;
+}
+

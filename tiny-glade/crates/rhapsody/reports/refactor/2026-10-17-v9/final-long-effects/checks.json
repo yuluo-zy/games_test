@@ -1,0 +1,58 @@
+{
+  "started_utc": "2026-10-17T05:57:47.438502+00:00",
+  "source": "071ef6b0563d2f43f72e8f5ac2868e3699351f9fccc992fe5b571c907c22e16f",
+  "binary_sha256": "f5addbe5c99e831f3a148099f4f8b4710cb15073bf4435eed453106cc649871a",
+  "source_scope": "rhapsody-window-and-shader-dependencies",
+  "harness_sha256": {
+    "window_lab_checks.py": "064240c0d2b06f43695ea56c4dde3a6ef927fec2d0368acfafe4f152e1fc7123",
+    "refactor_checks.py": "5526d0a4e6c451ad8a48159c94cc6619ec42d7b05f79e341382fc7a5745d8aa0"
+  },
+  "reference": null,
+  "runs": [
+    {
+      "name": "long-effects",
+      "command": [
+        "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/reports/refactor/2026-10-17-v9/final-long-effects/window_lab",
+        "--scene",
+        "raster",
+        "--shader-script",
+        "--repeat-script",
+        "--rendering",
+        "dynamic",
+        "--min-run-seconds",
+        "1800",
+        "--frames",
+        "10000",
+        "--fps",
+        "60",
+        "--gpu-timing",
+        "on",
+        "--report",
+        "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/reports/refactor/2026-10-17-v9/final-long-effects/long-effects/report.json",
+        "--capture",
+        "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/reports/refactor/2026-10-17-v9/final-long-effects/long-effects/readback.ppm",
+        "--pipeline-cache",
+        "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/reports/refactor/2026-10-17-v9/final-long-effects/long-effects/pipeline.cache",
+        "--require-validation",
+        "--gpu-pass-timing",
+        "on"
+      ],
+      "binary_kind": "current",
+      "binary_sha256": "f5addbe5c99e831f3a148099f4f8b4710cb15073bf4435eed453106cc649871a",
+      "status": "FAIL",
+      "reasons": [
+        "execution/report/validation failed",
+        "requested frames were not all presented and verified",
+        "long-run duration too short",
+        "insufficient long-run resource stability samples"
+      ],
+      "exit_code": 1,
+      "elapsed_seconds": 21.9420907079475,
+      "source_before": "071ef6b0563d2f43f72e8f5ac2868e3699351f9fccc992fe5b571c907c22e16f",
+      "source_after": "071ef6b0563d2f43f72e8f5ac2868e3699351f9fccc992fe5b571c907c22e16f",
+      "report": "long-effects/report.json"
+    }
+  ],
+  "comparisons": [],
+  "scope": "Application GPU readback, validation and presentation teardown. Screen pixels, keyboard and Windows are separate pending checks."
+}

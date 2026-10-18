@@ -1,24 +1,29 @@
-// Preserve the original instruction-level expression order/NaN policy, API call shapes, and evidence/test transcription. See README.md.
+//! 游戏资产的类型化身份。句柄不拥有资源，Bevy 只提供组件存储与查询。
+//! 原作来源见项目 evidence；当前接口、行为变化与验证范围见 README.md。
+
 #![allow(clippy::new_without_default)]
 use std::fmt;
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
-/// Global handle-id counter (O: `AssetMeshLibrary::add` /
-/// `AssetShaderLibrary::add_*` increment `HANDLE_COUNT`).
 static HANDLE_COUNT: AtomicU64 = AtomicU64::new(1);
 
-/// Raw handle id (O: `HandleId::new` / `HandleId::from_raw`).
+/// 游戏自有的 64 位资产编号，零保留为无效值。
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct HandleId(u64);
 
 impl HandleId {
-    /// `new` — allocate the next global handle id (O).
+    /// 创建初始状态。
     pub fn new() -> Self {
-        HandleId(HANDLE_COUNT.fetch_add(1, Ordering::Relaxed))
+        HandleId(
+            HANDLE_COUNT
+                .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |next_id| {
+                    next_id.checked_add(1)
+                })
+                .expect("资产句柄编号已耗尽"),
+        )
     }
 
-    /// `from_raw` (O name).
     pub fn from_raw(raw: u64) -> Self {
         HandleId(raw)
     }
@@ -34,12 +39,7 @@ impl fmt::Debug for HandleId {
     }
 }
 
-/// Typed handle to an asset (O: `Handle<T>` wraps `HandleId`).
-///
-/// `PartialEq`/`Eq`/`Hash`/`Copy`/`Clone` are implemented without a `T: …`
-/// bound (equality is by id only), so handles stay usable as hash-map keys for
-/// any asset type. `Component` is derived (O: entities carry `Handle<Mesh>`
-/// components; wp12 wall signifier systems query `&Handle<Mesh>`).
+/// 带资源类型的轻量句柄；标记不占空间，不持有 T，也不增加其引用计数。
 #[derive(bevy_ecs::component::Component)]
 pub struct Handle<T> {
     id: HandleId,
@@ -47,7 +47,7 @@ pub struct Handle<T> {
 }
 
 impl<T> Handle<T> {
-    /// `new` — allocate the next handle (O).
+    /// 创建初始状态。
     pub fn new() -> Self {
         Handle {
             id: HandleId::new(),
@@ -55,7 +55,6 @@ impl<T> Handle<T> {
         }
     }
 
-    /// `is_valid` (O name).
     pub fn is_valid(&self) -> bool {
         self.id.raw() != 0
     }
@@ -99,7 +98,7 @@ impl<T> fmt::Debug for Handle<T> {
     }
 }
 
-/// Named asset entry (O: `Asset { name, … }`, `Asset::name`, `Asset::new`).
+/// 可命名资产的基础描述。
 #[derive(Clone, Debug)]
 pub struct Asset {
     pub name: String,
@@ -118,9 +117,11 @@ impl Asset {
 pub mod audio_trigger_library;
 pub mod color_library;
 pub mod configwatch;
+pub mod descriptor_table;
 pub mod mesh_library;
 pub mod meshwatch;
 pub mod placement_data_library;
+pub mod runtime;
 pub mod shader_library;
 pub mod ssbo_library;
 pub mod texture_library;

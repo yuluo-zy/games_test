@@ -1,0 +1,31 @@
+
+running 2 tests
+test real_independent_queues_preserve_pixels_and_do_not_wait_between_branches ... Validation Error: [ VUID-vkCmdPipelineBarrier-srcStageMask-09634 ] | MessageID = 0x8c542782
+vkCmdPipelineBarrier(): srcStageMask is VK_PIPELINE_STAGE_HOST_BIT but srcQueueFamilyIndex (0) != dstQueueFamilyIndex (2).
+The Vulkan spec states: If either srcStageMask or dstStageMask includes VK_PIPELINE_STAGE_HOST_BIT, for each element of pBufferMemoryBarriers, srcQueueFamilyIndex and dstQueueFamilyIndex must be equal (https://docs.vulkan.org/spec/latest/chapters/synchronization.html#VUID-vkCmdPipelineBarrier-srcStageMask-09634)
+Objects: 1
+    [0] VkCommandBuffer 0xbceaf9418
+
+Validation Error: [ VUID-vkCmdPipelineBarrier-srcStageMask-09634 ] | MessageID = 0x8c542782
+vkCmdPipelineBarrier(): dstStageMask is VK_PIPELINE_STAGE_HOST_BIT but srcQueueFamilyIndex (2) != dstQueueFamilyIndex (0).
+The Vulkan spec states: If either srcStageMask or dstStageMask includes VK_PIPELINE_STAGE_HOST_BIT, for each element of pBufferMemoryBarriers, srcQueueFamilyIndex and dstQueueFamilyIndex must be equal (https://docs.vulkan.org/spec/latest/chapters/synchronization.html#VUID-vkCmdPipelineBarrier-srcStageMask-09634)
+Objects: 1
+    [0] VkCommandBuffer 0xbceaf9c18
+
+ok
+test successful_acquires_survive_later_recording_failure_and_next_frame_recovers ... Validation Error: [ VUID-vkCmdPipelineBarrier-srcStageMask-09634 ] | MessageID = 0x8c542782
+vkCmdPipelineBarrier(): srcStageMask is VK_PIPELINE_STAGE_HOST_BIT but srcQueueFamilyIndex (0) != dstQueueFamilyIndex (2).
+The Vulkan spec states: If either srcStageMask or dstStageMask includes VK_PIPELINE_STAGE_HOST_BIT, for each element of pBufferMemoryBarriers, srcQueueFamilyIndex and dstQueueFamilyIndex must be equal (https://docs.vulkan.org/spec/latest/chapters/synchronization.html#VUID-vkCmdPipelineBarrier-srcStageMask-09634)
+Objects: 1
+    [0] VkCommandBuffer 0xbceaf8e18
+
+Validation Error: [ VUID-vkCmdPipelineBarrier-srcStageMask-09634 ] | MessageID = 0x8c542782
+vkCmdPipelineBarrier(): dstStageMask is VK_PIPELINE_STAGE_HOST_BIT but srcQueueFamilyIndex (2) != dstQueueFamilyIndex (0).
+The Vulkan spec states: If either srcStageMask or dstStageMask includes VK_PIPELINE_STAGE_HOST_BIT, for each element of pBufferMemoryBarriers, srcQueueFamilyIndex and dstQueueFamilyIndex must be equal (https://docs.vulkan.org/spec/latest/chapters/synchronization.html#VUID-vkCmdPipelineBarrier-srcStageMask-09634)
+Objects: 1
+    [0] VkCommandBuffer 0xbceafa418
+
+ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.59s
+

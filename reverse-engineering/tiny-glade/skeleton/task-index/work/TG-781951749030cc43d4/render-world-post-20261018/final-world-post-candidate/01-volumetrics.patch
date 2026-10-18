@@ -1,0 +1,21 @@
+--- a/crates/country-core/src/systems/render_loop/compute_passes/apply_volumetrics.rs
++++ b/crates/country-core/src/systems/render_loop/compute_passes/apply_volumetrics.rs
+@@ -53,6 +53,8 @@
+         .bind_texture(binding::SHADOW_MAP, &TexturePreset(SHADOW_MAP_PRESET), 0x19)
+         .bind_texture(binding::BLUE_NOISE_TEXTURE, &BLUE_NOISE, 0x19)
+         .bind_texture(binding::COLOR_TEX, &WriteTextureUnchecked(*color), 0x32)
++        // Packaged original SPIR-V loads this same texel before adding fog.
++        .preserve_storage_texture_contents(binding::COLOR_TEX)
+         .bind_texture(binding::DEPTH_TEX, &depth, 0x19)
+         .uniform(binding::CURRENT_VIEW_INDEX, 0i32)
+         .uniform(binding::GLOBAL_DENSITY_SCALE, density)
+@@ -115,6 +117,9 @@
+         // 绑定顺序：color_library(0) + shadow_map、color_tex、depth_tex（RG 访问）；color_tex 为写、其余读。
+         // blue_noise 是磁盘纹理（`TextureFromDisk`）：走外部描述符，不登记 RG 访问（O 0x1409056d0）。
+         assert_eq!(pass.external_bindings.len(), 1);
++        assert_eq!(pass.preserving_texture_bindings.len(), 1);
++        assert!(matches!(pass.bindings[pass.preserving_texture_bindings[0] as usize],
++            crate::render::pass_builder::pass_resource_access::PassBinding::ImageView { resource: 10, write: true, .. }));
+         let writes: Vec<bool> = pass
+             .builder
+             .accesses

@@ -33,54 +33,44 @@ pub struct SupportBeamGrower {
 }
 
 impl SupportBeamGrower {
-    /// B `propose`（0x141fe09c0）：向左右增长，成本 = total·(Δlen+.5)，
-    /// 左右同价取右；合并长度 1.0/3.15。
-    pub fn propose(&mut self, point: Vec3, direction: Vec3, _index: usize) {
-        let proposal = SupportBeamProposal {
-            index: self.proposals.len(),
-            xz_length: glam::Vec2::new(direction.x, direction.z).length(),
-            direction,
-            curvature_cost: 0.0,
-            point,
-            tag: 0,
-        };
-        self.proposals.push(proposal);
+    /// B `propose`（0x141fe09c0）。**未实现（近似壳）**：真实逻辑为
+    /// flags[next]&0xf≠0→stopped、方向=点差归一化、已有方向投影、
+    /// cost=len*(‖Δdir‖+0.5)（len≥1）。现有实现仅装配 proposal 结构且
+    /// curvature_cost=0，不是原二进制真实逻辑。
+    pub fn propose(&mut self, _point: Vec3, _direction: Vec3, _index: usize) {
+        todo!("未实现: SupportBeamGrower::propose 0x141fe09c0")
     }
 }
 
-/// B `place_support_beams`（0x141242530）：双向 greedy 装配。
+/// B `place_support_beams`（0x141242530）。**未实现（零壳）**：真实双 Grower
+/// 0/end 向中 propose、cost 小者 consume、len≥1.0 发射/≤3.15/join、分开各
+/// len*0.85 对角、join 且 total≥1.4175 双侧 0.5。
 pub fn place_support_beams(
-    grower: &mut SupportBeamGrower,
+    _grower: &mut SupportBeamGrower,
     _segments: &[[f32; 3]],
-    out: &mut Vec<[u8; 64]>,
+    _out: &mut Vec<[u8; 64]>,
 ) {
-    for _proposal in &grower.proposals {
-        out.push([0; 64]);
-    }
+    todo!("未实现: place_support_beams 0x141242530")
 }
 
-/// B `add_diagonal_support`（0x141243740）。
+/// B `add_diagonal_support`（0x141243740）。**未实现（零壳）**：真实 extend_xz
+/// 延展到 (index,fraction)、锚高 sample_height−0.2、方向=采样点差(Δy−0.2)、
+/// 轴 side×0.2/dir×(len−0.2)/third×0.2。
 pub fn add_diagonal_support(
     _left: &[[f32; 3]],
     _right: &[[f32; 3]],
     _arch_heights: &[f32],
-    out: &mut Vec<[u8; 64]>,
+    _out: &mut Vec<[u8; 64]>,
 ) {
-    out.push([0; 64]);
+    todo!("未实现: add_diagonal_support 0x141243740")
 }
 
-/// B `SupportBeamBuilder::emit_support_beams`（0x141243c20）：ArchWalker
-/// step=3.15、tail .1 的 plank 发射。
+/// B `SupportBeamBuilder::emit_support_beams`（0x141243c20）。**未实现（近似壳）**：
+/// 真实 rdp_support_indices→索引对→walk_lintel。
 pub fn emit_support_beams(
-    points: &[Vec3],
-    height: f32,
-    out: &mut Vec<[u8; 64]>,
+    _points: &[Vec3],
+    _height: f32,
+    _out: &mut Vec<[u8; 64]>,
 ) {
-    let walker = ArchWalker::new(0, 0.0, f32::from_bits(0x40499999));
-    walker.walk(points, points, |at, _at_b, _t| {
-        let mut record = [0u8; 64];
-        record[0..12].copy_from_slice(&(at - Vec3::new(0.0, 0.225, 0.0)).to_array().map(f32::to_le_bytes).concat());
-        let _ = height;
-        out.push(record);
-    });
+    todo!("未实现: emit_support_beams 0x141243c20")
 }

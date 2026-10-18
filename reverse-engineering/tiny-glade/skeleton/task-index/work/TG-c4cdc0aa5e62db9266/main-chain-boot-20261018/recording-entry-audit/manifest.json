@@ -1,0 +1,35 @@
+{
+  "status": "v28_core_history14_passed_runtime_tinyglade_pending",
+  "original_rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "files": [
+    {
+      "path": "games_test/tiny-glade/crates/country-core/src/systems/history.rs",
+      "before_sha256": "49764e843ead26ae1e9a6a5c6baffab586c79aaeb44b0d8680fbf667f63cb219",
+      "after_sha256": "10a6038c142965cbf4146910b49db1a6603fde92d2847afa4cf1df12e1cb1520"
+    },
+    {
+      "path": "games_test/tiny-glade/crates/country-core/src/resources/history/transactions.rs",
+      "before_sha256": "307416a434bdc593f27258c5db527000de5b59fba8e448042df9bdd99387245d",
+      "after_sha256": "b3bcf0fa571a086186e373f8064ddcbda10a9f123eb40906a1b09384b5f1d001"
+    },
+    {
+      "path": "games_test/tiny-glade/crates/country-core/src/systems/history/tests.rs",
+      "before_sha256": "b6f83b451539ddc382d79c9283795ab98e76f64c87e0dd0355dcd5423b754901",
+      "after_sha256": "e2f1b58faf3312e5bd9e880978ff4e40cfe879bcab5751709940eb6f60af6da5"
+    },
+    {
+      "path": "games_test/tiny-glade/crates/tiny-glade/src/run_game.rs",
+      "before_sha256": "26d1f23919d86eae2b993b2cc64c93692d5dab84e49898d12f9ff5bae7f11137",
+      "after_sha256": "232d064eacf0976a3f102149c745764d868303414318d0e3e92542ad6825fe4e"
+    }
+  ],
+  "new_tests": [
+    "recording_consumes_only_current_event_and_returns_before_queue_pop",
+    "recording_without_new_event_does_not_gate_existing_queue_selection"
+  ],
+  "source_only_checks": [
+    "rustfmt edition2024",
+    "all workspace callsites reviewed; runtime set35 and add_history_cpu_systems use unified entry; lower adapters remain only in isolated tests"
+  ],
+  "validation_report": "games_test/tiny-glade/reports/main-chain-recovery-2026-10-18/core-algorithm-validation-v28.json"
+}

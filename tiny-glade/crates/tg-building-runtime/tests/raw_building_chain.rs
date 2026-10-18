@@ -1,12 +1,11 @@
 use bevy_ecs::prelude::*;
-use country_core::recovered_building::{
-    building_roof_creation::RoofCreateRequestObserved,
-    building_wall_collection::{
-        DirtyPublicationSubscription, RawWallPublicationSource, TerrainHeightGrid512,
-    },
-    building_wall_state::{WallId, WallShapeSnapshot},
-    surface::Curve2,
-};
+use country_core::resources::roofs::creation::RoofCreateRequestObserved;
+use country_core::resources::walls::publication_source::DirtyPublicationSubscription;
+use country_core::resources::walls::publication_source::RawWallPublicationSource;
+use country_core::resources::walls::publication_source::TerrainHeightGrid512;
+use country_core::resources::walls::publication_fields::WallId;
+use country_core::resources::walls::publication_fields::WallShapeSnapshot;
+use country_core::resources::roofs::geometry::surface::Curve2;
 use std::sync::Arc;
 use tg_building_runtime::{nani::*, *};
 fn emit<T: Event>(app: &mut bevy_app::App, event: T) {
@@ -60,7 +59,7 @@ fn clean(app: &bevy_app::App) {
     );
 }
 fn configure_clear_path_resources(app: &mut bevy_app::App) {
-    use country_core::recovered_building::building_wall_path_preparation::PathRasters512;
+    use country_core::systems::wall::wall_state::path_preparation::PathRasters512;
     emit(
         app,
         tg_building_runtime::wall_paths::SetWallPathRasters(
@@ -394,4 +393,99 @@ fn terrain_mask_resolves_raw_memberships_and_cleans_moves_and_removal() {
             .raw_sources
             .contains_key(&id)
     );
+}
+
+#[test]
+fn malformed_grids_and_raw_sources_preserve_last_valid_authority() {
+    let mut app = building_app();
+    configure_clear_path_resources(&mut app);
+    let id = WallId(80);
+    emit(
+        &mut app,
+        SetTerrainGrid {
+            grid: grid(0.),
+            affected_walls: vec![],
+        },
+    );
+    emit(
+        &mut app,
+        UpsertRawWall {
+            wall: id,
+            source: source(0, 2.),
+        },
+    );
+    step(&mut app, 0.);
+    let revision = app.world().resource::<PublicWalls>().walls[&id].publication_revision;
+    let invalid_grids: &[fn(&mut TerrainHeightGrid512)] = &[
+        |grid| grid.encoded = Arc::from(vec![0; 1]),
+        |grid| grid.minimum_y = f32::NAN,
+        |grid| grid.minimum_y = 2.,
+        |grid| {
+            grid.minimum_y = -f32::MAX;
+            grid.maximum_y = f32::MAX;
+        },
+    ];
+    for invalidate in invalid_grids {
+        let mut invalid = grid(1.);
+        invalidate(&mut invalid);
+        emit(
+            &mut app,
+            SetTerrainGrid {
+                grid: invalid,
+                affected_walls: vec![id],
+            },
+        );
+    }
+    let invalid_sources: &[fn(&mut RawWallPublicationSource)] = &[
+        |source| {
+            source.curve.points.clear();
+            source.curve.points_u.clear();
+        },
+        |source| {
+            source.curve.points_u.pop();
+        },
+        |source| source.curve.points[0][0] = f32::INFINITY,
+        |source| source.curve.points_u[1] = f32::NAN,
+        |source| source.curve.length *= 2.,
+        |source| source.curve.points_u[1] = 0.8,
+        |source| source.extra = f32::NAN,
+        |source| source.curve.points_u[0] = f32::EPSILON,
+        |source| *source.curve.points_u.last_mut().unwrap() = 1.0 - f32::EPSILON,
+        |source| {
+            let mut shape = *source.shape.bytes();
+            shape[4..8].copy_from_slice(&f32::NAN.to_le_bytes());
+            source.shape = WallShapeSnapshot::from_observed(shape);
+        },
+    ];
+    for invalidate in invalid_sources {
+        let mut invalid = source(0, 2.);
+        invalidate(&mut invalid);
+        emit(
+            &mut app,
+            UpsertRawWall {
+                wall: id,
+                source: invalid,
+            },
+        );
+    }
+    // A later valid input must still publish in this batch.
+    emit(
+        &mut app,
+        UpsertRawWall {
+            wall: WallId(81),
+            source: source(0, 2.),
+        },
+    );
+    app.update();
+    assert_eq!(
+        app.world().resource::<BuildingReport>().faults.len(),
+        invalid_grids.len() + invalid_sources.len()
+    );
+    let state = app.world().resource::<WallCollectionState>();
+    assert_eq!(state.terrain.as_ref().unwrap().minimum_y, 0.);
+    assert_eq!(state.raw_sources[&id].curve.length, 28.);
+    let walls = app.world().resource::<PublicWalls>();
+    assert_eq!(walls.walls[&id].publication_revision, revision);
+    assert!(walls.walls.contains_key(&WallId(81)));
+    step(&mut app, 0.);
 }

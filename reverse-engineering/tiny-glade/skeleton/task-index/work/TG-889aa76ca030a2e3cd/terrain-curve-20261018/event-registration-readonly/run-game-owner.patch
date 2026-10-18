@@ -1,0 +1,17 @@
+--- a/games_test/tiny-glade/crates/tiny-glade/src/run_game.rs
++++ b/games_test/tiny-glade/crates/tiny-glade/src/run_game.rs
+@@ -596,6 +596,14 @@
+     app.init_resource::<LiveDecoratorArchivist>();
+     app.init_resource::<DecoratorIdGen>();
+     app.init_resource::<DeferredDecoratorOpEvents>();
++    app.add_event::<country_core::resources::walls::decorator::DecoratorOpEvent>();
++    // B DecoratorPlugin: 19-member chain is assigned to GameSystemSet25.
++    // Keep original replay40-produced notifications for the following frame.
++    app.add_systems(
++        bevy_app::Update,
++        country_core::resources::walls::decorator::unleash_decorator_op_events
++            .in_set(GameSystemSet(25)),
++    );
+     app.init_resource::<DecoratorPhysicsColliders>();
+     app.init_resource::<country_core::resources::stairs::stairs_state::StairsState>();
+     app.init_resource::<country_core::systems::collision::world::RaycastWorld>();

@@ -1,0 +1,14 @@
+--- a/games_test/tiny-glade/crates/country-core/src/utils/index_condenser.rs
++++ b/games_test/tiny-glade/crates/country-core/src/utils/index_condenser.rs
+@@ -25,6 +25,11 @@
+     }
+     pub fn is_empty(&self) -> bool {
+         self.shared.is_empty()
++    }
++    /// Session unload delegates to the existing shared capacity-retaining
++    /// clear; no duplicate condenser storage/algorithm is introduced.
++    pub fn clear(&mut self) {
++        self.shared.clear();
+     }
+     pub fn contains_id(&self, id: u32) -> bool {
+         self.shared.contains_key(&id)

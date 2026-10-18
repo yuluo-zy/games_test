@@ -1,0 +1,13 @@
+# B original GPU LUT closure contract
+
+Scope: B RNE SHA256 f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03; PDB 2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911. Ghidra B patched cf048e27… is secondary only; exact LLVM ranges in this directory are the raw oracle. No A/C equivalence claim.
+
+Original producer build@14090e080 creates Vec<GpuLutDesc> with one BRDF closure; reads global DEV_OVERRIDE_IS_DEMO_MODE@143634d90, adds water closure only when false, inserts real GpuLutTracker@14090e1dc. Each descriptor is 48 B: source-hash Vec, boxed Fn callback, rendered bool@+28. Standard container/boxing reused.
+
+Original render_luts@14090e280 iterates retained descriptors; if !rendered, clears source-hash Vec length, invokes callback, marks rendered=true after normal callback completion. It does not drain the descriptors or rerun each frame. compute_impl@14090e310 first calls source_hash and pushes the u64 to that descriptor, then constructs ComputePass name "LUT" from the actual AsComputeShaderSource trait and invokes supplied one-shot compute builder. Generic library execution/allocations reused. Source-host Result propagation replaces the original fatal unwrap at the boundary; no success synthesized on missing resources/shader compile failure.
+
+BRDF outer closure@140a716c0 uses exact path /lut/brdf_fg.cs.hlsl (20 bytes); inner@140a71730 writes TexturePreset(0), binding output_tex=88219a3ae69892b2, access32, default view. Dispatch variant=1 Threads,64,64,1 from RNE142ad55e0. Water outer@140a71980 path /lut/water_noise.cs.hlsl (24 bytes); inner@140a713b0 writes preset18 same output hash/access, samples TextureFromDisk(6ec95f7a9d9f0faf), binding815bf5036966978c/access19, and Threads256,256,1 from142ad0480. Native read/write calls were checked before using existing ComputePass bind_texture/dispatch_2d consumers.
+
+Host adapter: GpuLutPlugin carries explicit demo bool because source build obtains config in the executable rather than reading the native process-static address. Exact tracker producer and conditional behavior retained. The callback returns RecordedComputePass because existing reconstructed dispatch owns its graph callback; it is immediately passed to the same enclosing PassFrame.record. No independent backend, fake image, extra clear, or pre-import-all buffer pass.
+
+Original main compile closure calls GpuWorld.import@140161fbc, FrameConstants@14016210a, tracker.render_luts@1401622e7, reset_indirect_args@1401622fd. The new module is not a replacement for the unrecovered scene FramePasses consumer. Main graph and native-C runtime remain unverified.

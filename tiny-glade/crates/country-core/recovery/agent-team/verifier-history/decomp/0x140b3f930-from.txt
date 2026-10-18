@@ -1,0 +1,105 @@
+
+void __cdecl country_core::resources::history::decorator_edit::impl$1::from(void)
+
+{
+  undefined8 uVar1;
+  char cVar2;
+  undefined1 uVar3;
+  undefined1 uVar4;
+  undefined1 uVar5;
+  undefined8 uVar6;
+  undefined8 uVar7;
+  undefined8 uVar8;
+  undefined8 *in_RCX;
+  undefined8 *in_RDX;
+  undefined4 uVar9;
+  undefined4 uVar10;
+  undefined1 uVar11;
+  byte bVar12;
+  uint uVar13;
+  uint uVar14;
+  char cVar15;
+  undefined1 uVar16;
+  uint uVar17;
+  undefined1 uVar18;
+  uint uVar19;
+  undefined4 uVar20;
+  
+  if (*(char *)((longlong)in_RDX + 0x47) == '\0') {
+    cVar2 = *(char *)((longlong)in_RDX + 0x41);
+    bVar12 = 6;
+    if ((byte)(cVar2 - 2U) < 6) {
+      bVar12 = cVar2 - 2U;
+    }
+    if ((bVar12 == 2) || (bVar12 == 6)) {
+      uVar13 = *(uint *)(in_RDX + 6);
+      uVar17 = uVar13;
+      uVar14 = uVar13;
+    }
+    else {
+      uVar17 = (uint)*(byte *)(in_RDX + 6);
+      uVar13 = *(uint *)(in_RDX + 6);
+      uVar14 = 0;
+    }
+    uVar10 = 0;
+    uVar20 = 0x3f800000;
+    uVar11 = 0;
+    uVar9 = 0;
+    cVar15 = '\0';
+    if ((byte)(cVar2 - 8U) < 0xfa) {
+      uVar20 = *(undefined4 *)((longlong)in_RDX + 0x34);
+      uVar10 = *(undefined4 *)(in_RDX + 7);
+      uVar11 = *(undefined1 *)(in_RDX + 8);
+      uVar9 = *(undefined4 *)((longlong)in_RDX + 0x3c);
+      cVar15 = cVar2;
+    }
+    uVar3 = *(undefined1 *)((longlong)in_RDX + 0x46);
+    uVar4 = *(undefined1 *)((longlong)in_RDX + 0x44);
+    uVar1 = in_RDX[5];
+    uVar5 = *(undefined1 *)((longlong)in_RDX + 0x45);
+    uVar19 = 0x3f800000;
+    if (cVar2 == '\a') {
+      uVar19 = uVar13;
+    }
+    if (cVar2 != '\x06') {
+      uVar13 = 0;
+    }
+    uVar16 = (char)uVar17;
+    if (cVar2 != '\x05') {
+      uVar16 = 0;
+    }
+    uVar18 = 1;
+    if (cVar2 == '\x04') {
+      uVar18 = *(undefined1 *)((longlong)in_RDX + 0x34);
+    }
+    in_RCX[4] = in_RDX[4];
+    uVar6 = *in_RDX;
+    uVar7 = in_RDX[1];
+    uVar8 = in_RDX[3];
+    in_RCX[2] = in_RDX[2];
+    in_RCX[3] = uVar8;
+    *in_RCX = uVar6;
+    in_RCX[1] = uVar7;
+    *(undefined1 *)((longlong)in_RCX + 0x4a) = uVar3;
+    *(undefined1 *)(in_RCX + 9) = uVar4;
+    in_RCX[5] = uVar1;
+    *(undefined1 *)((longlong)in_RCX + 0x49) = uVar5;
+    *(uint *)(in_RCX + 6) = uVar14;
+    *(undefined1 *)((longlong)in_RCX + 0x4c) = uVar16;
+    *(uint *)((longlong)in_RCX + 0x34) = uVar13;
+    *(uint *)(in_RCX + 7) = uVar19;
+    *(undefined1 *)((longlong)in_RCX + 0x4d) = uVar18;
+    *(undefined4 *)((longlong)in_RCX + 0x3c) = uVar20;
+    *(undefined4 *)(in_RCX + 8) = uVar10;
+    *(undefined1 *)((longlong)in_RCX + 0x4b) = uVar11;
+    *(char *)((longlong)in_RCX + 0x4e) = cVar15;
+    *(undefined4 *)((longlong)in_RCX + 0x44) = uVar9;
+    return;
+  }
+                    // WARNING: Subroutine does not return
+  core::panicking::panic_fmt();
+}
+
+
+
+CALLEES: [{"name": "panic_fmt", "address": "1428d9390"}]

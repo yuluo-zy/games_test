@@ -1,9 +1,7 @@
-//! UNVERIFIED integration draft: actual ConstructGateCmd -> CPU gate geometry,
-//! source metadata and Bevy-owned entities. GPU asset/pool transport is pending.
-//! Original container implementation is reused through std/Bevy, never copied.
+//! Gate command batches produce CPU geometry and Bevy-owned entities.
+//! CPU mesh ownership is tracked separately from renderer asset/upload handles.
 use crate::{
-    BuildingStage, CreateRoof, DeleteRoof, ObjectTransform, PublicWalls, RemoveWall,
-    RoofGeometryChanged, WallCollectionState, WallSpatialDirty,
+    BuildingStage, DeleteRoof, ObjectTransform, PublicWalls, RemoveWall, WallCollectionState,
     nani::{
         NaniInstanceDesc, NaniInstanceMeshDesc, NaniSolidVertexColorBundle,
         SolidVertexColorInstanceDataMarker,
@@ -12,15 +10,17 @@ use crate::{
     wall_paths::WallPreparedPaths,
 };
 use bevy_ecs::{prelude::*, schedule::ApplyDeferred, system::SystemParam};
-use country_core::recovered_building::{
-    building_gates::{
-        GateConstructionInput, GateCpuOutput, GateMeshProjection, GateNaniProjection,
-        construct_gate_cpu,
-    },
-    building_wall_constructor::WallBrickInstance,
-    building_wall_state::WallId,
+use country_core::systems::wall::construction::gates::GateConstructionInput;
+use country_core::systems::wall::construction::gates::GateCpuOutput;
+use country_core::systems::wall::construction::gates::GateMeshProjection;
+use country_core::systems::wall::construction::gates::GateNaniProjection;
+use country_core::systems::wall::construction::gates::construct_gate_cpu;
+use country_core::systems::wall::construction::bricks::WallBrickInstance;
+use country_core::resources::walls::publication_fields::WallId;
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
 };
-use std::collections::{HashMap, HashSet};
 
 /// Local CPU asset identity only. This never represents a GPU/renderer handle.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -59,7 +59,7 @@ pub struct WoodenGate {
 #[derive(Component, Clone, Copy, Debug)]
 pub struct GateCpuDrawable {
     pub mesh: GateCpuMeshHandle,
-    /// Actual original shader choice. No GPU shader handle is synthesized.
+    /// Shader identifier consumed by the renderer.
     pub shader_key: &'static str,
 }
 #[derive(Component, Clone, Copy, Debug)]
@@ -78,7 +78,7 @@ pub struct GateNaniSource {
     pub ordinal: u64,
     pub projection: GateNaniProjection,
 }
-/// Native Gates contains door/post entities, not the separate SSBO brick slots.
+/// Door and post entities owned by each wall.
 #[derive(Resource, Default)]
 pub struct Gates(pub HashMap<WallId, Vec<Entity>>);
 /// CPU support entity ownership stands in front of the explicit SSBO boundary.
@@ -96,6 +96,9 @@ pub enum PendingGateReason {
 #[derive(Resource, Default)]
 pub struct GateBuildState {
     fingerprints: HashMap<WallId, Vec<u8>>,
+    command_batches: HashMap<WallId, Vec<ConstructGateCmd>>,
+    // Keep allocation identities alive while terrain is part of a fingerprint.
+    terrain_snapshot: Option<Arc<[u16]>>,
     pub pending: HashMap<WallId, PendingGateReason>,
     pub rebuilt: Vec<WallId>,
     /// CPU transport reaches these records; renderer handles/uploads are absent.
@@ -103,9 +106,6 @@ pub struct GateBuildState {
 }
 #[derive(SystemParam)]
 pub struct GateInvalidationReaders<'w, 's> {
-    changed: EventReader<'w, 's, WallSpatialDirty>,
-    created: EventReader<'w, 's, CreateRoof>,
-    geometry: EventReader<'w, 's, RoofGeometryChanged>,
     removed: EventReader<'w, 's, RemoveWall>,
     deleted_roofs: EventReader<'w, 's, DeleteRoof>,
 }
@@ -135,7 +135,7 @@ fn withdraw(
     let entities = if remove_entry {
         gates.0.remove(&wall).unwrap_or_default()
     } else {
-        gates.0.entry(wall).or_default().drain(..).collect()
+        std::mem::take(gates.0.entry(wall).or_default())
     };
     for entity in entities {
         assets.withdraw_entity(entity);
@@ -146,15 +146,26 @@ fn withdraw(
     }
     state.fingerprints.remove(&wall);
     state.cpu_outputs.remove(&wall);
-    if remove_entry {
-        state.pending.remove(&wall);
-    }
+    state.pending.remove(&wall);
 }
-fn fingerprint(host: &crate::PublishedWall, prepared_generation: u64) -> Vec<u8> {
+fn fingerprint(
+    host: &crate::PublishedWall,
+    prepared_generation: u64,
+    terrain: Option<
+        &country_core::resources::walls::publication_source::TerrainHeightGrid512,
+    >,
+) -> Vec<u8> {
     let mut bytes = host.observed_projection().to_vec();
     bytes.extend(host.publication_revision.to_le_bytes());
     bytes.extend(prepared_generation.to_le_bytes());
     bytes.push(u8::from(host.observed_source_metadata_complete));
+    bytes.push(u8::from(terrain.is_some()));
+    if let Some(terrain) = terrain {
+        bytes.extend((terrain.encoded.as_ptr() as usize).to_le_bytes());
+        bytes.extend(terrain.minimum_y.to_le_bytes());
+        bytes.extend(terrain.maximum_y.to_le_bytes());
+        bytes.push(u8::from(terrain.sampling_fix));
+    }
     bytes
 }
 fn consume(
@@ -172,10 +183,10 @@ fn consume(
     mut report: ResMut<crate::BuildingReport>,
 ) {
     state.rebuilt.clear();
-    let mut rebuild: HashSet<_> = invalidations.changed.read().map(|e| e.0).collect();
-    rebuild.extend(invalidations.created.read().map(|e| e.0.wall_id()));
-    rebuild.extend(invalidations.geometry.read().map(|e| e.wall));
-    rebuild.extend(arches.rebuilt.iter().copied());
+    // The upstream producer owns geometry invalidation. A no-op roof/spatial
+    // event may leave its cached command batch unchanged and emit no commands;
+    // withdrawing on that notification alone would permanently erase gates.
+    let mut rebuild: HashSet<_> = arches.rebuilt.iter().copied().collect();
     rebuild.extend(arches.pending.iter().copied());
     let mut remove: HashSet<_> = invalidations.removed.read().map(|e| e.0).collect();
     // DeleteRoof removes the Gates entry even while the wall itself remains.
@@ -192,19 +203,35 @@ fn consume(
         let current = walls.walls.get(&wall).and_then(|host| {
             paths
                 .current(wall, host.publication_revision)
-                .map(|path| fingerprint(host, path.generation))
+                .map(|path| fingerprint(host, path.generation, source.terrain.as_ref()))
         });
         if current.as_ref() != Some(previous) {
             refresh.insert(wall);
         }
     }
     rebuild.extend(refresh);
-    let requests: Vec<_> = events.read().cloned().collect();
-    // A new command batch rebuilds one wall once, then appends every ordinal.
-    rebuild.extend(requests.iter().map(|e| e.0.wall_id));
+    // A producer rebuild replaces the whole batch, including an empty result.
+    // Retain successful batches as well: terrain changes can invalidate CPU
+    // geometry without changing the upstream arch segmentation.
+    for wall in arches.rebuilt.iter().chain(&arches.pending) {
+        state.command_batches.remove(wall);
+    }
+    let mut incoming = HashMap::<WallId, Vec<ConstructGateCmd>>::new();
+    for request in events.read() {
+        incoming
+            .entry(request.0.wall_id)
+            .or_default()
+            .push(request.clone());
+    }
+    rebuild.extend(incoming.keys().copied());
+    state.command_batches.extend(incoming);
+    rebuild.extend(state.pending.iter().filter_map(|(&wall, reason)| {
+        (*reason != PendingGateReason::OriginalCpuBranch).then_some(wall)
+    }));
     let mut ids: Vec<_> = remove.iter().copied().collect();
     ids.sort_unstable_by_key(|w| w.0);
     for wall in ids {
+        state.command_batches.remove(&wall);
         withdraw(
             wall,
             true,
@@ -220,7 +247,7 @@ fn consume(
         .filter(|wall| !remove.contains(wall))
         .collect();
     ids.sort_unstable_by_key(|w| w.0);
-    for wall in ids {
+    for &wall in &ids {
         withdraw(
             wall,
             false,
@@ -231,12 +258,22 @@ fn consume(
             &mut state,
         );
     }
+    // Detach the batch map while updating build state. Each request borrows
+    // retained geometry, including retries while dependencies are unavailable.
+    let command_batches = std::mem::take(&mut state.command_batches);
     let mut failed_walls = HashSet::new();
-    for request in requests {
+    for request in ids
+        .iter()
+        .filter_map(|wall| command_batches.get(wall))
+        .flatten()
+    {
         if failed_walls.contains(&request.0.wall_id) {
             continue;
         }
         let wall = request.0.wall_id;
+        if remove.contains(&wall) {
+            continue;
+        }
         // A deleted host's queued commands must never resurrect its ownership.
         if !source.raw_sources.contains_key(&wall) {
             state
@@ -268,13 +305,12 @@ fn consume(
                 .insert(wall, PendingGateReason::MissingTerrain);
             continue;
         };
-        let projection = host.observed_projection();
         let input = GateConstructionInput {
             segment: &request.0.segment,
             prepared_positions: &path.path.positions,
             prepared_u: &path.path.points_u,
-            observed_public_288: f32::from_le_bytes(projection[0x288..0x28c].try_into().unwrap()),
-            observed_public_29a: projection[0x29a],
+            observed_public_288: host.state.float_0x288(),
+            observed_public_29a: host.state.observed_29a(),
             wall_id: wall,
             ordinal: request.0.ordinal,
         };
@@ -293,6 +329,10 @@ fn consume(
                 state
                     .pending
                     .insert(wall, PendingGateReason::OriginalCpuBranch);
+                state.fingerprints.insert(
+                    wall,
+                    fingerprint(host, path.generation, source.terrain.as_ref()),
+                );
                 failed_walls.insert(wall);
                 state.rebuilt.retain(|id| *id != wall);
                 report
@@ -355,26 +395,32 @@ fn consume(
             gates.0.entry(wall).or_default().push(entity);
         }
         state.cpu_outputs.entry(wall).or_default().push(output);
-        state
-            .fingerprints
-            .insert(wall, fingerprint(host, path.generation));
+        state.fingerprints.insert(
+            wall,
+            fingerprint(host, path.generation, source.terrain.as_ref()),
+        );
         state.pending.remove(&wall);
         if !state.rebuilt.contains(&wall) {
             state.rebuilt.push(wall);
         }
     }
+    state.command_batches = command_batches;
+    state.terrain_snapshot = source
+        .terrain
+        .as_ref()
+        .map(|terrain| terrain.encoded.clone());
 }
-fn nani_transform(p: &GateNaniProjection) -> ObjectTransform {
+fn nani_transform(projection: &GateNaniProjection) -> ObjectTransform {
     let mut bytes = [0; 48];
-    // The original ObjectTransform48 has 40 meaningful bytes and padding.
-    for (i, f) in p
+    // Transform records contain 10 floats followed by 8 padding bytes.
+    for (index, value) in projection
         .rotation
         .into_iter()
-        .chain(p.position)
-        .chain(p.scale)
+        .chain(projection.position)
+        .chain(projection.scale)
         .enumerate()
     {
-        bytes[i * 4..i * 4 + 4].copy_from_slice(&f.to_le_bytes());
+        bytes[index * 4..index * 4 + 4].copy_from_slice(&value.to_le_bytes());
     }
     ObjectTransform(bytes)
 }

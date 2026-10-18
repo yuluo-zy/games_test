@@ -29,7 +29,7 @@ unsafe impl GlobalAlloc for ObservedAllocator {
 static ALLOCATOR: ObservedAllocator = ObservedAllocator;
 
 #[test]
-fn linear_bc7_reuses_owned_rgba_pixels_without_a_full_image_copy() {
+fn linear_encoding_reuses_owned_rgba_pixels_without_a_full_image_copy() {
     let source = RgbaImage::from_fn(SIDE, SIDE, |x, y| {
         Rgba([x as u8, y as u8, (x ^ y) as u8, 255])
     });
@@ -55,5 +55,20 @@ fn linear_bc7_reuses_owned_rgba_pixels_without_a_full_image_copy() {
     assert_eq!(
         copies, 0,
         "an already-owned linear RGBA image needs no copy before BC7"
+    );
+    let source = RgbaImage::from_pixel(SIDE, SIDE, Rgba([13, 27, 41, 255]));
+    let source_pointer = source.as_raw().as_ptr();
+    let output = process_decoded_image(
+        DynamicImage::ImageRgba8(source),
+        &TextureOpts {
+            compression: CompressionMethod::None,
+            ..opts
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        output.data.as_ptr(),
+        source_pointer,
+        "uncompressed single mip transfers the source allocation"
     );
 }

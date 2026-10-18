@@ -5,8 +5,8 @@
 //! |---|---|
 //! | `rcx` | `&mut RenderGraph`（传给 `RasterPass::new_impl` 的 `[rsp+0x40]`）|
 //! | `rdx` | `&World`（`+0x38` = `&Components`）|
-//! | `r8` = arg3 | `&[Handle<Texture>; 2]`（0x24 B 一个）：`[0]` = 视口来源 + 绑定 `0x41aa…`，`[1]`（`+0x24`）= **颜色附件**（tag1，视图字 0）+ 绑定 `0x4861…` |
-//! | `r9` = arg4 | `&Handle<Texture>` 深度附件（tag 0 可写，无清除）；`extent_2d` → `[u32;2]` uniform |
+//! | `r8` = arg3 | `&[Handle<Texture>; 2]`（0x24 B 一个）：`[0]` = 视口来源 + 绑定 `0x41aa…`，`[1]`（`+0x24`）= **只读深度附件**（tag1）+ 绑定 `0x4861…` |
+//! | `r9` = arg4 | `&Handle<Texture>` 场景颜色附件（tag0 LOAD）；其 `extent_2d` → `[u32;2]` uniform |
 //! | `[0xdf0]` = arg5 | `&Handle<Texture>` → `0x0417…` |
 //! | `[0xdf8]` = arg6 | `u8` → `write_uniform<u32>(0x5788…)` |
 //! | `[0xe00]` = arg7 | `&Handle<Texture>` → `0xe003…` |
@@ -24,7 +24,7 @@
 //!   `country_core::resources::render::lantern…`）→ 缓冲首字低 32 位 → `write_uniform<u32>(0x9b88…)`。
 //!
 //! # 绘制（O）
-//! `RasterPass::new_impl("Apply deferred lighting"(0x17), [tag1 = arg3[1]], 深度 = arg4 (tag0), 视口 = arg3[0])`；然后 5 个条目
+//! `RasterPass::new_impl("Apply deferred lighting"(0x17), [tag0 = arg4], 深度 = arg3[1] (tag1 只读), 视口 = arg3[1])`；然后 5 个条目
 //! （[`ENTRIES`]，下标/标志取自 `[rbp+0xcc8..0xcf4]`）。每个条目一次 `DrawPacket`（头 `[0, _]`、`blend = 1.0`、`DrawKind` 默认）+
 //! `DrawBuilder::new(variant 0)`：
 //! - 默认状态 `s = shader::default()`；`flag == false`：`byte0 = s & 0xbf`，`byte3` 不变，`packet.+0xb1`（模板参考值）= `material`；
@@ -34,7 +34,7 @@
 //! - `draw_no_vao(3)`。循环结束后 `render`。
 //!
 //! 对 A4 的适配（I）：`bind_ray_tracing<DrawBuilder>`（0x1416289d0）用 A4 的 `DrawBuilder::bind_ray_tracing::<Tri, Meta, Bvh, Wall>`
-//! （本函数对四个 `SsboType` 载体泛型）；Lantern 的 uniform 值 = `PassHost::ssbo_buffer_word(LanternSsbo)`（缓冲首字低 32 位）；
+//! （本函数对四个 `SsboType` 载体泛型）；Lantern 的 uniform 值 = `PassHost::ssbo_instance_count(LanternSsbo)`（实际实例数量）；
 //! `LanternSsbo` 在 crate 里是 typed gap（无 `SsboType`），这里用本文件的 [`LanternBuffer`] / [`SpatialResolveOffsetsBuffer`]
 //! 载体（`rg_buffer_hash` = `get_rg_buffer<T>` 的立即数）。
 
@@ -50,6 +50,14 @@ use crate::systems::render_loop::draw_passes::d_main_support::{
     ColorSpec, DepthSpec, DrawPassCtx, UNWRAP_NONE,
 };
 use crate::systems::render_loop::draw_passes::material_id::MaterialId;
+
+/// Real per-App material shader owner (PDB DeferredRasterResources).
+/// B insert_rendering_resources 140940afa..b50 initializes all five Options
+/// to None; startup_deferred_raster fills only material slots 1,3,0,2.
+#[derive(bevy_ecs::resource::Resource, Default)]
+pub struct DeferredRasterResources {
+    pub shaders: [Option<crate::asset_libraries::Handle<RasterShaderProgram>>; 5],
+}
 
 pub const PASS_NAME: &str = "Apply deferred lighting";
 
@@ -69,20 +77,10 @@ pub fn materials() -> &'static [MaterialId] {
     &MaterialId::DEFERRED
 }
 
-/// `get_rg_buffer<LanternSsbo>`（0x1412d5470）的 `SsboId` 立即数（`-0x74d25e10e40069e7`）。
-pub struct LanternBuffer;
-impl SsboType for LanternBuffer {
-    fn rg_buffer_hash() -> u64 {
-        0x8b2d_a1ef_1bff_9619
-    }
-}
 /// `get_rg_buffer<SpatialResolveOffsetsSsbo>`（0x1412d57a0）的 `SsboId` 立即数。
-pub struct SpatialResolveOffsetsBuffer;
-impl SsboType for SpatialResolveOffsetsBuffer {
-    fn rg_buffer_hash() -> u64 {
-        0x0b59_18c6_e8c2_5a37
-    }
-}
+pub use crate::resources::render::spatial_resolve_offsets::SpatialResolveOffsetsSsbo as SpatialResolveOffsetsBuffer;
+/// `get_rg_buffer<LanternSsbo>`（0x1412d5470）的 `SsboId` 立即数（`-0x74d25e10e40069e7`）。
+pub use crate::resources::render_ssbo::LanternSsbo as LanternBuffer;
 
 // ---- 绑定名哈希（O：`movabs r8`；负立即数已转无符号）----
 pub const B_LIGHTING_0: u64 = 0x41aa_4a0d_2dea_0b36;
@@ -124,9 +122,9 @@ pub const ENTRIES: [(u32, bool); 5] = [(1, false), (3, false), (0, false), (0, t
 pub struct DeferredInputs<'a> {
     /// 资源 `0x78cac557…`：按 material 下标的着色器。
     pub shaders: [Option<Handle<RasterShaderProgram>>; 5],
-    /// arg3：`[0]` 视口来源，`[1]` 颜色附件。
+    /// arg3：`[0]` G-buffer，`[1]` 只读深度与视口来源。
     pub lighting: [AttachmentTexture; 2],
-    /// arg4：深度附件。
+    /// arg4：场景颜色附件（历史字段名保留；原调用方传 color）。
     pub depth: AttachmentTexture,
     pub arg5: AttachmentTexture,
     pub arg6: u8,
@@ -161,7 +159,7 @@ pub fn bind_all<'p, Tri: SsboType, Meta: SsboType, Bvh: SsboType, Wall: SsboType
     mut b: DrawBuilder<'p>,
     i: &DeferredInputs<'_>,
     time: f32,
-    lantern_value: u32,
+    lantern_instance_count: u32,
 ) -> DrawBuilder<'p> {
     b = b.uniform(U_ARG6, i.arg6 as u32);
     b = sampled(b, &i.lighting[0], B_LIGHTING_0);
@@ -183,7 +181,7 @@ pub fn bind_all<'p, Tri: SsboType, Meta: SsboType, Bvh: SsboType, Wall: SsboType
     b = b.optional_uniform(U_TIME, time);
     b = b.uniform(U_FLAG_INT, 0u32);
     b = b.optional_uniform(U_DEPTH_DIMS, [i.depth.extent.0, i.depth.extent.1]);
-    b = b.uniform(U_LANTERN, lantern_value);
+    b = b.uniform(U_LANTERN, lantern_instance_count);
     b = sampled(b, &i.arg10, B_ARG10);
     b = sampled(b, &i.gbuffer[0], B_GBUFFER_0);
     b = sampled(b, &i.gbuffer[1], B_GBUFFER_1);
@@ -228,18 +226,22 @@ pub fn deferred_raster<Tri: SsboType, Meta: SsboType, Bvh: SsboType, Wall: SsboT
     i: &DeferredInputs<'_>,
 ) {
     let time = ctx.elapsed.as_secs_f32();
-    // O：`AssetSsboLibrary::get::<LanternSsbo>` → 缺失 `expect`；值 = 缓冲首字低 32 位。
-    let lantern_value = ctx
+    // O：`AssetSsboLibrary::get::<LanternSsbo>` → 缺失 `expect`；值为实际灯笼实例数量。
+    let lantern_instance_count = ctx
         .host()
-        .ssbo_buffer_word(LanternBuffer::rg_buffer_hash())
+        .ssbo_instance_count_typed(
+            LanternBuffer::rg_buffer_hash(),
+            core::any::type_name::<LanternBuffer>(),
+        )
         .expect(UNWRAP_NONE);
-    let colors = [ColorSpec::tag1(i.lighting[1])];
-    let depth = DepthSpec::Write {
-        tex: i.depth,
-        layer: 0,
-        clear: None,
+    // B 1409d2216..2298: tag0 color = incoming r9, tag1 read-only
+    // depth = incoming r8 + 0x24. render_world supplies {gbuffer, depth}
+    // in r8 and the scene color in r9 (1404eca56..67).
+    let colors = [ColorSpec::tag0(i.depth)];
+    let depth = DepthSpec::ReadOnly {
+        tex: i.lighting[1],
     };
-    let mut pass = ctx.raster_pass(PASS_NAME, &colors, depth, i.lighting[0]);
+    let mut pass = ctx.raster_pass(PASS_NAME, &colors, depth, i.lighting[1]);
     for (material, flag) in ENTRIES {
         // O：`cmp r13, 5; jae panic_bounds_check` / `test byte [..], 1; je unwrap_failed`。
         let shader = i.shaders[material as usize].clone().expect(UNWRAP_NONE);
@@ -251,7 +253,7 @@ pub fn deferred_raster<Tri: SsboType, Meta: SsboType, Bvh: SsboType, Wall: SsboT
         );
         let mut b = DrawBuilder::new(&mut pass, packet, 0);
         b.packet_mut().unknown_b1 = stencil;
-        let mut b = bind_all::<Tri, Meta, Bvh, Wall>(b, i, time, lantern_value);
+        let mut b = bind_all::<Tri, Meta, Bvh, Wall>(b, i, time, lantern_instance_count);
         let p = b.packet_mut();
         p.state.0 = final_state(p.state.0);
         b.draw_no_vao(3);

@@ -12,16 +12,16 @@
 //! `bind_ray_tracing<ComputePass>`（O）：
 //!   1. 从 world 取 `AssetSsboLibrary`（TypeId D；缺失 `Option::unwrap`）；
 //!   2. 按 `SsboId` 取 `RtTrianglesSsbo` 与 `RtBvhSsbo` 的状态，`assert_eq!(state.name, type_name::<T>())`，
-//!      取其 `Buffer`（缺失 `Option::unwrap`）；
+//!      取实际 `InstanceBuffer`（缺失 `Option::unwrap`）；
 //!   3. 依次 `read_access_buffer<T>`（0x1a）+ 注册表追加：`RtTrianglesSsbo`/`0x168ddb2c3b5f38a9`、
 //!      `RtTriangleMetaSsbo`/`0x47ddebfb264383d0`、`RtBvhSsbo`/`0x339e76846042a271`、
 //!      `WallColorIdSsbo`/`0xe9701a257aa8828c`（ComputePass 版**不**写 CPU 缓冲）；
-//!   4. 两次 `write_uniform<u32>`：键 `0x1c9f2eef0ac739ac` ← `RtTriangles` 缓冲字（`Buffer+0` 低 32 位），
-//!      键 `0xc2b7f2fdf5e21521` ← `RtBvh` 缓冲字（取值来源为 I）。
+//!   4. 两次 `write_uniform<u32>`：键 `0x1c9f2eef0ac739ac` ← `RtTriangles` 的 instance_count 低 32 位，
+//!      键 `0xc2b7f2fdf5e21521` ← `RtBvh` 的 instance_count 低 32 位。
 //!
-//! 接入说明：真实 `resources::rt::*` / `color_id::WallColorIdSsbo` 目前没有 `StorageElement`/库 `SsboType` 实现
-//! （它们含 `Vec`，不满足 `Copy`），故 trait 默认实现用本文件的载体；真实类型就绪后直接调用泛型的
-//! [`bind_ray_tracing_compute`]。
+//! Fresh B recovery: RT entries use canonical InstanceBuffer storage: +0 is
+//! instance_count, +8 is the actual Buffer. The two uniforms receive count,
+//! never Buffer.id. Native add_new/upload/bind are one producer-consumer chain.
 
 // Preserve the original instruction-level expression order/NaN policy, API call shapes, and evidence/test transcription. See README.md.
 #![allow(clippy::doc_lazy_continuation)]
@@ -29,7 +29,7 @@ use crate::asset_libraries::ssbo_library::SsboType as LibrarySsbo;
 use crate::render::pass_builder::compute_pass_builder::{AccessRange, ComputePass};
 use crate::render::pass_builder::pass_resource_access::SsboType;
 use crate::render::pass_builder::pass_resources::PassResources;
-use crate::render::ssbo::{StorageElement, TypedStorageBuffer};
+use crate::render::ssbo::{InstanceCounted, StorageElement};
 use crate::rhapsody_contract::{PassBuilder, RenderPassBinding};
 
 /// 资源槽表项（DrawBuilder 版 `HashMap<&str, PassResourceSlot>` 的值）。
@@ -147,14 +147,16 @@ pub fn bind_color_library_compute(pass: &mut ComputePass) {
 pub fn bind_ray_tracing_compute<Tri, Meta, Bvh, Wall>(pass: &mut ComputePass)
 where
     Tri: LibrarySsbo,
+    Tri::Storage: InstanceCounted,
     Meta: LibrarySsbo,
     Bvh: LibrarySsbo,
+    Bvh::Storage: InstanceCounted,
     Wall: LibrarySsbo,
 {
     let library = pass.resources().ssbo_library();
-    // 先取两个缓冲（缺失 `Option::unwrap`；名字断言在 `get_buffer` 内）。
-    let triangles_word = library.get_buffer::<Tri>().unwrap().id as u32;
-    let bvh_word = library.get_buffer::<Bvh>().unwrap().id as u32;
+    // Original downcast returns InstanceBuffer: count at +0; Buffer begins +8.
+    let triangles_word = library.get::<Tri>().unwrap().instance_count() as u32;
+    let bvh_word = library.get::<Bvh>().unwrap().instance_count() as u32;
 
     pass.read_ssbo_in_place::<Tri>(RT_TRIANGLES_BINDING_HASH);
     pass.read_ssbo_in_place::<Meta>(RT_TRIANGLE_META_BINDING_HASH);
@@ -167,7 +169,7 @@ where
 
 // ---- SSBO 类型载体与 `SsboType` 实现 ----
 // `ColorLibrarySsbo` 由 WP4 `asset_libraries::color_library` 拥有；光线追踪 / 墙色 SSBO 载体为
-// typed-gap 占位（真实类型 `resources::rt::*`/`color_id::WallColorIdSsbo` 含 `Vec`，暂不满足 `StorageElement: Copy`）。
+// All four types now come from their real producer modules.
 
 /// WP4 拥有的颜色库 SSBO。
 pub use crate::asset_libraries::color_library::ColorLibrarySsbo;
@@ -178,47 +180,10 @@ fn ssbo_id_of<T: StorageElement>() -> u64 {
     crate::asset_libraries::ssbo_library::SsboId::of::<T>().0.0
 }
 
-macro_rules! carrier {
-    ($name:ident, $short:literal) => {
-        #[derive(Clone, Copy, Debug, Default)]
-        pub struct $name;
-        impl StorageElement for $name {
-            const NAME: &'static str = $short;
-            /// 单个结构体缓冲（载体无字段；真实布局 U）。
-            const BUFFER_LEN: usize = 1;
-            fn default_value() -> Option<Self> {
-                Some($name)
-            }
-        }
-        impl LibrarySsbo for $name {
-            type Storage = TypedStorageBuffer<$name>;
-            fn new_storage_buffer(
-                device: &dyn crate::render::ssbo::rhapsody_boundary::GraphicsDevice,
-                initial: Option<&[u8]>,
-            ) -> Self::Storage {
-                match initial {
-                    None => TypedStorageBuffer::<$name>::new(device, None),
-                    Some(bytes) => {
-                        TypedStorageBuffer::<$name>::new_storage_buffer(device, Some(bytes))
-                    }
-                }
-            }
-        }
-        impl SsboType for $name {
-            fn rg_buffer_hash() -> u64 {
-                ssbo_id_of::<$name>()
-            }
-        }
-    };
-}
-
-// NAME 均为机器码里的槽名（`rustc_entry` 的键，同时 `xxh3_64(NAME) == SsboId`，见本文件测试）：
-// "RtTriangles"(0xbea32db3bf3177c9)、"RtTriangleMeta"(0x0aa4d4a026938e06)、"RtBvh"(0x282b72fc752587c0)、
-// "WallColorIds"(0xaf42315d263aa22a，注意复数)。
-carrier!(RtTrianglesSsbo, "RtTriangles");
-carrier!(RtTriangleMetaSsbo, "RtTriangleMeta");
-carrier!(RtBvhSsbo, "RtBvh");
-carrier!(WallColorIdSsbo, "WallColorIds");
+// These aliases preserve one canonical producer/consumer TypeId. No zero-size
+// carrier or second same-NAME library entry is admitted.
+pub use crate::resources::color_id::WallColorIdSsbo;
+pub use crate::resources::rt::{RtBvhSsbo, RtTriangleMetaSsbo, RtTrianglesSsbo};
 
 impl SsboType for ColorLibrarySsbo {
     fn rg_buffer_hash() -> u64 {

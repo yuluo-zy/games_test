@@ -1,0 +1,38 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/dof_autofocus.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/dof_autofocus.rs
+@@ -71,7 +71,18 @@
+ impl LibrarySsbo for DofAutofocusSsbo {
+     type Storage = TypedStorageBuffer<DofAutofocusSsbo>;
+     fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
+-        TypedStorageBuffer::<DofAutofocusSsbo>::new_storage_buffer(device, initial)
++        // Original None@14161025c allocates0x200B and repeats the exact
++        //16B constant142ac7e60 ([0x41f00000;4]) through14161034a.
++        // This is128 f32 bit-patterns for30.0, not a zero Default record.
++        let native_defaults;
++        let data = match initial {
++            Some(bytes) => Some(bytes),
++            None => {
++                native_defaults = [0x41f00000u32; 128];
++                Some(bytemuck::cast_slice(&native_defaults))
++            }
++        };
++        TypedStorageBuffer::<DofAutofocusSsbo>::new_storage_buffer(device, data)
+     }
+ }
+ 
+@@ -469,9 +480,13 @@
+             (0x200, 0x22, 1, 4)
+         );
+         assert_eq!(name, "DofAutofocusSsbo");
++        let data = data
++            .as_ref()
++            .expect("native autofocus None uploads defaults");
++        assert_eq!(data.len(), 0x200);
+         assert!(
+-            data.is_none(),
+-            "BUFFER_LEN > 0 without data uploads nothing (O)"
++            data.chunks_exact(4)
++                .all(|word| u32::from_le_bytes(word.try_into().unwrap()) == 0x41f00000)
+         );
+         assert_eq!(
+             DofAutofocusSsbo::BUFFER_LEN * size_of::<DofAutofocusSsbo>(),

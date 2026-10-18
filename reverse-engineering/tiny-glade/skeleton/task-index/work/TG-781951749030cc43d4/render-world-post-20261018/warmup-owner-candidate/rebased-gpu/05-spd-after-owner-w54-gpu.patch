@@ -1,0 +1,135 @@
+--- a/crates/tiny-glade/tests/original_scene_compute_gpu.rs
++++ b/crates/tiny-glade/tests/original_scene_compute_gpu.rs
+@@ -1191,3 +1191,132 @@
+         }
+     }
+ }
++
++/// Native temporal buffers upload zero bytes even though their first history
++/// byte is false. Exercise the actual original SPD cross-workgroup path twice,
++/// with a fresh base image each frame and the same physical atomic allocation.
++#[test]
++fn original_spd_large_mip_chain_uses_uploaded_zero_atomic_and_reuses_it_next_frame() {
++    use country_core::render::ssbo::rhapsody_boundary::BufferDesc as CoreBufferDesc;
++    use rhapsody::rg::resource::AccessRange;
++    let Some(mut fixture) = Fixture::new() else { return };
++    let observed = Arc::new(std::sync::Mutex::new(Vec::new()));
++    for frame_index in 0..2u32 {
++        let source = Arc::new(rhapsody::raw::texture::Texture::new(
++            fixture.device.clone(),
++            &rhapsody::raw::texture::TextureDesc::new_2d(256, 256, vk::Format::B10G11R11_UFLOAT_PACK32)
++                .mip_levels(9)
++                .usage(vk::ImageUsageFlags::STORAGE | vk::ImageUsageFlags::TRANSFER_SRC | vk::ImageUsageFlags::TRANSFER_DST),
++        ).unwrap());
++        let output = Arc::new(rhapsody::raw::buffer::Buffer::new(
++            fixture.device.clone(),
++            &rhapsody::raw::buffer::BufferDesc::new_gpu_to_cpu(44, vk::BufferUsageFlags::TRANSFER_DST),
++        ).unwrap());
++        let (_, built) = fixture.bridge.build_frame(|frame| {
++            tiny_glade::frame_setup::with_frame_resources(frame, &mut fixture.world, |frame, world| {
++                let source_id = frame.import_native_texture(source.clone(), 0)?;
++                let output_id = frame.import_native_buffer(output.clone(), 0)?;
++                // Independent diagnostic named-buffer probe uses explicit
++                // TRANSFER_SRC; the actual SPD counter keeps native usage0x20.
++                let probe = frame.with_compute(|compute| {
++                    compute.get_or_create_temporal_buffer(
++                        "SPD creation zero-upload diagnostic",
++                        &CoreBufferDesc::new_gpu_only(24, 0x21),
++                    ).map_err(|e| rhapsody::Error::invalid_usage(format!("named zero probe: {e}")))
++                })?;
++                assert_eq!(probe.flag, frame_index as u8);
++                frame.with_graph(|graph| {
++                    let mut clear = graph.add_pass("fixture initialize only SPD mip0");
++                    clear.add_resource_access_range(source_id, 0x34, 0, AccessRange::Texture {
++                        aspect_mask: 1, base_mip_level: 0, level_count: 1, base_array_layer: 0, layer_count: 1,
++                    })?;
++                    let device = fixture.device.clone();
++                    let source = source.clone();
++                    clear.render_with_result_context(move |ctx| {
++                        let color = if frame_index == 0 { [1., 0., 0., 1.] } else { [0., 1., 0., 1.] };
++                        unsafe {
++                            device.device.cmd_clear_color_image(
++                                vk::CommandBuffer::from_raw(ctx.command.handle()), source.handle,
++                                vk::ImageLayout::TRANSFER_DST_OPTIMAL, &vk::ClearColorValue { float32: color },
++                                &[vk::ImageSubresourceRange::default()
++                                    .aspect_mask(vk::ImageAspectFlags::COLOR).level_count(1).layer_count(1)],
++                            );
++                        }
++                        Ok(())
++                    });
++                    Ok(())
++                })?;
++                scene_compute::SceneComputeHost::new(frame, world).generate_mips(
++                    &RgTexture { resource: source_id.raw(), desc: TextureDesc::new_2d([256, 256], 0x7a).storage().mip_levels(9) },
++                    "large original SPD fixture",
++                )?;
++                frame.with_graph(|graph| {
++                    let atomic_index = graph.declaration().resources.iter().position(|resource|
++                        resource.name.contains("SPD Atomic: large original SPD fixture"))
++                        .expect("the original consumer must request its real named counter");
++                    let atomic = graph.resource_handle(atomic_index as u32)?;
++                    let atomic_id = graph.buffer_id(atomic)?;
++                    let probe = graph.resource_handle(probe.buffer.resource)?;
++                    let mut read = graph.add_pass("fixture read SPD last mips and real zero-upload probe");
++                    read.add_resource_access_range(source_id, 0x25, 0, AccessRange::Texture {
++                        aspect_mask: 1, base_mip_level: 7, level_count: 2, base_array_layer: 0, layer_count: 1,
++                    })?;
++                    read.add_resource_access(atomic, 0x19, 0)?;
++                    read.add_resource_access(probe, 0x25, 0)?;
++                    read.add_resource_access(output_id, 0x34, 0)?;
++                    let device = fixture.device.clone();
++                    let source = source.clone();
++                    let output = output.clone();
++                    let observed = observed.clone();
++                    read.render_with_result_context(move |ctx| {
++                        assert_eq!(ctx.buffer_history_valid(atomic_id)?, frame_index != 0);
++                        let managed = ctx.managed.as_ref().expect("real graph-managed resources");
++                        let counter = managed.buffer_for(atomic.raw())?;
++                        assert_eq!(counter.size, 24);
++                        assert!(counter.usage.contains(vk::BufferUsageFlags::STORAGE_BUFFER | vk::BufferUsageFlags::TRANSFER_DST));
++                        assert!(!counter.usage.contains(vk::BufferUsageFlags::TRANSFER_SRC),
++                            "do not change the native counter usage merely to inspect it");
++                        observed.lock().unwrap().push(counter.shared());
++                        let probe = managed.buffer_for(probe.raw())?;
++                        let command = vk::CommandBuffer::from_raw(ctx.command.handle());
++                        unsafe {
++                            device.device.cmd_copy_image_to_buffer(
++                                command, source.handle, vk::ImageLayout::TRANSFER_SRC_OPTIMAL, output.handle,
++                                &[
++                                    vk::BufferImageCopy::default().image_subresource(vk::ImageSubresourceLayers::default()
++                                        .aspect_mask(vk::ImageAspectFlags::COLOR).mip_level(7).layer_count(1))
++                                        .image_extent(vk::Extent3D { width: 2, height: 2, depth: 1 }),
++                                    vk::BufferImageCopy::default().buffer_offset(16)
++                                        .image_subresource(vk::ImageSubresourceLayers::default()
++                                            .aspect_mask(vk::ImageAspectFlags::COLOR).mip_level(8).layer_count(1))
++                                        .image_extent(vk::Extent3D { width: 1, height: 1, depth: 1 }),
++                                ],
++                            );
++                            device.device.cmd_copy_buffer(command, probe.handle, output.handle,
++                                &[vk::BufferCopy::default().dst_offset(20).size(24)]);
++                        }
++                        Ok(())
++                    });
++                    graph.export(output_id, 0x26)?;
++                    Ok(())
++                })
++            })
++        }).unwrap();
++        fixture.bridge.shader_backend().prewarm(Duration::from_secs(30)).unwrap();
++        let receipt = fixture.bridge.execute_built(built).unwrap();
++        assert_eq!(receipt.snapshot.pass_order.iter().filter(|name| name.as_str() == "Generate mips").count(), 1);
++        assert!(receipt.snapshot.pass_order.iter().any(|name| name == "fixture initialize only SPD mip0"));
++        fixture.bridge.wait_submits_done(10_000_000_000).unwrap();
++        let mut bytes = [0u8; 44];
++        output.read_bytes(0, &mut bytes).unwrap();
++        let expected = if frame_index == 0 { 0x3c0u32 } else { 0x3c0u32 << 11 };
++        for pixel in bytes[..20].chunks_exact(4) {
++            assert_eq!(u32::from_le_bytes(pixel.try_into().unwrap()), expected,
++                "original SPD last two mip levels, frame {frame_index}");
++        }
++        assert_eq!(&bytes[20..], &[0; 24], "actual uploaded complete zero slice remains readable");
++    }
++    let counters = observed.lock().unwrap();
++    assert_eq!(counters.len(), 2);
++    assert!(Arc::ptr_eq(&counters[0], &counters[1]), "the second frame must reuse the actual atomic allocation");
++}

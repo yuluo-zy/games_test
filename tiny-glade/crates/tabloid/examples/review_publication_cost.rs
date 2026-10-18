@@ -7,6 +7,8 @@ use std::{
 use tabloid::{Publisher, State, StateDelta};
 struct CountedSystem;
 static ALLOCATIONS: AtomicUsize = AtomicUsize::new(0);
+// SAFETY: every operation delegates unchanged pointer/layout contracts to System.
+// Atomic counters neither allocate nor inspect memory behind caller pointers.
 unsafe impl GlobalAlloc for CountedSystem {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         ALLOCATIONS.fetch_add(1, Ordering::Relaxed);
@@ -42,9 +44,9 @@ impl State for Fixed {
     }
 }
 impl StateDelta<Fixed> for u64 {
-    fn apply_to(&self, s: &mut Fixed) {
+    fn apply_to(&self, state: &mut Fixed) {
         APPLIES.fetch_add(1, Ordering::Relaxed);
-        s.0[0] |= self;
+        state.0[0] |= self;
     }
 }
 #[derive(Default)]
@@ -61,9 +63,9 @@ impl State for Growing {
     }
 }
 impl StateDelta<Growing> for u64 {
-    fn apply_to(&self, s: &mut Growing) {
+    fn apply_to(&self, state: &mut Growing) {
         APPLIES.fetch_add(1, Ordering::Relaxed);
-        s.0.push(*self);
+        state.0.push(*self);
     }
 }
 fn run<T: State>(name: &str)

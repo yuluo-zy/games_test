@@ -1,6 +1,20 @@
-# motomoto：原作 B 版业务规则
+> 历史原作对照记录。2026-10-17 源码已工程化重构，修正了本文件记录的坏输入与 I/O 故障行为；以下实现名、测试数、源码哈希与零差异结论仅适用于历史快照。当前合同以 [README.md](README.md) 为准。本次未重新逆向或升级原进程验收。
 
-状态：可调用 chunk 写入→长度回填→slice 读取链已经实现并编译验证。Reader 的 173 个受控原指令案例与候选零差异；Writer/Drop 目前为原指令静态规则对照与候选格式/失败测试，未称为原 Writer 入口运行验收。完整游戏存档消费链接线仍未完成。
+# motomoto：原作 B 版业务规则（历史记录）
+
+## 当前修正规则
+
+发现的错误不会再因“历史行为”或“兼容测试”而保留。2026-10-17 已完成以下修正：
+
+- 空 chunk 在末尾正常返回；残缺头和 payload 返回一次 `UnexpectedEof`，随后永久终止。
+- 任意 `u64` payload 长度都经过输入范围校验，取消 signed cast、向后 seek 和坏输入 panic。
+- 写入位置采用受检算术；I/O 故障永久标记 writer 失败，不消费或清除错误后继续写入。
+- `ChunkWriter::finish()` 显式报告回填错误；Drop 仅兜底，不重试失败回填。
+- 固化旧错误的生成用例已删除，当前十个测试验证修正后的合同。
+
+下文只保留原作观察和历史验证出处，不作为当前实现要求。
+
+2026-10-13 历史状态：可调用 chunk 写入→长度回填→slice 读取链已经实现并编译验证。Reader 的 173 个受控原指令案例与候选零差异；Writer/Drop 目前为原指令静态规则对照与候选格式/失败测试，未称为原 Writer 入口运行验收。完整游戏存档消费链接线仍未完成。
 
 ## 来源和证据身份
 
@@ -12,7 +26,7 @@
 
 ## Observed（观察事实）
 
-| 原规则 | 依据 | 实现与对照 |
+| 原规则 | 依据 | 历史实现与对照（已过期） |
 |---|---|---|
 | u64 tag 原值返回；字符串取 UTF-8 原字节、零补足 8 字节、LE 解释；strict 版本长度超过 8 bytes panic，trunc 版本仅保留前 8 bytes，可以截断多字节字符 | tags-rne-disassembly.txt：0x142080ca0、0x142080d00；Writer u64 调用 0x1400885d0 | AsTag/tag_from_str/tag_from_str_trunc/tag_from_le_bytes_truncated；候选 tag 边界测试 |
 | chunk 无额外 magic/padding：tag:u64 LE、payload_length:u64 LE，随后原 payload bytes | writer-rne-disassembly.txt 中当前 Cursor 位置写 tag、位置+8 写零；Reader 0x142080de6/0x142080dea 取两 word | Writer::add_chunk + byteorder；黄金字节格式与连续写读测试 |
@@ -58,9 +72,9 @@
 
 首次 cargo test 因child进程未带MSVC PATH/LIB而缺link.exe（cargo-test.log），改用已安装BuildTools/SDK的child环境后通过；未安装工具或改全局配置。模型环境可见ReVa namespace没有加载程序；SDK worker读取Reader成功但后续Writer反编译请求卡住，read-result.json保留为部分报告，不能把其ok=false称全批成功。Writer采用原RNE disassembly核对。
 
-独立回看修正：首版Drop仅Err赋值，现改为直接Result.err()替换；首版地址/长度算术使用debug可溢出操作，现显式wrapping对应原release指令。普通roundtrip容易漏掉末尾16-byte空chunk，当前严格保留原>=边界。剩余未知不是零差异。
+历史回看记录：当时将 Drop 错误槽替换和 wrapping 算术调整为原 release 行为，并保留了末尾 16 字节空 chunk 被忽略的原边界。2026-10-17 已取消这些错误行为：错误槽永久保留失败，位置使用受检算术，末尾空段正常读取。
 
 
 ## 2026-10-13 独立模块验收补充
 
-[FUNCTIONALITY.md](FUNCTIONALITY.md)登记当前模块全功能和实际File/BufWriter/故障合同验收。核心规则未改；历史本文的6测试数字是当时结果，本轮总计11测试。原flush及原泛型失败动态合同仍Unknown。游戏consumer后续单列，不在本轮独立库范围。
+2026-10-13 当时登记了 11 项候选测试；本历史记录中的测试数和“核心规则未改”结论不再适用于当前源码。当前模块合同与验证以 [FUNCTIONALITY.md](FUNCTIONALITY.md) 为准。原 flush 及原泛型失败动态合同仍属历史未验范围，游戏消费者接线仍另列。

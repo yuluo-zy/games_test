@@ -268,8 +268,8 @@ mod tests {
     #[test]
     fn mapped_critters_are_library_ssbos_with_the_original_buffer_sizes() {
         use crate::asset_libraries::ssbo_library::AssetSsboLibrary;
-        use crate::rhapsody_contract::GraphicsDevice;
-        let dev = GraphicsDevice(1);
+        use crate::render::test_device::TestDevice;
+        let dev = TestDevice(1);
         let lib = AssetSsboLibrary::new();
         lib.add_new::<ButterflySsbo>(&dev);
         lib.add_new::<FireflySsbo>(&dev);

@@ -1,0 +1,135 @@
+{
+  "entryPoints": [
+    {
+      "name": "ps_main",
+      "mode": "frag"
+    }
+  ],
+  "types": {
+    "_34": {
+      "name": "type.$Globals",
+      "members": [
+        {
+          "name": "blue_noise_texture_dims",
+          "type": "uvec2",
+          "offset": 0
+        },
+        {
+          "name": "window_size_pixels",
+          "type": "vec2",
+          "offset": 8
+        },
+        {
+          "name": "font_atlas_tex_dims",
+          "type": "uvec2",
+          "offset": 16
+        }
+      ]
+    },
+    "_37": {
+      "name": "type.ByteAddressBuffer",
+      "members": [
+        {
+          "name": "_m0",
+          "type": "uint",
+          "array": [
+            0
+          ],
+          "array_size_is_literal": [
+            true
+          ],
+          "offset": 0,
+          "array_stride": 4
+        }
+      ]
+    }
+  },
+  "inputs": [
+    {
+      "type": "vec2",
+      "name": "in.var.C0",
+      "location": 0
+    },
+    {
+      "type": "vec4",
+      "name": "in.var.C1",
+      "location": 1
+    },
+    {
+      "type": "vec4",
+      "name": "in.var.C2",
+      "location": 2
+    },
+    {
+      "type": "uint",
+      "name": "in.var.C3",
+      "location": 3
+    }
+  ],
+  "outputs": [
+    {
+      "type": "vec4",
+      "name": "out.var.SV_TARGET",
+      "location": 0
+    }
+  ],
+  "separate_images": [
+    {
+      "type": "texture2D",
+      "name": "bindless_textures_dyn",
+      "array": [
+        0
+      ],
+      "array_size_is_literal": [
+        true
+      ],
+      "set": 2,
+      "binding": 0
+    },
+    {
+      "type": "texture2D",
+      "name": "blue_noise_texture",
+      "set": 0,
+      "binding": 14
+    },
+    {
+      "type": "texture2D",
+      "name": "font_atlas_tex",
+      "set": 0,
+      "binding": 17
+    }
+  ],
+  "separate_samplers": [
+    {
+      "type": "sampler",
+      "name": "sampler_lnc",
+      "set": 0,
+      "binding": 0
+    },
+    {
+      "type": "sampler",
+      "name": "sampler_llc",
+      "set": 0,
+      "binding": 3
+    }
+  ],
+  "ssbos": [
+    {
+      "type": "_37",
+      "name": "shape_stream",
+      "readonly": true,
+      "block_size": 0,
+      "set": 0,
+      "binding": 16
+    }
+  ],
+  "ubos": [
+    {
+      "type": "_34",
+      "name": "type.$Globals",
+      "block_size": 24,
+      "set": 0,
+      "binding": 13
+    }
+  ]
+}

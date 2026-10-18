@@ -1,0 +1,142 @@
+--- a/crates/country-core/src/render/pass_builder/compute_pass_builder.rs
++++ b/crates/country-core/src/render/pass_builder/compute_pass_builder.rs
+@@ -206,6 +206,8 @@
+     /// Image binding indices whose writes retain previously produced texels.
+     pub preserving_texture_bindings: Vec<u8>,
+     pub external_bindings: Vec<ExternalBinding>,
++    /// Immutable physical ranges read through shader device addresses.
++    pub device_address_reads: Vec<rhapsody::raw::dynamic_constants::DynamicConstantsChunk>,
+     pub uniform_binder: Option<UniformBinder>,
+     pub push_constants: Vec<u8>,
+     pub program: Option<Handle<ComputeShaderProgram>>,
+@@ -373,8 +375,21 @@
+ }
+ 
+ impl RecordedComputePass {
++    /// Attach actual BDA upload allocations, never numeric lifetime tokens.
++    /// The production graph imports their physical buffers/ranges and its
++    /// existing command owner protocol retains them through GPU completion.
++    pub fn with_device_address_reads(
++        mut self,
++        chunks: Vec<rhapsody::raw::dynamic_constants::DynamicConstantsChunk>,
++    ) -> Self {
++        self.device_address_reads.extend(chunks);
++        self
++    }
++
+     /// 见 [`ComputeExecution::execute`]。
+     pub fn execute(self, exec: &mut dyn ComputeExec) {
++        assert!(self.device_address_reads.is_empty(),
++            "BDA upload ranges require the production graph command owner path");
+         ComputeExecution {
+             push_constants: self.push_constants,
+             dispatch: self.dispatch,
+@@ -831,6 +846,7 @@
+             preserving_buffers: self.preserving_buffers,
+             preserving_texture_bindings: self.preserving_texture_bindings,
+             external_bindings: self.external_bindings,
++            device_address_reads: Vec::new(),
+             uniform_binder: self.uniform_binder,
+             push_constants: self.push_constants,
+             program: self.program,
+--- a/crates/tiny-glade/src/render_host.rs
++++ b/crates/tiny-glade/src/render_host.rs
+@@ -2201,6 +2201,7 @@
+             preserving_buffers,
+             preserving_texture_bindings,
+             external_bindings,
++            device_address_reads,
+             uniform_binder,
+             push_constants,
+             dispatch,
+@@ -2358,6 +2359,44 @@
+             external_accesses.push((handle, range, code));
+             upsert_shader_resource(&mut external_resources, external.binding, resource)?;
+         }
++        // BDA pointers are not descriptor bindings, but their physical reads
++        // still participate in this graph's synchronization and owner program.
++        // The same import/session owns cancellation and completion retirement.
++        let mut device_address_accesses = Vec::new();
++        device_address_accesses
++            .try_reserve_exact(device_address_reads.len())
++            .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
++        for chunk in device_address_reads {
++            if chunk.size == 0
++                || chunk
++                    .offset
++                    .checked_add(chunk.size)
++                    .is_none_or(|end| end > chunk.buffer.size)
++            {
++                return Err(rhapsody::Error::invalid_usage("invalid BDA upload range"));
++            }
++            // Validate actual BDA admission even if a future caller bypasses
++            // the terrain uploader's own device_address() call.
++            chunk.device_address()?;
++            let mut session = self
++                .cache_session
++                .as_mut()
++                .map(GraphSession::borrow_mut)
++                .transpose()?
++                .ok_or_else(|| {
++                    rhapsody::Error::unsupported(
++                        "BDA upload ranges require the frame driver's session",
++                    )
++                })?;
++            let handle = session.import_frame_buffer(&mut graph, chunk.buffer.clone(), 0x1a)?;
++            device_address_accesses.push((
++                handle,
++                rhapsody::rg::resource::AccessRange::Buffer {
++                    offset: chunk.offset,
++                    size: chunk.size,
++                },
++            ));
++        }
+         for range in &access_ranges {
+             if bindings.get(range.access_index as usize).is_none() {
+                 return Err(rhapsody::Error::invalid_usage(
+@@ -2421,6 +2460,9 @@
+         }
+         for (resource, range, code) in external_accesses {
+             declared.add_resource_access_range(resource, code, 0, range)?;
++        }
++        for (resource, range) in device_address_accesses {
++            declared.add_resource_access_range(resource, 0x1a, 1, range)?;
+         }
+         if external_writes {
+             declared.side_effect();
+--- a/crates/tiny-glade/src/compute_frame.rs
++++ b/crates/tiny-glade/src/compute_frame.rs
+@@ -202,6 +202,7 @@
+             inactive_texture_bindings: Vec::new(),
+             preserving_buffers: Vec::new(),
+             preserving_texture_bindings: Vec::new(),
++            device_address_reads: Vec::new(),
+             external_bindings: Vec::new(),
+             uniform_binder: None,
+             push_constants: Vec::new(),
+--- a/crates/tiny-glade/tests/render_host.rs
++++ b/crates/tiny-glade/tests/render_host.rs
+@@ -564,6 +564,7 @@
+                 inactive_texture_bindings: Vec::new(),
+                 preserving_buffers: Vec::new(),
+                 preserving_texture_bindings: Vec::new(),
++                device_address_reads: Vec::new(),
+                 external_bindings: if external {
+                     vec![ExternalBinding {
+                         binding: 0,
+@@ -1343,6 +1344,7 @@
+                 inactive_texture_bindings: Vec::new(),
+                 preserving_buffers: Vec::new(),
+                 preserving_texture_bindings: Vec::new(),
++                device_address_reads: Vec::new(),
+                 external_bindings: vec![
+                     ExternalBinding {
+                         binding: 0,
+@@ -1694,6 +1696,7 @@
+                         inactive_texture_bindings: vec![if inactive_first { 0 } else { 2 }],
+                         preserving_buffers: vec![],
+                         preserving_texture_bindings: Vec::new(),
++                        device_address_reads: Vec::new(),
+                         external_bindings: vec![],
+                         uniform_binder: None,
+                         push_constants: vec![],

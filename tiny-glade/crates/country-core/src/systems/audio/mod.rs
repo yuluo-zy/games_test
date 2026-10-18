@@ -100,13 +100,14 @@ pub struct PlayClutterSoundCmd {
     pub context: u8,
 }
 
-/// `PlaySheepReactSound` (sheep_audio). Slot stride 0x20, pitch f32 @+0x14,
-/// kind u8 @+0x18.
+/// `PlaySheepReactSound` (sheep_audio). Slot stride 0x20; payload (from +8):
+/// position Vec3 @+8, pitch f32 @+0x14, kind u8 @+0x18.
 #[derive(Event, Clone, Copy, Debug, PartialEq)]
 pub struct PlaySheepReactSound {
-    pub kind: u8,
+    pub position: Vec3,
     /// O: pitch f32 @+0x14 (set_parameter("Pitch", value)).
     pub pitch: f32,
+    pub kind: u8,
 }
 
 /// `PlayMenuUiSound` (menu_audio). Slot stride 0x10, kind u8 @+0x8.
@@ -115,11 +116,22 @@ pub struct PlayMenuUiSound {
     pub kind: u8,
 }
 
-/// `PlayTreeSoundCmd` (tree_audio). Kind: 0 → TreePlace, 2 → TreeDelete,
-/// 1 → ignored; position @+8.
+/// `PlayTreeSoundCmd` (tree_audio). Slot stride 0x20; payload (from +8):
+/// kind u8 @+8, selector byte @+9, extra byte @+0xa, value f32 @+0xc,
+/// position Vec3 @+0x10.
+///
+/// Kind 0 → TreePlace (value = tree_size, byte@+9 = in_water, byte@+0xa =
+/// is_naked); kind 1 → the frame-end TreeMove loop (byte@+9 = in_water,
+/// value = tree_size, byte@+9 == 2 → stop); kind 2 → TreeDelete.
 #[derive(Event, Clone, Copy, Debug, PartialEq)]
 pub struct PlayTreeSoundCmd {
     pub kind: u8,
+    /// O: payload byte @+9 (in_water / TreeMove selector: 2 stops the loop).
+    pub selector: u8,
+    /// O: payload byte @+0xa (is_naked for TreePlace).
+    pub extra: u8,
+    /// O: payload f32 @+0xc (tree_size).
+    pub value: f32,
     pub position: Vec3,
 }
 
@@ -130,13 +142,18 @@ pub struct PlayReplayAudio {
     pub kind: u8,
 }
 
-/// `PlayWallUiSound` (wall_audio_ui). Kind dispatch to instantiate_audio_w_position.
+/// `PlayWallUiSound` (wall_audio_ui). Native slot stride 0x20: kind u8 @+8,
+/// selector byte @+9, value f32 @+0xc, position Vec3 @+0x10. Kinds 6/9/0xf/0x10
+/// select by the byte@+9; kinds 0/0xd/0xe carry a parameter value@+0xc.
 #[derive(Event, Clone, Copy, Debug, PartialEq)]
 pub struct PlayWallUiSound {
     pub kind: u8,
+    /// Byte @+9 (O: selector for ColorBricks isHalfTimbered, Flags
+    /// ToggleDisconnect/Connect, Chimney ToggleSmoke, ChangeWallStyle).
+    pub selector: u8,
+    /// f32 @+0xc (O: StructureSize, LanternColor, BrightnessValue parameter).
+    pub value: f32,
     pub position: Vec3,
-    /// Flag byte (e.g. Chimney ToggleSmokeOn|Off selector @+0x9).
-    pub flag: u8,
 }
 
 /// `PlayDecoratorSoundCmd` (decorator_audio). Kind dispatch into the 16-loop
@@ -147,11 +164,21 @@ pub struct PlayDecoratorSoundCmd {
     pub position: Vec3,
 }
 
-/// `PlayTimberframeSound` (timberframe_audio). Kind dispatch.
+/// `PlayTimberframeSound` (timberframe_audio). Native payload (no bevy
+/// bookmark): kind u8 @0, flag byte @+1, speed-source f32 @+4, position Vec3
+/// @+8, value f32 @+0x14. Kinds 0/1 arm the Width/Length loops (speed source
+/// @+4 divided by the shared editing speed), kind 3 the Move loop (speed
+/// source @+4, no division), kinds 2/4/5/6/7 are one-shots.
 #[derive(Event, Clone, Copy, Debug, PartialEq)]
 pub struct PlayTimberframeSound {
     pub kind: u8,
+    /// O: byte @+1 (is_on_ground for the Move loop).
+    pub flag: u8,
+    /// O: f32 @+4 (inverse_lerp input).
+    pub speed_source: f32,
     pub position: Vec3,
+    /// O: f32 @+0x14 (BuildingSize instance parameter).
+    pub value: f32,
 }
 
 /// `PlayElevationSupportSoundCmd` (elevation_supports_audio). Kind selects one
@@ -168,13 +195,15 @@ pub struct PlayElevationSupportSoundCmd {
 pub struct SuppressPathSound;
 
 /// `RequestWallMaterialAudio` (wall_audio_orchestrator): request a material-parameter
-/// update for the wall identified by `id` (GlobalId hash key).
+/// update for the wall identified by `id`. B draw_wall @140a7ed56..ed9c
+/// publishes the actual position, kind byte2 and flag byte0; no scalar value
+/// is present in that payload.
 #[derive(Event, Clone, Copy, Debug, PartialEq)]
 pub struct RequestWallMaterialAudio {
     pub id: u64,
     pub position: Vec3,
-    pub value: f32,
     pub kind: u8,
+    pub flag: u8,
 }
 
 /// `WallBendAudioParamReset` (wall audio): reset a bend-related loop parameter.
@@ -219,6 +248,9 @@ where
     M: crate::systems::audio::music::music_player::MusicBackend + Resource,
 {
     use crate::systems::audio::music::music_debug_gui::music_debug_gui;
+    use bevy_ecs::schedule::common_conditions::{not, resource_exists};
+    // Keep each existing domain owner across frames; commit its one-time
+    // initialization before its first consumer instead of replacing it each Update.
     schedule.add_systems(music_debug_gui::<M::Event>);
     schedule.add_systems((
         water_audio::water_audio_system::<S>,
@@ -228,56 +260,127 @@ where
     schedule.add_systems((
         // G6 六域（① a 契约 §1）：timberframe / elevation_supports / clutter /
         // forest / tree / firstperson_steps。
-        timberframe_audio::timberframe_audio_init_system::<S>,
-        timberframe_audio::timberframe_audio::<S>,
+        (
+            timberframe_audio::timberframe_audio_init_system::<S>
+                .run_if(not(resource_exists::<timberframe_audio::TimberframeAudioState<S::Event>>)),
+            timberframe_audio::timberframe_audio::<S>,
+        )
+            .chain(),
         elevation_supports_audio::elevation_supports_audio::<S>,
         clutter_audio::clutter_audio_system::<S>,
-        forest_audio::forest_audio_init_system::<S>,
-        forest_audio::forest_audio_system::<S>,
-        tree_audio::tree_audio_init_system::<S>,
-        tree_audio::tree_audio_system::<S>,
-        firstperson_steps::firstperson_steps_init_system::<S>,
-        firstperson_steps::firstperson_steps::<S>,
+        (
+            forest_audio::forest_audio_init_system::<S>
+                .run_if(not(resource_exists::<forest_audio::ForestAudioState<S::Event>>)),
+            forest_audio::forest_audio_system::<S>,
+        )
+            .chain(),
+        (
+            tree_audio::tree_audio_init_system::<S>
+                .run_if(not(resource_exists::<tree_audio::TreeAudioState<S::Event>>)),
+            tree_audio::tree_audio_system::<S>,
+        )
+            .chain(),
+        (
+            firstperson_steps::firstperson_steps_init_system::<S>
+                .run_if(not(resource_exists::<firstperson_steps::FirstPersonViewAudioState<S::Event>>)),
+            firstperson_steps::firstperson_steps::<S>,
+        )
+            .chain(),
         // F3：garden_audio（T1）。
-        garden_audio::garden_audio_init_system::<S>,
-        garden_audio::garden_audio_system::<S>,
+        (
+            garden_audio::garden_audio_init_system::<S>
+                .run_if(not(resource_exists::<garden_audio::GardenAudioState<S::Event>>)),
+            garden_audio::garden_audio_system::<S>,
+        )
+            .chain(),
         // crate 其余音频域（init + main），批 1。
         audio_update::audio_update_system::<S>,
         audio_update::boot_audio_update_system::<S>,
-        building_audio::building_audio_init_system::<S>,
-        building_audio::building_audio::<S>,
-        decorator_audio::decorator_audio_init_system::<S>,
-        decorator_audio::decorator_audio_system::<S>,
-        game_loading_audio::init_game_loading_audio::<S>,
-        game_loading_audio::loading_audio::<S>,
+        (
+            building_audio::building_audio_init_system::<S>
+                .run_if(not(resource_exists::<building_audio::BuildingAudioState<S::Event>>)),
+            building_audio::building_audio::<S>,
+        )
+            .chain(),
+        (
+            decorator_audio::decorator_audio_init_system::<S>
+                .run_if(not(resource_exists::<decorator_audio::DecoratorAudioState<S::Event>>)),
+            decorator_audio::decorator_audio_system::<S>,
+        )
+            .chain(),
+        (
+            game_loading_audio::init_game_loading_audio::<S>
+                .run_if(not(resource_exists::<game_loading_audio::GameLoadingAudioState<S::Event>>)),
+            game_loading_audio::loading_audio::<S>,
+        )
+            .chain(),
     ));
     schedule.add_systems((
-        menu_audio::menu_audio_init_system::<S>,
-        menu_audio::menu_audio::<S>,
-        path_audio::path_audio_init_system::<S>,
-        path_audio::path_audio_system::<S>,
-        playermade_stairs_audio::stairs_audio_init_system::<S>,
-        playermade_stairs_audio::stairs_audio_system::<S>,
-        replay_audio::replay_audio_init_system::<S>,
-        replay_audio::replay_audio_system::<S>,
-        sheep_audio::sheep_audio_init_system::<S>,
-        sheep_audio::sheep_audio_system::<S>,
-        signifier_audio::signifier_audio_init_system::<S>,
-        signifier_audio::signifier_audio_system::<S>,
-        terrain_audio::terrain_audio_init_system::<S>,
-        terrain_audio::terrain_audio_system::<S>,
-        terrain_stairs_audio::terrain_stairs_audio_init_system::<S>,
-        terrain_stairs_audio::terrain_stairs_audio_system::<S>,
-        trigger_audio::trigger_audio_init_system::<S>,
-        trigger_audio::trigger_audio_system::<S>,
-        wall_audio_fmod::wall_audio_init_system::<S>,
-        wall_audio_fmod::wall_audio_fmod::<S>,
+        (
+            menu_audio::menu_audio_init_system::<S>
+                .run_if(not(resource_exists::<menu_audio::MenuAudioState<S::Event>>)),
+            menu_audio::menu_audio::<S>,
+        )
+            .chain(),
+        (
+            path_audio::path_audio_init_system::<S>
+                .run_if(not(resource_exists::<path_audio::PathAudioState<S::Event>>)),
+            path_audio::path_audio_system::<S>,
+        )
+            .chain(),
+        (
+            playermade_stairs_audio::stairs_audio_init_system::<S>
+                .run_if(not(resource_exists::<playermade_stairs_audio::StairsAudioState<S::Event>>)),
+            playermade_stairs_audio::stairs_audio_system::<S>,
+        )
+            .chain(),
+        (
+            replay_audio::replay_audio_init_system::<S>
+                .run_if(not(resource_exists::<replay_audio::ReplayAudioState<S::Event>>)),
+            replay_audio::replay_audio_system::<S>,
+        )
+            .chain(),
+        (
+            sheep_audio::sheep_audio_init_system::<S>
+                .run_if(not(resource_exists::<sheep_audio::SheepAudioState<S::Event>>)),
+            sheep_audio::sheep_audio_system::<S>,
+        )
+            .chain(),
+        (
+            signifier_audio::signifier_audio_init_system::<S>
+                .run_if(not(resource_exists::<signifier_audio::SignifierAudioState<S::Event>>)),
+            signifier_audio::signifier_audio_system::<S>,
+        )
+            .chain(),
+        (
+            terrain_stairs_audio::terrain_stairs_audio_init_system::<S>
+                .run_if(not(resource_exists::<terrain_stairs_audio::TerrainStairsAudioState<S::Event>>)),
+            terrain_stairs_audio::terrain_stairs_audio_system::<S>,
+        )
+            .chain(),
+        (
+            trigger_audio::trigger_audio_init_system::<S>
+                .run_if(not(resource_exists::<trigger_audio::TriggerAudioState<S::Event>>)),
+            trigger_audio::trigger_audio_system::<S>,
+        )
+            .chain(),
+        (
+            wall_audio_fmod::wall_audio_init_system::<S>
+                .run_if(not(resource_exists::<wall_audio_fmod::WallAudioState<S::Event>>)),
+            wall_audio_fmod::wall_audio_fmod::<S>,
+        )
+            .chain(),
     ));
+    terrain_audio::add_terrain_audio_systems::<S>(schedule);
     schedule.add_systems(weather_audio::weather_audio_system::<S>);
     // G6 补全（① audio-G6-alignment 契约 §3 其余未注册音频系统）。
     schedule.add_systems((
-        roof_audio::roof_audio_init_system::<S>,
-        roof_audio::roof_audio_system::<S>,
+        (
+            roof_audio::roof_audio_init_system::<S>
+                .run_if(not(resource_exists::<roof_audio::RoofAudioState<S::Event>>)),
+            roof_audio::roof_audio_system::<S>,
+        )
+            .chain(),
         wall_audio_ui::wall_audio_ui::<S>,
         wall_audio_orchestrator::wall_audio_orchestrator::<S>,
         wall_audio_path::wall_audio_path::<S>,
@@ -306,3 +409,5 @@ impl AsyncLoadedAudioResources {
         }
     }
 }
+
+pub mod wall_kinds;

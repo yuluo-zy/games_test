@@ -1,0 +1,57 @@
+    Blocking waiting for file lock on build directory
+    Checking country-core v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core)
+error[E0603]: function `point_inside_wall_terrain_samples` is private
+   --> crates/country-core/src/systems/ivy/ivy_pruner.rs:19:18
+    |
+ 19 |     ivy_spawner::point_inside_wall_terrain_samples,
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ private function
+    |
+note: the function `point_inside_wall_terrain_samples` is defined here
+   --> crates/country-core/src/systems/ivy/ivy_spawner.rs:200:1
+    |
+200 | / fn point_inside_wall_terrain_samples(
+201 | |     wall: &crate::resources::walls::public_wall_state::PublicWallState,
+202 | |     point: Vec2,
+203 | | ) -> bool {
+...   |
+225 | |     false
+226 | | }
+    | |_^
+
+warning: unused import: `ON_LOAD_FENCE`
+  --> crates/country-core/src/meta_commander.rs:20:46
+   |
+20 | use crate::resources::session::{OnLoadEntry, ON_LOAD_FENCE, ON_LOAD_VARIANT_MASK};
+   |                                              ^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `LoadUpgradeFlags`
+  --> crates/country-core/src/systems/save/load_game.rs:18:9
+   |
+18 |         LoadUpgradeFlags, LoadVersionGates, arrow_slit_record_applies, upgrade_arrow_slit_color_id,
+   |         ^^^^^^^^^^^^^^^^
+
+warning: unused import: `save_backup_list::BackupSaveFileKind`
+  --> crates/country-core/src/systems/save/save_thread.rs:15:5
+   |
+15 |     save_backup_list::BackupSaveFileKind,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `bevy_ecs::schedule::IntoScheduleConfigs`
+  --> crates/country-core/src/systems/save/mod.rs:53:5
+   |
+53 | use bevy_ecs::schedule::IntoScheduleConfigs;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused variable: `emit`
+   --> crates/country-core/src/systems/ivy/ivy_grower.rs:454:5
+    |
+454 |     emit: &mut impl FnMut(IvySegmentDoneGrowingMsg),
+    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_emit`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+For more information about this error, try `rustc --explain E0603`.
+warning: `country-core` (lib) generated 5 warnings
+error: could not compile `country-core` (lib) due to 1 previous error; 5 warnings emitted

@@ -1,140 +1,100 @@
-//! radial_menu/mod.rs — 径向调色菜单（B 0x1425f2680/0x1425f26f0/0x1425f27c0/
-//! 0x1425f3d60，O；re-analyst-A 契约 §2/§4）。
+//! radial_menu/mod.rs — 径向调色菜单（B 0x1425f2680 new_separator /
+//! 0x1425f26f0 new_flat_roof_rim_ty / 0x1425f27c0 create，fresh 反编译；
+//! restorer-state-color 2026-10-17）。
 //!
-//! - `IconInfo`：{String 名, u8 kind@+0x18, u32 @+0x24}；kind 5 = separator
-//!   （'white' 串 0x1425f2680）、8 = 类型图标（freehand_ty_constant(31B)/
-//!   freehand_ty_terrain(30B)——**PDB 名 new_flat_roof_rim_ty 与串 freehand_ty
-//!   名实错位**，按 freehand_ty 语义落码（coordinator/机器码为准））。
-//! - `ColorRadialMenu::create`（0x1425f27c0，13 参 float 族 = 中心/半径/尺寸）：
-//!   AngleRange::from_min_and_len（0x1425f2460）+ 图标实体生成。
-//! - `register_required_components`（0x1425f3d60，胶水）。
+//! - `IconInfo`：40B（0x28）布局（O，new_separator/new_flat_roof_rim_ty 写面）：
+//!   `String{len,ptr,cap}`@+0x00、`kind u8`@+0x18、`u8`@+0x19、`u16`@+0x1a、
+//!   `u32`@+0x1c、`u32`@+0x20、`u32`@+0x24。
+//! - `new_separator`（0x1425f2680，106B）：构造 `{name:"white", kind=5}`。判等。
+//! - `new_flat_roof_rim_ty`（0x1425f26f0，201B）：按 `ClutterVersion::is_initial()`
+//!   选 `"color_icon/freehand_ty_terrain"`(30B) / `"color_icon/freehand_ty_constant"`
+//!   (31B)，`kind=8`。判等。
+//! - `ColorRadialMenu::create`（0x1425f27c0）：**未实现**——UI 实体 spawn 依赖
+//!   country_core 的 `Ui2dExtent`/`Ui2dImage`/`CustomizationIcon`（当前为 typed-gap
+//!   占位），`Commands::spawn<tuple<...>>` 无法按原布局编译（分歧点见 RESTORE.md）。
 
 use bevy_ecs::prelude::*;
-use glam::Vec2;
 
-use country_core::resources::color_icon::CustomizationIcon;
+use country_core::resources::walls::decorator::ClutterVersion;
 
-/// 图标信息（O：{String 名, u8 kind@+0x18, u32 @+0x24}；re-analyst §2）。
+/// 图标信息（O：40B 布局；`new_separator`/`new_flat_roof_rim_ty` 逐字节写面）。
 #[derive(Clone, Debug, Default)]
 pub struct IconInfo {
-    /// 图标网格路径名（O：图标串全表，re-analyst §2）。
+    /// 图标网格路径名（String：len@+0 / ptr@+8 / cap@+0x10）。
     pub name: String,
-    /// kind（O：5=separator、8=类型图标；其余 U）。
+    /// kind（O：5=separator、8=类型图标；其余值见 create 的分派面）。
     pub kind: u8,
-    /// @+0x24 载荷（O 存在，语义 U）。
-    pub extra: u32,
+    /// +0x19（部分构造器使用）。
+    pub b19: u8,
+    /// +0x1a。
+    pub u1a: u16,
+    /// +0x1c：u32/f32 值（颜色 id 或开关值；demo 分支写 0x309=777）。
+    pub v1c: u32,
+    /// +0x20。
+    pub v20: u32,
+    /// +0x24（new_* 均置 0）。
+    pub v24: u32,
 }
 
-impl IconInfo {
-    /// `IconInfo::new_separator` @0x1425f2680（O：'white' 串，kind=5）。
-    pub fn new_separator() -> Self {
-        Self {
-            name: "white".to_string(),
-            kind: 5,
-            extra: 0,
-        }
+/// `IconInfo::new_separator` @0x1425f2680（106B，判等）。
+///
+/// fresh 反编译写面：`"white"`(len 5)、`kind=5`、`+0x24=0`。
+pub fn new_separator() -> IconInfo {
+    IconInfo {
+        name: "white".to_string(),
+        kind: 5,
+        ..IconInfo::default()
     }
+}
 
-    /// `IconInfo::new_flat_roof_rim_ty` @0x1425f26f0（**PDB 名与串错位**——
-    /// 实为 freehand 类型图标：'freehand_ty_constant'(31B) / 'freehand_ty_terrain'
-    /// (30B)，kind=8）。
-    pub fn new_freehand_ty(terrain: bool) -> Self {
-        Self {
-            name: if terrain {
-                "freehand_ty_terrain".to_string()
-            } else {
-                "freehand_ty_constant".to_string()
-            },
-            kind: 8,
-            extra: 0,
-        }
-    }
-
-    /// `IconInfo::new_color`（行 93，内联）：颜色图标。
-    pub fn new_color(name: impl Into<String>) -> Self {
-        Self {
-            name: name.into(),
-            kind: 1,
-            extra: 0,
-        }
-    }
-
-    /// `IconInfo::new_color_array`（行 101，内联）：颜色图标组。
-    pub fn new_color_array(names: &[&str]) -> Vec<Self> {
-        names.iter().map(|n| Self::new_color(*n)).collect()
-    }
-
-    /// `IconInfo::new_style`（行 109，内联）：样式图标。
-    pub fn new_style(name: impl Into<String>) -> Self {
-        Self {
-            name: name.into(),
-            kind: 2,
-            extra: 0,
-        }
-    }
-
-    /// `IconInfo::new_plaster_peel`（行 117，内联）：plaster_peel_{low,medium,high}。
-    pub fn new_plaster_peel(level: &str) -> Self {
-        Self::new_style(format!("plaster_peel_{level}"))
-    }
-
-    /// `IconInfo::new_flatroof_style`（行 125，内联）：平顶样式图标。
-    pub fn new_flatroof_style(name: impl Into<String>) -> Self {
-        Self::new_style(name)
-    }
-
-    /// `IconInfo::new_flag_connection`（行 141，内联）：flag_{no_}connection。
-    pub fn new_flag_connection(connected: bool) -> Self {
-        Self::new_style(if connected {
-            "flag_connection"
+/// `IconInfo::new_flat_roof_rim_ty` @0x1425f26f0（201B，判等）。
+///
+/// fresh 反编译：读 `ClutterVersion::is_initial()`（0x140833230）；
+/// true → `"color_icon/freehand_ty_terrain"`(0x1e=30B)；false →
+/// `"color_icon/freehand_ty_constant"`(0x1f=31B)。`kind=8`、`+0x24=0`。
+/// PDB 符号名 `new_flat_roof_rim_ty` 与图标串 `freehand_ty_*` 错位（登记，不发明
+/// 改名）。
+pub fn new_flat_roof_rim_ty() -> IconInfo {
+    let initial = ClutterVersion::is_initial(ClutterVersion::default());
+    IconInfo {
+        name: if initial {
+            "color_icon/freehand_ty_terrain".to_string()
         } else {
-            "flag_no_connection"
-        })
-    }
-
-    /// `IconInfo::chimney_smoke_toggle`（行 153，内联）：chimney_smoke_{inactive,active}。
-    pub fn chimney_smoke_toggle(active: bool) -> Self {
-        Self::new_style(if active {
-            "chimney_smoke_active"
-        } else {
-            "chimney_smoke_inactive"
-        })
-    }
-
-    /// `IconInfo::stair_railing`（行 165，内联）：railing_1..4。
-    pub fn stair_railing(index: u8) -> Self {
-        Self::new_style(format!("railing_{index}"))
-    }
-
-    /// `IconInfo::new_brightness`（行 202，内联）：亮度图标（0.25/1.0/4.0）。
-    pub fn new_brightness(level: &str) -> Self {
-        Self::new_style(level)
-    }
-
-    /// `IconInfo::magic_color`（行 210，内联）。
-    pub fn magic_color() -> Self {
-        Self::new_style("magic_color")
+            "color_icon/freehand_ty_constant".to_string()
+        },
+        kind: 8,
+        ..IconInfo::default()
     }
 }
 
 /// 径向颜色菜单组件（O：`ColorRadialMenu`；color_menu 0x142291230 的
-/// `Query<(Entity, &mut ColorRadialMenu)>` 面；字段 U——中心/半径/图标表，
-/// re-analyst §2 的 AngleRange 布局 I）。
+/// `Query<(Entity, &mut ColorRadialMenu)>` 面）。
 #[derive(Component, Clone, Debug, Default)]
 pub struct ColorRadialMenu {
-    /// 菜单中心（I）。
-    pub center: Vec2,
-    /// 菜单半径（I）。
+    /// 菜单中心（create 的 float 族输入）。
+    pub center: glam::Vec2,
+    /// 半径。
     pub radius: f32,
-    /// 图标列表（I）。
+    /// 图标列表（stride 0x28）。
     pub icons: Vec<IconInfo>,
 }
 
 impl ColorRadialMenu {
-    /// `ColorRadialMenu::create` @0x1425f27c0（O 面：中心/半径/尺寸 float 族 +
-    /// AngleRange::from_min_and_len；图标实体生成细节 U——Commands::spawn ×2 +
-    /// 0x140ec30e0/0x140ec4530/0x141c5a430 UI 辅助）。
-    pub fn create(center: Vec2, radius: f32, icons: Vec<IconInfo>) -> Self {
+    /// `ColorRadialMenu::create` @0x1425f27c0（1947B）。
+    ///
+    /// **未实现**。fresh 反编译已解出：先统计非分隔符图标数（tag!=5 计数）、
+    /// `step=(start+span)*(count-1)/denom`、`AngleRange::from_min_and_len`
+    /// (0x1425f2460)、`cosf/sinf` 极坐标定位（半径偏移 size*0.75/0.25、角步
+    /// π/4）、`Commands::spawn<tuple<Ui2dExtent,Ui2dImage,CustomizationIcon,
+    /// UiDrawOrder>>`、按 tag-3 分派插入图标组件（tag 3..14 全表）。
+    /// 分歧点：country_core 的 `Ui2dExtent`/`Ui2dImage`/`CustomizationIcon` 为
+    /// typed-gap 占位，无法按原字段布局 spawn；AngleRange 输入来源（start/span/
+    /// denom 参数）在反编译中被内联丢失。本实现保留数据组装面，spawn 面标注未知。
+    pub fn create(center: glam::Vec2, radius: f32, icons: Vec<IconInfo>) -> Self {
+        let _ = (center, radius);
+        // O：非分隔符图标计数（tag!=5）。
+        let count = icons.iter().filter(|i| i.kind != 5).count();
+        let _ = count;
         Self {
             center,
             radius,
@@ -143,8 +103,8 @@ impl ColorRadialMenu {
     }
 }
 
-/// `register_required_components` @0x1425f3d60（O：bevy required-components 递归
-/// 注册；CustomizationIcon 组件面）。
+/// `register_required_components` @0x1425f3d60（bevy required-components 递归注册
+/// 胶水；`CustomizationIcon` 组件面）。
 pub fn register_required_components(world: &mut World) {
-    world.register_component::<CustomizationIcon>();
+    world.register_component::<country_core::resources::color_icon::CustomizationIcon>();
 }

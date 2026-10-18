@@ -1,0 +1,411 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/history/recording.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/history/recording.rs
+@@ -583,7 +583,7 @@
+             world
+                 .run_system_once(history_start_recording::<()>)
+                 .unwrap();
+-            let history = world.resource::<History>();
++            let history = world.resource::<History<()>>();
+             assert_eq!(
+                 history.is_recording(),
+                 was_recording || started,
+@@ -653,7 +653,7 @@
+                 .clearing_canvas_params(widget)
+                 .is_none()
+         );
+-        assert!(!world.resource::<History>().is_recording());
++        assert!(!world.resource::<History<()>>().is_recording());
+         let mut schedule = Schedule::default();
+         schedule.add_systems(ui_draw_terrain);
+         schedule.add_systems(
+@@ -679,10 +679,10 @@
+                 .clearing_canvas_params(widget)
+                 .is_some()
+         );
+-        assert!(world.resource::<History>().is_recording());
++        assert!(world.resource::<History<()>>().is_recording());
+         assert!(
+             world
+-                .resource::<History>()
++                .resource::<History<()>>()
+                 .pending()
+                 .unwrap()
+                 .edits
+@@ -699,7 +699,7 @@
+             });
+         world.resource_mut::<CursorTerrainRaycast>().pos.x = 4.0;
+         schedule.run(&mut world);
+-        assert!(world.resource::<History>().is_recording());
++        assert!(world.resource::<History<()>>().is_recording());
+         assert!(world.resource::<DecoratorStorage>().immutable);
+         world
+             .resource_mut::<UiState>()
+@@ -709,7 +709,7 @@
+                 widget,
+             });
+         schedule.run(&mut world);
+-        let history = world.resource::<History>();
++        let history = world.resource::<History<()>>();
+         assert!(!history.is_recording());
+         assert_eq!(history.ledger().cursor, 0);
+         assert_eq!(history.ledger().entries.len(), 1);
+@@ -737,8 +737,8 @@
+                 widget,
+             });
+         schedule.run(&mut world);
+-        assert!(world.resource::<History>().is_recording());
+-        assert_eq!(world.resource::<History>().ledger().entries.len(), 1);
++        assert!(world.resource::<History<()>>().is_recording());
++        assert_eq!(world.resource::<History<()>>().ledger().entries.len(), 1);
+         assert_eq!(world.resource::<crate::systems::backend::input::input_record_replay::InputRecordReplayState>().stream.sync_points().len(), 1);
+     }
+ 
+@@ -756,12 +756,12 @@
+         // Original has no pending group: it has not consumed the event.
+         assert!(!world.resource::<DecoratorStorage>().immutable);
+         world
+-            .resource_mut::<History>()
++            .resource_mut::<History<()>>()
+             .start_input_recording(0)
+             .unwrap();
+         system.run((), &mut world);
+-        assert!(!world.resource::<History>().is_recording());
+-        assert!(world.resource::<History>().ledger().entries.is_empty());
++        assert!(!world.resource::<History<()>>().is_recording());
++        assert!(world.resource::<History<()>>().ledger().entries.is_empty());
+         assert!(world.resource::<Events<InputReplayCommand>>().is_empty());
+     }
+     fn instant_deco() -> crate::systems::ui_clutter::ui_autoclutter::InstaCreateDeco {
+@@ -921,12 +921,12 @@
+                 .run_system_once(history_finish_recording_system::<()>)
+                 .unwrap();
+             assert_eq!(
+-                world.resource::<History>().is_recording(),
++                world.resource::<History<()>>().is_recording(),
+                 after,
+                 "native case {index}"
+             );
+             assert_eq!(
+-                world.resource::<History>().ledger().entries.len(),
++                world.resource::<History<()>>().ledger().entries.len(),
+                 ledger,
+                 "native case {index}"
+             );
+@@ -957,22 +957,22 @@
+         let mut system = IntoSystem::into_system(history_finish_recording_system::<()>);
+         system.initialize(&mut world);
+         system.run((), &mut world);
+-        assert_eq!(world.resource::<History>().ledger().entries.len(), 1);
++        assert_eq!(world.resource::<History<()>>().ledger().entries.len(), 1);
+         // Reader2 remains unread on the first frame and commits this new group.
+         world
+-            .resource_mut::<History>()
++            .resource_mut::<History<()>>()
+             .start_input_recording(0)
+             .unwrap();
+-        world.resource_mut::<History>().add(edit()).unwrap();
++        world.resource_mut::<History<()>>().add(edit()).unwrap();
+         system.run((), &mut world);
+-        assert_eq!(world.resource::<History>().ledger().entries.len(), 2);
++        assert_eq!(world.resource::<History<()>>().ledger().entries.len(), 2);
+         // Reader3 was consumed despite Reader1's trigger; it cannot finish this.
+         world
+-            .resource_mut::<History>()
++            .resource_mut::<History<()>>()
+             .start_input_recording(0)
+             .unwrap();
+         system.run((), &mut world);
+-        assert!(world.resource::<History>().is_recording());
++        assert!(world.resource::<History<()>>().is_recording());
+         assert_eq!(world.resource::<Events<InputReplayCommand>>().len(), 2);
+     }
+ }
+--- a/games_test/tiny-glade/crates/country-core/src/systems/history/tests.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/history/tests.rs
+@@ -10,8 +10,8 @@
+ use crate::resources::walls::public_walls::PublicWalls;
+ use crate::resources::walls::publication_fields::WallId as ObservedWallId;
+ 
+-fn empty_history() -> History {
+-    History::from_observed(ObservedHistoryLedger {
++fn empty_history() -> History<()> {
++    History::<()>::from_observed(ObservedHistoryLedger {
+         entries: Vec::new(),
+         cursor: -1,
+         undo_anchor: -1,
+@@ -27,7 +27,7 @@
+     // 两 Arc 随桶携带（ReplayBucketAux），由 replay_pop_bucket 恢复。
+     let mut entry = HistoryEntry::<EditType>::from_edits(Vec::new());
+     entry.observed_auxiliary_counts = [1, 0, 0];
+-    let mut history: History = History::from_observed(ObservedHistoryLedger {
++    let mut history: History<()> = History::<()>::from_observed(ObservedHistoryLedger {
+         entries: vec![entry],
+         cursor: 0,
+         undo_anchor: -1,
+@@ -289,7 +289,7 @@
+     };
+     use crate::resources::walls::decorator_storage::DecoratorStorageAddr;
+     use crate::systems::history::recording::history_finish_recording;
+-    let mut history: History = empty_history();
++    let mut history: History<()> = empty_history();
+     let mut edges = std::collections::HashSet::new();
+     let empty_diff = DecoratorHistoryDiffMap::default();
+     let empty_stairs = crate::resources::stairs::stairs_state::StairsHistoryDiff {
+@@ -381,7 +381,7 @@
+         core::mem::size_of::<history_process::NewReplayCommandEvent>(),
+         0
+     );
+-    assert_eq!(world.resource::<History>().ledger().cursor, 0);
++    assert_eq!(world.resource::<History<()>>().ledger().cursor, 0);
+     assert_eq!(world.resource::<ReplayBuffer>().buckets.len(), 1);
+ }
+ 
+@@ -459,7 +459,7 @@
+     schedule.add_systems(history_process_system::<()>);
+     schedule.run(&mut world);
+     assert_eq!(world.resource::<PendingHistoryCommands>().0.len(), 1);
+-    assert_eq!(world.resource::<History>().ledger().cursor, -1);
++    assert_eq!(world.resource::<History<()>>().ledger().cursor, -1);
+     assert!(world.resource::<ReplayBuffer>().is_empty());
+     assert!(
+         world
+@@ -479,11 +479,11 @@
+     // No Events::update/clear between runs: the same system's EventReader
+     // must retain the second event and must not reread the first one.
+     world
+-        .resource_mut::<History>()
++        .resource_mut::<History<()>>()
+         .finish_input_recording()
+         .unwrap();
+     schedule.run(&mut world);
+-    assert_eq!(world.resource::<History>().ledger().cursor, 0);
++    assert_eq!(world.resource::<History<()>>().ledger().cursor, 0);
+     assert_eq!(world.resource::<PendingHistoryCommands>().0.len(), 1);
+     assert_eq!(
+         world.resource::<PendingHistoryCommands>().0.front(),
+@@ -517,8 +517,8 @@
+     let mut schedule = Schedule::default();
+     schedule.add_systems(history_process_system::<()>);
+     schedule.run(&mut world);
+-    assert!(world.resource::<History>().is_recording());
+-    assert_eq!(world.resource::<History>().ledger().cursor, 0);
++    assert!(world.resource::<History<()>>().is_recording());
++    assert_eq!(world.resource::<History<()>>().ledger().cursor, 0);
+     assert!(world.resource::<PendingHistoryCommands>().0.is_empty());
+     assert_eq!(world.resource::<ReplayBuffer>().buckets.len(), 1);
+     assert_eq!(
+--- a/games_test/tiny-glade/crates/country-core/src/systems/garden/tests.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/garden/tests.rs
+@@ -65,7 +65,7 @@
+     let library = AssetSsboLibrary::new();
+     library.add_new::<GardenRasterStagingSsbo>(&crate::render::test_device::TestDevice(0));
+     world.insert_resource(library);
+-    let mut history: History = History::from_observed(ObservedHistoryLedger {
++    let mut history: History<()> = History::<()>::from_observed(ObservedHistoryLedger {
+         entries: vec![],
+         cursor: -1,
+         undo_anchor: -1,
+@@ -133,10 +133,10 @@
+         });
+     schedule.run(&mut world); // Commit; the same frame's record consumer takes slot 5.
+     assert_eq!(
+-        world.resource::<History>().pending().unwrap().edits.len(),
++        world.resource::<History<()>>().pending().unwrap().edits.len(),
+         1
+     );
+-    let EditType::Garden(stroke) = &world.resource::<History>().pending().unwrap().edits[0] else {
++    let EditType::Garden(stroke) = &world.resource::<History<()>>().pending().unwrap().edits[0] else {
+         panic!("wrong edit owner")
+     };
+     assert_eq!(
+@@ -154,7 +154,7 @@
+         .is_empty());
+     schedule.run(&mut world); // EventReader must not rerecord the old notification.
+     assert_eq!(
+-        world.resource::<History>().pending().unwrap().edits.len(),
++        world.resource::<History<()>>().pending().unwrap().edits.len(),
+         1
+     );
+     assert!(world
+--- a/games_test/tiny-glade/crates/country-core/src/systems/terrain/ui_draw_terrain.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/terrain/ui_draw_terrain.rs
+@@ -345,7 +345,7 @@
+         }));
+         world.resource_mut::<TerrainDrawState>().state = 2;
+         world.resource_mut::<TerrainDrawState>().active = true;
+-        let mut history: History = History::from_observed(ObservedHistoryLedger {
++        let mut history: History<()> = History::<()>::from_observed(ObservedHistoryLedger {
+             entries: vec![],
+             cursor: -1,
+             undo_anchor: -1,
+@@ -360,14 +360,14 @@
+         schedule.run(&mut world);
+         assert!(world.resource::<PendingTerrainHistory>().is_empty());
+         assert!(!world.resource::<TerrainDrawState>().active);
+-        let recorded = &world.resource::<History>().pending().unwrap().edits;
++        let recorded = &world.resource::<History<()>>().pending().unwrap().edits;
+         assert_eq!(recorded.len(), 1);
+         assert!(
+             matches!(&recorded[0], EditType::Terrain(edit) if matches!(edit.as_ref(), TerrainEdit::NewTerrainStroke { index: StrokeId(0), height_ws, stroke_pts } if *height_ws == 2.5 && *stroke_pts == [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]))
+         );
+         schedule.run(&mut world);
+         assert_eq!(
+-            world.resource::<History>().pending().unwrap().edits.len(),
++            world.resource::<History<()>>().pending().unwrap().edits.len(),
+             1
+         );
+     }
+--- a/games_test/tiny-glade/crates/country-core/src/systems/ui_clutter/tests.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/ui_clutter/tests.rs
+@@ -18,8 +18,8 @@
+ use bevy_ecs::prelude::*;
+ use std::sync::Arc;
+ 
+-fn empty_history() -> History {
+-    History::from_observed(ObservedHistoryLedger {
++fn empty_history() -> History<()> {
++    History::<()>::from_observed(ObservedHistoryLedger {
+         entries: Vec::new(),
+         cursor: -1,
+         undo_anchor: -1,
+@@ -52,7 +52,7 @@
+             .chain(),
+     );
+     world
+-        .resource_mut::<History>()
++        .resource_mut::<History<()>>()
+         .start_input_recording(0)
+         .unwrap();
+     for id in [5, 8] {
+@@ -64,10 +64,10 @@
+     assert!(world.resource::<DeletedAutoClutter>().is_deleted(5));
+     assert!(world.resource::<DeletedAutoClutter>().is_deleted(8));
+     world
+-        .resource_mut::<History>()
++        .resource_mut::<History<()>>()
+         .finish_input_recording()
+         .unwrap();
+-    let history = world.resource::<History>();
++    let history = world.resource::<History<()>>();
+     assert_eq!(history.ledger().entries.len(), 1);
+     let edits = &history.ledger().entries[0].edits;
+     assert_eq!(edits.len(), 2);
+@@ -92,14 +92,14 @@
+             world.resource::<DeletedAutoClutter>().is_deleted(8),
+             is_deleted
+         );
+-        assert_eq!(world.resource::<History>().ledger().cursor, cursor);
++        assert_eq!(world.resource::<History<()>>().ledger().cursor, cursor);
+         assert!(!world.resource::<ReplayBuffer>().is_empty());
+         schedule.run(&mut world); // old elapsed == 0.05: retain
+         assert!(!world.resource::<ReplayBuffer>().is_empty());
+         schedule.run(&mut world); // old elapsed == 0.1 > 0.05: remove
+         assert!(world.resource::<ReplayBuffer>().is_empty());
+     }
+-    assert_eq!(world.resource::<History>().ledger().entries.len(), 1);
++    assert_eq!(world.resource::<History<()>>().ledger().entries.len(), 1);
+     assert_eq!(
+         world.resource::<Events<RecordAutoClutterHistory>>().len(),
+         2
+@@ -213,10 +213,10 @@
+     );
+     // 原版无条件：start_input_recording → History::add(tag 0xd)；提交后入 ledger。
+     world
+-        .resource_mut::<History>()
++        .resource_mut::<History<()>>()
+         .finish_input_recording()
+         .unwrap();
+-    let history = world.resource::<History>();
++    let history = world.resource::<History<()>>();
+     assert_eq!(history.ledger().entries.len(), 1);
+     match &history.ledger().entries[0].edits[0] {
+         EditType::AutoClutter(edit) => assert_eq!(
+--- a/games_test/tiny-glade/crates/country-core/src/systems/ui_clutter/ui_autoclutter.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/ui_clutter/ui_autoclutter.rs
+@@ -203,7 +203,7 @@
+     #[test]
+     fn actual_latest_right_click_emits_creation_and_commits_its_history() {
+         let mut world = world();
+-        assert!(!world.resource::<History>().is_recording());
++        assert!(!world.resource::<History<()>>().is_recording());
+         world.send_event(EvRightClickedAutoClutter { entity: 42 });
+         let mut schedule = Schedule::default();
+         schedule.add_systems(
+@@ -215,7 +215,7 @@
+                 .chain(),
+         );
+         schedule.run(&mut world);
+-        let history = world.resource::<History>();
++        let history = world.resource::<History<()>>();
+         assert!(!history.is_recording());
+         assert_eq!(history.ledger().entries.len(), 1);
+         assert!(
+@@ -266,7 +266,7 @@
+         );
+         schedule.run(&mut world);
+         assert!(world.resource::<Events<InstaCreateDeco>>().is_empty());
+-        assert!(!world.resource::<History>().is_recording());
++        assert!(!world.resource::<History<()>>().is_recording());
+         schedule.run(&mut world);
+         assert!(world.resource::<Events<InstaCreateDeco>>().is_empty());
+         world.send_event(EvRightClickedAutoClutter { entity: 999 });
+--- a/games_test/tiny-glade/crates/country-core/src/systems/wall/draw_wall.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/wall/draw_wall.rs
+@@ -545,7 +545,7 @@
+                     .resource::<Events<HistoryRecordingFailed>>()
+                     .is_empty()
+             );
+-            let pending = world.resource::<History>().pending().unwrap();
++            let pending = world.resource::<History<()>>().pending().unwrap();
+             assert_eq!(pending.edits.len(), 1);
+             let EditType::Wall(record) = &pending.edits[0] else {
+                 panic!("wall history domain");
+@@ -596,7 +596,7 @@
+         assert!(world.resource::<InProgressCurve>().wall.is_none());
+         assert!(
+             world
+-                .resource::<History>()
++                .resource::<History<()>>()
+                 .pending()
+                 .unwrap()
+                 .edits
+--- a/games_test/tiny-glade/crates/country-core/src/systems/wall/finish_wall.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/wall/finish_wall.rs
+@@ -274,7 +274,7 @@
+                     .is_empty()
+             );
+             assert!(world.resource::<WallDrawingIssues>().0.is_empty());
+-            let edits = &world.resource::<History>().pending().unwrap().edits;
++            let edits = &world.resource::<History<()>>().pending().unwrap().edits;
+             assert_eq!(edits.len(), 1);
+             let EditType::Wall(compound) = &edits[0] else {
+                 panic!("wall history");
+@@ -312,7 +312,7 @@
+                 .is_none()
+         );
+         assert!(world.resource::<InProgressCurve>().wall.is_none());
+-        let edits = &world.resource::<History>().pending().unwrap().edits;
++        let edits = &world.resource::<History<()>>().pending().unwrap().edits;
+         let EditType::Wall(compound) = &edits[0] else {
+             panic!("wall history");
+         };
+@@ -339,7 +339,7 @@
+         assert!(world.resource::<InProgressCurve>().wall.is_none());
+         assert!(
+             world
+-                .resource::<History>()
++                .resource::<History<()>>()
+                 .pending()
+                 .unwrap()
+                 .edits
+--- a/games_test/tiny-glade/crates/country-core/src/systems/wall/ui_continue_wall.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/wall/ui_continue_wall.rs
+@@ -726,7 +726,7 @@
+                         .resource::<Events<HistoryRecordingFailed>>()
+                         .is_empty()
+                 );
+-                let edits = &world.resource::<History>().pending().unwrap().edits;
++                let edits = &world.resource::<History<()>>().pending().unwrap().edits;
+                 assert_eq!(edits.len(), 1);
+                 let EditType::Wall(compound) = &edits[0] else {
+                     panic!("wall edit");

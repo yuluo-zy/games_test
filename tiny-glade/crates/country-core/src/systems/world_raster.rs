@@ -20,12 +20,19 @@ pub use crate::resources::world_raster::UploadWorldRasterBuffersToStagingCmd;
 
 /// B 0x140957990. A caller's enum-variant constructor supplies the edit identity;
 /// the same HistoryTransactions owner is shared with modes and building edits.
+///
+/// `M: HistoryRecordingValidation` mirrors `HistoryTransactions::add`'s bound
+/// (added by the shared history refactor; both garden `EditType` and
+/// `RasterStroke` implement it).
 pub fn record_raster_history<M, S>(
     strokes: &mut ActiveRasterStrokesStorage,
     slot: u8,
-    history: &mut crate::recovered_building::history_transactions::HistoryTransactions<M, S>,
+    history: &mut crate::resources::history::transactions::HistoryTransactions<M, S>,
     construct_edit: impl FnOnce(std::sync::Arc<crate::resources::raster_stroke::RasterStroke>) -> M,
-) -> Result<(), crate::recovered_building::history_transactions::HistoryTransactionError> {
+) -> Result<(), crate::resources::history::transactions::HistoryTransactionError>
+where
+    M: crate::resources::history::transactions::HistoryRecordingValidation,
+{
     let stroke = strokes[slot].take_history_stroke();
     history.add(construct_edit(stroke))
 }
@@ -303,9 +310,8 @@ mod tests {
 
     #[test]
     fn history_takes_curve_and_keeps_active_input_and_blend_parameters() {
-        use crate::recovered_building::history_transactions::{
-            HistoryTransactions, ObservedHistoryLedger,
-        };
+        use crate::resources::history::transactions::HistoryTransactions;
+        use crate::resources::history::transactions::ObservedHistoryLedger;
         let mut strokes = ActiveRasterStrokesStorage::default();
         strokes[2].start_new(Vec3::ZERO, 1, 3.0, 1, 0.4);
         strokes[2].add_point(Vec3::X);

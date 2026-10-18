@@ -1,0 +1,11 @@
+# Ordinary wall review closure: additive roundf v2
+
+The three-input correction manifest `d49d8983a64b22ac88049e7f20b4dcd166026e76b3d6bf73a449b5af9f435c4f` was independently hash/size checked. Its delta patch applies to the unchanged frozen v1 draw_wall.rs in a temporary directory, and the resulting file exactly equals the frozen v2 draw_wall.rs. The full original v1 candidate also passed `git apply --check` against current production at review time.
+
+Both ceil operations are replaced with round, correctly matching the two exact original CRT roundf calls. The initial max(delta,1e-5), final max1, saturating usize conversion and existing wrapping weight clamp remain. The eight added source test expectations agree with separately f32-rounded finite arithmetic. No Rust/native execution is inferred from that arithmetic check. An additional useful root integration fixture is delta bits3d28e83f (1/24.25) -> increment3: reciprocal rounds24, 60/24 is exactly2.5, roundf produces3. This isolates the first rounding operator, whereas .04 and1/14 primarily detect the second.
+
+The sole confirmed v1 algorithm finding is closed by v2. No further blocker was identified in the first three bounded source files after the evidence/API/caller review in REVIEW-v1.md. Root may integrate v1 plus this additive correction, subject to its combined actual compilation and runtime tests and the separate finish/metadata reviewer result.
+
+Root's planned regression starting from an empty real UI registry, then creation/start/finish/ledger and next-frame Control Sync consumption, is required to accept the runtime registration. The author's existing manual-start History fixture does not establish that registration. The shared color-command wide-ID/schema correction is separately owned by history_audit/root; this report does not accept the old truncating shared command representation or broaden its independent three-file review into those other consumers.
+
+The full original draw-entry execution remains unaccepted; snap topology, previous-wall continuation/merge/reversal, cancellation and render/water-hint/pinned-clutter boundaries remain open. No new native run, Cargo invocation or production write occurred during this review.

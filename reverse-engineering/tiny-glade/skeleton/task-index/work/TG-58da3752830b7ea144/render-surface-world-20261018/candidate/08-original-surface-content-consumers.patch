@@ -1,0 +1,109 @@
+--- a/crates/country-core/src/systems/render_loop/draw_passes/transparency_pass/surface_support.rs
++++ b/crates/country-core/src/systems/render_loop/draw_passes/transparency_pass/surface_support.rs
+@@ -474,6 +474,25 @@
+         self
+     }
+ 
++    /// Current graph-host metadata for original SPIR-V content use. These
++    /// calls do not add original operations to the native call-order trace.
++    pub fn preserve_buffer(mut self, hash: u64) -> Self {
++        self.pass = self.pass.preserve_storage_buffer_contents(hash);
++        self
++    }
++    pub fn preserve_texture(mut self, hash: u64) -> Self {
++        self.pass = self.pass.preserve_storage_texture_contents(hash);
++        self
++    }
++    pub fn inactive_texture_when(mut self, hash: u64, inactive: bool) -> Self {
++        if inactive { self.pass = self.pass.inactive_texture_contents(hash); }
++        self
++    }
++    pub fn original_undefined_texture_when(mut self, hash: u64, undefined: bool) -> Self {
++        if undefined { self.pass = self.pass.allow_undefined_texture_contents(hash); }
++        self
++    }
++
+     /// `dispatch_indirect_raw(buffer, 0)`。
+     pub fn dispatch_indirect(self, b: &RgBuffer) -> RecordedComputePass {
+         self.op(PlanKind::DispatchIndirect, None);
+--- a/crates/country-core/src/systems/render_loop/draw_passes/transparency_pass/surface_water.rs
++++ b/crates/country-core/src/systems/render_loop/draw_passes/transparency_pass/surface_water.rs
+@@ -71,9 +71,11 @@
+             &|b| {
+                 let b = d_sampled(e, b, i.half_depth, names::HALF_DEPTH_TEX);
+                 let b = d_sampled(e, b, i.taa_history, names::TAA_HISTORY_TEX);
++                let b = if i.history_valid == 0 { b.inactive_texture_contents(names::TAA_HISTORY_TEX) } else { b };
+                 let b = d_uniform_u32(e, b, names::HISTORY_VALID, history_valid);
+                 let b = d_sampled(e, b, i.reprojection, names::REPROJECTION_TEX);
+                 let b = d_write_rg(e, b, names::WATER_RT_COUNT_BUFFER, &prepared.count);
++                let b = b.preserve_storage_buffer_contents(names::WATER_RT_COUNT_BUFFER);
+                 let b = d_write_rg(e, b, names::WATER_RT_RAY_BUFFER, &prepared.ray);
+                 d_sampled(e, b, i.refraction, names::REFRACTION_TEX)
+             },
+@@ -89,6 +91,7 @@
+     let args = env
+         .compute_pass(WATER_ARGS_PASS_NAME, WATER_ARGS_SHADER_URI)
+         .write_rg(names::WATER_RT_COUNT_BUFFER, &count)
++        .preserve_buffer(names::WATER_RT_COUNT_BUFFER)
+         .dispatch_1d(1);
+     env.record(args);
+ 
+@@ -111,6 +114,8 @@
+         .disk(names::BLUE_NOISE_TEXTURE, names::BLUE_NOISE_FILE)
+         .ray_tracing()
+         .tex_write(names::COLOR_TEX, i.color)
++        .preserve_texture(names::COLOR_TEX)
++        .inactive_texture_when(names::TAA_HISTORY_TEX, i.history_valid == 0)
+         .dispatch_indirect(&count);
+     env.record(rt);
+ }
+--- a/crates/country-core/src/systems/render_loop/draw_passes/transparency_pass/surface_ice.rs
++++ b/crates/country-core/src/systems/render_loop/draw_passes/transparency_pass/surface_ice.rs
+@@ -143,10 +143,12 @@
+                 let b = d_sampled(e, b, i.half_depth, names::HALF_DEPTH_TEX);
+                 let b = d_sampled(e, b, i.taa_history, names::TAA_HISTORY_TEX);
+                 let b = d_sampled(e, b, &shadows.previous, names::SHADOWS_HISTORY_TEX);
++                let b = if raster_history_valid == 0 { b.inactive_texture_contents(names::SHADOWS_HISTORY_TEX) } else { b };
+                 let b = d_uniform_u32(e, b, names::HISTORY_VALID, raster_history_valid);
+                 let b = d_sampled(e, b, i.reprojection, names::REPROJECTION_TEX);
+                 let b = d_sampled(e, b, i.refraction, names::REFRACTION_TEX);
+                 let b = d_write_rg(e, b, names::ICE_REFL_COUNT_BUFFER, &refl_count);
++                let b = b.preserve_storage_buffer_contents(names::ICE_REFL_COUNT_BUFFER);
+                 d_write_rg(e, b, names::ICE_REFL_PX_BUFFER, &refl_px)
+             },
+         );
+@@ -192,9 +194,12 @@
+         .disk(names::BLUE_NOISE_TEXTURE, names::BLUE_NOISE_FILE)
+         .ray_tracing()
+         .tex_write(names::REFL_HIT_TEX, &refl_hits)
++        .preserve_texture(names::REFL_HIT_TEX)
+         .tex_write(names::REFL_HIT_RADIANCE_TEX, &refl_hit_radiance)
+         .write_rg(names::ICE_RT_COUNT_BUFFER, &rt_count)
++        .preserve_buffer(names::ICE_RT_COUNT_BUFFER)
+         .write_rg(names::ICE_RT_RAY_BUFFER, &rt_ray)
++        .inactive_texture_when(names::TAA_HISTORY_TEX, i.history_valid == 0)
+         .dispatch_indirect(&refl_count);
+     env.record(p);
+ 
+@@ -218,7 +223,10 @@
+         .disk(names::BLUE_NOISE_TEXTURE, names::BLUE_NOISE_FILE)
+         .ray_tracing()
+         .tex_write(names::REFL_HIT_TEX, &refl_hits)
++        .preserve_texture(names::REFL_HIT_TEX)
+         .tex_write(names::REFL_HIT_RADIANCE_TEX, &refl_hit_radiance)
++        .preserve_texture(names::REFL_HIT_RADIANCE_TEX)
++        .inactive_texture_when(names::TAA_HISTORY_TEX, i.history_valid == 0)
+         .dispatch_indirect(&rt_count);
+     env.record(p);
+ 
+@@ -269,6 +277,10 @@
+         .tex_write(names::REFL_REFR_RADIANCE_OUT_TEX, &refr_temporal.current)
+         .tex(names::RAY_LEN_HISTORY_TEX, &ray_len.previous)
+         .tex_write(names::RAY_LEN_OUT_TEX, &ray_len.current)
++        .preserve_texture(names::REFL_REFR_RADIANCE_OUT_TEX)
++        .preserve_texture(names::COLOR_TEX)
++        .inactive_texture_when(names::REFL_REFR_RADIANCE_HISTORY_TEX, resolve_valid == 0)
++        .original_undefined_texture_when(names::RAY_LEN_HISTORY_TEX, !ray_len.fresh)
+         .dispatch_2d(color_extent[0], color_extent[1]);
+     env.record(p);
+     Ok(())

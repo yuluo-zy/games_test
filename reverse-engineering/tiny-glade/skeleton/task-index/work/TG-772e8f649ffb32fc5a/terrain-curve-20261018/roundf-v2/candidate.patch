@@ -1,0 +1,40 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/wall/draw_wall.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/wall/draw_wall.rs
+@@ -92,10 +92,10 @@
+     material_audio: EventWriter<'w, RequestWallMaterialAudio>,
+ }
+ 
+-/// B no-new-point path: ceil(60 / ceil(1 / max(delta, 1e-5))), at least one.
++/// B no-new-point path: round(60 / round(1 / max(delta, 1e-5))), at least one.
+ /// The existing curve method performs the native wrapping add and 1..=50 clamp.
+ pub fn stationary_point_weight(delta: f32) -> usize {
+-    (60.0 / (1.0 / delta.max(0.00001)).ceil()).ceil().max(1.0) as usize
++    (60.0 / (1.0 / delta.max(0.00001)).round()).round().max(1.0) as usize
+ }
+ 
+ pub fn draw_wall(
+@@ -284,6 +284,24 @@
+         },
+     };
+ 
++    #[test]
++    fn original_roundf_stationary_weight_non_integral_ratios() {
++        // Both original calls resolve through IAT143193198 to CRT roundf.
++        // delta .04 gives round(60 / round(25)) = round(2.4) = 2.
++        for (delta, expected) in [
++            (0.0, 1),
++            (-1.0, 1),
++            (1.0 / 60.0, 1),
++            (0.03, 2),
++            (0.04, 2),
++            (1.0 / 14.0, 4),
++            (0.06, 4),
++            (0.1, 6),
++        ] {
++            assert_eq!(stationary_point_weight(delta), expected);
++        }
++    }
++
+     fn world(fence: bool) -> World {
+         let mut world = World::new();
+         world.insert_resource(if fence {

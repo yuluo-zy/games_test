@@ -505,6 +505,25 @@ fn resource_info_failure_preserves_metadata_and_rejects_invalid_indices() {
 }
 
 #[test]
+fn original_raw_first_write_does_not_invent_a_previous_content_read() {
+    let mut graph = RenderGraph::new();
+    let buffer = graph.create_buffer("original first write", buffer_desc()).unwrap();
+    let mut writer = graph.add_pass("original writer with broad synchronization");
+    writer.add_resource_access(buffer.raw(), 0x37, 0).unwrap();
+    writer.render(|_| true);
+    let current = graph.buffer_id(buffer.raw()).unwrap();
+    let mut reader = graph.add_pass("consume actual written contents");
+    reader.side_effect();
+    reader.read_buffer(current, READ, AccessRange::Whole).unwrap();
+    reader.render(|_| true);
+    let definition = graph_definition(graph).unwrap();
+    assert!(!definition.passes[0].accesses[0].reads_previous);
+    let plan = rhapsody::rg::plan::compile_definition(definition).unwrap();
+    assert_eq!(plan.retained_passes, [0, 1]);
+    assert!(plan.dependency_edges.contains(&(0, 1)));
+}
+
+#[test]
 fn read_modify_write_requires_initialized_contents_and_preserves_its_producer() {
     let mut undefined = RenderGraph::new();
     let buffer = undefined.create_buffer("undefined", buffer_desc()).unwrap();

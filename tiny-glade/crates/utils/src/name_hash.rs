@@ -1,4 +1,4 @@
-//! B forwards UTF-8 bytes directly to xxh3, seed=0/default 192-byte secret.
+//! Stable name hashes computed from UTF-8 bytes with unseeded XXH3.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct NameHash(pub u64);
 impl NameHash {

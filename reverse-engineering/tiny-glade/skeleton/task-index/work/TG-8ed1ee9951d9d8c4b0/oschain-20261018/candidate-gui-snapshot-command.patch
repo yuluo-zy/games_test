@@ -1,0 +1,19 @@
+--- games_test/tiny-glade/crates/country-core/src/resources/gui.rs
++++ games_test/tiny-glade/crates/country-core/src/resources/gui.rs
+@@ -480,6 +480,8 @@
+ /// outside this semantic model until their consumers have been identified.
+ #[derive(Resource, Clone, Debug, PartialEq)]
+ pub struct DebugGui {
++    /// B +0/+8, consumed by original camera_snapshot@140911e40.
++    pub camera_snapshot_command: crate::systems::main_camera::CameraSnapshotCommand,
+     /// B +0xf0, toggled by the debug-window input action.
+     pub enabled: bool,
+     /// B +0xf1.
+@@ -530,6 +532,7 @@
+ impl Default for DebugGui {
+     fn default() -> Self {
+         Self {
++            camera_snapshot_command: crate::systems::main_camera::CameraSnapshotCommand::None,
+             enabled: false,
+             show_spatial_grid: false,
+             show_trigger_proxies: false,

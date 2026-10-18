@@ -1,7 +1,7 @@
 # country-core 逐目录源码核对
 
 由 tools/audit_core_foundation.py 生成；B 为唯一目标。原目录以 B PDB 文件索引为准，编译导出取自 rustdoc。
-有正式映射不等于完整实现；未映射不等于算法不存在（可能仍在 recovered_building 等投影中）。
+有正式映射不等于完整实现；未映射不等于算法不存在（可能仍在 共享建筑算法中）。
 完成验收必须另外核对状态所有者、消费者、失败分支、编辑/删除/历史传播和原版算法。
 
 B 索引文件 539；其中有章节 529；编译可达文件 268；旧纠错条目 277。不据此计算业务完成率。
@@ -11,7 +11,7 @@ B 索引文件 539；其中有章节 529；编译可达文件 268；旧纠错条
 |---|---:|---:|---:|---|
 | `./` | 6 | 1 | 0 | 待逐文件复核 |
 | `asset_libraries/` | 12 | 12 | 0 | 待逐文件复核 |
-| `components/` | 3 | 1 | 0 | 待逐文件复核 |
+| `components/` | 3 | 2 | 0 | 现有组件载荷已限定审查；其余库存/完整链待恢复 |
 | `geometry/` | 4 | 0 | 0 | 待逐文件复核 |
 | `input/` | 4 | 0 | 0 | 待逐文件复核 |
 | `render/` | 21 | 17 | 0 | 待逐文件复核 |
@@ -103,10 +103,12 @@ B 索引文件 539；其中有章节 529；编译可达文件 268；旧纠错条
 
 ### components/
 
+2026-10-18 增量：[审查报告](components-2026-10-18.md)；下列数目按原文件计，不按拆分后的 Rust 文件数计。
+
 | 原文件 | 当前源码 | 当前判定 | 原调用者 |
 |---|---|---|---:|
-| [drawable.rs](/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/country-core-deep/chapters/components/drawable.rs.md) | - | 缺正式映射，待查现有投影 | 9 |
-| [mod.rs](/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/country-core-deep/chapters/components/mod.rs.md) | [components.rs](/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/components.rs:1) | 已有代码，语义待复核 | 19 |
+| [drawable.rs](/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/country-core-deep/chapters/components/drawable.rs.md) | [drawable.rs](/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/components/drawable.rs:1) | 选择器/Bundle 限定审查；系统与其余载荷待恢复 | 9 |
+| [mod.rs](/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/country-core-deep/chapters/components/mod.rs.md) | [components/mod.rs](/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/components/mod.rs:1) | 三个现有占位已恢复，字段/克隆/消费者限定检查；完整链待恢复 | 19 |
 | [transient_mesh.rs](/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/country-core-deep/chapters/components/transient_mesh.rs.md) | - | 缺正式映射，待查现有投影 | 4 |
 
 ### geometry/
@@ -262,7 +264,7 @@ B 索引文件 539；其中有章节 529；编译可达文件 268；旧纠错条
 
 | 原文件 | 当前源码 | 当前判定 | 原调用者 |
 |---|---|---|---:|
-| [auto_clutter_edit.rs](/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/country-core-deep/chapters/resources/history/auto_clutter_edit.rs.md) | [clutter.rs](/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/recovered_systems/clutter.rs:1) | 已存在 Delete serde 合同投影；完整历史链未接 | 0 |
+| [auto_clutter_edit.rs](/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/country-core-deep/chapters/resources/history/auto_clutter_edit.rs.md) | [clutter.rs](/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/history/auto_clutter_edit.rs:1) | 已存在 Delete serde 合同投影；完整历史链未接 | 0 |
 | [color_edit.rs](/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/country-core-deep/chapters/resources/history/color_edit.rs.md) | - | 缺正式映射，待查现有投影 | 0 |
 | [decorator_edit.rs](/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/country-core-deep/chapters/resources/history/decorator_edit.rs.md) | - | 缺正式映射，待查现有投影 | 11 |
 | [mod.rs](/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/country-core-deep/chapters/resources/history/mod.rs.md) | - | 缺正式映射，待查现有投影 | 107 |

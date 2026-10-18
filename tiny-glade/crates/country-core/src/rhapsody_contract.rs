@@ -1,18 +1,6 @@
-//! rhapsody 设备的游戏侧接线缝（D 组接入，WIRING 契约 `D-rhapsody/rhapsody-WIRING.md` §1/§3.1）。
-//!
-//! `GraphicsDevice` 由 `pub u64` 占位改为包装真实 `rhapsody::raw::device::GraphicsDevice`，
-//! 5 处 `panic!("GPU backend is not connected")` 桩按 WIRING §3.1 逐条处理：
-//!
-//! | 桩 | 处理 |
-//! |---|---|
-//! | `create_persistent_descriptor_set(name)` | 真实签名 `(state, writes)`，接 `raw::device::GraphicsDevice::create_persistent_descriptor_set`（device.rs:941）。游戏侧 bindless 状态未恢复 → 登记缺口 §4.1，桥 `bindless_create_persistent_descriptor_set` |
-//! | `update_persistent_descriptor_set` | **登记缺口 §4.2**：rhapsody 无此方法身份（只有 bind 语义的 `bind_persistent_descriptor_set`）；桥内只记日志 |
-//! | `full_barrier_required` | **登记缺口 §4.3**：`[device+0xaba]` 全屏障开关无公开 getter；桥内返回 `false` |
-//! | `issue_full_pipeline_barrier(command: u64)` | 直改 `vk::CommandBuffer`，接 device.rs:911 真实实现 |
-//! | `dispatch(command, x, y, z)` | **删桩**：设备无 dispatch 方法；真实命令面 = `rg::pass_api::RenderPassApi::dispatch_groups_3d` / `Command::DispatchGroups` |
-//!
-//! 其余占位类型（`ManagedHandle`/`Handle`/`ReadOnlyHandle`/`ResourceHandle`/`PassBuilder`/`RenderGraph` 等）
-//! 是游戏侧 ABI 桥（WIRING §1 映射表已逐项登记真实对应类型），保留在本文件供上层编译。
+//! rhapsody 设备的游戏侧包装及兼容类型。
+//! 纹理资产需要由 TextureHost 解析托管身份；描述符表使用 rhapsody 的真实资源租约。
+//! 其他尚未完成的 ABI 兼容边界分别在对应接口中注明。
 
 use std::marker::PhantomData;
 use std::sync::Arc;
@@ -20,33 +8,41 @@ use std::sync::Arc;
 use super::render::shader::{ComputeShaderProgram, RasterShaderProgram};
 
 /// 全 crate 唯一的 rhapsody 设备包装（WIRING §1）。
-/// 原 `GraphicsDevice(pub u64)` → `Arc<rhapsody::raw::device::GraphicsDevice>`。
+/// 原 `GraphicsDevice(pub u64)` → `Arc<rhapsody::device::Device>`。
 #[derive(Clone)]
 pub struct GraphicsDevice {
-    inner: Arc<rhapsody::raw::device::GraphicsDevice>,
+    inner: Arc<rhapsody::device::Device>,
+    // Same host that owns the App's library buffers; never a second registry.
+    buffer_host:
+        Option<Arc<dyn crate::render::ssbo::rhapsody_boundary::GraphicsDevice + Send + Sync>>,
 }
 
 impl GraphicsDevice {
     /// 从真实 rhapsody 设备构造本包装。
-    pub fn new(inner: Arc<rhapsody::raw::device::GraphicsDevice>) -> Self {
-        Self { inner }
+    pub fn new(inner: Arc<rhapsody::device::Device>) -> Self {
+        Self {
+            inner,
+            buffer_host: None,
+        }
+    }
+    pub fn with_buffer_host(
+        mut self,
+        host: Arc<dyn crate::render::ssbo::rhapsody_boundary::GraphicsDevice + Send + Sync>,
+    ) -> Self {
+        self.buffer_host = Some(host);
+        self
+    }
+    pub(crate) fn buffer_host(
+        &self,
+    ) -> Option<&(dyn crate::render::ssbo::rhapsody_boundary::GraphicsDevice + Send + Sync)> {
+        self.buffer_host.as_deref()
     }
     /// 底层 rhapsody 设备。
-    pub fn inner(&self) -> &Arc<rhapsody::raw::device::GraphicsDevice> {
+    pub fn inner(&self) -> &Arc<rhapsody::device::Device> {
         &self.inner
     }
 
     // ---------------------------------------------------------------- 真实调用（WIRING §2.1）
-
-    /// 真实 `GraphicsDevice::create_persistent_descriptor_set(state, writes)`
-    /// （device.rs:941；WIRING §2.1/§3.1 #1）。
-    pub fn create_persistent_descriptor_set(
-        &self,
-        state: &rhapsody::raw::descriptor_set::DescriptorSetState,
-        writes: &[rhapsody::raw::descriptor_set::DescriptorWrite],
-    ) -> Result<Arc<rhapsody::raw::descriptor_set::VulkanDescriptorSet>, ash::vk::Result> {
-        self.inner.create_persistent_descriptor_set(state, writes)
-    }
 
     /// 真实 `GraphicsDevice::issue_full_pipeline_barrier(command: vk::CommandBuffer)`
     /// （device.rs:911；WIRING §2.1/§3.1 #4）。命令面由 `rg::pass_api::RenderPassApi` 或真实
@@ -74,12 +70,12 @@ impl GraphicsDevice {
     }
 
     /// 真实 `GraphicsDevice::wait_idle_and_recycle_resources()`（device.rs:699；WIRING §2.7）。
-    pub fn wait_idle_and_recycle_resources(&self) -> Result<(), ash::vk::Result> {
+    pub fn wait_idle_and_recycle_resources(&self) -> rhapsody::Result<()> {
         self.inner.wait_idle_and_recycle_resources()
     }
 
     /// 真实 `GraphicsDevice::wait_idle()`（device.rs:680）。
-    pub fn wait_idle(&self) -> Result<(), ash::vk::Result> {
+    pub fn wait_idle(&self) -> rhapsody::Result<()> {
         self.inner.wait_idle()
     }
 
@@ -88,12 +84,15 @@ impl GraphicsDevice {
         &self,
         family: u32,
         name: &str,
-    ) -> Result<rhapsody::raw::command_buffer::VulkanCommandBuffer, ash::vk::Result> {
+    ) -> rhapsody::Result<rhapsody::raw::command_buffer::VulkanCommandBuffer> {
         self.inner.create_command_buffer(family, name)
     }
 
     /// 真实 `GraphicsDevice::get_built_in_sampler_by_name(name)`（device.rs:830）。
-    pub fn get_built_in_sampler_by_name(&self, name: &str) -> Arc<rhapsody::raw::sampler::Sampler> {
+    pub fn get_built_in_sampler_by_name(
+        &self,
+        name: &str,
+    ) -> rhapsody::Result<Arc<rhapsody::raw::sampler::Sampler>> {
         self.inner.get_built_in_sampler_by_name(name)
     }
 
@@ -105,8 +104,9 @@ impl GraphicsDevice {
     /// 真实 `GraphicsDevice::refresh_memory_budget()`（device.rs:611）。
     pub fn refresh_memory_budget(
         &self,
-    ) -> rhapsody::raw::error::Result<Option<ash::vk::PhysicalDeviceMemoryBudgetPropertiesEXT<'static>>>
-    {
+    ) -> rhapsody::raw::error::Result<
+        Option<ash::vk::PhysicalDeviceMemoryBudgetPropertiesEXT<'static>>,
+    > {
         self.inner.refresh_memory_budget()
     }
 
@@ -161,12 +161,14 @@ impl GraphicsDevice {
     }
 
     /// 真实 `buffer_mapped_slice_mut`（device_api.rs:137）。
+    /// # Safety
+    /// Callers must exclude GPU/host aliases and flush non-coherent writes.
     #[allow(clippy::mut_from_ref)]
-    pub fn buffer_mapped_slice_mut<'a>(
+    pub unsafe fn buffer_mapped_slice_mut<'a>(
         &self,
         buffer: &'a rhapsody::raw::managed::buffer::ManagedBuffer,
     ) -> Option<&'a mut [u8]> {
-        self.inner.buffer_mapped_slice_mut(buffer)
+        unsafe { self.inner.buffer_mapped_slice_mut(buffer) }
     }
 
     /// 真实 `buffer_device_address`（device_api.rs:144）。
@@ -177,36 +179,7 @@ impl GraphicsDevice {
         self.inner.buffer_device_address(buffer)
     }
 
-    /// 真实 `create_render_pass(attachments)`（device_api.rs:224）。
-    pub fn create_render_pass(
-        &self,
-        attachments: &[rhapsody::raw::render_pass::RenderPassAttachmentDesc],
-    ) -> rhapsody::raw::error::Result<rhapsody::raw::managed::render_pass::ManagedRenderPass> {
-        self.inner.create_render_pass(attachments)
-    }
-
-    /// 真实 `create_framebuffer(pass, views, extent, layers)`（device_api.rs:247）。
-    pub fn create_framebuffer(
-        &self,
-        pass: &rhapsody::raw::managed::render_pass::ManagedRenderPass,
-        views: Vec<Arc<rhapsody::raw::texture::TextureView>>,
-        extent: ash::vk::Extent2D,
-        layers: u32,
-    ) -> rhapsody::raw::error::Result<rhapsody::raw::managed::framebuffer::ManagedFramebuffer> {
-        self.inner.create_framebuffer(pass, views, extent, layers)
-    }
-
     // ---------------------------------------------------------------- 登记缺口（WIRING §3.1 / §4）
-
-    /// **登记缺口 §4.2**：rhapsody 无 `update_persistent_descriptor_set` 方法身份
-    /// （只有 bind 语义的 `device_api::bind_persistent_descriptor_set`）。游戏侧 bindless 描述符
-    /// 更新路径未接：桥内只记日志，**不 panic、不假成功**。
-    pub fn update_persistent_descriptor_set(&self) {
-        log::warn!(
-            target: "country_core::rhapsody_contract",
-            "update_persistent_descriptor_set: registered gap (WIRING §4.2), bindless descriptor-set update not wired"
-        );
-    }
 
     /// **登记缺口 §4.3**：`[device+0xaba]` 全屏障开关无公开 getter（rhapsody 结构注释已记录布局）。
     /// 桥内返回 `false`（WIRING §3.1 #3），不得当作真实完成。
@@ -217,24 +190,10 @@ impl GraphicsDevice {
         );
         false
     }
-
-    /// 游戏侧 bindless 持久描述符集创建（WIRING §3.1 #1）。
-    /// 真实 `create_persistent_descriptor_set` 的签名是 `(state: &DescriptorSetState, writes: &[DescriptorWrite])`；
-    /// 游戏侧 bindless `DescriptorSetState` 构造未恢复（**登记缺口 §4.1**）。此桥记录日志并返回占位，
-    /// 不 panic、不假成功（bindless 整链未接，见 `texture_library.rs` 的 `TextureLibraryDevice` 缝）。
-    pub fn bindless_create_persistent_descriptor_set(&self, _name: &str) -> DescriptorSet {
-        log::warn!(
-            target: "country_core::rhapsody_contract",
-            "bindless create_persistent_descriptor_set: registered gap (WIRING §4.1), bindless DescriptorSetState not recovered"
-        );
-        DescriptorSet
-    }
 }
 
-/// 游戏侧 bindless 描述符集占位（WIRING §1：真实 = `Arc<rhapsody::raw::descriptor_set::VulkanDescriptorSet>`）。
-/// 游戏侧 bindless 状态未恢复（登记缺口 §4.1），保留占位供 `texture_library` 编译。
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
-pub struct DescriptorSet;
+/// 资产库持有真实描述符堆与资源租约；兼容旧模块导入路径。
+pub use crate::asset_libraries::descriptor_table::DescriptorSet;
 
 /// 设备/着色器/纹理占位类型：全 crate 唯一一份，见 `crate::rhapsody_types`。
 pub use crate::render::pass_builder::shader_uri::ComputePipelineDesc;
@@ -243,14 +202,14 @@ pub use crate::rhapsody_types::{
     Texture, TextureDesc,
 };
 
-/// 托管 GPU-object 句柄占位（WIRING §1：真实 = `raw::managed::handle::ManagedHandle<T>` /
+/// Game-side logical object identity; actual GPU ownership uses `raw::managed::handle::Managed<T>` /
 /// `Managed<T>`）。游戏侧以 u64 槽位为 ABI 桥；`gpu_generate_draw_lists` 的 `ExternalBufferHandle`
 /// 等消费点经此编译。
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ManagedHandle(pub u64);
 
 /// Managed handle wrapper for a typed GPU object
-/// (reused `rhapsody::raw::managed::handle::Handle<T>`; added at assembly for
+/// (physical resource keys use `rhapsody::resource::Handle<T>`; game identity retained for
 /// the wp1 `DrawPacket` / `draw_stream` surface).
 /// Clone/Debug are implemented manually (no `T: Clone/Debug` bound) so the
 /// handle stays usable as a map key / packet field for any object type.
@@ -323,7 +282,7 @@ pub struct Extent2D {
 }
 
 /// Render pass descriptor used as a dedupe key
-/// (reused `rhapsody::raw::render_pass::RenderPassDesc`).
+/// (reused `rhapsody::rg::attachments::contract::RenderPassDesc`).
 /// WIRING §4.16：真实 `RenderPassDesc` 是附件表键（0x98B），`{selector:u32}` 是臆造；真正的
 /// “渲染通道句柄 + 选项 u32” 是 `RasterPipelineKey`。此占位不再作真实键，保留给游戏侧编译。
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -331,7 +290,7 @@ pub struct RenderPassDesc {
     pub selector: u32,
 }
 
-/// Runtime render pass（游戏侧占位；WIRING §1：真实 = `raw::managed::render_pass::ManagedRenderPass`）。
+/// Game-side pass marker; physical attachments are prepared by the dynamic renderer.
 #[derive(Clone, Debug, Default)]
 pub struct RenderPass;
 

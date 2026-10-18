@@ -1,0 +1,3266 @@
+; SPIR-V
+; Version: 1.3
+; Generator: Google rspirv; 0
+; Bound: 206
+; Schema: 0
+               OpCapability Shader
+               OpCapability RuntimeDescriptorArray
+               OpCapability StorageImageExtendedFormats
+               OpExtension "SPV_EXT_descriptor_indexing"
+          %1 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel Logical GLSL450
+               OpEntryPoint GLCompute %cs_main "cs_main" %gl_GlobalInvocationID
+               OpExecutionMode %cs_main LocalSize 8 8 1
+          %4 = OpString "/tmp/.tmpK5TRCM"
+          %5 = OpString "shaders/inc/common.hlsl"
+          %6 = OpString "shaders/inc/samplers.hlsl"
+          %7 = OpString "shaders/inc/debug_utils.hlsl"
+          %8 = OpString "shaders/inc/tracked_buffer.hlsl"
+          %9 = OpString "shaders/ssgi/temporal_filter.cs.hlsl"
+         %10 = OpString "shaders/inc/uv.hlsl"
+         %11 = OpString "shaders/inc/frame_constants.hlsl"
+         %12 = OpString "shaders/inc/ray_cone.hlsl"
+         %13 = OpString "shaders/inc/math_const.hlsl"
+         %14 = OpString "shaders/inc/history_valid.hlsl"
+               OpSource HLSL 640 %4 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %5 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %6 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %7 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %8 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %9 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %10 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %11 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %12 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %13 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %14 "
+
+
+
+
+
+
+
+
+"
+               OpName %type_sampler "type.sampler"
+               OpName %sampler_lnc "sampler_lnc"
+               OpName %type_ConstantBuffer_FrameConstants "type.ConstantBuffer.FrameConstants"
+               OpMemberName %type_ConstantBuffer_FrameConstants 0 "sun_color"
+               OpMemberName %type_ConstantBuffer_FrameConstants 1 "sky_low_color"
+               OpMemberName %type_ConstantBuffer_FrameConstants 2 "sky_high_color"
+               OpMemberName %type_ConstantBuffer_FrameConstants 3 "fog_tint_thickness"
+               OpMemberName %type_ConstantBuffer_FrameConstants 4 "fake_light_color"
+               OpMemberName %type_ConstantBuffer_FrameConstants 5 "fake_light_dir"
+               OpMemberName %type_ConstantBuffer_FrameConstants 6 "fake_light2_color"
+               OpMemberName %type_ConstantBuffer_FrameConstants 7 "fake_light2_dir"
+               OpMemberName %type_ConstantBuffer_FrameConstants 8 "frame_index"
+               OpMemberName %type_ConstantBuffer_FrameConstants 9 "delta_time_seconds"
+               OpMemberName %type_ConstantBuffer_FrameConstants 10 "ev_mult"
+               OpMemberName %type_ConstantBuffer_FrameConstants 11 "glade_theme_id"
+               OpMemberName %type_ConstantBuffer_FrameConstants 12 "inner_rendering_resolution"
+               OpMemberName %type_ConstantBuffer_FrameConstants 13 "game_time_sec"
+               OpMemberName %type_ConstantBuffer_FrameConstants 14 "game_time_frac"
+               OpMemberName %type_ConstantBuffer_FrameConstants 15 "editing_highlight_color"
+               OpMemberName %type_ConstantBuffer_FrameConstants 16 "time_of_day"
+               OpMemberName %type_ConstantBuffer_FrameConstants 17 "dir_to_sun"
+               OpMemberName %type_ConstantBuffer_FrameConstants 18 "camera_idx"
+               OpMemberName %type_ConstantBuffer_FrameConstants 19 "dir_to_moon"
+               OpMemberName %type_ConstantBuffer_FrameConstants 20 "render_overrides"
+               OpMemberName %type_ConstantBuffer_FrameConstants 21 "global_mip_bias"
+               OpMemberName %type_ConstantBuffer_FrameConstants 22 "highlighted_transient_stair_edge_id"
+               OpMemberName %type_ConstantBuffer_FrameConstants 23 "pad1"
+               OpMemberName %type_ConstantBuffer_FrameConstants 24 "pad2"
+               OpMemberName %type_ConstantBuffer_FrameConstants 25 "debug_tweakers"
+               OpMemberName %type_ConstantBuffer_FrameConstants 26 "view_constants"
+               OpName %ViewConstants "ViewConstants"
+               OpMemberName %ViewConstants 0 "view_to_clip"
+               OpMemberName %ViewConstants 1 "clip_to_view"
+               OpMemberName %ViewConstants 2 "view_to_sample"
+               OpMemberName %ViewConstants 3 "sample_to_view"
+               OpMemberName %ViewConstants 4 "world_to_view"
+               OpMemberName %ViewConstants 5 "view_to_world"
+               OpMemberName %ViewConstants 6 "world_to_sample"
+               OpMemberName %ViewConstants 7 "clip_to_prev_clip"
+               OpMemberName %ViewConstants 8 "prev_view_to_prev_clip"
+               OpMemberName %ViewConstants 9 "prev_clip_to_prev_view"
+               OpMemberName %ViewConstants 10 "prev_world_to_prev_view"
+               OpMemberName %ViewConstants 11 "prev_view_to_prev_world"
+               OpMemberName %ViewConstants 12 "sample_offset_pixels"
+               OpMemberName %ViewConstants 13 "sample_offset_clip"
+               OpMemberName %ViewConstants 14 "prev_sample_offset_pixels"
+               OpMemberName %ViewConstants 15 "prev_sample_offset_clip"
+               OpName %frame_constants "frame_constants"
+               OpName %type_2d_image "type.2d.image"
+               OpName %type__Globals "type.$Globals"
+               OpMemberName %type__Globals 0 "history_valid"
+               OpMemberName %type__Globals 1 "input_tex_dims"
+               OpMemberName %type__Globals 2 "history_tex_dims"
+               OpMemberName %type__Globals 3 "reprojection_tex_dims"
+               OpMemberName %type__Globals 4 "final_output_tex_dims"
+               OpMemberName %type__Globals 5 "history_output_tex_dims"
+               OpName %_Globals "$Globals"
+               OpName %input_tex "input_tex"
+               OpName %history_tex "history_tex"
+               OpName %reprojection_tex "reprojection_tex"
+               OpName %type_2d_image_0 "type.2d.image"
+               OpName %final_output_tex "final_output_tex"
+               OpName %history_output_tex "history_output_tex"
+               OpName %cs_main "cs_main"
+               OpName %type_sampled_image "type.sampled.image"
+               OpModuleProcessed "dxc-commit-hash: 16ceb560"
+               OpModuleProcessed "dxc-cl-option: /tmp/.tmpK5TRCM -E cs_main -T cs_6_4 -spirv -WX -Ges -fspv-target-env=vulkan1.1 -HV 2021 -Zi -Fo /tmp/.tmpWKMeEp -Qembed_debug"
+               OpDecorate %gl_GlobalInvocationID BuiltIn GlobalInvocationId
+               OpDecorate %frame_constants DescriptorSet 1
+               OpDecorate %frame_constants Binding 0
+               OpDecorate %sampler_lnc DescriptorSet 0
+               OpDecorate %sampler_lnc Binding 0
+               OpDecorate %_Globals DescriptorSet 0
+               OpDecorate %_Globals Binding 13
+               OpDecorate %input_tex DescriptorSet 0
+               OpDecorate %input_tex Binding 14
+               OpDecorate %history_tex DescriptorSet 0
+               OpDecorate %history_tex Binding 15
+               OpDecorate %reprojection_tex DescriptorSet 0
+               OpDecorate %reprojection_tex Binding 16
+               OpDecorate %final_output_tex DescriptorSet 0
+               OpDecorate %final_output_tex Binding 17
+               OpDecorate %history_output_tex DescriptorSet 0
+               OpDecorate %history_output_tex Binding 18
+               OpMemberDecorate %ViewConstants 0 Offset 0
+               OpMemberDecorate %ViewConstants 0 MatrixStride 16
+               OpMemberDecorate %ViewConstants 0 RowMajor
+               OpMemberDecorate %ViewConstants 1 Offset 64
+               OpMemberDecorate %ViewConstants 1 MatrixStride 16
+               OpMemberDecorate %ViewConstants 1 RowMajor
+               OpMemberDecorate %ViewConstants 2 Offset 128
+               OpMemberDecorate %ViewConstants 2 MatrixStride 16
+               OpMemberDecorate %ViewConstants 2 RowMajor
+               OpMemberDecorate %ViewConstants 3 Offset 192
+               OpMemberDecorate %ViewConstants 3 MatrixStride 16
+               OpMemberDecorate %ViewConstants 3 RowMajor
+               OpMemberDecorate %ViewConstants 4 Offset 256
+               OpMemberDecorate %ViewConstants 4 MatrixStride 16
+               OpMemberDecorate %ViewConstants 4 RowMajor
+               OpMemberDecorate %ViewConstants 5 Offset 320
+               OpMemberDecorate %ViewConstants 5 MatrixStride 16
+               OpMemberDecorate %ViewConstants 5 RowMajor
+               OpMemberDecorate %ViewConstants 6 Offset 384
+               OpMemberDecorate %ViewConstants 6 MatrixStride 16
+               OpMemberDecorate %ViewConstants 6 RowMajor
+               OpMemberDecorate %ViewConstants 7 Offset 448
+               OpMemberDecorate %ViewConstants 7 MatrixStride 16
+               OpMemberDecorate %ViewConstants 7 RowMajor
+               OpMemberDecorate %ViewConstants 8 Offset 512
+               OpMemberDecorate %ViewConstants 8 MatrixStride 16
+               OpMemberDecorate %ViewConstants 8 RowMajor
+               OpMemberDecorate %ViewConstants 9 Offset 576
+               OpMemberDecorate %ViewConstants 9 MatrixStride 16
+               OpMemberDecorate %ViewConstants 9 RowMajor
+               OpMemberDecorate %ViewConstants 10 Offset 640
+               OpMemberDecorate %ViewConstants 10 MatrixStride 16
+               OpMemberDecorate %ViewConstants 10 RowMajor
+               OpMemberDecorate %ViewConstants 11 Offset 704
+               OpMemberDecorate %ViewConstants 11 MatrixStride 16
+               OpMemberDecorate %ViewConstants 11 RowMajor
+               OpMemberDecorate %ViewConstants 12 Offset 768
+               OpMemberDecorate %ViewConstants 13 Offset 776
+               OpMemberDecorate %ViewConstants 14 Offset 784
+               OpMemberDecorate %ViewConstants 15 Offset 792
+               OpDecorate %_arr_ViewConstants_uint_5 ArrayStride 800
+               OpMemberDecorate %type_ConstantBuffer_FrameConstants 0 Offset 0
+               OpMemberDecorate %type_ConstantBuffer_FrameConstants 1 Offset 16
+               OpMemberDecorate %type_ConstantBuffer_FrameConstants 2 Offset 32
+               OpMemberDecorate %type_ConstantBuffer_FrameConstants 3 Offset 48
+               OpMemberDecorate %type_ConstantBuffer_FrameConstants 4 Offset 64
+               OpMemberDecorate %type_ConstantBuffer_FrameConstants 5 Offset 80
+               OpMemberDecorate %type_ConstantBuffer_FrameConstants 6 Offset 96
+               OpMemberDecorate %type_ConstantBuffer_FrameConstants 7 Offset 112
+               OpMemberDecorate %type_ConstantBuffer_FrameConstants 8 Offset 128
+               OpMemberDecorate %type_ConstantBuffer_FrameConstants 9 Offset 132
+               OpMemberDecorate %type_ConstantBuffer_FrameConstants 10 Offset 136
+               OpMemberDecorate %type_ConstantBuffer_FrameConstants 11 Offset 140
+               OpMemberDecorate %type_ConstantBuffer_FrameConstants 12 Offset 144
+               OpMemberDecorate %type_ConstantBuffer_FrameConstants 13 Offset 152
+               OpMemberDecorate %type_ConstantBuffer_FrameConstants 14 Offset 156
+               OpMemberDecorate %type_ConstantBuffer_FrameConstants 15 Offset 160
+               OpMemberDecorate %type_ConstantBuffer_FrameConstants 16 Offset 172
+               OpMemberDecorate %type_ConstantBuffer_FrameConstants 17 Offset 176
+               OpMemberDecorate %type_ConstantBuffer_FrameConstants 18 Offset 188
+               OpMemberDecorate %type_ConstantBuffer_FrameConstants 19 Offset 192
+               OpMemberDecorate %type_ConstantBuffer_FrameConstants 20 Offset 204
+               OpMemberDecorate %type_ConstantBuffer_FrameConstants 21 Offset 208
+               OpMemberDecorate %type_ConstantBuffer_FrameConstants 22 Offset 212
+               OpMemberDecorate %type_ConstantBuffer_FrameConstants 23 Offset 216
+               OpMemberDecorate %type_ConstantBuffer_FrameConstants 24 Offset 220
+               OpMemberDecorate %type_ConstantBuffer_FrameConstants 25 Offset 224
+               OpMemberDecorate %type_ConstantBuffer_FrameConstants 26 Offset 240
+               OpDecorate %type_ConstantBuffer_FrameConstants Block
+               OpMemberDecorate %type__Globals 0 Offset 0
+               OpMemberDecorate %type__Globals 1 Offset 4
+               OpMemberDecorate %type__Globals 2 Offset 16
+               OpMemberDecorate %type__Globals 3 Offset 24
+               OpMemberDecorate %type__Globals 4 Offset 32
+               OpMemberDecorate %type__Globals 5 Offset 40
+               OpDecorate %type__Globals Block
+        %int = OpTypeInt 32 1
+      %int_1 = OpConstant %int 1
+      %float = OpTypeFloat 32
+       %uint = OpTypeInt 32 0
+     %uint_0 = OpConstant %uint 0
+      %int_0 = OpConstant %int 0
+       %bool = OpTypeBool
+      %false = OpConstantFalse %bool
+    %float_0 = OpConstant %float 0
+    %v4float = OpTypeVector %float 4
+         %41 = OpConstantComposite %v4float %float_0 %float_0 %float_0 %float_0
+      %v2int = OpTypeVector %int 2
+  %float_0_5 = OpConstant %float 0.5
+    %float_5 = OpConstant %float 5
+%float_0_125 = OpConstant %float 0.125
+         %46 = OpConstantComposite %v4float %float_0_125 %float_0_125 %float_0_125 %float_0_125
+    %v2float = OpTypeVector %float 2
+         %48 = OpConstantComposite %v2float %float_0_5 %float_0_5
+%type_sampler = OpTypeSampler
+%_ptr_UniformConstant_type_sampler = OpTypePointer UniformConstant %type_sampler
+     %v2uint = OpTypeVector %uint 2
+    %v3float = OpTypeVector %float 3
+     %uint_5 = OpConstant %uint 5
+%mat4v4float = OpTypeMatrix %v4float 4
+%ViewConstants = OpTypeStruct %mat4v4float %mat4v4float %mat4v4float %mat4v4float %mat4v4float %mat4v4float %mat4v4float %mat4v4float %mat4v4float %mat4v4float %mat4v4float %mat4v4float %v2float %v2float %v2float %v2float
+%_arr_ViewConstants_uint_5 = OpTypeArray %ViewConstants %uint_5
+%type_ConstantBuffer_FrameConstants = OpTypeStruct %v4float %v4float %v4float %v4float %v4float %v4float %v4float %v4float %uint %float %float %uint %v2uint %uint %float %v3float %float %v3float %uint %v3float %uint %float %uint %uint %uint %v4float %_arr_ViewConstants_uint_5
+%_ptr_Uniform_type_ConstantBuffer_FrameConstants = OpTypePointer Uniform %type_ConstantBuffer_FrameConstants
+%type_2d_image = OpTypeImage %float 2D 2 0 0 1 Unknown
+%type__Globals = OpTypeStruct %uint %v2uint %v2uint %v2uint %v2uint %v2uint
+%_ptr_Uniform_type__Globals = OpTypePointer Uniform %type__Globals
+%_ptr_UniformConstant_type_2d_image = OpTypePointer UniformConstant %type_2d_image
+%type_2d_image_0 = OpTypeImage %float 2D 2 0 0 2 R8
+%_ptr_UniformConstant_type_2d_image_0 = OpTypePointer UniformConstant %type_2d_image_0
+     %v3uint = OpTypeVector %uint 3
+%_ptr_Input_v3uint = OpTypePointer Input %v3uint
+       %void = OpTypeVoid
+         %61 = OpTypeFunction %void
+%_ptr_Uniform_uint = OpTypePointer Uniform %uint
+%_ptr_Uniform_v2uint = OpTypePointer Uniform %v2uint
+%type_sampled_image = OpTypeSampledImage %type_2d_image
+%sampler_lnc = OpVariable %_ptr_UniformConstant_type_sampler UniformConstant
+%frame_constants = OpVariable %_ptr_Uniform_type_ConstantBuffer_FrameConstants Uniform
+   %_Globals = OpVariable %_ptr_Uniform_type__Globals Uniform
+  %input_tex = OpVariable %_ptr_UniformConstant_type_2d_image UniformConstant
+%history_tex = OpVariable %_ptr_UniformConstant_type_2d_image UniformConstant
+%reprojection_tex = OpVariable %_ptr_UniformConstant_type_2d_image UniformConstant
+%final_output_tex = OpVariable %_ptr_UniformConstant_type_2d_image_0 UniformConstant
+%history_output_tex = OpVariable %_ptr_UniformConstant_type_2d_image_0 UniformConstant
+%gl_GlobalInvocationID = OpVariable %_ptr_Input_v3uint Input
+%float_0_223130167 = OpConstant %float 0.223130167
+ %float_0_25 = OpConstant %float 0.25
+         %66 = OpConstantComposite %v4float %float_0_25 %float_0_25 %float_0_25 %float_0_25
+%uint_4294967294 = OpConstant %uint 4294967294
+         %68 = OpConstantComposite %v2uint %uint_4294967294 %uint_4294967294
+         %69 = OpConstantComposite %v2uint %uint_0 %uint_4294967294
+    %float_1 = OpConstant %float 1
+%float_0_472366542 = OpConstant %float 0.472366542
+     %uint_2 = OpConstant %uint 2
+         %73 = OpConstantComposite %v2uint %uint_2 %uint_4294967294
+         %74 = OpConstantComposite %v2uint %uint_4294967294 %uint_0
+         %75 = OpConstantComposite %v2uint %uint_2 %uint_0
+         %76 = OpConstantComposite %v2uint %uint_4294967294 %uint_2
+         %77 = OpConstantComposite %v2uint %uint_0 %uint_2
+         %78 = OpConstantComposite %v2uint %uint_2 %uint_2
+%float_0_264411271 = OpConstant %float 0.264411271
+         %80 = OpConstantComposite %v4float %float_0_264411271 %float_0_264411271 %float_0_264411271 %float_0_264411271
+     %uint_8 = OpConstant %uint 8
+               OpLine %9 19 1
+               OpNoLine
+    %cs_main = OpFunction %void None %61
+         %82 = OpLabel
+               OpLine %9 19 1
+         %83 = OpLoad %v3uint %gl_GlobalInvocationID
+         %84 = OpVectorShuffle %v2uint %83 %83 0 1
+               OpLine %9 22 10
+         %85 = OpAccessChain %_ptr_Uniform_uint %_Globals %int_0
+         %86 = OpLoad %uint %85
+         %87 = OpINotEqual %bool %86 %uint_0
+               OpSelectionMerge %88 None
+               OpBranchConditional %87 %89 %88
+         %89 = OpLabel
+         %90 = OpAccessChain %_ptr_Uniform_uint %frame_constants %uint_8
+         %91 = OpLoad %uint %90
+               OpLine %11 196 18
+         %92 = OpIEqual %bool %uint_0 %91
+               OpLine %9 22 27
+         %93 = OpLogicalNot %bool %92
+               OpBranch %88
+         %88 = OpLabel
+         %94 = OpPhi %bool %false %82 %93 %89
+               OpLine %9 22 70
+               OpSelectionMerge %95 None
+               OpBranchConditional %94 %96 %97
+         %96 = OpLabel
+               OpLine %9 23 30
+         %98 = OpBitcast %v2int %84
+               OpLine %9 23 34
+         %99 = OpAccessChain %_ptr_Uniform_v2uint %_Globals %int_1
+        %100 = OpLoad %v2uint %99
+        %101 = OpConvertUToF %v2float %100
+               OpLine %10 4 13
+        %102 = OpConvertSToF %v2float %98
+               OpLine %10 4 24
+        %103 = OpFAdd %v2float %102 %48
+               OpLine %10 4 31
+        %104 = OpFDiv %v2float %103 %101
+               OpLine %9 25 25
+        %105 = OpLoad %type_2d_image %input_tex
+        %106 = OpImageFetch %v4float %105 %84 Lod %uint_0
+               OpLine %9 26 25
+        %107 = OpLoad %type_2d_image %reprojection_tex
+        %108 = OpImageFetch %v4float %107 %84 Lod %uint_0
+               OpLine %9 30 14
+               OpSelectionMerge %109 None
+               OpBranchConditional %87 %110 %109
+        %110 = OpLabel
+        %111 = OpAccessChain %_ptr_Uniform_uint %frame_constants %uint_8
+        %112 = OpLoad %uint %111
+               OpLine %11 196 18
+        %113 = OpIEqual %bool %uint_0 %112
+               OpLine %9 30 31
+        %114 = OpLogicalNot %bool %113
+               OpBranch %109
+        %109 = OpLabel
+        %115 = OpPhi %bool %false %96 %114 %110
+               OpLine %9 30 13
+               OpSelectionMerge %116 None
+               OpBranchConditional %115 %117 %118
+        %117 = OpLabel
+               OpLine %9 31 15
+        %119 = OpLoad %type_2d_image %history_tex
+               OpLine %9 31 39
+        %120 = OpLoad %type_sampler %sampler_lnc
+               OpLine %9 31 57
+        %121 = OpVectorShuffle %v2float %108 %108 0 1
+               OpLine %9 31 55
+        %122 = OpFAdd %v2float %104 %121
+               OpLine %9 31 15
+        %123 = OpSampledImage %type_sampled_image %119 %120
+        %124 = OpImageSampleExplicitLod %v4float %123 %122 Lod %float_0
+               OpLine %9 31 69
+               OpBranch %116
+        %118 = OpLabel
+               OpLine %9 32 15
+               OpBranch %116
+        %116 = OpLabel
+        %125 = OpPhi %v4float %124 %117 %106 %118
+               OpLine %9 44 45
+        %126 = OpIAdd %v2uint %84 %68
+               OpLine %9 44 32
+        %127 = OpImageFetch %v4float %105 %126 Lod %uint_0
+               OpLine %9 46 22
+        %128 = OpVectorTimesScalar %v4float %127 %float_0_223130167
+               OpLine %9 47 23
+        %129 = OpFMul %v4float %127 %127
+               OpLine %9 47 31
+        %130 = OpVectorTimesScalar %v4float %129 %float_0_223130167
+               OpLine %9 44 45
+        %131 = OpIAdd %v2uint %84 %69
+               OpLine %9 44 32
+        %132 = OpImageFetch %v4float %105 %131 Lod %uint_0
+               OpLine %9 46 22
+        %133 = OpVectorTimesScalar %v4float %132 %float_0_472366542
+               OpLine %9 46 13
+        %134 = OpFAdd %v4float %128 %133
+               OpLine %9 47 23
+        %135 = OpFMul %v4float %132 %132
+               OpLine %9 47 31
+        %136 = OpVectorTimesScalar %v4float %135 %float_0_472366542
+               OpLine %9 47 14
+        %137 = OpFAdd %v4float %130 %136
+               OpLine %9 44 45
+        %138 = OpIAdd %v2uint %84 %73
+               OpLine %9 44 32
+        %139 = OpImageFetch %v4float %105 %138 Lod %uint_0
+               OpLine %9 46 22
+        %140 = OpVectorTimesScalar %v4float %139 %float_0_223130167
+               OpLine %9 46 13
+        %141 = OpFAdd %v4float %134 %140
+               OpLine %9 47 23
+        %142 = OpFMul %v4float %139 %139
+               OpLine %9 47 31
+        %143 = OpVectorTimesScalar %v4float %142 %float_0_223130167
+               OpLine %9 47 14
+        %144 = OpFAdd %v4float %137 %143
+               OpLine %9 44 45
+        %145 = OpIAdd %v2uint %84 %74
+               OpLine %9 44 32
+        %146 = OpImageFetch %v4float %105 %145 Lod %uint_0
+               OpLine %9 46 22
+        %147 = OpVectorTimesScalar %v4float %146 %float_0_472366542
+               OpLine %9 46 13
+        %148 = OpFAdd %v4float %141 %147
+               OpLine %9 47 23
+        %149 = OpFMul %v4float %146 %146
+               OpLine %9 47 31
+        %150 = OpVectorTimesScalar %v4float %149 %float_0_472366542
+               OpLine %9 47 14
+        %151 = OpFAdd %v4float %144 %150
+               OpLine %9 44 32
+        %152 = OpImageFetch %v4float %105 %84 Lod %uint_0
+               OpLine %9 46 22
+        %153 = OpVectorTimesScalar %v4float %152 %float_1
+               OpLine %9 46 13
+        %154 = OpFAdd %v4float %148 %153
+               OpLine %9 47 23
+        %155 = OpFMul %v4float %152 %152
+               OpLine %9 47 31
+        %156 = OpVectorTimesScalar %v4float %155 %float_1
+               OpLine %9 47 14
+        %157 = OpFAdd %v4float %151 %156
+               OpLine %9 44 45
+        %158 = OpIAdd %v2uint %84 %75
+               OpLine %9 44 32
+        %159 = OpImageFetch %v4float %105 %158 Lod %uint_0
+               OpLine %9 46 22
+        %160 = OpVectorTimesScalar %v4float %159 %float_0_472366542
+               OpLine %9 46 13
+        %161 = OpFAdd %v4float %154 %160
+               OpLine %9 47 23
+        %162 = OpFMul %v4float %159 %159
+               OpLine %9 47 31
+        %163 = OpVectorTimesScalar %v4float %162 %float_0_472366542
+               OpLine %9 47 14
+        %164 = OpFAdd %v4float %157 %163
+               OpLine %9 44 45
+        %165 = OpIAdd %v2uint %84 %76
+               OpLine %9 44 32
+        %166 = OpImageFetch %v4float %105 %165 Lod %uint_0
+               OpLine %9 46 22
+        %167 = OpVectorTimesScalar %v4float %166 %float_0_223130167
+               OpLine %9 46 13
+        %168 = OpFAdd %v4float %161 %167
+               OpLine %9 47 23
+        %169 = OpFMul %v4float %166 %166
+               OpLine %9 47 31
+        %170 = OpVectorTimesScalar %v4float %169 %float_0_223130167
+               OpLine %9 47 14
+        %171 = OpFAdd %v4float %164 %170
+               OpLine %9 44 45
+        %172 = OpIAdd %v2uint %84 %77
+               OpLine %9 44 32
+        %173 = OpImageFetch %v4float %105 %172 Lod %uint_0
+               OpLine %9 46 22
+        %174 = OpVectorTimesScalar %v4float %173 %float_0_472366542
+               OpLine %9 46 13
+        %175 = OpFAdd %v4float %168 %174
+               OpLine %9 47 23
+        %176 = OpFMul %v4float %173 %173
+               OpLine %9 47 31
+        %177 = OpVectorTimesScalar %v4float %176 %float_0_472366542
+               OpLine %9 47 14
+        %178 = OpFAdd %v4float %171 %177
+               OpLine %9 44 45
+        %179 = OpIAdd %v2uint %84 %78
+               OpLine %9 44 32
+        %180 = OpImageFetch %v4float %105 %179 Lod %uint_0
+               OpLine %9 46 22
+        %181 = OpVectorTimesScalar %v4float %180 %float_0_223130167
+               OpLine %9 46 13
+        %182 = OpFAdd %v4float %175 %181
+               OpLine %9 47 23
+        %183 = OpFMul %v4float %180 %180
+               OpLine %9 47 31
+        %184 = OpVectorTimesScalar %v4float %183 %float_0_223130167
+               OpLine %9 47 14
+        %185 = OpFAdd %v4float %178 %184
+               OpLine %9 52 23
+        %186 = OpFMul %v4float %182 %80
+               OpLine %9 53 25
+        %187 = OpFMul %v4float %185 %80
+               OpLine %9 54 47
+        %188 = OpFMul %v4float %186 %186
+               OpLine %9 54 42
+        %189 = OpFSub %v4float %187 %188
+               OpLine %9 54 24
+        %190 = OpExtInst %v4float %1 NMax %41 %189
+               OpLine %9 54 19
+        %191 = OpExtInst %v4float %1 Sqrt %190
+               OpLine %9 59 20
+        %192 = OpExtInst %v4float %1 FMix %106 %186 %66
+               OpLine %9 59 64
+        %193 = OpVectorTimesScalar %v4float %191 %float_0_5
+               OpLine %9 59 75
+        %194 = OpVectorTimesScalar %v4float %193 %float_5
+               OpLine %9 59 58
+        %195 = OpFSub %v4float %192 %194
+               OpLine %9 60 58
+        %196 = OpFAdd %v4float %192 %194
+               OpLine %9 62 31
+        %197 = OpExtInst %v4float %1 FClamp %125 %195 %196
+               OpLine %9 64 15
+        %198 = OpExtInst %v4float %1 FMix %197 %106 %46
+               OpLine %9 67 5
+               OpBranch %95
+         %97 = OpLabel
+               OpLine %9 66 15
+        %199 = OpLoad %type_2d_image %input_tex
+        %200 = OpImageFetch %v4float %199 %84 Lod %uint_0
+               OpLine %9 67 5
+               OpBranch %95
+         %95 = OpLabel
+        %201 = OpPhi %v4float %198 %116 %200 %97
+               OpLine %9 70 15
+        %202 = OpCompositeExtract %float %201 0
+        %203 = OpCompositeConstruct %v4float %202 %202 %202 %202
+               OpLine %9 73 5
+        %204 = OpLoad %type_2d_image_0 %history_output_tex
+               OpImageWrite %204 %84 %203 None
+               OpLine %9 74 5
+        %205 = OpLoad %type_2d_image_0 %final_output_tex
+               OpImageWrite %205 %84 %203 None
+               OpLine %9 75 1
+               OpReturn
+               OpFunctionEnd

@@ -1,12 +1,12 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Visitor};
 use std::marker::PhantomData;
-/// B 0x1408e1630: finite normalized coordinate including both endpoints.
+/// Finite normalized coordinate, including both endpoints.
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub struct CurveU<S = super::CurveCoordSemantic2D> {
     value: f32,
     semantic: PhantomData<S>,
 }
-/// B unrestricted finite curve coordinate, used before clamping wire values.
+/// Finite curve coordinate before clamping to the normalized range.
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub struct CurveUBoundless<S = super::CurveCoordSemantic2D> {
     value: f32,
@@ -14,8 +14,7 @@ pub struct CurveUBoundless<S = super::CurveCoordSemantic2D> {
 }
 impl<S> CurveUBoundless<S> {
     pub fn new(value: f32) -> Self {
-        assert!(!value.is_nan(), "NaN curve coordinate");
-        assert!(!value.is_infinite(), "infinite curve coordinate");
+        assert!(value.is_finite(), "nonfinite curve coordinate");
         Self {
             value,
             semantic: PhantomData,
@@ -43,9 +42,11 @@ impl<'de, S> Deserialize<'de> for CurveU<S> {
                 f.write_str("a finite curve coordinate")
             }
             fn visit_f64<E: serde::de::Error>(self, value: f64) -> Result<Self::Value, E> {
-                // Original narrows before validation; a finite f64 can overflow
-                // f32 and panic. Out-of-range finite values are clamped.
-                Ok(CurveUBoundless::<S>::new(value as f32).clamp())
+                if !value.is_finite() {
+                    return Err(E::custom("curve coordinate must be finite"));
+                }
+                // Clamp before narrowing so every finite f64 remains valid.
+                Ok(CurveU::new(value.clamp(0.0, 1.0) as f32))
             }
         }
         deserializer.deserialize_f64(CoordinateVisitor(PhantomData))

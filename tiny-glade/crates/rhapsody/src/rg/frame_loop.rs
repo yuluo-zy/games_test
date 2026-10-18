@@ -191,6 +191,23 @@ impl FrameLoop {
     pub fn swapchain(&self) -> &Arc<Swapchain> {
         &self.swapchain
     }
+    /// Forward a host focus event to the current swapchain generation.
+    pub fn set_focused(&self, focused: bool) -> Result<crate::raw::swapchain::FullscreenStatus> {
+        self.ensure_alive()?;
+        self.observe(self.swapchain.set_focused(focused))
+    }
+    /// Forward a host window-mode change; the next acquire rebuilds if needed.
+    ///
+    /// # Safety
+    /// An Exclusive monitor must satisfy Swapchain::set_window_mode's lifetime
+    /// and Win32 window/monitor association requirements.
+    pub unsafe fn set_window_mode(
+        &self,
+        mode: crate::raw::swapchain::WindowMode,
+    ) -> Result<crate::raw::swapchain::FullscreenStatus> {
+        self.ensure_alive()?;
+        self.observe(unsafe { self.swapchain.set_window_mode(mode) })
+    }
     pub fn last_cpu_timings(&self) -> FrameCpuTimings {
         self.cpu_timings
     }

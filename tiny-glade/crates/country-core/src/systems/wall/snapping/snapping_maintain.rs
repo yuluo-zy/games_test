@@ -40,9 +40,15 @@ pub fn check_for_disable_snapping(
     }
 }
 
-/// B 0x140a6ad00: publish the current mode to the `+0x20` sound-dedup byte.
+/// B 0x140a6ad00: publish the full active region to the `+0x20..+0x38` copy
+/// (mode@+0x20, snapped@+0x21, snap@+0x24..+0x30, wall@+0x30, end@+0x38).
+/// Rust 此前只发布模式字节（1 字节），fresh 证实原发布**全状态副本**。
 pub fn snapping_maintain(mut mode: ResMut<SnappingMode>) {
-    mode.last_published_mode = mode.mode;
+    mode.published.mode = mode.mode;
+    mode.published.snapped = mode.snapped;
+    mode.published.snap = mode.snap;
+    mode.published.wall = mode.wall;
+    mode.published.end = mode.end;
 }
 
 /// B 0x140a6a650 (6-param signifier system). Mode 2 draws the end-snap
@@ -72,8 +78,12 @@ pub fn snapping_signifiers(
     let Some(state) = public.get(mode.wall) else {
         return;
     };
+    // 原生调用方以参考点（snap 目标）作 position 传入 preview_snapping_line；
+    // 函数内部做 get_approx_u_from_pos 投影（对称切片中点 = 投影点）。
+    let reference = glam::Vec2::new(mode.snap.x, mode.snap.z);
     let Some(line) = crate::systems::wall::shapes::shape_placement_signifiers::preview_snapping_line(
         state,
+        reference,
     ) else {
         return;
     };

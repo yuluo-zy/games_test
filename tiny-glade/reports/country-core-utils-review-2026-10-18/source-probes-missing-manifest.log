@@ -1,0 +1,19 @@
+$ rustc --edition=2024 --test /var/folders/nn/2ymzgfd16j96wv2_mj2bpsfm0000gn/T/country-utils-source-review-pca151wg/main.rs -L dependency=/tmp/tg-country-core-utils-review-20261018-target/debug/deps --extern glam=/tmp/tg-country-core-utils-review-20261018-target/debug/deps/libglam-39981a410562b125.rlib --extern serde=/tmp/tg-country-core-utils-review-20261018-target/debug/deps/libserde-786e34224983ef47.rlib --extern serde_json=/tmp/tg-country-core-utils-review-20261018-target/debug/deps/libserde_json-57a2800a1410d1e0.rlib --extern anyhow=/tmp/tg-country-core-utils-review-20261018-target/debug/deps/libanyhow-19c0c2cd6065c249.rlib --extern bevy_ecs=/tmp/tg-country-core-utils-review-20261018-target/debug/deps/libbevy_ecs-970865816ef8625b.rlib --extern parking_lot=/tmp/tg-country-core-utils-review-20261018-target/debug/deps/libparking_lot-732da42b5256ef94.rlib --extern tempfile=/tmp/tg-country-core-utils-review-20261018-target/debug/deps/libtempfile-f058422402f53425.rlib --extern log=/tmp/tg-country-core-utils-review-20261018-target/debug/deps/liblog-1d332159fdb7033f.rlib --extern utils=/tmp/tg-country-core-utils-review-20261018-target/debug/deps/libutils-afe98ab5d1248165.rlib -o /var/folders/nn/2ymzgfd16j96wv2_mj2bpsfm0000gn/T/country-utils-source-review-pca151wg/probes
+error: proc-macro derive panicked
+  --> /var/folders/nn/2ymzgfd16j96wv2_mj2bpsfm0000gn/T/country-utils-source-review-pca151wg/assets.rs:43:10
+   |
+43 | #[derive(bevy_ecs::component::Component)]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: message: CARGO_MANIFEST_DIR is not defined.
+
+error: proc-macro derive panicked
+  --> /Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/asset_libraries/mesh_library.rs:28:10
+   |
+28 | #[derive(Resource)]
+   |          ^^^^^^^^
+   |
+   = help: message: CARGO_MANIFEST_DIR is not defined.
+
+error: aborting due to 2 previous errors
+

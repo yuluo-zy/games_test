@@ -1,5 +1,7 @@
 # Tiny Glade 原作还原：里程碑与进度
 
+2026-10-18 components 限定恢复：country-core 现有三个 `_gap` 已恢复为树动画、XZ 缓动位置和拥有名称/图层的 UI 图像；补回两个误作空标记的树载荷。修正删除误读时长、查询序 Local 进度错配、u32 绘制顺序和改变 ECS 克隆策略的派生；整理 UI/树/渲染文件并同步直接调用方。原 B 26 段指令与 RNE 一致；限定组件/真实删除系统共 5 测试，相关四库编译通过。完整工作区受 water_audio_grid 既有字段错误阻塞，all-targets 受 pass_kit/test_env 旧 trait 实现阻塞。其余 registry 载荷、放置 GPU 写面、原调度/完整游戏不计完成。见 [报告](../../tiny-glade/crates/country-core/recovery/components-2026-10-18.md)。
+
 2026-10-16 toolbar 来源核查：B 原 PDB 记录的 31 个 Taffy 源文件与 crates.io 0.3.13 完全一致；8 个原码定点函数确认游戏 Taffy 适配、mei 自有布局和 tg-text 渲染边界。不能把整套 toolbar 归为 iced/egui 或 Taffy 的修改版，完整公开 GUI 上游未确证。此次仅来源研究，无业务完成度增长，见 [报告](evidence/toolbar-origin-2026-10-16/REPORT.md)。
 
 2026-10-15 按用户要求改为实现优先：core gui.rs 已补菜单拥有状态、Next/Prev、状态推进、共享缩略图布局和调试标签；LUT 改读正确的 EscMenuState 并直接消费位置算法，菜单 ID 复用原 uuid。当前增量仅 all-targets 编译检查，不扩展验证矩阵。GUI 仍缺 PhotomodeScreen、完整 DebugGui/日志、Egui 资源及全局调度；全 core 未完成。逐文件状态以 [core 目录推进](../../tiny-glade/crates/country-core/recovery/README.md) 为准。
@@ -91,3 +93,19 @@
 工程：[Cargo.toml](reconstruction/Cargo.toml)。完整研究计划：[MASTER_PLAN.md](MASTER_PLAN.md)。源码任务与优先级：[TASK_BACKLOG.md](TASK_BACKLOG.md)。依赖排除与持久记忆：[PROJECT_MEMORY.md](PROJECT_MEMORY.md)。机器可读台账：[project.json](tracking/project.json)。
 
 依赖列描述最终验收依赖，源码阶段可以沿已确认的数据接口继续推进。排期以实际源码覆盖和验证吞吐滚动更新，不承诺未经测量的整游戏完工日期。更新台账后执行 `scripts/update-progress.py`，它会核验已完成项的依赖、证据文件与局部差分结果。
+
+
+## 2026-10-18 asset_libraries 工程化修复
+
+用户明确允许偏离逆向设计，以功能性、正确性优先。`games_test/tiny-glade/crates/country-core/src/asset_libraries` 完成六项审查问题修复：NoUninit 安全影子转换、真实纹理上传和 BindlessHeap 描述符租约、完整纹理描述与 D16 清零、ECS 热重载/VAO 刷新消费者、真实宿主每帧瞬态资源回收。中文业务注释与命名整理，复用既有 bytemuck/serde/rhapsody，不新增依赖版本；不计原作恢复信用，旧差分不覆盖当前源码。
+
+验证：成功构建快照 2103 项库测试 + 6 项资产链测试通过；真实 Vulkan GPU 1 项通过，已编译产物再次直接运行通过（sampled_capacity=1020，重载回收后 live_leases=1）。最终 17 文件格式检查通过；最新全目标编译、GPU 重新编译和 Clippy 被其他聊天中输入/工具栏接口变更阻断，不宣称最终全工作区通过。报告 `games_test/tiny-glade/reports/asset-libraries-refactor-2026-10-18/README.md`、`verification.json`，工程来源登记 `provenance/asset-libraries-refactor-2026-10-18.json`。没有全游戏/原进程验收或量化性能基准，摆放数据仍为 x/y schema。
+
+
+## 2026-10-18 asset_libraries 第二轮复审修复
+
+用户要求重新 review 并修复，继续以工程正确性优先，不计原作恢复信用。再次审查当前 15 个模块文件及生产调用链，修复 5 项：typed SSBO 初始上传缺少 NoUninit（改用 bytemuck，numeric records derive 校验）；普通 mesh 删除遗留 GPU VAO（独立删除通知，缺宿主保留、维护阶段释放）；延迟描述符连续热重载耗尽槽位（复用槽位并提交最新资产）；SSBO 缓存命中绕过完整类型检查（校验前置、写锁重查）；VAO Result 接口缺 mesh 仍 panic（改为 Err）。增加 1 库测试、3 链测试和 1 编译失败测试，更新 1 旧 VAO 测试。
+
+最新源码验证：country-core 2098 项库测试 + 9 项资产链测试通过；NoUninit 编译失败测试 1 项通过；重新编译并在本机严格 Vulkan 运行 GPU 测试 1 项通过（容量 1020，重载后 live_leases=1）；tiny-glade 全部目标 check、限定 core Clippy 均 exit 0；16 文件格式检查通过。Clippy 保留既有及锁定派生宏辅助项告警，未使用 -D warnings。本轮实际成功结果取代上一轮“全工程重编受阻”的状态，失败尝试仍保留。
+
+验证期间遇到其他任务的存档接口变动、临时探针移除、Cargo 锁和磁盘不足；只清理未锁定旧增量会话与旧核心编译归档，不删除源码/资产/证据。报告 `games_test/tiny-glade/reports/asset-libraries-rereview-2026-10-18/README.md`、verification.json；来源 `provenance/asset-libraries-rereview-2026-10-18.json`。下层通用缓冲的全部字节转换尚未全量收紧；没有整游戏/原进程或量化性能验收。

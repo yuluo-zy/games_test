@@ -33,7 +33,11 @@ impl TreeStorage {
     }
     /// Native insert returns the previous entry. The counter advances for an
     /// explicit restored index as well as an allocated one; replacement is valid.
-    pub fn insert(&mut self, index: TreeStorageIndex, entry: TreeStorageEntry) -> Option<TreeStorageEntry> {
+    pub fn insert(
+        &mut self,
+        index: TreeStorageIndex,
+        entry: TreeStorageEntry,
+    ) -> Option<TreeStorageEntry> {
         let previous = self.entries.insert(index, entry);
         self.next_index = self.next_index.max(index.0.wrapping_add(1));
         previous
@@ -81,30 +85,43 @@ pub struct InteractableForestPlacements {
 }
 
 /// 树移动命令（O：`tree_storage::MoveTreeCmd`；ui_move_tree 0x14226b1a0 发射、
-/// process_tree_cmds 0x142267430 消费。载荷语义 U）。
-#[derive(bevy_ecs::event::Event, Clone, Debug, Default)]
+/// process_tree_cmds 0x142267430 消费。载荷 = **0x18B** `{index u64@+0,
+/// position Vec3@+8}`；事件槽 stride 0x20 = Bevy EventInstance 头 8B + 0x18。
+/// wave4/A-toolbar FIX-C4：旧 `id@+0` 实为 EventInstance event_id，非载荷字段。
+#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default)]
 pub struct MoveTreeCmd {
-    /// typed gap。
-    pub _gap: u64,
+    /// @+0：树索引（O：`TreeStorage::get` 的键）。
+    pub index: u64,
+    /// @+8：世界位置。
+    pub position: glam::Vec3,
 }
 
-/// 区域树隐藏命令（O：`tree_storage::HideTreesinAreaCmd`；hide_trees 0x14226a260
-/// 消费——相机圈过滤门（Circle2d::with_expanded_diameter 0x140c980c0 +
-/// contains_point 0x140c980f0）；载荷 = {圈中心, 半径}，I 字段名）。
+/// Existing geometry values carried by the original area command. B's shape
+/// tag is 0 for circle and 1 for rectangle; the enum name here is descriptive.
+#[derive(Clone, Copy, Debug)]
+pub enum TreeHideArea {
+    Circle(utils::geometry::Circle2d),
+    Rectangle(utils::geometry::Rectangle2d),
+}
+
+/// B hide_trees consumes the actual shape, vertical limit, expansion and
+/// deletion gate. In its 48-byte EventInstance these are at 0/4, 0x1c, 0x20,
+/// 0x24; the event ID follows the payload, unlike the wall command instance.
 #[derive(bevy_ecs::event::Event, Clone, Copy, Debug)]
 pub struct HideTreesinAreaCmd {
-    /// 圈中心（世界 xz）。
-    pub center: glam::Vec2,
-    /// 圈半径。
-    pub radius: f32,
+    pub area: TreeHideArea,
+    /// Skip only when this is positive and exceeds tree Y by more than four.
+    pub height_limit: f32,
+    /// Added to circle radius, or to both rectangle dimensions.
+    pub expansion: f32,
+    pub finished: bool,
 }
 
-/// 墙旁树隐藏命令（O：`tree_storage::HideTreesNextToWallCmd`；hide_trees 消费；
-/// 载荷 = 墙圈 {中心, 半径}，I）。
+/// Wall-drawing request consumed by tree-tool::hide_trees. B ui_draw_wall
+/// @140ab075d/140ab0883 writes {wall:u64, finished:bool}; the circle is built
+/// around each queried tree by the consumer, not supplied by this command.
 #[derive(bevy_ecs::event::Event, Clone, Copy, Debug)]
 pub struct HideTreesNextToWallCmd {
-    /// 圈中心（世界 xz）。
-    pub center: glam::Vec2,
-    /// 圈半径。
-    pub radius: f32,
+    pub wall: crate::resources::walls::WallId,
+    pub finished: bool,
 }

@@ -1,7 +1,9 @@
-//! B 0x140a03ba0 coalesces all unread stroke changes into one notification.
+//! B0x140a03ba0 coalesces unread stroke changes, requests recalculation,
+//! increments scheduled readback and publishes PlayTerrainSound tag0. The
+//! original SystemParam identity supersedes folded grow_one's stairs alias.
 use super::{
-    delayed_terrain_changed_msg::ScheduledTerrainReadback, PlayTerrainSound,
-    RecalculateHeightMapCmd,
+    PlayTerrainSound, RecalculateHeightMapCmd,
+    delayed_terrain_changed_msg::ScheduledTerrainReadback,
 };
 use crate::resources::terrain_editing::StrokeId;
 use bevy_ecs::prelude::*;
@@ -14,11 +16,11 @@ pub fn terrain_stroke_changed(
     mut changed: EventReader<EvTerrainStrokeChanged>,
     readback: Res<ScheduledTerrainReadback>,
     mut recalculate: EventWriter<RecalculateHeightMapCmd>,
-    mut audio: EventWriter<PlayTerrainSound>,
+    mut sounds: EventWriter<PlayTerrainSound>,
 ) {
     if changed.read().last().is_some() {
         recalculate.write(RecalculateHeightMapCmd);
         readback.on_terrain_modified();
-        audio.write(PlayTerrainSound::StrokeChanged);
+        sounds.write(PlayTerrainSound::StrokeChanged);
     }
 }

@@ -1,27 +1,34 @@
 //! B `tree_audio.rs`: tree edit / ambience sounds — 4 loops + TreePlace /
 //! TreeDelete one-shots.
 //!
-//! O-level facts (chapter tree_audio.rs.md, decomp-0x1414633e0/0x1414638e0,
-//! rne-read):
+//! Fresh evidence (decomp-0x1414633e0 / 0x1414638e0, disasm-0x141463b80..
+//! 0x141464130, map closure `next` 0x1412f0680):
 //! - init: 4 × `instantiate_loop` — `event:/SFX/Tree/TreeMove`, then three
-//!   `event:/SFX/Tree/Amb` (decomp shows the 2nd–4th loop names all resolving
-//!   to `event:/SFX/Tree/Amb`; the chapter's TreePlace/TreeGizmo events are the
-//!   one-shot paths, not loops).
-//! - system: `Query<&TreeAmbience>` → `Vec<(dist, pos)>` stable-sorted by
-//!   distance; the first three loops follow the nearest trees (start + position
-//!   when a tree exists, stop otherwise). `PlayTreeSoundCmd` kind 0 → TreePlace,
-//!   kind 2 → TreeDelete one-shots (kind 1 ignored), each with parameters
-//!   `tree_size` / `is_naked` (rne-read).
+//!   `event:/SFX/Tree/Amb`.
+//! - the distance closure maps `&TreeAmbience` → `(distance_to_camera_eye,
+//!   position)`; the vector is stable-sorted by distance.
+//! - frame start: the three loops at state+0x38/+0x70/+0xa8 (indices 1..=3)
+//!   follow the three nearest trees (`start_if_not_playing` + `set_position`);
+//!   the remaining loops are stopped.
+//! - `PlayTreeSoundCmd` (stride 0x20: kind@+8, selector@+9, extra@+0xa,
+//!   value@+0xc, position@+0x10):
+//!   kind 0 → TreePlace, kind 2 → TreeDelete, kind 1 → frame-end TreeMove
+//!   loop (selector byte == 2 stops it). One-shot parameter order:
+//!   `tree_size` (= value) → `set_position` → `start_if_not_playing` →
+//!   (`in_water` = selector != 0, `is_naked` = extra != 0 for TreePlace).
 
 use crate::{
     resources::audio_resources::{AudioCore, AudioInstance, EventInstance, Studio},
+    systems::audio::PlayTreeSoundCmd,
+    systems::camera_rig::main_camera::MainCamera,
+    systems::mode_manager::AppMode,
+    resources::cursor_terrain_raycast::CursorTerrainRaycast,
     utils::audio_utils::AudioLoop,
 };
-use crate::systems::audio::PlayTreeSoundCmd;
 use bevy_ecs::prelude::*;
 use glam::Vec3;
 
-/// Loop events (O: rne-read; the 2nd–4th are the ambience loop).
+/// Loop events (O: init string constants; the 2nd–4th are the ambience loop).
 pub const TREE_LOOP_EVENTS: [&str; 4] = [
     "event:/SFX/Tree/TreeMove",
     "event:/SFX/Tree/Amb",
@@ -32,6 +39,12 @@ pub const TREE_LOOP_EVENTS: [&str; 4] = [
 /// One-shot events (O: decomp string assembly + rne-read).
 pub const TREE_PLACE_EVENT: &str = "event:/SFX/Tree/TreePlace";
 pub const TREE_DELETE_EVENT: &str = "event:/SFX/Tree/TreeDelete";
+
+/// One-shot / loop parameters (O: rne-read).
+pub const TREE_SIZE_PARAM: &str = "tree_size";
+pub const IN_WATER_PARAM: &str = "in_water";
+pub const IS_NAKED_PARAM: &str = "is_naked";
+pub const EDITING_SPEED_PARAM: &str = "editing_speed";
 
 /// `TreeAmbience` component (native `components::TreeAmbience`; the ECS
 /// component is registered in the registry but the owning struct lives in the
@@ -66,43 +79,98 @@ pub fn tree_audio_init_system<S: Studio + Send + Sync + 'static>(
 }
 
 /// `tree_audio_system` (0x1414638e0).
+#[allow(clippy::too_many_arguments)]
 pub fn tree_audio_system<S: Studio + Send + Sync + 'static>(
     mut state: ResMut<TreeAudioState<S::Event>>,
     mut events: EventReader<PlayTreeSoundCmd>,
     core: Res<AudioCore<S>>,
+    camera: Res<MainCamera>,
+    mode: Res<AppMode>,
+    raycast: Res<CursorTerrainRaycast>,
     trees: Query<&TreeAmbience>,
 ) {
-    // O: nearest-tree distance list, stable-sorted ascending.
+    // O (map closure `next` 0x1412f0680): distance to the maintained camera
+    // matrix eye position, stable-sorted ascending.
+    let eye = camera.eye_position();
     let mut distances: Vec<(f32, Vec3)> = trees
         .iter()
-        .map(|tree| (tree.position.length(), tree.position))
+        .map(|tree| (tree.position.distance(eye), tree.position))
         .collect();
     distances.sort_by(|a, b| a.0.total_cmp(&b.0));
 
-    // O: first three loops follow the nearest three trees.
-    for (index, loop_player) in state.loops.iter_mut().enumerate() {
-        if let Some((_, position)) = distances.get(index) {
+    // O: the three ambience loops (state+0x38/+0x70/+0xa8 = indices 1..=3) follow
+    // the three nearest trees.
+    for index in 1..=3 {
+        let loop_player = &mut state.loops[index];
+        if let Some((_, position)) = distances.get(index - 1) {
             let _ = loop_player.start_if_not_playing();
             let current = &mut loop_player.entries[loop_player.cursor];
             let _ = current.set_position([position.x, position.y, position.z]);
         } else {
-            let _ = loop_player.stop(std::time::Duration::ZERO);
+            let _ = loop_player.stop_now();
         }
     }
 
-    // O: PlayTreeSoundCmd kind 0 → TreePlace, 2 → TreeDelete, 1 ignored.
+    // O: TreeMove loop (state+0) driven by the last kind-1 event: selector == 2
+    // stops it, otherwise start + position + editing_speed / in_water / tree_size.
+    let mut move_selector = 2u8;
+    let mut move_position = Vec3::ZERO;
+    let mut move_value = 0.0f32;
+
+    // O: editing speed source: AppMode == Replay (0xd) → 1.0, else the shared
+    // `CursorTerrainRaycast.speed` (+0x1c) — no /60 normalization here.
+    let editing_speed = if mode.native_tag() == 0xd {
+        1.0
+    } else {
+        raycast.speed
+    };
+
     for event in events.read() {
-        let name = match event.kind {
-            0 => TREE_PLACE_EVENT,
-            2 => TREE_DELETE_EVENT,
-            _ => continue,
-        };
-        let mut instance = core.instantiate_audio(name);
-        // O: parameters tree_size / is_naked (rne-read), then position + start.
-        let _ = instance.set_parameter("tree_size", event.position.length());
-        let _ = instance.set_parameter("is_naked", 0.0);
-        let _ = instance.set_position([event.position.x, event.position.y, event.position.z]);
-        let _ = instance.start_if_not_playing();
+        match event.kind {
+            0 => {
+                let mut instance = core.instantiate_audio(TREE_PLACE_EVENT);
+                let _ = instance.set_parameter(TREE_SIZE_PARAM, event.value);
+                let _ = instance.set_position([
+                    event.position.x,
+                    event.position.y,
+                    event.position.z,
+                ]);
+                let _ = instance.start_if_not_playing();
+                let in_water = if event.selector != 0 { 1.0 } else { 0.0 };
+                let _ = instance.set_parameter(IN_WATER_PARAM, in_water);
+                let is_naked = if event.extra != 0 { 1.0 } else { 0.0 };
+                let _ = instance.set_parameter(IS_NAKED_PARAM, is_naked);
+            }
+            2 => {
+                let mut instance = core.instantiate_audio(TREE_DELETE_EVENT);
+                let _ = instance.set_parameter(TREE_SIZE_PARAM, event.value);
+                let _ = instance.set_position([
+                    event.position.x,
+                    event.position.y,
+                    event.position.z,
+                ]);
+                let _ = instance.start_if_not_playing();
+            }
+            1 => {
+                move_selector = event.selector;
+                move_position = event.position;
+                move_value = event.value;
+            }
+            _ => {}
+        }
+    }
+
+    let loop_player = &mut state.loops[0];
+    if move_selector == 2 {
+        let _ = loop_player.stop_now();
+    } else {
+        let _ = loop_player.start_if_not_playing();
+        let current = &mut loop_player.entries[loop_player.cursor];
+        let _ = current.set_position([move_position.x, move_position.y, move_position.z]);
+        let _ = current.set_parameter(EDITING_SPEED_PARAM, editing_speed);
+        let in_water = if move_selector & 1 != 0 { 1.0 } else { 0.0 };
+        let _ = current.set_parameter(IN_WATER_PARAM, in_water);
+        let _ = current.set_parameter(TREE_SIZE_PARAM, move_value);
     }
 }
 
@@ -116,5 +184,12 @@ mod tests {
         assert_eq!(TREE_DELETE_EVENT, "event:/SFX/Tree/TreeDelete");
         assert_eq!(TREE_LOOP_EVENTS[0], "event:/SFX/Tree/TreeMove");
         assert_eq!(TREE_LOOP_EVENTS[1], "event:/SFX/Tree/Amb");
+    }
+
+    #[test]
+    fn tree_parameter_names_are_original() {
+        assert_eq!(TREE_SIZE_PARAM, "tree_size");
+        assert_eq!(IN_WATER_PARAM, "in_water");
+        assert_eq!(IS_NAKED_PARAM, "is_naked");
     }
 }

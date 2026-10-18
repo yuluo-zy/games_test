@@ -1,0 +1,60 @@
+--- a/crates/country-core/src/render/pass_builder/compute_pass_builder.rs
++++ b/crates/country-core/src/render/pass_builder/compute_pass_builder.rs
+@@ -206,6 +206,8 @@
+     pub access_ranges: Vec<AccessRange>,
+     /// Binding-table indices with a proven uniformly disabled texel read.
+     pub inactive_texture_bindings: Vec<u8>,
++    /// Real reads whose original caller allows undefined initial contents.
++    pub undefined_texture_bindings: Vec<u8>,
+     /// Host content intent; native access codes and synchronization stay intact.
+     pub preserving_buffers: Vec<u32>,
+     /// Image binding indices whose writes retain previously produced texels.
+@@ -410,6 +412,7 @@
+     /// `+0x18`：访问范围表（8 B/项）。
+     pub(crate) access_ranges: Vec<AccessRange>,
+     pub(crate) inactive_texture_bindings: Vec<u8>,
++    pub(crate) undefined_texture_bindings: Vec<u8>,
+     pub(crate) preserving_buffers: Vec<u32>,
+     pub(crate) preserving_texture_bindings: Vec<u8>,
+     /// `+0x30`：外部绑定表（0x48 B/项）。
+@@ -494,6 +497,7 @@
+             bindings: Vec::new(),
+             access_ranges: Vec::new(),
+             inactive_texture_bindings: Vec::new(),
++            undefined_texture_bindings: Vec::new(),
+             preserving_buffers: Vec::new(),
+             preserving_texture_bindings: Vec::new(),
+             external_bindings: Vec::new(),
+@@ -707,6 +711,24 @@
+         );
+         if !self.inactive_texture_bindings.contains(&range.access_index) {
+             self.inactive_texture_bindings.push(range.access_index);
++        }
++        self
++    }
++
++    /// Current-host original-caller contract: the texture is genuinely read
++    /// but its initial contents may be undefined. Does not mark it initialized,
++    /// remove native binding/sync, or suppress an available producer.
++    pub fn allow_undefined_texture_contents(mut self, hash: u64) -> Self {
++        let Some(binding) = self.resolve(hash) else { return self; };
++        let range = self.access_ranges.iter().rev().find(|range| range.resource_index == binding)
++            .expect("undefined texture contents requires an existing graph binding");
++        assert!(matches!(self.bindings.get(range.access_index as usize),
++            Some(PassBinding::ImageView { write: false, .. })),
++            "undefined texture contents requires a non-writing image binding");
++        assert!(!self.inactive_texture_bindings.contains(&range.access_index),
++            "undefined content read is distinct from an inactive binding");
++        if !self.undefined_texture_bindings.contains(&range.access_index) {
++            self.undefined_texture_bindings.push(range.access_index);
+         }
+         self
+     }
+@@ -848,6 +870,7 @@
+             bindings: self.bindings,
+             access_ranges: self.access_ranges,
+             inactive_texture_bindings: self.inactive_texture_bindings,
++            undefined_texture_bindings: self.undefined_texture_bindings,
+             preserving_buffers: self.preserving_buffers,
+             preserving_texture_bindings: self.preserving_texture_bindings,
+             external_bindings: self.external_bindings,

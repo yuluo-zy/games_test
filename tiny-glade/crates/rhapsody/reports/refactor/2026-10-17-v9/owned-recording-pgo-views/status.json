@@ -1,0 +1,56 @@
+{
+  "scope": "Formal CPU recording metadata, owned full-content PGO names and bounded managed image-view cache. Domain evidence only.",
+  "implementation": [
+    "Command uses handle/family/queue/RecordingId/typed state; removed Command88, raw counter/snapshot/fixture bridges and shadow resource sequence tracking. Actual Vulkan SyncCell ownership/retirement remains authoritative.",
+    "PassDeclaration owns Arc<str>; PGO keys share it and compare/hash complete contents. Arena scratch retains Copy borrowed references and Option<u64>, with no Arc stored in bump memory. Removed global leaked-name pool.",
+    "Managed views share canonical default/explicit descriptors in a 256-entry cache. Host metadata backing is admitted before native view creation; eviction requires no external strong/weak owners and a reached real last-use set."
+  ],
+  "checks": {
+    "all_features_tests_check": {
+      "exit_code": 0,
+      "log": "rhapsody-v9-owned-pgo-check2.log",
+      "source_fingerprints": "not captured for this initial check"
+    },
+    "cpu": {
+      "exit_code": 0,
+      "passed": 293,
+      "filtered_gpu_tests": 1,
+      "metadata": "cpu.json"
+    },
+    "gpu": {
+      "exit_code": 0,
+      "passed": 10,
+      "gpu_dependent": 4,
+      "cpu": 6,
+      "skip_lines": 0,
+      "validation_error_lines": 0,
+      "metadata": "managed-gpu.json",
+      "note": "Initial native cache test held the pending command; the follow-up below independently validates last_use while the cache is the unique CPU owner."
+    },
+    "strict_clippy": {
+      "exit_code": 0,
+      "warnings": 0,
+      "metadata": "strict-clippy3.json"
+    },
+    "gpu_unique_owner": {
+      "exit_code": 0,
+      "passed": 2,
+      "source_stable": true,
+      "validation_error_lines": 0,
+      "skip_lines": 0,
+      "metadata": "managed-gpu-unique-owner.json",
+      "binary": "/private/tmp/rhapsody-managed-view-cache-gpu",
+      "binary_sha256": "370d7bd31047dc0e28ae2adc20bf308cdc5bdafa3e32f3ab1cf084535e1c1f0c",
+      "note": "Native Vulkan receipt is deliberately blocked; dropped PendingCommand and all external/weak owners before requesting eviction, then signalled/waited the actual timeline point."
+    }
+  },
+  "historical_failures_preserved": [
+    "Initial check found one queue fixture empty String after Arc migration, fixed.",
+    "strict-clippy found one Window pass.name.as_str consumer after Arc migration, fixed.",
+    "strict-clippy2 found a concurrent new Window repeat-script collapsible_if, fixed by owner; strict-clippy3 passes."
+  ],
+  "pending_outside_this_batch": [
+    "V4 reruns actual CPU allocator counts and records a real Vulkan Session allocation trace.",
+    "Root final whole-module snapshots, default/no-default matrix, long-run/performance and deferred Windows acceptance are not claimed by this report."
+  ]
+}

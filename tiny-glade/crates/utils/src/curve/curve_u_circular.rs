@@ -1,5 +1,4 @@
 //! Circular curve parameters use a directed, increasing-parameter interval.
-//! B inline evidence is recorded in geometry-curves/interface-batch-02.
 use super::CurveU;
 use crate::comparative_space::{CircularComparativeSpace, ComparativeSpace};
 use lerp::Lerp;
@@ -22,9 +21,9 @@ impl<S> PartialEq for CurveUCircular<S> {
     }
 }
 impl<S> CurveUCircular<S> {
-    /// The original checks NaN before projection; infinity projects to NaN.
+    /// Wrap a finite parameter into one turn.
     pub fn new(value: f32) -> Self {
-        assert!(!value.is_nan(), "NaN circular curve parameter");
+        assert!(value.is_finite(), "nonfinite circular curve parameter");
         Self::wrap_around(value)
     }
     fn wrap_around(value: f32) -> Self {
@@ -38,10 +37,10 @@ impl<S> CurveUCircular<S> {
     }
     #[allow(clippy::should_implement_trait)] // Preserve the original scalar-delta method surface.
     pub fn add(self, delta: f32) -> Self {
-        Self::wrap_around(self.value + delta)
+        Self::new(self.value + delta)
     }
     pub fn subtract(self, delta: f32) -> Self {
-        Self::wrap_around(self.value - delta)
+        Self::new(self.value - delta)
     }
     /// Distance from this parameter to `end` along increasing parameters.
     pub fn distance(self, end: Self) -> f32 {
@@ -54,7 +53,7 @@ impl<S> CurveUCircular<S> {
             end.value + 1.0
         }
     }
-    /// `t` is deliberately unbounded, as in the original lerp dependency.
+    /// `t` may extrapolate beyond the interval.
     pub fn wrapping_lerp(self, end: Self, t: f32) -> Self {
         Self::new(self.value.lerp(self.forward_end(end), t))
     }

@@ -26,7 +26,7 @@ use crate::inter_shape_stitches::detect_intra_shape_corners::{
 #[derive(Clone, Debug, PartialEq)]
 pub struct InterRoofMerlonsDescription {
     pub wall: WallId,
-    pub hole: country_core::recovered_building::wall_holes::RawWallHole,
+    pub hole: country_core::resources::walls::wall_holes::geometry::RawWallHole,
 }
 
 /// 脏墙集（WallAndRoofChanges::dirty_walls 0x141cd16b0 产出）。
@@ -35,26 +35,28 @@ pub struct WallAndRoofChanges {
     pub dirty_walls: HashSet<WallId>,
 }
 
-/// `dirty_walls`（0x141cd16b0）：三事件链式 map 汇脏墙集。
+/// `dirty_walls`（0x141cd16b0）：三事件链式 map（OnWallDeleted/OnWallChanged/
+/// RecalculateRoofCmd → WallId）后 `hashbrown::set::extend` 汇成**新** `HashSet<WallId>`
+/// 并写回（O；非清空复用）。
 pub fn dirty_walls(
     mut changes: ResMut<WallAndRoofChanges>,
     mut ev_deleted: EventReader<OnWallDeleted>,
     mut ev_changed: EventReader<OnWallChanged>,
     mut ev_roof_cmd: EventReader<country_core::resources::roofs::commands::RecalculateRoofCmd>,
 ) {
-    changes.dirty_walls.clear();
-    for e in ev_deleted.read() {
-        changes.dirty_walls.insert(e.0);
-    }
-    for e in ev_changed.read() {
-        changes.dirty_walls.insert(e.0);
-    }
-    for e in ev_roof_cmd.read() {
-        changes.dirty_walls.insert(e.0);
-    }
+    // O：新集合并入（size_hint 预留 → extend 三链）。
+    let mut set: HashSet<WallId> = HashSet::new();
+    set.extend(ev_deleted.read().map(|e| e.0));
+    set.extend(ev_changed.read().map(|e| e.0));
+    set.extend(ev_roof_cmd.read().map(|e| e.0));
+    changes.dirty_walls = set;
 }
 
 /// detect_inter_roof_merlons（0x141ce3a70）。
+///
+/// 2026-10-17（restorer-purelogic-integration，integration-registration）：`dirty_walls`
+/// 已注册为独立系统（lib.rs 链前序），本函数改读 `changes.dirty_walls` 不再自带三
+/// EventReader（对齐二进制 0x141cd16b0 独立系统 + 0x141ce3a70 消费侧分离）。
 pub fn detect_inter_roof_merlons(
     mut changes: ResMut<WallAndRoofChanges>,
     walls: Res<PublicWalls>,
@@ -63,8 +65,7 @@ pub fn detect_inter_roof_merlons(
     mut holes: ResMut<ShapeIntersectionHoles>,
     mut roof_query: Query<&Roof>,
 ) {
-    // 脏墙集刷新（O：dirty_walls 事件链）。
-    dirty_walls_ev(&mut changes, &walls);
+    // 脏墙集由独立系统 dirty_walls（0x141cd16b0，注册于链前序）刷新。
     // retain（O：Vec<InterRoofMerlonsDescription> 与 Vec<ShapeIntersectionHole>）。
     descriptions.0.retain(|d| changes.dirty_walls.contains(&d.wall));
     holes.0.retain(|h| changes.dirty_walls.contains(&h.wall));
@@ -94,15 +95,14 @@ pub fn detect_inter_roof_merlons(
         if let Some(hole) =
             add_hole_at_shape_intersection(expanded, expanded2, wall, roof.floor_y() + 0.4)
         {
-            let _ = wall_holes.add(wall, hole);
+            // O：交点洞先收集；循环结束后统一 WallHoles::add（见函数尾）。
             descriptions.0.push(InterRoofMerlonsDescription { wall, hole });
         }
     }
-}
-
-fn dirty_walls_ev(changes: &mut WallAndRoofChanges, _walls: &PublicWalls) {
-    // 事件链已由调用方冲刷；此处仅保留集。
-    let _ = changes;
+    // O：收尾逐条 WallHoles::add()（0x141ce3a70 尾部 stride 0x28 循环）。
+    for d in descriptions.0.iter() {
+        let _ = wall_holes.add(d.wall, d.hole);
+    }
 }
 
 /// 城垛断口描述集合（资源）。

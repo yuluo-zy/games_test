@@ -153,8 +153,14 @@ mod tests {
         let mut schedule = Schedule::default();
         world.init_resource::<DebugGui>();
         let mut actions = MainActionSet::default();
-        actions.digital[28] = DigitalActionState { disc: 0, val: 0.0 };
-        actions.digital[33] = DigitalActionState { disc: 2, val: 0.0 };
+        actions.digital[28] = DigitalActionState {
+            phase: crate::input::action_set::DigitalActionPhase::JustPressed,
+            timer_seconds: 0.0,
+        };
+        actions.digital[33] = DigitalActionState {
+            phase: crate::input::action_set::DigitalActionPhase::Repeating,
+            timer_seconds: 0.0,
+        };
         world.insert_resource(actions);
         schedule.add_systems(show_debug_controls);
         schedule.run(&mut world);
@@ -167,13 +173,15 @@ mod tests {
         assert!(world.resource::<DebugGui>().enabled);
         assert!(world.resource::<DebugGui>().experimental_window);
 
-        world.resource_mut::<MainActionSet>().digital[28].disc = 1;
-        world.resource_mut::<MainActionSet>().digital[33].val = 0.1;
+        world.resource_mut::<MainActionSet>().digital[28].phase =
+            crate::input::action_set::DigitalActionPhase::Held;
+        world.resource_mut::<MainActionSet>().digital[33].timer_seconds = 0.1;
         let _ = context.run(egui::RawInput::default(), |_| schedule.run(&mut world));
         assert!(world.resource::<DebugGui>().enabled);
         assert!(world.resource::<DebugGui>().experimental_window);
 
-        world.resource_mut::<MainActionSet>().digital[28].disc = 0;
+        world.resource_mut::<MainActionSet>().digital[28].phase =
+            crate::input::action_set::DigitalActionPhase::JustPressed;
         let _ = context.run(egui::RawInput::default(), |_| schedule.run(&mut world));
         assert!(!world.resource::<DebugGui>().enabled);
         assert!(world.resource::<DebugGui>().experimental_window);

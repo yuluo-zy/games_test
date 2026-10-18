@@ -7,7 +7,7 @@
 //!
 //! 机器码（building-segmentation/B-stairs + B-platform-* 冻结）：
 //! 墙路径段 → 平台楼梯段拆分（平台几何/行列链见
-//! recovered_building wall_platform_stairs 族）。
+//! shared building modules wall_platform_stairs 族）。
 use country_core::resources::{
     roofs::{Roof, commands::{CreateRoofCmd, SwitchRoofTypeCmd}},
     walls::public_walls::{OnWallChanged, PublicWalls},
