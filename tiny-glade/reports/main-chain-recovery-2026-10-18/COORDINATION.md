@@ -227,3 +227,53 @@ v74整core2432pass/3个植被新fixture误期望重复resource0；独审保留�
 用户要求的当前修改已保存为Git提交；`origin/main`已成功推送至`1f738fea2133ec392e583ca4b3f113e704f5648b`，包括核心恢复主快照以及提交窗口内新增的水面启动、世界工作线程与主循环存档接线候选。398个约3.8GiB的本地Mach-O验证程序仅留本地并精确忽略；源码、测试、报告及有界原版证据已纳入。提交不代表未完成候选已经通过业务验收。
 
 本条作为本次窗口最后协调记录随最终提交推送。主链owner确认本条已在`origin/main`后可恢复仓库写入；其后新增改动属于下一工作批次。core子agent本批仍保持安全停写状态。
+
+
+## 2026-10-19 v79 连续世界图源码与既有 GPU 回归
+
+v79 连续 W1–W54 世界图入口已实际编译通过；同批 core CPU **2457 pass/0 fail**，原 shader GPU 回归 **10 pass/0 fail**。后者是既有有界场景段、九级 SPD、后处理与同 owner 预热交接等用例，**不是完整非空世界帧验收**。当前生产 `compile_world_graph` 与 `warm_up_gameplay` 的缺失消费者 guard 仍明确保留。
+
+森林／水面完整启动、canonical 绘制回调、相机 set9/10、save4 与非空 world→worker 新候选均不在这次 v79 接受范围；后加 RtWorld/GpuWorld 清理也待下一批编译。原始通过日志和冻结可执行文件 SHA 已保存 `main-chain-validation-v79.json` 与 `logs/core-v79-cpu.log`、`logs/world-segments-v79-gpu.log`。不按测试数推算游戏完成百分比。
+
+
+## 2026-10-19T00:14:08+08:00 core共享阻塞恢复
+
+Git快照已完成后，本root按原授权继续。相机所需`RaycastWorld::spherecast_w_terrain(&self, &TerrainHeightsData<TerrainHeightSsbo>, origin, dir, radius, ShapeCastOptions, mask)`现已最窄整合，当前source SHA8161e74e7b74bc3d128187c872a626505e8e68e32212f026843597004bb86ffe；旧Raycasting入口委托，只有一份原地形合并算法，同World。10输入独审freeze4df77518bf1a1e55be3c149b642f7b89abe0266c26c8efe42c80d24074fe1a7a，Cargo待本批统一。
+
+Prefab唯一事件正在原系统owner目录增量恢复：API保持`prefab_name: Option<PrefabName>, entity: Option<Entity>`兼容现owned构造，第三字段改真实`placement: PlacementDataSsbo`全48B；Despawn仅保留`entity: Option<Entity>`，删除旧_gap。不造第二事件身份；当前forest7候选的Some(...)构造正好兼容，主链请按该API整合其forest7；本root仅处理core事件与tree-tool必要迁移，不覆盖forest owner候选/源码。Options为当前Rust工程表示，原事件均带真实name/entity，不用Default事件证明真实出生。
+
+State候选原TG-57目录是Dormer误归属，旧证据原地保留仅只读引用；新State候选按主链owner此次委派放实际snapshot合法work下`TG-3adf041a3108edb59a/main-chain-boot-20261018/core-state-reader-handoff-20261019`，不抢或改claim，生产snapshot仅root后续最窄集成并保留真实gen传播。地形Option与真实写入由原owner在现wrapper内层唯一状态恢复。
+
+
+## 2026-10-19 用户停止开发并要求提交推送
+
+主链与三个子agent已在安全边界停止仓库写入，不在push后自动恢复。当前全部源码/候选/有界原证/进度作为在途快照提交。v81宿主32/0、core2465/1，实际非空world→worker→同atomic快照ID→真实文件和flush ack测试通过；最新v83整体构建未通过，duck.rs:818边界Buffer误选同名inherent接口类型不匹配，按用户停止指令保留未修。详见 STOPPED-2026-10-19.md、main-chain-validation-v80-v83.json 和 logs。canonicaldraw/forest/相机仍候选，Surface整帧未执行；宿主候选HOST-CONTRACT.md尚未写明，不用manifest存在冒充完整交付。
+
+
+## 2026-10-19T00:23:58+08:00 用户停止任务：core及全部子agent安全停写，供主链统一提交推送
+
+按主链转达用户最新明确「停止任务 提交推送吧」，本core root与building_audit/history_audit/terrain_curve三个子agent现均已在安全文件边界完全停写，无在途工具/Cargo/JIT/Git任务；本线程不stage/commit/push，不在主链push后自动恢复。此前Git窗口结束可恢复的协调记录已被本条最新停止要求取代。此条为本线程最后仓库写入，主链可现在统一快照。
+
+### 本续轮实际生产增量与未验收边界
+
+1. 仅相机同World碰撞借用API，以及Roof/Shape存档读取两个有界批次已精确合入。碰撞10freeze4df77518bf1a1e55be3c149b642f7b89abe0266c26c8efe42c80d24074fe1a7a；原Raycasting入口完整委托唯一World算法。Roof197 freezed8b7b07a1b6b40d89158f5993cbf310515b7b52fb0752b4b982bc9cc8218357d；本root独审+只读重验34full PDB/32301B/8116指令/75静态check后应用，保留88B/28B/12B owner、无geometry重写。
+
+2. 本续轮没有执行Cargo，新增Roof/Shape10tests未跑；不能把此前2454/2457库测试或主链v83在途结果自动视作覆盖这些最新源。root审查整合记录在core报告collision-borrow-20261019/integration.json和roof-reader-20261019/review-integration.json。当前实际源码SHA：
+
+   - `tiny-glade/crates/country-core/src/systems/collision/world.rs` SHA `8161e74e7b74bc3d128187c872a626505e8e68e32212f026843597004bb86ffe`
+
+   - `tiny-glade/crates/country-core/src/resources/roofs/roof_shape.rs` SHA `efd8788a93b0a203245c717c3e37a07b25c0f81d4bf13086318e3d5540826523`
+
+   - `tiny-glade/crates/country-core/src/systems/wall/valid_enclosure/mod.rs` SHA `22eb05b20add68b1265eb52147c13b1b1deeec275af9d29cc08dfb9d2da41c78`
+
+
+### 已完整落盘但未生产整合的候选
+
+- cursor24：TG-e73d16b0f4be6e76bf/terrain-curve-20261018/cursor-plane-20261019，freeze909118c7ba26bd690b2dcd92b6c1ad8effd81365ce0a1a8432560a97e0917b17。唯一inner Option、state1 Some先于SSBO、state3缺末笔画仍None、snapshot唯一literalNone均尚未应用。building独审4输入freezeeb5a60e72bedcc2d8de51ef0dfdfd41dcad8a05d67aa09cee6cf9db423e34ec2，在building合法work/v2/terrain-cursor-plane-review-20261019。原typed端口是ToolWasJustUsed而非grow_one别名Finish；3新tests待跑。
+
+- Prefab18：TG-d44984ec9eec9a0bde/core-prefab-adapter-20261018/events-20261019，freeze485499187e22b8392992a5feb983258b5a1da045108fb2468d0d2f26fb1135fa。Spawn原72B=现Optionname/entity+完整Placement48，Despawn8移除_gap；tree必要word映射候选在新合法claimTG-3add2880f5e9bb64c3/core-tree-prefab-events-20261019。两patch均未生产应用，未运行Cargo；保留Default仅兼容待owner迁移的forest，不能称真实出生。terrain独审verification.json完整落盘但审查报告未freeze：TG-e73d16b0f4be6e76bf/terrain-curve-20261018/prefab-events-independent-review-20261019。18hash和3full原PDB10233B/2329指令、GPU602B/142指令、forest5342B/1141指令核对无confirmed blocker；完整ECS/Commands消费未闭合。
+
+- State reader：按实际snapshot父owner委派的新目录TG-3adf041a3108edb59a/main-chain-boot-20261018/core-state-reader-handoff-20261019；candidate/snapshot.rs和candidate.patch已完整落盘，基线f67ce保留真实gen。原证35full PDB42858B/11034指令、17selectors/50诊断/56Clutter/4FullNoneInnerOuter比较已落盘；Contract/validation/frozen-inputs尚未完成，明确UNFROZEN/未独审/未编译/未应用，不为提交赶验收。旧Dormer误容器草案未覆写。
+
+
+完整Motomoto文件回读、实际world加载/回放、全部域与完整渲染帧验收仍未闭合。本条只保存停止断点和现代码事实；各claim保留给后续用户明确续做，不抢占或冒充已完成。

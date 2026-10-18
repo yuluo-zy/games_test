@@ -259,6 +259,22 @@ fn empty_request_is_consumed_once_and_absence_is_safe_on_later_frames() {
     let mut world = World::new();
     world.init_resource::<MetaCommander>();
     world.init_resource::<AppMode>();
+    // The session schedule runs the actual commander; these canonical owners
+    // are supplied by the application even when its command queue is empty.
+    world.init_resource::<crate::resources::rt::RtWorld>();
+    world.init_resource::<crate::resources::rt::RtBvhBuilderGlueResource>();
+    world.init_resource::<crate::resources::game_clock::GameClock>();
+    let camera = crate::systems::camera_rig::main_camera::MainCamera::new(1.0);
+    world.insert_resource(crate::render::RenderTemporalState::new(
+        crate::render::FrameCameraMatrices {
+            projection: camera.read_matrix(0),
+            inverse_projection: camera.read_matrix(0x40),
+            view: camera.read_matrix(0x80),
+            inverse_view: camera.read_matrix(0xc0),
+        },
+    ));
+    world.init_resource::<bevy_state::state::NextState<crate::app_loading_state::AppLoadingState>>();
+    world.init_resource::<Events<crate::systems::save::save_game::SaveGameCmd>>();
     world.init_resource::<crate::game_profile::GameProfile>();
     world.init_resource::<crate::resources::session::SavedSessionList>();
     world.init_resource::<crate::resources::glade_settings::GladeSettings>();

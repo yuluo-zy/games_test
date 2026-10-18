@@ -4,7 +4,7 @@ use super::{
     save_thread::CurrentSaveFile,
     shadow_file::ShadowFile,
 };
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 
 #[test]
 fn close_file_resets_native_metronome_fields() {
@@ -100,7 +100,7 @@ fn unsaved_file_list_uses_the_native_0x80_byte_entry() {
 
 #[test]
 fn save_game_to_memory_serializes_edit_items_inside_the_function() {
-    use super::save_game::{GameSaveSections, save_game_to_memory};
+    use super::save_game::{save_game_to_memory, GameSaveSections};
     let values = std::array::from_fn(|_| SerializedJson::new(&json!([])).unwrap());
     let sections = GameSaveSections { values };
     // 传域类型（serde_json::Value）而非预序列化文本：函数内完成 serde。
@@ -313,7 +313,7 @@ fn backup_scan_and_snapshot_gc_release_cancel_and_delete_actual_files() {
 fn execute_save_cmd_changes_sections_and_flushes_to_disk() {
     use super::{
         save_game::AsyncSaveCmd,
-        save_thread::{CurrentSaveFile, UnsavedFileList, execute_save_cmd},
+        save_thread::{execute_save_cmd, CurrentSaveFile, UnsavedFileList},
     };
     let root = tempfile::tempdir().unwrap();
     let unsaved = UnsavedFileList::default();
@@ -338,11 +338,13 @@ fn execute_save_cmd_changes_sections_and_flushes_to_disk() {
         &mut current,
         AsyncSaveCmd::ChangeSection {
             section: SaveFileSection::Camera,
-            value: camera,
+            value: super::save_game::defer_json(camera),
         },
         &unsaved,
     );
-    execute_save_cmd(&mut current, AsyncSaveCmd::Flush, &unsaved);
+    let (reply, completed) = crossbeam_channel::bounded(1);
+    execute_save_cmd(&mut current, AsyncSaveCmd::Flush { reply }, &unsaved);
+    completed.recv().unwrap().unwrap();
     let bytes = std::fs::read(root.path().join("history.json")).unwrap();
     let parsed: Value = serde_json::from_slice(&bytes).unwrap();
     let written = parsed["Camera"]["x"].as_str().unwrap();
@@ -362,7 +364,7 @@ fn execute_save_cmd_changes_sections_and_flushes_to_disk() {
 #[should_panic(expected = "No active save file, but AsyncSaveCmd::ChangeSection has been issued")]
 fn change_section_without_active_file_panics() {
     use super::{
-        save_game::AsyncSaveCmd, save_thread::UnsavedFileList, save_thread::execute_save_cmd,
+        save_game::AsyncSaveCmd, save_thread::execute_save_cmd, save_thread::UnsavedFileList,
     };
     let mut current: Option<CurrentSaveFile> = None;
     let unsaved = UnsavedFileList::default();
@@ -370,58 +372,55 @@ fn change_section_without_active_file_panics() {
         &mut current,
         AsyncSaveCmd::ChangeSection {
             section: SaveFileSection::Camera,
-            value: SerializedJson::new(&json!(1)).unwrap(),
+            value: super::save_game::defer_json(SerializedJson::new(&json!(1)).unwrap()),
         },
         &unsaved,
     );
 }
 
 #[test]
-fn save_thread_exits_on_shutdown_with_flush_and_waits_when_flush_false() {
-    use super::save_thread::{AutosaveErrorState, UnsavedFileList, save_thread};
-    use std::sync::Arc;
-    let (cmd_sender, cmd_receiver) = crossbeam_channel::unbounded();
-    let (error_sender, _error_receiver) = AutosaveErrorState::channel();
-    let unsaved = Arc::new(UnsavedFileList::default());
-    let handle = std::thread::spawn(move || save_thread(cmd_receiver, error_sender, unsaved));
-    // Shutdown{flush:true}：原生 flush + drop + 退出线程（无 ack 通道）。
-    cmd_sender
-        .send(super::save_game::AsyncSaveCmd::Shutdown { flush: true })
-        .unwrap();
+fn save_thread_exits_when_the_command_channel_disconnects() {
+    use super::save_thread::{save_thread, AutosaveErrorState, UnsavedFileList};
+    let (sender, receiver) = crossbeam_channel::unbounded();
+    let (error_sender, _errors) = AutosaveErrorState::channel();
+    let handle = std::thread::spawn(move || {
+        save_thread(
+            receiver,
+            error_sender,
+            std::sync::Arc::new(UnsavedFileList::default()),
+        )
+    });
+    drop(sender);
     handle.join().unwrap();
 }
 
 #[test]
-fn save_thread_shutdown_without_flush_keeps_looping() {
-    use super::save_thread::{AutosaveErrorState, UnsavedFileList, save_thread};
-    use std::sync::Arc;
-    let (cmd_sender, cmd_receiver) = crossbeam_channel::unbounded();
-    let (error_sender, _error_receiver) = AutosaveErrorState::channel();
-    let unsaved = Arc::new(UnsavedFileList::default());
-    let handle = std::thread::spawn(move || save_thread(cmd_receiver, error_sender, unsaved));
-    // Shutdown{flush:false}：原生应用 deferred + 睡 10ms + 继续循环（不退出）。
-    cmd_sender
-        .send(super::save_game::AsyncSaveCmd::Shutdown { flush: false })
-        .unwrap();
-    // 线程仍在循环：还能接收并处理命令。
-    cmd_sender
-        .send(super::save_game::AsyncSaveCmd::Flush)
-        .unwrap();
-    std::thread::sleep(std::time::Duration::from_millis(50));
-    // 收尾：用 flush=true 结束线程。
-    cmd_sender
-        .send(super::save_game::AsyncSaveCmd::Shutdown { flush: true })
-        .unwrap();
+fn save_thread_empty_poll_keeps_looping_until_all_senders_disconnect() {
+    use super::save_thread::{save_thread, AutosaveErrorState, UnsavedFileList};
+    let (sender, receiver) = crossbeam_channel::unbounded();
+    let second_owner = sender.clone();
+    let (error_sender, _errors) = AutosaveErrorState::channel();
+    let handle = std::thread::spawn(move || {
+        save_thread(
+            receiver,
+            error_sender,
+            std::sync::Arc::new(UnsavedFileList::default()),
+        )
+    });
+    drop(sender);
+    std::thread::sleep(std::time::Duration::from_millis(30));
+    assert!(!handle.is_finished(), "Empty is not Disconnected");
+    drop(second_owner);
     handle.join().unwrap();
 }
 
 #[test]
 fn on_load_fence_terminates_both_replay_passes() {
-    use super::load_game::{ReplayedOnLoadCommand, advance_load_game};
+    use super::load_game::{advance_load_game, ReplayedOnLoadCommand};
     use crate::meta_commander::{MetaCommand, MetaCommandFence};
     use crate::resources::session::NextSessionKind;
     use crate::resources::session::{
-        NextSession, NextSessionTail, NextSessionTemplate, ON_LOAD_VARIANT_MASK, SessionId,
+        NextSession, NextSessionTail, NextSessionTemplate, SessionId, ON_LOAD_VARIANT_MASK,
     };
 
     let mut session = NextSession::create(
@@ -462,7 +461,7 @@ fn on_load_fence_terminates_both_replay_passes() {
 
 #[test]
 fn on_load_variant2_fence_release_unblocks_inline() {
-    use super::load_game::{LoadGameManager, LoadGameState, advance_load_game};
+    use super::load_game::{advance_load_game, LoadGameManager, LoadGameState};
     use crate::meta_commander::MetaCommandFence;
     use crate::resources::session::{
         NextSession, NextSessionKind, NextSessionTail, NextSessionTemplate, SessionId,

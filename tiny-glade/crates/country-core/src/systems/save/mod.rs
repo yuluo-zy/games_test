@@ -1,8 +1,7 @@
 //! Recovered save-file codec, mutable shadow and incremental write consumers,
-//! plus the asynchronous capture thread. The original game-thread capture
-//! system that assembles GameSaveData from ~9 domain resources is not
-//! registered here yet (domain owners pending); load_game's on_load replay
-//! depends on meta_commander.rs per the coordinator ruling.
+//! plus the inline game-thread snapshot collector and asynchronous save worker.
+//! The production host installs the original numeric sets and state lifecycle;
+//! session switching uses canonical MetaCommander and NextSession.
 pub mod load_completion_checker;
 pub mod load_game;
 pub mod save_backup_list;
@@ -75,12 +74,11 @@ pub fn add_save_load_events_and_resources(world: &mut bevy_ecs::world::World) {
 use bevy_ecs::schedule::IntoScheduleConfigs;
 pub fn add_save_load_systems_impl(schedule: &mut bevy_ecs::schedule::Schedule) {
     schedule.add_systems((
-        save_game::save_game_system
-            .after(crate::systems::debug::sheep_controls::sheep_controls),
-        // 域内快照捕获系统（O：save_game 0x140a3f470 触发后内联快照采集）——
-        // 宿主经 `CaptureSnapshotRequested` 请求额外快照；采集 roofs/walls/terrain/
-        // stairs 并发送 AsyncSaveCmd::CaptureSnapshot(9) + record_snapshot。
-        save_game::capture_snapshot_system,
+        save_game::save_game_system.run_if(
+            |active: Option<bevy_ecs::system::Res<crate::resources::session::ActiveSession>>| {
+                active.is_some()
+            },
+        ),
         load_game::load_game_system,
         save_thread::init_save_thread,
     ));

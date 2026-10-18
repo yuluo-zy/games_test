@@ -223,6 +223,24 @@ pub fn run_game_thread(
     // init_clearing later publishes the actual uploaded emitter prefix count.
     app.insert_resource(country_core::systems::render_loop::compute_passes::leaf_particles::LoadedParticleEmitterCount(0));
     country_core::systems::save::add_save_load_events_and_resources(app.world_mut());
+    // B add_save_load_systems1409443b0: set43, exact ActiveSession presence
+    // condition only. Runs each frame to publish real history/section changes.
+    app.add_systems(bevy_app::Update,
+        country_core::systems::save::save_game::save_game_system
+            .in_set(GameSystemSet(43))
+            .run_if(|active: Option<bevy_ecs::prelude::Res<country_core::resources::session::ActiveSession>>|active.is_some()));
+    // Original host PostUpdate closure1403bf630: Reload2 -> Game1.
+    // Existing OnEnter(Game) consumes the canonical NextSession and real loader.
+    app.add_systems(bevy_app::PostUpdate,
+        |state: bevy_ecs::prelude::Res<bevy_state::state::State<country_core::app_loading_state::AppLoadingState>>,
+         mut next: bevy_ecs::prelude::ResMut<bevy_state::state::NextState<country_core::app_loading_state::AppLoadingState>>| {
+            if *state.get()==country_core::app_loading_state::AppLoadingState::Reload {
+                next.set(country_core::app_loading_state::AppLoadingState::Game);
+            }
+        });
+    // Other domains retain their own OnExit consumers. This is the complete
+    // original host wall/unload consumer, not a blanket despawn replacement.
+    app.add_systems(bevy_state::state::OnExit(country_core::app_loading_state::AppLoadingState::Game),crate::app_systems::walls_on_glade_unload);
     app.add_systems(
         bevy_app::PreStartup,
         country_core::game_profile::load_game_profile,
@@ -494,7 +512,8 @@ fn install_gameplay_device_input(app: &mut App) {
     app.add_systems(bevy_app::Update,
         input_record_replay::begin_input_frame.before(GameSystemSet(1)));
     app.add_systems(bevy_app::Update,
-        ((input_record_replay::control_input_replay,
+        (country_core::meta_commander::commander_update_system,
+         (input_record_replay::control_input_replay,
           input_replay_for_trailers::record_and_replay_input_for_trailers),
          input_record_replay::advance_input_replay_frame)
             .chain_ignore_deferred().in_set(GameSystemSet(1)));
@@ -596,6 +615,14 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
     app.init_resource::<LiveDecoratorArchivist>();
     app.init_resource::<DecoratorIdGen>();
     app.init_resource::<DeferredDecoratorOpEvents>();
+    app.add_event::<country_core::resources::walls::decorator::DecoratorOpEvent>();
+    // B DecoratorPlugin: 19-member chain is assigned to GameSystemSet25.
+    // Keep original replay40-produced notifications for the following frame.
+    app.add_systems(
+        bevy_app::Update,
+        country_core::resources::walls::decorator::unleash_decorator_op_events
+            .in_set(GameSystemSet(25)),
+    );
     app.init_resource::<DecoratorPhysicsColliders>();
     app.init_resource::<country_core::resources::stairs::stairs_state::StairsState>();
     app.init_resource::<country_core::systems::collision::world::RaycastWorld>();

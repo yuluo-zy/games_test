@@ -20,6 +20,7 @@ pub mod startup_ivy;
 pub mod startup_nani;
 pub mod startup_session;
 pub mod startup_terrain;
+pub mod startup_water;
 
 #[cfg(test)]
 mod tests;

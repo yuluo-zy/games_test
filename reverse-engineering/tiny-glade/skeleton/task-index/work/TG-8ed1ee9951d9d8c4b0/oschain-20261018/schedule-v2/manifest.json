@@ -1,0 +1,62 @@
+{
+  "status": "frozen_candidate_not_compiled",
+  "production_unchanged_by_oschain": true,
+  "host_base_sha256": "4e8f1f368643d39ede30bf5576ee059e9b18fab25e7dbdd452af1e3fd03bc915",
+  "host_candidate": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-8ed1ee9951d9d8c4b0/oschain-20261018/schedule-v2/candidate-current-host-run_game-camera.rs",
+  "host_candidate_sha256": "51a05c6560cb791c05024c6712fc8a60ebf876069236fc713d2a12fb77cc2f14",
+  "host_patch": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-8ed1ee9951d9d8c4b0/oschain-20261018/schedule-v2/current-host-camera.patch",
+  "host_patch_sha256": "72130878989b200925e0d3c525af6d51816e47509bb30ceaa4179a0cbf1f69da",
+  "alternative": "old host-camera.patch then after-host-camera-v1.patch gives equivalent same changes; apply only one route, never whole-file replacement",
+  "aggregation": {
+    "patch": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-8ed1ee9951d9d8c4b0/oschain-20261018/schedule-v2/aggregation.patch",
+    "sha256": "d70f68b572c7f47a07465a2232e858f8666f538c26ba3811e31769de765d6a7b",
+    "files": [
+      {
+        "target": "games_test/tiny-glade/crates/country-core/src/resources/mod.rs",
+        "before_sha256": "a819119797bed2519aa531ac61e77978b41abdd014784afc6c4cf697a11b6d47"
+      },
+      {
+        "target": "games_test/tiny-glade/crates/country-core/src/components/mod.rs",
+        "before_sha256": "864b8ee1110cdf64c3863ac2334f48c5038309181355d72e1113d45ec1f76074"
+      }
+    ]
+  },
+  "tests": [
+    "original_set9_then_set10_updates_live_camera_ray_terrain_and_capture",
+    "original_reset_precedes_snapshot_and_paused_gate_skips_set10"
+  ],
+  "test_inputs": "actual MainCamera from original intro Camera; real CPU heights/PathRaster/RaycastWorld constructors; actual App/production installers/GameSystemSet/is_gameplay_active; explicit Autumn metadata envelope",
+  "test_gpu_boundary": "actual readback System runs its original DisableInput early return; a legitimate empty AssetSsboLibrary is present and no synthetic mapped allocation/device/output is supplied; this does not validate GPU readback",
+  "order": [
+    "Already integrated: collision borrowed API current world.rs SHA8161e74e7b74bc3d128187c872a626505e8e68e32212f026843597004bb86ffe and canonical Butterfly24B",
+    "Foreign owner prerequisite: same TerrainEditingData cursor_height_override Option<f32>, original None constructor and Some(draw_state.drag_distance)/None release producers (precise native manifest TG1db)",
+    "Apply depth/input4 patches from mouse-depth-input-delta-manifest TG601, preserving current parent input registration",
+    "Apply nine camera-runtime-manifest files except GUI whole-file candidate; use foreign GUI owner two-hunk patch instead alongside CameraSnapshotCommand definition",
+    "Apply aggregation.patch (systems::main_camera already exported; camera_rig::walk is in the camera module patch)",
+    "Apply unit-camera-moved-consumers.patch for the two actual old wall fixture constructors",
+    "Apply current-host-camera.patch to current base after save/Meta/Decorator, preserving all their hooks",
+    "Parent compile/tests/GPU; no acceptance inferred from git apply --check"
+  ],
+  "still_missing_owner_field": {
+    "canonical": "TerrainEditingData.cursor_height_override: Option<f32>",
+    "producer_evidence": "TG-1db8320879c6b5d23b/oschain-20261018/terrain-plane-producer-native-manifest.json",
+    "some_sites": [
+      "140aa010f load draw_state.drag_distance",
+      "140aa0117 store tag1",
+      "140aa011d store float+4"
+    ],
+    "none_site": "140aa06eb release store tag0"
+  },
+  "acceptance_limits": [
+    "Complete independent original second set10 UI/tool tuple is not asserted restored",
+    "Full OS->editing->save/load acceptance is separate",
+    "No Cargo/GPU run by oschain"
+  ],
+  "test_only_afterpatch": {
+    "baseline": "frozen candidate-main_camera-system.rs SHA879285b8536420127571d805288e62833b49048a85fe970532c2b1009c1ea17f",
+    "patch": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-8ed1ee9951d9d8c4b0/oschain-20261018/schedule-v2/after-main-camera-v1-test.patch",
+    "candidate": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-8ed1ee9951d9d8c4b0/oschain-20261018/schedule-v2/candidate-main_camera-system-test-v2.rs",
+    "candidate_sha256": "f3c693ac66171bb70606b0bd939f52503620d5cd7d6485582cc8054fe931a866",
+    "reason": "fixture must use actual gameplay Disabled/freeze=false Vermeer constructor, not enabled revelation Default dt freeze"
+  }
+}

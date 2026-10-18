@@ -216,3 +216,15 @@ v74整core2432pass/3个植被新fixture误期望重复resource0；独审保留�
 新连续world_graph入口已按原W1..54逐项串接实际typedconsumer，W21/27追加原墙8B push/highlight高位和Prev/Next第二轮交换，W7仅查询canonical optional StairsTopDownMesh，绝不插默认Some；Surface已原地提取prepare/raster/finish安全借用同World，并增量canonical flags0x108与fragment/RMW元数据。**这些新源在下一批编译/真实整帧验证中，不能据局部GPU通过称整图已成功。** 当前production compile_main/warmup完整世界guard仍保留，canonical draw callbacks/完整clearing/相机交互/存档读回闭环继续推进。
 
 证据与失败日志：main-chain-validation-v74-v77.json / logs；冻结二进制SHA在JSON，未复用编译中可变target二进制。
+
+
+## 2026-10-19 v79 连续世界图源码与既有 GPU 回归
+
+v79 连续 W1–W54 世界图入口已实际编译通过；同批 core CPU **2457 pass/0 fail**，原 shader GPU 回归 **10 pass/0 fail**。后者是既有有界场景段、九级 SPD、后处理与同 owner 预热交接等用例，**不是完整非空世界帧验收**。当前生产 `compile_world_graph` 与 `warm_up_gameplay` 的缺失消费者 guard 仍明确保留。
+
+森林／水面完整启动、canonical 绘制回调、相机 set9/10、save4 与非空 world→worker 新候选均不在这次 v79 接受范围；后加 RtWorld/GpuWorld 清理也待下一批编译。原始通过日志和冻结可执行文件 SHA 已保存 `main-chain-validation-v79.json` 与 `logs/core-v79-cpu.log`、`logs/world-segments-v79-gpu.log`。不按测试数推算游戏完成百分比。
+
+
+## 2026-10-19 用户停止开发并要求提交推送
+
+主链与三个子agent已在安全边界停止仓库写入，不在push后自动恢复。当前全部源码/候选/有界原证/进度作为在途快照提交。v81宿主32/0、core2465/1，实际非空world→worker→同atomic快照ID→真实文件和flush ack测试通过；最新v83整体构建未通过，duck.rs:818边界Buffer误选同名inherent接口类型不匹配，按用户停止指令保留未修。详见 STOPPED-2026-10-19.md、main-chain-validation-v80-v83.json 和 logs。canonicaldraw/forest/相机仍候选，Surface整帧未执行；宿主候选HOST-CONTRACT.md尚未写明，不用manifest存在冒充完整交付。

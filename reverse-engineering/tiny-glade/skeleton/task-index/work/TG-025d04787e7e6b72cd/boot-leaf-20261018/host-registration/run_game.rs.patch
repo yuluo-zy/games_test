@@ -1,0 +1,45 @@
+--- a/games_test/tiny-glade/crates/tiny-glade/src/run_game.rs
++++ b/games_test/tiny-glade/crates/tiny-glade/src/run_game.rs
+@@ -51,6 +51,13 @@
+ /// Retaining numeric identity avoids inventing stage names or engine internals.
+ #[derive(SystemSet, Clone, Copy, Debug, PartialEq, Eq, Hash)]
+ pub struct GameSystemSet(pub u8);
++
++/// Original OnEnter(Game) is a three-group chain. The two groups of11 and8
++/// functions are internally unchained; these names are host scheduling labels,
++/// not recovered source enum discriminants.
++#[derive(SystemSet, Clone, Copy, Debug, PartialEq, Eq, Hash)]
++pub enum GameSessionStage { Session, SharedScene, Glade }
++
+ 
+ /// Each original App constructs a separate shader library. The Arc is a Rust
+ /// owner for that App's library; it does not merge the two native libraries.
+@@ -436,12 +443,18 @@
+         )
+             .chain(),
+     );
++    // add_game_startup_systems@140941150 -> chain@141452870:
++    // conditioned load_game_session -> unchained11 -> unchained8.
++    app.configure_sets(
++        bevy_state::state::OnEnter(country_core::app_loading_state::AppLoadingState::Game),
++        (GameSessionStage::Session, GameSessionStage::SharedScene, GameSessionStage::Glade).chain(),
++    );
+     // Native @14094113d builds the resource_exists<NextSession> condition;
+     // @140941158 supplies OnEnter state1=Game. Its vtable @142ccf9d0 binds
+     // load_game_session @14166e7d0 through run_unsafe @14173e110.
+     app.add_systems(
+         bevy_state::state::OnEnter(country_core::app_loading_state::AppLoadingState::Game),
+-        country_core::startup::startup_session::load_game_session.run_if(
++        country_core::startup::startup_session::load_game_session.in_set(GameSessionStage::Session).run_if(
+             bevy_ecs::schedule::common_conditions::resource_exists::<
+                 country_core::resources::session::NextSession,
+             >,
+@@ -453,7 +466,7 @@
+     app.add_systems(
+         bevy_state::state::OnEnter(country_core::app_loading_state::AppLoadingState::Game),
+         country_core::startup::load_glade_tod_and_weather::load_glade_tod_and_weather
+-            .after(country_core::startup::startup_session::load_game_session),
++            .in_set(GameSessionStage::Glade),
+     );
+     // Native @1409443de supplies set12 to the original load_game wrapper:
+     // helper @14174d040 uses vtable @142cd2d78 (run_unsafe @141749a10),

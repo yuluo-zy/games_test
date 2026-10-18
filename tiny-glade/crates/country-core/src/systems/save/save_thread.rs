@@ -36,6 +36,7 @@ pub const MANUAL_BACKUP_SNAPSHOT_TAG: u64 = 0x746f_6873_7061_6e73;
 pub struct DeferredSection {
     pub section: SaveFileSection,
     pub value: SerializedJson,
+    pub expires_at: std::time::Instant,
 }
 
 /// 未落盘文件列表条目（O：`UnsavedFileList::add` 0x14171ff80 fresh disasm：
@@ -210,7 +211,31 @@ impl CurrentSaveFile {
 
     /// 延迟节变更入槽（10 槽位；`flush_deferred_and_sync` 统一落盘）。
     pub fn queue_section_change(&mut self, section: SaveFileSection, value: SerializedJson) {
-        self.deferred_sections[section as usize] = Some(DeferredSection { section, value });
+        let slot = &mut self.deferred_sections[section as usize];
+        // Replacements retain the first deadline instead of extending it forever.
+        let expires_at = slot
+            .as_ref()
+            .map(|pending| pending.expires_at)
+            .unwrap_or_else(|| std::time::Instant::now() + Duration::from_secs(120));
+        *slot = Some(DeferredSection {
+            section,
+            value,
+            expires_at,
+        });
+    }
+
+    /// Original idle path @1417210e0..11a2 applies only expired slots.
+    /// Forced Flush/Close uses flush_deferred_and_sync and ignores deadlines.
+    pub fn apply_due_sections(&mut self, now: std::time::Instant) {
+        for index in 0..self.deferred_sections.len() {
+            if self.deferred_sections[index]
+                .as_ref()
+                .is_some_and(|pending| pending.expires_at <= now)
+            {
+                let pending = self.deferred_sections[index].take().unwrap();
+                self.change_section(pending.section, &pending.value);
+            }
+        }
     }
 
     /// B ReplaceEdits case: keep the requested prefix, truncate at the first
@@ -264,17 +289,15 @@ impl CurrentSaveFile {
         self.shadow_file.sync_all()
     }
 
-    /// B `CurrentSaveFile::flush_deferred_and_sync` 0x14171f7f0：应用延迟节变更。
-    /// fresh 反编译 disasm 全 CALL 清单**无 `0x14091a230`(sync_all)/`0x1409193d0`(flush)**——
-    /// 原生只逐槽 apply `change_section`（deferred @+0xd8 stride 0x28），**不 sync_all**
-    /// （旧实现的末尾 `self.sync_all()` 为新增，已删）。save_thread Shutdown-flush 路径调用；
-    /// 失败由调用方 log "Error flushing save file on game thread disconnect."。
+    /// Complete B1934B @14171f7f0. Its tail@14171fc9f calls
+    /// ShadowFile::sync_all after applying each deferred section. Earlier
+    /// decompilation omitted that tail and incorrectly returned unconditional true.
     pub fn flush_deferred_and_sync(&mut self) -> bool {
         let pending = std::mem::take(&mut self.deferred_sections);
         for slot in pending.into_iter().flatten() {
             self.change_section(slot.section, &slot.value);
         }
-        true
+        self.sync_all()
     }
 
     /// B execute_save_cmd case 7 BackupSave / default 8 ManualBackup：
@@ -350,23 +373,57 @@ impl CurrentSaveFile {
         }
     }
 
-    /// B execute_save_cmd case 9 CaptureSnapshot：创建 `snapshots` 目录 → 快照 JSON
-    /// 落盘为 `<snapshot_id>.snapshot`（GC 按 stem 解析 u64 引用判定）。
-    pub fn capture_snapshot(&mut self, snapshot: &Arc<SnapshotSaveData>) -> bool {
-        let folder = self.shadow_file.directory().join("snapshots");
-        if let Err(error) = std::fs::create_dir_all(&folder) {
-            log::error!("creating snapshot folder: {error}");
-            return false;
-        }
-        let target = folder.join(format!("{}.snapshot", snapshot.snapshot_id));
-        let json = snapshot.to_json().to_string();
-        match std::fs::write(&target, json.as_bytes()) {
-            Ok(()) => true,
+    /// B @141724033..726d78: complete Motomoto blob -> deterministic
+    /// SipHash13(slice length + bytes) -> existing-file shortcut or atomic
+    /// NamedTempFile write/persist -> publish the same ledger ID owner.
+    pub fn capture_snapshot(
+        &mut self,
+        snapshot: &Arc<SnapshotSaveData>,
+        pending: &crate::resources::history::MaybePendingSnapshotId,
+    ) -> bool {
+        // The domain owner supplies the single Result encoder. Never turn an
+        // encoding failure into a partially populated JSON snapshot.
+        let result = snapshot
+            .encode()
+            .and_then(|blob| self.write_snapshot_blob(&blob));
+        match result {
+            Ok(id) => {
+                pending.assign(id);
+                true
+            }
             Err(error) => {
-                log::error!("Error writing snapshot {}: {error}", target.display());
+                pending.assign_invalid();
+                log::error!("Error while capturing a game snapshot: {error:#}");
                 false
             }
         }
+    }
+
+    fn write_snapshot_blob(
+        &mut self,
+        blob: &[u8],
+    ) -> anyhow::Result<crate::resources::history::HistorySnapshotId> {
+        use std::hash::{Hash, Hasher};
+        use std::io::Write;
+        // Native utils::calculate_hash<&[u8]> @14145b1a0 writes usize length
+        // then the bytes, using SipHash13 with both keys zero. Reuse std's
+        // same dependency implementation rather than a new hash algorithm.
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        blob.hash(&mut hasher);
+        let id = crate::resources::history::HistorySnapshotId(hasher.finish());
+        let folder = self.shadow_file.directory().join("snapshots");
+        let target = folder.join(format!("{}.snapshot", id.0));
+        if !target.is_file() {
+            // Native uses DirBuilder with recursive=true, then new_in,
+            // write_all and persist. It does not add a snapshot fsync call.
+            std::fs::create_dir_all(&folder)?;
+            let mut temporary = tempfile::NamedTempFile::new_in(&folder)?;
+            temporary.write_all(blob)?;
+            temporary
+                .persist(&target)
+                .map_err(|error| anyhow::anyhow!(error.error))?;
+        }
+        Ok(id)
     }
 
     /// `nuke_unreferenced_shapshots`（PDB 名拼写即如此）：清理未引用快照，由
@@ -449,7 +506,18 @@ pub fn execute_save_cmd(
             let file = current
                 .as_mut()
                 .expect("No active save file, but AsyncSaveCmd::ChangeSection has been issued");
-            file.change_section(section, &value);
+            // Original vtable+18 invocation @14172312f happens here, not on
+            // the gameplay thread. It sees IDs assigned by earlier tag9 work.
+            let value = value.to_json_string();
+            if matches!(
+                section,
+                SaveFileSection::Camera | SaveFileSection::TimeOfDay | SaveFileSection::Sheep
+            ) {
+                file.queue_section_change(section, value);
+            } else {
+                file.change_section(section, &value);
+                file.shadow_file.flush();
+            }
         }
         AsyncSaveCmd::ReplaceEdits { truncate, edits } => {
             let file = current
@@ -502,25 +570,26 @@ pub fn execute_save_cmd(
                 }
             }
         }
-        AsyncSaveCmd::CaptureSnapshot { snapshot } => {
-            if let Some(file) = current.as_mut() {
-                file.capture_snapshot(&snapshot);
-            } else {
-                log::warn!(
-                    "No active save file, but AsyncSaveCmd::CaptureSnapshot has been issued"
-                );
-            }
+        AsyncSaveCmd::CaptureSnapshot { snapshot, pending } => {
+            let file = current
+                .as_mut()
+                .expect("No active save file, but AsyncSaveCmd::CaptureSnapshot has been issued");
+            file.capture_snapshot(&snapshot, &pending);
         }
-        AsyncSaveCmd::Flush => {
-            if let Some(file) = current.as_mut() {
-                if !file.shadow_file.flush() {
-                    log::error!("Error flushing changes to disk");
-                }
+        AsyncSaveCmd::Flush { reply } => {
+            // Original execute_save_cmd tag10 panics without an active file.
+            let file = current
+                .as_mut()
+                .expect("No active save file, but a synchronous flush has been issued");
+            let result = if file.flush_deferred_and_sync() {
+                Ok(())
             } else {
-                log::warn!("No active save file, but AsyncSaveCmd::Flush has been issued");
-            }
+                Err(anyhow::anyhow!("Error flushing changes to disk"))
+            };
+            // Dropping the waiting game thread does not turn a disk failure
+            // into success. Native ignores a failed reply send.
+            let _ = reply.send(result);
         }
-        AsyncSaveCmd::Shutdown { .. } => unreachable!("Shutdown is handled by save_thread"),
     }
 }
 
@@ -550,22 +619,11 @@ pub fn execute_open_file_cmd(
     *current = Some(new_file);
 }
 
-/// `save_thread` 0x141720680 主循环（O，ALGORITHMS.md §2.1）。
-///
-/// - 每 ≥1s tick：有活动档且脏块非空 → 首个脏条目 `ShadowFile::sync_all`，失败入错误列表；
-/// - condvar 等待 ≤1s（本实现用 `recv_timeout` 等价等待命令）；
-/// - 错误列表 diff：新列表空 → log "Auto-save I/O error resolved"；非空 →
-///   log "Save thread I/O error; affected file count: " → 经 `error_sender` 回传游戏线程；
-/// - drop 当前存档（消费一个 GC 释放，断言属于当前档）；
-/// - 3=OpenFile 前置：`unsaved.contains_file(save_folder/history.json)` → panic
-///   "Was asked to load an unsaved file"；
-/// - 11=Shutdown：**flush=true** → `flush_deferred_and_sync`（失败 warn
-///   "Error flushing save file on game thread disconnect."）→ drop 当前档 → **返回退出**；
-///   **flush=false** → 应用 deferred + 睡 10ms + **继续循环（不 break，O 0x141721104
-///   jumptable 应用 deferred change_section→sleep(0x989680=10ms)→continue）**。
-///
-/// 原生**无 shutdown_ack 通道**（退出路径 drop error_sender + commands receiver 后
-/// return）；本实现已删自造 shutdown_ack。
+/// B save_thread @141720680, full5139B. Keep the existing crossbeam channel
+/// architecture while restoring its actual TryRecvError branches: Empty applies
+/// due sections and sleeps10ms; Disconnected forces all deferred data to disk
+/// and returns. The native outer Result niche11 is not an AsyncSaveCmd variant.
+/// A one-second tick syncs dirty shadow data and reports the actual error diff.
 pub fn save_thread(
     commands: Receiver<AsyncSaveCmd>,
     error_sender: crossbeam_channel::Sender<Vec<(PathBuf, AutoSaveError)>>,
@@ -609,45 +667,35 @@ pub fn save_thread(
             }
         }
 
-        // 2/6. 等待命令（≤1s）。
-        match commands.recv_timeout(Duration::from_secs(1)) {
-            Ok(AsyncSaveCmd::Shutdown { flush }) => {
-                if flush {
-                    // 11=Shutdown{flush:true}：flush_deferred_and_sync + drop + 退出线程。
-                    if let Some(file) = current.as_mut() {
-                        if !file.flush_deferred_and_sync() {
-                            log::warn!("Error flushing save file on game thread disconnect.");
-                        }
-                    }
-                    // current drop + error_sender/commands receiver drop + return 退出。
-                    return;
-                }
-                // 11=Shutdown{flush:false}：应用 deferred（有活动档时）+ 睡 10ms + 继续循环。
-                if let Some(file) = current.as_mut() {
-                    file.flush_deferred_and_sync();
-                }
-                std::thread::sleep(Duration::from_millis(10));
-            }
+        // B @141720f8c tests the outer try_recv Result niche0xb. Its byte
+        // payload is TryRecvError::{Empty,Disconnected}, not a Shutdown command.
+        match commands.try_recv() {
             Ok(cmd) => {
-                // 5. 每次处理命令前消费一个 GC 释放并断言属于当前档。
                 if let Some(file) = current.as_mut() {
                     file.consume_snapshot_gc_release();
                 }
-                // 8. OpenFile 前置：unsaved 列表命中 history.json → panic。
                 if let AsyncSaveCmd::OpenFile { session, .. } = &cmd {
                     let history = session.save_folder_path().join("history.json");
-                    if unsaved.contains_file(&history) {
-                        panic!("Was asked to load an unsaved file");
-                    }
+                    assert!(
+                        !unsaved.contains_file(&history),
+                        "Was asked to load an unsaved file"
+                    );
                 }
                 execute_save_cmd(&mut current, cmd, &unsaved);
             }
-            Err(_) => {
-                // 超时：无命令 → 有活动档时应用 deferred（原生每轮无命令即 apply），
-                // 进入下一轮（diff 已在每轮开头执行）。
+            Err(crossbeam_channel::TryRecvError::Empty) => {
                 if let Some(file) = current.as_mut() {
-                    file.flush_deferred_and_sync();
+                    file.apply_due_sections(std::time::Instant::now());
                 }
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            Err(crossbeam_channel::TryRecvError::Disconnected) => {
+                if let Some(file) = current.as_mut() {
+                    if !file.flush_deferred_and_sync() {
+                        log::warn!("Error flushing save file on game thread disconnect.");
+                    }
+                }
+                return;
             }
         }
     }
@@ -660,7 +708,7 @@ pub fn save_thread(
 
 /// 存档线程生产句柄（游戏线程侧资源）。`join` 供收尾等待；`command_sender` 经
 /// `AutoSaveState::attach_command_sender` 装配；`error_state` 供游戏线程吸干错误列表。
-/// 原生无 shutdown_ack（Shutdown{flush:true} 直接退出线程），已删。
+/// Dropping all actual command senders disconnects and joins this worker; no ack command is invented.
 #[derive(bevy_ecs::resource::Resource)]
 pub struct SaveThreadHandle {
     pub join: JoinHandle<()>,
@@ -698,4 +746,152 @@ pub fn init_save_thread(mut auto: ResMut<super::save_game::AutoSaveState>, mut c
     let handle = SaveThreadHandle::spawn_with_unsaved(auto.unsaved_files.clone());
     auto.attach_command_sender(handle.command_sender.clone());
     commands.insert_resource(handle);
+}
+
+#[cfg(test)]
+mod synchronous_flush_recovery_tests {
+    use super::*;
+    use crate::systems::save::save_game::{GameSaveSections, SerializedJson};
+    #[test]
+    fn native_sync_reply_follows_deferred_sections_and_actual_disk_sync() {
+        let dir = tempfile::tempdir().unwrap();
+        let values = [
+            serde_json::json!(27),
+            serde_json::json!(17u64),
+            serde_json::json!(0),
+            serde_json::json!({"before":true}),
+            serde_json::json!({}),
+            serde_json::json!([]),
+            serde_json::json!({}),
+            serde_json::json!(-1),
+            serde_json::json!(-1),
+            serde_json::json!([]),
+        ];
+        let sections = GameSaveSections {
+            values: values.map(|value| SerializedJson::new(&value).unwrap()),
+        };
+        let mut current = Some(CurrentSaveFile::create(dir.path(), sections, &[]));
+        let captured = serde_json::json!({"captured_from_live_camera":"x".repeat(300)});
+        current.as_mut().unwrap().queue_section_change(
+            SaveFileSection::Camera,
+            SerializedJson::new(&captured).unwrap(),
+        );
+        let (reply, completed) = crossbeam_channel::bounded(1);
+        execute_save_cmd(
+            &mut current,
+            AsyncSaveCmd::Flush { reply },
+            &UnsavedFileList::default(),
+        );
+        completed.recv().unwrap().unwrap();
+        let saved: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(dir.path().join("history.json")).unwrap())
+                .unwrap();
+        assert_eq!(saved["Camera"], captured);
+    }
+    #[test]
+    #[should_panic(expected = "No active save file")]
+    fn native_synchronous_flush_without_active_file_is_rejected() {
+        let (reply, _completed) = crossbeam_channel::bounded(1);
+        execute_save_cmd(
+            &mut None,
+            AsyncSaveCmd::Flush { reply },
+            &UnsavedFileList::default(),
+        );
+    }
+}
+
+#[cfg(test)]
+mod native_deferred_tests {
+    use super::*;
+
+    #[test]
+    fn native_section_deadline_is_retained_and_forced_flush_overrides_it() {
+        let root = tempfile::tempdir().unwrap();
+        let sections = GameSaveSections {
+            values: std::array::from_fn(|_| SerializedJson::new(&0).unwrap()),
+        };
+        let mut file = CurrentSaveFile::create(root.path(), sections, &[]);
+        file.queue_section_change(SaveFileSection::Camera, SerializedJson::new(&1).unwrap());
+        let deadline = file.deferred_sections[SaveFileSection::Camera as usize]
+            .as_ref()
+            .unwrap()
+            .expires_at;
+        file.queue_section_change(SaveFileSection::Camera, SerializedJson::new(&2).unwrap());
+        assert_eq!(
+            file.deferred_sections[SaveFileSection::Camera as usize]
+                .as_ref()
+                .unwrap()
+                .expires_at,
+            deadline
+        );
+        file.apply_due_sections(deadline - Duration::from_millis(1));
+        assert!(file.deferred_sections[SaveFileSection::Camera as usize].is_some());
+        assert!(file.flush_deferred_and_sync());
+        let saved: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(root.path().join("history.json")).unwrap())
+                .unwrap();
+        assert_eq!(saved["Camera"], 2);
+    }
+
+    #[test]
+    fn native_snapshot_reference_serialization_runs_on_the_worker_after_id_assignment() {
+        use super::super::save_game::{defer_json, SnapshotReferencesToJson};
+        use crate::resources::history::{
+            transactions::ResolvedHistorySnapshot, HistorySnapshotId, MaybePendingSnapshotId,
+        };
+        let root = tempfile::tempdir().unwrap();
+        let sections = GameSaveSections {
+            values: std::array::from_fn(|_| SerializedJson::new(&0).unwrap()),
+        };
+        let mut current = Some(CurrentSaveFile::create(root.path(), sections, &[]));
+        let pending = MaybePendingSnapshotId::new();
+        let command = AsyncSaveCmd::ChangeSection {
+            section: SaveFileSection::Snapshots,
+            value: defer_json(SnapshotReferencesToJson(vec![ResolvedHistorySnapshot {
+                chain_index: 4,
+                value: pending.clone(),
+            }])),
+        };
+        // Queue ownership is established while still pending; real tag9 assigns
+        // this exact atomic before the subsequent tag6 is handled.
+        pending.assign(HistorySnapshotId(73));
+        execute_save_cmd(&mut current, command, &UnsavedFileList::default());
+        let file = current.as_mut().unwrap();
+        assert!(file.flush_deferred_and_sync());
+        let saved: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(root.path().join("history.json")).unwrap())
+                .unwrap();
+        assert_eq!(
+            saved["History"]["snapshots"],
+            serde_json::json!([{"chain_index":4,"snapshot_id":73}])
+        );
+    }
+}
+
+#[cfg(test)]
+mod original_snapshot_file_tests {
+    use super::*;
+    #[test]
+    fn snapshot_blob_identity_and_existing_file_shortcut_use_the_same_content_hash() {
+        let root = tempfile::tempdir().unwrap();
+        let sections = GameSaveSections {
+            values: SaveFileSection::ALL.map(|_| SerializedJson::new(&0).unwrap()),
+        };
+        let mut file = CurrentSaveFile::create(root.path(), sections, &[]);
+        // This exercises the writer boundary after the domain encoder: bytes
+        // are opaque here, not a replacement valid-game snapshot fixture.
+        let blob = b"encoded-domain-blob";
+        let id = file.write_snapshot_blob(blob).unwrap();
+        assert!(id.0 >= 2);
+        let target = root
+            .path()
+            .join("snapshots")
+            .join(format!("{}.snapshot", id.0));
+        assert_eq!(std::fs::read(&target).unwrap(), blob);
+        std::fs::write(&target, b"existing").unwrap();
+        assert_eq!(file.write_snapshot_blob(blob).unwrap(), id);
+        assert_eq!(std::fs::read(&target).unwrap(), b"existing");
+        let other = file.write_snapshot_blob(b"encoded-other-blob").unwrap();
+        assert_ne!(id, other);
+    }
 }

@@ -1,6 +1,6 @@
 --- a/games_test/tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_a_views.rs
 +++ b/games_test/tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_a_views.rs
-@@ -10,34 +10,10 @@
+@@ -10,34 +10,11 @@
  // 视图 / stub 类型（只含被读字段；偏移为机器码观测）
  // =====================================================================================================================
  
@@ -33,13 +33,14 @@
 -#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
 -pub struct RoofFlagClothView(pub u32);
 +// One canonical ECS identity is shared with actual startup/prefab producers.
-+pub use crate::components::drawable::{AlbedoMap as AlbedoMapView,
-+    AlphaMap as AlphaMapView, NormalMap as NormalMapView,
-+    RoofFlagCloth as RoofFlagClothView, WallFlagCloth as WallFlagClothView};
++pub use crate::components::drawable::{
++    AlbedoMap as AlbedoMapView, AlphaMap as AlphaMapView, NormalMap as NormalMapView,
++    RoofFlagCloth as RoofFlagClothView, WallFlagCloth as WallFlagClothView,
++};
  
  /// `components::WoodenGate`（TypeId 0x3b633fbe5a39b5b4/0xd54faa3a72d3ee09；真实类型 `(pub Gap)`）：
  /// `qword @+0x18`（取低 32 位写 `i32` uniform）、`i32 @+0x30`。
-@@ -72,14 +48,7 @@
+@@ -72,14 +49,7 @@
      pub b60: u8,
  }
  
@@ -55,3 +56,41 @@
  
  /// Compatibility name for the same canonical Component identity. No byte cast
  /// or independently registered View remains on the startup -> draw path.
+@@ -113,27 +83,30 @@
+ pub use crate::resources::glade_border::ShowDemoBorderOverlay;
+ 
+ /// `ActiveSession`（TypeId 0x74430dfcc6d8719b/0xca5591f7e464509c）：`byte @+0x58`（变体）与字节序列（`ptr @+8`、`len @+0x10`）。
+-#[derive(Resource, Clone, Debug, Default, PartialEq, Eq)]
++#[cfg(test)]
++#[derive(Clone, Debug, Default, PartialEq, Eq)]
+ pub struct ActiveSessionView {
+     pub variant: u8,
+     pub glade_bytes: Vec<u8>,
+ }
+ 
+ /// `Weather`（TypeId 0xd2f519263066413b/0x5192b15f962559e4；真实类型 `(pub Gap)`）：`f32 @+0xc`（强度）。
+-#[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
++#[cfg(test)]
++#[derive(Clone, Copy, Debug, Default, PartialEq)]
+ pub struct WeatherView {
+     pub intensity: f32,
+ }
+ 
+-/// `AppMode`（TypeId 0xc2b8e941c91a6428/0x59f3c6d1d3da43a0）：只读首个 `u32`（判别）。真实 `AppMode` 的判别值域在 crate 里
+-/// 只有 5 个变体，与 `== 0x13` 的比较对不上，故用视图（U）。
+-#[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
++/// Legacy test-only tag DTO. Production reads actual AppMode.native_tag().
++#[cfg(test)]
++#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+ pub struct AppModeView {
+     pub tag: u32,
+ }
+ 
+-/// `MainCamera`（TypeId 0xbba451ee6a08a3ff/0x8d008d15febcf29d；真实类型 `raw: Gap`）：`eye_position()` 与 `byte @+0x4d0`。
+-#[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
++/// Legacy test-only DTO. Historical season field is actually CameraMode.
++#[cfg(test)]
++#[derive(Clone, Copy, Debug, Default, PartialEq)]
+ pub struct MainCameraView {
+     pub eye: Vec3,
+     pub season: u8,

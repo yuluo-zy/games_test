@@ -1,18 +1,41 @@
 --- a/games_test/tiny-glade/crates/country-core/src/components/drawable.rs
 +++ b/games_test/tiny-glade/crates/country-core/src/components/drawable.rs
-@@ -78,6 +78,16 @@
+@@ -78,6 +78,39 @@
      pub transform: Transform,
  }
  
 +/// Canonical texture-name hash used by original per-entity draw callbacks.
 +/// B flowery/olden insert these beside DrawableMeshBundle; no duplicate view
 +/// components should be created by the host.
-+#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, PartialEq, Eq)]
++#[derive(bevy_ecs::component::Component, Debug, PartialEq, Eq)]
 +pub struct AlbedoMap(pub u64);
-+#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, PartialEq, Eq)]
++#[derive(bevy_ecs::component::Component, Debug, PartialEq, Eq)]
 +pub struct AlphaMap(pub u64);
-+#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, PartialEq, Eq)]
++#[derive(bevy_ecs::component::Component, Debug, PartialEq, Eq)]
 +pub struct NormalMap(pub u64);
++
++/// Original drawable PrevTransform is the complete48-byte Transform wrapper.
++/// Native clone_behavior140831730 is Custom; both critter callbacks read this
++/// same Component instead of independently registered view Components.
++#[repr(transparent)]
++#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, PartialEq)]
++pub struct PrevTransform(pub Transform);
++
++/// Original flag cloth components use Custom Clone (140855020/140855720).
++/// The roof payload is one u32 instance identity. Wall also carries three
++/// f32 uniforms and its byte gate, at offsets0/4/8/c/10.
++#[repr(transparent)]
++#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, PartialEq, Eq)]
++pub struct RoofFlagCloth(pub u32);
++#[repr(C)]
++#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, PartialEq)]
++pub struct WallFlagCloth {
++    pub id: i32,
++    pub f4: f32,
++    pub f8: f32,
++    pub fc: f32,
++    pub flag: bool,
++}
 +
  #[cfg(test)]
  mod tests {

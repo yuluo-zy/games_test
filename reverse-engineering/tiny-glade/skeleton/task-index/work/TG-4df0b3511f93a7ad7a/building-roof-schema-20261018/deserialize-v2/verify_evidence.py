@@ -1,8 +1,13 @@
 from pathlib import Path
-import json, hashlib, subprocess, tempfile, shutil
+import json, hashlib, subprocess, tempfile, shutil, sys
 import pefile, capstone
 ROOT=Path('/Users/yuluo/Desktop/game'); P=Path(__file__).resolve().parent; E=P/'evidence'
 PE=ROOT/'ljxsj_92385/Tiny Glade/tiny-glade.rne'; PDB=PE.with_name('tiny_glade.pdb')
+WRITE='--write-report' in sys.argv
+def record(path,value):
+ text=json.dumps(value,indent=2)+'\n'
+ if WRITE:path.write_text(text)
+ else:assert path.read_text()==text,str(path)
 def sha(f):
  h=hashlib.sha256()
  with f.open('rb') as r:
@@ -60,7 +65,7 @@ with tempfile.TemporaryDirectory(prefix='roof-reader-apply-',dir='/private/tmp')
   r=subprocess.run(['git','apply',str(P/s['patch'])],cwd=t,capture_output=True,text=True);assert r.returncode==0,r.stderr
   assert dest.read_bytes()==(P/s['candidate']).read_bytes()
   r=subprocess.run(['rustfmt','--edition','2024','--check',str(P/s['candidate'])],capture_output=True,text=True);assert r.returncode==0,r.stderr
-(P/'source-map.json').write_text(json.dumps(source,indent=2)+'\n')
-(E/'checked-semantics.json').write_text(json.dumps(checks,indent=2)+'\n')
+record(P/'source-map.json',source)
+record(E/'checked-semantics.json',checks)
 result={'target':'B','full_PDB_ranges':len(ranges),'native_bytes':total,'instructions':n,'PE_PDB_ASM_agree':True,'semantic_assertions':len(checks),'writer139_unchanged':True,'patches_apply_exact':True,'rustfmt_check':True,'production_changed':False,'cargo_executed':False,'native_or_JIT_executed':False,'rust_tests':'10 authored, unexecuted','scope':'Roof reader JSON-value projection plus necessary canonical ShapeParameters compatibility'}
-(P/'validation.json').write_text(json.dumps(result,indent=2)+'\n');print(json.dumps(result,indent=2))
+record(P/'validation.json',result);print(json.dumps(result,indent=2))

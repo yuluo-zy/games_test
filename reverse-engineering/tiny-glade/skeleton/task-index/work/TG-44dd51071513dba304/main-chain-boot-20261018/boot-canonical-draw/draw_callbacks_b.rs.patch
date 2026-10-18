@@ -1,32 +1,87 @@
 --- a/games_test/tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_b.rs
 +++ b/games_test/tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_b.rs
-@@ -13,7 +13,7 @@
+@@ -13,14 +13,10 @@
  //!   `component_ids<T>` / `register_resource_with<..T..>` 等泛型实例体内，据此由 `procs.tsv` 反查出 T
  //!   （脚本：`/tmp/dcb/tid.py` 同法，报告 `B_d_cb_b.md` §2 列出全部 TypeId → 类型名）。
  //!
 -//! # 真实类型 vs 视图类型
+-//! 真实类型已在 crate 里且字段可读的（`SemiTransparent`、`FlatLighting`、`ColorId`、`WallHighlight`、
+-//! `CursorTerrainRaycast`、`GladeSettings`、`GpuWorld`、`AssetSsboLibrary`）直接使用。字段布局仍是 typed gap
+-//! （`MainCamera.raw: Gap`、`ActiveSession`、`Weather`、`EditingHighlight`、`DebugGui`、`LogoAnimation`、`RoofFlagCloth`、
+-//! `PrevTransform`…）、没有 `Resource` 派生或在 crate 里根本不存在的类型，只在本文件里放一个**只含被读字段**的 `*View`
+-//! 视图类型（字段偏移 = 机器码观测），名字后缀 `View`；`Duck`/`DuckState`/`CritterControl`/`EraserSizeMultiplier`/
+-//! `RoofHighlight`/`InstancedDrawFromPlacementData` 在 crate 里不存在，直接按 PDB 名放 stub。真实类型落地后把读取点换过去即可
+-//! （每个视图的文档写明真实类型与偏移）。
 +//! # 真实类型与剩余缺口
- //! 真实类型已在 crate 里且字段可读的（`SemiTransparent`、`FlatLighting`、`ColorId`、`WallHighlight`、
- //! `CursorTerrainRaycast`、`GladeSettings`、`GpuWorld`、`AssetSsboLibrary`）直接使用。字段布局仍是 typed gap
- //! （`MainCamera.raw: Gap`、`ActiveSession`、`Weather`、`EditingHighlight`、`DebugGui`、`LogoAnimation`、`RoofFlagCloth`、
-@@ -30,6 +30,16 @@
++//! Startup/clearing 回调直接读 canonical MainCamera、Weather、ActiveSession、canopy、Rocky
++//! 和 drawable components；历史 View DTO 仅测试可见，不注册为 Resource。其它仍缺真实
++//! 生产者的 critter/roof 输入保持显式缺口，不用默认镜像资源替代。
+ //!
+ //! # nani_draw
+ //! 原版 `nani_draw` 经 builder 里的 `World` 取 `GpuWorld`、`AssetSsboLibrary`（均为 `Resource`）。[`nani_draw_world`] 做同样的事；
+@@ -30,6 +26,19 @@
  // Preserve the original instruction-level expression order/NaN policy, API call shapes, and evidence/test transcription. See README.md.
  #![allow(clippy::field_reassign_with_default, clippy::redundant_closure)]
  use alloc::vec::Vec;
 +
-+use crate::components::drawable::{AlbedoMap, AlphaMap, NormalMap, PrevTransform,
-+    RoofFlagCloth, WallFlagCloth};
++use crate::components::drawable::{
++    AlbedoMap, AlphaMap, NormalMap, PrevTransform, RoofFlagCloth, WallFlagCloth,
++};
++use crate::resources::{
++    history::tree_edit::TreeCanopyMaxCullDistance, rocky_terrain::RockyTerrainMeshVertCount,
++};
 +use crate::resources::{session::ActiveSession, weather::Weather};
-+use crate::systems::{camera_rig::main_camera::MainCamera, mode_manager::AppMode};
-+use crate::resources::{history::tree_edit::TreeCanopyMaxCullDistance,
-+    rocky_terrain::RockyTerrainMeshVertCount};
 +use crate::systems::render_loop::draw_passes::draw_shaders::clearing_shaders::{
-+    SEASON_OFFSETS, SEASON_FIELD_OFFSET};
++    SEASON_FIELD_OFFSET, SEASON_OFFSETS,
++};
++use crate::systems::{camera_rig::main_camera::MainCamera, mode_manager::AppMode};
 +
  use core::sync::atomic::{AtomicBool, Ordering};
  
  use bevy_ecs::component::Component;
-@@ -199,9 +209,7 @@
+@@ -146,8 +155,9 @@
+ 
+ /// `MainCamera`（TypeId 0xbba451ee6a08a3ff/0x8d008d15febcf29d，`systems::camera_rig::MainCamera`，真实类型 `raw: Gap`）。
+ /// 读取：`CameraMatrices::eye_position`（0x140c96d40：`[+0xc0..+0xf0]` 与 0 相乘后加 `[+0xf0]` → `eye = [+0xf0].xyz`）、
+-/// 字节 `+0x4d0`（`MainCamera` 文档称模式字节；树 shader 里叫 season，I）、按该字节索引的子结构里 `f32 @+0x104`。
+-#[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
++/// Legacy test-only DTO; the historical season names actually describe CameraMode and its lens values.
++#[cfg(test)]
++#[derive(Clone, Copy, Debug, Default, PartialEq)]
+ pub struct MainCameraView {
+     /// `eye_position()`（O）。
+     pub eye: Vec3,
+@@ -158,14 +168,15 @@
+ }
+ 
+ /// `Weather`（TypeId 0xd2f519263066413b/0x5192b15f962559e4，真实类型 `Weather(pub Gap)`）：`f32 @+4` = 风（O）。
+-#[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
++#[cfg(test)]
++#[derive(Clone, Copy, Debug, Default, PartialEq)]
+ pub struct WeatherView {
+     pub wind: f32,
+ }
+ 
+-/// `TreeCanopyMaxCullDistance`（TypeId 0x1b4e385d376c1cc0/0x8c38d6ede2a437ec）：真实类型是 `(pub f32)` 且**没有** `Resource`
+-/// 派生；前一版文档称机器码读 `f32 @+4`（与单字段 `f32 @0` 不符，U）。视图保存该 f32。
+-#[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
++/// Legacy test-only scalar DTO. Production reads canonical smoothstep@+4.
++#[cfg(test)]
++#[derive(Clone, Copy, Debug, Default, PartialEq)]
+ pub struct TreeCanopyMaxCullDistanceView(pub f32);
+ 
+ /// `EditingHighlight`（TypeId 0x6efcda1c77e106b4/0x7c999c10e7fa637f，真实类型 `raw: Gap`）：`byte @+0xc`。
+@@ -186,7 +197,8 @@
+ 
+ /// `ActiveSession`（TypeId 0x74430dfcc6d8719b/0xca5591f7e464509c，真实类型 `glade: Gap`）：`byte @+0x58`（变体）与
+ /// 字节序列（`ptr @+8`、`len @+0x10`）。
+-#[derive(Resource, Clone, Debug, Default, PartialEq, Eq)]
++#[cfg(test)]
++#[derive(Clone, Debug, Default, PartialEq, Eq)]
+ pub struct ActiveSessionView {
+     pub variant: u8,
+     pub glade_bytes: Vec<u8>,
+@@ -199,9 +211,7 @@
      pub f10: f32,
  }
  
@@ -37,7 +92,7 @@
  
  /// `resources::critters::CritterControl`（TypeId 0xa2127765959c8b85/0xf078ccfbcec1f347，crate 里不存在）：`f32 @+0` 萤火虫强度。
  #[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
-@@ -209,14 +217,7 @@
+@@ -209,14 +219,7 @@
      pub intensity: f32,
  }
  
@@ -53,7 +108,17 @@
  
  /// `resources::critters::Duck`（TypeId 0x272a1f294225ce7f/0xd79870fafff409bc，crate 里不存在）：`f32 @+0xf0/+0xf4/+0xf8`、`u8 @+0xfc`。
  #[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
-@@ -549,7 +550,7 @@
+@@ -237,7 +240,8 @@
+ pub struct InstancedDrawFromPlacementData(pub u64);
+ 
+ /// `RockyTerrainMeshVertCount`（TypeId 0xfa44538b95ae76c6/0x12146c4ea814069b；真实类型 `(pub u32)` 无 `Resource` 派生）。
+-#[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
++#[cfg(test)]
++#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+ pub struct RockyTerrainMeshVertCountView(pub u32);
+ 
+ /// `water_planes_draw` 的进程级布尔（`.data` 0x143634d90，O：为真 → `discard`）。
+@@ -549,7 +553,7 @@
  /// closure_env$43（0x1409b8620）：`rocky_terrain_shader(b, false)`（`r9d = 0`）；顶点数取自
  /// `RockyTerrainMeshVertCount` 资源（缺失 → `Option::unwrap` panic）。
  pub fn env43(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
@@ -62,7 +127,7 @@
      rocky_terrain_shader(b, false, count);
  }
  
-@@ -589,7 +590,7 @@
+@@ -589,7 +593,7 @@
      bind_preset(b, 0xa, 0x297d1e4cdae8f657)
  }
  pub fn env5(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
@@ -71,7 +136,7 @@
      let b = env5_bind(b, eye);
      let id = comp::<InstancedDrawFromPlacementData>(w, p.entity).0;
      b.draw_instanced_from_placement_data(id);
-@@ -602,7 +603,7 @@
+@@ -602,7 +606,7 @@
      pub roof_flag_cloth: u32,
      /// `ColorId.0`。
      pub color_id: u32,
@@ -80,7 +145,7 @@
      pub session_bytes: Vec<u8>,
  }
  
-@@ -631,9 +632,9 @@
+@@ -631,9 +635,14 @@
      bind_disk(b, env21_last_texture(&i.session_bytes), 0xce84646a28bf8813)
  }
  pub fn env21(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
@@ -88,13 +153,21 @@
 +    let roof_flag_cloth = comp::<RoofFlagCloth>(w, p.entity).0;
      let color_id = comp::<ColorId>(w, p.entity).0;
 -    let session_bytes = res::<ActiveSessionView>(w).glade_bytes.clone();
-+    let session_bytes = res::<ActiveSession>(w).meta.mutators.iter().map(|m| *m as u8).collect();
++    let session_bytes = res::<ActiveSession>(w)
++        .meta
++        .mutators
++        .iter()
++        .map(|m| *m as u8)
++        .collect();
      env21_bind(
          b,
          &Env21Inputs {
-@@ -688,13 +689,13 @@
+@@ -686,30 +695,33 @@
+ // 直接函数的 World 适配器（`draw_shaders::*` 的 Rust 签名带数据参数，原版在函数内读 World）
+ // =====================================================================================================================
  
- /// `tree_trunk` 适配器（0x1409c9830）：资源 `Weather`（风）、`MainCamera`（eye、季节字节）、`TreeCanopyMaxCullDistance`。
+-/// `tree_trunk` 适配器（0x1409c9830）：资源 `Weather`（风）、`MainCamera`（eye、季节字节）、`TreeCanopyMaxCullDistance`。
++/// Original tree_trunk: Weather.wind_strength, actual camera eye/Walk mode, canonical canopy smoothstep.
  pub fn tree_trunk_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
 -    let wind = res::<WeatherView>(w).wind;
 -    let cam = *res::<MainCameraView>(w);
@@ -111,41 +184,56 @@
          blend,
      };
      let w: &World = w;
-@@ -703,13 +704,13 @@
+     tree_trunk(b, &inputs, |b, k| nani_draw_world(b, k, w));
+ }
  
- /// `tree_canopy` 适配器（0x1409ca350）：`season_param` = 季节子结构的 `f32 @+0x104`（`season >= 6` → 越界 panic，同原版的越界读）。
+-/// `tree_canopy` 适配器（0x1409ca350）：`season_param` = 季节子结构的 `f32 @+0x104`（`season >= 6` → 越界 panic，同原版的越界读）。
++/// Original tree_canopy selects actual lens f32@body+0x104 by CameraMode through the six-entry table.
++/// Historical pure input DTO field names are retained; there is no season resource projection.
  pub fn tree_canopy_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
 -    let cam = *res::<MainCameraView>(w);
 -    let wind = res::<WeatherView>(w).wind;
 -    let blend = res::<TreeCanopyMaxCullDistanceView>(w).0;
 +    let cam = res::<MainCamera>(w);
++    let camera_mode = cam.mode_byte();
++    let lens_param = cam.read_f32(SEASON_OFFSETS[camera_mode as usize] + SEASON_FIELD_OFFSET);
 +    let wind = res::<Weather>(w).wind_strength;
 +    let blend = res::<TreeCanopyMaxCullDistance>(w).smoothstep;
      let inputs = TreeCanopyInputs {
          wind,
 -        season_param: cam.season_params[cam.season as usize],
 -        season_is_3: cam.season == 3,
-+        season_param: cam.read_f32(SEASON_OFFSETS[cam.mode_byte() as usize] + SEASON_FIELD_OFFSET),
-+        season_is_3: cam.mode_byte() == 3,
++        season_param: lens_param,
++        season_is_3: camera_mode == 3,
          blend,
      };
      let w: &World = w;
-@@ -744,11 +745,11 @@
+@@ -740,15 +752,18 @@
+     draw_instanced_roof_support_beam_shader(b, &LibView(res::<AssetSsboLibrary>(w)));
+ }
+ 
+-/// `water_planes_draw` 适配器（0x1409d9bc0）：进程布尔、`ActiveSession`（变体字节、字节序列，两次取资源）。
++/// Original water_planes_draw: process bool and actual ActiveSession glade + SessionMeta mutators.
  /// `bind_ray_tracing<DrawBuilder>` 用 A4 的真实实现（`RtTriangles/RtTriangleMeta/RtBvh/WallColorId`）。
  pub fn water_planes_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
-     let skip = WATER_PLANES_DISABLED.load(Ordering::Relaxed);
+-    let skip = WATER_PLANES_DISABLED.load(Ordering::Relaxed);
 -    let s = res::<ActiveSessionView>(w);
++    if WATER_PLANES_DISABLED.load(Ordering::Relaxed) {
++        b.discard();
++        return;
++    }
 +    let s = res::<ActiveSession>(w);
      let inputs = WaterPlanesInputs {
-         skip,
+-        skip,
 -        variant: s.variant,
 -        all_set: all_nonzero(&s.glade_bytes),
++        skip: false,
 +        variant: s.meta.glade.native_tag(),
 +        all_set: s.meta.mutators.iter().all(|m| *m as u8 != 0),
      };
      water_planes_draw(b, inputs, |b| {
          b.bind_ray_tracing::<RtTrianglesSsbo, RtTriangleMetaSsbo, RtBvhSsbo, WallColorIdSsbo>()
-@@ -775,7 +776,7 @@
+@@ -775,7 +790,7 @@
  
  /// `draw_duck_shader` 适配器（0x141555080）：实体上的 `PrevTransform`（Transform 布局）、`Duck`、`DuckState`（读取序同机器码）。
  pub fn duck_cb(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
@@ -154,7 +242,16 @@
      let d = *comp::<Duck>(w, p.entity);
      let s = comp::<DuckState>(w, p.entity).0;
      draw_duck_shader(
-@@ -1272,10 +1273,9 @@
+@@ -1071,7 +1086,7 @@
+     #[test]
+     fn env43_passes_false_and_the_vertex_count_resource() {
+         let mut w = World::new();
+-        w.insert_resource(RockyTerrainMeshVertCountView(0x1234));
++        w.insert_resource(RockyTerrainMeshVertCount(0x1234));
+         let p = params(w.spawn_empty().id());
+         let (_, d) = run(&[], &[], |b| env43(b, &p, &mut w));
+         assert_eq!(
+@@ -1272,10 +1287,9 @@
      #[test]
      fn env5_binds_eye_then_eight_presets_then_placement_id() {
          let mut w = World::new();
@@ -168,7 +265,7 @@
          let e = w.spawn(InstancedDrawFromPlacementData(77)).id();
          let mut rig = Rig::new(&[], &[0x4bbdb30b873d3990]);
          let b = env5_bind(rig.builder(), Vec3::new(1.0, 2.0, 3.0));
-@@ -1358,10 +1358,12 @@
+@@ -1358,10 +1372,13 @@
      #[test]
      fn env21_reads_two_components_and_the_session() {
          let mut w = World::new();
@@ -181,11 +278,12 @@
 +            crate::resources::session::SessionMeta {
 +                mutators: vec![crate::resources::session::SessionMutator::Halloween2025],
 +                ..Default::default()
-+            }));
++            },
++        ));
          let e = w.spawn((RoofFlagClothView(3), ColorId(4))).id();
          let mut rig = Rig::new(&[], &[]);
          env21(rig.builder(), &params(e), &mut w);
-@@ -1495,11 +1497,11 @@
+@@ -1495,11 +1512,11 @@
          let mut w = World::new();
          let e = w
              .spawn((
@@ -199,7 +297,7 @@
                  Duck {
                      f_f0: 1.0,
                      f_f4: 2.0,
-@@ -1520,11 +1522,11 @@
+@@ -1520,11 +1537,11 @@
          let mut w = World::new();
          let e = w
              .spawn((
@@ -213,7 +311,7 @@
                  Duck::default(),
              ))
              .id();
-@@ -1545,9 +1547,9 @@
+@@ -1545,22 +1562,27 @@
      #[should_panic(expected = "called `Option::unwrap()` on a `None` value")]
      fn tree_trunk_adapter_reaches_nani_draw() {
          let mut w = World::new();
@@ -222,29 +320,36 @@
 -        w.insert_resource(TreeCanopyMaxCullDistanceView(0.5));
 +        w.insert_resource(Weather::default());
 +        w.insert_resource(MainCamera::new(1.0));
-+        w.insert_resource(TreeCanopyMaxCullDistance { progress: 0.5, smoothstep: 0.5 });
++        w.insert_resource(TreeCanopyMaxCullDistance {
++            progress: 0.5,
++            smoothstep: 0.5,
++        });
          nani_adapter_panics(tree_trunk_cb, &mut w);
      }
  
-@@ -1555,12 +1557,11 @@
+     #[test]
      #[should_panic(expected = "index out of bounds")]
-     fn tree_canopy_adapter_indexes_the_season_table() {
-         let mut w = World::new();
+-    fn tree_canopy_adapter_indexes_the_season_table() {
+-        let mut w = World::new();
 -        w.insert_resource(WeatherView::default());
 -        w.insert_resource(MainCameraView {
 -            season: 6,
 -            ..Default::default()
--        });
--        w.insert_resource(TreeCanopyMaxCullDistanceView(0.5));
++    fn tree_canopy_adapter_indexes_the_original_six_camera_body_table() {
++        let mut w = World::new();
 +        w.insert_resource(Weather::default());
 +        let mut camera = MainCamera::new(1.0);
 +        camera.set_mode_byte(crate::systems::camera_rig::main_camera::CameraMode(6));
 +        w.insert_resource(camera);
-+        w.insert_resource(TreeCanopyMaxCullDistance { progress: 0.5, smoothstep: 0.5 });
++        w.insert_resource(TreeCanopyMaxCullDistance {
++            progress: 0.5,
++            smoothstep: 0.5,
+         });
+-        w.insert_resource(TreeCanopyMaxCullDistanceView(0.5));
          nani_adapter_panics(tree_canopy_cb, &mut w);
      }
  
-@@ -1612,7 +1613,7 @@
+@@ -1612,7 +1634,7 @@
      fn world_helpers_report_the_original_failure_texts() {
          let w = World::new();
          let r = std::panic::catch_unwind(core::panic::AssertUnwindSafe(|| {

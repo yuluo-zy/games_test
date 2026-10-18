@@ -1,0 +1,73 @@
+--- games_test/tiny-glade/crates/country-core/src/systems/collision/world.rs
++++ games_test/tiny-glade/crates/country-core/src/systems/collision/world.rs
+@@ -1382,6 +1382,40 @@
+             };
+             if let Some(terrain_hit) = terrain.intersect_ray(ray, maximum_toi) {
+                 result = terrain_result(terrain_hit.t, origin, dir);
++            }
++        }
++        result
++    }
++
++    /// Borrowed original Raycasting terrain-aware sweep. The actual ECS
++    /// RaycastWorld remains the sole physics owner; the legacy owned wrapper
++    /// delegates here so camera motion and existing consumers share semantics.
++    #[cfg(feature = "native-physics")]
++    pub fn spherecast_w_terrain(
++        &self,
++        terrain: &TerrainHeightsData<TerrainHeightSsbo>,
++        origin: glam::Vec3,
++        dir: glam::Vec3,
++        radius: f32,
++        options: rapier3d::parry::query::ShapeCastOptions,
++        mask: u32,
++    ) -> RaycastWorldResult {
++        let mut result = self.spherecast_with_options(origin, dir, radius, options, mask);
++        if mask & 0x20 != 0 {
++            let ray = TerrainRay {
++                origin,
++                direction: dir,
++            };
++            let terrain_limit = options.max_time_of_impact + radius;
++            if let Some(terrain_hit) = terrain.intersect_ray(ray, terrain_limit) {
++                let toi =
++                    terrain_spherecast_time_of_impact(origin, dir, radius, terrain_hit.position);
++                if toi <= options.max_time_of_impact {
++                    // O：`local_70 < fVar9`（rapier toi < 地形 toi）才保留 rapier。
++                    if !(result.is_hit() && result.toi < toi) {
++                        result = terrain_result(toi, origin, dir);
++                    }
++                }
+             }
+         }
+         result
+@@ -2267,27 +2301,8 @@
+         options: rapier3d::parry::query::ShapeCastOptions,
+         mask: u32,
+     ) -> RaycastWorldResult {
+-        let mut result = self
+-            .world
+-            .spherecast_with_options(origin, dir, radius, options, mask);
+-        if mask & 0x20 != 0 {
+-            let ray = TerrainRay {
+-                origin,
+-                direction: dir,
+-            };
+-            let terrain_limit = options.max_time_of_impact + radius;
+-            if let Some(terrain_hit) = terrain.intersect_ray(ray, terrain_limit) {
+-                let toi =
+-                    terrain_spherecast_time_of_impact(origin, dir, radius, terrain_hit.position);
+-                if toi <= options.max_time_of_impact {
+-                    // O：`local_70 < fVar9`（rapier toi < 地形 toi）才保留 rapier。
+-                    if !(result.is_hit() && result.toi < toi) {
+-                        result = terrain_result(toi, origin, dir);
+-                    }
+-                }
+-            }
+-        }
+-        result
++        self.world
++            .spherecast_w_terrain(terrain, origin, dir, radius, options, mask)
+     }
+ }
+ 

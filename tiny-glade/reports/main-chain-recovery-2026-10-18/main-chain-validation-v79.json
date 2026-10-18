@@ -1,0 +1,47 @@
+{
+  "batch": "v79",
+  "target": "B original evidence on existing refactored Rust, Apple M3 Vulkan adapter",
+  "build": "success; continuous world W1..W54 source compiled",
+  "validation": [
+    {
+      "log": "logs/core-v79-cpu.log",
+      "sha256": "519b07f6bec6ada35229211168dbd23ff9e0804f06286226e8b022464113496c",
+      "actual_result": "2457 passed; 0 failed"
+    },
+    {
+      "log": "logs/world-segments-v79-gpu.log",
+      "sha256": "00d56b25dec83ec327b20fa27e5cc8297cdbf4f4062f4d46ec40eda635b89232",
+      "actual_result": "10 passed; 0 failed"
+    }
+  ],
+  "frozen_binaries": {
+    "rhapsody": {
+      "path": "/private/tmp/tg-rhapsody-v79-tests",
+      "sha256": "d3264a33b33ec050037ce04d12e8ef7afa35cf04588425455e75423073de9685"
+    },
+    "tiny_glade": {
+      "path": "/private/tmp/tg-tiny_glade-v79-tests",
+      "sha256": "9a83d6c1189d7a7247d49d84bf6c2fe21a8bf12b9900143474483e0d7672b46e"
+    },
+    "original_scene_compute_gpu": {
+      "path": "/private/tmp/tg-original_scene_compute_gpu-v79-tests",
+      "sha256": "9f2f0c1c21d2f974737076014a9c4cd7b49bfdc49054d172a868064965cdf594"
+    },
+    "country_core": {
+      "path": "/private/tmp/tg-country_core-v79-tests",
+      "sha256": "085368144f548f441698d24d2445a36b843e05b225ce0d7a854affcf53cad291"
+    }
+  },
+  "accepted_scope": [
+    "country-core CPU regression of compiled v79 input",
+    "10 bounded original-shader GPU regressions in one session-capable test program"
+  ],
+  "not_accepted": [
+    "complete nonempty W1..W54 world GPU frame",
+    "production compile_main/warm_up_gameplay gameplay ready",
+    "new candidate forest/clearing/water startup and canonical callbacks",
+    "camera runtime set9/10 and new save4 world-worker candidate",
+    "complete snapshot decode/load/world reapply"
+  ],
+  "source_timing": "v79 predates current v80 save integration and post-v79 RtWorld/GpuWorld clear APIs; no blanket acceptance of later source changes"
+}

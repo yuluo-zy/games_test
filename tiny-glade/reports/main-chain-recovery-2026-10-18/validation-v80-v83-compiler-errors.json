@@ -1,0 +1,944 @@
+[
+  {
+    "batch": "v80",
+    "diagnostic": {
+      "rendered": "error[E0277]: `fn(..., ..., ..., ..., ..., ..., ..., ..., ...) -> ... {commander_update_system}` does not describe a valid system configuration\n   --> crates/country-core/src/meta_commander.rs:375:26\n    |\n375 |     schedule.add_systems(commander_update_system);\n    |              ----------- ^^^^^^^^^^^^^^^^^^^^^^^ invalid system configuration\n    |              |\n    |              required by a bound introduced by this call\n    |\n    = help: the trait `bevy_ecs::schedule::IntoScheduleConfigs<Box<(dyn bevy_ecs::system::System<In = (), Out = std::result::Result<(), BevyError>> + 'static)>, _>` is not implemented for fn item `fn(..., ..., ..., ..., ..., ..., ..., ..., ...) -> ... {commander_update_system}`\n    = help: the following other types implement trait `bevy_ecs::schedule::IntoScheduleConfigs<T, Marker>`:\n              `(S,)` implements `IntoScheduleConfigs<T, (ScheduleConfigTupleMarker, P)>`\n              `(S0, S1)` implements `IntoScheduleConfigs<T, (ScheduleConfigTupleMarker, P0, P1)>`\n              `(S0, S1, S2)` implements `IntoScheduleConfigs<T, (ScheduleConfigTupleMarker, P0, P1, P2)>`\n              `(S0, S1, S2, S3)` implements `IntoScheduleConfigs<T, (ScheduleConfigTupleMarker, P0, P1, P2, P3)>`\n              `(S0, S1, S2, S3, S4)` implements `IntoScheduleConfigs<T, (..., ..., ..., ..., ..., ...)>`\n              `(S0, S1, S2, S3, S4, S5)` implements `IntoScheduleConfigs<T, (..., ..., ..., ..., ..., ..., ...)>`\n              `(S0, S1, S2, S3, S4, S5, S6)` implements `IntoScheduleConfigs<T, (..., ..., ..., ..., ..., ..., ..., ...)>`\n              `(S0, S1, S2, S3, S4, S5, S6, S7)` implements `IntoScheduleConfigs<T, (..., ..., ..., ..., ..., ..., ..., ..., ...)>`\n            and 14 others\nnote: required by a bound in `bevy_ecs::schedule::Schedule::add_systems`\n   --> /Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/schedule/schedule.rs:338:23\n    |\n336 |     pub fn add_systems<M>(\n    |            ----------- required by a bound in this associated function\n337 |         &mut self,\n338 |         systems: impl IntoScheduleConfigs<ScheduleSystem, M>,\n    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Schedule::add_systems`\n    = note: the full name for the type has been written to '/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/country_core-e8b18cfd0e493262.long-type-16251076682627734990.txt'\n    = note: consider using `--verbose` to print the full type name to the console\n\n",
+      "$message_type": "diagnostic",
+      "children": [
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "the trait `bevy_ecs::schedule::IntoScheduleConfigs<Box<(dyn bevy_ecs::system::System<In = (), Out = std::result::Result<(), BevyError>> + 'static)>, _>` is not implemented for fn item `fn(..., ..., ..., ..., ..., ..., ..., ..., ...) -> ... {commander_update_system}`",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "the following other types implement trait `bevy_ecs::schedule::IntoScheduleConfigs<T, Marker>`:\n  `(S,)` implements `IntoScheduleConfigs<T, (ScheduleConfigTupleMarker, P)>`\n  `(S0, S1)` implements `IntoScheduleConfigs<T, (ScheduleConfigTupleMarker, P0, P1)>`\n  `(S0, S1, S2)` implements `IntoScheduleConfigs<T, (ScheduleConfigTupleMarker, P0, P1, P2)>`\n  `(S0, S1, S2, S3)` implements `IntoScheduleConfigs<T, (ScheduleConfigTupleMarker, P0, P1, P2, P3)>`\n  `(S0, S1, S2, S3, S4)` implements `IntoScheduleConfigs<T, (..., ..., ..., ..., ..., ...)>`\n  `(S0, S1, S2, S3, S4, S5)` implements `IntoScheduleConfigs<T, (..., ..., ..., ..., ..., ..., ...)>`\n  `(S0, S1, S2, S3, S4, S5, S6)` implements `IntoScheduleConfigs<T, (..., ..., ..., ..., ..., ..., ..., ...)>`\n  `(S0, S1, S2, S3, S4, S5, S6, S7)` implements `IntoScheduleConfigs<T, (..., ..., ..., ..., ..., ..., ..., ..., ...)>`\nand 14 others",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "note",
+          "message": "required by a bound in `bevy_ecs::schedule::Schedule::add_systems`",
+          "rendered": null,
+          "spans": [
+            {
+              "byte_end": 11756,
+              "byte_start": 11745,
+              "column_end": 23,
+              "column_start": 12,
+              "expansion": null,
+              "file_name": "/Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/schedule/schedule.rs",
+              "is_primary": false,
+              "label": "required by a bound in this associated function",
+              "line_end": 336,
+              "line_start": 336,
+              "suggested_replacement": null,
+              "suggestion_applicability": null,
+              "text": [
+                {
+                  "highlight_end": 23,
+                  "highlight_start": 12,
+                  "text": "    pub fn add_systems<M>("
+                }
+              ]
+            },
+            {
+              "byte_end": 11840,
+              "byte_start": 11802,
+              "column_end": 61,
+              "column_start": 23,
+              "expansion": null,
+              "file_name": "/Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/schedule/schedule.rs",
+              "is_primary": true,
+              "label": "required by this bound in `Schedule::add_systems`",
+              "line_end": 338,
+              "line_start": 338,
+              "suggested_replacement": null,
+              "suggestion_applicability": null,
+              "text": [
+                {
+                  "highlight_end": 61,
+                  "highlight_start": 23,
+                  "text": "        systems: impl IntoScheduleConfigs<ScheduleSystem, M>,"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "note",
+          "message": "the full name for the type has been written to '/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/country_core-e8b18cfd0e493262.long-type-16251076682627734990.txt'",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "note",
+          "message": "consider using `--verbose` to print the full type name to the console",
+          "rendered": null,
+          "spans": []
+        }
+      ],
+      "level": "error",
+      "message": "`fn(..., ..., ..., ..., ..., ..., ..., ..., ...) -> ... {commander_update_system}` does not describe a valid system configuration",
+      "spans": [
+        {
+          "byte_end": 13749,
+          "byte_start": 13726,
+          "column_end": 49,
+          "column_start": 26,
+          "expansion": null,
+          "file_name": "crates/country-core/src/meta_commander.rs",
+          "is_primary": true,
+          "label": "invalid system configuration",
+          "line_end": 375,
+          "line_start": 375,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "text": [
+            {
+              "highlight_end": 49,
+              "highlight_start": 26,
+              "text": "    schedule.add_systems(commander_update_system);"
+            }
+          ]
+        },
+        {
+          "byte_end": 13725,
+          "byte_start": 13714,
+          "column_end": 25,
+          "column_start": 14,
+          "expansion": null,
+          "file_name": "crates/country-core/src/meta_commander.rs",
+          "is_primary": false,
+          "label": "required by a bound introduced by this call",
+          "line_end": 375,
+          "line_start": 375,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "text": [
+            {
+              "highlight_end": 25,
+              "highlight_start": 14,
+              "text": "    schedule.add_systems(commander_update_system);"
+            }
+          ]
+        }
+      ],
+      "code": {
+        "code": "E0277",
+        "explanation": "You tried to use a type which doesn't implement some trait in a place which\nexpected that trait.\n\nErroneous code example:\n\n```compile_fail,E0277\n// here we declare the Foo trait with a bar method\ntrait Foo {\n    fn bar(&self);\n}\n\n// we now declare a function which takes an object implementing the Foo trait\nfn some_func<T: Foo>(foo: T) {\n    foo.bar();\n}\n\nfn main() {\n    // we now call the method with the i32 type, which doesn't implement\n    // the Foo trait\n    some_func(5i32); // error: the trait bound `i32 : Foo` is not satisfied\n}\n```\n\nIn order to fix this error, verify that the type you're using does implement\nthe trait. Example:\n\n```\ntrait Foo {\n    fn bar(&self);\n}\n\n// we implement the trait on the i32 type\nimpl Foo for i32 {\n    fn bar(&self) {}\n}\n\nfn some_func<T: Foo>(foo: T) {\n    foo.bar(); // we can now use this method since i32 implements the\n               // Foo trait\n}\n\nfn main() {\n    some_func(5i32); // ok!\n}\n```\n\nOr in a generic context, an erroneous code example would look like:\n\n```compile_fail,E0277\nfn some_func<T>(foo: T) {\n    println!(\"{:?}\", foo); // error: the trait `core::fmt::Debug` is not\n                           //        implemented for the type `T`\n}\n\nfn main() {\n    // We now call the method with the i32 type,\n    // which *does* implement the Debug trait.\n    some_func(5i32);\n}\n```\n\nNote that the error here is in the definition of the generic function. Although\nwe only call it with a parameter that does implement `Debug`, the compiler\nstill rejects the function. It must work with all possible input types. In\norder to make this example compile, we need to restrict the generic type we're\naccepting:\n\n```\nuse std::fmt;\n\n// Restrict the input type to types that implement Debug.\nfn some_func<T: fmt::Debug>(foo: T) {\n    println!(\"{:?}\", foo);\n}\n\nfn main() {\n    // Calling the method is still fine, as i32 implements Debug.\n    some_func(5i32);\n\n    // This would fail to compile now:\n    // struct WithoutDebug;\n    // some_func(WithoutDebug);\n}\n```\n\nRust only looks at the signature of the called function, as such it must\nalready specify all requirements that will be used for every type parameter.\n"
+      }
+    }
+  },
+  {
+    "batch": "v80",
+    "diagnostic": {
+      "rendered": "error[E0277]: `fn(..., ..., ..., ..., ..., ..., ..., ..., ...) -> ... {commander_update_system}` does not describe a valid system configuration\n   --> crates/country-core/src/meta_commander.rs:375:26\n    |\n375 |     schedule.add_systems(commander_update_system);\n    |              ----------- ^^^^^^^^^^^^^^^^^^^^^^^ invalid system configuration\n    |              |\n    |              required by a bound introduced by this call\n    |\n    = help: the trait `bevy_ecs::schedule::IntoScheduleConfigs<Box<(dyn bevy_ecs::system::System<In = (), Out = std::result::Result<(), BevyError>> + 'static)>, _>` is not implemented for fn item `fn(..., ..., ..., ..., ..., ..., ..., ..., ...) -> ... {commander_update_system}`\n    = help: the following other types implement trait `bevy_ecs::schedule::IntoScheduleConfigs<T, Marker>`:\n              `(S,)` implements `IntoScheduleConfigs<T, (ScheduleConfigTupleMarker, P)>`\n              `(S0, S1)` implements `IntoScheduleConfigs<T, (ScheduleConfigTupleMarker, P0, P1)>`\n              `(S0, S1, S2)` implements `IntoScheduleConfigs<T, (ScheduleConfigTupleMarker, P0, P1, P2)>`\n              `(S0, S1, S2, S3)` implements `IntoScheduleConfigs<T, (ScheduleConfigTupleMarker, P0, P1, P2, P3)>`\n              `(S0, S1, S2, S3, S4)` implements `IntoScheduleConfigs<T, (..., ..., ..., ..., ..., ...)>`\n              `(S0, S1, S2, S3, S4, S5)` implements `IntoScheduleConfigs<T, (..., ..., ..., ..., ..., ..., ...)>`\n              `(S0, S1, S2, S3, S4, S5, S6)` implements `IntoScheduleConfigs<T, (..., ..., ..., ..., ..., ..., ..., ...)>`\n              `(S0, S1, S2, S3, S4, S5, S6, S7)` implements `IntoScheduleConfigs<T, (..., ..., ..., ..., ..., ..., ..., ..., ...)>`\n            and 14 others\nnote: required by a bound in `bevy_ecs::schedule::Schedule::add_systems`\n   --> /Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/schedule/schedule.rs:338:23\n    |\n336 |     pub fn add_systems<M>(\n    |            ----------- required by a bound in this associated function\n337 |         &mut self,\n338 |         systems: impl IntoScheduleConfigs<ScheduleSystem, M>,\n    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Schedule::add_systems`\n    = note: the full name for the type has been written to '/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/country_core-3853cbef5077b86c.long-type-13138823131115072305.txt'\n    = note: consider using `--verbose` to print the full type name to the console\n\n",
+      "$message_type": "diagnostic",
+      "children": [
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "the trait `bevy_ecs::schedule::IntoScheduleConfigs<Box<(dyn bevy_ecs::system::System<In = (), Out = std::result::Result<(), BevyError>> + 'static)>, _>` is not implemented for fn item `fn(..., ..., ..., ..., ..., ..., ..., ..., ...) -> ... {commander_update_system}`",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "the following other types implement trait `bevy_ecs::schedule::IntoScheduleConfigs<T, Marker>`:\n  `(S,)` implements `IntoScheduleConfigs<T, (ScheduleConfigTupleMarker, P)>`\n  `(S0, S1)` implements `IntoScheduleConfigs<T, (ScheduleConfigTupleMarker, P0, P1)>`\n  `(S0, S1, S2)` implements `IntoScheduleConfigs<T, (ScheduleConfigTupleMarker, P0, P1, P2)>`\n  `(S0, S1, S2, S3)` implements `IntoScheduleConfigs<T, (ScheduleConfigTupleMarker, P0, P1, P2, P3)>`\n  `(S0, S1, S2, S3, S4)` implements `IntoScheduleConfigs<T, (..., ..., ..., ..., ..., ...)>`\n  `(S0, S1, S2, S3, S4, S5)` implements `IntoScheduleConfigs<T, (..., ..., ..., ..., ..., ..., ...)>`\n  `(S0, S1, S2, S3, S4, S5, S6)` implements `IntoScheduleConfigs<T, (..., ..., ..., ..., ..., ..., ..., ...)>`\n  `(S0, S1, S2, S3, S4, S5, S6, S7)` implements `IntoScheduleConfigs<T, (..., ..., ..., ..., ..., ..., ..., ..., ...)>`\nand 14 others",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "note",
+          "message": "required by a bound in `bevy_ecs::schedule::Schedule::add_systems`",
+          "rendered": null,
+          "spans": [
+            {
+              "byte_end": 11756,
+              "byte_start": 11745,
+              "column_end": 23,
+              "column_start": 12,
+              "expansion": null,
+              "file_name": "/Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/schedule/schedule.rs",
+              "is_primary": false,
+              "label": "required by a bound in this associated function",
+              "line_end": 336,
+              "line_start": 336,
+              "suggested_replacement": null,
+              "suggestion_applicability": null,
+              "text": [
+                {
+                  "highlight_end": 23,
+                  "highlight_start": 12,
+                  "text": "    pub fn add_systems<M>("
+                }
+              ]
+            },
+            {
+              "byte_end": 11840,
+              "byte_start": 11802,
+              "column_end": 61,
+              "column_start": 23,
+              "expansion": null,
+              "file_name": "/Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/schedule/schedule.rs",
+              "is_primary": true,
+              "label": "required by this bound in `Schedule::add_systems`",
+              "line_end": 338,
+              "line_start": 338,
+              "suggested_replacement": null,
+              "suggestion_applicability": null,
+              "text": [
+                {
+                  "highlight_end": 61,
+                  "highlight_start": 23,
+                  "text": "        systems: impl IntoScheduleConfigs<ScheduleSystem, M>,"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "note",
+          "message": "the full name for the type has been written to '/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/country_core-3853cbef5077b86c.long-type-13138823131115072305.txt'",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "note",
+          "message": "consider using `--verbose` to print the full type name to the console",
+          "rendered": null,
+          "spans": []
+        }
+      ],
+      "level": "error",
+      "message": "`fn(..., ..., ..., ..., ..., ..., ..., ..., ...) -> ... {commander_update_system}` does not describe a valid system configuration",
+      "spans": [
+        {
+          "byte_end": 13749,
+          "byte_start": 13726,
+          "column_end": 49,
+          "column_start": 26,
+          "expansion": null,
+          "file_name": "crates/country-core/src/meta_commander.rs",
+          "is_primary": true,
+          "label": "invalid system configuration",
+          "line_end": 375,
+          "line_start": 375,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "text": [
+            {
+              "highlight_end": 49,
+              "highlight_start": 26,
+              "text": "    schedule.add_systems(commander_update_system);"
+            }
+          ]
+        },
+        {
+          "byte_end": 13725,
+          "byte_start": 13714,
+          "column_end": 25,
+          "column_start": 14,
+          "expansion": null,
+          "file_name": "crates/country-core/src/meta_commander.rs",
+          "is_primary": false,
+          "label": "required by a bound introduced by this call",
+          "line_end": 375,
+          "line_start": 375,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "text": [
+            {
+              "highlight_end": 25,
+              "highlight_start": 14,
+              "text": "    schedule.add_systems(commander_update_system);"
+            }
+          ]
+        }
+      ],
+      "code": {
+        "code": "E0277",
+        "explanation": "You tried to use a type which doesn't implement some trait in a place which\nexpected that trait.\n\nErroneous code example:\n\n```compile_fail,E0277\n// here we declare the Foo trait with a bar method\ntrait Foo {\n    fn bar(&self);\n}\n\n// we now declare a function which takes an object implementing the Foo trait\nfn some_func<T: Foo>(foo: T) {\n    foo.bar();\n}\n\nfn main() {\n    // we now call the method with the i32 type, which doesn't implement\n    // the Foo trait\n    some_func(5i32); // error: the trait bound `i32 : Foo` is not satisfied\n}\n```\n\nIn order to fix this error, verify that the type you're using does implement\nthe trait. Example:\n\n```\ntrait Foo {\n    fn bar(&self);\n}\n\n// we implement the trait on the i32 type\nimpl Foo for i32 {\n    fn bar(&self) {}\n}\n\nfn some_func<T: Foo>(foo: T) {\n    foo.bar(); // we can now use this method since i32 implements the\n               // Foo trait\n}\n\nfn main() {\n    some_func(5i32); // ok!\n}\n```\n\nOr in a generic context, an erroneous code example would look like:\n\n```compile_fail,E0277\nfn some_func<T>(foo: T) {\n    println!(\"{:?}\", foo); // error: the trait `core::fmt::Debug` is not\n                           //        implemented for the type `T`\n}\n\nfn main() {\n    // We now call the method with the i32 type,\n    // which *does* implement the Debug trait.\n    some_func(5i32);\n}\n```\n\nNote that the error here is in the definition of the generic function. Although\nwe only call it with a parameter that does implement `Debug`, the compiler\nstill rejects the function. It must work with all possible input types. In\norder to make this example compile, we need to restrict the generic type we're\naccepting:\n\n```\nuse std::fmt;\n\n// Restrict the input type to types that implement Debug.\nfn some_func<T: fmt::Debug>(foo: T) {\n    println!(\"{:?}\", foo);\n}\n\nfn main() {\n    // Calling the method is still fine, as i32 implements Debug.\n    some_func(5i32);\n\n    // This would fail to compile now:\n    // struct WithoutDebug;\n    // some_func(WithoutDebug);\n}\n```\n\nRust only looks at the signature of the called function, as such it must\nalready specify all requirements that will be used for every type parameter.\n"
+      }
+    }
+  },
+  {
+    "batch": "v80",
+    "diagnostic": {
+      "rendered": "error[E0599]: `(..., ...)` is not an iterator\n   --> crates/country-core/src/startup/run_game.rs:160:14\n    |\n155 | /         (\n156 | |             crate::meta_commander::commander_update_system,\n157 | |             startup_session::load_game_session\n158 | |                 .run_if(resource_exists::<crate::resources::session::NextSession>),\n159 | |         )\n160 | |             .chain(),\n    | |             -^^^^^ `(..., ...)` is not an iterator\n    | |_____________|\n    |\n    |\n    = note: the following trait bounds were not satisfied:\n            `(for<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j> fn(bevy_ecs::change_detection::ResMut<'a, MetaCommander>, bevy_ecs::change_detection::Res<'b, AppMode>, bevy_ecs::change_detection::Res<'c, RtBvhBuilderGlueResource>, bevy_ecs::change_detection::Res<'d, RtWorld>, bevy_ecs::change_detection::ResMut<'e, NextState<AppLoadingState>>, bevy_ecs::change_detection::ResMut<'f, GameClock>, bevy_ecs::change_detection::ResMut<'g, RenderTemporalState>, bevy_ecs::event::EventWriter<'h, SaveGameCmd>, bevy_ecs::system::Commands<'i, 'j>) -> std::result::Result<(), anyhow::Error> {commander_update_system}, ScheduleConfigs<Box<(dyn bevy_ecs::system::System<In = (), Out = std::result::Result<(), BevyError>> + 'static)>>): Iterator`\n            which is required by `&mut (for<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j> fn(bevy_ecs::change_detection::ResMut<'a, MetaCommander>, bevy_ecs::change_detection::Res<'b, AppMode>, bevy_ecs::change_detection::Res<'c, RtBvhBuilderGlueResource>, bevy_ecs::change_detection::Res<'d, RtWorld>, bevy_ecs::change_detection::ResMut<'e, NextState<AppLoadingState>>, bevy_ecs::change_detection::ResMut<'f, GameClock>, bevy_ecs::change_detection::ResMut<'g, RenderTemporalState>, bevy_ecs::event::EventWriter<'h, SaveGameCmd>, bevy_ecs::system::Commands<'i, 'j>) -> std::result::Result<(), anyhow::Error> {commander_update_system}, ScheduleConfigs<Box<(dyn bevy_ecs::system::System<In = (), Out = std::result::Result<(), BevyError>> + 'static)>>): Iterator`\n    = note: the full name for the type has been written to '/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/country_core-e8b18cfd0e493262.long-type-8665118607000758876.txt'\n    = note: consider using `--verbose` to print the full type name to the console\n\n",
+      "$message_type": "diagnostic",
+      "children": [
+        {
+          "children": [],
+          "code": null,
+          "level": "note",
+          "message": "the following trait bounds were not satisfied:\n`(for<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j> fn(bevy_ecs::change_detection::ResMut<'a, MetaCommander>, bevy_ecs::change_detection::Res<'b, AppMode>, bevy_ecs::change_detection::Res<'c, RtBvhBuilderGlueResource>, bevy_ecs::change_detection::Res<'d, RtWorld>, bevy_ecs::change_detection::ResMut<'e, NextState<AppLoadingState>>, bevy_ecs::change_detection::ResMut<'f, GameClock>, bevy_ecs::change_detection::ResMut<'g, RenderTemporalState>, bevy_ecs::event::EventWriter<'h, SaveGameCmd>, bevy_ecs::system::Commands<'i, 'j>) -> std::result::Result<(), anyhow::Error> {commander_update_system}, ScheduleConfigs<Box<(dyn bevy_ecs::system::System<In = (), Out = std::result::Result<(), BevyError>> + 'static)>>): Iterator`\nwhich is required by `&mut (for<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j> fn(bevy_ecs::change_detection::ResMut<'a, MetaCommander>, bevy_ecs::change_detection::Res<'b, AppMode>, bevy_ecs::change_detection::Res<'c, RtBvhBuilderGlueResource>, bevy_ecs::change_detection::Res<'d, RtWorld>, bevy_ecs::change_detection::ResMut<'e, NextState<AppLoadingState>>, bevy_ecs::change_detection::ResMut<'f, GameClock>, bevy_ecs::change_detection::ResMut<'g, RenderTemporalState>, bevy_ecs::event::EventWriter<'h, SaveGameCmd>, bevy_ecs::system::Commands<'i, 'j>) -> std::result::Result<(), anyhow::Error> {commander_update_system}, ScheduleConfigs<Box<(dyn bevy_ecs::system::System<In = (), Out = std::result::Result<(), BevyError>> + 'static)>>): Iterator`",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "note",
+          "message": "the full name for the type has been written to '/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/country_core-e8b18cfd0e493262.long-type-8665118607000758876.txt'",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "note",
+          "message": "consider using `--verbose` to print the full type name to the console",
+          "rendered": null,
+          "spans": []
+        }
+      ],
+      "level": "error",
+      "message": "`(..., ...)` is not an iterator",
+      "spans": [
+        {
+          "byte_end": 7022,
+          "byte_start": 6806,
+          "column_end": 14,
+          "column_start": 9,
+          "expansion": null,
+          "file_name": "crates/country-core/src/startup/run_game.rs",
+          "is_primary": false,
+          "label": "",
+          "line_end": 160,
+          "line_start": 155,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "text": [
+            {
+              "highlight_end": 10,
+              "highlight_start": 9,
+              "text": "        ("
+            },
+            {
+              "highlight_end": 60,
+              "highlight_start": 1,
+              "text": "            crate::meta_commander::commander_update_system,"
+            },
+            {
+              "highlight_end": 47,
+              "highlight_start": 1,
+              "text": "            startup_session::load_game_session"
+            },
+            {
+              "highlight_end": 84,
+              "highlight_start": 1,
+              "text": "                .run_if(resource_exists::<crate::resources::session::NextSession>),"
+            },
+            {
+              "highlight_end": 10,
+              "highlight_start": 1,
+              "text": "        )"
+            },
+            {
+              "highlight_end": 14,
+              "highlight_start": 1,
+              "text": "            .chain(),"
+            }
+          ]
+        },
+        {
+          "byte_end": 7027,
+          "byte_start": 7022,
+          "column_end": 19,
+          "column_start": 14,
+          "expansion": null,
+          "file_name": "crates/country-core/src/startup/run_game.rs",
+          "is_primary": true,
+          "label": "`(..., ...)` is not an iterator",
+          "line_end": 160,
+          "line_start": 160,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "text": [
+            {
+              "highlight_end": 19,
+              "highlight_start": 14,
+              "text": "            .chain(),"
+            }
+          ]
+        }
+      ],
+      "code": {
+        "code": "E0599",
+        "explanation": "This error occurs when a method is used on a type which doesn't implement it:\n\nErroneous code example:\n\n```compile_fail,E0599\nstruct Mouth;\n\nlet x = Mouth;\nx.chocolate(); // error: no method named `chocolate` found for type `Mouth`\n               //        in the current scope\n```\n\nIn this case, you need to implement the `chocolate` method to fix the error:\n\n```\nstruct Mouth;\n\nimpl Mouth {\n    fn chocolate(&self) { // We implement the `chocolate` method here.\n        println!(\"Hmmm! I love chocolate!\");\n    }\n}\n\nlet x = Mouth;\nx.chocolate(); // ok!\n```\n"
+      }
+    }
+  },
+  {
+    "batch": "v80",
+    "diagnostic": {
+      "rendered": "error[E0599]: `(..., ...)` is not an iterator\n   --> crates/country-core/src/startup/run_game.rs:160:14\n    |\n155 | /         (\n156 | |             crate::meta_commander::commander_update_system,\n157 | |             startup_session::load_game_session\n158 | |                 .run_if(resource_exists::<crate::resources::session::NextSession>),\n159 | |         )\n160 | |             .chain(),\n    | |             -^^^^^ `(..., ...)` is not an iterator\n    | |_____________|\n    |\n    |\n    = note: the following trait bounds were not satisfied:\n            `(for<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j> fn(bevy_ecs::change_detection::ResMut<'a, meta_commander::MetaCommander>, bevy_ecs::change_detection::Res<'b, types::AppMode>, bevy_ecs::change_detection::Res<'c, rt::RtBvhBuilderGlueResource>, bevy_ecs::change_detection::Res<'d, rt::RtWorld>, bevy_ecs::change_detection::ResMut<'e, NextState<AppLoadingState>>, bevy_ecs::change_detection::ResMut<'f, game_clock::GameClock>, bevy_ecs::change_detection::ResMut<'g, render_temporal_state::RenderTemporalState>, bevy_ecs::event::EventWriter<'h, SaveGameCmd>, bevy_ecs::system::Commands<'i, 'j>) -> std::result::Result<(), anyhow::Error> {commander_update_system}, ScheduleConfigs<Box<(dyn bevy_ecs::system::System<In = (), Out = std::result::Result<(), BevyError>> + 'static)>>): Iterator`\n            which is required by `&mut (for<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j> fn(bevy_ecs::change_detection::ResMut<'a, meta_commander::MetaCommander>, bevy_ecs::change_detection::Res<'b, types::AppMode>, bevy_ecs::change_detection::Res<'c, rt::RtBvhBuilderGlueResource>, bevy_ecs::change_detection::Res<'d, rt::RtWorld>, bevy_ecs::change_detection::ResMut<'e, NextState<AppLoadingState>>, bevy_ecs::change_detection::ResMut<'f, game_clock::GameClock>, bevy_ecs::change_detection::ResMut<'g, render_temporal_state::RenderTemporalState>, bevy_ecs::event::EventWriter<'h, SaveGameCmd>, bevy_ecs::system::Commands<'i, 'j>) -> std::result::Result<(), anyhow::Error> {commander_update_system}, ScheduleConfigs<Box<(dyn bevy_ecs::system::System<In = (), Out = std::result::Result<(), BevyError>> + 'static)>>): Iterator`\n    = note: the full name for the type has been written to '/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/country_core-3853cbef5077b86c.long-type-3483037404990501860.txt'\n    = note: consider using `--verbose` to print the full type name to the console\n\n",
+      "$message_type": "diagnostic",
+      "children": [
+        {
+          "children": [],
+          "code": null,
+          "level": "note",
+          "message": "the following trait bounds were not satisfied:\n`(for<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j> fn(bevy_ecs::change_detection::ResMut<'a, meta_commander::MetaCommander>, bevy_ecs::change_detection::Res<'b, types::AppMode>, bevy_ecs::change_detection::Res<'c, rt::RtBvhBuilderGlueResource>, bevy_ecs::change_detection::Res<'d, rt::RtWorld>, bevy_ecs::change_detection::ResMut<'e, NextState<AppLoadingState>>, bevy_ecs::change_detection::ResMut<'f, game_clock::GameClock>, bevy_ecs::change_detection::ResMut<'g, render_temporal_state::RenderTemporalState>, bevy_ecs::event::EventWriter<'h, SaveGameCmd>, bevy_ecs::system::Commands<'i, 'j>) -> std::result::Result<(), anyhow::Error> {commander_update_system}, ScheduleConfigs<Box<(dyn bevy_ecs::system::System<In = (), Out = std::result::Result<(), BevyError>> + 'static)>>): Iterator`\nwhich is required by `&mut (for<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j> fn(bevy_ecs::change_detection::ResMut<'a, meta_commander::MetaCommander>, bevy_ecs::change_detection::Res<'b, types::AppMode>, bevy_ecs::change_detection::Res<'c, rt::RtBvhBuilderGlueResource>, bevy_ecs::change_detection::Res<'d, rt::RtWorld>, bevy_ecs::change_detection::ResMut<'e, NextState<AppLoadingState>>, bevy_ecs::change_detection::ResMut<'f, game_clock::GameClock>, bevy_ecs::change_detection::ResMut<'g, render_temporal_state::RenderTemporalState>, bevy_ecs::event::EventWriter<'h, SaveGameCmd>, bevy_ecs::system::Commands<'i, 'j>) -> std::result::Result<(), anyhow::Error> {commander_update_system}, ScheduleConfigs<Box<(dyn bevy_ecs::system::System<In = (), Out = std::result::Result<(), BevyError>> + 'static)>>): Iterator`",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "note",
+          "message": "the full name for the type has been written to '/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/country_core-3853cbef5077b86c.long-type-3483037404990501860.txt'",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "note",
+          "message": "consider using `--verbose` to print the full type name to the console",
+          "rendered": null,
+          "spans": []
+        }
+      ],
+      "level": "error",
+      "message": "`(..., ...)` is not an iterator",
+      "spans": [
+        {
+          "byte_end": 7022,
+          "byte_start": 6806,
+          "column_end": 14,
+          "column_start": 9,
+          "expansion": null,
+          "file_name": "crates/country-core/src/startup/run_game.rs",
+          "is_primary": false,
+          "label": "",
+          "line_end": 160,
+          "line_start": 155,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "text": [
+            {
+              "highlight_end": 10,
+              "highlight_start": 9,
+              "text": "        ("
+            },
+            {
+              "highlight_end": 60,
+              "highlight_start": 1,
+              "text": "            crate::meta_commander::commander_update_system,"
+            },
+            {
+              "highlight_end": 47,
+              "highlight_start": 1,
+              "text": "            startup_session::load_game_session"
+            },
+            {
+              "highlight_end": 84,
+              "highlight_start": 1,
+              "text": "                .run_if(resource_exists::<crate::resources::session::NextSession>),"
+            },
+            {
+              "highlight_end": 10,
+              "highlight_start": 1,
+              "text": "        )"
+            },
+            {
+              "highlight_end": 14,
+              "highlight_start": 1,
+              "text": "            .chain(),"
+            }
+          ]
+        },
+        {
+          "byte_end": 7027,
+          "byte_start": 7022,
+          "column_end": 19,
+          "column_start": 14,
+          "expansion": null,
+          "file_name": "crates/country-core/src/startup/run_game.rs",
+          "is_primary": true,
+          "label": "`(..., ...)` is not an iterator",
+          "line_end": 160,
+          "line_start": 160,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "text": [
+            {
+              "highlight_end": 19,
+              "highlight_start": 14,
+              "text": "            .chain(),"
+            }
+          ]
+        }
+      ],
+      "code": {
+        "code": "E0599",
+        "explanation": "This error occurs when a method is used on a type which doesn't implement it:\n\nErroneous code example:\n\n```compile_fail,E0599\nstruct Mouth;\n\nlet x = Mouth;\nx.chocolate(); // error: no method named `chocolate` found for type `Mouth`\n               //        in the current scope\n```\n\nIn this case, you need to implement the `chocolate` method to fix the error:\n\n```\nstruct Mouth;\n\nimpl Mouth {\n    fn chocolate(&self) { // We implement the `chocolate` method here.\n        println!(\"Hmmm! I love chocolate!\");\n    }\n}\n\nlet x = Mouth;\nx.chocolate(); // ok!\n```\n"
+      }
+    }
+  },
+  {
+    "batch": "v80",
+    "diagnostic": {
+      "rendered": "error[E0599]: no method named `as_str` found for struct `mesh_atlas_library::PrefabName` in the current scope\n   --> crates/country-core/src/systems/save/save_game.rs:321:55\n    |\n321 |                         prefab_name: data.prefab_name.as_str().to_owned(),\n    |                                                       ^^^^^^ method not found in `mesh_atlas_library::PrefabName`\n    |\n   ::: crates/country-core/src/resources/render/mesh_atlas_library.rs:62:1\n    |\n 62 | pub struct PrefabName(pub Arc<str>);\n    | --------------------- method `as_str` not found for this struct\n    |\n    = help: items from traits can only be used if the trait is implemented and in scope\n    = note: the following traits define an item `as_str`, perhaps you need to implement one of them:\n            candidate #1: `TextBuffer`\n            candidate #2: `rustix::path::arg::Arg`\nhelp: one of the expressions' fields has a method of the same name\n    |\n321 |                         prefab_name: data.prefab_name.0.as_str().to_owned(),\n    |                                                       ++\n\n",
+      "$message_type": "diagnostic",
+      "children": [
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "items from traits can only be used if the trait is implemented and in scope",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "note",
+          "message": "the following traits define an item `as_str`, perhaps you need to implement one of them:\ncandidate #1: `TextBuffer`\ncandidate #2: `rustix::path::arg::Arg`",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "one of the expressions' fields has a method of the same name",
+          "rendered": null,
+          "spans": [
+            {
+              "byte_end": 14952,
+              "byte_start": 14952,
+              "column_end": 55,
+              "column_start": 55,
+              "expansion": null,
+              "file_name": "crates/country-core/src/systems/save/save_game.rs",
+              "is_primary": true,
+              "label": null,
+              "line_end": 321,
+              "line_start": 321,
+              "suggested_replacement": "0.",
+              "suggestion_applicability": "MaybeIncorrect",
+              "text": [
+                {
+                  "highlight_end": 55,
+                  "highlight_start": 55,
+                  "text": "                        prefab_name: data.prefab_name.as_str().to_owned(),"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "level": "error",
+      "message": "no method named `as_str` found for struct `mesh_atlas_library::PrefabName` in the current scope",
+      "spans": [
+        {
+          "byte_end": 14958,
+          "byte_start": 14952,
+          "column_end": 61,
+          "column_start": 55,
+          "expansion": null,
+          "file_name": "crates/country-core/src/systems/save/save_game.rs",
+          "is_primary": true,
+          "label": "method not found in `mesh_atlas_library::PrefabName`",
+          "line_end": 321,
+          "line_start": 321,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "text": [
+            {
+              "highlight_end": 61,
+              "highlight_start": 55,
+              "text": "                        prefab_name: data.prefab_name.as_str().to_owned(),"
+            }
+          ]
+        },
+        {
+          "byte_end": 3437,
+          "byte_start": 3416,
+          "column_end": 22,
+          "column_start": 1,
+          "expansion": null,
+          "file_name": "crates/country-core/src/resources/render/mesh_atlas_library.rs",
+          "is_primary": false,
+          "label": "method `as_str` not found for this struct",
+          "line_end": 62,
+          "line_start": 62,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "text": [
+            {
+              "highlight_end": 22,
+              "highlight_start": 1,
+              "text": "pub struct PrefabName(pub Arc<str>);"
+            }
+          ]
+        }
+      ],
+      "code": {
+        "code": "E0599",
+        "explanation": "This error occurs when a method is used on a type which doesn't implement it:\n\nErroneous code example:\n\n```compile_fail,E0599\nstruct Mouth;\n\nlet x = Mouth;\nx.chocolate(); // error: no method named `chocolate` found for type `Mouth`\n               //        in the current scope\n```\n\nIn this case, you need to implement the `chocolate` method to fix the error:\n\n```\nstruct Mouth;\n\nimpl Mouth {\n    fn chocolate(&self) { // We implement the `chocolate` method here.\n        println!(\"Hmmm! I love chocolate!\");\n    }\n}\n\nlet x = Mouth;\nx.chocolate(); // ok!\n```\n"
+      }
+    }
+  },
+  {
+    "batch": "v80",
+    "diagnostic": {
+      "rendered": "error[E0599]: no method named `as_str` found for struct `mesh_atlas_library::PrefabName` in the current scope\n   --> crates/country-core/src/systems/save/save_game.rs:321:55\n    |\n321 |                         prefab_name: data.prefab_name.as_str().to_owned(),\n    |                                                       ^^^^^^ method not found in `mesh_atlas_library::PrefabName`\n    |\n   ::: crates/country-core/src/resources/render/mesh_atlas_library.rs:62:1\n    |\n 62 | pub struct PrefabName(pub Arc<str>);\n    | --------------------- method `as_str` not found for this struct\n    |\n    = help: items from traits can only be used if the trait is implemented and in scope\n    = note: the following traits define an item `as_str`, perhaps you need to implement one of them:\n            candidate #1: `TextBuffer`\n            candidate #2: `rustix::path::arg::Arg`\nhelp: one of the expressions' fields has a method of the same name\n    |\n321 |                         prefab_name: data.prefab_name.0.as_str().to_owned(),\n    |                                                       ++\n\n",
+      "$message_type": "diagnostic",
+      "children": [
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "items from traits can only be used if the trait is implemented and in scope",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "note",
+          "message": "the following traits define an item `as_str`, perhaps you need to implement one of them:\ncandidate #1: `TextBuffer`\ncandidate #2: `rustix::path::arg::Arg`",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "one of the expressions' fields has a method of the same name",
+          "rendered": null,
+          "spans": [
+            {
+              "byte_end": 14952,
+              "byte_start": 14952,
+              "column_end": 55,
+              "column_start": 55,
+              "expansion": null,
+              "file_name": "crates/country-core/src/systems/save/save_game.rs",
+              "is_primary": true,
+              "label": null,
+              "line_end": 321,
+              "line_start": 321,
+              "suggested_replacement": "0.",
+              "suggestion_applicability": "MaybeIncorrect",
+              "text": [
+                {
+                  "highlight_end": 55,
+                  "highlight_start": 55,
+                  "text": "                        prefab_name: data.prefab_name.as_str().to_owned(),"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "level": "error",
+      "message": "no method named `as_str` found for struct `mesh_atlas_library::PrefabName` in the current scope",
+      "spans": [
+        {
+          "byte_end": 14958,
+          "byte_start": 14952,
+          "column_end": 61,
+          "column_start": 55,
+          "expansion": null,
+          "file_name": "crates/country-core/src/systems/save/save_game.rs",
+          "is_primary": true,
+          "label": "method not found in `mesh_atlas_library::PrefabName`",
+          "line_end": 321,
+          "line_start": 321,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "text": [
+            {
+              "highlight_end": 61,
+              "highlight_start": 55,
+              "text": "                        prefab_name: data.prefab_name.as_str().to_owned(),"
+            }
+          ]
+        },
+        {
+          "byte_end": 3437,
+          "byte_start": 3416,
+          "column_end": 22,
+          "column_start": 1,
+          "expansion": null,
+          "file_name": "crates/country-core/src/resources/render/mesh_atlas_library.rs",
+          "is_primary": false,
+          "label": "method `as_str` not found for this struct",
+          "line_end": 62,
+          "line_start": 62,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "text": [
+            {
+              "highlight_end": 22,
+              "highlight_start": 1,
+              "text": "pub struct PrefabName(pub Arc<str>);"
+            }
+          ]
+        }
+      ],
+      "code": {
+        "code": "E0599",
+        "explanation": "This error occurs when a method is used on a type which doesn't implement it:\n\nErroneous code example:\n\n```compile_fail,E0599\nstruct Mouth;\n\nlet x = Mouth;\nx.chocolate(); // error: no method named `chocolate` found for type `Mouth`\n               //        in the current scope\n```\n\nIn this case, you need to implement the `chocolate` method to fix the error:\n\n```\nstruct Mouth;\n\nimpl Mouth {\n    fn chocolate(&self) { // We implement the `chocolate` method here.\n        println!(\"Hmmm! I love chocolate!\");\n    }\n}\n\nlet x = Mouth;\nx.chocolate(); // ok!\n```\n"
+      }
+    }
+  },
+  {
+    "batch": "v82",
+    "diagnostic": {
+      "rendered": "error[E0277]: the trait bound `render_temporal_state::RenderTemporalState: FromWorld` is not satisfied\n    --> crates/country-core/src/startup/tests.rs:267:27\n     |\n 267 |     world.init_resource::<crate::render::render_temporal_state::RenderTemporalState>();\n     |           -------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound\n     |           |\n     |           required by a bound introduced by this call\n     |\nhelp: the trait `std::default::Default` is not implemented for `render_temporal_state::RenderTemporalState`\n    --> crates/country-core/src/render/render_temporal_state.rs:16:1\n     |\n  16 | pub struct RenderTemporalState {\n     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n     = help: the following other types implement trait `FromWorld`:\n               ChildOf\n               DefaultQueryFilters\n               QueryState<D, F>\n               SystemState<Param>\n               WorldId\n               bevy_state::state::State<S>\n     = note: required for `render_temporal_state::RenderTemporalState` to implement `FromWorld`\nnote: required by a bound in `bevy_ecs::world::World::init_resource`\n    --> /Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/world/mod.rs:1688:40\n     |\n1688 |     pub fn init_resource<R: Resource + FromWorld>(&mut self) -> ComponentId {\n     |                                        ^^^^^^^^^ required by this bound in `World::init_resource`\n\n",
+      "$message_type": "diagnostic",
+      "children": [
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "the trait `std::default::Default` is not implemented for `render_temporal_state::RenderTemporalState`",
+          "rendered": null,
+          "spans": [
+            {
+              "byte_end": 404,
+              "byte_start": 374,
+              "column_end": 31,
+              "column_start": 1,
+              "expansion": null,
+              "file_name": "crates/country-core/src/render/render_temporal_state.rs",
+              "is_primary": true,
+              "label": null,
+              "line_end": 16,
+              "line_start": 16,
+              "suggested_replacement": null,
+              "suggestion_applicability": null,
+              "text": [
+                {
+                  "highlight_end": 31,
+                  "highlight_start": 1,
+                  "text": "pub struct RenderTemporalState {"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "the following other types implement trait `FromWorld`:\n  ChildOf\n  DefaultQueryFilters\n  QueryState<D, F>\n  SystemState<Param>\n  WorldId\n  bevy_state::state::State<S>",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "note",
+          "message": "required for `render_temporal_state::RenderTemporalState` to implement `FromWorld`",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "note",
+          "message": "required by a bound in `bevy_ecs::world::World::init_resource`",
+          "rendered": null,
+          "spans": [
+            {
+              "byte_end": 66101,
+              "byte_start": 66092,
+              "column_end": 49,
+              "column_start": 40,
+              "expansion": null,
+              "file_name": "/Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/world/mod.rs",
+              "is_primary": true,
+              "label": "required by this bound in `World::init_resource`",
+              "line_end": 1688,
+              "line_start": 1688,
+              "suggested_replacement": null,
+              "suggestion_applicability": null,
+              "text": [
+                {
+                  "highlight_end": 49,
+                  "highlight_start": 40,
+                  "text": "    pub fn init_resource<R: Resource + FromWorld>(&mut self) -> ComponentId {"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "level": "error",
+      "message": "the trait bound `render_temporal_state::RenderTemporalState: FromWorld` is not satisfied",
+      "spans": [
+        {
+          "byte_end": 10080,
+          "byte_start": 10023,
+          "column_end": 84,
+          "column_start": 27,
+          "expansion": null,
+          "file_name": "crates/country-core/src/startup/tests.rs",
+          "is_primary": true,
+          "label": "unsatisfied trait bound",
+          "line_end": 267,
+          "line_start": 267,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "text": [
+            {
+              "highlight_end": 84,
+              "highlight_start": 27,
+              "text": "    world.init_resource::<crate::render::render_temporal_state::RenderTemporalState>();"
+            }
+          ]
+        },
+        {
+          "byte_end": 10020,
+          "byte_start": 10007,
+          "column_end": 24,
+          "column_start": 11,
+          "expansion": null,
+          "file_name": "crates/country-core/src/startup/tests.rs",
+          "is_primary": false,
+          "label": "required by a bound introduced by this call",
+          "line_end": 267,
+          "line_start": 267,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "text": [
+            {
+              "highlight_end": 24,
+              "highlight_start": 11,
+              "text": "    world.init_resource::<crate::render::render_temporal_state::RenderTemporalState>();"
+            }
+          ]
+        }
+      ],
+      "code": {
+        "code": "E0277",
+        "explanation": "You tried to use a type which doesn't implement some trait in a place which\nexpected that trait.\n\nErroneous code example:\n\n```compile_fail,E0277\n// here we declare the Foo trait with a bar method\ntrait Foo {\n    fn bar(&self);\n}\n\n// we now declare a function which takes an object implementing the Foo trait\nfn some_func<T: Foo>(foo: T) {\n    foo.bar();\n}\n\nfn main() {\n    // we now call the method with the i32 type, which doesn't implement\n    // the Foo trait\n    some_func(5i32); // error: the trait bound `i32 : Foo` is not satisfied\n}\n```\n\nIn order to fix this error, verify that the type you're using does implement\nthe trait. Example:\n\n```\ntrait Foo {\n    fn bar(&self);\n}\n\n// we implement the trait on the i32 type\nimpl Foo for i32 {\n    fn bar(&self) {}\n}\n\nfn some_func<T: Foo>(foo: T) {\n    foo.bar(); // we can now use this method since i32 implements the\n               // Foo trait\n}\n\nfn main() {\n    some_func(5i32); // ok!\n}\n```\n\nOr in a generic context, an erroneous code example would look like:\n\n```compile_fail,E0277\nfn some_func<T>(foo: T) {\n    println!(\"{:?}\", foo); // error: the trait `core::fmt::Debug` is not\n                           //        implemented for the type `T`\n}\n\nfn main() {\n    // We now call the method with the i32 type,\n    // which *does* implement the Debug trait.\n    some_func(5i32);\n}\n```\n\nNote that the error here is in the definition of the generic function. Although\nwe only call it with a parameter that does implement `Debug`, the compiler\nstill rejects the function. It must work with all possible input types. In\norder to make this example compile, we need to restrict the generic type we're\naccepting:\n\n```\nuse std::fmt;\n\n// Restrict the input type to types that implement Debug.\nfn some_func<T: fmt::Debug>(foo: T) {\n    println!(\"{:?}\", foo);\n}\n\nfn main() {\n    // Calling the method is still fine, as i32 implements Debug.\n    some_func(5i32);\n\n    // This would fail to compile now:\n    // struct WithoutDebug;\n    // some_func(WithoutDebug);\n}\n```\n\nRust only looks at the signature of the called function, as such it must\nalready specify all requirements that will be used for every type parameter.\n"
+      }
+    }
+  },
+  {
+    "batch": "v83",
+    "diagnostic": {
+      "rendered": "error[E0308]: mismatched types\n   --> crates/systems/critters/src/duck.rs:818:49\n    |\n818 |     let _ = device.device().update_buffer_bytes(buffer, &bytes, &[0..528], 0);\n    |                             ------------------- ^^^^^^ expected `&RhapsodyManaged<Buffer>`, found `&Buffer`\n    |                             |\n    |                             arguments to this method are incorrect\n    |\n    = note: expected reference `&RhapsodyManaged<rhapsody::raw::buffer::Buffer>`\n               found reference `&country_core::render::ssbo::rhapsody_boundary::Buffer`\nnote: method defined here\n   --> crates/country-core/src/rhapsody_contract.rs:153:12\n    |\n153 |     pub fn update_buffer_bytes(\n    |            ^^^^^^^^^^^^^^^^^^^\n\n",
+      "$message_type": "diagnostic",
+      "children": [
+        {
+          "children": [],
+          "code": null,
+          "level": "note",
+          "message": "expected reference `&RhapsodyManaged<rhapsody::raw::buffer::Buffer>`\n   found reference `&country_core::render::ssbo::rhapsody_boundary::Buffer`",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "note",
+          "message": "method defined here",
+          "rendered": null,
+          "spans": [
+            {
+              "byte_end": 5917,
+              "byte_start": 5898,
+              "column_end": 31,
+              "column_start": 12,
+              "expansion": null,
+              "file_name": "crates/country-core/src/rhapsody_contract.rs",
+              "is_primary": true,
+              "label": null,
+              "line_end": 153,
+              "line_start": 153,
+              "suggested_replacement": null,
+              "suggestion_applicability": null,
+              "text": [
+                {
+                  "highlight_end": 31,
+                  "highlight_start": 12,
+                  "text": "    pub fn update_buffer_bytes("
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "level": "error",
+      "message": "mismatched types",
+      "spans": [
+        {
+          "byte_end": 34400,
+          "byte_start": 34394,
+          "column_end": 55,
+          "column_start": 49,
+          "expansion": null,
+          "file_name": "crates/systems/critters/src/duck.rs",
+          "is_primary": true,
+          "label": "expected `&RhapsodyManaged<Buffer>`, found `&Buffer`",
+          "line_end": 818,
+          "line_start": 818,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "text": [
+            {
+              "highlight_end": 55,
+              "highlight_start": 49,
+              "text": "    let _ = device.device().update_buffer_bytes(buffer, &bytes, &[0..528], 0);"
+            }
+          ]
+        },
+        {
+          "byte_end": 34393,
+          "byte_start": 34374,
+          "column_end": 48,
+          "column_start": 29,
+          "expansion": null,
+          "file_name": "crates/systems/critters/src/duck.rs",
+          "is_primary": false,
+          "label": "arguments to this method are incorrect",
+          "line_end": 818,
+          "line_start": 818,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "text": [
+            {
+              "highlight_end": 48,
+              "highlight_start": 29,
+              "text": "    let _ = device.device().update_buffer_bytes(buffer, &bytes, &[0..528], 0);"
+            }
+          ]
+        }
+      ],
+      "code": {
+        "code": "E0308",
+        "explanation": "Expected type did not match the received type.\n\nErroneous code examples:\n\n```compile_fail,E0308\nfn plus_one(x: i32) -> i32 {\n    x + 1\n}\n\nplus_one(\"Not a number\");\n//       ^^^^^^^^^^^^^^ expected `i32`, found `&str`\n\nif \"Not a bool\" {\n// ^^^^^^^^^^^^ expected `bool`, found `&str`\n}\n\nlet x: f32 = \"Not a float\";\n//     ---   ^^^^^^^^^^^^^ expected `f32`, found `&str`\n//     |\n//     expected due to this\n```\n\nThis error occurs when an expression was used in a place where the compiler\nexpected an expression of a different type. It can occur in several cases, the\nmost common being when calling a function and passing an argument which has a\ndifferent type than the matching type in the function declaration.\n"
+      }
+    }
+  }
+]

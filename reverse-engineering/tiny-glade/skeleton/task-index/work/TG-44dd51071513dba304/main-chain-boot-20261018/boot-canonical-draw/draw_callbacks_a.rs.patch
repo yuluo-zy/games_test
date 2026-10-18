@@ -21,24 +21,27 @@
  #![allow(clippy::neg_cmp_op_on_partial_ord)]
  use alloc::vec::Vec;
 +
-+use crate::components::drawable::{AlbedoMap, AlphaMap, NormalMap, PrevTransform,
-+    RoofFlagCloth, WallFlagCloth};
++use crate::components::drawable::{
++    AlbedoMap, AlphaMap, NormalMap, PrevTransform, RoofFlagCloth, WallFlagCloth,
++};
 +use crate::resources::{session::ActiveSession, weather::Weather};
 +use crate::systems::{camera_rig::main_camera::MainCamera, mode_manager::AppMode};
-+
  
  use bevy_ecs::component::Component;
  use bevy_ecs::entity::Entity;
-@@ -368,7 +373,7 @@
+@@ -368,7 +373,10 @@
  
  /// 叶 / 花薄壳共用：相机眼位置 + 库视图。
  fn ivy_inputs(w: &World) -> (Vec3, &AssetSsboLibrary) {
 -    (res::<MainCameraView>(w).eye, res::<AssetSsboLibrary>(w))
-+    (res::<MainCamera>(w).eye_position(), res::<AssetSsboLibrary>(w))
++    (
++        res::<MainCamera>(w).eye_position(),
++        res::<AssetSsboLibrary>(w),
++    )
  }
  
  /// gap 5 `draw_instanced_ivy_leaf_shader`（0x1408dc180；21 B 薄壳，世界指针后移后 `jmp ivy_leaf_shader`）。
-@@ -404,9 +409,9 @@
+@@ -404,9 +412,9 @@
  
  pub fn read_env6(w: &World, e: Entity) -> Env6In {
      Env6In {
@@ -51,7 +54,7 @@
      }
  }
  
-@@ -455,7 +460,7 @@
+@@ -455,7 +463,7 @@
  pub fn read_env27(w: &World, e: Entity) -> Env27In {
      Env27In {
          semi_transparent: has::<SemiTransparent>(w, e),
@@ -60,7 +63,7 @@
          background_terrain: has::<BackgroundTerrain>(w, e),
          overwrite_roughness: comp_opt::<OverwriteRoughness>(w, e).map(|f| f.0),
          dont_receive_contact_shadows: comp_opt::<DontReceiveContactShadows>(w, e).is_some(),
-@@ -503,7 +508,7 @@
+@@ -503,15 +511,18 @@
  pub fn read_env2(w: &World, e: Entity) -> Env2In {
      Env2In {
          sheep: *comp::<SheepView>(w, e),
@@ -69,16 +72,20 @@
      }
  }
  
-@@ -511,7 +516,7 @@
+ /// uniform：`i32(sheep.q28)`、`f32(sheep.f58)`、`bool(sheep.b60)`、`Mat4::from_scale_rotation_translation(prev)` →
  /// `read_storage_buffer<SheepAnimationSsbo>` → 终结。
  pub fn env2_body<'p>(b: DrawBuilder<'p>, i: &Env2In, end: impl FnOnce(DrawBuilder<'p>)) {
-     let m =
+-    let m =
 -        Mat4::from_scale_rotation_translation(i.prev.scale, i.prev.rotation, i.prev.translation);
-+        Mat4::from_scale_rotation_translation(i.prev.0.scale, i.prev.0.rotation, i.prev.0.translation);
++    let m = Mat4::from_scale_rotation_translation(
++        i.prev.0.scale,
++        i.prev.0.rotation,
++        i.prev.0.translation,
++    );
      let b = b
          .uniform(E2_I32_UNIFORM, i.sheep.q28 as i32)
          .uniform(E2_F32_UNIFORM, i.sheep.f58)
-@@ -823,9 +828,9 @@
+@@ -823,9 +834,14 @@
  
  pub fn read_env23(w: &World, e: Entity) -> Env23In {
      Env23In {
@@ -86,11 +93,16 @@
 +        cloth: *comp::<RoofFlagCloth>(w, e),
          color: comp::<ColorId>(w, e).0,
 -        session: res::<ActiveSessionView>(w).glade_bytes.clone(),
-+        session: res::<ActiveSession>(w).meta.mutators.iter().map(|m| *m as u8).collect(),
++        session: res::<ActiveSession>(w)
++            .meta
++            .mutators
++            .iter()
++            .map(|m| *m as u8)
++            .collect(),
      }
  }
  
-@@ -852,9 +857,9 @@
+@@ -852,9 +868,14 @@
  
  pub fn read_env22(w: &World, e: Entity) -> Env22In {
      Env22In {
@@ -98,11 +110,16 @@
 +        cloth: *comp::<WallFlagCloth>(w, e),
          color: comp::<ColorId>(w, e).0,
 -        session: res::<ActiveSessionView>(w).glade_bytes.clone(),
-+        session: res::<ActiveSession>(w).meta.mutators.iter().map(|m| *m as u8).collect(),
++        session: res::<ActiveSession>(w)
++            .meta
++            .mutators
++            .iter()
++            .map(|m| *m as u8)
++            .collect(),
      }
  }
  
-@@ -964,7 +969,7 @@
+@@ -964,7 +985,7 @@
  }
  
  pub fn env11(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
@@ -111,7 +128,7 @@
      nani_draw_world(env11_binds(b, variant), E11_KIND, w);
  }
  
-@@ -1095,12 +1100,12 @@
+@@ -1095,12 +1116,12 @@
  }
  
  pub fn read_env3(w: &World) -> Env3In {
