@@ -1239,7 +1239,7 @@ mod original_world_worker_integration {
             .snapshot_id()
             .expect("actual snapshot hash assigned");
         let shared = current_snapshot(&history.ledger().resolved_snapshots, -1).unwrap();
-        assert_eq!(shared.value.snapshot_id(), Some(id));
+        assert_eq!(shared.snapshot_id(), Some(id));
         let saved: serde_json::Value =
             serde_json::from_slice(&std::fs::read(directory.path().join("history.json")).unwrap())
                 .unwrap();
