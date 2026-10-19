@@ -1483,6 +1483,10 @@ impl ExecutionBackend for VulkanGraphBackend {
                 recording::Queue::Auxiliary(i) => i + 1,
             },
             policy_signature: u64::from(self.transient_aliasing),
+            // Must stay false: the device never enables the Vulkan 1.2
+            // `separateDepthStencilLayouts` feature, so a barrier on a combined
+            // depth/stencil image has to name both aspects. The planner merges
+            // partial D/S ranges for exactly this case (sync_plan::native_range).
             separate_depth_stencil_layouts: false,
         }
     }

@@ -108,22 +108,28 @@ impl Recorder {
         }
         out
     }
+    /// Emit the batch's initial barriers and collect every pass's barriers
+    /// into `planned` (flat), with `ranges[i]` selecting pass `i`'s entries.
+    /// Both buffers are cleared first and reuse their capacity.
     pub fn plan_chunked_batch(
         &mut self,
         passes: &mut [Pass],
         commands: &[Command],
         chunk_of_pass: &[usize],
+        planned: &mut Vec<PlannedTransition>,
+        ranges: &mut Vec<std::ops::Range<usize>>,
         mut boundary: impl FnMut(RecordAction) -> bool,
-    ) -> (Vec<Vec<PlannedTransition>>, Outcome) {
+    ) -> Outcome {
         let mut out = Outcome::default();
-        let mut plan = Vec::with_capacity(passes.len());
+        planned.clear();
+        ranges.clear();
         if chunk_of_pass.len() != passes.len() {
             out.panic = true;
-            return (plan, out);
+            return out;
         }
         let Some(initial) = self.commands.last() else {
             out.panic = true;
-            return (plan, out);
+            return out;
         };
         if !self.emit(
             BarrierPhase::Initial,
@@ -132,29 +138,29 @@ impl Recorder {
             &mut boundary,
         ) {
             out.panic = true;
-            return (plan, out);
+            return out;
         }
         for (index, pass) in passes.iter_mut().enumerate() {
             if commands.get(chunk_of_pass[index]).is_none()
                 || !std::mem::take(&mut pass.callback_present)
             {
                 out.panic = true;
-                return (plan, out);
+                return out;
             }
-            let transitions = self
-                .phase(BarrierPhase::BeforePass(self.first_pass + index))
-                .collect::<Vec<_>>();
-            out.barrier_commands += u32::from(!transitions.is_empty());
-            out.barrier_transitions += transitions.len() as u32;
+            let start = planned.len();
+            planned.extend(self.phase(BarrierPhase::BeforePass(self.first_pass + index)));
+            let count = planned.len() - start;
+            out.barrier_commands += u32::from(count != 0);
+            out.barrier_transitions += count as u32;
             out.consumed_passes += 1;
-            plan.push(transitions);
+            ranges.push(start..planned.len());
         }
-        (plan, out)
+        out
     }
     pub fn finish_chunked_batch(
         &mut self,
         out: &mut Outcome,
-        commands: Vec<Command>,
+        commands: impl IntoIterator<Item = Command>,
         final_batch: bool,
         mut boundary: impl FnMut(RecordAction) -> bool,
     ) {

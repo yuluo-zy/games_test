@@ -12,10 +12,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 pub struct ExecutionChain {
     subgraph_cache: super::subgraph::SubgraphPlanCache,
-    plan_cache: super::cache::BoundedCache<
-        super::plan::GraphDefinition,
-        std::sync::Arc<super::plan::CompiledPlan>,
-    >,
+    plan_cache: super::cache::BoundedCache<PlanKey, ()>,
     plan_cache_enabled: bool,
     recording_ids: recording::RecordingCounters,
     pending_commands: Vec<(crate::sync::SyncPoint, recording::Command)>,
@@ -26,8 +23,34 @@ pub struct ExecutionChain {
     pool_family_count: u32,
     /// 并行录制配置；默认串行（与旧行为、原作开关关闭时一致）。
     pub parallel: crate::rg::parallel::ParallelRecording,
-    /// 原作双缓冲 PGO：分块读 `previous`，本帧耗时写入 `current`，每次执行结束交换。
+    /// 双缓冲 PGO：分块读 `previous`，本帧耗时写入 `current`，每次执行结束交换。
     pub pgo: PassPgoFrames,
+    /// Per-batch chunk recording storage reused across batches and frames.
+    chunk_scratch: ChunkScratch,
+}
+#[derive(Default)]
+struct ChunkScratch {
+    begun: Vec<recording::Command>,
+    chunk_of_pass: Vec<usize>,
+    planned: Vec<record::PlannedTransition>,
+    ranges: Vec<std::ops::Range<usize>>,
+    transitions: Vec<ChunkTransition>,
+}
+
+/// Plan cache key: the compiled plan itself, compared and hashed by its
+/// normalized definition, so the definition is stored once.
+#[derive(Clone)]
+struct PlanKey(std::sync::Arc<super::plan::CompiledPlan>);
+impl PartialEq for PlanKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.definition == other.0.definition
+    }
+}
+impl Eq for PlanKey {}
+impl std::hash::Hash for PlanKey {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.definition.hash(state);
+    }
 }
 
 /// 一个 batch 的并行录制输入。
@@ -51,7 +74,9 @@ struct ChunkWork<'a, C> {
     start: usize,
     callbacks: &'a mut [C],
     durations: &'a mut [Option<u64>],
-    transitions: &'a [Vec<ChunkTransition>],
+    /// Flat barrier list of the whole batch; `ranges[offset]` selects one pass.
+    transitions: &'a [ChunkTransition],
+    ranges: &'a [std::ops::Range<usize>],
     gpu_timings: &'a [Option<super::profiling::GpuPassTimestamp>],
 }
 struct ChunkResult {
@@ -575,12 +600,17 @@ impl ExecutionChain {
         let compile_start = std::time::Instant::now();
         let context = backend.plan_context();
         let cached = if self.plan_cache_enabled {
+            let mut found = None;
             self.plan_cache
-                .try_get_matching(|definition| {
-                    definition.matches_declaration(&graph, dependency, context)
+                .try_get_matching(|key| {
+                    let matched = key.0.definition.matches_declaration(&graph, dependency, context)?;
+                    if matched {
+                        found = Some(key.0.clone());
+                    }
+                    Ok(matched)
                 })
-                .map_err(Error::Compile)?
-                .cloned()
+                .map_err(Error::Compile)?;
+            found
         } else {
             self.plan_cache
                 .record_bypass(super::cache::CacheReason::Disabled);
@@ -597,19 +627,19 @@ impl ExecutionChain {
                 let reason = self
                     .plan_cache
                     .iter()
-                    .map(|(old, _)| old.differing_key_reason(&definition))
+                    .map(|(old, _)| old.0.definition.differing_key_reason(&definition))
                     .min_by_key(|reason| *reason as usize)
                     .unwrap_or(super::cache::CacheReason::Cold);
                 self.plan_cache.classify_miss(reason);
             }
             let plan = std::sync::Arc::new(
-                super::plan::compile_with_subgraphs(definition.clone(), &mut self.subgraph_cache)
+                super::plan::compile_with_subgraphs(definition, &mut self.subgraph_cache)
                     .map_err(Error::Compile)?,
             );
             if self.plan_cache_enabled {
-                // Count both the normalized key and the immutable plan's storage.
-                let bytes = plan.estimated_bytes().saturating_mul(2);
-                self.plan_cache.insert(definition, plan.clone(), bytes);
+                // The key is the plan itself; its definition is stored once.
+                let bytes = plan.estimated_bytes();
+                self.plan_cache.insert(PlanKey(plan.clone()), (), bytes);
             }
             plan
         };
@@ -798,6 +828,13 @@ impl ExecutionChain {
             return Err(Error::ResourceUnavailable(usize::MAX));
         }
         let managed = backend.managed_pass_resources();
+        let mut exported = scratch_slice(cpu_arena, compiled.info.lifetimes.len(), |_| false)
+            .map_err(Error::Validation)?;
+        for export in &compiled.declarations.exports {
+            if let Some(slot) = exported.get_mut(export.resource_index as usize) {
+                *slot = true;
+            }
+        }
         for (id, lifetime) in compiled.info.lifetimes.iter().enumerate() {
             let mapping = &compiled.registry.resources[id];
             // 首次命令 begin 前校验资源映射；有访问或导出的资源必须存在。
@@ -805,12 +842,7 @@ impl ExecutionChain {
                 .registry
                 .backing_resources
                 .get(mapping.backing_index as usize);
-            if (lifetime.first_access_index != crate::rg::graph::NO_ACCESS
-                || compiled
-                    .declarations
-                    .exports
-                    .iter()
-                    .any(|e| e.resource_index as usize == id))
+            if (lifetime.first_access_index != crate::rg::graph::NO_ACCESS || exported[id])
                 && payload.is_none_or(|r| crate::rg::graph::payload_projection(r).1.is_none())
             {
                 return Err(Error::ResourceUnavailable(id));
@@ -1218,6 +1250,7 @@ impl ExecutionChain {
             recorded_commands: 0,
             pool_family_count: family_count,
             parallel: Default::default(),
+            chunk_scratch: Default::default(),
             pgo: Default::default(),
         }
     }
@@ -1336,66 +1369,69 @@ impl ExecutionChain {
             .unwrap()
         };
         // 串行：每块一条命令缓冲（每块一个独立命令池，Vulkan 要求命令池外部同步）。
-        let mut begun = Vec::with_capacity(chunks.len());
+        let mut scratch = std::mem::take(&mut self.chunk_scratch);
+        scratch.begun.clear();
         for index in 0..chunks.len() {
             let handle = backend
                 .chunk_command_handle(index)
                 .map_err(Error::Lifecycle)?;
             let command = self.begin(handle, family, queue, backend.begin_command(handle))?;
-            begun.push(command);
+            scratch.begun.push(command);
         }
-        let record_commands = begun.to_vec();
-        let mut chunk_of_pass = vec![0usize; passes.len()];
+        scratch.chunk_of_pass.clear();
+        scratch.chunk_of_pass.resize(passes.len(), 0);
         for (index, range) in chunks.iter().enumerate() {
             for pass in range.clone() {
-                chunk_of_pass[pass] = index;
+                scratch.chunk_of_pass[pass] = index;
             }
         }
         // 串行：初始屏障、资源跟踪、pass 前屏障规划。
-        let (plan, mut outcome) =
-            recorder.plan_chunked_batch(passes, &record_commands, &chunk_of_pass, |action| {
-                match action {
-                    record::RecordAction::Transition {
-                        command,
-                        transition,
-                    } => backend.transition(
-                        command,
-                        token_of(transition.resource as usize),
-                        &transition,
-                    ),
-                    _ => true,
-                }
-            });
+        let mut outcome = recorder.plan_chunked_batch(
+            passes,
+            &scratch.begun,
+            &scratch.chunk_of_pass,
+            &mut scratch.planned,
+            &mut scratch.ranges,
+            |action| match action {
+                record::RecordAction::Transition {
+                    command,
+                    transition,
+                } => backend.transition(
+                    command,
+                    token_of(transition.resource as usize),
+                    &transition,
+                ),
+                _ => true,
+            },
+        );
         if outcome.panic {
+            self.chunk_scratch = scratch;
             self.finish_record(recorder, outcome)?;
             return Err(Error::ChunkPlan);
         }
-        let transitions = plan
-            .iter()
-            .map(|list| {
-                list.iter()
-                    .map(|t| ChunkTransition {
-                        token: token_of(t.resource as usize),
-                        transition: *t,
-                    })
-                    .collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>();
+        scratch.transitions.clear();
+        scratch
+            .transitions
+            .extend(scratch.planned.iter().map(|t| ChunkTransition {
+                token: token_of(t.resource as usize),
+                transition: *t,
+            }));
+        let begun = &scratch.begun;
         // 并行：块间互不重叠，各自独占命令缓冲、回调切片与 owner 列表。
-        let mut work = Vec::with_capacity(chunks.len());
         let mut durations =
             scratch_slice(cpu, callbacks.len(), |_| None).map_err(Error::Validation)?;
         let mut gpu_timings =
             scratch_slice(cpu, callbacks.len(), |_| None).map_err(Error::Validation)?;
-        for (range, command) in chunks.iter().zip(&begun) {
+        for (range, command) in chunks.iter().zip(begun) {
             for index in range.clone() {
                 gpu_timings[index] =
                     backend.reserve_pass_timestamp(command.handle(), first_pass + index);
             }
         }
+        let mut work = smallvec::SmallVec::<[ChunkWork<'_, C>; 8]>::with_capacity(chunks.len());
         let mut remaining_durations = &mut *durations;
         let mut rest = callbacks;
-        for (range, command) in chunks.iter().zip(&begun) {
+        for (range, command) in chunks.iter().zip(begun) {
             let (head, tail) = std::mem::take(&mut rest).split_at_mut(range.len());
             rest = tail;
             let (duration_slice, duration_tail) =
@@ -1406,7 +1442,8 @@ impl ExecutionChain {
                 start: range.start,
                 callbacks: head,
                 durations: duration_slice,
-                transitions: &transitions[range.clone()],
+                transitions: &scratch.transitions,
+                ranges: &scratch.ranges[range.clone()],
                 gpu_timings: &gpu_timings[range.clone()],
             });
         }
@@ -1447,7 +1484,7 @@ impl ExecutionChain {
                 for (offset, callback) in work.callbacks.iter_mut().enumerate() {
                     if let Err(error) = view.record_transitions(
                         work.command.handle(),
-                        &work.transitions[offset],
+                        &work.transitions[work.ranges[offset].clone()],
                         &mut owners.borrow_mut(),
                     ) {
                         errors.borrow_mut().get_or_insert(error);
@@ -1527,7 +1564,7 @@ impl ExecutionChain {
         if failed {
             outcome.panic = true;
         } else {
-            recorder.finish_chunked_batch(&mut outcome, record_commands, final_batch, |action| {
+            recorder.finish_chunked_batch(&mut outcome, begun.iter().cloned(), final_batch, |action| {
                 match action {
                     record::RecordAction::End(command) => {
                         backend.end_command(vk::CommandBuffer::from_raw(command))
@@ -1550,6 +1587,8 @@ impl ExecutionChain {
         }
         let outcome = outcome?;
         let last = begun.last().cloned().ok_or(Error::ChunkPlan)?;
+        drop(work);
+        self.chunk_scratch = scratch;
         Ok((last, outcome))
     }
 
