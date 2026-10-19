@@ -22,14 +22,21 @@
 - 跨队列族上传的所有权获取改由设备合并队列处理，下一个图批次合并录制；无图提交时用 `TransferManager::flush_acquires()`。
 - 计划校验器只在 debug、`validation` 特性或 `set_plan_validation` 时运行。
 
-**验证（2026-10-19，lavapipe）**：`--all-features` 82 组测试全部通过；`--no-default-features --lib` 371 通过；clippy `-D warnings` 零告警；country-core、tg-text、tiny-glade 全目标检查通过。
+**第三轮（同日，遗留五项）**
+- 渲染图资源池与瞬态别名缓存注册为 `Evictable`：空闲池资源停放到可驱逐存储，压力下按 LRU 只释放 GPU 已完成项，借给在飞帧的资源不可达；一并丢弃持有资源的 CPU 投影快照；`VulkanGraphSession::cache_stats()` / `GraphCacheStats`。登记 Weak，无 Arc 环。
+- 丢弃内容的图像首次使用不再发出所有权转移（规划器、运行期状态机、raw 访问、两套校验器一致）；最终回到呈现族的转移保留。
+- 呈现图在交换链图像首次使用前切批（`RenderGraph::gate_first_use`，并入计划键）：获取等待只挂在需要图像的批次。
+- 部分失败策略 `PresentPolicy::{SkipPresent（默认）, ClearTo([f32;4]), PreviousFrame}`（`FrameLoop::set_on_failure`、`VulkanGraphSession::set_present_policy`、`AcquiredImageLease::set_failure_policy`）：`SkipPresent` 在 release-images 可用时直接释放，Mesa 无头 WSI（会崩溃）改走“真实提交消费 acquire 并呈现黑帧”；`ClearTo` 呈现指定颜色；`PreviousFrame` 无副本，返回 `Unsupported`。原先 `#[ignore]` 的构建失败用例现在在 lavapipe 上经回退路径运行。
+- setup 命令池由设备持有（只存原生池与裸命令缓冲，不含 `Arc<Device>`），跨调用无条件复用；`Device::setup_context()` 返回轻量 `SetupContext` 句柄，统计为设备级；设备析构在最终等待与退役排空后释放池。
+
+**验证（2026-10-19，lavapipe，含第三轮）**：`--all-features` 83 组 731 项测试全部通过；`--no-default-features --lib` 375 通过；clippy `-D warnings` 零告警；country-core、tg-text、tiny-glade 全目标检查通过（本地临时绕过 duck.rs:818，未提交）；rhapsody 与 window-lab 二进制的 x86_64-pc-windows-gnu 检查通过。
 
 **未验证与已知缺口**
 - 无 Vulkan 验证层；多队列族传输、跨族获取、非一致性内存、独占全屏均未在真硬件上跑过（lavapipe 单队列、仅一致性内存）。一个 WSI 失败释放用例因 Mesa 无头 `vkReleaseSwapchainImagesEXT` 崩溃而 `#[ignore]`。
 - 驱动报告的堆预算现为硬上限，驱动偏保守时会更早报显存不足。
 - 规划器 `PendingOwner` 与运行期状态机未合并；u8 访问码保留为码表下标。
 - 剩余 54 个 Vulkan 类型公开字段在描述结构里；内部模块 dead_code 告警被屏蔽。
-- 渲染图资源池尚未注册为 `Evictable`；setup 辅助仍有 `SetupContext` 弱引用跨调用复用限制。
+- `crates/rhapsody/examples/window_lab/scene.rs:1358` 的测试目标引用不存在的 `rhapsody::rg::Outcome`（本轮前即如此，二进制本身可编译）。
 - tiny-glade 在主线上仍无法编译：`crates/systems/critters/src/duck.rs:818` 把占位 `Buffer` 传给 `update_buffer_bytes`（与本轮无关）；其 24 个失败测试均因本机缺少原版安装目录与 compiled-shaders。
 - 逆向时期的地址/“原版”注释仍有约 138 处，按决定不再专项清理。
 

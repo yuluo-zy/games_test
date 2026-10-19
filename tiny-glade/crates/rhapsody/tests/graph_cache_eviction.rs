@@ -158,7 +158,7 @@ fn eviction_is_least_recently_used_first_and_stops_at_the_target() {
     // Asking for a little frees only the least recently used entry.
     let before = device.allocator_stats().device_memory_usage().total();
     let released = device.evict_idle_caches(MIB);
-    assert!(released >= 3 * MIB && released < 8 * MIB, "{released}");
+    assert!((3 * MIB..8 * MIB).contains(&released), "{released}");
     let freed = before - device.allocator_stats().device_memory_usage().total();
     assert!(
         freed >= 3 * MIB,

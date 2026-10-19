@@ -217,7 +217,7 @@ pub struct DeviceConfig {
 // src/device/logical.rs —— 只持有五个组件，方法按组件分布在各自文件中
 pub struct Device {
     self_ref: Weak<Device>,
-    caches: Caches,     // device/caches.rs：托管资源表、内置采样器、共享 setup 上下文
+    caches: Caches,     // device/caches.rs：托管资源表、内置采样器、停放的 setup 命令池（只持原生池，不持 Arc<Device>）
     lifetime: Lifetime, // device/lifetime.rs：退役队列 Retirement<Doomed>、回收预算、idle 计数
     memory: Memory,     // device/memory.rs：AllocatorStats、可选子分配器、驱动预算、驱逐登记
     queues: Queues,     // device/queues.rs + submission.rs + pending_acquire.rs：
@@ -241,7 +241,7 @@ impl Device {
 - `SubmitBatch { waits: &[Wait], commands: &[vk::CommandBuffer], signals: &[Signal] }`，`Wait = Binary{sem, stage} | Timeline{point, stage}`，`Signal = Binary(sem)`；`Device::submit` 自动追加本队列时间线 signal（`Timelines::submit` 给的值），一次 `vkQueueSubmit2` 提交全部批次。跨队列 `Timeline` 等待在调用前经 `Timelines::submitted` 校验。
 - 设备创建：枚举族 → `FamilyInfo::from_properties`（呈现支持经 `vkGetPhysicalDeviceSurfaceSupportKHR`）→ `plan_queues` → `create_counts` 生成 `VkDeviceQueueCreateInfo` → 每个 `QueueId` 创建一条初值 0 的时间线信号量。
 - `Doomed` 为枚举（Buffer+Allocation、Image+Allocation、ImageView、Sampler、CommandPool、DescriptorPool、Pipeline、Framebuffer、Semaphore …），`Drop` 中执行对应 `vkDestroy*`/`allocator.free`。
-- **组件与锁**：组件都是 `Device` 的直接字段（无额外 `Arc`/`dyn`），热路径访问即字段访问。各组件只持有自己的锁；跨组件嵌套仅限以下几种（外 → 内）：`Caches` 的采样器表 / setup 槽 → `Memory` 计量与托管资源表锁；`Queues` 挂起 acquire 表 → 资源同步单元；`Queues` 每队列外部同步锁（`with_all_queues` 按队列下标升序）→ 仅原生队列调用。退役队列与驱逐登记先出队/取快照再在无锁状态下执行回调，因此销毁路径可自由取 `Memory` 的锁。
+- **组件与锁**：组件都是 `Device` 的直接字段（无额外 `Arc`/`dyn`），热路径访问即字段访问。各组件只持有自己的锁；跨组件嵌套仅限以下几种（外 → 内）：`Caches` 的采样器表 / setup 池表 → `Memory` 计量与托管资源表锁；`Queues` 挂起 acquire 表 → 资源同步单元；`Queues` 每队列外部同步锁（`with_all_queues` 按队列下标升序）→ 仅原生队列调用。退役队列与驱逐登记先出队/取快照再在无锁状态下执行回调，因此销毁路径可自由取 `Memory` 的锁。
 - **Drop 顺序**：`Device::drop` 只做需要多个组件协作的一步：`vkDeviceWaitIdle`（失败或设备丢失也继续）→ 排空退役队列销毁全部 `Doomed` → 释放内置采样器票据。随后字段按声明顺序析构：`caches` → `lifetime` → `memory`（`Drop` 关闭子分配器、释放原生内存块）→ `queues`（`Drop` 销毁时间线信号量）→ `core`（`Drop` 执行 `vkDestroyDevice`，最后释放实例）。创建失败时同样依赖这些组件 `Drop` 回滚已建对象。
 - **对外接口**：组件字段为 `pub(crate)`；外部经 `Device` 的委托方法访问（`caps`/`limits`/`memory_properties`/`allocator_stats`/`timelines`/`queue_plan`/`resources` 等）。原生句柄只经显式互操作出口 `raw_device()`、`instance()`、`primary_queue()`、`physical_device()` 取得。
 - **删除的旧物**：`raw::device::VulkanDevice`、`GraphicsDevice`、`queue_lock`、`retire_timeline`、`graveyard`、`attach_graphics_device`、`SubmissionEngine`、`DeviceState.next_timeline`。
@@ -357,7 +357,11 @@ impl FrameLoop {
 6. present：`Timelines::with_queue(graphics, vkQueuePresentKHR)`；`OUT_OF_DATE`/`SUBOPTIMAL` → 标记 `stale`，下一帧重建。
 7. 记录 `slot.done = point`，返回 `Presented(point)`。
 
-失败处理由 `AcquiredImageLease` 记录 acquire 信号是否已消费、图像布局、提交完成点与呈现状态。未提交部分取消；已提交部分依 §3.10 收尾。设备可用时，已取得图像走支持的 release-images 路径，或补救提交后 present；补救提交必须等待尚未消费的 acquire，并在需要时录制到 `PRESENT_SRC_KHR` 的布局转换，不能无条件用空提交，也不能重复等待已消费的二值信号量。释放图像不等于消费 acquire 信号，二值信号量的复用/销毁单独跟踪。设备丢失时停止补救提交，转入设备销毁路径。
+失败处理由 `AcquiredImageLease` 记录 acquire 信号是否已消费、图像布局、提交完成点与呈现状态。未提交部分取消；已提交部分依 §3.10 收尾。图像按 `PresentPolicy` 返回（`FrameLoop::set_on_failure` / `VulkanGraphSession::set_present_policy`）：默认 `SkipPresent` 不呈现未定义内容——release-images 可用（`Swapchain::can_release_images`：启用 maintenance1 且不是 Mesa 软件 WSI，其 `vkReleaseSwapchainImagesEXT` 会崩溃）时等待已提交使用完成后直接释放；不可用时以真实提交消费 acquire 并呈现不透明黑帧。`ClearTo(rgba)` 呈现指定颜色（需要 `TRANSFER_DST` 用法，否则退化为 `SkipPresent`）。`PreviousFrame` 需要保留上一帧副本，交换链不保存，设置时返回 `Unsupported`。补救提交必须等待尚未消费的 acquire（或链接到已提交使用之后），不能无条件用空提交，也不能重复等待已消费的二值信号量。释放图像不等于消费 acquire 信号，二值信号量的复用/销毁单独跟踪。设备丢失时停止补救提交，转入设备销毁路径。
+
+**获取等待与批次**：获取等待附在批次的提交上，所以呈现图通过 `RenderGraph::gate_first_use` 在交换链图像首个使用者前强制批次边界（并入计划键，`import_swapchain_image` 自动登记）：之前的独立 pass 在前一批次提交，不被获取信号量阻塞；不需要 `batch_per_pass`。
+
+**所有权**：内容已丢弃（UNDEFINED 布局）的图像范围无主——规划器、运行期状态机（`RangeOwner::admits_discarding`）、raw 访问与两套独立校验器都允许任一队列族直接认领并在其队列上做 UNDEFINED -> layout 转换，不发出 release/acquire 对；写入过的内容仍按原规则转移，回到呈现族的最终转移保持不变。
 
 **呈现完成域**：`SyncPoint` 证明 GPU 提交完成，`PresentTicket` 证明相应呈现资源可以回收，二者不混用。支持并启用 swapchain maintenance1 时用呈现 fence；否则按再次 acquire 同一图像并等待其信号、呈现历史及交换链代际实现延迟销毁协议。旧交换链停止 acquire 后，不能依赖它未来再次 acquire，应采用官方交换链重建示例的代际关联方案。重建同时满足在飞提交与呈现资源的回收条件；只等待设备时间线不足以证明呈现资源已释放。
 
@@ -388,6 +392,8 @@ impl FrameLoop {
 ### 3.11 异步传输、内存预算与能力策略
 
 **传输服务**：`UploadManager` / `ReadbackManager` 返回带资源区间、设备代际与 `SyncPoint` 的 ticket。上传合并脏区，readback 提供非阻塞 `try_read`；需要同步的便捷 API 只等待相关资源区间，不等待整设备所有提交。区间预留与 GPU 使用登记必须防止宿主写入和并发新提交竞争，不能只读一次完成快照就授予写权限。非 coherent 内存的范围对齐、flush/invalidate 由分配层统一处理。上传环容量有上限，满时由策略选择延后、受限扩容或显式等待；传输队列是可选策略，不是正确性的前提。
+
+**可驱逐缓存**：渲染图空闲资源池（帧完成后“停放”到 `rg::graph_caches`，复用时认领）与空闲瞬态别名集、以及持有资源引用的 CPU 投影快照一起注册为 `Evictable`（`Transient` 优先级）。压力下只释放 GPU 已完成的停放资源（LRU），再释放空闲别名集；借给在飞帧的资源/别名集结构上不在存储内，不可达。登记只持 `Weak`，随后端析构注销。
 
 **统一预算**：`MemoryBudgetController` 记录 live、in-flight、可淘汰 cache、pending-retirement 字节数。各缓存有局部上限，统一预算约束总量；先淘汰已完成的空闲资源，再延后低优先级上传，画质降级交上层决定。高低水位与滞回防止频繁淘汰/重建。常规回收限制每帧工作量，内存压力触发加速回收；不能淘汰在飞资源。`VK_EXT_memory_budget` 的动态估计仅作为策略输入，未支持时使用配置预算，任何情况下仍处理真实 OOM。
 
