@@ -90,6 +90,11 @@ pub struct GraphDeclaration {
     pub passes: Vec<PassDeclaration>,
     pub exports: Vec<ExportDeclaration>,
     pub batch_per_pass: bool,
+    /// Logical resources whose first-using pass begins a new batch, sorted and
+    /// unique. Used for imports made available by an external wait (the
+    /// swapchain acquire): the wait is attached to a batch, so earlier
+    /// independent passes stay out of it.
+    pub gated_resources: Vec<u32>,
 }
 impl GraphDeclaration {
     /// 在资源分配和索引打包之前检查调用方可直接构造的声明。
@@ -390,6 +395,26 @@ impl RenderGraph {
 
     pub fn batch_per_pass(&mut self, enabled: bool) {
         self.declaration.batch_per_pass = enabled;
+    }
+    /// Begin a new batch immediately before the first pass that uses
+    /// `resource` (a no-op when it is already used by the first pass). Passes
+    /// ahead of it then do not share a batch with the resource's first use, so
+    /// an external wait attached to that batch (the swapchain acquire) never
+    /// delays them. The boundary is part of the plan identity.
+    pub fn gate_first_use(
+        &mut self,
+        resource: super::resource::ResourceHandle,
+    ) -> crate::Result<()> {
+        self.check_handle(resource)?;
+        let index = resource.raw();
+        if let Err(at) = self.declaration.gated_resources.binary_search(&index) {
+            self.declaration
+                .gated_resources
+                .try_reserve(1)
+                .map_err(|_| crate::Error::OutOfHostMemory)?;
+            self.declaration.gated_resources.insert(at, index);
+        }
+        Ok(())
     }
     pub fn on_retire(&mut self, callback: impl FnOnce() + 'static) {
         self.retire_callbacks.push(Box::new(callback));

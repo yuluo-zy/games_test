@@ -22,7 +22,7 @@ impl BatchCompiler {
     }
 
     pub fn flush_batch(&mut self, boundary: usize) {
-        if self.current_range.start == boundary {
+        if boundary <= self.current_range.start {
             return;
         }
         self.current_range.end = boundary;

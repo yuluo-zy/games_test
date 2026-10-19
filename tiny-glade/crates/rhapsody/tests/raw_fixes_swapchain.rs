@@ -503,6 +503,68 @@ fn multi_batch_presentation_graph_waits_on_first_use_and_signals_from_last_use()
     frame_loop.shutdown(TIMEOUT).unwrap();
 }
 
+/// (2b) Passes ordered before the first use of the image share no batch with
+/// it, so the acquire semaphore only blocks the batch that needs the image.
+/// The boundary is derived from the plan (no `batch_per_pass`), so repeated
+/// frames hit the plan cache; a graph without such passes stays one batch.
+#[test]
+fn independent_passes_before_the_image_are_not_blocked_by_the_acquire_wait() {
+    let Some((mut frame_loop, _instance)) = strict_frame_loop() else {
+        eprintln!("SKIP: strict headless presentation unavailable");
+        return;
+    };
+    let calls = Arc::new(AtomicUsize::new(0));
+    let prologue = Arc::new(AtomicUsize::new(0));
+    for frame in 0..4 {
+        let recorded = Arc::new(AtomicBool::new(false));
+        let retired = std::rc::Rc::new(std::cell::Cell::new(0));
+        let main = side_effect_graph(&mut frame_loop, &recorded, &retired);
+        frame_loop.execute_graph(main).expect("main graph");
+        let lease = frame_loop.acquire().expect("acquire").expect("image");
+        let (acquire, rendered) = (lease.acquire_semaphore(), lease.render_semaphore());
+        let mut graph = frame_loop.graph.begin_frame().expect("presentation graph");
+        let target = frame_loop
+            .graph
+            .import_swapchain_image(&mut graph, lease, SwapchainContents::Discard)
+            .expect("import");
+        for _ in 0..2 {
+            let prologue = prologue.clone();
+            graph
+                .add_pass("compute without the swapchain image")
+                .with_side_effect()
+                .render_with_context(move |_| {
+                    prologue.fetch_add(1, Ordering::Relaxed);
+                    true
+                });
+        }
+        clear_pass(&mut graph, &target, &calls, 0.1);
+        clear_pass(&mut graph, &target, &calls, 0.8);
+        let receipt = frame_loop
+            .graph
+            .execute_frame(graph.build())
+            .expect("presentation graph executes");
+        let sync = injected_sync(&frame_loop.graph, acquire, rendered);
+        assert_eq!(
+            sync.submits, 2,
+            "frame {frame}: prologue batch + image batch"
+        );
+        assert_eq!(receipt.stats.batches, 2, "frame {frame}");
+        assert_eq!(
+            sync.acquire_waits,
+            vec![(1, vk::PipelineStageFlags::TRANSFER)],
+            "frame {frame}: the prologue batch carries no acquire wait"
+        );
+        assert_eq!(sync.rendered_signals, vec![1], "frame {frame}");
+        assert_eq!(receipt.stats.plan_cache_hit, frame > 0, "frame {frame}");
+        let presented = frame_loop.present(&target).expect("present");
+        frame_loop.wait_render(presented, TIMEOUT).unwrap();
+    }
+    assert_eq!(prologue.load(Ordering::Relaxed), 8);
+    assert_eq!(calls.load(Ordering::Relaxed), 8);
+    frame_loop.wait_idle(TIMEOUT).unwrap();
+    frame_loop.shutdown(TIMEOUT).unwrap();
+}
+
 #[test]
 fn strict_frame_loop_presents_through_the_presentation_graph() {
     let Some((mut frame_loop, _instance)) = strict_frame_loop() else {

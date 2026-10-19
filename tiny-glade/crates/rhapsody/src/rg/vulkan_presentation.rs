@@ -407,6 +407,9 @@ impl VulkanGraphSession {
         let resource =
             self.import_frame_resource(graph, GpuResource::Image(texture.clone()), initial, false)?;
         graph.export(resource, PRESENT_ACCESS)?;
+        // The acquire wait is attached to the batch of the image's first use:
+        // keep earlier independent passes out of that batch.
+        graph.gate_first_use(resource)?;
         let token = match graph.declaration().resources[resource.raw() as usize].source {
             graph::OriginSource::ImportUnowned { token, .. } => token,
             _ => {

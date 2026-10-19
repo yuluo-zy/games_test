@@ -86,6 +86,7 @@ pub struct GraphDefinition {
     pub passes: Vec<PassDeclaration>,
     pub exports: Vec<ExportDeclaration>,
     pub batch_per_pass: bool,
+    pub gated_resources: Vec<u32>,
     pub access_semantics: Vec<AccessSemantics>,
     pub context: PlanContext,
     pub compiler_version: u32,
@@ -144,6 +145,7 @@ impl GraphDefinition {
         if self.compiler_version != COMPILER_VERSION
             || self.context != context
             || self.batch_per_pass != graph.batch_per_pass
+            || self.gated_resources != graph.gated_resources
             || self.subgraphs != graph.subgraphs
             || self.exports != graph.exports
             || self.resources.len() != graph.resources.len()
@@ -287,6 +289,7 @@ impl GraphDefinition {
             passes,
             exports: graph.exports.clone(),
             batch_per_pass: graph.batch_per_pass,
+            gated_resources: graph.gated_resources.clone(),
             access_semantics,
             context,
             compiler_version: COMPILER_VERSION,
@@ -808,6 +811,28 @@ fn finish_plan(definition: GraphDefinition, analysis: PassAnalysis) -> crate::Re
             batch_compiler.flush_batch(i);
         }
     }
+    // A gated resource's first retained user starts a batch (see
+    // `RenderGraph::gate_first_use`); `flush_batch` ignores boundaries already
+    // present and the one at pass 0.
+    let mut gates = definition
+        .gated_resources
+        .iter()
+        .filter_map(|&resource| {
+            retained_passes.iter().position(|&pass| {
+                definition.passes[pass]
+                    .accesses
+                    .iter()
+                    .any(|access| access.resource_index == resource)
+            })
+        })
+        .collect::<Vec<_>>();
+    gates.sort_unstable();
+    for boundary in gates {
+        // Skip boundaries that `batch_per_pass` already produced.
+        if boundary > batch_compiler.current_range.start {
+            batch_compiler.flush_batch(boundary);
+        }
+    }
     let base_batches = batch_compiler.finish(retained_passes.len());
     let (batches, queue_schedule) = super::queue_schedule::plan_queue_batches(
         &definition.passes,
@@ -891,6 +916,72 @@ mod borrowed_definition_tests {
         graph.export(output, 0x25).unwrap();
         graph.build().declaration
     }
+    fn gated_plan(gate: bool, per_pass: bool) -> (CompiledPlan, GraphDeclaration) {
+        let mut graph = RenderGraph::new();
+        let descriptor = Descriptor::Buffer(BufferDesc {
+            word_at_00: 64,
+            word_at_08: 0,
+            bytes_at_0c_through_0e: [0; 3],
+        });
+        let early = graph.import_unowned("early", descriptor, 21, 0x25).unwrap();
+        let gated = graph.import_unowned("gated", descriptor, 22, 0x25).unwrap();
+        for index in 0..2 {
+            let mut pass = graph.add_pass(format!("independent-{index}")).with_side_effect();
+            pass.add_resource_access(early, 0x34, 0).unwrap();
+            pass.render(|_| true);
+        }
+        for index in 0..2 {
+            let mut pass = graph.add_pass(format!("gated-{index}")).with_side_effect();
+            pass.add_resource_access(gated, 0x34, 0).unwrap();
+            pass.render(|_| true);
+        }
+        graph.batch_per_pass(per_pass);
+        if gate {
+            graph.gate_first_use(gated).unwrap();
+            // Idempotent: one boundary however often it is requested.
+            graph.gate_first_use(gated).unwrap();
+        }
+        let declaration = graph.build().declaration;
+        let definition = GraphDefinition::from_declaration(
+            &declaration,
+            &mut AccessTable::original(),
+            PlanContext::default(),
+        )
+        .unwrap();
+        (compile_definition(definition).unwrap(), declaration)
+    }
+    #[test]
+    fn gating_a_resource_starts_a_batch_before_its_first_user_and_is_part_of_the_key() {
+        let (plain, plain_declaration) = gated_plan(false, false);
+        assert_eq!(plain.batches.len(), 1, "no gate: one batch");
+        let (gated, declaration) = gated_plan(true, false);
+        let ranges = gated
+            .batches
+            .iter()
+            .map(|batch| batch.pass_range.clone())
+            .collect::<Vec<_>>();
+        assert_eq!(ranges, vec![0..2, 2..4]);
+        // The boundary is part of the plan identity: neither the owned key
+        // nor the borrowed comparison confuses gated and ungated graphs.
+        assert_ne!(gated.definition, plain.definition);
+        let context = PlanContext::default();
+        assert!(
+            gated
+                .definition
+                .matches_declaration(&declaration, &mut AccessTable::original(), context)
+                .unwrap()
+        );
+        assert!(
+            !gated
+                .definition
+                .matches_declaration(&plain_declaration, &mut AccessTable::original(), context)
+                .unwrap()
+        );
+        // Under batch_per_pass the existing boundaries already cover it.
+        let (per_pass, _) = gated_plan(true, true);
+        assert_eq!(per_pass.batches.len(), 4);
+        assert!(per_pass.batches.iter().all(|batch| batch.pass_range.len() == 1));
+    }
     #[test]
     fn complete_plan_miss_reasons_distinguish_policy_interface_and_structure() {
         use super::super::cache::CacheReason;
@@ -971,6 +1062,7 @@ mod borrowed_definition_tests {
                 }
             },
             |g| g.batch_per_pass = true,
+            |g| g.gated_resources.push(0),
         ];
         for change in changes {
             let mut changed = graph.clone();
