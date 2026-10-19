@@ -9,6 +9,7 @@
 //! | [`Error::SurfaceOutOfDate`] | 交换链需要重建 | 重建交换链，跳过本帧 |
 //! | [`Error::SurfaceLost`] | surface 已失效 | 重建 surface |
 //! | [`Error::Timeout`] | 有界等待超时 | 稍后重试 |
+//! | [`Error::Exhausted`] | 有界容量耗尽（槽位表、描述符池、arena、缓存） | 释放/回收后重试，或扩大配置容量 |
 //! | [`Error::Unsupported`] | 设备或驱动缺少所需能力 | 换路径或报告 |
 //! | [`Error::InvalidUsage`] | 调用方违反 API 约定（越界、过期句柄、状态顺序错误等） | 修调用方代码 |
 //! | [`Error::Vulkan`] | 其他未归类的 Vulkan 错误 | 记录并按致命处理 |
@@ -38,6 +39,8 @@ pub enum Error {
     SurfaceLost,
     #[error("等待超时")]
     Timeout,
+    #[error("容量耗尽：{0}")]
+    Exhausted(Cow<'static, str>),
     #[error("不支持：{0}")]
     Unsupported(Cow<'static, str>),
     #[error("用法错误：{what}")]
@@ -89,6 +92,7 @@ pub enum ErrorKind {
     SurfaceOutOfDate,
     SurfaceLost,
     Timeout,
+    Exhausted,
     Unsupported,
     InvalidUsage,
     Vulkan,
@@ -102,6 +106,7 @@ impl From<std::sync::Arc<Error>> for Error {
             Self::SurfaceOutOfDate => Self::SurfaceOutOfDate,
             Self::SurfaceLost => Self::SurfaceLost,
             Self::Timeout => Self::Timeout,
+            Self::Exhausted(what) => Self::Exhausted(what.clone()),
             Self::Unsupported(what) => Self::Unsupported(what.clone()),
             Self::Vulkan(code) => Self::Vulkan(*code),
             Self::InvalidUsage { what, .. } => Self::InvalidUsage {
@@ -120,6 +125,7 @@ impl Error {
             Self::SurfaceOutOfDate => ErrorKind::SurfaceOutOfDate,
             Self::SurfaceLost => ErrorKind::SurfaceLost,
             Self::Timeout => ErrorKind::Timeout,
+            Self::Exhausted(_) => ErrorKind::Exhausted,
             Self::Unsupported(_) => ErrorKind::Unsupported,
             Self::InvalidUsage { .. } => ErrorKind::InvalidUsage,
             Self::Vulkan(_) => ErrorKind::Vulkan,
@@ -135,10 +141,16 @@ impl Error {
         Self::Unsupported(what.into())
     }
 
-    /// 调用方误用。同时记一条 error 日志，避免误用在调用方吞掉错误后无声消失。
+    /// 有界容量耗尽；与 [`Error::Timeout`] 区分，调用方应先回收再重试。
+    pub fn exhausted(what: impl Into<Cow<'static, str>>) -> Self {
+        Self::Exhausted(what.into())
+    }
+
+    /// 调用方误用。记一条 debug 日志：预期内的拒绝（如重试循环）不应刷屏，
+    /// 调用方必须传播或显式处理返回的错误。
     pub fn invalid_usage(what: impl Into<Cow<'static, str>>) -> Self {
         let what = what.into();
-        log::error!("rhapsody 用法错误：{what}");
+        log::debug!("rhapsody 用法错误：{what}");
         Self::InvalidUsage { what, source: None }
     }
 
@@ -148,7 +160,7 @@ impl Error {
         source: impl std::error::Error + Send + Sync + 'static,
     ) -> Self {
         let what = what.into();
-        log::error!("rhapsody 用法错误：{what}：{source}");
+        log::debug!("rhapsody 用法错误：{what}：{source}");
         Self::InvalidUsage {
             what,
             source: Some(Box::new(source)),
@@ -166,6 +178,9 @@ impl From<vk::Result> for Error {
             | vk::Result::ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT => Self::SurfaceOutOfDate,
             vk::Result::ERROR_SURFACE_LOST_KHR => Self::SurfaceLost,
             vk::Result::TIMEOUT => Self::Timeout,
+            vk::Result::ERROR_OUT_OF_POOL_MEMORY | vk::Result::ERROR_FRAGMENTED_POOL => {
+                Self::Exhausted(format!("{result:?}").into())
+            }
             vk::Result::ERROR_FEATURE_NOT_PRESENT
             | vk::Result::ERROR_EXTENSION_NOT_PRESENT
             | vk::Result::ERROR_LAYER_NOT_PRESENT
@@ -250,10 +265,10 @@ mod tests {
 
     #[test]
     fn descriptor_pool_exhaustion_is_distinct_from_device_memory_exhaustion() {
-        assert!(matches!(
-            Error::from(vk::Result::ERROR_OUT_OF_POOL_MEMORY),
-            Error::Vulkan(vk::Result::ERROR_OUT_OF_POOL_MEMORY)
-        ));
+        assert_eq!(
+            Error::from(vk::Result::ERROR_OUT_OF_POOL_MEMORY).kind(),
+            ErrorKind::Exhausted
+        );
         assert!(matches!(
             Error::from(vk::Result::ERROR_OUT_OF_DEVICE_MEMORY),
             Error::OutOfDeviceMemory

@@ -82,6 +82,7 @@ impl UploadFailure {
             Error::SurfaceOutOfDate => Error::SurfaceOutOfDate,
             Error::SurfaceLost => Error::SurfaceLost,
             Error::Timeout => Error::Timeout,
+            Error::Exhausted(what) => Error::Exhausted(what.clone()),
             Error::Unsupported(what) => Error::Unsupported(what.clone()),
             Error::Vulkan(code) => Error::Vulkan(*code),
             Error::InvalidUsage { what, .. } => Error::InvalidUsage {

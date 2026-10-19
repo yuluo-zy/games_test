@@ -274,6 +274,7 @@ enum MetadataFailure {
     InvalidUsage,
     SurfaceLost,
     OutOfDate,
+    Exhausted,
     Vulkan(vk::Result),
 }
 impl MetadataFailure {
@@ -283,6 +284,7 @@ impl MetadataFailure {
             crate::Error::OutOfHostMemory => Self::HostMemory,
             crate::Error::OutOfDeviceMemory => Self::DeviceMemory,
             crate::Error::Timeout => Self::Timeout,
+            crate::Error::Exhausted(_) => Self::Exhausted,
             crate::Error::Unsupported(_) => Self::Unsupported,
             crate::Error::InvalidUsage { .. } => Self::InvalidUsage,
             crate::Error::SurfaceLost => Self::SurfaceLost,
@@ -296,6 +298,9 @@ impl MetadataFailure {
             Self::HostMemory => crate::Error::OutOfHostMemory,
             Self::DeviceMemory => crate::Error::OutOfDeviceMemory,
             Self::Timeout => crate::Error::Timeout,
+            Self::Exhausted => {
+                crate::Error::exhausted("command resource admission previously failed")
+            }
             Self::Unsupported => {
                 crate::Error::unsupported("command resource admission previously failed")
             }
