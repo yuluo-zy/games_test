@@ -263,6 +263,9 @@ pub struct ExecutionStats {
     /// 走并行路径的 batch 数及其总块数（串行 batch 不计块）。
     pub parallel_batches: u32,
     pub chunks: u32,
+    /// Pending cross-family ownership acquires recorded into this frame's
+    /// batches (no separate acquire submit).
+    pub coalesced_acquires: u32,
     /// 本次执行发出的屏障命令数（每个非空屏障作用域一次 `vkCmdPipelineBarrier`）。
     pub barrier_commands: u32,
     /// 本次执行包含的访问转换总数（屏障命令里的 buffer/image 屏障条目）。
@@ -442,6 +445,12 @@ pub trait ExecutionBackend: crate::rg::graph::ResourceBackend {
     }
     /// 失败路径：已分配或已开始、但不会提交的命令交还后端（它从未进入 GPU）。默认不做任何事。
     fn abandon_command(&mut self, _handle: u64) {}
+    /// Record the device's pending ownership acquires for this batch's queue
+    /// family at the start of the batch's first (just begun) command.
+    /// Returns how many were recorded.
+    fn drain_pending_acquires(&mut self, _command: u64) -> crate::Result<u32> {
+        Ok(0)
+    }
     fn wait_submission(&self, _receipt: crate::sync::SyncPoint) -> crate::Result<()> {
         Ok(())
     }
@@ -951,6 +960,9 @@ impl ExecutionChain {
             let handle = backend.command_handle().map_err(Error::Lifecycle)?;
             let first = self.begin(handle, family, queue, backend.begin_command(handle))?;
             recorder.commands.push(first.clone());
+            stats.coalesced_acquires += backend
+                .drain_pending_acquires(handle)
+                .map_err(Error::Validation)?;
             recorder.batch = batch_index;
             recorder.first_pass = batch.pass_range.start;
             let mut synchronization =

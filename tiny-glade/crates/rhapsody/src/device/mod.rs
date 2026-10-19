@@ -4,10 +4,12 @@ pub mod caps;
 pub mod generation;
 pub mod init;
 pub mod memory;
+mod pending_acquire;
 pub mod policy;
 pub mod queue_config;
 pub mod reclamation;
 mod submission;
+pub use pending_acquire::{AcquireTarget, DrainedAcquires, PendingAcquire, PendingAcquires};
 pub use submission::{Signal, SubmitBatch, Wait};
 
 pub use crate::raw::device::Device;

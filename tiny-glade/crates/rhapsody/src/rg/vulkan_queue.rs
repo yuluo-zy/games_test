@@ -25,6 +25,10 @@ pub(super) struct QueueRuntime {
     queue_flags: [vk::QueueFlags; crate::sync::MAX_QUEUES],
 }
 impl QueueRuntime {
+    /// Physical tokens bound by the frame being recorded.
+    pub(super) fn frame_tokens(&self) -> &[Option<u64>] {
+        &self.tokens.values
+    }
     pub fn new(device: &Device) -> crate::Result<Self> {
         let stats = &device.allocator_stats;
         let families = unsafe {

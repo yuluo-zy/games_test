@@ -1076,7 +1076,7 @@ mod tests {
         .unwrap();
         let release = SyncPoint { queue: q1, value: 5 };
         cell.publish_range_state(release);
-        cell.insert(release);
+        cell.insert_overall(release);
         let mut completed = crate::sync::CompletedValues::default();
         // Still executing: the member must not be reset (or returned) yet.
         assert!(!cell.discard_idle_range_state(&completed));

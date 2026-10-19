@@ -337,6 +337,9 @@ pub struct VulkanGraphBackend {
     /// Members of the alias set lent to the frame being populated.
     lent_aliases: Option<super::transient_resources::LentAliases>,
     active_alias_set: Option<u64>,
+    /// Pending acquires recorded into a not yet submitted command; re-queued
+    /// on the device if that command is abandoned.
+    drained_acquires: Vec<(u64, crate::device::DrainedAcquires)>,
     transient_alias_tokens: BTreeMap<u64, super::transient_resources::AliasOrigin>,
     transient_counters: Arc<crate::raw::transient_backing::TransientBackingCounters>,
     cpu_arenas: crate::command::CpuArenaPool,
@@ -692,6 +695,7 @@ impl VulkanGraphBackend {
             alias_cache: Default::default(),
             lent_aliases: None,
             active_alias_set: None,
+            drained_acquires: Vec::new(),
             transient_alias_tokens: Default::default(),
             transient_counters: Default::default(),
             commands: BTreeMap::new(),
@@ -1597,7 +1601,39 @@ impl ExecutionBackend for VulkanGraphBackend {
         // while chunks record on other threads.
         self.command_for_slot(chunk + 1)
     }
+    fn drain_pending_acquires(&mut self, handle: u64) -> crate::Result<u32> {
+        let Some(command) = self.commands.get_mut(&handle) else {
+            return Err(crate::Error::invalid_usage("batch command is missing"));
+        };
+        let (resources, tokens) = (&self.resources, self.queue_runtime.frame_tokens());
+        // Resources of this frame are acquired by the planner itself.
+        let drained = self.device.record_pending_acquires_except(command, |cell| {
+            tokens.iter().flatten().any(|token| {
+                resources
+                    .get(token)
+                    .is_some_and(|resource| Arc::ptr_eq(&resource.owner_cell(), cell))
+            })
+        })?;
+        if drained.is_empty() {
+            return Ok(0);
+        }
+        let count = drained.len() as u32;
+        self.drained_acquires
+            .try_reserve(1)
+            .map_err(|_| crate::Error::OutOfHostMemory)
+            .inspect_err(|_| self.device.requeue_pending_acquires(drained.clone()))?;
+        self.drained_acquires.push((handle, drained));
+        Ok(count)
+    }
     fn abandon_command(&mut self, handle: u64) {
+        if let Some(position) = self
+            .drained_acquires
+            .iter()
+            .position(|(command, _)| *command == handle)
+        {
+            let (_, drained) = self.drained_acquires.swap_remove(position);
+            self.device.requeue_pending_acquires(drained);
+        }
         if let Some(ring) = &mut self.gpu_timing {
             ring.abandon(handle);
         }
@@ -1863,6 +1899,12 @@ impl ExecutionBackend for VulkanGraphBackend {
         if let Ok(point) = result {
             prepared_states.publish(point);
             self.queue_submitted(point);
+            // Coalesced acquires in these commands are now committed.
+            self.drained_acquires.retain(|(command, _)| {
+                !prepared
+                    .iter()
+                    .any(|batch| batch.commands.iter().any(|c| c.as_raw() == *command))
+            });
             for semaphore in semaphores.iter() {
                 semaphore.last_use.insert_overall(point);
             }
