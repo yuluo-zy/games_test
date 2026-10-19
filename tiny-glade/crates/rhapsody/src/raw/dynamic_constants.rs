@@ -21,7 +21,7 @@ impl DynamicConstantsChunk {
         }
         self.buffer.write_bytes_unsynchronized(self.offset, bytes)
     }
-    /// 原入口名；与 `write_bytes` 同一实现。
+    /// Alias of [`Self::write_bytes`].
     pub fn write(&self, bytes: &[u8]) -> Result<()> {
         self.write_bytes(bytes)
     }
@@ -66,7 +66,7 @@ impl DynamicConstantsChunk {
             self.binding(vk::DescriptorType::STORAGE_BUFFER),
         )
     }
-    /// 候选接口返回安全的数据副本；不暴露受 GPU 生命周期约束的裸映射指针。
+    /// Returns a copy of the data rather than a GPU-lifetime-bound mapping.
     pub fn into_uniform_buffer_binding_and_data(self) -> Result<(DescriptorSetBinding, Vec<u8>)> {
         let mut bytes = vec![
             0;
@@ -78,10 +78,9 @@ impl DynamicConstantsChunk {
     }
 }
 
-/// 原 `DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES`：每页大小，也是单次分配上限
-/// （0x140c02740 开头 `cmp r9,0x40001; jae` → `assert!(bytes <= DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES)`）。
+/// Page size, which is also the largest single allocation.
 pub const DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES: u64 = 0x40000;
-/// 页缓冲用途（0x140c029f0 写入 `BufferDesc.usage = 0x20033`）：
+/// Page buffer usage:
 /// TRANSFER_SRC | TRANSFER_DST | UNIFORM_BUFFER | STORAGE_BUFFER | SHADER_DEVICE_ADDRESS。
 /// Creation removes only the optional address bit when BDA is not enabled;
 /// descriptor and parameter bindings do not require buffer addresses.
