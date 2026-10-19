@@ -122,7 +122,7 @@ fn real_attachment_storage_is_budgeted_retained_and_applies_owner_backpressure()
     };
     device
         .allocator_stats
-        .set_total_budget(device.allocator_stats.budget_usage().total().max(1))
+        .set_host_budget(device.allocator_stats.cpu_memory_usage().total().max(1))
         .unwrap();
     let error = cache
         .prepare_for_rendering(

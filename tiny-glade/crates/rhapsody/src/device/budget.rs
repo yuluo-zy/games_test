@@ -157,6 +157,12 @@ impl MemoryBudgetController {
         self.refresh_pressure();
     }
 
+    /// Record an already-owned cache charge that may exceed a lowered limit.
+    pub(crate) fn record_cache(&mut self, bytes: u64) {
+        self.add(BudgetCategory::Cache, bytes);
+        self.refresh_pressure();
+    }
+
     /// 释放一块内存。
     pub fn release(&mut self, category: BudgetCategory, bytes: u64) {
         self.sub(category, bytes);

@@ -32,14 +32,16 @@ impl Device {
     /// whole native blocks reserved; this is separate from range accounting.
     pub fn memory_usage_snapshot(&self) -> GpuMemoryUsage {
         #[cfg(feature = "suballocation")]
-        let (used, reserved, allocations, blocks) = self
+        let (used, reserved) = self
             .suballocator
             .as_ref()
-            .map_or((0, 0, 0, 0), |sub| sub.memory_usage());
+            .map_or((0, 0), |sub| {
+                let (used, reserved, _, _) = sub.memory_usage();
+                (used, reserved)
+            });
         #[cfg(not(feature = "suballocation"))]
-        let (used, reserved, allocations, blocks) = (0u64, 0u64, 0usize, 0usize);
-        let resources = self.allocator_stats.report();
-        let resource_range_bytes = resources.totals.total_allocated_bytes;
+        let (used, reserved) = (0u64, 0u64);
+        let resource_range_bytes = self.allocator_stats.totals().total_allocated_bytes;
         let dedicated_bytes = resource_range_bytes.saturating_sub(used);
         GpuMemoryUsage {
             resource_range_bytes,
@@ -60,11 +62,9 @@ impl Device {
             },
             dedicated_bytes,
             application_vk_memory_bytes: dedicated_bytes.saturating_add(reserved),
-            native_memory_blocks: resources
-                .allocations
-                .len()
-                .saturating_sub(allocations)
-                .saturating_add(blocks),
+            // Dedicated objects plus suballocator blocks.
+            native_memory_blocks: usize::try_from(self.allocator_stats.native_object_count())
+                .unwrap_or(usize::MAX),
         }
     }
 }

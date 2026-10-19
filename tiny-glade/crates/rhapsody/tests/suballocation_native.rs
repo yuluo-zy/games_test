@@ -162,7 +162,7 @@ fn budgets_below_the_dependency_minimum_use_the_existing_dedicated_fallback() {
 }
 
 #[test]
-fn rejected_first_block_leaves_no_native_capacity_or_range_record() {
+fn heap_budget_below_a_native_block_uses_an_exact_dedicated_allocation() {
     let Some(device) = device(1024 * MIB) else {
         return;
     };
@@ -176,14 +176,18 @@ fn rejected_first_block_leaves_no_native_capacity_or_range_record() {
     .unwrap();
     let heap = device.memory.memory_types[memory_type as usize].heap_index;
     device.allocator_stats.set_heap_budget(heap, MIB).unwrap();
+    // A 256 MiB native block cannot fit the heap budget; the request itself can.
+    let allocation = allocate(&device, MIB).unwrap();
+    assert!(!allocation.is_suballocated());
+    let native = device.memory_usage_snapshot();
+    assert_eq!(native.suballocator_reserved_bytes, 0);
+    assert_eq!(native.native_memory_blocks, 1, "the one dedicated object");
+    assert_eq!(native.application_vk_memory_bytes, allocation.size);
     let error = allocate(&device, MIB)
         .err()
-        .expect("native block exceeds the heap budget");
+        .expect("the heap budget is exhausted");
     assert_eq!(error.kind(), rhapsody::ErrorKind::OutOfMemory);
-    assert!(device.allocator_stats.report().allocations.is_empty());
+    assert_eq!(device.allocator_stats.report().allocations.len(), 1);
+    drop(allocation);
     assert_eq!(gpu_usage(&device).total(), 0);
-    let native = device.memory_usage_snapshot();
-    assert_eq!(native.application_vk_memory_bytes, 0);
-    assert_eq!(native.native_memory_blocks, 0);
-    assert!(native.suballocator_peak_reserved_bytes > MIB);
 }

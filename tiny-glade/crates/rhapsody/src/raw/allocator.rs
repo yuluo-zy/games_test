@@ -1,13 +1,21 @@
-//! 最小 Vulkan 专用分配适配。原 gpu-allocator 0.26 本地分叉来源待恢复，
-//! 此处只调用分配原语，不重写该依赖的次分配/池策略。
+//! Device memory blocks (dedicated or suballocated) and device/host memory
+//! accounting.
 use super::{
     device::Device,
     error::{Error, Result},
 };
+use crate::device::BudgetCategory;
+use crate::sync::{CompletedValues, MAX_QUEUES, QueueId, SyncPoint};
 use ash::vk;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, sync::Arc};
+use std::{
+    collections::{BTreeMap, VecDeque},
+    sync::{
+        Arc,
+        atomic::{AtomicU8, AtomicU64, AtomicUsize, Ordering},
+    },
+};
 pub fn choose_memory_type(
     memory: &vk::PhysicalDeviceMemoryProperties,
     bits: u32,
@@ -43,22 +51,42 @@ pub struct MemoryBlock {
     pub(crate) sub: Option<super::suballoc::SubAllocation>,
 }
 impl MemoryBlock {
-    /// 图像（最优平铺）的分配入口；设备启用子分配时走 gpu-allocator。
+    /// Memory for an `OPTIMAL`-tiling image. Use [`Self::allocate_image`] for
+    /// other tilings.
     pub fn allocate(
         device: Arc<Device>,
         requirements: vk::MemoryRequirements,
         required: vk::MemoryPropertyFlags,
         preferred: vk::MemoryPropertyFlags,
     ) -> Result<Self> {
+        Self::allocate_image(
+            device,
+            requirements,
+            required,
+            preferred,
+            vk::ImageTiling::OPTIMAL,
+        )
+    }
+    /// Image memory. `LINEAR` images are linear resources for
+    /// `bufferImageGranularity` placement next to buffers.
+    pub fn allocate_image(
+        device: Arc<Device>,
+        requirements: vk::MemoryRequirements,
+        required: vk::MemoryPropertyFlags,
+        preferred: vk::MemoryPropertyFlags,
+        tiling: vk::ImageTiling,
+    ) -> Result<Self> {
         let flags = vk::MemoryAllocateFlags::empty();
         #[cfg(feature = "suballocation")]
         if device.suballocation_enabled() {
-            return Self::allocate_sub(device, requirements, required, preferred, flags, false);
+            let linear = tiling == vk::ImageTiling::LINEAR;
+            return Self::allocate_sub(device, requirements, required, preferred, flags, linear);
         }
+        let _ = tiling;
         Self::allocate_dedicated(device, requirements, required, preferred, flags)
     }
 
-    /// 缓冲（线性）的分配入口；设备启用子分配时走 gpu-allocator。
+    /// Buffer (linear resource) memory; suballocated when the device enables it.
     pub fn allocate_with_flags(
         device: Arc<Device>,
         requirements: vk::MemoryRequirements,
@@ -73,7 +101,7 @@ impl MemoryBlock {
         Self::allocate_dedicated(device, requirements, required, preferred, flags)
     }
 
-    /// 每次一块专用 `VkDeviceMemory`，不经子分配器（`DirectMemoryBackend` 与专用模式使用）。
+    /// One dedicated `VkDeviceMemory` object per call, bypassing the suballocator.
     pub fn allocate_dedicated(
         device: Arc<Device>,
         requirements: vk::MemoryRequirements,
@@ -134,21 +162,25 @@ impl MemoryBlock {
             return Err(Error::invalid_usage("内存大小或设备地址分配能力无效"));
         }
         let heap = device.memory.memory_types[index as usize].heap_index;
-        let handle = super::error::observe_vulkan(&device, unsafe {
+        let stats = &device.allocator_stats;
+        stats.acquire_native_object()?;
+        let handle = match super::error::observe_vulkan(&device, unsafe {
             device.device.allocate_memory(&info, None)
-        })?;
-        let accounting_id = match device.allocator_stats.register(
-            requirements.size,
-            index,
-            heap,
-            properties,
-            String::new(),
-        ) {
+        }) {
+            Ok(handle) => handle,
+            Err(error) => {
+                stats.release_native_object();
+                return Err(error);
+            }
+        };
+        let accounting_id = match stats.register_native(requirements.size, index, heap, properties)
+        {
             Ok(id) => id,
             Err(error) => {
                 unsafe {
                     device.device.free_memory(handle, None);
                 }
+                stats.release_native_object();
                 return Err(error);
             }
         };
@@ -166,41 +198,25 @@ impl MemoryBlock {
     }
 }
 impl MemoryBlock {
-    /// 脱离设备 Arc，把显存所有权转交延迟销毁场；之后由设备在确认 GPU 不再使用后释放。
+    /// Detach from the device Arc and hand the memory to retirement, which
+    /// frees it once the GPU no longer uses it.
     pub(crate) fn into_deferred(self) -> super::graveyard::DeferredMemory {
-        if self.shared.is_some() {
-            let mut memory = std::mem::ManuallyDrop::new(self);
-            let backing = memory.shared.take().expect("checked shared allocation");
+        let mut memory = std::mem::ManuallyDrop::new(self);
+        // SAFETY: `memory` is never dropped; its Arc is read out exactly once
+        // and released, while the caller still holds another device Arc.
+        let device = unsafe { std::ptr::read(&memory.device) };
+        if let Some(backing) = memory.shared.take() {
             backing.retire_member();
-            drop(unsafe { std::ptr::read(&memory.device) });
             return super::graveyard::DeferredMemory::Shared(backing);
         }
-        self.device
-            .allocator_stats
-            .mark_retiring(self.accounting_id);
+        device.allocator_stats.mark_retiring(memory.accounting_id);
         #[cfg(feature = "suballocation")]
-        let (memory, sub) = {
-            let mut block = self;
-            let sub = block.sub.take();
-            (block, sub)
-        };
-        #[cfg(not(feature = "suballocation"))]
-        let memory = self;
-        let me = std::mem::ManuallyDrop::new(memory);
-        // SAFETY: `me` 不会再被 Drop，Arc 只在此处读出并释放一次；调用者仍持有另一个设备 Arc。
-        drop(unsafe { std::ptr::read(&me.device) });
-        #[cfg(feature = "suballocation")]
-        return match sub {
-            Some(allocation) => super::graveyard::DeferredMemory::Sub { allocation },
-            None => super::graveyard::DeferredMemory::Dedicated {
-                handle: me.handle,
-                accounting_id: me.accounting_id,
-            },
-        };
-        #[cfg(not(feature = "suballocation"))]
+        if let Some(allocation) = memory.sub.take() {
+            return super::graveyard::DeferredMemory::Sub { allocation };
+        }
         super::graveyard::DeferredMemory::Dedicated {
-            handle: me.handle,
-            accounting_id: me.accounting_id,
+            handle: memory.handle,
+            accounting_id: memory.accounting_id,
         }
     }
     pub fn accounting_id(&self) -> u64 {
@@ -239,8 +255,8 @@ impl MemoryBlock {
         #[cfg(not(feature = "suballocation"))]
         false
     }
-    /// 子分配且宿主可见时，gpu-allocator 已持久映射整块并给出本分配起点的指针（已含偏移）。
-    /// 返回 None 表示需要调用者自己 `vkMapMemory`（专用分配）。
+    /// Persistently mapped pointer to this allocation's start for host-visible
+    /// suballocations. `None` means the caller maps dedicated memory itself.
     pub fn host_ptr(&self) -> Option<*mut u8> {
         #[cfg(feature = "suballocation")]
         return self
@@ -252,8 +268,8 @@ impl MemoryBlock {
         #[cfg(not(feature = "suballocation"))]
         None
     }
-    /// 刷新/失效范围 `(偏移, 大小)`：专用分配覆盖整个内存对象；子分配只覆盖本分配自己的范围
-    /// （创建时已按非一致性粒度对齐，不会波及邻居）。
+    /// Flush/invalidate range `(offset, size)`: the whole object for dedicated
+    /// memory; the allocation's own atom-aligned range for suballocations.
     pub fn host_range(&self) -> (u64, u64) {
         #[cfg(feature = "suballocation")]
         if self
@@ -360,14 +376,13 @@ impl Drop for MemoryBlock {
         unsafe {
             self.device.device.free_memory(self.handle, None)
         };
-        self.device
-            .allocator_stats
-            .release(self.accounting_id)
-            .expect("内存登记与释放必须一一对应");
+        if let Err(error) = self.device.allocator_stats.release(self.accounting_id) {
+            log::error!("memory accounting release failed: {error}");
+        }
     }
 }
 
-/// 原 MemoryLocation 的公开依赖语义：控制 GPU/宿主可见属性，不实现次分配算法。
+/// Requested residency: selects required/preferred memory properties.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MemoryLocation {
     GpuOnly,
@@ -417,13 +432,36 @@ pub struct AllocatorReport {
     pub totals: AllocationTotals,
     pub allocations: Vec<AllocationRecord>,
 }
-/// 设备级专用 VkDeviceMemory 的统计；这是适配器的独立分配统计，不冒充原池预留量。
+/// Device memory accounting.
+///
+/// VkDeviceMemory ranges and unused native suballocator capacity are charged
+/// to the device budget, optionally further limited per heap (explicit limits
+/// or limits derived from `VK_EXT_memory_budget`). Renderer-owned host
+/// metadata is charged to a separate host budget, so exhausting host metadata
+/// reports `OutOfHostMemory` and never consumes device memory headroom.
+///
+/// GPU uses are staged in per-queue buffers without touching the global state
+/// lock; completion moves only the in-flight entries whose timeline value has
+/// been reached (per-queue queues ordered by value).
 #[derive(Default)]
 pub struct AllocatorStats {
-    update_after_bind_descriptors: std::sync::atomic::AtomicU64,
+    update_after_bind_descriptors: AtomicU64,
+    /// Live VkDeviceMemory objects (dedicated allocations and native blocks).
+    native_objects: AtomicU64,
+    /// `maxMemoryAllocationCount`; 0 means unlimited.
+    max_native_objects: AtomicU64,
+    /// `(value, allocation id)` uses recorded since the last state drain.
+    pending_uses: [Mutex<Vec<(u64, u64)>>; MAX_QUEUES],
+    pending_count: AtomicUsize,
+    /// Completion values already applied to the in-flight queues.
+    observed: [AtomicU64; MAX_QUEUES],
+    /// Combined device/heap/host budget action, published after each change.
+    action: AtomicU8,
+    host_action: AtomicU8,
+    host: Mutex<HostState>,
     state: Mutex<StatisticsState>,
 }
-/// Known host allocations participate in the same budget, but never become
+/// Known host allocations are charged to the host budget. They never become
 /// VkDeviceMemory records or physical-GPU allocation totals. The ticket follows
 /// the actual owner; cache removal cannot credit bytes held by an active lease.
 pub(crate) struct CpuMemoryReservation {
@@ -454,63 +492,63 @@ pub(crate) fn cpu_vec_bytes<T>(capacity: usize) -> Result<u64> {
     let layout = std::alloc::Layout::array::<T>(capacity).map_err(|_| Error::OutOfHostMemory)?;
     u64::try_from(layout.size()).map_err(|_| Error::OutOfHostMemory)
 }
+fn add_cpu(usage: &mut crate::device::BudgetUsage, category: BudgetCategory, bytes: u64) {
+    match category {
+        BudgetCategory::Live => usage.live += bytes,
+        BudgetCategory::Cache => usage.cache += bytes,
+        // Construction only admits live or cached host categories.
+        BudgetCategory::InFlight | BudgetCategory::Retiring => {}
+    }
+}
+fn sub_cpu(usage: &mut crate::device::BudgetUsage, category: BudgetCategory, bytes: u64) {
+    match category {
+        BudgetCategory::Live => usage.live -= bytes,
+        BudgetCategory::Cache => usage.cache -= bytes,
+        BudgetCategory::InFlight | BudgetCategory::Retiring => {}
+    }
+}
 impl CpuMemoryReservation {
     pub(crate) fn resize(&mut self, bytes: u64) -> Result<()> {
-        let mut state = self.stats.state.lock();
-        if bytes > self.bytes {
-            state
-                .budget
-                .reserve(self.category, bytes - self.bytes)
-                .map_err(|_| Error::OutOfHostMemory)?;
-        } else {
-            state.budget.release(self.category, self.bytes - bytes);
-        }
-        match self.category {
-            crate::device::BudgetCategory::Live => {
-                state.cpu_usage.live = state.cpu_usage.live - self.bytes + bytes
+        let category = self.category;
+        let previous = self.bytes;
+        self.stats.with_host(|host| {
+            if bytes > previous {
+                host.budget
+                    .reserve(category, bytes - previous)
+                    .map_err(|_| Error::OutOfHostMemory)?;
+            } else {
+                host.budget.release(category, previous - bytes);
             }
-            crate::device::BudgetCategory::Cache => {
-                state.cpu_usage.cache = state.cpu_usage.cache - self.bytes + bytes
-            }
-            _ => unreachable!("CPU allocations have no GPU completion domain"),
-        }
+            sub_cpu(&mut host.usage, category, previous);
+            add_cpu(&mut host.usage, category, bytes);
+            host.peak = host.peak.max(host.usage.total());
+            Ok::<(), Error>(())
+        })?;
         self.bytes = bytes;
-        state.cpu_peak_bytes = state.cpu_peak_bytes.max(state.cpu_usage.total());
         Ok(())
     }
-    pub(crate) fn reclassify(&mut self, category: crate::device::BudgetCategory) {
-        use crate::device::BudgetCategory;
-        debug_assert!(matches!(
-            category,
-            BudgetCategory::Live | BudgetCategory::Cache
-        ));
-        if category == self.category {
+    pub(crate) fn reclassify(&mut self, category: BudgetCategory) {
+        if category == self.category
+            || !matches!(category, BudgetCategory::Live | BudgetCategory::Cache)
+        {
             return;
         }
-        let mut state = self.stats.state.lock();
-        state.budget.reclassify(self.category, category, self.bytes);
-        match self.category {
-            BudgetCategory::Live => state.cpu_usage.live -= self.bytes,
-            BudgetCategory::Cache => state.cpu_usage.cache -= self.bytes,
-            _ => unreachable!("CPU allocations have no GPU completion domain"),
-        }
-        match category {
-            BudgetCategory::Live => state.cpu_usage.live += self.bytes,
-            BudgetCategory::Cache => state.cpu_usage.cache += self.bytes,
-            _ => unreachable!("CPU allocations have no GPU completion domain"),
-        }
+        let (from, bytes) = (self.category, self.bytes);
+        self.stats.with_host(|host| {
+            host.budget.reclassify(from, category, bytes);
+            sub_cpu(&mut host.usage, from, bytes);
+            add_cpu(&mut host.usage, category, bytes);
+        });
         self.category = category;
     }
 }
 impl Drop for CpuMemoryReservation {
     fn drop(&mut self) {
-        let mut state = self.stats.state.lock();
-        state.budget.release(self.category, self.bytes);
-        match self.category {
-            crate::device::BudgetCategory::Live => state.cpu_usage.live -= self.bytes,
-            crate::device::BudgetCategory::Cache => state.cpu_usage.cache -= self.bytes,
-            _ => unreachable!("CPU allocations have no GPU completion domain"),
-        }
+        let (category, bytes) = (self.category, self.bytes);
+        self.stats.with_host(|host| {
+            host.budget.release(category, bytes);
+            sub_cpu(&mut host.usage, category, bytes);
+        });
     }
 }
 pub(crate) struct DescriptorReservation {
@@ -521,33 +559,51 @@ impl Drop for DescriptorReservation {
     fn drop(&mut self) {
         self.stats
             .update_after_bind_descriptors
-            .fetch_sub(self.count, std::sync::atomic::Ordering::AcqRel);
+            .fetch_sub(self.count, Ordering::AcqRel);
     }
 }
 #[derive(Default)]
+struct HostState {
+    budget: crate::device::MemoryBudgetController,
+    usage: crate::device::BudgetUsage,
+    peak: u64,
+}
+/// Vulkan's `VK_MAX_MEMORY_HEAPS`.
+const MAX_HEAPS: usize = vk::MAX_MEMORY_HEAPS;
+#[derive(Default)]
 struct StatisticsState {
     budget: crate::device::MemoryBudgetController,
-    cpu_usage: crate::device::BudgetUsage,
-    cpu_peak_bytes: u64,
     phases: BTreeMap<u64, AllocationPhase>,
     next_id: u64,
     records: BTreeMap<u64, AllocationRecord>,
     totals: AllocationTotals,
     peak: AllocationTotals,
     peak_report: Option<AllocatorReport>,
-    /// 峰值刚被刷新、快照尚未物化。峰值之后只可能出现登记（继续刷新峰值）或释放；
-    /// 因此在首次释放前或被查询时物化，得到的状态与“刷新当刻”完全一致，登记路径保持 O(1)。
+    /// The peak was raised but its snapshot is not materialized yet. After a
+    /// peak only registrations (which raise it again) or releases can follow,
+    /// so materializing before the first release reproduces the exact state.
     peak_dirty: bool,
-    heap_budgets: BTreeMap<u32, u64>,
-    /// 各堆当前占用，增量维护，避免每次登记遍历全部记录。
-    heap_used: BTreeMap<u32, u64>,
+    /// Explicit per-heap limits set by the application.
+    heap_budgets: [Option<u64>; MAX_HEAPS],
+    /// Limits derived from `VK_EXT_memory_budget` (`None` = not reported).
+    heap_limits: [Option<u64>; MAX_HEAPS],
+    /// Native bytes charged per heap (ranges plus unused suballocator capacity).
+    heap_used: [u64; MAX_HEAPS],
+    heap_pressure: bool,
     /// Native allocator capacity not occupied by a live resource range. It is
     /// known GPU cache memory, distinct from host cache reservations.
     suballocator_spare: [u64; 32],
+    /// Per-queue `(timeline value, id)` of in-flight uses, ordered by value.
+    in_flight: [VecDeque<(u64, u64)>; MAX_QUEUES],
+    observed: CompletedValues,
+    /// Swap buffer for draining staged uses without reallocating.
+    scratch: Vec<(u64, u64)>,
 }
 struct AllocationPhase {
-    category: crate::device::BudgetCategory,
+    category: BudgetCategory,
     last_use: crate::sync::SyncSet,
+    /// The record owns one VkDeviceMemory object (dedicated allocation).
+    native: bool,
 }
 impl StatisticsState {
     fn report(&self) -> AllocatorReport {
@@ -562,30 +618,121 @@ impl StatisticsState {
             self.peak_dirty = false;
         }
     }
+    fn heap_limit(&self, heap: usize) -> Option<u64> {
+        match (self.heap_budgets[heap], self.heap_limits[heap]) {
+            (Some(a), Some(b)) => Some(a.min(b)),
+            (a, b) => a.or(b),
+        }
+    }
+    fn refresh_heap_pressure(&mut self) {
+        // Same high-water fraction as the device controller (80%).
+        self.heap_pressure = (0..MAX_HEAPS).any(|heap| {
+            self.heap_limit(heap).is_some_and(|limit| {
+                u128::from(self.heap_used[heap]) * 5 >= u128::from(limit) * 4 && limit != 0
+            })
+        });
+    }
+    fn apply_use(&mut self, queue: QueueId, value: u64, id: u64) {
+        let observed = self.observed.get(queue);
+        let Some(phase) = self.phases.get_mut(&id) else {
+            return;
+        };
+        let previous = phase.last_use.get(queue);
+        phase.last_use.insert(SyncPoint { queue, value });
+        if value <= observed {
+            return;
+        }
+        if value > previous {
+            let fifo = &mut self.in_flight[queue.index()];
+            // Submissions on one queue publish almost in value order.
+            let at = fifo.partition_point(|&(queued, _)| queued <= value);
+            fifo.insert(at, (value, id));
+        }
+        transition_phase(self, id, BudgetCategory::InFlight);
+    }
+    fn action(&self) -> crate::device::BudgetAction {
+        use crate::device::BudgetAction;
+        let device = self.budget.tick();
+        if device == BudgetAction::EvictCache {
+            return device;
+        }
+        if self.heap_pressure {
+            return if self.budget.usage().cache > 0 {
+                BudgetAction::EvictCache
+            } else {
+                BudgetAction::Backpressure
+            };
+        }
+        device
+    }
+}
+fn encode_action(action: crate::device::BudgetAction) -> u8 {
+    match action {
+        crate::device::BudgetAction::None => 0,
+        crate::device::BudgetAction::EvictCache => 1,
+        crate::device::BudgetAction::Backpressure => 2,
+    }
 }
 impl AllocatorStats {
+    fn with_state<R>(&self, run: impl FnOnce(&mut StatisticsState) -> R) -> R {
+        let mut state = self.state.lock();
+        self.drain_pending(&mut state);
+        let result = run(&mut state);
+        self.action
+            .store(encode_action(state.action()), Ordering::Release);
+        result
+    }
+    fn with_host<R>(&self, run: impl FnOnce(&mut HostState) -> R) -> R {
+        let mut host = self.host.lock();
+        let result = run(&mut host);
+        self.host_action
+            .store(encode_action(host.budget.tick()), Ordering::Release);
+        result
+    }
+    fn drain_pending(&self, state: &mut StatisticsState) {
+        if self.pending_count.load(Ordering::Acquire) == 0 {
+            return;
+        }
+        for (index, pending) in self.pending_uses.iter().enumerate() {
+            let Some(queue) = QueueId::new(index) else {
+                continue;
+            };
+            let mut scratch = std::mem::take(&mut state.scratch);
+            {
+                let mut pending = pending.lock();
+                if pending.is_empty() {
+                    state.scratch = scratch;
+                    continue;
+                }
+                std::mem::swap(&mut *pending, &mut scratch);
+            }
+            self.pending_count
+                .fetch_sub(scratch.len(), Ordering::AcqRel);
+            for &(value, id) in &scratch {
+                state.apply_use(queue, value, id);
+            }
+            scratch.clear();
+            state.scratch = scratch;
+        }
+    }
     pub(crate) fn reserve_cpu_bytes(
         self: &std::sync::Arc<Self>,
         bytes: u64,
-        category: crate::device::BudgetCategory,
+        category: BudgetCategory,
     ) -> Result<CpuMemoryReservation> {
-        use crate::device::BudgetCategory;
         if !matches!(category, BudgetCategory::Live | BudgetCategory::Cache) {
             return Err(Error::invalid_usage(
                 "CPU allocation must be live or cached",
             ));
         }
-        let mut state = self.state.lock();
-        state
-            .budget
-            .reserve(category, bytes)
-            .map_err(|_| Error::OutOfHostMemory)?;
-        match category {
-            BudgetCategory::Live => state.cpu_usage.live += bytes,
-            BudgetCategory::Cache => state.cpu_usage.cache += bytes,
-            _ => unreachable!(),
-        }
-        state.cpu_peak_bytes = state.cpu_peak_bytes.max(state.cpu_usage.total());
+        self.with_host(|host| {
+            host.budget
+                .reserve(category, bytes)
+                .map_err(|_| Error::OutOfHostMemory)?;
+            add_cpu(&mut host.usage, category, bytes);
+            host.peak = host.peak.max(host.usage.total());
+            Ok::<(), Error>(())
+        })?;
         Ok(CpuMemoryReservation {
             stats: self.clone(),
             bytes,
@@ -593,17 +740,28 @@ impl AllocatorStats {
         })
     }
     pub fn cpu_memory_usage(&self) -> crate::device::BudgetUsage {
-        self.state.lock().cpu_usage
+        self.host.lock().usage
     }
     pub fn cpu_peak_bytes(&self) -> u64 {
-        self.state.lock().cpu_peak_bytes
+        self.host.lock().peak
+    }
+    /// Host metadata limit; `0` means unbounded. Fails without change when the
+    /// current host usage already exceeds `bytes`.
+    pub fn set_host_budget(&self, bytes: u64) -> Result<()> {
+        self.with_host(|host| {
+            host.budget
+                .set_limit(bytes)
+                .map_err(|_| Error::OutOfHostMemory)
+        })
+    }
+    pub fn host_budget_limit(&self) -> u64 {
+        self.host.lock().budget.limit()
     }
     pub(crate) fn reserve_update_after_bind_descriptors(
         self: &std::sync::Arc<Self>,
         count: u64,
         limit: u64,
     ) -> Result<DescriptorReservation> {
-        use std::sync::atomic::Ordering;
         self.update_after_bind_descriptors
             .fetch_update(Ordering::AcqRel, Ordering::Acquire, |used| {
                 used.checked_add(count).filter(|next| *next <= limit)
@@ -614,87 +772,179 @@ impl AllocatorStats {
             count,
         })
     }
+    /// Device memory limit across all heaps; `0` means unbounded.
+    pub fn set_device_budget(&self, bytes: u64) -> Result<()> {
+        self.with_state(|state| {
+            state
+                .budget
+                .set_limit(bytes)
+                .map_err(|_| Error::OutOfDeviceMemory)
+        })
+    }
+    /// Set both the device memory limit and the host metadata limit to
+    /// `bytes` (each is enforced independently). Nothing changes on failure.
     pub fn set_total_budget(&self, bytes: u64) -> Result<()> {
-        self.state
-            .lock()
-            .budget
+        let mut state = self.state.lock();
+        let mut host = self.host.lock();
+        let mut device_budget = state.budget;
+        device_budget
             .set_limit(bytes)
-            .map_err(|_| Error::OutOfDeviceMemory)
+            .map_err(|_| Error::OutOfDeviceMemory)?;
+        let mut host_budget = host.budget;
+        host_budget
+            .set_limit(bytes)
+            .map_err(|_| Error::OutOfHostMemory)?;
+        state.budget = device_budget;
+        host.budget = host_budget;
+        self.action
+            .store(encode_action(state.action()), Ordering::Release);
+        self.host_action
+            .store(encode_action(host.budget.tick()), Ordering::Release);
+        Ok(())
     }
+    /// Device memory usage by phase (host metadata excluded).
+    pub fn device_memory_usage(&self) -> crate::device::BudgetUsage {
+        self.with_state(|state| state.budget.usage())
+    }
+    /// Combined report: device memory by phase plus host metadata
+    /// ([`Self::cpu_memory_usage`]) in its live/cache categories. Admission
+    /// still applies the device and host limits independently.
     pub fn budget_usage(&self) -> crate::device::BudgetUsage {
-        self.state.lock().budget.usage()
+        let mut usage = self.device_memory_usage();
+        let host = self.cpu_memory_usage();
+        usage.live = usage.live.saturating_add(host.live);
+        usage.cache = usage.cache.saturating_add(host.cache);
+        usage
     }
+    /// Bytes still admissible on `heap` under the device and heap limits.
     #[cfg(feature = "suballocation")]
-    pub(crate) fn budget_limit(&self) -> u64 {
-        self.state.lock().budget.limit()
-    }
-    #[cfg(feature = "suballocation")]
-    pub(crate) fn budget_available(&self) -> u64 {
-        self.state.lock().budget.available()
+    pub(crate) fn heap_available(&self, heap: u32) -> u64 {
+        let state = self.state.lock();
+        let device = if state.budget.limit() == 0 {
+            u64::MAX
+        } else {
+            state.budget.available()
+        };
+        let heap = heap as usize;
+        let heap = match (heap < MAX_HEAPS).then(|| state.heap_limit(heap)).flatten() {
+            Some(limit) => limit.saturating_sub(state.heap_used[heap]),
+            None => u64::MAX,
+        };
+        device.min(heap)
     }
     pub fn suballocator_spare_bytes(&self) -> u64 {
         self.state.lock().suballocator_spare.iter().sum()
     }
+    /// Lock-free pressure recommendation combining the device budget, heap
+    /// budgets and the host metadata budget.
     pub fn budget_action(&self) -> crate::device::BudgetAction {
-        self.state.lock().budget.tick()
-    }
-    pub(crate) fn record_gpu_use(&self, id: u64, point: crate::sync::SyncPoint) {
-        let mut state = self.state.lock();
-        if let Some(phase) = state.phases.get_mut(&id) {
-            phase.last_use.insert(point);
+        use crate::device::BudgetAction;
+        let decode = |value| match value {
+            1 => BudgetAction::EvictCache,
+            2 => BudgetAction::Backpressure,
+            _ => BudgetAction::None,
+        };
+        let device = decode(self.action.load(Ordering::Acquire));
+        let host = decode(self.host_action.load(Ordering::Acquire));
+        if device == BudgetAction::EvictCache || host == BudgetAction::EvictCache {
+            BudgetAction::EvictCache
+        } else if device == BudgetAction::Backpressure || host == BudgetAction::Backpressure {
+            BudgetAction::Backpressure
+        } else {
+            BudgetAction::None
         }
-        transition_phase(&mut state, id, crate::device::BudgetCategory::InFlight);
+    }
+    /// Stage a GPU use without the global statistics lock.
+    pub(crate) fn record_gpu_use(&self, id: u64, point: SyncPoint) {
+        {
+            let mut pending = self.pending_uses[point.queue.index()].lock();
+            if pending.try_reserve(1).is_ok() {
+                pending.push((point.value, id));
+                self.pending_count.fetch_add(1, Ordering::AcqRel);
+                return;
+            }
+        }
+        // No staging capacity: apply directly under the state lock.
+        self.with_state(|state| state.apply_use(point.queue, point.value, id));
     }
     pub(crate) fn mark_retiring(&self, id: u64) {
-        transition_phase(
-            &mut self.state.lock(),
-            id,
-            crate::device::BudgetCategory::Retiring,
-        );
+        self.with_state(|state| transition_phase(state, id, BudgetCategory::Retiring));
     }
-    pub(crate) fn mark_cached(&self, id: u64, completed: &crate::sync::CompletedValues) {
-        let mut state = self.state.lock();
-        if state
-            .phases
-            .get(&id)
-            .is_some_and(|phase| phase.last_use.is_reached(completed))
-        {
-            transition_phase(&mut state, id, crate::device::BudgetCategory::Cache);
-        }
+    pub(crate) fn mark_cached(&self, id: u64, completed: &CompletedValues) {
+        self.with_state(|state| {
+            if state
+                .phases
+                .get(&id)
+                .is_some_and(|phase| phase.last_use.is_reached(completed))
+            {
+                transition_phase(state, id, BudgetCategory::Cache);
+            }
+        });
     }
     /// Reusing completed cached storage changes its category, not its real GPU
     /// history. A retiring allocation stays terminal in transition_phase.
-    pub(crate) fn mark_live(&self, id: u64, completed: &crate::sync::CompletedValues) {
-        let mut state = self.state.lock();
-        if state
-            .phases
-            .get(&id)
-            .is_some_and(|phase| phase.last_use.is_reached(completed))
-        {
-            transition_phase(&mut state, id, crate::device::BudgetCategory::Live);
-        }
-    }
-    pub(crate) fn observe_completed(&self, completed: &crate::sync::CompletedValues) {
-        let mut state = self.state.lock();
-        // Transition one entry at a time without allocating on completion.
-        let StatisticsState {
-            budget,
-            phases,
-            records,
-            ..
-        } = &mut *state;
-        for (id, phase) in phases {
-            if phase.category == crate::device::BudgetCategory::InFlight
-                && phase.last_use.is_reached(completed)
+    pub(crate) fn mark_live(&self, id: u64, completed: &CompletedValues) {
+        self.with_state(|state| {
+            if state
+                .phases
+                .get(&id)
+                .is_some_and(|phase| phase.last_use.is_reached(completed))
             {
-                let bytes = records[id].size;
-                budget.reclassify(phase.category, crate::device::BudgetCategory::Live, bytes);
-                phase.category = crate::device::BudgetCategory::Live;
+                transition_phase(state, id, BudgetCategory::Live);
             }
+        });
+    }
+    /// Move in-flight allocations whose uses completed back to `Live`. Work is
+    /// proportional to the reached entries; an unchanged snapshot returns
+    /// without taking the statistics lock.
+    pub(crate) fn observe_completed(&self, completed: &CompletedValues) {
+        let advanced = self.observed.iter().enumerate().any(|(index, seen)| {
+            QueueId::new(index).is_some_and(|queue| completed.get(queue) > seen.load(Ordering::Acquire))
+        });
+        if !advanced {
+            return;
         }
+        self.with_state(|state| {
+            for index in 0..MAX_QUEUES {
+                let Some(queue) = QueueId::new(index) else {
+                    continue;
+                };
+                let done = completed.get(queue);
+                if done <= state.observed.get(queue) {
+                    continue;
+                }
+                state.observed.raise(queue, done);
+                while let Some(&(value, id)) = state.in_flight[index].front() {
+                    if value > done {
+                        break;
+                    }
+                    state.in_flight[index].pop_front();
+                    let StatisticsState {
+                        budget,
+                        phases,
+                        records,
+                        observed,
+                        ..
+                    } = &mut *state;
+                    if let Some(phase) = phases.get_mut(&id)
+                        && phase.category == BudgetCategory::InFlight
+                        && phase.last_use.is_reached(observed)
+                        && let Some(record) = records.get(&id)
+                    {
+                        budget.reclassify(BudgetCategory::InFlight, BudgetCategory::Live, record.size);
+                        phase.category = BudgetCategory::Live;
+                    }
+                }
+                self.observed[index].fetch_max(done, Ordering::AcqRel);
+            }
+        });
     }
     pub fn report(&self) -> AllocatorReport {
         self.state.lock().report()
+    }
+    /// Current totals without copying every allocation record.
+    pub fn totals(&self) -> AllocationTotals {
+        self.state.lock().totals
     }
     pub fn peak_allocator_report(&self) -> Option<AllocatorReport> {
         let mut state = self.state.lock();
@@ -709,15 +959,58 @@ impl AllocatorStats {
     pub fn peak_totals(&self) -> AllocationTotals {
         self.state.lock().peak
     }
-    /// 显式候选预算策略。设置失败不改变旧预算或任何统计；不声称原游戏采用此限制。
+    /// Explicit per-heap limit. Fails without change when the heap already
+    /// holds more than `bytes`.
     pub fn set_heap_budget(&self, heap: u32, bytes: u64) -> Result<()> {
-        let mut state = self.state.lock();
-        let used = state.heap_used.get(&heap).copied().unwrap_or(0);
-        if used > bytes {
-            return Err(Error::invalid_usage("预算小于当前分配"));
-        }
-        state.heap_budgets.insert(heap, bytes);
-        Ok(())
+        let index = heap_index(heap)?;
+        self.with_state(|state| {
+            if state.heap_used[index] > bytes {
+                return Err(Error::invalid_usage("heap budget is below its current usage"));
+            }
+            state.heap_budgets[index] = Some(bytes);
+            state.refresh_heap_pressure();
+            Ok(())
+        })
+    }
+    /// Apply a `VK_EXT_memory_budget` snapshot. Each heap's limit becomes the
+    /// driver budget minus memory this tracker did not allocate. A limit below
+    /// current usage is accepted: new allocations fail and pressure is raised.
+    pub(crate) fn apply_driver_heap_budgets(&self, heaps: &[(u64, u64)]) {
+        self.with_state(|state| {
+            for (index, &(budget, usage)) in heaps.iter().enumerate().take(MAX_HEAPS) {
+                let foreign = usage.saturating_sub(state.heap_used[index]);
+                state.heap_limits[index] = Some(budget.saturating_sub(foreign));
+            }
+            state.refresh_heap_pressure();
+        });
+    }
+    pub fn heap_usage(&self, heap: u32) -> Result<(u64, Option<u64>)> {
+        let index = heap_index(heap)?;
+        let state = self.state.lock();
+        Ok((state.heap_used[index], state.heap_limit(index)))
+    }
+    pub(crate) fn set_max_native_objects(&self, count: u64) {
+        self.max_native_objects.store(count, Ordering::Release);
+    }
+    pub fn native_object_count(&self) -> u64 {
+        self.native_objects.load(Ordering::Acquire)
+    }
+    /// Reserve one VkDeviceMemory object under `maxMemoryAllocationCount`.
+    pub(crate) fn acquire_native_object(&self) -> Result<()> {
+        let max = self.max_native_objects.load(Ordering::Acquire);
+        self.native_objects
+            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |count| {
+                (max == 0 || count < max).then_some(count + 1)
+            })
+            .map(|_| ())
+            .map_err(|_| Error::exhausted("maxMemoryAllocationCount reached"))
+    }
+    pub(crate) fn release_native_object(&self) {
+        let _ = self
+            .native_objects
+            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |count| {
+                count.checked_sub(1)
+            });
     }
     pub fn register(
         &self,
@@ -727,7 +1020,26 @@ impl AllocatorStats {
         properties: vk::MemoryPropertyFlags,
         name: String,
     ) -> Result<u64> {
-        self.register_with_spare(size, memory_type, heap, properties, name, None)
+        self.register_with_spare(size, memory_type, heap, properties, name, None, false)
+    }
+    /// Register a dedicated VkDeviceMemory object whose native slot was taken
+    /// by [`Self::acquire_native_object`]; releasing the record frees it.
+    pub(crate) fn register_native(
+        &self,
+        size: u64,
+        memory_type: u32,
+        heap: u32,
+        properties: vk::MemoryPropertyFlags,
+    ) -> Result<u64> {
+        self.register_with_spare(
+            size,
+            memory_type,
+            heap,
+            properties,
+            String::new(),
+            None,
+            true,
+        )
     }
     #[cfg(any(feature = "suballocation", test))]
     pub(crate) fn register_suballocation(
@@ -745,8 +1057,10 @@ impl AllocatorStats {
             properties,
             String::new(),
             Some(spare),
+            false,
         )
     }
+    #[allow(clippy::too_many_arguments)]
     fn register_with_spare(
         &self,
         size: u64,
@@ -755,92 +1069,86 @@ impl AllocatorStats {
         properties: vk::MemoryPropertyFlags,
         name: String,
         spare: Option<u64>,
+        native: bool,
     ) -> Result<u64> {
         if size == 0 {
-            return Err(Error::invalid_usage("不能登记零大小分配"));
+            return Err(Error::invalid_usage("cannot register a zero-sized allocation"));
         }
-        let mut state = self.state.lock();
-        let total = state
-            .totals
-            .total_allocated_bytes
-            .checked_add(size)
-            .ok_or_else(|| Error::invalid_usage("内存统计溢出"))?;
-        let old_spare = spare.map_or(0, |_| state.suballocator_spare[memory_type as usize]);
-        let new_spare = spare.unwrap_or(0);
-        let used = state
-            .heap_used
-            .get(&heap)
-            .copied()
-            .unwrap_or(0)
-            .checked_sub(old_spare)
-            .and_then(|used| used.checked_add(new_spare))
-            .and_then(|used| used.checked_add(size))
-            .ok_or_else(|| Error::invalid_usage("内存统计溢出"))?;
-        if state
-            .heap_budgets
-            .get(&heap)
-            .is_some_and(|budget| used > *budget)
-        {
-            return Err(Error::OutOfDeviceMemory);
-        }
-        let id = state
-            .next_id
-            .checked_add(1)
-            .ok_or_else(|| Error::invalid_usage("内存ID耗尽"))?;
-        let mut totals = state.totals;
-        totals.total_allocated_bytes = total;
-        if properties.contains(vk::MemoryPropertyFlags::DEVICE_LOCAL) {
-            totals.device_local_bytes = totals
-                .device_local_bytes
+        let heap_slot = heap_index(heap)?;
+        let type_slot = usize::try_from(memory_type)
+            .ok()
+            .filter(|index| *index < 32)
+            .ok_or_else(|| Error::invalid_usage("memory type index out of range"))?;
+        let overflow = || Error::invalid_usage("memory statistics overflow");
+        self.with_state(|state| {
+            let total = state
+                .totals
+                .total_allocated_bytes
                 .checked_add(size)
-                .ok_or_else(|| Error::invalid_usage("内存统计溢出"))?;
-        } else {
-            totals.system_bytes = totals
-                .system_bytes
-                .checked_add(size)
-                .ok_or_else(|| Error::invalid_usage("内存统计溢出"))?;
-        }
-        let mut budget = state.budget;
-        budget.release(crate::device::BudgetCategory::Cache, old_spare);
-        budget
-            .reserve(crate::device::BudgetCategory::Cache, new_spare)
-            .map_err(|_| Error::OutOfDeviceMemory)?;
-        budget
-            .reserve(crate::device::BudgetCategory::Live, size)
-            .map_err(|_| Error::OutOfDeviceMemory)?;
-        state.budget = budget;
-        if spare.is_some() {
-            state.suballocator_spare[memory_type as usize] = new_spare;
-        }
-        state.next_id = id;
-        state.phases.insert(
-            id,
-            AllocationPhase {
-                category: crate::device::BudgetCategory::Live,
-                last_use: crate::sync::SyncSet::EMPTY,
-            },
-        );
-        state.records.insert(
-            id,
-            AllocationRecord {
+                .ok_or_else(overflow)?;
+            let old_spare = spare.map_or(0, |_| state.suballocator_spare[type_slot]);
+            let new_spare = spare.unwrap_or(0);
+            let used = state.heap_used[heap_slot]
+                .checked_sub(old_spare)
+                .and_then(|used| used.checked_add(new_spare))
+                .and_then(|used| used.checked_add(size))
+                .ok_or_else(overflow)?;
+            if state.heap_limit(heap_slot).is_some_and(|limit| used > limit) {
+                return Err(Error::OutOfDeviceMemory);
+            }
+            let id = state.next_id.checked_add(1).ok_or_else(overflow)?;
+            let mut totals = state.totals;
+            totals.total_allocated_bytes = total;
+            if properties.contains(vk::MemoryPropertyFlags::DEVICE_LOCAL) {
+                totals.device_local_bytes =
+                    totals.device_local_bytes.checked_add(size).ok_or_else(overflow)?;
+            } else {
+                totals.system_bytes = totals.system_bytes.checked_add(size).ok_or_else(overflow)?;
+            }
+            let mut budget = state.budget;
+            budget.release(BudgetCategory::Cache, old_spare);
+            budget
+                .reserve(BudgetCategory::Cache, new_spare)
+                .map_err(|_| Error::OutOfDeviceMemory)?;
+            budget
+                .reserve(BudgetCategory::Live, size)
+                .map_err(|_| Error::OutOfDeviceMemory)?;
+            state.budget = budget;
+            if spare.is_some() {
+                state.suballocator_spare[type_slot] = new_spare;
+            }
+            state.next_id = id;
+            state.phases.insert(
                 id,
-                size,
-                memory_type,
-                heap,
-                properties: properties.as_raw(),
-                name,
-            },
-        );
-        state.totals = totals;
-        state.heap_used.insert(heap, used);
-        state.peak.device_local_bytes =
-            state.peak.device_local_bytes.max(totals.device_local_bytes);
-        state.peak.system_bytes = state.peak.system_bytes.max(totals.system_bytes);
-        if total > state.peak.total_allocated_bytes {
-            state.peak.total_allocated_bytes = total;
-            state.peak_dirty = true;
-        }
-        Ok(id)
+                AllocationPhase {
+                    category: BudgetCategory::Live,
+                    last_use: crate::sync::SyncSet::EMPTY,
+                    native,
+                },
+            );
+            state.records.insert(
+                id,
+                AllocationRecord {
+                    id,
+                    size,
+                    memory_type,
+                    heap,
+                    properties: properties.as_raw(),
+                    name,
+                },
+            );
+            state.totals = totals;
+            state.heap_used[heap_slot] = used;
+            state.refresh_heap_pressure();
+            state.peak.device_local_bytes =
+                state.peak.device_local_bytes.max(totals.device_local_bytes);
+            state.peak.system_bytes = state.peak.system_bytes.max(totals.system_bytes);
+            if total > state.peak.total_allocated_bytes {
+                state.peak.total_allocated_bytes = total;
+                state.peak_dirty = true;
+            }
+            Ok(id)
+        })
     }
     pub fn release(&self, id: u64) -> Result<()> {
         self.release_with_spare(id, None)
@@ -850,45 +1158,55 @@ impl AllocatorStats {
         self.release_with_spare(id, Some(spare))
     }
     fn release_with_spare(&self, id: u64, spare: Option<u64>) -> Result<()> {
-        let mut state = self.state.lock();
-        if !state.records.contains_key(&id) {
-            return Err(Error::invalid_usage("未知或已释放的内存ID"));
-        }
-        // 释放会改变状态：先把刚到达的峰值物化。
-        state.materialize_peak();
-        let record = state
-            .records
-            .remove(&id)
-            .ok_or_else(|| Error::invalid_usage("未知或已释放的内存ID"))?;
-        if let Some(phase) = state.phases.remove(&id) {
-            state.budget.release(phase.category, record.size);
-        }
-        if let Some(spare) = spare {
-            replace_spare(&mut state, record.memory_type, record.heap, spare);
-        }
-        if let Some(used) = state.heap_used.get_mut(&record.heap) {
-            *used -= record.size;
-        }
-        state.totals.total_allocated_bytes -= record.size;
-        if record.properties & vk::MemoryPropertyFlags::DEVICE_LOCAL.as_raw() != 0 {
-            state.totals.device_local_bytes -= record.size;
-        } else {
-            state.totals.system_bytes -= record.size;
+        let native = self.with_state(|state| {
+            if !state.records.contains_key(&id) {
+                return Err(Error::invalid_usage("unknown or already released memory id"));
+            }
+            // Releasing changes state: materialize a just-reached peak first.
+            state.materialize_peak();
+            let record = state
+                .records
+                .remove(&id)
+                .ok_or_else(|| Error::invalid_usage("unknown or already released memory id"))?;
+            let mut native = false;
+            if let Some(phase) = state.phases.remove(&id) {
+                state.budget.release(phase.category, record.size);
+                native = phase.native;
+            }
+            if let Some(spare) = spare {
+                replace_spare(state, record.memory_type, record.heap, spare);
+            }
+            if let Some(used) = state.heap_used.get_mut(record.heap as usize) {
+                *used = used.saturating_sub(record.size);
+            }
+            state.refresh_heap_pressure();
+            state.totals.total_allocated_bytes -= record.size;
+            if record.properties & vk::MemoryPropertyFlags::DEVICE_LOCAL.as_raw() != 0 {
+                state.totals.device_local_bytes -= record.size;
+            } else {
+                state.totals.system_bytes -= record.size;
+            }
+            Ok(native)
+        })?;
+        if native {
+            self.release_native_object();
         }
         Ok(())
     }
     /// Only unused native blocks may be trimmed. No live range changes here.
     #[cfg(any(feature = "suballocation", test))]
     pub(crate) fn trim_suballocator_spare(&self, memory_type: u32, heap: u32) {
-        replace_spare(&mut self.state.lock(), memory_type, heap, 0);
+        self.with_state(|state| {
+            replace_spare(state, memory_type, heap, 0);
+            state.refresh_heap_pressure();
+        });
     }
     pub(crate) fn rename(&self, id: u64, name: String) {
         let mut state = self.state.lock();
         if let Some(record) = state.records.get_mut(&id) {
             record.name = name.clone();
         }
-        // 名称在分配成功后立即生产；同步补齐刚捕获的峰值快照中对应记录。
-        // 快照未物化时，之后物化会直接带上新名字；已物化时按 id（有序）二分定位。
+        // Keep a materialized peak snapshot consistent with the new name.
         if let Some(report) = &mut state.peak_report
             && let Ok(index) = report
                 .allocations
@@ -899,22 +1217,30 @@ impl AllocatorStats {
     }
 }
 
-fn replace_spare(state: &mut StatisticsState, memory_type: u32, heap: u32, spare: u64) {
-    use crate::device::BudgetCategory;
-    let previous = state.suballocator_spare[memory_type as usize];
-    state.budget.release(BudgetCategory::Cache, previous);
-    state
-        .budget
-        .reserve(BudgetCategory::Cache, spare)
-        .expect("freeing or trimming native memory cannot increase its admitted total");
-    state.suballocator_spare[memory_type as usize] = spare;
-    let used = state.heap_used.entry(heap).or_default();
-    *used = used
-        .checked_sub(previous)
-        .and_then(|value| value.checked_add(spare))
-        .expect("native spare accounting is balanced");
+fn heap_index(heap: u32) -> Result<usize> {
+    usize::try_from(heap)
+        .ok()
+        .filter(|index| *index < MAX_HEAPS)
+        .ok_or_else(|| Error::invalid_usage("memory heap index out of range"))
 }
-fn transition_phase(state: &mut StatisticsState, id: u64, category: crate::device::BudgetCategory) {
+
+fn replace_spare(state: &mut StatisticsState, memory_type: u32, heap: u32, spare: u64) {
+    let Some(slot) = state.suballocator_spare.get_mut(memory_type as usize) else {
+        return;
+    };
+    let previous = std::mem::replace(slot, spare);
+    state.budget.release(BudgetCategory::Cache, previous);
+    // Freeing or trimming native memory never increases the admitted total,
+    // so this re-admission cannot exceed a limit that admitted `previous`.
+    // A limit lowered in between is tolerated: the charge is a fact.
+    if state.budget.reserve(BudgetCategory::Cache, spare).is_err() {
+        state.budget.record_cache(spare);
+    }
+    if let Some(used) = state.heap_used.get_mut(heap as usize) {
+        *used = used.saturating_sub(previous).saturating_add(spare);
+    }
+}
+fn transition_phase(state: &mut StatisticsState, id: u64, category: BudgetCategory) {
     let Some(phase) = state.phases.get_mut(&id) else {
         return;
     };
@@ -923,11 +1249,13 @@ fn transition_phase(state: &mut StatisticsState, id: u64, category: crate::devic
     }
     // Retiring is terminal: accounting can never make an unowned allocation
     // eligible for a cache just because another completion snapshot arrived.
-    if phase.category == crate::device::BudgetCategory::Retiring {
+    if phase.category == BudgetCategory::Retiring {
         return;
     }
-    let bytes = state.records[&id].size;
-    state.budget.reclassify(phase.category, category, bytes);
+    let Some(record) = state.records.get(&id) else {
+        return;
+    };
+    state.budget.reclassify(phase.category, category, record.size);
     phase.category = category;
 }
 
@@ -937,14 +1265,14 @@ pub struct AllocationRequest {
     pub location: MemoryLocation,
     pub flags: vk::MemoryAllocateFlags,
 }
-/// 原 gpu-allocator 分叉的外供边界。未来直接接原库；不复制其池或空闲块算法。
+/// Allocation backend boundary (dedicated or gpu-allocator suballocation).
 pub trait AllocationBackend {
     type Allocation;
     fn allocate(&mut self, request: &AllocationRequest) -> Result<Self::Allocation>;
     fn free(&mut self, allocation: Self::Allocation) -> Result<()>;
     fn report(&self) -> AllocatorReport;
 }
-/// 游戏私有峰值包装。原 +0x688 flag 为 1 时每次 allocate 返回后采样；free 不采样。
+/// Peak-tracking wrapper: samples the backend report after each allocation.
 pub struct GpuAllocator<B: AllocationBackend> {
     backend: B,
     track_peaks: bool,
@@ -973,7 +1301,8 @@ impl<B: AllocationBackend> GpuAllocator<B> {
         }
         result
     }
-    /// 保留完整报表快照，只在 total 严格增加时替换；device/system 独立取最大。
+    /// Keep the full report at the strictly highest total; device/system
+    /// peaks are tracked independently.
     pub fn observe_report(&mut self, report: AllocatorReport) {
         self.peaks.device_local_bytes = self
             .peaks
@@ -1113,6 +1442,41 @@ mod budget_tests {
         stats.release(id).unwrap();
         assert_eq!(stats.budget_usage().total(), 0);
     }
+    #[test]
+    fn completion_moves_only_reached_in_flight_uses_across_queues() {
+        let stats = AllocatorStats::default();
+        let register = || {
+            stats
+                .register(10, 0, 0, vk::MemoryPropertyFlags::DEVICE_LOCAL, String::new())
+                .unwrap()
+        };
+        let (a, b, c) = (register(), register(), register());
+        let (q0, q1) = (QueueId::new(0).unwrap(), QueueId::new(1).unwrap());
+        // Out-of-order publication on one queue and a two-queue dependency.
+        stats.record_gpu_use(a, SyncPoint { queue: q0, value: 5 });
+        stats.record_gpu_use(b, SyncPoint { queue: q0, value: 2 });
+        stats.record_gpu_use(c, SyncPoint { queue: q0, value: 1 });
+        stats.record_gpu_use(c, SyncPoint { queue: q1, value: 7 });
+        assert_eq!(stats.budget_usage().in_flight, 30);
+        let mut completed = CompletedValues::default();
+        completed.raise(q0, 2);
+        stats.observe_completed(&completed);
+        assert_eq!(stats.budget_usage().in_flight, 20, "b reached; c waits for q1");
+        assert_eq!(stats.state.lock().in_flight[0].len(), 1);
+        stats.observe_completed(&completed);
+        completed.raise(q1, 7);
+        stats.observe_completed(&completed);
+        assert_eq!(stats.budget_usage().in_flight, 10);
+        // A use already covered by the observed snapshot stays live.
+        stats.record_gpu_use(b, SyncPoint { queue: q0, value: 2 });
+        assert_eq!(stats.budget_usage().in_flight, 10);
+        completed.raise(q0, 5);
+        stats.observe_completed(&completed);
+        assert_eq!(stats.budget_usage().live, 30);
+        for id in [a, b, c] {
+            stats.release(id).unwrap();
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1184,23 +1548,74 @@ mod native_spare_tests {
         assert_eq!(stats.budget_usage().total(), 0);
     }
     #[test]
-    fn host_reservations_and_native_capacity_share_the_budget_without_sharing_gpu_totals() {
+    fn host_reservations_use_a_separate_budget_from_device_memory() {
         let stats = Arc::new(AllocatorStats::default());
         stats.set_total_budget(100).unwrap();
+        stats.set_host_budget(30).unwrap();
         let host = stats
             .reserve_cpu_bytes(20, crate::device::BudgetCategory::Cache)
             .unwrap();
+        // Host metadata does not consume device headroom...
         let a = stats
-            .register_suballocation(20, 0, 0, vk::MemoryPropertyFlags::DEVICE_LOCAL, 60)
+            .register_suballocation(20, 0, 0, vk::MemoryPropertyFlags::DEVICE_LOCAL, 80)
             .unwrap();
-        assert_eq!(stats.budget_usage().total(), 100);
-        assert_eq!(stats.report().totals.total_allocated_bytes, 20);
-        stats.release_suballocation(a, 80).unwrap();
-        assert_eq!(stats.budget_usage().cache, 100);
+        assert_eq!(stats.device_memory_usage().total(), 100);
+        assert_eq!(stats.budget_usage().total(), 120);
+        assert_eq!(stats.cpu_memory_usage().total(), 20);
+        // ...and host exhaustion is a host error, never device OOM.
+        assert!(matches!(
+            stats.reserve_cpu_bytes(11, crate::device::BudgetCategory::Live),
+            Err(Error::OutOfHostMemory)
+        ));
+        assert!(matches!(
+            stats.register(1, 0, 0, vk::MemoryPropertyFlags::DEVICE_LOCAL, String::new()),
+            Err(Error::OutOfDeviceMemory)
+        ));
+        stats.release_suballocation(a, 100).unwrap();
+        assert_eq!(stats.device_memory_usage().cache, 100);
         drop(host);
-        assert_eq!(stats.budget_usage().cache, 80);
+        assert_eq!(stats.cpu_memory_usage().total(), 0);
         stats.trim_suballocator_spare(0, 0);
         assert_eq!(stats.budget_usage().total(), 0);
+    }
+    #[test]
+    fn driver_heap_budgets_exclude_foreign_usage_and_raise_pressure() {
+        let stats = AllocatorStats::default();
+        let a = stats
+            .register(60, 0, 1, vk::MemoryPropertyFlags::DEVICE_LOCAL, String::new())
+            .unwrap();
+        // Heap 1: budget 200, process usage 100 of which 60 are ours.
+        stats.apply_driver_heap_budgets(&[(1000, 0), (200, 100)]);
+        assert_eq!(stats.heap_usage(1).unwrap(), (60, Some(160)));
+        assert_eq!(stats.budget_action(), crate::device::BudgetAction::None);
+        assert!(matches!(
+            stats.register(101, 0, 1, vk::MemoryPropertyFlags::DEVICE_LOCAL, String::new()),
+            Err(Error::OutOfDeviceMemory)
+        ));
+        let b = stats
+            .register(80, 0, 1, vk::MemoryPropertyFlags::DEVICE_LOCAL, String::new())
+            .unwrap();
+        assert_ne!(stats.budget_action(), crate::device::BudgetAction::None);
+        stats.release(b).unwrap();
+        stats.release(a).unwrap();
+        assert!(stats.heap_usage(16).is_err());
+    }
+    #[test]
+    fn native_object_count_never_exceeds_the_device_limit() {
+        let stats = AllocatorStats::default();
+        stats.set_max_native_objects(2);
+        stats.acquire_native_object().unwrap();
+        let id = stats
+            .register_native(8, 0, 0, vk::MemoryPropertyFlags::DEVICE_LOCAL)
+            .unwrap();
+        stats.acquire_native_object().unwrap();
+        assert_eq!(
+            stats.acquire_native_object().unwrap_err().kind(),
+            crate::ErrorKind::Exhausted
+        );
+        stats.release_native_object();
+        stats.release(id).unwrap();
+        assert_eq!(stats.native_object_count(), 0);
     }
 }
 

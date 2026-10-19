@@ -136,8 +136,8 @@ fn metadata_budget_rejects_view_before_cache_or_native_publication() {
     let desc = TextureDesc::new_2d(4, 4, vk::Format::R8G8B8A8_UNORM).sampled();
     let texture = device.create_texture(&desc, "view quota", ()).unwrap();
     let before = device.allocator_stats.cpu_memory_usage();
-    let total = device.allocator_stats.budget_usage().total();
-    device.allocator_stats.set_total_budget(total + 1).unwrap();
+    let total = device.allocator_stats.cpu_memory_usage().total();
+    device.allocator_stats.set_host_budget(total + 1).unwrap();
     assert!(matches!(
         texture.view(None),
         Err(rhapsody::Error::OutOfHostMemory)

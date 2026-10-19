@@ -1,12 +1,9 @@
-//! 显存子分配：把公开 `gpu-allocator` 接到 [`AllocationBackend`] 边界上，不自写次分配算法。
+//! Device memory suballocation through `gpu-allocator` 0.27, exposed at the
+//! [`AllocationBackend`] boundary.
 //!
-//! 原作 `rhapsody` 依赖 gpu-allocator 的本地分叉（Cargo.lock 记 0.26.0，另依赖 arc-swap/egui/puffin），
-//! 本身就做块内子分配。PDB 中 `with_global_allocator` 返回 `AllocatorReport`，该类型只存在于 0.27 系
-//! （`generate_report`），公开 0.26.0 又依赖 ash <=0.37，所以算法按公开 0.27.0 复用；
-//! 分叉相对 0.27 的附加项（egui 可视化、puffin、arc-swap 的用法）未恢复，不影响分配行为。
-//!
-//! 模式：`Suballocated`（默认，与原版一致）与 `Dedicated`（逐资源专用内存，仅作对比回退）。
-//! 默认值由进程级开关决定；未设置时看环境变量 `RHAPSODY_ALLOCATION=dedicated`。
+//! Modes: `Suballocated` (default) and `Dedicated` (one `VkDeviceMemory` per
+//! resource, for comparison). The process default can be overridden with
+//! `RHAPSODY_ALLOCATION=dedicated`.
 use super::{
     allocator::{
         AllocationBackend, AllocationRequest, AllocatorReport, MemoryBlock, MemoryLocation,
@@ -19,12 +16,12 @@ use gpu_allocator::vulkan::{Allocation, AllocationCreateDesc, AllocationScheme, 
 use parking_lot::Mutex;
 use std::sync::{
     Arc,
-    atomic::{AtomicU8, Ordering},
+    atomic::{AtomicBool, AtomicU8, AtomicU64, Ordering},
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AllocationMode {
-    /// 每个资源一块专用 `VkDeviceMemory`（原有行为）。
+    /// One dedicated `VkDeviceMemory` per resource.
     Dedicated,
     /// 经 gpu-allocator 在大块内子分配。
     Suballocated,
@@ -47,7 +44,6 @@ pub fn default_allocation_mode() -> AllocationMode {
     match DEFAULT_MODE.load(Ordering::SeqCst) {
         DEDICATED => AllocationMode::Dedicated,
         SUBALLOCATED => AllocationMode::Suballocated,
-        // 原版就是子分配（gpu-allocator）；环境变量只用于回退到逐资源专用分配做对比。
         _ => match std::env::var("RHAPSODY_ALLOCATION").as_deref() {
             Ok("dedicated") => AllocationMode::Dedicated,
             _ => AllocationMode::Suballocated,
@@ -78,25 +74,50 @@ fn allocation_error(error: gpu_allocator::AllocationError) -> Error {
     }
 }
 
+/// gpu-allocator 0.27 ignores `AllocatorCreateDesc::allocation_sizes` and
+/// always uses its default general block sizes.
+const HOST_BLOCK_BYTES: u64 = 64 * 1024 * 1024;
+const DEVICE_BLOCK_BYTES: u64 = 256 * 1024 * 1024;
+
 /// Shared by resource retirement and graph backing owners. Dispatch tables and
-/// statistics have no Arc<Device> back edge. An empty memory-type shard can be
-/// dropped independently because gpu-allocator retains its last general block.
+/// statistics have no Arc<Device> back edge. Each memory type has its own
+/// allocator and lock; its block/range counters are maintained incrementally
+/// (mirroring gpu-allocator's block lifetime rules), so no allocate/free path
+/// walks the allocator's live allocations.
 pub struct SubAllocator {
-    shards: Mutex<Shards>,
+    shards: [Mutex<Shard>; 32],
+    stopped: AtomicBool,
     instance: ash::Instance,
     device: ash::Device,
     physical: vk::PhysicalDevice,
     buffer_device_address: bool,
     stats: Arc<super::allocator::AllocatorStats>,
     memory: vk::PhysicalDeviceMemoryProperties,
-    physical_peak: std::sync::atomic::AtomicU64,
+    reserved_total: AtomicU64,
+    physical_peak: AtomicU64,
     pub non_coherent_atom_size: u64,
 }
-struct Shards {
-    allocators: [Option<Allocator>; 32],
-    /// Internal aligned chunk padding is native cache, not an exposed range.
-    range_bytes: [u64; 32],
-    stopped: bool,
+#[derive(Default)]
+struct Shard {
+    allocator: Option<Allocator>,
+    /// Bytes of live ranges handed to callers.
+    range_bytes: u64,
+    /// Bytes of native blocks owned by `allocator`.
+    reserved: u64,
+    allocations: usize,
+    blocks: Vec<NativeBlock>,
+    active_general_blocks: usize,
+}
+struct NativeBlock {
+    memory: vk::DeviceMemory,
+    size: u64,
+    live: usize,
+    general: bool,
+}
+impl Shard {
+    fn spare(&self) -> u64 {
+        self.reserved.saturating_sub(self.range_bytes)
+    }
 }
 /// One actual range and its unique allocator owner. Deferred destruction can
 /// return it without retaining the Device that owns the retirement queue.
@@ -109,6 +130,7 @@ pub struct SubAllocation {
 impl std::ops::Deref for SubAllocation {
     type Target = Allocation;
     fn deref(&self) -> &Allocation {
+        // Only `Drop` takes the allocation; no deref can follow it.
         self.allocation.as_ref().expect("live suballocation")
     }
 }
@@ -130,48 +152,49 @@ impl SubAllocator {
     ) -> Result<Self> {
         let properties = unsafe { instance.get_physical_device_properties(physical) };
         Ok(Self {
-            shards: Mutex::new(Shards {
-                allocators: std::array::from_fn(|_| None),
-                range_bytes: [0; 32],
-                stopped: false,
-            }),
+            shards: std::array::from_fn(|_| Mutex::new(Shard::default())),
+            stopped: AtomicBool::new(false),
             instance: instance.clone(),
             device: device.clone(),
             physical,
             buffer_device_address,
             stats,
             memory: unsafe { instance.get_physical_device_memory_properties(physical) },
-            physical_peak: Default::default(),
+            reserved_total: AtomicU64::new(0),
+            physical_peak: AtomicU64::new(0),
             non_coherent_atom_size: properties.limits.non_coherent_atom_size.max(1),
         })
     }
-    pub(crate) fn should_use(&self, memory_type: u32, size: u64) -> bool {
-        let limit = self.stats.budget_limit();
-        if limit == 0 {
-            return true;
-        }
-        let shards = self.shards.lock();
-        if let Some(allocator) = &shards.allocators[memory_type as usize] {
-            let report = allocator.generate_report();
-            if report.total_reserved_bytes - report.total_allocated_bytes >= size {
-                return true;
-            }
-        }
-        // gpu-allocator 0.27 ignores AllocatorCreateDesc.allocation_sizes in
-        // Allocator::new and installs its defaults (64/256 MiB) unconditionally.
-        // Do not claim a smaller configured block works. Existing free ranges
-        // remain useful; otherwise use the established dedicated fallback when
-        // a native block would leave no budget for host metadata/other types.
-        let default_block = if self.memory.memory_types[memory_type as usize]
+    fn general_block_bytes(&self, memory_type: usize) -> u64 {
+        if self.memory.memory_types[memory_type]
             .property_flags
             .contains(vk::MemoryPropertyFlags::HOST_VISIBLE)
         {
-            64 * 1024 * 1024
+            HOST_BLOCK_BYTES
         } else {
-            256 * 1024 * 1024
-        };
-        let native = default_block.max(size);
-        self.stats.budget_available() >= native.saturating_add((limit / 16).max(64 * 1024))
+            DEVICE_BLOCK_BYTES
+        }
+    }
+    /// Whether `size` bytes should be suballocated. Free space in existing
+    /// blocks is always used. A new native block is admitted when the device
+    /// and heap budgets can hold it, after first trimming empty blocks of
+    /// other memory types. Only then does the caller fall back to a
+    /// dedicated allocation of exactly `size` bytes.
+    pub(crate) fn should_use(&self, memory_type: u32, size: u64) -> bool {
+        let index = memory_type as usize;
+        if self.shards[index].lock().spare() >= size {
+            return true;
+        }
+        let block = self.general_block_bytes(index);
+        if size > block {
+            // A personal block of exactly `size` costs the same as dedicated.
+            return true;
+        }
+        let heap = self.memory.memory_types[index].heap_index;
+        if self.stats.heap_available(heap) >= block {
+            return true;
+        }
+        self.trim_unused() != 0 && self.stats.heap_available(heap) >= block
     }
     fn make_allocator(&self) -> Result<Allocator> {
         Allocator::new(&gpu_allocator::vulkan::AllocatorCreateDesc {
@@ -189,18 +212,16 @@ impl SubAllocator {
         desc: &AllocationCreateDesc<'_>,
         memory_type: u32,
     ) -> Result<SubAllocation> {
-        let mut shards = self.shards.lock();
-        if shards.stopped {
+        let index = memory_type as usize;
+        let slot = self
+            .shards
+            .get(index)
+            .ok_or_else(|| Error::invalid_usage("memory type index out of range"))?;
+        let mut shard = slot.lock();
+        if self.stopped.load(Ordering::Acquire) {
             return Err(Error::invalid_usage("suballocator has shut down"));
         }
-        let index = memory_type as usize;
         let heap = self.memory.memory_types[index].heap_index;
-        if shards.allocators[index].is_none() {
-            shards.allocators[index] = Some(self.make_allocator()?);
-        }
-        let allocator = shards.allocators[index]
-            .as_mut()
-            .expect("initialized shard");
         let mut requirements = desc.requirements;
         requirements.memory_type_bits = 1u32 << memory_type;
         let properties = self.memory.memory_types[index].property_flags;
@@ -210,49 +231,105 @@ impl SubAllocator {
             requirements.alignment = requirements.alignment.max(self.non_coherent_atom_size);
             requirements.size = round_up(requirements.size, self.non_coherent_atom_size);
         }
-        let allocation = allocator
-            .allocate(&AllocationCreateDesc {
-                requirements,
-                ..*desc
-            })
-            .map_err(allocation_error)?;
-        let report = allocator.generate_report();
-        let next_ranges = shards.range_bytes[index]
-            .checked_add(allocation.size())
-            .expect("native allocated ranges fit u64");
-        let spare = report.total_reserved_bytes - next_ranges;
-        let observed: u64 = shards
-            .allocators
-            .iter()
-            .flatten()
-            .map(|allocator| allocator.generate_report().total_reserved_bytes)
-            .sum();
-        self.physical_peak.fetch_max(observed, Ordering::Relaxed);
+        shard
+            .blocks
+            .try_reserve(1)
+            .map_err(|_| Error::OutOfHostMemory)?;
+        // Reserve a VkDeviceMemory slot in case a block is created. Without
+        // one, only existing free space may be used.
+        let have_slot = self.stats.acquire_native_object().is_ok();
+        if !have_slot && shard.spare() < requirements.size {
+            return Err(Error::exhausted("maxMemoryAllocationCount reached"));
+        }
+        if shard.allocator.is_none() {
+            match self.make_allocator() {
+                Ok(allocator) => shard.allocator = Some(allocator),
+                Err(error) => {
+                    if have_slot {
+                        self.stats.release_native_object();
+                    }
+                    return Err(error);
+                }
+            }
+        }
+        let result = match shard.allocator.as_mut() {
+            Some(allocator) => allocator
+                .allocate(&AllocationCreateDesc {
+                    requirements,
+                    ..*desc
+                })
+                .map_err(allocation_error),
+            None => Err(Error::invalid_usage("suballocator shard is unavailable")),
+        };
+        let allocation = match result {
+            Ok(allocation) => allocation,
+            Err(error) => {
+                if have_slot {
+                    self.stats.release_native_object();
+                }
+                return Err(error);
+            }
+        };
+        let memory = unsafe { allocation.memory() };
+        let size = allocation.size();
+        let created = match shard.blocks.iter_mut().find(|block| block.memory == memory) {
+            Some(block) => {
+                block.live += 1;
+                false
+            }
+            None => {
+                let general = size <= self.general_block_bytes(index);
+                let block_size = if general {
+                    self.general_block_bytes(index)
+                } else {
+                    size
+                };
+                shard.blocks.push(NativeBlock {
+                    memory,
+                    size: block_size,
+                    live: 1,
+                    general,
+                });
+                if general {
+                    shard.active_general_blocks += 1;
+                }
+                shard.reserved += block_size;
+                let total = self.reserved_total.fetch_add(block_size, Ordering::AcqRel) + block_size;
+                self.physical_peak.fetch_max(total, Ordering::Relaxed);
+                true
+            }
+        };
+        shard.range_bytes += size;
+        shard.allocations += 1;
+        match (created, have_slot) {
+            (false, true) => self.stats.release_native_object(),
+            (true, false) => {
+                // A fragmented block forced growth past the native object limit.
+                let released = self.release_locked(&mut shard, allocation);
+                if released {
+                    self.stats.trim_suballocator_spare(memory_type, heap);
+                }
+                return Err(Error::exhausted("maxMemoryAllocationCount reached"));
+            }
+            _ => {}
+        }
         let accounting_id = match self.stats.register_suballocation(
-            allocation.size(),
+            size,
             memory_type,
             heap,
             allocation.memory_properties(),
-            spare,
+            shard.spare(),
         ) {
             Ok(id) => id,
             Err(error) => {
-                // The dependency has no native-allocation preflight callback.
-                // Admit its observed native delta, or return the real range and
-                // destroy an empty shard before exposing a resource to callers.
-                let allocator = shards.allocators[index].as_mut().expect("allocated shard");
-                allocator
-                    .free(allocation)
-                    .expect("fresh allocation can be rolled back");
-                let report = allocator.generate_report();
-                if report.allocations.is_empty() {
-                    shards.allocators[index].take();
+                // gpu-allocator has no native-allocation preflight. Return the
+                // range and an emptied shard before exposing it to callers.
+                if self.release_locked(&mut shard, allocation) {
                     self.stats.trim_suballocator_spare(memory_type, heap);
                 }
                 return Err(error);
             }
         };
-        shards.range_bytes[index] = next_ranges;
         Ok(SubAllocation {
             allocation: Some(allocation),
             owner: self.clone(),
@@ -260,46 +337,101 @@ impl SubAllocator {
             accounting_id,
         })
     }
-    fn free(&self, allocation: Allocation, memory_type: u32, accounting_id: u64) {
-        let mut shards = self.shards.lock();
-        let index = memory_type as usize;
+    /// Return an unregistered range. Drops the whole allocator when it became
+    /// empty; returns whether that happened.
+    fn release_locked(&self, shard: &mut Shard, allocation: Allocation) -> bool {
+        self.free_locked(shard, allocation);
+        if shard.allocations == 0 {
+            self.drop_allocator(shard);
+            return true;
+        }
+        false
+    }
+    /// Free one range and mirror gpu-allocator's block destruction: personal
+    /// blocks die with their range, empty general blocks die unless they are
+    /// the last general block.
+    fn free_locked(&self, shard: &mut Shard, allocation: Allocation) {
+        let memory = unsafe { allocation.memory() };
         let size = allocation.size();
-        let allocator = shards.allocators[index]
-            .as_mut()
-            .expect("allocation owner is alive");
-        allocator
-            .free(allocation)
-            .expect("suballocation is returned once");
-        let report = allocator.generate_report();
-        shards.range_bytes[index] -= size;
-        let spare = if report.allocations.is_empty()
+        match shard.allocator.as_mut() {
+            Some(allocator) => {
+                if let Err(error) = allocator.free(allocation) {
+                    log::error!("gpu-allocator free failed: {error}");
+                }
+            }
+            None => log::error!("suballocation freed after its allocator shut down"),
+        }
+        shard.range_bytes = shard.range_bytes.saturating_sub(size);
+        shard.allocations = shard.allocations.saturating_sub(1);
+        let Some(position) = shard.blocks.iter().position(|block| block.memory == memory) else {
+            return;
+        };
+        let block = &mut shard.blocks[position];
+        block.live = block.live.saturating_sub(1);
+        if block.live != 0 {
+            return;
+        }
+        let destroyed = if block.general {
+            if shard.active_general_blocks > 1 {
+                shard.active_general_blocks -= 1;
+                true
+            } else {
+                false
+            }
+        } else {
+            true
+        };
+        if destroyed {
+            let block = shard.blocks.swap_remove(position);
+            shard.reserved = shard.reserved.saturating_sub(block.size);
+            self.reserved_total.fetch_sub(block.size, Ordering::AcqRel);
+            self.stats.release_native_object();
+        }
+    }
+    /// Destroy an empty shard's allocator and all of its native blocks.
+    fn drop_allocator(&self, shard: &mut Shard) -> u64 {
+        if shard.allocator.take().is_none() {
+            return 0;
+        }
+        for _ in shard.blocks.drain(..) {
+            self.stats.release_native_object();
+        }
+        let released = std::mem::take(&mut shard.reserved);
+        self.reserved_total.fetch_sub(released, Ordering::AcqRel);
+        shard.active_general_blocks = 0;
+        released
+    }
+    fn free(&self, allocation: Allocation, memory_type: u32, accounting_id: u64) {
+        let index = memory_type as usize;
+        let Some(slot) = self.shards.get(index) else {
+            return;
+        };
+        let mut shard = slot.lock();
+        self.free_locked(&mut shard, allocation);
+        let spare = if shard.allocations == 0
             && self.stats.budget_action() == crate::device::BudgetAction::EvictCache
         {
-            shards.allocators[index].take();
+            self.drop_allocator(&mut shard);
             0
         } else {
-            report.total_reserved_bytes - shards.range_bytes[index]
+            shard.spare()
         };
-        self.stats
-            .release_suballocation(accounting_id, spare)
-            .expect("range and native spare accounting are released together");
+        if let Err(error) = self.stats.release_suballocation(accounting_id, spare) {
+            log::error!("suballocation accounting release failed: {error}");
+        }
     }
     /// Only wholly empty memory-type shards can release native blocks. Holes in
     /// a shard with live ranges remain charged as GPU cache bytes.
     pub fn trim_unused(&self) -> u64 {
-        let mut shards = self.shards.lock();
         let mut released = 0;
-        for (index, slot) in shards.allocators.iter_mut().enumerate() {
-            if let Some(allocator) = slot {
-                let report = allocator.generate_report();
-                if report.allocations.is_empty() {
-                    released += report.total_reserved_bytes;
-                    slot.take();
-                    self.stats.trim_suballocator_spare(
-                        index as u32,
-                        self.memory.memory_types[index].heap_index,
-                    );
-                }
+        for index in 0..self.memory.memory_type_count as usize {
+            let mut shard = self.shards[index].lock();
+            if shard.allocator.is_some() && shard.allocations == 0 {
+                released += self.drop_allocator(&mut shard);
+                self.stats.trim_suballocator_spare(
+                    index as u32,
+                    self.memory.memory_types[index].heap_index,
+                );
             }
         }
         released
@@ -310,39 +442,30 @@ impl SubAllocator {
     pub fn physical_peak_bytes(&self) -> u64 {
         self.physical_peak.load(Ordering::Relaxed)
     }
+    /// `(range bytes, reserved native bytes, live ranges, native blocks)`.
     pub(crate) fn memory_usage(&self) -> (u64, u64, usize, usize) {
-        let shards = self.shards.lock();
-        let mut usage =
-            shards
-                .allocators
-                .iter()
-                .flatten()
-                .fold((0, 0, 0, 0), |total, allocator| {
-                    let report = allocator.generate_report();
-                    (
-                        0,
-                        total.1 + report.total_reserved_bytes,
-                        total.2 + report.allocations.len(),
-                        total.3 + report.blocks.len(),
-                    )
-                });
-        usage.0 = shards.range_bytes.iter().sum();
+        let mut usage = (0, 0, 0, 0);
+        for shard in &self.shards[..self.memory.memory_type_count as usize] {
+            let shard = shard.lock();
+            usage.0 += shard.range_bytes;
+            usage.1 += shard.reserved;
+            usage.2 += shard.allocations;
+            usage.3 += shard.blocks.len();
+        }
         usage
     }
     pub(crate) fn shutdown(&self) {
-        self.trim_unused();
-        let mut shards = self.shards.lock();
-        debug_assert!(
-            shards
-                .allocators
-                .iter()
-                .flatten()
-                .all(|allocator| allocator.generate_report().allocations.is_empty())
-        );
-        for slot in &mut shards.allocators {
-            slot.take();
+        self.stopped.store(true, Ordering::Release);
+        for (index, shard) in self.shards.iter().enumerate() {
+            let mut shard = shard.lock();
+            if shard.allocations != 0 {
+                log::error!(
+                    "suballocator shutdown with {} live ranges in memory type {index}",
+                    shard.allocations
+                );
+            }
+            self.drop_allocator(&mut shard);
         }
-        shards.stopped = true;
     }
 }
 
@@ -369,8 +492,8 @@ fn round_up(value: u64, to: u64) -> u64 {
 }
 
 impl MemoryBlock {
-    /// 经子分配器分配；`linear` 标明线性资源（缓冲/线性图像）或最优平铺图像，
-    /// 由 gpu-allocator 按 `bufferImageGranularity` 处理两类资源的相邻关系。
+    /// Suballocate. `linear` marks buffers and linear-tiling images so
+    /// gpu-allocator honours `bufferImageGranularity` between neighbours.
     pub(crate) fn allocate_sub(
         device: Arc<Device>,
         requirements: vk::MemoryRequirements,
@@ -447,8 +570,8 @@ impl Device {
     }
 }
 
-/// 把 gpu-allocator 接到原 `AllocationBackend` 边界；与 `DirectMemoryBackend`（专用分配）同构，
-/// 可直接放进游戏私有峰值包装 `GpuAllocator<B>`。
+/// gpu-allocator suballocation behind [`AllocationBackend`]; usable with the
+/// peak-tracking [`super::allocator::GpuAllocator`] wrapper.
 pub struct SubAllocationBackend {
     pub device: Arc<Device>,
 }

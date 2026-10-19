@@ -35,16 +35,20 @@ impl Device {
         Ok(self.queue_plan.queue(class))
     }
 
+    /// Fresh completion values (queries queues with outstanding work). The
+    /// same snapshot drives budget classification; that step is skipped when
+    /// no queue advanced.
     pub fn poll(&self) -> Result<crate::sync::CompletedValues> {
         let completed = self.timelines.poll()?;
         self.allocator_stats.observe_completed(&completed);
-        #[cfg(feature = "suballocation")]
-        if self.allocator_stats.budget_action() == crate::device::BudgetAction::EvictCache
-            && let Some(suballocator) = &self.suballocator
-        {
-            suballocator.trim_unused();
-        }
         Ok(completed)
+    }
+
+    /// Last observed completion values without a device query. Stale values
+    /// are conservative (work may look pending, never complete early); use
+    /// [`Self::poll`] when progress must be observed.
+    pub fn completed(&self) -> crate::sync::CompletedValues {
+        self.timelines.completed()
     }
 
     pub fn memory_budget_usage(&self) -> Result<crate::device::BudgetUsage> {
@@ -442,13 +446,7 @@ impl Device {
             }),
         )?;
         native_count(infos.len())?;
-        let extension = self
-            .enabled_extensions
-            .iter()
-            .any(|name| name == "VK_KHR_synchronization2")
-            .then(|| {
-                ash::khr::synchronization2::Device::new(&self.instance.instance, &self.device)
-            });
+        let extension = self.synchronization2.as_ref();
         let (point, ()) = self.timelines.submit(id, |signal| {
             // SAFETY: all arrays are owned by this call, all counts are checked,
             // and no backing can grow or move while the driver reads the views.
@@ -456,7 +454,7 @@ impl Device {
                 let last = signals_ptr.add(counts.2 - 1);
                 std::ptr::addr_of_mut!((*last).semaphore).write(signal.semaphore);
                 std::ptr::addr_of_mut!((*last).value).write(signal.value);
-                if let Some(extension) = &extension {
+                if let Some(extension) = extension {
                     extension.queue_submit2(queue, &infos, fence)
                 } else {
                     self.device.queue_submit2(queue, &infos, fence)

@@ -36,8 +36,12 @@ pub enum SubmissionApi {
 
 #[derive(Clone, Debug)]
 pub struct DeviceConfig {
-    /// Resource allocation budget; cached and retiring allocations still count.
+    /// Device memory budget; cached and retiring allocations still count.
+    /// Per-heap `VK_EXT_memory_budget` limits apply in addition when enabled.
     pub memory_budget_bytes: u64,
+    /// Budget for renderer-owned host metadata, enforced separately from
+    /// device memory (`0` = unbounded).
+    pub host_memory_budget_bytes: u64,
     pub queues: QueueConfig,
     /// 使用现有实例时要求验证层已启用；headless 入口负责创建它。
     pub validation: bool,
@@ -56,6 +60,7 @@ impl Default for DeviceConfig {
     fn default() -> Self {
         Self {
             memory_budget_bytes: 1024 * 1024 * 1024,
+            host_memory_budget_bytes: 512 * 1024 * 1024,
             queues: QueueConfig::default(),
             validation: false,
             required_features: super::policy::bindless_features()
@@ -132,6 +137,7 @@ impl DeviceConfig {
 pub(crate) struct RuntimeConfig {
     pub reclamation: super::ReclamationConfig,
     pub memory_budget_bytes: u64,
+    pub host_memory_budget_bytes: u64,
     pub caps: DeviceCaps,
     pub policy: ExecutionPolicy,
     pub frames_in_flight: u32,
@@ -602,6 +608,7 @@ pub(crate) fn create_candidate(
     let runtime = RuntimeConfig {
         reclamation: config.reclamation,
         memory_budget_bytes: config.memory_budget_bytes,
+        host_memory_budget_bytes: config.host_memory_budget_bytes,
         caps,
         policy,
         frames_in_flight: config.frames_in_flight,
