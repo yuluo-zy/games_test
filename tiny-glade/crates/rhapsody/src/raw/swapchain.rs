@@ -14,7 +14,9 @@ use super::{
     instance::VulkanInstance,
 };
 mod fullscreen;
+mod graph_presentation;
 use fullscreen::FullscreenState;
+pub(crate) use graph_presentation::{GraphPresentation, PresentSync};
 pub use fullscreen::{FullscreenFallback, FullscreenStatus, WindowMode};
 
 use ash::vk;
@@ -1692,82 +1694,6 @@ impl Drop for FrameSemaphores {
     }
 }
 
-/// How display work accesses the acquired swapchain image.
-///
-/// The library records the `UNDEFINED -> layout` transition, chained to the
-/// acquire semaphore wait at `stages`, before the display callback, and the
-/// `layout -> PRESENT_SRC_KHR` transition after it. A display callback only
-/// records its draws/copies and must leave the image in `layout`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct DisplayTarget {
-    /// Layout in which display work accesses the swapchain image.
-    pub layout: vk::ImageLayout,
-    /// Stages that access the swapchain image. The acquire semaphore wait
-    /// and both library transitions use exactly these stages.
-    pub stages: vk::PipelineStageFlags,
-    /// Accesses of the swapchain image made by display work.
-    pub access: vk::AccessFlags,
-    /// First stages in which display work reads render-graph outputs. All
-    /// graph timeline waits block these stages; the default is conservative.
-    pub graph_read_stages: vk::PipelineStageFlags,
-}
-impl DisplayTarget {
-    /// Copies or blits into the swapchain image.
-    pub const TRANSFER_DST: Self = Self {
-        layout: vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-        stages: vk::PipelineStageFlags::TRANSFER,
-        access: vk::AccessFlags::TRANSFER_WRITE,
-        graph_read_stages: vk::PipelineStageFlags::ALL_COMMANDS,
-    };
-    /// Renders into the swapchain image as a color attachment.
-    pub const COLOR_ATTACHMENT: Self = Self {
-        layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
-        stages: vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
-        access: vk::AccessFlags::from_raw(
-            vk::AccessFlags::COLOR_ATTACHMENT_READ.as_raw()
-                | vk::AccessFlags::COLOR_ATTACHMENT_WRITE.as_raw(),
-        ),
-        graph_read_stages: vk::PipelineStageFlags::ALL_COMMANDS,
-    };
-    /// Narrow the graph dependency to the stages that actually read graph
-    /// outputs, e.g. `FRAGMENT_SHADER` for a sampled fullscreen pass.
-    pub const fn with_graph_reads(mut self, stages: vk::PipelineStageFlags) -> Self {
-        self.graph_read_stages = stages;
-        self
-    }
-    fn validate(&self) -> Result<()> {
-        if self.stages.is_empty() || self.graph_read_stages.is_empty() {
-            return Err(Error::invalid_usage("呈现等待阶段为空"));
-        }
-        if matches!(
-            self.layout,
-            vk::ImageLayout::UNDEFINED | vk::ImageLayout::PREINITIALIZED | vk::ImageLayout::PRESENT_SRC_KHR
-        ) {
-            return Err(Error::invalid_usage("呈现目标布局无效"));
-        }
-        Ok(())
-    }
-    /// Barrier taking a freshly acquired image to `layout`. Its source scope
-    /// is the acquire semaphore's wait stage, forming the dependency chain.
-    fn acquire_barrier(&self, image: vk::Image) -> vk::ImageMemoryBarrier<'static> {
-        color_barrier(image)
-            .old_layout(vk::ImageLayout::UNDEFINED)
-            .new_layout(self.layout)
-            .dst_access_mask(self.access)
-    }
-    /// Barrier handing the finished image to the presentation engine.
-    fn present_barrier(&self, image: vk::Image) -> vk::ImageMemoryBarrier<'static> {
-        color_barrier(image)
-            .old_layout(self.layout)
-            .new_layout(vk::ImageLayout::PRESENT_SRC_KHR)
-            .src_access_mask(self.access)
-    }
-}
-impl Default for DisplayTarget {
-    fn default() -> Self {
-        Self::COLOR_ATTACHMENT
-    }
-}
 fn color_barrier(image: vk::Image) -> vk::ImageMemoryBarrier<'static> {
     vk::ImageMemoryBarrier::default()
         .image(image)
@@ -1804,6 +1730,14 @@ impl AcquiredImageLease {
     pub fn generation(&self) -> u64 {
         self.swapchain.generation()
     }
+    pub(crate) fn device(&self) -> &Arc<Device> {
+        &self.swapchain.device
+    }
+    /// Whether this image was handed to the presentation engine before in
+    /// this generation, i.e. it is in PRESENT_SRC_KHR with defined contents.
+    pub(crate) fn was_presented(&self) -> bool {
+        self.presentation.progress.lock().issued > 0
+    }
     pub fn image(&self) -> vk::Image {
         self.swapchain.images[self.index as usize]
     }
@@ -1833,7 +1767,7 @@ impl AcquiredImageLease {
     }
     /// A graph can borrow this actual acquired image while its generation is
     /// retained. Acquisition and present remain owned by the linear WSI lease.
-    pub fn texture(&self) -> Result<Arc<super::texture::Texture>> {
+    pub(crate) fn texture(&self) -> Result<Arc<super::texture::Texture>> {
         let chain = &self.swapchain;
         let desc = super::texture::TextureDesc::new_2d(chain.extent.width, chain.extent.height, chain.format)
             .usage(chain.usage);
@@ -1842,75 +1776,6 @@ impl AcquiredImageLease {
             self.image(),
             desc,
         )?))
-    }
-    /// Record the `UNDEFINED -> target.layout` transition chained to the
-    /// acquire wait at `target.stages`. [`crate::rg::frame_loop::FrameLoop`]
-    /// records this automatically; external hosts using [`Self::submit_after`]
-    /// call it first in their display command buffer.
-    pub fn record_acquire_transition(
-        &self,
-        command: &mut VulkanCommandBuffer,
-        target: DisplayTarget,
-    ) -> Result<()> {
-        self.record_transition(command, target, target.acquire_barrier(self.image()), target.stages)
-    }
-    /// Record the final `target.layout -> PRESENT_SRC_KHR` transition.
-    pub fn record_present_transition(
-        &self,
-        command: &mut VulkanCommandBuffer,
-        target: DisplayTarget,
-    ) -> Result<()> {
-        self.record_transition(
-            command,
-            target,
-            target.present_barrier(self.image()),
-            vk::PipelineStageFlags::BOTTOM_OF_PIPE,
-        )
-    }
-    fn record_transition(
-        &self,
-        command: &mut VulkanCommandBuffer,
-        target: DisplayTarget,
-        barrier: vk::ImageMemoryBarrier<'_>,
-        dst_stages: vk::PipelineStageFlags,
-    ) -> Result<()> {
-        target.validate()?;
-        if !command.is_recording() {
-            return Err(Error::invalid_usage("呈现命令不在录制状态"));
-        }
-        if !Arc::ptr_eq(&command.pool.device, &self.swapchain.device) {
-            return Err(Error::invalid_usage("呈现命令来自其他设备"));
-        }
-        unsafe {
-            self.swapchain.device.device.cmd_pipeline_barrier(
-                command.handle,
-                target.stages,
-                dst_stages,
-                vk::DependencyFlags::empty(),
-                &[],
-                &[],
-                &[barrier],
-            );
-        }
-        Ok(())
-    }
-    /// Arm one graph submission, keeping `present` as a later explicit phase.
-    /// The backend must submit the presentation graph on the graphics queue
-    /// with this acquisition's binary wait, rendered signal and submission fence.
-    pub fn into_graph_submission(mut self) -> Result<GraphImageLease> {
-        self.swapchain.policy.allow_present()?;
-        if let Err(error) = self.presentation.prepare(ACQUIRE_TIMEOUT_NS) {
-            self.recover_on_drop &= !error.is_device_lost();
-            return Err(error);
-        }
-        let device = self.swapchain.device.clone();
-        if let Err(error) = wsi_call(&device.timelines, || unsafe {
-            device.device.reset_fences(&[self.sync.fence])
-        }) {
-            self.recover_on_drop &= !error.is_device_lost();
-            return Err(error);
-        }
-        Ok(GraphImageLease { acquisition: Some(self), point: None })
     }
     /// Cancel before any submit has consumed the acquire semaphore. With
     /// maintenance1, wait for acquisition and release the image; the signaled
@@ -1958,26 +1823,7 @@ impl AcquiredImageLease {
             }
             return Ok(());
         }
-        let pool = wsi_call(&chain.device.timelines, || {
-            VulkanCommandPool::new(chain.device.clone())
-        })?;
-        let mut command = wsi_call(&chain.device.timelines, || pool.allocate())?;
-        wsi_call(&chain.device.timelines, || command.begin())?;
-        let barrier = color_barrier(self.image())
-            .old_layout(vk::ImageLayout::UNDEFINED)
-            .new_layout(vk::ImageLayout::PRESENT_SRC_KHR);
-        unsafe {
-            chain.device.device.cmd_pipeline_barrier(
-                command.handle,
-                vk::PipelineStageFlags::TOP_OF_PIPE,
-                vk::PipelineStageFlags::BOTTOM_OF_PIPE,
-                vk::DependencyFlags::empty(),
-                &[],
-                &[],
-                &[barrier],
-            );
-        }
-        wsi_call(&chain.device.timelines, || command.end())?;
+        let command = self.discard_to_present_command(vk::PipelineStageFlags::TOP_OF_PIPE)?;
         let mut recovery = Self {
             swapchain: chain.clone(),
             index,
@@ -1992,44 +1838,72 @@ impl AcquiredImageLease {
         // The barrier's source scope is TOP_OF_PIPE, the acquire wait stage.
         drop(recovery.submit_with_stages(
             command,
-            vk::PipelineStageFlags::TOP_OF_PIPE,
+            Some(vk::PipelineStageFlags::TOP_OF_PIPE),
             vk::PipelineStageFlags::TOP_OF_PIPE,
             crate::sync::SyncSet::EMPTY,
         )?);
         Ok(())
     }
-    /// Real GPU dependency chain: acquire semaphore -> submit wait -> rendered
-    /// semaphore -> present wait. The command must have ended and must contain
-    /// the transitions from [`Self::record_acquire_transition`] and
-    /// [`Self::record_present_transition`] for `target`.
-    pub fn submit_and_present(
-        self,
-        command: VulkanCommandBuffer,
-        target: DisplayTarget,
-    ) -> Result<PresentTicket> {
-        self.submit_after(command, target, crate::sync::SyncSet::EMPTY)
+    /// One command holding only `UNDEFINED -> PRESENT_SRC_KHR` on the
+    /// presentation queue family. `source` must cover the stage at which the
+    /// submit waits, so the layout transition is chained after that wait.
+    fn discard_to_present_command(
+        &self,
+        source: vk::PipelineStageFlags,
+    ) -> Result<VulkanCommandBuffer> {
+        let chain = &self.swapchain;
+        let pool = wsi_call(&chain.device.timelines, || {
+            VulkanCommandPool::new(chain.device.clone())
+        })?;
+        let mut command = wsi_call(&chain.device.timelines, || pool.allocate())?;
+        wsi_call(&chain.device.timelines, || command.begin())?;
+        let barrier = color_barrier(self.image())
+            .old_layout(vk::ImageLayout::UNDEFINED)
+            .new_layout(vk::ImageLayout::PRESENT_SRC_KHR);
+        unsafe {
+            chain.device.device.cmd_pipeline_barrier(
+                command.handle,
+                source,
+                vk::PipelineStageFlags::BOTTOM_OF_PIPE,
+                vk::DependencyFlags::empty(),
+                &[],
+                &[],
+                &[barrier],
+            );
+        }
+        wsi_call(&chain.device.timelines, || command.end())?;
+        Ok(command)
     }
-    /// Submit display work after the graph's real timeline receipts. The
-    /// acquire semaphore is waited at `target.stages`; every dependency at
-    /// `target.graph_read_stages`, so a display pass that samples graph
-    /// output in a fragment shader cannot race the graph's writes.
-    pub fn submit_after(
-        mut self,
-        command: VulkanCommandBuffer,
-        target: DisplayTarget,
-        dependencies: crate::sync::SyncSet,
+    /// Return an image whose acquire semaphore was already consumed by a
+    /// partially submitted presentation graph that never signalled
+    /// `rendered`. After every submitted graph use (`after`), discard the
+    /// contents, transition to PRESENT_SRC_KHR, signal `rendered` exactly once
+    /// and present. The acquire semaphore is never waited a second time.
+    fn present_after_partial_graph(
+        &mut self,
+        after: crate::sync::SyncSet,
     ) -> Result<PresentTicket> {
-        target.validate()?;
-        self.submit_with_stages(command, target.stages, target.graph_read_stages, dependencies)
+        if self.swapchain.device.is_device_lost() {
+            return Err(Error::DeviceLost);
+        }
+        let command = self.discard_to_present_command(vk::PipelineStageFlags::ALL_COMMANDS)?;
+        self.submit_with_stages(command, None, vk::PipelineStageFlags::ALL_COMMANDS, after)
     }
+    /// Submit `command` on the presentation queue and present it. With
+    /// `acquire_stage`, the submit consumes the acquire semaphore at that stage
+    /// and arms the slot fence that guards the semaphore's reuse; without it,
+    /// the acquire wait was already consumed by an earlier (graph) submit.
     fn submit_with_stages(
         &mut self,
         mut command: VulkanCommandBuffer,
-        acquire_stage: vk::PipelineStageFlags,
+        acquire_stage: Option<vk::PipelineStageFlags>,
         dependency_stage: vk::PipelineStageFlags,
         dependencies: crate::sync::SyncSet,
     ) -> Result<PresentTicket> {
-        if !command.is_executable() || acquire_stage.is_empty() || dependency_stage.is_empty() {
+        if !command.is_executable()
+            || acquire_stage.is_some_and(|stage| stage.is_empty())
+            || dependency_stage.is_empty()
+        {
             return Err(Error::invalid_usage("呈现命令未结束或等待阶段为空"));
         }
         if self.lease.is_none() {
@@ -2047,20 +1921,28 @@ impl AcquiredImageLease {
         command.retain_object(self.sync.clone())?;
         command.validate_submission()?;
         let device = chain.device.clone();
-        if let Err(error) = self.presentation.prepare(ACQUIRE_TIMEOUT_NS) {
-            self.recover_on_drop &= !error.is_device_lost();
-            return Err(error);
-        }
-        let fence = self.sync.fence;
-        if let Err(error) = wsi_call(&device.timelines, || unsafe {
-            device.device.reset_fences(&[fence])
-        }) {
-            self.recover_on_drop &= !error.is_device_lost();
-            return Err(error);
-        }
-        let mut waits = super::submit::SubmitArray::from_slice(&[self.sync.acquired]);
-        let mut wait_values = super::submit::SubmitArray::from_slice(&[0]);
-        let mut stages = super::submit::SubmitArray::from_slice(&[acquire_stage]);
+        let mut waits = super::submit::SubmitArray::default();
+        let mut wait_values = super::submit::SubmitArray::default();
+        let mut stages = super::submit::SubmitArray::default();
+        let fence = if let Some(acquire_stage) = acquire_stage {
+            if let Err(error) = self.presentation.prepare(ACQUIRE_TIMEOUT_NS) {
+                self.recover_on_drop &= !error.is_device_lost();
+                return Err(error);
+            }
+            let fence = self.sync.fence;
+            if let Err(error) = wsi_call(&device.timelines, || unsafe {
+                device.device.reset_fences(&[fence])
+            }) {
+                self.recover_on_drop &= !error.is_device_lost();
+                return Err(error);
+            }
+            waits.push(self.sync.acquired);
+            wait_values.push(0);
+            stages.push(acquire_stage);
+            fence
+        } else {
+            vk::Fence::null()
+        };
         for point in dependencies.points() {
             waits.push(device.timelines.semaphore(point.queue)?);
             wait_values.push(point.value);
@@ -2105,7 +1987,9 @@ impl AcquiredImageLease {
             .lock()
             .record_gpu_submission(point);
         command.record_submission(point);
-        self.sync.state.lock().submitted = true;
+        if acquire_stage.is_some() {
+            self.sync.state.lock().submitted = true;
+        }
         self.present_submitted(point, Some(command))
     }
     fn present_submitted(
@@ -2173,110 +2057,6 @@ impl Drop for AcquiredImageLease {
     }
 }
 
-/// Linear acquired -> graph GPU submission -> present owner, for hosts that
-/// render the presentation graph directly into the swapchain image. The graph
-/// session owns command retirement; this owner protects the WSI
-/// synchronization domains. Exactly one graphics-queue submission consumes the
-/// acquire wait and signals the rendered semaphore, so the attached graph
-/// must compile to a single submission.
-pub struct GraphImageLease {
-    acquisition: Option<AcquiredImageLease>,
-    point: Option<crate::sync::SyncPoint>,
-}
-fn graph_lease_presented() -> Error {
-    Error::invalid_usage("WSI graph lease already presented")
-}
-impl GraphImageLease {
-    pub fn submitted_point(&self) -> Option<crate::sync::SyncPoint> {
-        self.point
-    }
-    pub(crate) fn check_device(&self, device: &Arc<Device>) -> Result<()> {
-        let image = self.acquisition.as_ref().ok_or_else(graph_lease_presented)?;
-        if !Arc::ptr_eq(&image.sync.device, device) {
-            return Err(Error::invalid_usage("WSI graph lease belongs to another device"));
-        }
-        Ok(())
-    }
-    pub(crate) fn amend_submission(
-        &self,
-        queue: vk::Queue,
-        batches: &mut [super::submit::PreparedSubmit],
-    ) -> Result<()> {
-        let image = self.acquisition.as_ref().ok_or_else(graph_lease_presented)?;
-        if self.point.is_some()
-            || queue != image.swapchain.device.queue
-            || batches.iter().all(|batch| batch.commands.is_empty())
-        {
-            return Err(Error::invalid_usage(
-                "present graph requires one nonempty graphics-queue submission",
-            ));
-        }
-        let [first, ..] = batches else {
-            return Err(Error::invalid_usage("present graph has no submission batch"));
-        };
-        first.wait_semaphores.try_reserve_exact(1).map_err(|_| Error::OutOfHostMemory)?;
-        first.wait_values.try_reserve_exact(1).map_err(|_| Error::OutOfHostMemory)?;
-        first.wait_stages.try_reserve_exact(1).map_err(|_| Error::OutOfHostMemory)?;
-        first.wait_semaphores.push(image.sync.acquired);
-        first.wait_values.push(0);
-        // The graph may sample other images before writing the target. All its
-        // accesses must begin after acquisition and tracked dependencies.
-        first.wait_stages.push(vk::PipelineStageFlags::ALL_COMMANDS);
-        let [.., last] = batches else {
-            return Err(Error::invalid_usage("present graph has no submission batch"));
-        };
-        last.signal_semaphores.try_reserve_exact(1).map_err(|_| Error::OutOfHostMemory)?;
-        last.signal_values.try_reserve_exact(1).map_err(|_| Error::OutOfHostMemory)?;
-        last.signal_semaphores.push(image.presentation.rendered);
-        last.signal_values.push(0);
-        Ok(())
-    }
-    pub(crate) fn submit(
-        &mut self,
-        queue: vk::Queue,
-        batches: &[super::submit::PreparedSubmit],
-    ) -> Result<crate::sync::SyncPoint> {
-        let image = self.acquisition.as_mut().ok_or_else(graph_lease_presented)?;
-        let device = image.swapchain.device.clone();
-        if self.point.is_some() || queue != device.queue {
-            return Err(Error::invalid_usage("WSI graph submission already consumed or wrong queue"));
-        }
-        match device.submit_prepared(queue, batches, image.sync.fence) {
-            Ok(point) => {
-                self.point = Some(point);
-                image.recover_on_drop = false;
-                image.sync.state.lock().submitted = true;
-                image.presentation.progress.lock().record_gpu_submission(point);
-                Ok(point)
-            }
-            Err(error) => {
-                image.recover_on_drop &= !error.is_device_lost();
-                Err(error)
-            }
-        }
-    }
-    /// Present the exact image after its graph submission; no second acquire
-    /// wait and no empty surrogate GPU submission are introduced here.
-    pub fn present(&mut self) -> Result<PresentTicket> {
-        let point = self
-            .point
-            .ok_or_else(|| Error::invalid_usage("present graph has not submitted"))?;
-        let mut image = self.acquisition.take().ok_or_else(graph_lease_presented)?;
-        image.present_submitted(point, None)
-    }
-}
-impl Drop for GraphImageLease {
-    fn drop(&mut self) {
-        if self.point.is_some()
-            && self.acquisition.is_some()
-            && let Err(error) = self.present()
-        {
-            log::warn!(target: "rhapsody::raw::swapchain", "submitted graph acquisition cleanup: {error}");
-        }
-        // Unsubmitted acquisition follows the existing cancellation protocol.
-    }
-}
-
 /// Render and presentation have different completion domains. Dropping a ticket
 /// releases CPU ownership without an explicit GPU wait. Final destruction of
 /// the last swapchain owner still runs the generation's teardown protocol.
@@ -2321,12 +2101,6 @@ impl PresentTicket {
     }
     pub fn generation(&self) -> u64 {
         self.swapchain.generation()
-    }
-    pub(crate) fn take_completed_command(&mut self) -> Result<Option<VulkanCommandBuffer>> {
-        if !self.is_complete()? {
-            return Ok(None);
-        }
-        Ok(self.command.take())
     }
     /// Wait only for rendering. This does not authorize present semaphore reuse.
     pub fn wait(&self, timeout: u64) -> Result<()> {
@@ -3143,49 +2917,6 @@ mod tests {
         ));
         // Window-defined extent: only an explicit resize retires the chain.
         assert!(!suboptimal_requires_recreate(&caps(u32::MAX, identity), extent, identity));
-    }
-
-    #[test]
-    fn display_target_transitions_chain_to_the_acquire_wait() {
-        let image = vk::Image::from_raw(5);
-        for target in [DisplayTarget::TRANSFER_DST, DisplayTarget::COLOR_ATTACHMENT] {
-            target.validate().unwrap();
-            let acquire = target.acquire_barrier(image);
-            assert_eq!(acquire.old_layout, vk::ImageLayout::UNDEFINED);
-            assert_eq!(acquire.new_layout, target.layout);
-            assert_eq!(acquire.dst_access_mask, target.access);
-            assert!(acquire.src_access_mask.is_empty());
-            let present = target.present_barrier(image);
-            assert_eq!(present.old_layout, target.layout);
-            assert_eq!(present.new_layout, vk::ImageLayout::PRESENT_SRC_KHR);
-            assert_eq!(present.src_access_mask, target.access);
-            assert_eq!(
-                target.graph_read_stages,
-                vk::PipelineStageFlags::ALL_COMMANDS,
-                "graph waits default to a conservative mask"
-            );
-        }
-        let narrowed = DisplayTarget::COLOR_ATTACHMENT
-            .with_graph_reads(vk::PipelineStageFlags::FRAGMENT_SHADER);
-        assert_eq!(narrowed.stages, vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT);
-        assert_eq!(narrowed.graph_read_stages, vk::PipelineStageFlags::FRAGMENT_SHADER);
-        for invalid in [
-            DisplayTarget::TRANSFER_DST.with_graph_reads(vk::PipelineStageFlags::empty()),
-            DisplayTarget {
-                stages: vk::PipelineStageFlags::empty(),
-                ..DisplayTarget::TRANSFER_DST
-            },
-            DisplayTarget {
-                layout: vk::ImageLayout::PRESENT_SRC_KHR,
-                ..DisplayTarget::TRANSFER_DST
-            },
-            DisplayTarget {
-                layout: vk::ImageLayout::UNDEFINED,
-                ..DisplayTarget::TRANSFER_DST
-            },
-        ] {
-            assert_eq!(invalid.validate().unwrap_err().kind(), ErrorKind::InvalidUsage);
-        }
     }
 }
 

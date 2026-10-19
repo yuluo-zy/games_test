@@ -21,6 +21,9 @@ use std::{collections::BTreeMap, sync::Arc};
 
 #[path = "vulkan_queue.rs"]
 mod queue_runtime;
+#[path = "vulkan_presentation.rs"]
+mod presentation;
+pub use presentation::{PRESENT_ACCESS, PresentTarget, SwapchainContents};
 
 /// 后端导入 token 与跨帧 temporal token 共用的物理资源标识空间。
 ///
@@ -359,7 +362,8 @@ pub struct VulkanGraphBackend {
     synchronization: BTreeMap<usize, OwnedBatchSync>,
     graph_waits: Vec<TimelineWait>,
     graph_signals: Vec<TimelineSignal>,
-    presentation_submission: Option<Arc<parking_lot::Mutex<crate::raw::swapchain::GraphImageLease>>>,
+    /// The acquired swapchain image while its presentation graph executes.
+    presentation: Option<presentation::BackendPresentation>,
     recycled_commands: Vec<u64>,
     /// A backend selects one actual queue family; each frame and recording worker
     /// receives a separate pool within that family.
@@ -463,8 +467,10 @@ fn add_transition(
     resources: &BTreeMap<u64, GpuResource>,
     token: u64,
     transition: &super::sync_plan::BoundTransition,
+    present: Option<presentation::PresentPatch>,
 ) -> bool {
     use crate::resource::OwnershipRange;
+    presentation::PresentPatch::apply(present, scope, token, transition);
     // Alias (shared backing) dependencies are ordinary transitions here: the
     // planner models them as a synthetic previous access of the new member.
     scope.source_stages |= transition.source.stages;
@@ -518,6 +524,7 @@ fn add_transition(
 /// 并行录制时各块共享的只读视图：只读访问表与资源表，直接把每个 pass 的屏障写入块自己的命令缓冲。
 struct VulkanChunkView<'a> {
     device: &'a ash::Device,
+    present_patch: Option<presentation::PresentPatch>,
     barrier_device: &'a Device,
     barrier_dispatch: crate::raw::barrier::BarrierDispatch,
     resources: &'a BTreeMap<u64, GpuResource>,
@@ -570,6 +577,7 @@ impl super::executor::ChunkRecorder for VulkanChunkView<'_> {
                 self.resources,
                 t.token,
                 &t.transition,
+                self.present_patch,
             ) {
                 return Err(crate::Error::invalid_usage(
                     "parallel native barrier range is invalid",
@@ -587,21 +595,6 @@ impl super::executor::ChunkRecorder for VulkanChunkView<'_> {
     }
 }
 impl VulkanGraphBackend {
-    /// Attach the linear WSI owner only for the acquired presentation graph.
-    /// The next real graphics submit consumes acquire and signals rendered;
-    /// the session continues to own and retire its actual command buffers.
-    pub fn attach_presentation_submission(&mut self,
-        lease: Arc<parking_lot::Mutex<crate::raw::swapchain::GraphImageLease>>) -> crate::Result<()> {
-        if self.presentation_submission.is_some() {
-            return Err(crate::Error::invalid_usage("a WSI graph submission is already attached"));
-        }
-        lease.lock().check_device(&self.device)?;
-        self.presentation_submission = Some(lease);
-        Ok(())
-    }
-    pub fn detach_presentation_submission(&mut self) {
-        self.presentation_submission.take();
-    }
     pub fn new(device: Arc<Device>, accesses: AccessTable) -> crate::Result<Self> {
         Self::new_for_queue(device, accesses, recording::Queue::Primary)
     }
@@ -703,7 +696,7 @@ impl VulkanGraphBackend {
             synchronization: BTreeMap::new(),
             graph_waits: vec![],
             graph_signals: vec![],
-            presentation_submission: None,
+            presentation: None,
             recycled_commands: vec![],
             command_slot: BTreeMap::new(),
             stores,
@@ -1449,7 +1442,11 @@ impl ExecutionBackend for VulkanGraphBackend {
         compiled: &graph::FrameInstance,
         batch: usize,
     ) -> crate::Result<Option<super::executor::QueuePrelude>> {
-        self.next_prelude(compiled, batch)
+        let prelude = self.next_prelude(compiled, batch)?;
+        if let Some(prelude) = &prelude {
+            self.select_presentation_batch(prelude.tag as usize);
+        }
+        Ok(prelude)
     }
     fn record_queue_prelude(
         &mut self,
@@ -1463,7 +1460,9 @@ impl ExecutionBackend for VulkanGraphBackend {
         _compiled: &graph::FrameInstance,
         batch: usize,
     ) -> crate::Result<()> {
-        self.queue_runtime.select_main_batch(batch)
+        self.queue_runtime.select_main_batch(batch)?;
+        self.select_presentation_batch(batch);
+        Ok(())
     }
     fn timeline_wait(&self, point: crate::sync::SyncPoint) -> crate::Result<GraphTimelineWait> {
         self.queue_timeline_wait(point)
@@ -1512,7 +1511,10 @@ impl ExecutionBackend for VulkanGraphBackend {
         self.recording_error.take()
     }
     fn prepare_compiled_resources(&mut self, compiled: &graph::FrameInstance) -> bool {
-        if let Err(error) = self.bind_queue_resources(compiled) {
+        if let Err(error) = self
+            .bind_queue_resources(compiled)
+            .and_then(|()| self.resolve_presentation(compiled))
+        {
             self.recording_error = Some(error);
             return false;
         }
@@ -1614,6 +1616,7 @@ impl ExecutionBackend for VulkanGraphBackend {
     }
     fn chunk_recorder(&self) -> Option<Box<dyn super::executor::ChunkRecorder + '_>> {
         Some(Box::new(VulkanChunkView {
+            present_patch: self.present_patch(),
             barrier_device: &self.device,
             barrier_dispatch: self.barrier_dispatch,
             cpu_arenas: &self.cpu_arenas,
@@ -1704,11 +1707,13 @@ impl ExecutionBackend for VulkanGraphBackend {
             self.recording_error = Some(error);
             return false;
         }
+        let present = self.present_patch();
         add_transition(
             self.barriers.entry(command).or_default(),
             &self.resources,
             token,
             transition,
+            present,
         )
     }
     fn submit(
@@ -1725,10 +1730,8 @@ impl ExecutionBackend for VulkanGraphBackend {
             self.device.timelines.queue_count().saturating_sub(1),
             &self.device.allocator_stats,
         )?;
-        let presentation = self.presentation_submission.clone();
-        let mut presentation = presentation.as_ref().map(|lease| lease.lock());
-        if let Some(lease) = &mut presentation {
-            lease.amend_submission(queue, &mut capture.batches)?;
+        let (present_role, fence) = self.amend_presentation_submit(&mut capture.batches)?;
+        if present_role.waits_acquire || present_role.signals_rendered {
             capture.refresh_budget(&self.device.allocator_stats)?;
         }
         if self.submissions.len() < SUBMISSION_CAPTURE_LIMIT {
@@ -1805,12 +1808,13 @@ impl ExecutionBackend for VulkanGraphBackend {
         dependencies.merge(&self.queue_submission_dependencies()?);
         self.device
             .add_timeline_waits(queue, &mut capture.batches, &dependencies)?;
-        let result = if let Some(lease) = &mut presentation {
-            lease.submit(queue, &capture.batches)
-        } else {
-            self.device.submit_prepared(queue, &capture.batches, vk::Fence::null())
-        };
+        let result = self.device.submit_prepared(queue, &capture.batches, fence);
         if let Ok(point) = result {
+            // Infallible after the irreversible queue call: the owner only
+            // records the receipt it must now protect.
+            if let Err(error) = self.presentation_submitted(present_role, point) {
+                log::error!(target: "rhapsody::rg::presentation", "presentation bookkeeping failed after submit: {error}");
+            }
             prepared_states.publish(point);
             self.queue_submitted(point);
             for semaphore in semaphores.iter() {
@@ -1913,6 +1917,8 @@ pub struct VulkanGraphSession {
     /// 本帧提交账本（`frame::FrameLedger`）。
     ledger: super::frame::FrameLedger,
     named: Option<NamedResources>,
+    /// The acquired swapchain image imported into a presentation graph.
+    presentation: Option<presentation::SessionPresentation>,
 }
 impl VulkanGraphSession {
     pub fn new(backend: VulkanGraphBackend) -> Self {
@@ -1934,6 +1940,7 @@ impl VulkanGraphSession {
             last_frame_duration_ns: 0,
             ledger: Default::default(),
             named,
+            presentation: None,
         }
     }
     /// Additive current-architecture handoff used by background App warmup.
@@ -2203,6 +2210,7 @@ impl VulkanGraphSession {
             return Err(crate::Error::invalid_usage("execute or cancel the compiled graph before beginning another frame"));
         }
         self.collect_frame_imports();
+        self.reap_presentation();
         self.result_cache.abandon_pending();
         if self.result_cache.has_work() {
             let completed = self.backend.device.poll()?;
@@ -2247,6 +2255,7 @@ impl VulkanGraphSession {
             .named
             .as_ref()
             .is_some_and(|named| named.graph_id == Some(built.graph_id()));
+        self.cancel_presentation_of(built.graph_id());
         let (_, callbacks, retire) = built.into_parts();
         drop(callbacks);
         let retired = run_retire_callbacks(retire);
@@ -2359,6 +2368,7 @@ impl VulkanGraphSession {
         } else {
             named.state.abandon_frame();
             self.result_cache.abort(graph_id);
+            self.cancel_presentation_of(graph_id);
         }
         self.named = Some(named);
         self.collect_frame_imports();
@@ -2378,6 +2388,7 @@ impl VulkanGraphSession {
         }
         self.active_prepared = None;
         self.result_cache.abort(frame.graph_id);
+        self.cancel_presentation_of(frame.graph_id);
         graph::reclaim_failed_resources(&mut frame.prepared.compiled.tables.registry,
             &frame.prepared.compiled.declarations.resources,
             &frame.prepared.compiled.tables.snapshot.pool_hits, &mut self.pool, &mut self.backend);
@@ -2696,6 +2707,10 @@ impl VulkanGraphSession {
             self.cancel_prepared(frame)?;
             return Err(crate::Error::DeviceLost);
         }
+        if let Err(error) = self.begin_presentation_execution(frame.graph_id) {
+            self.cancel_prepared(frame)?;
+            return Err(error);
+        }
         self.active_prepared = None;
         let PreparedSessionFrame { graph_id, prepared, mut callbacks, retire, receipt_slot, .. } = frame;
         self.last_execution_partial = false;
@@ -2704,6 +2719,7 @@ impl VulkanGraphSession {
         let mut access = self.backend.accesses.clone();
         let executed = self.chain.execute_prepared_validated(prepared, &mut self.pool, &mut access,
             &mut self.backend, &mut callbacks, |_| Ok(()));
+        self.finish_presentation_execution();
         let result = (|| {
         match executed {
             Ok(execution) => {
