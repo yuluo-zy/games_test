@@ -7,7 +7,7 @@ use objc::{
     rc::{StrongPtr, autoreleasepool},
     runtime::{Class, Object, Sel, YES},
 };
-use rhapsody::raw::{instance::VulkanInstance, swapchain::Surface};
+use rhapsody::{interop::VulkanInstance, present::Surface};
 use std::{
     cell::RefCell,
     ffi::CString,

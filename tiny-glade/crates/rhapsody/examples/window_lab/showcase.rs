@@ -8,15 +8,8 @@ use super::{
 };
 use ash::vk::{self, Handle};
 use rhapsody::{
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        texture::{Texture, TextureDesc},
-    },
-    rg::{
-        frame_loop::FrameLoop,
-        graph::BuiltGraph,
-        vulkan::{GpuResource, ResourceSpec},
-    },
+    resource::Buffer, resource::BufferDesc, resource::Texture, resource::TextureDesc,
+    rg::BuiltGraph, rg::FrameLoop, rg::GpuResource, rg::ResourceSpec,
 };
 use serde::Serialize;
 use std::{path::Path, sync::Arc};

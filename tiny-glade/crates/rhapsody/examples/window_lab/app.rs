@@ -10,22 +10,11 @@ use super::{
 };
 use ash::vk::{self, Handle};
 use rhapsody::{
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        device::Device,
-        instance::{InstanceBuilder, ValidationMessenger},
-        swapchain::Swapchain,
-        texture::{Texture, TextureDesc},
-    },
-    rg::{
-        executor::PassContext,
-        frame_loop::{FrameLoop, FrameStatus},
-        graph::{BuiltGraph, RenderGraph},
-        vulkan::{
-            AccessTable, GpuResource, PresentTarget, ResourceSpec, VulkanGraphBackend,
-            VulkanGraphSession,
-        },
-    },
+    device::Device, interop::InstanceBuilder, interop::ValidationMessenger, present::Swapchain,
+    resource::Buffer, resource::BufferDesc, resource::Texture, resource::TextureDesc,
+    rg::AccessTable, rg::BuiltGraph, rg::FrameLoop, rg::FrameStatus, rg::GpuResource,
+    rg::PassContext, rg::PresentTarget, rg::RenderGraph, rg::ResourceSpec, rg::VulkanGraphBackend,
+    rg::VulkanGraphSession,
 };
 use serde::Serialize;
 use std::{
@@ -400,14 +389,13 @@ struct Report {
     class_queue_indices: [usize; 3],
     vsync_requested: bool,
     present_mode: String,
-    gpu_timing: Option<rhapsody::rg::profiling::GpuTimingStats>,
+    gpu_timing: Option<rhapsody::rg::GpuTimingStats>,
     /// Latest bounded per-pass command spans, distinct from outer command
     /// spans. These intervals can overlap and are not additive frame latency.
     gpu_pass_timings: VecDeque<PassGpuTimingReport>,
     gpu_pass_timings_dropped: u64,
-    queue_lock_waits:
-        [Option<rhapsody::sync::timeline::QueueLockStats>; rhapsody::sync::MAX_QUEUES],
-    reclamation: rhapsody::raw::graveyard::GraveyardStats,
+    queue_lock_waits: [Option<rhapsody::sync::QueueLockStats>; rhapsody::sync::MAX_QUEUES],
+    reclamation: rhapsody::device::RetirementStats,
     cache_diagnostics: Vec<CacheDomainReport>,
     application_gpu_memory: Option<GpuMemoryReport>,
     performance: Option<PerformanceReport>,
@@ -500,14 +488,14 @@ struct StabilitySample {
 }
 #[derive(Serialize)]
 struct CacheCauseReport {
-    reason: rhapsody::rg::cache::CacheReason,
+    reason: rhapsody::rg::CacheReason,
     misses: u64,
     invalidations: u64,
 }
 #[derive(Serialize)]
 struct PassGpuTimingReport {
     #[serde(flatten)]
-    sample: rhapsody::rg::profiling::GpuCommandTiming,
+    sample: rhapsody::rg::GpuCommandTiming,
     pass_name: String,
 }
 #[derive(Serialize)]
@@ -557,7 +545,7 @@ impl Report {
             .into_iter()
             .map(|(domain, diagnostics)| CacheDomainReport {
                 domain,
-                causes: rhapsody::rg::cache::CacheReason::ALL
+                causes: rhapsody::rg::CacheReason::ALL
                     .into_iter()
                     .map(|reason| CacheCauseReport {
                         reason,
@@ -609,7 +597,7 @@ struct BudgetReport {
 #[derive(Serialize)]
 struct GpuMemoryReport {
     scope: &'static str,
-    current: rhapsody::device::memory::GpuMemoryUsage,
+    current: rhapsody::device::GpuMemoryUsage,
     sampled_peak_application_vk_memory_bytes: u64,
     sampled_peak_native_memory_blocks: usize,
 }
@@ -1075,7 +1063,7 @@ impl Lab {
         )?);
         let mut backend = VulkanGraphBackend::new(device.clone(), AccessTable::original())?;
         if options.gpu_timing {
-            backend.configure_gpu_timing(Some(rhapsody::rg::profiling::GpuTimingConfig {
+            backend.configure_gpu_timing(Some(rhapsody::rg::GpuTimingConfig {
                 pass_spans: options.gpu_pass_timing,
                 pending_commands: 2048,
                 ..Default::default()

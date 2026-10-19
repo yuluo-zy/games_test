@@ -4,21 +4,10 @@
 use super::fixture::{HEIGHT, WIDTH};
 use ash::vk::{self, Handle};
 use rhapsody::{
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        device::Device,
-        texture::Texture,
-    },
-    rg::{
-        executor::PassContext,
-        frame_loop::FrameLoop,
-        graph::{BuiltGraph, RenderGraph},
-        resource::{AccessRange, ResourceHandle},
-        result_cache::{
-            ContentDependency, DependencyId, ResultDependencies, ResultNodeId, ResultRequest,
-        },
-        vulkan::ResourceSpec,
-    },
+    device::Device, resource::Buffer, resource::BufferDesc, resource::Texture, rg::AccessRange,
+    rg::BuiltGraph, rg::ContentDependency, rg::DependencyId, rg::FrameLoop, rg::PassContext,
+    rg::RenderGraph, rg::ResourceHandle, rg::ResourceSpec, rg::ResultDependencies,
+    rg::ResultNodeId, rg::ResultRequest,
 };
 use serde::Serialize;
 use std::sync::{

@@ -3,21 +3,11 @@
 use super::fixture::{HEIGHT, WIDTH};
 use ash::vk::{self, Handle};
 use rhapsody::{
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        texture::Texture,
-    },
-    rg::{
-        executor::PassContext,
-        frame_loop::FrameLoop,
-        graph::BuiltGraph,
-        resource::AccessRange,
-        vulkan::{GpuResource, ResourceSpec},
-    },
-    transfer::{
-        QueuedUploadTicket, ReadbackTicket, TransferConfig, TransferManager, UploadKey,
-        UploadOptions, UploadPriority,
-    },
+    resource::Buffer, resource::BufferDesc, resource::Texture, rg::AccessRange, rg::BuiltGraph,
+    rg::FrameLoop, rg::GpuResource, rg::PassContext, rg::ResourceSpec,
+    transfer::QueuedUploadTicket, transfer::ReadbackTicket, transfer::TransferConfig,
+    transfer::TransferManager, transfer::UploadKey, transfer::UploadOptions,
+    transfer::UploadPriority,
 };
 use serde::Serialize;
 use std::{collections::VecDeque, sync::Arc};

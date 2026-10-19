@@ -3,20 +3,13 @@
 #[path = "../gpu_test_support/mod.rs"]
 pub mod gpu_test_support;
 use ash::vk;
-use rhapsody::raw::{
-    buffer::BufferDesc,
-    command_buffer::{PendingCommand, VulkanCommandPool},
-    device::Device,
-    init::create_headless_device,
-    managed::{
-        buffer::ManagedBuffer,
-        texture::{ManagedTexture, ManagedTextureView},
-    },
-    shader::{
-        DynamicRenderingFormats, PipelineCache, PipelineLayout, RasterPipelineDesc,
-        RasterPipelineOpts, ShaderModule, VulkanPipeline,
-    },
-    texture::{TextureDesc, TextureViewDesc},
+use rhapsody::{
+    command::PendingCommand, command::VulkanCommandPool, device::Device,
+    interop::create_headless_device, pipeline::DynamicRenderingFormats, pipeline::PipelineCache,
+    pipeline::PipelineLayout, pipeline::RasterPipelineDesc, pipeline::RasterPipelineOpts,
+    pipeline::ShaderModule, pipeline::VulkanPipeline, resource::BufferDesc,
+    resource::ManagedBuffer, resource::ManagedTexture, resource::ManagedTextureView,
+    resource::TextureDesc, resource::TextureViewDesc,
 };
 use std::sync::Arc;
 
@@ -281,10 +274,8 @@ impl Rig {
             })
             .layer_count(1)
             .color_attachments(&colors);
-        let mut backend =
-            unsafe { rhapsody::rg::pass_api::AshCommandBackend::new_for_device(&self.device) };
-        let mut rendering =
-            rhapsody::rg::pass_api::RenderPassApi::new(&mut backend, handle, 1, false);
+        let mut backend = unsafe { rhapsody::rg::AshCommandBackend::new_for_device(&self.device) };
+        let mut rendering = rhapsody::rg::RenderPassApi::new(&mut backend, handle, 1, false);
         rendering.begin_dynamic_rendering(&info).unwrap();
         unsafe {
             raw.cmd_set_viewport(

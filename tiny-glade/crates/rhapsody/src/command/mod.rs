@@ -6,7 +6,7 @@
 pub use crate::raw::access_table::is_write;
 pub use crate::raw::barrier::SynchronizationScope;
 pub use crate::raw::binding::DescriptorSetBinding;
-pub use crate::raw::command_buffer::{VulkanCommandBuffer, VulkanCommandPool};
+pub use crate::raw::command_buffer::{PendingCommand, VulkanCommandBuffer, VulkanCommandPool};
 pub use crate::raw::resource_access::{buffer_access, image_access};
 pub use crate::raw::texture_upload::{record_texture_regions, record_texture_zero_fill};
 

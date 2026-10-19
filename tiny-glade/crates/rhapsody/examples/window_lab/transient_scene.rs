@@ -4,13 +4,8 @@
 use super::fixture::{HEIGHT, WIDTH};
 use ash::vk::{self, Handle};
 use rhapsody::{
-    raw::{
-        buffer::Buffer,
-        device::Device,
-        texture::{Texture, TextureDesc},
-        transient_backing::TransientBackingCounters,
-    },
-    rg::{executor::PassContext, frame_loop::FrameLoop, graph::BuiltGraph, vulkan::ResourceSpec},
+    device::Device, resource::Buffer, resource::Texture, resource::TextureDesc, rg::BuiltGraph,
+    rg::FrameLoop, rg::PassContext, rg::ResourceSpec, rg::TransientBackingCounters,
 };
 use serde::Serialize;
 use std::sync::Arc;

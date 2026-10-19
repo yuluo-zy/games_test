@@ -7,13 +7,8 @@ use super::{
 };
 use ash::vk::Handle;
 use rhapsody::{
-    device::QueueClass,
-    raw::{buffer::Buffer, texture::Texture},
-    resource::{QueueFamilies, ResourceSharing},
-    rg::{
-        frame_loop::FrameLoop,
-        graph::{BuiltGraph, OriginSource},
-    },
+    device::QueueClass, resource::Buffer, resource::QueueFamilies, resource::ResourceSharing,
+    resource::Texture, rg::BuiltGraph, rg::FrameLoop, rg::OriginSource,
 };
 use serde::Serialize;
 use std::{collections::BTreeSet, path::Path, sync::Arc};

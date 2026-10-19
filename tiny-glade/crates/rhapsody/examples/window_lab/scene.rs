@@ -5,17 +5,15 @@ use super::fixture::{HEIGHT, WIDTH};
 use ash::vk::{self, Handle};
 use rhapsody::{
     bindless::BindlessConfig, bindless::BindlessHeap, bindless::BindlessParameters,
-    bindless::BindlessResource, bindless::BindlessShaderPackage, pipeline::AsyncPipelineCompiler,
-    pipeline::CompilerConfig, pipeline::HotPipeline, pipeline::PersistentPipelineCache,
-    pipeline::PipelinePoll, pipeline::PipelineTicket, raw::buffer::Buffer, raw::buffer::BufferDesc,
-    raw::device::Device, raw::dynamic_constants::DynamicConstants,
-    raw::shader::DynamicRenderingFormats, raw::shader::PipelineLayout,
-    raw::shader::RasterPipelineDesc, raw::shader::RasterPipelineOpts, raw::shader::ShaderModule,
-    raw::shader::VulkanPipeline, raw::texture::Texture, raw::texture::TextureDesc,
-    raw::texture::TextureViewDesc, rg::attachments::Attachment, rg::attachments::AttachmentCache,
-    rg::attachments::RenderingPolicy, rg::executor::PassContext, rg::frame_loop::FrameLoop,
-    rg::graph::BuiltGraph, rg::pass_api::AshCommandBackend, rg::pass_api::RenderPassApi,
-    rg::vulkan::GpuResource, rg::vulkan::ResourceSpec,
+    bindless::BindlessResource, bindless::BindlessShaderPackage, device::Device,
+    pipeline::AsyncPipelineCompiler, pipeline::CompilerConfig, pipeline::DynamicRenderingFormats,
+    pipeline::HotPipeline, pipeline::PersistentPipelineCache, pipeline::PipelineLayout,
+    pipeline::PipelinePoll, pipeline::PipelineTicket, pipeline::RasterPipelineDesc,
+    pipeline::RasterPipelineOpts, pipeline::ShaderModule, pipeline::VulkanPipeline,
+    resource::Buffer, resource::BufferDesc, resource::DynamicConstants, resource::Texture,
+    resource::TextureDesc, resource::TextureViewDesc, rg::AshCommandBackend, rg::Attachment,
+    rg::AttachmentCache, rg::BuiltGraph, rg::FrameLoop, rg::GpuResource, rg::PassContext,
+    rg::RenderPassApi, rg::RenderingPolicy, rg::ResourceSpec,
 };
 use serde::Serialize;
 use shader_pipeline::{
@@ -734,10 +732,7 @@ impl RasterScene {
         Ok(graph.build())
     }
 
-    pub fn finish_execution(
-        &mut self,
-        result: &rhapsody::Result<rhapsody::rg::frame_loop::FrameOutcome>,
-    ) {
+    pub fn finish_execution(&mut self, result: &rhapsody::Result<rhapsody::rg::FrameOutcome>) {
         if result.is_err()
             && let Some(history) = &mut self.temporal
         {
@@ -1084,7 +1079,7 @@ fn expected_injected_record_failure(
 ) -> bool {
     reached
         && matches!(error.downcast_ref::<rhapsody::Error>(), Some(rhapsody::Error::InvalidUsage { source: Some(source), .. })
-        if matches!(source.downcast_ref::<rhapsody::rg::executor::Error>(), Some(rhapsody::rg::executor::Error::Record(outcome)) if outcome.panic))
+        if matches!(source.downcast_ref::<rhapsody::rg::ExecutionError>(), Some(rhapsody::rg::ExecutionError::Record(outcome)) if outcome.panic))
 }
 
 /// Exact channel permutation avoids implementation-dependent float rounding.
@@ -1241,7 +1236,7 @@ mod tests {
             assert_eq!(abi.original_push_bytes, 0);
             assert_eq!(abi.bindings.len(), 2);
             assert_eq!(abi.parameter_bytes, 8);
-            let entries = rhapsody::raw::shader::reflect_spirv_entries(&stages[0].spirv).unwrap();
+            let entries = rhapsody::pipeline::reflect_spirv_entries(&stages[0].spirv).unwrap();
             assert_eq!(entries.len(), 1);
             assert_eq!(entries[0].push_constants.len(), 1);
             assert!(
@@ -1359,8 +1354,8 @@ mod tests {
 
     #[test]
     fn failure_script_only_accepts_the_reached_injected_recording_error() {
-        let injected = rhapsody::Error::from(rhapsody::rg::executor::Error::Record(
-            rhapsody::rg::recorder::Outcome {
+        let injected = rhapsody::Error::from(rhapsody::rg::ExecutionError::Record(
+            rhapsody::rg::Outcome {
                 panic: true,
                 ..Default::default()
             },
