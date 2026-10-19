@@ -80,7 +80,7 @@ impl Arena {
         bump.set_allocation_limit(Some(bump.allocated_bytes()));
         let bytes = bump.allocated_bytes_including_metadata();
         if bytes > config.max_total_bytes {
-            return Err(Error::Timeout);
+            return Err(Error::exhausted("CPU arena block exceeds the configured byte limit"));
         }
         let reservation = budget.reserve_cpu_bytes(bytes as u64, BudgetCategory::Live)?;
         let initial_capacity = bump.chunk_capacity();
@@ -104,7 +104,7 @@ impl Arena {
         );
         result.map_err(|_| {
             self.failures.set(self.failures.get().saturating_add(1));
-            Error::Timeout
+            Error::exhausted("CPU arena chunk is full")
         })
     }
 }
@@ -405,7 +405,7 @@ mod tests {
         assert!(bytes >= 1024);
         let metadata = pool.stats().metadata_bytes as u64;
         assert_eq!(budget.cpu_memory_usage().live, bytes + metadata);
-        assert_eq!(budget.budget_usage().total(), bytes + metadata);
+        assert_eq!(budget.device_memory_usage().total(), 0, "host bytes never charge the device");
         assert_eq!(budget.report().totals.total_allocated_bytes, 0);
         assert!(budget.report().allocations.is_empty());
         assert_eq!(pool.trim_idle(0), 0);
@@ -427,7 +427,7 @@ mod tests {
         first.slice_fill(4, 123u64).unwrap();
         assert!(matches!(
             first.slice_fill(first.backing_bytes() * 2, 0u8),
-            Err(Error::Timeout)
+            Err(Error::Exhausted(_))
         ));
         let bytes = first.backing_bytes();
         drop(first);
@@ -447,7 +447,7 @@ mod tests {
         assert!(matches!(pool.checkout(), Err(Error::OutOfHostMemory)));
         assert_eq!(pool.stats().live_bytes, 0);
         assert_eq!(budget.cpu_memory_usage().total(), metadata);
-        assert_eq!(budget.budget_usage().total(), metadata);
+        assert_eq!(budget.device_memory_usage().total(), 0);
         drop(pool);
         assert_eq!(budget.cpu_memory_usage().total(), 0);
     }
