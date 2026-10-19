@@ -2407,6 +2407,7 @@ impl VulkanGraphSession {
             graph,
             &format!("slot/{}:{name}", name.len()),
             ResourceSpec::Image(desc).with_sharing(sharing),
+            false,
         )?;
         Ok(super::temporal::NamedTexture {
             texture: graph.texture_id(lookup.handle)?,
@@ -2426,6 +2427,23 @@ impl VulkanGraphSession {
             crate::resource::ResourceSharing::Exclusive,
         )
     }
+    /// Like [`Self::named_buffer`], but a newly created (or resized) buffer is
+    /// zero-filled, so reading it before the first write is defined.
+    /// `history_valid` still reports whether earlier frames wrote it.
+    pub fn named_buffer_zeroed(
+        &mut self,
+        graph: &mut graph::RenderGraph,
+        name: &str,
+        desc: buffer::BufferDesc,
+    ) -> crate::Result<super::temporal::NamedBuffer> {
+        self.named_buffer_with_options(
+            graph,
+            name,
+            desc,
+            crate::resource::ResourceSharing::Exclusive,
+            true,
+        )
+    }
     pub fn named_buffer_with_sharing(
         &mut self,
         graph: &mut graph::RenderGraph,
@@ -2433,10 +2451,24 @@ impl VulkanGraphSession {
         desc: buffer::BufferDesc,
         sharing: crate::resource::ResourceSharing,
     ) -> crate::Result<super::temporal::NamedBuffer> {
+        self.named_buffer_with_options(graph, name, desc, sharing, false)
+    }
+    /// A session-owned buffer that persists across frames. New contents are
+    /// undefined (a read before the first write is rejected) unless
+    /// `zero_initialized` requests a zero-filled allocation.
+    pub fn named_buffer_with_options(
+        &mut self,
+        graph: &mut graph::RenderGraph,
+        name: &str,
+        desc: buffer::BufferDesc,
+        sharing: crate::resource::ResourceSharing,
+        zero_initialized: bool,
+    ) -> crate::Result<super::temporal::NamedBuffer> {
         let lookup = self.request_named(
             graph,
             &format!("slot/{}:{name}", name.len()),
             ResourceSpec::Buffer(desc).with_sharing(sharing),
+            zero_initialized,
         )?;
         Ok(super::temporal::NamedBuffer {
             buffer: graph.buffer_id(lookup.handle)?,
@@ -2503,6 +2535,7 @@ impl VulkanGraphSession {
         graph: &mut graph::RenderGraph,
         key: &str,
         spec: ResourceSpec,
+        zero_initialized: bool,
     ) -> crate::Result<super::temporal::TemporalLookup> {
         let named = self
             .named
@@ -2511,6 +2544,7 @@ impl VulkanGraphSession {
         named.validate_graph(graph)?;
         named.ensure_capacity(key, 1)?;
         let previous = named.resources.register(key, spec);
+        named.resources.set_zero_initialized(key, zero_initialized);
         let lookup = match named.state.get_or_create_owned(
             graph,
             key,
@@ -3090,6 +3124,10 @@ impl NamedResources {
 struct TemporalGpuResources {
     pub device: Arc<Device>,
     specifications: BTreeMap<String, ResourceSpec>,
+    /// Keys whose buffer is zero-filled when it is (re)created.
+    zero_initialized: std::collections::BTreeSet<String>,
+    /// Tokens whose complete allocation was uploaded at creation.
+    defined: std::collections::BTreeSet<u64>,
     resources: BTreeMap<u64, GpuResource>,
     retired: Vec<u64>,
 }
@@ -3098,12 +3136,23 @@ impl TemporalGpuResources {
         Self {
             device,
             specifications: BTreeMap::new(),
+            zero_initialized: Default::default(),
+            defined: Default::default(),
             resources: BTreeMap::new(),
             retired: Vec::new(),
         }
     }
     fn register(&mut self, name: &str, spec: ResourceSpec) -> Option<ResourceSpec> {
         self.specifications.insert(name.into(), spec)
+    }
+    fn set_zero_initialized(&mut self, name: &str, zeroed: bool) {
+        if zeroed {
+            if !self.zero_initialized.contains(name) {
+                self.zero_initialized.insert(name.into());
+            }
+        } else {
+            self.zero_initialized.remove(name);
+        }
     }
     fn restore_specification(&mut self, name: &str, previous: Option<ResourceSpec>) {
         if let Some(previous) = previous {
@@ -3149,11 +3198,12 @@ impl super::temporal::TemporalResourceOwner for TemporalGpuResources {
                 "跨帧声明与物理规格不一致".into(),
             ));
         }
-        // Native get_or_create_temporal<Buffer> @0x1404f62d0 allocates a
-        // zero-filled Vec of desc.size, then passes Some(slice) to
-        // create_buffer @0x1405b93b0. Textures follow their separate None path.
+        // Contents of a new named resource are undefined (history_valid is
+        // false and a read before the first write is rejected) unless the
+        // caller asked for a zero-filled buffer, which costs one upload.
+        let zeroed = self.zero_initialized.contains(name);
         let resource = match spec {
-            ResourceSpec::Buffer(desc) | ResourceSpec::ConcurrentBuffer(desc, _) => {
+            ResourceSpec::Buffer(desc) | ResourceSpec::ConcurrentBuffer(desc, _) if zeroed => {
                 let size = usize::try_from(desc.size)
                     .map_err(|_| graph::BuildError::from(crate::Error::OutOfHostMemory))?;
                 let mut initial = Vec::new();
@@ -3188,10 +3238,13 @@ impl super::temporal::TemporalResourceOwner for TemporalGpuResources {
         let token = try_allocate_token()
             .ok_or_else(|| graph::BuildError::ResourceCreationFailed("跨帧token耗尽".into()))?;
         self.resources.insert(token, resource);
+        if zeroed && matches!(spec, ResourceSpec::Buffer(_) | ResourceSpec::ConcurrentBuffer(..)) {
+            self.defined.insert(token);
+        }
         Ok(token)
     }
     fn initial_contents_defined(&self, token: u64) -> bool {
-        matches!(self.resources.get(&token), Some(GpuResource::Buffer(_)))
+        self.defined.contains(&token)
     }
     fn temporal_sharing(&self, name: &str) -> crate::resource::ResourceSharing {
         self.specifications
@@ -3201,6 +3254,7 @@ impl super::temporal::TemporalResourceOwner for TemporalGpuResources {
     }
     fn release_temporal(&mut self, token: u64) {
         self.resources.remove(&token);
+        self.defined.remove(&token);
         self.retired.push(token);
     }
 }
