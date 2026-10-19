@@ -527,11 +527,11 @@ struct VulkanChunkView<'a> {
 impl super::executor::ChunkRecorder for VulkanChunkView<'_> {
     unsafe fn write_pass_timestamp(
         &self,
-        command: u64,
+        lease: &mut super::executor::ChunkLease<'_>,
         pair: super::profiling::GpuPassTimestamp,
         end: bool,
     ) {
-        pair.write(self.device, vk::CommandBuffer::from_raw(command), end);
+        pair.write(self.device, vk::CommandBuffer::from_raw(lease.command()), end);
     }
     fn owner_storage_pool(
         &self,
@@ -545,7 +545,7 @@ impl super::executor::ChunkRecorder for VulkanChunkView<'_> {
     }
     fn record_transitions(
         &self,
-        command: u64,
+        lease: &mut super::executor::ChunkLease<'_>,
         transitions: &[super::executor::ChunkTransition],
         owners: &mut super::owner_storage::ResourceOwners,
     ) -> crate::Result<()> {
@@ -580,7 +580,7 @@ impl super::executor::ChunkRecorder for VulkanChunkView<'_> {
         unsafe {
             self.barrier_dispatch.issue(
                 self.barrier_device,
-                vk::CommandBuffer::from_raw(command),
+                vk::CommandBuffer::from_raw(lease.command()),
                 &scope,
             )
         }
@@ -1597,11 +1597,6 @@ impl ExecutionBackend for VulkanGraphBackend {
         // while chunks record on other threads.
         self.command_for_slot(chunk + 1)
     }
-    fn command_pool_identity(&self, handle: u64) -> Option<u64> {
-        self.commands
-            .get(&handle)
-            .map(|command| Arc::as_ptr(&command.pool) as usize as u64)
-    }
     fn abandon_command(&mut self, handle: u64) {
         if let Some(ring) = &mut self.gpu_timing {
             ring.abandon(handle);
@@ -1619,15 +1614,61 @@ impl ExecutionBackend for VulkanGraphBackend {
     fn wait_submission(&self, receipt: crate::sync::SyncPoint) -> crate::Result<()> {
         self.device.timelines.wait(&receipt.into(), u64::MAX)
     }
-    fn chunk_recorder(&self) -> Option<Box<dyn super::executor::ChunkRecorder + '_>> {
-        Some(Box::new(VulkanChunkView {
+    fn supports_parallel_recording(&self) -> bool {
+        true
+    }
+    fn chunk_recording(
+        &mut self,
+        commands: &[u64],
+    ) -> crate::Result<super::executor::ChunkRecording<'_>> {
+        // Each lease is carved from a distinct `&mut` frame-pool entry, so no
+        // two chunks can record into one VkCommandPool. Worker 0's pool owns
+        // the batch's main commands, which stay recording meanwhile: never
+        // lease it. The command must really come from the leased pool.
+        let mut leases = smallvec::SmallVec::<[super::executor::ChunkLease<'_>; 8]>::new();
+        let mut entries = smallvec::SmallVec::<[(&FramePoolKey, &mut FrameCommandPool); 8]>::new();
+        let frame_slot = self.active_frame_slot;
+        let family = self.recording_family;
+        for (key, entry) in self.frame_pools.iter_mut() {
+            if key.frame_slot == frame_slot && key.family == family && key.worker != 0 {
+                entries.push((key, entry));
+            }
+        }
+        for &command in commands {
+            let key = self.command_slot.get(&command).ok_or_else(|| {
+                crate::Error::invalid_usage("parallel command has no frame pool")
+            })?;
+            let position = entries
+                .iter()
+                .position(|(candidate, _)| *candidate == key)
+                .ok_or_else(|| {
+                    crate::Error::invalid_usage(
+                        "parallel commands must each own a distinct non-main command pool",
+                    )
+                })?;
+            let (_, entry) = entries.swap_remove(position);
+            if !self
+                .commands
+                .get(&command)
+                .is_some_and(|recorded| Arc::ptr_eq(&recorded.pool, &entry.pool))
+            {
+                return Err(crate::Error::invalid_usage(
+                    "parallel command was not allocated from its leased pool",
+                ));
+            }
+            // SAFETY: `command` belongs to this exclusively borrowed pool
+            // entry, which no other lease or recording command shares.
+            leases.push(unsafe { super::executor::ChunkLease::new(entry, command) });
+        }
+        let view: Box<dyn super::executor::ChunkRecorder + '_> = Box::new(VulkanChunkView {
             barrier_device: &self.device,
             barrier_dispatch: self.barrier_dispatch,
             cpu_arenas: &self.cpu_arenas,
             owner_pool: &self.owner_pool,
             device: &self.device.device,
             resources: &self.resources,
-        }))
+        });
+        Ok((view, leases))
     }
     fn begin_command(&mut self, handle: u64) -> Result<(), recording::Failure> {
         let result = self

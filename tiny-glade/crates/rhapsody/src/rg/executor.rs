@@ -69,8 +69,10 @@ struct ChunkedBatch<'a, C> {
     queue: recording::Queue,
 }
 /// 单块的独占工作单元。
-struct ChunkWork<'a, C> {
+struct ChunkWork<'a, 'l, C> {
     command: &'a recording::Command,
+    /// Exclusive recording right for `command`'s pool on this worker.
+    lease: ChunkLease<'l>,
     start: usize,
     callbacks: &'a mut [C],
     durations: &'a mut [Option<u64>],
@@ -160,14 +162,71 @@ pub struct ChunkTransition {
     pub transition: super::sync_plan::BoundTransition,
 }
 
-/// 后端在并行段暴露的只读录制视图：多个块同时调用，每次只写入调用方独占的命令缓冲。
+/// Exclusive right to record one chunk's command buffer during a parallel
+/// section, standing for the external synchronization Vulkan requires of the
+/// `VkCommandPool` that allocated it.
+///
+/// A backend creates leases only from disjoint `&mut` borrows of its
+/// per-worker pools ([`ExecutionBackend::chunk_recording`]), so two live
+/// leases can never stand for one pool; the borrow also outlives the parallel
+/// section, so nothing else (allocation, reset, a second recording) touches
+/// that pool meanwhile. A lease is `Send` (handed to one worker) but not
+/// `Sync`: only the worker holding it records through it, and every
+/// [`ChunkRecorder`] recording call requires it mutably.
+///
+/// ```compile_fail
+/// # use rhapsody::rg::executor::ChunkLease;
+/// let mut pool = ();
+/// // A second lease of the same pool cannot coexist with the first.
+/// let first = unsafe { ChunkLease::new(&mut pool, 1) };
+/// let second = unsafe { ChunkLease::new(&mut pool, 2) };
+/// drop((first, second));
+/// ```
+///
+/// ```compile_fail
+/// # use rhapsody::rg::executor::ChunkLease;
+/// fn shared<T: Sync>(_: &T) {}
+/// let mut pool = ();
+/// shared(&unsafe { ChunkLease::new(&mut pool, 1) });
+/// ```
+pub struct ChunkLease<'a> {
+    command: u64,
+    _pool: std::marker::PhantomData<&'a mut ()>,
+    _not_sync: std::marker::PhantomData<std::cell::Cell<()>>,
+}
+impl<'a> ChunkLease<'a> {
+    /// # Safety
+    /// `command` was allocated from the pool `pool` stands for, and no other
+    /// command of that pool records while the lease lives. `pool` must be the
+    /// backend's unique owner of that pool (its `&mut` borrow is what makes
+    /// distinct leases name distinct pools).
+    pub unsafe fn new<P: ?Sized>(pool: &'a mut P, command: u64) -> Self {
+        let _ = pool;
+        Self {
+            command,
+            _pool: std::marker::PhantomData,
+            _not_sync: std::marker::PhantomData,
+        }
+    }
+    /// The leased command buffer handle.
+    pub fn command(&self) -> u64 {
+        self.command
+    }
+}
+/// A backend's parallel recording view with one [`ChunkLease`] per chunk.
+pub type ChunkRecording<'a> = (
+    Box<dyn ChunkRecorder + 'a>,
+    smallvec::SmallVec<[ChunkLease<'a>; 8]>,
+);
+
+/// 后端在并行段暴露的只读录制视图：多个块同时调用，每次只写入调用方租约独占的命令缓冲。
 pub trait ChunkRecorder: Sync {
     /// # Safety
     /// The command must be exclusively recording, and the pair must have been
     /// reserved for this command by this backend in the current CPU recording scope.
     unsafe fn write_pass_timestamp(
         &self,
-        _command: u64,
+        _lease: &mut ChunkLease<'_>,
         _pair: super::profiling::GpuPassTimestamp,
         _end: bool,
     ) {
@@ -184,7 +243,7 @@ pub trait ChunkRecorder: Sync {
     /// Emit one pass's scope. Native/OOM errors retain their public categories.
     fn record_transitions(
         &self,
-        command: u64,
+        lease: &mut ChunkLease<'_>,
         transitions: &[ChunkTransition],
         owners: &mut super::owner_storage::ResourceOwners,
     ) -> crate::Result<()>;
@@ -347,12 +406,6 @@ pub trait ExecutionBackend: crate::rg::graph::ResourceBackend {
     fn chunk_command_handle(&mut self, _chunk: usize) -> Result<u64, recording::Failure> {
         self.command_handle()
     }
-    /// Identity of the command pool that allocated `handle`, if the backend has
-    /// pools. Used to verify that concurrently recorded commands never share one
-    /// (a VkCommandPool requires external synchronization).
-    fn command_pool_identity(&self, _handle: u64) -> Option<u64> {
-        None
-    }
     fn begin_command(&mut self, handle: u64) -> Result<(), recording::Failure>;
     fn end_command(&mut self, handle: vk::CommandBuffer) -> bool;
     /// CPU 后端可只记录投影；实际后端必须发出 Vulkan 屏障。
@@ -372,9 +425,20 @@ pub trait ExecutionBackend: crate::rg::graph::ResourceBackend {
         queue: vk::Queue,
         prepared: &[submit::PreparedSubmit],
     ) -> crate::Result<crate::sync::SyncPoint>;
-    /// 支持并行录制的后端返回只读视图；返回 None 时执行器始终走串行路径。
-    fn chunk_recorder(&self) -> Option<Box<dyn ChunkRecorder + '_>> {
-        None
+    /// Whether [`Self::chunk_recording`] is implemented; otherwise the
+    /// executor always records serially.
+    fn supports_parallel_recording(&self) -> bool {
+        false
+    }
+    /// The parallel recording view plus one lease per chunk command, in the
+    /// order of `commands` (each from [`Self::chunk_command_handle`] and
+    /// begun). Leases must come from disjoint `&mut` borrows of the pools
+    /// that allocated those commands, none shared with a command that stays
+    /// recording during the parallel section (see [`ChunkLease`]).
+    fn chunk_recording(&mut self, _commands: &[u64]) -> crate::Result<ChunkRecording<'_>> {
+        Err(crate::Error::unsupported(
+            "backend does not support parallel recording",
+        ))
     }
     /// 失败路径：已分配或已开始、但不会提交的命令交还后端（它从未进入 GPU）。默认不做任何事。
     fn abandon_command(&mut self, _handle: u64) {}
@@ -962,7 +1026,7 @@ impl ExecutionChain {
             ) && self.pgo.previous.total_ns() >= self.parallel.min_total_ns
                 && (self.parallel.min_total_ns == 0 || !self.pgo.previous.is_empty());
             let chunks: smallvec::SmallVec<[_; 8]> =
-                if worth_it && backend.chunk_recorder().is_some() {
+                if worth_it && backend.supports_parallel_recording() {
                     crate::rg::parallel::plan_chunks(
                         self.parallel.strategy,
                         &pass_names[batch.pass_range.clone()],
@@ -1382,20 +1446,6 @@ impl ExecutionChain {
             let command = self.begin(handle, family, queue, backend.begin_command(handle))?;
             scratch.begun.push(command);
         }
-        // Chunks record concurrently while the batch's open main commands stay
-        // in the recording state: every one of them needs its own pool.
-        let mut pools = smallvec::SmallVec::<[u64; 16]>::new();
-        for command in scratch.begun.iter().chain(&recorder.commands) {
-            if let Some(pool) = backend.command_pool_identity(command.handle()) {
-                if pools.contains(&pool) {
-                    self.chunk_scratch = scratch;
-                    return Err(Error::Validation(crate::Error::invalid_usage(
-                        "concurrently recorded commands share a command pool",
-                    )));
-                }
-                pools.push(pool);
-            }
-        }
         scratch.chunk_of_pass.clear();
         scratch.chunk_of_pass.resize(passes.len(), 0);
         for (index, range) in chunks.iter().enumerate() {
@@ -1446,10 +1496,27 @@ impl ExecutionChain {
                     backend.reserve_pass_timestamp(command.handle(), first_pass + index);
             }
         }
-        let mut work = smallvec::SmallVec::<[ChunkWork<'_, C>; 8]>::with_capacity(chunks.len());
+        let handles = begun
+            .iter()
+            .map(|command| command.handle())
+            .collect::<smallvec::SmallVec<[u64; 8]>>();
+        let (view, leases) = match backend.chunk_recording(&handles) {
+            Ok(recording) if recording.1.len() == handles.len() => recording,
+            Ok(_) => {
+                self.chunk_scratch = scratch;
+                return Err(Error::ChunkPlan);
+            }
+            Err(error) => {
+                self.chunk_scratch = scratch;
+                return Err(Error::Validation(error));
+            }
+        };
+        let mut work =
+            smallvec::SmallVec::<[ChunkWork<'_, '_, C>; 8]>::with_capacity(chunks.len());
         let mut remaining_durations = &mut *durations;
         let mut rest = callbacks;
-        for (range, command) in chunks.iter().zip(begun) {
+        for ((range, command), lease) in chunks.iter().zip(begun).zip(leases) {
+            debug_assert_eq!(lease.command(), command.handle());
             let (head, tail) = std::mem::take(&mut rest).split_at_mut(range.len());
             rest = tail;
             let (duration_slice, duration_tail) =
@@ -1457,6 +1524,7 @@ impl ExecutionChain {
             remaining_durations = duration_tail;
             work.push(ChunkWork {
                 command,
+                lease,
                 start: range.start,
                 callbacks: head,
                 durations: duration_slice,
@@ -1466,7 +1534,6 @@ impl ExecutionChain {
             });
         }
         let results = {
-            let view = backend.chunk_recorder().ok_or(Error::ChunkPlan)?;
             let view = &*view;
             self.parallel.runner.map_chunks(&mut work, |_, work| {
                 let owners =
@@ -1501,7 +1568,7 @@ impl ExecutionChain {
                 let mut ok = true;
                 for (offset, callback) in work.callbacks.iter_mut().enumerate() {
                     if let Err(error) = view.record_transitions(
-                        work.command.handle(),
+                        &mut work.lease,
                         &work.transitions[work.ranges[offset].clone()],
                         &mut owners.borrow_mut(),
                     ) {
@@ -1523,7 +1590,7 @@ impl ExecutionChain {
                     let gpu = work.gpu_timings[offset];
                     if let Some(pair) = gpu {
                         // SAFETY: each worker owns its command and its disjoint reserved query pairs.
-                        unsafe { view.write_pass_timestamp(work.command.handle(), pair, false) };
+                        unsafe { view.write_pass_timestamp(&mut work.lease, pair, false) };
                     }
                     let timer = std::time::Instant::now();
                     let good = callback(PassContext {
@@ -1537,7 +1604,7 @@ impl ExecutionChain {
                     });
                     if let Some(pair) = gpu {
                         // SAFETY: the callback has returned on the same exclusive worker command.
-                        unsafe { view.write_pass_timestamp(work.command.handle(), pair, true) };
+                        unsafe { view.write_pass_timestamp(&mut work.lease, pair, true) };
                     }
                     work.durations[duration_count] = Some(timer.elapsed().as_nanos() as u64);
                     duration_count += 1;
@@ -1554,18 +1621,22 @@ impl ExecutionChain {
                 }
             })
         };
+        // The leases (and the view) end with the parallel section; the pools
+        // return to the backend before any further serial recording.
+        drop(work);
+        drop(view);
         // 串行：按块顺序合并耗时与 owner。
         let mut failed = false;
         let mut callback_error = None;
-        for ((command, work), mut result) in begun.iter().zip(&work).zip(results) {
+        for ((command, range), mut result) in begun.iter().zip(chunks).zip(results) {
             self.pgo.current.extend(
-                work.durations[..result.recorded_durations]
+                durations[range.clone()][..result.recorded_durations]
                     .iter()
                     .enumerate()
                     .map(|(offset, duration)| {
                         PassPgoDuration::new(
                             PassPgoNameId::from_shared(std::sync::Arc::clone(
-                                pass_names[first_pass + work.start + offset],
+                                pass_names[first_pass + range.start + offset],
                             )),
                             duration.expect("recorded pass duration"),
                         )
@@ -1605,7 +1676,6 @@ impl ExecutionChain {
         }
         let outcome = outcome?;
         let last = begun.last().cloned().ok_or(Error::ChunkPlan)?;
-        drop(work);
         self.chunk_scratch = scratch;
         Ok((last, outcome))
     }
