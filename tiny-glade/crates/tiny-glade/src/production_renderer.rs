@@ -17,10 +17,12 @@ use bevy_ecs::world::World;
 use country_core::{
     asset_libraries::shader_library::AssetShaderLibrary,
     game_config::GameConfig,
-    render::render_config::VideoSettings,
+    render::{pass_builder::rg_resources::RgResources as _, render_config::VideoSettings},
     systems::render_loop::{
         draw_passes::draw_lists::{DrawLists, build_draw_lists},
         render_frame::{Acquire, Level, RenderHost, SwapchainInfo},
+        render_world as core_render_world,
+        world_frame::{self as core_world_frame, MinimalWorldFrameHost, WorldFrameError},
     },
 };
 use rhapsody::{
@@ -32,7 +34,7 @@ use crate::{
     egui_backend::EguiBackend,
     egui_gpu::EguiGpu,
     game_loop::GameRenderHostFactory,
-    render_bridge::{CompiledCoreGraph, CoreRenderBridge},
+    render_bridge::{CompiledCoreGraph, CoreGraphFrame, CoreRenderBridge},
 };
 
 #[path = "production_resolve.rs"]
@@ -41,21 +43,414 @@ mod resolve;
 const TIMEOUT_NS: u64 = 10_000_000_000;
 
 /// Original loader closure 0x1400d7440 must successfully render the gameplay
-/// App once without a swapchain before publishing it. The unresolved original
-/// world consumer is a failure here too; it cannot signal a false ready App.
+/// App once without a swapchain before publishing it.
+///
+/// Wired to `render_bridge::warm_up_gameplay_with_world_builder` with the
+/// recovered W1..W54 world stage plus the compile_main tail subset
+/// (`grading -> blur -> final_post -> UI subset`) and the `"msaa color out"`
+/// 0x22 export. **Equivalence status**: not complete compile_main. The tail
+/// steps whose hosts/producers are still U (menu background, painterly aux
+/// inputs and session/feedback overlays)
+/// are listed in `world_postprocess::WorldTailControls`; when their controls are
+/// off this builder declares the implemented subset only. Worker warm-up has
+/// no egui backend; normal main frames draw their owned backend before export.
+/// LUT gallery consumes the optional capture slot; its producer remains open.
+/// The MEI producer is mandatory: without the original `text_flush_system` output the tail returns
+/// a named error instead of presenting a frame without UI text. This never
+/// reports success unless the graph compiled, executed and exported a real
+/// texture.
 pub fn warm_up_gameplay(
-    _device: Arc<rhapsody::device::Device>,
-    _compiled_shader_root: PathBuf,
-    _shaders: Arc<AssetShaderLibrary>,
-    _world: &mut World,
+    owners: crate::render_bridge::CoreRenderOwners,
+    world: &mut World,
 ) -> Result<()> {
-    Err(world_consumer_missing().into())
+    crate::render_bridge::warm_up_gameplay_with_world_builder(
+        owners,
+        world,
+        |frame, world, lists| {
+            // Update44 already consumed the text stream. Reuse that exact
+            // output in warm-up instead of destructively flushing twice.
+            frame.with_main_prelude(world, |frame, world| {
+                let extent = world_extent(world, None, None)?;
+                let id = build_full_world_stage(frame, world, lists, extent, None)?;
+                let display = display_extent(world)?;
+                Ok(
+                    country_core::render::pass_builder::pass_resource_access::RgTexture {
+                        resource: id,
+                        // Native final target: `"msaa color out"` = 0x2b. The
+                        // native sample_count(4) lives on the graph image and on
+                        // the attachment descriptions, not on this core view.
+                        desc: country_core::rhapsody_types::TextureDesc::new_2d(display, 0x2b)
+                            .sampled()
+                            .color_attachment(),
+                    },
+                )
+            })
+        },
+    )?;
+    Ok(())
 }
 
-fn world_consumer_missing() -> rhapsody::Error {
-    rhapsody::Error::unsupported(
-        "original compile_main 0x140161cd0: world FramePasses consumer is not connected",
-    )
+// ---------------------------------------------------------------------------------------------
+// Original compile_main 0x140161cd0 wiring (G2 world-frame round).
+//
+// O: the closure creates `main color` (TextureDesc::new_2d(extent, 0x7a) then
+// 0x140bd5460 `mov [desc+0x1c], 6` = mip_levels(6), name 0x14295d6a8 len 10)
+// and `main depth` (new_2d(extent, 0x82), name 0x14295d798 len 10), calls
+// render_world 0x1404ec110, then exports the final texture for the
+// presentation closure (import_unowned access 0x22). The typed W1..W54
+// consumers recovered in world_graph.rs are the production body; the 63-seam
+// `FramePasses` trait has no production host yet and is not used here.
+// ---------------------------------------------------------------------------------------------
+
+/// `production_resolve` imports the main source at access 0x22.
+const WORLD_EXPORT_ACCESS: u8 = 0x22;
+
+/// Explicit diagnostic switch for the minimal (clear+export) world frame.
+/// Without it, a missing world producer is a hard error:
+/// presenting an empty world as a successful frame would hide the real gap.
+pub const ALLOW_MINIMAL_WORLD_FRAME_ENV: &str = "TG_ALLOW_MINIMAL_WORLD_FRAME";
+
+fn minimal_world_frame_allowed() -> bool {
+    std::env::var(ALLOW_MINIMAL_WORLD_FRAME_ENV).as_deref() == Ok("1")
+}
+
+/// Original world dimensions.
+///
+/// Contract §5.1 M1 (I): `dims = min_extent.unwrap_or(world_dims)` — the OOM
+/// retry value is an **override**, not a floor. `world_dims` is the inner
+/// rendering resolution: base window extent times `world_resolution_scale`.
+/// `prepare_frame_constants` treats `extent_10` as `inner_rendering_resolution`
+/// and `global_mip_bias = extent_10/extent_8` (prepare_frame_constants.rs:205,
+/// 214); `FrameRenderConfig::at_startup` copies the window dims without applying
+/// the scale (render_config.rs:49-54), so the scale is consumed here. Reading
+/// `GameConfig.video.world_resolution_scale` is what makes
+/// `set_resolution_scale` (production_renderer.rs) actually shrink the OOM
+/// retry.
+fn world_extent(
+    world: &World,
+    swapchain: Option<&SwapchainInfo>,
+    min_extent: Option<[u32; 2]>,
+) -> rhapsody::Result<[u32; 2]> {
+    if let Some(min) = min_extent {
+        if min.contains(&0) {
+            return Err(rhapsody::Error::invalid_usage(
+                "original compile_main 0x140161cd0: min_extent contains zero",
+            ));
+        }
+        return Ok(min);
+    }
+    let config = world.get_resource::<country_core::render::render_config::FrameRenderConfig>();
+    let base = world
+        .get_resource::<country_core::resources::window::WindowSize>()
+        .map(|window| window.as_dims())
+        .or_else(|| config.map(|config| config.extent_10))
+        .or_else(|| swapchain.map(|info| info.extent))
+        .ok_or_else(|| {
+            rhapsody::Error::invalid_usage(
+                "original compile_main 0x140161cd0: missing WindowSize/FrameRenderConfig producer and no swapchain extent",
+            )
+        })?;
+    // I (evidence item): the native inner-resolution update that applies
+    // world_resolution_scale to extent_10 is not recovered. Apply it at the
+    // point of use so the OOM retry is not a no-op.
+    let scale = world
+        .get_resource::<GameConfig>()
+        .and_then(|config| config.video.world_resolution_scale)
+        .or_else(|| config.map(|config| config.world_resolution_scale))
+        .unwrap_or(1.0);
+    let extent = [
+        (base[0] as f32 * scale) as u32,
+        (base[1] as f32 * scale) as u32,
+    ];
+    if extent.contains(&0) {
+        return Err(rhapsody::Error::invalid_usage(
+            "original compile_main 0x140161cd0: world extent is zero after world_resolution_scale",
+        ));
+    }
+    Ok(extent)
+}
+
+/// Producers whose absence makes the typed W1..W54 consumer unable to declare
+/// a frame. Returning the missing name keeps the fallback explicit in logs and
+/// never fabricates a resource.
+fn missing_world_producer(world: &World) -> Option<&'static str> {
+    use country_core::{
+        render::{frame_constants::FrameConstants, nani::gpu_world::GpuWorld},
+        resources::{gpu_lut::GpuLutTracker, session::ActiveSession},
+        systems::{
+            camera_rig::main_camera::MainCamera,
+            render_loop::draw_passes::deferred_raster::DeferredRasterResources,
+        },
+    };
+    let checks: [(&'static str, bool); 7] = [
+        ("GpuWorld", world.contains_resource::<GpuWorld>()),
+        ("GpuLutTracker", world.contains_resource::<GpuLutTracker>()),
+        (
+            "FrameConstants",
+            world.contains_resource::<FrameConstants>(),
+        ),
+        ("MainCamera", world.contains_resource::<MainCamera>()),
+        ("ActiveSession", world.contains_resource::<ActiveSession>()),
+        (
+            "DeferredRasterResources",
+            world.contains_resource::<DeferredRasterResources>(),
+        ),
+        (
+            "FrameRenderConfig",
+            world.contains_resource::<country_core::render::render_config::FrameRenderConfig>(),
+        ),
+    ];
+    checks
+        .iter()
+        .find(|(_, present)| !present)
+        .map(|(name, _)| *name)
+}
+
+fn world_color_target(
+    frame: &mut CoreGraphFrame<'_>, extent: [u32; 2],
+) -> rhapsody::Result<country_core::render::pass_builder::pass_resource_access::RgTexture> {
+    frame.with_compute(|compute| Ok(compute.create_raw_texture(
+        core_world_frame::MAIN_COLOR_NAME, &core_world_frame::main_color_desc(extent))))
+}
+
+fn world_depth_target(
+    frame: &mut CoreGraphFrame<'_>, extent: [u32; 2],
+) -> rhapsody::Result<country_core::render::pass_builder::pass_resource_access::RgTexture> {
+    frame.with_compute(|compute| Ok(compute.create_raw_texture(
+        core_world_frame::MAIN_DEPTH_NAME, &core_world_frame::main_depth_desc(extent))))
+}
+
+/// Native `plVar39[6]` target extent (I: `FrameRenderConfig.extent_8`, the same
+/// display extent used by the TGSR history). Used by `final_post`'s `r9` and by
+/// the UI passes' viewport. Zero is a hard error, never a fallback size.
+fn display_extent(world: &World) -> rhapsody::Result<[u32; 2]> {
+    let extent = world
+        .get_resource::<country_core::render::render_config::FrameRenderConfig>()
+        .ok_or_else(|| {
+            rhapsody::Error::invalid_usage(
+                "original compile_main 0x140161cd0: missing FrameRenderConfig for the tail display extent",
+            )
+        })?
+        .extent_8;
+    if extent.contains(&0) {
+        return Err(rhapsody::Error::invalid_usage(
+            "original compile_main 0x140161cd0: display extent contains zero",
+        ));
+    }
+    Ok(extent)
+}
+
+fn build_full_world_stage(
+    frame: &mut CoreGraphFrame<'_>,
+    world: &mut World,
+    lists: &DrawLists,
+    extent: [u32; 2],
+    egui: Option<(&mut EguiGpu, &mut EguiBackend)>,
+) -> rhapsody::Result<u32> {
+    let color = world_color_target(frame, extent)?;
+    let decision = crate::world_graph::select_main_world(world)?;
+    let controls = crate::world_graph::WorldGraphControls {
+        // O: *0x14362c0d8 is a process debug byte initialised to zero; no
+        // recovered producer exists, so the load-time value is used.
+        freeze_occlusion_culling: false,
+        postprocess: crate::world_postprocess::PostProcessControls {
+            // O: *0x14362c080 (calc_dof multires) and *0x143634d50 (history
+            // disable) are load-time zero debug globals without producers.
+            multires_dof: false,
+            disable_temporal_history: false,
+        },
+    };
+    let debug_rt = crate::gui::gui_debug::RENDER_OVERRIDE_SHOW_DEBUG_RT_VIEW
+        .load(std::sync::atomic::Ordering::Relaxed);
+    let out = if decision.render_world && !debug_rt {
+        let depth = world_depth_target(frame, extent)?;
+        crate::world_graph::build_world(frame, world, lists, extent, depth, color, controls)?
+    } else {
+        if decision.render_world {
+            // Original 140162840 selects the recovered Primary RT algorithm,
+            // not a clear operation and not an empty stand-in world.
+            crate::scene_compute::with_env(frame, world, |env| {
+                let pass = country_core::systems::render_loop::compute_passes::primary_rt_debug::primary_rt_debug(env, &color);
+                env.record(pass);
+                Ok(())
+            })?;
+        }
+        // Both original no-world branches use these real independent dummies.
+        let depth = world_depth_target(frame, extent)?;
+        let coc = frame.with_compute(|compute| Ok(compute.create_raw_texture("coc",
+            &country_core::rhapsody_types::TextureDesc::new_2d([1, 1], 9))))?;
+        crate::world_postprocess::WorldPostOutputs { depth, coc, taa: color }
+    };
+    // Native compile_main 0x140161cd0 continues after render_world with
+    // grading -> blur -> final_post -> UI, then exports the MSAA target at 0x22.
+    let display = display_extent(world)?;
+    let tail_controls = crate::world_postprocess::resolve_world_tail_controls(world, decision)?;
+    let tail = crate::world_postprocess::build_world_tail(
+        frame,
+        world,
+        lists,
+        &out,
+        display,
+        &tail_controls,
+    )?;
+    // T21 (B compile_main :1363): the main-frame owner supplies Some, while
+    // the loading frame and the worker warm-up have no EguiBackend. Keep this
+    // after T20 loading_screen_pass and before the final 0x22 export; all draws
+    // target the same 4x MSAA image and the existing per-App GPU namespaces.
+    {
+        if let Some((gpu, backend)) = egui {
+            let shaders = frame.shader_library();
+            let target =
+                country_core::systems::render_loop::draw_passes::final_post::msaa_color_desc(
+                    (display[0], display[1]),
+                    tail.msaa.resource,
+                );
+            gpu.draw(frame, backend, shaders.as_ref(), target)
+                .map_err(|error| {
+                    rhapsody::Error::invalid_usage(format!(
+                        "original compile_main tail EguiBackend::draw: {error:#}"
+                    ))
+                })?;
+        }
+    }
+    crate::screenshot::shared_texture_capture::opportunity(frame, world, 6, tail.msaa, 4)?;
+    frame.with_graph(|graph| {
+        let id = graph.resource_handle(tail.msaa.resource)?;
+        graph.export(id, WORLD_EXPORT_ACCESS)?;
+        Ok(())
+    })?;
+    Ok(tail.msaa.resource)
+}
+
+fn compile_full_world_graph(
+    renderer: &mut ProductionRenderer,
+    world: &mut World,
+    lists: &DrawLists,
+    extent: [u32; 2],
+    egui: &mut EguiBackend,
+) -> rhapsody::Result<CompiledGameGraph> {
+    // Original `text_flush_system` runs in Update44. Compile and OOM retry
+    // reuse that uploaded stream without consuming the text renderer again.
+    let gpu = &mut renderer.egui;
+    let (output, built) = renderer.bridge.build_frame(|frame| {
+        frame.with_main_prelude(world, |frame, world| {
+            build_full_world_stage(frame, world, lists, extent, Some((gpu, egui)))
+        })
+    })?;
+    if let Err(error) = renderer
+        .bridge
+        .shader_backend()
+        .prewarm(Duration::from_secs(10))
+    {
+        if let Err(cleanup) = renderer.bridge.cancel_built(built) {
+            log::warn!("world pipeline prewarm cancellation: {cleanup}");
+        }
+        return Err(error);
+    }
+    let capture_graph_id = built.graph_id();
+    let graph = renderer.bridge.compile_built(built)?;
+    Ok(CompiledGameGraph {
+        capture_graph_id,
+        graph,
+        output,
+        expected: ExportExpectation {
+            format: country_core::systems::render_loop::draw_passes::final_post::MSAA_COLOR_FORMAT,
+            sample_count:
+                country_core::systems::render_loop::draw_passes::final_post::MSAA_SAMPLE_COUNT,
+        },
+    })
+}
+
+/// Minimal world-frame host over the real enclosing graph. `Clear image`
+/// (0x1409dde90) is a real transfer pass; no shader or substitute renderer is
+/// installed.
+struct MinimalWorldHost<'a, 'b> {
+    frame: &'a mut CoreGraphFrame<'b>,
+}
+
+fn backend_error(seam: &'static str) -> impl FnOnce(rhapsody::Error) -> WorldFrameError {
+    move |error| WorldFrameError::backend(seam, error)
+}
+
+impl MinimalWorldFrameHost for MinimalWorldHost<'_, '_> {
+    fn create_color_target(
+        &mut self,
+        name: &str,
+        desc: &country_core::rhapsody_types::TextureDesc,
+    ) -> Result<core_render_world::RgTexture, WorldFrameError> {
+        // The graph creation uses the full country-core description, including
+        // the native mip_levels(6); the returned render_world view only carries
+        // id/format/extent because downstream consumers use `id`.
+        let texture = self
+            .frame
+            .with_compute(|compute| Ok(compute.create_raw_texture(name, desc)))
+            .map_err(backend_error("create_color_target"))?;
+        Ok(core_render_world::RgTexture {
+            id: texture.resource,
+            desc: core_render_world::TextureDesc::new_2d(
+                [desc.extent[0], desc.extent[1]],
+                desc.format,
+            ),
+        })
+    }
+
+    fn clear_color_target(
+        &mut self,
+        color: &core_render_world::RgTexture,
+    ) -> Result<(), WorldFrameError> {
+        self.frame
+            .with_compute(|compute| {
+                country_core::render::rg_helpers::clear_rg_color_image(compute, color.id);
+                Ok(())
+            })
+            .map_err(backend_error("clear_color_target"))
+    }
+
+    fn export_texture(
+        &mut self,
+        color: &core_render_world::RgTexture,
+        access: u8,
+    ) -> Result<(), WorldFrameError> {
+        self.frame
+            .with_graph(|graph| {
+                let id = graph.resource_handle(color.id)?;
+                graph.export(id, access)?;
+                Ok(())
+            })
+            .map_err(backend_error("export_texture"))
+    }
+}
+
+fn compile_minimal_world_graph(
+    renderer: &mut ProductionRenderer,
+    extent: [u32; 2],
+) -> rhapsody::Result<CompiledGameGraph> {
+    let (output, built) = renderer.bridge.build_frame(|frame| {
+        let mut host = MinimalWorldHost { frame };
+        core_world_frame::build_minimal_world_frame(&mut host, extent)
+            .map_err(|error| rhapsody::Error::invalid_usage(error.to_string()))
+    })?;
+    if let Err(error) = renderer
+        .bridge
+        .shader_backend()
+        .prewarm(Duration::from_secs(10))
+    {
+        if let Err(cleanup) = renderer.bridge.cancel_built(built) {
+            log::warn!("minimal world frame prewarm cancellation: {cleanup}");
+        }
+        return Err(error);
+    }
+    let capture_graph_id = built.graph_id();
+    let graph = renderer.bridge.compile_built(built)?;
+    Ok(CompiledGameGraph {
+        capture_graph_id,
+        graph,
+        output: output.id,
+        expected: ExportExpectation {
+            format: core_render_world::formats::COLOR_HDR,
+            sample_count: 1,
+        },
+    })
 }
 
 struct ApplicationGpu {
@@ -101,6 +496,10 @@ impl ApplicationGpu {
                 );
             }
         }
+        country_core::systems::render_loop::painterly::startup_painterly(&mut VermeerShaders {
+            library: &shaders,
+            backend: bridge.shader_backend(),
+        });
         country_core::systems::render_loop::vermeer::startup_vermeer(&mut VermeerShaders {
             library: &shaders,
             backend: bridge.shader_backend(),
@@ -140,7 +539,7 @@ pub struct ProductionRenderer {
     reduced_state: u64,
     stats: rhapsody::device::RenderStats,
     last_stats: rhapsody::device::StatsSnapshot,
-    // The native window and CAMetalLayer outlive every Vulkan surface owner.
+    // The native window and platform backing outlive every Vulkan surface owner.
     platform: PlatformSurface,
     window: Arc<winit::window::Window>,
 }
@@ -397,9 +796,21 @@ impl Drop for ProductionRenderer {
     }
 }
 
+/// What the presentation graph must receive. The native resolve shader is chosen
+/// from the imported source's `sample_count` (`final_post::resolve_shader_name`),
+/// so a wrong export is observable here instead of silently taking the
+/// non-MSAA path.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct ExportExpectation {
+    format: u32,
+    sample_count: u8,
+}
+
 pub struct CompiledGameGraph {
+    capture_graph_id: rhapsody::rg::GraphId,
     graph: CompiledCoreGraph,
     output: u32,
+    expected: ExportExpectation,
 }
 
 pub struct ProductionRenderHost<'a> {
@@ -546,18 +957,48 @@ impl RenderHost for ProductionRenderHost<'_> {
             }
             return Err(error);
         }
+        let capture_graph_id = built.graph_id();
         let graph = self.renderer.bridge.compile_built(built)?;
         Ok(CompiledGameGraph {
+            capture_graph_id,
             graph,
             output: output.id,
+            // loading_graph builds its "loading screen" target as 0x2b with a
+            // single sample; presentation takes the non-MSAA resolve shader.
+            expected: ExportExpectation {
+                format: 0x2b,
+                sample_count: 1,
+            },
         })
     }
     fn compile_world_graph(
         &mut self,
-        _swapchain: Option<&SwapchainInfo>,
-        _min_extent: Option<[u32; 2]>,
+        swapchain: Option<&SwapchainInfo>,
+        min_extent: Option<[u32; 2]>,
     ) -> rhapsody::Result<Self::Compiled> {
-        Err(world_consumer_missing())
+        let extent = world_extent(self.world, swapchain, min_extent)?;
+        match missing_world_producer(self.world) {
+            None => {
+                compile_full_world_graph(self.renderer, self.world, &self.lists, extent, self.egui)
+            }
+            Some(missing) => {
+                if minimal_world_frame_allowed() {
+                    // Explicit diagnostic path only. The minimal closure
+                    // is a real clear+export frame, not a claim that world
+                    // rendering succeeded.
+                    log::warn!(
+                        target: crate::render_loop::LOG_TARGET,
+                        "original compile_main 0x140161cd0: missing {missing} producer; diagnostic minimal world frame enabled (clear + export)"
+                    );
+                    compile_minimal_world_graph(self.renderer, extent)
+                } else {
+                    // Default: refuse to present an empty world as success.
+                    Err(rhapsody::Error::unsupported(format!(
+                        "original compile_main 0x140161cd0: missing {missing} producer; refusing the minimal world frame (set {ALLOW_MINIMAL_WORLD_FRAME_ENV}=1 to allow the diagnostic)"
+                    )))
+                }
+            }
+        }
     }
     fn resolution_scale(&mut self) -> Option<f32> {
         self.world
@@ -622,19 +1063,46 @@ impl RenderHost for ProductionRenderHost<'_> {
         }
     }
     fn execute_main_graph(&mut self, compiled: Self::Compiled) {
+        let expected = compiled.expected;
+        let capture_graph_id = compiled.capture_graph_id;
         match self.renderer.bridge.execute_compiled(compiled.graph) {
-            Ok(receipt) => match self
+            Ok(receipt) => {
+                if crate::screenshot::shared_texture_capture::installed(self.world) {
+                    if let Err(error) = crate::screenshot::shared_texture_capture::submitted(
+                        self.world, &mut self.renderer.bridge, capture_graph_id, &receipt,
+                    ) { self.renderer.record_error(error); return; }
+                }
+                match self
                 .renderer
                 .bridge
                 .take_exported_texture(&receipt, compiled.output)
             {
                 Ok(texture) => {
+                    // The presentation graph imports this exact owner and picks
+                    // its resolve shader from `sample_count`; a mismatched export
+                    // would silently present an unresolvable/TAA image.
+                    let actual = ExportExpectation {
+                        format: texture.desc.format.as_raw() as u32,
+                        sample_count: texture.desc.sample_count,
+                    };
+                    if actual != expected {
+                        self.renderer.record_error(rhapsody::Error::invalid_usage(format!(
+                            "main graph export differs from the declared target: got format 0x{:x} \
+                             samples {}, expected 0x{:x} samples {}",
+                            actual.format, actual.sample_count, expected.format, expected.sample_count,
+                        )));
+                        return;
+                    }
                     self.renderer.main_output = Some(texture);
                     self.renderer.main = Some((compiled.output, receipt));
                 }
                 Err(error) => self.renderer.record_error(error),
-            },
-            Err(error) => self.renderer.record_error(error),
+                }
+            }
+            Err(error) => {
+                crate::screenshot::shared_texture_capture::cancel_unsubmitted(self.world, capture_graph_id);
+                self.renderer.record_error(error);
+            }
         }
     }
     fn acquire_swapchain_image(&mut self) -> Acquire {
@@ -706,12 +1174,10 @@ impl RenderHost for ProductionRenderHost<'_> {
         }
     }
     fn finish_screenshot_capture(&mut self) {
-        // The reconstructed screenshot coordinator still lacks the original
-        // per-request GPU texture association. Do not advance requests to a
-        // fictional completed state from this production owner.
-        if crate::screenshot::has_active_screenshot_requests() {
-            self.renderer.record_error(rhapsody::Error::unsupported(
-                "original screenshot 0x14031ea20: request-to-GPU-texture association is not recovered"));
+        if crate::screenshot::shared_texture_capture::installed(self.world) {
+            if let Err(error) = crate::screenshot::finish_screenshot_capture(self.world) {
+                self.renderer.record_error(error);
+            }
         }
     }
     fn snapshot_render_stats(&mut self) {
@@ -738,6 +1204,56 @@ impl RenderHost for ProductionRenderHost<'_> {
         {
             self.renderer.record_error(error);
         }
+    }
+}
+
+#[cfg(test)]
+mod world_extent_tests {
+    use super::world_extent;
+    use bevy_ecs::world::World;
+    use country_core::{
+        game_config::GameConfig, render::render_config::FrameRenderConfig,
+        resources::window::WindowSize,
+    };
+
+    fn test_world(window: [u32; 2], scale: Option<f32>) -> World {
+        let mut world = World::new();
+        world.insert_resource(WindowSize::new(window[0], window[1]));
+        let mut config = GameConfig::default();
+        config.video.world_resolution_scale = scale;
+        world.insert_resource(config);
+        world.insert_resource(FrameRenderConfig {
+            extent_0: window,
+            extent_8: window,
+            extent_10: window,
+            world_resolution_scale: scale.unwrap_or(1.0),
+            tgsr_resolution_scale: 1.0,
+            flag_20: false,
+        });
+        world
+    }
+
+    #[test]
+    fn extent_consumes_world_resolution_scale() {
+        let world = test_world([1280, 720], Some(0.5));
+        assert_eq!(world_extent(&world, None, None).unwrap(), [640, 360]);
+        let world = test_world([1280, 720], None);
+        assert_eq!(world_extent(&world, None, None).unwrap(), [1280, 720]);
+    }
+
+    #[test]
+    fn min_extent_is_an_override_not_a_floor() {
+        let world = test_world([1280, 720], Some(0.5));
+        assert_eq!(
+            world_extent(&world, None, Some([32, 32])).unwrap(),
+            [32, 32]
+        );
+    }
+
+    #[test]
+    fn zero_scale_is_a_named_error() {
+        let world = test_world([1280, 720], Some(0.0));
+        assert!(world_extent(&world, None, None).is_err());
     }
 }
 
@@ -857,9 +1373,73 @@ mod macos {
     }
 }
 
-#[cfg(not(target_os = "macos"))]
+// Host platform integration. This uses winit's actual Win32 handles and the
+// existing Surface owner, including its native-window lifetime on failed WSI teardown.
+#[cfg(target_os = "windows")]
+struct PlatformSurface {
+    hwnd: vk::HWND,
+    hinstance: vk::HINSTANCE,
+    window: Arc<winit::window::Window>,
+}
+#[cfg(target_os = "windows")]
+impl PlatformSurface {
+    fn native_handles(window: &winit::window::Window) -> Result<(vk::HWND, vk::HINSTANCE)> {
+        use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
+        let handle = match window.window_handle()?.as_raw() {
+            RawWindowHandle::Win32(handle) => handle,
+            _ => anyhow::bail!("winit did not return a Win32 window handle"),
+        };
+        Ok((
+            handle.hwnd.get(),
+            handle
+                .hinstance
+                .context("winit Win32 window has no module instance")?
+                .get(),
+        ))
+    }
+
+    fn new(window: &Arc<winit::window::Window>) -> Result<Self> {
+        let (hwnd, hinstance) = Self::native_handles(window)?;
+        Ok(Self {
+            hwnd,
+            hinstance,
+            window: window.clone(),
+        })
+    }
+
+    fn update(&self, window: &winit::window::Window) -> Result<()> {
+        // Win32 owns the client extent. ProductionRenderer::resize updates the
+        // swapchain separately; never create a second surface on resize/resume.
+        let (hwnd, hinstance) = Self::native_handles(window)?;
+        anyhow::ensure!(
+            self.hwnd == hwnd && self.hinstance == hinstance,
+            "Vulkan surface belongs to a different Win32 window"
+        );
+        Ok(())
+    }
+
+    fn create_surface(
+        &self,
+        instance: Arc<rhapsody::interop::VulkanInstance>,
+    ) -> Result<Arc<rhapsody::present::Surface>> {
+        // Keep both the native Win32 identity and its actual window owner.
+        // Surface destruction releases this lease after vkDestroySurfaceKHR;
+        // failed swapchain teardown retains the same lease with the Surface.
+        unsafe {
+            rhapsody::present::Surface::from_win32_retained(
+                instance,
+                self.hinstance,
+                self.hwnd,
+                self.window.clone(),
+            )
+        }
+        .context("create Vulkan Win32 surface")
+    }
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 struct PlatformSurface;
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 impl PlatformSurface {
     fn new(_: &winit::window::Window) -> Result<Self> {
         anyhow::bail!("native surface adapter is only available for macOS in this host build")

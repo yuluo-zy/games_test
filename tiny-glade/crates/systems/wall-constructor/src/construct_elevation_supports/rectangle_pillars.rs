@@ -9,7 +9,7 @@
 //! 逐语句重建；`construct_rectangle_pillars` 仍为未实现（见函数注释分歧点）。
 use country_core::resources::terrain_height::TerrainHeightsData;
 use country_core::systems::collision::world::{
-    RaycastWorld, RaycastSimpleResult, SubworldColliderHandle,
+    RaycastSimpleResult, RaycastWorld, SubworldColliderHandle,
 };
 use glam::{Vec2, Vec3};
 use utils::geometry::rectangle::Rectangle2d;
@@ -19,11 +19,7 @@ use utils::swizzlers::xvy;
 /// （与 `f32::min` 的 NaN 传播不同，必须逐位保留）。
 #[inline]
 fn minss(a: f32, b: f32) -> f32 {
-    if a < b {
-        a
-    } else {
-        b
-    }
+    if a < b { a } else { b }
 }
 
 /// B `find_stone_column_start_y`（0x141250720）：石柱起始高度。
@@ -120,10 +116,8 @@ pub fn find_stone_column_start_y(
 ///   `construct_wooden_pillar_w_stone_base`。
 /// 逐语句重建仍缺：Rectangle2d/3d 调用实参组合、0x40/0x20 记录字段语义、
 /// 常量 0x6d84 命中码全集（登记，未实现）。
-pub fn construct_rectangle_pillars(
-    _positions: &[Vec3],
-    _height: f32,
-    _out: &mut Vec<[u8; 96]>,
-) {
-    todo!("未实现: construct_rectangle_pillars 0x14124fcb0（4 角采样/3 向 raycast/0x40 提案/Rectangle3d 输出链未逐语句）")
+pub fn construct_rectangle_pillars(_positions: &[Vec3], _height: f32, _out: &mut Vec<[u8; 96]>) {
+    todo!(
+        "未实现: construct_rectangle_pillars 0x14124fcb0（4 角采样/3 向 raycast/0x40 提案/Rectangle3d 输出链未逐语句）"
+    )
 }

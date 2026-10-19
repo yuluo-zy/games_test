@@ -245,6 +245,7 @@ fn replay_pop_bucket_empty_path_pops_and_restores_aux() {
     let aux = crate::resources::history::replay_cmd_buffer::ReplayBucketAux {
         decorator_diff: Some(std::sync::Arc::new(diffs)),
         stairs_diff: None,
+        cull_allow: None,
     };
     let mut replay = ReplayBuffer::new(1.0);
     replay.push_with_aux(
@@ -527,4 +528,37 @@ fn recording_without_new_event_does_not_gate_existing_queue_selection() {
             .len(),
         1
     );
+}
+
+/// 契约第 9 步：NewReplayCommandEvent 清空旧 allowed 集合；archivist 缺失时
+/// 系统不运行（run_if resource_exists），新 cull 集合由 replay_decorator 注入。
+#[cfg(feature = "native-physics")]
+#[test]
+fn new_replay_command_clears_previous_allowed_ids() {
+    use crate::resources::walls::decorator_archivist::LiveDecoratorArchivist;
+    let mut world = World::new();
+    world.init_resource::<LiveDecoratorArchivist>();
+    world.init_resource::<Events<history_process::NewReplayCommandEvent>>();
+    world
+        .resource_mut::<LiveDecoratorArchivist>()
+        .culling
+        .allowed_ids
+        .insert(3);
+    let mut schedule = Schedule::default();
+    schedule.add_systems(history_clear_previous_state);
+    schedule.run(&mut world);
+    assert!(world
+        .resource::<LiveDecoratorArchivist>()
+        .culling
+        .allowed_ids
+        .contains(&3));
+    world
+        .resource_mut::<Events<history_process::NewReplayCommandEvent>>()
+        .send(history_process::NewReplayCommandEvent);
+    schedule.run(&mut world);
+    assert!(world
+        .resource::<LiveDecoratorArchivist>()
+        .culling
+        .allowed_ids
+        .is_empty());
 }

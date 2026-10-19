@@ -2,11 +2,14 @@
 //!
 //! 证据：fresh RE-MCP 反编译（18 业务 VA）+ 原字节手解（capdis）+ 骨架 callees（O）。
 //!
-//! 已恢复（O）：`determine_ladder_support` 0x1407de800（原字节手解全文）、
-//! `structural_graph_subscribe` 0x1407d4990（订阅回调注册）、
-//! `create_stairs_collider` 0x1407deb60（kind==0x11 → RaycastWorld::
-//! remove_collider<StairGraphEdge>，否则碰撞记录构建）、
-//! `stairs_subscribe_lazy` 0x1407cf210（惰性订阅）。
+//! **状态（2026-10-19 复核后修正）**：本文件没有“已全文恢复”的函数。
+//! `determine_ladder_support` 0x1407de800 只有原字节结构（a/b 高度选段 + 逐段
+//! 校验分支），段阈值/flag 语义仍 U，函数体返回显式未恢复值 0；订阅/碰撞
+//! 函数同样只有调用面结构。`playermade_stairs_assemble<true/false>`
+//! （0x140008c90/0x140018040）是**硬阻塞 U**：Ghidra 两次 timeout，且 4 个
+//! 发射闭包 `closure$8/9<true>`（0x140284b0/0x140275b0）、
+//! `closure$24/25<false>`（0x140286d0/0x14027840）均无落盘反编译；在补齐
+//! 闭包/P-code 前禁止写空体或伪造装配输出。
 //!
 //! 结构恢复（O 业务链，U 主体）：calculate_adjusted_ladder_positions /
 //! construct_ladder / playermade_stairs_assemble<false,true> /
@@ -30,12 +33,12 @@ use crate::decorator_visual_state::DecoratorTransientVisualState;
 /// 移除类；I 枚举面）。
 const STAIR_KIND_REMOVE: u8 = 0x11;
 
-/// 0x1407de800（O，capdis 全文）：梯支撑判定。
+/// 0x1407de800：梯支撑判定（**结构面，主体 U**）。
 ///
 /// 4 参面 {a: {f32@4}, b: {f32@4}, segments: &[0x20B {u32@0, f32@4, u8@0x18}],
-/// flag: {+0x14/+0 字节}} → u8 {0,1,2,3,4}。主体：比较 a/b 高度选取两个 0x20B
-/// 段（b<=a → 段1，否则段2），逐段校验 {u8@0x18==1 + 段头 u32 阈值 + f32@4 与
-/// 常量比较}，flag 字节门控 → 返回值 {0, 4-cl, 2, 1} 分支。U：段阈值常量语义。
+/// flag: {+0x14/+0 字节}} → u8 {0,1,2,3,4}。原字节可见：比较 a/b 高度选取两个
+/// 0x20B 段（b<=a → 段1，否则段2）与后续逐段校验分支；段阈值常量与 flag 语义
+/// 未闭合，返回 0 为显式未恢复值（不是“全文恢复”）。
 pub fn determine_ladder_support(
     a: f32,
     b: f32,
@@ -106,10 +109,16 @@ pub fn construct_ladder(
     Vec::new() // U。
 }
 
-/// 0x140008c90 / 0x140018040（O 结构，泛型 <true,false>；反编译超时 2 次）：
-/// 玩家楼梯装配主流程。U：装配主链待取证（re-analyst 补）。
+/// 0x140008c90 / 0x140018040（泛型 <true,false>）：玩家楼梯装配主流程。
+///
+/// **硬阻塞 U**（禁止空体冒充）：主体两实例栈帧 0x948、开头 48B 逐字节相同；
+/// Ghidra 两次 timeout。缺 4 个发射闭包的反编译/P-code：
+/// `closure$8<true>` 0x140284b0、`closure$9<true>` 0x140275b0、
+/// `closure$24<false>` 0x140286d0、`closure$25<false>` 0x14027840。
+/// 还需 `PlayermadeStairsAssemblyRequests`/`AdjustedStairEdge`/
+/// `StairSubSegment`/`SampledStairsPoints` core 类型（契约 §4.2）。
 pub fn playermade_stairs_assemble<const X: bool>() {
-    // U。
+    // U：见上；未取证前不写装配输出。
 }
 
 /// 0x1407cf500（O 结构）：插值与比较（新旧装配对比）。

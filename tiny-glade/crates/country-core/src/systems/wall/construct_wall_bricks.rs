@@ -34,8 +34,7 @@ use crate::systems::wall::construction::production::produce_wall;
 use bevy_ecs::prelude::*;
 use hashbrown::{HashMap, HashSet};
 
-#[derive(Event, Clone, Copy, Debug)]
-pub struct RecalculateWallBricks(pub WallId);
+pub use crate::resources::roofs::commands::RecalculateWallBricks;
 /// Actual completed brick output. Trigger/RT consumers can observe this event
 /// without pretending their own work has already happened.
 #[derive(Event, Clone, Copy, Debug)]

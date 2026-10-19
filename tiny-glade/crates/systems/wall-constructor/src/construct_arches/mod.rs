@@ -15,15 +15,16 @@
 //!   未做原码差分；reviewer 登记为未覆盖/边界）。
 //! - 产出（W-B2 落盘）：96B WallBrickInstance 记录 + ConstructGateCmd120
 //!   （→ construct_gates 消费）+ segment_count → 输出资源写回。
+use bevy_ecs::prelude::*;
 use country_core::asset_libraries::ssbo_library::AssetSsboLibrary;
-use country_core::systems::wall::construction::arches::RegularWallArchesInput;
-use country_core::systems::wall::construction::arches::construct_regular_wall_arches;
-use country_core::systems::wall::construction::segmentation::WallPathSegmentationMask;
 use country_core::resources::{
-    roofs::{Roof, commands::CreateRoofCmd},
+    roofs::{
+        Roof,
+        commands::{CreateRoofCmd, SwitchRoofTypeCmd},
+    },
     walls::public_walls::{OnWallChanged, PublicWalls},
 };
-use bevy_ecs::prelude::*;
+use country_core::systems::wall::construction::segmentation::WallPathSegmentationMask;
 
 pub mod profile;
 
@@ -36,8 +37,11 @@ pub struct WallPathSegmentationMasks {
 }
 
 /// 构造输出（渲染边界消费；W-B2 落盘）。
-#[derive(bevy_ecs::resource::Resource, Clone, Debug, Default)]
+#[derive(bevy_ecs::resource::Resource, Default)]
 pub struct WallConstructorOutput {
+    /// Actual per-source sparse owners; CPU vectors below are legacy producer
+    /// seams and must not be treated as uploaded instances.
+    pub gpu: crate::gpu_output::ConstructorGpuOutput,
     /// 96B 砖实例（arches/construct_walls 产出）。
     pub brick_instances: Vec<[u8; 96]>,
     /// 64B 木板实例（fences/lintels 产出）。
@@ -52,80 +56,113 @@ pub struct WallConstructorOutput {
 pub fn construct_arches(
     mut changed: EventReader<OnWallChanged>,
     mut create_roof: EventReader<CreateRoofCmd>,
-    walls: Res<PublicWalls>,
-    mut masks: ResMut<WallPathSegmentationMasks>,
+    mut switch_type: EventReader<SwitchRoofTypeCmd>,
+    mut walls: ResMut<PublicWalls>,
+    masks: Res<crate::construct_lintels::WallPathSegmentationMasksMinusStairs>,
+    mut arch_segments: ResMut<country_core::resources::walls::arches::ArchSegments>,
     roofs: Query<&Roof>,
-    ssbo: Res<AssetSsboLibrary>,
+    mut previous: ResMut<country_core::resources::walls::arches::BuildingHadArchesLastFrame>,
+    mut recalculate: EventWriter<country_core::resources::roofs::commands::RecalculateRoofCmd>,
+    mut ssbo: ResMut<AssetSsboLibrary>,
     mut output: ResMut<WallConstructorOutput>,
     mut gates: EventWriter<crate::construct_gates::systems::ConstructGateCmd>,
 ) {
-    let recalc: Vec<u64> = changed
+    let mut recalc: Vec<u64> = changed
         .read()
-        .map(|e| e.0 .0)
+        .map(|e| e.0.0)
         .chain(create_roof.read().map(|e| e.0.wall_id().0))
+        .chain(switch_type.read().map(|e| e.wall.0))
         .collect();
+    recalc.sort_unstable();
+    recalc.dedup();
+    let mut exhausted = false;
     for wall_id in recalc {
         let id = country_core::resources::walls::WallId(wall_id);
-        let Some(wall) = walls.get(id) else {
-            continue;
+        // Native76047b calls PublicWalls::has_roof, including its failure-map
+        // and generation test. Query validation belongs only to the tail below.
+        let has_roof = walls.has_roof(id);
+
+        let wall = walls
+            .get_mut(id)
+            .expect("arch event must reference a published wall");
+        let storage = ssbo
+            .get_mut::<country_core::geometry::instanced_wall::BrickTransformSsbo>()
+            .expect("canonical BrickTransformSsbo must exist before arch construction");
+        output.gpu.clear_bricks(storage, wall_id);
+        let outcome = if wall.building_projection().observed_296() != 0 {
+            country_core::systems::wall::construction::arches::WallArchesOutput::default()
+        } else {
+            let segments = masks
+                .masks
+                .get(&wall_id)
+                .expect("arches require processed masks for the source wall");
+            wall.construct_arches(id, segments, has_roof)
+                .expect("invalid or unrecovered authoritative arch input")
         };
-        let projection = wall.building_projection();
-        let has_roof = walls
-            .roof_entity(id)
-            .and_then(|entity| roofs.get(entity).ok())
-            .is_some();
-        let Some(segments) = masks.masks.get(&wall_id) else {
-            continue;
-        };
-        // 已冻结 CPU 链（G05 130 例/4159 条 96B）：prepared 数组源 =
-        // 路径预备 owner（wall_path_preparation）的预备点列；此处以简化
-        // 曲线点列代（I 级登记：预备点/第三数组的精确源待 path-prep 接线）。
-        let curve = wall.simplified_curve_2d();
-        let prepared_positions: Vec<[f32; 3]> = curve
-            .points
-            .iter()
-            .map(|p| [p[0], p[1], 0.0])
-            .collect();
-        let n = prepared_positions.len();
-        let mut arch = vec![0.0f32; n.max(2)];
-        let mut third = vec![0.0f32; n.max(2)];
-        let input = RegularWallArchesInput {
-            masks: segments,
-            prepared_positions: &prepared_positions,
-            prepared_u: &curve.points.iter().map(|p| p[0]).collect::<Vec<f32>>(),
-            path_values: &curve.points.iter().map(|p| p[1]).collect::<Vec<f32>>(),
-            shape_tag: projection.shape().tag(),
-            public_284: projection.float_0x284(),
-            observed_294: projection.observed_294(),
-            source_curve_length: curve.length,
-            wall_id: country_core::resources::walls::publication_fields::WallId(id.0),
-            has_roof,
-        };
-        if let Ok(outcome) = construct_regular_wall_arches(input, &mut arch, &mut third) {
+        {
+            let stats = &outcome.material_stats;
+            wall.material_stats
+                .set_arches_segments_count(stats.arches_segments_count());
+            wall.material_stats.add_arches_length(stats.arches_length);
+            wall.material_stats.add_gate_length(stats.gates_length);
+            wall.material_stats
+                .set_gates_segments_count(stats.gates_count as u32);
+            wall.material_stats.add_sewer_length(stats.sewer_length);
+            wall.material_stats
+                .set_sewer_segments_count(stats.sewer_count as u32);
+            arch_segments.0.insert(id, outcome.segments);
             // W-B2：96B 实例 + ConstructGateCmd120 落盘。
-            for instance in &outcome.instances {
-                output.brick_instances.push(instance.observed_bytes());
-            }
+            exhausted |= output.gpu.append_bricks(
+                storage,
+                crate::gpu_output::ConstructorKey {
+                    wall: wall_id,
+                    part: crate::gpu_output::ConstructorPart::Arches,
+                },
+                &outcome.instances,
+            ) != 0;
             for gate in &outcome.gate_commands {
-                let mut payload = [0u8; 120];
-                payload[..8].copy_from_slice(&gate.wall_id.0.to_le_bytes());
-                payload[8..16].copy_from_slice(&gate.ordinal.to_le_bytes());
                 gates.write(crate::construct_gates::systems::ConstructGateCmd {
                     wall: gate.wall_id.0,
-                    payload,
+                    ordinal: gate.ordinal,
+                    segment: gate.segment.clone(),
                 });
             }
             let _ = outcome.segment_count;
         }
-        // shape2 分支（style==2 → MaterialStats 直写）——未冻结边界登记。
-        if segments
-            .first()
-            .and_then(|s| s.flags.first().copied())
-            .unwrap_or(0)
-            & 2
-            != 0
-        {
-            let _ = ssbo;
+    }
+    if exhausted {
+        log::error!(target:"system_wall_constructor::construct_arches",
+            "Arch constructor ran out of bricks");
+    }
+    // Original762ce0..7630a5 scans all public rows every invocation, not only
+    // this frame's event IDs. Only a live, non-flat associated roof participates.
+    for (id, _) in walls.all() {
+        let Some(entity) = walls
+            .roof_entity(id)
+            .filter(|entity| entity.to_bits() >> 32 != 0)
+        else {
+            continue;
+        };
+        let Ok(roof) = roofs.get(entity) else {
+            continue;
+        };
+        if roof.is_flat() {
+            continue;
         }
+        let now = arch_segments
+            .0
+            .get(&id)
+            .is_some_and(|segments| segments.len() >= 2);
+        let before = previous.0.get(&id.0).copied().unwrap_or(false);
+        if before != now {
+            recalculate.write(
+                country_core::resources::roofs::commands::RecalculateRoofCmd {
+                    entity,
+                    wall: id,
+                    kind: 3,
+                },
+            );
+        }
+        previous.0.insert(id.0, now);
     }
 }

@@ -119,15 +119,21 @@ pub fn smoothstep(t: f32) -> f32 {
     t * t * (3.0 - 2.0 * t)
 }
 
-/// B RaycastMeshData::new_cuboid（core 恢复时该构造器在 native-physics feature
-/// 域；D1 以默认碰撞数据承载，U：立方体 8 角载荷）。
-pub fn new_cuboid_collider(_x: f32, _y: f32, _z: f32) -> Option<country_core::systems::collision::world::RaycastMeshData> {
-    Some(country_core::systems::collision::world::RaycastMeshData::default())
+/// B RaycastMeshData::new_cuboid（0x1408cfff0；core 恢复时该构造器位于
+/// `native-physics` feature 域，system-decorator 不启用该 feature）。
+/// **显式未恢复**：返回 None，不再以 `RaycastMeshData::default()` 冒充几何。
+pub fn new_cuboid_collider(
+    _x: f32,
+    _y: f32,
+    _z: f32,
+) -> Option<country_core::systems::collision::world::RaycastMeshData> {
+    None
 }
 
-/// B clutter_mesh_ty_data（0x1408b8e90，core 未恢复；D1 以 u8 载荷承载，U）。
-pub fn clutter_mesh_ty_data() -> u8 {
-    0 // U：杂乱网格类型载荷待取证。
+/// B clutter_mesh_ty_data（0x1408b8e90，core 未恢复；需定点反编译取
+/// subtype→mesh 类型表）。**显式未恢复**：None，不再恒 0。
+pub fn clutter_mesh_ty_data() -> Option<u8> {
+    None
 }
 
 /// B utils crate `IsoTransform`（B 未恢复；D1 承载）：刚性变换 {pos, rot}

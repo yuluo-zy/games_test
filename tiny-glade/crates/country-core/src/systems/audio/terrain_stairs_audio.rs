@@ -81,6 +81,8 @@ impl crate::render::pass_builder::pass_resource_access::SsboType for StairsCount
 
 /// `event:/SFX/StairDraw_OneShot` (O: 0x142c62e70).
 pub const STAIR_DRAW_ONE_SHOT: &str = "event:/SFX/StairDraw_OneShot";
+/// Native1417e3389 initializes the persistent ring with this distinct event.
+pub const STAIR_DRAW_LOOP_EVENT: &str = "event:/SFX/StairDraw_LoopTrem";
 /// Instance parameter (O: 0x142c62943).
 pub const STAIR_EDITING_SPEED_PARAM: &str = "editing_speed";
 
@@ -96,7 +98,7 @@ pub struct StairsRasterValue(pub u32);
 
 /// StairsCounter (native `+0x40` counter, incremented when a ring event is
 /// pushed).
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Resource, Debug, Default, Clone, Copy)]
 pub struct StairsCounter {
     pub count: u32,
 }
@@ -115,7 +117,7 @@ impl<E: EventInstance> TerrainStairsAudioState<E> {
     pub fn new<S: Studio<Event = E>>(core: &AudioCore<S>) -> Self {
         TerrainStairsAudioState {
             ring: core.instantiate_loop(
-                &crate::resources::audio_resources::AudioLoopDesc::new(STAIR_DRAW_ONE_SHOT),
+                &crate::resources::audio_resources::AudioLoopDesc::new(STAIR_DRAW_LOOP_EVENT),
             ),
             instances: Vec::new(),
             counter: StairsCounter::default(),

@@ -1,263 +1,377 @@
 //! toolbar 系统：`toolbar_alignment`（O 0x142344560）与 `toolbar_auto_hide`
-//! （O 0x142343a10）。wave2b fresh 反汇编 + 跳表 0x14304e6d8 解码；
-//! wave3（restorer-wave3-toolbar-layout）fresh 复核 + caller SystemParam 签名。
+//! （I 0x142343a10）。
 //!
-//! **toolbar_alignment**（0x142344560）签名（caller mangled 名）：
-//! `Res<country_core::game_config::GameConfig>, Res<ToolbarLayout>, Res<PhotomodeToolbarLayout>,
-//! ResMut<TaffyLayout>`。前置清位循环已重建；分派 case 调 `taffy_mut_style` 单态族
-//! （0x142375b40..0x142376300，`Taffy::style→clone→closure→set_style` 模式已证），
-//! 但各 closure_env 的 **setter 目标（taffy Style 字段）U** —— 见下。
+//! 第 11 轮 TB-D（2026-10-19）fresh 证据：
+//! - `toolbar_alignment` 0x142344560：PDB body 201 B，prepare + 反编译 +
+//!  冷块反汇编（`evidence/round11/tbd-jobs/decomp/142344560.c`、
+//!  `dis-align-cold-result.json`、`dis-align-gaps-result.json`）。
+//!  PDB 精确签名：
+//!  `fn(Res<GameConfig>, Res<ToolbarLayout>, Res<PhotomodeToolbarLayout>,
+//!  ResMut<TaffyLayout>)`。
+//!  1. 先遍历 `TaffyLayout.anchored`（stride 0x28）：`side(+0x24) != 4`
+//!     时按 `0x1020300 >> ((alignment & 3) << 3)` 的低字节重写 side；
+//!     `alignment = GameConfig.ui.toolbar_alignment`（native +0xF0）。
+//!  2. 对 **两个布局各一次**（ToolbarLayout、PhotomodeToolbarLayout）：
+//!     case 0..3 的 4 个 setter 序列作用在 `node_a(+0x18)` / `node_b(+0x20)`：
+//!     - 0：A=env12(justify center), A=env11(align flex-end),
+//!          B=env10(flex row), A=env11；
+//!     - 1：A=env0(justify flex-start), A=undo_env1(align center),
+//!          B=env2(flex column), A=env13(align flex-start)；
+//!     - 2：A=undo_env0(justify flex-end), A=undo_env1, B=env2, A=env11；
+//!     - 3：A=env12, A=env13, B=env10, A=env13。
+//!     第四调用的目标与参数由冷块 0x142344687/0x1423446df/0x14234473f/
+//!     0x14234479f 的 `MOV RCX,RSI; MOV EDX,EDI; MOV R8D,R12D; CALL ...`
+//!     逐条确认（0x142375ce0=env11、0x142376300=env13）。
+//!  3. 每个 contextual menu 记录（stride 0x20，`node(+0x10) != 0`）：
+//!     align 0/1 → env2(column)，align≥2 → env10(row)；随后偶数 align
+//!     (0/2) → env11、奇数 (1/3) → env13（次跳表 0x14304e6e8）。
+//! - `toolbar_auto_hide` 0x142343a10：PDB body 2883 B（hot 1675 B 已反编译 +
+//!  冷块反汇编，`decomp/142343a10.c`、`list-auto-hide-result.json`）。
+//!  PDB 精确签名（14 参数）：
+//!  `fn(Res<AppMode>, Res<CursorPositionSS>, Res<EscMenuState>, Res<GameConfig>,
+//!  Res<Time>, Query<(&ToolbarButtonCooldown, &UiInteractionState,
+//!  Option<&ShowOnlyInPhotomode>)>, Res<WindowSize>, Res<ActionSetStates>,
+//!  ResMut<ToolbarLayout>, ResMut<PhotomodeToolbarLayout>, ResMut<TaffyLayout>,
+//!  Query<(&mut Ui2dExtent, &DebugToolbarActivationZone)>,
+//!  EventWriter<PlayUiSound>, Res<ToolbarSizeMult>)`。
+//!  已重建：布局选择（`AppMode.native_tag() == 0x13` = Photomode）、
+//!  `auto_hide_toolbar == false → progress = 0`、
+//!  `scale = icon_size_mult * ToolbarSizeMult`、
+//!  `thin = scale·110·0.3`、`total = ((count-1)·10 + count·110)·scale`、
+//!  progress `±dt/0.3` + `clamp01` + PlayUiSound 0x10/0x11 边沿、
+//!  `CubicInOut::apply(progress)` 与 `offset = scale·200·ease`、anchored offset
+//!  写面（alignment 0:(0,+o)、1:(-o,0)、2:(+o,0)、3:(0,-o)）。
+//!  **U（未落）**：`DebugToolbarActivationZone` 的 Ui2dExtent 尺寸/位置公式
+//!  （热块 0x142343f2f..0x1423440xx 的 4 个 alignment 分支使用寄存器打包，
+//!  Ghidra 未给出可复核的逐轴语义）；`ActionSetStates` 具体动作槽（native 读
+//!  首 u32）与 PlayUiSound `id` 载荷；激活区 AABB 的窗口轴序（本实现按
+//!  undo_redo_auto_hide 0x1423449f0 的同构公式构造，I）。
 //!
-//! **toolbar_auto_hide**（0x142343a10）与 undo_redo_alignment/undo_redo_auto_hide/
-//! toolbar_steal_mouse_input 共享尾区（LLVM 合并）；auto-hide 阈值/数学已取证，
-//! 系统参数接线与 taffy setter 目标 U（未实现，见模块尾）。
+//! `undo_redo_alignment`/`undo_redo_auto_hide` 的 PDB 签名引用
+//! `toolbar::resouces_and_components::undo_redo_layout::UndoRedoLayout`，
+//! 该模块当前 crate 不存在且不在本组文件权内 → 本轮不落，登记为跨文件阻塞。
 
-use taffy::node::{Node, Taffy};
+use bevy_ecs::prelude::*;
+use bevy_time::Time;
+use country_core::{
+    game_config::GameConfig,
+    input::action_set::ActionSetStates,
+    resources::{
+        gui::EscMenuState,
+        mouse_terrain_raycast::CursorPositionSS,
+        window::WindowSize,
+    },
+    systems::{
+        mode_manager::AppMode,
+        ui::resources::widget_params::PlayUiSound,
+    },
+};
+use glam::Vec2;
+use utils::{easing_functions::EasingFunction, geometry::aabb::Aabb2};
 
-/// `toolbar_alignment::closure_env_*` setter 目标（O：fresh 8 个
-/// `taffy_mut_style` 单态反汇编的 inline 写面 + taffy 0.3.13 `Style` 精确偏移）。
+use crate::{
+    resouces_and_components::{
+        DebugToolbarActivationZone, ShowOnlyInPhotomode, ToolbarButtonCooldown, UiInteractionState,
+        taffy_layout::TaffyLayout,
+        toolbar_layout::{PhotomodeToolbarLayout, ToolbarContext, ToolbarLayout},
+    },
+    toolbar_update::ToolbarSizeMult,
+};
+
+/// `taffy_mut_style<T>` 通用模式（O 0x142375b40 等十单态 fresh 反编译逐语句）：
+/// `let mut s = taffy.style(node).unwrap(); f(&mut s); taffy.set_style(node, s);`。
+pub fn taffy_mut_style<T: FnOnce(&mut taffy::style::Style)>(
+    taffy: &mut taffy::node::Taffy,
+    node: taffy::node::Node,
+    f: T,
+) {
+    let mut style = taffy.style(node).unwrap().clone();
+    f(&mut style);
+    taffy.set_style(node, style).unwrap();
+}
+
+/// `toolbar_alignment` 使用、且 B 中确有 `taffy_mut_style` 单态的 8 个 closure。
 ///
-/// 偏移依据（`/tmp` 探针按 workspace taffy 0.3.13 实测）：`Style` 344B/align 8；
-/// `flex_direction@0x14b`、`align_items@0x14d`、`justify_content@0x152`。
-/// `Option<AlignItems>` 使用 niche 编码：`Some(FlexStart)=2`、`Some(FlexEnd)=3`、
-/// `Some(Center)=4`；`Option<AlignContent>` 同：`Some(FlexStart)=2`、
-/// `Some(FlexEnd)=3`、`Some(Center)=4`。
-///
-/// 各单态写面（逐指令，地址/`byte [RSP+off]`）：
-/// - toolbar_alignment closure_env$0  (0x142375c10)：`[0x1c2]=2` → justify_content = Some(FlexStart)
-/// - toolbar_alignment closure_env$2  (0x142375eb0)：`[0x1bb]=1` → flex_direction = Column
-/// - toolbar_alignment closure_env$10 (0x142375b40)：`[0x1bb]=0` → flex_direction = Row
-/// - toolbar_alignment closure_env$11 (0x142375ce0)：`[0x1bd]=3` → align_items = Some(FlexEnd)
-/// - toolbar_alignment closure_env$12 (0x142376050)：`[0x1c2]=4` → justify_content = Some(Center)
-/// - toolbar_alignment closure_env$13 (0x142376300)：`[0x1bd]=2` → align_items = Some(FlexStart)
-/// - undo_redo_alignment closure_env$0  (0x142376230)：`[0x1c2]=3` → justify_content = Some(FlexEnd)
-/// - undo_redo_alignment closure_env$1  (0x142375f80)：`[0x1bd]=4` → align_items = Some(Center)
-///
-/// **未实现（U）**：`toolbar_alignment::closure_env_1/3..9` 在 B 中**没有**
-/// `taffy_mut_style` 单态。2026-10-17 restorer-mei-body 重新核对
-/// `evidence/toolbar-origin-2026-10-16/procs.tsv` 全表：`taffy_mut_style` 单态
-/// 恰为 10 个 —— toolbar_alignment 的 closure_env 0/2/10/11/12/13、undo_redo
-/// 的 closure_env 0/1、`toolbar_button_size_and_padding_update::closure_env$1`、
-/// `taffy_layout::impl$1::perform_layout::closure_env$1`。closure_env 1/3..9
-/// **无独立符号**（未实例化或已内联），无法取得 setter 写面，**不伪造**。
-///
-/// **case 4/6 二跳（2026-10-17 fresh 补充证据）**：
-/// 主跳表 0x14304e6d8 的条目 4/6 都指向 `0x14234485d`。该地址是**二级跳表**：
-/// `lea rcx,[0x14304e6e8]; movsxd rax,[rcx+rax*4]; add rax,rcx; jmp rax`。
-/// 该二级表与主跳表物理重叠（0x14304e6e8 = 主表 + 4 项），是 LLVM 的
-/// 跳表后缀共享；条目按主表偏移解释时得到 4→`0x1423448d6`（三级跳表
-/// 0x14304e6f8 的派发）、6→`0x142344915`（尾段中段地址，非合法指令起点）；
-/// 按后缀表解释时 4/6→`0x14234486d`（= `taffy_mut_style<closure_env_13>` 尾段）。
-/// 两级解释互斥且都只部分自洽（RAX 在 `jmp rax` 后是目标地址而非索引，
-/// 与二级表的 `[rcx+rax*4]` 用法冲突），因此 **case 4/6 未实现（分歧：
-/// 二级表基址/索引寄存器语义）**，不落近似 setter 序列。
-/// 另：0x1423447af 起的 per-item 循环（stride 0x20，`+0x10 != 0` 项）对
-/// alignment ∈ {1,2} 先 `closure_env_2` 再 `closure_env_13`；alignment ∈ {0,3}
-/// 先 `closure_env_10` 再 `closure_env_13`（0x1423447c0/0x1423447d0 段已逐指令）；
-/// 其余 alignment 走二级/三级派发，语义同上未闭合。
+/// 偏移证据（workspace taffy 0.3.13 实测 `Style` 344B）：`flex_direction@0x14b`、
+/// `align_items@0x14d`、`justify_content@0x152`。
 pub mod alignment_closures {
     use taffy::style::{AlignContent, AlignItems, FlexDirection, Style};
 
-    pub fn toolbar_env_0(style: &mut Style) {
-        style.justify_content = Some(AlignContent::FlexStart);
-    }
-    pub fn toolbar_env_2(style: &mut Style) {
-        style.flex_direction = FlexDirection::Column;
-    }
-    pub fn toolbar_env_10(style: &mut Style) {
-        style.flex_direction = FlexDirection::Row;
-    }
-    pub fn toolbar_env_11(style: &mut Style) {
-        style.align_items = Some(AlignItems::FlexEnd);
-    }
+    /// `closure_env$12`（0x142376050）：`[+0x1c2]=4` → justify_content Center。
     pub fn toolbar_env_12(style: &mut Style) {
         style.justify_content = Some(AlignContent::Center);
     }
+    /// `closure_env$11`（0x142375ce0）：`[+0x1bd]=3` → align_items FlexEnd。
+    pub fn toolbar_env_11(style: &mut Style) {
+        style.align_items = Some(AlignItems::FlexEnd);
+    }
+    /// `closure_env$10`（0x142375b40）：`[+0x1bb]=0` → flex_direction Row。
+    pub fn toolbar_env_10(style: &mut Style) {
+        style.flex_direction = FlexDirection::Row;
+    }
+    /// `closure_env$0`（0x142375c10）：`[+0x1c2]=2` → justify_content FlexStart。
+    pub fn toolbar_env_0(style: &mut Style) {
+        style.justify_content = Some(AlignContent::FlexStart);
+    }
+    /// `closure_env$2`（0x142375eb0）：`[+0x1bb]=1` → flex_direction Column。
+    pub fn toolbar_env_2(style: &mut Style) {
+        style.flex_direction = FlexDirection::Column;
+    }
+    /// `closure_env$13`（0x142376300）：`[+0x1bd]=2` → align_items FlexStart。
     pub fn toolbar_env_13(style: &mut Style) {
         style.align_items = Some(AlignItems::FlexStart);
     }
+    /// `undo_redo_alignment::closure_env$0`（0x142376230）：justify FlexEnd。
     pub fn undo_redo_env_0(style: &mut Style) {
         style.justify_content = Some(AlignContent::FlexEnd);
     }
+    /// `undo_redo_alignment::closure_env$1`（0x142375f80）：align_items Center。
     pub fn undo_redo_env_1(style: &mut Style) {
         style.align_items = Some(AlignItems::Center);
     }
 }
 
-/// O 0x142344560 `toolbar_alignment` 的 taffy setter 分派序列（跳表
-/// 0x14304e6d8 20 项，条目已离线解码）。
-///
-/// 逐 case（fresh 反编译 case 0..3 + 5/7；`nodes` 为按序遍历的 taffy 节点）：
-/// - 0：env12, env11, env10, env11
-/// - 1：env0, undo1, env2, env13
-/// - 2：undo0, undo1, env2, env11
-/// - 3：env12, env13, env10, env13
-/// - 5/7：env13（共享段 0x1423447d0）
-/// - 9/10/0xb：`Taffy::style`→clone→`set_style`（反编译无字段 inline 写面 ⇒ 空 setter）
-/// - 4/6：跳表指向共享二跳 0x14234485d（未恢复）；**未实现**
-/// - 8/0xc..0x13：非 taffy setter 路径（写资源/缓动/算术），不在本函数范围
-///
-/// **判等**：setter 序列与跳表目标逐项；**分歧**：case 4/6 未实现。
-pub fn apply_alignment_setters(alignment: u8, nodes: &[Node], taffy: &mut Taffy) {
-    use alignment_closures::*;
-    let apply = |taffy: &mut Taffy, node: Node, f: &dyn Fn(&mut taffy::style::Style)| {
-        let mut style = taffy.style(node).unwrap().clone();
-        f(&mut style);
-        taffy.set_style(node, style).unwrap();
-    };
-    match alignment {
-        0 => {
-            if nodes.len() >= 4 {
-                apply(taffy, nodes[0], &toolbar_env_12);
-                apply(taffy, nodes[1], &toolbar_env_11);
-                apply(taffy, nodes[2], &toolbar_env_10);
-                apply(taffy, nodes[3], &toolbar_env_11);
-            }
-        }
-        1 => {
-            if nodes.len() >= 4 {
-                apply(taffy, nodes[0], &toolbar_env_0);
-                apply(taffy, nodes[1], &undo_redo_env_1);
-                apply(taffy, nodes[2], &toolbar_env_2);
-                apply(taffy, nodes[3], &toolbar_env_13);
-            }
-        }
-        2 => {
-            if nodes.len() >= 4 {
-                apply(taffy, nodes[0], &undo_redo_env_0);
-                apply(taffy, nodes[1], &undo_redo_env_1);
-                apply(taffy, nodes[2], &toolbar_env_2);
-                apply(taffy, nodes[3], &toolbar_env_11);
-            }
-        }
-        3 => {
-            if nodes.len() >= 4 {
-                apply(taffy, nodes[0], &toolbar_env_12);
-                apply(taffy, nodes[1], &toolbar_env_13);
-                apply(taffy, nodes[2], &toolbar_env_10);
-                apply(taffy, nodes[3], &toolbar_env_13);
-            }
-        }
-        5 | 7 => {
-            if let Some(node) = nodes.first() {
-                apply(taffy, *node, &toolbar_env_13);
-            }
-        }
-        // 9/10/0xb：直设空 setter（clone+set_style，字段不变）。
-        9 | 10 | 11 => {
-            for &node in nodes {
-                apply(taffy, node, &|_| {});
-            }
-        }
-        // 4/6 二跳未恢复；8/0xc..0x13 非 taffy 路径。未实现——不伪造。
-        _ => {}
+/// `0x1020300 >> ((alignment & 3) << 3)` 的低字节（O：0x142344600 前置清位）。
+pub fn alignment_side_mask(alignment: u8) -> u8 {
+    (0x0102_0300u32 >> ((alignment & 3) << 3)) as u8
+}
+
+fn apply_node(layout: &mut TaffyLayout, node: taffy::node::Node, f: fn(&mut taffy::style::Style)) {
+    if node == taffy::node::Node::default() {
+        return;
     }
-}
-
-/// ToolbarItem 最小读面（O toolbar_alignment 遍历：stride 0x28，`+0x24` 对齐位；
-/// 字段真名/完整布局 U）。wave3 fresh 复核：`+0x18`=尺寸 x、`+0x1c`=尺寸 y、
-/// `+0x20`=附加尺寸、`+0x24`=对齐位（`!= 4` 时按 alignment 掩码重写）。
-#[derive(Clone, Copy, Debug, Default)]
-#[repr(C)]
-pub struct ToolbarItem {
-    /// +0..+0x18 前区（taffy 节点/元数据，U）。
-    pub _head: [u8; 0x18],
-    /// +0x18 尺寸 x（I）。
-    pub size_x: f32,
-    /// +0x1c 尺寸 y（I）。
-    pub size_y: f32,
-    /// +0x20 附加尺寸（I）。
-    pub _extra: f32,
-    /// +0x24 对齐位（`!= 4` 时按 alignment 掩码重写）。
-    pub align: u8,
-    /// typed gap（+0x25..+0x28）。
-    pub _gap: [u8; 3],
-}
-
-const _TOOLBAR_ITEM_SIZE: () = assert!(std::mem::size_of::<ToolbarItem>() == 0x28);
-
-/// `taffy_mut_style<T>` 通用模式（O 0x142375b40/0x142375ce0/0x142376050/0x142376300
-/// 四单态 fresh 反编译逐语句）：`let mut s = taffy.style(node).unwrap(); f(&mut s);
-/// taffy.set_style(node, s);`。
-///
-/// **判等（骨架）**：`Taffy::style`→`impl$16::clone`→closure→`Taffy::set_style` 逐语句。
-/// **分歧（未实现）**：closure `f`（alignment closure_env_0..13）的 setter 目标
-/// （taffy Style 字段）U——需定点反编译各 closure 调用体。
-pub fn taffy_mut_style<T: FnOnce(&mut taffy::style::Style)>(
-    taffy: &mut Taffy,
-    node: Node,
-    f: T,
-) {
-    let mut style = taffy.style(node).unwrap().clone();
-    f(&mut style);
-    // O：`Taffy::set_style` 后按 Result 判别子 4（Ok）返，否则 unwrap_failed。
-    taffy.set_style(node, style).unwrap();
+    layout.style_mut(node, f);
 }
 
 /// O 0x142344560 `toolbar::toolbar_systems::toolbar_alignment`。
-///
-/// **已重建（逐语句，反汇编头 0x142344560..0x142344630 + wave3 fresh）**：
-/// - 遍历工具栏项（stride 0x28）：项 `+0x24` 对齐位 `!= 4` 时按
-///   `0x1020300 >> (alignment&3 << 3)` 的字节重写。
-/// - 按 `alignment`（0..19）经跳表 0x14304e6d8 分派。
-///
-/// **分派结构（跳表 0x14304e6d8，20 项；wave3 fresh 复核）**：
-/// - case 0：`taffy_mut_style<closure_env_12/11/10/11>`；
-/// - case 1：`<closure_env_0/undo_redo::closure_env_1/closure_env_2/closure_env_13>`；
-/// - case 2：`<undo_redo::closure_env_0/closure_env_1/closure_env_2/closure_env_11>`；
-/// - case 3：`<closure_env_12/13/10/13>`；
-/// - case 5/7：`<closure_env_13>`（经 0x1423447d0 共享段）；case 9/10/0xb：
-///   `taffy::style+set_style` 直设（经 0x142375b40 共享段）；
-/// - case 0xc/0xe：`EasingFunction::apply` + 写偏移；case 0xd：
-///   `EscMenuState::is_closed` + `Aabb2` + `DigitalActionState::pressed` +
-///   `EasingFunction::apply` + 写进度；case 0xf/0x10/0x11/0x12/0x13：算术/跳表转发。
-///
-/// **分歧（未实现）**：各 case 的 `taffy_mut_style` closure_env_0..13 **setter 目标
-/// 语义 U**（taffy Style 字段）；alignment 枚举（0..19）→ 锚点名 U；`r13+0xf0`
-/// 资源（对齐设置）类型 U；case 0xd 的 Aabb2 中心/尺寸源 U。本实现落前置清位循环，
-/// 分派结构登记，setter 目标不伪造。**签名分歧登记**：Rust 为 helper
-/// `(alignment, items, taffy)`，非二进制 SystemParam（Res<GameConfig>/Res<ToolbarLayout>/
-/// Res<PhotomodeToolbarLayout>/ResMut<TaffyLayout>）——分派 setter 目标落库后需改回
-/// SystemParam 签名（reviewer-wave3 FIX-A）。
 pub fn toolbar_alignment(
-    alignment: u8,
-    items: &mut [ToolbarItem],
-    _taffy: &mut Taffy,
+    config: Res<GameConfig>,
+    toolbar: Res<ToolbarLayout>,
+    photomode: Res<PhotomodeToolbarLayout>,
+    mut layout: ResMut<TaffyLayout>,
 ) {
-    // 前置：清非默认项对齐位（O 0x142344600..0x14234462a）。
-    // FIX-A（reviewer-wave3-toolbar-decorator）：二进制显式 `& 3`——
-    // `uVar25 = 0x1020300 >> ((*(byte*)(GameConfig+0x1e) & 3) << 3)`；本实现补显式
-    // `& 3`（release 与 `(a<<3)&31` 等价，debug 下防 `u32>>32` panic）。
-    let mask = 0x1020300u32 >> ((alignment & 3) << 3);
-    for item in items.iter_mut() {
-        if item.align != 4 {
-            item.align = mask as u8;
+    use alignment_closures::*;
+
+    let alignment = config.ui.toolbar_alignment as u8;
+    let mask = alignment_side_mask(alignment);
+
+    // 前置：清非 Window anchored 的 side 字节（O，0x142344600..0x14234462a）。
+    for entry in layout.anchored.iter_mut() {
+        if entry.side != crate::resouces_and_components::taffy_layout::AnchorSide::Window {
+            entry.side = match mask {
+                0 => crate::resouces_and_components::taffy_layout::AnchorSide::Above,
+                1 => crate::resouces_and_components::taffy_layout::AnchorSide::Below,
+                2 => crate::resouces_and_components::taffy_layout::AnchorSide::Left,
+                _ => crate::resouces_and_components::taffy_layout::AnchorSide::Right,
+            };
         }
     }
-    // alignment 分派（O 跳表 0x14304e6d8，20 项）：case 0..19 各调
-    // taffy_mut_style 设样式。**未实现**（setter 目标语义 U，见模块注释）。
-    // 本函数不重建分派 case 体；完整实现需 closure_env_0..13 的 taffy 字段语义。
+
+    // Native executes the switch once per layout resource (two-iteration loop).
+    for context in [
+        &*toolbar as &dyn ToolbarContext,
+        &*photomode as &dyn ToolbarContext,
+    ] {
+        let a = context.node_a();
+        let b = context.node_b();
+        match alignment {
+            0 => {
+                apply_node(&mut layout, a, toolbar_env_12);
+                apply_node(&mut layout, a, toolbar_env_11);
+                apply_node(&mut layout, b, toolbar_env_10);
+                apply_node(&mut layout, a, toolbar_env_11);
+            }
+            1 => {
+                apply_node(&mut layout, a, toolbar_env_0);
+                apply_node(&mut layout, a, undo_redo_env_1);
+                apply_node(&mut layout, b, toolbar_env_2);
+                apply_node(&mut layout, a, toolbar_env_13);
+            }
+            2 => {
+                apply_node(&mut layout, a, undo_redo_env_0);
+                apply_node(&mut layout, a, undo_redo_env_1);
+                apply_node(&mut layout, b, toolbar_env_2);
+                apply_node(&mut layout, a, toolbar_env_11);
+            }
+            3 => {
+                apply_node(&mut layout, a, toolbar_env_12);
+                apply_node(&mut layout, a, toolbar_env_13);
+                apply_node(&mut layout, b, toolbar_env_10);
+                apply_node(&mut layout, a, toolbar_env_13);
+            }
+            // 4..19 的 setter 目标落在共享冷块（跨函数尾部合并），未取证 → U。
+            _ => {}
+        }
+        // 次跳表 0x14304e6e8：偶 align → env11；奇 align → env13。
+        for menu in context.contextual_menus() {
+            if menu.node == taffy::node::Node::default() {
+                continue;
+            }
+            if alignment < 2 {
+                apply_node(&mut layout, menu.node, toolbar_env_2);
+            } else {
+                apply_node(&mut layout, menu.node, toolbar_env_10);
+            }
+            if alignment & 1 == 0 {
+                apply_node(&mut layout, menu.node, toolbar_env_11);
+            } else {
+                apply_node(&mut layout, menu.node, toolbar_env_13);
+            }
+        }
+    }
 }
 
-/// O 0x142343a10 `toolbar::toolbar_systems::toolbar_auto_hide`。
+/// Activation-zone rectangle used by the auto-hide cursor test.
 ///
-/// **已重建（常量/前段）**：多 SystemParam 系统（栈参密集 0x28..0x48）。常量
-/// `110.0`(0x14304e2fc)、`-1.0`(0x14295a0e4)、`10.0`(0x1429345a8)、`0.3`
-/// (0x1429258d8)、`-0.5`(0x14295a0e8)、`0.5`(0x142925870)、`{80,40}`(0x14304e300)/
-/// `{40,80}`(0x14304e310)、`200.0`(0x142a13848)。前段把多 SystemParam 资源
-/// （窗口尺寸、工具栏尺寸、焦点项等）压栈并逐项写 `+0x1c` 尺寸。
+/// Reconstructed from `undo_redo_auto_hide` 0x1423449f0 cold blocks
+/// (0x142344af3/0x142344b06/0x142344b18/0x142344b2f): the decoded centers are
+/// `align 0 = (x/2, thin/2)`, `align 1 = (x - total/2, y/2)`,
+/// `align 2 = (total/2, y/2)`, `align 3 = (x/2, y - thin/2)` with dimensions
+/// `(total, thin)` for horizontal rows and `(thin, total)` for vertical rows.
+/// **I**: native keeps the x/y halves in separate XMM registers; the axis order
+/// is inferred from the natural toolbar geometry, not from a typed record.
+pub fn activation_rect(alignment: u8, window: Vec2, thin: f32, total: f32) -> (Vec2, Vec2) {
+    match alignment {
+        0 => (Vec2::new(window.x * 0.5, thin * 0.5), Vec2::new(total, thin)),
+        1 => (
+            Vec2::new(window.x - total * 0.5, window.y * 0.5),
+            Vec2::new(thin, total),
+        ),
+        2 => (
+            Vec2::new(total * 0.5, window.y * 0.5),
+            Vec2::new(thin, total),
+        ),
+        3 => (
+            Vec2::new(window.x * 0.5, window.y - thin * 0.5),
+            Vec2::new(total, thin),
+        ),
+        _ => (Vec2::ZERO, Vec2::new(total, thin)),
+    }
+}
+
+/// `toolbar_auto_hide` 的可见进度更新（从 0x142343a10 的 hot block 逐句译出）。
 ///
-/// **wave3 fresh 复核（公式）**：`fVar55 = ((count-1)·10 + count·110)·fVar56`；
-/// `fVar49 = fVar56·110·0.3`；按 `byte+0x1e`（对齐枚举）switch 设 `{80,40}`/
-/// `{40,80}` 边距；`fVar55` 经 `EscMenuState::is_closed`/`Aabb2::contains`/
-/// `DigitalActionState::pressed` 三路增量（`±dt/0.3`）后 `clamp01` 写 `+0x2c`；
-/// 经 `EasingFunction::apply` 缩放 + `movmskpd` 项查找写 `{dx,dy}`。
+/// `keep_bit` 是 `Query<(&ToolbarButtonCooldown, &UiInteractionState,
+/// Option<&ShowOnlyInPhotomode>)>` 中与当前 AppMode 匹配的项的
+/// `UiInteractionState.keep` 按位或结果（native `OR`）。
+pub fn auto_hide_progress(
+    old: f32,
+    dt: f32,
+    inside_or_keep: bool,
+    menu_closed: bool,
+    action_pressed: bool,
+) -> f32 {
+    let next = if !inside_or_keep || !menu_closed {
+        // Cursor outside the activation zone, or a menu is open → hide.
+        old + dt / 0.3
+    } else if !action_pressed {
+        // Toolbar hotkey (first digital slot) held → show.
+        old + dt / (-0.3)
+    } else {
+        old
+    };
+    next.clamp(0.0, 1.0)
+}
+
+/// Native PlayUiSound edge emission: 0x11 when 1 → <1, 0x10 when 0 → >0.
+pub fn auto_hide_sound_kind(old: f32, new: f32) -> Option<u32> {
+    if old != 0.0 || new <= 0.0 {
+        if old == 1.0 && new < 1.0 {
+            Some(0x11)
+        } else {
+            None
+        }
+    } else {
+        Some(0x10)
+    }
+}
+
+/// I 0x142343a10 `toolbar::toolbar_systems::toolbar_auto_hide`.
 ///
-/// **未实现（重建阻塞）**：Ghidra "Control flow encountered bad instruction data"
-/// 截断区（switch 尾 case）未取证；系统参数接线（taffy setter 目标、工具栏尺寸
-/// 资源 `+0xf1`/`+0x1e` 类型）U。不落近似体。
-pub fn toolbar_auto_hide() {
-    // 未实现（分歧见 RESTORE.md §toolbar_auto_hide）。
+/// See the module docs for the recovered/output surface and the explicit U
+/// items (activation-zone `Ui2dExtent` geometry, action slot, sound payload).
+pub fn toolbar_auto_hide(
+    app_mode: Res<AppMode>,
+    cursor: Res<CursorPositionSS>,
+    esc_menu: Res<EscMenuState>,
+    config: Res<GameConfig>,
+    time: Res<Time>,
+    buttons: Query<(
+        &ToolbarButtonCooldown,
+        &UiInteractionState,
+        Option<&ShowOnlyInPhotomode>,
+    )>,
+    window: Res<WindowSize>,
+    actions: Res<ActionSetStates>,
+    mut toolbar: ResMut<ToolbarLayout>,
+    mut photomode: ResMut<PhotomodeToolbarLayout>,
+    mut layout: ResMut<TaffyLayout>,
+    _zones: Query<(&mut country_core::components::Ui2dExtent, &DebugToolbarActivationZone)>,
+    mut sounds: EventWriter<PlayUiSound>,
+    size_mult: Res<ToolbarSizeMult>,
+) {
+    let is_photomode = app_mode.native_tag() == AppMode::Photomode.native_tag();
+    let context: &mut dyn ToolbarContext = if is_photomode {
+        &mut *photomode
+    } else {
+        &mut *toolbar
+    };
+    let scale = config.ui.icon_size_mult * size_mult.multiplier;
+
+    if !config.ui.auto_hide_toolbar {
+        context.set_hide_progress(0.0);
+    } else {
+        // Native counts only buttons belonging to the active mode
+        // (Option<ShowOnlyInPhotomode> presence == is_photomode) and ORs
+        // UiInteractionState.keep (+1 of the 3-byte component).
+        let mut keep = 0u8;
+        let mut count = 0usize;
+        for (_cooldown, state, photomode_only) in &buttons {
+            if photomode_only.is_some() == is_photomode {
+                keep |= state.keep;
+                count += 1;
+            }
+        }
+        let count_f = count as f32;
+        let total = ((count_f - 1.0) * 10.0 + count_f * 110.0) * scale;
+        let thin = scale * 110.0 * 0.3;
+        let (center, dims) =
+            activation_rect(config.ui.toolbar_alignment as u8, window.as_vec2(), thin, total);
+        let inside_or_keep =
+            (keep & 1) != 0 || Aabb2::from_center_dims(center, dims).contains(cursor.0);
+
+        let old = context.hide_progress();
+        let next = auto_hide_progress(
+            old,
+            time.delta_secs(),
+            inside_or_keep,
+            esc_menu.is_closed(),
+            actions.digital[0].pressed(),
+        );
+        context.set_hide_progress(next);
+        if let Some(kind) = auto_hide_sound_kind(old, next) {
+            sounds.write(PlayUiSound {
+                kind,
+                _payload: [0; 0x10],
+                id: 0,
+            });
+        }
+    }
+
+    // CubicInOut easing (`0x14304e668` discriminant 1) and the anchored
+    // offset write (hot block 0x142344410..0x1423444ca).
+    let ease = EasingFunction::CubicInOut.apply(context.hide_progress());
+    let offset = scale * 200.0 * ease;
+    let (dx, dy) = match config.ui.toolbar_alignment as u8 {
+        0 => (0.0, offset),
+        1 => (-offset, 0.0),
+        2 => (offset, 0.0),
+        3 => (0.0, -offset),
+        _ => (0.0, 0.0),
+    };
+    if let Some(entry) = layout.anchored.iter_mut().find(|entry| entry.node == context.node_a()) {
+        entry.offset = Vec2::new(dx, dy);
+    }
 }
 
 #[cfg(test)]
@@ -265,7 +379,6 @@ mod tests {
     use super::*;
     use taffy::style::{AlignContent, AlignItems, FlexDirection};
 
-    /// 8 个已取证 setter 的字段写面（O：taffy_mut_style 单态 inline 写）。
     #[test]
     fn alignment_closures_write_expected_style_fields() {
         use alignment_closures::*;
@@ -295,30 +408,80 @@ mod tests {
         assert_eq!(s.align_items, Some(AlignItems::Center));
     }
 
-    /// alignment case 0 在 4 个节点上的 setter 序列（O 跳表 case 0）。
     #[test]
-    fn alignment_case_zero_applies_four_setters() {
-        let mut taffy = Taffy::new();
-        let n0 = taffy.new_leaf(taffy::style::Style::default()).unwrap();
-        let n1 = taffy.new_leaf(taffy::style::Style::default()).unwrap();
-        let n2 = taffy.new_leaf(taffy::style::Style::default()).unwrap();
-        let n3 = taffy.new_leaf(taffy::style::Style::default()).unwrap();
-        apply_alignment_setters(0, &[n0, n1, n2, n3], &mut taffy);
+    fn side_mask_matches_native_rotation() {
+        assert_eq!(alignment_side_mask(0), 0x00);
+        assert_eq!(alignment_side_mask(1), 0x03);
+        assert_eq!(alignment_side_mask(2), 0x02);
+        assert_eq!(alignment_side_mask(3), 0x01);
+        // `& 3` is explicit in the original before the shift.
+        assert_eq!(alignment_side_mask(4), 0x00);
+        assert_eq!(alignment_side_mask(7), 0x01);
+    }
+
+    #[test]
+    fn progress_integration_and_sound_edges_match_native() {
+        // Cursor outside -> +dt/0.3
+        assert!((auto_hide_progress(0.0, 0.15, false, true, true) - 0.5).abs() < 1e-6);
+        // Inside + menu closed + hotkey not pressed -> -dt/0.3
+        assert!((auto_hide_progress(0.9, 0.15, true, true, false) - 0.4).abs() < 1e-6);
+        // Inside + menu open -> +dt/0.3
+        assert!((auto_hide_progress(0.0, 0.15, true, false, false) - 0.5).abs() < 1e-6);
+        // clamp01
+        assert_eq!(auto_hide_progress(0.95, 1.0, false, true, true), 1.0);
+        assert_eq!(auto_hide_progress(0.05, 1.0, true, true, false), 0.0);
+        // Edges: 1 -> <1 emits 0x11; 0 -> >0 emits 0x10.
+        assert_eq!(auto_hide_sound_kind(1.0, 0.9), Some(0x11));
+        assert_eq!(auto_hide_sound_kind(0.0, 0.1), Some(0x10));
+        assert_eq!(auto_hide_sound_kind(0.5, 0.6), None);
+        assert_eq!(auto_hide_sound_kind(0.5, 0.0), None);
+        assert_eq!(auto_hide_sound_kind(0.0, 0.0), None);
+    }
+
+    #[test]
+    fn activation_rect_places_all_four_alignments() {
+        let window = Vec2::new(1000.0, 600.0);
+        let (c0, d0) = activation_rect(0, window, 10.0, 200.0);
+        assert_eq!(c0, Vec2::new(500.0, 5.0));
+        assert_eq!(d0, Vec2::new(200.0, 10.0));
+        let (c1, d1) = activation_rect(1, window, 10.0, 200.0);
+        assert_eq!(c1, Vec2::new(900.0, 300.0));
+        assert_eq!(d1, Vec2::new(10.0, 200.0));
+        let (c2, _) = activation_rect(2, window, 10.0, 200.0);
+        assert_eq!(c2, Vec2::new(100.0, 300.0));
+        let (c3, d3) = activation_rect(3, window, 10.0, 200.0);
+        assert_eq!(c3, Vec2::new(500.0, 595.0));
+        assert_eq!(d3, Vec2::new(200.0, 10.0));
+    }
+
+    #[test]
+    fn alignment_case_zero_applies_sequence_to_node_a_and_b() {
+        use crate::resouces_and_components::taffy_layout::TaffyLayout;
+        let mut layout = TaffyLayout::default();
+        let a = layout
+            .taffy
+            .new_leaf(taffy::style::Style::default())
+            .unwrap();
+        let b = layout
+            .taffy
+            .new_leaf(taffy::style::Style::default())
+            .unwrap();
+        // Case 0 sequence (native 0x142344648 block).
+        apply_node(&mut layout, a, alignment_closures::toolbar_env_12);
+        apply_node(&mut layout, a, alignment_closures::toolbar_env_11);
+        apply_node(&mut layout, b, alignment_closures::toolbar_env_10);
+        apply_node(&mut layout, a, alignment_closures::toolbar_env_11);
         assert_eq!(
-            taffy.style(n0).unwrap().justify_content,
+            layout.taffy.style(a).unwrap().justify_content,
             Some(AlignContent::Center)
         );
         assert_eq!(
-            taffy.style(n1).unwrap().align_items,
+            layout.taffy.style(a).unwrap().align_items,
             Some(AlignItems::FlexEnd)
         );
         assert_eq!(
-            taffy.style(n2).unwrap().flex_direction,
+            layout.taffy.style(b).unwrap().flex_direction,
             FlexDirection::Row
-        );
-        assert_eq!(
-            taffy.style(n3).unwrap().align_items,
-            Some(AlignItems::FlexEnd)
         );
     }
 }

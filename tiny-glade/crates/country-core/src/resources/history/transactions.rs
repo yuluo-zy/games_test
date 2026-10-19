@@ -13,6 +13,10 @@ pub trait HistoryRecordingValidation {
 #[derive(Clone, Debug, PartialEq)]
 pub struct HistoryEntry<M> {
     pub edits: Vec<M>,
+    /// Actual owners carried by this MultiEdit. Keeping them on the entry
+    /// preserves identity through head insertion, branching, cloning and
+    /// truncation; a mutable ledger index is not an ownership key.
+    pub auxiliary: HistoryEntryAux,
     /// Three nonempty checks observed in MultiEdit's auxiliary owners.
     /// Their contents remain with those owners; counts are not fabricated deltas.
     pub observed_auxiliary_counts: [usize; 3],
@@ -28,12 +32,67 @@ impl<M> HistoryEntry<M> {
     pub fn from_edits(edits: Vec<M>) -> Self {
         Self {
             edits,
+            auxiliary: HistoryEntryAux::default(),
             observed_auxiliary_counts: [0; 3],
             observed_stairs_checksum: None,
         }
     }
     fn is_empty(&self) -> bool {
-        self.edits.is_empty() && self.observed_auxiliary_counts == [0; 3]
+        self.edits.is_empty()
+            && self.observed_auxiliary_counts == [0; 3]
+            && self.auxiliary.is_empty()
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct HistoryEntryAux {
+    pub decorator_diff:
+        Option<std::sync::Arc<crate::resources::history::decorator_edit::DecoratorHistoryDiffMap>>,
+    pub stairs_diff:
+        Option<std::sync::Arc<crate::resources::stairs::stairs_state::StairsHistoryDiff>>,
+}
+
+impl HistoryEntryAux {
+    pub fn is_empty(&self) -> bool {
+        self.decorator_diff
+            .as_deref()
+            .is_none_or(|diff| diff.is_empty())
+            && self
+                .stairs_diff
+                .as_deref()
+                .is_none_or(|diff| diff.is_empty())
+    }
+
+    /// B replay_edit140af6170 takes the SELECTED entry's diff, then calls
+    /// cull_allow_list. 1412ff007..01b swaps source/other maps on undo;
+    /// 1415635a0 yields only keys absent from the other map, per storage.
+    pub fn for_replay(
+        &self,
+        undo: bool,
+    ) -> crate::resources::history::replay_cmd_buffer::ReplayBucketAux {
+        let cull_allow = self.decorator_diff.as_deref().map(|diff| {
+            let ids: Vec<_> = diff
+                .values()
+                .flat_map(|storage| {
+                    let (source, other) = if undo {
+                        (&storage.after, &storage.before)
+                    } else {
+                        (&storage.before, &storage.after)
+                    };
+                    source
+                        .states
+                        .keys()
+                        .filter(move |id| !other.states.contains_key(id))
+                        .copied()
+                })
+                .collect();
+            std::sync::Arc::from(ids)
+        });
+        crate::resources::history::replay_cmd_buffer::ReplayBucketAux {
+            decorator_diff: self.decorator_diff.clone(),
+            stairs_diff: self.stairs_diff.clone(),
+            cull_allow,
+        }
     }
 }
 #[derive(Clone, Debug, PartialEq)]
@@ -95,12 +154,15 @@ impl HistoryReplaySelection<RoofRimHistoryMutation> {
 pub struct HistoryTransactions<M, S = ()> {
     ledger: ObservedHistoryLedger<M, S>,
     pending: Option<HistoryEntry<M>>,
+    /// Latest pending-write compatibility view, not the replay authority.
+    /// Committed entries retain their own Arc in HistoryEntryAux.
     /// Native `History +0x48`: `Arc<DecoratorHistoryDiff>` replaced by
     /// `History::add_decorator_diff` (0x140a854a0). Native
     /// `DecoratorHistoryDiff` is a 0x30-byte map value (see
     /// `decorator_edit::DecoratorHistoryDiffMap`).
     pub decorator_diff:
         Option<std::sync::Arc<crate::resources::history::decorator_edit::DecoratorHistoryDiffMap>>,
+    /// Latest pending-write compatibility view; replay uses the selected entry.
     /// Native `History +0x50`: `Arc<StairsHistoryDiff>` replaced by the same
     /// function (0x60-byte payload in the original; see stairs domain).
     pub stairs_diff:
@@ -126,6 +188,17 @@ impl<M, S> HistoryTransactions<M, S> {
             debug_history_start: 0,
         }
     }
+    /// Canonical native History+0x60. The old public ledger field name
+    /// mutation_nonce refers to this same owner, not a separate RNG counter.
+    pub fn identity(&self) -> super::HistoryIdentity {
+        super::HistoryIdentity(self.ledger.mutation_nonce)
+    }
+    /// Load/move boundary for an already parsed Identity. Recording mutations
+    /// continue to replace this same value through their existing RNG boundary.
+    pub fn set_identity(&mut self, identity: super::HistoryIdentity) {
+        self.ledger.mutation_nonce = identity.0;
+    }
+
     pub fn ledger(&self) -> &ObservedHistoryLedger<M, S> {
         &self.ledger
     }

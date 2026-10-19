@@ -328,8 +328,7 @@ fn butterfly_state_dispatch(
             if pos.y >= f32::from_bits(0x3fc00000) {
                 (
                     2,
-                    rng.uniform_f32() * f32::from_bits(0x40a00000)
-                        + f32::from_bits(0x40a00000),
+                    rng.uniform_f32() * f32::from_bits(0x40a00000) + f32::from_bits(0x40a00000),
                     flag,
                 )
             } else {
@@ -360,7 +359,11 @@ pub fn update_butterfly_goals(
     for (transform, velocity, mut butterfly, mut goal) in &mut query {
         let pos = transform.translation;
         // CritterGoal 桥接（country-core {position,goal_tag}，DIVERGE 见 shared.rs 头）。
-        let mut goal_opt = if goal.goal_tag != 0 { Some(goal.position) } else { None };
+        let mut goal_opt = if goal.goal_tag != 0 {
+            Some(goal.position)
+        } else {
+            None
+        };
         update_butterfly_goal_core(
             butterfly.state,
             &mut butterfly.goal_timer,
@@ -529,26 +532,32 @@ pub fn update_butterfly_audio(mut query: Query<(&Transform, &mut ButterflyAudio)
     }
 }
 
-/// butterflies_send_to_gpu（0x141d87140）：`from_iter<Vec<ButterflySsbo>,
-/// Map<QueryIter<(Transform, Butterfly)>>>` 构建实例缓冲 → `FrozenMap::get<SsboId>` +
-/// memcmp（名 len 0x46=70）→ `render::ssbo::cpu_write<ButterflySsbo>()` 上传。
-/// GPU 胶水（GPU 后置）：元素布局 ButterflySsbo 由 core render_loop 合同（anim_t =
-/// Butterfly+0x14 phase_ref）；缓冲上传由宿主接线。`ButterflySsbo` 布局未恢复，保持
-/// CPU 侧实例投影。
+/// Original full population projection, count validation, and mapped SSBO write.
 pub fn butterflies_send_to_gpu(
-    mut out: ResMut<ButterflyGpuData>,
+    mut buffers: ResMut<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>,
     query: Query<(&Transform, &Butterfly)>,
 ) {
-    out.instances.clear();
-    for (transform, butterfly) in &query {
-        if out.instances.len() >= ButterflySsbo::BUFFER_LEN {
-            break;
-        }
-        out.instances.push(ButterflySsbo::from_components(
-            transform.translation,
-            transform.rotation,
-            butterfly.phase_ref,
-        ));
+    let instances: Vec<ButterflySsbo> = query
+        .iter()
+        .map(|(transform, butterfly)| {
+            ButterflySsbo::from_components(
+                transform.translation,
+                transform.rotation,
+                butterfly.phase_ref,
+            )
+        })
+        .collect();
+    if instances.is_empty() {
+        return;
+    }
+    // Original author asserts the complete fixed population before looking up its SSBO.
+    assert_eq!(
+        instances.len(),
+        24,
+        "Unexpected butterfly population for GPU upload"
+    );
+    if let Some(buffer) = buffers.get_mut::<ButterflySsbo>() {
+        buffer.cpu_write(&instances);
     }
 }
 

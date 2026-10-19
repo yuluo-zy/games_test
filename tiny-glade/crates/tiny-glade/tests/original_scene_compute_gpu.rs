@@ -1332,6 +1332,16 @@ fn completed_background_warmup_preserves_actual_pair_owner_parity_and_pixels() {
     });
     let (world, completed, actual_warmup_current) = worker.join().unwrap();
     fixture.world = world;
+    // An outstanding declaration makes activation temporarily inadmissible.
+    // Rejecting it must preserve the worker's actual one-shot owners/parity,
+    // so activation can be retried after this graph is cancelled.
+    let (_, unsubmitted) = fixture.bridge.build_frame(|_| Ok(())).unwrap();
+    assert!(fixture.bridge.accept_gameplay_warmup(&completed).is_err());
+    fixture.bridge.cancel_built(unsubmitted).unwrap();
+    let (_, unsubmitted) = fixture.bridge.build_frame(|_| Ok(())).unwrap();
+    let compiled = fixture.bridge.compile_built(unsubmitted).unwrap();
+    assert!(fixture.bridge.accept_gameplay_warmup(&completed).is_err());
+    drop(compiled);
     fixture.bridge.accept_gameplay_warmup(&completed).unwrap();
     // Repeated activation is harmless after the single actual ownership move.
     fixture.bridge.accept_gameplay_warmup(&completed).unwrap();

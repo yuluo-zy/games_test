@@ -28,7 +28,7 @@ use bevy_ecs::component::Component;
 use bevy_ecs::resource::Resource;
 use glam::{Quat, Vec3};
 
-pub use country_core::resources::critters::CritterGoal;
+pub use country_core::resources::critters::{Critter, CritterGoal};
 pub use country_core::utils::components::transform::Transform;
 
 /// 轨迹状态（Duck+0xe0/+0xe1/+0xe4 段；与 reconstruction duck.rs DuckGoalState 一致）。
@@ -150,28 +150,10 @@ pub struct Firefly {
     pub goal_timer: f32,
 }
 
-/// `Wren`（鹪鹩状态；`nani_update_wren` 读 prev/current 变换 + 参数，布局 U——
-/// 只落状态机消费的语义字段）。
-#[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
-pub struct Wren {
-    pub pos: Vec3,
-    pub prev_pos: Vec3,
-    pub phase: f32,
-    pub hop_timer: f32,
-}
+pub use country_core::resources::critters::Wren;
 
 /// 鹪鹩停靠点记录（stride 0x18；move_critters 更新位置，wren 系统读写）。
-#[derive(Component, Clone, Debug, Default, PartialEq)]
-pub struct BirdSpots {
-    pub spots: Vec<BirdSpot>,
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct BirdSpot {
-    pub pos: Vec3,
-    /// 占用标志（u32@+0xc 段，语义 I）。
-    pub occupied: bool,
-}
+pub use crate::bird_spots::{BirdSpot, BirdSpots};
 
 /// `DecoratorBirdSpots`（wren.rs PDB 命名实体；装饰物上的鸟点，语义同 BirdSpots）。
 #[derive(Component, Clone, Debug, Default, PartialEq)]
@@ -198,30 +180,8 @@ pub struct FishBoids {
     pub turn_timer: f32,
 }
 
-/// 小动物总开关/强度资源。
-/// - firefly 门：`*res+4 == 1` 才跑；
-/// - **wren 门**：`*res+5`（fresh sim_wren_boids 0x142326a80 `TEST byte[*in_R8+5]`）
-///   非 0 才模拟，否则清空 WrenBoids 并 despawn 全部鹪鹩；
-/// - render_loop 的 `CritterControl.intensity` 是萤火虫强度（f32@+0）。
-#[derive(Resource, Clone, Copy, Debug)]
-pub struct CritterControlState {
-    /// +4 字节：control 门（==1 运行）。
-    pub enabled: bool,
-    /// +5 字节：wren/bird 模拟门（!=0 运行）。
-    pub birds_enabled: bool,
-    /// 萤火虫强度（f32@+0；draw_shaders 消费）。
-    pub intensity: f32,
-}
-
-impl Default for CritterControlState {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            birds_enabled: false,
-            intensity: 0.0,
-        }
-    }
-}
+/// One identity for the behavior systems and firefly rendering callbacks.
+pub use country_core::resources::critters::CritterControl as CritterControlState;
 
 /// `DuckSpawnLocations`（0x140f8ee90）：10×10=100 候选点；`timer` 资源尾字段
 /// （spawn_ducks 累加 dt，>=30 才生；+0x18=25.0 常数语义 I）。
@@ -317,22 +277,7 @@ impl FishSpawnLocations {
 }
 
 /// `PrevTransform`（鸭 shader 消费的上一帧变换；布局 = Transform{旋转@0,平移@0x10,缩放@0x1c}）。
-#[derive(Component, Clone, Copy, Debug, PartialEq)]
-pub struct PrevTransform {
-    pub rotation: Quat,
-    pub translation: Vec3,
-    pub scale: Vec3,
-}
-
-impl Default for PrevTransform {
-    fn default() -> Self {
-        Self {
-            rotation: Quat::IDENTITY,
-            translation: Vec3::ZERO,
-            scale: Vec3::ONE,
-        }
-    }
-}
+pub use country_core::components::drawable::PrevTransform;
 
 impl Default for Duck {
     fn default() -> Self {

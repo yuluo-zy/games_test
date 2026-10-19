@@ -39,6 +39,11 @@ pub struct PlaceDecoratorInteractionState {
     pub id: Option<DecoratorId>,
 }
 
+/// 瞬时装饰 id 基数（I：`TransientDecoratorIdGen` 的共享 base 所有权；
+/// 原版 base 由宿主提供，Rust 侧以资源持有避免空指针解引用）。
+#[derive(Resource, Clone, Copy, Debug, Default)]
+pub struct TransientDecoratorIdBase(pub u32);
+
 /// B 0x1407a9c10（O 结构）：放置主系统。
 #[allow(clippy::too_many_arguments)]
 pub fn ui_place_decorator(
@@ -59,15 +64,18 @@ pub fn ui_place_decorator(
     // InstaCreateStairPoint/InstaCreateDeco 为早期编造事件（fresh 0x1407adb20 无此
     // 事件面；core ui_autoclutter 已删除）——不伪造参数，登记待真事件取证。
     mut _local: Local<PlayedConnectSoundLastFrame>,
+    mut id_base: ResMut<TransientDecoratorIdBase>,
 ) {
     // O 结构：init 事件 → 瞬时 id 生成器 + 交互状态初始化；随后命中转换 +
     // 意图计算 + 楼梯候选 + 指示符 + 释放 → apply。精确流程 I（90KB 反编译
     // 的相位/跳表细节登记于 RESTORE.md；本实现承载结构面）。
     for _ev in _inits.read() {
         _init_w.write(EvInitPlaceDecoratorInteractionState);
+        // 0x1408339e0 非直写模式：offset 递增 + base 值参与 id。base 由本资源
+        // 持有（原宿主所有权面），不再用空指针（旧实现 UAF/P0）。
+        let mut id_gen = TransientDecoratorIdGen::new(&mut id_base.0, false);
+        let _transient_id = id_gen.generate();
     }
-    let mut _gen = TransientDecoratorIdGen::new(std::ptr::null_mut(), false);
-    let _ = _gen.generate();
     let _ = &mut stream;
 }
 

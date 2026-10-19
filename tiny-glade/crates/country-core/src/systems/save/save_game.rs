@@ -9,14 +9,14 @@
 //! Sheep/chain_index/history_start/snapshots）由所属域提供序列化载荷，缺失即 panic
 //! （原版每节必写），不伪造。
 use crate::resources::critters::{
-    sheep::{control::capture_sheep_snapshot, Sheep},
     CritterGoal,
+    sheep::{Sheep, control::capture_sheep_snapshot},
 };
 use crate::resources::glade_color_customization::GladeColorCustomization;
+use crate::resources::history::HistoryIdentity;
 use crate::resources::history::snapshots::current_snapshot;
 use crate::resources::history::snapshots::set_current_snapshot;
 use crate::resources::history::transactions::ResolvedHistorySnapshot;
-use crate::resources::history::HistoryIdentity;
 use crate::resources::roofs::roof_animation::RoofMarkedForDeletion;
 use crate::resources::roofs::roof_shape::Roof;
 pub use crate::resources::save_file::SaveFileSection;
@@ -26,9 +26,9 @@ use crate::resources::time::GameTime;
 use crate::systems::camera_rig::CameraRigParametersCache;
 use crate::systems::save::save_backup_list::BackupSaveFileKind;
 use crate::systems::save::save_backup_metronome::SaveBackupMetronome;
-use crate::systems::save::snapshot::capture_game_snapshot_save_data;
 use crate::systems::save::snapshot::SnapshotDomainData;
 use crate::systems::save::snapshot::SnapshotSaveData;
+use crate::systems::save::snapshot::capture_game_snapshot_save_data;
 use crate::utils::components::transform::Transform;
 use bevy_ecs::prelude::{Query, Res, ResMut, Without};
 use hashbrown::HashMap;
@@ -288,8 +288,8 @@ pub struct SaveSnapshotWorld<'w, 's> {
         'w,
         's,
         (
-            &'static crate::systems::prefab::PrefabInstanceData,
             &'static crate::resources::prefab::PrefabInstance,
+            &'static crate::systems::prefab::PrefabInstanceData,
             &'static crate::components::trees::TreeComponent,
         ),
     >,
@@ -666,7 +666,7 @@ impl AutoSaveState {
     /// 0x141e59860：**同步请求-应答**。建 `sync_channel<Result<(),anyhow::Error>>` →
     /// 发 ManualBackup 命令（带应答 Sender）→ 阻塞 `recv` → 返回 `Result`。
     /// send 失败或执行失败 → Err(anyhow::Error)（O：Err 经 `format_err` 构 ContextError）。
-    pub fn create_backup_of(&mut self, path: PathBuf) -> Result<(), anyhow::Error> {
+    pub fn create_backup_of(&self, path: PathBuf) -> Result<(), anyhow::Error> {
         let (reply_sender, reply_receiver) = crossbeam_channel::bounded(1);
         let command = AsyncSaveCmd::ManualBackup {
             path,
@@ -1010,9 +1010,9 @@ mod original_incremental_tests {
     use super::*;
     #[test]
     fn current_history_edits_append_to_the_real_file_without_reopening() {
-        use super::super::save_thread::{execute_save_cmd, CurrentSaveFile, UnsavedFileList};
+        use super::super::save_thread::{CurrentSaveFile, UnsavedFileList, execute_save_cmd};
         use crate::resources::history::{
-            serialized::SavedMultiEdit, transactions::ObservedHistoryLedger, History,
+            History, serialized::SavedMultiEdit, transactions::ObservedHistoryLedger,
         };
         let original: serde_json::Value = serde_json::from_str(include_str!(
             "../../../tests/fixtures/original-intro-history-b.json"
@@ -1072,7 +1072,7 @@ mod original_incremental_tests {
     #[test]
     fn pending_snapshot_cache_requires_late_worker_serialization() {
         use crate::resources::history::{
-            transactions::ResolvedHistorySnapshot, HistorySnapshotId, MaybePendingSnapshotId,
+            HistorySnapshotId, MaybePendingSnapshotId, transactions::ResolvedHistorySnapshot,
         };
         let owner = MaybePendingSnapshotId::new();
         let left = vec![ResolvedHistorySnapshot {
@@ -1108,7 +1108,7 @@ mod original_incremental_tests {
 
 #[cfg(test)]
 mod original_world_worker_integration {
-    use super::super::save_thread::{execute_save_cmd, CurrentSaveFile, UnsavedFileList};
+    use super::super::save_thread::{CurrentSaveFile, UnsavedFileList, execute_save_cmd};
     use super::*;
     use crate::resources::{
         color_id::{GateColorIds, HalftimberColorIds, WallColorIds},
@@ -1116,7 +1116,7 @@ mod original_world_worker_integration {
         stairs::{stairs_removed_supports::StairsRemovedSupports, stairs_state::StairsState},
         terrain_editing::TerrainEditingData,
         terrain_height::{TerrainHeightSsbo, TerrainHeightsData},
-        walls::{decorator_storage::DecoratorStorage, InnerWalls, WallState},
+        walls::{InnerWalls, WallState, decorator_storage::DecoratorStorage},
         world_raster::DirtyTilePublisher,
         world_raster_defs::{
             Cobblestone1Raster, Cobblestone2Raster, Cobblestone3Raster, GardenRaster, PathRaster,

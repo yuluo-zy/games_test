@@ -90,12 +90,7 @@ pub fn perturb_row_ends(
 /// - upper：aabb={min_x, new_y, max_x, max_y}（center={center.x,
 ///   max_y−h*(1−t)*0.5} dims={w, h*(1−t)}）；deformation=
 ///   {new_x, new_y, max_x, max_y}；seed=原值+1；split=0。
-pub fn split_horizontally(
-    split: f32,
-    aabb: &[f32; 4],
-    seed: u32,
-    out: &mut VecDeque<MyBrick>,
-) {
+pub fn split_horizontally(split: f32, aabb: &[f32; 4], seed: u32, out: &mut VecDeque<MyBrick>) {
     const SPLIT_A: f32 = f32::from_bits(0x3ecccccc); // 0.4
     const SPLIT_B: f32 = f32::from_bits(0x3e99999a); // 0.3
     let t = split * SPLIT_A + SPLIT_B;

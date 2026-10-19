@@ -108,7 +108,7 @@ pub fn create_circle(
             height_01,
             0.2,
             0.2,
-            colors.flat_rim_style,
+            colors.flat_rim_style.native_tag(),
             false,
             appearance.roof_color_id,
             appearance.roof_appearance,
@@ -152,8 +152,8 @@ mod tests {
         world.insert_resource(WallColorIds::default());
         world.insert_resource(HalftimberColorIds::default());
         let mut colors = GladeColorCustomization::default();
-        colors.building_wall_style = 4;
-        colors.flat_rim_style = 6;
+        colors.building_wall_style = crate::resources::walls::inner_wall_state::WallStyle(4);
+        colors.flat_rim_style = crate::resources::roofs::roof_shape::FlatRoofRimStyle::NoRim;
         world.insert_resource(colors);
         world.insert_resource(RoofColorComponentTables::default());
         register_wall_recording_events(&mut world);
@@ -192,7 +192,7 @@ mod tests {
         // fresh：圆圈 +0x38 恒 0、+0x39 = settings+0x41；update_style 写
         // settings+0x42。
         assert_eq!(record[0x38], 0);
-        assert_eq!(record[0x39], 6);
+        assert_eq!(record[0x39], 1);
         assert_eq!(
             world
                 .resource::<InnerWalls>()

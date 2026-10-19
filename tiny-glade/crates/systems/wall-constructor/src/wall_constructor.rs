@@ -12,20 +12,16 @@
 //! CPU 链已冻结（3516/3516 案例）：split_into_random_rows/trim_rows/
 //! normalize_wall_holes/resolve_hole_overlap/cut_wall_bricks/
 //! emit_resolved_wall_brick（96B BrickTransformSsbo）→ 本 crate 直接复用
-//! country-core shared building modules 的同一链。**row→proposal 中段
-//! （相邻行匹配/横向 partition/噪声与 seed 来源）仍未恢复** ——
-//! from_curve 的完整装配以 `consume_wall_proposal` 的已解析源值输入
-//! （building-constructor README 边界），不自行补造缺失源值。
-use country_core::systems::wall::construction::bricks::*;
-use country_core::resources::walls::public_walls::PublicWalls;
-use glam::Vec2;
+//! country-core shared building modules 的同一链。新的生产入口直接复用
+//! country-core 的完整 authority→row→proposal→96B 算法；旧 resolved
+//! proposal 叶 API 仅作为证据核对入口保留，不再作为 World 的生产边。
 
 pub use country_core::systems::wall::construction::bricks::WallBrick;
 pub use country_core::systems::wall::construction::bricks::WallBrickInstance;
 pub use country_core::systems::wall::construction::bricks::WallEmissionContext;
 pub use country_core::systems::wall::construction::bricks::WallRow;
-pub use country_core::systems::wall::construction::bricks::consume_wall_proposal;
 pub use country_core::systems::wall::construction::bricks::construct_resolved_plain_wall_proposal;
+pub use country_core::systems::wall::construction::bricks::consume_wall_proposal;
 pub use country_core::systems::wall::construction::bricks::cut_wall_bricks;
 pub use country_core::systems::wall::construction::bricks::emit_plain_wall_brick;
 pub use country_core::systems::wall::construction::bricks::emit_resolved_wall_brick;
@@ -40,45 +36,45 @@ pub use country_core::systems::wall::construction::bricks::trim_rows;
 /// 12 surface + 4 seed + 4 material + 8 wall_distance + 4 flags）。
 pub type BrickSsboRecord = [u8; 96];
 
-/// `WallConstructor::from_curve`（0x140769760）的已恢复安全闭包：
-/// raw authority rows/holes → 归一化 → proposal 消费 → 切割 → 96B 实例。
-/// 中段 row→proposal 桥以 caller 提供的已解析源值为输入（README 边界）。
+/// Full authoritative producer, sharing the restored country-core algorithm.
+/// Source arrays, cached U, holes, policy and seeds are required inputs.
 pub fn from_curve_resolved(
-    curve: &[Vec2],
-    material: u32,
-    seed: u64,
-    holes: &[([f32; 4], u8)],
-    length: f32,
-    height_scale: f32,
-    closed: bool,
-    wall: u64,
-    special: bool,
-) -> Vec<BrickSsboRecord> {
-    let heights: Vec<f32> = curve.iter().map(|p| p.y).collect();
-    let rows = split_into_random_rows(&heights, height_scale, seed);
-    let curve_u: Vec<f32> = (0..curve.len())
-        .map(|i| i as f32 / (curve.len().saturating_sub(1).max(1)) as f32)
-        .collect();
-    let trimmed = trim_rows(&rows, &curve_u, &heights, height_scale, length, special);
-    let normalized = normalize_wall_holes(holes, length, height_scale, closed);
-    let _ = (material, wall);
-    // 中段（row→proposal）未恢复：construct_resolved_plain_wall_proposal
-    // 需要已解析的 context（README：不得自行生成未恢复源值）。
-    let mut out = Vec::new();
-    if let (Ok(trimmed), Ok(_normalized)) = (trimmed, normalized) {
-        let _ = trimmed;
-    }
-    out
+    input: country_core::systems::wall::construction::production::PlainWallProductionInput<'_>,
+    branch: country_core::systems::wall::construction::production::WallProductionBranch,
+) -> Result<
+    Vec<BrickSsboRecord>,
+    country_core::systems::wall::construction::production::WallProductionError,
+> {
+    country_core::systems::wall::construction::production::produce_wall(input, branch).map(
+        |instances| {
+            instances
+                .iter()
+                .map(|instance| instance.observed_bytes())
+                .collect()
+        },
+    )
 }
 
 /// `construct_walls`（0x140757800）调用的墙角/裙边/阶梯指示符几何
 /// （add_wall_corners 0x141215540 / add_skirts 0x1412221f0 /
 /// stairs_signifiers 0x141223d10；building-structures findings G05）。
+///
+/// 三个 helper 都委托到各自的原函数；在对应算法未闭合前保持显式 panic，
+/// 不以空函数体吞掉真实输出。
 pub mod helpers {
     /// 墙角砖（O：construct_walls 实调；几何数值见 building-structures）。
-    pub fn add_wall_corners(_points: &[[f32; 3]], _out: &mut Vec<[u8; 96]>) {}
+    pub fn add_wall_corners(points: &[[f32; 3]], out: &mut Vec<[u8; 96]>) {
+        let points: Vec<glam::Vec3> = points.iter().map(|p| glam::Vec3::from_array(*p)).collect();
+        crate::utils::wall_corners::add_wall_corners_new(&points, out);
+    }
     /// 墙裙边（O：实调）。
-    pub fn add_skirts(_points: &[[f32; 3]], _out: &mut Vec<[u8; 96]>) {}
+    pub fn add_skirts(points: &[[f32; 3]], out: &mut Vec<[u8; 96]>) {
+        let points: Vec<glam::Vec3> = points.iter().map(|p| glam::Vec3::from_array(*p)).collect();
+        crate::utils::wall_skirts::add_skirts_new(&points, out);
+    }
     /// 阶梯指示符（O：实调；stairs_signifiers 0x141223d10）。
-    pub fn stairs_signifiers(_wall: u64, _points: &[[f32; 3]], _out: &mut Vec<[u8; 96]>) {}
+    pub fn stairs_signifiers(wall: u64, points: &[[f32; 3]], out: &mut Vec<[u8; 96]>) {
+        let points: Vec<glam::Vec3> = points.iter().map(|p| glam::Vec3::from_array(*p)).collect();
+        crate::utils::stairs_signifiers::stairs_signifiers_new(wall, &points, out);
+    }
 }

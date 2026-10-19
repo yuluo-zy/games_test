@@ -28,6 +28,12 @@ pub struct AssetLibraryRuntime {
     pub theme: GladeTheme,
 }
 impl AssetLibraryRuntime {
+    /// Borrow the same physical buffer device used by library maintenance.
+    /// External game systems may flush their typed sparse owners without
+    /// constructing a second device or taking ownership of its tables.
+    pub fn buffer_device(&self) -> &(dyn GraphicsDevice + Send + Sync) {
+        self.buffers.as_ref()
+    }
     pub fn new(
         buffers: Arc<dyn GraphicsDevice + Send + Sync>,
         textures: Arc<dyn TextureLibraryDevice + Send + Sync>,

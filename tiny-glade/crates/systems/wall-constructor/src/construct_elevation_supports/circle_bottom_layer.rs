@@ -46,5 +46,7 @@ pub fn construct_circle_bottom_layer(
     _count: usize,
     _out: &mut Vec<[u8; 96]>,
 ) {
-    todo!("未实现: construct_circle_bottom_layer 0x14124b2c0（random_splits_into/get_pos_at_u/BufferState 锁链未逐语句）")
+    todo!(
+        "未实现: construct_circle_bottom_layer 0x14124b2c0（random_splits_into/get_pos_at_u/BufferState 锁链未逐语句）"
+    )
 }

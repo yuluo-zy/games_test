@@ -48,7 +48,7 @@ pub fn dirty_walls(
     let mut set: HashSet<WallId> = HashSet::new();
     set.extend(ev_deleted.read().map(|e| e.0));
     set.extend(ev_changed.read().map(|e| e.0));
-    set.extend(ev_roof_cmd.read().map(|e| e.0));
+    set.extend(ev_roof_cmd.read().map(|e| e.wall));
     changes.dirty_walls = set;
 }
 

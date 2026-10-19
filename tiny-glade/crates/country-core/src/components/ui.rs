@@ -49,3 +49,35 @@ impl Ui2dImage {
 #[repr(transparent)]
 #[derive(Component, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct UiDrawOrder(pub u64);
+
+/// B register@0x14084e100: zero-sized marker, alignment 1. The render query
+/// binds its presence to U_INACTIVE; there is no payload to reconstruct.
+#[derive(Component, Clone, Copy, Debug, Default)]
+pub struct UiInactive;
+
+/// B register@0x14084eee0: size 0x14, align 4. ui_2d_pass reads extent@0
+/// as Vec2 and world position@8 as Vec3 without sorting this query.
+#[repr(C)]
+#[derive(Component, Clone, Copy, Debug, Default)]
+pub struct Ui2dWsExtent {
+    pub extent: Vec2,
+    pub position: glam::Vec3,
+}
+
+/// Canonical B UiInteractionState (register@0x14084fcc0): three bytes,
+/// alignment 1. Toolbar writers and the UI raster query share this owner.
+#[repr(C)]
+#[derive(Component, Clone, Copy, Debug, Default)]
+pub struct UiInteractionState {
+    pub state: u8,
+    pub keep: u8,
+    pub selected: u8,
+}
+
+const _: () = assert!(std::mem::size_of::<UiInactive>() == 0);
+const _: () = assert!(std::mem::size_of::<Ui2dWsExtent>() == 0x14);
+const _: () = assert!(std::mem::size_of::<UiInteractionState>() == 3);
+
+/// Original zero-sized query filter marker; no independent runtime owner.
+#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default)]
+pub struct Ui2DFollowMouse;

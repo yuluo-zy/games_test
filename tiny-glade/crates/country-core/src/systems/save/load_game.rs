@@ -10,15 +10,21 @@
 //! 2026-10-15 会话切换链（RE-SESSION-SWITCH）：commander_update case 0 经
 //! `insert_resource<NextSession>` 触发 load_game；on_load 列表元素 0x20B {tag, payload}；
 //! 两遍回放终止哨兵 = tag 0x8000000000000003（fence 是变体 0 载荷，非终止）；fence 释放
-//! 走变体 2（unblock +0x10 + Arc drop）。MetaCommand 应用（commander_update case 0）与
-//! `init_game_state_from_snapshot` 依赖游戏资源，由宿主/域恢复后接入；不伪造加载成功。
+//! 走变体 2（unblock +0x10 + Arc drop）。MetaCommand 应用（commander_update case 0）由
+//! `init_game_state_from_snapshot` 之外的历史链所有者处理。
+//!
+//! 快照读档（Round9 G1）：`try_load_game_system` 在解析存档后按最近记录打开
+//! `{snapshot_id}.snapshot`；打开成功 → `snapshot::load_snapshot_file`（motomoto
+//! chunks → Snapshot JSON + 命名栅格/Terrain chunk）→ 基础会话状态应用 →
+//! `snapshot::init_game_state_from_snapshot`（World 级域写回）。打不开的记录按原版
+//! 告警后尝试下一条；无可用快照 → 原版 @14146dfa6 的「历史链 cursor-1」分支。
 use crate::meta_commander::{MetaCommand, MetaCommander};
 use crate::resources::history::wall_edit::WallCompoundHistoryEdit;
 use crate::resources::history::wall_edit::WallHistoryEdit;
 use crate::resources::save_file::LoadVersionGates;
-use crate::resources::save_file::arrow_slit_record_applies;
-use crate::resources::save_file::upgrade_arrow_slit_color_id;
-use crate::resources::save_file::upgrade_window_record_color;
+use crate::resources::save_file::upgrade_arrow_slit_record_color;
+use crate::resources::save_file::upgrade_window_color_id;
+use crate::resources::save_file::window_record_applies;
 use crate::resources::session::NextSession;
 use crate::resources::session::ON_LOAD_FENCE;
 use crate::resources::session::ON_LOAD_VARIANT_MASK;
@@ -29,6 +35,9 @@ use anyhow::Context as _;
 use bevy_ecs::prelude::Resource;
 use serde_json::Value;
 use std::path::Path;
+
+#[path = "load_game_migration.rs"]
+mod migration;
 
 /// B state byte at +0x48. The old `+9` interpretation confused a
 /// qword index with a byte offset. Constructor @140944bc6 stores 2.
@@ -41,6 +50,9 @@ pub enum LoadGameState {
     /// Idle/post-command phase. Kept named Loaded for existing pure API callers.
     #[default]
     Loaded = 2,
+    /// 失败终态（I：原生 state 字节只证 0/1/2；这里用 3 明确“本次请求已失败、
+    /// 不得重试/不得当完成”）。进入后 `try_load_game_system` 只返回 Ok 不再重复上报。
+    Failed = 3,
 }
 
 /// B source discriminant at +0x18, taken by load_game @14146d030.
@@ -165,6 +177,38 @@ impl LoadGameManager {
 /// fresh 反编译 0x141470d00 的节解析面（2026-10-17；键串经 `read_memory`
 /// @0x142c644a0..0x142c64a10 核对）：`Version`（typed i32；解析失败默认 0x19）→
 /// `Camera`（`CameraRigParametersCache`，失败 context **"parsing camera"** 致命）→
+/// The native successful return owns a 240B body plus these four flags.
+/// Its other four-byte field is the target chain_index, already stored above.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ParsedLoadMetadata {
+    /// Native wrapper+c: parsed source version!=27 OR an actual migration ran.
+    pub requires_upgrade_backup: bool,
+    /// Native wrapper+d: WINDOW snapshot colors, then invalidate snapshot refs.
+    pub upgrade_window_colors: bool,
+    /// Native wrapper+e: ARROW SLIT snapshot colors. Not the previous swapped bit.
+    pub upgrade_arrow_slit_colors: bool,
+    /// Native wrapper+f: source version<19 requests SpawnPreplacedTrees.
+    /// The historical field name is retained for owning-request callers;
+    /// it is not DisplayCorruptedSaveFileWarning. Err uses niche value2.
+    pub legacy_version_notice: bool,
+}
+impl ParsedLoadMetadata {
+    /// Proven native v27 branch @141471bfe..1c23 / @141472e76..eb3.
+    pub const VERSION_27: Self = Self {
+        requires_upgrade_backup: false,
+        upgrade_window_colors: false,
+        upgrade_arrow_slit_colors: false,
+        legacy_version_notice: false,
+    };
+
+    pub fn snapshot_color_upgrade_flags(self) -> crate::resources::save_file::LoadUpgradeFlags {
+        crate::resources::save_file::LoadUpgradeFlags(
+            ((self.upgrade_window_colors as u64) << 40)
+                | ((self.upgrade_arrow_slit_colors as u64) << 48),
+        )
+    }
+}
+
 /// `Time of day`（typed 3×f32；失败回退 legacy f32；再失败告警
 /// **"This save file had no `Time of day` data"** 并用默认）→ `Sheep`
 /// （`SheepControlSnapshot`；失败日志 **"Error parrsing sheep snapshot: {}"** [原文拼写]）
@@ -176,6 +220,10 @@ impl LoadGameManager {
 /// → `BackwardCompatibility`。
 #[derive(Clone, Debug, Default)]
 pub struct ParsedGameData {
+    /// All four original wrapper flags, carried through the owning request.
+    /// A missing value is only possible in hand-built inputs; the parser
+    /// always produces all four flags, including compatibility migrations.
+    pub migration_metadata: Option<ParsedLoadMetadata>,
     pub version: i32,
     pub backward_compatibility: Option<Value>,
     pub camera: Option<crate::systems::camera_rig::CameraRigParametersCache>,
@@ -227,19 +275,25 @@ struct SavedSnapshotReference {
     snapshot_id: u64,
 }
 
-/// Original validate loop removes records whose actual file cannot be opened,
-/// then tries the closest remaining record again. An opened snapshot must
-/// reach the real domain loader; current partial JSON helpers cannot certify
-/// the motomoto stream or all its world writes, so that boundary remains Err.
-fn require_no_valid_snapshot(
-    parsed: &mut ParsedGameData,
+/// 原版快照选择循环：按 `nearest_snapshot_index` 从最近的记录开始，打开文件；打不开的
+/// 记录从**本地**候选表移除后继续找，打开成功的记录交给真实文件加载器
+/// （[`crate::systems::save::snapshot::load_snapshot_file`]：motomoto chunks →
+/// Snapshot JSON + 命名栅格/ Terrain chunk）。
+///
+/// `ignore_snapshot` 保留原版 ignore 分支：不读文件，历史引用（`parsed.snapshots`）
+/// 原样保留。
+///
+/// 已保存引用**不**从 `parsed.snapshots` 删除：原版保留存档引用列表（快照 GC/重存
+/// 依赖），只有本地候选表随打不开的文件收缩。
+fn load_closest_valid_snapshot(
+    references: &[Value],
+    target_chain_index: i32,
     snapshot_root: &Path,
     ignore_snapshot: bool,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<Option<(i32, crate::systems::save::snapshot::LoadedSnapshotData)>> {
     let mut snapshots: Vec<
         crate::resources::history::transactions::ResolvedHistorySnapshot<SavedSnapshotReference>,
-    > = parsed
-        .snapshots
+    > = references
         .iter()
         .cloned()
         .map(|value| {
@@ -253,20 +307,25 @@ fn require_no_valid_snapshot(
         .collect::<Result<_, _>>()
         .context("parsing snapshot references")?;
     if ignore_snapshot {
-        // Original ignore branch retains saved references. The canonical
-        // shared-ID owner now represents those same references in live History.
-        return Ok(());
+        return Ok(None);
     }
     while let Some(index) =
-        crate::resources::history::snapshots::nearest_snapshot_index(&snapshots, parsed.chain_index)
+        crate::resources::history::snapshots::nearest_snapshot_index(&snapshots, target_chain_index)
     {
         let record = snapshots[index].value;
         let path = snapshot_root.join(format!("{}.snapshot", record.snapshot_id));
         match std::fs::File::open(&path) {
-            Ok(_) => anyhow::bail!(
-                "B snapshot {} opened; original motomoto chunk/domain application @1417a9c50 is not restored",
-                path.display()
-            ),
+            Ok(_) => {
+                // 打开成功 = 权威数据源；解析失败保留原版失败语义（不静默回退）。
+                let loaded = crate::systems::save::snapshot::load_snapshot_file(&path)
+                    .with_context(|| format!("loading history snapshot {}", path.display()))?;
+                log::info!(
+                    "Loading history snapshot {} (chain_index {})",
+                    path.display(),
+                    record.chain_index
+                );
+                return Ok(Some((record.chain_index, loaded)));
+            }
             Err(error) => {
                 log::warn!(
                     "Failed to load history snapshot {}: {error}",
@@ -276,8 +335,7 @@ fn require_no_valid_snapshot(
             }
         }
     }
-    parsed.snapshots.clear();
-    Ok(())
+    Ok(None)
 }
 
 fn default_history_start() -> i32 {
@@ -330,7 +388,10 @@ pub struct StartupRevealFinished;
 /// **upgrade 备份不在本函数**（fresh 反编译 0x141470d00 无 copy_file_to_backup 调用；
 /// 备份在调用方 load_game 0x14146d030 行 681，见 [`make_upgrade_backup`]）。
 /// 失败返回 "Couldn't load save file from " 语义错误。
-pub fn parse_saved_game_data(path: &Path) -> anyhow::Result<ParsedGameData> {
+pub fn parse_saved_game_data(
+    path: &Path,
+    settings: &crate::resources::glade_settings::GladeSettings,
+) -> anyhow::Result<ParsedGameData> {
     use crate::resources::critters::sheep::control::SheepControlSnapshot;
     use crate::resources::glade_color_customization::GladeColorCustomization;
     use crate::resources::history::HistoryIdentity;
@@ -402,6 +463,16 @@ pub fn parse_saved_game_data(path: &Path) -> anyhow::Result<ParsedGameData> {
             .ok()
     });
 
+    let initial_colors = || GladeColorCustomization {
+        freeform_wall: crate::resources::color_id::ColorId(settings.default_freeform_wall_color_id),
+        building: crate::resources::color_id::ColorId(settings.default_building_color_id),
+        roof: crate::resources::color_id::ColorId(settings.default_roof_color_id),
+        stairs: crate::resources::glade_color_customization::StairCustomization::default(),
+        lantern_brightness: 1.0,
+        building_wall_style:
+            crate::resources::walls::inner_wall_state::WallStyle::STONE_WITH_SKIRTS,
+        ..GladeColorCustomization::default()
+    };
     // Colors：失败 → default + "Initializing new color customization."。
     let colors: GladeColorCustomization = match object.get("Colors") {
         Some(value) => match serde_json::from_value(value.clone()) {
@@ -411,18 +482,23 @@ pub fn parse_saved_game_data(path: &Path) -> anyhow::Result<ParsedGameData> {
             }
             Err(error) => {
                 log::warn!("Initializing new color customization.: {error}");
-                GladeColorCustomization::default()
+                initial_colors()
             }
         },
         None => {
             log::warn!("Initializing new color customization.");
-            GladeColorCustomization::default()
+            initial_colors()
         }
     };
 
     // History：typed 4 字段；失败 fatal（context "parsing history"）。
-    let history_value = object.get("History").cloned().unwrap_or(Value::Null);
-    let history: HistorySectionJson =
+    let mut history_value = object.get("History").cloned().unwrap_or(Value::Null);
+    let legacy_enclosure_changed = if version != LATEST_SAVE_VERSION {
+        migration::migrate_legacy_enclosure(&mut history_value)?
+    } else {
+        false
+    };
+    let mut history: HistorySectionJson =
         serde_json::from_value(history_value).context("parsing history")?;
     let history_start = history.history_start;
 
@@ -440,7 +516,7 @@ pub fn parse_saved_game_data(path: &Path) -> anyhow::Result<ParsedGameData> {
             None
         }
     };
-    let identity = match identity {
+    let mut identity = match identity {
         Some(identity) => Some(identity),
         None => {
             let derived =
@@ -452,7 +528,17 @@ pub fn parse_saved_game_data(path: &Path) -> anyhow::Result<ParsedGameData> {
 
     let backward_compatibility = object.get("BackwardCompatibility").cloned();
 
+    let (metadata, history_mutated) =
+        migration::migrate_history(&mut history, version, legacy_enclosure_changed);
+    if history_mutated {
+        // History::finish_potential_mutation 140a86980 uses the same native
+        // Identity owner after invalidating snapshots; no second resource.
+        identity = Some(HistoryIdentity::generate());
+        log::info!("Deprecated operations have been found. Upgrading the save file");
+    }
+
     Ok(ParsedGameData {
+        migration_metadata: Some(metadata),
         version,
         backward_compatibility,
         camera: Some(camera),
@@ -481,10 +567,8 @@ pub fn parse_saved_game_data(path: &Path) -> anyhow::Result<ParsedGameData> {
 /// 描述串（"{:04}-{:02}-{:02} {:02}-{:02}-{:02}"，与 utils/src/file.rs 实现一致）。
 /// 旧 `backup-saves/history-recovered-{ts}.json` 目标名已弃。
 ///
-/// **门控登记 U**：load_game 反编译显示备份在 parse 成功后按 ParsedGameData 位域条件执行
-/// （`uStack_860 & 0x100000000`（偏移 4 bit0）+ `cVar3` 双条件；位域语义 U/待①）——当前
-/// 实现按「kind==1 解析成功即备份」落地（备份只出现在升级/解析路径），不伪造位域判别。
-/// 失败仅告警不中止解析（O：copy 失败 → ContextError 构错，load_game 转错误面）。
+/// Native gate: wrapper+c && !new_session, Path source only. Copy failure
+/// propagates to the existing failed-load route, never silent success.
 fn make_upgrade_backup(path: &Path) -> anyhow::Result<()> {
     utils::file::copy_file_to_backup(path).map_err(Into::into)
 }
@@ -495,18 +579,16 @@ pub fn version_gates(version: i32) -> LoadVersionGates {
     LoadVersionGates::from_version(version)
 }
 
-/// 旧版窗口颜色升级（O：位 48，"Detected old version of window color IDs..."）。
-/// 子类型 == 0x3a 的记录颜色改 999。
+/// Window bit40 applies the original nine-way map to all three window types.
 pub fn upgrade_window_color(subtype: u8, color: &mut u32) {
-    upgrade_window_record_color(subtype, color);
+    if window_record_applies(subtype) {
+        *color = upgrade_window_color_id(*color);
+    }
 }
 
-/// 旧版箭孔颜色升级（O：位 40，"Detected old version of arrow slits color IDs..."）。
-/// 子类型 ∈ 0x38..=0x3a 的记录颜色按映射表改写。
+/// ArrowSlit bit48 replaces only type0x3a with999.
 pub fn upgrade_arrow_slit_color(subtype: u8, color: &mut u32) {
-    if arrow_slit_record_applies(subtype) {
-        *color = upgrade_arrow_slit_color_id(*color);
-    }
+    upgrade_arrow_slit_record_color(subtype, color);
 }
 
 /// `extract_max_wall_id_from_history`（内联，行 899）：遍历 MultiEdit 取最大 wall id。
@@ -698,8 +780,9 @@ pub fn clamp_next_session_kind(decoded: u64) -> u64 {
 ///   （MetaCommand → PostGameLoadCommand，fence 终止）。
 pub fn advance_load_game(
     manager: &mut LoadGameManager,
-    next: &NextSession,
+    next: &mut NextSession,
     save_path: Option<&Path>,
+    settings: &crate::resources::glade_settings::GladeSettings,
 ) -> Result<(Option<ParsedGameData>, Vec<ReplayedOnLoadCommand>), LoadGameError> {
     match manager.state {
         LoadGameState::Loading => {
@@ -711,7 +794,15 @@ pub fn advance_load_game(
             "B load_game state1 requires original counter event producer"
         )
         .into()),
+        LoadGameState::Failed => {
+            Err(anyhow::anyhow!("B load_game request failed; state is terminal (no retry)").into())
+        }
         LoadGameState::Loaded => {
+            if next.kind == crate::resources::session::NextSessionKind::LoadParsedGame {
+                let parsed = *next.take_parsed_data()?;
+                manager.progress_counter = manager.progress_counter.wrapping_add(1);
+                return Ok((Some(parsed), Vec::new()));
+            }
             let selected = clamp_next_session_kind(next.kind.decoded());
             match selected {
                 0 => {
@@ -721,7 +812,7 @@ pub fn advance_load_game(
                 1 => {
                     let path = save_path
                         .ok_or_else(|| anyhow::anyhow!("parse_saved_game_data needs a path"))?;
-                    let parsed = parse_saved_game_data(path)?;
+                    let parsed = parse_saved_game_data(path, settings)?;
                     manager.progress_counter = manager.progress_counter.wrapping_add(1);
                     Ok((Some(parsed), Vec::new()))
                 }
@@ -750,15 +841,16 @@ pub fn advance_load_game(
 /// `load_game_session`：完整会话切换纯核心（0x14146d030 主流程的可接部分）。
 ///
 /// 状态机推进 → kind 解码 → 两遍 on_load 回放（fence 终止）→ 版本开关 → 颜色 ID 升级
-/// → max wall id 恢复。`MetaCommand` 应用（commander_update case 0）与
-/// `init_game_state_from_snapshot` 依赖游戏资源，由宿主/域恢复后接入；不伪造加载成功。
+/// → max wall id 恢复。本纯核心不持有 World；快照域写回走
+/// `try_load_game_system` → `snapshot::init_game_state_from_snapshot`。
 #[allow(clippy::too_many_arguments)]
 pub fn load_game_session(
     manager: &mut LoadGameManager,
-    next: &NextSession,
+    next: &mut NextSession,
     save_path: Option<&Path>,
     edits: &[WallCompoundHistoryEdit],
     upgrade_flags: crate::resources::save_file::LoadUpgradeFlags,
+    settings: &crate::resources::glade_settings::GladeSettings,
 ) -> Result<
     (
         Option<ParsedGameData>,
@@ -769,12 +861,20 @@ pub fn load_game_session(
     LoadGameError,
 > {
     // 1. 状态推进 + kind 解码 + 两遍回放。
-    let (parsed, commands) = advance_load_game(manager, next, save_path)?;
+    let (parsed, commands) = advance_load_game(manager, next, save_path, settings)?;
     // 1b. upgrade 备份（O：load_game 0x14146d030 行 681 在 parse 成功后调用
     //     copy_file_to_backup；备份只出现在 kind==1 解析路径 = parsed.is_some()）。
-    if parsed.is_some() {
-        if let Some(path) = save_path {
-            let _ = make_upgrade_backup(path);
+    if let (Some(parsed), Some(path)) = (
+        &parsed,
+        save_path
+            .filter(|_| next.kind != crate::resources::session::NextSessionKind::LoadParsedGame),
+    ) {
+        if parsed
+            .migration_metadata
+            .context("B parsed migration metadata missing")?
+            .requires_upgrade_backup
+        {
+            make_upgrade_backup(path).context("backing up save before upgrade")?;
         }
     }
     // 2. 版本 → 全局开关（O：0x14146dc82..0x14146dc95）。
@@ -784,22 +884,19 @@ pub fn load_game_session(
         // 成功读取存档后先设置采样模式；加载准备阶段和命令回放不覆盖当前会话策略。
         gates.apply_centered_path(&crate::utils::float_grid::CENTERED_PATH);
     }
-    // 3. 颜色 ID 升级（位 48 window / 位 40 arrow slits）——作用于 MultiEdit 记录；
-    //    纯函数入口见 `upgrade_window_color`/`upgrade_arrow_slit_color`（按记录遍历由
-    //    MultiEdit 恢复后接入）。此处仅登记标志消费。
+    // Entry-owned history colors are migrated by the parser. The flags here
+    // apply to a loaded snapshot, owned only by the World-level consumer.
     let _ = upgrade_flags;
     // 4. max wall id 恢复（O：extract_max_wall_id_from_history）。
     let max_wall_id = extract_max_wall_id_from_history(edits.iter().cloned());
     Ok((parsed, commands, gates, max_wall_id))
 }
 
-/// 写 `save_folder/loading.tmp`（O：load_game 0x14146d030 后置写标记；@0x142c6416e）。
-/// 文件内容为读档进度标记；失败仅告警（宿主可据此判定正在读档）。
+/// Original state0 creates/truncates an empty loading.tmp marker; errors are dropped.
 pub fn write_loading_tmp(session: &SessionId) {
-    let path = session.save_folder_path().join("loading.tmp");
-    if let Err(error) = std::fs::write(&path, b"loading") {
-        log::warn!("Failed writing loading.tmp for {}: {error}", session.0);
-    }
+    // B14146d750..7b0 sets write/create/truncate, then drops both success
+    // handle and every error. It does not write payload bytes or warn.
+    let _ = std::fs::File::create(session.save_folder_path().join("loading.tmp"));
 }
 
 /// `load_game` 0x14146d030 的 ECS 系统（消费 `NextSession`，门 AppMode::LoadGame）。
@@ -813,16 +910,17 @@ pub fn write_loading_tmp(session: &SessionId) {
 /// - 事件：LoadingGameComplete / StartupRevealStarted（StartupRevealFinished 由宿主
 ///   应用完加载后发）。
 ///
-/// PostGameLoadCommand::Apply 的应用（FUN_1412e0b90）与
-/// `init_game_state_from_snapshot` 依赖游戏资源，由宿主/域恢复后接入；不伪造加载成功。
+/// PostGameLoadCommand::Apply 的应用（FUN_1412e0b90）由域消费者处理；
+/// 快照域写回由调用方在基础状态之后经
+/// `snapshot::init_game_state_from_snapshot` 接入。
 /// B no-valid-snapshot branch @14146dfa6. The authoritative starting state is
 /// the real saved edit chain at cursor-1, not an invented empty snapshot.
 fn apply_history_without_snapshot(
     world: &mut bevy_ecs::world::World,
     mut parsed: ParsedGameData,
     options: ActiveLoadOptions,
-    source_file: Option<&Path>,
-) -> anyhow::Result<()> {
+    _source_file: Option<&Path>,
+) -> anyhow::Result<super::save_game::AsyncSaveCmd> {
     use super::save_game::{
         AsyncSaveCmd, AutoSaveState, SerializedJson, assemble_game_save_sections,
     };
@@ -894,7 +992,9 @@ fn apply_history_without_snapshot(
         pitch_offset: saved_pose.pitch_offset,
         yaw_offset: saved_pose.yaw_offset,
     };
-    let undo_boundary = parsed.history_start.max(0);
+    // Native +ec is moved unchanged into History+6c. In particular -1 is
+    // the saved/default no-anchor value, not an instruction to clamp to0.
+    let undo_boundary = parsed.history_start;
     let sections = assemble_game_save_sections(
         parsed.version,
         parsed
@@ -916,35 +1016,37 @@ fn apply_history_without_snapshot(
         .map(|entry| SerializedJson::new(&entry))
         .collect::<Result<Vec<_>, _>>()?;
     let backups = super::save_backup_list::SaveBackupList::new_from_session(session);
-    if let Some(path) = source_file {
-        let _ = make_upgrade_backup(path);
-    }
     gates.apply_centered_path(&crate::utils::float_grid::CENTERED_PATH);
     // The second version global is likewise the original shared owner.
     crate::resources::stairs::stairs_state::VERIFY_STAIR_CHECKSUMS
         .store(gates.stairs_checksum, std::sync::atomic::Ordering::Relaxed);
     let count = parsed.edits.len();
-    let snapshot_references = parsed.snapshots.iter().cloned()
+    let snapshot_references = parsed
+        .snapshots
+        .iter()
+        .cloned()
         .map(serde_json::from_value::<crate::resources::history::ResolvedHistoryChainSnapshot>)
-        .collect::<Result<Vec<_>, _>>().context("canonical History snapshot references")?;
+        .collect::<Result<Vec<_>, _>>()
+        .context("canonical History snapshot references")?;
     world.insert_resource(History::from_observed(ObservedHistoryLedger {
         entries: parsed.edits,
         cursor: -1,
         undo_anchor: undo_boundary,
         resolved_snapshots: snapshot_references.into_iter().map(Into::into).collect(),
         observed_count_58: count,
-        // Native serde object @1415bd9f6..bda3d explicitly writes zero here.
-        mutation_nonce: 0,
+        // Parser writes parsed+0x48; load14146dd98..de95 moves it into
+        // canonical History+0x60 after the serde object's temporary zero.
+        mutation_nonce: parsed
+            .identity
+            .context("B parsed history identity missing")?
+            .0,
     }));
     camera.write_f32(0x194, target_fov);
     world.insert_resource(camera);
     world.insert_resource(time);
     world.insert_resource(parsed.colors);
-    // Existing canonical SheepControl is the deferred snapshot owner. This
-    // does not spawn a sheep or fake the downstream critter query's contents.
-    world.insert_resource(crate::systems::debug::sheep_controls::SheepControl {
-        snapshot: parsed.sheep,
-    });
+    crate::resources::critters::sheep::control::install_loaded_sheep_snapshot(world, parsed.sheep)
+        .map_err(anyhow::Error::msg)?;
     {
         let mut walls = world.resource_mut::<InnerWalls>();
         let restored_max = walls.max_id().max(max_id);
@@ -955,17 +1057,19 @@ fn apply_history_without_snapshot(
         auto.session = session;
         auto.metronome =
             super::save_backup_metronome::SaveBackupMetronome::new_from_backup_list(&backups);
-        auto.send_command_expect(AsyncSaveCmd::OpenFile {
-            session,
-            sections,
-            edits,
-        });
     }
     let mut manager = world.resource_mut::<LoadGameManager>();
     manager.progress_counter = parsed.chain_index.wrapping_sub(-1);
     manager.source = LoadGameSource::None;
-    manager.state = LoadGameState::ApplyCounter;
-    Ok(())
+    // `state` 由调用方在全部域写回成功后推进（M2：快照 apply 失败不得进入
+    // ApplyCounter → Loaded 的完成路径）。
+    // Native OpenFile is sent after snapshot application and compatibility
+    // invalidation. Keep this owned command local until that boundary.
+    Ok(AsyncSaveCmd::OpenFile {
+        session,
+        sections,
+        edits,
+    })
 }
 
 pub fn load_game_system(world: &mut bevy_ecs::world::World) -> bevy_ecs::error::Result {
@@ -979,28 +1083,171 @@ pub fn try_load_game_system(world: &mut bevy_ecs::world::World) -> anyhow::Resul
     let manager = world.resource::<LoadGameManager>();
     match manager.state {
         LoadGameState::Loading => {
-            let options = manager
-                .options
-                .context("B active load has no startup options")?;
-            let (mut parsed, snapshot_root, source_file) = match &manager.source {
-                LoadGameSource::Path(path) => (
-                    parse_saved_game_data(path)
+            // Original state0 creates the marker before parsing/applying the
+            // requested source. Failure to create the marker is nonfatal.
+            write_loading_tmp(
+                &world
+                    .resource::<crate::resources::session::ActiveSession>()
+                    .id,
+            );
+            // M2/M3：只有全部域写回成功才推进到 ApplyCounter；任何 `?` 失败都转
+            // Failed 终态（下一帧不再重试同一坏文件，也不进入 Loaded 完成路径）。
+            let result = (|| -> anyhow::Result<()> {
+                let manager = world.resource::<LoadGameManager>();
+                let options = manager
+                    .options
+                    .context("B active load has no startup options")?;
+                let source = std::mem::take(&mut world.resource_mut::<LoadGameManager>().source);
+                let (parsed, snapshot_root, source_file) = match source {
+                    LoadGameSource::Path(path) => (
+                        parse_saved_game_data(
+                            &path,
+                            world
+                                .get_resource::<crate::resources::glade_settings::GladeSettings>()
+                                .context("B GladeSettings producer missing")?,
+                        )
                         .with_context(|| format!("B load_game source {}", path.display()))?,
-                    path.parent()
-                        .context("B source history path has no parent")?
-                        .join("snapshots"),
-                    Some(path.clone()),
-                ),
-                LoadGameSource::Parsed {
-                    data,
-                    snapshot_root,
-                } => ((**data).clone(), snapshot_root.clone(), None),
-                LoadGameSource::None => {
-                    anyhow::bail!("B LoadGameState::LoadGameData has no source")
+                        path.parent()
+                            .context("B source history path has no parent")?
+                            .join("snapshots"),
+                        Some(path.clone()),
+                    ),
+                    LoadGameSource::Parsed {
+                        data,
+                        snapshot_root,
+                    } => (*data, snapshot_root, None),
+                    LoadGameSource::None => {
+                        anyhow::bail!("B LoadGameState::LoadGameData has no source")
+                    }
+                };
+                let metadata = parsed
+                    .migration_metadata
+                    .context("B parsed migration metadata missing")?;
+                if let Some(path) = &source_file {
+                    if metadata.requires_upgrade_backup && !options.new_session {
+                        make_upgrade_backup(path).context("backing up save before upgrade")?;
+                    }
                 }
-            };
-            require_no_valid_snapshot(&mut parsed, &snapshot_root, options.ignore_snapshot)?;
-            apply_history_without_snapshot(world, parsed, options, source_file.as_deref())
+                let snapshot_references = parsed.snapshots.clone();
+                let target_chain_index = parsed.chain_index;
+                // 快照 load_state 会把 InnerWalls.max_id 置为快照记录最大值；历史链里
+                // 可能有更大的 id（原版 extract_max_wall_id_from_history 写同一计数器），
+                // 先取值再应用。
+                let history_max_wall_id = extract_max_wall_id_from_history(
+                    parsed
+                        .edits
+                        .iter()
+                        .flat_map(|entry| &entry.edits)
+                        .filter_map(|edit| match edit {
+                            crate::resources::history::EditType::Wall(wall) => {
+                                Some((**wall).clone())
+                            }
+                            _ => None,
+                        }),
+                );
+                // 2. 基础状态（相机/时间/颜色/历史/保存 owner）。
+                let mut save_open =
+                    apply_history_without_snapshot(world, parsed, options, source_file.as_deref())?;
+                // Native bit56 writes the SpawnPreplacedTrees unit event,
+                // not a warning event: tuple writer at in_stack68[9].
+                if metadata.legacy_version_notice {
+                    world
+                        .resource_mut::<bevy_ecs::event::Events<
+                            crate::resources::history::tree_edit::SpawnPreplacedTrees,
+                        >>()
+                        .send(crate::resources::history::tree_edit::SpawnPreplacedTrees);
+                }
+                let snapshot = load_closest_valid_snapshot(
+                    &snapshot_references,
+                    target_chain_index,
+                    &snapshot_root,
+                    options.ignore_snapshot,
+                )?;
+                // 3. 有快照 → 走 init_game_state_from_snapshot 的域写回；无快照 → 原版
+                //    @14146dfa6 分支（历史链 cursor-1 起始状态，已在上面应用）。
+                if let Some((snapshot_chain_index, mut loaded)) = snapshot {
+                    migration::migrate_snapshot(&mut loaded, metadata)?;
+                    let resources = crate::systems::save::snapshot::SnapshotLoadResources {
+                        loaded: Some(loaded),
+                    };
+                    let report = crate::systems::save::snapshot::init_game_state_from_snapshot(
+                        world, &resources,
+                    )?;
+                    // Original applies the selected snapshot's chain cursor,
+                    // then replays only the signed delta to the target.
+                    {
+                        let mut history =
+                            world.resource_mut::<crate::resources::history::History>();
+                        history.ledger_mut().cursor = snapshot_chain_index;
+                        if metadata.upgrade_window_colors {
+                            history.ledger_mut().resolved_snapshots.clear();
+                        }
+                    }
+                    if metadata.upgrade_window_colors {
+                        if let super::save_game::AsyncSaveCmd::OpenFile { sections, .. } =
+                            &mut save_open
+                        {
+                            sections.values[crate::resources::save_file::SaveFileSection::Snapshots
+                                as usize] =
+                                super::save_game::SerializedJson::new(&Vec::<Value>::new())?;
+                        }
+                    }
+                    world.resource_mut::<LoadGameManager>().progress_counter =
+                        target_chain_index.wrapping_sub(snapshot_chain_index);
+                    if let Some(history_max) = history_max_wall_id {
+                        let mut walls = world.resource_mut::<crate::resources::walls::InnerWalls>();
+                        if walls.max_id() < history_max {
+                            walls.set_max_id(history_max);
+                        }
+                    }
+                    if report.gaps.is_empty() {
+                        log::info!(
+                            "Applied history snapshot: walls={} roofs={} decorators={} trees={} strokes={} raster={}",
+                            report.walls,
+                            report.roofs,
+                            report.decorators,
+                            report.trees,
+                            report.terrain_strokes,
+                            report.raster_slots
+                        );
+                    } else {
+                        // 部分域未闭合：明确记录，不宣告完整加载。
+                        log::warn!(
+                            "History snapshot applied with {} gap(s): {}",
+                            report.gaps.len(),
+                            report.gaps.join("; ")
+                        );
+                    }
+                } else {
+                    log::debug!("No history snapshot applied; starting from the saved edit chain");
+                }
+                world
+                    .resource_mut::<super::save_game::AutoSaveState>()
+                    .send_command_expect(save_open);
+                Ok(())
+            })();
+            match result {
+                Ok(()) => {
+                    world.resource_mut::<LoadGameManager>().state = LoadGameState::ApplyCounter;
+                    Ok(())
+                }
+                Err(error) => {
+                    {
+                        let mut manager = world.resource_mut::<LoadGameManager>();
+                        manager.state = LoadGameState::Failed;
+                        manager.source = LoadGameSource::None;
+                        manager.options = None;
+                        manager.post_load_commands.clear();
+                        manager.post_load_cursor = 0;
+                    }
+                    log::error!("B load_game failed (terminal): {error}");
+                    Err(error)
+                }
+            }
+        }
+        LoadGameState::Failed => {
+            // 终态：首次失败已上报，后续帧不重复上报、不重试同一输入。
+            Ok(())
         }
         LoadGameState::ApplyCounter => {
             world.resource_scope(|world, mut manager: bevy_ecs::prelude::Mut<LoadGameManager>| {
@@ -1098,4 +1345,64 @@ pub fn emit_load_history_commands(
         });
     }
     manager.state = LoadGameState::Loaded;
+}
+
+#[cfg(test)]
+mod state_machine_tests {
+    use super::*;
+    use bevy_ecs::world::World;
+
+    fn loading_manager(source: LoadGameSource) -> LoadGameManager {
+        let mut manager = LoadGameManager::new();
+        manager.begin(
+            source,
+            ActiveLoadOptions {
+                ignore_snapshot: false,
+                request_reveal: false,
+                new_session: false,
+            },
+            Vec::new(),
+        );
+        manager
+    }
+
+    #[test]
+    fn load_failure_is_terminal_and_reported_once() {
+        // M3：首次解析失败 → Err + Failed 终态，清空请求；后续帧不再重试同一输入。
+        let mut world = World::new();
+        world.insert_resource(AppMode::LoadGame);
+        world.insert_resource(loading_manager(LoadGameSource::Path(
+            std::path::PathBuf::from("missing/history.json"),
+        )));
+        assert!(try_load_game_system(&mut world).is_err());
+        {
+            let manager = world.resource::<LoadGameManager>();
+            assert_eq!(manager.state, LoadGameState::Failed);
+            assert!(manager.options.is_none());
+            assert!(matches!(manager.source, LoadGameSource::None));
+        }
+        // 终态帧：不重复上报、不重试。
+        assert!(try_load_game_system(&mut world).is_ok());
+        assert_eq!(
+            world.resource::<LoadGameManager>().state,
+            LoadGameState::Failed
+        );
+    }
+
+    #[test]
+    fn apply_counter_is_only_reached_after_a_successful_load() {
+        // M2：构造阶段（Loading）不再提前写 ApplyCounter；失败终态保持 Failed。
+        let mut world = World::new();
+        world.insert_resource(AppMode::LoadGame);
+        world.insert_resource(loading_manager(LoadGameSource::Path(
+            std::path::PathBuf::from("missing/history.json"),
+        )));
+        let _ = try_load_game_system(&mut world);
+        assert_ne!(
+            world.resource::<LoadGameManager>().state,
+            LoadGameState::ApplyCounter
+        );
+        // 未加载时 state2 不消费命令（options 已清空）。
+        assert!(try_load_game_system(&mut world).is_ok());
+    }
 }

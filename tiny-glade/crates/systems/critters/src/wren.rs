@@ -26,6 +26,8 @@ use std::collections::HashMap;
 use crate::bird_spots::BirdSpotManager;
 use crate::components::{BirdSpot, BirdSpots, Wren};
 use crate::wren_boids::WrenAudio;
+pub mod recycle;
+pub mod roof_spots;
 
 /// `SittableForBirds`（B component，0x10）：`DecoratorId u32@+0` + 局部偏移
 /// `Vec3@+4`（world = 装饰物 Transform 变换该偏移）。country-core 仅注册未定义该类型，
@@ -99,16 +101,11 @@ pub fn update_decorator_bird_spots(
         }
 
         // O：gen_id（点 id）→ create_spots（池分配）→ spawn + insert<BirdSpots>。
-        let _spot_id = manager.gen_id();
-        let allocated = manager.create_spots(1);
-        let spots: Vec<BirdSpot> = allocated
-            .into_iter()
-            .map(|_| BirdSpot {
-                pos: world,
-                occupied: false,
-            })
-            .collect();
-        let entity = commands.spawn(BirdSpots { spots }).id();
+        let spot_id = manager.gen_id();
+        let spots = manager.create_spots(vec![BirdSpot {
+            occupant: None, pos: world, id: spot_id,
+        }]);
+        let entity = commands.spawn(spots).id();
         local.spots.insert(id, entity);
     }
     // O：`HashMap::retain`（decorator 仍存在）。
@@ -116,32 +113,8 @@ pub fn update_decorator_bird_spots(
     local.spots.retain(|id, _| keep.contains(id));
 }
 
-/// 屋顶鸟点生成（0x14231d6c0）。
-///
-/// PDB 符号签名（0x141d81f90）：
-/// `fn(Query<(Entity, &mut Transform, &mut Wren), Without<SittableForBirds>>,
-///     EventReader<RecalculateRoofCmd>, EventReader<OnWallChanged>,
-///     Query<(&Roof, Option<&BirdSpots>)>, ResMut<BirdSpotManager>, Commands,
-///     Res<PublicWalls>, Res<UiSignifierStream>, Res<GameTime>)`。
-///
-/// **状态：部分实现（未实现-需重做）**。已证并落库：
-/// - 事件驱动：`RecalculateRoofCmd` / `OnWallChanged` 标记需重算的屋顶；
-/// - `PublicWalls::roof_entity` 取屋顶实体；实体不存在 → `BirdSpotManager::recycle`
-///   （屋顶移除路径）；
-/// - 形状门：`Roof` 截面 tag==1（矩形）且 `!is_flat` 才产生脊线停靠点；
-/// - 矩形门：`RoofRidgeDims::from` + `calc_roof_tip_center_ls` → `Rectangle2d`
-///   （`orientation_mat2`/`new_axis_aligned`）→ `get_edge_pts`，两端距 > 0.5 才采样；
-///   否则空点集。
-///
-/// **未实现（分歧点/解锁条件）**：
-/// - `utils::rng::init_rng` 的种子来源（寄存器实参 U）；
-/// - `utils::random_splits` 的 count/amplitude 实参（U）与逐点 `fastrand::Rng::f32`
-///   偏置用途；
-/// - 逐点 `Roof::height(t)` + `swizzlers::xvy` + `apply_roof_noise` 的采样平面
-///   （脊线 u 值 → 世界点）未闭合；
-/// - `ClutterVersion::is_initial` 分支（0x54 style byte）选边差异；
-/// - `UiSignifierStream` 调试写入、wren 实体对旧点的重定位路径。
-/// 解锁条件：上述实参需 fresh 反汇编逐寄存器闭合（当前 ghidra 变量合并无法区分）。
+/// Original 14231d6c0: recalc events supply the roof entity directly; wall
+/// publication events resolve their current roof. Repeated events are retained.
 pub fn update_roof_bird_spots(
     time: Res<GameTime>,
     walls: Res<PublicWalls>,
@@ -149,85 +122,20 @@ pub fn update_roof_bird_spots(
     mut commands: Commands,
     mut roof_changed: EventReader<RecalculateRoofCmd>,
     mut wall_changed: EventReader<OnWallChanged>,
-    mut roofs: Query<(&Roof, Option<&BirdSpots>)>,
-    wrens: Query<(Entity, &mut crate::components::Transform, &mut Wren), Without<SittableForBirds>>,
+    roofs: Query<(&Roof, Option<&BirdSpots>)>,
+    mut wrens: Query<(Entity, &mut crate::components::Transform, &mut Wren), Without<SittableForBirds>>,
 ) {
-    let _ = (&time, &wrens);
-    // 收集需重算的墙（事件载荷 = WallId）。
-    let mut dirty: Vec<country_core::resources::walls::WallId> = Vec::new();
-    for event in roof_changed.read() {
-        dirty.push(event.0);
+    let roof_entities = roof_changed.read().map(|event| event.entity)
+        .chain(wall_changed.read().filter_map(|event| walls.roof_entity(event.0)));
+    for roof_entity in roof_entities {
+        let Ok((roof, _existing)) = roofs.get(roof_entity) else { continue };
+        let records = roof_spots::sample_roof_bird_spots(roof, time.frame_count, &mut manager);
+        commands.entity(roof_entity).insert(manager.create_spots(records));
     }
-    for event in wall_changed.read() {
-        dirty.push(event.0);
-    }
-    for wall in dirty {
-        let Some(roof_entity) = walls.roof_entity(wall) else {
-            // 屋顶已移除：回收（O：`recycle::<closure_env$3>`）。
-            manager.recycle_all();
-            continue;
-        };
-        let Ok((roof, _existing)) = roofs.get_mut(roof_entity) else {
-            manager.recycle_all();
-            continue;
-        };
-        // 形状门：tag==1（矩形）&& !is_flat（O 14231daf6/14231db0x）。
-        let rect_roof = roof.observed()[8..12]
-            .try_into()
-            .map(u32::from_le_bytes)
-            .unwrap_or(0)
-            == 1;
-        if !rect_roof || roof.is_flat() {
-            let spots = manager.create_spots(0);
-            let _ = spots;
-            commands.spawn(BirdSpots { spots: Vec::new() });
-            continue;
-        }
-        // 脊线矩形门（几何部分已证；采样段未实现 → 空点集并登记）。
-        let dims = country_core::resources::roofs::roof_ridge::RoofRidgeDims::from(roof);
-        let tip = country_core::resources::roofs::roof_ridge::calc_roof_tip_center_ls(
-            roof,
-            dims.get(),
-        );
-        let rect = utils::geometry::rectangle::Rectangle2d::new_axis_aligned(
-            glam::Vec2::new(tip[0], tip[1]),
-            glam::Vec2::new(dims.get()[0], dims.get()[1]),
-        );
-        let _ = roof.is_gable();
-        let (a, b) = rect.get_edge_pts(0);
-        let edge_len = (b - a).length();
-        let spots = if 0.5 < edge_len {
-            // 未实现：init_rng/random_splits/height/xvy/apply_roof_noise 采样（见函数注）。
-            Vec::new()
-        } else {
-            Vec::new()
-        };
-        let _ = manager.create_spots(spots.len());
-        commands.spawn(BirdSpots { spots });
-    }
+    recycle::recycle_returned_bird_spots(&mut manager, &mut wrens);
 }
 
-/// 鹪鹩 per-spot 状态机记录（二进制 spot 0x50 记录的语义投影；字段偏移见各注释）。
-/// 状态跳表 DAT_14304b638（RE-ANALYSIS §1.1 解码，index=`*(uint*)(spot+0x30)`）：
-/// 0=计时/等待（timer 倒计时；到点或距目标<1.0 → state1）、1=音频过渡（→2）、
-/// 2/4=扫描续（无 handler）、3=smoothstep 移动（→重置后高度更新）。
-#[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
-pub struct WrenSpotState {
-    /// +0x30：状态字节（0..4）。
-    pub state: u32,
-    /// +0x34：计时（state0 倒计时；state3 复用作 dir.x 方向分量）。
-    pub timer: f32,
-    /// +0x38：state3 方向分量 y。
-    pub dir_y: f32,
-    /// +0x3c：state3 方向分量 z。
-    pub dir_z: f32,
-    /// +0x40：smoothstep 进度计时（state3 `+= dt`，>6.0 → 重置）。
-    pub progress: f32,
-    /// +0x44：动画流经值（state0/1 经 XMM15 原样回写；state3 = 新 progress）。
-    pub anim_val: f32,
-    /// +0x48：高度（`clamp01(height + dt*(state==0 ? -50 : 5))`，表 [0x14304b3b0]=(-50,5)）。
-    pub height: f32,
-}
+pub use country_core::resources::critters::WrenSpotState;
 
 /// update_wrens（0x14231e390）。
 /// ① 逐鹪鹩 PlacementDataSsbo::to_affine3a（放置矩阵；crate 以 Wren.pos 承载）→
@@ -241,18 +149,19 @@ pub fn update_wrens(
     mode: Res<AppMode>,
     cursor: Res<CursorTerrainRaycast>,
     mut commands: Commands,
-    mut query: Query<(Entity, &mut Wren, &mut WrenSpotState, &mut WrenAudio)>,
+    mut query: Query<(Entity, &mut Wren, &mut WrenAudio)>,
 ) {
     let dt = time.delta;
     let cursor_pos = cursor.position();
     // O 0x14231e7d9-0x14231f5fb：模式 → h0 距离阈值（`xmm7`）。
     let proximity = wren_proximity_threshold(*mode);
-    for (entity, mut wren, mut spot, mut audio) in &mut query {
+    for (entity, mut wren, mut audio) in &mut query {
+        let wren = &mut *wren;
         // ① 音频 set_position（跳表分派前，0x14231ebde）。
         audio.handle.set_position(wren.pos);
         // ② 状态机 + 跳表分派。
         wren_spot_step(
-            &mut spot,
+            &mut wren.spot,
             &mut wren.pos,
             dt,
             cursor_pos,

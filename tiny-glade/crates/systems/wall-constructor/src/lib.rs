@@ -19,6 +19,7 @@ pub mod construct_platform_stairs;
 pub mod construct_playermade_stairs;
 pub mod construct_walls;
 pub mod curved_halftimber;
+pub mod gpu_output;
 pub mod init_wall_height_and_arch_segment_height;
 pub mod place_pillars;
 pub mod plaster_systems;
@@ -53,8 +54,8 @@ pub fn add_wall_constructor_systems(schedule: &mut Schedule) {
             construct_arches::construct_arches,
             construct_lintels::construct_lintels,
             construct_fences::construct_fences,
-            construct_gates::systems::construct_gates,
             construct_gates::systems::update_gates_hashmap,
+            construct_gates::systems::construct_gates,
             place_pillars::place_pillars,
             curved_halftimber::curved_halftimber_maintain_entities,
             construct_platform_stairs::construct_platform_stairs,

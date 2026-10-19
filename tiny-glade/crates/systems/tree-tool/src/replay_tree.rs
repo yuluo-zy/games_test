@@ -132,8 +132,7 @@ pub fn replay_tree<S: Send + Sync + 'static>(
         // O：移除集逆序 `Vec::remove`（decomp 行 245-410；tag switch 释放载荷
         // = 共享 `ReplayCommand` 枚举 Drop，等价）。
         for i in removal.into_iter().rev() {
-            let _ = bucket.commands.remove(i);
-            bucket.timing.remove(i);
+            let _ = bucket.remove_command(i);
         }
     }
 }

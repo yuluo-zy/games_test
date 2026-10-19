@@ -337,6 +337,10 @@ pub struct LoadMenuThumbnailMetrics {
     pub column_major: bool,
 }
 
+/// The one canonical shared scroll-metrics lock type used across toolbar and
+/// renderer crates. This aliases the existing parking_lot owner.
+pub type ThumbnailMetricsMutex = Mutex<LoadMenuThumbnailMetrics>;
+
 impl LoadMenuThumbnailMetrics {
     /// B 0x14093fc70 and its inlined map at 0x141304fb0. Collection is eager:
     /// zero cells do not divide, but nonempty grids with zero stride panic here.
@@ -476,10 +480,12 @@ impl TodSnapshotGuiState {
 
 /// Owned controls whose meaning is established by the original widgets. Field
 /// spellings are descriptive; the offset comments refer to B, not this layout.
-/// The three flags at B +0xfb/+0xfc/+0xff and the snapshot request at +0 remain
+/// The flags at B +0xfb/+0xfc remain
 /// outside this semantic model until their consumers have been identified.
 #[derive(Resource, Clone, Debug, PartialEq)]
 pub struct DebugGui {
+    /// B +0/+8, consumed by camera_snapshot@140911e40.
+    pub camera_snapshot_command: crate::systems::main_camera::CameraSnapshotCommand,
     /// B +0xf0, toggled by the debug-window input action.
     pub enabled: bool,
     /// B +0xf1.
@@ -506,6 +512,9 @@ pub struct DebugGui {
     pub disable_wall_snapping: bool,
     /// B +0xfe, labelled `Disable eraser higlight` in the original UI.
     pub suppress: bool,
+    /// B +0xff, read by painterly_pass@1408a65b0. Forces immediate strokes.
+    /// DebugGui::default@14093fdf8 zeroes the eight-byte f9..100 region.
+    pub painterly_instant: bool,
     /// B +0x100.
     pub force_music_richness: bool,
     /// B +0x101, the independently toggled experimental window.
@@ -530,6 +539,7 @@ pub struct DebugGui {
 impl Default for DebugGui {
     fn default() -> Self {
         Self {
+            camera_snapshot_command: crate::systems::main_camera::CameraSnapshotCommand::None,
             enabled: false,
             show_spatial_grid: false,
             show_trigger_proxies: false,
@@ -543,6 +553,7 @@ impl Default for DebugGui {
             hide_brush_previews: false,
             disable_wall_snapping: false,
             suppress: false,
+            painterly_instant: false,
             force_music_richness: false,
             experimental_window: false,
             trigger_proxy_visualization: DebugTriggerProxyVis::ShowAll,

@@ -402,7 +402,7 @@ fn legacy_integer_cannot_be_reinterpreted_as_an_arc() {
     });
     let mut manager = LoadGameManager::default();
     assert!(
-        crate::systems::save::load_game::advance_load_game(&mut manager, &request, None).is_err()
+        crate::systems::save::load_game::advance_load_game(&mut manager, &mut request, None, &crate::resources::glade_settings::GladeSettings::default()).is_err()
     );
 }
 

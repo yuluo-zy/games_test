@@ -487,7 +487,7 @@ mod tests {
         world.resource_mut::<SuppressContinueWall>().suppressed = true;
         world
             .resource_mut::<Events<MainCameraMoved>>()
-            .send(MainCameraMoved(Vec3::X));
+            .send(MainCameraMoved);
         endpoint_frame(
             &mut world,
             &mut schedule,
@@ -545,7 +545,7 @@ mod tests {
         world.resource_mut::<SuppressContinueWall>().suppressed = true;
         world
             .resource_mut::<Events<MainCameraMoved>>()
-            .send(MainCameraMoved(Vec3::X));
+            .send(MainCameraMoved);
         let mut schedule = Schedule::default();
         schedule.add_systems(ui_continue_wall);
         endpoint_frame(&mut world, &mut schedule, wall, false, 3, Vec3::X);

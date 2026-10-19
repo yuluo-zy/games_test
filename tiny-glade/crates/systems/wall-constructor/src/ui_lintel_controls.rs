@@ -3,12 +3,12 @@
 //! `ui_lintel_controls`（0x140771a60）。候选参数面（skeleton 富化）：
 //! `(Res<AppMode>, Res<UiState>, Res<UiSignifierStream>,
 //!  ResMut<InnerWalls>, Res<PublicWalls>, Local<…>, …)`。
+use bevy_ecs::prelude::*;
 use country_core::resources::walls::{inner_walls::InnerWalls, public_walls::PublicWalls};
 use country_core::systems::{
     mode_manager::AppMode, ui::resources::ui_state::UiState,
     ui::signifiers::signifier_create::UiSignifierStream,
 };
-use bevy_ecs::prelude::*;
 
 /// B 0x140771a60：过梁编辑 UI 分发（模式 + 交互 → 过梁段编辑）。
 pub fn ui_lintel_controls(
@@ -25,7 +25,10 @@ pub fn ui_lintel_controls(
     if ui.interaction().widget.0 == 0 {
         return;
     }
-    if walls.get(country_core::resources::walls::WallId(wall)).is_none() {
+    if walls
+        .get(country_core::resources::walls::WallId(wall))
+        .is_none()
+    {
         return;
     }
     // 过梁段编辑命令（toolbar 交互后置登记）。

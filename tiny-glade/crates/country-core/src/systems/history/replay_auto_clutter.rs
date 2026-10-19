@@ -48,7 +48,7 @@ pub fn replay_auto_clutter(
     let Some(bucket) = replay.front_mut_bucket() else {
         return;
     };
-    bucket.commands.retain_mut(|command| {
+    bucket.retain_commands_mut(|command| {
         let ReplayCommand::AutoClutter(command) = command else {
             return true;
         };

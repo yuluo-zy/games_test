@@ -1,4 +1,5 @@
 //! Original wall replay groups applied to the one live wall authority.
+use crate::resources::color_id::{WallColorIds, MAX_NUMBER_OF_WALLS};
 use crate::resources::history::HistoryReplayError;
 use crate::resources::history::ReplayBuffer;
 use crate::resources::history::ReplayCommand;
@@ -7,6 +8,7 @@ use crate::resources::history::wall_edit::WallHistoryEdit;
 use crate::resources::history::wall_edit::WallReplayAudio;
 use crate::resources::history::wall_edit::WallRestoreColorRequest;
 use crate::resources::time::GameTime;
+use crate::systems::audio::PlayWallAudio;
 use crate::resources::walls::InnerWalls;
 use crate::resources::walls::WallId;
 use crate::resources::walls::WallState;
@@ -20,8 +22,12 @@ use crate::systems::wall::wall_state::publish_public_wall_state::WallPublication
 use bevy_ecs::prelude::*;
 use std::collections::HashMap;
 
-/// Actual audio/color owners consume these effects; writing an event is not
-/// claimed as having played sound or installed a material.
+/// 墙回放音频效果的真实消费面。
+///
+/// `WallReplayAudio` 只携带 `{wall, anchor, kind, flag}`；目标音频事件
+/// `PlayWallAudio` 同有 kind/position/flag，`value`/`volume` 在回放载荷中没有
+/// 对应字段（原版回放音频记录也不含这两项），按无参数播放取 `0.0`/`1.0`
+/// （I：仅这两项为默认，其余逐字段来自 `WallReplayAudio`）。
 #[derive(Event, Clone, Debug)]
 pub struct WallHistoryReplayAudio(pub WallReplayAudio);
 #[derive(Event, Clone, Debug)]
@@ -30,7 +36,59 @@ pub struct WallHistoryRestoreColor(pub WallRestoreColorRequest);
 pub fn register_wall_replay_events(world: &mut World) {
     world.init_resource::<Events<WallHistoryReplayAudio>>();
     world.init_resource::<Events<WallHistoryRestoreColor>>();
+    world.init_resource::<Events<PlayWallAudio>>();
     crate::systems::wall::adjust_wall_height::register_wall_height_events(world);
+}
+
+/// 消费墙回放颜色请求，按 `observed_special_owner` 分流（source+65
+/// StructureType≠0 → 门/结构色表；否则墙色表）。两个 writer 都有同构的
+/// “共享索引空间、`idx < MAX_NUMBER_OF_WALLS`” 语义。
+///
+/// 直接写 CPU 表是本轮的生产路径；`set_wall_color_id` 的 plaster 分类、
+/// `PlayWallUiSound kind=6` 与 SSBO dirty 副作用不在 core 内复刻
+/// （显式 partial，不冒充完成）。
+pub fn apply_wall_replay_color(
+    mut events: EventReader<WallHistoryRestoreColor>,
+    mut wall_colors: Option<ResMut<WallColorIds>>,
+    mut gate_colors: Option<ResMut<crate::resources::color_id::GateColorIds>>,
+) {
+    for WallHistoryRestoreColor(request) in events.read() {
+        let table = if request.observed_special_owner {
+            gate_colors.as_mut().map(|table| &mut table.0)
+        } else {
+            wall_colors.as_mut().map(|table| &mut table.0)
+        };
+        let Some(table) = table else {
+            continue;
+        };
+        let index = request.wall.0 as usize;
+        if index >= MAX_NUMBER_OF_WALLS {
+            log::warn!(
+                target: "country_core::systems::history::replay_wall",
+                "wall replay color index {index} exceeds MAX_NUMBER_OF_WALLS"
+            );
+            continue;
+        }
+        if let Some(slot) = table.get_mut(index) {
+            *slot = request.color_id;
+        }
+    }
+}
+
+/// 消费墙回放音频请求：转成墙音频 owner 的 `PlayWallAudio` 事件。
+pub fn apply_wall_replay_audio(
+    mut events: EventReader<WallHistoryReplayAudio>,
+    mut audio: EventWriter<PlayWallAudio>,
+) {
+    for WallHistoryReplayAudio(value) in events.read() {
+        audio.write(PlayWallAudio {
+            kind: value.kind,
+            value: 0.0,
+            position: glam::Vec3::from(value.anchor),
+            volume: 1.0,
+            flag: value.flag,
+        });
+    }
 }
 
 fn command_wall(edit: &WallHistoryEdit) -> RecoveredWallId {
@@ -181,9 +239,7 @@ pub fn replay_wall(
             }
         }
     }
-    bucket
-        .commands
-        .retain(|command| !matches!(command, ReplayCommand::Wall(groups) if groups.is_empty()));
+    bucket.retain_commands_mut(|command| !matches!(command, ReplayCommand::Wall(groups) if groups.is_empty()));
 }
 
 #[cfg(test)]
@@ -338,23 +394,82 @@ mod tests {
         assert_eq!(world.resource::<Events<HistoryReplayFailed>>().len(), 1);
     }
     #[test]
-    fn delete_undo_uses_before_height_even_when_saved_fallback_height_differs() {
+    fn create_restore_writes_color_table() {
         let (mut world, mut schedule, state) = fixture();
-        let edit = crate::resources::history::wall_edit::record_deleted_wall_with_height(
-            RecoveredWallId(9), state.snapshot(), 7, 7.0,
+        world.init_resource::<WallColorIds>();
+        world.init_resource::<crate::resources::color_id::GateColorIds>();
+        world.init_resource::<Events<PlayWallAudio>>();
+        schedule.add_systems(
+            (apply_wall_replay_color, apply_wall_replay_audio).after(replay_wall),
         );
-        push(&mut world, 0, &edit, true, true);
+        let edit = record_new_wall(RecoveredWallId(9), state.snapshot(), 7).unwrap();
+        push(&mut world, 0, &edit, false, true);
         schedule.run(&mut world);
-        assert_eq!(
-            world.resource::<InnerWalls>().get_unwrapped(WallId(9)).height().to_bits(),
-            state.height().to_bits(),
-        );
-        assert!(world.resource::<Events<HistoryReplayFailed>>().is_empty());
-        assert_eq!(world.resource::<Events<WallHistoryRestoreColor>>().len(), 1);
-        push(&mut world, 1, &edit, false, true);
+        // 颜色请求：create 的 color_id=7 写入墙色表索引 9。
+        assert_eq!(world.resource::<WallColorIds>().0[9], 7);
+    }
+
+    #[test]
+    fn wall_audio_maps_kind_anchor_flag_into_play_wall_audio() {
+        let mut world = World::new();
+        world.init_resource::<Events<WallHistoryReplayAudio>>();
+        world.init_resource::<Events<PlayWallAudio>>();
+        let mut schedule = Schedule::default();
+        schedule.add_systems(apply_wall_replay_audio);
+        for (kind, flag) in [(0u8, 0u8), (1, 0), (2, 0), (2, 1)] {
+            world
+                .resource_mut::<Events<WallHistoryReplayAudio>>()
+                .send(WallHistoryReplayAudio(WallReplayAudio {
+                    wall: RecoveredWallId(9),
+                    anchor: [1.0, 2.0, 3.0],
+                    kind,
+                    flag,
+                }));
+        }
         schedule.run(&mut world);
-        assert!(!world.resource::<InnerWalls>().contains(WallId(9)));
-        assert!(world.resource::<Events<HistoryReplayFailed>>().is_empty());
+        let events: Vec<_> = world
+            .resource_mut::<Events<PlayWallAudio>>()
+            .drain()
+            .collect();
+        assert_eq!(events.len(), 4);
+        for (event, (kind, flag)) in events.iter().zip([(0u8, 0u8), (1, 0), (2, 0), (2, 1)]) {
+            assert_eq!(event.kind, kind);
+            assert_eq!(event.flag, flag);
+            // I：回放载荷没有 value/volume 字段，按无参数播放取 0.0/1.0。
+            assert_eq!(event.value, 0.0);
+            assert_eq!(event.volume, 1.0);
+            assert_eq!(event.position, glam::Vec3::new(1.0, 2.0, 3.0));
+        }
+    }
+
+    #[test]
+    fn special_owner_color_routes_to_gate_table() {
+        let mut world = World::new();
+        world.init_resource::<WallColorIds>();
+        world.init_resource::<crate::resources::color_id::GateColorIds>();
+        world.init_resource::<Events<WallHistoryRestoreColor>>();
+        world.init_resource::<Events<PlayWallAudio>>();
+        let mut schedule = Schedule::default();
+        schedule.add_systems(apply_wall_replay_color);
+        world
+            .resource_mut::<Events<WallHistoryRestoreColor>>()
+            .send(WallHistoryRestoreColor(WallRestoreColorRequest {
+                wall: crate::resources::walls::publication_fields::WallId(5),
+                color_id: 11,
+                observed_special_owner: true,
+            }));
+        world
+            .resource_mut::<Events<WallHistoryRestoreColor>>()
+            .send(WallHistoryRestoreColor(WallRestoreColorRequest {
+                wall: crate::resources::walls::publication_fields::WallId(6),
+                color_id: 3,
+                observed_special_owner: false,
+            }));
+        schedule.run(&mut world);
+        assert_eq!(world.resource::<crate::resources::color_id::GateColorIds>().0[5], 11);
+        assert_eq!(world.resource::<WallColorIds>().0[5], 0);
+        assert_eq!(world.resource::<WallColorIds>().0[6], 3);
+        assert_eq!(world.resource::<crate::resources::color_id::GateColorIds>().0[6], 0);
     }
 
 }

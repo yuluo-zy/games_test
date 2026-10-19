@@ -1,33 +1,40 @@
-//! 墙高与拱段高初始化（init_wall_height_and_arch_segment_height.rs）。
-//!
-//! `init_wall_height_and_arch_segment_height`（0x14078b550）。候选参数面：
-//! `(ResMut<PublicWalls>, EventReader<OnWallChanged>, Query<&Roof>)`。
-//! 与 core WallState 高度规则衔接（对照 reconstruction/wall/height_rules.rs：
-//! clamp 下限 1.6/0.7/0.3/0.5、上限 special 2.5 否则 14.0、
-//! flat_roof_y=max_y−0.79）。
+//! B14078b550 relationship portion of wall height initialization.
+//! Prepared base/third caches belong to the actual PublicWallState path owner.
+use bevy_ecs::prelude::*;
 use country_core::resources::{
     roofs::Roof,
     walls::public_walls::{OnWallChanged, PublicWalls},
 };
-use bevy_ecs::prelude::*;
 
-/// B 0x14078b550：墙高/拱段高初始化（height_rules clamp 层 + 屋顶平顶高度）。
 pub fn init_wall_height_and_arch_segment_height(
     mut changed: EventReader<OnWallChanged>,
     mut walls: ResMut<PublicWalls>,
     roofs: Query<&Roof>,
 ) {
     for event in changed.read() {
-        let Some(wall) = walls.get_mut(event.0) else {
-            continue;
+        // Native PublicWalls table absence is unwrap_failed, not silent skip.
+        let wall = walls
+            .get(event.0)
+            .expect("wall height event must reference a published wall");
+        // Native query is reached only for a rectangle. A present association
+        // must resolve the same generation; another roof with equal WallId
+        // cannot replace a stale/missing associated component.
+        let roof = if wall.is_rectangle().is_some() {
+            walls
+                .roof_entity(event.0)
+                .filter(|entity| entity.to_bits() >> 32 != 0)
+                .map(|entity| {
+                    roofs
+                        .get(entity)
+                        .expect("associated rectangle roof component must resolve")
+                })
+        } else {
+            None
         };
-        // 高度规则（reconstruction/wall/height_rules.rs clamp 层）：
-        // 下限 1.6/0.7/0.3/0.5、上限 special 2.5 否则 14.0。
-        let _ = wall.update_gable_heights(
-            roofs
-                .iter()
-                .find(|r| r.wall_id() == event.0)
-                .map(Roof::observed),
-        );
+        walls
+            .get_mut(event.0)
+            .unwrap()
+            .update_gable_heights(roof.map(Roof::observed))
+            .expect("invalid authoritative gable height input");
     }
 }

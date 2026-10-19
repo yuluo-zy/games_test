@@ -8,8 +8,8 @@ pub mod path_edit;
 pub mod replay_cmd_buffer;
 pub mod serialized;
 pub mod stairs_history_edit;
-pub mod tree_edit;
 pub mod terrain_edit;
+pub mod tree_edit;
 
 pub use crate::resources::history::building_transactions::RoofHistoryEdit;
 use crate::resources::history::transactions::HistoryRecordingValidation;
@@ -20,11 +20,12 @@ use crate::resources::raster_stroke::RasterStroke;
 use crate::systems::terrain::deferred_terrain_history::TerrainEdit;
 use std::sync::Arc;
 
-pub use replay_cmd_buffer::{HistoryReplayError, ReplayBucket, ReplayBuffer, ReplayCommand};
 pub use crate::systems::history::recording::FinishInputRecordingCmd;
+pub use replay_cmd_buffer::{HistoryReplayError, ReplayBucket, ReplayBuffer, ReplayCommand};
 
-pub use snapshots::{HistoryChainSnapshot, HistorySnapshotId, MaybePendingSnapshotId,
-    ResolvedHistoryChainSnapshot};
+pub use snapshots::{
+    HistoryChainSnapshot, HistorySnapshotId, MaybePendingSnapshotId, ResolvedHistoryChainSnapshot,
+};
 pub type History<S = MaybePendingSnapshotId> = HistoryTransactions<EditType, S>;
 
 impl<S> HistoryTransactions<EditType, S> {
@@ -101,7 +102,7 @@ pub enum EditType {
     Wall(Arc<WallCompoundHistoryEdit>),
     Roof(Arc<RoofHistoryEdit>),
     Color(Arc<color_edit::ColorEdit>),
-    DecoratorV5(Arc<decorator_edit::DecoratorHistoryEdit>),
+    DecoratorV5(Arc<decorator_edit::DecoratorV5Edit>),
     Decorator(Arc<decorator_edit::DecoratorHistoryEdit>),
     /// tag 12（① T3：visit_str case4 else `0x142aee14b="Tree"` → tag 0xc；旧 tag 0 错）。
     Tree(Arc<tree_edit::TreeEdit>),
@@ -206,14 +207,14 @@ impl HistoryRecordingValidation for EditType {
                         | WallHistoryEdit::ChangeElevation(..)
                         | WallHistoryEdit::ChangeArchHeight(..)
                         | WallHistoryEdit::ChangeSupports(..)
-                        | WallHistoryEdit::ChangeStairsType(..)
+                        | WallHistoryEdit::ChangeSkirt(..)
                         | WallHistoryEdit::ChangePlasterPeelAmount(..)
                         | WallHistoryEdit::ChangeFreehandHeightType(..)
                         | WallHistoryEdit::ChangeArchType(..)
                         | WallHistoryEdit::MorphFreehandWall(..)
                         | WallHistoryEdit::DeprecatedMorphOriginal(..)
                         | WallHistoryEdit::Unresolved15(..)
-                        | WallHistoryEdit::ChangeSkirt(..) => {}
+                        | WallHistoryEdit::ChangeStyle(..) => {}
                     }
                 }
             }

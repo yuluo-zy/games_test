@@ -28,8 +28,9 @@ pub const SOURCE_TEXTURE_ACCESS: u8 = 0x1d;
 /// `RasterState` 字节 0 的清除掩码（O：`and al, 0x7f`）。
 pub const RASTER_STATE_BYTE0_MASK: u8 = 0x7f;
 
-/// `AppMode` 资源里本模块读到的两个字段（O：`+0x00` 判别式，`+0x08` 一个布尔字节）。
-/// 工程里 `AppMode` 有多份占位定义，这里只复刻机器码读到的部分。
+/// EscMenuState read projection. RNE@1408c9a4d uses the same native TypeId
+/// d38dae617fb79c7a as session selection; the historical AppMode name was wrong.
+/// Retained API name avoids changing unrelated adapters.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AppModeView {
     /// `+0x00`：比较发生在 64 位（`== 2`）与 32 位（`== 0xa`、`== 7`）宽度上。
@@ -43,6 +44,7 @@ pub struct AppModeView {
 pub struct ManagedTexture(pub u64);
 
 /// 菜单背景资源（O 0x40 B）。
+#[derive(bevy_ecs::resource::Resource)]
 pub struct MenuBackgroundResources {
     /// `+0x00`：其它系统往里放新纹理的共享槽（`Arc<Mutex<Option<_>>>`）。
     pub shared: Arc<Mutex<Option<ManagedTexture>>>,
@@ -60,7 +62,7 @@ impl Default for MenuBackgroundResources {
     }
 }
 
-/// `AppMode` 门控（O：0x1408c9aca..0x1408c9fa3）。返回 `true` = 继续绘制。
+/// EscMenuState gate（O：0x1408c9aca..0x1408c9fa3）。返回 `true` = 继续绘制。
 ///
 /// 1. `state == 2`（64 位比较）→ 不画；
 /// 2. `state == 0xa`（低 32 位）且 `flag != 1` → 不画；
@@ -88,7 +90,7 @@ pub fn menu_bg_mode_allows(mode: AppModeView) -> bool {
 
 /// `render_menu_bg` 调用的外部面（调用点 O；实现者是 bevy world / 资源库 / pass_builder）。
 pub trait MenuBackgroundHost {
-    /// `Components::get_resource_id(AppMode)` + 取值（缺失 → `Option::unwrap` panic，O @0x1408c9fd4）。
+    /// `Components::get_resource_id(EscMenuState)` + value (missing panics).
     fn app_mode(&self) -> AppModeView;
     /// `MenuBackgroundResources`（hash `0xfb32e4dcc8287bca`，缺失 → unwrap panic，O @0x1408c9fe0）。
     fn menu_background(&mut self) -> &mut MenuBackgroundResources;

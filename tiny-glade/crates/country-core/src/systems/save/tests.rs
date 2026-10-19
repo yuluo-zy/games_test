@@ -4,7 +4,7 @@ use super::{
     save_thread::CurrentSaveFile,
     shadow_file::ShadowFile,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 #[test]
 fn close_file_resets_native_metronome_fields() {
@@ -62,7 +62,11 @@ fn parse_saved_game_data_parses_all_native_sections() {
         "Identity": 123456789
     });
     std::fs::write(&path, serde_json::to_vec(&body).unwrap()).unwrap();
-    let parsed = parse_saved_game_data(&path).unwrap();
+    let parsed = parse_saved_game_data(
+        &path,
+        &crate::resources::glade_settings::GladeSettings::default(),
+    )
+    .unwrap();
     assert_eq!(parsed.version, 27);
     assert_eq!(parsed.camera.unwrap().yaw, 1.0);
     assert_eq!(parsed.time_of_day.time_of_day, 0.25);
@@ -79,11 +83,23 @@ fn parse_saved_game_data_parses_all_native_sections() {
     let mut low = body.clone();
     low["Version"] = json!(2);
     std::fs::write(&path, serde_json::to_vec(&low).unwrap()).unwrap();
-    assert!(parse_saved_game_data(&path).is_err());
+    assert!(
+        parse_saved_game_data(
+            &path,
+            &crate::resources::glade_settings::GladeSettings::default()
+        )
+        .is_err()
+    );
     let mut high = body.clone();
     high["Version"] = json!(0x1c);
     std::fs::write(&path, serde_json::to_vec(&high).unwrap()).unwrap();
-    assert!(parse_saved_game_data(&path).is_err());
+    assert!(
+        parse_saved_game_data(
+            &path,
+            &crate::resources::glade_settings::GladeSettings::default()
+        )
+        .is_err()
+    );
 }
 
 #[test]
@@ -100,7 +116,7 @@ fn unsaved_file_list_uses_the_native_0x80_byte_entry() {
 
 #[test]
 fn save_game_to_memory_serializes_edit_items_inside_the_function() {
-    use super::save_game::{save_game_to_memory, GameSaveSections};
+    use super::save_game::{GameSaveSections, save_game_to_memory};
     let values = std::array::from_fn(|_| SerializedJson::new(&json!([])).unwrap());
     let sections = GameSaveSections { values };
     // 传域类型（serde_json::Value）而非预序列化文本：函数内完成 serde。
@@ -313,7 +329,7 @@ fn backup_scan_and_snapshot_gc_release_cancel_and_delete_actual_files() {
 fn execute_save_cmd_changes_sections_and_flushes_to_disk() {
     use super::{
         save_game::AsyncSaveCmd,
-        save_thread::{execute_save_cmd, CurrentSaveFile, UnsavedFileList},
+        save_thread::{CurrentSaveFile, UnsavedFileList, execute_save_cmd},
     };
     let root = tempfile::tempdir().unwrap();
     let unsaved = UnsavedFileList::default();
@@ -364,7 +380,7 @@ fn execute_save_cmd_changes_sections_and_flushes_to_disk() {
 #[should_panic(expected = "No active save file, but AsyncSaveCmd::ChangeSection has been issued")]
 fn change_section_without_active_file_panics() {
     use super::{
-        save_game::AsyncSaveCmd, save_thread::execute_save_cmd, save_thread::UnsavedFileList,
+        save_game::AsyncSaveCmd, save_thread::UnsavedFileList, save_thread::execute_save_cmd,
     };
     let mut current: Option<CurrentSaveFile> = None;
     let unsaved = UnsavedFileList::default();
@@ -380,7 +396,7 @@ fn change_section_without_active_file_panics() {
 
 #[test]
 fn save_thread_exits_when_the_command_channel_disconnects() {
-    use super::save_thread::{save_thread, AutosaveErrorState, UnsavedFileList};
+    use super::save_thread::{AutosaveErrorState, UnsavedFileList, save_thread};
     let (sender, receiver) = crossbeam_channel::unbounded();
     let (error_sender, _errors) = AutosaveErrorState::channel();
     let handle = std::thread::spawn(move || {
@@ -396,7 +412,7 @@ fn save_thread_exits_when_the_command_channel_disconnects() {
 
 #[test]
 fn save_thread_empty_poll_keeps_looping_until_all_senders_disconnect() {
-    use super::save_thread::{save_thread, AutosaveErrorState, UnsavedFileList};
+    use super::save_thread::{AutosaveErrorState, UnsavedFileList, save_thread};
     let (sender, receiver) = crossbeam_channel::unbounded();
     let second_owner = sender.clone();
     let (error_sender, _errors) = AutosaveErrorState::channel();
@@ -416,11 +432,11 @@ fn save_thread_empty_poll_keeps_looping_until_all_senders_disconnect() {
 
 #[test]
 fn on_load_fence_terminates_both_replay_passes() {
-    use super::load_game::{advance_load_game, ReplayedOnLoadCommand};
+    use super::load_game::{ReplayedOnLoadCommand, advance_load_game};
     use crate::meta_commander::{MetaCommand, MetaCommandFence};
     use crate::resources::session::NextSessionKind;
     use crate::resources::session::{
-        NextSession, NextSessionTail, NextSessionTemplate, SessionId, ON_LOAD_VARIANT_MASK,
+        NextSession, NextSessionTail, NextSessionTemplate, ON_LOAD_VARIANT_MASK, SessionId,
     };
 
     let mut session = NextSession::create(
@@ -442,7 +458,13 @@ fn on_load_fence_terminates_both_replay_passes() {
     session.append_replay_terminator();
     let mut manager = super::load_game::LoadGameManager::default();
     manager.state = super::load_game::LoadGameState::Loaded;
-    let (parsed, commands) = advance_load_game(&mut manager, &session, None).unwrap();
+    let (parsed, commands) = advance_load_game(
+        &mut manager,
+        &mut session,
+        None,
+        &crate::resources::glade_settings::GladeSettings::default(),
+    )
+    .unwrap();
     assert!(parsed.is_none());
     // 第一遍：批量展开为两条 MetaCommand + fence 变体 0 写 manager 状态；
     // 第二遍：两条 Apply + fence 变体 0 SwitchAppMode（忽略）；终止哨兵后不再回放。
@@ -461,7 +483,7 @@ fn on_load_fence_terminates_both_replay_passes() {
 
 #[test]
 fn on_load_variant2_fence_release_unblocks_inline() {
-    use super::load_game::{advance_load_game, LoadGameManager, LoadGameState};
+    use super::load_game::{LoadGameManager, LoadGameState, advance_load_game};
     use crate::meta_commander::MetaCommandFence;
     use crate::resources::session::{
         NextSession, NextSessionKind, NextSessionTail, NextSessionTemplate, SessionId,
@@ -477,8 +499,66 @@ fn on_load_variant2_fence_release_unblocks_inline() {
     session.append_replay_terminator();
     let mut manager = LoadGameManager::default();
     manager.state = LoadGameState::Loaded;
-    let (parsed, _commands) = advance_load_game(&mut manager, &session, None).unwrap();
+    let (parsed, _commands) = advance_load_game(
+        &mut manager,
+        &mut session,
+        None,
+        &crate::resources::glade_settings::GladeSettings::default(),
+    )
+    .unwrap();
     assert!(parsed.is_none());
     // 变体2 内联释放（O 0x14146d030 首遍 uVar23==2）：fence 已被 unblock（+0x10 清 0）。
     assert!(!check.is_blocked());
+}
+
+#[test]
+fn parsed_request_moves_owned_edits_and_all_native_metadata_without_disk_reparse() {
+    use super::load_game::{
+        LoadGameManager, ParsedGameData, ParsedLoadMetadata, advance_load_game,
+    };
+    use crate::resources::{
+        glade_settings::GladeSettings,
+        session::{NextSession, SessionId},
+    };
+    let metadata = ParsedLoadMetadata {
+        requires_upgrade_backup: true,
+        upgrade_window_colors: true,
+        upgrade_arrow_slit_colors: false,
+        legacy_version_notice: true,
+    };
+    let mut data = ParsedGameData {
+        version: 27,
+        chain_index: 8,
+        migration_metadata: Some(metadata),
+        ..Default::default()
+    };
+    data.edits.reserve_exact(4);
+    let original_allocation = data.edits.as_ptr();
+    let mut request = NextSession::from_parsed(SessionId::new(), data);
+    let mut manager = LoadGameManager::new();
+    let (loaded, _) = advance_load_game(
+        &mut manager,
+        &mut request,
+        Some(std::path::Path::new("this-file-must-not-be-opened.json")),
+        &GladeSettings::default(),
+    )
+    .unwrap();
+    let loaded = loaded.unwrap();
+    assert_eq!(loaded.edits.as_ptr(), original_allocation);
+    assert_eq!(loaded.chain_index, 8);
+    assert_eq!(loaded.migration_metadata, Some(metadata));
+    assert!(
+        metadata
+            .snapshot_color_upgrade_flags()
+            .upgrade_window_color_ids()
+    );
+    assert!(
+        !metadata
+            .snapshot_color_upgrade_flags()
+            .upgrade_arrow_slit_color_ids()
+    );
+    assert!(
+        advance_load_game(&mut manager, &mut request, None, &GladeSettings::default()).is_err(),
+        "the same owner cannot be taken twice"
+    );
 }

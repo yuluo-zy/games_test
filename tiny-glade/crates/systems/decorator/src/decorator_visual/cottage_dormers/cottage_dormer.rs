@@ -15,7 +15,6 @@ use bevy_ecs::prelude::*;
 use country_core::resources::walls::decorator::DecoratorInfo;
 use country_core::resources::walls::decorator_storage::DecoratorStorage;
 use country_core::resources::walls::decorator_subtype::DerivedDecoratorSubtypes;
-use glam::{Quat, Vec3};
 
 use crate::blueprint::{DecoratorBlueprint, DecoratorBlueprints};
 use crate::decorator_visual_state::DecoratorTransientVisualState;
@@ -67,14 +66,17 @@ pub struct RoofBoundsShape {
     pub h: f32,
 }
 
-/// 农舍老虎窗尺寸（内联，I；U：维度来源）。
-pub fn cottage_dormer_dims(_info: &DecoratorInfo) -> (f32, f32) {
-    (0.0, 0.0) // U。
+/// 农舍老虎窗子类型（O：0x1407c7ac0 行 402 `subtype != 0x02 → skip`）。
+pub const COTTAGE_DORMER_SUBTYPE: u8 = 0x02;
+
+/// 农舍老虎窗尺寸（内联，I；U：维度来源）。未恢复返回 None。
+pub fn cottage_dormer_dims(_info: &DecoratorInfo) -> Option<(f32, f32)> {
+    None // U。
 }
 
-/// 老虎窗面板变换（内联，I；U：面板几何）。
-pub fn get_dormer_panel_xforms(_info: &DecoratorInfo) -> Vec<crate::utils::IsoTransform> {
-    Vec::new() // U。
+/// 老虎窗面板变换（内联，I；U：面板几何）。未恢复返回 None。
+pub fn get_dormer_panel_xforms(_info: &DecoratorInfo) -> Option<Vec<crate::utils::IsoTransform>> {
+    None // U。
 }
 
 /// 0x1407c7ac0（O 结构）：生成农舍老虎窗装饰视觉。
@@ -83,13 +85,15 @@ pub fn generate_cottage_dormers(
     derived: Res<DerivedDecoratorSubtypes>,
     mut blueprints: ResMut<DecoratorBlueprints>,
     mut transient: ResMut<DecoratorTransientVisualState>,
-    _cached: Res<country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms>,
+    cached: Res<country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms>,
     _mesh_lib: Res<country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary>,
 ) {
     for (_wall, decorators) in decorator_storage.iter_walls() {
         for (id, info) in decorators.iter_modified() {
-            // O：窗族（as_window 判别）。
-            let _window = info.extra().as_window();
+            // O：农舍老虎窗子类型 = 2。
+            if derived.get(id).subtype().0 != COTTAGE_DORMER_SUBTYPE {
+                continue;
+            }
             // O：超出屋顶边界判定（is_out_of_roof_bounds）。
             if is_out_of_roof_bounds(
                 &DormerRoofBoundsState::default(),
@@ -101,14 +105,17 @@ pub fn generate_cottage_dormers(
                 continue;
             }
             let d = derived.get(id);
+            let transform = cached.transform(id);
             // O：蓝图 + 视觉实体。
             let mut blueprint = DecoratorBlueprint::new();
             blueprint.set_colliders(vec![d.collision_mesh()]);
             blueprint.set_outline((0.0, 0.0, 0.0));
             blueprints.insert(id, blueprint);
-            let builder = WindowVisualEntityBuilder::new(Vec3::ZERO, Quat::IDENTITY, id);
+            let builder =
+                WindowVisualEntityBuilder::new(transform.translation, transform.rotation, id);
             let _ = &mut transient;
             let _ = &builder;
+            let _ = info;
         }
     }
 }

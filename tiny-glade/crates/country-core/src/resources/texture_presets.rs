@@ -7,7 +7,7 @@
 //!
 //! - `TextureFromDisk(name_hash)`：按 64 位名字哈希取磁盘纹理资源。
 //!   已知 O 值（见各模块 contract）：`0x579f39ab91a01865` =
-//!   water_noise_texture；其余（clearing/floor/rocky/pebble/brick/leaf/
+//!   blue_noise（由原锁 xxhash 与发行资产名复核）；其余（clearing/floor/rocky/pebble/brick/leaf/
 //!   critter/ivy 族）名字待资源库恢复（U）。
 //! - `TexturePreset(preset_byte)`：数值预设槽。观测值 8/9/10/0xc/0xe/
 //!   0x13/0x14/0x15/0x18/5/6/7/0xf 等（语义 U；water_planes_draw 记录

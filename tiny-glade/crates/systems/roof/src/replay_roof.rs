@@ -67,7 +67,7 @@ pub fn replay_roof(
             }
         }
     }
-    bucket.commands.retain(|command| {
+    bucket.retain_commands_mut(|command| {
         !matches!(command,
         ReplayCommand::Roof(command) if command.state().bytes()[21] == 1)
     });

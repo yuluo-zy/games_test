@@ -502,7 +502,15 @@ pub struct Env2In {
 
 pub fn read_env2(w: &World, e: Entity) -> Env2In {
     Env2In {
-        sheep: *comp::<SheepView>(w, e),
+        sheep: {
+            let sheep = comp::<crate::resources::critters::sheep::Sheep>(w, e);
+            let walk = comp::<crate::resources::critters::sheep::SheepWalkRecord>(w, e);
+            SheepView {
+                q28: walk.frame_index,
+                f58: sheep.amplitude,
+                b60: sheep.control_flag,
+            }
+        },
         prev: *comp::<PrevTransformView>(w, e),
     }
 }

@@ -28,6 +28,116 @@ impl LengthPercentage {
     fn minimum(self) -> f32 {
         if self.is_percent { 0.0 } else { self.value }
     }
+    /// Original points getter (inline, 24 instances): the raw f32 of an
+    /// absolute length; percentages carry their fraction unchanged.
+    pub fn points(self) -> f32 {
+        self.value
+    }
+    /// Original points_or_zero (inline, 11 instances): percentages contribute
+    /// zero, absolute lengths contribute their value.
+    pub fn points_or_zero(self) -> f32 {
+        self.minimum()
+    }
+}
+
+impl std::ops::Add for LengthPercentage {
+    type Output = LengthPercentage;
+    /// Native Rect::width/height use two generic adds; absolute lengths add.
+    /// U: the mixed percent/absolute form has no recovered consumer.
+    fn add(self, rhs: LengthPercentage) -> LengthPercentage {
+        LengthPercentage {
+            is_percent: self.is_percent || rhs.is_percent,
+            value: self.value + rhs.value,
+        }
+    }
+}
+
+/// Native 16-byte Size{width@0, height@8}; each component is a
+/// LengthPercentage. LayoutStyle keeps width at +0x28 and height at +0x30
+/// (historical Rust field names `size`/`min` in this crate).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[repr(C)]
+pub struct Size {
+    pub width: LengthPercentage,
+    pub height: LengthPercentage,
+}
+impl Size {
+    pub fn points(self) -> Vec2 {
+        Vec2::new(self.width.points(), self.height.points())
+    }
+    pub fn points_or_zero(self) -> Vec2 {
+        Vec2::new(self.width.points_or_zero(), self.height.points_or_zero())
+    }
+}
+impl From<Vec2> for Size {
+    fn from(value: Vec2) -> Self {
+        Size {
+            width: LengthPercentage::absolute(value.x),
+            height: LengthPercentage::absolute(value.y),
+        }
+    }
+}
+
+/// Native left/top/right/bottom rect used by the untagged padding
+/// deserializer140fe2560 and Rect::size_vec2. `width`/`height` are the two
+/// absolute edge sums (O: two `core::ops::arith::add` calls).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[repr(C)]
+pub struct Rect {
+    pub left: LengthPercentage,
+    pub top: LengthPercentage,
+    pub right: LengthPercentage,
+    pub bottom: LengthPercentage,
+}
+impl Rect {
+    pub fn width(self) -> f32 {
+        (self.left + self.right).points_or_zero()
+    }
+    pub fn height(self) -> f32 {
+        (self.top + self.bottom).points_or_zero()
+    }
+    /// Original size_vec2 (inline, 4 instances): (width, height).
+    pub fn size_vec2(self) -> Vec2 {
+        Vec2::new(self.width(), self.height())
+    }
+    pub fn points(self) -> [f32; 4] {
+        [
+            self.left.points(),
+            self.top.points(),
+            self.right.points(),
+            self.bottom.points(),
+        ]
+    }
+    pub fn points_or_zero(self) -> [f32; 4] {
+        [
+            self.left.points_or_zero(),
+            self.top.points_or_zero(),
+            self.right.points_or_zero(),
+            self.bottom.points_or_zero(),
+        ]
+    }
+}
+impl From<(LengthPercentage, LengthPercentage, LengthPercentage, LengthPercentage)> for Rect {
+    fn from(
+        value: (LengthPercentage, LengthPercentage, LengthPercentage, LengthPercentage),
+    ) -> Self {
+        Rect {
+            left: value.0,
+            top: value.1,
+            right: value.2,
+            bottom: value.3,
+        }
+    }
+}
+impl From<Size> for Rect {
+    fn from(value: Size) -> Self {
+        Rect {
+            left: value.width,
+            top: value.height,
+            right: LengthPercentage::default(),
+            bottom: LengthPercentage::default(),
+        }
+    }
 }
 impl<'de> Deserialize<'de> for LengthPercentage {
     fn deserialize<D: serde::Deserializer<'de>>(de: D) -> Result<Self, D::Error> {
@@ -159,6 +269,53 @@ impl Swizzle for SwizzleYX {
 }
 
 impl LayoutStyle {
+    /// Original LayoutStyle::horizontal (inline, 2 instances): swizzle 0.
+    pub fn horizontal(mut self) -> Self {
+        self.swizzle = 0;
+        self
+    }
+    /// Original LayoutStyle::vertical (inline, 1 instance): swizzle 1.
+    pub fn vertical(mut self) -> Self {
+        self.swizzle = 1;
+        self
+    }
+    /// Original 0x14068e8b0: gap LengthPercentage at +0x20/+0x24.
+    pub fn gap(mut self, gap: LengthPercentage) -> Self {
+        self.gap = gap;
+        self
+    }
+    /// Original LayoutStyle::padding (inline, 2 instances): LTRB rect into the
+    /// four padding slots.
+    pub fn padding(mut self, padding: Rect) -> Self {
+        self.padding = [padding.left, padding.top, padding.right, padding.bottom];
+        self
+    }
+    /// Original 0x14068e8f0: expand flag writes 1.0 at +0x38.
+    pub fn expand(mut self) -> Self {
+        self.expand = 1.;
+        self
+    }
+    /// Original 0x14068e930: justify tag 3 at +0x46.
+    pub fn space_between(mut self) -> Self {
+        self.justify = Justify(3);
+        self
+    }
+    /// Original 0x14068e960: justify tag 1 at +0x46.
+    pub fn align_center(mut self) -> Self {
+        self.justify = Justify(1);
+        self
+    }
+    /// Original 0x14068e990: cross align tag 2 at +0x45.
+    pub fn xalign_center(mut self) -> Self {
+        self.align = 2;
+        self
+    }
+    /// Original 0x14068e9c0: write Size{width@+0x28, height@+0x30}.
+    pub fn size(mut self, size: Size) -> Self {
+        self.size = size.width;
+        self.min = size.height;
+        self
+    }
     /// Original helper140fe0e10, called on the reverse topological order.
     pub fn compute_min_size_with_children(
         &self,
@@ -390,5 +547,62 @@ mod native_layout_tests {
             style.compute_min_size_with_children([LengthPercentage::default(); 2], []),
             Vec2::splat(4.)
         );
+    }
+    /// O: builder tags from 0x68e930/960/990 and Size at +0x28/+0x30.
+    #[test]
+    fn style_builders_write_native_tags_and_size() {
+        let style = LayoutStyle::default()
+            .horizontal()
+            .space_between()
+            .xalign_center()
+            .align_center()
+            .gap(LengthPercentage::absolute(6.))
+            .padding(Rect {
+                left: LengthPercentage::absolute(1.),
+                top: LengthPercentage::absolute(2.),
+                right: LengthPercentage::absolute(3.),
+                bottom: LengthPercentage::absolute(4.),
+            })
+            .expand()
+            .size(Size {
+                width: LengthPercentage::absolute(30.),
+                height: LengthPercentage::absolute(20.),
+            });
+        assert_eq!(style.swizzle, 0);
+        assert_eq!(style.justify, Justify(1));
+        assert_eq!(style.align, 2);
+        assert_eq!(style.gap.value, 6.);
+        assert_eq!(style.padding.map(|p| p.value), [1., 2., 3., 4.]);
+        assert_eq!(style.expand, 1.);
+        assert_eq!(style.size.value, 30.);
+        assert_eq!(style.min.value, 20.);
+        assert_eq!(LayoutStyle::default().vertical().swizzle, 1);
+    }
+    /// O: points/points_or_zero on LengthPercentage/Size/Rect.
+    #[test]
+    fn points_accessors_resolve_or_zero() {
+        let percent = LengthPercentage {
+            is_percent: true,
+            value: 0.5,
+        };
+        assert_eq!(percent.points(), 0.5);
+        assert_eq!(percent.points_or_zero(), 0.);
+        assert_eq!(LengthPercentage::absolute(7.).points_or_zero(), 7.);
+        let size = Size {
+            width: LengthPercentage::absolute(9.),
+            height: percent,
+        };
+        assert_eq!(size.points(), Vec2::new(9., 0.5));
+        assert_eq!(size.points_or_zero(), Vec2::new(9., 0.));
+        let rect = Rect {
+            left: LengthPercentage::absolute(2.),
+            top: LengthPercentage::absolute(3.),
+            right: LengthPercentage::absolute(4.),
+            bottom: LengthPercentage::absolute(5.),
+        };
+        assert_eq!(rect.width(), 6.);
+        assert_eq!(rect.height(), 8.);
+        assert_eq!(rect.size_vec2(), Vec2::new(6., 8.));
+        assert_eq!(rect.points(), [2., 3., 4., 5.]);
     }
 }

@@ -143,7 +143,7 @@ pub fn replay_terrain(
     let Some(bucket) = replay.front_mut_bucket() else {
         return;
     };
-    bucket.commands.retain_mut(|command| {
+    bucket.retain_commands_mut(|command| {
         let ReplayCommand::Terrain(command) = command else {
             return true;
         };

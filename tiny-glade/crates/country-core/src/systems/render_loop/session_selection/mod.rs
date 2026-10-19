@@ -115,7 +115,7 @@ pub struct PooledThumbnail {
 }
 
 /// 会话缩略图纹理池资源（O：`Vec<PooledThumbnail>` @ `{cap, ptr@+8, len@+0x10}`）。
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(bevy_ecs::resource::Resource, Clone, Debug, Default, PartialEq, Eq)]
 pub struct ThumbnailTextures {
     pub pool: Vec<PooledThumbnail>,
 }

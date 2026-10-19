@@ -41,9 +41,9 @@
 //! **登记（core-api-missing）**：建议 core 提供
 //! `WallShapeSnapshot::contains_point(Vec2)`（或 `as_border_shape()`），
 //! 落库后本文件的本地转换可删除。
-use country_core::resources::walls::publication_fields::WallShapeSnapshot;
-use country_core::resources::walls::public_walls::PublicWalls;
 use country_core::resources::walls::WallId;
+use country_core::resources::walls::public_walls::PublicWalls;
+use country_core::resources::walls::publication_fields::WallShapeSnapshot;
 use glam::Vec2;
 use utils::geometry::Circle2d;
 use utils::geometry::Rectangle2d;
@@ -91,21 +91,13 @@ fn shape_contains(shape: &WallShapeSnapshot, point: Vec2) -> bool {
 /// x86 `MAXSS a, b`：`if a > b { a } else { b }`；unordered（NaN）返回 **b**。
 #[inline]
 fn maxss(a: f32, b: f32) -> f32 {
-    if a > b {
-        a
-    } else {
-        b
-    }
+    if a > b { a } else { b }
 }
 
 /// x86 `MINSS a, b`：`if a < b { a } else { b }`；unordered（NaN）返回 **b**。
 #[inline]
 fn minss(a: f32, b: f32) -> f32 {
-    if a < b {
-        a
-    } else {
-        b
-    }
+    if a < b { a } else { b }
 }
 
 /// B `circle_categorize`（0x14124af60）：圆形墙的支柱覆盖占比判定。

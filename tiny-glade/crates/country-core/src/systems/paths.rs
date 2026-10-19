@@ -149,7 +149,7 @@ pub struct PathPinnedClutterCircle {
 /// Fresh 反编译（2026-10-17）逐分支：
 /// - 门：`AppMode` native tag ∈ {7, 8}（Path / Cobblestone(_)）；其它直接返回；
 /// - `brush_size = BrushSizes.path * 1.25`（无 is_finite 断言）；
-/// - 取 Query 的**第一个**匹配实体（原生只找到一个并写回，无迭代副作用）：
+/// - Query 必须恰好一个匹配实体；空或多个均不写（原608B查询第二项判错）：
 ///   `scale.x = scale.z = brush_size`，`scale.y = max(brush_size, 1.0)`；
 ///   Transform 偏移 +0x1c/+0x20/+0x24。
 pub mod path_brush_preview_size {
@@ -170,7 +170,7 @@ pub mod path_brush_preview_size {
         }
         // O：`MULSS [0x142a8d600]` = 1.25。
         let size = brush.path * 1.25;
-        if let Some(mut transform) = query.iter_mut().next() {
+        if let Ok(mut transform) = query.single_mut() {
             transform.scale.x = size;
             transform.scale.z = size;
             // O：`MAXSS XMM0, [0x142925904]`（=1.0）：NaN 时返回 1.0（SSE maxss 语义）。
@@ -930,5 +930,71 @@ mod world_raster_tests {
         let _ = std::any::type_name::<DisplayOutOfBorder>();
         let _ = std::any::type_name::<FeedbackInputOutOfBorder>();
         let _ = std::any::type_name::<RecordCobblestone1EditToHistoryCmd>();
+    }
+}
+
+#[cfg(test)]
+mod native_preview_cardinality_tests {
+    use super::*;
+    use crate::{
+        resources::brush_sizes::BrushSizes, systems::mode_manager::AppMode,
+        utils::components::transform::Transform,
+    };
+    use bevy_ecs::prelude::*;
+    #[test]
+    fn complete_original64_cardinality_mode_and_float_cases() {
+        let fixtures:serde_json::Value=serde_json::from_str(include_str!(concat!(env!("CARGO_MANIFEST_DIR"),"/../../../reverse-engineering/tiny-glade/evidence/round12/brush-startup/native-path-preview-fixtures.json"))).unwrap();
+        for case in fixtures.as_array().unwrap() {
+            let mut world = World::new();
+            let mode = match case["mode"].as_u64().unwrap() {
+                7 => AppMode::Path,
+                8 => AppMode::Cobblestone(Default::default()),
+                _ => AppMode::default(),
+            };
+            world.insert_resource(mode);
+            world.insert_resource(BrushSizes {
+                path: f32::from_bits(case["size_bits"].as_u64().unwrap() as u32),
+                water: 2.,
+                garden: 3.,
+            });
+            let ids: Vec<_> = (0..case["count"].as_u64().unwrap())
+                .map(|_| {
+                    world
+                        .spawn((
+                            SetSizeBasedOnAppModePath,
+                            Transform {
+                                translation: glam::Vec3::new(1., 2., 3.),
+                                scale: glam::Vec3::splat(2.),
+                                ..Transform::identity()
+                            },
+                        ))
+                        .id()
+                })
+                .collect();
+            let mut schedule = Schedule::default();
+            schedule.add_systems(path_brush_preview_size::path_brush_preview_size);
+            schedule.run(&mut world);
+            for (id, expected) in ids
+                .into_iter()
+                .zip(case["native"]["transforms"].as_array().unwrap())
+            {
+                let t = world.get::<Transform>(id).unwrap();
+                let bits: Vec<_> = t
+                    .rotation
+                    .to_array()
+                    .into_iter()
+                    .chain(t.translation.to_array())
+                    .chain(t.scale.to_array())
+                    .map(f32::to_bits)
+                    .collect();
+                let expected: Vec<_> = expected
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|x| x.as_u64().unwrap() as u32)
+                    .collect();
+                assert_eq!(bits, expected, "case={case}");
+            }
+        }
     }
 }

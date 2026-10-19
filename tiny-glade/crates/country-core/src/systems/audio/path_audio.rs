@@ -66,8 +66,9 @@ pub struct PathAudioState<E: EventInstance> {
 impl<E: EventInstance> PathAudioState<E> {
     pub fn new<S: Studio<Event = E>>(core: &AudioCore<S>) -> Self {
         PathAudioState {
-            loops: PATH_LOOP_EVENTS.map(|name| {
-                core.instantiate_loop(&crate::resources::audio_resources::AudioLoopDesc::new(name))
+            loops: std::array::from_fn(|index| {
+                // Native1409d0987/a1f/ab7/b64/c05 set each returned ring+36.
+                core.instantiate_loop(&crate::resources::audio_resources::AudioLoopDesc::new(PATH_LOOP_EVENTS[index])).noloop()
             }),
             raster_gate: 0.0,
         }

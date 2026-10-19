@@ -250,62 +250,94 @@ impl<E: EventInstance> LoopInstance for AudioInstance<E> {
     }
 }
 
-/// `AudioCore::instantiate_loop` descriptor (O: `{name, count=3, max=50}`,
-/// 0x140a59220; the ring flags/threshold are 待取证 — library callers supply
-/// their own threshold/flag policy via [`AudioLoop`]'s constructor).
+/// Original borrowed descriptor is {name, extra_instance_count, stop_delay_ms}.
+/// Native140a59243 increments count before collecting owned instances.
 #[derive(Clone, Debug)]
 pub struct AudioLoopDesc {
-    /// FMOD event path (e.g. `event:/SFX/Wall Draw`).
     pub name: String,
-    /// Number of event instances in the loop (`count`, O: 3).
+    /// Additional ring instances; native total is count.wrapping_add(1).
     pub count: usize,
-    /// Soft cap for recycling (`max`, O: 50).
-    pub max: usize,
-    /// Ring stop threshold in ms (native default 待取证; 0 = toggle immediately).
     pub threshold_ms: u32,
-    /// Whether the loop sets the `loop` parameter on start/stop (O: used by
-    /// AudioLoop; native init default 待取证).
-    pub uses_loop_parameter: bool,
-    /// Whether the loop explicitly `stop`s the FMOD instance (O; default 待取证).
-    pub stops_explicitly: bool,
 }
-
 impl AudioLoopDesc {
-    /// Native init default shape (count=3, max=50).
     pub fn new(name: impl Into<String>) -> Self {
-        AudioLoopDesc {
-            name: name.into(),
-            count: 3,
-            max: 50,
-            threshold_ms: 0,
-            uses_loop_parameter: false,
-            stops_explicitly: false,
-        }
+        Self { name: name.into(), count: 3, threshold_ms: 50 }
     }
 }
 
-/// `AudioSamplesLoadedPromise::recv` (0x140a57100): crossbeam three-channel
-/// `recv_timeout(1s)`; timeout discards the payload and returns normally,
-/// a disconnected channel unwraps (panics) like the original.
-#[derive(Debug)]
+/// One-shot completion from the delayed FMOD bank loader.
+///
+/// `AudioCore::new` @140a557d9 constructs `std::sync::mpsc::sync_channel(1)`.
+/// `recv` @140a57100 takes the receiver before blocking and unwraps disconnect.
+/// The native channel deadline's nanosecond word 1_000_000_000 is `None`, not
+/// a one-second timeout (the array receiver @141679f7d skips its clock check).
+#[derive(Debug, Resource)]
 pub struct AudioSamplesLoadedPromise<T> {
-    receiver: crossbeam_channel::Receiver<T>,
+    receiver: std::sync::Mutex<Option<std::sync::mpsc::Receiver<T>>>,
 }
 
 impl<T> AudioSamplesLoadedPromise<T> {
-    pub fn new(receiver: crossbeam_channel::Receiver<T>) -> Self {
-        Self { receiver }
+    pub fn new(receiver: std::sync::mpsc::Receiver<T>) -> Self {
+        Self { receiver: std::sync::Mutex::new(Some(receiver)) }
     }
 
-    /// O: `recv_timeout(1_000_000_000 ns)`; timeout → `None` (payload dropped).
+    /// The original completion can arrive before gameplay finishes loading.
+    pub fn channel() -> (std::sync::mpsc::SyncSender<T>, Self) {
+        let (sender, receiver) = std::sync::mpsc::sync_channel(1);
+        (sender, Self::new(receiver))
+    }
+
+    /// Consume once. Later calls have no receiver and return immediately.
     pub fn recv(&self) -> Option<T> {
-        match self.receiver.recv_timeout(std::time::Duration::from_secs(1)) {
-            Ok(payload) => Some(payload),
-            Err(crossbeam_channel::RecvTimeoutError::Timeout) => None,
-            Err(crossbeam_channel::RecvTimeoutError::Disconnected) => {
-                panic!("called Result::unwrap() on an Err value")
-            }
-        }
+        let receiver = self.receiver.lock().unwrap().take()?;
+        Some(receiver.recv().unwrap())
+    }
+}
+
+#[cfg(test)]
+mod audio_samples_lifecycle {
+    use super::AudioSamplesLoadedPromise;
+    use std::{sync::mpsc, thread, time::Duration};
+
+    #[test]
+    fn early_completion_survives_a_late_receiver() {
+        let (sender, promise) = AudioSamplesLoadedPromise::channel();
+        // Join proves the sender can finish without a simultaneous receiver.
+        thread::spawn(move || sender.send(37).unwrap()).join().unwrap();
+        thread::sleep(Duration::from_millis(1100));
+        assert_eq!(promise.recv(), Some(37));
+        assert_eq!(promise.recv(), None);
+    }
+
+    #[test]
+    fn receiving_waits_for_completion_beyond_the_old_false_deadline() {
+        let (sender, promise) = AudioSamplesLoadedPromise::channel();
+        let (started, waiting) = mpsc::channel();
+        let receiver = thread::spawn(move || {
+            started.send(()).unwrap();
+            promise.recv()
+        });
+        waiting.recv().unwrap();
+        thread::sleep(Duration::from_millis(1100));
+        assert!(!receiver.is_finished(), "the original has no one-second timeout");
+        sender.send(71).unwrap();
+        assert_eq!(receiver.join().unwrap(), Some(71));
+    }
+
+    #[test]
+    fn cancelled_gameplay_releases_the_completion_receiver() {
+        let (sender, promise) = AudioSamplesLoadedPromise::<()>::channel();
+        drop(promise);
+        assert!(sender.send(()).is_err());
+    }
+
+    #[test]
+    fn failed_loader_is_not_silently_accepted_as_loaded_samples() {
+        let (sender, promise) = AudioSamplesLoadedPromise::<()>::channel();
+        drop(sender);
+        assert!(std::panic::catch_unwind(|| promise.recv()).is_err());
+        // Original takes the receiver before unwrapping the receive result.
+        assert_eq!(promise.recv(), None);
     }
 }
 
@@ -336,7 +368,7 @@ impl Bank {
     pub fn load_sample_data<S: Studio>(&mut self, studio: &mut S) {
         assert!(self.loaded, "Bank::load_sample_data called before the bank is loaded");
         log::trace!(target: "country_core::resources::audio_resources", "Loading sample data of FMOD bank: {}", self.path);
-        studio.load_sample_data().unwrap();
+        studio.load_bank_sample_data(&self.path).unwrap();
     }
 }
 
@@ -349,6 +381,12 @@ pub trait Studio {
     type Vca: VcaHandle<Error = Self::Error>;
     fn load_bank_file(&mut self, path: &str) -> Result<(), Self::Error>;
     fn load_sample_data(&mut self) -> Result<(), Self::Error>;
+    /// Sample data belongs to the selected bank, rather than whichever bank
+    /// happened to be loaded most recently. Legacy injected bindings can keep
+    /// their single-bank operation; the production FMOD owner overrides this.
+    fn load_bank_sample_data(&mut self, _path: &str) -> Result<(), Self::Error> {
+        self.load_sample_data()
+    }
     /// `get_vca` (0x140a54810): resolve the VCA by name; the caller logs and
     /// continues on failure (native), then unwraps `Vca::set_volume`.
     fn get_vca(&self, name: &str) -> Result<Self::Vca, Self::Error>;
@@ -386,8 +424,8 @@ pub struct ListenerAttributes {
 
 /// AudioCore — the FMOD Studio core. Native: core handle@+0 (empty → Disabled
 /// variant), banks HashMap<String, Bank>, and the inner volume/parameter state.
-/// `AudioCore::new` (0x140a54a40) creates the Studio, initializes it and scans
-/// `assets/audio/Desktop` `.bank` files, loading each bank and its sample data.
+/// `AudioCore::new` (0x140a54a40) scans `.bank` files and loads the five boot
+/// banks in order; the returned original background closure loads the rest.
 #[derive(Debug)]
 pub struct AudioCore<S> {
     pub studio: Option<S>,
@@ -401,8 +439,10 @@ impl<S: Studio> AudioCore<S> {
     /// original (scanned for `.bank` files).
     pub fn new(studio: S, desktop_dir: &std::path::Path) -> Self {
         let mut banks = HashMap::new();
-        if let Ok(entries) = std::fs::read_dir(desktop_dir) {
-            for entry in entries.flatten() {
+        {
+            let entries = std::fs::read_dir(desktop_dir).unwrap();
+            for entry in entries {
+                let entry = entry.unwrap();
                 let path = entry.path();
                 if path.extension().is_some_and(|e| e == std::ffi::OsStr::new("bank")) {
                     let path_str = path.to_string_lossy().into_owned();
@@ -410,7 +450,7 @@ impl<S: Studio> AudioCore<S> {
                         loaded: false,
                         path: path_str.clone(),
                     };
-                    banks.insert(path_str, bank);
+                    banks.insert(entry.file_name().to_string_lossy().into_owned(), bank);
                 }
             }
         }
@@ -418,12 +458,15 @@ impl<S: Studio> AudioCore<S> {
             studio: Some(studio),
             banks,
         };
-        // Load each bank immediately (O: scan → each load + load_sample_data).
-        for bank in core.banks.values_mut() {
-            if let Some(s) = &mut core.studio {
-                bank.load(s);
-                bank.load_sample_data(s);
-            }
+        // Native arrays @142ad27b8: all five metadata loads precede all five
+        // sample loads. Loading every theme here was an incorrect old shortcut.
+        for name in BOOT_BANKS {
+            let bank = core.banks.get_mut(name).expect("missing boot FMOD bank");
+            bank.load(core.studio.as_mut().unwrap());
+        }
+        for name in BOOT_BANKS {
+            let bank = core.banks.get_mut(name).expect("missing boot FMOD bank");
+            bank.load_sample_data(core.studio.as_mut().unwrap());
         }
         core
     }
@@ -492,25 +535,37 @@ impl<S: Studio> AudioCore<S> {
         }
     }
 
-    /// `AudioCore::instantiate_loop` (0x140a59220): build `desc.count` instances
-    /// for the ring loop player (tree/water/roof/... frame-end start_if_not_playing/stop).
-    pub fn instantiate_loop(&self, desc: &AudioLoopDesc) -> AudioLoop<AudioInstance<S::Event>> {
-        let entries = (0..desc.count)
-            .map(|_| self.instantiate_audio(&desc.name))
-            .collect();
-        AudioLoop::new(entries, desc.threshold_ms, desc.uses_loop_parameter, desc.stops_explicitly)
+    /// Original140a59220 collects fallible creation, then probes the first real
+    /// instance's "loop" parameter. Prefix instances release on failure.
+    pub fn try_instantiate_loop(&self, desc: &AudioLoopDesc) -> anyhow::Result<AudioLoop<AudioInstance<S::Event>>> {
+        let entries: Vec<_> = (0..desc.count.wrapping_add(1))
+            .map(|_| {
+                let instance = self.instantiate_audio(&desc.name);
+                if let AudioInstance::Err(error) = &instance {
+                    return Err(anyhow::anyhow!("{error}"));
+                }
+                Ok(instance)
+            }).collect::<anyhow::Result<_>>()?;
+        let first = entries.first().expect("original AudioLoop first instance bounds check");
+        let uses_loop_parameter = match first.has_parameter("loop") {
+            Ok(found) => found,
+            Err(error) => {
+                log::error!("Couldn't query audio loop parameter for {}: {error:?}", desc.name);
+                false
+            }
+        };
+        Ok(AudioLoop::new(entries, desc.threshold_ms, uses_loop_parameter, false))
     }
 
-    /// `AudioCore::instantiate_loop` (0x140a59220) as an [`AudioLoopPlayer`]
-    /// (request_play + frame-end should-play model; wall/building/stairs init).
-    pub fn instantiate_loop_player(
-        &self,
-        desc: &AudioLoopDesc,
-    ) -> AudioLoopPlayer<AudioInstance<S::Event>> {
-        let instances = (0..desc.count)
-            .map(|_| self.instantiate_audio(&desc.name))
-            .collect();
-        AudioLoopPlayer::new(instances)
+    /// Startup callers unwrap the original Result. This adapter keeps their
+    /// existing return type while retaining creation and prefix-drop failures.
+    pub fn instantiate_loop(&self, desc: &AudioLoopDesc) -> AudioLoop<AudioInstance<S::Event>> {
+        self.try_instantiate_loop(desc).expect("instantiate original audio loop")
+    }
+
+    /// A player owns the same fully initialized ring; no timing/flags are lost.
+    pub fn instantiate_loop_player(&self, desc: &AudioLoopDesc) -> AudioLoopPlayer<AudioInstance<S::Event>> {
+        AudioLoopPlayer::from_audio(self.instantiate_loop(desc))
     }
 
     /// `AudioCoreInner::set_parameter` (0x140a53db0): global FMOD parameter.
@@ -571,6 +626,11 @@ impl<S: Studio> AudioCore<S> {
         Vec::new()
     }
 }
+
+/// Original five-entry boot-bank table, in native order.
+pub const BOOT_BANKS: [&str; 5] = [
+    "Master.strings.bank", "Master.bank", "Master.assets.bank", "UI.bank", "UI.assets.bank",
+];
 
 /// `DelayedBankLoader` (native line 64, inlined): defers a bank load until the
 /// sample data is available. The PDB name `DelayedBankLoader::load` is 错位
@@ -920,9 +980,147 @@ mod tests {
     }
 
     #[test]
-    fn audio_loop_desc_native_default_shape_is_count_3_max_50() {
+    fn native_disabled_loop_constructor_corpus_retains_all_instances_and_delay() {
+        let core = AudioCore::<FakeStudio> { studio: None, banks: HashMap::new() };
+        // Actual original constructor+iterator outputs, native-loop-init-fixtures.json.
+        for (descriptor_count, actual_count) in [(0,1),(1,2),(3,4),(7,8)] {
+            let mut desc = AudioLoopDesc::new("event:/SFX/Player/Walking");
+            desc.count = descriptor_count;
+            let ring = core.try_instantiate_loop(&desc).unwrap();
+            assert_eq!(ring.entries.len(), actual_count);
+            assert_eq!(ring.threshold_ms, 50);
+            assert!(!ring.uses_loop_parameter);
+            assert!(!ring.stops_explicitly);
+        }
+    }
+    #[test]
+    fn original_parameter_probe_survives_player_construction() {
+        let core = AudioCore { studio: Some(FakeStudio), banks: HashMap::new() };
+        let player = core.instantiate_loop_player(&AudioLoopDesc::new("event:/x"));
+        assert_eq!(player.audio.entries.len(), 4);
+        assert_eq!(player.audio.threshold_ms, 50);
+        assert!(player.audio.uses_loop_parameter);
+        assert!(!player.audio.stops_explicitly);
+        assert!(!player.should_play);
+    }
+
+    #[test]
+    fn audio_loop_desc_native_default_shape_is_extra_count_3_delay_50() {
         let desc = AudioLoopDesc::new("event:/x");
         assert_eq!(desc.count, 3);
-        assert_eq!(desc.max, 50);
+        assert_eq!(desc.threshold_ms, 50);
+    }
+}
+
+#[cfg(test)]
+mod original_loop_initialization {
+    use super::*;
+    use std::sync::{Arc, Mutex};
+
+    #[derive(Default)]
+    struct Trace {
+        creates: Vec<String>,
+        probes: Vec<(usize, String)>,
+        releases: Vec<usize>,
+        fail_at: Option<usize>,
+        probe: Option<Result<bool, &'static str>>,
+    }
+    struct RecordedEvent { index: usize, trace: Arc<Mutex<Trace>> }
+    impl EventInstance for RecordedEvent {
+        type Error = &'static str;
+        fn start(&mut self) -> Result<(), Self::Error> { Ok(()) }
+        fn stop(&mut self, _: i32) -> Result<(), Self::Error> { Ok(()) }
+        fn get_playback_state(&self) -> Result<PlaybackState, Self::Error> { Ok(PlaybackState::Stopped) }
+        fn set_volume(&mut self, _: f32) -> Result<(), Self::Error> { Ok(()) }
+        fn set_parameter_by_name(&mut self, _: &str, _: f32) -> Result<(), Self::Error> { Ok(()) }
+        fn has_parameter(&self, name: &str) -> Result<bool, Self::Error> {
+            let mut trace = self.trace.lock().unwrap();
+            trace.probes.push((self.index, name.to_owned()));
+            trace.probe.unwrap_or(Ok(true))
+        }
+        fn set_3d_attributes(&mut self, _: [f32;3], _: [f32;3], _: [f32;3], _: [f32;3]) -> Result<(), Self::Error> { Ok(()) }
+        fn get_timeline_position(&self) -> Result<i32, Self::Error> { Ok(0) }
+        fn pause(&mut self, _: bool) -> Result<(), Self::Error> { Ok(()) }
+        fn install_beat_callback(&mut self) -> Result<(), Self::Error> { Ok(()) }
+        fn release(&mut self) -> Result<(), Self::Error> {
+            self.trace.lock().unwrap().releases.push(self.index); Ok(())
+        }
+    }
+    struct RecordedStudio(Arc<Mutex<Trace>>);
+    struct RecordedVca;
+    impl VcaHandle for RecordedVca {
+        type Error = &'static str;
+        fn set_volume(&self, _: f32) -> Result<(), Self::Error> { Ok(()) }
+    }
+    impl Studio for RecordedStudio {
+        type Error = &'static str;
+        type Event = RecordedEvent;
+        type Vca = RecordedVca;
+        fn load_bank_file(&mut self, _: &str) -> Result<(), Self::Error> { Ok(()) }
+        fn load_sample_data(&mut self) -> Result<(), Self::Error> { Ok(()) }
+        fn get_vca(&self, _: &str) -> Result<Self::Vca, Self::Error> { Ok(RecordedVca) }
+        fn set_listener_attributes(&mut self, _: ListenerAttributes) -> Result<(), Self::Error> { Ok(()) }
+        fn update(&mut self) -> Result<(), Self::Error> { Ok(()) }
+        fn set_parameter_by_name(&self, _: &str, _: f32) -> Result<(), Self::Error> { Ok(()) }
+        fn create_event_instance(&self, name: &str) -> Result<Option<Self::Event>, Self::Error> {
+            let mut trace = self.0.lock().unwrap();
+            let index = trace.creates.len();
+            trace.creates.push(name.to_owned());
+            if trace.fail_at == Some(index) { return Err("creation failure"); }
+            Ok(Some(RecordedEvent { index, trace: self.0.clone() }))
+        }
+    }
+    fn setup(trace: Trace) -> (AudioCore<RecordedStudio>, Arc<Mutex<Trace>>) {
+        let trace = Arc::new(Mutex::new(trace));
+        (AudioCore { studio: Some(RecordedStudio(trace.clone())), banks: HashMap::new() }, trace)
+    }
+
+    #[test]
+    fn constructor_owns_four_events_probes_only_the_first_and_releases_every_event() {
+        for probe in [Ok(true), Ok(false), Err("parameter lookup failure")] {
+            let (core, trace) = setup(Trace { probe: Some(probe), ..Default::default() });
+            let player = core.instantiate_loop_player(&AudioLoopDesc::new("event:/test"));
+            assert_eq!(player.audio.entries.len(), 4);
+            assert_eq!(player.audio.threshold_ms, 50);
+            assert_eq!(player.audio.uses_loop_parameter, probe == Ok(true));
+            assert!(!player.audio.stops_explicitly);
+            assert_eq!(trace.lock().unwrap().probes, [(0, "loop".to_owned())]);
+            drop(player);
+            assert_eq!(trace.lock().unwrap().releases, [0,1,2,3]);
+        }
+    }
+    #[test]
+    fn every_creation_failure_releases_the_successful_prefix_without_probing() {
+        for fail_at in 0..4 {
+            let (core, trace) = setup(Trace { fail_at: Some(fail_at), ..Default::default() });
+            assert!(core.try_instantiate_loop(&AudioLoopDesc::new("event:/test")).is_err());
+            let trace = trace.lock().unwrap();
+            assert_eq!(trace.creates.len(), fail_at + 1);
+            assert_eq!(trace.releases, (0..fail_at).collect::<Vec<_>>());
+            assert!(trace.probes.is_empty());
+        }
+    }
+    #[test]
+    fn real_startup_owners_preserve_original_event_names_ring_size_and_noloop() {
+        use crate::systems::audio::{path_audio, sheep_audio, terrain_stairs_audio, decorator_audio};
+        let (core, trace) = setup(Trace::default());
+        let paths = path_audio::PathAudioState::new(&core);
+        for ring in &paths.loops {
+            assert_eq!(ring.entries.len(), 4);
+            assert_eq!(ring.threshold_ms, 50);
+            assert!(ring.uses_loop_parameter && ring.stops_explicitly);
+        }
+        let sheep = sheep_audio::SheepAudioState::new(&core);
+        let stairs = terrain_stairs_audio::TerrainStairsAudioState::new(&core);
+        let decorators = decorator_audio::DecoratorAudioState::new(&core);
+        let trace = trace.lock().unwrap();
+        assert_eq!(trace.creates.len(), (5+1+1+16)*4);
+        assert_eq!(&trace.creates[20..24], ["event:/SFX/Sheep/Pet";4]);
+        assert_eq!(&trace.creates[24..28], ["event:/SFX/StairDraw_LoopTrem";4]);
+        assert_eq!(&trace.creates[88..92], ["event:/SFX/Cosmetics/MoveBuilding";4]);
+        drop(trace);
+        assert!(!sheep.loop4.stops_explicitly);
+        assert!(!stairs.ring.stops_explicitly);
+        assert!(!decorators.loops[15].stops_explicitly);
     }
 }

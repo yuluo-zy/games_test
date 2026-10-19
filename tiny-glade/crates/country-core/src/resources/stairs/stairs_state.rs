@@ -18,9 +18,7 @@ use std::{
 /// gate later. Keep one canonical static for its producer and consumers.
 pub static VERIFY_STAIR_CHECKSUMS: AtomicBool = AtomicBool::new(true);
 
-#[derive(
-    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
-)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct StairGraphEdge {
     a: u32,
     b: u32,
@@ -38,6 +36,18 @@ impl StairGraphEdge {
     }
     pub fn is_stub(self) -> bool {
         self.a == self.b
+    }
+}
+
+impl serde::Serialize for StairGraphEdge {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        serde::Serialize::serialize(&(self.a, self.b), s)
+    }
+}
+impl<'de> serde::Deserialize<'de> for StairGraphEdge {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let (a, b) = <(u32, u32) as serde::Deserialize>::deserialize(d)?;
+        Ok(Self::new(a, b))
     }
 }
 
@@ -117,11 +127,15 @@ impl StairsSnapshot {
 }
 
 /// The two checksums and sorted difference vectors from B 0x1409007b0.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct StairsHistoryDiff {
+    #[serde(rename = "hash_before")]
     pub before_checksum: u64,
+    #[serde(rename = "hash_after")]
     pub after_checksum: u64,
+    #[serde(rename = "before")]
     pub removed: Vec<(u32, u32)>,
+    #[serde(rename = "after")]
     pub added: Vec<(u32, u32)>,
 }
 impl StairsHistoryDiff {
@@ -273,6 +287,19 @@ impl StairsState {
         mark_missing(&self.graph, &self.backup, &mut self.dirty_edges);
         self.graph = self.backup.clone();
         self.backed_up = true;
+    }
+    /// B replay_pop_bucket @140b383cc..3842c. The two IndexMap clears at
+    /// state+b8 and state+100 are the node/edge maps of the *backup* GraphMap,
+    /// not external StructuralGraphConnection state (shared clear glue name).
+    /// Mark obsolete backup edges/stubs, clear it, reset backed_up@178, and
+    /// rebuild from the restored authority, exactly as restore_snapshot does.
+    pub fn restore_replay_diff(&mut self, diff: &StairsHistoryDiff, undo: bool) {
+        self.restore_backup();
+        self.apply_diff(diff, undo);
+        mark_missing(&self.backup, &self.graph, &mut self.dirty_edges);
+        self.backup.clear();
+        self.backed_up = false;
+        self.make_backup();
     }
     /// B 0x140900010 compares the old backup to current state and then clones
     /// the current graph, even if the two snapshots happen to compare equal.

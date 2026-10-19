@@ -181,7 +181,7 @@ fn readback(
 }
 fn pixels(
     bridge: &mut CoreRenderBridge,
-    built: rhapsody::rg::BuiltGraph,
+    built: tiny_glade::render_bridge::BuiltCoreGraph,
     readback: Arc<rhapsody::resource::Buffer>,
 ) -> Vec<u8> {
     bridge

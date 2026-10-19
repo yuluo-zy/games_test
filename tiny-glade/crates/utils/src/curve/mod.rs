@@ -202,6 +202,16 @@ fn clamp01(value: f32) -> f32 {
     if lo <= 1.0 { lo } else { 1.0 }
 }
 impl<T: CurvePoint, S: CurveMetric<T>> Curve<T, S> {
+    /// Takes an authoritative serialized curve, including its cached parameters.
+    /// No recomputation or geometry policy is applied by this ownership constructor.
+    pub fn from_cached_parts(points: Vec<T>, points_u: Vec<f32>, length: f32) -> Self {
+        Self {
+            points,
+            points_u,
+            length,
+            semantic: PhantomData,
+        }
+    }
     /// Build normalized cumulative arc lengths, optionally rejecting repeated points.
     pub fn try_new_from_points(
         points: Vec<T>,

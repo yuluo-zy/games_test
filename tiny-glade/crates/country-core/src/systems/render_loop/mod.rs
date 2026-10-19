@@ -24,6 +24,7 @@ pub mod menu_background;
 pub mod painterly;
 pub mod render_frame;
 pub mod render_world;
+pub mod world_frame;
 pub mod resources;
 pub mod session_selection;
 pub mod vermeer;

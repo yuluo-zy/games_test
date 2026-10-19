@@ -23,7 +23,6 @@
 
 use crate::{
     resources::audio_resources::{AudioCore, AudioInstance, Studio},
-    systems::audio::audio_update::EditingSpeed,
     utils::audio_utils::AudioLoop,
 };
 use bevy_ecs::prelude::*;
@@ -159,10 +158,10 @@ pub fn roof_audio_system<S: Studio + Send + Sync + 'static>(
     mut state: ResMut<RoofAudioState<S::Event>>,
     mut events: EventReader<RoofEditSound>,
     core: Res<AudioCore<S>>,
-    speed: Option<Res<EditingSpeed>>,
+    speed: Res<bevy_time::Time>,
 ) {
     // O: `+0x58` editing speed → acc[0]/acc[1] (state+0xa8/+0xac).
-    let speed = speed.map_or(0.0, |s| s.0);
+    let speed = speed.delta_secs();
     state.acc[0] += speed;
     state.acc[1] += speed;
     // O: kind 2 stores value2 (+0x14) as the RoofShape loop's editing-speed

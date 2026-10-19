@@ -9,7 +9,7 @@ use country_core::{
             control::{SheepControlSnapshot, SheepSnapshot, capture_sheep_snapshot},
         },
     },
-    systems::debug::sheep_controls::{SheepControl, apply_sheep_snapshot, sheep_controls},
+    systems::debug::sheep_controls::{SheepControl, sheep_controls},
     utils::components::transform::Transform,
 };
 use glam::{Quat, Vec3};
@@ -117,6 +117,12 @@ fn capture_matches_eighty_original_instruction_records() {
 #[test]
 fn ecs_freeze_preserves_other_fields_and_extra_entities() {
     let mut world = World::new();
+    world.insert_resource(country_core::systems::mode_manager::AppMode::default());
+    world.insert_resource(country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast::default());
+    world.insert_resource(country_core::systems::ui::resources::ui_state::UiState::at_startup());
+    world.insert_resource(country_core::resources::gui::DebugGui::default());
+    world.insert_resource(bevy_input::ButtonInput::<bevy_input::keyboard::KeyCode>::default());
+
     world
         .init_resource::<Events<country_core::systems::history::finish_replay::CmdUnfreezeSheep>>();
     let original = Transform {
@@ -149,13 +155,18 @@ fn ecs_freeze_preserves_other_fields_and_extra_entities() {
             force_reach_goal: true,
         },
     };
-    world.insert_resource(SheepControl {
-        snapshot: Some(SheepControlSnapshot {
-            sheep: vec![saved.clone()],
-        }),
-    });
+    let wireframe = world.spawn_empty().id();
+    let solid = world.spawn_empty().id();
+    let control_owner = world
+        .spawn(SheepControl {
+            snapshot: Some(SheepControlSnapshot {
+                sheep: vec![saved.clone()],
+            }),
+            ..SheepControl::new(wireframe, solid)
+        })
+        .id();
     let mut schedule = Schedule::default();
-    schedule.add_systems((apply_sheep_snapshot, sheep_controls).chain());
+    schedule.add_systems(sheep_controls);
     schedule.run(&mut world);
     let transform = world.get::<Transform>(entity).unwrap();
     assert_eq!(transform.translation, saved.position);
@@ -167,7 +178,8 @@ fn ecs_freeze_preserves_other_fields_and_extra_entities() {
     assert_eq!(world.get::<CritterGoal>(extra).unwrap(), &old_goal);
     assert_eq!(
         world
-            .resource::<SheepControl>()
+            .get::<SheepControl>(control_owner)
+            .unwrap()
             .snapshot
             .as_ref()
             .unwrap()
@@ -182,10 +194,21 @@ fn save_section_captures_live_sheep_independently_of_debug_freeze() {
         SheepSaveSectionValue, sheep_save_section_system,
     };
     let mut world = World::new();
+    world.insert_resource(country_core::systems::mode_manager::AppMode::default());
+    world.insert_resource(country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast::default());
+    world.insert_resource(country_core::systems::ui::resources::ui_state::UiState::at_startup());
+    world.insert_resource(country_core::resources::gui::DebugGui::default());
+    world.insert_resource(bevy_input::ButtonInput::<bevy_input::keyboard::KeyCode>::default());
+
     world.init_resource::<SheepSaveSectionValue>();
-    world.insert_resource(SheepControl {
-        snapshot: Some(SheepControlSnapshot { sheep: vec![] }),
-    });
+    let wireframe = world.spawn_empty().id();
+    let solid = world.spawn_empty().id();
+    let control_owner = world
+        .spawn(SheepControl {
+            snapshot: Some(SheepControlSnapshot { sheep: vec![] }),
+            ..SheepControl::new(wireframe, solid)
+        })
+        .id();
     let mut schedule = Schedule::default();
     schedule.add_systems(sheep_save_section_system);
     schedule.run(&mut world);
@@ -220,7 +243,8 @@ fn save_section_captures_live_sheep_independently_of_debug_freeze() {
     assert_eq!(saved, capture_sheep_snapshot([(&transform, &sheep, &goal)]));
     assert!(
         world
-            .resource::<SheepControl>()
+            .get::<SheepControl>(control_owner)
+            .unwrap()
             .snapshot
             .as_ref()
             .unwrap()

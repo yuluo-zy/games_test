@@ -109,15 +109,46 @@ pub(crate) fn initialize_common_assets(
         if !entry.file_type().is_file() || entry.path().extension().and_then(|x| x.to_str()) != Some("texture") { continue; }
         let name = entry.path().strip_prefix(&root)?.with_extension("");
         if !country_core::startup::load_textures::should_load(&name, demo) { continue; }
-        let name = name.to_str().context("compiled texture asset name is not UTF-8")?;
+        // The packaged NameHash keys use '/' on every host. A Windows Path's
+        // native '\\' must not change the identity of nested logo/menu assets.
+        let name = name.to_str().context("compiled texture asset name is not UTF-8")?
+            .replace('\\', "/");
         let file = AlignedFile::read(entry.path())?;
         let image = parse_compiled_image(file.bytes(), entry.path());
-        let texture = hosts.textures.create_texture(name, &image.desc, image.data)?;
-        textures.add(Some(name.to_owned()), texture);
+        let texture = hosts.textures.create_texture(&name, &image.desc, image.data)?;
+        textures.add(Some(name), texture);
     }
     let mut text = tg_text::TextRenderer::new();
     load_text_fonts(&mut text, installed)?;
     world.insert_resource(text);
+    Ok(())
+}
+
+/// Gameplay LUT producer; the independent loading App only loads common assets.
+/// GradingLuts::load @140b01df0 retains every successfully parsed 3D LUT. Publish
+/// those exact owners under final_post/gallery's canonical asset names.
+pub(crate) fn initialize_grading_assets(
+    world: &mut World, hosts: &HostTables, installed: &Path,
+) -> Result<()> {
+    use country_core::resources::grading_lut::{GradingLuts, lut_name_to_asset_name};
+    anyhow::ensure!(!world.contains_resource::<GradingLuts>(),
+        "gameplay GradingLuts startup producer already ran");
+    let luts = GradingLuts::load(hosts.textures.as_ref(), &installed.join("assets/luts"));
+    let mut textures = world.get_resource_mut::<AssetTextureLibrary>()
+        .context("gameplay AssetTextureLibrary producer has not run")?;
+    for (meta, record) in luts.metas.iter().zip(&luts.textures) {
+        textures.add(Some(lut_name_to_asset_name(&meta.name)), record.texture.clone());
+    }
+    // final_post's fixed file key is xxh3("tony_mc_mapface"), not a named
+    // grading_lut alias. Decode the packaged descriptor and texels unchanged.
+    for name in ["tony_mc_mapface", "menu/active_lut"] {
+        let path = installed.join("compiled-assets/textures").join(name).with_extension("texture");
+        let file = AlignedFile::read(&path)?;
+        let image = parse_compiled_image(file.bytes(), &path);
+        let texture = hosts.textures.create_texture(name, &image.desc, image.data)?;
+        textures.add(Some(name.to_owned()), texture);
+    }
+    world.insert_resource(luts);
     Ok(())
 }
 

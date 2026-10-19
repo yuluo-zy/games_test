@@ -14,15 +14,15 @@
 //!
 //! W-B1 接线：`materialize_wall_segments` + `construct_lintel_supports`
 //! （systems/wall/construction/structures.rs 冻结链）→ 64B 木板输出落盘。
+use bevy_ecs::prelude::*;
 use country_core::asset_libraries::ssbo_library::AssetSsboLibrary;
-use country_core::systems::wall::construction::segmentation::WallPathSegmentationMask;
-use country_core::systems::wall::construction::structures::WallSegmentSource;
-use country_core::systems::wall::construction::structures::construct_lintel_supports;
 use country_core::resources::{
     roofs::commands::CreateRoofCmd,
     walls::public_walls::{OnWallChanged, PublicWalls},
 };
-use bevy_ecs::prelude::*;
+use country_core::systems::wall::construction::segmentation::WallPathSegmentationMask;
+use country_core::systems::wall::construction::structures::WallSegmentSource;
+use country_core::systems::wall::construction::structures::construct_lintel_supports;
 
 pub mod place_support_beams;
 
@@ -37,47 +37,64 @@ pub struct WallPathSegmentationMasksMinusStairs {
 pub fn construct_lintels(
     mut changed: EventReader<OnWallChanged>,
     mut create_roof: EventReader<CreateRoofCmd>,
-    walls: Res<PublicWalls>,
+    mut walls: ResMut<PublicWalls>,
     mut masks: ResMut<WallPathSegmentationMasksMinusStairs>,
-    ssbo: Res<AssetSsboLibrary>,
+    mut ssbo: ResMut<AssetSsboLibrary>,
     mut output: ResMut<crate::construct_arches::WallConstructorOutput>,
 ) {
-    let recalc: Vec<u64> = changed
+    let mut recalc: Vec<u64> = changed
         .read()
-        .map(|e| e.0 .0)
+        .map(|e| e.0.0)
         .chain(create_roof.read().map(|e| e.0.wall_id().0))
         .collect();
+    recalc.sort_unstable();
+    recalc.dedup();
     for wall_id in recalc {
         let id = country_core::resources::walls::WallId(wall_id);
-        let Some(wall) = walls.get(id) else {
+        let Some(wall) = walls.get_mut(id) else {
             continue;
         };
         let projection = wall.building_projection();
-        let Some(segments) = masks.masks.get(&wall_id) else {
+        if projection.observed_296() == 0 {
+            // Native76e198..19d bypasses the complete ordinary-wall mask loop.
+            wall.material_stats.set_lintels_segments_count(0);
+            wall.material_stats.add_lintels_length(0.0);
             continue;
-        };
-        let curve = wall.simplified_curve_2d();
-        let prepared_positions: Vec<[f32; 3]> = curve
-            .points
-            .iter()
-            .map(|p| [p[0], p[1], 0.0])
-            .collect();
-        let prepared_u: Vec<f32> = curve.points.iter().map(|p| p[0]).collect();
-        let segment_values: Vec<f32> = curve.points.iter().map(|p| p[1]).collect();
-        let mut arch = vec![0.0f32; prepared_positions.len().max(2)];
-        let mut third = vec![0.0f32; prepared_positions.len().max(2)];
+        }
+        let segments = masks
+            .masks
+            .get(&wall_id)
+            .expect("lintels require processed masks for the source wall");
+        let path = wall
+            .prepared_path
+            .as_ref()
+            .expect("lintels require prepared wall path");
+        let arch = wall
+            .arch_segment_heights()
+            .expect("lintels require actual arch height cache");
+        let mut third = wall.segment_heights.clone();
+        let mut instances = Vec::new();
+        let mut stats_count = 0u64;
+        let mut stats_length = 0.0f32;
         for mask in segments {
             let source = WallSegmentSource {
                 mask,
-                segment_values: &segment_values,
-                arch_heights: &arch,
-                prepared_positions: &prepared_positions,
-                prepared_u: &prepared_u,
+                segment_values: &path.segment_values,
+                arch_heights: arch,
+                prepared_positions: &path.positions,
+                prepared_u: &path.points_u,
                 regular: projection.shape().tag() < 2,
-                // 闭合判定：掩码 LoopRange 的闭合性质（for_closed/for_open 族；
-                // 当前以开环登记，精确判定待 range 接线）。
-                closed: false,
+                closed: projection.shape().tag() != 2,
             };
+            // Observe the same pre-profile materializer; complete retained
+            // LintelSegments/pillar-proposal ownership is not implied here.
+            let materialized =
+                country_core::systems::wall::construction::structures::materialize_wall_segments(
+                    source,
+                )
+                .expect("invalid authoritative lintel materialization input");
+            stats_count += materialized.len() as u64;
+            stats_length += mask.length;
             if let Ok(planks) = construct_lintel_supports(
                 source,
                 projection.float_0x284(),
@@ -85,11 +102,25 @@ pub fn construct_lintels(
                 wall_id,
                 &mut third,
             ) {
-                for plank in &planks {
-                    output.plank_instances.push(plank.observed_bytes());
-                }
+                instances.extend(planks.iter().map(crate::gpu_output::wooden_plank));
+            } else {
+                panic!("invalid lintel authoritative input for wall {wall_id}");
             }
         }
-        let _ = ssbo;
+        wall.segment_heights = third;
+        let storage = ssbo
+            .get_mut::<country_core::resources::roofs::roof_buffers::WoodenPlankSsbo>()
+            .expect("canonical WoodenPlankSsbo must exist before lintel construction");
+        output.gpu.append_planks(
+            storage,
+            crate::gpu_output::ConstructorKey {
+                wall: wall_id,
+                part: crate::gpu_output::ConstructorPart::Lintels,
+            },
+            &instances,
+        );
+        wall.material_stats
+            .set_lintels_segments_count(stats_count as u32);
+        wall.material_stats.add_lintels_length(stats_length);
     }
 }

@@ -1,39 +1,32 @@
 //! 半木构纹理生成（utils/half_timber.rs）。
 //!
-//! `half_timbering`（0x141218e30，27KB / 5494 条指令）。re-analysis
-//! hardpoints-interaction §3.1 / hardpoints-ecstate §4.1 已攻克：radare2
-//! `aa` 后 pdg 可反编译（13KB，`r2_half_timbering_full_141218e30.c`）。
-//! Ghidra/ReVa "Unable to find unique hash for varnode" 修签名后仍复现，
-//! 固定走 radare2 `aa`+pdg 路径。
+//! 原 B 源：`crates/systems/wall-constructor/src/utils/half_timber.rs`。
 //!
-//! pdg 已解码的前导（逐语句可判等）：
-//! 1. puffin 门控（`**0x14362c098` 非 0 → 早退）；
-//! 2. `fcn.140b2a600(arg1)`（try_get_wall_shape）NULL → 返回；
-//! 3. `fcn.1408e33e0(&fStack_4b0, wall)`（Roof::gable_sides）+ `cStack_f4 =
-//!    fcn.1408e3380(wall)`（Roof::is_flat）；
-//! 4. SSBO 注册表 `fcn.141209c40(var_38h, 0x142c1a7d0)` 查名
-//!    `"country_core::resources::roofs::roof_buffers::WoodenPlankSsbo..."`
-//!    （0x3d=61 字节 memcmp 校验；不匹配走 `fcn.1428cab41` 错误/panic）；
-//!    命中后虚调 `(**[1]+0x18)(*reg)` 取稀疏缓冲；
-//! 5. 墙实体 `+0x180` 字段 → `+0x18` LOCK cmpxchg 握手（后台上传占用位）；
-//! 6. 主流程：取 10 qword（`reg[4..0xb]`）→ `fcn.14120c9d0(&0x60B 结构)` →
-//!    按 is_flat 分 `fcn.140b2a620` / `fcn.140f86cd0+141206480+140b2a680`
-//!    得 skirt 高度 → `fcn.140b34f80`（split_height_into_skirts，
-//!    country-core `resources/walls/mod.rs` 已落库）→ `Vec<f32>` 追加 +
-//!    扩容（0x15 阈值分流 `14122cd30`/`14122f250`）→ 遍历扫描
-//!    `while (*(wall+0x280) + *0x142925904[1.0] <= fVar110)`。
+//! `half_timbering`（0x141218e30，27KB / 5494 条指令）的 pdg 前导已解码，
+//! 但逐梁（plank）坐标生成/closure 装配（~0x6860B）仍无证据，保持 U。
 //!
-//! **未实现**：pdg 分页截断，逐梁（plank）坐标生成/closure 装配（函数中段
-//! ~0x6860B）未取证；`+0x180` 结构字段语义、SSBO 写缓冲目标记录布局未闭合。
-//! 不得以观测近似通过。
+//! 窗工具三件（0x1412218a0 / 0x141221da0 / 0x141221f70）的几何/常量/分支
+//! 已按反编译逐语句恢复；装饰器存储遍历（SIMD 掩码、subtype 过滤）属于
+//! `country-core::resources::walls::decorator_storage` 的跨 crate API，
+//! 这里以 `WindowAabbSource` 显式传入已取出的窗记录（调用方负责过滤），
+//! 不在本 crate 伪造存储布局。
+//!
+//! 常量（rne-read 直读 .rdata）：
+//! - 0x142c1c880 = 0.038、0x142c1c884 = −0.038、0x142c1c888 = −0.14、
+//!   0x142a80d40 = 0.14；
+//! - 0x1429cd068 = 0.2、0x1429a0764 = 0.46、0x1429df16c = −0.2、
+//!   0x142925970 = 0.4、0x142c1c88c = 0.093。
+use glam::Vec2;
 use glam::Vec3;
+use utils::geometry::aabb::Aabb2;
 
 /// 墙形状点列（try_get_wall_shape 输出）。
 pub type WallShapePoints = [[f32; 3]];
 
-/// B `half_timbering`（0x141218e30）。**未实现**：前导已由 radare2 pdg 解码
-/// （见模块文档），逐梁 plank 坐标生成/closure 装配未取证；本函数为占位壳，
-/// 不得作为真实逻辑。
+/// B `half_timbering`（0x141218e30）。**未实现（U）**：前导已由 radare2 pdg
+/// 解码（puffin 门控、try_get_wall_shape、gable_sides/is_flat、WoodenPlankSsbo
+/// 0x3d 名校验、+0x180 LOCK 握手、split_height_into_skirts），逐梁坐标/closure
+/// 中段无证据（asm 5281 行已落盘），不得以近似体冒充。
 pub fn half_timbering(
     _wall_shape: Option<&WallShapePoints>,
     _u: &[f32],
@@ -42,39 +35,306 @@ pub fn half_timbering(
     _is_flat: bool,
     _out: &mut Vec<[u8; 64]>,
 ) {
-    todo!("未实现: half_timbering 0x141218e30（pdg 前导已解码，逐梁 plank 坐标/closure 装配未取证）")
+    todo!(
+        "未实现: half_timbering 0x141218e30（pdg 前导已解码，逐梁 plank 坐标/closure 装配未取证）"
+    )
 }
 
-/// B `roof_outline`（0x141217be0）：is_gable 时的屋顶轮廓半木构
-/// （Roof::gable_sides 驱动；坐标细节未恢复登记）。
+/// B `roof_outline`（0x141217be0）：is_gable 时的屋顶轮廓半木构。
+///
+/// **未实现（U）**：反编译已解出 4 侧循环（uVar19 0..3）、
+/// `profile_curve_normalized`/`profile_curve_ws`、gable sides、法线/切线、
+/// 0.05/0.13/0.25 等常量与 64B 记录装配，但 SSBO 写缓冲目标记录布局与
+/// 若干 .rdata 常量语义未闭合；不得以空壳通过。
 pub fn roof_outline(_roof: &[u8; 88], _points: &[Vec3], _out: &mut Vec<[u8; 64]>) {}
 
-/// B `overlapping_windows`（0x1412218a0）。**未实现（近似体，不得作为真实逻辑）**：
-/// 真实逻辑为 DecoratorStorage SIMD 掩码遍历（每墙 0x50B 记录）、subtype 过滤
-/// （byte[10]<2 且 byte[0xe]−0x38<3）、get_window_aabb 后 ±0.038（dormer 'g' 且
-/// leaf[0xc]==1 再 ±0.14）、Aabb2::intersects → ResourceAccessInfo（stride 0x14，
-/// 标记 0/1）收集。fresh 反编译见 evidence/toolchain session-ghidra-shared-* /
-/// /tmp/wc-dec/0x1412218a0.c。
-pub fn overlapping_windows(_window: &[f32; 4], _other: &[f32; 4]) -> bool {
-    todo!("未实现: overlapping_windows 0x1412218a0 (fresh decomp /tmp/wc-dec/0x1412218a0.c)")
+/// 窗装饰器记录的安全输入（调用方从 DecoratorStorage 取出）。
+///
+/// `raw` 的原件读取偏移：+0x0c（leaf 标志）、+0x0e（subtype 族）、
+/// +0x44（子类型/朝向字节）、+0x46（窗类型字节 '8'/'9'/':'）。
+#[derive(Clone, Copy, Debug)]
+pub struct WindowAabbSource<'a> {
+    /// 装饰器原始记录（至少 0x50 字节；这里保留 0x50）。
+    pub raw: [u8; 0x50],
+    /// `DecoratorInfo::dst_as_wall` 的挂点 (x0, y0)。
+    pub attachment: [f32; 2],
+    /// `DerivedDecoratorInfo::dims_wall_space` 的三浮点结果 (a, b, c)。
+    pub bbx: [f32; 3],
+    /// gothic profile 的墙面坐标点（raw[0x46]=='9' 时使用）。
+    pub profile: &'a [[f32; 2]],
 }
 
-/// B `get_window_aabb`（0x141221da0）。**未实现（近似体，不得作为真实逻辑）**：
-/// 真实逻辑含门类分支（dst_as_wall 且 raw+0x46=='9' → gothic_door_profile_curve
-/// 或 gothic_half_dormer_profile_curve，取 profile 末点算 [x−x0, y0+y, y0, ..+0.093]），
-/// 普通装饰 bbx_ls + Aabb2::from_center_dims。fresh 反编译见
-/// /tmp/wc-dec/0x141221da0.c。
-pub fn get_window_aabb(_window: &[f32; 4]) -> [f32; 4] {
-    todo!("未实现: get_window_aabb 0x141221da0 (fresh decomp /tmp/wc-dec/0x141221da0.c)")
+impl Default for WindowAabbSource<'_> {
+    fn default() -> Self {
+        Self {
+            raw: [0; 0x50],
+            attachment: [0.0; 2],
+            bbx: [0.0; 3],
+            profile: &[],
+        }
+    }
 }
 
-/// B `check_for_overlap_with_all_windows`（0x141221f70）。**未实现**：
-/// 真实逻辑为 get_window_aabb + Aabb2::contains 中心/侧向/扩展三测试。
-/// fresh 反编译见 /tmp/wc-dec/0x141221f70.c。
-pub fn check_for_overlap_with_all_windows(_window: &[f32; 4], _windows: &[[f32; 4]]) -> bool {
-    todo!("未实现: check_for_overlap_with_all_windows 0x141221f70 (fresh decomp /tmp/wc-dec/0x141221f70.c)")
+/// B `get_window_aabb`（0x141221da0，逐语句重建）。
+///
+/// - `raw[0x46] == '9'`（门类）：profile 末点 (px, py)、首点 (fx, fy)；
+///   `aabb = [x0 − px, y0 + py, x0 + px, fy + 0.093 + y0]`。
+///   `subtype == 9` 走 `gothic_door_profile_curve`，否则
+///   `gothic_half_dormer_profile_curve(raw[0x44])`（两者由调用方在 profile
+///   中给出——曲线函数属装饰器 crate）。
+/// - 其他：
+///   `width = max(bbx[0] + 0.2, 0.46)`；
+///   `height = bbx[2] − bbx[1]`；
+///   `raw[0x46]=='8'` → height += 0.2；
+///   `raw[0x46]==':'` → `raw[0x44]==3` 时 width −= 0.2，height += 0.4；
+///   `Aabb2::from_center_dims(center, (width, height))`。
+pub fn get_window_aabb(window: &WindowAabbSource) -> Aabb2 {
+    let subtype_tag = window.raw[0x46];
+    if subtype_tag == b'9' {
+        let (first, last) = match (window.profile.first(), window.profile.last()) {
+            (Some(first), Some(last)) => (first, last),
+            _ => return Aabb2::from_center_dims(Vec2::ZERO, Vec2::ZERO),
+        };
+        let [x0, y0] = window.attachment;
+        return Aabb2 {
+            min: Vec2::new(x0 - last[0], y0 + last[1]),
+            max: Vec2::new(x0 + last[0], first[1] + f32::from_bits(0x3dbe76c9) + y0),
+        };
+    }
+    let mut width = window.bbx[0] + f32::from_bits(0x3e4ccccd); // +0.2
+    if width <= f32::from_bits(0x3eeb851f) {
+        width = f32::from_bits(0x3eeb851f); // 0.46
+    }
+    let mut height = window.bbx[2] - window.bbx[1];
+    if subtype_tag == b'8' {
+        height += f32::from_bits(0x3e4ccccd); // +0.2
+    } else if subtype_tag == b':' {
+        if window.raw[0x44] == 3 {
+            width += f32::from_bits(0xbe4ccccd); // −0.2
+        }
+        height += f32::from_bits(0x3ecccccd); // +0.4
+    }
+    let center = Vec2::from_array(window.attachment);
+    Aabb2::from_center_dims(center, Vec2::new(width, height))
+}
+
+/// B `overlapping_windows`（0x1412218a0）：对已取出的窗集合做 AABB 访问测试，
+/// 返回 `ResourceAccessInfo` 投影（20B：aabb 16B + leaf + subtype + shifted）。
+///
+/// 调用方已完成原件 SIMD 掩码/子类型过滤（`byte[10] < 2 &&
+/// (byte[0xe] − 0x38) < 3`）；本函数按原件逐窗展开与三向移位测试。
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct WindowAccessInfo {
+    pub aabb: [f32; 4],
+    /// 原 `pauStack_110[-1][0xc]`。
+    pub leaf: u8,
+    /// `DerivedDecoratorInfo::subtype`。
+    pub subtype: u8,
+    /// 0 = 直接相交；1 = 侧向移位后相交。
+    pub shifted: u8,
+}
+
+impl WindowAccessInfo {
+    pub fn observed_bytes(&self) -> [u8; 20] {
+        let mut b = [0u8; 20];
+        for (i, v) in self.aabb.iter().enumerate() {
+            b[i * 4..i * 4 + 4].copy_from_slice(&v.to_le_bytes());
+        }
+        b[16] = self.leaf;
+        b[17] = self.subtype;
+        b[18] = self.shifted;
+        b
+    }
+}
+
+fn aabb_array(aabb: Aabb2) -> [f32; 4] {
+    [aabb.min.x, aabb.min.y, aabb.max.x, aabb.max.y]
+}
+
+/// B `overlapping_windows`（0x1412218a0）。
+///
+/// `query` 为待测墙 AABB（归一化/墙面空间），`expanded_limit` 为原件
+/// `param_6`（0.038 外的横向可用余量）。
+pub fn overlapping_windows(
+    query: Aabb2,
+    expanded_limit: f32,
+    windows: &[WindowAabbSource],
+    subtypes: &[u8],
+) -> Vec<WindowAccessInfo> {
+    let mut out = Vec::new();
+    for (window, &subtype) in windows.iter().zip(subtypes) {
+        let mut aabb = get_window_aabb(window);
+        // 原件只调整 x 两界：min.x +0.038、max.x −0.038（向内收 3.8cm）。
+        aabb.min.x += f32::from_bits(0x3d1ba5e3);
+        aabb.max.x += f32::from_bits(0xbd1ba5e3);
+        if subtype == b'\t' && window.raw[0x0c] == 1 {
+            // dormer 'g' 分支：min.x −0.14、max.x +0.14。
+            aabb.min.x += f32::from_bits(0xbe0f5c29);
+            aabb.max.x += f32::from_bits(0x3e0f5c29);
+        }
+        let leaf = window.raw[0x0c];
+        if query.intersects(aabb) {
+            out.push(WindowAccessInfo {
+                aabb: aabb_array(aabb),
+                leaf,
+                subtype,
+                shifted: 0,
+            });
+            continue;
+        }
+        // 原件第二段：中心 ± 半宽 与 expanded_limit 比较后左右移位。
+        let center = aabb.center();
+        let half = aabb.half_dims();
+        let shifted = if (center.x + half.x) <= expanded_limit {
+            if half.x <= center.x {
+                continue;
+            }
+            Aabb2::from_center_dims(
+                Vec2::new(center.x + expanded_limit, center.y),
+                Vec2::new(aabb.width(), aabb.height()),
+            )
+        } else {
+            Aabb2::from_center_dims(
+                Vec2::new(center.x - expanded_limit, center.y),
+                Vec2::new(aabb.width(), aabb.height()),
+            )
+        };
+        if query.intersects(shifted) {
+            out.push(WindowAccessInfo {
+                aabb: aabb_array(shifted),
+                leaf,
+                subtype,
+                shifted: 1,
+            });
+        }
+    }
+    out
+}
+
+/// B `check_for_overlap_with_all_windows`（0x141221f70）：对每个窗调用
+/// `get_window_aabb`，先测查询点是否在 AABB 内；否则按 `expansion` 左右
+/// 移位中心 x（保持 y/宽高），再次测点。返回任一命中。
+pub fn check_for_overlap_with_all_windows(
+    point: Vec2,
+    expansion: f32,
+    windows: &[WindowAabbSource],
+) -> bool {
+    for window in windows {
+        let aabb = get_window_aabb(window);
+        if aabb.contains(point) {
+            return true;
+        }
+        let center = aabb.center();
+        let half_width = aabb.width() * 0.5;
+        let shifted_x = if expansion < center.x + half_width {
+            center.x - expansion
+        } else if half_width <= center.x {
+            continue;
+        } else {
+            center.x + expansion
+        };
+        let shifted = Aabb2::from_center_dims(
+            Vec2::new(shifted_x, point.y),
+            Vec2::new(aabb.width(), aabb.height()),
+        );
+        if shifted.contains(point) {
+            return true;
+        }
+    }
+    false
 }
 
 /// B `add_underwindow_pattern`（0x141fd1c30）：窗下图案。
-/// **未恢复（壳登记）**：窗下半木构图案坐标生成未实现（不称已恢复）。
+/// **未实现（U）**：反编译为 1907B，前导已解（`raw[0x11]&0x1e != 0x16`
+/// 门控、窗高差、±0.16/0.1/0.2 常量族、plank 发射），但逐梁循环与 0x60B
+/// 记录装配未逐语句闭合；不写空实现冒充完成。
 pub fn add_underwindow_pattern(_window: &[f32; 4], _out: &mut Vec<[u8; 64]>) {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn window<'a>(tag: u8) -> WindowAabbSource<'a> {
+        let mut raw = [0u8; 0x50];
+        raw[0x46] = tag;
+        WindowAabbSource {
+            raw,
+            attachment: [1.0, 2.0],
+            bbx: [0.5, 0.1, 1.1],
+            profile: &[],
+        }
+    }
+
+    #[test]
+    fn plain_window_uses_max_width_and_height_delta() {
+        let aabb = get_window_aabb(&window(b'7'));
+        // width = max(0.5+0.2, 0.46)=0.7；height=1.1−0.1=1.0。
+        assert!((aabb.width() - 0.7).abs() < 1e-6);
+        assert!((aabb.height() - 1.0).abs() < 1e-6);
+        assert_eq!(aabb.center(), Vec2::new(1.0, 2.0));
+    }
+
+    #[test]
+    fn subtype_8_and_colon_adjust_height() {
+        let tall = get_window_aabb(&window(b'8'));
+        assert!((tall.height() - 1.2).abs() < 1e-6);
+        let mut colon = window(b':');
+        colon.raw[0x44] = 3;
+        let aabb = get_window_aabb(&colon);
+        assert!((aabb.height() - 1.4).abs() < 1e-6);
+        assert!((aabb.width() - 0.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn width_clamps_to_046() {
+        let mut w = window(b'7');
+        w.bbx[0] = 0.1;
+        assert!((get_window_aabb(&w).width() - 0.46).abs() < 1e-6);
+    }
+
+    #[test]
+    fn gothic_profile_builds_from_last_and_first_points() {
+        let profile = [[0.1, 0.2], [0.3, 0.5]];
+        let mut w = window(b'9');
+        w.profile = &profile;
+        let aabb = get_window_aabb(&w);
+        assert!((aabb.min.x - (1.0 - 0.3)).abs() < 1e-6);
+        assert!((aabb.min.y - (2.0 + 0.5)).abs() < 1e-6);
+        assert!((aabb.max.x - (1.0 + 0.3)).abs() < 1e-6);
+        assert!((aabb.max.y - (0.2 + 0.093 + 2.0)).abs() < 1e-5);
+    }
+
+    #[test]
+    fn overlap_check_detects_inside_and_shifted_points() {
+        let w = window(b'7');
+        assert!(check_for_overlap_with_all_windows(
+            Vec2::new(1.0, 2.0),
+            0.1,
+            &[w]
+        ));
+        // 移位后中心 x=0.9，区间 [0.55,1.25]；点 1.2 命中。
+        assert!(check_for_overlap_with_all_windows(
+            Vec2::new(1.2, 2.0),
+            0.1,
+            &[w]
+        ));
+        assert!(!check_for_overlap_with_all_windows(
+            Vec2::new(4.0, 4.0),
+            0.1,
+            &[w]
+        ));
+    }
+
+    #[test]
+    fn overlapping_windows_reports_shifted_flag() {
+        let w = window(b'7');
+        // expansion=2.0：center+half(1.35) ≤ 2.0 → 右移中心到 3.0，
+        // 区间 [2.65,3.35]；查询 [2.95,3.05] 命中且带 shifted=1。
+        let query = Aabb2::from_center_dims(Vec2::new(3.0, 2.0), Vec2::new(0.1, 2.0));
+        let hits = overlapping_windows(query, 2.0, &[w], &[b'7']);
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].shifted, 1);
+        let bytes = hits[0].observed_bytes();
+        assert_eq!(bytes[17], b'7');
+    }
+}

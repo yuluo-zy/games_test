@@ -43,6 +43,49 @@ impl MorphPremadeShapeEdit {
     }
 }
 
+/// Original scalar/enum edit payload: wall id followed by before/after values.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct WallValueEdit<T> {
+    pub wall_index: u64,
+    pub before: T,
+    pub after: T,
+}
+#[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
+pub enum WallTerrainPolicy {
+    FollowTerrain,
+    ConstantMaxHeight,
+}
+impl WallTerrainPolicy {
+    pub fn native_tag(self) -> u8 {
+        match self {
+            Self::FollowTerrain => 0,
+            Self::ConstantMaxHeight => 1,
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
+pub enum SavedWallStyle {
+    Stone,
+    StoneWithSkirts,
+    HalfTimbered,
+}
+impl SavedWallStyle {
+    pub fn native_tag(self) -> u8 {
+        match self {
+            Self::Stone => 0,
+            Self::StoneWithSkirts => 1,
+            Self::HalfTimbered => 2,
+        }
+    }
+}
+/// Original Curve2 serialization preserves cached parameters, without resampling.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct WallCurveHistory {
+    pub points: Vec<[f32; 2]>,
+    pub points_u: Vec<f32>,
+    pub length: f32,
+}
+
 /// Additional original source fields copied into Wall history. Their meanings
 /// are not inferred; caller supplies actual observed bits, including global-
 /// dependent source+69 rather than manufacturing a universal creation default.
@@ -99,9 +142,9 @@ pub struct WallAuthoritySnapshot {
 ///   `write_observed_arc_fields`）。
 /// - 变体 4 `ChangeIsEnclosedState`：disc=`0x8000000000000003`（**旧注释
 ///   0x8000000000000004 差一错，fresh 修正**）。
-/// - 变体 5..16：disc=`0x8000000000000004..0x800000000000000f`；载荷未恢复
-///   （**登记缺类型**：见 `WallHistoryOperationTag` + 布局报告）。不编造字段，
-///   以 `UnresolvedWallEditPayload` 显式标记。
+/// - Round12 restores named saved payloads and original consumers for 4..8,
+///   11..13 and16. Remaining deprecated/opaque operations keep explicit errors;
+///   raw pointers and enum padding are never serialized as business fields.
 #[derive(Clone, Debug)]
 pub enum WallHistoryEdit {
     /// 原生变体 0 `WallChanged`（disc = wall id，非 niche）。
@@ -136,34 +179,36 @@ pub enum WallHistoryEdit {
     /// 原生变体 4 `ChangeIsEnclosedState`，disc = `0x8000000000000003`。
     EnclosureChange {
         wall: WallId,
-        previous: WallShapeSnapshot,
-        next: WallShapeSnapshot,
+        previous: crate::systems::wall::valid_enclosure::IsEnclosed,
+        next: crate::systems::wall::valid_enclosure::IsEnclosed,
     },
     /// 原生变体 5 `MorphPremadeShape`，disc = `0x8000000000000004`；
     /// 载荷 = [`MorphPremadeShapeEdit`]（fresh 2026-10-17）。
     MorphPremadeShape(MorphPremadeShapeEdit),
-    /// 原生变体 6 `ChangeElevation`，disc = `0x8000000000000005`；载荷未恢复。
-    ChangeElevation(UnresolvedWallEditPayload),
-    /// 原生变体 7 `ChangeArchHeight`，disc = `0x8000000000000006`；载荷未恢复。
-    ChangeArchHeight(UnresolvedWallEditPayload),
-    /// 原生变体 8 `ChangeSupports`，disc = `0x8000000000000007`；载荷未恢复。
-    ChangeSupports(UnresolvedWallEditPayload),
-    /// 原生变体 9 `ChangeStairsType`，disc = `0x8000000000000008`；载荷未恢复。
-    ChangeStairsType(UnresolvedWallEditPayload),
-    /// 原生变体 10 `ChangePlasterPeelAmount`，disc = `0x8000000000000009`；载荷未恢复。
-    ChangePlasterPeelAmount(UnresolvedWallEditPayload),
-    /// 原生变体 11 `ChangeFreehandHeightType`，disc = `0x800000000000000a`；载荷未恢复。
-    ChangeFreehandHeightType(UnresolvedWallEditPayload),
-    /// 原生变体 12 `ChangeArchType`，disc = `0x800000000000000b`；载荷未恢复。
-    ChangeArchType(UnresolvedWallEditPayload),
+    /// Native operation6, source+58 scalar (140aaaac0).
+    ChangeElevation(WallValueEdit<f32>),
+    /// Native operation7, source+5c scalar (140aaa710).
+    ChangeArchHeight(WallValueEdit<f32>),
+    /// Native operation12, source+67 bool (140aa9800).
+    ChangeSupports(WallValueEdit<bool>),
+    /// Native operation9, typed WallStyle before/after, source+68.
+    /// Both original serializers select ChangeStyle at table index9.
+    ChangeStyle(WallValueEdit<SavedWallStyle>),
+    /// Native operation10, source+60 f32 bits (update_plaster_peel140aaa530).
+    ChangePlasterPeelAmount(WallValueEdit<f32>),
+    /// Native operation11, source+66 terrain policy (140aa99e0).
+    ChangeFreehandHeightType(WallValueEdit<WallTerrainPolicy>),
+    /// Native operation8, source+64 terrain policy (140aa9eb0).
+    ChangeArchType(WallValueEdit<WallTerrainPolicy>),
     /// 原生变体 13 `MorphFreehandWall`，disc = `0x800000000000000c`；载荷未恢复。
-    MorphFreehandWall(UnresolvedWallEditPayload),
+    MorphFreehandWall(WallValueEdit<WallCurveHistory>),
     /// 原生变体 14 `DeprecatedMorphOriginal`，disc = `0x800000000000000d`；载荷未恢复。
     DeprecatedMorphOriginal(UnresolvedWallEditPayload),
     /// 原生变体 15（名未解），disc = `0x800000000000000e`；载荷未恢复。
     Unresolved15(UnresolvedWallEditPayload),
-    /// 原生变体 16 `ChangeSkirt`，disc = `0x800000000000000f`；载荷未恢复。
-    ChangeSkirt(UnresolvedWallEditPayload),
+    /// Native operation16, legacy bool before/after; update_style140aaa350
+    /// receives the selected0/1 byte. This is distinct from typed style tag9.
+    ChangeSkirt(WallValueEdit<bool>),
 }
 
 impl WallHistoryEdit {
@@ -179,11 +224,11 @@ impl WallHistoryEdit {
             WallHistoryEdit::MorphPremadeShape(..) => 0x8000_0000_0000_0004,
             WallHistoryEdit::ChangeElevation(..) => 0x8000_0000_0000_0005,
             WallHistoryEdit::ChangeArchHeight(..) => 0x8000_0000_0000_0006,
-            WallHistoryEdit::ChangeSupports(..) => 0x8000_0000_0000_0007,
-            WallHistoryEdit::ChangeStairsType(..) => 0x8000_0000_0000_0008,
+            WallHistoryEdit::ChangeSupports(..) => 0x8000_0000_0000_000b,
+            WallHistoryEdit::ChangeStyle(..) => 0x8000_0000_0000_0008,
             WallHistoryEdit::ChangePlasterPeelAmount(..) => 0x8000_0000_0000_0009,
             WallHistoryEdit::ChangeFreehandHeightType(..) => 0x8000_0000_0000_000a,
-            WallHistoryEdit::ChangeArchType(..) => 0x8000_0000_0000_000b,
+            WallHistoryEdit::ChangeArchType(..) => 0x8000_0000_0000_0007,
             WallHistoryEdit::MorphFreehandWall(..) => 0x8000_0000_0000_000c,
             WallHistoryEdit::DeprecatedMorphOriginal(..) => 0x8000_0000_0000_000d,
             WallHistoryEdit::Unresolved15(..) => 0x8000_0000_0000_000e,
@@ -213,17 +258,20 @@ impl WallHistoryEdit {
             | WallHistoryEdit::AdjustHeight { wall, .. }
             | WallHistoryEdit::EnclosureChange { wall, .. } => Some(*wall),
             WallHistoryEdit::MorphPremadeShape(payload) => Some(payload.wall()),
-            WallHistoryEdit::ChangeElevation(..)
-            | WallHistoryEdit::ChangeArchHeight(..)
-            | WallHistoryEdit::ChangeSupports(..)
-            | WallHistoryEdit::ChangeStairsType(..)
-            | WallHistoryEdit::ChangePlasterPeelAmount(..)
-            | WallHistoryEdit::ChangeFreehandHeightType(..)
-            | WallHistoryEdit::ChangeArchType(..)
-            | WallHistoryEdit::MorphFreehandWall(..)
-            | WallHistoryEdit::DeprecatedMorphOriginal(..)
-            | WallHistoryEdit::Unresolved15(..)
-            | WallHistoryEdit::ChangeSkirt(..) => None,
+            WallHistoryEdit::ChangeElevation(p) | WallHistoryEdit::ChangeArchHeight(p) => {
+                Some(WallId(p.wall_index))
+            }
+            WallHistoryEdit::ChangeFreehandHeightType(p) | WallHistoryEdit::ChangeArchType(p) => {
+                Some(WallId(p.wall_index))
+            }
+            WallHistoryEdit::ChangeSupports(p) => Some(WallId(p.wall_index)),
+            WallHistoryEdit::ChangeStyle(p) => Some(WallId(p.wall_index)),
+            WallHistoryEdit::ChangeSkirt(p) => Some(WallId(p.wall_index)),
+            WallHistoryEdit::ChangePlasterPeelAmount(p) => Some(WallId(p.wall_index)),
+            WallHistoryEdit::MorphFreehandWall(p) => Some(WallId(p.wall_index)),
+            WallHistoryEdit::DeprecatedMorphOriginal(..) | WallHistoryEdit::Unresolved15(..) => {
+                None
+            }
         }
     }
 }
@@ -297,11 +345,11 @@ pub enum WallHistoryOperationTag {
     MorphPremadeShape = 5,
     ChangeElevation = 6,
     ChangeArchHeight = 7,
-    ChangeSupports = 8,
-    ChangeStairsType = 9,
+    ChangeSupports = 12,
+    ChangeStyle = 9,
     ChangePlasterPeelAmount = 10,
     ChangeFreehandHeightType = 11,
-    ChangeArchType = 12,
+    ChangeArchType = 8,
     MorphFreehandWall = 13,
     DeprecatedMorphOriginal = 14,
     /// tag 15 名未解（anon_95，13 字符）。
@@ -321,11 +369,11 @@ impl WallHistoryOperationTag {
             WallHistoryOperationTag::MorphPremadeShape => 0x8000_0000_0000_0004,
             WallHistoryOperationTag::ChangeElevation => 0x8000_0000_0000_0005,
             WallHistoryOperationTag::ChangeArchHeight => 0x8000_0000_0000_0006,
-            WallHistoryOperationTag::ChangeSupports => 0x8000_0000_0000_0007,
-            WallHistoryOperationTag::ChangeStairsType => 0x8000_0000_0000_0008,
+            WallHistoryOperationTag::ChangeSupports => 0x8000_0000_0000_000b,
+            WallHistoryOperationTag::ChangeStyle => 0x8000_0000_0000_0008,
             WallHistoryOperationTag::ChangePlasterPeelAmount => 0x8000_0000_0000_0009,
             WallHistoryOperationTag::ChangeFreehandHeightType => 0x8000_0000_0000_000a,
-            WallHistoryOperationTag::ChangeArchType => 0x8000_0000_0000_000b,
+            WallHistoryOperationTag::ChangeArchType => 0x8000_0000_0000_0007,
             WallHistoryOperationTag::MorphFreehandWall => 0x8000_0000_0000_000c,
             WallHistoryOperationTag::DeprecatedMorphOriginal => 0x8000_0000_0000_000d,
             WallHistoryOperationTag::Unresolved15 => 0x8000_0000_0000_000e,
@@ -342,11 +390,11 @@ impl WallHistoryOperationTag {
             5 => WallHistoryOperationTag::MorphPremadeShape,
             6 => WallHistoryOperationTag::ChangeElevation,
             7 => WallHistoryOperationTag::ChangeArchHeight,
-            8 => WallHistoryOperationTag::ChangeSupports,
-            9 => WallHistoryOperationTag::ChangeStairsType,
+            8 => WallHistoryOperationTag::ChangeArchType,
+            9 => WallHistoryOperationTag::ChangeStyle,
             10 => WallHistoryOperationTag::ChangePlasterPeelAmount,
             11 => WallHistoryOperationTag::ChangeFreehandHeightType,
-            12 => WallHistoryOperationTag::ChangeArchType,
+            12 => WallHistoryOperationTag::ChangeSupports,
             13 => WallHistoryOperationTag::MorphFreehandWall,
             14 => WallHistoryOperationTag::DeprecatedMorphOriginal,
             15 => WallHistoryOperationTag::Unresolved15,
@@ -447,10 +495,77 @@ pub fn apply_instant_wall_edit(
             color_id,
             ..
         } => (*wall, undo, source, *color_id),
-        // Enclosure writes emit two updated notifications. Use the command
-        // consumer, whose Vec preserves that original multiplicity.
-        WallHistoryEdit::EnclosureChange { .. } => {
-            return Err(WallReplaySourceError::EnclosureCommandRequired);
+        WallHistoryEdit::EnclosureChange {
+            wall,
+            previous,
+            next,
+        } => {
+            use crate::systems::wall::valid_enclosure::IsEnclosed;
+            let selected = if undo { previous } else { next };
+            let shape = match *selected {
+                IsEnclosed::PremadeShape(p) => p.to_snapshot(),
+                state => {
+                    let mut b = [0; 28];
+                    let tag: u32 = if matches!(state, IsEnclosed::No) {
+                        2
+                    } else {
+                        3
+                    };
+                    b[..4].copy_from_slice(&tag.to_le_bytes());
+                    WallShapeSnapshot::from_observed(b)
+                }
+            };
+            if let Some(target) = sources.get_mut(wall) {
+                target.source.curve_kind_tag = shape.tag();
+                target.source.shape = shape;
+                out.updated_source_notification = Some(*wall);
+            }
+            return Ok(out);
+        }
+        WallHistoryEdit::ChangeFreehandHeightType(p) | WallHistoryEdit::ChangeArchType(p) => {
+            let wall = WallId(p.wall_index);
+            let value = if undo { p.before } else { p.after }.native_tag();
+            if let Some(target) = sources.get_mut(&wall) {
+                if matches!(edit, WallHistoryEdit::ChangeArchType(..)) {
+                    target.source.observed_source_flag_64 = value;
+                } else {
+                    target.metadata.source_66 = Some(value);
+                }
+                out.updated_source_notification = Some(wall);
+            }
+            return Ok(out);
+        }
+        WallHistoryEdit::ChangeSupports(p) => {
+            let wall = WallId(p.wall_index);
+            if let Some(target) = sources.get_mut(&wall) {
+                target.metadata.source_67 = u8::from(if undo { p.before } else { p.after });
+                out.updated_source_notification = Some(wall);
+            }
+            return Ok(out);
+        }
+        WallHistoryEdit::ChangeStyle(p) => {
+            let wall = WallId(p.wall_index);
+            if let Some(target) = sources.get_mut(&wall) {
+                target.source.style = if undo { p.before } else { p.after }.native_tag();
+                out.updated_source_notification = Some(wall);
+            }
+            return Ok(out);
+        }
+        WallHistoryEdit::ChangeSkirt(p) => {
+            let wall = WallId(p.wall_index);
+            if let Some(target) = sources.get_mut(&wall) {
+                target.source.style = u8::from(if undo { p.before } else { p.after });
+                out.updated_source_notification = Some(wall);
+            }
+            return Ok(out);
+        }
+        WallHistoryEdit::ChangePlasterPeelAmount(p) => {
+            let wall = WallId(p.wall_index);
+            if let Some(target) = sources.get_mut(&wall) {
+                target.metadata.source_60_bits = if undo { p.before } else { p.after }.to_bits();
+                out.updated_source_notification = Some(wall);
+            }
+            return Ok(out);
         }
         WallHistoryEdit::StateChange {
             wall,
@@ -478,15 +593,9 @@ pub fn apply_instant_wall_edit(
         | WallHistoryEdit::MorphPremadeShape(..)
         | WallHistoryEdit::ChangeElevation(..)
         | WallHistoryEdit::ChangeArchHeight(..)
-        | WallHistoryEdit::ChangeSupports(..)
-        | WallHistoryEdit::ChangeStairsType(..)
-        | WallHistoryEdit::ChangePlasterPeelAmount(..)
-        | WallHistoryEdit::ChangeFreehandHeightType(..)
-        | WallHistoryEdit::ChangeArchType(..)
         | WallHistoryEdit::MorphFreehandWall(..)
         | WallHistoryEdit::DeprecatedMorphOriginal(..)
-        | WallHistoryEdit::Unresolved15(..)
-        | WallHistoryEdit::ChangeSkirt(..) => {
+        | WallHistoryEdit::Unresolved15(..) => {
             return Err(WallReplaySourceError::UnrestoredOperation(
                 edit.operation_tag() as u64,
             ));
@@ -708,6 +817,10 @@ mod tests {
             0x8000_0000_0000_0004,
         );
         assert_eq!(
+            WallHistoryOperationTag::ChangeStyle.native_discriminant(),
+            0x8000_0000_0000_0008,
+        );
+        assert_eq!(
             WallHistoryOperationTag::ChangeSkirt.native_discriminant(),
             0x8000_0000_0000_000f,
         );
@@ -741,8 +854,16 @@ mod tests {
     fn concurrent_edits_groups_preserve_insertion_order() {
         let compound = WallCompoundHistoryEdit {
             groups: vec![
-                vec![WallHistoryEdit::ChangeSkirt(UnresolvedWallEditPayload)],
-                vec![WallHistoryEdit::ChangeSkirt(UnresolvedWallEditPayload)],
+                vec![WallHistoryEdit::ChangeStyle(WallValueEdit {
+                    wall_index: 7,
+                    before: SavedWallStyle::Stone,
+                    after: SavedWallStyle::StoneWithSkirts,
+                })],
+                vec![WallHistoryEdit::ChangeStyle(WallValueEdit {
+                    wall_index: 7,
+                    before: SavedWallStyle::Stone,
+                    after: SavedWallStyle::StoneWithSkirts,
+                })],
             ],
         };
         let ops: Vec<_> = compound
@@ -757,8 +878,8 @@ mod tests {
         assert_eq!(
             ops,
             vec![
-                vec![WallHistoryOperationTag::ChangeSkirt],
-                vec![WallHistoryOperationTag::ChangeSkirt],
+                vec![WallHistoryOperationTag::ChangeStyle],
+                vec![WallHistoryOperationTag::ChangeStyle],
             ]
         );
     }

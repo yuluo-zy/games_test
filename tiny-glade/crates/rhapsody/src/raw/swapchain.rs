@@ -183,6 +183,10 @@ pub struct Surface {
     /// Sticky VK_ERROR_SURFACE_LOST_KHR. A lost surface never recovers; the
     /// host must create a new one and call [`Swapchain::replace_surface`].
     lost: std::sync::atomic::AtomicBool,
+    // Dropped after Surface::drop destroys VkSurfaceKHR. Swapchain teardown
+    // may retain this Surface on an unproven WSI timeout, so keep its actual
+    // native window alive with it rather than relying on a host's field order.
+    native_owner: Option<Arc<dyn std::any::Any + Send + Sync>>,
 }
 
 impl Surface {
@@ -224,6 +228,7 @@ impl Surface {
             owned,
             win32: false,
             lost: std::sync::atomic::AtomicBool::new(false),
+            native_owner: None,
         }
     }
     /// Wrap an existing Win32 Vulkan surface, allowing explicit fullscreen.
@@ -247,14 +252,40 @@ impl Surface {
         hinstance: vk::HINSTANCE,
         hwnd: vk::HWND,
     ) -> Result<Arc<Self>> {
+        unsafe { Self::create_win32(instance, hinstance, hwnd, None) }
+    }
+
+    /// Create a Win32 surface retaining the actual HWND owner until Vulkan
+    /// surface destruction, including deliberately retained WSI generations.
+    /// This is one bounded owner slot; cloning/replacing a swapchain does not
+    /// append additional native-window leases.
+    ///
+    /// # Safety
+    /// In addition to from_win32's requirements, native_owner must retain the
+    /// window that owns hwnd. The owner must not strongly refer to this Surface.
+    pub unsafe fn from_win32_retained(
+        instance: Arc<VulkanInstance>,
+        hinstance: vk::HINSTANCE,
+        hwnd: vk::HWND,
+        native_owner: Arc<dyn std::any::Any + Send + Sync>,
+    ) -> Result<Arc<Self>> {
+        unsafe { Self::create_win32(instance, hinstance, hwnd, Some(native_owner)) }
+    }
+
+    unsafe fn create_win32(
+        instance: Arc<VulkanInstance>,
+        hinstance: vk::HINSTANCE,
+        hwnd: vk::HWND,
+        native_owner: Option<Arc<dyn std::any::Any + Send + Sync>>,
+    ) -> Result<Arc<Self>> {
         let loader = ash::khr::win32_surface::Instance::new(&instance.entry, &instance.instance);
         let info = vk::Win32SurfaceCreateInfoKHR::default()
             .hinstance(hinstance)
             .hwnd(hwnd);
         let handle = unsafe { loader.create_win32_surface(&info, None) }?;
-        Ok(Arc::new(unsafe {
-            Self::from_win32_raw(instance, handle, true)
-        }))
+        let mut surface = unsafe { Self::from_win32_raw(instance, handle, true) };
+        surface.native_owner = native_owner;
+        Ok(Arc::new(surface))
     }
 }
 impl Drop for Surface {

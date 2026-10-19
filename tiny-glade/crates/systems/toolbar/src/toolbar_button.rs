@@ -90,23 +90,54 @@ pub fn toolbar_button_keep_focus(
 /// EventReader<UiClickEvent>, EventWriter<RequestAppModeChange>, Res<AppMode>,
 /// EventReader<ModeJustChanged>, Commands`。
 ///
-/// **未实现（reviewer-wave3 FIX-B 降级；gap-utils-toolbar 2026-10-17 载荷面闭环）**：
-/// country-core `RequestAppModeChange(pub String, pub SettingsMenuState)` 已按 B 载荷
-/// `(str, SettingsMenuState)`（stride 0x18）落库（mode_manager 组），本函数 EventWriter
-/// 载荷面由此闭环。二进制核心（点击匹配 → push `RequestAppModeChange`；逐项按钮目标与
-/// 当前 AppMode/ModeJustChanged 判别比较 0..6 变体；相等 → `insert(UiPlaySelectAnimation
-/// {a:0.2,b:0.2})`）**均未落库**——载荷源 U：按钮 &str（B SwitchAppModeButton 组件
-/// 16B `{ptr,len}`，country-core `{mode: AppMode,_gap}` 无该字段）与 SettingsMenuState
-/// 值（B 自 Events+0x40 读）未取证——本函数保持诚实壳，事件写不伪造。
+/// **判等（fresh 0x142341fe0 + `0x142341fe0.c` 复读）**：
+/// ① 点击阶段：命中 `SwitchAppModeButton` → `RequestAppModeChange(button.mode)`
+///    （B 载荷 16B AppMode + EventInstance id，stride 0x18）；
+/// ② `ModeJustChanged` 有未读事件时逐项比较按钮目标与 `Res<AppMode>`：外层 tag
+///    归一化（<6→0，6..=20→tag-5）+ 各变体 payload 比较，等价于 `AppMode` 的
+///    派生相等；写 `interaction.selected`；相等项入队
+///    `UiPlaySelectAnimation{0.2,0.2,0}`（命令记录 0x28B：两个 fn 指针 + entity
+///    + 12B 载荷）。
+///
+/// 残余 U：B 事件 id 字段（`uVar3`）由 bevy 自动管理，不单独建模。
 pub fn switch_app_mode_button(
-    _query: Query<(Entity, &SwitchAppModeButton, &mut UiInteractionState)>,
-    _click_events: EventReader<crate::ui_interaction::UiClickEvent>,
-    _app_mode_events: EventWriter<RequestAppModeChange>,
-    _app_mode: Res<country_core::systems::mode_manager::AppMode>,
-    _mode_changed: EventReader<country_core::resources::events::ModeJustChanged>,
-    _commands: Commands,
+    mut query: Query<(Entity, &SwitchAppModeButton, &mut UiInteractionState)>,
+    mut click_events: EventReader<crate::ui_interaction::UiClickEvent>,
+    mut app_mode_events: EventWriter<RequestAppModeChange>,
+    app_mode: Res<country_core::systems::mode_manager::AppMode>,
+    mut mode_changed: EventReader<country_core::resources::events::ModeJustChanged>,
+    mut commands: Commands,
 ) {
-    // 未实现（分歧见模块头与 RESTORE.md §switch_app_mode_button）。
+    // Click phase (O 0x1423422xx..0x142342378): every clicked widget copies its
+    // 16-byte switch target into an EventInstance<RequestAppModeChange>
+    // (stride 0x18 = event id + 16-byte AppMode payload).
+    for click in click_events.read() {
+        if let Ok((_, button, _)) = query.get(click.entity) {
+            app_mode_events.write(RequestAppModeChange(button.mode));
+        }
+    }
+    // ModeJustChanged phase: the native loop body is entered only when the
+    // reader has unread events; it drains them (cursor := end).
+    let mut any_mode_change = false;
+    for _ in mode_changed.read() {
+        any_mode_change = true;
+    }
+    if !any_mode_change {
+        return;
+    }
+    // Per-widget target/current comparison: normalized outer tags plus the
+    // per-variant payload compare (0/1/4/3/6 dispatch) is exactly the derived
+    // AppMode equality. Writes +2 selected and, on a match, queues
+    // UiPlaySelectAnimation{0.2, 0.2, 0}.
+    for (entity, button, mut interaction) in &mut query {
+        let selected = button.mode == *app_mode;
+        interaction.selected = u8::from(selected);
+        if selected {
+            commands
+                .entity(entity)
+                .insert(UiPlaySelectAnimation { a: 0.2, b: 0.2, progress: 0.0 });
+        }
+    }
 }
 
 /// O 0x1423427f0 `toolbar::toolbar_button::switch_toolbar_category_button`。
@@ -125,7 +156,7 @@ pub fn switch_toolbar_category_button(
     mut query: Query<(Entity, &SwitchToolbarCategoryButton, &mut UiInteractionState)>,
     mut click_events: EventReader<crate::ui_interaction::UiClickEvent>,
     mut category_events: EventWriter<RequestToolbarCategoryChange>,
-    mode_changed: EventReader<country_core::resources::events::ModeJustChanged>,
+    mut mode_changed: EventReader<country_core::resources::events::ModeJustChanged>,
     toolbar: Res<country_core::resources::toolbar::Toolbar>,
     mut commands: Commands,
 ) {
@@ -137,8 +168,12 @@ pub fn switch_toolbar_category_button(
             category_events.write(RequestToolbarCategoryChange(WindowFocusEvent(button.category as u8)));
         }
     }
-    // 动画插入两门：①ModeJustChanged 事件存在；②interaction.selected != 1 未选中。
-    let mode_changed_exists = !mode_changed.is_empty();
+    // 动画插入两门：①ModeJustChanged 事件存在（读取即推进游标，等价原生
+    // 游标移到事件末尾）；②interaction.selected != 1 未选中。
+    let mut mode_changed_exists = false;
+    for _ in mode_changed.read() {
+        mode_changed_exists = true;
+    }
     for (entity, button, mut interaction) in &mut query {
         let category_match = toolbar.current == button.category;
         if mode_changed_exists && interaction.selected != 1 && category_match {
@@ -188,9 +223,14 @@ pub fn tod_v2_button(
         }
     }
     // ② FIX-T2：click 之后读 ModeJustChanged 首事件 tag != 0xd && visible → 清 visible。
-    if tod_screen.visible
-        && mode_changed.read().next().is_some_and(|e| e.tool != 0xd)
-    {
+    // 读取整个 reader 以推进游标（原生同样把游标移到事件末尾），只使用首事件。
+    let mut first_tool = None;
+    for event in mode_changed.read() {
+        if first_tool.is_none() {
+            first_tool = Some(event.tool);
+        }
+    }
+    if tod_screen.visible && first_tool.is_some_and(|tool| tool != 0xd) {
         tod_screen.visible = false;
     }
     // ③ 逐项写 per-widget +2 = visible（在 ①② 之后；B `*(char*)(col+2+id*3)=visible`）。
@@ -203,3 +243,51 @@ pub fn tod_v2_button(
 /// 本模块只落按钮族（toolbar_button 模块）。
 #[allow(dead_code)]
 const _TOOLBAR_BUTTON_SCOPE: () = ();
+
+#[cfg(test)]
+mod native_switch_app_mode_tests {
+    use super::*;
+    use bevy_ecs::event::Events;
+    use bevy_ecs::prelude::{Schedule, World};
+    use country_core::resources::events::ModeJustChanged;
+    use country_core::systems::mode_manager::AppMode;
+
+    #[test]
+    fn click_writes_target_mode_and_mode_change_selects_matching_button() {
+        let mut world = World::new();
+        world.init_resource::<Events<crate::ui_interaction::UiClickEvent>>();
+        world.init_resource::<Events<RequestAppModeChange>>();
+        world.init_resource::<Events<ModeJustChanged>>();
+        world.insert_resource(AppMode::Path);
+        let entity = world
+            .spawn((
+                SwitchAppModeButton { mode: AppMode::Path },
+                UiInteractionState::default(),
+            ))
+            .id();
+        let mut schedule = Schedule::default();
+        schedule.add_systems(switch_app_mode_button);
+        world
+            .resource_mut::<Events<crate::ui_interaction::UiClickEvent>>()
+            .send(crate::ui_interaction::UiClickEvent { entity });
+        schedule.run(&mut world);
+        let events = world.resource::<Events<RequestAppModeChange>>();
+        let mut cursor = events.get_cursor();
+        assert_eq!(
+            cursor.read(events).map(|e| e.0).collect::<Vec<_>>(),
+            vec![AppMode::Path]
+        );
+        // No ModeJustChanged yet: selected stays untouched.
+        assert_eq!(world.get::<UiInteractionState>(entity).unwrap().selected, 0);
+        world
+            .resource_mut::<Events<ModeJustChanged>>()
+            .send(ModeJustChanged {
+                tool: 7,
+                _gap: [0; 0x1c],
+            });
+        schedule.run(&mut world);
+        world.flush();
+        assert_eq!(world.get::<UiInteractionState>(entity).unwrap().selected, 1);
+        assert!(world.get::<UiPlaySelectAnimation>(entity).is_some());
+    }
+}

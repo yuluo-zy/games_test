@@ -38,7 +38,7 @@ pub const ICON_DISK_HASH: u64 = -0x59b8_17f5_0b16_c6a1_i64 as u64;
 
 /// uniform 名哈希（O：各 `write_uniform` 调用的 `r8`）。
 pub const U_TARGET_EXTENT: u64 = 0x531b_b931_8eea_4971; // optional_uniform<[u32;2]>
-pub const U_ALPHA: u64 = -0x636e_51d8_0248_c905_i64 as u64; // f32，常量 1.0
+pub const U_ALPHA: u64 = -0x636e_51d8_0248_c905_i64 as u64; // first=config0 grading strength; metas=1
 pub const U_CELL_POS: u64 = 0x1d06_ec44_e216_b191; // Vec2 = positions[i]
 pub const U_CELL_SIZE: u64 = 0x7038_b90f_2875_5919; // Vec2 = (state.+0x10, state.+0x14)
 pub const U_HIGHLIGHT: u64 = -0x012b_1270_98b2_24ef_i64 as u64; // bool = state.flag && state.selected == i
@@ -54,6 +54,7 @@ pub const RASTER_STATE_BYTE3_SET: u8 = 0x40;
 pub type LutGalleryInner = LoadMenuThumbnailMetrics;
 
 /// `LutGalleryState` 资源（O 16 B：`+0` 状态 Arc，`+8` 预览纹理共享槽，`build` 里为 `None`）。
+#[derive(bevy_ecs::resource::Resource)]
 pub struct LutGalleryState {
     pub state: Arc<Mutex<LutGalleryInner>>,
     /// `Option<Arc<Mutex<Option<ManagedTexture>>>>`：数据区 niche 字节 @Arc+0x4e == 7 即槽内 `None`。
@@ -69,14 +70,15 @@ impl Default for LutGalleryState {
     }
 }
 
-/// LUT 名（16 B 值，经 `Display`（0x140109e90，与 `anyhow::context` 同体的 ICF 别名）格式化；格式 U）。
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct LutName(pub u128);
+/// B passes the String's borrowed pointer/length pair (+8/+0x10) to
+/// Display at 0x1408b0a58, 0x1408b0b86 and 0x1408b0db0. These are two
+/// machine words of `&str`, not a u128 name. Preserve the canonical LUT name.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LutName(pub String);
 
 impl core::fmt::Display for LutName {
-    /// U：真实格式化器的输出未核对，这里用定宽十六进制保证 `NameHash` 输入稳定。
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{:032x}", self.0)
+        f.write_str(&self.0)
     }
 }
 
@@ -89,13 +91,14 @@ pub trait LutGalleryHost {
     /// `Res<EscMenuState>`（hash `0xd38dae617fb79c7a`）；缺失 → unwrap panic（O @0x1408b151a）。
     fn esc_menu_state(&self) -> &EscMenuState;
     /// 第三个资源（hash `0x4a142e09642375b9`，O @0x1408b0718）：`+8` 起 0x40 B 条目数组，选择字节 @+0xc0，
-    /// 条目的 16 B 名字 @+8 —— 当前生效的 LUT 名（条目 `[selected]`，O 0x1408b0b86）。
+    /// 条目的 String ptr/len @+8 —— 当前生效的 LUT 名（条目 `[selected]`，O 0x1408b0b86）。
     fn active_lut_name(&self) -> LutName;
-    /// 条目 `[0]` 的名字（O 0x1408b0a58：格式化后只保存、最后释放；用途 U）。
+    /// Entry0 is prepended once before the metadata iterator (1408b0d3b).
     fn first_entry_name(&self) -> LutName;
+    fn first_entry_strength(&self) -> f32;
     /// `AssetShaderLibrary::get_raster_handle_by_name`（缺失 → unwrap panic，O @0x1408b157b）。
     fn raster_shader(&self, name: &str) -> u64;
-    /// 第四个资源（hash `0xd387f1aea6230aea`）：0x28 B 元素的 LUT 列表，元素 +8 为 16 B 名字。
+    /// `GradingLuts`（hash `0xd387f1aea6230aea`）：0x28 B meta 条目，+8/+0x10 为 String ptr/len。
     fn lut_names(&self) -> Vec<LutName>;
     /// `NameHash::compute(&str)`（O 0x1408b101d）。
     fn name_hash(&self, name: &str) -> u64;
@@ -167,7 +170,8 @@ pub fn render_photomode_lut_gallery<H: LutGalleryHost>(host: &mut H) {
         return;
     };
     let active = host.active_lut_name();
-    let _first = host.first_entry_name(); // O：格式化后仅被保存再丢弃
+    let first = host.first_entry_name();
+    let first_strength = host.first_entry_strength();
     let shader = host.raster_shader(SHADER_NAME);
     let luts = host.lut_names();
     let state_arc = host.gallery_state().state.clone();
@@ -175,19 +179,22 @@ pub fn render_photomode_lut_gallery<H: LutGalleryHost>(host: &mut H) {
     let active_name = active.to_string();
     host.begin_pass(PASS_NAME);
     let positions = state.positions();
-    for (i, (lut, pos)) in luts.iter().zip(positions).enumerate() {
+    let cells =
+        std::iter::once((&first, first_strength)).chain(luts.iter().map(|name| (name, 1.0)));
+    for (i, ((lut, strength), pos)) in cells.zip(positions).enumerate() {
         let i = i as u32;
         let name = lut.to_string();
         let is_current = name == active_name;
         host.begin_draw(shader);
         host.bind_preview_texture(preview, PREVIEW_BINDING, TEXTURE_ACCESS);
         host.bind_disk_texture(ICON_DISK_HASH, ICON_BINDING, TEXTURE_ACCESS);
-        let hash = host.name_hash(&name);
+        let asset = crate::resources::grading_lut::lut_name_to_asset_name(&name);
+        let hash = host.name_hash(&asset);
         host.bind_disk_texture(hash, LUT_BINDING, TEXTURE_ACCESS);
         let extent = host.target_extent();
         host.optional_uniform_u32x2(U_TARGET_EXTENT, extent);
         let u = cell_uniforms(&state, i, pos.to_array(), is_current);
-        host.uniform_f32(U_ALPHA, u.alpha);
+        host.uniform_f32(U_ALPHA, strength);
         host.uniform_vec2(U_CELL_POS, u.position);
         host.uniform_vec2(U_CELL_SIZE, u.size);
         host.uniform_bool(U_HIGHLIGHT, u.highlighted);
@@ -242,20 +249,23 @@ mod tests {
             self.mode.as_ref().expect("EscMenuState")
         }
         fn active_lut_name(&self) -> LutName {
-            LutName(self.active)
+            LutName(self.active.to_string())
         }
         fn first_entry_name(&self) -> LutName {
-            LutName(0)
+            LutName("0".to_owned())
+        }
+        fn first_entry_strength(&self) -> f32 {
+            0.625
         }
         fn raster_shader(&self, name: &str) -> u64 {
             assert_eq!(name, "lut_gallery_thumbnail");
             9
         }
         fn lut_names(&self) -> Vec<LutName> {
-            self.luts.iter().map(|&v| LutName(v)).collect()
+            self.luts.iter().map(|&v| LutName(v.to_string())).collect()
         }
         fn name_hash(&self, name: &str) -> u64 {
-            name.len() as u64 * 1000 + u64::from_str_radix(&name[28..], 16).unwrap()
+            crate::name_hash::NameHash::compute(name).0
         }
         fn begin_pass(&mut self, n: &str) {
             self.log.push(format!("pass {n}"));
@@ -308,7 +318,7 @@ mod tests {
         };
         let mut r = Rec {
             mode: Some(EscMenuState::Photomode(true)),
-            active: luts.get(1).copied().unwrap_or(0),
+            active: luts.first().copied().unwrap_or(0),
             luts: luts.to_vec(),
             ..Default::default()
         };
@@ -316,6 +326,13 @@ mod tests {
         st.preview = Some(Arc::new(Mutex::new(Some(ManagedTexture(42)))));
         r.state = Some(st);
         r
+    }
+
+    #[test]
+    fn lut_name_preserves_actual_utf8_asset_stem() {
+        for name in ["default", "golden-hour", "雨后"] {
+            assert_eq!(LutName(name.to_owned()).to_string(), name);
+        }
     }
 
     #[test]
@@ -374,7 +391,7 @@ mod tests {
         assert!(l[3].starts_with("disk 0xa647e80af4e9395f 0x") && l[3].ends_with(" 0x1d"));
         assert!(l[4].ends_with("0x422b14c27be4803 0x1d"));
         assert_eq!(l[5], "u2 0x531bb9318eea4971 [1920, 1080]");
-        assert_eq!(l[6], format!("f32 {:#x} 1", U_ALPHA));
+        assert_eq!(l[6], format!("f32 {:#x} 0.625", U_ALPHA));
         assert_eq!(l[7], format!("v2 {:#x} [0.0, 10.0]", U_CELL_POS));
         assert_eq!(l[8], format!("v2 {:#x} [0.25, 0.5]", U_CELL_SIZE));
         assert_eq!(l[9], format!("b {:#x} false", U_HIGHLIGHT)); // 选中的是 1
@@ -396,7 +413,7 @@ mod tests {
     fn zip_stops_at_the_shorter_side() {
         let mut r = ready(5, &[1, 2]);
         render_photomode_lut_gallery(&mut r);
-        assert_eq!(r.log.iter().filter(|s| *s == "vao 6").count(), 2);
+        assert_eq!(r.log.iter().filter(|s| *s == "vao 6").count(), 3);
         let mut r = ready(1, &[1, 2, 3]);
         render_photomode_lut_gallery(&mut r);
         assert_eq!(r.log.iter().filter(|s| *s == "vao 6").count(), 1);

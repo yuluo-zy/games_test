@@ -17,8 +17,8 @@ use bevy_ecs::prelude::*;
 
 use country_core::resources::roofs::commands::SetFlatRoofStyleCmd;
 use country_core::resources::roofs::roof_shape::Roof;
-use country_core::resources::walls::public_walls::PublicWalls;
 use country_core::resources::walls::WallId;
+use country_core::resources::walls::public_walls::PublicWalls;
 use country_core::systems::audio::PlayWallUiSound;
 
 use crate::SetRoofColorIdCmd;
@@ -31,6 +31,7 @@ pub fn set_roof_customization<S: Send + Sync + 'static>(
     _styles: EventReader<SetFlatRoofStyleCmd>,
     walls: Res<PublicWalls>,
     mut roofs: Query<&mut Roof>,
+    mut roof_colors: ResMut<country_core::resources::color_id::RoofColorIds>,
     mut sounds: EventWriter<PlayWallUiSound>,
     _history: ResMut<country_core::resources::history::History<S>>,
 ) {
@@ -39,6 +40,12 @@ pub fn set_roof_customization<S: Send + Sync + 'static>(
     for cmd in colors.read() {
         if let Some(entity) = walls.roof_entity(WallId(cmd.id)) {
             if let Ok(mut roof) = roofs.get_mut(entity) {
+                let index = usize::try_from(cmd.id).expect("roof color index fits usize");
+                assert!(
+                    index < roof_colors.0.len(),
+                    "roof color index out of bounds"
+                );
+                roof_colors.0[index] = cmd.color;
                 roof.observed_mut()[0x50..0x54].copy_from_slice(&cmd.color.to_le_bytes());
                 // O：custom == 1（反编译 `event+0x14 == '\x01'`）→ pivot_3d 推 tag 11。
                 if cmd.custom == 1 {

@@ -10,76 +10,169 @@
 //! - `add_splits_in_empty_range`（0x140751240）：常量 1.0/0.5/1.5 +
 //!   u32 转换守卫 0x5f000000/0x5f7fffff；
 //! - `score_split_candidate`（0x140751610）：分裂候选评分。
-use country_core::systems::wall::construction::segmentation::WallPathSegmentationMask;
-use country_core::systems::wall::construction::segmentation::wall_path_segmentation;
+use bevy_ecs::prelude::*;
 use country_core::resources::walls::public_walls::{OnWallChanged, PublicWalls};
 use country_core::systems::ui::signifiers::signifier_create::UiSignifierStream;
-use bevy_ecs::prelude::*;
-
+use country_core::systems::wall::construction::segmentation::WallPathSegmentationMask;
+use country_core::systems::wall::construction::segmentation::wall_path_segmentation;
 
 /// B 0x14074f310：分段计算主入口（每墙掩码产出 → 136B 掩码写回）。
 pub fn calculate_wall_path_segmentation(
     mut changed: EventReader<OnWallChanged>,
-    walls: Res<PublicWalls>,
+    mut walls: ResMut<PublicWalls>,
     mut masks: ResMut<crate::construct_arches::WallPathSegmentationMasks>,
     _signifiers: Res<UiSignifierStream>,
 ) {
     for event in changed.read() {
-        let Some(wall) = walls.get(event.0) else {
-            continue;
-        };
+        let wall = walls
+            .get_mut(event.0)
+            .expect("segmentation changed event must reference a published wall");
         let projection = wall.building_projection();
-        let curve = wall.simplified_curve_2d();
-        let prepared_positions: Vec<[f32; 3]> =
-            curve.points.iter().map(|p| [p[0], p[1], 0.0]).collect();
-        let input = country_core::systems::wall::construction::segmentation::WallSegmentationInput {
-            prepared_positions: &prepared_positions,
-            path_values: &curve.points.iter().map(|p| p[1]).collect::<Vec<f32>>(),
-            shape: &projection.shape(),
-            observed_special_flag: projection.observed_294(),
-        };
-        if let Ok(mask) = wall_path_segmentation(input) {
-            masks.masks.insert(event.0 .0, mask);
-        }
+        let path = wall
+            .prepared_path
+            .as_ref()
+            .expect("segmentation requires prepared wall path");
+        let input =
+            country_core::systems::wall::construction::segmentation::WallSegmentationInput {
+                prepared_positions: &path.positions,
+                path_values: &path.segment_values,
+                shape: &projection.shape(),
+                observed_special_flag: projection.observed_296(),
+            };
+        let mask = wall_path_segmentation(input)
+            .expect("invalid authoritative wall path segmentation input");
+        wall.material_stats
+            .init_this_update(path.length, projection.observed_296() != 0);
+        wall.material_stats
+            .set_path_segmentation_count(mask.len() as u32);
+        masks.masks.insert(event.0.0, mask);
     }
 }
 
-/// B 0x140750420：逐段处理（每段产出候选 splits；数值链见
-/// add_splits_in_empty_range/score_split_candidate）。
+/// B 0x140750420：逐段处理。
+/// **未实现（U）**：旧 `[0.0;4]` 比例近似不是原逻辑。原件为 mask LoopRange
+/// 长度分配 + 逐段 flags/coords 处理；其 closure/输出结构尚未逐语句锚定。
 pub fn process_segment(mask: &WallPathSegmentationMask, out: &mut Vec<[f32; 4]>) {
-    // 段范围遍历：flags/coords 并行（B-process 冻结结构）。
-    for i in 0..mask.flags.len().min(mask.coords.len()) {
-        let flag = mask.flags[i];
-        if flag != 0 {
-            let c = &mask.coords[i];
-            let _ = c;
-            out.push([0.0; 4]);
-        }
-    }
+    let _ = (mask, out);
+    todo!("未实现: process_segment 0x140750420（段处理 closure/输出结构未取证）")
 }
 
-/// B 0x140751240：空区间补分裂（常量 1.0/0.5/1.5；u32 转换守卫
-/// 0x5f000000/0x5f7fffff）。
+/// B 0x140751240：空区间补分裂（逐语句重建：
+/// building-segmentation/B-process/140751240.c）。
+///
+/// - 由 `LoopSlice<Vec3>` 的 xz 点构造 Curve；
+/// - `n = floor(curve.length / spacing)`；`n == 1 且 length < spacing*1.5`
+///   → 0（0x3fc00000=1.5）；
+/// - `for i in 1..=n`：`t = i/(n+1)`，断言 t∈[0,1] 且 !NaN；
+///   `coord = curve.coord_at_u(t)`；`index = base + segment +
+///   (0.5 < fraction)`；`flags[index] |= 8`；`coords[index] = coord`。
+///
+/// `base` 为掩码全局起点（原件 in_RCX），`flags`/`coords` 为掩码数组。
 pub fn add_splits_in_empty_range(
-    segment: &WallPathSegmentationMask,
-    out: &mut Vec<[f32; 4]>,
+    base: usize,
+    points: &[[f32; 3]],
+    flags: &mut [u8],
+    coords: &mut [WallPathSegmentationMaskCoord],
+    spacing: f32,
 ) {
-    // 空区间（无 flag）按 1.0/0.5/1.5 比例补分裂点（数值登记）。
-    let span = segment.length;
-    let n = (span / 1.5).ceil() as u32;
-    for i in 1..n {
-        let t = i as f32 / n as f32;
-        out.push([t, 0.0, 1.0, 0.5]);
+    use country_core::resources::roofs::geometry::surface::Curve2;
+    let planar: Vec<[f32; 2]> = points.iter().map(|p| [p[0], p[2]]).collect();
+    let Ok(curve) = Curve2::try_new(planar, false) else {
+        return;
+    };
+    let rounded = (curve.length / spacing).floor();
+    if rounded <= 0.0 {
+        return;
+    }
+    let mut count = if rounded > u64::MAX as f32 {
+        u64::MAX
+    } else {
+        rounded as u64
+    };
+    // `n == 1 && length < spacing*1.5 → 0`。
+    if count == 1 && curve.length < spacing * f32::from_bits(0x3fc00000) {
+        count = 0;
+    }
+    for i in 1..=count {
+        let t = i as f32 / (count + 1) as f32;
+        assert!(
+            t.is_finite() && (0.0..=1.0).contains(&t),
+            "add_splits_in_empty_range: coordinate out of range"
+        );
+        let (segment, fraction) = curve.coord_at_u(t);
+        let index = base + segment + usize::from(fraction > 0.5);
+        assert!(
+            index < flags.len() && index < coords.len(),
+            "add_splits_in_empty_range: index out of bounds"
+        );
+        flags[index] |= 8;
+        coords[index] = WallPathSegmentationMaskCoord {
+            point_index: segment as u32,
+            fraction,
+        };
     }
 }
 
-/// B 0x140751610：分裂候选评分（候选 = 中点投影距离/角度成本）。
-pub fn score_split_candidate(segment: &WallPathSegmentationMask, index: usize) -> f32 {
-    // 候选评分（B-process 冻结公式；精确系数登记）。
-    let total = segment.coords.len();
-    if total == 0 {
-        return 0.0;
+/// 掩码坐标（原 `ThresholdedCurveCoord` 的 8B 记录投影）。
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct WallPathSegmentationMaskCoord {
+    pub point_index: u32,
+    pub fraction: f32,
+}
+
+impl WallPathSegmentationMaskCoord {
+    pub fn observed_bytes(&self) -> [u8; 8] {
+        let mut out = [0u8; 8];
+        out[..4].copy_from_slice(&self.point_index.to_le_bytes());
+        out[4..].copy_from_slice(&self.fraction.to_le_bytes());
+        out
     }
-    let mid = (index as f32 + 0.5) / total as f32;
-    (mid - 0.5).abs()
+}
+
+/// B 0x140751610：分裂候选处理。
+/// **未实现（U）**：原件无返回值，按 `flags[index]&0xf==0` 走
+/// `CurveSlice::extend_left_until/extend_right_until`（closure_env$0/$1
+/// 未反编译）→ 两次 `sample_at_coord` → 以墙形参数化坐标写回；closure
+/// 停止条件无证据，不能以距离公式冒充。
+pub fn score_split_candidate(segment: &WallPathSegmentationMask, index: usize) -> f32 {
+    let _ = (segment, index);
+    todo!("未实现: score_split_candidate 0x140751610（extend_left/right_until closure 未取证）")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn add_splits_marks_nearest_endpoint_bucket() {
+        let points = [[0.0, 0.0, 0.0], [10.0, 0.0, 0.0]];
+        let mut flags = vec![0u8; 16];
+        let mut coords = vec![
+            WallPathSegmentationMaskCoord {
+                point_index: 0,
+                fraction: 0.0,
+            };
+            16
+        ];
+        add_splits_in_empty_range(0, &points, &mut flags, &mut coords, 2.0);
+        assert_eq!(flags[0], 8);
+        assert_eq!(coords[0].point_index, 0);
+        assert!(coords[0].fraction > 0.0 && coords[0].fraction <= 1.0);
+    }
+
+    #[test]
+    fn add_splits_skips_single_short_segment() {
+        let points = [[0.0, 0.0, 0.0], [10.0, 0.0, 0.0]];
+        let mut flags = vec![0u8; 4];
+        let mut coords = vec![
+            WallPathSegmentationMaskCoord {
+                point_index: 0,
+                fraction: 0.0,
+            };
+            4
+        ];
+        // length=10, spacing=10 → n=1 且 10 < 15 → 跳过。
+        add_splits_in_empty_range(0, &points, &mut flags, &mut coords, 10.0);
+        assert_eq!(flags, vec![0u8; 4]);
+    }
 }

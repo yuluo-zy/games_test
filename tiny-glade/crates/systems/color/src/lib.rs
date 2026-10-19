@@ -30,18 +30,28 @@ use bevy_ecs::prelude::*;
 /// 显示颜色菜单命令（O：`show_color_menu::ShowColorMenuCmd`；ui_color_* 发射、
 /// show_color_options 0x14229a7f0 消费）。字段名 U（show_color_options 反编译失败）；
 /// autoclose_color_menu 0x142298d30 读 kind 字段：`kind == 0xc` 直接关闭。
+#[repr(C)]
 #[derive(Event, Clone, Copy, Debug, Default)]
 pub struct ShowColorMenuCmd {
     /// kind（O：autoclose 读 `*event == 0xc`）。
-    pub kind: u32,
-    /// 载荷（U）。
+    pub kind: u8,
+    /// DecoratorId uses the native +4 payload, independently of wall ids.
+    pub decorator_id: u32,
+    /// Native +8 WallId payload.
     pub payload: u64,
+    /// Native +0x10 screen-space menu center, supplied by the clicked widget.
+    pub position: glam::Vec2,
 }
+
+const _: () = assert!(std::mem::size_of::<ShowColorMenuCmd>() == 24);
 
 /// 隐藏颜色菜单命令（O：`show_color_menu::HideColorMenuCmd`；hide_color_menu
 /// 0x1422adcf0 消费）。
 #[derive(Event, Clone, Copy, Debug, Default)]
-pub struct HideColorMenuCmd;
+pub struct HideColorMenuCmd {
+    /// Native event byte: true restores the saved selection before closing.
+    pub cancel: bool,
+}
 
 /// 屋顶颜色命令（O：`set_roof_customization::SetRoofColorIdCmd`；消费
 /// set_roof_customization 0x142299dd0 / write_roof_color_id_to_gpu 0x142298520）。
@@ -138,44 +148,23 @@ pub struct SetWindowLightCmd {
     pub custom: u8,
 }
 
-/// 旗连接命令（O：`walls::decorator::SetFlagConnectionCmd`；set_flag_connection_
-/// and_chimney_smoke 0x142298970 消费）。E={id u32, value u8, custom u8} = 8B →
-/// stride 0x10（读 event+0xc 值、+0xd custom）。**core `walls::decorator` 同名
-/// 占位（`_gap: u64`）未恢复字段——本模块按消费面重建，登记分歧。**
-#[derive(Event, Clone, Copy, Debug, Default)]
-pub struct SetFlagConnectionCmd {
-    /// 装饰 id。
-    pub id: u32,
-    /// 旗连接值。
-    pub value: u8,
-    /// custom 标志。
-    pub custom: u8,
-}
-
-/// 烟囱烟开关命令（O：`walls::decorator::SetChimneySmokeCmd`；同族消费）。
-/// E={id u32, value u8, custom u8}，stride 0x10。
-#[derive(Event, Clone, Copy, Debug, Default)]
-pub struct SetChimneySmokeCmd {
-    /// 装饰 id。
-    pub id: u32,
-    /// 烟开关值。
-    pub value: u8,
-    /// custom 标志。
-    pub custom: u8,
-}
+/// Share the original core event identity with replay, UI, and the consumer.
+pub use country_core::resources::walls::decorator::{SetChimneySmokeCmd, SetFlagConnectionCmd};
 
 /// `system_color::impl$0::add_color` @0x140651870（注册面；FIX-4 reviewer：
 /// 事件**集合**一致 15 个，注册面按 workspace 约定 `init_resource` 胶水落地——
 /// 未逐事件对齐反编译的 `register_event` 顺序，另含本模块系统写出的他域事件）。
 pub fn register_color_events(world: &mut World) {
     use country_core::resources::color_id::{
-        GateColorIds, HalftimberColorIds, RoofColorIds, SetGateColorIdCmd,
-        SetHalftimberColorIdCmd, SetWallColorIdCmd, WallColorIds,
+        GateColorIds, HalftimberColorIds, RoofColorIds, SetGateColorIdCmd, SetHalftimberColorIdCmd,
+        SetWallColorIdCmd, WallColorIds,
     };
     use country_core::resources::glade_border::NotInDemoHint;
-    use country_core::systems::ui::resources::widget_params::PlayUiSound;
-    use country_core::systems::wall::{SetFreehandHeightTypeCmd, SetPlasterPeelAmountCmd, SetWallStyleCmd};
     use country_core::resources::roofs::commands::SetFlatRoofRimStyleCmd;
+    use country_core::systems::ui::resources::widget_params::PlayUiSound;
+    use country_core::systems::wall::{
+        SetFreehandHeightTypeCmd, SetPlasterPeelAmountCmd, SetWallStyleCmd,
+    };
 
     // O：三色表资源注册（`init_color_ids_buffer` 0x142290750 的 insert_resource
     // ×3 + 菜单登记 4×0x140987ca0）。

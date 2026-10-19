@@ -1,81 +1,90 @@
-//! B `resources/glade_color_customization.rs` — 15 字段颜色定制（≥0x48B）。
-//!
-//! 存档 Colors 节载荷 = `to_json_string<GladeColorCustomization>` 0x14085ee90；
-//! 字段名/索引与偏移由 re-analyst 域类型证据包（RE-DOMAIN-TYPES.md §3）全表给出：
-//! `visit_str` 0x14085f550 长度分派 → index 0..0xe，`serialize` 0x14085f980
-//! `serialize_entry` 泛型。多为 `ColorId(u32)`；+0x40/+0x41/+0x42 三字节枚举
-//! （含 `building_wall_style = StairRailingType` 候选）；`flag` bool、
-//! `lantern_brightness` f32。
-use crate::resources::color_id::ColorId;
+//! Original B15-field Colors wire. Full native serializers and visitor
+//! executions are retained in round12/glade-colors-full, including all enums.
+use crate::resources::{
+    color_id::ColorId,
+    roofs::roof_shape::FlatRoofRimStyle,
+    walls::{
+        decorator::StairRailingType,
+        inner_wall_state::{ArchType, WallStyle},
+    },
+};
 
-/// 颜色定制（字段序按原 visit_str index 0..0xe；偏移见 RE-DOMAIN-TYPES §3）。
-///
-/// 三个字节枚举字段（freehand_ty/flat_rim_style/building_wall_style）的**变体名待取证**；
-/// 以 `u8` 保留字节存储与 serde 数字形态，枚举变体恢复后改为具名枚举。
-#[derive(bevy_ecs::resource::Resource, Clone, Copy, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
+/// B GCC+8..18: independent stair, ladder and magic colors plus railing type.
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct StairCustomization {
+    pub stairs_color: ColorId,
+    pub ladder_color: ColorId,
+    pub railing_ty: StairRailingType,
+    #[serde(default)]
+    pub magic_color: ColorId,
+}
+impl Default for StairCustomization {
+    fn default() -> Self {
+        Self {
+            stairs_color: ColorId(100003),
+            ladder_color: ColorId(0),
+            railing_ty: StairRailingType::None,
+            magic_color: ColorId(0),
+        }
+    }
+}
+
+#[derive(
+    bevy_ecs::resource::Resource,
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 pub struct GladeColorCustomization {
-    /// index 0，+0x18
     pub freeform_wall: ColorId,
-    /// index 1，+0x1c
     pub building: ColorId,
-    /// index 2，+0x20
     pub roof: ColorId,
-    /// index 3，+0x42（字节枚举；StairRailingType 候选，变体名待取证）
-    pub building_wall_style: u8,
-    /// index 4，+0x40（字节枚举，变体名待取证）
-    pub freehand_ty: u8,
-    /// index 5，+0x24
+    pub building_wall_style: WallStyle,
+    pub freehand_ty: ArchType,
     pub halftimber: ColorId,
-    /// index 6，+0x28
     pub lantern_light: ColorId,
-    /// index 7，+0x2c
-    pub fence: ColorId,
-    /// index 8，+0x30
+    pub fences: ColorId,
     pub window_light: ColorId,
-    /// index 9，+0x34
-    pub flag: bool,
-    /// index 10，+0x00
-    pub windows: ColorId,
-    /// index 11，+0x38
+    pub flag: ColorId,
+    pub windows: Option<ColorId>,
     pub gates: ColorId,
-    /// index 12，+0x41（字节枚举，变体名待取证）
-    pub flat_rim_style: u8,
-    /// index 13，+0x3c
+    #[serde(default)]
+    pub flat_rim_style: FlatRoofRimStyle,
+    #[serde(default = "default_lantern_brightness")]
     pub lantern_brightness: f32,
-    /// index 14，+0x08
-    pub stairs: ColorId,
+    #[serde(default)]
+    pub stairs: StairCustomization,
+}
+fn default_lantern_brightness() -> f32 {
+    1.0
+}
+impl Default for GladeColorCustomization {
+    /// Complete original82B default1408c5600, executed with poison-filled
+    /// storage and then serialized by original14085ee90 to verify all fields.
+    fn default() -> Self {
+        Self {
+            freeform_wall: ColorId(0),
+            building: ColorId(8),
+            roof: ColorId(0),
+            building_wall_style: WallStyle::STONE_WITH_SKIRTS,
+            freehand_ty: ArchType::FollowTerrain,
+            halftimber: ColorId(0),
+            lantern_light: ColorId(0),
+            fences: ColorId(0),
+            window_light: ColorId(0),
+            flag: ColorId(0),
+            windows: None,
+            gates: ColorId(0),
+            flat_rim_style: FlatRoofRimStyle::Rim,
+            lantern_brightness: 1.0,
+            stairs: StairCustomization::default(),
+        }
+    }
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn colors_roundtrip_keeps_all_fifteen_fields() {
-        let value = GladeColorCustomization {
-            freeform_wall: ColorId(1),
-            building: ColorId(2),
-            roof: ColorId(3),
-            building_wall_style: 1,
-            freehand_ty: 2,
-            halftimber: ColorId(4),
-            lantern_light: ColorId(5),
-            fence: ColorId(6),
-            window_light: ColorId(7),
-            flag: true,
-            windows: ColorId(8),
-            gates: ColorId(9),
-            flat_rim_style: 3,
-            lantern_brightness: 0.5,
-            stairs: ColorId(10),
-        };
-        let json = serde_json::to_value(&value).unwrap();
-        let back: GladeColorCustomization = serde_json::from_value(json).unwrap();
-        assert_eq!(value, back);
-        // ColorId 序列化为透明 u32（裸数字，非元组数组）。
-        assert_eq!(
-            serde_json::to_value(&ColorId(42)).unwrap(),
-            serde_json::json!(42)
-        );
-    }
-}
+#[path = "glade_color_customization_native_oracle.rs"]
+mod native_oracle;

@@ -219,9 +219,11 @@ pub fn construct_freehand_wall_arches(
         return Err(WallArchesError::InvalidInput);
     }
     let mut out = WallArchesOutput {
+        material_stats: Default::default(),
         instances: Vec::new(),
         gate_commands: Vec::new(),
         segment_count: 0,
+        segments: Vec::new(),
     };
     let mut all = Vec::new();
     for mask in input.masks {
@@ -234,6 +236,8 @@ pub fn construct_freehand_wall_arches(
             regular: false,
             closed: false,
         })?;
+        out.material_stats
+            .observe_mask(mask.length, &ss, input.has_roof);
         let override_height = if input.observed_294 != 0 {
             let mut h = 0.;
             let mut y = 0.;
@@ -319,5 +323,6 @@ pub fn construct_freehand_wall_arches(
             *a = maxnum(*a, raised[i]);
         }
     }
+    out.segments = all.into_iter().map(|(segment, _)| segment).collect();
     Ok(out)
 }

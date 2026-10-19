@@ -9,16 +9,7 @@
 use crate::resources::audio_resources::{AudioCore, Studio};
 use bevy_ecs::prelude::*;
 
-/// Weather state (native `resources::weather::Weather` 待接线). The rain
-/// strength drives the global parameter below.
-#[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
-pub struct Weather {
-    pub season: u8,
-    pub time_of_day: f32,
-    /// O: the weather system's set_parameter value source (native reads the
-    /// weather state; the exact field mapping 待取证).
-    pub rain_strength: f32,
-}
+pub use crate::resources::weather::Weather;
 
 /// Global rain parameter (O: 0x142c63000, len 0xb).
 pub const WEATHER_RAIN_PARAM: &str = "RainStrength";
@@ -31,7 +22,8 @@ pub fn weather_audio_system<S: Studio + Send + Sync + 'static>(
     weather: Res<Weather>,
     core: Res<AudioCore<S>>,
 ) {
-    let _ = core.set_parameter(WEATHER_RAIN_PARAM, weather.rain_strength);
+    // Original @14155691f reads the canonical Weather+8 directly.
+    let _ = core.set_parameter(WEATHER_RAIN_PARAM, weather.field_8);
 }
 
 #[cfg(test)]

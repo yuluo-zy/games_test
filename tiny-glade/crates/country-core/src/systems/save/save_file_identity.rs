@@ -3,20 +3,15 @@
 //! - `try_approx_parse_save_file_identity` 0x141e58f20：分配 0x800 B 缓冲，ReadFile 读入，
 //!   在 UTF-8 文本里搜索字面量 `"Identity"`（含引号，串 @0x142f92a40，len 10），随后把紧跟的
 //!   JSON 值解析为身份 u64。
-//! - `derive_fallback_save_file_identity` 0x141673140：解析失败回退——取 SystemTime、
-//!   二次尝试、再由文件元数据派生（字段序 U，未决）。
+//! - `derive_fallback_save_file_identity` 0x141673140：解析失败回退——依次哈希
+//!   basename → file length → modification time 的逐次 tuple hash。
 //!
 //! Identity 节的载荷是 `to_json_string<HistoryIdentity>`（0x140b385e0），即把 u64 按十进制
 //! 写成数字字符串；因此存档内 `"Identity":<number>` 中的 `<number>` 就是身份值。
 //! 文件身份与历史身份同值（`SaveFileIdentity` = `HistoryIdentity`，re-analyst 闭合）。
 use crate::resources::history::HistoryIdentity;
 use anyhow::{Context, Result, bail};
-use std::{
-    fs::File,
-    io::Read,
-    path::Path,
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::{fs::File, io::Read, path::Path};
 
 /// 存档文件身份 = 历史身份 u64（PDB 类型 `SaveFileIdentity` 与 `HistoryIdentity` 同值）。
 pub type SaveFileIdentity = HistoryIdentity;
@@ -55,33 +50,19 @@ pub fn try_approx_parse_save_file_identity(file: &mut File) -> Result<Option<Sav
     Ok(Some(HistoryIdentity(value)))
 }
 
-/// 解析失败回退（O：0x141673140）：SystemTime 取时 + 二次尝试 + 文件元数据派生。
-///
-/// 原版字段序 U 未决；本实现把文件修改时间戳折叠进身份值，既不伪造成功解析，也保证同一
-/// 文件稳定产出同一身份。二次尝试复用 `try_approx_parse_save_file_identity`（seek 回 0）。
+/// B 141673140: hash the optional basename first, then hash the pair of
+/// the previous result and file length, then the pair with modification time.
+/// Metadata failures retain the already-computed prefix hash. This function
+/// neither parses the Identity section nor uses the current clock.
 pub fn derive_fallback_save_file_identity(path: &Path) -> SaveFileIdentity {
-    // 二次尝试：调用方先 seek 到文件头再解析一次；仍失败则按元数据派生。
-    if let Ok(mut file) = File::open(path) {
-        use std::io::Seek;
-        if file.seek(std::io::SeekFrom::Start(0)).is_ok() {
-            if let Ok(Some(identity)) = try_approx_parse_save_file_identity(&mut file) {
-                return identity;
-            }
+    let mut hash = crate::utils::calculate_hash(&path.file_name());
+    if let Ok(metadata) = std::fs::metadata(path) {
+        hash = crate::utils::calculate_hash(&(hash, &metadata.len()));
+        if let Ok(modified) = metadata.modified() {
+            hash = crate::utils::calculate_hash(&(hash, &modified));
         }
     }
-    let modified = std::fs::metadata(path)
-        .ok()
-        .and_then(|metadata| metadata.modified().ok())
-        .unwrap_or(UNIX_EPOCH);
-    let seconds = modified
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
-    let nanos = modified
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .subsec_nanos();
-    HistoryIdentity(seconds ^ (nanos as u64) << 32)
+    HistoryIdentity(hash)
 }
 
 /// 供外部使用的完整入口：解析失败自动回退（`try_approx_parse` → `derive_fallback`）。
@@ -92,12 +73,6 @@ pub fn parse_save_file_identity(path: &Path) -> SaveFileIdentity {
         }
     }
     derive_fallback_save_file_identity(path)
-}
-
-/// 让 `SystemTime` 参与测试语义；不暴露更多实现细节。
-#[allow(dead_code)]
-fn _modified_since(path: &Path) -> Option<SystemTime> {
-    std::fs::metadata(path).ok().and_then(|m| m.modified().ok())
 }
 
 #[cfg(test)]
@@ -144,5 +119,30 @@ mod tests {
         temp.write_all(br#"{"Identity":7}"#).unwrap();
         temp.flush().unwrap();
         assert_eq!(parse_save_file_identity(temp.path()), HistoryIdentity(7));
+    }
+    #[test]
+    fn fallback_hashes_metadata_and_does_not_reparse_identity() {
+        let mut file = tempfile::NamedTempFile::new().unwrap();
+        file.write_all(br#"{"Identity":7}"#).unwrap();
+        file.flush().unwrap();
+        let metadata = std::fs::metadata(file.path()).unwrap();
+        let basename = crate::utils::calculate_hash(&file.path().file_name());
+        let sized = crate::utils::calculate_hash(&(basename, &metadata.len()));
+        let expected = crate::utils::calculate_hash(&(sized, &metadata.modified().unwrap()));
+        assert_eq!(
+            derive_fallback_save_file_identity(file.path()),
+            HistoryIdentity(expected)
+        );
+        assert_eq!(parse_save_file_identity(file.path()), HistoryIdentity(7));
+    }
+
+    #[test]
+    fn metadata_failure_returns_the_basename_hash() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("missing-history.json");
+        assert_eq!(
+            derive_fallback_save_file_identity(&path),
+            HistoryIdentity(crate::utils::calculate_hash(&path.file_name()))
+        );
     }
 }

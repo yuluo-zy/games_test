@@ -346,7 +346,7 @@ pub fn replay_rasters<S: Send + Sync + 'static>(
         }
     }
     for index in finished.into_iter().rev() {
-        bucket.commands.remove(index);
+        bucket.remove_command(index);
     }
 }
 

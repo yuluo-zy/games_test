@@ -13,28 +13,20 @@
 use glam::Vec3;
 
 /// B `construct_wooden_pillar_w_stone_base`（0x141fe2150）。**未实现**。
-pub fn construct_wooden_pillar_w_stone_base(
-    _base: Vec3,
-    _height: f32,
-    _out: &mut Vec<[u8; 96]>,
-) {
-    todo!("未实现: construct_wooden_pillar_w_stone_base 0x141fe2150（1.1 钳/1.25 石基/0.3 斜撑/0x18B 二路未逐语句）")
+pub fn construct_wooden_pillar_w_stone_base(_base: Vec3, _height: f32, _out: &mut Vec<[u8; 96]>) {
+    todo!(
+        "未实现: construct_wooden_pillar_w_stone_base 0x141fe2150（1.1 钳/1.25 石基/0.3 斜撑/0x18B 二路未逐语句）"
+    )
 }
 
 /// B `construct_brick_columns`（0x141fe3240）。**未实现**。
-pub fn construct_brick_columns(
-    _positions: &[Vec3],
-    _height: f32,
-    _out: &mut Vec<[u8; 96]>,
-) {
+pub fn construct_brick_columns(_positions: &[Vec3], _height: f32, _out: &mut Vec<[u8; 96]>) {
     todo!("未实现: construct_brick_columns 0x141fe3240（FrozenMap(0x3a)→writer→0x40B 表未逐语句）")
 }
 
 /// B `construct_crossbrick_pillar`（0x142418f50）。**未实现**。
-pub fn construct_crossbrick_pillar(
-    _base: Vec3,
-    _height: f32,
-    _out: &mut Vec<[u8; 96]>,
-) {
-    todo!("未实现: construct_crossbrick_pillar 0x142418f50（count=ceil((top-bottom)/(size*0.4))/random_splits/四边/xz_rotation_bad 未逐语句）")
+pub fn construct_crossbrick_pillar(_base: Vec3, _height: f32, _out: &mut Vec<[u8; 96]>) {
+    todo!(
+        "未实现: construct_crossbrick_pillar 0x142418f50（count=ceil((top-bottom)/(size*0.4))/random_splits/四边/xz_rotation_bad 未逐语句）"
+    )
 }

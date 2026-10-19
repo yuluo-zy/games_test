@@ -25,7 +25,7 @@ pub const GATE_STATE: u32 = 8;
 pub const MAX_PAGE_EXCLUSIVE: u8 = 7;
 
 /// 反馈报告状态（资源 B，只含被读取的字段）。
-#[derive(Clone, Debug)]
+#[derive(bevy_ecs::resource::Resource, Clone, Debug)]
 pub struct FeedbackReportBg {
     /// `+0x44`：必须 == 1。
     pub visible: u8,

@@ -10,7 +10,7 @@
 //! - **Move 分支**：MoveTreeCmd 0x20 载荷（coregap-1 已落库）→ 全实现。逐事件
 //!   `TreeStorage::get(index@+8)`；None → 日志 "MoveTreeCmd references a
 //!   non-existing tree"（decomp 0x142267430 行 247-270）；Some → 定位
-//!   PrefabInstanceData 写新位置 → 水面采样（bilinear_sample_at_world_xz）→
+//!   PrefabInstance 写新位置 → 水面采样（bilinear_sample_at_world_xz）→
 //!   `PlayTreeSoundCmd{kind=1, position}`（真实槽 stride 0x20 另有
 //!   in_water@+9 / inverse_lerp@+0xc——共享类型缺这两个字段，见分歧 T1）。
 //! - **Delete 分支**：补 `Entities::contains(entity)` 门控（decomp 行 835）——
@@ -28,7 +28,6 @@ use bevy_ecs::prelude::*;
 
 use country_core::components::{TreeAnimation, TreeComponent, TreeMarkedForDeletion, TreeMoveBend};
 use country_core::resources::history::tree_edit::{DeleteTreeCmd, InsertTreeCmd};
-use country_core::resources::prefab::PrefabInstance;
 use country_core::resources::session::ActiveSession;
 use country_core::resources::time_of_day::inverse_lerp;
 use country_core::resources::tree_storage::{
@@ -37,6 +36,7 @@ use country_core::resources::tree_storage::{
 use country_core::resources::world_raster_defs::WaterRaster;
 use country_core::systems::audio::PlayTreeSoundCmd;
 use country_core::systems::audio::tree_audio::TreeAmbience;
+use country_core::systems::prefab::PrefabInstanceData;
 use country_core::systems::prefab::{DespawnPrefabCmd, SpawnPrefabCmd};
 use country_core::systems::save::load_completion_checker::LoadingCompletionState;
 
@@ -73,7 +73,7 @@ pub fn should_despawn_tree(marked_for_deletion: bool, animation_value: f32) -> b
 #[allow(clippy::too_many_arguments)]
 pub fn process_tree_cmds<S: Send + Sync + 'static>(
     mut storage: ResMut<TreeStorage>,
-    mut instances: Query<&mut PrefabInstance>,
+    mut instances: Query<&mut PrefabInstanceData>,
     mut moves: EventReader<MoveTreeCmd>,
     mut deletes: EventReader<DeleteTreeCmd>,
     mut inserts: EventReader<InsertTreeCmd>,
@@ -89,11 +89,11 @@ pub fn process_tree_cmds<S: Send + Sync + 'static>(
     // ---- Move 分支（O：槽 stride 0x20；decomp 行 187-325）。wave3 落库。
     for cmd in moves.read() {
         if let Some(entry) = storage.get(TreeStorageIndex(cmd.index)) {
-            // Original query is the actual 48-byte PrefabInstance placement.
+            // Original query is the actual 48-byte PrefabInstanceData placement.
             // Entity/component errors reach unwrap_failed @142268583.
             let mut instance = instances
                 .get_mut(entry.entity)
-                .expect("MoveTreeCmd entity has no PrefabInstance placement");
+                .expect("MoveTreeCmd entity has no PrefabInstanceData placement");
             instance.0.position = cmd.position;
             let size_ratio = inverse_lerp(0.5, 0.9, instance.0.scale);
             // O：水面采样（decomp 行 300-303）。结果 `0.0 < level` 是
@@ -267,7 +267,7 @@ pub fn process_tree_cmds<S: Send + Sync + 'static>(
                 // position@+0x10/+0x18）。
                 let instance = instances
                     .get(entry.entity)
-                    .expect("DeleteTreeCmd live entity has no PrefabInstance placement");
+                    .expect("DeleteTreeCmd live entity has no PrefabInstanceData placement");
                 sounds.write(PlayTreeSoundCmd {
                     kind: 2,
                     selector: 0,
@@ -344,7 +344,7 @@ mod placement_consumer_tests {
         let mut placement = PlacementDataSsbo::default();
         placement.position = glam::Vec3::new(1.0, 2.0, 3.0);
         placement.scale = 0.75;
-        let entity = world.spawn(PrefabInstance(placement)).id();
+        let entity = world.spawn(PrefabInstanceData(placement)).id();
         world.resource_mut::<TreeStorage>().insert(
             TreeStorageIndex(73),
             TreeStorageEntry {
@@ -361,7 +361,7 @@ mod placement_consumer_tests {
         schedule.add_systems(process_tree_cmds::<()>);
         schedule.run(&mut world);
         assert_eq!(
-            world.get::<PrefabInstance>(entity).unwrap().0.position,
+            world.get::<PrefabInstanceData>(entity).unwrap().0.position,
             target
         );
         let events = world.resource::<Events<PlayTreeSoundCmd>>();
@@ -393,7 +393,7 @@ mod placement_consumer_tests {
         let mut placement = PlacementDataSsbo::default();
         placement.position = glam::Vec3::new(1.0, 2.0, 3.0);
         placement.scale = 0.75;
-        let old = world.spawn(PrefabInstance(placement)).id();
+        let old = world.spawn(PrefabInstanceData(placement)).id();
         world.resource_mut::<TreeStorage>().insert(
             TreeStorageIndex(73),
             TreeStorageEntry {
@@ -436,7 +436,7 @@ mod placement_consumer_tests {
         assert!(world.get::<TreeMarkedForDeletion>(created).is_some());
     }
     #[test]
-    #[should_panic(expected = "MoveTreeCmd entity has no PrefabInstance placement")]
+    #[should_panic(expected = "MoveTreeCmd entity has no PrefabInstanceData placement")]
     fn live_move_entity_without_placement_preserves_original_unwrap_failure() {
         let mut world = world();
         let entity = world.spawn_empty().id();

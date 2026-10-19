@@ -66,7 +66,7 @@ pub mod window_lights;
 //      try_merge_decorators 行 77，均 inline，被 merge_proposal / ui_systems /
 //      collision_detection 内联实例化）----
 
-use bevy_ecs::schedule::Schedule;
+use bevy_ecs::schedule::IntoScheduleConfigs;
 use bevy_ecs::world::World;
 use country_core::resources::walls::decorator::DecoratorInfo;
 
@@ -125,31 +125,75 @@ pub fn try_merge_decorators(
 ///   `SparseInstanceBufferAllocation<RoofTileSsbo>`）；函数仍为非 bevy 系统
 ///   （参数为绘制状态/双列表借用），原调度注册点未取证 → 未入调度。
 pub fn add_decorator_systems<S: Send + Sync + 'static, C: Send + Sync + 'static>(
-    schedule: &mut Schedule,
+    app: &mut bevy_app::App,
 ) {
-    schedule.add_systems((
-        audio::op_confirm_audio::op_confirm_audio,
-        audio::op_preview_audio::op_preview_audio,
-        audio::op_stairs_audio::op_stairs_audio,
-        window_lights::window_lights,
-        remove_ivy_under_windows::remove_ivy_under_windows,
-        chimney_smoke_anim_thickness::chimney_smoke_anim_thickness,
-        // integration-registration 2026-10-17：判等/部分实现系统补注册点。
-        decorator_visual::maintain_visual_entities::clear_out_wall_holes,
-        decorator_visual::maintain_visual_entities::clear_out_visual_entities,
-        deferred_decorator_history::decorator_record_history::<S>,
-        backup::create_or_restore_decorator_backup::<C>,
-    ));
+    use bevy_app::Update;
+
+    // 阶段 0/3（契约 §1 阶段 0.3 + 3.1）：子类型派生 → 变换缓存。缓存必须先于
+    // UI 高度系统与可视化生成（它们消费 CachedDecoratorTransforms）。
+    app.add_systems(
+        Update,
+        (
+            derive_decorator_subtype::derive_decorator_subtypes,
+            cache_decorator_transforms::cache_decorator_transforms,
+        )
+            .chain(),
+    );
+
+    // 阶段 4（可视化清空 → 音频/窗灯/常春藤/烟柱）。清空在缓存之后；生成族由
+    // 各模块宿主继续接入（见 DELIVERY 剩余项）。
+    app.add_systems(
+        Update,
+        (
+            decorator_visual::maintain_visual_entities::clear_out_visual_entities,
+            decorator_visual::maintain_visual_entities::clear_out_wall_holes,
+            audio::op_confirm_audio::op_confirm_audio,
+            audio::op_preview_audio::op_preview_audio,
+            audio::op_stairs_audio::op_stairs_audio,
+            window_lights::window_lights,
+            remove_ivy_under_windows::remove_ivy_under_windows,
+            chimney_smoke_anim_thickness::chimney_smoke_anim_thickness,
+        )
+            .chain()
+            .after(cache_decorator_transforms::cache_decorator_transforms),
+    );
+
+    // 阶段 5/6（历史 → 备份 → 外部命令）。历史排空在窗灯/可视化之后。
+    //
+    // `restore_archived_decorators` **暂不注册**：原系统带历史游标守卫
+    // （阶段 6.3，0x140817a40 步骤 2；本实现尚未闭合），每帧无条件运行会用
+    // archivist 内容反复覆盖存储。待游标守卫取证后单独以 run_if 注册。
+    app.add_systems(
+        Update,
+        (
+            deferred_decorator_history::decorator_record_history::<S>,
+            backup::create_or_restore_decorator_backup::<C>,
+            handle_external_decorator_cmds::handle_external_decorator_cmds::<C>,
+        )
+            .chain()
+            .after(window_lights::window_lights),
+    );
+
+    // 回放（0x14080c8d0）消费 `LiveDecoratorArchivist` 的 cull 集；在历史链后。
+    app.add_systems(
+        Update,
+        replay_decorator::replay_decorator
+            .after(deferred_decorator_history::decorator_record_history::<S>),
+    );
 }
 
 /// cull 剔除族注册（`DecoratorArchivist<C>` 泛型 → 宿主 App 具化 C 后调用）。
-pub fn register_cull_oob_systems<C: Send + Sync + 'static>(schedule: &mut Schedule) {
-    schedule.add_systems((
-        cull_oob_decorators::auto_allow_decorator_culling::<C>,
-        cull_oob_decorators::cull_oob_decorators::<C>,
-        cull_oob_decorators::cull_stair_attached_decorators::<C>,
-        cull_oob_decorators::cull_stair_attached_decorators_on_invalid_stairs::<C>,
-    ));
+pub fn register_cull_oob_systems<C: Send + Sync + 'static>(app: &mut bevy_app::App) {
+    app.add_systems(
+        bevy_app::Update,
+        (
+            cull_oob_decorators::auto_allow_decorator_culling::<C>,
+            cull_oob_decorators::cull_oob_decorators::<C>,
+            cull_oob_decorators::cull_stair_attached_decorators::<C>,
+            cull_oob_decorators::cull_stair_attached_decorators_on_invalid_stairs::<C>,
+        )
+            .chain(),
+    );
 }
 
 /// 事件/资源注册（D4 统一）：装饰域自有资源 init_resource。
@@ -158,12 +202,26 @@ pub fn add_decorator_events_and_resources(world: &mut World) {
     world.init_resource::<window_lights::GlobalWindowLightsControl>();
     world.init_resource::<chimney_smoke_anim_thickness::ChimneySmokeThickness>();
     world.init_resource::<chimney_smoke_anim_thickness::TimeOfDayCycle>();
+    // 灯笼灯光双缓冲（0x140790400 新旧 0x1cB 列表比较输出）。
+    world.init_resource::<decorator_visual::lantern::LanternLightLists>();
     // integration-registration 2026-10-17：add_decorator_systems 新增 4 系统所需的
     // crate 本地资源（幂等 init；DecoratorBackup/DeferredDecoratorEditHistory 亦在
     // ui_systems::register_ui_systems 初始化，双路径并存无冲突）。
     world.init_resource::<decorator_visual_state::DecoratorVisualState>();
     world.init_resource::<deferred_decorator_history::DeferredDecoratorEditHistory>();
     world.init_resource::<backup::DecoratorBackup>();
+    // add_decorator_systems 消费的权威/缓存资源（幂等：宿主已插入时保持原值）。
+    world.init_resource::<country_core::resources::walls::decorator_storage::DecoratorStorage>();
+    world.init_resource::<
+        country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms,
+    >();
+    world.init_resource::<country_core::resources::walls::decorator_subtype::DerivedDecoratorSubtypes>();
+    world.init_resource::<country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary>();
+    world.init_resource::<country_core::resources::walls::decorator::DeferredDecoratorOpEvents>();
+    // 外部装饰命令事件（handle_external_decorator_cmds 的 EventReader 面）。
+    world.init_resource::<bevy_ecs::event::Events<
+        handle_external_decorator_cmds::ExternalDecoratorCmd,
+    >>();
     // 音频事件通道由 country-core `add_audio_events` 注册（PlayDecoratorSoundCmd
     // 属于 core）；装饰域直接写该事件。
 }

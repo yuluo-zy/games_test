@@ -46,6 +46,15 @@ use bevy_ecs::prelude::*;
 use country_core::{game_config::GameConfig, resources::window::WindowSize};
 use std::{path::PathBuf, sync::Arc};
 
+#[path = "startup_event_runtime.rs"]
+mod startup_event_runtime;
+
+#[path = "startup_construction_runtime.rs"]
+mod startup_construction_runtime;
+
+#[path = "history_runtime.rs"]
+mod history_runtime;
+
 /// Rust marker for the original 45 GameSystemSet discriminants. Their source
 /// names are unavailable; original add_stages iterates 0..44 and chains them.
 /// Retaining numeric identity avoids inventing stage names or engine internals.
@@ -54,10 +63,7 @@ pub struct GameSystemSet(pub u8);
 
 /// Each original App constructs a separate shader library. The Arc is a Rust
 /// owner for that App's library; it does not merge the two native libraries.
-#[derive(Resource, Clone)]
-pub struct ApplicationShaderLibrary(
-    pub Arc<country_core::asset_libraries::shader_library::AssetShaderLibrary>,
-);
+pub use country_core::asset_libraries::shader_library::SharedAssetShaderLibrary as ApplicationShaderLibrary;
 
 /// B `tiny_glade::run_game::impl$2` 对应的输入插件（PDB 未暴露类型名）。
 ///
@@ -152,8 +158,9 @@ pub fn run_game(
             ),
         );
         app.insert_resource(country_core::systems::steam::SteamClientResource {
-            client: Some(client),
+            client: Some(client.clone()),
         });
+        app.world_mut().resource_mut::<country_core::systems::steam::SteamOverlayOpenResources>().client = Some(client);
     } else {
         // The explicitly named standalone host has neither GFN nor Steam SDK.
         app.insert_resource(
@@ -201,6 +208,31 @@ pub fn run_game_thread(
         },
     };
     let mut app = App::new();
+    startup_event_runtime::install(&mut app);
+    // Complete the original unchained set7 tuple on the existing App.
+    // The other three leaves were delivered in brush-startup/runtime-registration.rs.
+    app.add_systems(bevy_app::Update, (
+     country_core::systems::debug::human_scale_ref::human_scale_ref,
+     country_core::systems::ui_2d_follow_mouse::ui_2d_follow_mouse,
+     country_core::systems::mesh_follow_terrain::mesh_follow_terrain,
+    ).in_set(GameSystemSet(7)));
+    // No run_if, no chain. Native Query/resource permissions are preserved.
+    
+    // Integration fragment for the already authoritative App; no replacement owner.
+    // B run_game_thread1405a019c/19e => in_set7, immediately add_systems(Update).
+    // These three leaves belong to the original unchained six-system tuple.
+    app.add_event::<country_core::systems::brush_preview::OverwriteBrushPreview>();
+    app.add_event::<country_core::systems::arrow_gizmo_animation::EnableArrowGizmoStretch>();
+    app.add_systems(bevy_app::Update, (
+        country_core::systems::brush_preview::brush_preview,
+        country_core::systems::look_at_camera::look_at_camera,
+        country_core::systems::arrow_gizmo_animation::arrow_gizmo_animation,
+    ).in_set(GameSystemSet(7)));
+    
+    #[cfg(target_os = "windows")]
+    app.insert_resource(crate::audio_host::AudioStartupOptions {
+        asynchronous: cli.fmod_asynchronous,
+    });
     // Original StatesPlugin/init_state and PostStartup Pending(Game) producer.
     use bevy_state::app::AppExtStates;
     app.add_plugins(bevy_state::app::StatesPlugin);
@@ -241,6 +273,18 @@ pub fn run_game_thread(
     // Other domains retain their own OnExit consumers. This is the complete
     // original host wall/unload consumer, not a blanket despawn replacement.
     app.add_systems(bevy_state::state::OnExit(country_core::app_loading_state::AppLoadingState::Game),crate::app_systems::walls_on_glade_unload);
+    // Native140b3f550 outer chain: begin precedes the inner unordered pair.
+    // Keep the independently registered full host wall-unload system above.
+    app.add_systems(
+        bevy_state::state::OnExit(country_core::app_loading_state::AppLoadingState::Game),
+        (
+            country_core::startup::clearing::begin_glade_unload,
+            (
+                country_core::startup::clearing::uninit_clearing::<country_core::resources::native_audio::NativeStudio>,
+                country_core::startup::clearing::despawn_glade_entities,
+            ),
+        ).chain(),
+    );
     app.add_systems(
         bevy_app::PreStartup,
         country_core::game_profile::load_game_profile,
@@ -290,6 +334,9 @@ pub fn run_game_thread(
     // InnerWalls::new @140859f90 creates the actual owning map/id counter.
     // Saved commands later populate this same authority; no snapshot is made.
     app.insert_resource(country_core::resources::walls::InnerWalls::new());
+    // R10G1: 预置树系统（B save::add_save_load_systems 注册的同一 owner）在
+    // OnEnter(Game) 写入该表；宿主在本文件直接注册 save 批次，因此补上资源。
+    app.init_resource::<country_core::resources::tree_storage::TreeStorage>();
     app.init_resource::<country_core::resources::stairs::stairs_state::TransientStairEdgeIdAllocator>();
     // Original full-game tuple immediately follows MainCamera insertion with
     // ImageFormationConfigs::default @1408ae7f0.
@@ -305,6 +352,19 @@ pub fn run_game_thread(
     app.insert_resource(rt_worker);
     app.add_event::<country_core::resources::rt::UpdateRtWorldEvent>();
     install_history_and_wall_runtime(&mut app, config.dev.demo);
+    startup_construction_runtime::install(&mut app);
+    // Preserve actual domain owner constructors without mounting incomplete
+    // edit/UI helpers merely to initialize their resources.
+    toolbar::configure_app(&mut app);
+    crate::decorator_plugin::build_startup_resources(&mut app);
+    crate::wall_constructor_plugin::build(&mut app);
+    app.add_event::<toolbar::ui_interaction::UiDragEvent>();
+    app.add_event::<toolbar::ui_interaction::UiJustBecameInFocusEvent>();
+    app.add_event::<toolbar::toolbar_button::UiToolbarButtonResetAllCooldowns>();
+    app.add_event::<country_core::resources::events::ModeJustChanged>();
+    app.add_event::<country_core::systems::ui::resources::widget_params::PlayUiSound>();
+    app.add_event::<country_core::systems::backend::input::calculate_input_delta::UiHistoryButtonPressed>();
+
     app.insert_resource(window);
     // Original insert_resources @140940e35/e4a: both native tag 0.
     app.init_resource::<country_core::systems::mode_manager::AppMode>();
@@ -344,9 +404,33 @@ pub fn run_game_thread(
     });
     app.init_resource::<ActionSetValues>();
     app.init_resource::<ActionSetStates>();
+    let demo = app.world().resource::<GameConfig>().dev.demo;
+    app.insert_resource(country_core::startup::init_photomode_state::PhotomodeState::new(demo));
+    app.init_resource::<country_core::resources::gui::PhotomodeScreen>();
+    app.add_event::<country_core::resources::photo_mode::PhotoModeCmd>();
+    app.add_event::<country_core::systems::backend::photomode::PhotoModeAudioParameter>();
+    app.add_event::<toolbar::ui_interaction::UiClickEvent>();
+    // Original toolbar::impl1::build @14068dd10..dd96: the photo tuple is
+    // chain_ignore_deferred, set8, gated by AppLoadingState::Game.
+    app.add_systems(bevy_app::Update, (
+        country_core::systems::backend::photomode::update_photomode_visibility,
+        country_core::systems::backend::photomode::process_photomode_transitions,
+        toolbar::photomode::timelapse::restore_after_timelapse,
+        toolbar::photomode::photomode_camera_buttons,
+        country_core::systems::backend::photomode::finish_photomode_frame,
+    ).chain_ignore_deferred().in_set(GameSystemSet(8)).run_if(
+        bevy_state::condition::in_state(country_core::app_loading_state::AppLoadingState::Game)));
     app.init_resource::<EscMenuState>();
     app.init_resource::<NextEscMenuState>();
     app.init_resource::<PrevEscMenuState>();
+    app.add_event::<country_core::resources::events::EscapeMenuJustOpened>();
+    app.insert_resource(country_core::systems::steam::SteamOverlayOpenResources {
+        open_browser: Some(Arc::new(|url| webbrowser::open(url).map_err(|error| error.to_string()))),
+        ..Default::default()
+    });
+    app.add_event::<country_core::resources::window::OsWindowCmd>();
+    app.add_systems(bevy_app::Update,
+        country_core::systems::steam::forward_browser_window_commands.after(GameSystemSet(39)));
     // run_game_thread decomp L3503..3517 clears the block covering +0xa.
     app.insert_resource(TimeOfDayScreen {
         visible: false,
@@ -360,6 +444,46 @@ pub fn run_game_thread(
     );
     register_input_events(app.world_mut());
     install_gameplay_device_input(&mut app);
+    // MainCameraPlugin@1409125e0: reset precedes snapshot in set9; the
+    // active snapshot then main/paused tuple is chained without deferred flush.
+    app.init_resource::<country_core::systems::main_camera::CameraSnapshot>();
+    app.init_resource::<country_core::resources::read_mouse_depth_value::MouseDepthValue>();
+    app.insert_resource(country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast::new());
+    app.insert_resource(country_core::resources::mouse_terrain_raycast::CameraCursorRay::new());
+    app.add_event::<country_core::systems::main_camera::MainCameraMoved>();
+    app.add_event::<country_core::resources::onboarding::NotifyHintSystemCameraMoved>();
+    app.add_event::<country_core::resources::window::AudioCursorMoved>();
+    app.add_systems(
+        bevy_app::Update,
+        country_core::systems::main_camera::reset_camera
+            .in_set(GameSystemSet(9))
+            .before(country_core::systems::main_camera::camera_snapshot)
+            .run_if(bevy_ecs::schedule::common_conditions::on_event::<
+                country_core::resources::session::NewSessionStartedCmd,
+            >),
+    );
+    app.add_systems(
+        bevy_app::Update,
+        (
+            country_core::systems::main_camera::camera_snapshot.run_if(is_gameplay_active),
+            (
+                country_core::systems::main_camera::main_camera_update.run_if(is_gameplay_active),
+                country_core::systems::main_camera::paused_main_camera_update
+                    .run_if(bevy_ecs::schedule::common_conditions::not(is_gameplay_active)),
+            ),
+        ).chain_ignore_deferred().in_set(GameSystemSet(9)),
+    );
+    app.add_systems(
+        bevy_app::Update,
+        (
+            country_core::resources::mouse_terrain_raycast::camera_mouse_ray,
+            country_core::resources::mouse_terrain_raycast::mouse_terrain_raycast,
+            (
+                country_core::resources::mouse_capture::mouse_capture,
+                country_core::resources::read_mouse_depth_value::read_mouse_depth_value_from_gpu,
+            ),
+        ).chain_ignore_deferred().in_set(GameSystemSet(10)).run_if(is_gameplay_active),
+    );
     app.add_event::<country_core::systems::backend::input::translate_input_to_cursor_moved::InputCursorMoved>();
     app.add_event::<country_core::systems::backend::input::translate_input_to_cursor_moved::InputCursorDelta>();
     app.add_event::<country_core::systems::backend::input::translate_input::MouseWheel>();
@@ -374,10 +498,7 @@ pub fn run_game_thread(
     app.add_event::<country_core::resources::mouse_capture::OsCursorVisibilityCmd>();
     app.add_systems(
         bevy_app::PostUpdate,
-        (
-            country_core::resources::mouse_capture::mouse_capture,
-            country_core::resources::shutdown::initiate_game_shutdown,
-        ),
+        country_core::resources::shutdown::initiate_game_shutdown,
     );
     app.add_event::<country_core::game_profile::SaveGameProfileCmd>();
     app.add_systems(
@@ -419,23 +540,32 @@ pub fn run_game_thread(
         )
             .chain(),
     );
-    let mut gui = Schedule::new(bevy_app::Update);
-    configure_gui_consumers(app.world_mut(), &mut gui);
-    // Reuse its real systems without replacing the existing Update schedule.
-    gui.add_systems(country_core::resources::gui::advance_menu_state_system);
-    let gui_system = move |world: &mut World| gui.run(world);
-    // add_backend_systems @0x140942c80 -> in_set @0x140aad7d0 ->
-    // SubApp::add_systems<Update> @0x140b67280 proves Update. The time→GUI
-    // edge below is the explicit local adapter; the full original set graph
-    // (including its second GameTime consumer) is not claimed complete.
+    // Original MenuPlugin14068dee6 /14068e29e: Load36 + in_state(Game).
+    // It consumes the same owning session/menu/history resources as Escape39.
     app.add_systems(
         bevy_app::Update,
-        (
-            country_core::systems::time_update::time_update.in_set(GameSystemSet(2)),
-            gui_system,
-        )
-            .chain(),
+        toolbar::menu::load_ui::ui
+            .in_set(GameSystemSet(36))
+            .run_if(bevy_state::condition::in_state(
+                country_core::app_loading_state::AppLoadingState::Game,
+            )),
     );
+    let mut gui = Schedule::new(bevy_app::Update);
+    configure_gui_consumers(app.world_mut(), &mut gui);
+    gui.add_systems(crate::gui::gui_debug::show_camera_snapshot_panel
+        .after(country_core::systems::backend::gui::show_debug_controls));
+    // Reuse its real systems without replacing the existing Update schedule.
+    gui.add_systems(country_core::resources::gui::advance_menu_state_system);
+    gui.add_systems(crate::gui::gui_escape_menu::do_gui_escape_menu
+        .before(country_core::resources::gui::advance_menu_state_system));
+    let gui_system = move |world: &mut World| gui.run(world);
+    // Native1405a0512 calls GUI tuple in_set140611040 with stage0x27=39.
+    // The separate time tuple140aad7d0 belongs to stage2; it is not the GUI.
+    app.add_systems(
+        bevy_app::Update,
+        country_core::systems::time_update::time_update.in_set(GameSystemSet(2)),
+    );
+    app.add_systems(bevy_app::Update, gui_system.in_set(GameSystemSet(39)));
     // Native @14094113d builds the resource_exists<NextSession> condition;
     // @140941158 supplies OnEnter state1=Game. Its vtable @142ccf9d0 binds
     // load_game_session @14166e7d0 through run_unsafe @14173e110.
@@ -455,6 +585,41 @@ pub fn run_game_thread(
         country_core::startup::load_glade_tod_and_weather::load_glade_tod_and_weather
             .after(country_core::startup::startup_session::load_game_session),
     );
+    // Original session tuple140839b80's first descriptor140839c98 resets the
+    // whole photo owner; preserve the distinct selective photo-entry method.
+    app.add_systems(
+        bevy_state::state::OnEnter(country_core::app_loading_state::AppLoadingState::Game),
+        country_core::startup::init_photomode_state::init_photomode_state
+            .after(country_core::startup::startup_session::load_game_session),
+    );
+    app.add_systems(
+        bevy_state::state::OnEnter(country_core::app_loading_state::AppLoadingState::Game),
+        country_core::startup::load_glade_grading::load_glade_grading
+            .after(country_core::startup::startup_session::load_game_session),
+    );
+    // Device-owned per-session scene producers are installed together by
+    // gameplay_startup, in the original seven-item order. Do not preload bare
+    // meshes here: cached names would bypass their full animation/drawable work.
+    // Original batch4 typed add_systems helper140b67b50 is Startup.
+    app.add_systems(
+        bevy_app::Startup,
+        country_core::startup::startup_time_of_day::startup_time_of_day,
+    );
+    // The legacy-load event is produced by load_game in Update, after OnEnter.
+    // Both original readers run during Game updates; the converter must also
+    // run on no-event frames to allow the deferred prefab contents to arrive.
+    app.add_systems(
+        bevy_app::Update,
+        (
+            country_core::startup::spawn_preplaced_trees::spawn_preplaced_trees,
+            system_tree::convert_preplaced_trees::convert_preplaced_trees::<
+                country_core::resources::history::MaybePendingSnapshotId,
+            >,
+        )
+            .run_if(bevy_state::condition::in_state(
+                country_core::app_loading_state::AppLoadingState::Game,
+            )),
+    );
     // Native @1409443de supplies set12 to the original load_game wrapper:
     // helper @14174d040 uses vtable @142cd2d78 (run_unsafe @141749a10),
     // then @1409443ec supplies in_state(Game). No provisional Update chain.
@@ -466,6 +631,11 @@ pub fn run_game_thread(
                 country_core::app_loading_state::AppLoadingState::Game,
             )),
     );
+    // Original14059fc33 supplies36 to typed in_set helper140524400.
+    // No invented on_event/AppState gate: sticky Local retries after replay.
+    app.add_systems(bevy_app::Update,
+        country_core::systems::save::load_completion_checker::check_load_completion_system
+            .in_set(GameSystemSet(36)));
     // Original full-game registrations: weather in set36 and the complete
     // fourteen-resource frame writer in set44. ActiveSession comes from the
     // real OnEnter(Game) producer above; loading App has a different schedule.
@@ -473,12 +643,13 @@ pub fn run_game_thread(
         bevy_app::Update,
         country_core::systems::weather_system::weather_system.in_set(GameSystemSet(36)),
     );
-    app.add_systems(
-        bevy_app::Update,
-        country_core::systems::time_of_day::time_of_day_audio_disabled
-            .in_set(GameSystemSet(36))
-            .run_if(is_gameplay_active),
-    );
+    let time_of_day_without_core = country_core::systems::time_of_day::time_of_day_audio_disabled
+        .in_set(GameSystemSet(36)).run_if(is_gameplay_active);
+    #[cfg(target_os = "windows")]
+    let time_of_day_without_core = time_of_day_without_core.run_if(
+        bevy_ecs::schedule::common_conditions::not(bevy_ecs::schedule::common_conditions::resource_exists::<
+            country_core::resources::audio_resources::AudioCore<country_core::resources::native_audio::NativeStudio>>));
+    app.add_systems(bevy_app::Update, time_of_day_without_core);
     app.add_systems(
         bevy_app::Update,
         country_core::systems::backend::prepare_frame_constants::prepare_frame_constants
@@ -574,7 +745,15 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
     app.init_resource::<mode_manager::RestoreAppTo>();
     // Safe projection of the unengaged original ActionSetStates slots16/17.
     // ActionSetStates aliases MainActionSet; this is the same input owner.
-    app.init_resource::<history::replay_mode::ReplayFastHoldInput>();
+    // Native startup1405a146f supplies tag2; this is a real inactive state,
+    // not a substitute for the active lifecycle handled below.
+    app.insert_resource(country_core::systems::timelapse_replay::TimelapseState::Inactive);
+    app.init_resource::<country_core::systems::timelapse_replay::ReplaySpeedMultiplierOverride>();
+    app.add_event::<country_core::systems::timelapse_replay::StartTimelapseReplayCmd>();
+    app.add_event::<country_core::systems::timelapse_replay::InterruptTimelapse>();
+    app.add_event::<country_core::systems::timelapse_replay::TimelapseReplayFinished>();
+    app.add_event::<country_core::resources::history::tree_edit::SpawnPreplacedTrees>();
+    app.add_systems(bevy_app::PostUpdate, country_core::systems::timelapse_replay::cleanup_timelapse);
     // insert_terrain_resources @1409457c0 creates both actual CPU readback
     // owners: 0x80000 zero bytes with the original -2.5/24 height bounds.
     let heights = TerrainHeightsData::<TerrainHeightSsbo>::new();
@@ -658,6 +837,7 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
         (
             mode_manager::synchronize_mode_manager_ui_context,
             mode_manager::mode_manager::<country_core::resources::history::EditType, country_core::resources::history::MaybePendingSnapshotId>,
+            country_core::systems::timelapse_replay::start_timelapse,
             mode_manager::send_mode_just_changed_event.in_set(mode_manager::ModeChangePublication),
         )
             .chain_ignore_deferred()
@@ -672,9 +852,13 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
             adjust_wall_height,
             collect_wall_publication_dirty,
             publish_public_wall_state,
-            // Original helper140335b30 ends with the changed/deleted event
-            // readers and the same PublicWalls/WallSpatialHash owners.
+            country_core::systems::wall::delete_wall::delete_wall,
+            system_wall_constructor::gpu_output::delete_constructor_output,
             spatial_hash_update,
+            country_core::systems::wall::calc_wall_bend::calc_wall_bend,
+            system_wall_constructor::gpu_output::clear_constructor_planks,
+            system_wall_constructor::segmentation::calculate_wall_path_segmentation::calculate_wall_path_segmentation,
+            system_wall_constructor::init_wall_height_and_arch_segment_height::init_wall_height_and_arch_segment_height,
         )
             .chain_ignore_deferred()
             .in_set(GameSystemSet(19)),
@@ -687,6 +871,7 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
             history::history_clear_previous_state,
             history::replay_mode::replay_mode,
             history::finish_replay::finish_replay,
+            history::signifier_replay_active::signifier_replay_active,
         )
             .chain_ignore_deferred()
             .in_set(GameSystemSet(35)),
@@ -695,11 +880,15 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
         bevy_app::Update,
         history::replay_wall::replay_wall.in_set(GameSystemSet(40)),
     );
+    history_runtime::install(app);
     app.add_systems(
         bevy_app::Update,
         (
             history::replay_pop_bucket_system,
             history::finish_replay::finish_replay,
+            country_core::systems::timelapse_replay::finish_timelapse.run_if(
+                bevy_ecs::schedule::common_conditions::resource_exists::<country_core::resources::session::ActiveSession>,
+            ),
         )
             .chain_ignore_deferred()
             .in_set(GameSystemSet(41)),
@@ -709,7 +898,7 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
 /// Original country_core::systems::is_gameplay_active @140a90e00,22B.
 /// Kept local to this source host until the shared core systems export is
 /// consolidated; the condition's two resource identities are canonical.
-fn is_gameplay_active(
+pub(crate) fn is_gameplay_active(
     time: bevy_ecs::prelude::Res<country_core::resources::time::GameTime>,
     state: bevy_ecs::prelude::Res<
         bevy_state::state::State<country_core::app_loading_state::AppLoadingState>,
@@ -735,6 +924,8 @@ fn insert_vermeer_resources(app: &mut App, enabled: bool, hold: bool) {
         ..Default::default()
     });
     app.insert_resource(VermeerDebugControl::default());
+    // Original PainterlyPlugin::build@1408a63e0 owns an independent Disabled state.
+    app.init_resource::<country_core::systems::render_loop::painterly::PainterlyState>();
 }
 
 /// B's independent loading App (run_game_thread @1405a4380 onward). This
@@ -955,6 +1146,17 @@ impl Drop for GameplayPreparation {
     }
 }
 
+/// Original skip_splash=true branch1405a4194..439d. There is no loading
+/// App, async preparation, warmup or Started event on this native path.
+pub(crate) fn finish_skipped_splash(world: &mut World) -> anyhow::Result<()> {
+    use country_core::resources::gui::PendingEguiContextResource;
+    let pending = world.remove_resource::<PendingEguiContextResource>()
+        .context("B skipped splash: PendingEguiContextResource missing")?;
+    world.insert_resource(pending.into_egui_context_resource());
+    world.send_event(country_core::systems::save::load_game::StartupRevealFinished);
+    Ok(())
+}
+
 fn transfer_loading_resources(from: &mut World, to: &mut World) -> anyhow::Result<()> {
     use country_core::{
         input::ActiveInputModeTracker,
@@ -979,7 +1181,9 @@ fn transfer_loading_resources(from: &mut World, to: &mut World) -> anyhow::Resul
     take::<AvailableMonitors>(from, to)?;
     take::<FrameRenderConfig>(from, to)?;
     take::<AdaptiveRenderState>(from, to)?;
-    to.send_event(country_core::resources::events::WriteSettingsFileCmd);
+    // main_loop1404da0b5..15a: this exact TypeId is StartupRevealStarted.
+    // It precedes Vermeer.into_disable_hold, after the six real owner moves.
+    to.send_event(country_core::systems::save::load_game::StartupRevealStarted);
     let vermeer = from
         .remove_resource::<VermeerState>()
         .ok_or_else(|| anyhow::anyhow!("B handoff: VermeerState missing"))?;
@@ -1031,7 +1235,7 @@ mod intro_history_integration {
     fn shipped_intro_reaches_the_same_live_wall_authority() {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../country-core/tests/fixtures/original-intro-history-b.json");
-        let parsed = country_core::systems::save::load_game::parse_saved_game_data(&path)
+        let parsed = country_core::systems::save::load_game::parse_saved_game_data(&path, &country_core::resources::glade_settings::GladeSettings::default())
             .expect("original intro sections decode");
         assert_eq!(parsed.chain_index, 12);
         assert_eq!(parsed.edits.len(), 13);
@@ -1102,5 +1306,140 @@ mod intro_history_integration {
                 .resource::<Events<country_core::systems::history::HistoryReplayFailed>>()
                 .is_empty()
         );
+    }
+}
+
+#[cfg(test)]
+mod startup_handoff_integration {
+    use super::*;
+    use country_core::{
+        input::ActiveInputModeTracker,
+        render::{adaptive_render_state::AdaptiveRenderState, render_config::{FrameRenderConfig, MonitorMatch, VideoMode}},
+        resources::{gui::{EguiContextResource, PendingEguiContextResource}, logo_animation::LogoAnimation,
+            window::{AvailableMonitor, AvailableMonitors}},
+        systems::{render_loop::vermeer::{VermeerState, VermeerPhase}, save::load_game::{StartupRevealStarted, StartupRevealFinished}},
+    };
+
+    fn events(app: &mut App) {
+        app.add_event::<StartupRevealStarted>().add_event::<StartupRevealFinished>();
+    }
+
+    fn six_owners(app: &mut App) -> (usize, usize, FrameRenderConfig) {
+        let mut config = GameConfig::default();
+        config.video.fps_limit = 117.5;
+        config.lang_override = Some("original-loading-owner".to_owned());
+        let config_allocation = config.lang_override.as_ref().unwrap().as_ptr() as usize;
+        let window = WindowSize::new(1431, 913);
+        let frame = FrameRenderConfig {
+            extent_0: [1431,913], extent_8: [1171,733], extent_10: [1001,607],
+            world_resolution_scale: 0.75, tgsr_resolution_scale: 0.5, flag_20: true,
+        };
+        let monitors = AvailableMonitors { monitors: vec![AvailableMonitor {
+            monitor: MonitorMatch { name: Some("loading-monitor".into()), physical_position: [-1431,91], physical_size: [1431,913] },
+            video_modes: vec![VideoMode { resolution: [1431,913], refresh_rate_millihertz: 144_001, bit_depth: 30 }],
+        }] };
+        let monitor_allocation = monitors.monitors.as_ptr() as usize;
+        app.insert_resource(config);
+        app.insert_resource(ActiveInputModeTracker::new_default_controller(std::time::Duration::from_millis(827)));
+        app.insert_resource(window);
+        app.insert_resource(monitors);
+        app.insert_resource(frame);
+        app.insert_resource(AdaptiveRenderState::at_startup(true));
+        (config_allocation, monitor_allocation, frame)
+    }
+
+    #[test]
+    fn ordinary_startup_waits_for_logo_then_moves_real_owners_and_starts_reveal() {
+        let mut loading = App::new();
+        let (config_ptr, monitors_ptr, expected_frame) = six_owners(&mut loading);
+        events(&mut loading);
+        let mut logo = LogoAnimation::default();
+        logo.progress[3] = 0.25;
+        loading.insert_resource(logo);
+        let context = egui::Context::default();
+        let marker = egui::Id::new("loading-egui-owner");
+        context.data_mut(|data| data.insert_temp(marker, 912_u32));
+        loading.insert_resource(EguiContextResource(context.clone()));
+        loading.insert_resource(VermeerState { frame_count: 71, progress: 0.37,
+            timer: 8.25, target_extent: [1431,913], phase: VermeerPhase::Ready,
+            hold: true, freeze_camera: false, ..Default::default() });
+        let loading_shaders = Arc::new(country_core::asset_libraries::shader_library::AssetShaderLibrary::new());
+        loading.insert_resource(ApplicationShaderLibrary(loading_shaders.clone()));
+        let mut gameplay = App::new();
+        events(&mut gameplay);
+        let gameplay_shaders = Arc::new(country_core::asset_libraries::shader_library::AssetShaderLibrary::new());
+        gameplay.insert_resource(ApplicationShaderLibrary(gameplay_shaders.clone()));
+        gameplay.insert_resource(WindowSize::new(1,2));
+        gameplay.insert_resource(GameConfig::default());
+        let (sender, receiver) = std::sync::mpsc::channel();
+        sender.send(Ok(std::mem::take(gameplay.main_mut()))).unwrap();
+        let mut preparation = GameplayPreparation { receiver, pending: None,
+            cancel: Arc::new(std::sync::atomic::AtomicBool::new(false)) };
+        assert!(!preparation.poll(&mut loading).unwrap());
+        assert_eq!(loading.world().resource::<LogoAnimation>().progress[3],1.0);
+        assert_eq!(loading.world().resource::<GameConfig>().video.fps_limit,117.5);
+        assert!(loading.world().resource::<Events<StartupRevealStarted>>().is_empty());
+        loading.world_mut().resource_mut::<LogoAnimation>().progress[4]=1.0;
+        assert!(preparation.poll(&mut loading).unwrap());
+        let world=loading.world();
+        assert_eq!(world.resource::<GameConfig>().lang_override.as_ref().unwrap().as_ptr() as usize,config_ptr);
+        assert_eq!(world.resource::<GameConfig>().video.fps_limit,117.5);
+        assert_eq!(*world.resource::<ActiveInputModeTracker>(),ActiveInputModeTracker::new_default_controller(std::time::Duration::from_millis(827)));
+        assert_eq!(*world.resource::<WindowSize>(),WindowSize::new(1431,913));
+        let monitors=world.resource::<AvailableMonitors>();
+        assert_eq!(monitors.monitors.as_ptr() as usize,monitors_ptr);
+        assert_eq!(monitors.monitors[0].monitor.name.as_deref(),Some("loading-monitor"));
+        assert_eq!(monitors.monitors[0].video_modes[0].refresh_rate_millihertz,144_001);
+        assert_eq!(*world.resource::<FrameRenderConfig>(),expected_frame);
+        assert_eq!(*world.resource::<AdaptiveRenderState>(),AdaptiveRenderState::at_startup(true));
+        assert_eq!(world.resource::<Events<StartupRevealStarted>>().len(),1);
+        assert!(world.resource::<Events<StartupRevealFinished>>().is_empty());
+        let reveal=world.resource::<VermeerState>();
+        assert_eq!(reveal.frame_count,71); assert_eq!(reveal.progress,0.37);
+        assert_eq!(reveal.timer,8.25); assert_eq!(reveal.target_extent,[1431,913]);
+        assert_eq!(reveal.phase,VermeerPhase::Ready); assert!(!reveal.hold); assert!(!reveal.freeze_camera);
+        assert_eq!(world.resource::<EguiContextResource>().0.data(|data|data.get_temp::<u32>(marker)),Some(912));
+        world.resource::<EguiContextResource>().0.data_mut(|data|data.insert_temp(marker,913_u32));
+        assert_eq!(context.data(|data|data.get_temp::<u32>(marker)),Some(913));
+        assert!(Arc::ptr_eq(&world.resource::<ApplicationShaderLibrary>().0,&gameplay_shaders));
+        assert!(!Arc::ptr_eq(&world.resource::<ApplicationShaderLibrary>().0,&loading_shaders));
+    }
+
+    #[test]
+    fn skipped_splash_moves_pending_context_and_finishes_without_started_or_loading_wait() {
+        let mut app=App::new(); events(&mut app);
+        let context=egui::Context::default();let marker=egui::Id::new("skip-context");
+        context.data_mut(|data|data.insert_temp(marker,53_u32));
+        app.insert_resource(PendingEguiContextResource(context.clone()));
+        // No LoadingGameComplete, preparation manager, logo, or six-owner bundle
+        // exists: the original skip path requires none of those objects.
+        finish_skipped_splash(app.world_mut()).unwrap();
+        assert!(!app.world().contains_resource::<PendingEguiContextResource>());
+        assert_eq!(app.world().resource::<EguiContextResource>().0.data(|data|data.get_temp::<u32>(marker)),Some(53));
+        app.world().resource::<EguiContextResource>().0.data_mut(|data|data.insert_temp(marker,54_u32));
+        assert_eq!(context.data(|data|data.get_temp::<u32>(marker)),Some(54));
+        assert_eq!(app.world().resource::<Events<StartupRevealFinished>>().len(),1);
+        assert!(app.world().resource::<Events<StartupRevealStarted>>().is_empty());
+    }
+
+    #[test]
+    fn started_is_published_after_all_six_moves_before_vermeer_and_egui_move() {
+        let mut loading=App::new();six_owners(&mut loading);
+        let context=egui::Context::default();
+        loading.insert_resource(EguiContextResource(context));
+        // Deliberately omit Vermeer: the real handoff exposes the exact native
+        // mutation boundary rather than replacing failure with a ready marker.
+        let mut gameplay=App::new();events(&mut gameplay);
+        assert!(transfer_loading_resources(loading.world_mut(),gameplay.world_mut()).is_err());
+        let from=loading.world();let to=gameplay.world();
+        assert!(!from.contains_resource::<GameConfig>() && to.contains_resource::<GameConfig>());
+        assert!(!from.contains_resource::<ActiveInputModeTracker>() && to.contains_resource::<ActiveInputModeTracker>());
+        assert!(!from.contains_resource::<WindowSize>() && to.contains_resource::<WindowSize>());
+        assert!(!from.contains_resource::<AvailableMonitors>() && to.contains_resource::<AvailableMonitors>());
+        assert!(!from.contains_resource::<FrameRenderConfig>() && to.contains_resource::<FrameRenderConfig>());
+        assert!(!from.contains_resource::<AdaptiveRenderState>() && to.contains_resource::<AdaptiveRenderState>());
+        assert_eq!(to.resource::<Events<StartupRevealStarted>>().len(),1);
+        assert!(from.contains_resource::<EguiContextResource>());
+        assert!(!to.contains_resource::<EguiContextResource>());
     }
 }

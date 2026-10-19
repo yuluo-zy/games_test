@@ -7,17 +7,16 @@ use bevy_ecs::{component::Component, resource::Resource};
 
 use crate::Gap;
 
-/// 一段拱（O 名；布局 U → Gap）。
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct ArchSegment(pub Gap);
-
-/// 拱段集合（O 名；跨帧写回容器）。
+/// Native104B record: Vec<f32>, Vec<Vec3>, Vec<f32>, then source/range metadata.
+/// Reuse the original materialization owner rather than retaining opaque Gap.
+pub type ArchSegment = crate::systems::wall::construction::structures::MaterializedWallSegment;
+/// Native HashMap<WallId, Vec<ArchSegment>> populated by construct_arches.
 #[derive(Resource, Clone, Debug, Default)]
-pub struct ArchSegments(pub Gap);
+pub struct ArchSegments(pub std::collections::HashMap<super::WallId, Vec<ArchSegment>>);
 
 /// 上一帧是否有拱（O 名；bool 标志）。
-#[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
-pub struct BuildingHadArchesLastFrame(pub bool);
+#[derive(Resource, Clone, Debug, Default, PartialEq)]
+pub struct BuildingHadArchesLastFrame(pub std::collections::HashMap<u64, bool>);
 
 /// 一段过梁（O 名；布局 U）。
 #[derive(Clone, Debug, Default, PartialEq)]

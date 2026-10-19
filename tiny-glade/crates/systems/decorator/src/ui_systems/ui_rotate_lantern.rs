@@ -12,7 +12,7 @@
 //! （kind 0x21 族；精确载荷 U——处理器为函数尾部内联段，逐位登记）。
 use bevy_ecs::prelude::*;
 use country_core::resources::walls::decorator::{DecoratorId, DecoratorInfo};
-use country_core::resources::walls::decorator_storage::{DecoratorStorage, DecoratorStorageAddr};
+use country_core::resources::walls::decorator_storage::DecoratorStorage;
 use country_core::systems::ui::resources::ui_state::{UiState, WidgetId};
 
 use crate::ui_systems::ui_decorator_affordance_dispatch::DecoratorAffordanceDispatcher;
@@ -107,8 +107,5 @@ fn rotate_stair_handler(
     // I：楼梯旋转处理器（0x1407a8814 尾部段；楼梯拓扑旋转 U）。
 }
 
-/// 目的存储地址辅助（I：DecoratorStorageAddr 16B 判别面）。
-#[allow(dead_code)]
-fn dst_addr(_info: &DecoratorInfo) -> Option<DecoratorStorageAddr> {
-    None
-}
+// `dst_addr` 已删除：原版无此函数（CONTRACT §2.5 #60；存储地址查找在
+// dispatch 前由 `DecoratorStorage::lookup_storage` 0x140a1c3e0 完成）。

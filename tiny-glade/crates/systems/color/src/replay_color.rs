@@ -60,14 +60,14 @@
 
 use bevy_ecs::prelude::*;
 
-use country_core::resources::roofs::customization::FlatRoofStyleObserved;
-use country_core::resources::roofs::customization::FlatRoofStyleRequest;
 use country_core::resources::color_id::{
     SetGateColorIdCmd, SetHalftimberColorIdCmd, SetWallColorIdCmd,
 };
 use country_core::resources::history::color_edit::ColorEdit;
 use country_core::resources::history::replay_cmd_buffer::{ReplayBuffer, ReplayCommand};
 use country_core::resources::roofs::commands::SetFlatRoofStyleCmd;
+use country_core::resources::roofs::customization::FlatRoofStyleObserved;
+use country_core::resources::roofs::customization::FlatRoofStyleRequest;
 use country_core::resources::time::GameTime;
 
 use crate::{
@@ -82,11 +82,7 @@ const MIN_REQUIRED: f32 = 0.1;
 /// undo 方向选择（O：所有 case `undo==0 → to`、`undo!=0 → from`）。
 #[inline]
 fn pick<T: Copy>(undo: bool, from: T, to: T) -> T {
-    if undo {
-        from
-    } else {
-        to
-    }
+    if undo { from } else { to }
 }
 
 /// `replay_color` @0x141c7f270（1450B，判等/重建）。
@@ -208,6 +204,7 @@ pub fn replay_color<S: Send + Sync + 'static>(
                         id: decorator_id.0,
                         value: u8::from(pick(command.undo, *from, *to)),
                         custom: 1,
+                        _pad: [0; 2],
                     });
                 }
                 ColorEdit::Brightness {
@@ -231,6 +228,7 @@ pub fn replay_color<S: Send + Sync + 'static>(
                         id: decorator_id.0,
                         value: u8::from(pick(command.undo, *from, *to)),
                         custom: 1,
+                        _pad: [0; 2],
                     });
                 }
                 ColorEdit::StairLadder {
@@ -293,7 +291,7 @@ pub fn replay_color<S: Send + Sync + 'static>(
         removed.reverse();
     }
     for index in removed {
-        bucket.commands.remove(index);
+        bucket.remove_command(index);
     }
 }
 

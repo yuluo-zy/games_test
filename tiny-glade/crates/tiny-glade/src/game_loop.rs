@@ -64,6 +64,12 @@ pub fn frame_render_mode(world: &World) -> RenderMode {
     }
 }
 
+/// B 1404ddf28..3c: absent DebugGui has the default-input behavior.
+pub fn frame_egui_input_enabled(world: &World) -> bool {
+    world.get_resource::<country_core::resources::gui::DebugGui>()
+        .is_some_and(|debug| debug.enabled || debug.experimental_window)
+}
+
 fn apply_menu_fps_limit(fps: f32, menu_limits: bool, profiling: bool) -> f32 {
     if menu_limits && !profiling {
         if fps > 0.0 { fps.min(60.0) } else { 60.0 }
@@ -218,6 +224,19 @@ pub struct GameLoop {
     settings_events: bevy_ecs::event::EventCursor<crate::app_config::WriteSettingsFileCmd>,
 }
 
+/// Event owners installed by the OS host before either App can run startup.
+/// Headless acceptance uses the same registration rather than a reduced App.
+pub fn register_platform_events(app: &mut App) {
+    use country_core::resources::{mouse_capture::*, window::*};
+    app.add_event::<OsCursorCaptureCmd>()
+        .add_event::<OsCursorVisibilityCmd>()
+        .add_event::<CustomCursorSsboCreatedCmd>()
+        .add_event::<CursorCaptureCmd>()
+        .add_event::<OsWindowCmd>()
+        .add_event::<WindowFocusEvent>()
+        .add_event::<country_core::resources::events::ShutdownGameCmd>();
+}
+
 impl GameLoop {
     pub fn new(
         mut app: App,
@@ -234,14 +253,8 @@ impl GameLoop {
         if !app.is_plugin_added::<bevy_input::InputPlugin>() {
             app.add_plugins(bevy_input::InputPlugin);
         }
-        use country_core::resources::{mouse_capture::*, window::*};
-        app.add_event::<OsCursorCaptureCmd>()
-            .add_event::<OsCursorVisibilityCmd>()
-            .add_event::<CustomCursorSsboCreatedCmd>()
-            .add_event::<CursorCaptureCmd>()
-            .add_event::<OsWindowCmd>()
-            .add_event::<WindowFocusEvent>()
-            .add_event::<country_core::resources::events::ShutdownGameCmd>();
+        use country_core::resources::window::*;
+        register_platform_events(&mut app);
         let size = window.inner_size();
         app.world_mut()
             .insert_resource(WindowSize::new(size.width, size.height));
@@ -262,7 +275,7 @@ impl GameLoop {
         // B add_game_startup_systems' gameplay PreStartup tuple contains the
         // full SSBO producer. It stays on this gameplay App when preparation
         // moves its SubApp; the separate loading App installs only two entries.
-        crate::gameplay_startup::install_gameplay_gpu_startup(
+        crate::gameplay_startup::install_gameplay_device_runtime(
             &mut app,
             renderer.bridge().hosts().buffers.graphics_device().clone(),
             renderer.bridge().hosts().clone(),
@@ -272,31 +285,17 @@ impl GameLoop {
                 .context("compiled shader directory has no installation root")?
                 .to_path_buf(),
         )?;
-        crate::world_terrain::install_terrain_startup(
-            &mut app,
-            renderer.bridge().hosts().shaders.clone(),
-            options
-                .compiled_shader_root
-                .parent()
-                .context("compiled shader directory has no installation root")?
-                .to_path_buf(),
-        );
-        crate::world_terrain::install_grass_startup(
-            &mut app,
-            renderer.bridge().hosts().shaders.clone(),
-        );
-        crate::world_lighting::install_deferred_startup(
-            &mut app,
-            renderer.bridge().hosts().shaders.clone(),
-        );
-        // Only the gameplay tuple contains GpuLutPlugin. Its producer records
-        // BRDF and (!demo) water callbacks using this App's actual GPU owners.
-        let demo = app
-            .world()
-            .resource::<country_core::game_config::GameConfig>()
-            .dev
-            .demo;
-        app.add_plugins(country_core::resources::gpu_lut::GpuLutPlugin { demo });
+        // Original run_game_thread14059f0a9 inserts the GUI context passed
+        // from the OS owner as Pending before either startup path. The public
+        // host owns Context creation here; both Apps retain that one identity.
+        use country_core::resources::gui::{EguiContextResource, PendingEguiContextResource};
+        let shared_gui = app.world().get_resource::<PendingEguiContextResource>()
+            .map(|value| value.0.clone())
+            .or_else(|| app.world().get_resource::<EguiContextResource>().map(|value| value.0.clone()))
+            .unwrap_or_default();
+        if !app.world().contains_resource::<PendingEguiContextResource>() {
+            app.insert_resource(PendingEguiContextResource(shared_gui.clone()));
+        }
         let mut preparation = None;
         if !app
             .world()
@@ -306,35 +305,34 @@ impl GameLoop {
         {
             // B owns two different Apps. Their libraries share only the actual
             // graphics device; no MainCamera is removed to fake a loading mode.
-            let loading = crate::run_game::make_loading_app(&app)?;
+            let mut loading = crate::run_game::make_loading_app(&app)?;
+            loading.insert_resource(EguiContextResource(shared_gui));
+            #[cfg(windows)]
+            loading.insert_resource(crate::audio_host::share_core(app.world().resource::<
+                country_core::resources::audio_resources::AudioCore<
+                    country_core::resources::native_audio::NativeStudio,
+                >,
+            >()));
             country_core::asset_libraries::runtime::add_asset_library_systems(
                 app.get_schedule_mut(bevy_app::PostUpdate)
                     .expect("gameplay PostUpdate"),
             );
+            // The warm-up graph must use the gameplay App's exact physical
+            // owners; capture them before its SubApp moves to the worker. The
+            // renderer keeps these same owners in `other_applications` until
+            // publish re-adopts them (render_bridge.rs warm-up contract).
+            let owners = renderer.bridge().warmup_owners()?;
             let gameplay = std::mem::take(app.main_mut());
-            let device = renderer.device().clone();
-            let root = options.compiled_shader_root.clone();
-            let shaders = gameplay
-                .world()
-                .resource::<crate::run_game::ApplicationShaderLibrary>()
-                .0
-                .clone();
             preparation = Some(crate::run_game::GameplayPreparation::spawn(
                 gameplay,
                 move |world| {
-                    crate::production_renderer::warm_up_gameplay(device, root, shaders, world)
+                    crate::production_renderer::warm_up_gameplay(owners, world)
                 },
             )?);
             app = loading;
             // The same OS command identities are registered in B's loading
             // App tuple; replacing the App must not lose their event owners.
-            app.add_event::<OsCursorCaptureCmd>()
-                .add_event::<OsCursorVisibilityCmd>()
-                .add_event::<CustomCursorSsboCreatedCmd>()
-                .add_event::<CursorCaptureCmd>()
-                .add_event::<OsWindowCmd>()
-                .add_event::<WindowFocusEvent>()
-                .add_event::<country_core::resources::events::ShutdownGameCmd>();
+            register_platform_events(&mut app);
             register_settings_application_system(&mut app);
             renderer.activate_application(app.world())?;
             renderer.bridge().install_asset_libraries(app.world_mut())?;
@@ -355,44 +353,11 @@ impl GameLoop {
                     .with_buffer_host(renderer.bridge().hosts().buffers.clone()),
             ));
             use bevy_ecs::schedule::IntoScheduleConfigs;
-            app.add_event::<country_core::systems::audio::PlayMenuUiSound>();
-            // MeiPlugin build @1406873a4/3d2/42a: pre-update is Update set6.
-            app.add_systems(
-                bevy_app::Update,
-                toolbar::mei::systems::mei_pre_update.in_set(crate::run_game::GameSystemSet(6)),
-            );
-            // SplashScreenPlugin @14068e570 registers ui @141ec1390 in set36.
+            crate::mei_host::install_mei_frame_systems(&mut app);
+            // SplashScreenPlugin @14068e570 adds its real frame producer in set36.
             app.add_systems(
                 bevy_app::Update,
                 toolbar::menu::splash::ui.in_set(crate::run_game::GameSystemSet(36)),
-            );
-            app.add_systems(
-                bevy_app::Update,
-                crate::mei_host::update_text_renderer_scale
-                    .in_set(crate::run_game::GameSystemSet(7)),
-            );
-            app.add_systems(
-                bevy_app::Update,
-                (
-                    crate::mei_host::prepare_text_fragments,
-                    toolbar::taffy_update::taffy_finalize_element_size,
-                    toolbar::taffy_update::taffy_perform_layout,
-                    toolbar::taffy_update::taffy_update_drawables,
-                    toolbar::ui_interaction::debug_hide_ui,
-                    crate::mei_host::render_text_fragments,
-                )
-                    .chain_ignore_deferred()
-                    .in_set(crate::run_game::GameSystemSet(44)),
-            );
-            app.add_systems(
-                bevy_app::Update,
-                (
-                    toolbar::mei_post_update,
-                    crate::loading_graph::flush_mei_frame,
-                )
-                    .chain()
-                    .in_set(crate::run_game::GameSystemSet(44))
-                    .after(crate::mei_host::render_text_fragments),
             );
             let shaders = app
                 .world()
@@ -406,18 +371,31 @@ impl GameLoop {
                 )
                 .expect("startup_animated_logo");
             });
-            // This target's explicit macOS host has no FMOD Studio SDK. The
-            // native AudioCore None branch skips sound while animation advances.
-            // The generic FMOD-backed original consumer stays available in core.
+            // Both Apps share the actual initialized Studio. Only a real FMOD
+            // initialization failure enters AudioCore::None inside the producer.
+            #[cfg(windows)]
+            app.add_systems(
+                bevy_app::Update,
+                (
+                    country_core::resources::logo_animation::animate_logo_system::<
+                        country_core::resources::native_audio::NativeStudio,
+                    >,
+                    country_core::systems::audio::audio_update::boot_audio_update_system::<
+                        country_core::resources::native_audio::NativeStudio,
+                    >,
+                ),
+            );
             #[cfg(target_os = "macos")]
             app.add_systems(
                 bevy_app::Update,
                 country_core::resources::logo_animation::animate_logo_with_disabled_audio,
             );
-            #[cfg(not(target_os = "macos"))]
+            #[cfg(not(any(windows, target_os = "macos")))]
             anyhow::bail!(
                 "AnimatedLogo requires a real FMOD AudioCore startup backend on this target"
             );
+        } else {
+            crate::run_game::finish_skipped_splash(app.world_mut())?;
         }
         let context = app
             .world()
@@ -724,7 +702,14 @@ impl GameLoop {
         {
             return Ok(false);
         }
-        let input = self.egui_io.take_egui_input(&self.window);
+        // B 1404ddf28..3c: real OS egui input is consumed only while the
+        // debug or experimental window is active. Other frames still begin
+        // and end egui with RawInput::default (1404ddf49 -> 140c2c770).
+        let input = if frame_egui_input_enabled(self.driver.app.world()) {
+            self.egui_io.take_egui_input(&self.window)
+        } else {
+            egui::RawInput::default()
+        };
         let egui_io = &self.egui_io;
         let window = &self.window;
         self.driver
@@ -947,6 +932,22 @@ mod frame_tests {
         world.resource_mut::<GameConfig>().video.fps_limit = 30.0;
         world.insert_resource(EscMenuState::Main);
         assert_eq!(frame_target_fps(&world), 30.0);
+    }
+
+    #[test]
+    fn debug_window_flags_choose_actual_os_egui_input() {
+        use country_core::resources::gui::DebugGui;
+        let mut world = World::new();
+        assert!(!frame_egui_input_enabled(&world));
+        world.insert_resource(DebugGui::default());
+        assert!(!frame_egui_input_enabled(&world));
+        world.resource_mut::<DebugGui>().enabled = true;
+        assert!(frame_egui_input_enabled(&world));
+        world.resource_mut::<DebugGui>().enabled = false;
+        world.resource_mut::<DebugGui>().experimental_window = true;
+        assert!(frame_egui_input_enabled(&world));
+        world.resource_mut::<DebugGui>().experimental_window = false;
+        assert!(!frame_egui_input_enabled(&world));
     }
 
     #[test]

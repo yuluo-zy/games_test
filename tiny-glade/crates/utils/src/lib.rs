@@ -23,6 +23,7 @@ pub mod natural_cubic;
 pub mod rdp;
 pub mod rgb9e5;
 pub mod rng;
+pub mod sampling;
 pub mod selective_deserialize;
 pub mod subtractive_1d_boolean;
 pub mod swizzlers;

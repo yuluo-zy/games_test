@@ -75,9 +75,9 @@ pub fn timberframe_audio<S: Studio + Send + Sync + 'static>(
     mut state: ResMut<TimberframeAudioState<S::Event>>,
     mut events: EventReader<PlayTimberframeSound>,
     core: Res<AudioCore<S>>,
-    speed: Option<Res<crate::systems::audio::audio_update::EditingSpeed>>,
+    speed: Res<bevy_time::Time>,
 ) {
-    let speed = speed.map_or(0.0, |s| s.0);
+    let speed = speed.delta_secs();
     // Per-frame loop flags and values (native local_130 = Move,
     // local_128 = Length, local_120 = Width).
     let mut move_flag = false;

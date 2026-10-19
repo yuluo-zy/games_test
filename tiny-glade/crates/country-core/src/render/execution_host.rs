@@ -6,6 +6,16 @@
 //!
 //! GPU 真机执行后置（协调简报 §D 规则 4）；本模块验收 = 真实调用接线 + `cargo check` + 原侧入口核对
 //! （`render_frame.rs::render` 0x1404e8010 的调用点映射见 WIRING §2.7 表）。
+//!
+//! # 状态（2026-10-19，G2）：保留，但**不是生产路径**
+//!
+//! workspace 内没有任何调用者。生产唯一执行面是 tiny-glade `CoreRenderBridge`
+//! （`render_bridge.rs`）：它持有同一种 `VulkanGraphSession`，并额外绑定宿主
+//! `BufferHost`/`TextureHost`/`ShaderHost`/`RasterShared` 与 App 资产库身份。
+//! 本模块的 `RhapsodyExecutionHost` 若直接使用会得到一套没有这些宿主的会话，
+//! 因此不作为构图/提交入口。保留它是因为它把 `BuildGraph`→`SessionFrameReceipt`
+//! 的调用形状与 `pass_api_from_context` 的裸句柄转换记录在案，可作为 rhapsody
+//! 边界核对材料；新增接线一律走 `CoreRenderBridge`，不要再创建第二条会话。
 
 use std::sync::Arc;
 

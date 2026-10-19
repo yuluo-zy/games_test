@@ -41,7 +41,9 @@ pub fn detect_overhang_support_segments(
         crate::construct_elevation_supports::find_overlap_segments::OverhangSupportFinderCache,
     >,
 ) {
-    todo!("未实现: detect_overhang_support_segments 0x1407867d0（tabloid 脏订阅→43KB 悬挑段→ElevationSupports 写面）")
+    todo!(
+        "未实现: detect_overhang_support_segments 0x1407867d0（tabloid 脏订阅→43KB 悬挑段→ElevationSupports 写面）"
+    )
 }
 
 /// B `construct_circle_supports`（0x140788160，2305B / 544 行 fresh）。
@@ -68,7 +70,9 @@ pub fn detect_overhang_support_segments(
 /// `construct_circle_pillars` 均未实现。解锁条件：core 落 ElevationSupports
 /// 布局 + 四个被调函数重建后按上述全序实现。
 pub fn construct_circle_supports() {
-    todo!("未实现: construct_circle_supports 0x140788160（ElevationSupports 布局 U + circle_categorize/turret/bottom_layer/pillars 未实现）")
+    todo!(
+        "未实现: construct_circle_supports 0x140788160（ElevationSupports 布局 U + circle_categorize/turret/bottom_layer/pillars 未实现）"
+    )
 }
 
 /// B `construct_rectangle_columns`（0x140788a80，2674B / 651 行 fresh）。
@@ -78,7 +82,9 @@ pub fn construct_circle_supports() {
 /// halftimber 二路——即 `construct_rectangle_pillars` 0x14124fcb0 的调用宿主，
 /// 该被调函数仍未实现）。
 pub fn construct_rectangle_columns() {
-    todo!("未实现: construct_rectangle_columns 0x140788a80（宿主链依赖 construct_rectangle_pillars 未实现）")
+    todo!(
+        "未实现: construct_rectangle_columns 0x140788a80（宿主链依赖 construct_rectangle_pillars 未实现）"
+    )
 }
 
 /// B `construct_rectangle_brackets`（0x1407896b0，2626B / 584 行 fresh）。
@@ -86,5 +92,7 @@ pub fn construct_rectangle_columns() {
 /// 0x141250da0 / `construct_rectangle_large_brackets` 0x141253fc0 调用宿主；
 /// 被调两者仍未实现）。
 pub fn construct_rectangle_brackets() {
-    todo!("未实现: construct_rectangle_brackets 0x1407896b0（宿主链依赖 small/large brackets 未实现）")
+    todo!(
+        "未实现: construct_rectangle_brackets 0x1407896b0（宿主链依赖 small/large brackets 未实现）"
+    )
 }

@@ -3,7 +3,6 @@
 //! 快照 schema 为 **Motomoto chunks + JSON + deflate**：元数据字段
 //! 共十四项，格式 Version=2。Snapshot chunk 保存 JSON；之后为命名 Raster
 //! chunks（u64 原长 + deflate6）和 Terrain chunk（仅 deflate6）。
-//! 旧 JSON-only 加载入口仍是局部兼容面，不代表完整 chunk 解码/世界恢复。
 //!
 //! - `capture_game_snapshot_save_data` 0x1417a0430：从世界数据构建快照结构并返回 **Arc**。
 //!   各节载荷由所属域序列化器提供（StairsSnapshot{edges,checksum}、
@@ -14,9 +13,14 @@
 //! - `validate_and_load_closest_snapshot_data` 0x1417a6e50：解析器，节序 + Version 校验
 //!   （"Version mismatch; expected , got "）+ Terrain 解压 + Raster 键白名单外忽略
 //!   （"Ignoring unknown raster data in snapshot: "）。
-//! - `init_game_state_from_snapshot` 0x1417a9c50：应用解析数据到世界；域应用逻辑留待接入。
+//! - `load_snapshot_file`：文件入口，装配 motomoto chunks（Snapshot JSON + 命名栅格 +
+//!   Terrain）为 [`LoadedSnapshotData`]。
+//! - `init_game_state_from_snapshot` 0x1417a9c50：World 级域写回（Walls/Roofs/
+//!   Decorators/三色表/Terrain/高度/Trees/Raster/Stairs），未闭合项记入
+//!   [`SnapshotApplyReport::gaps`]。
 use crate::resources::{
     color_id::ColorId,
+    roofs::associations::{ResolvedRoofAssociation, RoofAssociations},
     roofs::roof_shape::Roof,
     session::SessionId,
     stairs::{
@@ -28,13 +32,21 @@ use crate::resources::{
         WallId,
         decorator::DecoratorIdGen,
         decorator_storage::{
-            DecoratorAddrSnapshot, DecoratorStorage, DecoratorStorageAddr, DecoratorStorageSnapshot,
+            DecoratorAddrSnapshot, DecoratorStorageAddr, DecoratorStorageSnapshot,
         },
         inner_wall_state::WallState,
+        public_walls::PublicWalls,
+        publication_fields::PublicWallBuildingState,
+        publication_fields::WallId as PublicWallId,
     },
     world_raster_defs::{AllWorldRasterWrite, NamedRasterData},
 };
 use serde_json::Value;
+
+/// `RoofAssociations` 在原版是墙-屋顶关联表 owner；本 crate 的
+/// `resources/roofs/associations.rs` 未派生 `Resource`（该文件不在本轮文件权内）。
+/// 同 crate 内为其登记 `Resource`，使快照 apply 能把重建结果交给生产世界。
+impl bevy_ecs::resource::Resource for RoofAssociations {}
 use std::{
     io::{Cursor, Write},
     ops::Range,
@@ -89,6 +101,44 @@ pub fn collect_trees(
         .into_iter()
         .map(|(index, tree)| SnapshotTreesEntry { index, tree })
         .collect()
+}
+
+/// Trees 节反序列化（G1① 契约 §3.2，36 样本实证）。
+///
+/// 590 条真实树记录中 **50 条缺 `prefab_name` / `is_preplaced`**，原版 Deserialize
+/// 对这两字段取缺省（空串 / false）。`TreeEditData` 的 canonical 定义在
+/// `resources/history/tree_edit.rs`（不在本组文件权内），故此处解析前补齐这两个缺省键，
+/// 其余字段一律要求原样存在（不编造）。
+pub fn parse_trees_section(value: &Value) -> anyhow::Result<Vec<SnapshotTreesEntry>> {
+    use crate::resources::history::tree_edit::TreeEditData;
+    use crate::resources::tree_storage::TreeStorageIndex;
+    let Value::Array(entries) = value else {
+        anyhow::bail!("Trees: expected an array");
+    };
+    let mut out = Vec::with_capacity(entries.len());
+    for entry in entries {
+        let Value::Array(pair) = entry else {
+            anyhow::bail!("Trees: expected [TreeStorageIndex, TreeData] pairs");
+        };
+        anyhow::ensure!(
+            pair.len() == 2,
+            "Trees: expected 2-element pairs, got {}",
+            pair.len()
+        );
+        let index: TreeStorageIndex = serde_json::from_value(pair[0].clone())
+            .map_err(|error| anyhow::anyhow!("Trees index: {error}"))?;
+        let mut tree = pair[1].clone();
+        let Some(map) = tree.as_object_mut() else {
+            anyhow::bail!("Trees: tree record is not an object");
+        };
+        map.entry("prefab_name")
+            .or_insert_with(|| Value::String(String::new()));
+        map.entry("is_preplaced").or_insert(Value::Bool(false));
+        let tree: TreeEditData =
+            serde_json::from_value(tree).map_err(|error| anyhow::anyhow!("Trees data: {error}"))?;
+        out.push(SnapshotTreesEntry { index, tree });
+    }
+    Ok(out)
 }
 
 /// Wall 采集器（0x141308b40，① T3 t3-save-domain-collectors §1）：`inner_walls::all()`
@@ -375,7 +425,7 @@ impl SnapshotDomainData {
 
 // Native serde adapters over the canonical owned HistoryState projection.
 // They do not decode process pointers or manufacture DecoratorInfo values.
-fn decorator_storage_addr_json(addr: DecoratorStorageAddr) -> Value {
+pub(crate) fn decorator_storage_addr_json(addr: DecoratorStorageAddr) -> Value {
     match addr {
         DecoratorStorageAddr::Wall(id) => serde_json::json!({"Wall": id.0}),
         DecoratorStorageAddr::Terrain => Value::String("Terrain".into()),
@@ -442,7 +492,7 @@ const CLUTTER_MESH_NAMES: [&str; 56] = [
     "crates_w_pumpkins_regular",
 ];
 
-fn decorator_history_state_json(
+pub(crate) fn decorator_history_state_json(
     state: &crate::resources::history::decorator_edit::DecoratorHistoryState,
 ) -> anyhow::Result<Value> {
     use serde_json::json;
@@ -1017,6 +1067,12 @@ pub fn validate_and_load_closest_snapshot_data(json: &[u8]) -> anyhow::Result<Lo
         .ok_or_else(|| anyhow::anyhow!("Snapshot has no Version"))?;
     let version_i32: i32 = serde_json::from_value(version_value.clone())
         .map_err(|error| anyhow::anyhow!("Version: {error}"))?;
+    // 原生 0x1417a6e50：版本不符 → "Version mismatch; expected , got "（panic 面；
+    // 此处以 Err 保留失败语义）。
+    anyhow::ensure!(
+        version_i32 == SNAPSHOT_FORMAT_VERSION,
+        "Version mismatch; expected {SNAPSHOT_FORMAT_VERSION}, got {version_i32}"
+    );
     let version = i64::from(version_i32);
     let mut sections = Vec::new();
     let mut rasters = Vec::new();
@@ -1028,23 +1084,24 @@ pub fn validate_and_load_closest_snapshot_data(json: &[u8]) -> anyhow::Result<Lo
         match *key {
             // 逐节 typed deserialize（失败 = 解析错误，原版直接传播）。
             "Walls" => {
-                // 原生 `Vec<(WallId, WallState)>`；WallState 无 serde 镜像 → 以
-                // 0x78B 记录 JSON mirror（id + WallStateJson）typed 校验。
-                serde_json::from_value::<Vec<(u64, WallStateJson)>>(section.clone())
-                    .map_err(|error| anyhow::anyhow!("Walls: {error}"))?;
+                // 原生 `Vec<(WallId, WallState)>`；`WallState` 的 Deserialize 即原版
+                // 0x1415bb1c0 object visitor（saved_wall_state.rs）。
+                serde_json::from_value::<
+                    Vec<(u64, crate::resources::walls::inner_wall_state::WallState)>,
+                >(section.clone())
+                .map_err(|error| anyhow::anyhow!("Walls: {error}"))?;
             }
             "Roofs" => {
-                // 原生 `Vec<Roof>`（Roof 无 serde derive；域镜像待①）。这里保证
-                // 形状为数组；元素保留 Value。
-                if !section.is_array() {
-                    anyhow::bail!("Roofs: expected an array");
-                }
+                // 原生 `Vec<Roof>`；Roof 的 Deserialize 即 B 0x1415c5460/0x1415a9230
+                // wire view（roof_shape.rs）。
+                serde_json::from_value::<Vec<Roof>>(section.clone())
+                    .map_err(|error| anyhow::anyhow!("Roofs: {error}"))?;
             }
             "Decorators" => {
                 serde_json::from_value::<DecoratorsSectionJson>(section.clone())
                     .map_err(|error| anyhow::anyhow!("Decorators: {error}"))?;
             }
-            "WallColors" | "GateColors" => {
+            "WallColors" | "GateColors" | "HalftimberColors" => {
                 serde_json::from_value::<Vec<(u64, u32)>>(section.clone())
                     .map_err(|error| anyhow::anyhow!("{key}: {error}"))?;
             }
@@ -1052,14 +1109,36 @@ pub fn validate_and_load_closest_snapshot_data(json: &[u8]) -> anyhow::Result<Lo
                 serde_json::from_value::<TerrainSectionJson>(section.clone())
                     .map_err(|error| anyhow::anyhow!("Terrain: {error}"))?;
             }
+            "TerrainHeightRange" => {
+                serde_json::from_value::<Range<f32>>(section.clone())
+                    .map_err(|error| anyhow::anyhow!("TerrainHeightRange: {error}"))?;
+            }
             "Trees" => {
-                serde_json::from_value::<Vec<SnapshotTreesEntry>>(section.clone())
-                    .map_err(|error| anyhow::anyhow!("Trees: {error}"))?;
+                // 缺省 prefab_name/is_preplaced 由 parse_trees_section 补齐（G1① §3.2）。
+                parse_trees_section(section)?;
+            }
+            "Stairs" => {
+                serde_json::from_value::<StairsSectionJson>(section.clone())
+                    .map_err(|error| anyhow::anyhow!("Stairs: {error}"))?;
+            }
+            "StairsRemovedSupports" => {
+                serde_json::from_value::<StairsRemovedSupportsJson>(section.clone())
+                    .map_err(|error| anyhow::anyhow!("StairsRemovedSupports: {error}"))?;
             }
             "Raster" => {
-                // Raster 节：白名单键保留（ordered_names），未知键忽略并 log；
-                // 已知键载荷走 flate2 deflate 解压（O：DeflateDecoder + read_exact）。
-                if let Some(map) = section.as_object() {
+                // 真实发行样本（r7-chain1-field §1/§5）：`"Raster": ["PathRaster", …]`
+                // 只是在场栅格名表，载荷在 motomoto 二进制 chunks（`load_snapshot_file`
+                // 装配进 `rasters`）。旧兼容对象形状仍按白名单逐键解压。
+                if let Some(names) = section.as_array() {
+                    for name in names {
+                        let Some(name) = name.as_str() else {
+                            anyhow::bail!("Raster: expected raster names");
+                        };
+                        if !is_known_raster_key(name) {
+                            log::debug!("Ignoring unknown raster data in snapshot: {name}");
+                        }
+                    }
+                } else if let Some(map) = section.as_object() {
                     for (name, payload) in map {
                         if !is_known_raster_key(name) {
                             log::debug!("Ignoring unknown raster data in snapshot: {name}");
@@ -1071,7 +1150,7 @@ pub fn validate_and_load_closest_snapshot_data(json: &[u8]) -> anyhow::Result<Lo
                         rasters.push((name.clone(), bytes));
                     }
                 } else {
-                    anyhow::bail!("Raster: expected an object");
+                    anyhow::bail!("Raster: expected an array of raster names");
                 }
             }
             _ => {}
@@ -1084,6 +1163,97 @@ pub fn validate_and_load_closest_snapshot_data(json: &[u8]) -> anyhow::Result<Lo
         terrain: Vec::new(),
         rasters,
     })
+}
+
+/// Stairs 节 serde（14 节捕获面；真实 17 版样本无此节）。
+#[derive(Clone, Debug, serde::Deserialize)]
+pub struct StairsSectionJson {
+    #[serde(default)]
+    pub edges: Vec<(u32, u32)>,
+    #[serde(default)]
+    pub checksum: Option<u64>,
+}
+
+/// StairsRemovedSupports 节 serde：`{"edges": [[a, b], …]}`。
+#[derive(Clone, Debug, serde::Deserialize)]
+pub struct StairsRemovedSupportsJson {
+    #[serde(default)]
+    pub edges: Vec<(u32, u32)>,
+}
+
+/// 从快照文件载入（`load_game` 的 `{snapshot_id}.snapshot` 路径）。
+///
+/// 文件 = motomoto chunks（r7-chain1-field §1，真实样本实证）：
+/// `"Snapshot"` JSON chunk → 逐命名栅格 chunk（u64 原长 + deflate6）→ `"Terrain"`
+/// chunk（仅 deflate6，0x80000B 高度缓冲）。本函数按 `try_chunk` 0x1417a6d70 的
+/// Result 语义消费每个 chunk，把栅格/地形载荷装配进 [`LoadedSnapshotData`]。
+///
+/// 未知 chunk 标签按 "Ignoring unknown raster data in snapshot: " 忽略。
+pub fn load_snapshot_file(path: &std::path::Path) -> anyhow::Result<LoadedSnapshotData> {
+    let bytes = std::fs::read(path).map_err(|error| {
+        anyhow::anyhow!(
+            "Failed to load history snapshot {}: {error}",
+            path.display()
+        )
+    })?;
+    let chunks = motomoto::Reader::new(&bytes)
+        .iter()
+        .collect::<std::io::Result<Vec<_>>>()?;
+    let mut chunks = chunks.into_iter();
+    let Some(first) = chunks.next() else {
+        return Err(anyhow::anyhow!("No chunks left in iterator"));
+    };
+    let mut loaded = validate_and_load_closest_snapshot_data(&first.data)?;
+    // Raster 名表给出 chunk 顺序（写出侧按 ordered_names 顺序逐 chunk）；截断到 8 字节
+    // 的 tag 会让 Cobblestone1/2/3 同名，故用名表游标按顺序消歧。
+    let names: Vec<String> = match loaded
+        .sections
+        .iter()
+        .find(|(name, _)| *name == "Raster")
+        .map(|(_, value)| value)
+    {
+        Some(Value::Array(values)) => values
+            .iter()
+            .filter_map(|value| value.as_str())
+            .filter(|name| is_known_raster_key(name))
+            .map(str::to_owned)
+            .collect(),
+        _ => AllWorldRasterWrite::ordered_names()
+            .iter()
+            .map(|name| (*name).to_string())
+            .collect(),
+    };
+    let mut cursor = 0usize;
+    let terrain_tag = motomoto::tag_from_str("Terrain");
+    for chunk in chunks {
+        if chunk.tag == terrain_tag {
+            loaded.terrain = inflate_terrain(&chunk.data)
+                .map_err(|error| anyhow::anyhow!("Terrain: {error}"))?;
+            continue;
+        }
+        let Some(offset) = names[cursor..]
+            .iter()
+            .position(|name| motomoto::tag_from_str_trunc(name) == chunk.tag)
+        else {
+            log::debug!("Ignoring unknown raster data in snapshot: {:?}", chunk.tag);
+            continue;
+        };
+        let name = names[cursor + offset].clone();
+        cursor += offset + 1;
+        // 栅格 chunk 前置 u64 原长，其余为 deflate 载荷。
+        anyhow::ensure!(chunk.data.len() >= 8, "Raster {name}: truncated chunk");
+        let uncompressed = u64::from_le_bytes(chunk.data[..8].try_into().unwrap());
+        let payload = inflate_terrain(&chunk.data[8..]).map_err(|error| {
+            anyhow::anyhow!("Decompressing raster data failed for {name}: {error}")
+        })?;
+        anyhow::ensure!(
+            payload.len() as u64 == uncompressed,
+            "Raster {name}: expected {uncompressed} bytes, got {}",
+            payload.len()
+        );
+        loaded.rasters.push((name, payload));
+    }
+    Ok(loaded)
 }
 
 /// `try_chunk` 0x1417a6d70（fresh disasm 2026-10-17，148 B）：**Result 包装闭包**，
@@ -1170,67 +1340,39 @@ impl SnapshotPrefix {
     }
 }
 
-/// `init_game_state_from_snapshot` 0x1417a9c50：域写回主链。
+/// `init_game_state_from_snapshot` 0x1417a9c50：域写回主链（World 级入口）。
 ///
 /// fresh 反编译：`memcpy(header, in_R8, 0xc0)` + 14 个 0x20B 描述符读取，随后按序
 /// 写回（callees）：`InnerWalls::load_state` 0x14085ad80 → `DecoratorStorage::restore_snapshot`
 /// 0x140a20d70 → … → `AllWorldRasterWrite::write` 0x14083ebe0 → `StairsState::restore_snapshot`
 /// 0x1408ff590（另有 WindowFocusEvent/AvailableMonitor/SettingsMenuState grow 面由宿主）。
 ///
-/// 本入口解析头/描述符后，以**已验证的 JSON 节数据**（validate 0x1417a6e50 的输出）
-/// 走既有写回入口；描述符中的原生内存指针无法在 Rust 侧解引用，按域登记（不伪造）：
-/// Walls→`apply_loaded_snapshot`、Decorators→`restore_snapshot`、Terrain→TerrainEditingData、
-/// Raster→`write_named`、Stairs→`restore_snapshot`（宿主提供捕获侧 StairsSnapshot）。
-/// `decorator_ids` is the same runtime resource used by live decorator creation;
-/// the native restore call reserves every loaded id in that owner.
+/// 文件快照不走 0xc0 内存描述符：`load_snapshot_file` 已把 motomoto chunks 装配为
+/// [`LoadedSnapshotData`]，本入口把它应用到真实 ECS 资源/实体。原生描述符里的内存指针
+/// 无法在 Rust 侧解引用，域目标按 crate 权威运行时 owner 接线（见
+/// [`apply_loaded_snapshot_to_world`] 的逐域说明与 `gaps` 登记）。
 pub fn init_game_state_from_snapshot(
-    raw_snapshot: &[u8],
-    resources: &mut SnapshotLoadResources,
-    walls: &mut crate::resources::walls::inner_walls::InnerWalls,
-    decorators: &mut crate::resources::walls::decorator_storage::DecoratorStorage,
-    decorator_ids: &mut DecoratorIdGen,
-    terrain: &mut TerrainEditingData,
-    mut rasters: Option<&mut AllWorldRasterWrite<'_>>,
-    stairs: Option<&mut StairsState>,
-    stairs_snapshot: Option<StairsSnapshot>,
-) -> anyhow::Result<SnapshotPrefix> {
-    // 1. 0xc0 头 + 14 域描述符（O：首段，逐字段偏移已核对）。
-    let prefix = SnapshotPrefix::from_bytes(raw_snapshot)?;
-    // 2. 域写回序（Walls → Decorators → … → Raster → Stairs）。
-    apply_loaded_snapshot(resources, walls, decorators, decorator_ids, terrain, rasters.take());
-    if let (Some(stairs), Some(snapshot)) = (stairs, stairs_snapshot) {
-        apply_stairs_writeback(stairs, snapshot);
-    }
-    Ok(prefix)
+    world: &mut bevy_ecs::world::World,
+    resources: &SnapshotLoadResources,
+) -> anyhow::Result<SnapshotApplyReport> {
+    apply_loaded_snapshot_to_world(world, resources)
 }
 
-/// `init_game_state_from_snapshot` 0x1417a9c50 的装载面。域应用逻辑由对应域提供。
+/// `init_game_state_from_snapshot` 的**纯资源视图**（不接管 World）。
 ///
-/// ⑤轮 C 块（① c-snapshot-apply-targets + c-apply-api-formats + c-apply-data-source）：
-/// 数据流 = 节 JSON 值 → serde 反序列化 → 记录 → 目标 API 写回。
-/// - **Walls**：`parse_wall_section`（JSON → 0x78B 记录，record[0]=WallId）→
+/// 生产读档路径走 [`init_game_state_from_snapshot`]（World 级，覆盖全部 11 个已解析域）；
+/// 本函数保留给只需 Walls/Decorators/Terrain/Raster 且由调用方显式持有资源的场景
+/// （现有测试）。数据流 = 节 JSON 值 → serde 反序列化 → 目标 API 写回：
+/// - **Walls**：`parse_wall_section`（canonical `WallState` serde → 0x78B 记录）→
 ///   `InnerWalls::load_state`（0x14085ad80）。
-/// - **Decorators**：`parse_decorator_section`（JSON → 快照，0x28B 形状）→
-///   `DecoratorStorage::restore_snapshot`（0x140a20d70）。
-/// - **Terrain**：`parse_terrain_section`（JSON 承载 deflate → inflate）→ TerrainEditingData。
-/// serde 架构/逐字段解码待①（中优先）；解析失败登记不伪造。Roofs/WallColors/GateColors/
-/// Trees/Raster 域目标与写入序待①（中优先）。
+/// - **Decorators**：`DecoratorsSectionJson` → `DecoratorStorageSnapshot` →
+///   `restore_snapshot_with_id_gen`（0x140a20d70）。
+/// - **Terrain**：`TerrainSectionJson`（JSON 明文 strokes）→ `TerrainEditingData`。
+/// - **Raster**：6 白名单键 → `apply_raster_writeback`（0x14083ebe0）。
 ///
-/// ② r8 写回接线：Decorators 节 JSON → crate `DecoratorStorageSnapshot` →
-/// `DecoratorStorage::restore_snapshot`（0x140a20d70）；Walls 节 JSON → 0x78B 记录
-/// （record[0]=WallId + O 字段）→ `InnerWalls::load_state`（0x14085ad80，曲线区打包
-/// 待①）；Terrain 节 JSON → `TerrainEditingData` → 写回地形资源。state 字节语义 /
-/// 0x70B 曲线区 / 0x16B 子记录待 G4① 契约对齐。
-///
-/// **Raster 写回（0x14083ebe0 接线，2026-10-17）**：Raster 节 JSON 对象按
-/// `AllWorldRasterWrite::ordered_names()` 6 白名单键逐槽解码（flate2 deflate 尾，
-/// 形状待①）→ `apply_raster_writeback`（write_named 先校验名称/长度，任一不符整批
-/// 不写）。`rasters` 缺省时登记不写。**Stairs 无 JSON 节**（StairsSnapshot 只在内存
-/// `SnapshotSaveData` 域描述符），init 写回经 [`apply_stairs_writeback`] 由宿主把
-/// 捕获侧 stairs 接入。
+/// 该视图不处理 Roofs/WallColors/GateColors/HalftimberColors/Trees/地形高度/
+/// Stairs —— 这些域由 [`apply_loaded_snapshot_to_world`] 写回。
 #[allow(clippy::too_many_arguments)]
-/// Pass the authoritative runtime generator through to decorator restoration.
-/// No temporary generator is allocated by this helper.
 pub fn apply_loaded_snapshot(
     resources: &mut SnapshotLoadResources,
     walls: &mut crate::resources::walls::inner_walls::InnerWalls,
@@ -1260,24 +1402,32 @@ pub fn apply_loaded_snapshot(
             continue;
         };
         match key {
-            // ① c-apply-data-source §2b：JSON 值 → serde → 记录 → load_state。
+            // G1① §4：语义 WallState（含点列）直接插入，不做 0x70 字节打包。
             "Walls" => {
-                let records = parse_wall_section(value);
-                if records.is_empty() {
-                    log::trace!("apply Walls: JSON→0x78B 解析为空（曲线区打包待①）");
-                } else {
-                    walls.load_state(&records);
+                match serde_json::from_value::<
+                    Vec<(u64, crate::resources::walls::inner_wall_state::WallState)>,
+                >(value.clone())
+                {
+                    Ok(rows) => {
+                        if let Err(error) = load_snapshot_walls(
+                            walls,
+                            rows.into_iter().map(|(id, state)| (WallId(id), state)),
+                        ) {
+                            log::error!("apply Walls: {error}");
+                        }
+                    }
+                    Err(error) => log::error!("apply Walls: {error}"),
                 }
             }
             "Decorators" => {
-                // ① r7-chain1-writeback §1：真实 serde = {states:[[addr,{state:[{id,
-                //   DecoratorInfo}]}]]}。② r8 接线：JSON → DecoratorStorageSnapshot →
-                //   DecoratorStorage::restore_snapshot（0x140a20d70）真写回。
-                //   state 字节语义 / 0x28B/0x16B 逐槽打包待①。
+                // G1① §5：JSON → DecoratorStorageSnapshot → restore_snapshot（0x140a20d70）。
+                // 内层记录 0x58B = 明文 DecoratorId + DecoratorHistoryState 0x50。
                 if let Ok(section) = serde_json::from_value::<DecoratorsSectionJson>(value.clone())
                 {
                     match section.into_storage_snapshot() {
-                        Ok(snapshot) => decorators.restore_snapshot_with_id_gen(&snapshot, decorator_ids),
+                        Ok(snapshot) => {
+                            decorators.restore_snapshot_with_id_gen(&snapshot, decorator_ids)
+                        }
                         Err(error) => log::error!("apply Decorators: {error}"),
                     }
                 } else {
@@ -1329,21 +1479,722 @@ pub fn apply_loaded_snapshot(
                     }
                 }
             }
-            // Roofs/WallColors/GateColors/Trees：目标资源与写入序待①。
-            _ => log::trace!("apply domain {key}（目标映射待①）"),
+            // Roofs/WallColors/GateColors/HalftimberColors/Trees 由 World 级
+            // `apply_loaded_snapshot_to_world` 写回。
+            _ => log::trace!("apply domain {key}: 由 init_game_state_from_snapshot (World) 处理"),
         }
     }
     let _ = loaded.version;
     let _ = &loaded.terrain;
 }
 
+/// 快照应用到 World 的结果面。`gaps` 非空表示该域只完成部分写回（宿主面缺失），
+/// 读取方不得把带 gap 的结果当作完整恢复。
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct SnapshotApplyReport {
+    pub walls: usize,
+    pub roofs: usize,
+    /// Roofs apply 后经 `RoofAssociations::rebuild` 建立的墙-屋顶关联数。
+    pub roof_associations: usize,
+    pub decorators: usize,
+    pub wall_colors: usize,
+    pub gate_colors: usize,
+    pub halftimber_colors: usize,
+    pub trees: usize,
+    pub terrain_strokes: usize,
+    pub terrain_heights: bool,
+    pub raster_slots: usize,
+    pub stairs: bool,
+    pub removed_supports: usize,
+    /// 已解析但未完整应用的项（缺资源/缺消费者/未接线域等）。
+    pub gaps: Vec<String>,
+}
+
+/// 读档时 `PublicWalls` 尚未发布（`Walls` 段只写 `InnerWalls`），
+/// Roofs 段的关联重建因此延后到墙发布后：apply 记录待重建行，由
+/// [`rebuild_pending_roof_associations`] 在 `WallCpuStage::Publish` 之后
+/// 一次成功重建。避免“读档期恒 gap、之后永不重建”。
+#[derive(bevy_ecs::resource::Resource, Clone, Debug, Default)]
+pub struct PendingRoofAssociationRebuild {
+    pub rows: Vec<PendingRoofAssociationRow>,
+}
+
+/// 待重建行：`entity.to_bits()` + `Roof::wall_id`。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PendingRoofAssociationRow {
+    pub entity: u64,
+    pub wall: u64,
+}
+
+fn queue_pending_roof_associations(
+    world: &mut bevy_ecs::world::World,
+    spawned: &[(bevy_ecs::entity::Entity, WallId)],
+) {
+    world.insert_resource(PendingRoofAssociationRebuild {
+        rows: spawned
+            .iter()
+            .map(|(entity, wall)| PendingRoofAssociationRow {
+                entity: entity.to_bits(),
+                wall: wall.0,
+            })
+            .collect(),
+    });
+}
+
+/// 读取待重建行，等 `PublicWalls` 拥有全部墙行后调用
+/// `RoofAssociations::rebuild`，并消费 `AssociationChanges`
+/// （`DeleteRoofCmd` / `WallRoofPresenceChanged`）。未集齐前保持 pending，
+/// 不清空、不伪造。
+pub fn rebuild_pending_roof_associations(
+    mut pending: Option<bevy_ecs::prelude::ResMut<PendingRoofAssociationRebuild>>,
+    public: Option<bevy_ecs::prelude::Res<PublicWalls>>,
+    mut associations: Option<bevy_ecs::prelude::ResMut<RoofAssociations>>,
+    mut delete_roof: Option<
+        bevy_ecs::prelude::ResMut<
+            bevy_ecs::event::Events<crate::resources::roofs::commands::DeleteRoofCmd>,
+        >,
+    >,
+    mut presence: Option<
+        bevy_ecs::prelude::ResMut<
+            bevy_ecs::event::Events<crate::resources::roofs::commands::WallRoofPresenceChanged>,
+        >,
+    >,
+) {
+    let (Some(pending), Some(public), Some(associations)) =
+        (pending.as_mut(), public.as_ref(), associations.as_mut())
+    else {
+        return;
+    };
+    if pending.rows.is_empty() {
+        return;
+    }
+    let mut projections: std::collections::HashMap<u64, PublicWallBuildingState> =
+        std::collections::HashMap::new();
+    for row in &pending.rows {
+        if let Some(state) = public.get(WallId(row.wall)) {
+            projections.insert(row.wall, state.building_projection());
+        }
+    }
+    if pending
+        .rows
+        .iter()
+        .any(|row| !projections.contains_key(&row.wall))
+    {
+        // 墙发布尚未覆盖全部行：下帧再试。
+        return;
+    }
+    let order: Vec<PublicWallId> = public.wall_ids().map(|wall| PublicWallId(wall.0)).collect();
+    let rows: Vec<ResolvedRoofAssociation<'_>> = pending
+        .rows
+        .iter()
+        .map(|row| ResolvedRoofAssociation {
+            wall_id: PublicWallId(row.wall),
+            entity: row.entity,
+            marked: false,
+            public_wall: projections.get(&row.wall),
+        })
+        .collect();
+    match associations.rebuild(rows, &order, 0) {
+        Ok(changes) => {
+            if let Some(delete_roof) = delete_roof.as_mut() {
+                for wall in &changes.invalid_roof_requests {
+                    delete_roof.send(crate::resources::roofs::commands::DeleteRoofCmd(WallId(
+                        wall.0,
+                    )));
+                }
+            }
+            if let Some(presence) = presence.as_mut() {
+                for wall in &changes.wall_presence_changes {
+                    presence.send(crate::resources::roofs::commands::WallRoofPresenceChanged(
+                        WallId(wall.0),
+                    ));
+                }
+            }
+            pending.rows.clear();
+        }
+        Err(error) => {
+            log::warn!(
+                target: "country_core::systems::save::snapshot",
+                "deferred RoofAssociations rebuild failed: {error:?}"
+            );
+            pending.rows.clear();
+        }
+    }
+}
+
+/// `init_game_state_from_snapshot` 0x1417a9c50 的 World 级写回入口。
+///
+/// 接线序按原版 apply 序：Version 门 → Walls → Roofs → Decorators → WallColors →
+/// GateColors → HalftimberColors → Terrain → TerrainHeightRange → Trees → Raster →
+/// Stairs → StairsRemovedSupports。
+///
+/// 域目标（O 面定案，其余按 crate 权威运行时 owner 接线并登记 U）：
+/// - Walls → [`load_snapshot_walls`]（语义 `Vec<(WallId, WallState)>` 直接插入，
+///   复刻 `InnerWalls::load_state` 0x14085ad80 的三断言/created/HashMap/max_id 语义；
+///   G1① §4：点列在堆上，无 0x70 内联打包）。
+/// - Decorators → `DecoratorStorage::restore_snapshot_with_id_gen` 0x140a20d70（O；
+///   内层 0x58B = 明文 DecoratorId + DecoratorHistoryState 0x50）。
+/// - Raster → `AllWorldRasterWrite::write_named` 0x14083ebe0（O）。
+/// - Terrain strokes → `TerrainEditingData`（O）；Terrain chunk → `TerrainHeightsData`
+///   （0x80000B 高度缓冲，`TerrainHeightRange` 同步写 min/max）。
+/// - Roofs → ECS `Roof` 组件实体（原版 init 的 0x40B 中间条目逐槽 U；
+///   apply 后以 `PublicWalls` 的 `PublicWallBuildingState` 行调用
+///   `RoofAssociations::rebuild`，缺墙行时记 gap 而不伪造关联）。
+/// - WallColors/GateColors/HalftimberColors → `WallColorIds`/`GateColorIds`/
+///   `HalftimberColorIds` 的 CPU 表（原版三段同构循环 → 0x18B 条目 Vec；稀疏写入等价 I）。
+/// - Trees → ECS 树实体（TreeComponent/TreeAnimation/TreeMoveBend）+ `TreeStorage`
+///   + `SpawnPrefabCmd`（索引/变体/位置/缩放/旋转/prefab 映射，G1① §3.2）。
+/// - Stairs → `StairsState::restore_snapshot` 0x1408ff590；StairsRemovedSupports →
+///   该资源边集。
+///
+/// 缺失的核心 owner（InnerWalls/DecoratorStorage/TerrainEditingData）→ Err；
+/// 可选宿主面缺失 → 记入 `gaps`，不伪造成功。
+pub fn apply_loaded_snapshot_to_world(
+    world: &mut bevy_ecs::world::World,
+    resources: &SnapshotLoadResources,
+) -> anyhow::Result<SnapshotApplyReport> {
+    use crate::resources::walls::inner_wall_state::WallState;
+    let Some(loaded) = resources.loaded.as_ref() else {
+        return Ok(SnapshotApplyReport::default());
+    };
+    let mut report = SnapshotApplyReport::default();
+    let section = |key: &str| {
+        loaded
+            .sections
+            .iter()
+            .find(|(name, _)| *name == key)
+            .map(|(_, value)| value)
+    };
+
+    // ---- Walls（O：InnerWalls::load_state 0x14085ad80）----
+    if let Some(value) = section("Walls") {
+        anyhow::ensure!(
+            world.contains_resource::<crate::resources::walls::InnerWalls>(),
+            "B InnerWalls constructor missing"
+        );
+        let rows: Vec<(u64, WallState)> = serde_json::from_value(value.clone())
+            .map_err(|error| anyhow::anyhow!("Walls section: {error}"))?;
+        report.walls = load_snapshot_walls(
+            &mut world.resource_mut::<crate::resources::walls::InnerWalls>(),
+            rows.into_iter().map(|(id, state)| (WallId(id), state)),
+        )?;
+    }
+
+    // ---- Roofs（capture: Query<&Roof, Without<RoofMarkedForDeletion>>）----
+    // G1① §2.3：原版把屋顶投影成 0x40B 中间条目 push 到目标 Vec（逐槽 U）；
+    // crate 侧等价 = spawn 带 `Roof` 组件的实体。shape tag≥2 由 `Roof` 的
+    // Deserialize 拒绝（validate 阶段即 fatal），不伪造。
+    if let Some(value) = section("Roofs") {
+        let roofs: Vec<Roof> = serde_json::from_value(value.clone())
+            .map_err(|error| anyhow::anyhow!("Roofs section: {error}"))?;
+        let existing = {
+            let mut query = world.query::<&Roof>();
+            query.iter(world).count()
+        };
+        if existing != 0 {
+            report.gaps.push(format!(
+                "Roofs: {existing} pre-existing roof entities were not cleared (snapshot load expects the fresh session world)"
+            ));
+        }
+        let mut spawned = Vec::with_capacity(roofs.len());
+        for roof in &roofs {
+            let entity = world.spawn(roof.clone()).id();
+            spawned.push((entity, roof.wall_id()));
+        }
+        report.roofs = roofs.len();
+        if !spawned.is_empty() {
+            // 原版 init 在 Roofs 写回后重建 `RoofAssociations`（输入
+            // `PublicWallBuildingState` 行 + PublicWalls 顺序）。关联表的输入
+            // 是墙发布状态：没有对应 PublicWalls 行时不能伪造关联，显式记缺口。
+            if !world.contains_resource::<PublicWalls>() {
+                queue_pending_roof_associations(world, &spawned);
+                report.gaps.push(
+                    "Roofs: RoofAssociations deferred until PublicWalls publication (rebuild_pending_roof_associations)"
+                        .to_string(),
+                );
+            } else {
+                let changes = world.resource_scope(
+                    |world, public: bevy_ecs::prelude::Mut<PublicWalls>| {
+                        let mut projections: std::collections::HashMap<
+                            u64,
+                            PublicWallBuildingState,
+                        > = std::collections::HashMap::new();
+                        for (_, wall) in &spawned {
+                            if let Some(state) = public.get(*wall) {
+                                projections.insert(wall.0, state.building_projection());
+                            }
+                        }
+                        let missing = spawned
+                            .iter()
+                            .filter(|(_, wall)| !projections.contains_key(&wall.0))
+                            .count();
+                        if missing != 0 {
+                            queue_pending_roof_associations(world, &spawned);
+                            report.gaps.push(format!(
+                                "Roofs: RoofAssociations deferred until PublicWalls publication ({missing} roofs have no row yet)"
+                            ));
+                            return None;
+                        }
+                        let order: Vec<PublicWallId> =
+                            public.wall_ids().map(|wall| PublicWallId(wall.0)).collect();
+                        let rows: Vec<ResolvedRoofAssociation<'_>> = spawned
+                            .iter()
+                            .map(|(entity, wall)| ResolvedRoofAssociation {
+                                wall_id: PublicWallId(wall.0),
+                                entity: entity.to_bits(),
+                                marked: false,
+                                public_wall: projections.get(&wall.0),
+                            })
+                            .collect();
+                        if !world.contains_resource::<RoofAssociations>() {
+                            world.insert_resource(RoofAssociations::default());
+                        }
+                        let mut associations = world.resource_mut::<RoofAssociations>();
+                        match associations.rebuild(rows, &order, 0) {
+                            Ok(changes) => {
+                                report.roof_associations = spawned.len();
+                                Some(changes)
+                            }
+                            Err(error) => {
+                                queue_pending_roof_associations(world, &spawned);
+                                report.gaps.push(format!(
+                                    "Roofs: RoofAssociations rebuild failed ({error:?}); left pending"
+                                ));
+                                None
+                            }
+                        }
+                    },
+                );
+                if let Some(changes) = changes {
+                    // `AssociationChanges` 的真实消费者：无效屋顶请求 → 屋顶
+                    // 删除命令；墙存在性变化 → `WallRoofPresenceChanged`。
+                    use crate::resources::roofs::commands::{
+                        DeleteRoofCmd, WallRoofPresenceChanged,
+                    };
+                    world.init_resource::<bevy_ecs::event::Events<DeleteRoofCmd>>();
+                    world.init_resource::<bevy_ecs::event::Events<WallRoofPresenceChanged>>();
+                    for wall in &changes.invalid_roof_requests {
+                        world
+                            .resource_mut::<bevy_ecs::event::Events<DeleteRoofCmd>>()
+                            .send(DeleteRoofCmd(WallId(wall.0)));
+                    }
+                    for wall in &changes.wall_presence_changes {
+                        world
+                            .resource_mut::<bevy_ecs::event::Events<WallRoofPresenceChanged>>()
+                            .send(WallRoofPresenceChanged(WallId(wall.0)));
+                    }
+                }
+            }
+        }
+    }
+
+    // ---- Decorators（O：DecoratorStorage::restore_snapshot 0x140a20d70）----
+    if let Some(value) = section("Decorators") {
+        anyhow::ensure!(
+            world
+                .contains_resource::<crate::resources::walls::decorator_storage::DecoratorStorage>(
+                ),
+            "B DecoratorStorage constructor missing"
+        );
+        anyhow::ensure!(
+            world.contains_resource::<DecoratorIdGen>(),
+            "B DecoratorIdGen constructor missing"
+        );
+        let section: DecoratorsSectionJson = serde_json::from_value(value.clone())
+            .map_err(|error| anyhow::anyhow!("Decorators section: {error}"))?;
+        let snapshot = section.into_storage_snapshot()?;
+        let empty = {
+            let storage =
+                world.resource::<crate::resources::walls::decorator_storage::DecoratorStorage>();
+            storage.per_wall.is_empty()
+                && storage.terrain.is_none()
+                && storage.stairs.is_none()
+                && storage.removed.is_empty()
+                && storage.decorator_to_storage.is_empty()
+        };
+        anyhow::ensure!(
+            empty,
+            "snapshot load requires an empty DecoratorStorage (B restore_snapshot assertion)"
+        );
+        report.decorators = snapshot
+            .states
+            .iter()
+            .map(|(_, list)| list.states.len())
+            .sum();
+        world.resource_scope(
+            |world,
+             mut decorators: bevy_ecs::prelude::Mut<
+                crate::resources::walls::decorator_storage::DecoratorStorage,
+            >| {
+                world.resource_scope(|_world, mut ids: bevy_ecs::prelude::Mut<DecoratorIdGen>| {
+                    decorators.restore_snapshot_with_id_gen(&snapshot, &mut ids);
+                });
+            },
+        );
+    }
+
+    // ---- 三色表 ----
+    for (key, applied) in [
+        ("WallColors", 0u8),
+        ("GateColors", 1),
+        ("HalftimberColors", 2),
+    ] {
+        let Some(value) = section(key) else {
+            continue;
+        };
+        let rows: Vec<(u64, u32)> = serde_json::from_value(value.clone())
+            .map_err(|error| anyhow::anyhow!("{key}: {error}"))?;
+        let count = write_color_table(world, applied, &rows, key, &mut report)?;
+        match applied {
+            0 => report.wall_colors = count,
+            1 => report.gate_colors = count,
+            _ => report.halftimber_colors = count,
+        }
+    }
+
+    // ---- Terrain strokes（O：TerrainEditingData）----
+    if let Some(value) = section("Terrain") {
+        anyhow::ensure!(
+            world.contains_resource::<TerrainEditingData>(),
+            "B TerrainEditingData constructor missing"
+        );
+        let section: TerrainSectionJson = serde_json::from_value(value.clone())
+            .map_err(|error| anyhow::anyhow!("Terrain section: {error}"))?;
+        let editing = section.into_editing_data();
+        report.terrain_strokes = editing.0.strokes.len();
+        *world.resource_mut::<TerrainEditingData>() = editing;
+    }
+
+    // ---- Terrain 高度缓冲 + 范围 ----
+    let height_range = section("TerrainHeightRange")
+        .map(|value| serde_json::from_value::<Range<f32>>(value.clone()))
+        .transpose()
+        .map_err(|error| anyhow::anyhow!("TerrainHeightRange: {error}"))?;
+    if !loaded.terrain.is_empty() || height_range.is_some() {
+        use crate::resources::terrain_height::{TerrainHeightSsbo, TerrainHeightsData};
+        if !world.contains_resource::<TerrainHeightsData<TerrainHeightSsbo>>() {
+            report.gaps.push(
+                "Terrain: TerrainHeightsData<TerrainHeightSsbo> resource missing; heights not written"
+                    .to_string(),
+            );
+        } else {
+            if !loaded.terrain.is_empty() {
+                let heights: Vec<u16> = loaded
+                    .terrain
+                    .chunks_exact(2)
+                    .map(|pair| u16::from_le_bytes([pair[0], pair[1]]))
+                    .collect();
+                anyhow::ensure!(
+                    loaded.terrain.len() % 2 == 0,
+                    "Terrain: odd height buffer length {}",
+                    loaded.terrain.len()
+                );
+                let mut heights_data =
+                    world.resource_mut::<TerrainHeightsData<TerrainHeightSsbo>>();
+                anyhow::ensure!(
+                    heights.len() == heights_data.heights().len(),
+                    "Terrain: expected {} u16 heights, got {}",
+                    heights_data.heights().len(),
+                    heights.len()
+                );
+                heights_data.heights_mut().copy_from_slice(&heights);
+                report.terrain_heights = true;
+            }
+            if let Some(range) = height_range.clone() {
+                world
+                    .resource_mut::<TerrainHeightsData<TerrainHeightSsbo>>()
+                    .set_height_range(range.start, range.end);
+            }
+        }
+    }
+
+    // ---- Trees ----
+    if let Some(value) = section("Trees") {
+        let trees = parse_trees_section(value)?;
+        let mut spawned = 0;
+        let mut empty_prefabs = 0usize;
+        let storage_present =
+            world.contains_resource::<crate::resources::tree_storage::TreeStorage>();
+        let events_present = world
+            .contains_resource::<bevy_ecs::event::Events<crate::systems::prefab::SpawnPrefabCmd>>();
+        let inserts_present = world.contains_resource::<
+            bevy_ecs::event::Events<crate::resources::history::tree_edit::InsertTreeCmd>,
+        >();
+        let mut insert_dispatched = 0usize;
+        for entry in &trees {
+            let position = entry.tree.position;
+            // 空 prefab：原版唯一解析点是 tree-tool `process_tree_cmds` 的
+            // InsertTreeCmd 分支（prefab == MISSING_TREE_PREFAB_NAME →
+            // `random_tree_prefab(id&1, deny_load, is_halloween, is_corrupted,
+            // false)`）。core 不能反向依赖 tree-tool，因此发真实
+            // `InsertTreeCmd`（实体/TreeStorage 由该 consumer 建立），而不是
+            // 自带一个无法解析的 SpawnPrefabCmd。consumer 未装配时退回手工
+            // spawn + sentinel + gap。
+            if entry.tree.prefab_name.is_empty() {
+                empty_prefabs += 1;
+                if inserts_present {
+                    world
+                        .resource_mut::<
+                            bevy_ecs::event::Events<
+                                crate::resources::history::tree_edit::InsertTreeCmd,
+                            >,
+                        >()
+                        .send(crate::resources::history::tree_edit::InsertTreeCmd {
+                            id: entry.index.0,
+                            rotation_degrees: entry.tree.rotation_degrees,
+                            variant: entry.tree.id,
+                            is_preplaced: entry.tree.is_preplaced,
+                            position,
+                            scale: entry.tree.scale,
+                            prefab_name: crate::resources::history::tree_edit::missing_prefab(),
+                        });
+                    insert_dispatched += 1;
+                    spawned += 1;
+                    continue;
+                }
+            }
+            let entity = world.spawn_empty().id();
+            world
+                .entity_mut(entity)
+                .insert(crate::components::trees::TreeComponent {
+                    id: entry.index.0,
+                    is_preplaced: entry.tree.is_preplaced,
+                });
+            // 快照不含生长进度；加载的树按已完成生长（preplaced 初值 1.0/1.0）恢复。
+            world
+                .entity_mut(entity)
+                .insert(crate::components::trees::TreeAnimation::preplaced());
+            world
+                .entity_mut(entity)
+                .insert(crate::components::trees::TreeMoveBend {
+                    position: glam::Vec2::new(position.x, position.z),
+                });
+            // 空 prefab 写 `MISSING_TREE_PREFAB_NAME` sentinel（原版 O：
+            // `resources/history/tree_edit.rs::missing_prefab`）：解析由 tree-tool
+            // `ui_place_tree::random_tree_prefab(id&1, deny_load, is_halloween,
+            // is_corrupted, false)` 在 spawn 前完成（core 不得反向依赖）。
+            let prefab_name = if entry.tree.prefab_name.is_empty() {
+                // 已在循环头计数；consumer 缺失时的回退路径仍写 sentinel。
+                crate::resources::history::tree_edit::missing_prefab()
+            } else {
+                entry.tree.prefab_name.clone()
+            };
+            if events_present {
+                world
+                    .resource_mut::<bevy_ecs::event::Events<crate::systems::prefab::SpawnPrefabCmd>>()
+                    .send(crate::systems::prefab::SpawnPrefabCmd {
+                        prefab_name: Some(
+                            crate::resources::render::mesh_atlas_library::PrefabName::new(
+                                &prefab_name,
+                            ),
+                        ),
+                        entity: Some(entity),
+                        position,
+                        scale: entry.tree.scale,
+                        rotation: entry.tree.rotation_degrees,
+                        variant: entry.tree.id as u32,
+                        one: 1.0,
+                        flags: [0; 0x10],
+                        mode: 1,
+                    });
+            } else {
+                report.gaps.push(
+                    "Trees: Events<SpawnPrefabCmd> missing; prefab instances not requested"
+                        .to_string(),
+                );
+            }
+            if storage_present {
+                world
+                    .resource_mut::<crate::resources::tree_storage::TreeStorage>()
+                    .insert(
+                        entry.index,
+                        crate::resources::tree_storage::TreeStorageEntry { entity, position },
+                    );
+            }
+            spawned += 1;
+        }
+        if empty_prefabs != 0 {
+            if insert_dispatched != 0 {
+                report.gaps.push(format!(
+                    "Trees: {insert_dispatched}/{empty_prefabs} empty-prefab entries dispatched as InsertTreeCmd(MISSING_TREE_PREFAB_NAME); tree-tool process_tree_cmds random_tree_prefab resolution must be registered"
+                ));
+            }
+            if insert_dispatched != empty_prefabs {
+                let fallback = empty_prefabs - insert_dispatched;
+                report.gaps.push(format!(
+                    "Trees: {fallback} empty-prefab entries fell back to SpawnPrefabCmd sentinel (Events<InsertTreeCmd> missing); resolution owned by tree-tool"
+                ));
+            }
+        }
+        if !storage_present && !trees.is_empty() {
+            report
+                .gaps
+                .push("Trees: TreeStorage resource missing; index table not rebuilt".to_string());
+        }
+        report.trees = spawned;
+    }
+
+    // ---- Raster（O：AllWorldRasterWrite::write 0x14083ebe0）----
+    if section("Raster").is_some() && !loaded.rasters.is_empty() {
+        use crate::resources::world_raster_defs::{
+            Cobblestone1Raster, Cobblestone2Raster, Cobblestone3Raster, GardenRaster, PathRaster,
+            WaterRaster, WorldRasterResources,
+        };
+        let present = world.contains_resource::<PathRaster>()
+            && world.contains_resource::<Cobblestone1Raster>()
+            && world.contains_resource::<Cobblestone2Raster>()
+            && world.contains_resource::<Cobblestone3Raster>()
+            && world.contains_resource::<WaterRaster>()
+            && world.contains_resource::<GardenRaster>();
+        if !present {
+            report.gaps.push(
+                "Raster: one or more named raster resources missing; write skipped".to_string(),
+            );
+        } else {
+            let data: Vec<NamedRasterData> = AllWorldRasterWrite::ordered_names()
+                .iter()
+                .map(|name| {
+                    let bytes = loaded
+                        .rasters
+                        .iter()
+                        .find(|(key, _)| key == name)
+                        .map(|(_, bytes)| bytes.clone());
+                    ((*name).to_string(), bytes)
+                })
+                .collect();
+            report.raster_slots = data.iter().filter(|(_, bytes)| bytes.is_some()).count();
+            let mut state =
+                bevy_ecs::system::SystemState::<WorldRasterResources<'static>>::new(world);
+            {
+                let mut rasters = state.get_mut(world);
+                apply_raster_writeback(&mut rasters.write_view(), &data)?;
+            }
+            state.apply(world);
+        }
+    } else if let Some(value) = section("Raster") {
+        // 空名表 = 该快照确实没有栅格；非空名表却无 chunk = 文件不完整。
+        let listed = value.as_array().map_or(true, |names| !names.is_empty());
+        if listed {
+            report.gaps.push(
+                "Raster: section lists names but the file carried no raster chunks; write skipped"
+                    .to_string(),
+            );
+        }
+    }
+
+    // ---- Stairs / StairsRemovedSupports ----
+    if let Some(value) = section("Stairs") {
+        let section: StairsSectionJson = serde_json::from_value(value.clone())
+            .map_err(|error| anyhow::anyhow!("Stairs section: {error}"))?;
+        let snapshot = StairsSnapshot::new(section.edges.clone());
+        if section.checksum.is_some() && section.checksum != snapshot.cached_checksum() {
+            report.gaps.push(
+                "Stairs: saved checksum differs from the edge-derived checksum; cached value not preserved"
+                    .to_string(),
+            );
+        }
+        if world.contains_resource::<StairsState>() {
+            apply_stairs_writeback(&mut world.resource_mut::<StairsState>(), snapshot);
+            report.stairs = true;
+        } else {
+            report
+                .gaps
+                .push("Stairs: StairsState resource missing; graph not restored".to_string());
+        }
+    }
+    if let Some(value) = section("StairsRemovedSupports") {
+        let section: StairsRemovedSupportsJson = serde_json::from_value(value.clone())
+            .map_err(|error| anyhow::anyhow!("StairsRemovedSupports: {error}"))?;
+        if world.contains_resource::<StairsRemovedSupports>() {
+            let mut supports = world.resource_mut::<StairsRemovedSupports>();
+            supports.edges.clear();
+            for (a, b) in section.edges {
+                supports.record(crate::resources::stairs::stairs_state::StairGraphEdge::new(
+                    a, b,
+                ));
+            }
+            report.removed_supports = supports.edges.len();
+        } else {
+            report.gaps.push(
+                "StairsRemovedSupports: resource missing; removed-support set not restored"
+                    .to_string(),
+            );
+        }
+    }
+
+    Ok(report)
+}
+
+/// 写一张颜色表（`iter_nondefault` 的逆）：`[[index, ColorId], …]` → `Vec<u32>`。
+/// `table` 选择 0=Wall/1=Gate/2=Halftimber（capture 侧同为 CPU Vec<u32>）。
+fn write_color_table(
+    world: &mut bevy_ecs::world::World,
+    table: u8,
+    rows: &[(u64, u32)],
+    key: &str,
+    report: &mut SnapshotApplyReport,
+) -> anyhow::Result<usize> {
+    use crate::resources::color_id::{GateColorIds, HalftimberColorIds, WallColorIds};
+    let resource_missing = match table {
+        0 => !world.contains_resource::<WallColorIds>(),
+        1 => !world.contains_resource::<GateColorIds>(),
+        _ => !world.contains_resource::<HalftimberColorIds>(),
+    };
+    if resource_missing {
+        report.gaps.push(format!(
+            "{key}: color table resource missing; entries not written"
+        ));
+        return Ok(0);
+    }
+    let mut applied = 0;
+    match table {
+        0 => apply_color_rows(
+            &mut world.resource_mut::<WallColorIds>().0,
+            rows,
+            key,
+            &mut applied,
+        )?,
+        1 => apply_color_rows(
+            &mut world.resource_mut::<GateColorIds>().0,
+            rows,
+            key,
+            &mut applied,
+        )?,
+        _ => apply_color_rows(
+            &mut world.resource_mut::<HalftimberColorIds>().0,
+            rows,
+            key,
+            &mut applied,
+        )?,
+    }
+    Ok(applied)
+}
+
+fn apply_color_rows(
+    table: &mut Vec<u32>,
+    rows: &[(u64, u32)],
+    key: &str,
+    applied: &mut usize,
+) -> anyhow::Result<()> {
+    for (index, color) in rows {
+        let index = usize::try_from(*index)
+            .map_err(|_| anyhow::anyhow!("{key}: negative index {index}"))?;
+        let Some(slot) = table.get_mut(index) else {
+            anyhow::bail!("{key}: index {index} out of range ({})", table.len());
+        };
+        *slot = *color;
+        *applied += 1;
+    }
+    Ok(())
+}
+
 /// init 写回：Stairs 快照应用（O：`StairsState::restore_snapshot` 0x1408ff590）。
 ///
-/// 快照 JSON **无 Stairs 节**（StairsSnapshot 只存在于内存 [`SnapshotSaveData`] 的
-/// 域描述符/`SnapshotDomainData.stairs`），故 [`apply_loaded_snapshot`] 不承载。
-/// 本入口 = init 链（`init_game_state_from_snapshot` 0x1417a9c50）的 Stairs 写回接线点：
-/// 宿主把捕获侧 `SnapshotSaveData.domain.stairs` 传入，`restore_snapshot` 计算差值、
-/// 清旧备份、写回当前图并重建备份（backed_up=true）。
+/// 现行 14 节捕获侧会写出 `"Stairs": {"edges": …, "checksum": …}` 与
+/// `"StairsRemovedSupports"`（`try_to_section_values`）；17 版发行样本没有这两个节，
+/// 此时 `StairsSnapshot` 只来自内存 [`SnapshotSaveData`] 的域描述符。
+/// [`apply_loaded_snapshot_to_world`] 解析 JSON 节并调用本函数；纯资源版
+/// [`apply_loaded_snapshot`] 不承载 Stairs，由宿主显式接入 `SnapshotSaveData.domain.stairs`。
 pub fn apply_stairs_writeback(stairs: &mut StairsState, snapshot: StairsSnapshot) {
     stairs.restore_snapshot(snapshot);
 }
@@ -1375,169 +2226,154 @@ pub fn decode_raster_payload(value: &Value) -> Option<Vec<u8>> {
     inflate_terrain(&raw).ok()
 }
 
-/// Walls 节→0x78B 记录解析（① r7-chain1-field 契约 §2，**真实发行样本权威**）：节载荷 =
-/// **JSON 值** `[[WallId, WallStateJson 8 字段], …]`；0x78B 记录 = 反序列化后内存形式
-/// （{WallId u64@0, WallState 0x70B@8}）。
+/// Walls 语义写回（G1① 契约 §0.1/§4/§7-1）：原版 `InnerWalls::load_state`
+/// 0x14085ad80 接收的是 `Vec<(WallId, WallState)>`（stride 0x78 = 8 + 0x70），
+/// `WallState` 内的 `Curve2` 点列是**堆缓冲区**，不存在 0x70 固定内联打包。
+/// 因此读档直接把反序列化出的 `WallState`（含真实点列）插入权威表。
 ///
-/// ② r8 写回接线：record[0]=WallId（O）+ WallState `+0x54` height（JSON `height` 直映，O
-/// `update_wall_state_height` 写 +0x54）。**其余字段映射待①**：`+0x60` freehand / `+0x64`
-/// arch / `+0x67` removed_supports 需 JSON 串（arch_ty/is_enclosed/structure_ty）→ 字节
-/// 枚举表映射；`+0x00..0x53` 曲线区（可变点列 2..104 点）0x70B 固定记录打包方式待①
-/// （r7-chain1-writeback §2 样本受限登记）。本函数构造 record[0]+height 已证面，
-/// 其余槽位 0 + 注释锁定，不伪造打包。
+/// 逐字复刻 0x14085ad80 的可观察语义：
+/// 1. 前置 3 断言（walls / changes.updated / changes.removed 必须为空）；
+/// 2. 空记录 → 直接返回，`max_id` 与各集合保持不变；
+/// 3. 逐记录插 `changes.created` 并重建 HashMap（同 id 视为非法输入 → Err，不 panic 不静默覆盖）；
+/// 4. `max_id = 记录 id 最大值`。
+///
+/// crate 侧的显式 id 插入入口是 `InnerWalls::new_wall_with_id` 0x14085a4a0（不推进
+/// +0xc0），所以最后显式写 `max_id`。
+pub fn load_snapshot_walls(
+    walls: &mut crate::resources::walls::InnerWalls,
+    records: impl IntoIterator<Item = (WallId, crate::resources::walls::inner_wall_state::WallState)>,
+) -> anyhow::Result<usize> {
+    anyhow::ensure!(
+        walls.all().next().is_none(),
+        "assertion failed: self.walls.is_empty()"
+    );
+    anyhow::ensure!(
+        walls.changes().updated.is_empty(),
+        "assertion failed: self.changes.updated.is_empty()"
+    );
+    anyhow::ensure!(
+        walls.changes().removed.is_empty(),
+        "assertion failed: self.changes.removed.is_empty()"
+    );
+    let mut count = 0usize;
+    let mut max_id = 0u64;
+    for (id, state) in records {
+        anyhow::ensure!(
+            !walls.contains(id),
+            "Duplicate wall id: {} in snapshot Walls section",
+            id.0
+        );
+        walls.new_wall_with_id(id, state);
+        max_id = max_id.max(id.0);
+        count += 1;
+    }
+    if count != 0 {
+        walls.set_max_id(max_id);
+    }
+    Ok(count)
+}
+
+/// Walls 节→0x78B 记录解析（① r7-chain1-field 契约 §2，**真实发行样本权威**）：节载荷 =
+/// **JSON 值** `[[WallId, WallState 8 字段], …]`；用原版已恢复的 `WallState` Deserialize
+/// （`saved_wall_state.rs`，即 B 0x1415bb1c0 object visitor）反序列化，再投影到 0x78B
+/// 记录（{WallId u64@0, WallState 0x70B@8}）。
+///
+/// **读档不使用本函数**（G1① 契约 §4：0x70 固定记录装不下点列，且
+/// `from_record_bytes` 只保留 length）。生产路径走 [`load_snapshot_walls`] 的语义插入；
+/// 本函数保留给仍接收 0x78B 字节记录的外部调用者。
+///
+/// 已证偏移（`WallState::from_record_bytes` 解码面，LOGIC3 §0）全部写入：
+/// `+0x34` curve.length / `+0x38` shape 28B / `+0x54` height / `+0x58` terrain_floor /
+/// `+0x5c` arch scalar / `+0x60` plaster bits / `+0x64` arch_ty / `+0x65` structure_ty /
+/// `+0x66` freehand_ty / `+0x67` removed_supports / `+0x68` style / `+0x69` metadata。
+///
+/// **0x78B 字节投影的固有损失**（G1① §4）：`+0x00..0x33` 是 `Curve2` 点列的
+/// `Vec` 头（堆外缓冲），不是内联打包区；`WallState::from_record_bytes` 只保留
+/// `+0x34` length，点列留空。因此本函数写出的记录**不含点列**——读档不经过这里，
+/// 见 [`load_snapshot_walls`]。
 pub fn parse_wall_section(
     json: &serde_json::Value,
 ) -> Vec<crate::resources::walls::inner_walls::InnerWallStateRecord> {
-    let Ok(walls) = serde_json::from_value::<Vec<(u64, WallStateJson)>>(json.clone()) else {
-        log::trace!("parse_wall_section: JSON shape 待①（serde 架构）");
+    use crate::resources::walls::inner_wall_state::WallState;
+    let Ok(walls) = serde_json::from_value::<Vec<(u64, WallState)>>(json.clone()) else {
+        log::error!("parse_wall_section: canonical WallState serde rejected the Walls section");
         return Vec::new();
     };
     let mut records = Vec::with_capacity(walls.len());
     for (id, state) in walls {
-        let mut bytes = [0u8; 0x78];
-        // record[0] = WallId（0x78B 首 qword LE，O）。
-        bytes[..8].copy_from_slice(&id.to_le_bytes());
-        // WallState +0x54 = height f32（JSON `height` 直映，O 写偏移 +0x54）。
-        bytes[8 + 0x54..8 + 0x58].copy_from_slice(&state.height.to_le_bytes());
-        // +0x60 freehand / +0x64 arch / +0x67 removed_supports 与 +0x00..0x53 曲线区：
-        // 串→字节映射与打包方式待①，槽位保持 0（不编造枚举/曲线打包）。
-        records.push(crate::resources::walls::inner_walls::InnerWallStateRecord(
-            bytes,
-        ));
+        records.push(encode_wall_record(id, &state));
     }
     log::trace!(
-        "parse_wall_section: {} wall records（record[0]+height 已证；曲线区/枚举待①）",
+        "parse_wall_section: {} wall records（固定字段全写；0x70 记录不含点列，读档请用 load_snapshot_walls）",
         records.len()
     );
     records
 }
 
-/// 快照 Walls 节 WallState 对象 serde（① r7-chain1-field 契约 §2，真实样本全字段）。
-#[derive(Clone, Debug, serde::Deserialize)]
-pub struct WallStateJson {
-    pub arch_height: f32,
-    pub arch_ty: String,
-    pub curve: WallCurveJson,
-    pub elevation: f32,
-    pub has_skirts: bool,
-    pub height: f32,
-    pub is_enclosed: String,
-    pub structure_ty: String,
-}
-
-/// WallState curve 子对象（真实样本：length/points/points_u）。
-#[derive(Clone, Debug, serde::Deserialize)]
-pub struct WallCurveJson {
-    pub length: f32,
-    pub points: Vec<[f32; 3]>,
-    pub points_u: Vec<f32>,
-}
-
-/// 快照 DecoratorId 编码掩码（_UNK_1429cd080/_UNK_1429cd090，数值待①）。
-/// 与 crate `resources::walls::decorator_storage` 的 `SNAPSHOT_ID_MASK = 0`
-/// 同源；① r6-decorators-serde §1 的"16B XOR 掩码"被 `take_snapshot` 用作文档
-/// 记录的哈希计算输入（decomp-0x140a20d70 `auVar6/auVar7 ^ auVar32/auVar37`），
-/// 其**数值是否为 0** 待①取证——现按 crate 模型 0 对齐，不编造掩码值。
-pub const SNAPSHOT_ID_MASK: u64 = 0;
-
-/// 编码：`(u64::from(id)).rotate_right(32) ^ SNAPSHOT_ID_MASK`（crate
-/// `encode_snapshot_id` 同公式）。掩码数值待①；G4① 契约定值后此处对齐。
-#[inline]
-pub fn encode_snapshot_id(id: u32) -> u64 {
-    (u64::from(id)).rotate_right(32) ^ SNAPSHOT_ID_MASK
-}
-
-/// 解码：`(encoded ^ SNAPSHOT_ID_MASK).rotate_left(32)`（crate `decode_snapshot_id`
-/// 同公式）。
-#[inline]
-pub fn decode_snapshot_id(encoded: u64) -> u32 {
-    (encoded ^ SNAPSHOT_ID_MASK).rotate_left(32) as u32
-}
-
-/// Decorators 0x28B 节记录（① r6-field-status §4，O 形状）：`{u32 id@0（快照编码）,
-/// 8B×4 @4..0x14, u32×2 @0x18..0x20}`；内层 0x16B 子记录（含 +0x52 状态字节）。
-/// crate `DecoratorAddrSnapshot`（16B）与 0x28B 节格式**不符**（round4 标注）；
-/// **JSON↔0x28B serde 架构与逐槽字段待①**（中优先）。
-#[derive(Clone, Copy, Debug)]
-#[repr(C)]
-pub struct DecoratorSectionRecord(pub [u8; 0x28]);
-
-impl DecoratorSectionRecord {
-    /// 快照编码 id（u32@0，O）。
-    pub fn encoded_id(&self) -> u32 {
-        u32::from_le_bytes(self.0[..4].try_into().unwrap())
-    }
-
-    /// ID 旋转 XOR 编码为 u64（① r6-decorators §1：`(id 32 位旋转<<0x20|id>>0x20) ^
-    /// 16B XOR 掩码 0x1429cd080`；crate `encode_snapshot_id` 语义——`u64::from(id).
-    /// rotate_right(32) ^ mask`）。掩码值待①（现 0，同 crate SNAPSHOT_ID_MASK）。
-    pub fn encoded_u64(&self) -> u64 {
-        (u64::from(self.encoded_id())).rotate_right(32) ^ SNAPSHOT_ID_MASK
-    }
-
-    /// 子侧状态字节公式 `(b-2)<=2 ? b-1 : 0`（① r6-decorators §1；crate
-    /// `side_from_state` 语义，u8 回绕）。
-    pub fn side_from_state(b: u8) -> u8 {
-        if 2 < b.wrapping_sub(2) {
-            0
-        } else {
-            b.wrapping_sub(1)
-        }
-    }
-}
-
-/// Decorators 节→0x28B 记录解析（① r6-field-status §4，可先按 0x28B 组装）：节载荷 =
-/// **JSON 值**；0x28B 记录 = 反序列化后内存形式。按候选形状 `Vec<[u64;5]>`（0x28B=5 qword）
-/// 反序列化 → 组装 `DecoratorSectionRecord`；**serde 架构（JSON↔0x28B/0x16B 逐槽）待①**，
-/// 失败返回 `None`（不构造假快照）。
-pub fn parse_decorator_section(json: &serde_json::Value) -> Option<Vec<DecoratorSectionRecord>> {
-    let Ok(records) = serde_json::from_value::<Vec<[u64; 5]>>(json.clone()) else {
-        log::trace!("parse_decorator_section: JSON↔0x28B 架构待①");
-        return None;
+/// `WallState` → 0x78B 记录（`InnerWalls::load_state` 0x14085ad80 的输入投影）。
+/// 偏移即 `WallState::from_record_bytes` 的读面；record 基址 +8 = WallState +0。
+pub fn encode_wall_record(
+    id: u64,
+    state: &crate::resources::walls::inner_wall_state::WallState,
+) -> crate::resources::walls::inner_walls::InnerWallStateRecord {
+    let source = state.source();
+    let metadata = &state.snapshot().metadata;
+    let mut bytes = [0u8; 0x78];
+    bytes[..8].copy_from_slice(&id.to_le_bytes());
+    let put_f32 = |bytes: &mut [u8; 0x78], offset: usize, value: f32| {
+        bytes[8 + offset..8 + offset + 4].copy_from_slice(&value.to_le_bytes());
     };
-    Some(
-        records
-            .into_iter()
-            .map(|qwords| {
-                let mut bytes = [0u8; 0x28];
-                for (i, q) in qwords.iter().enumerate() {
-                    bytes[i * 8..i * 8 + 8].copy_from_slice(&q.to_le_bytes());
-                }
-                DecoratorSectionRecord(bytes)
-            })
-            .collect(),
-    )
+    // +0x34 Curve2 length。+0x00..0x33 是点列 Vec 头（堆外缓冲），字节记录无法携带。
+    put_f32(&mut bytes, 0x34, source.curve.length);
+    // +0x38 shape 0x1cB。
+    bytes[8 + 0x38..8 + 0x54].copy_from_slice(source.shape.bytes());
+    // +0x54 height / +0x58 terrain_floor / +0x5c arch scalar。
+    put_f32(&mut bytes, 0x54, source.extra);
+    put_f32(&mut bytes, 0x58, source.terrain_floor);
+    put_f32(&mut bytes, 0x5c, source.observed_path_scalar);
+    // +0x60 plaster bits（u32）。
+    bytes[8 + 0x60..8 + 0x64].copy_from_slice(&metadata.source_60_bits.to_le_bytes());
+    // +0x64 arch_ty / +0x65 structure_ty / +0x66 freehand / +0x67 supports /
+    // +0x68 style / +0x69 metadata source_69。
+    bytes[8 + 0x64] = source.observed_source_flag_64;
+    bytes[8 + 0x65] = source.clutter_version;
+    bytes[8 + 0x66] = metadata.source_66.unwrap_or(0);
+    bytes[8 + 0x67] = metadata.source_67;
+    bytes[8 + 0x68] = source.style;
+    bytes[8 + 0x69] = metadata.source_69;
+    crate::resources::walls::inner_walls::InnerWallStateRecord(bytes)
 }
 
-/// Decorators 节 JSON → 0x28B 记录打包**骨架**（② r8；0x28B = {u32 装饰 id@0,
-/// 8B×4 @4..0x14, u32×2 @0x18..0x20}，① r6 §1）。
+/// 原版 `_UNK_1429cd080` / `_UNK_1429cd090` 的 32 字节实值（G1① §5.4，rne-read O）：
+/// 8B 词内字节反转 + 词序交换后的 `"somepseudorandomlygeneratedbytes"`，即 aHash
+/// 固定种子。用途（`dec-0x140a20d70`）：装入两个 XMM → 与 `map+0x20` 的 16B key
+/// 异或 → aHash 风格混合 → `FUN_140b776d0(map, hash, &id)`。
 ///
-/// 骨架落地面：每个 `{id, DecoratorInfo}` 条目 → 一条 0x28B 记录，`+0` 写 **原始
-/// DecoratorId**（u32 LE，与 [`DecoratorSectionRecord::encoded_u64`] 的 re-encode 语义
-/// 一致）。**待①**：+4..0x14/+0x18..0x20 槽位（8B×4 + u32×2）逐槽字段名、内层 0x16B
-/// 子记录（+0x52 状态字节）布局、ID 编码掩码（0x1429cd080）数值——本骨架将未定槽位
-/// 置 0 并锁定注释，不编造打包。
-pub fn pack_decorators_section(json: &serde_json::Value) -> Option<Vec<DecoratorSectionRecord>> {
-    let Ok(section) = serde_json::from_value::<DecoratorsSectionJson>(json.clone()) else {
-        log::trace!("pack_decorators_section: JSON↔DecoratorsSectionJson 解析失败");
-        return None;
-    };
-    let mut records = Vec::new();
-    for (addr_json, list) in &section.states {
-        let _ = addr_json.to_storage_addr();
-        for (id, _info) in &list.state {
-            let mut bytes = [0u8; 0x28];
-            // +0：原始 DecoratorId（u32 LE；encoded_u64() 按 crate 模型 re-encode）。
-            bytes[..4].copy_from_slice(&id.to_le_bytes());
-            // +4..0x14/+0x18..0x20 槽位与 0x16B 子记录：待①，保持 0。
-            records.push(DecoratorSectionRecord(bytes));
-        }
+/// **不是 ID XOR 掩码**：restore 中 `DecoratorId` 以 u32 明文读出直接使用
+/// （`uVar9 = *puVar27`），没有 rotate/XOR 解码步骤。旧 `SNAPSHOT_ID_MASK=0` +
+/// `encode/decode_snapshot_id`（rotate_right(32)）为未证实实现，已从读档路径删除。
+pub const DECORATOR_HASHER_SEEDS: [u64; 4] = [
+    0x736f6d6570736575, // "somepseu"
+    0x6c7967656e657261, // "lygenera"
+    0x646f72616e646f6d, // "dorandom"
+    0x7465646279746573, // "tedbytes"
+];
+
+/// Decorators 外层桶条目大小（G1① §5.1，O）：
+/// `{storage_disc u64@0, storage_payload u64@8, Vec 头 @0x10/0x18/0x20}`。
+pub const DECORATOR_OUTER_RECORD_SIZE: usize = 0x28;
+/// Decorators 内层条目大小（G1① §5.1，O）：
+/// `{DecoratorId u32@0, pad4, DecoratorHistoryState 0x50@+8}`。**不是 0x16B**。
+pub const DECORATOR_INNER_RECORD_SIZE: usize = 0x58;
+
+/// 子侧状态字节公式 `(b-2)<=2 ? b-1 : 0`（① r6-decorators §1；u8 回绕）。
+/// 与记录形状无关的独立标量转换，保留供域调用者使用。
+pub fn decorator_side_from_state(b: u8) -> u8 {
+    if 2 < b.wrapping_sub(2) {
+        0
+    } else {
+        b.wrapping_sub(1)
     }
-    log::trace!(
-        "pack_decorators_section: {} 0x28B records（骨架；逐槽/子记录待①）",
-        records.len()
-    );
-    Some(records)
 }
 
 /// 快照 Terrain 节 serde（① r7-chain1-field 契约 §3，**真实发行样本权威**）：
@@ -1559,17 +2395,24 @@ pub struct TerrainStrokeJson {
     pub points: Vec<[f32; 3]>,
 }
 
-/// 快照 Decorators 节 addr 判别（① r7-chain1-writeback 契约 §1，非空样本
-/// 33273486/87775451 反推）：`{"Wall": <id>}` / `"Terrain"` / `{"Stair": <id>}`。
+/// 快照 Decorators 节 addr 判别（r7-chain1-writeback §1 + G1① §5.1）：
+/// `{"Wall": <id>}` / `"Terrain"` / `"Stairs"`（真实样本 5/36 文件、9 条，写出侧
+/// `decorator_storage_addr_json` 同形）/ `{"Stair": <id>}`（旧对象判别）。
 #[derive(Clone, Debug)]
 pub enum DecoratorAddrJson {
-    Wall { Wall: u64 },
+    Wall {
+        Wall: u64,
+    },
     Terrain,
-    Stair { Stair: u64 },
+    /// 单元变体串 `"Stairs"`（写出侧与真实样本的现行形状）。
+    Stairs,
+    Stair {
+        Stair: u64,
+    },
 }
 
-/// 手写 `Deserialize`（样本契约 `{"Wall": <id>}` / `"Terrain"` / `{"Stair": <id>}`）：
-/// `#[serde(untagged)]` derive 不能把字符串 `"Terrain"` 解到单元变体
+/// 手写 `Deserialize`（样本契约 `{"Wall": <id>}` / `"Terrain"` / `"Stairs"` /
+/// `{"Stair": <id>}`）：`#[serde(untagged)]` derive 不能把字符串解到单元变体
 /// （untagged 单元变体只接受 `null`），故按判别形状手写 visitor。
 impl<'de> serde::Deserialize<'de> for DecoratorAddrJson {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -1581,20 +2424,20 @@ impl<'de> serde::Deserialize<'de> for DecoratorAddrJson {
             type Value = DecoratorAddrJson;
             fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 formatter.write_str(
-                    "a snapshot decorator addr: {\"Wall\": <id>}, \"Terrain\", or {\"Stair\": <id>}",
+                    "a snapshot decorator addr: {\"Wall\": <id>}, \"Terrain\", \"Stairs\", or {\"Stair\": <id>}",
                 )
             }
             fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
             where
                 E: serde::de::Error,
             {
-                if value == "Terrain" {
-                    Ok(DecoratorAddrJson::Terrain)
-                } else {
-                    Err(serde::de::Error::unknown_variant(
+                match value {
+                    "Terrain" => Ok(DecoratorAddrJson::Terrain),
+                    "Stairs" => Ok(DecoratorAddrJson::Stairs),
+                    _ => Err(serde::de::Error::unknown_variant(
                         value,
-                        &["Terrain", "Wall", "Stair"],
-                    ))
+                        &["Terrain", "Stairs", "Wall", "Stair"],
+                    )),
                 }
             }
             fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
@@ -1626,27 +2469,103 @@ impl<'de> serde::Deserialize<'de> for DecoratorAddrJson {
 
 impl DecoratorAddrJson {
     /// 判别 → crate 权威存储地址（`DecoratorStorageAddr`：disc 0=Wall/1=Terrain/
-    /// 2=Stair，payload=WallId）。Stair 的 <id> 判别在 crate 模型为单元变体
-    /// （多楼梯地址的细分待①）。
+    /// 2=Stair，payload=WallId）。`"Stairs"` 串与 `{"Stair": id}` 都是 Stair 桶；
+    /// 多楼梯地址的细分待①。
     pub fn to_storage_addr(&self) -> DecoratorStorageAddr {
         match self {
             DecoratorAddrJson::Wall { Wall } => DecoratorStorageAddr::Wall(WallId(*Wall)),
             DecoratorAddrJson::Terrain => DecoratorStorageAddr::Terrain,
+            DecoratorAddrJson::Stairs => DecoratorStorageAddr::Stair,
             DecoratorAddrJson::Stair { Stair: _ } => DecoratorStorageAddr::Stair,
         }
     }
 }
 
-/// 快照 Decorators 节 DecoratorInfo（① r7-chain1-writeback §1，真实样本 8 字段）。
+/// 快照 Decorators 节 DecoratorInfo（① r7-chain1-writeback §1，真实样本字段；
+/// G1① §5.2 逐偏移复核定案）。
+///
+/// 字段与 `decorator_history_state_json`（本文件，B 侧面序列化投影）逐项互逆：
+/// 仅在非默认值时写出的字段在这里是 `Option`/默认值；`h_offset`/`lantern_brightness`/
+/// `stair_width` 以 `Value` 承载，以区分「缺省」与原生 NaN 被 serde_json 写成 `null`
+/// 的情形（原生 `f32::NAN` 与默认值比较为不等 → 写出 null）。`seed` 恒写出并落在
+/// state +0x2c（不是桶键）。
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct DecoratorInfoJson {
+    #[serde(default = "default_true")]
     pub allow_connection: bool,
+    #[serde(default)]
     pub clv: u32,
+    #[serde(default)]
     pub color_id: u32,
     pub dst: DecoratorDstJson,
+    #[serde(default)]
     pub rank: DecoratorRankJson,
+    #[serde(default)]
     pub seed: u32,
-    pub stair_width: f32,
+    /// 缺省 1.0；`null` = 原生 NaN。
+    #[serde(default, deserialize_with = "deserialize_present_json_value")]
+    pub stair_width: Option<Value>,
+    pub ty: DecoratorTypeJson,
+    #[serde(default)]
+    pub window_light_color: u32,
+    #[serde(default)]
+    pub ladder_color: u32,
+    #[serde(default)]
+    pub magic_color: u32,
+    /// 缺省 0.0；`null` = 原生 NaN。真实样本另写 `chimney_h_offset`（47 条，
+    /// G1① §5.5）：原生槽位 U（36 样本恒 0.0），先按 +0x30 别名接收，不丢字段。
+    #[serde(
+        default,
+        alias = "chimney_h_offset",
+        deserialize_with = "deserialize_present_json_value"
+    )]
+    pub h_offset: Option<Value>,
+    /// 缺省 1.0；`null` = 原生 NaN。
+    #[serde(default, deserialize_with = "deserialize_present_json_value")]
+    pub lantern_brightness: Option<Value>,
+    #[serde(default = "default_true")]
+    pub chimney_smoke: bool,
+    #[serde(default)]
+    pub railing: Option<String>,
+    #[serde(default)]
+    pub stairs_supports: Option<String>,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+/// A missing field uses serde's default None. A present JSON null must remain
+/// Some(Null): original f32 NaN serializes to null and is not the field default.
+/// Option<Value>'s standard deserializer otherwise collapses these two cases.
+fn deserialize_present_json_value<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<Value>, D::Error> {
+    <Value as serde::Deserialize>::deserialize(deserializer).map(Some)
+}
+
+/// JSON f32 字段（缺省 → default；`null` → 原生 NaN）。
+fn json_f32(value: Option<&Value>, default: f32) -> f32 {
+    match value {
+        None => default,
+        Some(Value::Null) => f32::NAN,
+        Some(value) => value
+            .as_f64()
+            .map(|number| number as f32)
+            .unwrap_or(default),
+    }
+}
+
+/// DecoratorType JSON：`{"Clutter":{"ty":"plant_pot_v1"}}` 或单元变体串。
+#[derive(Clone, Debug, serde::Deserialize)]
+#[serde(untagged)]
+pub enum DecoratorTypeJson {
+    Clutter { Clutter: DecoratorClutterJson },
+    Name(String),
+}
+
+#[derive(Clone, Debug, serde::Deserialize)]
+pub struct DecoratorClutterJson {
     pub ty: String,
 }
 
@@ -1654,7 +2573,9 @@ pub struct DecoratorInfoJson {
 #[serde(untagged)]
 pub enum DecoratorDstJson {
     Wall { Wall: DecoratorWallDstJson },
+    Roof { Roof: DecoratorRoofDstJson },
     Terrain { Terrain: DecoratorTerrainDstJson },
+    Stair { Stair: DecoratorStairDstJson },
 }
 
 #[derive(Clone, Debug, serde::Deserialize)]
@@ -1665,10 +2586,19 @@ pub struct DecoratorWallDstJson {
 
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct DecoratorAnchorJson {
+    #[serde(default)]
     pub anchor_ws: [f32; 3],
+    #[serde(default)]
     pub corner: u32,
-    pub platform: u32,
+    #[serde(default)]
+    pub platform: u64,
+    #[serde(default)]
     pub wall_height_relative_y: f32,
+    #[serde(default)]
+    pub is_bottom_door: bool,
+    /// 写出侧仅在 `+0x22 == 0` 时写 `"Inner"`；其余（含缺省）= tag 1。
+    #[serde(default)]
+    pub side: Option<String>,
 }
 
 #[derive(Clone, Debug, serde::Deserialize)]
@@ -1678,33 +2608,199 @@ pub struct DecoratorCoordJson {
 }
 
 #[derive(Clone, Debug, serde::Deserialize)]
+pub struct DecoratorRoofDstJson {
+    pub mesh_uv: [f32; 2],
+    #[serde(default)]
+    pub relative_yaw_radians: f32,
+}
+
+#[derive(Clone, Debug, serde::Deserialize)]
 pub struct DecoratorTerrainDstJson {
     pub pos_xz: [f32; 2],
+    #[serde(default)]
     pub yaw_radians: f32,
 }
 
 #[derive(Clone, Debug, serde::Deserialize)]
+pub struct DecoratorStairDstJson {
+    pub graph_edge: [u32; 2],
+    pub uv: [f32; 2],
+    #[serde(default)]
+    pub yaw_radians: f32,
+}
+
+#[derive(Clone, Debug, Default, serde::Deserialize)]
 pub struct DecoratorRankJson {
+    #[serde(default)]
     pub x: u32,
 }
 
 /// 快照 Decorators 节（① r7-chain1-writeback §1）：`{states: [[addr 判别,
 /// {"state": [ {id, DecoratorInfo}, ... ]}], ...]}`。
+///
+/// G1① §5.1（O）修正的记录模型：外层桶条目 **0x28B**（disc/payload/桶 Vec 头），
+/// 内层条目 **0x58B** = `{DecoratorId u32 明文 @+0, pad4, DecoratorHistoryState 0x50 @+8}`。
+/// 这里转换出的 `DecoratorAddrSnapshot.states` 即 `(DecoratorId, DecoratorHistoryState)`，
+/// 由 `restore_snapshot_with_id_gen` 消费。
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct DecoratorsSectionJson {
     pub states: Vec<(DecoratorAddrJson, DecoratorStateListJson)>,
 }
 
+fn pack_f32_pair(a: f32, b: f32) -> u64 {
+    u64::from(a.to_bits()) | (u64::from(b.to_bits()) << 32)
+}
+
+fn decorator_ty_tag(ty: &DecoratorTypeJson) -> anyhow::Result<u8> {
+    Ok(match ty {
+        DecoratorTypeJson::Name(name) => match name.as_str() {
+            "CottageWindow" => 56,
+            "GothicWindow" => 57,
+            "ArrowSlit" => 58,
+            "Chimney" => 59,
+            "Lantern" => 60,
+            "Flag" => 61,
+            "Stairs" => 63,
+            other => anyhow::bail!("unknown DecoratorType {other}"),
+        },
+        DecoratorTypeJson::Clutter { Clutter } => CLUTTER_MESH_NAMES
+            .iter()
+            .position(|name| *name == Clutter.ty)
+            .ok_or_else(|| anyhow::anyhow!("unknown clutter mesh {}", Clutter.ty))?
+            as u8,
+    })
+}
+
+/// `DecoratorDstJson` → 原生 dst 字段（`decorator_history_state_json` 的逐字节互逆）。
+///
+/// 返回 `(tag, dst_wall, dst_secondary, dst_payload, u18, u20)`；tag 写在 u20 的
+/// byte2（原生 `DecoratorInfo.dst_tag`）。
+#[allow(clippy::type_complexity)]
+fn decorator_dst_fields(dst: &DecoratorDstJson) -> (u8, u64, u64, u64, u64, u32) {
+    match dst {
+        DecoratorDstJson::Wall { Wall } => {
+            // 写出侧：coord.x=f(+0)、coord.y=f(+4)；anchor wall_height_relative_y=f(+0x10)；
+            // anchor_ws=f(+0x14/+0x18/+0x1c)；corner=b(+0x20)、is_bottom_door=b(+0x21)、
+            // side 仅 tag 0 时写 "Inner"。
+            let tag = if Wall.anchor.side.as_deref() == Some("Inner") {
+                0
+            } else {
+                1
+            };
+            let dst_wall = pack_f32_pair(Wall.coord.x, Wall.coord.y);
+            let dst_payload = u64::from(Wall.anchor.wall_height_relative_y.to_bits())
+                | (u64::from(Wall.anchor.anchor_ws[0].to_bits()) << 32);
+            let u18 = u64::from(Wall.anchor.anchor_ws[1].to_bits())
+                | (u64::from(Wall.anchor.anchor_ws[2].to_bits()) << 32);
+            let u20 = Wall.anchor.corner
+                | (u32::from(Wall.anchor.is_bottom_door) << 8)
+                | (u32::from(tag) << 16);
+            (tag, dst_wall, Wall.anchor.platform, dst_payload, u18, u20)
+        }
+        DecoratorDstJson::Roof { Roof: roof } => (
+            2,
+            pack_f32_pair(roof.mesh_uv[0], roof.mesh_uv[1]),
+            u64::from(roof.relative_yaw_radians.to_bits()),
+            0,
+            0,
+            2 << 16,
+        ),
+        DecoratorDstJson::Terrain { Terrain } => (
+            3,
+            pack_f32_pair(Terrain.pos_xz[0], Terrain.pos_xz[1]),
+            u64::from(Terrain.yaw_radians.to_bits()),
+            0,
+            0,
+            3 << 16,
+        ),
+        DecoratorDstJson::Stair { Stair: stair } => (
+            4,
+            u64::from(stair.graph_edge[0]) | (u64::from(stair.graph_edge[1]) << 32),
+            pack_f32_pair(stair.uv[0], stair.uv[1]),
+            u64::from(stair.yaw_radians.to_bits()),
+            0,
+            4 << 16,
+        ),
+    }
+}
+
+impl DecoratorInfoJson {
+    /// `DecoratorInfo` JSON 投影 → 原生 `DecoratorHistoryState`（0x50B）。
+    ///
+    /// 映射是 `decorator_history_state_json`（B 0x140a20d70 take_snapshot 的 serde 投影）
+    /// 的逐字段逆。G1① §5.2 定案：`seed` 写 **+0x2c**，与桶键（pair 第一元素）不同
+    /// ——36 样本中 5 条 `seed != key`，故这里用 JSON `seed`，桶键只作 map key /
+    /// `DecoratorIdGen.reserve`。
+    /// **登记 U**：+0x24（u24）、非 Wall dst 的未写出高位、以及 `style` 与
+    /// `allow_connection`/`chimney_smoke`/`stairs_supports` 在原字节上复用同一槽
+    /// （Flag/Chimney 变体载荷与布尔门同字节）——wire 无法区分，按写出侧默认还原。
+    pub fn to_history_state(
+        &self,
+    ) -> anyhow::Result<crate::resources::history::decorator_edit::DecoratorHistoryState> {
+        use crate::resources::history::decorator_edit::DecoratorHistoryState;
+        let ty = decorator_ty_tag(&self.ty)?;
+        let (_tag, dst_wall, dst_secondary, dst_payload, u18, u20) =
+            decorator_dst_fields(&self.dst);
+        let railing = match self.railing.as_deref() {
+            None => 0,
+            Some("Low") => 1,
+            Some("High") => 2,
+            Some("Wooden") => 3,
+            Some(other) => anyhow::bail!("unknown RailingType {other}"),
+        };
+        Ok(DecoratorHistoryState {
+            dst_wall,
+            dst_secondary,
+            dst_payload,
+            u18,
+            u20,
+            u24: 0,
+            // +0x28 color_id / +0x2c seed（G1① §5.2；桶键不参与）。
+            u28: u64::from(self.color_id) | (u64::from(self.seed) << 32),
+            // +0x30 h_offset（style 4/6/7/8+/<2 变体簇共用）。
+            u30: json_f32(self.h_offset.as_ref(), 0.0).to_bits(),
+            // +0x34 window_light_color（Window 变体簇）。
+            u34: self.window_light_color,
+            // +0x38 lantern_brightness（Lantern 变体簇；缺省 1.0）。
+            u38: json_f32(self.lantern_brightness.as_ref(), 1.0).to_bits(),
+            // +0x3c stair_width（缺省 1.0）。
+            u3c: json_f32(self.stair_width.as_ref(), 1.0).to_bits(),
+            // +0x40 ladder_color / +0x44 magic_color（默认簇）。
+            u40: self.ladder_color,
+            u44: self.magic_color,
+            rank: self.rank.x as u8,
+            u49: self.clv as u8,
+            ty,
+            u4b: railing,
+            u4c: u8::from(self.allow_connection),
+            u4d: u8::from(self.chimney_smoke),
+            // +0x4e style（写出侧 `stairs_supports != 0` 即写出 "None"）。
+            style: u8::from(self.stairs_supports.is_some()),
+        })
+    }
+}
+
 impl DecoratorsSectionJson {
     /// 每地址的装饰状态列表 → crate `DecoratorStorageSnapshot` 快照条目。
-    /// 每 `{id, DecoratorInfo}` 条目 → `DecoratorAddrSnapshot{encoded_id, addr,
-    /// state, info}`；state 字节语义 U（待①）。crate `restore_snapshot`
-    /// （0x140a20d70）现按 fresh 重建：removed_ids.remove + modified_ids.insert +
-    /// 内嵌 map insert(info) + d2s insert（冲突 panic）。
-    ///
-    /// 这是 `apply_loaded_snapshot` "Decorators" 分支的真实写回输入面。
+    /// 每 `{id, DecoratorInfo}` 条目 → `DecoratorAddrSnapshot`（id + 原生 0x50B 状态）；
+    /// restore_snapshot（0x140a20d70）再经 `DecoratorHistoryState::to_info` 重建
+    /// `DecoratorInfo` 并写回桶。
     pub fn into_storage_snapshot(&self) -> anyhow::Result<DecoratorStorageSnapshot> {
-        anyhow::bail!("legacy DecoratorInfo JSON is not the native DecoratorHistoryState schema")
+        use crate::resources::walls::decorator::DecoratorId;
+        let mut states = Vec::with_capacity(self.states.len());
+        for (addr, list) in &self.states {
+            let mut entries = Vec::with_capacity(list.state.len());
+            for (id, info) in &list.state {
+                entries.push((DecoratorId(*id), info.to_history_state()?));
+            }
+            states.push((
+                addr.to_storage_addr(),
+                crate::resources::walls::decorator_storage::DecoratorAddrSnapshot {
+                    states: entries,
+                },
+            ));
+        }
+        Ok(DecoratorStorageSnapshot { states })
     }
 }
 
@@ -1736,6 +2832,8 @@ impl TerrainSectionJson {
         }
         crate::resources::terrain_editing::TerrainEditingData(
             tg_terrain::stroke::TerrainEditingData {
+                // Loaded strokes do not retain a live UI drag's cursor plane.
+                cursor_height_override: None,
                 strokes,
                 next_index: self.next_stroke_index,
                 // Loaded strokes have not yet reached this world's GPU raster.
@@ -1768,7 +2866,7 @@ pub fn inflate_terrain_entry(bytes: &[u8]) -> std::io::Result<Vec<u8>> {
 mod tests {
     use super::*;
     use crate::resources::walls::decorator::DecoratorId;
-    use crate::resources::walls::decorator_storage::DecoratorStorageAddr;
+    use crate::resources::walls::decorator_storage::{DecoratorStorage, DecoratorStorageAddr};
     use crate::resources::walls::inner_walls::InnerWalls;
     use serde_json::json;
 
@@ -1836,17 +2934,26 @@ mod tests {
     #[test]
     fn validate_parses_version_typed_and_ignores_unknown_raster_keys() {
         let payload = deflate_terrain(&[1, 2, 3]).unwrap();
+        // 真实样本形态：Raster = 在场栅格名数组；兼容对象载荷形状仍解压。
         let json = json!({
-            "Version": 27,
+            "Version": SNAPSHOT_FORMAT_VERSION,
             "Walls": [],
             "Decorators": {"states": []},
             "Terrain": {"next_stroke_index": 0, "strokes": {}},
             "Trees": [],
-            "Raster": {"NotARaster": [], "PathRaster": payload}
+            "Raster": ["NotARaster", "PathRaster"]
         });
         let loaded =
             validate_and_load_closest_snapshot_data(&serde_json::to_vec(&json).unwrap()).unwrap();
-        assert_eq!(loaded.version, 27);
+        assert_eq!(loaded.version, 2);
+        assert!(loaded.rasters.is_empty(), "name list carries no payload");
+        let object_form = json!({
+            "Version": SNAPSHOT_FORMAT_VERSION,
+            "Raster": {"NotARaster": [], "PathRaster": payload}
+        });
+        let loaded =
+            validate_and_load_closest_snapshot_data(&serde_json::to_vec(&object_form).unwrap())
+                .unwrap();
         assert_eq!(loaded.rasters.len(), 1);
         assert_eq!(loaded.rasters[0].0, "PathRaster");
         assert_eq!(loaded.rasters[0].1, vec![1, 2, 3]);
@@ -1855,6 +2962,12 @@ mod tests {
         assert!(
             validate_and_load_closest_snapshot_data(&serde_json::to_vec(&bad).unwrap()).is_err()
         );
+        // 版本不符 → "Version mismatch; expected , got " 语义（原 panic 面）。
+        let mismatch = json!({"Version": 27});
+        let error =
+            validate_and_load_closest_snapshot_data(&serde_json::to_vec(&mismatch).unwrap())
+                .unwrap_err();
+        assert!(error.to_string().contains("Version mismatch"));
     }
 
     #[test]
@@ -1879,10 +2992,17 @@ mod tests {
     }
 
     #[test]
-    fn snapshot_id_encode_decode_roundtrip() {
-        for id in [0u32, 1, 0x1020, u32::MAX] {
-            assert_eq!(decode_snapshot_id(encode_snapshot_id(id)), id);
-        }
+    fn decorator_hasher_seeds_are_the_shipped_a_hash_words() {
+        // G1① §5.4：内存字节按大端读作 ASCII 时拼出 "somepseu|lygenera|
+        // dorandom|tedbytes"（即 0x1429cd080/090 的 32B 常量）。
+        let words = DECORATOR_HASHER_SEEDS;
+        assert_eq!(u64::from_be_bytes(*b"somepseu"), words[0]);
+        assert_eq!(u64::from_be_bytes(*b"lygenera"), words[1]);
+        assert_eq!(u64::from_be_bytes(*b"dorandom"), words[2]);
+        assert_eq!(u64::from_be_bytes(*b"tedbytes"), words[3]);
+        assert_eq!(words[0].to_le_bytes(), *b"uespemos");
+        assert_eq!(DECORATOR_OUTER_RECORD_SIZE, 0x28);
+        assert_eq!(DECORATOR_INNER_RECORD_SIZE, 0x58);
     }
 
     #[test]
@@ -1982,44 +3102,160 @@ mod tests {
     }
 
     #[test]
-    fn legacy_decorator_json_does_not_fabricate_default_info() {
-        let section: DecoratorsSectionJson = serde_json::from_value(json!({"states": []})).unwrap();
-        assert!(section.into_storage_snapshot().is_err());
+    fn decorator_section_states_convert_to_native_history_states() {
+        // 真实样本：空 states 合法（inspect states = [["Terrain", {"state": []}]]）。
+        let section: DecoratorsSectionJson =
+            serde_json::from_value(json!({"states": [["Terrain", {"state": []}]]})).unwrap();
+        let snapshot = section.into_storage_snapshot().unwrap();
+        assert_eq!(
+            snapshot.states,
+            vec![(
+                DecoratorStorageAddr::Terrain,
+                crate::resources::walls::decorator_storage::DecoratorAddrSnapshot {
+                    states: Vec::new()
+                }
+            )]
+        );
+        // 非空条目：JSON → DecoratorHistoryState → 写出侧 JSON 应保持字段一致。
+        let entry = json!({
+            "allow_connection": false, "clv": 3, "color_id": 1,
+            "dst": {"Terrain": {"pos_xz": [1.0, 2.0], "yaw_radians": 0.5}},
+            "rank": {"x": 2}, "seed": 9, "stair_width": 1.5, "ty": "Stairs",
+            "stairs_supports": "None"
+        });
+        let section: DecoratorsSectionJson =
+            serde_json::from_value(json!({"states": [["Terrain", {"state": [[9, entry]]}]]}))
+                .unwrap();
+        let snapshot = section.into_storage_snapshot().unwrap();
+        let (id, state) = &snapshot.states[0].1.states[0];
+        assert_eq!(id.0, 9);
+        assert_eq!(state.ty, 63);
+        assert_eq!(state.rank, 2);
+        assert_eq!(state.u49, 3);
+        assert_eq!(((state.u20 >> 16) & 0xff) as u8, 3, "Terrain dst tag");
+        assert_eq!(state.u28 & 0xffff_ffff, 1, "color_id");
+        assert_eq!(state.u28 >> 32, 9, "decorator id");
+        assert_eq!(f32::from_bits(state.u3c), 1.5, "stair_width");
+        assert_eq!(state.u4c, 0, "allow_connection=false");
+        assert_eq!(state.style, 1, "stairs_supports=None");
+        // 回写侧投影一致（decorator_history_state_json 的逆验证）。
+        let projected = decorator_history_state_json(state).unwrap();
+        assert_eq!(projected["ty"], json!("Stairs"));
+        assert_eq!(projected["rank"], json!({"x": 2}));
+        assert_eq!(projected["seed"], json!(9));
+        assert_eq!(projected["color_id"], json!(1));
+        assert_eq!(projected["allow_connection"], json!(false));
+        assert_eq!(projected["stairs_supports"], json!("None"));
+        assert_eq!(projected["stair_width"], json!(1.5));
     }
 
     #[test]
-    fn parse_wall_section_builds_record_id_and_height() {
+    fn parse_wall_section_builds_all_proven_record_fields() {
+        // 真实样本字段名/取值（r7-chain1-field §2）+ 显式非默认枚举/字节字段，
+        // 用于锁定 from_record_bytes 已证偏移（+0x60/+0x64/+0x65/+0x66/+0x67/+0x69）。
         let json = json!([[7, {
-            "arch_height": 0.5, "arch_ty": "None",
-            "curve": {"length": 10.0, "points": [[0.0,1.0,2.0],[3.0,4.0,5.0]],
+            "arch_height": 0.5, "arch_ty": "ConstantMaxHeight",
+            "curve": {"length": 10.0, "points": [[0.0,0.0,2.0],[3.0,0.0,5.0]],
                       "points_u": [0.0,1.0]},
             "elevation": 0.2, "has_skirts": true, "height": 4.0,
-            "is_enclosed": "No", "structure_ty": "Plain"
+            "is_enclosed": "No", "structure_ty": "Fence",
+            "clutter_version": 4, "freehand_ty": "ConstantMaxHeight",
+            "plaster_peel": 0.25, "removed_supports": true
         }]]);
         let records = parse_wall_section(&json);
         assert_eq!(records.len(), 1);
         assert_eq!(records[0].wall_id(), WallId(7));
         assert_eq!(records[0].height(), 4.0);
-        // +0x60/+0x64/+0x67 与曲线区槽位 0（待①）。
-        assert_eq!(records[0].freehand_type(), 0);
-        assert_eq!(records[0].arch_type(), 0);
-        assert_eq!(records[0].removed_supports(), 0);
+        assert_eq!(records[0].removed_supports(), 1);
+        let state = records[0].wall_state();
+        assert_eq!(state.elevation().to_bits(), 0.2f32.to_bits());
+        assert_eq!(state.arch_height().to_bits(), 0.5f32.to_bits());
+        assert_eq!(state.style(), 1, "has_skirts=true → StoneWithSkirts");
+        assert_eq!(state.plaster_peel_amount().to_bits(), 0.25f32.to_bits());
+        assert_eq!(state.freehand_ty(), 1, "+0x66 freehand_ty");
+        assert_eq!(state.arch_type(), 1, "+0x64 arch_ty");
+        assert_eq!(state.source_flag_65(), 1, "+0x65 structure_ty=Fence");
+        assert_eq!(
+            state.snapshot().metadata.source_69,
+            4,
+            "+0x69 clutter_version"
+        );
+        assert_eq!(state.removed_supports(), 1, "+0x67 removed_supports");
+        assert_eq!(state.source().curve.length.to_bits(), 10.0f32.to_bits());
+        assert_eq!(
+            state.source().shape.tag(),
+            2,
+            "is_enclosed=No → shape tag 2"
+        );
+        // 曲线点列区待①：load_state 解码后点列为空（记录 0x70B 固定槽位）。
+        assert!(state.source().curve.points.is_empty());
     }
 
     #[test]
-    fn pack_decorators_section_skeleton_encodes_raw_ids() {
+    fn load_snapshot_walls_preserves_heap_curve_points() {
+        // G1① §4：读档走语义 WallState，点列（堆 Vec）必须完整保留。
+        let json = json!([[7, {
+            "arch_height": 0.5, "arch_ty": "FollowTerrain",
+            "curve": {"length": 10.0, "points": [[0.0,0.0,2.0],[3.0,0.0,5.0]],
+                      "points_u": [0.0,1.0]},
+            "elevation": 0.2, "has_skirts": false, "height": 4.0,
+            "is_enclosed": "No", "structure_ty": "Wall"
+        }]]);
+        let rows: Vec<(u64, crate::resources::walls::inner_wall_state::WallState)> =
+            serde_json::from_value(json).unwrap();
+        let mut walls = InnerWalls::default();
+        let count = load_snapshot_walls(
+            &mut walls,
+            rows.into_iter().map(|(id, state)| (WallId(id), state)),
+        )
+        .unwrap();
+        assert_eq!(count, 1);
+        let state = walls.get(WallId(7)).expect("wall restored");
+        assert_eq!(state.source().curve.points, vec![[0.0, 2.0], [3.0, 5.0]]);
+        assert_eq!(state.source().curve.points_u, vec![0.0, 1.0]);
+        assert_eq!(walls.max_id(), 7);
+        assert!(walls.changes().created.contains(&WallId(7)));
+        // 原版 load_state 的 empty 断言：已有墙时再次载入必须失败。
+        assert!(load_snapshot_walls(&mut walls, std::iter::empty()).is_err());
+    }
+
+    #[test]
+    fn decorator_addr_accepts_terrain_and_stairs_string_forms() {
+        // 真实样本 5/36 文件、9 条使用 "Stairs" 单元变体串（写出侧同形）。
+        let section: DecoratorsSectionJson = serde_json::from_value(json!({
+            "states": [
+                ["Terrain", {"state": []}],
+                ["Stairs", {"state": []}]
+            ]
+        }))
+        .unwrap();
+        let snapshot = section.into_storage_snapshot().unwrap();
+        assert_eq!(snapshot.states[0].0, DecoratorStorageAddr::Terrain);
+        assert_eq!(snapshot.states[1].0, DecoratorStorageAddr::Stair);
+        // 旧对象判别仍兼容。
+        let section: DecoratorsSectionJson =
+            serde_json::from_value(json!({"states": [[{"Stair": 7}, {"state": []}]]})).unwrap();
+        assert_eq!(
+            section.into_storage_snapshot().unwrap().states[0].0,
+            DecoratorStorageAddr::Stair
+        );
+    }
+
+    #[test]
+    fn decorator_seed_is_written_to_state_plus_0x2c_not_the_bucket_key() {
+        // G1① §5.2/§7-7：36 样本中 5 条 seed != 桶键（如 key 9 / seed 18）。
         let json = json!({
             "states": [[{"Wall": 3}, {"state": [[9, {
-                "allow_connection": false, "clv": 3, "color_id": 1,
                 "dst": {"Terrain": {"pos_xz": [1.0, 2.0], "yaw_radians": 0.5}},
-                "rank": {"x": 0}, "seed": 7, "stair_width": 0.0, "ty": "Stairs"
+                "rank": {"x": 0}, "seed": 18, "color_id": 4, "ty": "Stairs"
             }]]}]]
         });
-        let packed = pack_decorators_section(&json).unwrap();
-        assert_eq!(packed.len(), 1);
-        assert_eq!(packed[0].encoded_id(), 9);
-        // re-encode 与 crate 模型一致（掩码 0，数值待①）。
-        assert_eq!(packed[0].encoded_u64(), encode_snapshot_id(9));
+        let section: DecoratorsSectionJson = serde_json::from_value(json).unwrap();
+        let snapshot = section.into_storage_snapshot().unwrap();
+        let (id, state) = &snapshot.states[0].1.states[0];
+        assert_eq!(id.0, 9, "bucket key stays the outer pair id");
+        assert_eq!(state.u28 & 0xffff_ffff, 4, "+0x28 color_id");
+        assert_eq!(state.u28 >> 32, 18, "+0x2c seed (not the bucket key)");
     }
 
     #[test]
@@ -2055,6 +3291,300 @@ mod tests {
         );
         assert_eq!(terrain.0.strokes.len(), 1);
         assert_eq!(terrain.0.next_index, 3);
-        assert_eq!(decorator_ids.generate().0, 43, "apply retains the caller-owned generator");
+        assert_eq!(
+            decorator_ids.generate().0,
+            43,
+            "apply retains the caller-owned generator"
+        );
+    }
+
+    #[test]
+    fn world_apply_restores_walls_roofs_colors_trees_and_raster() {
+        use crate::components::trees::{TreeAnimation, TreeComponent, TreeMoveBend};
+        use crate::resources::color_id::{GateColorIds, WallColorIds};
+        use crate::resources::terrain_height::{TerrainHeightSsbo, TerrainHeightsData};
+        use crate::resources::tree_storage::{TreeStorage, TreeStorageIndex};
+        use crate::resources::walls::InnerWalls;
+        use crate::resources::world_raster::DirtyTilePublisher;
+        use crate::resources::world_raster_defs::{
+            AllWorldRasterWrite, Cobblestone1Raster, Cobblestone2Raster, Cobblestone3Raster,
+            GardenRaster, PathRaster, WaterRaster,
+        };
+        use bevy_ecs::prelude::World;
+
+        let json = json!({
+            "Version": SNAPSHOT_FORMAT_VERSION,
+            "Walls": [[7, {
+                "arch_height": 0.5, "arch_ty": "FollowTerrain",
+                "curve": {"length": 10.0, "points": [[0.0,0.0,2.0],[3.0,0.0,5.0]],
+                          "points_u": [0.0,1.0]},
+                "elevation": 0.2, "has_skirts": false, "height": 4.0,
+                "is_enclosed": "No", "structure_ty": "Wall"
+            }]],
+            "Roofs": [{
+                "id": 7,
+                "params": {"profile_01": -2.0, "height_01": 3.0, "tip_offset_01": [0.25,-0.5]},
+                "wall_shape": {"Rectangle": {
+                    "orientation": [2.0, 3.0], "width": -4.0,
+                    "length": 8.0, "center": [5.0, 6.0]}},
+                "pivot_y": 7.0, "color_id": 13,
+                "gable_style": "Stepped", "flat_roof_style": "Matching"
+            }],
+            "Decorators": {"states": []},
+            "WallColors": [[5, 9]],
+            "GateColors": [[6, 11]],
+            "HalftimberColors": [[4, 3]],
+            "Terrain": {"next_stroke_index": 2, "strokes": {
+                "1": {"falloff": 0.5, "height_ws": 2.0, "index": 1,
+                      "points": [[0.0, 1.0, 2.0]]}
+            }},
+            "Trees": [[3, {
+                "position": [1.0, 2.0, 3.0], "scale": 1.5, "rotation_degrees": 0.0,
+                "id": 4, "prefab_name": "tree_a", "is_preplaced": false
+            }]],
+            "Raster": []
+        });
+        let loaded =
+            validate_and_load_closest_snapshot_data(&serde_json::to_vec(&json).unwrap()).unwrap();
+        let resources = SnapshotLoadResources {
+            loaded: Some(loaded),
+        };
+
+        let mut world = World::new();
+        world.init_resource::<InnerWalls>();
+        world.init_resource::<DecoratorStorage>();
+        world.init_resource::<DecoratorIdGen>();
+        world.insert_resource(TerrainEditingData(
+            tg_terrain::stroke::TerrainEditingData::default(),
+        ));
+        world.init_resource::<TerrainHeightsData<TerrainHeightSsbo>>();
+        world.init_resource::<WallColorIds>();
+        world.init_resource::<GateColorIds>();
+        world.init_resource::<crate::resources::color_id::HalftimberColorIds>();
+        world.init_resource::<TreeStorage>();
+        world.init_resource::<bevy_ecs::event::Events<crate::systems::prefab::SpawnPrefabCmd>>();
+        world.insert_resource(PathRaster::new(DirtyTilePublisher::unique()));
+        world.insert_resource(Cobblestone1Raster::new(DirtyTilePublisher::unique()));
+        world.insert_resource(Cobblestone2Raster::new(DirtyTilePublisher::unique()));
+        world.insert_resource(Cobblestone3Raster::new(DirtyTilePublisher::unique()));
+        world.insert_resource(WaterRaster::new(DirtyTilePublisher::unique()));
+        world.insert_resource(GardenRaster::new(DirtyTilePublisher::unique()));
+
+        let report = init_game_state_from_snapshot(&mut world, &resources).unwrap();
+        assert_eq!(report.walls, 1);
+        assert_eq!(report.roofs, 1);
+        assert_eq!(report.wall_colors, 1);
+        assert_eq!(report.gate_colors, 1);
+        assert_eq!(report.halftimber_colors, 1);
+        assert_eq!(report.trees, 1);
+        assert_eq!(report.terrain_strokes, 1);
+        assert_eq!(report.raster_slots, 0);
+        // 真实写回检查。
+        assert!(
+            world
+                .resource::<InnerWalls>()
+                .contains(crate::resources::walls::WallId(7))
+        );
+        {
+            let mut query = world.query::<&Roof>();
+            assert_eq!(query.iter(&world).count(), 1);
+        }
+        assert_eq!(world.resource::<WallColorIds>().0[5], 9);
+        assert_eq!(world.resource::<GateColorIds>().0[6], 11);
+        assert_eq!(
+            world
+                .resource::<crate::resources::color_id::HalftimberColorIds>()
+                .0[4],
+            3
+        );
+        let entity = {
+            let storage = world.resource::<TreeStorage>();
+            let entry = storage
+                .get(TreeStorageIndex(3))
+                .expect("tree index restored");
+            assert_eq!(entry.position, glam::Vec3::new(1.0, 2.0, 3.0));
+            entry.entity
+        };
+        assert!(world.get::<TreeComponent>(entity).is_some());
+        assert_eq!(world.get::<TreeComponent>(entity).unwrap().id, 3);
+        assert!(world.get::<TreeAnimation>(entity).is_some());
+        assert!(world.get::<TreeMoveBend>(entity).is_some());
+        assert_eq!(
+            world.resource::<TerrainEditingData>().0.next_index,
+            2,
+            "terrain strokes written"
+        );
+        assert_eq!(AllWorldRasterWrite::ordered_names().len(), 6);
+    }
+
+    fn collect_snapshot_files(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                collect_snapshot_files(&path, out);
+            } else if path.extension().and_then(|ext| ext.to_str()) == Some("snapshot") {
+                out.push(path);
+            }
+        }
+    }
+
+    /// 发行样本回归（G1① §7-12）。基线：36 个 `.snapshot`，计数由契约给出，
+    /// 本机用同一批文件复核（162 walls / 73 roofs / 134 decorators / 431 wall
+    /// colors / 0 gate / 20 halftimber / 590 trees / 104 点墙 / 5 条 seed≠key /
+    /// 50 条缺 prefab_name+is_preplaced）。
+    ///
+    /// 资产目录可用 `TINY_GLADE_ASSETS_DIR` 覆盖；目录不存在时跳过，不伪造通过。
+    #[test]
+    fn shipped_snapshot_corpus_parses_expected_domain_counts() {
+        let root = std::env::var("TINY_GLADE_ASSETS_DIR").unwrap_or_else(|_| {
+            "D:/game/ljxsj_92385/Tiny Glade/assets/starting-builds".to_string()
+        });
+        let root = std::path::Path::new(&root);
+        if !root.exists() {
+            eprintln!(
+                "skipping shipped snapshot corpus: {} not found",
+                root.display()
+            );
+            return;
+        }
+        let mut files = Vec::new();
+        collect_snapshot_files(root, &mut files);
+        files.sort();
+        assert_eq!(files.len(), 36, "shipped snapshot corpus size");
+
+        let (mut walls, mut roofs, mut decorators) = (0usize, 0usize, 0usize);
+        let (mut wall_colors, mut gate_colors, mut halftimber) = (0usize, 0usize, 0usize);
+        let mut trees = 0usize;
+        let mut seed_mismatch = 0usize;
+        let mut stair_buckets = 0usize;
+        let mut missing_prefab = 0usize;
+        let mut max_points = 0usize;
+        let mut shape_tags = std::collections::BTreeSet::new();
+        for path in &files {
+            let loaded = load_snapshot_file(path)
+                .unwrap_or_else(|error| panic!("{}: {error}", path.display()));
+            let section = |key: &str| {
+                loaded
+                    .sections
+                    .iter()
+                    .find(|(name, _)| *name == key)
+                    .map(|(_, value)| value)
+            };
+            if let Some(value) = section("Walls") {
+                let rows: Vec<(u64, crate::resources::walls::inner_wall_state::WallState)> =
+                    serde_json::from_value(value.clone()).unwrap();
+                for (_, state) in &rows {
+                    assert!(
+                        !state.source().curve.points.is_empty(),
+                        "{}: wall without curve points",
+                        path.display()
+                    );
+                    assert_eq!(
+                        state.source().curve.points.len(),
+                        state.source().curve.points_u.len(),
+                        "{}: points/points_u length mismatch",
+                        path.display()
+                    );
+                    max_points = max_points.max(state.source().curve.points.len());
+                }
+                walls += rows.len();
+            }
+            if let Some(value) = section("Roofs") {
+                let rows: Vec<Roof> = serde_json::from_value(value.clone()).unwrap();
+                for roof in &rows {
+                    shape_tags.insert(roof.observed()[8]);
+                }
+                roofs += rows.len();
+            }
+            if let Some(value) = section("Decorators") {
+                let section: DecoratorsSectionJson = serde_json::from_value(value.clone()).unwrap();
+                let snapshot = section.into_storage_snapshot().unwrap();
+                for (addr, list) in &snapshot.states {
+                    if *addr == DecoratorStorageAddr::Stair {
+                        stair_buckets += 1;
+                    }
+                    for (id, state) in &list.states {
+                        if state.u28 >> 32 != u64::from(id.0) {
+                            seed_mismatch += 1;
+                        }
+                    }
+                    decorators += list.states.len();
+                }
+            }
+            if let Some(value) = section("WallColors") {
+                wall_colors += serde_json::from_value::<Vec<(u64, u32)>>(value.clone())
+                    .unwrap()
+                    .len();
+            }
+            if let Some(value) = section("GateColors") {
+                gate_colors += serde_json::from_value::<Vec<(u64, u32)>>(value.clone())
+                    .unwrap()
+                    .len();
+            }
+            if let Some(value) = section("HalftimberColors") {
+                halftimber += serde_json::from_value::<Vec<(u64, u32)>>(value.clone())
+                    .unwrap()
+                    .len();
+            }
+            if let Some(value) = section("Trees") {
+                let entries = parse_trees_section(value).unwrap();
+                missing_prefab += entries
+                    .iter()
+                    .filter(|entry| entry.tree.prefab_name.is_empty())
+                    .count();
+                trees += entries.len();
+            }
+        }
+        assert_eq!(walls, 162);
+        assert_eq!(roofs, 73);
+        assert_eq!(decorators, 134);
+        assert_eq!(wall_colors, 431);
+        assert_eq!(gate_colors, 0);
+        assert_eq!(halftimber, 20);
+        assert_eq!(trees, 590);
+        assert_eq!(max_points, 104, "104-point wall from the shipped corpus");
+        assert_eq!(seed_mismatch, 5, "seed != bucket key rows");
+        // 5/36 发行文件使用 `"Stairs"` 地址串（M1 回归）。
+        assert_eq!(
+            stair_buckets, 5,
+            "decorator buckets addressed by \"Stairs\""
+        );
+        assert_eq!(missing_prefab, 50, "tree rows missing prefab_name");
+        // 73 roofs: 25 Circle (tag 0) / 48 Rectangle (tag 1) at Roof+8 as ShapeParameters.
+        assert_eq!(roofs, 73);
+        assert_eq!(shape_tags.len(), 2);
+    }
+
+    #[test]
+    fn pending_roof_associations_wait_for_public_wall_rows() {
+        // 读档时 PublicWalls 尚无行：系统必须保持 pending（下帧重试），
+        // 不能清空、也不能把它当作永久完成。
+        let mut world = bevy_ecs::world::World::new();
+        world.init_resource::<PendingRoofAssociationRebuild>();
+        world.init_resource::<RoofAssociations>();
+        world.insert_resource(PublicWalls::default());
+        world.init_resource::<bevy_ecs::event::Events<
+            crate::resources::roofs::commands::DeleteRoofCmd,
+        >>();
+        world.init_resource::<bevy_ecs::event::Events<
+            crate::resources::roofs::commands::WallRoofPresenceChanged,
+        >>();
+        world
+            .resource_mut::<PendingRoofAssociationRebuild>()
+            .rows
+            .push(PendingRoofAssociationRow {
+                entity: 0x1_0000_0009,
+                wall: 3,
+            });
+        let mut schedule = bevy_ecs::schedule::Schedule::default();
+        schedule.add_systems(rebuild_pending_roof_associations);
+        schedule.run(&mut world);
+        assert_eq!(
+            world.resource::<PendingRoofAssociationRebuild>().rows.len(),
+            1
+        );
     }
 }

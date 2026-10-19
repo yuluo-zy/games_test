@@ -31,7 +31,9 @@ fn observe(actions: Res<ActionSetStates>, mut observed: ResMut<ObservedActions>)
 }
 fn fixture() -> (World, Schedule) {
     let mut world = World::new();
+    world.init_resource::<country_core::resources::read_mouse_depth_value::MouseDepthValue>();
     input::register_input_events(&mut world);
+    world.init_resource::<country_core::game_profile::GameProfile>();
     let mut toolbar = Toolbar::default();
     toolbar.switch_mode(&AppMode::Path);
     world.insert_resource(toolbar);
@@ -353,6 +355,12 @@ fn consume_is_ordered_after_cursor_and_modifier_derivation() {
         ..Default::default()
     });
     schedule.initialize(&mut world).unwrap();
+    // Derive the actual modifier from the loaded profile binding, rather than
+    // relying on the removed always-enabled ModKeyConfig fixture.
+    let disable_key = world.resource::<country_core::game_profile::GameProfile>()
+        .key_bindings.bindings[24].unwrap();
+    world.resource_mut::<country_core::systems::backend::input::button_input::KeyButtonInput>()
+        .press(country_core::game_profile::desktop_keycode_index(disable_key).unwrap());
     world.resource_mut::<CursorPositionSS>().0 = Vec2::new(99.0, 50.0);
     world.send_event(InputCursorMoved::Relative(Vec2::new(5.0, 0.0)));
     schedule.run(&mut world);
@@ -414,63 +422,54 @@ fn replay_restores_recorded_capture_instead_of_live_capture() {
 }
 
 #[test]
-fn clock_overflow_stops_replay_without_partial_clock_or_live_action_leak() {
+fn clock_overflow_panics_after_delta_write_without_advancing_other_fields() {
     let (mut world, mut schedule) = fixture();
-    observe_frame(&mut world, &mut schedule);
     two_frame_recording(&mut world);
     world.resource_mut::<GameTime>().elapsed = std::time::Duration::MAX;
     let mut expected = *world.resource::<GameTime>();
-    expected.delta = 0.0;
-    expected.ticks_60 = 0;
-    expected.ran = false;
-    world.resource_mut::<MouseButtonInput>().press(0);
+    expected.delta = 0.1;
     world.send_event(InputReplayCommand::Replay { rewind: 0 });
-    schedule.run(&mut world);
-    assert_eq!(world.resource::<ObservedFrame>().clock, expected);
-    assert_eq!(
-        *world.resource::<ActionSetStates>(),
-        MainActionSet::default()
-    );
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        schedule.run(&mut world);
+    }));
+    assert!(result.is_err());
+    assert_eq!(*world.resource::<GameTime>(), expected);
     let replay = world.resource::<InputRecordReplayState>();
-    assert_eq!(replay.mode, InputRecordReplayMode::None);
+    assert_eq!(replay.mode, InputRecordReplayMode::Replay);
     assert_eq!(replay.stream.frame_count(), 2);
-    assert!(replay.last_error.as_ref().unwrap().contains("overflow"));
+    assert!(replay.last_error.is_none());
 }
 
 #[test]
-fn malformed_in_memory_replay_frame_is_stopped_before_consumption() {
-    let (mut world, mut schedule) = fixture();
-    two_frame_recording(&mut world);
-    world
-        .resource_mut::<InputRecordReplayState>()
-        .stream
-        .last_frame_mut()
-        .unwrap()
-        .time_delta_seconds = f32::MAX;
-    world.send_event(InputReplayCommand::Replay { rewind: 0 });
-    schedule.run(&mut world);
-    let before = *world.resource::<GameTime>();
-    schedule.run(&mut world);
-    assert_eq!(world.resource::<GameTime>().elapsed, before.elapsed);
-    assert_eq!(world.resource::<GameTime>().delta, 0.0);
-    assert_eq!(
-        *world.resource::<ActionSetStates>(),
-        MainActionSet::default()
-    );
-    assert!(
-        world
-            .resource::<InputRecordReplayState>()
-            .last_error
-            .is_some()
-    );
+fn malformed_in_memory_replay_time_panics_after_publishing_the_bad_delta() {
+    for bad in [-1.0, f32::MAX, f32::NAN] {
+        let (mut world, mut schedule) = fixture();
+        two_frame_recording(&mut world);
+        world.resource_mut::<InputRecordReplayState>()
+            .stream.last_frame_mut().unwrap().time_delta_seconds = bad;
+        world.send_event(InputReplayCommand::Replay { rewind: 0 });
+        schedule.run(&mut world);
+        let before = *world.resource::<GameTime>();
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            schedule.run(&mut world);
+        }));
+        assert!(result.is_err());
+        let after = *world.resource::<GameTime>();
+        assert_eq!(after.delta.to_bits(), bad.to_bits());
+        assert_eq!(GameTime { delta: before.delta, ..after }, before);
+        assert_eq!(world.resource::<InputRecordReplayState>().mode, InputRecordReplayMode::Replay);
+    }
 }
 
 #[test]
-fn right_drag_release_never_creates_a_click_but_small_gestures_do() {
+fn right_click_uses_only_motion_accumulated_on_held_frames() {
     for (press_motion, held_motion, release_motion, expect_click) in [
         (0.0, 20.0, 0.0, false),
-        (0.0, 0.0, 20.0, false),
-        (20.0, 0.0, 0.0, false),
+        // B1417cd959 resets at just-press, accumulates only while held, and
+        // checks the stored length on release. Press/release-frame deltas are
+        // deliberately excluded; do not alter the original gesture algorithm.
+        (0.0, 0.0, 20.0, true),
+        (20.0, 0.0, 0.0, true),
         (0.0, 1.0, 1.0, true),
     ] {
         let (mut world, mut schedule) = fixture();
@@ -624,24 +623,14 @@ fn uncaptured_replay_frame_releases_a_previously_captured_os_cursor() {
 }
 
 #[test]
-fn stop_and_invalid_frame_release_capture_and_allow_future_live_requests() {
+fn stop_releases_capture_and_allows_future_live_requests() {
     use country_core::resources::mouse_capture::CursorCaptureCmd;
-    for invalid_frame in [false, true] {
+    {
         let (mut world, mut schedule) = fixture();
         captured_recording(&mut world, &mut schedule);
         schedule.run(&mut world);
         capture_commands(&mut world);
-        if invalid_frame {
-            world
-                .resource_mut::<InputRecordReplayState>()
-                .stream
-                .last_frame_mut()
-                .unwrap()
-                .time_delta_seconds = f32::NAN;
-            schedule.run(&mut world);
-        } else {
-            world.send_event(InputReplayCommand::Stop);
-        }
+        world.send_event(InputReplayCommand::Stop);
         world.send_event(CursorCaptureCmd(false));
         schedule.run(&mut world);
         assert_capture_released(&mut world);

@@ -8,7 +8,8 @@
 //! - **字段名与 72 B 布局由发行资产核实**（2026-10-16，`D:/game/ljxsj_92385/Tiny Glade/
 //!   assets/glade/{summer,olden,flowery,autumn,winter}/audio.json` 全 5 主题逐字节读）：
 //!   键 `ambience`（String，24 B = 3 qword）+ `music`（Vec<String>，24 B）+
-//!   `select_glade_stinger`（String，24 B）= 9 qword = 72 B。字段名不再待取证。
+//!   `select_glade_stinger`（Option<String>，24 B）= 9 qword = 72 B。
+//!   default@1408bf2c0 writes the None niche, not an empty String.
 //! - 5 主题样例：`ambience: event:/Amb/amb_Summer`、`music: [5 × event:/Music/...]`、
 //!   `select_glade_stinger: event:/UI/ChooseSummer`。
 use serde::{Deserialize, Serialize};
@@ -20,17 +21,17 @@ pub struct GladeAudio {
     pub ambience: String,
     /// 主题音乐事件（native Vec<String> 24 B；发行文件 5 条）。
     pub music: Vec<String>,
-    /// `event:/UI/Choose<Theme>`（native String 24 B）。
-    pub select_glade_stinger: String,
+    /// `event:/UI/Choose<Theme>`; native Option<String> uses String's niche.
+    pub select_glade_stinger: Option<String>,
 }
 
 impl Default for GladeAudio {
-    /// `GladeAudio::default` @0x1408bf2c0：空串/空 Vec。
+    /// Original constants @142aa0d18/142aa0d31 and None @+0x30.
     fn default() -> Self {
         Self {
-            ambience: String::new(),
-            music: Vec::new(),
-            select_glade_stinger: String::new(),
+            ambience: "event:/Amb/Ambience".into(),
+            music: vec!["event:/Music/mus_MainMenu".into()],
+            select_glade_stinger: None,
         }
     }
 }
@@ -88,7 +89,7 @@ mod tests {
         assert_eq!(parsed.ambience, "event:/Amb/amb_Olden");
         assert_eq!(parsed.music.len(), 5);
         assert_eq!(parsed.music[0], "event:/Music/Olden/SingleLeaf");
-        assert_eq!(parsed.select_glade_stinger, "event:/UI/ChooseOlden");
+        assert_eq!(parsed.select_glade_stinger.as_deref(), Some("event:/UI/ChooseOlden"));
         assert_eq!(
             serde_json::to_value(&parsed).unwrap(),
             serde_json::json!({

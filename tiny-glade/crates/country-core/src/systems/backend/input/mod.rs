@@ -61,6 +61,9 @@ pub fn register_input_events(world: &mut World) {
     register_event::<crate::resources::session::SessionLoadedCmd>(world);
     world.init_resource::<ActionSetStates>();
     world.init_resource::<ActionSetValues>();
+    // Original backend CPU constructor initializes this separate 56-byte owner;
+    // the mapped GPU SSBO is provided by the graphics startup, never fabricated here.
+    world.init_resource::<crate::resources::read_mouse_depth_value::MouseDepthValue>();
     world.init_resource::<bevy_time::Time>();
     world.init_resource::<crate::resources::time::GameTime>();
     if !world.contains_resource::<ActiveInputModeTracker>() {

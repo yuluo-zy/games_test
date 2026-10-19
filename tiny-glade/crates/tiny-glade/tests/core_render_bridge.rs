@@ -66,9 +66,13 @@ fn core_staging_upload_imports_and_retires_through_one_session() {
     let canonical = world.resource::<country_core::render::device::GraphicsDeviceResource>();
     // Exercise the canonical ECS device, not a second host or the old
     // unsupported compatibility implementation. Its IDs must resolve here.
-    let target = GraphicsDevice::create_buffer(canonical.device(),
-        &BufferDesc::new(8, 0x22, 2), "core bridge target", None)
-        .unwrap();
+    let target = GraphicsDevice::create_buffer(
+        canonical.device(),
+        &BufferDesc::new(8, 0x22, 2),
+        "core bridge target",
+        None,
+    )
+    .unwrap();
     assert!(buffers.managed_buffer(&target).is_some());
     let retired = Rc::new(Cell::new(false));
     let flag = retired.clone();
@@ -216,4 +220,123 @@ fn failed_ignored_and_unwound_builders_retire_without_submission() {
     assert_eq!(retired.get(), 3);
     // Cancellation must leave the same session reusable.
     bridge.render_frame(|_| Ok(())).unwrap();
+}
+
+#[test]
+fn built_graph_lease_survives_rejected_rebuild_and_releases_on_compiled_drop() {
+    let Some(mut bridge) = bridge() else { return };
+    let retired = Rc::new(Cell::new(0));
+    let flag = retired.clone();
+    let (_, built) = bridge
+        .build_frame(|frame| {
+            frame.with_graph(|graph| {
+                graph
+                    .add_pass("original pending declaration")
+                    .with_side_effect()
+                    .render(|_| true);
+                graph.on_retire(move || flag.set(flag.get() + 1));
+                Ok(())
+            })
+        })
+        .unwrap();
+    let invoked = Cell::new(false);
+    assert!(
+        bridge
+            .build_frame(|_| {
+                invoked.set(true);
+                Ok(())
+            })
+            .is_err()
+    );
+    assert!(
+        !invoked.get(),
+        "rejected begin must not invoke another builder"
+    );
+    assert_eq!(retired.get(), 0, "the first declaration must remain live");
+    let compiled = bridge.compile_built(built).unwrap();
+    assert_eq!(
+        compiled.snapshot().pass_order,
+        ["original pending declaration"]
+    );
+    assert!(
+        bridge.build_frame(|_| Ok(())).is_err(),
+        "prepared frame still owns its session"
+    );
+    drop(compiled);
+    assert_eq!(retired.get(), 1);
+    let (_, retry) = bridge.build_frame(|_| Ok(())).unwrap();
+    bridge.cancel_built(retry).unwrap();
+    let (_, retry) = bridge.build_frame(|_| Ok(())).unwrap();
+    bridge.cancel_built(retry).unwrap();
+}
+
+#[test]
+fn foreign_built_graph_retires_the_originating_lease_without_submitting() {
+    let Some(mut origin) = bridge() else { return };
+    let mut other = CoreRenderBridge::from_owners(origin.warmup_owners().unwrap()).unwrap();
+    let retired = Rc::new(Cell::new(false));
+    let flag = retired.clone();
+    let (_, foreign) = origin
+        .build_frame(|frame| {
+            frame.with_graph(|graph| {
+                graph
+                    .add_pass("foreign work")
+                    .with_side_effect()
+                    .render(|_| {
+                        panic!("foreign graph must never record");
+                    });
+                graph.on_retire(move || flag.set(true));
+                Ok(())
+            })
+        })
+        .unwrap();
+    let error = other.execute_built(foreign).unwrap_err();
+    assert_eq!(error.kind(), rhapsody::ErrorKind::InvalidUsage);
+    assert!(retired.get());
+    assert_eq!(
+        other.with_session(|session| session.pending_frame_count()),
+        0
+    );
+    let (_, retry) = origin.build_frame(|_| Ok(())).unwrap();
+    origin.cancel_built(retry).unwrap();
+    let (_, retry) = other.build_frame(|_| Ok(())).unwrap();
+    other.cancel_built(retry).unwrap();
+}
+
+#[test]
+fn dropped_uncompiled_graph_cancels_imports_and_leaves_the_session_reusable() {
+    let Some(mut bridge) = bridge() else { return };
+    let buffers = bridge.hosts().buffers.clone();
+    let target = buffers
+        .create_buffer(&BufferDesc::new(8, 0x22, 2), "abandoned declaration", None)
+        .unwrap();
+    let retired = Rc::new(Cell::new(0));
+    let flag = retired.clone();
+    let (_, built) = bridge
+        .build_frame(|frame| {
+            frame.import_buffer(&target, 0)?;
+            frame.with_graph(|graph| {
+                graph.on_retire(move || flag.set(flag.get() + 1));
+                Ok(())
+            })
+        })
+        .unwrap();
+    assert_eq!(
+        bridge.with_session(|session| session.frame_import_count()),
+        1
+    );
+    assert_eq!(retired.get(), 0);
+    drop(built);
+    assert_eq!(retired.get(), 1);
+    assert_eq!(
+        bridge.with_session(|session| session.frame_import_count()),
+        0
+    );
+    assert_eq!(
+        bridge.with_session(|session| session.pending_frame_count()),
+        0
+    );
+    let (_, retry) = bridge.build_frame(|_| Ok(())).unwrap();
+    bridge.cancel_built(retry).unwrap();
+    assert!(buffers.release(&target));
 }

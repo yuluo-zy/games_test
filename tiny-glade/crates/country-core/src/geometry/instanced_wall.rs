@@ -281,3 +281,14 @@ pub fn populate_brick_ssbo_library(
     library.add_new::<BrickPrevVisibilityBitmaskSsbo>(device);
     library.add_new::<BrickNextVisibilityBitmaskSsbo>(device);
 }
+
+/// Original three-byte global wall draw policy component, written by
+/// glade_startup_walls and consumed by the LOD0/LOD1 indirect callbacks.
+/// Field names remain observed byte offsets: semantic enum names are unproved.
+#[repr(C)]
+#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct WallBrickInstancedDrawProxy {
+    pub b0: u8,
+    pub b1: u8,
+    pub b2: u8,
+}

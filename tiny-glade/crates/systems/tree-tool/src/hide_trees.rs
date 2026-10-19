@@ -1,8 +1,8 @@
 //! B hide_trees @14226a260: wall requests, then area requests. Each
 //! resolved query clears the existing animation flag before checking a hit.
-//! Placement comes from PrefabInstance; the name comes from PrefabInstanceData.
+//! Placement comes from PrefabInstanceData; the name comes from PrefabInstance.
 use bevy_ecs::prelude::*;
-use country_core::components::{PrefabInstanceData, TreeAnimation, TreeComponent};
+use country_core::components::{TreeAnimation, TreeComponent};
 use country_core::resources::history::tree_edit::{DeleteTreeCmd, TreeEdit, TreeEditData};
 use country_core::resources::history::{EditType, History};
 use country_core::resources::prefab::PrefabInstance;
@@ -13,6 +13,7 @@ use country_core::resources::walls::{
     WallId,
     spatial_index::{GRID_SIDE, WORLD_SIZE, world_space_to_grid_coord_unclamped},
 };
+use country_core::systems::prefab::PrefabInstanceData;
 use country_core::systems::wall::wall_state::wall_spatial_hash::{
     WallSpatialHash, WallSpatialSegment,
 };
@@ -100,8 +101,8 @@ fn area_hides_tree(command: &HideTreesinAreaCmd, p: glam::Vec3) -> bool {
 pub fn hide_trees<S: Send + Sync + 'static>(
     mut trees: Query<(
         &mut TreeAnimation,
-        &PrefabInstanceData,
         &PrefabInstance,
+        &PrefabInstanceData,
         &TreeComponent,
     )>,
     storage: Res<TreeStorage>,
@@ -399,7 +400,7 @@ mod tests {
     }
 
     fn tree(world: &mut World, index: u64, position: Vec3) -> Entity {
-        let instance = PrefabInstance(PlacementDataSsbo {
+        let instance = PrefabInstanceData(PlacementDataSsbo {
             position,
             scale: 0.75,
             rotation_angle: 123.0,
@@ -412,7 +413,7 @@ mod tests {
             .spawn((
                 TreeAnimation::preplaced(),
                 instance,
-                PrefabInstanceData {
+                PrefabInstance {
                     prefab_name: PrefabName::new("test/tree"),
                     ..Default::default()
                 },

@@ -268,18 +268,22 @@ pub fn set_sheep_velocities_towards_goals(
     }
 }
 
-/// update_sheep_audio（0x142316490，源码 248–253）：逐羊 `audio_resources::set_position`。
-/// 原码每羊同时 `[0x38-stride 音频记录]+0x34 += dt`（音频内部计时，本重建未落组件，DIVERGE）。
-pub fn update_sheep_audio(mut query: Query<(&Transform, &mut SheepAudio)>) {
+/// B update_sheep_audio142316490: set position, then audio+0x34 = dt + old.
+pub fn update_sheep_audio(time: Res<GameTime>, mut query: Query<(&Transform, &mut SheepAudio)>) {
     for (transform, mut audio) in &mut query {
         audio.handle.set_position(transform.translation);
+        audio.elapsed = time.delta + audio.elapsed;
     }
 }
 
-/// 羊音频（宿主缝）。
+/// Original 56B audio record's semantic fields; the host owns AudioInstance.
 #[derive(Component, Debug, Default)]
 pub struct SheepAudio {
     pub handle: AudioHandle,
+    /// B +0x30: same pitch used for startup's Pitch parameter.
+    pub startup_pitch: f32,
+    /// B +0x34, initialized zero and advanced by update_sheep_audio.
+    pub elapsed: f32,
 }
 
 #[cfg(test)]

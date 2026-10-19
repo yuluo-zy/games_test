@@ -28,6 +28,11 @@ pub type NoHashHasher = nohash_hasher::NoHashHasher<u64>;
 pub type NoHashBuildHasher = BuildHasherDefault<NoHashHasher>;
 
 /// 保存已编译程序，并维护业务名字到句柄的索引。
+/// One Arc owner of the current App's physical shader registry. Consumers in
+/// other crates borrow the same TypeId; no second AssetShaderLibrary is created.
+#[derive(bevy_ecs::resource::Resource, Clone)]
+pub struct SharedAssetShaderLibrary(pub std::sync::Arc<AssetShaderLibrary>);
+
 pub struct AssetShaderLibrary {
     pub raster_shaders: FrozenMap<Handle<RasterShaderProgram>, RasterShaderProgram>,
     pub compute_shaders: FrozenMap<Handle<ComputeShaderProgram>, ComputeShaderProgram>,

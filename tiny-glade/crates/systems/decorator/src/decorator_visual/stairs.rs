@@ -66,11 +66,15 @@ pub fn derive_stair_node_params(
     info: &country_core::resources::walls::decorator::DecoratorInfo,
     _key: u64,
 ) -> u8 {
-    // O：`(tag-2)<3 → tag-1 否则 0`（= core side_from_state 公式），四向分派。
+    // O：跳表索引 `(tag-2)<3 ? tag-1 : 0`（fresh capstone：`lea ecx,[tag-2];
+    // cmp cl,3; cmovb idx,tag-1`）。idx 0=墙 / 1=屋顶 / 2=地形 / 3=楼梯。
+    // 各分支载荷语义仍 U（返回索引，不伪造参数记录）。
     let tag = info.dst_tag();
-    let idx = if (2u8).wrapping_sub(tag).wrapping_add(2) < 3 { tag } else { 0 };
-    let _ = idx;
-    0 // U：分派载荷待取证。
+    if tag.wrapping_sub(2) < 3 {
+        tag - 1
+    } else {
+        0
+    }
 }
 
 /// 0x14080beb0（O 结构，6+ 参面）：对齐偏好计算。
@@ -135,4 +139,28 @@ pub fn compute_stair_assembly_params(
     _nodes: &[(u32, Vec3)],
 ) -> Vec<f32> {
     Vec::new() // U。
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use country_core::resources::walls::decorator::DecoratorInfo;
+
+    fn info_tag(tag: u8) -> DecoratorInfo {
+        DecoratorInfo {
+            u20: u32::from(tag) << 16,
+            ..DecoratorInfo::default()
+        }
+    }
+
+    #[test]
+    fn stair_node_dispatch_index_matches_native_formula() {
+        // O：tag 2/3/4 → idx 1/2/3；其余 → 0。
+        assert_eq!(derive_stair_node_params(&info_tag(2), 0), 1);
+        assert_eq!(derive_stair_node_params(&info_tag(3), 0), 2);
+        assert_eq!(derive_stair_node_params(&info_tag(4), 0), 3);
+        assert_eq!(derive_stair_node_params(&info_tag(0), 0), 0);
+        assert_eq!(derive_stair_node_params(&info_tag(1), 0), 0);
+        assert_eq!(derive_stair_node_params(&info_tag(5), 0), 0);
+    }
 }

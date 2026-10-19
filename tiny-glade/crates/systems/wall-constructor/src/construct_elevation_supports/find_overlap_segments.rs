@@ -30,5 +30,7 @@ pub fn find_overhang_support_segments(
     _cache: &mut OverhangSupportFinderCache,
     _wall: u64,
 ) -> Option<[u8; 40]> {
-    todo!("未实现: find_overhang_support_segments 0x141248620（43KB：输出结构/阈值/多 closure 未逐语句）")
+    todo!(
+        "未实现: find_overhang_support_segments 0x141248620（43KB：输出结构/阈值/多 closure 未逐语句）"
+    )
 }

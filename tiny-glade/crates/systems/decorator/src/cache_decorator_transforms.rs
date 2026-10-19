@@ -29,12 +29,11 @@ use country_core::resources::terrain_height::TerrainHeightsData;
 use country_core::resources::walls::cached_decorator_transforms::{
     CachedDecoratorTransform, CachedDecoratorTransforms,
 };
-use country_core::resources::walls::decorator::DecoratorRotationXZ;
 use country_core::resources::walls::decorator_storage::DecoratorStorage;
 use country_core::resources::walls::public_wall_state::PublicWallState;
 use country_core::resources::walls::public_walls::PublicWalls;
 use country_core::resources::walls::WallId;
-use glam::{Quat, Vec2, Vec3};
+use glam::{Quat, Vec3};
 
 /// `cache_decorator_transforms` @0x1408153d0（O 结构；公式尾段 U）。
 pub fn cache_decorator_transforms(
@@ -50,7 +49,7 @@ pub fn cache_decorator_transforms(
         for (_id, info) in bucket.iter_maybe_mut() {
             let transform = compute_decorator_transform(
                 info,
-                wall,
+                Some(wall),
                 wall_state,
                 &walls,
                 &roof_trigger_volumes,
@@ -60,13 +59,45 @@ pub fn cache_decorator_transforms(
             cache.insert(info.decorator_id, transform);
         }
     }
+    // O：原生迭代 `DecoratorStorage` 全存储（墙 + 地形 + 楼梯）；旧实现只
+    // 遍历墙桶，地形/楼梯装饰永远不会进入缓存（已修）。
+    for bucket in storage.iter_terrain_decorators() {
+        for info in bucket.iter_maybe_mut().map(|(_, info)| info) {
+            let Some(transform) = compute_decorator_transform(
+                info,
+                None,
+                None,
+                &walls,
+                &roof_trigger_volumes,
+                &terrain,
+            ) else {
+                continue;
+            };
+            cache.insert(info.decorator_id, transform);
+        }
+    }
+    for bucket in storage.iter_stair_decorators() {
+        for info in bucket.iter_maybe_mut().map(|(_, info)| info) {
+            let Some(transform) = compute_decorator_transform(
+                info,
+                None,
+                None,
+                &walls,
+                &roof_trigger_volumes,
+                &terrain,
+            ) else {
+                continue;
+            };
+            cache.insert(info.decorator_id, transform);
+        }
+    }
 }
 
 /// 逐装饰世界变换（O 调用面；公式尾段 U——精确公式见 decomp 全文本）。
 #[allow(clippy::too_many_arguments)]
 fn compute_decorator_transform(
     info: &country_core::resources::walls::decorator::DecoratorInfo,
-    wall: WallId,
+    wall: Option<WallId>,
     wall_state: Option<&PublicWallState>,
     walls: &PublicWalls,
     roof_trigger_volumes: &Query<&RoofTriggerVolume>,
@@ -75,36 +106,24 @@ fn compute_decorator_transform(
     match info.dst_tag() {
         0 | 1 => {
             // 墙目的（O）：墙曲线坐标 + XZ 旋转（from_xz_forward_vector/
-            // offset/to_quat 调用面）。
-            let Some(_state) = wall_state else { return None };
-            let _ = walls.get(wall);
-            let rotation = DecoratorRotationXZ(0.0).to_quat();
-            let translation = Vec3::ZERO;
-            Some(CachedDecoratorTransform {
-                rotation,
-                translation,
-                scale: Vec3::ONE,
-            })
+            // offset/to_quat 调用面）。**公式尾段仍是 U**（decomp 0x1408153d0
+            // 61KB 内联；u/v→曲线坐标与附着高未逐字节闭合）。显式返回 None，
+            // 不再以 `Vec3::ZERO`/恒等旋转冒充变换（W6）。
+            let _ = (wall, wall_state, walls);
+            None
         }
         2 => {
             // 屋顶目的（O）：roof_entity + Roof + RoofTriggerVolume::
-            // get_position_from_mesh_uv（uv 计算 U）+ roof_decorator_normal。
-            let Some(roof_entity) = walls.roof_entity(wall) else {
-                return None;
-            };
-            let _roof: Option<&Roof> = None;
-            let trigger = roof_trigger_volumes.get(roof_entity).ok()?;
-            let position = trigger.get_position_from_mesh_uv(Vec2::ZERO, 0.0)?;
-            Some(CachedDecoratorTransform {
-                rotation: Quat::IDENTITY,
-                translation: position,
-                scale: Vec3::ONE,
-            })
+            // get_position_from_mesh_uv + roof_decorator_normal。uv 计算 U；
+            // `Vec2::ZERO` 是伪造值 → 显式未恢复（W7）。
+            let _ = (wall, roof_trigger_volumes);
+            None
         }
         3 => {
-            // 地形目的（O）：TerrainHeightsData::sample_at_world_xz。
-            let x = (info.u38 as f32).max(-512.0).min(512.0);
-            let z = (info.u3c as f32).max(-512.0).min(512.0);
+            // 地形目的（O）：`DecoratorInfo+0x00` 前 8B = Vec2(x,z)（与
+            // ui_change_stair_height 地形处理器 0x1407ae060 同源读面），
+            // `TerrainHeightsData::sample_at_world_xz` 得 y。
+            let (x, z) = decorator_terrain_xz(info);
             let y = terrain.sample_at_world_xz(x, z);
             Some(CachedDecoratorTransform {
                 rotation: Quat::IDENTITY,
@@ -112,7 +131,34 @@ fn compute_decorator_transform(
                 scale: Vec3::ONE,
             })
         }
+        // 楼梯目的（tag 4）：O 跳表有专用处理器；其位置公式（楼梯拓扑
+        // 采样）尚未闭合，显式返回 None（U），不以零变换冒充。
         _ => None,
+    }
+}
+
+/// 地形装饰位置（O：`DecoratorInfo+0x00` 前 8B = Vec2(x,z)）。
+pub fn decorator_terrain_xz(
+    info: &country_core::resources::walls::decorator::DecoratorInfo,
+) -> (f32, f32) {
+    (
+        f32::from_bits(info.dst_wall as u32),
+        f32::from_bits((info.dst_wall >> 32) as u32),
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use country_core::resources::walls::decorator::DecoratorInfo;
+
+    #[test]
+    fn terrain_xz_reads_packed_dst_wall() {
+        let info = DecoratorInfo {
+            dst_wall: u64::from(1.5f32.to_bits()) | (u64::from((-2.25f32).to_bits()) << 32),
+            ..DecoratorInfo::default()
+        };
+        assert_eq!(decorator_terrain_xz(&info), (1.5, -2.25));
     }
 }
 

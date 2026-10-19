@@ -6,8 +6,8 @@
 //!
 //! | VA | 函数 | 处置 |
 //! |---|---|---|
-//! | 0x140840610 | `spawn_prefabs` | 核心实现（ECS 事件/命令接线为 seam，见下） |
-//! | 0x140841550 | `create_prefab_rt` | 实现（矩阵/颜色/半径逐条判等；宿主队列 seam） |
+//! | 0x140840610 | `spawn_prefabs` | 库内算法与生产 runtime::spawn_prefab_commands 接线 |
+//! | 0x140841550 | `create_prefab_rt` | 矩阵/颜色/半径；生产 runtime 插入 BirdHaven |
 //! | inline | `create_prefab_audio_trigger` | 实现（并入 [`build_prefab_contents`]：`Aabb3::scaled`+`translated`→`add_trigger`） |
 //! | 0x140841b00 | `create_prefab_gpu_instances` | 实现（`MeshAtlasLibrary::get_by_name` + `GpuWorld::create_instances`） |
 //! | 0x140841d60 | `update_prefabs` | 核心实现（GPU/音频直写；RT 矩阵变更检测以输出 seam 返回） |
@@ -20,7 +20,7 @@
 //! | inline | `create_prefab_gpu_instances::closure$0` / `hot_reload_prefabs::closure$0` | 胶水 |
 //!
 //! # 原生布局锚点（fresh）
-//! * `PrefabInstanceData` = **0x58 B**：`+0x08` `Vec<GpuInstanceRecord>`（元素 0xc，ptr/len/cap）、
+//! * `PrefabInstance` = **0x58 B**：`+0x08` `Vec<GpuInstanceRecord>`（元素 0xc，ptr/len/cap）、
 //!   `+0x20` `Vec<RtMeshHandle>`（元素 0x10）、`+0x38` `Vec<AudioTriggerRecord>`（元素 0x28）、
 //!   `+0x48/+0x50` `PrefabName`（Arc ptr/len）。`despawn_prefab_contents` 0x140843390 逐 Vec
 //!   `ptr@+8/len@+0x10`、`ptr@+0x20/len@+0x28`、`ptr@+0x38/len@+0x40` 读取；
@@ -34,23 +34,24 @@
 //!   其它 → bounds panic）；`+0x20` slotmap 键。
 //!
 //! # seam / 登记（解锁条件）
-//! 1. `SpawnPrefabCmd` 原生载荷（GlobalId/变换/名称）未在 src 锚定 → [`spawn_prefabs`] 以
-//!    [`PrefabSpawnRequest`] 表出；ECS `EventReader/Commands` 接线待 host。GlobalId 去重表
-//!    （原生 `HashSet/HashMap<GlobalId>`，命中 → `warn!("Issued creation of a prefab … same frame …")`）
-//!    以 `issued: &HashSet<u64>` 传入。
+//! 1. Production ECS wiring is in [`runtime`]. Original dedupe is a
+//!    `HashSet<Entity>` populated from same-frame DespawnPrefabCmd, not a
+//!    GlobalId table. The older slice adapter retains its u64 field name for
+//!    callers; these bits represent the target Entity. Complete cmd+18..48
+//!    placement and cull position/scale now come from the same record.
 //! 2. **RT 写回已落地**（2026-10-17 ui-restorer-seams）：`resources::rt::RtMesh` 订正为 0x60 B
 //!    `{matrix [f32;16] @+0, positions Vec<Vec3> @+0x40, color u32 @+0x58}`；`RtWorld` 派生
 //!    `Resource`，+0x30 计数器经 [`RtWorld::alloc_prefab_handle`]（tag 2）。`create_prefab_rt`
 //!    经 `get_mut` 写矩阵/顶点/颜色；`update_prefabs` 比较 `matrix[4..16]` 后写回。
-//!    剩余 seam：0x48 B 延迟命令记录（radius、`10.0`、`panic` handler）与 `{2, handle}` 事件
-//!    的宿主队列（[`build_prefab_contents`] 以返回值暴露 `(handle, radius)`）。
+//!    0x48 B 延迟命令已定名为 insert<BirdHaven>：runtime 消费真实
+//!    `(handle, radius)` 返回值，按 part local center/radius 插入同一实体。
+//!    `{2, handle}` 为 PrefabInstance.rt_meshes 内容，不是待处理事件。
 //! 3. `hot_reload_prefabs` 的 `PrefabWatcher`（hotwatch + 100 ms）与两个事件集合来源已在
 //!    `startup::load_prefabs` 落地（见该模块）；本函数接收已收集的 `HashSet<PrefabName>` /
 //!    `HashSet<GpuWorldSubsetKind>`。
-//! 4. 组件注册：`components::trees::PrefabInstanceData` 已改为 re-export 本文件的 0x58 语义类型。
+//! 4. 组件注册：`components::trees::PrefabInstanceData` re-exports the canonical48B placement。
 //! 5. `GpuWorld` 构造需 `GraphicsDevice`（`GpuWorld::new`），spawn/hot_reload 的 host 侧负责。
-//! 6. RT 延迟命令记录（0x48 B：`0x41200000`=10.0、`panic` handler）与 `{2, handle}` 事件是
-//!    `create_prefab_rt` 的宿主队列入队操作，未在本 crate 建模（登记）。
+//! 6. Shared BirdHaven 的构造字段已接；critters 旧算法对该组件的完整消费仍另行审查。
 
 use std::collections::HashSet;
 
@@ -71,6 +72,8 @@ use crate::resources::prefab::{Prefab, PrefabLibrary};
 use crate::resources::render::mesh_atlas_library::{MeshAtlasLibrary, PrefabName, PrefabNameRef};
 use crate::resources::rt::{RtMeshHandle, RtWorld, color_to_u32};
 use crate::utils_contract::Aabb3;
+
+pub mod runtime;
 
 /// 日志 target（O：`spawn_prefabs`/`create_prefab_gpu_instances` 的 `&str` 长 0x1d = 29）。
 pub const LOG_TARGET: &str = "country_core::systems::prefab";
@@ -103,7 +106,7 @@ pub struct CullInstanceSource {
     pub radius: f32,
 }
 
-/// GPU 实例记录（O：`PrefabInstanceData +0x08` Vec 的元素，stride 0xc）。
+/// GPU 实例记录（O：`PrefabInstance +0x08` Vec 的元素，stride 0xc）。
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[repr(C)]
 pub struct GpuInstanceRecord {
@@ -129,7 +132,7 @@ impl GpuInstanceRecord {
     }
 }
 
-/// 音频触发记录（O：`PrefabInstanceData +0x38` Vec 的元素，stride 0x28）。
+/// 音频触发记录（O：`PrefabInstance +0x38` Vec 的元素，stride 0x28）。
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(C)]
 pub struct AudioTriggerRecord {
@@ -151,29 +154,11 @@ impl Default for AudioTriggerRecord {
     }
 }
 
-/// 预制体实例数据组件（O：`systems::prefab::PrefabInstanceData`，**原生 0x58 B**，见模块文档）。
-#[derive(Component, Clone, Debug)]
-pub struct PrefabInstanceData {
-    /// `+0x08` GPU 实例（stride 0xc）。
-    pub gpu_instances: Vec<GpuInstanceRecord>,
-    /// `+0x20` RT 网格句柄（stride 0x10）。
-    pub rt_meshes: Vec<RtMeshHandle>,
-    /// `+0x38` 音频触发（stride 0x28）。
-    pub audio_triggers: Vec<AudioTriggerRecord>,
-    /// `+0x48/+0x50` 预制体名（`PrefabName` = Arc ptr/len）。
-    pub prefab_name: PrefabName,
-}
-
-impl Default for PrefabInstanceData {
-    fn default() -> Self {
-        Self {
-            gpu_instances: Vec::new(),
-            rt_meshes: Vec::new(),
-            audio_triggers: Vec::new(),
-            prefab_name: PrefabName::new(""),
-        }
-    }
-}
+/// Canonical B systems::prefab::PrefabInstanceData: mutable48B placement.
+/// Original register_component140b7e440 writes size0x30 at140b7e6ed.
+#[repr(transparent)]
+#[derive(Component, Clone, Copy, Debug, PartialEq)]
+pub struct PrefabInstanceData(pub PlacementDataSsbo);
 
 /// 生成预制体命令（O：`systems::prefab::SpawnPrefabCmd`；`PrefabPlugin::build`
 /// 0x140840430 注册）。
@@ -230,6 +215,28 @@ impl Default for SpawnPrefabCmd {
     }
 }
 
+impl SpawnPrefabCmd {
+    /// B spawn_prefabs copies cmd+18..48 into the 0x30-byte placement
+    /// component. Keep every active field and all packed channels, including
+    /// mode@44; none of these bytes come from PlacementDataSsbo::default.
+    pub fn placement(&self) -> PlacementDataSsbo {
+        PlacementDataSsbo {
+            position: self.position,
+            scale: self.scale,
+            rotation_angle: self.rotation,
+            id: self.variant as i32,
+            custom0: self.one.to_bits(),
+            custom1: u32::from_le_bytes(self.flags[0..4].try_into().unwrap()),
+            anim_t_packed: u32::from_le_bytes(self.flags[4..8].try_into().unwrap()),
+            bend_vector: glam::Vec2::new(
+                f32::from_le_bytes(self.flags[8..12].try_into().unwrap()),
+                f32::from_le_bytes(self.flags[12..16].try_into().unwrap()),
+            ),
+            pad0: self.mode as i32,
+        }
+    }
+}
+
 /// 回收预制体命令（O：`systems::prefab::DespawnPrefabCmd`；载荷 `+0x08` = 目标实体）。
 #[derive(Event, Clone, Debug, Default)]
 pub struct DespawnPrefabCmd {
@@ -239,12 +246,14 @@ pub struct DespawnPrefabCmd {
     pub _gap: u64,
 }
 
-/// spawn 输入（O：由 `SpawnPrefabCmd` 事件/查询解析出的语义字段；载荷映射待 host）。
+/// Legacy slice adapter input. Production [`runtime::spawn_prefab_commands`]
+/// reads SpawnPrefabCmd directly and preserves its complete placement.
 #[derive(Clone, Debug)]
 pub struct PrefabSpawnRequest {
     /// 预制体名（O：`PrefabLibrary::get` 的键）。
     pub prefab: PrefabName,
-    /// 去重键（O：`spawn_prefabs` 的 `GlobalId` 哈希查找）。
+    /// Legacy field name: target Entity bits, used for same-frame deletion
+    /// dedupe. Original PDB instantiates HashSet<bevy_ecs::entity::Entity>.
     pub global_id: u64,
     /// 实例变换。
     pub transform: PrefabTransform,
@@ -254,8 +263,8 @@ pub struct PrefabSpawnRequest {
     pub placement: PlacementDataSsbo,
 }
 
-/// spawn 输出（O：`EntityCommands::insert<(PrefabInstance, PrefabInstanceData)>` 的载荷）。
-/// RT 网格已在本轮直接写入 `RtWorld`（`create_prefab_rt` 的 `get_mut` 写面），不再经返回值。
+/// Legacy slice adapter output. Production inserts these owned contents and
+/// the full placement on the command's Entity, plus any BirdHaven component.
 #[derive(Clone, Debug)]
 pub struct PrefabSpawnOutput {
     /// 去重键。
@@ -263,10 +272,11 @@ pub struct PrefabSpawnOutput {
     /// 预制体名。
     pub prefab: PrefabName,
     /// 实例数据。
-    pub data: PrefabInstanceData,
+    pub data: PrefabInstance,
 }
 
-/// `create_prefab_rt` 的输出载荷（O：`RtWorld::get_mut` 之后的写入面）。
+/// `create_prefab_rt` resolved mesh output. The optional radius also requests
+/// BirdHaven insertion using the source part's local bounds center.
 #[derive(Clone, Debug, PartialEq)]
 pub struct PrefabRtMeshUpdate {
     /// 颜色（O：`+0x58` u32，`sqrt(c)*255+0.5` 饱和打包，同 [`color_to_u32`]）。
@@ -356,8 +366,10 @@ pub fn rt_cube_positions(bounds: &Aabb3) -> Vec<Vec3> {
 ///   `[x0,x1,y0,y1,z0,z1]`）；`Mesh::positions()`（0x140a07b30）后按索引映射（0x1415634c0）。
 /// - `bVar2 & 1` → `Aabb3::center()`/`extent()`（part+0x48），半径 = `0.5 * min(extent.x,y,z)`
 ///   （NaN：`f32::min` 的非 NaN 语义）。
-/// 原生还追加一个 0x48 B 延迟命令记录（`0x41200000` = 10.0、`panic` handler）与 `{2, handle}` 事件；
-/// 这两项是宿主队列 seam，登记。
+/// The native 0x48B Commands record invokes insert<BirdHaven> (callback
+/// 1412dbe50), with local center/radius, state0, cooldown10 and flagfalse.
+/// Production runtime applies that component write. `{2, handle}` is the
+/// tag2 RtMeshHandle appended to PrefabInstance.rt_meshes, not an event.
 pub fn create_prefab_rt(
     part: &crate::resources::prefab::PrefabPart,
     transform: &PrefabTransform,
@@ -423,10 +435,13 @@ pub fn create_prefab_gpu_instances(
 /// `Option` 音频触发（kind 门：`tag==4` 且名以 `"Tree"` 开头，否则 panic）→
 /// `Aabb3::scaled(splat(scale))` → `translated(translation)` → `AudioTriggerLibrary::add_trigger`；
 /// 之后每 part 调 `create_prefab_rt`（kind != 2）：从 `RtWorld` 分配 tag-2 句柄并
-/// 写矩阵/顶点/颜色。返回需要宿主入队的 `(handle, radius)` 延迟命令记录（seam）。
+/// Writes the actual RT mesh and records its tag2 handle in the contents.
+/// Returned `(handle, radius)` entries identify odd-rt_kind parts for the
+/// production runtime's real BirdHaven component insertion; no RT work queue
+/// is needed. The handle retains the part order/association for its center.
 #[allow(clippy::too_many_arguments)]
 fn build_prefab_contents(
-    data: &mut PrefabInstanceData,
+    data: &mut PrefabInstance,
     prefab: &Prefab,
     transform: &PrefabTransform,
     mesh_atlases: &MeshAtlasLibrary,
@@ -473,7 +488,9 @@ fn build_prefab_contents(
                 .translated(transform.translation);
             let handle = audio.add_trigger(AudioTriggerKind::Primary, shape);
             data.audio_triggers.push(AudioTriggerRecord {
-                shape,
+                // Native stores part's LOCAL bounds beside the handle;
+                // update_prefabs applies the placement exactly once again.
+                shape: trigger.bounds,
                 handle: Some(handle),
             });
         }
@@ -489,12 +506,14 @@ fn build_prefab_contents(
     rt_commands
 }
 
-/// `spawn_prefabs`（O：0x140840610）核心：去重 → `PrefabLibrary::get` → 构造内容 → 输出待插入记录。
+/// Legacy slice adapter for the resolved spawn algorithm. It returns owned
+/// contents to callers; the production EventReader/Commands path is
+/// [`runtime::spawn_prefab_commands`], which also applies BirdHaven insertion.
 ///
-/// 去重（O）：`GlobalId` 已在 `issued` 中 → `Warn` 级
+/// 去重（O）：target Entity bits 已在 `issued` 中 → `Warn` 级
 /// `"Issued creation of a prefab {:?} on the same frame as issuing its deletion!"` 并跳过。
-/// ECS 侧（`Res<PrefabLibrary>` / `Commands::entity(..).insert((PrefabInstance,
-/// PrefabInstanceData))` / `PrefabsToDelete` 清空）为 host seam，登记。
+/// `issued` contains same-frame deleted Entity bits. It is not an existing
+/// instance registry or a second game-ID namespace.
 #[allow(clippy::too_many_arguments)]
 pub fn spawn_prefabs(
     requests: &[PrefabSpawnRequest],
@@ -518,9 +537,9 @@ pub fn spawn_prefabs(
             continue;
         }
         let prefab = library.get(&request.prefab);
-        let mut data = PrefabInstanceData {
+        let mut data = PrefabInstance {
             prefab_name: request.prefab.clone(),
-            ..PrefabInstanceData::default()
+            ..PrefabInstance::default()
         };
         let _rt_commands = build_prefab_contents(
             &mut data,
@@ -555,7 +574,7 @@ pub fn spawn_prefabs(
 /// 3. 音频 Vec：`Aabb3::scaled(splat(scale))` + `translated(translation)` →
 ///    `AudioTriggerLibrary::update_trigger_shape`；键失效 → `unwrap_failed` panic（O）。
 pub fn update_prefabs_instance(
-    data: &PrefabInstanceData,
+    data: &PrefabInstance,
     transform: &PrefabTransform,
     gpu_world: &mut GpuWorld,
     rt_world: &mut RtWorld,
@@ -609,7 +628,7 @@ pub fn update_prefabs_instance(
 /// - 音频 Vec：原生槽 Option 判别（`2`=None → `return`；`0`=Some → `remove`；其它 → panic）。
 #[allow(clippy::too_many_arguments)]
 pub fn despawn_prefab_contents(
-    data: &mut PrefabInstanceData,
+    data: &mut PrefabInstance,
     gpu_world: &GpuWorld,
     rt_world: &mut RtWorld,
     audio: &mut AudioTriggerLibrary,
@@ -623,7 +642,7 @@ pub fn despawn_prefab_contents(
         }
     }
     for handle in data.rt_meshes.drain(..) {
-        let _removed = rt_world.meshes.remove(&handle);
+        let _removed = rt_world.remove_mesh(&handle);
     }
     for record in data.audio_triggers.drain(..) {
         let Some(handle) = record.handle else {
@@ -635,12 +654,12 @@ pub fn despawn_prefab_contents(
 
 /// `despawn_prefabs`（O：0x140842d60）：消费 `DespawnPrefabCmd`，逐实体回收内容并 `despawn()`。
 ///
-/// 原生在命中 `PrefabInstanceData` 时先写外部计数/GPU 数据再调 contents（计数资源 seam）；
-/// 实体查找用 archetype/table 位图（= `Query<&mut PrefabInstanceData>::get_mut`）。
+/// 原生在命中 `PrefabInstance` 时先写外部计数/GPU 数据再调 contents（计数资源 seam）；
+/// 实体查找用 archetype/table 位图（= `Query<&mut PrefabInstance>::get_mut`）。
 pub fn despawn_prefabs(
     mut commands: Commands,
     mut events: EventReader<DespawnPrefabCmd>,
-    mut query: Query<&mut PrefabInstanceData>,
+    mut query: Query<&mut PrefabInstance>,
     gpu_world: &GpuWorld,
     rt_world: &mut RtWorld,
     audio: &mut AudioTriggerLibrary,
@@ -665,7 +684,7 @@ pub fn despawn_prefabs(
 /// 返回被重建的实体列表。
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn hot_reload_prefabs(
-    instances: &mut [(Entity, PlacementDataSsbo, PrefabInstanceData)],
+    instances: &mut [(Entity, PlacementDataSsbo, PrefabInstance)],
     modified_prefabs: &HashSet<PrefabName>,
     modified_subsets: &HashSet<GpuWorldSubsetKind>,
     library: &PrefabLibrary,
@@ -846,9 +865,20 @@ mod tests {
 
     #[test]
     fn audio_trigger_kind_gate_requires_exact_tree_string() {
-        let bounds = Aabb3 { min: Vec3::ZERO, max: Vec3::ONE };
-        for (kind, accepted) in [("Tree", true), ("TreeX", false), ("Tre", false), ("Bush", false)] {
-            let trigger = PrefabAudioTrigger { kind_name: kind.into(), bounds };
+        let bounds = Aabb3 {
+            min: Vec3::ZERO,
+            max: Vec3::ONE,
+        };
+        for (kind, accepted) in [
+            ("Tree", true),
+            ("TreeX", false),
+            ("Tre", false),
+            ("Bush", false),
+        ] {
+            let trigger = PrefabAudioTrigger {
+                kind_name: kind.into(),
+                bounds,
+            };
             assert_eq!(trigger.is_tree(), accepted);
         }
     }
@@ -858,7 +888,7 @@ mod tests {
         let gpu_world = test_world(GpuWorldSubsetKind::Canopy);
         let mut rt_world = RtWorld::default();
         let mut audio = AudioTriggerLibrary::default();
-        let mut data = PrefabInstanceData {
+        let mut data = PrefabInstance {
             gpu_instances: vec![
                 GpuInstanceRecord {
                     id: 0,
@@ -876,7 +906,7 @@ mod tests {
                     kind: GpuWorldSubsetKind::Plant as u8,
                 },
             ],
-            ..PrefabInstanceData::default()
+            ..PrefabInstance::default()
         };
         despawn_prefab_contents(&mut data, &gpu_world, &mut rt_world, &mut audio);
         // 哨兵之后（id=2）不被访问；Vec 整体 drain。
@@ -934,7 +964,7 @@ mod tests {
             &mut pending,
             0,
         );
-        // `issued` 是“已存在实例”表（不是批内去重）：空表时两条都生成。
+        // Empty same-frame deletion set permits both creation commands.
         assert_eq!(out.len(), 2);
         assert_eq!(&*out[0].prefab.0, "tree/a");
         assert_eq!(&*out[0].data.prefab_name.0, "tree/a");
@@ -945,7 +975,7 @@ mod tests {
         assert_eq!(out[0].data.rt_meshes[0].tag, 2);
         assert!(rt_world.get(out[0].data.rt_meshes[0]).is_some());
 
-        // GlobalId 已在 issued 中 → warn 跳过，不生成。
+        // Entity bits in the same-frame deletion set → warn and skip.
         let mut issued = HashSet::new();
         issued.insert(7u64);
         let out = spawn_prefabs(
@@ -992,17 +1022,17 @@ mod tests {
             (
                 Entity::from_raw(1),
                 test_placement(),
-                PrefabInstanceData {
+                PrefabInstance {
                     prefab_name: PrefabName::new("tree/a"),
-                    ..PrefabInstanceData::default()
+                    ..PrefabInstance::default()
                 },
             ),
             (
                 Entity::from_raw(2),
                 test_placement(),
-                PrefabInstanceData {
+                PrefabInstance {
                     prefab_name: PrefabName::new("tree/b"),
-                    ..PrefabInstanceData::default()
+                    ..PrefabInstance::default()
                 },
             ),
         ];
@@ -1053,7 +1083,7 @@ mod tests {
         let rt_handle = RtMeshHandle::from_handle(3);
         let mut rt_world = RtWorld::default();
         let _ = rt_world.get_mut(rt_handle); // 默认单位矩阵
-        let data = PrefabInstanceData {
+        let data = PrefabInstance {
             audio_triggers: vec![AudioTriggerRecord {
                 shape: Aabb3 {
                     min: Vec3::ZERO,
@@ -1062,7 +1092,7 @@ mod tests {
                 handle: Some(audio_handle),
             }],
             rt_meshes: vec![rt_handle],
-            ..PrefabInstanceData::default()
+            ..PrefabInstance::default()
         };
         let t = PrefabTransform {
             translation: Vec3::new(1.0, 1.0, 1.0),

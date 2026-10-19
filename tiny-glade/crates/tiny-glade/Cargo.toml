@@ -34,7 +34,11 @@ bytemuck.workspace = true
 walkdir = "=2.3.2"
 country-core = { workspace = true, features = ["native-physics"] }
 system-roof.workspace = true
+system-tree.workspace = true
+forest.workspace = true
+system-color.workspace = true
 system-wall-constructor.workspace = true
+system-decorator.workspace = true
 system-critters.workspace = true
 rhapsody.workspace = true
 shader-pipeline.workspace = true
@@ -70,6 +74,8 @@ bevy_state = { version = "=0.16.0", default-features = false, features = ["std",
 bevy_input = "=0.16.0"
 egui = "=0.27.2"
 egui-winit.workspace = true
+rfd.workspace = true
+webbrowser.workspace = true
 winit = "0.29"
 zip = "=0.6.6"
 crc32fast = "=1.3.2"
@@ -78,6 +84,9 @@ sentry-types = "=0.31.7"
 
 [dev-dependencies]
 rspirv.workspace = true
+
+[target.'cfg(target_os = "windows")'.dependencies]
+country-core = { workspace = true, features = ["native-audio"] }
 
 # B `icc.rs` 使用 winapi 0.3.9 的 wingdi（original-Cargo.lock）。
 [target.'cfg(windows)'.dependencies]

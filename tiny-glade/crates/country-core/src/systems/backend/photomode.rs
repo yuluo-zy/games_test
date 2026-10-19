@@ -51,6 +51,73 @@ pub fn configure_photomode_visibility(world: &mut World, schedule: &mut Schedule
     schedule.add_systems(update_photomode_visibility);
 }
 
+/// Audio request sampled before this frame's camera commands, matching
+/// @14234b386..3ec. The actual AudioCore consumer runs in the audio phase.
+#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, PartialEq)]
+pub struct PhotoModeAudioParameter(pub f32);
+pub const PHOTOMODE_AUDIO_PARAMETER: &str = "PhotoModeMinusFPV";
+
+/// Camera/lifecycle prefix of toolbar::photomode::do_photomode
+/// @14234b1f7..653, split from the original UI construction for crate ownership.
+/// The complete focus and photo widgets are separate consumers, not omitted
+/// branches hidden behind a substitute do_photomode implementation.
+#[cfg(feature = "native-physics")]
+#[allow(clippy::too_many_arguments)]
+pub fn process_photomode_transitions(
+    mut screen: ResMut<PhotomodeScreen>,
+    mut photo: ResMut<PhotomodeState>,
+    mut camera: ResMut<crate::systems::camera_rig::MainCamera>,
+    mut debug: ResMut<crate::resources::gui::DebugGui>,
+    mut formation: ResMut<crate::resources::image_formation::ImageFormationConfigs>,
+    mut vermeer: ResMut<crate::systems::render_loop::vermeer::VermeerState>,
+    mut modes: bevy_ecs::event::EventReader<crate::systems::mode_manager::AppModeChanged>,
+    mut commands: bevy_ecs::event::EventReader<crate::resources::photo_mode::PhotoModeCmd>,
+    mut focus: bevy_ecs::event::EventWriter<crate::resources::window::WindowFocusEvent>,
+    mut audio: bevy_ecs::event::EventWriter<PhotoModeAudioParameter>,
+    config: Res<crate::game_config::GameConfig>,
+    collision: Res<crate::systems::collision::world::RaycastWorld>,
+    heights: Res<crate::resources::terrain_height::TerrainHeightsData>,
+) {
+    use crate::systems::camera_rig::main_camera::CameraMode;
+    if let Some(event) = modes.read().last() {
+        if event.current == AppMode::Photomode && event.previous != AppMode::Replay {
+            screen.enabled = true;
+            photo.on_enable_photomode(config.dev.demo);
+            debug.camera_mode = photo.camera_mode.into();
+            formation.switch_kind(2);
+            if !photo.free_camera_initialized {
+                camera.match_free_camera_to_normal();
+                photo.free_camera_initialized = true;
+            }
+        }
+        if event.previous == AppMode::Photomode && event.current != AppMode::Replay {
+            debug.camera_mode = CameraMode::NORMAL;
+            formation.switch_kind(1);
+            vermeer.deactivate();
+            screen.enabled = false;
+        }
+    }
+    audio.write(PhotoModeAudioParameter(if screen.enabled && debug.camera_mode != CameraMode::WALK { 1.0 } else { 0.0 }));
+    for command in commands.read() {
+        let Some(mode) = command.camera() else { continue; };
+        if debug.camera_mode == CameraMode::WALK {
+            focus.write(crate::resources::window::WindowFocusEvent(1));
+        } else if mode == crate::resources::photo_mode::PhotoModeCameraMode::Walk {
+            focus.write(crate::resources::window::WindowFocusEvent(0));
+            if !photo.walk_camera_initialized {
+                camera.init_walk_camera(&collision, &heights);
+                photo.walk_camera_initialized = true;
+            }
+        }
+        debug.camera_mode = mode.into();
+        photo.camera_mode = mode;
+    }
+}
+
+pub fn finish_photomode_frame(mut screen: ResMut<PhotomodeScreen>) {
+    screen.finish_frame();
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

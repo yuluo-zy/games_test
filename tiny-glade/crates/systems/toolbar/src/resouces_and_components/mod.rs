@@ -29,13 +29,27 @@ use taffy::node::Taffy;
 /// `{node: Node@+0 (8B), _tail: [u8;12]@+8}`。原 16B `{node, _gap:u64}` 推断作废；
 /// 尾 12B 的字段语义 U（add_toolbar_item spawn 写面观测到 +0x40 qword、
 /// +0x48 qword、+0x50 dword 共 20B）。
-#[derive(Component, Clone, Copy, Debug, Default)]
+#[derive(Component, Clone, Copy, Debug)]
 #[repr(C)]
 pub struct TaffyNode {
     /// taffy 树节点 id（I：B 布局 +0，8B）。
     pub node: taffy::node::Node,
     /// +8..+0x14 尾区（布局 O，字段语义 U）。
     pub _tail: [u8; 12],
+}
+
+impl Default for TaffyNode {
+    /// Node id defaults to the slotmap default; the animation scale at +0x10 is
+    /// initialized to 1.0 (I: native spawn stores the multiplier that
+    /// ui_select_animation multiplies, so a zero would annihilate the widget).
+    fn default() -> Self {
+        let mut value = TaffyNode {
+            node: taffy::node::Node::default(),
+            _tail: [0; 12],
+        };
+        value.set_scale(1.0);
+        value
+    }
 }
 
 const _TAFFY_NODE_SIZE: () = assert!(std::mem::size_of::<TaffyNode>() == 0x14);
@@ -48,8 +62,19 @@ impl TaffyNode {
         taffy.add_child(parent, node).unwrap();
         TaffyNode {
             node,
-            _tail: [0; 12],
+            ..TaffyNode::default()
         }
+    }
+
+    /// One-frame size multiplier at TaffyNode+0x10 (tail bytes 8..12).
+    /// taffy_finalize_element_size reads it as `once` and resets it to 1.0;
+    /// ui_select_animation/ui_locked_animation multiply it in place. O: the
+    /// 0x14-stride write `*(f32*)(dense + idx*0x14 + 0x10)`. Field name U.
+    pub fn scale(&self) -> f32 {
+        f32::from_le_bytes(self._tail[8..12].try_into().unwrap())
+    }
+    pub fn set_scale(&mut self, value: f32) {
+        self._tail[8..12].copy_from_slice(&value.to_le_bytes());
     }
 }
 
@@ -158,16 +183,7 @@ const _UI_MOUSE_INTERACTABLE_SIZE: () =
 /// 本组件自身（非独立 `WidgetByteState`）。原 4B/16B 推断作废；wave3 “stride-4 u32
 /// 写面”是 bevy `&mut` changed-tick 记账（`TicksMut::set_changed`），非业务写面
 /// （Rust `&mut` 自动等价）。
-#[derive(Component, Clone, Copy, Debug, Default)]
-#[repr(C)]
-pub struct UiInteractionState {
-    /// +0 交互状态/appear 符号（ui_animation_state_update：0 → appear 递减符号）。
-    pub state: u8,
-    /// +1 keep 字节（toolbar_button_keep_focus 读/写；ui_animation_state_update 读进入/离开）。
-    pub keep: u8,
-    /// +2 选中标志（switch_*_button 读/写；ui_2d_pass 读 +2 面）。
-    pub selected: u8,
-}
+pub use country_core::components::UiInteractionState;
 
 const _UI_INTERACTION_STATE_SIZE: () =
     assert!(std::mem::size_of::<UiInteractionState>() == 0x3);
@@ -275,6 +291,21 @@ pub struct UiSlider {
 
 const _UI_SLIDER_SIZE: () = assert!(std::mem::size_of::<UiSlider>() == 0x18);
 
+impl UiSlider {
+    /// O: native `ui_slider` reads the widget kind as `*(u8*)(entry+0x10)`.
+    /// The recovered 24-byte component keeps that slot in the typed gap; this
+    /// accessor is the only reader and does not name the remaining fields.
+    pub fn kind(&self) -> u8 {
+        self._gap[0x10]
+    }
+
+    /// Writes the native kind slot (`+0x10`); used by the producer that spawns
+    /// the slider entity.
+    pub fn set_kind(&mut self, kind: u8) {
+        self._gap[0x10] = kind;
+    }
+}
+
 /// 拍照模式按钮（O：`toolbar::resouces_and_components::PhotomodeButton`，**枚举**
 /// `enum2$`；ui_sounds 的 Query 目标 `Query<&PhotomodeButton>`）。
 ///
@@ -342,10 +373,11 @@ const _UI_SLIDER_RESET_SIZE: () = assert!(std::mem::size_of::<UiSliderReset>() =
 pub struct UiPlaySelectAnimation {
     /// +0 参数 A（观测 0.1/0.2）。
     pub a: f32,
-    /// +4 参数 B（观测 0.2）。
+    /// +4 参数 B（duration；观测 0.2）。
     pub b: f32,
-    /// +8 载荷（观测 0；U）。
-    pub _pad_u32: u32,
+    /// +8 progress（O 0x14233c300：`p += dt / b`, clamp01, stored back as f32）。
+    /// The old `_pad_u32` name was wrong: native reads/writes this word as f32.
+    pub progress: f32,
 }
 
 const _UI_PLAY_SELECT_SIZE: () = assert!(std::mem::size_of::<UiPlaySelectAnimation>() == 0xC);
@@ -361,8 +393,8 @@ pub struct UiPlayLockedAnimation {
     pub a: f32,
     /// +4 参数 B（U）。
     pub b: f32,
-    /// +8 载荷（U）。
-    pub _pad_u32: u32,
+    /// +8 progress（O 0x14233c8b0 公式的 p；原 `_pad_u32` 名称作废）。
+    pub progress: f32,
 }
 
 const _UI_PLAY_LOCKED_SIZE: () = assert!(std::mem::size_of::<UiPlayLockedAnimation>() == 0xC);
@@ -584,6 +616,12 @@ impl LogSlider {
         let p = param.clamp(self.min, self.max);
         (p + self.log2_base).exp2()
     }
+    /// O `LogSlider::value_to_param` (inline, 2 instances; host
+    /// ui_slider_reset case 7): inverse of `param_to_value`, i.e.
+    /// `log2(value)` clamped to `[min, max]`.
+    pub fn value_to_param(&self, value: f32) -> f32 {
+        value.log2().clamp(self.min, self.max)
+    }
 }
 
 // ------------------------------------------------------------------
@@ -686,6 +724,23 @@ mod tests {
             ..s
         };
         assert!((s2.param_to_value(2.0) - 8.0).abs() < 1e-6);
+    }
+
+    /// O: value_to_param is log2(value) clamped to the slider range and is the
+    /// inverse of param_to_value where the mapping is representable.
+    #[test]
+    fn value_to_param_inverts_and_clamps() {
+        let s = LogSlider {
+            min: 0.0,
+            max: 4.0,
+            _pad: 0.0,
+            log2_base: 0.0,
+        };
+        assert!((s.value_to_param(4.0) - 2.0).abs() < 1e-6);
+        assert_eq!(s.value_to_param(0.25), 0.0);
+        assert_eq!(s.value_to_param(64.0), 4.0);
+        let param = 2.0;
+        assert!((s.value_to_param(s.param_to_value(param)) - param).abs() < 1e-6);
     }
 
     #[test]

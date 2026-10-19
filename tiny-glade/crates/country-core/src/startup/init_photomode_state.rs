@@ -22,6 +22,16 @@ pub struct PhotomodeState {
     pub show_focus_marker: bool,
 }
 
+/// Original OnEnter(Game) init_photomode_state, inlined in run_unsafe1408397a0.
+/// This is a session reset, distinct from on_enable_photomode's selective reset.
+/// Original demo is process-global; the host supplies the same immutable value.
+pub fn init_photomode_state(
+    mut state: bevy_ecs::prelude::ResMut<PhotomodeState>,
+    config: bevy_ecs::prelude::Res<crate::game_config::GameConfig>,
+) {
+    *state = PhotomodeState::new(config.dev.demo);
+}
+
 impl Default for PhotomodeState {
     fn default() -> Self {
         Self::new(false)

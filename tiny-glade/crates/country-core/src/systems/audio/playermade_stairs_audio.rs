@@ -107,8 +107,7 @@ pub fn stairs_audio_system<S: Studio + Send + Sync + 'static>(
         let position = [event.position.x, event.position.y, event.position.z];
         let kind = event.kind as usize;
         if let Some(loop_index) = kind_to_loop(event.kind) {
-            let current = state.loops[loop_index].current;
-            let _ = state.loops[loop_index].instances[current]
+            let _ = state.loops[loop_index].audio.current_mut()
                 .set_parameter("stair_width", event.values[0]);
             let _ = state.loops[loop_index].frame_end();
             state.loops[loop_index].should_play = true;

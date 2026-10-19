@@ -270,6 +270,25 @@ fn begin(frame: &mut CoreGraphFrame<'_>, world: &mut World) -> rhapsody::Result<
                 .insert(SsboId::of::<RtBvhSsbo>().0.0, storage.instance_count as u32);
         }
     }
+    // The placement draw consumer indexes the exact gameplay library handle
+    // and forwards its stored instance count. Publish this App's actual buffer
+    // owner at every frame, rather than leaving RasterAssets::placement empty.
+    {
+        let mut tables = raster.assets.lock();
+        tables.placement.clear();
+        if let Some(placements) = world.get_resource::<
+            country_core::asset_libraries::placement_data_library::AssetPlacementDataLibrary,
+        >() {
+            for (handle, (storage, count)) in &placements.buffers {
+                hosts.buffers.managed_buffer(&storage.buffer)
+                    .ok_or_else(|| fail("placement buffer does not belong to this App's BufferHost"))?;
+                let count = u32::try_from(*count)
+                    .map_err(|_| fail("placement instance count exceeds native u32"))?;
+                tables.placement.insert(handle.id().raw(),
+                    (country_core::rhapsody_contract::ManagedHandle(storage.buffer.id), count));
+            }
+        }
+    }
     frame
         .shader_backend()
         .set_frame_globals(Arc::new(FrameGlobals { constants, sampled }));

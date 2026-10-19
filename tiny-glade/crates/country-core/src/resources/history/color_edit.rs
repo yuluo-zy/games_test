@@ -43,8 +43,8 @@
 use crate::resources::color_id::ColorId;
 use crate::resources::roofs::roof_shape::FlatRoofStyle;
 use crate::resources::terrain_editing::StrokeId as TerrainStrokeId;
-use crate::resources::walls::decorator::DecoratorId;
 use crate::resources::walls::WallId;
+use crate::resources::walls::decorator::DecoratorId;
 use serde::{Deserializer, Serializer};
 
 /// 颜色编辑目标（原生内存判别 3..=16；`ColorTarget::native_discriminant`）。
@@ -122,11 +122,7 @@ impl ColorTarget {
     /// 内层 id 键：wall 族 `wall_id`、decorator 族 `decorator_id`。
     pub const fn id_key(self) -> &'static str {
         match self {
-            Self::Wall
-            | Self::Gate
-            | Self::Roof
-            | Self::FlatRoof
-            | Self::Halftimber => "wall_id",
+            Self::Wall | Self::Gate | Self::Roof | Self::FlatRoof | Self::Halftimber => "wall_id",
             _ => "decorator_id",
         }
     }
@@ -252,10 +248,7 @@ impl serde::Serialize for ColorEdit {
         use serde::ser::SerializeMap;
         let target = self.target();
         let mut outer = serializer.serialize_map(Some(1))?;
-        outer.serialize_entry(
-            target.key(),
-            &ColorEditInner { edit: self },
-        )?;
+        outer.serialize_entry(target.key(), &ColorEditInner { edit: self })?;
         outer.end()
     }
 }
@@ -283,33 +276,79 @@ impl serde::Serialize for ColorEditInner<'_> {
             }
             ColorEdit::FlatRoof { wall_id, from, to } => {
                 map.serialize_entry("wall_id", &wall_id.0)?;
-                // FlatRoofStyle 在 src 无 serde derive；原生单态
-                // `serialize_entry<_, FlatRoofStyle>` 存在。按其 12B 观察投影
-                // `[u8; 12]`（derive tuple struct → 数组）写 wire（登记 U）。
-                map.serialize_entry("from", from.observed())?;
-                map.serialize_entry("to", to.observed())?;
+                map.serialize_entry("from", from)?;
+                map.serialize_entry("to", to)?;
             }
-            ColorEdit::Decorator { decorator_id, from, to }
-            | ColorEdit::WindowLight { decorator_id, from, to }
-            | ColorEdit::StairLadder { decorator_id, from, to }
-            | ColorEdit::MagicColor { decorator_id, from, to } => {
+            ColorEdit::Decorator {
+                decorator_id,
+                from,
+                to,
+            }
+            | ColorEdit::WindowLight {
+                decorator_id,
+                from,
+                to,
+            }
+            | ColorEdit::StairLadder {
+                decorator_id,
+                from,
+                to,
+            }
+            | ColorEdit::MagicColor {
+                decorator_id,
+                from,
+                to,
+            } => {
                 map.serialize_entry("decorator_id", decorator_id)?;
                 map.serialize_entry("from", from)?;
                 map.serialize_entry("to", to)?;
             }
-            ColorEdit::FlagBunting { decorator_id, from, to }
-            | ColorEdit::ChimneySmoke { decorator_id, from, to } => {
+            ColorEdit::FlagBunting {
+                decorator_id,
+                from,
+                to,
+            }
+            | ColorEdit::ChimneySmoke {
+                decorator_id,
+                from,
+                to,
+            } => {
                 map.serialize_entry("decorator_id", decorator_id)?;
                 map.serialize_entry("from", from)?;
                 map.serialize_entry("to", to)?;
             }
-            ColorEdit::Brightness { decorator_id, from, to } => {
+            ColorEdit::Brightness {
+                decorator_id,
+                from,
+                to,
+            } => {
                 map.serialize_entry("decorator_id", decorator_id)?;
                 map.serialize_entry("from", from)?;
                 map.serialize_entry("to", to)?;
             }
-            ColorEdit::StairRailing { decorator_id, from, to }
-            | ColorEdit::StairSupport { decorator_id, from, to } => {
+            ColorEdit::StairRailing {
+                decorator_id,
+                from,
+                to,
+            } => {
+                let name = |value: u8| -> Result<&str, S::Error> {
+                    match value {
+                        0 => Ok("None"),
+                        1 => Ok("Low"),
+                        2 => Ok("High"),
+                        3 => Ok("Wooden"),
+                        _ => Err(serde::ser::Error::custom("invalid StairRailingType")),
+                    }
+                };
+                map.serialize_entry("decorator_id", decorator_id)?;
+                map.serialize_entry("from", name(*from)?)?;
+                map.serialize_entry("to", name(*to)?)?;
+            }
+            ColorEdit::StairSupport {
+                decorator_id,
+                from,
+                to,
+            } => {
                 map.serialize_entry("decorator_id", decorator_id)?;
                 map.serialize_entry("from", from)?;
                 map.serialize_entry("to", to)?;
@@ -371,67 +410,128 @@ impl<'de> serde::Deserialize<'de> for ColorEdit {
                     serde_json::from_value::<u64>(take(&mut fields, "wall_id")?)
                         .map_err(D::Error::custom)?,
                 );
-                let from = serde_json::from_value(take(&mut fields, "from")?).map_err(D::Error::custom)?;
-                let to = serde_json::from_value(take(&mut fields, "to")?).map_err(D::Error::custom)?;
-                match target {
-                    ColorTarget::Wall => ColorEdit::Wall { wall_id: id, from, to },
-                    ColorTarget::Gate => ColorEdit::Gate { wall_id: id, from, to },
-                    _ => ColorEdit::Roof { wall_id: id, from, to },
-                }
-            }
-            ColorTarget::FlatRoof => {
-                let from_bytes: [u8; 12] =
+                let from =
                     serde_json::from_value(take(&mut fields, "from")?).map_err(D::Error::custom)?;
-                let to_bytes: [u8; 12] =
+                let to =
                     serde_json::from_value(take(&mut fields, "to")?).map_err(D::Error::custom)?;
-                ColorEdit::FlatRoof {
-                    wall_id: WallId(serde_json::from_value::<u64>(take(&mut fields, "wall_id")?)
-                        .map_err(D::Error::custom)?),
-                    from: FlatRoofStyle::from_observed(from_bytes),
-                    to: FlatRoofStyle::from_observed(to_bytes),
+                match target {
+                    ColorTarget::Wall => ColorEdit::Wall {
+                        wall_id: id,
+                        from,
+                        to,
+                    },
+                    ColorTarget::Gate => ColorEdit::Gate {
+                        wall_id: id,
+                        from,
+                        to,
+                    },
+                    _ => ColorEdit::Roof {
+                        wall_id: id,
+                        from,
+                        to,
+                    },
                 }
             }
+            ColorTarget::FlatRoof => ColorEdit::FlatRoof {
+                wall_id: WallId(
+                    serde_json::from_value::<u64>(take(&mut fields, "wall_id")?)
+                        .map_err(D::Error::custom)?,
+                ),
+                from: serde_json::from_value(take(&mut fields, "from")?)
+                    .map_err(D::Error::custom)?,
+                to: serde_json::from_value(take(&mut fields, "to")?).map_err(D::Error::custom)?,
+            },
             ColorTarget::Halftimber => ColorEdit::Halftimber {
-                wall_id: WallId(serde_json::from_value::<u64>(take(&mut fields, "wall_id")?).map_err(D::Error::custom)?),
-                from: serde_json::from_value(take(&mut fields, "from")?).map_err(D::Error::custom)?,
+                wall_id: WallId(
+                    serde_json::from_value::<u64>(take(&mut fields, "wall_id")?)
+                        .map_err(D::Error::custom)?,
+                ),
+                from: serde_json::from_value(take(&mut fields, "from")?)
+                    .map_err(D::Error::custom)?,
                 to: serde_json::from_value(take(&mut fields, "to")?).map_err(D::Error::custom)?,
             },
             ColorTarget::Decorator
             | ColorTarget::WindowLight
             | ColorTarget::StairLadder
             | ColorTarget::MagicColor => {
-                let id = serde_json::from_value(take(&mut fields, "decorator_id")?).map_err(D::Error::custom)?;
-                let from = serde_json::from_value(take(&mut fields, "from")?).map_err(D::Error::custom)?;
-                let to = serde_json::from_value(take(&mut fields, "to")?).map_err(D::Error::custom)?;
+                let id = serde_json::from_value(take(&mut fields, "decorator_id")?)
+                    .map_err(D::Error::custom)?;
+                let from =
+                    serde_json::from_value(take(&mut fields, "from")?).map_err(D::Error::custom)?;
+                let to =
+                    serde_json::from_value(take(&mut fields, "to")?).map_err(D::Error::custom)?;
                 match target {
-                    ColorTarget::Decorator => ColorEdit::Decorator { decorator_id: id, from, to },
-                    ColorTarget::WindowLight => ColorEdit::WindowLight { decorator_id: id, from, to },
-                    ColorTarget::StairLadder => ColorEdit::StairLadder { decorator_id: id, from, to },
-                    _ => ColorEdit::MagicColor { decorator_id: id, from, to },
+                    ColorTarget::Decorator => ColorEdit::Decorator {
+                        decorator_id: id,
+                        from,
+                        to,
+                    },
+                    ColorTarget::WindowLight => ColorEdit::WindowLight {
+                        decorator_id: id,
+                        from,
+                        to,
+                    },
+                    ColorTarget::StairLadder => ColorEdit::StairLadder {
+                        decorator_id: id,
+                        from,
+                        to,
+                    },
+                    _ => ColorEdit::MagicColor {
+                        decorator_id: id,
+                        from,
+                        to,
+                    },
                 }
             }
             ColorTarget::FlagBunting | ColorTarget::ChimneySmoke => {
-                let id = serde_json::from_value(take(&mut fields, "decorator_id")?).map_err(D::Error::custom)?;
-                let from = serde_json::from_value(take(&mut fields, "from")?).map_err(D::Error::custom)?;
-                let to = serde_json::from_value(take(&mut fields, "to")?).map_err(D::Error::custom)?;
+                let id = serde_json::from_value(take(&mut fields, "decorator_id")?)
+                    .map_err(D::Error::custom)?;
+                let from =
+                    serde_json::from_value(take(&mut fields, "from")?).map_err(D::Error::custom)?;
+                let to =
+                    serde_json::from_value(take(&mut fields, "to")?).map_err(D::Error::custom)?;
                 match target {
-                    ColorTarget::FlagBunting => ColorEdit::FlagBunting { decorator_id: id, from, to },
-                    _ => ColorEdit::ChimneySmoke { decorator_id: id, from, to },
+                    ColorTarget::FlagBunting => ColorEdit::FlagBunting {
+                        decorator_id: id,
+                        from,
+                        to,
+                    },
+                    _ => ColorEdit::ChimneySmoke {
+                        decorator_id: id,
+                        from,
+                        to,
+                    },
                 }
             }
             ColorTarget::Brightness => ColorEdit::Brightness {
-                decorator_id: serde_json::from_value(take(&mut fields, "decorator_id")?).map_err(D::Error::custom)?,
-                from: serde_json::from_value(take(&mut fields, "from")?).map_err(D::Error::custom)?,
+                decorator_id: serde_json::from_value(take(&mut fields, "decorator_id")?)
+                    .map_err(D::Error::custom)?,
+                from: serde_json::from_value(take(&mut fields, "from")?)
+                    .map_err(D::Error::custom)?,
                 to: serde_json::from_value(take(&mut fields, "to")?).map_err(D::Error::custom)?,
             },
-            ColorTarget::StairRailing => ColorEdit::StairRailing {
-                decorator_id: serde_json::from_value(take(&mut fields, "decorator_id")?).map_err(D::Error::custom)?,
-                from: serde_json::from_value(take(&mut fields, "from")?).map_err(D::Error::custom)?,
-                to: serde_json::from_value(take(&mut fields, "to")?).map_err(D::Error::custom)?,
-            },
+            ColorTarget::StairRailing => {
+                let railing = |v: serde_json::Value| -> Result<u8, D::Error> {
+                    match v.as_str() {
+                        Some("None") => Ok(0),
+                        Some("Low") => Ok(1),
+                        Some("High") => Ok(2),
+                        Some("Wooden") => Ok(3),
+                        _ => Err(D::Error::custom("invalid StairRailingType")),
+                    }
+                };
+                ColorEdit::StairRailing {
+                    decorator_id: serde_json::from_value(take(&mut fields, "decorator_id")?)
+                        .map_err(D::Error::custom)?,
+                    from: railing(take(&mut fields, "from")?)?,
+                    to: railing(take(&mut fields, "to")?)?,
+                }
+            }
             ColorTarget::StairSupport => ColorEdit::StairSupport {
-                decorator_id: serde_json::from_value(take(&mut fields, "decorator_id")?).map_err(D::Error::custom)?,
-                from: serde_json::from_value(take(&mut fields, "from")?).map_err(D::Error::custom)?,
+                decorator_id: serde_json::from_value(take(&mut fields, "decorator_id")?)
+                    .map_err(D::Error::custom)?,
+                from: serde_json::from_value(take(&mut fields, "from")?)
+                    .map_err(D::Error::custom)?,
                 to: serde_json::from_value(take(&mut fields, "to")?).map_err(D::Error::custom)?,
             },
         };
@@ -469,7 +569,10 @@ mod tests {
         assert_eq!(ColorTarget::Wall.native_discriminant(), 3);
         assert_eq!(ColorTarget::StairSupport.native_discriminant(), 16);
         assert_eq!(ColorTarget::StairSupport.table_index(), 13);
-        assert_eq!(ColorTarget::from_key("DecoratorTerrain"), Some(ColorTarget::Decorator));
+        assert_eq!(
+            ColorTarget::from_key("DecoratorTerrain"),
+            Some(ColorTarget::Decorator)
+        );
     }
 
     #[test]
@@ -483,7 +586,8 @@ mod tests {
             serde_json::to_string(&edit).unwrap(),
             r#"{"Wall":{"wall_id":7,"from":1,"to":2}}"#
         );
-        let back: ColorEdit = serde_json::from_str(r#"{"Wall":{"wall_id":7,"from":1,"to":2}}"#).unwrap();
+        let back: ColorEdit =
+            serde_json::from_str(r#"{"Wall":{"wall_id":7,"from":1,"to":2}}"#).unwrap();
         assert_eq!(back, edit);
     }
 
@@ -493,7 +597,7 @@ mod tests {
             serde_json::json!({"Wall":{"wall_id":1,"from":2,"to":3}}),
             serde_json::json!({"Gate":{"wall_id":1,"from":2,"to":3}}),
             serde_json::json!({"Roof":{"wall_id":1,"from":2,"to":3}}),
-            serde_json::json!({"FlatRoof":{"wall_id":1,"from":[1,1,0,0,0,0,0,0,0,0,0,0],"to":[2,1,0,0,0,0,0,0,0,0,0,0]}}),
+            serde_json::json!({"FlatRoof":{"wall_id":1,"from":"MatchingStoneOnly","to":{"Override":{"material":"Stone","color_id":0,"pattern_id":0}}}}),
             serde_json::json!({"Decorator":{"decorator_id":4,"from":2,"to":3}}),
             serde_json::json!({"WindowLight":{"decorator_id":4,"from":2,"to":3}}),
             serde_json::json!({"Halftimber":{"wall_id":1,"from":2,"to":3}}),
@@ -501,7 +605,7 @@ mod tests {
             serde_json::json!({"Brightness":{"decorator_id":4,"from":0.5,"to":0.75}}),
             serde_json::json!({"ChimneySmoke":{"decorator_id":4,"from":true,"to":true}}),
             serde_json::json!({"StairLadder":{"decorator_id":4,"from":2,"to":3}}),
-            serde_json::json!({"StairRailing":{"decorator_id":4,"from":1,"to":2}}),
+            serde_json::json!({"StairRailing":{"decorator_id":4,"from":"Low","to":"High"}}),
             serde_json::json!({"MagicColor":{"decorator_id":4,"from":2,"to":3}}),
             serde_json::json!({"StairSupport":{"decorator_id":4,"from":1,"to":2}}),
         ];
@@ -517,6 +621,12 @@ mod tests {
         let edit: ColorEdit =
             serde_json::from_str(r#"{"DecoratorTerrain":{"decorator_id":1,"from":2,"to":3}}"#)
                 .unwrap();
-        assert!(matches!(edit, ColorEdit::Decorator { decorator_id: DecoratorId(1), .. }));
+        assert!(matches!(
+            edit,
+            ColorEdit::Decorator {
+                decorator_id: DecoratorId(1),
+                ..
+            }
+        ));
     }
 }

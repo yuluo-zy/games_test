@@ -6,9 +6,9 @@
 //!  EventWriter<DoUiArchControls>)` 与
 //! `(Res<AppMode>, ResMut<InnerWalls>, Res<PublicWalls>, Res<ArchSegments>,
 //!  DecoratorArchivalResources, Local<…>, …)`。
+use bevy_ecs::{event::Event, prelude::*};
 use country_core::resources::walls::{arches::ArchSegments, public_walls::PublicWalls};
 use country_core::systems::{mode_manager::AppMode, ui::resources::ui_state::UiState};
-use bevy_ecs::{event::Event, prelude::*};
 
 /// B `system_wall_constructor::ui_arch_controls::DoUiArchControls`。
 #[derive(Event, Clone, Copy, Debug)]
@@ -31,7 +31,10 @@ pub fn ui_arch_controls(
     if ui.interaction().widget.0 == 0 {
         return;
     }
-    if walls.get(country_core::resources::walls::WallId(wall)).is_none() {
+    if walls
+        .get(country_core::resources::walls::WallId(wall))
+        .is_none()
+    {
         return;
     }
     let _ = &*segments;

@@ -45,11 +45,15 @@ pub struct ChimneyPreviewState {
 
 /// B 0x1407ae2e0（O 结构）：烟囱高度调整主系统。
 #[allow(clippy::too_many_arguments)]
-pub fn ui_change_chimney_height(
+pub fn ui_change_chimney_height<C: Send + Sync + 'static>(
     ui: Res<UiState>,
     mut stream: ResMut<UiSignifierStream>,
     dispatcher: Res<DecoratorAffordanceDispatcher>,
     mut storage: ResMut<DecoratorStorage>,
+    mut archivist: ResMut<
+        country_core::resources::walls::decorator_archivist::DecoratorArchivist<C>,
+    >,
+    events: Res<country_core::resources::walls::decorator::DeferredDecoratorOpEvents>,
     mut interaction: ResMut<MoveDecorationInteractionState>,
     visuals: Res<ChimneyVisuals>,
     mut preview: ResMut<ChimneyPreviewState>,
@@ -69,9 +73,10 @@ pub fn ui_change_chimney_height(
         interaction.reset_interaction();
     }
     let decorator_id = DecoratorId(dispatcher.payload as u32);
-    let Some(info) = lookup_info(&storage, decorator_id) else {
+    let Some((dst, info)) = lookup_info(&storage, decorator_id) else {
         panic!("ui_change_chimney_height: no decorator info (ui_change_chimney_height.rs:40)");
     };
+    let info = *info;
     let visual_pos = visuals.position(decorator_id);
     let phase = if dragged.wrapping_sub(2) < 3 {
         dragged.wrapping_sub(2)
@@ -81,24 +86,25 @@ pub fn ui_change_chimney_height(
     match phase {
         // 释放（O：bVar20∈{2,3} → apply + 推 0x28B 高度 op）。
         2 | 3 => {
-            let dst = info_dst_addr(&storage, info);
             let op = DecoratorOp {
+                // 原生 op 首字段 = 存储地址判别（0/1/2；非 3/4 → change）。
                 kind: match dst {
-                    DecoratorStorageAddr::Wall(w) => w.0,
+                    DecoratorStorageAddr::Wall(_) => 0,
                     DecoratorStorageAddr::Terrain => 1,
                     DecoratorStorageAddr::Stair => 2,
                 },
-                info: *info,
+                info,
                 extra: [0; 0x20],
+                dst: None,
             };
             apply_decorator_op(
                 &op,
                 u8::from(dragged > 1),
                 dst,
                 &mut storage,
-                None::<&mut country_core::resources::walls::decorator_archivist::changes::DecoratorArchivist<()>>,
-                Some(&mut history),
-                &Default::default(),
+                Some(&mut *archivist),
+                Some(&mut *history),
+                &events,
             );
             let ratio = local.ratio.max(0.0).min(1.0);
             let seq = op_queue.seq;
@@ -127,24 +133,10 @@ pub fn ui_change_chimney_height(
 fn lookup_info<'a>(
     storage: &'a DecoratorStorage,
     id: DecoratorId,
-) -> Option<&'a DecoratorInfo> {
+) -> Option<(DecoratorStorageAddr, &'a DecoratorInfo)> {
     let addr = storage.lookup_storage(id)?;
-    storage.get(addr)?.get(id)
-}
-
-/// 目的地址（I：DecoratorInfo 目的 tag → 存储地址；disc {0,1}=wall）。
-fn info_dst_addr(storage: &DecoratorStorage, info: &DecoratorInfo) -> DecoratorStorageAddr {
-    match info.dst_tag() {
-        0 | 1 => DecoratorStorageAddr::Wall(
-            country_core::resources::walls::WallId(info.dst_wall),
-        ),
-        2 => DecoratorStorageAddr::Terrain,
-        3 => DecoratorStorageAddr::Stair,
-        _ => {
-            let _ = storage;
-            DecoratorStorageAddr::Terrain
-        }
-    }
+    let info = storage.get(addr)?.get(id)?;
+    Some((addr, info))
 }
 
 /// 预览高度比例（I：光标高差/参考高度；精确公式 U）。

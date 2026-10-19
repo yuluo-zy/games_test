@@ -12,13 +12,13 @@ use country_core::resources::history::building_transactions::RoofHistoryEdit;
 use country_core::resources::history::building_transactions::RoofVisualHistoryRecord;
 use country_core::resources::history::building_transactions::advance_roof_bucket;
 use country_core::resources::history::transactions::HistoryCursorStep;
-use country_core::systems::wall::height_command::AdjustWallHeightRequest;
 use country_core::resources::history::wall_edit::WallAuthoritySnapshot;
 use country_core::resources::history::wall_edit::WallHistoryEdit;
 use country_core::resources::history::wall_edit::WallHistoryMetadata;
 use country_core::resources::history::wall_edit::WallReplayAudio;
 use country_core::resources::history::wall_edit::WallRestoreColorRequest;
 use country_core::resources::history::wall_edit::record_new_wall;
+use country_core::systems::wall::height_command::AdjustWallHeightRequest;
 use std::collections::VecDeque;
 
 fn supported_wall_edit(edit: &WallHistoryEdit) -> bool {
@@ -29,6 +29,14 @@ fn supported_wall_edit(edit: &WallHistoryEdit) -> bool {
             | WallHistoryEdit::Delete { .. }
             | WallHistoryEdit::AdjustHeight { .. }
             | WallHistoryEdit::EnclosureChange { .. }
+            | WallHistoryEdit::MorphPremadeShape(..)
+            | WallHistoryEdit::ChangeElevation(..)
+            | WallHistoryEdit::ChangeArchHeight(..)
+            | WallHistoryEdit::ChangeArchType(..)
+            | WallHistoryEdit::ChangeFreehandHeightType(..)
+            | WallHistoryEdit::ChangeSupports(..)
+            | WallHistoryEdit::ChangeStyle(..)
+            | WallHistoryEdit::MorphFreehandWall(..)
     )
 }
 #[derive(Resource, Default)]

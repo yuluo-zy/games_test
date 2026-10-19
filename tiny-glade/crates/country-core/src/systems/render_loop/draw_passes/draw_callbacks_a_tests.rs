@@ -425,7 +425,21 @@ fn env2_uniforms_matrix_and_ssbo() {
         scale: Vec3::new(2.0, 3.0, 4.0),
     };
     let mut w = World::new();
-    let e = w.spawn((sheep, prev)).id();
+    let state = crate::resources::critters::sheep::Sheep {
+        behavior_state: 0,
+        goal_timer: 0.0,
+        pet_phase: 0,
+        pet_progress: 0.0,
+        pet_target: 0,
+        move_state: crate::resources::critters::sheep::SheepMoveState::Idle { timeout_s: 0.0 },
+        amplitude: sheep.f58,
+        control_flag: sheep.b60,
+    };
+    let walk = crate::resources::critters::sheep::SheepWalkRecord {
+        frame_index: sheep.q28,
+        ..Default::default()
+    };
+    let e = w.spawn((state, walk, prev)).id();
     let i = read_env2(&w, e);
     assert_eq!(i, Env2In { sheep, prev });
     let mut rig = Rig::new(
@@ -457,7 +471,23 @@ fn env2_uniforms_matrix_and_ssbo() {
 #[test]
 fn env2_callback_requires_both_components() {
     let mut w = World::new();
-    let e = w.spawn(SheepView::default()).id();
+    let e = w
+        .spawn((
+            crate::resources::critters::sheep::Sheep {
+                behavior_state: 0,
+                goal_timer: 0.0,
+                pet_phase: 0,
+                pet_progress: 0.0,
+                pet_target: 0,
+                move_state: crate::resources::critters::sheep::SheepMoveState::Idle {
+                    timeout_s: 0.0,
+                },
+                amplitude: 0.0,
+                control_flag: 0,
+            },
+            crate::resources::critters::sheep::SheepWalkRecord::default(),
+        ))
+        .id();
     assert!(
         run_panics(env2, &mut w, &params(e)).contains(NONE_MSG),
         "缺 PrevTransform → Option::unwrap panic"

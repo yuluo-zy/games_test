@@ -250,6 +250,21 @@ impl<T: SparseSsbo> SparseInstanceBuffer<T> {
         self.writer_for(allocation.chunk_ids())
     }
 
+    /// Resume an existing source owner's tail chunk. Native constructor
+    /// callers choose the allocation's last chunk (or the full sentinel when
+    /// empty); generic `writer` retains its existing sentinel-first contract.
+    /// All allocation, push, clear and batch-replace algorithms stay shared.
+    pub fn append_writer<'a>(
+        &'a mut self,
+        allocation: &'a SparseInstanceBufferAllocation<T>,
+    ) -> SparseInstanceBufferWriter<'a, T> {
+        let mut writer = self.writer(allocation);
+        if let Some(&chunk) = writer.allocation_chunks.last() {
+            writer.current_chunk = chunk;
+        }
+        writer
+    }
+
     /// 防止相同元素类型的两个缓冲误用彼此的 chunk 编号。
     pub fn owns_allocation(&self, allocation: &SparseInstanceBufferAllocation<T>) -> bool {
         Weak::ptr_eq(&allocation.waste, &Arc::downgrade(&self.waste))

@@ -483,11 +483,7 @@ struct SavedRoofShapeParams {
     flat_rim_style: SavedFlatRimStyle,
 }
 
-#[derive(Deserialize)]
-enum SavedFlatRimStyle {
-    Rim,
-    NoRim,
-}
+type SavedFlatRimStyle = FlatRoofRimStyle;
 
 fn saved_ridge_length_default() -> f32 {
     f32::from_bits(0x3ecccccd) // B @0x142925970: 0.4.
@@ -1415,5 +1411,23 @@ mod original_roof_reader_tests {
         .unwrap();
         assert_eq!((at(&legacy.0, 0xc), at(&legacy.0, 0x10)), (8.0, 9.0));
         assert_eq!(at(&legacy.0, 0x18).to_bits(), 0);
+    }
+}
+
+/// Original B GCC/roof wire uses the same two named rim variants.
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum FlatRoofRimStyle {
+    #[default]
+    Rim = 0,
+    NoRim = 1,
+}
+impl FlatRoofRimStyle {
+    pub fn native_tag(self)->u8 { self as u8 }
+}
+impl TryFrom<u8> for FlatRoofRimStyle {
+    type Error=u8;
+    fn try_from(value:u8)->Result<Self,u8> {
+        match value {0=>Ok(Self::Rim),1=>Ok(Self::NoRim),_=>Err(value)}
     }
 }

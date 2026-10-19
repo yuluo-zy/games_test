@@ -38,7 +38,7 @@ use bevy_ecs::prelude::*;
 use country_core::resources::gothic_window_profile::gothic_half_dormer_profile_curve;
 use country_core::resources::walls::decorator_storage::DecoratorStorage;
 use country_core::resources::walls::decorator_subtype::DerivedDecoratorSubtypes;
-use glam::{Quat, Vec2, Vec3};
+use glam::{Vec2, Vec3};
 use utils::comparative_space::ComparativeSpace;
 use utils::curve::{Curve2, Curve3};
 use utils::swizzlers::xvy;
@@ -283,6 +283,9 @@ pub fn get_gothic_hat_bones(
 pub fn generate_gothic_wall_windows(
     decorator_storage: Res<DecoratorStorage>,
     derived: Res<DerivedDecoratorSubtypes>,
+    cached: Res<
+        country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms,
+    >,
     mut blueprints: ResMut<DecoratorBlueprints>,
     mut transient: ResMut<DecoratorTransientVisualState>,
 ) {
@@ -296,11 +299,13 @@ pub fn generate_gothic_wall_windows(
             // O：窗洞（get_window_holes，U）。
             let _holes = get_window_holes(id);
             // O：蓝图 + 视觉实体。
+            let transform = cached.transform(id);
             let mut blueprint = DecoratorBlueprint::new();
             blueprint.set_colliders(vec![d.collision_mesh()]);
             blueprint.set_outline((0.0, 0.0, 0.0));
             blueprints.insert(id, blueprint);
-            let builder = WindowVisualEntityBuilder::new(Vec3::ZERO, Quat::IDENTITY, id);
+            let builder =
+                WindowVisualEntityBuilder::new(transform.translation, transform.rotation, id);
             let _ = &mut transient;
             let _ = &builder;
         }

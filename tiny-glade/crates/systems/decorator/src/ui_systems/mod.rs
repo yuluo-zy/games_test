@@ -85,14 +85,29 @@ pub fn decorator_widget_id(id: DecoratorId) -> u64 {
 }
 
 /// 注册装饰 UI 交互系统（宿主调度组装；阶段归属按原 B 登记 I）。
-pub fn register_ui_systems(app: &mut bevy_app::App) {
+///
+/// `C` 为 `DecoratorArchivist<C>` 的碰撞载荷类型（与原 cull 族同模式）：
+/// `ui_change_stair_height` 的释放相位必须写归档/历史，故为泛型系统。
+pub fn register_ui_resources(app: &mut bevy_app::App) {
     app.init_resource::<DecoratorAffordanceDispatcher>();
     app.init_resource::<MoveDecorationInteractionState>();
     app.init_resource::<crate::backup::DecoratorBackup>();
     app.init_resource::<crate::deferred_decorator_history::DeferredDecoratorEditHistory>();
     app.init_resource::<crate::deferred_decorator_history::DeferredDecoratorOpQueue>();
     app.init_resource::<crate::blueprint::DecoratorBlueprints>();
+    // P0：已注册系统消费但此前从未初始化的资源（Bevy 缺资源会 panic）。
+    app.init_resource::<ui_change_chimney_height::ChimneyVisuals>();
+    app.init_resource::<ui_change_chimney_height::ChimneyPreviewState>();
+    app.init_resource::<ui_move_decorator::MoveDecoratorDeltaPositions>();
+    app.init_resource::<ui_stairs_viz::InsertPointState>();
+    app.init_resource::<ui_place_decorator::PlaceDecoratorInteractionState>();
+    app.init_resource::<ui_place_decorator::TransientDecoratorIdBase>();
     app.add_event::<ui_place_decorator::EvInitPlaceDecoratorInteractionState>();
+}
+
+/// Historical UI registration; startup calls only register_ui_resources.
+pub fn register_ui_systems<C: Send + Sync + 'static>(app: &mut bevy_app::App) {
+    register_ui_resources(app);
     app.add_systems(
         bevy_app::Update,
         (
@@ -106,7 +121,7 @@ pub fn register_ui_systems(app: &mut bevy_app::App) {
         ui_move_decorator::ui_move_decorator,
         ui_place_decorator::ui_place_decorator,
         ui_rotate_lantern::ui_rotate_decorator,
-        ui_change_stair_height::ui_change_stair_height,
-        ui_change_chimney_height::ui_change_chimney_height,
+        ui_change_stair_height::ui_change_stair_height::<C>,
+        ui_change_chimney_height::ui_change_chimney_height::<C>,
     ));
 }

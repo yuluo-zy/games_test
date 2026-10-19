@@ -126,13 +126,16 @@ impl<E: MusicEvent> MusicPlayer<E> {
             glade_theme_flag: 0.0,
         }
     }
-    /// 先创建替代曲库，再停止旧曲目并整体替换，避免部分新曲目污染旧状态。
+    /// Native1408b6b10 releases old owners before creating replacement tracks.
+    /// Stopping playback belongs to the enclosing session transition.
     /// 字符串切片与 String 共用入口，启动常量无需先分配 Vec<String>。
     pub fn load_tracks<B: MusicBackend<Event = E>, P: AsRef<str>>(
         &mut self,
         backend: &B,
         paths: &[P],
     ) {
+        self.tracks.clear();
+        self.track_names.clear();
         let mut tracks = Vec::with_capacity(paths.len());
         let mut track_names = Vec::with_capacity(paths.len());
         for path in paths {
@@ -144,9 +147,6 @@ impl<E: MusicEvent> MusicPlayer<E> {
                     track_names.push(path.to_owned());
                 }
             }
-        }
-        if !self.tracks.is_empty() {
-            self.stop_immediately();
         }
         self.current_track = None;
         self.tracks = tracks;

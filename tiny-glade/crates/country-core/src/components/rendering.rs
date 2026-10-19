@@ -4,6 +4,11 @@
 
 use bevy_ecs::component::Component;
 
+/// B FollowMouse: true follows the camera ray at 45 units; false follows
+/// the actual terrain hit (1408efbaf/1408efcff).
+#[derive(Component, Debug)]
+pub struct FollowMouse(pub bool);
+
 /// 使对象进入半透明绘制路径。
 #[derive(Component, Debug, Default)]
 pub struct SemiTransparent;
@@ -39,3 +44,11 @@ pub struct OverwriteRoughness(pub f32);
 pub struct StairsStep {
     pub flags: u8,
 }
+
+/// Original components::NormalMap: one eight-byte disk-texture name hash.
+#[derive(Component,Debug,PartialEq,Eq)]
+pub struct NormalMap(pub u64);
+
+/// Original zero-sized query filter marker; no independent runtime owner.
+#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default)]
+pub struct MeshFollowTerrain;

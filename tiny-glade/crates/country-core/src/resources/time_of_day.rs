@@ -309,43 +309,35 @@ impl Default for TodSequenceEntry {
 }
 
 impl TodSequence {
-    /// `TodSequence::snapshot_at_tod` @0x140b067d0（O）。
-    ///
-    /// 控制流（fresh）：
-    /// 1. `t = rem_euclid(tod, 1.0)`；`len == 1` → 直接复制唯一 entry；
-    /// 2. `len == 0` → 原生 `panic_bounds_check`；
-    /// 3. `t < key[0]` → 权重钳到 0（等于复制 entry[0]）；
-    /// 4. 否则线性搜索 `key[i] <= t <= key[i+1]`，`u = inverse_lerp(key[i],key[i+1],t)`，
-    ///    钳到 `[0,1]` 后 `entry[i].snapshot.lerp(entry[i+1].snapshot, u)`；
-    /// 5. 搜索不命中（`t > key[last]`）→ 原生 `unwrap_failed` panic。
+    /// B140b067d0/824B: adjacent keys are periodic across midnight.
+    /// Before first, interpolate last.time-1 -> first; after the final pair,
+    /// interpolate last -> first.time+1. A NaN weight copies the left snapshot
+    /// without arithmetic; infinities and finite weights clamp to [0,1].
     pub fn snapshot_at_tod(&self, tod: f32) -> TodLightingSnapshot {
         let entries = &self.entries;
-        let n = entries.len();
-        // 原生 len==0 时先做 entries[0] 的边界检查 panic。
-        assert!(n != 0, "TodSequence::snapshot_at_tod: empty sequence");
+        if entries.len() == 1 {
+            return entries[0].snapshot;
+        }
         let t = tod.rem_euclid(1.0);
-        if n == 1 {
-            return entries[0].snapshot;
+        // Native performs rem_euclid before the empty-vector bounds panic.
+        let first = &entries[0];
+        let last = entries.last().unwrap();
+        let (a, b, lower, upper) = if t < first.time_of_day {
+            (last, first, last.time_of_day - 1.0, first.time_of_day)
+        } else if let Some(pair) = entries.windows(2).find(|pair| {
+            pair[0].time_of_day <= t && t <= pair[1].time_of_day
+        }) {
+            (&pair[0], &pair[1], pair[0].time_of_day, pair[1].time_of_day)
+        } else {
+            (last, first, last.time_of_day, first.time_of_day + 1.0)
+        };
+        let raw = inverse_lerp(lower, upper, t);
+        // Native bit-classifies the raw weight. Only NaN bypasses the lerp:
+        // finite negatives and -inf reach weight0, +inf reaches weight1.
+        if raw.is_nan() {
+            return a.snapshot;
         }
-        if t < entries[0].time_of_day {
-            // 原生 inverse_lerp 权重为 -inf/负 → 下钳 0 → 复制首 entry。
-            return entries[0].snapshot;
-        }
-        let mut i = 1;
-        while i < n {
-            let a = &entries[i - 1];
-            let b = &entries[i];
-            if a.time_of_day <= t && t <= b.time_of_day {
-                let raw = inverse_lerp(a.time_of_day, b.time_of_day, t);
-                // 原生：max(0,u) 后 `if <= 1.0` 才采用，否则保持初始权重 1.0。
-                let lower = if 0.0 <= raw { raw } else { 0.0 };
-                let u = if lower <= 1.0 { lower } else { 1.0 };
-                return a.snapshot.lerp(&b.snapshot, u);
-            }
-            i += 1;
-        }
-        // 原生在序列末尾之外 `Option::unwrap` 失败。
-        panic!("TodSequence::snapshot_at_tod: time_of_day past last keyframe");
+        a.snapshot.lerp(&b.snapshot, raw.clamp(0.0, 1.0))
     }
 }
 

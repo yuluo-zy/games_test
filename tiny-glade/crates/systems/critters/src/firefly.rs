@@ -13,15 +13,15 @@
 //!   `FireflySsbo`，96 上限）。
 
 use bevy_ecs::prelude::*;
-use country_core::resources::time::GameTime;
 use country_core::render::ssbo::StorageElement;
+use country_core::resources::time::GameTime;
 use country_core::systems::render_loop::resources::critters::FireflySsbo;
 use glam::Vec3;
 use perchance::PerchanceContext;
 
 use crate::components::{
     CritterControlState, CritterGoal, CritterVelocityMultiplier, CritterVelocityTarget, Firefly,
-    Sheep, Transform, Velocity,
+    Transform, Velocity,
 };
 use crate::duck::CritterRng;
 use crate::sample::uniform_sample_sphere;
@@ -31,7 +31,7 @@ pub fn update_firefly_goals(
     time: Res<GameTime>,
     control: Res<CritterControlState>,
     rng: Res<CritterRng>,
-    mut query: Query<(&Transform, &mut Firefly, &Velocity, &mut CritterGoal, &Sheep)>,
+    mut query: Query<(&Transform, &mut Firefly, &Velocity, &mut CritterGoal)>,
 ) {
     // control 门（O）：`*res + 4 != 1 → return`（不消费 RNG）。
     if !control.enabled {
@@ -39,10 +39,14 @@ pub fn update_firefly_goals(
     }
     let dt = time.delta;
     let mut rng_ctx = rng.0.lock().unwrap();
-    for (transform, mut firefly, velocity, mut goal, _sheep) in &mut query {
+    for (transform, mut firefly, velocity, mut goal) in &mut query {
         let pos = transform.translation;
         // CritterGoal 桥接（country-core {position,goal_tag}，DIVERGE 见 shared.rs 头）。
-        let mut goal_opt = if goal.goal_tag != 0 { Some(goal.position) } else { None };
+        let mut goal_opt = if goal.goal_tag != 0 {
+            Some(goal.position)
+        } else {
+            None
+        };
         update_firefly_goal_core(
             &mut firefly.goal_timer,
             &mut goal_opt,
@@ -108,17 +112,17 @@ pub fn update_firefly_goal_core(
 }
 
 /// set_firefly_velocities_towards_goals（0x142317040）。
-/// 查询（O）：`(Transform, Sheep, CritterGoal, VelocityTarget, Multiplier)`。
+/// Original PDB: `(Transform, Firefly, CritterGoal, VelocityTarget, Multiplier)`.
 pub fn set_firefly_velocities_towards_goals(
     mut query: Query<(
         &Transform,
-        &Sheep,
+        &Firefly,
         &CritterGoal,
         &mut CritterVelocityTarget,
         &mut CritterVelocityMultiplier,
     )>,
 ) {
-    for (transform, _sheep, goal, mut target, mut multiplier) in &mut query {
+    for (transform, _firefly, goal, mut target, mut multiplier) in &mut query {
         let pos = transform.translation;
         // CritterGoal 桥接：goal_tag!=0 → goal.position；否则零方向。
         let d = if goal.goal_tag != 0 {
@@ -134,18 +138,26 @@ pub fn set_firefly_velocities_towards_goals(
     }
 }
 
-/// fireflies_send_to_gpu（0x142316760）：CPU 侧把萤火虫实例投影为 `FireflySsbo`
-/// （96 上限，O core render_loop 合同）；缓冲上传由宿主接线（GPU 后置）。
+/// Original full population projection, count validation, and mapped SSBO write.
 pub fn fireflies_send_to_gpu(
-    mut out: ResMut<FireflyGpuData>,
+    mut buffers: ResMut<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>,
     query: Query<(&Transform, &Firefly)>,
 ) {
-    out.instances.clear();
-    for (transform, _firefly) in &query {
-        if out.instances.len() >= FireflySsbo::BUFFER_LEN {
-            break;
-        }
-        out.instances.push(FireflySsbo::from_translation(transform.translation));
+    let instances: Vec<FireflySsbo> = query
+        .iter()
+        .map(|(transform, _firefly)| FireflySsbo::from_translation(transform.translation))
+        .collect();
+    if instances.is_empty() {
+        return;
+    }
+    // Original author asserts the complete fixed population before looking up its SSBO.
+    assert_eq!(
+        instances.len(),
+        96,
+        "Unexpected firefly population for GPU upload"
+    );
+    if let Some(buffer) = buffers.get_mut::<FireflySsbo>() {
+        buffer.cpu_write(&instances);
     }
 }
 

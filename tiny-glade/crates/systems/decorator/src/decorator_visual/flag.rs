@@ -3,19 +3,25 @@
 //! 证据：fresh RE-MCP 反编译 0x1407ff6c0（generate_flags）+ 常量 rne-read +
 //! 骨架 callees（O）。
 //!
-//! 机器码业务（O）：逐墙 modified 装饰 → CachedDecoratorTransforms::transform
-//! （0x140a1aa20）→ DerivedDecoratorInfo::subtype（0x140b26970）→ **子类型判别**：
-//! `subtype-0xd < 2` → 旗（墙旗/屋旗，0xd/0xe）；subtype == 0xf → 旗连接分支
-//! （flag_connections 消费，见 0x1407df470）；其余走 fmt panic
-//! （UNK_142a8d440 "flag.rs" 源文件）。旗分支 → DecoratorBlueprints::insert
-//! （0x1408258b0）后**蓝图值写**：`{1, 0, pos_hi, pos_lo, pos, pos,
-//! cloth_basis Vec2{0.5,-0.7071}, Vec2{0.7071,0.5}}`（+0x00 起，O 写面）。
-//! 随后 DecoratorLibKey::new（0x140b25c90）+ 网格库查询（0x1411f7dc0）逐条目
-//! 构建碰撞/实体；旗布几何 = 四元数 {0.5,-0.7071,0.7071,0.5} 与
-//! 0x142a88840..0x8c 常量矩阵的旋转合成（O 数学链，语义：旗布四角）。
+//! 机器码业务（O）：
+//! - 逐墙 modified 装饰 → `CachedDecoratorTransforms::transform`（0x140a1aa20）→
+//!   `DerivedDecoratorInfo::subtype`（0x140b26970）；
+//! - **子类型判别**（0x1407ff6c0 行 483-517）：
+//!   `subtype - 0xb <= 1`（0xb/0xc）→ 不产出；
+//!   `subtype - 0xd < 2`（0xd/0xe）→ 旗分支；
+//!   `subtype == 0xf` → 旗连接分支（flag_connections 消费）；
+//!   其余 → fmt panic（UNK_142a8d440 源路径 `flag.rs`）；
+//! - 旗分支 → `DecoratorBlueprints::insert`（0x1408258b0）后**蓝图值写**：
+//!   `+0x00 = {1, 0}`；`+0x10..+0x1c = cloth 基四元数`（常量
+//!   0x142a887e0..0xec = `{-0.0, -0.70710677, -0.0, +0.70710677}`，经
+//!   rne-read 复核，是绕 Y 轴 -90° 的四元数，**不是**旧注释的
+//!   `{0.5,-0.7071,0.7071,0.5}`）；`+0x20/+0x28/+0x30/+0x38` 为变换/附加槽；
+//! - 随后 `DecoratorLibKey::new`（0x140b25c90）+ 网格库查询（0x1411f7dc0）
+//!   逐条目构建碰撞/实体；旗布几何 = 该四元数与常量表 0x142a88840
+//!   （`0.48`、`0.08` 等）的旋转/下垂合成（O 数学链，槽位语义 U）。
 //!
-//! U 登记：① 蓝图 +0x18 之后字段（4/5/6/7 槽）语义 ② 网格条目碰撞/实体装配
-//! 细节 ③ 参数排序 SystemParam 映射。
+//! U 登记：① 蓝图 +0x20..+0x40 槽位语义；② 网格条目碰撞/实体装配细节；
+//! ③ 旗布四角局部偏移的精确映射（本实现仅落地可复核的四元数/下垂常量）。
 
 use bevy_ecs::prelude::*;
 use country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms;
@@ -29,15 +35,77 @@ use crate::blueprint::DecoratorBlueprints;
 use crate::decorator_visual_state::DecoratorTransientVisualState;
 use crate::utils::visual_entity_builder::WindowVisualEntityBuilder;
 
-/// 墙旗子类型（O：subtype-0xd<2 判别族的 0xd 侧；墙旗/屋旗的精确配对 U）。
-const FLAG_WALL_SUBTYPE: u8 = 0x0d;
+/// 子类型下界（O：`subtype-0xb <= 1` 的 0xb 侧）。
+const FLAG_SUBTYPE_LOW: u8 = 0x0b;
+/// 墙旗子类型（O：`subtype-0xd < 2` 的 0xd 侧）。
+pub const FLAG_WALL_SUBTYPE: u8 = 0x0d;
 /// 屋旗子类型（O 判别族 0xe 侧）。
-const FLAG_ROOF_SUBTYPE: u8 = 0x0e;
+pub const FLAG_ROOF_SUBTYPE: u8 = 0x0e;
 /// 旗连接子类型（O：subtype == 0xf → flag_connections 分支）。
-const FLAG_CONNECTIONS_SUBTYPE: u8 = 0x0f;
+pub const FLAG_CONNECTIONS_SUBTYPE: u8 = 0x0f;
+/// 旗布基四元数（O：0x142a887e0..0xec = {-0.0,-0.70710677,-0.0,0.70710677}）。
+pub const FLAG_CLOTH_QUAT_XYZW: [f32; 4] = [-0.0, -0.707_106_77, -0.0, 0.707_106_77];
+/// 旗布半宽（O：0x142a88848/0x142a88850 = 0.48）。
+pub const FLAG_CLOTH_HALF_WIDTH: f32 = 0.48;
+/// 旗布下垂系数（O：0x142a88890/0x142a88894 = 0.08）。
+pub const FLAG_CLOTH_SAG: f32 = 0.08;
 
-/// 旗布基（O：蓝图 +0x10 写面 {0.5,-0.7071,0.7071,0.5} = 四元数四分量）。
-const CLOTH_BASIS: [f32; 4] = [0.5, -0.70710677, 0.70710677, 0.5];
+/// 旗子类型分类（O：0x1407ff6c0 行 483-517）。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FlagSubtype {
+    /// 0xb/0xc：本函数不产出（`subtype-0xb <= 1` 提前跳过）。
+    HandledElsewhere,
+    /// 0xd/0xe：旗。
+    Flag,
+    /// 0xf：旗连接。
+    Connections,
+}
+
+/// 分类子类型；越界值返回 None（调用方保持原 fmt panic）。
+pub fn classify_flag_subtype(subtype: u8) -> Option<FlagSubtype> {
+    if subtype.wrapping_sub(FLAG_SUBTYPE_LOW) <= 1 {
+        Some(FlagSubtype::HandledElsewhere)
+    } else if subtype.wrapping_sub(FLAG_WALL_SUBTYPE) < 2 {
+        Some(FlagSubtype::Flag)
+    } else if subtype == FLAG_CONNECTIONS_SUBTYPE {
+        Some(FlagSubtype::Connections)
+    } else {
+        None
+    }
+}
+
+/// 旗布基四元数（O 常量）。
+pub fn flag_cloth_quat() -> Quat {
+    Quat::from_xyzw(
+        FLAG_CLOTH_QUAT_XYZW[0],
+        FLAG_CLOTH_QUAT_XYZW[1],
+        FLAG_CLOTH_QUAT_XYZW[2],
+        FLAG_CLOTH_QUAT_XYZW[3],
+    )
+}
+
+/// 旗布四角（O 结构 + U：局部偏移精确映射）。
+///
+/// 以基四元数旋转本地方向，XZ 半宽 0.48，并按 0.08 系数下垂（常量
+/// 0x142a88848/0x142a88890）。角点局部偏移的精确槽位语义 U。
+pub fn flag_cloth_corners(origin: Vec3, rotation: Quat) -> [Vec3; 4] {
+    let q = rotation * flag_cloth_quat();
+    let half = FLAG_CLOTH_HALF_WIDTH;
+    let local = [
+        Vec3::new(-half, 0.0, 0.0),
+        Vec3::new(half, 0.0, 0.0),
+        Vec3::new(-half, 0.0, 2.0 * half),
+        Vec3::new(half, 0.0, 2.0 * half),
+    ];
+    let mut out = [Vec3::ZERO; 4];
+    for (i, p) in local.iter().enumerate() {
+        let mut r = origin + q * *p;
+        // 下垂：布角低于原点（相对半宽的比例，常量 0.08）。
+        r.y -= FLAG_CLOTH_SAG * half * 2.0;
+        out[i] = r;
+    }
+    out
+}
 
 /// 0x1407ff6c0（O）：生成旗装饰视觉。
 pub fn generate_flags(
@@ -48,56 +116,103 @@ pub fn generate_flags(
     mut blueprints: ResMut<DecoratorBlueprints>,
     mut transient: ResMut<DecoratorTransientVisualState>,
 ) {
-    for (wall, decorators) in decorator_storage.iter_walls() {
-        for (_id, info) in decorators.iter_modified() {
-            let transform = cached_transforms.transform(info.decorator_id);
-            let derived = derived_subtypes.get(info.decorator_id);
+    for (_wall, decorators) in decorator_storage.iter_walls() {
+        for (id, _info) in decorators.iter_modified() {
+            let transform = cached_transforms.transform(id);
+            let derived = derived_subtypes.get(id);
             let subtype = derived.subtype().0;
-            // O 判别：subtype-0xd<2 → 旗；==0xf → 连接旗（flag_connections）；
-            // 其余 → 原 fmt panic（flag.rs 源）。
-            if subtype.wrapping_sub(FLAG_WALL_SUBTYPE) < 2 {
-                // O 蓝图写面：{kind=1, 0, pos, pos, pos, cloth_basis}。
-                let mut blueprint = crate::blueprint::DecoratorBlueprint::new();
-                blueprint.u50 = 1;
-                blueprint.flag_cloth_basis = CLOTH_BASIS;
-                blueprint.transform = Some(transform);
-                blueprints.insert(info.decorator_id, blueprint);
-                // O：网格库查询（DecoratorLibKey::new + 查询链）→ 逐条目构建。
-                let key = DecoratorLibKey::new(subtype, 0);
-                if let Some(collision) = mesh_lib.collision_mesh(key) {
-                    let b = blueprints.get_mut(info.decorator_id).unwrap();
-                    b.set_colliders(vec![collision]);
-                }
-                // 旗布几何（O 数学链）：四元数 CLOTH_BASIS 旋转合成 + 常量矩阵
-                // 0x142a88840..0x8c（U：精确装配语义）。
-                let pos = transform_pos(&transform);
-                let builder = WindowVisualEntityBuilder::new(pos, Quat::IDENTITY, info.decorator_id);
-                match subtype {
-                    FLAG_WALL_SUBTYPE => {
-                        let _ = builder;
+            match classify_flag_subtype(subtype) {
+                Some(FlagSubtype::HandledElsewhere) => continue,
+                Some(FlagSubtype::Connections) => continue,
+                Some(FlagSubtype::Flag) => {
+                    // O 蓝图写面：`+0x00 = {1, 0}`，`+0x10.. = cloth 基四元数`，
+                    // 变换槽由缓存变换承载。
+                    let mut blueprint = crate::blueprint::DecoratorBlueprint::new();
+                    blueprint.u50 = 1;
+                    blueprint.flag_cloth_basis = FLAG_CLOTH_QUAT_XYZW;
+                    blueprint.transform = Some(transform);
+                    // O：网格库查询（DecoratorLibKey::new + 查询链）→ 逐条目构建。
+                    let key = DecoratorLibKey::new(subtype, 0);
+                    if let Some(collision) = mesh_lib.collision_mesh(key) {
+                        blueprint.set_colliders(vec![collision]);
                     }
-                    FLAG_ROOF_SUBTYPE => {
-                        let _ = builder;
+                    blueprints.insert(id, blueprint);
+                    // O：旗布几何（四元数 + 0.48/0.08 常量）。
+                    let pos = transform.translation;
+                    let corners = flag_cloth_corners(pos, transform.rotation);
+                    let _ = corners;
+                    // O：视觉实体 builder（沿用 id/位置；mesh 名静态表 U）。
+                    let mut builder =
+                        WindowVisualEntityBuilder::new(pos, transform.rotation, id);
+                    match subtype {
+                        FLAG_WALL_SUBTYPE => {
+                            builder.flag_wall_cloth();
+                        }
+                        FLAG_ROOF_SUBTYPE => {
+                            builder.flag_roof_cloth();
+                        }
+                        _ => {}
                     }
-                    _ => {}
+                    let _ = &mut transient;
                 }
-                // U：实体落瞬态表（build 反编译缺失；D1 以 builder 记录承载）。
-                let _ = &mut transient;
-            } else if subtype == FLAG_CONNECTIONS_SUBTYPE {
-                // 旗连接由 flag_connections 处理（O 分支）；本函数跳过。
-                continue;
-            } else {
-                // 原 fmt panic（UNK_142a8d440 = flag.rs 源路径）。保持 panic 语义。
-                panic!("generate_flags: unexpected decorator subtype {}", subtype);
+                None => {
+                    // 原 fmt panic（UNK_142a8d440 = flag.rs 源路径）。保持 panic 语义。
+                    panic!("generate_flags: unexpected decorator subtype {}", subtype);
+                }
             }
-            let _ = wall;
         }
     }
 }
 
-/// U：缓存变换 → 位置（CachedDecoratorTransform 布局待取证）。
-fn transform_pos(
-    _t: &country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransform,
-) -> Vec3 {
-    Vec3::ZERO
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn subtype_classification_matches_decomp() {
+        assert_eq!(
+            classify_flag_subtype(0x0b),
+            Some(FlagSubtype::HandledElsewhere)
+        );
+        assert_eq!(
+            classify_flag_subtype(0x0c),
+            Some(FlagSubtype::HandledElsewhere)
+        );
+        assert_eq!(classify_flag_subtype(0x0d), Some(FlagSubtype::Flag));
+        assert_eq!(classify_flag_subtype(0x0e), Some(FlagSubtype::Flag));
+        assert_eq!(
+            classify_flag_subtype(0x0f),
+            Some(FlagSubtype::Connections)
+        );
+        assert_eq!(classify_flag_subtype(0x10), None);
+        assert_eq!(classify_flag_subtype(0x0a), None);
+    }
+
+    #[test]
+    fn cloth_quat_is_unit_and_rotates_y() {
+        let q = flag_cloth_quat();
+        assert!((q.length() - 1.0).abs() < 1e-6);
+        // 绕 Y -90°：+X → +Z? 以结果正交/长度验证，具体轴向由常量锚定。
+        let v = q * Vec3::X;
+        assert!((v.length() - 1.0).abs() < 1e-5);
+        assert!(v.y.abs() < 1e-6);
+    }
+
+    #[test]
+    fn cloth_corners_are_distinct_and_below_origin() {
+        let c = flag_cloth_corners(Vec3::new(1.0, 2.0, 3.0), Quat::IDENTITY);
+        assert!(c.iter().all(|p| p.y < 2.0));
+        assert_ne!(c[0], c[1]);
+        // 半宽 0.48*2 = 0.96 的横向跨度在某个轴上体现。
+        assert!(c.iter().any(|p| (p - c[0]).length() > 0.5));
+    }
+
+    #[test]
+    fn cloth_quat_constant_layout() {
+        // O 常量：x=-0.0, y=-0.70710677, z=-0.0, w=+0.70710677。
+        assert_eq!(FLAG_CLOTH_QUAT_XYZW[0], 0.0);
+        assert!((FLAG_CLOTH_QUAT_XYZW[1] + std::f32::consts::FRAC_1_SQRT_2).abs() < 1e-6);
+        assert_eq!(FLAG_CLOTH_QUAT_XYZW[2], 0.0);
+        assert!((FLAG_CLOTH_QUAT_XYZW[3] - std::f32::consts::FRAC_1_SQRT_2).abs() < 1e-6);
+    }
 }

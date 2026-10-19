@@ -36,7 +36,6 @@
 
 use bevy_ecs::prelude::*;
 use bevy_ecs::resource::Resource;
-use fastrand::Rng;
 
 use country_core::resources::session::ActiveSession;
 use country_core::resources::time::GameTime;
@@ -98,6 +97,16 @@ pub fn time_continuous_lerp(a: f32, b: f32, bits: u32, rate: f32) -> f32 {
     (b - a) * (1.0 - f) + a
 }
 
+/// 开灯判定（O：`lower <= t && t < 0.72`；lower = olden ? 0.44 : 0.51）。
+pub fn lights_on(t: f32, olden: bool) -> bool {
+    let lower = if olden {
+        LOWER_BOUND_OLDEN
+    } else {
+        LOWER_BOUND_NORMAL
+    };
+    lower <= t && t < UPPER_BOUND
+}
+
 /// `window_lights`（0x1407b5980，O 结构 + 部分判等）。
 ///
 /// 1. 开灯判定（deny_load 门控下界 0.51/0.44，上界 0.72）——判等；
@@ -112,21 +121,18 @@ pub fn window_lights(
     time: Res<GameTime>,
 ) {
     let olden = session.is_olden();
-    let lower = if olden {
-        LOWER_BOUND_OLDEN
-    } else {
-        LOWER_BOUND_NORMAL
-    };
     // 开灯判定（O：`lower <= t && t < 0.72`；写控制字节 +0x30）。
     let t = control.cycle_t;
-    let lights_on = lower <= t && t < UPPER_BOUND;
+    let lights_on = lights_on(t, olden);
     control.lights_on = lights_on;
 
     // 灯态变化（O，逐条目）：target != lights_on → 随机重计时 + 更新 target。
-    let rng = Rng::with_seed(rng_seed());
+    // 原版直接调用全局 `fastrand::Rng::f32()`（decomp 行 287），**没有**
+    // `init_rng`/`rng_seed` 函数；旧实现以固定 seed 0 构造本地 Rng 与二进制
+    // 不符（CONTRACT §2.4 #62）。
     for state in control.lights.values_mut() {
         if state.target_on != lights_on as u8 {
-            state.timer = 2.0 * rng.f32();
+            state.timer = 2.0 * fastrand::f32();
             state.target_on = lights_on as u8;
         }
     }
@@ -153,7 +159,27 @@ pub fn window_lights(
     }
 }
 
-/// rng 种子（U：原 fastrand::init_rng 种子来源；以 t 位模式承载，登记）。
-fn rng_seed() -> u64 {
-    0
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn lights_on_uses_normal_and_olden_lower_bounds() {
+        // O：normal 下界 0.51、olden 下界 0.44、上界 0.72（strict）。
+        assert!(!lights_on(0.5099, false));
+        assert!(lights_on(0.51, false));
+        assert!(lights_on(0.7199, true));
+        assert!(!lights_on(0.72, true));
+        assert!(lights_on(0.44, true));
+        assert!(!lights_on(0.4399, true));
+        assert!(!lights_on(0.44, false), "0.44 olden-only lower bound");
+    }
+
+    #[test]
+    fn window_light_default_is_off() {
+        let s = WindowLightState::default();
+        assert_eq!(s.actual_on, 0);
+        assert_eq!(s.target_on, 0);
+        assert_eq!(s.brightness, 0.0);
+    }
 }

@@ -26,6 +26,7 @@ use country_core::systems::ui::resources::widget_params::{
 
 use crate::resouces_and_components::{
     HistoryButton, TaffyNode, UiAnimationState, UiInteractionState, UiMouseInteractable, UiNav,
+    UiPlayLockedAnimation, UiPlaySelectAnimation,
 };
 
 /// B 0x14233e960: hide only UiMouseInteractable entities by zeroing size.
@@ -83,6 +84,49 @@ mod native_debug_hide_tests {
             Vec2::new(5.0, 7.0)
         );
         assert_eq!(world.get::<Ui2dExtent>(ordinary).unwrap().size, Vec2::ONE);
+    }
+
+    /// O 0x14233c300: pulse formula, progress clamp and completion removal.
+    #[test]
+    fn select_animation_pulses_scale_then_removes_component() {
+        use crate::resouces_and_components::{TaffyNode, UiPlaySelectAnimation};
+        use bevy_ecs::prelude::World;
+        use std::time::Duration;
+
+        let mut world = World::new();
+        world.insert_resource(Time::<()>::default());
+        world
+            .resource_mut::<Time>()
+            .advance_by(Duration::from_secs_f32(0.1));
+        let entity = world
+            .spawn((
+                TaffyNode::default(),
+                UiPlaySelectAnimation {
+                    a: 0.2,
+                    b: 0.2,
+                    progress: 0.0,
+                },
+            ))
+            .id();
+        let mut schedule = Schedule::default();
+        schedule.add_systems(ui_select_animation);
+        schedule.run(&mut world);
+        let animation = *world.get::<UiPlaySelectAnimation>(entity).unwrap();
+        assert_eq!(animation.progress, 0.5);
+        let pulse = ((1.0 - 0.5) * 0.1 + 0.5) * 4.0 * (1.0 - 0.5);
+        let scale = world.get::<TaffyNode>(entity).unwrap().scale();
+        assert!((scale - (pulse * pulse * 0.2 + 1.0)).abs() < 1e-6);
+        // Second step clamps at 1.0 (pulse 0) and the command removes it.
+        schedule.run(&mut world);
+        world.flush();
+        assert!(world.get::<UiPlaySelectAnimation>(entity).is_none());
+    }
+
+    /// O: sinc is sin(x)/x with sinc(0) = 1.
+    #[test]
+    fn sinc_has_removable_singularity() {
+        assert_eq!(sinc(0.0), 1.0);
+        assert!((sinc(1.0) - 1.0f32.sin()).abs() < 1e-6);
     }
 }
 
@@ -150,6 +194,69 @@ pub fn ui_animation_state_update(
         // appear：`+= 4·dt·sign`，sign = interaction+0（`==0` → -1 否则 +1）。
         let sign = if interaction.state == 0 { -1.0 } else { 1.0 };
         anim.appear = (anim.appear + 4.0 * dt * sign).clamp(0.0, 1.0);
+    }
+}
+
+/// O `sinc` (inline, 2 instances; host ui_locked_animation): `sin(x) / x`,
+/// with the removable singularity at 0 returning 1.
+pub fn sinc(x: f32) -> f32 {
+    if x == 0.0 {
+        1.0
+    } else {
+        x.sin() / x
+    }
+}
+
+/// O 0x14233c300 `ui_select_animation` (fresh decompile
+/// `evidence/core-recovery-20261015/gui/0x14233c300.c`):
+/// - `p = clamp01(p + dt / b)` stored back at component +8;
+/// - `pulse = ((1 - p) * 0.1 + p) * 4 * (1 - p)`;
+/// - `scale *= pulse * pulse * a + 1` at TaffyNode+0x10;
+/// - `p == 1` removes the component through the entity command queue.
+///
+/// Parameter A is the pop amplitude and B the duration
+/// (`UiPlaySelectAnimation{0.1/0.2, 0.2}` at the original producers).
+pub fn ui_select_animation(
+    time: Res<Time>,
+    mut query: Query<(Entity, &mut TaffyNode, &mut UiPlaySelectAnimation)>,
+    mut commands: Commands,
+) {
+    let dt = time.delta_secs();
+    for (entity, mut taffy, mut animation) in &mut query {
+        let progress = (animation.progress + dt / animation.b).clamp(0.0, 1.0);
+        animation.progress = progress;
+        let pulse = ((1.0 - progress) * 0.1 + progress) * 4.0 * (1.0 - progress);
+        let scale = (pulse * pulse * animation.a + 1.0) * taffy.scale();
+        taffy.set_scale(scale);
+        if progress == 1.0 {
+            commands.entity(entity).remove::<UiPlaySelectAnimation>();
+        }
+    }
+}
+
+/// O 0x14233c8b0 `ui_locked_animation`:
+/// - `p = clamp01(p + dt / b)` stored at component +8;
+/// - `x = (p * 5 - 1) * PI`, `amp = sinc(x)`;
+/// - `scale *= amp * a + 1`; `p == 1` removes the component.
+///
+/// The native "hit interaction inserts a select animation" tail is not
+/// recovered (U; see ANALYSIS-B §11.9), so no extra insert is fabricated.
+pub fn ui_locked_animation(
+    time: Res<Time>,
+    mut query: Query<(Entity, &mut TaffyNode, &mut UiPlayLockedAnimation)>,
+    mut commands: Commands,
+) {
+    let dt = time.delta_secs();
+    for (entity, mut taffy, mut animation) in &mut query {
+        let progress = (animation.progress + dt / animation.b).clamp(0.0, 1.0);
+        animation.progress = progress;
+        let x = (progress * 5.0 - 1.0) * std::f32::consts::PI;
+        let amplitude = sinc(x);
+        let scale = (amplitude * animation.a + 1.0) * taffy.scale();
+        taffy.set_scale(scale);
+        if progress == 1.0 {
+            commands.entity(entity).remove::<UiPlayLockedAnimation>();
+        }
     }
 }
 
@@ -330,7 +437,7 @@ pub fn render_taffy_ui_to_widgets(
                     crate::resouces_and_components::UiPlaySelectAnimation {
                         a: 0.2,
                         b: 0.2,
-                        _pad_u32: 0,
+                        progress: 0.,
                     },
                 );
             }
@@ -345,20 +452,22 @@ pub fn render_taffy_ui_to_widgets(
                 // O L539-555：分配 0x20 B 载荷 `{1u64, 1u64, cursor(Vec2),
                 // f32 = config_scale * 60.0}` → `SignifierFactory::new` →
                 // `UiSignifierStream::write`。
-                // **未实现（分歧）**：`SignifierFactory::new(payload, inner,
-                // marker)` 的 inner/marker（闭包胖指针）未在反编译中展开；
-                // 载荷本身已判等（{1,1,cursor_bits,f32}），不伪造闭包。
-                let _payload = {
-                    let cursor_bits = cursor.0;
-                    let mut payload = [0u8; 0x20];
-                    payload[0..8].copy_from_slice(&1u64.to_le_bytes());
-                    payload[8..16].copy_from_slice(&1u64.to_le_bytes());
-                    payload[16..20].copy_from_slice(&cursor_bits.x.to_le_bytes());
-                    payload[20..24].copy_from_slice(&cursor_bits.y.to_le_bytes());
-                    payload[24..28].copy_from_slice(&(config_scale * 60.0).to_le_bytes());
-                    payload
-                };
-                let _ = &mut signifiers;
+                // **U**：`inner`/`marker`（闭包胖指针）未在反编译中展开；这里以
+                // null/0 构造 40B 记录并真实写入流（无闭包记录走 5-qword 原始
+                // 视图），不再计算后丢弃。
+                let cursor_bits = cursor.0;
+                let mut payload = [0u8; 0x20];
+                payload[0..8].copy_from_slice(&1u64.to_le_bytes());
+                payload[8..16].copy_from_slice(&1u64.to_le_bytes());
+                payload[16..20].copy_from_slice(&cursor_bits.x.to_le_bytes());
+                payload[20..24].copy_from_slice(&cursor_bits.y.to_le_bytes());
+                payload[24..28].copy_from_slice(&(config_scale * 60.0).to_le_bytes());
+                let factory = country_core::systems::ui::signifiers::SignifierFactory::new(
+                    &payload,
+                    std::ptr::null(),
+                    0,
+                );
+                signifiers.write_factory(&factory);
             }
         }
 

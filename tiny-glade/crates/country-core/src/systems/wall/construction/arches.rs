@@ -44,11 +44,15 @@ pub struct ConstructGateCmd120Projection {
     pub wall_id: WallId,
     pub ordinal: u64,
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct WallArchesOutput {
+    pub material_stats: super::arch_stats::WallArchMaterialStats,
     pub instances: Vec<WallBrickInstance>,
     pub gate_commands: Vec<ConstructGateCmd120Projection>,
     pub segment_count: u64,
+    /// Original ArchSegments map owns these full104B records after profiling
+    /// (140762a58..140762a99), independently of generated brick instances.
+    pub segments: Vec<MaterializedWallSegment>,
 }
 fn length_xyz(v: Vec3) -> f32 {
     ((v.x * v.x + v.y * v.y) + v.z * v.z).sqrt()
@@ -244,9 +248,11 @@ pub fn construct_regular_wall_arches(
         return Err(WallArchesError::InvalidInput);
     }
     let mut out = WallArchesOutput {
+        material_stats: Default::default(),
         instances: Vec::new(),
         gate_commands: Vec::new(),
         segment_count: 0,
+        segments: Vec::new(),
     };
     let mut all = Vec::new();
     for mask in input.masks {
@@ -259,6 +265,8 @@ pub fn construct_regular_wall_arches(
             regular: true,
             closed: true,
         })?;
+        out.material_stats
+            .observe_mask(mask.length, &segments, input.has_roof);
         let override_height = if input.observed_294 != 0 {
             let mut maximum = 0.;
             let mut ground = 0.;
@@ -305,5 +313,6 @@ pub fn construct_regular_wall_arches(
     }
     third[n - 1] = third[0];
     arch[n - 1] = arch[0];
+    out.segments = all;
     Ok(out)
 }

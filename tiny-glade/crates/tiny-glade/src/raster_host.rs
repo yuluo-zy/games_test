@@ -14,7 +14,8 @@
 //!
 //! 已核对（O）与未证实（U）的取舍都在对应函数注释里；未恢复的 draw 种类进入正式帧错误通道。
 use crate::render_host::{
-    BufferHost, RasterEntry, ShaderHost, TextureHost, rh_view_desc, upsert_shader_resource,
+    BufferHost, RasterEntry, ShaderHost, TextureHost, compute_view_range, rh_view_desc,
+    upsert_shader_resource,
 };
 use ash::vk;
 use country_core::{
@@ -23,8 +24,9 @@ use country_core::{
         pass_builder::{
             draw_stream::{
                 AttachmentDesc, DescriptorSetBinding as CoreBinding, DrawKind, DrawPacket,
-                DynamicConstantsBinding, PassHost, RasterPassSubmission, RasterRenderPassDesc,
-                RasterState, ShaderReflection as CoreReflection,
+                DynamicConstantsBinding, PassHost, RasterPassColorAttachment, RasterPassDepth,
+                RasterPassSubmission, RasterRenderPassDesc, RasterState,
+                ShaderReflection as CoreReflection,
             },
             framebuffer_binding::{AttachmentTexture, DepthClear},
             pass_resource_access::RgTexture,
@@ -777,6 +779,18 @@ impl PassHost for RasterPassHost {
             .map_err(|error| error.to_string())
     }
 
+    fn vk_image_view_with_desc(
+        &self,
+        texture: &ManagedHandle,
+        view: Option<&country_core::rhapsody_types::TextureViewDesc>,
+    ) -> Result<u64, String> {
+        match view {
+            Some(view) => self.shared.textures.explicit_view(texture.0, view),
+            None => self.shared.textures.default_view(texture.0),
+        }
+        .map_err(|error| error.to_string())
+    }
+
     fn texture_by_name(&self, name_hash: u64) -> (ManagedHandle, AttachmentTexture) {
         self.shared
             .assets
@@ -784,7 +798,7 @@ impl PassHost for RasterPassHost {
             .textures_by_name
             .get(&name_hash)
             .cloned()
-            .expect("No such texture")
+            .unwrap_or_else(|| panic!("No such texture: name hash 0x{name_hash:016x}"))
     }
 
     fn rg_texture(&self, preset: u8) -> AttachmentTexture {
@@ -1162,46 +1176,77 @@ impl PassHost for RasterPassHost {
                 return;
             }
         };
-        // Native attachment LOAD preserves an existing producer. A newly
-        // created/imported-undefined target may still use native LOAD (the
-        // original fullscreen combine/resolve does so); that does not invent
-        // initialized contents or a preceding clear. Preserve only contents
-        // actually imported or written earlier in this same declaration.
-        let has_previous_contents = |resource: u32| {
-            let imported = graph
-                .declaration()
-                .resources
-                .get(resource as usize)
-                .is_some_and(|entry| match entry.source {
-                    rhapsody::rg::OriginSource::ImportOwned { initial_access, .. }
-                    | rhapsody::rg::OriginSource::ImportUnowned { initial_access, .. } => {
-                        initial_access != 0
-                    }
-                    rhapsody::rg::OriginSource::Create => false,
-                });
-            imported
-                || graph.declaration().passes.iter().any(|pass| {
-                    pass.accesses.iter().any(|access| {
-                        access.resource_index == resource
-                            && country_core::render::pass_builder::draw_stream::access_is_write(
-                                access.access_code,
-                            )
-                    })
-                })
+        // A native shader binding carries its view independently from the
+        // owner's graph identity. Project the very same view before graph build;
+        // a descriptor selecting one layer must not read every layer/mip.
+        let attachment_accesses = match raster_attachment_accesses(&colors, depth.as_ref()) {
+            Ok(attachments) => attachments,
+            Err(error) => {
+                let mut declared = graph.add_pass(name);
+                declared.side_effect();
+                declared.render_with_result_context(move |_| Err(error));
+                return;
+            }
         };
-        let mut preserving_attachments = colors
-            .iter()
-            .filter(|color| color.tag == 0 && has_previous_contents(color.id))
-            .map(|color| color.id)
-            .collect::<Vec<_>>();
-        if let Some(depth) = &depth {
-            if depth.writable
-                && matches!(depth.clear, DepthClear::Load)
-                && has_previous_contents(depth.texture_id)
-            {
-                preserving_attachments.push(depth.texture_id);
+        let mut access_ranges = match raster_binding_ranges(
+            &accesses,
+            &bindings,
+            colors.len() + usize::from(depth.is_some()),
+            |resource| {
+                let handle = graph.resource_handle(resource)?;
+                Ok(graph.declaration().resources[handle.raw() as usize].descriptor)
+            },
+        ) {
+            Ok(ranges) => ranges,
+            Err(error) => {
+                let mut declared = graph.add_pass(name);
+                declared.side_effect();
+                declared.render_with_result_context(move |_| Err(error));
+                return;
+            }
+        };
+        for (index, attachment) in attachment_accesses.iter().enumerate() {
+            let actual = &accesses[index];
+            let projection = (|| -> rhapsody::Result<_> {
+                if actual.resource != attachment.resource
+                    || actual.access != attachment.access
+                    || actual.group != 1
+                {
+                    return Err(rhapsody::Error::invalid_usage(
+                        "raster attachment differs from its native resource access",
+                    ));
+                }
+                let handle = graph.resource_handle(attachment.resource)?;
+                let descriptor = graph.declaration().resources[handle.raw() as usize].descriptor;
+                compute_view_range(descriptor, &attachment.view)
+            })();
+            match projection {
+                Ok(range) => access_ranges[index] = (range, None),
+                Err(error) => {
+                    let mut declared = graph.add_pass(name);
+                    declared.side_effect();
+                    declared.render_with_result_context(move |_| Err(error));
+                    return;
+                }
             }
         }
+        // Native LOAD keeps the producer of this exact view. An independent
+        // layer or mip never turns a first write into a preserving operation.
+        // Undefined/partially initialized inputs are not invented here: an
+        // overlapping producer still requires the complete LOAD range defined.
+        let preserving_attachments = attachment_accesses
+            .iter()
+            .enumerate()
+            .map(|(index, attachment)| {
+                attachment.load
+                    && rhapsody::command::is_write(attachment.access)
+                    && raster_has_previous_contents(
+                        &graph,
+                        attachment.resource,
+                        access_ranges[index].0,
+                    )
+            })
+            .collect::<Vec<_>>();
         let mut declared = graph.add_pass(name);
         for draw in &prepared {
             // Native DrawBuilder also records these as access 2/group 1.
@@ -1265,36 +1310,23 @@ impl PassHost for RasterPassHost {
                     .expect("validated vertex buffer range");
             }
         }
-        for a in &accesses {
+        for (index, (a, (range, binding_slot))) in accesses.iter().zip(&access_ranges).enumerate() {
             let resource = declared
                 .resource_handle(a.resource)
                 .expect("add_resource_access: resource does not belong to this graph");
             let writes = country_core::render::pass_builder::draw_stream::access_is_write(a.access);
-            let result = if (preserving_attachments.contains(&a.resource)
+            let result = if (preserving_attachments.get(index) == Some(&true)
                 || preserving_buffers.contains(&a.resource))
                 && writes
             {
-                declared.add_preserving_resource_access_range(
-                    resource,
-                    a.access,
-                    a.group,
-                    rhapsody::rg::AccessRange::Whole,
-                )
+                declared.add_preserving_resource_access_range(resource, a.access, a.group, *range)
             } else if !writes
-                && inactive_reads.get(&a.resource) == Some(&true)
-                && !colors.iter().any(|color| color.id == a.resource)
-                && depth
-                    .as_ref()
-                    .is_none_or(|depth| depth.texture_id != a.resource)
+                && (*binding_slot).and_then(|slot| inactive_reads.get(&slot)) == Some(&true)
+                && index >= attachment_accesses.len()
             {
-                declared.add_inactive_resource_read_range(
-                    resource,
-                    a.access,
-                    a.group,
-                    rhapsody::rg::AccessRange::Whole,
-                )
+                declared.add_inactive_resource_read_range(resource, a.access, a.group, *range)
             } else {
-                declared.add_resource_access(resource, a.access, a.group)
+                declared.add_resource_access_range(resource, a.access, a.group, *range)
             };
             result.expect("add_resource_access: resource does not belong to this graph");
         }
@@ -1317,10 +1349,10 @@ impl PassHost for RasterPassHost {
                 }
             }
 
-            // 附件：tag 决定 loadOp（0 LOAD / 1 CLEAR / 2 DONT_CARE，clear 值取缓存默认的 0）。
+            // 附件：tag 决定 loadOp（0 LOAD / 1 CLEAR / 2 DONT_CARE，CLEAR 值来自原四字 payload）。
             let mut attachments = Vec::new();
             let mut extent = None;
-            for c in &colors {
+            for (index, c) in colors.iter().enumerate() {
                 let texture = managed
                     .texture_for(c.id)
                     .expect("color attachment: unresolved image");
@@ -1328,10 +1360,22 @@ impl PassHost for RasterPassHost {
                     width: texture.desc.width,
                     height: texture.desc.height,
                 });
-                // CLEAR（tag1）需要清除值；core 的附件描述里没有颜色清除值，取零（I：`AttachmentCache` 的缺省）。
-                let clear = (c.tag == 1).then_some([0.0f32; 4]);
-                let Ok(mut a) = Attachment::color(texture.shared(), 0, clear) else {
-                    return false;
+                // B color tag1's +4..+0x14 words become VkClearValue.
+                // The legacy core field is named `view`; preserve its bits.
+                let clear = (c.tag == 1).then(|| c.clear_color_bits().map(f32::from_bits));
+                let mut a = match Attachment::color(texture.shared(), 0, clear) {
+                    Ok(attachment) => attachment,
+                    Err(error) => {
+                        ctx.report_error(error);
+                        return false;
+                    }
+                };
+                a.view = match rh_view_desc(&texture, &attachment_accesses[index].view) {
+                    Ok(view) => view,
+                    Err(error) => {
+                        ctx.report_error(error);
+                        return false;
+                    }
                 };
                 a.desc.load = vk::AttachmentLoadOp::from_raw(c.tag as i32);
                 attachments.push(a);
@@ -1348,16 +1392,25 @@ impl PassHost for RasterPassHost {
                     DepthClear::Clear(v) => Some(v),
                     DepthClear::Load => None,
                 };
-                let Ok(a) = Attachment::depth(texture.shared(), 0, clear) else {
-                    return false;
+                let a = match Attachment::depth(texture.shared(), 0, clear) {
+                    Ok(attachment) => attachment,
+                    Err(error) => {
+                        ctx.report_error(error);
+                        return false;
+                    }
                 };
                 let mut a = a.depth_access(if d.writable {
                     rhapsody::rg::DepthAccess::ReadWrite
                 } else {
                     rhapsody::rg::DepthAccess::ReadOnly
                 });
-                a.view.base_layer = d.layer;
-                a.view.layer_count = 1;
+                a.view = match rh_view_desc(&texture, &attachment_accesses[colors.len()].view) {
+                    Ok(view) => view,
+                    Err(error) => {
+                        ctx.report_error(error);
+                        return false;
+                    }
+                };
                 attachments.push(a);
             }
             let extent = extent.expect("raster pass without attachments");
@@ -1959,13 +2012,162 @@ mod program_identity_tests {
     }
 }
 
+/// Original new_impl gives every attachment mip zero / level_count one.
+/// Only depth adds layer_count one and the caller's base_layer. Color's four
+/// payload words are a clear value and never change the subresource view.
+struct RasterAttachmentAccess {
+    resource: u32,
+    access: u8,
+    load: bool,
+    view: country_core::rhapsody_types::TextureViewDesc,
+}
+
+fn raster_attachment_accesses(
+    colors: &[RasterPassColorAttachment],
+    depth: Option<&RasterPassDepth>,
+) -> rhapsody::Result<Vec<RasterAttachmentAccess>> {
+    use country_core::render::pass_builder::framebuffer_binding::{
+        COLOR_ACCESS_TEXTURE, COLOR_ACCESS_VIEW, DEPTH_ACCESS_READ, DEPTH_ACCESS_WRITE,
+    };
+    let mut attachments = Vec::new();
+    attachments
+        .try_reserve_exact(colors.len() + usize::from(depth.is_some()))
+        .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
+    for color in colors {
+        if color.tag > 2 {
+            return Err(rhapsody::Error::invalid_usage(
+                "invalid native color attachment tag",
+            ));
+        }
+        attachments.push(RasterAttachmentAccess {
+            resource: color.id,
+            access: if color.tag == 0 {
+                COLOR_ACCESS_TEXTURE
+            } else {
+                COLOR_ACCESS_VIEW
+            },
+            load: color.tag == 0,
+            view: country_core::rhapsody_types::TextureViewDesc::new().level_count(Some(1)),
+        });
+    }
+    if let Some(depth) = depth {
+        attachments.push(RasterAttachmentAccess {
+            resource: depth.texture_id,
+            access: if depth.writable {
+                DEPTH_ACCESS_WRITE
+            } else {
+                DEPTH_ACCESS_READ
+            },
+            load: matches!(depth.clear, DepthClear::Load),
+            view: country_core::rhapsody_types::TextureViewDesc::new()
+                .level_count(Some(1))
+                .base_layer(depth.layer)
+                .layer_count(Some(1)),
+        });
+    }
+    Ok(attachments)
+}
+
+/// A preserving attachment must depend only on earlier writes to its selected
+/// subresources. Source initialization remains checked by the production graph.
+fn raster_has_previous_contents(
+    graph: &RhGraph,
+    resource: u32,
+    range: rhapsody::rg::AccessRange,
+) -> bool {
+    let imported = graph
+        .declaration()
+        .resources
+        .get(resource as usize)
+        .is_some_and(|entry| match entry.source {
+            rhapsody::rg::OriginSource::ImportOwned { initial_access, .. }
+            | rhapsody::rg::OriginSource::ImportUnowned { initial_access, .. } => {
+                initial_access != 0
+            }
+            rhapsody::rg::OriginSource::Create => false,
+        });
+    imported
+        || graph.declaration().passes.iter().any(|pass| {
+            pass.accesses.iter().any(|access| {
+                access.resource_index == resource
+                    && rhapsody::command::is_write(access.access_code)
+                    && access.range.overlaps(range)
+            })
+        })
+}
+
+/// Pair each native pass binding with the access appended by the same
+/// DrawBuilder operation. Attachment and indirect accesses need no shader slot;
+/// they retain their own declaration. Repeated views of one image are consumed
+/// once in original order, instead of replacing them with an owner-wide access.
+fn raster_binding_ranges(
+    accesses: &[country_core::render::pass_builder::draw_stream::PassAccess],
+    bindings: &[RenderPassBinding],
+    attachment_accesses: usize,
+    mut descriptor: impl FnMut(u32) -> rhapsody::Result<rhapsody::rg::Descriptor>,
+) -> rhapsody::Result<Vec<(rhapsody::rg::AccessRange, Option<u8>)>> {
+    use rhapsody::rg::{AccessRange, Descriptor};
+    if attachment_accesses > accesses.len() {
+        return Err(rhapsody::Error::invalid_usage(
+            "raster attachment accesses are absent",
+        ));
+    }
+    let mut used = vec![false; bindings.len()];
+    let mut ranges = Vec::new();
+    ranges
+        .try_reserve_exact(accesses.len())
+        .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
+    for (access_index, access) in accesses.iter().enumerate() {
+        // RasterPass::new writes attachments before any DrawBuilder bindings.
+        // A shader alias must never steal that independent attachment access.
+        if access_index < attachment_accesses {
+            ranges.push((AccessRange::Whole, None));
+            continue;
+        }
+        let matching = bindings.iter().enumerate().find(|(slot, binding)| {
+            !used[*slot]
+                && binding.resource_index == access.resource
+                && binding.access_type == access.access
+        });
+        let (range, slot) = if let Some((slot, binding)) = matching {
+            let slot_id = u8::try_from(slot).map_err(|_| {
+                rhapsody::Error::invalid_usage("raster pass binding index exceeds u8")
+            })?;
+            used[slot] = true;
+            let desc = descriptor(binding.resource_index)?;
+            let range = match desc {
+                Descriptor::Image(_) => {
+                    compute_view_range(desc, &binding.view.unwrap_or_default())?
+                }
+                Descriptor::Buffer(_) if binding.view.is_none() => AccessRange::Whole,
+                Descriptor::Buffer(_) => {
+                    return Err(rhapsody::Error::invalid_usage(
+                        "raster texture view refers to a buffer",
+                    ));
+                }
+            };
+            (range, Some(slot_id))
+        } else {
+            (AccessRange::Whole, None)
+        };
+        ranges.push((range, slot));
+    }
+    if used.iter().any(|used| !used) {
+        return Err(rhapsody::Error::invalid_usage(
+            "raster pass binding has no matching native resource access",
+        ));
+    }
+    Ok(ranges)
+}
+
 /// Resolve packet-local evidence onto the real graph resource. Any active
-/// alias in any draw tightens an inactive binding back into a content read.
+/// alias of that same pass slot tightens it back into a content read. Different
+/// views of one image remain distinct until the graph evaluates their ranges.
 fn raster_content_intents<'a>(
     packets: impl IntoIterator<Item = &'a DrawPacket>,
     bindings: &[RenderPassBinding],
     mut is_texture: impl FnMut(u32) -> rhapsody::Result<bool>,
-) -> rhapsody::Result<(Vec<u32>, std::collections::BTreeMap<u32, bool>)> {
+) -> rhapsody::Result<(Vec<u32>, std::collections::BTreeMap<u8, bool>)> {
     use country_core::render::pass_builder::draw_stream::access_is_write;
     let mut preserving = Vec::new();
     let mut inactive = std::collections::BTreeMap::new();
@@ -2013,7 +2215,7 @@ fn raster_content_intents<'a>(
             }
             if !access_is_write(actual.access_type) {
                 inactive
-                    .entry(actual.resource_index)
+                    .entry(access.slot)
                     .and_modify(|all| *all &= unused)
                     .or_insert(unused);
             }
@@ -2066,7 +2268,7 @@ mod original_surface_raster_intent_tests {
         let (preserving, inactive) =
             raster_content_intents([&first], &bindings, |id| Ok(id == 42)).unwrap();
         assert_eq!(preserving, [43]);
-        assert_eq!(inactive[&42], true);
+        assert_eq!(inactive[&0], true);
         let mut active = packet();
         active.accesses.push(ResourceAccess {
             binding_index: 0,
@@ -2074,8 +2276,316 @@ mod original_surface_raster_intent_tests {
         });
         let (_, inactive) =
             raster_content_intents([&first, &active], &bindings, |id| Ok(id == 42)).unwrap();
-        assert_eq!(inactive[&42], false);
+        assert_eq!(inactive[&0], false);
         first.inactive_texture_bindings.push(1);
         assert!(raster_content_intents([&first], &bindings, |id| Ok(id == 42)).is_err());
+    }
+}
+
+#[cfg(test)]
+mod raster_binding_range_tests {
+    use super::*;
+    use country_core::render::pass_builder::draw_stream::{PassAccess, ResourceAccess};
+    use country_core::rhapsody_types::TextureViewDesc;
+    use rhapsody::rg::{AccessRange, Descriptor, ResourceSpec};
+
+    fn image() -> Descriptor {
+        ResourceSpec::Image(
+            rhapsody::resource::TextureDesc::new_2d_array(64, 64, 3, vk::Format::R32_SFLOAT)
+                .mip_levels(4)
+                .usage(vk::ImageUsageFlags::SAMPLED | vk::ImageUsageFlags::STORAGE),
+        )
+        .descriptor()
+    }
+    fn binding(mip: u32, layer: u32, access: u8) -> RenderPassBinding {
+        RenderPassBinding {
+            resource_index: 0,
+            access_type: access,
+            view: Some(
+                TextureViewDesc::new()
+                    .base_mip_level(mip)
+                    .level_count(Some(1))
+                    .base_layer(layer)
+                    .layer_count(Some(1)),
+            ),
+        }
+    }
+    fn access(code: u8) -> PassAccess {
+        PassAccess {
+            resource: 0,
+            access: code,
+            group: 1,
+        }
+    }
+    fn packet() -> DrawPacket {
+        DrawPacket::new(
+            country_core::rhapsody_contract::Handle(ManagedHandle(1), std::marker::PhantomData),
+            [0, 0],
+            RasterState::default(),
+        )
+    }
+
+    #[test]
+    fn repeated_owner_views_keep_ranges_slots_and_attachment_order() {
+        let bindings = [binding(2, 1, 0x1d), binding(3, 2, 0x1d)];
+        // The first access has an identical owner/code but belongs to the
+        // framebuffer, before the two native shader binding operations.
+        let ranges = raster_binding_ranges(
+            &[access(0x1d), access(0x1d), access(0x1d)],
+            &bindings,
+            1,
+            |_| Ok(image()),
+        )
+        .unwrap();
+        assert_eq!(ranges[0], (AccessRange::Whole, None));
+        assert_eq!(ranges[1].1, Some(0));
+        assert_eq!(ranges[2].1, Some(1));
+        assert_eq!(
+            ranges[1].0,
+            AccessRange::Texture {
+                aspect_mask: 1,
+                base_mip_level: 2,
+                level_count: 1,
+                base_array_layer: 1,
+                layer_count: 1,
+            }
+        );
+        assert!(!ranges[1].0.overlaps(ranges[2].0));
+        let mut first = packet();
+        first.accesses = vec![
+            ResourceAccess {
+                binding_index: 4,
+                slot: 0,
+            },
+            ResourceAccess {
+                binding_index: 5,
+                slot: 1,
+            },
+        ];
+        first.inactive_texture_bindings.push(5);
+        let (_, inactive) = raster_content_intents([&first], &bindings, |_| Ok(true)).unwrap();
+        assert_eq!(inactive[&0], false);
+        assert_eq!(inactive[&1], true);
+        // A second packet's active alias of slot 1 must still tighten that slot.
+        let mut second = packet();
+        second.accesses.push(ResourceAccess {
+            binding_index: 8,
+            slot: 1,
+        });
+        let (_, inactive) =
+            raster_content_intents([&first, &second], &bindings, |_| Ok(true)).unwrap();
+        assert_eq!(inactive[&1], false);
+    }
+
+    #[test]
+    fn selected_shader_view_reads_only_its_real_producer_and_keeps_other_layers_undefined() {
+        use rhapsody::rg::{AccessTable, GraphDefinition, PlanContext};
+        let selected =
+            raster_binding_ranges(&[access(0x1d)], &[binding(2, 1, 0x1d)], 0, |_| Ok(image()))
+                .unwrap()[0]
+                .0;
+        let definition = |read_range: AccessRange| {
+            let mut graph = RhGraph::new();
+            let texture = graph
+                .import_unowned("partial array", image(), 1, 0)
+                .unwrap();
+            let mut writer = graph.add_pass("real selected producer");
+            writer
+                .add_resource_access_range(texture, 0x34, 0, selected)
+                .unwrap();
+            writer.render(|_| true);
+            let mut reader = graph.add_pass("raster selected view");
+            reader
+                .add_resource_access_range(texture, 0x1d, 1, read_range)
+                .unwrap();
+            reader.side_effect();
+            reader.render(|_| true);
+            GraphDefinition::from_declaration(
+                &graph.build().declaration,
+                &mut AccessTable::original(),
+                PlanContext::default(),
+            )
+        };
+        assert!(definition(selected).is_ok());
+        assert!(
+            definition(AccessRange::Whole).is_err(),
+            "owner-wide projection must retain its real uninitialized-content failure"
+        );
+        let wrong_layer = AccessRange::Texture {
+            aspect_mask: 1,
+            base_mip_level: 2,
+            level_count: 1,
+            base_array_layer: 2,
+            layer_count: 1,
+        };
+        assert!(definition(wrong_layer).is_err());
+    }
+
+    #[test]
+    fn bad_view_missing_access_and_invalid_slot_fail_without_widening() {
+        assert!(
+            raster_binding_ranges(&[access(0x1d)], &[binding(4, 0, 0x1d)], 0, |_| Ok(image()))
+                .is_err()
+        );
+        assert!(
+            raster_binding_ranges(&[access(0x1d)], &[binding(0, 3, 0x1d)], 0, |_| Ok(image()))
+                .is_err()
+        );
+        assert!(raster_binding_ranges(&[], &[binding(0, 0, 0x1d)], 0, |_| Ok(image())).is_err());
+        assert!(
+            raster_binding_ranges(&[access(0x1d)], &[binding(0, 0, 0x1d)], 2, |_| Ok(image()))
+                .is_err()
+        );
+        let buffer = ResourceSpec::Buffer(rhapsody::resource::BufferDesc::new(
+            64,
+            vk::BufferUsageFlags::STORAGE_BUFFER,
+            rhapsody::resource::MemoryLocation::GpuOnly,
+        ))
+        .descriptor();
+        assert!(
+            raster_binding_ranges(&[access(0x1d)], &[binding(0, 0, 0x1d)], 0, |_| Ok(buffer))
+                .is_err()
+        );
+    }
+}
+
+#[cfg(test)]
+mod raster_attachment_range_tests {
+    use super::*;
+    use rhapsody::rg::{AccessRange, AccessTable, GraphDefinition, PlanContext, ResourceSpec};
+
+    fn color(tag: u32, bits: [u32; 4]) -> RasterPassColorAttachment {
+        RasterPassColorAttachment {
+            id: 0,
+            format: 100,
+            tag,
+            sample_count: 1,
+            view: bits,
+        }
+    }
+    fn depth(layer: u32, clear: DepthClear) -> RasterPassDepth {
+        RasterPassDepth {
+            texture_id: 0,
+            format: 126,
+            sample_count: 1,
+            clear,
+            writable: true,
+            layer,
+        }
+    }
+    fn depth_desc() -> rhapsody::rg::Descriptor {
+        ResourceSpec::Image(
+            rhapsody::resource::TextureDesc::new_2d_array(64, 64, 3, vk::Format::D32_SFLOAT)
+                .mip_levels(4)
+                .usage(vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT),
+        )
+        .descriptor()
+    }
+    #[test]
+    fn native_color_payload_is_clear_bits_and_only_depth_restricts_array_layer_count() {
+        let bits = [0x3f80_0000, 0x8000_0000, 0x7fc0_0123, 0x3e80_0000];
+        let c = color(1, bits);
+        assert_eq!(c.clear_color_bits(), bits);
+        let decoded = c.clear_color_bits().map(f32::from_bits);
+        assert_eq!(decoded.map(f32::to_bits), bits);
+        let plans = raster_attachment_accesses(&[c], Some(&depth(2, DepthClear::Load))).unwrap();
+        assert_eq!(plans[0].access, 0x2e);
+        assert!(!plans[0].load);
+        assert!(plans[1].load);
+        assert_eq!(plans[0].view.level_count, Some(1));
+        assert_eq!(plans[0].view.layer_count, None);
+        assert_eq!(plans[1].view.layer_count, Some(1));
+        assert_eq!(plans[1].view.base_layer, 2);
+        let desc = ResourceSpec::Image(
+            rhapsody::resource::TextureDesc::new_2d_array(64, 64, 3, vk::Format::R32_SFLOAT)
+                .mip_levels(4),
+        )
+        .descriptor();
+        assert_eq!(
+            compute_view_range(desc, &plans[0].view).unwrap(),
+            AccessRange::Texture {
+                aspect_mask: 1,
+                base_mip_level: 0,
+                level_count: 1,
+                base_array_layer: 0,
+                layer_count: 3,
+            }
+        );
+        assert_eq!(
+            compute_view_range(depth_desc(), &plans[1].view).unwrap(),
+            AccessRange::Texture {
+                aspect_mask: 2,
+                base_mip_level: 0,
+                level_count: 1,
+                base_array_layer: 2,
+                layer_count: 1,
+            }
+        );
+        assert!(raster_attachment_accesses(&[color(3, bits)], None).is_err());
+    }
+
+    #[test]
+    fn native_depth_layer_load_keeps_its_producer_and_does_not_initialize_other_mips_or_layers() {
+        let plans = raster_attachment_accesses(&[], Some(&depth(1, DepthClear::Load))).unwrap();
+        let selected = compute_view_range(depth_desc(), &plans[0].view).unwrap();
+        let other = compute_view_range(depth_desc(), &plans[0].view.base_layer(2)).unwrap();
+        let mut graph = RhGraph::new();
+        let texture = graph
+            .import_unowned("shadow cascades", depth_desc(), 1, 0)
+            .unwrap();
+        assert!(!raster_has_previous_contents(
+            &graph,
+            texture.raw(),
+            selected
+        ));
+        let mut writer = graph.add_pass("cascade 1 depth clear and draw");
+        writer
+            .add_resource_access_range(texture, 0x2f, 1, selected)
+            .unwrap();
+        writer.render(|_| true);
+        assert!(raster_has_previous_contents(
+            &graph,
+            texture.raw(),
+            selected
+        ));
+        assert!(!raster_has_previous_contents(&graph, texture.raw(), other));
+        let mut load = graph.add_pass("cascade 1 load");
+        load.add_preserving_resource_access_range(texture, 0x2f, 1, selected)
+            .unwrap();
+        load.side_effect();
+        load.render(|_| true);
+        let definition = GraphDefinition::from_declaration(
+            &graph.build().declaration,
+            &mut AccessTable::original(),
+            PlanContext::default(),
+        )
+        .unwrap();
+        let plan = rhapsody::rg::compile_definition(definition).unwrap();
+        assert_eq!(plan.retained_passes, [0, 1]);
+        rhapsody::rg::check_plan(&plan.definition, &plan).unwrap();
+        let mut wrong = RhGraph::new();
+        let texture = wrong
+            .import_unowned("undefined cascade 2", depth_desc(), 2, 0)
+            .unwrap();
+        let mut writer = wrong.add_pass("cascade 1 only");
+        writer
+            .add_resource_access_range(texture, 0x2f, 1, selected)
+            .unwrap();
+        writer.render(|_| true);
+        let mut reader = wrong.add_pass("cascade 2 actual read");
+        reader
+            .add_resource_access_range(texture, 0x17, 1, other)
+            .unwrap();
+        reader.side_effect();
+        reader.render(|_| true);
+        assert!(
+            GraphDefinition::from_declaration(
+                &wrong.build().declaration,
+                &mut AccessTable::original(),
+                PlanContext::default()
+            )
+            .is_err()
+        );
+        assert!(compute_view_range(depth_desc(), &plans[0].view.base_layer(3)).is_err());
     }
 }

@@ -23,7 +23,6 @@
 use crate::{
     asset_libraries::audio_trigger_library::{AudioTriggerKind, AudioTriggerLibrary},
     resources::audio_resources::{AudioCore, AudioInstance, EventInstance, Studio},
-    systems::audio::audio_update::EditingSpeed,
     systems::camera_rig::main_camera::MainCamera,
 };
 use bevy_ecs::prelude::*;
@@ -62,8 +61,8 @@ pub struct TriggerAudioState<E: EventInstance> {
     pub prev_position: Vec3,
     pub audibility: f32,
     pub wind_volume: f32,
-    /// O: `+0xd8` byte — written by the forest domain; boosts the wind volume
-    /// and the wind target by ×10.
+    /// O: `+0xd8` byte — rollercoaster_update's original override. The ordinary
+    /// camera path initializes it false; its coaster writer remains separate.
     pub in_forest_state: bool,
 }
 
@@ -100,9 +99,7 @@ fn ground_flag_set(camera: &MainCamera) -> bool {
     let ground = bytes[0x4d0] as usize;
     match GROUND_FLAG_OFFSETS.get(ground) {
         Some(offset) => bytes.get(0x128 + offset).copied().unwrap_or(0) != 0,
-        // Native indexes the table unchecked; out-of-range ground types read
-        // neighbouring memory. Treat them as "flag not set".
-        None => false,
+        None => panic!("invalid original camera mode"),
     }
 }
 
@@ -112,10 +109,10 @@ pub fn trigger_audio_system<S: Studio + Send + Sync + 'static>(
     camera: Res<MainCamera>,
     triggers: Res<AudioTriggerLibrary>,
     core: Res<AudioCore<S>>,
-    speed: Res<EditingSpeed>,
+    speed: Res<bevy_time::Time>,
 ) {
     // O: `speed@+0x58 == 0.0` (non-NaN) → early return.
-    let speed = speed.0;
+    let speed = speed.delta_secs();
     if speed == 0.0 && !speed.is_nan() {
         return;
     }

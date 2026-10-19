@@ -51,57 +51,40 @@ pub trait LoopInstance {
 /// 参数名（O：0x142aaf450，长 0xd）。
 pub const EDITING_SPEED_PARAMETER: &str = "editing_speed";
 
-/// 循环播放器：一组实例加当前下标与"应播放"标志（O：`current usize @+0x28`、`should_play u8 @+0x38`）。
-#[derive(Clone, Debug, Default)]
+/// Original player owns one complete AudioLoop plus its should-play byte.
+/// Ring timing, parameter detection, current index and entries have one owner.
+#[derive(Clone, Debug)]
 pub struct AudioLoopPlayer<I> {
-    pub instances: Vec<I>,
-    pub current: usize,
+    pub audio: crate::utils::audio_utils::AudioLoop<I>,
     pub should_play: bool,
 }
-
-impl<I: LoopInstance> AudioLoopPlayer<I> {
+impl<I> AudioLoopPlayer<I> {
+    pub fn from_audio(audio: crate::utils::audio_utils::AudioLoop<I>) -> Self {
+        Self { audio, should_play: false }
+    }
+}
+impl<I> AudioLoopPlayer<I>
+where I: LoopInstance + crate::utils::audio_utils::LoopEntry<Error=<I as LoopInstance>::Error> {
+    /// Explicit low-level host adapter. Game startup uses from_audio on the
+    /// fully initialized canonical producer, rather than discarding its state.
     pub fn new(instances: Vec<I>) -> Self {
-        Self {
-            instances,
-            current: 0,
-            should_play: false,
-        }
+        Self::from_audio(crate::utils::audio_utils::AudioLoop::new(instances,0,false,false))
     }
-
-    /// 当前实例（`AudioLoopPlayer::resolve`，0x140a592xx 语义；越界 panic 同原版）。
-    pub fn current(&self) -> &I {
-        &self.instances[self.current]
-    }
-
-    /// `request_play`（0x1409285a0）。`current` 越界与 `set_volume` 失败对应原版 panic：越界 panic，音量失败以 `Err` 返回。
-    pub fn request_play(
-        &mut self,
-        position: [f32; 3],
-        volume: f32,
-        editing_speed: f32,
-    ) -> Result<(), I::Error> {
+    pub fn current(&self) -> &I { self.audio.current() }
+    pub fn request_play(&mut self, position:[f32;3], volume:f32, editing_speed:f32) -> Result<(), <I as LoopInstance>::Error> {
         self.should_play = true;
-        let instance = &mut self.instances[self.current];
-        instance.set_position(position);
-        instance.set_parameter(EDITING_SPEED_PARAMETER, editing_speed);
-        if instance.is_active() {
-            instance.set_volume(volume)?;
-        }
+        let instance = self.audio.current_mut();
+        LoopInstance::set_position(instance,position);
+        LoopInstance::set_parameter(instance,EDITING_SPEED_PARAMETER,editing_speed);
+        if LoopInstance::is_active(instance) { LoopInstance::set_volume(instance,volume)?; }
         Ok(())
     }
-
-    /// 帧尾：按 `should_play` 标志对当前实例 `start`/`stop` 并清标志
-    /// （wall_audio_fmod/building/stair 帧尾，0x140a596b0/0x140a59430 的驱动侧）。
-    pub fn frame_end(&mut self) -> Result<(), I::Error> {
-        let play = self.should_play;
-        self.should_play = false;
-        let instance = &mut self.instances[self.current];
-        if play {
-            instance.start()?;
-        } else {
-            instance.stop()?;
-        }
-        Ok(())
+    fn frame_end_with_stop(&mut self, stop: impl FnOnce(&mut crate::utils::audio_utils::AudioLoop<I>) -> Result<(),<I as LoopInstance>::Error>) -> Result<(),<I as LoopInstance>::Error> {
+        let play = std::mem::take(&mut self.should_play);
+        if play { self.audio.start_if_not_playing() } else { stop(&mut self.audio) }
+    }
+    pub fn frame_end(&mut self) -> Result<(),<I as LoopInstance>::Error> {
+        self.frame_end_with_stop(crate::utils::audio_utils::AudioLoop::stop_now)
     }
 }
 
@@ -145,6 +128,14 @@ mod tests {
         }
     }
 
+    impl crate::utils::audio_utils::LoopEntry for Fake {
+        type Error = &'static str;
+        fn is_active(&self) -> bool { LoopInstance::is_active(self) }
+        fn set_parameter(&mut self,name:&str,value:f32) { LoopInstance::set_parameter(self,name,value); }
+        fn start(&mut self) -> Result<(),Self::Error> { LoopInstance::start(self) }
+        fn stop(&mut self,_:crate::utils::audio_utils::StopMode) -> Result<(),Self::Error> { LoopInstance::stop(self) }
+    }
+
     #[test]
     fn start_is_skipped_for_playing_sustaining_and_starting() {
         assert!(!PlaybackState::Playing.should_start());
@@ -170,7 +161,7 @@ mod tests {
         player.request_play([1.0, 2.0, 3.0], 0.5, 2.0).unwrap();
         assert!(player.should_play);
         assert_eq!(
-            player.instances[0].calls,
+            player.audio.entries[0].calls,
             ["position", "editing_speed=2", "volume=0.5"]
         );
     }
@@ -179,7 +170,7 @@ mod tests {
     fn inactive_instance_skips_the_volume_call() {
         let mut player = AudioLoopPlayer::new(vec![Fake::default()]);
         player.request_play([1.0, 2.0, 3.0], 0.5, 1.0).unwrap();
-        assert_eq!(player.instances[0].calls, ["position", "editing_speed=1"]);
+        assert_eq!(player.audio.entries[0].calls, ["position", "editing_speed=1"]);
     }
 
     #[test]
@@ -197,16 +188,21 @@ mod tests {
     }
 
     #[test]
-    fn frame_end_starts_when_should_play_and_stops_otherwise() {
-        let mut player = AudioLoopPlayer::new(vec![Fake::default()]);
-        player.frame_end().unwrap();
-        assert_eq!(player.instances[0].calls, ["stop"]);
-        player.request_play([0.0, 0.0, 0.0], 1.0, 1.0).unwrap();
-        player.frame_end().unwrap();
-        assert_eq!(
-            player.instances[0].calls,
-            ["stop", "position", "editing_speed=1", "start"]
-        );
+    fn player_retains_native_delayed_stop_and_rotation_from_its_ring() {
+        use core::time::Duration;
+        let audio = crate::utils::audio_utils::AudioLoop::new(vec![Fake {active:true,..Default::default()},Fake::default()],50,false,false);
+        let mut player = AudioLoopPlayer::from_audio(audio);
+        player.request_play([0.;3],1.,1.).unwrap();
+        player.frame_end_with_stop(|ring|ring.stop(Duration::ZERO)).unwrap();
+        assert!(player.audio.started);
+        assert_eq!(player.audio.entries[0].calls,["position","editing_speed=1","volume=1","start"]);
+        player.frame_end_with_stop(|ring|ring.stop(Duration::ZERO)).unwrap();
+        player.frame_end_with_stop(|ring|ring.stop(Duration::from_millis(50))).unwrap();
+        assert!(player.audio.started);
+        player.frame_end_with_stop(|ring|ring.stop(Duration::from_millis(51))).unwrap();
+        assert!(!player.audio.started);
+        assert_eq!(player.audio.cursor,1);
+        assert_eq!(player.audio.entries[0].calls.last().unwrap(),"stop");
         assert!(!player.should_play);
     }
 
@@ -214,7 +210,7 @@ mod tests {
     #[should_panic]
     fn current_out_of_bounds_panics_like_the_original() {
         let mut player = AudioLoopPlayer::new(vec![Fake::default()]);
-        player.current = 1;
+        player.audio.cursor = 1;
         let _ = player.request_play([0.0, 0.0, 0.0], 1.0, 1.0);
     }
 

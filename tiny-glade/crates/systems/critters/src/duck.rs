@@ -815,7 +815,7 @@ pub fn update_duck_ripples(
     let bytes: Vec<u8> = words.iter().flat_map(|word| word.to_le_bytes()).collect();
     // Original update result is dropped (142314e7a..f6f), not unwrapped.
     // Keep that policy; the graph still requires actual initialized contents.
-    let _ = device.device().update_buffer_bytes(buffer, &bytes, &[0..528], 0);
+    let _ = GraphicsDevice::update_buffer_bytes(device.device(), &buffer, &bytes, &[0..528], 0);
 }
 
 /// 水波记录资源（CPU 侧；SSBO 上传后置）。

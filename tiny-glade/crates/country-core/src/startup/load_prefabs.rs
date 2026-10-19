@@ -505,7 +505,7 @@ mod native_empty_trunk_tests {
 
     #[test]
     fn shipped_far_tree_empty_trunk_keeps_empty_attributes_and_removes_id() {
-        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../../ljxsj_92385/Tiny Glade");
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../ljxsj_92385/Tiny Glade");
         let path = root.join("assets/meshes/far_distance_tree.json");
         let source =
             crate::utils::load_json::try_load_json_as_mesh(path.to_str().unwrap()).unwrap();

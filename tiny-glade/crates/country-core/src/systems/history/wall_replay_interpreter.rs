@@ -132,7 +132,12 @@ pub fn expand_wall_compound(
                         && matches!(
                             e,
                             WallHistoryEdit::StateChange { .. }
-                                | WallHistoryEdit::EnclosureChange { .. }
+                                | WallHistoryEdit::AdjustHeight { .. }
+                                | WallHistoryEdit::MorphPremadeShape(..)
+                                | WallHistoryEdit::ChangeElevation(..)
+                                | WallHistoryEdit::ChangeArchHeight(..)
+                                | WallHistoryEdit::MorphFreehandWall(..)
+                                | WallHistoryEdit::DeprecatedMorphOriginal(..)
                         ),
                     duration: 0.4,
                     elapsed: 0.0,
@@ -186,55 +191,159 @@ impl WallReplayCommand {
         if self.finished {
             return Ok(out);
         }
-        if let WallHistoryEdit::EnclosureChange {
-            wall,
-            previous,
-            next,
-        } = &self.edit
-        {
-            let destination = if self.undo { previous } else { next };
-            let mut completes = !self.timed;
-            let shape = if self.timed {
-                let ratio = divide(self.elapsed, self.duration);
-                let ratio = if ratio < 0.0 { 0.0 } else { ratio };
-                let ratio = if ratio > 1.0 { 1.0 } else { ratio };
-                let progress = cubic_in_out(ratio);
-                if progress >= 1.0 || progress.is_nan() {
-                    completes = true;
-                }
-                let progress = if self.undo { 1.0 - progress } else { progress };
-                crate::resources::history::wall_edit::interpolate_rectangle_enclosure(
-                    previous, next, progress,
-                )
-                .map_err(WallReplayError::Enclosure)?
+        // Native operation5 owns geometric interpolation; operation4 is a
+        // discrete IsEnclosed update and never reaches the timed branch.
+        if let WallHistoryEdit::MorphPremadeShape(edit) = &self.edit {
+            use crate::systems::wall::valid_enclosure::{Shape, ShapeParameters};
+            let wall = WallId(edit.wall_index);
+            let (a, b) = if self.undo {
+                (edit.after, edit.before)
             } else {
-                destination.clone()
+                (edit.before, edit.after)
             };
-            let rectangle = crate::resources::history::wall_edit::rectangle_from_enclosure(&shape)
-                .map_err(WallReplayError::Enclosure)?;
-            let curve = crate::resources::walls::freeform_height_cache::rectangle_curve(rectangle)
-                .map_err(WallReplayError::Enclosure)?;
-            if let Some(target) = sources.get_mut(wall) {
-                target.source.shape = shape;
-                target.source.curve_kind_tag = 1;
-                out.updated_source_notifications.push(*wall);
-                target.source.curve = curve;
-                out.updated_source_notifications.push(*wall);
+            let ratio = divide(self.elapsed, self.duration);
+            let p = cubic_in_out(if ratio < 0.0 {
+                0.0
+            } else if ratio > 1.0 {
+                1.0
+            } else {
+                ratio
+            });
+            let shape = if !self.timed {
+                b
+            } else {
+                match (a.get_shape(), b.get_shape()) {
+                    (Some(Shape::Circle(a)), Some(Shape::Circle(b))) => {
+                        ShapeParameters::from_shape(Shape::Circle(a.lerp(b, p)))
+                    }
+                    (Some(Shape::Rectangle(_)), Some(Shape::Rectangle(_))) => {
+                        ShapeParameters::from_snapshot(
+                            &crate::resources::history::wall_edit::interpolate_rectangle_enclosure(
+                                &a.to_snapshot(),
+                                &b.to_snapshot(),
+                                p,
+                            )
+                            .map_err(WallReplayError::Enclosure)?,
+                        )
+                    }
+                    _ => return Err(WallReplayError::UnrestoredOperation(5)),
+                }
+            };
+            if !shape.is_premade() {
+                return Err(WallReplayError::UnrestoredOperation(5));
+            }
+            let curve = shape.as_curve2();
+            if let Some(target) = sources.get_mut(&wall) {
+                target.source.shape = shape.to_snapshot();
+                target.source.curve_kind_tag = shape.tag();
+                out.updated_source_notifications.push(wall);
+                target.source.curve = crate::resources::roofs::geometry::surface::Curve2 {
+                    points: curve.points.into_iter().map(|p| p.to_array()).collect(),
+                    points_u: curve.points_u,
+                    length: curve.length,
+                };
+                out.updated_source_notifications.push(wall);
             }
             if self.timed {
-                let rectangle =
-                    crate::resources::history::wall_edit::rectangle_from_enclosure(destination)
-                        .map_err(WallReplayError::Enclosure)?;
-                let [x, z] = rectangle.center;
+                let c = b.center();
                 out.audio = Some(WallReplayAudio {
-                    wall: *wall,
-                    anchor: [x, terrain.sample_at_world_xz(x, z), z],
+                    wall,
+                    anchor: [c.x, terrain.sample_at_world_xz(c.x, c.y), c.y],
                     kind: 0,
                     flag: 1,
                 });
                 self.elapsed = add(self.elapsed, dt);
             }
-            self.finished = completes;
+            self.finished = !self.timed || p >= 1.0 || p.is_nan();
+            return Ok(out);
+        }
+        if let WallHistoryEdit::MorphFreehandWall(edit) = &self.edit {
+            let ratio = divide(self.elapsed, self.duration);
+            let p = if self.timed {
+                cubic_in_out(if ratio < 0.0 {
+                    0.0
+                } else if ratio > 1.0 {
+                    1.0
+                } else {
+                    ratio
+                })
+            } else {
+                1.0
+            };
+            let t = if self.undo { 1.0 - p } else { p };
+            // _deprecated_morph_curve140952570 clones before, with its cached
+            // u/length, exactly at t==0. Every other factor calls the existing
+            // crashy_lerp utility and retains its equal-count panic domain.
+            let curve = if t == 0.0 {
+                crate::resources::roofs::geometry::surface::Curve2 {
+                    points: edit.before.points.clone(),
+                    points_u: edit.before.points_u.clone(),
+                    length: edit.before.length,
+                }
+            } else {
+                let owned = |c: &crate::resources::history::wall_edit::WallCurveHistory| {
+                    utils::curve::Curve2::from_cached_parts(
+                        c.points
+                            .iter()
+                            .copied()
+                            .map(glam::Vec2::from_array)
+                            .collect(),
+                        c.points_u.clone(),
+                        c.length,
+                    )
+                };
+                let curve = owned(&edit.before).crashy_lerp(&owned(&edit.after), t);
+                crate::resources::roofs::geometry::surface::Curve2 {
+                    points: curve.points.into_iter().map(|p| p.to_array()).collect(),
+                    points_u: curve.points_u,
+                    length: curve.length,
+                }
+            };
+            let wall = WallId(edit.wall_index);
+            if let Some(target) = sources.get_mut(&wall) {
+                target.source.curve = curve;
+                out.updated_source_notifications.push(wall);
+            }
+            self.finished = !self.timed || p >= 1.0 || p.is_nan();
+            if self.timed {
+                self.elapsed = add(self.elapsed, dt);
+            }
+            return Ok(out);
+        }
+        if let WallHistoryEdit::ChangeElevation(edit) | WallHistoryEdit::ChangeArchHeight(edit) =
+            &self.edit
+        {
+            let wall = WallId(edit.wall_index);
+            let ratio = divide(self.elapsed, self.duration);
+            let p = cubic_in_out(if ratio < 0.0 {
+                0.0
+            } else if ratio > 1.0 {
+                1.0
+            } else {
+                ratio
+            });
+            let (a, b) = if self.undo {
+                (edit.after, edit.before)
+            } else {
+                (edit.before, edit.after)
+            };
+            let value = if !self.timed || p >= 1.0 || p.is_nan() {
+                b
+            } else {
+                add(a * (1.0 - p), b * p)
+            };
+            if let Some(target) = sources.get_mut(&wall) {
+                if matches!(self.edit, WallHistoryEdit::ChangeElevation(..)) {
+                    target.source.terrain_floor = value;
+                } else {
+                    target.source.observed_path_scalar = value;
+                }
+                out.updated_source_notifications.push(wall);
+            }
+            self.finished = !self.timed || p >= 1.0 || p.is_nan();
+            if self.timed {
+                self.elapsed = add(self.elapsed, dt);
+            }
             return Ok(out);
         }
         if !self.timed {
@@ -274,7 +383,7 @@ impl WallReplayCommand {
         // timed 路径（fresh 0x140abfbd0..：先 cubic_in_out(elapsed/duration 夹取)
         // 再按 timed 跳表 0x142adf44c 分派）。
         match self.edit.operation_tag() {
-            // ChangeIsEnclosedState 的动画由上方 EnclosureChange 分支处理。
+            // Native operation3 emits the height command consumed by InnerWalls.
             crate::resources::history::wall_edit::WallHistoryOperationTag::AdjustHeight => {
                 let WallHistoryEdit::AdjustHeight { wall, from, to } = &self.edit else {
                     return Err(WallReplayError::UnrestoredOperation(u32::MAX));
@@ -332,11 +441,11 @@ impl WallReplayCommand {
             | crate::resources::history::wall_edit::WallHistoryOperationTag::DeleteWall
             | crate::resources::history::wall_edit::WallHistoryOperationTag::ChangeIsEnclosedState
             | crate::resources::history::wall_edit::WallHistoryOperationTag::ChangeSupports
-            | crate::resources::history::wall_edit::WallHistoryOperationTag::ChangeStairsType
+            | crate::resources::history::wall_edit::WallHistoryOperationTag::ChangeSkirt
             | crate::resources::history::wall_edit::WallHistoryOperationTag::ChangePlasterPeelAmount
             | crate::resources::history::wall_edit::WallHistoryOperationTag::ChangeFreehandHeightType
             | crate::resources::history::wall_edit::WallHistoryOperationTag::ChangeArchType
-            | crate::resources::history::wall_edit::WallHistoryOperationTag::ChangeSkirt => panic!(
+            | crate::resources::history::wall_edit::WallHistoryOperationTag::ChangeStyle => panic!(
                 "CreateWall, DeleteWall, MarkEnclosure, ChangeArchType and ChangeSkirt do not implement animation. The code should not have reached here"
             ),
             _ => {}
@@ -449,6 +558,50 @@ mod dispatch_tests {
     }
 
     #[test]
+    fn original_freehand_curve_and_discrete_policy_replay_redo_then_undo() {
+        let rows: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../tests/fixtures/original-wall-variants-b.json"
+        ))
+        .unwrap();
+        let edit: WallHistoryEdit =
+            serde_json::from_value(rows["MorphFreehandWall"].clone()).unwrap();
+        let wall = edit.wall_id().unwrap();
+        let before = rows["MorphFreehandWall"]["MorphFreehandWall"]["before"].clone();
+        let mut states = std::collections::HashMap::from([(wall, wall_snapshot())]);
+        let effect = command(edit.clone(), false, false)
+            .advance(&mut states, 0.1, &terrain())
+            .unwrap();
+        assert_eq!(effect.updated_source_notifications, [wall]);
+        assert_eq!(states[&wall].source.curve.points[0], [2.958064, 0.5108361]);
+        command(edit, false, true)
+            .advance(&mut states, 0.1, &terrain())
+            .unwrap();
+        assert_eq!(states[&wall].source.curve.points_u, [0.0, 1.0]);
+        assert_eq!(
+            states[&wall].source.curve.length,
+            before["length"].as_f64().unwrap() as f32
+        );
+        assert_eq!(
+            states[&wall].source.curve.points[0],
+            [-1.1893375, 0.37190735]
+        );
+        let edit: WallHistoryEdit = serde_json::from_value(rows["ChangeArchType"].clone()).unwrap();
+        let wall = edit.wall_id().unwrap();
+        states.insert(wall, wall_snapshot());
+        assert_eq!(edit.operation_tag() as u64, 8);
+        command(edit.clone(), false, false)
+            .advance(&mut states, 0.1, &terrain())
+            .unwrap();
+        assert_eq!(states[&wall].source.observed_source_flag_64, 1);
+        command(edit, false, true)
+            .advance(&mut states, 0.1, &terrain())
+            .unwrap();
+        assert_eq!(states[&wall].source.observed_source_flag_64, 0);
+        // Arch type must not overwrite the independent support byte (native12).
+        assert_eq!(states[&wall].metadata.source_67, 0);
+    }
+
+    #[test]
     fn instant_adjust_height_emits_undo_selected_height_and_marks_done() {
         // fresh 0x140ac042c：`[edit+0x20/0x24]` 由 undo^1 选侧，写 height 事件。
         let mut cmd = command(
@@ -533,13 +686,31 @@ mod dispatch_tests {
     }
 
     #[test]
-    fn unrecovered_instant_operation_returns_unrestored() {
+    fn plaster_peel_instant_replay_preserves_selected_bits_and_direction() {
+        use crate::resources::history::wall_edit::WallValueEdit;
+        let mut map = sources();
+        map.insert(WallId(1), wall_snapshot());
         let mut cmd = command(
-            WallHistoryEdit::ChangeSupports(UnresolvedWallEditPayload),
+            WallHistoryEdit::ChangePlasterPeelAmount(WallValueEdit {
+                wall_index: 1,
+                before: -0.0,
+                after: f32::from_bits(0x3f12_3456),
+            }),
             false,
             false,
         );
-        let error = cmd.advance(&mut sources(), 0.1, &terrain()).unwrap_err();
-        assert!(matches!(error, WallReplayError::Source(_)));
+        let effect = cmd.advance(&mut map, 0.1, &terrain()).unwrap();
+        assert_eq!(map[&WallId(1)].metadata.source_60_bits, 0x3f12_3456);
+        assert_eq!(
+            effect.instantaneous.unwrap().updated_source_notification,
+            Some(WallId(1))
+        );
+        cmd.undo = true;
+        cmd.finished = false;
+        cmd.advance(&mut map, 0.1, &terrain()).unwrap();
+        assert_eq!(
+            map[&WallId(1)].metadata.source_60_bits,
+            (-0.0_f32).to_bits()
+        );
     }
 }

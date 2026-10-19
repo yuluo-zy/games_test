@@ -1,6 +1,6 @@
 //! ECS 主题音频入口，复用 startup 的唯一加载实现。
 use super::{music_player::MusicBackend, music_system::MusicAudioState};
-use crate::{resources::session::ActiveSession, startup::load_glade_audio::load_theme_audio};
+use crate::{resources::session::ActiveSession, startup::load_glade_audio::load_session_audio};
 use bevy_ecs::prelude::*;
 
 /// 在活动会话已建立、音乐资源已初始化后运行。
@@ -9,12 +9,12 @@ pub fn load_glade_audio<B: MusicBackend + Resource>(
     session: Res<ActiveSession>,
     mut state: ResMut<MusicAudioState<B::Event>>,
 ) -> bevy_ecs::error::Result {
-    load_theme_audio(
-        &mut state.player,
+    load_session_audio(
+        &mut state,
         &*backend,
         &session.assets_root(),
-        session.meta.glade,
-    )?;
+        &session.meta,
+    );
     Ok(())
 }
 

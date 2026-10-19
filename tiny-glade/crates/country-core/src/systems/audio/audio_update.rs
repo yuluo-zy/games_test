@@ -15,6 +15,7 @@
 use crate::resources::audio_resources::{AudioCore, ListenerAttributes, Studio};
 use bevy_ecs::prelude::*;
 use glam::{Mat3, Vec3};
+pub use crate::resources::audio_settings::AudioSettings;
 
 /// The 5 FMOD VCA names (O: audio-misc multi-baseline §2).
 pub const VCA_MASTER: &str = "vca:/Master";
@@ -23,19 +24,6 @@ pub const VCA_MUSIC_DAWN_JINGLE: &str = "vca:/Music-DawnJingle";
 pub const VCA_SFX: &str = "vca:/SFX";
 pub const VCA_AMB: &str = "vca:/Amb";
 
-/// AudioSettings: the five volume sliders read by the update chain. Native
-/// offsets (O): master@+0xf8, music@+0xfc, dawn_jingle@+0xfc, sfx@+0x100,
-/// ambience@+0x104; the exact settings struct layout is 待取证, represented
-/// here by the read fields.
-#[derive(Resource, Clone, Copy, Debug)]
-pub struct AudioSettings {
-    pub master_volume: f32,
-    pub music_volume: f32,
-    pub dawn_jingle_volume: f32,
-    pub sfx_volume: f32,
-    pub ambience_volume: f32,
-}
-
 /// Push all five VCA volumes (O: the shared first section of both systems).
 fn push_vca_volumes<S: Studio>(
     core: &mut AudioCore<S>,
@@ -43,7 +31,7 @@ fn push_vca_volumes<S: Studio>(
 ) -> Result<(), S::Error> {
     core.set_vca_volume(VCA_MASTER, settings.master_volume)?;
     core.set_vca_volume(VCA_MUSIC, settings.music_volume)?;
-    core.set_vca_volume(VCA_MUSIC_DAWN_JINGLE, settings.dawn_jingle_volume)?;
+    core.set_vca_volume(VCA_MUSIC_DAWN_JINGLE, settings.music_volume)?;
     core.set_vca_volume(VCA_SFX, settings.sfx_volume)?;
     core.set_vca_volume(VCA_AMB, settings.ambience_volume)
 }
@@ -65,18 +53,15 @@ pub fn camera_listener(rotation: Mat3, translation: Vec3) -> ListenerAttributes 
 #[allow(clippy::too_many_arguments)]
 pub fn audio_update_system<S: Studio + Send + Sync + 'static>(
     mut core: ResMut<AudioCore<S>>,
-    settings: Res<AudioSettings>,
-    camera_rotation: Option<Res<CameraRotation>>,
-    camera_position: Option<Res<CameraPosition>>,
+    config: Res<crate::game_config::GameConfig>,
+    camera: Res<crate::systems::camera_rig::MainCamera>,
 ) {
     if !core.is_connected() {
         return;
     }
-    let _ = push_vca_volumes(&mut *core, &settings);
-    let listener = match (camera_rotation, camera_position) {
-        (Some(rot), Some(pos)) => camera_listener(rot.0, pos.0),
-        _ => default_listener(),
-    };
+    let _ = push_vca_volumes(&mut *core, &config.audio);
+    let inverse_view = camera.camera_matrices().inverse_view;
+    let listener = camera_listener(Mat3::from_mat4(inverse_view), inverse_view.w_axis.truncate());
     let _ = core.update(listener);
 }
 
@@ -84,12 +69,12 @@ pub fn audio_update_system<S: Studio + Send + Sync + 'static>(
 /// default listener pose.
 pub fn boot_audio_update_system<S: Studio + Send + Sync + 'static>(
     mut core: ResMut<AudioCore<S>>,
-    settings: Res<AudioSettings>,
+    config: Res<crate::game_config::GameConfig>,
 ) {
     if !core.is_connected() {
         return;
     }
-    let _ = push_vca_volumes(&mut *core, &settings);
+    let _ = push_vca_volumes(&mut *core, &config.audio);
     let _ = core.update(default_listener());
 }
 
@@ -102,19 +87,6 @@ fn default_listener() -> ListenerAttributes {
         velocity: [0.0, 0.0, 0.0],
     }
 }
-
-/// Camera rotation wrapper (native camera rotation @+0xc0).
-#[derive(Resource, Clone, Copy, Debug)]
-pub struct CameraRotation(pub Mat3);
-/// Camera translation wrapper (native camera translation @+0xf0).
-#[derive(Resource, Clone, Copy, Debug)]
-pub struct CameraPosition(pub Vec3);
-
-/// O: the `+0x58` editing-speed face shared by the audio systems (trigger,
-/// roof and wall frame-end volume, water ambience). The host wires the writer
-/// (待接线); the systems fall back to their default when absent.
-#[derive(Resource, Clone, Copy, Debug, Default)]
-pub struct EditingSpeed(pub f32);
 
 #[cfg(test)]
 mod tests {

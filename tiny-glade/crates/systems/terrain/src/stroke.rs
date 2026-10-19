@@ -61,6 +61,11 @@ impl TerrainStroke {
 }
 #[derive(Clone, Debug, Default)]
 pub struct TerrainEditingData {
+    /// Active cursor plane height in the canonical editing owner. B ui_draw
+    /// writes the original drag distance after successful creation, before
+    /// reading SSBOs/deriving stroke height; release clears it, even if empty.
+    /// This transient state is not part of the saved stroke map.
+    pub cursor_height_override: Option<f32>,
     pub strokes: HashMap<StrokeId, TerrainStroke>,
     pub next_index: u32,
     /// Runtime rasterization state of this stroke owner. B startup +0x40 is

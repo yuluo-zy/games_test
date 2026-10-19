@@ -10,10 +10,8 @@
 use glam::Vec3;
 
 /// B `construct_rect_bottom_layer`（0x14124eb80）。**未实现**：见模块文档。
-pub fn construct_rect_bottom_layer(
-    _min: Vec3,
-    _max: Vec3,
-    _out: &mut Vec<[u8; 96]>,
-) {
-    todo!("未实现: construct_rect_bottom_layer 0x14124eb80（halftimber 四角/5 段边二路、0.69 计数、0.32 jitter 未逐语句）")
+pub fn construct_rect_bottom_layer(_min: Vec3, _max: Vec3, _out: &mut Vec<[u8; 96]>) {
+    todo!(
+        "未实现: construct_rect_bottom_layer 0x14124eb80（halftimber 四角/5 段边二路、0.69 计数、0.32 jitter 未逐语句）"
+    )
 }

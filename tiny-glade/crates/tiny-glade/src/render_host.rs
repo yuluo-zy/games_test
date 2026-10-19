@@ -269,6 +269,15 @@ pub struct TextureHost {
     slots: Arc<Mutex<Vec<TextureSlot>>>,
     /// 默认视图缓存（原 `ManagedTexture::view` 按描述缓存，M2.6）：视图随纹理一起存活，`release` 时丢弃。
     views: Arc<Mutex<std::collections::HashMap<u64, rhapsody::resource::ManagedTextureView>>>,
+    /// Native explicit subresource views, retained until the texture owner retires.
+    view_variants: Arc<
+        Mutex<
+            std::collections::HashMap<
+                (u64, country_core::rhapsody_types::TextureViewDesc),
+                rhapsody::resource::ManagedTextureView,
+            >,
+        >,
+    >,
     /// 宿主附加的用途位（core 的 `TextureDesc` 只有 sampled/storage/附件五个开关，没有 TRANSFER_SRC；
     /// 读回像素的宿主/测试在这里统一加上。原版 `TextureDesc.usage` 是完整位集，此项是宿主策略，不是原版行为）。
     extra_usage: vk::ImageUsageFlags,
@@ -280,6 +289,7 @@ impl TextureHost {
             device,
             slots: Arc::new(Mutex::new(Vec::new())),
             views: Arc::new(Mutex::new(Default::default())),
+            view_variants: Arc::new(Mutex::new(Default::default())),
             extra_usage: vk::ImageUsageFlags::empty(),
         }
     }
@@ -319,21 +329,44 @@ impl TextureHost {
         Ok(raw)
     }
 
+    /// Select the native disk texture subresource with the recovered descriptor.
+    pub fn explicit_view(
+        &self,
+        id: u64,
+        desc: &country_core::rhapsody_types::TextureViewDesc,
+    ) -> rhapsody::Result<u64> {
+        let texture = self
+            .get_by_id(id)
+            .ok_or_else(|| rhapsody::Error::invalid_usage("texture host handle is not live"))?;
+        let mut variants = self.view_variants.lock();
+        if let Some(view) = variants.get(&(id, *desc)) {
+            return Ok(ash::vk::Handle::as_raw(view.raw()));
+        }
+        let native = rh_view_desc(&texture, desc)?;
+        let view = self.device.get_vk_image_view(&texture, &native)?;
+        let raw = ash::vk::Handle::as_raw(view.raw());
+        variants.insert((id, *desc), view);
+        Ok(raw)
+    }
+
     pub(crate) fn owned_view(
         &self,
         id: u64,
         raw: u64,
     ) -> rhapsody::Result<Arc<rhapsody::resource::TextureView>> {
-        let views = self.views.lock();
-        let view = views.get(&id).ok_or_else(|| {
-            rhapsody::Error::invalid_usage("external texture view is not owned by this host")
-        })?;
-        if ash::vk::Handle::as_raw(view.raw()) != raw {
-            return Err(rhapsody::Error::invalid_usage(
-                "external texture view differs from retained owner",
-            ));
+        if let Some(view) = self.views.lock().get(&id) {
+            if ash::vk::Handle::as_raw(view.raw()) == raw {
+                return Ok(view.view.clone());
+            }
         }
-        Ok(view.view.clone())
+        self.view_variants
+            .lock()
+            .iter()
+            .find(|((owner, _), view)| *owner == id && ash::vk::Handle::as_raw(view.raw()) == raw)
+            .map(|(_, view)| view.view.clone())
+            .ok_or_else(|| {
+                rhapsody::Error::invalid_usage("external texture view is not owned by this host")
+            })
     }
 
     /// rhapsody 描述 → core 描述（`managed_texture_desc`）。
@@ -387,6 +420,9 @@ impl TextureHost {
         slot.texture = None;
         slot.generation += 1;
         self.views.lock().remove(&texture.id);
+        self.view_variants
+            .lock()
+            .retain(|(id, _), _| *id != texture.id);
         true
     }
 
@@ -2096,7 +2132,7 @@ fn individual_mip_views(
 /// Declaration-time projection of the same view used by rh_view_desc during
 /// recording. The logical descriptor is available before GPU allocation; no
 /// physical image or substitute owner is created to calculate this range.
-fn compute_view_range(
+pub(crate) fn compute_view_range(
     descriptor: rhapsody::rg::Descriptor,
     view: &country_core::rhapsody_types::TextureViewDesc,
 ) -> rhapsody::Result<rhapsody::rg::AccessRange> {

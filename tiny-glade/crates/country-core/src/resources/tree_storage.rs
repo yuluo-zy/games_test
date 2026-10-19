@@ -59,30 +59,65 @@ impl TreeStorage {
 
 // ---------------------------------------------------------------- 组 A 接线
 
-/// 可交互森林树（O：`tree_storage::InteractableForestTree`；forest
-/// manage_tree_prefabs 0x141bf16c0 的候选评估面 + system_critters 消费。
-/// 字段布局 U——re-analyst-A 契约：树记录 0x50B（{Arc<String> prefab, u64 打包
-/// 位置, f32 高, f32 缩放, …}），语义字段名 I）。
-#[derive(Component, Clone, Debug, Default)]
+// Candidate replacement of the forest types in resources/tree_storage.rs.
+// Existing unrelated TreeStorage/event declarations remain untouched.
+
+/// B InteractableForestTree is a24-byte animation component. It refers back
+/// to the canonical80-byte ForestTree record; it does not own that record.
+#[repr(C)]
+#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default, PartialEq)]
 pub struct InteractableForestTree {
-    /// 树 id（O：0x58B 树命令 {1,1,变体,树 id} 载荷族；I）。
-    pub id: u64,
-    /// 世界位置（I：pack_2x16f_uint 打包位的语义解）。
-    pub position: glam::Vec3,
-    /// 缩放（I：fastrand lerp(0.3, 0.75) 族）。
-    pub scale: f32,
-    /// typed gap：其余字段（U）。
-    pub _gap: u64,
+    pub placement_index: usize,
+    pub amplitude: f32,
+    pub progress: f32,
+    pub delay: f32,
 }
 
-/// 可交互森林放置位点（O：`tree_storage::InteractableForestPlacements`；
-/// manage_tree_prefabs 的 ResMut 写侧（0x50B 树记录 Vec）+ 36B 默认实例
-/// （0x142b8fc58 静态初值，re-analyst-A 契约 §2）。字段明细 U。
-#[derive(Resource, Clone, Debug, Default)]
-pub struct InteractableForestPlacements {
-    /// 树记录 Vec（0x50B 条目；语义 I）。
-    pub records: Vec<InteractableForestTree>,
+/// Native ForestTree,80 bytes: PrefabName@0, placement@10, Entity@40,
+/// billboard expansion@48. The final four bytes are alignment padding.
+/// init_clearing clones the full48-byte placement and preserves every channel.
+#[repr(C)]
+#[derive(Clone, Debug)]
+pub struct ForestTree {
+    pub prefab_name: crate::resources::render::mesh_atlas_library::PrefabName,
+    pub placement: crate::resources::placement_data::PlacementDataSsbo,
+    pub entity: Option<bevy_ecs::entity::Entity>,
+    pub billboard_expansion_scale: f32,
 }
+
+#[derive(bevy_ecs::resource::Resource, Clone, Debug, Default)]
+pub struct InteractableForestPlacements {
+    pub records: Vec<ForestTree>,
+    pub processed: bool,
+}
+
+impl InteractableForestPlacements {
+    pub fn clear(&mut self) {
+        self.records.clear();
+        self.processed = false;
+    }
+}
+
+#[cfg(test)]
+mod forest_native_layout {
+    use super::*;
+    use core::mem::{offset_of, size_of};
+
+    #[test]
+    fn placement_owner_and_animation_component_are_distinct_native_types() {
+        assert_eq!(size_of::<ForestTree>(), 80);
+        assert_eq!(offset_of!(ForestTree, prefab_name), 0);
+        assert_eq!(offset_of!(ForestTree, placement), 0x10);
+        assert_eq!(offset_of!(ForestTree, entity), 0x40);
+        assert_eq!(offset_of!(ForestTree, billboard_expansion_scale), 0x48);
+        assert_eq!(size_of::<InteractableForestTree>(), 24);
+        assert_eq!(offset_of!(InteractableForestTree, placement_index), 0);
+        assert_eq!(offset_of!(InteractableForestTree, amplitude), 8);
+        assert_eq!(offset_of!(InteractableForestTree, progress), 12);
+        assert_eq!(offset_of!(InteractableForestTree, delay), 16);
+    }
+}
+
 
 /// 树移动命令（O：`tree_storage::MoveTreeCmd`；ui_move_tree 0x14226b1a0 发射、
 /// process_tree_cmds 0x142267430 消费。载荷 = **0x18B** `{index u64@+0,
@@ -124,4 +159,30 @@ pub struct HideTreesinAreaCmd {
 pub struct HideTreesNextToWallCmd {
     pub wall: crate::resources::walls::WallId,
     pub finished: bool,
+}
+
+/// Shared owner of the component inserted by prefab140841550 and consumed
+/// by the critter domain. The native constructor's observed state/clock/flag
+/// are retained independently of the current flock's owned wren collection.
+#[derive(bevy_ecs::component::Component, Clone, Debug, Default, PartialEq)]
+pub struct BirdHaven {
+    pub sphere: (glam::Vec3, f32),
+    pub wrens: Vec<HavenWren>,
+    pub observed_state: u32,
+    pub cooldown: f32,
+    pub observed_flag: bool,
+}
+
+impl BirdHaven {
+    pub fn new(center: glam::Vec3, radius: f32) -> Self {
+        Self { sphere: (center, radius), wrens: Vec::new(),
+            observed_state: 0, cooldown: 10.0, observed_flag: false }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct HavenWren {
+    pub entity: bevy_ecs::entity::Entity,
+    pub pos: glam::Vec3,
+    pub timer: f32,
 }

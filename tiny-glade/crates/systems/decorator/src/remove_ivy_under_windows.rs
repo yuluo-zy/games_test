@@ -21,6 +21,9 @@ use bevy_ecs::prelude::*;
 use country_core::resources::terrain_height::TerrainHeightsData;
 use country_core::resources::walls::decorator::{DecoratorId, DecoratorInfo};
 use country_core::resources::walls::decorator_storage::DecoratorStorage;
+use country_core::resources::walls::decorator_subtype::{
+    DecoratorLibKey, DecoratorMeshLibrary,
+};
 use country_core::resources::walls::WallId;
 use country_core::systems::ivy::ivy_pruner::{remove_ivy_at_location, RemoveIvyCmd};
 use glam::Vec3;
@@ -31,6 +34,7 @@ use glam::Vec3;
 pub fn remove_ivy_under_windows(
     storage: Res<DecoratorStorage>,
     terrain: Res<TerrainHeightsData>,
+    mesh_lib: Res<DecoratorMeshLibrary>,
     mut ivy_commands: EventWriter<RemoveIvyCmd>,
 ) {
     // 墙段记录（0x90B；skip tag==2 / 非窗）。
@@ -39,7 +43,7 @@ pub fn remove_ivy_under_windows(
             if !is_window_for_ivy(info) {
                 continue;
             }
-            emit_remove_ivy(&mut ivy_commands, &terrain, *id, info, wall);
+            emit_remove_ivy(&mut ivy_commands, &terrain, &mesh_lib, *id, info, wall);
         }
     }
     // 楼梯/屋顶段（记录 tag 3；窗判定同）。
@@ -48,7 +52,14 @@ pub fn remove_ivy_under_windows(
             if !is_window_for_ivy(info) {
                 continue;
             }
-            emit_remove_ivy(&mut ivy_commands, &terrain, *id, info, WallId(u64::MAX));
+            emit_remove_ivy(
+                &mut ivy_commands,
+                &terrain,
+                &mesh_lib,
+                *id,
+                info,
+                WallId(u64::MAX),
+            );
         }
     }
 }
@@ -65,6 +76,7 @@ fn is_window_for_ivy(info: &DecoratorInfo) -> bool {
 fn emit_remove_ivy(
     commands: &mut EventWriter<RemoveIvyCmd>,
     terrain: &TerrainHeightsData,
+    mesh_lib: &DecoratorMeshLibrary,
     id: u32,
     info: &DecoratorInfo,
     wall: WallId,
@@ -75,10 +87,17 @@ fn emit_remove_ivy(
     // 地形高（O：sample_at_world_xz；盒中心贴地）。
     let ground = terrain.sample_at_world_xz(x, z);
     let center = Vec3::new(x, -ground, z);
-    // 尺寸（I：窗墙空间尺寸；原经 DecoratorSubtypeLibrary 查表
-    // 0x14125cf90，未命中 fmt panic —— Rust 侧以默认尺寸承载并登记）。
-    let width = 1.0;
-    let height = 3.0;
+    // 尺寸（O：`DecoratorLibKey::new` → 库查表 0x14125cf90；未命中
+    // fmt panic 0x142c21c80/0x142c21c90，不回落默认尺寸）。
+    let key = DecoratorLibKey::new(info.decorator_type().0, info.rank());
+    let dims = mesh_lib
+        .collision_mesh(key)
+        .unwrap_or_else(|| {
+            panic!("remove_ivy_under_windows: missing decorator collision dims for key")
+        })
+        .dims_wall_space();
+    let width = dims.x;
+    let height = dims.y;
     // 源（O：source_0 = 装饰 id；source_8 = 墙 id，try_as_wall 0x140a1c290）。
     let source_0 = u64::from(DecoratorId::new(id).0);
     let source_8 = wall.get_inner();

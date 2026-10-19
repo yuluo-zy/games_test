@@ -114,20 +114,7 @@ pub fn restore_archived_decorators<C: Send + Sync + 'static>(
     }
     // 机器码步骤 4：逐装饰落位（含 d2s 状态字节 2 → insert）。
     for (address, id) in archivist_all_decorators(&archivist) {
-        let addr = addr_from_address(address);
-        let bucket = storage.get_or_insert_default(addr);
-        if let Some(tracked) = tracked_at(&archivist, address) {
-            if let Some(info) = tracked.items.get(&id) {
-                let decorator_info = crate::apply_decorator_op::bytes_to_info(&info.0);
-                bucket.insert(DecoratorId(id), decorator_info);
-                let state = decorator_info.state;
-                if state == 2 {
-                    storage.decorator_to_storage.insert(DecoratorId(id), addr);
-                } else {
-                    storage.decorator_to_storage.update(DecoratorId(id), addr);
-                }
-            }
-        }
+        overwrite_decorator_state_from_archivist(&mut storage, &archivist, address, id);
     }
     // 机器码步骤：楼梯备份恢复。
     stairs.restore_backup();
@@ -135,6 +122,35 @@ pub fn restore_archived_decorators<C: Send + Sync + 'static>(
     // extract_diff 冲刷）——colliders/interactions 落位在 core 归档类型
     // （DecoratorArchivist collision_a/b）接线后补齐；extract_diff 冲刷属
     // 历史差异链（core add_decorator_diff 缺口，见 RESTORE.md）。
+}
+
+/// 单装饰归档状态覆盖（0x140817a40 步骤 4 内联）：archivist 条目的
+/// `ObservedDecoratorInfo` 解码为 `DecoratorInfo` → 目标桶 insert → 按
+/// `state==2` 选择 d2s insert/update。
+///
+/// 返回是否写入（归档条目缺失 → false，不伪造默认状态）。
+pub fn overwrite_decorator_state_from_archivist<C: Send + Sync + 'static>(
+    storage: &mut DecoratorStorage,
+    archivist: &DecoratorArchivist<C>,
+    address: DecoratorStorageAddress,
+    id: u32,
+) -> bool {
+    let Some(tracked) = tracked_at(archivist, address) else {
+        return false;
+    };
+    let Some(info) = tracked.items.get(&id) else {
+        return false;
+    };
+    let decorator_info = crate::apply_decorator_op::bytes_to_info(&info.0);
+    let addr = addr_from_address(address);
+    let bucket = storage.get_or_insert_default(addr);
+    bucket.insert(DecoratorId(id), decorator_info);
+    if decorator_info.state == 2 {
+        storage.decorator_to_storage.insert(DecoratorId(id), addr);
+    } else {
+        storage.decorator_to_storage.update(DecoratorId(id), addr);
+    }
+    true
 }
 
 /// DecoratorStorageAddress → DecoratorStorageAddr（core 模型桥；
@@ -152,3 +168,57 @@ pub(crate) fn addr_from_address(address: DecoratorStorageAddress) -> DecoratorSt
 fn _wall_id_surface(_w: WallId) {}
 
 const LOG_TARGET: &str = "system_decorator::restore_archived_decorators";
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use country_core::resources::walls::decorator_archivist::changes::{
+        ObservedDecoratorInfo, TrackedDecorators,
+    };
+    use country_core::resources::walls::publication_fields::WallId as ArchivedWallId;
+
+    #[test]
+    fn overwrite_restores_entry_and_d2s() {
+        let mut archivist = DecoratorArchivist::<()>::default();
+        let info = country_core::resources::walls::decorator::DecoratorInfo {
+            decorator_id: 5,
+            state: 2,
+            ..Default::default()
+        };
+        let mut tracked = TrackedDecorators::default();
+        tracked.items.insert(
+            5,
+            ObservedDecoratorInfo(crate::apply_decorator_op::info_to_bytes(info)),
+        );
+        archivist.walls.insert(ArchivedWallId(9), tracked);
+
+        let mut storage = DecoratorStorage::default();
+        assert!(overwrite_decorator_state_from_archivist(
+            &mut storage,
+            &archivist,
+            DecoratorStorageAddress::Wall(ArchivedWallId(9)),
+            5
+        ));
+        let entry = storage
+            .lookup_decorator_info(DecoratorId(5))
+            .expect("restored entry");
+        assert_eq!(entry.state, 2);
+        assert_eq!(
+            storage.lookup_storage(DecoratorId(5)),
+            Some(DecoratorStorageAddr::Wall(WallId(9)))
+        );
+    }
+
+    #[test]
+    fn overwrite_returns_false_for_missing_archive_entry() {
+        let archivist = DecoratorArchivist::<()>::default();
+        let mut storage = DecoratorStorage::default();
+        assert!(!overwrite_decorator_state_from_archivist(
+            &mut storage,
+            &archivist,
+            DecoratorStorageAddress::Wall(ArchivedWallId(9)),
+            5
+        ));
+        assert!(storage.lookup_decorator_info(DecoratorId(5)).is_none());
+    }
+}

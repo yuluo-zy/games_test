@@ -37,12 +37,13 @@ pub struct EffectsHost<'f, 's, 'a> {
     backend: &'a dyn ShaderBackend,
     shaders: &'a AssetShaderLibrary,
     textures: HashMap<u32, RgTexture>,
+    texture_sample_counts: HashMap<u32, u8>,
     named_textures: HashMap<u64, p::TexRef>,
     app_mode: Option<p::AppModeView>,
     time: Option<p::TimeView>,
     debug: Option<VermeerDebugControl>,
     alt_background: bool,
-    settings_events: Option<&'a mut bevy_ecs::event::Events<country_core::resources::events::WriteSettingsFileCmd>>,
+    reveal_finished_events: Option<&'a mut bevy_ecs::event::Events<country_core::systems::save::load_game::StartupRevealFinished>>,
     error: Option<rhapsody::Error>,
 }
 
@@ -54,18 +55,25 @@ impl<'f, 's, 'a> EffectsHost<'f, 's, 'a> {
         debug: Option<VermeerDebugControl>, alt_background: bool,
     ) -> Self {
         Self { frame, access, backend, shaders, textures: HashMap::new(),
-            named_textures: HashMap::new(), app_mode, time, debug, alt_background,
-            settings_events: None, error: None }
+            texture_sample_counts: HashMap::new(), named_textures: HashMap::new(), app_mode, time, debug, alt_background,
+            reveal_finished_events: None, error: None }
     }
 
-    pub fn with_settings_events(mut self, events: &'a mut bevy_ecs::event::Events<country_core::resources::events::WriteSettingsFileCmd>) -> Self {
-        self.settings_events = Some(events);
+    pub fn with_startup_reveal_finished_events(mut self, events: &'a mut bevy_ecs::event::Events<country_core::systems::save::load_game::StartupRevealFinished>) -> Self {
+        self.reveal_finished_events = Some(events);
         self
     }
 
     /// Record the actual graph handle returned by its producer. A logical index
     /// is never replaced with a fabricated GPU handle.
     pub fn register_texture(&mut self, texture: RgTexture) -> p::TexRef {
+        self.register_texture_with_samples(texture, 1)
+    }
+
+    /// RgTexture's compatibility description omits sample_count. Preserve it
+    /// for external raster targets instead of relabelling a 4x image as 1x.
+    pub fn register_texture_with_samples(&mut self, texture: RgTexture, samples: u8) -> p::TexRef {
+        self.texture_sample_counts.insert(texture.resource, samples);
         self.textures.insert(texture.resource, texture);
         p::TexRef(texture.resource)
     }
@@ -135,7 +143,11 @@ impl<'f, 's, 'a> EffectsHost<'f, 's, 'a> {
             return Err(rhapsody::Error::invalid_usage("effect shader identity changed during this frame"));
         }
         let target = match desc.color { p::RasterColor::Texture(t) | p::RasterColor::View(t) => self.texture(t)? };
-        let target_attachment = attachment(target);
+        let target_attachment = AttachmentTexture {
+            sample_count: self.texture_sample_counts.get(&target.resource).copied()
+                .expect("registered effect texture sample count"),
+            ..attachment(target)
+        };
         let color = match desc.color {
             p::RasterColor::Texture(_) => ColorAttachment::Texture(target_attachment),
             p::RasterColor::View(_) => ColorAttachment::View { view: [0; 4], texture: target_attachment },
@@ -239,8 +251,8 @@ impl vermeer::VermeerHost for EffectsHost<'_, '_, '_> {
             .expect("Vermeer blur pyramid failed");
         self.register_texture(output)
     }
-    fn send_write_settings_file(&mut self) -> Option<()> {
-        self.settings_events.as_deref_mut()?.send(country_core::resources::events::WriteSettingsFileCmd);
+    fn send_startup_reveal_finished(&mut self) -> Option<()> {
+        self.reveal_finished_events.as_deref_mut()?.send(country_core::systems::save::load_game::StartupRevealFinished);
         Some(())
     }
 }

@@ -1,24 +1,10 @@
-//! B `water_ambience_audio.rs`: water ambience — per-water-grid-cell Amb loops.
-//!
-//! O-level facts (chapter water_ambience_audio.rs.md, decomp-0x1409ebe80 /
-//! 0x1409ebf20 / 0x1409ecea0, disasm-0x1409ed160): init builds an `AudioLoop`
-//! player per water grid cell (from_iter<Range, instantiate_loop closure> over
-//! `event:/SFX/Water/Amb`), then `insert_resource<WaterAmbienceAudio>` +
-//! `insert_resource<WaterAudioGrid>`. The system traverses the grid: inactive
-//! cells `AudioLoop::stop`, active cells `start_if_not_playing` +
-//! `set_position` (the resolved cell world position) + `set_volume`.
-//! Resolved (disasm-0x1409ed160/0x1409ed2f0): each cell carries a 64-bit
-//! "exists" bits field at +8 whose `popcount` weights the volume
-//!   `volume = sqrt( pop / (1 + dist² / (pop * 0.015625 * 42.5)) )`
-//! (`0.015625` @ 0x142ac4d00, `42.5` @ 0x142ac4d20, `1.0` @ 0x142925904),
-//! and `set_volume` is guarded by a per-cell state byte == 1. The cell's world
-//! position is `cell.xz` + a grid-sample offset (vector @ 0x142ac4d10,
-//! 待对账). The native `load_index_unchecked` (0x1409ebe80) loads a grid cell.
-
+//! Original water-audio owner: 10x10 fixed cell bases, 64-frame visibility
+//! bits and wrapping i16 jitter sums. Native volume is based on popcount/64,
+//! with RNE coefficient42.25; Active belongs to AudioInstance, not the cell.
 use crate::{
     resources::audio_resources::{AudioCore, AudioInstance, EventInstance, Studio},
     systems::{
-        audio::audio_update::CameraPosition,
+        camera_rig::MainCamera,
         backend::input::translate_input::DemoModeEnabled,
     },
     utils::audio_utils::AudioLoop,
@@ -28,42 +14,86 @@ use bevy_ecs::prelude::*;
 /// `event:/SFX/Water/Amb` (O: rne-read).
 pub const WATER_AMB_EVENT: &str = "event:/SFX/Water/Amb";
 
-/// Grid extent (native grid dimensions 待取证; the constant mirrors the
-/// documented 64-bit rolling-window cell accounting).
-pub const WATER_GRID_EXTENT: usize = 8;
+/// Native init1409ebf20 constructs10 rows with10 columns.
+pub const WATER_GRID_EXTENT: usize = 10;
 
 /// Water ambience volume constants (O: disasm-0x1409ed1c1/1ce/1d7):
-/// `1.0` @ 0x142925904, `0.015625` @ 0x142ac4d00, `42.5` @ 0x142ac4d20.
+/// `1.0` @ 0x142925904, `0.015625` @ 0x142ac4d00, `42.25` @ 0x142ac4d20.
 pub const WATER_VOLUME_ONE: f32 = 1.0;
 pub const WATER_VOLUME_BIT_WEIGHT: f32 = 0.015625;
-pub const WATER_VOLUME_ATTENUATION: f32 = 42.5;
+pub const WATER_VOLUME_ATTENUATION: f32 = 42.25;
 
-/// A water-grid cell (native cell 24 B: world xz @+0, 64-bit "exists" bits @+8
-/// (popcount = volume weight), 2×i16 grid samples @+0x10, state byte @+0x18;
-/// the water-domain producer fills the bits).
-#[derive(Debug, Clone, Copy, Default)]
+/// B native 24B cell: base x/z at0, 64-frame visibility bits at8,
+/// two wrapping signed jitter sums at0x10; the last four bytes are padding.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct WaterGridCell {
-    /// Native `+0` world x, z of the cell.
     pub position: [f32; 2],
-    /// Native `+8` 64-bit "exists" flag (O: a non-zero field selects active
-    /// cells; its popcount weights the volume). The previous water_level>=0.5
-    /// threshold was a self-approximation and is dropped.
     pub bits: u64,
-    /// Native set_volume guard byte (`== 1` plays the volume; 待接线 producer).
-    pub state: u8,
+    pub sums: [i16; 2],
 }
 
-/// WaterAudioGrid: the grid (O: inserted by init; consumed by the system).
+impl WaterGridCell {
+    /// Native producer141baf4b3..50c: +/- the current jitter only on bit changes.
+    pub fn set_sample(&mut self, bit: u64, visible: bool, delta: [i16; 2]) {
+        let was_set = self.bits & bit != 0;
+        if visible {
+            self.bits |= bit;
+            if !was_set {
+                self.sums[0] = self.sums[0].wrapping_add(delta[0]);
+                self.sums[1] = self.sums[1].wrapping_add(delta[1]);
+            }
+        } else {
+            self.bits &= !bit;
+            if was_set {
+                self.sums[0] = self.sums[0].wrapping_sub(delta[0]);
+                self.sums[1] = self.sums[1].wrapping_sub(delta[1]);
+            }
+        }
+    }
+
+    pub fn active_position(&self) -> [f32; 3] {
+        let reciprocal_count = 1.0 / self.bits.count_ones() as f32;
+        [self.position[0] + reciprocal_count * self.sums[0] as f32 * 0.8125,
+            0.0,
+            self.position[1] + reciprocal_count * self.sums[1] as f32 * 0.8125]
+    }
+}
+
 #[derive(Resource, Debug, Default)]
 pub struct WaterAudioGrid {
     pub cells: Vec<WaterGridCell>,
 }
 
 impl WaterAudioGrid {
-    /// `load_index_unchecked` (0x1409ebe80): grid cell access (index OOB is the
-    /// caller's responsibility, matching the unchecked access).
-    pub fn load_index_unchecked(&self, index: usize) -> &WaterGridCell {
-        &self.cells[index]
+    /// Original init1409ebf20: 10x10 cells centred in [-65,65].
+    pub fn new() -> Self {
+        let mut cells = Vec::with_capacity(100);
+        for z in 0..WATER_GRID_EXTENT {
+            let tz = (z as f32 + 0.5) / 10.0;
+            for x in 0..WATER_GRID_EXTENT {
+                let tx = (x as f32 + 0.5) / 10.0;
+                cells.push(WaterGridCell {
+                    position: [tx * 65.0 - (1.0-tx) * 65.0,
+                        tz * 65.0 - (1.0-tz) * 65.0],
+                    bits: 0, sums: [0; 2],
+                });
+            }
+        }
+        Self { cells }
+    }
+
+    /// B uninit_clearing140a7a7b0..7c8: retain base positions and allocation.
+    pub fn clear_activity(&mut self) {
+        for cell in &mut self.cells {
+            cell.bits = 0;
+            cell.sums = [0; 2];
+        }
+    }
+
+    /// B1409ebe80 returns visibility density, not a reference to the cell.
+    pub fn load_index_unchecked(&self, index: usize) -> f32 {
+        self.cells[index].bits.count_ones() as f32 * WATER_VOLUME_BIT_WEIGHT
     }
 }
 
@@ -95,17 +125,18 @@ pub fn water_ambience_audio_init_system<S: Studio + Send + Sync + 'static>(
 ) {
     let cells = WATER_GRID_EXTENT * WATER_GRID_EXTENT;
     let ambience = WaterAmbienceAudio::<S::Event>::new(&core, cells);
-    let mut grid = WaterAudioGrid::default();
-    grid.cells = vec![WaterGridCell::default(); cells];
+    let grid = WaterAudioGrid::new();
     commands.insert_resource(ambience);
     commands.insert_resource(grid);
 }
 
 /// Resolved water ambience volume (O: disasm-0x1409ed2b8..36d):
-/// `sqrt( pop / (1 + dist² / (pop * 0.015625 * 42.5)) )`.
+/// `sqrt( pop / (1 + dist² / (pop * 0.015625 * 42.25)) )`.
 fn water_ambience_volume(pop: f32, dist_sq: f32) -> f32 {
-    let attenuation = pop * WATER_VOLUME_BIT_WEIGHT * WATER_VOLUME_ATTENUATION;
-    (pop / (WATER_VOLUME_ONE + dist_sq / attenuation)).sqrt()
+    // Exact mul/div/add/reciprocal/mul/sqrt sequence1409ed2b8..36d.
+    let fraction=pop*WATER_VOLUME_BIT_WEIGHT;
+    let attenuation=fraction*WATER_VOLUME_ATTENUATION;
+    (fraction*(WATER_VOLUME_ONE/(dist_sq/attenuation+WATER_VOLUME_ONE))).sqrt()
 }
 
 /// `water_ambience_audio_system` (0x1409ecea0): per active cell start the Amb
@@ -120,32 +151,33 @@ fn water_ambience_volume(pop: f32, dist_sq: f32) -> f32 {
 pub fn water_ambience_audio_system<S: Studio + Send + Sync + 'static>(
     mut ambience: ResMut<WaterAmbienceAudio<S::Event>>,
     grid: Res<WaterAudioGrid>,
-    camera_position: Option<Res<CameraPosition>>,
+    camera: Res<MainCamera>,
     demo: Option<Res<DemoModeEnabled>>,
 ) {
     // O: `_DEV_OVERRIDE_IS_DEMO_MODE == 0` gate.
     if demo.is_some_and(|d| d.0) {
         return;
     }
-    let eye = camera_position.map_or([0.0, 0.0, 0.0], |p| [p.0.x, p.0.y, p.0.z]);
+    let eye: [f32; 3] = camera.eye_position().into();
     let count = ambience.loops.len().min(grid.cells.len());
     for index in 0..count {
         let loop_player = &mut ambience.loops[index];
-        let cell = grid.load_index_unchecked(index);
+        let cell = &grid.cells[index];
         if cell.bits != 0 {
-            let _ = loop_player.start_if_not_playing();
+            loop_player.start_if_not_playing().unwrap();
             let current = &mut loop_player.entries[loop_player.cursor];
-            // O: resolved cell world position (cell.xz + grid-sample offset).
-            let _ = current.set_position([cell.position[0], 0.0, cell.position[1]]);
-            let dx = cell.position[0] - eye[0];
-            let dz = cell.position[1] - eye[2];
-            let dist_sq = dx * dx + dz * dz;
+            let position = cell.active_position();
+            current.set_position(position).unwrap();
+            let dx = position[0] - eye[0];
+            let dy = position[1] - eye[1];
+            let dz = position[2] - eye[2];
+            let dist_sq = dx * dx + dy * dy + dz * dz;
             let volume = water_ambience_volume(cell.bits.count_ones() as f32, dist_sq);
-            if cell.state == 1 {
-                let _ = current.set_volume(volume);
-            }
+            // Native ==1 guard is the selected AudioInstance::Active tag,
+            // not a WaterGridCell state. AudioInstance::set_volume owns it.
+            current.set_volume(volume).unwrap();
         } else {
-            let _ = loop_player.stop_now();
+            loop_player.stop_now().unwrap();
         }
     }
 }
@@ -162,8 +194,45 @@ mod tests {
     #[test]
     fn water_ambience_volume_matches_the_native_formula() {
         // pop=1, dist=0 → volume = sqrt(1/(1+0)) = 1.0.
-        assert!((water_ambience_volume(1.0, 0.0) - 1.0).abs() < 1e-6);
-        // The 0.015625/42.5 constants enter only through dist².
-        assert!((water_ambience_volume(2.0, 0.0) - 2.0f32.sqrt()).abs() < 1e-6);
+        assert!((water_ambience_volume(1.0, 0.0) - 0.125).abs() < 1e-6);
+        // The 0.015625/42.25 constants enter only through dist².
+        assert!((water_ambience_volume(2.0, 0.0) - (2.0f32/64.0).sqrt()).abs() < 1e-6);
+    }
+}
+
+
+#[cfg(test)]
+mod lifecycle_native_tests {
+    use super::*;
+    #[test]
+    fn original_water_grid_owns_rollover_and_unload_preserves_positions() {
+        let mut grid=WaterAudioGrid::new();
+        assert_eq!(grid.cells.len(),100);
+        assert_eq!(core::mem::size_of::<WaterGridCell>(),24);
+        assert_eq!(core::mem::offset_of!(WaterGridCell,sums),0x10);
+        assert_eq!(grid.cells[0].position,[-58.5,-58.5]);
+        assert_eq!(grid.cells[99].position,[58.5,58.5]);
+        let base=grid.cells.iter().map(|c|c.position).collect::<Vec<_>>();
+        let address=grid.cells.as_ptr();
+        grid.cells[0].set_sample(1<<11,true,[-1,-5]);
+        grid.cells[0].set_sample(1<<11,true,[-1,-5]);
+        assert_eq!(grid.cells[0].sums,[-1,-5]);
+        assert_eq!(grid.cells[0].active_position(),[-59.3125,0.0,-62.5625]);
+        assert_eq!(grid.load_index_unchecked(0),1.0/64.0);
+        grid.clear_activity();
+        assert_eq!(grid.cells.as_ptr(),address);
+        assert_eq!(grid.cells.iter().map(|c|c.position).collect::<Vec<_>>(),base);
+        assert!(grid.cells.iter().all(|c|c.bits==0 && c.sums==[0,0]));
+        // The still-live producer's next frame uses the cleared canonical owner.
+        grid.cells[0].set_sample(1<<22,true,[5,-3]);
+        assert_eq!(grid.cells[0].bits,1<<22);
+        assert_eq!(grid.cells[0].sums,[5,-3]);
+        grid.cells[0].set_sample(1<<22,false,[5,-3]);
+        assert_eq!(grid.cells[0].sums,[0,0]);
+    }
+    #[test]
+    fn native_attenuation_constant_and_normalized_volume_are_retained() {
+        assert_eq!(WATER_VOLUME_ATTENUATION.to_bits(),0x42290000);
+        assert_eq!(water_ambience_volume(64.0,42.25).to_bits(),0.5f32.sqrt().to_bits());
     }
 }

@@ -79,23 +79,8 @@ pub const WREN_MAX_Y: f32 = 30.0;
 /// 认领半径（B `swap_remove` 认领距离 8.0）。
 pub const FREE_SPOT_RADIUS: f32 = 8.0;
 
-/// 树庇护（BirdHaven 的 crate 投影；B 类型在 country_core::resources::tree_storage）。
-#[derive(Component, Clone, Debug, Default, PartialEq)]
-pub struct BirdHaven {
-    /// 冠球（中心 + 半径；树查询产出）。
-    pub sphere: (Vec3, f32),
-    /// 已入庇护的鹪鹩（pos + 摇树计时）。
-    pub wrens: Vec<HavenWren>,
-}
-
-/// 树庇护内一只鹪鹩（decomp 0x28-stride 树侧状态：pos + 计时 语义投影）。
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct HavenWren {
-    pub entity: Entity,
-    pub pos: Vec3,
-    /// 摇树计时（@+0x24；`<=0 && 距离/dt>10` → 摇树出生）。
-    pub timer: f32,
-}
+// Use the exact component identity produced by the prefab Commands writer.
+pub use country_core::resources::tree_storage::{BirdHaven, HavenWren};
 
 /// 鹪鹩实体 boid 记录（历史 API；B 权威状态在 WrenBoids 资源）。
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
@@ -196,12 +181,7 @@ pub fn sim_wren_boids(
             let vel = Vec3::new(r.f32() - 0.5, r.f32() - 0.5, r.f32() - 0.5);
             let mut spawn = commands.spawn((
                 Transform::default(),
-                Wren {
-                    pos,
-                    prev_pos: pos,
-                    phase: 0.0,
-                    hop_timer: 0.0,
-                },
+                Wren::new_airborne(pos),
                 PrevTransform::default(),
             ));
             if let Some(core) = audio_core.as_ref() {
@@ -222,7 +202,7 @@ pub fn sim_wren_boids(
             spots
                 .spots
                 .iter()
-                .filter(|s| !s.occupied)
+                .filter(|s| s.occupant.is_none())
                 .map(|s| s.pos)
         })
         .collect();
@@ -346,12 +326,7 @@ pub fn sim_wren_boids(
                     let pos = sphere + dir * dist * 1.01;
                     let mut spawn = commands.spawn((
                         Transform::default(),
-                        Wren {
-                            pos,
-                            prev_pos: pos,
-                            phase: 0.0,
-                            hop_timer: 0.0,
-                        },
+                        Wren::new_airborne(pos),
                         PrevTransform::default(),
                     ));
                     if let Some(core) = audio_core.as_ref() {

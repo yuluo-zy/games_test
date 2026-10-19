@@ -60,14 +60,14 @@ pub fn wall_audio_init_system<S: Studio + Send + Sync + 'static>(
 /// `wall_audio_fmod` (0x140950920): the wall audio event system.
 ///
 /// The native reads the `+0x58` editing speed (the shared
-/// [`crate::systems::audio::audio_update::EditingSpeed`], host 待接线) for the
+/// `bevy_time::Time::delta_secs` @+0x58) for the
 /// frame-end volume modulation; an absent source keeps the previous behaviour.
 pub fn wall_audio_fmod<S: Studio + Send + Sync + 'static>(
     mode: Res<AppMode>,
     core: Res<AudioCore<S>>,
     mut events: EventReader<PlayWallAudio>,
     mut state: ResMut<WallAudioState<S::Event>>,
-    speed: Option<Res<crate::systems::audio::audio_update::EditingSpeed>>,
+    speed: Res<bevy_time::Time>,
 ) {
     // O: volume source — AppMode==0xd uses constant 1.0, else the stack
     // resource's +0x1c / 60.0 normalization. The per-event `volume` field feeds
@@ -86,16 +86,14 @@ pub fn wall_audio_fmod<S: Studio + Send + Sync + 'static>(
                 let loop_index = *loop_index;
                 let _ = state.loops[loop_index].request_play(position, event.volume, editing_speed);
                 let value = inverse_lerp(inverse_lerp_bounds.0, inverse_lerp_bounds.1, event.value);
-                let current = state.loops[loop_index].current;
-                let _ = state.loops[loop_index].instances[current]
+                let _ = state.loops[loop_index].audio.current_mut()
                     .set_parameter(param, value);
             }
             WallKind::LoopBoolParam { loop_index, param, flag_offset: _ } => {
                 let loop_index = *loop_index;
                 let _ = state.loops[loop_index].request_play(position, event.volume, editing_speed);
                 let value = if event.flag != 0 { 1.0 } else { 0.0 };
-                let current = state.loops[loop_index].current;
-                let _ = state.loops[loop_index].instances[current]
+                let _ = state.loops[loop_index].audio.current_mut()
                     .set_parameter(param, value);
             }
             WallKind::OneShot(name) => {
@@ -111,9 +109,7 @@ pub fn wall_audio_fmod<S: Studio + Send + Sync + 'static>(
     }
     // O (decomp-0x140950920 line 564): the state volume is modulated at frame
     // end by `powf(0.1, speed × 5.0)` where speed is the +0x58 editing speed.
-    if let Some(speed) = speed {
-        state.volume *= 0.1_f32.powf(speed.0 * 5.0);
-    }
+    state.volume *= 0.1_f32.powf(speed.delta_secs() * 5.0);
 }
 
 /// `inverse_lerp` (shared utils, 0x140c904a0): value in [min,max] → [0,1]

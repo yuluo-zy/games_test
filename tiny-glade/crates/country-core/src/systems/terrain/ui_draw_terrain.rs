@@ -164,6 +164,9 @@ pub fn ui_draw_terrain(
     match state {
         1 => {
             if let Ok(Some(id)) = editing.new_stroke(position.to_array()) {
+                // B aa010f..aa011d: preserve the raw drag distance before any
+                // SSBO lookup or clamp/addition for the actual stroke height.
+                editing.cursor_height_override = Some(draw_state.drag_distance);
                 let library = assets
                     .as_deref()
                     .expect("terrain drawing requires the SSBO library");
@@ -224,6 +227,9 @@ pub fn ui_draw_terrain(
                     .write(NotifyHintSystemTerrain { tag: 0 });
                 effects.used.write(NotifyHintSystemToolWasJustUsed);
             }
+            // B aa02e1 jumps here when get_last_mut_stroke is missing too.
+            // aa06eb clears the same editing owner's Option after release events.
+            editing.cursor_height_override = None;
             draw_state.active = false;
         }
         _ => {}
@@ -716,6 +722,7 @@ mod original_initial_height_tests {
         );
         assert!(world.resource::<LiveDecoratorArchivist>().culling.allow_any);
         assert!(world.resource::<TerrainDrawState>().active);
+        assert_eq!(world.resource::<TerrainEditingData>().cursor_height_override, Some(-1.0));
 
         let widget = WidgetId::clearing_canvas(DRAW_CANVAS_NAME);
         world
@@ -729,6 +736,7 @@ mod original_initial_height_tests {
         schedule.run(&mut world);
         assert_eq!(world.resource::<Events<EvTerrainStrokeChanged>>().len(), 2);
         assert_eq!(world.resource::<TerrainDrawState>().state, 2);
+        assert_eq!(world.resource::<TerrainEditingData>().cursor_height_override, Some(-1.0));
         assert_eq!(
             world.resource::<TerrainEditingData>().strokes[&StrokeId(0)].points,
             [[3.0, -1.0, 4.0], [4.0, -1.0, 4.0]]
@@ -743,6 +751,7 @@ mod original_initial_height_tests {
             });
         schedule.run(&mut world);
         assert!(!world.resource::<TerrainDrawState>().active);
+        assert_eq!(world.resource::<TerrainEditingData>().cursor_height_override, None);
         assert!(
             matches!(world.resource::<PendingTerrainHistory>().edit.as_ref(),
             Some(TerrainEdit::NewTerrainStroke { index: StrokeId(0), height_ws, stroke_pts })
@@ -968,5 +977,86 @@ mod native_canvas_argument_tests {
                 assert_eq!((deny.argument_79, deny.layer), (0, 1));
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod cursor_plane_lifecycle_tests {
+    use super::*;
+    use crate::systems::{
+        terrain::register_terrain_events,
+        ui::resources::ui_state::{UiInteraction, WidgetId},
+    };
+
+    fn world(distance: f32, phase: u8) -> World {
+        let mut world = World::new();
+        register_terrain_events(&mut world);
+        world.insert_resource(AppMode::Terrain);
+        world.insert_resource(CursorTerrainRaycast {
+            tag: 1,
+            pos: glam::Vec3::new(0.0, distance, 0.0),
+            ..Default::default()
+        });
+        world.insert_resource(WaterRaster::new(
+            crate::resources::world_raster::DirtyTilePublisher::unique(),
+        ));
+        world.insert_resource(TerrainEditingData(
+            tg_terrain::stroke::TerrainEditingData::default(),
+        ));
+        world.insert_resource(GladeBorder(BorderShape::Circle(Circle2d::new(
+            Vec2::ZERO, 100.0,
+        ))));
+        world.insert_resource(UiState::new(UiInteraction {
+            native_tag: 2,
+            native_phase: phase,
+            widget: WidgetId::clearing_canvas(DRAW_CANVAS_NAME),
+        }));
+        world
+    }
+
+    #[test]
+    fn start_sets_raw_plane_before_a_later_missing_ssbo_failure() {
+        for bits in [(-1.0_f32).to_bits(), 25.0_f32.to_bits(), 0x8000_0000, 0x7fc0_1234] {
+            let mut world = world(f32::from_bits(bits), 3);
+            let mut schedule = Schedule::default();
+            schedule.add_systems(ui_draw_terrain);
+            // The original mutates the plane first; preserve that observable
+            // mutation even when the later required library/SSBO read fails.
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                schedule.run(&mut world);
+            }));
+            assert!(result.is_err());
+            let editing = world.resource::<TerrainEditingData>();
+            assert_eq!(editing.cursor_height_override.map(f32::to_bits), Some(bits));
+            assert_eq!(editing.strokes[&StrokeId(0)].height_ws, 2.5);
+        }
+    }
+
+    #[test]
+    fn rejected_creation_leaves_the_previous_plane_unchanged() {
+        let mut world = world(12.0, 3);
+        {
+            let mut editing = world.resource_mut::<TerrainEditingData>();
+            editing.next_index = tg_terrain::stroke::ID_COUNTER_LIMIT;
+            editing.cursor_height_override = Some(7.25);
+        }
+        let mut schedule = Schedule::default();
+        schedule.add_systems(ui_draw_terrain);
+        schedule.run(&mut world); // no assets: the rejected creation must skip the read.
+        assert_eq!(world.resource::<TerrainEditingData>().cursor_height_override, Some(7.25));
+        assert!(world.resource::<TerrainEditingData>().strokes.is_empty());
+    }
+
+    #[test]
+    fn release_without_a_last_stroke_still_clears_the_plane() {
+        let mut world = world(12.0, 5);
+        world.resource_mut::<TerrainDrawState>().state = 2;
+        world.resource_mut::<TerrainEditingData>().cursor_height_override = Some(7.25);
+        let mut schedule = Schedule::default();
+        schedule.add_systems(ui_draw_terrain);
+        schedule.run(&mut world);
+        assert_eq!(world.resource::<TerrainEditingData>().cursor_height_override, None);
+        assert!(world.resource::<Events<NotifyHintSystemTerrain>>().is_empty());
+        assert!(world.resource::<Events<NotifyHintSystemToolWasJustUsed>>().is_empty());
     }
 }

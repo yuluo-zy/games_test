@@ -47,12 +47,14 @@ pub fn set_flag_connection_and_chimney_smoke(
         }
     }
     for cmd in smokes.read() {
-        let _info = storage
+        let info = storage
             .lookup_decorator_info_mut(DecoratorId(cmd.id))
             .unwrap();
-        // O：`as_chimney()` 写 payload+4（u8 烟开关）。core `ChimneyExtra{pub f32}`
-        // 为 4B、未建模 +4 字节（分歧点，GAP 登记）——此处保留读值面、不写。
-        let _ = cmd.value;
+        // The canonical core payload now includes the original +4 smoke byte.
+        // Preserve the other union bytes while applying the actual command.
+        let mut extra = info.extra();
+        extra.as_chimney_mut().smoke = cmd.value;
+        info.set_extra(extra);
         // O：custom == 1（反编译 `event+0xd == '\x01'`）→ tag 0xf 记录。
         if cmd.custom == 1 {
             let position = transforms.position(cmd.id);

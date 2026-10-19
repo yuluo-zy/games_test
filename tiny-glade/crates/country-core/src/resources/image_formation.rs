@@ -250,9 +250,10 @@ impl ImageFormationConfigs {
     pub fn get(&self, i: usize) -> Option<&ImageFormationConfig> {
         self.configs.get(i)
     }
-    /// `iter_non_default_mut`（O 0x1408aea60：`{begin, begin + 0xc0, idx = 0}`，三档遍历；“non_default”的过滤条件 U）。
+    /// B1408aea60 returns the enumerate/filter iterator; callers skip index0
+    /// (141ec0890 and141ec09bc), retaining the two editable configurations.
     pub fn iter_non_default_mut(&mut self) -> impl Iterator<Item = &mut ImageFormationConfig> {
-        self.configs.iter_mut()
+        self.configs.iter_mut().skip(1)
     }
     /// `switch_kind`（O 0x1408aea90）。
     pub fn switch_kind(&mut self, kind: u8) {
@@ -320,7 +321,7 @@ mod tests {
         assert_eq!(c.configs[2].word_38, 7);
         assert_eq!(c.get(2).map(|x| x.word_38), Some(7));
         assert!(c.get(3).is_none());
-        assert_eq!(c.iter_non_default_mut().count(), 3);
+        assert_eq!(c.iter_non_default_mut().count(), 2);
     }
 
     /// O 0x140b00b20 `ColorGradingState::flattened`：bypass 未置位 → 克隆名 + 拷贝四 f32；

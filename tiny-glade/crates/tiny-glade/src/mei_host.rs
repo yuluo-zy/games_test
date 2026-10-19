@@ -36,6 +36,55 @@ use crate::{
 pub const TEXT_PRIMITIVE_BYTES: usize = 0x600000;
 pub const SHAPE_STREAM_BYTES: usize = 0x400000;
 
+/// Shared gameplay/loading registration from B MeiPlugin (set6/7/44).
+/// Text preparation precedes Taffy measurement; drawing follows layout; the
+/// stream is consumed once, after both component and MEI node producers. Graph
+/// compilation and its retries only read the uploaded output of this update.
+pub fn install_mei_frame_systems(app: &mut bevy_app::App) {
+    use bevy_ecs::schedule::IntoScheduleConfigs;
+    use crate::run_game::GameSystemSet;
+
+    app.init_resource::<toolbar::MeiContext>();
+    app.init_resource::<toolbar::resouces_and_components::taffy_layout::TaffyLayout>();
+    app.init_resource::<toolbar::toolbar_update::ToolbarSizeMult>();
+    app.init_resource::<country_core::systems::ui::resources::widget_params::UiNavState>();
+    app.add_event::<country_core::systems::audio::PlayMenuUiSound>();
+    app.add_systems(bevy_app::Update,
+        toolbar::mei::systems::mei_pre_update.in_set(GameSystemSet(6)));
+    app.add_systems(bevy_app::Update,
+        update_text_renderer_scale.in_set(GameSystemSet(7)));
+    app.add_systems(bevy_app::Update, (
+        prepare_text_fragments,
+        toolbar::taffy_update::taffy_finalize_element_size,
+        toolbar::taffy_update::taffy_perform_layout,
+        toolbar::taffy_update::taffy_update_drawables,
+        toolbar::ui_interaction::debug_hide_ui,
+        render_text_fragments,
+    ).chain_ignore_deferred().in_set(GameSystemSet(44)));
+    app.add_systems(bevy_app::Update, (
+        toolbar::mei_post_update,
+        crate::loading_graph::flush_mei_frame,
+    ).chain().in_set(GameSystemSet(44)).after(render_text_fragments));
+}
+
+#[cfg(test)]
+mod registration_tests {
+    #[test]
+    fn shared_mei_schedule_initializes_with_native_stages() {
+        use bevy_ecs::schedule::IntoScheduleConfigs;
+        let mut app = bevy_app::App::new();
+        for stage in 0..44 {
+            app.configure_sets(bevy_app::Update,
+                crate::run_game::GameSystemSet(stage)
+                    .before(crate::run_game::GameSystemSet(stage + 1)));
+        }
+        super::install_mei_frame_systems(&mut app);
+        app.world_mut().schedule_scope(bevy_app::Update, |world, schedule| {
+            schedule.initialize(world).expect("shared MEI stage order");
+        });
+    }
+}
+
 /// Original toolbar Startup producer. WalkDir error entries are skipped by the
 /// original filter; a selected ttf/otf file failing to load is fatal.
 pub fn load_text_fonts(renderer: &mut TextRenderer, installed: &Path) -> anyhow::Result<()> {

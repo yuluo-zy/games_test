@@ -134,13 +134,7 @@ pub struct SteamScreenshotRequests {
     pub pending: bool,
 }
 
-/// 原 `country_core::resources::window::OsWindowCmd` 跨域命令事件；本域重建本地承载，
-/// 消费端（窗口/UI 系统）接线前须并入 `resources::window`（U）。
-#[derive(Event, Clone, Debug)]
-pub struct OsWindowCmd {
-    /// 命令载荷（U；本域只发浏览器已打开标记）。
-    pub _gap: u64,
-}
+pub use crate::resources::window::OsWindowCmd;
 
 /// 覆盖层资源面（原 `SteamOverlayOpenResources` SystemParam，含
 /// `Option<Res<SteamClientResource>>` 客户端 @+0x20 + `Events<OsWindowCmd>`）。
@@ -183,7 +177,7 @@ impl SteamOverlayOpenResources {
         match self.open_browser.as_deref() {
             Some(open) => match open(url) {
                 Ok(()) => {
-                    self.browser_opened_events.send(OsWindowCmd { _gap: 1 });
+                    self.browser_opened_events.send(OsWindowCmd);
                 }
                 Err(err) => {
                     error!("Failed opening browser window: {}", err);
@@ -193,6 +187,16 @@ impl SteamOverlayOpenResources {
                 error!("Failed opening browser window: no opener injected");
             }
         }
+    }
+}
+
+/// Deliver host-opener results to the same command stream drained by main_loop.
+pub fn forward_browser_window_commands(
+    mut overlay: ResMut<SteamOverlayOpenResources>,
+    mut window: EventWriter<OsWindowCmd>,
+) {
+    for command in overlay.browser_opened_events.drain() {
+        window.write(command);
     }
 }
 

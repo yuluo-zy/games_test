@@ -36,6 +36,7 @@
 #![allow(clippy::doc_lazy_continuation, clippy::unnecessary_sort_by)]
 use glam::Vec2;
 
+use crate::asset_libraries::ssbo_library::SsboType as LibrarySsbo;
 use crate::name_hash::NameHash;
 use crate::render::pass_builder::draw_builder::{
     ACCESS_SAMPLED_IMAGE, BindTexture, DrawBuilder, UniformValue,
@@ -44,7 +45,6 @@ use crate::render::pass_builder::draw_stream::DrawPacket;
 use crate::render::pass_builder::framebuffer_binding::{AttachmentTexture, ColorAttachment};
 use crate::render::pass_builder::pass_resource_access::SsboType;
 use crate::render::raster_single::raster_single_object;
-use crate::asset_libraries::ssbo_library::SsboType as LibrarySsbo;
 use crate::render::ssbo::{StorageElement, TypedStorageBuffer, rhapsody_boundary::GraphicsDevice};
 use crate::resources::texture_presets::TextureFromDisk;
 use crate::rhapsody_contract::ManagedHandle;
@@ -227,13 +227,15 @@ pub struct Ui2dWsElement {
 }
 
 fn bind_image<'p>(b: DrawBuilder<'p>, image: &Ui2dImageRef) -> DrawBuilder<'p> {
-    // view 参数在 A4 里是 `Option<&TextureViewDesc>`（单元占位）；视图字段（view_type/base_layer/layer_count）由 `image.view()` 给出。
-    let _view = image.view();
+    let view = crate::rhapsody_contract::TextureViewDesc::new()
+        .view_type(1)
+        .base_layer(image.layer)
+        .layer_count(Some(1));
     b.bind_texture_to_draw_builder(
         BindTexture::FromDisk(TextureFromDisk(image.file_hash())),
         IMAGE_BINDING,
         ACCESS_SAMPLED_IMAGE,
-        Some(&crate::rhapsody_contract::TextureViewDesc::default()),
+        Some(&view),
     )
 }
 
@@ -321,14 +323,26 @@ pub fn mei_pass(
     window: (u32, u32),
     text: &MeiTextOutput,
 ) {
+    mei_pass_with_shadows(ctx, target, Some(temp), window, text);
+}
+
+/// Native cast_ui_shadows argument: without it MEI writes directly to the
+/// existing target and does not allocate/read a shadow intermediate.
+pub fn mei_pass_with_shadows(
+    ctx: &mut DrawPassCtx<'_>,
+    target: &AttachmentTexture,
+    temp: Option<&AttachmentTexture>,
+    window: (u32, u32),
+    text: &MeiTextOutput,
+) {
     let text_shader = ctx
         .shader(MEI_TEXT_SHADER)
         .expect("called `Option::expect()` on a `None` value");
     let mut pass = ctx.raster_pass(
         MEI_PASS_NAME,
-        &[ColorSpec::tag2(*temp)],
+        &[temp.map_or_else(|| ColorSpec::tag0(*target), |temp| ColorSpec::tag1(*temp))],
         DepthSpec::None,
-        *target,
+        temp.copied().unwrap_or(*target),
     );
     let state = pass.host.default_raster_state();
     let packet = DrawPacket::new(text_shader, [1, 0], state);
@@ -359,6 +373,7 @@ pub fn mei_pass(
     b.draw_no_vao(6 * text.prim_count);
     pass.render();
 
+    let Some(temp) = temp else { return; };
     let shadow = ctx
         .shader(MEI_SHADOW_SHADER)
         .expect("called `Option::expect()` on a `None` value");
@@ -401,17 +416,43 @@ mod native_ssbo_constructor_tests {
         let library = AssetSsboLibrary::new();
         library.add_new::<TextPrimSsbo>(&device);
         library.add_new::<ShapeStreamSsbo>(&device);
-        assert_eq!(library.get::<TextPrimSsbo>().unwrap().buffer.byte_size, 0x600000);
-        assert_eq!(library.get::<ShapeStreamSsbo>().unwrap().buffer.byte_size, 0x400000);
+        assert_eq!(
+            library.get::<TextPrimSsbo>().unwrap().buffer.byte_size,
+            0x600000
+        );
+        assert_eq!(
+            library.get::<ShapeStreamSsbo>().unwrap().buffer.byte_size,
+            0x400000
+        );
         let rows = device.created.borrow();
         assert_eq!(rows.len(), 2);
-        for (row, (name, size)) in rows.iter().zip([("TextPrim", 0x600000), ("ShapeStream", 0x400000)]) {
-            assert_eq!((row.1.as_str(), row.0.size, row.0.usage, row.0.memory, row.0.alignment),
-                (name, size, 0x22, 1, 4));
-            assert!(row.2.is_none(), "original None must not manufacture zero contents");
+        for (row, (name, size)) in rows
+            .iter()
+            .zip([("TextPrim", 0x600000), ("ShapeStream", 0x400000)])
+        {
+            assert_eq!(
+                (
+                    row.1.as_str(),
+                    row.0.size,
+                    row.0.usage,
+                    row.0.memory,
+                    row.0.alignment
+                ),
+                (name, size, 0x22, 1, 4)
+            );
+            assert!(
+                row.2.is_none(),
+                "original None must not manufacture zero contents"
+            );
         }
-        assert_eq!(TextPrimSsbo::rg_buffer_hash(), utils::name_hash::NameHash::compute("TextPrim").0);
-        assert_eq!(ShapeStreamSsbo::rg_buffer_hash(), utils::name_hash::NameHash::compute("ShapeStream").0);
+        assert_eq!(
+            TextPrimSsbo::rg_buffer_hash(),
+            utils::name_hash::NameHash::compute("TextPrim").0
+        );
+        assert_eq!(
+            ShapeStreamSsbo::rg_buffer_hash(),
+            utils::name_hash::NameHash::compute("ShapeStream").0
+        );
         assert_eq!(core::mem::size_of::<TextPrimSsbo>(), 48);
         assert_eq!(core::mem::align_of::<TextPrimSsbo>(), 4);
         assert_eq!(core::mem::size_of::<ShapeStreamSsbo>(), 4);

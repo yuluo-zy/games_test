@@ -128,7 +128,7 @@ pub fn create_rectangle(
         // id 存在、roofs 探针命中、entity generation != 0、dense roof 记录链
         // 命中时：style = component+0x3d；pitch = component+0x30，且
         // `pitch <= 0.1`（有序；NaN 跳过）时 height_01 改为 pitch。
-        let mut roof_style = colors.flat_rim_style;
+        let mut roof_style = colors.flat_rim_style.native_tag();
         let mut height_01 = rectangle_roof_height_01(event.dimensions);
         if let Some(previous) = event.previous_wall {
             if let Some(entity_bits) = public.roof_entity(previous).map(|e| e.to_bits()) {
@@ -242,8 +242,8 @@ mod tests {
         world.insert_resource(WallColorIds::default());
         world.insert_resource(HalftimberColorIds::default());
         let mut colors = GladeColorCustomization::default();
-        colors.building_wall_style = 3;
-        colors.flat_rim_style = 5;
+        colors.building_wall_style = crate::resources::walls::inner_wall_state::WallStyle(3);
+        colors.flat_rim_style = crate::resources::roofs::roof_shape::FlatRoofRimStyle::NoRim;
         colors.gates = crate::resources::color_id::ColorId(11);
         world.insert_resource(colors);
         world.insert_resource(RoofColorComponentTables::default());
@@ -274,7 +274,7 @@ mod tests {
         assert_eq!(roofs.len(), 1);
         assert_eq!(inherited_style, 3);
         let record = roofs[0].0.record();
-        assert_eq!(record[0x39], 5); // 扁屋顶样式 = settings+0x41
+        assert_eq!(record[0x39], 1); // 扁屋顶样式 = settings+0x41
         assert_eq!(record[0x38], 0); // 6>4 → ridge_dir=false
         // History::add #1 = EditType::Roof / RoofHistoryEdit tag 0 (create).
         let roof_edits = world

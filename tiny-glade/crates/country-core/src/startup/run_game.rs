@@ -11,7 +11,7 @@ use crate::{
             add_audio_events, add_audio_systems, music::music_system::music_audio_init_system,
         },
         backend::input::{add_input_cpu_consumers, register_input_events},
-        debug::sheep_controls::{SheepControl, sheep_controls},
+        debug::sheep_controls::sheep_controls,
         garden::{add_garden_cpu_systems, register_garden_events},
         history::{add_history_cpu_systems, register_history_events},
         ivy::registration::{add_ivy_systems, register_ivy_storage},
@@ -73,11 +73,10 @@ pub fn register_core_startup<B, S>(
 {
     initialize_core_resources(world);
     let demo = world.resource::<GameConfig>().dev.demo;
-    crate::systems::mode_manager::configure_mode_manager::<crate::resources::history::EditType, crate::resources::history::MaybePendingSnapshotId>(
-        world,
-        update_schedule,
-        demo,
-    );
+    crate::systems::mode_manager::configure_mode_manager::<
+        crate::resources::history::EditType,
+        crate::resources::history::MaybePendingSnapshotId,
+    >(world, update_schedule, demo);
     update_schedule.add_systems(
         crate::systems::mode_manager::synchronize_mode_manager_ui_context
             .after(crate::systems::backend::input::InputSystemSet::Derive)
@@ -87,6 +86,8 @@ pub fn register_core_startup<B, S>(
             >),
     );
     register_startup_systems::<B>(startup_schedule);
+    // The host runs the real sample-completion resource commands at
+    // PreStartup; load_audio does not register Schedule systems.
     register_session_systems(session_schedule);
     register_update_systems::<B, S>(update_schedule);
 }
@@ -106,6 +107,7 @@ pub fn initialize_core_resources(world: &mut World) {
     }
     world.init_resource::<MetaCommander>();
     world.init_resource::<GameConfig>();
+    world.init_resource::<crate::resources::time_of_day::TodSequence>();
     // Reuse the UI's real constructor and projection. Preserve a host's live
     // UI; the local CPU entry needs the same mode consumer as the full host.
     if !world.contains_resource::<crate::systems::ui::resources::ui_state::UiState>() {
@@ -125,9 +127,10 @@ pub fn initialize_core_resources(world: &mut World) {
     register_ivy_storage(world);
     register_garden_events(world);
     if !world.contains_resource::<History>() {
-        world.insert_resource(History::<crate::resources::history::MaybePendingSnapshotId>::empty_glade());
+        world.insert_resource(
+            History::<crate::resources::history::MaybePendingSnapshotId>::empty_glade(),
+        );
     }
-    world.init_resource::<SheepControl>();
     world.init_resource::<SheepSaveSectionValue>();
     world.init_resource::<Events<crate::systems::save::save_game::DeleteSessionCmd>>();
     world.init_resource::<Events<crate::resources::session::NewSessionStartedCmd>>();
@@ -145,10 +148,13 @@ where
     schedule.add_systems((
         crate::resources::session::refresh_session_list_system.run_if(run_once),
         music_audio_init_system::<B>.run_if(not(resource_exists::<MusicAudioState<B::Event>>)),
+        super::startup_time_of_day::startup_time_of_day.run_if(run_once),
     ));
 }
 
 /// 每帧先处理命令，再消费本帧新请求；chain 保证 Commands 在消费者之前提交。
+/// 契约 §1.4：本表对应 OnEnter(AppLoadingState::Game)；batch2/batch3/batch4
+/// 共用同一 label。启动世界资产产者按 batch2→batch4 顺序追加在会话载入之后。
 pub fn register_session_systems(schedule: &mut Schedule) {
     use bevy_ecs::schedule::common_conditions::resource_exists;
     schedule.add_systems(
@@ -159,6 +165,7 @@ pub fn register_session_systems(schedule: &mut Schedule) {
         )
             .chain(),
     );
+    super::add_startup_mesh_systems(schedule);
 }
 
 /// 每帧系统不再包含磁盘初始扫描、音乐重建和启动网格加载。
@@ -183,7 +190,9 @@ where
     add_terrain_cpu_systems(schedule);
     add_terrain_tool_systems::<crate::resources::history::MaybePendingSnapshotId>(schedule);
     add_wall_cpu_systems(schedule);
-    crate::systems::wall::registration::add_wall_drawing_cpu_systems::<crate::resources::history::MaybePendingSnapshotId>(schedule);
+    crate::systems::wall::registration::add_wall_drawing_cpu_systems::<
+        crate::resources::history::MaybePendingSnapshotId,
+    >(schedule);
     add_ivy_systems(schedule);
     add_garden_cpu_systems::<(), crate::resources::history::MaybePendingSnapshotId>(schedule);
     add_input_cpu_consumers(schedule);
@@ -192,4 +201,40 @@ where
         sheep_save_section_system.after(sheep_controls),
         crate::systems::time_of_day::time_of_day::<S>,
     ));
+    // The complete controller requires the real collision world. CPU-only
+    // builds do not install a substitute camera controller.
+    #[cfg(feature = "native-physics")]
+    {
+        use crate::systems::main_camera::{
+            camera_snapshot, main_camera_update, paused_main_camera_update, reset_camera,
+        };
+        use bevy_ecs::schedule::common_conditions::{not, on_event, resource_exists};
+        fn active(
+            clock: Option<Res<crate::resources::time::GameTime>>,
+            state: Option<Res<bevy_state::state::State<crate::app_loading_state::AppLoadingState>>>,
+        ) -> bool {
+            clock.is_some_and(|clock| clock.ran)
+                && state.is_some_and(|state| {
+                    *state.get() == crate::app_loading_state::AppLoadingState::Game
+                })
+        }
+        schedule.add_systems(
+            reset_camera
+                .before(camera_snapshot)
+                .run_if(on_event::<crate::resources::session::NewSessionStartedCmd>)
+                .run_if(resource_exists::<crate::systems::camera_rig::MainCamera>),
+        );
+        schedule.add_systems(
+            (
+                camera_snapshot.run_if(active),
+                (
+                    main_camera_update.run_if(active),
+                    paused_main_camera_update.run_if(not(active)),
+                ),
+            )
+                .chain_ignore_deferred()
+                .after(crate::systems::backend::input::InputSystemSet::Derive)
+                .run_if(resource_exists::<crate::systems::camera_rig::MainCamera>),
+        );
+    }
 }

@@ -164,7 +164,7 @@ impl TextureRecord {
 ///
 /// fresh 0x140b01df0 的闭包每成功解析一条 LUT 就同时向两个 Vec 各压一条（`load` 里两段
 /// `grow_one` + 独立长度计数器）；原生纹理记录 0x38 B（[`TextureRecord`]）。
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(bevy_ecs::resource::Resource, Clone, Debug, Default, PartialEq, Eq)]
 pub struct GradingLuts {
     /// stride 0x28：`{name String, extent [u32;3]}`。
     pub metas: Vec<GradingLutMeta>,
@@ -206,7 +206,7 @@ impl GradingLuts {
                     ),
                 },
                 "png" => {
-                    let lut = GradingLut::load_unwrapped(device, stem.to_owned());
+                    let lut = GradingLut::load_unwrapped_from_path(device, &path, stem.to_owned());
                     luts.push(lut);
                 }
                 _ => log::warn!(

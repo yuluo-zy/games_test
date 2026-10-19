@@ -9,18 +9,21 @@
 //! CPU 链 = shared building modules wall_platform_stairs 族
 //! （collect_platform_stair_blockers/prepare_platform_stair_segments/
 //! platform_stair_cell/platform_stair_geometry/platform_stair_holes）。
-use country_core::asset_libraries::ssbo_library::AssetSsboLibrary;
-use country_core::resources::{
-    walls::{public_walls::PublicWalls, wall_holes::WallHoles},
-};
-use country_core::systems::ui::signifiers::signifier_create::UiSignifierStream;
 use bevy_ecs::prelude::*;
+use country_core::asset_libraries::ssbo_library::AssetSsboLibrary;
+use country_core::resources::walls::{public_walls::PublicWalls, wall_holes::WallHoles};
+use country_core::systems::ui::signifiers::signifier_create::UiSignifierStream;
 
 /// B `system_wall_constructor::PlatformStairsStorage`（跨帧平台段存储）。
 #[derive(bevy_ecs::resource::Resource, Clone, Debug, Default)]
 pub struct PlatformStairsStorage {
-    /// 墙 id → 平台段记录（布局 I）。
-    pub segments: hashbrown::HashMap<u64, Vec<[u8; 104]>>,
+    /// Native32B threshold ranges; the28 creator materializes104B segments.
+    pub segments: hashbrown::HashMap<
+        u64,
+        Vec<
+            country_core::systems::wall::construction::platform_segmentation::WallPlatformStepRange,
+        >,
+    >,
 }
 
 /// B 0x1407744d0。**未实现（零壳）**：真实逻辑为 80B 装饰源

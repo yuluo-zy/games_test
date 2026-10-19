@@ -11,11 +11,8 @@
 use glam::Vec3;
 
 /// B `construct_turret`（0x14124cc30）。**未实现**：层数/收分率未定。
-pub fn construct_turret(
-    _center: Vec3,
-    _radius: f32,
-    _height: f32,
-    _out: &mut Vec<[u8; 96]>,
-) {
-    todo!("未实现: construct_turret 0x14124cc30（1902 行 fresh：层数/收分率/逐层计数/半木构二路未逐语句）")
+pub fn construct_turret(_center: Vec3, _radius: f32, _height: f32, _out: &mut Vec<[u8; 96]>) {
+    todo!(
+        "未实现: construct_turret 0x14124cc30（1902 行 fresh：层数/收分率/逐层计数/半木构二路未逐语句）"
+    )
 }

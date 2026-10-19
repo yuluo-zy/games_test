@@ -70,25 +70,38 @@ pub fn replay_stairs(
         } else {
             removed.erase(&edge);
         }
-        // 附挂装饰查询：type 字节过滤，命中才携带 decorator 对（@+0x28 语义）。
-        let decorator = decorators
+        // 附挂装饰查询：type 字节过滤（原生 +0x28 载荷来源）。音频消费端
+        // `stairs_audio_system` 只读 kind/position/values（见
+        // `evidence/multi-baseline/audio-events-analysis.md` §5b），不读
+        // +0x28/+0x30；因此不把 u30/常量写进事件（避免伪字段），此查询保留
+        // 作为原生过滤语义的接线点并登记 U。
+        let _decorator = decorators
             .lookup_decorator_info(DecoratorId(cmd.edge1))
             .filter(|info| !decorator_skipped(info));
+        // fresh 0x140af75b0 事件构造：
+        //   kind 两条路径不对称——instant（flags bit0==0）`0x12 - undo`，
+        //   animated（flags bit0==1）`0x11 + undo`（decomp :219 / :501）；
+        //   position = CachedDecoratorTransforms[edge1] 命中记录（12B），未命中 0；
+        //   其余 values/tail/bytes 槽来源未解码（U，保持零）。
         let position = cached.try_position(cmd.edge1).unwrap_or(Vec3::ZERO);
+        let kind = if cmd.instant {
+            0x12 - u8::from(cmd.undo)
+        } else {
+            0x11 + u8::from(cmd.undo)
+        };
         audio.write(PlayStairsAudioCmd {
-            kind: 0,
+            kind,
             position,
             values: [0.0; 4],
             tail: [0.0; 2],
             bytes: [0; 3],
         });
-        let _ = decorator; // 事件载荷精确映射 U（音频域 PlayStairsAudioCmd 消费端待接线）。
         cmd.finish();
         done.push(index);
     }
     for &index in done.iter().rev() {
         // 已完成命令逆序移除（memmove 压缩语义）。
-        bucket.commands.remove(index);
+        bucket.remove_command(index);
     }
 }
 
@@ -254,5 +267,125 @@ mod tests {
                 .contains(&StairGraphEdge::new(1, 2))
         );
         assert!(world.resource::<ReplayBuffer>().is_empty());
+        // 音频载荷：redo（undo==0）→ kind 17（StairSupportAppear one-shot）。
+        let events: Vec<_> = world
+            .resource_mut::<Events<PlayStairsAudioCmd>>()
+            .drain()
+            .collect();
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].kind, 0x11);
+    }
+
+    #[test]
+    fn undo_audio_kind_is_eighteen_and_uses_cached_position() {
+        let mut world = World::new();
+        register_history_events(&mut world);
+        world.init_resource::<StairsRemovedSupports>();
+        world.init_resource::<crate::resources::walls::decorator_storage::DecoratorStorage>();
+        world.init_resource::<crate::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms>();
+        world.init_resource::<Events<PlayStairsAudioCmd>>();
+        world.init_resource::<Events<HistoryReplayFailed>>();
+        world.init_resource::<Events<ReplayBucketFinished>>();
+        world.insert_resource(ReplayBuffer::new(1.0));
+        world.insert_resource(GameTime {
+            delta: 0.2,
+            ..Default::default()
+        });
+        world.resource_mut::<ReplayBuffer>().push(ReplayBucket {
+            entry_index: 0,
+            undo: true,
+            commands: vec![ReplayCommand::Stairs(
+                crate::resources::history::stairs_history_edit::StairsReplayCmd::new(
+                    3, 4, true, true,
+                ),
+            )],
+            timing: vec![Default::default(); 1],
+        });
+        let mut schedule = Schedule::default();
+        schedule.add_systems((replay_stairs, pop_empty_replay_bucket).chain());
+        schedule.run(&mut world);
+        let events: Vec<_> = world
+            .resource_mut::<Events<PlayStairsAudioCmd>>()
+            .drain()
+            .collect();
+        assert_eq!(events.len(), 1);
+        // instant 路径：0x12 - undo = 0x11。
+        assert_eq!(events[0].kind, 0x11);
+        // 缓存未命中 → 位置回退为零（`try_position`），不是伪造坐标。
+        assert_eq!(events[0].position, Vec3::ZERO);
+    }
+
+    #[test]
+    fn instant_redo_audio_kind_is_eighteen() {
+        let mut world = World::new();
+        register_history_events(&mut world);
+        world.init_resource::<StairsRemovedSupports>();
+        world.init_resource::<crate::resources::walls::decorator_storage::DecoratorStorage>();
+        world.init_resource::<crate::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms>();
+        world.init_resource::<Events<PlayStairsAudioCmd>>();
+        world.init_resource::<Events<HistoryReplayFailed>>();
+        world.init_resource::<Events<ReplayBucketFinished>>();
+        world.insert_resource(ReplayBuffer::new(1.0));
+        world.insert_resource(GameTime {
+            delta: 0.2,
+            ..Default::default()
+        });
+        world.resource_mut::<ReplayBuffer>().push(ReplayBucket {
+            entry_index: 0,
+            undo: false,
+            commands: vec![ReplayCommand::Stairs(
+                crate::resources::history::stairs_history_edit::StairsReplayCmd::new(
+                    3, 4, false, true,
+                ),
+            )],
+            timing: vec![Default::default(); 1],
+        });
+        let mut schedule = Schedule::default();
+        schedule.add_systems((replay_stairs, pop_empty_replay_bucket).chain());
+        schedule.run(&mut world);
+        let events: Vec<_> = world
+            .resource_mut::<Events<PlayStairsAudioCmd>>()
+            .drain()
+            .collect();
+        assert_eq!(events.len(), 1);
+        // instant 路径：0x12 - undo = 0x12。
+        assert_eq!(events[0].kind, 0x12);
+    }
+
+    #[test]
+    fn animated_undo_audio_kind_is_eighteen() {
+        let mut world = World::new();
+        register_history_events(&mut world);
+        world.init_resource::<StairsRemovedSupports>();
+        world.init_resource::<crate::resources::walls::decorator_storage::DecoratorStorage>();
+        world.init_resource::<crate::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms>();
+        world.init_resource::<Events<PlayStairsAudioCmd>>();
+        world.init_resource::<Events<HistoryReplayFailed>>();
+        world.init_resource::<Events<ReplayBucketFinished>>();
+        world.insert_resource(ReplayBuffer::new(1.0));
+        world.insert_resource(GameTime {
+            delta: 0.2,
+            ..Default::default()
+        });
+        let mut cmd = crate::resources::history::stairs_history_edit::StairsReplayCmd::new(
+            3, 4, true, false,
+        );
+        cmd.elapsed = 0.3; // 已超过 required=0.2 → 本帧处理
+        world.resource_mut::<ReplayBuffer>().push(ReplayBucket {
+            entry_index: 0,
+            undo: true,
+            commands: vec![ReplayCommand::Stairs(cmd)],
+            timing: vec![Default::default(); 1],
+        });
+        let mut schedule = Schedule::default();
+        schedule.add_systems((replay_stairs, pop_empty_replay_bucket).chain());
+        schedule.run(&mut world);
+        let events: Vec<_> = world
+            .resource_mut::<Events<PlayStairsAudioCmd>>()
+            .drain()
+            .collect();
+        assert_eq!(events.len(), 1);
+        // animated 路径：0x11 + undo = 0x12。
+        assert_eq!(events[0].kind, 0x12);
     }
 }

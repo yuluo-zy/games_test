@@ -37,8 +37,7 @@ pub struct RoofGeometryChanged {
 }
 /// Original name for `RoofGeometryChanged` in the system faces:
 /// `country_core::resources::roofs::commands::RecalculateRoofCmd`.
-#[derive(Event, Clone, Copy, Debug)]
-pub struct RecalculateRoofCmd(pub WallId);
+pub use RoofGeometryChanged as RecalculateRoofCmd;
 #[derive(Event, Clone, Copy, Debug)]
 pub struct RecalculateWallHoles(pub WallId);
 /// B `country_core::resources::roofs::commands::SwitchRoofTypeCmd`: emitted by

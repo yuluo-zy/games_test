@@ -245,11 +245,10 @@ pub struct DeleteTreeCmd {
 
 /// 预置树批量生成命令（O：`tree_edit::SpawnPreplacedTrees`；convert_preplaced_trees
 /// 0x14226be70 消费）。
+/// Native load_game14146ea49..eb4e writes an 8B EventInstance (only EventId).
+/// The legacy save compatibility route sends this same unit event.
 #[derive(bevy_ecs::event::Event, Clone, Debug, Default)]
-pub struct SpawnPreplacedTrees {
-    /// typed gap。
-    pub _gap: u64,
-}
+pub struct SpawnPreplacedTrees;
 
 /// 树回放命令（O：`tree_edit::TreeReplayCmd`；`ReplayCommand::Tree` 载荷，
 /// `system_tree::replay_tree` 0x141bc34f0 消费。命令记录 = 0x58B

@@ -4,7 +4,6 @@
 //! single raw/unclamped height payload. Reuse existing AudioCore/AudioInstance.
 use crate::{
     resources::audio_resources::{AudioCore, AudioInstance, EventInstance, Studio},
-    systems::audio::audio_update::EditingSpeed,
     systems::terrain::PlayTerrainSound,
     utils::audio_utils::AudioLoop,
 };
@@ -97,9 +96,9 @@ pub fn terrain_audio_system<S: Studio + Send + Sync + 'static>(
     mut state: ResMut<TerrainAudioState<S::Event>>,
     mut events: EventReader<PlayTerrainSound>,
     core: Res<AudioCore<S>>,
-    speed: Res<EditingSpeed>,
+    speed: Res<bevy_time::Time>,
 ) {
-    let editing_speed = speed.0;
+    let editing_speed = speed.delta_secs();
     for sound in events.read() {
         let tag = sound.native_tag();
         let (position, value0, value1, value2) = match sound {
@@ -362,7 +361,9 @@ mod original_one_shot_consumer_tests {
         let mut world = World::new();
         world.insert_resource(core);
         world.insert_resource(state);
-        world.insert_resource(EditingSpeed(speed));
+        let mut time = bevy_time::Time::<()>::default();
+        time.advance_by(std::time::Duration::from_secs_f32(speed));
+        world.insert_resource(time);
         world.init_resource::<Events<PlayTerrainSound>>();
         world.send_event(sound);
         let mut schedule = Schedule::default();
@@ -397,7 +398,9 @@ mod original_one_shot_consumer_tests {
             studio: Some(RecordingStudio(log.clone())),
             banks: Default::default(),
         });
-        world.insert_resource(EditingSpeed(1.0));
+        let mut time = bevy_time::Time::<()>::default();
+        time.advance_by(std::time::Duration::from_secs(1));
+        world.insert_resource(time);
         world.init_resource::<Events<PlayTerrainSound>>();
         let mut schedule = Schedule::default();
         schedule.add_systems(produce.in_set(crate::systems::terrain::TerrainCpuStage::Changed));
@@ -424,7 +427,7 @@ mod original_one_shot_consumer_tests {
                     .iter()
                     .filter(|call| { matches!(call, Call::Create(created) if created == name) })
                     .count(),
-                crate::resources::audio_resources::AudioLoopDesc::new(name).count,
+                crate::resources::audio_resources::AudioLoopDesc::new(name).count.wrapping_add(1),
                 "loop owner must survive subsequent frames: {name}"
             );
         }

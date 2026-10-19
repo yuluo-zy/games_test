@@ -40,7 +40,8 @@
 //! [`archive_decorator_state`]）；预览标签桶（special）登记 U。
 
 use country_core::resources::walls::decorator::{
-    DecoratorId, DecoratorInfo, DecoratorLocator, DeferredDecoratorOpEvents,
+    DecoratorExtraInfo, DecoratorId, DecoratorInfo, DecoratorLocator, DeferredDecoratorOpEvents,
+    StairExtra,
 };
 use country_core::resources::walls::decorator_archivist::DecoratorArchivist;
 use country_core::resources::walls::decorator_storage::{
@@ -65,6 +66,8 @@ pub struct DecoratorOp {
     pub info: DecoratorInfo,
     /// +0x50：未解析载荷（含 +0x5c..0x5f 状态字节簇，U）。
     pub extra: [u8; 0x20],
+    /// 原生 `+0x10` 第二定位器；`None` = 哨兵 3（原地更新，不迁移存储）。
+    pub dst: Option<DecoratorStorageAddr>,
 }
 
 impl DecoratorOp {
@@ -168,21 +171,27 @@ pub fn archive_decorator_state<C: Send + Sync + 'static>(
     addr: DecoratorStorageAddr,
     label: &str,
 ) {
-    // 墙桶路径（O）。特殊地址/预览标签：core 模型无字符串键桶，登记 U。
-    let Some(wall) = addr.try_as_wall() else {
-        log::warn!(
-            target: LOG_TARGET,
-            "archive_decorator_state: non-wall addr under label '{label}' is U (core archivist string-keyed bucket missing)"
-        );
+    // O：三路归档（0x1412b2a70 墙 / 0x1412b3910<String> 特殊桶）：
+    // 墙 → archivist.walls；地形 → special1（原生 +0xc0）；楼梯 → special2
+    // （原生 +0x150）。旧实现把非墙地址 log 后跳过（W16），导致恢复不完整。
+    let (slot, source) = match addr {
+        DecoratorStorageAddr::Wall(wall) => (
+            ArchiveSlot::Wall(
+                country_core::resources::walls::publication_fields::WallId(wall.0),
+            ),
+            storage.wall_decorators(wall),
+        ),
+        DecoratorStorageAddr::Terrain => (ArchiveSlot::Special1, storage.terrain.as_ref()),
+        DecoratorStorageAddr::Stair => (ArchiveSlot::Special2, storage.stairs.as_ref()),
+    };
+    let Some(source) = source else {
         return;
     };
-    let Some(source) = storage.wall_decorators(wall) else {
-        return;
+    let tracked = match slot {
+        ArchiveSlot::Wall(wall) => archivist.walls.entry(wall).or_default(),
+        ArchiveSlot::Special1 => archivist.special1.get_or_insert_with(Default::default),
+        ArchiveSlot::Special2 => archivist.special2.get_or_insert_with(Default::default),
     };
-    // archivist 桶键 = shared building modules WallId（与 resources WallId 双类型；
-    // 以 u64 桥接）。
-    let archivist_wall = country_core::resources::walls::publication_fields::WallId(wall.0);
-    let tracked = archivist.walls.entry(archivist_wall).or_default();
     tracked.removed.clone_from(&source.removed_ids);
     tracked.items.clear();
     tracked.items.extend(
@@ -192,6 +201,13 @@ pub fn archive_decorator_state<C: Send + Sync + 'static>(
             .map(|(id, info)| (*id, ObservedDecoratorInfo(info_to_bytes(*info)))),
     );
     tracked.added.clone_from(&source.modified_ids);
+    let _ = label;
+}
+
+enum ArchiveSlot {
+    Wall(country_core::resources::walls::publication_fields::WallId),
+    Special1,
+    Special2,
 }
 
 /// DecoratorInfo(72B, repr(C)) → 原始字节（归档桶载荷；字段序 = 机器码
@@ -347,10 +363,16 @@ pub fn apply_decorator_op<C: Send + Sync + 'static>(
         }
         DecoratorOpKind::Change => {
             archive_decorator_state(&mut *decorator_archivist, storage, dst, label);
-            // O：change 分支二次归档，条件 = op[+0x10] 子判别 != 3
-            // （move preview dst；子判别字段语义 U，见文件头）。
-            if op.info.dst_secondary != 3 {
-                archive_decorator_state(&mut *decorator_archivist, storage, dst, LABEL_MOVE_DST);
+            // O：change 分支第二定位器 != 哨兵 3 时按目标地址二次归档
+            // （fresh 0x141276e30：`lVar1 = op[+0x10..0x18]`；`!= 3` →
+            // `FUN_1412b4a40(..., "move preview dst", 0x10)`）。
+            if let Some(target) = op.dst {
+                archive_decorator_state(
+                    &mut *decorator_archivist,
+                    storage,
+                    target,
+                    LABEL_MOVE_DST,
+                );
             }
             if let Some(mut history) = history {
                 write_change_op_history(&mut history, op, dst);
@@ -368,7 +390,21 @@ pub fn apply_decorator_op<C: Send + Sync + 'static>(
             storage.apply_decorator_remove(dst, id);
         }
         DecoratorOpKind::Change => {
-            storage.apply_decorator_change(dst, id, &op.info);
+            match op.dst {
+                // 正常迁移（O：0x140a20890 非哨兵路径）：先 remove(源)，
+                // 再 get_or_insert_default(目标) + insert + d2s update +
+                // modified_ids 标记 + 逐字段更新。core
+                // `apply_decorator_change` 只能同址 remove/insert（无法表达
+                // 源≠目标），故此处按机器码恢复迁移路径。
+                Some(target) => {
+                    apply_decorator_change_move(storage, dst, target, id, &op.info);
+                }
+                // O 哨兵 3（fresh 0x140a20890）：**不 remove/reinsert**，仅
+                // `get_mut` + `modified_ids.insert` + 内嵌条目逐字段更新。
+                // core `apply_decorator_change` 仅实现正常路径（已登记缺口），
+                // 此处按机器码恢复哨兵路径。
+                None => apply_decorator_change_in_place(storage, dst, id, &op.info),
+            }
         }
     }
 
@@ -376,8 +412,239 @@ pub fn apply_decorator_op<C: Send + Sync + 'static>(
     events.send(build_op_event(kind, op, dst, kind_byte));
 }
 
+/// `apply_decorator_change` 哨兵路径（fresh 0x140a20890，O）：目标 == 源时
+/// **不迁移存储**，仅标记 modified + 逐字段更新内嵌条目。
+///
+/// 机器码（哨兵 `param_2[2] == 3` 分支）：
+/// 1. `DecoratorStorage::get_mut(addr)`（0x140a1cde0；未命中 panic）；
+/// 2. `modified_ids.insert(id)`（`FUN_1402c9200(bucket+0x60, id)`）；
+/// 3. 内嵌 map 探针（`FUN_1405b0ed0(bucket+0x50, &id)`）→ 逐判别写字段。
+///
+/// core 的 `DecoratorStorage::apply_decorator_change` 只实现正常
+/// remove/reinsert 路径（章节 §942 已登记），故哨兵路径在此按机器码恢复。
+pub(crate) fn apply_decorator_change_in_place(
+    storage: &mut DecoratorStorage,
+    addr: DecoratorStorageAddr,
+    id: DecoratorId,
+    info: &DecoratorInfo,
+) {
+    let Some(decorators) = storage.get_mut(addr) else {
+        panic!("apply_decorator_change: target bucket missing");
+    };
+    decorators.modified_ids.insert(id.0);
+    let Some(entry) = decorators.decorators.get_mut(&id.0) else {
+        panic!("apply_decorator_change: missing decorator entry");
+    };
+    apply_decorator_change_field_update(entry, info);
+}
+
+/// `apply_decorator_change` 正常迁移路径（fresh 0x140a20890，O）：
+/// `remove(src)` → `get_or_insert_default(dst)` + `insert` → d2s update →
+/// `modified_ids.insert` → 内嵌条目逐字段更新。
+pub(crate) fn apply_decorator_change_move(
+    storage: &mut DecoratorStorage,
+    src: DecoratorStorageAddr,
+    target: DecoratorStorageAddr,
+    id: DecoratorId,
+    info: &DecoratorInfo,
+) {
+    storage.apply_decorator_remove(src, id);
+    {
+        let bucket = storage.get_or_insert_default(target);
+        bucket.insert(id, *info);
+    }
+    storage.decorator_to_storage.update(id, target);
+    let bucket = storage
+        .get_mut(target)
+        .unwrap_or_else(|| panic!("apply_decorator_change: target bucket missing"));
+    bucket.modified_ids.insert(id.0);
+    let entry = bucket
+        .decorators
+        .get_mut(&id.0)
+        .unwrap_or_else(|| panic!("apply_decorator_change: missing decorator entry"));
+    apply_decorator_change_field_update(entry, info);
+}
+
+/// 内嵌条目逐字段更新（fresh 0x140a20890 判别跳表，O）。
+///
+/// 判别源 = op.info 的 `u30/u38/u40/u45/rank`；写面与 core
+/// `apply_decorator_change_field_update`（0x140a20890）逐条一致：
+/// - `u40 低字节 == 1` → `rank = u40 字节1`；
+/// - `u45 != 0x40` → `ty = u45`（`0x40` 为“跳过”哨兵）；
+/// - `u40 字节2 == 1` → `decorator_id += (i8)u40 字节3`（demo 恒 false →
+///   `u45 = 5`）；
+/// - `u30 低 32 位 == 1` → rank 判别后 `entry.u30 低 32 = info.u30 高 32`
+///   （楼梯高度载荷）；
+/// - `u38 & 1` → type 判别后 `entry.u30 高 32 = info.u3c`；
+/// - `rank != 2` → `entry.u40 字节1 == 5` 断言后 `entry.u30 最低字节 = rank`。
+fn apply_decorator_change_field_update(entry: &mut DecoratorInfo, info: &DecoratorInfo) {
+    if info.u40 & 0xff == 1 {
+        entry.rank = ((info.u40 >> 8) & 0xff) as u8;
+    }
+    if info.u45 != 0x40 {
+        entry.ty = info.u45;
+    }
+    if (info.u40 >> 16) & 0xff == 1 {
+        entry.decorator_id = entry
+            .decorator_id
+            .wrapping_add(((info.u40 >> 24) & 0xff) as i8 as u32);
+        const DEV_OVERRIDE_IS_DEMO_MODE: bool = false;
+        entry.u45 = if DEV_OVERRIDE_IS_DEMO_MODE { 0 } else { 5 };
+    }
+    if info.u30 as u32 == 1 {
+        let disc = (((entry.u40 >> 8) & 0xff) as u8)
+            .wrapping_sub(2)
+            .min(6)
+            | 4;
+        if disc != 6 {
+            panic!("apply_decorator_change: invalid DecoratorExtraInfo rank");
+        }
+        let height_bits = (info.u30 >> 32) as u32;
+        entry.u30 = (entry.u30 & 0xffff_ffff_0000_0000) | u64::from(height_bits);
+        // core 模型适配：`DecoratorInfo::extra()` 把楼梯载荷编码在
+        // dst_payload/u18/u20（章节登记偏移偏离）；同步首 f32，保证
+        // `extra().as_stair()` 消费者可见新高度。
+        let mut raw: [u8; 20] = entry.extra().as_stair().0;
+        raw[0..4].copy_from_slice(&height_bits.to_le_bytes());
+        entry.set_extra(DecoratorExtraInfo::Stair(StairExtra(raw)));
+    }
+    if info.u38 & 1 != 0 {
+        let disc = (((entry.u40 >> 8) & 0xff) as u8) | 0xf8;
+        if disc >= 0xfa {
+            panic!("apply_decorator_change: invalid DecoratorExtraInfo type");
+        }
+        entry.u30 = (entry.u30 & 0xffff_ffff) | (u64::from(info.u3c) << 32);
+    }
+    if info.rank != 2 {
+        if (entry.u40 >> 8) & 0xff != 5 {
+            panic!("apply_decorator_change: invalid DecoratorExtraInfo rank");
+        }
+        entry.u30 = (entry.u30 & 0xffff_ffff_ff00_0000) | u64::from(info.rank);
+    }
+}
+
 /// 归档索引面：TrackedDecorators 往返保留（backup/restore 共享）。
 #[allow(dead_code)]
 fn _tracked_surface(_t: TrackedDecorators) {}
 
-const LOG_TARGET: &str = "system_decorator::apply_decorator_op";
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use country_core::resources::walls::decorator_storage::Decorators;
+    use country_core::resources::walls::WallId;
+
+    fn height_op(id: u32, height: f32, dst: Option<DecoratorStorageAddr>) -> DecoratorOp {
+        DecoratorOp {
+            kind: 0,
+            info: DecoratorInfo {
+                decorator_id: id,
+                dst_secondary: 3,
+                u30: 1 | (u64::from(height.to_bits()) << 32),
+                rank: 2,
+                u45: 0x40,
+                ..DecoratorInfo::default()
+            },
+            extra: [0; 0x20],
+            dst,
+        }
+    }
+
+    fn storage_with(wall: WallId, id: u32) -> DecoratorStorage {
+        let mut storage = DecoratorStorage::default();
+        let mut bucket = Decorators::default();
+        bucket.decorators.insert(
+            id,
+            DecoratorInfo {
+                decorator_id: id,
+                // 楼梯 extra_style 判别：低 3 位 0/1（8/9）才通过 as_stair 与
+                // u30 rank 判别（`(b-2).min(6)|4 == 6`）。
+                u40: 0x0000_0800,
+                state: 2,
+                ..DecoratorInfo::default()
+            },
+        );
+        storage.per_wall.insert(wall, bucket);
+        storage
+            .decorator_to_storage
+            .insert(DecoratorId(id), DecoratorStorageAddr::Wall(wall));
+        storage
+    }
+
+    #[test]
+    fn sentinel_change_updates_in_place_without_removing() {
+        let wall = WallId(7);
+        let mut storage = storage_with(wall, 9);
+        let mut archivist = DecoratorArchivist::<()>::default();
+        let events = DeferredDecoratorOpEvents::default();
+        let addr = DecoratorStorageAddr::Wall(wall);
+        let op = height_op(9, 3.5, None);
+        apply_decorator_op(
+            &op,
+            0,
+            addr,
+            &mut storage,
+            Some(&mut archivist),
+            None,
+            &events,
+        );
+        let bucket = storage.wall_decorators(wall).unwrap();
+        let entry = bucket.decorators.get(&9).expect("entry retained in place");
+        assert_eq!(entry.u30 as u32, 3.5f32.to_bits());
+        // core 载荷编码同步。
+        assert_eq!(
+            f32::from_le_bytes(entry.extra().as_stair().0[0..4].try_into().unwrap()),
+            3.5
+        );
+        assert!(bucket.modified_ids.contains(&9));
+        assert!(!bucket.removed_ids.contains(&9), "in-place path must not remove");
+        assert_eq!(
+            storage.lookup_storage(DecoratorId(9)),
+            Some(DecoratorStorageAddr::Wall(wall))
+        );
+    }
+
+    #[test]
+    fn change_move_removes_source_and_inserts_target() {
+        let src = WallId(7);
+        let target = WallId(8);
+        let mut storage = storage_with(src, 9);
+        // 目标墙桶存在（native get_or_insert_default 亦可新建；这里验证迁移）。
+        storage.per_wall.insert(target, Decorators::default());
+        let mut archivist = DecoratorArchivist::<()>::default();
+        let events = DeferredDecoratorOpEvents::default();
+        let op = height_op(9, 6.25, Some(DecoratorStorageAddr::Wall(target)));
+        apply_decorator_op(
+            &op,
+            0,
+            DecoratorStorageAddr::Wall(src),
+            &mut storage,
+            Some(&mut archivist),
+            None,
+            &events,
+        );
+        assert!(storage.wall_decorators(src).unwrap().decorators.get(&9).is_none());
+        assert!(storage.wall_decorators(src).unwrap().removed_ids.contains(&9));
+        let target_bucket = storage.wall_decorators(target).unwrap();
+        let entry = target_bucket.decorators.get(&9).expect("moved entry");
+        assert_eq!(entry.u30 as u32, 6.25f32.to_bits());
+        assert!(target_bucket.modified_ids.contains(&9));
+        assert_eq!(
+            storage.lookup_storage(DecoratorId(9)),
+            Some(DecoratorStorageAddr::Wall(target))
+        );
+    }
+
+    #[test]
+    fn field_update_rejects_invalid_rank_discriminant() {
+        // entry.u40 字节1=5 → `(5-2).min(6)|4 = 7 != 6` → panic。
+        let mut entry = DecoratorInfo {
+            u40: 0x0000_0500,
+            ..DecoratorInfo::default()
+        };
+        let info = height_op(1, 1.0, None).info;
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            apply_decorator_change_field_update(&mut entry, &info);
+        }));
+        assert!(result.is_err());
+    }
+}

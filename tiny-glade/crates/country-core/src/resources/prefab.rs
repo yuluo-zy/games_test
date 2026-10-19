@@ -31,12 +31,30 @@ use crate::render::mesh::Mesh;
 use crate::resources::render::mesh_atlas_library::{PrefabName, PrefabNameRef};
 use crate::utils_contract::Aabb3;
 
-/// Mutable placement component. B hide_trees indexes this component with a
-/// 48-byte stride and copies its first 24 bytes into the history placement.
-/// The owning prefab name is in systems::prefab::PrefabInstanceData.
-#[repr(transparent)]
-#[derive(Component, Clone, Copy, Debug, PartialEq)]
-pub struct PrefabInstance(pub crate::resources::placement_data::PlacementDataSsbo);
+/// Canonical B resources::prefab::PrefabInstance, 88B owned contents.
+/// Original register_component141552040 writes size0x58 at1415522dc.
+#[derive(Component, Clone, Debug)]
+pub struct PrefabInstance {
+    /// `+0x08` GPU 实例（stride 0xc）。
+    pub gpu_instances: Vec<crate::systems::prefab::GpuInstanceRecord>,
+    /// `+0x20` RT 网格句柄（stride 0x10）。
+    pub rt_meshes: Vec<crate::resources::rt::RtMeshHandle>,
+    /// `+0x38` 音频触发（stride 0x28）。
+    pub audio_triggers: Vec<crate::systems::prefab::AudioTriggerRecord>,
+    /// `+0x48/+0x50` 预制体名（`PrefabName` = Arc ptr/len）。
+    pub prefab_name: PrefabName,
+}
+
+impl Default for PrefabInstance {
+    fn default() -> Self {
+        Self {
+            gpu_instances: Vec::new(),
+            rt_meshes: Vec::new(),
+            audio_triggers: Vec::new(),
+            prefab_name: PrefabName::new(""),
+        }
+    }
+}
 
 /// 预制体库值（O：`HashMap<PrefabName, Prefab>` 的值；`add` 被替换旧值逐 `PrefabPart` drop）。
 /// 字段布局 U（`parts` 为语义 I；`PrefabPart` 原生 0x98 B）。
@@ -220,7 +238,9 @@ mod tests {
         // O：panic 用 `{:?}` 于 `PrefabNameRef`（derive Debug，透明 str 包装 → `PrefabNameRef("…")`）
         // 与 `Vec<&PrefabName>`（`PrefabName("…")`）。文案逐字 `No such prefab …; available: …`。
         assert!(
-            msg.contains("No such prefab PrefabNameRef(\"tree/zzz\"); available: [PrefabName(\"tree/a\")]"),
+            msg.contains(
+                "No such prefab PrefabNameRef(\"tree/zzz\"); available: [PrefabName(\"tree/a\")]"
+            ),
             "panic message: {msg}"
         );
     }

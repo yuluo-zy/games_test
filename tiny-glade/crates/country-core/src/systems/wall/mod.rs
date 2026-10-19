@@ -14,6 +14,7 @@ pub mod snapping;
 pub mod eraser;
 pub mod shapes;
 pub mod structure_outline;
+pub mod set_wall_style;
 
 // ---------------------------------------------------------------- 组 A 接线
 
@@ -21,22 +22,29 @@ pub mod structure_outline;
 /// color_menu 0x142291230 的 EventWriter 面；载荷语义 U——样式/模式字节族）。
 #[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default)]
 pub struct SetWallStyleCmd {
-    /// typed gap。
-    pub _gap: u64,
+    pub wall_id: crate::resources::walls::WallId,
+    pub from: u8,
+    pub to: u8,
+    pub record_history: u8,
+    pub play_sound: u8,
 }
 
 /// 自由手高度类型设置命令（O：`set_wall_style::SetFreehandHeightTypeCmd` 族）。
 #[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default)]
 pub struct SetFreehandHeightTypeCmd {
-    /// typed gap。
-    pub _gap: u64,
+    pub wall_id: crate::resources::walls::WallId,
+    pub from: u8,
+    pub to: u8,
+    pub record_history: u8,
 }
 
 /// 灰泥剥离量命令（O：`set_wall_style::SetPlasterPeelAmountCmd` 族）。
 #[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default)]
 pub struct SetPlasterPeelAmountCmd {
-    /// typed gap。
-    pub _gap: u64,
+    pub wall_id: crate::resources::walls::WallId,
+    pub from: f32,
+    pub to: f32,
+    pub record_history: u8,
 }
 
 pub mod construction;

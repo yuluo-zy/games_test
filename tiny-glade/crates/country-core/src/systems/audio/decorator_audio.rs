@@ -41,7 +41,7 @@ pub const DECORATOR_LOOP_EVENTS: [&str; 16] = [
     "event:/SFX/Flags/DragGround",
     "event:/SFX/Cosmetics/Clutter_Rotate",
     "event:/SFX/Cosmetics/MoveGround",
-    "event:/SFX/Lantern/Amb",
+    "event:/SFX/Cosmetics/MoveBuilding",
 ];
 
 /// DecoratorAudioState: the 16 loops + per-loop should-play flag.

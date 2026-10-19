@@ -1,4 +1,54 @@
+## 2026-10-19 最新优先级：集中完成启动→装配→主循环
+
+用户明确要求把并行力量集中到这一条主流程。T16/归档等编辑候选冻结留存，不丢弃既有交付；8专项转为会话初始请求/CLI、卸载与Reload、预置树、真实环境/森林/墙drawable startup、相机与步行音频、装配及独立二次会话验收。中央单一Cargo owner。任务记录见 evidence/round12/startup-focus/dispatch.json。T13继续排除。
+
+已中央合入：v23墙候选除stale run_game（21文件）、preplaced15、完整GCC10、会话lifecycle14、LoadUI36/Parsed缺主history修复、真实Started/Finished及Vermeer持久locals、原check_load_completion sticky/unlink36、真实resource-only装配。候选SHA逐一审计，现正fresh all-targets check，不计验收通过。旧v20实际exe运行241s在临时Decorator完整UI装配处B0002失败；其结构stub不得仅改ParamSet后冒充恢复，改为保真实资源并只挂已恢复叶。v20后因Load test类型/私有字段失败已结束，120源变化使它不是新source的验收。
+
+新发现真实启动gap：初始NextSession由实际SessionFlowPlugin.build创建，已撤销“缺writer”的早期误判；首次intro是v16，必须经过legacy SpawnPreplacedTrees；原墙7全局drawable未生成；init_clearing完整6913B/forest80B producer仍缺；Walk footsteps真实8参数/rock/raster/input算法当前简化，专项恢复中。原Reveal writers分别来自MainLoop交接和Vermeer完成，不在load_game，不能凭request_reveal新造等待。首次非空+同主题二次+Summer→Winter验收未完成。
+
+## 2026-10-19 最新中央并行验收检查点
+
+当前上限为9个并发槽（含中央），本轮以8个专项agent并行，旧文的4槽记录仅为较早阶段。中央唯一Cargo owner，生产冻结后再验证；释放的成员动态转交屋顶UI、Load菜单、startup卸载链与独立复核。T13明确排除；其它复杂算法/完整交互不可简化。
+
+独立执行：音频真实生产源43/43生命周期测试通过；MaterialStats对原B实际执行530/530位模式与selector匹配。v14实际GPU Egui单样本及原sRGB4×MSAA两测试通过；capture及实际gameplay/历史测试此前失败，已给候选修复但未重跑，不算通过。新roof原RNE28组执行不等于Rust数值验证通过。
+
+已落但待统一验收：历史9/16变体身份、plaster/support/AutoClutter/Deprecated Decorator保存及nullable NaN往返；完整旧版本迁移、identity权威流与snapshot cursor；timelapse生命周期；Escape真实GUI及OS命令接线；roof tile/spire/trigger；墙typed GPU分配与样式消费者。Load菜单和颜色show/main、roof UI仍在恢复。原支撑梁只有静态零count channel证据，不编造非空producer。
+
+最新发现的完整性断点：第二次同主题会话placement库重复load，需恢复整个unload/despawn生命周期；<19预置树事件有原证但消费者组件归属颠倒（原PrefabInstanceData48B、PrefabInstance88B），不能只注册writer宣布完成。最大缺口仍输入→权威→历史→实体/上传→实际绘制。
+
+升级flag裁决：原wrapper d→bit40/window（GateColors及非邻接冷块三窗Decorator色），e→bit48/ArrowSlit999。两次独立核实完整CFG，不能因旧helper命名或截断连续反汇编再次翻转。webbrowser实际原锁是0.8.10，已按原依赖复用。
+
 # Tiny Glade 项目记忆
+
+## 2026-10-19 内网 LLM 委派与长函数基准
+
+用户要求尽量把重复、独立且边界清楚的逆向分析/核对交给内网模型。已接入 `scripts/llm-worker/run.mjs`，密钥只读进程环境；中央入口为 AI_REVERSE_TOOLS.md §10，后续提示词 `scripts/llm-worker/review-production.txt`。实测模型 `deepseek-ai/DeepSeek-V4.1-Flash`；标准 thinking disabled 在本网关未生效，有效参数为 `chat_template_kwargs`，语义任务默认 `thinking:true, reasoning_effort:25`，最多 2 独立请求并发，冻结输入/缓存与格式门禁。快速模式在长函数和窄任务均出现关键错误，不能直接接受；低强度也只作助手，主流程保留原指令/ABI/跨模块/写入与集成裁决。T13 仍排除。
+
+原 B replay_stairs 703 非空行/2373 原字节长函数基准已完成工具评估，未自动接受完整合同。最终原汇编独立任务约 49/45 秒，事件公式经主流程核对正确；数值指令事实需纠正 worker 把“加时间等待”误叫“应用命令”的标签。原指令进一步确认：事件 tag 根据 payload bit（当前 schema 的 recreate）选择 `0x11+undo` / `0x12-undo`，不是 instant 标志；当前 Rust 音频 kind 分支存在静态不一致，已登记未改码。NaN 等比较以 MAXSS/UCOMISS/JBE 原指令为准，初始反编译 checklist 的强结论已纠正。完整失败/性能/证据/裁决见 `evidence/llm-worker-2026-10-19/{REPORT.md,owner-adjudication.json}`。本轮没有修改游戏代码、数据库或提升游戏还原进度。
+
+## 2026-10-19 后续执行范围：排除 T13，其余多 agent 推进
+
+用户明确要求 **T13 反馈捕获不推进、直接跳过**。保留历史证据，不恢复其截图捕获/页面状态生产者，不把 T13 计入当前主流程完成阻碍。其它未恢复、未知、未验证内容继续集中多个 agent 推进，目标是完整 producer → 权威状态/算法 → consumer → 交互副作用调用链；不能以单消费者接线或一次有界增量结束代替原任务完成。
+
+用户随后要求总结逆向经验并持续优化效率。已将本轮确认有效的方法补入现有 `skeleton/workflow-design/tiny-glade-recovery/references/original-driven-integration.md`：按完整调用链分工、公共源冻结与单owner编译、独立target避免其它任务锁、Git sparse保留证据精确提取、MCP异步失败判别、TypeId/Time字段与实际caller-set纠错、真实存档变体→回放消费者、真实App共用装配验收、画廊首格与captured纹理同帧依赖/Arc生命周期。效率提升不得以简化算法、删除交互或弱化验收换取。round12在途，不将新增源码自动记为通过。
+
+用户进一步要求增加一批agent、root作为中央协调。当前环境同时上限4（含root）；旧startup/history/render成员交接结束后已新建session_owner、roof_visual、menu_interaction三专项，分别负责完整会话拥有数据转移、屋顶实体/几何/GPU、Load/Escape完整交互。root集中共享文件/接口裁决与单一验证，空槽继续轮换颜色菜单、墙GPU和旧版本迁移。进度和真实验收状态见 [round12报告](evidence/round12/REPORT.md) 与 [工作边界](evidence/round12/WORKLIST.md)，不能把已准备补丁算已落或把编译算通过。
+
+## 2026-10-19 用户最高优先还原约束：正确性与完整交互
+
+用户明确要求：还原首先确保**游戏逻辑的正确性、算法的正确性和设计的正确性**；**原作复杂算法和业务逻辑都不允许简化，保证整个游戏的交互完整性**。允许多态等设计更新，但设计变化必须保留全部业务语义，不得借架构适配删减功能、分支、状态、边界处理、副作用、生命周期、事件顺序或跨模块联动。
+
+执行时以原版 producer → 权威状态/算法 → consumer → 交互结果为恢复单位。现有实现若比原作简单，应按原证重构现实现并同步修复消费者；不能只包装接口，不能用默认值、空操作、假数据或绕过未恢复路径获得假成功。证据不足须继续取证并保留明确未闭合项；编译、局部测试、类型覆盖、可构图均不等于完整交互或原版算法验收。此要求适用于当前三个主流程及后续全部 Tiny Glade 还原，与保留用户已重构 rhapsody/工具库架构的要求同时生效。
+
+## 2026-10-19 三主流程继续恢复：round11
+
+先fetch并快进合并62提交到1253c0ab，三方移植本地round9/10业务，未修改拉取后的rhapsody库。root本地Git仅为历史Mac非法文件名设core.protectNTFS=false，防索引刷新截断；拉取前186文件与补丁/哈希均在evidence/sync-20261019-local-backup，不覆盖最新API。
+
+启动侧纠正load_glade_grading职责为ImageFormationConfigs三槽，独立真实加载全LUT与tony_mc_mapface/menu-active-lut；meadow真实48B placement→GPU owner→draw；纠正旧13相机槽/Modifiers/动作参数误读，复用全长原证恢复六body、Normal/Free/Walk、set9/10、ray/MouseDepth与完整snapshot磁盘UI。当前宿主录制格式2→3携depth/mouse/center，拒绝缺值旧格式，不声称原208B ABI。terrain平面成功创建先写raw distance，释放无条件清；两App单次MEI flush，构图重试只复用输出。
+
+历史侧纠正两张所谓结构表实为stairs backup GraphMap，支持非空aux Pop；mixed命令/timing同步压缩；真实color/FlatRoof/tree/prefab消费者保完整placement、Entity去重、GPU/RT/audio/BirdHaven副作用。新增原证纠正：RT所谓延迟callback实际insert<BirdHaven>，不得再造RT请求队列。进一步修复HistoryEntry未持自身aux而错误回放global最近diff；每entry两Arc与方向性cull表直接由选中entry生成，不能退回索引映射或None。
+
+渲染侧接T12 canonical String LUT、T16全部query/draw分支/唯一组件身份及真实layer-view、T21同MSAA owner；T11/T13按真实EscMenuState门控，不用默认false绕过。T11完整host、T12 preview捕获、T13 capture/state、其余尾部控制/截图，Walk入口teleport、其它startup/full UI输入、保存aux wire解码及颜色GPU等仍未闭合。三流程保持部分，不宣称完整compile_main/warmup/游戏交互。最终源码/日志指纹及测试以[evidence/round11/REPORT.md](evidence/round11/REPORT.md)和verification.json为准；子报告旧在途数字不是最新验收。
 
 ## 2026-10-18 用户最新约束：保留已重构的 rhapsody 架构
 

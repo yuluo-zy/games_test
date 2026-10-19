@@ -36,5 +36,7 @@ pub fn construct_circle_pillars(
     _start_y: impl Fn(f32, f32, f32) -> f32,
     _out: &mut Vec<Vec3>,
 ) {
-    todo!("未实现: construct_circle_pillars 0x14124ba30（0x298 门控/三向 raycast 净空/-0.4 外移/halftimber 二路/0x50B 实体校验未逐语句）")
+    todo!(
+        "未实现: construct_circle_pillars 0x14124ba30（0x298 门控/三向 raycast 净空/-0.4 外移/halftimber 二路/0x50B 实体校验未逐语句）"
+    )
 }

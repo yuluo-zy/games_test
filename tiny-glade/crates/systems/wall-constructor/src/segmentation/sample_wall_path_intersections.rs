@@ -6,9 +6,9 @@
 //!
 //! 机器码（building-production-authority/B-intersections 冻结）：路径光栅
 //! 与墙轮廓的交点采样（arch_function 内联），产出交点对 → 分段候选。
+use bevy_ecs::prelude::*;
 use country_core::resources::walls::public_walls::{OnWallChanged, PublicWalls};
 use country_core::systems::ui::signifiers::signifier_create::UiSignifierStream;
-use bevy_ecs::prelude::*;
 
 /// B 0x14074c720。
 pub fn sample_wall_path_intersections(

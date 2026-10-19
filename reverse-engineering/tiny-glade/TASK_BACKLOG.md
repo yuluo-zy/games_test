@@ -1,5 +1,9 @@
 # 游戏自有源码逆向任务与收益排序
 
+2026-10-19 最新范围覆盖下文旧待办：用户明确跳过 T13 反馈捕获与其状态生产者，之后不再作为当前缺口推进。多个 agent 并行恢复其它链：编辑/历史/保存跨 crate、启动/输入/模式生命周期、T11/T12/T16 及渲染生产者；root 集成真实调用链与运行验证。
+
+2026-10-19 三主流程当前断点：先fetch并快进合并62提交到1253c0ab，保留最新rhapsody/工具架构；按用户正确性与完整交互优先要求恢复meadow真实placements、grading配置/GPU资产、六body相机与set9/10、MouseDepth录制v3、完整snapshot文件UI；历史修非空stairs Pop、mixed timing、FlatRoof/tree→prefab、entry-owned aux/cull；渲染接T12/T16/T21与T13原门控消费者。三条主流程仍为部分，不能把局部通过标作整游戏交互完成。下一重点：T11完整thumbnail host/字段writer，T12预览捕获，T13捕获/状态，尾部未恢复控制/截图关联，Walk进入teleport及其它startup/full input注册，保存aux解码与颜色GPU/全域历史消费者。报告与最终验证入口：[round11](evidence/round11/REPORT.md)。
+
 2026-10-15 当前 GUI：菜单拥有载荷、Next/Prev 移动、状态推进和缩略图算法已落 core；LUT 资源身份纠错并接入共享类型。按用户最新要求实施优先，仅必要编译，不再扩大测试矩阵。继续 gui.rs 的 PhotomodeScreen、完整 DebugGui/日志和 PendingEguiContextResource，再推进 PublicWalls。SessionId 仅作为当前菜单依赖恢复，未跳转展开整个会话模块。
 
 2026-10-14 最新执行方式：按 B 原源码目录/文件推进，入口为 [core/recovery](../../tiny-glade/crates/country-core/recovery/README.md)。先核依赖与真实导出，逐文件关联旧章节/FIX、当前代码和消费者，冲突直接查 RNE。基础合同与 wall_highlight 单系统已落 core；原完整 PublicWalls、GUI 载荷、实体生命周期和原注册仍缺。后续以逐目录台账为准，下面 NR 分域仅保留为历史粗排，不能替代文件验收。

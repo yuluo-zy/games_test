@@ -4,15 +4,18 @@
 //! `(ResMut<StairsPillarProposals>, Res<UiSignifierStream>,
 //!  ResMut<StairsVisualState>, Res<AssetSsboLibrary>,
 //!  Res<TerrainHeightsData>, …)`。
+use bevy_ecs::prelude::*;
 use country_core::asset_libraries::ssbo_library::AssetSsboLibrary;
 use country_core::resources::{
     stairs::visual::StairsVisualState, stairs_walls::StairsPillarProposals,
     terrain_height::TerrainHeightsData,
 };
 use country_core::systems::ui::signifiers::signifier_create::UiSignifierStream;
-use bevy_ecs::prelude::*;
 
-/// B 0x14077d520：支柱提议 → 视觉状态记录（44B 提议 → 96B 支柱实例）。
+/// B 0x14077d520。**未实现（U）**：`StairsState::graph`/`StairSegment::new`/
+/// `Rectangle2d` 边法向/`WallConstructor::from_curve` + `random_splits` +
+/// `construct_pillar_stub`(inlinee 24718) 的柱高/数量未逐语句。
+/// 旧“44B 提议首 8 字节直推 96B”的近似体已移除（不伪造输出）。
 pub fn construct_playermade_stair_pillars_visuals(
     mut proposals: ResMut<StairsPillarProposals>,
     _signifiers: Res<UiSignifierStream>,
@@ -21,19 +24,14 @@ pub fn construct_playermade_stair_pillars_visuals(
     terrain: Res<TerrainHeightsData>,
     mut output: ResMut<crate::construct_arches::WallConstructorOutput>,
 ) {
-    let mut all = Vec::new();
-    proposals.drain_all(&mut all);
-    for proposal in all {
-        // 44B 提议：{x,z, 高度…} → 96B 支柱实例（terrain 高度采样）。
-        let p = glam::Vec3::new(
-            f32::from_le_bytes(proposal[0..4].try_into().unwrap_or([0; 4])),
-            0.0,
-            f32::from_le_bytes(proposal[4..8].try_into().unwrap_or([0; 4])),
-        );
-        let _ = terrain;
-        let mut record = [0u8; 96];
-        record[..12].copy_from_slice(&p.to_array().map(f32::to_le_bytes).concat());
-        output.brick_instances.push(record);
-    }
-    let _ = (&mut *visual, ssbo);
+    let _ = (
+        &mut *proposals,
+        &mut *visual,
+        &ssbo,
+        &terrain,
+        &mut *output,
+    );
+    todo!(
+        "未实现: construct_playermade_stair_pillars_visuals 0x14077d520（graph/from_curve/construct_pillar_stub 未逐语句）"
+    )
 }

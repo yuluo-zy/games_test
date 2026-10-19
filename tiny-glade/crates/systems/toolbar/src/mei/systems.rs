@@ -83,8 +83,9 @@ pub fn mei_pre_update(
     // O L259/L402：`scale = window_height / 1000.0`（cvtsi2ss + divss）。
     let scale = window_size.height as f32 / 1000.0;
 
-    // O L161：`*(u32*)(mei+0x270) = *(u32*)(Time+0x58)` = elapsed_secs_wrapped。
-    mei.elapsed_wrapped = time.elapsed_secs_wrapped();
+    // B14068459f: Time+0x58 is delta_secs, not elapsed_secs_wrapped.
+    // Keep the legacy source field name until callers migrate together.
+    mei.elapsed_wrapped = time.delta_secs();
 
     // O L163-175：handler 表 hashbrown clear + 容量字段重写。
     mei.frame_begin();

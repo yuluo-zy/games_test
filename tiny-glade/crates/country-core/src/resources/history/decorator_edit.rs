@@ -15,12 +15,10 @@
 //! （`convert_before_after_states_to_changes` 0x140b3fab0 /
 //! `send_state_diff_events` 0x1417bdae0 的 `__SerializeWith`），Rust 侧暂为
 //! 全字段 derive；`restore_decorators` 消费链在 walls/decorator 域实现。
-use crate::resources::walls::decorator::{
-    DecoratorId, DecoratorInfo, DeferredDecoratorOpEvents,
-};
+use crate::resources::walls::decorator::{DecoratorId, DecoratorInfo, DeferredDecoratorOpEvents};
 use crate::resources::walls::decorator_storage::DecoratorStorageAddr;
 use serde::ser::SerializeMap;
-use serde::{Deserializer, Serializer};
+use serde::{Deserialize, Deserializer, Serializer};
 use std::collections::{HashMap, HashSet};
 
 /// 装饰历史编辑（原生 0x1404f46e0：单 entry map `{"diffs": {<addr>: diff}}`）。
@@ -116,22 +114,32 @@ impl DecoratorHistoryState {
     /// B restore_snapshot 0x140a20f44..0x140a2107d chooses extra data by
     /// DecoratorType, including default-valued extras. It does not infer the
     /// variant from which optional field happens to differ from its default.
+    ///
+    /// Clutter（`ty < 0x38`）与未知类型在原生 `ty - 0x38` 夹取后走 index 6
+    /// 分支（0x140a20d70 clamp+switch）：该分支保留 `u30/u38/u3c/u40` 原始槽，
+    /// style 回读 `state.style`（Clutter 为 0）。不得把扩展簇清零或把 style
+    /// 默认写成 3（round9 6/134 样本状态丢失的根因）。
     pub fn to_info(&self) -> DecoratorInfo {
         let style = match self.ty {
             0x38..=0x3a => 6,
             0x3b => 4,
             0x3c => 7,
             0x3d => 5,
-            0x3f => self.style,
-            _ => 3,
+            // `0x3f` 与 Clutter（<0x38）/未知类型共享 style 回读。
+            _ => self.style,
         };
         let (u30, u38, u3c, extra_byte) = match self.ty {
             0x38..=0x3a => (u64::from(self.u34), 0, 0, 0),
             0x3b => (u64::from(self.u30) | (u64::from(self.u4d) << 32), 0, 0, 0),
             0x3c => (u64::from(self.u38), 0, 0, 0),
             0x3d => (u64::from(self.u4c), 0, 0, 0),
-            0x3f => (u64::from(self.u30) | (u64::from(self.u3c) << 32), self.u40, self.u44, self.u4b),
-            _ => (0, 0, 0, 0),
+            // 0x3f 与 Clutter/未知：保留原始扩展簇槽。
+            _ => (
+                u64::from(self.u30) | (u64::from(self.u3c) << 32),
+                self.u40,
+                self.u44,
+                self.u4b,
+            ),
         };
         DecoratorInfo {
             dst_wall: self.dst_wall,
@@ -164,11 +172,7 @@ impl From<&DecoratorInfo> for DecoratorHistoryState {
         // bVar12 = clamp(style-2, 0..=5) else 6（fresh：`(byte)(style-2)<6`）。
         let b12: u8 = {
             let d = (style as i16) - 2;
-            if (0..6).contains(&d) {
-                d as u8
-            } else {
-                6
-            }
+            if (0..6).contains(&d) { d as u8 } else { 6 }
         };
         let u30 = info.u30 as u32; // u32 @ +0x30（`u30` low）
         let u30_hi = (info.u30 >> 32) as u32; // u32 @ +0x34（`u30` high）
@@ -418,11 +422,7 @@ fn selector_before(tag: u8) -> u8 {
 }
 /// 原生 after selector：`tag < 2 ? 0 : tag-1`。
 fn selector_after(tag: u8) -> u8 {
-    if tag < 2 {
-        0
-    } else {
-        tag.wrapping_sub(1)
-    }
+    if tag < 2 { 0 } else { tag.wrapping_sub(1) }
 }
 
 /// 存储槽相等：判别低 32 位相等，且（判别 != 0 或载荷相等）。
@@ -475,11 +475,7 @@ fn state_fields_equal(before: &[u8; 0x50], after: &[u8; 0x50]) -> bool {
 /// 原生类型标记（+0x55）：`ty-0x38` 夹取（>=8 → 6）。
 fn clamp_ty(ty: u8) -> u8 {
     let d = ty.wrapping_sub(0x38);
-    if d >= 8 {
-        6
-    } else {
-        d
-    }
+    if d >= 8 { 6 } else { d }
 }
 
 /// `convert_before_after_states_to_changes`（0x140b3fab0）逐分支实现。
@@ -685,9 +681,7 @@ pub fn send_state_diff_events(
             continue;
         }
         if after.storage_disc == 3 {
-            events.send(
-                DecoratorDiffEvent::from_removed_with_after(*key, before, &after.state).0,
-            );
+            events.send(DecoratorDiffEvent::from_removed_with_after(*key, before, &after.state).0);
             continue;
         }
         let changes = convert_before_after_states_to_changes(before, after);
@@ -695,10 +689,12 @@ pub fn send_state_diff_events(
     }
 }
 
-impl<S> crate::resources::history::transactions::HistoryTransactions<
-    crate::resources::history::EditType,
-    S,
-> {
+impl<S>
+    crate::resources::history::transactions::HistoryTransactions<
+        crate::resources::history::EditType,
+        S,
+    >
+{
     /// `History::add_decorator_diff`（0x140a854a0）。
     ///
     /// 原生 4 参：`History`（RCX）、`&DecoratorHistoryDiff`（RDX，0x30B map）、
@@ -746,18 +742,17 @@ impl<S> crate::resources::history::transactions::HistoryTransactions<
 
         // 3. checksum 校验（原生：倒序找最近 tag==1 记录，比较 record+0x28）。
         if verify_stair_checksums {
-            let stored = self
-                .ledger()
-                .entries
-                .iter()
-                .rev()
-                .find(|entry| {
-                    entry
-                        .edits
-                        .iter()
-                        .any(|edit| matches!(edit, crate::resources::history::EditType::Stairs(_)))
-                })
-                .and_then(|entry| entry.observed_stairs_checksum);
+            let stored =
+                self.ledger()
+                    .entries
+                    .iter()
+                    .rev()
+                    .find(|entry| {
+                        entry.edits.iter().any(|edit| {
+                            matches!(edit, crate::resources::history::EditType::Stairs(_))
+                        })
+                    })
+                    .and_then(|entry| entry.observed_stairs_checksum);
             if let Some(stored) = stored {
                 if stored != stairs_diff.after_checksum {
                     log::error!("Stairs diff {:?}", stairs_diff);
@@ -774,17 +769,17 @@ impl<S> crate::resources::history::transactions::HistoryTransactions<
         for &(a, b) in &stairs_diff.added {
             let edge = StairGraphEdge::new(a, b);
             if stairs_edges.contains(&edge) {
-                records.push(crate::resources::history::EditType::Stairs(std::sync::Arc::new(
-                    StairsHistoryEdit::SupportsDelete(edge),
-                )));
+                records.push(crate::resources::history::EditType::Stairs(
+                    std::sync::Arc::new(StairsHistoryEdit::SupportsDelete(edge)),
+                ));
             }
         }
         for &(a, b) in &stairs_diff.removed {
             let edge = StairGraphEdge::new(a, b);
             if stairs_edges.remove(&edge) {
-                records.push(crate::resources::history::EditType::Stairs(std::sync::Arc::new(
-                    StairsHistoryEdit::SupportsRecreate(edge),
-                )));
+                records.push(crate::resources::history::EditType::Stairs(
+                    std::sync::Arc::new(StairsHistoryEdit::SupportsRecreate(edge)),
+                ));
             }
         }
         if let Some(pending) = self.pending_mut() {
@@ -794,112 +789,142 @@ impl<S> crate::resources::history::transactions::HistoryTransactions<
         }
 
         // 5. Arc 替换（原生先 decorator +0x48，再 stairs +0x50）。
-        let old = self.decorator_diff.replace(std::sync::Arc::new(decorator_diff.clone()));
+        let old = self
+            .decorator_diff
+            .replace(std::sync::Arc::new(decorator_diff.clone()));
         drop(old);
-        let old = self.stairs_diff.replace(std::sync::Arc::new(stairs_diff.clone()));
+        let old = self
+            .stairs_diff
+            .replace(std::sync::Arc::new(stairs_diff.clone()));
         drop(old);
+        let auxiliary = crate::resources::history::transactions::HistoryEntryAux {
+            decorator_diff: self.decorator_diff.clone(),
+            stairs_diff: self.stairs_diff.clone(),
+        };
         // 建模：原生 MultiEdit 的空判定读 3 个 aux owner 计数；装饰/楼梯 diff
         // 非空即让 pending 非空（否则 decorator-only diff 不会提交条目）。
         if let Some(pending) = self.pending_mut() {
+            pending.auxiliary = auxiliary;
             pending.observed_auxiliary_counts[0] = usize::from(!decorator_diff.is_empty());
             pending.observed_auxiliary_counts[1] = usize::from(!stairs_diff.is_empty());
         }
     }
 }
 
-
-/// 装饰差异 map 的 wire 键编码。**登记 U**：原生 map 键是
-/// `DecoratorStorageAddr` 的 Serialize 实现（crate 内该类型无 serde，wire 格式
-/// 未取证）。本实现使用可逆占位编码（`wall:<id>` / `terrain` / `stair`），
-/// 外层 `{"diffs": {...}}` 结构按 fresh 对齐；decorator 域补 `DecoratorStorageAddr`
-/// serde 后切换。
-fn decorator_storage_addr_key(addr: &DecoratorStorageAddr) -> String {
-    match addr {
-        DecoratorStorageAddr::Wall(wall) => format!("wall:{}", wall.get_inner()),
-        DecoratorStorageAddr::Terrain => "terrain".to_string(),
-        DecoratorStorageAddr::Stair => "stair".to_string(),
-    }
+/// The tag10 edit carries the native 32-byte operation record. Replay uses
+/// its entry-owned storage diff; serialization intentionally writes only the
+/// operation marker (the original saved Place/Change/Remove payload is {}).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DecoratorV5Edit {
+    pub kind: u64,
+    pub fields: [u64; 3],
 }
-
-fn decorator_storage_addr_from_key(key: &str) -> Option<DecoratorStorageAddr> {
-    match key {
-        "terrain" => Some(DecoratorStorageAddr::Terrain),
-        "stair" => Some(DecoratorStorageAddr::Stair),
-        other => other
-            .strip_prefix("wall:")
-            .and_then(|id| id.parse().ok())
-            .map(|id| DecoratorStorageAddr::Wall(crate::resources::walls::WallId(id))),
-    }
-}
-
-struct DiffMapWire<'a>(&'a DecoratorHistoryDiffMap);
-impl serde::Serialize for DiffMapWire<'_> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut map = serializer.serialize_map(Some(self.0.len()))?;
-        for (addr, diff) in self.0 {
-            map.serialize_entry(&decorator_storage_addr_key(addr), diff)?;
+impl Default for DecoratorV5Edit {
+    fn default() -> Self {
+        Self {
+            kind: 3,
+            fields: [0; 3],
         }
-        map.end()
     }
 }
-
-/// 手写 `Serialize`（0x1404f46e0）：单 entry map `{"diffs": {<addr>: diff}}`。
-impl serde::Serialize for DecoratorHistoryEdit {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut map = serializer.serialize_map(Some(1))?;
-        map.serialize_entry("diffs", &DiffMapWire(&self.diffs))?;
-        map.end()
-    }
-}
-
-/// 手写 `Deserialize`（0x1417c2770 族）：单 entry map `{"diffs": {...}}`。
-impl<'de> serde::Deserialize<'de> for DecoratorHistoryEdit {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct Visitor;
-        impl<'de> serde::de::Visitor<'de> for Visitor {
-            type Value = DecoratorHistoryEdit;
-            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                formatter.write_str("a decorator history edit")
+impl serde::Serialize for DecoratorV5Edit {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let name = match self.kind {
+            3 => "Change",
+            4 => "Place",
+            5 => "Remove",
+            other => {
+                return Err(serde::ser::Error::custom(format!(
+                    "unrestored decorator operation {other}"
+                )));
             }
-            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
-            where
-                A: serde::de::MapAccess<'de>,
-            {
-                let Some((key, value)) = map.next_entry::<String, serde_json::Value>()? else {
-                    return Err(serde::de::Error::custom(
-                        "expected the `diffs` entry in DecoratorHistoryEdit",
-                    ));
-                };
-                if key != "diffs" {
-                    return Err(serde::de::Error::unknown_field(&key, &["diffs"]));
-                }
-                let object = value.as_object().cloned().ok_or_else(|| {
-                    serde::de::Error::custom("expected a decorator storage diff map")
-                })?;
-                let mut diffs = DecoratorHistoryDiffMap::default();
-                for (addr_key, diff) in object {
-                    let addr = decorator_storage_addr_from_key(&addr_key).ok_or_else(|| {
-                        serde::de::Error::custom("unknown decorator storage address key")
-                    })?;
-                    diffs.insert(
-                        addr,
-                        serde_json::from_value(diff)
-                            .map_err(serde::de::Error::custom)?,
+        };
+        use serde::ser::SerializeStructVariant;
+        serializer
+            .serialize_struct_variant("DecoratorV5", self.kind as u32, name, 0)?
+            .end()
+    }
+}
+impl<'de> serde::Deserialize<'de> for DecoratorV5Edit {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(serde::Deserialize)]
+        enum Marker {
+            Place {},
+            Change {},
+            Remove {},
+        }
+        let kind = match Marker::deserialize(deserializer)? {
+            Marker::Change {} => 3,
+            Marker::Place {} => 4,
+            Marker::Remove {} => 5,
+        };
+        Ok(Self {
+            kind,
+            fields: [0; 3],
+        })
+    }
+}
+
+/// Original vectorize codec: address enum + named before/after state maps.
+/// State conversion is shared with save snapshots, preserving the same variant
+/// defaults and style-specific fields instead of serializing native byte slots.
+impl serde::Serialize for DecoratorHistoryEdit {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use crate::systems::save::snapshot::{
+            decorator_history_state_json, decorator_storage_addr_json,
+        };
+        let encode =
+            |state: &DecoratorStorageAddrHistoryState| -> Result<serde_json::Value, S::Error> {
+                let mut out = serde_json::Map::new();
+                for (id, value) in &state.states {
+                    out.insert(
+                        id.0.to_string(),
+                        decorator_history_state_json(value).map_err(serde::ser::Error::custom)?,
                     );
                 }
-                Ok(DecoratorHistoryEdit { diffs })
-            }
+                Ok(serde_json::Value::Object(out))
+            };
+        let mut diffs = Vec::with_capacity(self.diffs.len());
+        for (addr, diff) in &self.diffs {
+            diffs.push(serde_json::json!([decorator_storage_addr_json(*addr), {
+                "before": encode(&diff.before)?, "after": encode(&diff.after)?
+            }]));
         }
-        deserializer.deserialize_map(Visitor)
+        let mut map = serializer.serialize_map(Some(1))?;
+        map.serialize_entry("diffs", &diffs)?;
+        map.end()
+    }
+}
+impl<'de> serde::Deserialize<'de> for DecoratorHistoryEdit {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        use crate::systems::save::snapshot::{DecoratorAddrJson, DecoratorInfoJson};
+        #[derive(serde::Deserialize)]
+        struct Diff {
+            before: HashMap<u32, DecoratorInfoJson>,
+            after: HashMap<u32, DecoratorInfoJson>,
+        }
+        #[derive(serde::Deserialize)]
+        struct Input {
+            diffs: Vec<(DecoratorAddrJson, Diff)>,
+        }
+        let decode = |input: HashMap<u32, DecoratorInfoJson>| -> Result<DecoratorStorageAddrHistoryState, D::Error> {
+            let mut out = DecoratorStorageAddrHistoryState::default();
+            for (id, state) in input {
+                out.states.insert(DecoratorId(id), state.to_history_state().map_err(serde::de::Error::custom)?);
+            }
+            Ok(out)
+        };
+        let mut diffs = DecoratorHistoryDiffMap::new();
+        for (addr, diff) in Input::deserialize(deserializer)?.diffs {
+            diffs.insert(
+                addr.to_storage_addr(),
+                DecoratorStorageHistoryDiff {
+                    before: decode(diff.before)?,
+                    after: decode(diff.after)?,
+                },
+            );
+        }
+        Ok(Self { diffs })
     }
 }
 
@@ -989,7 +1014,13 @@ mod tests {
     fn to_info_roundtrips_per_style_fields() {
         fn valid_info(style: u8) -> DecoratorInfo {
             let mut src = info(style, 0);
-            src.ty = match style { 4 => 0x3b, 5 => 0x3d, 6 => 0x38, 7 => 0x3c, _ => 0x3f };
+            src.ty = match style {
+                4 => 0x3b,
+                5 => 0x3d,
+                6 => 0x38,
+                7 => 0x3c,
+                _ => 0x3f,
+            };
             src
         }
         // 各 style：from → to_info 收敛回 DecoratorInfo 的直拷簇 + style 字节。
@@ -1035,9 +1066,23 @@ mod tests {
 
     #[test]
     fn to_info_type_selects_default_extras_and_live_state() {
-        for (ty, expected_style) in [(0x38, 6), (0x39, 6), (0x3a, 6), (0x3b, 4), (0x3c, 7), (0x3d, 5), (0x3e, 3)] {
+        // 0x3e/未知与 Clutter（<0x38）在原生 `ty-0x38` 夹取后走 index 6 分支：
+        // style 回读 state.style（默认 0），不得默认写 3。
+        for (ty, expected_style) in [
+            (0x38, 6),
+            (0x39, 6),
+            (0x3a, 6),
+            (0x3b, 4),
+            (0x3c, 7),
+            (0x3d, 5),
+            (0x3e, 0),
+            (0x10, 0),
+        ] {
             let state = DecoratorHistoryState {
-                ty, u38: 1.0_f32.to_bits(), u3c: 1.0_f32.to_bits(), u4d: 1,
+                ty,
+                u38: 1.0_f32.to_bits(),
+                u3c: 1.0_f32.to_bits(),
+                u4d: 1,
                 ..DecoratorHistoryState::default()
             };
             let actual = state.to_info();
@@ -1170,7 +1215,8 @@ mod tests {
         before.u28 = 0x0000_0000_0000_00bb;
         after.u28 = 0x0000_0005_0000_00bb;
         after.ty = 0x40; // clamp 6，与 before 0x3b→3 不同 → marker=after ty
-        let changes = convert_before_after_states_to_changes(&slot(0, 0, before), &slot(0, 0, after));
+        let changes =
+            convert_before_after_states_to_changes(&slot(0, 0, before), &slot(0, 0, after));
         assert_eq!(changes.rank_changed, 1);
         assert_eq!(changes.rank_value, 2);
         assert_eq!(changes.id_changed, 1);
@@ -1212,8 +1258,11 @@ mod tests {
         let mut before = state_with(0x3b, 1.0); // case 3
         before.u4d = 0x5a;
         let after_state = state_with(0x3b, 1.0);
-        let event =
-            DecoratorDiffEvent::from_removed_with_after(DecoratorId(1), &slot(1, 0, before), &after_state);
+        let event = DecoratorDiffEvent::from_removed_with_after(
+            DecoratorId(1),
+            &slot(1, 0, before),
+            &after_state,
+        );
         assert_eq!(event.kind(), 4);
         assert_eq!(event.0[0x48..0x4c], before.u30.to_le_bytes());
         assert_eq!(event.0[0x4c], 0x5a); // case 3 → before.u4d
@@ -1224,8 +1273,11 @@ mod tests {
         case7.ty = 0x3f;
         case7.u3c = f32::to_bits(2.0);
         case7.style = 11;
-        let event7 =
-            DecoratorDiffEvent::from_removed_with_after(DecoratorId(2), &slot(1, 0, case7), &after_state);
+        let event7 = DecoratorDiffEvent::from_removed_with_after(
+            DecoratorId(2),
+            &slot(1, 0, case7),
+            &after_state,
+        );
         assert_eq!(event7.0[0x48..0x4c], case7.u30.to_le_bytes());
         assert_eq!(event7.0[0x4c], (case7.u3c & 0xff) as u8);
         assert_eq!(event7.0[0x59], 11);
@@ -1261,7 +1313,10 @@ mod tests {
         let mut out = Vec::new();
         events.unleash(&mut out);
         assert_eq!(out.len(), 3);
-        let kinds: Vec<u32> = out.iter().map(|e| u32::from_le_bytes(e[0..4].try_into().unwrap())).collect();
+        let kinds: Vec<u32> = out
+            .iter()
+            .map(|e| u32::from_le_bytes(e[0..4].try_into().unwrap()))
+            .collect();
         assert!(kinds.contains(&0)); // changed（before disc 0）
         assert!(kinds.contains(&3)); // added
         assert!(kinds.contains(&4)); // removed
@@ -1321,9 +1376,10 @@ mod tests {
     fn add_decorator_diff_panics_on_checksum_mismatch() {
         use crate::resources::history::transactions::HistoryEntry;
         use crate::resources::history::transactions::ObservedHistoryLedger;
-        use crate::resources::history::{stairs_history_edit, EditType, History};
+        use crate::resources::history::{EditType, History, stairs_history_edit};
         use crate::resources::stairs::stairs_state::{StairGraphEdge, StairsHistoryDiff};
         let entry = HistoryEntry {
+            auxiliary: Default::default(),
             edits: vec![EditType::Stairs(std::sync::Arc::new(
                 stairs_history_edit::StairsHistoryEdit::SupportsDelete(StairGraphEdge::new(1, 2)),
             ))],
@@ -1382,5 +1438,31 @@ mod tests {
             &mut HashSet::new(),
             false,
         );
+    }
+
+    #[test]
+    fn clutter_state_round_trips_extension_slots_through_to_info() {
+        // Clutter（ty<0x38）：from_info 写入的扩展簇槽必须被 to_info 保留，
+        // style 回读 0（round9 6/134 样本丢失面）。
+        let info = DecoratorInfo {
+            decorator_id: 0x21,
+            ty: 0x10,
+            u30: 0x1122_3344_5566_7788,
+            u38: 0x99aa_bbcc,
+            u3c: 0x0d0e_0f10,
+            u40: 0x11,
+            rank: 3,
+            u45: 5,
+            ..DecoratorInfo::default()
+        };
+        let state = DecoratorHistoryState::from_info(&info);
+        assert_eq!(state.style, 0);
+        let back = state.to_info();
+        assert_eq!(back.u30, info.u30);
+        assert_eq!(back.u38, info.u38);
+        assert_eq!(back.u3c, info.u3c);
+        assert_eq!(back.u40 & 0xff, info.u40 & 0xff);
+        assert_eq!(back.u40 >> 8 & 0xff, 0);
+        assert_eq!(back.ty, info.ty);
     }
 }

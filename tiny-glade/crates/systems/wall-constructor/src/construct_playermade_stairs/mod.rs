@@ -57,12 +57,12 @@ pub mod magic_support;
 pub mod pillars_process_proposals;
 pub mod pillars_visual;
 
+use bevy_ecs::prelude::*;
 use country_core::resources::{
     stairs_walls::{StairsArchSupportRequests, StairsPillarProposals},
     terrain_height::TerrainHeightsData,
 };
 use country_core::systems::ui::signifiers::signifier_create::UiSignifierStream;
-use bevy_ecs::prelude::*;
 use glam::Vec3;
 
 /// B `preprocess_curve`（0x140780e20）。**未实现**。
@@ -88,7 +88,9 @@ use glam::Vec3;
 /// 逐语句重建未完成：closure_0 的语义、两路模式分支的完整位组合、
 /// 输出结构字段类型未锚定（不造近似体）。
 pub fn preprocess_curve(_points: &[Vec3]) -> Vec<Vec3> {
-    todo!("未实现: preprocess_curve 0x140780e20（closure_0/两路模式/try_resample 段结构未逐语句；见函数注释）")
+    todo!(
+        "未实现: preprocess_curve 0x140780e20（closure_0/两路模式/try_resample 段结构未逐语句；见函数注释）"
+    )
 }
 
 /// B 0x140496800 / 0x14048ab50：玩家楼梯拱与墙（双模板）。

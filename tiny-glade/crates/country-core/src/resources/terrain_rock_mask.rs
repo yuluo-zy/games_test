@@ -8,7 +8,7 @@
 //! SSBO 载体实现与 `TerrainHeightSsbo` 同族（StorageElement NAME=stringify、BUFFER_LEN、
 //! MAPPED_MEMORY_READBACK + SsboType）。
 use crate::asset_libraries::ssbo_library::SsboType;
-use crate::render::ssbo::{MappedStorageBuffer, StorageElement, MAPPED_MEMORY_READBACK};
+use crate::render::ssbo::{MAPPED_MEMORY_READBACK, MappedStorageBuffer, StorageElement};
 
 /// 岩石 mask 回读 SSBO（O：`TerrainRockMaskSsbo`，0x2000 线程回读）。
 #[repr(transparent)]
@@ -32,6 +32,14 @@ impl SsboType for TerrainRockMaskSsbo {
         initial: Option<&[u8]>,
     ) -> Self::Storage {
         MappedStorageBuffer::new_storage_buffer(device, initial)
+    }
+}
+
+impl TerrainRockMaskSsbo {
+    /// Native typed mapped-readback view. Reuse the same bit-sampling policy
+    /// without a second CPU shadow or a caller-specific copied mask.
+    pub fn sample_mapped_at_world_xz(mask: &[Self], x: f32, z: f32) -> u32 {
+        sample_at_world_xz(bytemuck::cast_slice(mask), x, z)
     }
 }
 
@@ -79,7 +87,6 @@ pub fn sample_at_world_xz(mask: &[u32], x: f32, z: f32) -> u32 {
     (mask[word as usize] >> (index & 0x1f)) & 1
 }
 
-
 #[cfg(test)]
 mod original_storage_contract_tests {
     use super::*;
@@ -98,14 +105,23 @@ mod original_storage_contract_tests {
             assert_eq!(calls.len(), 1);
             let (desc, name, initial) = &calls[0];
             assert_eq!(name, "TerrainRockMask");
-            assert_eq!((desc.size, desc.usage, desc.memory, desc.alignment), (0x8000, 0x22, 4, 4));
+            assert_eq!(
+                (desc.size, desc.usage, desc.memory, desc.alignment),
+                (0x8000, 0x22, 4, 4)
+            );
             let initial = initial.as_ref().unwrap();
             assert_eq!(initial.len(), 0x8000);
             assert!(initial.iter().all(|byte| *byte == 0));
         }
         library.get_mut::<TerrainRockMaskSsbo>().unwrap().mapped[0x1fff].0 = 1 << 31;
         let mask = library.get::<TerrainRockMaskSsbo>().unwrap();
-        assert_eq!(sample_at_world_xz(bytemuck::cast_slice(&mask.mapped[..]), 65.0, 65.0), 1);
-        assert_eq!(sample_at_world_xz(bytemuck::cast_slice(&mask.mapped[..]), -65.0, -65.0), 0);
+        assert_eq!(
+            sample_at_world_xz(bytemuck::cast_slice(&mask.mapped[..]), 65.0, 65.0),
+            1
+        );
+        assert_eq!(
+            sample_at_world_xz(bytemuck::cast_slice(&mask.mapped[..]), -65.0, -65.0),
+            0
+        );
     }
 }

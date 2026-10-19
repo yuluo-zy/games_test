@@ -517,13 +517,27 @@ impl<'p> DrawBuilder<'p> {
     /// Current-host content intent for an original fragment atomic/RMW.
     /// It keeps the native access and real clear/upload dependency intact.
     pub fn preserve_storage_buffer_contents(mut self, hash: u64) -> Self {
-        let Some(binding) = self.lookup_binding(hash) else { return self; };
-        let access = self.packet.get().accesses.iter().rev()
+        let Some(binding) = self.lookup_binding(hash) else {
+            return self;
+        };
+        let access = self
+            .packet
+            .get()
+            .accesses
+            .iter()
+            .rev()
             .find(|access| access.binding_index == binding)
             .expect("preserving raster buffer requires its actual graph binding");
         let actual = &self.pass.bindings[access.slot as usize];
-        assert!(!self.pass.texture_slots.values().any(|slot| *slot == access.slot) && access_is_write(actual.access_type),
-            "preserving raster buffer requires a buffer write");
+        assert!(
+            !self
+                .pass
+                .texture_slots
+                .values()
+                .any(|slot| *slot == access.slot)
+                && access_is_write(actual.access_type),
+            "preserving raster buffer requires a buffer write"
+        );
         let packet = self.packet.get_mut();
         if !packet.preserving_buffer_bindings.contains(&binding) {
             packet.preserving_buffer_bindings.push(binding);
@@ -534,13 +548,26 @@ impl<'p> DrawBuilder<'p> {
     /// A proven uniform configuration prevents all texel fetches from this
     /// binding. Preserve the actual descriptor, owner and native sync access.
     pub fn inactive_texture_contents(mut self, hash: u64) -> Self {
-        let Some(binding) = self.lookup_binding(hash) else { return self; };
-        let access = self.packet.get().accesses.iter().rev()
+        let Some(binding) = self.lookup_binding(hash) else {
+            return self;
+        };
+        let access = self
+            .packet
+            .get()
+            .accesses
+            .iter()
+            .rev()
             .find(|access| access.binding_index == binding)
             .expect("inactive raster texture requires its actual graph binding");
         let actual = &self.pass.bindings[access.slot as usize];
-        assert!(self.pass.texture_slots.values().any(|slot| *slot == access.slot) && !access_is_write(actual.access_type),
-            "inactive raster texture requires a non-writing image binding");
+        assert!(
+            self.pass
+                .texture_slots
+                .values()
+                .any(|slot| *slot == access.slot)
+                && !access_is_write(actual.access_type),
+            "inactive raster texture requires a non-writing image binding"
+        );
         let packet = self.packet.get_mut();
         if !packet.inactive_texture_bindings.contains(&binding) {
             packet.inactive_texture_bindings.push(binding);
@@ -653,7 +680,7 @@ impl<'p> DrawBuilder<'p> {
                     "assertion failed: !access.is_write()"
                 );
                 let (handle, desc) = self.pass.host.texture_by_name(d.0);
-                self.bind_raw_texture(&handle, &desc, name_hash);
+                self.bind_raw_texture(&handle, &desc, name_hash, view);
             }
             BindTexture::Raw { texture, desc } => {
                 // O 0x1408fd6c0：`assert!(!access.is_write())`、`assert!(view.is_none())`。
@@ -662,7 +689,7 @@ impl<'p> DrawBuilder<'p> {
                     "assertion failed: !access.is_write()"
                 );
                 assert!(view.is_none(), "assertion failed: view.is_none()");
-                self.bind_raw_texture(texture, desc, name_hash);
+                self.bind_raw_texture(texture, desc, name_hash, None);
             }
         }
         self
@@ -714,12 +741,13 @@ impl<'p> DrawBuilder<'p> {
         handle: &ManagedHandle,
         desc: &AttachmentTexture,
         name_hash: u64,
+        view: Option<&TextureViewDesc>,
     ) {
         if let Some(binding) = self.lookup_binding(name_hash) {
             let view = self
                 .pass
                 .host
-                .vk_image_view(handle)
+                .vk_image_view_with_desc(handle, view)
                 .expect("called `Result::unwrap()` on an `Err` value");
             self.packet.get_mut().bindings.insert(
                 binding,
@@ -1499,13 +1527,26 @@ mod tests {
     #[test]
     fn raster_content_intents_only_tag_actual_reflected_bindings() {
         let (mut pass, _) = make_pass();
-        let texture = AttachmentTexture { id: 50, extent: (4,4), format: 37, sample_count: 1 };
+        let texture = AttachmentTexture {
+            id: 50,
+            extent: (4, 4),
+            format: 37,
+            sample_count: 1,
+        };
         let b = builder(&mut pass)
-            .bind_texture_to_draw_builder(BindTexture::RgHandle(&texture), 0x10, ACCESS_SAMPLED_IMAGE, None)
-            .inactive_texture_contents(0x10).inactive_texture_contents(0x10)
+            .bind_texture_to_draw_builder(
+                BindTexture::RgHandle(&texture),
+                0x10,
+                ACCESS_SAMPLED_IMAGE,
+                None,
+            )
+            .inactive_texture_contents(0x10)
+            .inactive_texture_contents(0x10)
             .write_rg_storage_buffer(0x11, 60)
-            .preserve_storage_buffer_contents(0x11).preserve_storage_buffer_contents(0x11)
-            .inactive_texture_contents(0xdead).preserve_storage_buffer_contents(0xdead);
+            .preserve_storage_buffer_contents(0x11)
+            .preserve_storage_buffer_contents(0x11)
+            .inactive_texture_contents(0xdead)
+            .preserve_storage_buffer_contents(0xdead);
         assert_eq!(b.packet().inactive_texture_bindings, [3]);
         assert_eq!(b.packet().preserving_buffer_bindings, [4]);
         assert_eq!(b.packet().accesses.len(), 2);

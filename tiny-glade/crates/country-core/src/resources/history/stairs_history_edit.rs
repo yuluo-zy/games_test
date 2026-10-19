@@ -92,7 +92,7 @@ impl<'de> serde::Deserialize<'de> for StairsHistoryEdit {
                         return Err(serde::de::Error::unknown_variant(
                             key.as_str(),
                             &["SupportsDelete", "SupportsRecreate"],
-                        ))
+                        ));
                     }
                 })
             }

@@ -21,7 +21,7 @@
 use bevy_ecs::prelude::*;
 use country_core::resources::walls::decorator_storage::DecoratorStorage;
 use country_core::resources::walls::decorator_subtype::DerivedDecoratorSubtypes;
-use glam::{Vec2, Vec3, Quat};
+use glam::Vec2;
 
 use crate::blueprint::{DecoratorBlueprint, DecoratorBlueprints};
 use crate::decorator_visual_state::DecoratorTransientVisualState;
@@ -59,7 +59,10 @@ const RANK3_PROFILE: [Vec2; 9] = [
     Vec2::new(0.76, 0.0),
 ];
 
-/// 0x1407c7500（O，全文）：哥特老虎窗剖面曲线控制点。
+/// 哥特老虎窗子类型（O：0x1407c5650 行 430 `subtype != 0x08 → skip`）。
+pub const GOTHIC_DORMER_SUBTYPE: u8 = 0x08;
+
+/// 哥特老虎窗剖面控制点（0x1407c7500，O 全文）。
 pub fn gothic_dormer_profile_curve(rank: u8) -> Vec<Vec2> {
     match rank {
         1 => RANK1_PROFILE.to_vec(),
@@ -76,25 +79,45 @@ pub fn generate_gothic_dormers(
     mut blueprints: ResMut<DecoratorBlueprints>,
     mut transient: ResMut<DecoratorTransientVisualState>,
     _mesh_lib: Res<country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary>,
-    _cached: Res<country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms>,
+    cached: Res<country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms>,
 ) {
     for (_wall, decorators) in decorator_storage.iter_walls() {
         for (id, info) in decorators.iter_modified() {
-            // O：哥特窗族判别（DecoratorType 0x39；U 精确谓词）。
-            if info.decorator_type().0 != 0x39 {
+            // O：哥特老虎窗子类型 = 8（0x1407c5650 行 430）。
+            if derived.get(id).subtype().0 != GOTHIC_DORMER_SUBTYPE {
                 continue;
             }
             let d = derived.get(id);
             // O：剖面（rank 驱动）。
             let _profile = gothic_dormer_profile_curve(info.rank());
             // O：蓝图 + 视觉实体。
+            let transform = cached.transform(id);
             let mut blueprint = DecoratorBlueprint::new();
             blueprint.set_colliders(vec![d.collision_mesh()]);
             blueprint.set_outline((0.0, 0.0, 0.0));
             blueprints.insert(id, blueprint);
-            let builder = WindowVisualEntityBuilder::new(Vec3::ZERO, Quat::IDENTITY, id);
+            let builder =
+                WindowVisualEntityBuilder::new(transform.translation, transform.rotation, id);
             let _ = &mut transient;
             let _ = &builder;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn profile_tables_end_at_documented_half_widths() {
+        assert_eq!(gothic_dormer_profile_curve(1).last(), Some(&Vec2::new(0.35, 0.0)));
+        assert_eq!(gothic_dormer_profile_curve(2).last(), Some(&Vec2::new(0.588, 0.0)));
+        assert_eq!(gothic_dormer_profile_curve(3).last(), Some(&Vec2::new(0.76, 0.0)));
+    }
+
+    #[test]
+    #[should_panic]
+    fn unexpected_rank_panics() {
+        let _ = gothic_dormer_profile_curve(4);
     }
 }

@@ -42,12 +42,16 @@ pub struct DeferredSection {
 /// 未落盘文件列表条目（O：`UnsavedFileList::add` 0x14171ff80 fresh disasm：
 /// `len << 7` 计算尾部、`grow_one` 后**拷贝 16 qword = 0x80B**；`contains_file`
 /// 0x1417201a0 每步 `len*0x80 - 0x80` 遍历，条目内路径按 `Path::components()`
-/// 反向 `eq_by` 比较）。路径位于条目 **+0**（`OsStr/PathBuf` 24B）；其余 `0x68`
+/// 反向 `eq_by` 比较）。路径位于条目 **+0**（原生 `PathBuf` 24B）；其余 `0x68`
 /// 字段身份 U（`contains_file` 不读），保持为不解析的不透明字节，不编造字段名。
+///
+/// **平台布局适配**：Windows 的 std `PathBuf` 是 32B（WTF-8 前缀布局），直接内嵌
+/// 会让条目变成 0x88，破坏原生 0x80 步进。这里用同为 24B 的 `String` 承载 UTF-8
+/// 路径（`to_string_lossy`），断言保留、不得删除。
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct UnsavedFileEntry {
-    /// +0x00：路径（`PathBuf`，24B）。
-    pub path: PathBuf,
+    /// +0x00：路径（24B `String`，映射原生 24B `PathBuf` 槽）。
+    pub path: String,
     /// +0x18..0x80：未被 `contains_file` 读取的原生尾部（U，原样保留）。
     pub opaque: [u8; 0x68],
 }
@@ -55,7 +59,7 @@ impl UnsavedFileEntry {
     /// 生产路径构造（未被消费的 0x68 尾部置零；不是对原生字段值的断言）。
     pub fn from_path(path: PathBuf) -> Self {
         Self {
-            path,
+            path: path.to_string_lossy().into_owned(),
             opaque: [0u8; 0x68],
         }
     }
@@ -80,12 +84,13 @@ impl UnsavedFileList {
     }
     /// B 0x1417201a0：列表查找（"Was asked to load an unsaved file" 前置检查）。
     /// 原生按 `Path::components()` 反向逐组件比较；对等价的绝对/相对路径，
-    /// `PathBuf ==` 等价（CRATE 侧路径均为 join 生成的同形路径）。
+    /// `Path ==` 等价（CRATE 侧路径均为 join 生成的同形路径）。条目路径以 24B
+    /// 字符串保存，这里重建 `Path` 再比较。
     pub fn contains_file(&self, path: &Path) -> bool {
         self.files
             .lock()
             .iter()
-            .any(|candidate| candidate.path == path)
+            .any(|candidate| Path::new(&candidate.path) == path)
     }
     /// 条目数（测试/诊断）。
     pub fn len(&self) -> usize {

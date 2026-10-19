@@ -30,7 +30,7 @@ use country_core::systems::collision::world::Raycasting;
 use crate::water_systems_enabled;
 
 /// 栅格维数（O：掩码 0x0e → 每轴 8 格；core `WATER_GRID_EXTENT` = 8 一致）。
-pub const WATER_GRID_EXTENT: usize = 8;
+pub const WATER_GRID_EXTENT: usize = 10;
 /// 格坐标 → 世界 / 抖动幅度（O：`x * 0x0625(0x142eed8e0) * 13.0(0x142eed8f0)` = x*0.8125）。
 pub const GRID_CELL_SPACING: f32 = 0.0625 * 13.0;
 /// 相机距离² 阈值（O：0x142eed900 = 6400.0）。
@@ -41,37 +41,15 @@ pub const WATER_LEVEL_THRESHOLD: f32 = 0.5;
 pub const OCCLUSION_RAY_MASK: u32 = 0x32a3;
 /// 采样 extent / 窗（O：0x142a7b658 = 130.0 / 0x43020000 = 260.0）。
 pub const SAMPLE_EXTENT: f32 = 130.0;
-pub const SAMPLE_WINDOW: f32 = 260.0;
+pub const SAMPLE_WINDOW: f32 = 130.0;
 
 /// 滚动更新状态（O：`*param_1 = f + 1` 帧计数；窗口位 = `1 << ((11*(f+1)) & 0x3f)`，
 /// 11 与 64 互质 → 全窗口轮转）。
+#[derive(Default)]
 pub struct WaterAudioGridUpdateState {
-    /// 帧计数。
+    /// Only this frame counter is Local in native141baefe0; rolling state is
+    /// owned by WaterAudioGrid and reset on level unload.
     pub frame: u64,
-    /// 每格 64 位滚动窗口（原版在 24 B 栅格条目 +0x08；语义模型移入 Local，差登记）。
-    pub windows: [u64; WATER_GRID_EXTENT * WATER_GRID_EXTENT],
-    /// 每格可见帧抖动增量累加对（原版 24 B 条目 +0x10 u16×2，PADDW/PSUBW）。
-    pub sums: [[i16; 2]; WATER_GRID_EXTENT * WATER_GRID_EXTENT],
-}
-
-impl Default for WaterAudioGridUpdateState {
-    fn default() -> Self {
-        Self {
-            frame: 0,
-            windows: [0; WATER_GRID_EXTENT * WATER_GRID_EXTENT],
-            sums: [[0; 2]; WATER_GRID_EXTENT * WATER_GRID_EXTENT],
-        }
-    }
-}
-
-/// 格索引 → 轴坐标（O：`((2*(i&7))-7, (2*((i>>2)&7))-7)`；格基址 = 坐标 × spacing。
-/// I：原版由栅格构建方（音频域 init）预写单元 +0/+4 基址）。
-fn cell_coord(index: usize) -> Vec2 {
-    let i = index as u32;
-    Vec2::new(
-        2.0 * (i & 7) as f32 - 7.0,
-        2.0 * ((i >> 2) & 7) as f32 - 7.0,
-    )
 }
 
 /// `update_water_audio_grid` @0x141baefe0（O，fresh 重建）。
@@ -113,10 +91,9 @@ pub fn update_water_audio_grid(
     // O：`MainCamera::eye_position`（0x140911dd0）。
     let eye = camera.eye_position();
 
-    for (index, cell) in grid.cells.iter_mut().enumerate() {
+    for cell in &mut grid.cells {
         // O：单元基址 + 抖动 → `utils::swizzlers::x0y`（0x140c9cdc0）→ 采样点 {x,0,z}。
-        let coord = cell_coord(index);
-        let base = Vec2::new(coord.x * GRID_CELL_SPACING, coord.y * GRID_CELL_SPACING);
+        let base = Vec2::from_array(cell.position);
         let sample = base + jitter;
         let point = Vec3::new(sample.x, 0.0, sample.y);
         let delta = eye - point;
@@ -139,39 +116,7 @@ pub fn update_water_audio_grid(
 
         // O：滚动窗置位/清位；0→1 累加增量对（PADDW），1→0 累减（PSUBW）
         //     （0x141baf4b3..4da / 0x141baf4e8..50c）。
-        let was_set = state.windows[index] & bit != 0;
-        if visible {
-            state.windows[index] |= bit;
-            if !was_set {
-                state.sums[index][0] = state.sums[index][0].wrapping_add(delta_x);
-                state.sums[index][1] = state.sums[index][1].wrapping_add(delta_z);
-            }
-        } else {
-            state.windows[index] &= !bit;
-            if was_set {
-                state.sums[index][0] = state.sums[index][0].wrapping_sub(delta_x);
-                state.sums[index][1] = state.sums[index][1].wrapping_sub(delta_z);
-            }
-        }
-
-        // O 语义模型投影（I：原版此处不写 water_level/position——窗口/计数器由消费方
-        //   推导；core WaterAudioGrid 以 `water_level` + `position` 表达，本实现把
-        //   真实窗口占比投影为 water_level、把计数器质心投影为 position，差登记）。
-        let window = state.windows[index];
-        let sum = state.sums[index];
-        let visible_count = window.count_ones();
-        let level = visible_count as f32 / 64.0;
-        let centroid = if visible_count == 0 {
-            point
-        } else {
-            Vec3::new(
-                base.x + sum[0] as f32 / visible_count as f32 * GRID_CELL_SPACING,
-                0.0,
-                base.y + sum[1] as f32 / visible_count as f32 * GRID_CELL_SPACING,
-            )
-        };
-        cell.water_level = level;
-        cell.position = centroid;
+        cell.set_sample(bit, visible, [delta_x, delta_z]);
     }
 }
 

@@ -1,9 +1,9 @@
 use bevy_ecs::prelude::*;
-use country_core::systems::wall::shapes::authoring::*;
-use country_core::resources::walls::publication_source::TerrainHeightGrid512;
 use country_core::resources::walls::freeform_height_cache::*;
-use country_core::systems::wall::wall_state::path_preparation::PathRasters512;
 use country_core::resources::walls::publication_fields::WallId;
+use country_core::resources::walls::publication_source::TerrainHeightGrid512;
+use country_core::systems::wall::shapes::authoring::*;
+use country_core::systems::wall::wall_state::path_preparation::PathRasters512;
 use std::sync::Arc;
 use tg_building_runtime::{wall_authoring::*, wall_bricks::*, wall_paths::*, *};
 fn emit<T: Event>(app: &mut bevy_app::App, event: T) {
@@ -494,9 +494,9 @@ fn compound_wall_roof_history_restores_authority_and_whole_geometry_in_native_bu
 #[test]
 fn actual_platform_decorator_rows_drive_stair_colliders_holes_bricks_and_cleanup() {
     use country_core::resources::roofs::creation::RoofCreateRequestObserved;
-    use country_core::resources::walls::publication_source::RawWallPublicationSource;
-    use country_core::resources::walls::publication_fields::WallShapeSnapshot;
     use country_core::resources::roofs::geometry::surface::Curve2;
+    use country_core::resources::walls::publication_fields::WallShapeSnapshot;
+    use country_core::resources::walls::publication_source::RawWallPublicationSource;
     use tg_building_runtime::wall_platform_stairs::*;
     let mut app = building_app();
     configure(&mut app);
@@ -1206,8 +1206,8 @@ fn rectangle_edits_process_each_wall_in_the_same_update() {
 
 #[test]
 fn observed_archive_keeps_the_supplied_culling_policy() {
-    use country_core::resources::walls::decorator_archivist::changes::DecoratorArchivist;
     use country_core::resources::walls::decorator_archivist::DecoratorCullPolicy;
+    use country_core::resources::walls::decorator_archivist::changes::DecoratorArchivist;
     use tg_building_runtime::wall_decorator_archivist::*;
     let mut app = building_app();
     emit(
@@ -1265,8 +1265,8 @@ fn observed_places_publish_legacy_bindings_in_the_same_update() {
     use country_core::resources::walls::decorator::anchors::DecoratorPlaceRequestObserved;
     use country_core::resources::walls::decorator::anchors::decorator_source_from_place;
     use country_core::resources::walls::decorator::placement::WallDecoratorRequest;
-    use country_core::resources::walls::wall_holes::opening_rules::OpeningFamily;
     use country_core::resources::walls::decorator_archivist::changes::DecoratorStorage;
+    use country_core::resources::walls::wall_holes::opening_rules::OpeningFamily;
     use tg_building_runtime::{
         decorator_assets::DecoratorAssetLibrary, decorator_info_binding::*, decorator_placement::*,
         openings::*, wall_decorator_archivist::*,
@@ -2055,21 +2055,27 @@ fn failed_wall_replay_rolls_back_progress_and_keeps_completed_disjoint_groups() 
         .resource_mut::<RoofHistoryReplay>()
         .buckets
         .push_back(BuildingReplayBucketSelection {
-            entry_index: 42,
-            owner: BuildingReplayBucket::Wall(std::collections::VecDeque::from([
-                vec![command(WallHistoryEdit::StateChange {
-                    wall: WallId(100),
-                    previous,
-                    next,
-                    observed_operation: [0; 12],
-                })],
-                vec![command(WallHistoryEdit::EnclosureChange {
-                    wall: WallId(101),
-                    previous: malformed_shape.clone(),
-                    next: malformed_shape,
-                })],
-            ])),
-        });
+        entry_index: 42,
+        owner: BuildingReplayBucket::Wall(std::collections::VecDeque::from([
+            vec![command(WallHistoryEdit::StateChange {
+                wall: WallId(100),
+                previous,
+                next,
+                observed_operation: [0; 12],
+            })],
+            vec![command(WallHistoryEdit::MorphPremadeShape(
+                country_core::resources::history::wall_edit::MorphPremadeShapeEdit::new(
+                    WallId(101),
+                    country_core::systems::wall::valid_enclosure::ShapeParameters::from_snapshot(
+                        &malformed_shape,
+                    ),
+                    country_core::systems::wall::valid_enclosure::ShapeParameters::from_snapshot(
+                        &malformed_shape,
+                    ),
+                ),
+            ))],
+        ])),
+    });
     app.update();
     assert!(
         app.world()

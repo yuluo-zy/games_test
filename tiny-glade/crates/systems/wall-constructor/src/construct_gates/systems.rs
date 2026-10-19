@@ -6,7 +6,7 @@
 //!   46 mesh/822 顶点冻结）。
 //!
 //! W-B1 轮 3 终验接线：ConstructGateCmd（construct_arches 的
-//! ConstructGateCmd120 产出）→ payload 全解（wall/ordinal/段计数/端点）
+//! ConstructGateCmd120 产出）→ 完整拥有的 materialized segment/wall/ordinal
 //! → `construct_gate_cpu`（systems/wall/construction/gates.rs，内部按墙高比选
 //! construct_wooden_gate_doors 或 nani 分支）→ GateCpuOutput：
 //! - bricks（96B）→ WallConstructorOutput；
@@ -14,46 +14,48 @@
 //!   wall_id/seed/29a）→ 136B spawn payload（TransientMesh 0..16、
 //!   变换 16..56、mesh 64、shader 72、top-position 80..104、WallId 104、
 //!   端点方向 112..128、seed 128、+29a 132）→ 门实体 + Gates 表；
-//! - nanis（NaniBundle<SolidVertexColorInstanceData>）→ 渲染边界登记。
+//! - nanis → actual NaniBundle<SolidVertexColorInstanceData> entities.
 //! seed = wrapping `WallId::get_inner() * ordinal + leaf.ordinal` cast u32；
 //! shader 键 = `solid_vertex_color_wooden_gate`。
+use bevy_ecs::{event::Event, prelude::*};
 use country_core::asset_libraries::{
     mesh_library::AssetMeshLibrary, ssbo_library::AssetSsboLibrary,
 };
-use country_core::systems::wall::construction::structures::MaterializedWallSegment;
-use country_core::resources::walls::publication_source::TerrainHeightGrid512;
-use country_core::systems::wall::construction::gates::GateConstructionInput;
-use country_core::systems::wall::construction::gates::construct_gate_cpu;
 use country_core::resources::walls::publication_fields::WallId as ObservedWallId;
+use country_core::resources::walls::publication_source::TerrainHeightGrid512;
 use country_core::resources::{
     roofs::commands::{CreateRoofCmd, SwitchRoofTypeCmd},
     terrain_height::TerrainHeightsData,
     walls::{
+        WallId,
         public_walls::{OnWallChanged, OnWallDeleted, PublicWalls},
         wooden_gates::Gates,
-        WallId,
     },
 };
 use country_core::systems::ui::signifiers::signifier_create::UiSignifierStream;
-use bevy_ecs::{event::Event, prelude::*};
+use country_core::systems::wall::construction::gates::GateConstructionInput;
+use country_core::systems::wall::construction::gates::construct_gate_cpu;
+use country_core::systems::wall::construction::structures::MaterializedWallSegment;
 
-/// B `ConstructGateCmd`（120B 事件 + 8B EventId = 128B 元素；G06）。
-/// payload 布局（轮 3 全解登记）：wall u64@0、ordinal u64@8、段计数 u32@16、
-/// 段端点/预备点（位置/高度/points_u 打包）@20..120。
-#[derive(Event, Clone, Copy, Debug)]
+/// Owned semantic form of native120B {MaterializedWallSegment, WallId, ordinal}.
+/// The three Vec fields stay owned values; no native pointers are serialized.
+#[derive(Event, Clone, Debug)]
 pub struct ConstructGateCmd {
     pub wall: u64,
-    pub payload: [u8; 120],
+    pub ordinal: u64,
+    pub segment: MaterializedWallSegment,
 }
 
-impl ConstructGateCmd {
-    /// payload 解码：{wall, ordinal, point_count, 每点 (x,y,z,h,u)}。
-    pub fn decode(&self) -> (u64, u64, u32) {
-        let wall = u64::from_le_bytes(self.payload[..8].try_into().unwrap_or([0; 8]));
-        let ordinal = u64::from_le_bytes(self.payload[8..16].try_into().unwrap_or([0; 8]));
-        let count = u32::from_le_bytes(self.payload[16..20].try_into().unwrap_or([0; 4]));
-        (wall, ordinal, count)
-    }
+/// Full leaf metadata retained independently of the renderer's two-field view.
+/// Module ownership is an integration design choice; the original component
+/// contains the top-position Vec, WallId, endpoint directions, seed and version.
+#[derive(Component, Clone, Debug)]
+pub struct WoodenGateState {
+    pub top_positions: Vec<[f32; 3]>,
+    pub wall: WallId,
+    pub endpoint_directions: [[f32; 2]; 2],
+    pub seed: u32,
+    pub clutter_version: u8,
 }
 
 /// B 0x140756370：9 参数面（顺序按 G06 findings）。
@@ -61,102 +63,162 @@ pub fn construct_gates(
     mut requests: EventReader<ConstructGateCmd>,
     mut gates: ResMut<Gates>,
     mut commands: Commands,
-    mut meshes: ResMut<AssetMeshLibrary>,
+    meshes: Res<AssetMeshLibrary>,
+    shaders: Res<country_core::asset_libraries::shader_library::SharedAssetShaderLibrary>,
     walls: Res<PublicWalls>,
     terrain: Res<TerrainHeightsData>,
-    ssbo: Res<AssetSsboLibrary>,
+    mut ssbo: ResMut<AssetSsboLibrary>,
     _signifiers: Res<UiSignifierStream>,
     mut output: ResMut<crate::construct_arches::WallConstructorOutput>,
 ) {
+    let mut exhausted = false;
     // TerrainHeightGrid512（512×512 u16 + 高度界；采样修复标志按证据登记）。
     let terrain_grid = TerrainHeightGrid512 {
         encoded: std::sync::Arc::from(terrain.heights()),
         minimum_y: terrain.min_height(),
         maximum_y: terrain.max_height(),
-        sampling_fix: false,
+        sampling_fix: utils::float_grid::CENTERED_PATH.load(std::sync::atomic::Ordering::Relaxed),
     };
     for request in requests.read() {
-        let (wall, ordinal, count) = request.decode();
+        let wall = request.wall;
+        let ordinal = request.ordinal;
         let id = WallId(wall);
         let Some(wall_state) = walls.get(id) else {
             continue;
         };
         let projection = wall_state.building_projection();
-        let curve = wall_state.simplified_curve_2d();
-        // 段（MaterializedWallSegment）：预备点列源 = 简化曲线（I 级登记：
-        // 预备点/第三数组的精确源待 path-prep 全链接线）。
-        let n = (count as usize).clamp(2, curve.points.len().max(2));
-        let positions: Vec<[f32; 3]> = curve
-            .points
-            .iter()
-            .take(n)
-            .map(|p| [p[0], p[1], 0.0])
-            .collect();
-        let heights: Vec<f32> = curve.points.iter().take(n).map(|p| p[1]).collect();
-        let points_u: Vec<f32> = (0..n)
-            .map(|i| i as f32 / (n.saturating_sub(1).max(1)) as f32)
-            .collect();
-        let segment = MaterializedWallSegment {
-            heights,
-            positions,
-            points_u,
-            source_indices: [0, n],
-            range: country_core::systems::wall::construction::segmentation::WallLoopRange {
-                start: 0,
-                end: n as i32,
-                modulus: n as i32,
-            },
-        };
-        let prepared_positions = segment.positions.clone();
-        let prepared_u = segment.points_u.clone();
+        let path = wall_state
+            .prepared_path
+            .as_ref()
+            .expect("gate construction requires prepared wall path");
         let input = GateConstructionInput {
-            segment: &segment,
-            prepared_positions: &prepared_positions,
-            prepared_u: &prepared_u,
+            segment: &request.segment,
+            prepared_positions: &path.positions,
+            prepared_u: &path.points_u,
             observed_public_288: projection.float_0x288(),
             observed_public_29a: projection.observed_29a(),
             wall_id: ObservedWallId(wall),
             ordinal,
         };
-        if let Ok(outcome) = construct_gate_cpu(input, &terrain_grid) {
-            // 96B 支撑砖落盘。
-            for brick in &outcome.bricks {
-                output.brick_instances.push(brick.observed_bytes());
-            }
-            // 门扇实体 + 136B spawn payload（G06 布局登记）。
-            for (leaf_ordinal, leaf) in outcome.leaves.iter().enumerate() {
-                let seed = wall.wrapping_mul(ordinal).wrapping_add(leaf_ordinal as u64) as u32;
-                let mut spawn_payload = [0u8; 136];
-                spawn_payload[16..20].copy_from_slice(&1.0f32.to_le_bytes()); // 单位缩放
-                spawn_payload[20..24].copy_from_slice(&1.0f32.to_le_bytes());
-                spawn_payload[24..28].copy_from_slice(&1.0f32.to_le_bytes());
-                spawn_payload[80..104].copy_from_slice(
-                    &leaf
-                        .top_positions
-                        .first()
-                        .copied()
-                        .unwrap_or([0.0; 3])
-                        .map(f32::to_le_bytes)
-                        .concat(),
-                );
-                spawn_payload[104..112].copy_from_slice(&wall.to_le_bytes());
-                spawn_payload[112..120].copy_from_slice(
-                    &leaf.endpoint_directions[0].map(f32::to_le_bytes).concat(),
-                );
-                spawn_payload[120..128].copy_from_slice(
-                    &leaf.endpoint_directions[1].map(f32::to_le_bytes).concat(),
-                );
-                spawn_payload[128..132].copy_from_slice(&seed.to_le_bytes());
-                spawn_payload[132] = leaf.observed_public_29a;
-                // 门扇实体（TransientMesh/mesh/shader 句柄 = 渲染边界登记）。
-                let entity = commands.spawn_empty().id();
-                gates.for_wall_mut(id).push(entity.to_bits());
-                output.door_spawn_payloads.push(spawn_payload);
-            }
-            // nanis（NaniBundle）→ 渲染边界登记。
-            let _ = outcome.nanis;
+        let outcome = construct_gate_cpu(input, &terrain_grid)
+            .expect("invalid or unrecovered gate construction input");
+        let storage = ssbo
+            .get_mut::<country_core::geometry::instanced_wall::BrickTransformSsbo>()
+            .expect("canonical BrickTransformSsbo must exist before gate construction");
+        exhausted |= output.gpu.append_bricks(
+            storage,
+            crate::gpu_output::ConstructorKey {
+                wall,
+                part: crate::gpu_output::ConstructorPart::Gates,
+            },
+            &outcome.bricks,
+        ) != 0;
+        for leaf in outcome.leaves {
+            use country_core::asset_libraries::{
+                mesh_library::MeshAsset, transient_mesh::TransientMesh,
+            };
+            use country_core::components::drawable::DrawableMeshBundle;
+            use country_core::render::mesh::{
+                ATTR_COLOR, ATTR_NORMAL, ATTR_POSITION, ATTR_UV, Mesh,
+            };
+            use country_core::systems::render_loop::draw_passes::draw_callbacks_a::WoodenGateView;
+            use country_core::utils::components::transform::Transform;
+            let mut mesh = Mesh::new("wooden_gate");
+            mesh.indices = leaf.mesh.indices;
+            mesh.set_attribute(
+                ATTR_POSITION,
+                leaf.mesh
+                    .positions
+                    .into_iter()
+                    .map(glam::Vec3::from_array)
+                    .collect::<Vec<_>>(),
+            );
+            mesh.set_attribute(
+                ATTR_NORMAL,
+                leaf.mesh
+                    .normals
+                    .into_iter()
+                    .map(glam::Vec3::from_array)
+                    .collect::<Vec<_>>(),
+            );
+            mesh.set_attribute(
+                ATTR_COLOR,
+                leaf.mesh
+                    .colors
+                    .into_iter()
+                    .map(glam::Vec3::from_array)
+                    .collect::<Vec<_>>(),
+            );
+            mesh.set_attribute(
+                ATTR_UV,
+                leaf.mesh
+                    .uvs
+                    .into_iter()
+                    .map(glam::Vec2::from_array)
+                    .collect::<Vec<_>>(),
+            );
+            let handle = meshes.add(MeshAsset::new(mesh, None));
+            let shader = shaders
+                .0
+                .get_raster_handle_by_name("solid_vertex_color_wooden_gate")
+                .expect("wooden gate shader must be loaded");
+            let entity = commands
+                .spawn((
+                    DrawableMeshBundle {
+                        mesh: handle,
+                        shader,
+                        transform: Transform::identity(),
+                    },
+                    TransientMesh::new_with_registry(handle, meshes.transient_meshes()),
+                    WoodenGateView {
+                        q18: wall,
+                        d30: leaf.seed as i32,
+                    },
+                    WoodenGateState {
+                        top_positions: leaf.top_positions,
+                        wall: id,
+                        endpoint_directions: leaf.endpoint_directions,
+                        seed: leaf.seed,
+                        clutter_version: leaf.observed_public_29a,
+                    },
+                ))
+                .id();
+            gates.for_wall_mut(id).push(entity.to_bits());
         }
-        let _ = (&mut meshes, &ssbo);
+        for nani in outcome.nanis {
+            use country_core::{
+                components::drawable::NaniBundle,
+                name_hash::NameHash,
+                render::nani::{
+                    gpu_world::{GpuWorldSubsetKind, InstanceDataMarker},
+                    instance_data::SolidVertexColorInstanceData,
+                    systems::{NaniInstanceDesc, NaniMeshSelector},
+                },
+                utils::components::transform::Transform,
+            };
+            assert_eq!(nani.observed_word_30, 0);
+            assert_eq!(nani.subset_kind, 3);
+            let entity = commands
+                .spawn(NaniBundle::<SolidVertexColorInstanceData> {
+                    desc: NaniInstanceDesc {
+                        mesh: NaniMeshSelector::Named(NameHash(nani.definition_id)),
+                        subset_kind: GpuWorldSubsetKind::SolidVertexColor,
+                    },
+                    transform: Transform {
+                        rotation: glam::Quat::from_array(nani.rotation),
+                        translation: glam::Vec3::from_array(nani.position),
+                        scale: glam::Vec3::from_array(nani.scale),
+                    },
+                    marker: InstanceDataMarker::default(),
+                })
+                .id();
+            gates.for_wall_mut(id).push(entity.to_bits());
+        }
+        let _ = &ssbo;
+    }
+    if exhausted {
+        log::error!(target:"system_wall_constructor::construct_gates",
+            "Gate constructor ran out of bricks");
     }
 }
 
@@ -167,20 +229,70 @@ pub fn update_gates_hashmap(
     mut create_roof: EventReader<CreateRoofCmd>,
     mut switch_type: EventReader<SwitchRoofTypeCmd>,
     mut deleted: EventReader<OnWallDeleted>,
+    mut delete_roof: EventReader<country_core::resources::roofs::commands::DeleteRoofCmd>,
     mut gates: ResMut<Gates>,
+    mut commands: Commands,
 ) {
-    let mut rebuild: Vec<u64> = changed
+    let rebuild = changed
         .read()
-        .map(|e| e.0 .0)
-        .chain(create_roof.read().map(|e| e.0.wall_id().0))
-        .chain(switch_type.read().map(|e| e.wall.0))
-        .collect();
-    rebuild.sort_unstable();
-    rebuild.dedup();
-    for id in rebuild {
-        let _ = gates.for_wall_mut(WallId(id));
+        .map(|e| e.0)
+        .chain(create_roof.read().map(|e| WallId(e.0.wall_id().0)))
+        .chain(switch_type.read().map(|e| e.wall));
+    for wall in rebuild {
+        for entity in gates.for_wall_mut(wall).drain(..) {
+            commands.entity(Entity::from_bits(entity)).despawn();
+        }
     }
-    for event in deleted.read() {
-        gates.per_wall.remove(&event.0);
+    for wall in deleted
+        .read()
+        .map(|e| e.0)
+        .chain(delete_roof.read().map(|e| e.0))
+    {
+        if let Some(entities) = gates.per_wall.remove(&wall) {
+            for entity in entities {
+                commands.entity(Entity::from_bits(entity)).despawn();
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use country_core::resources::roofs::commands::DeleteRoofCmd;
+    #[test]
+    fn gate_rebuild_and_roof_delete_despawn_tracked_entities_in_real_world() {
+        let mut world = World::new();
+        world.init_resource::<Gates>();
+        world.init_resource::<Events<OnWallChanged>>();
+        world.init_resource::<Events<CreateRoofCmd>>();
+        world.init_resource::<Events<SwitchRoofTypeCmd>>();
+        world.init_resource::<Events<OnWallDeleted>>();
+        world.init_resource::<Events<DeleteRoofCmd>>();
+        let wall = WallId(12345);
+        let leaves = [world.spawn_empty().id(), world.spawn_empty().id()];
+        world
+            .resource_mut::<Gates>()
+            .per_wall
+            .insert(wall, leaves.iter().map(|e| e.to_bits()).collect());
+        world
+            .resource_mut::<Events<OnWallChanged>>()
+            .send(OnWallChanged(wall));
+        let mut schedule = bevy_ecs::schedule::Schedule::default();
+        schedule.add_systems(update_gates_hashmap);
+        schedule.run(&mut world);
+        assert!(leaves.iter().all(|&e| world.get_entity(e).is_err()));
+        assert!(world.resource::<Gates>().per_wall[&wall].is_empty());
+        let replacement = world.spawn_empty().id();
+        world
+            .resource_mut::<Gates>()
+            .for_wall_mut(wall)
+            .push(replacement.to_bits());
+        world
+            .resource_mut::<Events<DeleteRoofCmd>>()
+            .send(DeleteRoofCmd(wall));
+        schedule.run(&mut world);
+        assert!(world.get_entity(replacement).is_err());
+        assert!(!world.resource::<Gates>().per_wall.contains_key(&wall));
     }
 }

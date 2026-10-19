@@ -57,44 +57,6 @@ pub fn nan_aware_max(a: f32, b: f32) -> f32 {
     if b.is_nan() { a } else { a.max(b) }
 }
 
-/// 快进按住输入（fresh 五个面：byte0 bit0 覆盖速度 + f32@+4，
-/// `u32[+0x80]` / `u32[+0x88]` 两路 input-ready 计数）。
-#[derive(Resource, Clone, Copy, Debug, PartialEq)]
-pub struct ReplayFastHoldInput {
-    /// input byte0 bit0：覆盖 `ReplayBuffer.speed = speed_override`。
-    pub override_speed: bool,
-    pub speed_override: f32,
-    /// input `+0x80`。
-    pub primary: u32,
-    /// input `+0x88`。
-    pub secondary: u32,
-}
-impl Default for ReplayFastHoldInput {
-    fn default() -> Self {
-        Self {
-            override_speed: false,
-            speed_override: 0.0,
-            primary: 4,
-            secondary: 4,
-        }
-    }
-}
-impl ReplayFastHoldInput {
-    /// MainActionSet is the shared live/replayed input owner; native slots16/17.
-    pub fn from_actions(self, actions: &MainActionSet) -> Self {
-        Self {
-            primary: actions.digital[16].phase as u32,
-            secondary: actions.digital[17].phase as u32,
-            ..self
-        }
-    }
-
-    /// `input[+0x80] < 3 || input[+0x88] < 3`。
-    pub fn engaged(self) -> bool {
-        self.primary < 3 || self.secondary < 3
-    }
-}
-
 /// HoldToFastReplay 状态（原生 8B：`{u32 fast @0, f32 hold @4}`）。
 #[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
 pub struct HoldToFastReplay {
@@ -148,7 +110,7 @@ pub fn restoration_mode(previous: AppMode, existing: AppMode) -> AppMode {
 pub fn replay_mode(
     mode: Res<AppMode>,
     time: Res<GameTime>,
-    input: Res<ReplayFastHoldInput>,
+    speed_override: Res<crate::systems::timelapse_replay::ReplaySpeedMultiplierOverride>,
     actions: Res<MainActionSet>,
     (mut modes, mut restore, mut elapsed): (
         EventReader<AppModeChanged>,
@@ -170,7 +132,9 @@ pub fn replay_mode(
             hold.reset();
         }
     }
-    let input = input.from_actions(&actions);
+    let primary = actions.digital[16].phase as u32;
+    let secondary = actions.digital[17].phase as u32;
+    let engaged = primary < 3 || secondary < 3;
     let is_replay = mode.native_tag() == 13;
     if !is_replay {
         if *was_replay {
@@ -186,13 +150,13 @@ pub fn replay_mode(
     // 原版在 AppMode==Replay 的每帧都调用 clearing_canvas_w_layer_and_sound。
     clear.write(ClearCanvasCmd(true));
 
-    if input.override_speed {
-        replay_buffer.speed = input.speed_override;
+    if let Some(speed) = speed_override.0 {
+        replay_buffer.speed = speed;
         return;
     }
     let dt = time.delta;
     if !hold.fast {
-        hold.advance(input.engaged(), dt);
+        hold.advance(engaged, dt);
         if hold.fast {
             replay_buffer.speed = 1.0;
         } else {
@@ -201,7 +165,7 @@ pub fn replay_mode(
         }
         return;
     }
-    if input.primary < 3 {
+    if primary < 3 {
         commands.write(HistoryCommand {
             bytes: REPLAY_FOCUS_PRIMARY_READY.to_le_bytes(),
         });
@@ -213,7 +177,7 @@ pub fn replay_mode(
         );
         hold.hold_time = value;
         replay_buffer.speed = value;
-    } else if input.secondary >= 3 {
+    } else if secondary >= 3 {
         commands.write(HistoryCommand {
             bytes: REPLAY_FOCUS_BOTH_READY.to_le_bytes(),
         });
@@ -248,7 +212,7 @@ mod tests {
             delta: 0.1,
             ..Default::default()
         });
-        world.insert_resource(ReplayFastHoldInput::default());
+        world.init_resource::<crate::systems::timelapse_replay::ReplaySpeedMultiplierOverride>();
         world.init_resource::<MainActionSet>();
         world.init_resource::<HoldToFastReplay>();
         world.init_resource::<RestoreAppTo>();
@@ -333,11 +297,9 @@ mod tests {
         // 每帧一次 clear（不是仅进入帧）。
         assert_eq!(world.resource::<Events<ClearCanvasCmd>>().len(), 2);
         // 覆盖速度。
-        {
-            let mut input = world.resource_mut::<ReplayFastHoldInput>();
-            input.override_speed = true;
-            input.speed_override = 4.0;
-        }
+        world
+            .resource_mut::<crate::systems::timelapse_replay::ReplaySpeedMultiplierOverride>()
+            .0 = Some(4.0);
         schedule.run(&mut world);
         assert_eq!(world.resource::<ReplayBuffer>().speed, 4.0);
     }
@@ -346,8 +308,9 @@ mod tests {
     fn restoration_uses_last_mode_event_and_resets_shared_hold() {
         let (mut world, mut schedule) = fixture();
         *world.resource_mut::<AppMode>() = AppMode::Replay;
-        world.resource_mut::<ReplayFastHoldInput>().override_speed = true;
-        world.resource_mut::<ReplayFastHoldInput>().speed_override = 1.0;
+        world
+            .resource_mut::<crate::systems::timelapse_replay::ReplaySpeedMultiplierOverride>()
+            .0 = Some(1.0);
         *world.resource_mut::<HoldToFastReplay>() = HoldToFastReplay {
             fast: true,
             hold_time: 5.0,

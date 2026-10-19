@@ -34,6 +34,9 @@ pub struct CoreRenderBridge {
     tables: HostTables,
     raster: Arc<RasterShared>,
     shaders: Arc<AssetShaderLibrary>,
+    /// A built graph still owns this session's declaration/specification state.
+    /// A BuiltCoreGraph guard releases it on cancellation or abandonment.
+    pending_build: Rc<Cell<Option<GraphId>>>,
 }
 
 /// This App's exact physical handle namespaces and their retained owners.
@@ -82,12 +85,13 @@ impl CoreRenderBridge {
             tables,
             raster,
             shaders,
+            pending_build: Rc::new(Cell::new(None)),
         })
     }
 
     /// Captured before moving the original gameplay SubApp to its worker.
     pub fn warmup_owners(&self) -> rhapsody::Result<CoreRenderOwners> {
-        if self.session.borrow().named_resource_count() != 0 {
+        if self.pending_build.get().is_some() || self.session.borrow().named_resource_count() != 0 {
             return Err(rhapsody::Error::invalid_usage(
                 "gameplay warmup cannot fork an existing temporal owner",
             ));
@@ -110,6 +114,7 @@ impl CoreRenderBridge {
             tables: owners.tables,
             raster: owners.raster,
             shaders: owners.shaders,
+            pending_build: Rc::new(Cell::new(None)),
         })
     }
 
@@ -153,10 +158,14 @@ impl CoreRenderBridge {
             ));
         }
         let mut named = completed.named.lock();
-        if let Some(named) = named.take() {
-            self.session
-                .borrow_mut()
-                .adopt_completed_named_resources(named)?;
+        if let Some(completed) = named.as_ref() {
+            let mut session = self.session.borrow_mut();
+            // Keep the actual owners available when activation must be retried.
+            // The RefMut prevents local session state from changing between
+            // preflight and adoption. Shared terminal device loss can still
+            // invalidate the transfer; it is not a retryable session refusal.
+            session.validate_completed_named_resources_adoption(completed)?;
+            session.adopt_completed_named_resources(named.take().expect("validated warmup"))?;
         }
         Ok(())
     }
@@ -241,8 +250,15 @@ impl CoreRenderBridge {
     pub fn build_frame<T>(
         &mut self,
         build: impl FnOnce(&mut CoreGraphFrame<'_>) -> rhapsody::Result<T>,
-    ) -> rhapsody::Result<(T, rhapsody::rg::BuiltGraph)> {
+    ) -> rhapsody::Result<(T, BuiltCoreGraph)> {
+        if self.pending_build.get().is_some() {
+            return Err(rhapsody::Error::invalid_usage(
+                "execute, compile or cancel the built core graph before beginning another frame",
+            ));
+        }
         let graph = self.session.borrow_mut().begin_frame()?;
+        let graph_id = graph.graph_id();
+        self.pending_build.set(Some(graph_id));
         let declarer = Rc::new(FrameDeclarer {
             session: self.session.clone(),
             scope: FrameScope {
@@ -263,20 +279,40 @@ impl CoreRenderBridge {
             ));
         }
         let graph = frame.take_graph()?;
-        Ok((value, graph.build()))
+        Ok((
+            value,
+            BuiltCoreGraph {
+                session: self.session.clone(),
+                pending_build: self.pending_build.clone(),
+                graph: Some(graph.build()),
+            },
+        ))
     }
 
     pub fn execute_built(
         &mut self,
-        graph: rhapsody::rg::BuiltGraph,
+        graph: BuiltCoreGraph,
     ) -> rhapsody::Result<SessionFrameReceipt> {
+        let graph = self.claim_built(graph)?;
         self.session.borrow_mut().execute_frame(graph)
     }
 
-    pub fn compile_built(
-        &mut self,
-        graph: rhapsody::rg::BuiltGraph,
-    ) -> rhapsody::Result<CompiledCoreGraph> {
+    /// Reject a different App's graph before consuming its declaration.
+    /// A rejected guard cancels through its originating session when dropped.
+    fn claim_built(&self, mut graph: BuiltCoreGraph) -> rhapsody::Result<rhapsody::rg::BuiltGraph> {
+        if !Rc::ptr_eq(&self.session, &graph.session)
+            || self.pending_build.get() != Some(graph.graph_id())
+        {
+            return Err(rhapsody::Error::invalid_usage(
+                "built graph belongs to another bridge or declaration",
+            ));
+        }
+        self.pending_build.set(None);
+        Ok(graph.graph.take().expect("built graph consumed once"))
+    }
+
+    pub fn compile_built(&mut self, graph: BuiltCoreGraph) -> rhapsody::Result<CompiledCoreGraph> {
+        let graph = self.claim_built(graph)?;
         let frame = self.session.borrow_mut().compile_frame(graph)?;
         Ok(CompiledCoreGraph {
             session: self.session.clone(),
@@ -316,7 +352,8 @@ impl CoreRenderBridge {
         self.session.borrow().has_presentation()
     }
 
-    pub fn cancel_built(&mut self, graph: rhapsody::rg::BuiltGraph) -> rhapsody::Result<()> {
+    pub fn cancel_built(&mut self, graph: BuiltCoreGraph) -> rhapsody::Result<()> {
+        let graph = self.claim_built(graph)?;
         self.session.borrow_mut().cancel_frame(graph)
     }
 
@@ -388,6 +425,36 @@ impl CoreRenderBridge {
 
     pub fn wait_submits_done(&mut self, timeout_ns: u64) -> rhapsody::Result<()> {
         self.session.borrow_mut().wait_submits_done(timeout_ns)
+    }
+}
+
+/// An uncompiled declaration tied to its originating App/session. Dropping it
+/// cancels through that owner, retiring callbacks and frame imports exactly once.
+#[must_use = "execute, compile or cancel this graph; dropping cancels its declaration"]
+pub struct BuiltCoreGraph {
+    session: Rc<RefCell<VulkanGraphSession>>,
+    pending_build: Rc<Cell<Option<GraphId>>>,
+    graph: Option<rhapsody::rg::BuiltGraph>,
+}
+impl BuiltCoreGraph {
+    pub fn graph_id(&self) -> GraphId {
+        self.graph
+            .as_ref()
+            .expect("built graph consumed once")
+            .graph_id()
+    }
+}
+impl Drop for BuiltCoreGraph {
+    fn drop(&mut self) {
+        if let Some(graph) = self.graph.take() {
+            let id = graph.graph_id();
+            if let Err(error) = self.session.borrow_mut().cancel_frame(graph) {
+                log::warn!("cancelling uncompiled core frame: {error}");
+            }
+            if self.pending_build.get() == Some(id) {
+                self.pending_build.set(None);
+            }
+        }
     }
 }
 
@@ -739,6 +806,31 @@ impl CoreGraphFrame<'_> {
         result
     }
 
+    /// Declare a raw graph image with a full rhapsody description. The core
+    /// placeholder `TextureDesc` carries no `sample_count`, so the original
+    /// `"msaa color out"` target (`new_2d(extent, 0x2b).sample_count(4)`,
+    /// 0x14090d000) cannot be expressed through `RgResources::create_raw_texture`.
+    /// This keeps the caller's native description instead of silently creating a
+    /// single-sample image. Access-derived usage bits are added by rhapsody's
+    /// resource plan exactly as for any other declared image.
+    pub fn declare_native_image(
+        &mut self,
+        name: &str,
+        desc: rhapsody::resource::TextureDesc,
+    ) -> rhapsody::Result<u32> {
+        let result = self
+            .declarer
+            .declare(
+                &mut self.graph().borrow_mut(),
+                name,
+                ResourceSpec::Image(desc),
+            )
+            .map(|handle| handle.raw())
+            .map_err(Into::into);
+        self.failed |= result.is_err();
+        result
+    }
+
     pub fn import_texture(
         &mut self,
         texture: &Texture,
@@ -785,6 +877,9 @@ impl Drop for CoreGraphFrame<'_> {
             // cannot mutate the graph that was just cancelled or a future frame.
             Err(graph) => graph.replace(RenderGraph::new()),
         };
+        if self.bridge.pending_build.get() == Some(graph.graph_id()) {
+            self.bridge.pending_build.set(None);
+        }
         if let Err(error) = self.bridge.session.borrow_mut().cancel_frame(graph.build()) {
             log::warn!("cancelling unsubmitted core frame: {error}");
         }
@@ -966,10 +1061,14 @@ mod tests {
     }
 }
 
-/// Actual full-world builder seam. The caller supplies the recovered complete
-/// compile_main graph (including its original final22 export), not a prefix.
-/// Actual ECS draw-list construction and every render phase use the same App
-/// owners. Sending the SubApp is allowed only after this function returns Ok.
+/// Actual full-world builder seam. The caller supplies the recovered world
+/// stage plus the compile_main tail subset, ending in the real final22 export
+/// of `"msaa color out"` (0x2b, sample_count 4, display extent) — not the TAA
+/// texture. Equivalence with the complete native compile_main is **not**
+/// claimed: `world_postprocess::WorldTailControls` lists the tail steps whose
+/// hosts/producers remain U, and the delivery records them. Actual ECS
+/// draw-list construction and every render phase use the same App owners.
+/// Sending the SubApp is allowed only after this function returns Ok.
 pub fn warm_up_gameplay_with_world_builder(
     owners: CoreRenderOwners,
     world: &mut bevy_ecs::world::World,
@@ -999,8 +1098,18 @@ pub fn warm_up_gameplay_with_world_builder(
         }
         return Err(error);
     }
+    let capture_graph_id = built.graph_id();
     let compiled = bridge.compile_built(built)?;
-    let receipt = bridge.execute_compiled(compiled)?;
+    let receipt = match bridge.execute_compiled(compiled) {
+        Ok(receipt) => receipt,
+        Err(error) => {
+            crate::screenshot::shared_texture_capture::cancel_unsubmitted(world, capture_graph_id);
+            return Err(error);
+        }
+    };
+    if crate::screenshot::shared_texture_capture::installed(world) {
+        crate::screenshot::shared_texture_capture::submitted(world, &mut bridge, capture_graph_id, &receipt)?;
+    }
     // Real final export, physical allocation and retained native owner are
     // required; neither a logical texture number nor a ready flag suffices.
     let actual_output = bridge.exported_texture(&receipt, output.resource)?;

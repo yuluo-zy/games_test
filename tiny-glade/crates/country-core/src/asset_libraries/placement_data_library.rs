@@ -27,6 +27,13 @@ impl AssetPlacementDataLibrary {
         }
     }
 
+    /// B uninit_clearing@140a7a5fd..60c drops buffers before path keys.
+    /// Retain table allocations, and let each typed buffer release its real lease.
+    pub fn clear(&mut self) {
+        self.buffers.clear();
+        self.paths.clear();
+    }
+
     /// 加载并注册摆放数据，同一路径不能重复加载。
     pub fn load(
         &mut self,

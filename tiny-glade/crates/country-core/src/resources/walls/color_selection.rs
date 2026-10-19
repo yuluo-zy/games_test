@@ -281,7 +281,7 @@ pub fn get_building_and_roof_colors(
         wall_color_id: settings.building.0,
         roof_color_id: settings.roof.0,
         timber_color_id: settings.halftimber.0,
-        wall_style: settings.building_wall_style,
+        wall_style: settings.building_wall_style.0,
         roof_appearance: [0; 12],
     };
 
@@ -357,7 +357,7 @@ mod tests {
             building: ColorId(11),
             roof: ColorId(12),
             halftimber: ColorId(13),
-            building_wall_style: 14,
+            building_wall_style: crate::resources::walls::inner_wall_state::WallStyle(14),
             ..Default::default()
         }
     }

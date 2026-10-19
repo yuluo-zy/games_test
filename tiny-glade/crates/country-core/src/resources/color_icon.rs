@@ -29,23 +29,55 @@ impl ColorMenuBrightnessValue {
 
 // ---------------------------------------------------------------- 组 A 接线
 
-/// 自定义图标组件（O：`resources::color_icon::CustomizationIcon`；color_menu
-/// 0x142291230 的图标状态条目（0xa0B 数组族）与 color_button_animations 消费；
-/// 字段 U（typed gap）。
+/// B CustomizationIcon register@0x1422b58f0 records size 0x24/align 4.
+/// ui_2d_pass reads alpha@0x18 and the flag byte@0x21. The animation system
+/// 1422979b0 consumes the three Vec2 values and hover state below. The old
+/// 0xa0 state record belongs to the color-menu algorithm, not this component.
+#[repr(C)]
 #[derive(bevy_ecs::component::Component, Clone, Debug, Default)]
 pub struct CustomizationIcon {
-    /// typed gap：0xa0B 图标状态条目字段。
-    pub _gap: u64,
+    pub size: glam::Vec2,
+    pub position: glam::Vec2,
+    pub initial_position: glam::Vec2,
+    pub alpha_18: f32,
+    pub hover_progress: f32,
+    pub hovered: u8,
+    pub flag_21: u8,
+    pub opaque_22: [u8; 2],
 }
 
-/// 颜色图标组件（O：`resources::color_icon::ColorIcon`；BASELINE
-/// `Option<&ColorIcon>` 查询面；字段 U）。
-#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default)]
-pub struct ColorIcon;
+const _: () = assert!(std::mem::size_of::<CustomizationIcon>() == 0x24);
+const _: () = assert!(std::mem::offset_of!(CustomizationIcon, alpha_18) == 0x18);
+const _: () = assert!(std::mem::offset_of!(CustomizationIcon, flag_21) == 0x21);
 
-/// 墙样式图标组件（O：`resources::color_icon::WallStyleIcon`；字段 U）。
+/// B1425f3057 inserts the original u32 color payload into ColorIcon.
 #[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default)]
-pub struct WallStyleIcon;
+pub struct ColorIcon(pub u32);
+
+/// B1425f3297 inserts the wall-style selector byte.
+#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default)]
+pub struct WallStyleIcon(pub u8);
+
+#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default)]
+pub struct MagicColorIcon(pub u32);
+#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default)]
+pub struct PlasterPeelIcon(pub f32);
+#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default)]
+pub struct StairRailingIcon(pub u8);
+#[derive(bevy_ecs::component::Component, Clone, Copy, Debug)]
+pub struct ColorMenuBrightnessIcon(pub ColorMenuBrightnessValue);
+#[derive(bevy_ecs::component::Component, Clone, Copy, Debug)]
+pub struct FlatRoofStyleIcon(pub crate::resources::roofs::customization::FlatRoofStyleObserved);
+#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default)]
+pub struct ColorWheelSeparator;
+#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default)]
+pub struct FreehandHeightTypeToggleIcon;
+#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default)]
+pub struct FlagConnectionIcon;
+#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default)]
+pub struct FlatRoofRimTypeToggle;
+#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default)]
+pub struct ChimneySmokeToggle;
 
 /// 图标删除标记（O：`resources::color_icon::CustomizationIconMarkedForDeletion`；
 /// delete_color_icon_entities 0x142297ff0 的查询面）。

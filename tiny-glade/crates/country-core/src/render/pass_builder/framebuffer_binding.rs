@@ -5,7 +5,7 @@
 //!   `ptr = *(self + 8 + (tag == 1) * 0x10); return ptr + 4`，即两个变体都持有一个指向
 //!   `Texture`（`{ id: u32 @0, TextureDesc @4 }`）的引用，只是引用所在偏移不同（tag0 @+8，tag1 @+0x18）。
 //! - O 数组元素 0x20 B（`RasterPass::new_impl` 以 `r12 = count << 5` 迭代）；tag1 在 `+4` 处多带 16 B
-//!   视图字段（`from_iter` 0x14157b150：`movups [r12 + 4]`）。
+//!   VkClearColorValue 字段（`from_iter` 0x14157b150：`movups [r12 + 4]`）。
 //! - O 添加到 pass 时的访问类型：tag0 → `0x36`，tag1 → `0x2e`，同步组 1
 //!   （`from_iter`：`r8b = (tag == 0) * 8 + 0x2e`，`r9d = 1`）。
 //! - O `DepthAttachment`（`new_impl` 0x140867970 读 `*depth`）：tag0 → 访问 `0x2f`（可写），
@@ -20,7 +20,7 @@ use crate::rhapsody_types::Texture;
 
 /// 颜色附件作为 RG 资源访问时的访问类型（O 数值；名称 U）。
 pub const COLOR_ACCESS_TEXTURE: u8 = 0x36;
-/// tag1（视图/句柄变体）的访问类型（O 数值；名称 U）。
+/// tag1（清除颜色变体）的访问类型（O 数值；名称 U）。
 pub const COLOR_ACCESS_VIEW: u8 = 0x2e;
 /// 深度附件：可写（O 数值）。
 pub const DEPTH_ACCESS_WRITE: u8 = 0x2f;
@@ -54,21 +54,26 @@ impl From<&Texture> for AttachmentTexture {
     }
 }
 
-/// 视图字段（tag1 的 `+4..+0x14`，16 B）：机器码只整块搬运，字段含义 U。
-pub type ColorViewWords = [u32; 4];
+/// Tag1 +4..+0x14 is the exact VkClearColorValue payload. B new_impl's
+/// from_iter @14157b1d0 copies it to RasterPassColorAttachment +0x40;
+/// begin_render_pass @1416f719b..71db places it in pClearValues.
+pub type ColorClearWords = [u32; 4];
+/// Source compatibility for the historical misnomer; these are clear bits.
+pub type ColorViewWords = ColorClearWords;
 
 /// 颜色附件（0x20 B，tag @0）。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ColorAttachment {
     /// tag0：直接引用纹理（引用 @+8）。
     Texture(AttachmentTexture),
-    /// tag1：带 16 B 视图字（@+4）的引用（引用 @+0x18）。
+    /// tag1：16 B VkClearColorValue 位模式（@+4），纹理引用 @+0x18。
+    /// `View`/`view` 是保留的历史源码名，不是图像子资源视图。
     View {
         view: ColorViewWords,
         texture: AttachmentTexture,
     },
     /// tag2（B 阶段补，i_api；O：`main_pass` 的 "G-buffer"、`ui_2d_pass` 的 "mei"、`feedback_report_bg` 用 `mov dword [..], 2`）：
-    /// 布局与 tag0 相同（引用在 `+8`，无视图字——`from_iter` 只对 `tag == 1` 取 `[+4]` 的 16 B），
+    /// 布局与 tag0 相同（引用在 `+8`，无清除颜色载荷——`from_iter` 只对 `tag == 1` 取 `[+4]` 的 16 B），
     /// 访问类型与 tag1 相同（`(tag == 0) * 8 + 0x2e` → 0x2e），`RasterPass::render` 的描述里 `+4` 覆盖为 2。变体名 U。
     Tag2(AttachmentTexture),
 }
@@ -107,12 +112,16 @@ impl ColorAttachment {
         }
     }
 
-    /// 视图字（tag0 为 0）。
-    pub fn view_words(&self) -> ColorViewWords {
+    /// Exact clear payload; LOAD / DONT_CARE have no payload.
+    pub fn clear_color_bits(&self) -> ColorClearWords {
         match self {
             ColorAttachment::Texture(_) | ColorAttachment::Tag2(_) => [0; 4],
             ColorAttachment::View { view, .. } => *view,
         }
+    }
+    /// Source-compatible legacy accessor for the same clear-value bits.
+    pub fn view_words(&self) -> ColorViewWords {
+        self.clear_color_bits()
     }
 }
 
@@ -200,7 +209,7 @@ mod tests {
 
     #[test]
     fn tag2_has_view_access_no_view_words_and_texture_at_plus8() {
-        // O 0x14157b150：`r8b = (tag == 0) * 8 + 0x2e` → tag2 = 0x2e；只有 tag1 搬 16 B 视图字；引用偏移 `(tag == 1) * 0x10 + 8`。
+        // O 0x14157b150：`r8b = (tag == 0) * 8 + 0x2e` → tag2 = 0x2e；只有 tag1 搬 16 B 清除颜色字；引用偏移 `(tag == 1) * 0x10 + 8`。
         let c = ColorAttachment::Tag2(tex(12));
         assert_eq!(c.tag(), 2);
         assert_eq!(c.access_type(), 0x2e);

@@ -11,6 +11,26 @@ pub enum PhotoModeCameraMode {
     TopDown = 3,
 }
 
+/// Original one-byte PhotoModeCmd payload: 0..3 select the photo camera;
+/// tag4 is the separate non-camera command, ignored by the camera loop.
+/// Its unrecovered variant spelling is not replaced by an invented action.
+#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct PhotoModeCmd(pub u8);
+impl From<PhotoModeCameraMode> for PhotoModeCmd {
+    fn from(mode: PhotoModeCameraMode) -> Self { Self(mode as u8) }
+}
+impl PhotoModeCmd {
+    pub fn camera(self) -> Option<PhotoModeCameraMode> {
+        match self.0 {
+            0 => Some(PhotoModeCameraMode::TiltShift), 1 => Some(PhotoModeCameraMode::Free),
+            2 => Some(PhotoModeCameraMode::Walk), 3 => Some(PhotoModeCameraMode::TopDown),
+            4 => None,
+            tag => panic!("invalid PhotoModeCmd tag {tag}"),
+        }
+    }
+}
+
 impl PhotoModeCameraMode {
     /// B 0x140b59720, packed table 0x00030201.
     pub fn next(self) -> Self {

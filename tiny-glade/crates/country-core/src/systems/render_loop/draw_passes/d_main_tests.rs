@@ -676,7 +676,9 @@ fn ui_2d_pass_sorts_by_order_picks_shader_by_tint_and_draws_ws_after() {
         let (mut h, _) = MockHost::new();
         h.log = log.clone();
         for id in 6..=8u64 {
-            h.shaders.insert(id, Arc::new(ShaderReflection::default()));
+            let mut reflection = ShaderReflection::default();
+            reflection.bindings.insert(IMAGE_BINDING, (0, 1));
+            h.shaders.insert(id, Arc::new(reflection));
         }
         h.rg_buffers.insert(ColorLibrarySsbo::rg_buffer_hash(), 1);
         for name in ["a", "b"] {
@@ -703,6 +705,14 @@ fn ui_2d_pass_sorts_by_order_picks_shader_by_tint_and_draws_ws_after() {
             .iter()
             .all(|d| d.kind == DrawKind::NoVao { vertex_count: 6 })
     );
+    // Every screen/world-space image preserves the requested array layer.
+    assert_eq!(l.image_views.len(), 5);
+    for (_, view) in &l.image_views {
+        let view = view.expect("explicit UI image view");
+        assert_eq!(view.view_type, Some(1));
+        assert_eq!(view.base_layer, 2);
+        assert_eq!(view.layer_count, Some(1));
+    }
     // 没有 bind_common：不会绑定颜色库缓冲。
     assert!(s.buffer_slots.is_empty());
     assert_eq!(MEI_TEMP_FORMAT, 0x2b);

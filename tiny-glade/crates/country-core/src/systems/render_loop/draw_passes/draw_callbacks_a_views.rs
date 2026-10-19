@@ -10,19 +10,10 @@ use glam::{Quat, Vec3};
 // 视图 / stub 类型（只含被读字段；偏移为机器码观测）
 // =====================================================================================================================
 
-/// `components::drawable::AlbedoMap`（TypeId 0xed4361819ec3a729/0xc98cd7c5754ff3d7；真实类型 `(pub Gap)`）：`u64 @+0`
-/// = `TextureFromDisk` 文件键。
-#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct AlbedoMapView(pub u64);
-
-/// `AlphaMap`（TypeId 0x028b8ca353f65821/0x1bedc6589e5297bc）：`u64 @+0` 文件键。**I**：类型名由「含该 TypeId 的 bundle
-/// `component_ids<DrawableMeshBundle, AlbedoMap, AlphaMap, NormalMap>` 里剔除 AlbedoMap/NormalMap」推得。
-#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct AlphaMapView(pub u64);
-
-/// `components::NormalMap`（TypeId 0x83098c3ec284caf1/0x6530b452db618923；真实类型 `(pub Gap)`）：`u64 @+0` 文件键。
-#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct NormalMapView(pub u64);
+// Preserve old callback import paths while reading the real startup-owned
+// components. Re-exporting tuple constructors keeps existing callers intact.
+pub use crate::components::NormalMap as NormalMapView;
+pub use crate::components::drawable::{AlbedoMap as AlbedoMapView, AlphaMap as AlphaMapView};
 
 /// `components::WallFlagCloth`（TypeId 0x0e2c5c63fb76ee91/0xc662ff3d29b2c8d6；真实类型 `(pub Gap)`）：
 /// `i32 @+0`、`f32 @+4/+8/+0xc`、`bool @+0x10`。
@@ -63,9 +54,9 @@ pub struct ArrowGizmoView {
 // 保留旧导出名，绘制端与创建端必须使用同一个 ECS 组件身份。
 pub use crate::components::DashedLineLength as DashedLineLengthView;
 
-/// `resources::critters::sheep::Sheep`（TypeId 0x60556123d75da34f/0x847d370ca9cbbae9；crate 里不存在）：
+/// `resources::critters::sheep::Sheep` rendering payload projection (the actual ECS owners are Sheep + SheepWalkRecord)：
 /// `qword @+0x28`（取低 32 位写 `i32`）、`f32 @+0x58`、`u8 @+0x60`（写 `bool`）。
-#[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct SheepView {
     pub q28: u64,
     pub f58: f32,
@@ -74,12 +65,7 @@ pub struct SheepView {
 
 /// `components::drawable::PrevTransform`（TypeId 0xa0da022fc84ca3d9/0xfc62e38c26a7c4c9）：`Transform` 布局
 /// （旋转 @0、平移 @0x10、缩放 @0x1c）。
-#[derive(Component, Clone, Copy, Debug, PartialEq)]
-pub struct PrevTransformView {
-    pub rotation: Quat,
-    pub translation: Vec3,
-    pub scale: Vec3,
-}
+pub use crate::components::drawable::PrevTransform as PrevTransformView;
 
 /// Compatibility name for the same canonical Component identity. No byte cast
 /// or independently registered View remains on the startup -> draw path.
@@ -87,12 +73,7 @@ pub use crate::components::rendering::StairsStep as StairsStepView;
 
 /// `geometry::instanced_wall::WallBrickInstancedDrawProxy`（组件）：三个字节 `b0 @+0`、`b1 @+1`、`b2 @+2`。真实类型
 /// `{ kind: u16, sub: u8 }` 的字节对应关系 U，故用视图。
-#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct WallBrickInstancedDrawProxyView {
-    pub b0: u8,
-    pub b1: u8,
-    pub b2: u8,
-}
+pub use crate::geometry::instanced_wall::WallBrickInstancedDrawProxy as WallBrickInstancedDrawProxyView;
 
 /// `LogoAnimation`（TypeId 0x98df08dcfa7ea5ba/0x67b117a60e632bc3；真实类型无 `Resource` 派生）：`f32 @+0`、`f32 @+0x10`。
 #[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]

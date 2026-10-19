@@ -6,9 +6,8 @@
 //!    `ambience_volume` @+0xc（4 × f32）。
 //!  * `GameConfig::default`（0x140914880）在 audio 槽 @+0xf8 写 4 × 1.0f。
 //!
-//! 注意：`systems::audio::audio_update::AudioSettings` 是此前按 VCA 读取面
-//! 建的 5 音量占位，与本原类型不是同一实体；本类型按原 serde 面落地，
-//! 解锁条件：audio_update 改用本类型后删除那份占位。
+//! 音频更新直接读取 GameConfig.audio；Music 与 Music-DawnJingle 共用
+//! music_volume，同一四字段权威状态也供设置页面序列化。
 
 use bevy_ecs::resource::Resource;
 use serde::{Deserialize, Serialize};

@@ -1,12 +1,49 @@
-//! `toolbar::toolbar_update` 资源/系统面（依赖线使能，2026-10-17）。
+//! `toolbar::toolbar_update` per-frame update chain.
 //!
-//! 本批只落 `ToolbarSizeMult` 资源（`render_taffy_ui_to_widgets` 13 参之一的
-//! `Res<ToolbarSizeMult>`）。其余 `toolbar_update` 系统
-//! （`toolbar_button_size_and_padding_update` 0x141eaec50、
-//! `taffy_update_drawables` 0x142340d20、`taffy_finalize_element_size` 0x142340890）
-//! 仍未实现（见 RESTORE.md）。
+//! Fresh evidence (2026-10-19, B patched EXE):
+//! - `toolbar_button_size_and_padding_update` 0x141eaec50, PDB body 3563 B,
+//!   decompiled in `evidence/round11/tbd-jobs/decomp/141eaec50.c`;
+//!   PDB structures give the exact system signature
+//!   `fn(Query<(&mut TaffyNode, Option<&ShowOnlyInPhotomode>), With<ToolbarExpand>>,
+//!   Res<ToolbarLayout>, Res<PhotomodeToolbarLayout>, ResMut<TaffyLayout>,
+//!   Res<GameConfig>, Res<ToolbarSizeMult>)`.
+//!   Decoded body:
+//!   1. `gap = GameConfig.ui.icon_size_mult(+0xE8) * 10.0 * ToolbarSizeMult`
+//!      (`MOVSS [rax+0xE8]; MULSS 10.0; MULSS [mult]`).
+//!   2. For each of the two toolbar contexts (normal, photomode), walk the
+//!      query.  In the **normal** context only, every node *without*
+//!      `ShowOnlyInPhotomode` gets its one-frame multiplier scaled by
+//!      `lerp(0.8, 1.0, BackOut::apply(ctx+0x28))`
+//!      (`((1.0 - ease)*0.8 + ease) * scale`, constants 0x142a16cb8=0.8,
+//!      0x142925904=1.0, easing static 0x142f986e4 has discriminant 5 = BackOut).
+//!   3. `taffy_mut_style<closure_env$1>` 0x142375db0 writes
+//!      `Style.gap = Size { Points(gap), Points(gap) }` on `ctx+0x20` (four
+//!      dwords `{0, gap, 0, gap}` at Style+0xA8, verified by an offset probe
+//!      against taffy 0.3.13: Style::gap @0xA8, LengthPercentage tag 0 =
+//!      Points).
+//!   4. For every contextual-menu record with a live node, the same gap is
+//!      written to each direct taffy child (`TaffyLayout::children` +
+//!      `taffy::style`/`set_style`).
+//!
+//! `toolbar_size_mult_update` (inline, source line 28) is **U**: PDB gives
+//! five inline instances with signature `fn(Res<GameConfig>, Res<WindowSize>,
+//! ResMut<ToolbarSizeMult>)` and records two `f32::min` + `set_changed`
+//! inlines, but the inlined body lives inside Bevy's generic
+//! `FunctionSystem::run_unsafe` monomorph and has no physical procedure with a
+//! recoverable operand list.  The exact `min` operands are therefore not
+//! fabricated here; see the round-11 TB-D delivery U-list.
 
-use bevy_ecs::prelude::Resource;
+use bevy_ecs::prelude::*;
+use country_core::game_config::GameConfig;
+use taffy::geometry::Size;
+use taffy::style::LengthPercentage;
+use utils::easing_functions::EasingFunction;
+
+use crate::resouces_and_components::{
+    ShowOnlyInPhotomode, TaffyNode, ToolbarExpand,
+    taffy_layout::TaffyLayout,
+    toolbar_layout::{PhotomodeToolbarLayout, ToolbarContext, ToolbarLayout},
+};
 
 /// 工具栏尺寸倍率（O：`toolbar::toolbar_update::ToolbarSizeMult`；
 /// `render_taffy_ui_to_widgets` 0x142338990 fresh 反编译中作为 `f32` 读入
@@ -17,4 +54,62 @@ use bevy_ecs::prelude::Resource;
 pub struct ToolbarSizeMult {
     /// 尺寸倍率（f32@+0）。
     pub multiplier: f32,
+}
+
+/// Native `toolbar_button_size_and_padding_update` 0x141eaec50.
+///
+/// The multiplier stored at `TaffyNode+0x10` is read one frame later by
+/// `taffy_finalize_element_size`; the gap writes feed the next
+/// `taffy_perform_layout`.
+pub fn toolbar_button_size_and_padding_update(
+    mut nodes: Query<(&mut TaffyNode, Option<&ShowOnlyInPhotomode>), With<ToolbarExpand>>,
+    toolbar: Res<ToolbarLayout>,
+    photomode: Res<PhotomodeToolbarLayout>,
+    mut layout: ResMut<TaffyLayout>,
+    config: Res<GameConfig>,
+    mult: Res<ToolbarSizeMult>,
+) {
+    // `fStack_d4 = *(f32*)(config+0xE8) * 10.0 * *mult` (0x141eaf0xx).
+    let gap = config.ui.icon_size_mult * 10.0 * mult.multiplier;
+
+    for (context, is_photomode) in [
+        (&*toolbar as &dyn ToolbarContext, false),
+        (&*photomode as &dyn ToolbarContext, true),
+    ] {
+        // Native only runs the shrink easing for the normal toolbar context
+        // (`(char)puStack_d0 == 0`); the photomode pass is gap-only.
+        if !is_photomode {
+            let ease = EasingFunction::BackOut.apply(context.scale_progress());
+            let factor = (1.0 - ease) * 0.8 + ease;
+            for (mut node, show_only_in_photomode) in &mut nodes {
+                // Native condition: optional component absent.
+                if show_only_in_photomode.is_none() {
+                    let scale = node.scale();
+                    node.set_scale(factor * scale);
+                }
+            }
+        }
+        // `taffy_mut_style<closure_env$1>` on the context root (+0x20).
+        layout.style_mut(context.node_b(), |style| {
+            style.gap = Size {
+                width: LengthPercentage::Points(gap),
+                height: LengthPercentage::Points(gap),
+            };
+        });
+        // Native: for every contextual-menu record with a node, re-read each
+        // child style and set the same gap (`TaffyLayout::children` deps).
+        for menu in context.contextual_menus() {
+            if menu.node == taffy::node::Node::default() {
+                continue;
+            }
+            for child in layout.children(menu.node) {
+                layout.style_mut(child, |style| {
+                    style.gap = Size {
+                        width: LengthPercentage::Points(gap),
+                        height: LengthPercentage::Points(gap),
+                    };
+                });
+            }
+        }
+    }
 }

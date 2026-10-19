@@ -40,6 +40,21 @@ pub fn calculate_hash<T: Hash>(value: &T) -> u64 {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
 pub struct GlobalId(pub u64);
 
+/// Original `find_node_path` (inline, 2 instances; host
+/// `process_input_action_handlers`): walk the child→parent table from `focus`
+/// to the root, then reverse so the result is root→focus. Native always calls
+/// `slice::reverse`, which is a no-op for a single element.
+pub fn find_node_path(parents: &HashMap<GlobalId, GlobalId>, focus: GlobalId) -> Vec<GlobalId> {
+    let mut path = vec![focus];
+    let mut current = focus;
+    while let Some(&parent) = parents.get(&current) {
+        path.push(parent);
+        current = parent;
+    }
+    path.reverse();
+    path
+}
+
 impl GlobalId {
     /// 名字节点 id：`calculate_hash((name, ())) ^ GLOBAL_ID_MASK`（零键 SipHasher13）。
     /// `<String>` 单态（new_at_pos<String> 0x142289f80）经 `WidgetId::from_name`
@@ -107,6 +122,30 @@ pub struct NodeDrawContext<'a> {
     pub state: u8,
 }
 
+impl NodeDrawContext<'_> {
+    /// Original `RenderContext::draw_rect` (inline, 10 instances; deps:
+    /// `Vec2::sub` + `[f32;2]` conversion). The native helper converts the
+    /// center/extent pair to an origin then emits the encoded rect; this
+    /// projection keeps the caller parameters explicit (I: exact parameter
+    /// order U).
+    pub fn draw_rect(
+        &mut self,
+        center: Vec2,
+        extent: Vec2,
+        opacity: f32,
+        shapes: &tg_text::RawShapeStream,
+    ) {
+        self.text
+            .rect(
+                (center - extent * 0.5).to_array(),
+                extent.to_array(),
+                opacity,
+                shapes,
+            )
+            .expect("draw MEI rect");
+    }
+}
+
 /// 节点内容 trait（O：NodeContent 虚表 +0x30=type_name、+0x40=interactive、
 /// +0x48=process_input_action、+0x50=on_input、+0x58=pre_update、
 /// +0x60=prepare_layout、+0x68=render）。`draw` is the Rust spelling of the
@@ -135,6 +174,12 @@ pub trait NodeContent: std::any::Any + Send + Sync {
     fn on_input(&mut self, action: &ActionSetAction) -> bool {
         let _ = action;
         false
+    }
+    /// Original vtable+50 receives the capture/bubble phase and whether a
+    /// descendant handled the action. Keep the legacy adapter for old content.
+    fn on_input_phase(&mut self, action: &ActionSetAction, phase: [bool; 2]) -> bool {
+        let _ = phase;
+        self.on_input(action)
     }
     /// 帧前更新（vtable +0x58）。O：mei_pre_update 0x140684? 对每个节点调用
     /// `(&MeiContext.actions, {&cursor_units, &mut node.state_bits})`。
@@ -369,10 +414,10 @@ impl Node {
         self.flags = (nav as u8) << 5 | (self.flags & !NodeFlags::WITH_NAV);
     }
 
-    /// O 0x140683c80：物理函数 `return;`（语义：点击消费标记，体为 no-op）。
-    /// **判等**（物理空壳）。
-    pub fn used(&mut self) {
-        // 物理函数为空壳 return;；used 语义由 safe_frame +0x5d=0 表达。
+    /// B RNE0x140683c80/11B: testb $0x30,+0xb6; setne al; ret.
+    /// Pointer/key activation is a predicate; this does not mutate the node.
+    pub fn used(&self) -> bool {
+        self.state_bits & 0x30 != 0
     }
 
     /// O 0x140683c90：hover getter 内联（物理 return;）；state bit0。**重建**（I）。
@@ -450,7 +495,7 @@ pub struct MeiContext {
     pub click_action: DigitalActionState,
     /// 光标（mei 单元 = 屏幕像素 / (window_height/1000)，O：mei+0x268 双 f32）。
     pub cursor_units: Vec2,
-    /// `Time::elapsed_secs_wrapped`（O：mei+0x270 = `Time+0x58` f32）。
+    /// Legacy source name; actual `Time::delta_secs` (B Time+0x58).
     pub elapsed_wrapped: f32,
 }
 
@@ -499,10 +544,13 @@ impl MeiContext {
         self.nodes.get_mut(&id).unwrap()
     }
 
-    /// Original140f99230: enqueue once when this current-frame root is first
-    /// created. `test dl,1` tests the helper's `existed` return, not id parity.
-    pub fn safe_frame(&mut self, name: &str, opaque: bool) -> NodeContext {
-        let id = GlobalId::new(name);
+    /// Original MeiContext::new_root (inline, 85 instances): shared root
+    /// creation used by fullscreen/safe_frame/new_at_pos/new_relative.
+    fn new_root(&mut self, kind: FrameKind, name: &str, opaque: bool) -> NodeContext {
+        self.new_root_with_id(kind, GlobalId::new(name), opaque)
+    }
+
+    fn new_root_with_id(&mut self, kind: FrameKind, id: GlobalId, opaque: bool) -> NodeContext {
         let existed = self.nodes.contains_key(&id);
         let node = self.reuse_or_create_node(id);
         node.style.align = 0;
@@ -510,9 +558,27 @@ impl MeiContext {
             node.flags = NodeFlags::FORCE_INTERACTIVE;
         }
         if !existed {
-            self.frame_events.push(FrameEvent::safe(id));
+            self.frame_events.push(FrameEvent { kind, id });
         }
         NodeContext::new(self, id)
+    }
+
+    /// Original MeiContext::fullscreen (inline, 12 instances): a full-window
+    /// root that blocks input.
+    pub fn fullscreen(&mut self, name: &str) -> NodeContext {
+        self.new_root(FrameKind::FullWindow, name, true)
+    }
+
+    /// Original MeiContext::fullscreen_without_block_input (inline, 4
+    /// instances): a full-window root that does not set FORCE_INTERACTIVE.
+    pub fn fullscreen_without_block_input(&mut self, name: &str) -> NodeContext {
+        self.new_root(FrameKind::FullWindow, name, false)
+    }
+
+    /// Original140f99230: enqueue once when this current-frame root is first
+    /// created. `test dl,1` tests the helper's `existed` return, not id parity.
+    pub fn safe_frame(&mut self, name: &str, opaque: bool) -> NodeContext {
+        self.new_root(FrameKind::Safe, name, opaque)
     }
 
     /// Original140f992e0: position, optional size and anchor are independent
@@ -525,19 +591,56 @@ impl MeiContext {
         anchor: Vec2,
         opaque: bool,
     ) -> NodeContext {
-        let id = GlobalId::new(name);
-        let existed = self.nodes.contains_key(&id);
-        let node = self.reuse_or_create_node(id);
-        node.style.align = 0;
-        if opaque {
-            node.flags = NodeFlags::FORCE_INTERACTIVE;
-        }
-        if !existed {
-            self.frame_events
-                .push(FrameEvent::at_pos(id, position, requested_size, anchor));
-        }
-        NodeContext::new(self, id)
+        self.new_root(
+            FrameKind::AtPos {
+                position,
+                requested_size,
+                anchor,
+            },
+            name,
+            opaque,
+        )
     }
+    /// Original relative-frame source adapter. All five native payload fields
+    /// are retained; new_root supplies the same per-frame reuse/event lifecycle
+    /// as fullscreen, safe_frame and new_at_pos.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new_relative(
+        &mut self,
+        name: &str,
+        relative_to: GlobalId,
+        requested_size: Option<Vec2>,
+        offset: Vec2,
+        reference_anchor: Vec2,
+        anchor: Vec2,
+        opaque: bool,
+    ) -> NodeContext {
+        self.new_root(
+            FrameKind::Relative { requested_size, relative_to, offset, reference_anchor, anchor },
+            name,
+            opaque,
+        )
+    }
+
+    /// Original decorators supply a tuple-derived global ID rather than a name.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new_relative_with_id(
+        &mut self,
+        id: GlobalId,
+        relative_to: GlobalId,
+        requested_size: Option<Vec2>,
+        offset: Vec2,
+        reference_anchor: Vec2,
+        anchor: Vec2,
+        opaque: bool,
+    ) -> NodeContext {
+        self.new_root_with_id(
+            FrameKind::Relative { requested_size, relative_to, offset, reference_anchor, anchor },
+            id,
+            opaque,
+        )
+    }
+
     pub fn new_at_pos_string(
         &mut self,
         name: String,
@@ -726,11 +829,15 @@ impl MeiContext {
         {
             let path = entry.path();
             if path.extension().and_then(|s| s.to_str()) == Some("ron") {
-                if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
+                if let Ok(relative) = path.strip_prefix(dir) {
+                    let key = relative
+                        .with_extension("")
+                        .to_string_lossy()
+                        .replace('\\', "/");
                     let config = crate::mei::config::read_node_config_from_file(path)
                         .unwrap_or_else(|e| panic!("{}", e));
-                    log::info!("Loaded UI config from {stem}");
-                    self.configs.insert(stem.to_string(), Arc::new(config));
+                    log::info!("Loaded UI config from {key}");
+                    self.configs.insert(key, Arc::new(config));
                 }
             }
         }
@@ -748,40 +855,35 @@ impl MeiContext {
     ///    `handled=1` 返回。
     /// 4. 返回 `handled`。
     ///
-    /// `Vec` 反向 + 双遍 + 两字节状态线程均按 fresh 重建；`on_input` 的
-    /// 2 B 状态实参尚未进入 `NodeContent` trait（U：当前唯一实现是空壳
-    /// `EmptyContent`，无行为差）。
+    /// Capture truncates the bubbling prefix to the handler, as at140688386;
+    /// every callback receives the original two-byte phase state.
     pub fn process_input_action_handlers(
         &mut self,
         focus_id: GlobalId,
         action: &ActionSetAction,
     ) -> bool {
-        let mut chain = vec![focus_id];
-        let mut current = focus_id;
-        while let Some(&parent) = self.parents.get(&current) {
-            chain.push(parent);
-            current = parent;
-        }
-        chain.reverse();
+        let chain = find_node_path(&self.parents, focus_id);
 
         let mut handled = false;
-        for id in chain.iter() {
+        let mut bubble_len = chain.len();
+        for (index, id) in chain.iter().enumerate() {
             if self.parents.is_empty() {
                 break;
             }
             if let Some(node) = self.nodes.get_mut(id) {
-                if node.content.on_input(action) {
+                if node.content.on_input_phase(action, [false, false]) {
                     handled = true;
+                    bubble_len = index + 1;
                     break;
                 }
             }
         }
-        for id in chain.iter().rev() {
+        for id in chain[..bubble_len].iter().rev() {
             if self.parents.is_empty() {
                 break;
             }
             if let Some(node) = self.nodes.get_mut(id) {
-                if node.content.on_input(action) {
+                if node.content.on_input_phase(action, [true, handled]) {
                     handled = true;
                     break;
                 }
@@ -898,6 +1000,38 @@ impl NodeContext {
             .expect("MEI node content has a different concrete type")
     }
 
+    /// Original `content_mut` (inline, 223 instances): mutable typed content,
+    /// initializing an empty owner as `get_content_mut_impl(false)`.
+    pub fn content_mut<T: crate::mei::widgets::DefaultNodeContent>(&self) -> &mut T {
+        self.get_content_mut_impl::<T>(false)
+    }
+
+    /// Original `get_content_impl` (inline, 12 instances; deps:
+    /// `downcast_ref` + `Option::expect`): read-only typed content.
+    pub fn get_content_impl<T: crate::mei::widgets::DefaultNodeContent>(&self) -> &T {
+        let any: &dyn std::any::Any = self.node().content.as_ref();
+        any.downcast_ref::<T>()
+            .expect("MEI node content has a different concrete type")
+    }
+
+    /// Original `child_with_content` (inline, 119 instances; direct deps:
+    /// `NodeContext::child` + `get_content_mut_impl`): named child with a
+    /// typed content owner initialized when absent.
+    pub fn child_with_content<T: crate::mei::widgets::DefaultNodeContent>(
+        &self,
+        name: &str,
+    ) -> NodeContext {
+        let child = self.child(name);
+        child.get_content_mut_impl::<T>(false);
+        child
+    }
+
+    /// Original `into_child` (inline, 4 instances): same construction as
+    /// `into_child_with_global_id` for a computed child id.
+    pub fn into_child(&self, child: GlobalId) -> NodeContext {
+        self.into_child_with_global_id(child)
+    }
+
     /// O 0x1406861b0 `child_with_global_id(child)`：先 `reuse_or_create_node(child)`
     /// 创建/取得子节点；再探**父**节点表（self.id），**缺失→unwrap_failed panic**
     /// （FIX 1：不静默创建父节点），命中把子 id append 到父 children；返回
@@ -968,16 +1102,14 @@ impl NodeContext {
         self.node_mut().with_nav(nav);
     }
 
-    /// O 0x140683ce0 `NodeContext::hover(&self)`：探表确保节点存在（命中即 return，
-    /// 缺失 panic；物理函数不写返回值）。**判等**。
-    pub fn hover(&self) {
-        let _ = self.node();
+    /// B140683ce0: checked node lookup, then state_bits &1 in AL.
+    pub fn hover(&self) -> bool {
+        self.node().hover()
     }
 
-    /// O 0x140683dd0 `NodeContext::interaction(&self)`：同 hover，确保节点存在。
-    /// **判等**。
-    pub fn interaction(&self) {
-        let _ = self.node();
+    /// B140683dd0: checked node lookup, then the complete interaction byte.
+    pub fn interaction(&self) -> u8 {
+        self.node().state_bits
     }
 }
 
@@ -1058,5 +1190,52 @@ mod tests {
         assert_eq!(root.node().pos, Vec2::new(80., 70.));
         assert_eq!(child.node().pos, Vec2::new(80., 70.));
         assert_eq!(child.node().z, 4.);
+    }
+
+    /// O: find_node_path walks child→parent then reverses to root→focus.
+    #[test]
+    fn find_node_path_reverses_parent_chain() {
+        let mut parents = std::collections::HashMap::new();
+        parents.insert(GlobalId(3), GlobalId(2));
+        parents.insert(GlobalId(2), GlobalId(1));
+        assert_eq!(
+            find_node_path(&parents, GlobalId(3)),
+            vec![GlobalId(1), GlobalId(2), GlobalId(3)]
+        );
+        assert_eq!(find_node_path(&parents, GlobalId(1)), vec![GlobalId(1)]);
+    }
+
+    /// O: fullscreen enqueues FullWindow; the without_block_input variant
+    /// leaves FORCE_INTERACTIVE clear.
+    #[test]
+    fn fullscreen_variants_share_root_creation() {
+        let mut mei = MeiContext::default();
+        let blocking = mei.fullscreen("menu");
+        assert_eq!(blocking.node().flags, NodeFlags::FORCE_INTERACTIVE);
+        let passive = mei.fullscreen_without_block_input("menu-passive");
+        assert_eq!(passive.node().flags, 0);
+        assert_eq!(mei.frame_events.len(), 2);
+        assert!(
+            mei.frame_events
+                .iter()
+                .all(|event| event.kind == FrameKind::FullWindow)
+        );
+    }
+
+    /// O: child_with_content = child(typed id) + content_mut initialization.
+    #[test]
+    fn child_with_content_initializes_typed_owner_once() {
+        use crate::mei::widgets::FrameContent;
+        let mut mei = MeiContext::default();
+        let root = mei.safe_frame("root", false);
+        let child = root.child_with_content::<FrameContent>("frame");
+        assert_eq!(root.node().children, vec![child.id]);
+        let first = child.content_mut::<FrameContent>() as *mut FrameContent;
+        let second = child.content_mut::<FrameContent>() as *mut FrameContent;
+        assert_eq!(first, second);
+        assert_eq!(
+            child.get_content_impl::<FrameContent>().type_name(),
+            "toolbar::mei::widgets::FrameContent"
+        );
     }
 }

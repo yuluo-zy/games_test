@@ -185,6 +185,7 @@ pub fn collect_resource_access_range_with_policy(
         // Any active binding to this same range still consumes its contents.
         merge_content_policy(
             &mut entries[previous_index],
+            reads_previous,
             contents_unused,
             allow_undefined_contents,
         );
@@ -199,6 +200,7 @@ pub fn collect_resource_access_range_with_policy(
                 entries[previous_index].access_code = 0x1e;
                 merge_content_policy(
                     &mut entries[previous_index],
+                    reads_previous,
                     contents_unused,
                     allow_undefined_contents,
                 );
@@ -210,6 +212,7 @@ pub fn collect_resource_access_range_with_policy(
                 entries[previous_index].access_code = 0x02;
                 merge_content_policy(
                     &mut entries[previous_index],
+                    reads_previous,
                     contents_unused,
                     allow_undefined_contents,
                 );
@@ -259,7 +262,16 @@ pub fn collect_resource_access_range_with_policy(
 // A normal content-consuming alias must win over a permissive read, while
 // an inactive alias imposes no content requirement of its own. Keep the native
 // access-code/group merging rules above independent of this source capability.
-fn merge_content_policy(previous: &mut AccessDeclaration, unused: bool, allow_undefined: bool) {
+fn merge_content_policy(
+    previous: &mut AccessDeclaration,
+    reads_previous: bool,
+    unused: bool,
+    allow_undefined: bool,
+) {
+    // Aliases of this exact range/version retain every previous-content
+    // dependency in either order. Do not erase inactive/undefined evidence:
+    // the normal graph contract still rejects preserving metadata on reads.
+    previous.reads_previous |= reads_previous;
     let requires_defined = (!previous.contents_unused && !previous.allow_undefined_contents)
         || (!unused && !allow_undefined);
     previous.contents_unused &= unused;

@@ -35,22 +35,60 @@ pub struct AnchoredNode {
 #[derive(Resource, Default)]
 pub struct TaffyLayout {
     pub taffy: Taffy,
+    /// Root nodes registered through `TaffyNodeBuilder::root` (O: two Vec
+    /// pushes in the builder; consumed by toolbar_alignment/perform_layout).
+    pub roots: Vec<Node>,
     pub anchored: Vec<AnchoredNode>,
 }
 
 impl TaffyLayout {
+    /// Original `add_node` (inline, 16 instances; deps: `Result::unwrap`):
+    /// create a taffy leaf from the caller's style and return the builder.
+    pub fn add_node(&mut self, style: Style) -> TaffyNodeBuilder<'_> {
+        let node = self.taffy.new_leaf(style).unwrap();
+        TaffyNodeBuilder { layout: self, node }
+    }
+
+    /// Original `roots` (inline, 4 instances): registered root slice.
+    pub fn roots(&self) -> &[Node] {
+        &self.roots
+    }
+
+    /// Original `roots_mut` (inline, 2 instances): mutable root slice.
+    pub fn roots_mut(&mut self) -> &mut Vec<Node> {
+        &mut self.roots
+    }
+
+    /// Original `root_mut` (inline, 3 instances; deps: `slice::iter::find` +
+    /// slotmap equality): find the registered root by node id.
+    pub fn root_mut(&mut self, node: Node) -> &mut Node {
+        self.roots
+            .iter_mut()
+            .find(|root| **root == node)
+            .expect("taffy root node missing")
+    }
+
+    /// Original `layout` (inline, 4 instances): computed layout of a node.
+    pub fn layout(&self, node: Node) -> &taffy::layout::Layout {
+        self.taffy.layout(node).expect("taffy node layout")
+    }
+
+    /// Original `children` (inline, 8 instances): direct children of a node.
+    /// The pinned taffy 0.3.13 inherent method returns an owned Vec.
+    pub fn children(&self, node: Node) -> Vec<Node> {
+        self.taffy.children(node).expect("taffy node children")
+    }
+
     pub fn style(&self, node: Node) -> &Style {
         self.taffy.style(node).expect("taffy node style")
     }
 
     /// Native taffy_mut_style: clone the actual dependency style, edit, then
     /// set_style so its dirty/cache protocol remains the pinned dependency's.
+    /// Real consumer of `toolbar_systems::taffy_mut_style` (the ten native
+    /// monomorphizations collapse to this generic helper).
     pub fn style_mut(&mut self, node: Node, update: impl FnOnce(&mut Style)) {
-        let mut style = self.style(node).clone();
-        update(&mut style);
-        self.taffy
-            .set_style(node, style)
-            .expect("set taffy node style");
+        crate::toolbar_systems::taffy_mut_style(&mut self.taffy, node, update);
     }
 
     /// Original 0x141e4c6c0. `scale` is icon_size_mult * ToolbarSizeMult.
@@ -107,6 +145,58 @@ impl TaffyLayout {
             };
             make_layout_absolute(&mut self.taffy, entry.node, origin);
         }
+    }
+}
+
+/// Original `TaffyNodeBuilder` (source lines 160..192). It temporarily binds a
+/// freshly created taffy node to its layout resource and consumes itself when
+/// the destination (root/anchor/child edge) is chosen.
+/// I: native field/parameter order U; semantics are the three Vec/add_child
+/// consumers recorded in the PDB dependency annotations.
+pub struct TaffyNodeBuilder<'a> {
+    layout: &'a mut TaffyLayout,
+    node: Node,
+}
+
+impl TaffyNodeBuilder<'_> {
+    /// Original `root` (inline, 4 instances; two `Vec::push`): register the
+    /// node as a root and return it.
+    pub fn root(self) -> Node {
+        let TaffyNodeBuilder { layout, node } = self;
+        layout.roots.push(node);
+        node
+    }
+
+    /// Original `anchored_to` (inline, 2 instances; `Vec::push`): append one
+    /// `AnchoredNode` record and return the node.
+    pub fn anchored_to(
+        self,
+        order: u64,
+        offset: Vec2,
+        relative_to: Node,
+        gap: f32,
+        side: AnchorSide,
+    ) -> Node {
+        let TaffyNodeBuilder { layout, node } = self;
+        layout.anchored.push(AnchoredNode {
+            order,
+            offset,
+            node,
+            relative_to,
+            gap,
+            side,
+        });
+        node
+    }
+
+    /// Original `child_of` (inline, 12 instances; `add_child(...).unwrap()`).
+    pub fn child_of(self, parent: Node) -> Node {
+        let TaffyNodeBuilder { layout, node } = self;
+        layout
+            .taffy
+            .add_child(parent, node)
+            .expect("taffy add_child");
+        node
     }
 }
 
@@ -169,6 +259,27 @@ mod tests {
             let actual = layout.taffy.layout(node).unwrap();
             assert_eq!(Vec2::new(actual.location.x, actual.location.y), expected);
         }
+    }
+
+    /// O: add_node -> child_of/root/anchored_to push the real taffy edge and
+    /// the two registration vectors.
+    #[test]
+    fn builder_registers_roots_children_and_anchors() {
+        let mut layout = TaffyLayout::default();
+        let root = layout.add_node(Style::default()).root();
+        let child = layout
+            .add_node(Style::default())
+            .child_of(root);
+        let anchored = layout
+            .add_node(Style::default())
+            .anchored_to(3, Vec2::new(1.0, 2.0), root, 4.0, AnchorSide::Below);
+        assert_eq!(layout.roots(), &[root][..]);
+        assert_eq!(*layout.root_mut(root), root);
+        assert_eq!(layout.children(root), vec![child]);
+        assert_eq!(layout.anchored.len(), 1);
+        assert_eq!(layout.anchored[0].node, anchored);
+        assert_eq!(layout.anchored[0].side, AnchorSide::Below);
+        assert_eq!(layout.layout(child).size.width, 0.0);
     }
 }
 

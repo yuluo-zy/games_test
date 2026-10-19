@@ -2123,9 +2123,9 @@ impl VulkanGraphSession {
 
     /// Restore the same actual named owners into the App's original idle
     /// session. It never merges two histories or overwrites live GPU work.
-    pub fn adopt_completed_named_resources(
-        &mut self,
-        completed: CompletedNamedResources,
+    pub fn validate_completed_named_resources_adoption(
+        &self,
+        completed: &CompletedNamedResources,
     ) -> crate::Result<()> {
         if self.active_prepared.is_some()
             || !self.pending.is_empty()
@@ -2153,6 +2153,17 @@ impl VulkanGraphSession {
         for resource in completed.named.resources.resources.values() {
             resource.check_device(&self.backend.device)?;
         }
+        Ok(())
+    }
+
+    /// Consume a completed owner's cache only after all adoption checks succeed.
+    /// Call the borrowed validation first when retaining the transfer on failure
+    /// is required by an application-owned one-shot channel.
+    pub fn adopt_completed_named_resources(
+        &mut self,
+        completed: CompletedNamedResources,
+    ) -> crate::Result<()> {
+        self.validate_completed_named_resources_adoption(&completed)?;
         for (token, family) in completed.families {
             self.backend.import_families.insert(token, family);
         }
@@ -2580,6 +2591,9 @@ impl VulkanGraphSession {
             self.active_prepared = Some(graph_id);
         } else {
             named.state.abandon_frame();
+            if named.graph_id == Some(graph_id) {
+                named.graph_id = None;
+            }
             self.result_cache.abort(graph_id);
             self.cancel_presentation_of(graph_id);
         }
@@ -2619,6 +2633,7 @@ impl VulkanGraphSession {
         let result = run_retire_callbacks(frame.retire);
         if let Some(named) = &mut self.named {
             named.state.abandon_frame();
+            named.graph_id = None;
         }
         self.collect_frame_imports();
         result
@@ -3086,6 +3101,11 @@ impl VulkanGraphSession {
                     }
                 }
             }
+        }
+        // The declaration was consumed regardless of submit success. Pending
+        // GPU work and committed history have their own independent owners.
+        if let Some(named) = &mut self.named {
+            named.graph_id = None;
         }
         self.collect_frame_imports();
         result

@@ -313,6 +313,8 @@ pub enum NextSessionKind {
     LoadSavedGame = 0x8000_0000_0000_0001,
     /// decoded 2：on_load 命令回放 + 内存快照（`NextSession::load` 默认）。
     LoadOnLoad = 0x8000_0000_0000_0002,
+    /// Load UI already parsed this save; the request owns the complete result.
+    LoadParsedGame = 0x8000_0000_0000_0003,
 }
 impl NextSessionKind {
     pub const fn decoded(self) -> u64 {
@@ -370,6 +372,9 @@ pub struct NextSession {
     /// +0x78..+0x98：`create` 的 32B 尾部载荷（4 qword，字段语义 U，原样复制）。
     pub tail_payload: [u64; 4],
     pub ignore_snapshot: bool,
+    /// Safe owner replacing the native Box+metadata wrapper at +0x30.
+    /// Never put an allocation address in template_payload.
+    parsed_data: Option<Box<crate::systems::save::load_game::ParsedGameData>>,
 }
 
 /// `NextSession::create` 的 96B 模板（O 0x140b46960 rdx 12 qword：`[0]`=kind、
@@ -412,6 +417,7 @@ impl NextSession {
             template_payload: [0; 9],
             tail_payload: [0; 4],
             ignore_snapshot: false,
+            parsed_data: None,
         }
     }
     /// `NextSession::create` 0x140b46960：从 96B 模板（kind/id/载荷）与 32B 尾部构造；
@@ -424,8 +430,38 @@ impl NextSession {
             template_payload: template.payload,
             tail_payload: tail.words,
             ignore_snapshot: false,
+            parsed_data: None,
         }
     }
+    /// Ordinary load, backup restore and theme switch transfer the actual parsed
+    /// result (@141e20d5c..e1a / @140fc4cc3..4d6f), without reopening history.json.
+    pub fn from_parsed(
+        id: SessionId,
+        data: crate::systems::save::load_game::ParsedGameData,
+    ) -> Self {
+        let mut request = Self::load(id);
+        request.kind = NextSessionKind::LoadParsedGame;
+        request.parsed_data = Some(Box::new(data));
+        request
+    }
+
+    /// Borrow the actual owned parse result without cloning or exposing mutation.
+    /// Startup retains the sole consuming operation through take_parsed_data.
+    pub fn parsed_data(&self) -> Option<&crate::systems::save::load_game::ParsedGameData> {
+        self.parsed_data.as_deref()
+    }
+
+    /// Move only after startup has prepared the destination metadata/settings.
+    /// A malformed public template must fail before publishing partial state.
+    pub(crate) fn take_parsed_data(
+        &mut self,
+    ) -> anyhow::Result<Box<crate::systems::save::load_game::ParsedGameData>> {
+        anyhow::ensure!(self.kind == NextSessionKind::LoadParsedGame,
+            "NextSession does not own parsed game data");
+        self.parsed_data.take().ok_or_else(|| anyhow::anyhow!(
+            "NextSession parsed variant has no owned ParsedGameData"))
+    }
+
     /// `NextSession::ignore_snapshot` 0x140b46a20：写 +0x98 bool（builder）。
     pub fn ignore_snapshot(mut self, ignore: bool) -> Self {
         self.ignore_snapshot = ignore;
@@ -476,6 +512,9 @@ impl NextSession {
 pub struct SavedSession {
     pub id: SessionId,
     pub modified: std::time::SystemTime,
+    /// B +0x18, written by load_saved_session_list closure @0x1413285f4:
+    /// is_session_ok_to_load returns tags 0/1/2; the thumbnail shader receives !=0.
+    pub readiness: crate::systems::save::load_completion_checker::SessionLoadReadiness,
     pub screenshot_exists: bool,
     pub loading_background_exists: bool,
 }
@@ -501,34 +540,51 @@ pub struct SavedSessionList {
 /// 构建 `SavedSession`，按修改时间排序（`sort_by_key`，O）。rhapsody 缩略图过滤
 /// 待接入。
 pub fn load_saved_session_list() -> Vec<SavedSession> {
+    load_saved_session_list_in(paths::saves(), None)
+}
+
+/// Native filter_map closure @0x141328260: UUID directory + history.json
+/// regular file + successful history modification time. The optional save
+/// owner's unsaved list participates in the saved readiness byte.
+pub fn load_saved_session_list_in(
+    root: impl AsRef<Path>,
+    unsaved: Option<&crate::systems::save::save_thread::UnsavedFileList>,
+) -> Vec<SavedSession> {
+    use crate::systems::save::load_completion_checker::{
+        SessionLoadReadiness, is_session_ok_to_load_in,
+    };
     let mut sessions = Vec::new();
-    let Ok(entries) = std::fs::read_dir(paths::saves()) else {
+    let Ok(entries) = std::fs::read_dir(root) else {
         return sessions;
     };
     for entry in entries.filter_map(Result::ok) {
         let path = entry.path();
-        if !path.is_dir() {
+        let Some(name) = entry.file_name().to_str().map(str::to_owned) else {
+            continue;
+        };
+        let Ok(uuid) = Uuid::try_parse(&name) else {
+            continue;
+        };
+        let history = path.join("history.json");
+        if !path.is_dir() || !history.is_file() {
             continue;
         }
-        let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+        let Ok(modified) = std::fs::metadata(&history).and_then(|m| m.modified()) else {
             continue;
         };
-        let Ok(uuid) = Uuid::try_parse(name) else {
-            continue;
+        let readiness = match unsaved {
+            Some(unsaved) => is_session_ok_to_load_in(&path, unsaved),
+            None if path.join("loading.tmp").exists() => SessionLoadReadiness::NotReady,
+            None => SessionLoadReadiness::Ok,
         };
-        let modified = entry
-            .metadata()
-            .ok()
-            .and_then(|metadata| metadata.modified().ok())
-            .unwrap_or(std::time::UNIX_EPOCH);
         sessions.push(SavedSession {
             id: SessionId(uuid),
             modified,
+            readiness,
             screenshot_exists: path.join("screenshot.jpg").exists(),
             loading_background_exists: path.join("loading_background.jpg").exists(),
         });
     }
-    // 最近会话在前（"Latest game session " 语义）。
     sessions.sort_by_key(|session| std::cmp::Reverse(session.modified));
     sessions
 }
@@ -591,9 +647,12 @@ impl SessionFlowPlugin {
 /// 匹配原生签名（crate 内刷新逻辑不消费它）。
 pub fn refresh_session_list_system(
     mut list: ResMut<SavedSessionList>,
-    _auto_save: Option<Res<crate::systems::save::save_game::AutoSaveState>>,
+    auto_save: Option<Res<crate::systems::save::save_game::AutoSaveState>>,
 ) {
-    refresh_session_list(&mut list);
+    list.sessions = load_saved_session_list_in(
+        paths::saves(),
+        auto_save.as_ref().map(|save| save.unsaved_files.as_ref()),
+    );
 }
 
 /// DeleteSessionCmd 处理器（O：`fn(EventReader<DeleteSessionCmd>)`）。

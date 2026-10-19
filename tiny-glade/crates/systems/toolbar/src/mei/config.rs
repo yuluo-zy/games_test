@@ -38,17 +38,17 @@ pub enum NodeChild {
 #[serde(deny_unknown_fields)]
 pub struct LabelConfig {
     pub text: String,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_optional")]
     pub color: Option<u32>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_optional")]
     pub align: Option<TextAlign>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_optional")]
     pub font: Option<FontFamily>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_optional")]
     pub size: Option<f32>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_optional")]
     pub max_width: Option<f32>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_optional")]
     pub weight: Option<TextWeight>,
 }
 #[derive(Debug, Clone, Copy, Deserialize)]
@@ -220,6 +220,24 @@ fn slot_id(namespace: GlobalId, name: &str) -> GlobalId {
 
 /// Replace every t!(key) segment, keeping surrounding UTF-8 text. Missing ')'
 /// produces the original visible Invalid t! format diagnostic as the label.
+///
+/// Original name `localize_ui_text_from_config` (inline, 2 instances; deps are
+/// `format!`, `str::find`, slicing and `push_str`). Missing keys fall back to
+/// the lang-lib lookup value.
+pub fn localize_ui_text_from_config(text: &str) -> String {
+    localize_label(text)
+}
+
+/// Original `deserialize_optional` (inline, 19 instances): the transparent
+/// `Option<T>` field seed used by the config/template RON structures.
+pub fn deserialize_optional<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: serde::Deserialize<'de>,
+{
+    Option::<T>::deserialize(deserializer)
+}
+
 fn localize_label(text: &str) -> String {
     let mut rest = text;
     let mut result = String::new();
@@ -398,6 +416,21 @@ mod native_template_tests {
                 .pending_text
                 .as_deref(),
             Some("Title")
+        );
+    }
+
+    /// O: localize_ui_text_from_config replaces t!(key) and keeps text around
+    /// it; an unterminated marker returns the native diagnostic string.
+    #[test]
+    fn localize_ui_text_substitutes_every_t_marker() {
+        assert_eq!(localize_ui_text_from_config("plain"), "plain");
+        let localized = localize_ui_text_from_config("a t!(Some_Key) b t!(Other_Key) c");
+        assert!(localized.starts_with("a "));
+        assert_eq!(localized.matches(" b ").count(), 1);
+        assert!(localized.ends_with(" c"));
+        assert_eq!(
+            localize_ui_text_from_config("t!(unterminated"),
+            "Invalid t! format: t!(unterminated"
         );
     }
 }

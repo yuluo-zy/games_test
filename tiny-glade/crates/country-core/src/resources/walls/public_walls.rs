@@ -259,6 +259,12 @@ impl PublicWalls {
                         self.path_failures.insert(id, error);
                     }
                 }
+                if let Some(old) = self.records.get_mut(&id) {
+                    record.material_stats =
+                        super::material_stats::MaterialStats::for_new_publication(
+                            &mut old.material_stats,
+                        );
+                }
                 self.records.insert(id, record);
                 self.failures.remove(&id);
                 self.last_delta.changed.insert(id);
@@ -286,10 +292,10 @@ pub struct WallPlasters(pub HashMap<WallId, Vec<Option<Entity>>>);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::resources::walls::publication_source::TerrainHeightGrid512;
     use crate::resources::roofs::Roof;
     use crate::resources::roofs::geometry::surface::Curve2;
     use crate::resources::walls::WallState;
+    use crate::resources::walls::publication_source::TerrainHeightGrid512;
     use crate::systems::wall::valid_enclosure::{Shape, ShapeParameters};
 
     fn curve() -> Curve2 {
@@ -319,25 +325,29 @@ mod tests {
         public.associate_roof(WallId(1), Entity::from_raw(9));
         assert!(public.has_roof(WallId(1)));
         // 0x140a92100: first-map hit performs `XOR ESI,ESI`.
-        public.failures.insert(WallId(1), CollectionError::InvalidSource);
+        public
+            .failures
+            .insert(WallId(1), CollectionError::InvalidSource);
         assert!(!public.has_roof(WallId(1)));
     }
 
     #[test]
     fn get_shape_params_returns_the_28_byte_premade_record_only() {
-        let record = ShapeParameters::from_shape(Shape::Circle(
-            utils::geometry::Circle2d {
-                center: glam::Vec2::new(1.0, 2.0),
-                radius: 3.0,
-                rotation: 0.0,
-            },
-        ))
+        let record = ShapeParameters::from_shape(Shape::Circle(utils::geometry::Circle2d {
+            center: glam::Vec2::new(1.0, 2.0),
+            radius: 3.0,
+            rotation: 0.0,
+        }))
         .to_record();
         let mut public = PublicWalls::default();
-        public
-            .records
-            .insert(WallId(3), PublicWallState::collect(&wall_with_shape(record), &terrain()).unwrap());
-        assert_eq!(public.get_shape_params(WallId(3)).unwrap().to_record(), record);
+        public.records.insert(
+            WallId(3),
+            PublicWallState::collect(&wall_with_shape(record), &terrain()).unwrap(),
+        );
+        assert_eq!(
+            public.get_shape_params(WallId(3)).unwrap().to_record(),
+            record
+        );
 
         // tag 2 (freehand) -> canonical None; missing id -> None.
         let mut freehand = PublicWalls::default();

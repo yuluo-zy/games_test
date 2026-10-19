@@ -84,30 +84,30 @@ pub fn is_decorator_location_valid(
         };
     };
     match info.dst_tag() {
-        // 墙附着（tag 0/1）：墙空间有效性（行 707 内联；曲线采样面 I）。
+        // 墙附着（tag 0/1；跳表 idx0 亦为 tag 5+ 的默认槽）：墙空间有效性
+        // （行 707 内联；曲线采样面 I）。
         0..=1 => DecoratorLocationCheckResult {
             valid: is_wall_decorator_location_valid(info),
             position,
             reason_rect: None,
         },
-        // 楼梯附着（tag 2）：楼梯存在性（I：原跳表槽 1；边检查由
-        // cull_stair_attached_decorators 族承载）。
+        // 屋顶附着（tag 2；跳表 idx1 → 0x14080f66d）：屋顶查表 + 界判据。
+        // 几何主体 U（登记 RESTORE.md）。
         2 => DecoratorLocationCheckResult {
             valid: true,
             position,
             reason_rect: None,
         },
-        // 屋顶附着（tag 3）：dormer 屋顶界检查（O：跳表槽 2；dormer 脊线
-        // 判据见 check_if_dormer_ridge_is_within_roof_bounds；非 dormer
-        // 屋顶装饰有效性 I —— 登记 RESTORE.md）。
-        3 => DecoratorLocationCheckResult {
-            valid: true,
+        // 地形（tag 3，跳表 idx2）与楼梯（tag 4，跳表 idx3）**恒无效**
+        // （O：fresh capstone 0x14080f542 = `*out = 0xb; return`）。
+        3 | 4 => DecoratorLocationCheckResult {
+            valid: false,
             position,
             reason_rect: None,
         },
-        // 地形附着（tag 4）：O：跳表槽 3（I：地形成效 = 地形存在）。
+        // tag 5+ 走跳表默认槽 idx0（墙处理器）。
         _ => DecoratorLocationCheckResult {
-            valid: true,
+            valid: is_wall_decorator_location_valid(info),
             position,
             reason_rect: None,
         },
@@ -227,6 +227,7 @@ fn cull_one<C: Send + Sync + 'static>(
         kind: DecoratorOp::KIND_REMOVE,
         info: *info,
         extra: [0; 0x20],
+        dst: None,
     };
     let dst = storage
         .lookup_storage(DecoratorId::new(id))
@@ -278,6 +279,7 @@ pub fn cull_stair_attached_decorators_impl<C: Send + Sync + 'static>(
             kind: DecoratorOp::KIND_REMOVE,
             info,
             extra: [0; 0x20],
+            dst: None,
         };
         let dst = storage
             .lookup_storage(DecoratorId::new(id))
@@ -376,4 +378,61 @@ pub fn check_if_dormer_ridge_is_within_roof_bounds(
     }
     // 屋顶界判据（I：圆/矩形最近点 + 距离阈值；本面以屋顶存在性承载）。
     true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransform;
+    use glam::{Quat, Vec3};
+
+    fn transforms_with(id: u32) -> CachedDecoratorTransforms {
+        let mut cache = CachedDecoratorTransforms::default();
+        cache.insert(
+            id,
+            CachedDecoratorTransform {
+                rotation: Quat::IDENTITY,
+                translation: Vec3::new(1.0, 2.0, 3.0),
+                scale: Vec3::ONE,
+            },
+        );
+        // insert 写当前册；读取册是另一册 → 交换后才可查询。
+        cache.swap_buffers_and_clear();
+        cache
+    }
+
+    fn info_with_tag(id: u32, tag: u8) -> DecoratorInfo {
+        DecoratorInfo {
+            decorator_id: id,
+            u20: u32::from(tag) << 16,
+            ..DecoratorInfo::default()
+        }
+    }
+
+    #[test]
+    fn roof_tag_two_is_dispatched_to_roof_slot() {
+        // O 跳表：idx1（tag 2）→ 0x14080f66d（屋顶处理器）。
+        let cache = transforms_with(1);
+        let info = info_with_tag(1, 2);
+        let out = is_decorator_location_valid(&info, &cache);
+        assert!(out.is_valid());
+        assert_eq!(out.position, Vec3::new(1.0, 2.0, 3.0));
+    }
+
+    #[test]
+    fn terrain_and_stair_tags_are_invalid() {
+        // O：idx2（tag 3）与 idx3（tag 4）同址 0x14080f542 → tag 0xb。
+        let cache = transforms_with(2);
+        let terrain = info_with_tag(2, 3);
+        let stair = info_with_tag(2, 4);
+        assert!(!is_decorator_location_valid(&terrain, &cache).is_valid());
+        assert!(!is_decorator_location_valid(&stair, &cache).is_valid());
+    }
+
+    #[test]
+    fn missing_transform_is_invalid() {
+        let cache = CachedDecoratorTransforms::default();
+        let info = info_with_tag(9, 0);
+        assert!(!is_decorator_location_valid(&info, &cache).is_valid());
+    }
 }

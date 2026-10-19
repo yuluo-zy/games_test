@@ -7,6 +7,10 @@ use glam::Vec2;
 
 use crate::render::render_config::{MonitorMatch, VideoMode};
 
+/// B camera_mouse_ray@1408ef2f8 emits an EventId-only (8B) record.
+#[derive(Event, Clone, Copy, Debug, Default)]
+pub struct AudioCursorMoved;
+
 /// `AvailableMonitors`（B `country_core::resources::window::AvailableMonitors`）。
 ///
 /// fresh 证据：`AvailableMonitors::clear` 0x140949C40 ——

@@ -1,3 +1,9 @@
+## Windows 当前入口优先（2026-10-19 续验）
+
+本机 cwd 为 D:/game 时，先使用 [Windows 持久 SDK 说明](scripts/reverse_tools/README.md)。解释器为 D:/tools/reverse-engineering/venvs/reverse-engineering-assistant/Scripts/python.exe，operator 为 D:/game/reverse-engineering/tiny-glade/scripts/reverse_tools/reverse_operator.py。下文旧 /Users/yuluo 路径仅属于 Mac 环境，不在本 Windows 主机尝试。
+
+本轮 color-menu-full 专属 write worker 已复验启动；Windows兼容 ghidra 适配器底层使用 ReVa/Ghidra，并不表示旧 ghidra MCP服务已安装。按README每worker独立持久副本、明确程序身份；需要prepare/script/signature修改时使用唯一worker+--write。禁止重启其它worker。真实schema按单工具读取；工具复验不算业务恢复。旧Mac overlay不宣称已同步Windows库。
+
 # AI 逆向工具使用说明
 
 适用：本机 Tiny Glade 原生 Rust 游戏逆向。验证日期：2026-10-11。先读本目录 `AGENTS.md`；业务恢复应用 `native-rust-reconstruction`，自定义 Ghidra Python 分析应用 `pyghidra-scripting`。以下入口执行真实 MCP SDK 调用；当前 agent 未加载对应 MCP namespace 时，也可直接通过终端调用。
@@ -205,3 +211,9 @@ py -3 C:/Users/liyu/.codex/skills/claude-reverse-assist/scripts/claude_print.py 
 该技能入口直接调用 npm 安装的原生程序，通过 stdin 传递提示词，保留空 `--tools` 参数，并禁用本次分析的工具/MCP。输出为 `.stdout.json`、`.stderr.txt`、`.result.json`；检查进程退出码和报告 `ok`，不得只看 stderr。当前配置会输出 `[claude-code:unrecognized_model]` 日志，但真实请求退出 0、`subtype=success`、`is_error=false` 且返回预期文本，因此此日志本身不能判定调用失败。超时单独记录，不自动重试、不改模型配置。
 
 复验证据：[probe.result.json](evidence/claude-call-repair-2026-10-15/probe.result.json)，5.316 秒返回 `CLAUDE_OK_20261015`。Claude 仅作辅助分析，业务结论仍按原指令/PDB/Ghidra/ReVa 证据验收。
+
+## 10. 内网 LLM 分析 worker（2026-10-19）
+
+用户要求把重复、独立且边界清楚的分析优先交给内网 LLM。入口与任务合同见 [llm-worker/README.md](scripts/llm-worker/README.md)，后续提示词为 `scripts/llm-worker/review-production.txt`；用 JSON manifest 批量调用，密钥仅从进程环境读取。实测模板参数低强度思考优于快速模式，默认 `template-low`；标准厂商关闭开关未生效。长函数基准、失败与原指令纠错保留在 `evidence/llm-worker-2026-10-19/`。
+
+主 agent 提供冻结的原证据包；worker 返回分支/状态/副作用/未知项与行号。优先委派机械对照、独立函数/模块合同、已有 Rust 对原证据核对、字段读写整理。ABI/别名/跨模块权威状态与生命周期、数据库和源码写入、原指令核验与验收由主 agent 裁决。传输/格式通过不是语义通过；不得绕过依赖排除与完整调用链要求，T13 范围继续排除。具体失败、参数效果和性能以该轮真实报告为准。

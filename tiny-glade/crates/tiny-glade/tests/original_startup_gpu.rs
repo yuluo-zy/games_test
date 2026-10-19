@@ -156,6 +156,13 @@ fn original_gameplay_assets_reach_the_same_app_atlases_and_nani_gpu_owners() {
     bridge.install_asset_libraries(app.world_mut()).unwrap();
     app.insert_resource(GameConfig::default());
     app.insert_resource(ConfigWatch::new(false));
+    app.add_plugins(bevy_time::TimePlugin);
+    app.insert_resource(country_core::resources::window::WindowSize::new(1280, 720));
+    app.insert_resource(country_core::input::ActiveInputModeTracker::new_default_mouse_keyboard(
+        std::time::Duration::ZERO));
+    app.init_resource::<country_core::input::action_set::ActionSetStates>();
+    app.init_resource::<country_core::resources::gui::DebugGui>();
+    app.add_event::<bevy_input::mouse::MouseWheel>();
     app.insert_resource(tiny_glade::run_game::ApplicationShaderLibrary(shaders));
     app.add_event::<CustomCursorSsboCreatedCmd>();
     tiny_glade::gameplay_startup::install_gameplay_gpu_startup(
@@ -261,6 +268,18 @@ fn original_gameplay_assets_reach_the_same_app_atlases_and_nani_gpu_owners() {
         app.world()
             .contains_resource::<tiny_glade::loading_graph::LoadingGpuResources>()
     );
+    let luts = app.world().resource::<country_core::resources::grading_lut::GradingLuts>();
+    assert!(!luts.metas.is_empty(), "packaged LUTs must be uploaded by gameplay startup");
+    let textures = app.world().resource::<country_core::asset_libraries::texture_library::AssetTextureLibrary>();
+    for (meta, record) in luts.metas.iter().zip(&luts.textures) {
+        let name = country_core::resources::grading_lut::lut_name_to_asset_name(&meta.name);
+        assert_eq!(textures.get_by_name(country_core::name_hash::NameHash::compute(&name)).id,
+            record.texture.id, "LUT metadata and graph consumer must share the physical texture");
+    }
+    assert!(textures.get_handle_and_texture_by_name(country_core::name_hash::NameHash(0xbbc2_dfc4_c682_4251)).is_some(),
+        "final_post fixed tony_mc_mapface producer");
+    assert!(app.world().resource::<tiny_glade::loading_graph::LoadingGpuResources>()
+        .mei.output().is_some(), "Update44 must flush the actual renderer before graph compilation");
     bridge
         .shader_backend()
         .prewarm(std::time::Duration::from_secs(60))

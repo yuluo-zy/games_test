@@ -7,9 +7,9 @@
 //! - `ensure_current_snapshot`（`add_history_edit_to_save_file`）0x140a439b0：**仅当 `edit_offsets` 推入前非空**才写
 //!   `",\n"`（此前文档漏了这一条件），随后追加序列化后的编辑并标脏。
 //! - 读档升级（`load_game` 0x14146d030 的两处独立块，此前文档混为一段）：
-//!   位 48：子类型字节 == 0x3a 的 0x58 步长记录，颜色字段写 999（"window color IDs"）；
+//!   位 48：子类型字节 == 0x3a 的 0x58 步长记录，颜色字段写 999（"arrow slits color IDs"）；
 //!   位 40：颜色映射 `{0,3,6,7 不变; 1→2; 2→5; 4→8; 5→3; 8→4; 999 不变; 其余→1}`，作用于 16 B 条目的 `+8` 字段与
-//!   子类型 0x38..=0x3a 的 0x58 步长记录（"arrow slits color IDs"）。
+//!   子类型 0x38..=0x3a 的 0x58 步长记录（"window color IDs"）。
 //! - 版本开关：`0x14362c308 = (v >= 0x1a)`、`0x14362c011 = (v > 0x1a)`（有符号比较，0x14146dc82..0x14146dc95）。
 //!
 //! 影子文件 I/O、节更新、备份节拍器及快照 GC 已接 `systems::save`。
@@ -91,7 +91,8 @@ impl DirtyBlocks {
     }
 
     pub(crate) fn truncate_for_file_length(&mut self, length: u64) {
-        self.bits.truncate(length.div_ceil(DIRTY_BLOCK_SIZE) as usize);
+        self.bits
+            .truncate(length.div_ceil(DIRTY_BLOCK_SIZE) as usize);
     }
 
     /// `mark_dirty(start, end)`（0x14091a450）：`end <= start` 直接返回；块区间为
@@ -186,31 +187,30 @@ impl ShadowBuffer {
 pub struct LoadUpgradeFlags(pub u64);
 
 impl LoadUpgradeFlags {
-    /// 位 40："Detected old version of arrow slits color IDs. Upgrading..."
+    /// Native wrapper+e, second-qword bit48: ArrowSlit colors become999.
     pub fn upgrade_arrow_slit_color_ids(self) -> bool {
-        self.0 >> 40 & 1 != 0
-    }
-
-    /// 位 48："Detected old version of window color IDs. Upgrading..."
-    pub fn upgrade_window_color_ids(self) -> bool {
         self.0 >> 48 & 1 != 0
+    }
+    /// Native wrapper+d, bit40: window colors and GateColors use the old map.
+    pub fn upgrade_window_color_ids(self) -> bool {
+        self.0 >> 40 & 1 != 0
     }
 }
 
-/// 窗口颜色 ID 升级用的记录子类型（O：`+0x52` 字节 == `':'`）。
-pub const WINDOW_RECORD_SUBTYPE: u8 = 0x3a;
-/// 窗口升级写入的颜色值（O）。
-pub const WINDOW_UPGRADED_COLOR: u32 = 999;
+/// 箭孔颜色 ID 升级用的记录子类型（O：`+0x52` 字节 == `':'`）。
+pub const ARROW_SLIT_RECORD_SUBTYPE: u8 = 0x3a;
+/// 箭孔升级写入的颜色值（O）。
+pub const ARROW_SLIT_UPGRADED_COLOR: u32 = 999;
 
 /// 位 48 的记录改写：子类型为 `0x3a` 时颜色改为 999，其余不动。
-pub fn upgrade_window_record_color(subtype: u8, color: &mut u32) {
-    if subtype == WINDOW_RECORD_SUBTYPE {
-        *color = WINDOW_UPGRADED_COLOR;
+pub fn upgrade_arrow_slit_record_color(subtype: u8, color: &mut u32) {
+    if subtype == ARROW_SLIT_RECORD_SUBTYPE {
+        *color = ARROW_SLIT_UPGRADED_COLOR;
     }
 }
 
 /// 位 40 的颜色映射（O：switch，`0,3,6,7` 与 `999` 原样，`1→2 2→5 4→8 5→3 8→4`，其余 → 1）。
-pub fn upgrade_arrow_slit_color_id(id: u32) -> u32 {
+pub fn upgrade_window_color_id(id: u32) -> u32 {
     match id {
         0 | 3 | 6 | 7 | 999 => id,
         1 => 2,
@@ -223,14 +223,14 @@ pub fn upgrade_arrow_slit_color_id(id: u32) -> u32 {
 }
 
 /// 位 40 作用到 0x58 步长记录的条件：`subtype - 0x38 < 3`。
-pub fn arrow_slit_record_applies(subtype: u8) -> bool {
+pub fn window_record_applies(subtype: u8) -> bool {
     subtype.wrapping_sub(0x38) < 3
 }
 
 /// 位 40 的整张颜色表升级（16 B 条目的 `+8` 字段）。
-pub fn upgrade_arrow_slit_color_table(colors: &mut [u32]) {
+pub fn upgrade_window_color_table(colors: &mut [u32]) {
     for color in colors {
-        *color = upgrade_arrow_slit_color_id(*color);
+        *color = upgrade_window_color_id(*color);
     }
 }
 
@@ -369,30 +369,31 @@ mod tests {
 
     #[test]
     fn color_upgrade_map_matches_the_switch() {
-        let mapped: Vec<_> = (0..10).map(upgrade_arrow_slit_color_id).collect();
+        let mapped: Vec<_> = (0..10).map(upgrade_window_color_id).collect();
         assert_eq!(mapped, [0, 2, 5, 3, 8, 3, 6, 7, 4, 1]);
-        assert_eq!(upgrade_arrow_slit_color_id(999), 999);
-        assert_eq!(upgrade_arrow_slit_color_id(1000), 1);
+        assert_eq!(upgrade_window_color_id(999), 999);
+        assert_eq!(upgrade_window_color_id(1000), 1);
         let mut table = [1, 2, 4, 5, 8, 0, 999, 42];
-        upgrade_arrow_slit_color_table(&mut table);
+        upgrade_window_color_table(&mut table);
         assert_eq!(table, [2, 5, 8, 3, 4, 0, 999, 1]);
     }
 
     #[test]
     fn upgrade_flags_and_record_filters() {
-        assert!(LoadUpgradeFlags(1 << 40).upgrade_arrow_slit_color_ids());
-        assert!(!LoadUpgradeFlags(1 << 40).upgrade_window_color_ids());
-        assert!(LoadUpgradeFlags(1 << 48).upgrade_window_color_ids());
+        assert!(LoadUpgradeFlags(1 << 48).upgrade_arrow_slit_color_ids());
+        assert!(!LoadUpgradeFlags(1 << 40).upgrade_arrow_slit_color_ids());
+        assert!(LoadUpgradeFlags(1 << 40).upgrade_window_color_ids());
+        assert!(!LoadUpgradeFlags(1 << 48).upgrade_window_color_ids());
         assert!(
             LoadUpgradeFlags(1 << 56).0 != 0
                 && !LoadUpgradeFlags(1 << 56).upgrade_window_color_ids()
         );
-        assert!(arrow_slit_record_applies(0x38) && arrow_slit_record_applies(0x3a));
-        assert!(!arrow_slit_record_applies(0x37) && !arrow_slit_record_applies(0x3b));
+        assert!(window_record_applies(0x38) && window_record_applies(0x3a));
+        assert!(!window_record_applies(0x37) && !window_record_applies(0x3b));
         let mut color = 5;
-        upgrade_window_record_color(0x39, &mut color);
+        upgrade_arrow_slit_record_color(0x39, &mut color);
         assert_eq!(color, 5);
-        upgrade_window_record_color(0x3a, &mut color);
+        upgrade_arrow_slit_record_color(0x3a, &mut color);
         assert_eq!(color, 999);
     }
 

@@ -96,8 +96,7 @@ pub fn building_audio<S: Studio + Send + Sync + 'static>(
                 // O: per-loop BuildingSize / ifWindow / BuildingHeight /
                 // isHalfTimbered / IsOnGround params are set from the building
                 // table (0x2a8 stride, 待接线); BuildingSize stands in here.
-                let current = loop_player.current;
-                let _ = loop_player.instances[current]
+                let _ = loop_player.audio.current_mut()
                     .set_parameter("BuildingSize", event.editing_speed);
             }
             None => {

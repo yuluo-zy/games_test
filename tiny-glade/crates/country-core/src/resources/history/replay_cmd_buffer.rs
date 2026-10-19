@@ -87,7 +87,7 @@ impl ColorReplayCmd {
 /// `undo @+0x1c`。
 #[derive(Clone, Debug)]
 pub struct DecoratorReplayCmd {
-    pub edit: std::sync::Arc<super::decorator_edit::DecoratorHistoryEdit>,
+    pub edit: std::sync::Arc<super::decorator_edit::DecoratorV5Edit>,
     pub timed: bool,
     pub duration: f32,
     pub elapsed: f32,
@@ -97,7 +97,7 @@ impl DecoratorReplayCmd {
     /// 原生生成器常量 0x3e4ccccd。
     pub const DURATION: f32 = 0.2;
     pub fn expanded(
-        edit: std::sync::Arc<super::decorator_edit::DecoratorHistoryEdit>,
+        edit: std::sync::Arc<super::decorator_edit::DecoratorV5Edit>,
         undo: bool,
         instant: bool,
     ) -> Self {
@@ -122,6 +122,10 @@ pub struct ReplayBucketAux {
     pub decorator_diff: Option<std::sync::Arc<super::decorator_edit::DecoratorHistoryDiffMap>>,
     pub stairs_diff:
         Option<std::sync::Arc<crate::resources::stairs::stairs_state::StairsHistoryDiff>>,
+    /// 原生 bucket `+0x18/+0x20` 的 `Arc<[DecoratorId]>` cull-allow 表；
+    /// `replay_decorator` 以 take 语义注入 archivist 允许集合。Producer is
+    /// HistoryEntryAux::for_replay on the selected committed entry's diff.
+    pub cull_allow: Option<std::sync::Arc<[crate::resources::walls::decorator::DecoratorId]>>,
 }
 #[derive(Clone, Debug)]
 pub struct ReplayBucket {
@@ -153,6 +157,33 @@ pub struct CommandTiming {
     pub started: bool,
 }
 impl ReplayBucket {
+    /// Current Rust projection stores native per-command timing separately.
+    /// Every domain removal must compact both arrays in the same order.
+    pub fn remove_command(&mut self, index: usize) -> ReplayCommand {
+        if index < self.timing.len() {
+            self.timing.remove(index);
+        }
+        self.commands.remove(index)
+    }
+
+    pub fn retain_commands_mut(&mut self, mut keep: impl FnMut(&mut ReplayCommand) -> bool) {
+        let mut removed = Vec::new();
+        let mut index = 0;
+        self.commands.retain_mut(|command| {
+            let retain = keep(command);
+            if !retain {
+                removed.push(index);
+            }
+            index += 1;
+            retain
+        });
+        for index in removed.into_iter().rev() {
+            if index < self.timing.len() {
+                self.timing.remove(index);
+            }
+        }
+    }
+
     pub fn expand(
         entry_index: usize,
         entry: &HistoryEntry<EditType>,
@@ -379,7 +410,7 @@ impl ReplayBuffer {
 mod tests {
     use super::*;
     use crate::resources::history::color_edit::{ColorEdit, ColorTarget};
-    use crate::resources::history::decorator_edit::DecoratorHistoryEdit;
+    use crate::resources::history::decorator_edit::{DecoratorHistoryEdit, DecoratorV5Edit};
     use crate::resources::terrain_editing::StrokeId;
     use crate::resources::walls::WallId;
     use std::sync::Arc;
@@ -418,7 +449,7 @@ mod tests {
     fn decorator_v5_expands_to_tag_seven_command() {
         // fresh 0x14143fed0：DecoratorV5(tag10) → 命令 tag 7、duration 0.2。
         let entry = HistoryEntry::from_edits(vec![EditType::DecoratorV5(Arc::new(
-            DecoratorHistoryEdit::default(),
+            DecoratorV5Edit::default(),
         ))]);
         let bucket = ReplayBucket::expand(0, &entry, false, false).unwrap();
         let ReplayCommand::Decorator(command) = &bucket.commands[0] else {
@@ -451,6 +482,7 @@ mod tests {
                     added: Vec::new(),
                 },
             )),
+            cull_allow: None,
         };
         let bucket = ReplayBucket::expand_with_aux(3, &entry, false, false, aux.clone()).unwrap();
         let mut buffer = ReplayBuffer::new(1.0);
@@ -474,7 +506,7 @@ mod tests {
             .unwrap(),
         ))]);
         let decorator = HistoryEntry::from_edits(vec![EditType::DecoratorV5(Arc::new(
-            DecoratorHistoryEdit::default(),
+            DecoratorV5Edit::default(),
         ))]);
         let tree = HistoryEntry::from_edits(vec![EditType::Tree(Arc::new(
             crate::resources::history::tree_edit::TreeEdit::default(),

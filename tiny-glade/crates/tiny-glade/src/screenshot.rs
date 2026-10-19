@@ -1,247 +1,72 @@
-//! `tiny_glade::screenshot` — screenshot request/capture orchestration.
-//!
-//! Recovered VAs: `gather_screenshot_requests` `0x14031af10`,
-//! `handle_screenshot_opportunity` `0x14031d140`,
-//! `finish_screenshot_capture` `0x14031ea20`,
-//! `hurry_active_screenshots_on_shutdown` `0x14031eed0`,
-//! `write_image_with_callback_impl` `0x1403206a0`.
-//!
-//! Anatomy from the fresh decompilation:
-//! * requests are stored in `ACTIVE_SCREENSHOT_REQUESTS` under a parking-lot
-//!   mutex; each `ActiveScreenshotRequest` is `0x98` bytes with
-//!   `purpose @+0x4c`, `state @+0x50`, `frames_remaining @+0x54`, and a tag at
-//!   `+0x96` (`6` marks completed requests);
-//! * `finish_screenshot_capture` walks the list:
-//!   `state == 1` → `wait_idle` + `read_back_screenshot`, then state `2`;
-//!   `state == 0` and `frames_remaining == 0` → read back, state `2`;
-//!   otherwise decrement the counter; finally `retain` removes done requests;
-//! * `hurry_active_screenshots_on_shutdown` recomputes the elapsed budget from
-//!   three `Instant` fields, sets every active request to state `1`, and joins
-//!   the image-writer threads;
-//! * `write_image_with_callback_impl` validates `len >= width*height*4`, creates
-//!   the parent directory, writes through a `tempfile::NamedTempFile`, persists
-//!   it to the destination and invokes the completion callback.
-//!
-//! The texture allocation/readback and Steam library upload are engine/Steam
-//! glue; they are kept behind [`ScreenshotBackend`] and [`ScreenshotSink`].
-
-use anyhow::{anyhow, Context, Result};
+//! B screenshot orchestration; one per-App request owner in screenshot_capture.
+//! Native tag 6 means awaiting an opportunity. It is never completion.
+//! File images capture into GpuToCpu buffers; menu/LUT capture into shared textures.
+use anyhow::{Result, anyhow};
 use image::ImageEncoder;
-use parking_lot::Mutex;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-
-/// B `tiny_glade::screenshot::ScreenshotSink`.
+use std::io::Write;
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
+#[path = "screenshot_capture.rs"]
+pub mod shared_texture_capture;
+pub type Completion = Arc<dyn Fn(std::result::Result<[u32; 2], String>) + Send + Sync>;
+/// Byte values are native, including the three opportunities in compile_main.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum ScreenshotPurpose {
+    GradingReference = 0,
+    LutPreview = 1,
+    MenuBackground = 2,
+    SceneBeforeUi = 3,
+    SceneWithUi = 4,
+    FinalFrame = 6,
+}
+impl ScreenshotPurpose {
+    pub fn as_byte(self) -> u8 {
+        self as u8
+    }
+}
 #[derive(Clone)]
 pub enum ScreenshotSink {
-    /// Write to a path on disk.
-    File(PathBuf),
-    /// Hand the image to Steam's screenshot library.
-    Steam,
-    /// Invoke a callback with the RGBA bytes.
-    Callback(Arc<dyn Fn(ScreenshotResult) + Send + Sync>),
+    File {
+        path: PathBuf,
+        jpeg_quality: u8,
+    },
+    /// An actual pixel consumer, never a fabricated Steam success result.
+    Rgba(Arc<dyn Fn(u32, u32, Vec<u8>) + Send + Sync>),
 }
-
-/// Completion result handed to callbacks / the screenshot sink.
-#[derive(Clone, Debug)]
-pub enum ScreenshotResult {
-    File(PathBuf),
-    Steam,
-    Callback { width: u32, height: u32, rgba: Vec<u8> },
-}
-
-/// Request purpose discriminant (`+0x4c`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ScreenshotPurpose {
-    SaveThumbnail,
-    SessionScreenshot,
-    SteamScreenshot,
-    BugReport,
-    Other(u8),
-}
-
-impl ScreenshotPurpose {
-    fn from_byte(value: u8) -> Self {
-        match value {
-            0 => Self::SaveThumbnail,
-            1 => Self::SessionScreenshot,
-            2 => Self::SteamScreenshot,
-            3 => Self::BugReport,
-            other => Self::Other(other),
-        }
-    }
-
-    fn as_byte(self) -> u8 {
-        match self {
-            Self::SaveThumbnail => 0,
-            Self::SessionScreenshot => 1,
-            Self::SteamScreenshot => 2,
-            Self::BugReport => 3,
-            Self::Other(value) => value,
-        }
-    }
-}
-
-/// Request submitted by gameplay systems.
-#[derive(Clone)]
 pub struct ScreenshotRequest {
     pub purpose: ScreenshotPurpose,
-    pub width: u32,
-    pub height: u32,
+    pub dimensions: Option<[u32; 2]>,
     pub sink: ScreenshotSink,
+    pub completion: Option<Completion>,
 }
-
-/// Active request (`0x98` bytes in B).
-#[derive(Clone)]
-pub struct ActiveScreenshotRequest {
-    pub purpose: ScreenshotPurpose,
-    /// `0` = waiting, `1` = readback requested, `2` = readback done.
-    pub state: u8,
-    /// `+0x54`: frames to wait before a readback.
-    pub frames_remaining: u32,
-    /// `+0x96`: `6` marks a completed request.
-    pub tag: u8,
-    pub width: u32,
-    pub height: u32,
-    pub sink: ScreenshotSink,
-    pub rgba: Option<Vec<u8>>,
-}
-
-/// Device-side screenshot operations (rhapsody in B).
-pub trait ScreenshotBackend {
-    fn allocate_screenshot_texture(&mut self, width: u32, height: u32) -> Result<u64>;
-    fn wait_idle(&mut self);
-    fn read_back_screenshot(&mut self, handle: u64) -> Result<(u32, u32, Vec<u8>)>;
-    fn upload_to_steam(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()>;
-}
-
-/// A capture opportunity reported by the render loop.
-#[derive(Clone, Copy, Debug)]
-pub struct ScreenshotOpportunity {
-    pub purpose: ScreenshotPurpose,
-    pub texture: u64,
-}
-
-static ACTIVE_SCREENSHOT_REQUESTS: Mutex<Vec<ActiveScreenshotRequest>> = Mutex::new(Vec::new());
-
-/// Query the actual queue without advancing an unfinished capture.
-pub fn has_active_screenshot_requests() -> bool {
-    !ACTIVE_SCREENSHOT_REQUESTS.lock().is_empty()
-}
-
-/// B `gather_screenshot_requests` (`0x14031af10`).
-///
-/// Locks the active-request list, allocates one texture per submitted request,
-/// and pushes an `ActiveScreenshotRequest` with `state = 0`. Requests without a
-/// matching allocation are skipped (the original records the texture handle in
-/// the active entry and reuses an existing texture when dimensions match).
+/// Native gather's map closure initializes state=0, remaining=3, tag=6.
+/// Allocation happens at the matching graph opportunity, never here.
 pub fn gather_screenshot_requests(
-    requests: Vec<ScreenshotRequest>,
-    backend: &mut dyn ScreenshotBackend,
-) -> Result<()> {
-    let mut active = ACTIVE_SCREENSHOT_REQUESTS.lock();
+    world: &mut bevy_ecs::world::World,
+    requests: impl IntoIterator<Item = ScreenshotRequest>,
+) -> rhapsody::Result<()> {
     for request in requests {
-        let _texture = backend.allocate_screenshot_texture(request.width, request.height)?;
-        active.push(ActiveScreenshotRequest {
-            purpose: request.purpose,
-            state: 0,
-            frames_remaining: 0,
-            tag: 0,
-            width: request.width,
-            height: request.height,
-            sink: request.sink,
-            rgba: None,
-        });
+        shared_texture_capture::enqueue(world, request)?;
     }
     Ok(())
 }
-
-/// B `handle_screenshot_opportunity` (`0x14031d140`).
-///
-/// Locks the list and matches an active request by purpose and texture tag;
-/// on a match it either overwrites explicit dimensions (`+0x40` flag) or uses
-/// `TextureDesc::extent_2d`. Returns `true` when a request was consumed.
-pub fn handle_screenshot_opportunity(
-    opportunity: ScreenshotOpportunity,
-    backend: &mut dyn ScreenshotBackend,
-) -> Result<bool> {
-    let mut active = ACTIVE_SCREENSHOT_REQUESTS.lock();
-    let Some(index) = active.iter().position(|request| {
-        request.purpose == opportunity.purpose && request.tag == 6
-    }) else {
-        return Ok(false);
-    };
-
-    let request = &mut active[index];
-    let (width, height, rgba) = backend.read_back_screenshot(opportunity.texture)?;
-    request.width = width;
-    request.height = height;
-    request.rgba = Some(rgba);
-    request.state = 2;
-    request.tag = 6;
-    Ok(true)
+pub fn active_capture_purpose(world: &bevy_ecs::world::World) -> u8 {
+    shared_texture_capture::active_capture_purpose(world)
 }
-
-/// B `finish_screenshot_capture` (`0x14031ea20`).
-///
-/// State machine per request; the `retain` predicate drops requests whose tag is
-/// `6` and whose state is `2` (the original closure is
-/// `finish_screenshot_capture::closure_env$0`).
-pub fn finish_screenshot_capture(backend: &mut dyn ScreenshotBackend) -> Result<()> {
-    let mut active = ACTIVE_SCREENSHOT_REQUESTS.lock();
-    for request in active.iter_mut() {
-        if request.tag == 6 {
-            continue;
-        }
-        match request.state {
-            1 => {
-                backend.wait_idle();
-                request.state = 2;
-            }
-            0 => {
-                if request.frames_remaining == 0 {
-                    request.state = 2;
-                } else {
-                    request.frames_remaining -= 1;
-                }
-            }
-            _ => {}
-        }
-    }
-    active.retain(|request| request.tag != 6 || request.state != 2);
-    Ok(())
+pub fn has_active_screenshot_requests(world: &bevy_ecs::world::World) -> bool {
+    shared_texture_capture::has_requests(world)
 }
-
-/// B `hurry_active_screenshots_on_shutdown` (`0x14031eed0`).
-///
-/// The original computes `elapsed` from three `Instant`s
-/// (`now - field(+0x18)`, `now - field(+0x38)`, `field(+0x30)`), subtracts it
-/// from the budget at `+0x40`, and sets every active request's state to `1`.
-/// It also flips the shutdown flag at `DAT_14362b080` and joins every
-/// `write_image` thread (`once_cell` `Mutex<Vec<JoinHandle<()>>>`).
-pub fn hurry_active_screenshots_on_shutdown() {
-    let mut active = ACTIVE_SCREENSHOT_REQUESTS.lock();
-    if active.is_empty() {
-        return;
-    }
-    for request in active.iter_mut() {
-        request.state = 1;
-    }
-    log::debug!("hurrying {} screenshots on shutdown", active.len());
+pub fn finish_screenshot_capture(world: &mut bevy_ecs::world::World) -> rhapsody::Result<()> {
+    shared_texture_capture::finish(world)
 }
-
-/// B `write_image_with_callback_impl` (`0x1403206a0`).
-///
-/// Recovered CFG:
-/// * if `rgba.len() < width*height*4` → `"Failed to create ImageBuffer"`;
-/// * `create_dir_all(parent)` when the first `parent()` is `Some`;
-/// * a second `parent()` returning `None` is an **error** (no system-temp
-///   fallback);
-/// * extension dispatch: `"jpg"` → RGBA→RGB then
-///   `JpegEncoder::new_with_quality`; everything else →
-///   `ImageFormat::from_path` + `write_buffer`;
-/// * the callback receives `Result<[u32;2], String>`; failures are formatted as
-///   `"Error writing screenshot image: {error}"`.
+pub fn hurry_active_screenshots_on_shutdown(
+    world: &mut bevy_ecs::world::World,
+) -> rhapsody::Result<()> {
+    shared_texture_capture::shutdown(world)
+}
 pub fn write_image_with_callback_impl(
     path: &Path,
     width: u32,
@@ -256,14 +81,11 @@ pub fn write_image_with_callback_impl(
     callback(result);
 }
 
-fn write_image(
-    path: &Path,
-    width: u32,
-    height: u32,
-    rgba: &[u8],
-    jpeg_quality: u8,
-) -> Result<()> {
-    let expected = width as usize * height as usize * 4;
+fn write_image(path: &Path, width: u32, height: u32, rgba: &[u8], jpeg_quality: u8) -> Result<()> {
+    let expected = (width as usize)
+        .checked_mul(height as usize)
+        .and_then(|n| n.checked_mul(4))
+        .ok_or_else(|| anyhow!("Failed to create ImageBuffer"))?;
     if rgba.len() < expected {
         return Err(anyhow!("Failed to create ImageBuffer"));
     }
@@ -272,9 +94,7 @@ fn write_image(
     }
     // The original requires a second `parent()`; `None` is an error, not a
     // fallback to the system temp directory.
-    let parent = path
-        .parent()
-        .ok_or_else(|| anyhow!("path has no parent"))?;
+    let parent = path.parent().ok_or_else(|| anyhow!("path has no parent"))?;
     let temp = tempfile::NamedTempFile::new_in(parent)?;
 
     if path.extension().and_then(|extension| extension.to_str()) == Some("jpg") {
@@ -282,11 +102,13 @@ fn write_image(
         for pixel in rgba[..expected].chunks_exact(4) {
             rgb.extend_from_slice(&pixel[..3]);
         }
-        let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(
-            std::io::BufWriter::new(temp.as_file()),
-            jpeg_quality,
-        );
-        encoder.write_image(&rgb, width, height, image::ExtendedColorType::Rgb8)?;
+        let mut writer = std::io::BufWriter::new(temp.as_file());
+        {
+            let encoder =
+                image::codecs::jpeg::JpegEncoder::new_with_quality(&mut writer, jpeg_quality);
+            encoder.write_image(&rgb, width, height, image::ExtendedColorType::Rgb8)?;
+        }
+        writer.flush()?;
     } else {
         let format = image::ImageFormat::from_path(path)?;
         let image = image::RgbaImage::from_raw(width, height, rgba[..expected].to_vec())
@@ -296,65 +118,4 @@ fn write_image(
 
     temp.persist(path).map_err(|error| error.error)?;
     Ok(())
-}
-
-/// Pull all completed RGBA images out of the active list (helper for the
-/// sink-dispatch pass in the render loop).
-pub fn take_completed_screenshots() -> Vec<ActiveScreenshotRequest> {
-    let mut active = ACTIVE_SCREENSHOT_REQUESTS.lock();
-    let (done, pending) = active
-        .drain(..)
-        .partition::<Vec<_>, _>(|request| request.state == 2);
-    *active = pending;
-    done
-}
-
-/// Deliver one completed screenshot to its sink.
-pub fn deliver_screenshot(
-    request: ActiveScreenshotRequest,
-    backend: &mut dyn ScreenshotBackend,
-) -> Result<()> {
-    let Some(rgba) = request.rgba.as_ref() else {
-        return Ok(());
-    };
-    match &request.sink {
-        ScreenshotSink::File(path) => {
-            let error = std::cell::RefCell::new(None);
-            write_image_with_callback_impl(
-                path,
-                request.width,
-                request.height,
-                rgba,
-                90,
-                &|value| {
-                    if let Err(value) = value {
-                        *error.borrow_mut() = Some(value);
-                    }
-                },
-            );
-            match error.into_inner() {
-                Some(error) => Err(anyhow!(error)),
-                None => Ok(()),
-            }
-        }
-        ScreenshotSink::Steam => backend.upload_to_steam(request.width, request.height, rgba),
-        ScreenshotSink::Callback(callback) => {
-            callback(ScreenshotResult::Callback {
-                width: request.width,
-                height: request.height,
-                rgba: rgba.clone(),
-            });
-            Ok(())
-        }
-    }
-}
-
-/// Decode a purpose byte (public for replay/tests).
-pub fn purpose_from_byte(value: u8) -> ScreenshotPurpose {
-    ScreenshotPurpose::from_byte(value)
-}
-
-/// Encode a purpose byte.
-pub fn purpose_to_byte(purpose: ScreenshotPurpose) -> u8 {
-    purpose.as_byte()
 }

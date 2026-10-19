@@ -9,7 +9,7 @@
 
 use crate::{
     resources::audio_resources::{AudioCore, AudioInstance, EventInstance, Studio},
-    systems::mode_manager::AppMode,
+    resources::gui::EscMenuState,
 };
 use crate::systems::audio::PlayMenuUiSound;
 use bevy_ecs::prelude::*;
@@ -61,11 +61,12 @@ pub fn menu_audio<S: Studio + Send + Sync + 'static>(
     mut state: ResMut<MenuAudioState<S::Event>>,
     mut events: EventReader<PlayMenuUiSound>,
     core: Res<AudioCore<S>>,
-    mode: Res<AppMode>,
+    menu: Res<EscMenuState>,
 ) {
-    // O: AppMode gate — `(mode|8)==0xa` → stop the pause-menu snapshot, else
+    // PDB run_unsafe@140b27720 identifies EscMenuState, not AppMode.
+    // `(tag|8)==0xa` → stop the pause-menu snapshot, else
     // start_if_not_playing.
-    if mode.native_tag() | 8 == 0xa {
+    if menu.view().tag | 8 == 0xa {
         let _ = state.snapshot.stop();
     } else {
         let _ = state.snapshot.start_if_not_playing();

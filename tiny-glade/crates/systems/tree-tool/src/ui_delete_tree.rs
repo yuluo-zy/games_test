@@ -36,7 +36,7 @@ pub const TREE_ERASE_LAYER: u8 = 3;
 pub fn ui_delete_tree<S: Send + Sync + 'static>(
     mode: Res<AppMode>,
     ui: Res<UiState>,
-    trees: Query<(&PrefabInstanceData, &PrefabInstance, &TreeComponent)>,
+    trees: Query<(&PrefabInstance, &PrefabInstanceData, &TreeComponent)>,
     mut strokes: EventReader<PathDrawEvent>,
     mut deletes: EventWriter<DeleteTreeCmd>,
     storage: Res<TreeStorage>,

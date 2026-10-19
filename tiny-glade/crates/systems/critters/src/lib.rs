@@ -30,10 +30,11 @@
 //! 缓冲写入与绘制由宿主 render_loop draw_shaders 接线（GPU 后置）。
 
 pub mod audio;
-pub mod boids;
 pub mod bird_spots;
+pub mod boids;
 pub mod butterfly;
 pub mod components;
+pub mod control_critters;
 pub mod duck;
 pub mod duck_splash_particle;
 pub mod ducks_react_to_being_inside_buildings;
@@ -43,6 +44,8 @@ pub mod sample;
 pub mod shared;
 pub mod sheep;
 pub mod spawn_ducks;
+pub mod startup_critters;
+pub mod startup_sheep;
 pub mod ui_pet_ducks;
 pub mod wren;
 pub mod wren_boids;
@@ -79,53 +82,57 @@ pub fn configure(world: &mut World, schedule: &mut Schedule) {
     schedule.add_systems(
         (
             (
-            spawn_ducks::spawn_ducks,
-            spawn_ducks::despawn_ducks,
-            duck::plan_duck_trajectories,
-            duck::move_ducks_along_trajectories,
-            duck::update_duck_goals,
-            duck::set_duck_velocities_towards_goals,
-            duck::update_duck_ripples,
-            firefly::update_firefly_goals,
-            firefly::set_firefly_velocities_towards_goals,
-            butterfly::update_butterfly_states,
-            butterfly::update_butterfly_goals,
-        ).chain(),
-        (
-            butterfly::set_butterfly_velocities_towards_goals,
-            butterfly::update_butterfly_audio,
-            fish::fish,
-            // 真实注册面：`OnExit<AppLoadingState>` 上的资源重置（0x14067d440），
-            // 非 Update 系统。crate 无 bevy_state，宿主在退出加载态时调用
-            // `fish::despawn_fish`；不得每帧执行（资源布局重建）。
-            sheep::sheep_behavior::update_sheep_goals,
-            sheep::sheep_behavior::set_sheep_velocities_towards_goals,
-            sheep::sheep_behavior::update_sheep_audio,
-            sheep::sheep_terrain::sheep_walk_on_terrain,
-            sheep::sheep_walk_animation::sheep_walk_animation,
-            sheep::sheep_pet_animation::sheep_pet_animation,
-            sheep::sheep_floatie::sheep_floaties,
-        ).chain(),
-        (
-            sheep::sheep_umbrella::sheep_umbrellas,
-            sheep::sheep_unstuck::sheep_unstuck,
-            sheep::sheep_react_to_being_inside_buildings::react_to_being_inside_buildings,
-            sheep::sheep_react_to_being_inside_buildings::sheep_reaction_emoji,
-            sheep::sheep_input_record_replay::sheep_input_record_replay,
-            sheep::ui_pet_sheep::ui_pet_sheep,
-            ui_pet_ducks::ui_pet_ducks,
-            ducks_react_to_being_inside_buildings::ducks_react_to_being_inside_buildings,
-            duck_splash_particle::duck_splash_particle,
-            wren::update_decorator_bird_spots,
-            wren::update_roof_bird_spots,
-            wren::update_wrens,
-        ).chain(),
-        (
-            wren_boids::sim_wren_boids,
-            shared::critters_avoid_collisions,
-            shared::smooth_critter_velocities,
-            shared::move_critters,
-        ).chain(),
+                spawn_ducks::spawn_ducks,
+                spawn_ducks::despawn_ducks,
+                duck::plan_duck_trajectories,
+                duck::move_ducks_along_trajectories,
+                duck::update_duck_goals,
+                duck::set_duck_velocities_towards_goals,
+                duck::update_duck_ripples,
+                firefly::update_firefly_goals,
+                firefly::set_firefly_velocities_towards_goals,
+                butterfly::update_butterfly_states,
+                butterfly::update_butterfly_goals,
+            )
+                .chain(),
+            (
+                butterfly::set_butterfly_velocities_towards_goals,
+                butterfly::update_butterfly_audio,
+                fish::fish,
+                // 真实注册面：`OnExit<AppLoadingState>` 上的资源重置（0x14067d440），
+                // 非 Update 系统。crate 无 bevy_state，宿主在退出加载态时调用
+                // `fish::despawn_fish`；不得每帧执行（资源布局重建）。
+                sheep::sheep_behavior::update_sheep_goals,
+                sheep::sheep_behavior::set_sheep_velocities_towards_goals,
+                sheep::sheep_behavior::update_sheep_audio,
+                sheep::sheep_terrain::sheep_walk_on_terrain,
+                sheep::sheep_walk_animation::sheep_walk_animation,
+                sheep::sheep_pet_animation::sheep_pet_animation,
+                sheep::sheep_floatie::sheep_floaties,
+            )
+                .chain(),
+            (
+                sheep::sheep_umbrella::sheep_umbrellas,
+                sheep::sheep_unstuck::sheep_unstuck,
+                sheep::sheep_react_to_being_inside_buildings::react_to_being_inside_buildings,
+                sheep::sheep_react_to_being_inside_buildings::sheep_reaction_emoji,
+                sheep::sheep_input_record_replay::sheep_input_record_replay,
+                sheep::ui_pet_sheep::ui_pet_sheep,
+                ui_pet_ducks::ui_pet_ducks,
+                ducks_react_to_being_inside_buildings::ducks_react_to_being_inside_buildings,
+                duck_splash_particle::duck_splash_particle,
+                wren::update_decorator_bird_spots,
+                wren::update_roof_bird_spots,
+                wren::update_wrens,
+            )
+                .chain(),
+            (
+                wren_boids::sim_wren_boids,
+                shared::critters_avoid_collisions,
+                shared::smooth_critter_velocities,
+                shared::move_critters,
+            )
+                .chain(),
         )
             .chain(),
     );
@@ -184,3 +191,6 @@ pub fn configure(world: &mut World, schedule: &mut Schedule) {
     world.init_resource::<Events<country_core::resources::roofs::commands::RecalculateRoofCmd>>();
     world.init_resource::<Events<country_core::resources::walls::public_walls::OnWallChanged>>();
 }
+
+#[cfg(test)]
+mod upload_tests;

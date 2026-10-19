@@ -45,16 +45,20 @@ pub fn ui_color_wall_and_roof(
     if mode.native_tag() == 0xc {
         // O：RaycastWorld::raycast（mask 0xcb）命中 → ShowColorMenuCmd（类别由
         // 命中类型 0/2/6/7/8 分派）；widget/signifier 面未恢复（GAP）。
-        let _ = (&mut shows, &mut hides, &_menus, &_outlines, &_cursor, &_camera_ray);
+        let _ = (
+            &mut shows,
+            &mut hides,
+            &_menus,
+            &_outlines,
+            &_cursor,
+            &_camera_ray,
+        );
     }
 }
 
 /// `color_cursor_icon` @0x141c9b510（580B，未实现——SignifierEntityBuilder 面
 /// core 未对齐）。
-pub fn color_cursor_icon(
-    _signifiers: ResMut<UiSignifierStream>,
-    _cursor: Res<CursorPositionSS>,
-) {
+pub fn color_cursor_icon(_signifiers: ResMut<UiSignifierStream>, _cursor: Res<CursorPositionSS>) {
     // O：构建取色光标图标（mesh "color_icon/color_cursor"，插入 Ui2dExtent/
     // Ui2dImage/Ui2DFollowMouse；SignifierEntityBuilder 面 core 未恢复——GAP）。
 }

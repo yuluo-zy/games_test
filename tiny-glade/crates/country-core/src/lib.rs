@@ -39,13 +39,17 @@ pub mod systems {
     pub mod arrow_gizmo_animation;
     pub mod backend;
     pub mod brush_preview;
+    pub mod look_at_camera;
     pub mod debug;
     pub mod camera_rig;
     pub mod collision;
+    pub mod clear_canvas;
     pub mod ivy;
     pub mod main_camera;
     pub mod mode_manager;
     pub mod paths;
+    pub mod ui_2d_follow_mouse;
+    pub mod mesh_follow_terrain;
     pub mod render_loop;
     pub mod weather_system;
     pub mod world_raster;

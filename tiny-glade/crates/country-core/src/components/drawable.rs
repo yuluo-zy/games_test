@@ -4,7 +4,7 @@
 //! 使用 Bevy Bundle 派生完成插入，不另实现原作的库转发胶水。
 //! 原生字段复制范围与本机 Rust 分配大小分别记录在布局测试中。
 //!
-//! 当前仍未在本文件恢复 cache_prev_object_transforms 系统和完整的材质组件族；
+//! Previous-object transforms use the canonical component below; material families
 //! 详见 recovery/components-2026-10-18.md。
 use bevy_ecs::bundle::Bundle;
 
@@ -128,5 +128,45 @@ mod tests {
         assert_eq!(size_of::<DrawableMeshBundle>(), 0x40);
         assert_eq!(size_of::<Handle<Mesh>>(), 8);
         assert_eq!(size_of::<Handle<RasterShaderProgram>>(), 8);
+    }
+}
+
+/// Native material disk-texture name hash, eight bytes. The draw callback
+/// reads this same component; no parallel render-only view is constructed.
+#[derive(bevy_ecs::component::Component, Debug, PartialEq, Eq)]
+pub struct AlbedoMap(pub u64);
+/// Native alpha-map disk-texture name hash.
+#[derive(bevy_ecs::component::Component, Debug, PartialEq, Eq)]
+pub struct AlphaMap(pub u64);
+
+/// One canonical previous object Transform, read by actual sheep/duck draw callbacks.
+#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, PartialEq)]
+pub struct PrevTransform {
+    pub rotation: glam::Quat,
+    pub translation: glam::Vec3,
+    pub scale: glam::Vec3,
+}
+impl Default for PrevTransform {
+    fn default() -> Self {
+        Self::from(Transform::identity())
+    }
+}
+impl From<Transform> for PrevTransform {
+    fn from(value: Transform) -> Self {
+        Self {
+            rotation: value.rotation,
+            translation: value.translation,
+            scale: value.scale,
+        }
+    }
+}
+
+/// B14082bd80/628B, PDB FunctionSystem140b51320: unfiltered
+/// Query<(&Transform, &mut PrevTransform)>. Bevy owns changed ticks.
+pub fn cache_prev_object_transforms(
+    mut transforms: bevy_ecs::system::Query<(&Transform, &mut PrevTransform)>,
+) {
+    for (current, mut previous) in &mut transforms {
+        *previous = PrevTransform::from(*current);
     }
 }

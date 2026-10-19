@@ -32,22 +32,7 @@ use glam::Vec3;
 
 use crate::components::{Sheep, Transform};
 
-/// 羊行走动画记录（二进制位于 Sheep 0x68 记录 +0x10/+0x14/+0x28/+0x48/+0x4c/+0x50/+0x54/+0x5c）。
-#[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
-pub struct SheepWalkRecord {
-    /// +0x10：动画状态（1=行走、2=静止过渡、3=静止；跳表 0x14304b0f8 索引）。
-    pub state: u32,
-    /// +0x14：动画进度。
-    pub progress: f32,
-    /// +0x28：walk 动画帧索引 = `(idx + n*20 + 3) mod 30`（idx = clamp_f32_to_i64(accum*24.0)）。
-    pub frame_index: u64,
-    /// +0x48：速度 = |目标位-记录位| / dt。
-    pub speed: f32,
-    /// +0x4c x/y +0x54 z：上一帧位置记录。
-    pub last_pos: Vec3,
-    /// +0x5c：walk 累积计时（每帧 `+= dt` 后 `fmodf(accum, 1.25)` 回写）。
-    pub accum: f32,
-}
+pub use country_core::resources::critters::sheep::SheepWalkRecord;
 
 /// sheep_walk_animation（0x14231a630）。
 pub fn sheep_walk_animation(

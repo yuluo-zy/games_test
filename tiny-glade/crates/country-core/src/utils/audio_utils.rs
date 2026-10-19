@@ -58,6 +58,13 @@ impl<E: LoopEntry> AudioLoop<E> {
         }
     }
 
+    /// Original noloop adaptor sets AudioLoop+36. Keep native parameter
+    /// detection; this additionally requests explicit stop when a loop exists.
+    pub fn noloop(mut self) -> Self {
+        self.stops_explicitly = true;
+        self
+    }
+
     /// 调用方必须维持非空实例队列及有效 cursor。
     pub fn current(&self) -> &E {
         &self.entries[self.cursor]

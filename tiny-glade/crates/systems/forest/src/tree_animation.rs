@@ -31,7 +31,7 @@
 //! ## ⚠ 与当前 country_core 类型的分歧（未实现面，详见 RESTORE.md）
 //!
 //! TreeAnimation 已恢复为实体自身的时长/进度/树冠可见性/临时隐藏标志。
-//! PrefabInstanceData 的放置记录写面仍缺失；InteractableForestTree 的
+//! Placement writes use canonical PrefabInstanceData(48B). InteractableForestTree 的
 //! 动画字段仍借 position 的 x/y/z 偏移承载
 //! （+0x8/+0xc/+0x10），语义名分歧（以 position 承载）。`Aabb3::intersect_segment` 原为
 //! 3D AABB 线段求交（0x141240570），当前 utils 无此方法（本地等效实现落地并标注）。
@@ -39,16 +39,15 @@
 use bevy_ecs::prelude::*;
 use glam::Vec3;
 
-use country_core::asset_libraries::audio_trigger_library::{
-    AudioTriggerKind, AudioTriggerLibrary,
-};
-use country_core::components::{PrefabInstanceData, TreeAnimation, TreeMarkedForDeletion};
+use country_core::asset_libraries::audio_trigger_library::{AudioTriggerKind, AudioTriggerLibrary};
+use country_core::components::{TreeAnimation, TreeMarkedForDeletion};
 use country_core::render::nani::instance_updates::pack_2x16f_uint;
 use country_core::resources::time::GameTime;
 use country_core::resources::tree_storage::{InteractableForestPlacements, InteractableForestTree};
 use country_core::systems::camera_rig::main_camera::MainCamera;
 use country_core::systems::mode_manager::AppMode;
 use country_core::systems::prefab::DespawnPrefabCmd;
+use country_core::systems::prefab::PrefabInstanceData;
 use country_core::systems::ui::signifiers::signifier_create::UiSignifierStream;
 use utils::easing_functions::EasingFunction;
 
@@ -144,12 +143,12 @@ pub fn handplaced_tree_animation(
 
     // ---------------------------------------------------------------- 逐树循环（O）
     // 进度属于实体；查询顺序改变、实体删除或切换 archetype 不会串用别的树状态。
-    for (mut animation, _instance, marked) in trees.iter_mut() {
+    for (mut animation, mut instance, marked) in trees.iter_mut() {
         let changed = animation.advance(delta, marked.is_some(), !(subtract && !audio_hit));
-        // PrefabInstanceData 的 GPU 放置记录写面尚待接线；打包公式保持原式。
         if changed {
             let fade = animation.canopy_visibility;
-            let _packed = pack_2x16f_uint(animation.progress, 1.0 - (1.0 - fade) * (1.0 - fade));
+            instance.0.anim_t_packed =
+                pack_2x16f_uint(animation.progress, 1.0 - (1.0 - fade) * (1.0 - fade));
         }
     }
 }
@@ -157,63 +156,27 @@ pub fn handplaced_tree_animation(
 /// `forest_tree_animation` @0x14227a0d0（O；4 参 = Query + GameTime + DespawnPrefabCmd +
 /// placements）。
 pub fn forest_tree_animation(
-    mut trees: Query<(
-        Entity,
-        &mut InteractableForestTree,
-        &mut PrefabInstanceData,
-        Option<&TreeMarkedForDeletion>,
-    )>,
-    time: Res<GameTime>,
-    mut despawns: EventWriter<DespawnPrefabCmd>,
-    mut placements: ResMut<InteractableForestPlacements>,
+    mut trees:Query<(Entity,&mut InteractableForestTree,&mut PrefabInstanceData,Option<&TreeMarkedForDeletion>)>,
+    time:Res<GameTime>,mut despawns:EventWriter<DespawnPrefabCmd>,
+    mut placements:ResMut<InteractableForestPlacements>,
 ) {
-    let delta = time.delta;
-    for (entity, mut tree, _instance, marked) in trees.iter_mut() {
-        // ⚠ InteractableForestTree 真实 stride 0x18 {+0x8 幅度, +0xc 进度, +0x10 计时器}；
-        // 当前 core 以 `position: Vec3` 的 x/y/z 承载——偏移恰好对齐（+0x8/+0xc/+0x10），
-        // 语义名分歧（进度/计时器语义 I，见 RESTORE.md §3）。
-        let amplitude = tree.position.x;
-        let timer = tree.position.z;
-
-        // O：step 与 growing：
-        //   标记树 → `step = delta / -0.3`（0x1429258fc = -0.3），growing=false；
-        //   否则 timer>0 → `timer -= delta`，step=0，growing=true；
-        //        timer≤0 → `step = delta + delta`（2×delta），growing=true。
-        let (step, growing) = if marked.is_some() {
-            (delta / -0.3, false)
-        } else if timer > 0.0 {
-            tree.position.z = timer - delta;
-            (0.0, true)
-        } else {
-            (delta + delta, true)
-        };
-
-        let old_progress = tree.position.y;
-        // O：`progress = clamp(progress + step, 0, 1)` —— 原机器码为**分支**
-        //   `if 0.0 <= x { x } else { 0.0 }`、`if r <= 1.0 { r } else { 1.0 }`
-        //   （NaN 得 0），与 `f32::clamp`（NaN 传播）不同；按分支复刻。
-        let x = tree.position.y + step;
-        let r = if 0.0 <= x { x } else { 0.0 };
-        tree.position.y = if r <= 1.0 { r } else { 1.0 };
-
-        if tree.position.y != old_progress {
-            // O：`EasingFunction::apply(progress)`（self = 静态 0x14303802c 判别值
-            // 0x06 = CubicOut，0x140c95ef0）× 幅度 → 写 `PrefabInstanceData[+0xc]`。
-            // ⚠ 权威布局修正后 `PrefabInstanceData` 无该承载位 → **未实现
-            // （core-type-gap，登记）**；缓动值仍按原式计算。
-            let _eased = EasingFunction::CubicOut.apply(tree.position.y) * amplitude;
+    for (entity,mut tree,mut instance,marked) in &mut trees {
+        let (step,growing)=if marked.is_some() {(time.delta / -0.3,false)}
+        else if tree.delay>0.0 {tree.delay-=time.delta;(0.0,true)}
+        else {(time.delta+time.delta,true)};
+        let previous=tree.progress;
+        // Native14227a68a..69f MAXSS 0,raw / MINSS 1,result retains NaN/-0.
+        let raw=step+tree.progress;
+        let low=if 0.0>raw {0.0}else{raw};
+        tree.progress=if 1.0<low {1.0}else{low};
+        if tree.progress!=previous {
+            instance.0.scale=EasingFunction::CubicOut.apply(tree.progress)*tree.amplitude;
         }
-
-        // O：`!growing && progress == 0.0`（NaN 不命中）→ `DespawnPrefabCmd`
-        // payload = 打包 Entity（8 B；核心类型多出的 `_gap` 原生不写 → 0）+ 清记录 +0x44。
-        if !growing && tree.position.y == 0.0 {
-            despawns.write(DespawnPrefabCmd {
-                entity: Some(entity),
-                _gap: 0,
-            });
-            // ⚠ 真实：`placements.records[tree.id].+0x44 = 0`（越界 panic）；当前
-            // country_core 记录无 `+0x44` 位 → 未实现面（保留结构、不伪造字段）。
-            let _ = &mut placements;
+        if !growing && tree.progress==0.0 {
+            despawns.write(DespawnPrefabCmd{entity:Some(entity),_gap:0});
+            // Original writes the record Entity's generation@44=0. The same
+            // indexed owner must be released before the next manage pass.
+            placements.records[tree.placement_index].entity=None;
         }
     }
 }

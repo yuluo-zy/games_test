@@ -39,8 +39,8 @@
 //! （`grep` 全 workspace 无该类型），其字段布局未锚定——无法逐语句重建
 //! insert 命令载荷。解锁条件：core 落 `Floor` 组件布局（O 面：wall_id@0、
 //! shape 字段、floor 高度、byte@0x88=0 等）后按上述全序实现。
-use country_core::resources::walls::public_walls::{OnWallChanged, OnWallDeleted, PublicWalls};
 use bevy_ecs::prelude::*;
+use country_core::resources::walls::public_walls::{OnWallChanged, OnWallDeleted, PublicWalls};
 
 /// B `system_wall_constructor::construct_floors::FloorStorage`（Local）。
 #[derive(Default, Debug)]
@@ -60,5 +60,7 @@ pub fn construct_floors(
     _storage: Local<FloorStorage>,
     _commands: Commands,
 ) {
-    todo!("未实现: construct_floors 0x1407661e0（缺 country_core::resources::walls::Floor 组件布局；deleted/changed 的 FloorStorage 生命周期与墙门控已解，见模块文档）")
+    todo!(
+        "未实现: construct_floors 0x1407661e0（缺 country_core::resources::walls::Floor 组件布局；deleted/changed 的 FloorStorage 生命周期与墙门控已解，见模块文档）"
+    )
 }

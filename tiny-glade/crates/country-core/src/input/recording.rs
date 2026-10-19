@@ -1,7 +1,7 @@
 //! 完整输入录制的版本化文件协议。运行时帧和持久化帧使用同一语义结构。
 use super::{action_set::MainActionSet, input_stream::InputStream};
 use anyhow::{Context, Result};
-use glam::Vec2;
+use glam::{Vec2, Vec3};
 use serde::{Deserialize, Serialize};
 use std::{
     io::{BufWriter, Read, Write},
@@ -9,8 +9,28 @@ use std::{
 };
 
 // 快照改用实际工具栏和 AppMode，并记录捕获锚点；旧版缺少恢复所需的数据。
-pub const RECORDING_FORMAT_VERSION: u32 = 2;
+// The current versioned host format gains the native per-frame depth values.
+// Reject old incomplete recordings instead of silently filling those values.
+pub const RECORDING_FORMAT_VERSION: u32 = 3;
 const MAX_RECORDING_FILE_BYTES: u64 = 64 * 1024 * 1024;
+
+/// The three values copied by original read_mouse_depth_value_from_gpu into
+/// the actual input frame (+48/+4c/+58). This is a semantic host projection,
+/// not a native208-byte frame ABI.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MouseDepthReplayFrame {
+    pub depth: f32,
+    pub mouse_position: Vec3,
+    pub center_position: Vec3,
+}
+impl MouseDepthReplayFrame {
+    pub fn is_finite(self) -> bool {
+        self.depth.is_finite()
+            && self.mouse_position.is_finite()
+            && self.center_position.is_finite()
+    }
+}
 
 /// 动作保留按下沿和连发计时；游标是消费动作前的位置。
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -21,10 +41,12 @@ pub struct InputFrame {
     pub screen_cursor_position: Vec2,
     pub captured_cursor_position: Option<Vec2>,
     pub time_delta_seconds: f32,
+    pub mouse_depth: MouseDepthReplayFrame,
 }
 impl InputFrame {
     pub fn validate(&self) -> Result<()> {
         anyhow::ensure!(self.actions.is_finite(), "录制动作包含非有限值");
+        anyhow::ensure!(self.mouse_depth.is_finite(), "录制深度值包含非有限值");
         anyhow::ensure!(
             self.screen_cursor_position.is_finite(),
             "录制游标包含非有限值"
@@ -123,10 +145,45 @@ pub fn save_recording(path: &Path, stream: &InputStream<InputFrame>) -> Result<(
         temporary.as_file().metadata()?.len() <= MAX_RECORDING_FILE_BYTES,
         "输入录制超过 64 MiB 限制"
     );
-    temporary
-        .persist(path)
-        .map_err(|error| error.error)
-        .context("替换输入录制文件失败")?;
+    // Windows 的 rename/persist 不能覆盖已存在目标。先把旧文件移到同目录的
+    // 唯一备份，再 persist；persist 失败则恢复备份，保持“失败保留原文件”。
+    #[cfg(windows)]
+    {
+        let backup = if path.exists() {
+            let name = path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or("recording");
+            let backup = parent.join(format!(
+                ".{name}.{}.tg-rec-backup",
+                fastrand::u64(..)
+            ));
+            std::fs::rename(path, &backup).context("备份输入录制文件失败")?;
+            Some(backup)
+        } else {
+            None
+        };
+        match temporary.persist(path) {
+            Ok(_) => {
+                if let Some(backup) = backup {
+                    let _ = std::fs::remove_file(backup);
+                }
+            }
+            Err(error) => {
+                if let Some(backup) = backup {
+                    let _ = std::fs::rename(backup, path);
+                }
+                return Err(error.error).context("替换输入录制文件失败");
+            }
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        temporary
+            .persist(path)
+            .map_err(|error| error.error)
+            .context("替换输入录制文件失败")?;
+    }
     Ok(())
 }
 
@@ -149,6 +206,11 @@ mod tests {
                 screen_cursor_position: Vec2::new(0.25, 0.75),
                 time_delta_seconds: 0.016,
                 ..Default::default()
+            };
+            frame.mouse_depth = MouseDepthReplayFrame {
+                depth: 0.125 + index as f32 * 0.125,
+                mouse_position: Vec3::new(index as f32, 5.0, 6.0),
+                center_position: Vec3::new(7.0, 8.0, index as f32),
             };
             frame.actions.digital[16] = DigitalActionState {
                 phase: DigitalActionPhase::JustPressed,
@@ -176,6 +238,20 @@ mod tests {
         save_recording(file.path(), &stream).unwrap();
         assert_eq!(load_recording(file.path()).unwrap(), stream);
         assert_eq!(load_recording(file.path()).unwrap().frame_count(), 3);
+    }
+    #[test]
+    fn incomplete_depth_recordings_are_rejected_instead_of_filled() {
+        let file = tempfile::NamedTempFile::new().unwrap();
+        let mut value = serde_json::to_value(RecordingFile {
+            format_version: RECORDING_FORMAT_VERSION,
+            stream: stream(),
+        })
+        .unwrap();
+        // The versioned format requires the three real native replay values.
+        let frames = value["stream"]["frames"].as_array_mut().unwrap();
+        frames[0].as_object_mut().unwrap().remove("mouse_depth");
+        std::fs::write(file.path(), serde_json::to_vec(&value).unwrap()).unwrap();
+        assert!(load_recording(file.path()).is_err());
     }
     #[test]
     fn invalid_version_and_sync_indices_are_rejected() {
@@ -233,12 +309,10 @@ mod tests {
         })
         .unwrap();
         std::fs::write(file.path(), bytes).unwrap();
-        assert!(
-            load_recording(file.path())
-                .unwrap_err()
-                .to_string()
-                .contains("累计时间溢出")
-        );
+        assert!(load_recording(file.path())
+            .unwrap_err()
+            .to_string()
+            .contains("累计时间溢出"));
     }
 
     #[test]

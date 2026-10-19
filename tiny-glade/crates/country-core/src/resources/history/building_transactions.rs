@@ -164,6 +164,146 @@ impl RoofHistoryEdit {
     }
 }
 
+#[derive(serde::Serialize, serde::Deserialize)]
+struct SavedRoofPresence {
+    wall_index: u64,
+    color_id: u32,
+    params: crate::resources::roofs::roof_shape::RoofShapeParams,
+    #[serde(default = "history_flat_style_default")]
+    flat_roof_style: crate::resources::roofs::roof_shape::FlatRoofStyle,
+}
+fn history_flat_style_default() -> crate::resources::roofs::roof_shape::FlatRoofStyle {
+    let mut bytes = [0; 12];
+    bytes[0] = 1;
+    crate::resources::roofs::roof_shape::FlatRoofStyle::from_observed(bytes)
+}
+#[derive(serde::Serialize, serde::Deserialize)]
+enum SavedRoofRim {
+    Rim,
+    NoRim,
+}
+impl SavedRoofRim {
+    fn native_tag(self) -> u8 {
+        match self {
+            Self::Rim => 0,
+            Self::NoRim => 1,
+        }
+    }
+    fn from_tag(tag: u8) -> Self {
+        match tag {
+            0 => Self::Rim,
+            1 => Self::NoRim,
+            _ => panic!("invalid FlatRoofRimStyle"),
+        }
+    }
+}
+#[derive(serde::Serialize, serde::Deserialize)]
+enum SavedRoofEdit {
+    CreateRoof(SavedRoofPresence),
+    DeleteRoof(SavedRoofPresence),
+    VisualEdit(tg_history::RoofVisualEdit),
+    SwitchRoofRidgeDir(tg_history::RoofDirectionEdit),
+    ChangeFlatRoofRimStyle {
+        wall_index: u64,
+        before: SavedRoofRim,
+        after: SavedRoofRim,
+    },
+}
+impl serde::Serialize for RoofHistoryEdit {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let b = &self.0;
+        let f = |i| f32::from_le_bytes(b[i..i + 4].try_into().unwrap());
+        let direction = |x| {
+            if x == 0 {
+                tg_history::RidgeDirection::Width
+            } else {
+                tg_history::RidgeDirection::Length
+            }
+        };
+        let value = match self.tag() {
+            0 | 1 => {
+                let mut roof = [0; 88];
+                roof[0x24..0x40].copy_from_slice(&b[20..48]);
+                let presence = SavedRoofPresence {
+                    wall_index: self.wall_id(),
+                    color_id: u32::from_le_bytes(b[4..8].try_into().unwrap()),
+                    params: crate::resources::roofs::roof_shape::RoofShapeParams::from_roof(&roof),
+                    flat_roof_style:
+                        crate::resources::roofs::roof_shape::FlatRoofStyle::from_observed(
+                            b[8..20].try_into().unwrap(),
+                        ),
+                };
+                if self.tag() == 0 {
+                    SavedRoofEdit::CreateRoof(presence)
+                } else {
+                    SavedRoofEdit::DeleteRoof(presence)
+                }
+            }
+            2 => SavedRoofEdit::VisualEdit(tg_history::RoofVisualEdit {
+                wall_index: self.wall_id(),
+                prev_height: f(4),
+                prev_profile: f(8),
+                prev_ridge: f(12),
+                prev_eave: f(16),
+                new_height: f(20),
+                new_profile: f(24),
+                new_ridge: f(28),
+                new_eave: f(32),
+                prev_tip_offset: [f(48), f(52)],
+                new_tip_offset: [f(56), f(60)],
+                extensions: Default::default(),
+            }),
+            3 => SavedRoofEdit::SwitchRoofRidgeDir(tg_history::RoofDirectionEdit {
+                wall_index: self.wall_id(),
+                from: direction(b[1]),
+                to: direction(b[2]),
+                extensions: Default::default(),
+            }),
+            4 => SavedRoofEdit::ChangeFlatRoofRimStyle {
+                wall_index: self.wall_id(),
+                before: SavedRoofRim::from_tag(b[1]),
+                after: SavedRoofRim::from_tag(b[2]),
+            },
+            _ => return Err(serde::ser::Error::custom("invalid RoofEdit tag")),
+        };
+        serde::Serialize::serialize(&value, serializer)
+    }
+}
+impl<'de> serde::Deserialize<'de> for RoofHistoryEdit {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let value = <SavedRoofEdit as serde::Deserialize>::deserialize(deserializer)?;
+        let direction = |x| match x {
+            tg_history::RidgeDirection::Width => 0,
+            tg_history::RidgeDirection::Length => 1,
+        };
+        let presence = |p: SavedRoofPresence, tag| {
+            let mut bytes = [0; 44];
+            bytes[..4].copy_from_slice(&p.color_id.to_le_bytes());
+            bytes[4..16].copy_from_slice(p.flat_roof_style.observed());
+            bytes[16..44].copy_from_slice(p.params.observed());
+            Self::presence(tag, p.wall_index, bytes)
+        };
+        Ok(match value {
+            SavedRoofEdit::ChangeFlatRoofRimStyle {
+                wall_index,
+                before,
+                after,
+            } => Self::rim(RoofRimHistoryMutation {
+                observed_tag: 4,
+                wall_id: crate::resources::walls::publication_fields::WallId(wall_index),
+                from: before.native_tag(),
+                to: after.native_tag(),
+            }),
+            SavedRoofEdit::CreateRoof(p) => presence(p, 0),
+            SavedRoofEdit::DeleteRoof(p) => presence(p, 1),
+            SavedRoofEdit::VisualEdit(v) => Self::visual(&v),
+            SavedRoofEdit::SwitchRoofRidgeDir(v) => {
+                Self::direction(v.wall_index, direction(v.from), direction(v.to))
+            }
+        })
+    }
+}
+
 /// Native deferred visual recording consumes only the last unread change.
 /// This is the actual producer payload mapping; UI selection/start ownership
 /// remains with the caller. The record includes its 8-byte queue prefix.
@@ -472,7 +612,7 @@ impl<S: Clone> BuildingHistoryTransactions<S> {
         let Some(entry) = ledger.entries.get(target) else {
             return Ok(None);
         };
-        if entry.observed_auxiliary_counts != [0; 3] {
+        if entry.observed_auxiliary_counts != [0; 3] || !entry.auxiliary.is_empty() {
             return Err(BuildingHistoryError::AuxiliaryReplayOwnerRequired);
         }
         let undo = step == HistoryCursorStep::Undo;

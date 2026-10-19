@@ -37,13 +37,13 @@
 //!   `Events<(&str, SettingsMenuState)>` / `Events<(DecoratorId,
 //!   Vec<PreferredNodeAlignment>)>` 事件写面、`MainCamera::eye_position` SIMD 偏移、
 //!   平顶 else 块、demo 分支——登记 GAP。
-//! - `hide_color_menu`（0x1422adcf0，2408B）：**未实现**。
+//! - `hide_color_menu`（0x1422adcf0，5058B）：完整取消/关闭/退场生命周期。
 
 use bevy_ecs::prelude::*;
 
 use country_core::resources::color_icon::{CustomizationIcon, CustomizationIconMarkedForDeletion};
 
-use crate::radial_menu::{new_flat_roof_rim_ty, new_separator, ColorRadialMenu, IconInfo};
+use crate::radial_menu::{ColorRadialMenu, IconInfo, new_flat_roof_rim_ty, new_separator};
 use crate::{HideColorMenuCmd, ShowColorMenuCmd};
 
 /// `IconInfo` 色 swatch 图标构造（O：反编译写面 String@0 + kind@+0x18 +
@@ -106,7 +106,11 @@ fn push_case0_main_swatches(options: &mut Vec<IconInfo>) {
 fn push_case0_plaster_peel(options: &mut Vec<IconInfo>) {
     options.push(new_separator());
     options.push(icon_color("color_icon/plaster_peel_low", 0xc, 0));
-    options.push(icon_color("color_icon/plaster_peel_medium", 0xc, 0x3f000000));
+    options.push(icon_color(
+        "color_icon/plaster_peel_medium",
+        0xc,
+        0x3f000000,
+    ));
     options.push(icon_color("color_icon/plaster_peel_high", 0xc, 0x3f800000));
 }
 
@@ -198,30 +202,223 @@ fn options_for_kind(
     }
 }
 
-/// `hide_color_menu` @0x1422adcf0（2408B，未实现——事件/动作面+图标子类型
-/// switch 的写者映射依赖反编译与 core 目录，登记）。
+/// All native cancellation writers, kept in one SystemParam to preserve the
+/// original event ownership while avoiding a flattened function parameter list.
+#[derive(bevy_ecs::system::SystemParam)]
+pub struct ColorMenuRestoreEvents<'w> {
+    pub walls: EventWriter<'w, country_core::resources::color_id::SetWallColorIdCmd>,
+    pub roofs: EventWriter<'w, crate::SetRoofColorIdCmd>,
+    pub decorators: EventWriter<'w, crate::SetDecoratorColorIdCmd>,
+    pub ladders: EventWriter<'w, crate::SetLadderColorIdCmd>,
+    pub brightness: EventWriter<'w, crate::SetDecoratorBrightnessCmd>,
+    pub gates: EventWriter<'w, country_core::resources::color_id::SetGateColorIdCmd>,
+    pub halftimber: EventWriter<'w, country_core::resources::color_id::SetHalftimberColorIdCmd>,
+    pub styles: EventWriter<'w, country_core::systems::wall::SetWallStyleCmd>,
+    pub flags: EventWriter<'w, crate::SetFlagConnectionCmd>,
+    pub window_lights: EventWriter<'w, crate::SetWindowLightCmd>,
+    pub rims: EventWriter<'w, country_core::resources::roofs::commands::SetFlatRoofRimStyleCmd>,
+    pub chimneys: EventWriter<'w, crate::SetChimneySmokeCmd>,
+    pub magic: EventWriter<'w, crate::SetMagicColorIdCmd>,
+    pub flat_styles: EventWriter<'w, crate::SetFlatRoofStyleCmd>,
+    pub plaster: EventWriter<'w, country_core::systems::wall::SetPlasterPeelAmountCmd>,
+}
+impl ColorMenuRestoreEvents<'_> {
+    /// B1422ae3e4 jump table0x14303cad8, targets0..12. The stored initial
+    /// snapshot is restored on cancel; current preview values are not committed.
+    pub fn restore(&mut self, menu: &ColorRadialMenu) {
+        use country_core::resources::roofs::customization::{
+            FlatRoofRimRequest, FlatRoofStyleObserved, FlatRoofStyleRequest,
+        };
+        use country_core::resources::walls::WallId;
+        let target = menu.target;
+        let initial = menu.initial;
+        let wall = WallId(target.id);
+        let id = target.payload;
+        match target.kind {
+            0 => {
+                self.walls
+                    .write(country_core::resources::color_id::SetWallColorIdCmd {
+                        id: target.id as u32,
+                        _gap4: (target.id >> 32) as u32,
+                        color: initial.color,
+                        custom: 0,
+                        _pad: [0; 3],
+                    });
+                self.styles
+                    .write(country_core::systems::wall::SetWallStyleCmd {
+                        wall_id: wall,
+                        from: initial.wall_style,
+                        to: initial.wall_style,
+                        record_history: 0,
+                        play_sound: 0,
+                    });
+                self.rims.write(
+                    country_core::resources::roofs::commands::SetFlatRoofRimStyleCmd(
+                        FlatRoofRimRequest {
+                            wall_id: country_core::resources::walls::publication_fields::WallId(
+                                target.id,
+                            ),
+                            from: initial.flat_roof_rim_style,
+                            to: initial.flat_roof_rim_style,
+                            observed_record_history: 0,
+                        },
+                    ),
+                );
+                self.plaster
+                    .write(country_core::systems::wall::SetPlasterPeelAmountCmd {
+                        wall_id: wall,
+                        from: initial.plaster_peel,
+                        to: initial.plaster_peel,
+                        record_history: 0,
+                    });
+            }
+            1 => {
+                self.roofs.write(crate::SetRoofColorIdCmd {
+                    id: target.id,
+                    color: initial.color,
+                    custom: 0,
+                });
+            }
+            2 => {
+                self.flat_styles
+                    .write(crate::SetFlatRoofStyleCmd(FlatRoofStyleRequest {
+                        wall_id: country_core::resources::walls::publication_fields::WallId(
+                            target.id,
+                        ),
+                        style: FlatRoofStyleObserved::from_observed(initial.flat_roof_style),
+                        observed_play_sound: 0,
+                    }));
+            }
+            3 => {
+                self.decorators.write(crate::SetDecoratorColorIdCmd {
+                    id,
+                    color: initial.color,
+                    custom: 0,
+                });
+            }
+            4 => {
+                self.window_lights.write(crate::SetWindowLightCmd {
+                    id,
+                    value: initial.color,
+                    custom: 0,
+                });
+            }
+            5 => {
+                self.gates
+                    .write(country_core::resources::color_id::SetGateColorIdCmd {
+                        id: target.id as u32,
+                        _gap4: (target.id >> 32) as u32,
+                        color: initial.color,
+                        custom: 0,
+                        _pad: [0; 3],
+                    });
+            }
+            6 => {
+                self.decorators.write(crate::SetDecoratorColorIdCmd {
+                    id,
+                    color: initial.color,
+                    custom: 0,
+                });
+                self.flags.write(crate::SetFlagConnectionCmd {
+                    id,
+                    value: initial.flag_connection,
+                    custom: 0,
+                    _pad: [0; 2],
+                });
+            }
+            9 => {
+                self.decorators.write(crate::SetDecoratorColorIdCmd {
+                    id,
+                    color: initial.color,
+                    custom: 0,
+                });
+                self.brightness.write(crate::SetDecoratorBrightnessCmd {
+                    id,
+                    value: initial.brightness.to_bits(),
+                    custom: 0,
+                });
+            }
+            10 => {
+                self.decorators.write(crate::SetDecoratorColorIdCmd {
+                    id,
+                    color: initial.color,
+                    custom: 0,
+                });
+                self.chimneys.write(crate::SetChimneySmokeCmd {
+                    id,
+                    value: initial.chimney_smoke,
+                    custom: 0,
+                    _pad: [0; 2],
+                });
+            }
+            11 | 12 => {
+                if target.kind == 11 {
+                    self.decorators.write(crate::SetDecoratorColorIdCmd {
+                        id,
+                        color: initial.color,
+                        custom: 0,
+                    });
+                } else {
+                    self.ladders.write(crate::SetLadderColorIdCmd {
+                        id,
+                        value: initial.color,
+                        custom: 0,
+                    });
+                }
+                self.magic.write(crate::SetMagicColorIdCmd {
+                    id,
+                    value: initial.magic_color,
+                    custom: 0,
+                });
+            }
+            _ => {
+                self.halftimber
+                    .write(country_core::resources::color_id::SetHalftimberColorIdCmd {
+                        id: target.id as u32,
+                        _gap4: (target.id >> 32) as u32,
+                        color: initial.color,
+                        custom: 0,
+                        _pad: [0; 3],
+                    });
+            }
+        }
+    }
+}
+
+/// B1422adcf0. The latest command decides cancellation; keyboard ui_cancel18
+/// supplies true only when there is no command. Menu despawn is immediate, while
+/// icon entities retain their original animated deletion lifetime.
 #[allow(clippy::too_many_arguments)]
 pub fn hide_color_menu(
     mut cmds: EventReader<HideColorMenuCmd>,
-    mut _sounds: EventWriter<country_core::systems::ui::resources::widget_params::PlayUiSound>,
+    mut sounds: EventWriter<country_core::systems::ui::resources::widget_params::PlayUiSound>,
     menus: Query<(Entity, &ColorRadialMenu)>,
     icons: Query<(Entity, &CustomizationIcon)>,
-    _actions: Res<country_core::input::action_set::ActionSetStates>,
+    actions: Res<country_core::input::action_set::ActionSetStates>,
     mut commands: Commands,
+    mut restoration: ColorMenuRestoreEvents,
 ) {
-    // FIX-2（reviewer-state-color）：原按 HideColorMenuCmd 存在（或
-    // `DigitalActionState::just_pressed()`）**命中才动**；无命令/动作则不动。
-    // just_pressed 的具体输入动作名 U（GAP）——本实现以事件存在为门控。
-    if cmds.read().next().is_some() {
-        for (entity, _menu) in menus.iter() {
-            commands.entity(entity).despawn();
+    let cancel = match cmds.read().last() {
+        Some(cmd) => cmd.cancel,
+        None if actions.digital[18].just_pressed() => true,
+        None => return,
+    };
+    for (entity, menu) in &menus {
+        if cancel {
+            restoration.restore(menu);
+            sounds.write(
+                country_core::systems::ui::resources::widget_params::PlayUiSound {
+                    kind: 9,
+                    ..Default::default()
+                },
+            );
         }
-        for (entity, _icon) in icons.iter() {
-            commands
-                .entity(entity)
-                .insert(CustomizationIconMarkedForDeletion)
-                .despawn();
-        }
+        commands.entity(entity).despawn();
+    }
+    for (entity, _) in &icons {
+        commands
+            .entity(entity)
+            .insert(CustomizationIconMarkedForDeletion);
     }
 }
 
@@ -240,7 +437,9 @@ pub fn show_color_options<S: Send + Sync + 'static>(
     camera: Res<country_core::systems::camera_rig::main_camera::MainCamera>,
     mut _nav: ResMut<country_core::systems::ui::resources::widget_params::UiNavState>,
     _cursor: Res<country_core::resources::mouse_terrain_raycast::CursorPositionSS>,
-    _customization: Res<country_core::resources::glade_color_customization::GladeColorCustomization>,
+    _customization: Res<
+        country_core::resources::glade_color_customization::GladeColorCustomization,
+    >,
     mut commands: Commands,
 ) {
     // O：demo 门 = `_DEV_OVERRIDE_IS_DEMO_MODE`（0x143634d90 静态字节，非资源；
@@ -251,12 +450,20 @@ pub fn show_color_options<S: Send + Sync + 'static>(
     for cmd in cmds.read() {
         // O：plaster 门 iVar9 源 = Res<WallColorIds> + get_instruction() 索引
         // （GAP：索引源未定，以遍历任一 ∈{4..10,12} 近似登记）。
-        let is_plaster_wall = wall_colors.0.iter().any(|id| (4..=10).contains(id) || *id == 0xc);
+        let is_plaster_wall = wall_colors
+            .0
+            .iter()
+            .any(|id| (4..=10).contains(id) || *id == 0xc);
         // O：halftimber 门 `*(puStack_250+600)<2`（GAP：puStack_250 源为 core
         // HalftimberColorIds/墙目录面，以 0 近似登记——近似不入行为判等）。
         let halftimber_count = 0u32;
         // O：构建该 kind 的图标选项列表。
-        let options = options_for_kind(cmd.kind, is_plaster_wall, halftimber_count, has_flat_roof);
+        let options = options_for_kind(
+            u32::from(cmd.kind),
+            is_plaster_wall,
+            halftimber_count,
+            has_flat_roof,
+        );
         // O：`ColorRadialMenu::create`——center 源自 `MainCamera::eye_position()`
         // + 偏移（GAP：SIMD 逐分量偏移未对齐 core 类型，以 eye_position().truncate()
         // 近似登记），icons = 上述列表。
@@ -267,4 +474,146 @@ pub fn show_color_options<S: Send + Sync + 'static>(
         commands.spawn((menu, CustomizationIcon::default()));
     }
     let _ = demo_mode;
+}
+
+#[cfg(test)]
+mod native_hide_tests {
+    use super::*;
+    use crate::radial_menu::{ColorMenuTarget, ColorSelectionSnapshot};
+    use country_core::resources::color_id::*;
+    use country_core::systems::ui::resources::widget_params::PlayUiSound;
+    fn setup() -> World {
+        let mut world = World::new();
+        crate::register_color_events(&mut world);
+        world.init_resource::<country_core::input::action_set::ActionSetStates>();
+        world
+    }
+    #[test]
+    fn cancellation_restores_every_native_target_then_keeps_exit_animation() {
+        let mut world = setup();
+        let icon = world
+            .spawn(CustomizationIcon {
+                alpha_18: 1.,
+                ..Default::default()
+            })
+            .id();
+        for kind in 0..13 {
+            world.spawn(ColorRadialMenu {
+                target: ColorMenuTarget {
+                    kind,
+                    payload: 67,
+                    id: 0x100000009,
+                },
+                initial: ColorSelectionSnapshot {
+                    color: 5,
+                    brightness: 4.,
+                    plaster_peel: 0.5,
+                    magic_color: 8,
+                    wall_style: 2,
+                    flat_roof_rim_style: 1,
+                    flag_connection: 1,
+                    chimney_smoke: 1,
+                    ..Default::default()
+                },
+                ..Default::default()
+            });
+        }
+        world
+            .resource_mut::<Events<HideColorMenuCmd>>()
+            .send(HideColorMenuCmd { cancel: true });
+        let mut schedule = Schedule::default();
+        schedule.add_systems(hide_color_menu);
+        schedule.run(&mut world);
+        assert_eq!(world.query::<&ColorRadialMenu>().iter(&world).count(), 0);
+        assert!(
+            world
+                .get::<CustomizationIconMarkedForDeletion>(icon)
+                .is_some()
+        );
+        assert_eq!(world.get::<CustomizationIcon>(icon).unwrap().alpha_18, 1.);
+        assert_eq!(world.resource::<Events<PlayUiSound>>().len(), 13);
+        assert_eq!(world.resource::<Events<SetWallColorIdCmd>>().len(), 1);
+        assert_eq!(
+            world.resource::<Events<crate::SetRoofColorIdCmd>>().len(),
+            1
+        );
+        assert_eq!(
+            world.resource::<Events<crate::SetFlatRoofStyleCmd>>().len(),
+            1
+        );
+        assert_eq!(
+            world
+                .resource::<Events<crate::SetDecoratorColorIdCmd>>()
+                .len(),
+            5
+        );
+        assert_eq!(
+            world.resource::<Events<crate::SetWindowLightCmd>>().len(),
+            1
+        );
+        assert_eq!(world.resource::<Events<SetGateColorIdCmd>>().len(), 1);
+        assert_eq!(world.resource::<Events<SetHalftimberColorIdCmd>>().len(), 2);
+        assert_eq!(
+            world
+                .resource::<Events<crate::SetFlagConnectionCmd>>()
+                .len(),
+            1
+        );
+        assert_eq!(
+            world
+                .resource::<Events<crate::SetDecoratorBrightnessCmd>>()
+                .len(),
+            1
+        );
+        assert_eq!(
+            world.resource::<Events<crate::SetChimneySmokeCmd>>().len(),
+            1
+        );
+        assert_eq!(
+            world.resource::<Events<crate::SetMagicColorIdCmd>>().len(),
+            2
+        );
+        assert_eq!(
+            world.resource::<Events<crate::SetLadderColorIdCmd>>().len(),
+            1
+        );
+        assert_eq!(
+            world
+                .resource::<Events<country_core::systems::wall::SetWallStyleCmd>>()
+                .len(),
+            1
+        );
+        assert_eq!(
+            world
+                .resource::<Events<country_core::systems::wall::SetPlasterPeelAmountCmd>>()
+                .len(),
+            1
+        );
+        assert_eq!(world.resource::<Events<country_core::resources::roofs::commands::SetFlatRoofRimStyleCmd>>().len(), 1);
+        let wall = world
+            .resource::<Events<SetWallColorIdCmd>>()
+            .iter_current_update_events()
+            .next()
+            .unwrap();
+        assert_eq!(wall.wall_id().0, 0x100000009);
+        assert_eq!((wall.color, wall.custom), (5, 0));
+    }
+    #[test]
+    fn latest_false_command_overrides_keyboard_cancel_without_restoring_values() {
+        let mut world = setup();
+        let menu = world.spawn(ColorRadialMenu::default()).id();
+        world
+            .resource_mut::<country_core::input::action_set::ActionSetStates>()
+            .digital[18]
+            .phase = country_core::input::action_set::DigitalActionPhase::JustPressed;
+        let mut cmds = world.resource_mut::<Events<HideColorMenuCmd>>();
+        cmds.send(HideColorMenuCmd { cancel: true });
+        cmds.send(HideColorMenuCmd { cancel: false });
+        let mut schedule = Schedule::default();
+        schedule.add_systems(hide_color_menu);
+        schedule.run(&mut world);
+        assert!(world.get_entity(menu).is_err());
+        assert!(world.resource::<Events<SetWallColorIdCmd>>().is_empty());
+        assert!(world.resource::<Events<PlayUiSound>>().is_empty());
+    }
 }

@@ -8,6 +8,15 @@
 //!   WallGableChanged、PlayRoofSound ≡ RoofSound。
 //! - `wall_roof_hashmap`：原 `country_core::systems::wall::wall_state::wall_roof_hashmap`
 //!   的关联哈希表系统（RoofIsInvalid 事件的原始归属模块）。
+use crate::utils::components::{RoofSpire, RoofSupportBeams};
+use bevy_ecs::prelude::*;
+use country_core::components::drawable::NaniBundle;
+use country_core::render::nani::{
+    gpu_world::{GpuWorldSubsetKind, InstanceDataMarker},
+    instance_data::StoneFloorInstanceData,
+    systems::{NaniInstanceDesc, NaniMeshSelector},
+};
+use country_core::resources::roofs::RoofTiles;
 use country_core::resources::roofs::associations::AssociationAction;
 use country_core::resources::roofs::associations::association_action;
 use country_core::resources::roofs::components::prepare_resolved_roof_components;
@@ -19,7 +28,6 @@ use country_core::resources::{
     walls::{WallId, public_walls::PublicWalls},
 };
 use country_core::utils::components::transform::Transform;
-use bevy_ecs::prelude::*;
 use hashbrown::HashMap;
 
 /// B 0x1421aaea0. 缺失墙与不支持形状按原不变式失败。命令拥有实体与延迟组件插入。
@@ -53,8 +61,18 @@ pub fn create_roof(
                 RoofAnimation::from_inner(prepared.animation),
                 RoofTileSimulation::from_inner(prepared.tile_simulation),
                 RoofTriggerVolume::default(),
-                // 1421ab2bf..2f2: zero translation, identity rotation, unit scale.
-                Transform::identity(),
+                RoofTiles::default(),
+                RoofSpire,
+                RoofSupportBeams,
+                NaniBundle::<StoneFloorInstanceData> {
+                    desc: NaniInstanceDesc {
+                        mesh: NaniMeshSelector::AtlasPart(0),
+                        subset_kind: GpuWorldSubsetKind::RoofFloor,
+                    },
+                    // Original bundle stores the identity transform here.
+                    transform: Transform::identity(),
+                    marker: InstanceDataMarker::default(),
+                },
             ))
             .id();
         sounds.write(RoofSound {

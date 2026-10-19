@@ -135,11 +135,11 @@ pub fn draw_wall(
             let state =
                 WallState::new(to_authority_curve(&input), height, 0, kind, config.dev.demo);
             let wall = walls.new_wall_from_curve(state);
-            let freehand_ty = if kind == 0 { settings.freehand_ty } else { 0 };
+            let freehand_ty = if kind == 0 { settings.freehand_ty.native_tag() } else { 0 };
             let color_id = if kind == 0 {
                 settings.freeform_wall.0
             } else {
-                settings.fence.0
+                settings.fences.0
             };
             *progress = InProgressCurve::from_curve(input);
             progress.wall = Some(wall);
@@ -394,8 +394,8 @@ mod tests {
         world.init_resource::<GameConfig>();
         let mut settings = GladeColorCustomization::default();
         settings.freeform_wall.0 = 23;
-        settings.fence.0 = 42;
-        settings.freehand_ty = 1;
+        settings.fences.0 = 42;
+        settings.freehand_ty = crate::resources::walls::inner_wall_state::ArchType::ConstantMaxHeight;
         world.insert_resource(settings);
         world.insert_resource(GameTime {
             ticks_60: 1,

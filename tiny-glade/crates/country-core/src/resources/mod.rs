@@ -2,12 +2,15 @@ pub mod active_raster_stroke;
 pub mod raster_stroke;
 pub mod audio_instance;
 pub mod audio_resources;
+#[cfg(feature = "native-audio")]
+pub mod native_audio;
 pub mod audio_settings;
 pub mod brush_sizes;
 pub mod color_icon;
 pub mod color_id;
 pub mod color_id_roof;
 pub mod compute_mouse_depth_value;
+pub mod read_mouse_depth_value;
 pub mod editing_highlight;
 pub mod game_clock;
 pub mod glade_color_customization;
@@ -70,3 +73,6 @@ pub mod shader_refactoring_state;
 
 pub mod weather;
 pub mod drawing_input_smoother;
+
+/// Original Olden placement exclusion owner.
+pub mod preplaced_autoclutter;

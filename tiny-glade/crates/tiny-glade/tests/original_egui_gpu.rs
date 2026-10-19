@@ -10,6 +10,22 @@ use tiny_glade::{egui_backend::EguiBackend, egui_gpu::EguiGpu, render_bridge::Co
 
 #[test]
 fn original_egui_shader_draws_real_vertex_index_and_font_uploads_to_gpu() {
+    verify_original_egui(1);
+}
+
+#[test]
+fn original_egui_shader_draws_to_the_gameplay_four_sample_target() {
+    verify_original_egui(4);
+}
+
+fn verify_original_egui(sample_count: u8) {
+    let format = if sample_count == 4 {
+        vk::Format::from_raw(
+            country_core::systems::render_loop::draw_passes::final_post::MSAA_COLOR_FORMAT as i32,
+        )
+    } else {
+        vk::Format::R8G8B8A8_UNORM
+    };
     let shader_root = std::env::var_os("TG_COMPILED_SHADERS")
         .map(PathBuf::from)
         .unwrap_or_else(|| {
@@ -64,14 +80,28 @@ fn original_egui_shader_draws_real_vertex_index_and_font_uploads_to_gpu() {
     let target = Arc::new(
         rhapsody::resource::Texture::new(
             device.clone(),
-            &rhapsody::resource::TextureDesc::new_2d(64, 64, vk::Format::R8G8B8A8_UNORM).usage(
-                vk::ImageUsageFlags::COLOR_ATTACHMENT
-                    | vk::ImageUsageFlags::TRANSFER_SRC
-                    | vk::ImageUsageFlags::TRANSFER_DST,
-            ),
+            &rhapsody::resource::TextureDesc::new_2d(64, 64, format)
+                .sample_count(sample_count)
+                .usage(
+                    vk::ImageUsageFlags::COLOR_ATTACHMENT
+                        | vk::ImageUsageFlags::TRANSFER_SRC
+                        | vk::ImageUsageFlags::TRANSFER_DST,
+                ),
         )
         .unwrap(),
     );
+    let resolved = if sample_count == 4 {
+        Arc::new(
+            rhapsody::resource::Texture::new(
+                device.clone(),
+                &rhapsody::resource::TextureDesc::new_2d(64, 64, format)
+                    .usage(vk::ImageUsageFlags::TRANSFER_SRC | vk::ImageUsageFlags::TRANSFER_DST),
+            )
+            .unwrap(),
+        )
+    } else {
+        target.clone()
+    };
     let readback = Arc::new(
         rhapsody::resource::Buffer::new(
             device.clone(),
@@ -118,20 +148,58 @@ fn original_egui_shader_draws_real_vertex_index_and_font_uploads_to_gpu() {
                     AttachmentTexture {
                         id: color.raw(),
                         extent: (64, 64),
-                        format: vk::Format::R8G8B8A8_UNORM.as_raw() as u32,
-                        sample_count: 1,
+                        format: format.as_raw() as u32,
+                        sample_count,
                     },
                 )
                 .map_err(|error| rhapsody::Error::InvalidUsage {
                     what: "original egui consumer".into(),
                     source: Some(error.into()),
                 })?;
+            let read_color = if sample_count == 4 {
+                let destination = frame.import_native_texture(resolved.clone(), 0)?;
+                frame.with_graph(|graph| {
+                    let device = device.clone();
+                    let target = target.clone();
+                    let resolved = resolved.clone();
+                    let mut pass = graph.add_pass("read back multisampled original egui");
+                    pass.add_resource_access(color, 0x25, 0)?;
+                    pass.add_resource_access(destination, 0x34, 0)?;
+                    pass.render_with_result_context(move |ctx| {
+                        let layers = vk::ImageSubresourceLayers::default()
+                            .aspect_mask(vk::ImageAspectFlags::COLOR)
+                            .layer_count(1);
+                        unsafe {
+                            device.raw_device().cmd_resolve_image(
+                                vk::CommandBuffer::from_raw(ctx.command.handle()),
+                                target.raw_handle(),
+                                vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+                                resolved.raw_handle(),
+                                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                                &[vk::ImageResolve::default()
+                                    .src_subresource(layers)
+                                    .dst_subresource(layers)
+                                    .extent(vk::Extent3D {
+                                        width: 64,
+                                        height: 64,
+                                        depth: 1,
+                                    })],
+                            );
+                        }
+                        Ok(())
+                    });
+                    Ok(())
+                })?;
+                destination
+            } else {
+                color
+            };
             frame.with_graph(|graph| {
                 let device = device.clone();
-                let target = target.clone();
+                let target = resolved.clone();
                 let readback = readback.clone();
                 let mut copy = graph.add_pass("verify original egui output");
-                copy.add_resource_access(color, 0x25, 0)?;
+                copy.add_resource_access(read_color, 0x25, 0)?;
                 copy.add_resource_access(output, 0x34, 0)?;
                 copy.render_with_result_context(move |ctx| {
                     unsafe {

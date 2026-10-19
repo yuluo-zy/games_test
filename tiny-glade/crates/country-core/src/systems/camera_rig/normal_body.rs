@@ -18,8 +18,8 @@
 //! - 最小距离表 0x142aab4a0 = `[3.0, 40.0]`（Normal/TopDown 与 TiltShift），平方表 0x142aab4a8 = `[9.0, 1600.0]`；
 //! - 锚点水平距离必须 `< 130.0`（0x142a7b658），否则整次缩放被忽略。
 //!
-//! 未做：`update` 0x140949fe0、`translate_screen_space` 0x140949e70（旋转四元数来源未证）、`load_parameters`。
-use glam::Vec3;
+//! `update` 0x140949fe0（2339B）与 `translate_screen_space` 0x140949e70（365B）按完整 B RNE 恢复；每个 body 的持久状态仍由 MainCamera 拥有。
+use glam::{Quat, Vec2, Vec3};
 
 use super::main_camera::CameraMode;
 
@@ -239,6 +239,168 @@ impl NormalCameraBody {
     }
 }
 
+/// Native YXZ Euler construction from stored degrees. Keep the exact original
+/// float scale; do not reinterpret these angles as radians.
+fn body_rotation(yaw: f32, pitch: f32) -> Quat {
+    let scale = super::main_camera::ORBIT_ANGLE_SCALE;
+    Quat::from_rotation_y(yaw * scale) * Quat::from_rotation_x(pitch * scale)
+}
+
+fn original_xz_bounds(point: Vec2, extent: f32, extent_squared: f32, demo: bool) -> Vec2 {
+    if demo {
+        let squared = point.x * point.x + point.y * point.y;
+        if extent_squared * 4.0 < squared {
+            (point / squared.sqrt()) * (extent * 2.0)
+        } else {
+            point
+        }
+    } else {
+        // Original max/min vector sequence explicitly maps NaN to the lower
+        // bound, then allows up to one extent beyond the clamped rectangle.
+        let clamp = |value: f32| {
+            if value.is_nan() {
+                -extent
+            } else {
+                sse_min(extent, sse_max(-extent, value))
+            }
+        };
+        let clamped = Vec2::new(clamp(point.x), clamp(point.y));
+        let excess = point - clamped;
+        let squared = excess.x * excess.x + excess.y * excess.y;
+        if extent_squared < squared {
+            clamped + excess * (extent / squared.sqrt())
+        } else {
+            point
+        }
+    }
+}
+
+impl NormalCameraBody {
+    /// B normal::translate_screen_space@140949e70. The movement has already
+    /// been formed by the outer input controller. This body scales it by the
+    /// previous matrix eye's ground-plane intersection distance, then yaws it.
+    pub fn translate_screen_space(
+        &mut self,
+        movement: Vec3,
+        matrices: utils::camera::CameraMatrices,
+    ) {
+        let height = matrices.eye_position().y;
+        let direction_y = matrices.eye_direction().y;
+        let scale = sse_max(height / -direction_y, 1.0) / 50.0;
+        let rotation = Quat::from_rotation_y(self.yaw * super::main_camera::ORBIT_ANGLE_SCALE);
+        self.pending_translation += (rotation * movement) * scale;
+    }
+
+    /// B main_camera_update@14091340f..458 produces this exact active orbit.
+    pub fn begin_rotation(&mut self, anchor: Vec3, direction: Vec3, eye: Vec3) {
+        let offset = eye - anchor;
+        let length = (offset.z * offset.z + (offset.y * offset.y + offset.x * offset.x)).sqrt();
+        self.active = Some(ActiveRotation {
+            unknown_00: length,
+            arm_length: length,
+            pitch_delta: 0.0,
+            yaw_delta: 0.0,
+            unknown_10: direction.x,
+            unknown_14: direction.y,
+            unknown_18: direction.z,
+        });
+    }
+
+    /// Original main-camera release transfers the existing orbit to the
+    /// backlog. It does not finish the interpolation immediately.
+    pub fn finish_rotation(&mut self) {
+        if let Some(active) = self.active.take() {
+            self.rotations.push(active);
+        }
+    }
+
+    /// Full B normal::update@140949fe0. Includes eventual radial cap, normal
+    /// and loose ground projections, soft rectangle/circular demo bounds,
+    /// per-orbit smoothing, radial arm interpolation, queued translation and
+    /// completed-backlog compaction. Negative dt is a pose-only read.
+    pub fn update(&mut self, dt: f32, demo: bool) -> (Vec3, Quat) {
+        if dt < 0.0 {
+            return (self.position, body_rotation(self.yaw, self.pitch));
+        }
+        let residual = (dt * -8.0).exp();
+        let alpha = 1.0 - residual;
+        let target = self.position + self.pending_translation;
+        let squared = target.z * target.z + (target.y * target.y + target.x * target.x);
+        if self.radial_max * self.radial_max < squared {
+            self.pending_translation += (target / squared.sqrt()) * self.radial_max - target;
+        }
+        let forward = body_rotation(self.yaw, self.pitch) * Vec3::NEG_Z;
+        let goal = if self.loose_ground_projection != 0.0 {
+            let denominator = sse_max(-forward.y, f32::from_bits(0x3e19_999a));
+            let distance = sse_max(
+                (self.position.y - 10.0) / denominator,
+                f32::from_bits(0x4140_6667),
+            );
+            let back = Vec2::new(-forward.x, -forward.z) * distance;
+            let point = Vec2::new(self.position.x, self.position.z) - back;
+            let bounded = original_xz_bounds(
+                point,
+                f32::from_bits(0x4205_e666),
+                f32::from_bits(0x448c_126b),
+                demo,
+            );
+            let point = bounded + back;
+            let candidate = Vec3::new(point.x, self.position.y, point.y);
+            let squared =
+                candidate.z * candidate.z + (candidate.y * candidate.y + candidate.x * candidate.x);
+            if self.radial_min * self.radial_min < squared {
+                (candidate / squared.sqrt()) * self.radial_min
+            } else {
+                candidate
+            }
+        } else {
+            let forward_offset =
+                Vec2::new(forward.x, forward.z) * f32::from_bits(0x42b3_6666) * 0.2;
+            let point = Vec2::new(self.position.x, self.position.z) + forward_offset;
+            let bounded = original_xz_bounds(
+                point,
+                f32::from_bits(0x4233_6666),
+                f32::from_bits(0x44fb_70b7),
+                demo,
+            );
+            let point = bounded - forward_offset;
+            Vec3::new(point.x, self.position.y, point.y)
+        };
+        self.position += (goal - self.position) * alpha;
+        for rotation in self.rotations.iter_mut().chain(self.active.iter_mut()) {
+            let pitch_delta = alpha * rotation.pitch_delta;
+            let yaw_delta = alpha * rotation.yaw_delta;
+            rotation.pitch_delta -= pitch_delta;
+            rotation.yaw_delta -= yaw_delta;
+            let direction = Vec3::new(
+                rotation.unknown_10,
+                rotation.unknown_14,
+                rotation.unknown_18,
+            );
+            let old_arm = body_rotation(self.yaw, self.pitch) * (-direction * rotation.unknown_00);
+            rotation.unknown_00 = rotation.arm_length * alpha + rotation.unknown_00 * (1.0 - alpha);
+            self.pitch += pitch_delta;
+            self.yaw += yaw_delta;
+            let new_arm = body_rotation(self.yaw, self.pitch) * (-direction * rotation.unknown_00);
+            self.position += new_arm - old_arm;
+        }
+        let translation = self.pending_translation * alpha;
+        self.pending_translation -= translation;
+        self.position += translation;
+        self.position.y = sse_max(self.position.y, 1.0);
+        self.rotations.retain(|rotation| {
+            // Native compares threshold > abs three times; unordered keeps
+            // the record, rather than deleting a corrupted/NaN remainder.
+            !(rotation.pitch_delta.abs() < 0.001
+                && rotation.yaw_delta.abs() < 0.001
+                && (rotation.unknown_00 - rotation.arm_length).abs()
+                    / sse_max(rotation.arm_length.abs(), 1.0e-20)
+                    < 0.001)
+        });
+        (self.position, body_rotation(self.yaw, self.pitch))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -419,5 +581,56 @@ mod tests {
         b.pending_translation = Vec3::new(0.0, 1.5, 0.0);
         b.constrain_to_be_above_terrain(|_, _| 0.0);
         assert_eq!(b.pending_translation, Vec3::new(0.0, 1.5, 0.0));
+    }
+}
+
+#[cfg(test)]
+mod original_update_tests {
+    use super::*;
+    fn body_at(position: Vec3) -> NormalCameraBody {
+        NormalCameraBody {
+            rotations: Vec::new(),
+            active: None,
+            position,
+            pending_translation: Vec3::ZERO,
+            pitch: 0.0,
+            yaw: 0.0,
+            pitch_min: 5.0,
+            pitch_max: 90.0,
+            radial_min: 300.0,
+            radial_max: 1000.0,
+            terrain_clearance: 0.75,
+            loose_ground_projection: 0.0,
+        }
+    }
+    #[test]
+    fn native_soft_bounds_preserve_the_near_edge_and_only_limit_large_excess() {
+        let mut near = body_at(Vec3::new(57.0, 20.0, 0.0));
+        near.update(1000.0, false);
+        assert_eq!(near.position.x, 57.0);
+        let mut far = body_at(Vec3::new(200.0, 20.0, 0.0));
+        far.update(1000.0, false);
+        assert!((far.position.x - f32::from_bits(0x42b3_6666)).abs() < 1.0e-5);
+    }
+    #[test]
+    fn native_orbit_updates_both_arm_lengths_and_preserves_the_pivot() {
+        let mut body = body_at(Vec3::new(0.0, 20.0, 10.0));
+        body.begin_rotation(Vec3::new(0.0, 20.0, 0.0), Vec3::NEG_Z, body.position);
+        body.active.as_mut().unwrap().yaw_delta = 90.0;
+        body.active.as_mut().unwrap().arm_length = 20.0;
+        body.finish_rotation();
+        let (position, _) = body.update(1000.0, false);
+        assert!((position - Vec3::new(20.0, 20.0, 0.0)).length() < 1.0e-4);
+        assert_eq!(body.yaw, 90.0);
+        assert!(body.rotations.is_empty());
+    }
+    #[test]
+    fn negative_delta_reads_the_pose_without_consuming_pending_movement() {
+        let mut body = body_at(Vec3::new(200.0, 20.0, 0.0));
+        body.pending_translation = Vec3::new(1.0, 2.0, 3.0);
+        let before = body.clone();
+        let (position, _) = body.update(-1.0, false);
+        assert_eq!(position, before.position);
+        assert_eq!(body, before);
     }
 }

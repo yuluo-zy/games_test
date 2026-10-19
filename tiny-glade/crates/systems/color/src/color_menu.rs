@@ -101,8 +101,8 @@ use country_core::resources::color_icon::{CustomizationIcon, CustomizationIconMa
 #[derive(Default)]
 pub struct ColorMenuSelection(pub Option<(usize, usize)>);
 
-/// `color_button_animations` @0x1422979b0（1577B，未实现——CustomizationIcon/
-/// Ui2dExtent typed-gap 阻断）。
+/// B1422979b0: animate the actual 0x24-byte component, not the unrelated
+/// 0xa0-byte radial-menu owner. Both marked/unmarked branches are preserved.
 pub fn color_button_animations(
     mut icons: Query<(
         &mut CustomizationIcon,
@@ -110,13 +110,53 @@ pub fn color_button_animations(
         &mut country_core::components::UiDrawOrder,
         Option<&CustomizationIconMarkedForDeletion>,
     )>,
-    _time: Res<country_core::resources::time::GameTime>,
+    time: Res<country_core::resources::time::GameTime>,
 ) {
-    for (_icon, _extent, _order, _marked) in icons.iter_mut() {
-        // O：progress(icon+0x18+idx*0x24) 推进（删除态 dt/-0.15，否则 dt*4.0）、
-        // clamp 1.0、EasingFunction::apply 缩放、二次缓动 0.8/0.2 混合。
-        // —— GAP：字段 typed-gap。
+    for (mut icon, mut extent, mut order, marked) in icons.iter_mut() {
+        animate_icon(
+            &mut icon,
+            &mut extent,
+            &mut order,
+            marked.is_some(),
+            time.delta,
+        );
     }
+}
+
+fn native_min(a: f32, b: f32) -> f32 {
+    if a < b { a } else { b }
+}
+fn native_max(a: f32, b: f32) -> f32 {
+    if a > b { a } else { b }
+}
+
+fn animate_icon(
+    icon: &mut CustomizationIcon,
+    extent: &mut country_core::components::Ui2dExtent,
+    order: &mut country_core::components::UiDrawOrder,
+    deleting: bool,
+    delta: f32,
+) {
+    use utils::easing_functions::EasingFunction;
+    icon.alpha_18 += if deleting { delta / -0.15 } else { delta * 4.0 };
+    order.0 = u64::from(!deleting);
+    icon.alpha_18 = native_min(icon.alpha_18, 1.0);
+    let progress = native_min(1.0, native_max(0.0, icon.alpha_18));
+    let eased = EasingFunction::BackOut.apply(progress);
+    extent.size = icon.size * eased;
+    if deleting {
+        return;
+    }
+    // Native evaluates BackOut again before the position interpolation.
+    let eased = EasingFunction::BackOut.apply(progress);
+    let mix = (1.0 - eased) * 0.8 + eased;
+    extent.pos = icon.position * mix + icon.initial_position * (1.0 - mix);
+    // This is a per-frame increment in the original, not multiplied by dt.
+    let step = if icon.hovered != 0 { 0.15 } else { -0.15 };
+    icon.hover_progress = native_min(1.0, native_max(0.0, icon.hover_progress + step));
+    let eased = EasingFunction::CubicOut.apply(icon.hover_progress);
+    let scale = (1.0 - eased) * 0.0 + eased * 0.2 + 1.0;
+    extent.size *= scale;
 }
 
 /// `color_menu` @0x142291230（136KB 全量反编译已解——本文件模块头登记完整结构/
@@ -143,22 +183,75 @@ pub fn color_menu<S: Send + Sync + 'static>(
     // 未实现：反编译主循环 = 逐图标 0xa0 状态机（menu state switch 0..0x15、
     // 双 just_pressed 门、选中推进、widget 交互、History/事件写）。
     // 保持读取面（避免未使用告警），不构造近似控制流。
-    let _ = (icons.iter_mut().count(), menus.iter_mut().count(), selection.0, &mut sounds);
+    let _ = (
+        icons.iter_mut().count(),
+        menus.iter_mut().count(),
+        selection.0,
+        &mut sounds,
+    );
     selection.0 = None;
 }
 
-/// `delete_color_icon_entities` @0x142297ff0（611B，未实现——`CustomizationIcon`
-/// 动画进度 `+0x18+idx*0x24` typed-gap）。
-///
-/// FIX-1（reviewer-state-color）：原逻辑为**仅 `progress(+0x18+icon_index*0x24) <= 0.0`
-/// 才 `despawn`**；进度字段 typed-gap 无法读取 → 本实现**不做无条件 despawn**（留空
-/// 循环体，登记 GAP），而非近似无条件销毁。
+/// B142297ff0: delete marked entities only when the animation is finished.
 pub fn delete_color_icon_entities(
-    icons: Query<(Entity, &CustomizationIcon, &CustomizationIconMarkedForDeletion)>,
-    _commands: Commands,
+    icons: Query<(
+        Entity,
+        &CustomizationIcon,
+        &CustomizationIconMarkedForDeletion,
+    )>,
+    mut commands: Commands,
 ) {
-    for (_entity, _icon, _marked) in icons.iter() {
-        // O：`progress(+0x18+icon_index*0x24) <= 0.0` → despawn（字段 typed-gap，
-        // 未解前留空——不产生与原行为不符的副作用）。
+    for (entity, icon, _) in icons.iter() {
+        // UCOMISS 0,alpha; JB keeps positive or unordered values.
+        if icon.alpha_18 <= 0.0 {
+            commands.entity(entity).despawn();
+        }
+    }
+}
+
+#[cfg(test)]
+mod animation_tests {
+    use super::*;
+    #[test]
+    fn retained_icon_animates_then_deletes_without_overwriting_exit_position() {
+        use country_core::components::{Ui2dExtent, UiDrawOrder};
+        let mut icon = CustomizationIcon {
+            size: glam::Vec2::splat(30.),
+            position: glam::Vec2::new(100., 200.),
+            initial_position: glam::Vec2::ZERO,
+            hovered: 1,
+            ..Default::default()
+        };
+        let mut extent = Ui2dExtent::default();
+        let mut order = UiDrawOrder::default();
+        animate_icon(&mut icon, &mut extent, &mut order, false, 0.25);
+        assert_eq!(icon.alpha_18, 1.);
+        assert_eq!(order.0, 1);
+        assert_eq!(icon.hover_progress, 0.15);
+        assert_eq!(extent.pos, icon.position);
+        assert!(extent.size.x > 30.);
+        let position = extent.pos;
+        animate_icon(&mut icon, &mut extent, &mut order, true, 0.15);
+        assert_eq!(order.0, 0);
+        assert_eq!(icon.alpha_18, 0.);
+        assert_eq!(extent.pos, position);
+        // Native BackOut keeps sin(pi)'s floating-point endpoint residue.
+        assert!(extent.size.abs().max_element() < 0.0001);
+        let mut world = World::new();
+        let exiting = world.spawn((icon, CustomizationIconMarkedForDeletion)).id();
+        let pending = world
+            .spawn((
+                CustomizationIcon {
+                    alpha_18: 0.1,
+                    ..Default::default()
+                },
+                CustomizationIconMarkedForDeletion,
+            ))
+            .id();
+        let mut schedule = Schedule::default();
+        schedule.add_systems(delete_color_icon_entities);
+        schedule.run(&mut world);
+        assert!(world.get_entity(exiting).is_err());
+        assert!(world.get_entity(pending).is_ok());
     }
 }

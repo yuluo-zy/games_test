@@ -15,6 +15,7 @@ pub mod egui_gpu;
 pub mod effects_host;
 pub mod production_renderer;
 pub mod mei_host;
+pub mod menu_background_host;
 pub mod loading_graph;
 pub mod scene_compute;
 pub mod scene_raster;
@@ -23,6 +24,8 @@ pub mod scene_raster;
 // `main` 在 B 中是模块（`tiny_glade::main::*`），Cargo.toml 已设 `autobins = false`。
 pub mod app_config;
 pub mod app_systems;
+#[cfg(target_os = "windows")]
+pub mod audio_host;
 pub mod decorator_plugin;
 pub mod event_loop;
 pub mod fps_limiter;
@@ -50,6 +53,7 @@ pub mod panic_reporter;
 pub mod rollercoaster;
 pub mod screenshot;
 pub mod theme_fetcher_plugin;
+pub mod toolbar_plugin;
 pub mod vram;
 pub mod vulkan_config_main;
 pub mod winit_bevy_glue;

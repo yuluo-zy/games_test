@@ -6,7 +6,7 @@
 //!   `Res<DebugGui>`, `Res<EraserSizeMultiplier>`, `Res<BrushSizes>`；
 //! - `DebugGui.hide_brush_previews`（+0xfa）置位 → 对全部 BrushPreview 实体
 //!   `Commands::remove::<Transform>` 后返回；
-//! - 每条 `OverwriteBrushPreview`（0x20 B：`flag@+8` bit0、世界位置 Vec3@+0xc、
+//! - 最后一条 `OverwriteBrushPreview`（0x20 B：`flag@+8` bit0、世界位置 Vec3@+0xc、
 //!   `kind@+0x18`）：kind 不匹配的实体移除 Transform；匹配时按 flag 位
 //!   写/插入 Transform.translation（flag bit0=0 且无 Transform 时用光标位置）；
 //! - 逐实体按 `BrushPreview` 的 kind 字节（4..=10）算 preview scale：
@@ -17,16 +17,15 @@
 //!   `m = EraserSizeMultiplier.0`；写 `Transform.scale`（+0x1c/+0x20/+0x24）。
 //! - `clone_behavior` @0x140867080：判别 2（已判等）。
 //!
-//! GAP（登记）：原生插入的是 0x68 B bundle（Transform + 其它组件），crate 只落库
-//! Transform；`AssetMeshLibrary`/`AssetShaderLibrary` 的预览网格解析面未接。
+//! Native32B EventInstance includes the8B Bevy EventId. Business payload is
+//! flag/Vec3/kind; the104B deferred record is insert<Transform> plus Bevy
+//! command ownership/error-handler metadata, not an additional game component.
 use bevy_ecs::prelude::*;
 use glam::Vec3;
 
 use crate::{
     resources::{
-        brush_sizes::BrushSizes,
-        cursor_terrain_raycast::CursorTerrainRaycast,
-        gui::DebugGui,
+        brush_sizes::BrushSizes, cursor_terrain_raycast::CursorTerrainRaycast, gui::DebugGui,
         walls::EraserSizeMultiplier,
     },
     utils::components::transform::Transform,
@@ -39,23 +38,15 @@ use crate::{
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct BrushPreview(pub u8);
 
-/// 覆盖笔刷预览事件（O：0x20 B 记录；`flag@+8` bit0、`position: Vec3@+0xc`、
-/// `kind@+0x18`；`+0x00` 8 B 载荷未取证）。
+/// Original EventInstance: EventId@0, payload@8. Keep EventId in Bevy.
 #[repr(C)]
 #[derive(Event, Clone, Copy, Debug, Default, PartialEq)]
 pub struct OverwriteBrushPreview {
-    /// +0x00：未取证（U）。
-    pub head: u64,
-    /// +0x08：flag（bit0 决定直接覆盖 vs 仅缺省插入）。
     pub flag: u8,
-    /// +0x09..+0x0c：填充。
     pub pad: [u8; 3],
-    /// +0x0c：世界位置。
     pub position: Vec3,
-    /// +0x18：笔刷种类（匹配 `BrushPreview.0`）。
     pub kind: u8,
-    /// +0x19..+0x20：填充。
-    pub pad2: [u8; 7],
+    pub pad2: [u8; 3],
 }
 
 /// 克隆行为判别（O：0x140867080 `mov eax,2`）。
@@ -63,20 +54,12 @@ pub const CLONE_BEHAVIOR_DISC: u8 = 2;
 
 /// `maxss`：任一操作数 NaN 时返回 src（与 EXE 位语义一致）。
 fn maxss(dst: f32, src: f32) -> f32 {
-    if dst > src {
-        dst
-    } else {
-        src
-    }
+    if dst > src { dst } else { src }
 }
 
 /// `minss`：任一操作数 NaN 时返回 src。
 fn minss(dst: f32, src: f32) -> f32 {
-    if dst < src {
-        dst
-    } else {
-        src
-    }
+    if dst < src { dst } else { src }
 }
 
 /// kind 6 的乘数（O 位型 0x3fd70a3d，读自 0x142a95dd0）。
@@ -134,7 +117,7 @@ pub fn brush_preview(
     }
 
     // O：OverwriteBrushPreview → 逐事件按 kind 写/插入 translation。
-    for event in overwrite.read() {
+    if let Some(event) = overwrite.read().last() {
         for (entity, preview, transform) in &mut query {
             if preview.0 != event.kind {
                 commands.entity(entity).remove::<Transform>();
@@ -168,9 +151,6 @@ pub fn brush_preview(
         }
     }
 }
-
-/// `register_required_components` @0x140866800（O：Bevy 派生注册胶水）。
-pub fn register_required_components(_world: &mut World) {}
 
 #[cfg(test)]
 mod tests {
@@ -215,9 +195,155 @@ mod tests {
     fn event_layout_matches_native_offsets() {
         let e = OverwriteBrushPreview::default();
         let base = &e as *const _ as usize;
-        assert_eq!(&e.flag as *const _ as usize - base, 0x08);
-        assert_eq!(&e.position as *const _ as usize - base, 0x0c);
-        assert_eq!(&e.kind as *const _ as usize - base, 0x18);
-        assert_eq!(std::mem::size_of::<OverwriteBrushPreview>(), 0x20);
+        assert_eq!(&e.flag as *const _ as usize - base, 0x00);
+        assert_eq!(&e.position as *const _ as usize - base, 0x04);
+        assert_eq!(&e.kind as *const _ as usize - base, 0x10);
+        assert_eq!(std::mem::size_of::<OverwriteBrushPreview>(), 0x14);
+    }
+}
+
+#[cfg(test)]
+mod native_runtime_tests {
+    use super::*;
+    fn vec3(v: &serde_json::Value) -> Vec3 {
+        Vec3::new(
+            v[0].as_f64().unwrap() as f32,
+            v[1].as_f64().unwrap() as f32,
+            v[2].as_f64().unwrap() as f32,
+        )
+    }
+    fn bits(t: &Transform) -> Vec<u32> {
+        t.rotation
+            .to_array()
+            .into_iter()
+            .chain(t.translation.to_array())
+            .chain(t.scale.to_array())
+            .map(f32::to_bits)
+            .collect()
+    }
+    #[test]
+    fn actual_schedule_matches80_full_original_native_cases_including_deferred_identity_insertion()
+    {
+        let fixtures:serde_json::Value=serde_json::from_str(include_str!(concat!(env!("CARGO_MANIFEST_DIR"),"/../../../reverse-engineering/tiny-glade/evidence/round12/brush-startup/native-brush-runtime-fixtures.json"))).unwrap();
+        for case in fixtures.as_array().unwrap() {
+            let input = &case["input"];
+            let native = &case["native"];
+            let mut world = World::new();
+            world.init_resource::<Events<OverwriteBrushPreview>>();
+            let mut cursor = CursorTerrainRaycast::new();
+            if !input["cursor"].is_null() {
+                cursor.update(Some(vec3(&input["cursor"])));
+            }
+            world.insert_resource(cursor);
+            let mut debug = DebugGui::default();
+            debug.hide_brush_previews = input["hide"].as_bool().unwrap();
+            world.insert_resource(debug);
+            world.insert_resource(EraserSizeMultiplier(1.));
+            world.insert_resource(BrushSizes {
+                path: 0.8,
+                water: 2.,
+                garden: 3.,
+            });
+            let mut entities = Vec::new();
+            for row in input["rows"].as_array().unwrap() {
+                let mut e = world.spawn(BrushPreview(row[0].as_u64().unwrap() as u8));
+                if !row[1].is_null() {
+                    e.insert(Transform {
+                        translation: vec3(&row[1]),
+                        scale: Vec3::splat(2.),
+                        ..Transform::identity()
+                    });
+                }
+                entities.push(e.id());
+            }
+            for event in input["events"].as_array().unwrap() {
+                world.send_event(OverwriteBrushPreview {
+                    kind: event[0].as_u64().unwrap() as u8,
+                    flag: event[1].as_u64().unwrap() as u8,
+                    position: vec3(&event[2]),
+                    ..Default::default()
+                });
+            }
+            let mut expected: Vec<Option<Vec<u32>>> = native["transforms"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|v| {
+                    if v.is_null() {
+                        None
+                    } else {
+                        Some(
+                            v.as_array()
+                                .unwrap()
+                                .iter()
+                                .map(|x| x.as_u64().unwrap() as u32)
+                                .collect(),
+                        )
+                    }
+                })
+                .collect();
+            for command in native["commands"].as_array().unwrap() {
+                if let Some(id) = command["remove"].as_u64() {
+                    expected[(id - 0x100000000) as usize] = None;
+                }
+                if let Some(id) = command["insert"].as_u64() {
+                    expected[(id - 0x100000000) as usize] = Some(
+                        command["transform_bits"]
+                            .as_array()
+                            .unwrap()
+                            .iter()
+                            .map(|x| x.as_u64().unwrap() as u32)
+                            .collect(),
+                    );
+                }
+            }
+            let mut schedule = Schedule::default();
+            schedule.add_systems(brush_preview);
+            schedule.run(&mut world);
+            let actual: Vec<_> = entities
+                .into_iter()
+                .map(|id| world.get::<Transform>(id).map(bits))
+                .collect();
+            assert_eq!(actual, expected, "input={input}");
+        }
+    }
+    #[test]
+    fn hidden_preview_retains_reader_then_unhide_consumes_last_event() {
+        let mut world = World::new();
+        world.init_resource::<Events<OverwriteBrushPreview>>();
+        world.init_resource::<CursorTerrainRaycast>();
+        let mut debug = DebugGui::default();
+        debug.hide_brush_previews = true;
+        world.insert_resource(debug);
+        world.insert_resource(EraserSizeMultiplier(1.));
+        world.insert_resource(BrushSizes {
+            path: 0.8,
+            water: 2.,
+            garden: 3.,
+        });
+        let e = world.spawn((BrushPreview(4), Transform::identity())).id();
+        world.send_event(OverwriteBrushPreview {
+            kind: 5,
+            ..Default::default()
+        });
+        world.send_event(OverwriteBrushPreview {
+            kind: 4,
+            flag: 1,
+            position: Vec3::new(6., 7., 8.),
+            ..Default::default()
+        });
+        let mut schedule = Schedule::default();
+        schedule.add_systems(brush_preview);
+        schedule.run(&mut world);
+        assert!(world.get::<Transform>(e).is_none());
+        world.resource_mut::<DebugGui>().hide_brush_previews = false;
+        schedule.run(&mut world);
+        assert_eq!(
+            world.get::<Transform>(e).unwrap().translation,
+            Vec3::new(6., 7., 8.)
+        );
+        assert_eq!(world.get::<Transform>(e).unwrap().scale, Vec3::ONE);
+        schedule.run(&mut world);
+        assert_eq!(world.get::<Transform>(e).unwrap().scale, Vec3::ONE);
     }
 }

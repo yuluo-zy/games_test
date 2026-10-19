@@ -27,7 +27,8 @@ pub const WALL_LOOP_EVENTS: [&str; 10] = [
 ];
 
 /// `AudioLoopPlayer::new` (native line 46, inlined): build from instances.
-pub fn new_player<I: crate::resources::audio_instance::LoopInstance>(instances: Vec<I>) -> AudioLoopPlayer<I> {
+pub fn new_player<I>(instances: Vec<I>) -> AudioLoopPlayer<I>
+where I: crate::resources::audio_instance::LoopInstance + crate::utils::audio_utils::LoopEntry<Error=<I as crate::resources::audio_instance::LoopInstance>::Error> {
     AudioLoopPlayer::new(instances)
 }
 

@@ -34,7 +34,6 @@ pub struct InputRecordReplayState {
     pub mode: InputRecordReplayMode,
     next_frame_index: usize,
     frame_applied: bool,
-    input_suppressed_this_frame: bool,
     release_capture_requested: bool,
     /// 命令失败可供 UI 展示；错误不会清空正在进行的录制。
     pub last_error: Option<String>,
@@ -46,7 +45,6 @@ impl Default for InputRecordReplayState {
             mode: InputRecordReplayMode::AutoRecordPanicRepro,
             next_frame_index: 0,
             frame_applied: false,
-            input_suppressed_this_frame: false,
             release_capture_requested: false,
             last_error: None,
         }
@@ -80,15 +78,6 @@ impl InputRecordReplayState {
         if std::mem::take(&mut self.release_capture_requested) {
             capture.restore_for_replay(None);
         }
-    }
-    /// 时钟失败时终止回放，并屏蔽本帧已经采集到的实时动作。
-    pub(crate) fn fail_current_frame(&mut self, error: impl std::fmt::Display) {
-        self.stop();
-        self.release_capture_requested = true;
-        self.input_suppressed_this_frame = true;
-        let message = error.to_string();
-        log::error!("输入帧已停止：{message}");
-        self.last_error = Some(message);
     }
     /// 先检查回退目标，再修改模式和资源；从不使用减一回绕的哨兵索引。
     pub fn seek(
@@ -135,9 +124,6 @@ impl InputRecordReplayState {
 /// an exclusive world entry keeps CursorCapturePolicy private to this module's
 /// implementation while allowing the actual tiny-glade host to begin a frame.
 pub fn begin_input_frame(world: &mut World) {
-    world
-        .resource_mut::<InputRecordReplayState>()
-        .input_suppressed_this_frame = false;
     *world.resource_mut::<CursorCapturePolicy>() = CursorCapturePolicy::Live;
 }
 
@@ -193,6 +179,7 @@ pub fn control_input_replay(
 /// 普通录制帧按值复制定长动作数组，不分配动作列表。
 pub fn input_record_replay(
     time: Res<GameTime>,
+    depth: Res<crate::resources::read_mouse_depth_value::MouseDepthValue>,
     context: (Res<Toolbar>, Res<AppMode>, Res<MainCamera>),
     cursor_state: (ResMut<CursorPosition>, ResMut<CursorPositionSS>),
     mut capture: CursorCaptureState,
@@ -204,11 +191,6 @@ pub fn input_record_replay(
     let (mut cursor, mut screen_cursor) = cursor_state;
     replay.frame_applied = false;
     replay.release_capture_if_requested(&mut capture);
-    if replay.input_suppressed_this_frame {
-        *actions = ActionSetStates::default();
-        values.current = Default::default();
-        return;
-    }
     match replay.mode {
         InputRecordReplayMode::AutoRecordPanicRepro | InputRecordReplayMode::Records => {
             let frame = InputFrame {
@@ -217,6 +199,7 @@ pub fn input_record_replay(
                 screen_cursor_position: screen_cursor.0,
                 captured_cursor_position: capture.position(),
                 time_delta_seconds: time.delta,
+                mouse_depth: depth.replay_frame(),
             };
             // 非法宿主时间不写入不可加载的录制；保留已录好的帧并报告错误。
             if let Err(error) = frame.validate() {

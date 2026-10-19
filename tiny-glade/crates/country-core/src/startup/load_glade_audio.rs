@@ -2,10 +2,11 @@
 //! 具体主题曲目复用 GladeAudio 配置，避免所有主题都使用 Halloween 曲库。
 
 use crate::{
-    resources::session::GladeType,
+    resources::session::{GladeType, SessionMeta},
     systems::audio::music::{
         glade_audio::GladeAudio,
-        music_player::{MusicBackend, MusicEvent, MusicPlayer},
+        music_player::{MusicBackend, MusicEvent, MusicPlayer, MusicInstance, StopMode},
+        music_system::MusicAudioState,
     },
 };
 use std::path::Path;
@@ -43,6 +44,37 @@ fn set_parameter<B: MusicBackend>(backend: &B, name: &str, value: f32) {
     if let Err(error) = backend.set_global_parameter(name, value) {
         log::warn!("无法设置音频参数 {name}={value}：{error:?}");
     }
+}
+
+/// Complete original load_glade_audio@1408be360 (3927 B). Session metadata,
+/// rather than the directory spelling, selects the Halloween override. Old
+/// tracks and ambience stop before replacement; the stinger is fire-and-forget.
+pub fn load_session_audio<B: MusicBackend>(
+    state: &mut MusicAudioState<B::Event>, backend: &B,
+    glade_dir: &Path, meta: &SessionMeta,
+) {
+    state.player.stop_immediately();
+    state.new_glade_time = 0.0;
+    let description = GladeAudio::try_load_path(glade_dir).unwrap_or_default();
+    let halloween = meta.is_halloween_any();
+    if halloween {
+        state.player.load_tracks(backend, &HALLOWEEN_MUSIC_EVENTS);
+    } else {
+        state.player.load_tracks(backend, &description.music);
+    }
+    state.ambience.stop(StopMode::Immediate);
+    state.ambience = MusicInstance::create(backend, &description.ambience);
+    state.ambience.start();
+    if let Some(path) = description.select_glade_stinger {
+        let mut stinger = MusicInstance::create(backend, &path);
+        stinger.start();
+        // Native instance Drop calls release; FMOD retains the playing event.
+    }
+    let richness = halloween_theme_flag(meta.glade.native_tag());
+    state.richness = richness;
+    state.target_richness = richness;
+    set_parameter(backend, GLADE_TYPE_PARAMETER, meta.glade.audio_id());
+    set_parameter(backend, IS_HALLOWEEN_PARAMETER, if halloween { 1.0 } else { 0.0 });
 }
 
 /// 类型明确的主题入口；曲目替换会清理旧播放列表，重复调用不会积累实例。
@@ -107,6 +139,10 @@ where
         .ok_or_else(|| anyhow::anyhow!("无效的音频主题编号：{theme_byte}"))?;
     load_theme_audio(player, backend, glade_dir, theme)
 }
+
+#[cfg(test)]
+#[path = "load_glade_audio_regression.rs"]
+mod session_regression;
 
 #[cfg(test)]
 mod tests {

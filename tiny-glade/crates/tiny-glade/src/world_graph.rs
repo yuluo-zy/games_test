@@ -36,6 +36,47 @@ fn missing(name: &str) -> rhapsody::Error {
     rhapsody::Error::invalid_usage(format!("original render_world: missing {name}"))
 }
 
+/// Native compile_main before-render_world selection. These two bools have
+/// independent meanings: menu painting can reuse its captured target while
+/// the 54-pass world graph remains idle.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct MainWorldDecision {
+    pub render_world: bool,
+    pub painterly_enabled: bool,
+}
+
+pub fn select_main_world(world: &World) -> rhapsody::Result<MainWorldDecision> {
+    use country_core::{app_loading_state::AppLoadingState, resources::gui::EscMenuState,
+        systems::render_loop::painterly::PainterlyState,
+        render::frame_constants::FrameConstants, meta_commander::MetaCommander};
+    let menu = world.get_resource::<EscMenuState>().ok_or_else(|| missing("EscMenuState"))?;
+    let loading = world.get_resource::<bevy_state::state::State<AppLoadingState>>()
+        .ok_or_else(|| missing("AppLoadingState"))?;
+    let profiling = || world.get_resource::<MetaCommander>()
+        .map(MetaCommander::is_profiling).ok_or_else(|| missing("MetaCommander"));
+    if *loading.get() != AppLoadingState::Game || !menu.should_show_world() {
+        return Ok(MainWorldDecision { render_world: profiling()?, painterly_enabled: false });
+    }
+    let painterly_enabled = menu.is_open();
+    let render_world = if menu.is_closed() {
+        true
+    } else if painterly_enabled && !world.get_resource::<PainterlyState>()
+        .ok_or_else(|| missing("PainterlyState"))?.has_target() {
+        log::trace!(target: "tiny_glade::render_loop", "Forcing world rendering because painterly needs a target");
+        true
+    } else if world.get_resource::<FrameConstants>()
+        .ok_or_else(|| missing("FrameConstants"))?.should_reset_temporal() {
+        log::trace!(target: "tiny_glade::render_loop", "Forcing world rendering because temporal needs reset");
+        true
+    } else if menu.can_use_static_world_capture() {
+        profiling()?
+    } else {
+        log::trace!(target: "tiny_glade::render_loop", "Forcing world rendering because !can_use_static_world_capture()");
+        true
+    };
+    Ok(MainWorldDecision { render_world, painterly_enabled })
+}
+
 /// Must run inside the original main prelude and its one FrameSetup scope.
 /// Each stage borrows the same World and graph; any missing owner aborts before
 /// successful compilation and before warmup can publish the SubApp.
@@ -106,4 +147,45 @@ pub fn build_world(
     world_surface::build_world_surface(frame, world, lists, &lighting,
         SurfaceControls { glade, skip_refraction })?;
     world_postprocess::build_world_postprocess(frame, world, lists, &lighting, controls.postprocess)
+}
+
+#[cfg(test)]
+mod main_selection_tests {
+    use super::*;
+    use country_core::{app_loading_state::AppLoadingState, resources::gui::EscMenuState,
+        systems::render_loop::painterly::{PainterlyState, PainterlyPhase},
+        render::frame_constants::FrameConstants, meta_commander::MetaCommander};
+    fn game(menu: EscMenuState) -> World {
+        let mut world = World::new();
+        world.insert_resource(bevy_state::state::State::new(AppLoadingState::Game));
+        world.insert_resource(menu);
+        world
+    }
+    #[test]
+    fn closed_world_does_not_require_idle_only_producers() {
+        let world = game(EscMenuState::Closed);
+        assert_eq!(select_main_world(&world).unwrap(), MainWorldDecision { render_world: true, painterly_enabled: false });
+    }
+    #[test]
+    fn static_menu_reuses_ready_painting_until_temporal_reset() {
+        let mut world = game(EscMenuState::Main);
+        world.insert_resource(PainterlyState { phase: PainterlyPhase::Ready, ..Default::default() });
+        world.insert_resource(MetaCommander::default());
+        world.insert_resource(FrameConstants { frame_counter: 9, ..Default::default() });
+        assert_eq!(select_main_world(&world).unwrap(), MainWorldDecision { render_world: false, painterly_enabled: true });
+        world.resource_mut::<FrameConstants>().frame_counter = 0;
+        assert!(select_main_world(&world).unwrap().render_world);
+    }
+    #[test]
+    fn pending_target_forces_world_before_frame_constant_lookup() {
+        let mut world = game(EscMenuState::Main);
+        world.insert_resource(PainterlyState::default());
+        assert_eq!(select_main_world(&world).unwrap(), MainWorldDecision { render_world: true, painterly_enabled: true });
+    }
+    #[test]
+    fn hidden_world_does_not_lookup_painterly_or_frame_constants() {
+        let mut world = game(EscMenuState::Load(Default::default()));
+        world.insert_resource(MetaCommander::default());
+        assert_eq!(select_main_world(&world).unwrap(), MainWorldDecision { render_world: false, painterly_enabled: false });
+    }
 }

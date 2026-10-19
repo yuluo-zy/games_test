@@ -448,6 +448,19 @@ pub trait PassHost {
     fn vk_buffer(&self, buffer: &ManagedHandle) -> Option<u64>;
     /// `GraphicsDevice::get_vk_image_view`（`Err` → 调用点 `Result::unwrap` panic）。
     fn vk_image_view(&self, texture: &ManagedHandle) -> Result<u64, String>;
+    /// Native TextureFromDisk can select an image-array layer. Hosts must
+    /// preserve the descriptor instead of silently using a whole-image view.
+    fn vk_image_view_with_desc(
+        &self,
+        texture: &ManagedHandle,
+        view: Option<&TextureViewDesc>,
+    ) -> Result<u64, String> {
+        if view.is_some() {
+            return Err("explicit disk texture view is unsupported by this host".into());
+        }
+        self.vk_image_view(texture)
+    }
+
     /// `AssetTextureLibrary::get_by_name`（`TextureFromDisk`）：返回 `(纹理句柄, 描述)`。
     fn texture_by_name(
         &self,
@@ -522,7 +535,14 @@ pub struct RasterPassColorAttachment {
     pub format: u32,
     pub tag: u32,
     pub sample_count: u8,
+    /// Exact VkClearColorValue bits; historical field name retained for source compatibility.
     pub view: ColorViewWords,
+}
+
+impl RasterPassColorAttachment {
+    pub fn clear_color_bits(&self) -> [u32; 4] {
+        self.view
+    }
 }
 
 /// 深度状态（`RasterPass +0xe0..+0x12e`）。
@@ -589,7 +609,7 @@ impl RasterPass {
                 format: t.format,
                 tag: a.tag(),
                 sample_count: t.sample_count,
-                view: a.view_words(),
+                view: a.clear_color_bits(),
             });
         }
         let depth = depth.map(|d| {
@@ -729,6 +749,7 @@ pub(crate) mod test_host {
         pub created_passes: Vec<RasterRenderPassDesc>,
         pub submissions: Vec<RasterPassSubmission>,
         pub constants_requests: u32,
+        pub image_views: Vec<(u64, Option<TextureViewDesc>)>,
         /// `flush_dynamic_constants` 收到的（`keepalive`, 字节）。
         pub flushed_constants: Vec<(u64, Vec<u8>)>,
     }
@@ -808,6 +829,14 @@ pub(crate) mod test_host {
         }
         fn vk_image_view(&self, t: &ManagedHandle) -> Result<u64, String> {
             Ok(0x1000 + t.0)
+        }
+        fn vk_image_view_with_desc(
+            &self,
+            t: &ManagedHandle,
+            view: Option<&TextureViewDesc>,
+        ) -> Result<u64, String> {
+            self.log.borrow_mut().image_views.push((t.0, view.copied()));
+            self.vk_image_view(t)
         }
         fn texture_by_name(&self, h: u64) -> (ManagedHandle, AttachmentTexture) {
             self.textures_by_name

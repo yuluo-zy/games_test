@@ -1,7 +1,19 @@
-//! toolbar 布局：`ToolbarItemKind` 与 `add_toolbar_item`（O 0x141e4dc40）。
+//! toolbar 布局：`ToolbarItemKind`/`add_toolbar_item`（O 0x141e4dc40）与
+//! `ToolbarLayout`/`PhotomodeToolbarLayout`（O 0x141e4ccb0 / 0x141e4d1e0）。
 //!
 //! wave2b fresh 证据：`ghidra-0x141e4dc40-*.c.txt`（完整）+ `add_toolbar_item-*kind*.disasm.txt`
 //! ×6 + kind 跳表 0x142f8f774 解码（re-analysis evidence）。
+//!
+//! 第 11 轮 TB-D（2026-10-19）fresh 补充：`setup_screen_and_toolbar_nodes`
+//! 0x141e4ccb0 与 `add_contextual_menu` 0x141e4d1e0 已 prepare + 反编译
+//! （`evidence/round11/tbd-jobs/decomp/141e4ccb0.c`、`141e4d1e0.c`）：
+//! - setup 只登记 **1** 条 anchored `{order 0, offset 0, node screen, side 4=Window}`，
+//!   随后 `new_leaf` toolbar 并 `add_child(screen, toolbar)`；`root()` 由调用方完成。
+//! - `add_contextual_menu` 在 `ToolbarLayout+0x08/+0x10` 的 stride 0x20 定义表中
+//!   按 `+0x18` tag 查找（未命中 `unwrap_failed`）；行布局
+//!   `relative_to@+0x00`、`menu node@+0x10`、`tag@+0x18`。新菜单登记 anchored
+//!   `{order 1, offset 0, relative_to=行+0, gap 10.0, side 0=Above}`，递归添加项
+//!   到 `item+0x38 == 2` 哨兵，最后把菜单 node 写回定义表 +0x10。
 
 /// 工具栏项（O：`ToolbarItemKind`，判别子@+0，字节；0..7）。
 ///
@@ -56,6 +68,9 @@ impl ToolbarItemKind {
 
     /// 叶子 label（+0x20/+0x28 读面，`Box<str>`；O）。
     pub fn label(&self) -> &str {
+        if self.label_len == 0 || self.label_ptr.is_null() {
+            return "";
+        }
         // SAFETY: 调用侧保证 label_ptr/len 有效（B 布局 Box<str>）。
         unsafe {
             std::str::from_utf8_unchecked(std::slice::from_raw_parts(self.label_ptr, self.label_len))
@@ -81,19 +96,13 @@ impl ToolbarItemKind {
 ///    UiMouseInteractable,Ui2dExtent,Ui2dImage,UiDrawOrder>` → 无条件插入
 ///    `UiShowIfParentIsInFocus` → 条件（`item[0x38] != 0`）插入 `ShowOnlyInFpvAndFree` →
 ///    kind 跳表分派。
-/// 3. **spawn 8 组件取值（O，disasm 0x141e4e433..0x141e4e4e6；见
-///    evidence/disasm-1.txt）**：
+/// 3. **spawn 组件取值（O，disasm 0x141e4e433..0x141e4e4e6）**：
 ///    - `TaffyNode` = 本次 `new_leaf` 的节点（索引@载荷+0x40、代@+0x44）；
-///    - `UiScaleWithUserSetting` = `item.size * (82.5,82.5)` + `(1.0,0.011)`
-///      （`MULPS [0x142f8f600]` / `UNPCKLPD [0x142f8f610]`，载荷 +0x48..+0x58）；
-///    - `UiInteractionState`/`UiMouseInteractable`/`Ui2dExtent`/`UiDrawOrder` = 全零
-///      （载荷 +0x18/+0x30..+0x40/+0x58/+0x60；`Ui2dExtent` 另有 PDB inline
-///      `components::impl$45::default`，O）；
-///    - `UiAnimationState` = `{0.0, 0.0, 0, state: 2}`（载荷 +0x20..+0x30；
-///      状态字节 **2**，O）；
-///    - `Ui2dImage` = `Ui2dImage::new(label_clone)`（PDB inline，components/mod.rs:229，
-///      O；core 现类型为 `{_gap: u64}` typed-gap，无法承载 `String`——本实现保留
-///      label 克隆并登记，组件暂以 `default()` 落库）。
+///    - `UiScaleWithUserSetting` = ZST（fresh `register_required_components` size 0，
+///      wave2b 的 16B `size*82.5` 归属改判，见 `taffy_update` 证据）；
+///    - `UiInteractionState`/`UiMouseInteractable`/`Ui2dExtent`/`UiDrawOrder` = 全零；
+///    - `UiAnimationState` = `{0.0, 0.0, 0, state: 2}`（状态字节 **2**，O）；
+///    - `Ui2dImage` = `Ui2dImage::new(label_clone)`（PDB inline，O）。
 /// 4. kind 跳表（8 项）：kind0→0x141e4e5f3（压 **0x60B** 记录
 ///    `{fn@0x140fdf9a0,0,0,0,0,0,rbx,r13}`，调 vtable[+0x18]）；kind7→0x141e4e7e0
 ///    （压 **0x20B** 记录 `{fn@0x140fdf500,r13,r12,0}`）；kind2→0x141e4e817（读 `[item+1]`
@@ -101,14 +110,9 @@ impl ToolbarItemKind {
 ///    0x141e4e911。
 ///
 /// **判等**（控制流 + 8 组件 spawn 取值/顺序逐条对齐）；**分歧（未实现）**：
-/// - kind 处理器的命令记录载荷（0x60B/0x20B、fn@0x140fdf9a0/0x140fdf500、
-///   [rax+0x18] vtable、0x140c904a0 朝向）类型 U——本实现以 `kind_handler` 枚举占位，
-///   不伪造记录编码。
-/// - 图像名称/图层已接入 core Ui2dImage；其余未恢复面见下方 kind_handler。
-/// - **签名/节点接线为重建（I）**：B 函数 6 参（rcx、edx、r8d、r9、栈×2），
-///   `0x140fe7600`/`0x140fe7790`（new_leaf/add_child 包装）返回两个 NodeId
-///   （`[rbp+0x1b4]/[rbp+0x1b8]`），递归沿用该结果——本实现简化为
-///   `(taffy, parent, item, commands)` 4 参、容器节点为父。
+/// kind 处理器的命令记录载荷（0x60B/0x20B、fn@0x140fdf9a0/0x140fdf500、
+/// [rax+0x18] vtable、0x140c904a0 朝向）类型 U——本实现以 `kind_handler` 枚举占位，
+/// 不伪造记录编码。
 pub fn add_toolbar_item(
     taffy: &mut taffy::node::Taffy,
     parent: taffy::node::Node,
@@ -117,20 +121,18 @@ pub fn add_toolbar_item(
 ) {
     // kind 4/5：容器——new_leaf+add_child、递归子项、逐子 drop、释放 Vec 缓冲。
     if item.is_container() {
-        let _leaf = crate::resouces_and_components::TaffyNode::spawn_leaf(taffy, parent);
+        let leaf = crate::resouces_and_components::TaffyNode::spawn_leaf(taffy, parent);
         let base = item.children_ptr;
         let mut it = base;
         let count = item.children_len;
         let mut remaining = count;
         // 循环界：`byte[child+0x38] != 2`（B：`*(char*)(lVar5 + 0x38) != 2`）。
         while remaining != 0 && unsafe { (*it).show_only_fpv } != 2 {
-            unsafe { add_toolbar_item(taffy, _leaf.node, &mut *it, commands) };
+            unsafe { add_toolbar_item(taffy, leaf.node, &mut *it, commands) };
             it = unsafe { it.add(1) };
             remaining -= 1;
         }
-        // decomp：drop 次数 = `(end - lVar7) >> 6`，其中 lVar7 是循环停止后的
-        // 下一项（`lVar5+0x40`）；即只 drop **停止位置之后**未消费的尾项
-        // （前缀已被递归消费；len==0 结束时 lVar7==end，不 drop）。
+        // decomp：drop 次数 = `(end - lVar7) >> 6`，只 drop 停止位置之后的尾项。
         if remaining != 0 {
             let mut drop_it = unsafe { it.add(1) };
             let end = unsafe { base.add(count) };
@@ -139,12 +141,9 @@ pub fn add_toolbar_item(
                 drop_it = unsafe { drop_it.add(1) };
             }
         }
-        // **FIX-1（wave4）**：B 在容器分支末尾 `if (cap != 0) __rust_dealloc(...)`：
-        // 0x141e4e794 `SHL RDX(cap),0x6; MOV R8D,0x8; MOV RCX,ptr; CALL __rust_dealloc`
-        // ⇒ 释放 `cap * 0x40`、align 8 的子项缓冲（原实现遗漏）。
+        // 0x141e4e794 `SHL RDX(cap),0x6; MOV R8D,0x8; ... CALL __rust_dealloc`。
         if item.children_cap != 0 {
-            // SAFETY: 容器分支的缓冲由 B Vec 分配（cap 个 0x40 B 元素，align 8）；
-            // 指针与容量来自 ToolbarItemKind 的原始布局读面。
+            // SAFETY: 容器分支的缓冲由 B Vec 分配（cap 个 0x40 B 元素，align 8）。
             unsafe {
                 let layout =
                     std::alloc::Layout::from_size_align_unchecked(item.children_cap * 0x40, 8);
@@ -154,22 +153,13 @@ pub fn add_toolbar_item(
         return;
     }
 
-    // 其余 kind：new_leaf + add_child → spawn 8 组件 → 插入 UiShowIfParentIsInFocus →
-    // 条件插入 ShowOnlyInFpvAndFree → kind 处理器。
     let leaf = crate::resouces_and_components::TaffyNode::spawn_leaf(taffy, parent);
-    // B 克隆 label（ptr@+0x20、len@+0x28）并移入 Ui2dImage，图层初值为零。
     let label = item.label().to_owned();
-    // O：+0x30 两 f32（ToolbarItemKind::size）。
-    let size = item.size();
-    // **FIX（2026-10-17 unlock-mei-toolbar）**：fresh `register_component` 证明
-    // `UiScaleWithUserSetting` 为 ZST（size 0），wave2b 的 16B `size*82.5` 归属
-    // 改判：该 16B 观测值对应 16B 的 `Ui2dExtent`（core typed-gap 未承载，登记）。
-    // 这里保留 `size` 读数并显式丢弃，避免伪造字段。
-    let _ = size;
+    // O：+0x30 两 f32（ToolbarItemKind::size）。UiScaleWithUserSetting 为 ZST，
+    // 该读数在 native 中供后续尺寸路径使用；此处无消费者，显式保留读取。
+    let _size = item.size();
     let mut entity = commands.spawn((
-        // O：TaffyNode = 本次 new_leaf 的节点（不是 default）。
         leaf,
-        // O：UiScaleWithUserSetting 为 ZST（fresh impl$3 size 0x0）。
         crate::resouces_and_components::UiScaleWithUserSetting,
         crate::resouces_and_components::UiInteractionState::default(),
         // O：状态字节初值 2（载荷 +0x2c）。
@@ -183,15 +173,310 @@ pub fn add_toolbar_item(
     if item.show_only_fpv != 0 {
         entity.insert(crate::resouces_and_components::ShowOnlyInFpvAndFree::default());
     }
-    // kind 处理器（未实现：命令记录载荷类型 U，见模块注释与 RESTORE.md）。
-    crate::resouces_and_components::toolbar_layout::kind_handler(item.tag, item.sub);
+    kind_handler(item.tag, item.sub);
 }
 
 /// kind 处理器占位（O kind 跳表 0x142f8f774 各 case）。
 ///
-/// **未实现（重建阻塞）**：kind0/7 的 0x60B/0x20B 命令记录（fn@0x140fdf9a0/
-/// 0x140fdf500）、[rax+0x18] vtable 回调、kind2 三张 f32 朝向表（0x142f8f6d8/
-/// 0x142f8f70c/0x142f8f740）+ 0x140c904a0 载荷类型 U；禁止近似体。
+/// **未实现（重建阻塞，U）**：kind0/7 的 0x60B/0x20B 命令记录
+/// （fn@0x140fdf9a0/0x140fdf500）、[rax+0x18] vtable 回调、kind2 三张 f32
+/// 朝向表（0x142f8f6d8/0x142f8f70c/0x142f8f740）+ 0x140c904a0 载荷类型 U。
 pub fn kind_handler(_tag: u8, _sub: u8) {
-    // 未实现（分歧见 RESTORE.md §add_toolbar_item）。
+    // 未实现（见 delivery §U）。
+}
+
+/// 一条 contextual menu 定义/实例记录。
+///
+/// Native stride 0x20（`add_contextual_menu` 0x141e4d1e0 / `toolbar_alignment`
+/// 0x142344560）：`relative_to Node@+0x00`、`menu Node@+0x10`（0 = 尚未创建）、
+/// `tag@+0x18`。
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ContextualMenu {
+    /// 定义表 +0x00：菜单锚定目标节点。
+    pub relative_to: taffy::node::Node,
+    /// 定义表 +0x10：菜单根节点（创建前为 `Node::default()`）。
+    pub node: taffy::node::Node,
+    /// 定义表 +0x18：菜单 tag。
+    pub tag: u8,
+}
+
+/// 工具栏布局资源（native `ToolbarLayout`）。
+///
+/// **B 字段读面（O，0x141e4ccb0 / 0x141e4d1e0 / 0x142344560）**：
+/// - `+0x08/+0x10`：contextual menu 定义表 `Vec`（ptr/len，stride 0x20）；
+/// - `+0x18`：Node A（对齐批改目标，U 名称）；
+/// - `+0x20`：Node B（对齐/间距批改目标，U 名称）；
+/// - `+0x28`：`f32`（`toolbar_button_size_and_padding_update` 的 BackOut 输入，
+///   U 名称）；
+/// - `+0x2c`：`f32` 自动隐藏进度（`toolbar_auto_hide` clamp01 写面，O）。
+#[derive(bevy_ecs::prelude::Resource, Default)]
+pub struct ToolbarLayout {
+    /// native +0x08/+0x10 定义表。
+    pub menus: Vec<ContextualMenu>,
+    /// native +0x18。
+    pub node_a: taffy::node::Node,
+    /// native +0x20。
+    pub node_b: taffy::node::Node,
+    /// native +0x28（U 语义；BackOut easing 输入）。
+    pub scale_progress: f32,
+    /// native +0x2c（自动隐藏进度，clamp01）。
+    pub hide_progress: f32,
+}
+
+/// 拍照模式工具栏布局资源（native `PhotomodeToolbarLayout`）。
+///
+/// PDB 为独立类型（`toolbar_alignment` / `toolbar_button_size_and_padding_update`
+/// 依次读取二者），字段与 [`ToolbarLayout`] 同构。
+#[derive(bevy_ecs::prelude::Resource, Default)]
+pub struct PhotomodeToolbarLayout {
+    /// native +0x08/+0x10 定义表。
+    pub menus: Vec<ContextualMenu>,
+    /// native +0x18。
+    pub node_a: taffy::node::Node,
+    /// native +0x20。
+    pub node_b: taffy::node::Node,
+    /// native +0x28（U 语义）。
+    pub scale_progress: f32,
+    /// native +0x2c（自动隐藏进度）。
+    pub hide_progress: f32,
+}
+
+/// Shared field view of the two context resources. Native `toolbar_alignment`
+/// and `toolbar_button_size_and_padding_update` run the same body once per
+/// resource (two-iteration loop in 0x142344560 / 0x141eaec50); this trait keeps
+/// that single body without duplicating it.
+pub trait ToolbarContext {
+    fn node_a(&self) -> taffy::node::Node;
+    fn node_b(&self) -> taffy::node::Node;
+    fn contextual_menus(&self) -> &[ContextualMenu];
+    fn scale_progress(&self) -> f32;
+    fn hide_progress(&self) -> f32;
+    fn set_hide_progress(&mut self, value: f32);
+}
+
+impl ToolbarContext for ToolbarLayout {
+    fn node_a(&self) -> taffy::node::Node {
+        self.node_a
+    }
+    fn node_b(&self) -> taffy::node::Node {
+        self.node_b
+    }
+    fn contextual_menus(&self) -> &[ContextualMenu] {
+        &self.menus
+    }
+    fn scale_progress(&self) -> f32 {
+        self.scale_progress
+    }
+    fn hide_progress(&self) -> f32 {
+        self.hide_progress
+    }
+    fn set_hide_progress(&mut self, value: f32) {
+        self.hide_progress = value;
+    }
+}
+
+impl ToolbarContext for PhotomodeToolbarLayout {
+    fn node_a(&self) -> taffy::node::Node {
+        self.node_a
+    }
+    fn node_b(&self) -> taffy::node::Node {
+        self.node_b
+    }
+    fn contextual_menus(&self) -> &[ContextualMenu] {
+        &self.menus
+    }
+    fn scale_progress(&self) -> f32 {
+        self.scale_progress
+    }
+    fn hide_progress(&self) -> f32 {
+        self.hide_progress
+    }
+    fn set_hide_progress(&mut self, value: f32) {
+        self.hide_progress = value;
+    }
+}
+
+impl ToolbarLayout {
+    /// O 0x141e4ccb0 `ToolbarLayout::setup_screen_and_toolbar_nodes`.
+    ///
+    /// Native takes only the `TaffyLayout` owner (param_2) and returns two
+    /// builders; Rust cannot return two builders borrowing the same `&mut`, so
+    /// this port returns the two nodes. `root()`/further anchoring is the
+    /// caller's (`toolbar_setup`) responsibility.
+    pub fn setup_screen_and_toolbar_nodes(
+        taffy: &mut crate::resouces_and_components::taffy_layout::TaffyLayout,
+    ) -> (taffy::node::Node, taffy::node::Node) {
+        use crate::resouces_and_components::taffy_layout::{AnchorSide, AnchoredNode};
+        let screen = taffy
+            .taffy
+            .new_leaf(taffy::style::Style::default())
+            .expect("native screen root new_leaf");
+        // Native writes order=0, offset=(0,0), node=screen, side=4; the
+        // Window branch never reads relative_to (filled with screen itself, I).
+        taffy.anchored.push(AnchoredNode {
+            order: 0,
+            offset: glam::Vec2::ZERO,
+            node: screen,
+            relative_to: screen,
+            gap: 0.,
+            side: AnchorSide::Window,
+        });
+        let toolbar = taffy
+            .taffy
+            .new_leaf(taffy::style::Style::default())
+            .expect("native toolbar new_leaf");
+        taffy
+            .taffy
+            .add_child(screen, toolbar)
+            .expect("native toolbar add_child");
+        (screen, toolbar)
+    }
+
+    /// O 0x141e4d1e0 `ToolbarLayout::add_contextual_menu`.
+    ///
+    /// Looks up the definition row by `tag` (native unwrap on failure), creates
+    /// the menu leaf, records the native anchor, recursively adds items until
+    /// the sentinel, and writes the menu node back into the definition row.
+    pub fn add_contextual_menu(
+        &mut self,
+        taffy: &mut crate::resouces_and_components::taffy_layout::TaffyLayout,
+        tag: u8,
+        items: &mut [ToolbarItemKind],
+        commands: &mut bevy_ecs::system::Commands,
+    ) -> taffy::node::Node {
+        use crate::resouces_and_components::taffy_layout::{AnchorSide, AnchoredNode};
+        let row = self
+            .menus
+            .iter_mut()
+            .find(|row| row.tag == tag)
+            .expect("contextual menu definition tag missing (native unwrap_failed)");
+        let menu = taffy
+            .taffy
+            .new_leaf(taffy::style::Style::default())
+            .expect("contextual menu new_leaf");
+        taffy.anchored.push(AnchoredNode {
+            order: 1,
+            offset: glam::Vec2::ZERO,
+            node: menu,
+            relative_to: row.relative_to,
+            // `MOV dword [entry+0x20],0x41200000` = 10.0.
+            gap: 10.0,
+            // `MOV byte [entry+0x24],0` = Above.
+            side: AnchorSide::Above,
+        });
+        for item in items.iter_mut() {
+            if item.show_only_fpv == 2 {
+                break;
+            }
+            add_toolbar_item(&mut taffy.taffy, menu, item, commands);
+        }
+        row.node = menu;
+        menu
+    }
+
+    /// O `contextual_menus` inline (5 instances): the registered menu slice
+    /// consumed by alignment and the size/padding update.
+    pub fn contextual_menus(&self) -> &[ContextualMenu] {
+        &self.menus
+    }
+
+    /// O 0x141e4d880 `link_up_nav`: for each button write
+    /// `UiNav{prev=ids[(i+n-1)%n], next=ids[(i+1)%n]}` into the real entity.
+    /// The boolean selects the horizontal/vertical slot layout.
+    pub fn link_up_cyclic_list_nav(
+        &self,
+        ids: &[(bevy_ecs::entity::Entity, u64)],
+        horizontal: bool,
+        commands: &mut bevy_ecs::system::Commands,
+    ) {
+        if ids.is_empty() {
+            return;
+        }
+        for (i, (entity, _)) in ids.iter().enumerate() {
+            let prev = ids[(i + ids.len() - 1) % ids.len()].1;
+            let next = ids[(i + 1) % ids.len()].1;
+            let nav = if horizontal {
+                crate::resouces_and_components::UiNav::horizontal(prev, next)
+            } else {
+                crate::resouces_and_components::UiNav::vertical(prev, next)
+            };
+            commands.entity(*entity).insert(nav);
+        }
+    }
+}
+
+impl PhotomodeToolbarLayout {
+    /// Same inline `contextual_menus` (native reads both layouts).
+    pub fn contextual_menus(&self) -> &[ContextualMenu] {
+        &self.menus
+    }
+}
+
+#[cfg(test)]
+mod layout_owner_tests {
+    use super::*;
+    use crate::resouces_and_components::taffy_layout::{AnchorSide, TaffyLayout};
+
+    #[test]
+    fn setup_registers_single_window_anchor_and_screen_child() {
+        let mut taffy = TaffyLayout::default();
+        let (screen, toolbar) = ToolbarLayout::setup_screen_and_toolbar_nodes(&mut taffy);
+        assert_eq!(taffy.anchored.len(), 1);
+        assert_eq!(taffy.anchored[0].order, 0);
+        assert_eq!(taffy.anchored[0].node, screen);
+        assert_eq!(taffy.anchored[0].side, AnchorSide::Window);
+        assert_eq!(taffy.children(screen), vec![toolbar]);
+    }
+
+    #[test]
+    fn contextual_menu_uses_definition_row_anchor_and_sentinel() {
+        let mut taffy = TaffyLayout::default();
+        let (screen, toolbar) = ToolbarLayout::setup_screen_and_toolbar_nodes(&mut taffy);
+        let mut layout = ToolbarLayout {
+            menus: vec![ContextualMenu {
+                relative_to: toolbar,
+                node: taffy::node::Node::default(),
+                tag: 5,
+            }],
+            node_a: screen,
+            node_b: toolbar,
+            ..Default::default()
+        };
+        let mut world = bevy_ecs::world::World::new();
+        let mut queue = bevy_ecs::world::CommandQueue::default();
+        let mut commands = bevy_ecs::system::Commands::new(&mut queue, &world);
+        let mut items = [
+            ToolbarItemKind { tag: 0, ..Default::default() },
+            ToolbarItemKind {
+                tag: 7,
+                show_only_fpv: 2,
+                ..Default::default()
+            },
+            ToolbarItemKind { tag: 1, ..Default::default() },
+        ];
+        let menu = layout.add_contextual_menu(&mut taffy, 5, &mut items, &mut commands);
+        queue.apply(&mut world);
+        assert_eq!(layout.contextual_menus().len(), 1);
+        assert_eq!(layout.contextual_menus()[0].tag, 5);
+        assert_eq!(layout.contextual_menus()[0].node, menu);
+        assert_eq!(layout.contextual_menus()[0].relative_to, toolbar);
+        assert_eq!(taffy.anchored.len(), 2);
+        assert_eq!(taffy.anchored[1].relative_to, toolbar);
+        assert_eq!(taffy.anchored[1].gap, 10.0);
+        assert_eq!(taffy.anchored[1].side, AnchorSide::Above);
+        // Only the item before the sentinel was linked.
+        assert_eq!(taffy.children(menu).len(), 1);
+    }
+
+    #[test]
+    #[should_panic(expected = "contextual menu definition tag missing")]
+    fn contextual_menu_without_definition_row_panics_like_unwrap_failed() {
+        let mut taffy = TaffyLayout::default();
+        let mut layout = ToolbarLayout::default();
+        let mut world = bevy_ecs::world::World::new();
+        let mut queue = bevy_ecs::world::CommandQueue::default();
+        let mut commands = bevy_ecs::system::Commands::new(&mut queue, &world);
+        let mut items: [ToolbarItemKind; 0] = [];
+        layout.add_contextual_menu(&mut taffy, 1, &mut items, &mut commands);
+    }
 }

@@ -15,6 +15,7 @@ use std::sync::Arc;
 
 use bevy_ecs::resource::Resource;
 use country_core::geometry::instanced_wall::BrickSourceId;
+use country_core::resources::walls::decorator_storage::DecoratorStorage;
 use country_core::resources::walls::decorator_subtype::DecoratorCollision;
 use country_core::systems::collision::world::RaycastMeshData;
 use glam::{Quat, Vec3};
@@ -145,12 +146,48 @@ impl DecoratorBlueprint {
 pub struct DecoratorBlueprints {
     /// 蓝图表。
     pub map: HashMap<u32, DecoratorBlueprint>,
+    /// 上一帧蓝图表（原 +0x20/+0x28 的 prev map；差分实例化基线）。
+    pub prev: HashMap<u32, DecoratorBlueprint>,
 }
 
 impl DecoratorBlueprints {
     /// 0x1408258b0（O）：插入蓝图（键 u32；冲突行为 U，D1 以覆盖语义承载）。
     pub fn insert(&mut self, id: u32, blueprint: DecoratorBlueprint) {
         self.map.insert(id, blueprint);
+    }
+
+    /// `clear_blueprints` @0x1408260d0（O 结构）：移除本帧 modified/removed
+    /// 装饰与已移除存储桶的蓝图（Arc 归零由 HashMap 释放承载）。
+    pub fn clear_blueprints(&mut self, storage: &DecoratorStorage) {
+        let mut ids: Vec<u32> = Vec::new();
+        for (_, bucket) in storage.iter() {
+            ids.extend(bucket.modified_ids.iter().copied());
+            ids.extend(bucket.removed_ids.iter().copied());
+        }
+        for bucket in storage.iter_terrain_decorators() {
+            ids.extend(bucket.modified_ids.iter().copied());
+            ids.extend(bucket.removed_ids.iter().copied());
+        }
+        for bucket in storage.iter_stair_decorators() {
+            ids.extend(bucket.modified_ids.iter().copied());
+            ids.extend(bucket.removed_ids.iter().copied());
+        }
+        // 已移除存储地址的整个桶（O：removed storages 遍历）。
+        for addr in storage.iter_removed_storages() {
+            if let Some(bucket) = storage.get(addr) {
+                ids.extend(bucket.removed_ids.iter().copied());
+                ids.extend(bucket.modified_ids.iter().copied());
+            }
+        }
+        for id in ids {
+            self.map.remove(&id);
+        }
+    }
+
+    /// `copy_blueprints_to_prev` @0x140826d70（O）：当前蓝图表
+    /// `clone_from` 到 prev 基线（差分实例化读取 prev）。
+    pub fn copy_blueprints_to_prev(&mut self) {
+        self.prev.clone_from(&self.map);
     }
 
     /// 0x140825ff0（O）：查询蓝图，未中返回 None（原返回 0）。
@@ -166,5 +203,38 @@ impl DecoratorBlueprints {
     /// 删除（内联，I；移动/移除族消费）。
     pub fn remove(&mut self, id: u32) -> Option<DecoratorBlueprint> {
         self.map.remove(&id)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use country_core::resources::walls::decorator_storage::Decorators;
+    use country_core::resources::walls::WallId;
+
+    #[test]
+    fn copy_blueprints_to_prev_clones_current_map() {
+        let mut blueprints = DecoratorBlueprints::default();
+        blueprints.insert(1, DecoratorBlueprint::new());
+        blueprints.copy_blueprints_to_prev();
+        assert_eq!(blueprints.prev.len(), 1);
+        assert!(blueprints.prev.contains_key(&1));
+    }
+
+    #[test]
+    fn clear_blueprints_removes_modified_and_removed_ids() {
+        let mut storage = DecoratorStorage::default();
+        let mut bucket = Decorators::default();
+        bucket.modified_ids.insert(1);
+        bucket.removed_ids.insert(2);
+        storage.per_wall.insert(WallId(9), bucket);
+
+        let mut blueprints = DecoratorBlueprints::default();
+        for id in [1, 2, 3] {
+            blueprints.insert(id, DecoratorBlueprint::new());
+        }
+        blueprints.clear_blueprints(&storage);
+        assert_eq!(blueprints.map.len(), 1, "untouched id 3 retained");
+        assert!(blueprints.map.contains_key(&3));
     }
 }

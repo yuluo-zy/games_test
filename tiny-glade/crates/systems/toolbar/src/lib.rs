@@ -103,5 +103,61 @@ pub fn configure(world: &mut World, schedule: &mut bevy_ecs::schedule::Schedule)
         toolbar_button::switch_toolbar_category_button,
         toolbar_button::tod_v2_button,
         ui_interaction::ui_animation_state_update,
+        // O 0x14233c300 / 0x14233c8b0: select/locked scale animations; their
+        // real consumers are TaffyNode+0x10 and the command queue.
+        ui_interaction::ui_select_animation,
+        ui_interaction::ui_locked_animation,
     ));
+}
+
+/// Bevy `App` registration surface for `ToolbarPlugin::build` (O 0x14068d610).
+///
+/// This installs the real resources/events/components consumed by the toolbar
+/// systems. Systems themselves are added by the host plugin
+/// (`tiny_glade::toolbar_plugin`) so their `GameSystemSet` ordering stays in
+/// the tiny-glade crate (original set numbers 8..43 are U).
+pub fn configure_app(app: &mut bevy_app::App) {
+    app.init_resource::<MeiContext>();
+    app.init_resource::<toolbar_update::ToolbarSizeMult>();
+    // Core-owned in run_game, but idempotent and required by render_taffy's
+    // Res<UiNavState> surface when this plugin is the only toolbar entry.
+    app.init_resource::<country_core::systems::ui::resources::widget_params::UiNavState>();
+    app.init_resource::<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>();
+
+    // Event owners consumed by the button/animation systems.
+    app.init_resource::<Events<ui_interaction::UiClickEvent>>();
+    app.init_resource::<Events<ui_interaction::UiDragEvent>>();
+    app.init_resource::<Events<ui_interaction::UiJustBecameInFocusEvent>>();
+    app.init_resource::<Events<toolbar_button::UiToolbarButtonResetAllCooldowns>>();
+    app.init_resource::<Events<country_core::resources::events::ModeJustChanged>>();
+    app.init_resource::<Events<country_core::systems::ui::resources::widget_params::PlayUiSound>>();
+    app.init_resource::<Events<country_core::systems::mode_manager::RequestToolbarCategoryChange>>();
+    app.init_resource::<Events<country_core::systems::mode_manager::RequestAppModeChange>>();
+    app.init_resource::<
+        Events<
+            country_core::systems::backend::input::calculate_input_delta::UiHistoryButtonPressed,
+        >,
+    >();
+
+    // All 24 local toolbar components (native register_required_components).
+    resouces_and_components::register_local_components(app.world_mut());
+
+    // Core-owned yet hard prerequisites of render_taffy's SystemParam. Install
+    // them only when absent so a later core plugin keeps its own constructor.
+    if !app
+        .world()
+        .contains_resource::<country_core::systems::ui::resources::ui_state::UiState>()
+    {
+        app.world_mut().insert_resource(
+            country_core::systems::ui::resources::ui_state::UiState::at_startup(),
+        );
+    }
+    if !app
+        .world()
+        .contains_resource::<country_core::resources::mouse_terrain_raycast::CursorPositionSS>()
+    {
+        app.world_mut().insert_resource(
+            country_core::resources::mouse_terrain_raycast::CursorPositionSS(glam::Vec2::ZERO),
+        );
+    }
 }

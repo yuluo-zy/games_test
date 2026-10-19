@@ -6,9 +6,6 @@
 use glam::Vec3;
 
 /// B `construct_rectangle_large_brackets`（0x141253fc0）。**未实现**。
-pub fn construct_rectangle_large_brackets(
-    _positions: &[Vec3],
-    _out: &mut Vec<[u8; 64]>,
-) {
+pub fn construct_rectangle_large_brackets(_positions: &[Vec3], _out: &mut Vec<[u8; 64]>) {
     todo!("未实现: construct_rectangle_large_brackets 0x141253fc0（角部斜撑+横梁几何参数未逐语句）")
 }

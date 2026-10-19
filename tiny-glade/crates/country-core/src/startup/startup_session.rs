@@ -131,11 +131,17 @@ pub fn load_game_session(
     // 先完成文件和配置准备；出错时 request.on_load 仍由原请求持有。
     let requested_id = match request.kind {
         NextSessionKind::LoadSavedGame => saved_sessions.sessions.first().map(|session| session.id),
-        NextSessionKind::LoadOnLoad => Some(request.id),
+        NextSessionKind::LoadOnLoad | NextSessionKind::LoadParsedGame => Some(request.id),
         NextSessionKind::None => unreachable!(),
     };
-    let valid_session =
-        requested_id.filter(|id| is_session_ok_to_load(*id, &auto_save.unsaved_files).is_ok());
+    // Native case3 does not run readiness again or fall back to a starting build.
+    // In particular, backup restore must use the owned backup result even when
+    // the selected session's current history.json is broken or absent.
+    let valid_session = if request.kind == NextSessionKind::LoadParsedGame {
+        Some(request.id)
+    } else {
+        requested_id.filter(|id| is_session_ok_to_load(*id, &auto_save.unsaved_files).is_ok())
+    };
     let demo = config.as_deref().map_or_else(
         || STARTUP_DEMO_MODE.load(std::sync::atomic::Ordering::Relaxed),
         |config| config.dev.demo,
@@ -149,7 +155,7 @@ pub fn load_game_session(
     } else {
         let build = select_starting_build(demo, profile.new_glade_count)?;
         let history_path = build.join("history.json");
-        if !history_path.is_file() {
+        if request.kind != NextSessionKind::LoadParsedGame && !history_path.is_file() {
             return Err(format!("起始场景缺少历史文件：{}", history_path.display()).into());
         }
         let previous_theme = saved_sessions
@@ -174,7 +180,7 @@ pub fn load_game_session(
         )?;
         (session_id, history_path)
     };
-    if !history_path.is_file() {
+    if request.kind != NextSessionKind::LoadParsedGame && !history_path.is_file() {
         return Err(format!("会话历史文件不存在：{}", history_path.display()).into());
     }
     let mut metadata =
@@ -193,9 +199,20 @@ pub fn load_game_session(
         settings.default_roof_color_id = 0;
         settings.leaf_particle_count = 0;
     }
+    let source = if request.kind == NextSessionKind::LoadParsedGame {
+        // This is the last fallible request operation: retain the owner and all
+        // post-load actions until the complete destination has been prepared.
+        let data = request.take_parsed_data()?;
+        LoadGameSource::Parsed {
+            data,
+            snapshot_root: session_id.save_folder_path().join("snapshots"),
+        }
+    } else {
+        LoadGameSource::Path(history_path)
+    };
     let pending_actions = make_post_load_commands(std::mem::take(&mut request.on_load));
     load_manager.begin(
-        LoadGameSource::Path(history_path),
+        source,
         ActiveLoadOptions {
             ignore_snapshot: request.ignore_snapshot,
             request_reveal: is_new,

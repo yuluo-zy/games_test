@@ -42,10 +42,10 @@
 //! （`RawTable<StairGraphEdge, Vec<Vec3>>` 语义：hash_one→探测→命中直用/
 //! 未命中 reserve_rehash 插入空 Vec）与 `UpdateRtWorldEvent`（Event 载荷）后，
 //! 按宿主反编译全序实现第 4-6 步。
+use bevy_ecs::prelude::*;
 use country_core::resources::stairs_walls::{StairsPillarProposal, StairsPillarProposals};
 use country_core::systems::collision::world::RaycastWorld;
 use country_core::systems::ui::signifiers::signifier_create::UiSignifierStream;
-use bevy_ecs::prelude::*;
 
 /// 提议记录内字段偏移（stride 0x2c）。
 const POS: std::ops::Range<usize> = 0..8; // pos x/z（2×f32）
@@ -139,7 +139,9 @@ pub fn process_playermade_stair_pillars_proposals(
     _signifiers: Res<UiSignifierStream>,
     _world: ResMut<RaycastWorld>,
 ) {
-    todo!("未实现: process_playermade_stair_pillars_proposals 宿主 0x140178a70（缺 StairColliderRegistry/RtWorld/RtMeshHandle/UpdateRtWorldEvent/StairGraphEdge core 类型）；merge 块已落 merge_nearby_proposals")
+    todo!(
+        "未实现: process_playermade_stair_pillars_proposals 宿主 0x140178a70（缺 StairColliderRegistry/RtWorld/RtMeshHandle/UpdateRtWorldEvent/StairGraphEdge core 类型）；merge 块已落 merge_nearby_proposals"
+    )
 }
 
 fn read_f32(bytes: &[u8], offset: usize) -> f32 {

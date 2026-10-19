@@ -61,7 +61,7 @@ pub fn ui_move_tree<S: Send + Sync + 'static>(
     mode: Res<AppMode>,
     ui: Res<UiState>,
     storage: Res<TreeStorage>,
-    _trees: Query<(&PrefabInstanceData, &PrefabInstance)>,
+    _trees: Query<(&PrefabInstance, &PrefabInstanceData)>,
     cursor: Res<CursorTerrainRaycast>,
     heights: Res<TerrainHeightsData<TerrainHeightSsbo>>,
     mut moves: EventWriter<MoveTreeCmd>,

@@ -11,13 +11,17 @@ pub mod trees;
 pub mod ui;
 
 pub use rendering::{
+    FollowMouse,
     BackgroundTerrain, DashedLineLength, DontReceiveContactShadows, FlatLighting,
     OverwriteRoughness, SemiTransparent, StairsStep,
 };
 pub use trees::{
     ConvertedPreplacedTree, TreeAnimation, TreeComponent, TreeMarkedForDeletion, TreeMoveBend,
 };
-pub use ui::{Ui2dExtent, Ui2dImage, UiDrawOrder, UiMouseInteractable};
+pub use ui::{
+    Ui2dExtent, Ui2dImage, Ui2dWsExtent, UiDrawOrder, UiInactive, UiInteractionState,
+    UiMouseInteractable,
+};
 
 /// B KeepOnLevelUnload, original component registration @0x140852670:
 /// size 0, alignment 1, no drop; animated-logo startup retains this entity.
@@ -27,3 +31,12 @@ pub struct KeepOnLevelUnload;
 // 保持已有公共入口；权威定义分别属于 prefab 系统和树编辑资源。
 pub use crate::resources::history::tree_edit::TreeCanopyMaxCullDistance;
 pub use crate::systems::prefab::PrefabInstanceData;
+
+/// Canonical material normal map used by startup and draw consumers.
+pub use rendering::NormalMap;
+
+pub mod brush_previews;
+pub use brush_previews::{SnappingToEndPreview, SnappingToSegmentPreview};
+
+pub use ui::Ui2DFollowMouse;
+pub use rendering::MeshFollowTerrain;

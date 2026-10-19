@@ -75,6 +75,10 @@ impl PublicWallBuildingState {
     pub fn from_observed(bytes: [u8; 0x2a0]) -> Self {
         Self(bytes)
     }
+    /// Identified observed fields only; owning Rust vectors are never encoded.
+    pub fn observed_bytes(&self) -> &[u8; 0x2a0] {
+        &self.0
+    }
     pub fn validate_read(&self) -> Result<(), WallReadError> {
         validate_public_wall_read(
             u64::from_le_bytes(self.0[0x10..0x18].try_into().unwrap()),

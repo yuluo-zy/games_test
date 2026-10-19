@@ -117,6 +117,30 @@ pub fn upload_dormer_holes_to_gpu(
     ssbos: &mut AssetSsboLibrary,
     device: &dyn GraphicsDevice,
 ) -> usize {
+    let (counts, cells, count) = build_dormer_hole_grid(blueprints);
+    let Some(buffer) = ssbos.get_mut::<DormerHoleSsbo>() else {
+        return count;
+    };
+    // 计数写（O：900 u32 → 缓冲头区；`InstanceBuffer<DormerHoleSsbo>` 只承载
+    // 记录数组，计数区 SSBO 布局未取证 → 显式 U（`counts` 由
+    // [`build_dormer_hole_grid`] 返回给 render handoff，不再丢弃）。
+    let _ = &counts;
+    // 单元写（O：225×50 记录；I：扁平化次序 = 单元序 + 记录序）。
+    let mut flat: Vec<DormerHoleSsbo> = Vec::with_capacity(CELL_COUNT * CELL_CAP);
+    for cell in &cells {
+        flat.extend_from_slice(cell);
+    }
+    let _ = buffer.buffer.gpu_write(device, &flat);
+    buffer.instance_count = count;
+    count
+}
+
+/// 老虎窗洞网格 CPU 生产者（0x1407b1d40 内联主体，O）：逐蓝图洞记录 →
+/// 覆盖单元计数 + 记录入表。返回 `(counts[900], cells[225][*], 总记录数)`，
+/// 供 GPU 上传与 render handoff 消费。
+pub fn build_dormer_hole_grid(
+    blueprints: &DecoratorBlueprints,
+) -> (DormerHoleCounts, Vec<Vec<DormerHoleSsbo>>, usize) {
     // 计数缓冲（O：900 u32 memset 0）。
     let mut counts = [0u32; COUNT_BUFFER_LEN];
     // 单元表（O：225 × 50 × 0x30B；逐单元计数 + 记录追加，容量越界原 panic）。
@@ -152,20 +176,44 @@ pub fn upload_dormer_holes_to_gpu(
         }
     }
 
-    // 上传（O：双 gpu_write：counts 900 + 单元表；native = 0x140beefa0 ×2）。
+    // 计数总和（O：900 计数累加）。
     let count = counts.iter().sum::<u32>() as usize;
-    let Some(buffer) = ssbos.get_mut::<DormerHoleSsbo>() else {
-        return count;
-    };
-    // 计数写（O：900 u32 → 缓冲头区；InstanceBuffer<DormerHoleSsbo> 无法承载
-    // u32 计数 —— 计数区布局挂账 RESTORE.md，本面以 cells 写承载）。
-    let _ = counts;
-    // 单元写（O：225×50 记录；I：扁平化次序 = 单元序 + 记录序）。
-    let mut flat: Vec<DormerHoleSsbo> = Vec::with_capacity(CELL_COUNT * CELL_CAP);
-    for cell in &cells {
-        flat.extend_from_slice(cell);
+    (DormerHoleCounts { counts }, cells, count)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::blueprint::{DecoratorBlueprint, DecoratorBlueprints};
+    use country_core::resources::walls::decorator_subtype::DecoratorCollision;
+    use utils::geometry::rectangle::{Rectangle2d, Rectangle3d};
+
+    #[test]
+    fn grid_covers_footprint_cells_and_counts() {
+        let mut collision = DecoratorCollision::empty();
+        collision.bounds = Rectangle3d {
+            footprint: Rectangle2d::new(Vec2::new(10.0, 10.0), Vec2::new(16.0, 16.0), Vec2::X),
+            bottom: 0.0,
+            top: 2.0,
+        };
+        let mut blueprint = DecoratorBlueprint::new();
+        blueprint.set_colliders(vec![collision]);
+        let mut blueprints = DecoratorBlueprints::default();
+        blueprints.insert(7, blueprint);
+
+        let (counts, cells, total) = build_dormer_hole_grid(&blueprints);
+        assert!(total >= 1, "footprint must cover at least one cell");
+        assert_eq!(counts.counts.iter().sum::<u32>() as usize, total);
+        assert_eq!(cells.iter().map(Vec::len).sum::<usize>(), total);
+        assert!(cells.iter().any(|c| !c.is_empty()));
     }
-    let _ = buffer.buffer.gpu_write(device, &flat);
-    buffer.instance_count = count;
-    count
+
+    #[test]
+    fn world_to_grid_maps_origin_and_clamps() {
+        // (0 + 65) / 8.6667 = 7.5 → floor 7；NaN → 0。
+        assert_eq!(world_space_to_grid_coord_unclamped(0.0), 7);
+        assert_eq!(world_space_to_grid_coord_unclamped(f32::NAN), 0);
+        let cells = get_cells_from_bbx(Vec2::new(0.0, 0.0), Vec2::new(0.0, 0.0));
+        assert_eq!(cells, vec![7 * GRID_COLS + 7]);
+    }
 }

@@ -34,13 +34,10 @@ pub const SHEEP_EVENTS: [&str; 7] = [
     "event:/SFX/Sheep/Confused",
 ];
 
-/// Kind 4 → the continuous frame-end loop (E3 CONFIRMED: event table 0x142ac23b0
-/// kind 0–7 are the seven one-shots; kind 4 packages a loop handle driven at
-/// frame end by start_if_not_playing / stop — 0x1409d61b0). The loop event is
-/// `event:/SFX/Sheep/Baah` (rne-read; startup_sheep loads Baah + Pitch at
-/// 0x142ac2460). The Baah loop carries a `Pitch` parameter.
-pub const KIND4_LOOP_EVENT: &str = "event:/SFX/Sheep/Baah";
-/// Baah loop parameter (O: rne-read `Pitch` adjacent to the Baah/UI Boop table).
+/// Original inlined SheepAudioState constructors140b6a92c/1414d9b82 use
+/// event name142ac2338 (20 bytes), separate from startup sheep's Baah event.
+pub const KIND4_LOOP_EVENT: &str = "event:/SFX/Sheep/Pet";
+/// Sheep reaction pitch parameter.
 pub const SHEEP_PITCH_PARAM: &str = "Pitch";
 
 /// SheepAudioState (O: the kind-4 frame-end loop player).

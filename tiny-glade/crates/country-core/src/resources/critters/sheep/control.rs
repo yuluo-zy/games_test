@@ -34,7 +34,7 @@ pub fn capture_sheep_snapshot<'a>(
             .into_iter()
             .map(|(transform, sheep, critter_goal)| SheepSnapshot {
                 position: transform.translation,
-                goal: (critter_goal.goal_tag != 0).then_some(critter_goal.position),
+                goal: (critter_goal.goal_tag == 1).then_some(critter_goal.position),
                 move_state: sheep.move_state,
             })
             .collect(),
@@ -198,4 +198,38 @@ mod tests {
             r#"{"sheep":[{"position":[1.0,2.0,3.0],"goal":null,"move_state":{"Idle":{"timeout_s":2.0}}}]}"#
         );
     }
+}
+
+/// Loading before OnEnter(Game) can precede the original control component's
+/// birth. Resource presence means one pending transfer, including a None clear.
+/// This DTO is not a live SheepControl and never owns an applied snapshot.
+#[derive(bevy_ecs::resource::Resource, Clone, Debug)]
+pub struct PendingSheepSnapshot(pub Option<SheepControlSnapshot>);
+
+/// Query the unique real owner, or retain a pre-birth DTO until startup consumes
+/// it. A duplicate owner is an error rather than selecting an arbitrary entity.
+pub fn install_loaded_sheep_snapshot(
+    world: &mut bevy_ecs::world::World,
+    snapshot: Option<SheepControlSnapshot>,
+) -> Result<(), &'static str> {
+    use crate::systems::debug::sheep_controls::SheepControl;
+    use bevy_ecs::{entity::Entity, query::With};
+    let owners: Vec<_> = world
+        .query_filtered::<Entity, With<SheepControl>>()
+        .iter(world)
+        .collect();
+    match owners.as_slice() {
+        [] => {
+            world.insert_resource(PendingSheepSnapshot(snapshot));
+        }
+        [entity] => {
+            world.remove_resource::<PendingSheepSnapshot>();
+            world
+                .get_mut::<SheepControl>(*entity)
+                .expect("validated live sheep control")
+                .snapshot = snapshot;
+        }
+        _ => return Err("multiple live SheepControl components"),
+    }
+    Ok(())
 }

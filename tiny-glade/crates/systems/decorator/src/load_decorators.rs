@@ -88,10 +88,9 @@ pub fn load_collision_as_bbx(
     _subtype: u8,
 ) -> Option<RaycastMeshData> {
     let mesh = asset_library.get_by_name(name)?;
-    let bbx = mesh.collision_bbx();
-    // 机器码：new_cuboid + box_trigger_volume（core 缺口登记：new_cuboid/
-    // new_convex 在 `native-physics` feature 关闭时不可用——以默认构造 +
-    // 几何哈希占位，待碰撞后端接线）。
-    let _ = bbx;
-    Some(RaycastMeshData::default())
+    let _bbx = mesh.collision_bbx();
+    // 机器码：`new_cuboid(bbx 半extents, 几何哈希)` + box_trigger_volume。
+    // core `new_cuboid` 位于 `native-physics` feature（system-decorator 不启用），
+    // 故**显式未恢复**返回 None，不再以 `RaycastMeshData::default()` 冒充。
+    None
 }

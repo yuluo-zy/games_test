@@ -145,6 +145,14 @@ pub struct SheepAnimationSsbo {
     pub delighted_normal: [f32; 4],
 }
 
+// SAFETY: repr(C) contains only62 consecutive [f32;4] arrays. Alignment4
+// and992-byte size leave no implicit padding or invalid initialized byte.
+unsafe impl bytemuck::NoUninit for SheepAnimationSsbo {}
+const _: () = {
+    assert!(core::mem::size_of::<SheepAnimationSsbo>() == 992);
+    assert!(core::mem::align_of::<SheepAnimationSsbo>() == 4);
+};
+
 impl StorageElement for SheepAnimationSsbo {
     const NAME: &'static str = "Sheep Animation";
     // BUFFER_LEN = 0：缓冲大小随初始数据（`new_storage_buffer<SheepAnimationSsbo>` 无 BUFFER_LEN 常量）。

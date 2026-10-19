@@ -19,6 +19,15 @@ enum SavedOperation {
     ShrinkTo { start_t: f32, end_t: f32 },
     SwapInstant,
 }
+
+/// Original tag12's bool payload has distinct field names, despite sharing the
+/// live scalar-edit owner. Serializer141400759 / strings142c5b69b,142c5b6b2.
+#[derive(Deserialize, Serialize)]
+struct SavedWallSupports {
+    wall_index: u64,
+    before_removed_supports: bool,
+    after_removed_supports: bool,
+}
 impl SavedOperation {
     fn bytes(self) -> [u8; 12] {
         let (tag, start, end): (u32, f32, f32) = match self {
@@ -65,6 +74,19 @@ enum SavedWallEdit {
         before: f32,
         after: f32,
     },
+    MorphPremadeShape(super::wall_edit::MorphPremadeShapeEdit),
+    ChangeIsEnclosedState(
+        super::wall_edit::WallValueEdit<crate::systems::wall::valid_enclosure::IsEnclosed>,
+    ),
+    ChangeElevation(super::wall_edit::WallValueEdit<f32>),
+    ChangeArchHeight(super::wall_edit::WallValueEdit<f32>),
+    ChangeFreehandHeightType(super::wall_edit::WallValueEdit<super::wall_edit::WallTerrainPolicy>),
+    ChangeArchType(super::wall_edit::WallValueEdit<super::wall_edit::WallTerrainPolicy>),
+    ChangeSupports(SavedWallSupports),
+    ChangeStyle(super::wall_edit::WallValueEdit<super::wall_edit::SavedWallStyle>),
+    ChangeSkirt(super::wall_edit::WallValueEdit<bool>),
+    ChangePlasterPeelAmount(super::wall_edit::WallValueEdit<f32>),
+    MorphFreehandWall(super::wall_edit::WallValueEdit<super::wall_edit::WallCurveHistory>),
 }
 
 impl Serialize for WallHistoryEdit {
@@ -128,6 +150,33 @@ impl Serialize for WallHistoryEdit {
                 before: wall(source)?,
                 color_id: *color_id,
             },
+            Self::MorphPremadeShape(edit) => SavedWallEdit::MorphPremadeShape(*edit),
+            Self::EnclosureChange {
+                wall,
+                previous,
+                next,
+            } => SavedWallEdit::ChangeIsEnclosedState(super::wall_edit::WallValueEdit {
+                wall_index: wall.0,
+                before: *previous,
+                after: *next,
+            }),
+            Self::ChangeElevation(edit) => SavedWallEdit::ChangeElevation(edit.clone()),
+            Self::ChangeArchHeight(edit) => SavedWallEdit::ChangeArchHeight(edit.clone()),
+            Self::ChangeFreehandHeightType(edit) => {
+                SavedWallEdit::ChangeFreehandHeightType(edit.clone())
+            }
+            Self::ChangeArchType(edit) => SavedWallEdit::ChangeArchType(edit.clone()),
+            Self::ChangeSupports(edit) => SavedWallEdit::ChangeSupports(SavedWallSupports {
+                wall_index: edit.wall_index,
+                before_removed_supports: edit.before,
+                after_removed_supports: edit.after,
+            }),
+            Self::ChangeStyle(edit) => SavedWallEdit::ChangeStyle(edit.clone()),
+            Self::ChangeSkirt(edit) => SavedWallEdit::ChangeSkirt(edit.clone()),
+            Self::ChangePlasterPeelAmount(edit) => {
+                SavedWallEdit::ChangePlasterPeelAmount(edit.clone())
+            }
+            Self::MorphFreehandWall(edit) => SavedWallEdit::MorphFreehandWall(edit.clone()),
             Self::AdjustHeight { wall, from, to } => SavedWallEdit::AdjustHeight {
                 wall_index: wall.0,
                 before: *from,
@@ -181,6 +230,27 @@ impl<'de> Deserialize<'de> for WallHistoryEdit {
                 color_id,
                 restored_height: wall_height,
             },
+            SavedWallEdit::MorphPremadeShape(edit) => Self::MorphPremadeShape(edit),
+            SavedWallEdit::ChangeIsEnclosedState(edit) => Self::EnclosureChange {
+                wall: WallId(edit.wall_index),
+                previous: edit.before,
+                next: edit.after,
+            },
+            SavedWallEdit::ChangeElevation(edit) => Self::ChangeElevation(edit),
+            SavedWallEdit::ChangeArchHeight(edit) => Self::ChangeArchHeight(edit),
+            SavedWallEdit::ChangeFreehandHeightType(edit) => Self::ChangeFreehandHeightType(edit),
+            SavedWallEdit::ChangeArchType(edit) => Self::ChangeArchType(edit),
+            SavedWallEdit::ChangeSupports(edit) => {
+                Self::ChangeSupports(super::wall_edit::WallValueEdit {
+                    wall_index: edit.wall_index,
+                    before: edit.before_removed_supports,
+                    after: edit.after_removed_supports,
+                })
+            }
+            SavedWallEdit::ChangeStyle(edit) => Self::ChangeStyle(edit),
+            SavedWallEdit::ChangeSkirt(edit) => Self::ChangeSkirt(edit),
+            SavedWallEdit::ChangePlasterPeelAmount(edit) => Self::ChangePlasterPeelAmount(edit),
+            SavedWallEdit::MorphFreehandWall(edit) => Self::MorphFreehandWall(edit),
             SavedWallEdit::AdjustHeight {
                 wall_index,
                 before,
@@ -214,12 +284,42 @@ impl Serialize for WallCompoundHistoryEdit {
 enum SavedEdit {
     Tree(super::tree_edit::TreeEdit),
     Terrain(TerrainEdit),
+    AutoClutter(super::auto_clutter_edit::AutoClutterEdit),
+    DecoratorV5(super::decorator_edit::DecoratorV5Edit),
+    #[serde(
+        rename = "DecoratorOld",
+        alias = "Decorator",
+        alias = "Decorator4",
+        alias = "Decorator5"
+    )]
+    Decorator(super::decorator_edit::DecoratorHistoryEdit),
+    Color(super::color_edit::ColorEdit),
+    Roof(super::building_transactions::RoofHistoryEdit),
+    Path(crate::resources::raster_stroke::RasterStroke),
+    Cobblestone1(crate::resources::raster_stroke::RasterStroke),
+    Cobblestone2(crate::resources::raster_stroke::RasterStroke),
+    Cobblestone3(crate::resources::raster_stroke::RasterStroke),
+    Water(crate::resources::raster_stroke::RasterStroke),
+    Garden(crate::resources::raster_stroke::RasterStroke),
+    Stairs(super::stairs_history_edit::StairsHistoryEdit),
     #[serde(alias = "WallNewSystem")]
     Wall(WallCompoundHistoryEdit),
 }
 impl<'de> Deserialize<'de> for EditType {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         match SavedEdit::deserialize(d)? {
+            SavedEdit::AutoClutter(edit) => Ok(Self::AutoClutter(Arc::new(edit))),
+            SavedEdit::DecoratorV5(edit) => Ok(Self::DecoratorV5(Arc::new(edit))),
+            SavedEdit::Decorator(edit) => Ok(Self::Decorator(Arc::new(edit))),
+            SavedEdit::Color(edit) => Ok(Self::Color(Arc::new(edit))),
+            SavedEdit::Stairs(edit) => Ok(Self::Stairs(Arc::new(edit))),
+            SavedEdit::Path(edit) => Ok(Self::Path(Arc::new(edit))),
+            SavedEdit::Cobblestone1(edit) => Ok(Self::Cobblestone1(Arc::new(edit))),
+            SavedEdit::Cobblestone2(edit) => Ok(Self::Cobblestone2(Arc::new(edit))),
+            SavedEdit::Cobblestone3(edit) => Ok(Self::Cobblestone3(Arc::new(edit))),
+            SavedEdit::Water(edit) => Ok(Self::Water(Arc::new(edit))),
+            SavedEdit::Garden(edit) => Ok(Self::Garden(Arc::new(edit))),
+            SavedEdit::Roof(edit) => Ok(Self::Roof(Arc::new(edit))),
             SavedEdit::Tree(tree) => Ok(Self::Tree(Arc::new(tree))),
             SavedEdit::Terrain(terrain) => Ok(Self::Terrain(Arc::new(terrain))),
             SavedEdit::Wall(wall) => Ok(Self::Wall(Arc::new(wall))),
@@ -230,33 +330,58 @@ impl<'de> Deserialize<'de> for EditType {
 impl Serialize for EditType {
     fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         match self {
+            Self::AutoClutter(edit) => {
+                s.serialize_newtype_variant("EditType", 13, "AutoClutter", &**edit)
+            }
+            Self::DecoratorV5(edit) => {
+                s.serialize_newtype_variant("EditType", 10, "DecoratorV5", &**edit)
+            }
+            Self::Decorator(edit) => {
+                s.serialize_newtype_variant("EditType", 11, "DecoratorOld", &**edit)
+            }
+            Self::Color(edit) => s.serialize_newtype_variant("EditType", 9, "Color", &**edit),
+            Self::Stairs(edit) => s.serialize_newtype_variant("EditType", 14, "Stairs", &**edit),
+            Self::Path(edit) => s.serialize_newtype_variant("EditType", 1, "Path", &**edit),
+            Self::Cobblestone1(edit) => {
+                s.serialize_newtype_variant("EditType", 2, "Cobblestone1", &**edit)
+            }
+            Self::Cobblestone2(edit) => {
+                s.serialize_newtype_variant("EditType", 3, "Cobblestone2", &**edit)
+            }
+            Self::Cobblestone3(edit) => {
+                s.serialize_newtype_variant("EditType", 4, "Cobblestone3", &**edit)
+            }
+            Self::Water(edit) => s.serialize_newtype_variant("EditType", 5, "Water", &**edit),
+            Self::Garden(edit) => s.serialize_newtype_variant("EditType", 6, "Garden", &**edit),
+            Self::Roof(edit) => s.serialize_newtype_variant("EditType", 8, "Roof", &**edit),
             Self::Tree(tree) => s.serialize_newtype_variant("EditType", 12, "Tree", &**tree),
             Self::Terrain(terrain) => {
                 s.serialize_newtype_variant("EditType", 0, "Terrain", &**terrain)
             }
             Self::Wall(wall) => s.serialize_newtype_variant("EditType", 7, "Wall", &**wall),
-            _ => Err(serde::ser::Error::custom(
-                "B History save encoder for this edit is not restored",
-            )),
         }
     }
 }
 
-/// A decoded original MultiEdit, before it is installed in the History ledger.
-/// The auxiliary owners are kept as input until their native schema is usable;
-/// nonempty data is rejected instead of losing decorator or stairs changes.
+/// Original MultiEdit owns its decorator/stairs diffs alongside edit markers.
 #[derive(Clone, Debug)]
 pub struct SavedMultiEdit(pub HistoryEntry<EditType>);
 impl Serialize for SavedMultiEdit {
     fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeStruct;
-        if self.0.observed_auxiliary_counts != [0; 3] || self.0.observed_stairs_checksum.is_some() {
-            return Err(serde::ser::Error::custom(
-                "B MultiEdit auxiliary save encoder is not restored",
-            ));
-        }
-        let mut value = s.serialize_struct("MultiEdit", 1)?;
+        let mut value = s.serialize_struct("MultiEdit", 3)?;
         value.serialize_field("edits", &self.0.edits)?;
+        if let Some(diff) = &self.0.auxiliary.decorator_diff {
+            value.serialize_field(
+                "decorators",
+                &super::decorator_edit::DecoratorHistoryEdit {
+                    diffs: (**diff).clone(),
+                },
+            )?;
+        }
+        if let Some(diff) = &self.0.auxiliary.stairs_diff {
+            value.serialize_field("stairs", &**diff)?;
+        }
         value.end()
     }
 }
@@ -266,23 +391,103 @@ impl<'de> Deserialize<'de> for SavedMultiEdit {
         struct Input {
             edits: Vec<EditType>,
             #[serde(default)]
-            decorators: Option<serde_json::Value>,
+            decorators: Option<super::decorator_edit::DecoratorHistoryEdit>,
             #[serde(default)]
-            stairs: Option<serde_json::Value>,
+            stairs: Option<crate::resources::stairs::stairs_state::StairsHistoryDiff>,
         }
         let input = Input::deserialize(d)?;
-        if input.decorators.is_some() || input.stairs.is_some() {
-            return Err(D::Error::custom(
-                "B MultiEdit decorator/stairs saved owner decoder is not restored",
-            ));
+        let mut entry = HistoryEntry::from_edits(input.edits);
+        if let Some(diff) = input.decorators {
+            entry.observed_auxiliary_counts[0] = diff.diffs.len();
+            entry.auxiliary.decorator_diff = Some(Arc::new(diff.diffs));
         }
-        Ok(Self(HistoryEntry::from_edits(input.edits)))
+        if let Some(diff) = input.stairs {
+            entry.observed_auxiliary_counts[1] = diff.removed.len() + diff.added.len();
+            entry.observed_stairs_checksum = Some(diff.after_checksum);
+            entry.auxiliary.stairs_diff = Some(Arc::new(diff));
+        }
+        Ok(Self(entry))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn original_mixed_multi_edit_aux_survives_save_reload_and_replay_expansion() {
+        let fixture: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../tests/fixtures/original-mixed-history-b.json"
+        ))
+        .unwrap();
+        let entries: Vec<SavedMultiEdit> = serde_json::from_value(fixture).unwrap();
+        let mut decorators = 0;
+        let mut stairs = 0;
+        for entry in entries {
+            if entry.0.auxiliary.decorator_diff.is_some() {
+                decorators += 1;
+            }
+            if entry.0.auxiliary.stairs_diff.is_some() {
+                stairs += 1;
+            }
+            let saved = serde_json::to_value(&entry).unwrap();
+            let loaded: SavedMultiEdit = serde_json::from_value(saved.clone()).unwrap();
+            assert_eq!(serde_json::to_value(&loaded).unwrap(), saved);
+            assert_eq!(entry.0.auxiliary, loaded.0.auxiliary);
+            for undo in [false, true] {
+                let bucket = super::super::replay_cmd_buffer::ReplayBucket::expand_with_aux(
+                    0,
+                    &loaded.0,
+                    undo,
+                    true,
+                    loaded.0.auxiliary.for_replay(undo),
+                );
+                assert!(
+                    bucket.is_ok(),
+                    "original entry replay expansion: {bucket:?}"
+                );
+            }
+        }
+        assert!(decorators >= 3 && stairs >= 3);
+    }
+
+    #[test]
+    #[ignore = "external original asset diagnostic; root runs explicitly with TG_INSTALL_ROOT"]
+    fn all_original_starting_build_histories_decode_save_reload() {
+        let root = std::path::PathBuf::from(
+            std::env::var_os("TG_INSTALL_ROOT")
+                .expect("TG_INSTALL_ROOT must name the original B release root"),
+        )
+        .join("assets/starting-builds");
+        let mut files = 0;
+        let mut count = 0;
+        for edition in std::fs::read_dir(root).unwrap() {
+            for build in std::fs::read_dir(edition.unwrap().path()).unwrap() {
+                let p = build.unwrap().path().join("history.json");
+                if !p.is_file() {
+                    continue;
+                }
+                let asset: serde_json::Value =
+                    serde_json::from_str(&std::fs::read_to_string(&p).unwrap()).unwrap();
+                let entries: Vec<SavedMultiEdit> =
+                    serde_json::from_value(asset["History"]["edit_chain"].clone())
+                        .unwrap_or_else(|e| panic!("{}: {e}", p.display()));
+                count += entries.len();
+                files += 1;
+                for entry in entries {
+                    let saved = serde_json::to_value(&entry).unwrap();
+                    let reloaded: SavedMultiEdit = serde_json::from_value(saved.clone()).unwrap();
+                    assert_eq!(
+                        serde_json::to_value(reloaded).unwrap(),
+                        saved,
+                        "{}",
+                        p.display()
+                    );
+                }
+            }
+        }
+        assert_eq!((files, count), (33, 2120));
+    }
 
     #[test]
     fn original_intro_retains_all_groups_and_decodes_into_live_commands() {
@@ -324,6 +529,33 @@ mod tests {
         assert_eq!(lengths.iter().filter(|&&n| n == 0).count(), 8);
         assert_eq!(lengths.iter().filter(|&&n| n == 2).count(), 4);
         assert_eq!(lengths.iter().sum::<usize>(), 22);
+    }
+
+    #[test]
+    fn all_observed_original_wall_variants_preserve_saved_payloads() {
+        let rows: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../tests/fixtures/original-wall-variants-b.json"
+        ))
+        .unwrap();
+        assert_eq!(rows.as_object().unwrap().len(), 12);
+        for (name, row) in rows.as_object().unwrap() {
+            let edit: WallHistoryEdit =
+                serde_json::from_value(row.clone()).unwrap_or_else(|e| panic!("{name}: {e}"));
+            let saved = serde_json::to_value(&edit).unwrap();
+            let back: WallHistoryEdit = serde_json::from_value(saved.clone()).unwrap();
+            assert_eq!(serde_json::to_value(back).unwrap(), saved, "{name}");
+            if let WallHistoryEdit::ChangeArchType(_) = edit {
+                assert_eq!(edit.operation_tag() as u64, 8);
+            }
+            if !matches!(name.as_str(), "WallChanged" | "CreateWall" | "DeleteWall") {
+                assert_eq!(&saved, row, "original named payload {name}");
+            }
+        }
+        let rim = serde_json::json!({"ChangeFlatRoofRimStyle":{"wall_index":7,"before":"Rim","after":"NoRim"}});
+        let edit: crate::resources::history::building_transactions::RoofHistoryEdit =
+            serde_json::from_value(rim.clone()).unwrap();
+        assert_eq!(edit.tag(), 4);
+        assert_eq!(serde_json::to_value(edit).unwrap(), rim);
     }
 
     #[test]
@@ -374,21 +606,33 @@ mod tests {
     #[test]
     fn delete_wall_distinct_height_round_trips_without_overwriting_before() {
         let curve = crate::resources::roofs::geometry::surface::Curve2::try_new(
-            vec![[0.0, 0.0], [4.0, 0.0]], false,
-        ).unwrap();
+            vec![[0.0, 0.0], [4.0, 0.0]],
+            false,
+        )
+        .unwrap();
         // Use the existing saved schema's valid HalfTimbered style. Tag3 is
         // intentionally rejected; this test isolates independent Delete height.
         let state = WallState::new(curve, 3.9, 2, 0, false);
         let edit = WallHistoryEdit::Delete {
-            wall: WallId(9), source: state.snapshot().clone(), color_id: 17,
+            wall: WallId(9),
+            source: state.snapshot().clone(),
+            color_id: 17,
             restored_height: 7.0,
         };
         let saved = serde_json::to_value(&edit).unwrap();
         assert_eq!(saved["DeleteWall"]["wall_height"], 7.0);
-        assert_eq!(saved["DeleteWall"]["before"]["height"], serde_json::json!(3.9_f32));
+        assert_eq!(
+            saved["DeleteWall"]["before"]["height"],
+            serde_json::json!(3.9_f32)
+        );
         let back: WallHistoryEdit = serde_json::from_value(saved.clone()).unwrap();
         assert_eq!(serde_json::to_value(&back).unwrap(), saved);
-        let WallHistoryEdit::Delete { source, restored_height, .. } = back else {
+        let WallHistoryEdit::Delete {
+            source,
+            restored_height,
+            ..
+        } = back
+        else {
             panic!("delete record");
         };
         assert_eq!(source.source.extra.to_bits(), 3.9_f32.to_bits());
@@ -400,5 +644,4 @@ mod tests {
         let back: WallHistoryEdit = serde_json::from_value(alias).unwrap();
         assert_eq!(serde_json::to_value(back).unwrap(), saved);
     }
-
 }

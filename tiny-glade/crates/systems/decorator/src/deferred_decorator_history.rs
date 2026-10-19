@@ -33,7 +33,7 @@ use bevy_ecs::prelude::*;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use country_core::resources::history::decorator_edit::DecoratorHistoryEdit;
+use country_core::resources::history::decorator_edit::DecoratorV5Edit;
 use country_core::resources::history::{EditType, History};
 use country_core::resources::walls::decorator::DecoratorLocator;
 
@@ -171,17 +171,9 @@ impl DeferredDecoratorOpQueue {
     }
 }
 
-/// 32B 记录 → core 存档模型 `DecoratorHistoryEdit` 的映射。
-///
-/// 模型适配登记（2026-10-17 consume-types 复核）：原生运行时载荷 = **48B
-/// `{1,1,kind,f1,f2,f3}`**（0x140817850：`*p=1,[1]=1,[2]=kind,[3]=f1,[4]=f2,
-/// [5]=f3`）随 `History::add`（kind=10）提交；core 现模型
-/// `DecoratorHistoryEdit { diffs: HashMap<DecoratorStorageAddr, Diff> }`
-/// （0x30B diff map，0x1404f46e0）无法承载该 48B 记录的 kind/f1/f2/f3。
-/// **未实现（登记）**：需 core 落 48B 运行时载荷模型或证实 diffs 等价，
-/// 在此之前返回空 edit（不把 @0 kind/f1 冒充 diff 地址）。
-pub(crate) fn record_to_history_edit(_record: &DeferredDecoratorRecord) -> DecoratorHistoryEdit {
-    DecoratorHistoryEdit::default()
+/// Preserve all four native qwords copied by decorator_record_history140817850.
+pub(crate) fn record_to_history_edit(record: &DeferredDecoratorRecord) -> DecoratorV5Edit {
+    DecoratorV5Edit { kind: record.kind, fields: [record.f1, record.f2, record.f3] }
 }
 
 /// `decorator_record_history` @0x140817850（O）。

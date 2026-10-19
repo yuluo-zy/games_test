@@ -31,6 +31,7 @@ use bevy_ecs::prelude::*;
 use country_core::resources::stairs::stairs_state::StairsState;
 use country_core::resources::walls::decorator_storage::DecoratorStorage;
 use country_core::resources::walls::decorator_archivist::changes::DecoratorArchivist;
+use country_core::resources::walls::decorator_archivist::changes::ObservedDecoratorInfo;
 use country_core::resources::walls::decorator_archivist::changes::TrackedDecorators;
 
 use crate::deferred_decorator_history::{DeferredDecoratorEditHistory, DeferredDecoratorRecord};
@@ -55,12 +56,16 @@ pub struct DecoratorBackup {
     pub state: u8,
 }
 
-/// DecoratorStorage 备份（墙桶 + 特殊桶；模型对应
+/// DecoratorStorage 备份（墙桶 + 地形/楼梯特殊桶；模型对应
 /// `resources::walls::decorator_archivist::changes::DecoratorStorage`）。
 #[derive(Clone, Debug, Default)]
 pub struct BackupStorage {
     /// 分墙桶（TrackedDecorators = {removed, items, added}）。
     pub walls: hashbrown::HashMap<u64, TrackedDecorators>,
+    /// 地形内联桶（原生 +0xc0 special1；None = 存储侧不存在）。
+    pub terrain: Option<TrackedDecorators>,
+    /// 楼梯内联桶（原生 +0x150 special2；None = 存储侧不存在）。
+    pub stairs: Option<TrackedDecorators>,
 }
 
 /// 0x30B 辅助状态备份（U：类型待取证；机器码经 0x141263210/0x141262b00/
@@ -117,24 +122,57 @@ fn create_backup(
     storage: &DecoratorStorage,
     deferred: &mut DeferredDecoratorEditHistory,
 ) {
-    backup.storage_backup.walls.clear();
-    for (wall, bucket) in storage.iter_walls() {
-        let tracked = backup.storage_backup.walls.entry(wall.0).or_default();
-        tracked.removed.clone_from(&bucket.removed_ids);
-        tracked.items.clear();
-        tracked.items.extend(bucket.decorators.iter().map(|(id, info)| {
-            (
-                *id,
-                country_core::resources::walls::decorator_archivist::changes::ObservedDecoratorInfo(
-                    crate::apply_decorator_op::info_to_bytes(*info),
-                ),
-            )
-        }));
-        tracked.added.clone_from(&bucket.modified_ids);
-    }
+    backup.storage_backup = BackupStorage {
+        walls: storage
+            .iter_walls()
+            .map(|(wall, bucket)| (wall.0, tracked_from(bucket)))
+            .collect(),
+        terrain: storage.terrain.as_ref().map(tracked_from),
+        stairs: storage.stairs.as_ref().map(tracked_from),
+    };
     // 延迟记录/事件备份（O：0x20B 记录 3/4/5 开关拷贝 + 0x88B 事件 Vec）。
     backup.records.clone_from(&deferred.records);
     backup.created = true;
+}
+
+/// `Decorators` → `TrackedDecorators`（0x1412573b0 tracked_clone_from 的
+/// 字段映射：removed_ids→removed、内嵌 map→items、modified_ids→added）。
+fn tracked_from(bucket: &country_core::resources::walls::decorator_storage::Decorators) -> TrackedDecorators {
+    TrackedDecorators {
+        removed: bucket.removed_ids.clone(),
+        items: bucket
+            .decorators
+            .iter()
+            .map(|(id, info)| (*id, ObservedDecoratorInfo(crate::apply_decorator_op::info_to_bytes(*info))))
+            .collect(),
+        added: bucket.modified_ids.clone(),
+    }
+}
+
+/// RESTORE 反向拷贝单个桶（O：clear_modification_tracking 后按备份三集合
+/// 重置；modified 装饰 state@+0x47==1 且 history.pending 时 → 0）。
+fn restore_bucket(
+    bucket: &mut country_core::resources::walls::decorator_storage::Decorators,
+    tracked: &TrackedDecorators,
+    clear_modified: bool,
+) {
+    bucket.clear_modification_tracking();
+    bucket.removed_ids.clone_from(&tracked.removed);
+    bucket.modified_ids.clone_from(&tracked.added);
+    for (id, info) in &tracked.items {
+        bucket
+            .decorators
+            .insert(*id, crate::apply_decorator_op::bytes_to_info(&info.0));
+    }
+    if clear_modified {
+        for id in &bucket.modified_ids {
+            if let Some(info) = bucket.decorators.get_mut(id) {
+                if info.state == 1 {
+                    info.state = 0;
+                }
+            }
+        }
+    }
 }
 
 /// RESTORE 分支（O 结构；反向拷贝 + 状态清理）。
@@ -160,22 +198,17 @@ fn restore_backup<C: Send + Sync + 'static>(
     for (wall, tracked) in &backup.storage_backup.walls {
         let wall_id = country_core::resources::walls::WallId(*wall);
         if let Some(bucket) = storage.wall_decorators_mut(wall_id) {
-            bucket.clear_modification_tracking();
-            for (id, info) in &tracked.items {
-                let decorator_info = crate::apply_decorator_op::bytes_to_info(&info.0);
-                bucket.insert(
-                    country_core::resources::walls::decorator::DecoratorId(*id),
-                    decorator_info,
-                );
-                if clear_modified
-                    && bucket
-                        .decorators
-                        .get(id)
-                        .is_some_and(|i| i.state == 1)
-                {
-                    bucket.decorators.get_mut(id).unwrap().state = 0;
-                }
-            }
+            restore_bucket(bucket, tracked, clear_modified);
+        }
+    }
+    if let Some(tracked) = &backup.storage_backup.terrain {
+        if let Some(bucket) = storage.terrain.as_mut() {
+            restore_bucket(bucket, tracked, clear_modified);
+        }
+    }
+    if let Some(tracked) = &backup.storage_backup.stairs {
+        if let Some(bucket) = storage.stairs.as_mut() {
+            restore_bucket(bucket, tracked, clear_modified);
         }
     }
     stairs.restore_backup();
@@ -187,3 +220,55 @@ fn restore_backup<C: Send + Sync + 'static>(
 fn _stairs_backup_surface(_stairs: &StairsState, _wall: country_core::resources::walls::WallId) {}
 
 const LOG_TARGET: &str = "system_decorator::backup";
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use country_core::resources::walls::decorator::DecoratorInfo;
+    use country_core::resources::walls::decorator_storage::Decorators;
+
+    fn bucket_with(id: u32, state: u8) -> Decorators {
+        let mut bucket = Decorators::default();
+        bucket.decorators.insert(
+            id,
+            DecoratorInfo {
+                decorator_id: id,
+                state,
+                ..DecoratorInfo::default()
+            },
+        );
+        bucket.removed_ids.insert(id + 100);
+        bucket.modified_ids.insert(id);
+        bucket
+    }
+
+    #[test]
+    fn tracked_roundtrip_restores_decorators_and_tracking_sets() {
+        let source = bucket_with(5, 2);
+        let tracked = tracked_from(&source);
+        assert_eq!(tracked.removed, source.removed_ids);
+        assert_eq!(tracked.added, source.modified_ids);
+        assert!(tracked.items.contains_key(&5));
+
+        let mut target = Decorators::default();
+        restore_bucket(&mut target, &tracked, false);
+        assert!(target.decorators.contains_key(&5));
+        assert_eq!(target.decorators[&5].state, 2);
+        assert!(target.removed_ids.contains(&105));
+        assert!(target.modified_ids.contains(&5));
+    }
+
+    #[test]
+    fn restore_clears_live_state_only_when_pending() {
+        let source = bucket_with(5, 1);
+        let tracked = tracked_from(&source);
+
+        let mut gated = Decorators::default();
+        restore_bucket(&mut gated, &tracked, true);
+        assert_eq!(gated.decorators[&5].state, 0, "state 1 cleared when pending");
+
+        let mut ungated = Decorators::default();
+        restore_bucket(&mut ungated, &tracked, false);
+        assert_eq!(ungated.decorators[&5].state, 1, "state kept without pending");
+    }
+}

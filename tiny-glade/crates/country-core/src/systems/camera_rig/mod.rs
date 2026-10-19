@@ -1,11 +1,13 @@
-//! Only the closed camera-schema leaf is included. Camera mode controllers,
-//! projection adapters and the incomplete standalone camera package are excluded.
-//! `main_camera` / `free_camera` hold the pieces of `MainCamera` verified against the
-//! B EXE (see `R9_camera.md`); the per-mode bodies and `main_camera_update` are still open.
+//! Original six camera bodies and their owned orbit/Dolly state. The active
+//! input/snapshot controllers are in systems::main_camera; collision movement
+//! uses the existing native-physics world.
 
+pub mod butterfly;
 pub mod free_camera;
 pub mod main_camera;
 pub mod normal_body;
+pub mod walk;
+pub use main_camera::MainCamera;
 
 /// B `CameraRigParametersCache`（0x24B=36B；6 字段存档 schema，re-analyst 域类型证据包）。
 /// 存档 Camera 节载荷 = `to_json_string<CameraRigParametersCache>` 0x1416f8470：
@@ -62,7 +64,7 @@ pub fn default_vertical_fov_degrees() -> f32 {
 /// | 4 TopDown | +0x290 | anon_…_19 | +0x31c | +0x300 |
 /// | 5 Butterfly | +0x348 | anon_…_18 | +0x3a4 | +0x388 |
 ///
-/// mode ≥ 6 无 case（输出未初始化；crate 内按 FOV_OFFSETS 兜底 fov、其余 0）。
+/// mode ≥ 6 is invalid; no additional mode bodies follow this table.
 /// `fov_abs` 与 [`main_camera::FOV_OFFSETS`] 前 6 项逐项一致。
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct CameraModeStates {
@@ -102,16 +104,8 @@ impl CameraModeStates {
             3 => CurrentDyn::new(0x1f0, CameraBodyVtable::A16, 0x264, 0x248),
             4 => CurrentDyn::new(0x290, CameraBodyVtable::A19, 0x31c, 0x300),
             5 => CurrentDyn::new(0x348, CameraBodyVtable::A18, 0x3a4, 0x388),
-            // mode ≥ 6：反编译无 case（输出保持初始/未定义）；fov 仍由 13 项表兜底。
-            _ => CurrentDyn {
-                dyn_body_ptr: 0,
-                vtable: CameraBodyVtable::A19,
-                fov_abs: main_camera::FOV_OFFSETS
-                    .get(self.mode as usize)
-                    .copied()
-                    .unwrap_or(0),
-                body_abs: 0,
-            },
+            // Six real bodies; following native table words belong to pivots.
+            _ => panic!("invalid original camera mode"),
         }
     }
 
