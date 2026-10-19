@@ -15,7 +15,7 @@ use rhapsody::{
         command_buffer::VulkanCommandBuffer,
         device::Device,
         instance::{InstanceBuilder, ValidationMessenger},
-        swapchain::{AcquiredImageLease, Swapchain},
+        swapchain::{AcquiredImageLease, DisplayTarget, Swapchain},
         texture::{Texture, TextureDesc},
     },
     rg::{
@@ -1332,29 +1332,12 @@ impl Lab {
                     vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
                 )?;
             }
-            let range = vk::ImageSubresourceRange::default()
-                .aspect_mask(vk::ImageAspectFlags::COLOR)
-                .level_count(1)
-                .layer_count(1);
+            // The frame loop transitions the swapchain image to
+            // TRANSFER_DST_OPTIMAL (chained to the acquire wait) before this
+            // callback and to PRESENT_SRC_KHR after it.
             let layers = vk::ImageSubresourceLayers::default()
                 .aspect_mask(vk::ImageAspectFlags::COLOR)
                 .layer_count(1);
-            let to_dst = vk::ImageMemoryBarrier::default()
-                .image(frame.image())
-                .old_layout(vk::ImageLayout::UNDEFINED)
-                .new_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
-                .dst_access_mask(vk::AccessFlags::TRANSFER_WRITE)
-                .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                .subresource_range(range);
-            let to_present = vk::ImageMemoryBarrier::default()
-                .image(frame.image())
-                .old_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
-                .new_layout(vk::ImageLayout::PRESENT_SRC_KHR)
-                .src_access_mask(vk::AccessFlags::TRANSFER_WRITE)
-                .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                .subresource_range(range);
             let extent = frame.extent();
             let blit = vk::ImageBlit::default()
                 .src_subresource(layers)
@@ -1376,15 +1359,6 @@ impl Lab {
                     },
                 ]);
             unsafe {
-                device.device.cmd_pipeline_barrier(
-                    command.handle,
-                    vk::PipelineStageFlags::TOP_OF_PIPE,
-                    vk::PipelineStageFlags::TRANSFER,
-                    vk::DependencyFlags::empty(),
-                    &[],
-                    &[],
-                    &[to_dst],
-                );
                 device.device.cmd_blit_image(
                     command.handle,
                     image.handle,
@@ -1394,22 +1368,13 @@ impl Lab {
                     &[blit],
                     vk::Filter::NEAREST,
                 );
-                device.device.cmd_pipeline_barrier(
-                    command.handle,
-                    vk::PipelineStageFlags::TRANSFER,
-                    vk::PipelineStageFlags::BOTTOM_OF_PIPE,
-                    vk::DependencyFlags::empty(),
-                    &[],
-                    &[],
-                    &[to_present],
-                );
             }
             Ok(())
         };
         let protocol_started = Instant::now();
-        let executed = self
-            .frame_loop
-            .execute(built, record, vk::PipelineStageFlags::TRANSFER);
+        // The blit reads the graph image in the transfer stage only.
+        let target = DisplayTarget::TRANSFER_DST.with_graph_reads(vk::PipelineStageFlags::TRANSFER);
+        let executed = self.frame_loop.execute(built, record, target);
         let protocol_ns = protocol_started.elapsed().as_nanos() as u64;
         if let Some(scene) = &mut self.scene {
             scene.finish_execution(&executed);
@@ -1418,7 +1383,13 @@ impl Lab {
         if outcome.status == FrameStatus::Recreated {
             report.recreate_events += 1;
         }
-        let Some((graph, present)) = outcome.receipts else {
+        let graph = outcome.graph;
+        let Some(present) = outcome.presentation else {
+            // The graph still executed and advanced temporal history, but no
+            // frame was read back to verify against; restart the history.
+            if let Some(scene) = &mut self.scene {
+                scene.reset_history(&mut self.frame_loop, &mut report.scene, "skipped presentation")?;
+            }
             return Ok(false);
         };
         report.application_gpu_memory = Some(GpuMemoryReport::sample(
@@ -1687,7 +1658,7 @@ fn play(options: &Options, report: &mut Report, launched_at: Instant) -> Result<
             let current_extent = window.extent();
             if current_extent != extent {
                 extent = current_extent;
-                lab.frame_loop.swapchain().resize(vk::Extent2D {
+                lab.frame_loop.resize(vk::Extent2D {
                     width: extent.0,
                     height: extent.1,
                 })?;

@@ -1,5 +1,12 @@
 //! Production ownership for graph submission, acquisition, display submission,
 //! and bounded in-flight frames. Uses the same device timeline as the graph.
+//!
+//! Frame order: the main graph is submitted first (it never depends on the
+//! swapchain image), then the image is acquired, then display work is recorded,
+//! submitted and presented. The GPU therefore executes the graph while the CPU
+//! may block in acquire, and a frame without an image still executes its graph
+//! (uploads and temporal-history writes are never dropped); only display and
+//! present are skipped.
 use super::{
     graph::BuiltGraph,
     vulkan::{SessionFrameReceipt, VulkanGraphSession},
@@ -8,7 +15,7 @@ use crate::{
     Error, Result,
     raw::{
         command_buffer::{VulkanCommandBuffer, VulkanCommandPool},
-        swapchain::{AcquiredImageLease, PresentTicket, Swapchain},
+        swapchain::{AcquiredImageLease, DisplayTarget, PresentTicket, Surface, Swapchain},
     },
     sync::{SyncPoint, SyncSet},
 };
@@ -60,33 +67,50 @@ fn recover_acquisition<O: FrameOperations>(operations: &mut O, lease: O::Lease, 
     }
 }
 
+/// The graph's result is valid whenever it was submitted; the presentation
+/// result is independent of it.
+struct FrameProtocolOutput<G, P> {
+    graph: G,
+    presentation: Result<Option<P>>,
+}
+
 fn execute_frame_protocol<O: FrameOperations>(
     operations: &mut O,
     built: BuiltGraph,
-) -> Result<Option<(O::GraphReceipt, O::PresentationReceipt)>> {
-    let acquired = if operations.is_device_lost() {
-        Err(Error::DeviceLost)
-    } else {
-        operations.acquire()
-    };
-    let lease = match acquired {
-        Ok(Some(lease)) => lease,
-        other => {
-            if let Err(error) = &other {
-                operations.observe_error(error);
-            }
-            let (_, _, retire) = built.into_parts();
-            let cleanup = super::vulkan::run_retire_callbacks(retire);
-            return match other {
-                Err(error) => Err(error),
-                Ok(_) => cleanup.map(|_| None),
-            };
+) -> Result<FrameProtocolOutput<O::GraphReceipt, O::PresentationReceipt>> {
+    if operations.is_device_lost() {
+        // Unsubmitted callbacks retire now; their own errors never mask loss.
+        let (_, _, retire) = built.into_parts();
+        if let Err(error) = super::vulkan::run_retire_callbacks(retire) {
+            log::warn!("设备丢失后未提交帧的退役回调失败: {error}");
         }
-    };
+        return Err(Error::DeviceLost);
+    }
     let graph = match operations.execute_graph(built) {
         Ok(receipt) => receipt,
         Err(error) => {
-            recover_acquisition(operations, lease, &error);
+            operations.observe_error(&error);
+            return Err(error);
+        }
+    };
+    let presentation = present_after_graph(operations);
+    Ok(FrameProtocolOutput {
+        graph,
+        presentation,
+    })
+}
+
+fn present_after_graph<O: FrameOperations>(
+    operations: &mut O,
+) -> Result<Option<O::PresentationReceipt>> {
+    if operations.is_device_lost() {
+        return Err(Error::DeviceLost);
+    }
+    let lease = match operations.acquire() {
+        Ok(Some(lease)) => lease,
+        Ok(None) => return Ok(None),
+        Err(error) => {
+            operations.observe_error(&error);
             return Err(error);
         }
     };
@@ -105,7 +129,7 @@ fn execute_frame_protocol<O: FrameOperations>(
     if let Err(error) = &result {
         operations.observe_error(error);
     }
-    result.map(|present| Some((graph, present)))
+    result.map(Some)
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -117,6 +141,7 @@ pub struct PresentationReceipt {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FrameStatus {
+    /// The graph executed but no image was presented this frame.
     Skipped,
     Presented,
     /// The swapchain was actually replaced. This can include a presentation,
@@ -127,7 +152,9 @@ pub enum FrameStatus {
 #[derive(Debug)]
 pub struct FrameOutcome {
     pub status: FrameStatus,
-    pub receipts: Option<(SessionFrameReceipt, PresentationReceipt)>,
+    /// The main graph always executes, including on skipped presentations.
+    pub graph: SessionFrameReceipt,
+    pub presentation: Option<PresentationReceipt>,
     /// The current swapchain generation after this frame's acquire/recreation.
     pub generation: u64,
 }
@@ -188,8 +215,31 @@ impl FrameLoop {
             graph_completion: SyncSet::EMPTY,
         })
     }
-    pub fn swapchain(&self) -> &Arc<Swapchain> {
+    /// The *current* swapchain generation. The frame loop replaces it on
+    /// recreation, so this is a borrow rather than a shareable `Arc`: a
+    /// retained clone would silently refer to a retired generation. Compare
+    /// [`Self::generation`] values to detect replacement.
+    pub fn swapchain(&self) -> &Swapchain {
         &self.swapchain
+    }
+    pub fn device(&self) -> &Arc<crate::raw::device::Device> {
+        &self.swapchain.device
+    }
+    /// Generation of the current swapchain; changes on every replacement.
+    pub fn generation(&self) -> u64 {
+        self.swapchain.generation()
+    }
+    /// Request a new extent; the next acquisition rebuilds the swapchain.
+    pub fn resize(&self, extent: vk::Extent2D) -> Result<()> {
+        self.ensure_alive()?;
+        self.swapchain.resize(extent)
+    }
+    /// Supply a new surface after [`Error::SurfaceLost`]. Frames keep
+    /// returning SurfaceLost cheaply, without native calls, until then.
+    pub fn replace_surface(&mut self, surface: Arc<Surface>) -> Result<()> {
+        self.ensure_alive()?;
+        let result = Swapchain::replace_surface(&mut self.swapchain, surface);
+        self.observe(result)
     }
     /// Forward a host focus event to the current swapchain generation.
     pub fn set_focused(&self, focused: bool) -> Result<crate::raw::swapchain::FullscreenStatus> {
@@ -223,16 +273,22 @@ impl FrameLoop {
     fn observe<T>(&self, result: Result<T>) -> Result<T> {
         observe_device_result(&self.swapchain.device.timelines, result)
     }
+    /// Throttle on the oldest in-flight display frame, then poll WSI
+    /// completion proofs and device garbage once for this frame.
     pub fn begin_frame(&mut self) -> Result<super::graph::RenderGraph> {
         self.ensure_alive()?;
-        self.collect()?;
-        if self.pending.len() >= self.swapchain.device.frames_in_flight() as usize {
-            self.pending
-                .front()
-                .expect("nonempty")
-                .wait(crate::raw::swapchain::ACQUIRE_TIMEOUT_NS)?;
-            self.collect()?;
+        let result = self.retire_tickets();
+        self.observe(result)?;
+        if self.pending.len() >= self.swapchain.device.frames_in_flight() as usize
+            && let Some(oldest) = self.pending.front()
+        {
+            let result = oldest.wait(crate::raw::swapchain::ACQUIRE_TIMEOUT_NS);
+            self.observe(result)?;
+            let result = self.retire_tickets();
+            self.observe(result)?;
         }
+        let result = self.collect_wsi();
+        self.observe(result)?;
         self.graph_completion = SyncSet::EMPTY;
         let result = self.graph.begin_frame();
         self.observe(result)
@@ -248,29 +304,35 @@ impl FrameLoop {
         }
         Ok(receipt)
     }
-    /// Submit the graph and its display work through one frame protocol. A
-    /// display recording failure cancels only the unsubmitted acquisition; the
-    /// session still owns successful graph batches and their retirement callbacks.
+    /// Submit the graph, then acquire, record and present display work.
+    ///
+    /// `record_display` only records draws/copies: the library transitions
+    /// the image from UNDEFINED to `target.layout` before it and to
+    /// PRESENT_SRC_KHR after it. On an error after the graph was submitted,
+    /// the session still owns those batches and their retirement callbacks,
+    /// and an unsubmitted acquisition is cancelled (released) before return.
     pub fn execute(
         &mut self,
         built: BuiltGraph,
         record_display: impl FnOnce(&mut VulkanCommandBuffer, &AcquiredImageLease) -> Result<()>,
-        first_access: vk::PipelineStageFlags,
+        target: DisplayTarget,
     ) -> Result<FrameOutcome> {
         self.cpu_timings = FrameCpuTimings::default();
         let before = self.swapchain.generation();
-        let receipts = execute_frame_protocol(
+        let output = execute_frame_protocol(
             &mut LiveFrameOperations {
                 frame_loop: self,
                 record_display: Some(record_display),
-                first_access,
+                target,
             },
             built,
         )?;
+        let presentation = output.presentation?;
         let generation = self.swapchain.generation();
         Ok(FrameOutcome {
-            status: frame_status(before, generation, receipts.is_some()),
-            receipts,
+            status: frame_status(before, generation, presentation.is_some()),
+            graph: output.graph,
+            presentation,
             generation,
         })
     }
@@ -312,11 +374,14 @@ impl FrameLoop {
             Ok(command)
         }
     }
+    /// Submit recorded display work after this frame's graph and present it.
+    /// The command must contain the lease's acquire/present transitions for
+    /// `target` (see [`AcquiredImageLease::record_acquire_transition`]).
     pub fn present(
         &mut self,
         lease: AcquiredImageLease,
         command: VulkanCommandBuffer,
-        first_access: vk::PipelineStageFlags,
+        target: DisplayTarget,
     ) -> Result<PresentationReceipt> {
         if self.graph.is_poisoned() {
             lease.abandon_device_lost();
@@ -325,12 +390,6 @@ impl FrameLoop {
         if lease.generation() != self.swapchain.generation() {
             return Err(Error::invalid_usage("呈现租约不属于当前交换链代际"));
         }
-        if let Err(error) = self.collect() {
-            if error.is_device_lost() {
-                lease.abandon_device_lost();
-            }
-            return Err(error);
-        }
         if self.pending.len() >= self.swapchain.device.frames_in_flight() as usize {
             return Err(Error::invalid_usage("须先 begin_frame 执行帧节流"));
         }
@@ -338,7 +397,7 @@ impl FrameLoop {
             .try_reserve(1)
             .map_err(|_| Error::OutOfHostMemory)?;
         let started = Instant::now();
-        let result = lease.submit_after(command, first_access, self.graph_completion);
+        let result = lease.submit_after(command, target, self.graph_completion);
         self.cpu_timings.display_submit_present_ns = started.elapsed().as_nanos() as u64;
         let ticket = self.observe(result)?;
         let receipt = PresentationReceipt {
@@ -366,15 +425,23 @@ impl FrameLoop {
         self.observe(result)
     }
     fn collect_inner(&mut self) -> Result<()> {
+        self.retire_tickets()?;
+        self.collect_wsi()
+    }
+    fn retire_tickets(&mut self) -> Result<()> {
         while let Some(ticket) = self.pending.front() {
             if !ticket.is_complete()? {
                 break;
             }
-            let mut ticket = self.pending.pop_front().expect("nonempty");
-            if let Some(command) = ticket.take_completed_command()? {
+            if let Some(mut ticket) = self.pending.pop_front()
+                && let Some(command) = ticket.take_completed_command()?
+            {
                 self.commands.push(command);
             }
         }
+        Ok(())
+    }
+    fn collect_wsi(&mut self) -> Result<()> {
         self.swapchain.collect_presentations()?;
         self.swapchain.device.try_collect_garbage()?;
         Ok(())
@@ -423,7 +490,7 @@ impl FrameLoop {
 struct LiveFrameOperations<'a, F> {
     frame_loop: &'a mut FrameLoop,
     record_display: Option<F>,
-    first_access: vk::PipelineStageFlags,
+    target: DisplayTarget,
 }
 impl<F> FrameOperations for LiveFrameOperations<'_, F>
 where
@@ -453,10 +520,17 @@ where
     }
     fn record_display(&mut self, lease: &Self::Lease) -> Result<Self::Command> {
         let started = Instant::now();
+        let record = self
+            .record_display
+            .take()
+            .ok_or_else(|| Error::invalid_usage("呈现录制回调每帧只能调用一次"))?;
         let mut command = self.frame_loop.command()?;
         self.frame_loop.observe(command.begin())?;
-        let record = self.record_display.take().expect("called once per frame");
+        self.frame_loop
+            .observe(lease.record_acquire_transition(&mut command, self.target))?;
         self.frame_loop.observe(record(&mut command, lease))?;
+        self.frame_loop
+            .observe(lease.record_present_transition(&mut command, self.target))?;
         self.frame_loop.observe(command.end())?;
         self.frame_loop.cpu_timings.display_record_ns = started.elapsed().as_nanos() as u64;
         Ok(command)
@@ -466,7 +540,7 @@ where
         lease: Self::Lease,
         command: Self::Command,
     ) -> Result<Self::PresentationReceipt> {
-        self.frame_loop.present(lease, command, self.first_access)
+        self.frame_loop.present(lease, command, self.target)
     }
     fn cancel(&mut self, lease: Self::Lease) -> Result<()> {
         lease.cancel(crate::raw::swapchain::ACQUIRE_TIMEOUT_NS)
@@ -684,6 +758,28 @@ mod device_loss_tests {
         graph.build()
     }
 
+    fn run(
+        operations: &mut ScriptedOperations,
+        graph: BuiltGraph,
+    ) -> Result<Option<()>> {
+        execute_frame_protocol(operations, graph).and_then(|output| output.presentation)
+    }
+
+    #[test]
+    fn graph_is_submitted_before_acquire_and_survives_skipped_presentation() {
+        let calls = std::rc::Rc::new(std::cell::Cell::new(0));
+        let mut operations = ScriptedOperations::new(Failure::NoImage);
+        let output = execute_frame_protocol(&mut operations, graph_with_retire(&calls)).unwrap();
+        assert!(matches!(output.presentation, Ok(None)));
+        assert_eq!(operations.events, ["graph", "acquire"]);
+        assert_eq!(calls.get(), 0, "a skipped frame keeps its submitted graph");
+        operations.complete_graphs();
+        assert_eq!(calls.get(), 1);
+        operations.events.clear();
+        assert!(run(&mut operations, graph_with_retire(&calls)).unwrap().is_some());
+        assert_eq!(operations.events, ["graph", "acquire", "record", "present"]);
+    }
+
     #[test]
     fn production_frame_protocol_fault_matrix_preserves_retirement_and_recovers_next_frame() {
         for failure in [
@@ -697,7 +793,13 @@ mod device_loss_tests {
         ] {
             let calls = std::rc::Rc::new(std::cell::Cell::new(0));
             let mut operations = ScriptedOperations::new(failure);
-            let result = execute_frame_protocol(&mut operations, graph_with_retire(&calls));
+            let output = execute_frame_protocol(&mut operations, graph_with_retire(&calls));
+            let graph_failed = matches!(
+                failure,
+                Failure::GraphFirstSubmit | Failure::GraphPartialSubmit
+            );
+            assert_eq!(output.is_err(), graph_failed, "{failure:?}");
+            let result = output.and_then(|output| output.presentation);
             if failure == Failure::NoImage {
                 assert_eq!(result.unwrap(), None);
             } else if failure == Failure::DisplayPanic {
@@ -708,18 +810,11 @@ mod device_loss_tests {
                     "{failure:?}"
                 );
             }
-            let unsubmitted = matches!(
-                failure,
-                Failure::NoImage | Failure::Acquire | Failure::GraphFirstSubmit
-            );
+            // A failed graph never acquires; every later stage keeps its graph.
+            assert_eq!(operations.events.contains(&"acquire"), !graph_failed);
+            let unsubmitted = failure == Failure::GraphFirstSubmit;
             assert_eq!(calls.get(), usize::from(unsubmitted), "{failure:?}");
-            let cancelled = matches!(
-                failure,
-                Failure::GraphFirstSubmit
-                    | Failure::GraphPartialSubmit
-                    | Failure::Display
-                    | Failure::DisplayPanic
-            );
+            let cancelled = matches!(failure, Failure::Display | Failure::DisplayPanic);
             assert_eq!(
                 operations
                     .events
@@ -735,7 +830,7 @@ mod device_loss_tests {
                 "the first frame retires exactly once: {failure:?}"
             );
             assert!(
-                execute_frame_protocol(&mut operations, graph_with_retire(&calls))
+                run(&mut operations, graph_with_retire(&calls))
                     .unwrap()
                     .is_some()
             );
@@ -755,22 +850,22 @@ mod device_loss_tests {
         for cleanup in [Error::Timeout, Error::OutOfHostMemory, Error::DeviceLost] {
             let lost = cleanup.is_device_lost();
             let calls = std::rc::Rc::new(std::cell::Cell::new(0));
-            let mut operations = ScriptedOperations::new(Failure::GraphPartialSubmit);
+            let mut operations = ScriptedOperations::new(Failure::Display);
             operations.cancel_error = Some(cleanup);
             assert!(matches!(
-                execute_frame_protocol(&mut operations, graph_with_retire(&calls)),
+                run(&mut operations, graph_with_retire(&calls)),
                 Err(Error::OutOfDeviceMemory)
             ));
             assert_eq!(calls.get(), 0, "cleanup does not retire submitted batches");
             assert_eq!(operations.is_device_lost(), lost);
             let before = operations.events.len();
-            let retry = execute_frame_protocol(&mut operations, graph_with_retire(&calls));
+            let retry = run(&mut operations, graph_with_retire(&calls));
             if lost {
                 assert!(retry.unwrap_err().is_device_lost());
                 assert_eq!(
                     operations.events.len(),
                     before,
-                    "device loss forbids even acquire"
+                    "device loss forbids even graph submission"
                 );
             } else {
                 assert!(retry.unwrap().is_some());
@@ -793,7 +888,7 @@ mod device_loss_tests {
             let mut operations = ScriptedOperations::new(failure);
             operations.inject_device_loss = true;
             assert!(
-                execute_frame_protocol(&mut operations, graph_with_retire(&calls))
+                run(&mut operations, graph_with_retire(&calls))
                     .unwrap_err()
                     .is_device_lost()
             );
@@ -804,7 +899,7 @@ mod device_loss_tests {
             );
             let before = operations.events.len();
             assert!(
-                execute_frame_protocol(&mut operations, graph_with_retire(&calls))
+                run(&mut operations, graph_with_retire(&calls))
                     .unwrap_err()
                     .is_device_lost()
             );
@@ -815,22 +910,17 @@ mod device_loss_tests {
     }
 
     #[test]
-    fn acquire_failure_keeps_its_error_even_when_an_unsubmitted_retire_callback_panics() {
-        for failure in [Failure::NoImage, Failure::Acquire] {
-            let calls = std::rc::Rc::new(std::cell::Cell::new(0));
-            let mut graph = super::super::graph::RenderGraph::new();
-            graph.on_retire(|| panic!("injected unsubmitted retirement panic"));
-            let retired = calls.clone();
-            graph.on_retire(move || retired.set(retired.get() + 1));
-            let mut operations = ScriptedOperations::new(failure);
-            let error = execute_frame_protocol(&mut operations, graph.build()).unwrap_err();
-            if failure == Failure::Acquire {
-                assert!(matches!(error, Error::OutOfDeviceMemory));
-            } else {
-                assert_eq!(error.kind(), crate::ErrorKind::InvalidUsage);
-            }
-            assert_eq!(calls.get(), 1);
-            assert!(!operations.events.contains(&"graph"));
-        }
+    fn device_loss_keeps_its_error_even_when_an_unsubmitted_retire_callback_panics() {
+        let calls = std::rc::Rc::new(std::cell::Cell::new(0));
+        let mut graph = super::super::graph::RenderGraph::new();
+        graph.on_retire(|| panic!("injected unsubmitted retirement panic"));
+        let retired = calls.clone();
+        graph.on_retire(move || retired.set(retired.get() + 1));
+        let mut operations = ScriptedOperations::new(Failure::NoImage);
+        operations.timelines.mark_device_lost();
+        let error = run(&mut operations, graph.build()).unwrap_err();
+        assert!(error.is_device_lost());
+        assert_eq!(calls.get(), 1);
+        assert!(operations.events.is_empty());
     }
 }

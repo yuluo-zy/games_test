@@ -8,8 +8,15 @@ use rhapsody::raw::{
     init::{DeviceSelectionPolicy, GraphicsInstance},
     instance::{GraphicsInstanceLoader, InstanceBuilder},
     physical_device::enumerate_physical_devices,
-    swapchain::{Surface, Swapchain, SwapchainPolicy},
+    swapchain::{AcquiredImageLease, DisplayTarget, Surface, Swapchain, SwapchainPolicy},
 };
+use rhapsody::raw::command_buffer::VulkanCommandBuffer;
+use rhapsody::rg::{
+    frame_loop::{FrameLoop, FrameStatus},
+    graph::BuiltGraph,
+    vulkan::{AccessTable, VulkanGraphBackend, VulkanGraphSession},
+};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::{
     ffi::CString,
     sync::{Arc, mpsc},
@@ -23,6 +30,32 @@ const EXTENT: vk::Extent2D = vk::Extent2D {
 
 /// 不支持 headless surface 的环境返回 None（测试跳过）。
 fn headless() -> Option<(Arc<Device>, Arc<Surface>)> {
+    headless_with(&[])
+}
+
+fn headless_with(optional: &[&str]) -> Option<(Arc<Device>, Arc<Surface>)> {
+    let (device, surface, _) = headless_parts(optional)?;
+    Some((device, surface))
+}
+
+fn create_headless_surface(
+    instance: &Arc<rhapsody::raw::instance::VulkanInstance>,
+) -> Arc<Surface> {
+    let loader = ash::ext::headless_surface::Instance::new(&instance.entry, &instance.instance);
+    let handle = unsafe {
+        loader.create_headless_surface(&vk::HeadlessSurfaceCreateInfoEXT::default(), None)
+    }
+    .expect("headless surface");
+    Arc::new(unsafe { Surface::from_raw(instance.clone(), handle, true) })
+}
+
+fn headless_parts(
+    optional: &[&str],
+) -> Option<(
+    Arc<Device>,
+    Arc<Surface>,
+    Arc<rhapsody::raw::instance::VulkanInstance>,
+)> {
     let loader =
         gpu_test_support::initialize("headless surface loader", GraphicsInstanceLoader::new())?;
     if !loader
@@ -33,11 +66,19 @@ fn headless() -> Option<(Arc<Device>, Arc<Surface>)> {
         eprintln!("UNSUPPORTED headless presentation: VK_EXT_headless_surface is unavailable");
         return None;
     }
+    let mut extensions = vec![
+        CString::new("VK_KHR_surface").unwrap(),
+        CString::new("VK_EXT_headless_surface").unwrap(),
+    ];
+    for name in optional {
+        if !loader.extensions.iter().any(|extension| extension == name) {
+            eprintln!("UNSUPPORTED headless presentation: {name} is unavailable");
+            return None;
+        }
+        extensions.push(CString::new(*name).unwrap());
+    }
     let builder = InstanceBuilder {
-        extensions: vec![
-            CString::new("VK_KHR_surface").unwrap(),
-            CString::new("VK_EXT_headless_surface").unwrap(),
-        ],
+        extensions,
         ..Default::default()
     };
     let instance = gpu_test_support::initialize(
@@ -68,7 +109,7 @@ fn headless() -> Option<(Arc<Device>, Arc<Surface>)> {
         "headless present logical device",
         selected.create_device(&graphics),
     )?;
-    Some((device, surface))
+    Some((device, surface, instance))
 }
 
 fn chain(device: &Arc<Device>, surface: &Arc<Surface>) -> Arc<Swapchain> {
@@ -196,4 +237,237 @@ fn canonical_acquire_rejects_null_semaphore_and_fence() {
         Err(rhapsody::raw::error::Error::InvalidUsage { .. })
     ));
     device.wait_idle().unwrap();
+}
+
+
+const TIMEOUT: u64 = 5_000_000_000;
+const USAGE: vk::ImageUsageFlags = vk::ImageUsageFlags::from_raw(
+    vk::ImageUsageFlags::COLOR_ATTACHMENT.as_raw() | vk::ImageUsageFlags::TRANSFER_DST.as_raw(),
+);
+
+/// A strict FrameLoop on a headless surface; None when unsupported.
+fn strict_frame_loop() -> Option<(FrameLoop, Arc<rhapsody::raw::instance::VulkanInstance>)> {
+    let (device, surface, instance) = headless_parts(&[
+        "VK_KHR_get_surface_capabilities2",
+        "VK_EXT_surface_maintenance1",
+    ])?;
+    if !device
+        .caps()
+        .is_enabled(rhapsody::device::Feature::SwapchainMaintenance1)
+    {
+        eprintln!("UNSUPPORTED strict presentation: swapchainMaintenance1 is unavailable");
+        return None;
+    }
+    let chain = Arc::new(
+        unsafe { Swapchain::new(device.clone(), surface, EXTENT, true, USAGE) }.expect("swapchain"),
+    );
+    let backend = VulkanGraphBackend::new(device, AccessTable::original()).expect("backend");
+    let frame_loop = FrameLoop::new(VulkanGraphSession::new(backend), chain).expect("frame loop");
+    Some((frame_loop, instance))
+}
+
+/// A graph whose only pass records a side effect, plus a retire callback.
+fn side_effect_graph(
+    frame_loop: &mut FrameLoop,
+    recorded: &Arc<AtomicBool>,
+    retired: &std::rc::Rc<std::cell::Cell<usize>>,
+) -> BuiltGraph {
+    let mut graph = frame_loop.begin_frame().expect("begin frame");
+    let recorded = recorded.clone();
+    graph
+        .add_pass("side effect")
+        .with_side_effect()
+        .render_with_context(move |_| {
+            recorded.store(true, Ordering::Relaxed);
+            true
+        });
+    let retired = retired.clone();
+    graph.on_retire(move || retired.set(retired.get() + 1));
+    graph.build()
+}
+
+/// Display work only clears; the library owns both layout transitions.
+fn clear_display(
+    calls: &Arc<AtomicUsize>,
+) -> impl FnOnce(&mut VulkanCommandBuffer, &AcquiredImageLease) -> rhapsody::Result<()> {
+    let calls = calls.clone();
+    move |command, frame| {
+        calls.fetch_add(1, Ordering::Relaxed);
+        let range = vk::ImageSubresourceRange::default()
+            .aspect_mask(vk::ImageAspectFlags::COLOR)
+            .level_count(1)
+            .layer_count(1);
+        unsafe {
+            command.pool.device.device.cmd_clear_color_image(
+                command.handle,
+                frame.image(),
+                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                &vk::ClearColorValue {
+                    float32: [0.2, 0.4, 0.6, 1.0],
+                },
+                &[range],
+            );
+        }
+        Ok(())
+    }
+}
+
+#[test]
+fn strict_frame_loop_presents_with_library_owned_transitions() {
+    let Some((mut frame_loop, _instance)) = strict_frame_loop() else {
+        eprintln!("SKIP: strict headless presentation unavailable");
+        return;
+    };
+    let recorded = Arc::new(AtomicBool::new(false));
+    let retired = std::rc::Rc::new(std::cell::Cell::new(0));
+    let displays = Arc::new(AtomicUsize::new(0));
+    let generation = frame_loop.generation();
+    for frame in 0..6 {
+        let built = side_effect_graph(&mut frame_loop, &recorded, &retired);
+        let outcome = frame_loop
+            .execute(built, clear_display(&displays), DisplayTarget::TRANSFER_DST)
+            .expect("frame");
+        assert_eq!(outcome.status, FrameStatus::Presented, "frame {frame}");
+        assert!(outcome.presentation.is_some());
+        assert_eq!(outcome.generation, generation);
+    }
+    assert!(recorded.load(Ordering::Relaxed));
+    assert_eq!(displays.load(Ordering::Relaxed), 6);
+    frame_loop.wait_idle(TIMEOUT).unwrap();
+    frame_loop.shutdown(TIMEOUT).unwrap();
+}
+
+#[test]
+fn skipped_presentation_still_executes_and_retires_the_graph() {
+    let Some((mut frame_loop, _instance)) = strict_frame_loop() else {
+        eprintln!("SKIP: strict headless presentation unavailable");
+        return;
+    };
+    let retired = std::rc::Rc::new(std::cell::Cell::new(0));
+    let displays = Arc::new(AtomicUsize::new(0));
+    frame_loop.resize(vk::Extent2D::default()).unwrap();
+    for _ in 0..3 {
+        let recorded = Arc::new(AtomicBool::new(false));
+        let built = side_effect_graph(&mut frame_loop, &recorded, &retired);
+        let outcome = frame_loop
+            .execute(built, clear_display(&displays), DisplayTarget::TRANSFER_DST)
+            .expect("minimised frame");
+        assert_eq!(outcome.status, FrameStatus::Skipped);
+        assert!(outcome.presentation.is_none());
+        assert!(
+            recorded.load(Ordering::Relaxed),
+            "a skipped presentation must not drop the graph"
+        );
+        assert!(!outcome.graph.receipts.is_empty(), "the graph reached the GPU");
+    }
+    assert_eq!(displays.load(Ordering::Relaxed), 0);
+    frame_loop.graph.wait_submits_done(TIMEOUT).unwrap();
+    // Restoring the size rebuilds and presents again.
+    frame_loop.resize(EXTENT).unwrap();
+    let recorded = Arc::new(AtomicBool::new(false));
+    let built = side_effect_graph(&mut frame_loop, &recorded, &retired);
+    let outcome = frame_loop
+        .execute(built, clear_display(&displays), DisplayTarget::TRANSFER_DST)
+        .expect("restored frame");
+    assert!(outcome.presentation.is_some());
+    frame_loop.wait_idle(TIMEOUT).unwrap();
+    // Retirement runs when the session collects completed frames.
+    for _ in 0..4 {
+        let built = side_effect_graph(&mut frame_loop, &recorded, &retired);
+        frame_loop
+            .execute(built, clear_display(&displays), DisplayTarget::TRANSFER_DST)
+            .unwrap();
+        frame_loop.wait_idle(TIMEOUT).unwrap();
+    }
+    assert!(retired.get() >= 4, "skipped frames retire too: {}", retired.get());
+    frame_loop.shutdown(TIMEOUT).unwrap();
+}
+
+#[test]
+fn windowed_focus_loss_keeps_presenting() {
+    let Some((mut frame_loop, _instance)) = strict_frame_loop() else {
+        eprintln!("SKIP: strict headless presentation unavailable");
+        return;
+    };
+    frame_loop.set_focused(false).unwrap();
+    let recorded = Arc::new(AtomicBool::new(false));
+    let retired = std::rc::Rc::new(std::cell::Cell::new(0));
+    let displays = Arc::new(AtomicUsize::new(0));
+    for _ in 0..3 {
+        let built = side_effect_graph(&mut frame_loop, &recorded, &retired);
+        let outcome = frame_loop
+            .execute(built, clear_display(&displays), DisplayTarget::TRANSFER_DST)
+            .unwrap();
+        assert_eq!(outcome.status, FrameStatus::Presented);
+    }
+    frame_loop.wait_idle(TIMEOUT).unwrap();
+    frame_loop.shutdown(TIMEOUT).unwrap();
+}
+
+/// Releasing an unsubmitted acquisition uses vkReleaseSwapchainImagesEXT,
+/// which Mesa's headless WSI does not implement (it crashes in the driver);
+/// run with `--ignored` on a real presentation surface. The protocol itself
+/// is covered by the fake-operation tests in `rg::frame_loop`.
+#[test]
+#[ignore = "requires a WSI that implements vkReleaseSwapchainImagesEXT"]
+fn display_failure_after_graph_releases_the_image_and_recovers() {
+    let Some((mut frame_loop, _instance)) = strict_frame_loop() else {
+        eprintln!("SKIP: strict headless presentation unavailable");
+        return;
+    };
+    let retired = std::rc::Rc::new(std::cell::Cell::new(0));
+    let displays = Arc::new(AtomicUsize::new(0));
+    // Fail more often than there are images: each failure must return its
+    // acquisition, otherwise acquire would eventually run out of images.
+    for _ in 0..8 {
+        let recorded = Arc::new(AtomicBool::new(false));
+        let built = side_effect_graph(&mut frame_loop, &recorded, &retired);
+        let error = frame_loop
+            .execute(
+                built,
+                |_, _| Err(rhapsody::Error::invalid_usage("injected display failure")),
+                DisplayTarget::TRANSFER_DST,
+            )
+            .unwrap_err();
+        assert_eq!(error.kind(), rhapsody::ErrorKind::InvalidUsage);
+        assert!(recorded.load(Ordering::Relaxed), "the graph was submitted first");
+    }
+    let recorded = Arc::new(AtomicBool::new(false));
+    let built = side_effect_graph(&mut frame_loop, &recorded, &retired);
+    let outcome = frame_loop
+        .execute(built, clear_display(&displays), DisplayTarget::TRANSFER_DST)
+        .unwrap();
+    assert!(outcome.presentation.is_some());
+    frame_loop.wait_idle(TIMEOUT).unwrap();
+    frame_loop.shutdown(TIMEOUT).unwrap();
+}
+
+#[test]
+fn replacing_the_surface_starts_a_new_generation() {
+    let Some((mut frame_loop, instance)) = strict_frame_loop() else {
+        eprintln!("SKIP: strict headless presentation unavailable");
+        return;
+    };
+    let recorded = Arc::new(AtomicBool::new(false));
+    let retired = std::rc::Rc::new(std::cell::Cell::new(0));
+    let displays = Arc::new(AtomicUsize::new(0));
+    let built = side_effect_graph(&mut frame_loop, &recorded, &retired);
+    frame_loop
+        .execute(built, clear_display(&displays), DisplayTarget::TRANSFER_DST)
+        .unwrap();
+    let before = frame_loop.generation();
+    frame_loop
+        .replace_surface(create_headless_surface(&instance))
+        .unwrap();
+    assert_ne!(frame_loop.generation(), before);
+    assert!(!frame_loop.swapchain().surface.is_lost());
+    for _ in 0..3 {
+        let built = side_effect_graph(&mut frame_loop, &recorded, &retired);
+        let outcome = frame_loop
+            .execute(built, clear_display(&displays), DisplayTarget::TRANSFER_DST)
+            .unwrap();
+        assert!(outcome.presentation.is_some());
+    }
+    frame_loop.wait_idle(TIMEOUT).unwrap();
+    frame_loop.shutdown(TIMEOUT).unwrap();
 }

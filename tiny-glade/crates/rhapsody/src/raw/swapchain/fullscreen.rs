@@ -1,5 +1,5 @@
 //! Library-owned fullscreen policy. Window styling and monitor selection belong
-//! to the host; every native operation is serialized by the swapchain lock.
+//! to the host; every native operation is serialized by the swapchain's WSI lock.
 use super::*;
 
 type SurfaceConfiguration = (
@@ -85,6 +85,11 @@ impl FullscreenState {
             _ => None,
         };
         self
+    }
+    /// Acquisition pauses while unfocused only for a generation created in
+    /// exclusive fullscreen; windowed and borderless keep presenting.
+    pub fn paused(&self) -> bool {
+        !self.status.focused && self.monitor.is_some()
     }
     pub fn lost(&mut self) {
         self.status.acquired = false;
@@ -228,6 +233,7 @@ impl Swapchain {
                 .iter()
                 .any(|e| e == "VK_KHR_get_surface_capabilities2")
     }
+    /// The caller holds the WSI lock.
     pub(super) fn release_fullscreen(&self, inner: &mut SwapchainInner) -> Result<()> {
         inner.fullscreen.release(|| {
             wsi_call(&self.device.timelines, || unsafe {
@@ -245,6 +251,7 @@ impl Swapchain {
         if self.device.is_device_lost() {
             return Err(Error::DeviceLost);
         }
+        let _wsi = self.wsi.lock();
         let mut inner = self.inner.write();
         if !inner.can_replace() || inner.fullscreen.retired {
             return Ok(());
@@ -272,9 +279,10 @@ impl Swapchain {
     pub fn fullscreen_status(&self) -> FullscreenStatus {
         self.inner.read().fullscreen.status
     }
-    /// Host focus event. Loss pauses acquisition immediately. Release is
-    /// deferred while a frame owns an image; call collect_presentations or the
-    /// next FrameLoop acquisition to finish it after returning those leases.
+    /// Host focus event. Loss pauses acquisition immediately for a generation
+    /// in exclusive fullscreen (windowed and borderless keep presenting).
+    /// Release is deferred while a frame owns an image; the next acquisition
+    /// attempt finishes it after those leases return.
     pub fn set_focused(&self, focused: bool) -> Result<FullscreenStatus> {
         if self.device.is_device_lost() {
             return Err(Error::DeviceLost);
