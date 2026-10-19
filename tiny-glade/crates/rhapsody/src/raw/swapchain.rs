@@ -1238,7 +1238,30 @@ impl Swapchain {
             sync,
             slot_index,
             recover_on_drop: true,
+            on_failure: PresentPolicy::default(),
         })
+    }
+    /// Whether `vkReleaseSwapchainImagesEXT` is usable: the extension is
+    /// enabled and the driver's headless WSI is not Mesa's software
+    /// implementation, whose release entry point crashes.
+    pub fn can_release_images(&self) -> bool {
+        if !self
+            .device
+            .caps()
+            .is_enabled(crate::device::Feature::SwapchainMaintenance1)
+        {
+            return false;
+        }
+        let mut driver = vk::PhysicalDeviceDriverProperties::default();
+        let mut properties = vk::PhysicalDeviceProperties2::default().push_next(&mut driver);
+        unsafe {
+            self.device
+                .core
+                .instance
+                .instance
+                .get_physical_device_properties2(self.device.core.physical, &mut properties);
+        }
+        driver.driver_id != vk::DriverId::MESA_LLVMPIPE
     }
     fn release_image(&self, index: u32) -> Result<()> {
         let indices = [index];
@@ -1770,6 +1793,45 @@ fn color_barrier(image: vk::Image) -> vk::ImageMemoryBarrier<'static> {
         )
 }
 
+/// What happens to an acquired image whose frame failed before complete
+/// content was rendered into it (the presentation graph errored, was dropped
+/// or cancelled). The default never shows undefined memory.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum PresentPolicy {
+    /// Return the image without presenting it. With
+    /// `VK_EXT_swapchain_maintenance1` release-images that is a true release
+    /// (nothing reaches the screen). Where the release call is not usable
+    /// (see [`Swapchain::can_release_images`]) the acquire wait is still
+    /// consumed by a real submit and a cleared opaque black frame is
+    /// presented instead of undefined content.
+    #[default]
+    SkipPresent,
+    /// Present the image cleared to this RGBA colour (requires the swapchain
+    /// usage to include `TRANSFER_DST`; otherwise the policy degrades to
+    /// [`Self::SkipPresent`]).
+    ClearTo([f32; 4]),
+    /// Re-present the previous frame's content. The swapchain keeps no copy of
+    /// presented images, so this is unsupported: configuring it returns
+    /// [`Error::Unsupported`].
+    PreviousFrame,
+}
+impl PresentPolicy {
+    /// Opaque black, the colour of the fallback frame.
+    pub const FALLBACK_COLOR: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
+    /// Reject policies this library cannot honour.
+    pub fn validate(self) -> Result<()> {
+        match self {
+            Self::PreviousFrame => Err(Error::unsupported(
+                "PresentPolicy::PreviousFrame: the swapchain keeps no copy of presented frames",
+            )),
+            Self::ClearTo(color) if color.iter().any(|c| !c.is_finite()) => Err(
+                Error::invalid_usage("PresentPolicy::ClearTo needs finite colour components"),
+            ),
+            _ => Ok(()),
+        }
+    }
+}
+
 /// An acquired image accepts exactly one display submission. Dropping it
 /// unconsumed cancels the acquisition and retires the generation.
 pub struct AcquiredImageLease {
@@ -1780,6 +1842,7 @@ pub struct AcquiredImageLease {
     slot_index: usize,
     presentation: Arc<ImagePresentation>,
     recover_on_drop: bool,
+    on_failure: PresentPolicy,
 }
 fn consumed() -> Error {
     Error::invalid_usage("交换链图像租约已被消费")
@@ -1844,18 +1907,18 @@ impl AcquiredImageLease {
             desc,
         )?))
     }
-    /// Cancel before any submit has consumed the acquire semaphore. With
-    /// maintenance1, wait for acquisition and release the image; the signaled
-    /// acquire semaphore is discarded independently. Otherwise submit a real
-    /// UNDEFINED -> PRESENT transition, consuming acquire exactly once, and
-    /// return the image through presentation.
+    /// Cancel before any submit has consumed the acquire semaphore, per the
+    /// image's [`PresentPolicy`]: release it (maintenance1), or submit a real
+    /// clear that consumes the acquire exactly once and present that.
     pub fn cancel(mut self, timeout: u64) -> Result<()> {
         self.recover_on_drop = false;
         self.cancel_unsubmitted(timeout)
     }
     fn cancel_unsubmitted(&mut self, timeout: u64) -> Result<()> {
         let chain = self.swapchain.clone();
-        let index = self.lease.as_ref().ok_or_else(consumed)?.index;
+        if self.lease.is_none() {
+            return Err(consumed());
+        }
         if chain.device.is_device_lost() {
             return Err(Error::DeviceLost);
         }
@@ -1871,45 +1934,171 @@ impl AcquiredImageLease {
             self.lease.take();
             return Ok(());
         }
-        if chain
-            .device
-            .caps()
-            .is_enabled(crate::device::Feature::SwapchainMaintenance1)
-        {
+        self.return_without_content(crate::sync::SyncSet::EMPTY, false, timeout)
+    }
+    /// Return an image that never received complete content, per
+    /// [`PresentPolicy`]. `acquire_consumed` says an earlier submit already
+    /// waited the acquire semaphore (it is never waited a second time);
+    /// `after` holds every submitted use of the image.
+    ///
+    /// - `SkipPresent` with a usable release call releases the image; no
+    ///   frame reaches the screen.
+    /// - Otherwise a real submit consumes the pending acquire wait (or
+    ///   chains after `after`), clears the image and presents it, so the
+    ///   acquire/render semaphores stay balanced and nothing is leaked.
+    /// - Only when neither release nor a clear is possible the contents are
+    ///   discarded and presented (undefined, logged).
+    pub(crate) fn return_without_content(
+        &mut self,
+        after: crate::sync::SyncSet,
+        acquire_consumed: bool,
+        timeout: u64,
+    ) -> Result<()> {
+        // If recovery itself fails, retire this generation instead of
+        // recursively attempting another recovery from Drop.
+        self.recover_on_drop = false;
+        if self.swapchain.device.is_device_lost() {
+            return Err(Error::DeviceLost);
+        }
+        let chain = self.swapchain.clone();
+        let can_clear = chain.usage.contains(vk::ImageUsageFlags::TRANSFER_DST);
+        let color = match self.on_failure {
+            PresentPolicy::ClearTo(color) if can_clear => Some(color),
+            _ => None,
+        };
+        if color.is_none() && chain.can_release_images() {
+            return self.release_unpresented(after, acquire_consumed, timeout);
+        }
+        let color = color.or_else(|| can_clear.then_some(PresentPolicy::FALLBACK_COLOR));
+        if color.is_none() {
+            log::warn!(
+                target: "rhapsody::raw::swapchain",
+                "cannot release or clear an abandoned swapchain image; presenting undefined contents"
+            );
+        }
+        self.present_without_content(color, after, acquire_consumed)
+            .map(drop)
+    }
+    /// Release the acquired image without presenting (maintenance1).
+    fn release_unpresented(
+        &mut self,
+        after: crate::sync::SyncSet,
+        acquire_consumed: bool,
+        timeout: u64,
+    ) -> Result<()> {
+        let chain = self.swapchain.clone();
+        let index = self.lease.as_ref().ok_or_else(consumed)?.index;
+        if acquire_consumed {
+            // Every submitted use must finish before the image can be
+            // acquired again; the acquire semaphore itself is already spent.
+            chain.device.queues.timelines.wait(&after, timeout)?;
+        } else {
             self.sync
                 .finish_acquire(&mut self.sync.state.lock(), timeout)?;
-            chain.release_image(index)?;
-            {
-                let mut state = self.sync.state.lock();
-                // release-images does not consume the acquisition semaphore.
-                state.abandoned = true;
-                state.reserved = false;
-            }
-            if let Some(mut lease) = self.lease.take() {
-                lease.released = true;
-            }
-            return Ok(());
         }
-        let command = self.discard_to_present_command(vk::PipelineStageFlags::TOP_OF_PIPE)?;
-        let mut recovery = Self {
-            swapchain: chain.clone(),
-            index,
-            lease: self.lease.take(),
-            sync: self.sync.clone(),
-            slot_index: self.slot_index,
-            presentation: self.presentation.clone(),
-            // If recovery itself fails, retire this generation instead of
-            // recursively attempting another recovery from Drop.
-            recover_on_drop: false,
-        };
-        // The barrier's source scope is TOP_OF_PIPE, the acquire wait stage.
-        drop(recovery.submit_with_stages(
-            command,
-            Some(vk::PipelineStageFlags::TOP_OF_PIPE),
-            vk::PipelineStageFlags::TOP_OF_PIPE,
-            crate::sync::SyncSet::EMPTY,
-        )?);
+        chain.release_image(index)?;
+        {
+            let mut state = self.sync.state.lock();
+            // Release-images does not consume a pending acquire signal.
+            state.abandoned |= !acquire_consumed;
+            state.reserved = false;
+        }
+        if let Some(mut lease) = self.lease.take() {
+            lease.released = true;
+        }
         Ok(())
+    }
+    /// Submit a command that leaves the image in PRESENT_SRC_KHR (cleared to
+    /// `color`, or with discarded contents) and present it.
+    fn present_without_content(
+        &mut self,
+        color: Option<[f32; 4]>,
+        after: crate::sync::SyncSet,
+        acquire_consumed: bool,
+    ) -> Result<PresentTicket> {
+        let source = match (acquire_consumed, color) {
+            (true, _) => vk::PipelineStageFlags::ALL_COMMANDS,
+            (false, Some(_)) => vk::PipelineStageFlags::TRANSFER,
+            (false, None) => vk::PipelineStageFlags::TOP_OF_PIPE,
+        };
+        let command = match color {
+            Some(color) => self.clear_to_present_command(color, source)?,
+            None => self.discard_to_present_command(source)?,
+        };
+        if acquire_consumed {
+            self.submit_with_stages(command, None, vk::PipelineStageFlags::ALL_COMMANDS, after)
+        } else {
+            // The barrier's source scope is the acquire wait stage, chaining
+            // the layout transition after that wait.
+            self.submit_with_stages(
+                command,
+                Some(source),
+                vk::PipelineStageFlags::TOP_OF_PIPE,
+                crate::sync::SyncSet::EMPTY,
+            )
+        }
+    }
+    /// The policy applied when this image is abandoned (default
+    /// [`PresentPolicy::SkipPresent`]).
+    pub fn failure_policy(&self) -> PresentPolicy {
+        self.on_failure
+    }
+    /// Choose what happens if this acquisition is abandoned; unsupported
+    /// policies are rejected without changing the current one.
+    pub fn set_failure_policy(&mut self, policy: PresentPolicy) -> Result<()> {
+        policy.validate()?;
+        self.on_failure = policy;
+        Ok(())
+    }
+    /// `UNDEFINED -> TRANSFER_DST -> clear -> PRESENT_SRC_KHR` on the
+    /// presentation queue family. `source` must cover the stage at which the
+    /// submit waits, so the first transition is chained after that wait.
+    fn clear_to_present_command(
+        &self,
+        color: [f32; 4],
+        source: vk::PipelineStageFlags,
+    ) -> Result<VulkanCommandBuffer> {
+        let chain = &self.swapchain;
+        let pool = wsi_call(&chain.device.queues.timelines, || {
+            VulkanCommandPool::new(chain.device.clone())
+        })?;
+        let mut command = wsi_call(&chain.device.queues.timelines, || pool.allocate())?;
+        wsi_call(&chain.device.queues.timelines, || command.begin())?;
+        let range = vk::ImageSubresourceRange::default()
+            .aspect_mask(vk::ImageAspectFlags::COLOR)
+            .level_count(1)
+            .layer_count(1);
+        let mut to_clear =
+            super::barrier::SynchronizationScope::new(source, vk::PipelineStageFlags::TRANSFER);
+        to_clear.images.push(
+            color_barrier(self.image())
+                .old_layout(vk::ImageLayout::UNDEFINED)
+                .new_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
+                .dst_access_mask(vk::AccessFlags::TRANSFER_WRITE),
+        );
+        to_clear.issue_into(&command)?;
+        unsafe {
+            chain.device.core.device.cmd_clear_color_image(
+                command.handle,
+                self.image(),
+                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                &vk::ClearColorValue { float32: color },
+                &[range],
+            );
+        }
+        let mut to_present = super::barrier::SynchronizationScope::new(
+            vk::PipelineStageFlags::TRANSFER,
+            vk::PipelineStageFlags::BOTTOM_OF_PIPE,
+        );
+        to_present.images.push(
+            color_barrier(self.image())
+                .old_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
+                .new_layout(vk::ImageLayout::PRESENT_SRC_KHR)
+                .src_access_mask(vk::AccessFlags::TRANSFER_WRITE),
+        );
+        to_present.issue_into(&command)?;
+        wsi_call(&chain.device.queues.timelines, || command.end())?;
+        Ok(command)
     }
     /// One command holding only `UNDEFINED -> PRESENT_SRC_KHR` on the
     /// presentation queue family. `source` must cover the stage at which the
@@ -1936,21 +2125,6 @@ impl AcquiredImageLease {
         scope.issue_into(&command)?;
         wsi_call(&chain.device.queues.timelines, || command.end())?;
         Ok(command)
-    }
-    /// Return an image whose acquire semaphore was already consumed by a
-    /// partially submitted presentation graph that never signalled
-    /// `rendered`. After every submitted graph use (`after`), discard the
-    /// contents, transition to PRESENT_SRC_KHR, signal `rendered` exactly once
-    /// and present. The acquire semaphore is never waited a second time.
-    fn present_after_partial_graph(
-        &mut self,
-        after: crate::sync::SyncSet,
-    ) -> Result<PresentTicket> {
-        if self.swapchain.device.is_device_lost() {
-            return Err(Error::DeviceLost);
-        }
-        let command = self.discard_to_present_command(vk::PipelineStageFlags::ALL_COMMANDS)?;
-        self.submit_with_stages(command, None, vk::PipelineStageFlags::ALL_COMMANDS, after)
     }
     /// Submit `command` on the presentation queue and present it. With
     /// `acquire_stage`, the submit consumes the acquire semaphore at that stage

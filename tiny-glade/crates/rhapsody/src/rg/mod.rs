@@ -73,8 +73,9 @@ pub use result_cache::{
 };
 pub use temporal::{NamedBuffer, NamedTexture, TemporalTexturePair};
 pub use vulkan::{
-    AccessTable, CompletedNamedResources, GpuResource, PreparedSessionFrame, PresentTarget,
-    ResourceSpec, SessionFrameReceipt, SwapchainContents, VulkanGraphBackend, VulkanGraphSession,
+    AccessTable, CompletedNamedResources, GpuResource, PreparedSessionFrame, PresentPolicy,
+    PresentTarget, ResourceSpec, SessionFrameReceipt, SwapchainContents, VulkanGraphBackend,
+    VulkanGraphSession,
 };
 
 mod transient_resources;

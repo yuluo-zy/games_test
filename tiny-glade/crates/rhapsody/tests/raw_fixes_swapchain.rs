@@ -256,6 +256,11 @@ const TRANSFER_WRITE: u8 = 0x34;
 
 /// A strict FrameLoop on a headless surface; None when unsupported.
 fn strict_frame_loop() -> Option<(FrameLoop, Arc<rhapsody::raw::instance::VulkanInstance>)> {
+    strict_frame_loop_with(USAGE)
+}
+fn strict_frame_loop_with(
+    usage: vk::ImageUsageFlags,
+) -> Option<(FrameLoop, Arc<rhapsody::raw::instance::VulkanInstance>)> {
     let (device, surface, instance) = headless_parts(&[
         "VK_KHR_get_surface_capabilities2",
         "VK_EXT_surface_maintenance1",
@@ -268,7 +273,7 @@ fn strict_frame_loop() -> Option<(FrameLoop, Arc<rhapsody::raw::instance::Vulkan
         return None;
     }
     let chain = Arc::new(
-        unsafe { Swapchain::new(device.clone(), surface, EXTENT, true, USAGE) }.expect("swapchain"),
+        unsafe { Swapchain::new(device.clone(), surface, EXTENT, true, usage) }.expect("swapchain"),
     );
     let backend = VulkanGraphBackend::new(device, AccessTable::original()).expect("backend");
     let frame_loop = FrameLoop::new(VulkanGraphSession::new(backend), chain).expect("frame loop");
@@ -720,13 +725,13 @@ fn presentation_graph_failure_after_acquire_returns_the_image_and_recovers() {
     frame_loop.shutdown(TIMEOUT).unwrap();
 }
 
-/// Releasing an unsubmitted acquisition uses vkReleaseSwapchainImagesEXT,
-/// which Mesa's headless WSI does not implement (it crashes in the driver);
-/// run with `--ignored` on a real presentation surface. The protocol itself
-/// is covered by the fake-operation tests in `rg::frame_loop`.
+/// A presentation build failure before anything was submitted returns the
+/// image under the default `SkipPresent` policy: a real release where the
+/// driver supports it, otherwise (Mesa's headless WSI crashes in
+/// vkReleaseSwapchainImagesEXT, see `Swapchain::can_release_images`) a submit
+/// that consumes the acquire and presents a cleared black frame.
 #[test]
-#[ignore = "requires a WSI that implements vkReleaseSwapchainImagesEXT"]
-fn presentation_build_failure_releases_the_image_and_recovers() {
+fn presentation_build_failure_returns_the_image_and_recovers() {
     let Some((mut frame_loop, _instance)) = strict_frame_loop() else {
         eprintln!("SKIP: strict headless presentation unavailable");
         return;
@@ -757,6 +762,271 @@ fn presentation_build_failure_releases_the_image_and_recovers() {
         .execute(built, clear_presentation(&displays))
         .unwrap();
     assert!(outcome.presentation.is_some());
+    frame_loop.wait_idle(TIMEOUT).unwrap();
+    frame_loop.shutdown(TIMEOUT).unwrap();
+}
+
+const READBACK_USAGE: vk::ImageUsageFlags =
+    vk::ImageUsageFlags::from_raw(USAGE.as_raw() | vk::ImageUsageFlags::TRANSFER_SRC.as_raw());
+/// Transfer-read access code (TRANSFER_SRC_OPTIMAL).
+const TRANSFER_READ: u8 = 0x25;
+
+/// Run frames until image `wanted` comes around again, then read its first
+/// pixel back through a `Preserve` presentation graph. Every other image is
+/// presented with an ordinary clear. Returns the pixel as RGBA bytes.
+fn read_back_image(frame_loop: &mut FrameLoop, wanted: u32) -> [u8; 4] {
+    frame_loop.set_swapchain_contents(SwapchainContents::Preserve);
+    let device = frame_loop.device().clone();
+    let retired = std::rc::Rc::new(std::cell::Cell::new(0));
+    let calls = Arc::new(AtomicUsize::new(0));
+    for _ in 0..16 {
+        let recorded = Arc::new(AtomicBool::new(false));
+        let main = side_effect_graph(frame_loop, &recorded, &retired);
+        frame_loop.execute_graph(main).expect("main graph");
+        let lease = frame_loop.acquire().expect("acquire").expect("image");
+        let format = lease.format();
+        let mut graph = frame_loop.graph.begin_frame().expect("graph");
+        let target = frame_loop
+            .graph
+            .import_swapchain_image(&mut graph, lease, SwapchainContents::Preserve)
+            .expect("import");
+        if target.index() != wanted {
+            clear_pass(&mut graph, &target, &calls, 0.0);
+            frame_loop.graph.execute_frame(graph.build()).unwrap();
+            let receipt = frame_loop.present(&target).unwrap();
+            frame_loop.wait_render(receipt, TIMEOUT).unwrap();
+            continue;
+        }
+        let readback = Arc::new(
+            rhapsody::raw::buffer::Buffer::new(
+                device.clone(),
+                &rhapsody::raw::buffer::BufferDesc::new_gpu_to_cpu(
+                    256,
+                    vk::BufferUsageFlags::TRANSFER_DST,
+                ),
+            )
+            .unwrap(),
+        );
+        let destination = frame_loop
+            .graph
+            .import_frame_buffer(&mut graph, readback.clone(), 0)
+            .unwrap();
+        let (image, raw_buffer, raw_device) = (
+            target.image(),
+            readback.raw_handle(),
+            device.raw_device().clone(),
+        );
+        let mut pass = graph.add_pass("read back").with_side_effect();
+        pass.add_resource_access(target.resource(), TRANSFER_READ, 0)
+            .unwrap();
+        pass.add_resource_access(destination, TRANSFER_WRITE, 0)
+            .unwrap();
+        pass.render_with_context(move |ctx| {
+            let region = vk::BufferImageCopy::default()
+                .image_subresource(
+                    vk::ImageSubresourceLayers::default()
+                        .aspect_mask(vk::ImageAspectFlags::COLOR)
+                        .layer_count(1),
+                )
+                .image_extent(vk::Extent3D {
+                    width: 1,
+                    height: 1,
+                    depth: 1,
+                });
+            unsafe {
+                raw_device.cmd_copy_image_to_buffer(
+                    vk::CommandBuffer::from_raw(ctx.command.handle()),
+                    image,
+                    vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+                    raw_buffer,
+                    &[region],
+                );
+            }
+            true
+        });
+        frame_loop.graph.execute_frame(graph.build()).unwrap();
+        let receipt = frame_loop.present(&target).unwrap();
+        frame_loop.wait_render(receipt, TIMEOUT).unwrap();
+        let mut pixel = [0u8; 4];
+        readback.read_bytes(0, &mut pixel).unwrap();
+        return match format {
+            vk::Format::B8G8R8A8_UNORM | vk::Format::B8G8R8A8_SRGB => {
+                [pixel[2], pixel[1], pixel[0], pixel[3]]
+            }
+            _ => pixel,
+        };
+    }
+    panic!("image {wanted} never came around again");
+}
+
+fn near(actual: [u8; 4], expected: [f32; 4]) {
+    for (channel, (&got, want)) in actual.iter().zip(expected).enumerate() {
+        let want = (want * 255.0).round() as i32;
+        assert!(
+            (i32::from(got) - want).abs() <= 2,
+            "channel {channel}: got {got}, expected about {want} ({actual:?})"
+        );
+    }
+}
+
+/// Fail a presentation graph after its first batch consumed the acquire and
+/// return the index of the abandoned image.
+fn fail_after_first_batch(frame_loop: &mut FrameLoop, abandoned: &mut Option<u32>) {
+    let retired = std::rc::Rc::new(std::cell::Cell::new(0));
+    let calls = Arc::new(AtomicUsize::new(0));
+    let recorded = Arc::new(AtomicBool::new(false));
+    let built = side_effect_graph(frame_loop, &recorded, &retired);
+    let index = std::rc::Rc::new(std::cell::Cell::new(None));
+    let seen = index.clone();
+    let error = frame_loop
+        .execute(built, move |graph, target| {
+            seen.set(Some(target.index()));
+            graph.batch_per_pass(true);
+            clear_pass(graph, target, &calls, 0.9);
+            let mut failing = graph.add_pass("failing overlay");
+            failing.add_resource_access(target.resource(), TRANSFER_WRITE, 0)?;
+            failing.render_with_context(|_| false);
+            Ok(())
+        })
+        .unwrap_err();
+    assert_ne!(error.kind(), rhapsody::ErrorKind::DeviceLost, "{error}");
+    assert!(
+        !frame_loop.graph.has_presentation(),
+        "the image was returned"
+    );
+    *abandoned = index.get();
+}
+
+/// (4) `ClearTo`: after a partial failure the image that reaches the screen
+/// holds the configured colour, never the undefined memory the discarded
+/// first batch left behind.
+#[test]
+fn partial_failure_presents_the_configured_clear_colour() {
+    let Some((mut frame_loop, _instance)) = strict_frame_loop_with(READBACK_USAGE) else {
+        eprintln!("SKIP: strict headless presentation unavailable");
+        return;
+    };
+    let color = [0.25, 0.5, 0.75, 1.0];
+    frame_loop
+        .set_on_failure(rhapsody::rg::PresentPolicy::ClearTo(color))
+        .unwrap();
+    assert_eq!(
+        frame_loop.on_failure(),
+        rhapsody::rg::PresentPolicy::ClearTo(color)
+    );
+    let mut abandoned = None;
+    fail_after_first_batch(&mut frame_loop, &mut abandoned);
+    near(
+        read_back_image(&mut frame_loop, abandoned.expect("image index")),
+        color,
+    );
+    // Fail more often than there are images: every image comes back.
+    for _ in 0..8 {
+        fail_after_first_batch(&mut frame_loop, &mut abandoned);
+    }
+    near(
+        read_back_image(&mut frame_loop, abandoned.expect("image index")),
+        color,
+    );
+    frame_loop.wait_idle(TIMEOUT).unwrap();
+    frame_loop.shutdown(TIMEOUT).unwrap();
+}
+
+/// (5) `SkipPresent` (the default): the failed frame never shows the graph's
+/// partial output. Where the release call is unusable (Mesa headless) the
+/// acquire is still consumed by a real submit and an opaque black frame
+/// replaces it; the next frames present normally either way.
+#[test]
+fn skip_present_never_presents_undefined_content_and_next_frames_present() {
+    let Some((mut frame_loop, _instance)) = strict_frame_loop_with(READBACK_USAGE) else {
+        eprintln!("SKIP: strict headless presentation unavailable");
+        return;
+    };
+    assert_eq!(
+        frame_loop.on_failure(),
+        rhapsody::rg::PresentPolicy::SkipPresent
+    );
+    let releasable = frame_loop.swapchain().can_release_images();
+    let mut abandoned = None;
+    for _ in 0..8 {
+        fail_after_first_batch(&mut frame_loop, &mut abandoned);
+    }
+    let displays = Arc::new(AtomicUsize::new(0));
+    let retired = std::rc::Rc::new(std::cell::Cell::new(0));
+    for _ in 0..3 {
+        let recorded = Arc::new(AtomicBool::new(false));
+        let built = side_effect_graph(&mut frame_loop, &recorded, &retired);
+        let outcome = frame_loop
+            .execute(built, clear_presentation(&displays))
+            .unwrap();
+        assert_eq!(outcome.status, FrameStatus::Presented);
+    }
+    if !releasable {
+        fail_after_first_batch(&mut frame_loop, &mut abandoned);
+        near(
+            read_back_image(&mut frame_loop, abandoned.expect("image index")),
+            rhapsody::rg::PresentPolicy::FALLBACK_COLOR,
+        );
+    }
+    frame_loop.wait_idle(TIMEOUT).unwrap();
+    frame_loop.shutdown(TIMEOUT).unwrap();
+}
+
+/// `PreviousFrame` needs a retained copy of presented frames, which the
+/// swapchain does not keep: it is rejected and changes nothing.
+#[test]
+fn previous_frame_policy_is_unsupported() {
+    let Some((mut frame_loop, _instance)) = strict_frame_loop() else {
+        eprintln!("SKIP: strict headless presentation unavailable");
+        return;
+    };
+    let error = frame_loop
+        .set_on_failure(rhapsody::rg::PresentPolicy::PreviousFrame)
+        .unwrap_err();
+    assert_eq!(error.kind(), rhapsody::ErrorKind::Unsupported, "{error}");
+    assert_eq!(
+        frame_loop.on_failure(),
+        rhapsody::rg::PresentPolicy::SkipPresent
+    );
+    let error = frame_loop
+        .set_on_failure(rhapsody::rg::PresentPolicy::ClearTo([
+            f32::NAN,
+            0.0,
+            0.0,
+            1.0,
+        ]))
+        .unwrap_err();
+    assert_eq!(error.kind(), rhapsody::ErrorKind::InvalidUsage);
+}
+
+/// `ClearTo` on a swapchain whose usage lacks TRANSFER_DST cannot clear; it
+/// degrades to `SkipPresent` and the image still comes back.
+#[test]
+fn clear_policy_without_transfer_dst_degrades_to_skip_present() {
+    let Some((mut frame_loop, _instance)) =
+        strict_frame_loop_with(vk::ImageUsageFlags::COLOR_ATTACHMENT)
+    else {
+        eprintln!("SKIP: strict headless presentation unavailable");
+        return;
+    };
+    if !frame_loop.swapchain().can_release_images() {
+        eprintln!("SKIP: no release path and no TRANSFER_DST: only undefined content possible");
+        return;
+    }
+    frame_loop
+        .set_on_failure(rhapsody::rg::PresentPolicy::ClearTo([1.0; 4]))
+        .unwrap();
+    let retired = std::rc::Rc::new(std::cell::Cell::new(0));
+    for _ in 0..6 {
+        let recorded = Arc::new(AtomicBool::new(false));
+        let built = side_effect_graph(&mut frame_loop, &recorded, &retired);
+        let error = frame_loop
+            .execute(built, |_, _| {
+                Err(rhapsody::Error::invalid_usage("injected"))
+            })
+            .unwrap_err();
+        assert_eq!(error.kind(), rhapsody::ErrorKind::InvalidUsage);
+    }
     frame_loop.wait_idle(TIMEOUT).unwrap();
     frame_loop.shutdown(TIMEOUT).unwrap();
 }

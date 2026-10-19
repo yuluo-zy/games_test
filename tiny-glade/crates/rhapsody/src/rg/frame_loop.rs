@@ -16,7 +16,9 @@
 //! signal into the last batch touching it (see `rg::vulkan::PresentTarget`).
 use super::{
     graph::{BuiltGraph, RenderGraph},
-    vulkan::{PresentTarget, SessionFrameReceipt, SwapchainContents, VulkanGraphSession},
+    vulkan::{
+        PresentPolicy, PresentTarget, SessionFrameReceipt, SwapchainContents, VulkanGraphSession,
+    },
 };
 use crate::{
     Error, Result,
@@ -225,6 +227,17 @@ impl FrameLoop {
     pub fn set_swapchain_contents(&mut self, contents: SwapchainContents) {
         self.contents = contents;
     }
+    /// What happens to an acquired image whose presentation graph fails
+    /// after the acquire was consumed (or before anything was submitted):
+    /// [`PresentPolicy::SkipPresent`] (default) never shows undefined
+    /// memory; `ClearTo` presents a defined colour. `PreviousFrame` is
+    /// unsupported (the swapchain keeps no copy) and returns an error.
+    pub fn set_on_failure(&mut self, policy: PresentPolicy) -> Result<()> {
+        self.graph.set_present_policy(policy)
+    }
+    pub fn on_failure(&self) -> PresentPolicy {
+        self.graph.present_policy()
+    }
     /// Request a new extent; the next acquisition rebuilds the swapchain.
     pub fn resize(&self, extent: vk::Extent2D) -> Result<()> {
         self.ensure_alive()?;
@@ -336,7 +349,12 @@ impl FrameLoop {
         let started = Instant::now();
         let result = Swapchain::validate_swapchain_and_acquire_image(&mut self.swapchain);
         self.cpu_timings.acquire_ns = started.elapsed().as_nanos() as u64;
-        self.observe(result)
+        let policy = self.graph.present_policy();
+        self.observe(result.and_then(|lease| {
+            lease
+                .map(|mut lease| lease.set_failure_policy(policy).map(|()| lease))
+                .transpose()
+        }))
     }
     /// Present the image rendered by `target`'s executed presentation graph.
     pub fn present(&mut self, target: &PresentTarget) -> Result<PresentationReceipt> {

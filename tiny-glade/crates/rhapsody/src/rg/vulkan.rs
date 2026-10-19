@@ -23,6 +23,7 @@ use std::{collections::BTreeMap, sync::Arc};
 mod presentation;
 #[path = "vulkan_queue.rs"]
 mod queue_runtime;
+pub use crate::raw::swapchain::PresentPolicy;
 pub use presentation::{PRESENT_ACCESS, PresentTarget, SwapchainContents};
 
 /// 后端导入 token 与跨帧 temporal token 共用的物理资源标识空间。
@@ -1999,6 +2000,8 @@ pub struct VulkanGraphSession {
     named: Option<NamedResources>,
     /// The acquired swapchain image imported into a presentation graph.
     presentation: Option<presentation::SessionPresentation>,
+    /// What happens to an acquired image whose presentation graph fails.
+    present_policy: PresentPolicy,
 }
 
 impl VulkanGraphSession {
@@ -2022,6 +2025,7 @@ impl VulkanGraphSession {
             ledger: Default::default(),
             named,
             presentation: None,
+            present_policy: PresentPolicy::default(),
         }
     }
     /// Additive current-architecture handoff used by background App warmup.

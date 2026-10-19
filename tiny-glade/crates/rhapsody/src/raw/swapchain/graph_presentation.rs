@@ -128,11 +128,9 @@ impl GraphPresentation {
             image.abandon_device_lost();
             return Err(Error::DeviceLost);
         }
-        if self.acquire_point.is_some() {
-            image.recover_on_drop = false;
-            return image.present_after_partial_graph(self.gpu_use).map(drop);
-        }
-        image.cancel(ACQUIRE_TIMEOUT_NS)
+        // Policy-driven return (release, or a cleared frame); a consumed
+        // acquire is never waited again.
+        image.return_without_content(self.gpu_use, self.acquire_point.is_some(), ACQUIRE_TIMEOUT_NS)
     }
 }
 

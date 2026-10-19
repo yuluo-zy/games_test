@@ -366,10 +366,11 @@ impl VulkanGraphSession {
     pub fn import_swapchain_image(
         &mut self,
         graph: &mut graph::RenderGraph,
-        image: AcquiredImageLease,
+        mut image: AcquiredImageLease,
         contents: SwapchainContents,
     ) -> crate::Result<PresentTarget> {
         self.reap_presentation();
+        image.set_failure_policy(self.present_policy)?;
         if self.presentation.is_some() {
             return Err(crate::Error::invalid_usage(
                 "another swapchain image is still owned by this session; present or cancel it first",
@@ -441,6 +442,19 @@ impl VulkanGraphSession {
             generation,
         })
     }
+    /// What happens to an acquired image whose presentation graph fails or is
+    /// cancelled before complete content reached it (default
+    /// [`PresentPolicy::SkipPresent`]: never show undefined memory).
+    /// Applies to images imported afterwards. Unsupported policies
+    /// (`PreviousFrame`) are rejected and leave the current one unchanged.
+    pub fn set_present_policy(&mut self, policy: PresentPolicy) -> crate::Result<()> {
+        policy.validate()?;
+        self.present_policy = policy;
+        Ok(())
+    }
+    pub fn present_policy(&self) -> PresentPolicy {
+        self.present_policy
+    }
     /// Present the image rendered by `target`'s executed graph.
     pub fn present(&mut self, target: &PresentTarget) -> crate::Result<PresentTicket> {
         let Some(slot) = self
@@ -469,9 +483,11 @@ impl VulkanGraphSession {
         result
     }
     /// Return a not yet presented swapchain image. A rendered image is
-    /// presented (its contents are complete); otherwise the acquisition is
-    /// released without presenting, or discarded and presented when a
-    /// partially submitted graph already consumed the acquire wait.
+    /// presented (its contents are complete); otherwise the session's
+    /// [`PresentPolicy`] decides: by default the acquisition is released
+    /// without presenting (or, where release is unusable, a cleared black
+    /// frame is presented), also when a partially submitted graph already
+    /// consumed the acquire wait.
     pub fn cancel_presentation(&mut self) -> crate::Result<()> {
         let Some(mut slot) = self.presentation.take() else {
             return Ok(());
