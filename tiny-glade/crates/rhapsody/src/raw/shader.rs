@@ -150,13 +150,7 @@ impl PipelineLayout {
         if sets.iter().any(|s| !Arc::ptr_eq(&device, &s.device)) {
             return Err(crate::Error::invalid_usage("着色器资源、接口或设备不匹配"));
         }
-        let limits = unsafe {
-            device
-                .instance
-                .instance
-                .get_physical_device_properties(device.physical)
-        }
-        .limits;
+        let limits = *device.limits();
         if sets.len() > limits.max_bound_descriptor_sets as usize
             || push_constants.iter().any(|range| {
                 range.size == 0
@@ -306,7 +300,9 @@ fn slot_for<K>(
                 .position(|entry| {
                     Arc::strong_count(&entry.slot) == 1 && entry.slot.try_lock().is_some()
                 })
-                .ok_or(crate::Error::Timeout)?,
+                .ok_or_else(|| {
+                    crate::Error::exhausted("every pipeline cache slot is referenced")
+                })?,
         )
     } else {
         let needed = slots.as_slice().len() + 1;
@@ -423,7 +419,7 @@ impl PipelineCache {
                 )
             };
             observe_vulkan(&self.device, result.result())?;
-            if size > 64 << 20 {
+            if size as u64 > MAX_PIPELINE_CACHE_BYTES {
                 return Err(crate::Error::invalid_usage(
                     "pipeline cache data exceeds its byte limit",
                 ));
@@ -470,8 +466,10 @@ impl PipelineCache {
             .count()
     }
 }
+/// Upper bound for driver pipeline-cache blobs, in memory and on disk.
+pub(crate) const MAX_PIPELINE_CACHE_BYTES: u64 = 64 << 20;
 pub(crate) fn valid_pipeline_cache_data(device: &Device, bytes: &[u8]) -> bool {
-    if bytes.len() < 32 || bytes.len() > 64 << 20 {
+    if bytes.len() < 32 || bytes.len() as u64 > MAX_PIPELINE_CACHE_BYTES {
         return false;
     }
     let word = |offset| {
@@ -481,12 +479,7 @@ pub(crate) fn valid_pipeline_cache_data(device: &Device, bytes: &[u8]) -> bool {
                 .expect("checked Vulkan cache header"),
         )
     };
-    let properties = unsafe {
-        device
-            .instance
-            .instance
-            .get_physical_device_properties(device.physical)
-    };
+    let properties = device.properties();
     word(0) >= 32
         && word(0) as usize <= bytes.len()
         && word(4) == vk::PipelineCacheHeaderVersion::ONE.as_raw() as u32
@@ -982,13 +975,7 @@ impl VulkanPipeline {
                     "dynamicRendering feature was not enabled",
                 ));
             }
-            let properties = unsafe {
-                cache
-                    .device
-                    .instance
-                    .instance
-                    .get_physical_device_properties(cache.device.physical)
-            };
+            let properties = cache.device.properties();
             if properties
                 .api_version
                 .min(cache.device.instance.api_version)
@@ -2735,7 +2722,7 @@ mod raster_opts_tests {
                 1,
                 &budget
             ),
-            Err(crate::Error::Timeout)
+            Err(crate::Error::Exhausted(_))
         ));
         assert!(
             !invoked.get(),

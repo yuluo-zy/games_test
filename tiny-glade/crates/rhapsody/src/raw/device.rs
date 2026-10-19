@@ -392,6 +392,10 @@ impl Device {
     pub fn limits(&self) -> &vk::PhysicalDeviceLimits {
         &self.properties.limits
     }
+    /// Physical-device properties captured at device creation.
+    pub fn properties(&self) -> &vk::PhysicalDeviceProperties {
+        &self.properties
+    }
 
     /// 旧候选接口（数值版）：有值取原值，否则保持历史行为返回通用下限 1。
     pub fn min_subgroup_size(&self) -> u32 {
