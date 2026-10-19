@@ -2,6 +2,7 @@
 #[cfg(any(windows, target_os = "macos"))]
 #[path = "window_lab/app.rs"]
 mod app;
+#[cfg(any(windows, target_os = "macos"))]
 #[path = "window_lab/fixture.rs"]
 mod fixture;
 #[cfg(any(windows, target_os = "macos"))]
