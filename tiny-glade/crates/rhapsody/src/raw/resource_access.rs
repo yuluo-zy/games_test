@@ -11,7 +11,10 @@ use crate::{
     Error, Result,
     resource::{
         OwnershipRange, ResourceSharing, SyncCell,
-        range_state::{AccessScope, NativeState, PatchAction, RangeCell, RangeOwner, StatePatch},
+        range_state::{
+            AccessScope, NativeState, OwnershipDenial, PatchAction, RangeCell, StatePatch,
+            released_range_error,
+        },
     },
     sync::QueueId,
 };
@@ -79,18 +82,14 @@ fn step(
             "native image old layout differs from recorded state",
         ));
     }
-    let owns = match cell.state.owner {
-        RangeOwner::Unclaimed => true,
-        RangeOwner::Owned(owner) => owner == family,
-        RangeOwner::Released { .. } if !sharing.is_concurrent() => {
-            return Err(crate::resource::range_state::released_range_error());
+    match cell.state.owner.admits(sharing, family) {
+        Ok(()) => {}
+        Err(OwnershipDenial::Released) => return Err(released_range_error()),
+        Err(_) => {
+            return Err(Error::unsupported(
+                "native access requires a matching ownership acquire",
+            ));
         }
-        RangeOwner::Released { .. } => false,
-    };
-    if !sharing.allows_family(family) || !sharing.is_concurrent() && !owns {
-        return Err(Error::unsupported(
-            "native access requires a matching ownership acquire",
-        ));
     }
     let mut source = cell.state.writer.for_queue(queue);
     let hazard = destination.write || cell.state.layout != layout;
@@ -385,6 +384,7 @@ pub unsafe fn buffer_access(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::resource::range_state::RangeOwner;
     use crate::resource::range_state::{Frontier, RangeStateConfig, RangeStateTable};
 
     fn image(state: NativeState) -> RangeCell {

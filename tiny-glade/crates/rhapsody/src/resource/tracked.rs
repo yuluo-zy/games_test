@@ -182,11 +182,15 @@ impl SyncCell {
                     .iter()
                     .filter(|cell| super::range_state::intersection(cell.range, range).is_some())
                     .any(|cell| match cell.state.owner {
-                        super::range_state::RangeOwner::Unclaimed => false,
-                        super::range_state::RangeOwner::Owned(owner) => owner != family,
-                        super::range_state::RangeOwner::Released { transfer, .. } => {
-                            !incoming || transfer.destination_family != family
+                        // The caller records the acquire before its access.
+                        super::range_state::RangeOwner::Released { transfer, .. }
+                            if incoming && transfer.destination_family == family =>
+                        {
+                            false
                         }
+                        owner => owner
+                            .admits(super::ResourceSharing::Exclusive, family)
+                            .is_err(),
                     })
             })
         {

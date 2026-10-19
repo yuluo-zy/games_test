@@ -12,8 +12,8 @@ use crate::{
     resource::{
         OwnershipRange,
         range_state::{
-            AccessScope, NativeState, PatchAction, RangeOwner, RangeTransfer, StatePatch, contains,
-            intersection,
+            AccessScope, NativeState, OwnershipDenial, PatchAction, RangeTransfer, StatePatch,
+            contains, intersection, released_range_error,
         },
     },
     sync::{QueueId, SyncPoint},
@@ -150,18 +150,14 @@ pub(super) fn record_buffer_writes(
                 let Some(overlap) = intersection(current.range, range) else {
                     continue;
                 };
-                let owned = match current.state.owner {
-                    RangeOwner::Unclaimed => true,
-                    RangeOwner::Owned(owner) => owner == family,
-                    RangeOwner::Released { .. } if !sharing.is_concurrent() => {
-                        return Err(crate::resource::range_state::released_range_error());
+                match current.state.owner.admits(sharing, family) {
+                    Ok(()) => {}
+                    Err(OwnershipDenial::Released) => return Err(released_range_error()),
+                    Err(_) => {
+                        return Err(Error::unsupported(
+                            "upload destination requires a matching ownership acquire",
+                        ));
                     }
-                    RangeOwner::Released { .. } => false,
-                };
-                if !sharing.allows_family(family) || !sharing.is_concurrent() && !owned {
-                    return Err(Error::unsupported(
-                        "upload destination requires a matching ownership acquire",
-                    ));
                 }
                 source = source.union(current.state.source_scope(target.id, true));
                 pieces.try_reserve(1).map_err(|_| Error::OutOfHostMemory)?;
@@ -389,6 +385,7 @@ pub(super) fn image_release_program(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::resource::range_state::RangeOwner;
 
     #[test]
     fn route_uses_graphics_when_aliased_or_ownership_is_unavailable() {

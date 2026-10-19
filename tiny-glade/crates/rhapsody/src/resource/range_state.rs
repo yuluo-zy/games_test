@@ -88,6 +88,39 @@ pub enum RangeOwner {
         point: SyncPoint,
     },
 }
+/// Why a queue family may not use a range now.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum OwnershipDenial {
+    /// A concurrent resource does not list the family.
+    NotShared,
+    /// A queue-family release is still waiting for its acquire.
+    Released,
+    /// Another family owns the exclusive range.
+    OtherFamily,
+}
+impl RangeOwner {
+    /// The single ownership admission rule: whether `family` may use a range
+    /// in this state under `sharing` without an acquire. An unclaimed
+    /// exclusive range is admitted (the access claims it).
+    pub(crate) fn admits(
+        self,
+        sharing: ResourceSharing,
+        family: u32,
+    ) -> std::result::Result<(), OwnershipDenial> {
+        if !sharing.allows_family(family) {
+            return Err(OwnershipDenial::NotShared);
+        }
+        if sharing.is_concurrent() {
+            return Ok(());
+        }
+        match self {
+            Self::Unclaimed => Ok(()),
+            Self::Owned(owner) if owner == family => Ok(()),
+            Self::Owned(_) => Err(OwnershipDenial::OtherFamily),
+            Self::Released { .. } => Err(OwnershipDenial::Released),
+        }
+    }
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct NativeState {
     pub layout: vk::ImageLayout,
@@ -663,22 +696,20 @@ fn apply_preview(
                     "range access uses another queue or a pending release",
                 ));
             }
-            match sharing {
-                ResourceSharing::Concurrent(families) => {
-                    if !families.as_slice().contains(&family) {
-                        return Err(Error::invalid_usage("concurrent access family is absent"));
-                    }
+            match state.owner.admits(sharing, family) {
+                Ok(()) => {}
+                Err(OwnershipDenial::NotShared) => {
+                    return Err(Error::invalid_usage("concurrent access family is absent"));
                 }
-                ResourceSharing::Exclusive => match state.owner {
-                    RangeOwner::Unclaimed => state.owner = RangeOwner::Owned(family),
-                    RangeOwner::Owned(owner) if owner == family => {}
-                    RangeOwner::Released { .. } => return Err(released_range_error()),
-                    RangeOwner::Owned(_) => {
-                        return Err(Error::invalid_usage(
-                            "range access needs a matching ownership acquire",
-                        ));
-                    }
-                },
+                Err(OwnershipDenial::Released) => return Err(released_range_error()),
+                Err(OwnershipDenial::OtherFamily) => {
+                    return Err(Error::invalid_usage(
+                        "range access needs a matching ownership acquire",
+                    ));
+                }
+            }
+            if !sharing.is_concurrent() && state.owner == RangeOwner::Unclaimed {
+                state.owner = RangeOwner::Owned(family);
             }
             // A layout conversion is a visibility checkpoint even for a read.
             // Later readers on another VkQueue must wait its actual point.
@@ -755,17 +786,17 @@ fn apply_preview(
                     "opaque access uses another queue or pending release",
                 ));
             }
-            if !sharing.is_concurrent() {
-                match state.owner {
-                    RangeOwner::Unclaimed => state.owner = RangeOwner::Owned(family),
-                    RangeOwner::Owned(owner) if owner == family => {}
-                    RangeOwner::Released { .. } => return Err(released_range_error()),
-                    RangeOwner::Owned(_) => {
-                        return Err(Error::invalid_usage(
-                            "opaque access requires ownership acquire",
-                        ));
-                    }
+            match state.owner.admits(sharing, family) {
+                Ok(()) => {}
+                Err(OwnershipDenial::Released) => return Err(released_range_error()),
+                Err(_) => {
+                    return Err(Error::invalid_usage(
+                        "opaque access requires ownership acquire",
+                    ));
                 }
+            }
+            if !sharing.is_concurrent() && state.owner == RangeOwner::Unclaimed {
+                state.owner = RangeOwner::Owned(family);
             }
             state.writer = Frontier::EMPTY;
             state.writer.add(
@@ -1066,6 +1097,45 @@ fn coalesce(cells: &mut Vec<RangeCell>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ownership_admission_is_one_rule_for_every_owner_state() {
+        let exclusive = ResourceSharing::Exclusive;
+        let concurrent =
+            ResourceSharing::Concurrent(crate::resource::QueueFamilies::new(&[0, 2]).unwrap());
+        let released = RangeOwner::Released {
+            transfer: RangeTransfer {
+                pair: 1,
+                source_family: 2,
+                destination_family: 0,
+                range: NativeRange::Buffer { offset: 0, size: 4 },
+                source: AccessScope::EMPTY,
+                destination: AccessScope::EMPTY,
+                old_layout: vk::ImageLayout::UNDEFINED,
+                new_layout: vk::ImageLayout::UNDEFINED,
+            },
+            point: SyncPoint {
+                queue: QueueId::new(1).unwrap(),
+                value: 1,
+            },
+        };
+        assert_eq!(RangeOwner::Unclaimed.admits(exclusive, 0), Ok(()));
+        assert_eq!(RangeOwner::Owned(0).admits(exclusive, 0), Ok(()));
+        assert_eq!(
+            RangeOwner::Owned(2).admits(exclusive, 0),
+            Err(OwnershipDenial::OtherFamily)
+        );
+        assert_eq!(
+            released.admits(exclusive, 0),
+            Err(OwnershipDenial::Released)
+        );
+        // Concurrent sharing ignores ownership but not membership.
+        assert_eq!(released.admits(concurrent, 0), Ok(()));
+        assert_eq!(
+            RangeOwner::Unclaimed.admits(concurrent, 1),
+            Err(OwnershipDenial::NotShared)
+        );
+    }
     fn q(index: usize) -> QueueId {
         QueueId::new(index).unwrap()
     }
