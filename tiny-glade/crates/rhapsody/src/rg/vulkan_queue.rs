@@ -70,7 +70,7 @@ impl QueueRuntime {
     }
 }
 impl GpuResource {
-    pub(super) fn owner_cell(&self) -> Arc<SyncCell> {
+    pub(crate) fn owner_cell(&self) -> Arc<SyncCell> {
         match self {
             Self::Buffer(buffer) => buffer.last_use.clone(),
             Self::Image(image) => image.last_use.clone(),

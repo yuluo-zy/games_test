@@ -412,6 +412,24 @@ impl SynchronizationPlanner {
                     "opaque image use requires an explicit external native-state declaration",
                 ));
             }
+            // An alias member's contents are discarded at its first use in a
+            // frame; its set returns it only when idle with the state reset
+            // (AliasCache::give_back). Never acquire a stale release for it.
+            if current.fresh
+                && self
+                    .bound
+                    .aliases
+                    .values
+                    .iter()
+                    .any(|edge| edge.next == access.resource || edge.previous == access.resource)
+                && (matches!(current.owner, PendingOwner::Released { .. })
+                    || !sharing.is_concurrent()
+                        && matches!(current.owner, PendingOwner::Owned(owner) if owner != domain.family))
+            {
+                return Err(Error::invalid_usage(
+                    "alias member keeps queue-family ownership from an earlier frame",
+                ));
+            }
             // A prior failed acquire is completed for exactly its original
             // native pair before any splitting of that released range.
             if let PendingOwner::Released { transfer, release } = current.owner {
@@ -1006,6 +1024,140 @@ mod tests {
                 );
             }
         }
+    }
+    /// Two exclusive alias members of one backing used on family 0. Member 1
+    /// was released to family 1 by an earlier frame whose acquire never ran.
+    fn alias_after_failed_release(reset: bool) -> Result<SynchronizationPlanner> {
+        use crate::resource::{
+            SyncCell,
+            range_state::{PatchAction, StatePatch},
+        };
+        let stats = Arc::new(AllocatorStats::default());
+        let range = buffer(0, 64);
+        let q1 = QueueId::new(1).unwrap();
+        let cell = Arc::new(
+            SyncCell::for_device(crate::device::DeviceGeneration::next())
+                .with_ownership_range(range),
+        );
+        cell.with_range_state(NativeState::default(), &stats, |_| Ok(()))
+            .unwrap();
+        let transfer = RangeTransfer {
+            pair: 7,
+            source_family: 1,
+            destination_family: 0,
+            range,
+            source: usage(range, true).scope,
+            destination: usage(range, false).scope,
+            old_layout: vk::ImageLayout::UNDEFINED,
+            new_layout: vk::ImageLayout::UNDEFINED,
+        };
+        cell.prepare_range_state(
+            &[
+                StatePatch {
+                    range,
+                    expected_revision: 0,
+                    action: PatchAction::Access {
+                        scope: usage(range, true).scope,
+                        layout: vk::ImageLayout::UNDEFINED,
+                        queue: q1,
+                        family: 1,
+                    },
+                },
+                StatePatch {
+                    range,
+                    expected_revision: 1,
+                    action: PatchAction::Release(transfer),
+                },
+            ],
+            q1,
+            1,
+            &stats,
+        )
+        .unwrap();
+        let release = SyncPoint { queue: q1, value: 5 };
+        cell.publish_range_state(release);
+        cell.insert(release);
+        let mut completed = crate::sync::CompletedValues::default();
+        // Still executing: the member must not be reset (or returned) yet.
+        assert!(!cell.discard_idle_range_state(&completed));
+        cell.with_range_state(NativeState::default(), &stats, |table| {
+            assert!(matches!(
+                table.cells()[0].state.owner,
+                RangeOwner::Released { .. }
+            ));
+            Ok(())
+        })
+        .unwrap();
+        if reset {
+            completed.raise(q1, 5);
+            assert!(cell.discard_idle_range_state(&completed));
+        }
+        let initial = cell
+            .with_range_state(NativeState::default(), &stats, |table| {
+                Ok(table.cells().to_vec())
+            })
+            .unwrap();
+        let mut program = program(
+            range,
+            vec![usage(range, true), usage(range, true)],
+            &[queue(0, 0), queue(0, 0)],
+        );
+        program.resources.push(program.resources[0]);
+        program.uses[1].resource = 1;
+        program.dependencies = vec![(0, 1)];
+        let mut planner = SynchronizationPlanner::new(stats, Default::default()).unwrap();
+        planner
+            .add_initial(
+                0,
+                &[RangeCell {
+                    range,
+                    state: NativeState::default(),
+                }],
+            )
+            .unwrap();
+        planner.add_initial(1, &initial).unwrap();
+        planner.add_alias(0, 1).unwrap();
+        planner.add_alias(1, 0).unwrap();
+        planner.bind(&program, |family| Ok(queue(family, family)))?;
+        Ok(planner)
+    }
+    #[test]
+    fn alias_member_released_by_a_failed_frame_is_discarded_without_stale_acquire() {
+        let planner = alias_after_failed_release(true).unwrap();
+        let bound = planner.bound();
+        assert!(
+            bound
+                .batches()
+                .iter()
+                .all(|batch| matches!(batch.kind, BoundBatchKind::Graph { .. })),
+            "no ownership prelude batch"
+        );
+        assert!(
+            bound
+                .transitions()
+                .iter()
+                .all(|transition| matches!(transition.kind, BarrierKind::Memory)
+                    && transition.source_family == vk::QUEUE_FAMILY_IGNORED),
+            "no ownership transfer barrier"
+        );
+        assert!(
+            bound
+                .patches()
+                .iter()
+                .all(|patch| matches!(patch.action, BoundPatchAction::Access { .. }))
+        );
+        // The completed release is neither waited on nor carried forward.
+        assert!(
+            bound
+                .waits()
+                .iter()
+                .all(|wait| !matches!(wait.dependency, DependencyRef::Point(_)))
+        );
+        // An unreset stale release is rejected instead of acquired.
+        let Err(error) = alias_after_failed_release(false) else {
+            panic!("stale release must not bind");
+        };
+        assert!(error.to_string().contains("alias member"), "{error}");
     }
     #[test]
     fn released_recovery_first_acquires_the_original_destination_then_moves_again() {

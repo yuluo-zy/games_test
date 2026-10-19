@@ -750,8 +750,9 @@ impl VulkanGraphBackend {
     /// stopped early) were not used by the GPU; they return to their set.
     fn return_unconsumed_aliases(&mut self) {
         if let Some(lent) = self.lent_aliases.take() {
+            let completed = self.device.completed();
             for (resource, origin) in lent.resources.into_values() {
-                self.alias_cache.give_back(origin, resource);
+                self.alias_cache.give_back(origin, resource, &completed);
             }
         }
     }
@@ -800,6 +801,11 @@ impl VulkanGraphBackend {
         self.active_alias_set
             .and_then(|set| self.alias_cache.plan(set))
             .unwrap_or(&self.prepared_transients.plan)
+    }
+    /// Alias-set members handed back while their GPU work may still run;
+    /// they rejoin their set (and the set becomes reusable) once idle.
+    pub fn transient_alias_retiring(&self) -> usize {
+        self.alias_cache.retiring_count()
     }
     pub fn transient_backing_statistics(
         &self,
@@ -1362,7 +1368,8 @@ impl graph::ResourceBackend for VulkanGraphBackend {
             Ok(token) => token,
             Err(error) => {
                 if let Some(origin) = origin {
-                    self.alias_cache.give_back(origin, resource);
+                    self.alias_cache
+                        .give_back(origin, resource, &self.device.completed());
                 }
                 return Err(error);
             }
@@ -1379,7 +1386,10 @@ impl graph::ResourceBackend for VulkanGraphBackend {
         if let (Some(origin), Some(resource)) =
             (self.transient_alias_tokens.remove(&token), resource)
         {
-            self.alias_cache.give_back(origin, resource);
+            // Completion is re-checked: a member of a partially submitted
+            // frame rejoins its set only after its GPU work finished.
+            self.alias_cache
+                .give_back(origin, resource, &self.device.completed());
         }
         self.import_families.remove(&token);
     }

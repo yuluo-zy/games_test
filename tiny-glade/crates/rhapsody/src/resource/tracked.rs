@@ -296,6 +296,19 @@ impl SyncCell {
         let table = self.native_state.lock();
         run(table.as_ref().expect("native state prefix was prepared"))
     }
+    /// Drop the native state of a resource whose contents are discarded, once
+    /// `completed` proves every recorded GPU use finished. Returns `false`
+    /// (state untouched) while any use may still be executing.
+    pub(crate) fn discard_idle_range_state(&self, completed: &CompletedValues) -> bool {
+        let _gate = self.lock_submission();
+        if !self.is_reached(completed) {
+            return false;
+        }
+        if let Some(table) = self.native_state.lock().as_mut() {
+            table.discard_idle_contents();
+        }
+        true
+    }
     pub(crate) fn cancel_range_state(&self) {
         if let Some(table) = self.native_state.lock().as_mut() {
             table.cancel_prepared();

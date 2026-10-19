@@ -343,6 +343,32 @@ impl RangeStateTable {
             cell.state.revision = cell.state.revision.saturating_add(1);
         }
     }
+    /// The resource's contents are discarded and all of its earlier GPU work
+    /// is known to be complete (caller checked the physical last use). Every
+    /// range returns to the unclaimed, `UNDEFINED`, dependency-free state:
+    /// a pending ownership release or foreign owner is dropped without any
+    /// acquire, and nothing is left to wait on. Revisions keep increasing so
+    /// stale recorded patches still fail their preconditions.
+    pub fn discard_idle_contents(&mut self) {
+        self.cancel_prepared();
+        let revision = self
+            .cells
+            .values
+            .iter()
+            .map(|cell| cell.state.revision)
+            .max()
+            .unwrap_or(0)
+            .saturating_add(1)
+            .min(u64::MAX - 1);
+        self.cells.values.clear();
+        self.cells.values.push(RangeCell {
+            range: self.domain,
+            state: NativeState {
+                revision,
+                ..NativeState::default()
+            },
+        });
+    }
     pub fn cancel_prepared(&mut self) {
         self.prepared_queue = None;
         self.prepared_host = false;
