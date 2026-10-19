@@ -191,7 +191,9 @@ fn production_session_uses_bounded_frame_worker_pools_and_whole_pool_reuse() {
         session.backend.command_pool_count() > 2,
         "recording workers must use distinct actual pools"
     );
-    assert!(session.backend.command_pool_count() <= 8);
+    // One pool for the main commands plus one per chunk (4), per frame slot (2):
+    // a chunk never shares the main command's pool while both are recording.
+    assert!(session.backend.command_pool_count() <= 10);
     assert!(session.backend.command_pool_reset_count() > 0);
     assert!(
         session.backend.cpu_arena_statistics().peak_checked_out >= 2,

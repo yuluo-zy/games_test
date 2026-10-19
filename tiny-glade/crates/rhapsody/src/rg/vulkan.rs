@@ -1586,7 +1586,14 @@ impl ExecutionBackend for VulkanGraphBackend {
         self.command_for_slot(0)
     }
     fn chunk_command_handle(&mut self, chunk: usize) -> Result<u64, recording::Failure> {
-        self.command_for_slot(chunk)
+        // Worker pool 0 belongs to the main (serial) commands, which stay open
+        // while chunks record on other threads.
+        self.command_for_slot(chunk + 1)
+    }
+    fn command_pool_identity(&self, handle: u64) -> Option<u64> {
+        self.commands
+            .get(&handle)
+            .map(|command| Arc::as_ptr(&command.pool) as usize as u64)
     }
     fn abandon_command(&mut self, handle: u64) {
         if let Some(ring) = &mut self.gpu_timing {

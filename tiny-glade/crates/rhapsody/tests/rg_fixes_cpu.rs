@@ -67,6 +67,8 @@ struct Mock {
     queue: Option<recording::Queue>,
     fail_wait: bool,
     ranges: cpu_graph_support::CpuRanges,
+    /// Report one command pool for every command (a broken backend).
+    shared_pool: bool,
 }
 impl ResourceBackend for Mock {
     fn create_without_initial_data(
@@ -91,6 +93,9 @@ impl ResourceBackend for Mock {
     }
 }
 impl ExecutionBackend for Mock {
+    fn command_pool_identity(&self, handle: u64) -> Option<u64> {
+        Some(if self.shared_pool { 0 } else { handle })
+    }
     fn chunk_recorder(&self) -> Option<Box<dyn rhapsody::rg::executor::ChunkRecorder + '_>> {
         struct View;
         impl rhapsody::rg::executor::ChunkRecorder for View {
@@ -1064,4 +1069,41 @@ fn duplicate_imports_are_rejected_before_recording_or_allocation() {
     assert_eq!(backend.creations, 0);
     assert_eq!(backend.submit_attempts, 0);
     assert_eq!(backend.next_command, 0);
+}
+
+#[test]
+fn parallel_chunks_never_record_into_a_shared_command_pool() {
+    use rhapsody::rg::parallel::{ParallelRecording, TaskRunner};
+    for shared_pool in [false, true] {
+        let mut backend = Mock {
+            shared_pool,
+            ..Mock::default()
+        };
+        let mut chain = chain();
+        chain.parallel = ParallelRecording {
+            runner: TaskRunner::Inline,
+            ..ParallelRecording::EVERY_PASS
+        };
+        let mut graph = RenderGraph::new();
+        for name in ["a", "b", "c"] {
+            graph.add_pass(name).with_side_effect().render(|_| true);
+        }
+        let (declaration, mut callbacks, _) = graph.build().into_parts();
+        let result = chain.execute_graph_with_context(
+            declaration,
+            &mut Pool::default(),
+            &mut Dependency,
+            &mut backend,
+            &mut callbacks,
+        );
+        if shared_pool {
+            assert_eq!(
+                rhapsody::Error::from(result.unwrap_err()).kind(),
+                rhapsody::ErrorKind::InvalidUsage
+            );
+            assert_eq!(backend.submit_attempts, 0);
+        } else {
+            assert!(result.unwrap().stats.chunks > 1);
+        }
+    }
 }

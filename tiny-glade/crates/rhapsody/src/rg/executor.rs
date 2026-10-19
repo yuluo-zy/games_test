@@ -343,9 +343,15 @@ pub trait ExecutionBackend: crate::rg::graph::ResourceBackend {
     }
     /// 设备和命令创建由后端提供；真实实现见 rg/vulkan.rs。
     fn command_handle(&mut self) -> Result<u64, recording::Failure>;
-    /// 并行录制时第 `chunk` 块使用的命令；真实后端须保证不同块来自不同命令池。
+    /// 并行录制时第 `chunk` 块使用的命令；真实后端须保证不同块、以及块与主命令来自不同命令池。
     fn chunk_command_handle(&mut self, _chunk: usize) -> Result<u64, recording::Failure> {
         self.command_handle()
+    }
+    /// Identity of the command pool that allocated `handle`, if the backend has
+    /// pools. Used to verify that concurrently recorded commands never share one
+    /// (a VkCommandPool requires external synchronization).
+    fn command_pool_identity(&self, _handle: u64) -> Option<u64> {
+        None
     }
     fn begin_command(&mut self, handle: u64) -> Result<(), recording::Failure>;
     fn end_command(&mut self, handle: vk::CommandBuffer) -> bool;
@@ -1375,6 +1381,20 @@ impl ExecutionChain {
                 .map_err(Error::Lifecycle)?;
             let command = self.begin(handle, family, queue, backend.begin_command(handle))?;
             scratch.begun.push(command);
+        }
+        // Chunks record concurrently while the batch's open main commands stay
+        // in the recording state: every one of them needs its own pool.
+        let mut pools = smallvec::SmallVec::<[u64; 16]>::new();
+        for command in scratch.begun.iter().chain(&recorder.commands) {
+            if let Some(pool) = backend.command_pool_identity(command.handle()) {
+                if pools.contains(&pool) {
+                    self.chunk_scratch = scratch;
+                    return Err(Error::Validation(crate::Error::invalid_usage(
+                        "concurrently recorded commands share a command pool",
+                    )));
+                }
+                pools.push(pool);
+            }
         }
         scratch.chunk_of_pass.clear();
         scratch.chunk_of_pass.resize(passes.len(), 0);
