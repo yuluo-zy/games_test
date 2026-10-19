@@ -63,6 +63,13 @@ fn whole_pool_reset_requires_every_live_command_and_preserves_owners_on_failure(
     assert!(!second.is_recording());
     assert_eq!(dropped.load(Ordering::Relaxed), 1);
     assert_eq!(pool.reset_count(), 1);
+    let pending = pool.allocate().unwrap();
+    std::thread::spawn(move || drop(pending)).join().unwrap();
+    assert_eq!(
+        pool.pending_free_count(),
+        0,
+        "a whole-pool reset ends every recording scope"
+    );
     first.begin().unwrap();
     first.end().unwrap();
     second.begin().unwrap();
@@ -237,4 +244,30 @@ fn production_callbacks_reuse_cpu_arenas_after_recording_completes() {
         session.backend.cpu_arena_statistics().backing_allocations,
         1
     );
+}
+
+#[test]
+fn frees_from_other_threads_are_deferred_while_the_pool_records() {
+    let Some(device) = device() else {
+        return;
+    };
+    let pool = VulkanCommandPool::new(device.clone()).unwrap();
+    let mut first = pool.allocate().unwrap();
+    let mut second = pool.allocate().unwrap();
+    let idle = pool.allocate().unwrap();
+    first.begin().unwrap();
+    second.begin().unwrap();
+    // A never-submitted buffer is freed by retirement immediately; while the
+    // pool records on this thread, a free from another thread is deferred.
+    std::thread::spawn(move || drop(idle)).join().unwrap();
+    assert_eq!(pool.pending_free_count(), 1);
+    first.end().unwrap();
+    assert_eq!(pool.pending_free_count(), 1, "second still records");
+    // Dropping a recording buffer also ends its recording scope.
+    drop(second);
+    assert_eq!(pool.pending_free_count(), 0);
+    first.reset().unwrap();
+    first.begin().unwrap();
+    first.end().unwrap();
+    assert_eq!(pool.live_command_count(), 1);
 }

@@ -26,17 +26,47 @@ pub struct VulkanCommandPool {
 
 /// Pool storage retained by deferred command frees. It deliberately does not own
 /// Arc<Device>; the retirement queue is drained before vkDestroyDevice.
+///
+/// Vulkan requires the `VkCommandPool` to be externally synchronized for every
+/// pool-level call and for recording into any of its buffers. Recording
+/// buffers are `&mut`-exclusive and the owning thread performs begin/end and
+/// allocate/reset, all serialized by `lock`. The one call that can arrive from
+/// an arbitrary thread is the deferred free issued by device retirement; while
+/// any buffer of the pool is recording, such frees are queued and executed
+/// when the last recording ends, so they never race the recording thread.
 pub struct CommandPoolAllocation {
     device: ash::Device,
     handle: vk::CommandPool,
-    lock: Mutex<()>,
+    lock: Mutex<PoolSync>,
     _memory: super::allocator::CpuMemoryReservation,
+}
+#[derive(Default)]
+struct PoolSync {
+    recording: usize,
+    deferred_free: Vec<vk::CommandBuffer>,
 }
 impl CommandPoolAllocation {
     pub(crate) fn free(&self, handle: vk::CommandBuffer) {
-        let _guard = self.lock.lock();
+        let mut sync = self.lock.lock();
+        if sync.recording != 0 {
+            if sync.deferred_free.try_reserve(1).is_ok() {
+                sync.deferred_free.push(handle);
+            }
+            // On host allocation failure the handle is reclaimed with the pool.
+            return;
+        }
         unsafe {
             self.device.free_command_buffers(self.handle, &[handle]);
+        }
+    }
+    fn end_recording(&self, sync: &mut PoolSync) {
+        sync.recording -= 1;
+        if sync.recording == 0 && !sync.deferred_free.is_empty() {
+            unsafe {
+                self.device
+                    .free_command_buffers(self.handle, &sync.deferred_free);
+            }
+            sync.deferred_free.clear();
         }
     }
 }
@@ -91,7 +121,7 @@ impl VulkanCommandPool {
         let allocation = Arc::new(CommandPoolAllocation {
             device: device.device.clone(),
             handle,
-            lock: Mutex::new(()),
+            lock: Mutex::new(PoolSync::default()),
             _memory: allocation_memory,
         });
         Ok(Arc::new(Self {
@@ -170,7 +200,7 @@ impl VulkanCommandPool {
             return Err(crate::Error::DeviceLost);
         }
         let _reservation = self.last_use.lock_submission();
-        let guard = self.allocation.lock.lock();
+        let mut guard = self.allocation.lock.lock();
         if commands.len() != self.live_commands.load(Ordering::Relaxed)
             || commands
                 .iter()
@@ -198,6 +228,12 @@ impl VulkanCommandPool {
                 .reset_command_pool(self.handle, vk::CommandPoolResetFlags::empty())
         })?;
         self.resets.fetch_add(1, Ordering::Relaxed);
+        for command in commands.iter_mut() {
+            if command.recording {
+                self.allocation.end_recording(&mut guard);
+                command.recording = false;
+            }
+        }
         drop(guard);
         drop(_reservation);
         for command in commands {
@@ -221,6 +257,10 @@ impl VulkanCommandPool {
 
     pub fn reset_count(&self) -> u64 {
         self.resets.load(Ordering::Relaxed)
+    }
+    /// Command buffers whose free waits for the pool's current recording to end.
+    pub fn pending_free_count(&self) -> usize {
+        self.allocation.lock.lock().deferred_free.len()
     }
     pub fn live_command_count(&self) -> usize {
         self.live_commands.load(Ordering::Relaxed)
@@ -562,7 +602,11 @@ impl VulkanCommandBuffer {
         }
         self.pool.device.timelines.wait(&self.last_use, u64::MAX)?;
         {
-            let _guard = self.pool.allocation.lock.lock();
+            let mut sync = self.pool.allocation.lock.lock();
+            if self.recording {
+                self.pool.allocation.end_recording(&mut sync);
+                self.recording = false;
+            }
             super::error::observe_vulkan(&self.pool.device, unsafe {
                 self.pool
                     .device
@@ -582,7 +626,11 @@ impl VulkanCommandBuffer {
             return Err(crate::Error::DeviceLost);
         }
         {
-            let _guard = self.pool.allocation.lock.lock();
+            let mut sync = self.pool.allocation.lock.lock();
+            if self.recording {
+                self.pool.allocation.end_recording(&mut sync);
+                self.recording = false;
+            }
             super::error::observe_vulkan(&self.pool.device, unsafe {
                 self.pool
                     .device
@@ -605,12 +653,14 @@ impl VulkanCommandBuffer {
         }
         let info = vk::CommandBufferBeginInfo::default()
             .flags(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT);
+        let mut sync = self.pool.allocation.lock.lock();
         super::error::observe_vulkan(&self.pool.device, unsafe {
             self.pool
                 .device
                 .device
                 .begin_command_buffer(self.handle, &info)
         })?;
+        sync.recording += 1;
         self.recording = true;
         Ok(())
     }
@@ -624,9 +674,19 @@ impl VulkanCommandBuffer {
         if let Some(error) = self.range_failure {
             return Err(error.error());
         }
-        super::error::observe_vulkan(&self.pool.device, unsafe {
-            self.pool.device.device.end_command_buffer(self.handle)
-        })?;
+        {
+            let mut sync = self.pool.allocation.lock.lock();
+            let ended = super::error::observe_vulkan(&self.pool.device, unsafe {
+                self.pool.device.device.end_command_buffer(self.handle)
+            });
+            // A failed end leaves the buffer invalid; either way it no longer
+            // records, so pending frees may proceed.
+            self.pool.allocation.end_recording(&mut sync);
+            if let Err(error) = ended {
+                self.recording = false;
+                return Err(error);
+            }
+        }
         self.normalize_uses();
         self.recording = false;
         self.executable = true;
@@ -1188,7 +1248,10 @@ impl VulkanCommandBuffer {
 impl Drop for VulkanCommandBuffer {
     fn drop(&mut self) {
         {
-            let _guard = self.pool.allocation.lock.lock();
+            let mut sync = self.pool.allocation.lock.lock();
+            if self.recording {
+                self.pool.allocation.end_recording(&mut sync);
+            }
             self.pool.live_commands.fetch_sub(1, Ordering::Relaxed);
         }
         self.pool.device.retire(
