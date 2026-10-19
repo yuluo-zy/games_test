@@ -1,27 +1,34 @@
-//! 延迟回收：GPU 可能仍在使用的对象挂在它依赖的 [`SyncSet`] 上，完成后交还调用方销毁。
+//! Deferred destruction: objects the GPU may still use wait on the
+//! [`SyncSet`] they depend on and are handed back once it completes.
 //!
-//! 销毁本身不在这里发生：[`Retirement::collect`] 把到期对象移到调用方提供的缓冲里，
-//! 调用方在释放锁之后再 drop，避免持锁执行 `vkDestroy*`。
-use super::{CompletedValues, SyncSet};
-use std::time::Instant;
+//! Entries live in per-queue FIFOs ordered by timeline value, each guarded by
+//! its own lock. An entry is filed under one queue it depends on; when that
+//! queue reaches its value the entry either completes or moves to the next
+//! queue it still waits for (at most once per queue). Collection therefore
+//! pops exactly the reached prefix of each FIFO, in O(reached), and reached
+//! entries can never starve behind unreached ones.
+use super::{CompletedValues, MAX_QUEUES, QueueId, SyncSet};
+use parking_lot::Mutex;
+use std::collections::VecDeque;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-pub struct Retirement<T> {
-    entries: Vec<(SyncSet, T, Instant)>,
-    scan_cursor: usize,
-    ages: RetirementAges,
+struct Entry<T> {
+    /// Value on the FIFO's queue this entry waits for.
+    value: u64,
+    after: SyncSet,
+    item: T,
 }
 
-/// Enqueue-to-removal wall time for queued objects. Includes GPU waiting and
-/// deferred maintenance; it does not claim to measure GPU completion latency.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize)]
-pub struct RetirementAges {
-    pub reclaimed: u64,
-    pub total_ns: u64,
-    pub maximum_ns: u64,
+pub struct Retirement<T> {
+    queues: [Mutex<VecDeque<Entry<T>>>; MAX_QUEUES],
+    len: AtomicUsize,
+    /// Rotates the first queue visited by bounded collection.
+    cursor: AtomicUsize,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct CollectionProgress {
+    /// Entries removed from a FIFO (completed or moved to another queue).
     pub scanned: usize,
     pub destroyed: usize,
 }
@@ -32,115 +39,131 @@ impl<T> Default for Retirement<T> {
     }
 }
 
+/// The queue an entry waits on next: the first queue whose value is not yet
+/// reached by `completed`, or `None` when the entry is complete.
+fn pending_queue(after: &SyncSet, completed: &CompletedValues) -> Option<(usize, u64)> {
+    after
+        .points()
+        .find(|point| point.value > completed.get(point.queue))
+        .map(|point| (point.queue.index(), point.value))
+}
+
 impl<T> Retirement<T> {
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         Self {
-            entries: Vec::new(),
-            scan_cursor: 0,
-            ages: RetirementAges {
-                reclaimed: 0,
-                total_ns: 0,
-                maximum_ns: 0,
-            },
+            queues: std::array::from_fn(|_| Mutex::new(VecDeque::new())),
+            len: AtomicUsize::new(0),
+            cursor: AtomicUsize::new(0),
         }
     }
 
-    /// 登记一个对象。`after` 为空（从未提交给 GPU）或已完成时立即还给调用方。
-    #[must_use = "返回的对象未被 GPU 使用，应由调用方立即销毁"]
-    pub fn retire(&mut self, after: SyncSet, item: T, completed: &CompletedValues) -> Option<T> {
+    /// Hand `item` back when `after` is empty or already reached; otherwise
+    /// queue it. Returns `Err(item)` only when queue storage cannot grow.
+    pub fn retire(&self, after: SyncSet, item: T, completed: &CompletedValues) -> Result<Option<T>, T> {
         if after.is_reached(completed) {
-            return Some(item);
+            return Ok(Some(item));
         }
-        self.enqueue(after, item);
-        None
+        self.try_enqueue(after, item).map(|()| None)
     }
 
-    /// Queue an object even when its dependency has already completed. Device
-    /// destruction uses this path so dropping a submitted owner does not bypass
-    /// the maintenance budget.
-    pub fn enqueue(&mut self, after: SyncSet, item: T) {
-        self.entries.push((after, item, Instant::now()));
-    }
-    pub fn ages(&self) -> RetirementAges {
-        self.ages
-    }
-    fn observe_age(&mut self, queued: Instant) {
-        let ns = queued.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
-        self.ages.reclaimed = self.ages.reclaimed.saturating_add(1);
-        self.ages.total_ns = self.ages.total_ns.saturating_add(ns);
-        self.ages.maximum_ns = self.ages.maximum_ns.max(ns);
+    /// Queue an object even when its dependency has already completed, so
+    /// dropping a submitted owner does not bypass the maintenance budget.
+    /// Storage growth is fallible: on host OOM the item is returned.
+    pub fn try_enqueue(&self, after: SyncSet, item: T) -> Result<(), T> {
+        let (queue, value) = after
+            .points()
+            .next()
+            .map_or((0, 0), |point| (point.queue.index(), point.value));
+        self.insert(queue, Entry { value, after, item })
+            .map_err(|entry| entry.item)?;
+        self.len.fetch_add(1, Ordering::AcqRel);
+        Ok(())
     }
 
-    /// Inspect and remove a bounded number of entries. The callback must only
-    /// move the object into already available storage; destruction belongs
-    /// outside the caller's retirement lock.
+    fn insert(&self, queue: usize, entry: Entry<T>) -> Result<(), Entry<T>> {
+        let mut fifo = self.queues[queue].lock();
+        if fifo.try_reserve(1).is_err() {
+            return Err(entry);
+        }
+        // Retirements arrive almost in value order; search from the back.
+        let at = fifo.partition_point(|queued| queued.value <= entry.value);
+        fifo.insert(at, entry);
+        Ok(())
+    }
+
+    /// Pop the next reached entry of `queue`, without holding the lock after.
+    fn pop_reached(&self, queue: usize, completed: &CompletedValues) -> Option<Entry<T>> {
+        let done = QueueId::new(queue).map_or(0, |id| completed.get(id));
+        let mut fifo = self.queues[queue].lock();
+        if fifo.front().is_some_and(|entry| entry.value <= done) {
+            fifo.pop_front()
+        } else {
+            None
+        }
+    }
+
+    /// Remove up to `max_destroys` completed entries, inspecting at most
+    /// `max_scans` reached entries. `ready` runs without any retirement lock
+    /// held, so it may destroy the object directly.
     pub fn collect_limited(
-        &mut self,
+        &self,
         completed: &CompletedValues,
         max_scans: usize,
         max_destroys: usize,
         mut ready: impl FnMut(T),
     ) -> CollectionProgress {
-        let scan_limit = max_scans.min(self.entries.len());
         let mut progress = CollectionProgress::default();
-        while progress.scanned < scan_limit
-            && progress.destroyed < max_destroys
-            && !self.entries.is_empty()
-        {
-            self.scan_cursor %= self.entries.len();
-            progress.scanned += 1;
-            if self.entries[self.scan_cursor].0.is_reached(completed) {
-                let (_, item, queued) = self.entries.swap_remove(self.scan_cursor);
-                self.observe_age(queued);
-                progress.destroyed += 1;
-                ready(item);
-                // Inspect the replacement before advancing; advancing here
-                // would skip an entry every time swap_remove moves the tail.
-            } else {
-                self.scan_cursor += 1;
-            }
+        if self.is_empty() {
+            return progress;
         }
-        if self.entries.is_empty() {
-            self.scan_cursor = 0;
-        } else {
-            self.scan_cursor %= self.entries.len();
+        let start = self.cursor.fetch_add(1, Ordering::Relaxed);
+        for offset in 0..MAX_QUEUES {
+            let queue = (start + offset) % MAX_QUEUES;
+            while progress.scanned < max_scans && progress.destroyed < max_destroys {
+                let Some(mut entry) = self.pop_reached(queue, completed) else {
+                    break;
+                };
+                progress.scanned += 1;
+                match pending_queue(&entry.after, completed) {
+                    None => {
+                        self.len.fetch_sub(1, Ordering::AcqRel);
+                        progress.destroyed += 1;
+                        ready(entry.item);
+                    }
+                    Some((next, value)) => {
+                        entry.value = value;
+                        if let Err(entry) = self.insert(next, entry) {
+                            // No room to move it: keep it reached at the head of
+                            // its FIFO and end this pass instead of spinning.
+                            self.queues[queue].lock().push_front(entry);
+                            return progress;
+                        }
+                    }
+                }
+            }
         }
         progress
     }
 
-    /// 把所有已完成的对象移入 `ready`，返回移出的数量。
-    pub fn collect(&mut self, completed: &CompletedValues, ready: &mut Vec<T>) -> usize {
-        let before = ready.len();
-        let mut index = 0;
-        while index < self.entries.len() {
-            if self.entries[index].0.is_reached(completed) {
-                let (_, item, queued) = self.entries.swap_remove(index);
-                self.observe_age(queued);
-                ready.push(item);
-            } else {
-                index += 1;
-            }
-        }
-        self.scan_cursor = 0;
-        ready.len() - before
+    /// Move every completed object into `ready`; returns how many moved.
+    pub fn collect(&self, completed: &CompletedValues, ready: &mut Vec<T>) -> usize {
+        self.collect_limited(completed, usize::MAX, usize::MAX, |item| ready.push(item))
+            .destroyed
     }
 
-    /// 无条件移出全部对象（`vkDeviceWaitIdle` 之后或设备丢失后）。
-    pub fn drain_all(&mut self, ready: &mut Vec<T>) -> usize {
-        let count = self.entries.len();
-        while let Some((_, item, queued)) = self.entries.pop() {
-            self.observe_age(queued);
-            ready.push(item);
-        }
-        self.scan_cursor = 0;
-        count
+    /// Remove every object unconditionally (after `vkDeviceWaitIdle` or loss).
+    pub fn drain_all(&self, ready: &mut Vec<T>) -> usize {
+        self.collect_limited(&CompletedValues::all(), usize::MAX, usize::MAX, |item| {
+            ready.push(item)
+        })
+        .destroyed
     }
 
     pub fn len(&self) -> usize {
-        self.entries.len()
+        self.len.load(Ordering::Acquire)
     }
     pub fn is_empty(&self) -> bool {
-        self.entries.is_empty()
+        self.len() == 0
     }
 }
 
@@ -158,29 +181,29 @@ mod tests {
 
     #[test]
     fn unused_or_completed_items_come_back_immediately() {
-        let mut retirement = Retirement::new();
+        let retirement = Retirement::new();
         let done = CompletedValues::default();
         assert_eq!(
             retirement.retire(SyncSet::EMPTY, "never submitted", &done),
-            Some("never submitted")
+            Ok(Some("never submitted"))
         );
         let mut done = done;
         done.raise(QueueId::new(0).unwrap(), 3);
         assert_eq!(
             retirement.retire(point(0, 3), "finished", &done),
-            Some("finished")
+            Ok(Some("finished"))
         );
         assert!(retirement.is_empty());
     }
 
     #[test]
     fn items_wait_for_every_queue_they_used() {
-        let mut retirement = Retirement::new();
+        let retirement = Retirement::new();
         let mut done = CompletedValues::default();
         let mut both = point(0, 2);
         both.merge(&point(1, 5));
-        assert!(retirement.retire(both, "cross-queue", &done).is_none());
-        assert!(retirement.retire(point(0, 1), "graphics", &done).is_none());
+        assert!(retirement.retire(both, "cross-queue", &done).unwrap().is_none());
+        assert!(retirement.retire(point(0, 1), "graphics", &done).unwrap().is_none());
 
         let mut ready = Vec::new();
         done.raise(QueueId::new(0).unwrap(), 2);
@@ -195,10 +218,10 @@ mod tests {
 
     #[test]
     fn drain_all_releases_everything() {
-        let mut retirement = Retirement::new();
+        let retirement = Retirement::new();
         let done = CompletedValues::default();
         for value in 1..=3 {
-            assert!(retirement.retire(point(0, value), value, &done).is_none());
+            assert!(retirement.retire(point(0, value), value, &done).unwrap().is_none());
         }
         let mut ready = Vec::new();
         assert_eq!(retirement.drain_all(&mut ready), 3);
@@ -209,9 +232,9 @@ mod tests {
 
     #[test]
     fn bounded_scans_progress_past_pending_entries_and_inspect_swapped_tail() {
-        let mut retirement = Retirement::new();
+        let retirement = Retirement::new();
         for value in 0..7 {
-            retirement.enqueue(point(0, if value < 4 { 9 } else { 1 }), value);
+            retirement.try_enqueue(point(0, if value < 4 { 9 } else { 1 }), value).ok().unwrap();
         }
         let mut done = CompletedValues::default();
         done.raise(QueueId::new(0).unwrap(), 1);
@@ -226,7 +249,7 @@ mod tests {
         done.raise(QueueId::new(0).unwrap(), 9);
         assert_eq!(retirement.collect(&done, &mut ready), 4);
         assert!(retirement.is_empty());
-        retirement.enqueue(point(0, 1), 8);
+        retirement.try_enqueue(point(0, 1), 8).ok().unwrap();
         assert_eq!(
             retirement.collect_limited(&done, 0, 1, |_| panic!("zero scans")),
             CollectionProgress::default()
@@ -253,7 +276,7 @@ mod tests {
         for order in ORDERS {
             for scans in 1..=7 {
                 for destroys in 1..=scans.min(3) {
-                    let mut retirement = Retirement::new();
+                    let retirement = Retirement::new();
                     let mut expected = Vec::new();
                     for item in 0..23 {
                         let mut after = SyncSet::EMPTY;
@@ -261,7 +284,7 @@ mod tests {
                             after.merge(&point(queue, (item % 3 + 1) as u64));
                         }
                         expected.push(after);
-                        retirement.enqueue(after, item);
+                        retirement.try_enqueue(after, item).ok().unwrap();
                     }
                     let mut released = [false; 23];
                     let mut done = CompletedValues::default();
@@ -296,7 +319,7 @@ mod tests {
             *seed
         }
         for mut seed in [1, 0x519a_423e, 0x7521_f1f4_3691_ab35] {
-            let mut retirement = Retirement::new();
+            let retirement = Retirement::new();
             let mut expected = Vec::new();
             for item in 0..97 {
                 let mut after = SyncSet::EMPTY;
@@ -304,7 +327,7 @@ mod tests {
                     after.merge(&point(queue, random(&mut seed) % 8 + 1));
                 }
                 expected.push(after);
-                retirement.enqueue(after, item);
+                retirement.try_enqueue(after, item).ok().unwrap();
             }
             let mut done = CompletedValues::default();
             let mut released = [false; 97];
@@ -326,5 +349,29 @@ mod tests {
             assert!(retirement.is_empty(), "completed entries must not starve");
             assert!(released.into_iter().all(|item| item));
         }
+    }
+
+    #[test]
+    fn collection_touches_only_the_reached_prefix() {
+        let retirement = Retirement::new();
+        for value in 1..=1000u64 {
+            retirement.try_enqueue(point(0, value), value).ok().unwrap();
+        }
+        let mut done = CompletedValues::default();
+        done.raise(QueueId::new(0).unwrap(), 10);
+        let mut ready = Vec::new();
+        let progress = retirement.collect_limited(&done, 4096, 4096, |item| ready.push(item));
+        assert_eq!(progress.scanned, 10, "unreached entries are never inspected");
+        assert_eq!(ready, (1..=10).collect::<Vec<_>>());
+        // A multi-queue entry moves once to the queue it still waits for.
+        let mut both = point(0, 5);
+        both.merge(&point(1, 3));
+        retirement.try_enqueue(both, 0).ok().unwrap();
+        let mut ready = Vec::new();
+        assert_eq!(retirement.collect(&done, &mut ready), 0);
+        done.raise(QueueId::new(1).unwrap(), 3);
+        assert_eq!(retirement.collect(&done, &mut ready), 1);
+        assert_eq!(ready, [0]);
+        assert_eq!(retirement.len(), 990);
     }
 }

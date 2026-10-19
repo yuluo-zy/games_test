@@ -95,7 +95,7 @@ impl<T: Send + Sync + 'static> ManagedSlots<T> {
     }
     fn reserve_one(&mut self, limit: usize) -> Result<()> {
         if self.slots.len() >= limit {
-            return Err(Error::Timeout);
+            return Err(Error::exhausted("managed resource slot capacity reached"));
         }
         if self.slots.len() < self.slots.capacity() {
             return Ok(());
@@ -211,7 +211,7 @@ impl<T: Send + Sync + 'static> ResourceManager<T> {
     pub fn allocate_shared(&self, resource: Arc<T>) -> Result<Managed<T>> {
         let mut slots = self.state.slots.lock();
         if slots.slots.len() >= self.state.capacity_limit {
-            return Err(Error::Timeout);
+            return Err(Error::exhausted("managed resource slot capacity reached"));
         }
         let memory = self
             .state
@@ -307,7 +307,7 @@ mod tests {
         let stats = Arc::new(AllocatorStats::default());
         let store = ResourceManager::with_capacity_limit(stats.clone(), 1).unwrap();
         let first = store.allocate(1u32).unwrap();
-        assert!(matches!(store.allocate(2), Err(Error::Timeout)));
+        assert!(matches!(store.allocate(2), Err(Error::Exhausted(_))));
         let key = first.key();
         drop(first);
         let used = stats.cpu_memory_usage().total();
@@ -356,7 +356,7 @@ mod tests {
             dropped: dropped.clone(),
         };
         let first = store.allocate(create()).unwrap();
-        assert!(matches!(store.allocate(create()), Err(Error::Timeout)));
+        assert!(matches!(store.allocate(create()), Err(Error::Exhausted(_))));
         assert_eq!(dropped.load(Ordering::Relaxed), 1);
         drop(first);
         assert_eq!(dropped.load(Ordering::Relaxed), 2);

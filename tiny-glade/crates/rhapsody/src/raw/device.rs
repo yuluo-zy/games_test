@@ -30,7 +30,11 @@ impl DeviceCapabilities {
     }
 }
 
-/// 实际 Vulkan 设备适配。原作 Device 的完整布局不使用此候选布局替代。
+/// Logical Vulkan device.
+///
+/// Teardown order is fixed by `Drop`: queued retirements are drained, cached
+/// objects and the suballocator release their memory, then the `VkDevice` is
+/// destroyed; `instance` is the last field so the `VkInstance` outlives it.
 pub struct Device {
     generation: crate::device::DeviceGeneration,
     caps: crate::device::DeviceCaps,
@@ -48,7 +52,6 @@ pub struct Device {
     pub memory: vk::PhysicalDeviceMemoryProperties,
     pub queue: vk::Queue,
     pub queue_family: u32,
-    pub instance: Arc<super::instance::VulkanInstance>,
     pub timelines: crate::sync::timeline::Timelines<ash::Device>,
     pub capabilities: DeviceCapabilities,
     /// 创建时实际启用的设备扩展名（`vkCreateDevice` 的 `ppEnabledExtensionNames`）。
@@ -57,18 +60,18 @@ pub struct Device {
     /// 配置入口创建时保留的类别映射；直接提供 VkDeviceCreateInfo 的底层入口无此映射。
     pub queue_plan: crate::device::QueuePlan,
     pub allocator_stats: Arc<super::allocator::AllocatorStats>,
-    pub(crate) retirement: Mutex<crate::sync::retire::Retirement<super::graveyard::Doomed>>,
+    pub(crate) retirement: crate::sync::retire::Retirement<super::graveyard::Doomed>,
     pub(crate) idle_waits: AtomicU64,
-
-    /// 原 `device+0xab0`：累计 `vkUpdateDescriptorSets` 调用次数。四个写入点（`lock inc`）：
-    /// 0x1416a26aa（update_persistent_descriptor_set）与 0x1416a56e5 / 0x1416a5ce8 / 0x1416a63f2
-    /// （三个 bind_descriptor_set 单态，每次调用一条 vkUpdateDescriptorSets 后 +1）；初始化为 0
-    /// （0x140bf631d）。全 .text 扫描未找到读取者（`xchg`/`xadd`/`mov r,[dev+0xab0]` 均无），
-    /// 语义按纯统计计数处理；无读取点故不清零。
+    /// Number of `vkUpdateDescriptorSets` calls (statistics only).
     pub descriptor_update_count: AtomicU64,
-    /// 启用子分配时的 gpu-allocator 适配；None 表示每资源一块专用内存。
+    /// gpu-allocator suballocation; `None` means one dedicated allocation per resource.
     #[cfg(feature = "suballocation")]
     pub suballocator: Option<Arc<super::suballoc::SubAllocator>>,
+    /// Loaded once at creation when `VK_KHR_synchronization2` is enabled.
+    pub(crate) synchronization2: Option<ash::khr::synchronization2::Device>,
+    memory_budget_extension: bool,
+    /// Must stay the last field: the instance outlives the logical device.
+    pub instance: Arc<super::instance::VulkanInstance>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -89,6 +92,7 @@ impl Device {
     /// Every public device is constructed in an Arc. Internal caches hold only weak
     /// references; this upgrade is used while an external caller already owns it.
     pub(crate) fn shared(&self) -> Arc<Self> {
+        // Every Device lives in an Arc and `&self` proves an owner exists.
         self.self_ref
             .upgrade()
             .expect("device method called with a live owner")
@@ -119,7 +123,7 @@ impl Device {
     pub fn suballocation_enabled(&self) -> bool {
         false
     }
-    /// 原 runtime descriptor 上限来自该实际 properties2 字段；减32和8192截断由布局规则执行。
+    /// `maxDescriptorSetUpdateAfterBindSampledImages` of the physical device.
     pub fn max_descriptor_set_update_after_bind_sampled_images(&self) -> u32 {
         let mut indexing = vk::PhysicalDeviceDescriptorIndexingProperties::default();
         let mut properties = vk::PhysicalDeviceProperties2::default().push_next(&mut indexing);
@@ -139,7 +143,8 @@ impl Device {
     ) -> crate::Result<Arc<Self>> {
         let queue_family = plan.queues[0].family;
         let allocator_stats = Arc::new(super::allocator::AllocatorStats::default());
-        allocator_stats.set_total_budget(runtime.memory_budget_bytes)?;
+        allocator_stats.set_device_budget(runtime.memory_budget_bytes)?;
+        allocator_stats.set_host_budget(runtime.host_memory_budget_bytes)?;
         // Prepare fallible host metadata before creating a native VkDevice.
         let resources = super::managed::resources::ManagedResources::new(allocator_stats.clone())?;
         unsafe {
@@ -217,6 +222,13 @@ impl Device {
                 .collect()
             };
             let device = instance.instance.create_device(physical, info, None)?;
+            let synchronization2 = enabled_extensions
+                .iter()
+                .any(|name| name == "VK_KHR_synchronization2")
+                .then(|| ash::khr::synchronization2::Device::new(&instance.instance, &device));
+            let memory_budget_extension = enabled_extensions
+                .iter()
+                .any(|name| name == "VK_EXT_memory_budget");
             let queue = device.get_device_queue(queue_family, 0);
             let memory = instance
                 .instance
@@ -247,7 +259,7 @@ impl Device {
                         .position(|physical| {
                             physical.family == queue.family && physical.index == queue.index
                         })
-                        .expect("配置队列都来自同一规划")
+                        .unwrap_or(usize::MAX)
                 });
             }
             #[cfg(feature = "suballocation")]
@@ -295,9 +307,24 @@ impl Device {
                     }
                 }
             }
-            let timelines = crate::sync::timeline::Timelines::new(device.clone(), &semaphores)
-                .expect("队列数已校验且每队列创建一条时间线");
+            let timelines = match crate::sync::timeline::Timelines::new(device.clone(), &semaphores)
+            {
+                Ok(timelines) => timelines,
+                Err(error) => {
+                    for semaphore in semaphores {
+                        device.destroy_semaphore(semaphore, None);
+                    }
+                    #[cfg(feature = "suballocation")]
+                    if let Some(sub) = &suballocator {
+                        sub.shutdown();
+                    }
+                    device.destroy_device(None);
+                    return Err(error);
+                }
+            };
             let properties = instance.instance.get_physical_device_properties(physical);
+            allocator_stats
+                .set_max_native_objects(u64::from(properties.limits.max_memory_allocation_count));
             Ok(Arc::new_cyclic(|weak| Self {
                 self_ref: weak.clone(),
                 properties,
@@ -327,7 +354,14 @@ impl Device {
                 idle_waits: AtomicU64::new(0),
                 #[cfg(feature = "suballocation")]
                 suballocator,
+                synchronization2,
+                memory_budget_extension,
             }))
+            .inspect(|device| {
+                if let Err(error) = device.refresh_memory_budget() {
+                    log::warn!("initial memory budget query failed: {error}");
+                }
+            })
         }
     }
 
@@ -338,23 +372,29 @@ impl Device {
 
 impl Drop for Device {
     fn drop(&mut self) {
-        // 所有拥有的 Vulkan 子对象都持有设备 Arc，因此会先于设备销毁；延迟场在此排空。
-        self.drain_graveyard_for_drop();
-        // 子分配器的内存块必须先于设备销毁释放。
+        // Owned Vulkan children hold a device Arc and are already gone; only
+        // queued retirements and device-owned caches remain.
+        self.drain_retirement_for_drop();
+        // Cached entries only hold weak handles and host metadata tickets.
+        for entry in self.builtin_samplers.get_mut().iter_mut() {
+            entry.take();
+        }
+        // Native memory blocks must be freed before the VkDevice.
         #[cfg(feature = "suballocation")]
-        if let Some(sub) = &self.suballocator {
+        if let Some(sub) = self.suballocator.take() {
             sub.shutdown();
         }
         unsafe {
             for index in 0..self.timelines.queue_count() {
-                let queue = crate::sync::QueueId::new(index).expect("已校验的队列数");
-                self.device.destroy_semaphore(
-                    self.timelines.semaphore(queue).expect("已创建的队列"),
-                    None,
-                );
+                if let Some(semaphore) = crate::sync::QueueId::new(index)
+                    .and_then(|queue| self.timelines.semaphore(queue).ok())
+                {
+                    self.device.destroy_semaphore(semaphore, None);
+                }
             }
             self.device.destroy_device(None);
         }
+        // `instance` is dropped after this body, after the VkDevice.
     }
 }
 
@@ -393,16 +433,15 @@ impl Device {
         &self.properties.limits
     }
 
-    /// 旧候选接口（数值版）：有值取原值，否则保持历史行为返回通用下限 1。
+    /// Minimum subgroup size, or 1 when `VK_EXT_subgroup_size_control` is absent.
     pub fn min_subgroup_size(&self) -> u32 {
         self.min_subgroup_size_option().unwrap_or(1)
     }
-    /// 0x140bf8950：返回物理设备包装内的 `PhysicalDevice`（`*(dev+0x658)+0x10`）；
-    /// 本重建里是裸句柄，包装见 [`Self::physical_device_info`]。
+    /// Raw physical device handle; see [`Self::physical_device_info`].
     pub fn physical_device(&self) -> vk::PhysicalDevice {
         self.physical
     }
-    /// 物理设备包装；由 init 路径经 [`Self::attach_physical_device_info`] 挂接。
+    /// Physical device wrapper attached by [`Self::attach_physical_device_info`].
     pub fn physical_device_info(&self) -> Option<&Arc<super::physical_device::PhysicalDevice>> {
         self.physical_info.get()
     }
@@ -413,25 +452,43 @@ impl Device {
     ) -> Result<(), Arc<super::physical_device::PhysicalDevice>> {
         self.physical_info.set(info)
     }
-    /// 0x140bf8f80：`device+0x1a` 门控（VK_EXT_memory_budget 已启用）→ 尾调 raw-init 的滞回算法
-    /// （0x140c01620，即 `PhysicalDevice::refresh_memory_budget`）；门关则直接返回。
-    /// 未挂接物理设备包装时无法委托，返回 `Ok(None)`。
+    /// Query `VK_EXT_memory_budget` and apply the per-heap budgets to the
+    /// allocator (driver budget minus memory this device did not allocate).
+    /// Call once per frame or maintenance tick. Returns `Ok(None)` when the
+    /// extension is not enabled.
     pub fn refresh_memory_budget(
         &self,
     ) -> super::error::Result<Option<vk::PhysicalDeviceMemoryBudgetPropertiesEXT<'static>>> {
-        if !self.memory_budget_enabled() {
+        if !self.memory_budget_extension {
             return Ok(None);
         }
-        match self.physical_info.get() {
-            Some(physical) => physical.refresh_memory_budget(),
-            None => Ok(None),
+        let mut budget = vk::PhysicalDeviceMemoryBudgetPropertiesEXT::default();
+        let mut properties = vk::PhysicalDeviceMemoryProperties2::default().push_next(&mut budget);
+        unsafe {
+            self.instance
+                .instance
+                .get_physical_device_memory_properties2(self.physical, &mut properties);
         }
+        let heaps = (self.memory.memory_heap_count as usize).min(vk::MAX_MEMORY_HEAPS);
+        let mut snapshot = [(0u64, 0u64); vk::MAX_MEMORY_HEAPS];
+        for (index, entry) in snapshot.iter_mut().enumerate().take(heaps) {
+            *entry = (budget.heap_budget[index], budget.heap_usage[index]);
+        }
+        self.allocator_stats
+            .apply_driver_heap_budgets(&snapshot[..heaps]);
+        let budget = vk::PhysicalDeviceMemoryBudgetPropertiesEXT {
+            heap_budget: budget.heap_budget,
+            heap_usage: budget.heap_usage,
+            ..Default::default()
+        };
+        if let Some(physical) = self.physical_info.get() {
+            physical.publish_memory_budget(&budget);
+        }
+        Ok(Some(budget))
     }
-    /// `+0x1a`：创建时是否启用了 `VK_EXT_memory_budget`。
+    /// Whether `VK_EXT_memory_budget` was enabled at creation.
     pub fn memory_budget_enabled(&self) -> bool {
-        self.enabled_extensions
-            .iter()
-            .any(|e| e == "VK_EXT_memory_budget")
+        self.memory_budget_extension
     }
     pub fn queue_family_index_for(&self, kind: u8) -> crate::Result<u32> {
         match kind {
@@ -448,8 +505,7 @@ impl Device {
     pub fn queue_family_index(&self) -> u32 {
         self.queue_family
     }
-    /// 0x140bf8960：`dev+0x870` 非空才有（`Option<&DebugUtils>`）；本重建以实例是否启用
-    /// `VK_EXT_debug_utils` 为准。
+    /// Debug utils when the instance enabled `VK_EXT_debug_utils`.
     pub fn debug_utils_option(&self) -> Option<super::debug::DebugUtils> {
         self.instance
             .enabled_extensions
@@ -461,26 +517,17 @@ impl Device {
         super::debug::DebugUtils::new(&self.shared().instance.instance, self.shared())
     }
 
-    /// 原 bindless 运行时描述符上限。
+    /// Runtime bindless descriptor limit.
     pub fn max_bindless_descriptor_count(&self) -> u32 {
         self.max_descriptor_set_update_after_bind_sampled_images()
     }
-    /// 本构建无硬件光追；返回 None 表示该路径不可用。
-    pub fn rt(&self) -> Option<()> {
-        None
-    }
-
-    /// 0x140bf8e60：`wait_idle()` → 退役排水（0x1418c0a70）→ 锁提交引擎 → 推进图形/辅助队列时间线
-    /// （0x1418c3300，`vkGetSemaphoreCounterValue`）→ 回收图形 Queue 与每个辅助 Queue 的命令缓冲 → 解锁。
-    /// 原版末尾对全局 parking_lot 哈希表（0x1436308f0）的遍历是 `parking_lot` 解锁慢路径的 `unpark`，
-    /// 属依赖库实现，不复现（见报告 U#8 闭合）。
+    /// Waits for the device to become idle and destroys all completed
+    /// retirements; same as [`Self::wait_idle`].
     pub fn wait_idle_and_recycle_resources(&self) -> crate::Result<()> {
-        self.wait_idle()?;
-        Ok(())
+        self.wait_idle()
     }
-    /// 0x140bef4a0 `create_command_buffer(family, name)`：持池锁，从 `pool[family]` 空闲链 LIFO 取；
-    /// 空则新建（trace 日志 `Allocating a new command buffer`，0x142b15c50）；
-    /// 取得后若启用了 debug_utils 则命名。越界族索引 panic（与原版一致）。
+    /// Allocate a primary command buffer from a new pool for `family` and name
+    /// it when debug utils are enabled.
     pub fn create_command_buffer(
         &self,
         family: u32,
@@ -494,25 +541,6 @@ impl Device {
         }
         Ok(command)
     }
-    /// 回收路径把已完成的命令缓冲压回其族空闲链（`reclaim_command_buffer_resources` 尾段）。
-    ///
-    /// # Safety
-    /// 覆盖该命令缓冲全部提交的时间线必须已完成。
-    pub unsafe fn recycle_command_buffer(
-        &self,
-        command: super::command_buffer::VulkanCommandBuffer,
-    ) -> crate::Result<()> {
-        // Completed allocations are released here. Frame-owned pooling is managed
-        // by the executor, never by a device cache owning Arc<Device>.
-        drop(command);
-        Ok(())
-    }
-    /// 空闲链数量（诊断/测试）。
-    pub fn free_command_buffers(&self, family: u32) -> usize {
-        let _ = family;
-        0
-    }
-
     pub fn create_buffer_impl(
         &self,
         desc: &super::buffer::BufferDesc,
@@ -617,7 +645,7 @@ impl Device {
             .map(|name| available.iter().any(|have| have == name))
             .collect()
     }
-    /// 校验物理设备需求（内存/队列族/特性）；候选只做最基础的堆检查。
+    /// Whether the device-local heaps hold at least `min_device_local_bytes`.
     pub fn validate_physical_device_requirements(&self, min_device_local_bytes: u64) -> bool {
         let memory = unsafe {
             self.instance
@@ -631,7 +659,7 @@ impl Device {
             .sum::<u64>();
         device_local >= min_device_local_bytes
     }
-    /// 全局分配器包装：执行 `body` 并附带分配器统计。候选仅返回统计快照。
+    /// Run `body` with the device allocator statistics.
     pub fn with_global_allocator<R>(
         &self,
         body: impl FnOnce(&super::allocator::AllocatorStats) -> R,
@@ -679,22 +707,6 @@ impl Device {
                 &[],
                 &[],
             )
-        }
-    }
-    /// 等待单个 fence 完成。
-    pub fn wait_submit_done(&self, fence: vk::Fence, timeout: u64) -> crate::Result<()> {
-        unsafe { self.device.wait_for_fences(&[fence], true, timeout) }.map_err(Into::into)
-    }
-    /// 有界等待直到提交完成或超时；返回 true 表示完成。
-    pub fn wait_duration_or_until_submit_done(
-        &self,
-        fence: vk::Fence,
-        timeout: u64,
-    ) -> crate::Result<bool> {
-        match unsafe { self.device.wait_for_fences(&[fence], true, timeout) } {
-            Ok(()) => Ok(true),
-            Err(vk::Result::TIMEOUT) => Ok(false),
-            Err(error) => Err(error.into()),
         }
     }
     /// 在 setup 命令缓冲上录制并同步执行一次回调；结尾自动补全量内存屏障。

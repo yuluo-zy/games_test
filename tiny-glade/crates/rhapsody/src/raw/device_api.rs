@@ -100,6 +100,16 @@ impl Device {
             ));
         }
         let managed = self.create_buffer(desc, name, ())?;
+        // The raw pointer has no flush/invalidate path, so it is only handed
+        // out for host-coherent memory.
+        if !managed
+            .memory_properties()
+            .contains(vk::MemoryPropertyFlags::HOST_COHERENT)
+        {
+            return Err(Error::unsupported(
+                "mapped buffer pointers require HOST_COHERENT memory",
+            ));
+        }
         let mapped = managed
             .persistent_host_ptr()
             .ok_or_else(|| Error::invalid_usage("缓冲内存未映射"))?;
@@ -181,7 +191,7 @@ impl Device {
         self.resources.textures.allocate(texture)
     }
 
-    /// 原方法身份 `Device::bind_pipeline`（free fn 见 `raw::binding`）。
+    /// Method form of [`super::binding`] pipeline binding.
     ///
     /// # Safety
     /// `command_buffer` 必须处于录制状态且属于本设备。
@@ -194,7 +204,7 @@ impl Device {
         unsafe { super::binding::bind_pipeline(&self.shared(), command_buffer, point, pipeline) }
     }
 
-    /// 原方法身份 `Device::bind_descriptor_set`。
+    /// Bind a descriptor set.
     ///
     /// # Safety
     /// 描述符集须与布局兼容，调用者保证其宿主与资源存活至提交完成。
@@ -220,7 +230,7 @@ impl Device {
         }
     }
 
-    /// 原方法身份 `Device::bind_persistent_descriptor_set`。
+    /// Bind a persistent descriptor set.
     ///
     /// # Safety
     /// 同 [`Self::bind_descriptor_set`]。
