@@ -1801,10 +1801,12 @@ impl ExecutionBackend for VulkanGraphBackend {
             )?
         };
         drop(command_refs);
-        let mut dependencies = prepared_states.dependencies();
+        // Declared (planner-bound) accesses carry their first-use stages;
+        // opaque uses inside the commands keep ALL_COMMANDS.
+        let mut dependencies = prepared_states.staged_dependencies();
         dependencies.merge(&self.queue_submission_dependencies()?);
         self.device
-            .add_timeline_waits(queue, &mut capture.batches, &dependencies)?;
+            .add_staged_timeline_waits(queue, &mut capture.batches, &dependencies)?;
         let result = if let Some(lease) = &mut presentation {
             lease.submit(queue, &capture.batches)
         } else {

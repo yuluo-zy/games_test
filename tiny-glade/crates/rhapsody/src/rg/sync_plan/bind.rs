@@ -49,6 +49,14 @@ impl PendingFrontier {
     fn source(self, queue: QueueId) -> AccessScope {
         self.scope[queue.index()].union(self.host)
     }
+    /// Some prerequisite executes on a queue other than `queue`, so it is
+    /// reached through a semaphore wait rather than command order.
+    fn waits_other_queue(&self, queue: QueueId) -> bool {
+        self.points
+            .iter()
+            .enumerate()
+            .any(|(index, point)| point.is_some() && index != queue.index())
+    }
     fn add(&mut self, queue: QueueId, scope: AccessScope, batch: usize) {
         self.scope[queue.index()] = self.scope[queue.index()].union(scope);
         self.points[queue.index()] = Some(DependencyRef::Batch(batch));
@@ -528,11 +536,19 @@ impl SynchronizationPlanner {
             if changes {
                 self.wait_frontier(current.readers, batch, access.scope.stages, domain)?;
             }
-            let source = current.writer.source(queue).union(if changes {
+            let mut source = current.writer.source(queue).union(if changes {
                 current.readers.source(queue)
             } else {
                 AccessScope::EMPTY
             });
+            // A layout transition after a cross-queue semaphore wait must chain
+            // with that wait, which blocks exactly `access.scope.stages`.
+            if changes_layout
+                && (current.writer.waits_other_queue(queue)
+                    || changes && current.readers.waits_other_queue(queue))
+            {
+                source.stages |= access.scope.stages;
+            }
             if !source.is_empty() || changes_layout {
                 self.push_transition(BoundTransition {
                     batch,
@@ -600,7 +616,12 @@ impl SynchronizationPlanner {
             phase,
             resource: current.resource,
             range: transfer.range,
-            source: AccessScope::EMPTY,
+            // Execution-only source: the acquire (and its layout transition)
+            // chains with the release wait at the same stages.
+            source: AccessScope {
+                stages: transfer.destination.stages,
+                ..AccessScope::EMPTY
+            },
             destination: transfer.destination,
             old_layout: transfer.old_layout,
             new_layout: transfer.new_layout,
@@ -902,6 +923,89 @@ mod tests {
         assert!(
             matches!(planner.bound().patches()[1].resolve(|_|Some(real)).unwrap().action,PatchAction::Acquire {release_point,..} if release_point==real)
         );
+    }
+    #[test]
+    fn cross_queue_layout_transition_and_acquire_chain_with_their_precise_waits() {
+        let image = NativeRange::Image {
+            aspects: vk::ImageAspectFlags::COLOR.as_raw(),
+            base_mip: 0,
+            mip_count: 1,
+            base_layer: 0,
+            layer_count: 1,
+        };
+        let fragment = AccessScope {
+            stages: vk::PipelineStageFlags::FRAGMENT_SHADER,
+            access: vk::AccessFlags::SHADER_READ,
+            write: false,
+        };
+        let writes = RangeUse {
+            resource: 0,
+            range: image,
+            scope: AccessScope {
+                stages: vk::PipelineStageFlags::COMPUTE_SHADER,
+                access: vk::AccessFlags::SHADER_WRITE,
+                write: true,
+            },
+            layout: vk::ImageLayout::GENERAL,
+            access_code: 0x34,
+        };
+        let reads = RangeUse {
+            scope: fragment,
+            layout: vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+            access_code: 0x25,
+            ..writes
+        };
+        for (sharing, acquire) in [
+            (
+                ResourceSharing::Concurrent(crate::resource::QueueFamilies::new(&[0, 1]).unwrap()),
+                false,
+            ),
+            (ResourceSharing::Exclusive, true),
+        ] {
+            let mut program = program(image, vec![writes, reads], &[queue(1, 1), queue(0, 0)]);
+            program.resources[0].sharing = sharing;
+            let mut planner =
+                SynchronizationPlanner::new(Arc::new(AllocatorStats::default()), Default::default())
+                    .unwrap();
+            planner
+                .add_initial(
+                    0,
+                    &[RangeCell {
+                        range: image,
+                        state: NativeState::default(),
+                    }],
+                )
+                .unwrap();
+            planner
+                .bind(&program, |family| Ok(queue(family, family)))
+                .unwrap();
+            let bound = planner.bound();
+            let wait = bound
+                .waits()
+                .iter()
+                .find(|wait| wait.batch == 1)
+                .expect("cross-queue wait");
+            assert_eq!(wait.stages, vk::PipelineStageFlags::FRAGMENT_SHADER);
+            let consumer = bound
+                .transitions()
+                .iter()
+                .filter(|transition| transition.batch == 1)
+                .collect::<Vec<_>>();
+            assert!(!consumer.is_empty());
+            assert_eq!(
+                consumer
+                    .iter()
+                    .any(|transition| matches!(transition.kind, BarrierKind::Acquire { .. })),
+                acquire
+            );
+            for transition in consumer {
+                // Every barrier on the consumer queue chains with the wait.
+                assert!(
+                    transition.source.stages.contains(wait.stages),
+                    "{transition:?} does not chain with {wait:?}"
+                );
+            }
+        }
     }
     #[test]
     fn released_recovery_first_acquires_the_original_destination_then_moves_again() {

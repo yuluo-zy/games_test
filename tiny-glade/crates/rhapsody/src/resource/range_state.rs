@@ -6,7 +6,7 @@ use crate::{
     Error, Result,
     device::BudgetCategory,
     raw::allocator::{AllocatorStats, CpuMemoryReservation},
-    sync::{MAX_QUEUES, QueueId, SyncPoint, SyncSet},
+    sync::{MAX_QUEUES, QueueId, StagedDependencies, SyncPoint, SyncSet},
 };
 use ash::vk;
 use smallvec::SmallVec;
@@ -250,7 +250,7 @@ pub struct RangeStateTable {
     budget: Arc<AllocatorStats>,
     prepared_queue: Option<QueueId>,
     prepared_host: bool,
-    prepared_dependencies: SyncSet,
+    prepared_dependencies: StagedDependencies,
 }
 impl std::fmt::Debug for RangeStateTable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -291,7 +291,7 @@ impl RangeStateTable {
             budget,
             prepared_queue: None,
             prepared_host: false,
-            prepared_dependencies: SyncSet::EMPTY,
+            prepared_dependencies: StagedDependencies::EMPTY,
         };
         result.cells.values.push(RangeCell {
             range: domain,
@@ -346,7 +346,7 @@ impl RangeStateTable {
     pub fn cancel_prepared(&mut self) {
         self.prepared_queue = None;
         self.prepared_host = false;
-        self.prepared_dependencies = SyncSet::EMPTY;
+        self.prepared_dependencies = StagedDependencies::EMPTY;
         self.scratch.values.clear();
     }
     /// Ordered patches may include accesses followed by a release in the same
@@ -396,20 +396,30 @@ impl RangeStateTable {
                 }
                 let mut changed = current;
                 changed.cell.range = overlap;
-                let dependencies = match patch.action {
-                    PatchAction::Access { scope, layout, .. } => current.cell.state.dependencies(
-                        scope.write
-                            || !current.cell.state.layout_known
-                            || current.cell.state.layout != layout,
+                // Declared accesses know the first stage that touches the
+                // range on this queue; opaque uses and releases do not.
+                let (dependencies, stages) = match patch.action {
+                    PatchAction::Access { scope, layout, .. } => (
+                        current.cell.state.dependencies(
+                            scope.write
+                                || !current.cell.state.layout_known
+                                || current.cell.state.layout != layout,
+                        ),
+                        scope.stages,
                     ),
-                    PatchAction::Release(_) | PatchAction::Unknown { .. } => {
-                        current.cell.state.dependencies(true)
-                    }
-                    PatchAction::Acquire { release_point, .. } => {
-                        SyncSet::from_point(release_point)
-                    }
+                    PatchAction::Release(_) | PatchAction::Unknown { .. } => (
+                        current.cell.state.dependencies(true),
+                        vk::PipelineStageFlags::ALL_COMMANDS,
+                    ),
+                    PatchAction::Acquire {
+                        release_point,
+                        transfer,
+                    } => (
+                        SyncSet::from_point(release_point),
+                        transfer.destination.stages,
+                    ),
                 };
-                self.prepared_dependencies.merge(&dependencies);
+                self.prepared_dependencies.merge_set(&dependencies, stages);
                 apply_preview(&mut changed, patch.action, self.sharing, queue, family)?;
                 changed.cell.state.revision = current
                     .cell
@@ -454,6 +464,12 @@ impl RangeStateTable {
     /// batch under its gate. Pending accesses in the same native batch introduce
     /// no invented point and rely on the emitted command-order dependencies.
     pub fn prepared_dependencies(&self) -> SyncSet {
+        self.prepared_dependencies.points()
+    }
+    /// The same prerequisites with, per source queue, the destination stages
+    /// of the declared accesses that need them (`ALL_COMMANDS` for opaque
+    /// uses and releases).
+    pub fn prepared_staged_dependencies(&self) -> StagedDependencies {
         self.prepared_dependencies
     }
     /// Admit all splits before a mapped operation. Caller holds the same gate

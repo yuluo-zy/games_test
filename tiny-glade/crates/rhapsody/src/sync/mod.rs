@@ -95,6 +95,73 @@ impl From<SyncPoint> for SyncSet {
     }
 }
 
+/// Cross-queue prerequisites with the destination stages that first need
+/// each queue's value. A wait built from this set blocks only those stages;
+/// prerequisites without a proven consumer stage carry `ALL_COMMANDS`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct StagedDependencies {
+    points: SyncSet,
+    stages: [ash::vk::PipelineStageFlags; MAX_QUEUES],
+}
+
+impl StagedDependencies {
+    pub const EMPTY: Self = Self {
+        points: SyncSet::EMPTY,
+        stages: [ash::vk::PipelineStageFlags::empty(); MAX_QUEUES],
+    };
+    /// Conservative wrapper for prerequisites whose consumer stage is unknown.
+    pub fn opaque(points: SyncSet) -> Self {
+        let mut result = Self::EMPTY;
+        result.merge_set(&points, ash::vk::PipelineStageFlags::ALL_COMMANDS);
+        result
+    }
+    /// Add one prerequisite needed from `stages` onward. Empty stages mean no
+    /// proven consumer stage and are widened to `ALL_COMMANDS`.
+    pub fn insert(&mut self, point: SyncPoint, stages: ash::vk::PipelineStageFlags) {
+        if point.value == 0 {
+            return;
+        }
+        self.points.insert(point);
+        self.stages[point.queue.index()] |= if stages.is_empty() {
+            ash::vk::PipelineStageFlags::ALL_COMMANDS
+        } else {
+            stages
+        };
+    }
+    pub fn merge_set(&mut self, points: &SyncSet, stages: ash::vk::PipelineStageFlags) {
+        for point in points.points() {
+            self.insert(point, stages);
+        }
+    }
+    pub fn merge(&mut self, other: &Self) {
+        self.points.merge(&other.points);
+        for (mine, theirs) in self.stages.iter_mut().zip(other.stages) {
+            *mine |= theirs;
+        }
+    }
+    pub fn points(&self) -> SyncSet {
+        self.points
+    }
+    /// Destination stages that must wait for `queue`'s value (empty when the
+    /// set has no prerequisite on that queue).
+    pub fn stages(&self, queue: QueueId) -> ash::vk::PipelineStageFlags {
+        if self.points.get(queue) == 0 {
+            ash::vk::PipelineStageFlags::empty()
+        } else {
+            self.stages[queue.index()]
+        }
+    }
+    pub fn is_empty(&self) -> bool {
+        self.points.is_empty()
+    }
+    /// `(point, stages)` per source queue.
+    pub fn waits(&self) -> impl Iterator<Item = (SyncPoint, ash::vk::PipelineStageFlags)> + '_ {
+        self.points
+            .points()
+            .map(|point| (point, self.stages[point.queue.index()]))
+    }
+}
+
 /// 某一时刻各队列已完成的时间线值。只会单调增大。
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct CompletedValues {

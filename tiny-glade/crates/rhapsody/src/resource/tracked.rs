@@ -281,12 +281,12 @@ impl SyncCell {
             .expect("prepared native state")
             .publish(point);
     }
-    pub(crate) fn prepared_range_dependencies(&self) -> SyncSet {
+    pub(crate) fn prepared_range_staged_dependencies(&self) -> crate::sync::StagedDependencies {
         self.native_state
             .lock()
             .as_ref()
             .expect("prepared native state")
-            .prepared_dependencies()
+            .prepared_staged_dependencies()
     }
     /// Caller holds this resource's submission gate and has prepared a prefix.
     pub(crate) fn with_prepared_range_state<R>(

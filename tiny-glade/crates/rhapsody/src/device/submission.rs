@@ -64,11 +64,29 @@ impl Device {
         self.timelines.is_device_lost()
     }
 
+    /// Conservative variant for prerequisites without a proven consumer
+    /// stage: every cross-queue wait blocks `ALL_COMMANDS`.
     pub(crate) fn add_timeline_waits(
         &self,
         queue: vk::Queue,
         prepared: &mut [PreparedSubmit],
         dependencies: &crate::sync::SyncSet,
+    ) -> Result<()> {
+        self.add_staged_timeline_waits(
+            queue,
+            prepared,
+            &crate::sync::StagedDependencies::opaque(*dependencies),
+        )
+    }
+
+    /// Add one timeline wait per foreign queue to the first batch. Each wait
+    /// blocks exactly the stages recorded for that queue in `dependencies`
+    /// (merged with any wait the caller already placed on that semaphore).
+    pub(crate) fn add_staged_timeline_waits(
+        &self,
+        queue: vk::Queue,
+        prepared: &mut [PreparedSubmit],
+        dependencies: &crate::sync::StagedDependencies,
     ) -> Result<()> {
         let queue_id = self.queue_id(queue)?;
         let Some(first) = prepared.first_mut() else {
@@ -80,45 +98,9 @@ impl Device {
                 ))
             };
         };
-        for point in dependencies
-            .points()
-            .filter(|point| point.queue != queue_id)
-        {
-            let semaphore = self.timelines.semaphore(point.queue)?;
-            if let Some(index) = first
-                .wait_semaphores
-                .iter()
-                .position(|&wait| wait == semaphore)
-            {
-                let value = first
-                    .wait_values
-                    .get_mut(index)
-                    .ok_or_else(|| Error::invalid_usage("invalid wait value array"))?;
-                *value = (*value).max(point.value);
-                let stage = first
-                    .wait_stages
-                    .get_mut(index)
-                    .ok_or_else(|| Error::invalid_usage("invalid wait stage array"))?;
-                *stage |= vk::PipelineStageFlags::ALL_COMMANDS;
-            } else {
-                first
-                    .wait_semaphores
-                    .try_reserve(1)
-                    .map_err(|_| Error::OutOfHostMemory)?;
-                first
-                    .wait_values
-                    .try_reserve(1)
-                    .map_err(|_| Error::OutOfHostMemory)?;
-                first
-                    .wait_stages
-                    .try_reserve(1)
-                    .map_err(|_| Error::OutOfHostMemory)?;
-                first.wait_semaphores.push(semaphore);
-                first.wait_values.push(point.value);
-                first.wait_stages.push(vk::PipelineStageFlags::ALL_COMMANDS);
-            }
-        }
-        Ok(())
+        apply_staged_waits(first, queue_id, dependencies, |queue| {
+            self.timelines.semaphore(queue)
+        })
     }
 
     /// 提交前检查设备时间线等待值；成功后返回同一设备完成域中的真实完成点。
@@ -466,7 +448,229 @@ impl Device {
     }
 }
 
+/// Waits for every foreign queue in `dependencies` at its recorded stages.
+pub(crate) fn apply_staged_waits(
+    batch: &mut PreparedSubmit,
+    queue: QueueId,
+    dependencies: &crate::sync::StagedDependencies,
+    semaphore: impl Fn(QueueId) -> Result<vk::Semaphore>,
+) -> Result<()> {
+    for (point, stages) in dependencies.waits() {
+        if point.queue != queue {
+            merge_timeline_wait(batch, semaphore(point.queue)?, point.value, stages)?;
+        }
+    }
+    Ok(())
+}
+
+/// Merge one timeline wait into a prepared batch: an existing wait on the
+/// same semaphore keeps the larger value and the union of both stage masks.
+pub(crate) fn merge_timeline_wait(
+    batch: &mut PreparedSubmit,
+    semaphore: vk::Semaphore,
+    value: u64,
+    stages: vk::PipelineStageFlags,
+) -> Result<()> {
+    let stages = if stages.is_empty() {
+        vk::PipelineStageFlags::ALL_COMMANDS
+    } else {
+        stages
+    };
+    if let Some(index) = batch
+        .wait_semaphores
+        .iter()
+        .position(|&wait| wait == semaphore)
+    {
+        let old = batch
+            .wait_values
+            .get_mut(index)
+            .ok_or_else(|| Error::invalid_usage("invalid wait value array"))?;
+        *old = (*old).max(value);
+        let stage = batch
+            .wait_stages
+            .get_mut(index)
+            .ok_or_else(|| Error::invalid_usage("invalid wait stage array"))?;
+        *stage |= stages;
+        return Ok(());
+    }
+    batch
+        .wait_semaphores
+        .try_reserve(1)
+        .map_err(|_| Error::OutOfHostMemory)?;
+    batch
+        .wait_values
+        .try_reserve(1)
+        .map_err(|_| Error::OutOfHostMemory)?;
+    batch
+        .wait_stages
+        .try_reserve(1)
+        .map_err(|_| Error::OutOfHostMemory)?;
+    batch.wait_semaphores.push(semaphore);
+    batch.wait_values.push(value);
+    batch.wait_stages.push(stages);
+    Ok(())
+}
+
 fn native_count(count: usize) -> Result<u32> {
     u32::try_from(count)
         .map_err(|_| Error::invalid_usage("Vulkan submission array exceeds u32 count"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::raw::allocator::AllocatorStats;
+    use crate::resource::{
+        OwnershipRange, ResourceSharing,
+        range_state::{
+            AccessScope, Frontier, NativeState, PatchAction, RangeStateConfig, RangeStateTable,
+            StatePatch,
+        },
+    };
+    use crate::sync::StagedDependencies;
+    use std::sync::Arc;
+
+    fn q(index: usize) -> QueueId {
+        QueueId::new(index).unwrap()
+    }
+    fn semaphore(queue: QueueId) -> Result<vk::Semaphore> {
+        Ok(ash::vk::Handle::from_raw(0x100 + queue.index() as u64))
+    }
+    /// A buffer last written on queue 1 at value 5, now used on queue 0.
+    fn written_on_other_queue() -> RangeStateTable {
+        let mut writer = Frontier::EMPTY;
+        writer.points.insert(SyncPoint {
+            queue: q(1),
+            value: 5,
+        });
+        writer.add(
+            q(1),
+            AccessScope {
+                stages: vk::PipelineStageFlags::COMPUTE_SHADER,
+                access: vk::AccessFlags::SHADER_WRITE,
+                write: true,
+            },
+        );
+        RangeStateTable::new(
+            OwnershipRange::Buffer {
+                offset: 0,
+                size: 64,
+            },
+            ResourceSharing::Exclusive,
+            NativeState {
+                writer,
+                ..NativeState::default()
+            },
+            RangeStateConfig::default(),
+            Arc::new(AllocatorStats::default()),
+        )
+        .unwrap()
+    }
+    fn waits_for(action: PatchAction, planner: Option<vk::PipelineStageFlags>) -> PreparedSubmit {
+        let mut table = written_on_other_queue();
+        table
+            .prepare(
+                &[StatePatch {
+                    range: OwnershipRange::Buffer {
+                        offset: 0,
+                        size: 64,
+                    },
+                    expected_revision: if matches!(action, PatchAction::Unknown { .. }) {
+                        u64::MAX
+                    } else {
+                        0
+                    },
+                    action,
+                }],
+                q(0),
+                0,
+            )
+            .unwrap();
+        let mut dependencies = table.prepared_staged_dependencies();
+        if let Some(stages) = planner {
+            dependencies.insert(
+                SyncPoint {
+                    queue: q(1),
+                    value: 5,
+                },
+                stages,
+            );
+        }
+        let mut batch = PreparedSubmit::default();
+        apply_staged_waits(&mut batch, q(0), &dependencies, semaphore).unwrap();
+        batch
+    }
+
+    #[test]
+    fn planner_proven_cross_queue_dependency_waits_only_first_use_stages() {
+        let batch = waits_for(
+            PatchAction::Access {
+                scope: AccessScope {
+                    stages: vk::PipelineStageFlags::FRAGMENT_SHADER,
+                    access: vk::AccessFlags::SHADER_READ,
+                    write: false,
+                },
+                layout: vk::ImageLayout::UNDEFINED,
+                queue: q(0),
+                family: 0,
+            },
+            Some(vk::PipelineStageFlags::FRAGMENT_SHADER),
+        );
+        assert_eq!(
+            batch.wait_semaphores.as_slice(),
+            &[semaphore(q(1)).unwrap()]
+        );
+        assert_eq!(batch.wait_values.as_slice(), &[5]);
+        assert_eq!(
+            batch.wait_stages.as_slice(),
+            &[vk::PipelineStageFlags::FRAGMENT_SHADER]
+        );
+    }
+
+    #[test]
+    fn opaque_cross_queue_dependency_waits_all_commands() {
+        let batch = waits_for(
+            PatchAction::Unknown {
+                queue: q(0),
+                family: 0,
+            },
+            None,
+        );
+        assert_eq!(batch.wait_values.as_slice(), &[5]);
+        assert_eq!(
+            batch.wait_stages.as_slice(),
+            &[vk::PipelineStageFlags::ALL_COMMANDS]
+        );
+        // An opaque use widens a precise planner wait on the same semaphore.
+        let batch = waits_for(
+            PatchAction::Unknown {
+                queue: q(0),
+                family: 0,
+            },
+            Some(vk::PipelineStageFlags::FRAGMENT_SHADER),
+        );
+        assert_eq!(batch.wait_semaphores.len(), 1);
+        assert!(batch.wait_stages[0].contains(vk::PipelineStageFlags::ALL_COMMANDS));
+    }
+
+    #[test]
+    fn same_queue_dependencies_add_no_wait_and_opaque_wrapper_is_conservative() {
+        let mut dependencies = StagedDependencies::EMPTY;
+        dependencies.insert(
+            SyncPoint {
+                queue: q(0),
+                value: 3,
+            },
+            vk::PipelineStageFlags::TRANSFER,
+        );
+        let mut batch = PreparedSubmit::default();
+        apply_staged_waits(&mut batch, q(0), &dependencies, semaphore).unwrap();
+        assert!(batch.wait_semaphores.is_empty());
+        let opaque = StagedDependencies::opaque(crate::sync::SyncSet::from_point(SyncPoint {
+            queue: q(2),
+            value: 1,
+        }));
+        assert_eq!(opaque.stages(q(2)), vk::PipelineStageFlags::ALL_COMMANDS);
+        assert!(opaque.stages(q(1)).is_empty());
+    }
 }
