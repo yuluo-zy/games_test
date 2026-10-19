@@ -2,9 +2,11 @@
 //! state-derived barrier batches and queue-family ownership transfers.
 use crate::{
     Error, Result,
-    device::Device,
+    device::{AcquireTarget, Device, PendingAcquire},
     raw::{
-        barrier::{BarrierDispatch, SynchronizationScope},
+        barrier::{
+            OwnershipHalf, SynchronizationScope, ownership_buffer_barrier, ownership_image_barrier,
+        },
         buffer::Buffer,
         command_buffer::{VulkanCommandBuffer, VulkanCommandPool},
         device::DeviceQueue,
@@ -153,6 +155,9 @@ pub(super) fn record_buffer_writes(
                 let owned = match current.state.owner {
                     RangeOwner::Unclaimed => true,
                     RangeOwner::Owned(owner) => owner == family,
+                    RangeOwner::Released { .. } if !sharing.is_concurrent() => {
+                        return Err(crate::resource::range_state::released_range_error());
+                    }
                     RangeOwner::Released { .. } => false,
                 };
                 if !sharing.allows_family(family) || !sharing.is_concurrent() && !owned {
@@ -208,7 +213,7 @@ pub(super) fn record_buffer_writes(
                 .size(size),
         );
     }
-    issue(command, &scope)
+    scope.issue_into(command)
 }
 
 /// Make TRANSFER writes of `ranges` visible to [`BUFFER_CONSUMERS`] on the same
@@ -231,19 +236,12 @@ pub(super) fn record_buffer_visibility(
                 .size(size),
         );
     }
-    issue(command, &scope)
+    scope.issue_into(command)
 }
 
 /// Identity of release/acquire pairs created by transfer uploads. Kept in a
 /// namespace disjoint from per-graph pair numbering.
 static NEXT_PAIR: AtomicU64 = AtomicU64::new(1 << 62);
-
-/// A release recorded on the transfer queue, to be acquired on graphics.
-#[derive(Clone, Copy, Debug)]
-pub(super) struct PendingAcquire {
-    pub transfer: RangeTransfer,
-    pub revision: u64,
-}
 
 pub(super) fn buffer_transfer(
     range: OwnershipRange,
@@ -262,34 +260,13 @@ pub(super) fn buffer_transfer(
     }
 }
 
-fn ownership_barrier(
-    buffer: vk::Buffer,
-    transfer: &RangeTransfer,
-    source_access: vk::AccessFlags,
-    destination_access: vk::AccessFlags,
-) -> Result<vk::BufferMemoryBarrier<'static>> {
-    let OwnershipRange::Buffer { offset, size } = transfer.range else {
-        return Err(Error::invalid_usage(
-            "buffer ownership transfer of an image range",
-        ));
-    };
-    Ok(vk::BufferMemoryBarrier::default()
-        .src_access_mask(source_access)
-        .dst_access_mask(destination_access)
-        .src_queue_family_index(transfer.source_family)
-        .dst_queue_family_index(transfer.destination_family)
-        .buffer(buffer)
-        .offset(offset)
-        .size(size))
-}
-
 /// Record release patches and one release barrier batch for written pieces.
 pub(super) fn record_buffer_release(
     command: &mut VulkanCommandBuffer,
     destination: &Arc<Buffer>,
     pieces: &[WrittenPiece],
     destination_family: u32,
-    released: &mut Vec<PendingAcquire>,
+    released: &mut Vec<RangeTransfer>,
 ) -> Result<()> {
     let source_family = command.pool.family;
     let mut scope =
@@ -308,18 +285,14 @@ pub(super) fn record_buffer_release(
                 action: PatchAction::Release(transfer),
             },
         )?;
-        scope.buffers.push(ownership_barrier(
+        scope.buffers.push(ownership_buffer_barrier(
             destination.handle,
             &transfer,
-            TRANSFER_WRITE.access,
-            vk::AccessFlags::empty(),
+            OwnershipHalf::Release,
         )?);
-        released.push(PendingAcquire {
-            transfer,
-            revision: piece.revision + 1,
-        });
+        released.push(transfer);
     }
-    issue(command, &scope)
+    scope.issue_into(command)
 }
 
 /// Ownership transfer of a whole uploaded image piece. The release performs the
@@ -342,46 +315,26 @@ pub(super) fn image_transfer(
     }
 }
 
-/// The release (`release == true`) or acquire half of an image ownership
-/// transfer. Both halves carry identical layouts, families and subresources.
-pub(super) fn image_ownership_barrier(
-    image: vk::Image,
-    transfer: &RangeTransfer,
-    release: bool,
-) -> Result<vk::ImageMemoryBarrier<'static>> {
-    let OwnershipRange::Image {
-        aspects,
-        base_mip,
-        mip_count,
-        base_layer,
-        layer_count,
-    } = transfer.range
-    else {
-        return Err(Error::invalid_usage(
-            "image ownership transfer of a buffer range",
-        ));
-    };
-    let (source_access, destination_access) = if release {
-        (transfer.source.access, vk::AccessFlags::empty())
-    } else {
-        (vk::AccessFlags::empty(), transfer.destination.access)
-    };
-    Ok(vk::ImageMemoryBarrier::default()
-        .src_access_mask(source_access)
-        .dst_access_mask(destination_access)
-        .old_layout(transfer.old_layout)
-        .new_layout(transfer.new_layout)
-        .src_queue_family_index(transfer.source_family)
-        .dst_queue_family_index(transfer.destination_family)
-        .image(image)
-        .subresource_range(
-            vk::ImageSubresourceRange::default()
-                .aspect_mask(vk::ImageAspectFlags::from_raw(aspects))
-                .base_mip_level(base_mip)
-                .level_count(mip_count)
-                .base_array_layer(base_layer)
-                .layer_count(layer_count),
-        ))
+/// Register the acquires matching `released` (all recorded by the command
+/// submitted at `release_point`) on the device: they are recorded by the next
+/// render-graph batch or graphics-queue transfer command on the destination
+/// family, or by [`super::TransferManager::flush_acquires`]. Room must have
+/// been reserved with `Device::reserve_pending_acquires` before the release
+/// was submitted.
+pub(super) fn queue_acquires(
+    device: &Device,
+    target: &AcquireTarget,
+    released: &[RangeTransfer],
+    release_point: SyncPoint,
+) -> Result<()> {
+    for transfer in released {
+        device.queue_pending_acquire(PendingAcquire {
+            target: target.clone(),
+            transfer: *transfer,
+            release_point,
+        })?;
+    }
+    Ok(())
 }
 
 /// Release patches and barriers for every written image piece. Pure: the
@@ -393,7 +346,7 @@ pub(super) fn image_release_program(
     destination_family: u32,
     patches: &mut Vec<StatePatch>,
     scope: &mut SynchronizationScope,
-    released: &mut Vec<PendingAcquire>,
+    released: &mut Vec<RangeTransfer>,
 ) -> Result<()> {
     patches.clear();
     released.clear();
@@ -414,92 +367,14 @@ pub(super) fn image_release_program(
             expected_revision: piece.revision,
             action: PatchAction::Release(transfer),
         });
-        scope
-            .images
-            .push(image_ownership_barrier(image, &transfer, true)?);
-        released.push(PendingAcquire {
-            transfer,
-            revision: piece.revision + 1,
-        });
-    }
-    Ok(())
-}
-
-/// Acquire patches and barriers matching [`image_release_program`].
-pub(super) fn image_acquire_program(
-    image: vk::Image,
-    acquires: &[PendingAcquire],
-    release_point: SyncPoint,
-    patches: &mut Vec<StatePatch>,
-    scope: &mut SynchronizationScope,
-) -> Result<()> {
-    patches.clear();
-    patches
-        .try_reserve(acquires.len())
-        .map_err(|_| Error::OutOfHostMemory)?;
-    scope
-        .images
-        .try_reserve(acquires.len())
-        .map_err(|_| Error::OutOfHostMemory)?;
-    for acquire in acquires {
-        patches.push(StatePatch {
-            range: acquire.transfer.range,
-            expected_revision: acquire.revision,
-            action: PatchAction::Acquire {
-                transfer: acquire.transfer,
-                release_point,
-            },
-        });
-        scope
-            .images
-            .push(image_ownership_barrier(image, &acquire.transfer, false)?);
-    }
-    Ok(())
-}
-
-/// Record the matching acquires (one barrier batch) on the graphics queue.
-pub(super) fn record_buffer_acquire(
-    command: &mut VulkanCommandBuffer,
-    destination: &Arc<Buffer>,
-    acquires: &[PendingAcquire],
-    release_point: SyncPoint,
-) -> Result<()> {
-    let mut scope =
-        SynchronizationScope::new(vk::PipelineStageFlags::empty(), BUFFER_CONSUMERS.stages);
-    for acquire in acquires {
-        command.record_state_patch(
-            destination.last_use.clone(),
-            StatePatch {
-                range: acquire.transfer.range,
-                expected_revision: acquire.revision,
-                action: PatchAction::Acquire {
-                    transfer: acquire.transfer,
-                    release_point,
-                },
-            },
-        )?;
-        scope.buffers.push(ownership_barrier(
-            destination.handle,
-            &acquire.transfer,
-            vk::AccessFlags::empty(),
-            acquire.transfer.destination.access,
+        scope.images.push(ownership_image_barrier(
+            image,
+            &transfer,
+            OwnershipHalf::Release,
         )?);
+        released.push(transfer);
     }
-    // SAFETY: the acquire touches exactly the patched ranges.
-    unsafe {
-        command.retain_recorded(destination.clone())?;
-    }
-    issue(command, &scope)
-}
-
-pub(super) fn issue(command: &VulkanCommandBuffer, scope: &SynchronizationScope) -> Result<()> {
-    if scope.is_empty() {
-        return Ok(());
-    }
-    let device = &command.pool.device;
-    // SAFETY: the command is recording on this device and every barrier
-    // resource is retained by it through completion.
-    unsafe { BarrierDispatch::new(device).issue(device, command.handle, scope) }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -538,29 +413,21 @@ mod tests {
         assert_ne!(first.pair, second.pair);
         assert!(first.pair >= 1 << 62);
         crate::resource::range_state::validate_transfer(first).unwrap();
-        let release = ownership_barrier(
-            vk::Buffer::null(),
-            &first,
-            TRANSFER_WRITE.access,
-            vk::AccessFlags::empty(),
-        )
-        .unwrap();
-        let acquire = ownership_barrier(
-            vk::Buffer::null(),
-            &first,
-            vk::AccessFlags::empty(),
-            first.destination.access,
-        )
-        .unwrap();
+        let release =
+            ownership_buffer_barrier(vk::Buffer::null(), &first, OwnershipHalf::Release).unwrap();
+        let acquire =
+            ownership_buffer_barrier(vk::Buffer::null(), &first, OwnershipHalf::Acquire).unwrap();
         for barrier in [release, acquire] {
             assert_eq!(barrier.src_queue_family_index, 2);
             assert_eq!(barrier.dst_queue_family_index, 0);
             assert_eq!((barrier.offset, barrier.size), (64, 128));
         }
+        assert_eq!(release.src_access_mask, TRANSFER_WRITE.access);
         assert_eq!(release.dst_access_mask, vk::AccessFlags::empty());
         assert_eq!(acquire.src_access_mask, vk::AccessFlags::empty());
+        assert_eq!(acquire.dst_access_mask, first.destination.access);
         assert!(
-            ownership_barrier(
+            ownership_buffer_barrier(
                 vk::Buffer::null(),
                 &RangeTransfer {
                     range: OwnershipRange::Image {
@@ -572,8 +439,7 @@ mod tests {
                     },
                     ..first
                 },
-                vk::AccessFlags::empty(),
-                vk::AccessFlags::empty()
+                OwnershipHalf::Release
             )
             .is_err()
         );
@@ -623,23 +489,9 @@ mod tests {
             .unwrap();
             assert_eq!(patches.len(), 1);
             assert_eq!(patches[0].expected_revision, 4);
-            assert!(matches!(patches[0].action, PatchAction::Release(t) if t.range == range));
-            assert_eq!(released[0].revision, 5);
-            let point = SyncPoint {
-                queue: QueueId::new(1).unwrap(),
-                value: 9,
-            };
-            let mut acquire = SynchronizationScope::new(
-                vk::PipelineStageFlags::empty(),
-                vk::PipelineStageFlags::FRAGMENT_SHADER,
-            );
-            image_acquire_program(image, &released, point, &mut patches, &mut acquire).unwrap();
-            assert!(matches!(
-                patches[0].action,
-                PatchAction::Acquire { transfer, release_point }
-                    if transfer == released[0].transfer && release_point == point
-            ));
-            let (r, a) = (release.images[0], acquire.images[0]);
+            assert!(matches!(patches[0].action, PatchAction::Release(t) if t == released[0]));
+            let a = ownership_image_barrier(image, &released[0], OwnershipHalf::Acquire).unwrap();
+            let r = release.images[0];
             assert_eq!((r.old_layout, r.new_layout), (a.old_layout, a.new_layout));
             assert_eq!(r.old_layout, vk::ImageLayout::TRANSFER_DST_OPTIMAL);
             assert_eq!(r.new_layout, vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL);
@@ -670,10 +522,10 @@ mod tests {
             assert_eq!(a.dst_access_mask, vk::AccessFlags::SHADER_READ);
         }
         assert!(
-            image_ownership_barrier(
+            ownership_image_barrier(
                 image,
                 &buffer_transfer(OwnershipRange::Buffer { offset: 0, size: 4 }, 1, 0),
-                true
+                OwnershipHalf::Release
             )
             .is_err()
         );
@@ -690,6 +542,26 @@ mod tests {
         cell.with_range_state(NativeState::default(), stats, |_| Ok(()))
             .unwrap();
         cell
+    }
+
+    /// The acquire patches the device records for `released` pieces whose
+    /// revision before the release was `revision`.
+    fn acquire_patches(
+        released: &[RangeTransfer],
+        revision: u64,
+        release_point: SyncPoint,
+    ) -> Vec<StatePatch> {
+        released
+            .iter()
+            .map(|transfer| StatePatch {
+                range: transfer.range,
+                expected_revision: revision + 1,
+                action: PatchAction::Acquire {
+                    transfer: *transfer,
+                    release_point,
+                },
+            })
+            .collect()
     }
 
     fn upload_access(range: OwnershipRange, queue: QueueId, family: u32) -> StatePatch {
@@ -742,19 +614,7 @@ mod tests {
         }
         // Graphics cannot touch the released range before the acquire.
         assert!(cell.validate_queue_range(graphics_family, range).is_err());
-        let mut acquire_patches = Vec::new();
-        let mut acquire_scope = SynchronizationScope::new(
-            vk::PipelineStageFlags::empty(),
-            vk::PipelineStageFlags::FRAGMENT_SHADER,
-        );
-        image_acquire_program(
-            vk::Image::null(),
-            &released,
-            release_point,
-            &mut acquire_patches,
-            &mut acquire_scope,
-        )
-        .unwrap();
+        let acquire_patches = acquire_patches(&released, 1, release_point);
         let acquire_point = SyncPoint {
             queue: graphics_queue,
             value: 8,
@@ -764,11 +624,13 @@ mod tests {
             cell.prepare_range_state(&acquire_patches, graphics_queue, graphics_family, &stats)
                 .unwrap();
             assert!(
-                cell.prepared_range_staged_dependencies().points().is_reached(&{
-                    let mut completed = crate::sync::CompletedValues::default();
-                    completed.raise(transfer_queue, 3);
-                    completed
-                }),
+                cell.prepared_range_staged_dependencies()
+                    .points()
+                    .is_reached(&{
+                        let mut completed = crate::sync::CompletedValues::default();
+                        completed.raise(transfer_queue, 3);
+                        completed
+                    }),
                 "the acquire waits exactly for the release point"
             );
             cell.publish_range_state(acquire_point);
@@ -826,22 +688,14 @@ mod tests {
         .unwrap();
         // Graphics may use the image directly; a stale acquire is rejected.
         assert!(cell.validate_queue_range(0, range).is_ok());
-        let mut acquire_patches = Vec::new();
-        let mut acquire_scope = SynchronizationScope::new(
-            vk::PipelineStageFlags::empty(),
-            vk::PipelineStageFlags::FRAGMENT_SHADER,
-        );
-        image_acquire_program(
-            vk::Image::null(),
+        let acquire_patches = acquire_patches(
             &released,
+            1,
             SyncPoint {
                 queue: transfer_queue,
                 value: 1,
             },
-            &mut acquire_patches,
-            &mut acquire_scope,
-        )
-        .unwrap();
+        );
         let _gate = cell.lock_submission();
         assert!(
             cell.prepare_range_state(&acquire_patches, QueueId::new(0).unwrap(), 0, &stats)

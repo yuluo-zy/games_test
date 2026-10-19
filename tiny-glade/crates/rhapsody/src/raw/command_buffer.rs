@@ -837,12 +837,12 @@ impl VulkanCommandBuffer {
             .as_slice()
             .iter()
             .filter(|entry| Arc::ptr_eq(&entry.cell, cell));
-        if entries.clone().any(|entry| {
-            matches!(
-                entry.patch.action,
-                PatchAction::Release(_) | PatchAction::Acquire { .. }
-            )
-        }) {
+        // An acquire recorded earlier in this command is a valid predecessor
+        // (the preview applies it like submission does); a release is not.
+        if entries
+            .clone()
+            .any(|entry| matches!(entry.patch.action, PatchAction::Release(_)))
+        {
             return Err(crate::Error::unsupported(
                 "copy-helper preview cannot expose an unsubmitted ownership transfer",
             ));

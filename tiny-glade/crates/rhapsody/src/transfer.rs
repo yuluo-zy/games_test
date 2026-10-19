@@ -2,10 +2,14 @@
 //!
 //! Uploads run on the device's planned transfer queue when it is a distinct
 //! queue and the destination's ownership allows it; otherwise on the graphics
-//! queue. A transfer queue of another family releases the written ranges and a
-//! graphics-queue acquire publishes them, so every consumer sees the data as
-//! graphics-owned and orders after the returned point. Barriers come from the
-//! tracked resource state as one batch per command.
+//! queue. A transfer queue of another family releases the written ranges and
+//! registers their acquires on the device (`Device::queue_pending_acquire`):
+//! the next render-graph batch, graphics-queue transfer command or
+//! [`TransferManager::flush_acquires`] on the graphics family records them all
+//! in one barrier batch, so N uploads cost no extra submit when a graph frame
+//! follows. Until then the tracked range state stays released, and any use
+//! that has not recorded the acquire fails validation instead of racing.
+//! Barriers come from the tracked resource state as one batch per command.
 //!
 //! Each slot owns a separate persistently mapped allocation. Host writes cannot overlap a
 //! previous GPU use, and a readback slot cannot be recycled while its ticket
@@ -32,7 +36,7 @@ pub use queue::{
     UploadCancellation, UploadFailure, UploadKey, UploadOptions, UploadPriority, UploadQueueConfig,
     UploadQueueStats, UploadStatus,
 };
-use record::{PendingAcquire, QueueTarget, UploadRoute, WrittenPiece};
+use record::{QueueTarget, UploadRoute, WrittenPiece};
 use staging::{ReadbackLease, Staging};
 use std::sync::Arc;
 pub use texture::TextureUpload;
@@ -93,9 +97,6 @@ pub struct TransferManager {
     transfer: Option<QueueTarget>,
     /// Image copies the transfer family may record.
     transfer_images: TransferImageSupport,
-    /// Ownership acquires whose release already executed on the transfer
-    /// queue but whose graphics submit failed; retried before new work.
-    pending_acquires: Vec<AcquireBatch>,
     config: TransferConfig,
     /// Staging slots; registered as an evictable cache with the device.
     staging: Arc<parking_lot::Mutex<Staging>>,
@@ -105,6 +106,14 @@ pub struct TransferManager {
 }
 
 /// A successful GPU upload; its completion point is never published on failure.
+///
+/// `point` is the submit point of the copy on its upload queue. When the copy
+/// ran on a transfer queue of another family, it is the release point: the
+/// graphics-family acquire is still pending on the device and is recorded by
+/// the next render-graph batch (or graph import), the next graphics-queue
+/// command of the transfer manager, or [`TransferManager::flush_acquires`].
+/// Waiting `point` therefore guarantees the bytes were written, while GPU
+/// consumers are ordered by the tracked range state.
 #[derive(Clone)]
 pub struct UploadTicket {
     device: Arc<Device>,
@@ -121,8 +130,9 @@ impl UploadTicket {
     pub fn is_complete(&self) -> crate::Result<bool> {
         Ok(SyncSet::from_point(self.point).is_reached(&self.device.poll()?))
     }
-    /// Bind through the normal graph import validation. The queue is shared with
-    /// the upload, so its normal submission order and barriers carry the result.
+    /// Bind through the normal graph import validation. The graph plans its
+    /// accesses from the buffer's tracked range state, acquiring a range
+    /// still released by a cross-family upload itself.
     pub fn import_buffer(
         &self,
         graph: &mut crate::rg::graph::RenderGraph,
@@ -296,7 +306,6 @@ impl TransferManager {
             graphics,
             transfer,
             transfer_images,
-            pending_acquires: Vec::new(),
             config,
             scratch,
             staging,
@@ -324,7 +333,9 @@ impl TransferManager {
                 "transfer buffer device, usage or range is invalid",
             ));
         }
-        buffer.last_use.validate_queue_range(
+        // A range released to the graphics family is acquired by the
+        // graphics command that next touches it.
+        buffer.last_use.validate_incoming_queue_range(
             self.device.queue_family,
             crate::resource::OwnershipRange::Buffer {
                 offset,
@@ -402,7 +413,6 @@ impl TransferManager {
     /// Under device-budget pressure only High jobs can be submitted. This never
     /// waits for a device/queue or for an unrelated request.
     pub fn flush_uploads(&mut self, max_submits: usize) -> crate::Result<UploadFlush> {
-        self.retry_pending_acquires()?;
         let mut result = UploadFlush::default();
         if self.device.allocator_stats.budget_action() != crate::device::BudgetAction::None {
             self.queued.trim_idle();
@@ -431,7 +441,6 @@ impl TransferManager {
                 staging: &mut staging,
                 stalls: &mut self.capacity_stalls,
                 scratch: &mut self.scratch,
-                pending_acquires: &mut self.pending_acquires,
             };
             match uploader.submit(
                 &job.target,
@@ -482,7 +491,6 @@ impl TransferManager {
         if self.queued.has_target(&destination) {
             return Err(crate::Error::Timeout);
         }
-        self.retry_pending_acquires()?;
         let point = self.with_uploader(|uploader| {
             uploader.submit(&destination, std::iter::once((offset, bytes)))
         })?;
@@ -531,7 +539,7 @@ impl TransferManager {
             ));
         }
         for range in ranges.iter().filter(|range| !range.is_empty()) {
-            destination.last_use.validate_queue_range(
+            destination.last_use.validate_incoming_queue_range(
                 self.device.queue_family,
                 crate::resource::OwnershipRange::Buffer {
                     offset: destination_offset + range.start as u64,
@@ -612,10 +620,10 @@ impl TransferManager {
     /// queue that can write every texture now (see `texture_route`): a queue
     /// of the graphics family or a concurrent image orders consumers through
     /// the timeline semaphore only; an exclusive image of another family is
-    /// released there (including the final layout transition) and acquired on
-    /// the graphics queue. Otherwise it runs on the graphics queue. Never
-    /// waits; the returned point (the acquire point when ownership moved) is
-    /// at or after every texture's recorded last use.
+    /// released there (including the final layout transition) and its acquire
+    /// is queued on the device (see [`UploadTicket`]). Otherwise it runs on
+    /// the graphics queue. Never waits; the returned point is the batch's
+    /// submit point (the release point when ownership moved).
     pub fn upload_textures(&mut self, uploads: &[TextureUpload<'_>]) -> crate::Result<SyncPoint> {
         if self.device.is_device_lost() {
             return Err(crate::Error::DeviceLost);
@@ -629,7 +637,6 @@ impl TransferManager {
                 "texture uploads must be nonempty and belong to this device",
             ));
         }
-        self.retry_pending_acquires()?;
         let mut plans = Vec::new();
         plans
             .try_reserve_exact(uploads.len())
@@ -687,32 +694,25 @@ impl TransferManager {
             .as_ref()
             .filter(|transfer| texture_route(transfer.family(), self.transfer_images, uploads));
         let point = match transfer {
-            None => {
-                record_graphics_textures(&self.graphics, uploads, &plans, &bases, &staging, total)?
-            }
-            Some(transfer) => {
-                let (release, acquire) = record_transfer_textures(
-                    &self.graphics,
-                    transfer,
-                    uploads,
-                    &plans,
-                    &bases,
-                    &staging,
-                    total,
-                )?;
-                if let Some(index) = slot {
-                    slots.uploads[index].last_use = SyncSet::from_point(release);
-                }
-                return match acquire {
-                    None => Ok(release),
-                    Some((command, batches)) => acquire_or_defer(
-                        &self.graphics,
-                        command,
-                        batches,
-                        &mut self.pending_acquires,
-                    ),
-                };
-            }
+            None => record_graphics_textures(
+                &self.device,
+                &self.graphics,
+                uploads,
+                &plans,
+                &bases,
+                &staging,
+                total,
+            )?,
+            Some(transfer) => record_transfer_textures(
+                &self.device,
+                &self.graphics,
+                transfer,
+                uploads,
+                &plans,
+                &bases,
+                &staging,
+                total,
+            )?,
         };
         if let Some(index) = slot {
             slots.uploads[index].last_use = SyncSet::from_point(point);
@@ -720,21 +720,29 @@ impl TransferManager {
         Ok(point)
     }
 
-    /// Ownership acquires waiting for a graphics submit after an earlier
-    /// failure. Their resources cannot be used until these complete.
+    /// Ownership acquires queued on the device for the graphics family (by
+    /// this manager or any other producer).
     pub fn pending_acquire_count(&self) -> usize {
-        self.pending_acquires.len()
+        self.device.pending_acquire_count(self.graphics.family())
     }
 
-    /// Resubmit acquires left pending by a failed graphics submit. On failure
-    /// they stay pending and the error is returned.
-    pub fn retry_pending_acquires(&mut self) -> crate::Result<Option<SyncPoint>> {
-        if self.pending_acquires.is_empty() {
+    /// Record every pending graphics-family acquire into one command and
+    /// submit it (at most one submit; none when nothing is pending). For
+    /// callers whose consumers are not a render graph, e.g. raw command
+    /// buffers. On failure the acquires stay pending.
+    pub fn flush_acquires(&mut self) -> crate::Result<Option<SyncPoint>> {
+        if self.pending_acquire_count() == 0 {
             return Ok(None);
         }
-        let command = self.graphics.pool.allocate()?;
-        let batches = std::mem::take(&mut self.pending_acquires);
-        acquire_or_defer(&self.graphics, command, batches, &mut self.pending_acquires).map(Some)
+        let mut command = self.graphics.pool.allocate()?;
+        let recorded = RecordedAcquires::begin(&self.device, &mut command)?;
+        if recorded.is_empty() {
+            return Ok(None);
+        }
+        command.end()?;
+        let point = command.submit_to(self.graphics.queue, &[], &[])?.point;
+        recorded.submitted();
+        Ok(Some(point))
     }
 
     pub fn read_buffer(
@@ -771,7 +779,7 @@ impl TransferManager {
             command.retain_opaque_buffer_range(readback.clone(), 0, size)?;
             command.retain_recorded(source.clone())?;
         }
-        command.begin()?;
+        let recorded = RecordedAcquires::begin(&self.device, &mut command)?;
         crate::raw::resource_access::buffer_access_borrowed(
             &mut command,
             &source,
@@ -811,9 +819,10 @@ impl TransferManager {
                 .offset(0)
                 .size(size),
         );
-        record::issue(&command, &host)?;
+        host.issue_into(&command)?;
         command.end()?;
         let submitted = command.submit_to(target.queue, &[], &[])?;
+        recorded.submitted();
         // Publication happens only after a successful submit; a failed submit
         // leaves the private lease untouched.
         Ok(ReadbackTicket {
@@ -912,7 +921,6 @@ struct Uploader<'a> {
     staging: &'a mut Staging,
     stalls: &'a mut u64,
     scratch: &'a mut Scratch,
-    pending_acquires: &'a mut Vec<AcquireBatch>,
 }
 impl TransferManager {
     fn with_uploader<R>(&mut self, run: impl FnOnce(&mut Uploader<'_>) -> R) -> R {
@@ -924,7 +932,6 @@ impl TransferManager {
             staging: &mut staging,
             stalls: &mut self.capacity_stalls,
             scratch: &mut self.scratch,
-            pending_acquires: &mut self.pending_acquires,
         })
     }
 }
@@ -1028,18 +1035,13 @@ impl Uploader<'_> {
             _ => self.transfer.expect("route has a transfer queue"),
         };
         let mut command = target.pool.allocate()?;
-        // Allocate the acquire before the release is submitted, so that host
-        // allocation failure cannot strand a released range.
-        let acquire = if route == UploadRoute::OwnershipTransfer {
-            Some(self.graphics.pool.allocate()?)
-        } else {
-            None
-        };
         // SAFETY: the copy reads exactly the packed staging span.
         unsafe {
             command.retain_opaque_buffer_range(buffer.clone(), 0, packed)?;
         }
-        command.begin()?;
+        // Acquires still pending for this family (e.g. of an earlier upload
+        // to the same destination) ride in this command.
+        let recorded = RecordedAcquires::begin(self.device, &mut command)?;
         let mut pieces: Vec<WrittenPiece> = Vec::new();
         record::record_buffer_writes(&mut command, destination, target, ranges, &mut pieces)?;
         // SAFETY: recording; staging and destination are retained.
@@ -1051,7 +1053,7 @@ impl Uploader<'_> {
                 copies,
             );
         }
-        let mut released: Vec<PendingAcquire> = Vec::new();
+        let mut released = Vec::new();
         match route {
             UploadRoute::Graphics => {
                 record::record_buffer_visibility(&command, destination.handle, ranges)?
@@ -1068,23 +1070,21 @@ impl Uploader<'_> {
             )?,
         }
         command.end()?;
+        // Reserve the registrations before the release is submitted, so that
+        // host allocation failure cannot strand a released range.
+        self.device.reserve_pending_acquires(released.len())?;
         // A failed submit publishes no state: nothing was released and no
         // acquire becomes pending.
         let submitted = command.submit_to(target.queue, &[], &[])?;
+        recorded.submitted();
         self.staging.uploads[index].last_use = SyncSet::from_point(submitted.point);
-        let Some(acquire) = acquire else {
-            return Ok(submitted.point);
-        };
-        let mut batches = Vec::new();
-        batches
-            .try_reserve_exact(1)
-            .map_err(|_| crate::Error::OutOfHostMemory)?;
-        batches.push(AcquireBatch {
-            target: AcquireTarget::Buffer(destination.clone()),
-            acquires: released,
-            release_point: submitted.point,
-        });
-        acquire_or_defer(self.graphics, acquire, batches, self.pending_acquires)
+        record::queue_acquires(
+            self.device,
+            &crate::device::AcquireTarget::buffer(destination),
+            &released,
+            submitted.point,
+        )?;
+        Ok(submitted.point)
     }
 }
 
@@ -1160,6 +1160,7 @@ fn texture_publish(
 }
 
 fn record_graphics_textures(
+    device: &Device,
     target: &QueueTarget,
     uploads: &[TextureUpload<'_>],
     plans: &[texture::TexturePlan],
@@ -1176,7 +1177,7 @@ fn record_graphics_textures(
             command.retain_recorded(upload.texture.clone())?;
         }
     }
-    command.begin()?;
+    let recorded = RecordedAcquires::begin(device, &mut command)?;
     for ((upload, plan), base) in uploads.iter().zip(plans).zip(bases) {
         texture::record_texture_copies(
             &mut command,
@@ -1189,18 +1190,17 @@ fn record_graphics_textures(
         )?;
     }
     command.end()?;
-    Ok(command.submit_to(target.queue, &[], &[])?.point)
+    let point = command.submit_to(target.queue, &[], &[])?.point;
+    recorded.submitted();
+    Ok(point)
 }
 
-type PreparedAcquire = (
-    crate::raw::command_buffer::VulkanCommandBuffer,
-    Vec<AcquireBatch>,
-);
-
-/// Record and submit a texture batch on the transfer queue. Returns the
-/// transfer submit point and, when ownership moved, the preallocated acquire
-/// command with its batches. A failed submit publishes no release.
+/// Record and submit a texture batch on the transfer queue and queue the
+/// acquires of every released texture on the device. Returns the transfer
+/// submit point. A failed submit publishes no release.
+#[allow(clippy::too_many_arguments)]
 fn record_transfer_textures(
+    device: &Device,
     graphics: &QueueTarget,
     transfer: &QueueTarget,
     uploads: &[TextureUpload<'_>],
@@ -1208,24 +1208,9 @@ fn record_transfer_textures(
     bases: &[u64],
     staging: &Arc<Buffer>,
     total: u64,
-) -> crate::Result<(SyncPoint, Option<PreparedAcquire>)> {
-    let publish: Vec<TransferPublish> = uploads
-        .iter()
-        .map(|upload| {
-            texture_publish(
-                graphics.family(),
-                transfer.family(),
-                upload.texture.sharing().is_concurrent(),
-            )
-        })
-        .collect();
+) -> crate::Result<SyncPoint> {
     let mut command = transfer.pool.allocate()?;
-    let acquire = if publish.iter().all(|p| *p == TransferPublish::Local) {
-        None
-    } else {
-        Some(graphics.pool.allocate()?)
-    };
-    let mut released: Vec<Vec<PendingAcquire>> = Vec::new();
+    let mut released: Vec<Vec<crate::resource::range_state::RangeTransfer>> = Vec::new();
     released
         .try_reserve_exact(uploads.len())
         .map_err(|_| crate::Error::OutOfHostMemory)?;
@@ -1233,8 +1218,13 @@ fn record_transfer_textures(
     unsafe {
         command.retain_opaque_buffer_range(staging.clone(), 0, total)?;
     }
-    command.begin()?;
-    for (((upload, plan), base), publish) in uploads.iter().zip(plans).zip(bases).zip(&publish) {
+    let recorded = RecordedAcquires::begin(device, &mut command)?;
+    for ((upload, plan), base) in uploads.iter().zip(plans).zip(bases) {
+        let publish = texture_publish(
+            graphics.family(),
+            transfer.family(),
+            upload.texture.sharing().is_concurrent(),
+        );
         let mut pieces = Vec::new();
         texture::record_texture_copies_on_transfer(
             &mut command,
@@ -1244,95 +1234,59 @@ fn record_transfer_textures(
             *base,
             plan,
             upload.old_layout,
-            *publish,
+            publish,
             &mut pieces,
         )?;
         released.push(pieces);
     }
     command.end()?;
+    device.reserve_pending_acquires(released.iter().map(Vec::len).sum())?;
     let point = command.submit_to(transfer.queue, &[], &[])?.point;
-    let Some(acquire) = acquire else {
-        return Ok((point, None));
-    };
-    let mut batches = Vec::new();
-    batches
-        .try_reserve_exact(uploads.len())
-        .map_err(|_| crate::Error::OutOfHostMemory)?;
-    for (upload, acquires) in uploads.iter().zip(released) {
-        if !acquires.is_empty() {
-            batches.push(AcquireBatch {
-                target: AcquireTarget::Texture(upload.texture.clone()),
-                acquires,
-                release_point: point,
-            });
-        }
+    recorded.submitted();
+    for (upload, pieces) in uploads.iter().zip(&released) {
+        record::queue_acquires(
+            device,
+            &crate::device::AcquireTarget::image(upload.texture),
+            pieces,
+            point,
+        )?;
     }
-    Ok((point, Some((acquire, batches))))
+    Ok(point)
 }
 
-/// A resource released on the transfer queue that the graphics queue must
-/// acquire before any other use.
-enum AcquireTarget {
-    Buffer(Arc<Buffer>),
-    Texture(Arc<crate::raw::texture::Texture>),
+/// Pending acquires recorded at the start of one of this manager's commands.
+/// They go back to the device queue unless that command is submitted.
+struct RecordedAcquires<'a> {
+    device: &'a Device,
+    drained: crate::device::DrainedAcquires,
 }
-struct AcquireBatch {
-    target: AcquireTarget,
-    acquires: Vec<PendingAcquire>,
-    release_point: SyncPoint,
-}
-
-/// Submit the acquires; on failure keep every batch pending for a retry.
-fn acquire_or_defer(
-    graphics: &QueueTarget,
-    command: crate::raw::command_buffer::VulkanCommandBuffer,
-    batches: Vec<AcquireBatch>,
-    pending: &mut Vec<AcquireBatch>,
-) -> crate::Result<SyncPoint> {
-    match submit_acquires(graphics, command, &batches) {
-        Ok(point) => Ok(point),
-        Err(error) => {
-            if !error.is_device_lost() {
-                // Keeping the batches is required for correctness: the
-                // released ranges are unusable until acquired.
-                pending
-                    .try_reserve(batches.len())
-                    .map_err(|_| crate::Error::OutOfHostMemory)?;
-                pending.extend(batches);
-            }
-            Err(error)
-        }
+impl<'a> RecordedAcquires<'a> {
+    /// Begin `command` and record every acquire pending for its family.
+    fn begin(
+        device: &'a Device,
+        command: &mut crate::raw::command_buffer::VulkanCommandBuffer,
+    ) -> crate::Result<Self> {
+        command.begin()?;
+        Ok(Self {
+            device,
+            drained: device.record_pending_acquires(command)?,
+        })
+    }
+    fn is_empty(&self) -> bool {
+        self.drained.is_empty()
+    }
+    /// The command was submitted: its acquires are no longer pending.
+    fn submitted(mut self) {
+        self.drained.clear();
     }
 }
-
-/// The sole submission point of cross-family ownership acquires created by
-/// transfer uploads: one graphics-queue command with one barrier batch per
-/// resource, waiting on the release points through the tracked state.
-/// Replace this body to coalesce the acquires into the next graphics submit.
-fn submit_acquires(
-    graphics: &QueueTarget,
-    mut command: crate::raw::command_buffer::VulkanCommandBuffer,
-    batches: &[AcquireBatch],
-) -> crate::Result<SyncPoint> {
-    command.begin()?;
-    for batch in batches {
-        match &batch.target {
-            AcquireTarget::Buffer(buffer) => record::record_buffer_acquire(
-                &mut command,
-                buffer,
-                &batch.acquires,
-                batch.release_point,
-            )?,
-            AcquireTarget::Texture(texture) => texture::record_texture_acquire(
-                &mut command,
-                texture,
-                &batch.acquires,
-                batch.release_point,
-            )?,
+impl Drop for RecordedAcquires<'_> {
+    fn drop(&mut self) {
+        if !self.drained.is_empty() {
+            self.device
+                .requeue_pending_acquires(std::mem::take(&mut self.drained));
         }
     }
-    command.end()?;
-    Ok(command.submit_to(graphics.queue, &[], &[])?.point)
 }
 
 #[cfg(test)]
@@ -1372,5 +1326,179 @@ mod tests {
                 destination_family: 0
             }
         );
+    }
+
+    mod cross_family {
+        //! Cross-family uploads are simulated: the release state is recorded
+        //! on the resource as if family 1 had submitted it, then registered
+        //! through the same path as a transfer-queue upload.
+        use super::*;
+        use crate::device::pending_acquire::tests::{owner, released_buffer_with};
+        use crate::resource::range_state::{RangeOwner, RangeTransfer};
+        use crate::sync::QueueId;
+
+        const GRAPHICS: QueueId = match QueueId::new(0) {
+            Some(queue) => queue,
+            None => unreachable!(),
+        };
+
+        fn device() -> Option<Arc<Device>> {
+            crate::device::Device::new_headless(&crate::device::DeviceConfig::headless()).ok()
+        }
+        fn submitted(device: &Device) -> u64 {
+            device.timelines.submitted(GRAPHICS).unwrap()
+        }
+        /// `count` buffers released to the graphics family whose acquires are
+        /// queued by the transfer registration path.
+        fn released_uploads(
+            device: &Arc<Device>,
+            count: usize,
+            usage: vk::BufferUsageFlags,
+        ) -> Vec<(Arc<Buffer>, RangeTransfer)> {
+            // SAFETY: an empty batch only signals the device timeline.
+            let release = unsafe { device.submit(GRAPHICS, &[]) }.unwrap();
+            let uploads: Vec<_> = (0..count)
+                .map(|_| released_buffer_with(device, release, usage))
+                .collect();
+            device.reserve_pending_acquires(count).unwrap();
+            for (buffer, transfer) in &uploads {
+                record::queue_acquires(
+                    device,
+                    &crate::device::AcquireTarget::buffer(buffer),
+                    std::slice::from_ref(transfer),
+                    release,
+                )
+                .unwrap();
+            }
+            uploads
+        }
+
+        #[test]
+        fn uploads_followed_by_a_graph_frame_cost_no_extra_submit() {
+            use crate::raw::buffer::BufferDesc;
+            use crate::rg::vulkan::{
+                AccessTable, ResourceSpec, VulkanGraphBackend, VulkanGraphSession,
+            };
+            let Some(device) = device() else {
+                eprintln!("SKIP: no Vulkan device");
+                return;
+            };
+            let uploads = released_uploads(&device, 8, vk::BufferUsageFlags::TRANSFER_DST);
+            let manager = TransferManager::new(device.clone(), TransferConfig::default()).unwrap();
+            assert_eq!(manager.pending_acquire_count(), 8);
+            let backend = VulkanGraphBackend::new(device.clone(), AccessTable::original()).unwrap();
+            let mut session = VulkanGraphSession::new(backend);
+            let before = submitted(&device);
+            let mut graph = session.begin_frame().unwrap();
+            let scratch = session
+                .backend
+                .declare(
+                    &mut graph,
+                    "scratch",
+                    ResourceSpec::Buffer(BufferDesc::new_gpu_only(
+                        64,
+                        vk::BufferUsageFlags::TRANSFER_DST,
+                    )),
+                )
+                .unwrap();
+            let mut pass = graph.add_pass("fill").with_side_effect();
+            pass.add_resource_access(scratch, 0x34, 0).unwrap();
+            pass.render(|_| true);
+            let receipt = session.execute_frame(graph.build()).unwrap();
+            assert_eq!(receipt.stats.coalesced_acquires, 8);
+            assert_eq!(
+                submitted(&device) - before,
+                u64::from(receipt.stats.batches),
+                "the acquires ride in the graph's own submits"
+            );
+            assert_eq!(manager.pending_acquire_count(), 0);
+            session.wait_submits_done(10_000_000_000).unwrap();
+            for (buffer, _) in &uploads {
+                assert_eq!(owner(buffer), RangeOwner::Owned(0));
+            }
+        }
+
+        #[test]
+        fn flush_acquires_records_every_pending_acquire_in_one_submit() {
+            let Some(device) = device() else {
+                eprintln!("SKIP: no Vulkan device");
+                return;
+            };
+            let mut manager =
+                TransferManager::new(device.clone(), TransferConfig::default()).unwrap();
+            assert_eq!(manager.flush_acquires().unwrap(), None);
+            let uploads = released_uploads(&device, 6, vk::BufferUsageFlags::TRANSFER_DST);
+            // A raw command touching a released range fails validation
+            // instead of racing the release.
+            let pool =
+                crate::raw::command_buffer::VulkanCommandPool::new_for_family(device.clone(), 0)
+                    .unwrap();
+            let mut command = pool.allocate().unwrap();
+            command.begin().unwrap();
+            let error = crate::raw::resource_access::buffer_access_borrowed(
+                &mut command,
+                &uploads[0].0,
+                GRAPHICS,
+                0,
+                256,
+                AccessScope {
+                    stages: vk::PipelineStageFlags::TRANSFER,
+                    access: vk::AccessFlags::TRANSFER_READ,
+                    write: false,
+                },
+            )
+            .unwrap_err();
+            assert!(error.to_string().contains("pending acquire"), "{error}");
+            drop(command);
+            let before = submitted(&device);
+            let point = manager
+                .flush_acquires()
+                .unwrap()
+                .expect("one acquire submit");
+            assert_eq!(submitted(&device), before + 1);
+            assert_eq!(manager.pending_acquire_count(), 0);
+            manager
+                .device
+                .wait(&SyncSet::from_point(point), 10_000_000_000)
+                .unwrap();
+            for (buffer, _) in &uploads {
+                assert_eq!(owner(buffer), RangeOwner::Owned(0));
+            }
+            assert_eq!(manager.flush_acquires().unwrap(), None);
+            assert_eq!(submitted(&device), before + 1);
+        }
+
+        #[test]
+        fn graphics_transfer_commands_record_pending_acquires_first() {
+            let Some(device) = device() else {
+                eprintln!("SKIP: no Vulkan device");
+                return;
+            };
+            let usage = vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::TRANSFER_SRC;
+            let uploads = released_uploads(&device, 2, usage);
+            let mut manager =
+                TransferManager::new(device.clone(), TransferConfig::default()).unwrap();
+            // An upload to a still-released destination acquires it (and
+            // every other pending acquire) in its own command.
+            let ticket = manager
+                .upload_buffer(uploads[0].0.clone(), 16, &[7; 32])
+                .unwrap();
+            assert_eq!(manager.pending_acquire_count(), 0);
+            ticket.wait(10_000_000_000).unwrap();
+            for (buffer, _) in &uploads {
+                assert_eq!(owner(buffer), RangeOwner::Owned(0));
+            }
+            let readback = manager.read_buffer(uploads[0].0.clone(), 16, 32).unwrap();
+            readback.wait(10_000_000_000).unwrap();
+            let mut bytes = [0; 32];
+            assert_eq!(readback.try_read(&mut bytes).unwrap(), Some(32));
+            assert_eq!(bytes, [7; 32]);
+            // A readback of a released source acquires it the same way.
+            let released = released_uploads(&device, 1, usage);
+            let readback = manager.read_buffer(released[0].0.clone(), 0, 16).unwrap();
+            assert_eq!(manager.pending_acquire_count(), 0);
+            readback.wait(10_000_000_000).unwrap();
+            assert_eq!(owner(&released[0].0), RangeOwner::Owned(0));
+        }
     }
 }

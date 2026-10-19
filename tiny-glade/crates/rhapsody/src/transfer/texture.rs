@@ -1,8 +1,6 @@
 //! Texture uploads: validation, staging layout and command recording shared by
 //! [`super::TransferManager::upload_textures`] and the `raw::setup` helpers.
-use super::record::{
-    PendingAcquire, WrittenPiece, image_acquire_program, image_release_program, issue,
-};
+use super::record::{WrittenPiece, image_release_program};
 use crate::{
     Error, Result,
     raw::{
@@ -288,7 +286,7 @@ pub(super) fn transfer_accessible(texture: &Texture, family: u32) -> bool {
 
 /// Record one texture's upload on a dedicated transfer queue. With
 /// [`TransferPublish::Release`] the written pieces are released (their
-/// pending acquires are appended to `released`); the image ends up
+/// transfers are appended to `released`); the image ends up
 /// SHADER_READ_ONLY_OPTIMAL once acquired.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn record_texture_copies_on_transfer(
@@ -300,7 +298,7 @@ pub(super) fn record_texture_copies_on_transfer(
     plan: &TexturePlan,
     old_layout: vk::ImageLayout,
     publish: TransferPublish,
-    released: &mut Vec<PendingAcquire>,
+    released: &mut Vec<crate::resource::range_state::RangeTransfer>,
 ) -> Result<()> {
     // SAFETY: every memory access below has a native state patch.
     unsafe {
@@ -366,35 +364,7 @@ pub(super) fn record_texture_copies_on_transfer(
         .try_reserve(local.len())
         .map_err(|_| Error::OutOfHostMemory)?;
     released.extend(local);
-    issue(command, &scope)
-}
-
-/// Record the acquires matching [`record_texture_copies_on_transfer`]'s
-/// release on the consuming queue (one barrier batch).
-pub(super) fn record_texture_acquire(
-    command: &mut VulkanCommandBuffer,
-    texture: &Arc<Texture>,
-    acquires: &[PendingAcquire],
-    release_point: crate::sync::SyncPoint,
-) -> Result<()> {
-    let mut patches = Vec::new();
-    let mut scope =
-        SynchronizationScope::new(vk::PipelineStageFlags::empty(), IMAGE_CONSUMERS.stages);
-    image_acquire_program(
-        texture.handle,
-        acquires,
-        release_point,
-        &mut patches,
-        &mut scope,
-    )?;
-    for patch in patches {
-        command.record_state_patch(texture.last_use.clone(), patch)?;
-    }
-    // SAFETY: the acquire touches exactly the patched ranges.
-    unsafe {
-        command.retain_recorded(texture.clone())?;
-    }
-    issue(command, &scope)
+    scope.issue_into(command)
 }
 
 #[cfg(test)]

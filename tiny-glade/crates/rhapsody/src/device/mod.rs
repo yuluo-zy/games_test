@@ -4,7 +4,7 @@ pub mod caps;
 pub mod generation;
 pub mod init;
 pub mod memory;
-mod pending_acquire;
+pub(crate) mod pending_acquire;
 pub mod policy;
 pub mod queue_config;
 pub mod reclamation;

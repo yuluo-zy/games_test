@@ -147,6 +147,23 @@ impl SyncCell {
         family: u32,
         range: OwnershipRange,
     ) -> crate::Result<()> {
+        self.validate_family_range(family, range, false)
+    }
+    /// As [`Self::validate_queue_range`], also accepting ranges released to
+    /// `family` whose acquire the caller records before its own access.
+    pub(crate) fn validate_incoming_queue_range(
+        &self,
+        family: u32,
+        range: OwnershipRange,
+    ) -> crate::Result<()> {
+        self.validate_family_range(family, range, true)
+    }
+    fn validate_family_range(
+        &self,
+        family: u32,
+        range: OwnershipRange,
+        incoming: bool,
+    ) -> crate::Result<()> {
         self.validate_sharing_family(family)?;
         super::range_state::validate_range(range)?;
         if !self
@@ -167,7 +184,9 @@ impl SyncCell {
                     .any(|cell| match cell.state.owner {
                         super::range_state::RangeOwner::Unclaimed => false,
                         super::range_state::RangeOwner::Owned(owner) => owner != family,
-                        super::range_state::RangeOwner::Released { .. } => true,
+                        super::range_state::RangeOwner::Released { transfer, .. } => {
+                            !incoming || transfer.destination_family != family
+                        }
                     })
             })
         {

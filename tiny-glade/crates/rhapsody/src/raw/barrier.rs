@@ -32,6 +32,20 @@ impl SynchronizationScope {
     pub fn is_empty(&self) -> bool {
         self.memory.is_empty() && self.buffers.is_empty() && self.images.is_empty()
     }
+    /// Issue this batch into a recording command of its device; an empty
+    /// batch records nothing.
+    pub(crate) fn issue_into(
+        &self,
+        command: &super::command_buffer::VulkanCommandBuffer,
+    ) -> crate::Result<()> {
+        if self.is_empty() {
+            return Ok(());
+        }
+        let device = &command.pool.device;
+        // SAFETY: the command is recording on this device and every barrier
+        // resource is retained by it through completion.
+        unsafe { BarrierDispatch::new(device).issue(device, command.handle, self) }
+    }
     fn legacy_stages(&self) -> (ash::vk::PipelineStageFlags, ash::vk::PipelineStageFlags) {
         use ash::vk::PipelineStageFlags;
         // synchronization2 NONE has an empty execution scope. Legacy barriers
@@ -50,6 +64,88 @@ impl SynchronizationScope {
             },
         )
     }
+}
+
+/// Which half of a queue-family ownership transfer a barrier records.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum OwnershipHalf {
+    /// Recorded on the source family: makes `transfer.source` available.
+    Release,
+    /// Recorded on the destination family: makes the data visible to
+    /// `transfer.destination`.
+    Acquire,
+}
+impl OwnershipHalf {
+    fn access(
+        self,
+        transfer: &crate::resource::range_state::RangeTransfer,
+    ) -> (ash::vk::AccessFlags, ash::vk::AccessFlags) {
+        match self {
+            Self::Release => (transfer.source.access, ash::vk::AccessFlags::empty()),
+            Self::Acquire => (ash::vk::AccessFlags::empty(), transfer.destination.access),
+        }
+    }
+}
+
+/// The buffer barrier of one ownership-transfer half. Both halves carry the
+/// same families and range.
+pub(crate) fn ownership_buffer_barrier(
+    buffer: ash::vk::Buffer,
+    transfer: &crate::resource::range_state::RangeTransfer,
+    half: OwnershipHalf,
+) -> crate::Result<ash::vk::BufferMemoryBarrier<'static>> {
+    let crate::resource::OwnershipRange::Buffer { offset, size } = transfer.range else {
+        return Err(crate::Error::invalid_usage(
+            "buffer ownership transfer of an image range",
+        ));
+    };
+    let (source, destination) = half.access(transfer);
+    Ok(ash::vk::BufferMemoryBarrier::default()
+        .src_access_mask(source)
+        .dst_access_mask(destination)
+        .src_queue_family_index(transfer.source_family)
+        .dst_queue_family_index(transfer.destination_family)
+        .buffer(buffer)
+        .offset(offset)
+        .size(size))
+}
+
+/// The image barrier of one ownership-transfer half. Both halves carry the
+/// same layouts, families and subresource range.
+pub(crate) fn ownership_image_barrier(
+    image: ash::vk::Image,
+    transfer: &crate::resource::range_state::RangeTransfer,
+    half: OwnershipHalf,
+) -> crate::Result<ash::vk::ImageMemoryBarrier<'static>> {
+    let crate::resource::OwnershipRange::Image {
+        aspects,
+        base_mip,
+        mip_count,
+        base_layer,
+        layer_count,
+    } = transfer.range
+    else {
+        return Err(crate::Error::invalid_usage(
+            "image ownership transfer of a buffer range",
+        ));
+    };
+    let (source, destination) = half.access(transfer);
+    Ok(ash::vk::ImageMemoryBarrier::default()
+        .src_access_mask(source)
+        .dst_access_mask(destination)
+        .old_layout(transfer.old_layout)
+        .new_layout(transfer.new_layout)
+        .src_queue_family_index(transfer.source_family)
+        .dst_queue_family_index(transfer.destination_family)
+        .image(image)
+        .subresource_range(
+            ash::vk::ImageSubresourceRange::default()
+                .aspect_mask(ash::vk::ImageAspectFlags::from_raw(aspects))
+                .base_mip_level(base_mip)
+                .level_count(mip_count)
+                .base_array_layer(base_layer)
+                .layer_count(layer_count),
+        ))
 }
 
 /// Cache the actual enabled API once, without loading extension entry points

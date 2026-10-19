@@ -82,6 +82,9 @@ fn step(
     let owns = match cell.state.owner {
         RangeOwner::Unclaimed => true,
         RangeOwner::Owned(owner) => owner == family,
+        RangeOwner::Released { .. } if !sharing.is_concurrent() => {
+            return Err(crate::resource::range_state::released_range_error());
+        }
         RangeOwner::Released { .. } => false,
     };
     if !sharing.allows_family(family) || !sharing.is_concurrent() && !owns {

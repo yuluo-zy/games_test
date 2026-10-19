@@ -13,7 +13,7 @@ use crate::raw::{
     buffer::Buffer, command_buffer::VulkanCommandBuffer, device::Device, texture::Texture,
 };
 use crate::resource::{
-    OwnershipRange, SyncCell,
+    SyncCell,
     range_state::{PatchAction, RangeOwner, RangeTransfer, StatePatch},
 };
 use crate::sync::SyncPoint;
@@ -119,6 +119,16 @@ impl Device {
             ));
         }
         self.pending_acquires.push(acquire)
+    }
+    /// Reserve room for `additional` registrations before submitting their
+    /// releases, so that a host allocation failure cannot strand a range
+    /// that was already released.
+    pub(crate) fn reserve_pending_acquires(&self, additional: usize) -> Result<()> {
+        self.pending_acquires
+            .entries
+            .lock()
+            .try_reserve(additional)
+            .map_err(|_| Error::OutOfHostMemory)
     }
     /// Pending acquires for queues of `family`.
     pub fn pending_acquire_count(&self, family: u32) -> usize {
@@ -294,71 +304,38 @@ fn record_acquire(
     // with the release wait, which blocks exactly those stages.
     scope.source_stages |= transfer.destination.stages;
     scope.destination_stages |= transfer.destination.stages;
-    match (target, transfer.range) {
-        (LiveTarget::Buffer(buffer), OwnershipRange::Buffer { offset, size }) => {
+    use crate::raw::barrier::{OwnershipHalf, ownership_buffer_barrier, ownership_image_barrier};
+    match target {
+        LiveTarget::Buffer(buffer) => {
+            let barrier =
+                ownership_buffer_barrier(buffer.handle, &transfer, OwnershipHalf::Acquire)?;
             // SAFETY: the acquire touches exactly the patched range.
             unsafe { command.retain_recorded(buffer.clone())? };
             scope
                 .buffers
                 .try_reserve(1)
                 .map_err(|_| Error::OutOfHostMemory)?;
-            scope.buffers.push(
-                vk::BufferMemoryBarrier::default()
-                    .dst_access_mask(transfer.destination.access)
-                    .src_queue_family_index(transfer.source_family)
-                    .dst_queue_family_index(transfer.destination_family)
-                    .buffer(buffer.handle)
-                    .offset(offset)
-                    .size(size),
-            );
+            scope.buffers.push(barrier);
         }
-        (
-            LiveTarget::Image(image),
-            OwnershipRange::Image {
-                aspects,
-                base_mip,
-                mip_count,
-                base_layer,
-                layer_count,
-            },
-        ) => {
+        LiveTarget::Image(image) => {
+            let barrier = ownership_image_barrier(image.handle, &transfer, OwnershipHalf::Acquire)?;
             // SAFETY: the acquire touches exactly the patched range.
             unsafe { command.retain_recorded(image.clone())? };
             scope
                 .images
                 .try_reserve(1)
                 .map_err(|_| Error::OutOfHostMemory)?;
-            scope.images.push(
-                vk::ImageMemoryBarrier::default()
-                    .dst_access_mask(transfer.destination.access)
-                    .old_layout(transfer.old_layout)
-                    .new_layout(transfer.new_layout)
-                    .src_queue_family_index(transfer.source_family)
-                    .dst_queue_family_index(transfer.destination_family)
-                    .image(image.handle)
-                    .subresource_range(
-                        vk::ImageSubresourceRange::default()
-                            .aspect_mask(vk::ImageAspectFlags::from_raw(aspects))
-                            .base_mip_level(base_mip)
-                            .level_count(mip_count)
-                            .base_array_layer(base_layer)
-                            .layer_count(layer_count),
-                    ),
-            );
-        }
-        _ => {
-            return Err(Error::invalid_usage(
-                "pending acquire range does not match its resource kind",
-            ));
+            scope.images.push(barrier);
         }
     }
     Ok(())
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use crate::raw::buffer::BufferDesc;
+    use crate::resource::OwnershipRange;
     use crate::resource::range_state::{AccessScope, NativeState};
     use crate::sync::QueueId;
 
@@ -368,13 +345,17 @@ mod tests {
     /// A buffer whose whole range was released from (simulated) family 1 to
     /// family 0 by a submitted release.
     fn released_buffer(device: &Arc<Device>, release: SyncPoint) -> (Arc<Buffer>, RangeTransfer) {
-        let buffer = Arc::new(
-            Buffer::new(
-                device.clone(),
-                &BufferDesc::new_gpu_only(256, vk::BufferUsageFlags::TRANSFER_DST),
-            )
-            .unwrap(),
-        );
+        released_buffer_with(device, release, vk::BufferUsageFlags::TRANSFER_DST)
+    }
+    /// A 256-byte buffer of `usage` whose whole range was released from
+    /// (simulated) family 1 to family 0 by the submitted `release`.
+    pub(crate) fn released_buffer_with(
+        device: &Arc<Device>,
+        release: SyncPoint,
+        usage: vk::BufferUsageFlags,
+    ) -> (Arc<Buffer>, RangeTransfer) {
+        let buffer =
+            Arc::new(Buffer::new(device.clone(), &BufferDesc::new_gpu_only(256, usage)).unwrap());
         let range = OwnershipRange::Buffer {
             offset: 0,
             size: 256,
@@ -431,7 +412,7 @@ mod tests {
         drop(_gate);
         (buffer, transfer)
     }
-    fn owner(buffer: &Buffer) -> RangeOwner {
+    pub(crate) fn owner(buffer: &Buffer) -> RangeOwner {
         buffer
             .last_use
             .with_existing_range_state(|table| Ok(table.cells()[0].state.owner))

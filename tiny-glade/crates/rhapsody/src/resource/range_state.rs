@@ -634,6 +634,15 @@ impl RangeStateTable {
         self.scratch.values.clear();
     }
 }
+/// A use of a range whose queue-family release has no recorded acquire yet.
+/// Render graphs acquire such ranges themselves; other command producers must
+/// first record the device's pending acquires.
+pub(crate) fn released_range_error() -> Error {
+    Error::invalid_usage(
+        "range is released by a queue-family transfer: record its pending acquire first \
+         (Device::record_pending_acquires or TransferManager::flush_acquires)",
+    )
+}
 fn apply_preview(
     prepared: &mut PreparedCell,
     action: PatchAction,
@@ -663,7 +672,8 @@ fn apply_preview(
                 ResourceSharing::Exclusive => match state.owner {
                     RangeOwner::Unclaimed => state.owner = RangeOwner::Owned(family),
                     RangeOwner::Owned(owner) if owner == family => {}
-                    _ => {
+                    RangeOwner::Released { .. } => return Err(released_range_error()),
+                    RangeOwner::Owned(_) => {
                         return Err(Error::invalid_usage(
                             "range access needs a matching ownership acquire",
                         ));
@@ -749,7 +759,8 @@ fn apply_preview(
                 match state.owner {
                     RangeOwner::Unclaimed => state.owner = RangeOwner::Owned(family),
                     RangeOwner::Owned(owner) if owner == family => {}
-                    _ => {
+                    RangeOwner::Released { .. } => return Err(released_range_error()),
+                    RangeOwner::Owned(_) => {
                         return Err(Error::invalid_usage(
                             "opaque access requires ownership acquire",
                         ));
