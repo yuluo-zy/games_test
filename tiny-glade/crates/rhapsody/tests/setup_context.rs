@@ -56,7 +56,6 @@ fn held_context_reuses_one_pool_and_recycles_commands_without_waiting() {
         return;
     };
     let context = device.setup_context().unwrap();
-    assert!(Arc::ptr_eq(&context, &device.setup_context().unwrap()));
     let destination = Buffer::new(
         device.clone(),
         &BufferDesc::new_gpu_to_cpu(
@@ -107,7 +106,7 @@ fn held_context_reuses_one_pool_and_recycles_commands_without_waiting() {
 }
 
 #[test]
-fn nested_setup_calls_use_separate_pools_and_the_cache_is_weak() {
+fn nested_setup_calls_use_separate_pools_and_the_device_keeps_them() {
     let Some(device) = device() else {
         return;
     };
@@ -146,10 +145,89 @@ fn nested_setup_calls_use_separate_pools_and_the_cache_is_weak() {
         .unwrap();
     inner.wait(SETUP_WAIT_TIMEOUT_NS).unwrap();
     assert_eq!(context.stats().pools_created, 2);
-    let weak = Arc::downgrade(&context);
+    // The pools belong to the device, not to the handle: dropping every
+    // handle keeps them and later calls reuse them.
     drop(context);
-    assert!(weak.upgrade().is_none(), "the device keeps no strong owner");
     let fresh = device.setup_context().unwrap();
-    assert_eq!(fresh.stats().pools_created, 0);
+    assert_eq!(fresh.stats().pools_created, 2, "the device kept its pools");
     device.wait_idle().unwrap();
+    fill(&device, &buffer, 0, 32, 3)
+        .wait(SETUP_WAIT_TIMEOUT_NS)
+        .unwrap();
+    assert_eq!(fresh.stats().pools_created, 2, "reused, not recreated");
+}
+
+fn fill(
+    device: &Arc<Device>,
+    buffer: &Buffer,
+    offset: u64,
+    size: u64,
+    value: u32,
+) -> rhapsody::raw::setup::SetupSubmission<()> {
+    with_setup_resources(
+        device,
+        &[SetupAccess::transfer_write(buffer, offset, size)],
+        |command| unsafe {
+            device
+                .raw_device()
+                .cmd_fill_buffer(command, buffer.raw_handle(), offset, size, value);
+        },
+    )
+    .unwrap()
+}
+
+fn target(device: &Arc<Device>) -> Buffer {
+    Buffer::new(
+        device.clone(),
+        &BufferDesc::new_gpu_only(1 << 20, vk::BufferUsageFlags::TRANSFER_DST),
+    )
+    .unwrap()
+}
+
+#[test]
+fn consecutive_setup_calls_reuse_one_pool_without_any_caller_holding_the_context() {
+    let Some(device) = device() else {
+        return;
+    };
+    let buffer = target(&device);
+    // No `SetupContext` or `Arc` to it is ever kept by the caller.
+    for round in 0..12u32 {
+        fill(&device, &buffer, 0, 4096, round)
+            .wait(SETUP_WAIT_TIMEOUT_NS)
+            .unwrap();
+        let stats = device.setup_context().unwrap().stats();
+        assert_eq!(
+            stats.pools_created, 1,
+            "round {round}: no new VkCommandPool"
+        );
+        assert_eq!(stats.submissions, u64::from(round) + 1);
+    }
+    let stats = device.setup_context().unwrap().stats();
+    assert_eq!(stats.commands_allocated, 1, "{stats:?}");
+    assert_eq!(stats.commands_recycled, 11, "{stats:?}");
+    // The parked pools hold no device reference: no Arc cycle.
+    assert_eq!(Arc::strong_count(&device), 1 + 1, "buffer owns one");
+    drop(buffer);
+    assert_eq!(Arc::strong_count(&device), 1);
+}
+
+#[test]
+fn dropping_the_device_with_an_in_flight_setup_submission_is_clean() {
+    let Some(device) = device() else {
+        return;
+    };
+    let weak = Arc::downgrade(&device);
+    {
+        let buffer = target(&device);
+        // Not waited: the command may still be queued when the device goes.
+        for round in 0..4u32 {
+            drop(fill(&device, &buffer, 0, 1 << 20, round));
+        }
+        assert!(device.setup_context().unwrap().stats().pools_created >= 1);
+    }
+    drop(device);
+    assert!(
+        weak.upgrade().is_none(),
+        "parked setup pools must not keep the device alive"
+    );
 }

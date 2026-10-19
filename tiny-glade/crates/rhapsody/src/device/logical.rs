@@ -15,7 +15,7 @@
 //! # Lock order
 //! Components never call into each other while holding one of their own
 //! locks, with these documented nestings (outer → inner):
-//! `Caches` (sampler table / setup slot) → `Memory` and managed-store locks;
+//! `Caches` (sampler table / setup pool list) → `Memory` and managed-store locks;
 //! `Queues` pending acquires → resource sync cells;
 //! `Queues` per-queue locks (ascending queue index) → the native queue call only.
 //! Retirement and eviction run their callbacks with no lock held.
@@ -161,6 +161,9 @@ impl Drop for Device {
         self.drain_retirement_for_drop();
         // Cached entries only hold weak handles and host metadata tickets.
         self.caches.clear_samplers();
+        // The GPU is idle and every retired command buffer is freed: destroy
+        // the parked setup pools (they hold no device reference).
+        self.caches.setup.drain_idle();
         // Components drop in field order (see the module documentation).
     }
 }

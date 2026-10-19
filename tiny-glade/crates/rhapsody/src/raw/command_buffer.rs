@@ -101,6 +101,28 @@ impl VulkanCommandPool {
         family: u32,
         max_validation_items: usize,
     ) -> crate::Result<Arc<Self>> {
+        Self::build(device, family, max_validation_items, None)
+    }
+    /// A recording wrapper over an existing native pool (kept by the device's
+    /// setup cache without owning the device). The pool is destroyed when the
+    /// last `allocation` owner drops, never by this wrapper.
+    pub(crate) fn attach(
+        device: Arc<Device>,
+        family: u32,
+        allocation: Arc<CommandPoolAllocation>,
+    ) -> crate::Result<Arc<Self>> {
+        Self::build(device, family, 65_536, Some(allocation))
+    }
+    /// The shared native pool, for caches that outlive this wrapper.
+    pub(crate) fn allocation(&self) -> Arc<CommandPoolAllocation> {
+        self.allocation.clone()
+    }
+    fn build(
+        device: Arc<Device>,
+        family: u32,
+        max_validation_items: usize,
+        existing: Option<Arc<CommandPoolAllocation>>,
+    ) -> crate::Result<Arc<Self>> {
         if device.is_device_lost() {
             return Err(crate::Error::DeviceLost);
         }
@@ -117,24 +139,29 @@ impl VulkanCommandPool {
         {
             return Err(crate::Error::invalid_usage("命令状态或队列族无效"));
         }
-        let info = vk::CommandPoolCreateInfo::default()
-            .queue_family_index(family)
-            .flags(vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER);
         let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.memory.stats)?;
         let memory =
             super::allocator::reserve_shared_cpu_metadata::<Self>(&device.memory.stats, 0)?;
-        let allocation_memory = super::allocator::reserve_shared_cpu_metadata::<
-            CommandPoolAllocation,
-        >(&device.memory.stats, 0)?;
-        let handle = super::error::observe_vulkan(&device, unsafe {
-            device.core.device.create_command_pool(&info, None)
-        })?;
-        let allocation = Arc::new(CommandPoolAllocation {
-            device: device.core.device.clone(),
-            handle,
-            lock: Mutex::new(PoolSync::default()),
-            _memory: allocation_memory,
-        });
+        let allocation = match existing {
+            Some(allocation) => allocation,
+            None => {
+                let info = vk::CommandPoolCreateInfo::default()
+                    .queue_family_index(family)
+                    .flags(vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER);
+                let allocation_memory = super::allocator::reserve_shared_cpu_metadata::<
+                    CommandPoolAllocation,
+                >(&device.memory.stats, 0)?;
+                let handle = super::error::observe_vulkan(&device, unsafe {
+                    device.core.device.create_command_pool(&info, None)
+                })?;
+                Arc::new(CommandPoolAllocation {
+                    device: device.core.device.clone(),
+                    handle,
+                    lock: Mutex::new(PoolSync::default()),
+                    _memory: allocation_memory,
+                })
+            }
+        };
         Ok(Arc::new(Self {
             max_resources: max_validation_items,
             cpu_validation,
@@ -142,7 +169,7 @@ impl VulkanCommandPool {
             last_use: crate::resource::SyncCell::for_device(device.generation())
                 .into_reserved_arc(sync_storage),
             device,
-            handle,
+            handle: allocation.handle,
             family,
             allocation,
             live_commands: AtomicUsize::new(0),
@@ -150,21 +177,19 @@ impl VulkanCommandPool {
             _memory: memory,
         }))
     }
+    /// Wrap a native command buffer previously detached from this pool's
+    /// allocation ([`VulkanCommandBuffer::detach`]). The buffer must have
+    /// been allocated from this pool and not freed.
+    pub(crate) fn adopt(
+        self: &Arc<Self>,
+        handle: vk::CommandBuffer,
+    ) -> crate::Result<VulkanCommandBuffer> {
+        self.wrap(handle)
+    }
     pub fn allocate(self: &Arc<Self>) -> crate::Result<VulkanCommandBuffer> {
         if self.device.is_device_lost() {
             return Err(crate::Error::DeviceLost);
         }
-        let range_uses =
-            super::temp_list::TempList::new(self.max_resources, self.device.memory.stats.clone())?;
-        let state_patches =
-            super::temp_list::TempList::new(self.max_resources, self.device.memory.stats.clone())?;
-        let owners =
-            super::temp_list::TempList::new(self.max_resources, self.device.memory.stats.clone())?;
-        let mut uses =
-            super::temp_list::TempList::new(self.max_resources, self.device.memory.stats.clone())?;
-        uses.add(self.last_use.clone())?;
-        let upload_reads =
-            super::temp_list::TempList::new(self.max_resources, self.device.memory.stats.clone())?;
         let _guard = self.allocation.lock.lock();
         let info = vk::CommandBufferAllocateInfo::default()
             .command_pool(self.handle)
@@ -173,12 +198,33 @@ impl VulkanCommandPool {
         let handle = super::error::observe_vulkan(&self.device, unsafe {
             self.device.core.device.allocate_command_buffers(&info)
         })?[0];
+        drop(_guard);
+        match self.wrap(handle) {
+            Ok(command) => Ok(command),
+            Err(error) => {
+                self.allocation.free(handle);
+                Err(error)
+            }
+        }
+    }
+    fn wrap(self: &Arc<Self>, handle: vk::CommandBuffer) -> crate::Result<VulkanCommandBuffer> {
+        if self.device.is_device_lost() {
+            return Err(crate::Error::DeviceLost);
+        }
+        let stats = &self.device.memory.stats;
+        let range_uses = super::temp_list::TempList::new(self.max_resources, stats.clone())?;
+        let state_patches = super::temp_list::TempList::new(self.max_resources, stats.clone())?;
+        let owners = super::temp_list::TempList::new(self.max_resources, stats.clone())?;
+        let mut uses = super::temp_list::TempList::new(self.max_resources, stats.clone())?;
+        uses.add(self.last_use.clone())?;
+        let upload_reads = super::temp_list::TempList::new(self.max_resources, stats.clone())?;
         self.live_commands.fetch_add(1, Ordering::Relaxed);
         Ok(VulkanCommandBuffer {
             handle,
             pool: self.clone(),
             recording: false,
             executable: false,
+            detached: false,
             owners,
             uses,
             upload_reads,
@@ -293,6 +339,9 @@ pub struct VulkanCommandBuffer {
     pub pool: Arc<VulkanCommandPool>,
     recording: bool,
     executable: bool,
+    /// The native buffer was handed to a cache ([`Self::detach`]); dropping
+    /// this wrapper must not retire or free it.
+    detached: bool,
     owners: super::temp_list::TempList<crate::raw::binding::ResourceOwner>,
     uses: super::temp_list::TempList<Arc<crate::resource::SyncCell>>,
     range_uses: super::temp_list::TempList<RecordedOpaqueUse>,
@@ -1261,6 +1310,18 @@ impl VulkanCommandBuffer {
         })
     }
 }
+impl VulkanCommandBuffer {
+    /// Hand the native buffer to a cache: this wrapper (and the resources it
+    /// retained, which retire through their own use points) is dropped, the
+    /// native command buffer is neither freed nor retired and stays owned by
+    /// the pool's allocation. Returns the handle with the completion set of
+    /// every submission of this command; re-wrap it with
+    /// [`VulkanCommandPool::adopt`] after that set completed.
+    pub(crate) fn detach(mut self) -> (vk::CommandBuffer, crate::sync::SyncSet) {
+        self.detached = true;
+        (self.handle, self.last_use)
+    }
+}
 impl Drop for VulkanCommandBuffer {
     fn drop(&mut self) {
         {
@@ -1269,6 +1330,9 @@ impl Drop for VulkanCommandBuffer {
                 self.pool.allocation.end_recording(&mut sync);
             }
             self.pool.live_commands.fetch_sub(1, Ordering::Relaxed);
+        }
+        if self.detached {
+            return;
         }
         self.pool.device.retire(
             self.last_use,

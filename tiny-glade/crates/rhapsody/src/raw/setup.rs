@@ -9,7 +9,8 @@
 //! returns the submission's [`SyncPoint`]; waiting is an explicit opt-in.
 use super::{
     buffer::Buffer,
-    command_buffer::{VulkanCommandBuffer, VulkanCommandPool},
+    command_buffer::{CommandPoolAllocation, VulkanCommandBuffer, VulkanCommandPool},
+    graveyard::Doomed,
     device::Device,
     error::{Error, Result},
     format::vk_format_info,
@@ -133,14 +134,19 @@ impl<R> SetupSubmission<R> {
     }
 }
 
-/// One command pool with recycled command buffers. Used by one recording
-/// thread at a time (Vulkan pools are externally synchronized).
-struct SetupPool {
-    pool: Arc<VulkanCommandPool>,
-    ready: Vec<VulkanCommandBuffer>,
-    in_flight: VecDeque<(SyncPoint, VulkanCommandBuffer)>,
+/// One native command pool parked in the device with its recycled command
+/// buffers. It holds **no** reference to the device (only the pool's own
+/// allocation and raw handles), so keeping it in the device's caches forms no
+/// cycle: a recording call re-wraps it around a temporary `Arc<Device>`.
+/// Used by one recording thread at a time (Vulkan pools are externally
+/// synchronized).
+pub(crate) struct SetupPool {
+    allocation: Arc<CommandPoolAllocation>,
+    family: u32,
+    /// Submitted command buffers and the completion of each, oldest first.
+    in_flight: VecDeque<(SyncSet, vk::CommandBuffer)>,
 }
-/// Counters of a [`SetupContext`] (statistics only).
+/// Counters of the device's setup recording (statistics only).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct SetupStats {
     pub pools_created: u64,
@@ -149,87 +155,124 @@ pub struct SetupStats {
     pub submissions: u64,
 }
 
+/// Parked setup pools and counters, owned by the device's caches.
+#[derive(Default)]
+pub(crate) struct SetupCache {
+    idle: Mutex<Vec<SetupPool>>,
+    stats: Mutex<SetupStats>,
+}
+impl SetupCache {
+    /// Destroy every parked pool. Only valid once the GPU is idle (device
+    /// drop): native command buffers die with their pool.
+    pub(crate) fn drain_idle(&self) {
+        self.idle.lock().clear();
+    }
+}
+
 impl SetupPool {
     fn new(device: &Arc<Device>) -> Result<Self> {
+        let pool = VulkanCommandPool::new(device.clone())?;
         Ok(Self {
-            pool: VulkanCommandPool::new(device.clone())?,
-            ready: Vec::new(),
+            allocation: pool.allocation(),
+            family: pool.family,
             in_flight: VecDeque::new(),
         })
     }
-    /// A reset command buffer: a recycled one whose submission completed, or
-    /// a new allocation.
-    fn command(&mut self, stats: &Mutex<SetupStats>) -> Result<VulkanCommandBuffer> {
-        if let Some(command) = self.ready.pop() {
-            stats.lock().commands_recycled += 1;
-            return Ok(command);
-        }
-        let completed = self.pool.device.completed();
+    /// A reset command buffer wrapped for recording: the oldest recycled one
+    /// whose submissions completed, or a new allocation.
+    fn command(
+        &mut self,
+        device: &Arc<Device>,
+        pool: &Arc<VulkanCommandPool>,
+        stats: &Mutex<SetupStats>,
+    ) -> Result<VulkanCommandBuffer> {
+        let completed = device.completed();
         if self
             .in_flight
             .front()
-            .is_some_and(|(point, _)| SyncSet::from_point(*point).is_reached(&completed))
+            .is_some_and(|(done, _)| done.is_reached(&completed))
         {
-            let (_, mut command) = self.in_flight.pop_front().expect("checked front");
-            // SAFETY: the command's only submission reached its timeline point.
-            if unsafe { command.reset_after_completion() }.is_ok() {
-                stats.lock().commands_recycled += 1;
-                return Ok(command);
+            let (_, handle) = self.in_flight.pop_front().expect("checked front");
+            match pool.adopt(handle) {
+                Ok(mut command) => {
+                    // SAFETY: every submission of this buffer reached its
+                    // timeline point (checked against `completed` above).
+                    if unsafe { command.reset_after_completion() }.is_ok() {
+                        stats.lock().commands_recycled += 1;
+                        return Ok(command);
+                    }
+                    // Dropping retires the buffer after its own points.
+                }
+                Err(_) => self.allocation.free(handle),
             }
         }
-        let command = self.pool.allocate()?;
+        let command = pool.allocate()?;
         stats.lock().commands_allocated += 1;
         Ok(command)
     }
-    fn retire(&mut self, point: SyncPoint, command: VulkanCommandBuffer) {
-        if self.in_flight.len() >= MAX_RECYCLED_COMMANDS {
-            // Dropping retires the oldest command after its own point.
-            self.in_flight.pop_front();
+    /// Park a submitted command for recycling after `done`.
+    fn park(&mut self, device: &Device, done: SyncSet, handle: vk::CommandBuffer) {
+        if self.in_flight.len() >= MAX_RECYCLED_COMMANDS
+            && let Some((oldest, old)) = self.in_flight.pop_front()
+        {
+            device.retire(oldest, Doomed::CommandBuffer(old, self.allocation.clone()));
         }
         if self.in_flight.try_reserve(1).is_ok() {
-            self.in_flight.push_back((point, command));
+            self.in_flight.push_back((done, handle));
+        } else {
+            device.retire(done, Doomed::CommandBuffer(handle, self.allocation.clone()));
+        }
+    }
+    /// Give up this pool while the GPU may still use its buffers: each is
+    /// freed after its own completion; the native pool is destroyed after the
+    /// last of them.
+    fn retire(self, device: &Device) {
+        for (done, handle) in self.in_flight {
+            device.retire(done, Doomed::CommandBuffer(handle, self.allocation.clone()));
         }
     }
 }
 
-/// Reusable setup recording for one device. Obtain the shared instance with
-/// [`Device::setup_context`]; holding the `Arc` keeps its pools alive across
-/// calls (the device itself keeps only a weak reference).
+/// Reusable setup recording for one device: a cheap handle over the pools the
+/// device itself keeps ([`Device::setup_context`]). Pools are reused across
+/// calls whether or not any caller keeps a handle: the device owns them
+/// without owning itself (see [`SetupPool`]), and tears them down in its
+/// structural drop order after the final GPU wait.
+#[derive(Clone)]
 pub struct SetupContext {
     device: Arc<Device>,
-    idle: Mutex<Vec<SetupPool>>,
-    stats: Mutex<SetupStats>,
 }
 impl SetupContext {
-    pub fn new(device: Arc<Device>) -> Result<Arc<Self>> {
+    pub fn new(device: Arc<Device>) -> Result<Self> {
         if device.is_device_lost() {
             return Err(Error::DeviceLost);
         }
-        Ok(Arc::new(Self {
-            device,
-            idle: Mutex::new(Vec::new()),
-            stats: Mutex::new(SetupStats::default()),
-        }))
+        Ok(Self { device })
     }
     pub fn device(&self) -> &Arc<Device> {
         &self.device
     }
+    /// Counters shared by every handle of this device.
     pub fn stats(&self) -> SetupStats {
-        *self.stats.lock()
+        *self.device.caches.setup.stats.lock()
     }
     fn take_pool(&self) -> Result<SetupPool> {
-        if let Some(pool) = self.idle.lock().pop() {
+        if let Some(pool) = self.device.caches.setup.idle.lock().pop() {
             return Ok(pool);
         }
         let pool = SetupPool::new(&self.device)?;
-        self.stats.lock().pools_created += 1;
+        self.device.caches.setup.stats.lock().pools_created += 1;
         Ok(pool)
     }
     fn return_pool(&self, pool: SetupPool) {
-        let mut idle = self.idle.lock();
+        let cache = &self.device.caches.setup;
+        let mut idle = cache.idle.lock();
         if idle.len() < MAX_IDLE_POOLS && idle.try_reserve(1).is_ok() {
             idle.push(pool);
+            return;
         }
+        drop(idle);
+        pool.retire(&self.device);
     }
     /// Record the declared accesses, then `body`, and submit on the graphics
     /// queue without waiting. A failed body or submit publishes no state.
@@ -241,7 +284,13 @@ impl SetupContext {
         let queue = self.device.queue(crate::device::QueueClass::Graphics)?;
         let mut pool = self.take_pool()?;
         let result = (|| {
-            let mut command = pool.command(&self.stats)?;
+            // Temporary wrapper; the device is only referenced for this call.
+            let live = VulkanCommandPool::attach(
+                self.device.clone(),
+                pool.family,
+                pool.allocation.clone(),
+            )?;
+            let mut command = pool.command(&self.device, &live, &self.device.caches.setup.stats)?;
             command.begin()?;
             for access in accesses {
                 access.record(&mut command, queue)?;
@@ -250,8 +299,9 @@ impl SetupContext {
             command.end()?;
             let pending = command.submit()?;
             let point = pending.point;
-            pool.retire(point, pending.into_command());
-            self.stats.lock().submissions += 1;
+            let (handle, done) = pending.into_command().detach();
+            pool.park(&self.device, done, handle);
+            self.device.caches.setup.stats.lock().submissions += 1;
             Ok(SetupSubmission {
                 value,
                 point,

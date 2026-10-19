@@ -1,5 +1,5 @@
 //! [`Caches`]: device-scoped object caches — the managed-resource store,
-//! built-in samplers and the shared setup context.
+//! built-in samplers and the parked setup command pools.
 //!
 //! Lock order: the built-in sampler table and the setup-context slot are each
 //! held while creating their object, which may take memory (allocator) locks
@@ -10,7 +10,7 @@ use std::sync::{Arc, Weak};
 
 use super::Device;
 use crate::raw::sampler::{BUILTIN_SAMPLER_SPECS, Sampler, SamplerStorage};
-use crate::raw::setup::SetupContext;
+use crate::raw::setup::{SetupCache, SetupContext};
 
 struct BuiltinSamplerEntry {
     sampler: Weak<Sampler>,
@@ -23,8 +23,9 @@ pub(crate) struct Caches {
     /// Managed buffers/textures addressed by stable handles.
     pub(crate) resources: crate::raw::managed::resources::ManagedResources,
     builtin_samplers: Mutex<[Option<BuiltinSamplerEntry>; BUILTIN_SAMPLER_SPECS.len()]>,
-    /// Shared setup context; weak because its pools own the device.
-    setup: Mutex<Weak<SetupContext>>,
+    /// Parked setup command pools. They hold only the native pool, never the
+    /// device, so the device owns them without a reference cycle.
+    pub(crate) setup: SetupCache,
 }
 
 impl Caches {
@@ -32,7 +33,7 @@ impl Caches {
         Ok(Self {
             resources: crate::raw::managed::resources::ManagedResources::new(stats)?,
             builtin_samplers: Mutex::new(std::array::from_fn(|_| None)),
-            setup: Mutex::new(Weak::new()),
+            setup: SetupCache::default(),
         })
     }
 
@@ -50,16 +51,11 @@ impl Device {
     pub fn resources(&self) -> &crate::raw::managed::resources::ManagedResources {
         &self.caches.resources
     }
-    /// The shared reusable setup context, created on first use. The device
-    /// keeps it only while some caller holds the returned `Arc`.
-    pub fn setup_context(&self) -> crate::Result<Arc<SetupContext>> {
-        let mut cached = self.caches.setup.lock();
-        if let Some(context) = cached.upgrade() {
-            return Ok(context);
-        }
-        let context = SetupContext::new(self.shared())?;
-        *cached = Arc::downgrade(&context);
-        Ok(context)
+    /// The reusable setup recording handle. Its command pools live in the
+    /// device, so they are reused across calls even when no caller keeps a
+    /// handle.
+    pub fn setup_context(&self) -> crate::Result<SetupContext> {
+        SetupContext::new(self.shared())
     }
     /// Built-ins are cached weakly so live resources can own the device without a cycle.
     pub fn get_built_in_sampler(&self, index: usize) -> crate::Result<Option<Arc<Sampler>>> {
