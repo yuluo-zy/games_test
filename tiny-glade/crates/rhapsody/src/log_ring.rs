@@ -226,7 +226,11 @@ mod tests {
         assert_eq!(&out[out.len() - 9..], &[7, 0, 0, 0, 0, 0, 0, 0, 0x1e]);
         let named = &out[out.len() - 34..out.len() - 9];
         assert_eq!(&named[..14], b"abcdefghijklmn");
-        assert_eq!(&named[14..16], &[0, 0], "a split UTF-8 character is not stored");
+        assert_eq!(
+            &named[14..16],
+            &[0, 0],
+            "a split UTF-8 character is not stored"
+        );
         assert_eq!(&named[16..24], &9u64.to_le_bytes());
         assert_eq!(named[24], 3);
     }

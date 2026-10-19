@@ -477,6 +477,16 @@ impl VulkanDescriptorPool {
         })
     }
 }
+impl VulkanDescriptorPool {
+    /// Sets allocated from this pool that are still alive on the CPU.
+    pub fn live_set_count(&self) -> usize {
+        self.live_sets.load(Ordering::Relaxed)
+    }
+    /// Whether the pool resets as a whole instead of freeing individual sets.
+    pub fn is_transient(&self) -> bool {
+        !self.free_individual_sets
+    }
+}
 impl Drop for VulkanDescriptorPool {
     fn drop(&mut self) {
         self.device.retire(
@@ -897,3 +907,6 @@ mod descriptor_pool_tests {
         assert_eq!(error.kind(), crate::ErrorKind::InvalidUsage);
     }
 }
+#[path = "descriptor_pool_ring.rs"]
+mod pool_ring;
+pub use pool_ring::{DescriptorPoolRing, DescriptorPoolRingConfig, DescriptorPoolRingStats};

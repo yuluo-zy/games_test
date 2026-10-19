@@ -901,12 +901,19 @@ mod tests {
         slots.retire(b, SyncSet::from_point(SyncPoint { queue, value: 2 }));
         slots.retire(c, SyncSet::EMPTY);
         assert_eq!(slots.retiring_count, 2);
-        assert_eq!(slots.free[0].len(), 2, "unused lease is free without collection");
+        assert_eq!(
+            slots.free[0].len(),
+            2,
+            "unused lease is free without collection"
+        );
         let mut complete = CompletedValues::default();
         complete.raise(queue, 2);
         // A later-retired but earlier-completed slot is not blocked by `a`.
         assert_eq!(slots.collect(&complete), 1);
-        assert_eq!(slots.retiring[0].front().map(|entry| entry.0), Some(a.index));
+        assert_eq!(
+            slots.retiring[0].front().map(|entry| entry.0),
+            Some(a.index)
+        );
         complete.raise(queue, 9);
         assert_eq!(slots.collect(&complete), 1);
         assert!(!slots.has_retiring());

@@ -490,7 +490,7 @@ enum TextureStorage {
     Allocated(std::mem::ManuallyDrop<MemoryBlock>),
     // The swapchain, not this texture wrapper, destroys the VkImage. A strong
     // owner also protects the image while graph imports and views retain it.
-    Swapchain(Arc<super::swapchain::Swapchain>),
+    Swapchain(#[allow(dead_code, reason = "keeps the swapchain image alive")] Arc<super::swapchain::Swapchain>),
 }
 impl Texture {
     pub(crate) fn ownership_range(desc: &TextureDesc) -> Result<crate::resource::OwnershipRange> {
@@ -505,7 +505,9 @@ impl Texture {
     pub(crate) fn allocation_id(&self) -> u64 {
         match &self.storage {
             TextureStorage::Allocated(allocation) => allocation.accounting_id(),
-            TextureStorage::Swapchain(_) => panic!("swapchain images have no allocator allocation; they must never enter the transient/result resource pool"),
+            TextureStorage::Swapchain(_) => panic!(
+                "swapchain images have no allocator allocation; they must never enter the transient/result resource pool"
+            ),
         }
     }
     /// The caller owns an already-bound handle and transfers its sole raw-object ownership.
@@ -547,7 +549,8 @@ impl Texture {
     /// likewise retains the managed owner; the Rust representation is a host
     /// adapter rather than the original managed-handle ABI.
     pub(crate) fn from_swapchain_image(
-        owner: Arc<super::swapchain::Swapchain>, handle: vk::Image,
+        owner: Arc<super::swapchain::Swapchain>,
+        handle: vk::Image,
         desc: TextureDesc,
     ) -> Result<Self> {
         if handle == vk::Image::null() {
@@ -555,13 +558,22 @@ impl Texture {
         }
         let device = owner.device.clone();
         let range = Self::ownership_range(&desc)?;
-        let synchronization = crate::resource::SyncCell::reserve_arc_storage(&device.allocator_stats)?;
-        let memory = super::allocator::reserve_shared_cpu_metadata::<Self>(&device.allocator_stats, 0)?;
-        Ok(Self { sharing: crate::resource::ResourceSharing::Exclusive,
+        let synchronization =
+            crate::resource::SyncCell::reserve_arc_storage(&device.allocator_stats)?;
+        let memory =
+            super::allocator::reserve_shared_cpu_metadata::<Self>(&device.allocator_stats, 0)?;
+        Ok(Self {
+            sharing: crate::resource::ResourceSharing::Exclusive,
             allocation_use: None,
             last_use: crate::resource::SyncCell::for_device(device.generation())
-                .with_ownership_range(range).into_reserved_arc(synchronization),
-            device, handle, desc, storage: TextureStorage::Swapchain(owner), _memory: memory })
+                .with_ownership_range(range)
+                .into_reserved_arc(synchronization),
+            device,
+            handle,
+            desc,
+            storage: TextureStorage::Swapchain(owner),
+            _memory: memory,
+        })
     }
     pub fn new(device: Arc<Device>, desc: &TextureDesc) -> Result<Self> {
         Self::new_with_initial_data(device, desc, false)
@@ -751,7 +763,10 @@ impl Drop for Texture {
         if let TextureStorage::Allocated(allocation) = &mut self.storage {
             // SAFETY: this owned allocation is taken exactly once.
             let memory = unsafe { std::mem::ManuallyDrop::take(allocation) }.into_deferred();
-            self.device.retire(self.last_use.snapshot(), super::graveyard::Doomed::Image(self.handle, memory));
+            self.device.retire(
+                self.last_use.snapshot(),
+                super::graveyard::Doomed::Image(self.handle, memory),
+            );
         }
     }
 }

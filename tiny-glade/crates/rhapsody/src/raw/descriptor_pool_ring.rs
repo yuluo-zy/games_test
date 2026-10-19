@@ -1,0 +1,219 @@
+//! Growable descriptor allocation for non-bindless per-frame/per-material sets.
+//!
+//! A single `VkDescriptorPool` has a fixed `maxSets`. [`DescriptorPoolRing`]
+//! keeps a bounded list of equally sized pools: allocation uses the current
+//! pool and moves to an idle or new pool once it is exhausted (either by the
+//! ring's own `maxSets` accounting or a driver `OUT_OF_POOL_MEMORY` /
+//! `FRAGMENTED_POOL`). Transient rings reset whole pools once every set
+//! allocated from them is dropped and its GPU uses have completed; persistent
+//! rings free sets individually and reuse any pool with spare capacity.
+use super::{LayoutPlan, VulkanDescriptorPool, VulkanDescriptorSet, VulkanDescriptorSetLayout};
+use crate::{Error, Result, device::Device};
+use parking_lot::Mutex;
+use std::sync::Arc;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct DescriptorPoolRingConfig {
+    /// `maxSets` (and per-type descriptor multiplier) of each pool.
+    pub sets_per_pool: u32,
+    /// Upper bound on pools; allocation beyond it returns `Exhausted`.
+    pub max_pools: usize,
+    /// Reset whole pools (per-frame sets) instead of freeing sets individually.
+    pub transient: bool,
+}
+impl Default for DescriptorPoolRingConfig {
+    fn default() -> Self {
+        Self {
+            sets_per_pool: 64,
+            max_pools: 64,
+            transient: true,
+        }
+    }
+}
+
+struct RingPool {
+    pool: Arc<VulkanDescriptorPool>,
+    /// Sets allocated since creation/last reset (transient) — a transient pool
+    /// never reuses the space of dropped sets before a whole-pool reset.
+    allocated: u32,
+    /// The driver reported pool exhaustion; skip until reset (transient) or
+    /// until retired sets are reclaimed (persistent).
+    full: bool,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct DescriptorPoolRingStats {
+    pub pools: usize,
+    pub resets: u64,
+    pub created: u64,
+}
+
+pub struct DescriptorPoolRing {
+    device: Arc<Device>,
+    plan: LayoutPlan,
+    config: DescriptorPoolRingConfig,
+    state: Mutex<RingState>,
+}
+struct RingState {
+    pools: Vec<RingPool>,
+    current: usize,
+    stats: DescriptorPoolRingStats,
+}
+
+impl DescriptorPoolRing {
+    pub fn new(
+        device: Arc<Device>,
+        plan: &LayoutPlan,
+        config: DescriptorPoolRingConfig,
+    ) -> Result<Self> {
+        if config.sets_per_pool == 0 || config.max_pools == 0 {
+            return Err(Error::invalid_usage(
+                "descriptor pool ring needs nonzero pool size and pool count",
+            ));
+        }
+        Ok(Self {
+            device,
+            plan: plan.clone(),
+            config,
+            state: Mutex::new(RingState {
+                pools: Vec::new(),
+                current: 0,
+                stats: DescriptorPoolRingStats::default(),
+            }),
+        })
+    }
+
+    pub fn stats(&self) -> DescriptorPoolRingStats {
+        let state = self.state.lock();
+        DescriptorPoolRingStats {
+            pools: state.pools.len(),
+            ..state.stats
+        }
+    }
+
+    /// Allocate one set, growing the ring when every usable pool is exhausted.
+    pub fn allocate(&self, layout: Arc<VulkanDescriptorSetLayout>) -> Result<VulkanDescriptorSet> {
+        if !Arc::ptr_eq(&layout.device, &self.device) || layout.plan != self.plan {
+            return Err(Error::invalid_usage(
+                "descriptor layout does not match the pool ring plan",
+            ));
+        }
+        let mut state = self.state.lock();
+        if !self.config.transient && state.pools.iter().any(|entry| entry.full) {
+            // Dropped persistent sets are freed through device retirement;
+            // reclaim completed ones so the driver sees their space again.
+            self.device.try_collect_garbage()?;
+            for entry in &mut state.pools {
+                entry.full = false;
+            }
+        }
+        let count = state.pools.len();
+        // Visit every existing pool once, starting from the current one.
+        for step in 0..count {
+            let index = (state.current + step) % count;
+            let RingState { pools, stats, .. } = &mut *state;
+            if !self.make_usable(&mut pools[index], stats)? {
+                continue;
+            }
+            match self.try_allocate(&mut state.pools[index], &layout)? {
+                Some(set) => {
+                    state.current = index;
+                    return Ok(set);
+                }
+                None => continue,
+            }
+        }
+        if count >= self.config.max_pools {
+            return Err(Error::exhausted(
+                "descriptor pool ring reached its pool limit",
+            ));
+        }
+        let pool = if self.config.transient {
+            VulkanDescriptorPool::new_transient(
+                self.device.clone(),
+                &self.plan,
+                self.config.sets_per_pool,
+            )?
+        } else {
+            VulkanDescriptorPool::new(self.device.clone(), &self.plan, self.config.sets_per_pool)?
+        };
+        state.pools.push(RingPool {
+            pool,
+            allocated: 0,
+            full: false,
+        });
+        state.stats.created += 1;
+        state.current = count;
+        let entry = &mut state.pools[count];
+        self.try_allocate(entry, &layout)?.ok_or_else(|| {
+            Error::exhausted("a new descriptor pool cannot hold one set of its plan")
+        })
+    }
+
+    /// Reset every idle exhausted transient pool now (normally done lazily).
+    pub fn recycle(&self) -> Result<usize> {
+        let mut state = self.state.lock();
+        let RingState { pools, stats, .. } = &mut *state;
+        let mut recycled = 0;
+        for entry in pools.iter_mut() {
+            if entry.allocated != 0 && self.reset_if_idle(entry, stats)? {
+                recycled += 1;
+            }
+        }
+        Ok(recycled)
+    }
+
+    /// Returns whether `entry` can be tried for an allocation.
+    fn make_usable(
+        &self,
+        entry: &mut RingPool,
+        stats: &mut DescriptorPoolRingStats,
+    ) -> Result<bool> {
+        if self.config.transient {
+            if entry.full || entry.allocated >= self.config.sets_per_pool {
+                return self.reset_if_idle(entry, stats);
+            }
+            return Ok(true);
+        }
+        Ok(!entry.full && entry.pool.live_set_count() < self.config.sets_per_pool as usize)
+    }
+
+    fn reset_if_idle(
+        &self,
+        entry: &mut RingPool,
+        stats: &mut DescriptorPoolRingStats,
+    ) -> Result<bool> {
+        if entry.pool.live_set_count() != 0 {
+            return Ok(false);
+        }
+        match entry.pool.reset() {
+            Ok(()) => {
+                entry.allocated = 0;
+                entry.full = false;
+                stats.resets += 1;
+                Ok(true)
+            }
+            // GPU work still references sets from this pool.
+            Err(Error::Vulkan(ash::vk::Result::NOT_READY)) => Ok(false),
+            Err(error) => Err(error),
+        }
+    }
+
+    fn try_allocate(
+        &self,
+        entry: &mut RingPool,
+        layout: &Arc<VulkanDescriptorSetLayout>,
+    ) -> Result<Option<VulkanDescriptorSet>> {
+        match entry.pool.allocate(layout.clone()) {
+            Ok(set) => {
+                entry.allocated += 1;
+                Ok(Some(set))
+            }
+            Err(Error::Exhausted(_)) => {
+                entry.full = true;
+                Ok(None)
+            }
+            Err(error) => Err(error),
+        }
+    }
+}
