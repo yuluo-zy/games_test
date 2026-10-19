@@ -1,8 +1,12 @@
 //! Texture uploads: validation, staging layout and command recording shared by
 //! [`super::TransferManager::upload_textures`] and the `raw::setup` helpers.
+use super::record::{
+    PendingAcquire, WrittenPiece, image_acquire_program, image_release_program, issue,
+};
 use crate::{
     Error, Result,
     raw::{
+        barrier::SynchronizationScope,
         buffer::{Buffer, BufferDesc},
         command_buffer::VulkanCommandBuffer,
         format::vk_format_info,
@@ -188,11 +192,9 @@ pub(crate) fn new_staging(
     Ok(Arc::new(staging))
 }
 
-/// Record one texture's upload: a state-derived transition to
-/// TRANSFER_DST_OPTIMAL, the copies, and a transition to
-/// SHADER_READ_ONLY_OPTIMAL visible to [`IMAGE_CONSUMERS`]. The caller retains
-/// the staging span `[base, base + plan.total)` and submits on `queue`.
-pub(crate) fn record_texture_copies(
+/// Record the state-derived transition of the whole texture to
+/// TRANSFER_DST_OPTIMAL followed by the copies of `plan`.
+fn record_transfer_dst_copies(
     command: &mut VulkanCommandBuffer,
     texture: &Texture,
     queue: QueueId,
@@ -200,7 +202,7 @@ pub(crate) fn record_texture_copies(
     base: u64,
     plan: &TexturePlan,
     old_layout: vk::ImageLayout,
-) -> Result<()> {
+) -> Result<crate::resource::OwnershipRange> {
     let range = Texture::ownership_range(&texture.desc)?;
     image_access_borrowed(
         command,
@@ -234,6 +236,24 @@ pub(crate) fn record_texture_copies(
             &copies,
         );
     }
+    Ok(range)
+}
+
+/// Record one texture's upload: a state-derived transition to
+/// TRANSFER_DST_OPTIMAL, the copies, and a transition to
+/// SHADER_READ_ONLY_OPTIMAL visible to [`IMAGE_CONSUMERS`]. The caller retains
+/// the staging span `[base, base + plan.total)` and submits on `queue`.
+pub(crate) fn record_texture_copies(
+    command: &mut VulkanCommandBuffer,
+    texture: &Texture,
+    queue: QueueId,
+    staging: vk::Buffer,
+    base: u64,
+    plan: &TexturePlan,
+    old_layout: vk::ImageLayout,
+) -> Result<()> {
+    let range =
+        record_transfer_dst_copies(command, texture, queue, staging, base, plan, old_layout)?;
     image_access_borrowed(
         command,
         texture,
@@ -243,6 +263,138 @@ pub(crate) fn record_texture_copies(
         vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
         Some(vk::ImageLayout::TRANSFER_DST_OPTIMAL),
     )
+}
+
+/// How a texture uploaded on a dedicated transfer queue is published.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum TransferPublish {
+    /// Same family or concurrent sharing: the final layout transition happens
+    /// on the transfer queue (transfer-stage destination, legal on any
+    /// transfer-capable family); consumers order through the timeline wait.
+    Local,
+    /// Exclusive image of another family: release to this family; the
+    /// matching acquire runs on the consuming queue.
+    Release { destination_family: u32 },
+}
+
+/// Whether `texture` may be written on `family` right now without an
+/// ownership acquire. Exclusive images already owned by another family stay
+/// on that family's queue.
+pub(super) fn transfer_accessible(texture: &Texture, family: u32) -> bool {
+    texture.sharing().allows_family(family)
+        && Texture::ownership_range(&texture.desc)
+            .is_ok_and(|range| texture.last_use.validate_queue_range(family, range).is_ok())
+}
+
+/// Record one texture's upload on a dedicated transfer queue. With
+/// [`TransferPublish::Release`] the written pieces are released (their
+/// pending acquires are appended to `released`); the image ends up
+/// SHADER_READ_ONLY_OPTIMAL once acquired.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn record_texture_copies_on_transfer(
+    command: &mut VulkanCommandBuffer,
+    texture: &Arc<Texture>,
+    queue: QueueId,
+    staging: vk::Buffer,
+    base: u64,
+    plan: &TexturePlan,
+    old_layout: vk::ImageLayout,
+    publish: TransferPublish,
+    released: &mut Vec<PendingAcquire>,
+) -> Result<()> {
+    // SAFETY: every memory access below has a native state patch.
+    unsafe {
+        command.retain_recorded(texture.clone())?;
+    }
+    let range =
+        record_transfer_dst_copies(command, texture, queue, staging, base, plan, old_layout)?;
+    let destination_family = match publish {
+        TransferPublish::Local => {
+            return image_access_borrowed(
+                command,
+                texture,
+                queue,
+                range,
+                AccessScope {
+                    stages: vk::PipelineStageFlags::TRANSFER,
+                    access: vk::AccessFlags::empty(),
+                    write: false,
+                },
+                vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+                Some(vk::ImageLayout::TRANSFER_DST_OPTIMAL),
+            );
+        }
+        TransferPublish::Release { destination_family } => destination_family,
+    };
+    let mut pieces: Vec<WrittenPiece> = Vec::new();
+    command.with_recorded_state(
+        &texture.last_use,
+        crate::resource::range_state::NativeState::default(),
+        queue,
+        |table| {
+            for cell in table.prepared_cells() {
+                if crate::resource::range_state::intersection(cell.range, range).is_some() {
+                    pieces.try_reserve(1).map_err(|_| Error::OutOfHostMemory)?;
+                    pieces.push(WrittenPiece {
+                        range: cell.range,
+                        revision: cell.state.revision,
+                    });
+                }
+            }
+            Ok(())
+        },
+    )?;
+    let mut patches = Vec::new();
+    let mut scope = SynchronizationScope::new(
+        vk::PipelineStageFlags::TRANSFER,
+        vk::PipelineStageFlags::empty(),
+    );
+    let mut local = Vec::new();
+    image_release_program(
+        texture.handle,
+        &pieces,
+        command.pool.family,
+        destination_family,
+        &mut patches,
+        &mut scope,
+        &mut local,
+    )?;
+    for patch in patches {
+        command.record_state_patch(texture.last_use.clone(), patch)?;
+    }
+    released
+        .try_reserve(local.len())
+        .map_err(|_| Error::OutOfHostMemory)?;
+    released.extend(local);
+    issue(command, &scope)
+}
+
+/// Record the acquires matching [`record_texture_copies_on_transfer`]'s
+/// release on the consuming queue (one barrier batch).
+pub(super) fn record_texture_acquire(
+    command: &mut VulkanCommandBuffer,
+    texture: &Arc<Texture>,
+    acquires: &[PendingAcquire],
+    release_point: crate::sync::SyncPoint,
+) -> Result<()> {
+    let mut patches = Vec::new();
+    let mut scope =
+        SynchronizationScope::new(vk::PipelineStageFlags::empty(), IMAGE_CONSUMERS.stages);
+    image_acquire_program(
+        texture.handle,
+        acquires,
+        release_point,
+        &mut patches,
+        &mut scope,
+    )?;
+    for patch in patches {
+        command.record_state_patch(texture.last_use.clone(), patch)?;
+    }
+    // SAFETY: the acquire touches exactly the patched ranges.
+    unsafe {
+        command.retain_recorded(texture.clone())?;
+    }
+    issue(command, &scope)
 }
 
 #[cfg(test)]

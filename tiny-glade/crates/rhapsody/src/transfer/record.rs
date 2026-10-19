@@ -322,6 +322,141 @@ pub(super) fn record_buffer_release(
     issue(command, &scope)
 }
 
+/// Ownership transfer of a whole uploaded image piece. The release performs the
+/// TRANSFER_DST_OPTIMAL -> SHADER_READ_ONLY_OPTIMAL transition; the acquire
+/// repeats exactly the same layouts, families and subresource range.
+pub(super) fn image_transfer(
+    range: OwnershipRange,
+    source_family: u32,
+    destination_family: u32,
+) -> RangeTransfer {
+    RangeTransfer {
+        pair: NEXT_PAIR.fetch_add(1, Ordering::Relaxed),
+        source_family,
+        destination_family,
+        range,
+        source: TRANSFER_WRITE,
+        destination: super::texture::IMAGE_CONSUMERS,
+        old_layout: vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+        new_layout: vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+    }
+}
+
+/// The release (`release == true`) or acquire half of an image ownership
+/// transfer. Both halves carry identical layouts, families and subresources.
+pub(super) fn image_ownership_barrier(
+    image: vk::Image,
+    transfer: &RangeTransfer,
+    release: bool,
+) -> Result<vk::ImageMemoryBarrier<'static>> {
+    let OwnershipRange::Image {
+        aspects,
+        base_mip,
+        mip_count,
+        base_layer,
+        layer_count,
+    } = transfer.range
+    else {
+        return Err(Error::invalid_usage(
+            "image ownership transfer of a buffer range",
+        ));
+    };
+    let (source_access, destination_access) = if release {
+        (transfer.source.access, vk::AccessFlags::empty())
+    } else {
+        (vk::AccessFlags::empty(), transfer.destination.access)
+    };
+    Ok(vk::ImageMemoryBarrier::default()
+        .src_access_mask(source_access)
+        .dst_access_mask(destination_access)
+        .old_layout(transfer.old_layout)
+        .new_layout(transfer.new_layout)
+        .src_queue_family_index(transfer.source_family)
+        .dst_queue_family_index(transfer.destination_family)
+        .image(image)
+        .subresource_range(
+            vk::ImageSubresourceRange::default()
+                .aspect_mask(vk::ImageAspectFlags::from_raw(aspects))
+                .base_mip_level(base_mip)
+                .level_count(mip_count)
+                .base_array_layer(base_layer)
+                .layer_count(layer_count),
+        ))
+}
+
+/// Release patches and barriers for every written image piece. Pure: the
+/// caller records the patches and issues one barrier batch.
+pub(super) fn image_release_program(
+    image: vk::Image,
+    pieces: &[WrittenPiece],
+    source_family: u32,
+    destination_family: u32,
+    patches: &mut Vec<StatePatch>,
+    scope: &mut SynchronizationScope,
+    released: &mut Vec<PendingAcquire>,
+) -> Result<()> {
+    patches.clear();
+    released.clear();
+    patches
+        .try_reserve(pieces.len())
+        .map_err(|_| Error::OutOfHostMemory)?;
+    released
+        .try_reserve(pieces.len())
+        .map_err(|_| Error::OutOfHostMemory)?;
+    scope
+        .images
+        .try_reserve(pieces.len())
+        .map_err(|_| Error::OutOfHostMemory)?;
+    for piece in pieces {
+        let transfer = image_transfer(piece.range, source_family, destination_family);
+        patches.push(StatePatch {
+            range: piece.range,
+            expected_revision: piece.revision,
+            action: PatchAction::Release(transfer),
+        });
+        scope
+            .images
+            .push(image_ownership_barrier(image, &transfer, true)?);
+        released.push(PendingAcquire {
+            transfer,
+            revision: piece.revision + 1,
+        });
+    }
+    Ok(())
+}
+
+/// Acquire patches and barriers matching [`image_release_program`].
+pub(super) fn image_acquire_program(
+    image: vk::Image,
+    acquires: &[PendingAcquire],
+    release_point: SyncPoint,
+    patches: &mut Vec<StatePatch>,
+    scope: &mut SynchronizationScope,
+) -> Result<()> {
+    patches.clear();
+    patches
+        .try_reserve(acquires.len())
+        .map_err(|_| Error::OutOfHostMemory)?;
+    scope
+        .images
+        .try_reserve(acquires.len())
+        .map_err(|_| Error::OutOfHostMemory)?;
+    for acquire in acquires {
+        patches.push(StatePatch {
+            range: acquire.transfer.range,
+            expected_revision: acquire.revision,
+            action: PatchAction::Acquire {
+                transfer: acquire.transfer,
+                release_point,
+            },
+        });
+        scope
+            .images
+            .push(image_ownership_barrier(image, &acquire.transfer, false)?);
+    }
+    Ok(())
+}
+
 /// Record the matching acquires (one barrier batch) on the graphics queue.
 pub(super) fn record_buffer_acquire(
     command: &mut VulkanCommandBuffer,
@@ -442,5 +577,311 @@ mod tests {
             )
             .is_err()
         );
+    }
+
+    fn image_range(aspects: vk::ImageAspectFlags, mips: u32, layers: u32) -> OwnershipRange {
+        OwnershipRange::Image {
+            aspects: aspects.as_raw(),
+            base_mip: 0,
+            mip_count: mips,
+            base_layer: 0,
+            layer_count: layers,
+        }
+    }
+
+    #[test]
+    fn image_release_and_acquire_barriers_pair_layouts_families_and_subresources() {
+        let image = vk::Image::null();
+        for range in [
+            image_range(vk::ImageAspectFlags::COLOR, 1, 1),
+            // Cube with a full mip chain: six faces are six layers.
+            image_range(vk::ImageAspectFlags::COLOR, 9, 6),
+            // Cube array and plain 2D arrays.
+            image_range(vk::ImageAspectFlags::COLOR, 4, 24),
+            image_range(
+                vk::ImageAspectFlags::DEPTH | vk::ImageAspectFlags::STENCIL,
+                3,
+                2,
+            ),
+        ] {
+            let piece = WrittenPiece { range, revision: 4 };
+            let mut patches = Vec::new();
+            let mut released = Vec::new();
+            let mut release = SynchronizationScope::new(
+                vk::PipelineStageFlags::TRANSFER,
+                vk::PipelineStageFlags::empty(),
+            );
+            image_release_program(
+                image,
+                &[piece],
+                3,
+                0,
+                &mut patches,
+                &mut release,
+                &mut released,
+            )
+            .unwrap();
+            assert_eq!(patches.len(), 1);
+            assert_eq!(patches[0].expected_revision, 4);
+            assert!(matches!(patches[0].action, PatchAction::Release(t) if t.range == range));
+            assert_eq!(released[0].revision, 5);
+            let point = SyncPoint {
+                queue: QueueId::new(1).unwrap(),
+                value: 9,
+            };
+            let mut acquire = SynchronizationScope::new(
+                vk::PipelineStageFlags::empty(),
+                vk::PipelineStageFlags::FRAGMENT_SHADER,
+            );
+            image_acquire_program(image, &released, point, &mut patches, &mut acquire).unwrap();
+            assert!(matches!(
+                patches[0].action,
+                PatchAction::Acquire { transfer, release_point }
+                    if transfer == released[0].transfer && release_point == point
+            ));
+            let (r, a) = (release.images[0], acquire.images[0]);
+            assert_eq!((r.old_layout, r.new_layout), (a.old_layout, a.new_layout));
+            assert_eq!(r.old_layout, vk::ImageLayout::TRANSFER_DST_OPTIMAL);
+            assert_eq!(r.new_layout, vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+            assert_eq!((r.src_queue_family_index, r.dst_queue_family_index), (3, 0));
+            assert_eq!(
+                (a.src_queue_family_index, a.dst_queue_family_index),
+                (r.src_queue_family_index, r.dst_queue_family_index)
+            );
+            assert_eq!(
+                format!("{:?}", r.subresource_range),
+                format!("{:?}", a.subresource_range)
+            );
+            let OwnershipRange::Image {
+                aspects,
+                mip_count,
+                layer_count,
+                ..
+            } = range
+            else {
+                unreachable!()
+            };
+            assert_eq!(r.subresource_range.aspect_mask.as_raw(), aspects);
+            assert_eq!(r.subresource_range.level_count, mip_count);
+            assert_eq!(r.subresource_range.layer_count, layer_count);
+            assert_eq!(r.src_access_mask, vk::AccessFlags::TRANSFER_WRITE);
+            assert_eq!(r.dst_access_mask, vk::AccessFlags::empty());
+            assert_eq!(a.src_access_mask, vk::AccessFlags::empty());
+            assert_eq!(a.dst_access_mask, vk::AccessFlags::SHADER_READ);
+        }
+        assert!(
+            image_ownership_barrier(
+                image,
+                &buffer_transfer(OwnershipRange::Buffer { offset: 0, size: 4 }, 1, 0),
+                true
+            )
+            .is_err()
+        );
+    }
+
+    fn image_cell(
+        range: OwnershipRange,
+        stats: &Arc<crate::raw::allocator::AllocatorStats>,
+    ) -> Arc<crate::resource::SyncCell> {
+        let cell = Arc::new(
+            crate::resource::SyncCell::for_device(crate::device::DeviceGeneration::next())
+                .with_ownership_range(range),
+        );
+        cell.with_range_state(NativeState::default(), stats, |_| Ok(()))
+            .unwrap();
+        cell
+    }
+
+    fn upload_access(range: OwnershipRange, queue: QueueId, family: u32) -> StatePatch {
+        StatePatch {
+            range,
+            expected_revision: 0,
+            action: PatchAction::Access {
+                scope: TRANSFER_WRITE,
+                layout: vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                queue,
+                family,
+            },
+        }
+    }
+
+    #[test]
+    fn released_image_is_owned_by_graphics_in_its_final_layout_after_the_acquire() {
+        let stats = Arc::new(crate::raw::allocator::AllocatorStats::default());
+        let range = image_range(vk::ImageAspectFlags::COLOR, 5, 6);
+        let cell = image_cell(range, &stats);
+        let (transfer_queue, graphics_queue) = (QueueId::new(1).unwrap(), QueueId::new(0).unwrap());
+        let (transfer_family, graphics_family) = (2, 0);
+        let mut patches = vec![upload_access(range, transfer_queue, transfer_family)];
+        let mut release_patches = Vec::new();
+        let mut released = Vec::new();
+        let mut scope = SynchronizationScope::new(
+            vk::PipelineStageFlags::TRANSFER,
+            vk::PipelineStageFlags::empty(),
+        );
+        image_release_program(
+            vk::Image::null(),
+            &[WrittenPiece { range, revision: 1 }],
+            transfer_family,
+            graphics_family,
+            &mut release_patches,
+            &mut scope,
+            &mut released,
+        )
+        .unwrap();
+        patches.extend(release_patches);
+        let release_point = SyncPoint {
+            queue: transfer_queue,
+            value: 3,
+        };
+        {
+            let _gate = cell.lock_submission();
+            cell.prepare_range_state(&patches, transfer_queue, transfer_family, &stats)
+                .unwrap();
+            cell.publish_range_state(release_point);
+        }
+        // Graphics cannot touch the released range before the acquire.
+        assert!(cell.validate_queue_range(graphics_family, range).is_err());
+        let mut acquire_patches = Vec::new();
+        let mut acquire_scope = SynchronizationScope::new(
+            vk::PipelineStageFlags::empty(),
+            vk::PipelineStageFlags::FRAGMENT_SHADER,
+        );
+        image_acquire_program(
+            vk::Image::null(),
+            &released,
+            release_point,
+            &mut acquire_patches,
+            &mut acquire_scope,
+        )
+        .unwrap();
+        let acquire_point = SyncPoint {
+            queue: graphics_queue,
+            value: 8,
+        };
+        {
+            let _gate = cell.lock_submission();
+            cell.prepare_range_state(&acquire_patches, graphics_queue, graphics_family, &stats)
+                .unwrap();
+            assert!(
+                cell.prepared_range_dependencies().is_reached(&{
+                    let mut completed = crate::sync::CompletedValues::default();
+                    completed.raise(transfer_queue, 3);
+                    completed
+                }),
+                "the acquire waits exactly for the release point"
+            );
+            cell.publish_range_state(acquire_point);
+        }
+        cell.with_range_state(NativeState::default(), &stats, |table| {
+            for current in table.cells() {
+                assert_eq!(current.state.owner, RangeOwner::Owned(graphics_family));
+                assert_eq!(
+                    current.state.layout,
+                    vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL
+                );
+                assert_eq!(current.state.writer.points.get(graphics_queue), 8);
+            }
+            Ok(())
+        })
+        .unwrap();
+        assert!(cell.validate_queue_range(graphics_family, range).is_ok());
+    }
+
+    #[test]
+    fn failed_release_submit_leaves_no_acquire_pending() {
+        let stats = Arc::new(crate::raw::allocator::AllocatorStats::default());
+        let range = image_range(vk::ImageAspectFlags::COLOR, 1, 4);
+        let cell = image_cell(range, &stats);
+        let transfer_queue = QueueId::new(1).unwrap();
+        let mut release_patches = Vec::new();
+        let mut released = Vec::new();
+        let mut scope = SynchronizationScope::new(
+            vk::PipelineStageFlags::TRANSFER,
+            vk::PipelineStageFlags::empty(),
+        );
+        image_release_program(
+            vk::Image::null(),
+            &[WrittenPiece { range, revision: 1 }],
+            2,
+            0,
+            &mut release_patches,
+            &mut scope,
+            &mut released,
+        )
+        .unwrap();
+        let mut patches = vec![upload_access(range, transfer_queue, 2)];
+        patches.extend(release_patches);
+        {
+            // A queue-submit failure drops the prepared state without publishing.
+            let _gate = cell.lock_submission();
+            cell.prepare_range_state(&patches, transfer_queue, 2, &stats)
+                .unwrap();
+            cell.cancel_range_state();
+        }
+        cell.with_range_state(NativeState::default(), &stats, |table| {
+            assert_eq!(table.cells()[0].state.owner, RangeOwner::Unclaimed);
+            Ok(())
+        })
+        .unwrap();
+        // Graphics may use the image directly; a stale acquire is rejected.
+        assert!(cell.validate_queue_range(0, range).is_ok());
+        let mut acquire_patches = Vec::new();
+        let mut acquire_scope = SynchronizationScope::new(
+            vk::PipelineStageFlags::empty(),
+            vk::PipelineStageFlags::FRAGMENT_SHADER,
+        );
+        image_acquire_program(
+            vk::Image::null(),
+            &released,
+            SyncPoint {
+                queue: transfer_queue,
+                value: 1,
+            },
+            &mut acquire_patches,
+            &mut acquire_scope,
+        )
+        .unwrap();
+        let _gate = cell.lock_submission();
+        assert!(
+            cell.prepare_range_state(&acquire_patches, QueueId::new(0).unwrap(), 0, &stats)
+                .is_err()
+        );
+        cell.cancel_range_state();
+    }
+
+    #[test]
+    fn concurrent_images_reject_ownership_patches() {
+        let stats = Arc::new(crate::raw::allocator::AllocatorStats::default());
+        let range = image_range(vk::ImageAspectFlags::COLOR, 1, 1);
+        let cell = Arc::new(
+            crate::resource::SyncCell::for_device(crate::device::DeviceGeneration::next())
+                .with_concurrent_families(crate::resource::QueueFamilies::new(&[0, 2]).unwrap())
+                .with_ownership_range(range),
+        );
+        cell.with_range_state(NativeState::default(), &stats, |_| Ok(()))
+            .unwrap();
+        let mut patches = Vec::new();
+        let mut released = Vec::new();
+        let mut scope = SynchronizationScope::new(
+            vk::PipelineStageFlags::TRANSFER,
+            vk::PipelineStageFlags::empty(),
+        );
+        image_release_program(
+            vk::Image::null(),
+            &[WrittenPiece { range, revision: 1 }],
+            2,
+            0,
+            &mut patches,
+            &mut scope,
+            &mut released,
+        )
+        .unwrap();
+        let queue = QueueId::new(1).unwrap();
+        let mut all = vec![upload_access(range, queue, 2)];
+        all.extend(patches);
+        let _gate = cell.lock_submission();
+        assert!(cell.prepare_range_state(&all, queue, 2, &stats).is_err());
+        cell.cancel_range_state();
     }
 }
