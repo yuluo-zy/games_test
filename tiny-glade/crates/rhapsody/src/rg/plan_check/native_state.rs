@@ -2,11 +2,13 @@
 //! checker's disjoint slabs; production preparation, splitting and merging are
 //! never invoked to compute the expected state.
 use super::{invalid, range_oracle::SpatialLedger};
+use ash::vk;
 use crate::{
     resource::{
         OwnershipRange, ResourceSharing,
         range_state::{
-            AccessScope, Frontier, NativeState, PatchAction, RangeCell, RangeOwner, StatePatch,
+            AccessScope, Frontier, NativeRange, NativeState, PatchAction, RangeCell, RangeOwner,
+            StatePatch,
         },
     },
     sync::{SyncPoint, SyncSet},
@@ -115,6 +117,14 @@ impl StateOracle {
                             ResourceSharing::Exclusive => match state.owner {
                                 RangeOwner::Unclaimed => state.owner = RangeOwner::Owned(family),
                                 RangeOwner::Owned(owner) if owner == family => {}
+                                // Undefined image contents have no owner to hand over.
+                                RangeOwner::Owned(_)
+                                    if matches!(patch.range, NativeRange::Image { .. })
+                                        && state.layout_known
+                                        && state.layout == vk::ImageLayout::UNDEFINED =>
+                                {
+                                    state.owner = RangeOwner::Owned(family)
+                                }
                                 _ => return Err(invalid("native access lacks ownership acquire")),
                             },
                         }

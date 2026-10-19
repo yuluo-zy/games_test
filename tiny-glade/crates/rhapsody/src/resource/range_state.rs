@@ -120,6 +120,22 @@ impl RangeOwner {
             Self::Released { .. } => Err(OwnershipDenial::Released),
         }
     }
+    /// [`Self::admits`] for an access that does not preserve the previous
+    /// contents (`discarded`, see [`NativeState::contents_discarded`]): an
+    /// exclusive range last owned by another family is admitted, because
+    /// there is nothing to hand over; the access simply claims it. A pending
+    /// release still denies (its acquire completes a real transfer).
+    pub(crate) fn admits_discarding(
+        self,
+        sharing: ResourceSharing,
+        family: u32,
+        discarded: bool,
+    ) -> std::result::Result<(), OwnershipDenial> {
+        match self.admits(sharing, family) {
+            Err(OwnershipDenial::OtherFamily) if discarded => Ok(()),
+            other => other,
+        }
+    }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct NativeState {
@@ -143,6 +159,16 @@ impl Default for NativeState {
     }
 }
 impl NativeState {
+    /// Whether the image `range` holds no defined contents (known UNDEFINED
+    /// layout, e.g. a discarded swapchain import or a freshly aliased
+    /// member). Its queue-family ownership carries nothing to preserve, so
+    /// the first access may come from any family without a release/acquire
+    /// pair. Buffers have no layout and are never discarded.
+    pub fn contents_discarded(&self, range: NativeRange) -> bool {
+        matches!(range, NativeRange::Image { .. })
+            && self.layout_known
+            && self.layout == vk::ImageLayout::UNDEFINED
+    }
     pub fn dependencies(&self, write_or_layout_change: bool) -> SyncSet {
         let mut set = self.writer.points;
         if write_or_layout_change {
@@ -696,7 +722,8 @@ fn apply_preview(
                     "range access uses another queue or a pending release",
                 ));
             }
-            match state.owner.admits(sharing, family) {
+            let discarded = state.contents_discarded(prepared.cell.range);
+            match state.owner.admits_discarding(sharing, family, discarded) {
                 Ok(()) => {}
                 Err(OwnershipDenial::NotShared) => {
                     return Err(Error::invalid_usage("concurrent access family is absent"));
@@ -708,7 +735,8 @@ fn apply_preview(
                     ));
                 }
             }
-            if !sharing.is_concurrent() && state.owner == RangeOwner::Unclaimed {
+            if !sharing.is_concurrent() && state.owner != RangeOwner::Owned(family) {
+                // Unclaimed, or a discarded range last owned by another family.
                 state.owner = RangeOwner::Owned(family);
             }
             // A layout conversion is a visibility checkpoint even for a read.
@@ -1134,6 +1162,32 @@ mod tests {
         assert_eq!(
             RangeOwner::Unclaimed.admits(concurrent, 1),
             Err(OwnershipDenial::NotShared)
+        );
+    }
+    #[test]
+    fn discarded_image_contents_are_ownerless_but_buffers_and_defined_images_are_not() {
+        let exclusive = ResourceSharing::Exclusive;
+        let image = NativeRange::Image {
+            aspects: vk::ImageAspectFlags::COLOR.as_raw(),
+            base_mip: 0,
+            mip_count: 1,
+            base_layer: 0,
+            layer_count: 1,
+        };
+        let buffer = NativeRange::Buffer { offset: 0, size: 16 };
+        let undefined = NativeState::default();
+        let defined = NativeState {
+            layout: vk::ImageLayout::GENERAL,
+            ..NativeState::default()
+        };
+        assert!(undefined.contents_discarded(image));
+        assert!(!undefined.contents_discarded(buffer), "buffers have no layout");
+        assert!(!defined.contents_discarded(image));
+        let owner = RangeOwner::Owned(2);
+        assert_eq!(owner.admits_discarding(exclusive, 0, true), Ok(()));
+        assert_eq!(
+            owner.admits_discarding(exclusive, 0, false),
+            Err(OwnershipDenial::OtherFamily)
         );
     }
     fn q(index: usize) -> QueueId {

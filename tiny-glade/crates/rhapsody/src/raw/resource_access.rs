@@ -83,7 +83,12 @@ fn step(
             "native image old layout differs from recorded state",
         ));
     }
-    match cell.state.owner.admits(sharing, family) {
+    let discarded = cell.state.contents_discarded(cell.range);
+    match cell
+        .state
+        .owner
+        .admits_discarding(sharing, family, discarded)
+    {
         Ok(()) => {}
         Err(OwnershipDenial::Released) => return Err(released_range_error()),
         Err(_) => {

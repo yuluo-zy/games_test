@@ -8,7 +8,9 @@ use super::{
 use crate::{
     resource::{
         OwnershipRange,
-        range_state::{AccessScope, Frontier, NativeState, RangeOwner, RangeTransfer},
+        range_state::{
+            AccessScope, Frontier, NativeRange, NativeState, RangeOwner, RangeTransfer,
+        },
     },
     rg::sync_plan::{
         AliasEdge, BarrierKind, BarrierPhase, BoundBatch, BoundBatchKind, BoundPatch,
@@ -559,7 +561,14 @@ fn check(program: &RangeProgram, view: View<'_>) -> crate::Result<()> {
                             } => {
                                 let owned = match state.owner {
                                     Owner::Unclaimed => true,
-                                    Owner::Owned(owner) => owner == family,
+                                    Owner::Owned(owner) => {
+                                        owner == family
+                                            // Undefined image contents have no owner to
+                                            // hand over: any family may claim them.
+                                            || matches!(patch.range, NativeRange::Image { .. })
+                                                && state.known
+                                                && state.layout == vk::ImageLayout::UNDEFINED
+                                    }
                                     Owner::Released { .. } => false,
                                 };
                                 if queue != target

@@ -472,6 +472,12 @@ impl SynchronizationPlanner {
                 match current.owner {
                     PendingOwner::Unclaimed => current.owner = PendingOwner::Owned(domain.family),
                     PendingOwner::Owned(owner) if owner == domain.family => {}
+                    // Discarded contents (UNDEFINED image) have nothing to hand
+                    // over: the using family just claims the range, and the
+                    // UNDEFINED -> layout transition below runs on its queue.
+                    PendingOwner::Owned(_) if Self::contents_discarded(&current) => {
+                        current.owner = PendingOwner::Owned(domain.family);
+                    }
                     PendingOwner::Owned(owner) => {
                         let source = family_domain(owner)?;
                         let auxiliary = self.push_batch(BoundBatch {
@@ -679,6 +685,12 @@ impl SynchronizationPlanner {
             .writer
             .add(queue_id(domain)?, transfer.destination, batch);
         Ok(current)
+    }
+    /// An image range with known UNDEFINED layout holds no defined contents.
+    fn contents_discarded(cell: &ShadowCell) -> bool {
+        matches!(cell.range, NativeRange::Image { .. })
+            && cell.layout_known
+            && cell.layout == vk::ImageLayout::UNDEFINED
     }
     fn pair(&mut self) -> Result<u64> {
         let pair = self.next_pair;

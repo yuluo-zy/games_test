@@ -617,6 +617,19 @@ mod tests {
         Arc<SynchronizationPlanner>,
         u32,
     ) {
+        bound_presentation(compute_first, true)
+    }
+    /// `overlay` adds a graphics pass after the compute write; without it the
+    /// compute queue is also the last user and the export must hand the image
+    /// back to the presenting family.
+    fn bound_presentation(
+        compute_first: bool,
+        overlay: bool,
+    ) -> (
+        crate::rg::plan::CompiledPlan,
+        Arc<SynchronizationPlanner>,
+        u32,
+    ) {
         let mut graph = RenderGraph::new();
         let target = graph
             .import_unowned("swapchain", image_descriptor(), 7, 0)
@@ -651,7 +664,7 @@ mod tests {
             pass.add_resource_access(target, 0x32, 0).unwrap();
             pass.render(|_| true);
         }
-        {
+        if overlay {
             let mut pass = graph.add_pass("raster overlay");
             pass.add_resource_access(target, 0x2e, 0).unwrap();
             pass.render(|_| true);
@@ -725,8 +738,33 @@ mod tests {
             && t.new_layout == vk::ImageLayout::PRESENT_SRC_KHR));
     }
 
+    fn transfers(
+        bound: &crate::rg::sync_plan::BoundSynchronization,
+        resource: u32,
+        source: u32,
+        destination: u32,
+    ) -> (usize, usize) {
+        let count = |release: bool| {
+            bound
+                .transitions()
+                .iter()
+                .filter(|t| {
+                    t.resource == resource
+                        && t.source_family == source
+                        && t.destination_family == destination
+                        && match t.kind {
+                            crate::rg::sync_plan::BarrierKind::Release { .. } => release,
+                            crate::rg::sync_plan::BarrierKind::Acquire { .. } => !release,
+                            crate::rg::sync_plan::BarrierKind::Memory => false,
+                        }
+                })
+                .count()
+        };
+        (count(true), count(false))
+    }
+
     #[test]
-    fn foreign_family_first_use_moves_ownership_back_to_the_presenting_queue() {
+    fn discarded_first_use_on_a_foreign_family_needs_no_ownership_transfer() {
         let (plan, planner, resource) = bound_multi_family(true);
         let bound = planner.bound();
         let schedule = schedule_presentation(bound, &plan.range_program, resource);
@@ -744,54 +782,64 @@ mod tests {
             .collect::<Vec<_>>();
         assert!(!present.is_empty());
         assert!(present.iter().all(|t| t.batch == last));
-        // The discarded image is first released by a prelude on the home
-        // queue; that prelude carries the acquire wait, chained at
-        // ALL_COMMANDS because the release itself has no destination stage.
+        // The first use is the compute pass itself: no ownership prelude, no
+        // release from the home family, just UNDEFINED -> GENERAL on queue
+        // family 1; the acquire wait therefore targets the compute stage.
         assert!(matches!(
             bound.batches()[first].kind,
-            BoundBatchKind::OwnershipPrelude
+            BoundBatchKind::Graph { .. }
         ));
-        assert_eq!(bound.batches()[first].domain.family, 0);
-        assert_eq!(schedule.wait_stages, vk::PipelineStageFlags::ALL_COMMANDS);
+        assert_eq!(bound.batches()[first].domain.family, 1);
+        assert_eq!(schedule.wait_stages, vk::PipelineStageFlags::COMPUTE_SHADER);
+        assert!(bound.transitions().iter().any(|t| t.batch == first
+            && t.resource == resource
+            && t.old_layout == vk::ImageLayout::UNDEFINED
+            && t.new_layout == vk::ImageLayout::GENERAL
+            && t.kind == crate::rg::sync_plan::BarrierKind::Memory
+            && t.source_family == vk::QUEUE_FAMILY_IGNORED));
+        assert_eq!(
+            transfers(bound, resource, 0, 1),
+            (0, 0),
+            "discarded contents are ownerless: no 0 -> 1 pair"
+        );
+        // Written contents are preserved for the later graphics pass.
+        let (releases, acquires) = transfers(bound, resource, 1, 0);
+        assert!(
+            releases == 1 && acquires == 1,
+            "{releases} releases, {acquires} acquires"
+        );
         assert_eq!(
             position(first),
             1,
             "the unrelated batch does not wait on acquire"
         );
-        // A compute-family use is released to and acquired by family 0.
-        let releases = bound
-            .transitions()
-            .iter()
-            .filter(|t| {
-                t.resource == resource
-                    && matches!(t.kind, crate::rg::sync_plan::BarrierKind::Release { .. })
-                    && t.source_family == 1
-                    && t.destination_family == 0
-            })
-            .count();
-        let acquires = bound
-            .transitions()
-            .iter()
-            .filter(|t| {
-                t.resource == resource
-                    && matches!(t.kind, crate::rg::sync_plan::BarrierKind::Acquire { .. })
-                    && t.source_family == 1
-                    && t.destination_family == 0
-            })
-            .count();
-        assert!(
-            releases >= 1 && acquires >= 1,
-            "{releases} releases, {acquires} acquires"
-        );
-        // Every batch touching the image lies between first and last.
-        for (batch, _) in bound.batches().iter().enumerate() {
-            if bound
-                .transitions()
-                .iter()
-                .any(|t| t.batch == batch && t.resource == resource)
-            {
-                assert!(position(batch) >= position(first) && position(batch) <= position(last));
-            }
+    }
+
+    #[test]
+    fn final_handover_to_the_presenting_family_keeps_its_ownership_transfer() {
+        // The compute queue is both first and last user; the image must still
+        // return to family 0 before PRESENT_SRC_KHR, and only that pair exists.
+        let (plan, planner, resource) = bound_presentation(true, false);
+        let bound = planner.bound();
+        assert_eq!(transfers(bound, resource, 0, 1), (0, 0));
+        assert_eq!(transfers(bound, resource, 1, 0), (1, 1));
+        let schedule = schedule_presentation(bound, &plan.range_program, resource);
+        let last = schedule.last.unwrap();
+        assert_eq!(bound.batches()[last].domain.family, 0);
+        assert!(bound.transitions().iter().any(|t| t.batch == last
+            && t.resource == resource
+            && t.new_layout == vk::ImageLayout::PRESENT_SRC_KHR));
+    }
+
+    #[test]
+    fn discarded_ownerless_binding_passes_the_independent_checkers() {
+        for overlay in [true, false] {
+            let (plan, planner, _) = bound_presentation(true, overlay);
+            crate::rg::plan_check::check_bound_synchronization(
+                &plan.range_program,
+                planner.bound(),
+            )
+            .unwrap();
         }
     }
 
