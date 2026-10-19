@@ -89,31 +89,39 @@ pub struct BindlessIndex {
 enum SlotState {
     Free,
     Live,
-    Retiring(SyncSet),
+    Retiring,
     Exhausted,
 }
 struct Slot {
     generation: u64,
     state: SlotState,
 }
+/// Slot bookkeeping. Retiring slots wait in a queue keyed by their completion
+/// set, so collection inspects only retiring slots, never the whole table.
 struct Slots {
     live: usize,
-    retiring: usize,
+    retiring_count: usize,
+    exhausted: usize,
     peak_live: usize,
     peak_retiring: usize,
     entries: [Vec<Slot>; 4],
     free: [VecDeque<u32>; 4],
+    retiring: [VecDeque<(u32, SyncSet)>; 4],
 }
 impl Slots {
     fn new(counts: [u32; 4]) -> Result<Self> {
         let mut entries = std::array::from_fn(|_| Vec::new());
         let mut free = std::array::from_fn(|_| VecDeque::new());
+        let mut retiring = std::array::from_fn(|_| VecDeque::new());
         for table in 0..4 {
             let count = counts[table] as usize;
             entries[table]
                 .try_reserve_exact(count)
                 .map_err(|_| Error::OutOfHostMemory)?;
             free[table]
+                .try_reserve_exact(count)
+                .map_err(|_| Error::OutOfHostMemory)?;
+            retiring[table]
                 .try_reserve_exact(count)
                 .map_err(|_| Error::OutOfHostMemory)?;
             entries[table].resize_with(count, || Slot {
@@ -124,11 +132,13 @@ impl Slots {
         }
         Ok(Self {
             live: 0,
-            retiring: 0,
+            retiring_count: 0,
+            exhausted: 0,
             peak_live: 0,
             peak_retiring: 0,
             entries,
             free,
+            retiring,
         })
     }
     fn host_bytes(&self) -> Result<u64> {
@@ -142,7 +152,15 @@ impl Slots {
                     .free
                     .iter()
                     .map(|v| v.capacity() * std::mem::size_of::<u32>())
+                    .sum::<usize>()
+                + self
+                    .retiring
+                    .iter()
+                    .map(|v| v.capacity() * std::mem::size_of::<(u32, SyncSet)>())
                     .sum::<usize>()) as u64)
+    }
+    fn has_free(&self, kind: DescriptorKind) -> bool {
+        !self.free[kind as usize].is_empty()
     }
     fn allocate(&mut self, kind: DescriptorKind) -> Result<BindlessIndex> {
         let table = kind as usize;
@@ -150,6 +168,7 @@ impl Slots {
             let slot = &mut self.entries[table][index as usize];
             let Some(generation) = slot.generation.checked_add(1) else {
                 slot.state = SlotState::Exhausted;
+                self.exhausted += 1;
                 continue;
             };
             slot.generation = generation;
@@ -162,7 +181,7 @@ impl Slots {
                 generation,
             });
         }
-        Err(Error::Timeout)
+        Err(Error::exhausted("bindless descriptor table is full"))
     }
     fn valid(&self, index: BindlessIndex) -> bool {
         self.entries[index.kind as usize]
@@ -173,25 +192,45 @@ impl Slots {
     }
     fn retire(&mut self, index: BindlessIndex, after: SyncSet) {
         debug_assert!(self.valid(index));
+        let table = index.kind as usize;
         self.live -= 1;
-        self.retiring += 1;
-        self.peak_retiring = self.peak_retiring.max(self.retiring);
-        self.entries[index.kind as usize][index.index as usize].state = SlotState::Retiring(after);
+        self.entries[table][index.index as usize].state = SlotState::Retiring;
+        if after.is_empty() {
+            // Never used by the GPU: immediately reusable.
+            self.entries[table][index.index as usize].state = SlotState::Free;
+            self.free[table].push_back(index.index);
+            return;
+        }
+        self.retiring_count += 1;
+        self.peak_retiring = self.peak_retiring.max(self.retiring_count);
+        // Capacity equals the table size, so this never reallocates.
+        self.retiring[table].push_back((index.index, after));
     }
+    /// Move every retiring slot whose completion set is reached to the free
+    /// list. Cost is proportional to the retiring slots only.
     fn collect(&mut self, completed: &CompletedValues) -> usize {
         let mut count = 0;
         for table in 0..4 {
-            for (index, slot) in self.entries[table].iter_mut().enumerate() {
-                if matches!(&slot.state, SlotState::Retiring(after) if after.is_reached(completed))
-                {
-                    slot.state = SlotState::Free;
-                    self.retiring -= 1;
-                    self.free[table].push_back(index as u32);
-                    count += 1;
+            let (retiring, free, entries) = (
+                &mut self.retiring[table],
+                &mut self.free[table],
+                &mut self.entries[table],
+            );
+            retiring.retain(|(index, after)| {
+                if !after.is_reached(completed) {
+                    return true;
                 }
-            }
+                entries[*index as usize].state = SlotState::Free;
+                free.push_back(*index);
+                count += 1;
+                false
+            });
         }
+        self.retiring_count -= count;
         count
+    }
+    fn has_retiring(&self) -> bool {
+        self.retiring_count != 0
     }
 }
 
@@ -359,32 +398,30 @@ impl BindlessHeap {
             _slot_memory: slot_memory,
         }))
     }
+    /// Recycle retired slots whose GPU uses have completed. Call once per
+    /// frame tick; allocation also collects lazily when a table runs dry.
     pub fn collect(&self) -> Result<usize> {
+        if !self.slots.lock().has_retiring() {
+            return Ok(0);
+        }
         let completed = self.device.poll()?;
         Ok(self.slots.lock().collect(&completed))
     }
     pub fn stats(&self) -> BindlessStats {
         let slots = self.slots.lock();
-        let mut stats = BindlessStats {
+        BindlessStats {
             peak_live: slots.peak_live,
             peak_retiring: slots.peak_retiring,
-            ..Default::default()
-        };
-        for table in &slots.entries {
-            for slot in table {
-                stats.capacity += 1;
-                match slot.state {
-                    SlotState::Free => stats.free += 1,
-                    SlotState::Live => stats.live += 1,
-                    SlotState::Retiring(_) => stats.retiring += 1,
-                    SlotState::Exhausted => {}
-                }
-            }
+            capacity: slots.entries.iter().map(Vec::len).sum(),
+            live: slots.live,
+            retiring: slots.retiring_count,
+            free: slots.free.iter().map(VecDeque::len).sum(),
         }
-        stats
     }
     fn reserve(self: &Arc<Self>, kind: DescriptorKind, owner: Owner) -> Result<Arc<BindlessLease>> {
-        self.collect()?;
+        if !self.slots.lock().has_free(kind) {
+            self.collect()?;
+        }
         let memory = self.device.allocator_stats.reserve_cpu_bytes(
             crate::raw::allocator::shared_cpu_bytes::<BindlessLease>()?,
             crate::device::BudgetCategory::Live,
@@ -444,13 +481,7 @@ impl BindlessHeap {
         if self.device.is_device_lost() {
             return Err(Error::DeviceLost);
         }
-        let limits = unsafe {
-            self.device
-                .instance
-                .instance
-                .get_physical_device_properties(self.device.physical)
-        }
-        .limits;
+        let limits = self.device.limits();
         if !Arc::ptr_eq(&buffer.device, &self.device)
             || !buffer
                 .desc
@@ -847,7 +878,10 @@ mod tests {
         let mut complete = CompletedValues::default();
         complete.raise(QueueId::new(0).unwrap(), 3);
         assert_eq!(slots.collect(&complete), 0);
-        assert!(slots.allocate(DescriptorKind::StorageBuffer).is_err());
+        assert!(matches!(
+            slots.allocate(DescriptorKind::StorageBuffer),
+            Err(Error::Exhausted(_))
+        ));
         complete.raise(QueueId::new(1).unwrap(), 7);
         assert_eq!(slots.collect(&complete), 1);
         let second = slots.allocate(DescriptorKind::StorageBuffer).unwrap();
@@ -855,5 +889,27 @@ mod tests {
         assert_ne!(first.generation, second.generation);
         assert!(!slots.valid(first));
         assert!(slots.valid(second));
+    }
+    #[test]
+    fn collection_visits_only_retiring_slots_and_unused_leases_free_immediately() {
+        let queue = QueueId::new(0).unwrap();
+        let mut slots = Slots::new([4; 4]).unwrap();
+        let a = slots.allocate(DescriptorKind::SampledImage).unwrap();
+        let b = slots.allocate(DescriptorKind::SampledImage).unwrap();
+        let c = slots.allocate(DescriptorKind::SampledImage).unwrap();
+        slots.retire(a, SyncSet::from_point(SyncPoint { queue, value: 9 }));
+        slots.retire(b, SyncSet::from_point(SyncPoint { queue, value: 2 }));
+        slots.retire(c, SyncSet::EMPTY);
+        assert_eq!(slots.retiring_count, 2);
+        assert_eq!(slots.free[0].len(), 2, "unused lease is free without collection");
+        let mut complete = CompletedValues::default();
+        complete.raise(queue, 2);
+        // A later-retired but earlier-completed slot is not blocked by `a`.
+        assert_eq!(slots.collect(&complete), 1);
+        assert_eq!(slots.retiring[0].front().map(|entry| entry.0), Some(a.index));
+        complete.raise(queue, 9);
+        assert_eq!(slots.collect(&complete), 1);
+        assert!(!slots.has_retiring());
+        assert_eq!(slots.free[0].len(), 4);
     }
 }

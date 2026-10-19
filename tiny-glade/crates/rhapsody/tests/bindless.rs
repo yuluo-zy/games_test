@@ -188,7 +188,7 @@ fn a_real_pending_shader_keeps_the_bindless_slot_until_actual_completion() {
     assert_eq!(heap.stats().retiring, 1);
     assert!(matches!(
         heap.storage_buffer(target(&device), 0, 4),
-        Err(rhapsody::Error::Timeout)
+        Err(rhapsody::Error::Exhausted(_))
     ));
     assert_eq!(heap.collect().unwrap(), 0);
     drop(release_gate);
@@ -337,10 +337,11 @@ fn table_capacity_bad_ranges_and_foreign_devices_are_rejected_before_update() {
     let first = heap.storage_buffer(buffer.clone(), 0, 4).unwrap();
     assert!(matches!(
         heap.storage_buffer(buffer.clone(), 0, 4),
-        Err(rhapsody::Error::Timeout)
+        Err(rhapsody::Error::Exhausted(_))
     ));
     drop(first);
-    assert_eq!(heap.collect().unwrap(), 1);
+    // A lease that no command retained is reusable without collection.
+    assert_eq!(heap.collect().unwrap(), 0);
     let next = heap.storage_buffer(buffer, 0, 4).unwrap();
     let other = Device::new_headless(&DeviceConfig::headless()).unwrap();
     assert!(heap.storage_buffer(target(&other), 0, 4).is_err());
