@@ -261,9 +261,8 @@ pub const VULKAN_LAYER_DISABLE_ENV: [&str; 16] = [
     "DISABLE_VK_LAYER_gshade_1",
 ];
 
-/// `InstanceBuilder::build`（0x140c08f10）无条件启用的两个 instance 扩展：`Vec<&str>` 初值，
-/// 指针 0x142b1909b / 0x142b190c2（字符串池读出）。其后按 builder 标志追加 `VK_EXT_debug_utils`（0x142b190e3），
-/// 再接调用方给的扩展表。
+/// Instance extensions always enabled by `InstanceBuilder::build`, before the
+/// optional `VK_EXT_debug_utils` and the caller's extensions.
 pub const DEFAULT_INSTANCE_EXTENSIONS: [&str; 2] = [
     "VK_KHR_get_physical_device_properties2",
     "VK_KHR_get_surface_capabilities2",
