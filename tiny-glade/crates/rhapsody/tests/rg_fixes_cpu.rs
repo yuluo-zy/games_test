@@ -16,8 +16,8 @@ const WRITE: u8 = 0x34;
 /// 测试用访问掩码：缓冲 → STORAGE_BUFFER(0x20)。
 struct Dependency;
 impl AccessDependency for Dependency {
-    fn access_mask(&mut self, _code: u8) -> u32 {
-        0x20
+    fn access_mask(&mut self, _code: u8) -> ash::vk::AccessFlags {
+        ash::vk::AccessFlags::SHADER_READ
     }
     fn is_write(&mut self, code: u8) -> bool {
         code == WRITE

@@ -46,14 +46,7 @@ fn reserve_token(token: u64) {
     );
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct AccessSpec {
-    pub original_mask: u32,
-    pub write: bool,
-    pub stages: vk::PipelineStageFlags,
-    pub access: vk::AccessFlags,
-    pub layout: vk::ImageLayout,
-}
+pub use crate::raw::access_table::AccessSpec;
 /// Fixed u8 access-code space. Cloning the policy never allocates.
 #[derive(Clone)]
 pub struct AccessTable(pub AccessEntries);
@@ -93,10 +86,11 @@ impl Default for AccessTable {
         entries.insert(
             0,
             AccessSpec {
-                original_mask: 0,
-                write: false,
-                stages: vk::PipelineStageFlags::TOP_OF_PIPE,
-                access: vk::AccessFlags::empty(),
+                scope: crate::resource::range_state::AccessScope {
+                    stages: vk::PipelineStageFlags::TOP_OF_PIPE,
+                    access: vk::AccessFlags::empty(),
+                    write: false,
+                },
                 layout: vk::ImageLayout::UNDEFINED,
             },
         );
@@ -116,63 +110,46 @@ impl AccessTable {
                 | vk::PipelineStageFlags::TESSELLATION_EVALUATION_SHADER;
         }
         for entry in self.0.0.iter_mut().flatten() {
-            let original = entry.stages;
-            entry.stages &= !disabled;
+            let scope = &mut entry.scope;
+            let original = scope.stages;
+            scope.stages &= !disabled;
             // Empty stages must not carry memory access. A custom policy aimed
             // only at a disabled stage still has conservative ordering semantics.
-            if entry.stages.is_empty() && (!original.is_empty() || !entry.access.is_empty()) {
-                entry.stages = vk::PipelineStageFlags::ALL_COMMANDS;
+            if scope.stages.is_empty() && (!original.is_empty() || !scope.access.is_empty()) {
+                scope.stages = vk::PipelineStageFlags::ALL_COMMANDS;
             }
         }
     }
-    /// Complete original 64-code stage/access/layout policy.
+    /// The complete built-in 64-code policy (see `raw::access_table`).
     pub fn original() -> Self {
-        use crate::raw::access_table::{ACCESS_TABLE, is_write};
         let mut entries = AccessEntries::default();
-        for (code, info) in ACCESS_TABLE.iter().enumerate() {
-            entries.insert(
-                code as u8,
-                AccessSpec {
-                    original_mask: info.access,
-                    write: is_write(code as u8),
-                    stages: info.stages(),
-                    access: info.access_flags(),
-                    layout: info.image_layout(),
-                },
-            );
+        for (code, spec) in crate::raw::access_table::ACCESS_TABLE.iter().enumerate() {
+            entries.insert(code as u8, *spec);
         }
         Self(entries)
     }
 }
 impl graph::AccessDependency for AccessTable {
-    fn access_mask(&mut self, code: u8) -> u32 {
-        self.0[&code].original_mask
+    fn access_mask(&mut self, code: u8) -> vk::AccessFlags {
+        self.0[&code].scope.access
     }
     fn is_write(&mut self, code: u8) -> bool {
-        self.0[&code].write
+        self.0[&code].scope.write
     }
     fn native_semantics(
         &mut self,
         code: u8,
     ) -> (crate::resource::range_state::AccessScope, vk::ImageLayout) {
-        let access = self.0[&code];
+        let spec = self.0[&code];
+        let mut scope = spec.scope;
         // The shared shader heap lowers uniform blocks to storage-buffer reads.
         // Keep both read classes in the native scope so either pipeline ABI is
         // valid under this same policy. Descriptor usage remains independently
         // validated when the resource is bound.
-        let native_access = if access.access.contains(vk::AccessFlags::UNIFORM_READ) {
-            access.access | vk::AccessFlags::SHADER_READ
-        } else {
-            access.access
-        };
-        (
-            crate::resource::range_state::AccessScope {
-                stages: access.stages,
-                access: native_access,
-                write: access.write,
-            },
-            access.layout,
-        )
+        if scope.access.contains(vk::AccessFlags::UNIFORM_READ) {
+            scope.access |= vk::AccessFlags::SHADER_READ;
+        }
+        (scope, spec.layout)
     }
 }
 #[derive(Clone, Copy)]
@@ -3504,17 +3481,17 @@ mod enabled_access_stage_tests {
         let optional = vk::PipelineStageFlags::GEOMETRY_SHADER
             | vk::PipelineStageFlags::TESSELLATION_CONTROL_SHADER
             | vk::PipelineStageFlags::TESSELLATION_EVALUATION_SHADER;
-        assert!(original.stages.contains(optional));
+        assert!(original.scope.stages.contains(optional));
         table.normalize_enabled_stages(DeviceCapabilities::default());
         let (native, layout) = table.native_semantics(0x1d);
-        assert_eq!(native.stages, original.stages & !optional);
+        assert_eq!(native.stages, original.scope.stages & !optional);
         assert!(!native.stages.is_empty());
-        assert_eq!(native.access, original.access);
+        assert_eq!(native.access, original.scope.access);
         assert_eq!(layout, original.layout);
-        assert_eq!(table.0[&0x1d].original_mask, original.original_mask);
+        assert_eq!(table.access_mask(0x1d), original.scope.access);
         assert_eq!(
-            crate::raw::access_table::ACCESS_TABLE[0x1d].stage,
-            original.stages.as_raw()
+            crate::raw::access_table::ACCESS_TABLE[0x1d].scope.stages,
+            original.scope.stages
         );
     }
 
@@ -3547,10 +3524,11 @@ mod enabled_access_stage_tests {
             table.0.insert(
                 code,
                 AccessSpec {
-                    original_mask: access.as_raw(),
-                    write: access.contains(vk::AccessFlags::SHADER_WRITE),
-                    stages,
-                    access,
+                    scope: crate::resource::range_state::AccessScope {
+                        stages,
+                        access,
+                        write: access.contains(vk::AccessFlags::SHADER_WRITE),
+                    },
                     layout: vk::ImageLayout::GENERAL,
                 },
             );
@@ -3578,7 +3556,7 @@ mod enabled_access_stage_tests {
     fn explicitly_enabled_geometry_and_tessellation_scopes_are_preserved() {
         for (geometry_shader, tessellation_shader) in [(true, true), (true, false), (false, true)] {
             let mut table = AccessTable::original();
-            let original = table.0[&0x1d].stages;
+            let original = table.0[&0x1d].scope.stages;
             table.normalize_enabled_stages(DeviceCapabilities {
                 geometry_shader,
                 tessellation_shader,

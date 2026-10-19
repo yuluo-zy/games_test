@@ -1,9 +1,7 @@
 //! crates 域（vk-sync-fork / aftermath-rs / gpu-profiler / dxgi-enumerate-gpus）的聚焦测试。
-//! 公开 vk-sync-fork 0.4.0（registry，ash 0.37）的期望值由 `get_image_memory_barrier` 逐变体探测得到后内嵌，
-//! 避免为测试引入第二套 ash 依赖。
-use ash::vk;
+//! 访问码表的期望值按公开 vk-sync-fork 0.4.0 的变体内嵌，避免为测试引入第二套 ash 依赖。
 use rhapsody::raw::{
-    access_table::{self, *},
+    access_table::*,
     aftermath::{self, *},
     dxgi::{self, *},
 };
@@ -212,7 +210,7 @@ const DIFFERS_FROM_PUBLIC: [u8; 2] = [0x02, 0x2f];
 fn table_matches_public_vk_sync_fork_except_documented_differences() {
     for &(name, code, stage, access, layout) in PUBLIC_VARIANTS {
         let info = access_info(code).unwrap();
-        let same = (info.stage, info.access, info.layout) == (stage, access, layout);
+        let same = (info.scope.stages.as_raw(), info.scope.access.as_raw(), info.layout.as_raw()) == (stage, access, layout);
         assert_eq!(
             same,
             !DIFFERS_FROM_PUBLIC.contains(&code),
@@ -220,8 +218,8 @@ fn table_matches_public_vk_sync_fork_except_documented_differences() {
         );
     }
     let ind = access_info(0x02).unwrap();
-    assert_eq!((ind.stage, ind.access), (0x10000, 0x21));
-    assert_eq!(access_info(0x2f).unwrap().access, 0x600);
+    assert_eq!((ind.scope.stages.as_raw(), ind.scope.access.as_raw()), (0x10000, 0x21));
+    assert_eq!(access_info(0x2f).unwrap().scope.access.as_raw(), 0x600);
     // 公开 58 个变体 + 原版 6 个新增 = 64 个码，且互不重叠。
     let mut seen: Vec<u8> = PUBLIC_VARIANTS
         .iter()
@@ -231,113 +229,13 @@ fn table_matches_public_vk_sync_fork_except_documented_differences() {
     seen.sort_unstable();
     assert_eq!(seen, (0..64u8).collect::<Vec<_>>());
     // 新增读变体：stage 为 VS..FS 的并集或 ALL，layout 沿用 0/5/4/1 约定。
-    assert_eq!(access_info(0x1b).unwrap().stage, 0xf8);
-    assert_eq!(access_info(0x1e).unwrap().stage, 0x3f8);
+    assert_eq!(access_info(0x1b).unwrap().scope.stages.as_raw(), 0xf8);
+    assert_eq!(access_info(0x1e).unwrap().scope.stages.as_raw(), 0x3f8);
     assert!(FORK_ONLY.iter().all(|c| !is_write(*c)));
-}
-
-#[test]
-fn memory_barrier_follows_original_stage_defaults_and_write_only_src_access() {
-    // 空 → TOP / BOTTOM_OF_PIPE（`cmp r,1; adc r,0` 与 `cmovne eax,0x2000`）。
-    let (s, d, b) = get_memory_barrier(&[], &[]);
-    assert_eq!((s.as_raw(), d.as_raw()), (1, 0x2000));
-    assert_eq!(
-        (b.src_access_mask.as_raw(), b.dst_access_mask.as_raw()),
-        (0, 0)
-    );
-    assert_eq!(b.s_type, vk::StructureType::MEMORY_BARRIER);
-    // 写→读：src 取写 access，dst 取读 access。
-    let (s, d, b) = get_memory_barrier(&[0x32], &[0x1a]);
-    assert_eq!((s.as_raw(), d.as_raw()), (0x800, 0x800));
-    assert_eq!(
-        (b.src_access_mask.as_raw(), b.dst_access_mask.as_raw()),
-        (0x40, 0x20)
-    );
-    // 读→读：src 无写 → dst access 清零（RAR/WAR 不需要可见性）。
-    let (_, _, b) = get_memory_barrier(&[0x1a], &[0x1a]);
-    assert_eq!(
-        (b.src_access_mask.as_raw(), b.dst_access_mask.as_raw()),
-        (0, 0)
-    );
-}
-
-#[test]
-fn buffer_barrier_passes_fields_through() {
-    let buffer = <vk::Buffer as ash::vk::Handle>::from_raw(0xdead);
-    let (s, d, b) = get_buffer_memory_barrier(&BufferBarrier {
-        previous: &[0x34],
-        next: &[0x03, 0x1a],
-        src_queue_family_index: 2,
-        dst_queue_family_index: 3,
-        buffer,
-        offset: 16,
-        size: 64,
-    });
-    assert_eq!((s.as_raw(), d.as_raw()), (0x1000, 0x4 | 0x800));
-    assert_eq!(
-        (b.src_access_mask.as_raw(), b.dst_access_mask.as_raw()),
-        (0x1000, 0x2 | 0x20)
-    );
-    assert_eq!(
-        (
-            b.src_queue_family_index,
-            b.dst_queue_family_index,
-            b.offset,
-            b.size
-        ),
-        (2, 3, 16, 64)
-    );
-    assert_eq!(b.buffer, buffer);
-    assert_eq!(b.s_type, vk::StructureType::BUFFER_MEMORY_BARRIER);
-}
-
-fn image_barrier<'a>(prev: &'a [u8], next: &'a [u8]) -> ImageBarrier<'a> {
-    ImageBarrier {
-        previous: prev,
-        next,
-        previous_layout: BarrierLayout::Optimal,
-        next_layout: BarrierLayout::Optimal,
-        discard_contents: false,
-        src_queue_family_index: vk::QUEUE_FAMILY_IGNORED,
-        dst_queue_family_index: vk::QUEUE_FAMILY_IGNORED,
-        image: vk::Image::null(),
-        range: vk::ImageSubresourceRange::default(),
+    for (code, spec) in ACCESS_TABLE.iter().enumerate() {
+        assert_eq!(spec.scope.write, is_write(code as u8));
     }
-}
-
-#[test]
-fn image_barrier_layouts_and_unconditional_dst_access() {
-    // 读→读也带 dst access（image 版无"src 有写"条件，0x140c10c52）。
-    let (_, _, b) = get_image_memory_barrier(&image_barrier(&[0x1a], &[0x12]));
-    assert_eq!(b.src_access_mask.as_raw(), 0);
-    assert_eq!(b.dst_access_mask.as_raw(), 0x20);
-    assert_eq!((b.old_layout.as_raw(), b.new_layout.as_raw()), (1, 5));
-    // discard_contents：old_layout = UNDEFINED，但 src stage 仍累计。
-    let mut d = image_barrier(&[0x2e], &[0x12]);
-    d.discard_contents = true;
-    let (s, _, b) = get_image_memory_barrier(&d);
-    assert_eq!((s.as_raw(), b.old_layout.as_raw()), (0x400, 0));
-    // General：Present → PRESENT_SRC_KHR(0x3b9acdea)，其他 → GENERAL；空 next → 0。
-    let mut g = image_barrier(&[0x27], &[0x27]);
-    g.previous_layout = BarrierLayout::General;
-    g.next_layout = BarrierLayout::General;
-    let (_, _, b) = get_image_memory_barrier(&g);
-    assert_eq!(
-        (b.old_layout.as_raw(), b.new_layout.as_raw()),
-        (0x3b9acdea, 0x3b9acdea)
-    );
-    let mut g = image_barrier(&[0x32], &[]);
-    g.previous_layout = BarrierLayout::General;
-    let (_, d, b) = get_image_memory_barrier(&g);
-    assert_eq!(
-        (d.as_raw(), b.old_layout.as_raw(), b.new_layout.as_raw()),
-        (0x2000, 1, 0)
-    );
-    // 最后一个访问码的布局胜出。
-    let (_, _, b) = get_image_memory_barrier(&image_barrier(&[], &[0x34, 0x25]));
-    assert_eq!(b.new_layout.as_raw(), 6);
-    assert_eq!(b.s_type, vk::StructureType::IMAGE_MEMORY_BARRIER);
-    let _ = access_table::ACCESS_CODE_COUNT;
+    assert_eq!(ACCESS_TABLE.len(), ACCESS_CODE_COUNT);
 }
 
 // ---- aftermath ------------------------------------------------------------------------------

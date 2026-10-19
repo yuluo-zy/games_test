@@ -90,11 +90,7 @@ fn check_uses(
             .find(|semantics| semantics.code == code)
             .ok_or_else(|| invalid("native use has no declared Vulkan semantics"))?;
         let range = native_range(range, descriptor, program.separate_depth_stencil)?;
-        let scope = AccessScope {
-            stages: semantics.stages,
-            access: semantics.access,
-            write: semantics.write,
-        };
+        let scope = semantics.scope;
         let layout = match (descriptor, range) {
             (Descriptor::Image(_), crate::resource::OwnershipRange::Image { aspects, .. }) => {
                 crate::rg::sync_plan::native_layout(

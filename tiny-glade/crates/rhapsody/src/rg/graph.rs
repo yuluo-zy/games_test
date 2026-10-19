@@ -160,7 +160,8 @@ impl GraphDeclaration {
 }
 
 pub trait AccessDependency {
-    fn access_mask(&mut self, code: u8) -> u32;
+    /// The declared access of `code`; resource usage flags derive from it.
+    fn access_mask(&mut self, code: u8) -> ash::vk::AccessFlags;
     fn is_write(&mut self, code: u8) -> bool;
     /// Custom CPU policies may omit native details. Their conservative scope
     /// cannot be reused for a policy with different Vulkan stages or layouts.

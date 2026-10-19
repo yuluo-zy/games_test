@@ -28,7 +28,6 @@ pub mod resource_info;
 pub mod resource_pool;
 pub mod resource_registry;
 pub mod result_cache;
-pub mod resource_usage;
 pub mod subgraph;
 pub mod temporal;
 pub mod transient_memory;

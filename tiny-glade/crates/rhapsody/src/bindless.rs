@@ -828,7 +828,7 @@ impl BindlessHeap {
                     else {
                         return false;
                     };
-                    if !Self::is_shader_memory_access(native.access) {
+                    if !Self::is_shader_memory_access(native.scope.access) {
                         return false;
                     }
                     match &lease.owner {

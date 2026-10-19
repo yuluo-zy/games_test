@@ -60,10 +60,10 @@ impl ResourceDefinition {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct AccessSemantics {
     pub code: u8,
-    pub mask: u32,
-    pub write: bool,
-    pub stages: ash::vk::PipelineStageFlags,
-    pub access: ash::vk::AccessFlags,
+    /// The policy's declared access; it alone derives resource usage flags.
+    pub declared_access: ash::vk::AccessFlags,
+    /// The native synchronization scope (possibly wider than declared).
+    pub scope: crate::resource::range_state::AccessScope,
     pub layout: ash::vk::ImageLayout,
 }
 
@@ -189,11 +189,9 @@ impl GraphDefinition {
         // semantic keys. Compare the entire table, including unused-in-pass ports.
         for semantics in &self.access_semantics {
             let (native, layout) = dependency.native_semantics(semantics.code);
-            if semantics.mask != dependency.access_mask(semantics.code)
-                || semantics.write != dependency.is_write(semantics.code)
-                || semantics.write != native.write
-                || semantics.stages != native.stages
-                || semantics.access != native.access
+            if semantics.declared_access != dependency.access_mask(semantics.code)
+                || semantics.scope.write != dependency.is_write(semantics.code)
+                || semantics.scope != native
                 || semantics.layout != layout
             {
                 return Ok(false);
@@ -259,10 +257,8 @@ impl GraphDefinition {
                 }
                 Ok(AccessSemantics {
                     code,
-                    mask: dependency.access_mask(code),
-                    write,
-                    stages: native.stages,
-                    access: native.access,
+                    declared_access: dependency.access_mask(code),
+                    scope: native,
                     layout,
                 })
             })
@@ -299,7 +295,7 @@ impl GraphDefinition {
     pub fn is_write(&self, code: u8) -> bool {
         self.access_semantics
             .iter()
-            .any(|s| s.code == code && s.write)
+            .any(|s| s.code == code && s.scope.write)
     }
 }
 
@@ -510,7 +506,7 @@ impl<'a> SemanticTable<'a> {
         }
     }
     pub(crate) fn is_write(&self, code: u8) -> bool {
-        self.get(code).is_some_and(|semantic| semantic.write)
+        self.get(code).is_some_and(|semantic| semantic.scope.write)
     }
 }
 
@@ -615,7 +611,7 @@ fn ordering_edges(
                 if entry.pass == pass {
                     continue;
                 }
-                let content = (semantic.write || entry.write)
+                let content = (semantic.scope.write || entry.write)
                     && ranges_overlap(access.range, entry.range);
                 let layout = matches!((native, entry.native), (Some(a), Some(b))
                     if entry.layout != semantic.layout
@@ -624,7 +620,7 @@ fn ordering_edges(
                     edges.insert((entry.pass, pass));
                 }
             }
-            if semantic.write {
+            if semantic.scope.write {
                 // A widened native range (merged depth/stencil) may reach
                 // entries this declaration does not cover; keep those.
                 let exact = match (native, access.range) {
@@ -640,7 +636,7 @@ fn ordering_edges(
                 range: access.range,
                 native,
                 layout: semantic.layout,
-                write: semantic.write,
+                write: semantic.scope.write,
             });
         }
     }
@@ -782,7 +778,11 @@ fn finish_plan(definition: GraphDefinition, analysis: PassAnalysis) -> crate::Re
     let mut info = ResourceInfo::default();
     let table = SemanticTable::new(&definition.access_semantics);
     info.calculate(&origins, &definition.exports, &pass_slices, |code| {
-        table.get(code).map_or(0, |semantic| semantic.mask)
+        table
+            .get(code)
+            .map_or(ash::vk::AccessFlags::empty(), |semantic| {
+                semantic.declared_access
+            })
     })?;
     let mut batch_compiler = BatchCompiler::new();
     if definition.batch_per_pass {
@@ -989,13 +989,13 @@ mod borrowed_definition_tests {
                 .unwrap()
         );
         let mut policy = AccessTable::original();
-        policy.0.get_mut(&0x34).unwrap().original_mask ^= 1;
+        policy.0.get_mut(&0x34).unwrap().scope.access ^= ash::vk::AccessFlags::INDIRECT_COMMAND_READ;
         assert!(
             !key.matches_declaration(&graph, &mut policy, context)
                 .unwrap()
         );
         let mut policy = AccessTable::original();
-        policy.0.get_mut(&0x34).unwrap().write = false;
+        policy.0.get_mut(&0x34).unwrap().scope.write = false;
         assert!(
             !key.matches_declaration(&graph, &mut policy, context)
                 .unwrap()
@@ -1045,8 +1045,8 @@ mod borrowed_definition_tests {
             GraphDefinition::from_declaration(&graph, &mut AccessTable::original(), context)
                 .unwrap();
         let changes: &[fn(&mut super::super::vulkan::AccessSpec)] = &[
-            |spec| spec.stages = ash::vk::PipelineStageFlags::ALL_COMMANDS,
-            |spec| spec.access = ash::vk::AccessFlags::MEMORY_WRITE,
+            |spec| spec.scope.stages = ash::vk::PipelineStageFlags::ALL_COMMANDS,
+            |spec| spec.scope.access = ash::vk::AccessFlags::MEMORY_WRITE,
             |spec| spec.layout = ash::vk::ImageLayout::GENERAL,
         ];
         for change in changes {

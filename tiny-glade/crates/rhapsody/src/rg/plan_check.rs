@@ -22,13 +22,11 @@ fn invalid(message: impl Into<std::borrow::Cow<'static, str>>) -> crate::Error {
     crate::Error::invalid_usage(message)
 }
 
-fn usage_flags(descriptor: Descriptor, mask: u32) -> crate::Result<u32> {
-    use crate::raw::resource_usage::{
-        buffer_access_mask_to_usage_flags, image_access_mask_to_usage_flags,
-    };
+fn usage_flags(descriptor: Descriptor, access: ash::vk::AccessFlags) -> crate::Result<u32> {
+    use crate::raw::resource_usage::{buffer_usage_for_access, image_usage_for_access};
     match descriptor {
-        Descriptor::Image(_) => image_access_mask_to_usage_flags(mask).map(|flags| flags.as_raw()),
-        Descriptor::Buffer(_) => Ok(buffer_access_mask_to_usage_flags(mask).as_raw()),
+        Descriptor::Image(_) => image_usage_for_access(access).map(|flags| flags.as_raw()),
+        Descriptor::Buffer(_) => Ok(buffer_usage_for_access(access).as_raw()),
     }
 }
 
@@ -243,19 +241,19 @@ fn inspect_definition(definition: &GraphDefinition) -> crate::Result<Provenance>
             let semantic = semantics
                 .get(&access.access_code)
                 .ok_or_else(|| invalid("graph access has no classification"))?;
-            usage_flags(domain.descriptor, semantic.mask)?;
+            usage_flags(domain.descriptor, semantic.declared_access)?;
             domain.cells(access.range)?;
-            if access.contents_unused && (semantic.write || access.reads_previous) {
+            if access.contents_unused && (semantic.scope.write || access.reads_previous) {
                 return Err(invalid(
                     "inactive contents intent requires a non-writing access",
                 ));
             }
             if access.allow_undefined_contents
-                && (semantic.write || access.reads_previous || access.contents_unused) {
+                && (semantic.scope.write || access.reads_previous || access.contents_unused) {
                 return Err(invalid("undefined contents permission requires a real non-writing read"));
             }
             if access.reads_previous {
-                if !semantic.write {
+                if !semantic.scope.write {
                     return Err(invalid(
                         "a read access cannot also declare a read-modify-write dependency",
                     ));
@@ -267,7 +265,7 @@ fn inspect_definition(definition: &GraphDefinition) -> crate::Result<Provenance>
                         .filter(|&source| source != index),
                 );
             }
-            match (semantic.write, access.version) {
+            match (semantic.scope.write, access.version) {
                 (true, AccessVersion::Write { previous, current })
                     if previous == domain.version && previous.checked_add(1) == Some(current) =>
                 {
@@ -303,7 +301,7 @@ fn inspect_definition(definition: &GraphDefinition) -> crate::Result<Provenance>
                 "graph export has an invalid kind or unclassified access",
             ));
         }
-        usage_flags(domain.descriptor, semantics[&export.access_code].mask)?;
+        usage_flags(domain.descriptor, semantics[&export.access_code].declared_access)?;
         roots.extend(domain.sources(export.range)?);
     }
     super::subgraph::validate_subgraphs(definition)?;
@@ -437,7 +435,7 @@ fn check_projection(definition: &GraphDefinition, plan: &CompiledPlan) -> crate:
     let masks: BTreeMap<_, _> = definition
         .access_semantics
         .iter()
-        .map(|semantic| (semantic.code, semantic.mask))
+        .map(|semantic| (semantic.code, semantic.declared_access))
         .collect();
     let mut cursor = 0usize;
     for (scheduled, &original) in plan.retained_passes.iter().enumerate() {

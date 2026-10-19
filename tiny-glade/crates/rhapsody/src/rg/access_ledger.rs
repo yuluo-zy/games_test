@@ -317,7 +317,7 @@ mod tests {
         );
         let origins = [OriginKind::Tag1 { type_code: 1 }; 2];
         let mut info = ResourceInfo::default();
-        info.calculate(&origins, &[], &[entries], |_| 0).unwrap();
+        info.calculate(&origins, &[], &[entries], |_| ash::vk::AccessFlags::empty()).unwrap();
         assert_eq!(info.accesses.len(), 3);
         assert_eq!(info.accesses[2].previous_access_index, 0);
         assert_eq!(info.accesses[0].next_access_index, 2);

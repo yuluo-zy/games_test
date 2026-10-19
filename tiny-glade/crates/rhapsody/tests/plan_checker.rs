@@ -205,10 +205,12 @@ fn public_definitions_reject_unresolved_versions_unknown_sources_and_invalid_ind
     bad.access_semantics
         .push(rhapsody::rg::plan::AccessSemantics {
             code: READ,
-            mask: 0,
-            write: false,
-            stages: ash::vk::PipelineStageFlags::TRANSFER,
-            access: ash::vk::AccessFlags::TRANSFER_READ,
+            declared_access: ash::vk::AccessFlags::empty(),
+            scope: rhapsody::resource::range_state::AccessScope {
+                stages: ash::vk::PipelineStageFlags::TRANSFER,
+                access: ash::vk::AccessFlags::TRANSFER_READ,
+                write: false,
+            },
             layout: ash::vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
         });
     assert!(
@@ -294,7 +296,7 @@ fn illegal_image_usage_is_rejected_even_when_the_pass_would_be_dead() {
         false,
     );
     let mut definition = definition(&graph);
-    definition.access_semantics[0].mask = 0x2000;
+    definition.access_semantics[0].declared_access = ash::vk::AccessFlags::HOST_READ;
     assert!(
         check_definition(&definition)
             .unwrap_err()

@@ -308,7 +308,7 @@ impl PreparedAttachments {
                         .iter()
                         .find(|entry| entry.code == access.access_code)
                         .is_some_and(|native| {
-                            native.layout == layout && native.access.contains(required)
+                            native.layout == layout && native.scope.access.contains(required)
                         })
                         && managed
                             .texture_for(access.resource_index)

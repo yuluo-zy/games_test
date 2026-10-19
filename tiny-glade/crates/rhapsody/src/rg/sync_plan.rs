@@ -454,11 +454,7 @@ fn range_use(
     Ok(RangeUse {
         resource,
         range,
-        scope: AccessScope {
-            stages: semantics.stages,
-            access: semantics.access,
-            write: semantics.write,
-        },
+        scope: semantics.scope,
         layout: match range {
             NativeRange::Image { aspects, .. } => native_layout(
                 semantics.layout,

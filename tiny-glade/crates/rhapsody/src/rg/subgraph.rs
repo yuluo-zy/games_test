@@ -365,7 +365,7 @@ pub(crate) fn validate_subgraphs(definition: &GraphDefinition) -> crate::Result<
                     crate::Error::invalid_usage("subgraph port access has no classification")
                 })?;
             if matches!(resource.descriptor, super::graph::Descriptor::Image(_)) {
-                crate::raw::resource_usage::image_access_mask_to_usage_flags(semantic.mask)?;
+                crate::raw::resource_usage::image_usage_for_access(semantic.declared_access)?;
             }
         }
         if scope.interface.side_effect

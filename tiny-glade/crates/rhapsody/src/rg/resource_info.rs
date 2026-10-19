@@ -2,9 +2,8 @@
 //! ordered acquire/release events used to bind physical resources.
 use std::collections::HashSet;
 
-use crate::raw::resource_usage::{
-    buffer_access_mask_to_usage_flags, image_access_mask_to_usage_flags,
-};
+use crate::raw::resource_usage::{buffer_usage_for_access, image_usage_for_access};
+use ash::vk::AccessFlags;
 
 /// Marks an absent previous/next/first/last access index.
 pub const NO_ACCESS: u32 = u32::MAX;
@@ -164,7 +163,7 @@ impl ResourceInfo {
         origins: &[OriginKind],
         exports: &[ExportDeclaration],
         passes: &[&[AccessDeclaration]],
-        mut dependency_access_mask: impl FnMut(u8) -> u32,
+        mut dependency_access_mask: impl FnMut(u8) -> AccessFlags,
     ) -> crate::Result<()> {
         // Validate every caller-controlled index and usage before mutating the
         // current metadata. The same checks protect the public CPU entry point.
@@ -196,7 +195,7 @@ impl ResourceInfo {
                     })?;
                 let mask = *mask.get_or_insert_with(|| dependency_access_mask(access.access_code));
                 if origin.type_code()? == 0 {
-                    image_access_mask_to_usage_flags(mask)?;
+                    image_usage_for_access(mask)?;
                 }
             }
         }
@@ -216,10 +215,10 @@ impl ResourceInfo {
                 })?;
             let mask = *mask.get_or_insert_with(|| dependency_access_mask(export.access_code));
             if export.tag == 0 {
-                image_access_mask_to_usage_flags(mask)?;
+                image_usage_for_access(mask)?;
             }
         }
-        let mut dependency_access_mask = |code: u8| masks[usize::from(code)].unwrap_or(0);
+        let mut dependency_access_mask = |code: u8| masks[usize::from(code)].unwrap_or(AccessFlags::empty());
         self.clear();
         self.lifetimes.reserve(origins.len());
         for origin in origins {
@@ -302,20 +301,20 @@ impl ResourceInfo {
     fn extend_usage_flags_for_exports(
         &mut self,
         exports: &[ExportDeclaration],
-        dependency_access_mask: &mut impl FnMut(u8) -> u32,
+        dependency_access_mask: &mut impl FnMut(u8) -> AccessFlags,
     ) -> crate::Result<()> {
         for export in exports {
             let access_mask = dependency_access_mask(export.access_code);
             let resource_index =
                 u16::try_from(export.resource_index).expect("export index exceeds u16");
             self.exported_indices.insert(resource_index);
-            if access_mask != 0 {
+            if !access_mask.is_empty() {
                 if export.tag & 1 == 0 {
                     let usage = &mut self.image_usage_flags[usize::from(resource_index)];
-                    *usage |= image_access_mask_to_usage_flags(access_mask)?.as_raw();
+                    *usage |= image_usage_for_access(access_mask)?.as_raw();
                 } else {
                     let usage = &mut self.buffer_usage_flags[usize::from(resource_index)];
-                    *usage |= buffer_access_mask_to_usage_flags(access_mask).as_raw();
+                    *usage |= buffer_usage_for_access(access_mask).as_raw();
                 }
             }
         }
@@ -329,7 +328,7 @@ impl ResourceInfo {
         pass_index: PassIndex,
         pass: &[AccessDeclaration],
         origins: &[OriginKind],
-        dependency_access_mask: &mut impl FnMut(u8) -> u32,
+        dependency_access_mask: &mut impl FnMut(u8) -> AccessFlags,
     ) -> crate::Result<()> {
         let start = self.accesses.len();
         for declaration in pass {
@@ -354,12 +353,12 @@ impl ResourceInfo {
             match origins[resource_index].type_code()? {
                 1 => {
                     let usage = &mut self.buffer_usage_flags[resource_index];
-                    *usage |= buffer_access_mask_to_usage_flags(access_mask).as_raw();
+                    *usage |= buffer_usage_for_access(access_mask).as_raw();
                 }
                 2 => {}
                 _ => {
                     let usage = &mut self.image_usage_flags[resource_index];
-                    *usage |= image_access_mask_to_usage_flags(access_mask)?.as_raw();
+                    *usage |= image_usage_for_access(access_mask)?.as_raw();
                 }
             }
         }

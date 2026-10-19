@@ -480,7 +480,7 @@ fn resource_info_failure_preserves_metadata_and_rejects_invalid_indices() {
         access_code: WRITE,
         ..Default::default()
     }];
-    info.calculate(&origins, &[], &[&good], |_| 0x20).unwrap();
+    info.calculate(&origins, &[], &[&good], |_| ash::vk::AccessFlags::SHADER_READ).unwrap();
     let previous = info.accesses.clone();
     let bad = [AccessDeclaration {
         resource_index: u32::MAX,
@@ -488,7 +488,7 @@ fn resource_info_failure_preserves_metadata_and_rejects_invalid_indices() {
         ..Default::default()
     }];
     assert_eq!(
-        info.calculate(&origins, &[], &[&bad], |_| 0x20)
+        info.calculate(&origins, &[], &[&bad], |_| ash::vk::AccessFlags::SHADER_READ)
             .unwrap_err()
             .kind(),
         rhapsody::ErrorKind::InvalidUsage
@@ -496,7 +496,7 @@ fn resource_info_failure_preserves_metadata_and_rejects_invalid_indices() {
     assert_eq!(info.accesses, previous);
     let image_origins = [OriginKind::Tag1 { type_code: 0 }];
     assert_eq!(
-        info.calculate(&image_origins, &[], &[&good], |_| 0x2000)
+        info.calculate(&image_origins, &[], &[&good], |_| ash::vk::AccessFlags::HOST_READ)
             .unwrap_err()
             .kind(),
         rhapsody::ErrorKind::InvalidUsage
