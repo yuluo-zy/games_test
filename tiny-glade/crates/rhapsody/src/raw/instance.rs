@@ -498,7 +498,7 @@ impl ValidationCollector {
     }
 }
 
-/// 把 debug utils 消息收集进 [`ValidationCollector`] 的 messenger；Drop 时销毁（先于实例）。
+/// 把 debug utils 消息收集进 `ValidationCollector` 的 messenger；Drop 时销毁（先于实例）。
 pub struct ValidationMessenger {
     loader: ash::ext::debug_utils::Instance,
     handle: vk::DebugUtilsMessengerEXT,

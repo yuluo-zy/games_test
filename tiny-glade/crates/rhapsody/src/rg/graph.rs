@@ -342,7 +342,7 @@ impl RenderGraph {
         }
     }
 
-    /// 带 pass 上限检查的 `add_pass`：已有 [`MAX_PASSES`] 个 pass 时返回 [`BuildError::PassLimit`]。
+    /// 带 pass 上限检查的 `add_pass`：已有 `MAX_PASSES` 个 pass 时返回 [`BuildError::PassLimit`]。
     pub fn try_add_pass(
         &mut self,
         name: impl Into<std::sync::Arc<str>>,

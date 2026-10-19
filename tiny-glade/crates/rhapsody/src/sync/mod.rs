@@ -1,9 +1,9 @@
 //! GPU 完成的唯一真相源。
 //!
-//! 每个逻辑队列一条时间线信号量（[`timeline::QueueTimeline`]）。一次成功的提交在该队列上
+//! 每个逻辑队列一条时间线信号量（`timeline::QueueTimeline`）。一次成功的提交在该队列上
 //! signal 一个严格递增的值，得到 [`SyncPoint`]；资源或命令池记录"在哪些队列上用到哪个值"
 //! （[`SyncSet`]），当各队列已完成的值（[`CompletedValues`]）都不小于记录值时即可回收
-//! （[`retire::Retirement`]）。
+//! （`retire::Retirement`）。
 //!
 //! 不变量：
 //! - 值只在 `vkQueueSubmit` 成功后才算已提交；失败的提交不占用值，因此任何已知的

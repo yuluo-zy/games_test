@@ -69,7 +69,7 @@ impl Drop for Sampler {
 /// 发行版 404 个编译 shader 的反射里出现的内置采样器名（`inc/samplers.hlsl`，名字/set 来自
 /// raw-per-bin 反射，O）。原版 `Device` 在 `+0x680` 持有 `HashMap<name, vk::Sampler>`，
 /// `get_built_in_sampler`（0x140bfc5b0）按名字查找，缺失时 `panic!("Sampler not found: {name}")`
-/// （sampler.rs:201）。创建参数见 [`BUILTIN_SAMPLER_SPECS`]（`Device::create`
+/// （sampler.rs:201）。创建参数见 `BUILTIN_SAMPLER_SPECS`（`Device::create`
 /// 0x140bf2560 内联的 create_samplers，名字池 0x142b16b42，状态逐字节读自 0x140bf5208..0x140bf5823）。
 /// 本数组只列出 shader 反射里出现的 9 个名字；原版实际创建 13 个（另有 4 个 `_iso` 变体）。
 pub const BUILTIN_SAMPLER_NAMES: [&str; 9] = [

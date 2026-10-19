@@ -898,7 +898,7 @@ impl Buffer {
         })
     }
     /// Write after overlapping GPU uses complete, waiting at most
-    /// [`HOST_ACCESS_TIMEOUT_NS`] (then `Timeout`).
+    /// `HOST_ACCESS_TIMEOUT_NS` (then `Timeout`).
     pub fn write_bytes(&self, offset: u64, bytes: &[u8]) -> Result<()> {
         self.write_impl(offset, bytes, Some(HOST_ACCESS_TIMEOUT_NS))
     }
@@ -981,7 +981,7 @@ impl Buffer {
         self.read_impl(offset, bytes, None)
     }
     /// Read after overlapping GPU writes complete, waiting at most
-    /// [`HOST_ACCESS_TIMEOUT_NS`] (then `Timeout`).
+    /// `HOST_ACCESS_TIMEOUT_NS` (then `Timeout`).
     pub fn read_bytes(&self, offset: u64, bytes: &mut [u8]) -> Result<()> {
         self.read_impl(offset, bytes, Some(HOST_ACCESS_TIMEOUT_NS))
     }

@@ -410,7 +410,7 @@ fn require_transfer_dst(texture: &Texture) -> Result<()> {
 
 /// Initial upload of linear data (layer-major, mip-minor, every cube face a
 /// layer). The image must be in UNDEFINED and ends in SHADER_READ_ONLY_OPTIMAL.
-/// Does not wait; see [`upload_regions`].
+/// Does not wait; see `upload_regions`.
 pub fn init_texture_data(device: &Arc<Device>, texture: &Texture, bytes: &[u8]) -> Result<()> {
     init_texture_data_with(device, texture, TextureInitialData::Linear(bytes))
 }

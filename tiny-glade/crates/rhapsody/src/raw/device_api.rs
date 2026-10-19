@@ -179,7 +179,7 @@ impl Device {
     }
 
     /// `create_texture` + `TextureInitialData` 跳表 1 号目标：整张图清零（见
-    /// [`super::setup::init_texture_zero_fill`]）。与带数据的 `create_texture` 一样加 `TRANSFER_DST`、
+    /// `super::setup::init_texture_zero_fill`）。与带数据的 `create_texture` 一样加 `TRANSFER_DST`、
     /// 创建布局为 UNDEFINED，随后转换到传输目标执行清零。
     pub fn create_texture_zeroed(&self, desc: &TextureDesc, name: &str) -> Result<ManagedTexture> {
         desc.validate()?;
@@ -191,7 +191,7 @@ impl Device {
         self.caches.resources.textures.allocate(texture)
     }
 
-    /// Method form of [`super::binding`] pipeline binding.
+    /// Method form of `super::binding` pipeline binding.
     ///
     /// # Safety
     /// `command_buffer` 必须处于录制状态且属于本设备。

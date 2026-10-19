@@ -437,7 +437,7 @@ pub trait ExecutionBackend: crate::rg::graph::ResourceBackend {
     /// order of `commands` (each from [`Self::chunk_command_handle`] and
     /// begun). Leases must come from disjoint `&mut` borrows of the pools
     /// that allocated those commands, none shared with a command that stays
-    /// recording during the parallel section (see [`ChunkLease`]).
+    /// recording during the parallel section (see `ChunkLease`).
     fn chunk_recording(&mut self, _commands: &[u64]) -> crate::Result<ChunkRecording<'_>> {
         Err(crate::Error::unsupported(
             "backend does not support parallel recording",
@@ -633,7 +633,7 @@ impl ExecutionChain {
     }
 
     /// 同 [`Self::execute_graph_with_context`]，但在编译之后、任何命令开始之前先交给 `validate` 校验编译结果；
-    /// 校验失败返回 [`Error::Validation`]，并按失败路径归还本次取出/新建的资源。
+    /// 校验失败返回 `Error::Validation`，并按失败路径归还本次取出/新建的资源。
     pub fn execute_graph_validated(
         &mut self,
         graph: crate::rg::graph::GraphDeclaration,

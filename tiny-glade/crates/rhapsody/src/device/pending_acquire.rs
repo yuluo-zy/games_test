@@ -89,7 +89,7 @@ impl PendingAcquires {
 }
 
 /// Acquires recorded into one command. Re-queue them with
-/// [`Device::requeue_pending_acquires`] if that command is never submitted.
+/// `Device::requeue_pending_acquires` if that command is never submitted.
 pub type DrainedAcquires = smallvec::SmallVec<[PendingAcquire; 4]>;
 
 impl Device {

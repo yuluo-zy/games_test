@@ -1,5 +1,5 @@
 //! Narrow ownership for graph-local aliased allocations. Deferred owners contain
-//! an ash dispatch table and accounting only, never an Arc<Device> back edge.
+//! an ash dispatch table and accounting only, never an `Arc<Device>` back edge.
 use super::{
     allocator::{AllocatorStats, MemoryBlock, choose_memory_type},
     device::Device,

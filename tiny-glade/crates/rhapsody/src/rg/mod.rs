@@ -75,8 +75,8 @@ mod transient_resources;
 
 static PLAN_VALIDATION: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
-/// Enable the independent plan verifiers ([`plan_check`],
-/// [`transient_memory_check`]) on every plan-cache miss in builds where they are
+/// Enable the independent plan verifiers (`plan_check`,
+/// `transient_memory_check`) on every plan-cache miss in builds where they are
 /// not already on. Debug builds and the `validation` feature always run them.
 pub fn set_plan_validation(enabled: bool) {
     PLAN_VALIDATION.store(enabled, std::sync::atomic::Ordering::Relaxed);
