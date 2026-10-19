@@ -78,7 +78,7 @@ impl Fixture {
                     None,
                     &DeviceConfig {
                         submission_api: api,
-                        recording: RecordingPolicy::Parallel,
+                        recording: RecordingPolicy::Adaptive,
                         validation: true,
                         queues: QueueConfig {
                             async_compute: if independent {

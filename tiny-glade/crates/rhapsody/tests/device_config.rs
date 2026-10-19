@@ -22,7 +22,7 @@ fn create(config: &DeviceConfig) -> Option<std::sync::Arc<Device>> {
 fn configured_device_reports_actual_enabled_capabilities_and_allocation_mode() {
     let config = DeviceConfig {
         allocation: AllocationStrategy::Dedicated,
-        recording: RecordingPolicy::Parallel,
+        recording: RecordingPolicy::Adaptive,
         ..DeviceConfig::headless()
     };
     let Some(device) = create(&config) else {
@@ -42,6 +42,18 @@ fn configured_device_reports_actual_enabled_capabilities_and_allocation_mode() {
         session.chain.parallel.strategy,
         ParallelRecording::ADAPTIVE.strategy
     );
+}
+
+#[test]
+fn default_device_records_graph_sessions_adaptively() {
+    let Some(device) = create(&DeviceConfig::headless()) else {
+        return;
+    };
+    assert_eq!(device.policy().recording, RecordingPolicy::Adaptive);
+    let backend = VulkanGraphBackend::new(device, AccessTable::original()).unwrap();
+    let session = VulkanGraphSession::new(backend);
+    assert_eq!(session.chain.parallel, ParallelRecording::default());
+    assert_eq!(session.chain.parallel, ParallelRecording::ADAPTIVE);
 }
 
 #[test]

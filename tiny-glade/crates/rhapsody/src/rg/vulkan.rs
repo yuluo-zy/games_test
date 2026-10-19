@@ -1275,12 +1275,7 @@ impl VulkanGraphBackend {
                 .collect(),
             family_count,
         );
-        chain.parallel = match self.device.policy().recording {
-            crate::device::RecordingPolicy::Serial => super::parallel::ParallelRecording::SERIAL,
-            crate::device::RecordingPolicy::Parallel => {
-                super::parallel::ParallelRecording::ADAPTIVE
-            }
-        };
+        chain.parallel = self.device.policy().recording.into();
         chain
     }
 }

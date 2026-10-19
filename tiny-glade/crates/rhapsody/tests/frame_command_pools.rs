@@ -150,7 +150,7 @@ fn dropped_pending_commands_do_not_allow_early_whole_pool_reset() {
 fn production_session_uses_bounded_frame_worker_pools_and_whole_pool_reuse() {
     let config = DeviceConfig {
         frames_in_flight: 2,
-        recording: RecordingPolicy::Parallel,
+        recording: RecordingPolicy::Adaptive,
         ..DeviceConfig::headless()
     };
     let Some(device) = gpu_test_support::initialize(

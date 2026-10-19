@@ -68,7 +68,7 @@ impl Default for DeviceConfig {
                 .with(Feature::DynamicRendering),
             preferred_device: DevicePreference::default(),
             frames_in_flight: 2,
-            recording: RecordingPolicy::Serial,
+            recording: RecordingPolicy::default(),
             submission_api: SubmissionApi::Auto,
             reclamation: super::ReclamationConfig::default(),
             allocation: if cfg!(feature = "suballocation") {
