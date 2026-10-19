@@ -15,13 +15,13 @@ use crate::{
         graph::{Descriptor, RenderGraph},
         resource::{AccessRange, ResourceHandle},
     },
-    shader_pipeline::{
-        compiled::{CompiledShaderPipeline, CompiledShaderStage, ShaderStage},
-        reflection::BindingLocation,
-    },
 };
 use ash::vk::{self, Handle};
 use parking_lot::Mutex;
+use shader_pipeline::{
+    compiled::{CompiledShaderPipeline, CompiledShaderStage, ShaderStage},
+    reflection::BindingLocation,
+};
 use std::sync::Arc;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

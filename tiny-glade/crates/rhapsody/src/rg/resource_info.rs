@@ -218,7 +218,8 @@ impl ResourceInfo {
                 image_usage_for_access(mask)?;
             }
         }
-        let mut dependency_access_mask = |code: u8| masks[usize::from(code)].unwrap_or(AccessFlags::empty());
+        let mut dependency_access_mask =
+            |code: u8| masks[usize::from(code)].unwrap_or(AccessFlags::empty());
         self.clear();
         self.lifetimes.reserve(origins.len());
         for origin in origins {
@@ -344,7 +345,11 @@ impl ResourceInfo {
             });
             let current_pass = pass_index.0;
             lifetime.first_pass.get_or_insert(current_pass);
-            lifetime.last_pass = Some(lifetime.last_pass.map_or(current_pass, |last| last.max(current_pass)));
+            lifetime.last_pass = Some(
+                lifetime
+                    .last_pass
+                    .map_or(current_pass, |last| last.max(current_pass)),
+            );
             if lifetime.first_access_index == NO_ACCESS {
                 lifetime.first_access_index = access_index;
             }

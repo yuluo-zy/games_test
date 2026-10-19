@@ -136,16 +136,30 @@ pub fn collect_resource_access_range_with_contents(
     reads_previous: bool,
     contents_unused: bool,
 ) -> Result<LedgerUpdate, IncompatibleAccess> {
-    collect_resource_access_range_with_policy(entries, resource_index, access_code,
-        synchronization_group, range, version, reads_previous, contents_unused, false)
+    collect_resource_access_range_with_policy(
+        entries,
+        resource_index,
+        access_code,
+        synchronization_group,
+        range,
+        version,
+        reads_previous,
+        contents_unused,
+        false,
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
 pub fn collect_resource_access_range_with_policy(
-    entries: &mut Vec<AccessDeclaration>, resource_index: u32, access_code: u8,
-    synchronization_group: u32, range: super::resource::AccessRange,
-    version: super::resource::AccessVersion, reads_previous: bool,
-    contents_unused: bool, allow_undefined_contents: bool,
+    entries: &mut Vec<AccessDeclaration>,
+    resource_index: u32,
+    access_code: u8,
+    synchronization_group: u32,
+    range: super::resource::AccessRange,
+    version: super::resource::AccessVersion,
+    reads_previous: bool,
+    contents_unused: bool,
+    allow_undefined_contents: bool,
 ) -> Result<LedgerUpdate, IncompatibleAccess> {
     let Some(previous_index) = entries.iter().rposition(|entry| {
         entry.resource_index == resource_index && entry.range == range && entry.version == version
@@ -169,7 +183,11 @@ pub fn collect_resource_access_range_with_policy(
         .is_equivalent(ResourceSyncGroup::from_raw(synchronization_group));
     if previous.access_code == access_code && same_group {
         // Any active binding to this same range still consumes its contents.
-        merge_content_policy(&mut entries[previous_index], contents_unused, allow_undefined_contents);
+        merge_content_policy(
+            &mut entries[previous_index],
+            contents_unused,
+            allow_undefined_contents,
+        );
         return Ok(LedgerUpdate::Deduplicated {
             index: previous_index,
         });
@@ -179,14 +197,22 @@ pub fn collect_resource_access_range_with_policy(
         match (previous.access_code, access_code) {
             (0x17, 0x1d) | (0x1d, 0x17) => {
                 entries[previous_index].access_code = 0x1e;
-                merge_content_policy(&mut entries[previous_index], contents_unused, allow_undefined_contents);
+                merge_content_policy(
+                    &mut entries[previous_index],
+                    contents_unused,
+                    allow_undefined_contents,
+                );
                 return Ok(LedgerUpdate::MergedInPlace {
                     index: previous_index,
                 });
             }
             (0x1a, 0x02) => {
                 entries[previous_index].access_code = 0x02;
-                merge_content_policy(&mut entries[previous_index], contents_unused, allow_undefined_contents);
+                merge_content_policy(
+                    &mut entries[previous_index],
+                    contents_unused,
+                    allow_undefined_contents,
+                );
                 return Ok(LedgerUpdate::MergedInPlace {
                     index: previous_index,
                 });
@@ -317,7 +343,8 @@ mod tests {
         );
         let origins = [OriginKind::Tag1 { type_code: 1 }; 2];
         let mut info = ResourceInfo::default();
-        info.calculate(&origins, &[], &[entries], |_| ash::vk::AccessFlags::empty()).unwrap();
+        info.calculate(&origins, &[], &[entries], |_| ash::vk::AccessFlags::empty())
+            .unwrap();
         assert_eq!(info.accesses.len(), 3);
         assert_eq!(info.accesses[2].previous_access_index, 0);
         assert_eq!(info.accesses[0].next_access_index, 2);

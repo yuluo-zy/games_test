@@ -62,9 +62,9 @@ fn original_egui_shader_draws_real_vertex_index_and_font_uploads_to_gpu() {
         );
     backend.end_frame();
     let target = Arc::new(
-        rhapsody::raw::texture::Texture::new(
+        rhapsody::resource::Texture::new(
             device.clone(),
-            &rhapsody::raw::texture::TextureDesc::new_2d(64, 64, vk::Format::R8G8B8A8_UNORM).usage(
+            &rhapsody::resource::TextureDesc::new_2d(64, 64, vk::Format::R8G8B8A8_UNORM).usage(
                 vk::ImageUsageFlags::COLOR_ATTACHMENT
                     | vk::ImageUsageFlags::TRANSFER_SRC
                     | vk::ImageUsageFlags::TRANSFER_DST,
@@ -73,9 +73,9 @@ fn original_egui_shader_draws_real_vertex_index_and_font_uploads_to_gpu() {
         .unwrap(),
     );
     let readback = Arc::new(
-        rhapsody::raw::buffer::Buffer::new(
+        rhapsody::resource::Buffer::new(
             device.clone(),
-            &rhapsody::raw::buffer::BufferDesc::new_gpu_to_cpu(
+            &rhapsody::resource::BufferDesc::new_gpu_to_cpu(
                 64 * 64 * 4,
                 vk::BufferUsageFlags::TRANSFER_DST,
             ),

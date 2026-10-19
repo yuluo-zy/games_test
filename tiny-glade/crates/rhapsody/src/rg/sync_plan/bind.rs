@@ -242,7 +242,9 @@ impl SynchronizationPlanner {
             edge.previous as usize >= program.resources.len()
                 || edge.next as usize >= program.resources.len()
         }) {
-            return Err(Error::invalid_usage("native alias edge names an absent resource"));
+            return Err(Error::invalid_usage(
+                "native alias edge names an absent resource",
+            ));
         }
         for batch in &program.batches {
             self.push_batch(BoundBatch {
@@ -294,7 +296,9 @@ impl SynchronizationPlanner {
     fn static_dependency(&mut self, program: &RangeProgram, from: usize, to: usize) -> Result<()> {
         let (Some(source), Some(target)) = (program.batches.get(from), program.batches.get(to))
         else {
-            return Err(Error::invalid_usage("native batch dependency destination absent"));
+            return Err(Error::invalid_usage(
+                "native batch dependency destination absent",
+            ));
         };
         let domain = self.bound.batches.values[to].domain;
         let dependency = DependencyRef::Batch(from);
@@ -341,12 +345,20 @@ impl SynchronizationPlanner {
         };
         match (a, b) {
             (DependencyRef::Point(x), DependencyRef::Point(y)) => {
-                if x.value >= y.value { a } else { b }
+                if x.value >= y.value {
+                    a
+                } else {
+                    b
+                }
             }
             (DependencyRef::Batch(_), DependencyRef::Point(_)) => a,
             (DependencyRef::Point(_), DependencyRef::Batch(_)) => b,
             (DependencyRef::Batch(x), DependencyRef::Batch(y)) => {
-                if position(x) >= position(y) { a } else { b }
+                if position(x) >= position(y) {
+                    a
+                } else {
+                    b
+                }
             }
         }
     }
@@ -982,9 +994,11 @@ mod tests {
         ] {
             let mut program = program(image, vec![writes, reads], &[queue(1, 1), queue(0, 0)]);
             program.resources[0].sharing = sharing;
-            let mut planner =
-                SynchronizationPlanner::new(Arc::new(AllocatorStats::default()), Default::default())
-                    .unwrap();
+            let mut planner = SynchronizationPlanner::new(
+                Arc::new(AllocatorStats::default()),
+                Default::default(),
+            )
+            .unwrap();
             planner
                 .add_initial(
                     0,
@@ -1074,7 +1088,10 @@ mod tests {
             &stats,
         )
         .unwrap();
-        let release = SyncPoint { queue: q1, value: 5 };
+        let release = SyncPoint {
+            queue: q1,
+            value: 5,
+        };
         cell.publish_range_state(release);
         cell.insert_overall(release);
         let mut completed = crate::sync::CompletedValues::default();
@@ -1133,11 +1150,11 @@ mod tests {
             "no ownership prelude batch"
         );
         assert!(
-            bound
-                .transitions()
-                .iter()
-                .all(|transition| matches!(transition.kind, BarrierKind::Memory)
-                    && transition.source_family == vk::QUEUE_FAMILY_IGNORED),
+            bound.transitions().iter().all(|transition| matches!(
+                transition.kind,
+                BarrierKind::Memory
+            ) && transition.source_family
+                == vk::QUEUE_FAMILY_IGNORED),
             "no ownership transfer barrier"
         );
         assert!(

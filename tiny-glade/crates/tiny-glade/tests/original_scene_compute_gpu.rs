@@ -109,16 +109,16 @@ fn readback(
     shaders: &AssetShaderLibrary,
     device: &Arc<rhapsody::device::Device>,
     source: RgTexture,
-) -> rhapsody::Result<Arc<rhapsody::raw::buffer::Buffer>> {
+) -> rhapsody::Result<Arc<rhapsody::resource::Buffer>> {
     let [w, h] = source.desc.extent_2d();
-    let target = Arc::new(rhapsody::raw::texture::Texture::new(
+    let target = Arc::new(rhapsody::resource::Texture::new(
         device.clone(),
-        &rhapsody::raw::texture::TextureDesc::new_2d(w, h, vk::Format::R8G8B8A8_UNORM)
+        &rhapsody::resource::TextureDesc::new_2d(w, h, vk::Format::R8G8B8A8_UNORM)
             .usage(vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::TRANSFER_SRC),
     )?);
-    let output = Arc::new(rhapsody::raw::buffer::Buffer::new(
+    let output = Arc::new(rhapsody::resource::Buffer::new(
         device.clone(),
-        &rhapsody::raw::buffer::BufferDesc::new_gpu_to_cpu(
+        &rhapsody::resource::BufferDesc::new_gpu_to_cpu(
             u64::from(w * h * 4),
             vk::BufferUsageFlags::TRANSFER_DST,
         ),
@@ -321,9 +321,9 @@ fn reprojection_first_frame_uses_false_validity_and_copies_real_depth() {
                         (vk::Format::R32_SFLOAT, [1.0, 0.0, 0.0, 0.0]),
                         (vk::Format::R16G16B16A16_SFLOAT, [0.0; 4]),
                     ] {
-                        let texture = Arc::new(rhapsody::raw::texture::Texture::new(
+                        let texture = Arc::new(rhapsody::resource::Texture::new(
                             fixture.device.clone(),
-                            &rhapsody::raw::texture::TextureDesc::new_2d(16, 16, format).usage(
+                            &rhapsody::resource::TextureDesc::new_2d(16, 16, format).usage(
                                 vk::ImageUsageFlags::SAMPLED | vk::ImageUsageFlags::TRANSFER_DST,
                             ),
                         )?);
@@ -790,14 +790,11 @@ fn read_dof_buffer_range(
     source: country_core::render::pass_builder::compute_pass_builder::RgBuffer,
     offset: u64,
     size: u64,
-) -> rhapsody::Result<Arc<rhapsody::raw::buffer::Buffer>> {
+) -> rhapsody::Result<Arc<rhapsody::resource::Buffer>> {
     use rhapsody::rg::resource::AccessRange;
-    let output = Arc::new(rhapsody::raw::buffer::Buffer::new(
+    let output = Arc::new(rhapsody::resource::Buffer::new(
         device.clone(),
-        &rhapsody::raw::buffer::BufferDesc::new_gpu_to_cpu(
-            size,
-            vk::BufferUsageFlags::TRANSFER_DST,
-        ),
+        &rhapsody::resource::BufferDesc::new_gpu_to_cpu(size, vk::BufferUsageFlags::TRANSFER_DST),
     )?);
     let output_id = frame.import_native_buffer(output.clone(), 0)?;
     frame.with_graph(|graph| {
@@ -841,7 +838,7 @@ fn read_dof_buffer_range(
     Ok(output)
 }
 
-fn dof_read_words(buffer: &rhapsody::raw::buffer::Buffer, word_count: usize) -> Vec<u32> {
+fn dof_read_words(buffer: &rhapsody::resource::Buffer, word_count: usize) -> Vec<u32> {
     let mut bytes = vec![0; word_count * 4];
     buffer.read_bytes(0, &mut bytes).unwrap();
     bytes
@@ -911,9 +908,9 @@ fn original_multires_dof_reads_uploaded_tile_offsets_and_dispatches_its_real_par
                         ([64, 32], vk::Format::R16_SFLOAT, [0.0; 4]),
                         ([8, 4], vk::Format::R16G16_SFLOAT, [0.0; 4]),
                     ] {
-                        let texture = Arc::new(rhapsody::raw::texture::Texture::new(
+                        let texture = Arc::new(rhapsody::resource::Texture::new(
                             fixture.device.clone(),
-                            &rhapsody::raw::texture::TextureDesc::new_2d(dims[0], dims[1], format)
+                            &rhapsody::resource::TextureDesc::new_2d(dims[0], dims[1], format)
                                 .usage(
                                     vk::ImageUsageFlags::SAMPLED
                                         | vk::ImageUsageFlags::TRANSFER_DST,
@@ -1095,8 +1092,8 @@ fn run_original_aa_fixture_frame(
     use_tgsr: bool,
     frame_index: u32,
 ) -> (
-    Arc<rhapsody::raw::texture::Texture>,
-    Option<Arc<rhapsody::raw::texture::Texture>>,
+    Arc<rhapsody::resource::Texture>,
+    Option<Arc<rhapsody::resource::Texture>>,
 ) {
     use country_core::systems::render_loop::{
         compute_passes::taa::{HistoryTexture, TaaInputs, TgsrInputs},
@@ -1118,9 +1115,9 @@ fn run_original_aa_fixture_frame(
                         (vk::Format::R16G16B16A16_SFLOAT, [0.0; 4]),
                         (vk::Format::R32_SFLOAT, [1.0, 0.0, 0.0, 0.0]),
                     ] {
-                        let texture = Arc::new(rhapsody::raw::texture::Texture::new(
+                        let texture = Arc::new(rhapsody::resource::Texture::new(
                             device.clone(),
-                            &rhapsody::raw::texture::TextureDesc::new_2d(16, 16, format).usage(
+                            &rhapsody::resource::TextureDesc::new_2d(16, 16, format).usage(
                                 vk::ImageUsageFlags::SAMPLED | vk::ImageUsageFlags::TRANSFER_DST,
                             ),
                         )?);
@@ -1376,9 +1373,9 @@ fn original_shader_refactoring_replaces_the_full_frame_and_keeps_real_reference(
                     frame,
                     &mut fixture.world,
                     |frame, world| {
-                        let texture = Arc::new(rhapsody::raw::texture::Texture::new(
+                        let texture = Arc::new(rhapsody::resource::Texture::new(
                             device.clone(),
-                            &rhapsody::raw::texture::TextureDesc::new_2d(
+                            &rhapsody::resource::TextureDesc::new_2d(
                                 16,
                                 16,
                                 vk::Format::B10G11R11_UFLOAT_PACK32,
@@ -1528,9 +1525,9 @@ fn original_spd_large_mip_chain_uses_uploaded_zero_atomic_and_reuses_it_next_fra
     let observed = Arc::new(std::sync::Mutex::new(Vec::new()));
     for frame_index in 0..2u32 {
         let source = Arc::new(
-            rhapsody::raw::texture::Texture::new(
+            rhapsody::resource::Texture::new(
                 fixture.device.clone(),
-                &rhapsody::raw::texture::TextureDesc::new_2d(
+                &rhapsody::resource::TextureDesc::new_2d(
                     256,
                     256,
                     vk::Format::B10G11R11_UFLOAT_PACK32,
@@ -1545,9 +1542,9 @@ fn original_spd_large_mip_chain_uses_uploaded_zero_atomic_and_reuses_it_next_fra
             .unwrap(),
         );
         let output = Arc::new(
-            rhapsody::raw::buffer::Buffer::new(
+            rhapsody::resource::Buffer::new(
                 fixture.device.clone(),
-                &rhapsody::raw::buffer::BufferDesc::new_gpu_to_cpu(
+                &rhapsody::resource::BufferDesc::new_gpu_to_cpu(
                     44,
                     vk::BufferUsageFlags::TRANSFER_DST,
                 ),

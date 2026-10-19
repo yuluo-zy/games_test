@@ -118,14 +118,14 @@ fn point_upload_bytes(points: &[[f32; 3]]) -> (usize, Vec<u8>) {
 
 struct StrokeUpload {
     infos: Vec<StrokeInfo>,
-    chunks: Vec<rhapsody::raw::dynamic_constants::DynamicConstantsChunk>,
+    chunks: Vec<rhapsody::resource::DynamicConstantsChunk>,
 }
 fn upload_strokes(
     strokes: &std::collections::HashMap<
         crate::resources::terrain_editing::StrokeId,
         crate::resources::terrain_editing::TerrainStroke,
     >,
-    constants: &mut rhapsody::raw::dynamic_constants::DynamicConstants,
+    constants: &mut rhapsody::resource::DynamicConstants,
 ) -> rhapsody::Result<StrokeUpload> {
     let mut result = StrokeUpload {
         infos: Vec::new(),
@@ -202,7 +202,7 @@ pub const BLUR_TEMP_FORMAT: u32 = 0x6d;
 /// TerrainEditingData::rasterization_parts; no layout ResourceView is involved.
 pub fn rasterize_terrain_stroke(
     env: &mut PassEnv<'_>,
-    constants: &mut rhapsody::raw::dynamic_constants::DynamicConstants,
+    constants: &mut rhapsody::resource::DynamicConstants,
     strokes: &std::collections::HashMap<
         crate::resources::terrain_editing::StrokeId,
         crate::resources::terrain_editing::TerrainStroke,
@@ -336,10 +336,22 @@ mod tests {
             perm_define("PERM_ty", "float")
         );
         assert_ne!(vector.source_hash(), scalar.source_hash());
-        use rhapsody::shader_pipeline::shader_defines::ShaderDefines;
-        assert_eq!(ShaderDefines(vector.pipeline_defines()).artifact_hash(), 0xb9dd0465835cd591);
-        assert_eq!(ShaderDefines(GaussBlur { fmt: "r16", vec4: false }.pipeline_defines()).artifact_hash(),
-            0xdc5fd7e4b9bf9935);
+        use shader_pipeline::shader_defines::ShaderDefines;
+        assert_eq!(
+            ShaderDefines(vector.pipeline_defines()).artifact_hash(),
+            0xb9dd0465835cd591
+        );
+        assert_eq!(
+            ShaderDefines(
+                GaussBlur {
+                    fmt: "r16",
+                    vec4: false
+                }
+                .pipeline_defines()
+            )
+            .artifact_hash(),
+            0xdc5fd7e4b9bf9935
+        );
     }
     #[test]
     fn point_upload_uses_xz_and_retains_original_even_allocation() {

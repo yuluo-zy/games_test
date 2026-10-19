@@ -122,8 +122,11 @@ impl Domain {
 
     // Independent checker still collects all available writers. Only a caller's
     // explicit undefined-content read may leave cells without a content source.
-    fn sources_with_undefined(&self, range: AccessRange, allow_undefined: bool)
-        -> crate::Result<BTreeSet<usize>> {
+    fn sources_with_undefined(
+        &self,
+        range: AccessRange,
+        allow_undefined: bool,
+    ) -> crate::Result<BTreeSet<usize>> {
         let mut missing = self.cells(range)?;
         let mut sources = BTreeSet::new();
         for &(defined, writer) in &self.content {
@@ -249,8 +252,11 @@ fn inspect_definition(definition: &GraphDefinition) -> crate::Result<Provenance>
                 ));
             }
             if access.allow_undefined_contents
-                && (semantic.scope.write || access.reads_previous || access.contents_unused) {
-                return Err(invalid("undefined contents permission requires a real non-writing read"));
+                && (semantic.scope.write || access.reads_previous || access.contents_unused)
+            {
+                return Err(invalid(
+                    "undefined contents permission requires a real non-writing read",
+                ));
             }
             if access.reads_previous {
                 if !semantic.scope.write {
@@ -276,7 +282,10 @@ fn inspect_definition(definition: &GraphDefinition) -> crate::Result<Provenance>
                     if !access.contents_unused {
                         dependencies[index].extend(
                             domain
-                                .sources_with_undefined(access.range, access.allow_undefined_contents)?
+                                .sources_with_undefined(
+                                    access.range,
+                                    access.allow_undefined_contents,
+                                )?
                                 .into_iter()
                                 .filter(|&source| source != index),
                         );
@@ -301,7 +310,10 @@ fn inspect_definition(definition: &GraphDefinition) -> crate::Result<Provenance>
                 "graph export has an invalid kind or unclassified access",
             ));
         }
-        usage_flags(domain.descriptor, semantics[&export.access_code].declared_access)?;
+        usage_flags(
+            domain.descriptor,
+            semantics[&export.access_code].declared_access,
+        )?;
         roots.extend(domain.sources(export.range)?);
     }
     super::subgraph::validate_subgraphs(definition)?;

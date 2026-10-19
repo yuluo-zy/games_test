@@ -7,12 +7,8 @@ use country_core::{
     resources::texture_presets::TexturePreset,
 };
 use rhapsody::{
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        resource_access::{buffer_access, image_access},
-        setup::with_setup_command,
-    },
-    resource::{OwnershipRange, range_state::AccessScope},
+    command::buffer_access, command::image_access, resource::Buffer, resource::BufferDesc,
+    resource::OwnershipRange, resource::range_state::AccessScope, resource::with_setup_command,
 };
 use std::sync::Arc;
 use tiny_glade::render_host::TextureHost;
@@ -138,7 +134,7 @@ fn native_texture_clear_changes_pixels_and_descriptor_owns_a_real_view() {
             },
         )
     })
-    .and_then(|setup| setup.wait(rhapsody::raw::setup::SETUP_WAIT_TIMEOUT_NS))
+    .and_then(|setup| setup.wait(rhapsody::resource::SETUP_WAIT_TIMEOUT_NS))
     .unwrap();
     let mut pixels = [0xff; 64];
     output.read_bytes(0, &mut pixels).unwrap();

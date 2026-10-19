@@ -28,7 +28,7 @@ pub const DEPTH_ACCESS_WRITE: u8 = 0x2f;
 pub const DEPTH_ACCESS_READ: u8 = 0x17;
 
 /// 附件引用的纹理视图：机器码里读取的字段（`id` @0、`format` @0xc、`sample_count` @0x21、extent）。
-/// 是 `rhapsody::raw::texture::Texture` 被读取部分的最小替身；原类型字段布局见
+/// 是 `rhapsody::resource::Texture` 被读取部分的最小替身；原类型字段布局见
 /// `rhapsody_types::Texture`（那里的 `format/width/height` 本身也是 U 占位）。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AttachmentTexture {

@@ -13,12 +13,9 @@ use country_core::{
     render::ssbo::rhapsody_boundary::{BackendError, Buffer, BufferDesc, GraphicsDevice},
 };
 use rhapsody::{
-    raw::{
-        buffer::{Buffer as NativeBuffer, BufferDesc as NativeBufferDesc},
-        resource_access::buffer_access,
-        setup::with_setup_command,
-    },
-    resource::range_state::AccessScope,
+    command::buffer_access, resource::Buffer as NativeBuffer,
+    resource::BufferDesc as NativeBufferDesc, resource::range_state::AccessScope,
+    resource::with_setup_command,
 };
 use std::{ops::Range, sync::Arc};
 use tiny_glade::render_host::{BufferHost, TextureHost};
@@ -112,7 +109,7 @@ fn read_prefix(
             },
         )
     })
-    .and_then(|setup| setup.wait(rhapsody::raw::setup::SETUP_WAIT_TIMEOUT_NS))
+    .and_then(|setup| setup.wait(rhapsody::resource::SETUP_WAIT_TIMEOUT_NS))
     .unwrap();
     let mut bytes = vec![0; size];
     output.read_bytes(0, &mut bytes).unwrap();

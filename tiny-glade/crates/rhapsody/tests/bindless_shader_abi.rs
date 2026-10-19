@@ -1,21 +1,16 @@
 mod gpu_test_support;
 use ash::vk;
 use rhapsody::{
-    bindless::{
-        BindlessConfig, BindlessHeap, BindlessParameters, BindlessResource, BindlessShaderPackage,
-    },
-    device::{Device, DeviceConfig},
-    pipeline::{AsyncPipelineCompiler, CompilerConfig, HotPipeline},
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        command_buffer::VulkanCommandPool,
-        dynamic_constants::DynamicConstants,
-        shader::PipelineCache,
-    },
-    shader_pipeline::{
-        compiled::{CompiledShaderPipeline, CompiledShaderStage, ShaderStage},
-        reflection::BindingLocation,
-    },
+    bindless::BindlessConfig, bindless::BindlessHeap, bindless::BindlessParameters,
+    bindless::BindlessResource, bindless::BindlessShaderPackage, device::Device,
+    device::DeviceConfig, pipeline::AsyncPipelineCompiler, pipeline::CompilerConfig,
+    pipeline::HotPipeline, raw::buffer::Buffer, raw::buffer::BufferDesc,
+    raw::command_buffer::VulkanCommandPool, raw::dynamic_constants::DynamicConstants,
+    raw::shader::PipelineCache,
+};
+use shader_pipeline::{
+    compiled::CompiledShaderPipeline, compiled::CompiledShaderStage, compiled::ShaderStage,
+    reflection::BindingLocation,
 };
 use std::{sync::Arc, time::Duration};
 

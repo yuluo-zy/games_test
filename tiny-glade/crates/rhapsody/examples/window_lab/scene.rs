@@ -4,38 +4,25 @@
 use super::fixture::{HEIGHT, WIDTH};
 use ash::vk::{self, Handle};
 use rhapsody::{
-    bindless::{
-        BindlessConfig, BindlessHeap, BindlessParameters, BindlessResource, BindlessShaderPackage,
-    },
-    pipeline::{
-        AsyncPipelineCompiler, CompilerConfig, HotPipeline, PersistentPipelineCache, PipelinePoll,
-        PipelineTicket,
-    },
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        device::Device,
-        dynamic_constants::DynamicConstants,
-        shader::{
-            DynamicRenderingFormats, PipelineLayout, RasterPipelineDesc, RasterPipelineOpts,
-            ShaderModule, VulkanPipeline,
-        },
-        texture::{Texture, TextureDesc, TextureViewDesc},
-    },
-    rg::{
-        attachments::{Attachment, AttachmentCache, RenderingPolicy},
-        executor::PassContext,
-        frame_loop::FrameLoop,
-        graph::BuiltGraph,
-        pass_api::{AshCommandBackend, RenderPassApi},
-        vulkan::{GpuResource, ResourceSpec},
-    },
-    shader_compiler,
-    shader_pipeline::{
-        compiled::{CompiledShaderPipeline, CompiledShaderStage, ShaderStage},
-        reflection::BindingLocation,
-    },
+    bindless::BindlessConfig, bindless::BindlessHeap, bindless::BindlessParameters,
+    bindless::BindlessResource, bindless::BindlessShaderPackage, pipeline::AsyncPipelineCompiler,
+    pipeline::CompilerConfig, pipeline::HotPipeline, pipeline::PersistentPipelineCache,
+    pipeline::PipelinePoll, pipeline::PipelineTicket, raw::buffer::Buffer, raw::buffer::BufferDesc,
+    raw::device::Device, raw::dynamic_constants::DynamicConstants,
+    raw::shader::DynamicRenderingFormats, raw::shader::PipelineLayout,
+    raw::shader::RasterPipelineDesc, raw::shader::RasterPipelineOpts, raw::shader::ShaderModule,
+    raw::shader::VulkanPipeline, raw::texture::Texture, raw::texture::TextureDesc,
+    raw::texture::TextureViewDesc, rg::attachments::Attachment, rg::attachments::AttachmentCache,
+    rg::attachments::RenderingPolicy, rg::executor::PassContext, rg::frame_loop::FrameLoop,
+    rg::graph::BuiltGraph, rg::pass_api::AshCommandBackend, rg::pass_api::RenderPassApi,
+    rg::vulkan::GpuResource, rg::vulkan::ResourceSpec,
 };
 use serde::Serialize;
+use shader_compiler;
+use shader_pipeline::{
+    compiled::CompiledShaderPipeline, compiled::CompiledShaderStage, compiled::ShaderStage,
+    reflection::BindingLocation,
+};
 use std::sync::{
     Arc, Mutex,
     atomic::{AtomicBool, Ordering},

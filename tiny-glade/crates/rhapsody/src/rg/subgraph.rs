@@ -448,13 +448,10 @@ fn validate_boundary(
                 .or_default()
                 .push(access.range);
             let escapes = resource.is_external()
-                || definition
-                    .exports
-                    .iter()
-                    .any(|export| {
-                        export.resource_index == access.resource_index
-                            && export.range.overlaps(access.range)
-                    })
+                || definition.exports.iter().any(|export| {
+                    export.resource_index == access.resource_index
+                        && export.range.overlaps(access.range)
+                })
                 || definition.passes[scope.pass_range.end..]
                     .iter()
                     .flat_map(|pass| &pass.accesses)

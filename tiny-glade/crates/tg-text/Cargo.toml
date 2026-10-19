@@ -21,9 +21,10 @@ bevy_ecs = { version = "=0.16.0", default-features = false, features = ["std"] }
 
 ash = { version = "=0.38.0", optional = true }
 rhapsody = { path = "../rhapsody", optional = true }
+shader-pipeline = { workspace = true, optional = true }
 
 [features]
-gpu = ["dep:ash", "dep:rhapsody"]
+gpu = ["dep:ash", "dep:rhapsody", "dep:shader-pipeline"]
 
 [dev-dependencies]
 serde_json.workspace = true

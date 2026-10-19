@@ -163,9 +163,9 @@ fn original_main_prefix_imports_owned_world_resets_indirect_and_builds_luts_once
                             .resource::<AssetTextureLibrary>()
                             .get_rg_texture(TexturePreset(preset));
                         let target = Arc::new(
-                            rhapsody::raw::texture::Texture::new(
+                            rhapsody::resource::Texture::new(
                                 device.clone(),
-                                &rhapsody::raw::texture::TextureDesc::new_2d(
+                                &rhapsody::resource::TextureDesc::new_2d(
                                     extent[0],
                                     extent[1],
                                     vk::Format::R8G8B8A8_UNORM,
@@ -178,9 +178,9 @@ fn original_main_prefix_imports_owned_world_resets_indirect_and_builds_luts_once
                             .unwrap(),
                         );
                         let output = Arc::new(
-                            rhapsody::raw::buffer::Buffer::new(
+                            rhapsody::resource::Buffer::new(
                                 device.clone(),
-                                &rhapsody::raw::buffer::BufferDesc::new_gpu_to_cpu(
+                                &rhapsody::resource::BufferDesc::new_gpu_to_cpu(
                                     u64::from(extent[0] * extent[1] * 4),
                                     vk::BufferUsageFlags::TRANSFER_DST,
                                 ),

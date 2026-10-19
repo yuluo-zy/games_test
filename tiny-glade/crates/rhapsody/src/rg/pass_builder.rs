@@ -142,25 +142,42 @@ impl PassBuilder<'_> {
     /// explicitly permits undefined initial texels. Ordinary reads and exports
     /// stay strict; existing producers still remain data dependencies.
     pub fn add_undefined_content_read_range(
-        &mut self, resource: ResourceHandle, access_code: u8,
-        synchronization_group: u32, range: super::resource::AccessRange,
+        &mut self,
+        resource: ResourceHandle,
+        access_code: u8,
+        synchronization_group: u32,
+        range: super::resource::AccessRange,
     ) -> Result<&mut Self, BuildError> {
         self.graph.check_pass_capacity()?;
         self.graph.check_handle(resource)?;
         if usize::from(access_code) >= crate::raw::access_table::ACCESS_CODE_COUNT {
-            return Err(BuildError::Contract(super::resource::ResourceContractError::InvalidAccessCode(access_code)));
+            return Err(BuildError::Contract(
+                super::resource::ResourceContractError::InvalidAccessCode(access_code),
+            ));
         }
         if crate::raw::access_table::is_write(access_code) {
-            return Err(BuildError::Contract(super::resource::ResourceContractError::WrongAccessMode {
-                resource: resource.raw(), access_code,
-            }));
+            return Err(BuildError::Contract(
+                super::resource::ResourceContractError::WrongAccessMode {
+                    resource: resource.raw(),
+                    access_code,
+                },
+            ));
         }
-        range.validate(self.graph.declaration.resources[resource.raw() as usize].descriptor)
+        range
+            .validate(self.graph.declaration.resources[resource.raw() as usize].descriptor)
             .map_err(|error| super::resource_contracts::range_error(resource.raw(), error))?;
         super::access_ledger::collect_resource_access_range_with_policy(
-            &mut self.declaration.accesses, resource.raw(), access_code, synchronization_group,
-            range, super::resource::AccessVersion::Automatic, false, false, true,
-        ).map_err(BuildError::IncompatibleAccess)?;
+            &mut self.declaration.accesses,
+            resource.raw(),
+            access_code,
+            synchronization_group,
+            range,
+            super::resource::AccessVersion::Automatic,
+            false,
+            false,
+            true,
+        )
+        .map_err(BuildError::IncompatibleAccess)?;
         Ok(self)
     }
 

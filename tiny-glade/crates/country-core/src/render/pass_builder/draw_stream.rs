@@ -6,7 +6,7 @@
 //! - O `DrawPacket::new` 0x140867850（238 B）：`(out, shader: u64 @0xa0, head0 @0, head1 @8)`；
 //!   `+0x10` 空 Vec（元素 8 B：`u32 binding + u8 slot`，对齐 4）；`+0x28` 空 `Vec<u8>`；`+0x40 = 0x1_0000_0003`
 //!   （draw 种类 3，值 1）；`+0x70` 空 `HashMap<BindingIndex, GpuOwned<DescriptorSetBinding>>`（RawTable 0x20 B +
-//!   `RandomState` @0x90）；`+0xa8` = `rhapsody::raw::shader::impl$7::default()`（u32 打包的光栅状态）；
+//!   `RandomState` @0x90）；`+0xa8` = `rhapsody::pipeline::impl$7::default()`（u32 打包的光栅状态）；
 //!   `+0xac = 1.0f32`；`+0xb0 = 0u16`（`variant` 在 `DrawBuilder::new` 里被改写）。
 //! - O `TextureBindingKey::with_view` 0x140867940（33 B）：`key ^ calculate_hash(view)`（view 为 None 时原样返回）。
 //! - O `impl$8::to_texture_binding_key` 0x1408eefd0（61 B）：`unreachable!("Raw textures must not be used as rg resources")`
@@ -61,7 +61,7 @@ impl RasterState {
     }
 }
 
-/// `rhapsody::raw::binding::DescriptorSetBinding` 中本模块观测到的变体（O）。
+/// `rhapsody::command::DescriptorSetBinding` 中本模块观测到的变体（O）。
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DescriptorSetBinding {
     /// 判别 0（`bind_texture_to_draw_builder` raw 路径）：`{0, image_view, 5}`，keepalive 句柄 @+0x28。
@@ -337,7 +337,7 @@ pub struct DynamicConstantsBinding {
     pub lease: Option<ResourceLease>,
 }
 
-/// `rhapsody::raw::shader::RenderPassAttachmentDesc`（0x10 B）的最小替身。
+/// `rhapsody::pipeline::RenderPassAttachmentDesc`（0x10 B）的最小替身。
 /// O：`new(format)`、`.sample_count(n)`、`.clear_input()`；`+4` 被覆盖为附件 tag；`+0xc` 的字节在
 /// `take_while` 循环里决定是否继续收集。
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
@@ -463,7 +463,7 @@ pub trait PassHost {
     ) -> crate::render::pass_builder::framebuffer_binding::AttachmentTexture;
     /// `shader_pipeline::reflection::BindingNameHash::with_suffix_dims`（外部库；算法 U）。
     fn with_suffix_dims(&self, name_hash: u64) -> u64;
-    /// `rhapsody::raw::shader::impl$7::default()`。
+    /// `rhapsody::pipeline::impl$7::default()`。
     fn default_raster_state(&self) -> RasterState;
     /// `GraphicsDevice::create_render_pass`。
     fn create_render_pass(&mut self, desc: &RasterRenderPassDesc) -> ManagedHandle;

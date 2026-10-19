@@ -1,7 +1,7 @@
 //! compute 管线反射的两个前置检查（group size 必须存在、inputs 必须为空）。
 use rhapsody::raw::shader::validate_compute_reflection;
-use rhapsody::shader_pipeline::reflection::{ShaderReflection, VertexInput};
-use rhapsody::shader_pipeline::reflection_ty::{ScalarType, Type};
+use shader_pipeline::reflection::{ShaderReflection, VertexInput};
+use shader_pipeline::reflection_ty::{ScalarType, Type};
 
 fn empty() -> ShaderReflection {
     ShaderReflection {

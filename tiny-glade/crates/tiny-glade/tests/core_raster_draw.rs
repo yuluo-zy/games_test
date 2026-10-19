@@ -34,21 +34,16 @@ use country_core::{
 };
 use parking_lot::Mutex;
 use rhapsody::{
-    raw::device::Device as GraphicsDevice,
-    rg::{
-        executor::PassContext,
-        graph::RenderGraph as RhGraph,
-        vulkan::{AccessTable, GpuResource, VulkanGraphBackend, VulkanGraphSession},
-    },
-    shader_pipeline::{
-        compiled::{CompiledShaderPipeline, CompiledShaderStage, ShaderStage},
-        pipeline_desc::RasterPipelineDesc as FileRasterDesc,
-        reflection::{
-            Binding, BindingArray, BindingKind, BindingLocation, BindingNameHash, ShaderReflection,
-            UniformBlock,
-        },
-        shader_defines::ShaderDefines,
-    },
+    device::Device as GraphicsDevice, rg::executor::PassContext, rg::graph::RenderGraph as RhGraph,
+    rg::vulkan::AccessTable, rg::vulkan::GpuResource, rg::vulkan::VulkanGraphBackend,
+    rg::vulkan::VulkanGraphSession,
+};
+use shader_pipeline::{
+    compiled::CompiledShaderPipeline, compiled::CompiledShaderStage, compiled::ShaderStage,
+    pipeline_desc::RasterPipelineDesc as FileRasterDesc, reflection::Binding,
+    reflection::BindingArray, reflection::BindingKind, reflection::BindingLocation,
+    reflection::BindingNameHash, reflection::ShaderReflection, reflection::UniformBlock,
+    shader_defines::ShaderDefines,
 };
 use std::{cell::RefCell, path::PathBuf, rc::Rc, sync::Arc};
 use tiny_glade::{
@@ -1440,7 +1435,7 @@ fn core_raster_pass_depth_attachment_resolves_overlap_independent_of_draw_order(
 
 #[test]
 fn core_buffer_handle_checks_generation_and_reports_real_description() {
-    use rhapsody::raw::buffer::MemoryLocation;
+    use rhapsody::resource::MemoryLocation;
     let Some(env) = Env::new("buffer handle") else {
         return;
     };

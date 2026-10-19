@@ -1,10 +1,10 @@
 pub use crate::rg::resource_info::{AccessDeclaration, ExportDeclaration, ResourceInfo};
+pub use crate::rg::resource_info::{
+    LifetimeEvent, NO_ACCESS, ResourceAccessRecord, ResourceLifetimeRecord,
+};
 pub use crate::rg::resource_registry::{
     Buffer, BufferDesc, RegistryResource, ResourceExports, ResourcePool, ResourceRegistry,
     ResourceReuseInfo, Texture, TextureDesc,
-};
-pub use crate::rg::resource_info::{
-    LifetimeEvent, NO_ACCESS, ResourceAccessRecord, ResourceLifetimeRecord,
 };
 use std::ops::Range;
 
@@ -783,9 +783,7 @@ impl SnapshotStatic {
             + self.pass_ranges.capacity() * std::mem::size_of::<Range<usize>>()
             + self.accesses.capacity() * std::mem::size_of::<ResourceAccessRecord>()
             + self.lifetimes.capacity() * std::mem::size_of::<ResourceLifetimeRecord>()
-            + (self.image_usage.capacity()
-                + self.buffer_usage.capacity()
-                + self.imports.capacity())
+            + (self.image_usage.capacity() + self.buffer_usage.capacity() + self.imports.capacity())
                 * std::mem::size_of::<u32>()
             + self.lifetime_events.capacity() * std::mem::size_of::<LifetimeEvent>()
             + self.batches.capacity() * std::mem::size_of::<batch_state::Batch>()

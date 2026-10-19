@@ -1269,12 +1269,12 @@ pub fn map_vertex_attribute_format(type_tag: u32, bytes: u64) -> Result<vk::Form
 }
 
 pub fn vertex_input_from_reflection(
-    reflection: &crate::shader_pipeline::reflection::ShaderReflection,
+    reflection: &shader_pipeline::reflection::ShaderReflection,
 ) -> Result<(
     Vec<vk::VertexInputBindingDescription>,
     Vec<vk::VertexInputAttributeDescription>,
 )> {
-    use crate::shader_pipeline::reflection_ty::{ScalarType, Type};
+    use shader_pipeline::reflection_ty::{ScalarType, Type};
     let mut bindings = Vec::new();
     let mut attributes = Vec::new();
     for input in reflection.effective_vertex_inputs().into_values() {
@@ -1383,9 +1383,8 @@ pub struct ShaderLibrary {
     shaders: BTreeMap<String, ReflectedShader>,
     layouts: BTreeMap<String, Arc<PipelineLayout>>,
     compiled_rasters:
-        BTreeMap<(String, String), Arc<crate::shader_pipeline::compiled::CompiledShaderPipeline>>,
-    compiled_computes:
-        BTreeMap<String, Arc<crate::shader_pipeline::compiled::CompiledShaderPipeline>>,
+        BTreeMap<(String, String), Arc<shader_pipeline::compiled::CompiledShaderPipeline>>,
+    compiled_computes: BTreeMap<String, Arc<shader_pipeline::compiled::CompiledShaderPipeline>>,
 }
 pub struct RasterProgram {
     pub vertex: ReflectedShader,
@@ -1597,11 +1596,11 @@ impl ShaderLibrary {
 impl ShaderInterfacePlan {
     /// 直接消费发行容器的stored reflection；SPIR-Q重反射仅用于独立核对。
     pub fn from_compiled_pipeline(
-        compiled: &crate::shader_pipeline::compiled::CompiledShaderPipeline,
+        compiled: &shader_pipeline::compiled::CompiledShaderPipeline,
         samplers: &BTreeMap<String, u64>,
         runtime_device_scalar: u32,
     ) -> Result<Self> {
-        use crate::shader_pipeline::{
+        use shader_pipeline::{
             compiled::ShaderStage,
             reflection::{BindingArray, BindingKind},
         };
@@ -1704,8 +1703,8 @@ impl ShaderInterfacePlan {
     }
 }
 
-fn serialized_stage_name(stage: crate::shader_pipeline::compiled::ShaderStage) -> &'static str {
-    use crate::shader_pipeline::compiled::ShaderStage;
+fn serialized_stage_name(stage: shader_pipeline::compiled::ShaderStage) -> &'static str {
+    use shader_pipeline::compiled::ShaderStage;
     match stage {
         ShaderStage::Compute => "GLCompute",
         ShaderStage::Vertex => "Vertex",
@@ -1716,10 +1715,10 @@ fn serialized_stage_name(stage: crate::shader_pipeline::compiled::ShaderStage) -
 /// 原存储反射直接生产资源名字/编号/数组和push范围；不重新解析公开库类型。
 /// SPIR-V只用于入口名/执行模型的一致性检查，完整stage IO独立核对时才重新反射。
 pub fn stored_pipeline_entry(
-    compiled: &crate::shader_pipeline::compiled::CompiledShaderPipeline,
+    compiled: &shader_pipeline::compiled::CompiledShaderPipeline,
     index: usize,
 ) -> Result<ReflectedEntry> {
-    use crate::shader_pipeline::{
+    use shader_pipeline::{
         compiled::ShaderStage,
         reflection::{BindingArray, BindingKind},
     };
@@ -1820,7 +1819,7 @@ impl ReflectedShader {
     /// 运行时完整容器入口：消费真实stored reflection，不构造空尾段替身。
     pub fn from_compiled_pipeline_stage(
         device: Arc<Device>,
-        compiled: &crate::shader_pipeline::compiled::CompiledShaderPipeline,
+        compiled: &shader_pipeline::compiled::CompiledShaderPipeline,
         index: usize,
     ) -> Result<Self> {
         let entry = stored_pipeline_entry(compiled, index)?;
@@ -1835,7 +1834,7 @@ impl ReflectedShader {
 impl ShaderLibrary {
     /// 资产owner提供选择键；原存储字段保留至实际layout生产。
     pub fn register_compiled_compute(&mut self, key: String, bytes: &[u8]) -> Result<()> {
-        use crate::shader_pipeline::compiled::{CompiledShaderPipeline, ShaderStage};
+        use shader_pipeline::compiled::{CompiledShaderPipeline, ShaderStage};
         let compiled = CompiledShaderPipeline::decode(bytes).map_err(|_| invalid_shader())?;
         if compiled.stages.len() != 1 || compiled.stages[0].stage != ShaderStage::Compute {
             return Err(invalid_shader());
@@ -1853,7 +1852,7 @@ impl ShaderLibrary {
         fragment_key: String,
         bytes: &[u8],
     ) -> Result<()> {
-        use crate::shader_pipeline::compiled::{CompiledShaderPipeline, ShaderStage};
+        use shader_pipeline::compiled::{CompiledShaderPipeline, ShaderStage};
         let compiled = CompiledShaderPipeline::decode(bytes).map_err(|_| invalid_shader())?;
         if vertex_key == fragment_key || compiled.stages.len() != 2 {
             return Err(invalid_shader());
@@ -2064,7 +2063,7 @@ mod raster_opts_tests {
             reflect_spirv_entries(&[]).unwrap_err().kind(),
             crate::ErrorKind::InvalidUsage
         );
-        let reflection = crate::shader_pipeline::reflection::ShaderReflection {
+        let reflection = shader_pipeline::reflection::ShaderReflection {
             descriptor_sets: vec![],
             uniform_block: None,
             binding_names: vec![],

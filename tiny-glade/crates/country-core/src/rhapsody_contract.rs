@@ -63,7 +63,7 @@ impl GraphicsDevice {
     pub unsafe fn issue_pipeline_barrier(
         &self,
         command: ash::vk::CommandBuffer,
-        scope: &rhapsody::raw::barrier::SynchronizationScope,
+        scope: &rhapsody::command::SynchronizationScope,
     ) -> rhapsody::Result<()> {
         unsafe { self.inner.issue_pipeline_barrier(command, scope) }
     }
@@ -75,7 +75,7 @@ impl GraphicsDevice {
     pub unsafe fn issue_and_reset_pipeline_barrier(
         &self,
         command: ash::vk::CommandBuffer,
-        scope: &mut rhapsody::raw::barrier::SynchronizationScope,
+        scope: &mut rhapsody::command::SynchronizationScope,
     ) -> rhapsody::Result<()> {
         unsafe { self.inner.issue_and_reset_pipeline_barrier(command, scope) }
     }
@@ -95,7 +95,7 @@ impl GraphicsDevice {
         &self,
         family: u32,
         name: &str,
-    ) -> rhapsody::Result<rhapsody::raw::command_buffer::VulkanCommandBuffer> {
+    ) -> rhapsody::Result<rhapsody::command::VulkanCommandBuffer> {
         self.inner.create_command_buffer(family, name)
     }
 
@@ -103,7 +103,7 @@ impl GraphicsDevice {
     pub fn get_built_in_sampler_by_name(
         &self,
         name: &str,
-    ) -> rhapsody::Result<Arc<rhapsody::raw::sampler::Sampler>> {
+    ) -> rhapsody::Result<Arc<rhapsody::resource::Sampler>> {
         self.inner.get_built_in_sampler_by_name(name)
     }
 
@@ -115,59 +115,57 @@ impl GraphicsDevice {
     /// 真实 `GraphicsDevice::refresh_memory_budget()`（device.rs:611）。
     pub fn refresh_memory_budget(
         &self,
-    ) -> rhapsody::raw::error::Result<
-        Option<ash::vk::PhysicalDeviceMemoryBudgetPropertiesEXT<'static>>,
-    > {
+    ) -> rhapsody::Result<Option<ash::vk::PhysicalDeviceMemoryBudgetPropertiesEXT<'static>>> {
         self.inner.refresh_memory_budget()
     }
 
     // ---- raw::device_api 适配层（device_api.rs，WIRING §2.1/§2.3）----
 
     /// 真实 `create_buffer<D>`（device_api.rs:71）→ `ManagedBuffer`。
-    pub fn create_buffer<D: rhapsody::raw::device_api::BufferInitialData>(
+    pub fn create_buffer<D: rhapsody::resource::BufferInitialData>(
         &self,
-        desc: &rhapsody::raw::buffer::BufferDesc,
+        desc: &rhapsody::resource::BufferDesc,
         name: &str,
         data: D,
-    ) -> rhapsody::raw::error::Result<rhapsody::raw::managed::buffer::ManagedBuffer> {
+    ) -> rhapsody::Result<rhapsody::resource::ManagedBuffer> {
         self.inner.create_buffer(desc, name, data)
     }
 
     /// 真实 `create_texture<D>`（device_api.rs:151）→ `ManagedTexture`。
-    pub fn create_texture<D: rhapsody::raw::device_api::TextureInitialBytes>(
+    pub fn create_texture<D: rhapsody::resource::TextureInitialBytes>(
         &self,
-        desc: &rhapsody::raw::texture::TextureDesc,
+        desc: &rhapsody::resource::TextureDesc,
         name: &str,
         data: D,
-    ) -> rhapsody::raw::error::Result<rhapsody::raw::managed::texture::ManagedTexture> {
+    ) -> rhapsody::Result<rhapsody::resource::ManagedTexture> {
         self.inner.create_texture(desc, name, data)
     }
 
     /// 真实 `get_vk_image_view(texture, desc)`（device_api.rs:331）。
     pub fn get_vk_image_view(
         &self,
-        texture: &rhapsody::raw::managed::texture::ManagedTexture,
-        desc: &rhapsody::raw::texture::TextureViewDesc,
-    ) -> rhapsody::raw::error::Result<rhapsody::raw::managed::texture::ManagedTextureView> {
+        texture: &rhapsody::resource::ManagedTexture,
+        desc: &rhapsody::resource::TextureViewDesc,
+    ) -> rhapsody::Result<rhapsody::resource::ManagedTextureView> {
         self.inner.get_vk_image_view(texture, desc)
     }
 
     /// 真实 `get_vk_buffer(buffer)`（device_api.rs:325）。
     pub fn get_vk_buffer(
         &self,
-        buffer: &rhapsody::raw::managed::buffer::ManagedBuffer,
-    ) -> rhapsody::raw::error::Result<ash::vk::Buffer> {
+        buffer: &rhapsody::resource::ManagedBuffer,
+    ) -> rhapsody::Result<ash::vk::Buffer> {
         self.inner.get_vk_buffer(buffer)
     }
 
     /// 真实 `update_buffer_bytes(buffer, data, ranges, offset)`（device_api.rs:348）。
     pub fn update_buffer_bytes(
         &self,
-        buffer: &rhapsody::raw::managed::buffer::ManagedBuffer,
+        buffer: &rhapsody::resource::ManagedBuffer,
         data: &[u8],
         ranges: &[std::ops::Range<usize>],
         offset: usize,
-    ) -> rhapsody::raw::error::Result<()> {
+    ) -> rhapsody::Result<()> {
         self.inner.update_buffer_bytes(buffer, data, ranges, offset)
     }
 
@@ -177,7 +175,7 @@ impl GraphicsDevice {
     #[allow(clippy::mut_from_ref)]
     pub unsafe fn buffer_mapped_slice_mut<'a>(
         &self,
-        buffer: &'a rhapsody::raw::managed::buffer::ManagedBuffer,
+        buffer: &'a rhapsody::resource::ManagedBuffer,
     ) -> Option<&'a mut [u8]> {
         unsafe { self.inner.buffer_mapped_slice_mut(buffer) }
     }
@@ -185,8 +183,8 @@ impl GraphicsDevice {
     /// 真实 `buffer_device_address`（device_api.rs:144）。
     pub fn buffer_device_address(
         &self,
-        buffer: &rhapsody::raw::managed::buffer::ManagedBuffer,
-    ) -> rhapsody::raw::error::Result<ash::vk::DeviceAddress> {
+        buffer: &rhapsody::resource::ManagedBuffer,
+    ) -> rhapsody::Result<ash::vk::DeviceAddress> {
         self.inner.buffer_device_address(buffer)
     }
 
@@ -282,7 +280,7 @@ impl ResourceHandle {
     pub const NONE: ResourceHandle = ResourceHandle(0);
 }
 
-/// Texture view descriptor (reused `rhapsody::raw::texture::TextureViewDesc`).
+/// Texture view descriptor (reused `rhapsody::resource::TextureViewDesc`).
 pub use crate::rhapsody_types::TextureViewDesc;
 
 /// 2D extent（WIRING §1：真实 = `ash::vk::Extent2D`，同形；保留游戏侧结构体，字段语义一致）。
@@ -306,7 +304,7 @@ pub struct RenderPassDesc {
 pub struct RenderPass;
 
 /// Render-pass attachment descriptor
-/// (reused `rhapsody::raw::shader::RenderPassAttachmentDesc`).
+/// (reused `rhapsody::pipeline::RenderPassAttachmentDesc`).
 #[derive(Clone, Copy, Debug, Default)]
 pub struct RenderPassAttachmentDesc;
 impl RenderPassAttachmentDesc {

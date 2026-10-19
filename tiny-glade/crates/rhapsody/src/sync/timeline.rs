@@ -483,7 +483,11 @@ mod tests {
         let t = timelines(2);
         t.submit(q(0), |_| Ok(())).unwrap();
         t.api().complete(sem(1), 1);
-        assert_eq!(t.completed().get(q(0)), 0, "cached snapshot is conservative");
+        assert_eq!(
+            t.completed().get(q(0)),
+            0,
+            "cached snapshot is conservative"
+        );
         assert_eq!(t.api().queries.load(Ordering::Relaxed), 0);
         assert_eq!(t.refresh().unwrap().get(q(0)), 1);
         let queries = t.api().queries.load(Ordering::Relaxed);

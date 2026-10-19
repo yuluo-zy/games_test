@@ -566,7 +566,12 @@ pub(crate) fn analyze_passes(
     };
     for (pass_index, pass) in passes.iter().enumerate() {
         for access in &pass.accesses {
-            add_producer_access(&mut analysis, pass_index, access, table.is_write(access.access_code));
+            add_producer_access(
+                &mut analysis,
+                pass_index,
+                access,
+                table.is_write(access.access_code),
+            );
         }
     }
     analysis
@@ -624,7 +629,10 @@ fn ordering_edges(
                 // A widened native range (merged depth/stencil) may reach
                 // entries this declaration does not cover; keep those.
                 let exact = match (native, access.range) {
-                    (Some(crate::resource::OwnershipRange::Image { aspects, .. }), AccessRange::Texture { aspect_mask, .. }) => aspects == aspect_mask,
+                    (
+                        Some(crate::resource::OwnershipRange::Image { aspects, .. }),
+                        AccessRange::Texture { aspect_mask, .. },
+                    ) => aspects == aspect_mask,
                     _ => true,
                 };
                 if exact {
@@ -667,7 +675,12 @@ pub fn compile_with_subgraphs(
     for scope in &definition.subgraphs {
         while next < scope.pass_range.start {
             for access in &definition.passes[next].accesses {
-                add_producer_access(&mut analysis, next, access, table.is_write(access.access_code));
+                add_producer_access(
+                    &mut analysis,
+                    next,
+                    access,
+                    table.is_write(access.access_code),
+                );
             }
             next += 1;
         }
@@ -684,7 +697,12 @@ pub fn compile_with_subgraphs(
     }
     while next < definition.passes.len() {
         for access in &definition.passes[next].accesses {
-            add_producer_access(&mut analysis, next, access, table.is_write(access.access_code));
+            add_producer_access(
+                &mut analysis,
+                next,
+                access,
+                table.is_write(access.access_code),
+            );
         }
         next += 1;
     }
@@ -989,7 +1007,8 @@ mod borrowed_definition_tests {
                 .unwrap()
         );
         let mut policy = AccessTable::original();
-        policy.0.get_mut(&0x34).unwrap().scope.access ^= ash::vk::AccessFlags::INDIRECT_COMMAND_READ;
+        policy.0.get_mut(&0x34).unwrap().scope.access ^=
+            ash::vk::AccessFlags::INDIRECT_COMMAND_READ;
         assert!(
             !key.matches_declaration(&graph, &mut policy, context)
                 .unwrap()
@@ -1195,29 +1214,44 @@ mod borrowed_definition_tests {
     #[test]
     fn undefined_read_permission_does_not_bypass_cached_ordinary_boundary_validation() {
         let descriptor = super::super::vulkan::ResourceSpec::Image(
-            crate::raw::texture::TextureDesc::new_2d(8, 8, ash::vk::Format::R32_SFLOAT))
-            .descriptor();
+            crate::raw::texture::TextureDesc::new_2d(8, 8, ash::vk::Format::R32_SFLOAT),
+        )
+        .descriptor();
         for permitted in [false, true] {
             let mut graph = RenderGraph::new();
-            let h = graph.import_unowned("history", descriptor, 9, 0x19).unwrap();
+            let h = graph
+                .import_unowned("history", descriptor, 9, 0x19)
+                .unwrap();
             let mut pass = graph.add_pass("history");
             if permitted {
-                pass.add_undefined_content_read_range(h, 0x19, 0, AccessRange::Whole).unwrap();
+                pass.add_undefined_content_read_range(h, 0x19, 0, AccessRange::Whole)
+                    .unwrap();
             } else {
                 pass.add_resource_access(h, 0x19, 0).unwrap();
             }
-            pass.side_effect(); pass.render(|_| true);
+            pass.side_effect();
+            pass.render(|_| true);
             let mut raw = graph.build().declaration;
             let context = PlanContext::default();
-            let key = GraphDefinition::from_declaration(&raw, &mut AccessTable::original(), context).unwrap();
-            raw.resources[0].source = OriginSource::ImportUnowned { token: 10, initial_access: 0 };
+            let key =
+                GraphDefinition::from_declaration(&raw, &mut AccessTable::original(), context)
+                    .unwrap();
+            raw.resources[0].source = OriginSource::ImportUnowned {
+                token: 10,
+                initial_access: 0,
+            };
             let borrowed = key.matches_declaration(&raw, &mut AccessTable::original(), context);
             assert_eq!(borrowed.is_ok(), permitted);
-            if permitted { assert!(borrowed.unwrap()); }
-            assert_eq!(GraphDefinition::from_declaration(&raw, &mut AccessTable::original(), context).is_ok(), permitted);
+            if permitted {
+                assert!(borrowed.unwrap());
+            }
+            assert_eq!(
+                GraphDefinition::from_declaration(&raw, &mut AccessTable::original(), context)
+                    .is_ok(),
+                permitted
+            );
         }
     }
-
 }
 
 #[cfg(test)]
@@ -1305,7 +1339,10 @@ mod ordering_tests {
                 }
             }
         }
-        assert!(!reaches(&plan.dependency_edges, 1, 2), "two reads stay unordered");
+        assert!(
+            !reaches(&plan.dependency_edges, 1, 2),
+            "two reads stay unordered"
+        );
         // Covered entries are pruned: W4 does not need a direct edge from W0.
         assert!(!plan.dependency_edges.contains(&(0, 4)));
     }

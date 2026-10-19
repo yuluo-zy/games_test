@@ -1,7 +1,7 @@
 //! Validate inputs and pack the shader ABI before allocating frame resources.
 use super::*;
 use crate::shape_stream::encoding::GLYPH_STREAM;
-use rhapsody::shader_pipeline::reflection::ShaderReflection;
+use shader_pipeline::reflection::ShaderReflection;
 
 /// Validated borrowed inputs remain alive through preparation and submission.
 /// Validation does not borrow the renderer, so resource preparation can mutate its caches.

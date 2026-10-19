@@ -4,12 +4,8 @@
 #![cfg(feature = "gpu")]
 use ash::vk;
 use rhapsody::{
-    bindless::{BindlessConfig, BindlessHeap},
-    raw::{
-        device::Device,
-        setup::init_texture_data,
-        texture::{Texture, TextureDesc},
-    },
+    bindless::BindlessConfig, bindless::BindlessHeap, device::Device, resource::Texture,
+    resource::TextureDesc, resource::init_texture_data,
 };
 use std::{
     path::{Path, PathBuf},

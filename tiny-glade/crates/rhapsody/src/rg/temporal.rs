@@ -673,7 +673,11 @@ mod recorder_tests {
         use crate::raw::texture::{TextureDesc, TextureKind};
         super::super::vulkan::ResourceSpec::Image(
             TextureDesc::new(
-                ash::vk::Extent3D { width: 8, height: 8, depth: 1 },
+                ash::vk::Extent3D {
+                    width: 8,
+                    height: 8,
+                    depth: 1,
+                },
                 TextureKind::D2,
                 ash::vk::Format::R8G8B8A8_UNORM,
             )
@@ -1186,14 +1190,18 @@ mod recorder_tests {
     }
     #[test]
     fn uploaded_initial_contents_are_readable_without_publishing_history_and_survive_cancel() {
-        struct UploadedOwner { next: u64 }
+        struct UploadedOwner {
+            next: u64,
+        }
         impl TemporalResourceOwner for UploadedOwner {
             fn create_temporal(&mut self, _: &str, _: Descriptor) -> Result<u64, BuildError> {
                 self.next += 1;
                 Ok(self.next)
             }
             fn release_temporal(&mut self, _: u64) {}
-            fn initial_contents_defined(&self, _: u64) -> bool { true }
+            fn initial_contents_defined(&self, _: u64) -> bool {
+                true
+            }
         }
         fn reader(graph: &mut RenderGraph, lookup: TemporalLookup) {
             let mut pass = graph.add_pass("read actually uploaded bytes");
@@ -1203,37 +1211,53 @@ mod recorder_tests {
         let mut owner = UploadedOwner { next: 0 };
         let mut state = TemporalRenderGraphState::default();
         let mut graph = RenderGraph::new();
-        let first = state.get_or_create_owned(&mut graph, "uploaded", buffer(), &mut owner).unwrap();
+        let first = state
+            .get_or_create_owned(&mut graph, "uploaded", buffer(), &mut owner)
+            .unwrap();
         assert!(!first.reused, "an upload is not preceding frame history");
         reader(&mut graph, first);
         state.export_temporal(&mut graph).unwrap();
         assert_eq!(graph.declaration.exports.len(), 1);
         state.abandon_frame();
         let mut graph = RenderGraph::new();
-        let cancelled = state.get_or_create_owned(&mut graph, "uploaded", buffer(), &mut owner).unwrap();
+        let cancelled = state
+            .get_or_create_owned(&mut graph, "uploaded", buffer(), &mut owner)
+            .unwrap();
         assert!(!cancelled.reused);
         assert_eq!(cancelled.resource.token, first.resource.token);
         reader(&mut graph, cancelled);
         state.export_temporal(&mut graph).unwrap();
         state.confirm_exports();
         let mut graph = RenderGraph::new();
-        let confirmed = state.get_or_create_owned(&mut graph, "uploaded", buffer(), &mut owner).unwrap();
+        let confirmed = state
+            .get_or_create_owned(&mut graph, "uploaded", buffer(), &mut owner)
+            .unwrap();
         assert!(confirmed.reused);
         state.invalidate_submitted_frame();
         let mut graph = RenderGraph::new();
-        let failed = state.get_or_create_owned(&mut graph, "uploaded", buffer(), &mut owner).unwrap();
+        let failed = state
+            .get_or_create_owned(&mut graph, "uploaded", buffer(), &mut owner)
+            .unwrap();
         assert!(!failed.reused);
         reader(&mut graph, failed);
-        assert!(matches!(state.export_temporal(&mut graph),
+        assert!(matches!(
+            state.export_temporal(&mut graph),
             Err(TemporalError::Backend(BuildError::Contract(
-                super::super::resource::ResourceContractError::UninitializedRead { .. })))));
+                super::super::resource::ResourceContractError::UninitializedRead { .. }
+            )))
+        ));
         state.abandon_frame();
         state.reset("uploaded").unwrap();
         let mut graph = RenderGraph::new();
-        let reset = state.get_or_create_owned(&mut graph, "uploaded", buffer(), &mut owner).unwrap();
+        let reset = state
+            .get_or_create_owned(&mut graph, "uploaded", buffer(), &mut owner)
+            .unwrap();
         reader(&mut graph, reset);
         assert!(state.export_temporal(&mut graph).is_err());
-        assert_eq!(owner.next, 1, "reset/cancel do not secretly allocate or reupload");
+        assert_eq!(
+            owner.next, 1,
+            "reset/cancel do not secretly allocate or reupload"
+        );
     }
 
     // ---------------------------------------------------------------- 5. temporal 记录放弃 / 确认

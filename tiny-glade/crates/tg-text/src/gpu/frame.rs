@@ -2,8 +2,7 @@
 use super::input::{Globals, PackedGlyphUploads, ValidatedFrame};
 use super::*;
 use rhapsody::{
-    bindless::PreparedBindlessParameters,
-    raw::{command_buffer::VulkanCommandBuffer, shader::VulkanPipeline},
+    bindless::PreparedBindlessParameters, command::VulkanCommandBuffer, pipeline::VulkanPipeline,
     rg::attachments::PreparedAttachments,
 };
 

@@ -91,47 +91,75 @@ impl CoreRenderBridge {
     /// Captured before moving the original gameplay SubApp to its worker.
     pub fn warmup_owners(&self) -> rhapsody::Result<CoreRenderOwners> {
         if self.session.borrow().named_resource_count() != 0 {
-            return Err(rhapsody::Error::invalid_usage("gameplay warmup cannot fork an existing temporal owner"));
+            return Err(rhapsody::Error::invalid_usage(
+                "gameplay warmup cannot fork an existing temporal owner",
+            ));
         }
-        Ok(CoreRenderOwners { tables: self.tables.clone(), raster: self.raster.clone(),
-            shaders: self.shaders.clone() })
+        Ok(CoreRenderOwners {
+            tables: self.tables.clone(),
+            raster: self.raster.clone(),
+            shaders: self.shaders.clone(),
+        })
     }
 
     pub fn from_owners(owners: CoreRenderOwners) -> rhapsody::Result<Self> {
         let device = owners.tables.buffers.graphics_device().clone();
         // Current VulkanGraphBackend implementation, one thread-local session;
         // no new BufferHost/TextureHost/ShaderHost, descriptor heap or library.
-        let session = VulkanGraphSession::new(VulkanGraphBackend::new(device, AccessTable::original())?);
-        Ok(Self { session: Rc::new(RefCell::new(session)), tables: owners.tables,
-            raster: owners.raster, shaders: owners.shaders })
+        let session =
+            VulkanGraphSession::new(VulkanGraphBackend::new(device, AccessTable::original())?);
+        Ok(Self {
+            session: Rc::new(RefCell::new(session)),
+            tables: owners.tables,
+            raster: owners.raster,
+            shaders: owners.shaders,
+        })
     }
 
     /// Call only after the actual full compile_main builder was compiled and
     /// executed. This validates actual GPU completion, not a synthetic ready bit.
-    pub fn complete_gameplay_warmup(&mut self, timeout_ns: u64)
-        -> rhapsody::Result<CompletedGameplayWarmup> {
+    pub fn complete_gameplay_warmup(
+        &mut self,
+        timeout_ns: u64,
+    ) -> rhapsody::Result<CompletedGameplayWarmup> {
         if Rc::strong_count(&self.session) != 1 {
-            return Err(rhapsody::Error::invalid_usage("warmup has live graph/declarer leases"));
+            return Err(rhapsody::Error::invalid_usage(
+                "warmup has live graph/declarer leases",
+            ));
         }
-        let named = self.session.borrow_mut().take_completed_named_resources(timeout_ns)?;
+        let named = self
+            .session
+            .borrow_mut()
+            .take_completed_named_resources(timeout_ns)?;
         Ok(CompletedGameplayWarmup {
-            owners: CoreRenderOwners { tables: self.tables.clone(), raster: self.raster.clone(),
-                shaders: self.shaders.clone() }, named: parking_lot::Mutex::new(Some(named)),
+            owners: CoreRenderOwners {
+                tables: self.tables.clone(),
+                raster: self.raster.clone(),
+                shaders: self.shaders.clone(),
+            },
+            named: parking_lot::Mutex::new(Some(named)),
         })
     }
 
-    pub fn accept_gameplay_warmup(&mut self, completed: &CompletedGameplayWarmup)
-        -> rhapsody::Result<()> {
+    pub fn accept_gameplay_warmup(
+        &mut self,
+        completed: &CompletedGameplayWarmup,
+    ) -> rhapsody::Result<()> {
         if !Arc::ptr_eq(&self.tables.buffers, &completed.owners.tables.buffers)
             || !Arc::ptr_eq(&self.tables.textures, &completed.owners.tables.textures)
             || !Arc::ptr_eq(&self.tables.shaders, &completed.owners.tables.shaders)
             || !Arc::ptr_eq(&self.raster, &completed.owners.raster)
-            || !Arc::ptr_eq(&self.shaders, &completed.owners.shaders) {
-            return Err(rhapsody::Error::invalid_usage("completed gameplay warmup has different App owners"));
+            || !Arc::ptr_eq(&self.shaders, &completed.owners.shaders)
+        {
+            return Err(rhapsody::Error::invalid_usage(
+                "completed gameplay warmup has different App owners",
+            ));
         }
         let mut named = completed.named.lock();
         if let Some(named) = named.take() {
-            self.session.borrow_mut().adopt_completed_named_resources(named)?;
+            self.session
+                .borrow_mut()
+                .adopt_completed_named_resources(named)?;
         }
         Ok(())
     }
@@ -167,8 +195,10 @@ impl CoreRenderBridge {
             self.tables.textures.clone(),
         ));
         world.insert_resource(country_core::render::device::GraphicsDeviceResource::new(
-            country_core::rhapsody_contract::GraphicsDevice::new(self.tables.buffers.graphics_device().clone())
-                .with_buffer_host(self.tables.buffers.clone()),
+            country_core::rhapsody_contract::GraphicsDevice::new(
+                self.tables.buffers.graphics_device().clone(),
+            )
+            .with_buffer_host(self.tables.buffers.clone()),
         ));
         Ok(())
     }
@@ -275,7 +305,7 @@ impl CoreRenderBridge {
     pub fn present(
         &mut self,
         target: &rhapsody::rg::vulkan::PresentTarget,
-    ) -> rhapsody::Result<rhapsody::raw::swapchain::PresentTicket> {
+    ) -> rhapsody::Result<rhapsody::present::PresentTicket> {
         self.session.borrow_mut().present(target)
     }
 
@@ -299,7 +329,7 @@ impl CoreRenderBridge {
         &self,
         receipt: &SessionFrameReceipt,
         resource: u32,
-    ) -> rhapsody::Result<Arc<rhapsody::raw::texture::Texture>> {
+    ) -> rhapsody::Result<Arc<rhapsody::resource::Texture>> {
         let mapping = receipt
             .snapshot
             .physical_mapping
@@ -311,8 +341,7 @@ impl CoreRenderBridge {
         // SnapshotStatic.exports stores logical resource indices; physical
         // allocation indices can differ after pooling/aliasing. The latter
         // only locates the actual retained owner below.
-        if !u16::try_from(resource)
-            .is_ok_and(|logical| receipt.snapshot.exports.contains(&logical))
+        if !u16::try_from(resource).is_ok_and(|logical| receipt.snapshot.exports.contains(&logical))
         {
             return Err(rhapsody::Error::invalid_usage(
                 "texture was not exported by this frame",
@@ -336,7 +365,7 @@ impl CoreRenderBridge {
         &mut self,
         receipt: &SessionFrameReceipt,
         resource: u32,
-    ) -> rhapsody::Result<Arc<rhapsody::raw::texture::Texture>> {
+    ) -> rhapsody::Result<Arc<rhapsody::resource::Texture>> {
         let texture = self.exported_texture(receipt, resource)?;
         let token = receipt
             .snapshot
@@ -374,7 +403,10 @@ pub struct CompiledCoreGraph {
 impl CompiledCoreGraph {
     /// Inspect the actual prepared plan before executing its GPU callbacks.
     pub fn snapshot(&self) -> &rhapsody::rg::graph::Snapshot {
-        self.frame.as_ref().expect("compiled graph consumed once").snapshot()
+        self.frame
+            .as_ref()
+            .expect("compiled graph consumed once")
+            .snapshot()
     }
 }
 impl Drop for CompiledCoreGraph {
@@ -450,7 +482,9 @@ impl CoreGraphFrame<'_> {
         let declarer = self.declarer.clone();
         let tables = self.bridge.tables.clone();
         Rc::new(move || {
-            declarer.scope.validate(&graph.borrow())
+            declarer
+                .scope
+                .validate(&graph.borrow())
                 .expect("resource graph factory belongs to a closed frame");
             country_core::rhapsody_types::RenderGraph::with_backend(FrameBufferGraph {
                 graph: graph.clone(),
@@ -513,49 +547,82 @@ impl CoreGraphFrame<'_> {
         world: &mut bevy_ecs::world::World,
         build: impl FnOnce(&mut CoreGraphFrame<'_>, &mut bevy_ecs::world::World) -> rhapsody::Result<T>,
     ) -> rhapsody::Result<T> {
-        use country_core::{
-            asset_libraries::{placement_data_library::AssetPlacementDataLibrary,
-                ssbo_library::AssetSsboLibrary, texture_library::AssetTextureLibrary,
-                vao_library::AssetVAOLibrary},
-            resources::gpu_lut::GpuLutTracker,
-            systems::render_loop::{compute_passes::{pass_kit::PassEnv,
-                reset_indirect_args::reset_indirect_args}, indirect_params::{AtomicCounterBuffer,
-                DispatchIndirectBuffer, DrawIndexedIndirectBuffer, DrawIndirectBuffer}},
-        };
         use crate::frame_world::{FrameLibraries, FrameWorldAccess};
+        use country_core::{
+            asset_libraries::{
+                placement_data_library::AssetPlacementDataLibrary, ssbo_library::AssetSsboLibrary,
+                texture_library::AssetTextureLibrary, vao_library::AssetVAOLibrary,
+            },
+            resources::gpu_lut::GpuLutTracker,
+            systems::render_loop::{
+                compute_passes::{pass_kit::PassEnv, reset_indirect_args::reset_indirect_args},
+                indirect_params::{
+                    AtomicCounterBuffer, DispatchIndirectBuffer, DrawIndexedIndirectBuffer,
+                    DrawIndirectBuffer,
+                },
+            },
+        };
 
         self.import_gpu_world(world)?;
         let shaders = self.bridge.shaders.clone();
         let result = crate::frame_setup::with_frame_resources(self, world, |frame, world| {
             if !world.contains_resource::<GpuLutTracker>() {
                 return Err(rhapsody::Error::invalid_usage(
-                    "original compile_main 0x1401622e7: missing GpuLutPlugin producer"));
+                    "original compile_main 0x1401622e7: missing GpuLutPlugin producer",
+                ));
             }
-            world.resource_scope(|world, mut tracker: bevy_ecs::change_detection::Mut<GpuLutTracker>| {
-                let missing = |name| rhapsody::Error::invalid_usage(format!(
-                    "original main prelude: missing {name}"));
-                let vaos = world.get_resource::<AssetVAOLibrary>().ok_or_else(|| missing("AssetVAOLibrary"))?;
-                let placement = world.get_resource::<AssetPlacementDataLibrary>().ok_or_else(|| missing("AssetPlacementDataLibrary"))?;
-                let textures = world.get_resource::<AssetTextureLibrary>().ok_or_else(|| missing("AssetTextureLibrary"))?;
-                let ssbos = world.get_resource::<AssetSsboLibrary>().ok_or_else(|| missing("AssetSsboLibrary"))?;
-                let backend = frame.shader_backend();
-                let raster = frame.raster_resources();
-                let access = FrameWorldAccess::new(FrameLibraries { shaders: &shaders, textures,
-                    ssbos, vaos, placement, constants: raster.dynamic_constants() }, frame.compute_device())
+            world.resource_scope(
+                |world, mut tracker: bevy_ecs::change_detection::Mut<GpuLutTracker>| {
+                    let missing = |name| {
+                        rhapsody::Error::invalid_usage(format!(
+                            "original main prelude: missing {name}"
+                        ))
+                    };
+                    let vaos = world
+                        .get_resource::<AssetVAOLibrary>()
+                        .ok_or_else(|| missing("AssetVAOLibrary"))?;
+                    let placement = world
+                        .get_resource::<AssetPlacementDataLibrary>()
+                        .ok_or_else(|| missing("AssetPlacementDataLibrary"))?;
+                    let textures = world
+                        .get_resource::<AssetTextureLibrary>()
+                        .ok_or_else(|| missing("AssetTextureLibrary"))?;
+                    let ssbos = world
+                        .get_resource::<AssetSsboLibrary>()
+                        .ok_or_else(|| missing("AssetSsboLibrary"))?;
+                    let backend = frame.shader_backend();
+                    let raster = frame.raster_resources();
+                    let access = FrameWorldAccess::new(
+                        FrameLibraries {
+                            shaders: &shaders,
+                            textures,
+                            ssbos,
+                            vaos,
+                            placement,
+                            constants: raster.dynamic_constants(),
+                        },
+                        frame.compute_device(),
+                    )
                     .with_resource_graph_factory(frame.resource_graph_factory());
-                frame.with_compute(|compute| {
-                    let mut uniforms = crate::compute_frame::ComputeUniformAllocator;
-                    let mut env = PassEnv::new(&access, &*backend, &mut uniforms, compute);
-                    tracker.render_luts(&mut env)?;
-                    // Native LUT declaration (including its rendered flag)
-                    // precedes the reset consumer's mandatory buffer lookups.
-                    if !ssbos.contains::<DispatchIndirectBuffer>() || !ssbos.contains::<DrawIndexedIndirectBuffer>()
-                        || !ssbos.contains::<DrawIndirectBuffer>() || !ssbos.contains::<AtomicCounterBuffer>() {
-                        return Err(missing("original indirect SSBO startup producers (0x1401622fd)"));
-                    }
-                    reset_indirect_args(compute, ssbos)
-                })
-            })?;
+                    frame.with_compute(|compute| {
+                        let mut uniforms = crate::compute_frame::ComputeUniformAllocator;
+                        let mut env = PassEnv::new(&access, &*backend, &mut uniforms, compute);
+                        tracker.render_luts(&mut env)?;
+                        // Native LUT declaration (including its rendered flag)
+                        // precedes the reset consumer's mandatory buffer lookups.
+                        if !ssbos.contains::<DispatchIndirectBuffer>()
+                            || !ssbos.contains::<DrawIndexedIndirectBuffer>()
+                            || !ssbos.contains::<DrawIndirectBuffer>()
+                            || !ssbos.contains::<AtomicCounterBuffer>()
+                        {
+                            return Err(missing(
+                                "original indirect SSBO startup producers (0x1401622fd)",
+                            ));
+                        }
+                        reset_indirect_args(compute, ssbos)
+                    })
+                },
+            )?;
             build(frame, world)
         });
         // The host clears frame-local IDs on a failed declaration as well.
@@ -569,7 +636,10 @@ impl CoreGraphFrame<'_> {
         build: impl FnOnce(RasterPassHost) -> rhapsody::Result<T>,
     ) -> rhapsody::Result<T> {
         let declarer: Rc<dyn GraphDeclarer> = self.declarer.clone();
-        let host = self.bridge.raster.pass_host(self.graph(), Some(declarer))
+        let host = self
+            .bridge
+            .raster
+            .pass_host(self.graph(), Some(declarer))
             .with_resource_graph_factory(self.resource_graph_factory());
         let result = build(host);
         self.failed |= result.is_err();
@@ -616,7 +686,7 @@ impl CoreGraphFrame<'_> {
     /// lifetime checks. This is also used by bounded GPU readback validation.
     pub fn import_native_buffer(
         &mut self,
-        buffer: Arc<rhapsody::raw::buffer::Buffer>,
+        buffer: Arc<rhapsody::resource::Buffer>,
         initial_access: u8,
     ) -> rhapsody::Result<ResourceHandle> {
         let result = self.bridge.session.borrow_mut().import_frame_buffer(
@@ -630,7 +700,7 @@ impl CoreGraphFrame<'_> {
 
     pub fn import_native_texture(
         &mut self,
-        texture: Arc<rhapsody::raw::texture::Texture>,
+        texture: Arc<rhapsody::resource::Texture>,
         initial_access: u8,
     ) -> rhapsody::Result<ResourceHandle> {
         let result = self.bridge.session.borrow_mut().import_frame_texture(
@@ -647,7 +717,7 @@ impl CoreGraphFrame<'_> {
     /// execution waits on the acquire and signals the present wait.
     pub fn import_swapchain_image(
         &mut self,
-        image: rhapsody::raw::swapchain::AcquiredImageLease,
+        image: rhapsody::present::AcquiredImageLease,
     ) -> rhapsody::Result<rhapsody::rg::vulkan::PresentTarget> {
         let result = self.bridge.session.borrow_mut().import_swapchain_image(
             &mut self.graph().borrow_mut(),
@@ -660,7 +730,7 @@ impl CoreGraphFrame<'_> {
 
     pub fn import_native_texture_owned(
         &mut self,
-        texture: Arc<rhapsody::raw::texture::Texture>,
+        texture: Arc<rhapsody::resource::Texture>,
         initial_access: u8,
     ) -> rhapsody::Result<ResourceHandle> {
         let result = self.bridge.session.borrow_mut().import_frame_texture_owned(
@@ -819,7 +889,7 @@ impl GraphDeclarer for FrameDeclarer {
     fn import_buffer(
         &self,
         graph: &mut RenderGraph,
-        buffer: Arc<rhapsody::raw::buffer::Buffer>,
+        buffer: Arc<rhapsody::resource::Buffer>,
         access: u8,
     ) -> rhapsody::Result<ResourceHandle> {
         self.scope.validate(graph)?;
@@ -830,7 +900,7 @@ impl GraphDeclarer for FrameDeclarer {
     fn import_texture(
         &self,
         graph: &mut RenderGraph,
-        texture: Arc<rhapsody::raw::texture::Texture>,
+        texture: Arc<rhapsody::resource::Texture>,
         access: u8,
     ) -> rhapsody::Result<ResourceHandle> {
         self.scope.validate(graph)?;
@@ -851,7 +921,7 @@ impl GraphDeclarer for FrameDeclarer {
         &self,
         graph: &mut RenderGraph,
         name: &str,
-        desc: rhapsody::raw::texture::TextureDesc,
+        desc: rhapsody::resource::TextureDesc,
     ) -> rhapsody::Result<rhapsody::rg::temporal::NamedTexture> {
         self.scope.validate(graph)?;
         self.session.borrow_mut().named_texture(graph, name, desc)
@@ -860,7 +930,7 @@ impl GraphDeclarer for FrameDeclarer {
         &self,
         graph: &mut RenderGraph,
         name: &str,
-        desc: rhapsody::raw::texture::TextureDesc,
+        desc: rhapsody::resource::TextureDesc,
     ) -> rhapsody::Result<rhapsody::rg::temporal::TemporalTexturePair> {
         self.scope.validate(graph)?;
         self.session
@@ -871,11 +941,13 @@ impl GraphDeclarer for FrameDeclarer {
         &self,
         graph: &mut RenderGraph,
         name: &str,
-        desc: rhapsody::raw::buffer::BufferDesc,
+        desc: rhapsody::resource::BufferDesc,
     ) -> rhapsody::Result<rhapsody::rg::temporal::NamedBuffer> {
         self.scope.validate(graph)?;
         // Temporal buffers of the game are zero-filled on creation.
-        self.session.borrow_mut().named_buffer_zeroed(graph, name, desc)
+        self.session
+            .borrow_mut()
+            .named_buffer_zeroed(graph, name, desc)
     }
 }
 
@@ -897,7 +969,6 @@ mod tests {
     }
 }
 
-
 /// Actual full-world builder seam. The caller supplies the recovered complete
 /// compile_main graph (including its original final22 export), not a prefix.
 /// Actual ECS draw-list construction and every render phase use the same App
@@ -906,18 +977,26 @@ pub fn warm_up_gameplay_with_world_builder(
     owners: CoreRenderOwners,
     world: &mut bevy_ecs::world::World,
     build_world: impl FnOnce(
-        &mut CoreGraphFrame<'_>, &mut bevy_ecs::world::World,
+        &mut CoreGraphFrame<'_>,
+        &mut bevy_ecs::world::World,
         &country_core::systems::render_loop::draw_passes::draw_lists::DrawLists,
-    ) -> rhapsody::Result<country_core::render::pass_builder::pass_resource_access::RgTexture>,
+    ) -> rhapsody::Result<
+        country_core::render::pass_builder::pass_resource_access::RgTexture,
+    >,
 ) -> rhapsody::Result<()> {
-    use country_core::systems::render_loop::draw_passes::draw_lists::{build_draw_lists, DrawLists};
+    use country_core::systems::render_loop::draw_passes::draw_lists::{
+        DrawLists, build_draw_lists,
+    };
     let mut bridge = CoreRenderBridge::from_owners(owners)?;
     let mut lists = DrawLists::new();
     build_draw_lists(world, bridge.shader_library().as_ref(), &mut lists);
     lists.sort();
     bridge.raster_resources().refresh_draw_vaos(world, &lists)?;
     let (output, built) = bridge.build_frame(|frame| build_world(frame, world, &lists))?;
-    if let Err(error) = bridge.shader_backend().prewarm(std::time::Duration::from_secs(10)) {
+    if let Err(error) = bridge
+        .shader_backend()
+        .prewarm(std::time::Duration::from_secs(10))
+    {
         if let Err(cleanup) = bridge.cancel_built(built) {
             log::warn!("failed gameplay warmup prewarm cancellation: {cleanup}");
         }

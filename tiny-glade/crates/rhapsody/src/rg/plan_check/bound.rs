@@ -11,9 +11,9 @@ use crate::{
         range_state::{AccessScope, Frontier, NativeState, RangeOwner, RangeTransfer},
     },
     rg::sync_plan::{
-        AliasEdge, BarrierKind, BarrierPhase, BoundBatch, BoundBatchKind, BoundPatch, BoundPatchAction,
-        BoundSynchronization, BoundTransition, BoundWait, DependencyRef, InitialState,
-        RangeProgram, RangeUse,
+        AliasEdge, BarrierKind, BarrierPhase, BoundBatch, BoundBatchKind, BoundPatch,
+        BoundPatchAction, BoundSynchronization, BoundTransition, BoundWait, DependencyRef,
+        InitialState, RangeProgram, RangeUse,
     },
     sync::{MAX_QUEUES, QueueId, SyncSet},
 };
@@ -435,7 +435,9 @@ fn check(program: &RangeProgram, view: View<'_>) -> crate::Result<()> {
         )?;
     }
     for edge in view.aliases {
-        if states.get(edge.previous as usize).is_none_or(Option::is_none)
+        if states
+            .get(edge.previous as usize)
+            .is_none_or(Option::is_none)
             || states.get(edge.next as usize).is_none_or(Option::is_none)
             || edge.previous == edge.next
         {
@@ -1371,9 +1373,19 @@ mod tests {
             .iter()
             .find(|t| t.resource == 1 && t.phase == BarrierPhase::BeforePass(2))
             .expect("alias barrier");
-        assert!(alias.source.stages.contains(vk::PipelineStageFlags::TRANSFER));
+        assert!(
+            alias
+                .source
+                .stages
+                .contains(vk::PipelineStageFlags::TRANSFER)
+        );
         assert!(alias.source.access.contains(vk::AccessFlags::TRANSFER_READ));
-        assert!(alias.source.access.contains(vk::AccessFlags::TRANSFER_WRITE));
+        assert!(
+            alias
+                .source
+                .access
+                .contains(vk::AccessFlags::TRANSFER_WRITE)
+        );
         // The checker independently requires the alias barrier.
         let mut broken = source.clone();
         broken

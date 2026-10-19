@@ -22,10 +22,10 @@ use country_core::{
     rhapsody_types::{Texture, TextureDesc},
 };
 use rhapsody::{
-    bindless::{BindlessParameters, BindlessResource, BindlessShaderAbi},
-    raw::{dynamic_constants::DynamicConstantsChunk, texture::TextureView},
-    shader_pipeline::reflection::{BindingKind, BindingLocation},
+    bindless::BindlessParameters, bindless::BindlessResource, bindless::BindlessShaderAbi,
+    resource::DynamicConstantsChunk, resource::TextureView,
 };
+use shader_pipeline::{reflection::BindingKind, reflection::BindingLocation};
 use std::sync::Arc;
 
 /// Immutable per-frame owners, captured by actual shader parameter bindings.

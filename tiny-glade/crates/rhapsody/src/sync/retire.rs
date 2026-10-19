@@ -59,7 +59,12 @@ impl<T> Retirement<T> {
 
     /// Hand `item` back when `after` is empty or already reached; otherwise
     /// queue it. Returns `Err(item)` only when queue storage cannot grow.
-    pub fn retire(&self, after: SyncSet, item: T, completed: &CompletedValues) -> Result<Option<T>, T> {
+    pub fn retire(
+        &self,
+        after: SyncSet,
+        item: T,
+        completed: &CompletedValues,
+    ) -> Result<Option<T>, T> {
         if after.is_reached(completed) {
             return Ok(Some(item));
         }
@@ -202,8 +207,18 @@ mod tests {
         let mut done = CompletedValues::default();
         let mut both = point(0, 2);
         both.merge(&point(1, 5));
-        assert!(retirement.retire(both, "cross-queue", &done).unwrap().is_none());
-        assert!(retirement.retire(point(0, 1), "graphics", &done).unwrap().is_none());
+        assert!(
+            retirement
+                .retire(both, "cross-queue", &done)
+                .unwrap()
+                .is_none()
+        );
+        assert!(
+            retirement
+                .retire(point(0, 1), "graphics", &done)
+                .unwrap()
+                .is_none()
+        );
 
         let mut ready = Vec::new();
         done.raise(QueueId::new(0).unwrap(), 2);
@@ -221,7 +236,12 @@ mod tests {
         let retirement = Retirement::new();
         let done = CompletedValues::default();
         for value in 1..=3 {
-            assert!(retirement.retire(point(0, value), value, &done).unwrap().is_none());
+            assert!(
+                retirement
+                    .retire(point(0, value), value, &done)
+                    .unwrap()
+                    .is_none()
+            );
         }
         let mut ready = Vec::new();
         assert_eq!(retirement.drain_all(&mut ready), 3);
@@ -234,7 +254,10 @@ mod tests {
     fn bounded_scans_progress_past_pending_entries_and_inspect_swapped_tail() {
         let retirement = Retirement::new();
         for value in 0..7 {
-            retirement.try_enqueue(point(0, if value < 4 { 9 } else { 1 }), value).ok().unwrap();
+            retirement
+                .try_enqueue(point(0, if value < 4 { 9 } else { 1 }), value)
+                .ok()
+                .unwrap();
         }
         let mut done = CompletedValues::default();
         done.raise(QueueId::new(0).unwrap(), 1);
@@ -361,7 +384,10 @@ mod tests {
         done.raise(QueueId::new(0).unwrap(), 10);
         let mut ready = Vec::new();
         let progress = retirement.collect_limited(&done, 4096, 4096, |item| ready.push(item));
-        assert_eq!(progress.scanned, 10, "unreached entries are never inspected");
+        assert_eq!(
+            progress.scanned, 10,
+            "unreached entries are never inspected"
+        );
         assert_eq!(ready, (1..=10).collect::<Vec<_>>());
         // A multi-queue entry moves once to the queue it still waits for.
         let mut both = point(0, 5);

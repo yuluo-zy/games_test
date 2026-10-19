@@ -193,9 +193,9 @@ fn packaged_loading_background_vermeer_and_actual_text_stream_execute_and_read_b
     );
     let byte_count = extent[0] as usize * extent[1] as usize * 4;
     let readback = Arc::new(
-        rhapsody::raw::buffer::Buffer::new(
+        rhapsody::resource::Buffer::new(
             device.clone(),
-            &rhapsody::raw::buffer::BufferDesc::new_gpu_to_cpu(
+            &rhapsody::resource::BufferDesc::new_gpu_to_cpu(
                 byte_count as u64,
                 vk::BufferUsageFlags::TRANSFER_DST,
             ),

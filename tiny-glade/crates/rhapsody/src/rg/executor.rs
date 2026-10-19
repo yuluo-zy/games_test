@@ -680,7 +680,10 @@ impl ExecutionChain {
             let mut found = None;
             self.plan_cache
                 .try_get_matching(|key| {
-                    let matched = key.0.definition.matches_declaration(&graph, dependency, context)?;
+                    let matched = key
+                        .0
+                        .definition
+                        .matches_declaration(&graph, dependency, context)?;
                     if matched {
                         found = Some(key.0.clone());
                     }
@@ -735,7 +738,13 @@ impl ExecutionChain {
                 .map_err(Error::Compile)?;
         stats.compile_ns = compile_start.elapsed().as_nanos() as u64;
         let original_pass_count = callback_count;
-        Ok(PreparedGraph { compiled, stats, cpu_arena, queue: (queue, family), original_pass_count })
+        Ok(PreparedGraph {
+            compiled,
+            stats,
+            cpu_arena,
+            queue: (queue, family),
+            original_pass_count,
+        })
     }
 
     fn execute_graph_inner(
@@ -760,7 +769,8 @@ impl ExecutionChain {
         callbacks: &mut [impl FnMut(PassContext<'_>) -> bool + Send],
         validate: impl FnOnce(&crate::rg::graph::FrameInstance) -> crate::Result<()>,
     ) -> Result<GraphExecution, Error> {
-        let result = self.execute_prepared_inner(prepared, pool, dependency, backend, callbacks, validate);
+        let result =
+            self.execute_prepared_inner(prepared, pool, dependency, backend, callbacks, validate);
         self.pgo.end_frame();
         result
     }
@@ -774,11 +784,22 @@ impl ExecutionChain {
         callbacks: &mut [impl FnMut(PassContext<'_>) -> bool + Send],
         validate: impl FnOnce(&crate::rg::graph::FrameInstance) -> crate::Result<()>,
     ) -> Result<GraphExecution, Error> {
-        let PreparedGraph { mut compiled, mut stats, cpu_arena, queue: (queue, family), original_pass_count } = prepared;
+        let PreparedGraph {
+            mut compiled,
+            mut stats,
+            cpu_arena,
+            queue: (queue, family),
+            original_pass_count,
+        } = prepared;
         self.recorded_commands = 0;
         if callbacks.len() != original_pass_count {
-            crate::rg::graph::reclaim_failed_resources(&mut compiled.tables.registry,
-                &compiled.declarations.resources, &compiled.tables.snapshot.pool_hits, pool, backend);
+            crate::rg::graph::reclaim_failed_resources(
+                &mut compiled.tables.registry,
+                &compiled.declarations.resources,
+                &compiled.tables.snapshot.pool_hits,
+                pool,
+                backend,
+            );
             return Err(Error::CallbackCount);
         }
         let mut selected_callbacks = {
@@ -787,14 +808,21 @@ impl ExecutionChain {
                 .enumerate()
                 .filter(|(i, _)| compiled.plan.retained_passes.binary_search(i).is_ok())
                 .map(|(_, callback)| callback);
-            let selected = scratch_borrows(cpu_arena.as_ref(), compiled.plan.retained_passes.len(), |_| {
-                selected.next().expect("validated retained callback index")
-            });
+            let selected = scratch_borrows(
+                cpu_arena.as_ref(),
+                compiled.plan.retained_passes.len(),
+                |_| selected.next().expect("validated retained callback index"),
+            );
             match selected {
                 Ok(selected) => selected,
                 Err(error) => {
-                    crate::rg::graph::reclaim_failed_resources(&mut compiled.tables.registry,
-                        &compiled.declarations.resources, &compiled.tables.snapshot.pool_hits, pool, backend);
+                    crate::rg::graph::reclaim_failed_resources(
+                        &mut compiled.tables.registry,
+                        &compiled.declarations.resources,
+                        &compiled.tables.snapshot.pool_hits,
+                        pool,
+                        backend,
+                    );
                     return Err(Error::Validation(error));
                 }
             }
@@ -980,8 +1008,7 @@ impl ExecutionChain {
                     .iter()
                     .find(|wait| {
                         wait.batch == batch_index
-                            && wait.dependency
-                                == crate::rg::sync_plan::DependencyRef::Batch(source)
+                            && wait.dependency == crate::rg::sync_plan::DependencyRef::Batch(source)
                     })
                     .map(|wait| wait.stages);
                 if stages.is_none()
@@ -1476,11 +1503,9 @@ impl ExecutionChain {
                 record::RecordAction::Transition {
                     command,
                     transition,
-                } => backend.transition(
-                    command,
-                    token_of(transition.resource as usize),
-                    &transition,
-                ),
+                } => {
+                    backend.transition(command, token_of(transition.resource as usize), &transition)
+                }
                 _ => true,
             },
         );
@@ -1523,8 +1548,7 @@ impl ExecutionChain {
                 return Err(Error::Validation(error));
             }
         };
-        let mut work =
-            smallvec::SmallVec::<[ChunkWork<'_, '_, C>; 8]>::with_capacity(chunks.len());
+        let mut work = smallvec::SmallVec::<[ChunkWork<'_, '_, C>; 8]>::with_capacity(chunks.len());
         let mut remaining_durations = &mut *durations;
         let mut rest = callbacks;
         for ((range, command), lease) in chunks.iter().zip(begun).zip(leases) {
@@ -1665,8 +1689,11 @@ impl ExecutionChain {
         if failed {
             outcome.panic = true;
         } else {
-            recorder.finish_chunked_batch(&mut outcome, begun.iter().cloned(), final_batch, |action| {
-                match action {
+            recorder.finish_chunked_batch(
+                &mut outcome,
+                begun.iter().cloned(),
+                final_batch,
+                |action| match action {
                     record::RecordAction::End(command) => {
                         backend.end_command(vk::CommandBuffer::from_raw(command))
                     }
@@ -1679,8 +1706,8 @@ impl ExecutionChain {
                         &transition,
                     ),
                     record::RecordAction::Pass(_) => true,
-                }
-            });
+                },
+            );
         }
         let outcome = self.finish_record(recorder, outcome);
         if let Some(error) = callback_error {

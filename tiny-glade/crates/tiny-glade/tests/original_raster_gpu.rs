@@ -29,12 +29,11 @@ use country_core::{
         final_post,
     },
 };
-use rhapsody::shader_pipeline::{
-    compiled::{CompiledShaderPipeline, CompiledShaderStage, ShaderStage},
-    pipeline_desc::RasterPipelineDesc as FileDesc,
-    reflection::{ShaderReflection, VertexInput},
-    reflection_ty::{ScalarType, Type, VectorType},
-    shader_defines::ShaderDefines,
+use shader_pipeline::{
+    compiled::CompiledShaderPipeline, compiled::CompiledShaderStage, compiled::ShaderStage,
+    pipeline_desc::RasterPipelineDesc as FileDesc, reflection::ShaderReflection,
+    reflection::VertexInput, reflection_ty::ScalarType, reflection_ty::Type,
+    reflection_ty::VectorType, shader_defines::ShaderDefines,
 };
 use std::{path::PathBuf, sync::Arc, time::Duration};
 use tiny_glade::render_bridge::{CoreGraphFrame, CoreRenderBridge};
@@ -89,11 +88,11 @@ fn target(
     device: &Arc<rhapsody::device::Device>,
     width: u32,
     height: u32,
-) -> Arc<rhapsody::raw::texture::Texture> {
+) -> Arc<rhapsody::resource::Texture> {
     Arc::new(
-        rhapsody::raw::texture::Texture::new(
+        rhapsody::resource::Texture::new(
             device.clone(),
-            &rhapsody::raw::texture::TextureDesc::new_2d(width, height, vk::Format::R8G8B8A8_UNORM)
+            &rhapsody::resource::TextureDesc::new_2d(width, height, vk::Format::R8G8B8A8_UNORM)
                 .usage(
                     vk::ImageUsageFlags::COLOR_ATTACHMENT
                         | vk::ImageUsageFlags::TRANSFER_SRC
@@ -103,7 +102,7 @@ fn target(
         .unwrap(),
     )
 }
-fn attachment(id: u32, target: &rhapsody::raw::texture::Texture) -> AttachmentTexture {
+fn attachment(id: u32, target: &rhapsody::resource::Texture) -> AttachmentTexture {
     AttachmentTexture {
         id,
         extent: (target.desc.width, target.desc.height),
@@ -114,7 +113,7 @@ fn attachment(id: u32, target: &rhapsody::raw::texture::Texture) -> AttachmentTe
 fn clear(
     frame: &mut CoreGraphFrame<'_>,
     id: rhapsody::rg::resource::ResourceHandle,
-    image: Arc<rhapsody::raw::texture::Texture>,
+    image: Arc<rhapsody::resource::Texture>,
 ) -> rhapsody::Result<()> {
     frame.with_graph(|graph| {
         let mut p = graph.add_pass("fixture background");
@@ -142,11 +141,11 @@ fn clear(
 fn readback(
     frame: &mut CoreGraphFrame<'_>,
     id: rhapsody::rg::resource::ResourceHandle,
-    image: Arc<rhapsody::raw::texture::Texture>,
-) -> rhapsody::Result<Arc<rhapsody::raw::buffer::Buffer>> {
-    let buffer = Arc::new(rhapsody::raw::buffer::Buffer::new(
+    image: Arc<rhapsody::resource::Texture>,
+) -> rhapsody::Result<Arc<rhapsody::resource::Buffer>> {
+    let buffer = Arc::new(rhapsody::resource::Buffer::new(
         image.device.clone(),
-        &rhapsody::raw::buffer::BufferDesc::new_gpu_to_cpu(
+        &rhapsody::resource::BufferDesc::new_gpu_to_cpu(
             u64::from(image.desc.width * image.desc.height * 4),
             vk::BufferUsageFlags::TRANSFER_DST,
         ),
@@ -183,7 +182,7 @@ fn readback(
 fn pixels(
     bridge: &mut CoreRenderBridge,
     built: rhapsody::rg::graph::BuiltGraph,
-    readback: Arc<rhapsody::raw::buffer::Buffer>,
+    readback: Arc<rhapsody::resource::Buffer>,
 ) -> Vec<u8> {
     bridge
         .shader_backend()
@@ -521,7 +520,7 @@ fn actual_typed_vao_vertex_index_and_instance_count_change_gpu_pixels() {
                     None
                 };
                 frame.with_raster(|host| {
-                    let mut state = rhapsody::raw::shader::RasterPipelineOpts::new();
+                    let mut state = rhapsody::pipeline::RasterPipelineOpts::new();
                     state.set_cull_mode(vk::CullModeFlags::NONE);
                     state.set_depth_test_enable(false);
                     let mut pass = RasterPass::new(

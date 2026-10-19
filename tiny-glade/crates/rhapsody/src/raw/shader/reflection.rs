@@ -83,7 +83,7 @@ pub mod original_panics {
 /// Reflection checks before compute pipeline creation: no stage inputs, then
 /// a known local size.
 pub fn validate_compute_reflection(
-    reflection: &crate::shader_pipeline::reflection::ShaderReflection,
+    reflection: &shader_pipeline::reflection::ShaderReflection,
 ) -> Result<[u32; 3]> {
     if !reflection.vertex_inputs.is_empty() {
         return Err(InterfaceError::ComputeHasVertexInputs.into());
@@ -358,9 +358,9 @@ pub(super) fn reflected_type_json(ty: &spirq::ty::Type) -> serde_json::Value {
 /// 从真实容器stage记录取得SPIR-V，不使用外部catalog偏移或magic扫描。
 /// 序列化stage/入口名与payload不一致时，在Vulkan对象创建前拒绝。
 pub fn compiled_pipeline_entries(
-    compiled: &crate::shader_pipeline::compiled::CompiledShaderPipeline,
+    compiled: &shader_pipeline::compiled::CompiledShaderPipeline,
 ) -> Result<Vec<ReflectedEntry>> {
-    use crate::shader_pipeline::compiled::ShaderStage;
+    use shader_pipeline::compiled::ShaderStage;
     compiled
         .stages
         .iter()

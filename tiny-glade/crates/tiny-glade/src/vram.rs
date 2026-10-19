@@ -23,7 +23,7 @@
 //!   （B 未支持扩展时求和结果同样为 0）。合同缝，非行为分歧。
 
 use ash::vk;
-use rhapsody::raw::device::Device;
+use rhapsody::device::Device;
 
 const BYTES_PER_UNIT: f64 = 47.7399274329577;
 const COST_PER_SCALED_UNIT: f64 = 146.1091661136655;
@@ -52,10 +52,7 @@ const GIB: f64 = 9.313_225_746_154_785e-10;
 /// scale, while a positive budget yields `+inf` and does not constrain.
 ///
 /// Final quantisation is `(scale * 10.0).floor() * 0.1`.
-pub fn calculate_max_resolution_scale(
-    device: &Device,
-    render_resolution: [u32; 2],
-) -> f32 {
+pub fn calculate_max_resolution_scale(device: &Device, render_resolution: [u32; 2]) -> f32 {
     let physical = device
         .physical_device_info()
         .expect("physical device info must be initialised");

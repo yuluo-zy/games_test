@@ -180,7 +180,7 @@ fn invalid_texture_builder_inputs_return_invalid_usage() {
             .unwrap_err(),
     ];
     for error in errors {
-        assert_eq!(error.kind(), rhapsody::error::ErrorKind::InvalidUsage);
+        assert_eq!(error.kind(), rhapsody::ErrorKind::InvalidUsage);
     }
 }
 

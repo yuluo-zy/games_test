@@ -24,11 +24,8 @@ use country_core::{
     },
 };
 use rhapsody::{
-    raw::{
-        instance::InstanceBuilder,
-        swapchain::{AcquiredImageLease, PresentTicket, Swapchain},
-    },
-    rg::vulkan::SessionFrameReceipt,
+    interop::InstanceBuilder, present::AcquiredImageLease, present::PresentTicket,
+    present::Swapchain, rg::vulkan::SessionFrameReceipt,
 };
 
 use crate::{
@@ -134,15 +131,15 @@ pub struct ProductionRenderer {
     /// The swapchain image imported into the executed presentation graph.
     presentation: Option<rhapsody::rg::vulkan::PresentTarget>,
     main: Option<(u32, SessionFrameReceipt)>,
-    main_output: Option<Arc<rhapsody::raw::texture::Texture>>,
+    main_output: Option<Arc<rhapsody::resource::Texture>>,
     started: Instant,
     scopes: Vec<usize>,
     first_error: Option<anyhow::Error>,
     suspended: bool,
     closed: bool,
     reduced_state: u64,
-    stats: rhapsody::raw::stats::RenderStats,
-    last_stats: rhapsody::raw::stats::StatsSnapshot,
+    stats: rhapsody::device::RenderStats,
+    last_stats: rhapsody::device::StatsSnapshot,
     // The native window and CAMetalLayer outlive every Vulkan surface owner.
     platform: PlatformSurface,
     window: Arc<winit::window::Window>,
@@ -847,14 +844,14 @@ mod macos {
         }
         pub fn create_surface(
             &self,
-            instance: Arc<rhapsody::raw::instance::VulkanInstance>,
-        ) -> Result<Arc<rhapsody::raw::swapchain::Surface>> {
+            instance: Arc<rhapsody::interop::VulkanInstance>,
+        ) -> Result<Arc<rhapsody::present::Surface>> {
             let loader =
                 ash::ext::metal_surface::Instance::new(&instance.entry, &instance.instance);
             let info = vk::MetalSurfaceCreateInfoEXT::default().layer((*self.layer).cast());
             let handle = unsafe { loader.create_metal_surface(&info, None) }?;
             Ok(Arc::new(unsafe {
-                rhapsody::raw::swapchain::Surface::from_raw(instance, handle, true)
+                rhapsody::present::Surface::from_raw(instance, handle, true)
             }))
         }
     }
@@ -872,8 +869,8 @@ impl PlatformSurface {
     }
     fn create_surface(
         &self,
-        _: Arc<rhapsody::raw::instance::VulkanInstance>,
-    ) -> Result<Arc<rhapsody::raw::swapchain::Surface>> {
+        _: Arc<rhapsody::interop::VulkanInstance>,
+    ) -> Result<Arc<rhapsody::present::Surface>> {
         anyhow::bail!("native surface adapter is unavailable")
     }
 }

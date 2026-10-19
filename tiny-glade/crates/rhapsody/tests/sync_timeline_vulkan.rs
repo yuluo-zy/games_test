@@ -1,7 +1,7 @@
 //! 真实设备上验证 Timelines：提交值、失败不占用、等待与查询。
 mod gpu_test_support;
 use ash::vk;
-use rhapsody::error::ErrorKind;
+use rhapsody::ErrorKind;
 use rhapsody::sync::{QueueId, SyncSet, timeline::Timelines};
 
 fn gpu() -> Option<std::sync::Arc<rhapsody::raw::device::Device>> {

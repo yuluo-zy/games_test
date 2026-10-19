@@ -45,27 +45,19 @@ use country_core::{
 use hashbrown::HashMap as HbMap;
 use parking_lot::Mutex;
 use rhapsody::bindless::{BindlessParameters, BindlessResource};
-use rhapsody::shader_pipeline::reflection::BindingLocation;
 use rhapsody::{
-    raw::{
-        dynamic_constants::{DynamicConstants, DynamicConstantsChunk},
-        shader::RasterPipelineOpts,
-    },
-    rg::{
-        attachments::contract::{
-            AttachmentArray, DepthAccess, RenderPassAttachmentDesc as RhAttachmentDesc,
-            RenderPassDesc as RhRenderPassDesc,
-        },
-        attachments::{Attachment, AttachmentCache},
-        graph::{BuildError, RenderGraph as RhGraph},
-        pass_api::{AshCommandBackend, RenderPassApi as RhRenderPassApi},
-        pass_bindings::ManagedPassResources,
-        resource::ResourceHandle,
-        vulkan::{ResourceSpec, VulkanGraphSession},
-    },
-    shader_pipeline::{
-        compiled::CompiledShaderPipeline as RhCompiled, reflection::BindingNameHash,
-    },
+    pipeline::RasterPipelineOpts, resource::DynamicConstants, resource::DynamicConstantsChunk,
+    rg::attachments::Attachment, rg::attachments::AttachmentCache,
+    rg::attachments::contract::AttachmentArray, rg::attachments::contract::DepthAccess,
+    rg::attachments::contract::RenderPassAttachmentDesc as RhAttachmentDesc,
+    rg::attachments::contract::RenderPassDesc as RhRenderPassDesc, rg::graph::BuildError,
+    rg::graph::RenderGraph as RhGraph, rg::pass_api::AshCommandBackend,
+    rg::pass_api::RenderPassApi as RhRenderPassApi, rg::pass_bindings::ManagedPassResources,
+    rg::resource::ResourceHandle, rg::vulkan::ResourceSpec, rg::vulkan::VulkanGraphSession,
+};
+use shader_pipeline::reflection::BindingLocation;
+use shader_pipeline::{
+    compiled::CompiledShaderPipeline as RhCompiled, reflection::BindingNameHash,
 };
 use std::{cell::RefCell, collections::HashMap, marker::PhantomData, rc::Rc, sync::Arc};
 
@@ -77,13 +69,13 @@ pub trait GraphDeclarer {
     fn import_buffer(
         &self,
         graph: &mut RhGraph,
-        buffer: Arc<rhapsody::raw::buffer::Buffer>,
+        buffer: Arc<rhapsody::resource::Buffer>,
         initial_access: u8,
     ) -> rhapsody::Result<ResourceHandle>;
     fn import_texture(
         &self,
         graph: &mut RhGraph,
-        texture: Arc<rhapsody::raw::texture::Texture>,
+        texture: Arc<rhapsody::resource::Texture>,
         initial_access: u8,
     ) -> rhapsody::Result<ResourceHandle>;
     fn declare(
@@ -96,26 +88,26 @@ pub trait GraphDeclarer {
         &self,
         graph: &mut RhGraph,
         name: &str,
-        desc: rhapsody::raw::texture::TextureDesc,
+        desc: rhapsody::resource::TextureDesc,
     ) -> rhapsody::Result<rhapsody::rg::temporal::NamedTexture>;
     fn temporal_texture(
         &self,
         graph: &mut RhGraph,
         name: &str,
-        desc: rhapsody::raw::texture::TextureDesc,
+        desc: rhapsody::resource::TextureDesc,
     ) -> rhapsody::Result<rhapsody::rg::temporal::TemporalTexturePair>;
     fn named_buffer(
         &self,
         graph: &mut RhGraph,
         name: &str,
-        desc: rhapsody::raw::buffer::BufferDesc,
+        desc: rhapsody::resource::BufferDesc,
     ) -> rhapsody::Result<rhapsody::rg::temporal::NamedBuffer>;
 }
 impl GraphDeclarer for RefCell<VulkanGraphSession> {
     fn import_buffer(
         &self,
         graph: &mut RhGraph,
-        buffer: Arc<rhapsody::raw::buffer::Buffer>,
+        buffer: Arc<rhapsody::resource::Buffer>,
         initial_access: u8,
     ) -> rhapsody::Result<ResourceHandle> {
         self.borrow_mut()
@@ -124,7 +116,7 @@ impl GraphDeclarer for RefCell<VulkanGraphSession> {
     fn import_texture(
         &self,
         graph: &mut RhGraph,
-        texture: Arc<rhapsody::raw::texture::Texture>,
+        texture: Arc<rhapsody::resource::Texture>,
         initial_access: u8,
     ) -> rhapsody::Result<ResourceHandle> {
         self.borrow_mut()
@@ -142,7 +134,7 @@ impl GraphDeclarer for RefCell<VulkanGraphSession> {
         &self,
         graph: &mut RhGraph,
         name: &str,
-        desc: rhapsody::raw::texture::TextureDesc,
+        desc: rhapsody::resource::TextureDesc,
     ) -> rhapsody::Result<rhapsody::rg::temporal::NamedTexture> {
         self.borrow_mut().named_texture(graph, name, desc)
     }
@@ -150,7 +142,7 @@ impl GraphDeclarer for RefCell<VulkanGraphSession> {
         &self,
         graph: &mut RhGraph,
         name: &str,
-        desc: rhapsody::raw::texture::TextureDesc,
+        desc: rhapsody::resource::TextureDesc,
     ) -> rhapsody::Result<rhapsody::rg::temporal::TemporalTexturePair> {
         self.borrow_mut().temporal_texture(graph, name, desc)
     }
@@ -158,7 +150,7 @@ impl GraphDeclarer for RefCell<VulkanGraphSession> {
         &self,
         graph: &mut RhGraph,
         name: &str,
-        desc: rhapsody::raw::buffer::BufferDesc,
+        desc: rhapsody::resource::BufferDesc,
     ) -> rhapsody::Result<rhapsody::rg::temporal::NamedBuffer> {
         self.borrow_mut().named_buffer(graph, name, desc)
     }
@@ -297,9 +289,9 @@ pub struct AssetTables {
 }
 #[derive(Clone)]
 struct VaoSnapshot {
-    index: Arc<rhapsody::raw::buffer::Buffer>,
+    index: Arc<rhapsody::resource::Buffer>,
     index_count: u32,
-    bindings: Vec<(Arc<str>, Arc<rhapsody::raw::buffer::Buffer>)>,
+    bindings: Vec<(Arc<str>, Arc<rhapsody::resource::Buffer>)>,
 }
 
 /// 全部光栅 pass 共享的宿主状态。
@@ -456,7 +448,7 @@ impl RasterShared {
         buffers: Arc<BufferHost>,
         textures: Arc<TextureHost>,
         shaders: Arc<ShaderHost>,
-    ) -> Result<Arc<Self>, rhapsody::raw::error::Error> {
+    ) -> Result<Arc<Self>, rhapsody::Error> {
         Self::new_with_programs(
             device,
             buffers,
@@ -475,7 +467,7 @@ impl RasterShared {
         textures: Arc<TextureHost>,
         shaders: Arc<ShaderHost>,
         library: Arc<AssetShaderLibrary>,
-    ) -> Result<Arc<Self>, rhapsody::raw::error::Error> {
+    ) -> Result<Arc<Self>, rhapsody::Error> {
         Self::new_with_programs(
             device,
             buffers,
@@ -491,7 +483,7 @@ impl RasterShared {
         textures: Arc<TextureHost>,
         shaders: Arc<ShaderHost>,
         programs: RasterPrograms,
-    ) -> Result<Arc<Self>, rhapsody::raw::error::Error> {
+    ) -> Result<Arc<Self>, rhapsody::Error> {
         Ok(Arc::new(Self {
             attachments: Mutex::new(AttachmentCache::new(device.clone())?),
             dynamic: Arc::new(Mutex::new(DynamicConstants::new(device.clone())?)),
@@ -645,14 +637,14 @@ struct PreparedDraw {
     index: Option<ResourceHandle>,
     index_count: Option<u32>,
     vertices: Vec<(u32, ResourceHandle, u64)>,
-    external: rhapsody::raw::temp_list::TempList<ExternalDrawBinding>,
+    external: rhapsody::resource::TempList<ExternalDrawBinding>,
 }
 struct ExternalDrawBinding {
     binding: u32,
     resource: ResourceHandle,
     access: u8,
     range: rhapsody::rg::resource::AccessRange,
-    view: Option<rhapsody::raw::texture::TextureViewDesc>,
+    view: Option<rhapsody::resource::TextureViewDesc>,
 }
 
 impl PassHost for RasterPassHost {
@@ -812,7 +804,7 @@ impl PassHost for RasterPassHost {
         BindingNameHash(name_hash).with_suffix_dims().0
     }
 
-    /// `rhapsody::raw::shader::impl$7::default()`：`RasterPipelineOpts` 的 4 字节位域缺省值。
+    /// `rhapsody::pipeline::impl$7::default()`：`RasterPipelineOpts` 的 4 字节位域缺省值。
     fn default_raster_state(&self) -> RasterState {
         RasterState(RasterPipelineOpts::new().0)
     }
@@ -892,7 +884,7 @@ impl PassHost for RasterPassHost {
                     index: None,
                     index_count: None,
                     vertices: Vec::new(),
-                    external: rhapsody::raw::temp_list::TempList::new(
+                    external: rhapsody::resource::TempList::new(
                         country_core::render::pass_builder::draw_builder::MAX_PASS_BINDINGS,
                         shared.device.allocator_stats().clone(),
                     )?,
@@ -1661,7 +1653,8 @@ fn import_draw_bindings(
     declarer: &dyn GraphDeclarer,
     graph: &mut RhGraph,
 ) -> rhapsody::Result<()> {
-    use rhapsody::{rg::resource::AccessRange, shader_pipeline::reflection::BindingKind};
+    use rhapsody::rg::resource::AccessRange;
+    use shader_pipeline::reflection::BindingKind;
     for (binding, owned) in &draw.packet.bindings {
         if owned.state != country_core::render::pass_builder::draw_stream::GpuOwned::STATE_OWNED {
             continue;
@@ -1848,7 +1841,7 @@ fn bindless_parameters(
             .ok_or_else(|| rhapsody::Error::invalid_usage("raster pass binding slot is absent"))?;
         let resource = if let Ok(texture) = managed.texture_for(binding.resource_index) {
             let desc = binding.view.as_ref().map_or_else(
-                || rhapsody::raw::texture::TextureViewDesc::new(&texture.desc),
+                || rhapsody::resource::TextureViewDesc::new(&texture.desc),
                 |view| rh_view_desc(&texture, view),
             )?;
             let view = texture.image_view(&desc)?;

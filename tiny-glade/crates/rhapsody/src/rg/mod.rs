@@ -10,18 +10,17 @@ pub mod frame_storage;
 pub mod frame_throttle;
 pub mod graph;
 pub mod import_export;
+pub mod owner_storage;
 pub mod parallel;
-pub mod plan;
-pub mod profiling;
-pub mod queue_schedule;
-pub mod sync_plan;
-pub mod plan_check;
 pub mod pass_api;
 pub mod pass_bindings;
 pub mod pass_builder;
-pub mod recorder;
+pub mod plan;
+pub mod plan_check;
+pub mod profiling;
+pub mod queue_schedule;
 pub mod receipt_storage;
-pub mod owner_storage;
+pub mod recorder;
 pub mod resource;
 pub mod resource_contracts;
 pub mod resource_info;
@@ -29,17 +28,17 @@ pub mod resource_pool;
 pub mod resource_registry;
 pub mod result_cache;
 pub mod subgraph;
+pub mod sync_plan;
 pub mod temporal;
 pub mod transient_memory;
 pub mod transient_memory_check;
 mod transient_resources;
 pub mod util;
 
-
 pub mod vulkan;
 
-pub mod transaction;
 pub mod frame_loop;
+pub mod transaction;
 
 pub mod indirect_count;
 

@@ -8,10 +8,9 @@ use country_core::render::ssbo::rhapsody_boundary::{
     BackendError, Buffer, BufferDesc, GraphicsDevice as CoreGraphicsDevice,
 };
 use parking_lot::Mutex;
-use rhapsody::raw::{
-    buffer::{BufferDesc as RhBufferDesc, MemoryLocation},
-    device::Device,
-    managed::buffer::ManagedBuffer,
+use rhapsody::{
+    device::Device, resource::BufferDesc as RhBufferDesc, resource::ManagedBuffer,
+    resource::MemoryLocation,
 };
 use std::{ops::Range, sync::Arc};
 
@@ -173,12 +172,7 @@ impl CoreGraphicsDevice for BufferHost {
                 .update_buffer_bytes(&managed, data, ranges, offset);
         }
         // Reject invalid ranges before allocating the lazy transfer service.
-        rhapsody::raw::buffer::plan_buffer_update(
-            &managed.desc,
-            data.len(),
-            ranges,
-            offset as u64,
-        )?;
+        rhapsody::resource::plan_buffer_update(&managed.desc, data.len(), ranges, offset as u64)?;
         // This host method promises completion on return. Device-local sparse
         // updates use the same bounded queued uploader as streaming consumers,
         // then wait only for these batches' actual points.
@@ -241,9 +235,8 @@ impl CoreGraphicsDevice for BufferHost {
 use country_core::render::load_texture::boundary::{
     BackendError as TextureBackendError, Texture, TextureDesc, TextureDevice,
 };
-use rhapsody::raw::{
-    managed::texture::ManagedTexture,
-    texture::{TextureDesc as RhTextureDesc, TextureKind},
+use rhapsody::{
+    resource::ManagedTexture, resource::TextureDesc as RhTextureDesc, resource::TextureKind,
 };
 
 /// `Texture.id` 的标记位：图导入入口 `import_unowned(id, access)` 对缓冲和纹理共用，靠它区分。
@@ -275,9 +268,7 @@ pub struct TextureHost {
     device: Arc<Device>,
     slots: Arc<Mutex<Vec<TextureSlot>>>,
     /// 默认视图缓存（原 `ManagedTexture::view` 按描述缓存，M2.6）：视图随纹理一起存活，`release` 时丢弃。
-    views: Arc<
-        Mutex<std::collections::HashMap<u64, rhapsody::raw::managed::texture::ManagedTextureView>>,
-    >,
+    views: Arc<Mutex<std::collections::HashMap<u64, rhapsody::resource::ManagedTextureView>>>,
     /// 宿主附加的用途位（core 的 `TextureDesc` 只有 sampled/storage/附件五个开关，没有 TRANSFER_SRC；
     /// 读回像素的宿主/测试在这里统一加上。原版 `TextureDesc.usage` 是完整位集，此项是宿主策略，不是原版行为）。
     extra_usage: vk::ImageUsageFlags,
@@ -321,7 +312,7 @@ impl TextureHost {
         if let Some(view) = views.get(&id) {
             return Ok(ash::vk::Handle::as_raw(view.raw()));
         }
-        let desc = rhapsody::raw::texture::TextureViewDesc::new(&texture.desc)?;
+        let desc = rhapsody::resource::TextureViewDesc::new(&texture.desc)?;
         let view = self.device.get_vk_image_view(&texture, &desc)?;
         let raw = ash::vk::Handle::as_raw(view.raw());
         views.insert(id, view);
@@ -332,7 +323,7 @@ impl TextureHost {
         &self,
         id: u64,
         raw: u64,
-    ) -> rhapsody::Result<Arc<rhapsody::raw::texture::TextureView>> {
+    ) -> rhapsody::Result<Arc<rhapsody::resource::TextureView>> {
         let views = self.views.lock();
         let view = views.get(&id).ok_or_else(|| {
             rhapsody::Error::invalid_usage("external texture view is not owned by this host")
@@ -563,7 +554,7 @@ impl country_core::asset_libraries::texture_library::TextureLibraryDevice for Te
         let regions: Vec<_> = (0..layer_count)
             .map(|layer| {
                 let start = layer as usize * bytes_per_layer;
-                rhapsody::raw::texture_upload::TextureUpdateRegion {
+                rhapsody::resource::TextureUpdateRegion {
                     data: &update.data[start..start + bytes_per_layer],
                     extent: update.extent,
                     mip_level: update.mip_level,
@@ -571,7 +562,7 @@ impl country_core::asset_libraries::texture_library::TextureLibraryDevice for Te
                 }
             })
             .collect();
-        rhapsody::raw::setup::update_texture_regions(&self.device, &managed, &regions)
+        rhapsody::resource::update_texture_regions(&self.device, &managed, &regions)
     }
 }
 
@@ -604,20 +595,18 @@ use rhapsody::pipeline::{
     AsyncPipelineCompiler, CompilerConfig, PersistentPipelineCache, PipelineTicket,
 };
 use rhapsody::rg::attachments::contract::RenderPassKey;
-use rhapsody::shader_pipeline::reflection::{BindingKind, BindingLocation, ShaderReflection};
 use rhapsody::{
-    raw::{
-        sampler::Sampler,
-        shader::{
-            DynamicRenderingFormats, PipelineCache, RasterPipelineDesc as RhRasterDesc,
-            RasterPipelineOpts, ShaderModule, VulkanPipeline, vertex_input_from_reflection,
-        },
-    },
-    shader_pipeline::{
-        compiled::{CompiledShaderPipeline as RhCompiled, ShaderStage},
-        pipeline_desc::ComputePipelineDesc as FileComputeDesc,
-        shader_defines::ShaderDefines,
-    },
+    pipeline::DynamicRenderingFormats, pipeline::PipelineCache,
+    pipeline::RasterPipelineDesc as RhRasterDesc, pipeline::RasterPipelineOpts,
+    pipeline::ShaderModule, pipeline::VulkanPipeline, pipeline::vertex_input_from_reflection,
+    resource::Sampler,
+};
+use shader_pipeline::{
+    compiled::CompiledShaderPipeline as RhCompiled, compiled::ShaderStage,
+    pipeline_desc::ComputePipelineDesc as FileComputeDesc, shader_defines::ShaderDefines,
+};
+use shader_pipeline::{
+    reflection::BindingKind, reflection::BindingLocation, reflection::ShaderReflection,
 };
 use std::{
     collections::BTreeMap,
@@ -692,7 +681,7 @@ impl RenderPassHost {
         &self,
         device: &Arc<Device>,
         desc: &rhapsody::rg::attachments::contract::RenderPassDesc,
-    ) -> Result<u64, rhapsody::raw::error::Error> {
+    ) -> Result<u64, rhapsody::Error> {
         let mut by_desc = self.by_desc.lock();
         if let Some(id) = by_desc.get(desc) {
             return Ok(*id);
@@ -744,7 +733,7 @@ impl RenderPassHost {
         for attachment in &key.attachments {
             let format = vk::Format::from_raw(attachment.format);
             if attachment.depth_stencil {
-                let aspects = rhapsody::raw::format::vk_format_valid_aspect_flags(format);
+                let aspects = rhapsody::resource::vk_format_valid_aspect_flags(format);
                 if aspects.contains(vk::ImageAspectFlags::DEPTH) {
                     formats.depth = format;
                 }
@@ -779,7 +768,7 @@ impl RenderPassHost {
         &self,
         device: &Arc<Device>,
         key: &RenderPassKey,
-    ) -> Result<u64, rhapsody::raw::error::Error> {
+    ) -> Result<u64, rhapsody::Error> {
         let entry = Self::entry(device, key)?;
         let mut table = self.table.lock();
         if table.len() >= 256 {
@@ -800,7 +789,7 @@ impl RenderPassHost {
 /// 一条已创建的光栅管线及绘制时需要的反射信息。
 pub struct RasterEntry {
     pub pipeline: PipelineTicket,
-    pub layout: Arc<rhapsody::raw::shader::PipelineLayout>,
+    pub layout: Arc<rhapsody::pipeline::PipelineLayout>,
     pub registry: Arc<ResourceRegistry>,
     pub pass: Arc<RenderPassEntry>,
     pub bindings: ShaderBindings,
@@ -841,7 +830,7 @@ impl ShaderBindings {
     pub fn image(
         &self,
         binding: u32,
-        view: Arc<rhapsody::raw::texture::TextureView>,
+        view: Arc<rhapsody::resource::TextureView>,
     ) -> rhapsody::Result<BindlessResource> {
         match self
             .abi
@@ -1080,7 +1069,7 @@ impl ShaderBackend for ShaderHost {
     }
 
     fn load_compiled_raster(&self, desc: &RasterPipelineDesc) -> Result<CoreCompiled, ShaderError> {
-        let file = rhapsody::shader_pipeline::pipeline_desc::RasterPipelineDesc {
+        let file = shader_pipeline::pipeline_desc::RasterPipelineDesc {
             source_path: desc.path.clone(),
             vertex_entry: String::new(),
             fragment_entry: desc.entry.clone(),
@@ -1191,7 +1180,7 @@ impl ShaderBackend for ShaderHost {
 
         let layout = package.layout.clone();
         let bindings = self.bindings(&decoded, package.abi.clone())?;
-        let module = |stage: &rhapsody::shader_pipeline::compiled::CompiledShaderStage| {
+        let module = |stage: &shader_pipeline::compiled::CompiledShaderStage| {
             let bytes = stage
                 .spirv
                 .iter()
@@ -1384,11 +1373,9 @@ use country_core::render::rg_helpers::rg_boundary::{
     StagingAlloc, StagingCopy,
 };
 use rhapsody::{
-    raw::dynamic_constants::{DynamicConstants, DynamicConstantsChunk},
-    rg::{
-        pass_api::{AshCommandBackend, CommandBackend, RenderPassApi as RhRenderPassApi},
-        pass_bindings::ManagedPassResources,
-    },
+    resource::DynamicConstants, resource::DynamicConstantsChunk, rg::pass_api::AshCommandBackend,
+    rg::pass_api::CommandBackend, rg::pass_api::RenderPassApi as RhRenderPassApi,
+    rg::pass_bindings::ManagedPassResources,
 };
 /// core `rg_boundary::RenderGraph` 的宿主实现：pass 声明落到 rhapsody 图，动态常量走 rhapsody 的
 /// `DynamicConstants`（原版 256 KiB 页、线性分配）。
@@ -1455,10 +1442,7 @@ pub struct HostTables {
 }
 
 impl<'session> GraphPasses<'session> {
-    pub fn new(
-        graph: Rc<RefCell<RhGraph>>,
-        device: Arc<Device>,
-    ) -> Result<Self, rhapsody::raw::error::Error> {
+    pub fn new(graph: Rc<RefCell<RhGraph>>, device: Arc<Device>) -> Result<Self, rhapsody::Error> {
         let dynamic = DynamicConstants::new(device.clone())?;
         Ok(Self {
             graph,
@@ -2038,17 +2022,17 @@ use country_core::render::pass_builder::pass_resource_access::PassBinding as Cor
 
 /// 核心的视图描述（各字段 `Option`）叠加到纹理的默认视图上。
 pub(crate) fn rh_view_desc(
-    texture: &rhapsody::raw::texture::Texture,
+    texture: &rhapsody::resource::Texture,
     view: &country_core::rhapsody_types::TextureViewDesc,
-) -> rhapsody::Result<rhapsody::raw::texture::TextureViewDesc> {
+) -> rhapsody::Result<rhapsody::resource::TextureViewDesc> {
     project_view_desc(&texture.desc, view)
 }
 
 fn project_view_desc(
-    texture: &rhapsody::raw::texture::TextureDesc,
+    texture: &rhapsody::resource::TextureDesc,
     view: &country_core::rhapsody_types::TextureViewDesc,
-) -> rhapsody::Result<rhapsody::raw::texture::TextureViewDesc> {
-    let mut out = rhapsody::raw::texture::TextureViewDesc::new(texture)?;
+) -> rhapsody::Result<rhapsody::resource::TextureViewDesc> {
+    let mut out = rhapsody::resource::TextureViewDesc::new(texture)?;
     if let Some(v) = view.view_type {
         out.view_type = vk::ImageViewType::from_raw(v as i32);
     }
@@ -2089,9 +2073,9 @@ fn remaining_view_count(total: u32, base: u32, explicit: Option<u32>) -> rhapsod
 /// fully-bound shader ABI additionally fills unused array slots with the last
 /// actual view; it creates no owner or mip beyond the declared original range.
 fn individual_mip_views(
-    view: rhapsody::raw::texture::TextureViewDesc,
+    view: rhapsody::resource::TextureViewDesc,
     array_count: u32,
-) -> rhapsody::Result<Vec<rhapsody::raw::texture::TextureViewDesc>> {
+) -> rhapsody::Result<Vec<rhapsody::resource::TextureViewDesc>> {
     if view.level_count == 0 || array_count < view.level_count {
         return Err(rhapsody::Error::invalid_usage(
             "individual mip views exceed the actual shader array",
@@ -2138,7 +2122,7 @@ fn compute_view_range(
     };
     let range = AccessRange::Texture {
         aspect_mask: view.aspect_mask.unwrap_or_else(|| {
-            rhapsody::raw::format::vk_format_valid_aspect_flags(vk::Format::from_raw(
+            rhapsody::resource::vk_format_valid_aspect_flags(vk::Format::from_raw(
                 image.words_at_00_through_18[2] as i32,
             ))
             .as_raw()
@@ -2576,7 +2560,7 @@ impl GraphPasses<'_> {
                 contents_unused = inactive_texture_bindings.contains(&(index as u8));
                 allow_undefined = undefined_texture_bindings.contains(&(index as u8));
                 if allow_undefined
-                    && (contents_unused || rhapsody::raw::access_table::is_write(access.access))
+                    && (contents_unused || rhapsody::command::is_write(access.access))
                 {
                     return Err(rhapsody::Error::invalid_usage(
                         "undefined texture read metadata conflicts with its actual access",
@@ -2600,7 +2584,7 @@ impl GraphPasses<'_> {
                             CorePassBinding::BufferRead { resource }
                                 if !used_image_views[index]
                                     && *resource == access.resource
-                                    && !rhapsody::raw::access_table::is_write(access.access) =>
+                                    && !rhapsody::command::is_write(access.access) =>
                             {
                                 Some(index)
                             }
@@ -2631,12 +2615,12 @@ impl GraphPasses<'_> {
         declared.on_queue(rhapsody::device::QueueClass::Compute);
         for (a, range, contents_unused, allow_undefined, preserves_texture) in &declared_accesses {
             let resource = declared.resource_handle(a.resource)?;
-            if *contents_unused && !rhapsody::raw::access_table::is_write(a.access) {
+            if *contents_unused && !rhapsody::command::is_write(a.access) {
                 declared.add_inactive_resource_read_range(resource, a.access, a.group, *range)?;
-            } else if *allow_undefined && !rhapsody::raw::access_table::is_write(a.access) {
+            } else if *allow_undefined && !rhapsody::command::is_write(a.access) {
                 declared.add_undefined_content_read_range(resource, a.access, a.group, *range)?;
             } else if (*preserves_texture || preserving_buffers.contains(&a.resource))
-                && rhapsody::raw::access_table::is_write(a.access)
+                && rhapsody::command::is_write(a.access)
             {
                 declared
                     .add_preserving_resource_access_range(resource, a.access, a.group, *range)?;
@@ -2985,7 +2969,7 @@ mod original_individual_mip_view_tests {
     use super::*;
     #[test]
     fn selected_remaining_mips_are_individual_and_unused_abi_tail_reuses_the_last_actual_view() {
-        let desc = rhapsody::raw::texture::TextureDesc::new_2d_array(
+        let desc = rhapsody::resource::TextureDesc::new_2d_array(
             256,
             256,
             2,

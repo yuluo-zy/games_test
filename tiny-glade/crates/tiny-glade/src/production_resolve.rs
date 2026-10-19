@@ -28,7 +28,7 @@ pub fn build(
     frame: &mut CoreGraphFrame<'_>,
     world: &mut World,
     shaders: &AssetShaderLibrary,
-    source: Arc<rhapsody::raw::texture::Texture>,
+    source: Arc<rhapsody::resource::Texture>,
     target: &rhapsody::rg::vulkan::PresentTarget,
     flag: bool,
 ) -> rhapsody::Result<()> {
@@ -40,11 +40,11 @@ fn build_inner(
     frame: &mut CoreGraphFrame<'_>,
     world: &mut World,
     shaders: &AssetShaderLibrary,
-    source: Arc<rhapsody::raw::texture::Texture>,
+    source: Arc<rhapsody::resource::Texture>,
     target: &rhapsody::rg::vulkan::PresentTarget,
     flag: bool,
 ) -> rhapsody::Result<()> {
-    let attachment = |id, texture: &rhapsody::raw::texture::Texture| AttachmentTexture {
+    let attachment = |id, texture: &rhapsody::resource::Texture| AttachmentTexture {
         id,
         extent: (texture.desc.width, texture.desc.height),
         format: texture.desc.format.as_raw() as u32,

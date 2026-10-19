@@ -330,14 +330,12 @@ pub fn native_layout(
     }
     // Both aspects of a combined format: an aspect the declared layout does
     // not mention is not accessed and stays read-only.
-    Ok(
-        match (depth.unwrap_or(false), stencil.unwrap_or(false)) {
-            (true, true) => L::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-            (false, false) => L::DEPTH_STENCIL_READ_ONLY_OPTIMAL,
-            (true, false) => L::DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,
-            (false, true) => L::DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,
-        },
-    )
+    Ok(match (depth.unwrap_or(false), stencil.unwrap_or(false)) {
+        (true, true) => L::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        (false, false) => L::DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+        (true, false) => L::DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,
+        (false, true) => L::DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,
+    })
 }
 
 /// Every aspect of `descriptor`'s format (`0` for buffers).

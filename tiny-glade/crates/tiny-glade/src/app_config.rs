@@ -82,8 +82,8 @@ use bevy_ecs::resource::Resource;
 use clap::Parser;
 use country_core::game_config::GameConfig;
 use country_core::input::panic_repro_state::PanicReproState;
-use rhapsody::raw::init::{
-    GraphicsInstanceLayerAllowlist, GraphicsInstanceLayerAllowlistEntry,
+use rhapsody::{
+    interop::GraphicsInstanceLayerAllowlist, interop::GraphicsInstanceLayerAllowlistEntry,
 };
 
 /// `settings.ron`（`.rdata 0x1429c3860`，len 0xc）。
@@ -378,17 +378,13 @@ pub fn update_vulkan_allowlist_defaults(config: &mut GameConfig) {
         Ok(defaults) => defaults,
         Err(err) => {
             if log::max_level() != log::LevelFilter::Off {
-                log::error!(
-                    "Error deserializing Vulkan allowlist defaults: {}",
-                    err
-                );
+                log::error!("Error deserializing Vulkan allowlist defaults: {}", err);
             }
             return;
         }
     };
 
-    let allowlist: &mut GraphicsInstanceLayerAllowlist =
-        &mut config.video.vulkan_layer_allowlist;
+    let allowlist: &mut GraphicsInstanceLayerAllowlist = &mut config.video.vulkan_layer_allowlist;
     let old_len = allowlist.entries.len();
     let mut max_version = 0u32;
     let new_items: Vec<_> = defaults
@@ -415,12 +411,14 @@ pub fn update_vulkan_allowlist_defaults(config: &mut GameConfig) {
             GraphicsInstanceLayerAllowlistEntry::Vendor(left),
             GraphicsInstanceLayerAllowlistEntry::Vendor(right),
         ) => left.cmp(right),
-        (GraphicsInstanceLayerAllowlistEntry::Layer(_), GraphicsInstanceLayerAllowlistEntry::Vendor(_)) => {
-            core::cmp::Ordering::Less
-        }
-        (GraphicsInstanceLayerAllowlistEntry::Vendor(_), GraphicsInstanceLayerAllowlistEntry::Layer(_)) => {
-            core::cmp::Ordering::Greater
-        }
+        (
+            GraphicsInstanceLayerAllowlistEntry::Layer(_),
+            GraphicsInstanceLayerAllowlistEntry::Vendor(_),
+        ) => core::cmp::Ordering::Less,
+        (
+            GraphicsInstanceLayerAllowlistEntry::Vendor(_),
+            GraphicsInstanceLayerAllowlistEntry::Layer(_),
+        ) => core::cmp::Ordering::Greater,
     });
     allowlist.entries.dedup_by(|a, b| a == b);
 

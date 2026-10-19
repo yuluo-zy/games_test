@@ -1,16 +1,13 @@
 //! Bounded background pipeline creation, persistent driver data and explicit
 //! publication at a frame boundary. The compiler is owned by the renderer,
 //! never by Device, so cached pipelines cannot form a Device ownership cycle.
-use crate::{
-    Error, Result,
-    raw::{
-        device::Device,
-        shader::{
-            ComputePipelineDesc, PipelineCache, PipelineCacheData, PipelineLayout,
-            RasterPipelineDesc, ShaderModule, VulkanPipeline,
-        },
-    },
+
+pub use crate::raw::shader::{
+    ComputePipelineDesc, DynamicRenderingFormats, PipelineCache, PipelineCacheData, PipelineLayout,
+    RasterPipelineDesc, RasterPipelineOpts, ShaderLibrary, ShaderModule, VulkanPipeline,
+    get_vk_blend_mode, reflect_spirv_entries, vertex_input_from_reflection,
 };
+use crate::{Error, Result, raw::device::Device};
 use ash::vk::Handle;
 use parking_lot::{Condvar, Mutex};
 use std::{
