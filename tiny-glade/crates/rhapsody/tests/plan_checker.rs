@@ -257,9 +257,7 @@ fn executable_projection_rejects_lost_accesses_barriers_and_batch_coverage() {
     std::sync::Arc::make_mut(&mut bad.info).accesses[1].previous_access_index = u32::MAX;
     assert!(check_plan(&bad.definition, &bad).is_err());
     let mut bad = original.clone();
-    std::sync::Arc::make_mut(&mut bad.info).lifetimes[0]
-        .last_pass
-        .pass_index = 0;
+    std::sync::Arc::make_mut(&mut bad.info).lifetimes[0].last_pass = Some(0);
     assert!(check_plan(&bad.definition, &bad).is_err());
     let mut bad = original.clone();
     std::sync::Arc::make_mut(&mut bad.info)

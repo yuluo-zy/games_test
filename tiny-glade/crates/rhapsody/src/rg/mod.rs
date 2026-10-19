@@ -19,7 +19,6 @@ pub mod plan_check;
 pub mod pass_api;
 pub mod pass_bindings;
 pub mod pass_builder;
-pub mod pass_entries;
 pub mod recorder;
 pub mod receipt_storage;
 pub mod owner_storage;
@@ -37,7 +36,6 @@ pub mod transient_memory_check;
 mod transient_resources;
 pub mod util;
 
-pub mod resource_rules;
 
 pub mod vulkan;
 

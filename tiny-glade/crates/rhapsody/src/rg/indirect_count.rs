@@ -46,10 +46,10 @@ impl IndexedCountRequest {
         ))
     }
     fn input_span(self) -> Result<u64> {
-        if self.command_offset % 4 != 0
-            || self.count_offset % 4 != 0
+        if !self.command_offset.is_multiple_of(4)
+            || !self.count_offset.is_multiple_of(4)
             || self.command_stride < 20
-            || self.command_stride % 4 != 0
+            || !self.command_stride.is_multiple_of(4)
         {
             return Err(Error::invalid_usage(
                 "indexed count command offset/stride is invalid",
@@ -268,7 +268,7 @@ impl IndexedCountAdapter {
                 )?;
             }
             let prepared = parameters.finish(&mut constants.lock())?;
-            let pipeline = adapter.pipeline.try_get().map_err(Error::from)?;
+            let pipeline = adapter.pipeline.try_get()?;
             unsafe {
                 let command = vk::CommandBuffer::from_raw(ctx.command.handle());
                 pipeline.bind_pipeline(command);

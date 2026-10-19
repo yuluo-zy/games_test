@@ -1,4 +1,4 @@
-//! 构图 Ref 绑定到真实 managed 资源解析；复用原逻辑→物理 registry 和描述符消费接口。
+//! 构图 Ref 绑定到真实 managed 资源解析；复用逻辑→物理 registry 和描述符消费接口。
 use super::{
     binding::PassResourceSlot,
     graph::{BuildError, Descriptor, PassDeclaration},

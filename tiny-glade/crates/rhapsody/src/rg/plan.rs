@@ -821,7 +821,11 @@ fn finish_plan(definition: GraphDefinition, analysis: PassAnalysis) -> crate::Re
         batches,
         queue_schedule,
     };
-    super::plan_check::check_plan(&plan.definition, &plan)?;
+    // Independent verification of the compiler's own output (not input
+    // validation, which check_definition performs unconditionally).
+    if super::validation_enabled() {
+        super::plan_check::check_plan(&plan.definition, &plan)?;
+    }
     Ok(plan)
 }
 

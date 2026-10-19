@@ -1,13 +1,12 @@
-//! 帧在途节流：原 `GraphExecutor` 的首字段 `VecDeque<PendingSubmission>` 及其三处使用。
+//! 帧在途节流：在途提交队列 `VecDeque<PendingSubmission>`。
 //!
-//! 依据（a1-executor，伪代码逐行核对）：
-//! * `begin_frame` 0x140beabd0：`while pending.len() > 1 { let front = pop_front(); wait_submit_done(device, front) }`
+//! * `begin_frame`：`while pending.len() > 1 { let front = pop_front(); wait_submit_done(device, front) }`
 //!   —— 新一帧开始前把在途提交排到只剩最近一个。
-//! * `end_frame` 0x140bec400：`push_back(本帧提交回执)`。
-//! * `wait_gpu_queue_trim` 0x140bea680：超时参数非零且 `len > 1` 时，对**队首**调
+//! * `end_frame`：`push_back(本帧提交回执)`。
+//! * `wait_gpu_queue_trim`：超时参数非零且 `len > 1` 时，对**队首**调
 //!   `wait_duration_or_until_submit_done(device, front, timeout)`（不弹出）。
 //!
-//! 回执类型 `R` 由调用方决定（原版元素 0x90 字节，含提交回执与本帧统计）。
+//! 回执类型 `R` 由调用方决定。
 use std::collections::VecDeque;
 
 pub struct FrameThrottle<R> {
@@ -33,7 +32,7 @@ impl<R> FrameThrottle<R> {
     pub fn front(&self) -> Option<&R> {
         self.pending.front()
     }
-    /// 弹出队首：只在已确认该提交完成后调用（原 `begin_frame` 的 `pop_front` 紧随 `wait_submit_done`）。
+    /// 弹出队首：只在已确认该提交完成后调用。
     pub fn pop_front(&mut self) -> Option<R> {
         self.pending.pop_front()
     }

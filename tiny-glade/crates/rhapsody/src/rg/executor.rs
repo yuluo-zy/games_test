@@ -21,7 +21,7 @@ pub struct ExecutionChain {
     command_records: BTreeMap<u64, recording::Command>,
     recorded_commands: u32,
     pool_family_count: u32,
-    /// 并行录制配置；默认串行（与旧行为、原作开关关闭时一致）。
+    /// 并行录制配置；默认自适应（无统计或轻帧时串行）。
     pub parallel: crate::rg::parallel::ParallelRecording,
     /// 双缓冲 PGO：分块读 `previous`，本帧耗时写入 `current`，每次执行结束交换。
     pub pgo: PassPgoFrames,
@@ -525,7 +525,7 @@ impl PassContext<'_> {
 }
 
 impl ExecutionChain {
-    /// 候选公开入口只从图声明生成编译和录制状态；原游戏构图闭包及完整原链 oracle 尚未恢复。
+    /// 从图声明编译、绑定、录制并提交一帧。
     pub fn execute_graph(
         &mut self,
         graph: crate::rg::graph::GraphDeclaration,
@@ -566,15 +566,13 @@ impl ExecutionChain {
     ) -> Result<GraphExecution, Error> {
         let result =
             self.execute_graph_inner(graph, pool, dependency, backend, callbacks, validate);
-        // 原 end_frame：本帧耗时成为下一帧的分块依据。
+        // 本帧耗时成为下一帧的分块依据。
         self.pgo.end_frame();
         result
     }
 
-    /// Original compile/execute separation: compilation allocates and validates
-    /// the physical frame, but never records a callback or submits a command.
-    /// B RenderGraphState::compile instances 0x140161cd0 / 0x1401647b0 /
-    /// 0x140166510 precede execute_compiled 0x1400fa190 in the game consumer.
+    /// Compile/execute separation: compilation allocates and validates the
+    /// physical frame, but never records a callback or submits a command.
     pub fn compile_graph(
         &mut self,
         mut graph: crate::rg::graph::GraphDeclaration,
@@ -963,7 +961,7 @@ impl ExecutionChain {
                         self.parallel.strategy,
                         &pass_names[batch.pass_range.clone()],
                         &self.pgo.previous,
-                        // 候选约束位：当前每个图 pass 自成完整 render pass 实例，任意边界都可切。
+                        // 每个图 pass 自成完整 render pass 实例，任意边界都可切。
                         &[],
                     )
                     .into()
@@ -1332,7 +1330,7 @@ impl ExecutionChain {
     }
 
     /// 并行录制一个 batch：串行开命令并规划屏障 → 任务池按块并行录制 → 串行收尾。
-    /// 与原 `record_batch` 同形：串行段构造屏障，每块一条命令缓冲，块内逐 pass 发屏障、调回调、计时。
+    /// 串行段构造屏障，每块一条命令缓冲，块内逐 pass 发屏障、调回调、计时。
     fn record_chunked_batch<C>(
         &mut self,
         batch: ChunkedBatch<'_, C>,

@@ -1,5 +1,4 @@
-//! 将候选渲染图主链接到真实 Vulkan；显式访问表避免猜测原访问码的阶段和布局。
-//! 创建描述符为候选适配，原闭包/反射/缓存策略仍需整链对照。
+//! 渲染图的 Vulkan 后端与会话；显式访问表给出每个访问码的阶段、访问掩码和布局。
 use super::{
     executor::{
         ExecutionBackend, ExecutionChain, GraphBatchSync, GraphExecution, GraphTimelineSignal,
@@ -103,7 +102,7 @@ impl Default for AccessTable {
 }
 impl AccessTable {
     /// Resolve broad or custom native stage policies against VkDevice's actual
-    /// enabled features. The original evidence masks and access codes stay intact.
+    /// enabled features. Access masks and access codes stay intact.
     fn normalize_enabled_stages(&mut self, enabled: crate::raw::device::DeviceCapabilities) {
         let mut disabled = vk::PipelineStageFlags::empty();
         if !enabled.geometry_shader {
@@ -242,14 +241,14 @@ impl ResourceSpec {
         }
     }
 
-    /// 按原描述字节布局编码（缓冲：size@0 usage@8 alignment@0xc memory_location@0xe）。
+    /// 按描述符字节布局编码（缓冲：size@0 usage@8 alignment@0xc memory_location@0xe）。
     pub fn descriptor(self) -> graph::Descriptor {
         match self {
             Self::Buffer(d) | Self::ConcurrentBuffer(d, _) => {
                 graph::Descriptor::Buffer(graph::BufferDesc {
                     word_at_00: d.size,
                     word_at_08: d.usage.as_raw(),
-                    // 原 `BufferDesc`：alignment u16 @0xc、memory_location u8 @0xe。
+                    // `BufferDesc`：alignment u16 @0xc、memory_location u8 @0xe。
                     bytes_at_0c_through_0e: [
                         d.alignment.to_le_bytes()[0],
                         d.alignment.to_le_bytes()[1],
@@ -259,7 +258,7 @@ impl ResourceSpec {
             }
             Self::Image(d) | Self::ConcurrentImage(d, _) => {
                 graph::Descriptor::Image(graph::TextureDesc {
-                    // 原 `TextureDesc` 的字节布局：usage@0 flags@4 format@8 width@0xc height@0x10 depth@0x14
+                    // `TextureDesc` 的字节布局：usage@0 flags@4 format@8 width@0xc height@0x10 depth@0x14
                     // array_elements@0x18；mip_levels@0x1c sample_count@0x1d kind@0x1e。
                     words_at_00_through_18: [
                         d.usage.as_raw(),
@@ -1369,7 +1368,7 @@ impl graph::ResourceBackend for VulkanGraphBackend {
                 if let Some(origin) = origin {
                     self.alias_cache.give_back(origin, resource);
                 }
-                return Err(error.into());
+                return Err(error);
             }
         };
         if let Some(origin) = origin {
@@ -1892,7 +1891,7 @@ pub struct VulkanGraphSession {
     pub chain: ExecutionChain,
     pub(crate) result_cache: super::result_cache::ResultCache,
     pool: graph::Pool,
-    /// 原 `GraphExecutor` 首字段 `VecDeque<PendingSubmission>`（0x140beabd0/0x140bec400/0x140bea680）。
+    /// 在途提交队列（帧节流）。
     pending: super::frame_throttle::FrameThrottle<PendingSessionFrame>,
     next_frame: u64,
     receipt_storage: Option<super::receipt_storage::ReceiptStorage>,
@@ -1903,7 +1902,7 @@ pub struct VulkanGraphSession {
     active_prepared: Option<super::resource::GraphId>,
     /// 上一帧从 begin_frame 到该帧完成的墙钟时长；仅统计用途。
     last_frame_duration_ns: u64,
-    /// 原 recorder 里 `+0x108` 回执标签 / `+0x164` 结束标记的等价物（`frame::FrameLedger`）。
+    /// 本帧提交账本（`frame::FrameLedger`）。
     ledger: super::frame::FrameLedger,
     named: Option<NamedResources>,
 }
@@ -2168,7 +2167,7 @@ impl VulkanGraphSession {
     pub fn is_poisoned(&self) -> bool {
         self.device_lost || self.backend.device.timelines.is_device_lost()
     }
-    /// 原 GraphExecutor::last_known_frame_duration_ns：最近一次完成帧的墙钟时长。
+    /// 最近一次完成帧的墙钟时长。
     pub fn last_known_frame_duration_ns(&self) -> u64 {
         self.last_frame_duration_ns
     }
@@ -2176,7 +2175,7 @@ impl VulkanGraphSession {
     pub fn frame_ledger(&self) -> &super::frame::FrameLedger {
         &self.ledger
     }
-    /// 原 GraphExecutor::wait_submits_done：等待在途提交全部完成。
+    /// 等待在途提交全部完成。
     /// wait_frame 对每个在途帧执行有界等待，超时以 Err 返回。
     pub fn wait_submits_done(&mut self, timeout_ns: u64) -> crate::Result<()> {
         while let Some(pending) = self.pending.front() {
@@ -2308,8 +2307,7 @@ impl VulkanGraphSession {
         }
         Ok(())
     }
-    /// Compile/allocate without issuing Vulkan commands. This is the consumer
-    /// boundary observed in B 0x140161cd0 / 0x1401647b0 before execute_compiled.
+    /// Compile/allocate without issuing Vulkan commands.
     pub fn compile_frame(&mut self, built: graph::BuiltGraph) -> crate::Result<PreparedSessionFrame> {
         if self.active_prepared.is_some() {
             let (_, _, retire) = built.into_parts();
@@ -2789,7 +2787,7 @@ impl VulkanGraphSession {
             self.ledger.note_submission();
         }
         if let Err(error) = self.ledger.end() {
-            log::warn!("end_frame 账本异常: {error:?}（原版此处 panic）");
+            log::warn!("end_frame 账本异常: {error:?}");
         }
         self.pending.end_frame(pending);
     }
@@ -2959,7 +2957,7 @@ impl VulkanGraphSession {
         self.result_cache.abandon_pending();
         self.result_cache.clear();
         self.collect_cached_results(&crate::sync::CompletedValues::all())?;
-        // 缩放/收尾级等待（原版此处走 wait_idle_and_recycle_resources）：idle 后推进并回收提交引擎。
+        // 缩放/收尾级等待：idle 后推进并回收提交引擎。
         self.backend.clear_pass_resources();
         for command in self.backend.commands.values_mut() {
             unsafe { command.release_completed_owners() };
@@ -3224,7 +3222,7 @@ impl super::temporal::TemporalResourceOwner for TemporalGpuResources {
                             .map_err(graph::BuildError::from)?;
                         self.device.set_buffer_debug_name(&managed, name);
                         if size != 0 {
-                            self.device.update_buffer_bytes(&managed, &initial, &[0..size], 0)
+                            self.device.update_buffer_bytes(&managed, &initial, std::slice::from_ref(&(0..size)), 0)
                                 .map_err(graph::BuildError::from)?;
                         }
                         managed

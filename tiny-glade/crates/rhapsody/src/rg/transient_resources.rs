@@ -49,7 +49,6 @@ impl PreparedTransients {
                 ..Default::default()
             },
             edge_memory: memory,
-            ..Default::default()
         };
         if dependencies.len() > self.plan.dependency_edges.capacity() {
             let bytes = std::alloc::Layout::array::<(usize, usize)>(dependencies.len())

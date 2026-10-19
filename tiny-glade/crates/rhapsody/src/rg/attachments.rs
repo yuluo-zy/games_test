@@ -11,8 +11,8 @@ use ash::vk;
 use ash::vk::Handle;
 use std::sync::Arc;
 
-/// 原 16 字节描述符：new 写 format、load/store=0、samples=1，尾部填充保持未定义。
-/// clear_input 改 +4 为 1；sample_count 只改 +12。原二进制地址在验证报告中。
+/// 16 字节附件描述符：new 写 format、load/store=0、samples=1。
+/// clear_input 改 +4 为 1；sample_count 只改 +12。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct RenderPassAttachmentDesc {
     pub format: vk::Format,
@@ -21,7 +21,7 @@ pub struct RenderPassAttachmentDesc {
     pub samples: vk::SampleCountFlags,
 }
 
-/// 原 create_render_pass 的深度状态 0/1/2 分别映射到以下布局；3 表示无深度。
+/// create_render_pass 的深度状态 0/1/2 分别映射到以下布局；3 表示无深度。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DepthAccess {
     ReadOnly,
@@ -87,7 +87,7 @@ impl Attachment {
             generation,
             view,
             desc,
-            // 原 VkAttachmentDescription producer 固定 stencilLoad/Store 为 LOAD/STORE。
+            // 模板 load/store 固定为 LOAD/STORE。
             stencil_load: vk::AttachmentLoadOp::LOAD,
             stencil_store: vk::AttachmentStoreOp::STORE,
             initial_layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
