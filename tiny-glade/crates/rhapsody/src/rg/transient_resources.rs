@@ -343,14 +343,34 @@ struct AliasSet {
     id: u64,
     key: AliasKey,
     plan: Arc<PhysicalMemoryPlan>,
-    edges: Vec<(u32, u32)>,
+    edges: Arc<[(u32, u32)]>,
     members: Vec<(u32, Option<GpuResource>)>,
     lent: usize,
     last_used: u64,
 }
+/// Alias sets removed by eviction; dropping them retires their members.
+pub(crate) struct EvictedSets(
+    #[allow(dead_code, reason = "dropped to retire the members")] Vec<AliasSet>,
+);
+impl AliasSet {
+    /// Native bytes of the shared backings this set holds.
+    fn bytes(&self) -> u64 {
+        self.plan
+            .backings
+            .iter()
+            .filter(|backing| backing.resources.len() >= 2)
+            .map(|backing| backing.size)
+            .sum()
+    }
+}
 /// A frame's view of a lent alias set.
 pub(crate) struct LentAliases {
-    pub set: u64,
+    /// The set's physical plan and alias edges (`(previous, next)` by
+    /// logical resource index, including the wrap-around edge from the last
+    /// member back to the first: a reused set's first member overwrites
+    /// memory last used by the final member). Shared, immutable.
+    pub plan: Arc<PhysicalMemoryPlan>,
+    pub edges: Arc<[(u32, u32)]>,
     pub resources: BTreeMap<String, (GpuResource, AliasOrigin)>,
 }
 /// Cache of physical alias plans keyed by [`AliasKey`]. A cache hit performs no
@@ -371,21 +391,6 @@ pub(crate) struct AliasCache {
 /// flight with one or two alternating graphs fit without reallocation.
 const MAX_AVAILABLE_SETS: usize = 8;
 impl AliasCache {
-    pub(crate) fn plan(&self, set: u64) -> Option<&PhysicalMemoryPlan> {
-        self.sets
-            .iter()
-            .find(|entry| entry.id == set)
-            .map(|entry| &*entry.plan)
-    }
-    /// Alias edges `(previous, next)` by logical resource index, including the
-    /// wrap-around edge from the last member back to the first: when a set is
-    /// reused, its first member overwrites memory last used by the final member.
-    pub(crate) fn edges(&self, set: u64) -> &[(u32, u32)] {
-        self.sets
-            .iter()
-            .find(|entry| entry.id == set)
-            .map_or(&[], |entry| &entry.edges)
-    }
     /// Take back a member lent by [`Self::lend`]. It rejoins its set only
     /// once `completed` proves every recorded GPU use finished (a member of a
     /// never-submitted frame has none and returns immediately); otherwise it
@@ -434,6 +439,49 @@ impl AliasCache {
     /// Drop every retired set (memory pressure).
     pub(crate) fn trim(&mut self) {
         self.sets.retain(|set| set.lent != 0);
+    }
+    /// Release retired sets, least recently used first, until about `target`
+    /// bytes of shared backing are freed. Only sets with no lent member and
+    /// every member idle on the GPU (`completed` covers its last use) go;
+    /// anything lent to a frame, or still waiting in `retiring`, is kept.
+    /// Returns the bytes released (the memory itself is freed once the
+    /// dropped members' own retirement completes).
+    pub(crate) fn evict_idle(
+        &mut self,
+        completed: &crate::sync::CompletedValues,
+        target: u64,
+    ) -> (u64, EvictedSets) {
+        let mut released = 0u64;
+        let mut evicted = Vec::new();
+        while released < target {
+            let Some(position) = self
+                .sets
+                .iter()
+                .enumerate()
+                .filter(|(_, set)| {
+                    set.lent == 0
+                        && set.members.iter().all(|(_, slot)| {
+                            slot.as_ref()
+                                .is_some_and(|member| member.owner_cell().is_reached(completed))
+                        })
+                })
+                .min_by_key(|(_, set)| set.last_used)
+                .map(|(position, _)| position)
+            else {
+                break;
+            };
+            let set = self.sets.swap_remove(position);
+            released = released.saturating_add(set.bytes());
+            // Dropped by the caller after it released its own lock.
+            if evicted.try_reserve(1).is_ok() {
+                evicted.push(set);
+            }
+        }
+        (released, EvictedSets(evicted))
+    }
+    /// Retired sets currently kept for reuse.
+    pub(crate) fn available_count(&self) -> usize {
+        self.sets.iter().filter(|set| set.lent == 0).count()
     }
     fn build_key(
         &mut self,
@@ -564,7 +612,8 @@ impl AliasCache {
         }
         set.lent = set.members.len();
         Ok(Some(LentAliases {
-            set: set.id,
+            plan: set.plan.clone(),
+            edges: set.edges.clone(),
             resources,
         }))
     }
@@ -677,7 +726,7 @@ impl AliasCache {
             id,
             key: self.key.clone(),
             plan: Arc::new(physical),
-            edges,
+            edges: edges.into(),
             members,
             lent: 0,
             last_used: self.clock,

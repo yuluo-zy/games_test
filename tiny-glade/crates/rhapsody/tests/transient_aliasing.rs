@@ -641,3 +641,43 @@ fn failed_frames_return_alias_sets_only_when_idle_and_later_frames_discard_stale
     device.try_collect_all_completed().unwrap();
     assert_eq!(counters.snapshot().allocations, counters.snapshot().frees);
 }
+
+/// Retired alias sets are evictable: pressure drops idle sets (never a set
+/// lent to a frame) and the next frame simply builds a fresh one.
+#[test]
+fn memory_pressure_evicts_retired_alias_sets_and_the_next_frame_rebuilds() {
+    let Some(device) = device() else {
+        return;
+    };
+    let readback = Arc::new(
+        Buffer::new(
+            device.clone(),
+            &BufferDesc::new_gpu_to_cpu(BYTES * 2, vk::BufferUsageFlags::TRANSFER_DST),
+        )
+        .unwrap(),
+    );
+    let backend = VulkanGraphBackend::new(device.clone(), AccessTable::original()).unwrap();
+    let mut session = VulkanGraphSession::new(backend);
+    let built = graph(&mut session, readback.clone(), true, None).build();
+    session.execute_frame(built).unwrap();
+    session.wait_submits_done(TIMEOUT).unwrap();
+    let cached = session.cache_stats();
+    assert_eq!(cached.idle_alias_sets, 1, "{cached:?}");
+    // A frame that lent the set again keeps it through pressure.
+    let built = graph(&mut session, readback.clone(), true, None).build();
+    let prepared = session.compile_frame(built).unwrap();
+    assert_eq!(session.cache_stats().idle_alias_sets, 0, "lent to a frame");
+    assert_eq!(device.evict_idle_caches(u64::MAX), 0);
+    session.execute_prepared(prepared).unwrap();
+    session.wait_submits_done(TIMEOUT).unwrap();
+    assert_eq!(session.cache_stats().idle_alias_sets, 1);
+    // Idle now: pressure releases the set's shared backing.
+    assert!(device.evict_idle_caches(u64::MAX) >= BYTES);
+    assert_eq!(session.cache_stats().idle_alias_sets, 0);
+    // The next frame builds a fresh set and still renders correctly.
+    let built = graph(&mut session, readback.clone(), true, None).build();
+    session.execute_frame(built).unwrap();
+    session.wait_submits_done(TIMEOUT).unwrap();
+    assert_eq!(session.cache_stats().idle_alias_sets, 1);
+    device.wait_idle().unwrap();
+}

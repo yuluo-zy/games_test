@@ -94,6 +94,27 @@ impl<TextureHandle, BufferHandle> ResourcePool<TextureHandle, BufferHandle> {
         self.textures.clear();
         self.buffers.clear();
     }
+    /// Pooled entries.
+    pub fn len(&self) -> usize {
+        self.textures.values().map(Vec::len).sum::<usize>()
+            + self.buffers.values().map(Vec::len).sum::<usize>()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
+impl<TextureHandle: PartialEq, BufferHandle: PartialEq> ResourcePool<TextureHandle, BufferHandle> {
+    /// Forget entries whose resource the backend already released.
+    pub fn forget_handles(&mut self, textures: &[TextureHandle], buffers: &[BufferHandle]) {
+        for entries in self.textures.values_mut() {
+            entries.retain(|entry| !textures.contains(&entry.handle));
+        }
+        for entries in self.buffers.values_mut() {
+            entries.retain(|entry| !buffers.contains(&entry.handle));
+        }
+        self.textures.retain(|_, entries| !entries.is_empty());
+        self.buffers.retain(|_, entries| !entries.is_empty());
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

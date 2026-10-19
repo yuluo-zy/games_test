@@ -476,13 +476,16 @@ pub trait ResourceBackend {
     fn is_transient_alias(&self, _token: u64) -> bool {
         false
     }
-    fn resource_matches_sharing(
-        &self,
-        _token: u64,
-        _sharing: crate::resource::ResourceSharing,
-    ) -> bool {
+    /// Whether the pooled `token` can serve a declaration with `sharing`.
+    /// Accepting hands the resource to the frame (the pool removes the entry
+    /// right after), so a backend that parks idle resources must take it
+    /// back here; a token it no longer has (evicted) is refused.
+    fn claim_pooled(&mut self, _token: u64, _sharing: crate::resource::ResourceSharing) -> bool {
         true
     }
+    /// The pool took `token` back after a failed frame (or completion): the
+    /// backend may park its resource until it is claimed or evicted.
+    fn park_pooled(&mut self, _token: u64) {}
     fn device_generation(&self) -> Option<crate::device::DeviceGeneration> {
         None
     }
@@ -665,12 +668,12 @@ fn populate_resources_into(
                         match descriptor {
                             Descriptor::Image(desc) => pool
                                 .take_texture_where(&desc, |token| {
-                                    backend.resource_matches_sharing(*token, declaration.sharing)
+                                    backend.claim_pooled(*token, declaration.sharing)
                                 })
                                 .map(RegistryResource::OwnedTexture),
                             Descriptor::Buffer(desc) => pool
                                 .take_buffer_where(&desc, |token| {
-                                    backend.resource_matches_sharing(*token, declaration.sharing)
+                                    backend.claim_pooled(*token, declaration.sharing)
                                 })
                                 .map(RegistryResource::OwnedBuffer),
                         }
@@ -1056,8 +1059,16 @@ pub fn reclaim_failed_resources(
         };
         let pooled = pool_hits.contains(&(logical as u32));
         match std::mem::replace(slot, RegistryResource::Empty) {
-            RegistryResource::OwnedTexture(texture) if pooled => pool.insert_texture(texture),
-            RegistryResource::OwnedBuffer(buffer) if pooled => pool.insert_buffer(buffer),
+            RegistryResource::OwnedTexture(texture) if pooled => {
+                let token = texture.handle;
+                pool.insert_texture(texture);
+                backend.park_pooled(token);
+            }
+            RegistryResource::OwnedBuffer(buffer) if pooled => {
+                let token = buffer.handle;
+                pool.insert_buffer(buffer);
+                backend.park_pooled(token);
+            }
             RegistryResource::OwnedTexture(Texture { handle, .. })
             | RegistryResource::OwnedBuffer(Buffer { handle, .. }) => {
                 backend.release_created_resource(handle)

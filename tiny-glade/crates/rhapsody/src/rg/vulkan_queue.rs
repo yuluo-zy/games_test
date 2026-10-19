@@ -82,7 +82,15 @@ impl GpuResource {
             Self::Image(image) => image.last_use.clone(),
         }
     }
-    pub(super) fn sharing_mode(&self) -> ResourceSharing {
+    /// Bytes of the backing allocation (shared alias backings count with
+    /// every member; callers only use this for idle pooled resources).
+    pub(crate) fn allocation_bytes(&self) -> u64 {
+        match self {
+            Self::Buffer(buffer) => buffer.allocation_bytes(),
+            Self::Image(image) => image.allocation_bytes(),
+        }
+    }
+    pub(crate) fn sharing_mode(&self) -> ResourceSharing {
         match self {
             Self::Buffer(buffer) => buffer.sharing(),
             Self::Image(image) => image.sharing(),
@@ -265,7 +273,7 @@ impl VulkanGraphBackend {
                     planner.add_initial(logical as u32, table.cells())
                 })?;
         }
-        if let Some(set) = self.active_alias_set {
+        if let Some(active) = &self.active_alias {
             let bound = |logical: u32| {
                 runtime
                     .tokens
@@ -275,7 +283,7 @@ impl VulkanGraphBackend {
                     .flatten()
                     .is_some_and(|token| self.transient_alias_tokens.contains_key(&token))
             };
-            for &(previous, next) in self.alias_cache.edges(set) {
+            for &(previous, next) in active.edges.iter() {
                 if bound(previous) && bound(next) {
                     planner.add_alias(previous, next)?;
                 }

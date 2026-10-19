@@ -78,7 +78,9 @@ pub use vulkan::{
     VulkanGraphSession,
 };
 
+mod graph_caches;
 mod transient_resources;
+pub use graph_caches::GraphCacheStats;
 
 static PLAN_VALIDATION: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 

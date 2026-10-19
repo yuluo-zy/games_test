@@ -304,6 +304,12 @@ struct FrameCommandPool {
     epoch: u64,
 }
 
+/// The alias set bound to the frame being populated.
+struct ActiveAlias {
+    plan: Arc<super::transient_memory::PhysicalMemoryPlan>,
+    edges: Arc<[(u32, u32)]>,
+}
+
 pub struct VulkanGraphBackend {
     pub(crate) device: Arc<Device>,
     pub timeline: Arc<TimelineSemaphore>,
@@ -314,10 +320,11 @@ pub struct VulkanGraphBackend {
     specifications: BTreeMap<String, ResourceSpec>,
     transient_aliasing: bool,
     prepared_transients: super::transient_resources::PreparedTransients,
-    alias_cache: super::transient_resources::AliasCache,
+    /// Evictable idle pool and alias sets, registered with the device.
+    caches: Arc<super::graph_caches::GraphCaches>,
     /// Members of the alias set lent to the frame being populated.
     lent_aliases: Option<super::transient_resources::LentAliases>,
-    active_alias_set: Option<u64>,
+    active_alias: Option<ActiveAlias>,
     /// Pending acquires recorded into a not yet submitted command; re-queued
     /// on the device if that command is abandoned.
     drained_acquires: Vec<(u64, crate::device::DrainedAcquires)>,
@@ -350,8 +357,6 @@ pub struct VulkanGraphBackend {
     /// receives a separate pool within that family.
     command_slot: BTreeMap<u64, FramePoolKey>,
     pub stores: ManagedResources,
-    pass_resources: Option<Arc<super::pass_bindings::ManagedPassResources>>,
-    projection_pool: super::pass_bindings::ManagedProjectionPool,
     barrier_dispatch: crate::raw::barrier::BarrierDispatch,
     barriers: BTreeMap<u64, crate::raw::barrier::SynchronizationScope>,
 }
@@ -639,6 +644,14 @@ impl VulkanGraphBackend {
         )?;
         let queue_runtime = queue_runtime::QueueRuntime::new(&device)?;
         let barrier_dispatch = crate::raw::barrier::BarrierDispatch::new(&device);
+        let caches = Arc::new(super::graph_caches::GraphCaches::new(projection_pool));
+        // Weak registration: the backend owns the caches, so they unregister
+        // when it drops and the device never keeps them (or itself) alive.
+        let evictable: Arc<dyn crate::device::Evictable> = caches.clone();
+        device.register_evictable(
+            Arc::downgrade(&evictable),
+            crate::device::EvictionPriority::Transient,
+        );
         Ok(Self {
             cpu_arenas,
             owner_pool,
@@ -660,9 +673,9 @@ impl VulkanGraphBackend {
             specifications: BTreeMap::new(),
             transient_aliasing: true,
             prepared_transients: Default::default(),
-            alias_cache: Default::default(),
+            caches,
             lent_aliases: None,
-            active_alias_set: None,
+            active_alias: None,
             drained_acquires: Vec::new(),
             transient_alias_tokens: Default::default(),
             transient_counters: Default::default(),
@@ -679,14 +692,19 @@ impl VulkanGraphBackend {
             recycled_commands: vec![],
             command_slot: BTreeMap::new(),
             stores,
-            pass_resources: None,
-            projection_pool,
             barrier_dispatch,
             barriers: BTreeMap::new(),
         })
     }
+    /// Release a pooled token's resource, wherever it is (owner table or the
+    /// evictable idle store).
+    pub(crate) fn discard_pooled(&mut self, token: u64) {
+        self.resources.remove(&token);
+        self.import_families.remove(&token);
+        self.caches.discard(token);
+    }
     pub fn managed_projection_stats(&self) -> super::pass_bindings::ManagedProjectionStats {
-        self.projection_pool.stats()
+        self.caches.projection().pool.stats()
     }
     pub fn set_managed_projection_limits(
         &mut self,
@@ -700,13 +718,15 @@ impl VulkanGraphBackend {
             self.device.memory.stats.clone(),
             config,
         )?;
-        self.pass_resources.take();
-        self.projection_pool = replacement;
+        let mut projection = self.caches.projection();
+        projection.snapshot.take();
+        projection.pool = replacement;
         Ok(())
     }
     fn clear_pass_resources(&mut self) {
-        self.pass_resources.take();
-        self.projection_pool.clear_idle();
+        let mut projection = self.caches.projection();
+        projection.snapshot.take();
+        projection.pool.clear_idle();
     }
     /// Physical aliasing of transient resources (on by default). Aliasing only
     /// uses orderings already in the graph; it never adds DAG edges.
@@ -714,8 +734,8 @@ impl VulkanGraphBackend {
         self.transient_aliasing = enabled;
         if !enabled {
             self.return_unconsumed_aliases();
-            self.active_alias_set = None;
-            self.alias_cache.trim();
+            self.active_alias = None;
+            self.caches.alias().trim();
         }
     }
     /// Members lent to a frame that never bound them (population failed or
@@ -723,8 +743,9 @@ impl VulkanGraphBackend {
     fn return_unconsumed_aliases(&mut self) {
         if let Some(lent) = self.lent_aliases.take() {
             let completed = self.device.completed();
+            let mut aliases = self.caches.alias();
             for (resource, origin) in lent.resources.into_values() {
-                self.alias_cache.give_back(origin, resource, &completed);
+                aliases.give_back(origin, resource, &completed);
             }
         }
     }
@@ -770,14 +791,14 @@ impl VulkanGraphBackend {
             .flat_map(|ring| ring.drain_samples())
     }
     pub fn transient_memory_plan(&self) -> &super::transient_memory::PhysicalMemoryPlan {
-        self.active_alias_set
-            .and_then(|set| self.alias_cache.plan(set))
-            .unwrap_or(&self.prepared_transients.plan)
+        self.active_alias
+            .as_ref()
+            .map_or(&self.prepared_transients.plan, |active| &*active.plan)
     }
     /// Alias-set members handed back while their GPU work may still run;
     /// they rejoin their set (and the set becomes reusable) once idle.
     pub fn transient_alias_retiring(&self) -> usize {
-        self.alias_cache.retiring_count()
+        self.caches.alias().retiring_count()
     }
     pub fn transient_backing_statistics(
         &self,
@@ -802,7 +823,7 @@ impl VulkanGraphBackend {
             self.frame_storage.trim_idle(0);
             self.import_validation.get_mut().trim_idle();
             self.prepared_transients.trim_unaliased();
-            self.alias_cache.trim();
+            self.caches.alias().trim();
         }
         let slots = self.device.frames_in_flight();
         let selected = (1..=slots)
@@ -1282,15 +1303,18 @@ impl graph::ResourceBackend for VulkanGraphBackend {
         // allocating this frame. Already-published tokens belong to that frame.
         if self.transient_aliasing {
             self.return_unconsumed_aliases();
-            self.active_alias_set = None;
-            let lent = self.alias_cache.lend(
+            self.active_alias = None;
+            let lent = self.caches.alias().lend(
                 &self.device,
                 &self.specifications,
                 plan,
                 graph,
                 self.transient_counters.clone(),
             )?;
-            self.active_alias_set = lent.as_ref().map(|lent| lent.set);
+            self.active_alias = lent.as_ref().map(|lent| ActiveAlias {
+                plan: lent.plan.clone(),
+                edges: lent.edges.clone(),
+            });
             self.lent_aliases = lent;
         } else {
             self.prepared_transients
@@ -1306,17 +1330,31 @@ impl graph::ResourceBackend for VulkanGraphBackend {
     fn is_transient_alias(&self, token: u64) -> bool {
         self.transient_alias_tokens.contains_key(&token)
     }
-    fn resource_matches_sharing(
-        &self,
-        token: u64,
-        sharing: crate::resource::ResourceSharing,
-    ) -> bool {
-        self.resources
-            .get(&token)
-            .is_some_and(|resource| match resource {
-                GpuResource::Buffer(buffer) => buffer.sharing() == sharing,
-                GpuResource::Image(image) => image.sharing() == sharing,
-            })
+    fn claim_pooled(&mut self, token: u64, sharing: crate::resource::ResourceSharing) -> bool {
+        if let Some(resource) = self.resources.get(&token) {
+            return resource.sharing_mode() == sharing;
+        }
+        // Parked idle resource: take it back for this frame. A token the
+        // evictor already released is not found and is refused.
+        match self.caches.claim(token, sharing) {
+            Some((resource, family)) => {
+                self.resources.insert(token, resource);
+                if let Some(family) = family {
+                    self.import_families.insert(token, family);
+                }
+                true
+            }
+            None => false,
+        }
+    }
+    fn park_pooled(&mut self, token: u64) {
+        if self.transient_alias_tokens.contains_key(&token) {
+            return;
+        }
+        if let Some(resource) = self.resources.remove(&token) {
+            let family = self.import_families.remove(&token);
+            self.caches.park(token, resource, family);
+        }
     }
     fn create_without_initial_data(
         &mut self,
@@ -1341,7 +1379,8 @@ impl graph::ResourceBackend for VulkanGraphBackend {
             Ok(token) => token,
             Err(error) => {
                 if let Some(origin) = origin {
-                    self.alias_cache
+                    self.caches
+                        .alias()
                         .give_back(origin, resource, &self.device.completed());
                 }
                 return Err(error);
@@ -1361,7 +1400,8 @@ impl graph::ResourceBackend for VulkanGraphBackend {
         {
             // Completion is re-checked: a member of a partially submitted
             // frame rejoins its set only after its GPU work finished.
-            self.alias_cache
+            self.caches
+                .alias()
                 .give_back(origin, resource, &self.device.completed());
         }
         self.import_families.remove(&token);
@@ -1508,8 +1548,9 @@ impl ExecutionBackend for VulkanGraphBackend {
         }
         // CPU snapshots may be reused while GPU work runs: commands own the
         // actual raw resources. An external Arc or Weak keeps its snapshot fixed.
-        self.pass_resources.take();
-        self.pass_resources = match self.projection_pool.checkout(
+        let mut projection = self.caches.projection();
+        projection.snapshot.take();
+        projection.snapshot = match projection.pool.checkout(
             &self.device,
             &compiled.registry,
             &self.stores,
@@ -1524,7 +1565,7 @@ impl ExecutionBackend for VulkanGraphBackend {
         true
     }
     fn managed_pass_resources(&self) -> Option<Arc<super::pass_bindings::ManagedPassResources>> {
-        self.pass_resources.clone()
+        self.caches.projection().snapshot.clone()
     }
     fn retain_command_owners(
         &mut self,
@@ -2362,6 +2403,7 @@ impl VulkanGraphSession {
             }
             self.collect_cached_results(&completed)?;
         }
+        self.forget_evicted_pool_entries();
         self.evict_idle_resources_under_pressure()?;
         // 配置限制在飞帧数量；只等待最旧帧，不等待其他会话或无关队列。
         while self.pending.in_flight() >= self.backend.device.frames_in_flight() as usize {
@@ -2442,6 +2484,21 @@ impl VulkanGraphSession {
             false
         });
     }
+    /// Drop pool entries whose parked resource the device's eviction already
+    /// released (see `rg::graph_caches`).
+    fn forget_evicted_pool_entries(&mut self) {
+        let evicted = self.backend.caches.take_evicted();
+        if !evicted.is_empty() {
+            // Tokens come from one process-wide counter shared by textures
+            // and buffers.
+            self.pool.forget_handles(&evicted, &evicted);
+        }
+    }
+    /// Idle pooled resources and retired alias sets that memory pressure may
+    /// release.
+    pub fn cache_stats(&self) -> super::graph_caches::GraphCacheStats {
+        self.backend.caches.stats()
+    }
     fn evict_idle_resources_under_pressure(&mut self) -> crate::Result<()> {
         let _ = self.backend.device.poll()?;
         if self.backend.device.memory.stats.budget_action()
@@ -2450,16 +2507,17 @@ impl VulkanGraphSession {
             if let Some(storage) = &mut self.receipt_storage {
                 storage.trim_idle(0);
             }
-            self.backend.pass_resources.take();
-            self.backend.projection_pool.trim_idle();
+            let mut projection = self.backend.caches.projection();
+            projection.snapshot.take();
+            projection.pool.trim_idle();
+            drop(projection);
             let (textures, buffers) = self.pool.drain();
             for token in textures
                 .into_iter()
                 .map(|r| r.handle)
                 .chain(buffers.into_iter().map(|r| r.handle))
             {
-                self.backend.resources.remove(&token);
-                self.backend.import_families.remove(&token);
+                self.backend.discard_pooled(token);
             }
             self.backend.device.try_collect_garbage()?;
         }
@@ -2776,8 +2834,7 @@ impl VulkanGraphSession {
             .map(|resource| resource.handle)
             .chain(buffers.into_iter().map(|resource| resource.handle))
         {
-            self.backend.resources.remove(&token);
-            self.backend.import_families.remove(&token);
+            self.backend.discard_pooled(token);
         }
         Ok(())
     }
@@ -3173,7 +3230,9 @@ impl VulkanGraphSession {
                                 .stats
                                 .mark_cached(actual.allocation_id(), &completed);
                         }
-                        self.pool.insert_buffer(buffer)
+                        let token = buffer.handle;
+                        self.pool.insert_buffer(buffer);
+                        graph::ResourceBackend::park_pooled(&mut self.backend, token);
                     }
                     graph::RegistryResource::OwnedTexture(texture)
                         if created.contains(&texture.handle) =>
@@ -3195,7 +3254,9 @@ impl VulkanGraphSession {
                                 .stats
                                 .mark_cached(actual.allocation_id(), &completed);
                         }
-                        self.pool.insert_texture(texture)
+                        let token = texture.handle;
+                        self.pool.insert_texture(texture);
+                        graph::ResourceBackend::park_pooled(&mut self.backend, token);
                     }
                     _ => {}
                 }
@@ -3244,12 +3305,13 @@ impl VulkanGraphSession {
             })
             .collect::<Vec<_>>();
         self.pool.clear();
+        let parked = self.backend.caches.clear_idle();
         for token in &removed {
             self.backend.resources.remove(token);
             self.backend.import_families.remove(token);
         }
         self.backend.device.try_collect_all_completed()?;
-        Ok(removed.len())
+        Ok(removed.len() + parked)
     }
     /// 释放单个导入资源（`bind_import*` 登记的 token），不需要整设备空闲，也不清别的缓存。
     ///
@@ -3297,8 +3359,10 @@ impl VulkanGraphSession {
     pub fn clear_after_completion(&mut self) -> Result<usize, crate::Error> {
         self.collect_after_completion(&[])
     }
+    /// Physical resources the session owns, including idle pooled ones
+    /// parked in the evictable cache.
     pub fn resource_count(&self) -> usize {
-        self.backend.resources.len()
+        self.backend.resources.len() + self.backend.caches.parked_count()
     }
     pub fn command_count(&self) -> usize {
         self.backend.commands.len()
