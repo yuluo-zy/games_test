@@ -281,12 +281,12 @@ impl SyncCell {
             .expect("prepared native state")
             .publish(point);
     }
-    pub(crate) fn prepared_range_dependencies(&self) -> SyncSet {
+    pub(crate) fn prepared_range_staged_dependencies(&self) -> crate::sync::StagedDependencies {
         self.native_state
             .lock()
             .as_ref()
             .expect("prepared native state")
-            .prepared_dependencies()
+            .prepared_staged_dependencies()
     }
     /// Caller holds this resource's submission gate and has prepared a prefix.
     pub(crate) fn with_prepared_range_state<R>(
@@ -295,6 +295,19 @@ impl SyncCell {
     ) -> crate::Result<R> {
         let table = self.native_state.lock();
         run(table.as_ref().expect("native state prefix was prepared"))
+    }
+    /// Drop the native state of a resource whose contents are discarded, once
+    /// `completed` proves every recorded GPU use finished. Returns `false`
+    /// (state untouched) while any use may still be executing.
+    pub(crate) fn discard_idle_range_state(&self, completed: &CompletedValues) -> bool {
+        let _gate = self.lock_submission();
+        if !self.is_reached(completed) {
+            return false;
+        }
+        if let Some(table) = self.native_state.lock().as_mut() {
+            table.discard_idle_contents();
+        }
+        true
     }
     pub(crate) fn cancel_range_state(&self) {
         if let Some(table) = self.native_state.lock().as_mut() {

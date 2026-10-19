@@ -764,7 +764,7 @@ mod tests {
             cell.prepare_range_state(&acquire_patches, graphics_queue, graphics_family, &stats)
                 .unwrap();
             assert!(
-                cell.prepared_range_dependencies().is_reached(&{
+                cell.prepared_range_staged_dependencies().points().is_reached(&{
                     let mut completed = crate::sync::CompletedValues::default();
                     completed.raise(transfer_queue, 3);
                     completed

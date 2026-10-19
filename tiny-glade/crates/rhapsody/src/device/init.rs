@@ -68,7 +68,7 @@ impl Default for DeviceConfig {
                 .with(Feature::DynamicRendering),
             preferred_device: DevicePreference::default(),
             frames_in_flight: 2,
-            recording: RecordingPolicy::Serial,
+            recording: RecordingPolicy::default(),
             submission_api: SubmissionApi::Auto,
             reclamation: super::ReclamationConfig::default(),
             allocation: if cfg!(feature = "suballocation") {
@@ -156,6 +156,10 @@ pub(crate) fn core_features(
             core.draw_indirect_first_instance,
         ),
         (Feature::DrawIndirectCount, v12.draw_indirect_count),
+        (
+            Feature::SeparateDepthStencilLayouts,
+            v12.separate_depth_stencil_layouts,
+        ),
         (
             Feature::ShaderStorageBufferArrayDynamicIndexing,
             core.shader_storage_buffer_array_dynamic_indexing,
@@ -536,6 +540,8 @@ pub(crate) fn create_candidate(
     let mut enabled12 = vk::PhysicalDeviceVulkan12Features::default()
         .timeline_semaphore(true)
         .draw_indirect_count(v12.draw_indirect_count != 0)
+        // Optional: lets the graph track depth and stencil independently.
+        .separate_depth_stencil_layouts(v12.separate_depth_stencil_layouts != 0)
         .buffer_device_address(v12.buffer_device_address != 0)
         .descriptor_indexing(v12.descriptor_indexing != 0)
         .runtime_descriptor_array(v12.runtime_descriptor_array != 0)

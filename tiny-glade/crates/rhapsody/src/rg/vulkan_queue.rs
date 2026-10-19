@@ -13,7 +13,7 @@ use crate::{
             self, BoundBatchKind, BoundSynchronization, DependencyRef, SynchronizationPlanner,
         },
     },
-    sync::{SyncPoint, SyncSet},
+    sync::SyncPoint,
 };
 pub(super) struct QueueRuntime {
     pub multi_queue: bool,
@@ -25,6 +25,10 @@ pub(super) struct QueueRuntime {
     queue_flags: [vk::QueueFlags; crate::sync::MAX_QUEUES],
 }
 impl QueueRuntime {
+    /// Physical tokens bound by the frame being recorded.
+    pub(super) fn frame_tokens(&self) -> &[Option<u64>] {
+        &self.tokens.values
+    }
     pub fn new(device: &Device) -> crate::Result<Self> {
         let stats = &device.allocator_stats;
         let families = unsafe {
@@ -70,7 +74,7 @@ impl QueueRuntime {
     }
 }
 impl GpuResource {
-    pub(super) fn owner_cell(&self) -> Arc<SyncCell> {
+    pub(crate) fn owner_cell(&self) -> Arc<SyncCell> {
         match self {
             Self::Buffer(buffer) => buffer.last_use.clone(),
             Self::Image(image) => image.last_use.clone(),
@@ -391,8 +395,12 @@ impl VulkanGraphBackend {
         }
         Ok(())
     }
-    pub(super) fn queue_submission_dependencies(&self) -> crate::Result<SyncSet> {
-        let mut result = SyncSet::EMPTY;
+    /// The bound program's waits for the active batch, each with the exact
+    /// destination stages the planner proved for it.
+    pub(super) fn queue_submission_dependencies(
+        &self,
+    ) -> crate::Result<crate::sync::StagedDependencies> {
+        let mut result = crate::sync::StagedDependencies::EMPTY;
         let Some(batch) = self.queue_runtime.active_batch else {
             return Ok(result);
         };
@@ -404,7 +412,7 @@ impl VulkanGraphBackend {
             .iter()
             .filter(|wait| wait.batch == batch)
         {
-            result.insert(match wait.dependency {
+            let point = match wait.dependency {
                 DependencyRef::Point(point) => point,
                 DependencyRef::Batch(source) => self
                     .queue_runtime
@@ -416,7 +424,8 @@ impl VulkanGraphBackend {
                     .ok_or_else(|| {
                         crate::Error::invalid_usage("native wait refers to an unsuccessful batch")
                     })?,
-            });
+            };
+            result.insert(point, wait.stages);
         }
         Ok(result)
     }

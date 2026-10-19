@@ -340,6 +340,9 @@ pub struct VulkanGraphBackend {
     /// Members of the alias set lent to the frame being populated.
     lent_aliases: Option<super::transient_resources::LentAliases>,
     active_alias_set: Option<u64>,
+    /// Pending acquires recorded into a not yet submitted command; re-queued
+    /// on the device if that command is abandoned.
+    drained_acquires: Vec<(u64, crate::device::DrainedAcquires)>,
     transient_alias_tokens: BTreeMap<u64, super::transient_resources::AliasOrigin>,
     transient_counters: Arc<crate::raw::transient_backing::TransientBackingCounters>,
     cpu_arenas: crate::command::CpuArenaPool,
@@ -534,11 +537,11 @@ struct VulkanChunkView<'a> {
 impl super::executor::ChunkRecorder for VulkanChunkView<'_> {
     unsafe fn write_pass_timestamp(
         &self,
-        command: u64,
+        lease: &mut super::executor::ChunkLease<'_>,
         pair: super::profiling::GpuPassTimestamp,
         end: bool,
     ) {
-        pair.write(self.device, vk::CommandBuffer::from_raw(command), end);
+        pair.write(self.device, vk::CommandBuffer::from_raw(lease.command()), end);
     }
     fn owner_storage_pool(
         &self,
@@ -552,7 +555,7 @@ impl super::executor::ChunkRecorder for VulkanChunkView<'_> {
     }
     fn record_transitions(
         &self,
-        command: u64,
+        lease: &mut super::executor::ChunkLease<'_>,
         transitions: &[super::executor::ChunkTransition],
         owners: &mut super::owner_storage::ResourceOwners,
     ) -> crate::Result<()> {
@@ -588,7 +591,7 @@ impl super::executor::ChunkRecorder for VulkanChunkView<'_> {
         unsafe {
             self.barrier_dispatch.issue(
                 self.barrier_device,
-                vk::CommandBuffer::from_raw(command),
+                vk::CommandBuffer::from_raw(lease.command()),
                 &scope,
             )
         }
@@ -685,6 +688,7 @@ impl VulkanGraphBackend {
             alias_cache: Default::default(),
             lent_aliases: None,
             active_alias_set: None,
+            drained_acquires: Vec::new(),
             transient_alias_tokens: Default::default(),
             transient_counters: Default::default(),
             commands: BTreeMap::new(),
@@ -743,8 +747,9 @@ impl VulkanGraphBackend {
     /// stopped early) were not used by the GPU; they return to their set.
     fn return_unconsumed_aliases(&mut self) {
         if let Some(lent) = self.lent_aliases.take() {
+            let completed = self.device.completed();
             for (resource, origin) in lent.resources.into_values() {
-                self.alias_cache.give_back(origin, resource);
+                self.alias_cache.give_back(origin, resource, &completed);
             }
         }
     }
@@ -793,6 +798,11 @@ impl VulkanGraphBackend {
         self.active_alias_set
             .and_then(|set| self.alias_cache.plan(set))
             .unwrap_or(&self.prepared_transients.plan)
+    }
+    /// Alias-set members handed back while their GPU work may still run;
+    /// they rejoin their set (and the set becomes reusable) once idle.
+    pub fn transient_alias_retiring(&self) -> usize {
+        self.alias_cache.retiring_count()
     }
     pub fn transient_backing_statistics(
         &self,
@@ -1268,12 +1278,7 @@ impl VulkanGraphBackend {
                 .collect(),
             family_count,
         );
-        chain.parallel = match self.device.policy().recording {
-            crate::device::RecordingPolicy::Serial => super::parallel::ParallelRecording::SERIAL,
-            crate::device::RecordingPolicy::Parallel => {
-                super::parallel::ParallelRecording::ADAPTIVE
-            }
-        };
+        chain.parallel = self.device.policy().recording.into();
         chain
     }
 }
@@ -1360,7 +1365,8 @@ impl graph::ResourceBackend for VulkanGraphBackend {
             Ok(token) => token,
             Err(error) => {
                 if let Some(origin) = origin {
-                    self.alias_cache.give_back(origin, resource);
+                    self.alias_cache
+                        .give_back(origin, resource, &self.device.completed());
                 }
                 return Err(error);
             }
@@ -1377,7 +1383,10 @@ impl graph::ResourceBackend for VulkanGraphBackend {
         if let (Some(origin), Some(resource)) =
             (self.transient_alias_tokens.remove(&token), resource)
         {
-            self.alias_cache.give_back(origin, resource);
+            // Completion is re-checked: a member of a partially submitted
+            // frame rejoins its set only after its GPU work finished.
+            self.alias_cache
+                .give_back(origin, resource, &self.device.completed());
         }
         self.import_families.remove(&token);
     }
@@ -1482,11 +1491,13 @@ impl ExecutionBackend for VulkanGraphBackend {
                 recording::Queue::Auxiliary(i) => i + 1,
             },
             policy_signature: u64::from(self.transient_aliasing),
-            // Must stay false: the device never enables the Vulkan 1.2
-            // `separateDepthStencilLayouts` feature, so a barrier on a combined
-            // depth/stencil image has to name both aspects. The planner merges
-            // partial D/S ranges for exactly this case (sync_plan::native_range).
-            separate_depth_stencil_layouts: false,
+            // Only the actually enabled feature lets depth and stencil be
+            // tracked (and transitioned) independently; otherwise the planner
+            // merges partial D/S ranges and uses combined layouts.
+            separate_depth_stencil_layouts: self
+                .device
+                .caps()
+                .is_enabled(crate::device::Feature::SeparateDepthStencilLayouts),
         }
     }
     fn prepare_declaration(
@@ -1592,12 +1603,39 @@ impl ExecutionBackend for VulkanGraphBackend {
         // while chunks record on other threads.
         self.command_for_slot(chunk + 1)
     }
-    fn command_pool_identity(&self, handle: u64) -> Option<u64> {
-        self.commands
-            .get(&handle)
-            .map(|command| Arc::as_ptr(&command.pool) as usize as u64)
+    fn drain_pending_acquires(&mut self, handle: u64) -> crate::Result<u32> {
+        let Some(command) = self.commands.get_mut(&handle) else {
+            return Err(crate::Error::invalid_usage("batch command is missing"));
+        };
+        let (resources, tokens) = (&self.resources, self.queue_runtime.frame_tokens());
+        // Resources of this frame are acquired by the planner itself.
+        let drained = self.device.record_pending_acquires_except(command, |cell| {
+            tokens.iter().flatten().any(|token| {
+                resources
+                    .get(token)
+                    .is_some_and(|resource| Arc::ptr_eq(&resource.owner_cell(), cell))
+            })
+        })?;
+        if drained.is_empty() {
+            return Ok(0);
+        }
+        let count = drained.len() as u32;
+        self.drained_acquires
+            .try_reserve(1)
+            .map_err(|_| crate::Error::OutOfHostMemory)
+            .inspect_err(|_| self.device.requeue_pending_acquires(drained.clone()))?;
+        self.drained_acquires.push((handle, drained));
+        Ok(count)
     }
     fn abandon_command(&mut self, handle: u64) {
+        if let Some(position) = self
+            .drained_acquires
+            .iter()
+            .position(|(command, _)| *command == handle)
+        {
+            let (_, drained) = self.drained_acquires.swap_remove(position);
+            self.device.requeue_pending_acquires(drained);
+        }
         if let Some(ring) = &mut self.gpu_timing {
             ring.abandon(handle);
         }
@@ -1614,16 +1652,63 @@ impl ExecutionBackend for VulkanGraphBackend {
     fn wait_submission(&self, receipt: crate::sync::SyncPoint) -> crate::Result<()> {
         self.device.timelines.wait(&receipt.into(), u64::MAX)
     }
-    fn chunk_recorder(&self) -> Option<Box<dyn super::executor::ChunkRecorder + '_>> {
-        Some(Box::new(VulkanChunkView {
-            present_patch: self.present_patch(),
+    fn supports_parallel_recording(&self) -> bool {
+        true
+    }
+    fn chunk_recording(
+        &mut self,
+        commands: &[u64],
+    ) -> crate::Result<super::executor::ChunkRecording<'_>> {
+        // Each lease is carved from a distinct `&mut` frame-pool entry, so no
+        // two chunks can record into one VkCommandPool. Worker 0's pool owns
+        // the batch's main commands, which stay recording meanwhile: never
+        // lease it. The command must really come from the leased pool.
+        let present_patch = self.present_patch();
+        let mut leases = smallvec::SmallVec::<[super::executor::ChunkLease<'_>; 8]>::new();
+        let mut entries = smallvec::SmallVec::<[(&FramePoolKey, &mut FrameCommandPool); 8]>::new();
+        let frame_slot = self.active_frame_slot;
+        let family = self.recording_family;
+        for (key, entry) in self.frame_pools.iter_mut() {
+            if key.frame_slot == frame_slot && key.family == family && key.worker != 0 {
+                entries.push((key, entry));
+            }
+        }
+        for &command in commands {
+            let key = self.command_slot.get(&command).ok_or_else(|| {
+                crate::Error::invalid_usage("parallel command has no frame pool")
+            })?;
+            let position = entries
+                .iter()
+                .position(|(candidate, _)| *candidate == key)
+                .ok_or_else(|| {
+                    crate::Error::invalid_usage(
+                        "parallel commands must each own a distinct non-main command pool",
+                    )
+                })?;
+            let (_, entry) = entries.swap_remove(position);
+            if !self
+                .commands
+                .get(&command)
+                .is_some_and(|recorded| Arc::ptr_eq(&recorded.pool, &entry.pool))
+            {
+                return Err(crate::Error::invalid_usage(
+                    "parallel command was not allocated from its leased pool",
+                ));
+            }
+            // SAFETY: `command` belongs to this exclusively borrowed pool
+            // entry, which no other lease or recording command shares.
+            leases.push(unsafe { super::executor::ChunkLease::new(entry, command) });
+        }
+        let view: Box<dyn super::executor::ChunkRecorder + '_> = Box::new(VulkanChunkView {
+            present_patch,
             barrier_device: &self.device,
             barrier_dispatch: self.barrier_dispatch,
             cpu_arenas: &self.cpu_arenas,
             owner_pool: &self.owner_pool,
             device: &self.device.device,
             resources: &self.resources,
-        }))
+        });
+        Ok((view, leases))
     }
     fn begin_command(&mut self, handle: u64) -> Result<(), recording::Failure> {
         let result = self
@@ -1804,10 +1889,12 @@ impl ExecutionBackend for VulkanGraphBackend {
             )?
         };
         drop(command_refs);
-        let mut dependencies = prepared_states.dependencies();
+        // Declared (planner-bound) accesses carry their first-use stages;
+        // opaque uses inside the commands keep ALL_COMMANDS.
+        let mut dependencies = prepared_states.staged_dependencies();
         dependencies.merge(&self.queue_submission_dependencies()?);
         self.device
-            .add_timeline_waits(queue, &mut capture.batches, &dependencies)?;
+            .add_staged_timeline_waits(queue, &mut capture.batches, &dependencies)?;
         let result = self.device.submit_prepared(queue, &capture.batches, fence);
         if let Ok(point) = result {
             // Infallible after the irreversible queue call: the owner only
@@ -1817,6 +1904,12 @@ impl ExecutionBackend for VulkanGraphBackend {
             }
             prepared_states.publish(point);
             self.queue_submitted(point);
+            // Coalesced acquires in these commands are now committed.
+            self.drained_acquires.retain(|(command, _)| {
+                !prepared
+                    .iter()
+                    .any(|batch| batch.commands.iter().any(|c| c.as_raw() == *command))
+            });
             for semaphore in semaphores.iter() {
                 semaphore.last_use.insert_overall(point);
             }

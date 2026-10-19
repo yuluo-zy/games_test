@@ -390,11 +390,17 @@ type OwnershipValidationState = Arc<crate::resource::SyncCell>;
 pub(crate) struct PreparedResourceStates {
     cells: super::submit::SubmitScratch<[Arc<crate::resource::SyncCell>; 32]>,
     queue: crate::sync::QueueId,
-    dependencies: crate::sync::SyncSet,
+    dependencies: crate::sync::StagedDependencies,
     published: bool,
 }
 impl PreparedResourceStates {
+    /// Prerequisites without stage information (conservative consumers).
     pub(crate) fn dependencies(&self) -> crate::sync::SyncSet {
+        self.dependencies.points()
+    }
+    /// Prerequisites with the destination stages of the declared accesses
+    /// that need them; opaque uses carry `ALL_COMMANDS`.
+    pub(crate) fn staged_dependencies(&self) -> crate::sync::StagedDependencies {
         self.dependencies
     }
     fn prepare_cell(
@@ -406,7 +412,8 @@ impl PreparedResourceStates {
     ) -> crate::Result<()> {
         let cell = &self.cells[index];
         cell.prepare_range_state(patches, self.queue, family, stats)?;
-        self.dependencies.merge(&cell.prepared_range_dependencies());
+        self.dependencies
+            .merge(&cell.prepared_range_staged_dependencies());
         Ok(())
     }
     pub(crate) fn publish(mut self, point: crate::sync::SyncPoint) {
@@ -449,7 +456,7 @@ pub(crate) unsafe fn prepare_submission_states(
     let mut prepared = PreparedResourceStates {
         cells,
         queue,
-        dependencies: crate::sync::SyncSet::EMPTY,
+        dependencies: crate::sync::StagedDependencies::EMPTY,
         published: false,
     };
     let Some(first) = commands.first() else {
@@ -1332,7 +1339,7 @@ mod native_state_submission_tests {
             )
             .unwrap(),
             queue: queue(),
-            dependencies: SyncSet::EMPTY,
+            dependencies: crate::sync::StagedDependencies::EMPTY,
             published: false,
         }
     }

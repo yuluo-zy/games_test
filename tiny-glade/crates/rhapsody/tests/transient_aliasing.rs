@@ -36,7 +36,7 @@ fn graph(
     session: &mut VulkanGraphSession,
     readback: Arc<Buffer>,
     serial: bool,
-    fail_b: bool,
+    fail: Option<u64>,
 ) -> RenderGraph {
     let mut graph = session.begin_frame().unwrap();
     graph.batch_per_pass(true);
@@ -82,7 +82,7 @@ fn graph(
         let device = device.clone();
         let index = image_id.raw();
         pass.render_with_result_context(move |ctx: PassContext<'_>| {
-            if offset == BYTES && fail_b {
+            if fail == Some(offset) {
                 return Err(rhapsody::Error::invalid_usage(
                     "injected alias first-use recording failure",
                 ));
@@ -195,7 +195,7 @@ fn run_with_strategy(enabled: bool, allocation: AllocationStrategy) -> Option<Ru
     backend.set_transient_aliasing(enabled);
     let counters = backend.transient_backing_counters();
     let mut session = VulkanGraphSession::new(backend);
-    let graph = graph(&mut session, readback.clone(), true, false);
+    let graph = graph(&mut session, readback.clone(), true, None);
     let _receipt = session.execute_frame(graph.build()).unwrap();
     let physical = session.backend.transient_memory_plan();
     eprintln!("alias={enabled} {}", physical.dump());
@@ -361,7 +361,7 @@ fn unrelated_passes_do_not_alias_even_when_recording_indices_are_disjoint() {
     let mut backend = VulkanGraphBackend::new(device.clone(), AccessTable::original()).unwrap();
     backend.set_transient_aliasing(true);
     let mut session = VulkanGraphSession::new(backend);
-    let graph = graph(&mut session, readback, false, false);
+    let graph = graph(&mut session, readback, false, None);
     session.execute_frame(graph.build()).unwrap();
     assert!(
         session
@@ -432,7 +432,7 @@ fn simultaneously_pending_frames_allocate_distinct_backings_and_release_once() {
             )
             .unwrap(),
         );
-        let graph = graph(&mut session, readback, true, false);
+        let graph = graph(&mut session, readback, true, None);
         session
             .backend
             .set_graph_synchronization(
@@ -480,7 +480,7 @@ fn partial_submit_does_not_publish_an_unreached_alias_initial_layout() {
     let mut backend = VulkanGraphBackend::new(device.clone(), AccessTable::original()).unwrap();
     backend.set_transient_aliasing(true);
     let mut session = VulkanGraphSession::new(backend);
-    let graph = graph(&mut session, readback, true, true);
+    let graph = graph(&mut session, readback, true, Some(BYTES));
     let built = graph.build();
     let logical_a = built
         .declaration
@@ -535,4 +535,97 @@ fn partial_submit_does_not_publish_an_unreached_alias_initial_layout() {
         })
         .unwrap();
     session.wait_submits_done(TIMEOUT).unwrap();
+}
+
+fn assert_clean_alias_frame(session: &VulkanGraphSession, readback: &Buffer) {
+    use rhapsody::rg::sync_plan::BarrierKind;
+    let synchronization = session.last_synchronization();
+    assert!(
+        synchronization
+            .transitions()
+            .iter()
+            .all(|transition| matches!(transition.kind, BarrierKind::Memory)
+                && transition.source_family == vk::QUEUE_FAMILY_IGNORED
+                && transition.destination_family == vk::QUEUE_FAMILY_IGNORED),
+        "no ownership transfer barrier after a failed frame"
+    );
+    for resource in [0, 1] {
+        let first = synchronization
+            .transitions()
+            .iter()
+            .find(|transition| transition.resource == resource)
+            .expect("alias member first use");
+        assert_eq!(
+            first.old_layout,
+            vk::ImageLayout::UNDEFINED,
+            "alias member contents are discarded at first use"
+        );
+    }
+    let mut pixels = vec![0; BYTES as usize * 2];
+    unsafe {
+        readback
+            .read_bytes_after_completion(0, &mut pixels)
+            .unwrap();
+    }
+    for (index, pixel) in pixels.as_chunks::<4>().0.iter().enumerate() {
+        assert_eq!(
+            pixel,
+            if index < SIZE as usize * SIZE as usize {
+                &[255, 0, 0, 255]
+            } else {
+                &[0, 255, 0, 255]
+            }
+        );
+    }
+}
+
+#[test]
+fn failed_frames_return_alias_sets_only_when_idle_and_later_frames_discard_stale_state() {
+    let Some(device) = device() else { return };
+    let mut backend = VulkanGraphBackend::new(device.clone(), AccessTable::original()).unwrap();
+    backend.set_transient_aliasing(true);
+    let counters = backend.transient_backing_counters();
+    let mut session = VulkanGraphSession::new(backend);
+    let readback = || {
+        Arc::new(
+            Buffer::new(
+                device.clone(),
+                &BufferDesc::new_gpu_to_cpu(BYTES * 2, vk::BufferUsageFlags::TRANSFER_DST),
+            )
+            .unwrap(),
+        )
+    };
+    // 1. Fails before any submission: the borrow returns immediately and the
+    //    next frame reuses the same set without another backing allocation.
+    let graph_a = graph(&mut session, readback(), true, Some(0));
+    assert!(session.execute_frame(graph_a.build()).is_err());
+    assert_eq!(session.pending_frame_count(), 0, "nothing was submitted");
+    assert_eq!(session.backend.transient_alias_retiring(), 0);
+    assert_eq!(counters.snapshot().allocations, 1);
+    // 2. Fails mid-frame after earlier batches really submitted.
+    let graph_b = graph(&mut session, readback(), true, Some(BYTES));
+    assert!(session.execute_frame(graph_b.build()).is_err());
+    assert!(session.pending_frame_count() > 0, "a prefix was submitted");
+    assert_eq!(
+        counters.snapshot().allocations,
+        1,
+        "a never-submitted borrow left the set reusable"
+    );
+    // 3. Following frames reuse the set only after the failed prefix retired,
+    //    then render correct data without any stale ownership transfer.
+    for _ in 0..3 {
+        let target = readback();
+        let frame = graph(&mut session, target.clone(), true, None);
+        session.execute_frame(frame.build()).unwrap();
+        session.wait_submits_done(TIMEOUT).unwrap();
+        assert_clean_alias_frame(&session, &target);
+    }
+    assert_eq!(session.backend.transient_alias_retiring(), 0);
+    assert!(
+        counters.snapshot().allocations <= 2,
+        "retired sets are reused instead of reallocated every frame"
+    );
+    drop(session);
+    device.try_collect_all_completed().unwrap();
+    assert_eq!(counters.snapshot().allocations, counters.snapshot().frees);
 }

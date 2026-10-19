@@ -361,6 +361,10 @@ pub(crate) struct AliasCache {
     clock: u64,
     key: AliasKey,
     pairs: Vec<(u32, usize)>,
+    /// Members handed back while some recorded GPU use may still execute
+    /// (e.g. the submitted prefix of a failed frame). Their set stays lent
+    /// until each is proven idle.
+    retiring: Vec<(AliasOrigin, GpuResource)>,
 }
 /// Retired sets kept for reuse (lent sets are never evicted). Two frames in
 /// flight with one or two alternating graphs fit without reallocation.
@@ -381,9 +385,27 @@ impl AliasCache {
             .find(|entry| entry.id == set)
             .map_or(&[], |entry| &entry.edges)
     }
-    /// Take back a member lent by [`Self::lend`]. The caller guarantees the GPU
-    /// no longer uses it.
-    pub(crate) fn give_back(&mut self, origin: AliasOrigin, resource: GpuResource) {
+    /// Take back a member lent by [`Self::lend`]. It rejoins its set only
+    /// once `completed` proves every recorded GPU use finished (a member of a
+    /// never-submitted frame has none and returns immediately); otherwise it
+    /// waits in `retiring` and keeps its set lent. A returned member's
+    /// contents are discarded: its native state is reset to unclaimed and
+    /// `UNDEFINED`, so a release or foreign ownership left by a failed frame
+    /// never turns into a stale ownership acquire in the next frame.
+    pub(crate) fn give_back(
+        &mut self,
+        origin: AliasOrigin,
+        resource: GpuResource,
+        completed: &crate::sync::CompletedValues,
+    ) {
+        if !resource.owner_cell().discard_idle_range_state(completed) {
+            if self.retiring.try_reserve(1).is_ok() {
+                self.retiring.push((origin, resource));
+            }
+            // Without host memory the member is dropped; its set stays lent
+            // and is never reused (memory is freed with the last owner).
+            return;
+        }
         if let Some(set) = self.sets.iter_mut().find(|set| set.id == origin.set)
             && let Some((_, slot)) = set.members.get_mut(origin.member)
             && slot.is_none()
@@ -391,6 +413,26 @@ impl AliasCache {
             *slot = Some(resource);
             set.lent -= 1;
         }
+    }
+    /// Return retiring members whose GPU uses have completed.
+    pub(crate) fn collect_retiring(&mut self, completed: &crate::sync::CompletedValues) {
+        let mut index = 0;
+        while index < self.retiring.len() {
+            if self.retiring[index]
+                .1
+                .owner_cell()
+                .is_reached(completed)
+            {
+                let (origin, resource) = self.retiring.swap_remove(index);
+                self.give_back(origin, resource, completed);
+            } else {
+                index += 1;
+            }
+        }
+    }
+    /// Members waiting for GPU completion before rejoining their set.
+    pub(crate) fn retiring_count(&self) -> usize {
+        self.retiring.len()
     }
     /// Drop every retired set (memory pressure).
     pub(crate) fn trim(&mut self) {
@@ -486,6 +528,9 @@ impl AliasCache {
         counters: Arc<TransientBackingCounters>,
     ) -> crate::Result<Option<LentAliases>> {
         self.clock += 1;
+        if !self.retiring.is_empty() {
+            self.collect_retiring(&device.poll()?);
+        }
         self.build_key(specifications, plan, graph);
         if self.key.entries.is_empty() {
             return Ok(None);

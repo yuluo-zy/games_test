@@ -49,6 +49,14 @@ impl PendingFrontier {
     fn source(self, queue: QueueId) -> AccessScope {
         self.scope[queue.index()].union(self.host)
     }
+    /// Some prerequisite executes on a queue other than `queue`, so it is
+    /// reached through a semaphore wait rather than command order.
+    fn waits_other_queue(&self, queue: QueueId) -> bool {
+        self.points
+            .iter()
+            .enumerate()
+            .any(|(index, point)| point.is_some() && index != queue.index())
+    }
     fn add(&mut self, queue: QueueId, scope: AccessScope, batch: usize) {
         self.scope[queue.index()] = self.scope[queue.index()].union(scope);
         self.points[queue.index()] = Some(DependencyRef::Batch(batch));
@@ -404,6 +412,24 @@ impl SynchronizationPlanner {
                     "opaque image use requires an explicit external native-state declaration",
                 ));
             }
+            // An alias member's contents are discarded at its first use in a
+            // frame; its set returns it only when idle with the state reset
+            // (AliasCache::give_back). Never acquire a stale release for it.
+            if current.fresh
+                && self
+                    .bound
+                    .aliases
+                    .values
+                    .iter()
+                    .any(|edge| edge.next == access.resource || edge.previous == access.resource)
+                && (matches!(current.owner, PendingOwner::Released { .. })
+                    || !sharing.is_concurrent()
+                        && matches!(current.owner, PendingOwner::Owned(owner) if owner != domain.family))
+            {
+                return Err(Error::invalid_usage(
+                    "alias member keeps queue-family ownership from an earlier frame",
+                ));
+            }
             // A prior failed acquire is completed for exactly its original
             // native pair before any splitting of that released range.
             if let PendingOwner::Released { transfer, release } = current.owner {
@@ -528,11 +554,19 @@ impl SynchronizationPlanner {
             if changes {
                 self.wait_frontier(current.readers, batch, access.scope.stages, domain)?;
             }
-            let source = current.writer.source(queue).union(if changes {
+            let mut source = current.writer.source(queue).union(if changes {
                 current.readers.source(queue)
             } else {
                 AccessScope::EMPTY
             });
+            // A layout transition after a cross-queue semaphore wait must chain
+            // with that wait, which blocks exactly `access.scope.stages`.
+            if changes_layout
+                && (current.writer.waits_other_queue(queue)
+                    || changes && current.readers.waits_other_queue(queue))
+            {
+                source.stages |= access.scope.stages;
+            }
             if !source.is_empty() || changes_layout {
                 self.push_transition(BoundTransition {
                     batch,
@@ -600,7 +634,12 @@ impl SynchronizationPlanner {
             phase,
             resource: current.resource,
             range: transfer.range,
-            source: AccessScope::EMPTY,
+            // Execution-only source: the acquire (and its layout transition)
+            // chains with the release wait at the same stages.
+            source: AccessScope {
+                stages: transfer.destination.stages,
+                ..AccessScope::EMPTY
+            },
             destination: transfer.destination,
             old_layout: transfer.old_layout,
             new_layout: transfer.new_layout,
@@ -902,6 +941,223 @@ mod tests {
         assert!(
             matches!(planner.bound().patches()[1].resolve(|_|Some(real)).unwrap().action,PatchAction::Acquire {release_point,..} if release_point==real)
         );
+    }
+    #[test]
+    fn cross_queue_layout_transition_and_acquire_chain_with_their_precise_waits() {
+        let image = NativeRange::Image {
+            aspects: vk::ImageAspectFlags::COLOR.as_raw(),
+            base_mip: 0,
+            mip_count: 1,
+            base_layer: 0,
+            layer_count: 1,
+        };
+        let fragment = AccessScope {
+            stages: vk::PipelineStageFlags::FRAGMENT_SHADER,
+            access: vk::AccessFlags::SHADER_READ,
+            write: false,
+        };
+        let writes = RangeUse {
+            resource: 0,
+            range: image,
+            scope: AccessScope {
+                stages: vk::PipelineStageFlags::COMPUTE_SHADER,
+                access: vk::AccessFlags::SHADER_WRITE,
+                write: true,
+            },
+            layout: vk::ImageLayout::GENERAL,
+            access_code: 0x34,
+        };
+        let reads = RangeUse {
+            scope: fragment,
+            layout: vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+            access_code: 0x25,
+            ..writes
+        };
+        for (sharing, acquire) in [
+            (
+                ResourceSharing::Concurrent(crate::resource::QueueFamilies::new(&[0, 1]).unwrap()),
+                false,
+            ),
+            (ResourceSharing::Exclusive, true),
+        ] {
+            let mut program = program(image, vec![writes, reads], &[queue(1, 1), queue(0, 0)]);
+            program.resources[0].sharing = sharing;
+            let mut planner =
+                SynchronizationPlanner::new(Arc::new(AllocatorStats::default()), Default::default())
+                    .unwrap();
+            planner
+                .add_initial(
+                    0,
+                    &[RangeCell {
+                        range: image,
+                        state: NativeState::default(),
+                    }],
+                )
+                .unwrap();
+            planner
+                .bind(&program, |family| Ok(queue(family, family)))
+                .unwrap();
+            let bound = planner.bound();
+            let wait = bound
+                .waits()
+                .iter()
+                .find(|wait| wait.batch == 1)
+                .expect("cross-queue wait");
+            assert_eq!(wait.stages, vk::PipelineStageFlags::FRAGMENT_SHADER);
+            let consumer = bound
+                .transitions()
+                .iter()
+                .filter(|transition| transition.batch == 1)
+                .collect::<Vec<_>>();
+            assert!(!consumer.is_empty());
+            assert_eq!(
+                consumer
+                    .iter()
+                    .any(|transition| matches!(transition.kind, BarrierKind::Acquire { .. })),
+                acquire
+            );
+            for transition in consumer {
+                // Every barrier on the consumer queue chains with the wait.
+                assert!(
+                    transition.source.stages.contains(wait.stages),
+                    "{transition:?} does not chain with {wait:?}"
+                );
+            }
+        }
+    }
+    /// Two exclusive alias members of one backing used on family 0. Member 1
+    /// was released to family 1 by an earlier frame whose acquire never ran.
+    fn alias_after_failed_release(reset: bool) -> Result<SynchronizationPlanner> {
+        use crate::resource::{
+            SyncCell,
+            range_state::{PatchAction, StatePatch},
+        };
+        let stats = Arc::new(AllocatorStats::default());
+        let range = buffer(0, 64);
+        let q1 = QueueId::new(1).unwrap();
+        let cell = Arc::new(
+            SyncCell::for_device(crate::device::DeviceGeneration::next())
+                .with_ownership_range(range),
+        );
+        cell.with_range_state(NativeState::default(), &stats, |_| Ok(()))
+            .unwrap();
+        let transfer = RangeTransfer {
+            pair: 7,
+            source_family: 1,
+            destination_family: 0,
+            range,
+            source: usage(range, true).scope,
+            destination: usage(range, false).scope,
+            old_layout: vk::ImageLayout::UNDEFINED,
+            new_layout: vk::ImageLayout::UNDEFINED,
+        };
+        cell.prepare_range_state(
+            &[
+                StatePatch {
+                    range,
+                    expected_revision: 0,
+                    action: PatchAction::Access {
+                        scope: usage(range, true).scope,
+                        layout: vk::ImageLayout::UNDEFINED,
+                        queue: q1,
+                        family: 1,
+                    },
+                },
+                StatePatch {
+                    range,
+                    expected_revision: 1,
+                    action: PatchAction::Release(transfer),
+                },
+            ],
+            q1,
+            1,
+            &stats,
+        )
+        .unwrap();
+        let release = SyncPoint { queue: q1, value: 5 };
+        cell.publish_range_state(release);
+        cell.insert_overall(release);
+        let mut completed = crate::sync::CompletedValues::default();
+        // Still executing: the member must not be reset (or returned) yet.
+        assert!(!cell.discard_idle_range_state(&completed));
+        cell.with_range_state(NativeState::default(), &stats, |table| {
+            assert!(matches!(
+                table.cells()[0].state.owner,
+                RangeOwner::Released { .. }
+            ));
+            Ok(())
+        })
+        .unwrap();
+        if reset {
+            completed.raise(q1, 5);
+            assert!(cell.discard_idle_range_state(&completed));
+        }
+        let initial = cell
+            .with_range_state(NativeState::default(), &stats, |table| {
+                Ok(table.cells().to_vec())
+            })
+            .unwrap();
+        let mut program = program(
+            range,
+            vec![usage(range, true), usage(range, true)],
+            &[queue(0, 0), queue(0, 0)],
+        );
+        program.resources.push(program.resources[0]);
+        program.uses[1].resource = 1;
+        program.dependencies = vec![(0, 1)];
+        let mut planner = SynchronizationPlanner::new(stats, Default::default()).unwrap();
+        planner
+            .add_initial(
+                0,
+                &[RangeCell {
+                    range,
+                    state: NativeState::default(),
+                }],
+            )
+            .unwrap();
+        planner.add_initial(1, &initial).unwrap();
+        planner.add_alias(0, 1).unwrap();
+        planner.add_alias(1, 0).unwrap();
+        planner.bind(&program, |family| Ok(queue(family, family)))?;
+        Ok(planner)
+    }
+    #[test]
+    fn alias_member_released_by_a_failed_frame_is_discarded_without_stale_acquire() {
+        let planner = alias_after_failed_release(true).unwrap();
+        let bound = planner.bound();
+        assert!(
+            bound
+                .batches()
+                .iter()
+                .all(|batch| matches!(batch.kind, BoundBatchKind::Graph { .. })),
+            "no ownership prelude batch"
+        );
+        assert!(
+            bound
+                .transitions()
+                .iter()
+                .all(|transition| matches!(transition.kind, BarrierKind::Memory)
+                    && transition.source_family == vk::QUEUE_FAMILY_IGNORED),
+            "no ownership transfer barrier"
+        );
+        assert!(
+            bound
+                .patches()
+                .iter()
+                .all(|patch| matches!(patch.action, BoundPatchAction::Access { .. }))
+        );
+        // The completed release is neither waited on nor carried forward.
+        assert!(
+            bound
+                .waits()
+                .iter()
+                .all(|wait| !matches!(wait.dependency, DependencyRef::Point(_)))
+        );
+        // An unreset stale release is rejected instead of acquired.
+        let Err(error) = alias_after_failed_release(false) else {
+            panic!("stale release must not bind");
+        };
+        assert!(error.to_string().contains("alias member"), "{error}");
     }
     #[test]
     fn released_recovery_first_acquires_the_original_destination_then_moves_again() {

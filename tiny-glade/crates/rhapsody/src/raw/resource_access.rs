@@ -90,11 +90,21 @@ fn step(
         ));
     }
     let mut source = cell.state.writer.for_queue(queue);
-    if destination.write || cell.state.layout != layout {
+    let hazard = destination.write || cell.state.layout != layout;
+    if hazard {
         let readers = cell.state.readers.for_queue(queue);
         source.stages |= readers.stages;
         source.access |= readers.access;
         source.write |= readers.write;
+    }
+    // Submission waits other queues' prerequisites at exactly the destination
+    // stages; including them here chains the barrier (and any layout
+    // transition) after that semaphore wait.
+    let foreign = |frontier: &crate::resource::range_state::Frontier| {
+        frontier.points.points().any(|point| point.queue != queue)
+    };
+    if foreign(&cell.state.writer) || hazard && foreign(&cell.state.readers) {
+        source.stages |= destination.stages;
     }
     Ok(AccessStep { cell, source })
 }

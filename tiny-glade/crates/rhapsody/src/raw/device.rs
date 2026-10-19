@@ -69,6 +69,9 @@ pub struct Device {
     pub suballocator: Option<Arc<super::suballoc::SubAllocator>>,
     /// Loaded once at creation when `VK_KHR_synchronization2` is enabled.
     pub(crate) synchronization2: Option<ash::khr::synchronization2::Device>,
+    /// Released ownership ranges whose acquire is coalesced into the next
+    /// submit on the destination family (see `Device::queue_pending_acquire`).
+    pub(crate) pending_acquires: crate::device::PendingAcquires,
     memory_budget_extension: bool,
     /// Non-coherent dynamic-constants writes flushed before the next submit.
     pub(crate) host_flush: super::dynamic_constants::HostFlushQueue,
@@ -361,6 +364,7 @@ impl Device {
                 #[cfg(feature = "suballocation")]
                 suballocator,
                 synchronization2,
+                pending_acquires: Default::default(),
                 memory_budget_extension,
                 host_flush: Default::default(),
                 setup: Mutex::new(std::sync::Weak::new()),

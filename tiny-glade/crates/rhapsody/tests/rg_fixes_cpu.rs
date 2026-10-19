@@ -67,8 +67,10 @@ struct Mock {
     queue: Option<recording::Queue>,
     fail_wait: bool,
     ranges: cpu_graph_support::CpuRanges,
-    /// Report one command pool for every command (a broken backend).
-    shared_pool: bool,
+    /// One stand-in command pool per parallel worker.
+    chunk_pools: Vec<u8>,
+    /// Commands recorded through each lease, in chunk order.
+    leased: std::sync::Mutex<Vec<u64>>,
 }
 impl ResourceBackend for Mock {
     fn create_without_initial_data(
@@ -93,22 +95,38 @@ impl ResourceBackend for Mock {
     }
 }
 impl ExecutionBackend for Mock {
-    fn command_pool_identity(&self, handle: u64) -> Option<u64> {
-        Some(if self.shared_pool { 0 } else { handle })
+    fn supports_parallel_recording(&self) -> bool {
+        true
     }
-    fn chunk_recorder(&self) -> Option<Box<dyn rhapsody::rg::executor::ChunkRecorder + '_>> {
-        struct View;
-        impl rhapsody::rg::executor::ChunkRecorder for View {
+    fn chunk_recording(
+        &mut self,
+        commands: &[u64],
+    ) -> rhapsody::Result<rhapsody::rg::executor::ChunkRecording<'_>> {
+        struct View<'a>(&'a std::sync::Mutex<Vec<u64>>);
+        impl rhapsody::rg::executor::ChunkRecorder for View<'_> {
             fn record_transitions(
                 &self,
-                _: u64,
+                lease: &mut rhapsody::rg::executor::ChunkLease<'_>,
                 _: &[rhapsody::rg::executor::ChunkTransition],
                 _: &mut rhapsody::rg::owner_storage::ResourceOwners,
             ) -> rhapsody::Result<()> {
+                self.0.lock().unwrap().push(lease.command());
                 Ok(())
             }
         }
-        Some(Box::new(View))
+        if self.chunk_pools.len() < commands.len() {
+            self.chunk_pools.resize(commands.len(), 0);
+        }
+        // Disjoint `&mut` pool borrows: one lease per pool.
+        let leases = self
+            .chunk_pools
+            .iter_mut()
+            .zip(commands)
+            .map(|(pool, &command)| unsafe {
+                rhapsody::rg::executor::ChunkLease::new(pool, command)
+            })
+            .collect();
+        Ok((Box::new(View(&self.leased)), leases))
     }
     fn synchronization_plan(
         &self,
@@ -1072,16 +1090,13 @@ fn duplicate_imports_are_rejected_before_recording_or_allocation() {
 }
 
 #[test]
-fn parallel_chunks_never_record_into_a_shared_command_pool() {
+fn parallel_chunks_record_only_through_their_own_pool_leases() {
     use rhapsody::rg::parallel::{ParallelRecording, TaskRunner};
-    for shared_pool in [false, true] {
-        let mut backend = Mock {
-            shared_pool,
-            ..Mock::default()
-        };
+    for runner in [TaskRunner::Inline, TaskRunner::ComputePool] {
+        let mut backend = Mock::default();
         let mut chain = chain();
         chain.parallel = ParallelRecording {
-            runner: TaskRunner::Inline,
+            runner,
             ..ParallelRecording::EVERY_PASS
         };
         let mut graph = RenderGraph::new();
@@ -1096,14 +1111,14 @@ fn parallel_chunks_never_record_into_a_shared_command_pool() {
             &mut backend,
             &mut callbacks,
         );
-        if shared_pool {
-            assert_eq!(
-                rhapsody::Error::from(result.unwrap_err()).kind(),
-                rhapsody::ErrorKind::InvalidUsage
-            );
-            assert_eq!(backend.submit_attempts, 0);
-        } else {
-            assert!(result.unwrap().stats.chunks > 1);
-        }
+        let chunks = result.unwrap().stats.chunks;
+        assert!(chunks > 1);
+        // Every chunk recorded through a lease of its own command; a pool
+        // shared by two leases cannot be expressed (see ChunkLease docs).
+        let mut leased = backend.leased.into_inner().unwrap();
+        assert_eq!(leased.len(), chunks as usize);
+        leased.sort_unstable();
+        leased.dedup();
+        assert_eq!(leased.len(), chunks as usize);
     }
 }

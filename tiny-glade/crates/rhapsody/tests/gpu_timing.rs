@@ -144,7 +144,7 @@ fn per_pass_pairs_follow_actual_serial_and_worker_submissions_and_cancel_as_a_un
     use rhapsody::rg::parallel::ParallelRecording;
     for parallel in [ParallelRecording::SERIAL, ParallelRecording::EVERY_PASS] {
         let config = DeviceConfig {
-            recording: rhapsody::device::RecordingPolicy::Parallel,
+            recording: rhapsody::device::RecordingPolicy::Adaptive,
             ..DeviceConfig::headless()
         };
         let Some(device) = gpu_test_support::initialize(

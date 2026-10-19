@@ -159,8 +159,17 @@ impl ParallelRecording {
         min_total_ns: 0,
     };
 }
+impl From<crate::device::RecordingPolicy> for ParallelRecording {
+    fn from(policy: crate::device::RecordingPolicy) -> Self {
+        match policy {
+            crate::device::RecordingPolicy::Serial => Self::SERIAL,
+            crate::device::RecordingPolicy::Adaptive => Self::ADAPTIVE,
+        }
+    }
+}
+/// Same default as the device: [`crate::device::RecordingPolicy::default`].
 impl Default for ParallelRecording {
     fn default() -> Self {
-        Self::ADAPTIVE
+        crate::device::RecordingPolicy::default().into()
     }
 }
