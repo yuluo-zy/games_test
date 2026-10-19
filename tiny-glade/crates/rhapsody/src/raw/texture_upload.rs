@@ -192,11 +192,7 @@ pub unsafe fn record_texture_regions(
         &texture,
         queue,
         range,
-        AccessScope {
-            stages: vk::PipelineStageFlags::ALL_COMMANDS,
-            access: vk::AccessFlags::SHADER_READ,
-            write: false,
-        },
+        crate::transfer::texture::IMAGE_CONSUMERS,
         vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
         Some(vk::ImageLayout::TRANSFER_DST_OPTIMAL),
     )
@@ -264,11 +260,7 @@ pub(crate) fn record_zero_fill_borrowed(
         texture,
         queue,
         range,
-        AccessScope {
-            stages: vk::PipelineStageFlags::ALL_COMMANDS,
-            access: vk::AccessFlags::SHADER_READ,
-            write: false,
-        },
+        crate::transfer::texture::IMAGE_CONSUMERS,
         vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
         Some(vk::ImageLayout::TRANSFER_DST_OPTIMAL),
     )

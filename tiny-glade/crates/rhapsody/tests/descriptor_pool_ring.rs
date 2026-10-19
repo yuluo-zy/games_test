@@ -11,7 +11,6 @@ use rhapsody::{
 };
 use std::sync::Arc;
 
-
 fn device() -> Option<Arc<Device>> {
     gpu_test_support::initialize(
         "descriptor pool ring",
@@ -48,7 +47,9 @@ fn transient_ring_grows_on_exhaustion_and_reuses_reset_pools() {
         },
     )
     .unwrap();
-    let sets: Vec<_> = (0..5).map(|_| ring.allocate(layout.clone()).unwrap()).collect();
+    let sets: Vec<_> = (0..5)
+        .map(|_| ring.allocate(layout.clone()).unwrap())
+        .collect();
     assert_eq!(ring.stats().pools, 3);
     let sixth = ring.allocate(layout.clone()).unwrap();
     assert!(matches!(

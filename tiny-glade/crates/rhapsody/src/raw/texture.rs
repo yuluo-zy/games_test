@@ -490,7 +490,10 @@ enum TextureStorage {
     Allocated(std::mem::ManuallyDrop<MemoryBlock>),
     // The swapchain, not this texture wrapper, destroys the VkImage. A strong
     // owner also protects the image while graph imports and views retain it.
-    Swapchain(#[allow(dead_code, reason = "keeps the swapchain image alive")] Arc<super::swapchain::Swapchain>),
+    Swapchain(
+        #[allow(dead_code, reason = "keeps the swapchain image alive")]
+        Arc<super::swapchain::Swapchain>,
+    ),
 }
 impl Texture {
     pub(crate) fn ownership_range(desc: &TextureDesc) -> Result<crate::resource::OwnershipRange> {
