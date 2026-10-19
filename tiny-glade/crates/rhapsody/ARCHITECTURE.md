@@ -63,6 +63,25 @@ frame ─► graph ─► command ─► resource ─► device ─► sync ─�
    └────► swapchain ──────────────────────┘
 ```
 
+### 2.1 公开 API 面
+
+`lib.rs` 只公开以下模块，宿主所需类型都在模块根重导出，子模块一律是实现细节：
+
+| 模块 | 内容 |
+|------|------|
+| `device` | `Device`、`DeviceConfig`、能力/特性、队列规划、提交、预算与统计 |
+| `resource` | `Buffer`/`Texture`/`TextureView`/`Sampler`、描述结构、托管句柄、setup 上传、格式查询、`GpuUse`/`AccessScope` |
+| `command` | 命令池/命令缓冲、`SynchronizationScope` 屏障、资源访问描述、CPU arena |
+| `pipeline` | 着色器模块、管线布局/缓存、异步编译与持久缓存 |
+| `bindless` / `transfer` / `sync` | bindless 堆、异步上传、`QueueId`/`SyncPoint`/`SyncSet`/`Timelines` |
+| `rg` | 渲染图声明、规划、执行、会话与呈现目标 |
+| `present` | `Surface`、`Swapchain` 与呈现租约 |
+| `interop` | 显式逃生口：`VulkanInstance`、实例构建、调试工具、物理设备包装、`DeviceQueue` |
+
+- `raw`、`log_ring` 以及上述模块的子模块经 `internal_mod!` 声明：默认 `pub(crate)`；`test-support` 特性下以 `#[doc(hidden)] pub` 暴露，只供本 crate 的集成测试（经自身 dev-dependency 开启），不属于 API。
+- 拥有原生对象的类型不公开句柄字段，经 `raw_handle()`（以及 `Device::raw_device()`、`VulkanInstance::raw_instance()`、`Swapchain::loader()` 等）只读取得；这些访问器即互操作逃生口，取得的句柄仍归原对象所有。描述/配置结构（`TextureDesc`、`RasterPipelineDesc` 等）里的 Vulkan 枚举与标志字段属于输入数据，保持公开。
+- `shader_pipeline`/`shader_compiler` 不再整包重导出；下游直接依赖 `shader-pipeline`。
+
 ---
 
 ## 3. 详细设计
