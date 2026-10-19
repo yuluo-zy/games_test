@@ -293,13 +293,16 @@ impl Unbound {
 
 /// Identity of one physical alias plan: the aliasing candidates (logical
 /// index, creation parameters including derived usage, sharing, scheduled
-/// uses) and the dependency proof. Equal keys produce equal memory plans on one
-/// device, so the plan and its bound members can be reused.
+/// uses), the dependency proof and the queue schedule. Equal keys produce equal
+/// memory plans on one device, so the plan and its bound members can be reused.
+/// The schedule is part of the key so a reused member is always used on the
+/// same queue families and never needs an ownership transfer between frames.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 struct AliasKey {
     entries: Vec<KeyEntry>,
     uses: Vec<usize>,
     edges: Vec<(usize, usize)>,
+    schedule: Vec<(super::queue_schedule::QueueDomain, std::ops::Range<usize>)>,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum SpecKey {
@@ -322,6 +325,7 @@ impl AliasKey {
         self.entries.clear();
         self.uses.clear();
         self.edges.clear();
+        self.schedule.clear();
     }
 }
 /// Where a lent alias member returns once its frame retires.
@@ -412,6 +416,13 @@ impl AliasCache {
         let key = &mut self.key;
         key.clear();
         key.edges.extend_from_slice(&plan.dependency_edges);
+        key.schedule.extend(
+            plan.queue_schedule
+                .domains
+                .iter()
+                .copied()
+                .zip(plan.batches.iter().map(|batch| batch.pass_range.clone())),
+        );
         let mut cursor = 0;
         for (index, declaration) in graph.resources.iter().enumerate() {
             let first = cursor

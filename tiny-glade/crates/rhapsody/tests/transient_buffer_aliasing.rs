@@ -160,8 +160,8 @@ fn aliased_buffers_get_a_backing_barrier_and_correct_contents() {
         )
         .unwrap(),
     );
-    let mut backend = VulkanGraphBackend::new(device.clone(), AccessTable::original()).unwrap();
-    backend.set_transient_aliasing(true);
+    // Transient aliasing is on by default.
+    let backend = VulkanGraphBackend::new(device.clone(), AccessTable::original()).unwrap();
     let counters = backend.transient_backing_counters();
     let mut session = VulkanGraphSession::new(backend);
     let mut allocation_ids = Vec::new();

@@ -687,7 +687,7 @@ impl VulkanGraphBackend {
             recording_error: None,
             resources: BTreeMap::new(),
             specifications: BTreeMap::new(),
-            transient_aliasing: false,
+            transient_aliasing: true,
             prepared_transients: Default::default(),
             alias_cache: Default::default(),
             lent_aliases: None,
@@ -736,7 +736,8 @@ impl VulkanGraphBackend {
         self.pass_resources.take();
         self.projection_pool.clear_idle();
     }
-    /// Physical aliasing is opt-in. PreserveParallelism never adds DAG edges.
+    /// Physical aliasing of transient resources (on by default). Aliasing only
+    /// uses orderings already in the graph; it never adds DAG edges.
     pub fn set_transient_aliasing(&mut self, enabled: bool) {
         self.transient_aliasing = enabled;
         if !enabled {

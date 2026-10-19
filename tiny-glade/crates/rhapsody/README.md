@@ -39,7 +39,7 @@ V0 窗口基线 → V1 设备与回收 → V2 提交/呈现闭环 → V3 图与�
 - 生产图形路径最低要求 timeline semaphore、dynamic rendering 和完整 descriptor indexing 能力：runtime array、partially bound、sampled/storage image 与 storage buffer 的 update-after-bind、nonuniform/dynamic indexing，以及 update-unused-while-pending。创建共享 heap 时还向 Vulkan 查询实际 layout 支持并检查容量；缺能力返回 Unsupported。descriptor buffer/GPL/shader object 只作能力查询，未登记为实现策略。
 - 命名持久与历史资源由 `VulkanGraphSession::named_texture` / `named_buffer` / `temporal_texture` 管理，正常 `execute_frame` 自动校验、导出和提交；回调通过 `PassContext::history_valid` / `buffer_history_valid` 查询本帧历史。失败帧不发布新内容；旧公开 physical token/temporal owner 入口已删除，tiny-glade 的 temporal 宿主已接入。
 - `bindless::BindlessShaderPackage` 将现有 shader 资产一次转换为共享 heap ABI，原 uniform 和 push 数据进入有界参数页，实际 push 仅携带参数块索引。`BindlessParameters` 校验声明范围并登记真实资源和不可变 lease；`HotPipeline` 在帧边界核验逻辑 ABI、接口、compute 工作组大小和目标后发布，失败继续保留旧管线。持久管线缓存校验设备/版本/完整性，损坏时重建；输入与驱动提取数据携带 CPU 预算，保存不再复制整份 payload。
-- 瞬态着色由 `backend.set_transient_aliasing(true)` 显式开启，默认 PreserveParallelism 不增依赖。实际 requirements/dedicated/共享方式决定兼容分组，所有别名对象共用唯一 backing owner；报告区分区间与实际 native allocation，不保证每种小负载都减少整块保留显存。
+- 瞬态别名默认开启（`backend.set_transient_aliasing(false)` 关闭），只利用图中已有顺序、不增依赖；别名成员首用由同步规划器建模为前一成员的合成前序访问并发出屏障/跨队列等待；物理别名集按计划与资源规格缓存、整组借给单帧，帧退役后复用。实际 requirements/dedicated/共享方式决定兼容分组，所有别名对象共用唯一 backing owner；报告区分区间与实际 native allocation，不保证每种小负载都减少整块保留显存。
 - `backend.configure_gpu_timing(Some(config))` 开启有界 query ring；`config.pass_spans` 可额外测逐 pass 跨度，提交的真实完成点到达后才可读取和复用。命令与 pass span 分开统计，不能重复相加或冒充多队列帧延迟。Window Lab 用 `--gpu-pass-timing on` 保留有界的带名称样本；历史性能 A/B 保持双方相同观测配置。
 - 未完成旧交换链代际最多保留 4 个。默认生产呈现要求 maintenance1，`FrameLoop::shutdown` 只接受真实 acquire/render/present 完成证明；显式兼容策略无法证明最终关闭时保留所有权并返回错误，详见进度记录。
 
