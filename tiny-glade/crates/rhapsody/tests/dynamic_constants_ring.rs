@@ -171,6 +171,16 @@ fn dropped_cpu_owners_cannot_reset_a_page_until_actual_gpu_copy_completes() {
     let mut actual = [0; 64];
     output.read_bytes(0, &mut actual).unwrap();
     assert_eq!(actual.as_slice(), payload);
+    let coherent = held_properties(&device);
+    if coherent {
+        assert_eq!(
+            device.deferred_host_flush_count(),
+            0,
+            "coherent constants pages are never flushed"
+        );
+    } else {
+        assert_eq!(device.deferred_host_flush_count(), 1);
+    }
     let reused = constants
         .allocate(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES)
         .unwrap();
@@ -182,4 +192,15 @@ fn dropped_cpu_owners_cannot_reset_a_page_until_actual_gpu_copy_completes() {
     assert_eq!(constants.stats().page_reuses, 1);
     assert_eq!(constants.trim_idle(0).unwrap(), 1);
     device.try_collect_all_completed().unwrap();
+}
+
+/// Whether the memory backing constants pages is host coherent on this device.
+fn held_properties(device: &Arc<Device>) -> bool {
+    let page = Buffer::new(
+        device.clone(),
+        &BufferDesc::new_cpu_to_gpu(64, vk::BufferUsageFlags::UNIFORM_BUFFER),
+    )
+    .unwrap();
+    page.memory_properties()
+        .contains(vk::MemoryPropertyFlags::HOST_COHERENT)
 }

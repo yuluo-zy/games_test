@@ -263,9 +263,15 @@ impl Drop for HostRangeState<'_> {
     }
 }
 impl Buffer {
-    pub(crate) fn into_dynamic_constants_page(mut self) -> Self {
+    /// Mark a new constants page and map it for its whole lifetime, so its
+    /// non-coherent writes can defer their flush to the next submit.
+    pub(crate) fn into_dynamic_constants_page(mut self) -> Result<Self> {
+        // SAFETY: the buffer is new; no GPU or host access can overlap.
+        unsafe {
+            self.mapped_slice_mut(0, self.size)?;
+        }
         self.dynamic_constants_page = true;
-        self
+        Ok(self)
     }
     pub(crate) fn is_dynamic_constants_page(&self) -> bool {
         self.dynamic_constants_page
@@ -682,6 +688,19 @@ impl Buffer {
         wait_ns: Option<u64>,
         copy: impl FnOnce(*mut u8),
     ) -> Result<()> {
+        self.host_access_with(offset, len, write, false, wait_ns, copy)
+    }
+    /// [`Self::host_access`]; `defer_flush` queues non-coherent written atoms
+    /// on the device instead of flushing them immediately.
+    fn host_access_with(
+        &self,
+        offset: u64,
+        len: u64,
+        write: bool,
+        defer_flush: bool,
+        wait_ns: Option<u64>,
+        copy: impl FnOnce(*mut u8),
+    ) -> Result<()> {
         if self.device.is_device_lost() {
             return Err(Error::DeviceLost);
         }
@@ -732,7 +751,15 @@ impl Buffer {
                 &completed,
             )?;
             if pending.is_empty() {
-                let result = self.copy_locked(&host_range, coherent, write, copy);
+                let flush = if write {
+                    super::dynamic_constants::host_write_flush(
+                        self.allocation.properties,
+                        defer_flush,
+                    )
+                } else {
+                    super::dynamic_constants::HostFlush::None
+                };
+                let result = self.copy_locked(&host_range, coherent, write, flush, copy);
                 drop(reservation);
                 drop(host);
                 return result;
@@ -764,6 +791,7 @@ impl Buffer {
         host_range: &super::allocator::HostMemoryRange,
         coherent: bool,
         write: bool,
+        flush: super::dynamic_constants::HostFlush,
         copy: impl FnOnce(*mut u8),
     ) -> Result<()> {
         self.last_use.prepare_buffer_host_range(
@@ -814,13 +842,31 @@ impl Buffer {
         // A failing flush does not undo the CPU copy. Publish the conservative
         // host revision even on that error, so bound native programs go stale.
         host_state.accessed = true;
-        let result = if write && !coherent {
-            unsafe { self.device.device.flush_mapped_memory_ranges(&range) }
-        } else {
-            Ok(())
-        };
-        unmap();
-        super::error::observe_vulkan(&self.device, result)
+        match flush {
+            super::dynamic_constants::HostFlush::None => {
+                unmap();
+                Ok(())
+            }
+            super::dynamic_constants::HostFlush::Now => {
+                let result = unsafe { self.device.device.flush_mapped_memory_ranges(&range) };
+                unmap();
+                super::error::observe_vulkan(&self.device, result)
+            }
+            // Deferred flushes require a persistent mapping (constants pages).
+            super::dynamic_constants::HostFlush::Deferred if shared_pointer.is_some() => {
+                self.device.host_flush.record(
+                    self.allocation.accounting_id(),
+                    self.allocation.handle,
+                    host_range.memory_offset,
+                    host_range.memory_size,
+                )
+            }
+            super::dynamic_constants::HostFlush::Deferred => {
+                let result = unsafe { self.device.device.flush_mapped_memory_ranges(&range) };
+                unmap();
+                super::error::observe_vulkan(&self.device, result)
+            }
+        }
     }
     fn write_impl(&self, offset: u64, bytes: &[u8], wait_ns: Option<u64>) -> Result<()> {
         self.host_access(offset, bytes.len() as u64, true, wait_ns, |base| unsafe {
@@ -883,6 +929,15 @@ impl Buffer {
     pub fn write_bytes_unsynchronized(&self, offset: u64, bytes: &[u8]) -> Result<()> {
         self.write_impl(offset, bytes, None)
     }
+    /// [`Self::write_bytes_unsynchronized`] whose non-coherent flush is
+    /// deferred to the device's next queue submit (one call for all queued
+    /// ranges). Only for persistently mapped dynamic-constants pages.
+    pub(crate) fn write_bytes_deferred_flush(&self, offset: u64, bytes: &[u8]) -> Result<()> {
+        self.host_access_with(offset, bytes.len() as u64, true, true, None, |base| unsafe {
+            // SAFETY: the range was validated against the mapped buffer.
+            std::ptr::copy_nonoverlapping(bytes.as_ptr(), base.add(offset as usize), bytes.len())
+        })
+    }
     /// 在已确认本缓冲 GPU 操作完成后读回，保留非 coherent 内存失效处理，不做整设备等待。
     ///
     /// # Safety
@@ -904,6 +959,10 @@ impl Buffer {
 }
 impl Drop for Buffer {
     fn drop(&mut self) {
+        if self.dynamic_constants_page {
+            // Unsubmitted deferred flushes of a freed page are meaningless.
+            self.device.host_flush.forget(self.allocation.accounting_id());
+        }
         if self.mapped_ptr.take().is_some() {
             unsafe {
                 self.device.device.unmap_memory(self.allocation.handle);

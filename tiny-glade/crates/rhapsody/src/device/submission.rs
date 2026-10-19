@@ -246,6 +246,7 @@ impl Device {
         for batch in batches {
             batch.validate(&self.timelines)?;
         }
+        self.flush_deferred_host_writes()?;
         if self
             .caps()
             .is_enabled(crate::device::Feature::Synchronization2)

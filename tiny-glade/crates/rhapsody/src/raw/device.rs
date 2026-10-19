@@ -70,6 +70,8 @@ pub struct Device {
     /// Loaded once at creation when `VK_KHR_synchronization2` is enabled.
     pub(crate) synchronization2: Option<ash::khr::synchronization2::Device>,
     memory_budget_extension: bool,
+    /// Non-coherent dynamic-constants writes flushed before the next submit.
+    pub(crate) host_flush: super::dynamic_constants::HostFlushQueue,
     /// Must stay the last field: the instance outlives the logical device.
     pub instance: Arc<super::instance::VulkanInstance>,
 }
@@ -356,6 +358,7 @@ impl Device {
                 suballocator,
                 synchronization2,
                 memory_budget_extension,
+                host_flush: Default::default(),
             }))
             .inspect(|device| {
                 if let Err(error) = device.refresh_memory_budget() {
@@ -399,6 +402,20 @@ impl Drop for Device {
 }
 
 impl Device {
+    /// Flush every queued non-coherent dynamic-constants write with one
+    /// `vkFlushMappedMemoryRanges` call. Runs before each queue submit; a
+    /// no-op (one atomic load) when nothing is pending, e.g. coherent memory.
+    pub(crate) fn flush_deferred_host_writes(&self) -> crate::Result<()> {
+        self.host_flush.flush_with(|ranges| {
+            super::error::observe_vulkan(self, unsafe {
+                self.device.flush_mapped_memory_ranges(ranges)
+            })
+        })
+    }
+    /// Number of deferred host-flush calls issued (statistics).
+    pub fn deferred_host_flush_count(&self) -> u64 {
+        self.host_flush.flush_calls()
+    }
     pub fn min_subgroup_size_option(&self) -> Option<u32> {
         if !self
             .enabled_extensions
