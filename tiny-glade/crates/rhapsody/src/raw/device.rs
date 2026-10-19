@@ -72,6 +72,8 @@ pub struct Device {
     memory_budget_extension: bool,
     /// Non-coherent dynamic-constants writes flushed before the next submit.
     pub(crate) host_flush: super::dynamic_constants::HostFlushQueue,
+    /// Caches asked to release idle entries under memory pressure.
+    pub evictables: crate::device::EvictionRegistry,
     /// Shared setup context; weak because its pools own the device.
     setup: Mutex<std::sync::Weak<super::setup::SetupContext>>,
     /// Must stay the last field: the instance outlives the logical device.
@@ -362,6 +364,7 @@ impl Device {
                 memory_budget_extension,
                 host_flush: Default::default(),
                 setup: Mutex::new(std::sync::Weak::new()),
+                evictables: Default::default(),
             }))
             .inspect(|device| {
                 if let Err(error) = device.refresh_memory_budget() {
@@ -425,6 +428,34 @@ impl Device {
         let context = super::setup::SetupContext::new(self.shared())?;
         *cached = Arc::downgrade(&context);
         Ok(context)
+    }
+    /// Register a cache whose idle entries the allocator may release under
+    /// memory pressure. The device keeps only the weak reference.
+    pub fn register_evictable(
+        &self,
+        cache: std::sync::Weak<dyn crate::device::Evictable>,
+        priority: crate::device::EvictionPriority,
+    ) {
+        self.evictables.register(cache, priority);
+    }
+    /// Ask registered caches to release idle (CPU-unreferenced, GPU-complete)
+    /// entries until about `target_bytes` are freed, then destroy what became
+    /// collectable. Returns the bytes the caches reported released.
+    pub fn evict_idle_caches(&self, target_bytes: u64) -> u64 {
+        if self.evictables.is_empty() {
+            return 0;
+        }
+        let Ok(completed) = self.poll() else {
+            return 0;
+        };
+        let released = self.evictables.evict(&completed, target_bytes);
+        if released != 0 {
+            if let Err(error) = self.try_collect_all_completed() {
+                log::warn!("collecting evicted cache entries failed: {error}");
+            }
+            let _ = self.trim_unused_suballocations();
+        }
+        released
     }
     /// Number of deferred host-flush calls issued (statistics).
     pub fn deferred_host_flush_count(&self) -> u64 {

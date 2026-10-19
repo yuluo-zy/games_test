@@ -18,12 +18,13 @@
 //! convenience waits only for its own successful GPU submission points.
 use crate::{
     device::Device,
-    raw::buffer::{Buffer, BufferDesc},
+    raw::buffer::Buffer,
     resource::range_state::AccessScope,
     sync::{SyncPoint, SyncSet},
 };
 mod queue;
 mod record;
+mod staging;
 pub(crate) mod texture;
 use ash::vk;
 use queue::UploadQueue;
@@ -32,6 +33,7 @@ pub use queue::{
     UploadQueueStats, UploadStatus,
 };
 use record::{PendingAcquire, QueueTarget, UploadRoute, WrittenPiece};
+use staging::{ReadbackLease, Staging};
 use std::sync::Arc;
 pub use texture::TextureUpload;
 use texture::TransferPublish;
@@ -73,22 +75,6 @@ impl TransferConfig {
     }
 }
 
-struct UploadSlot {
-    buffer: Arc<Buffer>,
-    last_use: SyncSet,
-}
-struct ReadbackSlot {
-    buffer: Arc<Buffer>,
-    last_use: SyncSet,
-    lease: Arc<ReadbackLease>,
-}
-struct ReadbackLease {
-    buffer: Arc<Buffer>,
-    point: SyncPoint,
-    bytes: usize,
-    _memory: crate::raw::allocator::CpuMemoryReservation,
-}
-
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct TransferStats {
     pub committed_bytes: u64,
@@ -96,6 +82,8 @@ pub struct TransferStats {
     pub pending_readbacks: u32,
     pub leased_readbacks: u32,
     pub capacity_stalls: u64,
+    /// Idle staging slots released under device memory pressure.
+    pub evicted_slots: u64,
 }
 
 pub struct TransferManager {
@@ -109,14 +97,11 @@ pub struct TransferManager {
     /// queue but whose graphics submit failed; retried before new work.
     pending_acquires: Vec<AcquireBatch>,
     config: TransferConfig,
-    uploads: Vec<UploadSlot>,
-    readbacks: Vec<ReadbackSlot>,
-    committed_bytes: u64,
+    /// Staging slots; registered as an evictable cache with the device.
+    staging: Arc<parking_lot::Mutex<Staging>>,
     capacity_stalls: u64,
     queued: UploadQueue<Buffer>,
     scratch: Scratch,
-    // Vectors drop before their actual capacity credit.
-    _slots_memory: crate::raw::allocator::CpuMemoryReservation,
 }
 
 /// A successful GPU upload; its completion point is never published on failure.
@@ -287,75 +272,20 @@ impl TransferManager {
             .as_ref()
             .filter(|target| target.family() != graphics.family())
             .map(|target| [graphics.family(), target.family()]);
-        let staging = |desc: &BufferDesc| -> crate::Result<Arc<Buffer>> {
-            let mut buffer = match staging_families {
-                Some(families) => Buffer::new_concurrent(device.clone(), desc, &families)?,
-                None => Buffer::new_dedicated(device.clone(), desc)?,
-            };
-            // Map once for the slot lifetime; every later host copy reuses it.
-            // SAFETY: the buffer is new, so no GPU or host access can overlap.
-            unsafe {
-                buffer.mapped_slice_mut(0, desc.size)?;
-            }
-            Ok(Arc::new(buffer))
-        };
         let scratch = Scratch::new(&device, config.chunk_bytes)?;
-        let mut slots_memory = device.allocator_stats.reserve_cpu_bytes(
-            u64::from(config.slots) * (size_of::<UploadSlot>() + size_of::<ReadbackSlot>()) as u64,
-            crate::device::BudgetCategory::Live,
-        )?;
-        let mut uploads = Vec::new();
-        let mut readbacks = Vec::new();
-        uploads
-            .try_reserve_exact(config.slots as usize)
-            .map_err(|_| crate::Error::OutOfHostMemory)?;
-        readbacks
-            .try_reserve_exact(config.slots as usize)
-            .map_err(|_| crate::Error::OutOfHostMemory)?;
-        slots_memory.resize(
-            (uploads.capacity() * size_of::<UploadSlot>()
-                + readbacks.capacity() * size_of::<ReadbackSlot>()) as u64,
-        )?;
-        let mut committed_bytes = 0u64;
-        for _ in 0..config.slots {
-            let upload = staging(&BufferDesc::new_cpu_to_gpu(
-                config.chunk_bytes,
-                vk::BufferUsageFlags::TRANSFER_SRC,
-            ))?;
-            let readback = staging(&BufferDesc::new_gpu_to_cpu(
-                config.chunk_bytes,
-                vk::BufferUsageFlags::TRANSFER_DST,
-            ))?;
-            committed_bytes = committed_bytes
-                .checked_add(upload.allocation_bytes())
-                .and_then(|n| n.checked_add(readback.allocation_bytes()))
-                .ok_or(crate::Error::OutOfDeviceMemory)?;
-            if committed_bytes > config.max_bytes {
-                return Err(crate::Error::OutOfDeviceMemory);
-            }
-            uploads.push(UploadSlot {
-                buffer: upload,
-                last_use: SyncSet::EMPTY,
-            });
-            let memory = device.allocator_stats.reserve_cpu_bytes(
-                crate::raw::allocator::shared_cpu_bytes::<ReadbackLease>()?,
-                crate::device::BudgetCategory::Live,
-            )?;
-            let lease = Arc::new(ReadbackLease {
-                buffer: readback.clone(),
-                point: SyncPoint {
-                    queue: graphics.id,
-                    value: 0,
-                },
-                bytes: 0,
-                _memory: memory,
-            });
-            readbacks.push(ReadbackSlot {
-                buffer: readback,
-                last_use: SyncSet::EMPTY,
-                lease,
-            });
-        }
+        let staging = Arc::new(parking_lot::Mutex::new(Staging::new(
+            device.clone(),
+            staging_families,
+            config.slots,
+            config.chunk_bytes,
+            config.max_bytes,
+            graphics.id,
+        )?));
+        let evictable: Arc<dyn crate::device::Evictable> = staging.clone();
+        device.register_evictable(
+            Arc::downgrade(&evictable),
+            crate::device::EvictionPriority::Transient,
+        );
         let transfer_images = transfer
             .as_ref()
             .map_or(TransferImageSupport::NONE, |target| {
@@ -369,12 +299,9 @@ impl TransferManager {
             pending_acquires: Vec::new(),
             config,
             scratch,
-            uploads,
-            readbacks,
-            committed_bytes,
+            staging,
             capacity_stalls: 0,
             queued,
-            _slots_memory: slots_memory,
         })
     }
 
@@ -496,11 +423,12 @@ impl TransferManager {
             };
             let job = self.queued.job(index);
             let bytes = job.bytes();
+            let mut staging = self.staging.lock();
             let mut uploader = Uploader {
                 device: &self.device,
                 graphics: &self.graphics,
                 transfer: self.transfer.as_ref(),
-                uploads: &mut self.uploads,
+                staging: &mut staging,
                 stalls: &mut self.capacity_stalls,
                 scratch: &mut self.scratch,
                 pending_acquires: &mut self.pending_acquires,
@@ -555,9 +483,9 @@ impl TransferManager {
             return Err(crate::Error::Timeout);
         }
         self.retry_pending_acquires()?;
-        let point = self
-            .uploader()
-            .submit(&destination, std::iter::once((offset, bytes)))?;
+        let point = self.with_uploader(|uploader| {
+            uploader.submit(&destination, std::iter::once((offset, bytes)))
+        })?;
         Ok(UploadTicket {
             device: self.device.clone(),
             buffer: destination,
@@ -721,21 +649,32 @@ impl TransferManager {
             .collect();
         self.device.try_collect_garbage()?;
         let completed = self.device.poll()?;
-        let slot = if total <= self.config.chunk_bytes {
-            self.uploads
-                .iter()
-                .position(|slot| slot.last_use.is_reached(&completed))
+        let staging_slots = self.staging.clone();
+        let mut slots = staging_slots.lock();
+        let mut slot = if total <= self.config.chunk_bytes {
+            slots.free_upload(&completed)
         } else {
             None
         };
-        let staging = match slot {
-            Some(index) => {
+        // An evicted slot that cannot be recreated now falls back to a
+        // temporary staging buffer.
+        let resident = match slot {
+            Some(index) => match slots.upload_buffer(index) {
+                Ok(buffer) => Some(buffer),
+                Err(error) if crate::raw::allocator::is_memory_exhaustion(&error) => {
+                    slot = None;
+                    None
+                }
+                Err(error) => return Err(error),
+            },
+            None => None,
+        };
+        let staging = match resident {
+            Some(buffer) => {
                 let bytes = self.scratch.buffer(total as usize)?;
                 texture::pack_all(&pairs, &bases, total, bytes)?;
-                self.uploads[index]
-                    .buffer
-                    .write_bytes_unsynchronized(0, bytes)?;
-                self.uploads[index].buffer.clone()
+                buffer.write_bytes_unsynchronized(0, bytes)?;
+                buffer
             }
             None => {
                 let mut bytes = Vec::new();
@@ -762,7 +701,7 @@ impl TransferManager {
                     total,
                 )?;
                 if let Some(index) = slot {
-                    self.uploads[index].last_use = SyncSet::from_point(release);
+                    slots.uploads[index].last_use = SyncSet::from_point(release);
                 }
                 return match acquire {
                     None => Ok(release),
@@ -776,7 +715,7 @@ impl TransferManager {
             }
         };
         if let Some(index) = slot {
-            self.uploads[index].last_use = SyncSet::from_point(point);
+            slots.uploads[index].last_use = SyncSet::from_point(point);
         }
         Ok(point)
     }
@@ -815,21 +754,21 @@ impl TransferManager {
         )?;
         self.device.try_collect_garbage()?;
         let completed = self.device.poll()?;
-        let Some(slot) = self.readbacks.iter_mut().find(|slot| {
-            Arc::strong_count(&slot.lease) == 1
-                && Arc::weak_count(&slot.lease) == 0
-                && slot.last_use.is_reached(&completed)
-        }) else {
+        let staging = self.staging.clone();
+        let mut slots = staging.lock();
+        let Some(index) = slots.free_readback(&completed) else {
             self.capacity_stalls += 1;
             return Err(crate::Error::Timeout);
         };
+        slots.ensure_readback(index).map_err(defer_on_exhaustion)?;
+        let readback = slots.readback_buffer(index);
         let size = bytes as u64;
         let target = &self.graphics;
         let mut command = target.pool.allocate()?;
         // SAFETY: the copy writes exactly these slot bytes; the source access is
         // recorded below from its tracked state.
         unsafe {
-            command.retain_opaque_buffer_range(slot.buffer.clone(), 0, size)?;
+            command.retain_opaque_buffer_range(readback.clone(), 0, size)?;
             command.retain_recorded(source.clone())?;
         }
         command.begin()?;
@@ -850,7 +789,7 @@ impl TransferManager {
             self.device.device.cmd_copy_buffer(
                 command.handle,
                 source.handle,
-                slot.buffer.handle,
+                readback.handle,
                 &[vk::BufferCopy {
                     src_offset: offset,
                     dst_offset: 0,
@@ -868,7 +807,7 @@ impl TransferManager {
                 .dst_access_mask(vk::AccessFlags::HOST_READ)
                 .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
                 .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                .buffer(slot.buffer.handle)
+                .buffer(readback.handle)
                 .offset(0)
                 .size(size),
         );
@@ -877,38 +816,44 @@ impl TransferManager {
         let submitted = command.submit_to(target.queue, &[], &[])?;
         // Publication happens only after a successful submit; a failed submit
         // leaves the private lease untouched.
-        let lease = Arc::get_mut(&mut slot.lease).expect("lease is private until publication");
-        lease.point = submitted.point;
-        lease.bytes = bytes;
-        slot.last_use = SyncSet::from_point(submitted.point);
         Ok(ReadbackTicket {
-            lease: slot.lease.clone(),
+            lease: slots.publish_readback(index, submitted.point, bytes),
         })
     }
 
     pub fn stats(&self) -> crate::Result<TransferStats> {
         let completed = self.device.poll()?;
+        let staging = self.staging.lock();
         Ok(TransferStats {
-            committed_bytes: self.committed_bytes,
-            pending_uploads: self
+            committed_bytes: staging.committed_bytes,
+            pending_uploads: staging
                 .uploads
                 .iter()
                 .filter(|slot| !slot.last_use.is_reached(&completed))
                 .count() as u32,
-            pending_readbacks: self
+            pending_readbacks: staging
                 .readbacks
                 .iter()
                 .filter(|slot| !slot.last_use.is_reached(&completed))
                 .count() as u32,
-            leased_readbacks: self
+            leased_readbacks: staging
                 .readbacks
                 .iter()
-                .filter(|slot| {
-                    Arc::strong_count(&slot.lease) != 1 || Arc::weak_count(&slot.lease) != 0
-                })
+                .filter(|slot| slot.leased())
                 .count() as u32,
             capacity_stalls: self.capacity_stalls,
+            evicted_slots: staging.evicted_slots,
         })
+    }
+}
+
+/// Recreating an evicted staging slot under memory pressure defers the
+/// request (like full staging) instead of failing it.
+fn defer_on_exhaustion(error: crate::Error) -> crate::Error {
+    if crate::raw::allocator::is_memory_exhaustion(&error) {
+        crate::Error::Timeout
+    } else {
+        error
     }
 }
 
@@ -964,22 +909,23 @@ struct Uploader<'a> {
     device: &'a Arc<Device>,
     graphics: &'a QueueTarget,
     transfer: Option<&'a QueueTarget>,
-    uploads: &'a mut [UploadSlot],
+    staging: &'a mut Staging,
     stalls: &'a mut u64,
     scratch: &'a mut Scratch,
     pending_acquires: &'a mut Vec<AcquireBatch>,
 }
 impl TransferManager {
-    fn uploader(&mut self) -> Uploader<'_> {
-        Uploader {
+    fn with_uploader<R>(&mut self, run: impl FnOnce(&mut Uploader<'_>) -> R) -> R {
+        let mut staging = self.staging.lock();
+        run(&mut Uploader {
             device: &self.device,
             graphics: &self.graphics,
             transfer: self.transfer.as_ref(),
-            uploads: &mut self.uploads,
+            staging: &mut staging,
             stalls: &mut self.capacity_stalls,
             scratch: &mut self.scratch,
             pending_acquires: &mut self.pending_acquires,
-        }
+        })
     }
 }
 /// Upper bound of regions per native copy; queue admission enforces it.
@@ -1030,14 +976,14 @@ impl Uploader<'_> {
     ) -> crate::Result<SyncPoint> {
         self.device.try_collect_garbage()?;
         let completed = self.device.poll()?;
-        let Some(slot) = self
-            .uploads
-            .iter_mut()
-            .find(|slot| slot.last_use.is_reached(&completed))
-        else {
+        let Some(index) = self.staging.free_upload(&completed) else {
             *self.stalls += 1;
             return Err(crate::Error::Timeout);
         };
+        let buffer = self
+            .staging
+            .upload_buffer(index)
+            .map_err(defer_on_exhaustion)?;
         let mut copies = [vk::BufferCopy::default(); MAX_COPY_REGIONS];
         let mut ranges = [(0u64, 0u64); MAX_COPY_REGIONS];
         let mut count = 0;
@@ -1046,7 +992,7 @@ impl Uploader<'_> {
             if count == copies.len()
                 || packed
                     .checked_add(bytes.len() as u64)
-                    .is_none_or(|end| end > slot.buffer.size)
+                    .is_none_or(|end| end > buffer.size)
             {
                 return Err(crate::Error::invalid_usage(
                     "upload segments exceed admitted staging capacity",
@@ -1069,12 +1015,12 @@ impl Uploader<'_> {
         // One host write (one poll and at most one non-coherent flush).
         if count == 1 {
             let (_, bytes) = segments.clone().next().expect("one segment");
-            slot.buffer.write_bytes_unsynchronized(0, bytes)?;
+            buffer.write_bytes_unsynchronized(0, bytes)?;
         } else {
             let bytes = self
                 .scratch
                 .pack(segments.map(|(_, bytes)| bytes), packed as usize)?;
-            slot.buffer.write_bytes_unsynchronized(0, bytes)?;
+            buffer.write_bytes_unsynchronized(0, bytes)?;
         }
         let route = route(self.graphics, self.transfer, destination, copies);
         let target = match route {
@@ -1091,7 +1037,7 @@ impl Uploader<'_> {
         };
         // SAFETY: the copy reads exactly the packed staging span.
         unsafe {
-            command.retain_opaque_buffer_range(slot.buffer.clone(), 0, packed)?;
+            command.retain_opaque_buffer_range(buffer.clone(), 0, packed)?;
         }
         command.begin()?;
         let mut pieces: Vec<WrittenPiece> = Vec::new();
@@ -1100,7 +1046,7 @@ impl Uploader<'_> {
         unsafe {
             self.device.device.cmd_copy_buffer(
                 command.handle,
-                slot.buffer.handle,
+                buffer.handle,
                 destination.handle,
                 copies,
             );
@@ -1125,7 +1071,7 @@ impl Uploader<'_> {
         // A failed submit publishes no state: nothing was released and no
         // acquire becomes pending.
         let submitted = command.submit_to(target.queue, &[], &[])?;
-        slot.last_use = SyncSet::from_point(submitted.point);
+        self.staging.uploads[index].last_use = SyncSet::from_point(submitted.point);
         let Some(acquire) = acquire else {
             return Ok(submitted.point);
         };

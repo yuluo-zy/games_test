@@ -12,7 +12,8 @@ pub use submission::{Signal, SubmitBatch, Wait};
 
 pub use crate::raw::device::Device;
 pub use budget::{
-    BudgetAction, BudgetCategory, BudgetExceeded, BudgetUsage, MemoryBudgetController,
+    BudgetAction, BudgetCategory, BudgetExceeded, BudgetUsage, Evictable, EvictionPriority,
+    EvictionRegistry, MemoryBudgetController,
 };
 pub use caps::{DeviceCaps, Feature, FeatureSet};
 pub use generation::{DeviceGeneration, Generationed};

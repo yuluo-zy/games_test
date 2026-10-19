@@ -39,7 +39,13 @@ struct RingPool {
     /// The driver reported pool exhaustion; skip until reset (transient) or
     /// until retired sets are reclaimed (persistent).
     full: bool,
+    /// Allocation clock of the last set taken from this pool (LRU eviction).
+    used: u64,
 }
+
+/// Driver memory of one descriptor set, for eviction progress accounting.
+/// Descriptor pools live in driver memory outside the device-memory ledger.
+const DESCRIPTOR_SET_BYTES_ESTIMATE: u64 = 256;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct DescriptorPoolRingStats {
@@ -57,6 +63,7 @@ pub struct DescriptorPoolRing {
 struct RingState {
     pools: Vec<RingPool>,
     current: usize,
+    clock: u64,
     stats: DescriptorPoolRingStats,
 }
 
@@ -78,9 +85,19 @@ impl DescriptorPoolRing {
             state: Mutex::new(RingState {
                 pools: Vec::new(),
                 current: 0,
+                clock: 0,
                 stats: DescriptorPoolRingStats::default(),
             }),
         })
+    }
+
+    /// Let the device release this ring's idle pools under memory pressure.
+    pub fn register_eviction(self: &Arc<Self>) {
+        let evictable: Arc<dyn crate::device::Evictable> = self.clone();
+        self.device.register_evictable(
+            Arc::downgrade(&evictable),
+            crate::device::EvictionPriority::Normal,
+        );
     }
 
     pub fn stats(&self) -> DescriptorPoolRingStats {
@@ -118,6 +135,8 @@ impl DescriptorPoolRing {
             match self.try_allocate(&mut state.pools[index], &layout)? {
                 Some(set) => {
                     state.current = index;
+                    state.clock += 1;
+                    state.pools[index].used = state.clock;
                     return Ok(set);
                 }
                 None => continue,
@@ -137,10 +156,13 @@ impl DescriptorPoolRing {
         } else {
             VulkanDescriptorPool::new(self.device.clone(), &self.plan, self.config.sets_per_pool)?
         };
+        state.clock += 1;
+        let used = state.clock;
         state.pools.push(RingPool {
             pool,
             allocated: 0,
             full: false,
+            used,
         });
         state.stats.created += 1;
         state.current = count;
@@ -215,5 +237,41 @@ impl DescriptorPoolRing {
             }
             Err(error) => Err(error),
         }
+    }
+}
+
+/// Idle pools (no live set, every GPU use completed) are destroyed in LRU
+/// order; the ring recreates pools on demand.
+impl crate::device::Evictable for DescriptorPoolRing {
+    fn evict_idle(&self, completed: &crate::sync::CompletedValues, target_bytes: u64) -> u64 {
+        let Some(mut state) = self.state.try_lock() else {
+            return 0;
+        };
+        let per_pool = u64::from(self.config.sets_per_pool) * DESCRIPTOR_SET_BYTES_ESTIMATE;
+        let mut released = 0;
+        while released < target_bytes {
+            let victim = state
+                .pools
+                .iter()
+                .enumerate()
+                .filter(|(_, entry)| {
+                    entry.pool.live_set_count() == 0 && entry.pool.last_use.is_reached(completed)
+                })
+                .min_by_key(|(_, entry)| entry.used)
+                .map(|(index, _)| index);
+            let Some(index) = victim else {
+                break;
+            };
+            // Dropping retires the pool after its (already reached) last use.
+            state.pools.remove(index);
+            if state.current >= index && state.current > 0 {
+                state.current -= 1;
+            }
+            released += per_pool;
+        }
+        if state.current >= state.pools.len() {
+            state.current = 0;
+        }
+        released
     }
 }

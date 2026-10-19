@@ -345,6 +345,11 @@ impl AsyncPipelineCompiler {
                 merged: 0,
             }),
         });
+        let evictable: Arc<dyn crate::device::Evictable> = shared.clone();
+        shared.cache.device.register_evictable(
+            Arc::downgrade(&evictable),
+            crate::device::EvictionPriority::Expensive,
+        );
         let mut compiler = Self {
             shared,
             workers: Vec::new(),
@@ -643,6 +648,37 @@ fn worker(shared: Arc<Shared>) {
         completion.changed.notify_all();
     }
 }
+/// Under memory pressure, completed requests that no ticket references are
+/// dropped from the request cache in LRU order. Pipelines still referenced by
+/// callers or recorded commands stay alive through their own owners.
+impl crate::device::Evictable for Shared {
+    fn evict_idle(&self, _completed: &crate::sync::CompletedValues, target_bytes: u64) -> u64 {
+        let Some(mut state) = self.state.try_lock() else {
+            return 0;
+        };
+        evict_completed_requests(&mut state, target_bytes)
+    }
+}
+fn evict_completed_requests(state: &mut State, target_bytes: u64) -> u64 {
+    let mut released = 0u64;
+    let mut index = 0;
+    while index < state.lru.len() && released < target_bytes {
+        let idle = state.cached.get(&state.lru[index]).is_some_and(|entry| {
+            Arc::strong_count(&entry.completion) == 1
+                && !matches!(*entry.completion.status.lock(), Status::Pending)
+        });
+        if !idle {
+            index += 1;
+            continue;
+        }
+        let key = state.lru.remove(index).expect("bounded LRU position");
+        if let Some(entry) = state.cached.remove(&key) {
+            state.cache_bytes -= entry.bytes;
+            released += entry.bytes as u64;
+        }
+    }
+    released
+}
 impl Drop for AsyncPipelineCompiler {
     fn drop(&mut self) {
         {
@@ -919,6 +955,75 @@ fn atomic_write_temporary(path: &Path, temporary: &Path, parts: &[&[u8]]) -> Res
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn pressure_evicts_only_completed_unreferenced_requests_in_lru_order() {
+        let stats = Arc::new(crate::raw::allocator::AllocatorStats::default());
+        let mut state = State {
+            priority_burst: 0,
+            cancelled: 0,
+            queue: VecDeque::new(),
+            cached: BTreeMap::new(),
+            lru: VecDeque::new(),
+            pending: 0,
+            request_bytes: 0,
+            cache_bytes: 0,
+            stopping: false,
+            peak_pending: 0,
+            peak_request_bytes: 0,
+            compiled: 0,
+            merged: 0,
+        };
+        let mut tickets = Vec::new();
+        // (status, ticket alive) in LRU order.
+        let entries = [
+            (Status::Failed(Arc::new(Error::OutOfHostMemory)), false),
+            (Status::Pending, false),
+            (Status::Failed(Arc::new(Error::OutOfHostMemory)), true),
+            (Status::Failed(Arc::new(Error::OutOfHostMemory)), false),
+        ];
+        for (index, (status, referenced)) in entries.into_iter().enumerate() {
+            let key: Key = Arc::new(KeyPayload::Raster(vec![index as u64]));
+            let completion = Arc::new(Completion {
+                status: Mutex::new(status),
+                changed: Condvar::new(),
+            });
+            if referenced {
+                tickets.push(completion.clone());
+            }
+            state.cached.insert(
+                key.clone(),
+                Cached {
+                    reservation: stats
+                        .reserve_cpu_bytes(10, crate::device::BudgetCategory::Cache)
+                        .unwrap(),
+                    completion,
+                    bytes: 10,
+                },
+            );
+            state.lru.push_back(key);
+            state.cache_bytes += 10;
+        }
+        assert_eq!(evict_completed_requests(&mut state, 5), 10);
+        assert_eq!(state.cached.len(), 3);
+        assert_eq!(evict_completed_requests(&mut state, 100), 10);
+        let remaining: Vec<_> = state
+            .lru
+            .iter()
+            .map(|key| match &**key {
+                KeyPayload::Raster(values) => values[0],
+                _ => unreachable!(),
+            })
+            .collect();
+        assert_eq!(
+            remaining,
+            [1, 2],
+            "pending and ticket-referenced requests stay"
+        );
+        assert_eq!(state.cache_bytes, 20);
+        assert_eq!(stats.cpu_memory_usage().cache, 20);
+        drop(tickets);
+    }
     #[test]
     fn atomic_cache_write_does_not_remove_an_unowned_temporary_collision() {
         let directory = std::env::temp_dir().join(format!(

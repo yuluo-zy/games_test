@@ -121,7 +121,37 @@ impl MemoryBlock {
     }
 
     /// Required dedicated allocations name the one resource they may bind.
+    /// Under memory pressure registered caches release idle entries first;
+    /// an out-of-memory result evicts again and retries once.
     pub(crate) fn allocate_for_resource(
+        device: Arc<Device>,
+        requirements: vk::MemoryRequirements,
+        required: vk::MemoryPropertyFlags,
+        preferred: vk::MemoryPropertyFlags,
+        flags: vk::MemoryAllocateFlags,
+        buffer: vk::Buffer,
+        image: vk::Image,
+    ) -> Result<Self> {
+        let memory_type = choose_memory_type(
+            &device.memory,
+            requirements.memory_type_bits,
+            required,
+            preferred,
+        );
+        relieve_pressure(&device, memory_type, requirements.size);
+        with_eviction_retry(&device, requirements.size, || {
+            Self::allocate_for_resource_once(
+                device.clone(),
+                requirements,
+                required,
+                preferred,
+                flags,
+                buffer,
+                image,
+            )
+        })
+    }
+    fn allocate_for_resource_once(
         device: Arc<Device>,
         requirements: vk::MemoryRequirements,
         required: vk::MemoryPropertyFlags,
@@ -306,6 +336,55 @@ impl MemoryBlock {
             atom,
             dedicated,
         )
+    }
+}
+
+/// Whether an allocation of `bytes` from `memory_type` should first ask
+/// registered caches to release idle entries.
+pub(crate) fn needs_eviction(
+    action: crate::device::BudgetAction,
+    heap_available: Option<u64>,
+    bytes: u64,
+) -> bool {
+    action == crate::device::BudgetAction::EvictCache
+        || heap_available.is_some_and(|available| available < bytes)
+}
+
+/// Under budget pressure, or when `bytes` would exceed the heap budget, ask
+/// registered caches to release idle entries before allocating.
+pub(crate) fn relieve_pressure(device: &Device, memory_type: Option<u32>, bytes: u64) {
+    let stats = &device.allocator_stats;
+    let heap = memory_type.map(|index| device.memory.memory_types[index as usize].heap_index);
+    if needs_eviction(
+        stats.budget_action(),
+        heap.map(|heap| stats.heap_available(heap)),
+        bytes,
+    ) {
+        device.evict_idle_caches(bytes);
+    }
+}
+
+/// Whether an allocation error can be relieved by releasing cached memory.
+pub(crate) fn is_memory_exhaustion(error: &Error) -> bool {
+    matches!(error, Error::OutOfDeviceMemory | Error::Exhausted(_))
+}
+
+/// Run `attempt`; on memory exhaustion evict idle cache entries and, when
+/// anything was released, retry exactly once.
+pub(crate) fn with_eviction_retry<T>(
+    device: &Device,
+    bytes: u64,
+    mut attempt: impl FnMut() -> Result<T>,
+) -> Result<T> {
+    match attempt() {
+        Err(error) if is_memory_exhaustion(&error) => {
+            if device.evict_idle_caches(bytes) != 0 {
+                attempt()
+            } else {
+                Err(error)
+            }
+        }
+        result => result,
     }
 }
 
@@ -817,7 +896,6 @@ impl AllocatorStats {
         usage
     }
     /// Bytes still admissible on `heap` under the device and heap limits.
-    #[cfg(feature = "suballocation")]
     pub(crate) fn heap_available(&self, heap: u32) -> u64 {
         let state = self.state.lock();
         let device = if state.budget.limit() == 0 {
@@ -1647,4 +1725,19 @@ mod host_subrange_tests {
         assert!(mapped_host_subrange(0, 1000, 1000, 999, 2, 256, true).is_err());
         assert!(mapped_host_subrange(u64::MAX - 1, 4, 4, 0, 1, 1, true).is_err());
     }
+
+    #[test]
+    fn eviction_runs_under_pressure_or_when_the_heap_cannot_hold_the_request() {
+        use crate::device::BudgetAction;
+        assert!(!needs_eviction(BudgetAction::None, None, 1 << 40));
+        assert!(!needs_eviction(BudgetAction::None, Some(100), 100));
+        assert!(needs_eviction(BudgetAction::None, Some(99), 100));
+        assert!(needs_eviction(BudgetAction::EvictCache, Some(u64::MAX), 1));
+        assert!(!needs_eviction(BudgetAction::Backpressure, Some(u64::MAX), 1));
+        assert!(is_memory_exhaustion(&Error::OutOfDeviceMemory));
+        assert!(is_memory_exhaustion(&Error::exhausted("native objects")));
+        assert!(!is_memory_exhaustion(&Error::OutOfHostMemory));
+        assert!(!is_memory_exhaustion(&Error::DeviceLost));
+    }
+
 }
