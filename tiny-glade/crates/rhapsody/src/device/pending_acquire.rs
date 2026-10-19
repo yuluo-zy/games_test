@@ -240,10 +240,9 @@ impl Device {
             .store(entries.len(), Ordering::Release);
         drop(entries);
         if !drained.is_empty() {
-            let dispatch = crate::raw::barrier::BarrierDispatch::new(self);
             // SAFETY: `command` is recording on this device; the barrier
             // covers exactly the ranges whose Acquire patches were recorded.
-            let issued = unsafe { dispatch.issue(self, command.handle, &scope) };
+            let issued = unsafe { self.issue_barriers(command.handle, &scope) };
             if let Err(error) = issued {
                 self.requeue_pending_acquires(drained);
                 return Err(error);
@@ -304,31 +303,22 @@ fn record_acquire(
     // with the release wait, which blocks exactly those stages.
     scope.source_stages |= transfer.destination.stages;
     scope.destination_stages |= transfer.destination.stages;
-    use crate::raw::barrier::{OwnershipHalf, ownership_buffer_barrier, ownership_image_barrier};
-    match target {
+    use crate::raw::barrier::{BarrierTarget, OwnershipHalf, RangeBarrier};
+    // SAFETY: the acquire touches exactly the patched range.
+    let target = match target {
         LiveTarget::Buffer(buffer) => {
-            let barrier =
-                ownership_buffer_barrier(buffer.handle, &transfer, OwnershipHalf::Acquire)?;
-            // SAFETY: the acquire touches exactly the patched range.
             unsafe { command.retain_recorded(buffer.clone())? };
-            scope
-                .buffers
-                .try_reserve(1)
-                .map_err(|_| Error::OutOfHostMemory)?;
-            scope.buffers.push(barrier);
+            BarrierTarget::Buffer(buffer.handle)
         }
         LiveTarget::Image(image) => {
-            let barrier = ownership_image_barrier(image.handle, &transfer, OwnershipHalf::Acquire)?;
-            // SAFETY: the acquire touches exactly the patched range.
             unsafe { command.retain_recorded(image.clone())? };
-            scope
-                .images
-                .try_reserve(1)
-                .map_err(|_| Error::OutOfHostMemory)?;
-            scope.images.push(barrier);
+            BarrierTarget::Image(image.handle)
         }
-    }
-    Ok(())
+    };
+    scope.push(
+        target,
+        &RangeBarrier::ownership(&transfer, OwnershipHalf::Acquire),
+    )
 }
 
 #[cfg(test)]

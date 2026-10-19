@@ -4,9 +4,7 @@ use crate::{
     Error, Result,
     device::{AcquireTarget, Device, PendingAcquire},
     raw::{
-        barrier::{
-            OwnershipHalf, SynchronizationScope, ownership_buffer_barrier, ownership_image_barrier,
-        },
+        barrier::{BarrierTarget, OwnershipHalf, RangeBarrier, SynchronizationScope},
         buffer::Buffer,
         command_buffer::{VulkanCommandBuffer, VulkanCommandPool},
         device::DeviceQueue,
@@ -201,18 +199,13 @@ pub(super) fn record_buffer_writes(
         return Ok(());
     }
     let mut scope = SynchronizationScope::new(source.stages, TRANSFER_WRITE.stages);
-    for &(offset, size) in ranges {
-        scope.buffers.push(
-            vk::BufferMemoryBarrier::default()
-                .src_access_mask(source.access)
-                .dst_access_mask(TRANSFER_WRITE.access)
-                .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                .buffer(destination.handle)
-                .offset(offset)
-                .size(size),
-        );
-    }
+    push_buffer_ranges(
+        &mut scope,
+        destination.handle,
+        ranges,
+        source.access,
+        TRANSFER_WRITE.access,
+    )?;
     scope.issue_into(command)
 }
 
@@ -224,19 +217,37 @@ pub(super) fn record_buffer_visibility(
     ranges: &[(u64, u64)],
 ) -> Result<()> {
     let mut scope = SynchronizationScope::new(TRANSFER_WRITE.stages, BUFFER_CONSUMERS.stages);
-    for &(offset, size) in ranges {
-        scope.buffers.push(
-            vk::BufferMemoryBarrier::default()
-                .src_access_mask(TRANSFER_WRITE.access)
-                .dst_access_mask(BUFFER_CONSUMERS.access)
-                .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                .buffer(buffer)
-                .offset(offset)
-                .size(size),
-        );
-    }
+    push_buffer_ranges(
+        &mut scope,
+        buffer,
+        ranges,
+        TRANSFER_WRITE.access,
+        BUFFER_CONSUMERS.access,
+    )?;
     scope.issue_into(command)
+}
+
+/// Append one queue-local barrier per `(offset, size)` range of `buffer`.
+fn push_buffer_ranges(
+    scope: &mut SynchronizationScope,
+    buffer: vk::Buffer,
+    ranges: &[(u64, u64)],
+    source: vk::AccessFlags,
+    destination: vk::AccessFlags,
+) -> Result<()> {
+    for &(offset, size) in ranges {
+        scope.push(
+            BarrierTarget::Buffer(buffer),
+            &RangeBarrier::local(
+                OwnershipRange::Buffer { offset, size },
+                source,
+                destination,
+                vk::ImageLayout::UNDEFINED,
+                vk::ImageLayout::UNDEFINED,
+            ),
+        )?;
+    }
+    Ok(())
 }
 
 /// Identity of release/acquire pairs created by transfer uploads. Kept in a
@@ -285,11 +296,10 @@ pub(super) fn record_buffer_release(
                 action: PatchAction::Release(transfer),
             },
         )?;
-        scope.buffers.push(ownership_buffer_barrier(
-            destination.handle,
-            &transfer,
-            OwnershipHalf::Release,
-        )?);
+        scope.push(
+            BarrierTarget::Buffer(destination.handle),
+            &RangeBarrier::ownership(&transfer, OwnershipHalf::Release),
+        )?;
         released.push(transfer);
     }
     scope.issue_into(command)
@@ -367,11 +377,10 @@ pub(super) fn image_release_program(
             expected_revision: piece.revision,
             action: PatchAction::Release(transfer),
         });
-        scope.images.push(ownership_image_barrier(
-            image,
-            &transfer,
-            OwnershipHalf::Release,
-        )?);
+        scope.push(
+            BarrierTarget::Image(image),
+            &RangeBarrier::ownership(&transfer, OwnershipHalf::Release),
+        )?;
         released.push(transfer);
     }
     Ok(())
@@ -413,10 +422,12 @@ mod tests {
         assert_ne!(first.pair, second.pair);
         assert!(first.pair >= 1 << 62);
         crate::resource::range_state::validate_transfer(first).unwrap();
-        let release =
-            ownership_buffer_barrier(vk::Buffer::null(), &first, OwnershipHalf::Release).unwrap();
-        let acquire =
-            ownership_buffer_barrier(vk::Buffer::null(), &first, OwnershipHalf::Acquire).unwrap();
+        let release = RangeBarrier::ownership(&first, OwnershipHalf::Release)
+            .buffer(vk::Buffer::null())
+            .unwrap();
+        let acquire = RangeBarrier::ownership(&first, OwnershipHalf::Acquire)
+            .buffer(vk::Buffer::null())
+            .unwrap();
         for barrier in [release, acquire] {
             assert_eq!(barrier.src_queue_family_index, 2);
             assert_eq!(barrier.dst_queue_family_index, 0);
@@ -427,8 +438,7 @@ mod tests {
         assert_eq!(acquire.src_access_mask, vk::AccessFlags::empty());
         assert_eq!(acquire.dst_access_mask, first.destination.access);
         assert!(
-            ownership_buffer_barrier(
-                vk::Buffer::null(),
+            RangeBarrier::ownership(
                 &RangeTransfer {
                     range: OwnershipRange::Image {
                         aspects: 1,
@@ -441,6 +451,7 @@ mod tests {
                 },
                 OwnershipHalf::Release
             )
+            .buffer(vk::Buffer::null())
             .is_err()
         );
     }
@@ -490,7 +501,9 @@ mod tests {
             assert_eq!(patches.len(), 1);
             assert_eq!(patches[0].expected_revision, 4);
             assert!(matches!(patches[0].action, PatchAction::Release(t) if t == released[0]));
-            let a = ownership_image_barrier(image, &released[0], OwnershipHalf::Acquire).unwrap();
+            let a = RangeBarrier::ownership(&released[0], OwnershipHalf::Acquire)
+                .image(image)
+                .unwrap();
             let r = release.images[0];
             assert_eq!((r.old_layout, r.new_layout), (a.old_layout, a.new_layout));
             assert_eq!(r.old_layout, vk::ImageLayout::TRANSFER_DST_OPTIMAL);
@@ -522,11 +535,11 @@ mod tests {
             assert_eq!(a.dst_access_mask, vk::AccessFlags::SHADER_READ);
         }
         assert!(
-            ownership_image_barrier(
-                image,
+            RangeBarrier::ownership(
                 &buffer_transfer(OwnershipRange::Buffer { offset: 0, size: 4 }, 1, 0),
                 OwnershipHalf::Release
             )
+            .image(image)
             .is_err()
         );
     }

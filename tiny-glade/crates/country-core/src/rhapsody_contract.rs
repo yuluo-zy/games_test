@@ -44,29 +44,40 @@ impl GraphicsDevice {
 
     // ---------------------------------------------------------------- 真实调用（WIRING §2.1）
 
-    /// 真实 `GraphicsDevice::issue_full_pipeline_barrier(command: vk::CommandBuffer)`
-    /// （device.rs:911；WIRING §2.1/§3.1 #4）。命令面由 `rg::pass_api::RenderPassApi` 或真实
-    /// `VulkanCommandBuffer` 提供 `vk::CommandBuffer` 句柄。
-    pub fn issue_full_pipeline_barrier(&self, command: ash::vk::CommandBuffer) {
-        self.inner.issue_full_pipeline_barrier(command);
+    /// Full execution and memory dependency on a recording command.
+    ///
+    /// # Safety
+    /// `command` must be recording on this device.
+    pub unsafe fn issue_full_pipeline_barrier(
+        &self,
+        command: ash::vk::CommandBuffer,
+    ) -> rhapsody::Result<()> {
+        unsafe { self.inner.issue_full_pipeline_barrier(command) }
     }
 
-    /// 真实 `GraphicsDevice::issue_pipeline_barrier(command, scope)`（device.rs:882）。
-    pub fn issue_pipeline_barrier(
+    /// Record one barrier batch.
+    ///
+    /// # Safety
+    /// `command` must be recording on this device; every barrier resource
+    /// must stay alive through the command's completion.
+    pub unsafe fn issue_pipeline_barrier(
         &self,
         command: ash::vk::CommandBuffer,
         scope: &rhapsody::raw::barrier::SynchronizationScope,
-    ) {
-        self.inner.issue_pipeline_barrier(command, scope);
+    ) -> rhapsody::Result<()> {
+        unsafe { self.inner.issue_pipeline_barrier(command, scope) }
     }
 
-    /// 真实 `GraphicsDevice::issue_and_reset_pipeline_barrier(command, scope)`（device.rs:900）。
-    pub fn issue_and_reset_pipeline_barrier(
+    /// Record one barrier batch, then clear it for reuse.
+    ///
+    /// # Safety
+    /// As [`Self::issue_pipeline_barrier`].
+    pub unsafe fn issue_and_reset_pipeline_barrier(
         &self,
         command: ash::vk::CommandBuffer,
         scope: &mut rhapsody::raw::barrier::SynchronizationScope,
-    ) {
-        self.inner.issue_and_reset_pipeline_barrier(command, scope);
+    ) -> rhapsody::Result<()> {
+        unsafe { self.inner.issue_and_reset_pipeline_barrier(command, scope) }
     }
 
     /// 真实 `GraphicsDevice::wait_idle_and_recycle_resources()`（device.rs:699；WIRING §2.7）。

@@ -1857,20 +1857,16 @@ impl AcquiredImageLease {
         })?;
         let mut command = wsi_call(&chain.device.timelines, || pool.allocate())?;
         wsi_call(&chain.device.timelines, || command.begin())?;
-        let barrier = color_barrier(self.image())
-            .old_layout(vk::ImageLayout::UNDEFINED)
-            .new_layout(vk::ImageLayout::PRESENT_SRC_KHR);
-        unsafe {
-            chain.device.device.cmd_pipeline_barrier(
-                command.handle,
-                source,
-                vk::PipelineStageFlags::BOTTOM_OF_PIPE,
-                vk::DependencyFlags::empty(),
-                &[],
-                &[],
-                &[barrier],
-            );
-        }
+        let mut scope = super::barrier::SynchronizationScope::new(
+            source,
+            vk::PipelineStageFlags::BOTTOM_OF_PIPE,
+        );
+        scope.images.push(
+            color_barrier(self.image())
+                .old_layout(vk::ImageLayout::UNDEFINED)
+                .new_layout(vk::ImageLayout::PRESENT_SRC_KHR),
+        );
+        scope.issue_into(&command)?;
         wsi_call(&chain.device.timelines, || command.end())?;
         Ok(command)
     }

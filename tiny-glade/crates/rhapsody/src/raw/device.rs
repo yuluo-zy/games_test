@@ -736,48 +736,64 @@ impl Device {
     ) -> R {
         body(&self.shared().allocator_stats)
     }
-    /// 下发一次管线屏障（memory/buffer/image 三类数组按 scope 汇总）。
-    pub fn issue_pipeline_barrier(
+    /// Record one barrier batch through the enabled barrier API
+    /// (synchronization2 when enabled, legacy otherwise; empty stage masks
+    /// keep their empty-scope meaning on both).
+    ///
+    /// # Safety
+    /// `command` must be recording on this device and every barrier resource
+    /// must stay alive through the command's completion.
+    pub unsafe fn issue_barriers(
         &self,
         command: vk::CommandBuffer,
         scope: &super::barrier::SynchronizationScope,
-    ) {
-        unsafe {
-            self.device.cmd_pipeline_barrier(
-                command,
-                scope.source_stages,
-                scope.destination_stages,
-                vk::DependencyFlags::empty(),
-                &scope.memory,
-                &scope.buffers,
-                &scope.images,
-            )
-        }
+    ) -> super::error::Result<()> {
+        unsafe { super::barrier::BarrierDispatch::new(self).issue(self, command, scope) }
     }
-    /// 下发后立即清空 scope，供下一批复用。
-    pub fn issue_and_reset_pipeline_barrier(
+    /// Record one barrier batch; see [`Self::issue_barriers`].
+    ///
+    /// # Safety
+    /// As [`Self::issue_barriers`].
+    pub unsafe fn issue_pipeline_barrier(
+        &self,
+        command: vk::CommandBuffer,
+        scope: &super::barrier::SynchronizationScope,
+    ) -> super::error::Result<()> {
+        unsafe { self.issue_barriers(command, scope) }
+    }
+    /// Record the batch, then clear its barriers for reuse.
+    ///
+    /// # Safety
+    /// As [`Self::issue_barriers`].
+    pub unsafe fn issue_and_reset_pipeline_barrier(
         &self,
         command: vk::CommandBuffer,
         scope: &mut super::barrier::SynchronizationScope,
-    ) {
-        self.issue_pipeline_barrier(command, scope);
+    ) -> super::error::Result<()> {
+        let issued = unsafe { self.issue_barriers(command, scope) };
         scope.memory.clear();
         scope.buffers.clear();
         scope.images.clear();
+        issued
     }
-    /// 全同步屏障（所有命令→所有命令）。
-    pub fn issue_full_pipeline_barrier(&self, command: vk::CommandBuffer) {
-        unsafe {
-            self.device.cmd_pipeline_barrier(
-                command,
-                vk::PipelineStageFlags::ALL_COMMANDS,
-                vk::PipelineStageFlags::ALL_COMMANDS,
-                vk::DependencyFlags::empty(),
-                &[],
-                &[],
-                &[],
-            )
-        }
+    /// Full execution and memory dependency (all commands to all commands).
+    ///
+    /// # Safety
+    /// `command` must be recording on this device.
+    pub unsafe fn issue_full_pipeline_barrier(
+        &self,
+        command: vk::CommandBuffer,
+    ) -> super::error::Result<()> {
+        let mut scope = super::barrier::SynchronizationScope::new(
+            vk::PipelineStageFlags::ALL_COMMANDS,
+            vk::PipelineStageFlags::ALL_COMMANDS,
+        );
+        scope.memory.push(
+            vk::MemoryBarrier::default()
+                .src_access_mask(vk::AccessFlags::MEMORY_WRITE)
+                .dst_access_mask(vk::AccessFlags::MEMORY_READ | vk::AccessFlags::MEMORY_WRITE),
+        );
+        unsafe { self.issue_barriers(command, &scope) }
     }
     /// Record `body` after the declared accesses on the shared setup context
     /// and submit without waiting (see [`super::setup::with_setup_resources`]).

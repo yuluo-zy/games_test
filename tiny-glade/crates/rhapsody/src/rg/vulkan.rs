@@ -471,58 +471,34 @@ fn add_transition(
     token: u64,
     transition: &super::sync_plan::BoundTransition,
     present: Option<presentation::PresentPatch>,
-) -> bool {
-    use crate::resource::OwnershipRange;
+) -> crate::Result<()> {
+    use crate::raw::barrier::{BarrierTarget, RangeBarrier};
     presentation::PresentPatch::apply(present, scope, token, transition);
     // Alias (shared backing) dependencies are ordinary transitions here: the
     // planner models them as a synthetic previous access of the new member.
     scope.source_stages |= transition.source.stages;
     scope.destination_stages |= transition.destination.stages;
-    match (resources.get(&token), transition.range) {
-        (Some(GpuResource::Buffer(buffer)), OwnershipRange::Buffer { offset, size }) => {
-            scope.buffers.push(
-                vk::BufferMemoryBarrier::default()
-                    .src_access_mask(transition.source.access)
-                    .dst_access_mask(transition.destination.access)
-                    .src_queue_family_index(transition.source_family)
-                    .dst_queue_family_index(transition.destination_family)
-                    .buffer(buffer.handle)
-                    .offset(offset)
-                    .size(size),
-            );
+    let target = match resources.get(&token) {
+        Some(GpuResource::Buffer(buffer)) => BarrierTarget::Buffer(buffer.handle),
+        Some(GpuResource::Image(image)) => BarrierTarget::Image(image.handle),
+        None => {
+            return Err(crate::Error::invalid_usage(
+                "native barrier resource is missing",
+            ));
         }
-        (
-            Some(GpuResource::Image(image)),
-            OwnershipRange::Image {
-                aspects,
-                base_mip,
-                mip_count,
-                base_layer,
-                layer_count,
-            },
-        ) => {
-            scope.images.push(
-                vk::ImageMemoryBarrier::default()
-                    .src_access_mask(transition.source.access)
-                    .dst_access_mask(transition.destination.access)
-                    .old_layout(transition.old_layout)
-                    .new_layout(transition.new_layout)
-                    .src_queue_family_index(transition.source_family)
-                    .dst_queue_family_index(transition.destination_family)
-                    .image(image.handle)
-                    .subresource_range(
-                        vk::ImageSubresourceRange::default()
-                            .aspect_mask(vk::ImageAspectFlags::from_raw(aspects))
-                            .base_mip_level(base_mip)
-                            .level_count(mip_count)
-                            .base_array_layer(base_layer)
-                            .layer_count(layer_count),
-                    ),
-            );
-        }
-        _ => return false,
-    }
-    true
+    };
+    scope.push(
+        target,
+        &RangeBarrier {
+            range: transition.range,
+            source_access: transition.source.access,
+            destination_access: transition.destination.access,
+            old_layout: transition.old_layout,
+            new_layout: transition.new_layout,
+            source_family: transition.source_family,
+            destination_family: transition.destination_family,
+        },
+    )
 }
 /// 并行录制时各块共享的只读视图：只读访问表与资源表，直接把每个 pass 的屏障写入块自己的命令缓冲。
 struct VulkanChunkView<'a> {
@@ -575,17 +551,13 @@ impl super::executor::ChunkRecorder for VulkanChunkView<'_> {
                     ));
                 }
             }
-            if !add_transition(
+            add_transition(
                 &mut scope,
                 self.resources,
                 t.token,
                 &t.transition,
                 self.present_patch,
-            ) {
-                return Err(crate::Error::invalid_usage(
-                    "parallel native barrier range is invalid",
-                ));
-            }
+            )?;
         }
         // 与串行路径相同：每个 pass 一次屏障命令。
         unsafe {
@@ -1793,13 +1765,19 @@ impl ExecutionBackend for VulkanGraphBackend {
             return false;
         }
         let present = self.present_patch();
-        add_transition(
+        match add_transition(
             self.barriers.entry(command).or_default(),
             &self.resources,
             token,
             transition,
             present,
-        )
+        ) {
+            Ok(()) => true,
+            Err(error) => {
+                self.recording_error = Some(error);
+                false
+            }
+        }
     }
     fn submit(
         &mut self,

@@ -809,16 +809,16 @@ impl TransferManager {
             vk::PipelineStageFlags::TRANSFER,
             vk::PipelineStageFlags::HOST,
         );
-        host.buffers.push(
-            vk::BufferMemoryBarrier::default()
-                .src_access_mask(vk::AccessFlags::TRANSFER_WRITE)
-                .dst_access_mask(vk::AccessFlags::HOST_READ)
-                .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                .buffer(readback.handle)
-                .offset(0)
-                .size(size),
-        );
+        host.push(
+            crate::raw::barrier::BarrierTarget::Buffer(readback.handle),
+            &crate::raw::barrier::RangeBarrier::local(
+                crate::resource::OwnershipRange::Buffer { offset: 0, size },
+                vk::AccessFlags::TRANSFER_WRITE,
+                vk::AccessFlags::HOST_READ,
+                vk::ImageLayout::UNDEFINED,
+                vk::ImageLayout::UNDEFINED,
+            ),
+        )?;
         host.issue_into(&command)?;
         command.end()?;
         let submitted = command.submit_to(target.queue, &[], &[])?;
