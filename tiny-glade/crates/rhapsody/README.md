@@ -17,6 +17,7 @@
 | [DELIVERY_PLAN.md](DELIVERY_PLAN.md) | 完整范围、交付顺序、S01–S08 场景及 M0–M9 验收门槛 |
 | [REFACTOR_PLAN.md](REFACTOR_PLAN.md) | 各版开发工作包、依赖、下游迁移与旧路径删除 |
 | [REFACTOR_PROGRESS.md](REFACTOR_PROGRESS.md) | 唯一的当前状态与实测证据入口，区分实现/接线/验收 |
+| [OPTIMIZATIONS.md](OPTIMIZATIONS.md) | 当前已落地的性能优化清单：机制、位置、开关、实测数据与未验证项 |
 
 V0 窗口基线 → V1 设备与回收 → V2 提交/呈现闭环 → V3 图与资源 → V4 池/传输/预算 → V5 缓存 → V6 内存着色 → V7 管线/描述符 → V8 多队列 → V9 全链路发布验收。P0–P7 仅作为技术领域索引。GPU 驱动、mesh shader、descriptor buffer 等后续实验不作为本轮完成条件。
 
