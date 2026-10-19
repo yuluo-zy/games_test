@@ -3,7 +3,6 @@ pub mod command;
 pub mod bindless;
 pub mod device;
 pub mod error;
-pub mod leek;
 pub mod log_ring;
 pub mod pipeline;
 pub mod raw;

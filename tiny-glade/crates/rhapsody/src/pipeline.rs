@@ -745,7 +745,7 @@ impl HotPipeline {
 }
 
 const CACHE_MAGIC: &[u8; 8] = b"RHPC0001";
-const MAX_DISK_BYTES: u64 = 64 << 20;
+const MAX_DISK_BYTES: u64 = crate::raw::shader::MAX_PIPELINE_CACHE_BYTES;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DiskCacheStatus {
     Missing,
@@ -759,12 +759,7 @@ pub struct PersistentPipelineCache {
     pub status: DiskCacheStatus,
 }
 fn identity(device: &Device) -> [u8; 32] {
-    let properties = unsafe {
-        device
-            .instance
-            .instance
-            .get_physical_device_properties(device.physical)
-    };
+    let properties = device.properties();
     let mut bytes = [0; 32];
     for (index, value) in [
         properties.vendor_id,

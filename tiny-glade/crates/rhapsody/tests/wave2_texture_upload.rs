@@ -522,3 +522,91 @@ fn gpu_update_texture_regions_overwrites_only_the_given_mip_and_layer() {
         all[144..160]
     );
 }
+
+#[test]
+fn gpu_transfer_manager_batches_textures_in_one_submit_and_never_waits() {
+    use rhapsody::{
+        raw::texture::Texture,
+        transfer::{TextureUpload, TransferConfig, TransferManager},
+    };
+    let Some(gd) = device() else { return };
+    let mut manager = TransferManager::new(
+        gd.clone(),
+        TransferConfig {
+            slots: 1,
+            chunk_bytes: 256,
+            max_bytes: 4096,
+        },
+    )
+    .unwrap();
+    let new =
+        |desc: &TextureDesc| Arc::new(Texture::new(gd.clone(), &desc.transfer_dst()).unwrap());
+    let small = new(&TextureDesc::new_2d(4, 4, vk::Format::R8G8B8A8_UNORM).usage(readable()));
+    let cube = new(&TextureDesc::new_cube(2, vk::Format::R8G8B8A8_UNORM)
+        .mip_levels(2)
+        .usage(readable()));
+    let small_data = pattern(64, 3);
+    let cube_data = pattern(6 * (16 + 4), 9);
+    let small_regions = linear_regions(&small_data, [4, 4, 1], 1, 1, 4, [1, 1]).unwrap();
+    let cube_regions = linear_regions(&cube_data, [2, 2, 1], 2, 6, 4, [1, 1]).unwrap();
+    // 64 + 120 bytes fit the 256-byte slot: one staging write, one submit.
+    let point = manager
+        .upload_textures(&[
+            TextureUpload {
+                texture: &small,
+                regions: &small_regions,
+                old_layout: vk::ImageLayout::UNDEFINED,
+            },
+            TextureUpload {
+                texture: &cube,
+                regions: &cube_regions,
+                old_layout: vk::ImageLayout::UNDEFINED,
+            },
+        ])
+        .unwrap();
+    assert!(manager.stats().unwrap().pending_uploads <= 1);
+    // Larger than a chunk: a temporary staging buffer, no stall on the slot.
+    let large = new(&TextureDesc::new_2d(16, 16, vk::Format::R8G8B8A8_UNORM).usage(readable()));
+    let large_data = pattern(1024, 5);
+    let large_regions = linear_regions(&large_data, [16, 16, 1], 1, 1, 4, [1, 1]).unwrap();
+    let second = manager
+        .upload_textures(&[TextureUpload {
+            texture: &large,
+            regions: &large_regions,
+            old_layout: vk::ImageLayout::UNDEFINED,
+        }])
+        .unwrap();
+    assert!(second.value > point.value);
+    assert_eq!(
+        read_back(&gd, small.clone(), 0, 0, [4, 4, 1], 64),
+        small_data
+    );
+    for face in 0..6u32 {
+        let start = face as usize * 20;
+        assert_eq!(
+            read_back(&gd, cube.clone(), 0, face, [2, 2, 1], 16),
+            cube_data[start..start + 16],
+            "cube face {face} mip 0"
+        );
+        assert_eq!(
+            read_back(&gd, cube.clone(), 1, face, [1, 1, 1], 4),
+            cube_data[start + 16..start + 20],
+            "cube face {face} mip 1"
+        );
+    }
+    assert_eq!(
+        read_back(&gd, large.clone(), 0, 0, [16, 16, 1], 1024),
+        large_data
+    );
+    // An update reuses the slot after completion and orders after the reads.
+    let patch = pattern(64, 99);
+    let patch_regions = linear_regions(&patch, [4, 4, 1], 1, 1, 4, [1, 1]).unwrap();
+    manager
+        .upload_textures(&[TextureUpload {
+            texture: &small,
+            regions: &patch_regions,
+            old_layout: vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+        }])
+        .unwrap();
+    assert_eq!(read_back(&gd, small, 0, 0, [4, 4, 1], 64), patch);
+}

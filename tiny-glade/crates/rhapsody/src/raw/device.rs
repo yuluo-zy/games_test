@@ -432,6 +432,10 @@ impl Device {
     pub fn limits(&self) -> &vk::PhysicalDeviceLimits {
         &self.properties.limits
     }
+    /// Physical-device properties captured at device creation.
+    pub fn properties(&self) -> &vk::PhysicalDeviceProperties {
+        &self.properties
+    }
 
     /// Minimum subgroup size, or 1 when `VK_EXT_subgroup_size_control` is absent.
     pub fn min_subgroup_size(&self) -> u32 {

@@ -1,4 +1,4 @@
-//! Texture/ImageView 完整资源路径候选；描述符字段不声称恢复原 ABI。
+//! Textures, texture descriptions and image views.
 use super::{
     allocator::MemoryBlock,
     device::Device,
@@ -8,8 +8,8 @@ use super::{
 use ash::vk;
 use std::sync::Arc;
 
-/// 原 `image_aspect_mask_from_format`（0x140bd6630）：`format - 0x7c`（无符号）`> 6` 返回 COLOR(1)，
-/// 否则查 7 项表 `0x142b0ffb8 = {2,2,2,4,6,6,6}`（D16 / X8_D24 / D32 / S8 / D16S8 / D24S8 / D32S8）。
+/// Aspect mask of a format: depth/stencil aspects for D16 / X8_D24 / D32 / S8 /
+/// D16S8 / D24S8 / D32S8 (`{2,2,2,4,6,6,6}`), COLOR otherwise.
 pub fn image_aspect_mask_from_format(format: vk::Format) -> vk::ImageAspectFlags {
     const TABLE: [u32; 7] = [2, 2, 2, 4, 6, 6, 6];
     let index = (format.as_raw() as u32).wrapping_sub(0x7c);
@@ -21,25 +21,23 @@ pub fn mip_count_1d(size: u32) -> u32 {
     32 - size.leading_zeros()
 }
 
-/// `create_texture`（0x140c07950）里各 Vulkan 调用失败时的 `.expect(msg)` 文案（原版 panic，
-/// 位置 crates/rhapsody/src/raw/texture.rs 0x244 / 0x24d / 0x26a 行附近）。
-/// 这里的创建路径返回 `Err(Error::Vulkan(..))`，调用方需要原文案时用 [`create_failure_text`] 拼出。
+/// Stage names of texture creation failures, for diagnostics built with
+/// [`create_failure_text`]; creation itself returns `Err(Error::Vulkan(..))`.
 pub mod create_failure {
-    /// 0x142b18af8（12B）：`vkCreateImage` 失败。
+    /// `vkCreateImage` failed.
     pub const CREATE_IMAGE: &str = "create_image";
-    /// 0x142b18b70（17B）：`vkBindImageMemory` 失败。
+    /// `vkBindImageMemory` failed.
     pub const BIND_IMAGE_MEMORY: &str = "bind_image_memory";
-    /// 0x142b18b38（27B）：`vkSetDebugUtilsObjectNameEXT` 失败（缓冲创建同名文案 0x142b15850）。
+    /// `vkSetDebugUtilsObjectNameEXT` failed.
     pub const SET_DEBUG_UTILS_OBJECT_NAME: &str = "set_debug_utils_object_name";
 }
 
-/// `Result::expect(msg)` 的 panic 文本形态：`"{msg}: {Debug(err)}"`（0x1428d9760 的 `expect_failed` 调用形）。
+/// `"{stage}: {result:?}"` diagnostic text.
 pub fn create_failure_text(stage: &str, result: vk::Result) -> String {
     format!("{stage}: {result:?}")
 }
 
-/// 纹理采样数候选枚举；`to_vk` 映射到 Vulkan `SampleCountFlags`。
-/// 枚举名来自 PDB，具体排序与语义未逐证明，保留显式映射。
+/// Sample count; `to_vk` maps to Vulkan `SampleCountFlags`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TextureSampleCount {
     One,
@@ -64,8 +62,7 @@ impl TextureSampleCount {
     }
 }
 
-/// 线性初始数据的逐层迭代器；每次 `next` 返回一层的数据切片。
-/// 原 `LinearInitialDataIter` 从连续内存按 mip 偏移切分；候选按分配步进。
+/// Splits linear data into consecutive slices of `step` bytes.
 pub struct LinearInitialDataIter<'a> {
     data: &'a [u8],
     step: usize,
@@ -91,7 +88,7 @@ impl<'a> Iterator for LinearInitialDataIter<'a> {
     }
 }
 
-/// 构建 `ImageCreateInfo`（原 `get_image_create_info` 0x140bd5ed0，`has_data = false`）。
+/// `ImageCreateInfo` for `desc`.
 pub fn get_image_create_info(desc: &TextureDesc) -> Result<vk::ImageCreateInfo<'_>> {
     get_image_create_info_with_data(desc, false)
 }
@@ -123,7 +120,7 @@ pub fn get_image_create_info_with_data(
         .initial_layout(vk::ImageLayout::UNDEFINED))
 }
 
-/// 原图像种类枚举（`TextureDesc+0x1e`，0..=6）。
+/// Image kind.
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum TextureKind {
@@ -143,7 +140,7 @@ impl TextureKind {
             _ => vk::ImageType::TYPE_2D,
         }
     }
-    /// `get_image_create_info` 的 extent 选择（0x140bd5ed0 跳表各 case）。
+    /// Vulkan image extent of this kind.
     pub fn image_extent(self, desc: &TextureDesc) -> vk::Extent3D {
         match self {
             Self::D1 | Self::D1Array => vk::Extent3D {
@@ -162,7 +159,7 @@ impl TextureKind {
     pub fn is_cube(self) -> bool {
         matches!(self, Self::Cube | Self::CubeArray)
     }
-    /// 原 `array_elements` 的合法性掩码 `0x4a`：只有 1D 数组、2D 数组、cube 数组可以有多层。
+    /// Only 1D arrays, 2D arrays and cube arrays may have several elements.
     pub fn is_array(self) -> bool {
         (0x4au32 >> self as u32) & 1 != 0
     }
@@ -180,8 +177,7 @@ impl TextureKind {
     }
 }
 
-/// 原 32 字节 `TextureDesc`（n2 REPORT）：`usage@0 flags@4 format@8 width@0xc height@0x10 depth@0x14
-/// array_elements@0x18 mip_levels@0x1c sample_count@0x1d kind@0x1e`。
+/// Texture description (32 bytes).
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct TextureDesc {
@@ -219,7 +215,7 @@ impl TextureDesc {
     }
     fn base(width: u32, height: u32, depth: u32, format: vk::Format, kind: TextureKind) -> Self {
         Self {
-            // 原版构造器把 usage/flags 整个 qword 清零（0x140bd5270/52a0）；由 `.sampled()` 等 builder 追加。
+            // Usage and flags start empty; builders such as `.sampled()` add them.
             usage: vk::ImageUsageFlags::empty(),
             flags: vk::ImageCreateFlags::empty(),
             format,
@@ -232,18 +228,18 @@ impl TextureDesc {
             kind,
         }
     }
-    /// 原 `new_2d`（0x140bd52a0）：深度 1、层 1。
+    /// 2D texture with one layer.
     pub fn new_2d(width: u32, height: u32, format: vk::Format) -> Self {
         Self::base(width, height, 1, format, TextureKind::D2)
     }
-    /// 原 `new_2d_array`（0x140bd52e0）。
+    /// 2D array texture.
     pub fn new_2d_array(width: u32, height: u32, layers: u32, format: vk::Format) -> Self {
         Self {
             array_elements: layers,
             ..Self::base(width, height, 1, format, TextureKind::D2Array)
         }
     }
-    /// 原 `new_3d`（0x140bd5310）。
+    /// 3D texture.
     pub fn new_3d(width: u32, height: u32, depth: u32, format: vk::Format) -> Self {
         Self::base(width, height, depth, format, TextureKind::D3)
     }
@@ -251,8 +247,7 @@ impl TextureDesc {
     pub fn new_cube(size: u32, format: vk::Format) -> Self {
         Self::base(size, size, 1, format, TextureKind::Cube)
     }
-    /// 原 `TextureDesc::new(extent, kind, format)`（0x140bd5270：`r8b → +0x1e`、`r9d → +8`）。
-    /// 压缩纹理文件尾的 `−3` 字节是 kind、`−4` 字节是 format。
+    /// Texture of `kind` with `extent` and `format`.
     pub fn new(extent: vk::Extent3D, kind: TextureKind, format: vk::Format) -> Self {
         Self::base(extent.width, extent.height, extent.depth, format, kind)
     }
@@ -269,7 +264,7 @@ impl TextureDesc {
     pub fn samples(&self) -> vk::SampleCountFlags {
         vk::SampleCountFlags::from_raw(u32::from(self.sample_count))
     }
-    /// 原 `sample_count(self, n)`（0x140bd55a0）：`n → +0x1d`（原始数值，1/2/4/…）。
+    /// Set the raw sample count (1/2/4/…).
     pub fn sample_count(mut self, count: u8) -> Self {
         self.sample_count = count;
         self
@@ -288,7 +283,7 @@ impl TextureDesc {
             _ => Ok(self.array_elements),
         }
     }
-    /// 原 `array_elements(self, n)` builder：只有数组种类允许 `n > 1`。
+    /// Set the element count; only array kinds allow `n > 1`.
     pub fn array_elements(mut self, count: u32) -> Result<Self> {
         if count == 0 || (count > 1 && !self.kind.is_array()) {
             return Err(Error::invalid_usage("纹理数组元素数量与种类不匹配"));
@@ -299,7 +294,7 @@ impl TextureDesc {
         self.array_elements = count;
         Ok(self)
     }
-    /// 原 `format(f)` builder（0x140bd5430）。
+    /// Set the format.
     pub fn format(mut self, format: vk::Format) -> Self {
         self.format = format;
         self
@@ -327,7 +322,7 @@ impl TextureDesc {
             depth: f(self.depth),
         })
     }
-    /// 原 `div_up_extent(self, divisors)`（0x140bd55e0）：三个维度各 `ceil(x / d)`，结果至少为 1，
+    /// Each dimension becomes `ceil(x / d)`, at least 1;
     /// 任一除数为 0 则返回 InvalidUsage。
     pub fn div_up_extent_by(mut self, divisors: [u32; 3]) -> Result<Self> {
         if divisors.contains(&0) {
@@ -339,7 +334,7 @@ impl TextureDesc {
         self.depth = f(self.depth, divisors[2]);
         Ok(self)
     }
-    /// 原 `div_extent(self, divisors)`（0x140bd56a0）：三个维度各 `floor(x / d)`，结果至少为 1，
+    /// Each dimension becomes `floor(x / d)`, at least 1;
     /// 任一除数为 0 则返回 InvalidUsage。
     pub fn div_extent_by(mut self, divisors: [u32; 3]) -> Result<Self> {
         if divisors.contains(&0) {
@@ -354,13 +349,12 @@ impl TextureDesc {
     pub fn full_mip_chain_length(&self) -> u32 {
         32 - self.width.max(self.height).max(self.depth).leading_zeros()
     }
-    /// 旧候选谓词（非原版）：纯色格式且用途含 `SAMPLED`。
+    /// Color format with `SAMPLED` usage.
     pub fn is_sampled_color(&self) -> bool {
         self.usage.contains(vk::ImageUsageFlags::SAMPLED)
             && vk_format_valid_aspect_flags(self.format) == vk::ImageAspectFlags::COLOR
     }
-    /// 原 `sampled_with_different_format`（0x140bd5410，`or qword [rdx], 0x108000004`）：
-    /// `usage |= SAMPLED`，`flags |= 0x108`（`MUTABLE_FORMAT(0x8) | BLOCK_TEXEL_VIEW_COMPATIBLE(0x100)`）。
+    /// `usage |= SAMPLED`, `flags |= MUTABLE_FORMAT | BLOCK_TEXEL_VIEW_COMPATIBLE`.
     pub fn sampled_with_different_format(mut self) -> Self {
         self.usage |= vk::ImageUsageFlags::SAMPLED;
         self.flags |= vk::ImageCreateFlags::from_raw(0x108);
@@ -390,13 +384,12 @@ impl TextureDesc {
         self.usage |= vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT;
         self
     }
-    /// 原 `all_mip_levels`（0x140bd54a0）：`max(bitlen(w), bitlen(h), bitlen(depth))` 截成 u8
-    /// （三个 `bsr` 取大；旧文档写成 `max(w,h)` 不准确，机器码含 depth）。
+    /// Full mip chain: `max(bitlen(w), bitlen(h), bitlen(depth))` levels.
     pub fn all_mip_levels(mut self) -> Self {
         self.mip_levels = self.full_mip_chain_length() as u8;
         self
     }
-    /// 原 `mip_levels(n)` builder。
+    /// Set the mip level count.
     pub fn mip_levels(mut self, levels: u8) -> Self {
         self.mip_levels = levels;
         self
@@ -407,8 +400,7 @@ impl TextureDesc {
             height: self.height,
         }
     }
-    /// 原 `half_res`（0x140bd5730）：宽/高/深各 `x - (x >> 1)`（= `ceil(x/2)`），结果为 0 时取 1。
-    /// （旧实现漏了 depth；3D 纹理的 depth 同样减半。）
+    /// Halve width, height and depth (`ceil(x / 2)`, at least 1).
     pub fn half_res(mut self) -> Self {
         let f = |x: u32| (x - (x >> 1)).max(1);
         self.width = f(self.width);
@@ -490,7 +482,10 @@ enum TextureStorage {
     Allocated(std::mem::ManuallyDrop<MemoryBlock>),
     // The swapchain, not this texture wrapper, destroys the VkImage. A strong
     // owner also protects the image while graph imports and views retain it.
-    Swapchain(Arc<super::swapchain::Swapchain>),
+    Swapchain(
+        #[allow(dead_code, reason = "keeps the swapchain image alive")]
+        Arc<super::swapchain::Swapchain>,
+    ),
 }
 impl Texture {
     pub(crate) fn ownership_range(desc: &TextureDesc) -> Result<crate::resource::OwnershipRange> {
@@ -505,7 +500,9 @@ impl Texture {
     pub(crate) fn allocation_id(&self) -> u64 {
         match &self.storage {
             TextureStorage::Allocated(allocation) => allocation.accounting_id(),
-            TextureStorage::Swapchain(_) => panic!("swapchain images have no allocator allocation; they must never enter the transient/result resource pool"),
+            TextureStorage::Swapchain(_) => panic!(
+                "swapchain images have no allocator allocation; they must never enter the transient/result resource pool"
+            ),
         }
     }
     /// The caller owns an already-bound handle and transfers its sole raw-object ownership.
@@ -543,11 +540,10 @@ impl Texture {
     }
     /// The WSI lease is the only producer of this non-owning image wrapper.
     /// It retains the actual swapchain generation, never allocates image memory
-    /// and never calls vkDestroyImage. Native B import_unowned (0x140bd60a0)
-    /// likewise retains the managed owner; the Rust representation is a host
-    /// adapter rather than the original managed-handle ABI.
+    /// and never calls vkDestroyImage.
     pub(crate) fn from_swapchain_image(
-        owner: Arc<super::swapchain::Swapchain>, handle: vk::Image,
+        owner: Arc<super::swapchain::Swapchain>,
+        handle: vk::Image,
         desc: TextureDesc,
     ) -> Result<Self> {
         if handle == vk::Image::null() {
@@ -555,13 +551,22 @@ impl Texture {
         }
         let device = owner.device.clone();
         let range = Self::ownership_range(&desc)?;
-        let synchronization = crate::resource::SyncCell::reserve_arc_storage(&device.allocator_stats)?;
-        let memory = super::allocator::reserve_shared_cpu_metadata::<Self>(&device.allocator_stats, 0)?;
-        Ok(Self { sharing: crate::resource::ResourceSharing::Exclusive,
+        let synchronization =
+            crate::resource::SyncCell::reserve_arc_storage(&device.allocator_stats)?;
+        let memory =
+            super::allocator::reserve_shared_cpu_metadata::<Self>(&device.allocator_stats, 0)?;
+        Ok(Self {
+            sharing: crate::resource::ResourceSharing::Exclusive,
             allocation_use: None,
             last_use: crate::resource::SyncCell::for_device(device.generation())
-                .with_ownership_range(range).into_reserved_arc(synchronization),
-            device, handle, desc, storage: TextureStorage::Swapchain(owner), _memory: memory })
+                .with_ownership_range(range)
+                .into_reserved_arc(synchronization),
+            device,
+            handle,
+            desc,
+            storage: TextureStorage::Swapchain(owner),
+            _memory: memory,
+        })
     }
     pub fn new(device: Arc<Device>, desc: &TextureDesc) -> Result<Self> {
         Self::new_with_initial_data(device, desc, false)
@@ -751,7 +756,10 @@ impl Drop for Texture {
         if let TextureStorage::Allocated(allocation) = &mut self.storage {
             // SAFETY: this owned allocation is taken exactly once.
             let memory = unsafe { std::mem::ManuallyDrop::take(allocation) }.into_deferred();
-            self.device.retire(self.last_use.snapshot(), super::graveyard::Doomed::Image(self.handle, memory));
+            self.device.retire(
+                self.last_use.snapshot(),
+                super::graveyard::Doomed::Image(self.handle, memory),
+            );
         }
     }
 }

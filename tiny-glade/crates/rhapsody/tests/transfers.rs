@@ -507,3 +507,44 @@ fn readback_envelopes_reuse_capacity_and_escaping_tickets_keep_their_actual_cpu_
         "escaped lease CPU credit must follow its last actual owner"
     );
 }
+
+#[test]
+fn overwriting_a_range_read_by_earlier_gpu_work_is_ordered_by_tracked_state() {
+    let Some(device) = device() else {
+        return;
+    };
+    let mut manager = TransferManager::new(
+        device.clone(),
+        TransferConfig {
+            slots: 2,
+            chunk_bytes: 256,
+            max_bytes: 4096,
+        },
+    )
+    .unwrap();
+    let target = Arc::new(
+        Buffer::new(
+            device.clone(),
+            &BufferDesc::new_gpu_only(
+                256,
+                vk::BufferUsageFlags::TRANSFER_SRC | vk::BufferUsageFlags::TRANSFER_DST,
+            ),
+        )
+        .unwrap(),
+    );
+    let mut previous = None;
+    for round in 0..4u8 {
+        let bytes = [round + 1; 64];
+        manager.upload_buffer(target.clone(), 32, &bytes).unwrap();
+        // The readback reads the range; the next upload must order after it.
+        let readback = manager.read_buffer(target.clone(), 32, 64).unwrap();
+        readback.wait(10_000_000_000).unwrap();
+        let mut output = [0; 64];
+        assert_eq!(readback.try_read(&mut output).unwrap(), Some(64));
+        assert_eq!(output, bytes);
+        assert_eq!(readback.len(), 64);
+        previous = Some(readback);
+    }
+    drop(previous);
+    assert_eq!(manager.stats().unwrap().pending_uploads, 0);
+}
