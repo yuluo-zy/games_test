@@ -106,7 +106,7 @@ impl DxcRequest {
     pub fn entry(&self) -> &str {
         &self.entry
     }
-    /// 为已准备输入生成参数，保持原作顺序；路径作为单个 OS 参数传递。
+    /// Compiler arguments for a prepared input; each path is one OS argument.
     pub fn prepared_arguments(&self, input: &Path, output: &Path) -> Vec<OsString> {
         vec![
             input.as_os_str().into(),
@@ -149,8 +149,9 @@ impl DxcRequest {
         }
         Ok(())
     }
-    /// 候选进程适配，诊断保留原字节。拒绝已有输出，防止旧产物掩盖失败。
-    /// 输入/输出及临时文件由调用者独占和管理；未恢复原作异常清理规则。
+    /// Run the compiler process; diagnostics keep their raw bytes. An existing
+    /// output is rejected so a stale artifact cannot hide a failure. The caller
+    /// owns the input, output and temporary files.
     pub fn compile_prepared(
         &self,
         dxc: &Path,

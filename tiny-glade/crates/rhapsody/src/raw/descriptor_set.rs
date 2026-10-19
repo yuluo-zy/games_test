@@ -1,4 +1,5 @@
-//! 原 descriptor layout/pool CPU 规则及新增 Vulkan 对象生产、写入、回收候选接口。
+//! Descriptor set layouts, pools and sets: CPU layout/pool planning and the
+//! Vulkan objects with their write, retention and retirement rules.
 use crate::Result;
 use ash::vk;
 use serde::{Deserialize, Serialize};
@@ -12,7 +13,7 @@ pub struct Binding {
     pub sampler: u64,
 }
 
-// 以下为可运行 Vulkan 候选路径；上方原 CPU layout/pool 规则保持独立证据范围。
+// Vulkan objects.
 use crate::raw::binding::{DescriptorSetBinding, ResourceOwner};
 use crate::raw::device::Device;
 use parking_lot::Mutex;
@@ -257,7 +258,7 @@ impl VulkanDescriptorPool {
         Self::create(device, plan, max_sets, true)
     }
 
-    /// 瞬时池整池 reset，不逐 set 释放；原分配器的空闲栈保存池句柄。
+    /// Transient pool: reset as a whole instead of freeing individual sets.
     pub fn new_transient(
         device: Arc<Device>,
         plan: &LayoutPlan,

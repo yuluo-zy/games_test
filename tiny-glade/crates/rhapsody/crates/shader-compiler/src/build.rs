@@ -25,7 +25,7 @@ pub struct BuiltPipeline {
     pub prepared: PreparedSource,
     /// 原请求提供的artifact宏；键只从此集合产生，不能混入复原配方。
     pub artifact_defines: ShaderDefines,
-    /// 显式的重建源码分支选择宏；不冒认为原作配置。
+    /// Explicit source-branch selection macros of this build.
     pub recipe_defines: ShaderDefines,
 }
 /// 原variants函数克隆base后分别追加depth-only=0/1，不去重或改写已有defines。

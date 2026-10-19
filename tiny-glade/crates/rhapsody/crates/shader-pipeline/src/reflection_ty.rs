@@ -134,17 +134,14 @@ impl Type {
 
 #[cfg(test)]
 mod nbyte_tests {
-    //! `Type::nbyte`（原 0x1420bda00，15 项跳表 0x142fd8f84 + 标量/向量子表）的逐 case 对拍。
-    //! 跳表逐项由 `.rne` 读出：0 Scalar、1 Vector、2 Matrix、3..8 opaque 资源（None）、9 Array、
-    //! 10 Struct（默认）、11 AccelStruct（None）、12/13 地址（Some(8)）。下面的参考模型逐条抄机器码：
+    //! `Type::nbyte` per type: opaque resources and acceleration structures are
+    //! None, addresses Some(8); the reference model below:
     //!
-    //! * Vector（0x1420bdaeb）：`scalar_nbyte(tag, payload) * nscalar`，其中 Void→0、Boolean→1、
-    //!   Signed/Unsigned/Float→payload（`[rcx+0xc]`）。
-    //! * Matrix（0x1420bdaa0）：`stride 为 Some ? stride : scalar_nbyte * nscalar`，再乘 `nvec`
-    //!   （`imul rdx,rax` 最后一步）。
-    //! * Array（0x1420bdb09）：`stride.unwrap_or(0) * nrepeat.unwrap_or(0)`（两个 Option 标签字节
-    //!   `cmp byte [rcx+8],0` / `[rcx+0x18]`，None 取 0）。
-    //! * Struct（0x1420bda47）：空 → Some(0)；否则最后一个成员 `offset + nbyte(ty).unwrap_or(0)`。
+    //! * Vector: `scalar_nbyte(tag, payload) * nscalar` (Void→0, Boolean→1,
+    //!   Signed/Unsigned/Float→payload).
+    //! * Matrix: `stride.unwrap_or(scalar_nbyte * nscalar) * nvec`.
+    //! * Array: `stride.unwrap_or(0) * nrepeat.unwrap_or(0)`.
+    //! * Struct: empty → Some(0); else last member `offset + nbyte(ty).unwrap_or(0)`.
     use super::*;
 
     fn scalar_mc(s: &ScalarType) -> usize {
@@ -291,7 +288,7 @@ mod nbyte_tests {
         assert_eq!(t.nbyte(), mc(&t));
     }
 
-    /// 末尾成员无尺寸（opaque）：原版 `test cl,1; cmovne` 取 0，结果仍是 `Some(offset)`。
+    /// An unsized (opaque) last member contributes 0: the result is `Some(offset)`.
     #[test]
     fn struct_with_unsized_last_member_is_offset_only() {
         let t = Type::Struct(StructType {

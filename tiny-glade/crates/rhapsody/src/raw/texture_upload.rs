@@ -1,4 +1,5 @@
-//! 帧内批量区域上传适配：只录制命令，不提交或等待；不是原作者源码。
+//! Texture region uploads: command recording helpers (no submit or wait) and
+//! pure region generation for initial data and updates.
 use super::{
     buffer::Buffer,
     command_buffer::VulkanCommandBuffer,
@@ -293,18 +294,11 @@ pub unsafe fn record_texture_zero_fill(
 }
 
 // ======================================================================================
-// 初值上传的区域生成（`init_texture_data` 2/3 号目标 + `update_texture_impl`，纯函数，无设备访问）
+// Region generation for initial data and updates (pure, no device access).
 // ======================================================================================
-//
-// 证据（patched EXE，已逐条机器码核对）：
-// * `MipChainIter::new` 0x140bd5a80、`next` 0x140bd5bf0；
-// * 层×mip 迭代器 `next` 0x140bd5d30（层主序、mip 次序，线性数据依次切片，末尾断言无剩余）；
-// * 2 号目标的 zip 收集 0x1418b77a0、3 号目标的收集 0x1418b8170（均为 `Vec<[u8;0x30]>`）；
-// * `update_texture_impl` 0x140bfeac0、逐区域闭包 0x1418b4080（memcpy + 0x38B 区域）、
-//   命令闭包 0x140c08830（屏障 → `vkCmdCopyBufferToImage`（`device+0x388`，布局 7）→ 屏障）。
 
-/// 原 0x30 字节区域表项：`{ptr@0, len@8, 0@0x10(u64), 0@0x18(u32), extent{w,h,d}@0x1c/0x20/0x24,
-/// mip@0x28, layer@0x2c}`。`0x10..0x1c` 在两个生成点都写 0（`imageOffset` 三个 i32）。
+/// One tightly packed copy region: `data` covers `extent` of one mip level of
+/// one array layer (cube faces are layers).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TextureUpdateRegion<'a> {
     pub data: &'a [u8],
@@ -313,7 +307,7 @@ pub struct TextureUpdateRegion<'a> {
     pub array_layer: u32,
 }
 
-/// `MipChainIter::next` 的一项（0x140bd5bf0）：`{size@+8, w@+0x10, h@+0x14, d@+0x18, mip@+0x1c}`。
+/// One mip level of a chain: byte size, extent and level index.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct MipLevelItem {
     /// `ceil(w/block[0]) * ceil(h/block[1]) * d * bytes_per_block`。
@@ -322,7 +316,7 @@ pub struct MipLevelItem {
     pub mip_level: u32,
 }
 
-/// 原 `MipChainIter`（12 字节状态 `{w u16, h u16, d u16, block[2] u8, cur u8, count u8, bytes_per_block u8}`）。
+/// Iterator over the mip levels of an extent with texel-block sizes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct MipChainIter {
     extent: [u16; 3],
@@ -332,12 +326,12 @@ pub struct MipChainIter {
     bytes_per_block: u8,
 }
 
-const UNWRAP_ERR: &str = "called `Result::unwrap()` on an `Err` value";
+const EXTENT_ERR: &str = "texture extent and layer count must fit in 16 bits";
+const BLOCK_ERR: &str = "texel block byte size must fit in 8 bits";
 
 impl MipChainIter {
-    /// `new(extent, mip_levels, bytes_per_block, block)`（0x140bd5a80）。断言顺序按机器码：
-    /// `bytes_per_block > 0` → `block[0] > 0` → `block[1] > 0` → `extent[0..3] > 0` → 三个 `u16::try_from(extent[i]).unwrap()`
-    /// （`>= 0x10000` 失败，位置 texture.rs 0x16d/0x16e/0x16f 行）。原版断言失败是 panic，这里返回 `Err`。
+    /// Requires nonzero block size, block extent and extent, and an extent that
+    /// fits in 16 bits per dimension.
     pub fn new(
         extent: [u32; 3],
         mip_levels: u8,
@@ -346,27 +340,27 @@ impl MipChainIter {
     ) -> Result<Self> {
         if bytes_per_block == 0 {
             return Err(Error::invalid_usage(
-                "assertion failed: bytes_per_block > 0",
+                "texel block byte size must be nonzero",
             ));
         }
         if block[0] == 0 {
-            return Err(Error::invalid_usage("assertion failed: block[0] > 0"));
+            return Err(Error::invalid_usage("texel block width must be nonzero"));
         }
         if block[1] == 0 {
-            return Err(Error::invalid_usage("assertion failed: block[1] > 0"));
+            return Err(Error::invalid_usage("texel block height must be nonzero"));
         }
         if extent[0] == 0 {
-            return Err(Error::invalid_usage("assertion failed: extent[0] > 0"));
+            return Err(Error::invalid_usage("texture width must be nonzero"));
         }
         if extent[1] == 0 {
-            return Err(Error::invalid_usage("assertion failed: extent[1] > 0"));
+            return Err(Error::invalid_usage("texture height must be nonzero"));
         }
         if extent[2] == 0 {
-            return Err(Error::invalid_usage("assertion failed: extent[2] > 0"));
+            return Err(Error::invalid_usage("texture depth must be nonzero"));
         }
         let mut narrowed = [0u16; 3];
         for (dst, src) in narrowed.iter_mut().zip(extent) {
-            *dst = u16::try_from(src).map_err(|_| Error::invalid_usage(UNWRAP_ERR))?;
+            *dst = u16::try_from(src).map_err(|_| Error::invalid_usage(EXTENT_ERR))?;
         }
         Ok(Self {
             extent: narrowed,
@@ -380,8 +374,8 @@ impl MipChainIter {
 
 impl Iterator for MipChainIter {
     type Item = MipLevelItem;
-    /// 0x140bd5bf0：`cur >= count` 结束；否则返回当前级，再把三维各减半（至少 1），
-    /// 减半后三维全为 0（当前级已是 1x1x1）则把 `cur` 置 0xff 使下一次结束。
+    /// Yields the current level, then halves every dimension (at least 1); the
+    /// chain ends after `count` levels or after the 1x1x1 level.
     fn next(&mut self) -> Option<MipLevelItem> {
         if self.cur >= self.count {
             return None;
@@ -406,13 +400,9 @@ impl Iterator for MipChainIter {
     }
 }
 
-/// `init_texture_data` 3 号目标（线性数据）的区域生成：层主序、mip 次序，数据按 `MipChainIter` 给出的
-/// 尺寸依次从前往后切（0x140bd5d30 + 0x1418b8170）。
-///
-/// 失败条件（原版均为 panic）：`array_elements >= 0x10000`（texture.rs 0x293:52）、
-/// `bytes_per_block >= 0x100`（0x294:48）、数据为空（`assert!(!data.is_empty())`）、
-/// 数据不够（"Texture initial data underflow"，0x1ff:21 / 0x203:37）、
-/// 数据多余（`"Texture initial data has incorrect size; more bytes supplied than necessary"`，0x214:17）。
+/// Regions of linear data: layer-major, mip-minor, each level sliced in order
+/// with its [`MipChainIter`] size. Fails on empty, short or excess data, or on
+/// layer/block counts that do not fit the iterator.
 ///
 /// The caller supplies actual Vulkan layers, including every face of cube arrays.
 pub fn linear_regions(
@@ -423,11 +413,11 @@ pub fn linear_regions(
     bytes_per_block: u32,
     block: [u8; 2],
 ) -> Result<Vec<TextureUpdateRegion<'_>>> {
-    let layers = u16::try_from(array_elements).map_err(|_| Error::invalid_usage(UNWRAP_ERR))?;
+    let layers = u16::try_from(array_elements).map_err(|_| Error::invalid_usage(EXTENT_ERR))?;
     let bytes_per_block =
-        u8::try_from(bytes_per_block).map_err(|_| Error::invalid_usage(UNWRAP_ERR))?;
+        u8::try_from(bytes_per_block).map_err(|_| Error::invalid_usage(BLOCK_ERR))?;
     if data.is_empty() {
-        return Err(Error::invalid_usage("assertion failed: !data.is_empty()"));
+        return Err(Error::invalid_usage("texture initial data is empty"));
     }
     let template = MipChainIter::new(extent, mip_levels, bytes_per_block, block)?;
     let mut rest = data;
@@ -458,12 +448,8 @@ pub fn linear_regions(
     Ok(regions)
 }
 
-/// `init_texture_data` 2 号目标（逐 mip 一块数据，仅非压缩格式）的区域生成：
-/// `slices.len() == desc.mip_levels`（texture.rs 0x29b 行 `assert_eq!`）后，把每个切片与
-/// `MipChainIter::new(extent, mips, 1, [1,1])` 的尺寸/级别 zip（0x1418b77a0），层固定 0。
-///
-/// 原版不校验切片长度是否够 mip 的字节数（GPU 会越界读暂存）；这里在 `min_len` 给出时拒绝过短切片
-/// （有意偏差，纯 Rust 安全面不放行越界）。
+/// Regions of one slice per mip level (layer 0). Requires one slice per level;
+/// slices shorter than `min_len` reports for their level are rejected.
 pub fn per_mip_regions<'a>(
     slices: &[&'a [u8]],
     extent: [u32; 3],
@@ -472,7 +458,7 @@ pub fn per_mip_regions<'a>(
 ) -> Result<Vec<TextureUpdateRegion<'a>>> {
     if slices.len() != usize::from(mip_levels) {
         return Err(Error::invalid_usage(
-            "assertion `left == right` failed: mip slice count != desc.mip_levels",
+            "per-mip slice count differs from the mip level count",
         ));
     }
     let chain = MipChainIter::new(extent, mip_levels, 1, [1, 1])?;
@@ -481,7 +467,7 @@ pub fn per_mip_regions<'a>(
         if let Some(need) = min_len(&item)
             && (slice.len() as u64) < need
         {
-            return Err(Error::invalid_usage("逐 mip 初始数据短于该级所需字节数"));
+            return Err(Error::invalid_usage("per-mip slice is shorter than its level"));
         }
         regions.push(TextureUpdateRegion {
             data: slice,

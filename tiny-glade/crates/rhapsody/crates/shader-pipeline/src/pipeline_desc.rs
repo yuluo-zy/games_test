@@ -9,13 +9,11 @@ pub struct ComputePipelineDesc {
     pub defines: ShaderDefines,
 }
 impl ComputePipelineDesc {
-    /// 候选便利构造：选择发行样本常见cs_main；不声称原new的完整默认字段/optional语义。
+    /// Compute pipeline with the `cs_main` entry point.
     pub fn new(source_path: impl Into<String>) -> Self {
         Self::with_entry(source_path, "cs_main")
     }
-    /// 原 `with_entry`（0x140539370 / 0x1409e3ab0）：入口为空串时用默认 `cs_main`，否则 `to_owned`。
-    /// 原 `ComputePipelineDesc` 布局 = `{source_path String@0, entry String@0x18, defines Vec@0x30}`
-    /// （0x141795d10 读 `[desc+8/+0x10]` 路径、`[desc+0x38/+0x40]` defines）。
+    /// Compute pipeline with `entry_point` (`cs_main` when empty).
     pub fn with_entry(source_path: impl Into<String>, entry_point: impl Into<String>) -> Self {
         let entry_point = entry_point.into();
         Self {
@@ -39,11 +37,8 @@ impl ComputePipelineDesc {
         .into()
     }
 }
-/// 原 `RasterPipelineDesc` 是 0x48B（O，0x1409e3980 构造、0x141796080 取键）：
-/// `{source_path String@0, defines Vec<(String,String)>@0x18, String@0x30}`；第三个字符串在
-/// `new_vertex_fragment` 里是 path 的克隆，文件键只用 `@0`/`@0x18`（无入口名）。`@0x30` 的语义
-/// 未证实（下面的 `vertex_entry/fragment_entry` 是候选便利字段，不对应原布局；真正入口名来自
-/// 编译容器每个 stage 的 entry 字符串，见 0x141477105）。
+/// Raster pipeline description. The artifact file key uses only the source
+/// path and defines; stage entry names come from the compiled container.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RasterPipelineDesc {
     pub source_path: String,

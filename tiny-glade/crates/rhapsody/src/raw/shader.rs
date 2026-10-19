@@ -1,6 +1,6 @@
-//! shader 资产选择、原容器存储反射布局生产、管线与缓存的可运行候选。
-//! SPIR-V 解析复用原锁 rspirv；反射 schema 复用原 spirq fork 已保存目录。
-//! 原资产键到 country-core pass 的关联、完整原缓存策略与 ABI 仍未全部对齐。
+//! Shader assets and reflection, pipeline layouts, pipelines and the pipeline
+//! cache. SPIR-V parsing uses rspirv; reflection comes from the stored shader
+//! container catalog.
 use super::allocator::{
     AllocatorStats, CpuMemoryReservation, cpu_vec_bytes, reserve_shared_cpu_metadata,
     shared_cpu_bytes,
@@ -509,7 +509,7 @@ impl ComputePipelineDesc {
     }
 }
 
-/// 图形状态显式交给调用者；不猜原作各材质的默认深度、混合或剔除规则。
+/// Formats of a dynamic-rendering pipeline; graphics state is explicit.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct DynamicRenderingFormats {
     pub colors: Vec<vk::Format>,
@@ -792,7 +792,7 @@ impl RasterPipelineOpts {
             .reference(0)
     }
     /// 把位域展开到管线描述（固定状态部分；`front_face` 恒 COUNTER_CLOCKWISE=0，线宽 1.0）。
-    /// 混合附件状态对每个颜色附件复制同一份（原版把同一个 32 字节状态写满 `color_attachments` 份）。
+    /// The blend attachment state is replicated for every color attachment.
     pub fn apply_to(self, desc: &mut RasterPipelineDesc, color_attachments: usize) -> Result<()> {
         // Decode every fallible field before mutating the caller's description.
         let topology = self.topology()?;
@@ -1279,7 +1279,7 @@ fn append_dynamic_rendering_key(key: &mut Vec<u64>, formats: Option<&DynamicRend
     }
 }
 
-/// 键覆盖本候选 RasterPipelineDesc 所有会影响 Vulkan 管线的字段；不使用不稳定 Debug 字串或哈希碰撞替代相等性。
+/// The key covers every RasterPipelineDesc field that affects the Vulkan pipeline;不使用不稳定 Debug 字串或哈希碰撞替代相等性。
 pub(crate) fn raster_pipeline_key_len(desc: &RasterPipelineDesc) -> usize {
     let fragment = desc.fragment_entry.as_deref().unwrap_or(&desc.entry);
     // Nineteen fixed state words and four following sequence lengths. Native
@@ -1460,14 +1460,14 @@ pub enum InterfaceError {
     RuntimeBindingNotLast(u32, u32),
     InvalidLayout,
     IncompatibleLocation(u32, u32),
-    /// 原 `create_raster_pipeline` shader.rs:840:47 `Option::expect("vertex input attrib byte count")`：
-    /// `Type::nbyte()` 为 None（opaque 资源类型当顶点输入）。
+    /// A vertex input has no byte size (`Type::nbyte()` is None, e.g. an
+    /// opaque resource type).
     VertexInputByteCount,
-    /// 原 shader.rs:838:26 `panic!("Unsupported vertex attribute type: {:?}", ty)`，载荷是类型的 Debug 文本。
+    /// Unsupported vertex attribute type; the payload is the type's Debug text.
     UnsupportedVertexAttributeType(String),
-    /// 原 compute 管线创建 shader.rs:397:9 `assert!(compiled.reflection.inputs.is_empty())`。
+    /// A compute shader declares stage inputs.
     ComputeHasVertexInputs,
-    /// 原 compute 管线创建 shader.rs:460:60 `.expect("a valid group size")`（`local_size` 为 None）。
+    /// A compute shader has no workgroup size (`local_size` is None).
     MissingGroupSize,
 }
 pub mod original_panics {
@@ -1489,8 +1489,8 @@ pub mod original_panics {
         )
     }
 }
-/// 原 compute 管线创建在使用反射前的两个检查（shader.rs:397 assert + 460 expect，顺序按机器码：
-/// 先 assert 再取 local_size）。
+/// Reflection checks before compute pipeline creation: no stage inputs, then
+/// a known local size.
 pub fn validate_compute_reflection(
     reflection: &crate::shader_pipeline::reflection::ShaderReflection,
 ) -> Result<[u32; 3]> {
@@ -1746,8 +1746,7 @@ pub(super) fn canonical_type(value: &serde_json::Value) -> serde_json::Value {
     }
 }
 
-/// 原函数读取 raster 状态偏移 0x1b 的高两位；枚举名称未知，因此保留编码接口。
-/// 表值与写入的完整 VkPipelineColorBlendAttachmentState 已按原机器码确认。
+/// Blend state from the two blend-mode bits (5..=6) of the encoded raster flags.
 pub fn get_vk_blend_mode(encoded_raster_flags: u8) -> vk::PipelineColorBlendAttachmentState {
     let mode = usize::from(encoded_raster_flags >> 5 & 3);
     let enabled = [0, 1, 1, 1][mode];
@@ -1800,10 +1799,9 @@ pub fn vertex_input_from_reflection(
                 );
             }
         };
-        // Original schema stores scalar *bytes*, not SPIR-V bits. B's
-        // create_raster_pipeline 0x1416a3b40..3b91 passes scalar.nbyte()*N
-        // and the scalar tag to map_vertex_attribute_format 0x140be6850;
-        // 0x1416a3ba2 uses the actual Type::nbyte for vertex stride.
+        // The reflection schema stores scalar *bytes*, not SPIR-V bits: the
+        // attribute format comes from scalar.nbyte() * N and the scalar tag,
+        // and the vertex stride from the full Type::nbyte.
         let tag = match scalar {
             ScalarType::Signed(_) => 2,
             ScalarType::Unsigned(_) => 3,
@@ -1974,7 +1972,7 @@ impl ShaderLibrary {
             }
         }
         let plan = if let Some(compiled) = self.compiled_computes.get(key) {
-            // 原 compute 管线创建的两个检查（shader.rs:397 / 460）。
+            // Compute reflection checks: no stage inputs, known local size.
             validate_compute_reflection(&compiled.reflection)?;
             ShaderInterfacePlan::from_compiled_pipeline(compiled, &by_name, runtime_device_scalar)?
         } else {
