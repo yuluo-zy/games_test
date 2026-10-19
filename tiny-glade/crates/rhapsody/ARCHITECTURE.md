@@ -148,6 +148,22 @@ impl<T> Retirement<T> {
 
 **锁顺序（全局唯一）**：交换链锁 → 队列提交锁 → 回收锁 → 分配器内部锁。提交锁内只做队列调用，不做阻塞等待、不做 `vkDestroy*`。
 
+### 3.2.1 范围同步与状态跟踪（模块分工）
+
+一条链路，各层只做一件事：
+
+| 层 | 模块 | 职责 |
+|---|---|---|
+| 访问词汇 | `resource::range_state::AccessScope` + `vk::ImageLayout`；`raw::access_table::AccessSpec` | 唯一的访问描述。图的 u8 访问码只是 `ACCESS_TABLE` 的下标，规划时立即降为 `AccessScope`/布局（`rg::plan::AccessSemantics.scope`）；`declared_access` 只用于推导资源 usage（`raw::resource_usage`）。 |
+| 范围状态机 | `resource::range_state`（`RangeStateTable`、`StatePatch`、`RangeOwner::admits`） | 唯一的运行期逐范围状态：写者/读者前沿、布局、所有权（Unclaimed/Owned/Released）、修订号。补丁在提交闸门内 `prepare`，仅在成功提交后以真实 `SyncPoint` `publish`；宿主映射走 `prepare_host`。所有权准入只有 `RangeOwner::admits` 一处规则。 |
+| 资源挂载 | `resource::tracked::SyncCell` | 持有资源的状态表与整体最后使用点；`validate_queue_range` 为传输服务的预检。 |
+| 屏障构建/下发 | `raw::barrier`（`RangeBarrier`、`SynchronizationScope`、`BarrierDispatch`、`Device::issue_barriers`） | 唯一把范围转换变成 Vulkan 屏障并按 sync2/legacy 下发的地方。rg、传输、挂起 acquire、raw 资源访问、交换链、诊断都经此。 |
+| 规划期（图） | `rg::access_ledger`（声明收集、同步组）→ `rg::sync_plan`（静态 `RangeProgram`）→ `rg::sync_plan::bind`（每帧把程序叠加到物理 `SyncCell` 表上，产出 `BoundTransition` 与 `StatePatch`） | 规划器用符号依赖（`DependencyRef`）模拟所有权与前沿，提交时产出的补丁仍由运行期状态机校验并发布；Released 范围由规划器自己 acquire。 |
+| 运行期（非图） | `raw::resource_access`（显式 raw 访问）、`transfer`、`device::pending_acquire` | 从同一状态表推导屏障并记录同一种 `StatePatch`。跨族上传的 acquire 挂在设备队列上，由下一图批次、传输管理器的图形族命令或 `TransferManager::flush_acquires` 合并录制；未 acquire 的范围被任何使用拒绝（明确错误，不会竞态）。 |
+| 校验器 | `rg::plan_check`（`range_program`、`bound`、`native_state`、`range_oracle`） | 独立验证器：刻意不调用生产的拆分/状态转换实现，用自己的稠密格/切片重新推导，再与规划结果比较；共享 `AccessScope`/`RangeTransfer`/`NativeRange` 等词汇类型。仅在开启计划校验时运行（debug 构建、`validation` feature 或 `rg::set_plan_validation`）。 |
+
+不再存在的平行实现：vk-sync 式按访问码推导屏障（`access_table::get_*_barrier`）、`rg::vulkan::AccessSpec` 的散字段/`original_mask`、传输本地的 acquire 待重试列表与逐作业 acquire 提交、各处手写的 `vk::*MemoryBarrier` 与所有权判断。
+
 ### 3.3 队列规划（`src/device/queue_config.rs`，P2）
 
 ```rust
