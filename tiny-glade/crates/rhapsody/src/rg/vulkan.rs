@@ -1278,7 +1278,7 @@ impl VulkanGraphBackend {
         chain.parallel = match self.device.policy().recording {
             crate::device::RecordingPolicy::Serial => super::parallel::ParallelRecording::SERIAL,
             crate::device::RecordingPolicy::Parallel => {
-                super::parallel::ParallelRecording::ORIGINAL
+                super::parallel::ParallelRecording::ADAPTIVE
             }
         };
         chain

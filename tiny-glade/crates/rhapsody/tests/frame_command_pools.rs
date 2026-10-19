@@ -154,7 +154,7 @@ fn production_session_uses_bounded_frame_worker_pools_and_whole_pool_reuse() {
     };
     let backend = VulkanGraphBackend::new(device, AccessTable::original()).unwrap();
     let mut session = VulkanGraphSession::new(backend);
-    session.chain.parallel = ParallelRecording::ORIGINAL;
+    session.chain.parallel = ParallelRecording::EVERY_PASS;
     for _ in 0..12 {
         let mut graph = session.begin_frame().unwrap();
         for name in ["one", "two", "three", "four"] {

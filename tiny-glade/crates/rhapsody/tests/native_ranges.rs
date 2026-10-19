@@ -433,7 +433,7 @@ fn read(buffer: &Buffer, size: usize) -> Vec<u8> {
 #[test]
 fn buffer_barriers_follow_disjoint_and_overlapping_bytes_on_serial_and_worker_recorders() {
     for api in [SubmissionApi::Auto, SubmissionApi::Legacy] {
-        for parallel in [ParallelRecording::SERIAL, ParallelRecording::ORIGINAL] {
+        for parallel in [ParallelRecording::SERIAL, ParallelRecording::EVERY_PASS] {
             let Some(mut fixture) = Fixture::new(api, parallel) else {
                 return;
             };
@@ -516,7 +516,7 @@ fn buffer_barriers_follow_disjoint_and_overlapping_bytes_on_serial_and_worker_re
 #[test]
 fn image_mips_and_layers_keep_distinct_native_layouts_across_frames_without_whole_initialization() {
     for api in [SubmissionApi::Auto, SubmissionApi::Legacy] {
-        for parallel in [ParallelRecording::SERIAL, ParallelRecording::ORIGINAL] {
+        for parallel in [ParallelRecording::SERIAL, ParallelRecording::EVERY_PASS] {
             let Some(mut fixture) = Fixture::new(api, parallel) else {
                 return;
             };

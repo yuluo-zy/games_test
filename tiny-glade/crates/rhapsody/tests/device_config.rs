@@ -3,7 +3,7 @@ mod gpu_test_support;
 use ash::vk;
 use rhapsody::rg::{
     graph::RenderGraph,
-    parallel::ChunkStrategy,
+    parallel::ParallelRecording,
     vulkan::{AccessTable, VulkanGraphBackend, VulkanGraphSession},
 };
 use rhapsody::{
@@ -38,7 +38,10 @@ fn configured_device_reports_actual_enabled_capabilities_and_allocation_mode() {
     assert!(!device.suballocation_enabled());
     let backend = VulkanGraphBackend::new(device, AccessTable::original()).unwrap();
     let session = VulkanGraphSession::new(backend);
-    assert_eq!(session.chain.parallel.strategy, ChunkStrategy::Original);
+    assert_eq!(
+        session.chain.parallel.strategy,
+        ParallelRecording::ADAPTIVE.strategy
+    );
 }
 
 #[test]

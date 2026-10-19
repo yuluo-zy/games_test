@@ -182,7 +182,7 @@ fn result_callbacks_preserve_device_errors_in_serial_and_parallel_recording() {
         ParallelRecording::SERIAL,
         ParallelRecording {
             runner: TaskRunner::Inline,
-            ..ParallelRecording::ORIGINAL
+            ..ParallelRecording::EVERY_PASS
         },
     ] {
         for device_lost in [false, true] {
@@ -236,7 +236,7 @@ fn reported_callback_errors_cannot_be_ignored_by_returning_true() {
         ParallelRecording::SERIAL,
         ParallelRecording {
             runner: TaskRunner::Inline,
-            ..ParallelRecording::ORIGINAL
+            ..ParallelRecording::EVERY_PASS
         },
     ] {
         let mut backend = Mock::default();

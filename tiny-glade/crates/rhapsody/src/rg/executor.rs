@@ -859,8 +859,30 @@ impl ExecutionChain {
                 return Err(Error::InvalidSynchronization);
             }
             for &source in &compiled.plan.queue_schedule.dependencies[batch_index] {
+                // The bound program proves the exact destination stages of each
+                // cross-queue dependency; same-queue order needs no semaphore.
+                let stages = recorder
+                    .synchronization
+                    .bound()
+                    .waits()
+                    .iter()
+                    .find(|wait| {
+                        wait.batch == batch_index
+                            && wait.dependency
+                                == crate::rg::sync_plan::DependencyRef::Batch(source)
+                    })
+                    .map(|wait| wait.stages);
+                if stages.is_none()
+                    && compiled.plan.queue_schedule.domains[source].queue_index
+                        == domain.queue_index
+                {
+                    continue;
+                }
                 let point = batch_points[source].ok_or(Error::InvalidSynchronization)?;
-                let wait = backend.timeline_wait(point).map_err(Error::Validation)?;
+                let mut wait = backend.timeline_wait(point).map_err(Error::Validation)?;
+                if let Some(stages) = stages {
+                    wait.stage = stages;
+                }
                 if let Some(old) = synchronization
                     .waits
                     .iter_mut()
@@ -872,6 +894,8 @@ impl ExecutionChain {
                     synchronization.waits.push(wait);
                 }
             }
+            // The graph-completion signal joins every other queue's work, so these
+            // waits have no single consumer stage and stay at ALL_COMMANDS.
             if backend.requires_graph_completion(batch_index, compiled.snapshot.batches.len()) {
                 for (source, point) in batch_points[..batch_index].iter().enumerate() {
                     if compiled.plan.queue_schedule.domains[source].queue_index
@@ -936,18 +960,14 @@ impl ExecutionChain {
                 )?;
                 stats.count_barriers(&outcome.1);
             } else {
-                let new = if matches!(
-                    self.parallel.strategy,
-                    crate::rg::parallel::ChunkStrategy::Serial
-                ) {
+                // A single chunk records into the batch's first command, which
+                // already holds the initial barriers.
+                let new = {
                     let handle = recorder.commands.last().ok_or(Error::EmptyCommands)?.handle;
                     self.command_records
                         .get(&handle)
                         .ok_or(Error::MissingCommand(handle))?
                         .clone()
-                } else {
-                    let handle = backend.command_handle().map_err(Error::Lifecycle)?;
-                    self.begin(handle, family, queue, backend.begin_command(handle))?
                 };
                 let handle = new.handle();
                 let start = batch.pass_range.start;
