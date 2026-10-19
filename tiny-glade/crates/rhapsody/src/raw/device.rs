@@ -626,7 +626,7 @@ impl Device {
             ),
         )
     }
-    /// 初始化纹理数据：经暂存缓冲 + setup 命令缓冲同步上传（见 `raw::setup`）。
+    /// 初始化纹理数据：经暂存缓冲在共享 setup 上下文上异步上传（见 `raw::setup`），不等待 GPU。
     pub fn init_texture_data(
         &self,
         texture: &super::texture::Texture,
