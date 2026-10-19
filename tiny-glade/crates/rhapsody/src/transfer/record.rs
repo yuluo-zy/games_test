@@ -76,13 +76,14 @@ impl QueueTarget {
 pub(super) fn device_queue(device: &Device, id: QueueId) -> Result<DeviceQueue> {
     if id.index() == 0 {
         return Ok(DeviceQueue {
-            handle: device.queue,
-            family: device.queue_family,
+            handle: device.queues.primary,
+            family: device.queues.primary_family,
             index: 0,
         });
     }
     device
-        .additional_queues
+        .queues
+        .additional
         .get(id.index() - 1)
         .copied()
         .ok_or_else(|| Error::invalid_usage("planned queue is not part of this device"))

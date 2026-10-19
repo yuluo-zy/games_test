@@ -47,10 +47,11 @@ fn family(command: &VulkanCommandBuffer, queue: QueueId) -> Result<u32> {
         return Err(Error::DeviceLost);
     }
     let family = if queue.index() == 0 {
-        device.queue_family
+        device.queues.primary_family
     } else {
         device
-            .additional_queues
+            .queues
+            .additional
             .get(queue.index() - 1)
             .ok_or_else(|| Error::invalid_usage("native access queue belongs to another device"))?
             .family
@@ -135,7 +136,7 @@ fn steps(
             "explicit native access follows an opaque use in the same command",
         ));
     }
-    let mut result = TempList::new(65_536, command.pool.device.allocator_stats.clone())?;
+    let mut result = TempList::new(65_536, command.pool.device.memory.stats.clone())?;
     command.with_recorded_state(cell, NativeState::default(), queue, |table| {
         if !crate::resource::range_state::contains(table.domain(), range) {
             return Err(Error::invalid_usage(

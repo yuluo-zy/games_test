@@ -21,13 +21,13 @@ fn timelines_on_a_real_queue() {
         .semaphore_type(vk::SemaphoreType::TIMELINE)
         .initial_value(0);
     let semaphore = unsafe {
-        gpu.device.create_semaphore(
+        gpu.raw_device().create_semaphore(
             &vk::SemaphoreCreateInfo::default().push_next(&mut kind),
             None,
         )
     }
     .unwrap();
-    let timelines = Timelines::new(gpu.device.clone(), &[semaphore]).unwrap();
+    let timelines = Timelines::new(gpu.raw_device().clone(), &[semaphore]).unwrap();
     let q0 = QueueId::new(0).unwrap();
 
     let submit = |fail: bool| {
@@ -42,7 +42,10 @@ fn timelines_on_a_real_queue() {
             let info = [vk::SubmitInfo::default()
                 .signal_semaphores(&semaphores)
                 .push_next(&mut timeline_info)];
-            unsafe { gpu.device.queue_submit(gpu.queue, &info, vk::Fence::null()) }?;
+            unsafe {
+                gpu.raw_device()
+                    .queue_submit(gpu.primary_queue(), &info, vk::Fence::null())
+            }?;
             Ok(())
         })
     };
@@ -62,7 +65,7 @@ fn timelines_on_a_real_queue() {
     assert_eq!(timelines.poll().unwrap().get(q0), 51);
     // 设备上的真实计数器与提交值一致（没有因失败而跳值）。
     assert_eq!(
-        unsafe { gpu.device.get_semaphore_counter_value(semaphore) }.unwrap(),
+        unsafe { gpu.raw_device().get_semaphore_counter_value(semaphore) }.unwrap(),
         51
     );
 
@@ -78,6 +81,6 @@ fn timelines_on_a_real_queue() {
     drop(timelines);
     gpu.wait_idle().unwrap();
     unsafe {
-        gpu.device.destroy_semaphore(semaphore, None);
+        gpu.raw_device().destroy_semaphore(semaphore, None);
     }
 }

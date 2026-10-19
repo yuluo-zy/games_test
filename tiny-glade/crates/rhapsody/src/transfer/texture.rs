@@ -226,7 +226,7 @@ fn record_transfer_dst_copies(
     // SAFETY: recording; the texture is retained by the access above and the
     // staging span by the caller.
     unsafe {
-        command.pool.device.device.cmd_copy_buffer_to_image(
+        command.pool.device.core.device.cmd_copy_buffer_to_image(
             command.handle,
             staging,
             texture.handle,

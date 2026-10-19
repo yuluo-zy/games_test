@@ -82,7 +82,7 @@ fn graph(session: &mut VulkanGraphSession, readback: Arc<Buffer>) -> RenderGraph
                 .buffer_for(index)
                 .map_err(|e| rhapsody::Error::invalid_usage_with("invalid pass binding", e))?;
             unsafe {
-                fill_device.device.cmd_fill_buffer(
+                fill_device.raw_device().cmd_fill_buffer(
                     vk::CommandBuffer::from_raw(ctx.command.handle()),
                     buffer.raw(),
                     0,
@@ -113,7 +113,7 @@ fn graph(session: &mut VulkanGraphSession, readback: Arc<Buffer>) -> RenderGraph
                 .map_err(|e| rhapsody::Error::invalid_usage_with("invalid pass binding", e))?;
             let command = vk::CommandBuffer::from_raw(ctx.command.handle());
             unsafe {
-                copy_device.device.cmd_copy_buffer(
+                copy_device.raw_device().cmd_copy_buffer(
                     command,
                     source.raw(),
                     output.raw(),
@@ -130,7 +130,7 @@ fn graph(session: &mut VulkanGraphSession, readback: Arc<Buffer>) -> RenderGraph
                     .map_err(|e| rhapsody::Error::invalid_usage_with("invalid pass binding", e))?;
                 unsafe {
                     copy_device
-                        .device
+                        .raw_device()
                         .cmd_fill_buffer(command, bridge.raw(), 0, 16, 1);
                 }
             }
@@ -186,7 +186,12 @@ fn aliased_buffers_get_a_backing_barrier_and_correct_contents() {
             .iter()
             .filter(|backing| backing.resources.len() > 1)
             .collect::<Vec<_>>();
-        assert_eq!(shared.len(), 1, "a and b share one backing:\n{}", plan.dump());
+        assert_eq!(
+            shared.len(),
+            1,
+            "a and b share one backing:\n{}",
+            plan.dump()
+        );
         assert!(shared[0].resources.contains(&a) && shared[0].resources.contains(&b));
         allocation_ids.push(shared[0].allocation_id.expect("allocated backing"));
         let sync = session.last_synchronization();
@@ -210,10 +215,7 @@ fn aliased_buffers_get_a_backing_barrier_and_correct_contents() {
                 .any(|edge| edge.previous == a && edge.next == b),
             "bound program records the alias edge for verification"
         );
-        rhapsody::rg::plan_check::check_bound_synchronization(
-            &program, sync,
-        )
-        .unwrap();
+        rhapsody::rg::plan_check::check_bound_synchronization(&program, sync).unwrap();
         session.wait_submits_done(TIMEOUT).unwrap();
         let mut words = vec![0u8; BYTES as usize * 2];
         unsafe {
@@ -221,7 +223,11 @@ fn aliased_buffers_get_a_backing_barrier_and_correct_contents() {
         }
         for (index, word) in words.as_chunks::<4>().0.iter().enumerate() {
             let expected = if (index as u64) < WORDS { 0xA } else { 0xB };
-            assert_eq!(u32::from_le_bytes(*word), expected, "frame {frame} word {index}");
+            assert_eq!(
+                u32::from_le_bytes(*word),
+                expected,
+                "frame {frame} word {index}"
+            );
         }
     }
     assert!(
@@ -235,7 +241,11 @@ fn aliased_buffers_get_a_backing_barrier_and_correct_contents() {
     let actual = counters.snapshot();
     assert_eq!(actual.allocations, actual.frees);
     assert_eq!(
-        device.allocator_stats.report().totals.total_allocated_bytes,
+        device
+            .allocator_stats()
+            .report()
+            .totals
+            .total_allocated_bytes,
         0
     );
 }

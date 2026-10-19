@@ -227,7 +227,7 @@ impl GpuCrashDiagnostics {
         label: impl Into<String>,
     ) -> Result<u32> {
         if !Arc::ptr_eq(&command.pool.device, &self.device)
-            || command.pool.family != self.device.queue_family
+            || command.pool.family != self.device.queues.primary_family
         {
             return Err(Error::invalid_usage("诊断命令设备或队列族不匹配"));
         }
@@ -247,9 +247,13 @@ impl GpuCrashDiagnostics {
         );
         command.retain_opaque(self.marker_buffer.clone())?;
         unsafe {
-            self.device
-                .device
-                .cmd_fill_buffer(command.handle, self.marker_buffer.handle, 0, 4, id);
+            self.device.core.device.cmd_fill_buffer(
+                command.handle,
+                self.marker_buffer.handle,
+                0,
+                4,
+                id,
+            );
         }
         Ok(id)
     }
@@ -261,7 +265,7 @@ impl GpuCrashDiagnostics {
     pub fn make_host_readable(&self, command: &mut VulkanCommandBuffer) -> Result<()> {
         if !Arc::ptr_eq(&command.pool.device, &self.device)
             || !command.is_recording()
-            || command.pool.family != self.device.queue_family
+            || command.pool.family != self.device.queues.primary_family
         {
             return Err(Error::invalid_usage("诊断屏障的命令设备或录制状态不匹配"));
         }

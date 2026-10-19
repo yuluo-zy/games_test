@@ -212,8 +212,8 @@ fn real_uniform_push_and_descriptor_array_execute_through_one_shared_heap_set() 
             prepared
                 .bind_command(&mut command, pipeline.clone())
                 .unwrap();
-            device.device.cmd_dispatch(command.handle, 1, 1, 1);
-            device.device.cmd_pipeline_barrier(
+            device.raw_device().cmd_dispatch(command.handle, 1, 1, 1);
+            device.raw_device().cmd_pipeline_barrier(
                 command.handle,
                 vk::PipelineStageFlags::COMPUTE_SHADER,
                 vk::PipelineStageFlags::COMPUTE_SHADER,
@@ -232,8 +232,8 @@ fn real_uniform_push_and_descriptor_array_execute_through_one_shared_heap_set() 
             changed_push
                 .bind_command(&mut command, pipeline.clone())
                 .unwrap();
-            device.device.cmd_dispatch(command.handle, 1, 1, 1);
-            device.device.cmd_pipeline_barrier(
+            device.raw_device().cmd_dispatch(command.handle, 1, 1, 1);
+            device.raw_device().cmd_pipeline_barrier(
                 command.handle,
                 vk::PipelineStageFlags::COMPUTE_SHADER,
                 vk::PipelineStageFlags::HOST,

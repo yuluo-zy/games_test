@@ -113,7 +113,7 @@ fn real_attachment_storage_is_budgeted_retained_and_applies_owner_backpressure()
         )
         .unwrap(),
     );
-    let baseline = device.allocator_stats.cpu_memory_usage().total();
+    let baseline = device.allocator_stats().cpu_memory_usage().total();
     let mut cache = AttachmentCache::with_capacity(device.clone(), 1).unwrap();
     let attachment = Attachment::color(texture.clone(), 0, Some([0.; 4])).unwrap();
     let extent = vk::Extent2D {
@@ -121,8 +121,8 @@ fn real_attachment_storage_is_budgeted_retained_and_applies_owner_backpressure()
         height: 8,
     };
     device
-        .allocator_stats
-        .set_host_budget(device.allocator_stats.cpu_memory_usage().total().max(1))
+        .allocator_stats()
+        .set_host_budget(device.allocator_stats().cpu_memory_usage().total().max(1))
         .unwrap();
     let error = cache
         .prepare_for_rendering(
@@ -134,9 +134,12 @@ fn real_attachment_storage_is_budgeted_retained_and_applies_owner_backpressure()
         .err()
         .expect("capacity growth must be admitted before allocation");
     assert_eq!(error.kind(), rhapsody::ErrorKind::OutOfMemory);
-    assert_eq!(device.allocator_stats.cpu_memory_usage().total(), baseline);
+    assert_eq!(
+        device.allocator_stats().cpu_memory_usage().total(),
+        baseline
+    );
     assert_eq!(cache.view_count(), 0);
-    device.allocator_stats.set_total_budget(u64::MAX).unwrap();
+    device.allocator_stats().set_total_budget(u64::MAX).unwrap();
     let first = cache
         .prepare_for_rendering(
             std::slice::from_ref(&attachment),
@@ -163,11 +166,14 @@ fn real_attachment_storage_is_budgeted_retained_and_applies_owner_backpressure()
     cache.clear();
     drop(cache);
     assert!(
-        device.allocator_stats.cpu_memory_usage().total() > baseline,
+        device.allocator_stats().cpu_memory_usage().total() > baseline,
         "the prepared Arc and actual native view must retain their storage credit"
     );
     drop(prepared);
-    assert_eq!(device.allocator_stats.cpu_memory_usage().total(), baseline);
+    assert_eq!(
+        device.allocator_stats().cpu_memory_usage().total(),
+        baseline
+    );
 }
 
 #[test]

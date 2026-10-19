@@ -294,7 +294,8 @@ impl SubAllocator {
                     shard.active_general_blocks += 1;
                 }
                 shard.reserved += block_size;
-                let total = self.reserved_total.fetch_add(block_size, Ordering::AcqRel) + block_size;
+                let total =
+                    self.reserved_total.fetch_add(block_size, Ordering::AcqRel) + block_size;
                 self.physical_peak.fetch_max(total, Ordering::Relaxed);
                 true
             }
@@ -506,12 +507,13 @@ impl MemoryBlock {
             return Err(Error::DeviceLost);
         }
         let sub = device
+            .memory
             .suballocator
             .as_ref()
             .ok_or_else(|| Error::invalid_usage("设备未启用子分配"))?;
         if requirements.size == 0
             || (flags.contains(vk::MemoryAllocateFlags::DEVICE_ADDRESS)
-                && !device.capabilities.buffer_device_address)
+                && !device.core.capabilities.buffer_device_address)
         {
             return Err(Error::invalid_usage("内存大小或设备地址分配能力无效"));
         }
@@ -523,7 +525,7 @@ impl MemoryBlock {
             adjusted.size = round_up(adjusted.size, sub.non_coherent_atom_size);
         }
         let memory_type = super::allocator::choose_memory_type(
-            &device.memory,
+            &device.core.memory_properties,
             adjusted.memory_type_bits,
             required,
             preferred,
@@ -550,11 +552,11 @@ impl MemoryBlock {
                 memory_type,
             )
         })
-            .inspect_err(|error| {
-                if matches!(error, Error::DeviceLost) {
-                    device.timelines.mark_device_lost();
-                }
-            })?;
+        .inspect_err(|error| {
+            if matches!(error, Error::DeviceLost) {
+                device.queues.timelines.mark_device_lost();
+            }
+        })?;
         let properties = allocation.memory_properties();
         let allocation_size = allocation.size();
         let accounting_id = allocation.accounting_id;
@@ -568,12 +570,6 @@ impl MemoryBlock {
             sub: Some(allocation),
             device,
         })
-    }
-}
-
-impl Device {
-    pub fn suballocation_enabled(&self) -> bool {
-        self.suballocator.is_some()
     }
 }
 
@@ -596,7 +592,8 @@ impl AllocationBackend for SubAllocationBackend {
             linear,
         )?;
         self.device
-            .allocator_stats
+            .memory
+            .stats
             .rename(block.accounting_id(), request.name.clone());
         Ok(block)
     }
@@ -608,7 +605,7 @@ impl AllocationBackend for SubAllocationBackend {
         Ok(())
     }
     fn report(&self) -> AllocatorReport {
-        self.device.allocator_stats.report()
+        self.device.memory.stats.report()
     }
 }
 

@@ -31,7 +31,9 @@ struct BufferUploads {
 }
 
 impl BufferHost {
-    pub fn graphics_device(&self) -> &Arc<Device> { &self.device }
+    pub fn graphics_device(&self) -> &Arc<Device> {
+        &self.device
+    }
     pub fn new(device: Arc<Device>) -> Self {
         Self {
             device,
@@ -909,11 +911,18 @@ impl ShaderHost {
     }
     /// Uses this host's existing heap/compiler. Device support policy is
     /// selected by the raster host; no second descriptor backend is created.
-    pub fn indexed_count_adapter(&self) -> rhapsody::Result<Arc<rhapsody::rg::indirect_count::IndexedCountAdapter>> {
+    pub fn indexed_count_adapter(
+        &self,
+    ) -> rhapsody::Result<Arc<rhapsody::rg::indirect_count::IndexedCountAdapter>> {
         let mut cached = self.indexed_count_adapter.lock();
-        if let Some(adapter) = cached.as_ref() { return Ok(adapter.clone()); }
+        if let Some(adapter) = cached.as_ref() {
+            return Ok(adapter.clone());
+        }
         let adapter = rhapsody::rg::indirect_count::IndexedCountAdapter::new(
-            self.device.clone(), self.heap.clone(), &self.compiler)?;
+            self.device.clone(),
+            self.heap.clone(),
+            &self.compiler,
+        )?;
         *cached = Some(adapter.clone());
         Ok(adapter)
     }
@@ -1678,7 +1687,7 @@ impl CorePassGraph for GraphPasses<'_> {
                 .managed
                 .expect("pass callback without managed resources");
             // SAFETY: 命令缓冲、资源与设备在回调期间由 recorder 持有存活。
-            let mut backend = unsafe { AshCommandBackend::new(&device.device) };
+            let mut backend = unsafe { AshCommandBackend::new(&device.raw_device()) };
             let command =
                 <ash::vk::CommandBuffer as ash::vk::Handle>::from_raw(ctx.command.handle());
             let mut host = PassApiHost {
@@ -1793,7 +1802,7 @@ impl CorePassGraph for GraphPasses<'_> {
                     rhapsody::Error::invalid_usage_with("staging target", error)
                 })?;
                 unsafe {
-                    device.device.cmd_copy_buffer(
+                    device.raw_device().cmd_copy_buffer(
                         <vk::CommandBuffer as ash::vk::Handle>::from_raw(ctx.command.handle()),
                         source.handle,
                         target.handle,
@@ -1921,7 +1930,7 @@ impl CorePassGraph for GraphPasses<'_> {
                             rhapsody::Error::invalid_usage_with("upload staging source", error)
                         })?;
                         unsafe {
-                            device.device.cmd_copy_buffer(
+                            device.raw_device().cmd_copy_buffer(
                                 <vk::CommandBuffer as ash::vk::Handle>::from_raw(
                                     ctx.command.handle(),
                                 ),
@@ -1963,7 +1972,7 @@ impl CorePassGraph for GraphPasses<'_> {
                     rhapsody::Error::invalid_usage_with("cached upload target", error)
                 })?;
                 unsafe {
-                    device.device.cmd_copy_buffer(
+                    device.raw_device().cmd_copy_buffer(
                         <vk::CommandBuffer as ash::vk::Handle>::from_raw(ctx.command.handle()),
                         source.handle,
                         target.handle,
@@ -2063,11 +2072,14 @@ fn project_view_desc(
 /// Native None means the remaining subresource count after the selected base,
 /// not the whole image count plus that base (rg binding @14205f263..297).
 fn remaining_view_count(total: u32, base: u32, explicit: Option<u32>) -> rhapsody::Result<u32> {
-    let remaining = total.checked_sub(base)
-        .ok_or_else(|| rhapsody::Error::invalid_usage("image view base exceeds its actual image"))?;
+    let remaining = total.checked_sub(base).ok_or_else(|| {
+        rhapsody::Error::invalid_usage("image view base exceeds its actual image")
+    })?;
     let count = explicit.unwrap_or(remaining);
     if count == 0 || count > remaining {
-        return Err(rhapsody::Error::invalid_usage("image view count exceeds its actual remaining range"));
+        return Err(rhapsody::Error::invalid_usage(
+            "image view count exceeds its actual remaining range",
+        ));
     }
     Ok(count)
 }
@@ -2081,13 +2093,19 @@ fn individual_mip_views(
     array_count: u32,
 ) -> rhapsody::Result<Vec<rhapsody::raw::texture::TextureViewDesc>> {
     if view.level_count == 0 || array_count < view.level_count {
-        return Err(rhapsody::Error::invalid_usage("individual mip views exceed the actual shader array"));
+        return Err(rhapsody::Error::invalid_usage(
+            "individual mip views exceed the actual shader array",
+        ));
     }
     let mut views = Vec::new();
-    views.try_reserve_exact(array_count as usize).map_err(|_| rhapsody::Error::OutOfHostMemory)?;
+    views
+        .try_reserve_exact(array_count as usize)
+        .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
     for element in 0..array_count {
         let mut selected = view;
-        selected.base_mip_level = view.base_mip_level.checked_add(element.min(view.level_count - 1))
+        selected.base_mip_level = view
+            .base_mip_level
+            .checked_add(element.min(view.level_count - 1))
             .ok_or_else(|| rhapsody::Error::invalid_usage("individual mip index overflow"))?;
         selected.level_count = 1;
         views.push(selected);
@@ -2320,23 +2338,35 @@ impl GraphPasses<'_> {
             let (resource, handle, range, code) = match external.slot {
                 ExternalSlot::UniformBytes(bytes) => {
                     declared_uniform_bindings.push(external.binding);
-                    if !matches!(kind, BindingKind::StorageBuffer | BindingKind::UniformBuffer) {
-                        return Err(rhapsody::Error::invalid_usage("external uniform differs from shader ABI"));
+                    if !matches!(
+                        kind,
+                        BindingKind::StorageBuffer | BindingKind::UniformBuffer
+                    ) {
+                        return Err(rhapsody::Error::invalid_usage(
+                            "external uniform differs from shader ABI",
+                        ));
                     }
                     if bytes.is_empty() {
-                        return Err(rhapsody::Error::invalid_usage("external uniform has an empty range"));
+                        return Err(rhapsody::Error::invalid_usage(
+                            "external uniform has an empty range",
+                        ));
                     }
-                    let (buffer, offset, size) = if let Some((_, chunk)) = self.uniform_uploads
-                        .iter().find(|(source, _)| Arc::ptr_eq(source, &bytes))
+                    let (buffer, offset, size) = if let Some((_, chunk)) = self
+                        .uniform_uploads
+                        .iter()
+                        .find(|(source, _)| Arc::ptr_eq(source, &bytes))
                     {
                         (chunk.buffer.clone(), chunk.offset, chunk.size)
                     } else {
                         // Bounded declaration cache, not another allocator or
                         // descriptor heap. Original DoF uses one shared table.
                         if self.uniform_uploads.len() == 64 {
-                            return Err(rhapsody::Error::unsupported("external uniform declaration budget exceeded"));
+                            return Err(rhapsody::Error::unsupported(
+                                "external uniform declaration budget exceeded",
+                            ));
                         }
-                        self.uniform_uploads.try_reserve(1)
+                        self.uniform_uploads
+                            .try_reserve(1)
                             .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
                         let chunk = self.dynamic.lock().push_slice(&bytes)?;
                         let range = (chunk.buffer.clone(), chunk.offset, chunk.size);
@@ -2352,11 +2382,17 @@ impl GraphPasses<'_> {
                         || !buffer.usage.contains(expected)
                         || offset.checked_add(size).is_none_or(|end| end > buffer.size)
                     {
-                        return Err(rhapsody::Error::invalid_usage("external uniform physical range/device mismatch"));
+                        return Err(rhapsody::Error::invalid_usage(
+                            "external uniform physical range/device mismatch",
+                        ));
                     }
                     let handle = session.import_frame_buffer(&mut graph, buffer.clone(), 0x1a)?;
                     (
-                        BindlessResource::Buffer { buffer, offset, size },
+                        BindlessResource::Buffer {
+                            buffer,
+                            offset,
+                            size,
+                        },
                         handle,
                         AccessRange::Buffer { offset, size },
                         0x1a,
@@ -2539,8 +2575,12 @@ impl GraphPasses<'_> {
                 used_image_views[index] = true;
                 contents_unused = inactive_texture_bindings.contains(&(index as u8));
                 allow_undefined = undefined_texture_bindings.contains(&(index as u8));
-                if allow_undefined && (contents_unused || rhapsody::raw::access_table::is_write(access.access)) {
-                    return Err(rhapsody::Error::invalid_usage("undefined texture read metadata conflicts with its actual access"));
+                if allow_undefined
+                    && (contents_unused || rhapsody::raw::access_table::is_write(access.access))
+                {
+                    return Err(rhapsody::Error::invalid_usage(
+                        "undefined texture read metadata conflicts with its actual access",
+                    ));
                 }
                 preserves_texture = preserving_texture_bindings.contains(&(index as u8));
                 let resource = graph.resource_handle(access.resource)?;
@@ -2552,20 +2592,33 @@ impl GraphPasses<'_> {
                 // Storage buffers share the same existing per-binding inactive
                 // intent. Match each native read occurrence independently so an
                 // active alias still tightens the graph's content requirement.
-                if let Some(index) = bindings.iter().enumerate().find_map(|(index, binding)| {
-                    match binding {
-                        CorePassBinding::BufferRead { resource }
-                            if !used_image_views[index] && *resource == access.resource
-                                && !rhapsody::raw::access_table::is_write(access.access) => Some(index),
-                        _ => None,
-                    }
-                }) {
+                if let Some(index) =
+                    bindings
+                        .iter()
+                        .enumerate()
+                        .find_map(|(index, binding)| match binding {
+                            CorePassBinding::BufferRead { resource }
+                                if !used_image_views[index]
+                                    && *resource == access.resource
+                                    && !rhapsody::raw::access_table::is_write(access.access) =>
+                            {
+                                Some(index)
+                            }
+                            _ => None,
+                        })
+                {
                     used_image_views[index] = true;
                     contents_unused = inactive_texture_bindings.contains(&(index as u8));
                 }
                 rhapsody::rg::resource::AccessRange::Whole
             };
-            declared_accesses.push((*access, range, contents_unused, allow_undefined, preserves_texture));
+            declared_accesses.push((
+                *access,
+                range,
+                contents_unused,
+                allow_undefined,
+                preserves_texture,
+            ));
         }
         if bindings.iter().enumerate().any(|(index, binding)| {
             matches!(binding, CorePassBinding::ImageView { .. }) && !used_image_views[index]
@@ -2585,7 +2638,8 @@ impl GraphPasses<'_> {
             } else if (*preserves_texture || preserving_buffers.contains(&a.resource))
                 && rhapsody::raw::access_table::is_write(a.access)
             {
-                declared.add_preserving_resource_access_range(resource, a.access, a.group, *range)?;
+                declared
+                    .add_preserving_resource_access_range(resource, a.access, a.group, *range)?;
             } else {
                 declared.add_resource_access_range(resource, a.access, a.group, *range)?;
             }
@@ -2670,7 +2724,7 @@ impl GraphPasses<'_> {
             }
             // SAFETY: pipeline and command belong to this device; graph declares the accessed resources.
             unsafe {
-                device.device.cmd_bind_pipeline(
+                device.raw_device().cmd_bind_pipeline(
                     command,
                     vk::PipelineBindPoint::COMPUTE,
                     pipeline.handle,
@@ -2740,7 +2794,7 @@ impl GraphPasses<'_> {
                 &mut bind_parameters,
             )?;
             let mut exec = ComputeExecHost {
-                device: &device.device,
+                device: &device.raw_device(),
                 command,
                 local_size: entry.local_size,
                 managed,
@@ -2926,32 +2980,64 @@ mod compute_parameter_tests {
     }
 }
 
-
 #[cfg(test)]
 mod original_individual_mip_view_tests {
     use super::*;
     #[test]
     fn selected_remaining_mips_are_individual_and_unused_abi_tail_reuses_the_last_actual_view() {
-        let desc = rhapsody::raw::texture::TextureDesc::new_2d_array(256, 256, 2, vk::Format::B10G11R11_UFLOAT_PACK32)
-            .mip_levels(9).usage(vk::ImageUsageFlags::STORAGE);
+        let desc = rhapsody::raw::texture::TextureDesc::new_2d_array(
+            256,
+            256,
+            2,
+            vk::Format::B10G11R11_UFLOAT_PACK32,
+        )
+        .mip_levels(9)
+        .usage(vk::ImageUsageFlags::STORAGE);
         let source = country_core::rhapsody_types::TextureViewDesc::new()
-            .base_mip_level(1).base_layer(1).view_type(5).bind_individual_mips(true);
+            .base_mip_level(1)
+            .base_layer(1)
+            .view_type(5)
+            .bind_individual_mips(true);
         let selected = project_view_desc(&desc, &source).unwrap();
-        assert_eq!((selected.base_mip_level, selected.level_count, selected.base_layer, selected.layer_count), (1, 8, 1, 1));
+        assert_eq!(
+            (
+                selected.base_mip_level,
+                selected.level_count,
+                selected.base_layer,
+                selected.layer_count
+            ),
+            (1, 8, 1, 1)
+        );
         let views = individual_mip_views(selected, 12).unwrap();
         assert_eq!(views.len(), 12);
-        assert_eq!(views.iter().map(|v| v.base_mip_level).collect::<Vec<_>>(), [1,2,3,4,5,6,7,8,8,8,8,8]);
-        assert!(views.iter().all(|v| v.level_count == 1 && v.layer_count == 1 && v.base_layer == 1));
-        for v in views { v.validate(&desc).unwrap(); }
+        assert_eq!(
+            views.iter().map(|v| v.base_mip_level).collect::<Vec<_>>(),
+            [1, 2, 3, 4, 5, 6, 7, 8, 8, 8, 8, 8]
+        );
+        assert!(
+            views
+                .iter()
+                .all(|v| v.level_count == 1 && v.layer_count == 1 && v.base_layer == 1)
+        );
+        for v in views {
+            v.validate(&desc).unwrap();
+        }
         let logical = rhapsody::rg::vulkan::ResourceSpec::Image(desc).descriptor();
-        assert_eq!(compute_view_range(logical, &source).unwrap(),
-            rhapsody::rg::resource::AccessRange::Texture { aspect_mask: 1, base_mip_level: 1, level_count: 8, base_array_layer: 1, layer_count: 1 });
+        assert_eq!(
+            compute_view_range(logical, &source).unwrap(),
+            rhapsody::rg::resource::AccessRange::Texture {
+                aspect_mask: 1,
+                base_mip_level: 1,
+                level_count: 8,
+                base_array_layer: 1,
+                layer_count: 1
+            }
+        );
         assert!(individual_mip_views(selected, 7).is_err());
         assert!(project_view_desc(&desc, &source.base_mip_level(9)).is_err());
         assert!(project_view_desc(&desc, &source.level_count(Some(9))).is_err());
     }
 }
-
 
 #[cfg(test)]
 mod original_surface_texture_flags_tests {
@@ -2967,6 +3053,12 @@ mod original_surface_texture_flags_tests {
         assert_eq!(native.width, 64);
         assert_eq!(native.height, 32);
         assert!(native.usage.contains(vk::ImageUsageFlags::SAMPLED));
-        assert_eq!(TextureHost::convert(&TextureDesc::new_2d([64, 32], 0x62)).unwrap().flags.as_raw(), 0);
+        assert_eq!(
+            TextureHost::convert(&TextureDesc::new_2d([64, 32], 0x62))
+                .unwrap()
+                .flags
+                .as_raw(),
+            0
+        );
     }
 }

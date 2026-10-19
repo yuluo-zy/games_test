@@ -485,9 +485,9 @@ fn run_core_compute_pass_with_heap_parameters(with_push: bool, external: bool) {
     let textures = Arc::new(TextureHost::new(gd.clone()));
     let offset = if external {
         unsafe {
-            gd.instance
+            gd.instance()
                 .instance
-                .get_physical_device_properties(gd.physical)
+                .get_physical_device_properties(gd.physical_device())
         }
         .limits
         .min_storage_buffer_offset_alignment
@@ -1447,7 +1447,7 @@ fn external_compute_sampled_and_storage_images_have_declared_views_and_real_pixe
                 write: true,
             },
         )?;
-        device.device.cmd_copy_image_to_buffer(
+        device.raw_device().cmd_copy_image_to_buffer(
             command.handle,
             target_owner.handle,
             vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
@@ -1476,7 +1476,8 @@ fn external_compute_sampled_and_storage_images_have_declared_views_and_real_pixe
                 write: false,
             },
         )
-    }).and_then(|setup| setup.wait(rhapsody::raw::setup::SETUP_WAIT_TIMEOUT_NS))
+    })
+    .and_then(|setup| setup.wait(rhapsody::raw::setup::SETUP_WAIT_TIMEOUT_NS))
     .unwrap();
     let mut actual = vec![0; 64];
     readback.read_bytes(0, &mut actual).unwrap();
@@ -1819,7 +1820,7 @@ fn device_address_chunks_keep_same_page_ranges_until_cancel_or_real_completion()
         return;
     };
     assert!(
-        device.capabilities.buffer_device_address,
+        device.capabilities().buffer_device_address,
         "this GPU regression requires the real BDA feature"
     );
     let root = tempfile::tempdir().unwrap();

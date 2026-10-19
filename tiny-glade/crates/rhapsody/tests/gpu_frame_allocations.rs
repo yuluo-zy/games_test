@@ -70,7 +70,7 @@ fn build(
             // declared with full matching copy ranges. The production executor
             // retains their RawResource owners and records their real SyncCells.
             unsafe {
-                device.device.cmd_copy_buffer(
+                device.raw_device().cmd_copy_buffer(
                     vk::CommandBuffer::from_raw(context.command.handle()),
                     source,
                     destination,
@@ -123,7 +123,7 @@ fn real_vulkan_session_reports_framework_execution_allocations() {
         },
     )
     .expect("strict Vulkan Session allocation fixture requires a working Vulkan device");
-    let messenger = ValidationMessenger::new(&device.instance).unwrap();
+    let messenger = ValidationMessenger::new(device.instance()).unwrap();
     let desc = BufferDesc::new_gpu_to_cpu(
         BYTES,
         vk::BufferUsageFlags::TRANSFER_SRC | vk::BufferUsageFlags::TRANSFER_DST,

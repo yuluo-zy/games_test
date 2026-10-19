@@ -441,7 +441,7 @@ impl AsyncPipelineCompiler {
             return Ok(PipelineTicket { completion });
         }
         if options.priority == CompilePriority::Background
-            && self.shared.cache.device.allocator_stats.budget_action()
+            && self.shared.cache.device.memory.stats.budget_action()
                 != crate::device::BudgetAction::None
         {
             return Err(Error::Timeout);
@@ -477,7 +477,8 @@ impl AsyncPipelineCompiler {
             .shared
             .cache
             .device
-            .allocator_stats
+            .memory
+            .stats
             .reserve_cpu_bytes(bytes as u64, crate::device::BudgetCategory::Live)?;
         let key = job.key();
         let completion = Arc::new(Completion {
@@ -607,7 +608,7 @@ fn worker(shared: Arc<Shared>) {
             ))
         });
         if result.as_ref().is_err_and(|error| error.is_device_lost()) {
-            shared.cache.device.timelines.mark_device_lost();
+            shared.cache.device.queues.timelines.mark_device_lost();
         }
         // Remove failed keys before publishing failure. The queued descriptor
         // retains its original Arc identities through this critical section,
@@ -856,7 +857,7 @@ impl PersistentPipelineCache {
                 let loaded =
                     if let Some(length) = length.filter(|&length| length <= MAX_DISK_BYTES + 128) {
                         let mut payload =
-                            PipelineCacheData::zeroed(&device.allocator_stats, length as usize)?;
+                            PipelineCacheData::zeroed(&device.memory.stats, length as usize)?;
                         let mut trailing = [0];
                         if file.read_exact(payload.as_mut_slice()).is_ok()
                             && file.read(&mut trailing).is_ok_and(|read| read == 0)

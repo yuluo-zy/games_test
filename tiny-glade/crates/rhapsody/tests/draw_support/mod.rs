@@ -222,7 +222,7 @@ impl Rig {
     /// 由命令缓冲持有到执行完成。返回待完成的提交。
     pub fn draw(&self, target: &Target, triangle: &Triangle, clear: [u8; 4]) -> PendingCommand {
         let gd = &self.gd;
-        let raw = &self.device.device;
+        let raw = &self.device.raw_device();
         let bytes: Vec<u8> = triangle
             .iter()
             .flatten()

@@ -92,9 +92,9 @@ fn deliberate_api_misuse_produces_a_validation_error_when_the_layer_exists() {
     let info = vk::BufferCreateInfo::default()
         .size(0)
         .usage(vk::BufferUsageFlags::TRANSFER_DST);
-    let result = unsafe { env.device.device.create_buffer(&info, None) };
+    let result = unsafe { env.device.raw_device().create_buffer(&info, None) };
     if let Ok(buffer) = result {
-        unsafe { env.device.device.destroy_buffer(buffer, None) };
+        unsafe { env.device.raw_device().destroy_buffer(buffer, None) };
     }
     assert!(
         !env.messenger.collector.errors().is_empty(),

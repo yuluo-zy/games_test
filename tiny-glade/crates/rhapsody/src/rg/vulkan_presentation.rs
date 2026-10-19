@@ -461,7 +461,7 @@ impl VulkanGraphSession {
             .ok_or_else(|| crate::Error::invalid_usage("presentation already consumed"))?
             .present();
         if result.as_ref().is_err_and(crate::Error::is_device_lost) {
-            self.backend.device.timelines.mark_device_lost();
+            self.backend.device.queues.timelines.mark_device_lost();
         }
         result
     }
@@ -478,7 +478,7 @@ impl VulkanGraphSession {
             .as_mut()
             .map_or(Ok(()), GraphPresentation::abandon);
         if result.as_ref().is_err_and(crate::Error::is_device_lost) {
-            self.backend.device.timelines.mark_device_lost();
+            self.backend.device.queues.timelines.mark_device_lost();
         }
         result
     }

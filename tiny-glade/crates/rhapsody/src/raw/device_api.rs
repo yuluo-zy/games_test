@@ -83,7 +83,7 @@ impl Device {
                 )?;
             }
         }
-        self.resources.buffers.allocate(buffer)
+        self.caches.resources.buffers.allocate(buffer)
     }
 
     pub fn create_mapped_buffer(
@@ -157,7 +157,7 @@ impl Device {
         if let Some(bytes) = bytes {
             super::setup::init_texture_data(&self.shared(), &texture, bytes)?;
         }
-        self.resources.textures.allocate(texture)
+        self.caches.resources.textures.allocate(texture)
     }
 
     /// `create_texture` 的完整 `TextureInitialData` 形态（`init_texture_data` 跳表 1/2/3 号目标，
@@ -175,7 +175,7 @@ impl Device {
         let texture = super::texture::Texture::new_with_initial_data(self.shared(), &desc, true)?;
         self.set_debug_name(texture.handle, name);
         super::setup::init_texture_data_with(&self.shared(), &texture, data)?;
-        self.resources.textures.allocate(texture)
+        self.caches.resources.textures.allocate(texture)
     }
 
     /// `create_texture` + `TextureInitialData` 跳表 1 号目标：整张图清零（见
@@ -188,7 +188,7 @@ impl Device {
         let texture = super::texture::Texture::new_with_initial_data(self.shared(), &desc, true)?;
         self.set_debug_name(texture.handle, name);
         super::setup::init_texture_zero_fill(&self.shared(), &texture)?;
-        self.resources.textures.allocate(texture)
+        self.caches.resources.textures.allocate(texture)
     }
 
     /// Method form of [`super::binding`] pipeline binding.
@@ -310,6 +310,7 @@ impl Device {
     /// 实例未启用 debug_utils 时静默跳过（命名只影响诊断）。
     fn set_debug_name<T: ash::vk::Handle>(&self, handle: T, name: &str) {
         if self
+            .core
             .instance
             .enabled_extensions
             .iter()
@@ -363,7 +364,8 @@ impl Device {
         }));
         let _submission =
             super::setup::with_setup_resources(&self.shared(), &accesses, |command| unsafe {
-                self.device
+                self.core
+                    .device
                     .cmd_copy_buffer(command, staging.handle, target.handle, &copies);
             })?;
         Ok(())

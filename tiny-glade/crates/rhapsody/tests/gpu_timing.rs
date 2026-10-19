@@ -18,7 +18,7 @@ impl Unblock {
         unsafe {
             self.0
                 .device
-                .device
+                .raw_device()
                 .signal_semaphore(
                     &vk::SemaphoreSignalInfo::default()
                         .semaphore(self.0.handle)
@@ -269,13 +269,11 @@ fn in_flight_pass_queries_keep_their_slots_until_the_actual_timeline_reaches_the
             .count(),
         1
     );
-    assert!(samples.iter().all(
-        |sample| {
-            first.receipts.iter().any(|point| {
-                point.queue.index() == sample.queue && point.value == sample.completion_value
-            })
-        }
-    ));
+    assert!(samples.iter().all(|sample| {
+        first.receipts.iter().any(|point| {
+            point.queue.index() == sample.queue && point.value == sample.completion_value
+        })
+    }));
     assert_eq!(
         session.backend.poll_gpu_timings().unwrap().unwrap().pending,
         0

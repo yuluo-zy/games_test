@@ -20,7 +20,7 @@ impl Sampler {
             return Err(crate::Error::DeviceLost);
         }
         let memory = super::allocator::reserve_shared_cpu_metadata::<Self>(
-            &device.allocator_stats,
+            &device.memory.stats,
             super::allocator::shared_cpu_bytes::<SamplerStorage>()?,
         )?;
         let storage = Arc::new(SamplerStorage { _memory: memory });
@@ -33,9 +33,9 @@ impl Sampler {
         if device.is_device_lost() {
             return Err(crate::Error::DeviceLost);
         }
-        let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.allocator_stats)?;
+        let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.memory.stats)?;
         let handle = super::error::observe_vulkan(&device, unsafe {
-            device.device.create_sampler(info, None)
+            device.core.device.create_sampler(info, None)
         })?;
         Ok(Self {
             last_use: crate::resource::SyncCell::for_device(device.generation())

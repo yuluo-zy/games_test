@@ -10,16 +10,16 @@ fn failed_submit_does_not_advance_completion_past_in_flight_work() {
         eprintln!("skip: no Vulkan device");
         return;
     };
-    let q = device.queue_id(device.queue).unwrap();
+    let q = device.queue_id(device.primary_queue()).unwrap();
     let mut ty = vk::SemaphoreTypeCreateInfo::default().semaphore_type(vk::SemaphoreType::TIMELINE);
     let gate = unsafe {
         device
-            .device
+            .raw_device()
             .create_semaphore(&vk::SemaphoreCreateInfo::default().push_next(&mut ty), None)
     }
     .unwrap();
     let (point, ()) = device
-        .timelines
+        .timelines()
         .submit(q, |signal| {
             let waits = [gate];
             let stages = [vk::PipelineStageFlags::ALL_COMMANDS];
@@ -35,20 +35,20 @@ fn failed_submit_does_not_advance_completion_past_in_flight_work() {
                 .push_next(&mut timeline);
             unsafe {
                 device
-                    .device
-                    .queue_submit(device.queue, &[info], vk::Fence::null())
+                    .raw_device()
+                    .queue_submit(device.primary_queue(), &[info], vk::Fence::null())
             }
             .map_err(Into::into)
         })
         .unwrap();
-    let failed = device.timelines.submit(q, |_| {
+    let failed = device.timelines().submit(q, |_| {
         Err::<(), _>(vk::Result::ERROR_OUT_OF_HOST_MEMORY.into())
     });
     assert_eq!(failed.unwrap_err().kind(), rhapsody::ErrorKind::OutOfMemory);
-    let before = device.timelines.submitted(q).unwrap();
+    let before = device.timelines().submitted(q).unwrap();
     let sampler = unsafe {
         device
-            .device
+            .raw_device()
             .create_sampler(&vk::SamplerCreateInfo::default(), None)
     }
     .unwrap();
@@ -59,16 +59,16 @@ fn failed_submit_does_not_advance_completion_past_in_flight_work() {
     // 先开闸再断言，测试失败也不会使设备 Drop 等待被本线程阻塞的 GPU。
     unsafe {
         device
-            .device
+            .raw_device()
             .signal_semaphore(&vk::SemaphoreSignalInfo::default().semaphore(gate).value(1))
     }
     .unwrap();
     device
-        .timelines
+        .timelines()
         .wait(&SyncSet::from_point(point), 10_000_000_000)
         .unwrap();
     device.collect_garbage();
-    unsafe { device.device.destroy_semaphore(gate, None) };
+    unsafe { device.raw_device().destroy_semaphore(gate, None) };
     assert_eq!(before, point.value);
     assert_eq!(collected, 0);
     assert_eq!(
@@ -89,7 +89,7 @@ fn unused_objects_are_destroyed_without_idle() {
     for _ in 0..128 {
         let sampler = unsafe {
             device
-                .device
+                .raw_device()
                 .create_sampler(&vk::SamplerCreateInfo::default(), None)
         }
         .unwrap();
@@ -131,13 +131,13 @@ fn dropping_a_submission_defers_used_resources_without_blocking_or_retiring_unus
     command.retain_opaque(buffer.clone()).unwrap();
     unsafe {
         device
-            .device
+            .raw_device()
             .cmd_fill_buffer(command.handle, buffer.handle, 0, 16, 0);
     }
     command.end().unwrap();
     let queue = DeviceQueue {
-        handle: device.queue,
-        family: device.queue_family,
+        handle: device.primary_queue(),
+        family: device.queue_family_index(),
         index: 0,
     };
     let pending = command
@@ -163,7 +163,7 @@ fn dropping_a_submission_defers_used_resources_without_blocking_or_retiring_unus
     let after_unused = device.garbage_stats().pending;
     // Always release the gate before assertions, including on a blocking-drop regression.
     unsafe {
-        device.device.signal_semaphore(
+        device.raw_device().signal_semaphore(
             &vk::SemaphoreSignalInfo::default()
                 .semaphore(gate.handle)
                 .value(1),
@@ -218,7 +218,7 @@ fn completed_submitted_drops_obey_ticks_and_explicit_drain_ignores_the_quota() {
     for _ in 0..161 {
         let sampler = unsafe {
             device
-                .device
+                .raw_device()
                 .create_sampler(&vk::SamplerCreateInfo::default(), None)
         }
         .unwrap();

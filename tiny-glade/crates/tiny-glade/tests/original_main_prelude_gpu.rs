@@ -221,7 +221,7 @@ fn original_main_prefix_imports_owned_world_resets_indirect_and_builds_luts_once
                             copy.add_resource_access(output_id, 0x34, 0)?;
                             copy.render_with_result_context(move |ctx| {
                                 unsafe {
-                                    device.device.cmd_copy_image_to_buffer(
+                                    device.raw_device().cmd_copy_image_to_buffer(
                                         vk::CommandBuffer::from_raw(ctx.command.handle()),
                                         target.handle,
                                         vk::ImageLayout::TRANSFER_SRC_OPTIMAL,

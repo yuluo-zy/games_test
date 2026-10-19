@@ -171,13 +171,14 @@ fn first_zero_timeout_acquire_does_not_take_the_graphics_queue_lock() {
     let worker_device = device.clone();
 
     let (worker, returned) = device
-        .timelines
-        .with_queue(device.queue_id(device.queue).unwrap(), || {
+        .timelines()
+        .with_queue(device.queue_id(device.primary_queue()).unwrap(), || {
             let worker = std::thread::spawn(move || {
-                let fence = match unsafe { worker_device.device.create_fence(&fence_info, None) } {
-                    Ok(fence) => fence,
-                    Err(error) => return Err(rhapsody::Error::from(error)),
-                };
+                let fence =
+                    match unsafe { worker_device.raw_device().create_fence(&fence_info, None) } {
+                        Ok(fence) => fence,
+                        Err(error) => return Err(rhapsody::Error::from(error)),
+                    };
                 let started = Instant::now();
                 let result =
                     unsafe { worker_chain.acquire_next_image(0, vk::Semaphore::null(), fence) };
@@ -196,10 +197,14 @@ fn first_zero_timeout_acquire_does_not_take_the_graphics_queue_lock() {
             if result.is_ok() {
                 // Successful acquire can return before its fence signals.
                 // A first acquisition is within the forward-progress bound.
-                fence_wait = unsafe { device.device.wait_for_fences(&[fence], true, u64::MAX) };
+                fence_wait = unsafe {
+                    device
+                        .raw_device()
+                        .wait_for_fences(&[fence], true, u64::MAX)
+                };
             }
             acquisition_error = result.err(); // return a successful lease before teardown
-            unsafe { device.device.destroy_fence(fence, None) };
+            unsafe { device.raw_device().destroy_fence(fence, None) };
             None
         }
         Ok(Err(error)) => Some(format!("fence creation failed: {error}")),
@@ -310,7 +315,7 @@ fn clear_pass(
             .level_count(1)
             .layer_count(1);
         unsafe {
-            device.device.cmd_clear_color_image(
+            device.raw_device().cmd_clear_color_image(
                 vk::CommandBuffer::from_raw(ctx.command.handle()),
                 image,
                 vk::ImageLayout::TRANSFER_DST_OPTIMAL,

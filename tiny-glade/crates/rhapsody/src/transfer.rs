@@ -140,7 +140,7 @@ impl UploadTicket {
         name: &str,
     ) -> crate::Result<crate::rg::resource::BufferId> {
         if backend.device.generation() != self.device.generation()
-            || backend.selected_family() != self.device.queue_family
+            || backend.selected_family() != self.device.queues.primary_family
         {
             return Err(crate::Error::invalid_usage(
                 "upload ticket belongs to another device or queue-family domain",
@@ -260,14 +260,15 @@ impl TransferManager {
         }
         config.validate()?;
         let queued = UploadQueue::new(
-            device.allocator_stats.clone(),
+            device.memory.stats.clone(),
             queue,
             usize::try_from(config.chunk_bytes).map_err(|_| crate::Error::OutOfHostMemory)?,
         )?;
         let graphics =
             QueueTarget::new(&device, device.queue(crate::device::QueueClass::Graphics)?)?;
         let transfer = if device
-            .queue_plan
+            .queues
+            .plan
             .is_aliased(crate::device::QueueClass::Transfer)
         {
             None
@@ -336,7 +337,7 @@ impl TransferManager {
         // A range released to the graphics family is acquired by the
         // graphics command that next touches it.
         buffer.last_use.validate_incoming_queue_range(
-            self.device.queue_family,
+            self.device.queues.primary_family,
             crate::resource::OwnershipRange::Buffer {
                 offset,
                 size: bytes,
@@ -414,7 +415,7 @@ impl TransferManager {
     /// waits for a device/queue or for an unrelated request.
     pub fn flush_uploads(&mut self, max_submits: usize) -> crate::Result<UploadFlush> {
         let mut result = UploadFlush::default();
-        if self.device.allocator_stats.budget_action() != crate::device::BudgetAction::None {
+        if self.device.memory.stats.budget_action() != crate::device::BudgetAction::None {
             self.queued.trim_idle();
         }
         if max_submits != 0 && self.queued.stats().queued_jobs != 0 {
@@ -425,10 +426,7 @@ impl TransferManager {
             }
         }
         for _ in 0..max_submits {
-            let Some(index) = self
-                .queued
-                .next(self.device.allocator_stats.budget_action())
-            else {
+            let Some(index) = self.queued.next(self.device.memory.stats.budget_action()) else {
                 break;
             };
             let job = self.queued.job(index);
@@ -540,7 +538,7 @@ impl TransferManager {
         }
         for range in ranges.iter().filter(|range| !range.is_empty()) {
             destination.last_use.validate_incoming_queue_range(
-                self.device.queue_family,
+                self.device.queues.primary_family,
                 crate::resource::OwnershipRange::Buffer {
                     offset: destination_offset + range.start as u64,
                     size: range.len() as u64,
@@ -794,7 +792,7 @@ impl TransferManager {
         )?;
         // SAFETY: recording; both buffers are retained by the command.
         unsafe {
-            self.device.device.cmd_copy_buffer(
+            self.device.core.device.cmd_copy_buffer(
                 command.handle,
                 source.handle,
                 readback.handle,
@@ -878,7 +876,8 @@ impl Scratch {
             bytes: Vec::new(),
             limit: usize::try_from(limit).map_err(|_| crate::Error::OutOfHostMemory)?,
             memory: device
-                .allocator_stats
+                .memory
+                .stats
                 .reserve_cpu_bytes(0, crate::device::BudgetCategory::Live)?,
         })
     }
@@ -1046,7 +1045,7 @@ impl Uploader<'_> {
         record::record_buffer_writes(&mut command, destination, target, ranges, &mut pieces)?;
         // SAFETY: recording; staging and destination are retained.
         unsafe {
-            self.device.device.cmd_copy_buffer(
+            self.device.core.device.cmd_copy_buffer(
                 command.handle,
                 buffer.handle,
                 destination.handle,
@@ -1105,9 +1104,10 @@ impl TransferImageSupport {
         // SAFETY: valid physical device of a live instance.
         let families = unsafe {
             device
+                .core
                 .instance
                 .instance
-                .get_physical_device_queue_family_properties(device.physical)
+                .get_physical_device_queue_family_properties(device.core.physical)
         };
         families
             .get(family as usize)
@@ -1346,7 +1346,7 @@ mod tests {
             crate::device::Device::new_headless(&crate::device::DeviceConfig::headless()).ok()
         }
         fn submitted(device: &Device) -> u64 {
-            device.timelines.submitted(GRAPHICS).unwrap()
+            device.queues.timelines.submitted(GRAPHICS).unwrap()
         }
         /// `count` buffers released to the graphics family whose acquires are
         /// queued by the transfer registration path.

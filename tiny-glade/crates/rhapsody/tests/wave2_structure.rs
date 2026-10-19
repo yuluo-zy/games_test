@@ -40,7 +40,7 @@ fn device_stores_release_unused_resources_without_sequence_buckets() {
     let key = buffer.key();
     let weak = Arc::downgrade(&buffer.shared());
     drop(buffer);
-    assert!(device.resources.buffers.get(key).is_none());
+    assert!(device.resources().buffers.get(key).is_none());
     assert!(weak.upgrade().is_none());
 }
 
@@ -76,7 +76,7 @@ fn create_graphics_device_attaches_the_physical_device_wrapper() {
     // refresh_memory_budget 经包装委托：扩展门开时给出快照，门关时 Ok(None)。
     let budget = device.refresh_memory_budget().unwrap();
     if device
-        .enabled_extensions
+        .enabled_extensions()
         .iter()
         .any(|e| e == "VK_EXT_memory_budget")
     {

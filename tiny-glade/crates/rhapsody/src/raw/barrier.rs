@@ -232,9 +232,9 @@ impl BarrierDispatch {
         let cmd_pipeline_barrier2 = device
             .caps()
             .is_enabled(crate::device::Feature::Synchronization2)
-            .then(|| match &device.synchronization2 {
+            .then(|| match &device.core.synchronization2 {
                 Some(extension) => extension.fp().cmd_pipeline_barrier2_khr,
-                None => device.device.fp_v1_3().cmd_pipeline_barrier2,
+                None => device.core.device.fp_v1_3().cmd_pipeline_barrier2,
             });
         Self {
             generation: device.generation(),
@@ -260,7 +260,7 @@ impl BarrierDispatch {
             ));
         }
         if let Some(cmd_pipeline_barrier2) = self.cmd_pipeline_barrier2 {
-            let barriers = Barrier2Scope::new(scope, &device.allocator_stats)?;
+            let barriers = Barrier2Scope::new(scope, &device.memory.stats)?;
             let dependency = vk::DependencyInfo::default()
                 .memory_barriers(&barriers.memory)
                 .buffer_memory_barriers(&barriers.buffers)
@@ -271,7 +271,7 @@ impl BarrierDispatch {
         } else {
             let (source, destination) = scope.legacy_stages();
             unsafe {
-                device.device.cmd_pipeline_barrier(
+                device.core.device.cmd_pipeline_barrier(
                     command,
                     source,
                     destination,

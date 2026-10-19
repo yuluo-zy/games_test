@@ -19,10 +19,10 @@ use crate::raw::{
 use ash::vk::{self, Handle};
 use std::{collections::BTreeMap, sync::Arc};
 
-#[path = "vulkan_queue.rs"]
-mod queue_runtime;
 #[path = "vulkan_presentation.rs"]
 mod presentation;
+#[path = "vulkan_queue.rs"]
+mod queue_runtime;
 pub use presentation::{PRESENT_ACCESS, PresentTarget, SwapchainContents};
 
 /// 后端导入 token 与跨帧 temporal token 共用的物理资源标识空间。
@@ -365,12 +365,25 @@ pub struct GpuSubmissionCapture {
     _memory: Option<crate::raw::allocator::CpuMemoryReservation>,
 }
 impl GpuSubmissionCapture {
-    fn refresh_budget(&mut self, stats: &Arc<crate::raw::allocator::AllocatorStats>) -> crate::Result<()> {
-        let bytes = self.batches.iter().map(submit::PreparedSubmit::heap_capacity_bytes).sum::<usize>()
-            + if self.batches.spilled() { self.batches.capacity() * std::mem::size_of::<submit::PreparedSubmit>() } else { 0 };
-        if let Some(memory) = &mut self._memory { memory.resize(bytes as u64)?; }
-        else if bytes != 0 {
-            self._memory = Some(stats.reserve_cpu_bytes(bytes as u64, crate::device::BudgetCategory::Cache)?);
+    fn refresh_budget(
+        &mut self,
+        stats: &Arc<crate::raw::allocator::AllocatorStats>,
+    ) -> crate::Result<()> {
+        let bytes = self
+            .batches
+            .iter()
+            .map(submit::PreparedSubmit::heap_capacity_bytes)
+            .sum::<usize>()
+            + if self.batches.spilled() {
+                self.batches.capacity() * std::mem::size_of::<submit::PreparedSubmit>()
+            } else {
+                0
+            };
+        if let Some(memory) = &mut self._memory {
+            memory.resize(bytes as u64)?;
+        } else if bytes != 0 {
+            self._memory =
+                Some(stats.reserve_cpu_bytes(bytes as u64, crate::device::BudgetCategory::Cache)?);
         }
         Ok(())
     }
@@ -494,7 +507,11 @@ impl super::executor::ChunkRecorder for VulkanChunkView<'_> {
         pair: super::profiling::GpuPassTimestamp,
         end: bool,
     ) {
-        pair.write(self.device, vk::CommandBuffer::from_raw(lease.command()), end);
+        pair.write(
+            self.device,
+            vk::CommandBuffer::from_raw(lease.command()),
+            end,
+        );
     }
     fn owner_storage_pool(
         &self,
@@ -556,7 +573,7 @@ impl VulkanGraphBackend {
         accesses: AccessTable,
         class: crate::device::QueueClass,
     ) -> crate::Result<Self> {
-        let id = device.queue_plan.queue(class);
+        let id = device.queues.plan.queue(class);
         let queue = if id.index() == 0 {
             recording::Queue::Primary
         } else {
@@ -570,18 +587,19 @@ impl VulkanGraphBackend {
         queue: recording::Queue,
     ) -> crate::Result<Self> {
         let mut accesses = accesses;
-        accesses.normalize_enabled_stages(device.capabilities);
+        accesses.normalize_enabled_stages(device.core.capabilities);
         let (slot, family) = match queue {
-            recording::Queue::Primary => (0, device.queue_family),
+            recording::Queue::Primary => (0, device.queues.primary_family),
             recording::Queue::Auxiliary(index) => {
                 let selected = device
-                    .additional_queues
+                    .queues
+                    .additional
                     .get(index as usize)
                     .ok_or_else(|| crate::Error::invalid_usage("请求的辅助队列不存在"))?;
                 (index as usize + 1, selected.family)
             }
         };
-        let queue_timelines = (0..=device.additional_queues.len())
+        let queue_timelines = (0..=device.queues.additional.len())
             .map(|index| {
                 TimelineSemaphore::for_queue(
                     device.clone(),
@@ -589,26 +607,26 @@ impl VulkanGraphBackend {
                 )
             })
             .collect::<Result<Vec<_>, _>>()?;
-        let stores = device.resources.clone();
+        let stores = device.caches.resources.clone();
         let cpu_arenas = crate::command::CpuArenaPool::new(
             crate::command::CpuArenaConfig::default(),
-            device.allocator_stats.clone(),
+            device.memory.stats.clone(),
         )?;
         let owner_pool = crate::raw::temp_list_pool::TempListPool::new(
             Default::default(),
-            device.allocator_stats.clone(),
+            device.memory.stats.clone(),
         )?;
         let frame_storage = super::frame_storage::FrameStoragePool::new(
             Default::default(),
-            device.allocator_stats.clone(),
+            device.memory.stats.clone(),
         )?;
         let import_validation = parking_lot::Mutex::new(crate::raw::temp_list::TempList::new(
             65_536,
-            device.allocator_stats.clone(),
+            device.memory.stats.clone(),
         )?);
         let projection_pool = super::pass_bindings::ManagedProjectionPool::new(
             device.generation(),
-            device.allocator_stats.clone(),
+            device.memory.stats.clone(),
             Default::default(),
         )?;
         let queue_runtime = queue_runtime::QueueRuntime::new(&device)?;
@@ -671,7 +689,7 @@ impl VulkanGraphBackend {
         }
         let replacement = super::pass_bindings::ManagedProjectionPool::new(
             self.device.generation(),
-            self.device.allocator_stats.clone(),
+            self.device.memory.stats.clone(),
             config,
         )?;
         self.pass_resources.take();
@@ -768,7 +786,7 @@ impl VulkanGraphBackend {
     fn begin_command_frame(&mut self) -> crate::Result<()> {
         self.poll_gpu_timings()?;
         if !matches!(
-            self.device.allocator_stats.budget_action(),
+            self.device.memory.stats.budget_action(),
             crate::device::BudgetAction::None
         ) {
             self.cpu_arenas.trim_idle(0);
@@ -806,7 +824,7 @@ impl VulkanGraphBackend {
         config: crate::command::CpuArenaConfig,
     ) -> crate::Result<()> {
         let replacement =
-            crate::command::CpuArenaPool::new(config, self.device.allocator_stats.clone())?;
+            crate::command::CpuArenaPool::new(config, self.device.memory.stats.clone())?;
         self.cpu_arenas = replacement;
         Ok(())
     }
@@ -820,7 +838,7 @@ impl VulkanGraphBackend {
     ) -> crate::Result<()> {
         self.owner_pool = crate::raw::temp_list_pool::TempListPool::new(
             config,
-            self.device.allocator_stats.clone(),
+            self.device.memory.stats.clone(),
         )?;
         Ok(())
     }
@@ -831,10 +849,8 @@ impl VulkanGraphBackend {
         &mut self,
         config: super::frame_storage::FrameStorageConfig,
     ) -> crate::Result<()> {
-        self.frame_storage = super::frame_storage::FrameStoragePool::new(
-            config,
-            self.device.allocator_stats.clone(),
-        )?;
+        self.frame_storage =
+            super::frame_storage::FrameStoragePool::new(config, self.device.memory.stats.clone())?;
         Ok(())
     }
 
@@ -1034,7 +1050,7 @@ impl VulkanGraphBackend {
         &mut self,
         chain: &mut ExecutionChain,
     ) -> crate::Result<usize> {
-        let completed = self.device.timelines.poll()?;
+        let completed = self.device.queues.timelines.poll()?;
         for index in 0..self.queue_timelines.len() {
             let queue = crate::sync::QueueId::new(index).expect("validated queue count");
             chain.observe_completion(crate::sync::SyncPoint {
@@ -1066,7 +1082,7 @@ impl VulkanGraphBackend {
         token: u64,
         resource: GpuResource,
     ) -> crate::Result<()> {
-        self.bind_import_named_owned_by(name, token, resource, self.device.queue_family)
+        self.bind_import_named_owned_by(name, token, resource, self.device.queues.primary_family)
     }
     /// 已有独占资源须声明真实归属；不为跨队列族资源伪造 release/acquire。
     pub fn bind_import_named_owned_by(
@@ -1096,7 +1112,7 @@ impl VulkanGraphBackend {
         Ok(())
     }
     pub fn bind_import(&mut self, resource: GpuResource) -> crate::Result<u64> {
-        self.bind_import_owned_by(resource, self.device.queue_family)
+        self.bind_import_owned_by(resource, self.device.queues.primary_family)
     }
     pub fn bind_import_owned_by(
         &mut self,
@@ -1185,6 +1201,7 @@ impl VulkanGraphBackend {
                 } else {
                     unsafe {
                         self.device
+                            .core
                             .device
                             .get_semaphore_counter_value(signal.semaphore)
                     }
@@ -1211,17 +1228,19 @@ impl VulkanGraphBackend {
     fn new_execution_chain(&self) -> ExecutionChain {
         let family_count = self
             .device
-            .additional_queues
+            .queues
+            .additional
             .iter()
             .map(|q| q.family)
-            .chain(std::iter::once(self.device.queue_family))
+            .chain(std::iter::once(self.device.queues.primary_family))
             .max()
             .unwrap_or(0)
             + 1;
         let mut chain = ExecutionChain::new(
-            self.device.queue,
+            self.device.queues.primary,
             self.device
-                .additional_queues
+                .queues
+                .additional
                 .iter()
                 .map(|q| q.handle)
                 .collect(),
@@ -1267,7 +1286,7 @@ impl graph::ResourceBackend for VulkanGraphBackend {
             self.lent_aliases = lent;
         } else {
             self.prepared_transients
-                .prepare_unaliased(&plan.dependency_edges, &self.device.allocator_stats)?;
+                .prepare_unaliased(&plan.dependency_edges, &self.device.memory.stats)?;
         }
         Ok(())
     }
@@ -1355,7 +1374,7 @@ impl ExecutionBackend for VulkanGraphBackend {
         end: bool,
     ) {
         pair.write(
-            &self.device.device,
+            &self.device.core.device,
             vk::CommandBuffer::from_raw(command),
             end,
         );
@@ -1375,10 +1394,11 @@ impl ExecutionBackend for VulkanGraphBackend {
         domain: super::queue_schedule::QueueDomain,
     ) -> crate::Result<()> {
         let family = if domain.queue_index == 0 {
-            self.device.queue_family
+            self.device.queues.primary_family
         } else {
             self.device
-                .additional_queues
+                .queues
+                .additional
                 .get(domain.queue_index as usize - 1)
                 .ok_or_else(|| crate::Error::invalid_usage("scheduled queue does not exist"))?
                 .family
@@ -1457,7 +1477,7 @@ impl ExecutionBackend for VulkanGraphBackend {
             .validate_graph(declaration)
             .and_then(|()| self.begin_command_frame());
         if result.as_ref().is_err_and(|error| error.is_device_lost()) {
-            self.device.timelines.mark_device_lost();
+            self.device.queues.timelines.mark_device_lost();
         }
         result
     }
@@ -1558,13 +1578,15 @@ impl ExecutionBackend for VulkanGraphBackend {
         };
         let (resources, tokens) = (&self.resources, self.queue_runtime.frame_tokens());
         // Resources of this frame are acquired by the planner itself.
-        let drained = self.device.record_pending_acquires_except(command, |cell| {
-            tokens.iter().flatten().any(|token| {
-                resources
-                    .get(token)
-                    .is_some_and(|resource| Arc::ptr_eq(&resource.owner_cell(), cell))
-            })
-        })?;
+        let drained = self
+            .device
+            .record_pending_acquires_except(command, |cell| {
+                tokens.iter().flatten().any(|token| {
+                    resources
+                        .get(token)
+                        .is_some_and(|resource| Arc::ptr_eq(&resource.owner_cell(), cell))
+                })
+            })?;
         if drained.is_empty() {
             return Ok(0);
         }
@@ -1599,7 +1621,7 @@ impl ExecutionBackend for VulkanGraphBackend {
         }
     }
     fn wait_submission(&self, receipt: crate::sync::SyncPoint) -> crate::Result<()> {
-        self.device.timelines.wait(&receipt.into(), u64::MAX)
+        self.device.queues.timelines.wait(&receipt.into(), u64::MAX)
     }
     fn supports_parallel_recording(&self) -> bool {
         true
@@ -1623,9 +1645,10 @@ impl ExecutionBackend for VulkanGraphBackend {
             }
         }
         for &command in commands {
-            let key = self.command_slot.get(&command).ok_or_else(|| {
-                crate::Error::invalid_usage("parallel command has no frame pool")
-            })?;
+            let key = self
+                .command_slot
+                .get(&command)
+                .ok_or_else(|| crate::Error::invalid_usage("parallel command has no frame pool"))?;
             let position = entries
                 .iter()
                 .position(|(candidate, _)| *candidate == key)
@@ -1654,7 +1677,7 @@ impl ExecutionBackend for VulkanGraphBackend {
             barrier_dispatch: self.barrier_dispatch,
             cpu_arenas: &self.cpu_arenas,
             owner_pool: &self.owner_pool,
-            device: &self.device.device,
+            device: &self.device.core.device,
             resources: &self.resources,
         });
         Ok((view, leases))
@@ -1767,12 +1790,12 @@ impl ExecutionBackend for VulkanGraphBackend {
         let mut capture = GpuSubmissionCapture::try_new(
             queue,
             prepared,
-            self.device.timelines.queue_count().saturating_sub(1),
-            &self.device.allocator_stats,
+            self.device.queues.timelines.queue_count().saturating_sub(1),
+            &self.device.memory.stats,
         )?;
         let (present_role, fence) = self.amend_presentation_submit(&mut capture.batches)?;
         if present_role.waits_acquire || present_role.signals_rendered {
-            capture.refresh_budget(&self.device.allocator_stats)?;
+            capture.refresh_budget(&self.device.memory.stats)?;
         }
         if self.submissions.len() < SUBMISSION_CAPTURE_LIMIT {
             self.submissions
@@ -1786,7 +1809,7 @@ impl ExecutionBackend for VulkanGraphBackend {
         })?;
         let command_refs = submit::SubmitScratch::<[&VulkanCommandBuffer; 8]>::try_collect(
             command_count,
-            &self.device.allocator_stats,
+            &self.device.memory.stats,
             prepared
                 .iter()
                 .flat_map(|batch| &batch.commands)
@@ -1816,22 +1839,22 @@ impl ExecutionBackend for VulkanGraphBackend {
             });
         let semaphores = submit::SubmitScratch::<[Arc<TimelineSemaphore>; 8]>::try_collect(
             semaphore_refs.clone().count(),
-            &self.device.allocator_stats,
+            &self.device.memory.stats,
             semaphore_refs.map(|semaphore| Ok(semaphore.clone())),
         )?;
         let use_sources =
             submit::SubmitScratch::<[&[Arc<crate::resource::SyncCell>]; 8]>::try_collect(
                 command_refs.len(),
-                &self.device.allocator_stats,
+                &self.device.memory.stats,
                 command_refs.iter().map(|command| Ok(command.use_cells())),
             )?;
         let uses = crate::resource::tracked::collect_submission_uses(
             &use_sources,
-            &self.device.allocator_stats,
+            &self.device.memory.stats,
         )?;
         drop(use_sources);
         let _reservations =
-            crate::resource::tracked::lock_submission_uses_in(&uses, &self.device.allocator_stats)?;
+            crate::resource::tracked::lock_submission_uses_in(&uses, &self.device.memory.stats)?;
         crate::raw::command_buffer::validate_submission_commands(&command_refs)?;
         let family = self.recording_family;
         let prepared_states = unsafe {
@@ -1840,7 +1863,7 @@ impl ExecutionBackend for VulkanGraphBackend {
                 &uses,
                 self.device.queue_id(queue)?,
                 family,
-                &self.device.allocator_stats,
+                &self.device.memory.stats,
             )?
         };
         drop(command_refs);
@@ -1926,7 +1949,9 @@ pub struct PreparedSessionFrame {
     receipt_slot: usize,
 }
 impl PreparedSessionFrame {
-    pub fn snapshot(&self) -> &graph::Snapshot { &self.prepared.compiled.snapshot }
+    pub fn snapshot(&self) -> &graph::Snapshot {
+        &self.prepared.compiled.snapshot
+    }
 }
 
 struct PendingSessionFrame {
@@ -1993,25 +2018,51 @@ impl VulkanGraphSession {
     }
     /// Additive current-architecture handoff used by background App warmup.
     /// Ordinary sessions retain their existing API and resource/cache owners.
-    pub fn take_completed_named_resources(&mut self, timeout_ns: u64)
-        -> crate::Result<CompletedNamedResources> {
-        if self.active_prepared.is_some() || self.last_execution_partial
-            || !self.ledger.has_ended() || self.ledger.submissions() == 0 {
-            return Err(crate::Error::invalid_usage("named handoff requires a completely submitted frame"));
+    pub fn take_completed_named_resources(
+        &mut self,
+        timeout_ns: u64,
+    ) -> crate::Result<CompletedNamedResources> {
+        if self.active_prepared.is_some()
+            || self.last_execution_partial
+            || !self.ledger.has_ended()
+            || self.ledger.submissions() == 0
+        {
+            return Err(crate::Error::invalid_usage(
+                "named handoff requires a completely submitted frame",
+            ));
         }
         self.wait_submits_done(timeout_ns)?;
         if !self.pending.is_empty() || self.frame_import_count() != 0 || self.is_poisoned() {
-            return Err(crate::Error::invalid_usage("named handoff has pending or lost GPU work"));
+            return Err(crate::Error::invalid_usage(
+                "named handoff has pending or lost GPU work",
+            ));
         }
-        let named = self.named.as_ref().ok_or_else(||
-            crate::Error::invalid_usage("named handoff while a graph is executing"))?;
+        let named = self.named.as_ref().ok_or_else(|| {
+            crate::Error::invalid_usage("named handoff while a graph is executing")
+        })?;
         if named.state.requested_validity().next().is_some() {
-            return Err(crate::Error::invalid_usage("named handoff has an uncommitted frame declaration"));
+            return Err(crate::Error::invalid_usage(
+                "named handoff has an uncommitted frame declaration",
+            ));
         }
-        let families = named.resources.resources.keys().map(|token| (*token,
-            self.backend.import_families.get(token).copied().unwrap_or(self.backend.device.queue_family)))
+        let families = named
+            .resources
+            .resources
+            .keys()
+            .map(|token| {
+                (
+                    *token,
+                    self.backend
+                        .import_families
+                        .get(token)
+                        .copied()
+                        .unwrap_or(self.backend.device.queues.primary_family),
+                )
+            })
             .collect();
-        let mut named = self.named.replace(NamedResources::new(self.backend.device.clone()))
+        let mut named = self
+            .named
+            .replace(NamedResources::new(self.backend.device.clone()))
             .expect("validated named owner");
         named.graph_id = None;
         Ok(CompletedNamedResources { named, families })
@@ -2019,19 +2070,32 @@ impl VulkanGraphSession {
 
     /// Restore the same actual named owners into the App's original idle
     /// session. It never merges two histories or overwrites live GPU work.
-    pub fn adopt_completed_named_resources(&mut self, completed: CompletedNamedResources)
-        -> crate::Result<()> {
-        if self.active_prepared.is_some() || !self.pending.is_empty()
-            || self.frame_import_count() != 0 || self.is_poisoned() {
-            return Err(crate::Error::invalid_usage("named adoption requires an idle healthy session"));
+    pub fn adopt_completed_named_resources(
+        &mut self,
+        completed: CompletedNamedResources,
+    ) -> crate::Result<()> {
+        if self.active_prepared.is_some()
+            || !self.pending.is_empty()
+            || self.frame_import_count() != 0
+            || self.is_poisoned()
+        {
+            return Err(crate::Error::invalid_usage(
+                "named adoption requires an idle healthy session",
+            ));
         }
-        let current = self.named.as_ref().ok_or_else(||
-            crate::Error::invalid_usage("named adoption while a graph is executing"))?;
-        if (current.graph_id.is_some() && !self.ledger.has_ended()) || current.resources.len() != 0 {
-            return Err(crate::Error::invalid_usage("named adoption cannot replace an existing graph/history owner"));
+        let current = self.named.as_ref().ok_or_else(|| {
+            crate::Error::invalid_usage("named adoption while a graph is executing")
+        })?;
+        if (current.graph_id.is_some() && !self.ledger.has_ended()) || current.resources.len() != 0
+        {
+            return Err(crate::Error::invalid_usage(
+                "named adoption cannot replace an existing graph/history owner",
+            ));
         }
         if !Arc::ptr_eq(&completed.named.resources.device, &self.backend.device) {
-            return Err(crate::Error::invalid_usage("named handoff belongs to another device owner"));
+            return Err(crate::Error::invalid_usage(
+                "named handoff belongs to another device owner",
+            ));
         }
         for resource in completed.named.resources.resources.values() {
             resource.check_device(&self.backend.device)?;
@@ -2048,11 +2112,13 @@ impl VulkanGraphSession {
         config: super::receipt_storage::ReceiptStorageConfig,
     ) -> crate::Result<()> {
         if self.active_prepared.is_some() {
-            return Err(crate::Error::invalid_usage("a compiled frame owns an admitted receipt slot"));
+            return Err(crate::Error::invalid_usage(
+                "a compiled frame owns an admitted receipt slot",
+            ));
         }
         self.receipt_storage = Some(super::receipt_storage::ReceiptStorage::new(
             config,
-            self.backend.device.allocator_stats.clone(),
+            self.backend.device.memory.stats.clone(),
         )?);
         Ok(())
     }
@@ -2068,7 +2134,7 @@ impl VulkanGraphSession {
         }
         self.frame_imports = Some(super::frame_imports::FrameImports::new(
             config,
-            self.backend.device.allocator_stats.clone(),
+            self.backend.device.memory.stats.clone(),
         )?);
         self.frame_import_config = config;
         Ok(())
@@ -2097,7 +2163,10 @@ impl VulkanGraphSession {
     /// B compile-present transfers its main output into the second graph with
     /// access 0x22, while the acquired swapchain image remains borrowed.
     pub fn import_frame_texture_owned(
-        &mut self, graph: &mut graph::RenderGraph, texture: Arc<texture::Texture>, initial_access: u8,
+        &mut self,
+        graph: &mut graph::RenderGraph,
+        texture: Arc<texture::Texture>,
+        initial_access: u8,
     ) -> crate::Result<super::resource::ResourceHandle> {
         self.import_frame_resource(graph, GpuResource::Image(texture), initial_access, true)
     }
@@ -2148,7 +2217,9 @@ impl VulkanGraphSession {
             };
             if matches {
                 if owned != matches!(declaration.source, graph::OriginSource::ImportOwned { .. }) {
-                    return Err(crate::Error::invalid_usage("frame import ownership differs from its existing declaration"));
+                    return Err(crate::Error::invalid_usage(
+                        "frame import ownership differs from its existing declaration",
+                    ));
                 }
                 validate_import_descriptor(declaration.descriptor, resource.descriptor())?;
                 if declaration.sharing != sharing {
@@ -2161,7 +2232,7 @@ impl VulkanGraphSession {
         if self.frame_imports.is_none() {
             self.frame_imports = Some(super::frame_imports::FrameImports::new(
                 self.frame_import_config,
-                self.backend.device.allocator_stats.clone(),
+                self.backend.device.memory.stats.clone(),
             )?);
         }
         let imports = self
@@ -2177,15 +2248,23 @@ impl VulkanGraphSession {
         graph.reserve_retirement_callback()?;
         let marker = lease.marker();
         let token = self.backend.bind_import(resource)?;
-        let imported = if owned { graph.import_owned_with_sharing(
-            format!("{name}-{}", graph.declaration.resources.len()), descriptor, token, initial_access, sharing)
-        } else { graph.import_unowned_with_sharing(
-            format!("{name}-{}", graph.declaration.resources.len()),
-            descriptor,
-            token,
-            initial_access,
-            sharing,
-        ) };
+        let imported = if owned {
+            graph.import_owned_with_sharing(
+                format!("{name}-{}", graph.declaration.resources.len()),
+                descriptor,
+                token,
+                initial_access,
+                sharing,
+            )
+        } else {
+            graph.import_unowned_with_sharing(
+                format!("{name}-{}", graph.declaration.resources.len()),
+                descriptor,
+                token,
+                initial_access,
+                sharing,
+            )
+        };
         let handle = match imported {
             Ok(handle) => handle,
             Err(error) => {
@@ -2228,7 +2307,7 @@ impl VulkanGraphSession {
         self.backend.bound_synchronization()
     }
     pub fn is_poisoned(&self) -> bool {
-        self.device_lost || self.backend.device.timelines.is_device_lost()
+        self.device_lost || self.backend.device.queues.timelines.is_device_lost()
     }
     /// 最近一次完成帧的墙钟时长。
     pub fn last_known_frame_duration_ns(&self) -> u64 {
@@ -2255,14 +2334,16 @@ impl VulkanGraphSession {
     }
     pub fn begin_frame(&mut self) -> Result<graph::RenderGraph, crate::Error> {
         if self.active_prepared.is_some() {
-            return Err(crate::Error::invalid_usage("execute or cancel the compiled graph before beginning another frame"));
+            return Err(crate::Error::invalid_usage(
+                "execute or cancel the compiled graph before beginning another frame",
+            ));
         }
         self.collect_frame_imports();
         self.reap_presentation();
         self.result_cache.abandon_pending();
         if self.result_cache.has_work() {
             let completed = self.backend.device.poll()?;
-            if self.backend.device.allocator_stats.budget_action()
+            if self.backend.device.memory.stats.budget_action()
                 == crate::device::BudgetAction::EvictCache
             {
                 self.result_cache.evict_completed(&completed);
@@ -2351,7 +2432,7 @@ impl VulkanGraphSession {
     }
     fn evict_idle_resources_under_pressure(&mut self) -> crate::Result<()> {
         let _ = self.backend.device.poll()?;
-        if self.backend.device.allocator_stats.budget_action()
+        if self.backend.device.memory.stats.budget_action()
             == crate::device::BudgetAction::EvictCache
         {
             if let Some(storage) = &mut self.receipt_storage {
@@ -2373,16 +2454,23 @@ impl VulkanGraphSession {
         Ok(())
     }
     /// Compile/allocate without issuing Vulkan commands.
-    pub fn compile_frame(&mut self, built: graph::BuiltGraph) -> crate::Result<PreparedSessionFrame> {
+    pub fn compile_frame(
+        &mut self,
+        built: graph::BuiltGraph,
+    ) -> crate::Result<PreparedSessionFrame> {
         if self.active_prepared.is_some() {
             let (_, _, retire) = built.into_parts();
             let _ = run_retire_callbacks(retire);
-            return Err(crate::Error::invalid_usage("a compiled frame already owns this session"));
+            return Err(crate::Error::invalid_usage(
+                "a compiled frame already owns this session",
+            ));
         }
         let Some(mut named) = self.named.take() else {
             let (_, _, retire) = built.into_parts();
             let _ = run_retire_callbacks(retire);
-            return Err(crate::Error::invalid_usage("named frame is already compiling"));
+            return Err(crate::Error::invalid_usage(
+                "named frame is already compiling",
+            ));
         };
         let graph_id = built.graph_id();
         let result = (|| {
@@ -2392,12 +2480,16 @@ impl VulkanGraphSession {
             if named.graph_id != Some(graph_id) {
                 let (_, _, retire) = built.into_parts();
                 let _ = run_retire_callbacks(retire);
-                return Err(crate::Error::invalid_usage("named resources belong to another frame graph"));
+                return Err(crate::Error::invalid_usage(
+                    "named resources belong to another frame graph",
+                ));
             }
             let mut graph = built.into_graph();
             let preparation = (|| -> crate::Result<()> {
                 for (name, resource) in named.state.requested() {
-                    named.resources.import_into(&mut self.backend, &name, resource.token)?;
+                    named
+                        .resources
+                        .import_into(&mut self.backend, &name, resource.token)?;
                 }
                 named.state.export_temporal(&mut graph)?;
                 Ok(())
@@ -2408,7 +2500,10 @@ impl VulkanGraphSession {
                 return Err(error);
             }
             self.compile_built(graph.build(), |compiled| {
-                named.state.validate_compiled_exports(compiled).map_err(crate::Error::from)
+                named
+                    .state
+                    .validate_compiled_exports(compiled)
+                    .map_err(crate::Error::from)
             })
         })();
         if result.is_ok() {
@@ -2424,25 +2519,37 @@ impl VulkanGraphSession {
     }
 
     /// Compatibility entry uses exactly the same compile and execute path.
-    pub fn execute_frame(&mut self, built: graph::BuiltGraph) -> crate::Result<SessionFrameReceipt> {
+    pub fn execute_frame(
+        &mut self,
+        built: graph::BuiltGraph,
+    ) -> crate::Result<SessionFrameReceipt> {
         let prepared = self.compile_frame(built)?;
         self.execute_prepared(prepared)
     }
 
     pub fn cancel_prepared(&mut self, mut frame: PreparedSessionFrame) -> crate::Result<()> {
         if self.active_prepared != Some(frame.graph_id)
-            || frame.generation != self.backend.device.generation() {
-            return Err(crate::Error::invalid_usage("compiled frame belongs to another session"));
+            || frame.generation != self.backend.device.generation()
+        {
+            return Err(crate::Error::invalid_usage(
+                "compiled frame belongs to another session",
+            ));
         }
         self.active_prepared = None;
         self.result_cache.abort(frame.graph_id);
         self.cancel_presentation_of(frame.graph_id);
-        graph::reclaim_failed_resources(&mut frame.prepared.compiled.tables.registry,
+        graph::reclaim_failed_resources(
+            &mut frame.prepared.compiled.tables.registry,
             &frame.prepared.compiled.declarations.resources,
-            &frame.prepared.compiled.tables.snapshot.pool_hits, &mut self.pool, &mut self.backend);
+            &frame.prepared.compiled.tables.snapshot.pool_hits,
+            &mut self.pool,
+            &mut self.backend,
+        );
         drop(frame.callbacks);
         let result = run_retire_callbacks(frame.retire);
-        if let Some(named) = &mut self.named { named.state.abandon_frame(); }
+        if let Some(named) = &mut self.named {
+            named.state.abandon_frame();
+        }
         self.collect_frame_imports();
         result
     }
@@ -2630,7 +2737,9 @@ impl VulkanGraphSession {
     /// Invalidate history without waiting for unrelated GPU work or destroying allocations.
     pub fn reset_temporal(&mut self, name: &str) -> crate::Result<()> {
         if self.active_prepared.is_some() {
-            return Err(crate::Error::invalid_usage("a compiled frame owns temporal references"));
+            return Err(crate::Error::invalid_usage(
+                "a compiled frame owns temporal references",
+            ));
         }
         let named = self
             .named
@@ -2645,11 +2754,16 @@ impl VulkanGraphSession {
     /// frames retain their own physical owners until actual GPU completion.
     pub fn clear_idle_resource_pool(&mut self) -> crate::Result<()> {
         if self.active_prepared.is_some() {
-            return Err(crate::Error::invalid_usage("a compiled frame still owns resource-pool allocations"));
+            return Err(crate::Error::invalid_usage(
+                "a compiled frame still owns resource-pool allocations",
+            ));
         }
         let (textures, buffers) = self.pool.drain();
-        for token in textures.into_iter().map(|resource| resource.handle)
-            .chain(buffers.into_iter().map(|resource| resource.handle)) {
+        for token in textures
+            .into_iter()
+            .map(|resource| resource.handle)
+            .chain(buffers.into_iter().map(|resource| resource.handle))
+        {
             self.backend.resources.remove(&token);
             self.backend.import_families.remove(&token);
         }
@@ -2661,9 +2775,13 @@ impl VulkanGraphSession {
     /// frames alive instead of treating table removal as GPU completion.
     pub fn reset_all_temporals(&mut self) -> crate::Result<()> {
         if self.active_prepared.is_some() {
-            return Err(crate::Error::invalid_usage("a compiled frame still owns temporal references"));
+            return Err(crate::Error::invalid_usage(
+                "a compiled frame still owns temporal references",
+            ));
         }
-        let named = self.named.as_mut()
+        let named = self
+            .named
+            .as_mut()
             .ok_or_else(|| crate::Error::invalid_usage("named frame is already executing"))?;
         named.state.clear();
         self.collect_named_retired();
@@ -2704,52 +2822,93 @@ impl VulkanGraphSession {
         let graph_id = built.graph_id();
         let (declaration, callbacks, retire) = built.into_parts();
         let result = (|| -> crate::Result<(super::executor::PreparedGraph, usize)> {
-            if self.is_poisoned() { return Err(crate::Error::DeviceLost); }
-            self.result_cache.prepare(graph_id, &declaration, self.backend.device.generation().value())?;
+            if self.is_poisoned() {
+                return Err(crate::Error::DeviceLost);
+            }
+            self.result_cache.prepare(
+                graph_id,
+                &declaration,
+                self.backend.device.generation().value(),
+            )?;
             self.backend.validate_graph(&declaration)?;
             self.pending.reserve_frame()?;
             if self.receipt_storage.is_none() {
                 self.receipt_storage = Some(super::receipt_storage::ReceiptStorage::new(
-                    Default::default(), self.backend.device.allocator_stats.clone())?);
+                    Default::default(),
+                    self.backend.device.memory.stats.clone(),
+                )?);
             }
             let mut access = self.backend.accesses.clone();
-            let mut prepared = self.chain.compile_graph(declaration, &mut self.pool, &mut access,
-                &mut self.backend, callbacks.len()).map_err(crate::Error::from)?;
+            let mut prepared = self
+                .chain
+                .compile_graph(
+                    declaration,
+                    &mut self.pool,
+                    &mut access,
+                    &mut self.backend,
+                    callbacks.len(),
+                )
+                .map_err(crate::Error::from)?;
             let reservation = (|| {
                 validate(&prepared.compiled)?;
                 let capacity = prepared.compiled.snapshot.batches.len().saturating_add(
-                    prepared.compiled.info.accesses.len()
-                        .saturating_add(prepared.compiled.declarations.exports.len()).saturating_mul(4));
-                self.receipt_storage.as_mut().expect("receipt storage initialized")
+                    prepared
+                        .compiled
+                        .info
+                        .accesses
+                        .len()
+                        .saturating_add(prepared.compiled.declarations.exports.len())
+                        .saturating_mul(4),
+                );
+                self.receipt_storage
+                    .as_mut()
+                    .expect("receipt storage initialized")
                     .prepare(&prepared.compiled.snapshot, capacity)
             })();
             match reservation {
                 Ok(slot) => Ok((prepared, slot)),
                 Err(error) => {
-                    graph::reclaim_failed_resources(&mut prepared.compiled.tables.registry,
+                    graph::reclaim_failed_resources(
+                        &mut prepared.compiled.tables.registry,
                         &prepared.compiled.declarations.resources,
-                        &prepared.compiled.tables.snapshot.pool_hits, &mut self.pool, &mut self.backend);
+                        &prepared.compiled.tables.snapshot.pool_hits,
+                        &mut self.pool,
+                        &mut self.backend,
+                    );
                     Err(error)
                 }
             }
         })();
         match result {
             Ok((prepared, receipt_slot)) => Ok(PreparedSessionFrame {
-                graph_id, generation: self.backend.device.generation(), prepared, callbacks, retire, receipt_slot,
+                graph_id,
+                generation: self.backend.device.generation(),
+                prepared,
+                callbacks,
+                retire,
+                receipt_slot,
             }),
             Err(error) => {
                 self.result_cache.abort(graph_id);
-                if error.is_device_lost() { self.backend.device.timelines.mark_device_lost(); }
+                if error.is_device_lost() {
+                    self.backend.device.queues.timelines.mark_device_lost();
+                }
                 let _ = run_retire_callbacks(retire);
                 Err(error)
             }
         }
     }
 
-    pub fn execute_prepared(&mut self, frame: PreparedSessionFrame) -> crate::Result<SessionFrameReceipt> {
+    pub fn execute_prepared(
+        &mut self,
+        frame: PreparedSessionFrame,
+    ) -> crate::Result<SessionFrameReceipt> {
         if self.active_prepared != Some(frame.graph_id)
-            || frame.generation != self.backend.device.generation() {
-            return Err(crate::Error::invalid_usage("compiled frame belongs to another session"));
+            || frame.generation != self.backend.device.generation()
+        {
+            return Err(crate::Error::invalid_usage(
+                "compiled frame belongs to another session",
+            ));
         }
         if self.is_poisoned() {
             self.cancel_prepared(frame)?;
@@ -2760,23 +2919,38 @@ impl VulkanGraphSession {
             return Err(error);
         }
         self.active_prepared = None;
-        let PreparedSessionFrame { graph_id, prepared, mut callbacks, retire, receipt_slot, .. } = frame;
+        let PreparedSessionFrame {
+            graph_id,
+            prepared,
+            mut callbacks,
+            retire,
+            receipt_slot,
+            ..
+        } = frame;
         self.last_execution_partial = false;
         self.backend.submissions.clear();
-        if self.ledger.has_ended() { self.ledger.begin(); }
+        if self.ledger.has_ended() {
+            self.ledger.begin();
+        }
         let mut access = self.backend.accesses.clone();
-        let executed = self.chain.execute_prepared_validated(prepared, &mut self.pool, &mut access,
-            &mut self.backend, &mut callbacks, |_| Ok(()));
+        let executed = self.chain.execute_prepared_validated(
+            prepared,
+            &mut self.pool,
+            &mut access,
+            &mut self.backend,
+            &mut callbacks,
+            |_| Ok(()),
+        );
         self.finish_presentation_execution();
-        let result = (|| {
-        match executed {
+        let result = (|| match executed {
             Ok(execution) => {
                 let frame = self.next_frame;
                 self.next_frame += 1;
-                let storage = self.receipt_storage.as_mut().expect("compiled receipt storage").publish(
-                    receipt_slot,
-                    execution.transaction.receipts(),
-                );
+                let storage = self
+                    .receipt_storage
+                    .as_mut()
+                    .expect("compiled receipt storage")
+                    .publish(receipt_slot, execution.transaction.receipts());
                 let receipt = SessionFrameReceipt {
                     frame,
                     storage,
@@ -2800,9 +2974,9 @@ impl VulkanGraphSession {
                     error => (crate::Error::from(error), None),
                 };
                 self.device_lost =
-                    error.is_device_lost() || self.backend.device.timelines.is_device_lost();
+                    error.is_device_lost() || self.backend.device.queues.timelines.is_device_lost();
                 if self.device_lost {
-                    self.backend.device.timelines.mark_device_lost();
+                    self.backend.device.queues.timelines.mark_device_lost();
                 }
                 if let Some(execution) = deferred {
                     self.last_execution_partial = true;
@@ -2825,18 +2999,22 @@ impl VulkanGraphSession {
                 let _ = run_retire_callbacks(retire);
                 Err(error)
             }
-        }
         })();
         match &result {
             Ok(receipt) if !receipt.receipts.is_empty() => {
                 self.result_cache.commit(graph_id);
-                if let Some(named) = &mut self.named { named.state.confirm_exports(); }
+                if let Some(named) = &mut self.named {
+                    named.state.confirm_exports();
+                }
             }
             _ => {
                 self.result_cache.abort(graph_id);
                 if let Some(named) = &mut self.named {
-                    if self.last_execution_partial { named.state.invalidate_submitted_frame(); }
-                    else { named.state.abandon_frame(); }
+                    if self.last_execution_partial {
+                        named.state.invalidate_submitted_frame();
+                    } else {
+                        named.state.abandon_frame();
+                    }
                 }
             }
         }
@@ -2890,6 +3068,7 @@ impl VulkanGraphSession {
         match self
             .backend
             .device
+            .queues
             .timelines
             .wait(&pending.execution.completion(), timeout)
         {
@@ -2910,6 +3089,7 @@ impl VulkanGraphSession {
         // 等待失败（含超时）时帧仍在队头，调用方可重试。
         self.backend
             .device
+            .queues
             .timelines
             .wait(&pending.execution.completion(), timeout)?;
         let pending = self.pending.pop_front().unwrap();
@@ -2977,7 +3157,8 @@ impl VulkanGraphSession {
                         {
                             self.backend
                                 .device
-                                .allocator_stats
+                                .memory
+                                .stats
                                 .mark_cached(actual.allocation_id(), &completed);
                         }
                         self.pool.insert_buffer(buffer)
@@ -2998,7 +3179,8 @@ impl VulkanGraphSession {
                         {
                             self.backend
                                 .device
-                                .allocator_stats
+                                .memory
+                                .stats
                                 .mark_cached(actual.allocation_id(), &completed);
                         }
                         self.pool.insert_texture(texture)
@@ -3018,7 +3200,9 @@ impl VulkanGraphSession {
         retained_tokens: &[u64],
     ) -> Result<usize, crate::Error> {
         if self.active_prepared.is_some() {
-            return Err(crate::Error::invalid_usage("a compiled frame still owns its physical resources"));
+            return Err(crate::Error::invalid_usage(
+                "a compiled frame still owns its physical resources",
+            ));
         }
         if !self.pending.is_empty() {
             return Err(crate::Error::invalid_usage(
@@ -3133,7 +3317,7 @@ impl Drop for VulkanGraphSession {
                 // Device loss is terminal. An ordinary query failure needs an
                 // actual idle proof before invoking callbacks or recycling pools.
                 let safe = error.is_device_lost()
-                    || self.backend.device.timelines.is_device_lost()
+                    || self.backend.device.queues.timelines.is_device_lost()
                     || self.backend.device.wait_idle().is_ok();
                 if safe {
                     while let Some(pending) = self.pending.pop_front() {
@@ -3247,7 +3431,7 @@ impl TemporalGpuResources {
             .import_families
             .get(&token)
             .copied()
-            .unwrap_or(backend.device.queue_family);
+            .unwrap_or(backend.device.queues.primary_family);
         backend.bind_import_named_owned_by(name, token, resource, family)
     }
     pub fn len(&self) -> usize {
@@ -3277,24 +3461,40 @@ impl super::temporal::TemporalResourceOwner for TemporalGpuResources {
                 let size = usize::try_from(desc.size)
                     .map_err(|_| graph::BuildError::from(crate::Error::OutOfHostMemory))?;
                 let mut initial = Vec::new();
-                initial.try_reserve_exact(size)
+                initial
+                    .try_reserve_exact(size)
                     .map_err(|_| graph::BuildError::from(crate::Error::OutOfHostMemory))?;
                 initial.resize(size, 0u8);
                 let object = match spec.sharing() {
-                    crate::resource::ResourceSharing::Exclusive => self.device
+                    crate::resource::ResourceSharing::Exclusive => self
+                        .device
                         .create_buffer(&desc, name, Some(initial.as_slice()))
                         .map_err(graph::BuildError::from)?,
                     crate::resource::ResourceSharing::Concurrent(families) => {
                         let mut physical_desc = desc;
                         physical_desc.usage |= vk::BufferUsageFlags::TRANSFER_DST;
                         let raw = buffer::Buffer::new_concurrent(
-                            self.device.clone(), &physical_desc, families.as_slice(),
-                        ).map_err(graph::BuildError::from)?;
-                        let managed = self.device.resources.buffers.allocate(raw)
+                            self.device.clone(),
+                            &physical_desc,
+                            families.as_slice(),
+                        )
+                        .map_err(graph::BuildError::from)?;
+                        let managed = self
+                            .device
+                            .caches
+                            .resources
+                            .buffers
+                            .allocate(raw)
                             .map_err(graph::BuildError::from)?;
                         self.device.set_buffer_debug_name(&managed, name);
                         if size != 0 {
-                            self.device.update_buffer_bytes(&managed, &initial, std::slice::from_ref(&(0..size)), 0)
+                            self.device
+                                .update_buffer_bytes(
+                                    &managed,
+                                    &initial,
+                                    std::slice::from_ref(&(0..size)),
+                                    0,
+                                )
                                 .map_err(graph::BuildError::from)?;
                         }
                         managed
@@ -3302,13 +3502,19 @@ impl super::temporal::TemporalResourceOwner for TemporalGpuResources {
                 };
                 GpuResource::Buffer(object.shared())
             }
-            _ => spec.create_resource(self.device.clone(), 0)
+            _ => spec
+                .create_resource(self.device.clone(), 0)
                 .map_err(graph::BuildError::from)?,
         };
         let token = try_allocate_token()
             .ok_or_else(|| graph::BuildError::ResourceCreationFailed("跨帧token耗尽".into()))?;
         self.resources.insert(token, resource);
-        if zeroed && matches!(spec, ResourceSpec::Buffer(_) | ResourceSpec::ConcurrentBuffer(..)) {
+        if zeroed
+            && matches!(
+                spec,
+                ResourceSpec::Buffer(_) | ResourceSpec::ConcurrentBuffer(..)
+            )
+        {
             self.defined.insert(token);
         }
         Ok(token)

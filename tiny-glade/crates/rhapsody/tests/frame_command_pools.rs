@@ -81,7 +81,7 @@ impl Unblock {
     fn signal(&mut self) -> rhapsody::Result<()> {
         if !self.1 {
             unsafe {
-                self.0.device.device.signal_semaphore(
+                self.0.device.raw_device().signal_semaphore(
                     &vk::SemaphoreSignalInfo::default()
                         .semaphore(self.0.handle)
                         .value(1),
@@ -111,8 +111,8 @@ fn dropped_pending_commands_do_not_allow_early_whole_pool_reset() {
     command.begin().unwrap();
     command.end().unwrap();
     let queue = rhapsody::raw::device::DeviceQueue {
-        handle: device.queue,
-        family: device.queue_family,
+        handle: device.primary_queue(),
+        family: device.queue_family_index(),
         index: 0,
     };
     let pending = command
@@ -138,7 +138,7 @@ fn dropped_pending_commands_do_not_allow_early_whole_pool_reset() {
     assert_eq!(pool.reset_count(), 0);
     unblock.signal().unwrap();
     device
-        .timelines
+        .timelines()
         .wait(&point.into(), 10_000_000_000)
         .unwrap();
     pool.reset_completed(&mut []).unwrap();

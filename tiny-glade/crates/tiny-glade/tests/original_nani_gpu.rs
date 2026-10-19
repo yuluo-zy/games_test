@@ -110,7 +110,7 @@ fn read_range(
                 write: true,
             },
         )?;
-        device.device.cmd_copy_buffer(
+        device.raw_device().cmd_copy_buffer(
             command.handle,
             source.handle,
             output.handle,
@@ -130,7 +130,8 @@ fn read_range(
                 write: false,
             },
         )
-    }).and_then(|setup| setup.wait(rhapsody::raw::setup::SETUP_WAIT_TIMEOUT_NS))
+    })
+    .and_then(|setup| setup.wait(rhapsody::raw::setup::SETUP_WAIT_TIMEOUT_NS))
     .unwrap();
     let mut result = vec![0; size];
     output.read_bytes(0, &mut result).unwrap();
@@ -280,10 +281,19 @@ fn original_nani_master_one_real_instance_builds_indexed_command_and_indirection
         .prewarm(Duration::from_secs(60))
         .unwrap();
     let compiled = bridge.compile_built(built).unwrap();
-    eprintln!("original Nani prepared passes: {:?}", compiled.snapshot().pass_order);
+    eprintln!(
+        "original Nani prepared passes: {:?}",
+        compiled.snapshot().pass_order
+    );
     for required in ["Nani clear draw lists", "Nani clear histograms"] {
-        assert!(compiled.snapshot().pass_order.iter().any(|name| name == required),
-            "the original initializer {required} must remain before atomic/in-place consumers");
+        assert!(
+            compiled
+                .snapshot()
+                .pass_order
+                .iter()
+                .any(|name| name == required),
+            "the original initializer {required} must remain before atomic/in-place consumers"
+        );
     }
     let receipt = bridge.execute_compiled(compiled).unwrap();
     eprintln!(

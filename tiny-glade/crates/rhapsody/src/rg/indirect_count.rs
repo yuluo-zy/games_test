@@ -156,9 +156,10 @@ impl IndexedCountAdapter {
         }
         let properties = unsafe {
             self.device
+                .core
                 .instance
                 .instance
-                .get_physical_device_properties(self.device.physical)
+                .get_physical_device_properties(self.device.core.physical)
         };
         if request.maximum_draws.div_ceil(64) > properties.limits.max_compute_work_group_count[0] {
             return Err(Error::unsupported(
@@ -273,7 +274,7 @@ impl IndexedCountAdapter {
                 let command = vk::CommandBuffer::from_raw(ctx.command.handle());
                 pipeline.bind_pipeline(command);
                 prepared.bind_pass(&ctx, pipeline)?;
-                adapter.device.device.cmd_dispatch(
+                adapter.device.core.device.cmd_dispatch(
                     command,
                     request.maximum_draws.div_ceil(64),
                     1,

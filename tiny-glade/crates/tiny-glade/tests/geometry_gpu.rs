@@ -93,7 +93,7 @@ fn read_prefix(
                 write: true,
             },
         )?;
-        device.device.cmd_copy_buffer(
+        device.raw_device().cmd_copy_buffer(
             command.handle,
             source.handle,
             output.handle,
@@ -111,7 +111,8 @@ fn read_prefix(
                 write: false,
             },
         )
-    }).and_then(|setup| setup.wait(rhapsody::raw::setup::SETUP_WAIT_TIMEOUT_NS))
+    })
+    .and_then(|setup| setup.wait(rhapsody::raw::setup::SETUP_WAIT_TIMEOUT_NS))
     .unwrap();
     let mut bytes = vec![0; size];
     output.read_bytes(0, &mut bytes).unwrap();

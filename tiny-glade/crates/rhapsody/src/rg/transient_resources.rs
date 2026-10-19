@@ -15,10 +15,7 @@ use crate::raw::{
     transient_backing::{SharedBacking, TransientBackingCounters},
 };
 use ash::vk;
-use std::{
-    collections::BTreeMap,
-    sync::Arc,
-};
+use std::{collections::BTreeMap, sync::Arc};
 
 /// Unaliased dependency storage reused across frames.
 #[derive(Default)]
@@ -99,8 +96,12 @@ impl Drop for Unbound {
     fn drop(&mut self) {
         unsafe {
             match self.handle.take() {
-                Some(Handle::Buffer(handle, _)) => self.device.device.destroy_buffer(handle, None),
-                Some(Handle::Image(handle, _)) => self.device.device.destroy_image(handle, None),
+                Some(Handle::Buffer(handle, _)) => {
+                    self.device.core.device.destroy_buffer(handle, None)
+                }
+                Some(Handle::Image(handle, _)) => {
+                    self.device.core.device.destroy_image(handle, None)
+                }
                 None => {}
             }
         }
@@ -116,7 +117,7 @@ impl Unbound {
         if device.is_device_lost() {
             return Err(crate::Error::DeviceLost);
         }
-        let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.allocator_stats)?;
+        let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.memory.stats)?;
         let sharing = spec.sharing();
         sharing.validate_device(&device)?;
         let (handle, requirements, dedicated, compatibility, flags, memory) = match spec {
@@ -127,7 +128,7 @@ impl Unbound {
                 let address = desc
                     .usage
                     .contains(vk::BufferUsageFlags::SHADER_DEVICE_ADDRESS);
-                if address && !device.capabilities.buffer_device_address {
+                if address && !device.core.capabilities.buffer_device_address {
                     return Err(crate::Error::unsupported(
                         "buffer device address is disabled",
                     ));
@@ -141,17 +142,17 @@ impl Unbound {
                         vk::SharingMode::EXCLUSIVE
                     })
                     .queue_family_indices(sharing.families());
-                let memory = device.allocator_stats.reserve_cpu_bytes(
+                let memory = device.memory.stats.reserve_cpu_bytes(
                     crate::raw::allocator::shared_cpu_bytes::<buffer::Buffer>()?,
                     crate::device::BudgetCategory::Live,
                 )?;
                 let handle = crate::raw::error::observe_vulkan(&device, unsafe {
-                    device.device.create_buffer(&info, None)
+                    device.core.device.create_buffer(&info, None)
                 })?;
                 let mut dedicated = vk::MemoryDedicatedRequirements::default();
                 let mut requirements = vk::MemoryRequirements2::default().push_next(&mut dedicated);
                 unsafe {
-                    device.device.get_buffer_memory_requirements2(
+                    device.core.device.get_buffer_memory_requirements2(
                         &vk::BufferMemoryRequirementsInfo2::default().buffer(handle),
                         &mut requirements,
                     );
@@ -190,17 +191,17 @@ impl Unbound {
                         vk::SharingMode::EXCLUSIVE
                     })
                     .queue_family_indices(sharing.families());
-                let memory = device.allocator_stats.reserve_cpu_bytes(
+                let memory = device.memory.stats.reserve_cpu_bytes(
                     crate::raw::allocator::shared_cpu_bytes::<texture::Texture>()?,
                     crate::device::BudgetCategory::Live,
                 )?;
                 let handle = crate::raw::error::observe_vulkan(&device, unsafe {
-                    device.device.create_image(&info, None)
+                    device.core.device.create_image(&info, None)
                 })?;
                 let mut dedicated = vk::MemoryDedicatedRequirements::default();
                 let mut requirements = vk::MemoryRequirements2::default().push_next(&mut dedicated);
                 unsafe {
-                    device.device.get_image_memory_requirements2(
+                    device.core.device.get_image_memory_requirements2(
                         &vk::ImageMemoryRequirementsInfo2::default().image(handle),
                         &mut requirements,
                     );
@@ -249,7 +250,7 @@ impl Unbound {
             match self.handle.as_ref().expect("unbound resource") {
                 Handle::Buffer(handle, _) => crate::raw::error::observe_vulkan(
                     &self.device,
-                    self.device.device.bind_buffer_memory(
+                    self.device.core.device.bind_buffer_memory(
                         *handle,
                         allocation.handle,
                         allocation.offset,
@@ -257,7 +258,7 @@ impl Unbound {
                 )?,
                 Handle::Image(handle, _) => crate::raw::error::observe_vulkan(
                     &self.device,
-                    self.device.device.bind_image_memory(
+                    self.device.core.device.bind_image_memory(
                         *handle,
                         allocation.handle,
                         allocation.offset,
@@ -418,11 +419,7 @@ impl AliasCache {
     pub(crate) fn collect_retiring(&mut self, completed: &crate::sync::CompletedValues) {
         let mut index = 0;
         while index < self.retiring.len() {
-            if self.retiring[index]
-                .1
-                .owner_cell()
-                .is_reached(completed)
-            {
+            if self.retiring[index].1.owner_cell().is_reached(completed) {
                 let (origin, resource) = self.retiring.swap_remove(index);
                 self.give_back(origin, resource, completed);
             } else {
@@ -468,7 +465,8 @@ impl AliasCache {
         let mut cursor = 0;
         for (index, declaration) in graph.resources.iter().enumerate() {
             let first = cursor
-                + self.pairs[cursor..].partition_point(|&(resource, _)| (resource as usize) < index);
+                + self.pairs[cursor..]
+                    .partition_point(|&(resource, _)| (resource as usize) < index);
             let last = first
                 + self.pairs[first..].partition_point(|&(resource, _)| resource as usize == index);
             cursor = last;
@@ -555,7 +553,13 @@ impl AliasCache {
             let resource = slot.take().expect("retired alias set owns every member");
             resources.insert(
                 graph.resources[*index as usize].name.clone(),
-                (resource, AliasOrigin { set: set.id, member }),
+                (
+                    resource,
+                    AliasOrigin {
+                        set: set.id,
+                        member,
+                    },
+                ),
             );
         }
         set.lent = set.members.len();

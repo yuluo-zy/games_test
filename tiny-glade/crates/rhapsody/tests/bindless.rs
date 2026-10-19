@@ -86,7 +86,7 @@ struct ReleaseGate(Arc<TimelineSemaphore>);
 impl Drop for ReleaseGate {
     fn drop(&mut self) {
         unsafe {
-            let _ = self.0.device.device.signal_semaphore(
+            let _ = self.0.device.raw_device().signal_semaphore(
                 &vk::SemaphoreSignalInfo::default()
                     .semaphore(self.0.handle)
                     .value(1),
@@ -143,14 +143,14 @@ fn a_real_pending_shader_keeps_the_bindless_slot_until_actual_completion() {
             std::slice::from_ref(&lease),
         )
         .unwrap();
-        device.device.cmd_push_constants(
+        device.raw_device().cmd_push_constants(
             command.handle,
             pipeline.layout.handle,
             vk::ShaderStageFlags::COMPUTE,
             0,
             &first.index.to_le_bytes(),
         );
-        device.device.cmd_dispatch(command.handle, 1, 1, 1);
+        device.raw_device().cmd_dispatch(command.handle, 1, 1, 1);
         let barrier = vk::BufferMemoryBarrier::default()
             .buffer(buffer.handle)
             .offset(0)
@@ -159,7 +159,7 @@ fn a_real_pending_shader_keeps_the_bindless_slot_until_actual_completion() {
             .dst_access_mask(vk::AccessFlags::HOST_READ)
             .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
             .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED);
-        device.device.cmd_pipeline_barrier(
+        device.raw_device().cmd_pipeline_barrier(
             command.handle,
             vk::PipelineStageFlags::COMPUTE_SHADER,
             vk::PipelineStageFlags::HOST,
@@ -175,8 +175,8 @@ fn a_real_pending_shader_keeps_the_bindless_slot_until_actual_completion() {
     let pending = command
         .submit_to(
             rhapsody::raw::device::DeviceQueue {
-                handle: device.queue,
-                family: device.queue_family,
+                handle: device.primary_queue(),
+                family: device.queue_family_index(),
                 index: 0,
             },
             &[(gate.clone(), 1, vk::PipelineStageFlags::ALL_COMMANDS)],
@@ -280,14 +280,14 @@ fn graph_binding_rejects_undeclared_lease_bytes_and_accepts_the_complete_shader_
                 heap.bind_pass(&ctx, pipeline.clone(), 0, std::slice::from_ref(&lease))?;
                 let command = vk::CommandBuffer::from_raw(ctx.command.handle());
                 pipeline.bind_pipeline(command);
-                device.device.cmd_push_constants(
+                device.raw_device().cmd_push_constants(
                     command,
                     pipeline.layout.handle,
                     vk::ShaderStageFlags::COMPUTE,
                     0,
                     &lease.index().index.to_le_bytes(),
                 );
-                device.device.cmd_dispatch(command, 1, 1, 1);
+                device.raw_device().cmd_dispatch(command, 1, 1, 1);
             }
             Ok(())
         });
@@ -353,26 +353,32 @@ fn known_host_slot_storage_is_admitted_and_released_by_the_unified_budget() {
     let Some(device) = device() else {
         return;
     };
-    let baseline = device.allocator_stats.cpu_memory_usage().total();
+    let baseline = device.allocator_stats().cpu_memory_usage().total();
     device
-        .allocator_stats
+        .allocator_stats()
         .set_total_budget(baseline + 4096)
         .unwrap();
     assert!(matches!(
         BindlessHeap::new(device.clone(), BindlessConfig::default()),
         Err(rhapsody::Error::OutOfHostMemory)
     ));
-    assert_eq!(device.allocator_stats.cpu_memory_usage().total(), baseline);
+    assert_eq!(
+        device.allocator_stats().cpu_memory_usage().total(),
+        baseline
+    );
     assert_eq!(device.memory_budget_usage().unwrap().total(), baseline);
     // The full heap also charges its descriptor layout, pool, set and cells.
     // Do not assume their combined native-wrapper metadata fits in 4 KiB.
-    device.allocator_stats.set_total_budget(u64::MAX).unwrap();
+    device.allocator_stats().set_total_budget(u64::MAX).unwrap();
     let heap = BindlessHeap::new(device.clone(), small()).unwrap();
-    let bytes = device.allocator_stats.cpu_memory_usage().total();
+    let bytes = device.allocator_stats().cpu_memory_usage().total();
     assert!(bytes > baseline);
     assert_eq!(device.memory_budget_usage().unwrap().total(), bytes);
     drop(heap);
     device.try_collect_all_completed().unwrap();
-    assert_eq!(device.allocator_stats.cpu_memory_usage().total(), baseline);
+    assert_eq!(
+        device.allocator_stats().cpu_memory_usage().total(),
+        baseline
+    );
     assert_eq!(device.memory_budget_usage().unwrap().total(), baseline);
 }

@@ -154,7 +154,7 @@ fn cube_faces_cube_array_faces_and_odd_r8_mips_upload_every_subresource() {
             SetupAccess::transfer_write(&readback, 0, plan.total),
         ];
         with_setup_resources(&device, &accesses, |command| unsafe {
-            device.device.cmd_copy_image_to_buffer(
+            device.raw_device().cmd_copy_image_to_buffer(
                 command,
                 image.handle,
                 vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
@@ -168,7 +168,7 @@ fn cube_faces_cube_array_faces_and_odd_r8_mips_upload_every_subresource() {
                 .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
                 .buffer(readback.handle)
                 .size(vk::WHOLE_SIZE);
-            device.device.cmd_pipeline_barrier(
+            device.raw_device().cmd_pipeline_barrier(
                 command,
                 vk::PipelineStageFlags::TRANSFER,
                 vk::PipelineStageFlags::HOST,
@@ -314,7 +314,7 @@ fn recorded_uploads_share_virtual_state_and_graph_import_uses_physical_final_lay
             vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
         )?;
         buffer_access(command, readback.clone(), queue, 0, 256, transfer_write)?;
-        device.device.cmd_copy_image_to_buffer(
+        device.raw_device().cmd_copy_image_to_buffer(
             command.handle,
             texture.handle,
             vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
@@ -400,7 +400,7 @@ fn recorded_uploads_share_virtual_state_and_graph_import_uses_physical_final_lay
         let device = device.clone();
         pass.render_with_result_context(move |context| {
             unsafe {
-                device.device.cmd_copy_image_to_buffer(
+                device.raw_device().cmd_copy_image_to_buffer(
                     vk::CommandBuffer::from_raw(context.command.handle()),
                     image.handle,
                     vk::ImageLayout::TRANSFER_SRC_OPTIMAL,

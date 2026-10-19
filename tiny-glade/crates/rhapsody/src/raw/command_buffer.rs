@@ -79,7 +79,7 @@ impl Drop for CommandPoolAllocation {
 }
 impl VulkanCommandPool {
     pub fn new(device: Arc<Device>) -> crate::Result<Arc<Self>> {
-        let family = device.queue_family;
+        let family = device.queues.primary_family;
         Self::new_for_family(device, family)
     }
     pub fn new_for_family(device: Arc<Device>, family: u32) -> crate::Result<Arc<Self>> {
@@ -95,31 +95,31 @@ impl VulkanCommandPool {
         }
         let cpu_validation = Mutex::new(super::temp_list::TempList::new(
             max_validation_items,
-            device.allocator_stats.clone(),
+            device.memory.stats.clone(),
         )?);
         let cpu_state_patches = Mutex::new(super::temp_list::TempList::new(
             max_validation_items,
-            device.allocator_stats.clone(),
+            device.memory.stats.clone(),
         )?);
-        if family != device.queue_family
-            && !device.additional_queues.iter().any(|q| q.family == family)
+        if family != device.queues.primary_family
+            && !device.queues.additional.iter().any(|q| q.family == family)
         {
             return Err(crate::Error::invalid_usage("命令状态或队列族无效"));
         }
         let info = vk::CommandPoolCreateInfo::default()
             .queue_family_index(family)
             .flags(vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER);
-        let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.allocator_stats)?;
+        let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.memory.stats)?;
         let memory =
-            super::allocator::reserve_shared_cpu_metadata::<Self>(&device.allocator_stats, 0)?;
+            super::allocator::reserve_shared_cpu_metadata::<Self>(&device.memory.stats, 0)?;
         let allocation_memory = super::allocator::reserve_shared_cpu_metadata::<
             CommandPoolAllocation,
-        >(&device.allocator_stats, 0)?;
+        >(&device.memory.stats, 0)?;
         let handle = super::error::observe_vulkan(&device, unsafe {
-            device.device.create_command_pool(&info, None)
+            device.core.device.create_command_pool(&info, None)
         })?;
         let allocation = Arc::new(CommandPoolAllocation {
-            device: device.device.clone(),
+            device: device.core.device.clone(),
             handle,
             lock: Mutex::new(PoolSync::default()),
             _memory: allocation_memory,
@@ -143,34 +143,24 @@ impl VulkanCommandPool {
         if self.device.is_device_lost() {
             return Err(crate::Error::DeviceLost);
         }
-        let range_uses = super::temp_list::TempList::new(
-            self.max_resources,
-            self.device.allocator_stats.clone(),
-        )?;
-        let state_patches = super::temp_list::TempList::new(
-            self.max_resources,
-            self.device.allocator_stats.clone(),
-        )?;
-        let owners = super::temp_list::TempList::new(
-            self.max_resources,
-            self.device.allocator_stats.clone(),
-        )?;
-        let mut uses = super::temp_list::TempList::new(
-            self.max_resources,
-            self.device.allocator_stats.clone(),
-        )?;
+        let range_uses =
+            super::temp_list::TempList::new(self.max_resources, self.device.memory.stats.clone())?;
+        let state_patches =
+            super::temp_list::TempList::new(self.max_resources, self.device.memory.stats.clone())?;
+        let owners =
+            super::temp_list::TempList::new(self.max_resources, self.device.memory.stats.clone())?;
+        let mut uses =
+            super::temp_list::TempList::new(self.max_resources, self.device.memory.stats.clone())?;
         uses.add(self.last_use.clone())?;
-        let upload_reads = super::temp_list::TempList::new(
-            self.max_resources,
-            self.device.allocator_stats.clone(),
-        )?;
+        let upload_reads =
+            super::temp_list::TempList::new(self.max_resources, self.device.memory.stats.clone())?;
         let _guard = self.allocation.lock.lock();
         let info = vk::CommandBufferAllocateInfo::default()
             .command_pool(self.handle)
             .level(vk::CommandBufferLevel::PRIMARY)
             .command_buffer_count(1);
         let handle = super::error::observe_vulkan(&self.device, unsafe {
-            self.device.device.allocate_command_buffers(&info)
+            self.device.core.device.allocate_command_buffers(&info)
         })?[0];
         self.live_commands.fetch_add(1, Ordering::Relaxed);
         Ok(VulkanCommandBuffer {
@@ -217,6 +207,7 @@ impl VulkanCommandPool {
         }
         if !self
             .device
+            .queues
             .timelines
             .is_reached(&self.last_use.snapshot())?
         {
@@ -224,6 +215,7 @@ impl VulkanCommandPool {
         }
         super::error::observe_vulkan(&self.device, unsafe {
             self.device
+                .core
                 .device
                 .reset_command_pool(self.handle, vk::CommandPoolResetFlags::empty())
         })?;
@@ -607,7 +599,11 @@ impl VulkanCommandBuffer {
         if self.recording && self.range_failure.is_none() {
             return Err(crate::Error::invalid_usage("命令状态或队列族无效"));
         }
-        self.pool.device.timelines.wait(&self.last_use, u64::MAX)?;
+        self.pool
+            .device
+            .queues
+            .timelines
+            .wait(&self.last_use, u64::MAX)?;
         {
             let mut sync = self.pool.allocation.lock.lock();
             if self.recording {
@@ -617,6 +613,7 @@ impl VulkanCommandBuffer {
             super::error::observe_vulkan(&self.pool.device, unsafe {
                 self.pool
                     .device
+                    .core
                     .device
                     .reset_command_buffer(self.handle, vk::CommandBufferResetFlags::empty())
             })?;
@@ -641,6 +638,7 @@ impl VulkanCommandBuffer {
             super::error::observe_vulkan(&self.pool.device, unsafe {
                 self.pool
                     .device
+                    .core
                     .device
                     .reset_command_buffer(self.handle, vk::CommandBufferResetFlags::empty())
             })?;
@@ -664,6 +662,7 @@ impl VulkanCommandBuffer {
         super::error::observe_vulkan(&self.pool.device, unsafe {
             self.pool
                 .device
+                .core
                 .device
                 .begin_command_buffer(self.handle, &info)
         })?;
@@ -684,7 +683,7 @@ impl VulkanCommandBuffer {
         {
             let mut sync = self.pool.allocation.lock.lock();
             let ended = super::error::observe_vulkan(&self.pool.device, unsafe {
-                self.pool.device.device.end_command_buffer(self.handle)
+                self.pool.device.core.device.end_command_buffer(self.handle)
             });
             // A failed end leaves the buffer invalid; either way it no longer
             // records, so pending frees may proceed.
@@ -703,7 +702,7 @@ impl VulkanCommandBuffer {
     /// command 必须在合法录制状态（GRAPHICS 绑定点）。
     pub unsafe fn set_stencil_reference(&self, value: u8) {
         unsafe {
-            self.pool.device.device.cmd_set_stencil_reference(
+            self.pool.device.core.device.cmd_set_stencil_reference(
                 self.handle,
                 vk::StencilFaceFlags::FRONT_AND_BACK,
                 u32::from(value),
@@ -816,7 +815,7 @@ impl VulkanCommandBuffer {
     fn remember_metadata_error(&mut self, result: &crate::Result<()>) {
         if let Err(error) = result {
             if error.is_device_lost() {
-                self.pool.device.timelines.mark_device_lost();
+                self.pool.device.queues.timelines.mark_device_lost();
             }
             self.range_failure
                 .get_or_insert(MetadataFailure::from_error(error));
@@ -848,11 +847,11 @@ impl VulkanCommandBuffer {
             ));
         }
         let patches = super::submit::SubmitScratch::<[crate::resource::range_state::StatePatch; 8]>::try_collect(
-            entries.clone().count(), &self.pool.device.allocator_stats, entries.map(|entry| Ok(entry.patch)),
+            entries.clone().count(), &self.pool.device.memory.stats, entries.map(|entry| Ok(entry.patch)),
         )?;
         cell.preview_range_state(
             initial,
-            &self.pool.device.allocator_stats,
+            &self.pool.device.memory.stats,
             &patches,
             queue,
             self.pool.family,
@@ -1109,8 +1108,8 @@ impl VulkanCommandBuffer {
     }
     pub fn submit(self) -> crate::Result<PendingCommand> {
         let queue = super::device::DeviceQueue {
-            handle: self.pool.device.queue,
-            family: self.pool.device.queue_family,
+            handle: self.pool.device.queues.primary,
+            family: self.pool.device.queues.primary_family,
             index: 0,
         };
         self.submit_to(queue, &[], &[])
@@ -1133,10 +1132,10 @@ impl VulkanCommandBuffer {
         }
         self.validate_submission()?;
         let device = &self.pool.device;
-        let known = (queue.handle == device.queue
-            && queue.family == device.queue_family
+        let known = (queue.handle == device.queues.primary
+            && queue.family == device.queues.primary_family
             && queue.index == 0)
-            || device.additional_queues.iter().any(|q| {
+            || device.queues.additional.iter().any(|q| {
                 q.handle == queue.handle && q.family == queue.family && q.index == queue.index
             });
         if !known
@@ -1158,7 +1157,7 @@ impl VulkanCommandBuffer {
             [Arc<super::semaphore::TimelineSemaphore>; 8],
         >::try_collect(
             semaphore_count,
-            &device.allocator_stats,
+            &device.memory.stats,
             waits
                 .iter()
                 .map(|(s, _, _)| Ok(s.clone()))
@@ -1166,7 +1165,7 @@ impl VulkanCommandBuffer {
         )?;
         let wait_capacity = waits
             .len()
-            .checked_add(device.timelines.queue_count().saturating_sub(1))
+            .checked_add(device.queues.timelines.queue_count().saturating_sub(1))
             .ok_or_else(|| crate::Error::invalid_usage("submission wait count overflows"))?;
         let nested_bytes =
             super::submit::PreparedSubmit::heap_bytes_for_counts(wait_capacity, signals.len(), 1)?;
@@ -1177,7 +1176,8 @@ impl VulkanCommandBuffer {
         } else {
             Some(
                 device
-                    .allocator_stats
+                    .memory
+                    .stats
                     .reserve_cpu_bytes(nested_bytes as u64, crate::device::BudgetCategory::Live)?,
             )
         };
@@ -1214,7 +1214,7 @@ impl VulkanCommandBuffer {
         let uses =
             super::submit::SubmitScratch::<[Arc<crate::resource::SyncCell>; 32]>::try_collect(
                 self.uses.as_slice().len(),
-                &device.allocator_stats,
+                &device.memory.stats,
                 self.uses.as_slice().iter().cloned().map(Ok),
             )?;
         let _reservations = crate::resource::tracked::lock_submission_uses(&uses)?;
@@ -1225,7 +1225,7 @@ impl VulkanCommandBuffer {
                 &uses,
                 device.queue_id(queue.handle)?,
                 queue.family,
-                &device.allocator_stats,
+                &device.memory.stats,
             )?
         };
         device.add_timeline_waits(queue.handle, &mut prepared, &native_states.dependencies())?;
@@ -1271,6 +1271,7 @@ impl PendingCommand {
         self.command
             .pool
             .device
+            .queues
             .timelines
             .wait(&crate::sync::SyncSet::from_point(self.point), timeout)
     }
@@ -1278,6 +1279,7 @@ impl PendingCommand {
         self.command
             .pool
             .device
+            .queues
             .timelines
             .is_reached(&crate::sync::SyncSet::from_point(self.point))
     }

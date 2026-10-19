@@ -21,10 +21,10 @@ fn device() -> Option<Arc<Device>> {
 fn supports_bc(device: &Device, format: vk::Format) -> bool {
     let result = unsafe {
         device
-            .instance
+            .instance()
             .instance
             .get_physical_device_image_format_properties(
-                device.physical,
+                device.physical_device(),
                 format,
                 vk::ImageType::TYPE_2D,
                 vk::ImageTiling::OPTIMAL,
@@ -291,7 +291,7 @@ fn read_back(
                 height: extent[1],
                 depth: extent[2],
             })];
-        gd.device.cmd_copy_image_to_buffer(
+        gd.raw_device().cmd_copy_image_to_buffer(
             command.handle,
             texture.handle,
             vk::ImageLayout::TRANSFER_SRC_OPTIMAL,

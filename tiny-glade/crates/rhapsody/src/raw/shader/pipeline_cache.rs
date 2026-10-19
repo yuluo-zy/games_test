@@ -170,11 +170,11 @@ impl PipelineCache {
                 "pipeline cache header does not match this device",
             ));
         }
-        let compute = TempList::new(capacity, device.allocator_stats.clone())?;
-        let raster = TempList::new(capacity, device.allocator_stats.clone())?;
+        let compute = TempList::new(capacity, device.memory.stats.clone())?;
+        let raster = TempList::new(capacity, device.memory.stats.clone())?;
         let info = vk::PipelineCacheCreateInfo::default().initial_data(initial_data);
         let handle = observe_vulkan(&device, unsafe {
-            device.device.create_pipeline_cache(&info, None)
+            device.core.device.create_pipeline_cache(&info, None)
         })?;
         Ok(Self {
             device,
@@ -190,14 +190,14 @@ impl PipelineCache {
             return Err(crate::Error::DeviceLost);
         }
         let _lock = self.lock.write();
-        let get = self.device.device.fp_v1_0().get_pipeline_cache_data;
+        let get = self.device.core.device.fp_v1_0().get_pipeline_cache_data;
         // Query and copy under the same exclusive cache lock. Native creation
         // holds a read guard, so a compiler cannot invalidate the queried size.
         for _ in 0..3 {
             let mut size = 0;
             let result = unsafe {
                 get(
-                    self.device.device.handle(),
+                    self.device.core.device.handle(),
                     self.handle,
                     &mut size,
                     std::ptr::null_mut(),
@@ -209,11 +209,11 @@ impl PipelineCache {
                     "pipeline cache data exceeds its byte limit",
                 ));
             }
-            let mut data = PipelineCacheData::zeroed(&self.device.allocator_stats, size)?;
+            let mut data = PipelineCacheData::zeroed(&self.device.memory.stats, size)?;
             let mut written = size;
             let result = unsafe {
                 get(
-                    self.device.device.handle(),
+                    self.device.core.device.handle(),
                     self.handle,
                     &mut written,
                     data.bytes.as_mut_ptr().cast(),
@@ -274,6 +274,11 @@ pub(crate) fn valid_pipeline_cache_data(device: &Device, bytes: &[u8]) -> bool {
 }
 impl Drop for PipelineCache {
     fn drop(&mut self) {
-        unsafe { self.device.device.destroy_pipeline_cache(self.handle, None) }
+        unsafe {
+            self.device
+                .core
+                .device
+                .destroy_pipeline_cache(self.handle, None)
+        }
     }
 }

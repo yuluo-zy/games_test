@@ -377,15 +377,15 @@ impl Buffer {
         if desc.size == 0 {
             return Err(Error::invalid_usage("缓冲区大小不能为零"));
         }
-        if !device.capabilities.buffer_device_address
+        if !device.core.capabilities.buffer_device_address
             && desc
                 .usage
                 .contains(vk::BufferUsageFlags::SHADER_DEVICE_ADDRESS)
         {
             return Err(Error::unsupported("此路径未启用 bufferDeviceAddress"));
         }
-        let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.allocator_stats)?;
-        let memory = device.allocator_stats.reserve_cpu_bytes(
+        let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.memory.stats)?;
+        let memory = device.memory.stats.reserve_cpu_bytes(
             super::allocator::shared_cpu_bytes::<Self>()?,
             crate::device::BudgetCategory::Live,
         )?;
@@ -399,13 +399,13 @@ impl Buffer {
             })
             .queue_family_indices(sharing.families());
         let handle = super::error::observe_vulkan(&device, unsafe {
-            device.device.create_buffer(&info, None)
+            device.core.device.create_buffer(&info, None)
         })?;
         let mut dedicated_requirements = vk::MemoryDedicatedRequirements::default();
         let mut requirements2 =
             vk::MemoryRequirements2::default().push_next(&mut dedicated_requirements);
         unsafe {
-            device.device.get_buffer_memory_requirements2(
+            device.core.device.get_buffer_memory_requirements2(
                 &vk::BufferMemoryRequirementsInfo2::default().buffer(handle),
                 &mut requirements2,
             );
@@ -453,7 +453,7 @@ impl Buffer {
             Ok(value) => value,
             Err(error) => {
                 unsafe {
-                    device.device.destroy_buffer(handle, None);
+                    device.core.device.destroy_buffer(handle, None);
                 }
                 return Err(error);
             }
@@ -461,7 +461,7 @@ impl Buffer {
         let last_use = if sharing.is_concurrent() {
             crate::resource::SyncCell::for_allocation(
                 device.generation(),
-                device.allocator_stats.clone(),
+                device.memory.stats.clone(),
                 allocation.accounting_id(),
             )
             .with_concurrent_families(match sharing {
@@ -475,7 +475,7 @@ impl Buffer {
         } else {
             crate::resource::SyncCell::for_allocation(
                 device.generation(),
-                device.allocator_stats.clone(),
+                device.memory.stats.clone(),
                 allocation.accounting_id(),
             )
             .with_ownership_range(crate::resource::OwnershipRange::Buffer {
@@ -487,11 +487,11 @@ impl Buffer {
             .properties
             .contains(vk::MemoryPropertyFlags::HOST_VISIBLE)
         {
-            match last_use.with_host_buffer_ranges(desc.size, &device.allocator_stats) {
+            match last_use.with_host_buffer_ranges(desc.size, &device.memory.stats) {
                 Ok(cell) => cell,
                 Err(error) => {
                     unsafe {
-                        device.device.destroy_buffer(handle, None);
+                        device.core.device.destroy_buffer(handle, None);
                     }
                     return Err(error);
                 }
@@ -501,11 +501,12 @@ impl Buffer {
         };
         if let Err(error) = unsafe {
             device
+                .core
                 .device
                 .bind_buffer_memory(handle, allocation.handle, allocation.offset)
         } {
             unsafe {
-                device.device.destroy_buffer(handle, None);
+                device.core.device.destroy_buffer(handle, None);
             }
             return super::error::observe_vulkan(&device, Err(error));
         }
@@ -517,7 +518,7 @@ impl Buffer {
             && allocation.host_ptr().is_none()
         {
             match unsafe {
-                device.device.map_memory(
+                device.core.device.map_memory(
                     allocation.handle,
                     0,
                     vk::WHOLE_SIZE,
@@ -526,7 +527,7 @@ impl Buffer {
             } {
                 Ok(pointer) => Some(pointer as usize),
                 Err(error) => {
-                    unsafe { device.device.destroy_buffer(handle, None) };
+                    unsafe { device.core.device.destroy_buffer(handle, None) };
                     return super::error::observe_vulkan(&device, Err(error));
                 }
             }
@@ -610,7 +611,7 @@ impl Buffer {
             None => {
                 self.device.wait(&self.last_use.snapshot(), u64::MAX)?;
                 let pointer = super::error::observe_vulkan(&self.device, unsafe {
-                    self.device.device.map_memory(
+                    self.device.core.device.map_memory(
                         self.allocation.handle,
                         0,
                         vk::WHOLE_SIZE,
@@ -646,7 +647,7 @@ impl Buffer {
     pub fn unmap(&mut self) {
         if self.mapped_ptr.take().is_some() {
             unsafe {
-                self.device.device.unmap_memory(self.allocation.handle);
+                self.device.core.device.unmap_memory(self.allocation.handle);
             }
         }
     }
@@ -661,7 +662,7 @@ impl Buffer {
         if self.device.is_device_lost() {
             return Err(Error::DeviceLost);
         }
-        if !self.device.capabilities.buffer_device_address
+        if !self.device.core.capabilities.buffer_device_address
             || !self
                 .usage
                 .contains(vk::BufferUsageFlags::SHADER_DEVICE_ADDRESS)
@@ -669,7 +670,7 @@ impl Buffer {
             return Err(Error::unsupported("缓冲区未启用设备地址用途"));
         }
         let info = vk::BufferDeviceAddressInfo::default().buffer(self.handle);
-        Ok(unsafe { self.device.device.get_buffer_device_address(&info) })
+        Ok(unsafe { self.device.core.device.get_buffer_device_address(&info) })
     }
     /// Map-and-copy core shared by all host reads and writes.
     ///
@@ -736,9 +737,8 @@ impl Buffer {
                 self.device.limits().non_coherent_atom_size.max(1)
             },
         )?;
-        let deadline = wait_ns.map(|ns| {
-            std::time::Instant::now().checked_add(std::time::Duration::from_nanos(ns))
-        });
+        let deadline = wait_ns
+            .map(|ns| std::time::Instant::now().checked_add(std::time::Duration::from_nanos(ns)));
         let mut completed = self.device.completed();
         let mut polled = false;
         loop {
@@ -812,7 +812,7 @@ impl Buffer {
         let pointer = match shared_pointer {
             Some(pointer) => pointer.cast(),
             None => super::error::observe_vulkan(&self.device, unsafe {
-                self.device.device.map_memory(
+                self.device.core.device.map_memory(
                     self.allocation.handle,
                     0,
                     vk::WHOLE_SIZE,
@@ -826,11 +826,16 @@ impl Buffer {
             .size(host_range.memory_size)];
         let unmap = || {
             if shared_pointer.is_none() {
-                unsafe { self.device.device.unmap_memory(self.allocation.handle) };
+                unsafe { self.device.core.device.unmap_memory(self.allocation.handle) };
             }
         };
         let result = if !write && !coherent {
-            unsafe { self.device.device.invalidate_mapped_memory_ranges(&range) }
+            unsafe {
+                self.device
+                    .core
+                    .device
+                    .invalidate_mapped_memory_ranges(&range)
+            }
         } else {
             Ok(())
         };
@@ -848,13 +853,13 @@ impl Buffer {
                 Ok(())
             }
             super::dynamic_constants::HostFlush::Now => {
-                let result = unsafe { self.device.device.flush_mapped_memory_ranges(&range) };
+                let result = unsafe { self.device.core.device.flush_mapped_memory_ranges(&range) };
                 unmap();
                 super::error::observe_vulkan(&self.device, result)
             }
             // Deferred flushes require a persistent mapping (constants pages).
             super::dynamic_constants::HostFlush::Deferred if shared_pointer.is_some() => {
-                self.device.host_flush.record(
+                self.device.queues.host_flush.record(
                     self.allocation.accounting_id(),
                     self.allocation.handle,
                     host_range.memory_offset,
@@ -862,7 +867,7 @@ impl Buffer {
                 )
             }
             super::dynamic_constants::HostFlush::Deferred => {
-                let result = unsafe { self.device.device.flush_mapped_memory_ranges(&range) };
+                let result = unsafe { self.device.core.device.flush_mapped_memory_ranges(&range) };
                 unmap();
                 super::error::observe_vulkan(&self.device, result)
             }
@@ -910,18 +915,24 @@ impl Buffer {
         if start >= end {
             return Ok(());
         }
-        self.host_access(start, end - start, true, Some(HOST_ACCESS_TIMEOUT_NS), |base| {
-            for &(offset, bytes) in segments {
-                // SAFETY: every segment was validated against the buffer size.
-                unsafe {
-                    std::ptr::copy_nonoverlapping(
-                        bytes.as_ptr(),
-                        base.add(offset as usize),
-                        bytes.len(),
-                    )
+        self.host_access(
+            start,
+            end - start,
+            true,
+            Some(HOST_ACCESS_TIMEOUT_NS),
+            |base| {
+                for &(offset, bytes) in segments {
+                    // SAFETY: every segment was validated against the buffer size.
+                    unsafe {
+                        std::ptr::copy_nonoverlapping(
+                            bytes.as_ptr(),
+                            base.add(offset as usize),
+                            bytes.len(),
+                        )
+                    }
                 }
-            }
-        })
+            },
+        )
     }
     /// 不等待在飞 GPU 工作的写入。
     ///
@@ -933,10 +944,21 @@ impl Buffer {
     /// deferred to the device's next queue submit (one call for all queued
     /// ranges). Only for persistently mapped dynamic-constants pages.
     pub(crate) fn write_bytes_deferred_flush(&self, offset: u64, bytes: &[u8]) -> Result<()> {
-        self.host_access_with(offset, bytes.len() as u64, true, true, None, |base| unsafe {
-            // SAFETY: the range was validated against the mapped buffer.
-            std::ptr::copy_nonoverlapping(bytes.as_ptr(), base.add(offset as usize), bytes.len())
-        })
+        self.host_access_with(
+            offset,
+            bytes.len() as u64,
+            true,
+            true,
+            None,
+            |base| unsafe {
+                // SAFETY: the range was validated against the mapped buffer.
+                std::ptr::copy_nonoverlapping(
+                    bytes.as_ptr(),
+                    base.add(offset as usize),
+                    bytes.len(),
+                )
+            },
+        )
     }
     /// 在已确认本缓冲 GPU 操作完成后读回，保留非 coherent 内存失效处理，不做整设备等待。
     ///
@@ -961,11 +983,14 @@ impl Drop for Buffer {
     fn drop(&mut self) {
         if self.dynamic_constants_page {
             // Unsubmitted deferred flushes of a freed page are meaningless.
-            self.device.host_flush.forget(self.allocation.accounting_id());
+            self.device
+                .queues
+                .host_flush
+                .forget(self.allocation.accounting_id());
         }
         if self.mapped_ptr.take().is_some() {
             unsafe {
-                self.device.device.unmap_memory(self.allocation.handle);
+                self.device.core.device.unmap_memory(self.allocation.handle);
             }
         }
         // SAFETY: allocation 只在此处取出一次，之后不会再被访问。

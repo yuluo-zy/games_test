@@ -486,11 +486,13 @@ fn mark_cached(resource: &GpuResource, completed: &CompletedValues) {
     match resource {
         GpuResource::Buffer(buffer) => buffer
             .device
-            .allocator_stats
+            .memory
+            .stats
             .mark_cached(buffer.allocation_id(), completed),
         GpuResource::Image(image) => image
             .device
-            .allocator_stats
+            .memory
+            .stats
             .mark_cached(image.allocation_id(), completed),
     }
 }

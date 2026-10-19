@@ -129,7 +129,7 @@ fn declared_frame_sources_copy_real_bytes_and_failed_recording_does_not_leak_bin
             let input = managed.buffer_for(input.raw()).unwrap();
             let output = managed.buffer_for(target.raw()).unwrap();
             unsafe {
-                raw_device.device.cmd_copy_buffer(
+                raw_device.raw_device().cmd_copy_buffer(
                     vk::CommandBuffer::from_raw(ctx.command.handle()),
                     input.handle,
                     output.handle,
@@ -189,7 +189,7 @@ fn declared_frame_sources_copy_real_bytes_and_failed_recording_does_not_leak_bin
     pass.render_with_result_context(move |ctx| {
         let managed = ctx.managed.unwrap();
         unsafe {
-            raw_device.device.cmd_copy_buffer(
+            raw_device.raw_device().cmd_copy_buffer(
                 vk::CommandBuffer::from_raw(ctx.command.handle()),
                 managed.buffer_for(input.raw()).unwrap().handle,
                 managed.buffer_for(target.raw()).unwrap().handle,

@@ -75,7 +75,7 @@ fn filled(
                     };
 
                     unsafe {
-                        device.device.cmd_fill_buffer(
+                        device.raw_device().cmd_fill_buffer(
                             vk::CommandBuffer::from_raw(ctx.command.handle()),
                             buffer.raw(),
                             0,
@@ -111,7 +111,7 @@ fn copy(
         };
 
         unsafe {
-            device.device.cmd_copy_buffer(
+            device.raw_device().cmd_copy_buffer(
                 vk::CommandBuffer::from_raw(ctx.command.handle()),
                 source.raw(),
                 target.raw(),
@@ -173,7 +173,7 @@ impl Gate {
             unsafe {
                 self.0
                     .device
-                    .device
+                    .raw_device()
                     .signal_semaphore(
                         &vk::SemaphoreSignalInfo::default()
                             .semaphore(self.0.handle)
@@ -295,7 +295,7 @@ fn failed_or_partial_productions_never_replace_a_valid_cached_result() {
                             };
 
                             unsafe {
-                                device.device.cmd_fill_buffer(
+                                device.raw_device().cmd_fill_buffer(
                                     vk::CommandBuffer::from_raw(ctx.command.handle()),
                                     buffer.raw(),
                                     0,
@@ -499,7 +499,7 @@ fn immutable_hits_reject_writes_and_device_lost_stops_cached_work() {
     );
     assert_eq!(session.result_cache_stats().entries, 1);
     let mut graph = session.begin_frame().unwrap();
-    session.backend.device.timelines.mark_device_lost();
+    session.backend.device.timelines().mark_device_lost();
     assert_eq!(
         session
             .cached_result(

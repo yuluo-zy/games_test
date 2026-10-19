@@ -108,7 +108,7 @@ fn separate_depth_stencil_layouts_are_enabled_when_supported_and_used_per_aspect
             .texture_for(image_index)
             .map_err(|e| rhapsody::Error::invalid_usage_with("binding", e))?;
         unsafe {
-            raw.device.cmd_clear_depth_stencil_image(
+            raw.raw_device().cmd_clear_depth_stencil_image(
                 vk::CommandBuffer::from_raw(ctx.command.handle()),
                 image.raw(),
                 vk::ImageLayout::TRANSFER_DST_OPTIMAL,
@@ -155,7 +155,7 @@ fn separate_depth_stencil_layouts_are_enabled_when_supported_and_used_per_aspect
             .buffer_for(out_index)
             .map_err(|e| rhapsody::Error::invalid_usage_with("binding", e))?;
         unsafe {
-            raw.device.cmd_copy_image_to_buffer(
+            raw.raw_device().cmd_copy_image_to_buffer(
                 vk::CommandBuffer::from_raw(ctx.command.handle()),
                 image.raw(),
                 vk::ImageLayout::TRANSFER_SRC_OPTIMAL,

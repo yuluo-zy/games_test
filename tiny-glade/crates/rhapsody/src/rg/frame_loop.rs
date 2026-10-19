@@ -267,7 +267,7 @@ impl FrameLoop {
         }
     }
     fn observe<T>(&self, result: Result<T>) -> Result<T> {
-        observe_device_result(&self.swapchain.device.timelines, result)
+        observe_device_result(&self.swapchain.device.queues.timelines, result)
     }
     /// Throttle on the oldest in-flight presented frame, then poll WSI
     /// completion proofs and device garbage once for this frame.
@@ -372,6 +372,7 @@ impl FrameLoop {
         }
         self.swapchain
             .device
+            .queues
             .timelines
             .wait(&receipt.point.into(), timeout)?;
         self.collect()
@@ -503,6 +504,7 @@ where
             self.frame_loop
                 .swapchain
                 .device
+                .queues
                 .timelines
                 .mark_device_lost();
         }

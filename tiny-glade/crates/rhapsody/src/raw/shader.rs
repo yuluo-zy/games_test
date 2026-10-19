@@ -43,7 +43,7 @@ fn invalid_shader() -> crate::Error {
 fn observe_vulkan<T>(device: &Device, result: std::result::Result<T, vk::Result>) -> Result<T> {
     result.map_err(|error| {
         if error == vk::Result::ERROR_DEVICE_LOST {
-            device.timelines.mark_device_lost();
+            device.queues.timelines.mark_device_lost();
         }
         crate::Error::from(error)
     })
@@ -66,7 +66,7 @@ impl ShaderModule {
         if device.is_device_lost() {
             return Err(crate::Error::DeviceLost);
         }
-        let mut words_memory = device.allocator_stats.reserve_cpu_bytes(
+        let mut words_memory = device.memory.stats.reserve_cpu_bytes(
             cpu_vec_bytes::<u32>(bytes.len() / 4)?,
             crate::device::BudgetCategory::Live,
         )?;
@@ -92,16 +92,16 @@ impl ShaderModule {
                     .ok_or(crate::Error::OutOfHostMemory)
             },
         )?;
-        let memory = reserve_shared_cpu_metadata::<Self>(&device.allocator_stats, interface_bytes)?;
+        let memory = reserve_shared_cpu_metadata::<Self>(&device.memory.stats, interface_bytes)?;
         let interfaces = BudgetedMetadata {
             data: interfaces,
             memory,
         };
         let info = vk::ShaderModuleCreateInfo::default().code(&words);
         let handle =
-            unsafe { device.device.create_shader_module(&info, None) }.map_err(|error| {
+            unsafe { device.core.device.create_shader_module(&info, None) }.map_err(|error| {
                 if error == vk::Result::ERROR_DEVICE_LOST {
-                    device.timelines.mark_device_lost();
+                    device.queues.timelines.mark_device_lost();
                 }
                 crate::Error::from(error)
             })?;
@@ -116,7 +116,10 @@ impl ShaderModule {
 impl Drop for ShaderModule {
     fn drop(&mut self) {
         unsafe {
-            self.device.device.destroy_shader_module(self.handle, None);
+            self.device
+                .core
+                .device
+                .destroy_shader_module(self.handle, None);
         }
     }
 }
@@ -195,12 +198,12 @@ impl PipelineLayout {
                 push_constants.capacity(),
             )?)
             .ok_or(crate::Error::OutOfHostMemory)?;
-        let memory = reserve_shared_cpu_metadata::<Self>(&device.allocator_stats, bytes)?;
+        let memory = reserve_shared_cpu_metadata::<Self>(&device.memory.stats, bytes)?;
         let arrays = BudgetedMetadata {
             data: (sets, push_constants),
             memory,
         };
-        let mut raw = TempList::new(arrays.data.0.len().max(1), device.allocator_stats.clone())?;
+        let mut raw = TempList::new(arrays.data.0.len().max(1), device.memory.stats.clone())?;
         raw.reserve(arrays.data.0.len())?;
         for set in &arrays.data.0 {
             raw.add(set.handle)?;
@@ -208,9 +211,9 @@ impl PipelineLayout {
         let info = vk::PipelineLayoutCreateInfo::default()
             .set_layouts(raw.as_slice())
             .push_constant_ranges(&arrays.data.1);
-        let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.allocator_stats)?;
+        let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.memory.stats)?;
         let handle = observe_vulkan(&device, unsafe {
-            device.device.create_pipeline_layout(&info, None)
+            device.core.device.create_pipeline_layout(&info, None)
         })?;
         Ok(Arc::new(Self {
             last_use: crate::resource::SyncCell::for_device(device.generation())
@@ -594,14 +597,14 @@ impl VulkanPipeline {
             &cache.compute,
             |key| key.0 == shader && key.1 == layout && key.2.as_slice() == desc.entry.as_bytes(),
             || {
-                let key = budgeted_key_vec(&cache.device.allocator_stats, desc.entry.as_bytes())?;
+                let key = budgeted_key_vec(&cache.device.memory.stats, desc.entry.as_bytes())?;
                 Ok(BudgetedKey {
                     value: (shader, layout, key.value),
                     memory: key.memory,
                 })
             },
             cache.capacity,
-            &cache.device.allocator_stats,
+            &cache.device.memory.stats,
         )?;
         let mut created = slot.lock();
         if let Some(pipeline) = created.pipeline.as_ref() {
@@ -609,7 +612,7 @@ impl VulkanPipeline {
         }
         let count = 1;
         let mut memory = reserve_shared_cpu_metadata::<Self>(
-            &cache.device.allocator_stats,
+            &cache.device.memory.stats,
             pipeline_array_bytes(count, count, 0, 0)?,
         )?;
         let mut shaders = try_vec(count)?;
@@ -643,11 +646,12 @@ impl VulkanPipeline {
             .stage(stage)
             .layout(desc.layout.handle);
         let sync_storage =
-            crate::resource::SyncCell::reserve_arc_storage(&cache.device.allocator_stats)?;
+            crate::resource::SyncCell::reserve_arc_storage(&cache.device.memory.stats)?;
         let _cache_use = cache.lock.read();
         let result = unsafe {
             cache
                 .device
+                .core
                 .device
                 .create_compute_pipelines(cache.handle, &[info], None)
         };
@@ -718,10 +722,11 @@ impl VulkanPipeline {
             let properties = cache.device.properties();
             if properties
                 .api_version
-                .min(cache.device.instance.api_version)
+                .min(cache.device.core.instance.api_version)
                 < vk::API_VERSION_1_3
                 && !cache
                     .device
+                    .core
                     .enabled_extensions
                     .iter()
                     .any(|extension| extension == "VK_KHR_dynamic_rendering")
@@ -769,9 +774,9 @@ impl VulkanPipeline {
         let slot = slot_for(
             &cache.raster,
             |key| raster_pipeline_key_matches(&desc, key),
-            || budgeted_raster_key(&cache.device.allocator_stats, &desc),
+            || budgeted_raster_key(&cache.device.memory.stats, &desc),
             cache.capacity,
-            &cache.device.allocator_stats,
+            &cache.device.memory.stats,
         )?;
         let mut created = slot.lock();
         if let Some(pipeline) = created.pipeline.as_ref() {
@@ -783,7 +788,7 @@ impl VulkanPipeline {
             .as_ref()
             .expect("validated dynamic formats");
         let mut memory = reserve_shared_cpu_metadata::<Self>(
-            &cache.device.allocator_stats,
+            &cache.device.memory.stats,
             pipeline_array_bytes(
                 count,
                 count,
@@ -869,7 +874,7 @@ impl VulkanPipeline {
             .max_depth_bounds(1.0);
         let blend =
             vk::PipelineColorBlendStateCreateInfo::default().attachments(&desc.blend_attachments);
-        let line_width_dynamic = cache.device.capabilities.wide_lines;
+        let line_width_dynamic = cache.device.core.capabilities.wide_lines;
         let mut dynamic_values: smallvec::SmallVec<[vk::DynamicState; 4]> = smallvec::smallvec![
             vk::DynamicState::VIEWPORT,
             vk::DynamicState::SCISSOR,
@@ -900,11 +905,12 @@ impl VulkanPipeline {
             info = info.push_next(&mut rendering);
         }
         let sync_storage =
-            crate::resource::SyncCell::reserve_arc_storage(&cache.device.allocator_stats)?;
+            crate::resource::SyncCell::reserve_arc_storage(&cache.device.memory.stats)?;
         let _cache_use = cache.lock.read();
         let result = unsafe {
             cache
                 .device
+                .core
                 .device
                 .create_graphics_pipelines(cache.handle, &[info], None)
         };
@@ -930,6 +936,7 @@ impl VulkanPipeline {
     pub unsafe fn bind_pipeline(&self, command: vk::CommandBuffer) {
         unsafe {
             self.device
+                .core
                 .device
                 .cmd_bind_pipeline(command, self.point, self.handle)
         }
@@ -995,10 +1002,10 @@ fn finish_pipeline(
             .ok_or_else(|| crate::Error::invalid_usage("着色器资源、接口或设备不匹配")),
         Err((values, error)) => {
             if error == vk::Result::ERROR_DEVICE_LOST {
-                device.timelines.mark_device_lost();
+                device.queues.timelines.mark_device_lost();
             }
             for handle in values {
-                unsafe { device.device.destroy_pipeline(handle, None) }
+                unsafe { device.core.device.destroy_pipeline(handle, None) }
             }
             Err(error.into())
         }
@@ -2139,13 +2146,12 @@ mod raster_opts_tests {
             device: device.clone(),
             handle: vk::ShaderModule::null(),
             interfaces: Arc::from([]),
-            _memory: reserve_shared_cpu_metadata::<ShaderModule>(&device.allocator_stats, 16)
-                .unwrap(),
+            _memory: reserve_shared_cpu_metadata::<ShaderModule>(&device.memory.stats, 16).unwrap(),
         });
         let layout = Arc::new(PipelineLayout {
             last_use: crate::resource::SyncCell::for_device_budgeted(
                 device.generation(),
-                &device.allocator_stats,
+                &device.memory.stats,
             )
             .unwrap(),
             device: device.clone(),
@@ -2153,7 +2159,7 @@ mod raster_opts_tests {
             sets: Vec::new(),
             push_constants: Vec::new(),
             bindless_abi: None,
-            _memory: reserve_shared_cpu_metadata::<PipelineLayout>(&device.allocator_stats, 0)
+            _memory: reserve_shared_cpu_metadata::<PipelineLayout>(&device.memory.stats, 0)
                 .unwrap(),
         });
         let mut desc = RasterPipelineDesc::new(module, layout);
@@ -2261,13 +2267,12 @@ mod raster_opts_tests {
             device: device.clone(),
             handle: vk::ShaderModule::null(),
             interfaces: Arc::from([]),
-            _memory: reserve_shared_cpu_metadata::<ShaderModule>(&device.allocator_stats, 16)
-                .unwrap(),
+            _memory: reserve_shared_cpu_metadata::<ShaderModule>(&device.memory.stats, 16).unwrap(),
         });
         let layout = Arc::new(PipelineLayout {
             last_use: crate::resource::SyncCell::for_device_budgeted(
                 device.generation(),
-                &device.allocator_stats,
+                &device.memory.stats,
             )
             .unwrap(),
             device: device.clone(),
@@ -2275,7 +2280,7 @@ mod raster_opts_tests {
             sets: Vec::new(),
             push_constants: Vec::new(),
             bindless_abi: None,
-            _memory: reserve_shared_cpu_metadata::<PipelineLayout>(&device.allocator_stats, 0)
+            _memory: reserve_shared_cpu_metadata::<PipelineLayout>(&device.memory.stats, 0)
                 .unwrap(),
         });
         let mut desc = RasterPipelineDesc::new(module, layout);

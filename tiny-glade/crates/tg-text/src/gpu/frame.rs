@@ -305,7 +305,7 @@ impl PreparedFrame {
                 self.parameters
                     .bind_command(command, self.pipeline.clone())?;
                 device
-                    .device
+                    .raw_device()
                     .cmd_draw(command.handle, vertex_count, 1, 0, 0);
             }
             api.end_render_pass();
@@ -344,7 +344,7 @@ impl PreparedFrame {
                     write: true,
                 },
             )?;
-            device.device.cmd_copy_image_to_buffer(
+            device.raw_device().cmd_copy_image_to_buffer(
                 command.handle,
                 self.target.handle,
                 vk::ImageLayout::TRANSFER_SRC_OPTIMAL,

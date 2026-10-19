@@ -366,13 +366,15 @@ impl AttachmentCache {
         }
         let limits = unsafe {
             device
+                .core
                 .instance
                 .instance
-                .get_physical_device_properties(device.physical)
+                .get_physical_device_properties(device.core.physical)
         }
         .limits;
         let memory = device
-            .allocator_stats
+            .memory
+            .stats
             .reserve_cpu_bytes(0, crate::device::BudgetCategory::Cache)?;
         Ok(Self {
             device,
@@ -414,7 +416,7 @@ impl AttachmentCache {
             .iter()
             .filter(|attachment| !attachment.depth_stencil)
             .count();
-        let mut memory = self.device.allocator_stats.reserve_cpu_bytes(
+        let mut memory = self.device.memory.stats.reserve_cpu_bytes(
             crate::raw::allocator::shared_cpu_bytes::<PreparedAttachments>()?
                 + (attachments.len() * size_of::<Arc<TextureView>>()
                     + color_count
@@ -546,7 +548,7 @@ impl AttachmentCache {
             let capacity = needed
                 .max(self.views.capacity().saturating_mul(2))
                 .min(self.capacity);
-            let mut memory = self.device.allocator_stats.reserve_cpu_bytes(
+            let mut memory = self.device.memory.stats.reserve_cpu_bytes(
                 (capacity * size_of::<(ViewKey, Arc<TextureView>)>()) as u64,
                 crate::device::BudgetCategory::Cache,
             )?;

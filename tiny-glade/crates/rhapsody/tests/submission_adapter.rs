@@ -21,7 +21,7 @@ impl BinarySignals {
             owner.handles.push(unsafe {
                 owner
                     .device
-                    .device
+                    .raw_device()
                     .create_semaphore(&vk::SemaphoreCreateInfo::default(), None)
                     .unwrap()
             });
@@ -36,7 +36,7 @@ impl Drop for BinarySignals {
         let _ = self.device.wait_idle();
         for semaphore in &self.handles {
             unsafe {
-                self.device.device.destroy_semaphore(*semaphore, None);
+                self.device.raw_device().destroy_semaphore(*semaphore, None);
             }
         }
     }
@@ -59,11 +59,11 @@ fn outer_and_nested_spills_fail_before_submission_and_release_their_cpu_budget()
         .copied()
         .map(Signal::Binary)
         .collect();
-    let before = device.allocator_stats.cpu_memory_usage();
-    let submitted = device.timelines.submitted(queue).unwrap();
+    let before = device.allocator_stats().cpu_memory_usage();
+    let submitted = device.timelines().submitted(queue).unwrap();
     device
-        .allocator_stats
-        .set_total_budget(device.allocator_stats.budget_usage().total() + 1)
+        .allocator_stats()
+        .set_total_budget(device.allocator_stats().budget_usage().total() + 1)
         .unwrap();
     let batches = std::array::from_fn::<_, 2, _>(|_| SubmitBatch {
         waits: &[],
@@ -74,8 +74,8 @@ fn outer_and_nested_spills_fail_before_submission_and_release_their_cpu_budget()
         unsafe { device.submit(queue, &batches) },
         Err(rhapsody::Error::OutOfHostMemory)
     ));
-    assert_eq!(device.timelines.submitted(queue).unwrap(), submitted);
-    assert_eq!(device.allocator_stats.cpu_memory_usage(), before);
+    assert_eq!(device.timelines().submitted(queue).unwrap(), submitted);
+    assert_eq!(device.allocator_stats().cpu_memory_usage(), before);
     let batch = SubmitBatch {
         waits: &[],
         commands: &[],
@@ -85,9 +85,9 @@ fn outer_and_nested_spills_fail_before_submission_and_release_their_cpu_budget()
         unsafe { device.submit(queue, &[batch]) },
         Err(rhapsody::Error::OutOfHostMemory)
     ));
-    assert_eq!(device.timelines.submitted(queue).unwrap(), submitted);
-    assert_eq!(device.allocator_stats.cpu_memory_usage(), before);
-    device.allocator_stats.set_total_budget(u64::MAX).unwrap();
+    assert_eq!(device.timelines().submitted(queue).unwrap(), submitted);
+    assert_eq!(device.allocator_stats().cpu_memory_usage(), before);
+    device.allocator_stats().set_total_budget(u64::MAX).unwrap();
     let batch = SubmitBatch {
         waits: &[],
         commands: &[],
@@ -96,7 +96,7 @@ fn outer_and_nested_spills_fail_before_submission_and_release_their_cpu_budget()
     let point = unsafe { device.submit(queue, &[batch]) }.unwrap();
     device.wait(&point.into(), 10_000_000_000).unwrap();
     assert_eq!(point.value, submitted + 1);
-    assert_eq!(device.allocator_stats.cpu_memory_usage(), before);
+    assert_eq!(device.allocator_stats().cpu_memory_usage(), before);
 }
 
 #[test]
@@ -105,7 +105,7 @@ fn rejected_waits_and_duplicate_signals_do_not_publish_a_completion_point() {
     let queue = QueueId::new(0).unwrap();
     let semaphore = BinarySignals::new(device.clone(), 1);
     let signals = [Signal::Binary(semaphore.handles[0]); 2];
-    let before = device.timelines.submitted(queue).unwrap();
+    let before = device.timelines().submitted(queue).unwrap();
     let batch = SubmitBatch {
         waits: &[],
         commands: &[],
@@ -125,7 +125,7 @@ fn rejected_waits_and_duplicate_signals_do_not_publish_a_completion_point() {
         signals: &[],
     };
     assert!(unsafe { device.submit(queue, &[batch]) }.is_err());
-    assert_eq!(device.timelines.submitted(queue).unwrap(), before);
+    assert_eq!(device.timelines().submitted(queue).unwrap(), before);
     let point = unsafe { device.submit(queue, &[]) }.unwrap();
     device.wait(&point.into(), 10_000_000_000).unwrap();
     assert_eq!(point.value, before + 1);
@@ -135,12 +135,12 @@ fn rejected_waits_and_duplicate_signals_do_not_publish_a_completion_point() {
 fn known_loss_is_rejected_before_adapter_scratch_admission() {
     let Some(device) = device() else { return };
     let queue = QueueId::new(0).unwrap();
-    let before = device.allocator_stats.cpu_memory_usage();
+    let before = device.allocator_stats().cpu_memory_usage();
     device
-        .allocator_stats
-        .set_total_budget(device.allocator_stats.budget_usage().total() + 1)
+        .allocator_stats()
+        .set_total_budget(device.allocator_stats().budget_usage().total() + 1)
         .unwrap();
-    device.timelines.mark_device_lost();
+    device.timelines().mark_device_lost();
     let batches = std::array::from_fn::<_, 2, _>(|_| SubmitBatch {
         waits: &[],
         commands: &[],
@@ -150,7 +150,7 @@ fn known_loss_is_rejected_before_adapter_scratch_admission() {
         unsafe { device.submit(queue, &batches) },
         Err(rhapsody::Error::DeviceLost)
     ));
-    assert_eq!(device.allocator_stats.cpu_memory_usage(), before);
+    assert_eq!(device.allocator_stats().cpu_memory_usage(), before);
 }
 
 #[test]
@@ -202,7 +202,7 @@ fn legacy_submission_preserves_supported_caps_and_copies_with_real_timeline_wait
     let mut command = pool.allocate().unwrap();
     command.begin().unwrap();
     unsafe {
-        device.device.cmd_pipeline_barrier(
+        device.raw_device().cmd_pipeline_barrier(
             command.handle,
             vk::PipelineStageFlags::HOST,
             vk::PipelineStageFlags::TRANSFER,
@@ -224,7 +224,7 @@ fn legacy_submission_preserves_supported_caps_and_copies_with_real_timeline_wait
             }),
             &[],
         );
-        device.device.cmd_copy_buffer(
+        device.raw_device().cmd_copy_buffer(
             command.handle,
             source.handle,
             destination.handle,
@@ -234,7 +234,7 @@ fn legacy_submission_preserves_supported_caps_and_copies_with_real_timeline_wait
                 size: 32,
             }],
         );
-        device.device.cmd_pipeline_barrier(
+        device.raw_device().cmd_pipeline_barrier(
             command.handle,
             vk::PipelineStageFlags::TRANSFER,
             vk::PipelineStageFlags::HOST,

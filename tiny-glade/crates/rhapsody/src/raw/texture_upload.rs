@@ -180,7 +180,7 @@ pub unsafe fn record_texture_regions(
         Some(old_layout),
     )?;
     unsafe {
-        command.pool.device.device.cmd_copy_buffer_to_image(
+        command.pool.device.core.device.cmd_copy_buffer_to_image(
             command.handle,
             staging.handle,
             texture.handle,
@@ -239,15 +239,20 @@ pub(crate) fn record_zero_fill_borrowed(
         .layer_count(texture.desc.array_layers()?);
     unsafe {
         if aspect.intersects(vk::ImageAspectFlags::DEPTH | vk::ImageAspectFlags::STENCIL) {
-            command.pool.device.device.cmd_clear_depth_stencil_image(
-                command.handle,
-                texture.handle,
-                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-                &vk::ClearDepthStencilValue::default(),
-                &[native],
-            );
+            command
+                .pool
+                .device
+                .core
+                .device
+                .cmd_clear_depth_stencil_image(
+                    command.handle,
+                    texture.handle,
+                    vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                    &vk::ClearDepthStencilValue::default(),
+                    &[native],
+                );
         } else {
-            command.pool.device.device.cmd_clear_color_image(
+            command.pool.device.core.device.cmd_clear_color_image(
                 command.handle,
                 texture.handle,
                 vk::ImageLayout::TRANSFER_DST_OPTIMAL,
@@ -467,7 +472,9 @@ pub fn per_mip_regions<'a>(
         if let Some(need) = min_len(&item)
             && (slice.len() as u64) < need
         {
-            return Err(Error::invalid_usage("per-mip slice is shorter than its level"));
+            return Err(Error::invalid_usage(
+                "per-mip slice is shorter than its level",
+            ));
         }
         regions.push(TextureUpdateRegion {
             data: slice,

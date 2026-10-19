@@ -95,7 +95,7 @@ fn graph(
                 .map_err(|e| rhapsody::Error::invalid_usage_with("invalid pass binding", e))?;
 
             unsafe {
-                device.device.cmd_clear_color_image(
+                device.raw_device().cmd_clear_color_image(
                     vk::CommandBuffer::from_raw(ctx.command.handle()),
                     image.raw(),
                     vk::ImageLayout::TRANSFER_DST_OPTIMAL,
@@ -130,7 +130,7 @@ fn graph(
 
             let command = vk::CommandBuffer::from_raw(ctx.command.handle());
             unsafe {
-                device.device.cmd_copy_image_to_buffer(
+                device.raw_device().cmd_copy_image_to_buffer(
                     command,
                     image.raw(),
                     vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
@@ -159,7 +159,7 @@ fn graph(
 
                 unsafe {
                     device
-                        .device
+                        .raw_device()
                         .cmd_fill_buffer(command, buffer.raw(), 0, 16, 1);
                 }
             }
@@ -200,16 +200,20 @@ fn run_with_strategy(enabled: bool, allocation: AllocationStrategy) -> Option<Ru
     let physical = session.backend.transient_memory_plan();
     eprintln!("alias={enabled} {}", physical.dump());
     let saved = physical.stats.reuse_bytes;
-    let committed = device.allocator_stats.report().totals.total_allocated_bytes;
+    let committed = device
+        .allocator_stats()
+        .report()
+        .totals
+        .total_allocated_bytes;
     let native = device.memory_usage_snapshot();
     assert_eq!(
         native.suballocator_unused_bytes,
-        device.allocator_stats.suballocator_spare_bytes()
+        device.allocator_stats().suballocator_spare_bytes()
     );
-    let budget = device.allocator_stats.budget_usage().total();
+    let budget = device.allocator_stats().budget_usage().total();
     assert_eq!(
         budget,
-        native.application_vk_memory_bytes + device.allocator_stats.cpu_memory_usage().total()
+        native.application_vk_memory_bytes + device.allocator_stats().cpu_memory_usage().total()
     );
     let undefined_transitions = session
         .last_synchronization()
@@ -289,7 +293,11 @@ fn run_with_strategy(enabled: bool, allocation: AllocationStrategy) -> Option<Ru
     );
     assert_eq!(actual.allocated_bytes, actual.freed_bytes);
     assert_eq!(
-        device.allocator_stats.report().totals.total_allocated_bytes,
+        device
+            .allocator_stats()
+            .report()
+            .totals
+            .total_allocated_bytes,
         0,
         "shared allocation accounting is not leaked or released twice"
     );
@@ -385,7 +393,7 @@ impl Release {
             unsafe {
                 self.0
                     .device
-                    .device
+                    .raw_device()
                     .signal_semaphore(
                         &vk::SemaphoreSignalInfo::default()
                             .semaphore(self.0.handle)
@@ -401,7 +409,7 @@ impl Drop for Release {
     fn drop(&mut self) {
         if !self.1 {
             let _ = unsafe {
-                self.0.device.device.signal_semaphore(
+                self.0.device.raw_device().signal_semaphore(
                     &vk::SemaphoreSignalInfo::default()
                         .semaphore(self.0.handle)
                         .value(1),
@@ -461,7 +469,11 @@ fn simultaneously_pending_frames_allocate_distinct_backings_and_release_once() {
     device.try_collect_all_completed().unwrap();
     assert_eq!(counters.snapshot().allocations, counters.snapshot().frees);
     assert_eq!(
-        device.allocator_stats.report().totals.total_allocated_bytes,
+        device
+            .allocator_stats()
+            .report()
+            .totals
+            .total_allocated_bytes,
         0
     );
 }

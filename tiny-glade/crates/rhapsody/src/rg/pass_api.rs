@@ -127,25 +127,30 @@ impl<'a> AshCommandBackend<'a> {
         {
             None
         } else if device
+            .core
             .enabled_extensions
             .iter()
             .any(|extension| extension == "VK_KHR_dynamic_rendering")
         {
             Some(DynamicRenderingCommands::Khr(
-                ash::khr::dynamic_rendering::Device::new(&device.instance.instance, &device.device),
+                ash::khr::dynamic_rendering::Device::new(
+                    &device.core.instance.instance,
+                    &device.core.device,
+                ),
             ))
         } else {
             let properties = unsafe {
                 device
+                    .core
                     .instance
                     .instance
-                    .get_physical_device_properties(device.physical)
+                    .get_physical_device_properties(device.core.physical)
             };
-            (properties.api_version.min(device.instance.api_version) >= vk::API_VERSION_1_3)
+            (properties.api_version.min(device.core.instance.api_version) >= vk::API_VERSION_1_3)
                 .then_some(DynamicRenderingCommands::Core)
         };
         Self {
-            device: &device.device,
+            device: &device.core.device,
             rendering,
         }
     }

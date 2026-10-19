@@ -132,20 +132,20 @@ impl Swapchain {
     pub(super) fn fullscreen_surface_configuration(&mut self) -> Result<SurfaceConfiguration> {
         if !self.fullscreen_extension_enabled() {
             return Ok((
-                wsi_call(&self.device.timelines, || unsafe {
+                wsi_call(&self.device.queues.timelines, || unsafe {
                     self.surface
                         .loader
                         .get_physical_device_surface_capabilities(
-                            self.device.physical,
+                            self.device.core.physical,
                             self.surface.handle,
                         )
                 })?,
                 self.enumerate_surface_formats()?,
-                wsi_call(&self.device.timelines, || unsafe {
+                wsi_call(&self.device.queues.timelines, || unsafe {
                     self.surface
                         .loader
                         .get_physical_device_surface_present_modes(
-                            self.device.physical,
+                            self.device.core.physical,
                             self.surface.handle,
                         )
                 })?,
@@ -168,14 +168,14 @@ impl Swapchain {
                 surface = surface.push_next(&mut win32);
             }
             let loader = ash::khr::get_surface_capabilities2::Instance::new(
-                &self.device.instance.entry,
-                &self.device.instance.instance,
+                &self.device.core.instance.entry,
+                &self.device.core.instance.instance,
             );
             let mut support = vk::SurfaceCapabilitiesFullScreenExclusiveEXT::default();
             let mut caps = vk::SurfaceCapabilities2KHR::default().push_next(&mut support);
-            wsi_call(&self.device.timelines, || unsafe {
+            wsi_call(&self.device.queues.timelines, || unsafe {
                 loader.get_physical_device_surface_capabilities2(
-                    self.device.physical,
+                    self.device.core.physical,
                     &surface,
                     &mut caps,
                 )
@@ -187,23 +187,23 @@ impl Swapchain {
                 state.status.fallback = Some(FullscreenFallback::Unsupported);
                 continue;
             }
-            let count = wsi_call(&self.device.timelines, || unsafe {
-                loader.get_physical_device_surface_formats2_len(self.device.physical, &surface)
+            let count = wsi_call(&self.device.queues.timelines, || unsafe {
+                loader.get_physical_device_surface_formats2_len(self.device.core.physical, &surface)
             })?;
             let mut formats = vec![vk::SurfaceFormat2KHR::default(); count];
-            wsi_call(&self.device.timelines, || unsafe {
+            wsi_call(&self.device.queues.timelines, || unsafe {
                 loader.get_physical_device_surface_formats2(
-                    self.device.physical,
+                    self.device.core.physical,
                     &surface,
                     &mut formats,
                 )
             })?;
-            let modes = wsi_call(&self.device.timelines, || unsafe {
+            let modes = wsi_call(&self.device.queues.timelines, || unsafe {
                 ash::ext::full_screen_exclusive::Instance::new(
-                    &self.device.instance.entry,
-                    &self.device.instance.instance,
+                    &self.device.core.instance.entry,
+                    &self.device.core.instance.instance,
                 )
-                .get_physical_device_surface_present_modes2(self.device.physical, &surface)
+                .get_physical_device_surface_present_modes2(self.device.core.physical, &surface)
             })?;
             return Ok((
                 capabilities,
@@ -217,6 +217,7 @@ impl Swapchain {
             && self.surface.win32
             && self
                 .device
+                .core
                 .enabled_extensions
                 .iter()
                 .any(|e| e == "VK_EXT_full_screen_exclusive")
@@ -236,10 +237,10 @@ impl Swapchain {
     /// The caller holds the WSI lock.
     pub(super) fn release_fullscreen(&self, inner: &mut SwapchainInner) -> Result<()> {
         inner.fullscreen.release(|| {
-            wsi_call(&self.device.timelines, || unsafe {
+            wsi_call(&self.device.queues.timelines, || unsafe {
                 ash::ext::full_screen_exclusive::Device::new(
-                    &self.device.instance.instance,
-                    &self.device.device,
+                    &self.device.core.instance.instance,
+                    &self.device.core.device,
                 )
                 .release_full_screen_exclusive_mode(self.handle)
             })
@@ -265,10 +266,10 @@ impl Swapchain {
         }
         if !inner.stale {
             inner.stale |= inner.fullscreen.acquire(|| {
-                wsi_call(&self.device.timelines, || unsafe {
+                wsi_call(&self.device.queues.timelines, || unsafe {
                     ash::ext::full_screen_exclusive::Device::new(
-                        &self.device.instance.instance,
-                        &self.device.device,
+                        &self.device.core.instance.instance,
+                        &self.device.core.device,
                     )
                     .acquire_full_screen_exclusive_mode(self.handle)
                 })

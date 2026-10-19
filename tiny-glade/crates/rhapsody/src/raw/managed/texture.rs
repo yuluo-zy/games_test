@@ -103,7 +103,8 @@ impl ViewEntries {
             .saturating_mul(next)
             .saturating_mul(4);
             let memory = device
-                .allocator_stats
+                .memory
+                .stats
                 .reserve_cpu_bytes(bytes as u64, crate::device::BudgetCategory::Cache)?;
             let mut cache = BoundedCache::new(MAX_CACHED_TEXTURE_VIEWS, MAX_CACHED_TEXTURE_VIEWS);
             cache

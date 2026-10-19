@@ -42,7 +42,7 @@ rhapsody
 │  └─ retire.rs        Retirement<T>：按 SyncSet 延迟回收
 ├─ device/             设备与队列
 │  ├─ queue_config.rs  QueueConfig、plan_queues                             P2
-│  ├─ mod.rs           Device（唯一设备对象）                                P2
+│  ├─ logical.rs       Device（唯一设备对象，持有 caches/lifetime/memory/queues/core） P2
 │  ├─ init.rs          实例/物理设备选择/逻辑设备创建（DeviceConfig）         P2
 │  └─ memory.rs        分配器封装（gpu-allocator，持久映射）                  P2
 ├─ resource/           语义化资源身份                                        P4
@@ -183,7 +183,7 @@ impl QueuePlan { fn queue(class) -> QueueId; fn is_aliased(class) -> bool; fn ph
 - **Transfer**：专用 DMA 族（仅 TRANSFER，图像传输粒度 1×1×1）→ 专用 compute 族空闲队列 → 别名 graphics / `Require` 报错。
 - 别名队列共用 `VkQueue` 与时间线（同一个 `QueueId`），语义等同单队列，结果与 `Off` 一致。
 
-### 3.4 设备（`src/device/mod.rs`，P2）
+### 3.4 设备（`src/device/`，P2）
 
 ```rust
 pub struct DeviceConfig {
@@ -195,16 +195,15 @@ pub struct DeviceConfig {
     pub recording: RecordingPolicy,         // 见 3.7
 }
 
+// src/device/logical.rs —— 只持有五个组件，方法按组件分布在各自文件中
 pub struct Device {
-    instance: Arc<Instance>,
-    raw: ash::Device,
-    physical: PhysicalDeviceInfo,           // properties/limits/features/memory/format 能力缓存
-    plan: QueuePlan,
-    queues: Vec<vk::Queue>,                 // 下标 = QueueId
-    timelines: Timelines<ash::Device>,
-    retirement: Mutex<Retirement<Doomed>>,
-    allocator: Allocator,                   // gpu-allocator，内部自带锁
-    caches: Caches,                         // sampler / descriptor layout / pipeline layout / pipeline / render pass
+    self_ref: Weak<Device>,
+    caches: Caches,     // device/caches.rs：托管资源表、内置采样器、共享 setup 上下文
+    lifetime: Lifetime, // device/lifetime.rs：退役队列 Retirement<Doomed>、回收预算、idle 计数
+    memory: Memory,     // device/memory.rs：AllocatorStats、可选子分配器、驱动预算、驱逐登记
+    queues: Queues,     // device/queues.rs + submission.rs + pending_acquire.rs：
+                        //   主队列/附加队列、QueuePlan、Timelines、挂起 acquire、延迟宿主 flush
+    core: DeviceCore,   // device/native.rs：ash::Device、实例、物理设备属性、实际启用能力、策略
 }
 
 impl Device {
@@ -223,7 +222,9 @@ impl Device {
 - `SubmitBatch { waits: &[Wait], commands: &[vk::CommandBuffer], signals: &[Signal] }`，`Wait = Binary{sem, stage} | Timeline{point, stage}`，`Signal = Binary(sem)`；`Device::submit` 自动追加本队列时间线 signal（`Timelines::submit` 给的值），一次 `vkQueueSubmit2` 提交全部批次。跨队列 `Timeline` 等待在调用前经 `Timelines::submitted` 校验。
 - 设备创建：枚举族 → `FamilyInfo::from_properties`（呈现支持经 `vkGetPhysicalDeviceSurfaceSupportKHR`）→ `plan_queues` → `create_counts` 生成 `VkDeviceQueueCreateInfo` → 每个 `QueueId` 创建一条初值 0 的时间线信号量。
 - `Doomed` 为枚举（Buffer+Allocation、Image+Allocation、ImageView、Sampler、CommandPool、DescriptorPool、Pipeline、Framebuffer、Semaphore …），`Drop` 中执行对应 `vkDestroy*`/`allocator.free`。
-- **Drop 顺序**：`wait_idle`（失败或设备丢失也继续）→ `retirement.drain_all` 销毁 → 清缓存 → 销毁时间线信号量 → 关闭分配器 → `vkDestroyDevice`。
+- **组件与锁**：组件都是 `Device` 的直接字段（无额外 `Arc`/`dyn`），热路径访问即字段访问。各组件只持有自己的锁；跨组件嵌套仅限以下几种（外 → 内）：`Caches` 的采样器表 / setup 槽 → `Memory` 计量与托管资源表锁；`Queues` 挂起 acquire 表 → 资源同步单元；`Queues` 每队列外部同步锁（`with_all_queues` 按队列下标升序）→ 仅原生队列调用。退役队列与驱逐登记先出队/取快照再在无锁状态下执行回调，因此销毁路径可自由取 `Memory` 的锁。
+- **Drop 顺序**：`Device::drop` 只做需要多个组件协作的一步：`vkDeviceWaitIdle`（失败或设备丢失也继续）→ 排空退役队列销毁全部 `Doomed` → 释放内置采样器票据。随后字段按声明顺序析构：`caches` → `lifetime` → `memory`（`Drop` 关闭子分配器、释放原生内存块）→ `queues`（`Drop` 销毁时间线信号量）→ `core`（`Drop` 执行 `vkDestroyDevice`，最后释放实例）。创建失败时同样依赖这些组件 `Drop` 回滚已建对象。
+- **对外接口**：组件字段为 `pub(crate)`；外部经 `Device` 的委托方法访问（`caps`/`limits`/`memory_properties`/`allocator_stats`/`timelines`/`queue_plan`/`resources` 等）。原生句柄只经显式互操作出口 `raw_device()`、`instance()`、`primary_queue()`、`physical_device()` 取得。
 - **删除的旧物**：`raw::device::VulkanDevice`、`GraphicsDevice`、`queue_lock`、`retire_timeline`、`graveyard`、`attach_graphics_device`、`SubmissionEngine`、`DeviceState.next_timeline`。
 - 内存：一律持久映射（gpu-allocator `MemoryLocation::CpuToGpu/GpuToCpu` 自带映射指针）；宿主读写不加设备锁，正确性由 `SyncSet` 等待保证（写前等待 GPU 读完、读前等待 GPU 写完）。
 

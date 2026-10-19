@@ -17,7 +17,7 @@ impl Release {
             unsafe {
                 self.0
                     .device
-                    .device
+                    .raw_device()
                     .signal_semaphore(
                         &vk::SemaphoreSignalInfo::default()
                             .semaphore(self.0.handle)
@@ -38,12 +38,12 @@ impl Drop for Release {
 /// GPU phases exclude the independently charged host metadata; both remain
 /// admitted by the same total device budget.
 fn gpu_usage(device: &Device) -> rhapsody::device::BudgetUsage {
-    let mut usage = device.allocator_stats.budget_usage();
-    let cpu = device.allocator_stats.cpu_memory_usage();
+    let mut usage = device.allocator_stats().budget_usage();
+    let cpu = device.allocator_stats().cpu_memory_usage();
     usage.live -= cpu.live;
     usage.cache -= cpu.cache;
     assert_eq!(
-        device.allocator_stats.budget_usage().total(),
+        device.allocator_stats().budget_usage().total(),
         usage.total() + cpu.total()
     );
     usage
@@ -57,7 +57,7 @@ fn builtin_sampler_cache_charges_weak_allocations_and_has_no_device_cycle() {
     ) else {
         return;
     };
-    let stats = device.allocator_stats.clone();
+    let stats = device.allocator_stats().clone();
     let baseline = stats.cpu_memory_usage().total();
     stats
         .set_total_budget(stats.budget_usage().total())
@@ -121,15 +121,15 @@ fn live_in_flight_and_retiring_memory_remains_charged_until_actual_gpu_completio
     command.begin().unwrap();
     unsafe {
         device
-            .device
+            .raw_device()
             .cmd_fill_buffer(command.handle, buffer.handle, 0, buffer.size, 0);
     }
     command.end().unwrap();
     let pending = command
         .submit_to(
             rhapsody::raw::device::DeviceQueue {
-                handle: device.queue,
-                family: device.queue_family,
+                handle: device.primary_queue(),
+                family: device.queue_family_index(),
                 index: 0,
             },
             &[(blocker, 1, vk::PipelineStageFlags::ALL_COMMANDS)],
@@ -175,7 +175,7 @@ fn managed_payload_credit_follows_an_escaping_raw_owner_and_view() {
     ) else {
         return;
     };
-    let initial = device.allocator_stats.cpu_memory_usage();
+    let initial = device.allocator_stats().cpu_memory_usage();
     let desc = TextureDesc::new_2d(4, 4, vk::Format::R8G8B8A8_UNORM).sampled();
     let managed = device
         .create_texture(&desc, "CPU payload lifetime", ())
@@ -186,11 +186,11 @@ fn managed_payload_credit_follows_an_escaping_raw_owner_and_view() {
         raw.image_view(&TextureViewDesc::new(&desc).unwrap())
             .unwrap(),
     );
-    let created = device.allocator_stats.cpu_memory_usage();
+    let created = device.allocator_stats().cpu_memory_usage();
     assert!(created.live > initial.live);
     drop(managed);
-    assert!(device.resources.textures.get(key).is_none());
-    let escaped = device.allocator_stats.cpu_memory_usage();
+    assert!(device.resources().textures.get(key).is_none());
+    let escaped = device.allocator_stats().cpu_memory_usage();
     assert!(
         escaped.live > initial.live,
         "raw resource and view remain charged"
@@ -201,14 +201,17 @@ fn managed_payload_credit_follows_an_escaping_raw_owner_and_view() {
     );
     drop(raw);
     assert_eq!(
-        device.allocator_stats.cpu_memory_usage(),
+        device.allocator_stats().cpu_memory_usage(),
         escaped,
         "the view owns the raw texture"
     );
     drop(view);
     device.try_collect_all_completed().unwrap();
-    assert_eq!(device.allocator_stats.cpu_memory_usage().live, initial.live);
-    assert!(device.allocator_stats.cpu_memory_usage().cache >= initial.cache);
+    assert_eq!(
+        device.allocator_stats().cpu_memory_usage().live,
+        initial.live
+    );
+    assert!(device.allocator_stats().cpu_memory_usage().cache >= initial.cache);
 }
 
 #[test]
@@ -225,11 +228,11 @@ fn cpu_metadata_exhaustion_rejects_resource_and_view_creation_without_native_gro
     };
     let desc = TextureDesc::new_2d(4, 4, vk::Format::R8G8B8A8_UNORM).sampled();
     let texture = Arc::new(Texture::new(device.clone(), &desc).unwrap());
-    let before = device.allocator_stats.report();
-    let cpu = device.allocator_stats.cpu_memory_usage();
+    let before = device.allocator_stats().report();
+    let cpu = device.allocator_stats().cpu_memory_usage();
     device
-        .allocator_stats
-        .set_total_budget(device.allocator_stats.budget_usage().total())
+        .allocator_stats()
+        .set_total_budget(device.allocator_stats().budget_usage().total())
         .unwrap();
     assert!(matches!(
         Buffer::new(
@@ -246,6 +249,6 @@ fn cpu_metadata_exhaustion_rejects_resource_and_view_creation_without_native_gro
         texture.image_view(&TextureViewDesc::new(&desc).unwrap()),
         Err(rhapsody::Error::OutOfHostMemory)
     ));
-    assert_eq!(device.allocator_stats.report(), before);
-    assert_eq!(device.allocator_stats.cpu_memory_usage(), cpu);
+    assert_eq!(device.allocator_stats().report(), before);
+    assert_eq!(device.allocator_stats().cpu_memory_usage(), cpu);
 }

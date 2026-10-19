@@ -48,8 +48,8 @@ impl GraphPresentation {
         }
         let device = image.swapchain.device.clone();
         let fence = image.sync.fence;
-        if let Err(error) = wsi_call(&device.timelines, || unsafe {
-            device.device.reset_fences(&[fence])
+        if let Err(error) = wsi_call(&device.queues.timelines, || unsafe {
+            device.core.device.reset_fences(&[fence])
         }) {
             image.recover_on_drop &= !error.is_device_lost();
             return Err(error);

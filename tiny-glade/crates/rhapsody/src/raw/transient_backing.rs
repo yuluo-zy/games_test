@@ -71,15 +71,15 @@ impl SharedBacking {
             ));
         }
         if flags.contains(vk::MemoryAllocateFlags::DEVICE_ADDRESS)
-            && !device.capabilities.buffer_device_address
+            && !device.core.capabilities.buffer_device_address
         {
             return Err(crate::Error::unsupported(
                 "transient device-address allocation is unavailable",
             ));
         }
-        let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.allocator_stats)?;
+        let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.memory.stats)?;
         let memory_type = choose_memory_type(
-            &device.memory,
+            &device.core.memory_properties,
             requirements.memory_type_bits,
             vk::MemoryPropertyFlags::DEVICE_LOCAL,
             vk::MemoryPropertyFlags::DEVICE_LOCAL,
@@ -89,7 +89,7 @@ impl SharedBacking {
         })?;
         let required = vk::MemoryPropertyFlags::DEVICE_LOCAL;
         #[cfg(feature = "suballocation")]
-        let block = if device.suballocator.is_some() {
+        let block = if device.memory.suballocator.is_some() {
             MemoryBlock::allocate_sub(
                 device.clone(),
                 requirements,
@@ -133,8 +133,8 @@ impl SharedBacking {
         counters.allocations.fetch_add(1, Ordering::Relaxed);
         counters.allocated_bytes.fetch_add(size, Ordering::Relaxed);
         Ok(Arc::new(Self {
-            device: device.device.clone(),
-            stats: device.allocator_stats.clone(),
+            device: device.core.device.clone(),
+            stats: device.memory.stats.clone(),
             handle,
             size,
             offset,
@@ -145,7 +145,7 @@ impl SharedBacking {
             memory_type,
             last_use: crate::resource::SyncCell::for_allocation(
                 device.generation(),
-                device.allocator_stats.clone(),
+                device.memory.stats.clone(),
                 accounting_id,
             )
             .into_reserved_arc(sync_storage),

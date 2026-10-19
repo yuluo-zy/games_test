@@ -71,16 +71,18 @@ impl DescriptorSetBinding {
             .dst_array_element(array_element)
             .descriptor_type(self.descriptor_type());
         // Statistics: one increment per vkUpdateDescriptorSets call.
-        let count = &device.descriptor_update_count;
+        let count = &device.core.descriptor_update_count;
         unsafe {
             match self {
                 Self::Buffer { info, .. } => device
+                    .core
                     .device
                     .update_descriptor_sets(&[write.buffer_info(std::slice::from_ref(info))], &[]),
                 Self::Image { info, .. } => device
+                    .core
                     .device
                     .update_descriptor_sets(&[write.image_info(std::slice::from_ref(info))], &[]),
-                Self::TexelBuffer { view, .. } => device.device.update_descriptor_sets(
+                Self::TexelBuffer { view, .. } => device.core.device.update_descriptor_sets(
                     &[write.texel_buffer_view(std::slice::from_ref(view))],
                     &[],
                 ),
@@ -101,6 +103,7 @@ pub unsafe fn bind_pipeline(
 ) {
     unsafe {
         device
+            .core
             .device
             .cmd_bind_pipeline(command_buffer, point, pipeline)
     }
@@ -118,7 +121,7 @@ pub unsafe fn bind_persistent_descriptor_set(
     dynamic_offsets: &[u32],
 ) {
     unsafe {
-        device.device.cmd_bind_descriptor_sets(
+        device.core.device.cmd_bind_descriptor_sets(
             command_buffer,
             point,
             layout,

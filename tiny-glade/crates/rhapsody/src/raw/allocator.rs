@@ -133,7 +133,7 @@ impl MemoryBlock {
         image: vk::Image,
     ) -> Result<Self> {
         let memory_type = choose_memory_type(
-            &device.memory,
+            &device.core.memory_properties,
             requirements.memory_type_bits,
             required,
             preferred,
@@ -164,13 +164,13 @@ impl MemoryBlock {
             return Err(Error::DeviceLost);
         }
         let index = choose_memory_type(
-            &device.memory,
+            &device.core.memory_properties,
             requirements.memory_type_bits,
             required,
             preferred,
         )
         .ok_or(Error::unsupported("没有匹配的内存类型"))?;
-        let properties = device.memory.memory_types[index as usize].property_flags;
+        let properties = device.core.memory_properties.memory_types[index as usize].property_flags;
         let mut allocation_flags = vk::MemoryAllocateFlagsInfo::default().flags(flags);
         let mut info = vk::MemoryAllocateInfo::default()
             .allocation_size(requirements.size)
@@ -187,15 +187,15 @@ impl MemoryBlock {
         if requirements.size == 0
             || (!flags.is_empty()
                 && flags.contains(vk::MemoryAllocateFlags::DEVICE_ADDRESS)
-                && !device.capabilities.buffer_device_address)
+                && !device.core.capabilities.buffer_device_address)
         {
             return Err(Error::invalid_usage("内存大小或设备地址分配能力无效"));
         }
-        let heap = device.memory.memory_types[index as usize].heap_index;
-        let stats = &device.allocator_stats;
+        let heap = device.core.memory_properties.memory_types[index as usize].heap_index;
+        let stats = &device.memory.stats;
         stats.acquire_native_object()?;
         let handle = match super::error::observe_vulkan(&device, unsafe {
-            device.device.allocate_memory(&info, None)
+            device.core.device.allocate_memory(&info, None)
         }) {
             Ok(handle) => handle,
             Err(error) => {
@@ -208,7 +208,7 @@ impl MemoryBlock {
             Ok(id) => id,
             Err(error) => {
                 unsafe {
-                    device.device.free_memory(handle, None);
+                    device.core.device.free_memory(handle, None);
                 }
                 stats.release_native_object();
                 return Err(error);
@@ -239,7 +239,7 @@ impl MemoryBlock {
             backing.retire_member();
             return super::graveyard::DeferredMemory::Shared(backing);
         }
-        device.allocator_stats.mark_retiring(memory.accounting_id);
+        device.memory.stats.mark_retiring(memory.accounting_id);
         #[cfg(feature = "suballocation")]
         if let Some(allocation) = memory.sub.take() {
             return super::graveyard::DeferredMemory::Sub { allocation };
@@ -353,8 +353,9 @@ pub(crate) fn needs_eviction(
 /// Under budget pressure, or when `bytes` would exceed the heap budget, ask
 /// registered caches to release idle entries before allocating.
 pub(crate) fn relieve_pressure(device: &Device, memory_type: Option<u32>, bytes: u64) {
-    let stats = &device.allocator_stats;
-    let heap = memory_type.map(|index| device.memory.memory_types[index as usize].heap_index);
+    let stats = &device.memory.stats;
+    let heap = memory_type
+        .map(|index| device.core.memory_properties.memory_types[index as usize].heap_index);
     if needs_eviction(
         stats.budget_action(),
         heap.map(|heap| stats.heap_available(heap)),
@@ -448,14 +449,14 @@ impl Drop for MemoryBlock {
                 return;
             }
             None => unsafe {
-                self.device.device.free_memory(self.handle, None);
+                self.device.core.device.free_memory(self.handle, None);
             },
         }
         #[cfg(not(feature = "suballocation"))]
         unsafe {
-            self.device.device.free_memory(self.handle, None)
+            self.device.core.device.free_memory(self.handle, None)
         };
-        if let Err(error) = self.device.allocator_stats.release(self.accounting_id) {
+        if let Err(error) = self.device.memory.stats.release(self.accounting_id) {
             log::error!("memory accounting release failed: {error}");
         }
     }
@@ -977,7 +978,8 @@ impl AllocatorStats {
     /// without taking the statistics lock.
     pub(crate) fn observe_completed(&self, completed: &CompletedValues) {
         let advanced = self.observed.iter().enumerate().any(|(index, seen)| {
-            QueueId::new(index).is_some_and(|queue| completed.get(queue) > seen.load(Ordering::Acquire))
+            QueueId::new(index)
+                .is_some_and(|queue| completed.get(queue) > seen.load(Ordering::Acquire))
         });
         if !advanced {
             return;
@@ -1009,7 +1011,11 @@ impl AllocatorStats {
                         && phase.last_use.is_reached(observed)
                         && let Some(record) = records.get(&id)
                     {
-                        budget.reclassify(BudgetCategory::InFlight, BudgetCategory::Live, record.size);
+                        budget.reclassify(
+                            BudgetCategory::InFlight,
+                            BudgetCategory::Live,
+                            record.size,
+                        );
                         phase.category = BudgetCategory::Live;
                     }
                 }
@@ -1043,7 +1049,9 @@ impl AllocatorStats {
         let index = heap_index(heap)?;
         self.with_state(|state| {
             if state.heap_used[index] > bytes {
-                return Err(Error::invalid_usage("heap budget is below its current usage"));
+                return Err(Error::invalid_usage(
+                    "heap budget is below its current usage",
+                ));
             }
             state.heap_budgets[index] = Some(bytes);
             state.refresh_heap_pressure();
@@ -1150,7 +1158,9 @@ impl AllocatorStats {
         native: bool,
     ) -> Result<u64> {
         if size == 0 {
-            return Err(Error::invalid_usage("cannot register a zero-sized allocation"));
+            return Err(Error::invalid_usage(
+                "cannot register a zero-sized allocation",
+            ));
         }
         let heap_slot = heap_index(heap)?;
         let type_slot = usize::try_from(memory_type)
@@ -1171,15 +1181,20 @@ impl AllocatorStats {
                 .and_then(|used| used.checked_add(new_spare))
                 .and_then(|used| used.checked_add(size))
                 .ok_or_else(overflow)?;
-            if state.heap_limit(heap_slot).is_some_and(|limit| used > limit) {
+            if state
+                .heap_limit(heap_slot)
+                .is_some_and(|limit| used > limit)
+            {
                 return Err(Error::OutOfDeviceMemory);
             }
             let id = state.next_id.checked_add(1).ok_or_else(overflow)?;
             let mut totals = state.totals;
             totals.total_allocated_bytes = total;
             if properties.contains(vk::MemoryPropertyFlags::DEVICE_LOCAL) {
-                totals.device_local_bytes =
-                    totals.device_local_bytes.checked_add(size).ok_or_else(overflow)?;
+                totals.device_local_bytes = totals
+                    .device_local_bytes
+                    .checked_add(size)
+                    .ok_or_else(overflow)?;
             } else {
                 totals.system_bytes = totals.system_bytes.checked_add(size).ok_or_else(overflow)?;
             }
@@ -1238,7 +1253,9 @@ impl AllocatorStats {
     fn release_with_spare(&self, id: u64, spare: Option<u64>) -> Result<()> {
         let native = self.with_state(|state| {
             if !state.records.contains_key(&id) {
-                return Err(Error::invalid_usage("unknown or already released memory id"));
+                return Err(Error::invalid_usage(
+                    "unknown or already released memory id",
+                ));
             }
             // Releasing changes state: materialize a just-reached peak first.
             state.materialize_peak();
@@ -1333,7 +1350,9 @@ fn transition_phase(state: &mut StatisticsState, id: u64, category: BudgetCatego
     let Some(record) = state.records.get(&id) else {
         return;
     };
-    state.budget.reclassify(phase.category, category, record.size);
+    state
+        .budget
+        .reclassify(phase.category, category, record.size);
     phase.category = category;
 }
 
@@ -1423,7 +1442,8 @@ impl AllocationBackend for DirectMemoryBackend {
             request.flags,
         )?;
         self.device
-            .allocator_stats
+            .memory
+            .stats
             .rename(block.accounting_id, request.name.clone());
         Ok(block)
     }
@@ -1435,7 +1455,7 @@ impl AllocationBackend for DirectMemoryBackend {
         Ok(())
     }
     fn report(&self) -> AllocatorReport {
-        self.device.allocator_stats.report()
+        self.device.memory.stats.report()
     }
 }
 
@@ -1525,28 +1545,68 @@ mod budget_tests {
         let stats = AllocatorStats::default();
         let register = || {
             stats
-                .register(10, 0, 0, vk::MemoryPropertyFlags::DEVICE_LOCAL, String::new())
+                .register(
+                    10,
+                    0,
+                    0,
+                    vk::MemoryPropertyFlags::DEVICE_LOCAL,
+                    String::new(),
+                )
                 .unwrap()
         };
         let (a, b, c) = (register(), register(), register());
         let (q0, q1) = (QueueId::new(0).unwrap(), QueueId::new(1).unwrap());
         // Out-of-order publication on one queue and a two-queue dependency.
-        stats.record_gpu_use(a, SyncPoint { queue: q0, value: 5 });
-        stats.record_gpu_use(b, SyncPoint { queue: q0, value: 2 });
-        stats.record_gpu_use(c, SyncPoint { queue: q0, value: 1 });
-        stats.record_gpu_use(c, SyncPoint { queue: q1, value: 7 });
+        stats.record_gpu_use(
+            a,
+            SyncPoint {
+                queue: q0,
+                value: 5,
+            },
+        );
+        stats.record_gpu_use(
+            b,
+            SyncPoint {
+                queue: q0,
+                value: 2,
+            },
+        );
+        stats.record_gpu_use(
+            c,
+            SyncPoint {
+                queue: q0,
+                value: 1,
+            },
+        );
+        stats.record_gpu_use(
+            c,
+            SyncPoint {
+                queue: q1,
+                value: 7,
+            },
+        );
         assert_eq!(stats.budget_usage().in_flight, 30);
         let mut completed = CompletedValues::default();
         completed.raise(q0, 2);
         stats.observe_completed(&completed);
-        assert_eq!(stats.budget_usage().in_flight, 20, "b reached; c waits for q1");
+        assert_eq!(
+            stats.budget_usage().in_flight,
+            20,
+            "b reached; c waits for q1"
+        );
         assert_eq!(stats.state.lock().in_flight[0].len(), 1);
         stats.observe_completed(&completed);
         completed.raise(q1, 7);
         stats.observe_completed(&completed);
         assert_eq!(stats.budget_usage().in_flight, 10);
         // A use already covered by the observed snapshot stays live.
-        stats.record_gpu_use(b, SyncPoint { queue: q0, value: 2 });
+        stats.record_gpu_use(
+            b,
+            SyncPoint {
+                queue: q0,
+                value: 2,
+            },
+        );
         assert_eq!(stats.budget_usage().in_flight, 10);
         completed.raise(q0, 5);
         stats.observe_completed(&completed);
@@ -1646,7 +1706,13 @@ mod native_spare_tests {
             Err(Error::OutOfHostMemory)
         ));
         assert!(matches!(
-            stats.register(1, 0, 0, vk::MemoryPropertyFlags::DEVICE_LOCAL, String::new()),
+            stats.register(
+                1,
+                0,
+                0,
+                vk::MemoryPropertyFlags::DEVICE_LOCAL,
+                String::new()
+            ),
             Err(Error::OutOfDeviceMemory)
         ));
         stats.release_suballocation(a, 100).unwrap();
@@ -1660,18 +1726,36 @@ mod native_spare_tests {
     fn driver_heap_budgets_exclude_foreign_usage_and_raise_pressure() {
         let stats = AllocatorStats::default();
         let a = stats
-            .register(60, 0, 1, vk::MemoryPropertyFlags::DEVICE_LOCAL, String::new())
+            .register(
+                60,
+                0,
+                1,
+                vk::MemoryPropertyFlags::DEVICE_LOCAL,
+                String::new(),
+            )
             .unwrap();
         // Heap 1: budget 200, process usage 100 of which 60 are ours.
         stats.apply_driver_heap_budgets(&[(1000, 0), (200, 100)]);
         assert_eq!(stats.heap_usage(1).unwrap(), (60, Some(160)));
         assert_eq!(stats.budget_action(), crate::device::BudgetAction::None);
         assert!(matches!(
-            stats.register(101, 0, 1, vk::MemoryPropertyFlags::DEVICE_LOCAL, String::new()),
+            stats.register(
+                101,
+                0,
+                1,
+                vk::MemoryPropertyFlags::DEVICE_LOCAL,
+                String::new()
+            ),
             Err(Error::OutOfDeviceMemory)
         ));
         let b = stats
-            .register(80, 0, 1, vk::MemoryPropertyFlags::DEVICE_LOCAL, String::new())
+            .register(
+                80,
+                0,
+                1,
+                vk::MemoryPropertyFlags::DEVICE_LOCAL,
+                String::new(),
+            )
             .unwrap();
         assert_ne!(stats.budget_action(), crate::device::BudgetAction::None);
         stats.release(b).unwrap();
@@ -1733,11 +1817,14 @@ mod host_subrange_tests {
         assert!(!needs_eviction(BudgetAction::None, Some(100), 100));
         assert!(needs_eviction(BudgetAction::None, Some(99), 100));
         assert!(needs_eviction(BudgetAction::EvictCache, Some(u64::MAX), 1));
-        assert!(!needs_eviction(BudgetAction::Backpressure, Some(u64::MAX), 1));
+        assert!(!needs_eviction(
+            BudgetAction::Backpressure,
+            Some(u64::MAX),
+            1
+        ));
         assert!(is_memory_exhaustion(&Error::OutOfDeviceMemory));
         assert!(is_memory_exhaustion(&Error::exhausted("native objects")));
         assert!(!is_memory_exhaustion(&Error::OutOfHostMemory));
         assert!(!is_memory_exhaustion(&Error::DeviceLost));
     }
-
 }

@@ -30,19 +30,21 @@ impl QueueRuntime {
         &self.tokens.values
     }
     pub fn new(device: &Device) -> crate::Result<Self> {
-        let stats = &device.allocator_stats;
+        let stats = &device.memory.stats;
         let families = unsafe {
             device
+                .core
                 .instance
                 .instance
-                .get_physical_device_queue_family_properties(device.physical)
+                .get_physical_device_queue_family_properties(device.core.physical)
         };
         let queue_flags = std::array::from_fn(|index| {
             let family = if index == 0 {
-                Some(device.queue_family)
+                Some(device.queues.primary_family)
             } else {
                 device
-                    .additional_queues
+                    .queues
+                    .additional
                     .get(index - 1)
                     .map(|queue| queue.family)
             };
@@ -113,14 +115,14 @@ impl VulkanGraphBackend {
                 recording::Queue::Auxiliary(index) => index + 1,
             }
         } else {
-            self.device.queue_plan.queue(class).index() as u32
+            self.device.queues.plan.queue(class).index() as u32
         };
         QueueDomain {
             queue_index: index,
             family: if index == 0 {
-                self.device.queue_family
+                self.device.queues.primary_family
             } else {
-                self.device.additional_queues[index as usize - 1].family
+                self.device.queues.additional[index as usize - 1].family
             },
         }
     }
@@ -129,11 +131,12 @@ impl VulkanGraphBackend {
             if index == 0 {
                 Some(QueueDomain {
                     queue_index: 0,
-                    family: self.device.queue_family,
+                    family: self.device.queues.primary_family,
                 })
             } else {
                 self.device
-                    .additional_queues
+                    .queues
+                    .additional
                     .get(index - 1)
                     .map(|queue| QueueDomain {
                         queue_index: index as u32,
@@ -200,7 +203,7 @@ impl VulkanGraphBackend {
         compiled: &graph::FrameInstance,
     ) -> crate::Result<()> {
         let domains = self.domains();
-        let stats = &self.device.allocator_stats;
+        let stats = &self.device.memory.stats;
         let runtime = &mut self.queue_runtime;
         let planner = Arc::get_mut(&mut runtime.planner).ok_or(crate::Error::Timeout)?;
         planner.begin();

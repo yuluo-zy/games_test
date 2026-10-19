@@ -339,9 +339,10 @@ impl DynamicConstants {
         config.validate()?;
         let limits = unsafe {
             device
+                .core
                 .instance
                 .instance
-                .get_physical_device_properties(device.physical)
+                .get_physical_device_properties(device.core.physical)
         }
         .limits;
         let device_alignment = limits
@@ -351,8 +352,8 @@ impl DynamicConstants {
         if device_alignment >= 0x10000 || !device_alignment.is_power_of_two() {
             return Err(Error::invalid_usage("常量页对齐无效"));
         }
-        let sharing = constant_page_sharing(&device.queue_plan.queues)?;
-        let ring = PageRing::new(config, &device.allocator_stats)?;
+        let sharing = constant_page_sharing(&device.queues.plan.queues)?;
+        let ring = PageRing::new(config, &device.memory.stats)?;
         Ok(Self {
             device,
             device_alignment,
@@ -373,7 +374,8 @@ impl DynamicConstants {
             let _submission = cell.lock_submission();
             if Arc::get_mut(&mut page.buffer).is_some() && cell.is_reached(&self.ring.completed) {
                 self.device
-                    .allocator_stats
+                    .memory
+                    .stats
                     .mark_cached(page.buffer.allocation_id(), &self.ring.completed);
             }
         }
@@ -396,7 +398,7 @@ impl DynamicConstants {
             return Err(Error::DeviceLost);
         }
         let pressure =
-            self.device.allocator_stats.budget_action() == crate::device::BudgetAction::EvictCache;
+            self.device.memory.stats.budget_action() == crate::device::BudgetAction::EvictCache;
         if pressure
             || !self
                 .ring
@@ -410,7 +412,7 @@ impl DynamicConstants {
         let (buffer, offset) = self.ring.allocate(size, alignment, device_alignment, || {
             let desc = BufferDesc::new_cpu_to_gpu(
                 DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES,
-                constant_page_usage(device.capabilities.buffer_device_address),
+                constant_page_usage(device.core.capabilities.buffer_device_address),
             )
             .with_alignment(device_alignment as u16);
             match sharing {
@@ -422,7 +424,8 @@ impl DynamicConstants {
             .and_then(Buffer::into_dynamic_constants_page)
         })?;
         self.device
-            .allocator_stats
+            .memory
+            .stats
             .mark_live(buffer.allocation_id(), &self.ring.completed);
         self.ring.trim_idle(
             if pressure {
@@ -606,8 +609,7 @@ impl HostFlushQueue {
                 pages.push(DirtyPage { id, memory, ranges });
             }
         }
-        self.dirty
-            .store(true, std::sync::atomic::Ordering::Release);
+        self.dirty.store(true, std::sync::atomic::Ordering::Release);
         Ok(())
     }
     /// Drop the pending ranges of a freed allocation.
@@ -623,10 +625,7 @@ impl HostFlushQueue {
         &self,
         flush: impl FnOnce(&[vk::MappedMemoryRange<'_>]) -> Result<()>,
     ) -> Result<()> {
-        if !self
-            .dirty
-            .swap(false, std::sync::atomic::Ordering::AcqRel)
-        {
+        if !self.dirty.swap(false, std::sync::atomic::Ordering::AcqRel) {
             return Ok(());
         }
         let mut pages = self.pages.lock();
@@ -634,8 +633,7 @@ impl HostFlushQueue {
         let mut ranges: smallvec::SmallVec<[vk::MappedMemoryRange<'_>; 8]> =
             smallvec::SmallVec::new();
         ranges.try_reserve(count).map_err(|_| {
-            self.dirty
-                .store(true, std::sync::atomic::Ordering::Release);
+            self.dirty.store(true, std::sync::atomic::Ordering::Release);
             Error::OutOfHostMemory
         })?;
         for page in pages.iter() {
@@ -663,16 +661,14 @@ impl HostFlushQueue {
                 Ok(())
             }
             Err(error) => {
-                self.dirty
-                    .store(true, std::sync::atomic::Ordering::Release);
+                self.dirty.store(true, std::sync::atomic::Ordering::Release);
                 Err(error)
             }
         }
     }
     /// Number of `vkFlushMappedMemoryRanges` calls issued (statistics).
     pub(crate) fn flush_calls(&self) -> u64 {
-        self.flush_calls
-            .load(std::sync::atomic::Ordering::Relaxed)
+        self.flush_calls.load(std::sync::atomic::Ordering::Relaxed)
     }
 }
 
@@ -908,10 +904,19 @@ mod tests {
         drop(payload);
         drop(aligned_empty);
         drop(next);
-        assert!(matches!(ring.allocate(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES, None, 16, cpu_page), Err(Error::Timeout)));
+        assert!(matches!(
+            ring.allocate(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES, None, 16, cpu_page),
+            Err(Error::Timeout)
+        ));
         drop(empty);
-        assert!(ring.allocate(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES, None, 16, cpu_page).is_ok());
-        assert_eq!(allocation_offset(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES, 0, None, 16).unwrap(), Some(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES));
+        assert!(
+            ring.allocate(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES, None, 16, cpu_page)
+                .is_ok()
+        );
+        assert_eq!(
+            allocation_offset(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES, 0, None, 16).unwrap(),
+            Some(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES)
+        );
     }
 
     #[test]
@@ -975,7 +980,9 @@ mod tests {
             ]
         );
         // Nothing dirty: the next submit performs no flush call.
-        queue.flush_with(|_| panic!("clean queue must not flush")).unwrap();
+        queue
+            .flush_with(|_| panic!("clean queue must not flush"))
+            .unwrap();
         assert_eq!(queue.flush_calls(), 1);
     }
 
@@ -986,11 +993,7 @@ mod tests {
         let memory = vk::DeviceMemory::from_raw(0x30);
         queue.record(7, memory, 0, 256).unwrap();
         queue.record(8, memory, 512, vk::WHOLE_SIZE).unwrap();
-        assert!(
-            queue
-                .flush_with(|_| Err(Error::OutOfHostMemory))
-                .is_err()
-        );
+        assert!(queue.flush_with(|_| Err(Error::OutOfHostMemory)).is_err());
         queue.forget(8);
         let mut seen = Vec::new();
         queue
@@ -1017,5 +1020,4 @@ mod tests {
             [(0, MAX_DIRTY_RANGES_PER_PAGE as u64 * 128 + 64)]
         );
     }
-
 }

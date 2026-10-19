@@ -10,7 +10,7 @@ pub struct DebugUtils {
 impl DebugUtils {
     /// 仅在实例启用了 EXT_debug_utils 时创建。
     pub fn new(instance: &ash::Instance, device: Arc<Device>) -> Self {
-        let loader = ash::ext::debug_utils::Device::new(instance, &device.device);
+        let loader = ash::ext::debug_utils::Device::new(instance, &device.core.device);
         Self { device, loader }
     }
     /// # Safety

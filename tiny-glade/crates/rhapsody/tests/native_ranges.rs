@@ -96,7 +96,7 @@ impl Fixture {
                         ..DeviceConfig::headless()
                     },
                 )?;
-                let validation = ValidationMessenger::new(&device.instance)?;
+                let validation = ValidationMessenger::new(device.instance())?;
                 Ok((device, validation))
             })(),
         )?;
@@ -151,7 +151,7 @@ impl Fixture {
         let texture = Arc::new(if concurrent {
             let mut families = self
                 .device
-                .queue_plan
+                .queue_plan()
                 .queues
                 .iter()
                 .map(|q| q.family)
@@ -270,7 +270,7 @@ fn fill_on(
     pass.render_with_result_context(move |ctx: PassContext<'_>| {
         let target = ctx.managed.unwrap().buffer_for(buffer.raw())?;
         unsafe {
-            device.device.cmd_fill_buffer(
+            device.raw_device().cmd_fill_buffer(
                 vk::CommandBuffer::from_raw(ctx.command.handle()),
                 target.raw(),
                 offset,
@@ -325,7 +325,7 @@ fn clear_on(
         }
         let target = ctx.managed.unwrap().texture_for(image.raw())?;
         unsafe {
-            device.device.cmd_clear_color_image(
+            device.raw_device().cmd_clear_color_image(
                 vk::CommandBuffer::from_raw(ctx.command.handle()),
                 target.raw(),
                 if general {
@@ -393,7 +393,7 @@ fn read_image_on(
         let source = ctx.managed.unwrap().texture_for(image.raw())?;
         let target = ctx.managed.unwrap().buffer_for(target.raw())?;
         unsafe {
-            device.device.cmd_copy_image_to_buffer(
+            device.raw_device().cmd_copy_image_to_buffer(
                 vk::CommandBuffer::from_raw(ctx.command.handle()),
                 source.raw(),
                 if general {
@@ -455,7 +455,7 @@ fn buffer_barriers_follow_disjoint_and_overlapping_bytes_on_serial_and_worker_re
                 let src = ctx.managed.unwrap().buffer_for(src.raw())?;
                 let dst = ctx.managed.unwrap().buffer_for(dst.raw())?;
                 unsafe {
-                    device.device.cmd_copy_buffer(
+                    device.raw_device().cmd_copy_buffer(
                         vk::CommandBuffer::from_raw(ctx.command.handle()),
                         src.raw(),
                         dst.raw(),
@@ -732,17 +732,17 @@ fn concurrent_families_initialize_disjoint_image_layouts_without_serializing_and
         let Some(mut fixture) = Fixture::with_queues(api, ParallelRecording::SERIAL, true) else {
             return;
         };
-        let graphics = fixture.device.queue_plan.queue(QueueClass::Graphics);
-        let compute = fixture.device.queue_plan.queue(QueueClass::Compute);
+        let graphics = fixture.device.queue_plan().queue(QueueClass::Graphics);
+        let compute = fixture.device.queue_plan().queue(QueueClass::Compute);
         assert_ne!(
             fixture
                 .device
-                .queue_plan
+                .queue_plan()
                 .physical(QueueClass::Graphics)
                 .family,
             fixture
                 .device
-                .queue_plan
+                .queue_plan()
                 .physical(QueueClass::Compute)
                 .family,
             "this fixture requires real independent families"
@@ -855,7 +855,7 @@ fn join_buffer(
         let source = ctx.managed.unwrap().buffer_for(source.raw())?;
         let target = ctx.managed.unwrap().buffer_for(target.raw())?;
         unsafe {
-            device.device.cmd_copy_buffer(
+            device.raw_device().cmd_copy_buffer(
                 vk::CommandBuffer::from_raw(ctx.command.handle()),
                 source.raw(),
                 target.raw(),
@@ -881,17 +881,17 @@ fn exclusive_halves_keep_exact_release_pairs_after_failed_acquire_batch_and_reco
         let (target, output_token) = fixture.buffer(64, true);
         let graphics = fixture
             .device
-            .queue_plan
+            .queue_plan()
             .physical(QueueClass::Graphics)
             .family;
         let compute = fixture
             .device
-            .queue_plan
+            .queue_plan()
             .physical(QueueClass::Compute)
             .family;
         let transfer = fixture
             .device
-            .queue_plan
+            .queue_plan()
             .physical(QueueClass::Transfer)
             .family;
         assert_ne!(graphics, compute);
@@ -939,10 +939,7 @@ fn exclusive_halves_keep_exact_release_pairs_after_failed_acquire_batch_and_reco
         let dst = import_buffer(&mut graph, &target, output_token, "failed join");
         join_buffer(&mut graph, fixture.device.clone(), src, dst, true);
         assert_eq!(
-            fixture
-                .execute(graph)
-                .unwrap_err()
-                .kind(),
+            fixture.execute(graph).unwrap_err().kind(),
             rhapsody::ErrorKind::InvalidUsage
         );
         let released = fixture

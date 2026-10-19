@@ -80,7 +80,7 @@ impl VulkanDescriptorSetLayout {
                 .ok_or(crate::Error::OutOfHostMemory)
         };
         let mut memory = super::allocator::reserve_shared_cpu_metadata::<Self>(
-            &device.allocator_stats,
+            &device.memory.stats,
             plan_bytes(plan.bindings.len(), plan.binding_flags.len())?,
         )?;
         let mut owned_plan = LayoutPlan {
@@ -119,7 +119,7 @@ impl VulkanDescriptorSetLayout {
         })?;
         let samplers = super::submit::SubmitScratch::<[vk::Sampler; 8]>::try_collect(
             sampler_count,
-            &device.allocator_stats,
+            &device.memory.stats,
             plan.bindings
                 .iter()
                 .filter_map(|binding| {
@@ -136,7 +136,7 @@ impl VulkanDescriptorSetLayout {
         let bindings =
             super::submit::SubmitScratch::<[vk::DescriptorSetLayoutBinding<'_>; 8]>::try_collect(
                 plan.bindings.len(),
-                &device.allocator_stats,
+                &device.memory.stats,
                 plan.bindings.iter().map(|b| {
                     let value = vk::DescriptorSetLayoutBinding::default()
                         .binding(b.binding)
@@ -154,7 +154,7 @@ impl VulkanDescriptorSetLayout {
             )?;
         let flags = super::submit::SubmitScratch::<[vk::DescriptorBindingFlags; 8]>::try_collect(
             plan.binding_flags.len(),
-            &device.allocator_stats,
+            &device.memory.stats,
             plan.binding_flags
                 .iter()
                 .map(|f| Ok(vk::DescriptorBindingFlags::from_raw(*f))),
@@ -172,6 +172,7 @@ impl VulkanDescriptorSetLayout {
         let mut support = vk::DescriptorSetLayoutSupport::default();
         unsafe {
             device
+                .core
                 .device
                 .get_descriptor_set_layout_support(&info, &mut support);
         }
@@ -181,9 +182,10 @@ impl VulkanDescriptorSetLayout {
                 vk::PhysicalDeviceProperties2::default().push_next(&mut maintenance);
             unsafe {
                 device
+                    .core
                     .instance
                     .instance
-                    .get_physical_device_properties2(device.physical, &mut properties);
+                    .get_physical_device_properties2(device.core.physical, &mut properties);
             }
             let requested: u64 = plan
                 .bindings
@@ -195,9 +197,9 @@ impl VulkanDescriptorSetLayout {
                 maintenance.max_per_set_descriptors,
             )));
         }
-        let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.allocator_stats)?;
+        let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.memory.stats)?;
         let handle = super::error::observe_vulkan(&device, unsafe {
-            device.device.create_descriptor_set_layout(&info, None)
+            device.core.device.create_descriptor_set_layout(&info, None)
         })?;
         Ok(Arc::new(Self {
             last_use: crate::resource::SyncCell::for_device(device.generation())
@@ -286,7 +288,7 @@ impl VulkanDescriptorPool {
         });
         let sizes = super::submit::SubmitScratch::<[vk::DescriptorPoolSize; 8]>::try_collect(
             unique.clone().count(),
-            &device.allocator_stats,
+            &device.memory.stats,
             unique.map(|(_, binding)| {
                 let count = plan
                     .bindings
@@ -320,22 +322,19 @@ impl VulkanDescriptorPool {
             let mut properties = vk::PhysicalDeviceProperties2::default().push_next(&mut indexing);
             unsafe {
                 device
+                    .core
                     .instance
                     .instance
-                    .get_physical_device_properties2(device.physical, &mut properties);
+                    .get_physical_device_properties2(device.core.physical, &mut properties);
             }
             let count = sizes
                 .iter()
                 .map(|size| u64::from(size.descriptor_count))
                 .sum();
-            Some(
-                device
-                    .allocator_stats
-                    .reserve_update_after_bind_descriptors(
-                        count,
-                        u64::from(indexing.max_update_after_bind_descriptors_in_all_pools),
-                    )?,
-            )
+            Some(device.memory.stats.reserve_update_after_bind_descriptors(
+                count,
+                u64::from(indexing.max_update_after_bind_descriptors_in_all_pools),
+            )?)
         } else {
             None
         };
@@ -343,18 +342,18 @@ impl VulkanDescriptorPool {
             .flags(flags)
             .max_sets(max_sets)
             .pool_sizes(&sizes);
-        let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.allocator_stats)?;
+        let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.memory.stats)?;
         let memory =
-            super::allocator::reserve_shared_cpu_metadata::<Self>(&device.allocator_stats, 0)?;
+            super::allocator::reserve_shared_cpu_metadata::<Self>(&device.memory.stats, 0)?;
         let allocation_memory = super::allocator::reserve_shared_cpu_metadata::<
             DescriptorPoolAllocation,
-        >(&device.allocator_stats, 0)?;
+        >(&device.memory.stats, 0)?;
         let handle = super::error::observe_vulkan(&device, unsafe {
-            device.device.create_descriptor_pool(&info, None)
+            device.core.device.create_descriptor_pool(&info, None)
         })?;
         let allocation = Arc::new(DescriptorPoolAllocation {
             _descriptor_quota: descriptor_quota,
-            device: device.device.clone(),
+            device: device.core.device.clone(),
             handle,
             lock: Mutex::new(()),
             _memory: allocation_memory,
@@ -393,7 +392,7 @@ impl VulkanDescriptorPool {
             })?
             .max(1);
         let resources =
-            super::temp_list::TempList::new(max_resources, self.device.allocator_stats.clone())?;
+            super::temp_list::TempList::new(max_resources, self.device.memory.stats.clone())?;
         let _guard = self.allocation.lock.lock();
         let layouts = [layout.handle];
         let variable_count = layout
@@ -415,9 +414,9 @@ impl VulkanDescriptorPool {
             info = info.push_next(&mut variable);
         }
         let sync_storage =
-            crate::resource::SyncCell::reserve_arc_storage(&self.device.allocator_stats)?;
+            crate::resource::SyncCell::reserve_arc_storage(&self.device.memory.stats)?;
         let handle = super::error::observe_vulkan(&self.device, unsafe {
-            self.device.device.allocate_descriptor_sets(&info)
+            self.device.core.device.allocate_descriptor_sets(&info)
         })?[0];
         self.live_sets.fetch_add(1, Ordering::Relaxed);
         Ok(VulkanDescriptorSet {
@@ -441,7 +440,7 @@ impl VulkanDescriptorPool {
             return Err(crate::Error::DeviceLost);
         }
         let memory = super::allocator::reserve_shared_cpu_metadata::<VulkanDescriptorSet>(
-            &self.device.allocator_stats,
+            &self.device.memory.stats,
             0,
         )?;
         let mut set = self.allocate(layout)?;
@@ -466,6 +465,7 @@ impl VulkanDescriptorPool {
         }
         if !self
             .device
+            .queues
             .timelines
             .is_reached(&self.last_use.snapshot())?
         {
@@ -473,6 +473,7 @@ impl VulkanDescriptorPool {
         }
         super::error::observe_vulkan(&self.device, unsafe {
             self.device
+                .core
                 .device
                 .reset_descriptor_pool(self.handle, vk::DescriptorPoolResetFlags::empty())
         })
@@ -555,7 +556,7 @@ impl VulkanDescriptorSet {
             element: array_element,
             owners: super::submit::SubmitScratch::try_collect(
                 owner_refs.len(),
-                &self.pool.device.allocator_stats,
+                &self.pool.device.memory.stats,
                 owner_refs.iter().cloned().map(Ok),
             )?,
         };

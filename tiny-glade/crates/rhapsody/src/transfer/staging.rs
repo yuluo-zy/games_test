@@ -62,7 +62,7 @@ impl Staging {
         max_bytes: u64,
         lease_queue: QueueId,
     ) -> Result<Self> {
-        let mut slots_memory = device.allocator_stats.reserve_cpu_bytes(
+        let mut slots_memory = device.memory.stats.reserve_cpu_bytes(
             u64::from(slots) * (size_of::<UploadSlot>() + size_of::<ReadbackSlot>()) as u64,
             crate::device::BudgetCategory::Live,
         )?;
@@ -170,7 +170,7 @@ impl Staging {
             self.chunk_bytes,
             vk::BufferUsageFlags::TRANSFER_DST,
         ))?;
-        let memory = self.device.allocator_stats.reserve_cpu_bytes(
+        let memory = self.device.memory.stats.reserve_cpu_bytes(
             crate::raw::allocator::shared_cpu_bytes::<ReadbackLease>()?,
             crate::device::BudgetCategory::Live,
         )?;

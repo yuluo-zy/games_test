@@ -275,7 +275,7 @@ fn a_temporal_pair_ping_pongs_through_the_session_frame_path() {
                 };
 
                 unsafe {
-                    raw.device.cmd_clear_color_image(
+                    raw.raw_device().cmd_clear_color_image(
                         vk::CommandBuffer::from_raw(ctx.command.handle()),
                         image.raw(),
                         vk::ImageLayout::TRANSFER_DST_OPTIMAL,
@@ -321,7 +321,7 @@ fn a_temporal_pair_ping_pongs_through_the_session_frame_path() {
                 };
 
                 unsafe {
-                    raw.device.cmd_copy_image_to_buffer(
+                    raw.raw_device().cmd_copy_image_to_buffer(
                         vk::CommandBuffer::from_raw(ctx.command.handle()),
                         image.raw(),
                         vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
@@ -466,7 +466,7 @@ fn two_sessions_share_the_device_submission_timeline() {
     let backend = VulkanGraphBackend::new(device.clone(), AccessTable::original()).unwrap();
     let mut second = VulkanGraphSession::new(backend);
     let mut previous = device
-        .timelines
+        .timelines()
         .submitted(rhapsody::sync::QueueId::new(0).unwrap())
         .unwrap();
     for index in 0..4 {
@@ -492,7 +492,7 @@ fn device_lost_is_visible_to_every_session() {
         VulkanGraphBackend::new(device.clone(), AccessTable::original()).unwrap(),
     );
     // 没有在飞命令时注入终止状态；无需让驱动真的丢失设备。
-    device.timelines.mark_device_lost();
+    device.timelines().mark_device_lost();
     for session in [&mut first, &mut second] {
         assert!(session.is_poisoned());
         assert_eq!(
@@ -508,12 +508,12 @@ fn raw_submission_cannot_signal_the_owned_device_timeline() {
     let Some(session) = session() else { return };
     let device = session.backend.device.clone();
     let queue = rhapsody::raw::device::DeviceQueue {
-        handle: device.queue,
-        family: device.queue_family,
+        handle: device.primary_queue(),
+        family: device.queue_family_index(),
         index: 0,
     };
     let id = device.queue_id(queue.handle).unwrap();
-    let previous = device.timelines.submitted(id).unwrap();
+    let previous = device.timelines().submitted(id).unwrap();
     let pool = VulkanCommandPool::new(device.clone()).unwrap();
     let mut command = pool.allocate().unwrap();
     command.begin().unwrap();
@@ -527,7 +527,7 @@ fn raw_submission_cannot_signal_the_owned_device_timeline() {
         result.is_err(),
         "设备拥有的时间线不能经外部信号数组再次 signal"
     );
-    assert_eq!(device.timelines.submitted(id).unwrap(), previous);
+    assert_eq!(device.timelines().submitted(id).unwrap(), previous);
 }
 
 #[test]
@@ -604,7 +604,7 @@ fn named_slots_validate_scope_initialization_resize_and_reset() {
                     rhapsody::Error::invalid_usage_with("named buffer resolution", error)
                 })?;
             unsafe {
-                device.device.cmd_fill_buffer(
+                device.raw_device().cmd_fill_buffer(
                     vk::CommandBuffer::from_raw(ctx.command.handle()),
                     buffer.raw(),
                     0,
@@ -678,11 +678,11 @@ fn zeroed_named_buffer_may_be_read_before_its_first_write() {
         let source = managed.buffer_for(source).map_err(|error| {
             rhapsody::Error::invalid_usage_with("named buffer resolution", error)
         })?;
-        let target = managed.buffer_for(target).map_err(|error| {
-            rhapsody::Error::invalid_usage_with("readback resolution", error)
-        })?;
+        let target = managed
+            .buffer_for(target)
+            .map_err(|error| rhapsody::Error::invalid_usage_with("readback resolution", error))?;
         unsafe {
-            device.device.cmd_copy_buffer(
+            device.raw_device().cmd_copy_buffer(
                 vk::CommandBuffer::from_raw(ctx.command.handle()),
                 source.raw(),
                 target.raw(),

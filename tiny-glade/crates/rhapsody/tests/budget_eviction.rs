@@ -55,10 +55,10 @@ fn pressure_evicts_idle_staging_but_keeps_leased_slots_then_allocation_succeeds(
     device.wait_idle().unwrap();
     let staged = manager.stats().unwrap().committed_bytes;
     assert!(staged >= 16 * MIB);
-    let used = device.allocator_stats.device_memory_usage().total();
+    let used = device.allocator_stats().device_memory_usage().total();
     // Room for 4 MiB more: a 10 MiB buffer only fits after idle staging goes.
     device
-        .allocator_stats
+        .allocator_stats()
         .set_device_budget(used + 4 * MIB)
         .unwrap();
     let big = Buffer::new(
@@ -76,7 +76,7 @@ fn pressure_evicts_idle_staging_but_keeps_leased_slots_then_allocation_succeeds(
     // Without pressure, evicted slots are recreated on demand.
     drop(big);
     drop(ticket);
-    device.allocator_stats.set_device_budget(0).unwrap();
+    device.allocator_stats().set_device_budget(0).unwrap();
     let destination = Arc::new(
         Buffer::new(
             device.clone(),
@@ -91,7 +91,7 @@ fn pressure_evicts_idle_staging_but_keeps_leased_slots_then_allocation_succeeds(
         .unwrap();
     destination.read_bytes(0, &mut bytes).unwrap();
     assert_eq!(bytes, [9; 64]);
-    assert!(device.evictables.stats().0 >= 1);
+    assert!(device.evictables().stats().0 >= 1);
 }
 
 #[test]

@@ -32,15 +32,15 @@ pub struct SubmitBatch<'a> {
 
 impl Device {
     pub fn queue(&self, class: crate::device::QueueClass) -> Result<QueueId> {
-        Ok(self.queue_plan.queue(class))
+        Ok(self.queues.plan.queue(class))
     }
 
     /// Fresh completion values (queries queues with outstanding work). The
     /// same snapshot drives budget classification; that step is skipped when
     /// no queue advanced.
     pub fn poll(&self) -> Result<crate::sync::CompletedValues> {
-        let completed = self.timelines.poll()?;
-        self.allocator_stats.observe_completed(&completed);
+        let completed = self.queues.timelines.poll()?;
+        self.memory.stats.observe_completed(&completed);
         Ok(completed)
     }
 
@@ -48,20 +48,20 @@ impl Device {
     /// are conservative (work may look pending, never complete early); use
     /// [`Self::poll`] when progress must be observed.
     pub fn completed(&self) -> crate::sync::CompletedValues {
-        self.timelines.completed()
+        self.queues.timelines.completed()
     }
 
     pub fn memory_budget_usage(&self) -> Result<crate::device::BudgetUsage> {
         let _ = self.poll()?;
-        Ok(self.allocator_stats.budget_usage())
+        Ok(self.memory.stats.budget_usage())
     }
 
     pub fn wait(&self, set: &crate::sync::SyncSet, timeout_ns: u64) -> Result<()> {
-        self.timelines.wait(set, timeout_ns)
+        self.queues.timelines.wait(set, timeout_ns)
     }
 
     pub fn is_device_lost(&self) -> bool {
-        self.timelines.is_device_lost()
+        self.queues.timelines.is_device_lost()
     }
 
     /// Conservative variant for prerequisites without a proven consumer
@@ -99,7 +99,7 @@ impl Device {
             };
         };
         apply_staged_waits(first, queue_id, dependencies, |queue| {
-            self.timelines.semaphore(queue)
+            self.queues.timelines.semaphore(queue)
         })
     }
 
@@ -113,9 +113,10 @@ impl Device {
             return Err(Error::DeviceLost);
         }
         let raw = if queue.index() == 0 {
-            self.queue
+            self.queues.primary
         } else {
-            self.additional_queues
+            self.queues
+                .additional
                 .get(queue.index() - 1)
                 .ok_or_else(|| Error::invalid_usage("提交队列不属于设备"))?
                 .handle
@@ -135,13 +136,14 @@ impl Device {
             None
         } else {
             Some(
-                self.allocator_stats
+                self.memory
+                    .stats
                     .reserve_cpu_bytes(nested_bytes as u64, crate::device::BudgetCategory::Live)?,
             )
         };
         let prepared = SubmitScratch::<[PreparedSubmit; 1]>::try_collect(
             batches.len(),
-            &self.allocator_stats,
+            &self.memory.stats,
             batches.iter().map(|batch| {
                 fn reserve<T>(
                     values: &mut crate::raw::submit::SubmitArray<T>,
@@ -163,10 +165,14 @@ impl Device {
                     let (semaphore, value, stage) = match *wait {
                         Wait::Binary { semaphore, stage } => (semaphore, 0, stage),
                         Wait::Timeline { point, stage } => {
-                            if point.value > self.timelines.submitted(point.queue)? {
+                            if point.value > self.queues.timelines.submitted(point.queue)? {
                                 return Err(Error::invalid_usage("等待的时间线值尚未提交"));
                             }
-                            (self.timelines.semaphore(point.queue)?, point.value, stage)
+                            (
+                                self.queues.timelines.semaphore(point.queue)?,
+                                point.value,
+                                stage,
+                            )
                         }
                     };
                     if semaphore == vk::Semaphore::null()
@@ -203,10 +209,11 @@ impl Device {
         self.submit_prepared(raw, &prepared, vk::Fence::null())
     }
     pub fn queue_id(&self, queue: vk::Queue) -> Result<QueueId> {
-        let index = if queue == self.queue {
+        let index = if queue == self.queues.primary {
             0
         } else {
-            self.additional_queues
+            self.queues
+                .additional
                 .iter()
                 .position(|q| q.handle == queue)
                 .map(|i| i + 1)
@@ -226,7 +233,7 @@ impl Device {
         }
         let id = self.queue_id(queue)?;
         for batch in batches {
-            batch.validate(&self.timelines)?;
+            batch.validate(&self.queues.timelines)?;
         }
         self.flush_deferred_host_writes()?;
         if self
@@ -242,7 +249,7 @@ impl Device {
         })?;
         let mut signals = SubmitScratch::<[vk::Semaphore; 8]>::try_collect(
             signal_count,
-            &self.allocator_stats,
+            &self.memory.stats,
             batches
                 .iter()
                 .flat_map(|batch| batch.signal_semaphores.iter().copied())
@@ -251,7 +258,7 @@ impl Device {
         )?;
         let mut values = SubmitScratch::<[u64; 8]>::try_collect(
             signal_count,
-            &self.allocator_stats,
+            &self.memory.stats,
             batches
                 .iter()
                 .flat_map(|batch| batch.signal_values.iter().copied())
@@ -267,7 +274,7 @@ impl Device {
         let timelines =
             SubmitScratch::<[vk::TimelineSemaphoreSubmitInfo<'static>; 1]>::try_collect(
                 count,
-                &self.allocator_stats,
+                &self.memory.stats,
                 (0..count).map(|index| {
                     let batch = batches.get(index);
                     let signal_len = batch.map_or(0, |batch| batch.signal_values.len())
@@ -289,7 +296,7 @@ impl Device {
         signal_start = 0;
         let infos = SubmitScratch::<[vk::SubmitInfo<'static>; 1]>::try_collect(
             count,
-            &self.allocator_stats,
+            &self.memory.stats,
             (0..count).map(|index| {
                 let batch = batches.get(index);
                 let signal_len = batch.map_or(0, |batch| batch.signal_semaphores.len())
@@ -317,7 +324,7 @@ impl Device {
             }),
         )?;
         native_count(infos.len())?;
-        let (point, ()) = self.timelines.submit(id, |signal| {
+        let (point, ()) = self.queues.timelines.submit(id, |signal| {
             // SAFETY: validated batches, fixed-capacity arrays and their Vulkan
             // views above remain alive and unmoved throughout this queue call.
             // Write through the same raw exclusive pointers used by the views;
@@ -325,7 +332,7 @@ impl Device {
             unsafe {
                 signals_ptr.add(signal_count - 1).write(signal.semaphore);
                 values_ptr.add(signal_count - 1).write(signal.value);
-                self.device.queue_submit(queue, &infos, fence)
+                self.core.device.queue_submit(queue, &infos, fence)
             }
             .map_err(Into::into)
         })?;
@@ -360,7 +367,7 @@ impl Device {
         )?;
         let commands = SubmitScratch::<[vk::CommandBufferSubmitInfo<'static>; 8]>::try_collect(
             counts.0,
-            &self.allocator_stats,
+            &self.memory.stats,
             batches
                 .iter()
                 .flat_map(|batch| &batch.commands)
@@ -368,7 +375,7 @@ impl Device {
         )?;
         let waits = SubmitScratch::<[vk::SemaphoreSubmitInfo<'static>; 8]>::try_collect(
             counts.1,
-            &self.allocator_stats,
+            &self.memory.stats,
             batches
                 .iter()
                 .flat_map(|batch| {
@@ -387,7 +394,7 @@ impl Device {
         )?;
         let mut signals = SubmitScratch::<[vk::SemaphoreSubmitInfo<'static>; 8]>::try_collect(
             counts.2,
-            &self.allocator_stats,
+            &self.memory.stats,
             batches
                 .iter()
                 .flat_map(|batch| batch.signal_semaphores.iter().zip(&batch.signal_values))
@@ -406,7 +413,7 @@ impl Device {
         // three owning scratch arrays have their final capacities and locations.
         let infos = SubmitScratch::<[vk::SubmitInfo2<'static>; 1]>::try_collect(
             count,
-            &self.allocator_stats,
+            &self.memory.stats,
             (0..count).map(|index| {
                 let batch = batches.get(index);
                 let command_len = batch.map_or(0, |batch| batch.commands.len());
@@ -429,8 +436,8 @@ impl Device {
             }),
         )?;
         native_count(infos.len())?;
-        let extension = self.synchronization2.as_ref();
-        let (point, ()) = self.timelines.submit(id, |signal| {
+        let extension = self.core.synchronization2.as_ref();
+        let (point, ()) = self.queues.timelines.submit(id, |signal| {
             // SAFETY: all arrays are owned by this call, all counts are checked,
             // and no backing can grow or move while the driver reads the views.
             unsafe {
@@ -440,7 +447,7 @@ impl Device {
                 if let Some(extension) = extension {
                     extension.queue_submit2(queue, &infos, fence)
                 } else {
-                    self.device.queue_submit2(queue, &infos, fence)
+                    self.core.device.queue_submit2(queue, &infos, fence)
                 }
             }
             .map_err(Into::into)

@@ -551,10 +551,9 @@ impl Texture {
         }
         let device = owner.device.clone();
         let range = Self::ownership_range(&desc)?;
-        let synchronization =
-            crate::resource::SyncCell::reserve_arc_storage(&device.allocator_stats)?;
+        let synchronization = crate::resource::SyncCell::reserve_arc_storage(&device.memory.stats)?;
         let memory =
-            super::allocator::reserve_shared_cpu_metadata::<Self>(&device.allocator_stats, 0)?;
+            super::allocator::reserve_shared_cpu_metadata::<Self>(&device.memory.stats, 0)?;
         Ok(Self {
             sharing: crate::resource::ResourceSharing::Exclusive,
             allocation_use: None,
@@ -614,8 +613,8 @@ impl Texture {
         sharing.validate_device(&device)?;
         desc.validate()?;
         let range = Self::ownership_range(desc)?;
-        let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.allocator_stats)?;
-        let memory = device.allocator_stats.reserve_cpu_bytes(
+        let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.memory.stats)?;
+        let memory = device.memory.stats.reserve_cpu_bytes(
             super::allocator::shared_cpu_bytes::<Self>()?,
             crate::device::BudgetCategory::Live,
         )?;
@@ -627,12 +626,12 @@ impl Texture {
             })
             .queue_family_indices(sharing.families());
         let handle = super::error::observe_vulkan(&device, unsafe {
-            device.device.create_image(&info, None)
+            device.core.device.create_image(&info, None)
         })?;
         let mut dedicated = vk::MemoryDedicatedRequirements::default();
         let mut requirements2 = vk::MemoryRequirements2::default().push_next(&mut dedicated);
         unsafe {
-            device.device.get_image_memory_requirements2(
+            device.core.device.get_image_memory_requirements2(
                 &vk::ImageMemoryRequirementsInfo2::default().image(handle),
                 &mut requirements2,
             );
@@ -660,18 +659,19 @@ impl Texture {
             Ok(value) => value,
             Err(error) => {
                 unsafe {
-                    device.device.destroy_image(handle, None);
+                    device.core.device.destroy_image(handle, None);
                 }
                 return Err(error);
             }
         };
         if let Err(error) = unsafe {
             device
+                .core
                 .device
                 .bind_image_memory(handle, allocation.handle, allocation.offset)
         } {
             unsafe {
-                device.device.destroy_image(handle, None);
+                device.core.device.destroy_image(handle, None);
             }
             return super::error::observe_vulkan(&device, Err(error));
         }
@@ -682,7 +682,7 @@ impl Texture {
             last_use: (if sharing.is_concurrent() {
                 crate::resource::SyncCell::for_allocation(
                     device.generation(),
-                    device.allocator_stats.clone(),
+                    device.memory.stats.clone(),
                     allocation.accounting_id(),
                 )
                 .with_concurrent_families(match sharing {
@@ -693,7 +693,7 @@ impl Texture {
             } else {
                 crate::resource::SyncCell::for_allocation(
                     device.generation(),
-                    device.allocator_stats.clone(),
+                    device.memory.stats.clone(),
                     allocation.accounting_id(),
                 )
                 .with_ownership_range(range)
@@ -715,7 +715,7 @@ impl Texture {
                 .caps()
                 .require_enabled(crate::device::Feature::ImageCubeArray)?;
         }
-        let memory = self.device.allocator_stats.reserve_cpu_bytes(
+        let memory = self.device.memory.stats.reserve_cpu_bytes(
             super::allocator::shared_cpu_bytes::<TextureView>()?,
             crate::device::BudgetCategory::Live,
         )?;
@@ -731,9 +731,9 @@ impl Texture {
             .format(desc.format)
             .subresource_range(range);
         let sync_storage =
-            crate::resource::SyncCell::reserve_arc_storage(&self.device.allocator_stats)?;
+            crate::resource::SyncCell::reserve_arc_storage(&self.device.memory.stats)?;
         let handle = super::error::observe_vulkan(&self.device, unsafe {
-            self.device.device.create_image_view(&info, None)
+            self.device.core.device.create_image_view(&info, None)
         })?;
         Ok(TextureView {
             _memory: memory,

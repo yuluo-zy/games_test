@@ -315,7 +315,7 @@ impl Bench {
             api.set_stencil_ref(0);
             // SAFETY: 同上；管线与 render pass 兼容。
             unsafe {
-                device.device.cmd_bind_pipeline(
+                device.raw_device().cmd_bind_pipeline(
                     cb,
                     vk::PipelineBindPoint::GRAPHICS,
                     pipeline.handle,
@@ -353,7 +353,7 @@ fn add_clear(graph: &mut RenderGraph, device: &Device, target: ResourceHandle, f
 
         // SAFETY: 录制中的命令缓冲；图已把纹理转到 TRANSFER_DST_OPTIMAL。
         unsafe {
-            raw.device.cmd_clear_color_image(
+            raw.raw_device().cmd_clear_color_image(
                 vk::CommandBuffer::from_raw(ctx.command.handle()),
                 image.raw(),
                 vk::ImageLayout::TRANSFER_DST_OPTIMAL,
@@ -383,7 +383,7 @@ fn add_fill(graph: &mut RenderGraph, device: &Device, target: ResourceHandle, va
 
         // SAFETY: 录制中的命令缓冲；缓冲带 TRANSFER_DST。
         unsafe {
-            raw.device.cmd_fill_buffer(
+            raw.raw_device().cmd_fill_buffer(
                 vk::CommandBuffer::from_raw(ctx.command.handle()),
                 buffer.raw(),
                 0,
@@ -416,7 +416,7 @@ fn add_copy_image(
 
         // SAFETY: 录制中的命令缓冲；布局由图的访问声明保证。
         unsafe {
-            raw.device.cmd_copy_image(
+            raw.raw_device().cmd_copy_image(
                 vk::CommandBuffer::from_raw(ctx.command.handle()),
                 src.raw(),
                 vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
@@ -459,7 +459,7 @@ fn add_copy_image_to_buffer(
 
         // SAFETY: 同上。
         unsafe {
-            raw.device.cmd_copy_image_to_buffer(
+            raw.raw_device().cmd_copy_image_to_buffer(
                 vk::CommandBuffer::from_raw(ctx.command.handle()),
                 src.raw(),
                 vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
@@ -500,7 +500,7 @@ fn add_copy_buffer(
 
         // SAFETY: 同上。
         unsafe {
-            raw.device.cmd_copy_buffer(
+            raw.raw_device().cmd_copy_buffer(
                 vk::CommandBuffer::from_raw(ctx.command.handle()),
                 src.raw(),
                 dst.raw(),
@@ -675,9 +675,9 @@ fn pixel_check_passes(check: &PixelCheck) -> bool {
 fn device_identity(device: &Arc<rhapsody::raw::device::Device>) -> (String, u32, u32) {
     let properties = unsafe {
         device
+            .instance()
             .instance
-            .instance
-            .get_physical_device_properties(device.physical)
+            .get_physical_device_properties(device.physical_device())
     };
     (
         unsafe { std::ffi::CStr::from_ptr(properties.device_name.as_ptr()) }
@@ -867,7 +867,7 @@ fn render_perf_strict_acceptance() {
     let validation_layers: Vec<String> = bench
         .rig
         .device
-        .instance
+        .instance()
         .layer_names()
         .iter()
         .filter(|name| name.to_ascii_lowercase().contains("validation"))
@@ -1080,7 +1080,7 @@ impl Bench {
         let slot = (self.next_frame as usize) % self.frames_in_flight;
         let scene_frame = self.next_frame as usize;
         self.next_frame += 1;
-        let gpu_before = self.rig.device.allocator_stats.total_registered();
+        let gpu_before = self.rig.device.allocator_stats().total_registered();
         let (result, allocation) = allocation_counter::measured(|| {
             let begin_started = Instant::now();
             let graph = self.session.begin_frame()?;
@@ -1097,7 +1097,7 @@ impl Bench {
         let gpu_allocations = self
             .rig
             .device
-            .allocator_stats
+            .allocator_stats()
             .total_registered()
             .saturating_sub(gpu_before);
         self.pending.push_back(PendingFrame {
@@ -1178,7 +1178,7 @@ fn render_perf_throughput() {
     let validation_layers: Vec<String> = probe
         .rig
         .device
-        .instance
+        .instance()
         .layer_names()
         .iter()
         .filter(|name| name.to_ascii_lowercase().contains("validation"))
@@ -1205,7 +1205,7 @@ fn render_perf_throughput() {
             !bench
                 .rig
                 .device
-                .instance
+                .instance()
                 .layer_names()
                 .iter()
                 .any(|name| name.to_ascii_lowercase().contains("validation")),
@@ -1333,7 +1333,7 @@ fn render_perf_throughput() {
             "cpu_allocations_per_frame": count_json(&cpu_allocations),
             "cpu_allocated_bytes_per_frame": count_json(&cpu_allocated_bytes),
             "gpu_allocations_per_frame": count_json(&gpu_allocations),
-            "peak_allocated_bytes": bench.rig.device.allocator_stats.peak_totals().total_allocated_bytes,
+            "peak_allocated_bytes": bench.rig.device.allocator_stats().peak_totals().total_allocated_bytes,
             "setup_ns": setup_ns,
             "drain_ns": drain_ns,
             "warmup_drain_ns": warmup_drain_ns,

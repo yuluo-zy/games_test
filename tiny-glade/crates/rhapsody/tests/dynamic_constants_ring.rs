@@ -27,7 +27,7 @@ impl Unblock {
         if !self.1 {
             // SAFETY: this test is the sole host signaler and submits value 1 only once.
             unsafe {
-                self.0.device.device.signal_semaphore(
+                self.0.device.raw_device().signal_semaphore(
                     &vk::SemaphoreSignalInfo::default()
                         .semaphore(self.0.handle)
                         .value(1),
@@ -114,7 +114,7 @@ fn dropped_cpu_owners_cannot_reset_a_page_until_actual_gpu_copy_completes() {
     command.begin().unwrap();
     // SAFETY: both owned buffers are alive, same-device, correctly sized and recorded.
     unsafe {
-        device.device.cmd_copy_buffer(
+        device.raw_device().cmd_copy_buffer(
             command.handle,
             source_handle,
             output.handle,
@@ -124,7 +124,7 @@ fn dropped_cpu_owners_cannot_reset_a_page_until_actual_gpu_copy_completes() {
                 size: 64,
             }],
         );
-        device.device.cmd_pipeline_barrier(
+        device.raw_device().cmd_pipeline_barrier(
             command.handle,
             vk::PipelineStageFlags::TRANSFER,
             vk::PipelineStageFlags::HOST,
@@ -145,8 +145,8 @@ fn dropped_cpu_owners_cannot_reset_a_page_until_actual_gpu_copy_completes() {
     let pending = command
         .submit_to(
             rhapsody::raw::device::DeviceQueue {
-                handle: device.queue,
-                family: device.queue_family,
+                handle: device.primary_queue(),
+                family: device.queue_family_index(),
                 index: 0,
             },
             &[(blocker, 1, vk::PipelineStageFlags::ALL_COMMANDS)],
@@ -165,7 +165,7 @@ fn dropped_cpu_owners_cannot_reset_a_page_until_actual_gpu_copy_completes() {
     assert_eq!(constants.trim_idle(0).unwrap(), 0);
     unblock.signal();
     device
-        .timelines
+        .timelines()
         .wait(&point.into(), 10_000_000_000)
         .unwrap();
     let mut actual = [0; 64];

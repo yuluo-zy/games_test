@@ -102,15 +102,19 @@ impl Device {
         if transfer.source_family == transfer.destination_family
             || acquire.release_point.value == 0
             || acquire.release_point.value
-                > self.timelines.submitted(acquire.release_point.queue)?
+                > self
+                    .queues
+                    .timelines
+                    .submitted(acquire.release_point.queue)?
         {
             return Err(Error::invalid_usage(
                 "pending acquire needs a cross-family transfer with a submitted release",
             ));
         }
-        if transfer.destination_family != self.queue_family
+        if transfer.destination_family != self.queues.primary_family
             && !self
-                .additional_queues
+                .queues
+                .additional
                 .iter()
                 .any(|queue| queue.family == transfer.destination_family)
         {
@@ -118,13 +122,14 @@ impl Device {
                 "pending acquire destination family has no device queue",
             ));
         }
-        self.pending_acquires.push(acquire)
+        self.queues.pending_acquires.push(acquire)
     }
     /// Reserve room for `additional` registrations before submitting their
     /// releases, so that a host allocation failure cannot strand a range
     /// that was already released.
     pub(crate) fn reserve_pending_acquires(&self, additional: usize) -> Result<()> {
-        self.pending_acquires
+        self.queues
+            .pending_acquires
             .entries
             .lock()
             .try_reserve(additional)
@@ -132,10 +137,11 @@ impl Device {
     }
     /// Pending acquires for queues of `family`.
     pub fn pending_acquire_count(&self, family: u32) -> usize {
-        if self.pending_acquires.is_empty() {
+        if self.queues.pending_acquires.is_empty() {
             return 0;
         }
-        self.pending_acquires
+        self.queues
+            .pending_acquires
             .entries
             .lock()
             .iter()
@@ -144,13 +150,14 @@ impl Device {
     }
     /// Put back acquires drained into a command that was never submitted.
     pub fn requeue_pending_acquires(&self, drained: DrainedAcquires) {
-        let mut entries = self.pending_acquires.entries.lock();
+        let mut entries = self.queues.pending_acquires.entries.lock();
         if entries.try_reserve(drained.len()).is_ok() {
             entries.extend(drained);
         }
         // Without host memory the releases stay recorded on the resources;
         // a render graph using them still recovers through its own acquire.
-        self.pending_acquires
+        self.queues
+            .pending_acquires
             .count
             .store(entries.len(), Ordering::Release);
     }
@@ -174,7 +181,7 @@ impl Device {
         keep: impl Fn(&Arc<SyncCell>) -> bool,
     ) -> Result<DrainedAcquires> {
         let mut drained = DrainedAcquires::new();
-        if self.pending_acquires.is_empty() {
+        if self.queues.pending_acquires.is_empty() {
             return Ok(drained);
         }
         if !command.is_recording() {
@@ -183,7 +190,7 @@ impl Device {
             ));
         }
         let family = command.pool.family;
-        let mut entries = self.pending_acquires.entries.lock();
+        let mut entries = self.queues.pending_acquires.entries.lock();
         let mut scope = crate::raw::barrier::SynchronizationScope::new(
             vk::PipelineStageFlags::empty(),
             vk::PipelineStageFlags::empty(),
@@ -230,12 +237,14 @@ impl Device {
             // The command's recorded patches are discarded with it; keep
             // every acquire pending for a later command.
             entries.extend(drained);
-            self.pending_acquires
+            self.queues
+                .pending_acquires
                 .count
                 .store(entries.len(), Ordering::Release);
             return Err(error);
         }
-        self.pending_acquires
+        self.queues
+            .pending_acquires
             .count
             .store(entries.len(), Ordering::Release);
         drop(entries);
@@ -370,7 +379,7 @@ pub(crate) mod tests {
             new_layout: vk::ImageLayout::UNDEFINED,
         };
         let cell = buffer.last_use.clone();
-        let stats = &device.allocator_stats;
+        let stats = &device.memory.stats;
         cell.with_range_state(NativeState::default(), stats, |_| Ok(()))
             .unwrap();
         let _gate = cell.lock_submission();

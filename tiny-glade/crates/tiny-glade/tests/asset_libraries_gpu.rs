@@ -108,7 +108,7 @@ fn native_texture_clear_changes_pixels_and_descriptor_owns_a_real_view() {
                 write: true,
             },
         )?;
-        device.device.cmd_copy_image_to_buffer(
+        device.raw_device().cmd_copy_image_to_buffer(
             command.handle,
             owner.handle,
             vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
@@ -137,7 +137,8 @@ fn native_texture_clear_changes_pixels_and_descriptor_owns_a_real_view() {
                 write: false,
             },
         )
-    }).and_then(|setup| setup.wait(rhapsody::raw::setup::SETUP_WAIT_TIMEOUT_NS))
+    })
+    .and_then(|setup| setup.wait(rhapsody::raw::setup::SETUP_WAIT_TIMEOUT_NS))
     .unwrap();
     let mut pixels = [0xff; 64];
     output.read_bytes(0, &mut pixels).unwrap();

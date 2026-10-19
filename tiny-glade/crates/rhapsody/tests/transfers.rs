@@ -111,7 +111,7 @@ impl ReleaseWait {
             unsafe {
                 self.0
                     .device
-                    .device
+                    .raw_device()
                     .signal_semaphore(
                         &vk::SemaphoreSignalInfo::default()
                             .semaphore(self.0.handle)
@@ -162,15 +162,15 @@ fn nonblocking_host_writes_reject_in_flight_use_and_recover_after_completion() {
     command.begin().unwrap();
     unsafe {
         device
-            .device
+            .raw_device()
             .cmd_fill_buffer(command.handle, target.handle, 0, 64, 0x01010101);
     }
     command.end().unwrap();
     let pending = command
         .submit_to(
             rhapsody::raw::device::DeviceQueue {
-                handle: device.queue,
-                family: device.queue_family,
+                handle: device.primary_queue(),
+                family: device.queue_family_index(),
                 index: 0,
             },
             &[(blocker, 1, vk::PipelineStageFlags::ALL_COMMANDS)],
@@ -333,8 +333,8 @@ fn queued_upload_full_staging_defers_without_publishing_then_recovers_after_real
     let blocked = blocked
         .submit_to(
             rhapsody::raw::device::DeviceQueue {
-                handle: device.queue,
-                family: device.queue_family,
+                handle: device.primary_queue(),
+                family: device.queue_family_index(),
                 index: 0,
             },
             &[(semaphore, 1, vk::PipelineStageFlags::ALL_COMMANDS)],
@@ -419,7 +419,7 @@ fn lost_device_fails_all_accepted_upload_tickets_without_any_completion_point() 
             },
         )
         .unwrap();
-    device.timelines.mark_device_lost(); // Idle native device; explicit protocol-failure injection.
+    device.timelines().mark_device_lost(); // Idle native device; explicit protocol-failure injection.
     assert!(matches!(
         manager.flush_uploads(4),
         Err(rhapsody::Error::DeviceLost)
@@ -485,7 +485,7 @@ fn readback_envelopes_reuse_capacity_and_escaping_tickets_keep_their_actual_cpu_
         assert_eq!(output, [0x31; 256]);
         drop(read);
         device.try_collect_all_completed().unwrap();
-        let bytes = device.allocator_stats.cpu_memory_usage().total();
+        let bytes = device.allocator_stats().cpu_memory_usage().total();
         if let Some(expected) = baseline {
             assert_eq!(bytes, expected, "fixed readback capacity must not grow");
         } else {
@@ -496,14 +496,14 @@ fn readback_envelopes_reuse_capacity_and_escaping_tickets_keep_their_actual_cpu_
     escaped.wait(5_000_000_000).unwrap();
     drop(manager);
     device.try_collect_all_completed().unwrap();
-    let retained = device.allocator_stats.cpu_memory_usage().total();
+    let retained = device.allocator_stats().cpu_memory_usage().total();
     let mut output = [0; 256];
     escaped.try_read(&mut output).unwrap().unwrap();
     assert_eq!(output, [0x31; 256]);
     drop(escaped);
     device.try_collect_all_completed().unwrap();
     assert!(
-        device.allocator_stats.cpu_memory_usage().total() < retained,
+        device.allocator_stats().cpu_memory_usage().total() < retained,
         "escaped lease CPU credit must follow its last actual owner"
     );
 }

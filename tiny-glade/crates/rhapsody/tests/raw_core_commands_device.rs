@@ -55,7 +55,7 @@ fn device_micro_functions_and_creation_tail_state() {
     let budget = gd.refresh_memory_budget().unwrap();
     assert_eq!(budget.is_some(), gd.memory_budget_enabled());
     if budget.is_some() {
-        assert!(gd.allocator_stats.heap_usage(0).unwrap().1.is_some());
+        assert!(gd.allocator_stats().heap_usage(0).unwrap().1.is_some());
     }
     assert_eq!(gd.device_uuid(), gd.device_uuid());
 }

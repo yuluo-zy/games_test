@@ -16,8 +16,8 @@ use super::{
 mod fullscreen;
 mod graph_presentation;
 use fullscreen::FullscreenState;
-pub(crate) use graph_presentation::{GraphPresentation, PresentSync};
 pub use fullscreen::{FullscreenFallback, FullscreenStatus, WindowMode};
+pub(crate) use graph_presentation::{GraphPresentation, PresentSync};
 
 use ash::vk;
 use parking_lot::{Mutex, RwLock};
@@ -52,18 +52,18 @@ trait WsiFenceOperations {
 struct DeviceFenceOperations<'a>(&'a Device);
 impl WsiFenceOperations for DeviceFenceOperations<'_> {
     fn wait(&self, fence: vk::Fence, timeout: u64) -> Result<()> {
-        wsi_call(&self.0.timelines, || unsafe {
-            self.0.device.wait_for_fences(&[fence], true, timeout)
+        wsi_call(&self.0.queues.timelines, || unsafe {
+            self.0.core.device.wait_for_fences(&[fence], true, timeout)
         })
     }
     fn reset(&self, fence: vk::Fence) -> Result<()> {
-        wsi_call(&self.0.timelines, || unsafe {
-            self.0.device.reset_fences(&[fence])
+        wsi_call(&self.0.queues.timelines, || unsafe {
+            self.0.core.device.reset_fences(&[fence])
         })
     }
     fn signaled(&self, fence: vk::Fence) -> Result<bool> {
-        wsi_call(&self.0.timelines, || unsafe {
-            self.0.device.get_fence_status(fence)
+        wsi_call(&self.0.queues.timelines, || unsafe {
+            self.0.core.device.get_fence_status(fence)
         })
     }
 }
@@ -110,7 +110,9 @@ impl SwapchainPolicy {
 
 fn check_retired_generation_budget(pending: usize) -> Result<()> {
     if pending >= MAX_RETIRED_GENERATIONS {
-        Err(Error::exhausted("retired swapchain generations await completion proofs"))
+        Err(Error::exhausted(
+            "retired swapchain generations await completion proofs",
+        ))
     } else {
         Ok(())
     }
@@ -414,8 +416,8 @@ impl Swapchain {
         for slot in &inner.leases {
             let mut state = slot.state.lock();
             if state.acquired
-                && wsi_call(&self.device.timelines, || unsafe {
-                    self.device.device.get_fence_status(slot.acquire_ready)
+                && wsi_call(&self.device.queues.timelines, || unsafe {
+                    self.device.core.device.get_fence_status(slot.acquire_ready)
                 })?
             {
                 slot.finish_acquire(&mut state, 0)?;
@@ -506,14 +508,14 @@ impl Swapchain {
             let state = slot.state.lock();
             if state.acquired
                 || (state.submitted
-                    && !wsi_call(&self.device.timelines, || unsafe {
-                        self.device.device.get_fence_status(slot.fence)
+                    && !wsi_call(&self.device.queues.timelines, || unsafe {
+                        self.device.core.device.get_fence_status(slot.fence)
                     })?)
             {
                 return Ok(false);
             }
         }
-        let completed = self.device.timelines.poll()?;
+        let completed = self.device.queues.timelines.poll()?;
         Ok(inner
             .presentations
             .iter()
@@ -599,13 +601,13 @@ impl Swapchain {
             vsync,
             usage,
         } = desc;
-        if !Arc::ptr_eq(&device.instance, &surface.instance) {
+        if !Arc::ptr_eq(&device.core.instance, &surface.instance) {
             return Err(Error::invalid_usage("交换链表面属于其他实例"));
         }
-        if !wsi_call(&device.timelines, || unsafe {
+        if !wsi_call(&device.queues.timelines, || unsafe {
             surface.loader.get_physical_device_surface_support(
-                device.physical,
-                device.queue_family,
+                device.core.physical,
+                device.queues.primary_family,
                 surface.handle,
             )
         })? {
@@ -617,7 +619,8 @@ impl Swapchain {
         retired_generations
             .try_reserve(1)
             .map_err(|_| Error::OutOfHostMemory)?;
-        let loader = ash::khr::swapchain::Device::new(&device.instance.instance, &device.device);
+        let loader =
+            ash::khr::swapchain::Device::new(&device.core.instance.instance, &device.core.device);
         let mut result = Self {
             retired_generations: Mutex::new(retired_generations),
             generation: NEXT_SWAPCHAIN.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
@@ -649,20 +652,21 @@ impl Swapchain {
         Ok(result)
     }
     pub fn enumerate_surface_formats(&self) -> Result<Vec<vk::SurfaceFormatKHR>> {
-        wsi_call(&self.device.timelines, || unsafe {
+        wsi_call(&self.device.queues.timelines, || unsafe {
             self.surface
                 .loader
-                .get_physical_device_surface_formats(self.device.physical, self.surface.handle)
+                .get_physical_device_surface_formats(self.device.core.physical, self.surface.handle)
         })
     }
     /// Whether a 2D OPTIMAL image of this format supports the requested usage.
     fn format_supports_usage(&self, format: vk::Format) -> Result<bool> {
-        match wsi_call(&self.device.timelines, || unsafe {
+        match wsi_call(&self.device.queues.timelines, || unsafe {
             self.device
+                .core
                 .instance
                 .instance
                 .get_physical_device_image_format_properties(
-                    self.device.physical,
+                    self.device.core.physical,
                     format,
                     vk::ImageType::TYPE_2D,
                     vk::ImageTiling::OPTIMAL,
@@ -774,7 +778,7 @@ impl Swapchain {
         }
         // 成功建立新交换链后旧对象可能已被驱动退役；任何后续失败都不得继续获取旧图像。
         self.inner.get_mut().stale = true;
-        let handle = match wsi_call(&self.device.timelines, || unsafe {
+        let handle = match wsi_call(&self.device.queues.timelines, || unsafe {
             *old_retired |= old != vk::SwapchainKHR::null();
             self.loader.create_swapchain(&info, None)
         }) {
@@ -790,7 +794,7 @@ impl Swapchain {
             }
             Err(error) => return Err(error),
         };
-        let images = match wsi_call(&self.device.timelines, || unsafe {
+        let images = match wsi_call(&self.device.queues.timelines, || unsafe {
             self.loader.get_swapchain_images(handle)
         }) {
             Ok(images) => images,
@@ -812,14 +816,14 @@ impl Swapchain {
                 .view_type(vk::ImageViewType::TYPE_2D)
                 .format(format.format)
                 .subresource_range(range);
-            match wsi_call(&self.device.timelines, || unsafe {
-                self.device.device.create_image_view(&info, None)
+            match wsi_call(&self.device.queues.timelines, || unsafe {
+                self.device.core.device.create_image_view(&info, None)
             }) {
                 Ok(view) => views.push(view),
                 Err(error) => {
                     unsafe {
                         for view in views {
-                            self.device.device.destroy_image_view(view, None);
+                            self.device.core.device.destroy_image_view(view, None);
                         }
                         self.loader.destroy_swapchain(handle, None);
                     }
@@ -830,7 +834,7 @@ impl Swapchain {
         }
         unsafe {
             for view in self.views.drain(..) {
-                self.device.device.destroy_image_view(view, None);
+                self.device.core.device.destroy_image_view(view, None);
             }
             if self.handle != vk::SwapchainKHR::null() {
                 self.loader.destroy_swapchain(self.handle, None);
@@ -889,7 +893,7 @@ impl Swapchain {
         &self,
         call: impl FnOnce() -> std::result::Result<T, E>,
     ) -> Result<T> {
-        let result = wsi_call(&self.device.timelines, call);
+        let result = wsi_call(&self.device.queues.timelines, call);
         self.surface.observe(&result);
         result
     }
@@ -953,7 +957,7 @@ impl Swapchain {
     /// Replace a lost (or any) surface with a new one supplied by the host.
     /// The previous generation is retired with its completion proofs.
     pub fn replace_surface(chain: &mut Arc<Self>, surface: Arc<Surface>) -> Result<()> {
-        if !Arc::ptr_eq(&surface.instance, &chain.device.instance) {
+        if !Arc::ptr_eq(&surface.instance, &chain.device.core.instance) {
             return Err(Error::invalid_usage("交换链表面属于其他实例"));
         }
         let replacement = chain.replacement_for(&surface)?;
@@ -1045,7 +1049,10 @@ impl Swapchain {
         let caps = self.surface_call(|| unsafe {
             self.surface
                 .loader
-                .get_physical_device_surface_capabilities(self.device.physical, self.surface.handle)
+                .get_physical_device_surface_capabilities(
+                    self.device.core.physical,
+                    self.surface.handle,
+                )
         });
         let stale = match caps {
             Ok(caps) => suboptimal_requires_recreate(&caps, self.extent, self.pre_transform),
@@ -1201,8 +1208,8 @@ impl Swapchain {
             .swapchain(self.handle)
             .image_indices(&indices);
         let loader = ash::ext::swapchain_maintenance1::Device::new(
-            &self.device.instance.instance,
-            &self.device.device,
+            &self.device.core.instance.instance,
+            &self.device.core.device,
         );
         let _wsi = self.wsi.lock();
         self.surface_call(|| unsafe { loader.release_swapchain_images(&info) })
@@ -1250,17 +1257,17 @@ impl Swapchain {
         }
         let native = self
             .device
+            .queues
             .timelines
-            .with_queue(self.device.queue_id(self.device.queue)?, || {
-                Ok(unsafe { self.loader.queue_present(self.device.queue, &info) })
+            .with_queue(self.device.queue_id(self.device.queues.primary)?, || {
+                Ok(unsafe { self.loader.queue_present(self.device.queues.primary, &info) })
             })?;
-        let result = self.inner.write().finish_present(
-            &mut presentation.progress.lock(),
-            has_fence,
-            native,
-        );
+        let result =
+            self.inner
+                .write()
+                .finish_present(&mut presentation.progress.lock(), has_fence, native);
         if result.as_ref().is_err_and(Error::is_device_lost) {
-            self.device.timelines.mark_device_lost();
+            self.device.queues.timelines.mark_device_lost();
         }
         self.surface.observe(&result);
         result
@@ -1296,7 +1303,7 @@ impl Drop for Swapchain {
         }
         unsafe {
             for view in self.views.drain(..) {
-                self.device.device.destroy_image_view(view, None);
+                self.device.core.device.destroy_image_view(view, None);
             }
             if self.handle != vk::SwapchainKHR::null() {
                 self.loader.destroy_swapchain(self.handle, None);
@@ -1326,7 +1333,10 @@ impl SwapchainImageLease {
         // Swapchain::present retires the generation on every failed operation;
         // its caller handles a rejected wait independently from this image lease.
         self.released = true;
-        if result.as_ref().is_ok_and(|&present| present || self.suboptimal) {
+        if result
+            .as_ref()
+            .is_ok_and(|&present| present || self.suboptimal)
+        {
             self.swapchain.note_suboptimal();
         }
         result.map(|present| present || self.suboptimal)
@@ -1480,7 +1490,7 @@ impl ImagePresentation {
     }
     fn finish_gpu_use(&self, timeout: u64) -> Result<()> {
         let after = self.progress.lock().gpu_use;
-        self.device.timelines.wait(&after, timeout)
+        self.device.queues.timelines.wait(&after, timeout)
     }
     fn poll(&self) -> Result<()> {
         self.progress
@@ -1493,8 +1503,9 @@ impl ImagePresentation {
             .prepare_with(&DeviceFenceOperations(&self.device), self.fence, timeout)
     }
     fn new(device: Arc<Device>) -> Result<Self> {
-        let rendered = wsi_call(&device.timelines, || unsafe {
+        let rendered = wsi_call(&device.queues.timelines, || unsafe {
             device
+                .core
                 .device
                 .create_semaphore(&vk::SemaphoreCreateInfo::default(), None)
         })?;
@@ -1502,15 +1513,16 @@ impl ImagePresentation {
             .caps()
             .is_enabled(crate::device::Feature::SwapchainMaintenance1)
         {
-            match wsi_call(&device.timelines, || unsafe {
+            match wsi_call(&device.queues.timelines, || unsafe {
                 device
+                    .core
                     .device
                     .create_fence(&vk::FenceCreateInfo::default(), None)
             }) {
                 Ok(fence) => fence,
                 Err(error) => {
                     unsafe {
-                        device.device.destroy_semaphore(rendered, None);
+                        device.core.device.destroy_semaphore(rendered, None);
                     }
                     return Err(error);
                 }
@@ -1541,9 +1553,12 @@ impl Drop for ImagePresentation {
             return;
         }
         unsafe {
-            self.device.device.destroy_semaphore(self.rendered, None);
+            self.device
+                .core
+                .device
+                .destroy_semaphore(self.rendered, None);
             if self.fence != vk::Fence::null() {
-                self.device.device.destroy_fence(self.fence, None);
+                self.device.core.device.destroy_fence(self.fence, None);
             }
         }
     }
@@ -1601,34 +1616,37 @@ impl FrameSlotState {
 }
 impl FrameSemaphores {
     fn new(device: Arc<Device>) -> Result<Self> {
-        let acquired = wsi_call(&device.timelines, || unsafe {
+        let acquired = wsi_call(&device.queues.timelines, || unsafe {
             device
+                .core
                 .device
                 .create_semaphore(&vk::SemaphoreCreateInfo::default(), None)
         })?;
-        let acquire_ready = match wsi_call(&device.timelines, || unsafe {
+        let acquire_ready = match wsi_call(&device.queues.timelines, || unsafe {
             device
+                .core
                 .device
                 .create_fence(&vk::FenceCreateInfo::default(), None)
         }) {
             Ok(value) => value,
             Err(error) => {
                 unsafe {
-                    device.device.destroy_semaphore(acquired, None);
+                    device.core.device.destroy_semaphore(acquired, None);
                 }
                 return Err(error);
             }
         };
-        let fence = match wsi_call(&device.timelines, || unsafe {
+        let fence = match wsi_call(&device.queues.timelines, || unsafe {
             device
+                .core
                 .device
                 .create_fence(&vk::FenceCreateInfo::default(), None)
         }) {
             Ok(value) => value,
             Err(error) => {
                 unsafe {
-                    device.device.destroy_fence(acquire_ready, None);
-                    device.device.destroy_semaphore(acquired, None);
+                    device.core.device.destroy_fence(acquire_ready, None);
+                    device.core.device.destroy_semaphore(acquired, None);
                 }
                 return Err(error);
             }
@@ -1672,8 +1690,9 @@ impl Drop for FrameSemaphores {
                 if !state.submitted {
                     return Ok(());
                 }
-                wsi_call(&self.device.timelines, || unsafe {
+                wsi_call(&self.device.queues.timelines, || unsafe {
                     self.device
+                        .core
                         .device
                         .wait_for_fences(&[self.fence], true, ACQUIRE_TIMEOUT_NS)
                 })
@@ -1687,9 +1706,15 @@ impl Drop for FrameSemaphores {
             return;
         }
         unsafe {
-            self.device.device.destroy_fence(self.fence, None);
-            self.device.device.destroy_fence(self.acquire_ready, None);
-            self.device.device.destroy_semaphore(self.acquired, None);
+            self.device.core.device.destroy_fence(self.fence, None);
+            self.device
+                .core
+                .device
+                .destroy_fence(self.acquire_ready, None);
+            self.device
+                .core
+                .device
+                .destroy_semaphore(self.acquired, None);
         }
     }
 }
@@ -1769,8 +1794,12 @@ impl AcquiredImageLease {
     /// retained. Acquisition and present remain owned by the linear WSI lease.
     pub(crate) fn texture(&self) -> Result<Arc<super::texture::Texture>> {
         let chain = &self.swapchain;
-        let desc = super::texture::TextureDesc::new_2d(chain.extent.width, chain.extent.height, chain.format)
-            .usage(chain.usage);
+        let desc = super::texture::TextureDesc::new_2d(
+            chain.extent.width,
+            chain.extent.height,
+            chain.format,
+        )
+        .usage(chain.usage);
         Ok(Arc::new(super::texture::Texture::from_swapchain_image(
             chain.clone(),
             self.image(),
@@ -1852,11 +1881,11 @@ impl AcquiredImageLease {
         source: vk::PipelineStageFlags,
     ) -> Result<VulkanCommandBuffer> {
         let chain = &self.swapchain;
-        let pool = wsi_call(&chain.device.timelines, || {
+        let pool = wsi_call(&chain.device.queues.timelines, || {
             VulkanCommandPool::new(chain.device.clone())
         })?;
-        let mut command = wsi_call(&chain.device.timelines, || pool.allocate())?;
-        wsi_call(&chain.device.timelines, || command.begin())?;
+        let mut command = wsi_call(&chain.device.queues.timelines, || pool.allocate())?;
+        wsi_call(&chain.device.queues.timelines, || command.begin())?;
         let mut scope = super::barrier::SynchronizationScope::new(
             source,
             vk::PipelineStageFlags::BOTTOM_OF_PIPE,
@@ -1867,7 +1896,7 @@ impl AcquiredImageLease {
                 .new_layout(vk::ImageLayout::PRESENT_SRC_KHR),
         );
         scope.issue_into(&command)?;
-        wsi_call(&chain.device.timelines, || command.end())?;
+        wsi_call(&chain.device.queues.timelines, || command.end())?;
         Ok(command)
     }
     /// Return an image whose acquire semaphore was already consumed by a
@@ -1910,7 +1939,7 @@ impl AcquiredImageLease {
         if !Arc::ptr_eq(&command.pool.device, &chain.device) {
             return Err(Error::invalid_usage("呈现命令来自其他设备"));
         }
-        if command.pool.family != chain.device.queue_family {
+        if command.pool.family != chain.device.queues.primary_family {
             return Err(Error::invalid_usage("呈现命令的命令池不属于呈现队列族"));
         }
         command.retain_object(chain.clone())?;
@@ -1926,8 +1955,8 @@ impl AcquiredImageLease {
                 return Err(error);
             }
             let fence = self.sync.fence;
-            if let Err(error) = wsi_call(&device.timelines, || unsafe {
-                device.device.reset_fences(&[fence])
+            if let Err(error) = wsi_call(&device.queues.timelines, || unsafe {
+                device.core.device.reset_fences(&[fence])
             }) {
                 self.recover_on_drop &= !error.is_device_lost();
                 return Err(error);
@@ -1940,7 +1969,7 @@ impl AcquiredImageLease {
             vk::Fence::null()
         };
         for point in dependencies.points() {
-            waits.push(device.timelines.semaphore(point.queue)?);
+            waits.push(device.queues.timelines.semaphore(point.queue)?);
             wait_values.push(point.value);
             stages.push(dependency_stage);
         }
@@ -1954,9 +1983,9 @@ impl AcquiredImageLease {
             super::command_buffer::prepare_submission_states(
                 &[&command],
                 &uses,
-                device.queue_id(device.queue)?,
-                device.queue_family,
-                &device.allocator_stats,
+                device.queue_id(device.queues.primary)?,
+                device.queues.primary_family,
+                &device.memory.stats,
             )?
         };
         let mut prepared = [super::submit::PreparedSubmit {
@@ -1967,8 +1996,12 @@ impl AcquiredImageLease {
             signal_semaphores: signals.into_iter().collect(),
             signal_values: [0].into_iter().collect(),
         }];
-        device.add_timeline_waits(device.queue, &mut prepared, &native_states.dependencies())?;
-        let point = match device.submit_prepared(device.queue, &prepared, fence) {
+        device.add_timeline_waits(
+            device.queues.primary,
+            &mut prepared,
+            &native_states.dependencies(),
+        )?;
+        let point = match device.submit_prepared(device.queues.primary, &prepared, fence) {
             Ok(point) => point,
             Err(error) => {
                 if error.is_device_lost() {
@@ -2071,7 +2104,7 @@ impl PresentTicket {
         self.wait(timeout)?;
         let device = &self.swapchain.device;
         let point = device.submit_prepared(
-            device.queue,
+            device.queues.primary,
             &[super::submit::PreparedSubmit {
                 commands: Default::default(),
                 wait_semaphores: [self.presentation.rendered].into_iter().collect(),
@@ -2086,7 +2119,7 @@ impl PresentTicket {
             .progress
             .lock()
             .record_gpu_submission(point);
-        device.timelines.wait(&point.into(), timeout)?;
+        device.queues.timelines.wait(&point.into(), timeout)?;
         if device
             .caps()
             .is_enabled(crate::device::Feature::SwapchainMaintenance1)
@@ -2100,10 +2133,15 @@ impl PresentTicket {
     }
     /// Wait only for rendering. This does not authorize present semaphore reuse.
     pub fn wait(&self, timeout: u64) -> Result<()> {
-        self.sync.device.timelines.wait(&self.point.into(), timeout)
+        self.sync
+            .device
+            .queues
+            .timelines
+            .wait(&self.point.into(), timeout)
     }
     pub fn is_complete(&self) -> Result<bool> {
-        Ok(crate::sync::SyncSet::from(self.point).is_reached(&self.sync.device.timelines.poll()?))
+        Ok(crate::sync::SyncSet::from(self.point)
+            .is_reached(&self.sync.device.queues.timelines.poll()?))
     }
     /// Without maintenance1, a newer acquisition fence proves presentation
     /// completion. Shutdown never treats queue-idle as presentation completion.
@@ -2178,7 +2216,11 @@ mod tests {
             Err(Error::Vulkan(vk::Result::NOT_READY))
         ));
         let mut progress = PresentProgress::default();
-        assert!(!state.finish_present(&mut progress, true, Ok(false)).unwrap());
+        assert!(
+            !state
+                .finish_present(&mut progress, true, Ok(false))
+                .unwrap()
+        );
         state.return_acquisition(true);
         assert!(state.can_replace());
         state.fullscreen.status.focused = true;
@@ -2904,15 +2946,27 @@ mod tests {
             current_transform: transform,
             ..Default::default()
         };
-        assert!(!suboptimal_requires_recreate(&caps(64, identity), extent, identity));
-        assert!(suboptimal_requires_recreate(&caps(65, identity), extent, identity));
+        assert!(!suboptimal_requires_recreate(
+            &caps(64, identity),
+            extent,
+            identity
+        ));
+        assert!(suboptimal_requires_recreate(
+            &caps(65, identity),
+            extent,
+            identity
+        ));
         assert!(suboptimal_requires_recreate(
             &caps(64, vk::SurfaceTransformFlagsKHR::ROTATE_90),
             extent,
             identity
         ));
         // Window-defined extent: only an explicit resize retires the chain.
-        assert!(!suboptimal_requires_recreate(&caps(u32::MAX, identity), extent, identity));
+        assert!(!suboptimal_requires_recreate(
+            &caps(u32::MAX, identity),
+            extent,
+            identity
+        ));
     }
 }
 

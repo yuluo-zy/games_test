@@ -19,10 +19,10 @@ impl TimelineSemaphore {
             .initial_value(initial);
         let info = vk::SemaphoreCreateInfo::default().push_next(&mut timeline);
         let memory =
-            super::allocator::reserve_shared_cpu_metadata::<Self>(&device.allocator_stats, 0)?;
-        let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.allocator_stats)?;
+            super::allocator::reserve_shared_cpu_metadata::<Self>(&device.memory.stats, 0)?;
+        let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.memory.stats)?;
         let handle = super::error::observe_vulkan(&device, unsafe {
-            device.device.create_semaphore(&info, None)
+            device.core.device.create_semaphore(&info, None)
         })?;
         Ok(Arc::new(Self {
             handle,
@@ -41,9 +41,9 @@ impl TimelineSemaphore {
             return Err(crate::Error::DeviceLost);
         }
         let memory =
-            super::allocator::reserve_shared_cpu_metadata::<Self>(&device.allocator_stats, 0)?;
-        let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.allocator_stats)?;
-        let handle = device.timelines.semaphore(queue)?;
+            super::allocator::reserve_shared_cpu_metadata::<Self>(&device.memory.stats, 0)?;
+        let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.memory.stats)?;
+        let handle = device.queues.timelines.semaphore(queue)?;
         Ok(Arc::new(Self {
             handle,
             last_use: crate::resource::SyncCell::for_device(device.generation())
@@ -58,10 +58,18 @@ impl TimelineSemaphore {
             return Err(crate::Error::DeviceLost);
         }
         if let Some(queue) = self.queue {
-            return self.device.timelines.poll().map(|done| done.get(queue));
+            return self
+                .device
+                .queues
+                .timelines
+                .poll()
+                .map(|done| done.get(queue));
         }
         super::error::observe_vulkan(&self.device, unsafe {
-            self.device.device.get_semaphore_counter_value(self.handle)
+            self.device
+                .core
+                .device
+                .get_semaphore_counter_value(self.handle)
         })
     }
     pub fn wait(&self, value: u64, timeout: u64) -> crate::Result<()> {
@@ -69,7 +77,7 @@ impl TimelineSemaphore {
             return Err(crate::Error::DeviceLost);
         }
         if let Some(queue) = self.queue {
-            return self.device.timelines.wait(
+            return self.device.queues.timelines.wait(
                 &crate::sync::SyncSet::from_point(crate::sync::SyncPoint { queue, value }),
                 timeout,
             );
@@ -80,7 +88,7 @@ impl TimelineSemaphore {
             .semaphores(&semaphores)
             .values(&values);
         super::error::observe_vulkan(&self.device, unsafe {
-            self.device.device.wait_semaphores(&info, timeout)
+            self.device.core.device.wait_semaphores(&info, timeout)
         })
     }
 }

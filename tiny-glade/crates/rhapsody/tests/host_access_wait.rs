@@ -15,7 +15,7 @@ use std::sync::Arc;
 fn signal(gate: &TimelineSemaphore) {
     unsafe {
         gate.device
-            .device
+            .raw_device()
             .signal_semaphore(
                 &vk::SemaphoreSignalInfo::default()
                     .semaphore(gate.handle)
@@ -47,15 +47,15 @@ fn bounded_host_wait_times_out_and_completes_after_the_gpu_finishes() {
     command.begin().unwrap();
     unsafe {
         device
-            .device
+            .raw_device()
             .cmd_fill_buffer(command.handle, buffer.handle, 0, 256, 0x0101_0101);
     }
     command.end().unwrap();
     let pending = command
         .submit_to(
             rhapsody::raw::device::DeviceQueue {
-                handle: device.queue,
-                family: device.queue_family,
+                handle: device.primary_queue(),
+                family: device.queue_family_index(),
                 index: 0,
             },
             &[(gate.clone(), 1, vk::PipelineStageFlags::ALL_COMMANDS)],

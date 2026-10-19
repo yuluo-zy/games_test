@@ -333,9 +333,10 @@ impl BindlessHeap {
         let mut properties = vk::PhysicalDeviceProperties2::default().push_next(&mut indexing);
         unsafe {
             device
+                .core
                 .instance
                 .instance
-                .get_physical_device_properties2(device.physical, &mut properties);
+                .get_physical_device_properties2(device.core.physical, &mut properties);
         }
         let limits = [
             indexing
@@ -366,7 +367,8 @@ impl BindlessHeap {
         let host_bytes = crate::raw::allocator::shared_cpu_bytes::<Self>()?
             + u64::from(total) * (std::mem::size_of::<Slot>() + std::mem::size_of::<u32>()) as u64;
         let mut slot_memory = device
-            .allocator_stats
+            .memory
+            .stats
             .reserve_cpu_bytes(host_bytes, crate::device::BudgetCategory::Live)?;
         let slots = Slots::new(counts)?;
         slot_memory.resize(slots.host_bytes()?)?;
@@ -422,12 +424,12 @@ impl BindlessHeap {
         if !self.slots.lock().has_free(kind) {
             self.collect()?;
         }
-        let memory = self.device.allocator_stats.reserve_cpu_bytes(
+        let memory = self.device.memory.stats.reserve_cpu_bytes(
             crate::raw::allocator::shared_cpu_bytes::<BindlessLease>()?,
             crate::device::BudgetCategory::Live,
         )?;
         let last_use =
-            SyncCell::for_device_budgeted(self.device.generation(), &self.device.allocator_stats)?;
+            SyncCell::for_device_budgeted(self.device.generation(), &self.device.memory.stats)?;
         let index = self.slots.lock().allocate(kind)?;
         Ok(Arc::new(BindlessLease {
             heap: self.clone(),
@@ -519,7 +521,7 @@ impl BindlessHeap {
             .buffer_info(&info)];
         let _update = self.slots.lock();
         unsafe {
-            self.device.device.update_descriptor_sets(&write, &[]);
+            self.device.core.device.update_descriptor_sets(&write, &[]);
         }
         Ok(lease)
     }
@@ -568,7 +570,7 @@ impl BindlessHeap {
             .image_info(&info)];
         let _update = self.slots.lock();
         unsafe {
-            self.device.device.update_descriptor_sets(&write, &[]);
+            self.device.core.device.update_descriptor_sets(&write, &[]);
         }
         Ok(lease)
     }
@@ -591,7 +593,7 @@ impl BindlessHeap {
             .image_info(&info)];
         let _update = self.slots.lock();
         unsafe {
-            self.device.device.update_descriptor_sets(&write, &[]);
+            self.device.core.device.update_descriptor_sets(&write, &[]);
         }
         Ok(lease)
     }
@@ -695,7 +697,7 @@ impl BindlessHeap {
             }
         }
         unsafe {
-            self.device.device.cmd_bind_descriptor_sets(
+            self.device.core.device.cmd_bind_descriptor_sets(
                 command.handle,
                 pipeline.point,
                 pipeline.layout.handle,
@@ -745,7 +747,7 @@ impl BindlessHeap {
             }
         }
         unsafe {
-            self.device.device.cmd_bind_descriptor_sets(
+            self.device.core.device.cmd_bind_descriptor_sets(
                 vk::CommandBuffer::from_raw(context.command.handle()),
                 pipeline.point,
                 pipeline.layout.handle,

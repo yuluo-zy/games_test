@@ -24,7 +24,7 @@ impl SignalOnDrop {
     fn release(&mut self) {
         if self.armed {
             let result = unsafe {
-                self.semaphore.device.device.signal_semaphore(
+                self.semaphore.device.raw_device().signal_semaphore(
                     &vk::SemaphoreSignalInfo::default()
                         .semaphore(self.semaphore.handle)
                         .value(1),
@@ -32,7 +32,7 @@ impl SignalOnDrop {
             };
             self.armed = false;
             if result == Err(vk::Result::ERROR_DEVICE_LOST) {
-                self.semaphore.device.timelines.mark_device_lost();
+                self.semaphore.device.timelines().mark_device_lost();
             }
             result.unwrap();
         }
@@ -43,14 +43,14 @@ impl Drop for SignalOnDrop {
         // Always unblock real work before assertion unwinding can drop Device.
         if self.armed {
             let result = unsafe {
-                self.semaphore.device.device.signal_semaphore(
+                self.semaphore.device.raw_device().signal_semaphore(
                     &vk::SemaphoreSignalInfo::default()
                         .semaphore(self.semaphore.handle)
                         .value(1),
                 )
             };
             if result == Err(vk::Result::ERROR_DEVICE_LOST) {
-                self.semaphore.device.timelines.mark_device_lost();
+                self.semaphore.device.timelines().mark_device_lost();
             }
         }
     }
@@ -73,7 +73,7 @@ fn fixture(api: SubmissionApi) -> Option<(Arc<Device>, ValidationMessenger)> {
                     ..DeviceConfig::headless()
                 },
             )?;
-            let validation = ValidationMessenger::new(&device.instance)?;
+            let validation = ValidationMessenger::new(device.instance())?;
             rhapsody::Result::Ok((device, validation))
         })(),
     )
@@ -105,9 +105,9 @@ fn blocked_fill(
     command.begin().unwrap();
     unsafe {
         device
-            .device
+            .raw_device()
             .cmd_fill_buffer(command.handle, buffer.handle, 0, span, 0x44332211);
-        device.device.cmd_pipeline_barrier(
+        device.raw_device().cmd_pipeline_barrier(
             command.handle,
             vk::PipelineStageFlags::TRANSFER,
             vk::PipelineStageFlags::HOST,
@@ -128,8 +128,8 @@ fn blocked_fill(
     let pending = command
         .submit_to(
             DeviceQueue {
-                handle: device.queue,
-                family: device.queue_family,
+                handle: device.primary_queue(),
+                family: device.queue_family_index(),
                 index: 0,
             },
             &[(gate, 1, vk::PipelineStageFlags::ALL_COMMANDS)],
@@ -235,11 +235,11 @@ fn metadata_admission_failure_stays_on_the_command_and_publishes_no_completion_p
     for generic in [false, true] {
         let mut command = pool.allocate().unwrap();
         command.begin().unwrap();
-        let submitted = device.timelines.submitted(queue).unwrap();
-        let before = device.allocator_stats.cpu_memory_usage();
+        let submitted = device.timelines().submitted(queue).unwrap();
+        let before = device.allocator_stats().cpu_memory_usage();
         device
-            .allocator_stats
-            .set_total_budget(device.allocator_stats.budget_usage().total() + 1)
+            .allocator_stats()
+            .set_total_budget(device.allocator_stats().budget_usage().total() + 1)
             .unwrap();
         if generic {
             assert!(matches!(
@@ -252,11 +252,11 @@ fn metadata_admission_failure_stays_on_the_command_and_publishes_no_completion_p
                 Err(Error::OutOfHostMemory)
             ));
         }
-        device.allocator_stats.set_total_budget(u64::MAX).unwrap();
+        device.allocator_stats().set_total_budget(u64::MAX).unwrap();
         assert!(matches!(command.end(), Err(Error::OutOfHostMemory)));
         assert!(matches!(command.end(), Err(Error::OutOfHostMemory)));
-        assert_eq!(device.timelines.submitted(queue).unwrap(), submitted);
-        assert_eq!(device.allocator_stats.cpu_memory_usage(), before);
+        assert_eq!(device.timelines().submitted(queue).unwrap(), submitted);
+        assert_eq!(device.allocator_stats().cpu_memory_usage(), before);
         drop(command);
         buffer.write_bytes_unsynchronized(0, &[1; 4]).unwrap();
     }

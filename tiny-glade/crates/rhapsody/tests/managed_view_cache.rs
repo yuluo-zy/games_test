@@ -22,7 +22,7 @@ impl Release {
     fn signal(&mut self) -> rhapsody::Result<()> {
         if !self.1 {
             unsafe {
-                self.0.device.device.signal_semaphore(
+                self.0.device.raw_device().signal_semaphore(
                     &vk::SemaphoreSignalInfo::default()
                         .semaphore(self.0.handle)
                         .value(1),
@@ -44,7 +44,7 @@ fn view_cache_rejects_held_and_pending_views_then_reuses_completed_capacity() {
     let mut desc = TextureDesc::new_2d_array(16, 16, 16, vk::Format::R8G8B8A8_UNORM).sampled();
     desc.mip_levels = 2;
     let texture = device.create_texture(&desc, "bounded views", ()).unwrap();
-    let cache_before = device.allocator_stats.cpu_memory_usage().cache;
+    let cache_before = device.allocator_stats().cpu_memory_usage().cache;
     let mut descriptors = Vec::new();
     for mip in 0..2 {
         for first in 0..16 {
@@ -64,7 +64,7 @@ fn view_cache_rejects_held_and_pending_views_then_reuses_completed_capacity() {
         held.push(texture.view(Some(descriptor)).unwrap());
     }
     let observers: Vec<_> = held.iter().map(|view| Arc::downgrade(&view.view)).collect();
-    let cache_full = device.allocator_stats.cpu_memory_usage().cache;
+    let cache_full = device.allocator_stats().cpu_memory_usage().cache;
     assert!(cache_full > cache_before);
     let extra = &descriptors[MAX_CACHED_TEXTURE_VIEWS];
     assert!(matches!(
@@ -90,8 +90,8 @@ fn view_cache_rejects_held_and_pending_views_then_reuses_completed_capacity() {
     let pending = command
         .submit_to(
             rhapsody::raw::device::DeviceQueue {
-                handle: device.queue,
-                family: device.queue_family,
+                handle: device.primary_queue(),
+                family: device.queue_family_index(),
                 index: 0,
             },
             &[(blocker, 1, vk::PipelineStageFlags::ALL_COMMANDS)],
@@ -106,7 +106,7 @@ fn view_cache_rejects_held_and_pending_views_then_reuses_completed_capacity() {
     // next rejection independently exercises last_use rather than Arc counts.
     assert!(observers.iter().all(|view| view.strong_count() == 1));
     drop(observers);
-    assert!(!device.timelines.is_reached(&point.into()).unwrap());
+    assert!(!device.timelines().is_reached(&point.into()).unwrap());
     assert!(matches!(
         texture.view(Some(extra)),
         Err(rhapsody::Error::Timeout)
@@ -114,19 +114,22 @@ fn view_cache_rejects_held_and_pending_views_then_reuses_completed_capacity() {
     assert_eq!(texture.cached_view_count(), MAX_CACHED_TEXTURE_VIEWS);
     release.signal().unwrap();
     device
-        .timelines
+        .timelines()
         .wait(&point.into(), 10_000_000_000)
         .unwrap();
     pool.trim_cpu_scratch();
     device.try_collect_all_completed().unwrap();
     let admitted = texture.view(Some(extra)).unwrap();
     assert_eq!(texture.cached_view_count(), MAX_CACHED_TEXTURE_VIEWS);
-    assert_eq!(device.allocator_stats.cpu_memory_usage().cache, cache_full);
+    assert_eq!(
+        device.allocator_stats().cpu_memory_usage().cache,
+        cache_full
+    );
     drop(admitted);
     drop(texture);
     device.try_collect_all_completed().unwrap();
     assert_eq!(
-        device.allocator_stats.cpu_memory_usage().cache,
+        device.allocator_stats().cpu_memory_usage().cache,
         cache_before
     );
 }
@@ -135,16 +138,16 @@ fn metadata_budget_rejects_view_before_cache_or_native_publication() {
     let Some(device) = device() else { return };
     let desc = TextureDesc::new_2d(4, 4, vk::Format::R8G8B8A8_UNORM).sampled();
     let texture = device.create_texture(&desc, "view quota", ()).unwrap();
-    let before = device.allocator_stats.cpu_memory_usage();
-    let total = device.allocator_stats.cpu_memory_usage().total();
-    device.allocator_stats.set_host_budget(total + 1).unwrap();
+    let before = device.allocator_stats().cpu_memory_usage();
+    let total = device.allocator_stats().cpu_memory_usage().total();
+    device.allocator_stats().set_host_budget(total + 1).unwrap();
     assert!(matches!(
         texture.view(None),
         Err(rhapsody::Error::OutOfHostMemory)
     ));
     assert_eq!(texture.cached_view_count(), 0);
-    assert_eq!(device.allocator_stats.cpu_memory_usage(), before);
-    device.allocator_stats.set_total_budget(u64::MAX).unwrap();
+    assert_eq!(device.allocator_stats().cpu_memory_usage(), before);
+    device.allocator_stats().set_total_budget(u64::MAX).unwrap();
     let canonical = texture.view(None).unwrap();
     let explicit = texture
         .view(Some(&TextureViewDesc::new(&desc).unwrap()))

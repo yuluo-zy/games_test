@@ -270,7 +270,7 @@ pub fn run_big_graph(
             let cb = vk::CommandBuffer::from_raw(ctx.command.handle());
             unsafe {
                 device
-                    .device
+                    .raw_device()
                     .cmd_fill_buffer(cb, buffer.raw(), 0, vk::WHOLE_SIZE, word)
             };
             true
@@ -294,7 +294,7 @@ pub fn run_big_graph(
 
             let cb = vk::CommandBuffer::from_raw(ctx.command.handle());
             unsafe {
-                device.device.cmd_copy_buffer(
+                device.raw_device().cmd_copy_buffer(
                     cb,
                     from.raw(),
                     to.raw(),
