@@ -1,0 +1,145 @@
+--- tiny-glade/crates/systems/decorator/src/decorator_visual_state.rs
++++ tiny-glade/crates/systems/decorator/src/decorator_visual_state.rs
+@@ -45,16 +45,39 @@
+ //!
+ //! # U 登记
+ //!
+-//! - PDB 另有命名实体 `system_decorator::decorator_visual_state::ClothInfo`
+-//!   （被 `decorator_visual::generate_clothline::generate_clothline_visuals`
+-//!   以 `Box<ClothInfo>` / `Option<Box<ClothInfo>>` / `Iter<ClothInfo>` 消费）。
+-//!   其字段/布局在 PDB 为 unknown，`decomp-0x1407e5190` 未保留类型名；
+-//!   本文件不编造字段（U，交付登记）。
++//! - `ClothInfo` 的 PDB 字段声明仍未知；2026-10-20 的有界 B 原证已从两窗口
++//!   producer、180 B Option<Box<ClothInfo>> equality、434 B typed iterator fold
++//!   和全局 owner 生命周期恢复下方语义字段。它不是 WallFlagCloth 或 Nani
++//!   ClothlineCloth。原生分配 80 B/align16 不作为宿主 raw ABI 承诺。
++//! - 同一资源首 Vec 由 fullvisual 0x140827910 每帧清长度后，从所有当前蓝图
++//!   typed Box 按值克隆（发生在 differential gate 前）；clothline 原系统随后
++//!   读取它。当前窗口 producer/clothline/卸载宿主仍需各自接通，字段本身不代表
++//!   已有非空真实场景输入。证据见本任务 cloth-contract-v1/DESIGN_MANIFEST_V1.json。
+ //! - 持久表 sealed 字段的精确宽度：seal 写入为 8 B、add 读 bit0、seal 判 `!=1`；
+ //!   本实现以 `u8` 承载已观察语义（值域 {0,1}），宽度差异不影响判别。
+ 
+ use bevy_ecs::prelude::*;
++use country_core::resources::walls::decorator::DecoratorId;
++use country_core::resources::walls::WallId;
++use country_core::utils::components::transform::Transform;
+ use std::collections::HashMap;
++
++/// 窗口蓝图提供的布绳候选值；由同一全局 VisualState 首 Vec 持有。
++///
++/// B 0x1407ee313 / 0x1407f7e93 创建 `Box<ClothInfo>`；有效字段为 Transform
++/// （rotation@0, translation@0x10, scale@0x1c）、WallId@0x30、两个 float
++/// @0x38/0x3c、DecoratorId@0x40。原分配 80 B 对齐 16；不复制未知 padding。
++/// `dimensions` 保持原 pair 顺序，未推定原字段名或 width/height 次序。
++///
++/// B equality 0x140825090 对所有 12 个 float 使用 ordered equality：NaN 不等，
++/// 正负零相等；没有 Some Box 指针身份快捷路径。值克隆没有嵌套所有权。
++#[derive(Clone, Debug, PartialEq)]
++pub struct ClothInfo {
++    pub transform: Transform,
++    pub wall: WallId,
++    pub dimensions: [f32; 2],
++    pub decorator_id: DecoratorId,
++}
+ 
+ /// 持久视觉实体集合（B 表值 0x20 B：`{sealed u8 @0, pad, Vec<Entity> @+0x08}`；
+ /// 桶 0x28 B = `{key u32, pad, 本值}`）。PDB `enum2$`，消费方展平 `&[Entity]`。
+@@ -190,9 +213,12 @@
+     }
+ }
+ 
+-/// 装饰视觉状态（持久 + 瞬时；`seal` 面 O；行 114 Clone/PartialEq）。
++/// 同一装饰视觉状态 owner：布绳候选首 Vec、持久表和瞬时表。
+ #[derive(Resource, Clone, Debug, Default, PartialEq)]
+ pub struct DecoratorVisualState {
++    /// B 首 Vec<ClothInfo>：plugin 初始为空；fullvisual 每帧 clear 后重填。
++    /// clear 不触及另外两张实体表；glade unload 原路径替换整个 Default owner。
++    pub cloth_infos: Vec<ClothInfo>,
+     /// 持久视觉（seal 语义）。
+     pub persistent: DecoratorPersistentVisualState,
+     /// 瞬时视觉（drain 语义）。
+@@ -227,6 +253,83 @@
+ 
+     fn entity(raw: u32) -> Entity {
+         Entity::from_raw(raw)
++    }
++
++    fn cloth_info(lanes: [f32; 12]) -> ClothInfo {
++        ClothInfo {
++            transform: Transform {
++                rotation: glam::Quat::from_array([lanes[0], lanes[1], lanes[2], lanes[3]]),
++                translation: glam::Vec3::new(lanes[4], lanes[5], lanes[6]),
++                scale: glam::Vec3::new(lanes[7], lanes[8], lanes[9]),
++            },
++            wall: WallId(0x1234_5678_90ab_cdef),
++            dimensions: [lanes[10], lanes[11]],
++            decorator_id: DecoratorId(37),
++        }
++    }
++
++    #[test]
++    fn cloth_value_clone_and_all_identity_fields_participate_in_eq() {
++        let value = cloth_info([0.1, 0.2, 0.3, 0.4, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]);
++        assert_eq!(value, value.clone());
++        let mut other = value.clone();
++        other.wall = WallId(value.wall.0 + 1);
++        assert_ne!(value, other);
++        let mut other = value.clone();
++        other.decorator_id = DecoratorId(value.decorator_id.0 + 1);
++        assert_ne!(value, other);
++        for lane in 0..2 {
++            let mut other = value.clone();
++            other.dimensions[lane] += 1.0;
++            assert_ne!(value, other);
++        }
++    }
++
++    #[test]
++    fn cloth_eq_rejects_nan_in_every_native_compared_float_lane() {
++        for lane in 0..12 {
++            let mut lanes = [1.0; 12];
++            lanes[lane] = f32::NAN;
++            let value = cloth_info(lanes);
++            // The original Some/Some helper compares values even for one Box.
++            assert_ne!(value, value.clone(), "native float lane {lane}");
++        }
++    }
++
++    #[test]
++    fn cloth_eq_treats_positive_and_negative_zero_as_equal() {
++        let positive = cloth_info([0.0; 12]);
++        for lane in 0..12 {
++            let mut lanes = [0.0; 12];
++            lanes[lane] = -0.0;
++            assert_eq!(positive, cloth_info(lanes), "native float lane {lane}");
++        }
++    }
++
++    #[test]
++    fn same_global_owner_keeps_entity_maps_and_independent_cloth_values() {
++        let mut world = World::new();
++        world.init_resource::<DecoratorVisualState>();
++        let mut source = Box::new(cloth_info([1.0; 12]));
++        {
++            let mut visual = world.resource_mut::<DecoratorVisualState>();
++            assert!(visual.cloth_infos.is_empty());
++            assert!(visual.persistent.entries.is_empty());
++            assert!(visual.transient.entities.is_empty());
++            visual.persistent.add_decorator_visual_entity(37, entity(10));
++            visual.transient.add_decorator_visual_entity(37, entity(20));
++            visual.cloth_infos.push((*source).clone());
++            source.dimensions[0] = 9.0;
++            assert_eq!(visual.cloth_infos[0].dimensions, [1.0, 1.0]);
++            // Shared-state unit boundary only; actual fullvisual owns its clear/copy call.
++            visual.cloth_infos.clear();
++            visual.cloth_infos.push((*source).clone());
++        }
++        let visual = world.resource::<DecoratorVisualState>();
++        assert_eq!(visual.cloth_infos.len(), 1);
++        assert_eq!(visual.cloth_infos[0].dimensions, [9.0, 1.0]);
++        assert_eq!(visual.persistent_entities_of(37), Some([entity(10)].as_slice()));
++        assert_eq!(visual.transient_entities_of(37), Some([entity(20)].as_slice()));
+     }
+ 
+     #[test]

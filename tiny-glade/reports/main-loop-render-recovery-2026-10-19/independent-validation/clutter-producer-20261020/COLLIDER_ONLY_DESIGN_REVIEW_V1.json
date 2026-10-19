@@ -1,0 +1,31 @@
+{
+  "status": "passed_scoped_business_design_with_explicit_unrecovered_diagnostics",
+  "design_sha256": "8202216debf8ff413fabc7839c91e630179a7d54caa4f35babfbfa6c50f2a8a6",
+  "native_audit": "BLUEPRINT_NATIVE_AUDIT_V1.json SHA0ddb8dea957a696254f69bfa2a0a20db1f24af3e49578461c23895d65408190d",
+  "findings": [
+    "Original complete1009B wrapper uses actual four resource owners; complete6470B helper builds both pending removal sets from actual live collider maps, not previous blueprints.",
+    "Native current/previous pointer compare precedes u138 skip flag. Same Arc allocation clears both pending sets and does not inspect changed fields or upsert. This assumption requires correct original snapshot timing, which is a separate registration gate.",
+    "First tag0 upserts actual source3 with id/storage and actual mesh/pose; first tag1 or2 skips. Second tag0 uses raw interaction flag|4 and upserts, tag1 skips, tag2 panics. Native side-effect order allows first upsert before second invalid-tag failure; no whole-entry prevalidation is permitted.",
+    "Pending removes run first-map then second-map after all current entries, including empty current map. Use canonical core upsert/remove, same world SlotMap receipts and actual per-slot physical handles.",
+    "Native source+selected payload and geometry checks stay in canonical core. Visual Arc identity and physical geometry hash are distinct contracts; do not substitute hash Eq for blueprint identity or force replacement on new Arc alone."
+  ],
+  "implementation_requirements": [
+    "Implement wrapper and helper with actual four required owners, no synthetic geometry/None/default source/non-native success.",
+    "Keep exact failure/partial-side-effect sequence and only consume pending-set key after successful upsert according to result branch.",
+    "Tests use real two maps/world/receipts and actual ColliderDelta: unchanged pointer no delta; shrunk/full slots; removed blueprint/skipflag/Disabled delete; firstUnspecified legal; secondUnspecified fails after first mutation.",
+    "Do not invent snapshot schedule or register whole partial decorator plugin. Original set25 position7 after generation before flush is separate from current/prev copy timing."
+  ],
+  "diagnostics_gap": {
+    "original": "Imported PHYSICS_DEBUG_LOG_ENABLE==1 guards original inserted/replaced/removed/kept/name logs; real original flag owner unavailable in current source.",
+    "accepted_scope": "Business geometry/source/upsert/removal design can proceed with this explicitly listed unimplemented observable side effect.",
+    "not_allowed": [
+      "Decorator-local substitute flag",
+      "Assume initial IAT flag byte is runtimefalse",
+      "Claim full original helper equivalence or logging recovery"
+    ]
+  },
+  "limits": [
+    "Design only; no implementation candidate/typecheck/test execution or production mutation.",
+    "No full visual/holes/cloth/window/tracker consumer, no actual gameplay registration/frame/WSI acceptance."
+  ]
+}

@@ -195,7 +195,76 @@ fn arc_position(points: &[Vec2], coord: CurveInternalCoord) -> f64 {
 }
 
 #[test]
-fn slice_extensions_preserve_zero_distance_and_match_arc_length_arithmetic() {
+fn slice_extensions_follow_original_right_f32_and_left_arc_arithmetic() {
+    // B 1412898e0/921B scalar-instruction lift for the unchanged64 seeded
+    // chains and5 t values. These are lifted expected bits, not a native run.
+    // NaN payload bits are intentionally compared only with is_nan.
+    const RIGHT_ZERO_EXPECTED_BITS: [[u32; 5]; 64] = [
+        [0x7fc00000, 0x7fc00000, 0x7fc00000, 0x7fc00000, 0x7fc00000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x7fc00000, 0x7fc00000, 0x7fc00000, 0x7fc00000, 0x7fc00000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x7fc00000, 0x7fc00000, 0x7fc00000, 0x7fc00000, 0x7fc00000],
+        [0x0, 0x0, 0x3e4cccc8, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4cccc8, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4cccc8, 0x3f000000, 0x3f800000],
+        [0x7fc00000, 0x7fc00000, 0x7fc00000, 0x7fc00000, 0x7fc00000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x7fc00000, 0x7fc00000, 0x7fc00000, 0x7fc00000, 0x7fc00000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4cccc8, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x7fc00000, 0x7fc00000, 0x7fc00000, 0x7fc00000, 0x7fc00000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x7fc00000, 0x7fc00000, 0x7fc00000, 0x7fc00000, 0x7fc00000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x7fc00000, 0x7fc00000, 0x7fc00000, 0x7fc00000, 0x7fc00000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x7fc00000, 0x7fc00000, 0x7fc00000, 0x7fc00000, 0x7fc00000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x7fc00000, 0x7fc00000, 0x7fc00000, 0x7fc00000, 0x7fc00000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x7fc00000, 0x7fc00000, 0x7fc00000, 0x7fc00000, 0x7fc00000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x7fc00000, 0x7fc00000, 0x7fc00000, 0x7fc00000, 0x7fc00000],
+        [0x7fc00000, 0x7fc00000, 0x7fc00000, 0x7fc00000, 0x7fc00000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+        [0x0, 0x0, 0x3e4ccccc, 0x3f000000, 0x3f800000],
+    ];
     let mut random = Generator(0x02e7_5a31_861f_4221);
     for case in 0..64 {
         let mut points = vec![Vec2::ZERO];
@@ -215,7 +284,7 @@ fn slice_extensions_preserve_zero_distance_and_match_arc_length_arithmetic() {
                 t: 1.0,
             },
         );
-        for t in [0.0, 1e-8, 0.2, 0.5, 1.0] {
+        for (t_index, t) in [0.0, 1e-8, 0.2, 0.5, 1.0].into_iter().enumerate() {
             let coord = CurveInternalCoord {
                 segment: case % 12,
                 t,
@@ -231,12 +300,25 @@ fn slice_extensions_preserve_zero_distance_and_match_arc_length_arithmetic() {
                 slice.extend_right(distance);
                 if distance == 0.0 {
                     assert_eq!(slice.start(), coord);
-                    assert_eq!(slice.end(), coord);
+                    let expected_t = f32::from_bits(RIGHT_ZERO_EXPECTED_BITS[case][t_index]);
+                    assert_eq!(slice.end().segment, coord.segment);
+                    if expected_t.is_nan() {
+                        assert!(slice.end().t.is_nan());
+                    } else {
+                        assert_eq!(slice.end().t.to_bits(), expected_t.to_bits());
+                    }
                 }
                 let left = arc_position(&points, slice.start());
                 let right = arc_position(&points, slice.end());
                 assert!((left - (origin - f64::from(distance)).max(0.0)).abs() < 3e-5);
-                assert!((right - (origin + f64::from(distance)).min(total)).abs() < 3e-5);
+                if right.is_nan() {
+                    // Retain every repeated-edge/zero-distance input. The
+                    // original right method writes0/0 instead of an identity.
+                    assert_eq!(distance, 0.0);
+                    assert_eq!(points[coord.segment], points[coord.segment + 1]);
+                } else {
+                    assert!((right - (origin + f64::from(distance)).min(total)).abs() < 3e-5);
+                }
                 let mut split = CurveSlice::<Vec2, _, CurveCoordSemantic2D>::from_coord_range(
                     points.as_slice(),
                     coord,
@@ -247,7 +329,14 @@ fn slice_extensions_preserve_zero_distance_and_match_arc_length_arithmetic() {
                     split.extend_right(distance * 0.5);
                 }
                 assert!((arc_position(&points, split.start()) - left).abs() < 3e-5);
-                assert!((arc_position(&points, split.end()) - right).abs() < 3e-5);
+                if right.is_nan() {
+                    // Keep the original two-half call chain: its second right
+                    // call propagates the NaN residual to the last endpoint.
+                    assert_eq!(split.end(), CurveInternalCoord { segment: points.len() - 2, t: 1.0 });
+                    assert_eq!(arc_position(&points, split.end()), total);
+                } else {
+                    assert!((arc_position(&points, split.end()) - right).abs() < 3e-5);
+                }
             }
         }
     }
@@ -264,11 +353,12 @@ fn slice_extensions_preserve_zero_distance_and_match_arc_length_arithmetic() {
     slice.extend_left(5e-6);
     slice.extend_right(5e-6);
     assert!((slice.start().t - 5e-9).abs() < 1e-15);
-    assert!((slice.end().t - 1.5e-8).abs() < 2e-15);
+    // Original f32 cancellation rounds both1-t and1000-5e-6 back.
+    assert_eq!(slice.end().t.to_bits(), 0.0f32.to_bits());
 }
 
 #[test]
-fn wall_extrapolation_uses_first_and_last_nonzero_segment() {
+fn wall_extrapolation_uses_actual_endpoint_segments_and_original_negative_direction() {
     for repeated_start in 0..8 {
         for repeated_end in 0..8 {
             let mut points = vec![Vec2::ZERO; repeated_start + 1];
@@ -279,15 +369,26 @@ fn wall_extrapolation_uses_first_and_last_nonzero_segment() {
                 let left = WallSpaceCoord::new_unchecked(-distance, 2.0).to_world_space(&curve);
                 let right = WallSpaceCoord::new_unchecked(curve.length + distance, 2.0)
                     .to_world_space(&curve);
-                assert!(left.is_finite() && right.is_finite());
-                assert!(left.distance(Vec3::new(-0.6 * distance, 2.0, -0.8 * distance)) < 1e-5);
-                assert!(
-                    right.distance(Vec3::new(6.0 + 0.6 * distance, 2.0, -0.8 * distance)) < 1e-5
-                );
+                if repeated_start == 0 {
+                    assert!(left.is_finite());
+                    assert!(left.distance(Vec3::new(0.6 * distance, 2.0, 0.8 * distance)) < 1e-5);
+                } else {
+                    // Original actual zero first segment is not skipped.
+                    assert!(left.x.is_nan() && left.y.is_nan() && left.z.is_nan());
+                }
+                if repeated_end == 0 {
+                    assert!(right.is_finite());
+                    assert!(
+                        right.distance(Vec3::new(6.0 + 0.6 * distance, 2.0, -0.8 * distance)) < 1e-5
+                    );
+                } else {
+                    assert!(right.x.is_nan() && right.y.is_nan() && right.z.is_nan());
+                }
             }
         }
     }
-    // Default methods keep pre-existing CurveSampling implementations compatible.
+    // Host custom-domain fixture, not an original shipped Curve2. Preserve its
+    // original input; rawZERO now propagates through both native normalizations.
     struct Stationary;
     impl CurveSampling for Stationary {
         fn length(&self) -> f32 {
@@ -306,10 +407,8 @@ fn wall_extrapolation_uses_first_and_last_nonzero_segment() {
             0.0
         }
     }
-    assert_eq!(
-        WallSpaceCoord::new_unchecked(-1.0, 4.0).to_world_space(&Stationary),
-        Vec3::new(0.0, 4.0, 0.0)
-    );
+    let stationary = WallSpaceCoord::new_unchecked(-1.0, 4.0).to_world_space(&Stationary);
+    assert!(stationary.x.is_nan() && stationary.y.is_nan() && stationary.z.is_nan());
 }
 
 #[test]
@@ -386,8 +485,24 @@ fn slice_lengths_and_extensions_handle_tiny_and_extreme_segments() {
         let mut slice =
             CurveSlice::<Vec2, _, CurveCoordSemantic2D>::from_point_range(points.as_slice(), 0..=0);
         slice.extend_right(length * 0.5);
-        assert!((slice.end().t - 0.5).abs() < 1e-6);
-        assert!((slice.measure_length() / length - 0.5).abs() < 1e-6);
+        // Keep the original right→measure input chain. The right outcome is
+        // nativef32; measure_length is the unchanged current host consumer,
+        // whose extreme-input nativeB equivalence is not claimed here.
+        if length < 1.0 {
+            assert_eq!(slice.end(), CurveInternalCoord { segment: 0, t: 1.0 });
+            assert_eq!(slice.measure_length() / length, 1.0);
+        } else {
+            assert!(slice.end().t.is_nan());
+            assert!(slice.measure_length().is_nan());
+        }
+        // Supplement the combination case with the original direct length
+        // expectation on an explicit half-segment coordinate range.
+        let measured = CurveSlice::<Vec2, _, CurveCoordSemantic2D>::from_coord_range(
+            points.as_slice(),
+            CurveInternalCoord { segment: 0, t: 0.0 },
+            CurveInternalCoord { segment: 0, t: 0.5 },
+        );
+        assert!((measured.measure_length() / length - 0.5).abs() < 1e-6);
         let curve = Curve2::try_new(points.to_vec(), false).unwrap();
         assert_eq!(curve.length, length);
         let mut slice =
@@ -399,15 +514,16 @@ fn slice_lengths_and_extensions_handle_tiny_and_extreme_segments() {
     let curve = Curve2::try_new(points.to_vec(), false).unwrap();
     let mut slice = CurveSlice::<Vec2, _, CurveCoordSemantic2D>::from_curve_range(&curve, 0..=0);
     slice.extend_right(5e-31);
-    assert_eq!(slice.end().segment, 0);
-    assert!((slice.end().t - 0.5).abs() < 1e-6);
-    // Individual finite endpoints may span a length that the public f32 curve
-    // cache cannot represent. Borrowed slices can still extend a finite distance.
+    assert_eq!(slice.end(), CurveInternalCoord { segment: 1, t: 0.0 });
+    assert_eq!(slice.measure_length(), 1e-30);
+    // Individual finite endpoints can overflow the original f32 delta/length.
+    // Keep the original right→measure chain and the unchanged wider left test.
     let points = [Vec2::new(-f32::MAX, 0.0), Vec2::new(f32::MAX, 0.0)];
     let mut slice =
         CurveSlice::<Vec2, _, CurveCoordSemantic2D>::from_point_range(points.as_slice(), 0..=0);
     slice.extend_right(f32::MAX);
-    assert_eq!(slice.end().t, 0.5);
+    assert!(slice.end().t.is_nan());
+    assert!(slice.measure_length().is_nan());
     let mut slice =
         CurveSlice::<Vec2, _, CurveCoordSemantic2D>::from_point_range(points.as_slice(), 1..=1);
     slice.extend_left(f32::MAX);

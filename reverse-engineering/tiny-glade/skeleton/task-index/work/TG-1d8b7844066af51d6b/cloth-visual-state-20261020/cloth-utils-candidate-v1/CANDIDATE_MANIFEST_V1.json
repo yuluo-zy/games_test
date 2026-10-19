@@ -1,0 +1,42 @@
+{
+  "status": "frozen_candidate_pending_07_source_review",
+  "task": "TG-1d8b7844066af51d6b",
+  "owner": "cloth-visual-state-20261020",
+  "source": "tiny-glade/crates/utils/src/lib.rs",
+  "before_sha256": "c390ecff7fb5ae4c62e042c3edf54454c10275ebee75064cf722aa637193a5e0",
+  "candidate_sha256": "feaaee386a98f4551009dca584c63b3e1b680db0bed21d1c76bb33a7bf5e5fd6",
+  "patch_sha256": "cd9638dc91b030f1e2e37cd4d60af148249d96fd3d1f11f10aef1e56fd5d615f",
+  "old_module_and_reexports_bytes_preserved": true,
+  "design_manifest": {
+    "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-1d8b7844066af51d6b/cloth-visual-state-20261020/cloth-utils-design-v1/DESIGN_MANIFEST_V1.json",
+    "sha256": "d20434164cbd90d459e764acdda915206151b4d1a3c75804dc48f856d7b83575"
+  },
+  "review": {
+    "path": "tiny-glade/reports/main-loop-render-recovery-2026-10-19/independent-validation/fullvisual-20261020/CLOTH_SHARED_UTILS_DESIGN_REVIEW_V1.json",
+    "sha256": "b316d8a65d4900ce4f529390f67935c7be19ba6f90cc75f7860e313154727b44"
+  },
+  "provenance_addendum_sha256": "b5b518719e2a3236cbe5c5292c949d6d9a6102422015a71db020a0e5d5f1f870",
+  "implementation": "Three shared helpers only. Original count/cap/step order, RNG state/draw boundaries, checked pre-draw internal reservation, xz positive-X fallback and second right-axis normalization; pinned dependencies reused.",
+  "functions": [
+    "random_splits(count:usize,jitter:f32,rng:&fastrand::Rng)->Vec<f32>",
+    "random_splits_into(count:usize,jitter:f32,rng:&fastrand::Rng,out:&mutVec<f32>)",
+    "xz_rotation_bad(direction:glam::Vec2)->glam::Quat"
+  ],
+  "parser": {
+    "tool": "rustfmt --edition 2021 --emit stdout --config skip_children=true",
+    "exit_code": 0,
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "not_typecheck": true
+  },
+  "new_tests": 7,
+  "tests_run": false,
+  "cargo_run": false,
+  "gpu_run": false,
+  "production_written": false,
+  "limits": [
+    "Existing missing sampling declaration is preserved, not restored or bypassed.",
+    "Native-physics/current consumer/NaniCloth upstream/downstream closures are separate.",
+    "No third-party allocator/RNG/sort/quaternion algorithm reimplementation.",
+    "Original Rust borrowed-mutability spelling is unknown; host&Rng directly uses fastrand1.8 interior mutability."
+  ]
+}

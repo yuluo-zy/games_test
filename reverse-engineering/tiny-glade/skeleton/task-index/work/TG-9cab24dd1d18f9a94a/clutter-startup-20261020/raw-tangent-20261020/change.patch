@@ -1,0 +1,12 @@
+--- a/tiny-glade/crates/utils/src/curve/mod.rs
++++ b/tiny-glade/crates/utils/src/curve/mod.rs
+@@ -540,6 +540,9 @@
+     fn tangent_at_u(&self, u: f32) -> Vec2 {
+         self.get_tangent_at_u(u)
+     }
++    fn raw_tangent_at_u(&self, u: f32) -> Vec2 {
++        self.get_unnormalized_tangent_at_coord(self.get_coord_at_u(u))
++    }
+     fn approximate_u(&self, point: Vec2) -> f32 {
+         self.get_approx_u_from_pos(point)
+     }

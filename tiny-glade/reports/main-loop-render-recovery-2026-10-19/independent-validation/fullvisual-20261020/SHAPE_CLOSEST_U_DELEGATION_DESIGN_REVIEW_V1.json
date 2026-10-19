@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "created_utc": "2026-10-19T20:33:55.726011+00:00",
+  "reviewer": "07 independent validation",
+  "verdict": "passed_design_scoped",
+  "manifest": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-971fce9dfe7b86b81c/scene-clutter-producer-20261020/shape-closest-delegation-contract-v1/MANIFEST.json",
+    "sha256": "d218e5ab4c0e95dedbd723d216a98bccae6db16f114a6dc65931da970db357a1"
+  },
+  "delegation_receipt": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-f2c3841f004fb1ad05/main-chain-boot-20261018/shape-closest-u-20261020/DELEGATION_AND_CALLERS_V1.json",
+    "sha256": "83264c52eebbd325df74c36311bc14ab3567aa7847fd8076fa9cbecb214c6d11"
+  },
+  "checked_references": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-971fce9dfe7b86b81c/scene-clutter-producer-20261020/shape-closest-delegation-contract-v1/CONTRACT.md",
+      "sha256": "72c883cd9e741d6aff5e2c57e4500b7e8d18679871e44108a63edb6ba665710f"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-971fce9dfe7b86b81c/scene-clutter-producer-20261020/shape-closest-delegation-contract-v1/EVIDENCE.json",
+      "sha256": "4f60d00a21b759af19d0d082e57062086e0ceff33e1f4dea2807899eb5d1f2d9"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-971fce9dfe7b86b81c/scene-clutter-producer-20261020/cottage-shape-wrapper-pack-v1/shape-closest-u-wrapper.json",
+      "sha256": "27e46ceb311edc6c8c52c13aa09743345f3d2748219f5a2f11dff602fe1a6a02"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-971fce9dfe7b86b81c/scene-clutter-producer-20261020/native-roof-producer-pack-v1/cottage-roof-tessellator.json",
+      "sha256": "747942e6f83c6058cafbcdab92d9f8e1af8b3f869dda09a776dff5e8cdf28488"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/wall/valid_enclosure/mod.rs",
+      "sha256": "22eb05b20add68b1265eb52147c13b1b1deeec275af9d29cc08dfb9d2da41c78"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/utils/src/geometry/rectangle.rs",
+      "sha256": "6353c714ae6fd18b59a420257bb695b1f61e3c562e82d3e06efd0a55bb0ab403"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/wall/valid_enclosure/mod.rs",
+      "sha256": "22eb05b20add68b1265eb52147c13b1b1deeec275af9d29cc08dfb9d2da41c78"
+    }
+  ],
+  "native_rechecked": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-971fce9dfe7b86b81c/scene-clutter-producer-20261020/cottage-shape-wrapper-pack-v1/shape-closest-u-wrapper.json",
+      "sha256": "27e46ceb311edc6c8c52c13aa09743345f3d2748219f5a2f11dff602fe1a6a02",
+      "instruction_count": 5,
+      "continuous_bytes": 21,
+      "start_va": "0x1411ff660"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-971fce9dfe7b86b81c/scene-clutter-producer-20261020/native-roof-producer-pack-v1/cottage-roof-tessellator.json",
+      "sha256": "747942e6f83c6058cafbcdab92d9f8e1af8b3f869dda09a776dff5e8cdf28488",
+      "instruction_count": 2095,
+      "continuous_bytes": 10926,
+      "start_va": "0x14128db20"
+    }
+  ],
+  "findings": [
+    "The complete 21B original wrapper directly tests bit0 and tail-jumps Rectangle 140c9b000 / Circle140c976f0. The full10926B Cottage caller contains four actual calls to that wrapper; all instruction bytes and full requested spans match B PE. Function-boundary flags are retained, not upgraded by byte matching.",
+    "Actual Shape Rectangle branch still calls its sole private local loop; full canonical Rectangle already retains original 1000-distance pair policy and checked perimeter U. The helper has exactly one call and definition in the actual source.",
+    "Finite far-point counterexample is a static source consequence: all Euclidean distances exceed1000 so canonical pair remains0/1; old squared-MAX loop selects opposite edge. This is not original-target execution."
+  ],
+  "approved_candidate_scope": "In delegated TGf2 child work only: delegate Shape::Rectangle to existing Rectangle2d::get_closest_u_from_pos, remove only the now-orphan local helper, fix exact dispatch-address comment, add actual Shape/ShapeParameters farpoint, ordinary/corner/wrap, invalid-area and unchanged Circle tests. Do not alter Rectangle, Circle, other geometry policies, schemas or callers.",
+  "required_tests_unrun": true,
+  "limits": [
+    "No candidate source, Cargo, tests, original program or GPU was executed in this design review.",
+    "Cottage full geometry/strict circle/constructor/roof-section shared policies and real scene registration remain separate.",
+    "Rectangle vertical3D/edge-ID seams are a different authorized task and are not accepted by this verdict."
+  ]
+}

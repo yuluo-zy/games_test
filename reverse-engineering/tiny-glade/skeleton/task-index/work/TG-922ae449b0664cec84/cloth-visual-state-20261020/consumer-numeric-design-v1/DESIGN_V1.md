@@ -1,0 +1,81 @@
+# Actual ClothInfo consumer design v1
+
+This requests implementation review for a bounded B business chain: actual ClothInfo input -> connection/cache/geometry -> real endpoint/garment/thread Commands -> the existing global transient owner. The inspected original clothline caller has absent style. This is not recovery of the separate general flag producer or styled thread branch. C parity, complete original scene reachability, whole-App construction and GPU execution remain unverified.
+
+The immutable input/output contractadf20f1b, numerical observations62e9d06d, signed constants addendumdcaac48e and current interface addendum8b4bd892 remain separate dependencies. The canonical Cloth/Nani/NormalMap package is now root-integrated (receipt41c6ff5d); it is not itself the business producer. Source changes here are limited to the two already claimed generate_clothline.rs and flag_connections.rs. No new module, Resource, component definition, foreign builder/fullvisual/world edit, Cargo change or host registration is requested.
+
+## Actual system and state authority
+
+Two complete typed original Bevy wrappers,1400c7150/1770B and1404742d0/1778B, directly call1407e5190 at1400c761d and1404747a5. Their exact generic names carry the ten original SystemParam types. SYSTEM_PARAM_BINDING_V1.json verifies every instruction against original B PE and exact cached PDB records. This strengthens the earlier catalog association; it still does not recover original author names/Rust ABI or prove a schedule installation.
+
+Use the real system inputs: ResMut<DecoratorVisualState>, mesh/shader/texture libraries, UiSignifierStream, Commands, Local<CacheClothes>, EventWriter<PlayClutterSoundCmd>, DecoratorStorage and RaycastWorld. Texture and UI resources remain actual required resources even though the inspected builder ignores the former argument and the bounded greedy body makes no UI request. No resource_exists gate, dummy resource, new standalone transient Resource or default scene input is added.
+
+CacheClothes is a public local-state type with private semantic fields: previous_ids:Vec<DecoratorId>, current_pairs:HashSet<(DecoratorId,DecoratorId)> and previous_pairs of the same type. Default initializes only these original containers empty, reusing the standard library; it does not default any ClothInfo, Transform or payload. The native120-byte observation agrees with one24-byte Vec and two48-byte sets; current Rust layout is not promised. No derive/allocator/hash algorithm is reconstructed. Local state persists across repeated invocations.
+
+Read the same global cloth_infos and append output through its existing nested transient map. Preserve persistent state and the first Vec. Original first-Vec clearing/fullvisual and actual transient despawn/lifecycle remain host responsibilities; this package does not silently install an entire decorator plugin.
+
+## Input projection, ordering and connections
+
+Project each actual ClothInfo into a frame-local value while retaining its original index. Quaternion, scale, WallId, dimensions and DecoratorId remain the actual input values. Translation adds q*Vec3(0,0,0.385); the vertical shift is dimension1*(-0.5)*0.6, with native Y ordered `(old_y+shift)+rotated_y`. The inspected typed fold writes the additional scalar payload to0 and source/target tag to1. No raw80-byte value or unknown pointer is copied.
+
+Retain the existing FlagAnchor name only as a documented minimal geometry projection, not as the original CandidateInfo schema/ABI. Its ID/wall/position and source/target flags are supplied from the real projected input. Restore greedily_connect in place. Return dense original-input index degrees and original-input index edge pairs, plus a stable unsigned-ID sort permutation. This engineering interface preserves the native sorted traversal and duplicate-ID identity without inventing unknown CandidateInfo fields or an ECS mirror.
+
+ConnectParams will contain the five original business inputs: maximum degree (usize), allow_same_wall, maximum different-wall distance, maximum same-wall distance and minimum same-wall distance. The old cross_wall name misstates the native boolean; it enables same-wall candidates. Native minimum distance0.02, ray margin-0.01 and same-wall weight bias3.0 are fixed original constants, not new public tuning inputs. This caller uses1,true,9.0,6.0,0.0. Preserve a separate existing flag caller's2,true,10.0,5.5,2.0 defaults only in that caller's domain.
+
+Stable-sort original indices by unsigned DecoratorId. For sorted source i, scan only j>i. Source flag must be nonzero, target flag exactly1. Same-wall candidates additionally require allow_same_wall. Use strict original squared windows, preserving explicit accumulation order; reject unordered comparisons as the native instructions do. Build one neighbor list per source and stable-sort by partial_cmp(weight).unwrap(). Weight is distance+3 only for same-wall candidates with the boolean enabled, otherwise distance. Do not globally sort all edges or collapse IDs.
+
+The second pass traverses those source lists in order. Check both indexed degrees, accepted-pair membership, slope2*abs(dy)<=horizontal, then positive distance>0.02. Normalize the actual endpoint delta and call the current real intersects_any_with_max_toi(origin,dir,distance+(-0.01),0x30db). Only then append/insert the accepted sorted-index pair and increment both actual degrees. Map the final pair and degree views back through the permutation, preserving accepted order. The real production closure must call actual RaycastWorld; an always-false callback is permissible only in isolated pure CPU tests. system-decorator already enables country-core/native-physics in its current manifest, so no new feature/dependency is required.
+
+The unrelated existing generate_flag_connections system's upstream tag/placement/style producer is not restored by this projection. Compatibility edits, if necessary for index-based ConnectResult, are confined to reading returned indices and truthful scope comments; no missing flag data will be synthesized. It must not be installed as proof of this scoped cloth chain, or route an unsupported styled flag through the None-only helper.
+
+## Cache transitions and events
+
+In original input order, compare each current projected ID against previous_ids. Emit kind16/context0 at the projected candidate position when absent, then collect every current ID (including duplicates) and replace previous_ids. Do this before greedy sorting as the original main does.
+
+Clear current_pairs without replacing its owner. For each accepted graph edge, insert the unsigned normalized DecoratorId pair before testing previous_pairs. A pair absent from previous_pairs emits kind16/context0 at `0.5*position_a + 0.5*position_b`, with separate multiplication before addition; this is the candidate midpoint, not the selected half-dimension endpoints. Clone current_pairs into previous_pairs after processing connected edges and before degree-zero plans. Reuse actual HashSet clone_from semantics including its hasher ownership; no per-frame empty cache substitute. Cache events occur before geometry/asset failure just as in native main.
+
+## Connection plans and exact scalar values
+
+Use a named current semantic ConnectionPlan for the original `(id_a,id_b,Transform,Transform,u32)` tuple; no raw112-byte ABI copy. Copy real q/scale and replace translations with selected actual points. For a connected pair, calculate each candidate's signed local half-dimension X endpoints and compare combinations in order(--),(-+),(+-),(++). Native negative-axis multiplier is(-1,-0,-0), not Vec3::NEG_X with positive zeros. Multiply dimension by that vector, then by0.5 per component, before the existing locked quaternion-vector operation and translation addition. Positive-axis terms similarly retain the native zero products; do not delete them for nonfinite input.
+
+Same-wall selection starts with maximum0, different-wall selection with minimum10000. Only strict ordered improvement replaces the selected pair, preserving tie order. Initial selected translations are the real candidate centers; they are not identity/default Transforms. Exact signed-zero constants are retained in PLAN_CONSTANTS_ADDENDUM_V1.json. No artificial extent, finite clamp or fake endpoint is added.
+
+Connected plan_word is wrapping `storage_scalar_b + storage_scalar_a + id_a + id_b`; storage_scalar is original field2c, currently canonical decorator_id, with native optional absence contributing0 for this scalar only. It is not the rank byte44. Bounded callee140a1c5f0/518B proves this caller uses explicit Wall address(tag0,R8=actualWall), then id(R9), not the current convenience decorator_info(id) d2s-index route. Reuse the actual current owner via `storage.get(DecoratorStorageAddr::Wall(info.wall)).and_then(|bucket|bucket.get(info.decorator_id))`. Do not modify the foreign storage module, assume a d2s entry or default a whole record; test a real wall bucket whose d2s mapping is deliberately absent. Unconnected degree-zero candidates are processed in sorted order after pair-set clone: produce +X then-X endpoints from the same real input, both IDs equal its actual DecoratorId, and plan_word=storage_scalar+id. Preserve the negative branch's dimension*(-0.5) and dimension*(-0.0)*0.5 operations rather than an algebraic simplification.
+
+Initialize one Rng per plan with Rng::with_seed(utils::rng::init_rng(id_a.wrapping_mul(id_b))). Do not mix twice or reinitialize for each garment. This existing constructor only sets the already mixed state in the locked fastrand1.8 dependency.
+
+## Actual endpoint and garment Commands
+
+For each plan, emit two real NaniBundle<SolidVertexColorInstanceData> endpoint entities in plan order. Named mesh hash is the exact original0x20a7eff3a12c99eb, subset3. Remove q*Vec3(0,0,0.385) from each actual endpoint translation, retaining q/scale, and register each entity under its own actual endpoint ID in global transient. A missing named atlas must later expose the real Nani resolution failure; no fake mesh/VAO or guessed name is supplied.
+
+Garment/thread attachment positions separately add q*Vec3(0,0,0.2) to each plan endpoint. Let d be their original full3D distance. Garment normalized boundaries use shared random_splits with `r=roundf(d/0.7) as usize` (saturating cast), count=r.wrapping_add(1).wrapping_add(usize::from(r==0)), jitter0.2/d. No arbitrary maximum or saturation of the added count is allowed. The shared allocating helper enforces its real count assertion and allocation failure before RNG draws.
+
+For adjacent u0,u1, preserve these f32 operations: m=(u0+u1)*0.5; span=(u1-u0)*f32::from_bits(0x3f36db6e); l=m-span*0.5; r=m+span*0.5. Relative height at u is `(u*y1+(1-u)*y0-y0) + ((1-(u+u-1)^2)*d)*(-0.08)`, with the native operation ordering (6cbc..6d15), not reassociation into a simplified polynomial. Let h=(left+right)*0.5. Translation uses `(1-m)*a_xz+m*b_xz` and y0+h; the two cloth words are bit patterns left-h/right-h. Rotation uses the integrated xz_rotation_bad on Vec2(-delta_z,delta_x)/horizontal_length. No local fallback replaces its actual dependency behavior.
+
+One full-range u32 RNG draw chooses mesh `_cloth_2` and NormalMap hash0xe21f7890eabecf74 when draw&0xc0000000==0, otherwise `_cloth` and0xb9fbcd499788b2f1. Reuse the exact two installed mesh strings. Then consume two f32 draws r1,r2. Factor=abs(d*span)*2.5. Scale override components, in native store order, are:
+
+```text
+min(r2*1.1+(1-r2)*0.8,0.8)*factor
+min(((1-r1)*0.6+r1*1.2)*factor,1.0)
+1.0
+```
+
+Do not swap these or move the first cap after factor multiplication. Use the original final-scalar wrapping plan_word+garment_index. Feed explicit ClothlineCloth::from_words and original NormalMap hash to the already integrated actual builder, with shader nani_cloth and actual first-plan DecoratorId/global transient. No default/raw stand-in or no-argument setter remains. Current Nani query then resolves the actual texture name and writes the existing64B row; no numerical Nani algorithm is changed here.
+
+## Real thread helper, inspected absent-style domain
+
+Upgrade the existing clothline business helper from discarded quads to actual builder Commands with a documented semantic context containing real Commands, mesh/shader libraries and the same transient owner. API fields are an engineering adaptation of flattened ABI arguments, not a claim of the original Rust signature. This bounded entry supports the inspected None-style caller only; no Some-style value or flag data is invented.
+
+The actual caller uses the exact thread mesh name, spacing f32 bits3e99999a(0.3), stretch=true, width1, sag0 and actual plan endpoint Transforms. Only their translations enter sampling. Compute n=max(2,ceilf(distance/spacing) as usize), with native saturating cast, and emit n consecutive segments covering sample indices0 through n. The native count conversion and iteration are not a round-based `n+1` quad list or fixed maximum.
+
+Blend=(sag/distance).clamp(0,0.25) preserves the original maxss/minss NaN propagation; the old manual comparison turning NaN into0 must not remain the actual path. Sample parameter t'=((1-t)*blend)+t, where t=index as f32/(n as f32). Native point uses weighted endpoint products followed by subtraction of sag per component: X=(t'*b.x+(1-t')*a.x)-sag_offset*0; Y=(t'*b.y+(1-t')*a.y)-sag_offset; Z=(b.z*t'+a.z*(1-t'))-sag_offset*0. The zero products are proven native operations and are retained for nonfinite behavior. sag_offset=((1-(t'+t'-1)^2)*0.08)*distance. Do not substitute Vec3::lerp or eliminate products/reassociate.
+
+For each actual pair, segment_length is its real distance and forward is the real delta/length. The native right-axis expression is `Vec3(forward.z+forward.y*(-0.0), forward.x*0.0+forward.z*(-0.0), -forward.x-forward.y*(-0.0)).normalize()`, the signed-zero-preserving Y-cross direction. Use that explicit business axis construction rather than erasing its zero products; up=forward.cross(right).normalize(). Use the existing locked Quat::from_mat3 columns(right,up,forward). Do not reconstruct dependency quaternion algorithms, substitute atan2, or add normalize_or/default directions absent from the original. The inspected true stretch case uses scale(width,width,segment_length), sample0 translation and real shader nani_solid_vertex_color. Build/register actual transient entities per segment under the actual first-plan ID. It does not attach the garment12-byte payload or NormalMap to the thread.
+
+The old pure quad utilities may remain only where needed by the separate unrecovered flag caller/tests, with truthful scope comments. Actual ClothInfo consumer must no longer call them or discard output. Stale modified-flag collection and clothline_between production route in generate_clothline.rs are removed/replaced by the real input path, not left as an alternative successful system.
+
+## Required source validation and remaining integration boundary
+
+Tests must run the actual system repeatedly in one World with nonempty canonical ClothInfo values, actual Commands queues and the same global transient owner. Include duplicate IDs/index identity, stable ties and per-source weight ordering; real native-physics occlusion before/beyond endpoints; initial/unchanged/removed/reintroduced cache events; true endpoint, garment and thread component identities/nonzero payload/NormalMap bits; non-identity real asset-name lookup and missing-name failure. New tests and the whole crate remain root-run. Existing TestDevice/recording CPU boundaries may verify emitted values/flush but may not claim asset-loader or GPU execution.
+
+Freeze exact before/candidate/patch hashes of both business sources against current canonical dependencies. Use no older core rlib or substitute implementation to claim these tests pass. Root alone applies and compiles. This package does not install a whole decorator plugin, restore upstream window Box producers, rewrite world collision, change shared geometry/math again, register another GpuWorld or claim the full scene. Actual callback/order registration before Nani set44 and canonical transient despawn/unload must be verified by the host owner after the producer candidate exists.

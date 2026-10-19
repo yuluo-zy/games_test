@@ -1,0 +1,37 @@
+/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-60234a3eb4a6f6e4d2/rhapsody-correctness-20261019/snap-balcony-door-20261020/calculate-contract-20261020/native-pack/ui-move-decorator-full.asm.txt
+1407a4ad3: 49 8b 84 24 88 00 00 00     	movq	0x88(%r12), %rax
+1407a4adb: 48 89 85 28 06 00 00        	movq	%rax, 0x628(%rbp)
+1407a4ae2: 4d 8b a4 24 a8 00 00 00     	movq	0xa8(%r12), %r12
+1407a4c0d: 48 89 95 c8 03 00 00        	movq	%rdx, 0x3c8(%rbp)
+1407a4c14: 4c 89 a5 c0 03 00 00        	movq	%r12, 0x3c0(%rbp)
+1407a4c1b: 4c 89 ad 78 07 00 00        	movq	%r13, 0x778(%rbp)
+1407a6c0d: 48 8d 8d a0 06 00 00        	leaq	0x6a0(%rbp), %rcx
+1407a6c14: 4c 8d 85 d0 03 00 00        	leaq	0x3d0(%rbp), %r8
+1407a6c1b: 48 89 fa                    	movq	%rdi, %rdx
+1407a6c1e: 4c 8b 8d c0 03 00 00        	movq	0x3c0(%rbp), %r9
+1407a6c25: e8 46 63 ad 00              	callq	0x14127cf70 <.text+0x127bf70>
+/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-60234a3eb4a6f6e4d2/rhapsody-correctness-20261019/snap-balcony-door-20261020/value-consumer-pack/calculate-interaction-intent-full.asm.txt
+14127d41a: 48 8d 43 14                 	leaq	0x14(%rbx), %rax
+14127d41e: 48 89 45 18                 	movq	%rax, 0x18(%rbp)
+14127d422: 48 8d 4f 46                 	leaq	0x46(%rdi), %rcx
+14127d426: e8 55 5d 5b ff              	callq	0x140833180 <.text+0x832180>
+14127d42b: 84 c0                       	testb	%al, %al
+14127d42d: 0f 84 ee 0c 00 00           	je	0x14127e121 <.text+0x127d121>
+14127d433: 4d 8b 6f 08                 	movq	0x8(%r15), %r13
+14127d437: 49 69 47 10 50 01 00 00     	imulq	$0x150, 0x10(%r15), %rax # imm = 0x150
+14127d43f: 4e 8d 34 28                 	leaq	(%rax,%r13), %r14
+14127d443: 44 8b 7b 14                 	movl	0x14(%rbx), %r15d
+14127d447: 8b 5b 18                    	movl	0x18(%rbx), %ebx
+14127d44a: 49 8d bd b0 fe ff ff        	leaq	-0x150(%r13), %rdi
+14127d451: 66 66 66 66 66 66 2e 0f 1f 84 00 00 00 00 00	nopw	%cs:(%rax,%rax)
+14127d460: 48 85 c0                    	testq	%rax, %rax
+14127d463: 0f 84 40 17 00 00           	je	0x14127eba9 <.text+0x127dba9>
+14127d469: 48 89 f9                    	movq	%rdi, %rcx
+14127d46c: 48 81 c7 50 01 00 00        	addq	$0x150, %rdi            # imm = 0x150
+14127d473: 48 05 b0 fe ff ff           	addq	$-0x150, %rax           # imm = 0xFEB0
+14127d479: 44 39 b9 78 02 00 00        	cmpl	%r15d, 0x278(%rcx)
+14127d480: 75 de                       	jne	0x14127d460 <.text+0x127c460>
+14127d482: 39 99 7c 02 00 00           	cmpl	%ebx, 0x27c(%rcx)
+14127d488: 75 d6                       	jne	0x14127d460 <.text+0x127c460>
+14127d48a: 4c 8b 6f 70                 	movq	0x70(%rdi), %r13
+14127d48e: 4c 8b 67 78                 	movq	0x78(%rdi), %r12

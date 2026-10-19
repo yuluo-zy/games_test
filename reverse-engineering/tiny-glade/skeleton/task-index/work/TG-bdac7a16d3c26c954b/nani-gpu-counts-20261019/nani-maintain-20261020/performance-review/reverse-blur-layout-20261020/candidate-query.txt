@@ -1,0 +1,85 @@
+Source: /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-eac12c8d24c206af39/no-world-undefined-20261019/reverse-blur-top-20261020/consumer-candidate/candidate/crates/rhapsody/src/rg/executor.rs
+SHA256: 89a6bbef78677121b7475eec1893e3a3de177fbd84109fb2abf9f64749c162c0
+
+500: }
+501: impl PassContext<'_> {
+502:     /// Native layout of this exact image range in the current scheduled pass.
+503:     /// Queries validated declarations only; it grants no additional access.
+504:     /// A descriptor spanning missing uses or different layouts is rejected.
+505:     pub fn image_layout_for_range(
+506:         &self,
+507:         resource: u32,
+508:         range: crate::rg::AccessRange,
+509:     ) -> crate::Result<vk::ImageLayout> {
+510:         image_layout_from_plan(&self.compiled.plan, self.pass_index, resource, range)
+511:     }
+512: 
+513:     pub fn history_valid(&self, texture: crate::rg::resource::TextureId) -> crate::Result<bool> {
+514:         self.named_history_valid(texture.raw(), true)
+
+617: fn image_layout_from_plan(
+618:     plan: &super::plan::CompiledPlan,
+619:     pass_index: usize,
+620:     resource: u32,
+621:     range: super::resource::AccessRange,
+622: ) -> crate::Result<vk::ImageLayout> {
+623:     use crate::resource::range_state::{difference, intersection};
+624:     let descriptor = plan
+625:         .definition
+626:         .resources
+627:         .get(resource as usize)
+628:         .ok_or_else(|| crate::Error::invalid_usage("image layout resource is out of range"))?
+629:         .descriptor;
+630:     if !matches!(descriptor, super::graph::Descriptor::Image(_)) {
+631:         return Err(crate::Error::invalid_usage(
+632:             "image layout query refers to a buffer",
+633:         ));
+634:     }
+635:     let program = &plan.range_program;
+636:     let pass = program
+637:         .passes
+638:         .get(pass_index)
+639:         .filter(|pass| pass.pass == pass_index)
+640:         .ok_or_else(|| crate::Error::invalid_usage("image layout scheduled pass is absent"))?;
+641:     let uses = program
+642:         .uses
+643:         .get(pass.uses.clone())
+644:         .ok_or_else(|| crate::Error::invalid_usage("image layout pass uses are out of range"))?;
+645:     let requested =
+646:         super::sync_plan::native_range(range, descriptor, program.separate_depth_stencil)?;
+647:     let mut missing = smallvec::SmallVec::<[_; 8]>::from_slice(&[requested]);
+648:     let mut layout = None;
+649:     for usage in uses.iter().filter(|usage| usage.resource == resource) {
+650:         if intersection(usage.range, requested).is_none() {
+651:             continue;
+652:         }
+653:         if layout.is_some_and(|layout| layout != usage.layout) {
+654:             return Err(crate::Error::invalid_usage(
+655:                 "one image descriptor spans different native layouts",
+656:             ));
+657:         }
+658:         layout = Some(usage.layout);
+659:         let mut next = smallvec::SmallVec::<[_; 8]>::new();
+660:         for range in missing {
+661:             next.extend(difference(range, usage.range));
+662:         }
+663:         missing = next;
+664:     }
+665:     if !missing.is_empty() {
+666:         return Err(crate::Error::invalid_usage(
+667:             "image descriptor range has no complete declared native use",
+668:         ));
+669:     }
+670:     layout.ok_or_else(|| {
+671:         crate::Error::invalid_usage("image descriptor has no declared native layout")
+672:     })
+673: }
+674: 
+675: #[cfg(test)]
+676: mod exact_image_layout_tests {
+677:     use super::*;
+678:     use crate::rg::{
+679:         AccessRange, AccessTable, GraphDefinition, OriginSource, PlanContext, RenderGraph,
+680:         ResourceOrigin, ResourceSpec, compile_definition,
+681:     };
+

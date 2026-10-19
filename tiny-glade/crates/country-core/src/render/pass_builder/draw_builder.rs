@@ -432,10 +432,19 @@ impl<'p> DrawBuilder<'p> {
 
     /// `packet.accesses.push(ResourceAccess)`（`+0x10` Vec）。
     fn push_packet_access(&mut self, binding_index: u32, slot: u8) {
+        // 反射 binding 重新绑定后恢复严格内容合同，不能继承旧资源的许可。
+        self.forget_undefined_texture_binding(binding_index);
         self.packet.get_mut().accesses.push(ResourceAccess {
             binding_index,
             slot,
         });
+    }
+
+    fn forget_undefined_texture_binding(&mut self, binding: u32) {
+        self.packet
+            .get_mut()
+            .undefined_texture_bindings
+            .retain(|candidate| *candidate != binding);
     }
 
     /// 动态常量写入公共路径（`optional_uniform` / `uniform` / `UniformBinder::write_uniform` 的共同行为，O）：
@@ -545,12 +554,58 @@ impl<'p> DrawBuilder<'p> {
         self
     }
 
+    /// 原消费者允许本次真实纹理读取的内容未定义；不会初始化资源或省略已有 producer。
+    /// 只标记已存在且唯一的 graph texture 绑定，不能用于写访问或不发生 fetch 的绑定。
+    pub fn allow_undefined_texture_contents(mut self, hash: u64) -> Self {
+        let Some(binding) = self.lookup_binding(hash) else {
+            return self;
+        };
+        let packet = self.packet.get();
+        let mut accesses = packet
+            .accesses
+            .iter()
+            .filter(|access| access.binding_index == binding);
+        let access = accesses
+            .next()
+            .expect("undefined raster texture requires its actual graph binding");
+        assert!(
+            accesses.next().is_none() && !packet.bindings.contains_key(&binding),
+            "undefined raster texture requires one current graph binding"
+        );
+        let actual = &self.pass.bindings[access.slot as usize];
+        assert!(
+            self.pass
+                .texture_slots
+                .values()
+                .any(|slot| *slot == access.slot)
+                && !access_is_write(actual.access_type),
+            "undefined raster texture requires a non-writing image binding"
+        );
+        assert!(
+            !packet.inactive_texture_bindings.contains(&binding),
+            "undefined content read is distinct from an inactive binding"
+        );
+        let packet = self.packet.get_mut();
+        if !packet.undefined_texture_bindings.contains(&binding) {
+            packet.undefined_texture_bindings.push(binding);
+        }
+        self
+    }
+
     /// A proven uniform configuration prevents all texel fetches from this
     /// binding. Preserve the actual descriptor, owner and native sync access.
     pub fn inactive_texture_contents(mut self, hash: u64) -> Self {
         let Some(binding) = self.lookup_binding(hash) else {
             return self;
         };
+        assert!(
+            !self
+                .packet
+                .get()
+                .undefined_texture_bindings
+                .contains(&binding),
+            "inactive binding is distinct from an undefined content read"
+        );
         let access = self
             .packet
             .get()
@@ -579,6 +634,7 @@ impl<'p> DrawBuilder<'p> {
     /// panic，draw_builder.rs:189:89），把 `{buffer, 0, u64::MAX}` + 句柄克隆 `insert` 进 `packet.bindings`。
     pub fn bind_external_storage_buffer(mut self, name_hash: u64, buffer: &ManagedHandle) -> Self {
         if let Some(binding) = self.lookup_binding(name_hash) {
+            self.forget_undefined_texture_binding(binding);
             let vk = self
                 .pass
                 .host
@@ -744,6 +800,7 @@ impl<'p> DrawBuilder<'p> {
         view: Option<&TextureViewDesc>,
     ) {
         if let Some(binding) = self.lookup_binding(name_hash) {
+            self.forget_undefined_texture_binding(binding);
             let view = self
                 .pass
                 .host
@@ -1554,6 +1611,119 @@ mod tests {
         assert_eq!(pass.accesses[0].access, ACCESS_SAMPLED_IMAGE);
         assert_eq!(pass.accesses[1].access, ACCESS_RG_STORAGE_WRITE);
         finish_pass(pass);
+    }
+
+    #[test]
+    fn undefined_texture_intent_keeps_the_real_binding_and_rebinding_restores_strictness() {
+        for replacement in 0..4 {
+            let (mut pass, _) = make_pass();
+            let texture = tex(50);
+            let view = TextureViewDesc::new()
+                .base_mip_level(2)
+                .level_count(Some(1));
+            let mut b = builder(&mut pass).bind_texture_to_draw_builder(
+                BindTexture::RgHandle(&texture),
+                0x10,
+                ACCESS_SAMPLED_IMAGE,
+                Some(&view),
+            );
+            assert!(b.packet().undefined_texture_bindings.is_empty());
+            b = b
+                .allow_undefined_texture_contents(0xdead)
+                .allow_undefined_texture_contents(0x10)
+                .allow_undefined_texture_contents(0x10);
+            assert_eq!(b.packet().undefined_texture_bindings, [3]);
+            assert!(b.packet().inactive_texture_bindings.is_empty());
+            assert_eq!(b.packet().accesses.len(), 1);
+            assert_eq!(b.pass.bindings[0].resource_index, 50);
+            assert_eq!(b.pass.bindings[0].view, Some(view));
+            assert_eq!(b.pass.accesses[0].access, ACCESS_SAMPLED_IMAGE);
+            b = match replacement {
+                0 => b.bind_texture_to_draw_builder(
+                    BindTexture::RgHandle(&tex(51)),
+                    0x10,
+                    ACCESS_SAMPLED_IMAGE,
+                    None,
+                ),
+                1 => b.bind_texture_to_draw_builder(
+                    BindTexture::Raw {
+                        texture: &ManagedHandle(2),
+                        desc: &texture,
+                    },
+                    0x10,
+                    ACCESS_SAMPLED_IMAGE,
+                    None,
+                ),
+                2 => b.bind_external_storage_buffer(0x10, &ManagedHandle(42)),
+                _ => b.read_rg_storage_buffer(0x10, 51),
+            };
+            assert!(
+                b.packet().undefined_texture_bindings.is_empty(),
+                "new binding defaults to strict"
+            );
+            b.discard();
+            finish_pass(pass);
+        }
+    }
+
+    #[test]
+    fn undefined_texture_intent_rejects_inactive_both_orders_and_stale_or_nontexture_bindings() {
+        for case in 0..7 {
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                let (mut pass, _) = make_pass();
+                let texture = tex(50);
+                let b = builder(&mut pass);
+                let b = if case == 5 {
+                    b.write_rg_storage_buffer(0x10, 50)
+                } else if case == 6 {
+                    b.read_rg_storage_buffer(0x10, 50)
+                } else {
+                    b.bind_texture_to_draw_builder(
+                        BindTexture::RgHandle(&texture),
+                        0x10,
+                        ACCESS_SAMPLED_IMAGE,
+                        None,
+                    )
+                };
+                let b = match case {
+                    0 => b
+                        .inactive_texture_contents(0x10)
+                        .allow_undefined_texture_contents(0x10),
+                    1 => b
+                        .allow_undefined_texture_contents(0x10)
+                        .inactive_texture_contents(0x10),
+                    2 => b
+                        .allow_undefined_texture_contents(0x10)
+                        .bind_texture_to_draw_builder(
+                            BindTexture::RgHandle(&tex(51)),
+                            0x10,
+                            ACCESS_SAMPLED_IMAGE,
+                            None,
+                        )
+                        .allow_undefined_texture_contents(0x10),
+                    3 => b
+                        .allow_undefined_texture_contents(0x10)
+                        .bind_texture_to_draw_builder(
+                            BindTexture::Raw {
+                                texture: &ManagedHandle(2),
+                                desc: &texture,
+                            },
+                            0x10,
+                            ACCESS_SAMPLED_IMAGE,
+                            None,
+                        )
+                        .allow_undefined_texture_contents(0x10),
+                    4 => b
+                        .allow_undefined_texture_contents(0x10)
+                        .bind_external_storage_buffer(0x10, &ManagedHandle(42))
+                        .allow_undefined_texture_contents(0x10),
+                    _ => b.allow_undefined_texture_contents(0x10),
+                };
+                b.discard();
+                finish_pass(pass);
+            }));
+            assert!(result.is_err(), "forbidden binding case {case}");
+        }
     }
 
     #[test]

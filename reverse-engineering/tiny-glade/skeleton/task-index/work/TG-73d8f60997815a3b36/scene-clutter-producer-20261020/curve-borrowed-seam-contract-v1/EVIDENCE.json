@@ -1,0 +1,178 @@
+{
+  "status": "evidence_contract_only",
+  "original_target_executed": false,
+  "native_packs": [
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-73d8f60997815a3b36/scene-clutter-producer-20261020/curve-borrowed-seam-pack-v1/curve-nearest-coordinate.json",
+      "sha256": "81bb028afcf477a5bc32a66b8cb32deff8b767f67f3599fcb97e8395241d9a6e",
+      "range": {
+        "rva": "0x126a6b0",
+        "length": 572,
+        "start_va": "0x14126a6b0",
+        "stop_va_exclusive": "0x14126a8ec",
+        "instruction_overhang_bytes": 0,
+        "function_boundary_verified": false
+      },
+      "all_instruction_bytes_match_direct_pe": true,
+      "continuous_span_bytes": 572,
+      "continuous_span_sha256": "eef935141303ae75ebad82709a133fb71ee4c798a0b602e8416b6b3697ade006"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-73d8f60997815a3b36/scene-clutter-producer-20261020/curve-borrowed-seam-pack-v1/curve-nearest-u-caller.json",
+      "sha256": "978e6bb2b06fd99ed8ca73d6606d4689ce93384f5d96863f959ab7877a2bf3a6",
+      "range": {
+        "rva": "0x126a040",
+        "length": 195,
+        "start_va": "0x14126a040",
+        "stop_va_exclusive": "0x14126a103",
+        "instruction_overhang_bytes": 0,
+        "function_boundary_verified": false
+      },
+      "all_instruction_bytes_match_direct_pe": true,
+      "continuous_span_bytes": 195,
+      "continuous_span_sha256": "36a9e719c9c5ae9cfd5011014a22496039a94449f26a60a80b5e8ae9970dd32b"
+    }
+  ],
+  "native_constants": [
+    {
+      "va": "0x142925980",
+      "bytes": "ffff7f7f",
+      "sha256": "6048235e823ffe3c303299c2d9ad4cbd9e5ec680a5dc19c9c4eb97538ea6498f",
+      "u32": "0x7f7fffff",
+      "f32_repr": "3.4028234663852886e+38"
+    },
+    {
+      "va": "0x14295a0d8",
+      "bytes": "77cc2b32",
+      "sha256": "b2c6a8c83803ff33154c42757d93d1a39e827f2745b79e92eb09bd4db3aa8e7a",
+      "u32": "0x322bcc77",
+      "f32_repr": "9.99999993922529e-09"
+    },
+    {
+      "va": "0x142925904",
+      "bytes": "0000803f",
+      "sha256": "e00e5eb9444182f352323374ef4e08ebcb784725fdd4fd612d7730540b3e0c8c",
+      "u32": "0x3f800000",
+      "f32_repr": "1.0"
+    }
+  ],
+  "procedures": [
+    {
+      "class": "procedure",
+      "code_size": 195,
+      "debug_end": 0,
+      "debug_start": 0,
+      "end": 17728,
+      "event": "symbol",
+      "flags": 128,
+      "kind": 4368,
+      "module": 1506,
+      "name": "utils::curve::Curve::get_approx_u_from_pos<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D>",
+      "next": 0,
+      "parent": 0,
+      "record_offset": 17048,
+      "section": 1,
+      "section_offset": 19304512,
+      "type_index": 4097,
+      "type_namespace": "TPI",
+      "rva": 19308608,
+      "procedure_id": "1506:17048",
+      "source_files": [
+        "crates/utils/src/curve/mod.rs"
+      ]
+    },
+    {
+      "class": "procedure",
+      "code_size": 572,
+      "debug_end": 0,
+      "debug_start": 0,
+      "end": 23668,
+      "event": "symbol",
+      "flags": 128,
+      "kind": 4368,
+      "module": 1506,
+      "name": "utils::curve::Curve::get_approx_coord_from_pos<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D>",
+      "next": 0,
+      "parent": 0,
+      "record_offset": 22120,
+      "section": 1,
+      "section_offset": 19306160,
+      "type_index": 4097,
+      "type_namespace": "TPI",
+      "rva": 19310256,
+      "procedure_id": "1506:22120",
+      "source_files": [
+        "crates/utils/src/curve/mod.rs"
+      ]
+    }
+  ],
+  "observed_owned_source": {
+    "source": "tiny-glade/crates/utils/src/curve/mod.rs",
+    "sha256": "044c9623a9dde794211790fdafa4fd19c842369192e874879cb1bbe87d9fe987",
+    "note": "Read-only observed current source; owner01 candidate and later root apply can change this base. No source edits here.",
+    "clamp01": [
+      "fn clamp01(value: f32) -> f32 {",
+      "    let lo = if 0.0 <= value { value } else { 0.0 };",
+      "    if lo <= 1.0 { lo } else { 1.0 }",
+      "}"
+    ],
+    "nearest_functions": [
+      "    pub fn get_approx_coord_from_pos(&self, point: Vec2) -> CurveInternalCoord {",
+      "        let mut best = CurveInternalCoord { segment: 0, t: 0.0 };",
+      "        let mut distance = f32::INFINITY;",
+      "        for (segment, pair) in self.points.windows(2).enumerate() {",
+      "            let a = pair[0].projected();",
+      "            let b = pair[1].projected();",
+      "            let delta = b - a;",
+      "            let d2 = delta.y * delta.y + delta.x * delta.x;",
+      "            let denominator = if d2 <= 1e-8 { 1e-8 } else { d2 };",
+      "            let t = clamp01(((point.y - a.y) * delta.y + (point.x - a.x) * delta.x) / denominator);",
+      "            let candidate = b * t + a * (1.0 - t);",
+      "            let d = point - candidate;",
+      "            let d = (d.y * d.y + d.x * d.x).sqrt();",
+      "            if d < distance {",
+      "                distance = d;",
+      "                best = CurveInternalCoord { segment, t };",
+      "            }",
+      "        }",
+      "        best",
+      "    }",
+      "    pub fn get_approx_u_from_pos(&self, point: Vec2) -> f32 {",
+      "        assert!(self.points.len() >= 2);",
+      "        let c = self.get_approx_coord_from_pos(point);",
+      "        let u = c.t * self.points_u[c.segment + 1] + (1.0 - c.t) * self.points_u[c.segment];",
+      "        assert!(u.is_finite());",
+      "        u",
+      "    }"
+    ]
+  },
+  "counterexample": {
+    "classification": "static IEEE-f32 inference from source and native CFG; not executed",
+    "points": [
+      [
+        -1e+20,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        1e+22,
+        0.0
+      ]
+    ],
+    "point": [
+      1e+18,
+      0.0
+    ],
+    "native_coordinate": {
+      "segment": 0,
+      "t": 0.0
+    },
+    "current_owned_coordinate": {
+      "segment": 1,
+      "t": 0.0
+    }
+  }
+}

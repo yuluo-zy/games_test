@@ -1,0 +1,1 @@
+V6 exact same complete selected source suite as V5 plus independently reviewed mapped borrowed point ctor source delta. Existing measure/right/left and old test bodies unchanged, three new array fixture tests included. No game implementation in test driver. Immutable template; fresh runtime only; full utils/core/App/GPU still unaccepted.

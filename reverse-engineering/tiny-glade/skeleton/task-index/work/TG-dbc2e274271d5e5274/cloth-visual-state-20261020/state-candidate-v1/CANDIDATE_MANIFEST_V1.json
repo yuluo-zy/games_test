@@ -1,0 +1,65 @@
+{
+  "status": "frozen_candidate_pending_07_source_review",
+  "task": "TG-dbc2e274271d5e5274",
+  "owner": "cloth-visual-state-20261020",
+  "source": "tiny-glade/crates/systems/decorator/src/decorator_visual_state.rs",
+  "before_sha256": "9663103a448f70b67b638b8d965c5c1dfbaf85b53078929ddb5061bd83b46041",
+  "candidate_sha256": "976977a3d40ff291a75d8e9b996555687058c19a7f9768ec3d122c91633da502",
+  "patch_sha256": "466af514129ee56cf414cf18d9ae7767e56427db05ff68e3366a35122387212c",
+  "approved_design_manifest": {
+    "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-dbc2e274271d5e5274/cloth-visual-state-20261020/cloth-contract-v1/DESIGN_MANIFEST_V1.json",
+    "sha256": "7bfcebbeaabd2b1ecd66f25f3e4167790041235f2ab2a7d74300b471ae50bc45"
+  },
+  "design_review": {
+    "path": "tiny-glade/reports/main-loop-render-recovery-2026-10-19/independent-validation/fullvisual-20261020/CLOTH_SCHEMA_DESIGN_REVIEW_V1.json",
+    "sha256": "29519feeb7b48f21ff69ed0bdf134640d02c99fe040469460027be2f76b227de"
+  },
+  "public_interface": {
+    "ClothInfo": {
+      "transform": "country_core::utils::components::transform::Transform",
+      "wall": "country_core::resources::walls::WallId",
+      "dimensions": "[f32; 2]",
+      "decorator_id": "country_core::resources::walls::decorator::DecoratorId"
+    },
+    "DecoratorVisualState.cloth_infos": "Vec<ClothInfo>",
+    "ClothInfo_traits": [
+      "Clone",
+      "Debug",
+      "PartialEq"
+    ],
+    "ClothInfo_absent_traits": [
+      "Default",
+      "Copy",
+      "Eq",
+      "Resource",
+      "Component"
+    ]
+  },
+  "existing_function_bodies_exactly_unchanged": 28,
+  "new_tests": 4,
+  "syntax_parser": {
+    "tool": "rustfmt --edition 2021 --emit stdout --config skip_children=true",
+    "exit_code": 0,
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "not_typecheck": true
+  },
+  "tests_run": false,
+  "cargo_run": false,
+  "gpu_run": false,
+  "production_written": false,
+  "known_not_closed": [
+    "actual two window typed producers",
+    "actual fullvisual caller integration is separate02 candidate",
+    "clothline firstVec actual consumer/asset-backed output",
+    "unload owner replacement",
+    "NaniCloth/raster cloth other types",
+    "C parity",
+    "whole App construction/reachability"
+  ],
+  "notes": [
+    "Global resource only adds firstVec; does not register parallel resources.",
+    "No native80B raw ABI/padding clone or equality; original semantic values only.",
+    "NaN test covers all12float lanes and signed-zero equality; tests unrun.",
+    "Same World test is shared-owner unit boundary only, not real Blueprint/clothline execution."
+  ]
+}

@@ -1,107 +1,716 @@
-//! load_clutter_meshes（B 主基线；0x1422c0760，size 5383，源码 19–；closure 资产加载）。
-//!
-//! 证据：
-//! - wave2 fresh 反编译（2026-10-17，--worker shared）：全函数 = **55 次内联
-//!   `load_clutter_meshes::closure_0()`（逐个资产加载，reviewer fresh 复核计数 55）** +
-//!   `from_iter<RangeInclusive<i32>, Map<RangeInclusive<i32>, closure_env_1>>`（0..56 变体
-//!   枚举转 Vec）+ `Commands::insert_resource<ClutterMeshes>`（0x141cea830）。
-//! - 语义：把自动杂物网格资产（ClutterMeshes）载入网格库——ClutterMeshTy 56 变体按
-//!   资产路径匹配（chapters/resources/clutter_meshes.rs.md：`ClutterMeshTy::from(&str)`
-//!   0x1408b83d0，anvil/door_bell/door_krans/stall_bread/rack_brooms/flowerbox/birdnest/
-//!   firewood/cart_w_pumpkins/cart_w_p_candles 等；未识别 panic）。
-//!
-//! 路径表（**I 推断，U 登记**：wave2 未取 closure_0 内联体内逐资产路径 strings
-//! （RE-ANALYSIS §1.4 "strings 清单本轮未取（成本高、价值低）"）；现按变体名 snake_case
-//! 前缀推断，已证名（anvil/door_bell/…）保留，其余不判等）。
+//! Original B actual clutter asset producer: 55 fixed loads and six flowerbeds.
+//! Original 1422c0760/5472B, closure0 1422c1cc0/928B, closure1 1422c92c0/1028B.
+//! Constant order/paths/names/flags come from the identity-bound native call sites.
 
-use bevy_ecs::prelude::*;
-use country_core::systems::mode_manager::ClutterMeshTy;
+use bevy_ecs::prelude::{Commands, Res};
+use country_core::{
+    asset_libraries::{
+        mesh_library::{AssetMeshLibrary, MeshAsset},
+        meshwatch::MeshWatch,
+    },
+    game_config::GameConfig,
+    resources::clutter_meshes::{ClutterMesh, decode_solid_texture},
+    utils::load_json::load_json_as_mesh,
+};
+use std::path::Path;
+use utils::{geometry::rectangle::Rectangle3d, name_hash::NameHash};
 
-/// 删除标记组件（ClutterMarkedForDeletion，core 章节：UI 删除标记；manage 插入）。
-#[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
-pub struct ClutterMarkedForDeletion;
+// All consumers now refer to the single canonical owner and component TypeId.
+pub use country_core::resources::clutter_meshes::{ClutterMarkedForDeletion, ClutterMeshes};
 
-/// 自动杂物网格集合（宿主资产库装载后填充；按 ClutterMeshTy 56 变体）。
-#[derive(Resource, Clone, Debug, Default)]
-pub struct ClutterMeshes {
-    pub by_ty: Vec<(ClutterMeshTy, String)>,
+#[derive(Clone, Copy, Debug)]
+pub struct ClutterLoadSpec {
+    pub fixed_index: usize,
+    pub path: &'static str,
+    pub mesh_name: &'static str,
+    pub native_group: u8,
+    pub native_flag_46: bool,
+    pub native_flag_47: bool,
+    pub solid_code: u8,
+    pub skip_in_demo: bool,
 }
 
-/// 56 变体资产路径（O：`ClutterMeshTy::from(&str)` 0x1408b83d0 前缀匹配；
-/// 举例路径 anvil/door_bell/door_krans/stall_bread/rack_brooms/flowerbox/birdnest/
-/// firewood/cart_w_pumpkins/cart_w_p_candles 已证；其余按变体名推断 I）。
-pub const CLUTTER_MESH_PATHS: [&str; 56] = [
-    "clutter/plant_pot_v1",
-    "clutter/ladder",
-    "clutter/wheel",
-    "clutter/pitchfork",
-    "clutter/shovel",
-    "clutter/box_w_stuff",
-    "clutter/watering_can",
-    "clutter/firewood",
-    "clutter/bucket",
-    "clutter/birdnest",
-    "clutter/bench",
-    "clutter/bench_w_basket",
-    "clutter/bench_short",
-    "clutter/barrel_w_plantpot",
-    "clutter/haystack",
-    "clutter/plant_pot_v2",
-    "clutter/birdhouse",
-    "clutter/basket",
-    "clutter/basket_w_food",
-    "clutter/barrel_w_food_basket",
-    "clutter/potato_sack",
-    "clutter/road_sign",
-    "clutter/sunflower",
-    "clutter/cart",
-    "clutter/cart2",
-    "clutter/crates_w_tools",
-    "clutter/crates_w_flowers",
-    "clutter/window_flowerpot",
-    "clutter/window_shutter",
-    "clutter/window_flowerbeds",
-    "clutter/reed",
-    "clutter/lilypad",
-    "clutter/fallen_leaves",
-    "clutter/fallen_petals",
-    "clutter/olden_rock",
-    "clutter/olden_tree_log",
-    "clutter/olden_tree_stump",
-    "clutter/pumpkin",
-    "clutter/pumpkin2",
-    "clutter/pumpkin_w_face",
-    "clutter/cart_w_pumpkins",
-    "clutter/crates_w_pumpkins",
-    "clutter/olden_tree_stump_autumn",
-    "clutter/barrel_w_candles",
-    "clutter/anvil",
-    "clutter/fabric_rolls",
-    "clutter/stall_bread",
-    "clutter/stall_veggies",
-    "clutter/crate_fish",
-    "clutter/rack_brooms",
-    "clutter/flowerbox",
-    "clutter/door_bell",
-    "clutter/door_krans",
-    "clutter/door_krans_autumn",
-    "clutter/cart_w_pumpkins_regular",
-    "clutter/crates_w_pumpkins_regular",
+pub const FIXED_LOADS: [ClutterLoadSpec; 55] = [
+    ClutterLoadSpec {
+        fixed_index: 0,
+        path: "assets/meshes/clutter/plant_pot_v1.json",
+        mesh_name: "clutter/plant_pot_v1",
+        native_group: 7,
+        native_flag_46: true,
+        native_flag_47: false,
+        solid_code: 9,
+        skip_in_demo: false,
+    },
+    ClutterLoadSpec {
+        fixed_index: 1,
+        path: "assets/meshes/clutter/ladder.json",
+        mesh_name: "clutter/ladder",
+        native_group: 9,
+        native_flag_46: true,
+        native_flag_47: true,
+        solid_code: 9,
+        skip_in_demo: false,
+    },
+    ClutterLoadSpec {
+        fixed_index: 5,
+        path: "assets/meshes/clutter/box_w_stuff.json",
+        mesh_name: "clutter/box_w_stuff",
+        native_group: 2,
+        native_flag_46: true,
+        native_flag_47: false,
+        solid_code: 9,
+        skip_in_demo: false,
+    },
+    ClutterLoadSpec {
+        fixed_index: 6,
+        path: "assets/meshes/clutter/watering_can.json",
+        mesh_name: "clutter/watering_can",
+        native_group: 3,
+        native_flag_46: true,
+        native_flag_47: false,
+        solid_code: 9,
+        skip_in_demo: false,
+    },
+    ClutterLoadSpec {
+        fixed_index: 9,
+        path: "assets/meshes/clutter/birdnest.json",
+        mesh_name: "clutter/birdnest",
+        native_group: 0,
+        native_flag_46: false,
+        native_flag_47: false,
+        solid_code: 9,
+        skip_in_demo: false,
+    },
+    ClutterLoadSpec {
+        fixed_index: 2,
+        path: "assets/meshes/clutter/wheel.json",
+        mesh_name: "clutter/wheel",
+        native_group: 10,
+        native_flag_46: true,
+        native_flag_47: true,
+        solid_code: 9,
+        skip_in_demo: false,
+    },
+    ClutterLoadSpec {
+        fixed_index: 3,
+        path: "assets/meshes/clutter/pitchfork.json",
+        mesh_name: "clutter/pitchfork",
+        native_group: 12,
+        native_flag_46: false,
+        native_flag_47: true,
+        solid_code: 9,
+        skip_in_demo: false,
+    },
+    ClutterLoadSpec {
+        fixed_index: 4,
+        path: "assets/meshes/clutter/shovel.json",
+        mesh_name: "clutter/shovel",
+        native_group: 13,
+        native_flag_46: false,
+        native_flag_47: true,
+        solid_code: 9,
+        skip_in_demo: false,
+    },
+    ClutterLoadSpec {
+        fixed_index: 7,
+        path: "assets/meshes/clutter/firewood.json",
+        mesh_name: "clutter/firewood",
+        native_group: 11,
+        native_flag_46: true,
+        native_flag_47: false,
+        solid_code: 9,
+        skip_in_demo: false,
+    },
+    ClutterLoadSpec {
+        fixed_index: 8,
+        path: "assets/meshes/clutter/bucket.json",
+        mesh_name: "clutter/bucket",
+        native_group: 4,
+        native_flag_46: true,
+        native_flag_47: false,
+        solid_code: 9,
+        skip_in_demo: false,
+    },
+    ClutterLoadSpec {
+        fixed_index: 27,
+        path: "assets/meshes/clutter/window_flowerpot.json",
+        mesh_name: "clutter/window_flowerpot",
+        native_group: 7,
+        native_flag_46: false,
+        native_flag_47: false,
+        solid_code: 9,
+        skip_in_demo: false,
+    },
+    ClutterLoadSpec {
+        fixed_index: 28,
+        path: "assets/meshes/clutter/window_shutter.json",
+        mesh_name: "clutter/window_shutter",
+        native_group: 14,
+        native_flag_46: false,
+        native_flag_47: false,
+        solid_code: 9,
+        skip_in_demo: false,
+    },
+    ClutterLoadSpec {
+        fixed_index: 29,
+        path: "assets/meshes/clutter/reed.json",
+        mesh_name: "clutter/reed",
+        native_group: 17,
+        native_flag_46: false,
+        native_flag_47: false,
+        solid_code: 9,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 30,
+        path: "assets/meshes/clutter/lilypad.json",
+        mesh_name: "clutter/lilypad",
+        native_group: 17,
+        native_flag_46: false,
+        native_flag_47: false,
+        solid_code: 9,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 31,
+        path: "assets/meshes/fallen_leaves.json",
+        mesh_name: "fallen_leaves",
+        native_group: 17,
+        native_flag_46: false,
+        native_flag_47: false,
+        solid_code: 9,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 32,
+        path: "assets/meshes/fallen_petals.json",
+        mesh_name: "fallen_petals",
+        native_group: 17,
+        native_flag_46: false,
+        native_flag_47: false,
+        solid_code: 9,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 33,
+        path: "assets/meshes/olden_glade_rock.json",
+        mesh_name: "olden_glade_rock",
+        native_group: 30,
+        native_flag_46: false,
+        native_flag_47: false,
+        solid_code: 3,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 34,
+        path: "assets/meshes/tree_log.json",
+        mesh_name: "tree_log",
+        native_group: 28,
+        native_flag_46: false,
+        native_flag_47: false,
+        solid_code: 0,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 35,
+        path: "assets/meshes/tree_stump.json",
+        mesh_name: "tree_stump",
+        native_group: 29,
+        native_flag_46: false,
+        native_flag_47: false,
+        solid_code: 1,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 10,
+        path: "assets/meshes/clutter/bench.json",
+        mesh_name: "clutter/bench",
+        native_group: 19,
+        native_flag_46: false,
+        native_flag_47: true,
+        solid_code: 4,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 11,
+        path: "assets/meshes/clutter/bench_w_basket.json",
+        mesh_name: "clutter/bench_w_basket",
+        native_group: 19,
+        native_flag_46: false,
+        native_flag_47: true,
+        solid_code: 4,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 12,
+        path: "assets/meshes/clutter/bench_short.json",
+        mesh_name: "clutter/bench_short",
+        native_group: 5,
+        native_flag_46: false,
+        native_flag_47: true,
+        solid_code: 4,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 13,
+        path: "assets/meshes/clutter/barrel.json",
+        mesh_name: "clutter/barrel",
+        native_group: 23,
+        native_flag_46: false,
+        native_flag_47: false,
+        solid_code: 4,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 19,
+        path: "assets/meshes/clutter/barrel_w_food_basket.json",
+        mesh_name: "clutter/barrel_w_food_basket",
+        native_group: 23,
+        native_flag_46: false,
+        native_flag_47: false,
+        solid_code: 4,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 14,
+        path: "assets/meshes/clutter/haystack.json",
+        mesh_name: "clutter/haystack",
+        native_group: 24,
+        native_flag_46: false,
+        native_flag_47: false,
+        solid_code: 5,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 15,
+        path: "assets/meshes/clutter/plant_pot_v2.json",
+        mesh_name: "clutter/plant_pot_v2",
+        native_group: 7,
+        native_flag_46: true,
+        native_flag_47: false,
+        solid_code: 9,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 16,
+        path: "assets/meshes/clutter/birdhouse.json",
+        mesh_name: "clutter/birdhouse",
+        native_group: 20,
+        native_flag_46: false,
+        native_flag_47: true,
+        solid_code: 4,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 17,
+        path: "assets/meshes/clutter/basket.json",
+        mesh_name: "clutter/basket",
+        native_group: 25,
+        native_flag_46: true,
+        native_flag_47: false,
+        solid_code: 4,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 18,
+        path: "assets/meshes/clutter/basket_w_food.json",
+        mesh_name: "clutter/basket_w_food",
+        native_group: 25,
+        native_flag_46: true,
+        native_flag_47: false,
+        solid_code: 4,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 20,
+        path: "assets/meshes/clutter/potato_sack.json",
+        mesh_name: "clutter/potato_sack",
+        native_group: 21,
+        native_flag_46: true,
+        native_flag_47: false,
+        solid_code: 6,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 21,
+        path: "assets/meshes/clutter/road_sign.json",
+        mesh_name: "clutter/road_sign",
+        native_group: 22,
+        native_flag_46: false,
+        native_flag_47: true,
+        solid_code: 4,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 22,
+        path: "assets/meshes/clutter/sunflower.json",
+        mesh_name: "clutter/sunflower",
+        native_group: 7,
+        native_flag_46: true,
+        native_flag_47: false,
+        solid_code: 9,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 23,
+        path: "assets/meshes/clutter/cart.json",
+        mesh_name: "clutter/cart",
+        native_group: 5,
+        native_flag_46: false,
+        native_flag_47: false,
+        solid_code: 4,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 24,
+        path: "assets/meshes/clutter/cart2.json",
+        mesh_name: "clutter/cart2",
+        native_group: 5,
+        native_flag_46: false,
+        native_flag_47: false,
+        solid_code: 4,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 25,
+        path: "assets/meshes/clutter/crates_w_tools.json",
+        mesh_name: "clutter/crates_w_tools",
+        native_group: 5,
+        native_flag_46: true,
+        native_flag_47: true,
+        solid_code: 4,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 26,
+        path: "assets/meshes/clutter/crates_w_flowers.json",
+        mesh_name: "clutter/crates_w_flowers",
+        native_group: 5,
+        native_flag_46: true,
+        native_flag_47: true,
+        solid_code: 4,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 36,
+        path: "assets/meshes/clutter/pumpkin.json",
+        mesh_name: "clutter/pumpkin",
+        native_group: 26,
+        native_flag_46: true,
+        native_flag_47: false,
+        solid_code: 7,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 37,
+        path: "assets/meshes/clutter/pumpkin2.json",
+        mesh_name: "clutter/pumpkin2",
+        native_group: 26,
+        native_flag_46: true,
+        native_flag_47: false,
+        solid_code: 8,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 38,
+        path: "assets/meshes/clutter/pumpkin_w_face.json",
+        mesh_name: "clutter/pumpkin_w_face",
+        native_group: 27,
+        native_flag_46: true,
+        native_flag_47: false,
+        solid_code: 7,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 39,
+        path: "assets/meshes/clutter/cart_w_pumpkins.json",
+        mesh_name: "clutter/cart_w_pumpkins",
+        native_group: 5,
+        native_flag_46: true,
+        native_flag_47: false,
+        solid_code: 4,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 40,
+        path: "assets/meshes/clutter/crates_w_pumpkins.json",
+        mesh_name: "clutter/crates_w_pumpkins",
+        native_group: 1,
+        native_flag_46: true,
+        native_flag_47: false,
+        solid_code: 4,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 41,
+        path: "assets/meshes/tree_stump.json",
+        mesh_name: "tree_stump",
+        native_group: 29,
+        native_flag_46: false,
+        native_flag_47: false,
+        solid_code: 2,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 42,
+        path: "assets/meshes/clutter/barrel_w_candles.json",
+        mesh_name: "clutter/barrel_w_candles",
+        native_group: 23,
+        native_flag_46: false,
+        native_flag_47: false,
+        solid_code: 4,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 43,
+        path: "assets/meshes/clutter/anvil.json",
+        mesh_name: "clutter/anvil",
+        native_group: 32,
+        native_flag_46: false,
+        native_flag_47: false,
+        solid_code: 4,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 44,
+        path: "assets/meshes/clutter/fabric_rolls.json",
+        mesh_name: "clutter/fabric_rolls",
+        native_group: 33,
+        native_flag_46: true,
+        native_flag_47: false,
+        solid_code: 9,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 45,
+        path: "assets/meshes/clutter/stall_bread.json",
+        mesh_name: "clutter/stall_bread",
+        native_group: 34,
+        native_flag_46: true,
+        native_flag_47: true,
+        solid_code: 4,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 46,
+        path: "assets/meshes/clutter/stall_veggies.json",
+        mesh_name: "clutter/stall_veggies",
+        native_group: 35,
+        native_flag_46: true,
+        native_flag_47: true,
+        solid_code: 4,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 47,
+        path: "assets/meshes/clutter/crate_fish.json",
+        mesh_name: "clutter/crate_fish",
+        native_group: 36,
+        native_flag_46: true,
+        native_flag_47: false,
+        solid_code: 4,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 48,
+        path: "assets/meshes/clutter/rack_brooms.json",
+        mesh_name: "clutter/rack_brooms",
+        native_group: 37,
+        native_flag_46: true,
+        native_flag_47: true,
+        solid_code: 4,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 49,
+        path: "assets/meshes/clutter/flowerbox.json",
+        mesh_name: "clutter/flowerbox",
+        native_group: 2,
+        native_flag_46: true,
+        native_flag_47: true,
+        solid_code: 4,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 53,
+        path: "assets/meshes/clutter/cart_w_pumpkins_regular.json",
+        mesh_name: "clutter/cart_w_pumpkins_regular",
+        native_group: 5,
+        native_flag_46: false,
+        native_flag_47: false,
+        solid_code: 4,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 54,
+        path: "assets/meshes/clutter/crates_w_pumpkins_regular.json",
+        mesh_name: "clutter/crates_w_pumpkins_regular",
+        native_group: 1,
+        native_flag_46: false,
+        native_flag_47: false,
+        solid_code: 4,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 50,
+        path: "assets/meshes/clutter/door_bell.json",
+        mesh_name: "clutter/door_bell",
+        native_group: 38,
+        native_flag_46: false,
+        native_flag_47: false,
+        solid_code: 9,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 51,
+        path: "assets/meshes/clutter/door_krans.json",
+        mesh_name: "clutter/door_krans",
+        native_group: 31,
+        native_flag_46: false,
+        native_flag_47: false,
+        solid_code: 9,
+        skip_in_demo: true,
+    },
+    ClutterLoadSpec {
+        fixed_index: 52,
+        path: "assets/meshes/clutter/door_krans_autumn.json",
+        mesh_name: "clutter/door_krans_autumn",
+        native_group: 31,
+        native_flag_46: false,
+        native_flag_47: false,
+        solid_code: 9,
+        skip_in_demo: true,
+    },
 ];
 
-impl ClutterMeshes {
-    /// 全 56 变体注册（O：load closure 语义；宿主资产库按路径装载）。
-    pub fn register_all() -> Self {
-        let by_ty = (0..56u8)
-            .filter_map(|tag| ClutterMeshTy::from_native_tag(tag))
-            .zip(CLUTTER_MESH_PATHS.iter().copied())
-            .map(|(ty, path)| (ty, path.to_string()))
-            .collect();
-        Self { by_ty }
+// Original standard format pieces and closed range 1..=6. These finite literal
+// names preserve exact bytes/order and the existing static builder name API.
+pub const WINDOW_FLOWERBEDS: [(&str, &str); 6] = [
+    (
+        "assets/meshes/clutter/window_flower_bed_1.json",
+        "clutter/window_flower_bed_1",
+    ),
+    (
+        "assets/meshes/clutter/window_flower_bed_2.json",
+        "clutter/window_flower_bed_2",
+    ),
+    (
+        "assets/meshes/clutter/window_flower_bed_3.json",
+        "clutter/window_flower_bed_3",
+    ),
+    (
+        "assets/meshes/clutter/window_flower_bed_4.json",
+        "clutter/window_flower_bed_4",
+    ),
+    (
+        "assets/meshes/clutter/window_flower_bed_5.json",
+        "clutter/window_flower_bed_5",
+    ),
+    (
+        "assets/meshes/clutter/window_flower_bed_6.json",
+        "clutter/window_flower_bed_6",
+    ),
+];
+
+fn load_one(
+    installation: &Path,
+    meshes: &AssetMeshLibrary,
+    watch: &MeshWatch,
+    demo: bool,
+    spec: ClutterLoadSpec,
+) -> ClutterMesh {
+    let solid_texture = decode_solid_texture(spec.solid_code);
+    if demo && spec.skip_in_demo {
+        return ClutterMesh::omitted_in_demo(
+            spec.mesh_name,
+            spec.native_group,
+            solid_texture,
+            spec.native_flag_46,
+            spec.native_flag_47,
+        );
+    }
+    let path = installation.join(spec.path);
+    let mesh = load_json_as_mesh(path.to_str().expect("clutter asset path is not UTF-8"));
+    // Original radius and bounds are computed before asset ownership moves.
+    let radius_xz = mesh.collision_radius_xz();
+    let bounds = mesh.collision_bbx();
+    // Original shared load_mesh_into_library @140b1aca0: watch first, then add.
+    watch.watch(&mesh);
+    let handle = meshes.add(MeshAsset::new(mesh, Some(spec.mesh_name.to_owned())));
+    ClutterMesh {
+        bounds: Rectangle3d {
+            footprint: bounds.rect,
+            bottom: bounds.min_y,
+            top: bounds.max_y,
+        },
+        mesh_name: spec.mesh_name,
+        mesh: Some(handle),
+        name_hash: NameHash::compute(spec.mesh_name),
+        radius_xz,
+        native_group: spec.native_group,
+        solid_texture,
+        native_flag_46: spec.native_flag_46,
+        native_flag_47: spec.native_flag_47,
     }
 }
 
-/// load_clutter_meshes（0x1422c0760）：注册资产并 insert_resource。
-pub fn load_clutter_meshes(mut commands: Commands) {
-    commands.insert_resource(ClutterMeshes::register_all());
+/// Actual installation-root adapter. Registration is fail-fast on a missing or
+/// invalid required asset, as the original closure unwraps its load result.
+/// Root must install this in the original startup stage, not every Update.
+pub fn load_clutter_meshes_from(
+    installation: &Path,
+    meshes: &AssetMeshLibrary,
+    watch: &MeshWatch,
+    demo: bool,
+) -> ClutterMeshes {
+    let mut fixed: [Option<ClutterMesh>; 55] = std::array::from_fn(|_| None);
+    let mut flowerbeds = Vec::with_capacity(6);
+    for (index, &spec) in FIXED_LOADS.iter().enumerate() {
+        // The native vector is generated between fixed calls 12 and 13.
+        if index == 12 {
+            for &(path, mesh_name) in &WINDOW_FLOWERBEDS {
+                flowerbeds.push(load_one(
+                    installation,
+                    meshes,
+                    watch,
+                    false,
+                    ClutterLoadSpec {
+                        fixed_index: 0,
+                        path,
+                        mesh_name,
+                        native_group: 31,
+                        native_flag_46: false,
+                        native_flag_47: false,
+                        solid_code: 9,
+                        skip_in_demo: false,
+                    },
+                ));
+            }
+        }
+        assert!(
+            fixed[spec.fixed_index].is_none(),
+            "duplicate native clutter fixed slot"
+        );
+        fixed[spec.fixed_index] = Some(load_one(installation, meshes, watch, demo, spec));
+    }
+    ClutterMeshes::from_parts(
+        fixed.map(|entry| entry.expect("native clutter fixed slot was not loaded")),
+        flowerbeds,
+    )
+}
+
+/// Process-relative original system entry. The production host can call the
+/// explicit installation-root adapter while retaining the same asset owner.
+pub fn load_clutter_meshes(
+    mut commands: Commands,
+    meshes: Res<AssetMeshLibrary>,
+    watch: Res<MeshWatch>,
+    config: Res<GameConfig>,
+) {
+    commands.insert_resource(load_clutter_meshes_from(
+        Path::new("."),
+        &meshes,
+        &watch,
+        config.dev.demo,
+    ));
 }

@@ -2,7 +2,7 @@
 use super::{
     graph::{BuildError, GraphDeclaration, OriginSource},
     resource::{AccessRange, AccessVersion, RangeError, ResourceContractError as Contract},
-    resource_info::AccessDeclaration,
+    resource_info::{AccessDeclaration, entry_content_resources},
 };
 
 pub(crate) fn range_error(resource: u32, error: RangeError) -> BuildError {
@@ -52,9 +52,9 @@ pub(crate) fn validate_matching_initialization(
                 ))
     };
     for (pass_index, pass) in graph.passes.iter().enumerate() {
+        let entry_resources = entry_content_resources(&pass.accesses);
         for (access_index, access) in pass.accesses.iter().enumerate() {
-            if access.reads_contents(is_write(access.access_code))
-                && !access.allow_undefined_contents
+            if access.requires_defined_contents(is_write(access.access_code))
                 && !initialized(access.resource_index as usize)
             {
                 let writes = graph.passes[..=pass_index]
@@ -62,7 +62,11 @@ pub(crate) fn validate_matching_initialization(
                     .enumerate()
                     .flat_map(|(index, pass)| {
                         let count = if index == pass_index {
-                            access_index
+                            if entry_resources.contains(&access.resource_index) {
+                                0
+                            } else {
+                                access_index
+                            }
                         } else {
                             pass.accesses.len()
                         };
@@ -256,6 +260,11 @@ fn resolve_with_initialization(
         .collect();
     let mut passes = Vec::with_capacity(graph.passes.len());
     for (pass_index, pass) in graph.passes.iter().enumerate() {
+        let entry_lengths: smallvec::SmallVec<[(u32, usize); 2]> =
+            entry_content_resources(&pass.accesses)
+                .into_iter()
+                .map(|resource| (resource, initialized[resource as usize].len()))
+                .collect();
         let mut accesses = Vec::with_capacity(pass.accesses.len());
         for access in &pass.accesses {
             if usize::from(access.access_code) >= crate::raw::access_table::ACCESS_CODE_COUNT {
@@ -271,12 +280,7 @@ fn resolve_with_initialization(
                 .map_err(|error| range_error(access.resource_index, error))?;
             let current = versions[resource];
             let write = is_write(access.access_code);
-            let modifies = write || access.reads_previous;
-            let invalid_previous = access.reads_previous && !write;
-            let invalid_unused = access.contents_unused && modifies;
-            let invalid_undefined =
-                access.allow_undefined_contents && (modifies || access.contents_unused);
-            if invalid_previous || invalid_unused || invalid_undefined {
+            if !access.valid_content_mode(write) {
                 return Err(BuildError::Contract(Contract::WrongAccessMode {
                     resource: access.resource_index,
                     access_code: access.access_code,
@@ -318,9 +322,12 @@ fn resolve_with_initialization(
                     }));
                 }
             };
-            if access.reads_contents(write)
-                && !access.allow_undefined_contents
-                && !covers(&initialized[resource], access.range, descriptor)
+            let input_ranges = &initialized[resource][..entry_lengths
+                .iter()
+                .find_map(|&(saved, length)| (saved == access.resource_index).then_some(length))
+                .unwrap_or(initialized[resource].len())];
+            if access.requires_defined_contents(write)
+                && !covers(input_ranges, access.range, descriptor)
                     .map_err(|error| range_error(access.resource_index, error))?
             {
                 return Err(BuildError::Contract(Contract::UninitializedRead {

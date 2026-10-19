@@ -1,0 +1,7 @@
+# Window integration companion V2
+
+V1 HOLD is retained. New original registration contract proves raw0x24=36, fullvisual25 before36, manager member8 before animation9 and chain_ignore_deferred. This V2 corrects only the necessary manager/animation pair inside the pre-existing configure entry; it does NOT register this approximate whole entry into run_game or claim the other original twelve-member structure is restored. Keep original manager/animation Commands visibility with nested ignore-deferred; retain existing legacy geometry schedule beyond that pair as an explicitly pending boundary. Reset remains before all current outputs. Remove deleted fake manager resources; init unique Window resource and existing sound Events without replacing data.
+
+Actual App registers canonical PlayClutterSoundCmd with add_event in separate legally owned run_game companion, preserving actual EventRegistry/update lifecycle. Do not register a fake sound backend, default mesh catalog, new resource owner or incomplete whole audio plugin. Fullvisual actual set25 collector, output producers and complete set36 original registration remain pending.
+
+Apply with four exact approved consumer sources, both companion source deltas, and retain original candidate manifests unchanged. Their earlier preserve-animation-before-manager note is superseded only by the new frozen native schedule contract, not by silently rewriting author evidence. Eleven consumer tests remain unrun; no full core/App/GPU acceptance.

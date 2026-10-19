@@ -1,0 +1,16 @@
+Source: /Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/component.rs
+SHA256: 63feb82b43e4d1b9eda9e01deb20434b3d6bf0fffd9ff8142b1f30eb4caa4fbb
+
+480: #[diagnostic::on_unimplemented(
+481:     message = "`{Self}` is not a `Component`",
+482:     label = "invalid `Component`",
+483:     note = "consider annotating `{Self}` with `#[derive(Component)]`"
+484: )]
+485: pub trait Component: Send + Sync + 'static {
+486:     /// A constant indicating the storage type used for this component.
+487:     const STORAGE_TYPE: StorageType;
+488: 
+489:     /// A marker type to assist Bevy with determining if this component is
+490:     /// mutable, or immutable. Mutable components will have [`Component<Mutability = Mutable>`],
+491:     /// while immutable components will instead have [`Component<Mutability = Immutable>`].
+

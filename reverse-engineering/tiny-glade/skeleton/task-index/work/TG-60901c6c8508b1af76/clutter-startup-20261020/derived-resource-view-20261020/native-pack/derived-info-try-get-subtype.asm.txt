@@ -1,0 +1,73 @@
+
+/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140b26980: 56                          	pushq	%rsi
+140b26981: 57                          	pushq	%rdi
+140b26982: 53                          	pushq	%rbx
+140b26983: 48 83 ec 30                 	subq	$0x30, %rsp
+140b26987: 89 54 24 2c                 	movl	%edx, 0x2c(%rsp)
+140b2698b: 48 8b 39                    	movq	(%rcx), %rdi
+140b2698e: 48 83 7f 18 00              	cmpq	$0x0, 0x18(%rdi)
+140b26993: 0f 84 b9 00 00 00           	je	0x140b26a52 <.text+0xb25a52>
+140b26999: 89 d6                       	movl	%edx, %esi
+140b2699b: 48 8d 4f 20                 	leaq	0x20(%rdi), %rcx
+140b2699f: 48 8d 54 24 2c              	leaq	0x2c(%rsp), %rdx
+140b269a4: e8 27 a5 a8 ff              	callq	0x1405b0ed0 <.text+0x5afed0>
+140b269a9: 48 8b 0f                    	movq	(%rdi), %rcx
+140b269ac: 48 8b 57 08                 	movq	0x8(%rdi), %rdx
+140b269b0: 49 89 d0                    	movq	%rdx, %r8
+140b269b3: 49 21 c0                    	andq	%rax, %r8
+140b269b6: 48 c1 e8 39                 	shrq	$0x39, %rax
+140b269ba: 66 0f 6e c0                 	movd	%eax, %xmm0
+140b269be: 66 0f 60 c0                 	punpcklbw	%xmm0, %xmm0    # xmm0 = xmm0[0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7]
+140b269c2: f2 0f 70 c0 00              	pshuflw	$0x0, %xmm0, %xmm0      # xmm0 = xmm0[0,0,0,0,4,5,6,7]
+140b269c7: 66 0f 70 c0 00              	pshufd	$0x0, %xmm0, %xmm0      # xmm0 = xmm0[0,0,0,0]
+140b269cc: 31 c0                       	xorl	%eax, %eax
+140b269ce: 66 0f 76 c9                 	pcmpeqd	%xmm1, %xmm1
+140b269d2: 45 31 c9                    	xorl	%r9d, %r9d
+140b269d5: f3 42 0f 6f 14 01           	movdqu	(%rcx,%r8), %xmm2
+140b269db: 66 0f 6f da                 	movdqa	%xmm2, %xmm3
+140b269df: 66 0f 74 d8                 	pcmpeqb	%xmm0, %xmm3
+140b269e3: 66 44 0f d7 d3              	pmovmskb	%xmm3, %r10d
+140b269e8: 45 85 d2                    	testl	%r10d, %r10d
+140b269eb: 74 33                       	je	0x140b26a20 <.text+0xb25a20>
+140b269ed: f3 45 0f bc da              	tzcntl	%r10d, %r11d
+140b269f2: 4d 01 c3                    	addq	%r8, %r11
+140b269f5: 49 21 d3                    	andq	%rdx, %r11
+140b269f8: 4a 8d 3c dd 00 00 00 00     	leaq	(,%r11,8), %rdi
+140b26a00: 48 89 cb                    	movq	%rcx, %rbx
+140b26a03: 48 29 fb                    	subq	%rdi, %rbx
+140b26a06: 39 73 f8                    	cmpl	%esi, -0x8(%rbx)
+140b26a09: 74 33                       	je	0x140b26a3e <.text+0xb25a3e>
+140b26a0b: 45 8d 5a ff                 	leal	-0x1(%r10), %r11d
+140b26a0f: 66 45 21 d3                 	andw	%r10w, %r11w
+140b26a13: 45 89 da                    	movl	%r11d, %r10d
+140b26a16: 75 d5                       	jne	0x140b269ed <.text+0xb259ed>
+140b26a18: 0f 1f 84 00 00 00 00 00     	nopl	(%rax,%rax)
+140b26a20: 66 0f 74 d1                 	pcmpeqb	%xmm1, %xmm2
+140b26a24: 66 44 0f d7 d2              	pmovmskb	%xmm2, %r10d
+140b26a29: 45 85 d2                    	testl	%r10d, %r10d
+140b26a2c: 75 17                       	jne	0x140b26a45 <.text+0xb25a45>
+140b26a2e: 4d 01 c8                    	addq	%r9, %r8
+140b26a31: 49 83 c0 10                 	addq	$0x10, %r8
+140b26a35: 49 83 c1 10                 	addq	$0x10, %r9
+140b26a39: 49 21 d0                    	andq	%rdx, %r8
+140b26a3c: eb 97                       	jmp	0x140b269d5 <.text+0xb259d5>
+140b26a3e: 49 f7 db                    	negq	%r11
+140b26a41: 4a 8d 04 d9                 	leaq	(%rcx,%r11,8), %rax
+140b26a45: 48 8d 48 f8                 	leaq	-0x8(%rax), %rcx
+140b26a49: 48 85 c0                    	testq	%rax, %rax
+140b26a4c: 48 0f 44 c8                 	cmoveq	%rax, %rcx
+140b26a50: eb 02                       	jmp	0x140b26a54 <.text+0xb25a54>
+140b26a52: 31 c9                       	xorl	%ecx, %ecx
+140b26a54: 48 8d 41 04                 	leaq	0x4(%rcx), %rax
+140b26a58: 48 85 c9                    	testq	%rcx, %rcx
+140b26a5b: 48 0f 44 c1                 	cmoveq	%rcx, %rax
+140b26a5f: 48 83 c4 30                 	addq	$0x30, %rsp
+140b26a63: 5b                          	popq	%rbx
+140b26a64: 5f                          	popq	%rdi
+140b26a65: 5e                          	popq	%rsi
+140b26a66: c3                          	retq

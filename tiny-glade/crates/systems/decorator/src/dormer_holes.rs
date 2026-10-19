@@ -1,219 +1,521 @@
-//! B `crates/systems/decorator/src/dormer_holes.rs` — 老虎窗开洞网格上传（D4）。
-//!
-//! 证据（fresh RE-MCP，decomp-1407b1d40.txt，O 结构）：
-//! - `upload_dormer_holes_to_gpu` 0x1407b1d40（行 20）：遍历
-//!   `DecoratorBlueprints`（0x10B 槽位 map；值记录 +0x0..+0x1c = Rectangle2d
-//!   {center, size, axis} + +0x40/+0x50 u64）→ `Rectangle2d::aabb`
-//!   （0x140c9b680）→ 世界→网格坐标（`world_space_to_grid_coord_unclamped`
-//!   行 121 内联：`floor((x + 65.0) / 8.6667)`；0x142a83814=65.0、
-//!   0x142a83818=8.6667、0x1429a49bc=2.147e9 钳制）→ `get_cells_from_bbx`
-//!   （行 135 内联）逐格写入计数缓冲 `counts[900]`（u32，0x142923c20 memset 0）
-//!   与单元表 `cells[225][50]`（0x30B DormerHoleSsbo 记录，容量 panic
-//!   0x142a83c70/0x142a83c88）→ 双 `gpu_write`（0x140beefa0：
-//!   counts 900 + cells 区）经 `AssetSsboLibrary::get`（0x141258610）+
-//!   `DormerHoleSsbo::dummy`（0x141286660）。
-//!
-//! 网格：单元索引 = row*15 + col（15 列 × 60 行 = 900 计数；记录单元 225
-//! 个 × 50 条 × 0x30B）。`DecoratorBlueprint` 的洞记录（+0x0..+0x1c）=
-//! 其首个碰撞体 footprint（set_colliders 0x14017a22f0 写 +0x0 区，O 对齐）。
+//! B upload_dormer_holes_to_gpu@1407b1d40/14341B. The actual current
+//! blueprint's canonical48B list feeds a fixed15x15 spatial table, then the
+//! same App's registered count/hole buffers. This is middle tuple member3;
+//! independent dormer-roof geometry and real record producers remain required.
 
-use country_core::asset_libraries::ssbo_library::{AssetSsboLibrary, SsboType};
+use bevy_ecs::system::{Res, ResMut};
+use country_core::asset_libraries::ssbo_library::AssetSsboLibrary;
+use country_core::render::device::GraphicsDeviceResource;
 use country_core::render::ssbo::rhapsody_boundary::GraphicsDevice;
-use country_core::render::ssbo::{InstanceBuffer, StorageElement};
+use country_core::resources::walls::dormers::{DormerHoleCountPerCellSsbo, DormerHoleSsbo};
+use country_core::systems::ui::signifiers::signifier_create::UiSignifierStream;
 use glam::Vec2;
+use utils::geometry::rectangle::Rectangle2d;
 
 use crate::blueprint::DecoratorBlueprints;
-use crate::utils::DormerHoleSsbo;
 
-/// 网格列数（单元索引 = row*15 + col；cell 上限 0xe=14，O）。
 pub const GRID_COLS: usize = 15;
-/// 网格行数（计数缓冲 900 = 15×60，O）。
-pub const GRID_ROWS: usize = 60;
-/// 计数缓冲长度（u32[900]，O：0x384=900）。
-pub const COUNT_BUFFER_LEN: usize = GRID_COLS * GRID_ROWS;
-/// 单元表容量（225 单元 × 50 条，O：`pcStack_278 = 0x32` + 0x142a83b28
-/// 字符串 "…"; 0xe0=224 上限 +1）。
-pub const CELL_COUNT: usize = GRID_COLS * GRID_COLS;
+pub const GRID_ROWS: usize = 15;
+pub const CELL_COUNT: usize = GRID_COLS * GRID_ROWS;
+pub const COUNT_BUFFER_LEN: usize = CELL_COUNT;
 pub const CELL_CAP: usize = 50;
-
-/// 网格原点偏移（0x142a83814 = 65.0，O）。
 pub const GRID_ORIGIN: f32 = 65.0;
-/// 单元尺寸（0x142a83818 = 8.6667，O）。
-pub const GRID_CELL_SIZE: f32 = 8.6667;
-/// 坐标钳制上限（0x1429a49bc = 2.147e9 → i32::MAX 转换语义，O）。
-const GRID_LIMIT: f32 = 2_147_483_647.0;
+pub const GRID_CELL_SIZE: f32 = f32::from_bits(0x410a_aaab);
 
-/// `world_space_to_grid_coord_unclamped`（行 121，内联，O）：世界 x/z →
-/// 网格坐标（未钳制）。
+/// Native floor followed by saturating f32 -> i32, including NaN ->0.
 pub fn world_space_to_grid_coord_unclamped(world: f32) -> i32 {
-    let v = (world + GRID_ORIGIN) / GRID_CELL_SIZE;
-    if v > GRID_LIMIT || v.is_nan() {
-        0
-    } else {
-        v.floor() as i32
-    }
+    ((world + GRID_ORIGIN) / GRID_CELL_SIZE).floor() as i32
 }
 
-/// `get_cells_from_bbx`（行 135，内联，O）：包围盒 → 覆盖单元列表
-/// （行/列钳制 [0, 0xe]，单元索引 row*15+col）。
-pub fn get_cells_from_bbx(
-    min: Vec2,
-    max: Vec2,
-) -> Vec<usize> {
-    let col_min = world_space_to_grid_coord_unclamped(min.x).max(0) as usize;
-    let col_max = world_space_to_grid_coord_unclamped(max.x).max(0) as usize;
-    let row_min = world_space_to_grid_coord_unclamped(min.y).max(0) as usize;
-    let row_max = world_space_to_grid_coord_unclamped(max.y).max(0) as usize;
-    let col_max = col_max.min(GRID_COLS - 1);
-    let row_max = row_max.min(GRID_COLS - 1);
-    let mut cells = Vec::new();
+/// Only minima are lower-clamped and maxima upper-clamped. A box wholly
+/// outside an edge has an empty inclusive range; it is not forced into a cell.
+pub fn get_cells_from_bbx(min: Vec2, max: Vec2) -> Vec<usize> {
+    let col_min = world_space_to_grid_coord_unclamped(min.x).max(0);
+    let row_min = world_space_to_grid_coord_unclamped(min.y).max(0);
+    let col_max = world_space_to_grid_coord_unclamped(max.x).min(GRID_COLS as i32 - 1);
+    let row_max = world_space_to_grid_coord_unclamped(max.y).min(GRID_ROWS as i32 - 1);
+    let mut result = Vec::new();
     for row in row_min..=row_max {
         for col in col_min..=col_max {
-            cells.push(row * GRID_COLS + col);
+            result.push((row * GRID_COLS as i32 + col) as usize);
         }
     }
-    cells
+    result
 }
 
-/// 老虎窗洞计数缓冲（u32[900]，O）。
-#[derive(Clone, Copy, Debug)]
-#[repr(C)]
-pub struct DormerHoleCounts {
-    pub counts: [u32; COUNT_BUFFER_LEN],
+/// Per-invocation CPU state, not a second authoritative resource. Every cell
+/// has all50 canonical rows initialized, even though native accepts only49.
+#[derive(Debug)]
+pub struct DormerHoleGrid {
+    pub counts: Vec<DormerHoleCountPerCellSsbo>,
+    pub cells: Vec<Vec<DormerHoleSsbo>>,
 }
 
-impl Default for DormerHoleCounts {
-    fn default() -> Self {
-        Self {
-            counts: [0; COUNT_BUFFER_LEN],
+fn record_rectangle(record: &DormerHoleSsbo) -> Rectangle2d {
+    let words = record.0;
+    // The original creates this value directly, without constructor guards or
+    // normalizing raw floats. Its geometry operation is the existing aabb().
+    Rectangle2d {
+        axis: Vec2::new(f32::from_bits(words[8]), f32::from_bits(words[9])),
+        center: Vec2::new(f32::from_bits(words[0]), f32::from_bits(words[2])),
+        size: Vec2::new(f32::from_bits(words[4]), f32::from_bits(words[6])),
+    }
+}
+
+pub fn build_dormer_hole_grid(blueprints: &DecoratorBlueprints) -> DormerHoleGrid {
+    // Preserve the original full initialized row and225 cloned cell Vecs.
+    let row = vec![DormerHoleSsbo::dummy(); CELL_CAP];
+    let mut cells = vec![row; CELL_COUNT];
+    let mut counts = vec![DormerHoleCountPerCellSsbo(0); COUNT_BUFFER_LEN];
+    for blueprint in blueprints.map.values() {
+        for record in &blueprint.dormer_holes {
+            let aabb = record_rectangle(record).aabb();
+            for cell in get_cells_from_bbx(aabb.min, aabb.max) {
+                let next = counts[cell].0 + 1;
+                if next < CELL_CAP as u32 {
+                    counts[cell].0 = next;
+                    cells[cell][next as usize - 1] = *record;
+                } else {
+                    // Native level2 warning; count remains49 and no row is
+                    // overwritten. The original's bounds checks still panic.
+                    log::warn!(
+                        "Exceeded maximum count {} of dormer holes per spatial accel grid cell at cell id {}",
+                        CELL_CAP,
+                        cell
+                    );
+                }
+            }
         }
     }
+    DormerHoleGrid { counts, cells }
 }
 
-/// 老虎窗洞 SSBO 元素（native DormerHoleSsbo = 0x30B 洞记录；D1 utils 承载）。
-/// 名称串：`country_core::resources::walls::dormers::DormerHoleSsbo`
-/// （ssbo_tags.rs O；产生名字符串 0x142c215f8 待取证，登记 RESTORE.md）。
-pub const DORMER_HOLE_SSBO_NAME: &str = "country_core::resources::walls::dormers::DormerHoleSsbo";
-
-impl StorageElement for DormerHoleSsbo {
-    const NAME: &'static str = DORMER_HOLE_SSBO_NAME;
-    const BUFFER_LEN: usize = CELL_COUNT * CELL_CAP;
-}
-impl SsboType for DormerHoleSsbo {
-    type Storage = InstanceBuffer<DormerHoleSsbo>;
-    fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
-        InstanceBuffer::<DormerHoleSsbo>::new_storage_buffer(device, initial)
-    }
-}
-
-/// `upload_dormer_holes_to_gpu`（0x1407b1d40，O 结构）：老虎窗洞网格 CPU
-/// 生产者 + 上传。逐蓝图取洞记录（首个碰撞体 footprint = 原 +0x0 区），
-/// 覆盖单元计数 + 记录入表；随后双 gpu_write（计数 + 单元表）。
-///
-/// **render handoff（与 ivy_send_to_gpu_leaf 同约定）**：本函数由 render 世界
-/// （systems/render_loop）持有 `GraphicsDevice` 后调用；GPU 真机后置。
+/// Actual original four dependencies. ResMut on the same existing SSBO owner
+/// is the safe host adaptation for publishing InstanceBuffer counts; native
+/// used Res with internal mutable storage. No parallel BufferHost is created.
 pub fn upload_dormer_holes_to_gpu(
+    device: Res<GraphicsDeviceResource>,
+    mut ssbos: ResMut<AssetSsboLibrary>,
+    blueprints: Res<DecoratorBlueprints>,
+    _signifiers: Res<UiSignifierStream>,
+) {
+    upload_dormer_holes(&blueprints, &mut ssbos, device.device());
+}
+
+/// Same production body, with this App's existing device boundary forwarded
+/// directly by the ECS entry. CPU tests record its actual library writes;
+/// they do not manufacture a Vulkan Device or claim an initialized App/GPU.
+fn upload_dormer_holes(
     blueprints: &DecoratorBlueprints,
     ssbos: &mut AssetSsboLibrary,
     device: &dyn GraphicsDevice,
-) -> usize {
-    let (counts, cells, count) = build_dormer_hole_grid(blueprints);
-    let Some(buffer) = ssbos.get_mut::<DormerHoleSsbo>() else {
-        return count;
-    };
-    // 计数写（O：900 u32 → 缓冲头区；`InstanceBuffer<DormerHoleSsbo>` 只承载
-    // 记录数组，计数区 SSBO 布局未取证 → 显式 U（`counts` 由
-    // [`build_dormer_hole_grid`] 返回给 render handoff，不再丢弃）。
-    let _ = &counts;
-    // 单元写（O：225×50 记录；I：扁平化次序 = 单元序 + 记录序）。
-    let mut flat: Vec<DormerHoleSsbo> = Vec::with_capacity(CELL_COUNT * CELL_CAP);
-    for cell in &cells {
-        flat.extend_from_slice(cell);
+) {
+    let grid = build_dormer_hole_grid(blueprints);
+    if let Some(counts) = ssbos.get_mut::<DormerHoleCountPerCellSsbo>() {
+        counts.buffer.gpu_write(device, &grid.counts).unwrap();
+        counts.instance_count = grid.counts.len();
     }
-    let _ = buffer.buffer.gpu_write(device, &flat);
-    buffer.instance_count = count;
-    count
-}
-
-/// 老虎窗洞网格 CPU 生产者（0x1407b1d40 内联主体，O）：逐蓝图洞记录 →
-/// 覆盖单元计数 + 记录入表。返回 `(counts[900], cells[225][*], 总记录数)`，
-/// 供 GPU 上传与 render handoff 消费。
-pub fn build_dormer_hole_grid(
-    blueprints: &DecoratorBlueprints,
-) -> (DormerHoleCounts, Vec<Vec<DormerHoleSsbo>>, usize) {
-    // 计数缓冲（O：900 u32 memset 0）。
-    let mut counts = [0u32; COUNT_BUFFER_LEN];
-    // 单元表（O：225 × 50 × 0x30B；逐单元计数 + 记录追加，容量越界原 panic）。
-    let mut cells: Vec<Vec<DormerHoleSsbo>> = vec![Vec::with_capacity(CELL_CAP); CELL_COUNT];
-
-    for (_, blueprint) in blueprints.map.iter() {
-        // 洞记录 = 蓝图 +0x0 区（Rectangle2d）；D1 消费面以 colliders 首个
-        // footprint 承载（O 对齐：set_colliders 写 +0x0 区）。
-        let Some(first) = blueprint.colliders.first() else {
-            continue;
-        };
-        let footprint = first.bounds.footprint;
-        let aabb = footprint.aabb();
-        let covered = get_cells_from_bbx(aabb.min, aabb.max);
-        for cell in covered {
-            if cell >= CELL_COUNT {
-                continue;
-            }
-            if counts[cell] >= CELL_CAP as u32 {
-                // 原容量越界 panic（0x142a83c70/0x142a83c88，O）；Rust 侧
-                // 跳过并登记（同语义：不溢出）。
-                continue;
-            }
-            counts[cell] += 1;
-            let mut record = DormerHoleSsbo::dummy();
-            // 洞记录载荷（I：原 0x30B 写出面 = 蓝图 +0x0 区拷贝；
-            // 本面以 footprint 四值承载并登记 RESTORE.md）。
-            record.a[0..4].copy_from_slice(&footprint.center.x.to_le_bytes());
-            record.a[4..8].copy_from_slice(&footprint.center.y.to_le_bytes());
-            record.a[8..12].copy_from_slice(&footprint.size.x.to_le_bytes());
-            record.a[12..16].copy_from_slice(&footprint.size.y.to_le_bytes());
-            cells[cell].push(record);
-        }
+    if let Some(holes) = ssbos.get_mut::<DormerHoleSsbo>() {
+        // All50 rows per cell are retained, including unoccupied dummy rows.
+        let flat: Vec<DormerHoleSsbo> = grid.cells.into_iter().flatten().collect();
+        holes.buffer.gpu_write(device, &flat).unwrap();
+        holes.instance_count = flat.len();
     }
-
-    // 计数总和（O：900 计数累加）。
-    let count = counts.iter().sum::<u32>() as usize;
-    (DormerHoleCounts { counts }, cells, count)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::blueprint::{DecoratorBlueprint, DecoratorBlueprints};
+    use crate::blueprint::DecoratorBlueprint;
+    use core::ops::Range;
+    use country_core::asset_libraries::ssbo_library::SsboType;
+    use country_core::render::ssbo::rhapsody_boundary::{BackendError, Buffer, BufferDesc};
+    use country_core::render::ssbo::{InstanceBuffer, StorageElement};
     use country_core::resources::walls::decorator_subtype::DecoratorCollision;
-    use utils::geometry::rectangle::{Rectangle2d, Rectangle3d};
+    use glam::Vec3;
+    use std::sync::Mutex;
 
-    #[test]
-    fn grid_covers_footprint_cells_and_counts() {
-        let mut collision = DecoratorCollision::empty();
-        collision.bounds = Rectangle3d {
-            footprint: Rectangle2d::new(Vec2::new(10.0, 10.0), Vec2::new(16.0, 16.0), Vec2::X),
-            bottom: 0.0,
-            top: 2.0,
-        };
+    fn record(position: Vec3, size: Vec3, axis: Vec2, payload: u32) -> DormerHoleSsbo {
+        DormerHoleSsbo::gothic(payload, position, size, [axis.x, axis.y, 2.5, 0.05])
+    }
+
+    fn blueprints(records: Vec<DormerHoleSsbo>) -> DecoratorBlueprints {
         let mut blueprint = DecoratorBlueprint::new();
-        blueprint.set_colliders(vec![collision]);
-        let mut blueprints = DecoratorBlueprints::default();
-        blueprints.insert(7, blueprint);
-
-        let (counts, cells, total) = build_dormer_hole_grid(&blueprints);
-        assert!(total >= 1, "footprint must cover at least one cell");
-        assert_eq!(counts.counts.iter().sum::<u32>() as usize, total);
-        assert_eq!(cells.iter().map(Vec::len).sum::<usize>(), total);
-        assert!(cells.iter().any(|c| !c.is_empty()));
+        blueprint.dormer_holes = records;
+        let mut result = DecoratorBlueprints::default();
+        result.insert(17, blueprint);
+        result
     }
 
     #[test]
-    fn world_to_grid_maps_origin_and_clamps() {
-        // (0 + 65) / 8.6667 = 7.5 → floor 7；NaN → 0。
-        assert_eq!(world_space_to_grid_coord_unclamped(0.0), 7);
+    fn canonical_lists_preserve_full_payload_and_fixed_fifty_row_stride() {
+        let a = record(
+            Vec3::new(-60.0, 123.0, -60.0),
+            Vec3::ONE,
+            Vec2::X,
+            0xdead_beef,
+        );
+        let b = record(
+            Vec3::new(60.0, -17.0, 60.0),
+            Vec3::ONE,
+            Vec2::X,
+            0x7654_3210,
+        );
+        let grid = build_dormer_hole_grid(&blueprints(vec![a, b]));
+        assert_eq!(grid.counts.len(), 225);
+        assert_eq!(grid.cells.len(), 225);
+        assert!(grid.cells.iter().all(|cell| cell.len() == 50));
+        assert_eq!(grid.counts[0].0, 1);
+        assert_eq!(grid.counts[224].0, 1);
+        assert_eq!(grid.counts.iter().map(|count| count.0).sum::<u32>(), 2);
+        let flat: Vec<_> = grid.cells.into_iter().flatten().collect();
+        assert_eq!(flat.len(), 11250);
+        assert_eq!(flat[0], a);
+        assert_eq!(flat[224 * 50], b);
+        assert_eq!(flat[49], DormerHoleSsbo::dummy());
+        assert_eq!(flat[224 * 50 + 49], DormerHoleSsbo::dummy());
+        assert!(
+            flat[1..224 * 50]
+                .iter()
+                .all(|row| *row == DormerHoleSsbo::dummy())
+        );
+    }
+
+    #[test]
+    fn collider_footprints_are_not_dormer_hole_inputs() {
+        let mut blueprint = DecoratorBlueprint::new();
+        blueprint.set_colliders(vec![DecoratorCollision::empty()]);
+        let mut current = DecoratorBlueprints::default();
+        current.insert(3, blueprint);
+        let grid = build_dormer_hole_grid(&current);
+        assert!(grid.counts.iter().all(|count| count.0 == 0));
+        assert!(
+            grid.cells
+                .iter()
+                .flatten()
+                .all(|row| *row == DormerHoleSsbo::dummy())
+        );
+    }
+
+    #[test]
+    fn raw_record_axis_projects_xz_and_saturated_coordinates_keep_empty_outside_ranges() {
+        let rotated = record(
+            Vec3::new(0.0, 999.0, 0.0),
+            Vec3::new(30.0, 7.0, 1.0),
+            Vec2::Y,
+            9,
+        );
+        let grid = build_dormer_hole_grid(&blueprints(vec![rotated]));
+        let occupied: Vec<_> = grid
+            .counts
+            .iter()
+            .enumerate()
+            .filter_map(|(cell, count)| (count.0 != 0).then_some(cell))
+            .collect();
+        assert_eq!(occupied, [82, 97, 112, 127, 142]);
+        assert_eq!(world_space_to_grid_coord_unclamped(f32::INFINITY), i32::MAX);
+        assert_eq!(
+            world_space_to_grid_coord_unclamped(f32::NEG_INFINITY),
+            i32::MIN
+        );
         assert_eq!(world_space_to_grid_coord_unclamped(f32::NAN), 0);
-        let cells = get_cells_from_bbx(Vec2::new(0.0, 0.0), Vec2::new(0.0, 0.0));
-        assert_eq!(cells, vec![7 * GRID_COLS + 7]);
+        assert_eq!(world_space_to_grid_coord_unclamped(0.0), 7);
+        for (min, max) in [
+            (Vec2::new(-100.0, -1.0), Vec2::new(-90.0, 1.0)),
+            (Vec2::new(90.0, -1.0), Vec2::new(100.0, 1.0)),
+            (Vec2::new(-1.0, -100.0), Vec2::new(1.0, -90.0)),
+            (Vec2::new(-1.0, 90.0), Vec2::new(1.0, 100.0)),
+        ] {
+            assert!(get_cells_from_bbx(min, max).is_empty());
+        }
+        assert_eq!(
+            get_cells_from_bbx(Vec2::splat(-65.0), Vec2::splat(-65.0)),
+            [0]
+        );
+        assert_eq!(
+            get_cells_from_bbx(Vec2::splat(-100.0), Vec2::splat(100.0)),
+            (0..225).collect::<Vec<_>>()
+        );
+        let nan_axis = record(Vec3::ZERO, Vec3::ONE, Vec2::splat(f32::NAN), 77);
+        let grid = build_dormer_hole_grid(&blueprints(vec![nan_axis]));
+        assert_eq!(grid.counts[0].0, 1);
+        assert_eq!(grid.cells[0][0], nan_axis);
+    }
+
+    #[test]
+    fn native_fiftieth_and_later_inputs_leave_count_and_rows_at_forty_nine() {
+        let rows: Vec<_> = (0..51)
+            .map(|payload| record(Vec3::ZERO, Vec3::ONE, Vec2::X, payload))
+            .collect();
+        for input_count in [49, 50, 51] {
+            let grid = build_dormer_hole_grid(&blueprints(rows[..input_count].to_vec()));
+            let cell = 7 * 15 + 7;
+            assert_eq!(grid.counts[cell].0, 49);
+            assert_eq!(&grid.cells[cell][..49], &rows[..49]);
+            assert_eq!(grid.cells[cell][49], DormerHoleSsbo::dummy());
+        }
+    }
+
+    #[derive(Debug)]
+    struct Write {
+        buffer: u64,
+        bytes: Vec<u8>,
+        ranges: Vec<Range<usize>>,
+        offset: usize,
+    }
+
+    #[derive(Default)]
+    struct Recorded {
+        next_id: u64,
+        attempts: usize,
+        fail_on: Option<usize>,
+        writes: Vec<Write>,
+    }
+
+    #[derive(Default)]
+    struct Device(Mutex<Recorded>);
+
+    impl GraphicsDevice for Device {
+        fn create_buffer(
+            &self,
+            desc: &BufferDesc,
+            _: &str,
+            initial: Option<&[u8]>,
+        ) -> Result<Buffer, BackendError> {
+            assert!(initial.is_none());
+            let mut state = self.0.lock().unwrap();
+            state.next_id += 1;
+            Ok(Buffer {
+                id: state.next_id,
+                byte_size: desc.size as u64,
+                ..Buffer::default()
+            })
+        }
+
+        fn update_buffer_bytes(
+            &self,
+            buffer: &Buffer,
+            data: &[u8],
+            ranges: &[Range<usize>],
+            offset: usize,
+        ) -> Result<(), BackendError> {
+            let mut state = self.0.lock().unwrap();
+            state.attempts += 1;
+            if state.fail_on == Some(state.attempts) {
+                return Err(BackendError::invalid_usage(
+                    "injected dormer-hole write failure",
+                ));
+            }
+            state.writes.push(Write {
+                buffer: buffer.id,
+                bytes: data.to_vec(),
+                ranges: ranges.to_vec(),
+                offset,
+            });
+            Ok(())
+        }
+    }
+
+    fn library(device: &Device) -> AssetSsboLibrary {
+        let library = AssetSsboLibrary::new();
+        library.add_new::<DormerHoleCountPerCellSsbo>(device);
+        library.add_new::<DormerHoleSsbo>(device);
+        library
+    }
+
+    fn uploaded_word(bytes: &[u8], index: usize) -> u32 {
+        u32::from_le_bytes(bytes[index * 4..index * 4 + 4].try_into().unwrap())
+    }
+
+    fn uploaded_row(bytes: &[u8], index: usize) -> DormerHoleSsbo {
+        DormerHoleSsbo(std::array::from_fn(|word| {
+            uploaded_word(bytes, index * 12 + word)
+        }))
+    }
+
+    #[test]
+    fn actual_canonical_library_writes_counts_then_all_fixed_rows_and_publishes_metadata() {
+        let device = Device::default();
+        let mut library = library(&device);
+        let hole = record(Vec3::ZERO, Vec3::ONE, Vec2::X, 0x0123_4567);
+        upload_dormer_holes(&blueprints(vec![hole]), &mut library, &device);
+        assert_eq!(
+            library
+                .get::<DormerHoleCountPerCellSsbo>()
+                .unwrap()
+                .instance_count,
+            225
+        );
+        assert_eq!(
+            library.get::<DormerHoleSsbo>().unwrap().instance_count,
+            11250
+        );
+        let state = device.0.lock().unwrap();
+        assert_eq!(state.attempts, 2);
+        assert_eq!(state.writes.len(), 2);
+        assert_eq!(
+            (state.writes[0].buffer, state.writes[0].bytes.len()),
+            (1, 900)
+        );
+        assert_eq!(
+            (state.writes[1].buffer, state.writes[1].bytes.len()),
+            (2, 540000)
+        );
+        assert_eq!(state.writes[0].ranges, [0..900]);
+        assert_eq!(state.writes[1].ranges, [0..540000]);
+        assert!(state.writes.iter().all(|write| write.offset == 0));
+        let count_words: Vec<_> = (0..225)
+            .map(|index| uploaded_word(&state.writes[0].bytes, index))
+            .collect();
+        assert_eq!(count_words[112], 1);
+        assert_eq!(count_words.iter().sum::<u32>(), 1);
+        assert_eq!(uploaded_row(&state.writes[1].bytes, 112 * 50), hole);
+        assert_eq!(
+            uploaded_row(&state.writes[1].bytes, 112 * 50 + 49),
+            DormerHoleSsbo::dummy()
+        );
+    }
+
+    #[test]
+    fn failed_write_stops_later_work_and_does_not_publish_failed_metadata() {
+        for failed_attempt in [1, 2] {
+            let device = Device::default();
+            let mut library = library(&device);
+            device.0.lock().unwrap().fail_on = Some(failed_attempt);
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                upload_dormer_holes(&DecoratorBlueprints::default(), &mut library, &device)
+            }));
+            assert!(result.is_err());
+            let state = device.0.lock().unwrap();
+            assert_eq!(state.attempts, failed_attempt);
+            assert_eq!(state.writes.len(), failed_attempt - 1);
+            assert_eq!(
+                library
+                    .get::<DormerHoleCountPerCellSsbo>()
+                    .unwrap()
+                    .instance_count,
+                if failed_attempt == 1 { 0 } else { 225 }
+            );
+            assert_eq!(library.get::<DormerHoleSsbo>().unwrap().instance_count, 0);
+        }
+    }
+
+    #[test]
+    fn record_move_remove_and_empty_frames_replace_real_uploaded_membership() {
+        let device = Device::default();
+        let mut library = library(&device);
+        let first = record(Vec3::new(-60.0, 0.0, -60.0), Vec3::ONE, Vec2::X, 17);
+        let second = record(Vec3::new(60.0, 0.0, 60.0), Vec3::ONE, Vec2::X, 17);
+        let current = blueprints(vec![first]);
+        // Repeated identical input still uploads; the actual consumer has no
+        // previous-map/Arc identity early return.
+        upload_dormer_holes(&current, &mut library, &device);
+        upload_dormer_holes(&current, &mut library, &device);
+        upload_dormer_holes(&blueprints(vec![second]), &mut library, &device);
+        upload_dormer_holes(&DecoratorBlueprints::default(), &mut library, &device);
+        let state = device.0.lock().unwrap();
+        assert_eq!(state.writes.len(), 8);
+        assert_eq!(state.writes[0].bytes, state.writes[2].bytes);
+        assert_eq!(state.writes[1].bytes, state.writes[3].bytes);
+        assert_eq!(
+            (
+                uploaded_word(&state.writes[4].bytes, 0),
+                uploaded_word(&state.writes[4].bytes, 224)
+            ),
+            (0, 1)
+        );
+        assert_eq!(
+            uploaded_row(&state.writes[5].bytes, 0),
+            DormerHoleSsbo::dummy()
+        );
+        assert_eq!(uploaded_row(&state.writes[5].bytes, 224 * 50), second);
+        assert!(state.writes[6].bytes.iter().all(|&byte| byte == 0));
+        assert!(state.writes[7].bytes.iter().all(|&byte| byte == 0));
+    }
+
+    #[test]
+    fn missing_registered_types_follow_the_independent_native_optional_paths() {
+        for (counts, holes) in [(false, false), (true, false), (false, true)] {
+            let device = Device::default();
+            let mut library = AssetSsboLibrary::new();
+            if counts {
+                library.add_new::<DormerHoleCountPerCellSsbo>(&device);
+            }
+            if holes {
+                library.add_new::<DormerHoleSsbo>(&device);
+            }
+            upload_dormer_holes(&DecoratorBlueprints::default(), &mut library, &device);
+            let state = device.0.lock().unwrap();
+            assert_eq!(state.writes.len(), usize::from(counts) + usize::from(holes));
+            if counts {
+                assert_eq!(state.writes[0].bytes.len(), 900);
+            }
+            if holes {
+                assert_eq!(state.writes[0].bytes.len(), 540000);
+            }
+        }
+    }
+
+    #[test]
+    fn undersized_count_buffer_panics_before_device_writes_or_hole_publication() {
+        let device = Device::default();
+        let mut library = library(&device);
+        // Explicitly invalid capacity fixture exercises the same native bounds
+        // failure before calling the device, not a successful App state.
+        library
+            .get_mut::<DormerHoleCountPerCellSsbo>()
+            .unwrap()
+            .buffer
+            .buffer
+            .byte_size = 899;
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            upload_dormer_holes(&DecoratorBlueprints::default(), &mut library, &device)
+        }));
+        assert!(result.is_err());
+        assert_eq!(device.0.lock().unwrap().attempts, 0);
+        assert_eq!(
+            library
+                .get::<DormerHoleCountPerCellSsbo>()
+                .unwrap()
+                .instance_count,
+            0
+        );
+        assert_eq!(library.get::<DormerHoleSsbo>().unwrap().instance_count, 0);
+    }
+
+    #[derive(Clone, Copy)]
+    #[repr(transparent)]
+    struct SameNameCount(u32);
+
+    impl StorageElement for SameNameCount {
+        const NAME: &'static str = DormerHoleCountPerCellSsbo::NAME;
+        const BUFFER_LEN: usize = 225;
+    }
+
+    impl SsboType for SameNameCount {
+        type Storage = InstanceBuffer<Self>;
+        fn new_storage_buffer(
+            device: &dyn GraphicsDevice,
+            initial: Option<&[u8]>,
+        ) -> Self::Storage {
+            InstanceBuffer::new_storage_buffer(device, initial)
+        }
+    }
+
+    #[test]
+    fn full_type_collision_is_rejected_before_upload_instead_of_treated_as_missing() {
+        let device = Device::default();
+        let mut library = AssetSsboLibrary::new();
+        // Wrong nominal type with the real short NAME deliberately collides;
+        // the actual library must enforce its full-name assertion.
+        library.add_new::<SameNameCount>(&device);
+        library.add_new::<DormerHoleSsbo>(&device);
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            upload_dormer_holes(&DecoratorBlueprints::default(), &mut library, &device)
+        }));
+        assert!(result.is_err());
+        assert_eq!(device.0.lock().unwrap().attempts, 0);
+        assert_eq!(library.get::<SameNameCount>().unwrap().instance_count, 0);
+        assert_eq!(library.get::<DormerHoleSsbo>().unwrap().instance_count, 0);
     }
 }

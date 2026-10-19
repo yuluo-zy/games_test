@@ -714,6 +714,14 @@ impl AutoSaveState {
         self.command_sender = Some(sender);
     }
 
+    /// Current host disposal only: the owning World's schedules must be stopped
+    /// permanently. Keep the same unsaved Arc/state and return the actual prior
+    /// error while disconnecting this owner's command sender before join.
+    pub(crate) fn detach_for_shutdown(&mut self) -> Option<anyhow::Error> {
+        drop(self.command_sender.take());
+        self.last_error.take()
+    }
+
     /// 是否已装配命令发送端（init_save_thread 幂等门）。
     pub fn is_command_attached(&self) -> bool {
         self.command_sender.is_some()

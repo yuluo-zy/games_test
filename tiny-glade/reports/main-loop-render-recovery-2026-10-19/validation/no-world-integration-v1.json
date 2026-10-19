@@ -1,0 +1,54 @@
+{
+  "status": "source_integrated_not_full_crate_typechecked",
+  "applied_at_utc": "2026-10-19T15:56:55.083754+00:00",
+  "candidate_manifest": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-8020f37bb27d3fedc3/main-chain-frame-20261018/no-world-undefined-20261019/implementation-manifest.json",
+  "candidate_manifest_sha256": "895cf24a5c6eba67f3f773e75ffa31c41c2ac21c19e50a8b936aba407f01b959",
+  "review": "07 actual six-source patch bb0d9052 passed_scoped; NO_WORLD_IMPLEMENTATION_REVIEW.json",
+  "files": [
+    {
+      "source": "tiny-glade/crates/country-core/src/render/pass_builder/draw_builder.rs",
+      "before_sha256": "9fc507ff280e6af4d6b2053eba412b56f2fc671bf82a92b364e1b13f8c156b11",
+      "after_sha256": "5a52bd6a00fe3e5c9ff7aead795387a152d5957705b6fb3868a206cee67c8ae0",
+      "backup": "tiny-glade/reports/main-loop-render-recovery-2026-10-19/integration-before/no-world-v1/crates/country-core/src/render/pass_builder/draw_builder.rs"
+    },
+    {
+      "source": "tiny-glade/crates/country-core/src/render/pass_builder/draw_stream.rs",
+      "before_sha256": "7e7f5ea1ca3be6002f9d8276e2484f6a3f88afef8f9d4750a1db41be784115c2",
+      "after_sha256": "11ee052cb00d47f33e1656d4ddc2f921600f5768ce8fff1a48c0c615923ddba5",
+      "backup": "tiny-glade/reports/main-loop-render-recovery-2026-10-19/integration-before/no-world-v1/crates/country-core/src/render/pass_builder/draw_stream.rs"
+    },
+    {
+      "source": "tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/final_post.rs",
+      "before_sha256": "c5aa02cad4c0ba24879873e0ea59078274339b546ee4285b086454f188e7d9f2",
+      "after_sha256": "ff4173e253d5e9084d33eb09d718baa844384f470aa4dc3a6712bad24142a082",
+      "backup": "tiny-glade/reports/main-loop-render-recovery-2026-10-19/integration-before/no-world-v1/crates/country-core/src/systems/render_loop/draw_passes/final_post.rs"
+    },
+    {
+      "source": "tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/blur_pyramid.rs",
+      "before_sha256": "10b0126eaeec730debfdc572a003ecd9882ce20ba3c9529dbede75a1928f4592",
+      "after_sha256": "764171015fc201e85aa538c9225148a49ee113b0dff1cccc848dd19c6c4a7ff8",
+      "backup": "tiny-glade/reports/main-loop-render-recovery-2026-10-19/integration-before/no-world-v1/crates/country-core/src/systems/render_loop/compute_passes/blur_pyramid.rs"
+    },
+    {
+      "source": "tiny-glade/crates/tiny-glade/src/raster_host.rs",
+      "before_sha256": "9b43123150034fd90e431ca4fd48a0cd93a0b0e0fd5e4180c45378bf578e4932",
+      "after_sha256": "fad73d40098384db0d643cd265697d135094a934eb3a441a5e7f174c7a4877d6",
+      "backup": "tiny-glade/reports/main-loop-render-recovery-2026-10-19/integration-before/no-world-v1/crates/tiny-glade/src/raster_host.rs"
+    },
+    {
+      "source": "tiny-glade/crates/tiny-glade/src/world_postprocess.rs",
+      "before_sha256": "e658859cdfbd26f2d5738c2fe34ba4bed3c5f0fe43ae12a8d2fd563c812130c7",
+      "after_sha256": "196bf7f0caf83015e595707f88d33e901694ff123c42a63cf57ef89185f982ed",
+      "backup": "tiny-glade/reports/main-loop-render-recovery-2026-10-19/integration-before/no-world-v1/crates/tiny-glade/src/world_postprocess.rs"
+    }
+  ],
+  "new_tests_not_run": 7,
+  "existing_api_baseline": "validation/undefined-contents-v6.json 5 passed; only unchanged rhapsody content-policy boundary",
+  "planner_changed": false,
+  "policy_scope": "only original flag94==0 B_SRC0 and same tail first blur0 input; actual read/producer/sync/lifetime retained; strict alias wins; rebind clears permission",
+  "remaining": [
+    "actual original no-world shader + four-sample target GPU execution not yet run",
+    "reverse blur top-mip sample_self CFG still separate unknown",
+    "full game host new files pending sync; no stubs applied"
+  ]
+}

@@ -1,0 +1,44 @@
+14127cfe4: 4989d5  movq	%rdx, %r13
+14127cfe7: 4889ce  movq	%rcx, %rsi
+14127cfea: 488b9da0020000  movq	0x2a0(%rbp), %rbx
+14127cff1: 660f6e7b20  movd	0x20(%rbx), %xmm7
+14127cff6: 66440f6e5324  movd	0x24(%rbx), %xmm10
+14127cffc: 660f7efa  movd	%xmm7, %edx
+14127d000: 66440f7ed0  movd	%xmm10, %eax
+14127d005: 660f6e7328  movd	0x28(%rbx), %xmm6
+14127d00a: 660f7ef1  movd	%xmm6, %ecx
+14127d00e: 81e2ffffff7f  andl	$0x7fffffff, %edx       # imm = 0x7FFFFFFF
+14127d014: 25ffffff7f  andl	$0x7fffffff, %eax       # imm = 0x7FFFFFFF
+14127d019: 3d0000807f  cmpl	$0x7f800000, %eax       # imm = 0x7F800000
+14127d01e: 0f9cc0  setl	%al
+14127d021: 81e1ffffff7f  andl	$0x7fffffff, %ecx       # imm = 0x7FFFFFFF
+14127d027: 81f90000807f  cmpl	$0x7f800000, %ecx       # imm = 0x7F800000
+14127d02d: 0f9cc1  setl	%cl
+14127d030: 81faffff7f7f  cmpl	$0x7f7fffff, %edx       # imm = 0x7F7FFFFF
+14127d036: 0f8f801a0000  jg	0x14127eabc <.text+0x127dabc>
+14127d03c: 84c0  testb	%al, %al
+14127d03e: 0f84781a0000  je	0x14127eabc <.text+0x127dabc>
+14127d044: 84c9  testb	%cl, %cl
+14127d046: 0f84701a0000  je	0x14127eabc <.text+0x127dabc>
+14127d04c: 4d89cf  movq	%r9, %r15
+14127d04f: 4d89c6  movq	%r8, %r14
+14127d052: 8b85a8020000  movl	0x2a8(%rbp), %eax
+14127d058: 898540010000  movl	%eax, 0x140(%rbp)
+14127d05e: 440f282b  movaps	(%rbx), %xmm13
+14127d062: 440f296d60  movaps	%xmm13, 0x60(%rbp)
+14127d067: 488d8df0000000  leaq	0xf0(%rbp), %rcx
+14127d06e: 4c8d6560  leaq	0x60(%rbp), %r12
+14127d072: 4c89e2  movq	%r12, %rdx
+14127d075: e8d6ae0300  callq	0x1412b7f50 <.text+0x12b6f50>
+14127d07a: 0f2885f0000000  movaps	0xf0(%rbp), %xmm0
+14127d081: 0f50c0  movmskps	%xmm0, %eax
+14127d084: 83f80f  cmpl	$0xf, %eax
+14127d087: 0f85471a0000  jne	0x14127ead4 <.text+0x127dad4>
+14127d08d: 488bbdb0020000  movq	0x2b0(%rbp), %rdi
+14127d094: 488d4320  leaq	0x20(%rbx), %rax
+14127d098: 48898578010000  movq	%rax, 0x178(%rbp)
+14127d09f: 0fb64310  movzbl	0x10(%rbx), %eax
+14127d0a3: 488d0d6e769a01  leaq	0x19a766e(%rip), %rcx   # 0x142c24718
+14127d0aa: 48630481  movslq	(%rcx,%rax,4), %rax
+14127d0ae: 4801c8  addq	%rcx, %rax
+14127d0b1: ffe0  jmpq	*%rax

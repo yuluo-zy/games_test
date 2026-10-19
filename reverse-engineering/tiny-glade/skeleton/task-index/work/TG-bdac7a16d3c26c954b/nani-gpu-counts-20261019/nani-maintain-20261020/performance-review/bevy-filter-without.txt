@@ -1,0 +1,81 @@
+Source: /Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/query/filter.rs
+SHA256: 33d2b16a49986e3ae2606471c908da3460d7f82818b40eeced55c3175237aab5
+
+235: /// # bevy_ecs::system::assert_is_system(no_permit_system);
+236: /// ```
+237: pub struct Without<T>(PhantomData<T>);
+238: 
+239: /// SAFETY:
+240: /// `update_component_access` does not add any accesses.
+241: /// This is sound because [`QueryFilter::filter_fetch`] does not access any components.
+242: /// `update_component_access` adds a `Without` filter for `T`.
+243: /// This is sound because `matches_component_set` returns whether the set does not contain the component.
+244: unsafe impl<T: Component> WorldQuery for Without<T> {
+245:     type Fetch<'w> = ();
+246:     type State = ComponentId;
+247: 
+248:     fn shrink_fetch<'wlong: 'wshort, 'wshort>(_: Self::Fetch<'wlong>) -> Self::Fetch<'wshort> {}
+249: 
+250:     #[inline]
+251:     unsafe fn init_fetch(
+252:         _world: UnsafeWorldCell,
+253:         _state: &ComponentId,
+254:         _last_run: Tick,
+255:         _this_run: Tick,
+256:     ) {
+257:     }
+258: 
+259:     const IS_DENSE: bool = {
+260:         match T::STORAGE_TYPE {
+261:             StorageType::Table => true,
+262:             StorageType::SparseSet => false,
+263:         }
+264:     };
+265: 
+266:     #[inline]
+267:     unsafe fn set_archetype(
+268:         _fetch: &mut (),
+269:         _state: &ComponentId,
+270:         _archetype: &Archetype,
+271:         _table: &Table,
+272:     ) {
+273:     }
+274: 
+275:     #[inline]
+276:     unsafe fn set_table(_fetch: &mut (), _state: &Self::State, _table: &Table) {}
+277: 
+278:     #[inline]
+279:     fn update_component_access(&id: &ComponentId, access: &mut FilteredAccess<ComponentId>) {
+280:         access.and_without(id);
+281:     }
+282: 
+283:     fn init_state(world: &mut World) -> ComponentId {
+284:         world.register_component::<T>()
+285:     }
+286: 
+287:     fn get_state(components: &Components) -> Option<Self::State> {
+288:         components.component_id::<T>()
+289:     }
+290: 
+291:     fn matches_component_set(
+292:         &id: &ComponentId,
+293:         set_contains_id: &impl Fn(ComponentId) -> bool,
+294:     ) -> bool {
+295:         !set_contains_id(id)
+296:     }
+297: }
+298: 
+299: // SAFETY: WorldQuery impl performs no access at all
+300: unsafe impl<T: Component> QueryFilter for Without<T> {
+301:     const IS_ARCHETYPAL: bool = true;
+302: 
+303:     #[inline(always)]
+304:     unsafe fn filter_fetch(
+305:         _fetch: &mut Self::Fetch<'_>,
+306:         _entity: Entity,
+307:         _table_row: TableRow,
+308:     ) -> bool {
+309:         true
+310:     }
+311: }
+

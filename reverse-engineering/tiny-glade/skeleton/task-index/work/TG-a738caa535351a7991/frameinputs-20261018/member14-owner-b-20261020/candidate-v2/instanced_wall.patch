@@ -1,0 +1,248 @@
+--- a/crates/country-core/src/geometry/instanced_wall.rs
++++ b/crates/country-core/src/geometry/instanced_wall.rs
+@@ -1,6 +1,7 @@
+ //! 墙砖的来源编码、实例载荷与待上传状态。
+ //!
+-//! 墙对象独占稀疏分配；更新按整批提交，容量不足保留旧几何和 CPU 数据。
++//! 同一墙对象拥有base/chimney/door分配。base整批提交容量失败保旧；
++//! 两装饰lane由各原host执行clear/逐砖partial写，不套用base事务语义。
+ //! 布局来源见 README 的历史证据，运行期不依赖原作对象偏移或 moved-from 哨兵。
+ use crate::asset_libraries::ssbo_library::SsboType;
+ use crate::render::sparse_instance_buffer::{
+@@ -74,8 +75,24 @@
+ pub struct InstancedWall<T> {
+     pub id: u64,
+     brick_transforms: Vec<T>,
+-    upload_pending: bool,
++    base_state: BaseBrickState,
+     allocation: Option<SparseInstanceBufferAllocation<T>>,
++    assembly_allocations: Option<WallAssemblyAllocations<T>>,
++}
++
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++enum BaseBrickState {
++    /// A published wall owns lanes before its real base geometry/Trigger exists.
++    AwaitingProduction,
++    PendingUpload,
++    /// Base instances reached the CPU shadow. Device readiness is separate.
++    Published,
++}
++
++#[derive(Debug)]
++struct WallAssemblyAllocations<T> {
++    chimney: SparseInstanceBufferAllocation<T>,
++    door_stairs: SparseInstanceBufferAllocation<T>,
+ }
+ 
+ impl<T> InstancedWall<T> {
+@@ -83,15 +100,16 @@
+         Self {
+             id,
+             brick_transforms,
+-            upload_pending: true,
++            base_state: BaseBrickState::PendingUpload,
+             allocation: None,
++            assembly_allocations: None,
+         }
+     }
+ 
+     /// 合并同帧多次更新，只上传最后一份列表；空列表明确表示清除全部砖。
+     pub fn update(&mut self, brick_transforms: Vec<T>) {
+         self.brick_transforms = brick_transforms;
+-        self.upload_pending = true;
++        self.base_state = BaseBrickState::PendingUpload;
+     }
+ 
+     /// 只读访问待上传数据，防止绕过更新标记直接修改列表。
+@@ -100,29 +118,101 @@
+     }
+ 
+     pub fn is_upload_pending(&self) -> bool {
+-        self.upload_pending
++        self.base_state == BaseBrickState::PendingUpload
++    }
++
++    pub fn is_awaiting_production(&self) -> bool {
++        self.base_state == BaseBrickState::AwaitingProduction
+     }
+ 
+     pub fn allocation(&self) -> Option<&SparseInstanceBufferAllocation<T>> {
+         self.allocation.as_ref()
+     }
+ 
++    pub fn chimney_allocation(&self) -> Option<&SparseInstanceBufferAllocation<T>> {
++        self.assembly_allocations.as_ref().map(|lanes| &lanes.chimney)
++    }
++
++    pub fn door_stairs_allocation(&self) -> Option<&SparseInstanceBufferAllocation<T>> {
++        self.assembly_allocations.as_ref().map(|lanes| &lanes.door_stairs)
++    }
++
+     /// 从未分配过 GPU 槽的空更新无需创建整个共享缓冲。
+     pub(crate) fn finish_unallocated_empty_update(&mut self) {
+-        if self.allocation.is_none() && self.brick_transforms.is_empty() {
+-            self.upload_pending = false;
++        if self.base_state == BaseBrickState::PendingUpload
++            && self.allocation.is_none()
++            && self.brick_transforms.is_empty()
++        {
++            self.base_state = BaseBrickState::Published;
+         }
+     }
+ }
+ 
+ impl<T: SparseSsbo> InstancedWall<T> {
++    /// Current-architecture mapping of the publisher's pre-assembly ownership.
++    /// Empty allocations are real; no base geometry or Trigger is fabricated.
++    pub fn new_awaiting_production(id: u64, storage: &SparseInstanceBuffer<T>) -> Self {
++        Self {
++            id,
++            brick_transforms: Vec::new(),
++            base_state: BaseBrickState::AwaitingProduction,
++            allocation: Some(storage.new_allocation()),
++            assembly_allocations: Some(WallAssemblyAllocations {
++                chimney: storage.new_allocation(),
++                door_stairs: storage.new_allocation(),
++            }),
++        }
++    }
++
++    /// Validate every present handle before any batch-integration mutation.
++    /// `false` is the explicit legacy base-only component, not a valid assembly owner.
++    pub fn validate_assembly_ownership(
++        &self,
++        storage: &SparseInstanceBuffer<T>,
++    ) -> Result<bool, WallUploadError> {
++        if self.allocation.as_ref().is_some_and(|allocation| !storage.owns_allocation(allocation)) {
++            return Err(WallUploadError::ForeignStorage);
++        }
++        if let Some(lanes) = &self.assembly_allocations {
++            assert!(self.allocation.is_some(), "assembly owner has no base allocation");
++            if !storage.owns_allocation(&lanes.chimney)
++                || !storage.owns_allocation(&lanes.door_stairs)
++            {
++                return Err(WallUploadError::ForeignStorage);
++            }
++            return Ok(true);
++        }
++        Ok(false)
++    }
++
++    /// Explicit19-producer compatibility for a pre-existing base-only component.
++    /// Retains its base allocation, pending payload and state; assembly cannot call this.
++    pub fn initialize_assembly_allocations(
++        &mut self,
++        storage: &SparseInstanceBuffer<T>,
++    ) -> Result<(), WallUploadError> {
++        if self.validate_assembly_ownership(storage)? {
++            return Ok(());
++        }
++        let base = self.allocation.is_none().then(|| storage.new_allocation());
++        let lanes = WallAssemblyAllocations {
++            chimney: storage.new_allocation(),
++            door_stairs: storage.new_allocation(),
++        };
++        if let Some(base) = base {
++            self.allocation = Some(base);
++        }
++        self.assembly_allocations = Some(lanes);
++        Ok(())
++    }
++
+     /// 返回是否写入了新版本。容量失败不清空 CPU 数据、不破坏旧分配；无更新直接返回。
+     /// GPU 提交由共享缓冲的 try_gpu_flush 统一完成。
+     pub fn upload_to_storage_buffer(
+         &mut self,
+         storage: &mut SparseInstanceBuffer<T>,
+     ) -> Result<bool, WallUploadError> {
+-        if !self.upload_pending {
++        if self.base_state != BaseBrickState::PendingUpload {
+             return Ok(false);
+         }
+         let allocation = self
+@@ -135,7 +225,7 @@
+         writer.replace_all(&self.brick_transforms)?;
+         // 生产者每次交付拥有的 Vec，成功后及时释放，避免每堵墙额外保留一份容量。
+         self.brick_transforms = Vec::new();
+-        self.upload_pending = false;
++        self.base_state = BaseBrickState::Published;
+         Ok(true)
+     }
+ }
+@@ -292,3 +382,76 @@
+     pub b1: u8,
+     pub b2: u8,
+ }
++
++#[cfg(test)]
++mod assembly_owner_tests {
++    use super::*;
++    use crate::render::test_device::TestDevice;
++
++    #[derive(Clone, Copy, Default, Debug, PartialEq)]
++    struct Word(u32);
++    impl StorageElement for Word {
++        const NAME: &'static str = "AssemblyOwnerTestWord";
++        const BUFFER_LEN: usize = 64 * 32;
++    }
++    // SAFETY: one u32, no padding; test storage uses the same generic Sparse implementation.
++    unsafe impl SparseSsbo for Word { const CHUNK_COUNT: usize = 64; }
++
++    fn address(allocation: &SparseInstanceBufferAllocation<Word>) -> usize {
++        std::ptr::from_ref(allocation.handle.0.as_deref().unwrap()) as usize
++    }
++
++    #[test]
++    fn explicit_upgrade_preserves_pending_base_and_all_three_lanes_retire() {
++        let mut storage = SparseInstanceBuffer::<Word>::try_new(&TestDevice(1)).unwrap();
++        let mut owner = InstancedWall::new(0x700000031, vec![Word(7); 33]);
++        owner.upload_to_storage_buffer(&mut storage).unwrap();
++        let base = address(owner.allocation().unwrap());
++        owner.update(vec![Word(99); 65]);
++        owner.initialize_assembly_allocations(&storage).unwrap();
++        let chimney = address(owner.chimney_allocation().unwrap());
++        let door = address(owner.door_stairs_allocation().unwrap());
++        assert_ne!(base, chimney); assert_ne!(base, door); assert_ne!(chimney, door);
++        assert_eq!(owner.pending_instances(), [Word(99); 65]);
++        assert!(owner.is_upload_pending());
++        owner.initialize_assembly_allocations(&storage).unwrap();
++        assert_eq!(address(owner.allocation().unwrap()), base);
++        assert_eq!(address(owner.chimney_allocation().unwrap()), chimney);
++        assert_eq!(address(owner.door_stairs_allocation().unwrap()), door);
++        storage.writer(owner.chimney_allocation().unwrap()).push(&Word(11)).unwrap();
++        storage.writer(owner.door_stairs_allocation().unwrap()).push(&Word(12)).unwrap();
++        owner.upload_to_storage_buffer(&mut storage).unwrap();
++        assert_eq!(address(owner.allocation().unwrap()), base);
++        assert_eq!(address(owner.chimney_allocation().unwrap()), chimney);
++        assert_eq!(address(owner.door_stairs_allocation().unwrap()), door);
++        assert_eq!(storage.allocation_to_draw_multi_instanced(owner.chimney_allocation().unwrap()).iter().map(|r| r.1).sum::<u32>(), 1);
++        assert_eq!(storage.allocation_to_draw_multi_instanced(owner.door_stairs_allocation().unwrap()).iter().map(|r| r.1).sum::<u32>(), 1);
++        drop(owner);
++        storage.take_out_waste();
++        assert_eq!(storage.free_chunks.read().len(), Word::CHUNK_COUNT);
++        assert!(storage.to_draw_multi_instanced().is_empty());
++    }
++
++    #[test]
++    fn awaiting_is_not_an_empty_success_and_foreign_upgrade_preserves_source() {
++        let mut storage = SparseInstanceBuffer::<Word>::try_new(&TestDevice(1)).unwrap();
++        let foreign = SparseInstanceBuffer::<Word>::try_new(&TestDevice(2)).unwrap();
++        let mut awaiting = InstancedWall::new_awaiting_production(49, &storage);
++        awaiting.finish_unallocated_empty_update();
++        assert!(awaiting.is_awaiting_production());
++        assert!(!awaiting.is_upload_pending());
++        assert_eq!(awaiting.upload_to_storage_buffer(&mut storage), Ok(false));
++        assert!(awaiting.is_awaiting_production());
++        let mut legacy = InstancedWall::new(50, vec![Word(5)]);
++        legacy.upload_to_storage_buffer(&mut storage).unwrap();
++        let base = address(legacy.allocation().unwrap());
++        legacy.update(vec![Word(8); 33]);
++        assert_eq!(legacy.initialize_assembly_allocations(&foreign), Err(WallUploadError::ForeignStorage));
++        assert_eq!(address(legacy.allocation().unwrap()), base);
++        assert_eq!(legacy.pending_instances(), [Word(8); 33]);
++        assert!(legacy.is_upload_pending());
++        assert!(legacy.chimney_allocation().is_none());
++        assert!(legacy.door_stairs_allocation().is_none());
++        assert_eq!(awaiting.validate_assembly_ownership(&foreign), Err(WallUploadError::ForeignStorage));
++    }
++}

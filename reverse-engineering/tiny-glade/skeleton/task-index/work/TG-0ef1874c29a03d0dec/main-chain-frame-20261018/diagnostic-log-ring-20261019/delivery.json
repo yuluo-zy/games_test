@@ -1,0 +1,35 @@
+{
+  "status": "implemented_unverified",
+  "scope": "current hand-written diagnostic ring repair; no native-equivalence claim; root authorized directory, no index mapping",
+  "source": {
+    "path": "crates/rhapsody/src/log_ring.rs",
+    "before_sha256": "3d77e848c8d9d505ab602ff7d7b3e7d67364c4a3b225af4d70d477a72606cf40",
+    "candidate_sha256": "78db2eff60fd0b986ed52315effe2456c40781245082baf663c1a6444fd5d55a",
+    "production_still_matches_before": true
+  },
+  "patch_sha256": "d0f05ca65ad69a275515712bcd455ef518e2f286119f789595d5041aab77461e",
+  "contract_sha256": "b95577a7ab78c915e2c739b0356300b6cdf5c3b51e2033750d88cd16b37382ad",
+  "checks": {
+    "rustfmt_parser_and_format": "passed",
+    "rustc_tests": "not executed; root-only validation",
+    "cargo_gpu": "not executed; not needed for this standalone CPU module"
+  },
+  "deterministic_tests": [
+    "overlapping_writer_is_dropped_before_touching_payload",
+    "delayed_reservation_cannot_replace_a_newer_record",
+    "a_slot_overwritten_mid_copy_is_skipped",
+    "exhausted_tokens_never_reuse_a_publication_sequence"
+  ],
+  "root_validation_commands": [
+    "rustc --edition=2024 --test /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-0ef1874c29a03d0dec/main-chain-frame-20261018/diagnostic-log-ring-20261019/candidate/crates/rhapsody/src/log_ring.rs -o /private/tmp/tg-diagnostic-log-ring-20261019-tests",
+    "/private/tmp/tg-diagnostic-log-ring-20261019-tests --test-threads=1"
+  ],
+  "protocol": {
+    "written": "reservation attempts, existing wrapping AtomicU64 counter",
+    "dropped": "only rejected attempts, including odd-slot conflict/CAS loss/stale reservation/sequence exhaustion",
+    "successful_writer": "one per-slot CAS; exclusive through payload and release commit; no spin/wait/allocation",
+    "reader": "original acquire/fence validation, changed/odd slots skipped",
+    "ordering": "ascending successful reservation tokens; best-effort per-slot collection, not atomic whole-ring snapshot"
+  },
+  "main_graph_candidate": "unchanged/frozen c969f080747b8deae5e0a23721181a7988376374fe69103dea3cca096e3c0ac9"
+}

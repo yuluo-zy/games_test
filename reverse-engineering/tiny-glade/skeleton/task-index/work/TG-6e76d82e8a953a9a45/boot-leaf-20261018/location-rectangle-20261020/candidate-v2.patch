@@ -1,0 +1,132 @@
+--- a/tiny-glade/crates/utils/src/geometry/rectangle.rs
++++ b/tiny-glade/crates/utils/src/geometry/rectangle.rs
+@@ -271,7 +271,74 @@
+         }
+         best
+     }
++    // B 140c9a9d0: this pair search is distinct from get_closest_edge_id.
++    // In particular, its initial distance is 1000, rather than infinity.
++    fn closest_perimeter_edge_pair(self, point: Vec2) -> (usize, usize) {
++        let points = self.as_points2();
++        let mut pair = (0, 1);
++        let mut best_distance = 1000.0;
++        for left in 0..4 {
++            let right = left + 1;
++            let a = points[left];
++            let b = points[right % 4];
++            let t = Self::perimeter_projection(point, a, b);
++            let closest = b * t + a * (1.0 - t);
++            let delta = point - closest;
++            let distance = (delta.y * delta.y + delta.x * delta.x).sqrt();
++            if best_distance > distance {
++                pair = (left, right);
++            }
++            best_distance = Self::perimeter_sse_min(distance, best_distance);
++        }
++        pair
++    }
++
++    // MAXSS/MINSS select their second operand for unordered comparisons and ties.
++    fn perimeter_sse_max(first: f32, second: f32) -> f32 {
++        if first > second { first } else { second }
++    }
++    fn perimeter_sse_min(first: f32, second: f32) -> f32 {
++        if first < second { first } else { second }
++    }
++    fn perimeter_projection(point: Vec2, a: Vec2, b: Vec2) -> f32 {
++        let edge = b - a;
++        let offset = point - a;
++        let denominator = Self::perimeter_sse_max(
++            edge.y * edge.y + edge.x * edge.x,
++            f32::from_bits(0x1e3ce508),
++        );
++        let value = (offset.y * edge.y + offset.x * edge.x) / denominator;
++        Self::perimeter_sse_min(1.0, Self::perimeter_sse_max(0.0, value))
++    }
++
++    /// B 140c9ae20: project onto the original selected perimeter segment.
++    /// Nonfinite point coordinates propagate; the original checks positive area.
++    pub fn closest_point_on_perimeter(self, point: Vec2) -> Vec2 {
++        let (left, right) = self.closest_perimeter_edge_pair(point);
++        let points = self.as_points2();
++        let a = points[left % 4];
++        let b = points[right % 4];
++        let t = Self::perimeter_projection(point, a, b);
++        b * t + a * (1.0 - t)
++    }
++
++    /// B 140c9b000: keep the closing endpoint's U=1 while its point wraps to0.
++    pub fn get_closest_u_from_pos(self, point: Vec2) -> f32 {
++        let (left, right) = self.closest_perimeter_edge_pair(point);
++        let points = self.as_points2();
++        let left_u = self.get_point_u(left);
++        let right_u = self.get_point_u(right);
++        let valid_u = |u: f32| u.is_finite() && u >= 0.0 && u <= 1.0;
++        assert!(valid_u(left_u), "original perimeter U finite range guard");
++        assert!(valid_u(right_u), "original perimeter U finite range guard");
++        let t = Self::perimeter_projection(point, points[left % 4], points[right % 4]);
++        let u = left_u * (1.0 - t) + right_u * t;
++        assert!(valid_u(u), "original perimeter U finite range guard");
++        u
++    }
++
+     /// Signed distance to the rectangle perimeter, negative in the interior.
++
+     pub fn signed_distance_to_closest_edge(self, point: Vec2) -> f32 {
+         let q = self.perimeter_local_point(point).abs() - self.size * 0.5;
+         if q.x < 0.0 || q.y < 0.0 {
+@@ -613,6 +680,54 @@
+ 
+ #[cfg(test)]
+ mod normal_regressions {
++    #[test]
++    fn original_perimeter_helpers_preserve_ties_and_closing_u() {
++        let r = Rectangle2d::new_axis_aligned(Vec2::ZERO, Vec2::splat(2.0));
++        assert_eq!(
++            r.closest_point_on_perimeter(Vec2::ZERO),
++            Vec2::new(-1.0, 0.0)
++        );
++        assert_eq!(r.get_closest_u_from_pos(Vec2::ZERO), 0.125);
++        assert_eq!(r.get_closest_u_from_pos(Vec2::new(-0.5, -2.0)), 0.9375);
++        assert_eq!(
++            r.closest_point_on_perimeter(Vec2::new(-0.5, -2.0)),
++            Vec2::new(-0.5, -1.0)
++        );
++    }
++
++    #[test]
++    fn original_pair_search_keeps_its_finite_initial_distance() {
++        let r = Rectangle2d::new_axis_aligned(Vec2::ZERO, Vec2::splat(2.0));
++        assert_eq!(
++            r.closest_point_on_perimeter(Vec2::new(2000.0, 0.0)),
++            Vec2::new(-1.0, 0.0)
++        );
++        assert_eq!(r.get_closest_u_from_pos(Vec2::new(2000.0, 0.0)), 0.125);
++    }
++
++    #[test]
++    fn original_perimeter_helpers_use_actual_rotated_frame() {
++        let r = Rectangle2d::new(Vec2::new(3.0, -4.0), Vec2::splat(2.0), Vec2::Y);
++        assert_eq!(
++            r.closest_point_on_perimeter(Vec2::new(3.0, -4.0)),
++            Vec2::new(3.0, -5.0)
++        );
++        assert_eq!(r.get_closest_u_from_pos(Vec2::new(3.0, -4.0)), 0.125);
++    }
++
++    #[test]
++    fn original_nan_point_propagates_for_point_but_rejects_u() {
++        let r = Rectangle2d::new_axis_aligned(Vec2::ZERO, Vec2::splat(2.0));
++        let point = Vec2::new(f32::NAN, 0.0);
++        assert!(r.closest_point_on_perimeter(point).is_nan());
++        assert!(std::panic::catch_unwind(|| r.get_closest_u_from_pos(point)).is_err());
++        let zero = Rectangle2d {
++            size: Vec2::ZERO,
++            ..r
++        };
++        assert!(std::panic::catch_unwind(|| zero.closest_point_on_perimeter(Vec2::ZERO)).is_err());
++    }
++
+     use super::*;
+     #[test]
+     fn size_normalized_normal_is_independent_of_nearest_segment() {

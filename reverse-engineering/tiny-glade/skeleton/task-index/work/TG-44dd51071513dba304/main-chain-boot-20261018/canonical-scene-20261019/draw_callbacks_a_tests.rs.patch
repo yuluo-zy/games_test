@@ -1,0 +1,137 @@
+--- a/tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_a_tests.rs
++++ b/tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_a_tests.rs
+@@ -13,6 +13,20 @@
+ use xxhash_rust::xxh3::xxh3_64;
+ 
+ const NONE_MSG: &str = "called `Option::unwrap()` on a `None` value";
++
++fn test_session(
++    glade: crate::resources::session::GladeType,
++    mutators: Vec<crate::resources::session::SessionMutator>,
++) -> ActiveSession {
++    ActiveSession::new(
++        crate::resources::session::SessionId(uuid::Uuid::nil()),
++        crate::resources::session::SessionMeta {
++            glade,
++            mutators,
++            image: None,
++        },
++    )
++}
+ 
+ fn params(e: Entity) -> EntityDrawParams {
+     EntityDrawParams {
+@@ -113,7 +127,7 @@
+     }));
+     assert!(r.is_err(), "必需组件缺失 → Option::unwrap panic");
+     let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+-        res::<WeatherView>(&w);
++        res::<Weather>(&w);
+     }));
+     assert!(r.is_err(), "资源缺失 → Option::unwrap panic");
+ }
+@@ -866,10 +880,10 @@
+ #[test]
+ fn env23_roof_cloth_sequence() {
+     let mut w = World::new();
+-    w.insert_resource(ActiveSessionView {
+-        variant: 1,
+-        glade_bytes: vec![5, 0, 9],
+-    });
++    w.insert_resource(test_session(
++        crate::resources::session::GladeType::Olden,
++        vec![crate::resources::session::SessionMutator::Halloween2024],
++    ));
+     let e = w.spawn((RoofFlagClothView(0xdead), ColorId(42))).id();
+     let i = read_env23(&w, e);
+     let mut rig = Rig::new(&[], &[COLOR_ID_UNIFORM, CLOTH_ID_UNIFORM]);
+@@ -890,10 +904,10 @@
+ #[test]
+ fn env22_wall_cloth_sequence() {
+     let mut w = World::new();
+-    w.insert_resource(ActiveSessionView {
+-        variant: 1,
+-        glade_bytes: vec![5, 6],
+-    });
++    w.insert_resource(test_session(
++        crate::resources::session::GladeType::Olden,
++        vec![crate::resources::session::SessionMutator::Xmas2024],
++    ));
+     let cloth = WallFlagClothView {
+         id: -3,
+         f4: 0.5,
+@@ -938,7 +952,10 @@
+ #[test]
+ fn cloth_callbacks_require_color_id() {
+     let mut w = World::new();
+-    w.insert_resource(ActiveSessionView::default());
++    w.insert_resource(test_session(
++        crate::resources::session::GladeType::Summer,
++        vec![],
++    ));
+     let e = w.spawn(RoofFlagClothView(1)).id();
+     assert!(run_panics(env23, &mut w, &params(e)).contains(NONE_MSG));
+ }
+@@ -1024,7 +1041,7 @@
+     for (n, cb) in cbs.into_iter().enumerate() {
+         let mut w = World::new();
+         // env11/env0/env16 先读各自的资源，所以补上；GpuWorld 始终缺失。
+-        w.insert_resource(ActiveSessionView::default());
++        w.insert_resource(test_session(crate::resources::session::GladeType::Summer, vec![]));
+         w.insert_resource(EditingHighlightView::default());
+         w.insert_resource(CursorTerrainRaycast::default());
+         w.insert_resource(EraserSizeMultiplier(0.0));
+@@ -1041,7 +1058,10 @@
+ fn env3_discards_when_weather_is_not_positive_without_reading_other_resources() {
+     for v in [0.0f32, -1.0, f32::NAN] {
+         let mut w = World::new();
+-        w.insert_resource(WeatherView { intensity: v });
++        w.insert_resource(Weather {
++            snow_amount: v,
++            ..Weather::default()
++        });
+         assert_eq!(read_env3(&w), Env3In::Discard);
+         let e = w.spawn_empty().id();
+         let mut rig = Rig::new(&[], &[]);
+@@ -1054,12 +1074,14 @@
+ #[test]
+ fn env3_draws_with_mode_and_season_flags() {
+     let mut w = World::new();
+-    w.insert_resource(WeatherView { intensity: 0.5 });
+-    w.insert_resource(AppModeView { tag: 0x13 });
+-    w.insert_resource(MainCameraView {
+-        eye: Vec3::ZERO,
+-        season: 4,
+-    });
++    w.insert_resource(Weather {
++        snow_amount: 0.5,
++        ..Weather::default()
++    });
++    w.insert_resource(AppMode::Photomode);
++    let mut camera = MainCamera::new(1.0);
++    camera.set_mode_byte(crate::systems::camera_rig::main_camera::CameraMode(4));
++    w.insert_resource(camera);
+     let i = read_env3(&w);
+     assert_eq!(
+         i,
+@@ -1094,12 +1116,14 @@
+ #[test]
+ fn env3_flags_are_false_for_other_values() {
+     let mut w = World::new();
+-    w.insert_resource(WeatherView { intensity: 1.0 });
+-    w.insert_resource(AppModeView { tag: 0x12 });
+-    w.insert_resource(MainCameraView {
+-        eye: Vec3::ZERO,
+-        season: 3,
+-    });
++    w.insert_resource(Weather {
++        snow_amount: 1.0,
++        ..Weather::default()
++    });
++    w.insert_resource(AppMode::Fences);
++    let mut camera = MainCamera::new(1.0);
++    camera.set_mode_byte(crate::systems::camera_rig::main_camera::CameraMode(3));
++    w.insert_resource(camera);
+     assert_eq!(
+         read_env3(&w),
+         Env3In::Draw {

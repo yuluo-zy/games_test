@@ -1,0 +1,9 @@
+# Necessary schema dependencies and remaining consumers
+
+The combined source adds only the approved canonical values to existing country_core::components::drawable. It depends on existing core WallId, utils Rectangle3d, glam Vec2/Vec3, std Arc and Bevy Component, without importing system-clutter or creating a dependency cycle. It preserves the exact frozen BalconyDoorV1 source as a prefix. Its actual producer companion is04's builder fbfb35a1, originally bound toV1 c2acc82c; the same public two-field Component remains unchanged here.
+
+The new source/creation-destination/Convertable component is the unique future core TypeId. Existing persistent process state, Window-only manager and mirror UI/index records have not been migrated by this schema candidate. All future producers/manager/query must import this one type and supply real source owner plus selected mesh name/bounds. No synchronization with the old104B opaque record is added. No default component, fake resource, numeric Arc or observed pointer factory is present.
+
+Creation destination is only native0 (all32 mode bits, both32 float words, full64 WallId) or native2 Terrain. to_creation_words uses the existing InstaCreateDeco24B transport shape; inactive Terrain payload bytes are safe filler with no native padding promise. It neither constructs nor reinterprets storage DecoratorDst;06 owns that separate typed payload migration.
+
+Next actual source reviews remain mandatory for54 original name-parser arms, process filter/order/persistent copy, same-world manager last-wins preflight/Convertable insertion, actual UI query/parent rebuilding/latest click/RMB+History/events, and the nonempty populate placement/rejection/dirty/upstream owners. Neither schema-only installation nor04's Balcony producer repair proves those consumers, App mount, native equality, rendering, Reload or gameplay.

@@ -71,11 +71,11 @@ impl Shape {
         }
     }
 
-    /// B dispatch: circle 0x140c97970, rectangle 0x140c99530.
+    /// B 0x1411ff660: tail-dispatch to circle 0x140c976f0 / rectangle 0x140c9b000.
     pub fn get_closest_u_from_pos(self, p: Vec2) -> f32 {
         match self {
             Self::Circle(c) => c.get_closest_u_from_pos(p),
-            Self::Rectangle(r) => rectangle_closest_u_from_pos(r, p),
+            Self::Rectangle(r) => r.get_closest_u_from_pos(p),
         }
     }
 
@@ -149,28 +149,6 @@ impl Shape {
         }
         record
     }
-}
-
-/// B 0x140c99530: closest perimeter parameter. `u` is arc-length normalized
-/// along the four edges (Rectangle2d::corner_us).
-fn rectangle_closest_u_from_pos(rect: Rectangle2d, p: Vec2) -> f32 {
-    let corners = rect.as_points2();
-    let us = rect.corner_us();
-    let mut best_u = 0.0;
-    let mut best_d = f32::MAX;
-    for edge in 0..4 {
-        let e1 = corners[edge];
-        let edge_vec = corners[(edge + 1) % 4] - e1;
-        let len2 = edge_vec.length_squared().max(1e-20);
-        let t = ((p - e1).dot(edge_vec) / len2).clamp(0.0, 1.0);
-        let closest = e1 + edge_vec * t;
-        let d = (p - closest).length_squared();
-        if d < best_d {
-            best_d = d;
-            best_u = us[edge] + (us[edge + 1] - us[edge]) * t;
-        }
-    }
-    best_u
 }
 
 /// B `ShapeParameters` (0x1411ff2a0..0x1411ff740): 28 B record.
@@ -694,5 +672,77 @@ mod original_shape_reader_compatibility_tests {
     #[should_panic(expected = "legacy ShapeParameters must be Circle")]
     fn legacy_unit_rectangle_keeps_the_original_conversion_failure() {
         let _ = serde_json::from_value::<ShapeParameters>(json!("Rectangle"));
+    }
+}
+
+#[cfg(test)]
+mod closest_u_dispatch_tests {
+    use super::*;
+
+    #[test]
+    fn far_rectangle_point_preserves_the_original_initial_edge_policy() {
+        let rectangle = Rectangle2d::new_axis_aligned(Vec2::ZERO, Vec2::splat(2.0));
+        let point = Vec2::new(2000.0, 0.0);
+        let shape = Shape::Rectangle(rectangle);
+        let parameters = ShapeParameters::from_shape(shape);
+        // The canonical search starts at distance1000 and retains edge0 here.
+        // The removed local squared-distance loop instead returned0.625.
+        assert_eq!(rectangle.get_closest_u_from_pos(point), 0.125);
+        assert_eq!(shape.get_closest_u_from_pos(point), 0.125);
+        assert_eq!(parameters.get_closest_u_from_pos(point), 0.125);
+    }
+
+    #[test]
+    fn rectangle_wrappers_use_the_actual_frame_and_corner_u_policy() {
+        for rectangle in [
+            Rectangle2d::new_axis_aligned(Vec2::ZERO, Vec2::splat(2.0)),
+            Rectangle2d::new(Vec2::new(3.0, -4.0), Vec2::new(2.0, 6.0), Vec2::Y),
+        ] {
+            let shape = Shape::Rectangle(rectangle);
+            let parameters = ShapeParameters::from_shape(shape);
+            for point in [
+                rectangle.center,
+                rectangle.get_point(0),
+                rectangle.get_point(3),
+                Vec2::new(-0.5, -2.0),
+            ] {
+                let expected = rectangle.get_closest_u_from_pos(point).to_bits();
+                assert_eq!(shape.get_closest_u_from_pos(point).to_bits(), expected);
+                assert_eq!(parameters.get_closest_u_from_pos(point).to_bits(), expected);
+            }
+        }
+    }
+
+    #[test]
+    fn raw_zero_area_rectangle_keeps_the_canonical_failure() {
+        // Raw record/serde inputs bypass Rectangle2d's geometric constructor.
+        let rectangle = Rectangle2d {
+            axis: Vec2::X,
+            center: Vec2::ZERO,
+            size: Vec2::ZERO,
+        };
+        let shape = Shape::Rectangle(rectangle);
+        let parameters = ShapeParameters::from_shape(shape);
+        assert!(std::panic::catch_unwind(|| rectangle.get_closest_u_from_pos(Vec2::ZERO)).is_err());
+        assert!(std::panic::catch_unwind(|| shape.get_closest_u_from_pos(Vec2::ZERO)).is_err());
+        assert!(
+            std::panic::catch_unwind(|| parameters.get_closest_u_from_pos(Vec2::ZERO)).is_err()
+        );
+    }
+
+    #[test]
+    fn circle_dispatch_keeps_the_existing_canonical_implementation() {
+        let circle = Circle2d {
+            center: Vec2::new(3.0, -2.0),
+            radius: 4.0,
+            rotation: 0.75,
+        };
+        let shape = Shape::Circle(circle);
+        let parameters = ShapeParameters::from_shape(shape);
+        for point in [circle.center, Vec2::new(7.0, -2.0), Vec2::new(-2.0, 5.0)] {
+            let expected = circle.get_closest_u_from_pos(point).to_bits();
+            assert_eq!(shape.get_closest_u_from_pos(point).to_bits(), expected);
+            assert_eq!(parameters.get_closest_u_from_pos(point).to_bits(), expected);
+        }
     }
 }

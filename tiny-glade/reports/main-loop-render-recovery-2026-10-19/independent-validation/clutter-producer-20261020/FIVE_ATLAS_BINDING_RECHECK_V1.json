@@ -1,0 +1,409 @@
+{
+  "status": "native_helper_and_current_label_adapter_reaffirmed_sidecar_input_counterexample_unresolved",
+  "helper_path_audit": {
+    "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/independent-validation/clutter-producer-20261020/FIVE_HELPER_PATH_RECHECK_V1.json",
+    "sha256": "09e3f17dfb88a901deedc1d16b0d1ee6488e4ee5ef91d7e6d6026964a3c7ee28"
+  },
+  "facts": [
+    "Five exact native jump-table branches28/30/31/32/33 return actual UTF8 bytes at142a9ffa0,length23=nani_solid_vertex_color, selector9. These are real str pointer/length outputs, not a numeric ShaderName enum guessed by a label table.",
+    "Helper writes metadata pointer at tuple0, string pointer+length at tuple8/10, selector at18. Original generator3c07..3c1c copies string to local170/178, then42db..42f1 writes builderb0/b8. Selector instead comes from metadata45; no tuple field confusion found.",
+    "Full original builder5949B SHA07cf3c3f is bound. Its length23 string predicate compares real string bytes and writes Native Named selector/hash and subset kind3 at1412aa2e1. Current builder maps this exact string to canonical SolidVertexColor kind3/marker, matching native behavior.",
+    "Original maintain14206fae5..fb18 reads descriptor kind+10 and requires equal named atlas part kind; it does not accept a same-name different-kind part. Current create/change implementation retains this constraint.",
+    "Observed sibling RON has window_shutter only SolidVertexColorWindow and reed/lilypad/leaves/petals only Plant. This is a concrete prospective runtime input incompatibility if those names are published through this producer against this sidecar; it is not evidence that native helper strings were reconstructed incorrectly."
+  ],
+  "original_builder_comparison_bytes": {
+    "head16_va": "0x142abe210",
+    "head16_ascii": "nani_solid_verte",
+    "tail16_va": "0x142c2ade0",
+    "tail16_ascii": "lid_vertex_color",
+    "expected_original": "nani_solid_vertex_color"
+  },
+  "selected_native_instruction_checks": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-bdac7a16d3c26c954b/nani-gpu-counts-20261019/nani-maintain-20261020/1412a9b30-full-B-rne.asm",
+      "sha256": "f099285f4fd3e82df77eb3aea2241f12e3d31d36e8246b934f28695c67b17fb5",
+      "rows": [
+        {
+          "va": "0x1412aa213",
+          "bytes": "f3410f6f07",
+          "op": "movdqu xmm0, xmmword ptr [r15]",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa218",
+          "bytes": "f3410f6f4f07",
+          "op": "movdqu xmm1, xmmword ptr [r15 + 7]",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa21e",
+          "bytes": "660f740dba0b9801",
+          "op": "pcmpeqb xmm1, xmmword ptr [rip + 0x1980bba]",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa226",
+          "bytes": "660f7405e23f8101",
+          "op": "pcmpeqb xmm0, xmmword ptr [rip + 0x1813fe2]",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa22e",
+          "bytes": "660fdbc1",
+          "op": "pand xmm0, xmm1",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa232",
+          "bytes": "660fd7c0",
+          "op": "pmovmskb eax, xmm0",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa236",
+          "bytes": "3dffff0000",
+          "op": "cmp eax, 0xffff",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa23b",
+          "bytes": "0f859c010000",
+          "op": "jne 0x1412aa3dd",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa241",
+          "bytes": "488b8fa0000000",
+          "op": "mov rcx, qword ptr [rdi + 0xa0]",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa248",
+          "bytes": "488b97a8000000",
+          "op": "mov rdx, qword ptr [rdi + 0xa8]",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa24f",
+          "bytes": "e82c2b9fff",
+          "op": "call 0x140c9cd80 ; utils::name_hash::NameHash::compute",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa254",
+          "bytes": "4989c6",
+          "op": "mov r14, rax",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa257",
+          "bytes": "e82419d9fe",
+          "op": "call 0x14003bb80 ; bevy_app::plugin::Plugin::finish<country_core::systems::main_camera::MainCameraPlugin>",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa25c",
+          "bytes": "488d4c2470",
+          "op": "lea rcx, [rsp + 0x70]",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa261",
+          "bytes": "4889da",
+          "op": "mov rdx, rbx",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa264",
+          "bytes": "e837a4a6ff",
+          "op": "call 0x140d146a0 ; bevy_ecs::system::commands::Commands::spawn_empty",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa269",
+          "bytes": "488b5c2478",
+          "op": "mov rbx, qword ptr [rsp + 0x78]",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa26e",
+          "bytes": "4885db",
+          "op": "test rbx, rbx",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa271",
+          "bytes": "7508",
+          "op": "jne 0x1412aa27b",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa273",
+          "bytes": "488b9c2480000000",
+          "op": "mov rbx, qword ptr [rsp + 0x80]",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa27b",
+          "bytes": "4c8ba42490000000",
+          "op": "mov r12, qword ptr [rsp + 0x90]",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa283",
+          "bytes": "488b03",
+          "op": "mov rax, qword ptr [rbx]",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa286",
+          "bytes": "4c8b7b10",
+          "op": "mov r15, qword ptr [rbx + 0x10]",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa28a",
+          "bytes": "4c29f8",
+          "op": "sub rax, r15",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa28d",
+          "bytes": "483d87000000",
+          "op": "cmp rax, 0x87",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa293",
+          "bytes": "0f86f00e0000",
+          "op": "jbe 0x1412ab189",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa299",
+          "bytes": "488b4308",
+          "op": "mov rax, qword ptr [rbx + 8]",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa29d",
+          "bytes": "488d0dbc29fcff",
+          "op": "lea rcx, [rip - 0x3d644]",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa2a4",
+          "bytes": "4a890c38",
+          "op": "mov qword ptr [rax + r15], rcx",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa2a8",
+          "bytes": "460f11443808",
+          "op": "movups xmmword ptr [rax + r15 + 8], xmm8",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa2ae",
+          "bytes": "420f137c3818",
+          "op": "movlps qword ptr [rax + r15 + 0x18], xmm7",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa2b4",
+          "bytes": "f3420f11743820",
+          "op": "movss dword ptr [rax + r15 + 0x20], xmm6",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa2bb",
+          "bytes": "488b4c2430",
+          "op": "mov rcx, qword ptr [rsp + 0x30]",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa2c0",
+          "bytes": "4a894c3824",
+          "op": "mov qword ptr [rax + r15 + 0x24], rcx",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa2c5",
+          "bytes": "8b4c2438",
+          "op": "mov ecx, dword ptr [rsp + 0x38]",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa2c9",
+          "bytes": "42894c382c",
+          "op": "mov dword ptr [rax + r15 + 0x2c], ecx",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa2ce",
+          "bytes": "4a896c3830",
+          "op": "mov qword ptr [rax + r15 + 0x30], rbp",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa2d3",
+          "bytes": "42c744383800000000",
+          "op": "mov dword ptr [rax + r15 + 0x38], 0",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa2dc",
+          "bytes": "4e89743840",
+          "op": "mov qword ptr [rax + r15 + 0x40], r14",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa2e1",
+          "bytes": "42c644384803",
+          "op": "mov byte ptr [rax + r15 + 0x48], 3",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x1412aa2e7",
+          "bytes": "e9c0020000",
+          "op": "jmp 0x1412aa5ac ; unknown",
+          "direct_pe_matches": true
+        }
+      ],
+      "all_match": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-bdac7a16d3c26c954b/nani-gpu-counts-20261019/nani-maintain-20261019/14206f300-full-B-rne.asm",
+      "sha256": "553118796952efd7316f8215133ca8f4bcb07bd3af415ca49097fadabb1b6028",
+      "rows": [
+        {
+          "va": "0x14206fae5",
+          "bytes": "450fb64810",
+          "op": "movzx r9d, byte ptr [r8 + 0x10]",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x14206faea",
+          "bytes": "4983c010",
+          "op": "add r8, 0x10",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x14206faee",
+          "bytes": "4883c0f8",
+          "op": "add rax, -8",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x14206faf2",
+          "bytes": "48c1e203",
+          "op": "shl rdx, 3",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x14206faf6",
+          "bytes": "662e0f1f840000000000",
+          "op": "nop word ptr cs:[rax + rax]",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x14206fb00",
+          "bytes": "4885d2",
+          "op": "test rdx, rdx",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x14206fb03",
+          "bytes": "0f84140b0000",
+          "op": "je 0x14207061d",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x14206fb09",
+          "bytes": "488d4808",
+          "op": "lea rcx, [rax + 8]",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x14206fb0d",
+          "bytes": "4883c2f8",
+          "op": "add rdx, -8",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x14206fb11",
+          "bytes": "4438480c",
+          "op": "cmp byte ptr [rax + 0xc], r9b",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x14206fb15",
+          "bytes": "4889c8",
+          "op": "mov rax, rcx",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x14206fb18",
+          "bytes": "75e6",
+          "op": "jne 0x14206fb00",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x14206fb1a",
+          "bytes": "8b19",
+          "op": "mov ebx, dword ptr [rcx]",
+          "direct_pe_matches": true
+        },
+        {
+          "va": "0x14206fb1c",
+          "bytes": "c645541b",
+          "op": "mov byte ptr [rbp + 0x54], 0x1b",
+          "direct_pe_matches": true
+        }
+      ],
+      "all_match": true
+    }
+  ],
+  "observed_sidecar": {
+    "path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/assets/nani_meshes.ron",
+    "sha256": "b4b6c785799ec47432eabe24147234b13cd5c8f839a9382a0b1e2757c9d9cd0a",
+    "entries": [
+      {
+        "line": 78,
+        "name": "clutter/window_shutter",
+        "observed_subset": "SolidVertexColorWindow"
+      },
+      {
+        "line": 208,
+        "name": "clutter/reed",
+        "observed_subset": "Plant"
+      },
+      {
+        "line": 209,
+        "name": "clutter/lilypad",
+        "observed_subset": "Plant"
+      },
+      {
+        "line": 210,
+        "name": "fallen_leaves",
+        "observed_subset": "Plant"
+      },
+      {
+        "line": 211,
+        "name": "fallen_petals",
+        "observed_subset": "Plant"
+      }
+    ],
+    "release_binding": "Observed sibling installation input only. Native B RNE identity does not cryptographically bind this RON to that release. Adjacent exe/retained package provenance is being independently investigated by01; no verified B release equivalence asserted here."
+  },
+  "old_review_scope_correction": "LEAF_NATIVE_TABLE_AUDIT confirmed56 original helper paths, metadata offsets/selectors/string outputs. It did not prove all56 current-asset/Named-atlas runtime inputs; existing leaf/producer reviews already retained these5 counterexamples as unresolved. Names of old evidence files with suffixB do not supply sidecar release identity.",
+  "decision": [
+    "No v3 helper/resource correction is justified by current evidence; source5314749b matches original native helper constants.",
+    "Do not retarget original helper labels to current RON, duplicate assets into new subsets, relax strict kind lookup or invent atlas fallback.",
+    "Before fullgame acceptance resolve exact sidecar release pairing and/or original legitimate placement/producer domain. Actual release mismatch or unreachable original input would need evidence, not assumption."
+  ],
+  "limits": [
+    "Read-only native/source/asset inspection, no Cargo/GPU/original-process execution.",
+    "Current builder full visual execution not integrated/typechecked; prospective failure is not a claimed already executing default-App crash."
+  ]
+}

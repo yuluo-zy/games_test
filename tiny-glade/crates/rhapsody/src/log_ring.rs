@@ -1,15 +1,16 @@
 //! Process-wide diagnostic log ring.
 //!
 //! The ring is a fixed array of record slots. Writers reserve a slot with one
-//! `fetch_add` and publish it through a per-slot sequence word (a seqlock), so
-//! writers never block or allocate and a concurrent dump never returns a torn
-//! record: slots that are being written, or that were overwritten while being
-//! copied, are skipped. Records longer than [`MAX_RECORD_BYTES`] are truncated.
+//! `fetch_add`, claim exclusive write access with one per-slot compare_exchange,
+//! then publish through that slot's sequence word. Busy, superseded or exhausted
+//! reservations are dropped without waiting, retrying or allocating; see
+//! [`RingBuffer::dropped`]. A concurrent dump only returns whole records: slots
+//! that are being written, or that changed while being copied, are skipped. Records longer than [`MAX_RECORD_BYTES`] are truncated.
 //! Nothing in this module panics; writes before [`init_logging`] are dropped
 //! and dumps of an uninitialised ring are empty.
 use std::io::Write;
 use std::sync::OnceLock;
-use std::sync::atomic::{AtomicU64, Ordering, fence};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering, fence};
 
 /// Total payload capacity of the global ring in bytes.
 pub const LOG_RING_BYTES: usize = 0x10000;
@@ -36,6 +37,8 @@ impl Slot {
 pub struct RingBuffer {
     slots: Box<[Slot]>,
     next: AtomicU64,
+    dropped: AtomicU64,
+    exhausted: AtomicBool,
 }
 impl RingBuffer {
     /// `capacity_bytes` is rounded down to whole slots (at least one slot).
@@ -44,48 +47,103 @@ impl RingBuffer {
         Self {
             slots: (0..count).map(|_| Slot::new()).collect(),
             next: AtomicU64::new(0),
+            dropped: AtomicU64::new(0),
+            exhausted: AtomicBool::new(false),
         }
     }
     /// Number of records retained before the oldest is overwritten.
     pub fn capacity(&self) -> usize {
         self.slots.len()
     }
-    /// Total number of records ever written.
+    /// Number of reservation attempts, including in-flight and dropped writes.
+    /// This preserves the original counter; it wraps after `u64::MAX` attempts.
     pub fn written(&self) -> u64 {
         self.next.load(Ordering::Relaxed)
     }
-    /// Append one record, truncating it to [`MAX_RECORD_BYTES`].
+    /// Number of rejected busy, stale, contended or exhausted reservations.
+    /// A concurrent snapshot need not include attempts still in flight.
+    pub fn dropped(&self) -> u64 {
+        self.dropped.load(Ordering::Relaxed)
+    }
+    /// Best-effort append, truncating to [`MAX_RECORD_BYTES`]. A reservation
+    /// loses immediately if its slot is busy, superseded, or claimed by another
+    /// writer. `written()` counts the attempt; `dropped()` counts the rejection.
     pub fn write(&self, bytes: &[u8]) {
+        self.write_with(bytes, |_| {}, |_| {});
+    }
+    /// Private scheduling hooks let tests stop the actual production protocol
+    /// after reservation or payload stores. No-op closures have no dynamic
+    /// dispatch and disappear from the optimized production instantiation.
+    #[inline]
+    fn write_with(
+        &self,
+        bytes: &[u8],
+        reserved: impl FnOnce(u64),
+        mut stored_word: impl FnMut(usize),
+    ) -> bool {
         let bytes = &bytes[..bytes.len().min(MAX_RECORD_BYTES)];
         let index = self.next.fetch_add(1, Ordering::Relaxed);
+        reserved(index);
+        // Never reuse a publication sequence, even on counter exhaustion.
+        // A repeated even sequence could otherwise hide an intervening writer.
+        let committed = index.checked_add(1).and_then(|n| n.checked_mul(2));
+        let Some(committed) = committed.filter(|_| !self.exhausted.load(Ordering::Acquire)) else {
+            self.exhausted.store(true, Ordering::Release);
+            self.dropped.fetch_add(1, Ordering::Relaxed);
+            return false;
+        };
         let slot = &self.slots[(index % self.slots.len() as u64) as usize];
-        // Writers lapping each other on one slot is harmless: a reader only
-        // accepts a slot whose sequence is even and unchanged around its copy.
-        slot.sequence
-            .store(index.wrapping_mul(2).wrapping_add(1), Ordering::Relaxed);
+        let observed = slot.sequence.load(Ordering::Relaxed);
+        // One successful CAS owns all seven payload words until publication.
+        // The order check also rejects an old reservation delayed until after
+        // a newer writer committed to this same slot.
+        if observed % 2 == 1
+            || observed >= committed
+            || slot
+                .sequence
+                .compare_exchange(observed, committed - 1, Ordering::AcqRel, Ordering::Relaxed)
+                .is_err()
+        {
+            self.dropped.fetch_add(1, Ordering::Relaxed);
+            return false;
+        }
+        // Paired with the reader's Acquire fence through any payload word it
+        // reads: observing this writer's data also exposes its odd sequence.
         fence(Ordering::Release);
         let mut packed = [0u8; WORDS_PER_SLOT * 8];
         packed[..bytes.len()].copy_from_slice(bytes);
         packed[MAX_RECORD_BYTES] = bytes.len() as u8;
-        for (word, chunk) in slot.words.iter().zip(packed.chunks_exact(8)) {
+        for (i, (word, chunk)) in slot.words.iter().zip(packed.chunks_exact(8)).enumerate() {
             let mut value = [0u8; 8];
             value.copy_from_slice(chunk);
             word.store(u64::from_le_bytes(value), Ordering::Relaxed);
+            stored_word(i);
         }
-        slot.sequence
-            .store(index.wrapping_add(1).wrapping_mul(2), Ordering::Release);
+        slot.sequence.store(committed, Ordering::Release);
+        true
     }
-    /// Committed records, oldest first. Torn or in-progress records are skipped.
+    /// Committed records in reservation order. This is a best-effort collection,
+    /// not an atomic snapshot of every slot; changed/in-progress slots are skipped.
     pub fn records(&self) -> Vec<Vec<u8>> {
+        self.records_with(|_, _| {})
+    }
+    #[inline]
+    fn records_with(&self, mut copied_word: impl FnMut(usize, usize)) -> Vec<Vec<u8>> {
         let mut records: Vec<(u64, Vec<u8>)> = Vec::with_capacity(self.slots.len());
-        for slot in self.slots.iter() {
+        for (slot_index, slot) in self.slots.iter().enumerate() {
             let before = slot.sequence.load(Ordering::Acquire);
             if before == 0 || before % 2 == 1 {
                 continue;
             }
             let mut packed = [0u8; WORDS_PER_SLOT * 8];
-            for (word, chunk) in slot.words.iter().zip(packed.chunks_exact_mut(8)) {
+            for (i, (word, chunk)) in slot
+                .words
+                .iter()
+                .zip(packed.chunks_exact_mut(8))
+                .enumerate()
+            {
                 chunk.copy_from_slice(&word.load(Ordering::Relaxed).to_le_bytes());
+                copied_word(slot_index, i);
             }
             fence(Ordering::Acquire);
             if slot.sequence.load(Ordering::Relaxed) != before {
@@ -213,6 +271,112 @@ mod tests {
             worker.join().unwrap();
         }
         assert_eq!(ring.records().len(), 64);
+    }
+
+    #[test]
+    fn overlapping_writer_is_dropped_before_touching_payload() {
+        use std::sync::mpsc;
+        let ring = Arc::new(RingBuffer::new(size_of::<Slot>()));
+        let (entered_tx, entered_rx) = mpsc::sync_channel(0);
+        let (resume_tx, resume_rx) = mpsc::sync_channel(0);
+        let writer = {
+            let ring = ring.clone();
+            std::thread::spawn(move || {
+                ring.write_with(
+                    &[0xa5; MAX_RECORD_BYTES],
+                    |_| {},
+                    |i| {
+                        if i == 0 {
+                            entered_tx.send(()).unwrap();
+                            resume_rx.recv().unwrap();
+                        }
+                    },
+                )
+            })
+        };
+        entered_rx.recv().unwrap();
+        // A has written only word0 and still owns this single slot. A second
+        // writer must return without altering any payload word or sequence.
+        ring.write(&[0x5a; MAX_RECORD_BYTES]);
+        let during = ring.records();
+        let counts = (ring.written(), ring.dropped());
+        resume_tx.send(()).unwrap();
+        assert!(writer.join().unwrap());
+        assert!(during.is_empty());
+        assert_eq!(counts, (2, 1));
+        assert_eq!(ring.records(), vec![vec![0xa5; MAX_RECORD_BYTES]]);
+    }
+
+    #[test]
+    fn delayed_reservation_cannot_replace_a_newer_record() {
+        use std::sync::mpsc;
+        let ring = Arc::new(RingBuffer::new(size_of::<Slot>()));
+        let (entered_tx, entered_rx) = mpsc::sync_channel(0);
+        let (resume_tx, resume_rx) = mpsc::sync_channel(0);
+        let older = {
+            let ring = ring.clone();
+            std::thread::spawn(move || {
+                ring.write_with(
+                    b"older",
+                    |_| {
+                        entered_tx.send(()).unwrap();
+                        resume_rx.recv().unwrap();
+                    },
+                    |_| {},
+                )
+            })
+        };
+        entered_rx.recv().unwrap();
+        ring.write(b"newer");
+        resume_tx.send(()).unwrap();
+        assert!(!older.join().unwrap());
+        assert_eq!(ring.written(), 2);
+        assert_eq!(ring.dropped(), 1);
+        assert_eq!(ring.records(), vec![b"newer".to_vec()]);
+    }
+
+    #[test]
+    fn a_slot_overwritten_mid_copy_is_skipped() {
+        use std::sync::mpsc;
+        let ring = Arc::new(RingBuffer::new(size_of::<Slot>()));
+        ring.write(&[0xa5; MAX_RECORD_BYTES]);
+        let (entered_tx, entered_rx) = mpsc::sync_channel(0);
+        let (resume_tx, resume_rx) = mpsc::sync_channel(0);
+        let reader = {
+            let ring = ring.clone();
+            std::thread::spawn(move || {
+                ring.records_with(|_, word| {
+                    if word == 0 {
+                        entered_tx.send(()).unwrap();
+                        resume_rx.recv().unwrap();
+                    }
+                })
+            })
+        };
+        entered_rx.recv().unwrap();
+        ring.write(&[0x5a; MAX_RECORD_BYTES]);
+        resume_tx.send(()).unwrap();
+        assert!(reader.join().unwrap().is_empty());
+        assert_eq!(ring.records(), vec![vec![0x5a; MAX_RECORD_BYTES]]);
+        assert_eq!((ring.written(), ring.dropped()), (2, 0));
+    }
+
+    #[test]
+    fn exhausted_tokens_never_reuse_a_publication_sequence() {
+        let ring = RingBuffer::new(size_of::<Slot>());
+        ring.next.store(u64::MAX / 2 - 1, Ordering::Relaxed);
+        ring.write(b"last representable");
+        let committed = ring.slots[0].sequence.load(Ordering::Relaxed);
+        assert_eq!(committed, u64::MAX - 1);
+        ring.write(b"not representable");
+        assert_eq!(ring.dropped(), 1);
+        assert_eq!(ring.slots[0].sequence.load(Ordering::Relaxed), committed);
+        // Simulate eventual attempt-counter wrap: the terminal state must
+        // still refuse publication, rather than reusing an early even stamp.
+        ring.next.store(0, Ordering::Relaxed);
+        ring.write(b"wrapped");
+        assert_eq!(ring.dropped(), 2);
+        assert_eq!(ring.records(), vec![b"last representable".to_vec()]);
     }
 
     #[test]

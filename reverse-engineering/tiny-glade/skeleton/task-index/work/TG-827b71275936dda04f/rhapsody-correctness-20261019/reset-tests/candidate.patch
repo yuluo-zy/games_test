@@ -1,0 +1,186 @@
+--- /dev/null
++++ b/crates/rhapsody/tests/temporal_reset_retirement.rs
+@@ -0,0 +1,183 @@
++//! 真实 GPU：全部 temporal reset 释放命名 owner，并保留尚未完成的提交资源。
++mod gpu_test_support;
++
++use ash::vk::{self, Handle};
++use rhapsody::{
++    device::{Device, DeviceConfig},
++    raw::{buffer::BufferDesc, semaphore::TimelineSemaphore},
++    rg::{AccessTable, BuiltGraph, GpuResource, PassContext, VulkanGraphBackend, VulkanGraphSession},
++};
++use std::sync::{Arc, Weak};
++
++const TIMEOUT: u64 = 10_000_000_000;
++
++fn session() -> Option<VulkanGraphSession> {
++    let device = gpu_test_support::initialize(
++        "temporal reset device",
++        Device::new_headless(&DeviceConfig::headless()),
++    )?;
++    let backend = gpu_test_support::initialize(
++        "temporal reset backend",
++        VulkanGraphBackend::new(device, AccessTable::original()),
++    )?;
++    Some(VulkanGraphSession::new(backend))
++}
++
++fn filled_named(session: &mut VulkanGraphSession) -> (BuiltGraph, u32) {
++    let mut graph = session.begin_frame().unwrap();
++    let named = session
++        .named_buffer(
++            &mut graph,
++            "reset-target",
++            BufferDesc::new_gpu_only(64, vk::BufferUsageFlags::TRANSFER_DST),
++        )
++        .unwrap();
++    assert!(!named.history_valid, "reset 后不能复用旧历史");
++    let logical = named.buffer.raw().raw();
++    let device = session.backend.device().clone();
++    let mut pass = graph.add_pass("real named fill").with_side_effect();
++    pass.add_resource_access(named.buffer.raw(), 0x34, 0).unwrap();
++    pass.render_with_result_context(move |context: PassContext<'_>| {
++        let managed = context.managed.ok_or_else(|| {
++            rhapsody::Error::invalid_usage("named reset managed resources absent")
++        })?;
++        let buffer = managed.buffer_for(logical).map_err(|error| {
++            rhapsody::Error::invalid_usage_with("named reset buffer resolution", error)
++        })?;
++        unsafe {
++            device.raw_device().cmd_fill_buffer(
++                vk::CommandBuffer::from_raw(context.command.handle()),
++                buffer.raw(),
++                0,
++                64,
++                0x12345678,
++            );
++        }
++        Ok(())
++    });
++    (graph.build(), logical)
++}
++
++fn weak_buffer(session: &VulkanGraphSession, token: u64) -> Weak<rhapsody::resource::Buffer> {
++    match session.backend.resource_clone(token).unwrap() {
++        GpuResource::Buffer(buffer) => Arc::downgrade(&buffer),
++        _ => panic!("named buffer resolved to an image"),
++    }
++}
++
++struct Unblock(Arc<TimelineSemaphore>, bool);
++impl Unblock {
++    fn signal(&mut self) -> rhapsody::Result<()> {
++        if !self.1 {
++            unsafe {
++                self.0.device().raw_device().signal_semaphore(
++                    &vk::SemaphoreSignalInfo::default()
++                        .semaphore(self.0.raw_handle())
++                        .value(1),
++                )
++            }?;
++            self.1 = true;
++        }
++        Ok(())
++    }
++}
++impl Drop for Unblock {
++    fn drop(&mut self) {
++        // 断言失败也先解除真实 GPU 等待，避免 Session 析构被本线程阻塞。
++        let _ = self.signal();
++    }
++}
++
++#[test]
++fn reset_all_releases_cancelled_named_owners_and_rejects_prepared_frames() {
++    let Some(mut session) = session() else { return };
++    let (graph, logical) = filled_named(&mut session);
++    let prepared = session.compile_frame(graph).unwrap();
++    let token = prepared
++        .snapshot()
++        .physical_mapping
++        .iter()
++        .find(|mapping| mapping.logical == logical)
++        .unwrap()
++        .token
++        .unwrap();
++    let weak = weak_buffer(&session, token);
++    assert_eq!(
++        session.reset_all_temporals().unwrap_err().kind(),
++        rhapsody::ErrorKind::InvalidUsage
++    );
++    assert_eq!(session.named_resource_count(), 1);
++    assert!(weak.upgrade().is_some());
++    session.cancel_prepared(prepared).unwrap();
++    session.reset_all_temporals().unwrap();
++    assert_eq!(session.named_resource_count(), 0);
++    assert!(session.backend.resource_clone(token).is_none());
++    assert!(weak.upgrade().is_none());
++    session.reset_all_temporals().unwrap();
++    assert_eq!(session.resource_count(), 0, "重复 reset 不保留闲置物理 owner");
++}
++
++#[test]
++fn reset_all_preserves_real_pending_owners_and_reclaims_before_the_next_allocation() {
++    let Some(mut session) = session() else { return };
++    let device = session.backend.device().clone();
++    let mut prior_token = None;
++    for _ in 0..4 {
++        // 每轮新建零值 timeline，保证提交真实未完成；无需依靠 GPU 速度或 sleep。
++        // guard 在 Session 之前析构，失败路径也会开闸。
++        let mut unblock = Unblock(TimelineSemaphore::new(device.clone(), 0).unwrap(), false);
++        let (graph, logical) = filled_named(&mut session);
++        session
++            .backend
++            .set_graph_synchronization(
++                vec![(unblock.0.clone(), 1, vk::PipelineStageFlags::ALL_COMMANDS)],
++                vec![],
++            )
++            .unwrap();
++        let receipt = session.execute_frame(graph).unwrap();
++        assert!(!receipt.receipts.is_empty(), "必须实际提交 GPU 命令");
++        let completed = device.poll().unwrap();
++        assert!(
++            receipt
++                .receipts
++                .iter()
++                .any(|point| completed.get(point.queue) < point.value)
++        );
++        let token = receipt
++            .snapshot
++            .physical_mapping
++            .iter()
++            .find(|mapping| mapping.logical == logical)
++            .unwrap()
++            .token
++            .unwrap();
++        assert_ne!(Some(token), prior_token, "reset 后必须分配新的命名 owner");
++        prior_token = Some(token);
++        let weak = weak_buffer(&session, token);
++        session.reset_all_temporals().unwrap();
++        assert_eq!(
++            session.named_resource_count(),
++            0,
++            "状态退役须立即移交物理命名 owner"
++        );
++        assert_eq!(session.pending_frame_count(), 1);
++        assert!(session.backend.resource_clone(token).is_some());
++        assert!(weak.upgrade().is_some(), "GPU 未完成时不得销毁真实 Buffer");
++        assert_eq!(
++            session.wait_submits_done(0).unwrap_err().kind(),
++            rhapsody::ErrorKind::Timeout
++        );
++        session.reset_all_temporals().unwrap();
++        assert!(weak.upgrade().is_some(), "重复 reset 也不得提前释放在飞 owner");
++        unblock.signal().unwrap();
++        session.wait_submits_done(TIMEOUT).unwrap();
++        assert_eq!(session.pending_frame_count(), 0);
++        // OOM 降分辨率重编译也先 begin_frame；必须在下一次 named 分配前回收旧 backend owner。
++        let graph = session.begin_frame().unwrap();
++        assert!(session.backend.resource_clone(token).is_none());
++        assert!(weak.upgrade().is_none());
++        assert_eq!(session.named_resource_count(), 0);
++        assert_eq!(session.resource_count(), 0, "多帧 reset 不累积旧物理资源");
++        session.cancel_frame(graph.build()).unwrap();
++    }
++}

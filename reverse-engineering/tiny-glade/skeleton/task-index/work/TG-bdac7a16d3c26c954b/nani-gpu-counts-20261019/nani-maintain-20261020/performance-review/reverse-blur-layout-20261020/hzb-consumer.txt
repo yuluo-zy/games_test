@@ -1,0 +1,30 @@
+Source: /Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/generate_hzb.rs
+SHA256: 7469a171d7a73b6efe8da37e7404514eb3fcc42e774fdc92351ba50f9664ea9e
+
+72:     let pass = env
+73:         .pass(PASS_NAME, SHADER_URI)
+74:         .bind_texture(HASH_MIP0, depth, TEX_READ);
+75:     let hzb_ref = &hzb;
+76:     let pass = bind_with_view(
+77:         pass,
+78:         HASH_MIPS,
+79:         &hzb_ref,
+80:         TEX_STORAGE_WRITE,
+81:         TextureViewDesc::new()
+82:             .bind_individual_mips(true)
+83:             .base_mip_level(0)
+84:             .view_type(VIEW_TYPE_2D_ARRAY),
+85:     );
+86:     let pass = bind_with_view(
+87:         pass,
+88:         HASH_MIP_LAST,
+89:         &hzb_ref,
+90:         TEX_STORAGE_WRITE,
+91:         last_mip_view(mips),
+92:     );
+93:     let mut push = spd_push_constants(u32::from(mips).wrapping_sub(1), groups);
+94:     push.extend_from_slice(&w.to_le_bytes());
+95:     push.extend_from_slice(&h.to_le_bytes());
+96:     let pass = pass.write_rg_storage_buffer(HASH_ATOMIC, &atomic);
+97:     // The original SPD shader returns before its cross-workgroup atomic path
+

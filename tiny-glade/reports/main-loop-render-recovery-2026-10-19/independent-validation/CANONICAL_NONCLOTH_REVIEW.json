@@ -1,0 +1,59 @@
+{
+  "reviewed_at_utc": "2026-10-19T15:57:32.934838+00:00",
+  "verdict": "passed_scoped_static",
+  "manifest": {
+    "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-44dd51071513dba304/main-chain-boot-20261018/canonical-noncloth-20261019/noncloth-manifest.json",
+    "sha256": "5f2ad2dfa54c8099f15e03b1034c4559f6ea18b42a1d107dcc8d07f2cc9f1403"
+  },
+  "source_inputs": [
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-44dd51071513dba304/main-chain-boot-20261018/canonical-noncloth-20261019/draw_callbacks_a.rs.candidate",
+      "sha256": "3dc6f8cc1257aca7b4d5d2bac7c0429be82b6a87dbfac9188ad81c53d80a8b17"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-44dd51071513dba304/main-chain-boot-20261018/canonical-noncloth-20261019/draw_callbacks_b.rs.candidate",
+      "sha256": "763a48f74e793ed71a7816fbfaf9f93310f31dd4605cdf7acb163e57e2d2c728"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-44dd51071513dba304/main-chain-boot-20261018/canonical-noncloth-20261019/draw_callbacks_a_views.rs.candidate",
+      "sha256": "82745a1ead217842d83dfdddf165688380441f35b072238ad31f01b804aeda3a"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-44dd51071513dba304/main-chain-boot-20261018/canonical-noncloth-20261019/draw_callbacks_a_tests.rs.candidate",
+      "sha256": "a5020a04c9149235fdde70d964560d4a04fb74d93f66e54cbdf3860b6db9ccc1"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-ab197f381ed7615ce6/boot-leaf-20261018/canonical-scene-20261019/tree_edit.rs.candidate",
+      "sha256": "7401be60d481e9fba96ee8ccf52de66ab65725aac530fb2a95d8da05d71d4cf3"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a433e0de1f7930df66/boot-leaf-20261018/canonical-scene-20261019/tree_animation.rs.candidate",
+      "sha256": "bc965b0de408d20d4fe65fa83f1b0a6de6ae8b532a5b69285afedd11cf7b9cfd"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-35af5617310f31b9df/boot-leaf-20261018/canonical-scene-20261019/lib.rs.candidate",
+      "sha256": "55d42861bd6f926e68604bf631a6b71754fcacdd18f674c910d9f1c04ac5f2d1"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-c459c7f73345e24709/main-chain-boot-20261018/scene-startup-20261019/gameplay_startup.rs.candidate",
+      "sha256": "e326a82d7982ee452c3ecdbb9b32d737f3f77313cfb28d62c8292b75e3b39c9c"
+    }
+  ],
+  "checks": [
+    "Split package removes all new cloth component, alias, query/session and test migration hunks; drawable.rs excluded. Existing cloth Views remain unresolved and are not counted as closure.",
+    "Retains previously reviewed canonical Weather/MainCamera/AppMode/ActiveSession noncloth and water consumers, real Rocky count and shared canopy progress/smoothstep.",
+    "Retains exact original Forest manage -> forest -> handplaced chain_ignore_deferred in set36, same actual resources and current Sheep/PrevTransform/placement48/metadata88/ForestTree80 fields.",
+    "Read all four newly split callback patches. Remaining four files have the previously reviewed exact candidate hashes. No new resource_exists gate, synthetic World or fake resource inserted."
+  ],
+  "integration_requirements": [
+    "Match raw before hashes, including callback_b bare-CR input; its normalized diff is review only and matching LF candidate must be copied.",
+    "gameplay_startup is shared with Nani candidate: merge distinct registration hunks against current source; do not overwrite one full candidate with the other."
+  ],
+  "remaining": [
+    "Central typecheck and tests",
+    "Actual draw output and Forest behavior GPU/runtime",
+    "Cloth producer actual field interpretation and TypeId closure remain changes_required"
+  ],
+  "reviewer_ran_cargo_gpu": false,
+  "runtime_accepted": false
+}

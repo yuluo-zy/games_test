@@ -1,0 +1,134 @@
+{
+  "reviewer": "07-independent-validation",
+  "at_utc": "2026-10-19T19:56:25.357664+00:00",
+  "verdict": "passed_scoped_actual_provenance",
+  "central_receipt": {
+    "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/validation/curve-wallspace-source-suite-v5.json",
+    "sha256": "5ef39cca10144a7d14b1d2882bc6fca9de5374887f1d9bdb70214a6f64e6e5aa"
+  },
+  "scope": "Read/hash-only independent verification of central actual selected-source test run; no build/test/GPU performed by reviewer.",
+  "verified": {
+    "manifest": "a07a5c22e6000cfc58d7e3d08b71247cc71cc6b84d9604bcf8c9c3c222d52e6d",
+    "run": "7a2b6edbc7c58ad580f9f13dbe35be9e044aada68f9795575f6e2a3925c504e7",
+    "log": "f54a9fc4a0971a6ea1e310c09117d22baf8aada79035959a2c3eb388fd7aa450",
+    "canonical_template_runtime_sources": 31,
+    "all_source_bytes_and_sizes_match": true,
+    "identity_hash_checks": 109,
+    "mismatches": [],
+    "tests": {
+      "lib_passed": 41,
+      "properties_passed": 7,
+      "review_passed": 8,
+      "failed": 0,
+      "ignored": 0
+    },
+    "run_exit_code": 0,
+    "retained_binaries": [
+      {
+        "target": "curve_properties",
+        "path": "/private/tmp/tg-curve-source-target-v1/debug/deps/curve_properties-ee41b162b86efdd4",
+        "retained": "/private/tmp/tg-curve-source-v5-curve_properties-tests",
+        "sha256": "ca563feff719fc0c5cc69565b20dacf564f334d0ef7ec6ed23871ec47719a54a"
+      },
+      {
+        "target": "curve_review",
+        "path": "/private/tmp/tg-curve-source-target-v1/debug/deps/curve_review-78d5254320636510",
+        "retained": "/private/tmp/tg-curve-source-v5-curve_review-tests",
+        "sha256": "3e0b7511b7c5fe453ed775249aa03a6891e9e5162dc222ffedc8d5abb811a8bd"
+      },
+      {
+        "target": "utils",
+        "path": "/private/tmp/tg-curve-source-target-v1/debug/deps/utils-dfab4d58f7091b61",
+        "retained": "/private/tmp/tg-curve-source-v5-utils-tests",
+        "sha256": "de04308a7f8b1ba4f919237f1ff1e83a09170475691c6e17bea1fe8a4ac800c1"
+      }
+    ],
+    "original_public_lock_identity_including_checksum_recomputed": "16/16",
+    "actual_lock": "09575f95f5b7038b02c2218a98af1d58375ab92a3cd7630b2b425aea66306136",
+    "feature_reference": "983554905a829cba872572ef393ef2f1254e711847bd3f10e0ad9d43a652c360",
+    "all_16_public_resolved_features_independently_equal_V3": true,
+    "global_feature_union_differences": {
+      "glam": {
+        "actual": [
+          "default",
+          "std"
+        ],
+        "workspace_reference": [
+          "bytemuck",
+          "default",
+          "serde",
+          "std"
+        ],
+        "actual_subset_of_reference": true
+      },
+      "itertools": {
+        "actual": [
+          "default",
+          "use_alloc",
+          "use_std"
+        ],
+        "workspace_reference": [
+          "default",
+          "use_alloc",
+          "use_std"
+        ],
+        "actual_subset_of_reference": true
+      },
+      "lerp": {
+        "actual": [
+          "default"
+        ],
+        "workspace_reference": [
+          "default"
+        ],
+        "actual_subset_of_reference": true
+      },
+      "num-traits": {
+        "actual": [
+          "default",
+          "std"
+        ],
+        "workspace_reference": [
+          "default",
+          "i128",
+          "libm",
+          "std"
+        ],
+        "actual_subset_of_reference": true
+      },
+      "serde": {
+        "actual": [
+          "default",
+          "derive",
+          "serde_derive",
+          "std"
+        ],
+        "workspace_reference": [
+          "alloc",
+          "default",
+          "derive",
+          "serde_derive",
+          "std"
+        ],
+        "actual_subset_of_reference": true
+      },
+      "take-until": {
+        "actual": [],
+        "workspace_reference": [],
+        "actual_subset_of_reference": true
+      }
+    }
+  },
+  "chronology": [
+    "V2 actual driver missing original lerp dependency failed exit101; retained no binary/no tests.",
+    "V3 only restored exact existing dependency and actually passed53.",
+    "V4 actual new WallSpace source test imported CurveUBoundless from nonexistent root reexport: actual E0432/no binary/no tests. Reviewer07 missed this in original source admission; correction and withdrawal retained in0939502b1736684a705961b04ca336600861782bfee1be0fdea6febb80fe0a30.",
+    "V5 changes only actual WallSpace test usepath, no global reexport/driver/case deletion.56 actual tests passed before this provenance review."
+  ],
+  "limits": [
+    "Eight selected complete module families plus exact existing include/test sources and module-only driver; complete utils still missing sampling.",
+    "No native executable execution, whole workspace/crate equivalence, core/App/physics/scene/GPU/WSI/pixel/performance acceptance.",
+    "Selected actual public dependency feature sets equal V3 but remain subsets of workspace union; serde/bytemuck/libm differences are explicit.",
+    "V5 retained binaries verified separately, without relying on mutable target directory artifacts."
+  ]
+}

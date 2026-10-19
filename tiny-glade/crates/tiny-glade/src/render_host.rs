@@ -867,20 +867,83 @@ impl ShaderBindings {
         binding: u32,
         view: Arc<rhapsody::resource::TextureView>,
     ) -> rhapsody::Result<BindlessResource> {
-        match self
+        let layout = match self
             .abi
             .slot(BindingLocation { set: 0, binding })
             .map(|slot| slot.kind)
         {
-            Some(BindingKind::StorageImage) => Ok(BindlessResource::StorageImage(view)),
-            Some(BindingKind::SampledImage) => Ok(BindlessResource::SampledImage {
-                view,
-                layout: vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
-            }),
-            _ => Err(rhapsody::Error::invalid_usage(
-                "image binding differs from shader ABI",
-            )),
+            Some(BindingKind::StorageImage) => vk::ImageLayout::GENERAL,
+            Some(BindingKind::SampledImage) => vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+            _ => {
+                return Err(rhapsody::Error::invalid_usage(
+                    "image binding differs from shader ABI",
+                ));
+            }
+        };
+        self.image_with_layout(binding, view, layout)
+    }
+
+    fn image_with_layout(
+        &self,
+        binding: u32,
+        view: Arc<rhapsody::resource::TextureView>,
+        layout: vk::ImageLayout,
+    ) -> rhapsody::Result<BindlessResource> {
+        let kind = self
+            .abi
+            .slot(BindingLocation { set: 0, binding })
+            .map(|slot| slot.kind)
+            .ok_or_else(|| {
+                rhapsody::Error::invalid_usage("image binding is absent from shader ABI")
+            })?;
+        validate_image_binding_layout(kind, layout)?;
+        match kind {
+            BindingKind::StorageImage => Ok(BindlessResource::StorageImage(view)),
+            BindingKind::SampledImage => Ok(BindlessResource::SampledImage { view, layout }),
+            _ => unreachable!("validated image ABI kind"),
         }
+    }
+
+    fn image_for_pass(
+        &self,
+        ctx: &rhapsody::rg::PassContext<'_>,
+        resource: u32,
+        binding: u32,
+        view: Arc<rhapsody::resource::TextureView>,
+    ) -> rhapsody::Result<BindlessResource> {
+        let selected = view.desc;
+        let layout = ctx.image_layout_for_range(
+            resource,
+            rhapsody::rg::AccessRange::Texture {
+                aspect_mask: selected.aspect.as_raw(),
+                base_mip_level: selected.base_mip_level,
+                level_count: selected.level_count,
+                base_array_layer: selected.base_layer,
+                layer_count: selected.layer_count,
+            },
+        )?;
+        self.image_with_layout(binding, view, layout)
+    }
+}
+
+fn validate_image_binding_layout(
+    kind: BindingKind,
+    layout: vk::ImageLayout,
+) -> rhapsody::Result<()> {
+    let valid = match kind {
+        BindingKind::SampledImage => matches!(
+            layout,
+            vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL | vk::ImageLayout::GENERAL
+        ),
+        BindingKind::StorageImage => layout == vk::ImageLayout::GENERAL,
+        _ => false,
+    };
+    if valid {
+        Ok(())
+    } else {
+        Err(rhapsody::Error::invalid_usage(
+            "planned image layout differs from shader ABI",
+        ))
     }
 }
 
@@ -2710,7 +2773,7 @@ impl GraphPasses<'_> {
                             let mut elements = Vec::new();
                             for selected in individual_mip_views(desc, count)? {
                                 let selected = texture.image_view(&selected)?;
-                                elements.push(entry.bindings.image(range.resource_index, selected.view.clone())?);
+                                elements.push(entry.bindings.image_for_pass(&ctx, resource, range.resource_index, selected.view.clone())?);
                             }
                             image_arrays.push((range.resource_index, elements));
                             continue;
@@ -2718,7 +2781,7 @@ impl GraphPasses<'_> {
                         let view = texture.image_view(&desc)?;
                         entry
                             .bindings
-                            .image(range.resource_index, view.view.clone())?
+                            .image_for_pass(&ctx, resource, range.resource_index, view.view.clone())?
                     }
                 };
                 upsert_shader_resource(&mut resources, range.resource_index, resource)?;
@@ -3075,6 +3138,42 @@ mod original_surface_texture_flags_tests {
                 .flags
                 .as_raw(),
             0
+        );
+    }
+}
+
+#[cfg(test)]
+mod planned_image_layout_abi_tests {
+    use super::*;
+    #[test]
+    fn sampled_general_is_explicit_and_storage_never_accepts_sampled_layout() {
+        for layout in [
+            vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+            vk::ImageLayout::GENERAL,
+        ] {
+            validate_image_binding_layout(BindingKind::SampledImage, layout).unwrap();
+        }
+        validate_image_binding_layout(BindingKind::StorageImage, vk::ImageLayout::GENERAL).unwrap();
+        assert!(
+            validate_image_binding_layout(
+                BindingKind::StorageImage,
+                vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL
+            )
+            .is_err()
+        );
+        assert!(
+            validate_image_binding_layout(BindingKind::SampledImage, vk::ImageLayout::UNDEFINED)
+                .is_err()
+        );
+        assert!(
+            validate_image_binding_layout(
+                BindingKind::SampledImage,
+                vk::ImageLayout::TRANSFER_SRC_OPTIMAL
+            )
+            .is_err()
+        );
+        assert!(
+            validate_image_binding_layout(BindingKind::Sampler, vk::ImageLayout::GENERAL).is_err()
         );
     }
 }

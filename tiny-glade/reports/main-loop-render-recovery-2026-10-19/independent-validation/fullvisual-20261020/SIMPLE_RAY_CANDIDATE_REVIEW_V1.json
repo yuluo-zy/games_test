@@ -1,0 +1,37 @@
+{
+  "reviewer": "07-independent-validation",
+  "created_utc": "2026-10-19T18:51:49.319800+00:00",
+  "verdict": "passed_scoped_source",
+  "manifest": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-f7070bb3446b7a37eb/building-audit-20261018/simple-ray-validation-20261020/candidate-frozen-manifest-v1.json",
+    "sha256": "4e8b4f30b716e45f90e1bdb157b90a0ade3df2470112c634949b37f3e52807e5"
+  },
+  "candidate": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-f7070bb3446b7a37eb/building-audit-20261018/simple-ray-validation-20261020/candidate/world.rs",
+    "sha256": "919bfa6980ff3de6b2d19d394fc1d4b0833dd0ff3e1f40d5096a9fd6fef3d481",
+    "bytes": 167463
+  },
+  "before": {
+    "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/collision/world.rs",
+    "sha256": "15993d59d77ed971adbee9df8c274a0a30941ccf8cb7d3686140bfad21459a24",
+    "bytes": 161503
+  },
+  "patch_sha256": "3f9d241a611fb67ffb29ccff9e42ee144b2718220a8149ae8d29420ed078dfae",
+  "design_review_sha256": "ed50742a7ff8b9725d8218e7a4eda2096fb8dbdf3b613c6c7dec7c280caa9861",
+  "checks": [
+    "All six input artifact hashes and byte lengths matched, including live production before15993d59 at review. Exact unified diff independently regenerated from full before and candidate and matched patch bytes.",
+    "Previously reviewed overlap/finite-intersects implementation and tests remain byte-identical: production changes are limited to new native-physics finite public entry, max_toi private parameter/initial value and two old public compatibility calls explicitly passing f32::MAX.",
+    "The private query preserves all 17 slots/u32 mask, unchanged direction, solid=true/default filter, nearest-bound tightening, later equal-slot replacement, same canonical registry_handle_region and actual position=origin+dir*toi. No flush, second registry, direction normalization, clamping or new no-feature false-success API.",
+    "New API has identical cfg to real Rapier implementation. All current private callsites in this whole file are adapted; no public signature is removed.",
+    "Five new tests are normal module-level cfg(test,native-physics) tests and exercise actual canonical upsert/flush/Rapier sources: finite endpoint vs old MAX/exclude compatibility, all 24 canonical source bytes/pose, nearest/equal later slot, high/empty masks and nonunit direction, solid-inside bound0. No fake physics owner."
+  ],
+  "native_basis": [
+    "Prior independently verified complete B World forwarding39B, Rapier697B and Snap caller3277B, identity-bound to original RNE f507a6ce and PDB2d9686b8; this report reuses design review ed50742a rather than claiming a second independent execution.",
+    "Real Snap caller mask0x1000 normally reaches source13; the general query tests legitimately use other masks and do not fabricate a live incompatible source in the Snap slot."
+  ],
+  "limits": [
+    "Static source approval only; reviewer ran no Cargo/rustc/tests/GPU and changed no production or claims.",
+    "Five new real-Rapier tests remain unexecuted at this review. Whole core/App typecheck, actual Snap consumer, real scene scheduling and WSI/pixels/performance are not established.",
+    "Approval is exact before15993d59 to candidate919bfa69. Any later source delta requires separate fingerprinted review."
+  ]
+}

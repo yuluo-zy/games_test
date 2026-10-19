@@ -1,0 +1,65 @@
+
+/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140c98380: 48 83 ec 58                 	subq	$0x58, %rsp
+140c98384: 44 0f 29 44 24 40           	movaps	%xmm8, 0x40(%rsp)
+140c9838a: 0f 29 7c 24 30              	movaps	%xmm7, 0x30(%rsp)
+140c9838f: 0f 29 74 24 20              	movaps	%xmm6, 0x20(%rsp)
+140c98394: 4c 89 c0                    	movq	%r8, %rax
+140c98397: 4c 8b 84 24 88 00 00 00     	movq	0x88(%rsp), %r8
+140c9839f: 66 0f 6e 00                 	movd	(%rax), %xmm0
+140c983a3: 66 41 0f 7e c1              	movd	%xmm0, %r9d
+140c983a8: 41 81 e1 ff ff ff 7f        	andl	$0x7fffffff, %r9d       # imm = 0x7FFFFFFF
+140c983af: 41 81 f9 00 00 80 7f        	cmpl	$0x7f800000, %r9d       # imm = 0x7F800000
+140c983b6: 0f 8d c1 00 00 00           	jge	0x140c9847d <.text+0xc9747d>
+140c983bc: 66 0f 6e 48 08              	movd	0x8(%rax), %xmm1
+140c983c1: 66 41 0f 7e c9              	movd	%xmm1, %r9d
+140c983c6: 41 81 e1 ff ff ff 7f        	andl	$0x7fffffff, %r9d       # imm = 0x7FFFFFFF
+140c983cd: 41 81 f9 00 00 80 7f        	cmpl	$0x7f800000, %r9d       # imm = 0x7F800000
+140c983d4: 0f 8d b4 00 00 00           	jge	0x140c9848e <.text+0xc9748e>
+140c983da: f3 0f 10 94 24 80 00 00 00  	movss	0x80(%rsp), %xmm2
+140c983e3: 0f 28 e3                    	movaps	%xmm3, %xmm4
+140c983e6: f3 0f 59 e3                 	mulss	%xmm3, %xmm4
+140c983ea: 0f 28 ea                    	movaps	%xmm2, %xmm5
+140c983ed: f3 0f 59 ea                 	mulss	%xmm2, %xmm5
+140c983f1: f3 0f 58 ec                 	addss	%xmm4, %xmm5
+140c983f5: f3 0f 58 2d e7 1c cc 01     	addss	0x1cc1ce7(%rip), %xmm5  # 0x14295a0e4
+140c983fd: 0f 54 2d 7c 65 c9 01        	andps	0x1c9657c(%rip), %xmm5  # 0x14292e980
+140c98404: f3 0f 10 25 2c 61 e9 01     	movss	0x1e9612c(%rip), %xmm4  # 0x142b2e538
+140c9840c: 0f 2e e5                    	ucomiss	%xmm5, %xmm4
+140c9840f: 0f 82 8a 00 00 00           	jb	0x140c9849f <.text+0xc9749f>
+140c98415: f3 0f 10 22                 	movss	(%rdx), %xmm4
+140c98419: f3 0f 10 6a 08              	movss	0x8(%rdx), %xmm5
+140c9841e: f3 0f 10 72 04              	movss	0x4(%rdx), %xmm6
+140c98423: f3 0f 10 78 04              	movss	0x4(%rax), %xmm7
+140c98428: f3 0f 59 3d 40 d4 c8 01     	mulss	0x1c8d440(%rip), %xmm7  # 0x142925870
+140c98430: 44 0f 28 c6                 	movaps	%xmm6, %xmm8
+140c98434: f3 44 0f 5c c7              	subss	%xmm7, %xmm8
+140c98439: f3 0f 58 fe                 	addss	%xmm6, %xmm7
+140c9843d: f3 0f 11 19                 	movss	%xmm3, (%rcx)
+140c98441: f3 0f 11 51 04              	movss	%xmm2, 0x4(%rcx)
+140c98446: f3 0f 11 61 08              	movss	%xmm4, 0x8(%rcx)
+140c9844b: f3 0f 11 69 0c              	movss	%xmm5, 0xc(%rcx)
+140c98450: 66 0f 7e 41 10              	movd	%xmm0, 0x10(%rcx)
+140c98455: 66 0f 7e 49 14              	movd	%xmm1, 0x14(%rcx)
+140c9845a: f3 44 0f 11 41 18           	movss	%xmm8, 0x18(%rcx)
+140c98460: f3 0f 11 79 1c              	movss	%xmm7, 0x1c(%rcx)
+140c98465: 48 89 c8                    	movq	%rcx, %rax
+140c98468: 0f 28 74 24 20              	movaps	0x20(%rsp), %xmm6
+140c9846d: 0f 28 7c 24 30              	movaps	0x30(%rsp), %xmm7
+140c98472: 44 0f 28 44 24 40           	movaps	0x40(%rsp), %xmm8
+140c98478: 48 83 c4 58                 	addq	$0x58, %rsp
+140c9847c: c3                          	retq
+140c9847d: 48 8d 0d 74 61 e9 01        	leaq	0x1e96174(%rip), %rcx   # 0x142b2e5f8
+140c98484: ba 23 00 00 00              	movl	$0x23, %edx
+140c98489: e8 a2 0f c4 01              	callq	0x1428d9430 <.text+0x28d8430>
+140c9848e: 48 8d 0d 86 61 e9 01        	leaq	0x1e96186(%rip), %rcx   # 0x142b2e61b
+140c98495: ba 24 00 00 00              	movl	$0x24, %edx
+140c9849a: e8 91 0f c4 01              	callq	0x1428d9430 <.text+0x28d8430>
+140c9849f: 48 8d 0d 99 61 e9 01        	leaq	0x1e96199(%rip), %rcx   # 0x142b2e63f
+140c984a6: ba 2d 00 00 00              	movl	$0x2d, %edx
+140c984ab: e8 80 0f c4 01              	callq	0x1428d9430 <.text+0x28d8430>
+140c984b0: cc                          	int3

@@ -1,0 +1,385 @@
+--- a/tiny-glade/crates/systems/decorator/src/blueprint.rs
++++ b/tiny-glade/crates/systems/decorator/src/blueprint.rs
+@@ -1,25 +1,24 @@
+-//! B `blueprint.rs` — 装饰蓝图库（D1 消费契约）。
+-//!
+-//! 证据：`DecoratorBlueprints::insert` 0x1408258b0（值 = 0x140B 蓝图结构体，
+-//! +0x50/+0x94/+0x138 字段、+0x120 door stairs 参数指针）、`get` 0x140825ff0
+-//! （hashbrown 探测查询，未中返回 0）、`add_door_stairs` 0x140825830（分配 0x20B
+-//! = 8×u32 参数块，替换 +0x120）、`set_interaction_mesh` 0x1408255e0（+0x80 区域
+-//! {u32@+0x80=0, ptr@+0x84, f32@+0x8c, Arc@+0x90, slice ptr+len@+0xa0/+0xa8}，
+-//! NaN 校验 + 旧 Arc 释放）。
+-//!
+-//! 本模块为 decorator_visual 调用闭合所需的最小真实接线；0x140B 完整字段表与
+-//! 蓝图主流程归 blueprint.rs 的 D-owner。方法签名按调用点（generate_* 各函数）
+-//! 与上述反编译 O 事实。
++//! B decorator blueprints: retained native insert/clear/copy and clutter output.
++//! Evidence: insert@1408258b0/1854B, clear@1408260d0/3222B,
++//! copy@140826d70/957B; full visual consumer@140827910/7991B.
++//! This candidate recovers the actual shared blueprint state and clutter producer
++//! interface. The full consumer and its side-effect resource dependencies remain
++//! a separate acceptance gate; legacy generator fields below are not an ABI claim.
+ 
+ use std::sync::Arc;
+ 
+-use bevy_ecs::resource::Resource;
++use bevy_ecs::{
++    resource::Resource,
++    system::{Res, ResMut},
++};
+ use country_core::geometry::instanced_wall::BrickSourceId;
+-use country_core::resources::walls::decorator_storage::DecoratorStorage;
++use country_core::resources::walls::decorator_storage::{DecoratorStorage, DecoratorStorageAddr};
+ use country_core::resources::walls::decorator_subtype::DecoratorCollision;
+ use country_core::systems::collision::world::RaycastMeshData;
+ use glam::{Quat, Vec3};
+ use hashbrown::HashMap;
++
++use crate::utils::visual_entity_builder::WindowVisualEntityBuilder;
+ 
+ /// 交互网格记录（O：0x1408255e0 写入面 +0x80..+0xb0）。
+ ///
+@@ -45,10 +44,56 @@
+     }
+ }
+ 
+-/// B DecoratorBlueprint：装饰蓝图记录（原 0x140B=320B 结构体）。
+-/// 仅恢复 decorator_visual 消费面字段；其余偏移按 U 保留命名。
++/// A positioned mesh preserves original Arc identity as well as ordered pose.
++/// Native visual differential equality compares the allocation pointer, not hash.
++#[derive(Clone)]
++pub struct PositionedDecoratorMesh {
++    pub mesh: Arc<RaycastMeshData>,
++    pub position: Vec3,
++    pub rotation: Quat,
++}
++
++impl std::fmt::Debug for PositionedDecoratorMesh {
++    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
++        f.debug_struct("PositionedDecoratorMesh")
++            .field("mesh", &Arc::as_ptr(&self.mesh))
++            .field("position", &self.position)
++            .field("rotation", &self.rotation)
++            .finish()
++    }
++}
++
++impl PartialEq for PositionedDecoratorMesh {
++    fn eq(&self, other: &Self) -> bool {
++        Arc::ptr_eq(&self.mesh, &other.mesh)
++            && self.position == other.position
++            && self.rotation == other.rotation
++    }
++}
++
++/// Original tags 0/1/2. The two native consumers handle Unspecified differently:
++/// collision skips it; interaction rejects it. Do not collapse this to Option.
++#[derive(Clone, Debug, Default, PartialEq)]
++pub enum BlueprintMeshSlot {
++    Mesh(PositionedDecoratorMesh),
++    Disabled,
++    #[default]
++    Unspecified,
++}
++
++/// Recovered clutter fields coexist with older generator interfaces below.
++/// This is a semantic host type, not a claim to reproduce the native ABI layout.
+ #[derive(Clone, Debug, Default)]
+ pub struct DecoratorBlueprint {
++    /// Exact source for actual recovered producers; None marks legacy callers
++    /// whose source contract has not yet been recovered, never a default source.
++    pub storage_addr: Option<DecoratorStorageAddr>,
++    /// Original +0x139, ORed with 4 by interaction-source construction.
++    pub interaction_source_flags: u8,
++    pub collision_mesh: BlueprintMeshSlot,
++    pub interaction_mesh: BlueprintMeshSlot,
++    /// Original +0xb0 Vec<WindowVisualEntityBuilder>. Generation never spawns.
++    pub visual_entities: Vec<WindowVisualEntityBuilder>,
+     /// +0x00：u64（旗写面 = {u32 1, u32 0}；O generate_flags 0x1407ff6c0）。
+     pub u50: u64,
+     /// +0x80..+0xb0：交互网格（set_interaction_mesh 0x1408255e0 写；None=未设）。
+@@ -67,7 +112,9 @@
+     /// 碰撞体列表（set_colliders 0x14017a22f0/0x1408ed6f0 消费面；原 +0x0 区域）。
+     pub colliders: Vec<DecoratorCollision>,
+     /// 生成变换（I：generate_* 写面承载；与 transform_slots 对应）。
+-    pub transform: Option<country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransform>,
++    pub transform: Option<
++        country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransform,
++    >,
+     /// 描边网格（set_outline 消费面；I：原 +0x20 区域，U：载荷语义）。
+     pub outline: Option<(f32, f32, f32)>,
+     /// 烟囱参数（add_chimney 消费面，U：载荷语义）。
+@@ -80,6 +127,41 @@
+     /// new（内联，I）：全零蓝图。
+     pub fn new() -> Self {
+         Self::default()
++    }
++
++    /// B set_colliders@1408252b0. First is shrunken collision geometry; second
++    /// is full interaction geometry. Both carry the cached world pose.
++    pub fn set_positioned_colliders(
++        &mut self,
++        collision: Arc<RaycastMeshData>,
++        interaction: Arc<RaycastMeshData>,
++        position: &Vec3,
++        rotation: &Quat,
++    ) {
++        assert!(position.is_finite(), "collider position must be finite");
++        assert!(rotation.is_finite(), "collider rotation must be finite");
++        self.collision_mesh = BlueprintMeshSlot::Mesh(PositionedDecoratorMesh {
++            mesh: collision,
++            position: *position,
++            rotation: *rotation,
++        });
++        self.interaction_mesh = BlueprintMeshSlot::Mesh(PositionedDecoratorMesh {
++            mesh: interaction,
++            position: *position,
++            rotation: *rotation,
++        });
++    }
++
++    /// Clutter's original transform slot is written exactly once after insert.
++    pub fn set_cached_transform(
++        &mut self,
++        transform: country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransform,
++    ) {
++        assert!(
++            self.transform.is_none(),
++            "decorator blueprint already has an outline transform"
++        );
++        self.transform = Some(transform);
+     }
+ 
+     /// 0x14017a22f0（O 结构）/0x1408ed6f0：设置碰撞体列表（替换 +0x0 区域）。
+@@ -101,7 +183,10 @@
+         rotation: &Quat,
+     ) {
+         assert!(xyz.is_finite(), "interaction mesh position must be finite");
+-        assert!(rotation.is_finite(), "interaction mesh rotation must be finite");
++        assert!(
++            rotation.is_finite(),
++            "interaction mesh rotation must be finite"
++        );
+         self.interaction = Some(InteractionMesh {
+             xyz: *xyz,
+             mesh,
+@@ -141,100 +226,149 @@
+     }
+ }
+ 
+-/// B DecoratorBlueprints：DecoratorId(u32) → DecoratorBlueprint 蓝图库。
++/// Current map and previous map are separate original resources. Snapshotting
++/// clones Arcs, preserving the native unchanged-identity fast path.
+ #[derive(Resource, Clone, Debug, Default)]
+ pub struct DecoratorBlueprints {
+-    /// 蓝图表。
+-    pub map: HashMap<u32, DecoratorBlueprint>,
+-    /// 上一帧蓝图表（原 +0x20/+0x28 的 prev map；差分实例化基线）。
+-    pub prev: HashMap<u32, DecoratorBlueprint>,
++    pub map: HashMap<u32, Arc<DecoratorBlueprint>>,
++}
++
++#[derive(Resource, Clone, Debug, Default)]
++pub struct PrevDecoratorBlueprints {
++    pub map: HashMap<u32, Arc<DecoratorBlueprint>>,
+ }
+ 
+ impl DecoratorBlueprints {
+-    /// 0x1408258b0（O）：插入蓝图（键 u32；冲突行为 U，D1 以覆盖语义承载）。
++    /// Compatibility boundary for older generators. Their missing source/mesh
++    /// contracts remain explicit rather than being synthesized here.
+     pub fn insert(&mut self, id: u32, blueprint: DecoratorBlueprint) {
+-        self.map.insert(id, blueprint);
+-    }
+-
+-    /// `clear_blueprints` @0x1408260d0（O 结构）：移除本帧 modified/removed
+-    /// 装饰与已移除存储桶的蓝图（Arc 归零由 HashMap 释放承载）。
++        self.map.insert(id, Arc::new(blueprint));
++    }
++
++    /// B insert@1408258b0: reuse a unique allocation, otherwise allocate fresh.
++    /// A shared previous snapshot must never be mutated by generation.
++    pub fn insert_for(
++        &mut self,
++        id: u32,
++        storage_addr: DecoratorStorageAddr,
++        interaction_source_flags: u8,
++    ) -> &mut DecoratorBlueprint {
++        let entry = self
++            .map
++            .entry(id)
++            .or_insert_with(|| Arc::new(DecoratorBlueprint::new()));
++        if Arc::get_mut(entry).is_none() {
++            *entry = Arc::new(DecoratorBlueprint::new());
++        }
++        let blueprint = Arc::get_mut(entry).expect("fresh blueprint must be unique");
++        let mut visuals = std::mem::take(&mut blueprint.visual_entities);
++        visuals.clear();
++        *blueprint = DecoratorBlueprint::new();
++        blueprint.visual_entities = visuals;
++        blueprint.storage_addr = Some(storage_addr);
++        blueprint.interaction_source_flags = interaction_source_flags;
++        blueprint
++    }
++
++    /// B clear@1408260d0: all live buckets plus the removed-storage ID sets.
++    /// The removed registry is authoritative even when its bucket is gone.
+     pub fn clear_blueprints(&mut self, storage: &DecoratorStorage) {
+-        let mut ids: Vec<u32> = Vec::new();
+-        for (_, bucket) in storage.iter() {
+-            ids.extend(bucket.modified_ids.iter().copied());
+-            ids.extend(bucket.removed_ids.iter().copied());
+-        }
+-        for bucket in storage.iter_terrain_decorators() {
+-            ids.extend(bucket.modified_ids.iter().copied());
+-            ids.extend(bucket.removed_ids.iter().copied());
+-        }
+-        for bucket in storage.iter_stair_decorators() {
+-            ids.extend(bucket.modified_ids.iter().copied());
+-            ids.extend(bucket.removed_ids.iter().copied());
+-        }
+-        // 已移除存储地址的整个桶（O：removed storages 遍历）。
+-        for addr in storage.iter_removed_storages() {
+-            if let Some(bucket) = storage.get(addr) {
+-                ids.extend(bucket.removed_ids.iter().copied());
+-                ids.extend(bucket.modified_ids.iter().copied());
++        for bucket in storage
++            .per_wall
++            .values()
++            .chain(storage.terrain.iter())
++            .chain(storage.stairs.iter())
++        {
++            for id in bucket.modified_ids.iter().chain(bucket.removed_ids.iter()) {
++                self.map.remove(id);
+             }
+         }
+-        for id in ids {
+-            self.map.remove(&id);
++        for removed_ids in storage.removed.values() {
++            for id in removed_ids {
++                self.map.remove(id);
++            }
+         }
+     }
+ 
+-    /// `copy_blueprints_to_prev` @0x140826d70（O）：当前蓝图表
+-    /// `clone_from` 到 prev 基线（差分实例化读取 prev）。
+-    pub fn copy_blueprints_to_prev(&mut self) {
+-        self.prev.clone_from(&self.map);
+-    }
+-
+-    /// 0x140825ff0（O）：查询蓝图，未中返回 None（原返回 0）。
++    pub fn copy_blueprints_to_prev(&self, previous: &mut PrevDecoratorBlueprints) {
++        previous.map.clone_from(&self.map);
++    }
++
+     pub fn get(&self, id: u32) -> Option<&DecoratorBlueprint> {
+-        self.map.get(&id)
+-    }
+-
+-    /// 可变查询（内联，I）。
++        self.map.get(&id).map(Arc::as_ref)
++    }
++
+     pub fn get_mut(&mut self, id: u32) -> Option<&mut DecoratorBlueprint> {
+-        self.map.get_mut(&id)
+-    }
+-
+-    /// 删除（内联，I；移动/移除族消费）。
+-    pub fn remove(&mut self, id: u32) -> Option<DecoratorBlueprint> {
++        self.map.get_mut(&id).map(Arc::make_mut)
++    }
++
++    pub fn remove(&mut self, id: u32) -> Option<Arc<DecoratorBlueprint>> {
+         self.map.remove(&id)
+     }
++}
++
++/// Actual system interfaces; registration/copy phase must use original evidence.
++pub fn clear_blueprints(
++    storage: Res<DecoratorStorage>,
++    mut blueprints: ResMut<DecoratorBlueprints>,
++) {
++    blueprints.clear_blueprints(&storage);
++}
++
++pub fn copy_blueprints_to_prev(
++    blueprints: Res<DecoratorBlueprints>,
++    mut previous: ResMut<PrevDecoratorBlueprints>,
++) {
++    blueprints.copy_blueprints_to_prev(&mut previous);
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+-    use country_core::resources::walls::decorator_storage::Decorators;
+-    use country_core::resources::walls::WallId;
++    use country_core::resources::walls::{WallId, decorator_storage::Decorators};
+ 
+     #[test]
+-    fn copy_blueprints_to_prev_clones_current_map() {
++    fn snapshot_shares_identity_and_reinsert_cannot_mutate_previous() {
++        let mut current = DecoratorBlueprints::default();
++        current.insert_for(1, DecoratorStorageAddr::Terrain, 0).u138 = 7;
++        let mut previous = PrevDecoratorBlueprints::default();
++        current.copy_blueprints_to_prev(&mut previous);
++        assert!(Arc::ptr_eq(&current.map[&1], &previous.map[&1]));
++        current.insert_for(1, DecoratorStorageAddr::Stair, 0);
++        assert!(!Arc::ptr_eq(&current.map[&1], &previous.map[&1]));
++        assert_eq!(previous.map[&1].u138, 7);
++        assert_eq!(
++            current.map[&1].storage_addr,
++            Some(DecoratorStorageAddr::Stair)
++        );
++        assert!(matches!(
++            current.map[&1].interaction_mesh,
++            BlueprintMeshSlot::Unspecified
++        ));
++    }
++
++    #[test]
++    fn clear_covers_inline_buckets_and_removed_bucket_ids() {
++        let mut storage = DecoratorStorage::default();
++        let mut wall = Decorators::default();
++        wall.modified_ids.insert(1);
++        storage.per_wall.insert(WallId(9), wall);
++        let mut terrain = Decorators::default();
++        terrain.removed_ids.insert(2);
++        storage.terrain = Some(terrain);
++        let mut stairs = Decorators::default();
++        stairs.modified_ids.insert(3);
++        storage.stairs = Some(stairs);
++        storage
++            .removed
++            .entry(DecoratorStorageAddr::Wall(WallId(10)))
++            .or_default()
++            .insert(4);
+         let mut blueprints = DecoratorBlueprints::default();
+-        blueprints.insert(1, DecoratorBlueprint::new());
+-        blueprints.copy_blueprints_to_prev();
+-        assert_eq!(blueprints.prev.len(), 1);
+-        assert!(blueprints.prev.contains_key(&1));
+-    }
+-
+-    #[test]
+-    fn clear_blueprints_removes_modified_and_removed_ids() {
+-        let mut storage = DecoratorStorage::default();
+-        let mut bucket = Decorators::default();
+-        bucket.modified_ids.insert(1);
+-        bucket.removed_ids.insert(2);
+-        storage.per_wall.insert(WallId(9), bucket);
+-
+-        let mut blueprints = DecoratorBlueprints::default();
+-        for id in [1, 2, 3] {
++        for id in 1..=5 {
+             blueprints.insert(id, DecoratorBlueprint::new());
+         }
+         blueprints.clear_blueprints(&storage);
+-        assert_eq!(blueprints.map.len(), 1, "untouched id 3 retained");
+-        assert!(blueprints.map.contains_key(&3));
+-    }
+-}
++        assert_eq!(blueprints.map.keys().copied().collect::<Vec<_>>(), [5]);
++    }
++}

@@ -1,0 +1,226 @@
+--- a/tiny-glade/crates/systems/decorator/src/blueprint.rs
++++ b/tiny-glade/crates/systems/decorator/src/blueprint.rs
+@@ -13,6 +13,8 @@
+ };
+ use country_core::geometry::instanced_wall::BrickSourceId;
+ use country_core::resources::walls::decorator_subtype::DecoratorCollision;
++use country_core::resources::walls::dormers::DormerHoleSsbo;
++use country_core::resources::walls::wall_holes::RawWallHole;
+ use country_core::resources::walls::{
+     decorator::DecoratorId,
+     decorator_collision::DecoratorPhysicsColliders,
+@@ -101,6 +103,11 @@
+     pub interaction_mesh: BlueprintMeshSlot,
+     /// Original +0xb0 Vec<WindowVisualEntityBuilder>. Generation never spawns.
+     pub visual_entities: Vec<WindowVisualEntityBuilder>,
++    /// Original 20-byte wall-hole values; canonical geometry owner.
++    pub wall_holes: Vec<RawWallHole>,
++    /// Original 48-byte dormer values use the actual core/GPU record owner.
++    /// Consumer equality projects its native float/integer words below.
++    pub dormer_holes: Vec<DormerHoleSsbo>,
+     /// +0x00：u64（旗写面 = {u32 1, u32 0}；O generate_flags 0x1407ff6c0）。
+     pub u50: u64,
+     /// +0x80..+0xb0：交互网格（set_interaction_mesh 0x1408255e0 写；None=未设）。
+@@ -428,6 +435,122 @@
+     }
+ }
+ 
++/// Native full-visual equality for the canonical 48-byte GPU record. The
++/// original compares words 3/7 as integers and every other word as an ordered
++/// f32; deriving Eq on the GPU owner's twelve raw words is not this contract.
++fn dormer_hole_value_eq(left: &DormerHoleSsbo, right: &DormerHoleSsbo) -> bool {
++    left.0
++        .iter()
++        .zip(&right.0)
++        .enumerate()
++        .all(|(index, (&a, &b))| {
++            if matches!(index, 3 | 7) {
++                a == b
++            } else {
++                f32::from_bits(a) == f32::from_bits(b)
++            }
++        })
++}
++
++fn option_value_eq<T>(
++    left: Option<&T>,
++    right: Option<&T>,
++    equal: impl FnOnce(&T, &T) -> bool,
++) -> bool {
++    match (left, right) {
++        (None, None) => true,
++        (Some(a), Some(b)) => equal(a, b),
++        _ => false,
++    }
++}
++
++fn packed_float_eq(left: &[u8], right: &[u8], offset: usize) -> bool {
++    let a = u32::from_le_bytes(left[offset..offset + 4].try_into().unwrap());
++    let b = u32::from_le_bytes(right[offset..offset + 4].try_into().unwrap());
++    f32::from_bits(a) == f32::from_bits(b)
++}
++
++fn packed_float_pair_eq(left: u64, right: u64) -> bool {
++    f32::from_bits(left as u32) == f32::from_bits(right as u32)
++        && f32::from_bits((left >> 32) as u32) == f32::from_bits((right >> 32) as u32)
++}
++
++/// Exact projection of the represented native builder fields, from the complete
++/// slice equality at 0x1412a92a0/2178B. This deliberately does not derive byte
++/// equality for packed floats or compare host-only convenience fields. Original
++/// native None markers (BrickColor/WallFlag/Smoke=2, solid selector=9) are
++/// projected before inspecting payload, just as that helper does.
++fn visual_builder_value_eq(
++    left: &WindowVisualEntityBuilder,
++    right: &WindowVisualEntityBuilder,
++) -> bool {
++    let brick_color_eq = option_value_eq(
++        left.brick_color.as_ref().filter(|value| value[20] != 2),
++        right.brick_color.as_ref().filter(|value| value[20] != 2),
++        |a, b| {
++            a[0..8] == b[0..8]
++                && [8, 12, 16]
++                    .into_iter()
++                    .all(|offset| packed_float_eq(a, b, offset))
++                && a[20] == b[20]
++        },
++    );
++    let wall_flag_eq = option_value_eq(
++        left.wall_flag_cloth
++            .as_ref()
++            .filter(|value| value.2 as u8 != 2),
++        right
++            .wall_flag_cloth
++            .as_ref()
++            .filter(|value| value.2 as u8 != 2),
++        |a, b| {
++            a.0 as u32 == b.0 as u32
++                && f32::from_bits((a.0 >> 32) as u32) == f32::from_bits((b.0 >> 32) as u32)
++                && packed_float_pair_eq(a.1, b.1)
++                && a.2 as u8 == b.2 as u8
++        },
++    );
++    left.translation == right.translation
++        && left.rotation == right.rotation
++        && left.scale == right.scale
++        && left.semi_transparent == right.semi_transparent
++        && left.color_id == right.color_id
++        && left.normal_offset == right.normal_offset
++        && left.mesh_name == right.mesh_name
++        && left.normal_map == right.normal_map
++        && left.nani_name == right.nani_name
++        && left.scale_override == right.scale_override
++        && option_value_eq(
++            left.gothic_window_brick_deformation.as_ref(),
++            right.gothic_window_brick_deformation.as_ref(),
++            |a, b| (0..60).step_by(4).all(|offset| packed_float_eq(a, b, offset)),
++        )
++        && brick_color_eq
++        && option_value_eq(
++            left.clothline_cloth.as_ref(),
++            right.clothline_cloth.as_ref(),
++            |a, b| packed_float_pair_eq(a.0, b.0) && a.1 == b.1,
++        )
++        && left.window_light == right.window_light
++        && left.balcony_door == right.balcony_door
++        && left.smoke.as_ref().filter(|value| value.0 != 2)
++            == right.smoke.as_ref().filter(|value| value.0 != 2)
++        && left.roof_flag_cloth == right.roof_flag_cloth
++        && wall_flag_eq
++        && option_value_eq(
++            left.sittable_for_birds.as_ref(),
++            right.sittable_for_birds.as_ref(),
++            |a, b| {
++                packed_float_pair_eq(a.0, b.0) && f32::from_bits(a.1) == f32::from_bits(b.1)
++            },
++        )
++        // NameHash::eq@140c9cd70 is an exact u64 comparison.
++        && left.albedo_map == right.albedo_map
++        && left.solid_texture.filter(|&value| value != 9)
++            == right.solid_texture.filter(|&value| value != 9)
++        && left.lantern_light_params == right.lantern_light_params
++}
++
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+@@ -616,4 +739,78 @@
+         instantiate_decorator_colliders(&mut maps, &current, &previous, &mut world);
+         assert!(maps.first.is_empty() && maps.second.is_empty());
+     }
+-}
++
++    #[test]
++    fn native_dormer_equality_uses_float_words_and_keeps_integer_words_exact() {
++        let a = DormerHoleSsbo([0; 12]);
++        let mut b = a;
++        b.0[4] = (-0.0f32).to_bits();
++        assert!(dormer_hole_value_eq(&a, &b));
++        b.0[3] = (-0.0f32).to_bits();
++        assert!(!dormer_hole_value_eq(&a, &b));
++        b.0[3] = 0;
++        b.0[11] = f32::NAN.to_bits();
++        assert!(!dormer_hole_value_eq(&b, &b));
++    }
++
++    #[test]
++    fn native_builder_gothic_packed_floats_preserve_ordered_nan_and_zero_rules() {
++        let mut a = WindowVisualEntityBuilder::default();
++        a.gothic_window_brick_deformation = Some([0; 60]);
++        let mut b = a.clone();
++        b.gothic_window_brick_deformation.as_mut().unwrap()[56..60]
++            .copy_from_slice(&(-0.0f32).to_le_bytes());
++        assert!(visual_builder_value_eq(&a, &b));
++        b.gothic_window_brick_deformation.as_mut().unwrap()[24..28]
++            .copy_from_slice(&f32::NAN.to_le_bytes());
++        assert!(!visual_builder_value_eq(&b, &b));
++    }
++
++    #[test]
++    fn native_builder_brick_and_wall_flags_ignore_only_original_padding() {
++        let mut a = WindowVisualEntityBuilder::default();
++        a.brick_color = Some([0; 24]);
++        a.wall_flag_cloth = Some((5, 0, 0));
++        let mut b = a.clone();
++        b.brick_color.as_mut().unwrap()[21..24].copy_from_slice(&[17, 39, 91]);
++        b.brick_color.as_mut().unwrap()[8..12].copy_from_slice(&(-0.0f32).to_le_bytes());
++        b.wall_flag_cloth = Some((5 | (u64::from((-0.0f32).to_bits()) << 32), 0, 0xabc0_0000));
++        assert!(visual_builder_value_eq(&a, &b));
++        b.wall_flag_cloth.as_mut().unwrap().0 += 1;
++        assert!(!visual_builder_value_eq(&a, &b));
++        b = a.clone();
++        b.brick_color.as_mut().unwrap()[12..16].copy_from_slice(&f32::NAN.to_le_bytes());
++        assert!(!visual_builder_value_eq(&b, &b));
++    }
++
++    #[test]
++    fn native_builder_distinguishes_bird_float_and_clothline_integer_tail() {
++        let mut a = WindowVisualEntityBuilder::default();
++        a.sittable_for_birds = Some((0, 0));
++        a.clothline_cloth = Some((0, 0));
++        let mut b = a.clone();
++        b.sittable_for_birds = Some((u64::from((-0.0f32).to_bits()) << 32, (-0.0f32).to_bits()));
++        b.clothline_cloth = Some((u64::from((-0.0f32).to_bits()), 0));
++        assert!(visual_builder_value_eq(&a, &b));
++        b.clothline_cloth.as_mut().unwrap().1 = (-0.0f32).to_bits();
++        assert!(!visual_builder_value_eq(&a, &b));
++        b = a.clone();
++        b.sittable_for_birds.as_mut().unwrap().1 = f32::NAN.to_bits();
++        assert!(!visual_builder_value_eq(&b, &b));
++    }
++
++    #[test]
++    fn native_builder_equality_uses_actual_names_and_not_host_outer_id() {
++        let mut a = WindowVisualEntityBuilder::default();
++        a.mesh_name = "plant_pot_v1";
++        a.nani_name = "nani_clutter_SolidAlbedoMap";
++        let mut b = a.clone();
++        b.decorator_id = 99;
++        b.preview = true;
++        b.window_glass = true;
++        b.shader = Some(0x1234);
++        assert!(visual_builder_value_eq(&a, &b));
++        b.mesh_name = "plant_pot_v2";
++        assert!(!visual_builder_value_eq(&a, &b));
++    }
++}

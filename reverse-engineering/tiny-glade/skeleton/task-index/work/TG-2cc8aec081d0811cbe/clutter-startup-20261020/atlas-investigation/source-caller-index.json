@@ -1,0 +1,1565 @@
+{
+  "kind": "read_only_source_observation_not_runtime_acceptance",
+  "observed_at_utc": "2026-10-19T17:44:55.596522+00:00",
+  "root": "/Users/yuluo/Desktop/game/games_test",
+  "claim": {
+    "task_id": "TG-2cc8aec081d0811cbe",
+    "owner": "clutter-startup-20261020",
+    "status": "claimed",
+    "claimed_at_utc": "2026-10-19T16:59:20.460958+00:00",
+    "target_version": "C",
+    "versions": [
+      "A",
+      "B",
+      "C"
+    ],
+    "function_scope": null,
+    "work_dir": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-2cc8aec081d0811cbe/clutter-startup-20261020",
+    "worker": "idx-tg-2cc8aec081d0811cbe-clutter-startup-20261020",
+    "source_inputs": {
+      "A": {
+        "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/A/crates/systems/clutter/src/lib.rs",
+        "sha256": "935249a94bf5bdd98dc496910565331b9afcd0ad4774f61da83f4591e9c8daa4",
+        "binary_sha256": "76c998d48a2404b105b431d6d881290969e786e993dd7ae824b6bedab95fd708",
+        "pdb_sha256": "d5d4001583e31abf20b1563bbfdd9e4853629065aa2e461fe5809b205db908a5"
+      },
+      "B": {
+        "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/B/crates/systems/clutter/src/lib.rs",
+        "sha256": "40bd7bdb186a4b1984402c15337a81885830e889323c4084705007e6a7448482",
+        "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+        "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911"
+      },
+      "C": {
+        "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/C/crates/systems/clutter/src/lib.rs",
+        "sha256": "a8e65ef76370cd5ebfa78788582428eff8fea693b21dae43c6db7eda692098cb",
+        "binary_sha256": "d8f9261b1a4cb677fe91b8f5017bcff63b1312228b3f3264a2071ca7d3ad80a9",
+        "pdb_sha256": "df472d8e6ae642baed96127151b18685291468518ea8dc71557bce4508c78902"
+      }
+    },
+    "handoff": "task-index/handoffs/TG-2cc8aec081d0811cbe.json",
+    "rule": "one owner for this A/B/C file family; deliver independent candidate/patch/contract, never overwrite another owner or original artifacts"
+  },
+  "files": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/gameplay_startup.rs",
+      "sha256": "8e321256a300ae55728f6291d4ea55edf6fb128fcf2450e2dece027540f39432",
+      "bytes": 23317,
+      "line_count": 404,
+      "anchors": [
+        {
+          "line": 15,
+          "text": "render::mesh_atlas_library::{MeshAtlasLibrary, MeshAtlasesModifiedCmd}},"
+        },
+        {
+          "line": 33,
+          "text": "fn install_clutter_startup(app: &mut App, installed: PathBuf) {"
+        },
+        {
+          "line": 96,
+          "text": "install_clutter_startup(&mut app, PathBuf::from(\"not-loaded-at-registration\"));"
+        },
+        {
+          "line": 97,
+          "text": "install_clutter_startup(&mut app, PathBuf::from(\"not-loaded-at-registration\"));"
+        },
+        {
+          "line": 99,
+          "text": ".filter(|(_, system, _)| system.name().contains(\"install_clutter_startup\")).count(), 1);"
+        },
+        {
+          "line": 101,
+          "text": ".filter(|(_, system, _)| system.name().contains(\"install_clutter_startup\")).count(), 0);"
+        },
+        {
+          "line": 115,
+          "text": "install_clutter_startup(&mut app, missing);"
+        },
+        {
+          "line": 127,
+          "text": "install_clutter_startup(&mut app, installed.clone());"
+        },
+        {
+          "line": 142,
+          "text": "pub fn install_gameplay_gpu_startup("
+        },
+        {
+          "line": 146,
+          "text": "anyhow::ensure!(Arc::ptr_eq(&device, hosts.buffers.graphics_device()),"
+        },
+        {
+          "line": 176,
+          "text": "country_core::render::nani::systems::add_mapped_nani_instance_systems("
+        },
+        {
+          "line": 183,
+          "text": "app.init_resource::<MeshAtlasLibrary>();"
+        },
+        {
+          "line": 203,
+          "text": "app.insert_resource(GpuWorld::new(hosts.buffers.as_ref()));"
+        },
+        {
+          "line": 208,
+          "text": "install_clutter_startup(app, installed.clone());"
+        },
+        {
+          "line": 213,
+          "text": "app.insert_resource(PrefabWatcher::try_new(true)?);"
+        },
+        {
+          "line": 343,
+          "text": "app.configure_sets(PreStartup, ("
+        },
+        {
+          "line": 372,
+          "text": "load_prefabs::load_prefabs_with_watcher(&prefab_root, &mut prefabs, watcher.as_deref_mut())"
+        },
+        {
+          "line": 376,
+          "text": "(move |prefabs: Res<PrefabLibrary>, mut atlases: ResMut<MeshAtlasLibrary>,"
+        },
+        {
+          "line": 378,
+          "text": "load_mesh_atlases::load_mesh_atlases(&installed, &prefabs, &mut atlases, &mut meshes,"
+        },
+        {
+          "line": 385,
+          "text": "atlases: Res<MeshAtlasLibrary>, mut gpu: ResMut<GpuWorld>, mut commands: Commands| {"
+        },
+        {
+          "line": 386,
+          "text": "startup_nani::startup_nani(buffers.as_ref(), backend.as_ref(), &library.0,"
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/run_game.rs",
+      "sha256": "99ca10051a2998d2686ad52299d7e3c61ce375e6e43c07e8a06a659cd49dfe4b",
+      "bytes": 92250,
+      "line_count": 1834,
+      "anchors": [
+        {
+          "line": 68,
+          "text": "pub(crate) struct GameplayApplication;"
+        },
+        {
+          "line": 217,
+          "text": "app.insert_resource(GameplayApplication);"
+        },
+        {
+          "line": 366,
+          "text": "crate::decorator_plugin::build_startup_resources(&mut app);"
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/game_loop.rs",
+      "sha256": "5540cb4f986f149ed102e38de2df2d31caaa7a97829714cf9691958f06063a8b",
+      "bytes": 53803,
+      "line_count": 1245,
+      "anchors": [
+        {
+          "line": 117,
+          "text": "fn install_asset_library_systems(app: &mut App) {"
+        },
+        {
+          "line": 122,
+          "text": "use country_core::asset_libraries::runtime::{build_missing_vaos, rebuild_vaos};"
+        },
+        {
+          "line": 123,
+          "text": "country_core::asset_libraries::runtime::add_asset_library_post_update_systems("
+        },
+        {
+          "line": 128,
+          "text": "app.add_systems(bevy_app::Update, (build_missing_vaos, rebuild_vaos)"
+        },
+        {
+          "line": 130,
+          "text": ".before_ignore_deferred(country_core::render::nani::systems::nani_maintain_instances_ecs)"
+        },
+        {
+          "line": 371,
+          "text": "crate::gameplay_startup::install_gameplay_device_runtime("
+        },
+        {
+          "line": 1145,
+          "text": "for name in [\"build_missing_vaos\", \"rebuild_vaos\"] {"
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/decorator_plugin.rs",
+      "sha256": "bdbef25c4e7ed59722caa54bb6b187e7654da4e474ed511a88cda6ea2689eb72",
+      "bytes": 3565,
+      "line_count": 60,
+      "anchors": [
+        {
+          "line": 13,
+          "text": "//!    推进，`add_decorator_systems` 只接了部分系统）。"
+        },
+        {
+          "line": 15,
+          "text": "//! 当前不做：用 `add_decorator_systems` 整体转发会改变原注册顺序与集合，"
+        },
+        {
+          "line": 25,
+          "text": "/// `system_decorator::add_decorator_systems` 内的 `.chain()/.after()` 保证）："
+        },
+        {
+          "line": 30,
+          "text": "pub fn build(app: &mut bevy_app::App) {"
+        },
+        {
+          "line": 43,
+          "text": "system_decorator::add_decorator_systems::<MaybePendingSnapshotId, CollisionPayload>(app);"
+        },
+        {
+          "line": 55,
+          "text": "pub fn build_startup_resources(app: &mut bevy_app::App) {"
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/startup/load_mesh_atlases.rs",
+      "sha256": "0d8a8f2248154efc5b4fcfa9f5e7bd78eda2262e9994907b976278fd6b982797",
+      "bytes": 11147,
+      "line_count": 297,
+      "anchors": [
+        {
+          "line": 84,
+          "text": "pub fn load_nani_meshes("
+        },
+        {
+          "line": 102,
+          "text": "let source = installation.join(\"assets/nani_meshes.ron\");"
+        },
+        {
+          "line": 121,
+          "text": ".join(\"assets/meshes\")"
+        },
+        {
+          "line": 126,
+          "text": "watcher.watch_atlas(&path, config.subset)?;"
+        },
+        {
+          "line": 129,
+          "text": "atlases.add(config.subset, mesh.name.as_str(), &data);"
+        },
+        {
+          "line": 136,
+          "text": "/// then RON meshes, five procedural families and register_meshes@1412a00ae."
+        },
+        {
+          "line": 139,
+          "text": "pub fn load_mesh_atlases("
+        },
+        {
+          "line": 150,
+          "text": "atlases.add(part.render_subset, name.clone(), &part.render_mesh);"
+        },
+        {
+          "line": 156,
+          "text": "atlases.register_meshes(meshes);"
+        },
+        {
+          "line": 162,
+          "text": "/// The returned event is emitted only after real register_meshes succeeds."
+        },
+        {
+          "line": 163,
+          "text": "pub fn reload_mesh_atlases("
+        },
+        {
+          "line": 196,
+          "text": "atlases.add(part.render_subset, name.clone(), &part.render_mesh);"
+        },
+        {
+          "line": 204,
+          "text": "atlases.register_meshes(meshes);"
+        },
+        {
+          "line": 210,
+          "text": "pub fn load_nani_meshes_for_subsets("
+        },
+        {
+          "line": 244,
+          "text": "atlases.add("
+        },
+        {
+          "line": 270,
+          "text": "atlases.add("
+        },
+        {
+          "line": 281,
+          "text": "atlases.add(GpuWorldSubsetKind::Plaster, \"plaster_strip\", &mesh);"
+        },
+        {
+          "line": 288,
+          "text": "atlases.add("
+        },
+        {
+          "line": 296,
+          "text": "atlases.add(GpuWorldSubsetKind::Smoke, \"smoke\", &mesh);"
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/startup/load_prefabs.rs",
+      "sha256": "3adea3dbd5f753beb5e5adf2d03c71604af8a1f0ed3bc25c7767baf8d9292c96",
+      "bytes": 22230,
+      "line_count": 555,
+      "anchors": [
+        {
+          "line": 24,
+          "text": "pub struct PrefabWatcher {"
+        },
+        {
+          "line": 107,
+          "text": "pub fn take_atlas_changes(&self) -> HashSet<GpuWorldSubsetKind> {"
+        },
+        {
+          "line": 134,
+          "text": "pub fn reload_prefabs("
+        },
+        {
+          "line": 296,
+          "text": "pub fn load_prefabs_with_watcher("
+        },
+        {
+          "line": 319,
+          "text": "let atlases = watcher.take_atlas_changes();"
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/render/mesh_atlas_library.rs",
+      "sha256": "50d15a4203e8cd95f44981171ca770ac8ffaf86ef5c15d31a63c58c9712a0194",
+      "bytes": 17347,
+      "line_count": 460,
+      "anchors": [
+        {
+          "line": 8,
+          "text": "//!  * O `WorldSubsetMeshAtlas`（0xc0 B）= `{ registered: Option<Handle<Mesh>> @0 (tag) / @8, atlas: MeshAtlas @0x10 }`。"
+        },
+        {
+          "line": 75,
+          "text": "fn prefab_hash(name: &PrefabNameRef) -> NameHash {"
+        },
+        {
+          "line": 105,
+          "text": "impl From<&str> for AtlassedMeshName {"
+        },
+        {
+          "line": 144,
+          "text": "pub registered: Option<Handle<Mesh>>,"
+        },
+        {
+          "line": 151,
+          "text": "registered: None,"
+        },
+        {
+          "line": 187,
+          "text": "pub fn add<N: Into<AtlassedMeshName>>("
+        },
+        {
+          "line": 210,
+          "text": "pub fn get_by_name<N: Into<AtlassedMeshName>>(&self, name: N) -> &[PrefabMeshAtlasPart] {"
+        },
+        {
+          "line": 219,
+          "text": "pub fn get_by_name_hash(&self, hash: u64) -> &[PrefabMeshAtlasPart] {"
+        },
+        {
+          "line": 238,
+          "text": "if let Some(v) = self.prefab_parts.get_mut(&key) {"
+        },
+        {
+          "line": 247,
+          "text": "/// 删掉属于该 subset 的项（保序，`Vec::retain`）。`registered` 句柄保留。"
+        },
+        {
+          "line": 249,
+          "text": "if let Some(ws) = self.world_subsets.get_mut(&kind) {"
+        },
+        {
+          "line": 261,
+          "text": "pub fn register_meshes(&mut self, meshes: &mut AssetMeshLibrary) {"
+        },
+        {
+          "line": 270,
+          "text": "match ws.registered {"
+        },
+        {
+          "line": 274,
+          "text": "*meshes.get_mut(handle).unwrap() = new_mesh;"
+        },
+        {
+          "line": 280,
+          "text": "ws.registered = Some(handle);"
+        },
+        {
+          "line": 331,
+          "text": "assert!(lib.get_by_world_subset(k).registered.is_none());"
+        },
+        {
+          "line": 441,
+          "text": "assert!(lib.get_by_world_subset(MAIN).registered.is_none());"
+        },
+        {
+          "line": 447,
+          "text": ".registered"
+        },
+        {
+          "line": 448,
+          "text": ".expect(\"registered\");"
+        },
+        {
+          "line": 451,
+          "text": "assert!(lib.get_by_world_subset(BUSH).registered.is_none());"
+        },
+        {
+          "line": 455,
+          "text": "assert_eq!(lib.get_by_world_subset(MAIN).registered, Some(h));"
+        },
+        {
+          "line": 457,
+          "text": "// O：`get_mut` 每次登记后更新都会把 handle 压入 modified_meshes（驱动 VAO 重建）。"
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/name_hash.rs",
+      "sha256": "432d487baecb65dd4623e926168ddef2479c6766522d0ba2f2fa7da11a7fbef8",
+      "bytes": 1201,
+      "line_count": 32,
+      "anchors": [
+        {
+          "line": 8,
+          "text": "pub struct NameHash(pub u64);"
+        },
+        {
+          "line": 19,
+          "text": "pub fn compute(name: &str) -> Self {"
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/render/nani/mesh_atlas.rs",
+      "sha256": "6ec4c428496cad2bb6d966141a0c9927e9612aa263e54b705e881ad03f5bcb5c",
+      "bytes": 12135,
+      "line_count": 317,
+      "anchors": [
+        {
+          "line": 4,
+          "text": "//!  * 布局：`mesh: Mesh` @0x00（0x78 B，合并后的网格）、`layouts: Vec<MeshAtlasPart>` @0x78（16 B 元素）、"
+        },
+        {
+          "line": 14,
+          "text": "//!     3. `assert!(mesh_idx_within_atlas)`：`parts.len() < 0x40`（一张图集最多 64 个 part）；"
+        },
+        {
+          "line": 40,
+          "text": "pub struct MeshAtlasPart {"
+        },
+        {
+          "line": 50,
+          "text": "impl MeshAtlasPart {"
+        },
+        {
+          "line": 58,
+          "text": "pub type ComputedLayout = MeshAtlasPart;"
+        },
+        {
+          "line": 64,
+          "text": "pub layouts: Vec<MeshAtlasPart>,"
+        },
+        {
+          "line": 74,
+          "text": "// （label 指针 → \"MeshAtlas\"，长度 9）、空 layouts、空 parts。"
+        },
+        {
+          "line": 77,
+          "text": "layouts: Vec::new(),"
+        },
+        {
+          "line": 99,
+          "text": "pub fn add(&mut self, name: AtlassedMeshName, mesh: &Mesh) -> Result<u32, anyhow::Error> {"
+        },
+        {
+          "line": 148,
+          "text": "self.layouts.push(MeshAtlasPart {"
+        },
+        {
+          "line": 190,
+          "text": "/// The original upload copies the existing 16-byte atlas layouts directly:"
+        },
+        {
+          "line": 194,
+          "text": "pub type NaniMeshAtlasPartInfo = MeshAtlasPart;"
+        },
+        {
+          "line": 201,
+          "text": "/// 测试用：用原始 u64 哈希构造名字。"
+        },
+        {
+          "line": 202,
+          "text": "fn name(n: u64) -> AtlassedMeshName {"
+        },
+        {
+          "line": 230,
+          "text": "a.layouts,"
+        },
+        {
+          "line": 231,
+          "text": "vec![MeshAtlasPart {"
+        },
+        {
+          "line": 248,
+          "text": "assert_eq!(a.layouts[1].base_index, 3);"
+        },
+        {
+          "line": 249,
+          "text": "assert_eq!(a.layouts[1].count, 3);"
+        },
+        {
+          "line": 251,
+          "text": "assert!((a.layouts[1].radius - 41.0f32.sqrt()).abs() < 1e-6);"
+        },
+        {
+          "line": 272,
+          "text": "assert_eq!(a.layouts.len(), 1);"
+        },
+        {
+          "line": 296,
+          "text": "for i in 0..=MAX_PARTS as u64 {"
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/startup/startup_nani.rs",
+      "sha256": "cab4d333e3d54b87e829d63fd5910aa926416ee20ba149a53760ce5936e93dc7",
+      "bytes": 8963,
+      "line_count": 239,
+      "anchors": [
+        {
+          "line": 129,
+          "text": "pub fn create_world_subset("
+        },
+        {
+          "line": 175,
+          "text": "pub fn startup_nani("
+        },
+        {
+          "line": 193,
+          "text": "let subset = if let Some(mesh) = atlas.registered.clone() {"
+        },
+        {
+          "line": 194,
+          "text": "commands.spawn(("
+        },
+        {
+          "line": 203,
+          "text": "Some(create_world_subset(device, kind, atlas.atlas.layouts.len()))"
+        },
+        {
+          "line": 207,
+          "text": "gpu_world.update_mesh_atlas_slices(device, kind, &atlas.atlas.layouts);"
+        },
+        {
+          "line": 222,
+          "text": "pub fn reload_nani<'a>("
+        },
+        {
+          "line": 233,
+          "text": "gpu_world.update_mesh_atlas_slices("
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/render/nani/gpu_world.rs",
+      "sha256": "5a285e65c59524bd14e87d21a811c7e29a1177066f4012f34972682a033f7cab",
+      "bytes": 53049,
+      "line_count": 1263,
+      "anchors": [
+        {
+          "line": 646,
+          "text": "pub fn owned_subset_mut("
+        },
+        {
+          "line": 692,
+          "text": "pub fn assign_optional_subset("
+        },
+        {
+          "line": 762,
+          "text": "pub fn flush_instance_buffers(&mut self, device: &dyn GraphicsDevice) {"
+        },
+        {
+          "line": 808,
+          "text": "pub fn update_mesh_atlas_slices("
+        },
+        {
+          "line": 818,
+          "text": ".gpu_write_with_offset(device, layouts, (kind as usize) << 10)"
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/render/nani/systems.rs",
+      "sha256": "dec2fd83baea00edd9bbbf2d0d3b5789f47200b0f102defbdb483c7342b67085",
+      "bytes": 68393,
+      "line_count": 1612,
+      "anchors": [
+        {
+          "line": 90,
+          "text": "fn create_active_instance("
+        },
+        {
+          "line": 97,
+          "text": "NaniMeshSelector::Named(name) => atlas.get_by_name(name).iter()"
+        },
+        {
+          "line": 98,
+          "text": ".find(|part| part.subset == kind)"
+        },
+        {
+          "line": 121,
+          "text": "NaniMeshSelector::Named(name) => {"
+        },
+        {
+          "line": 640,
+          "text": "schedule::{ApplyDeferred, IntoScheduleConfigs, Schedule, SystemSet},"
+        },
+        {
+          "line": 698,
+          "text": "pub fn nani_maintain_instances_ecs("
+        },
+        {
+          "line": 910,
+          "text": "pub fn nani_flush_instance_updates_ecs("
+        },
+        {
+          "line": 918,
+          "text": "/// Original backend44 fragment: maintain -> explicit ApplyDeferred ->"
+        },
+        {
+          "line": 923,
+          "text": "pub fn add_mapped_nani_instance_systems<S: SystemSet>(schedule: &mut Schedule, set: S) {"
+        },
+        {
+          "line": 926,
+          "text": "ApplyDeferred,"
+        },
+        {
+          "line": 1040,
+          "text": "schedule.add_systems((nani_maintain_instances_ecs, ApplyDeferred,"
+        },
+        {
+          "line": 1119,
+          "text": "allocation.add_systems((nani_maintain_instances_ecs, ApplyDeferred,"
+        },
+        {
+          "line": 1161,
+          "text": "schedule.add_systems((nani_maintain_instances_ecs, ApplyDeferred,"
+        },
+        {
+          "line": 1198,
+          "text": "schedule.add_systems((nani_maintain_instances_ecs, ApplyDeferred,"
+        },
+        {
+          "line": 1281,
+          "text": "schedule.add_systems((nani_maintain_instances_ecs, ApplyDeferred,"
+        },
+        {
+          "line": 1324,
+          "text": "schedule.add_systems((nani_maintain_instances_ecs, ApplyDeferred,"
+        },
+        {
+          "line": 1383,
+          "text": "schedule.add_systems((nani_maintain_instances_ecs, ApplyDeferred,"
+        },
+        {
+          "line": 1477,
+          "text": "mesh: NaniMeshSelector::Named(name),"
+        },
+        {
+          "line": 1508,
+          "text": "mesh: NaniMeshSelector::Named(name),"
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/asset_libraries/mod.rs",
+      "sha256": "f78833188fb526f044ce08abc9fd11525b655d4a56fa01d3458646bea678ecf8",
+      "bytes": 3072,
+      "line_count": 130,
+      "anchors": [
+        {
+          "line": 9,
+          "text": "static HANDLE_COUNT: AtomicU64 = AtomicU64::new(1);"
+        },
+        {
+          "line": 13,
+          "text": "pub struct HandleId(u64);"
+        },
+        {
+          "line": 19,
+          "text": "HANDLE_COUNT"
+        },
+        {
+          "line": 20,
+          "text": ".fetch_update(Ordering::Relaxed, Ordering::Relaxed, |next_id| {"
+        },
+        {
+          "line": 21,
+          "text": "next_id.checked_add(1)"
+        },
+        {
+          "line": 44,
+          "text": "pub struct Handle<T> {"
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/asset_libraries/mesh_library.rs",
+      "sha256": "88d773eb8790e2f57344114afc5a85790332cd2f12e77f4b8fb7c3a63db0542e",
+      "bytes": 14556,
+      "line_count": 414,
+      "anchors": [
+        {
+          "line": 57,
+          "text": "pub fn add(&self, asset: MeshAsset) -> Handle<Mesh> {"
+        },
+        {
+          "line": 84,
+          "text": "pub fn get_mut(&mut self, handle: Handle<Mesh>) -> Option<&mut Mesh> {"
+        },
+        {
+          "line": 86,
+          "text": "self.modified_meshes.push(handle);"
+        },
+        {
+          "line": 138,
+          "text": "pub fn reload_mesh_src(&mut self, path: &str) {"
+        },
+        {
+          "line": 143,
+          "text": "pub fn reload_mesh_src_with("
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/asset_libraries/vao_library.rs",
+      "sha256": "7fd0208cc0df75d241b5938050adf6fee213728e0e6966bf99b58f0b7776f6ff",
+      "bytes": 9896,
+      "line_count": 285,
+      "anchors": [
+        {
+          "line": 13,
+          "text": "use crate::render::vao::{Vao, release_vao, try_build_vao};"
+        },
+        {
+          "line": 52,
+          "text": "pub fn add("
+        },
+        {
+          "line": 68,
+          "text": "let vao = try_build_vao(device, mesh_ref)?;"
+        },
+        {
+          "line": 76,
+          "text": "pub fn rebuild_vao("
+        },
+        {
+          "line": 97,
+          "text": "let new_vao = try_build_vao(device, mesh_ref)?;"
+        },
+        {
+          "line": 98,
+          "text": "release_vao(device, &entry.vao);"
+        },
+        {
+          "line": 113,
+          "text": "release_vao(device, &entry.vao);"
+        },
+        {
+          "line": 216,
+          "text": "vaos.rebuild_vao(&dev, &meshes, h).unwrap();"
+        },
+        {
+          "line": 230,
+          "text": "assert!(vaos.rebuild_vao(&dev, &meshes, h).is_ok());"
+        },
+        {
+          "line": 240,
+          "text": "let err = vaos.rebuild_vao(&dev, &meshes, h).unwrap_err();"
+        },
+        {
+          "line": 251,
+          "text": "let err = vaos.rebuild_vao(&dev, &meshes, h).unwrap_err();"
+        },
+        {
+          "line": 261,
+          "text": ".rebuild_vao(&dev, &meshes, Handle::<Mesh>::new())"
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/asset_libraries/runtime.rs",
+      "sha256": "a433ea80c66db7c9e31394045d7d649c7d564ce50dc5c7fd7f5769649d319cb2",
+      "bytes": 15832,
+      "line_count": 365,
+      "anchors": [
+        {
+          "line": 81,
+          "text": "pub fn add_asset_library_post_update_systems(schedule: &mut Schedule) {"
+        },
+        {
+          "line": 181,
+          "text": "pub fn build_missing_vaos("
+        },
+        {
+          "line": 182,
+          "text": "mesh_entities: Query<MissingMeshVaoComponents, Without<Handle<Vao>>>,"
+        },
+        {
+          "line": 203,
+          "text": "pub fn rebuild_vaos("
+        },
+        {
+          "line": 208,
+          "text": "if meshes.modified_meshes.is_empty() {"
+        },
+        {
+          "line": 212,
+          "text": "for mesh in &meshes.modified_meshes {"
+        },
+        {
+          "line": 222,
+          "text": "meshes.modified_meshes = failed;"
+        },
+        {
+          "line": 337,
+          "text": "world.resource_mut::<AssetMeshLibrary>().modified_meshes = vec![b, a, b, no_vao];"
+        },
+        {
+          "line": 342,
+          "text": "assert_eq!(world.resource::<AssetMeshLibrary>().modified_meshes, vec![b, a, b]);"
+        },
+        {
+          "line": 349,
+          "text": "assert!(world.resource::<AssetMeshLibrary>().modified_meshes.is_empty());"
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/prefab.rs",
+      "sha256": "2a72839d0819f30b031bee741cecd312993d55f44e06d6387eaa48a58ad851d0",
+      "bytes": 44920,
+      "line_count": 1171,
+      "anchors": [
+        {
+          "line": 686,
+          "text": "pub fn hot_reload_prefabs("
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/decorator_visual/decorator_clutter.rs",
+      "sha256": "e7341cb58df6a4de5b4c33c7ff1398e8d680e86a188f05211a89ad85ef25980c",
+      "bytes": 8793,
+      "line_count": 216,
+      "anchors": [
+        {
+          "line": 82,
+          "text": "pub fn generate_decorator_clutter("
+        },
+        {
+          "line": 166,
+          "text": "builder.mesh_name = data.mesh.mesh_name;"
+        },
+        {
+          "line": 167,
+          "text": "builder.nani_name = data.nani_name;"
+        },
+        {
+          "line": 171,
+          "text": "blueprint.visual_entities.push(builder);"
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/utils/visual_entity_builder.rs",
+      "sha256": "80a8c5fb106f06378e17aac7df08de5daa9f7e2b9664978d7bf4f070465ffc71",
+      "bytes": 38615,
+      "line_count": 859,
+      "anchors": [
+        {
+          "line": 37,
+          "text": "//! | +0xa0 / +0xa8 | **mesh 名** `&str`（ptr/len） | NameHash + `get_handle_by_name` |"
+        },
+        {
+          "line": 81,
+          "text": "//! | 默认 | `DrawableMeshBundle`（`get_handle_by_name` / `get_raster_handle_by_name(...).expect(nani 名)`） | — | — |"
+        },
+        {
+          "line": 134,
+          "text": "use country_core::name_hash::NameHash;"
+        },
+        {
+          "line": 277,
+          "text": "/// mesh 名（+0xa0/+0xa8，O；NameHash 与 `get_handle_by_name` 的输入）。"
+        },
+        {
+          "line": 451,
+          "text": "NaniMeshSelector::Named(NameHash::compute(self.mesh_name))"
+        },
+        {
+          "line": 474,
+          "text": "pub fn build<S: DecoratorVisualStateSink>("
+        },
+        {
+          "line": 517,
+          "text": "\"nani_solid_vertex_color\" => self.spawn_nani::<SolidVertexColorInstanceData>("
+        },
+        {
+          "line": 572,
+          "text": "// O 默认分支：AssetMeshLibrary::get_handle_by_name（内部 panic）"
+        },
+        {
+          "line": 575,
+          "text": "let mesh = mesh_lib.get_handle_by_name(self.mesh_name);"
+        },
+        {
+          "line": 709,
+          "text": "let mesh = NaniMeshSelector::Named(NameHash::compute(self.mesh_name));"
+        },
+        {
+          "line": 726,
+          "text": "pub fn build_transient("
+        },
+        {
+          "line": 737,
+          "text": "pub fn build_persistent("
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/blueprint.rs",
+      "sha256": "c86444c77352782c7572396e16886e55ff2820c56e16de7c2536d927a346b07b",
+      "bytes": 24506,
+      "line_count": 619,
+      "anchors": [
+        {
+          "line": 103,
+          "text": "pub visual_entities: Vec<WindowVisualEntityBuilder>,"
+        },
+        {
+          "line": 245,
+          "text": "pub struct PrevDecoratorBlueprints {"
+        },
+        {
+          "line": 301,
+          "text": "pub fn copy_blueprints_to_prev(&self, previous: &mut PrevDecoratorBlueprints) {"
+        },
+        {
+          "line": 326,
+          "text": "pub fn copy_blueprints_to_prev("
+        },
+        {
+          "line": 328,
+          "text": "mut previous: ResMut<PrevDecoratorBlueprints>,"
+        },
+        {
+          "line": 330,
+          "text": "blueprints.copy_blueprints_to_prev(&mut previous);"
+        },
+        {
+          "line": 335,
+          "text": "pub fn instantiate_blueprint_colliders("
+        },
+        {
+          "line": 339,
+          "text": "previous: Res<PrevDecoratorBlueprints>,"
+        },
+        {
+          "line": 351,
+          "text": "previous: &PrevDecoratorBlueprints,"
+        },
+        {
+          "line": 440,
+          "text": "let mut previous = PrevDecoratorBlueprints::default();"
+        },
+        {
+          "line": 441,
+          "text": "current.copy_blueprints_to_prev(&mut previous);"
+        },
+        {
+          "line": 503,
+          "text": "let previous = PrevDecoratorBlueprints::default();"
+        },
+        {
+          "line": 544,
+          "text": "let mut previous = PrevDecoratorBlueprints::default();"
+        },
+        {
+          "line": 551,
+          "text": "current.copy_blueprints_to_prev(&mut previous);"
+        },
+        {
+          "line": 569,
+          "text": "let previous = PrevDecoratorBlueprints::default();"
+        },
+        {
+          "line": 604,
+          "text": "let mut previous = PrevDecoratorBlueprints::default();"
+        },
+        {
+          "line": 609,
+          "text": "current.copy_blueprints_to_prev(&mut previous);"
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/lib.rs",
+      "sha256": "e822814b592b4226dfd4ae7a7c018ac082577dffb7ac844c082d327115983a25",
+      "bytes": 11522,
+      "line_count": 227,
+      "anchors": [
+        {
+          "line": 127,
+          "text": "pub fn add_decorator_systems<S: Send + Sync + 'static, C: Send + Sync + 'static>("
+        },
+        {
+          "line": 200,
+          "text": "pub fn add_decorator_events_and_resources(world: &mut World) {"
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/clutter/src/autoclutter/load_clutter_meshes.rs",
+      "sha256": "f3c82bdb831d76a70a0dcf84577633d07397c8d365fc5ba54b2ebc18967a4fa7",
+      "bytes": 21422,
+      "line_count": 716,
+      "anchors": [
+        {
+          "line": 637,
+          "text": "// Original shared load_mesh_into_library @140b1aca0: watch first, then add."
+        },
+        {
+          "line": 638,
+          "text": "watch.watch(&mesh);"
+        },
+        {
+          "line": 660,
+          "text": "pub fn load_clutter_meshes_from("
+        },
+        {
+          "line": 704,
+          "text": "pub fn load_clutter_meshes("
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/clutter_meshes.rs",
+      "sha256": "5314749ba8a40db1958d72536408ebe0e2f3d200b26ab896cf396e396fd3fcb1",
+      "bytes": 4312,
+      "line_count": 124,
+      "anchors": [
+        {
+          "line": 18,
+          "text": "pub mesh_name: &'static str,"
+        },
+        {
+          "line": 35,
+          "text": "mesh_name: &'static str,"
+        },
+        {
+          "line": 43,
+          "text": "mesh_name,"
+        },
+        {
+          "line": 45,
+          "text": "name_hash: NameHash::compute(mesh_name),"
+        },
+        {
+          "line": 58,
+          "text": "pub struct ClutterMeshes {"
+        },
+        {
+          "line": 92,
+          "text": "pub nani_name: &'static str,"
+        },
+        {
+          "line": 111,
+          "text": "let nani_name = match ty as u8 {"
+        },
+        {
+          "line": 118,
+          "text": "nani_name,"
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/render_bridge.rs",
+      "sha256": "c6e660b06a110dcf2a1808339b738ca774cfbea390d9f76ca3193a2b8ea6d9c2",
+      "bytes": 43806,
+      "line_count": 1121,
+      "anchors": [
+        {
+          "line": 150,
+          "text": "if !Arc::ptr_eq(&self.tables.buffers, &completed.owners.tables.buffers)"
+        },
+        {
+          "line": 151,
+          "text": "|| !Arc::ptr_eq(&self.tables.textures, &completed.owners.tables.textures)"
+        },
+        {
+          "line": 152,
+          "text": "|| !Arc::ptr_eq(&self.tables.shaders, &completed.owners.tables.shaders)"
+        },
+        {
+          "line": 153,
+          "text": "|| !Arc::ptr_eq(&self.raster, &completed.owners.raster)"
+        },
+        {
+          "line": 154,
+          "text": "|| !Arc::ptr_eq(&self.shaders, &completed.owners.shaders)"
+        },
+        {
+          "line": 174,
+          "text": "pub fn install_asset_libraries("
+        },
+        {
+          "line": 725,
+          "text": "pub fn import_buffer("
+        },
+        {
+          "line": 735,
+          "text": ".managed_buffer(buffer)"
+        },
+        {
+          "line": 739,
+          "text": "self.bridge.session.borrow_mut().import_frame_buffer("
+        },
+        {
+          "line": 756,
+          "text": "let result = self.bridge.session.borrow_mut().import_frame_buffer("
+        },
+        {
+          "line": 990,
+          "text": ".import_frame_buffer(graph, buffer, access)"
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/production_renderer.rs",
+      "sha256": "c148fa65883ef1c23ffb780b15633b3d73fbaaed16c7a0cfb851c23c5053e02d",
+      "bytes": 61666,
+      "line_count": 1572,
+      "anchors": [
+        {
+          "line": 529,
+          "text": "other_applications: BTreeMap<usize, ApplicationGpu>,"
+        },
+        {
+          "line": 617,
+          "text": "other_applications: BTreeMap::new(),"
+        },
+        {
+          "line": 652,
+          "text": "pub fn activate_application(&mut self, world: &World) -> Result<()> {"
+        },
+        {
+          "line": 670,
+          "text": "let key = Arc::as_ptr(&shaders) as usize;"
+        },
+        {
+          "line": 671,
+          "text": "let previous = Arc::as_ptr(&self.shaders) as usize;"
+        },
+        {
+          "line": 672,
+          "text": "let mut next = match self.other_applications.remove(&key) {"
+        },
+        {
+          "line": 684,
+          "text": "self.other_applications.insert(previous, next);"
+        },
+        {
+          "line": 758,
+          "text": "for app in self.other_applications.values_mut() {"
+        },
+        {
+          "line": 781,
+          "text": "for app in self.other_applications.values_mut() {"
+        },
+        {
+          "line": 792,
+          "text": "for app in self.other_applications.values_mut() {"
+        },
+        {
+          "line": 1196,
+          "text": "application_shader_owner: Arc::as_ptr(&self.renderer.shaders) as usize,"
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/render_host.rs",
+      "sha256": "03184a90100cd0584fc890af601a8111f5b70bf8a502b3db6624f9153562a329",
+      "bytes": 127372,
+      "line_count": 3179,
+      "anchors": [
+        {
+          "line": 33,
+          "text": "pub fn graphics_device(&self) -> &Arc<Device> {"
+        },
+        {
+          "line": 47,
+          "text": "(slot.generation == handle.generation)"
+        },
+        {
+          "line": 52,
+          "text": "/// Resolve a retained core buffer only while its slot generation is live."
+        },
+        {
+          "line": 53,
+          "text": "pub fn managed_buffer(&self, handle: &Buffer) -> Option<ManagedBuffer> {"
+        },
+        {
+          "line": 72,
+          "text": "if slot.generation != handle.generation || slot.buffer.is_none() {"
+        },
+        {
+          "line": 76,
+          "text": "slot.generation += 1;"
+        },
+        {
+          "line": 125,
+          "text": "fn create_buffer("
+        },
+        {
+          "line": 157,
+          "text": "fn update_buffer_bytes("
+        },
+        {
+          "line": 202,
+          "text": ".checked_add(1)"
+        },
+        {
+          "line": 204,
+          "text": "service.manager.upload_buffer_ranges_wait("
+        },
+        {
+          "line": 396,
+          "text": ".filter(|_| slot.generation == texture.generation())"
+        },
+        {
+          "line": 406,
+          "text": ".filter(|_| slot.generation == generation)"
+        },
+        {
+          "line": 417,
+          "text": "if slot.generation != texture.generation() || slot.texture.is_none() {"
+        },
+        {
+          "line": 421,
+          "text": "slot.generation += 1;"
+        },
+        {
+          "line": 1022,
+          "text": ".checked_add(timeout)"
+        },
+        {
+          "line": 1838,
+          "text": ".checked_add(size)"
+        },
+        {
+          "line": 2187,
+          "text": ".checked_add(element.min(view.level_count - 1))"
+        },
+        {
+          "line": 2462,
+          "text": "|| offset.checked_add(size).is_none_or(|end| end > buffer.size)"
+        },
+        {
+          "line": 2512,
+          "text": "if size == 0 || offset.checked_add(size).is_none_or(|end| end > buffer.size) {"
+        },
+        {
+          "line": 2599,
+          "text": ".checked_add(chunk.size)"
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/raster_host.rs",
+      "sha256": "fad73d40098384db0d643cd265697d135094a934eb3a441a5e7f174c7a4877d6",
+      "bytes": 114429,
+      "line_count": 2816,
+      "anchors": [
+        {
+          "line": 381,
+          "text": "pub fn refresh_vao_handles("
+        },
+        {
+          "line": 398,
+          "text": ".managed_buffer(&entry.vao.index_buffer)"
+        },
+        {
+          "line": 419,
+          "text": ".managed_buffer(&binding.buffer)"
+        },
+        {
+          "line": 1068,
+          "text": "// O B 0x141697ff9: head tag1 is a live Handle<Vao>,"
+        },
+        {
+          "line": 1096,
+          "text": "draw.index = Some(declarer.import_buffer(&mut graph, vao.index, 0)?);"
+        },
+        {
+          "line": 1109,
+          "text": "let resource = declarer.import_buffer(&mut graph, buffer.clone(), 0)?;"
+        },
+        {
+          "line": 1142,
+          "text": "draw.index = Some(declarer.import_buffer(&mut graph, buffer.shared(), 0x26)?);"
+        },
+        {
+          "line": 1763,
+          "text": "resource: declarer.import_buffer(graph, owner.shared(), 0x37)?,"
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/device_api.rs",
+      "sha256": "db68f514bc6350603967f3e600a624538461148d2e3eb4ef33f1e57618b04a3f",
+      "bytes": 11304,
+      "line_count": 321,
+      "anchors": [
+        {
+          "line": 57,
+          "text": "pub fn create_buffer<D: BufferInitialData>("
+        },
+        {
+          "line": 66,
+          "text": "desc.usage |= vk::BufferUsageFlags::TRANSFER_DST;"
+        },
+        {
+          "line": 152,
+          "text": "desc.usage |= vk::ImageUsageFlags::TRANSFER_DST;"
+        },
+        {
+          "line": 165,
+          "text": "/// 与带数据的 `create_texture` 一样加 `TRANSFER_DST`，创建后从 UNDEFINED 上传。"
+        },
+        {
+          "line": 174,
+          "text": "desc.usage |= vk::ImageUsageFlags::TRANSFER_DST;"
+        },
+        {
+          "line": 182,
+          "text": "/// `super::setup::init_texture_zero_fill`）。与带数据的 `create_texture` 一样加 `TRANSFER_DST`、"
+        },
+        {
+          "line": 187,
+          "text": "desc.usage |= vk::ImageUsageFlags::TRANSFER_DST;"
+        },
+        {
+          "line": 274,
+          "text": "fn upload_via_staging("
+        },
+        {
+          "line": 314,
+          "text": "super::setup::with_setup_resources(&self.shared(), &accesses, |command| unsafe {"
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/setup.rs",
+      "sha256": "f7fd90ae6a0c5fbe66c0ed5f19f43d1825d019382ad209947244d1b5f118143d",
+      "bytes": 19799,
+      "line_count": 549,
+      "anchors": [
+        {
+          "line": 93,
+          "text": "} => super::resource_access::buffer_access_borrowed("
+        },
+        {
+          "line": 279,
+          "text": "pub fn record<R>("
+        },
+        {
+          "line": 300,
+          "text": "let pending = command.submit()?;"
+        },
+        {
+          "line": 326,
+          "text": "pub fn with_setup_resources<R>("
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/transfer.rs",
+      "sha256": "524df65617b4c6a573d65747696e41536c44e69c79e199cb43c8c973c9061497",
+      "bytes": 56542,
+      "line_count": 1504,
+      "anchors": [
+        {
+          "line": 163,
+          "text": "/// dropping a ticket does not cancel already accepted work."
+        },
+        {
+          "line": 182,
+          "text": "pub fn try_submitted(&self) -> crate::Result<Option<UploadTicket>> {"
+        },
+        {
+          "line": 193,
+          "text": "Err(crate::Error::invalid_usage(\"queued upload was cancelled\"))"
+        },
+        {
+          "line": 350,
+          "text": "/// cancel older pending jobs of the same physical buffer/logical key;"
+        },
+        {
+          "line": 380,
+          "text": "/// Cancelling one coalesced ticket cancels that whole pending native job."
+        },
+        {
+          "line": 381,
+          "text": "/// Submitted work cannot be cancelled and retains its completion proof."
+        },
+        {
+          "line": 382,
+          "text": "pub fn cancel_upload(&mut self, ticket: &QueuedUploadTicket) -> crate::Result<bool> {"
+        },
+        {
+          "line": 388,
+          "text": "Ok(self.queued.cancel_task(&ticket.task))"
+        },
+        {
+          "line": 396,
+          "text": "pub fn cancel_queued_before(&mut self, epoch: u64) -> usize {"
+        },
+        {
+          "line": 397,
+          "text": "self.queued.cancel_before(epoch)"
+        },
+        {
+          "line": 399,
+          "text": "pub fn cancel_key_before("
+        },
+        {
+          "line": 407,
+          "text": "\"upload cancellation belongs to another device\","
+        },
+        {
+          "line": 410,
+          "text": "Ok(self.queued.cancel_key_before(destination, key, epoch))"
+        },
+        {
+          "line": 508,
+          "text": "/// batches remain valid; unsubmitted data from this batch is cancelled."
+        },
+        {
+          "line": 510,
+          "text": "pub fn upload_buffer_ranges_wait("
+        },
+        {
+          "line": 588,
+          "text": "let _ = self.cancel_upload(&last);"
+        },
+        {
+          "line": 600,
+          "text": ".try_submitted()?"
+        },
+        {
+          "line": 602,
+          "text": ".wait(timeout_ns)"
+        },
+        {
+          "line": 605,
+          "text": "let _ = self.cancel_upload(&ticket);"
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/device/pending_acquire.rs",
+      "sha256": "c085f44233999910ba18d3b3009a8ac6f6008adbd545c00aa54d0c522da9a866",
+      "bytes": 21342,
+      "line_count": 564,
+      "anchors": [
+        {
+          "line": 92,
+          "text": "/// `Device::requeue_pending_acquires` if that command is never submitted."
+        },
+        {
+          "line": 152,
+          "text": "pub(crate) fn requeue_pending_acquires(&self, drained: DrainedAcquires) {"
+        },
+        {
+          "line": 178,
+          "text": "pub(crate) fn record_pending_acquires_except("
+        },
+        {
+          "line": 256,
+          "text": "self.requeue_pending_acquires(drained);"
+        },
+        {
+          "line": 537,
+          "text": "device.requeue_pending_acquires(drained);"
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/executor.rs",
+      "sha256": "89a6bbef78677121b7475eec1893e3a3de177fbd84109fb2abf9f64749c162c0",
+      "bytes": 84224,
+      "line_count": 2095,
+      "anchors": [
+        {
+          "line": 1176,
+          "text": ".drain_pending_acquires(handle)"
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/vulkan.rs",
+      "sha256": "01cb0a81e191a87d250cd5404de2e12a09ebca4e52410beb128dd494d0c10964",
+      "bytes": 152498,
+      "line_count": 3887,
+      "anchors": [
+        {
+          "line": 1624,
+          "text": "fn drain_pending_acquires(&mut self, handle: u64) -> crate::Result<u32> {"
+        },
+        {
+          "line": 1632,
+          "text": ".record_pending_acquires_except(command, |cell| {"
+        },
+        {
+          "line": 1646,
+          "text": ".inspect_err(|_| self.device.requeue_pending_acquires(drained.clone()))?;"
+        },
+        {
+          "line": 1657,
+          "text": "self.device.requeue_pending_acquires(drained);"
+        }
+      ]
+    }
+  ],
+  "actual_app_source_identifier_scan": {
+    "scope": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src",
+    "identifiers": {
+      "generate_decorator_clutter": [],
+      "instantiate_blueprints": [],
+      "instantiate_blueprint_colliders": [],
+      "reload_prefabs": [],
+      "reload_mesh_atlases": [],
+      "reload_nani": [],
+      "hot_reload_prefabs": []
+    },
+    "limitation": "Lexical identifier/caller observation of current source, no compiled schedule execution; do not infer unnamed dynamic or future registrations."
+  }
+}

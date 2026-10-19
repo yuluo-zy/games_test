@@ -1,0 +1,90 @@
+{
+  "kind": "independent_source_review_native_equality_projection_subbatch",
+  "observed_at_utc": "2026-10-19T18:01:34.244326+00:00",
+  "verdict": "passed_scoped_static_preparatory_fields_and_unwired_native_projection",
+  "manifest": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-69cc2f973d7c14cb28/scene-clutter-producer-20261020/fullvisual-eq-v1/CANDIDATE_MANIFEST.json",
+    "sha256": "f4b66cf12ef42c1bb9f67285062163950e28e112b3620f1cfd7d4959ca51a8c6"
+  },
+  "identities": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-69cc2f973d7c14cb28/scene-clutter-producer-20261020/fullvisual-eq-v1/source/blueprint.rs",
+      "expected_sha256": "506501c8e5f506ab91bc8a78fd05d04c4fcc79ada0396f9a747cd77289618b95",
+      "actual_sha256": "506501c8e5f506ab91bc8a78fd05d04c4fcc79ada0396f9a747cd77289618b95",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-69cc2f973d7c14cb28/scene-clutter-producer-20261020/fullvisual-eq-v1/blueprint.rs.before",
+      "expected_sha256": "c86444c77352782c7572396e16886e55ff2820c56e16de7c2536d927a346b07b",
+      "actual_sha256": "c86444c77352782c7572396e16886e55ff2820c56e16de7c2536d927a346b07b",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-69cc2f973d7c14cb28/scene-clutter-producer-20261020/fullvisual-eq-v1/blueprint.rs.patch",
+      "expected_sha256": "88407aa492b42b7d83aab33bf69be4cdd557ff21af4fde57fadc27ede0e0f0fd",
+      "actual_sha256": "88407aa492b42b7d83aab33bf69be4cdd557ff21af4fde57fadc27ede0e0f0fd",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-69cc2f973d7c14cb28/scene-clutter-producer-20261020/fullvisual-eq-v1/CONTRACT.md",
+      "expected_sha256": "ce325f0b082913afd4a6e6df9d03338a19f87a5df98e02c07e9ad55c2fdd62ca",
+      "actual_sha256": "ce325f0b082913afd4a6e6df9d03338a19f87a5df98e02c07e9ad55c2fdd62ca",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-69cc2f973d7c14cb28/scene-clutter-producer-20261020/fullvisual-eq-v1/evidence/name_hash_eq-B-full.asm",
+      "expected_sha256": "dd2e90265dca414238fc9d4d63f8ce4396914cf80230cfa6dde85d1a9ad1df28",
+      "actual_sha256": "dd2e90265dca414238fc9d4d63f8ce4396914cf80230cfa6dde85d1a9ad1df28",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/walls/dormers.rs",
+      "expected_sha256": "435fe9f335de327385770a7ae57f689fc04f5ae14424474cdace2e2bb1b42beb",
+      "actual_sha256": "435fe9f335de327385770a7ae57f689fc04f5ae14424474cdace2e2bb1b42beb",
+      "matches": true
+    }
+  ],
+  "identities_all_match": true,
+  "production_before": {
+    "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/blueprint.rs",
+    "expected_sha256": "c86444c77352782c7572396e16886e55ff2820c56e16de7c2536d927a346b07b",
+    "actual_sha256": "c86444c77352782c7572396e16886e55ff2820c56e16de7c2536d927a346b07b",
+    "matches": true
+  },
+  "reused_native_review": {
+    "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/independent-validation/fullvisual-20261020/BODY_DESIGN_REVIEW_V1.json",
+    "sha256": "83fb4932402468146d62324a67620e20f053bf5e5ebe624856a23cb4d63b0e24",
+    "scope": "Native full body7991B, four OptionEq helpers and2178B builder sliceEq were already independently checked instruction-by-instruction."
+  },
+  "new_namehash_eq": {
+    "start": "0x140c9cd70",
+    "bytes": "488b01483b020f94c0c3",
+    "matches_retained_instructions": true,
+    "semantics": "exact u64 comparison"
+  },
+  "native_projection_checked": [
+    "Canonical48B Dormer helper compares words3/7 exactly as integers, all other ten words as ordered f32; does not change core GPU TypeId/raw words.",
+    "CanonicalRawWallHole and coreDormer Vec added to existing blueprint. Current constructor/default supplies empty Vec; all actual source constructions found use existing methods rather than exhaustive struct literals.",
+    "Builder projection follows native2178B comparison over represented original fields, not host derivedPartialEq. Semantic translation/rotation/scale/offset/scaleoverride, actual string bytes and Option NameHashes remain exact.",
+    "Gothic15 ordered floats, Brick two integer words+three ordered floats+low tag byte, clothline floatpair+integer tail, bird three floats, WallFlag lowint+three floats+lowtag ignore only native padding.",
+    "Window/roof/light/smoke/solid tag-payload state is compared under native sentinel encoding. Host-only id/preview/windowglass/shader are not added without original evidence.",
+    "No existing source body/diff consumer/registration is replaced or enabled. Five tests are source-only and unrun; helper remains private/unwired."
+  ],
+  "mandatory_fullconsumer_gate": [
+    "Projection maps raw native Brick/Wall/Smoke tag2 and Solid9 to None. Current host public raw Option fields and existing build do not uniformly enforce equivalent canonical input/None semantics; mapping must not be treated as all current builder inputs validated.",
+    "Before wiring complete blueprintEq/fullvisual, prove each reachable producer normalizes rawNone/active domain or restore actual build/tag readers under proper owner. Do not let Eq silently classify an otherwise visible unsupported build input as unchanged.",
+    "The currently recovered clutter producer has canonical Solid None/0..8 metadata and leaves Brick/Wall/Smoke None; this is a narrow producer-domain fact, not every legacy generator guarantee.",
+    "Actual Dormer semantic writers/upload and fullblueprint fields/Cloth/trackers/outline/native aliases remain separate gates. No always-changed shortcut, ignored payload, new stand-in or default business success."
+  ],
+  "focused_validation": [
+    "Existing five candidate tests cover packed float NaN/signedzero/integer/padding and ignored hostonly fields; all unrun.",
+    "When native fullEq is wired, add actual producer/build vs projectedNone boundary checks for Brick2/Wall2/Smoke2/Solid9 and active0..8 to prevent gating away real invalid-input errors.",
+    "Run actual fullvisual with realCommands/persistentowners and recurring outputs after all canonical dependencies; no tests here substitute for that."
+  ],
+  "not_accepted": [
+    "No complete blueprint equality implementation, fullvisual consumer or schedule in this patch.",
+    "No standalone/fullcrate typecheck, runtimeCPU/GPU, physical scene/Nani entity/drawlist or WSI acceptance.",
+    "No claim that legacy builder setters or every public raw input has native-compatible semantics."
+  ],
+  "execution": "07 source/frozen/native inspection and new project report only; no production/Cargo/rustc/GPU."
+}

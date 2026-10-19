@@ -1,0 +1,31 @@
+# True cottage-window ClothInfo producer input/output contract v1
+
+This is an original B input/output and ownership contract, not an implementation-design approval or source completion claim. Both exact file families were root-authorized, freshly observed NULL, and normally claimed for cloth-visual-state-20261020. No production/Cargo/GPU source is changed here. C parity is unverified.
+
+## Actual SystemParams and filters
+
+Four direct calls from complete typed original wrappers establish actual consumer binding:1400402aa and14046965a call corner1407f66b0;14043c87f and1405285db call wall1407ebfd0. Corner's six kinds in order are DerivedDecoratorInfoResources, Res<DecoratorStorage>, Res<CachedDecoratorTransforms>, Res<PublicWalls>, ResMut<DecoratorBlueprints>, Res<AssetMeshLibrary>. Wall has the same six plus mandatory Res<UiSignifierStream>. No Commands or separate transient resource is an original parameter here. The old six-argument wall decompiler prototype omits a typed source parameter and is not authoritative.
+
+The required subtype comes from actual DerivedDecoratorInfoResources.as_view().subtype(actual_modified_id). Original wall enters only returned byte0/1 (cmp al,1 then ja skip), corner only byte3. This is neither old wall DecoratorType0x38 predicate nor corner can_be_on_corner's broad bit mask. The native bodies use actual outer WallId, modified DecoratorId, cached transform and PublicWallState. Missing required subtype/cache/wall/library entries retain failure paths; no resource-exists or missing-geometry skip/default will be added.
+
+## Single owner and real outputs
+
+Original blueprint insertion uses the actual modified key, actual storage Wall address and full native source/state byte, preserving the reusable visual Vec/snapshot semantics already implemented by insert_for. Generation accumulates canonical WindowVisualEntityBuilder values in that blueprint; actual fullvisual later builds their entities and publishes recurring fields. It must not construct/discard an identity builder, spawn a separate world or insert an empty outline tuple as a transform.
+
+The original output domain includes actual collision/interaction geometry with world pose, real outline Transform, visual builders, raw20B wall holes, canonical48B dormer holes where that branch applies, canonical recurring window-auto-clutter candidates, and optional Box<ClothInfo>. Existing root/02 canonical blueprint output fields must be used for their actual values; old colliders/outline/cloth compatibility fields cannot stand in for the true slots. The current two files do not write these original values and are not recovered producers yet.
+
+ClothInfo uses the already integrated unique type {Transform,actualWallId,[f32;2],actualModifiedDecoratorId}. Its native Box allocation is80/align16 with68 semantic bytes; no raw unknown-pointer copy. Wall copies its actual computed local Transform and two real geometry values; corner computes actual rotation/translation, writes proven unit scale, actual wall/pair/id. New allocation replaces/drops any previous Box. Native condition uses the stored record's decorator_id(+2c) in a wrapping unsigned predicate and rank(+44); the Box's own id comes from the modified map key. Do not assume these two inputs interchangeable. Wall's earlier rank range and corner's actual attachment/corner/shape branches must also be preserved. No automatic ClothInfo Default/empty list/legacy cloth byte succeeds.
+
+The record's corner attachment byte is a real input: bounded original14B to_rectangle_corner_id returns None for byte0 and Some(byte-1) otherwise. The actual rectangle consumer separately validates its index and failures. Current get_corner_info returning0 is not original behavior. Rectangle and non-rectangle branches must be separated by the original PublicWallState geometry, not guessed from dimensions or a default corner.
+
+## Necessary shared dependencies, not new mirrors
+
+01 is the unique existing TG609 owner for actual DecoratorMeshLibrary. Its confirmed original collision value schema is Vec<Triangle> + Arc<RaycastMeshData> + Rectangle3d, native64B, stored directly by value in the collision/interaction maps; outline/collision-outline have their own enum payloads. The current Arc<LegacyDerivedDecoratorInfoRecord> bbox-only tables remain explicitly legacy. The new window source will reuse that owner's actual schema/loader/API; it will not build a second table, invent missing mesh geometry, cast an ID to VAO or promote an empty/bbox projection to native loaded assets. Original main lookup keys/fields and outline geometry still require the forthcoming full numeric implementation contract.
+
+Both bodies call missing shared xz_projective_rotation_bad. Its complete513B original selects x/z only; a separate shared-utils design610d10b4 proposes a thin adapter to the existing approved xz_rotation_bad rather than a second math algorithm. Original flowerbed_xforms473B and add_lintels2637B are complete and retained under the owned wall file; current helpers are only partial projections and their source comments/argument names do not prove semantics. Real mesh-location transforms, nonempty lintel geometry, exact RawWallHole values, and full current builder values must be established before implementation approval.
+
+WindowLight is another unique root-owned pending canonical contract. Root is recovering actual core12B/light state and will provide the same-builder migration separately; this worker will not change it in the current Balcony companion or create a second TypeId. Preserve original raw producer value flow until its approved component interface is available.
+
+## Next bounded work
+
+Freeze original phase/numeric mappings for each real window source and both original helpers, actual library read fields/key ordering, shape/corner coordinate sampling, full visual output/failed paths and exact ClothInfo gate/transform/pair provenance. Then submit a complete implementation design to07 using the root-integrated unique dependency APIs. This input/output contract alone does not authorize fallback numeric code or claim window scene reachability. Already integrated Cloth consumer/ClothInfo/Nani packages stay separate facts; their proposed22 tests remain unrun, while only the shared three-helper seven-test math slice was executed earlier by root.

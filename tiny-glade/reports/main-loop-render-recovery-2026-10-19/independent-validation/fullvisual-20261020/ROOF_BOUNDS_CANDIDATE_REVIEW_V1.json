@@ -1,0 +1,60 @@
+{
+  "verdict": "passed_scoped_source",
+  "candidate_manifest_sha256": "c32bc3cec27024ac5e192ecd748a5801c4f6a9751765dc5b358331d7899f0fb4",
+  "candidate_sha256": "f988c589c1e119123c9f494a04257d6fe6e3054590e94d84dbfc1048380528ea",
+  "before_sha256": "8d8f77cc760070b268fa9e3e16a2ee0f381a9dfbd4c71504da67826103782143",
+  "whole_patch_matches_current_before_and_candidate": true,
+  "design_review": "ROOF_BOUNDS_DESIGN_REVIEW_V1.json",
+  "design_review_sha256": "fb3357a9126ef2690566284cc6b7a91ae309b9cc629fb79233e802b0aa4232fa",
+  "actual_dependency_snapshot": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/roofs/roof_shape.rs",
+      "sha256": "976fa6ff9a05b23452873173ee69f53fab62719e752a3b5860ecb4c8b6ec9314"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/roofs/roof_visual_shape.rs",
+      "sha256": "9cb7487efddddd91d095ae19056903b15cd9dbbc117e10456ea8975656f3c436"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/roofs/geometry/surface.rs",
+      "sha256": "a98772b8c82e5297cc1b9582c813c07fb07dcd67d5154c38f7f283fb9ec89b0d"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/walls/cached_decorator_transforms.rs",
+      "sha256": "379423ff6ccad7434f627616b42fff4ae49a19c04c7b34e284951c9187f0253d"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/walls/public_walls.rs",
+      "sha256": "80c9d92500b8dc945c11a0c0052f579cafb30612e70e3c390ffd1b1d6766a66d"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/walls/decorator_subtype.rs",
+      "sha256": "cf93fcc6010ac800468d6c716a5e95e04dfece937e0316d27f4b04228fb01271"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/walls/decorator.rs",
+      "sha256": "ea8407fdad82fb8caf8cb16213d2def019b410cda6e17d865ebeb4164946db38"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/utils/src/geometry/rectangle.rs",
+      "sha256": "6353c714ae6fd18b59a420257bb695b1f61e3c562e82d3e06efd0a55bb0ab403"
+    }
+  ],
+  "source_findings": [
+    "Actual CachedDecoratorTransform/Roof inputs replace stand-in bounds structs; old default(mode0,height0) call removed. Actual caller uses same PublicWalls roof Entity -> Query<&Roof>, nonflat precondition, actual cached transform, subtype2+real info.rank collision bbox X/Y extents. Missing mesh key remains explicit panic. Whole-crate search found no other old bounds API consumers.",
+    "Height evaluated before rank gate; ranks1..3 factor0.1/0.15/0.2, roof real height/floor and circle-vs-rectangle margin0.5/0.1 preserved. Native unordered height comparison uses !(top>limit), and final out-of-bounds polarity is retained.",
+    "Rectangle sections resolved through actual Roof API at actual lower position and actual top height, preserving rectangle frame and dimensions. Existing canonical Rectangle get_closest_u/get_point_u/perimeter handles actual closed perimeter corner intervals, fmod negative wrap and original short-circuit order. Upper section only evaluated after lower accepts. No default rectangle or substituted constant roof.",
+    "Current canonical signatures support roof_entity(WallId), rank()->u8, CachedDecoratorTransforms::transform(u32), DecoratorLibKey::new(u8,u8), collision bbox Option<(Vec3,Vec3)>, RoofSection variants and actual Roof accessors. This is source/API inspection only, not Rust typecheck."
+  ],
+  "test_scope": [
+    "Four added normal cfg(test) functions exercise real canonical Roof values, rank0/4 rejection, circle out-of-bounds and unordered comparison, actual corner/width domain and a second-section-only rejection. No Cargo/rustc/test executed by reviewer.",
+    "Nonfinite transform direct-leaf test explicitly does not claim the real cache producer accepts that state."
+  ],
+  "unclosed_boundaries": [
+    "Original complete cottage visual producer is not recovered by the minimally corrected caller. It remains partial/unregistered; no fake ready/catalog or full generator acceptance.",
+    "Actual App currently cannot establish genuine DecoratorMeshLibrary data producer from missing/current loader source; source leaf recovery does not waive same-world asset/catalog prerequisites.",
+    "Full11reason location, mainloop/fullgame nonempty WSI pixels/performance remain outside this review."
+  ],
+  "production_or_claims_modified": false,
+  "reviewer_ran_Cargo_rustc_GPU": false
+}

@@ -222,6 +222,7 @@ impl p::PassHost for EffectsHost<'_, '_, '_> {
         self.register_texture(t)
     }
     fn log(&mut self, level: p::LogLevel, target: &str, _file: &str, message: &str) {
+        if self.error.is_some() { return; }
         match level {
             p::LogLevel::Info => log::info!(target: target, "{message}"),
             p::LogLevel::Trace => log::trace!(target: target, "{message}"),
@@ -252,7 +253,16 @@ impl vermeer::VermeerHost for EffectsHost<'_, '_, '_> {
         self.register_texture(output)
     }
     fn send_startup_reveal_finished(&mut self) -> Option<()> {
-        self.reveal_finished_events.as_deref_mut()?.send(country_core::systems::save::load_game::StartupRevealFinished);
+        if let Some(events) = self.reveal_finished_events.as_deref_mut() {
+            events.send(country_core::systems::save::load_game::StartupRevealFinished);
+        } else {
+            // The native unwrap is reached only after phase=Disabled. Keep
+            // that state mutation, and return the missing-owner error through
+            // finish() so Bevy's resource_scope can reinsert canonical state.
+            // No event or successful host result is fabricated.
+            self.error.get_or_insert_with(|| rhapsody::Error::invalid_usage(
+                "original vermeer_pass: missing Events<StartupRevealFinished>"));
+        }
         Some(())
     }
 }

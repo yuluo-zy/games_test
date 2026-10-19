@@ -1,0 +1,49 @@
+--- a/tiny-glade/crates/tiny-glade/tests/original_nani_gpu.rs
++++ b/tiny-glade/crates/tiny-glade/tests/original_nani_gpu.rs
+@@ -242,6 +242,7 @@
+     gpu.create_instances(kind, &[cull], &[record], &mut pending);
+     assert_eq!(pending.len(), 1);
+     gpu.flush_instance_buffers(&diagnostic);
++    let cull_handle = gpu.owned_subset_mut(kind).cull_buffer().buffer;
+     let params = gpu.draw_list_params();
+     let list_index = kind as usize * 4;
+     let command_index = params.max_instance_offsets[list_index] as usize;
+@@ -266,6 +267,38 @@
+             let result =
+                 tiny_glade::frame_setup::with_frame_resources(frame, &mut world, |frame, world| {
+                     tiny_glade::scene_compute::generate_nani_draw_lists(frame, world, None)?;
++                    // Resolve this exact full-generation handle through the same
++                    // session's physical-Arc dedup. Import adds no pass access:
++                    // without the real Nani metadata the assertion still fails.
++                    let cull_input = frame.import_buffer(&cull_handle, 0x1a)?;
++                    frame.with_graph(|graph| {
++                        let declaration = graph.declaration();
++                        let cull = declaration.passes.iter()
++                            .find(|pass| pass.name.as_ref() == "Nani cull & bucket")
++                            .expect("actual original Nani cull builder pass");
++                        let reads: Vec<_> = cull.accesses.iter()
++                            .filter(|access| access.resource_index == cull_input.raw()
++                                && access.access_code == 0x1a
++                                && access.synchronization_group == 1)
++                            .collect();
++                        assert_eq!(reads.len(), 1, "the actual Owned cull positions owner");
++                        assert!(cull.accesses.iter().any(|access|
++                            access.resource_index != cull_input.raw()
++                                && access.access_code == 0x1a
++                                && access.synchronization_group == 1),
++                            "original descriptor SSBO reads, including previous visibility, remain separate");
++                        assert_eq!(reads[0].range, rhapsody::rg::AccessRange::Buffer {
++                            offset: 0, size: 16,
++                        }, "only the live GpuInstance prefix, not full capacity");
++                        let input = &declaration.resources[reads[0].resource_index as usize];
++                        let rhapsody::rg::Descriptor::Buffer(desc) = input.descriptor else {
++                            panic!("cull BDA must name the actual imported buffer");
++                        };
++                        assert_eq!(desc.word_at_00, cull_handle.byte_size);
++                        assert!(matches!(input.source,
++                            rhapsody::rg::OriginSource::ImportUnowned { .. }));
++                        Ok(())
++                    })?;
+                     Ok(())
+                 });
+             let export = frame.export_gpu_world(&mut world);

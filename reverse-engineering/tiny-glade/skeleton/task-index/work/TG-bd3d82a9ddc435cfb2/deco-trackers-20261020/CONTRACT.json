@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "status": "design_only_awaiting_root_07_review",
+  "family": "B",
+  "claim": "TG-bd3d82a9ddc435cfb2",
+  "owner": "deco-trackers-20261020",
+  "production_modified": false,
+  "cargo_executed": false,
+  "target_executed": false,
+  "gpu_executed": false,
+  "benchmark_executed": false,
+  "canonical_dependencies": {
+    "storage": "country_core::resources::walls::decorator_storage::DecoratorStorageAddr",
+    "wall": "country_core::resources::walls::WallId",
+    "decorator_id": "country_core::resources::walls::decorator::DecoratorId",
+    "resource": "WallAttachedDecoTracker<canonical assembly Params>; two actual generic resource identities, no marker surrogate"
+  },
+  "observed_layout_B": {
+    "tracker_size": 96,
+    "tracker_alignment": 8,
+    "wall_logs_offset": 0,
+    "dirty_wall_set_offset": 48,
+    "diff_size": 24,
+    "door_payload_size": 32,
+    "chimney_payload_size": 40,
+    "payload_alignment": 4
+  },
+  "diff_tags_B": {
+    "0": "current",
+    "1": "added",
+    "2": "removed",
+    "3": "changed(new,old)",
+    "4": "temporary poison; illegal normal input"
+  },
+  "add": {
+    "requires_wall": true,
+    "allocation_before_lookup": true,
+    "absent": "Added(new)",
+    "Removed(old)": "Changed(new,old)",
+    "Current|Added|Changed": "panic",
+    "successful_side_effect": "dirty_walls.insert(wall)"
+  },
+  "remove": {
+    "requires_wall": true,
+    "Current(cur)": "Removed(cur)",
+    "Changed(new,old)": "drop(new); Removed(old)",
+    "missing_wall|missing_id|Added|Removed": "panic",
+    "successful_side_effect": "dirty_walls.insert(wall)"
+  },
+  "consume": {
+    "Current": "Current",
+    "Added": "Current",
+    "Removed": "removed callback(id, old); drop old; erase",
+    "Changed": "Current(new); drop old; no removed callback",
+    "missing_public_wall": "normalizes using empty removal callback",
+    "wall_iteration": "drained HashSet bucket order, capacity retained",
+    "decorator_iteration": "HashMap bucket order; current includes Current/Added/Changed"
+  },
+  "on_wall_changed": "insert wall in dirty set even without existing wall log",
+  "on_wall_removed": "drop/remove wall log, remove dirty wall; no per-decorator removal callback",
+  "parameter_equality_B": {
+    "door": "ordered f32 equality at all 8 words",
+    "chimney": "words2..7 ordered f32; word0 u32 equality; word1 ordered f32 unless tag(word0)==1; word8 u32 equality; word9 ordered f32",
+    "do_not_derive_Eq": true,
+    "source": "02 CORE_EQ_NATIVE_RANGES.json"
+  },
+  "proposed_API": [
+    "add(storage, id, &params)",
+    "remove(storage, id)",
+    "on_wall_changed(wall)",
+    "on_wall_removed(wall)",
+    "scoped wall-diff adapter with exactly-once normalization; signature is proposed safe Rust adaptation, not claimed native high-level ABI"
+  ],
+  "unknown": [
+    "formal original enum variant and field names",
+    "exact original log-wrapper source type/signature spelling",
+    "all assembly parameter semantic field names",
+    "full callback-unwind/recover-and-continue behavior and exact panic text",
+    "C semantic equivalence",
+    "runtime performance"
+  ],
+  "must_not": [
+    "second address/decorator registry",
+    "frame-wide current map cloning",
+    "bitwise float Eq",
+    "40-byte Door carrier",
+    "silent duplicate upsert/remove cancellation",
+    "unsafe Sync or lifetime extension",
+    "native TypeId hardcoding",
+    "restore fake 96-byte generation DecoDiff"
+  ],
+  "review_scope": "root/07 design gate; no source candidate currently authorized"
+}

@@ -1,0 +1,131 @@
+--- a/crates/utils/src/geometry/rectangle.rs
++++ b/crates/utils/src/geometry/rectangle.rs
+@@ -239,40 +239,11 @@
+         }
+     }
+     pub fn get_closest_edge_id(self, point: Vec2) -> usize {
+-        // B 0x140c9acb0: for each edge, clamp the point's projection onto the
+-        // segment, compare squared distances, and keep the first edge that is
+-        // strictly closest. Ties retain the earlier edge index.
+-        let hx = self.size.x * 0.5;
+-        let hy = self.size.y * 0.5;
+-        let corners = [
+-            Vec2::new(-hx, -hy),
+-            Vec2::new(-hx, hy),
+-            Vec2::new(hx, hy),
+-            Vec2::new(hx, -hy),
+-        ]
+-        .map(|p| self.local_to_world(p));
+-        let mut best = 0;
+-        let mut best_d = f32::INFINITY;
+-        for i in 0..4 {
+-            let e1 = corners[i];
+-            let e2 = corners[(i + 1) % 4];
+-            let edge = e2 - e1;
+-            let mut len2 = edge.length_squared();
+-            if len2 <= 1e-20 {
+-                len2 = 1e-20;
+-            }
+-            let t = (((point - e1).dot(edge)) / len2).clamp(0.0, 1.0);
+-            let closest = e2 * t + e1 * (1.0 - t);
+-            let d = (point - closest).length_squared();
+-            if d < best_d {
+-                best_d = d;
+-                best = i;
+-            }
+-        }
+-        best
+-    }
+-    // B 140c9a9d0: this pair search is distinct from get_closest_edge_id.
+-    // In particular, its initial distance is 1000, rather than infinity.
++        // B140c9acb0/5B tail-jumps to140c9a9d0. The scalar return is the
++        // existing common helper's first index, including its1000 threshold.
++        self.closest_perimeter_edge_pair(point).0
++    }
++    // B140c9a9d0: common pair search, also used by the scalar edge-ID wrapper.
+     fn closest_perimeter_edge_pair(self, point: Vec2) -> (usize, usize) {
+         let points = self.as_points2();
+         let mut pair = (0, 1);
+@@ -660,7 +631,8 @@
+             && self.footprint.contains_point(Vec2::new(point.x, point.z))
+     }
+     pub fn overlaps_rectangle3d(self, other: Self) -> bool {
+-        !(self.top < other.bottom || other.top < self.bottom)
++        self.top >= other.bottom
++            && other.top >= self.bottom
+             && self.footprint.overlaps_rectangle2d(other.footprint)
+     }
+     pub fn points(self) -> [Vec3; 8] {
+@@ -730,6 +702,72 @@
+ 
+     use super::*;
+     #[test]
++    fn original_3d_overlap_rejects_each_unordered_vertical_bound() {
++        let finite = Rectangle3d::new(Vec3::ZERO, Vec3::splat(2.0), Vec2::X);
++        // Native305B constructor permits height NaN. Overlap29B, rather than
++        // a new constructor guard, rejects the resulting unordered bounds.
++        let nan_height = Rectangle3d::new(
++            Vec3::ZERO,
++            Vec3::new(2.0, f32::NAN, 2.0),
++            Vec2::X,
++        );
++        assert!(nan_height.bottom.is_nan() && nan_height.top.is_nan());
++        assert!(!nan_height.overlaps_rectangle3d(finite));
++        assert!(!finite.overlaps_rectangle3d(nan_height));
++        for field in 0..4 {
++            let (mut a, mut b) = (finite, finite);
++            match field {
++                0 => a.top = f32::NAN,
++                1 => a.bottom = f32::NAN,
++                2 => b.top = f32::NAN,
++                _ => b.bottom = f32::NAN,
++            }
++            assert!(!a.overlaps_rectangle3d(b), "bound {field}");
++            assert!(!b.overlaps_rectangle3d(a), "reversed bound {field}");
++        }
++    }
++
++    #[test]
++    fn original_3d_overlap_keeps_touching_separation_and_ordered_infinity() {
++        let a = Rectangle3d::new(Vec3::ZERO, Vec3::splat(2.0), Vec2::X);
++        let touching = Rectangle3d::new(Vec3::new(0.0, 2.0, 0.0), Vec3::splat(2.0), Vec2::X);
++        let separated = Rectangle3d::new(Vec3::new(0.0, 2.25, 0.0), Vec3::splat(2.0), Vec2::X);
++        assert!(a.overlaps_rectangle3d(a));
++        assert!(a.overlaps_rectangle3d(touching));
++        assert!(touching.overlaps_rectangle3d(a));
++        assert!(!a.overlaps_rectangle3d(separated));
++        assert!(!separated.overlaps_rectangle3d(a));
++        let unbounded = Rectangle3d { bottom: f32::NEG_INFINITY, top: f32::INFINITY, ..a };
++        assert!(unbounded.overlaps_rectangle3d(a));
++        assert!(a.overlaps_rectangle3d(unbounded));
++    }
++
++    #[test]
++    fn original_edge_id_wrapper_keeps_finite_1000_distance_threshold() {
++        let rectangle = Rectangle2d::new_axis_aligned(Vec2::ZERO, Vec2::splat(2.0));
++        assert_eq!(rectangle.get_closest_edge_id(Vec2::new(2000.0, 0.0)), 0);
++        assert_eq!(rectangle.get_closest_edge_id(Vec2::new(0.0, 1001.0)), 0);
++        assert_eq!(rectangle.get_closest_edge_id(Vec2::new(0.0, 1000.0)), 1);
++        let rotated = Rectangle2d::new(Vec2::new(5.0, -6.0), Vec2::splat(2.0), Vec2::Y);
++        assert_eq!(rotated.get_closest_edge_id(Vec2::new(5.0, 1994.0)), 0);
++    }
++
++    #[test]
++    fn original_edge_id_wrapper_keeps_near_edge_and_first_ties() {
++        let rectangle = Rectangle2d::new_axis_aligned(Vec2::ZERO, Vec2::splat(2.0));
++        assert_eq!(rectangle.get_closest_edge_id(Vec2::new(1.2, 0.0)), 2);
++        assert_eq!(rectangle.get_closest_edge_id(Vec2::ZERO), 0);
++        assert_eq!(rectangle.get_closest_edge_id(Vec2::ONE), 1);
++    }
++
++    #[test]
++    #[should_panic(expected = "原as_points正面积guard")]
++    fn original_edge_id_wrapper_requires_actual_positive_area() {
++        Rectangle2d::new_axis_aligned(Vec2::ZERO, Vec2::ZERO)
++            .get_closest_edge_id(Vec2::new(1.0, 0.0));
++    }
++
++    #[test]
+     fn size_normalized_normal_is_independent_of_nearest_segment() {
+         let rectangle = Rectangle2d::new_centered_axis_aligned(Vec2::new(10.0, 2.0));
+         let point = Vec2::new(4.0, 0.5);

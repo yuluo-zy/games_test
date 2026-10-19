@@ -1,0 +1,244 @@
+--- a/tiny-glade/crates/country-core/src/systems/collision/world.rs
++++ b/tiny-glade/crates/country-core/src/systems/collision/world.rs
+@@ -2739,38 +2739,47 @@
+         false
+     }
+ 
+-    /// `decorator_overlaps_with_others<(OffsetColliderTransform, Arc<dyn Shape>)>`
+-    /// （0x14129be00，O）：装饰 collider 与其它 collider 是否重叠。
+-    ///
+-    /// fresh 反编译：`into_transformed_shape`（impl$43 拷贝）→ `index` 取注册表 →
+-    /// `as_collider_shape` → `intersection_with_shape`；命中则
+-    /// `get_mut_internal` + `DecoratorRank::new` 校验（登记）。Rust 侧以
+-    /// `OffsetColliderTransform` 形状扫掠自身槽 + 注册表 kind 门控近似。
++    /// B `decorator_overlaps_with_others` @0x14129be00: query decorator slot2
++    /// and return the actual registered source of an accepted overlap.
++    /// The predicate @0x14129c3d0 keeps same-wall decorators and excludes self;
++    /// ordered mode further accepts only IDs lower than the current ID.
+     #[cfg(feature = "native-physics")]
+     pub fn decorator_overlaps_with_others(
+         &self,
+         decorator: &OffsetColliderTransform,
+-        mask: u32,
+-    ) -> bool {
++        current_id: crate::resources::walls::decorator::DecoratorId,
++        wall: crate::resources::walls::WallId,
++        ordered: bool,
++    ) -> Option<&RaycastGeoSource> {
++        // B passes slice length17 and SubworldIndex(2), not a subworld mask.
++        const DECORATOR_SLOT: u8 = 2;
++        let slot = &self.slots[DECORATOR_SLOT as usize];
++        let predicate = |handle: ColliderHandle, _: &Collider| {
++            let source = &self.registered_mesh_for_collider(DECORATOR_SLOT, handle).source;
++            assert_eq!(source.tag(), 3, "decorator overlap: unexpected source kind");
++            let candidate_id = u32::from_le_bytes(source.0[4..8].try_into().unwrap());
++            let is_wall = source.0[8..16] == [0; 8];
++            let accepted_id = if ordered {
++                current_id.0 > candidate_id
++            } else {
++                current_id.0 != candidate_id
++            };
++            is_wall
++                && accepted_id
++                && u64::from_le_bytes(source.0[16..24].try_into().unwrap()) == wall.0
++        };
+         let shape = decorator.as_collider_shape();
+         let position = collider_isometry(decorator.position, decorator.rotation);
+-        // O：单装饰 collider 落其来源槽；Rust 以全 mask 槽扫掠（来源槽映射登记）。
+-        for (slot_index, slot) in self.slots.iter().enumerate() {
+-            if (mask >> slot_index) & 1 == 0 {
+-                continue;
+-            }
+-            let hit = slot.pipeline.intersection_with_shape(
+-                &slot.bodies,
+-                &slot.colliders,
+-                &position,
+-                shape.as_ref(),
+-                QueryFilter::default(),
+-            );
+-            if hit.is_some() {
+-                return true;
+-            }
+-        }
+-        false
++        let handle = slot.pipeline.intersection_with_shape(
++            &slot.bodies,
++            &slot.colliders,
++            &position,
++            shape.as_ref(),
++            QueryFilter::default().predicate(&predicate),
++        )?;
++        // Resolve the accepted physical handle again, preserving receipt checks
++        // and returning a borrow of the canonical mesh owner's source.
++        Some(&self.registered_mesh_for_collider(DECORATOR_SLOT, handle).source)
+     }
+ }
+ 
+@@ -3691,3 +3700,167 @@
+         );
+     }
+ }
++
++
++#[cfg(all(test, feature = "native-physics"))]
++mod decorator_overlap_regressions {
++    use super::*;
++    use crate::resources::walls::WallId;
++    use crate::resources::walls::decorator::DecoratorId;
++    use crate::resources::walls::decorator_storage::DecoratorStorageAddr;
++    use glam::{Quat, Vec3};
++    use std::collections::HashMap;
++
++    fn insert_source(
++        world: &mut RaycastWorld,
++        map: &mut HashMap<DecoratorId, ColliderMeshInstance>,
++        id: DecoratorId,
++        source: RaycastGeoSource,
++        position: Vec3,
++        dimensions: Vec3,
++    ) -> ColliderMeshInstance {
++        assert!(matches!(
++            upsert_collider(
++                world,
++                map,
++                id,
++                source,
++                Arc::new(RaycastMeshData::new_cuboid_at(dimensions, Vec3::ZERO)),
++                position,
++                Quat::IDENTITY,
++            ),
++            ColliderUpsert::Inserted { .. }
++        ));
++        map[&id]
++    }
++
++    fn query(position: Vec3) -> OffsetColliderTransform {
++        OffsetColliderTransform {
++            position,
++            rotation: Quat::IDENTITY,
++            shape: SharedShape::ball(0.25).0,
++        }
++    }
++
++    #[test]
++    fn rejects_self_other_wall_and_nonwall_then_returns_canonical_source() {
++        let mut world = RaycastWorld::new();
++        let mut map = HashMap::new();
++        let current = DecoratorId(50);
++        let wall = WallId(9);
++        let query = query(Vec3::ZERO);
++        assert!(world.decorator_overlaps_with_others(&query, current, wall, false).is_none());
++        for (id, storage) in [
++            (current, DecoratorStorageAddr::Wall(wall)),
++            (DecoratorId(1), DecoratorStorageAddr::Wall(WallId(10))),
++            (DecoratorId(2), DecoratorStorageAddr::Terrain),
++            (DecoratorId(3), DecoratorStorageAddr::Stair),
++        ] {
++            insert_source(&mut world, &mut map, id, RaycastGeoSource::decorator(id, storage), Vec3::ZERO, Vec3::splat(2.0));
++        }
++        insert_source(&mut world, &mut map, DecoratorId(99), RaycastGeoSource::Slot0, Vec3::ZERO, Vec3::splat(2.0));
++        world.flush_colliders();
++        assert!(world.decorator_overlaps_with_others(&query, current, wall, false).is_none());
++        assert!(world.decorator_overlaps_with_others(&query, current, wall, true).is_none());
++
++        let id = DecoratorId(22);
++        let expected = RaycastGeoSource::decorator(id, DecoratorStorageAddr::Wall(wall));
++        let live = insert_source(&mut world, &mut map, id, expected, Vec3::ZERO, Vec3::splat(2.0));
++        world.flush_colliders();
++        let hit = world.decorator_overlaps_with_others(&query, current, wall, false).unwrap();
++        assert_eq!(*hit, expected);
++        assert!(std::ptr::eq(hit, &world.get_collider_mesh(live.registry_index, live.generation).source));
++    }
++
++    #[test]
++    fn ordered_mode_uses_unsigned_id_comparison() {
++        let mut world = RaycastWorld::new();
++        let mut map = HashMap::new();
++        let wall = WallId(9);
++        let query = query(Vec3::ZERO);
++        let larger = DecoratorId(u32::MAX);
++        let expected = RaycastGeoSource::decorator(larger, DecoratorStorageAddr::Wall(wall));
++        insert_source(&mut world, &mut map, larger, expected, Vec3::ZERO, Vec3::splat(2.0));
++        world.flush_colliders();
++        assert_eq!(world.decorator_overlaps_with_others(&query, DecoratorId(9), wall, false), Some(&expected));
++        assert!(world.decorator_overlaps_with_others(&query, DecoratorId(9), wall, true).is_none());
++        assert!(remove_collider(&mut world, &mut map, &larger).is_some());
++        let smaller = DecoratorId(7);
++        let expected = RaycastGeoSource::decorator(smaller, DecoratorStorageAddr::Wall(wall));
++        insert_source(&mut world, &mut map, smaller, expected, Vec3::ZERO, Vec3::splat(2.0));
++        world.flush_colliders();
++        assert_eq!(world.decorator_overlaps_with_others(&query, DecoratorId(0x8000_0000), wall, true), Some(&expected));
++    }
++
++    #[test]
++    fn overlap_query_preserves_translation_and_rotation() {
++        let mut world = RaycastWorld::new();
++        let mut map = HashMap::new();
++        let wall = WallId(9);
++        let id = DecoratorId(1);
++        let center = Vec3::new(8.0, 2.0, 3.0);
++        let expected = RaycastGeoSource::decorator(id, DecoratorStorageAddr::Wall(wall));
++        insert_source(&mut world, &mut map, id, expected, center + Vec3::Z * 1.5, Vec3::splat(0.2));
++        world.flush_colliders();
++        let mut query = OffsetColliderTransform {
++            position: center,
++            rotation: Quat::IDENTITY,
++            shape: SharedShape::cuboid(2.0, 0.2, 0.2).0,
++        };
++        assert!(world.decorator_overlaps_with_others(&query, DecoratorId(20), wall, false).is_none());
++        query.rotation = Quat::from_rotation_y(std::f32::consts::FRAC_PI_2);
++        assert_eq!(world.decorator_overlaps_with_others(&query, DecoratorId(20), wall, false), Some(&expected));
++        query.position = Vec3::ZERO;
++        assert!(world.decorator_overlaps_with_others(&query, DecoratorId(20), wall, false).is_none());
++    }
++
++    #[test]
++    fn removed_and_reused_receipts_return_only_the_new_live_owner() {
++        let mut world = RaycastWorld::new();
++        let mut map = HashMap::new();
++        let wall = WallId(9);
++        let id = DecoratorId(1);
++        let query = query(Vec3::ZERO);
++        let source = RaycastGeoSource::decorator(id, DecoratorStorageAddr::Wall(wall));
++        let old = insert_source(&mut world, &mut map, id, source, Vec3::ZERO, Vec3::splat(2.0));
++        world.flush_colliders();
++        assert_eq!(world.decorator_overlaps_with_others(&query, DecoratorId(20), wall, false), Some(&source));
++        assert!(remove_collider(&mut world, &mut map, &id).is_some());
++        world.flush_colliders();
++        assert!(world.decorator_overlaps_with_others(&query, DecoratorId(20), wall, false).is_none());
++        let next = DecoratorId(2);
++        let expected = RaycastGeoSource::decorator(next, DecoratorStorageAddr::Wall(wall));
++        let live = insert_source(&mut world, &mut map, next, expected, Vec3::ZERO, Vec3::splat(2.0));
++        assert_ne!((old.registry_index, old.generation), (live.registry_index, live.generation));
++        world.flush_colliders();
++        let hit = world.decorator_overlaps_with_others(&query, DecoratorId(20), wall, false).unwrap();
++        assert_eq!(*hit, expected);
++        assert!(std::ptr::eq(hit, &world.get_collider_mesh(live.registry_index, live.generation).source));
++    }
++
++    #[test]
++    fn live_query_rejects_stale_receipts_and_unexpected_source_kind() {
++        let mut world = RaycastWorld::new();
++        let mut map = HashMap::new();
++        let wall = WallId(9);
++        let id = DecoratorId(1);
++        let source = RaycastGeoSource::decorator(id, DecoratorStorageAddr::Wall(wall));
++        let live = insert_source(&mut world, &mut map, id, source, Vec3::ZERO, Vec3::splat(2.0));
++        world.flush_colliders();
++        let query = query(Vec3::ZERO);
++        let original = (u64::from(live.generation) << 32) | u64::from(live.registry_index);
++        for generation in [live.generation & !1, live.generation.wrapping_add(2)] {
++            world.get_rapier_collider(live.slot, live.collider).unwrap().user_data =
++                u128::from((u64::from(generation) << 32) | u64::from(live.registry_index));
++            assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++                world.decorator_overlaps_with_others(&query, DecoratorId(20), wall, false);
++            })).is_err());
++        }
++        world.get_rapier_collider(live.slot, live.collider).unwrap().user_data = u128::from(original);
++        world.mesh_sources.meshes.get_mut(strict_mesh_key(original)).unwrap().source = RaycastGeoSource::Slot0;
++        world.colliders[live.registry_index as usize].set_kind(0);
++        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++            world.decorator_overlaps_with_others(&query, DecoratorId(20), wall, false);
++        })).is_err());
++    }
++}

@@ -1,0 +1,11 @@
+# Convertable context → existing creation command: bounded read-only refinement
+
+Additional original B evidence after the frozen source-owner findings, not a new source/schema candidate. The only new full body is handle_rmb_autoclutter140976ca0/1359B, selected by original PDB module519. No current foreign source was modified; no original/CPU/GPU execution.
+
+The24B Convertable+18..2f context has a concrete existing consumer identity: it is copied as the destination union of the actual **InstaCreateDeco** command. At140976fc5, rbp=Convertable+18. At140977080..08d,16B from rbp+0 and8B from rbp+10 are copied to a temporary. At1409770dc..0eb, the same24B forms command+00..17. The command's actual Color/extra/rotation/position/type/EventId fields follow separately (0ef..11b). This is not the source union at component+00..17, nor the clutter generated ID, nor a native pointer reconstructed from an ECS entity.
+
+The same real consumer reads Convertable mesh_name at+30/+38 (140977071..079) into the original ClutterMeshTy::from1408b83d0. The prior manager constructor already proved those values originate from the selected ClutterMesh's mesh_name slice. Thus no hashing backward into a guessed prefab name is needed, and the actual loader name must survive any metadata projection.
+
+Current canonical core::systems::ui_clutter::ui_autoclutter::InstaCreateDeco already declares destination:[u64;3] with explicit unknown placement-enum semantics, and current rmb adapter copies its resolved record.destination into that same event. This existing value transport can be reused conceptually; it does not prove the current adapter tables are populated from actual AutoClutterConvertable/Transform, or recover the destination's variant/float semantics. Those source-to-query and final placement consumers remain independent gaps. No opaque96B value or fake entity receipt is proposed.
+
+The new evidence narrows the previously unnamed context to an existing command payload, while keeping its internal semantic decoding open. A later typed source proposal must preserve all24 meaningful bytes/lanes supplied by the actual native-equivalent producer, not initialize a default destination or infer it from wall/tree IDs.

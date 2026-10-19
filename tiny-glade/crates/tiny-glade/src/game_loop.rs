@@ -27,11 +27,18 @@ use crate::setup::FromWinit;
 /// Implementations must supply the actual frame/pass/WSI adapter; this trait
 /// does not declare the missing production adapter implemented.
 pub trait GameRenderHostFactory {
-    type Host<'a>: RenderHost
+    type Host<'a>: RenderHost<CompileError = rhapsody::Error>
     where
         Self: 'a;
 
     fn host<'a>(&'a mut self, world: &'a mut World, egui: &'a mut EguiBackend) -> Self::Host<'a>;
+
+    /// Return an actual host-side error before the frame's temporal/log/limiter
+    /// effects. Graph errors retain their typed cause through `render`.
+    fn finish_render(&mut self) -> anyhow::Result<()>;
+    fn last_frame_submitted(&self) -> bool;
+    /// A successfully queued present is not a proof of scanout completion.
+    fn last_frame_present_queued(&self) -> bool;
 }
 
 /// B 0x1404de6b4..0x1404de7da. An open, throttleable menu limits
@@ -78,14 +85,74 @@ fn apply_menu_fps_limit(fps: f32, menu_limits: bool, profiling: bool) -> f32 {
     }
 }
 
-/// The recovered update/render section of main_loop, separated from its still
-/// unresolved OS-event/device-recovery section. This owns real Bevy/egui state;
-/// it is not a native-layout mirror of the 0x1118-byte GameLoop.
+/// Read-only counters from the real production frame path. A gameplay frame
+/// requires the Game state and MainCamera in the App actually updated/rendered.
+/// All counts cover only frames whose render and host checks succeeded. The
+/// submission/present fields are that successful-frame subset, not total GPU
+/// operations: a failed frame may already have submitted work. They do not
+/// assert nonempty scene data or scanout.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct FrameProgress {
+    pub completed_frames: u64,
+    pub gameplay_frames: u64,
+    pub gameplay_submissions: u64,
+    pub gameplay_presents_queued: u64,
+}
+
+/// The recovered update/render section of main_loop. This owns real Bevy/egui
+/// state; it is not a native-layout mirror of the 0x1118-byte GameLoop.
 pub struct GameFrameDriver {
     app: App,
     egui: EguiBackend,
     pacer: FramePacer,
     limiter: crate::fps_limiter::FpsLimiter,
+    progress: FrameProgress,
+}
+
+#[derive(bevy_ecs::resource::Resource)]
+struct AssetLibrarySystemsInstalled;
+
+/// Both independent Apps receive the same registration once, before either
+/// startup path can execute. The gameplay SubApp keeps it through warmup/move.
+fn install_asset_library_systems(app: &mut App) {
+    if app.world().contains_resource::<AssetLibrarySystemsInstalled>() {
+        return;
+    }
+    use bevy_ecs::schedule::IntoScheduleConfigs;
+    use country_core::asset_libraries::runtime::{build_missing_vaos, rebuild_vaos};
+    country_core::asset_libraries::runtime::add_asset_library_post_update_systems(
+        app.get_schedule_mut(bevy_app::PostUpdate).expect("App 缺少 PostUpdate 调度"),
+    );
+    // The one explicit barrier in the Nani chain applies these commands too.
+    // Loading has no Nani consumer and uses real Update schedule completion.
+    app.add_systems(bevy_app::Update, (build_missing_vaos, rebuild_vaos)
+        .chain_ignore_deferred()
+        .before_ignore_deferred(country_core::render::nani::systems::nani_maintain_instances_ecs)
+        .in_set(crate::run_game::GameSystemSet(44)));
+    app.insert_resource(AssetLibrarySystemsInstalled);
+}
+
+fn update_application(app: &mut App) -> anyhow::Result<()> {
+    // The asynchronous preparation already has this unwind boundary. The
+    // synchronous skip-splash path must also report a real startup failure
+    // before platform output, render or any completed-frame side effect.
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| app.update()))
+        .map_err(|payload| {
+            let message = if let Some(message) = payload.downcast_ref::<String>() {
+                message.as_str()
+            } else if let Some(message) = payload.downcast_ref::<&'static str>() {
+                *message
+            } else {
+                "non-string panic payload"
+            };
+            anyhow::anyhow!("application startup/update panicked: {message}")
+        })?;
+    // Bind this requirement to the actual gameplay World, not a camera or an
+    // early Splash/Game/Reload state. SubApp handoff retains the same role.
+    if app.world().contains_resource::<crate::run_game::GameplayApplication>() {
+        crate::gameplay_startup::require_clutter_catalog(app.world())?;
+    }
+    Ok(())
 }
 
 impl GameFrameDriver {
@@ -95,16 +162,13 @@ impl GameFrameDriver {
             .insert_resource(country_core::resources::gui::EguiContextResource(
                 context.clone(),
             ));
-        // 资产发布在本帧渲染之前完成，复用已有 PostUpdate 调度。
-        country_core::asset_libraries::runtime::add_asset_library_systems(
-            app.get_schedule_mut(bevy_app::PostUpdate)
-                .expect("App 缺少 PostUpdate 调度"),
-        );
+        install_asset_library_systems(&mut app);
         Self {
             app,
             egui: EguiBackend::new(context),
             pacer: FramePacer::default(),
             limiter: crate::fps_limiter::FpsLimiter::new(),
+            progress: FrameProgress::default(),
         }
     }
 
@@ -113,6 +177,10 @@ impl GameFrameDriver {
     }
     pub fn app_mut(&mut self) -> &mut App {
         &mut self.app
+    }
+
+    pub fn progress(&self) -> FrameProgress {
+        self.progress
     }
 
     /// B begin_frame@0x1404de115 → App::update@0x1404de349 →
@@ -127,22 +195,45 @@ impl GameFrameDriver {
         input: Option<egui::RawInput>,
         factory: &mut F,
         publish_platform_output: impl FnOnce(egui::PlatformOutput),
-    ) {
+    ) -> anyhow::Result<()> {
         let has_gui_input = input.is_some();
         if let Some(input) = input {
             self.egui.context().begin_frame(input);
         }
         {
             puffin::profile_scope!("App update");
-            self.app.update();
+            update_application(&mut self.app)?;
         }
         if has_gui_input {
             publish_platform_output(self.egui.end_frame());
         }
-        {
-            let mode = frame_render_mode(self.app.world());
+        let mode = frame_render_mode(self.app.world());
+        let gameplay_frame = mode == RenderMode::WorldGpuProfiled
+            && self.app.world().get_resource::<bevy_state::state::State<
+                country_core::app_loading_state::AppLoadingState,
+            >>().is_some_and(|state| {
+                *state.get() == country_core::app_loading_state::AppLoadingState::Game
+            });
+        let render_result = {
             let mut host = factory.host(self.app.world_mut(), &mut self.egui);
-            crate::render_loop::render(&mut host, &mut self.pacer, mode);
+            crate::render_loop::render(&mut host, &mut self.pacer, mode)
+        };
+        // Drain the adapter even when the graph returns an error, preserving the
+        // graph's original cause while still completing host-side error cleanup.
+        let host_result = factory.finish_render();
+        render_result?;
+        host_result?;
+        self.progress.completed_frames = self.progress.completed_frames.wrapping_add(1);
+        if gameplay_frame {
+            self.progress.gameplay_frames = self.progress.gameplay_frames.wrapping_add(1);
+            if factory.last_frame_submitted() {
+                self.progress.gameplay_submissions =
+                    self.progress.gameplay_submissions.wrapping_add(1);
+            }
+            if factory.last_frame_present_queued() {
+                self.progress.gameplay_presents_queued =
+                    self.progress.gameplay_presents_queued.wrapping_add(1);
+            }
         }
         // Original @1404de63a increments only after render returns. The
         // independent loading World intentionally has no gameplay temporal.
@@ -155,6 +246,7 @@ impl GameFrameDriver {
         }
         crate::main::log_time_to_first_frame();
         self.limiter.frame(frame_target_fps(self.app.world()));
+        Ok(())
     }
 }
 
@@ -212,6 +304,7 @@ pub struct GameLoop {
     pub(crate) frame_count: u64,
     pub(crate) suspended: bool,
     pub(crate) shutdown_done: bool,
+    pub(crate) pending_os_events: std::collections::VecDeque<crate::event_loop::OsWindowEvent>,
     preparation: Option<crate::run_game::GameplayPreparation>,
     custom_cursor_events: bevy_ecs::event::EventCursor<
         country_core::resources::mouse_capture::CustomCursorSsboCreatedCmd,
@@ -313,10 +406,7 @@ impl GameLoop {
                     country_core::resources::native_audio::NativeStudio,
                 >,
             >()));
-            country_core::asset_libraries::runtime::add_asset_library_systems(
-                app.get_schedule_mut(bevy_app::PostUpdate)
-                    .expect("gameplay PostUpdate"),
-            );
+            install_asset_library_systems(&mut app);
             // The warm-up graph must use the gameplay App's exact physical
             // owners; capture them before its SubApp moves to the worker. The
             // renderer keeps these same owners in `other_applications` until
@@ -430,6 +520,7 @@ impl GameLoop {
             frame_count: 0,
             suspended: false,
             shutdown_done: false,
+            pending_os_events: Default::default(),
             preparation,
             custom_cursor_events: Default::default(),
             capture_events: Default::default(),
@@ -444,6 +535,26 @@ impl GameLoop {
     }
     pub fn app_mut(&mut self) -> &mut App {
         self.driver.app_mut()
+    }
+
+    pub fn frame_progress(&self) -> FrameProgress {
+        self.driver.progress()
+    }
+
+    pub fn frame_observation(
+        &self,
+    ) -> Option<&crate::production_renderer::ProductionFrameObservation> {
+        self.renderer.frame_observation()
+    }
+
+    /// Nonblocking query of the exact current present ticket. None is unknown,
+    /// including a ticket already reclaimed by normal frame maintenance.
+    pub fn frame_present_complete(&self) -> rhapsody::Result<Option<bool>> {
+        self.renderer.frame_present_complete()
+    }
+
+    pub fn gameplay_preparation_pending(&self) -> bool {
+        self.preparation.is_some()
     }
 
     /// B consumes outgoing game requests before the OS event batch. Platform
@@ -463,7 +574,10 @@ impl GameLoop {
         if let Some(command) = capture {
             let id = self.cursor_requests.next_request_id();
             self.apply_capture(command)?;
-            self.cursor_requests.on_confirmation(id);
+            // B drains the incoming OS batch before sending this request. Its
+            // acknowledgement cannot validate older coordinates in that batch.
+            self.pending_os_events
+                .push_back(crate::event_loop::OsWindowEvent::CursorConfirmed(id));
         }
         let minimize_count = self
             .window_events
@@ -513,19 +627,29 @@ impl GameLoop {
         &mut self,
         created: country_core::resources::mouse_capture::CustomCursorSsboCreatedCmd,
     ) -> anyhow::Result<()> {
-        use country_core::asset_libraries::ssbo_library::AssetSsboLibrary;
-        use country_core::systems::render_loop::draw_passes::custom_cursor_pass::CustomCursorSsbo;
         // Retire the old writer before resolving the new owner's lease.
         self.custom_cursor_buffer = None;
+        let lease = self.resolve_custom_cursor_buffer()?;
+        anyhow::ensure!(
+            lease.persistent_host_ptr() == Some(created.0.as_ptr().cast::<u8>()),
+            "CustomCursor Created pointer does not match its canonical managed buffer"
+        );
+        self.custom_cursor_buffer = Some(lease);
+        Ok(())
+    }
+
+    /// The startup event carries only a pointer; the actual long-lived owner is
+    /// the canonical App library plus this same BufferHost's managed lease.
+    fn resolve_custom_cursor_buffer(&self) -> anyhow::Result<rhapsody::resource::ManagedBuffer> {
+        use country_core::asset_libraries::ssbo_library::AssetSsboLibrary;
+        use country_core::systems::render_loop::draw_passes::custom_cursor_pass::CustomCursorSsbo;
         let core_buffer = self
             .driver
             .app
             .world()
             .resource::<AssetSsboLibrary>()
             .get_buffer::<CustomCursorSsbo>()
-            .ok_or_else(|| {
-                anyhow::anyhow!("CustomCursor Created has no canonical buffer in its World")
-            })?;
+            .ok_or_else(|| anyhow::anyhow!("CustomCursor has no canonical buffer in its World"))?;
         let lease = self
             .renderer
             .bridge()
@@ -539,15 +663,11 @@ impl GameLoop {
             lease.size == core::mem::size_of::<CustomCursorSsbo>() as u64,
             "CustomCursor buffer has an invalid byte length"
         );
-        let pointer = lease
-            .persistent_host_ptr()
-            .ok_or_else(|| anyhow::anyhow!("CustomCursor buffer is not persistently mapped"))?;
         anyhow::ensure!(
-            pointer == created.0.as_ptr().cast::<u8>(),
-            "CustomCursor Created pointer does not match its canonical managed buffer"
+            lease.persistent_host_ptr().is_some(),
+            "CustomCursor buffer is not persistently mapped"
         );
-        self.custom_cursor_buffer = Some(lease);
-        Ok(())
+        Ok(lease)
     }
 
     /// B callback @140557e57..eb4 writes before the GameLoop confirmation
@@ -677,7 +797,7 @@ impl GameLoop {
     }
 
     /// B begin_frame → App::update → end_frame → PlatformOutput → render.
-    pub(crate) fn frame(&mut self) -> anyhow::Result<bool> {
+    pub(crate) fn frame(&mut self, target: &EventLoopWindowTarget<()>) -> anyhow::Result<bool> {
         if let Some(preparation) = &mut self.preparation {
             // No OS callback can run while poll owns this thread. Withdraw the
             // old writer before poll can swap Worlds; a failed/pending poll
@@ -688,12 +808,20 @@ impl GameLoop {
                 self.reset_world_event_cursors();
                 self.renderer
                     .activate_application(self.driver.app().world())?;
+                // The worker may have run more than two updates after PreStartup,
+                // so its one-shot Created event can already have expired. Rejoin
+                // the real canonical owner; do not synthesize a new notification,
+                // create a second buffer, or initialize its mapped contents.
+                self.custom_cursor_buffer = Some(self.resolve_custom_cursor_buffer()?);
                 self.preparation = None;
             } else {
                 self.custom_cursor_buffer = old_cursor_lease;
             }
         }
-        self.flush_game_requests()?;
+        // B switches Apps, snapshots the incoming OS batch, then flushes
+        // outgoing requests before dispatching that captured batch. Queue state
+        // belongs to the loop, so a handoff cannot discard this frame's inputs.
+        let incoming_count = self.pending_os_events.len();
         if self
             .driver
             .app
@@ -701,6 +829,33 @@ impl GameLoop {
             .contains_resource::<country_core::resources::shutdown::ShutdownGame>()
         {
             return Ok(false);
+        }
+        self.flush_game_requests()?;
+        let mut os_close_requested = false;
+        for _ in 0..incoming_count {
+            let event = self
+                .pending_os_events
+                .pop_front()
+                .expect("captured OS batch must remain queued");
+            os_close_requested |= matches!(&event, crate::event_loop::OsWindowEvent::CloseRequested);
+            self.dispatch_os_event(event, target)?;
+        }
+        // B @1404dc952..971 skips both simulation and rendering while either
+        // dimension is zero. Keep input edges for the next actual update.
+        let window = self
+            .driver
+            .app
+            .world()
+            .resource::<country_core::resources::window::WindowSize>();
+        if window.width == 0 || window.height == 0 {
+            // Main-thread host adaptation: an actual OS close may stop a zero-
+            // sized window without simulating, rendering or inventing the game
+            // shutdown marker. Sender disconnect still joins the real saver.
+            if os_close_requested {
+                return Ok(false);
+            }
+            std::thread::sleep(std::time::Duration::from_millis(1));
+            return Ok(true);
         }
         // B 1404ddf28..3c: real OS egui input is consumed only while the
         // debug or experimental window is active. Other frames still begin
@@ -715,10 +870,7 @@ impl GameLoop {
         self.driver
             .frame(Some(input), &mut self.renderer, |output| {
                 egui_io.handle_platform_output(window, output);
-            });
-        if let Some(error) = self.renderer.take_error() {
-            return Err(error);
-        }
+            })?;
         // 本帧消费完成后清除按下和释放边沿，保留仍按住的按钮。
         if let Some(mut keys) = self.driver.app.world_mut().get_resource_mut::<country_core::systems::backend::input::button_input::KeyButtonInput>() {
             keys.clear();
@@ -793,13 +945,38 @@ impl GameLoop {
         if self.shutdown_done {
             return Ok(());
         }
-        self.shutdown_done = true;
+        // A worker can still be declaring/executing the gameplay warm-up with
+        // these exact GPU owners. Stop and join it before touching renderer
+        // lifetime, and do not abandon GPU cleanup when it reports an error.
+        let preparation_result = self
+            .preparation
+            .take()
+            .map_or(Ok(()), |mut preparation| preparation.cancel_and_join());
+        let save_result = country_core::systems::save::save_thread::shutdown_save_thread(
+            self.driver.app_mut().world_mut(),
+        );
         self.custom_cursor_buffer = None;
         self.window
             .set_cursor_grab(winit::window::CursorGrabMode::None)
             .ok();
         self.window.set_cursor_visible(true);
-        self.renderer.shutdown()
+        let renderer_result = self.renderer.shutdown();
+        let mut failure = preparation_result.err();
+        for (phase, result) in [("save thread", save_result), ("GPU", renderer_result)] {
+            if let Err(error) = result {
+                if failure.is_some() {
+                    log::error!("Additional {phase} shutdown failure: {error:#}");
+                } else {
+                    failure = Some(error);
+                }
+            }
+        }
+        if let Some(error) = failure {
+            Err(error)
+        } else {
+            self.shutdown_done = true;
+            Ok(())
+        }
     }
 
     /// B 0x1404e2470: enumerate current monitors and sorted public video modes.
@@ -816,6 +993,18 @@ impl GameLoop {
                 video_modes: modes.iter().map(VideoMode::from_winit).collect(),
                 monitor,
             });
+        }
+    }
+}
+
+impl Drop for GameLoop {
+    fn drop(&mut self) {
+        // Also cover a constructed loop whose OS runner returns an error or is
+        // never entered: worker fields must not outlive renderer destruction.
+        if !self.shutdown_done {
+            if let Err(error) = self.shut_down() {
+                log::error!("game-loop shutdown: {error:#}");
+            }
         }
     }
 }
@@ -901,6 +1090,99 @@ fn gather_video_setting_events(
 mod frame_tests {
     use super::*;
     use country_core::{game_config::GameConfig, resources::gui::EscMenuState};
+
+    #[test]
+    fn gameplay_catalog_requirement_is_independent_of_loading_state_and_camera() {
+        use country_core::app_loading_state::AppLoadingState;
+        for state in [AppLoadingState::Splash, AppLoadingState::Game, AppLoadingState::Reload] {
+            let mut app = App::new();
+            app.insert_resource(crate::run_game::GameplayApplication);
+            app.insert_resource(bevy_state::state::State::new(state));
+            // An empty negative fixture must fail; do not install a fake
+            // catalog to pretend this small App completed real startup.
+            let error = update_application(&mut app).unwrap_err();
+            assert!(error.to_string().contains("ClutterMeshes"));
+        }
+        let mut separate_loading = App::new();
+        assert!(!separate_loading.world().contains_resource::<crate::run_game::GameplayApplication>());
+        update_application(&mut separate_loading).unwrap();
+    }
+
+    #[test]
+    fn synchronous_application_update_returns_the_actual_panic_text() {
+        let mut app = App::new();
+        app.add_systems(bevy_app::Startup, || -> () { panic!("required asset failed at its actual path"); });
+        let error = update_application(&mut app).unwrap_err();
+        assert!(error.to_string().contains("required asset failed at its actual path"));
+    }
+
+    fn vao_test_app() -> (App, country_core::asset_libraries::Handle<country_core::render::mesh::Mesh>) {
+        use country_core::{asset_libraries::{runtime::AssetLibraryRuntime,
+            mesh_library::{AssetMeshLibrary, MeshAsset}, vao_library::AssetVAOLibrary},
+            render::{mesh::Mesh, test_device::TestDevice}};
+        let mut app = App::new();
+        let device = std::sync::Arc::new(TestDevice(1));
+        app.insert_resource(AssetLibraryRuntime::new(device.clone(), device));
+        let meshes = AssetMeshLibrary::new();
+        let mut mesh = Mesh::new("loading-update-publication-test");
+        mesh.indices = vec![0, 1, 2];
+        let handle = meshes.add(MeshAsset::new(mesh, None));
+        app.insert_resource(meshes);
+        app.insert_resource(AssetVAOLibrary::new());
+        app.world_mut().spawn(handle);
+        (app, handle)
+    }
+
+    #[test]
+    fn asset_registration_is_per_app_and_loading_update_applies_vao_commands() {
+        use country_core::{asset_libraries::Handle, render::vao::Vao};
+        // Each separate App represents an independent loading/gameplay owner.
+        // No Nani systems are installed here: the loading Update end applies.
+        for _ in 0..2 {
+            let (mut app, _) = vao_test_app();
+            install_asset_library_systems(&mut app);
+            install_asset_library_systems(&mut app);
+            for name in ["build_missing_vaos", "rebuild_vaos"] {
+                let count = app.get_schedule(bevy_app::Update).unwrap().graph().systems()
+                    .filter(|(_, system, _)| system.name().ends_with(name)).count();
+                assert_eq!(count, 1, "{name}");
+                let post_count = app.get_schedule(bevy_app::PostUpdate).unwrap().graph().systems()
+                    .filter(|(_, system, _)| system.name().ends_with(name)).count();
+                assert_eq!(post_count, 0, "{name} remained in PostUpdate");
+            }
+            app.update();
+            let mut query = app.world_mut().query::<&Handle<Vao>>();
+            assert_eq!(query.iter(app.world()).count(), 1);
+        }
+    }
+
+    #[test]
+    fn post_update_modified_queue_is_consumed_by_the_next_update_prefix() {
+        use bevy_ecs::{prelude::{ResMut, Resource}, schedule::IntoScheduleConfigs};
+        use country_core::asset_libraries::{Handle, mesh_library::AssetMeshLibrary,
+            vao_library::AssetVAOLibrary, runtime::AssetMaintenance};
+        use country_core::render::mesh::Mesh;
+        #[derive(Resource)]
+        struct OnePostUpdateChange { mesh: Handle<Mesh>, done: bool }
+        fn modify_mesh(mut change: ResMut<OnePostUpdateChange>, mut meshes: ResMut<AssetMeshLibrary>) {
+            if !change.done {
+                meshes.get_mut(change.mesh).unwrap().indices = vec![0, 1, 2, 0, 2, 1];
+                change.done = true;
+            }
+        }
+        let (mut app, mesh) = vao_test_app();
+        install_asset_library_systems(&mut app);
+        app.insert_resource(OnePostUpdateChange { mesh, done: false });
+        // Exercise the existing phase with a one-shot real modified-queue
+        // producer; this is not a test of the file watcher or JSON loader.
+        app.add_systems(bevy_app::PostUpdate, modify_mesh.in_set(AssetMaintenance::Reload));
+        app.update();
+        assert_eq!(app.world().resource::<AssetVAOLibrary>().get(mesh).unwrap().index_count, 3);
+        assert_eq!(app.world().resource::<AssetMeshLibrary>().modified_meshes, vec![mesh]);
+        app.update();
+        assert_eq!(app.world().resource::<AssetVAOLibrary>().get(mesh).unwrap().index_count, 6);
+        assert!(app.world().resource::<AssetMeshLibrary>().modified_meshes.is_empty());
+    }
 
     #[test]
     fn menu_cap_preserves_normal_game_limits_and_handles_disabled_or_nan_limits() {

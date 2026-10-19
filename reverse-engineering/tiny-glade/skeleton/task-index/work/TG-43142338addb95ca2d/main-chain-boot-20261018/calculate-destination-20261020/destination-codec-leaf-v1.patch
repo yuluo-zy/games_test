@@ -1,0 +1,433 @@
+--- a/crates/country-core/src/resources/walls/decorator.rs
++++ b/crates/country-core/src/resources/walls/decorator.rs
+@@ -13,6 +13,7 @@
+ use std::sync::{Arc, Condvar, Mutex};
+ 
+ use super::WallId;
++use utils::wall_space::WallSpaceCoord;
+ 
+ /// B DecoratorType：u8 判别。类型值域（O）：0x38 cottage 窗、0x39 gothic 窗、
+ /// 0x3a 第三窗型（不可上屋顶）、0x3b 窗类、0x3c..0x3e 楼梯顶可放、0x3f 角吸附型。
+@@ -435,26 +436,53 @@
+     }
+ }
+ 
+-/// B DecoratorDst：目的地联合，判别字节位于 +0x22。
+-/// - tag 0/1：墙（`is_wall` 0x1408334d0 = `tag<2`；墙 id 载荷位于 +0x00）
+-/// - tag 2：屋顶（`as_roof` 0x1408334e0 判别 ==2）
+-/// - tag 3：地形（`dst_as_terrain` 0x140833410 判别 ==3）
+-/// - tag 4：楼梯（`dst_as_stair` 0x140833470，I）
+-///
+-/// tag 0 与 tag 1 的差异（原子/复合墙）待取证（U）。WallId 未实现 serde，
+-/// 故本枚举不派生序列化。
+-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
++/// Actual wall destination payload written by B1412801f0/512B.
++/// The authority wall belongs to DecoratorStorageAddr; coord is not its ID.
++#[derive(Clone, Copy, Debug, PartialEq)]
++pub struct WallDecoratorDst {
++    pub coord: WallSpaceCoord,
++    pub platform: WallId,
++    pub relative_y: f32,
++    pub position: Vec3,
++    pub corner_attachment: u8,
++    pub bottom_as_door: bool,
++}
++
++#[derive(Clone, Copy, Debug, PartialEq)]
++pub struct RoofDecoratorDst {
++    pub coord: Vec2,
++    pub yaw: DecoratorRotationXZ,
++}
++
++#[derive(Clone, Copy, Debug, PartialEq)]
++pub struct TerrainDecoratorDst {
++    pub position_xz: Vec2,
++    pub yaw: DecoratorRotationXZ,
++}
++
++#[derive(Clone, Copy, Debug, PartialEq)]
++pub struct StairDecoratorDst {
++    pub first_id: u32,
++    pub second_id: u32,
++    /// Signed lateral coordinate and longitudinal U.
++    pub coordinate: Vec2,
++    pub yaw: DecoratorRotationXZ,
++}
++
++/// Canonical storage destination. Tags0/1/2/3/4 correspond to B byte+22;
++/// this logical Rust value does not impose the original union ABI.
++#[derive(Clone, Copy, Debug, PartialEq)]
+ pub enum DecoratorDst {
+     /// tag 0：墙目的地。
+-    Wall(WallId),
++    Wall(WallDecoratorDst),
+     /// tag 1：墙目的地（复合墙，同存储桶；差异 U）。
+-    WallCompound(WallId),
++    WallCompound(WallDecoratorDst),
+     /// tag 2：屋顶目的地。
+-    Roof,
++    Roof(RoofDecoratorDst),
+     /// tag 3：地形目的地。
+-    Terrain,
++    Terrain(TerrainDecoratorDst),
+     /// tag 4：楼梯目的地。
+-    Stair,
++    Stair(StairDecoratorDst),
+ }
+ 
+ impl DecoratorDst {
+@@ -463,9 +491,9 @@
+         match self {
+             DecoratorDst::Wall(_) => 0,
+             DecoratorDst::WallCompound(_) => 1,
+-            DecoratorDst::Roof => 2,
+-            DecoratorDst::Terrain => 3,
+-            DecoratorDst::Stair => 4,
++            DecoratorDst::Roof(_) => 2,
++            DecoratorDst::Terrain(_) => 3,
++            DecoratorDst::Stair(_) => 4,
+         }
+     }
+ 
+@@ -475,37 +503,26 @@
+     }
+ 
+     /// 0x1408334e0（O）：tag==2 → &self，否则 panic（行 0x28）。
+-    pub fn as_roof(&self) -> &Self {
+-        if matches!(self, DecoratorDst::Roof) {
+-            self
+-        } else {
+-            panic!("DecoratorDst::as_roof: not a roof destination")
++    pub fn as_roof(&self) -> &RoofDecoratorDst {
++        match self {
++            Self::Roof(roof) => roof,
++            _ => panic!("DecoratorDst::as_roof: not a roof destination"),
+         }
+     }
+ 
+     /// 0x140833510（O）：tag<2 → &self，否则 panic。
+-    pub fn as_wall(&self) -> &Self {
+-        if self.is_wall() {
+-            self
+-        } else {
+-            panic!("DecoratorDst::as_wall: not a wall destination")
++    pub fn as_wall(&self) -> &WallDecoratorDst {
++        match self {
++            Self::Wall(wall) | Self::WallCompound(wall) => wall,
++            _ => panic!("DecoratorDst::as_wall: not a wall destination"),
+         }
+     }
+ 
+     /// 0x140833540（O）：tag<2 → &mut self，否则 unreachable。
+-    pub fn as_wall_mut(&mut self) -> &mut Self {
+-        if self.is_wall() {
+-            self
+-        } else {
+-            unreachable!("DecoratorDst::as_wall_mut: not a wall destination")
+-        }
+-    }
+-
+-    /// 墙 id 载荷（tag 0/1）。I：复合墙载荷语义待取证。
+-    pub fn wall_id(self) -> WallId {
++    pub fn as_wall_mut(&mut self) -> &mut WallDecoratorDst {
+         match self {
+-            DecoratorDst::Wall(id) | DecoratorDst::WallCompound(id) => id,
+-            _ => panic!("DecoratorDst::wall_id: not a wall destination"),
++            Self::Wall(wall) | Self::WallCompound(wall) => wall,
++            _ => unreachable!("DecoratorDst::as_wall_mut: not a wall destination"),
+         }
+     }
+ }
+@@ -526,7 +543,7 @@
+ #[repr(C)]
+ #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+ pub struct DecoratorInfo {
+-    /// +0x00：目的墙 id（WallId），dst tag<=1 有效。
++    /// +0x00：destination payload (wall/roof coordinates, terrain XZ, or stair IDs).
+     pub dst_wall: u64,
+     /// +0x08：目的次级 id。
+     pub dst_secondary: u64,
+@@ -578,6 +595,101 @@
+     #[inline]
+     pub fn dst_tag(self) -> u8 {
+         ((self.u20 >> 16) & 0xff) as u8
++    }
++
++    /// Decode only the first two f32 words. Original wall/default readers
++    /// perform their own tag dispatch, including raw tags outside the typed Dst.
++    pub fn wall_space_coord(&self) -> WallSpaceCoord {
++        WallSpaceCoord::new_unchecked(
++            f32::from_bits(self.dst_wall as u32),
++            f32::from_bits((self.dst_wall >> 32) as u32),
++        )
++    }
++
++    /// Read only the defined payload of the selected canonical destination.
++    /// Raw padding is never interpreted as a field or normalized.
++    pub fn destination(&self) -> DecoratorDst {
++        let coord = self.wall_space_coord();
++        match self.dst_tag() {
++            tag @ (0 | 1) => {
++                let bottom_as_door = match (self.u20 >> 8) as u8 {
++                    0 => false,
++                    1 => true,
++                    value => panic!("invalid wall destination boolean {value}"),
++                };
++                let wall = WallDecoratorDst {
++                    coord,
++                    platform: WallId(self.dst_secondary),
++                    relative_y: f32::from_bits(self.dst_payload as u32),
++                    position: Vec3::new(
++                        f32::from_bits((self.dst_payload >> 32) as u32),
++                        f32::from_bits(self.u18 as u32),
++                        f32::from_bits((self.u18 >> 32) as u32),
++                    ),
++                    corner_attachment: self.u20 as u8,
++                    bottom_as_door,
++                };
++                if tag == 0 { DecoratorDst::Wall(wall) } else { DecoratorDst::WallCompound(wall) }
++            }
++            2 => DecoratorDst::Roof(RoofDecoratorDst {
++                coord: Vec2::new(coord.u, coord.y),
++                yaw: DecoratorRotationXZ(f32::from_bits(self.dst_secondary as u32)),
++            }),
++            3 => DecoratorDst::Terrain(TerrainDecoratorDst {
++                position_xz: Vec2::new(coord.u, coord.y),
++                yaw: DecoratorRotationXZ(f32::from_bits(self.dst_secondary as u32)),
++            }),
++            4 => DecoratorDst::Stair(StairDecoratorDst {
++                first_id: self.dst_wall as u32,
++                second_id: (self.dst_wall >> 32) as u32,
++                coordinate: Vec2::new(
++                    f32::from_bits(self.dst_secondary as u32),
++                    f32::from_bits((self.dst_secondary >> 32) as u32),
++                ),
++                yaw: DecoratorRotationXZ(f32::from_bits(self.dst_payload as u32)),
++            }),
++            tag => panic!("invalid decorator destination tag {tag}"),
++        }
++    }
++
++    /// Update only bytes written for this variant by original calculate_move_dst.
++    /// All other Info fields and variant padding retain their previous bits.
++    pub fn set_destination(&mut self, destination: DecoratorDst) {
++        fn pair(first: f32, second: f32) -> u64 {
++            u64::from(first.to_bits()) | (u64::from(second.to_bits()) << 32)
++        }
++        let tag = destination.tag();
++        match destination {
++            DecoratorDst::Wall(wall) | DecoratorDst::WallCompound(wall) => {
++                self.dst_wall = pair(wall.coord.u, wall.coord.y);
++                self.dst_secondary = wall.platform.0;
++                self.dst_payload = pair(wall.relative_y, wall.position.x);
++                self.u18 = pair(wall.position.y, wall.position.z);
++                self.u20 = (self.u20 & 0xff00_0000)
++                    | u32::from(wall.corner_attachment)
++                    | (u32::from(wall.bottom_as_door) << 8)
++                    | (u32::from(tag) << 16);
++            }
++            DecoratorDst::Roof(roof) => {
++                self.dst_wall = pair(roof.coord.x, roof.coord.y);
++                self.dst_secondary = (self.dst_secondary & 0xffff_ffff_0000_0000)
++                    | u64::from(roof.yaw.0.to_bits());
++                self.u20 = (self.u20 & 0xff00_ffff) | (u32::from(tag) << 16);
++            }
++            DecoratorDst::Terrain(terrain) => {
++                self.dst_wall = pair(terrain.position_xz.x, terrain.position_xz.y);
++                self.dst_secondary = (self.dst_secondary & 0xffff_ffff_0000_0000)
++                    | u64::from(terrain.yaw.0.to_bits());
++                self.u20 = (self.u20 & 0xff00_ffff) | (u32::from(tag) << 16);
++            }
++            DecoratorDst::Stair(stair) => {
++                self.dst_wall = u64::from(stair.first_id) | (u64::from(stair.second_id) << 32);
++                self.dst_secondary = pair(stair.coordinate.x, stair.coordinate.y);
++                self.dst_payload = (self.dst_payload & 0xffff_ffff_0000_0000)
++                    | u64::from(stair.yaw.0.to_bits());
++                self.u20 = (self.u20 & 0xff00_ffff) | (u32::from(tag) << 16);
++            }
++        }
+     }
+ 
+     /// +0x44：rank。
+@@ -1105,12 +1217,175 @@
+ 
+     #[test]
+     fn decorator_dst_is_wall_and_tags() {
+-        assert!(DecoratorDst::Wall(WallId(1)).is_wall());
+-        assert!(DecoratorDst::WallCompound(WallId(1)).is_wall());
+-        assert!(!DecoratorDst::Roof.is_wall());
+-        assert_eq!(DecoratorDst::Terrain.tag(), 3);
+-        assert_eq!(DecoratorDst::Stair.tag(), 4);
+-        assert_eq!(DecoratorDst::Wall(WallId(1)).wall_id(), WallId(1));
++        let wall = destination_wall_fixture();
++        let mut dst = DecoratorDst::Wall(wall);
++        assert!(dst.is_wall());
++        assert_eq!(*dst.as_wall(), wall);
++        dst.as_wall_mut().coord.y = 9.0;
++        assert_eq!(dst.as_wall().coord.y, 9.0);
++        assert!(DecoratorDst::WallCompound(wall).is_wall());
++        let roof = DecoratorDst::Roof(RoofDecoratorDst {
++            coord: Vec2::new(0.25, 0.8),
++            yaw: DecoratorRotationXZ(0.7),
++        });
++        assert!(!roof.is_wall());
++        assert_eq!(roof.tag(), 2);
++        assert_eq!(roof.as_roof().coord, Vec2::new(0.25, 0.8));
++        assert!(std::panic::catch_unwind(|| roof.as_wall()).is_err());
++        assert!(std::panic::catch_unwind(|| dst.as_roof()).is_err());
++        // The authority wall belongs to the storage address. Destination
++        // coordinates and optional platform must not become that owner.
++        let storage = super::super::decorator_storage::DecoratorStorageAddr::Wall(WallId(77));
++        assert_eq!(storage.try_as_wall(), Some(WallId(77)));
++        assert_ne!(storage.try_as_wall(), Some(wall.platform));
++    }
++
++    fn destination_wall_fixture() -> WallDecoratorDst {
++        WallDecoratorDst {
++            coord: WallSpaceCoord::new_unchecked(1.25, -2.5),
++            platform: WallId(0x0002_0003_0004_0005),
++            relative_y: 0.5,
++            position: Vec3::new(1.0, 2.0, 3.0),
++            corner_attachment: 3,
++            bottom_as_door: true,
++        }
++    }
++
++    fn destination_sentinel() -> DecoratorInfo {
++        DecoratorInfo {
++            dst_wall: 0x1716_1514_1312_1110,
++            dst_secondary: 0x1f1e_1d1c_1b1a_1918,
++            dst_payload: 0x2726_2524_2322_2120,
++            u18: 0x2f2e_2d2c_2b2a_2928,
++            u20: 0x3332_3130,
++            u24: 0x3736_3534,
++            u28: 0x3b3a_3938,
++            decorator_id: 0x3f3e_3d3c,
++            u30: 0x4746_4544_4342_4140,
++            u38: 0x4b4a_4948,
++            u3c: 0x4f4e_4d4c,
++            u40: 0x5352_5150,
++            rank: 0x54,
++            u45: 0x55,
++            ty: 0x56,
++            state: 0x57,
++        }
++    }
++
++    fn destination_info_bytes(info: &DecoratorInfo) -> Vec<u8> {
++        let mut bytes = Vec::with_capacity(0x48);
++        for word in [info.dst_wall, info.dst_secondary, info.dst_payload, info.u18] {
++            bytes.extend_from_slice(&word.to_le_bytes());
++        }
++        for word in [info.u20, info.u24, info.u28, info.decorator_id] {
++            bytes.extend_from_slice(&word.to_le_bytes());
++        }
++        bytes.extend_from_slice(&info.u30.to_le_bytes());
++        for word in [info.u38, info.u3c, info.u40] {
++            bytes.extend_from_slice(&word.to_le_bytes());
++        }
++        bytes.extend_from_slice(&[info.rank, info.u45, info.ty, info.state]);
++        bytes
++    }
++
++    fn assert_destination_bytes(destination: DecoratorDst, writes: &[(usize, &[u8])]) {
++        let mut info = destination_sentinel();
++        let mut expected = destination_info_bytes(&info);
++        for &(offset, bytes) in writes {
++            expected[offset..offset + bytes.len()].copy_from_slice(bytes);
++        }
++        info.set_destination(destination);
++        assert_eq!(destination_info_bytes(&info), expected);
++        // Decode/encode must preserve payload bits, including nonfinite yaw
++        // and signed zero; PartialEq would not check the NaN roundtrip.
++        let decoded = info.destination();
++        let mut roundtrip = destination_sentinel();
++        roundtrip.set_destination(decoded);
++        assert_eq!(destination_info_bytes(&roundtrip), expected);
++    }
++
++    #[test]
++    fn destination_wall_codec_preserves_defined_bytes_and_all_other_info() {
++        let bytes = [
++            0, 0, 0xa0, 0x3f, 0, 0, 0x20, 0xc0,
++            5, 0, 4, 0, 3, 0, 2, 0,
++            0, 0, 0, 0x3f, 0, 0, 0x80, 0x3f,
++            0, 0, 0, 0x40, 0, 0, 0x40, 0x40,
++        ];
++        assert_destination_bytes(
++            DecoratorDst::Wall(destination_wall_fixture()),
++            &[(0, &bytes), (0x20, &[3, 1, 0])],
++        );
++        let mut compound = destination_wall_fixture();
++        compound.bottom_as_door = false;
++        assert_destination_bytes(
++            DecoratorDst::WallCompound(compound),
++            &[(0, &bytes), (0x20, &[3, 0, 1])],
++        );
++    }
++
++    #[test]
++    fn destination_roof_and_terrain_codec_preserves_yaw_bits_and_padding() {
++        assert_destination_bytes(
++            DecoratorDst::Roof(RoofDecoratorDst {
++                coord: Vec2::new(0.25, 0.8),
++                yaw: DecoratorRotationXZ(f32::from_bits(0x7fc1_2345)),
++            }),
++            &[(0, &[0, 0, 0x80, 0x3e, 0xcd, 0xcc, 0x4c, 0x3f]),
++              (8, &[0x45, 0x23, 0xc1, 0x7f]), (0x22, &[2])],
++        );
++        assert_destination_bytes(
++            DecoratorDst::Terrain(TerrainDecoratorDst {
++                position_xz: Vec2::new(-0.0, 1.0),
++                yaw: DecoratorRotationXZ(-7.5),
++            }),
++            &[(0, &[0, 0, 0, 0x80, 0, 0, 0x80, 0x3f]),
++              (8, &[0, 0, 0xf0, 0xc0]), (0x22, &[3])],
++        );
++    }
++
++    #[test]
++    fn destination_stair_codec_preserves_both_ids_coordinates_and_padding() {
++        assert_destination_bytes(
++            DecoratorDst::Stair(StairDecoratorDst {
++                first_id: 0x0123_4567,
++                second_id: 0x89ab_cdef,
++                coordinate: Vec2::new(f32::from_bits(0x7fc1_2345), -0.0),
++                yaw: DecoratorRotationXZ(-7.5),
++            }),
++            &[(0, &[0x67, 0x45, 0x23, 1, 0xef, 0xcd, 0xab, 0x89,
++                     0x45, 0x23, 0xc1, 0x7f, 0, 0, 0, 0x80,
++                     0, 0, 0xf0, 0xc0]), (0x22, &[4])],
++        );
++    }
++
++    #[test]
++    fn destination_decoder_rejects_malformed_bool_and_unknown_tag() {
++        for tag in [0u8, 1] {
++            for boolean in [2u8, 0xff] {
++                let mut info = destination_sentinel();
++                info.u20 = u32::from(tag) << 16 | u32::from(boolean) << 8;
++                assert!(std::panic::catch_unwind(|| info.destination()).is_err());
++            }
++        }
++        for tag in [5u8, 0xff] {
++            let mut info = destination_sentinel();
++            info.u20 = u32::from(tag) << 16;
++            assert!(std::panic::catch_unwind(|| info.destination()).is_err());
++        }
++    }
++
++    #[test]
++    fn raw_wall_coordinate_accessor_keeps_original_default_tag_and_nan_domain() {
++        let info = DecoratorInfo {
++            dst_wall: 0x7fc1_2345_8000_0000,
++            u20: 0xff << 16,
++            ..DecoratorInfo::default()
++        };
++        let coordinate = info.wall_space_coord();
++        assert_eq!(coordinate.u.to_bits(), 0x8000_0000);
++        assert_eq!(coordinate.y.to_bits(), 0x7fc1_2345);
++        assert_eq!(info.dst_tag(), 0xff);
+     }
+ 
+     #[test]

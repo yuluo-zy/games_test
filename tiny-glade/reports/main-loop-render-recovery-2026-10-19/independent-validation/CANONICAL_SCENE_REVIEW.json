@@ -1,0 +1,70 @@
+{
+  "reviewed_at_utc": "2026-10-19T15:46:47.427021+00:00",
+  "manifest": {
+    "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-44dd51071513dba304/main-chain-boot-20261018/canonical-scene-20261019/canonical-scene-manifest.json",
+    "sha256": "4fbf2cc695c20608bdb4a2daa202899a18546ba2a0522893d8eba5188b9f119d"
+  },
+  "verdict": "partial_passed_scoped_cloth_changes_required",
+  "source_inputs": [
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-44dd51071513dba304/main-chain-boot-20261018/canonical-scene-20261019/draw_callbacks_a.rs.candidate",
+      "sha256": "ff5cc11aba242e26c31c0dcf1d4f5afa25d3e6d52abe890bb1bc77734dc4d4e8"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-44dd51071513dba304/main-chain-boot-20261018/canonical-scene-20261019/draw_callbacks_b.rs.candidate",
+      "sha256": "0dbfe2b24320ccf2523ec16875f9cb5201a79ed6f5dca58b2144d0f7d44d8cc8"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-44dd51071513dba304/main-chain-boot-20261018/canonical-scene-20261019/draw_callbacks_a_views.rs.candidate",
+      "sha256": "56b86efce12426ae3febfec43d0be2b25a35ca642d110625951b312e3534474f"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-44dd51071513dba304/main-chain-boot-20261018/canonical-scene-20261019/draw_callbacks_a_tests.rs.candidate",
+      "sha256": "5870b91e0b073cf5794e8f698a2398af115c57bd0b55f15fbacb0da182b23746"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-70b16508540e9ee07b/boot-leaf-20261018/canonical-scene-20261019/drawable.rs.candidate",
+      "sha256": "a99c0af7614c0437791f23ed84355407909e9a2518941cc5ea809fe04ed46015"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-ab197f381ed7615ce6/boot-leaf-20261018/canonical-scene-20261019/tree_edit.rs.candidate",
+      "sha256": "7401be60d481e9fba96ee8ccf52de66ab65725aac530fb2a95d8da05d71d4cf3"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a433e0de1f7930df66/boot-leaf-20261018/canonical-scene-20261019/tree_animation.rs.candidate",
+      "sha256": "bc965b0de408d20d4fe65fa83f1b0a6de6ae8b532a5b69285afedd11cf7b9cfd"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-35af5617310f31b9df/boot-leaf-20261018/canonical-scene-20261019/lib.rs.candidate",
+      "sha256": "55d42861bd6f926e68604bf631a6b71754fcacdd18f674c910d9f1c04ac5f2d1"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-c459c7f73345e24709/main-chain-boot-20261018/scene-startup-20261019/gameplay_startup.rs.candidate",
+      "sha256": "e326a82d7982ee452c3ecdbb9b32d737f3f77313cfb28d62c8292b75e3b39c9c"
+    }
+  ],
+  "scoped_passed": [
+    "Canonical Weather/MainCamera/AppMode/ActiveSession/Rocky resource consumers replace shadow View identities",
+    "Shared canopy progress/smoothstep replaces Local surrogate; current caller scan finds no other live tuple .0 caller",
+    "Original tag9 subtype6 subtraction; MAXSS/MINSS and two-field writes verified in retained original handplaced assembly",
+    "Original ForestPlugin full PDB tuple proves manage, forest, handplaced chain_ignore_deferred; byte0x24 proves set36",
+    "Preserves current Sheep, PrevTransform, Prefab placement48/metadata88 and ForestTree80 fields; callback_b bareCR normalization is not semantic patch scope"
+  ],
+  "findings": [
+    {
+      "severity": "blocking_for_cloth_closure",
+      "file": "tiny-glade/crates/systems/decorator/src/utils/visual_entity_builder.rs",
+      "lines": [
+        208,
+        213,
+        239,
+        663,
+        669
+      ],
+      "description": "Actual builder still inserts pending_core raw RoofFlagCloth([u8;4])/WallFlagCloth([u8;0x14]), while callbacks re-export new core components::drawable types. TypeIds differ, so actual entities cannot satisfy callbacks. Migrate actual producer with verified field interpretation before accepting cloth closure. Avoid unchecked bool transmute."
+    }
+  ],
+  "evidence_scope": "Retained B RNE/PDB facts only; no C/native full-game equivalence",
+  "runtime_executed_by_reviewer": false,
+  "integration_note": "Verify all raw before hashes. callbacks_b normalized diff is review-only; copy matching candidate rather than apply normalized patch."
+}

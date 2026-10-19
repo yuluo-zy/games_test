@@ -1,0 +1,108 @@
+{
+  "reviewer": "07",
+  "verdict": "passed_scoped_design",
+  "design_manifest": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-f7070bb3446b7a37eb/building-audit-20261018/bounded-ray-validation-20261020/design-frozen-manifest.json",
+    "sha256": "0a166bcb588d8d57d9421c1e7ea5675795ef8afbd9abfa512e5ed8c3f7c3a8fd"
+  },
+  "design_sha256": "0db8e6cf6ae0fa6ab02ec4c3991286d6a499f1082bda268147e003ff5160ed5e",
+  "identity_checks": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-f7070bb3446b7a37eb/building-audit-20261018/bounded-ray-validation-20261020/DESIGN.md",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-f7070bb3446b7a37eb/building-audit-20261018/bounded-ray-validation-20261020/external-inputs.json",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-f7070bb3446b7a37eb/building-audit-20261018/bounded-ray-validation-20261020/native-manifest.json",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-f7070bb3446b7a37eb/building-audit-20261018/bounded-ray-validation-20261020/native-pack/bounded-ray-8cd5b0.asm.txt",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-f7070bb3446b7a37eb/building-audit-20261018/bounded-ray-validation-20261020/native-pack/bounded-ray-8cd5b0.json",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-f7070bb3446b7a37eb/building-audit-20261018/bounded-ray-validation-20261020/native-pack/bounded-ray-8cdf80.asm.txt",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-f7070bb3446b7a37eb/building-audit-20261018/bounded-ray-validation-20261020/native-pack/bounded-ray-8cdf80.json",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-f7070bb3446b7a37eb/building-audit-20261018/bounded-ray-validation-20261020/native-pack/report.json",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-f7070bb3446b7a37eb/building-audit-20261018/bounded-ray-validation-20261020/target-procedures.json",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-f7070bb3446b7a37eb/building-audit-20261018/bounded-ray-validation-20261020/workspace-method-references.txt",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-28b3a129d231927d1f/cloth-visual-state-20261020/consumer-primitives-v1/native-manifest-v1.json",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-28b3a129d231927d1f/cloth-visual-state-20261020/consumer-primitives-v1/1407e1430-full-B-rne.asm",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/.cargo/git/checkouts/rapier-40bda2dbc2e76d6e/7b5ece7/src/pipeline/query_pipeline/mod.rs",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/Cargo.toml",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/Cargo.lock",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/Cargo.toml",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-f7070bb3446b7a37eb/building-audit-20261018/collision-validation-20261020/candidate-frozen-manifest-v1.json",
+      "matches": true
+    }
+  ],
+  "native_checks": [
+    {
+      "start_va": "0x1408cdf80",
+      "length": 503,
+      "all_bytes_continuous_direct_PE": true
+    },
+    {
+      "start_va": "0x1408cd5b0",
+      "length": 5,
+      "all_bytes_continuous_direct_PE": true
+    }
+  ],
+  "findings": [
+    "Original finite ray caller passes unchanged Ray and exact distance - 0.01 as XMM2 max_toi. Native 5-byte World tailjump and full503-byte Rapier body preserve XMM2 at every selected slot, solid=true, ascending mask/17 slots, first-hit stop.",
+    "Narrow public native-only World API is appropriate. Extend existing private helper max_toi, preserve current unbounded World/Raycasting actual callers through explicit f32::MAX, terrain-first compatibility untouched.",
+    "No direction scaling/normalization/clamping/implicit flush/source changes, no nonphysics false-success. Negative/NaN behavior is forwarded to dependency, not invented by adapter.",
+    "Generate separate source delta only from exact accepted post-overlap source f6cfabe0 or later accepted hash; never overwrite source from obsolete e06d before."
+  ],
+  "required_future_tests": [
+    "Actual canonical upsert/flush and Rapier finite versus unbounded beyond endpoint; exact endpoint threshold.",
+    "Late slot16 and mask filtering retain max_toi; nonunit direction proves parametric rather than physical-distance reinterpretation.",
+    "Starting inside with max_toi0 preserves solid=true.",
+    "Existing overlap and current unbounded caller regressions, native feature typecheck."
+  ],
+  "limits": [
+    "Design only; no implementation/test execution by reviewer.",
+    "Cloth numeric/consumer and game registration still separate.",
+    "No broad query-policy/original-target/runtime acceptance."
+  ]
+}

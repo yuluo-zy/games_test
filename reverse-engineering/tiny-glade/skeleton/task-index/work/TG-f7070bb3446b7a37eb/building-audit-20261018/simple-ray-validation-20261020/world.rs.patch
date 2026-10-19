@@ -1,0 +1,183 @@
+--- /Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/collision/world.rs
++++ /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-f7070bb3446b7a37eb/building-audit-20261018/simple-ray-validation-20261020/candidate/world.rs
+@@ -1593,7 +1593,20 @@
+         dir: glam::Vec3,
+         mask: u32,
+     ) -> RaycastSimpleResult {
+-        Rapier::raycast_simple(self, origin, dir, mask)
++        Rapier::raycast_simple(self, origin, dir, f32::MAX, mask)
++    }
++
++    /// B `raycast_simple` accepts an explicit parametric TOI bound. The actual
++    /// Snap caller passes 1.0; direction and bound retain their original scale.
++    #[cfg(feature = "native-physics")]
++    pub fn raycast_simple_with_max_toi(
++        &self,
++        origin: glam::Vec3,
++        dir: glam::Vec3,
++        max_toi: f32,
++        mask: u32,
++    ) -> RaycastSimpleResult {
++        Rapier::raycast_simple(self, origin, dir, max_toi, mask)
+     }
+ 
+     /// `RaycastWorld::raycast_simple`（非 native-physics 壳）。
+@@ -1618,7 +1631,7 @@
+         mask: u32,
+         _excluded: SubworldColliderHandle,
+     ) -> RaycastSimpleResult {
+-        Rapier::raycast_simple(self, origin, dir, mask)
++        Rapier::raycast_simple(self, origin, dir, f32::MAX, mask)
+     }
+ 
+     /// `RaycastWorld::raycast_simple_exclude_wall_id`（非 native-physics 壳）。
+@@ -2188,6 +2201,7 @@
+         world: &RaycastWorld,
+         origin: glam::Vec3,
+         dir: glam::Vec3,
++        max_toi: f32,
+         mask: u32,
+     ) -> RaycastSimpleResult {
+         let ray = Ray::new(
+@@ -2195,7 +2209,7 @@
+             Vector::new(dir.x, dir.y, dir.z),
+         );
+         let mut result = RaycastSimpleResult::miss();
+-        let mut maximum_toi = f32::MAX;
++        let mut maximum_toi = max_toi;
+         for (slot_index, slot) in world.slots.iter().enumerate() {
+             if (mask >> slot_index) & 1 == 0 {
+                 continue;
+@@ -3953,3 +3967,132 @@
+         assert!(world.intersects_any_with_max_toi(Vec3::ZERO, Vec3::Z, 0.0, 1));
+     }
+ }
++
++
++#[cfg(all(test, feature = "native-physics"))]
++mod finite_simple_ray_regressions {
++    use super::*;
++    use glam::{Quat, Vec3};
++    use std::collections::HashMap;
++
++    fn insert_box(
++        world: &mut RaycastWorld,
++        map: &mut HashMap<u32, ColliderMeshInstance>,
++        key: u32,
++        source: RaycastGeoSource,
++        center: Vec3,
++    ) {
++        assert!(matches!(
++            upsert_collider(
++                world,
++                map,
++                key,
++                source,
++                Arc::new(RaycastMeshData::new_cuboid_at(Vec3::ONE, Vec3::ZERO)),
++                center,
++                Quat::IDENTITY,
++            ),
++            ColliderUpsert::Inserted { .. }
++        ));
++    }
++
++    fn assert_source(hit: &RaycastSimpleResult, expected: RaycastGeoSource) {
++        assert!(!hit.is_miss());
++        let words = std::array::from_fn(|i| {
++            u64::from_le_bytes(expected.0[i * 8..i * 8 + 8].try_into().unwrap())
++        });
++        assert_eq!(hit.handle, words);
++    }
++
++    #[test]
++    fn bounded_source13_miss_and_endpoint_keep_old_max_entry() {
++        let mut world = RaycastWorld::new();
++        let mut map = HashMap::new();
++        let source = RaycastGeoSource::Slot13;
++        insert_box(&mut world, &mut map, 1, source, Vec3::Y * -1.5);
++        world.flush_colliders();
++        let origin = Vec3::Y;
++        let direction = Vec3::new(-0.0, -1.0, -0.0);
++        let mask = 0x1000;
++        assert!(world.raycast_simple_with_max_toi(origin, direction, 1.0, mask).is_miss());
++        let old = world.raycast_simple(origin, direction, mask);
++        assert_source(&old, source);
++        assert_eq!(old.toi, 2.0);
++        let hit = world.raycast_simple_with_max_toi(origin, direction, 2.0, mask);
++        assert_source(&hit, source);
++        assert_eq!(hit.position, Vec3::Y * -1.0);
++        assert_eq!(hit.toi, 2.0);
++        // The existing exclude entry retains its previous forwarding behavior.
++        assert_eq!(world.raycast_simple_exclude_wall_id(origin, direction, mask,
++            SubworldColliderHandle::new(0, 0, 0)), old);
++    }
++
++    #[test]
++    fn finite_hit_returns_all_canonical_source_words_and_actual_pose() {
++        use crate::resources::walls::decorator::DecoratorId;
++        use crate::resources::walls::decorator_storage::DecoratorStorageAddr;
++        use crate::resources::walls::WallId;
++        let mut world = RaycastWorld::new();
++        let mut map = HashMap::new();
++        let source = RaycastGeoSource::decorator(
++            DecoratorId(0xfedc_ba98), DecoratorStorageAddr::Wall(WallId(0x1234_5678_9abc_def0)));
++        insert_box(&mut world, &mut map, 1, source, Vec3::new(8.0, 2.0, 5.0));
++        world.flush_colliders();
++        let origin = Vec3::new(8.0, 2.0, 1.0);
++        let hit = world.raycast_simple_with_max_toi(origin, Vec3::Z, 4.0, 1 << source.subworld());
++        assert_source(&hit, source);
++        assert_eq!(hit.toi, 3.5);
++        assert_eq!(hit.position, Vec3::new(8.0, 2.0, 4.5));
++    }
++
++    #[test]
++    fn nearest_hit_tightens_bound_and_equal_later_slot_replaces() {
++        let mut world = RaycastWorld::new();
++        let mut map = HashMap::new();
++        insert_box(&mut world, &mut map, 1, RaycastGeoSource::Slot0, Vec3::Z * 3.0);
++        insert_box(&mut world, &mut map, 2, RaycastGeoSource::Slot16, Vec3::Z * 6.0);
++        world.flush_colliders();
++        let mask = 1 | (1 << 16);
++        let hit = world.raycast_simple_with_max_toi(Vec3::ZERO, Vec3::Z, 10.0, mask);
++        assert_source(&hit, RaycastGeoSource::Slot0);
++        assert_eq!(hit.toi, 2.5);
++        assert_eq!(hit.position, Vec3::Z * 2.5);
++        assert!(remove_collider(&mut world, &mut map, &2).is_some());
++        insert_box(&mut world, &mut map, 3, RaycastGeoSource::Slot16, Vec3::Z * 3.0);
++        world.flush_colliders();
++        let tie = world.raycast_simple_with_max_toi(Vec3::ZERO, Vec3::Z, 10.0, mask);
++        assert_source(&tie, RaycastGeoSource::Slot16);
++        assert_eq!(tie.toi, 2.5);
++        assert_eq!(tie.position, hit.position);
++    }
++
++    #[test]
++    fn bound_and_mask_select_last_subworld_with_parametric_direction() {
++        let mut world = RaycastWorld::new();
++        let mut map = HashMap::new();
++        insert_box(&mut world, &mut map, 1, RaycastGeoSource::Slot0, Vec3::Z);
++        insert_box(&mut world, &mut map, 2, RaycastGeoSource::Slot16, Vec3::Z * 4.0);
++        world.flush_colliders();
++        let direction = Vec3::Z * 2.0;
++        let mask = 1 << 16;
++        assert!(world.raycast_simple_with_max_toi(Vec3::ZERO, direction, 1.5, mask).is_miss());
++        let hit = world.raycast_simple_with_max_toi(Vec3::ZERO, direction, 1.75, mask);
++        assert_source(&hit, RaycastGeoSource::Slot16);
++        assert_eq!(hit.toi, 1.75);
++        assert_eq!(hit.position, Vec3::Z * 3.5);
++        assert!(world.raycast_simple_with_max_toi(Vec3::ZERO, direction, 10.0, 0).is_miss());
++        assert!(world.raycast_simple_with_max_toi(Vec3::ZERO, direction, 10.0, 1 << 31).is_miss());
++    }
++
++    #[test]
++    fn solid_query_starts_inside_at_zero_bound() {
++        let mut world = RaycastWorld::new();
++        let mut map = HashMap::new();
++        insert_box(&mut world, &mut map, 1, RaycastGeoSource::Slot0, Vec3::ZERO);
++        world.flush_colliders();
++        let hit = world.raycast_simple_with_max_toi(Vec3::ZERO, Vec3::Z, 0.0, 1);
++        assert_source(&hit, RaycastGeoSource::Slot0);
++        assert_eq!(hit.toi, 0.0);
++        assert_eq!(hit.position, Vec3::ZERO);
++    }
++}

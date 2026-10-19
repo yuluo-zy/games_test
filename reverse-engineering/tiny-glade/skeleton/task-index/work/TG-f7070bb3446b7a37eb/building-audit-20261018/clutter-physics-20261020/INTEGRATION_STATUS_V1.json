@@ -1,0 +1,74 @@
+{
+  "status": "root_integrated_paired_sources_and_phase_design_api_checked_only",
+  "observed_at_utc": "2026-10-19T17:23:28.651144+00:00",
+  "root_integration_event": {
+    "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/validation/clutter-physics-integration-v1.json",
+    "sha256": "cc9ec058853cc6b3f4ffceca5e48a6b1fbe632429dcfa6a953714f1f0d4e8697"
+  },
+  "production_sources": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/collision/world.rs",
+      "sha256": "e06d44296c6b764221ce81bbedf5ef77fa66e25323a1d9e60a3b914657252a1c"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/collision/intersect_meshes.rs",
+      "sha256": "7603d2899c6374fd15fca0e6e6d62ceef30df49d84e36184d0a83a48c7efc14a"
+    }
+  ],
+  "phase_design": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-69cc2f973d7c14cb28/scene-clutter-producer-20261020/COLLIDER_ONLY_PHASE_DESIGN_V1.md",
+    "sha256": "8202216debf8ff413fabc7839c91e630179a7d54caa4f35babfbfa6c50f2a8a6",
+    "verdict": "design source-level owner and public API compatible; no phase implementation or runtime validation implied"
+  },
+  "interfaces": {
+    "new_cuboid_at": "(Vec3 full_dimensions, Vec3 local_translation) -> RaycastMeshData; native-physics; wrap in actual Arc at caller",
+    "decorator_source": "RaycastGeoSource::decorator(DecoratorId,DecoratorStorageAddr)->Self",
+    "interaction_source": "RaycastGeoSource::decorator_interaction(DecoratorId,DecoratorStorageAddr,u8)->Self; flags|4 legal4/5 assert; not Result",
+    "upsert": "(&mut RaycastWorld,&mut std::collections::HashMap<K,ColliderMeshInstance>,K,RaycastGeoSource,Arc<RaycastMeshData>,Vec3 external_position,Quat external_rotation)->ColliderUpsert",
+    "remove": "(&mut RaycastWorld,&mut std::collections::HashMap<K,ColliderMeshInstance>,&K)->Option<SubworldColliderHandle>",
+    "public_receipt_inspection": "get_collider_mesh(instance.registry_index,instance.generation)->&RaycastMesh; handle fields are separate Rapier identity",
+    "internal_receipt_helper": "registered_mesh_for_collider is pub(crate); scene-decorator phase must use its actual public upsert/remove interfaces"
+  },
+  "ownership_checks": [
+    "same App RaycastWorld owner specified, no Raycasting world substitution",
+    "existing DecoratorPhysicsColliders.first and second are independent std HashMap<DecoratorId,ColliderMeshInstance>",
+    "same DecoratorId may be present in both maps; actual global SlotMap keys are independently allocated by upsert",
+    "phase must not clone ColliderMeshInstance between maps or create registry key/default source itself",
+    "mesh-local translation is applied by canonical tuple builder once; supplied cached position/rotation are external placement"
+  ],
+  "sequence_checks": [
+    "same Arc current/prev identity is separate from canonical physics geometry-hash Kept",
+    "do not prevalidate second Unspecified before preceding first Mesh upsert",
+    "first disabled/unspecified leave first pending; second unspecified remains explicit failure",
+    "pending removals derive from each actual live map, then first remove loop before second"
+  ],
+  "validation": {
+    "new_focused_tests": 11,
+    "new_tests_run": false,
+    "upper_core_typechecked": false,
+    "phase_implementation_reviewed": false,
+    "cargo_or_gpu_run_by_author": false
+  },
+  "boundaries": [
+    "PHYSICS_DEBUG_LOG_ENABLE current Rust owner/API unknown; original diagnostic side effect remains a gap, never hardcoded false",
+    "prev snapshot scheduling unresolved by this API check",
+    "projection free-head is diagnostics only, never a complete recovered free chain",
+    "intersection business registration was not added",
+    "no live Edit/Reload, full world-frame or C-equivalence claim"
+  ],
+  "immutable_frozen_manifests": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-f7070bb3446b7a37eb/building-audit-20261018/clutter-physics-20261020/design-manifest.json",
+      "sha256": "f241a1895fdff13835dce7167efd28f79ec63cfc8f6f3ae52d151848d8fa6a24"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-f7070bb3446b7a37eb/building-audit-20261018/clutter-physics-20261020/candidate-manifest.json",
+      "sha256": "25ad6b364502a84378f0847b3142c13705b15974446cc056fbb265bdefd36cfb"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-f7070bb3446b7a37eb/building-audit-20261018/clutter-physics-20261020/paired-manifest.json",
+      "sha256": "7bff84bfafd2aaddf6cec8b60f26b730817e56dee2de0bebe20d273ed6c94119"
+    }
+  ],
+  "author_mutations": "only this new independent status file; no production/other-owner source/frozen artifact/claim lock changes"
+}

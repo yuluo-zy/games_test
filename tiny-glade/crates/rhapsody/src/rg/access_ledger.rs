@@ -1,6 +1,6 @@
 //! PassBuilder::add_resource_access 的整个访问账本收集合同。
 //! 直接使用访问码，不为 0x17/0x19/0x1d/0x1e 等未命名访问码猜测用途名称。
-use super::resource_info::AccessDeclaration;
+use super::resource_info::{AccessDeclaration, PreviousContentRead};
 use std::sync::atomic::{AtomicU32, Ordering};
 
 static NEXT_SYNC_GROUP: AtomicU32 = AtomicU32::new(2);
@@ -174,6 +174,7 @@ pub fn collect_resource_access_range_with_policy(
             reads_previous,
             contents_unused,
             allow_undefined_contents,
+            previous_content_read: PreviousContentRead::Inferred,
         });
         return Ok(LedgerUpdate::Appended { index });
     };
@@ -185,6 +186,7 @@ pub fn collect_resource_access_range_with_policy(
         // Any active binding to this same range still consumes its contents.
         merge_content_policy(
             &mut entries[previous_index],
+            access_code,
             reads_previous,
             contents_unused,
             allow_undefined_contents,
@@ -200,6 +202,7 @@ pub fn collect_resource_access_range_with_policy(
                 entries[previous_index].access_code = 0x1e;
                 merge_content_policy(
                     &mut entries[previous_index],
+                    access_code,
                     reads_previous,
                     contents_unused,
                     allow_undefined_contents,
@@ -212,6 +215,7 @@ pub fn collect_resource_access_range_with_policy(
                 entries[previous_index].access_code = 0x02;
                 merge_content_policy(
                     &mut entries[previous_index],
+                    access_code,
                     reads_previous,
                     contents_unused,
                     allow_undefined_contents,
@@ -227,8 +231,27 @@ pub fn collect_resource_access_range_with_policy(
     // 0x19/0x1a 后接 0x37 时，即使 group 不同也升级。
     // 必须先修改旧条，再追加新条，且两个 group 均清 0；ASCII '7' 是 0x37。
     if matches!(previous.access_code, 0x19 | 0x1a) && access_code == 0x37 {
+        let incoming = AccessDeclaration {
+            access_code,
+            reads_previous,
+            contents_unused,
+            allow_undefined_contents,
+            ..Default::default()
+        };
+        if !previous.valid_content_mode(false) || !incoming.valid_content_mode(true) {
+            return Err(IncompatibleAccess {
+                resource_index,
+                previous_access_code: previous.access_code,
+                previous_group: previous.synchronization_group,
+                new_access_code: access_code,
+                new_group: synchronization_group,
+            });
+        }
+        let previous_content = previous.content_read(false);
+        let incoming_content = incoming.content_read(true);
         entries[previous_index].access_code = 0x37;
         entries[previous_index].synchronization_group = 0;
+        entries[previous_index].previous_content_read = previous_content;
         entries[previous_index].reads_previous = true;
         entries[previous_index].contents_unused = false;
         entries[previous_index].allow_undefined_contents = false;
@@ -242,6 +265,7 @@ pub fn collect_resource_access_range_with_policy(
             reads_previous: true,
             contents_unused: false,
             allow_undefined_contents: false,
+            previous_content_read: incoming_content,
         });
         return Ok(LedgerUpdate::UpgradedAndAppended {
             previous: previous_index,
@@ -264,10 +288,38 @@ pub fn collect_resource_access_range_with_policy(
 // access-code/group merging rules above independent of this source capability.
 fn merge_content_policy(
     previous: &mut AccessDeclaration,
+    access_code: u8,
     reads_previous: bool,
     unused: bool,
     allow_undefined: bool,
 ) {
+    if previous.has_saved_content_read() {
+        let incoming = AccessDeclaration {
+            access_code,
+            reads_previous,
+            contents_unused: unused,
+            allow_undefined_contents: allow_undefined,
+            ..Default::default()
+        };
+        // Keep malformed caller metadata visible to the normal validator.
+        // A genuine preserving write tightens the saved output; a duplicate
+        // pure write never turns the saved real read into an invented RW read.
+        if !incoming.valid_content_mode(crate::command::is_write(access_code)) {
+            previous.contents_unused |= unused;
+            previous.allow_undefined_contents |= allow_undefined;
+            return;
+        }
+        use PreviousContentRead::{DefinedRequired, NotRead, UndefinedAllowed};
+        previous.previous_content_read = match (
+            previous.content_read(true),
+            incoming.content_read(crate::command::is_write(access_code)),
+        ) {
+            (DefinedRequired, _) | (_, DefinedRequired) => DefinedRequired,
+            (UndefinedAllowed, _) | (_, UndefinedAllowed) => UndefinedAllowed,
+            _ => NotRead,
+        };
+        return;
+    }
     // Aliases of this exact range/version retain every previous-content
     // dependency in either order. Do not erase inactive/undefined evidence:
     // the normal graph contract still rejects preserving metadata on reads.
@@ -395,5 +447,82 @@ mod tests {
             4
         );
         assert_eq!(std::mem::offset_of!(AccessLedgerEntry, access_code), 8);
+    }
+
+    #[test]
+    fn upgrade_saves_real_read_role_and_duplicate_output_preserving_intent() {
+        use super::super::resource::{AccessRange, AccessVersion};
+        for permitted in [false, true] {
+            let mut entries = Vec::new();
+            collect_resource_access_range_with_policy(
+                &mut entries,
+                0,
+                0x19,
+                1,
+                AccessRange::Whole,
+                AccessVersion::Automatic,
+                false,
+                false,
+                permitted,
+            )
+            .unwrap();
+            assert!(!entries[0].reads_previous);
+            assert!(entries[0].reads_contents(false));
+            collect_resource_access(&mut entries, 0, 0x37, 0).unwrap();
+            collect_resource_access(&mut entries, 0, 0x37, 0).unwrap();
+            assert_eq!(entries.len(), 2);
+            assert_eq!(
+                entries[0].previous_content_read,
+                if permitted {
+                    PreviousContentRead::UndefinedAllowed
+                } else {
+                    PreviousContentRead::DefinedRequired
+                }
+            );
+            assert_eq!(
+                entries[1].previous_content_read,
+                PreviousContentRead::NotRead
+            );
+            collect_resource_access_range(
+                &mut entries,
+                0,
+                0x37,
+                0,
+                AccessRange::Whole,
+                AccessVersion::Automatic,
+                true,
+            )
+            .unwrap();
+            assert_eq!(
+                entries[1].previous_content_read,
+                PreviousContentRead::DefinedRequired
+            );
+            assert!(entries.iter().all(|access| access.access_code == 0x37
+                && access.synchronization_group == 0
+                && access.reads_previous));
+        }
+    }
+
+    #[test]
+    fn malformed_upgrade_does_not_erase_invalid_caller_content_mode() {
+        use super::super::resource::{AccessRange, AccessVersion};
+        let mut entries = Vec::new();
+        collect_resource_access(&mut entries, 0, 0x19, 1).unwrap();
+        let before = entries.clone();
+        assert!(
+            collect_resource_access_range_with_policy(
+                &mut entries,
+                0,
+                0x37,
+                0,
+                AccessRange::Whole,
+                AccessVersion::Automatic,
+                true,
+                false,
+                true,
+            )
+            .is_err()
+        );
+        assert_eq!(entries, before);
     }
 }

@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "artifact": {
+    "path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne",
+    "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "bytes": 58460160,
+    "id": "TinyGlade-B-original",
+    "version": "B-RNE-f507a6ce",
+    "format": "PE",
+    "image_base": "0x140000000",
+    "rsds": [
+      {
+        "guid": "09F1A02A-49F2-F8C8-4C4C-44205044422E",
+        "age": 1,
+        "pdb_name": "tiny_glade.pdb"
+      }
+    ],
+    "debug": {
+      "path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny_glade.pdb",
+      "sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+      "bytes": 274710528,
+      "guid": "09F1A02A-49F2-F8C8-4C4C-44205044422E",
+      "age": 1
+    }
+  },
+  "request_id": "world-subscribe-selected-slot-full",
+  "cache_key": "911da4dba02dded85e15e846bf7e408c549862c21cfb39ff82afde1cec580a5c",
+  "status": "ok",
+  "range": {
+    "rva": "0x8cdc20",
+    "length": 25,
+    "start_va": "0x1408cdc20",
+    "stop_va_exclusive": "0x1408cdc39",
+    "instruction_overhang_bytes": 0,
+    "function_boundary_verified": false
+  },
+  "instructions": [
+    {
+      "va": "0x1408cdc20",
+      "rva": "0x8cdc20",
+      "bytes": "0fb6c2",
+      "size": 3,
+      "assembly": "movzbl\t%dl, %eax",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x1408cdc23",
+      "rva": "0x8cdc23",
+      "bytes": "4869c090030000",
+      "size": 7,
+      "assembly": "imulq\t$0x390, %rax, %rax      # imm = 0x390",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x1408cdc2a",
+      "rva": "0x8cdc2a",
+      "bytes": "4801c1",
+      "size": 3,
+      "assembly": "addq\t%rax, %rcx",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x1408cdc2d",
+      "rva": "0x8cdc2d",
+      "bytes": "4881c170010000",
+      "size": 7,
+      "assembly": "addq\t$0x170, %rcx            # imm = 0x170",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x1408cdc34",
+      "rva": "0x8cdc34",
+      "bytes": "e95766b800",
+      "size": 5,
+      "assembly": "jmp\t0x141454290 <.text+0x1453290>",
+      "crosses_requested_stop": false
+    }
+  ],
+  "symbolization": [
+    {
+      "Address": "0x8cdc20",
+      "ModuleName": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne",
+      "Symbol": [
+        {
+          "Column": 0,
+          "Discriminator": 0,
+          "FileName": "/home/h3/code/pouncelight/country-slice-private/crates/country-core/src/systems/collision/world.rs",
+          "FunctionName": "country_core::systems::collision::world::impl$2::index_mut",
+          "Line": 181,
+          "StartAddress": "",
+          "StartFileName": "",
+          "StartLine": 0
+        },
+        {
+          "Column": 0,
+          "Discriminator": 0,
+          "FileName": "/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\\library\\core\\src\\array\\mod.rs",
+          "FunctionName": "core::array::impl$16::index_mut",
+          "Line": 375,
+          "StartAddress": "",
+          "StartFileName": "",
+          "StartLine": 0
+        },
+        {
+          "Column": 0,
+          "Discriminator": 0,
+          "FileName": "/home/h3/code/pouncelight/country-slice-private/crates/country-core/src/systems/collision/world.rs",
+          "FunctionName": "country_core::systems::collision::world::RaycastWorld::subscribe_to_changes::h315cca1db4d01a05",
+          "Line": 669,
+          "StartAddress": "",
+          "StartFileName": "",
+          "StartLine": 0
+        }
+      ]
+    },
+    {
+      "Address": "0x8cdc38",
+      "ModuleName": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne",
+      "Symbol": [
+        {
+          "Column": 0,
+          "Discriminator": 0,
+          "FileName": "/home/h3/code/pouncelight/country-slice-private/crates/country-core/src/systems/collision/world.rs",
+          "FunctionName": "country_core::systems::collision::world::RaycastWorld::subscribe_to_changes::h315cca1db4d01a05",
+          "Line": 669,
+          "StartAddress": "",
+          "StartFileName": "",
+          "StartLine": 0
+        }
+      ]
+    }
+  ],
+  "missing_symbol_addresses": [],
+  "raw_assembly": "\n/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:\tfile format coff-x86-64\n\nDisassembly of section .text:\n\n0000000140001000 <.text>:\n1408cdc20: 0f b6 c2                    \tmovzbl\t%dl, %eax\n1408cdc23: 48 69 c0 90 03 00 00        \timulq\t$0x390, %rax, %rax      # imm = 0x390\n1408cdc2a: 48 01 c1                    \taddq\t%rax, %rcx\n1408cdc2d: 48 81 c1 70 01 00 00        \taddq\t$0x170, %rcx            # imm = 0x170\n1408cdc34: e9 57 66 b8 00              \tjmp\t0x141454290 <.text+0x1453290>\n",
+  "original_target_executed": false
+}

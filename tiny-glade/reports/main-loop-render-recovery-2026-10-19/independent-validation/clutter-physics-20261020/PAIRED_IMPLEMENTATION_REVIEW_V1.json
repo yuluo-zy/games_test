@@ -1,0 +1,100 @@
+{
+  "status": "passed_scoped_static_paired_sources",
+  "paired_manifest_sha256": "7bff84bfafd2aaddf6cec8b60f26b730817e56dee2de0bebe20d273ed6c94119",
+  "world_source_sha256": "e06d44296c6b764221ce81bbedf5ef77fa66e25323a1d9e60a3b914657252a1c",
+  "consumer_source_sha256": "7603d2899c6374fd15fca0e6e6d62ceef30df49d84e36184d0a83a48c7efc14a",
+  "paired_patch_sha256": "8784bf87fbcd07acd19beb88e8eef68622c0e0525d68a6ddf2b05f7b899e690e",
+  "identity_checks": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-f7070bb3446b7a37eb/building-audit-20261018/clutter-physics-20261020/candidate-manifest.json",
+      "sha256": "25ad6b364502a84378f0847b3142c13705b15974446cc056fbb265bdefd36cfb",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-89621bad1106d1999d/collision-consumer-20261020/candidate-manifest.json",
+      "sha256": "c5b1676a8acde974f2949a69be6b85692a0ff02058c87512c1073f7d7c2ebdd0",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-f7070bb3446b7a37eb/building-audit-20261018/clutter-physics-20261020/paired-candidate.patch",
+      "sha256": "8784bf87fbcd07acd19beb88e8eef68622c0e0525d68a6ddf2b05f7b899e690e",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-f7070bb3446b7a37eb/building-audit-20261018/clutter-physics-20261020/candidate/crates/country-core/src/systems/collision/world.rs",
+      "sha256": "e06d44296c6b764221ce81bbedf5ef77fa66e25323a1d9e60a3b914657252a1c",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-f7070bb3446b7a37eb/building-audit-20261018/clutter-physics-20261020/candidate.patch",
+      "sha256": "df6441937e89dbfa6d22907b021fd9837043d94d90222e80f3687dbad1a705ea",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/collision/world.rs",
+      "sha256": "8161e74e7b74bc3d128187c872a626505e8e68e32212f026843597004bb86ffe",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-89621bad1106d1999d/collision-consumer-20261020/candidate/crates/country-core/src/systems/collision/intersect_meshes.rs",
+      "sha256": "7603d2899c6374fd15fca0e6e6d62ceef30df49d84e36184d0a83a48c7efc14a",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-89621bad1106d1999d/collision-consumer-20261020/candidate.patch",
+      "sha256": "b9a83b4bc1d26de47a2c526b0af14a831911d60289d42a221582d496c0b26002",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/collision/intersect_meshes.rs",
+      "sha256": "7667b03450b076ceea52bc5bb85d904719b22dd75b0e6ba57b296be2dde9bc8c",
+      "matches": true
+    }
+  ],
+  "design_dependencies": [
+    "DESIGN_REVIEW_V2.json (world548bb5e0, 21 complete direct-PE original function checks)",
+    "COLLISION_CONSUMER_DESIGN_REVIEW_V1.json (dd98620a, 3 complete direct-PE original function checks)"
+  ],
+  "implementation_review": [
+    "Primitive cuboid uses dimensions*0.5 exactly once and actual center. Legacy UVec3 entry decodes float bits. Sphere and compound consume same explicit local pose tail, from_translation SIMD fourth lane duplicates z; getter reads xyz/xyzw without transmuting larger reconstructed IsoTransform. Compound children carry actual child local poses, not identity wrappers.",
+    "Tuple upsert composes external*local; distinct Iso overlap adapter composes parent*(local*external), with existing parent outside native local/external. Existing unchecked UnitQuaternion helper is reused, no new normalization. RaycastMesh::raycast direct behavior is not changed.",
+    "Existing 24B query-policy source type is reused. Decorator sources encode original id/storage/optional Wall payload; u8 flags retained. Kept requires current physical pose plus data.hash and selected native source equality. Raw projection PartialEq is not used as the upsert business test.",
+    "One existing MeshInstanceSources SlotMap allocates and owns mesh receipts. Upsert encodes its actual generation/index into physical Collider.user_data, projects selected bytes into existing diagnostic Vec, and returns separate actual Rapier handle. Two subworld Rapier index0 values cannot overwrite the same canonical key.",
+    "Shared strict packed-key decoder performs exact as_ffi roundtrip before get/remove, preventing slotmap from_ffi generation normalization from accepting malformed even raw receipts. All changed getmesh/query/overlap/predicate/artifact entrances resolve actual physical collider user_data into this same owner; no source synthesized from slot.",
+    "Disposal removes actual physical collider, validates/removes same SlotMap receipt, invalidates existing diagnostic projection and publishes actual physical removed handle. Reload resets sole world owner; actual scheduled gameplay reload/map clearing is not established by a direct method test.",
+    "Companion restores physical slot<2 gate before lookup, exact candidate slot lists, payload/flag predicate and second artifact receipt path. Original existing triangle/BVH/segments/polyline algorithms are unchanged except rustfmt layout; removed-node pruning and callback surface preserved. Non-native predicate/getmesh paths fail explicitly.",
+    "registry_free_head/live projection fields remain existing debug/compatibility bookkeeping, not a second allocator. The head is not claimed to be a coherent traversable free chain after SlotMap reuse; production source search found no business consumer of the private head."
+  ],
+  "test_source_review": {
+    "new_world": 7,
+    "new_consumer": 4,
+    "existing_modified": [
+      "real triangle intersection artifact regression now inserts indexed meshes through actual upsert with two subworld local index0 values and verifies payload11/12",
+      "old cross-slot query fixture now uses real canonical upsert/flush, not manual projection/physical collider seeding"
+    ],
+    "coverage": [
+      "real Parry cuboid/shapeAABB/nonzero center and one half conversion",
+      "distinct noncommuting transform orders",
+      "sphere/compound child local pose",
+      "same-key geometry/source changes and padding ignored",
+      "two decorator maps/sameWorld distinct receipts/raycast/overlap/remove",
+      "generation malformed/stale/remove/reuse/Arc retirement/reload direct method",
+      "physical hit without receipt explicit error",
+      "real registered source predicate equalpayload/bit0/fullbyte cases",
+      "actual Publisher diff candidate routing",
+      "invalid slot2/8/255 skip before physical lookup",
+      "actual stale user_data after replacement"
+    ],
+    "executed_by_reviewer": false,
+    "author_reports": "rustfmt parsing only, all 11 new tests unexecuted"
+  },
+  "integration_requirements": [
+    "Apply the two sources coherently against matching production before hashes; consumer depends on same canonical world resolver.",
+    "Central compiler/test results must bind actual current features and source; parser/static review is not typecheck or runtime acceptance."
+  ],
+  "limits": [
+    "No reviewer Cargo/rustc/GPU execution, production edits, or added registration.",
+    "Current production business registration of intersection functions absent; no live App panic claim.",
+    "No complete collision algorithm, full blueprint side effects, scheduled Edit/Reload, original-process/C parity, nonempty world GPU/WSI or performance acceptance."
+  ]
+}

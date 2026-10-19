@@ -1,0 +1,68 @@
+{
+  "scope": "read-only B24-byte BalconyDoor producer value contract; no shared source mutation",
+  "binary": {
+    "path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne",
+    "expected_bound_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+  },
+  "pdb_expected_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+  "complete_body": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-bdac7a16d3c26c954b/nani-gpu-counts-20261019/nani-maintain-20261020/1412a9b30-full-B-rne.asm",
+    "asm_sha256": "f099285f4fd3e82df77eb3aea2241f12e3d31d36e8246b934f28695c67b17fb5",
+    "native_start": "0x1412a9b30",
+    "native_size": 5949
+  },
+  "slice": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-1298d15aa21683bbb3/scene-decorator-20261019/balcony-door-contract-v1/BALCONY_PRODUCER_SLICE_B.asm",
+    "sha256": "96475a301d73bb121dd4087a7bda943243a7001c6d44a5751e7e07cd8503ac87",
+    "instruction_count": 62,
+    "all_instruction_bytes_PE_verified": true
+  },
+  "constants": [
+    {
+      "instruction": "0x1412aaaab",
+      "data_va": "0x1429cd0c0",
+      "hex": "00000000000000000000803f00000000",
+      "float_values": [
+        0.0,
+        0.0,
+        1.0,
+        0.0
+      ]
+    },
+    {
+      "instruction": "0x1412aaad7",
+      "data_va": "0x142925904",
+      "hex": "0000803f",
+      "float_values": [
+        1.0
+      ]
+    }
+  ],
+  "current_builder": {
+    "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/utils/visual_entity_builder.rs",
+    "sha256": "f5d7361c0f8a19ee769d7f9419b1a2315ac51c58424c6575940106aeb05a8bab"
+  },
+  "observed_writes": {
+    "condition": "self+0x14f !=0",
+    "translation": "closure+0x18/+0x1c xmm7 xy; +0x20 xmm6 z (actual computed Transform.translation)",
+    "forward": "closure+0x24/+0x28 xmm9 xy; +0x2c xmm9 z (actual rotation*Vec3::Z)",
+    "payload_bytes": 24,
+    "closure_bytes": 56,
+    "closure_tail": "separate byte+0x30, not part of the24B component"
+  },
+  "schema_proposal": {
+    "type": "country_core::components::drawable::BalconyDoor",
+    "fields": [
+      "translation:glam::Vec3",
+      "forward:glam::Vec3"
+    ],
+    "host_field_names": "semantic engineering names; original PDB declaration not recovered",
+    "no_default": true,
+    "no_Eq": true,
+    "no_zero_marker": true,
+    "no_new_resource": true,
+    "migration": "one canonical type authored by root/03 carrier; builder directly imports same type, computes six existing float values, inserts without raw mirror"
+  },
+  "consumer_binding": "03 currently recovering exact RejectionRes Query<&country_core::components::BalconyDoor>/six-lane geometric reader; separate bounded artifact pending",
+  "ABI_C_runtime": "native raw ABI/current Rust field layout/C parity/CPU/GPU not asserted"
+}

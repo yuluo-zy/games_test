@@ -4,11 +4,13 @@ use super::{
     compiled::{Batch, BatchCompiler},
     graph::{AccessDependency, Descriptor, GraphDeclaration, OriginSource, PassDeclaration},
     resource::{AccessRange, AccessVersion},
-    resource_info::{AccessDeclaration, ExportDeclaration, OriginKind, ResourceInfo},
+    resource_info::{
+        AccessDeclaration, ExportDeclaration, OriginKind, ResourceInfo, entry_content_resources,
+    },
 };
 use std::collections::{BTreeSet, VecDeque};
 
-pub const COMPILER_VERSION: u32 = 4;
+pub const COMPILER_VERSION: u32 = 5;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ResourceOriginKind {
@@ -537,25 +539,52 @@ impl PassAnalysis {
             )
     }
 }
-/// Record content producers of one access; returns nothing. A write removes
-/// every producer whose range it fully covers.
-fn add_producer_access(
+/// Record real input sources independently from the broader native scope.
+fn add_producer_sources(
     analysis: &mut PassAnalysis,
     pass_index: usize,
     access: &AccessDeclaration,
     write: bool,
 ) {
-    let producers = analysis.producers.entry(access.resource_index).or_default();
-    if access.reads_contents(write) {
-        for &(producer, range) in producers.iter() {
+    if access.reads_contents(write)
+        && let Some(producers) = analysis.producers.get(&access.resource_index)
+    {
+        for &(producer, range) in producers {
             if producer != pass_index && ranges_overlap(access.range, range) {
                 analysis.dependencies[pass_index].insert(producer);
             }
         }
     }
-    if write {
-        producers.retain(|&(_, range)| !range_covers(access.range, range));
-        producers.push((pass_index, access.range));
+}
+fn publish_producer(analysis: &mut PassAnalysis, pass_index: usize, access: &AccessDeclaration) {
+    let producers = analysis.producers.entry(access.resource_index).or_default();
+    producers.retain(|&(_, range)| !range_covers(access.range, range));
+    producers.push((pass_index, access.range));
+}
+fn add_pass_producers(
+    analysis: &mut PassAnalysis,
+    pass_index: usize,
+    pass: &PassDeclaration,
+    table: &SemanticTable<'_>,
+) {
+    let entry_resources = entry_content_resources(&pass.accesses);
+    for access in &pass.accesses {
+        let write = table.is_write(access.access_code);
+        add_producer_sources(analysis, pass_index, access, write);
+        if write && !entry_resources.contains(&access.resource_index) {
+            publish_producer(analysis, pass_index, access);
+        }
+    }
+    // Native upgrade records execute simultaneously. Every alias of an
+    // affected resource must consume the frontier from before this callback.
+    if !entry_resources.is_empty() {
+        for access in &pass.accesses {
+            if table.is_write(access.access_code)
+                && entry_resources.contains(&access.resource_index)
+            {
+                publish_producer(analysis, pass_index, access);
+            }
+        }
     }
 }
 pub(crate) fn analyze_passes(
@@ -568,14 +597,7 @@ pub(crate) fn analyze_passes(
         producers: Default::default(),
     };
     for (pass_index, pass) in passes.iter().enumerate() {
-        for access in &pass.accesses {
-            add_producer_access(
-                &mut analysis,
-                pass_index,
-                access,
-                table.is_write(access.access_code),
-            );
-        }
+        add_pass_producers(&mut analysis, pass_index, pass, &table);
     }
     analysis
 }
@@ -677,14 +699,7 @@ pub fn compile_with_subgraphs(
     let mut next = 0;
     for scope in &definition.subgraphs {
         while next < scope.pass_range.start {
-            for access in &definition.passes[next].accesses {
-                add_producer_access(
-                    &mut analysis,
-                    next,
-                    access,
-                    table.is_write(access.access_code),
-                );
-            }
+            add_pass_producers(&mut analysis, next, &definition.passes[next], &table);
             next += 1;
         }
         let local = cache.analysis(&definition, scope)?;
@@ -699,14 +714,7 @@ pub fn compile_with_subgraphs(
         next = local.range.end;
     }
     while next < definition.passes.len() {
-        for access in &definition.passes[next].accesses {
-            add_producer_access(
-                &mut analysis,
-                next,
-                access,
-                table.is_write(access.access_code),
-            );
-        }
+        add_pass_producers(&mut analysis, next, &definition.passes[next], &table);
         next += 1;
     }
     finish_plan(definition, analysis)
@@ -726,7 +734,9 @@ fn compose_analysis(
     // Producers contain earlier scopes only. The cached local analysis
     // supplies all inner-scope relations without replaying them.
     for pass_index in range.clone() {
-        for access in &definition.passes[pass_index].accesses {
+        let accesses = &definition.passes[pass_index].accesses;
+        let entry_resources = entry_content_resources(accesses);
+        for access in accesses {
             let write = table.is_write(access.access_code);
             let producers = global.producers.entry(access.resource_index).or_default();
             if access.reads_contents(write) {
@@ -736,8 +746,21 @@ fn compose_analysis(
                     }
                 }
             }
-            if write {
+            if write && !entry_resources.contains(&access.resource_index) {
                 producers.retain(|&(_, written)| !range_covers(access.range, written));
+            }
+        }
+        if !entry_resources.is_empty() {
+            for access in accesses {
+                if table.is_write(access.access_code)
+                    && entry_resources.contains(&access.resource_index)
+                {
+                    global
+                        .producers
+                        .entry(access.resource_index)
+                        .or_default()
+                        .retain(|&(_, written)| !range_covers(access.range, written));
+                }
             }
         }
     }
@@ -878,6 +901,138 @@ pub fn access_version(access: &AccessDeclaration) -> AccessVersion {
 }
 
 #[cfg(test)]
+mod upgraded_content_tests {
+    use super::*;
+    use crate::rg::{
+        graph::RenderGraph,
+        resource_info::PreviousContentRead,
+        vulkan::{AccessTable, ResourceSpec},
+    };
+
+    fn top() -> AccessRange {
+        AccessRange::Texture {
+            aspect_mask: 1,
+            base_mip_level: 1,
+            level_count: 1,
+            base_array_layer: 0,
+            layer_count: 1,
+        }
+    }
+    fn raw(strict_alias: bool, preceding_writer: bool, scoped: bool) -> GraphDeclaration {
+        let mut graph = RenderGraph::new();
+        let descriptor = ResourceSpec::Image(
+            crate::raw::texture::TextureDesc::new_2d(16, 16, ash::vk::Format::R32_SFLOAT)
+                .mip_levels(2),
+        )
+        .descriptor();
+        let image = graph.import_unowned("full", descriptor, 7, 0x19).unwrap();
+        if preceding_writer {
+            let mut pass = graph.add_pass("real writer");
+            pass.add_resource_access_range(image, 0x37, 0, top())
+                .unwrap();
+            pass.render(|_| true);
+        }
+        let declare = |graph: &mut RenderGraph| {
+            let mut pass = graph.add_pass("top alias").with_side_effect();
+            pass.add_undefined_content_read_range(image, 0x19, 1, top())
+                .unwrap();
+            pass.add_resource_access_range(image, 0x37, 0, top())
+                .unwrap();
+            if strict_alias {
+                pass.add_preserving_resource_access_range(image, 0x37, 0, top())
+                    .unwrap();
+            }
+            pass.render(|_| true);
+        };
+        if scoped {
+            graph
+                .subgraph("reverse", |scope| {
+                    scope.input(image, top(), 0x19)?;
+                    declare(scope.graph());
+                    scope.output(image, top(), 0x37)?;
+                    Ok(())
+                })
+                .unwrap();
+        } else {
+            declare(&mut graph);
+        }
+        graph.build().declaration
+    }
+    fn definition(raw: &GraphDeclaration) -> crate::Result<GraphDefinition> {
+        GraphDefinition::from_declaration(raw, &mut AccessTable::original(), PlanContext::default())
+    }
+
+    #[test]
+    fn borrowed_import_hit_rechecks_entry_content_for_saved_and_strict_aliases() {
+        for strict in [false, true] {
+            let mut raw = raw(strict, false, false);
+            let key = definition(&raw).unwrap();
+            raw.resources[0].source = OriginSource::ImportUnowned {
+                token: 8,
+                initial_access: 0,
+            };
+            let borrowed =
+                key.matches_declaration(&raw, &mut AccessTable::original(), PlanContext::default());
+            assert_eq!(borrowed.is_ok(), !strict);
+            if !strict {
+                assert!(borrowed.unwrap());
+            }
+            assert_eq!(definition(&raw).is_ok(), !strict);
+        }
+    }
+
+    #[test]
+    fn saved_policy_is_in_full_borrowed_subgraph_and_colliding_cache_keys() {
+        #[derive(Clone, PartialEq, Eq)]
+        struct Collision(GraphDefinition);
+        impl std::hash::Hash for Collision {
+            fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+                state.write_u8(0);
+            }
+        }
+        let mut raw = raw(false, true, true);
+        let allowed = definition(&raw).unwrap();
+        raw.passes[1].accesses[0].previous_content_read = PreviousContentRead::DefinedRequired;
+        let strict = definition(&raw).unwrap();
+        assert_ne!(allowed, strict);
+        assert!(
+            !allowed
+                .matches_declaration(&raw, &mut AccessTable::original(), PlanContext::default())
+                .unwrap()
+        );
+        let mut full = super::super::cache::BoundedCache::new(4, 4096 * 1024);
+        full.insert(Collision(allowed.clone()), 1u32, 1);
+        full.insert(Collision(strict.clone()), 2u32, 1);
+        assert_eq!(full.get(&Collision(allowed.clone())), Some(&1));
+        assert_eq!(full.get(&Collision(strict.clone())), Some(&2));
+        let mut cache = super::super::subgraph::SubgraphPlanCache::default();
+        for input in [allowed.clone(), allowed, strict] {
+            let cold = compile_definition(input.clone()).unwrap();
+            let cached = compile_with_subgraphs(input, &mut cache).unwrap();
+            assert_eq!(cold.retained_passes, [0, 1]);
+            assert_eq!(cold.retained_passes, cached.retained_passes);
+            assert_eq!(cold.dependency_edges, cached.dependency_edges);
+            assert_eq!(cold.range_program, cached.range_program);
+            assert!(cached.dependency_edges.contains(&(0, 1)));
+        }
+        assert_eq!(cache.stats().compilations, 2);
+        assert_eq!(cache.stats().hits, 1);
+    }
+
+    #[test]
+    fn independent_check_rejects_strict_same_pass_self_initialization_and_bad_saved_shape() {
+        let allowed = definition(&raw(false, false, false)).unwrap();
+        let mut strict = allowed.clone();
+        strict.resources[0].origin = ResourceOriginKind::Create;
+        strict.passes[0].accesses[1].previous_content_read = PreviousContentRead::DefinedRequired;
+        assert!(super::super::plan_check::check_definition(&strict).is_err());
+        let mut malformed = allowed;
+        malformed.passes[0].accesses[0].access_code = 0x19;
+        assert!(super::super::plan_check::check_definition(&malformed).is_err());
+    }
+}
+
+#[cfg(test)]
 mod borrowed_definition_tests {
     use super::*;
     use crate::rg::{
@@ -926,7 +1081,9 @@ mod borrowed_definition_tests {
         let early = graph.import_unowned("early", descriptor, 21, 0x25).unwrap();
         let gated = graph.import_unowned("gated", descriptor, 22, 0x25).unwrap();
         for index in 0..2 {
-            let mut pass = graph.add_pass(format!("independent-{index}")).with_side_effect();
+            let mut pass = graph
+                .add_pass(format!("independent-{index}"))
+                .with_side_effect();
             pass.add_resource_access(early, 0x34, 0).unwrap();
             pass.render(|_| true);
         }
@@ -980,7 +1137,12 @@ mod borrowed_definition_tests {
         // Under batch_per_pass the existing boundaries already cover it.
         let (per_pass, _) = gated_plan(true, true);
         assert_eq!(per_pass.batches.len(), 4);
-        assert!(per_pass.batches.iter().all(|batch| batch.pass_range.len() == 1));
+        assert!(
+            per_pass
+                .batches
+                .iter()
+                .all(|batch| batch.pass_range.len() == 1)
+        );
     }
     #[test]
     fn complete_plan_miss_reasons_distinguish_policy_interface_and_structure() {
@@ -1052,6 +1214,10 @@ mod borrowed_definition_tests {
             },
             |g| g.passes[0].accesses[0].reads_previous = true,
             |g| g.passes[0].accesses[0].allow_undefined_contents = true,
+            |g| {
+                g.passes[0].accesses[0].previous_content_read =
+                    super::super::resource_info::PreviousContentRead::UndefinedAllowed
+            },
             |g| g.passes[0].accesses[0].version = AccessVersion::Read(9),
             |g| g.subgraphs[0].interface.implementation_signature += 1,
             |g| g.exports[0].access_code = 0x26,
@@ -1210,6 +1376,7 @@ mod borrowed_definition_tests {
             reads_previous: false,
             contents_unused: false,
             allow_undefined_contents: false,
+            previous_content_read: Default::default(),
             range: AccessRange::Texture {
                 aspect_mask: 1,
                 base_mip_level: mip,

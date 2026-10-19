@@ -1,0 +1,7 @@
+# Approved clutter values combined candidate V2
+
+Root explicitly delegated the one drawable candidate author under existingTG70b/boot-leaf ownership. Before6989 stays frozen. The earlier BalconyV1 work/manifests are immutable. This combinedV2 preserves its complete source, then adds the independently admitted carrier schema: neutral ID tags0..3 with fullu64/u32 payloads, real Arc<[Vec3]> Points, no-payload None5; creation-only OnBuilding0/Terrain2; and the actual Convertable Component with static selected mesh name/bounds. No repr/native96 or author-field/TypeId promise, default, equality, raw owner, source-tag normalization or Copy of Arc-bearing data.
+
+The source contains three new tests in total: the unchanged Balcony actual ECS six-lane value test; actual Convertable ECS/clone/Arc identity+last-owner drop; full destination word transport/signed-zero/NaN+ID-tag rejection and full ID payload copy. Tests are source-only and UNRUN. Fixture name/bounds are explicit unit payloads, not asset selection or a new Nani/populate producer. No Cargo/compiler/CPU tests/GPU/original execution was invoked. Root alone reviews/integrates/executes.
+
+Balcony's exact builder companion must insert this same canonical component under the original condition and actual Transform-derived values.04's frozen source is unaffected by the additional carrier schema, but its review must bind the combined core hash. Pending process/UI/populate code is not included or accepted by this candidate.

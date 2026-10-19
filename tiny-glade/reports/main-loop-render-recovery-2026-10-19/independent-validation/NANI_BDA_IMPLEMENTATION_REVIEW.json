@@ -1,0 +1,93 @@
+{
+  "reviewed_at_utc": "2026-10-19T16:14:58.055873+00:00",
+  "verdict": "production_v2_passed_scoped_static_fixture_v1_changes_required",
+  "candidate_manifest": {
+    "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-5f034e6af1260241e4/render-nani-main-20261018/nani-cull-bda-20261020/versions/v2/candidate-manifest.json",
+    "sha256": "b2680c0ef23f7705f38c3a136d564881c5736495266a569c44e2661b16210b35"
+  },
+  "patch": {
+    "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-5f034e6af1260241e4/render-nani-main-20261018/nani-cull-bda-20261020/versions/v2/candidate.patch",
+    "sha256": "96397b6abc3172655dd83bdf74c8537929e827ce890355c5af757ca1f281ce52"
+  },
+  "design_review": {
+    "path": "tiny-glade/reports/main-loop-render-recovery-2026-10-19/independent-validation/NANI_BDA_DESIGN_REVIEW_V2.json",
+    "sha256": "d9571c5f34355b0bdc0235b83577f12358da2de6fed254a860a9351ba974cec8"
+  },
+  "source_inputs": [
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-5f034e6af1260241e4/render-nani-main-20261018/nani-cull-bda-20261020/versions/v2/candidate/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "sha256": "b67a561fd10cd7a25b900a0923826ed69c9714d40c844b2be78cd53503af9432"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-5f034e6af1260241e4/render-nani-main-20261018/nani-cull-bda-20261020/versions/v2/candidate/tiny-glade/crates/tiny-glade/src/scene_compute.rs",
+      "sha256": "809e0a3c8fd2eba8b5085ac7fb9fd4301f0575d70a0a6317033363db4c27b3d4"
+    }
+  ],
+  "before_inputs": [
+    {
+      "path": "tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "expected_sha256": "63cb302b3ef054ecd24b7e29c4f75516e51f4df3cd141a59fccd6e8c259df385",
+      "actual_sha256": "63cb302b3ef054ecd24b7e29c4f75516e51f4df3cd141a59fccd6e8c259df385"
+    },
+    {
+      "path": "tiny-glade/crates/tiny-glade/src/scene_compute.rs",
+      "expected_sha256": "05e1304fe7daf70050e9de8723a87b6dfa6a4caf7c5b9cb8098366db4e416017",
+      "actual_sha256": "05e1304fe7daf70050e9de8723a87b6dfa6a4caf7c5b9cb8098366db4e416017"
+    }
+  ],
+  "checks": [
+    "Helper resolves actual generation-checked owner before invoking the old infallible device_address hook; actual owner BDA capability/error kind is checked first, then address zero/mismatch returns typed InvalidUsage.",
+    "The active count used in unchanged push/dispatch determines checked count * size_of InstanceCullData; returned chunk must have offset0/exact bytes and fit the original handle. Actual scene resolver additionally checks underlying allocation size and full handle size/generation.",
+    "Generic Main batch accumulates one retained chunk per active owned subset and attaches chunks to the real RecordedComputePass. Three real custom BDA paths attach one chunk each; Curved preserves its original numeric payload and descriptor access without positions metadata.",
+    "No count, push word order, shader family, pass order, existing descriptor access, upload, dispatch or allocator changes. Zero-count subsets remain skipped.",
+    "Core returns Result and sole scene_compute production call returns it directly through with_env. Typed admission errors cannot become successful Nani outputs.",
+    "V2 production differs from V1 only by deleting a redundant scene BDA query; other core differences are comment whitespace and a more accurate test name. Added real BufferHost test additionally exercises actual same-slot generation reuse.",
+    "Existing production graph admission and unconditional pass-resource command retention remain the mechanism; no direct RecordedComputePass.execute fallback is used."
+  ],
+  "test_scope": {
+    "core_new_test": "Unrun CPU error-order test uses actual helper with resolver OutOfHostMemory and old device-address hook that would panic; proves intended early typed branch when executed, not full builder wiring.",
+    "scene_new_test": "Unrun actual Vulkan BufferHost test covers zero/oob prefix, same physical Arc, actual slot reuse with changed generation, stale rejection and old owner survival while chunk exists. It does not submit/cancel a command or prove GPU completion lifetime.",
+    "fixture_v1": {
+      "manifest": {
+        "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-5f034e6af1260241e4/render-nani-main-20261018/nani-cull-bda-20261020/actual-nani-builder-test-manifest.json",
+        "sha256": "3f42498bc390288d08f2a9dfbbb24c579e0229db21e62a635134a892c89c9b57"
+      },
+      "patch_sha256": "7560f07b16fc85bdc9795bace37c0fbb062b09734b1805b46791df057237e5a8",
+      "candidate_sha256": "cace364331e41a0f4f558fc1b0a5bad8a694fb449e3b58f204faa111162a8344",
+      "verdict": "changes_required",
+      "reason": "Filtering all 0x1a/group1 accesses also selects original prev_visibility SSBO read. read_ssbo_in_place -> read_access_buffer already registers that exact code/group, so asserting total reads.len()==1 is false in the actual cull pass. Select the actual positions exact range and physical descriptor/owner, and assert the visibility read is preserved separately."
+    }
+  },
+  "performance_scope": "V2 removes one redundant query, but each retained subset/stage still performs core fallible address query, original host address comparison and existing GraphPasses BDA admission query, plus owner/metadata clones and bounded Vec entries. No new GPU operation or lock-held wait; CPU cost and frame performance unmeasured.",
+  "ownership_scope": "Full id+generation is validated within the explicitly provided current frame BufferHost. Same-App GpuWorld/host construction is the existing required invariant; numeric ids/generations are not a global cross-App identity scheme.",
+  "source_version_history": {
+    "v1_manifest": {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-5f034e6af1260241e4/render-nani-main-20261018/nani-cull-bda-20261020/versions/v1/candidate-manifest.json",
+      "sha256": "1c11d4ded1ac27a91f7e846f181f88a6c4f4ad34bff2b58e7aa89da5f8393ca3"
+    },
+    "v1_patch": {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-5f034e6af1260241e4/render-nani-main-20261018/nani-cull-bda-20261020/versions/v1/candidate.patch",
+      "sha256": "8b08b644ad6b59a7f814d54289a7285f6a9dfda7df8eaa63bcad57e74e2aa442"
+    },
+    "v2_delta": [
+      {
+        "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+        "diff": "--- \n+++ \n@@ -741,7 +741,7 @@\n }\n \n /// Resolve the actual generation-checked owner before querying its address.\n-/// The original shader reads one16-byte GpuInstance for each active index;\n+/// The original shader reads one 16-byte GpuInstance for each active index;\n /// the retained range is the active prefix, independent of backing capacity.\n fn retain_owned_cull_read(\n     device: &dyn GraphicsDevice,\n@@ -1674,7 +1674,7 @@\n     }\n \n     #[test]\n-    fn stale_cull_owner_error_precedes_the_legacy_address_hook() {\n+    fn cull_owner_error_preserves_kind_before_the_legacy_address_hook() {\n         // MockDevice has no device_address implementation and would panic if\n         // queried. The resolver's real typed cause must return first.\n         let device = crate::render::ssbo::tests::MockDevice::default();\n"
+      },
+      {
+        "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/scene_compute.rs",
+        "diff": "--- \n+++ \n@@ -191,7 +191,6 @@\n     let read = rhapsody::resource::DynamicConstantsChunk {\n         buffer: owner.shared(), offset: 0, size: bytes,\n     };\n-    read.device_address()?;\n     Ok(read)\n }\n \n@@ -529,14 +528,23 @@\n         }\n         let read = retain_nani_cull_read(&buffers, &handle, 32).unwrap();\n         assert_eq!((read.offset, read.size), (0, 32));\n+        assert_eq!(read.device_address().unwrap(), buffers.device_address(&handle));\n         let owner = buffers.managed_buffer(&handle).unwrap().shared();\n         assert!(Arc::ptr_eq(&owner, &read.buffer));\n         let alive = Arc::downgrade(&owner);\n         drop(owner);\n         assert!(buffers.release(&handle));\n+        let replacement = buffers.create_buffer(\n+            &BufferDesc::new(96, 0x20022, 1).alignment(4),\n+            \"replacement Nani cull owner\", Some(&[0x32; 96]),\n+        ).unwrap();\n+        assert_eq!(replacement.id, handle.id, \"exercise actual slot reuse\");\n+        assert_ne!(replacement.generation, handle.generation);\n         assert!(buffers.managed_buffer(&handle).is_none());\n         let error = retain_nani_cull_read(&buffers, &handle, 32).err().unwrap();\n         assert_eq!(error.kind(), rhapsody::ErrorKind::InvalidUsage);\n+        let replacement_read = retain_nani_cull_read(&buffers, &replacement, 32).unwrap();\n+        assert!(!Arc::ptr_eq(&read.buffer, &replacement_read.buffer));\n         assert!(alive.upgrade().is_some(), \"the retained physical owner survives slot release\");\n         drop(read);\n     }\n"
+      }
+    ]
+  },
+  "runtime_accepted": false,
+  "typecheck_accepted": false,
+  "reviewer_ran_cargo_gpu": false,
+  "remaining": [
+    "Central typecheck and both new tests",
+    "Corrected actual Main fixture range assertion and its execution",
+    "Actual custom-path metadata/GPU evidence remains unrun",
+    "Actual GPU pending/cancel/complete lifetime and Edit/Reload scheduling are not established by new source tests",
+    "Full game nonempty-world WSI/output/performance remains unaccepted"
+  ]
+}

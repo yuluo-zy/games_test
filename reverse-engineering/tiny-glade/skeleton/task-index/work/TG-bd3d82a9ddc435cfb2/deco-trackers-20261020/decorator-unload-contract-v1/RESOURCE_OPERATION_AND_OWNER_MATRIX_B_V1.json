@@ -1,0 +1,351 @@
+[
+  {
+    "execution_order": 1,
+    "label": "Storage",
+    "native_tuple": "primary16",
+    "native_tuple_index": 0,
+    "native_parameter_stride": "ResMut0x20B; Commands tail follows second tuple4ResMut",
+    "canonical_type": "country_core::resources::walls::decorator_storage::DecoratorStorage",
+    "native_start": "0x1403473a5",
+    "native_end_exclusive": "0x1403475b6",
+    "native_operation": "replace Default: three empty keyed owners, None special buckets, immutable=false; drop old aggregate first after RHS construction",
+    "current_mapping_and_gap": "canonical present; foreign source read-only",
+    "source": {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/walls/decorator_storage.rs",
+      "sha256": "230af27c14ad5c7a77c84eb23e7d41b2e9712fe0c62350b4e2d911df7f331896",
+      "bytes": 84483
+    }
+  },
+  {
+    "execution_order": 2,
+    "label": "Blueprints",
+    "native_tuple": "primary16",
+    "native_tuple_index": 1,
+    "native_parameter_stride": "ResMut0x20B; Commands tail follows second tuple4ResMut",
+    "canonical_type": "system_decorator::blueprint::DecoratorBlueprints",
+    "native_start": "0x1403475b6",
+    "native_end_exclusive": "0x14034766b",
+    "native_operation": "replace Default, drop current Arc map/table; do not retain table capacity",
+    "current_mapping_and_gap": "canonical current map present",
+    "source": {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/blueprint.rs",
+      "sha256": "d1e08030732d329572579bbd51672191cea0b9c2559fbb6a3dc337065a64a2c3",
+      "bytes": 56159
+    }
+  },
+  {
+    "execution_order": 3,
+    "label": "PreviousBlueprints",
+    "native_tuple": "primary16",
+    "native_tuple_index": 2,
+    "native_parameter_stride": "ResMut0x20B; Commands tail follows second tuple4ResMut",
+    "canonical_type": "system_decorator::blueprint::PrevDecoratorBlueprints",
+    "native_start": "0x14034766b",
+    "native_end_exclusive": "0x140347728",
+    "native_operation": "replace Default, drop prior Arc map/table independently",
+    "current_mapping_and_gap": "canonical separate previous map present",
+    "source": {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/blueprint.rs",
+      "sha256": "d1e08030732d329572579bbd51672191cea0b9c2559fbb6a3dc337065a64a2c3",
+      "bytes": 56159
+    }
+  },
+  {
+    "execution_order": 4,
+    "label": "Archivist",
+    "native_tuple": "primary16",
+    "native_tuple_index": 3,
+    "native_parameter_stride": "ResMut0x20B; Commands tail follows second tuple4ResMut",
+    "canonical_type": "country_core::resources::walls::decorator_archivist::LiveDecoratorArchivist",
+    "native_start": "0x140347728",
+    "native_end_exclusive": "0x140347764",
+    "native_operation": "real default140341370 then drop old14060aae0 and copy1e8B",
+    "current_mapping_and_gap": "use actual native-physics Live alias; not similarly named archive DecoratorStorage",
+    "source": {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/walls/decorator_archivist.rs",
+      "sha256": "61adda4494f03cb0419c664c3b2bc541cb4f579c02676150e35000d7caaf9bfb",
+      "bytes": 27090
+    }
+  },
+  {
+    "execution_order": 5,
+    "label": "DeferredHistory",
+    "native_tuple": "primary16",
+    "native_tuple_index": 4,
+    "native_parameter_stride": "ResMut0x20B; Commands tail follows second tuple4ResMut",
+    "canonical_type": "system_decorator::deferred_decorator_history::DeferredDecoratorEditHistory",
+    "native_start": "0x140347764",
+    "native_end_exclusive": "0x140347821",
+    "native_operation": "replace Default: records Vec drops, affected locator set drops, pending=false",
+    "current_mapping_and_gap": "canonical32B history queue present; not28B UI op queue",
+    "source": {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/deferred_decorator_history.rs",
+      "sha256": "e900e1cc020b6fbe1ed8c9d3e6f93e12c1ab1e12fbd6d8dfd41fa2e2d660add1",
+      "bytes": 9755
+    }
+  },
+  {
+    "execution_order": 6,
+    "label": "VisualState",
+    "native_tuple": "primary16",
+    "native_tuple_index": 5,
+    "native_parameter_stride": "ResMut0x20B; Commands tail follows second tuple4ResMut",
+    "canonical_type": "system_decorator::decorator_visual_state::DecoratorVisualState",
+    "native_start": "0x140347821",
+    "native_end_exclusive": "0x140347988",
+    "native_operation": "replace Default after old visual drop605bf0; cloth Vec and persistent/transient maps empty",
+    "current_mapping_and_gap": "canonical owner present; Entity IDs are values and dropping maps does not despawn entities",
+    "source": {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/decorator_visual_state.rs",
+      "sha256": "976977a3d40ff291a75d8e9b996555687058c19a7f9768ec3d122c91633da502",
+      "bytes": 18802
+    }
+  },
+  {
+    "execution_order": 7,
+    "label": "IdGen",
+    "native_tuple": "primary16",
+    "native_tuple_index": 6,
+    "native_parameter_stride": "ResMut0x20B; Commands tail follows second tuple4ResMut",
+    "canonical_type": "country_core::resources::walls::decorator::DecoratorIdGen",
+    "native_start": "0x140347988",
+    "native_end_exclusive": "0x1403479a5",
+    "native_operation": "call shared zero-return constructor then storeu32 id counter; reset0",
+    "current_mapping_and_gap": "canonical Default next0; ICF alias of shared0-return body does not change native store",
+    "source": {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/walls/decorator.rs",
+      "sha256": "7da61633c1ec7be6662533fa7cd61ab9229942fa2e03e5f3221641425aeb8976",
+      "bytes": 62871
+    }
+  },
+  {
+    "execution_order": 8,
+    "label": "PlaceInteraction",
+    "native_tuple": "primary16",
+    "native_tuple_index": 7,
+    "native_parameter_stride": "ResMut0x20B; Commands tail follows second tuple4ResMut",
+    "canonical_type": "system_decorator::ui_systems::ui_place_decorator::PlaceDecoratorInteractionState",
+    "native_start": "0x1403479a5",
+    "native_end_exclusive": "0x1403479ec",
+    "native_operation": "default discriminant0; inactive payload words copied, not proof of all-zero payload",
+    "current_mapping_and_gap": "current onlyOption<DecoratorId> is partial schema; complete original active payload/consumer missing",
+    "source": {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/ui_systems/ui_place_decorator.rs",
+      "sha256": "c967d2747e5184319c2450e32b7863dc855a9973207c8a7ef212336f7edca228",
+      "bytes": 5557
+    }
+  },
+  {
+    "execution_order": 9,
+    "label": "AudioEvents",
+    "native_tuple": "primary16",
+    "native_tuple_index": 8,
+    "native_parameter_stride": "ResMut0x20B; Commands tail follows second tuple4ResMut",
+    "canonical_type": "system_decorator::audio::DecoratorAudioEvents",
+    "native_start": "0x1403479ec",
+    "native_end_exclusive": "0x140347c11",
+    "native_operation": "construct four empty map defaults; drop old6061f0, install0xc0B owner",
+    "current_mapping_and_gap": "current two command maps+fouru32 is partial against four native48B map owners; no EventWriter param",
+    "source": {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/audio/mod.rs",
+      "sha256": "e9839740b145537170a69c60c6c67781245374308133fa566cf3050be789d0b2",
+      "bytes": 9535
+    }
+  },
+  {
+    "execution_order": 10,
+    "label": "WindowLights",
+    "native_tuple": "primary16",
+    "native_tuple_index": 9,
+    "native_parameter_stride": "ResMut0x20B; Commands tail follows second tuple4ResMut",
+    "canonical_type": "system_decorator::window_lights::GlobalWindowLightsControl",
+    "native_start": "0x140347c11",
+    "native_end_exclusive": "0x140347cb9",
+    "native_operation": "replace Default, old table drop/reseed, lights_on=false",
+    "current_mapping_and_gap": "root alone implements approved narrow fragment; native country_core path maps current unique system_decorator owner; excluded from our source scope",
+    "source": {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/window_lights.rs",
+      "sha256": "55f7f4108da68f8b2c2badef43eb2d75f40c99e736432f152f43317a84807224",
+      "bytes": 8821
+    }
+  },
+  {
+    "execution_order": 11,
+    "label": "PhysicsColliders",
+    "native_tuple": "primary16",
+    "native_tuple_index": 11,
+    "native_parameter_stride": "ResMut0x20B; Commands tail follows second tuple4ResMut",
+    "canonical_type": "country_core::resources::walls::decorator_collision::DecoratorPhysicsColliders",
+    "native_start": "0x140347cb9",
+    "native_end_exclusive": "0x140347e04",
+    "native_operation": "replace Default: two collider-registry map owners, old24B entries tables dropped",
+    "current_mapping_and_gap": "canonical two maps present; handle values Copy/no implicit global RaycastWorld clear",
+    "source": {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/walls/decorator_collision.rs",
+      "sha256": "d77abd896325f6cf6567c23955ae9efc846db7a112ddbaeca9f2dc323eadd047",
+      "bytes": 566
+    }
+  },
+  {
+    "execution_order": 12,
+    "label": "StoneColumns",
+    "native_tuple": "primary16",
+    "native_tuple_index": 12,
+    "native_parameter_stride": "ResMut0x20B; Commands tail follows second tuple4ResMut",
+    "canonical_type": "country_core::resources::walls::wall_stone_columns::StoneColumnCollisionStorage",
+    "native_start": "0x140347e04",
+    "native_end_exclusive": "0x140347f3d",
+    "native_operation": "replace Default: old aggregate5cf990 drop, install Vec and two keyed owners over0x78B",
+    "current_mapping_and_gap": "current cleared Vec+column map+opaque u64 StoneColumn lacks second native collider registry/payload",
+    "source": {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/walls/wall_stone_columns.rs",
+      "sha256": "7ef7cb91ddec1a3f49772538ea1559c5f98763296234fec89de4325d7de5e622",
+      "bytes": 1527
+    }
+  },
+  {
+    "execution_order": 13,
+    "label": "DormerTiles",
+    "native_tuple": "primary16",
+    "native_tuple_index": 13,
+    "native_parameter_stride": "ResMut0x20B; Commands tail follows second tuple4ResMut",
+    "canonical_type": "country_core::resources::roofs::dormer_tiles::DormerTiles",
+    "native_start": "0x140347f3d",
+    "native_end_exclusive": "0x140348006",
+    "native_operation": "replace Default: map24B native key+allocation entries drop via specialized table glue",
+    "current_mapping_and_gap": "canonical nonClone sparse roof-tile allocations present; drop enqueues same weak-linked waste",
+    "source": {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/roofs/dormer_tiles.rs",
+      "sha256": "e18f24fb17de99d4b72238cb94435ae62075cac32c652341ec7b0951e50e4c2f",
+      "bytes": 875
+    }
+  },
+  {
+    "execution_order": 14,
+    "label": "ChimneyTracker",
+    "native_tuple": "primary16",
+    "native_tuple_index": 14,
+    "native_parameter_stride": "ResMut0x20B; Commands tail follows second tuple4ResMut",
+    "canonical_type": "system_decorator::decorator_visual::deco_differential_state::WallAttachedDecoTracker<ChimneyAssemblyParams>",
+    "native_start": "0x140348006",
+    "native_end_exclusive": "0x1403480b1",
+    "native_operation": "actual default14010ba60, drop56B wall log entries plus dirty set, install both empty",
+    "current_mapping_and_gap": "canonical strict tracker/40B Params; no Default requirement for Params",
+    "source": {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/decorator_visual/deco_differential_state.rs",
+      "sha256": "9e56581ae28381bd242fc60348010cb647ed2a86f120f8a262032ccc9117854e",
+      "bytes": 13944
+    }
+  },
+  {
+    "execution_order": 15,
+    "label": "StairsState",
+    "native_tuple": "primary16",
+    "native_tuple_index": 15,
+    "native_parameter_stride": "ResMut0x20B; Commands tail follows second tuple4ResMut",
+    "canonical_type": "country_core::resources::stairs::stairs_state::StairsState",
+    "native_start": "0x1403480b1",
+    "native_end_exclusive": "0x1403481b6",
+    "native_operation": "replace Default: two real empty GraphMaps, endpoint tag3, dirty empty, checksumNone, backed_upfalse",
+    "current_mapping_and_gap": "canonical new()/Default present; no fake node or altered ID allocator",
+    "source": {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/stairs/stairs_state.rs",
+      "sha256": "89ac108ee643249dfd5ae7fedbeeed4e4d5ac5f9c8975d0193bd854d051b0fd4",
+      "bytes": 16029
+    }
+  },
+  {
+    "execution_order": 16,
+    "label": "StairColliderRegistry",
+    "native_tuple": "secondary5",
+    "native_tuple_index": 0,
+    "native_parameter_stride": "ResMut0x20B; Commands tail follows second tuple4ResMut",
+    "canonical_type": "country_core::resources::stairs::stairs_collider::StairColliderRegistry",
+    "native_start": "0x1403481b6",
+    "native_end_exclusive": "0x14034831e",
+    "native_operation": "replace Default: four collider-registry owners, drop60a9e0, copy0xb0+16 bytes",
+    "current_mapping_and_gap": "missing exact current type; StairsCollider ZST is not equivalent",
+    "source": null
+  },
+  {
+    "execution_order": 17,
+    "label": "DoorTracker",
+    "native_tuple": "secondary5",
+    "native_tuple_index": 1,
+    "native_parameter_stride": "ResMut0x20B; Commands tail follows second tuple4ResMut",
+    "canonical_type": "system_decorator::decorator_visual::deco_differential_state::WallAttachedDecoTracker<DoorStairsAssemblyParams>",
+    "native_start": "0x14034831e",
+    "native_end_exclusive": "0x1403483c9",
+    "native_operation": "actual default14010b940, drop56B wall log entries and dirty set",
+    "current_mapping_and_gap": "canonical strict tracker/32B Params",
+    "source": {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/decorator_visual/deco_differential_state.rs",
+      "sha256": "9e56581ae28381bd242fc60348010cb647ed2a86f120f8a262032ccc9117854e",
+      "bytes": 13944
+    }
+  },
+  {
+    "execution_order": 18,
+    "label": "StairsVisual",
+    "native_tuple": "secondary5",
+    "native_tuple_index": 2,
+    "native_parameter_stride": "ResMut0x20B; Commands tail follows second tuple4ResMut",
+    "canonical_type": "country_core::resources::stairs::visual::StairsVisualState",
+    "native_start": "0x1403483c9",
+    "native_end_exclusive": "0x140348488",
+    "native_operation": "replace Default: drop0x110B edge values via specialized table glue, empty map and dirty=false",
+    "current_mapping_and_gap": "current edges have two real MeshAtlasAllocation slots but rest opaque; not full original per-edge mesh/RT/entity payload",
+    "source": {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/stairs/visual.rs",
+      "sha256": "d8e8e0da1f5db76dabd715743be6a588f9149f68bfd930b879ea8d4d7ceca7d2",
+      "bytes": 15136
+    }
+  },
+  {
+    "execution_order": 19,
+    "label": "StructuralGraph",
+    "native_tuple": "secondary5",
+    "native_tuple_index": 3,
+    "native_parameter_stride": "ResMut0x20B; Commands tail follows second tuple4ResMut",
+    "canonical_type": "country_core::resources::stairs::structural_graph::StairsStructuralGraph",
+    "native_start": "0x140348488",
+    "native_end_exclusive": "0x1403484a3",
+    "native_operation": "call real clear140869a30; preserve container capacity, not replaceDefault",
+    "current_mapping_and_gap": "current clear modeled graph+maps; original additional+120/+180 tables documented missing",
+    "source": {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/stairs/structural_graph.rs",
+      "sha256": "74bb16d977340dca160aa117ee18ced6dd4fadf7f411b199badbfc9b6726b529",
+      "bytes": 14267
+    }
+  },
+  {
+    "execution_order": 20,
+    "label": "Affordance",
+    "native_tuple": "primary16",
+    "native_tuple_index": 10,
+    "native_parameter_stride": "ResMut0x20B; Commands tail follows second tuple4ResMut",
+    "canonical_type": "system_decorator::ui_systems::ui_decorator_affordance_dispatch::DecoratorAffordanceDispatcher",
+    "native_start": "0x1403484a3",
+    "native_end_exclusive": "0x1403484be",
+    "native_operation": "call real clear1407af330: state6 payload0; preserve unrelated bytes",
+    "current_mapping_and_gap": "current clear matches bounded writes; derivedDefault(state0) is not equivalent",
+    "source": {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/ui_systems/ui_decorator_affordance_dispatch.rs",
+      "sha256": "2d5833ad2201aa3193e4d849aaada4860325b64e3431c7e76e5e9283b633d5c8",
+      "bytes": 6150
+    }
+  },
+  {
+    "execution_order": 21,
+    "label": "Commands",
+    "native_tuple": "secondary5",
+    "native_tuple_index": 4,
+    "native_parameter_stride": "ResMut0x20B; Commands tail follows second tuple4ResMut",
+    "canonical_type": "bevy_ecs::system::commands::Commands",
+    "native_start": "0x1403484be",
+    "native_end_exclusive": "0x14034854f",
+    "native_operation": "queue remove_resource<country_core::resources::stairs::stairs_top_down::StairsTopDownMesh>; deferred apply",
+    "current_mapping_and_gap": "not entity-despawn command; current optional mesh logical ManagedHandle has no owning Drop proof",
+    "source": null
+  }
+]

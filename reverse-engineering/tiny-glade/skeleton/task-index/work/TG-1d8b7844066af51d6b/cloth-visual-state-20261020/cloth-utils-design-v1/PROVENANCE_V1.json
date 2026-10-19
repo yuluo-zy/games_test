@@ -1,0 +1,47 @@
+{
+  "scope": "B-native helpers and current pinned dependencies; no original Rust ABI/mutability recovered from void PDB signatures.",
+  "source_before": {
+    "path": "tiny-glade/crates/utils/src/lib.rs",
+    "sha256": "c390ecff7fb5ae4c62e042c3edf54454c10275ebee75064cf722aa637193a5e0"
+  },
+  "prior_readonly_evidence": [
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-917d6130810801d337/deco-trackers-20261020/RANDOM_SPLITS_DEPENDENCY_CONTRACT_B.md",
+      "sha256": "b3308a526870d3b8ff564b2fc515632edb0f44248e52e6a6f25419638a43429c"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-917d6130810801d337/deco-trackers-20261020/RANDOM_SPLITS_READONLY_MANIFEST_B.json",
+      "sha256": "5ada82dc2fd6e2f407e759aea480caaaa95f8784eb74228f3290d8f1a4d914fc"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-922ae449b0664cec84/cloth-visual-state-20261020/projection-evidence-v1/PROJECTION_EVIDENCE_V1.json",
+      "sha256": "5e2bd36820ae5daeeccb19222d87f92326f3f4ab23c715ddce31659b266260f6"
+    }
+  ],
+  "dependency_sources": [
+    {
+      "path": "/Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fastrand-1.8.0/src/lib.rs",
+      "sha256": "94a02ae3d22d55a792b5c5739183039644830c4d1c9a3399c8c7570e0f043ada"
+    },
+    {
+      "path": "/Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glam-0.29.3/src/f32/vec2.rs",
+      "sha256": "ffd9424d28ad5f2265ee625b29d41ba52f26bbfb24deb94a5339d8e54921c0cc"
+    },
+    {
+      "path": "/Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glam-0.29.3/src/f32/scalar/quat.rs",
+      "sha256": "23076e32e2f0bc3c5bcf91f8d68ae6c024e7fde558bf8b5d8156269aabf32f91"
+    }
+  ],
+  "current_versions": {
+    "fastrand": "workspace=1.8.0",
+    "glam": "workspace=0.29.3"
+  },
+  "workspace_cargo_toml_sha256": "8e8f6a289d5c6d08774d8348ae3cb743813763206090e0e120b60f492f4538d7",
+  "utils_cargo_toml_sha256": "88c9cfcc10c437400b40925497e225a53bbc8138ee847f29e494edd4ae9e91ea",
+  "notes": [
+    "fastrand1.8.0 Rng is Cell<u64>; f32(&self) advances internal state. &mut callers coerce to host &Rng API.",
+    "Original Rust &Rng vs &mutRng spelling is not proved by native ABI, and is not claimed.",
+    "glam0.29.3 Vec2::try_normalize accepts exactly finite positive reciprocal; from_mat3 delegates rotation axes conversion.",
+    "Existing sampling module declaration remains; its pending user file is not restored or hidden."
+  ]
+}

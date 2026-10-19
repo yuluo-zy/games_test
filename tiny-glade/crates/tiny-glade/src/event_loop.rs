@@ -90,19 +90,25 @@ impl crate::game_loop::GameLoop {
         let failure = Rc::new(RefCell::new(None));
         let event_failure = failure.clone();
         self.refresh_monitors(&event_loop);
-        event_loop.run(move |event, target| {
+        let loop_result = event_loop.run(move |event, target| {
             if let Err(error) = self.main_loop(event, target) {
-                *event_failure.borrow_mut() = Some(error);
+                let mut first_error = event_failure.borrow_mut();
+                if first_error.is_none() {
+                    *first_error = Some(error);
+                } else {
+                    log::error!("event-loop cleanup after original failure: {error:#}");
+                }
+                drop(first_error);
                 if let Err(shutdown) = self.shut_down() {
                     log::error!("GPU shutdown after loop failure: {shutdown:#}");
                 }
                 target.exit();
             }
-        })?;
+        });
         let error = failure.borrow_mut().take();
         match error {
             Some(error) => Err(error),
-            None => Ok(()),
+            None => loop_result.map_err(Into::into),
         }
     }
 
@@ -118,7 +124,7 @@ impl crate::game_loop::GameLoop {
             Event::WindowEvent { window_id, event } if window_id == self.window.id() => {
                 if matches!(event, WindowEvent::RedrawRequested) {
                     if !self.suspended {
-                        let running = self.frame()?;
+                        let running = self.frame(target)?;
                         if self.renderer.any_present_successful() || self.frame_count > 1 {
                             self.window.set_visible(true);
                         }
@@ -127,6 +133,10 @@ impl crate::game_loop::GameLoop {
                             .frame_limit
                             .is_some_and(|limit| self.frame_count >= limit);
                         if !running || bounded_run_finished {
+                            log::info!(
+                                "production frame progress at exit: {:?}",
+                                self.frame_progress()
+                            );
                             self.shut_down()?;
                             target.exit();
                         }
@@ -142,16 +152,14 @@ impl crate::game_loop::GameLoop {
                 }
                 match event {
                     WindowEvent::Resized(size) => {
-                        self.on_os_event(OsWindowEvent::Resized([size.width, size.height]), target)?
+                        self.queue_os_event(OsWindowEvent::Resized([size.width, size.height]))?
                     }
-                    WindowEvent::Moved(_) => {
-                        self.on_os_event(OsWindowEvent::MonitorChanged, target)?
-                    }
+                    WindowEvent::Moved(_) => self.queue_os_event(OsWindowEvent::MonitorChanged)?,
                     WindowEvent::CloseRequested => {
-                        self.on_os_event(OsWindowEvent::CloseRequested, target)?
+                        self.queue_os_event(OsWindowEvent::CloseRequested)?
                     }
                     WindowEvent::Focused(focused) => {
-                        self.on_os_event(OsWindowEvent::Focused(focused), target)?
+                        self.queue_os_event(OsWindowEvent::Focused(focused))?
                     }
                     WindowEvent::ModifiersChanged(modifiers) => self.modifiers = modifiers.state(),
                     WindowEvent::KeyboardInput {
@@ -174,9 +182,9 @@ impl crate::game_loop::GameLoop {
                                     )
                                     && self.modifiers.alt_key())
                         {
-                            self.on_os_event(OsWindowEvent::ToggleFullscreen, target)?;
+                            self.queue_os_event(OsWindowEvent::ToggleFullscreen)?;
                         } else {
-                            self.on_os_event(OsWindowEvent::Keyboard(event), target)?;
+                            self.queue_os_event(OsWindowEvent::Keyboard(event))?;
                         }
                     }
                     WindowEvent::CursorMoved { position, .. } => {
@@ -193,29 +201,25 @@ impl crate::game_loop::GameLoop {
                                     (position.y - anchor.y) as f32,
                                 ]
                             };
-                            self.on_os_event(OsWindowEvent::CursorRelative(delta), target)?;
+                            self.queue_os_event(OsWindowEvent::CursorRelative(delta))?;
                         } else {
-                            self.on_os_event(
-                                OsWindowEvent::CursorAbsolute([position.x, position.y]),
-                                target,
-                            )?;
+                            self.queue_os_event(OsWindowEvent::CursorAbsolute([
+                                position.x, position.y,
+                            ]))?;
                         }
                     }
                     WindowEvent::MouseInput { state, button, .. } => {
-                        self.on_os_event(OsWindowEvent::MouseButton(state, button), target)?
+                        self.queue_os_event(OsWindowEvent::MouseButton(state, button))?
                     }
                     // B forwards the LineDelta variant (two f32s) and unit=0;
                     // the PixelDelta variant does not enter this producer path.
                     WindowEvent::MouseWheel {
                         delta: winit::event::MouseScrollDelta::LineDelta(x, y),
                         ..
-                    } => self.on_os_event(OsWindowEvent::LineMouseWheel([x, y]), target)?,
+                    } => self.queue_os_event(OsWindowEvent::LineMouseWheel([x, y]))?,
                     WindowEvent::ScaleFactorChanged { .. } => {
                         let size = self.window.inner_size();
-                        self.on_os_event(
-                            OsWindowEvent::Resized([size.width, size.height]),
-                            target,
-                        )?;
+                        self.queue_os_event(OsWindowEvent::Resized([size.width, size.height]))?;
                     }
                     _ => {}
                 }
@@ -227,10 +231,10 @@ impl crate::game_loop::GameLoop {
                 // Explicit OS adaptation: macOS Locked cursor does not produce
                 // the Windows warp-and-CursorMoved protocol. Feed its real raw
                 // deltas into the same recovered relative-motion consumer.
-                self.on_os_event(
-                    OsWindowEvent::CursorRelative([delta.0 as f32, delta.1 as f32]),
-                    target,
-                )?;
+                self.queue_os_event(OsWindowEvent::CursorRelative([
+                    delta.0 as f32,
+                    delta.1 as f32,
+                ]))?;
             }
             Event::AboutToWait => {
                 // OS main-thread adapter: redraw drives the same recovered
@@ -258,16 +262,26 @@ impl crate::game_loop::GameLoop {
         Ok(())
     }
 
-    pub fn on_os_event(
+    /// OS producer: retain the batch independently of either App. The mapped
+    /// absolute cursor write remains in this callback before confirmation gates.
+    pub(crate) fn queue_os_event(&mut self, event: OsWindowEvent) -> anyhow::Result<()> {
+        if let OsWindowEvent::CursorAbsolute(position) = &event {
+            self.update_custom_cursor_absolute(*position)?;
+        }
+        self.pending_os_events.push_back(event);
+        Ok(())
+    }
+
+    pub(crate) fn dispatch_os_event(
         &mut self,
         event: OsWindowEvent,
         target: &winit::event_loop::EventLoopWindowTarget<()>,
     ) -> anyhow::Result<()> {
         use bevy_ecs::entity::Entity;
         use bevy_input::{
+            ButtonState,
             keyboard::KeyboardInput,
             mouse::{MouseButtonInput, MouseScrollUnit, MouseWheel},
-            ButtonState,
         };
         use country_core::{
             game_config::GameConfig, resources::window::*, systems::backend::input,
@@ -323,8 +337,8 @@ impl crate::game_loop::GameLoop {
                 self.app_mut()
                     .world_mut()
                     .send_event(country_core::resources::events::ShutdownGameCmd);
-                // A close command reaches the app before the loop quit marker is
-                // checked. Even a minimized window must run this last update.
+                // Dispatch after a possible handoff so the current App owns
+                // the real command. Its normal Update consumer owns the marker.
                 self.window.request_redraw();
             }
             OsWindowEvent::ToggleFullscreen => {
@@ -374,10 +388,8 @@ impl crate::game_loop::GameLoop {
                 self.app_mut().world_mut().send_event(keyboard_event);
             }
             OsWindowEvent::CursorAbsolute(position) => {
-                // Native OS callback writes the mapped custom cursor before
-                // the game-side confirmation-id filter. The writer itself
-                // preserves the native uncaptured-only gate.
-                self.update_custom_cursor_absolute(position)?;
+                // The OS producer already wrote the mapped SSBO before this
+                // batch was captured. Only the game event is confirmation-gated.
                 if self.cursor_requests.is_fully_confirmed() {
                     self.app_mut().world_mut().send_event(
                         input::translate_input_to_cursor_moved::InputCursorMoved::Absolute(

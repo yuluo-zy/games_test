@@ -1,0 +1,33 @@
+{
+  "verdict": "passed_scoped_793B_math_and_same_curve_raw_tangent_design_with_documented_erratum",
+  "manifest_sha256": "6d58dcc7746179dbdc93f0b15d5c9dcb775247a5b09af68683e52cbe9731fa77",
+  "contract_sha256": "79443c81e39eff2c6810e4411ab781c22279b8e9153f89ef466770c7d4326c7d",
+  "frozen_and_actual_hash_checks": {
+    "design": 6,
+    "external": 6,
+    "live_before": 3
+  },
+  "full_original": {
+    "start_va": "0x140c92090",
+    "bytes": 793,
+    "instructions": 171,
+    "all_contiguous_PE_match": true
+  },
+  "source_design": [
+    "Original computes normalizedU f32, actualfinite/range checks and realCurve segment lookup; inputY is carried evenNaN, no addedfiniteY guard. Sourceleading simplifiedCoreCurve2 from actualPublicWallState, not preparedXYZclampedcenter substitute.",
+    "Out-of-range actual selected B-A segment at clampedU, two separate native f32 reciprocalnormalizations andembeddedzero lane. No searchfirst/lastnonzero, robustnormalize_or/f64/zero repair. Preserve nativezeroactualsegment ->allNaNoutput, includingYfrom0*infinity.",
+    "NegativeU uses position-u*tangent, upper uses position+(u-length)*tangent; finite(0,0)->(3,4) negative-1 witness(+.6,Y,+.8) rather than oldnegative. ExactPC221f..22ab independentlyread.",
+    "Narrow CurveSampling raw_tangent default may preserve compilationforlegacy customimplementations but is explicit engineeringcompatibility, not genericnative proof. TrueutilsCurve2 override must borrow actual get_unnormalized_tangent_at_coord(get_coord_at_u), with no constructor/left/measure/globaltangentpolicy changes.",
+    "Actuallocation adapter may borrowcoreCurve2, no Vec cloning/cache. Existingplacementwrapper strictervalidation/Yfinite means it is not an exactreplacement for this793B body. ApproximateU adapter reuse is separate/unused here."
+  ],
+  "mandatory_tests_and_scope": [
+    "Keepall192 repeat-end inputs/bothleft-right checks andfinite1e-5 tolerance. Existingzero-end finiteenhancement expected must explicitlychange toallNaN andnegativefiniteexpectedflip, no inputskip/isfiniteguard/testignore/removal.",
+    "KeepStationary input(-1,4), recordnative-mathNaNforcustomdomain not originalshippedCurve2. Add normalizedNaN/infinity panic andinrangeinputYNaN propagation.",
+    "Othercurvepolicies/260fixtures/measure/left unchanged. Freshthreecurrentbeforehash/sourcecandidate/testdelta review before rootexecution; previous53actualpass belongs oldsnapshot, not newmethod."
+  ],
+  "explicit_doc_erratum": "CONTRACT-V1 Stationary paragraph incorrectly quotes currentexpected(7,4,8). Actual frozen currentcurve_properties.rs399..402 expectsVec3(0,4,0), position_at_u=ZERO,length1. This factual typo does not change the prescribed retainedinput/newallNaNexpectation; source/testmust preserveactualinput. Author notified; append-onlydoccorrectionrequired, no oldfreeze rewrite.",
+  "authorization": "Root message and separatelyreadAUTHORIZATION-ADDENDUM-V1 explicitly authorize normalclaimed utils/curve/mod narrowcompanion. No foreignowner edit permission inferred.",
+  "implementation_admission": "Proceed only after existingrootdelegation within WallSpace/rawCurve override/requiredtestdelta. Locationborrowadapter remains itsownedconsumerpackage.",
+  "reviewer_Cargo_rustc_tests_GPU": false,
+  "production_or_claims_modified": false
+}

@@ -1,0 +1,4805 @@
+{
+  "id": "TG-5f034e6af1260241e4",
+  "source_path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+  "category": "core",
+  "target_version": "C",
+  "versions": [
+    "A",
+    "B",
+    "C"
+  ],
+  "priority_score": 88,
+  "family": "other_game_or_owner_review",
+  "claim_mode": "deferred",
+  "cross_version_pairs": [
+    {
+      "versions": [
+        "A",
+        "B"
+      ],
+      "same_file_source_checksum_set": false,
+      "shared_source_checksums": [],
+      "source_scope": "entire source-file checksum, not isolated function text",
+      "behavior_equivalence": "unverified"
+    },
+    {
+      "versions": [
+        "A",
+        "C"
+      ],
+      "same_file_source_checksum_set": false,
+      "shared_source_checksums": [],
+      "source_scope": "entire source-file checksum, not isolated function text",
+      "behavior_equivalence": "unverified"
+    },
+    {
+      "versions": [
+        "B",
+        "C"
+      ],
+      "same_file_source_checksum_set": false,
+      "shared_source_checksums": [],
+      "source_scope": "entire source-file checksum, not isolated function text",
+      "behavior_equivalence": "unverified"
+    }
+  ],
+  "function_ids": [
+    "045c2ffba2b06349f4",
+    "0920abe75352648ee8",
+    "0f39e9a8ae8f9bd800",
+    "10610ad5c6715d5cb1",
+    "161ca45b49c337a232",
+    "1caac6daea763626c0",
+    "2135c4748a88c2ea9f",
+    "24959dea55172cf058",
+    "2835b2b78a6f8fc31e",
+    "2d5085b1dccfe07ca5",
+    "3262761bee7d12cb6b",
+    "36f35ae37e495ccfce",
+    "37cb0f78525d2aeee8",
+    "3b8c66a9047727e866",
+    "3dcdd3d6a93cf4c786",
+    "40c454e2b217edea0a",
+    "40ea8e4f49bb74740c",
+    "45d474454defec58d3",
+    "580ac691328a7fa2b4",
+    "6184bf351d162a1c04",
+    "61e0c822186290711c",
+    "7144a789c7cee48961",
+    "72d2eea3dbb57f2c6a",
+    "898d8576b606fb1fa9",
+    "8aee3e06beec0b5037",
+    "8f940af0d03795bb14",
+    "923405522c7bdef375",
+    "96cdef1e6082c668fa",
+    "9e2e6164dd7536ad95",
+    "a1b2e1229e765b4a1b",
+    "a56e5778798bb88871",
+    "a9ed2d6244d08b9885",
+    "aae064774f19be083b",
+    "b622a6aa19100bd921",
+    "b7ede5bce25a6e241d",
+    "b9860bb75004795228",
+    "c48bee7262ac047c7c",
+    "c4f88baffdc6e48f1d",
+    "c5b9fe6c84fc1953ee",
+    "c65484a489e49f5383",
+    "ca13ca5c9c517ab867",
+    "cafb37a46cfa3c9232",
+    "d0c602c3a195d895ef",
+    "e411d638f02f02612f",
+    "e4fcb47f4880dc972f",
+    "ea213f9e0c29851f60",
+    "ec845fe9cb4ae5bf47",
+    "fdb7a19c7f81374ee6",
+    "fe738de7729aa59e8b",
+    "033c3fb059e46d0c51",
+    "06528a6194ec761c83",
+    "13c332ac1704a5f5d7",
+    "1446d8d20a84e6f939",
+    "1ee05a832e7343bef2",
+    "1f069387c514d5f0b1",
+    "203500b0c8f141dc4a",
+    "21947ae6ed36ced86f",
+    "21a9f9a36dcaac1926",
+    "2723091bc1d9d2750b",
+    "2fafe5fb99ea9e307b",
+    "389741f061328047d5",
+    "42aeb12762de95be05",
+    "4335d14b55cc8294f1",
+    "43ad3898ac1d6f20ab",
+    "53fcf8ac9bd5ed6830",
+    "55059157c2200f4d60",
+    "577ad907364ee5d362",
+    "58d28dffdc630c7855",
+    "5b355f523d5fa82ca5",
+    "5e0b5f7400f8d82c4f",
+    "60117b60fac96c51b8",
+    "6408960574d81c649c",
+    "6868259a61f583eace",
+    "6b27a75f55f970e4c7",
+    "700debdfc6865bcecd",
+    "83d77142bc137d415c",
+    "88e45fe285faaa992b",
+    "8c022cae0ef6ccfe6c",
+    "a131b37cf582a0d7b5",
+    "a747c9c195b4c2d1d7",
+    "a7e357b2d6db90ff12",
+    "a89b9e6f9c113178e3",
+    "abe354c4325e506afc",
+    "b04513d9e5c39cabec",
+    "b18e64180c8625a5e3",
+    "b45b0a2680738445f7",
+    "b4f0d58a0bac196d92",
+    "c3f8886d8341d1f826",
+    "d4d738610debe930ad",
+    "d62452fdc57f6ec71d",
+    "d6a6a032e87523c075",
+    "ed508673b195fff568",
+    "f09486c5ff24992aa3",
+    "fe767c143d192f973e",
+    "ff3a9117bf7aec29e0",
+    "026cc3476f2366e79b",
+    "055d2d6ec335d1fb51",
+    "07f9e13e724f5d8055",
+    "15e837b5d64a0c5008",
+    "1b5972998bea2ebf1e",
+    "1ec5ecd37ff3b0bae5",
+    "247abcb98978927932",
+    "259c455b7f16626b88",
+    "29f4be35f502e909cd",
+    "2a4a26ac08215e8350",
+    "30e5598cbe01884f6b",
+    "37db1f856eac6d9c0e",
+    "3d4802c7b43f7c5002",
+    "3f016d70d08b8f14a9",
+    "46c362455a2982d126",
+    "4f27b42c065aa32673",
+    "50ceb73e432ea95c1c",
+    "5c3440755afc5a0b0a",
+    "5de8edc7ac8c95d6ad",
+    "6082754ca5c14e0ae2",
+    "61f01e5f9cb7791dc9",
+    "67e79018cff19537a7",
+    "6d2e53b9cb49a9746a",
+    "6fa91ef129d171fcb5",
+    "750f3b6a0b081cb51a",
+    "77c950c14403113304",
+    "7ed83388b57035cc8c",
+    "80de473b169f94f45b",
+    "8c5c902c1ecf8474f9",
+    "92fe7cfa718a09b006",
+    "936e91239daa79b3b5",
+    "946926f919e61b3bb4",
+    "9a2f08912b4f07e7df",
+    "9be12bddec2bfe950e",
+    "9c83d59bd4bb61efed",
+    "9d41ebc93b79f39528",
+    "aa8754ecf3b97378bf",
+    "aaa81b53039c41af7e",
+    "ac73815f1df44f9f5e",
+    "ae1f04bb2244f4e8db",
+    "bd4b44398b4a4e9c74",
+    "c572ba89ea7b291655",
+    "c7b9a604fadf02081b",
+    "c9ea5c3b5dc252cdf2",
+    "ce97728d55e200bbac",
+    "cf2faa072d59aae4e2",
+    "d1eec5038106640f3d",
+    "d4841caf011cf6a657",
+    "d5dfd174164bb6425c",
+    "dd6282a930b0cd929f",
+    "e42a813a11172a39c5",
+    "e4c759ff3c4b8b13cb",
+    "eb17745f12ac366a96",
+    "eb8242dd190cfd9894",
+    "ecc7caa9d0417ad45c",
+    "edf9d88b832ed356a8",
+    "ee8c6536cc6492fb60",
+    "f029d1e2c4b497825a",
+    "f5d039ab62964a4d57",
+    "f62a7f53811af6f60a",
+    "f7c913d9766883238d",
+    "f8f473b4ec8e89b917",
+    "fb0d475216c52e26bd",
+    "fe6b80c331f277caef"
+  ],
+  "related_callee_tasks": [
+    "TG-3f1019bf28c1d470d9",
+    "TG-492fe68933dd29b2b6",
+    "TG-d1bc03d172aba70ca8",
+    "TG-11d607188d6724d9f3",
+    "TG-c7c4edf038d495b5b1",
+    "TG-77dd23d00f21137d84",
+    "TG-0cfb75ad2c28d18f87",
+    "TG-f4e8ea3c0995e850c0",
+    "TG-b7b401cb122797fc0b",
+    "TG-750826f00724551c35",
+    "TG-c9a66b45d43aad4580",
+    "TG-8749ca2ec65d150db3",
+    "TG-bdcb782feb83d7aa9f"
+  ],
+  "related_caller_tasks": [
+    "TG-3f1019bf28c1d470d9",
+    "TG-0ef1874c29a03d0dec"
+  ],
+  "source_inputs": {
+    "A": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/A/crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "sha256": "7a0d8425f2b95afccb1395e4a3856c8578cba3edec07b8a3d393f980841ef498",
+      "binary_sha256": "76c998d48a2404b105b431d6d881290969e786e993dd7ae824b6bedab95fd708",
+      "pdb_sha256": "d5d4001583e31abf20b1563bbfdd9e4853629065aa2e461fe5809b205db908a5"
+    },
+    "B": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/B/crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "sha256": "9519d66603173ae3b98d578d8e8d59f10430a7c81458f1acb0c9fc5a27a62864",
+      "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+      "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911"
+    },
+    "C": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/C/crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "sha256": "47cab5919dfe4d6f69d2442e3e6301b097e0f6f3311f9df56e318731827ffa84",
+      "binary_sha256": "d8f9261b1a4cb677fe91b8f5017bcff63b1312228b3f3264a2071ca7d3ad80a9",
+      "pdb_sha256": "df472d8e6ae642baed96127151b18685291468518ea8dc71557bce4508c78902"
+    }
+  },
+  "assignment_unit": "one source-file family across A/B/C; one owner to prevent overlapping file edits",
+  "deliverable": "independent candidate Rust + ABI/field/dependency contracts + producer/consumer and removal/history boundaries + evidence handoff",
+  "implementation_status": "not_assessed; existing Rust must be checked before duplicate work",
+  "semantic_acceptance": false,
+  "existing_reconstruction_candidates": [],
+  "known_B_evidence_function_ids": [],
+  "data_structure_metadata": {
+    "A": "skeleton/A/crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs.structures.json.gz",
+    "B": "skeleton/B/crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs.structures.json.gz",
+    "C": "skeleton/C/crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs.structures.json.gz"
+  },
+  "handoff": "task-index/handoffs/TG-5f034e6af1260241e4.json",
+  "handoff_audit": "task-index/handoffs/TG-5f034e6af1260241e4.audit.json",
+  "claim": {
+    "task_id": "TG-5f034e6af1260241e4",
+    "owner": "render-nani-main-20261018",
+    "status": "claimed",
+    "claimed_at_utc": "2026-10-18T04:59:27.455455+00:00",
+    "target_version": "C",
+    "versions": [
+      "A",
+      "B",
+      "C"
+    ],
+    "function_scope": null,
+    "work_dir": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-5f034e6af1260241e4/render-nani-main-20261018",
+    "worker": "idx-tg-5f034e6af1260241e4-render-nani-main-20261018",
+    "source_inputs": {
+      "A": {
+        "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/A/crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+        "sha256": "7a0d8425f2b95afccb1395e4a3856c8578cba3edec07b8a3d393f980841ef498",
+        "binary_sha256": "76c998d48a2404b105b431d6d881290969e786e993dd7ae824b6bedab95fd708",
+        "pdb_sha256": "d5d4001583e31abf20b1563bbfdd9e4853629065aa2e461fe5809b205db908a5"
+      },
+      "B": {
+        "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/B/crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+        "sha256": "9519d66603173ae3b98d578d8e8d59f10430a7c81458f1acb0c9fc5a27a62864",
+        "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+        "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911"
+      },
+      "C": {
+        "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/C/crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+        "sha256": "47cab5919dfe4d6f69d2442e3e6301b097e0f6f3311f9df56e318731827ffa84",
+        "binary_sha256": "d8f9261b1a4cb677fe91b8f5017bcff63b1312228b3f3264a2071ca7d3ad80a9",
+        "pdb_sha256": "df472d8e6ae642baed96127151b18685291468518ea8dc71557bce4508c78902"
+      }
+    },
+    "handoff": "task-index/handoffs/TG-5f034e6af1260241e4.json",
+    "rule": "one owner for this A/B/C file family; deliver independent candidate/patch/contract, never overwrite another owner or original artifacts",
+    "authorized_deferred_reason": "用户已明确要求先逆向原版再完成整个游戏生产链，当前子任务恢复原gpu_generate_draw_lists顶层业务；保留现重构rhapsody架构。"
+  },
+  "function_preview": [
+    {
+      "id": "b4f0d58a0bac196d92",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::gpu_generate_draw_lists",
+      "logical_group_id": "baf3fc97d4fa604919",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "core",
+      "native_instances": [
+        {
+          "module": 521,
+          "record_offset": 57552,
+          "rva": 9993680,
+          "code_size": 11539
+        }
+      ],
+      "body_hashes": [
+        "5fd525d81b00f99539f41777b980bf9c878aef46ea51778b9fd3a7e236b901d4"
+      ],
+      "body_sizes": [
+        11539
+      ],
+      "physical_reference_callers": [
+        5161232
+      ],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "alloc",
+        "bevy_ecs",
+        "core",
+        "country_core",
+        "enum_iterator",
+        "lock_api",
+        "rhapsody"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 18,
+        "pdb_inline_transitive": 85,
+        "native_direct_call_in_physical_body": 51,
+        "native_indirect_call_unresolved": 1
+      },
+      "ambiguous_alias_groups": 38,
+      "indirect_call_groups": 1,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "large/orchestrating body with several consumers or state transitions"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 1,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 1,
+        "cross_file_callers": 1,
+        "unique_private_callees": 23,
+        "unique_observed_physical_reference_callers": 1,
+        "native_max_bytes": 11539,
+        "native_min_bytes": 11539,
+        "indirect_call_groups": 1,
+        "ambiguous_alias_groups": 38,
+        "library_namespace_count": 7,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 1,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 88,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "bytes_differ_or_codegen_changed",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "bytes_differ_or_codegen_changed",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "bytes_differ_or_codegen_changed",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [
+        "23597a78d64ac67b30"
+      ],
+      "private_callees": [
+        "033c3fb059e46d0c51",
+        "0c5dd16292af90e97b",
+        "1446d8d20a84e6f939",
+        "1d133775f7fb0b9558",
+        "2fafe5fb99ea9e307b",
+        "389741f061328047d5",
+        "417a10bacd0b3a0c9f",
+        "42aeb12762de95be05",
+        "42b69bcd5691cafb75",
+        "4335d14b55cc8294f1",
+        "4e61cebd84b15d82a7",
+        "577ad907364ee5d362",
+        "5b355f523d5fa82ca5",
+        "5d9d1ae67d0d5d5be8",
+        "5e0b5f7400f8d82c4f",
+        "6e04e9237e560898d6",
+        "7d72271c4f969dbeb2",
+        "7db81f363b2f565c1e",
+        "83d77142bc137d415c",
+        "88e45fe285faaa992b",
+        "8aa3f1b016082627de",
+        "933ea8b9f486b386fd",
+        "9493bc5c041dd93ffb",
+        "b18e64180c8625a5e3",
+        "bb8fcbc988fd83be45",
+        "bbb40efa5caae228eb",
+        "c4015c8788651a0332",
+        "d731d699d4439a0cf5",
+        "df9391e47668defb11",
+        "f09486c5ff24992aa3",
+        "f6867e04ef604d0ab3",
+        "f7e412ab349f812ee7"
+      ]
+    },
+    {
+      "id": "1ee05a832e7343bef2",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::generate_wall_draw_lists_pass2",
+      "logical_group_id": "8a551364941f17eac1",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "core",
+      "native_instances": [
+        {
+          "module": 521,
+          "record_offset": 75080,
+          "rva": 10007200,
+          "code_size": 3257
+        }
+      ],
+      "body_hashes": [
+        "870e38be2c36c111d061781e01512771a663caba3957554a73a396ef08b87eb4"
+      ],
+      "body_sizes": [
+        3257
+      ],
+      "physical_reference_callers": [
+        5161232
+      ],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "alloc",
+        "bevy_ecs",
+        "core",
+        "country_core"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 12,
+        "pdb_inline_transitive": 56,
+        "native_direct_call_in_physical_body": 27
+      },
+      "ambiguous_alias_groups": 23,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "large/orchestrating body with several consumers or state transitions"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 1,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 1,
+        "cross_file_callers": 1,
+        "unique_private_callees": 16,
+        "unique_observed_physical_reference_callers": 1,
+        "native_max_bytes": 3257,
+        "native_min_bytes": 3257,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 23,
+        "library_namespace_count": 4,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 1,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 56,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "bytes_differ_or_codegen_changed",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "bytes_differ_or_codegen_changed",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "bytes_differ_or_codegen_changed",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [
+        "23597a78d64ac67b30"
+      ],
+      "private_callees": [
+        "0dffb5a6df7f7e0dca",
+        "1d133775f7fb0b9558",
+        "4a4b2b4b734f3cf7d8",
+        "4e00671e750e4cfa31",
+        "4e9f2b19458f5e209c",
+        "5bf6faa47de6a780dd",
+        "643a9ac77d11f2e9f0",
+        "6f1e280cf5301ad4e6",
+        "7762b1835b07d2c6b5",
+        "878fe25359d0651f25",
+        "b04409d734bf43eb2b",
+        "b48ef7870b20c35895",
+        "bad21d2964f5846672",
+        "c80229bfc9cdc41ad3",
+        "ca78d9f7631857dd60",
+        "d6a6a032e87523c075",
+        "df9391e47668defb11",
+        "e8f2df047f15cb21b2",
+        "fa59d549de41c3dd88"
+      ]
+    },
+    {
+      "id": "55059157c2200f4d60",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::generate_wall_draw_lists",
+      "logical_group_id": "a12d5cb7b079679c08",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "core",
+      "native_instances": [
+        {
+          "module": 521,
+          "record_offset": 71640,
+          "rva": 10005232,
+          "code_size": 1961
+        }
+      ],
+      "body_hashes": [
+        "5a46956452a129e93ff6be8abd0cb7514ad3b555b6e043eb6d6583647d1526ed"
+      ],
+      "body_sizes": [
+        1961
+      ],
+      "physical_reference_callers": [
+        5161232
+      ],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "alloc",
+        "bevy_ecs",
+        "core",
+        "country_core"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 9,
+        "pdb_inline_transitive": 54,
+        "native_direct_call_in_physical_body": 22
+      },
+      "ambiguous_alias_groups": 18,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "large/orchestrating body with several consumers or state transitions"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 1,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 1,
+        "cross_file_callers": 1,
+        "unique_private_callees": 12,
+        "unique_observed_physical_reference_callers": 1,
+        "native_max_bytes": 1961,
+        "native_min_bytes": 1961,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 18,
+        "library_namespace_count": 4,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 1,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 43,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "bytes_differ_or_codegen_changed",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "bytes_differ_or_codegen_changed",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "bytes_differ_or_codegen_changed",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [
+        "23597a78d64ac67b30"
+      ],
+      "private_callees": [
+        "03c8f17906d0cbee08",
+        "0dffb5a6df7f7e0dca",
+        "1d133775f7fb0b9558",
+        "4a4b2b4b734f3cf7d8",
+        "533d3fdd29b1dcd896",
+        "5bf6faa47de6a780dd",
+        "7ac4581d2b0879477a",
+        "878fe25359d0651f25",
+        "8c0cb8f432806e6e6f",
+        "b04409d734bf43eb2b",
+        "c80229bfc9cdc41ad3",
+        "ca78d9f7631857dd60",
+        "df9391e47668defb11",
+        "e8f2df047f15cb21b2"
+      ]
+    },
+    {
+      "id": "577ad907364ee5d362",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::create_cull_and_bucket_pass<ref$<dyn$<country_core::render::pass_builder::shader_uri::AsComputeShaderSource> > >",
+      "logical_group_id": "4c20d68499951e001f",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "core",
+      "native_instances": [
+        {
+          "module": 541,
+          "record_offset": 121376,
+          "rva": 10651184,
+          "code_size": 794
+        }
+      ],
+      "body_hashes": [
+        "d64974aa5a50b6e26ad4f3cfdd62ec3568165baa3ac136aee173b18d656bcbed"
+      ],
+      "body_sizes": [
+        794
+      ],
+      "physical_reference_callers": [
+        9993680
+      ],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "core",
+        "country_core"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 2,
+        "pdb_inline_transitive": 1,
+        "native_direct_call_in_physical_body": 13
+      },
+      "ambiguous_alias_groups": 11,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "large/orchestrating body with several consumers or state transitions"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 1,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 1,
+        "cross_file_callers": 0,
+        "unique_private_callees": 8,
+        "unique_observed_physical_reference_callers": 1,
+        "native_max_bytes": 794,
+        "native_min_bytes": 794,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 11,
+        "library_namespace_count": 2,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 1,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "high_orchestration_candidate",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 43,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [],
+      "distinct_callers": [
+        "b4f0d58a0bac196d92"
+      ],
+      "private_callees": [
+        "2c27b08cfa840bd923",
+        "3158264db0e9866e1c",
+        "495bbd29b0e20e26b7",
+        "643a9ac77d11f2e9f0",
+        "6c8efe3d8ae0117557",
+        "6f1e280cf5301ad4e6",
+        "933ea8b9f486b386fd",
+        "9820677e46d179af69",
+        "9bd0f5d8b6dec9798e",
+        "9da59088761a7be38e",
+        "b48ef7870b20c35895",
+        "bbb40efa5caae228eb"
+      ]
+    },
+    {
+      "id": "5b355f523d5fa82ca5",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::create_cull_and_bucket_pass<country_core::render::nani::cull_shaders::NaniCullAndBucketMain>",
+      "logical_group_id": "5603ad8ab18c14282c",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "core",
+      "native_instances": [
+        {
+          "module": 541,
+          "record_offset": 121784,
+          "rva": 10651984,
+          "code_size": 778
+        }
+      ],
+      "body_hashes": [
+        "38f0ffc2aa0f6c54130cf5242747403e9604cdab71435c307c4bebc4e7b9ba71"
+      ],
+      "body_sizes": [
+        778
+      ],
+      "physical_reference_callers": [
+        9993680
+      ],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "core",
+        "country_core"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 2,
+        "pdb_inline_transitive": 1,
+        "native_direct_call_in_physical_body": 13
+      },
+      "ambiguous_alias_groups": 11,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "large/orchestrating body with several consumers or state transitions"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 1,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 1,
+        "cross_file_callers": 0,
+        "unique_private_callees": 8,
+        "unique_observed_physical_reference_callers": 1,
+        "native_max_bytes": 778,
+        "native_min_bytes": 778,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 11,
+        "library_namespace_count": 2,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 1,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "high_orchestration_candidate",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 43,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [],
+      "distinct_callers": [
+        "b4f0d58a0bac196d92"
+      ],
+      "private_callees": [
+        "16244821cf193e7261",
+        "2c27b08cfa840bd923",
+        "3158264db0e9866e1c",
+        "495bbd29b0e20e26b7",
+        "643a9ac77d11f2e9f0",
+        "6f1e280cf5301ad4e6",
+        "933ea8b9f486b386fd",
+        "9820677e46d179af69",
+        "9bd0f5d8b6dec9798e",
+        "9da59088761a7be38e",
+        "b48ef7870b20c35895",
+        "bbb40efa5caae228eb"
+      ]
+    },
+    {
+      "id": "b18e64180c8625a5e3",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::create_cull_and_bucket_pass<country_core::render::nani::cull_shaders::NaniCullAndBucketFlowers>",
+      "logical_group_id": "a44f990c444d260ac6",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "core",
+      "native_instances": [
+        {
+          "module": 541,
+          "record_offset": 122560,
+          "rva": 10653552,
+          "code_size": 778
+        }
+      ],
+      "body_hashes": [
+        "e4d581996f42dc26ea637966b87fca098221fe92690bd1c8b451870717f09051"
+      ],
+      "body_sizes": [
+        778
+      ],
+      "physical_reference_callers": [
+        9993680
+      ],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "core",
+        "country_core"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 2,
+        "pdb_inline_transitive": 1,
+        "native_direct_call_in_physical_body": 13
+      },
+      "ambiguous_alias_groups": 11,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "large/orchestrating body with several consumers or state transitions"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 1,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 1,
+        "cross_file_callers": 0,
+        "unique_private_callees": 8,
+        "unique_observed_physical_reference_callers": 1,
+        "native_max_bytes": 778,
+        "native_min_bytes": 778,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 11,
+        "library_namespace_count": 2,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 1,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "high_orchestration_candidate",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 43,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [],
+      "distinct_callers": [
+        "b4f0d58a0bac196d92"
+      ],
+      "private_callees": [
+        "0ee41d7ce8dabd3020",
+        "2c27b08cfa840bd923",
+        "3158264db0e9866e1c",
+        "495bbd29b0e20e26b7",
+        "643a9ac77d11f2e9f0",
+        "6f1e280cf5301ad4e6",
+        "933ea8b9f486b386fd",
+        "9820677e46d179af69",
+        "9bd0f5d8b6dec9798e",
+        "9da59088761a7be38e",
+        "b48ef7870b20c35895",
+        "bbb40efa5caae228eb"
+      ]
+    },
+    {
+      "id": "6868259a61f583eace",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::create_cull_and_bucket_pass<country_core::render::nani::cull_shaders::NaniCullAndBucketBush>",
+      "logical_group_id": "eb4b3b5053c58f12c5",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "core",
+      "native_instances": [
+        {
+          "module": 541,
+          "record_offset": 122172,
+          "rva": 10652768,
+          "code_size": 778
+        }
+      ],
+      "body_hashes": [
+        "0141cc5c3cf59e9e0279c46e00b026eaa538f41dfeb965e172d9203147319229"
+      ],
+      "body_sizes": [
+        778
+      ],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "core",
+        "country_core"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 2,
+        "pdb_inline_transitive": 1,
+        "native_direct_call_in_physical_body": 13
+      },
+      "ambiguous_alias_groups": 11,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "large/orchestrating body with several consumers or state transitions"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 8,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 778,
+        "native_min_bytes": 778,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 11,
+        "library_namespace_count": 2,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "high_orchestration_candidate",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 39,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [],
+      "distinct_callers": [],
+      "private_callees": [
+        "2c27b08cfa840bd923",
+        "3158264db0e9866e1c",
+        "495bbd29b0e20e26b7",
+        "643a9ac77d11f2e9f0",
+        "6f1e280cf5301ad4e6",
+        "933ea8b9f486b386fd",
+        "9820677e46d179af69",
+        "9bd0f5d8b6dec9798e",
+        "9da59088761a7be38e",
+        "b48ef7870b20c35895",
+        "bbb40efa5caae228eb",
+        "cc703f616b3f646d0d"
+      ]
+    },
+    {
+      "id": "203500b0c8f141dc4a",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::cull_and_bucket_external<country_core::resources::roofs::roof_buffers::WoodenPlankSsbo,country_core::render::nani::cull_shaders::NaniCullAndBucketWoodenPlank>",
+      "logical_group_id": "034802c9a511ff6b33",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [
+        {
+          "module": 541,
+          "record_offset": 117644,
+          "rva": 10648336,
+          "code_size": 1423
+        }
+      ],
+      "body_hashes": [
+        "866e20cadf80ad948de57f555c49f24bb07ef0d04cb0ce846f7025ae3ef3411f"
+      ],
+      "body_sizes": [
+        1423
+      ],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "alloc",
+        "bevy_ecs",
+        "core",
+        "country_core"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 5,
+        "pdb_inline_transitive": 42,
+        "native_direct_call_in_physical_body": 22,
+        "native_indirect_call_unresolved": 1
+      },
+      "ambiguous_alias_groups": 18,
+      "indirect_call_groups": 1,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 10,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 1423,
+        "native_min_bytes": 1423,
+        "indirect_call_groups": 1,
+        "ambiguous_alias_groups": 18,
+        "library_namespace_count": 4,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 25,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "bytes_differ_or_codegen_changed",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": [
+        "2c27b08cfa840bd923",
+        "3158264db0e9866e1c",
+        "355cb5037bce0cadc1",
+        "3c9a2c96e5ebecc7d2",
+        "495bbd29b0e20e26b7",
+        "58d28dffdc630c7855",
+        "643a9ac77d11f2e9f0",
+        "933ea8b9f486b386fd",
+        "9820677e46d179af69",
+        "9bd0f5d8b6dec9798e",
+        "9ceefc94a281ee2156",
+        "9da59088761a7be38e",
+        "bbb40efa5caae228eb",
+        "f0060f6b054b9873a9",
+        "f555e0aaa1cd6432e7"
+      ]
+    },
+    {
+      "id": "53fcf8ac9bd5ed6830",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::cull_and_bucket_external<country_core::resources::roof_tile_ssbo::RoofTileSsbo,country_core::render::nani::cull_shaders::NaniCullAndBucketRoofTile>",
+      "logical_group_id": "2a402b9649fb37dd18",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [
+        {
+          "module": 541,
+          "record_offset": 119516,
+          "rva": 10649760,
+          "code_size": 1423
+        }
+      ],
+      "body_hashes": [
+        "688e0b92d36875d11f59e8fbc296e4cc30bc5e56d85ed7a657133701cad28d5a"
+      ],
+      "body_sizes": [
+        1423
+      ],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "alloc",
+        "bevy_ecs",
+        "core",
+        "country_core"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 5,
+        "pdb_inline_transitive": 42,
+        "native_direct_call_in_physical_body": 22,
+        "native_indirect_call_unresolved": 1
+      },
+      "ambiguous_alias_groups": 18,
+      "indirect_call_groups": 1,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 10,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 1423,
+        "native_min_bytes": 1423,
+        "indirect_call_groups": 1,
+        "ambiguous_alias_groups": 18,
+        "library_namespace_count": 4,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 25,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "bytes_differ_or_codegen_changed",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": [
+        "136b6678d93b5abd26",
+        "2c27b08cfa840bd923",
+        "3158264db0e9866e1c",
+        "495bbd29b0e20e26b7",
+        "58d28dffdc630c7855",
+        "643a9ac77d11f2e9f0",
+        "6910ee3622f48304dd",
+        "933ea8b9f486b386fd",
+        "9820677e46d179af69",
+        "9bd0f5d8b6dec9798e",
+        "9ceefc94a281ee2156",
+        "9da59088761a7be38e",
+        "b606a685ae02c45cd7",
+        "bbb40efa5caae228eb",
+        "f555e0aaa1cd6432e7"
+      ]
+    },
+    {
+      "id": "83d77142bc137d415c",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::cull_and_bucket",
+      "logical_group_id": "f11baf471ef3b7fec5",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "alloc",
+        "core",
+        "enum_iterator",
+        "lock_api"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 13,
+        "pdb_inline_transitive": 35
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 1,
+        "direct_inline_callers": 1,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 9,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 4,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 1,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 22,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [
+        "b4f0d58a0bac196d92"
+      ],
+      "private_callees": [
+        "36e8e1b24e7edc51b1",
+        "43ad3898ac1d6f20ab",
+        "5c4c0809708b3d23e1",
+        "5cb1a6b633fd23ae8a",
+        "6b3b0a7ecbbecca0ba",
+        "6b6a7ba6f98036bcee",
+        "a3cbfea4238dc4f4dd",
+        "b9d676bf1f0a3a9795",
+        "ec3ca84ecf68ea1cab"
+      ]
+    },
+    {
+      "id": "13c332ac1704a5f5d7",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::fill_sorted_instance_list<country_core::render::nani::gpu_world::RenderSublistsIter>",
+      "logical_group_id": "1c9d52734fe229a26e",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [
+        {
+          "module": 541,
+          "record_offset": 122948,
+          "rva": 10654336,
+          "code_size": 947
+        }
+      ],
+      "body_hashes": [
+        "030c168925aa4bab06f2d143b7565d0325319ced06ca7cbea362477d162a42b1"
+      ],
+      "body_sizes": [
+        947
+      ],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "core",
+        "country_core",
+        "rhapsody"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 1,
+        "pdb_inline_transitive": 3,
+        "native_direct_call_in_physical_body": 12
+      },
+      "ambiguous_alias_groups": 8,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 6,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 947,
+        "native_min_bytes": 947,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 8,
+        "library_namespace_count": 3,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 15,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "bytes_differ_or_codegen_changed",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": [
+        "6e04e9237e560898d6",
+        "7db81f363b2f565c1e",
+        "b8b6824c1c28f91ecb",
+        "ba9438aea5afc62773",
+        "bbb40efa5caae228eb",
+        "df9391e47668defb11",
+        "f897543644c4247ce9"
+      ]
+    },
+    {
+      "id": "a747c9c195b4c2d1d7",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::generate_draw_lists<country_core::render::nani::gpu_world::RenderSublistsIter>",
+      "logical_group_id": "167f0ceb0e0b92299b",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [
+        {
+          "module": 541,
+          "record_offset": 123956,
+          "rva": 10656048,
+          "code_size": 465
+        }
+      ],
+      "body_hashes": [
+        "0a96ba2dda28b5cead7d8278a90578677a4965aaa21b6daf41e0c4c3cde73ebf"
+      ],
+      "body_sizes": [
+        465
+      ],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "country_core"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 1,
+        "native_direct_call_in_physical_body": 8
+      },
+      "ambiguous_alias_groups": 6,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 7,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 465,
+        "native_min_bytes": 465,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 6,
+        "library_namespace_count": 1,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 15,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "bytes_differ_or_codegen_changed",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": [
+        "6c733ea4dacdb7e902",
+        "6e04e9237e560898d6",
+        "76537d539669da3fd6",
+        "7db81f363b2f565c1e",
+        "933ea8b9f486b386fd",
+        "9bd0f5d8b6dec9798e",
+        "d68032d1d3c18c3429",
+        "df9391e47668defb11",
+        "f897543644c4247ce9"
+      ]
+    },
+    {
+      "id": "1f069387c514d5f0b1",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::group_draw_cmd_prefix_sum::closure$0",
+      "logical_group_id": "d675ef3707b306128e",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "alloc",
+        "ash",
+        "core",
+        "enum_iterator"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 7,
+        "pdb_inline_transitive": 13
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 6,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 4,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 12,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": [
+        "0a6feaa6661690abbe",
+        "495a249559fbb4c23e",
+        "82d61afc32a2c79ac9",
+        "885955971183062549",
+        "a9c8af963e8e616006",
+        "b05c37abd5e52f4cf8"
+      ]
+    },
+    {
+      "id": "a89b9e6f9c113178e3",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::prefix_sum_unsorted_instances_per_atlas_entry<country_core::render::nani::gpu_world::RenderSublistsIter>",
+      "logical_group_id": "4a67c3c03ec9c49c9f",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [
+        {
+          "module": 541,
+          "record_offset": 123320,
+          "rva": 10655296,
+          "code_size": 356
+        }
+      ],
+      "body_hashes": [
+        "a41a2bb75a9f039f088aa5964aa7d0c6f66877194011b4c8fa4a6f0d6ad0d9f7"
+      ],
+      "body_sizes": [
+        356
+      ],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "core",
+        "country_core",
+        "rhapsody"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 1,
+        "pdb_inline_transitive": 3,
+        "native_direct_call_in_physical_body": 8
+      },
+      "ambiguous_alias_groups": 5,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 5,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 356,
+        "native_min_bytes": 356,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 5,
+        "library_namespace_count": 3,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 11,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "bytes_differ_or_codegen_changed",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": [
+        "7db81f363b2f565c1e",
+        "b03ac3fd1fe0a8fef5",
+        "bb8fcbc988fd83be45",
+        "d731d699d4439a0cf5",
+        "df9391e47668defb11"
+      ]
+    },
+    {
+      "id": "60117b60fac96c51b8",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::prefix_sum_unsorted_instances_per_atlas_entry::closure$0",
+      "logical_group_id": "2859343eff73cd0381",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "alloc",
+        "ash",
+        "core",
+        "enum_iterator"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 7,
+        "pdb_inline_transitive": 11
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 5,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 4,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 10,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": [
+        "22c5c5e62b138a4e2c",
+        "3100030bab2e7e5735",
+        "5c4c0809708b3d23e1",
+        "82d61afc32a2c79ac9",
+        "885955971183062549"
+      ]
+    },
+    {
+      "id": "b04513d9e5c39cabec",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::prepare_empty_unsorted_draw_lists::closure$0",
+      "logical_group_id": "ee57a2f8dbd065082d",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "alloc",
+        "ash",
+        "core",
+        "enum_iterator"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 7,
+        "pdb_inline_transitive": 11
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 5,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 4,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 10,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": [
+        "22c5c5e62b138a4e2c",
+        "3100030bab2e7e5735",
+        "5c4c0809708b3d23e1",
+        "82d61afc32a2c79ac9",
+        "885955971183062549"
+      ]
+    },
+    {
+      "id": "ff3a9117bf7aec29e0",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::group_draw_cmd_prefix_sum::closure$1",
+      "logical_group_id": "fa5a3821a746537fb9",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "alloc",
+        "ash",
+        "core",
+        "enum_iterator"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 6,
+        "pdb_inline_transitive": 13
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 5,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 4,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 10,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": [
+        "495a249559fbb4c23e",
+        "82d61afc32a2c79ac9",
+        "885955971183062549",
+        "a9c8af963e8e616006",
+        "b05c37abd5e52f4cf8"
+      ]
+    },
+    {
+      "id": "d62452fdc57f6ec71d",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::group_draw_cmd_prefix_sum<country_core::render::nani::gpu_world::RenderSublistsIter>",
+      "logical_group_id": "0a6e46677d5b5afc87",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [
+        {
+          "module": 541,
+          "record_offset": 123716,
+          "rva": 10655664,
+          "code_size": 372
+        }
+      ],
+      "body_hashes": [
+        "a1032f517b7f586117a74ea93529e80becdd4b67cd9058a7afdf08b19e7cd689"
+      ],
+      "body_sizes": [
+        372
+      ],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "country_core"
+      ],
+      "dependency_relations": {
+        "native_direct_call_in_physical_body": 5
+      },
+      "ambiguous_alias_groups": 4,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 4,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 372,
+        "native_min_bytes": 372,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 4,
+        "library_namespace_count": 1,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 9,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "bytes_differ_or_codegen_changed",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": [
+        "66858febfc92613616",
+        "8aa3f1b016082627de",
+        "bf5bbf6e761b040491",
+        "d731d699d4439a0cf5",
+        "df9391e47668defb11"
+      ]
+    },
+    {
+      "id": "43ad3898ac1d6f20ab",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::draw_indexed_indirect_to_dispatch",
+      "logical_group_id": "3192f2bd42d7d55902",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "alloc",
+        "core"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 3,
+        "pdb_inline_transitive": 23
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 1,
+        "direct_inline_callers": 1,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 2,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 2,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 1,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 8,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [
+        "83d77142bc137d415c"
+      ],
+      "private_callees": [
+        "6b3b0a7ecbbecca0ba",
+        "b9d676bf1f0a3a9795"
+      ]
+    },
+    {
+      "id": "2fafe5fb99ea9e307b",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::clear_draw_cmd_subtotals",
+      "logical_group_id": "0a999846ca46eca4de",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "alloc",
+        "core"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 2,
+        "pdb_inline_transitive": 20
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 1,
+        "direct_inline_callers": 1,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 2,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 2,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 1,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 8,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [
+        "b4f0d58a0bac196d92"
+      ],
+      "private_callees": [
+        "6b3b0a7ecbbecca0ba",
+        "b9d676bf1f0a3a9795"
+      ]
+    },
+    {
+      "id": "d6a6a032e87523c075",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::reset_wall_draw_indirect_args",
+      "logical_group_id": "3ec394e1e459fa4b09",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "core"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 2,
+        "pdb_inline_transitive": 3
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 1,
+        "direct_inline_callers": 1,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 2,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 1,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 1,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 8,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [
+        "1ee05a832e7343bef2"
+      ],
+      "private_callees": [
+        "6b3b0a7ecbbecca0ba",
+        "6f1e280cf5301ad4e6"
+      ]
+    },
+    {
+      "id": "58d28dffdc630c7855",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::create_cull_and_bucket_pass",
+      "logical_group_id": "85bd15cd3a6507fc6e",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "core"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 2,
+        "pdb_inline_transitive": 1
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 1,
+        "direct_inline_callers": 1,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 2,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 1,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 2,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 8,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [
+        "203500b0c8f141dc4a",
+        "53fcf8ac9bd5ed6830"
+      ],
+      "private_callees": [
+        "6f1e280cf5301ad4e6",
+        "b48ef7870b20c35895"
+      ]
+    },
+    {
+      "id": "a131b37cf582a0d7b5",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::cull_and_bucket::closure$0",
+      "logical_group_id": "27efd18291718e9407",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "core",
+        "lock_api"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 4,
+        "pdb_inline_transitive": 2
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 4,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 2,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 8,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": [
+        "36e8e1b24e7edc51b1",
+        "6b6a7ba6f98036bcee",
+        "a3cbfea4238dc4f4dd",
+        "ec3ca84ecf68ea1cab"
+      ]
+    },
+    {
+      "id": "c3f8886d8341d1f826",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::allocate_draw_lists::closure$0",
+      "logical_group_id": "c60c4b74a71cd985c7",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "alloc",
+        "ash",
+        "core",
+        "enum_iterator"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 6,
+        "pdb_inline_transitive": 9
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 4,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 4,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 8,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": [
+        "495a249559fbb4c23e",
+        "82d61afc32a2c79ac9",
+        "885955971183062549",
+        "b05c37abd5e52f4cf8"
+      ]
+    },
+    {
+      "id": "06528a6194ec761c83",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::generate_wall_draw_lists::closure$2::closure$0",
+      "logical_group_id": "3bb35194455525185a",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [],
+      "dependency_relations": {
+        "pdb_inline_direct": 2
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 1,
+        "direct_inline_callers": 1,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 2,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 0,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 1,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 8,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [
+        "abe354c4325e506afc"
+      ],
+      "private_callees": [
+        "22c5c5e62b138a4e2c",
+        "3100030bab2e7e5735"
+      ]
+    },
+    {
+      "id": "6408960574d81c649c",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::fill_unsorted_instance_indirection::closure$0",
+      "logical_group_id": "262f8d39f86f7bc96e",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "ash",
+        "core",
+        "enum_iterator"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 5,
+        "pdb_inline_transitive": 7
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 4,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 3,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 8,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": [
+        "495a249559fbb4c23e",
+        "82d61afc32a2c79ac9",
+        "885955971183062549",
+        "b05c37abd5e52f4cf8"
+      ]
+    },
+    {
+      "id": "21947ae6ed36ced86f",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::generate_draw_lists::closure$0",
+      "logical_group_id": "e9eee07b85e7668a49",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "alloc",
+        "ash",
+        "core",
+        "enum_iterator"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 6,
+        "pdb_inline_transitive": 9
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 4,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 4,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 8,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": [
+        "495a249559fbb4c23e",
+        "82d61afc32a2c79ac9",
+        "885955971183062549",
+        "b05c37abd5e52f4cf8"
+      ]
+    },
+    {
+      "id": "389741f061328047d5",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::clear_draw_lists",
+      "logical_group_id": "ec7f35997be80f92ae",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "core"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 1,
+        "pdb_inline_transitive": 2
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 1,
+        "direct_inline_callers": 1,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 1,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 1,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 1,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 6,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [
+        "b4f0d58a0bac196d92"
+      ],
+      "private_callees": [
+        "6b3b0a7ecbbecca0ba"
+      ]
+    },
+    {
+      "id": "f09486c5ff24992aa3",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::clear_histogram",
+      "logical_group_id": "2753b93e89f41e430b",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "core"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 1,
+        "pdb_inline_transitive": 2
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 1,
+        "direct_inline_callers": 1,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 1,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 1,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 1,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 6,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [
+        "b4f0d58a0bac196d92"
+      ],
+      "private_callees": [
+        "6b3b0a7ecbbecca0ba"
+      ]
+    },
+    {
+      "id": "1446d8d20a84e6f939",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::prepare_empty_unsorted_draw_lists",
+      "logical_group_id": "104540cec57edbab15",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [],
+      "dependency_relations": {
+        "pdb_inline_direct": 1
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 1,
+        "direct_inline_callers": 1,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 1,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 0,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 1,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 6,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [],
+      "distinct_callers": [
+        "b4f0d58a0bac196d92"
+      ],
+      "private_callees": [
+        "76537d539669da3fd6"
+      ]
+    },
+    {
+      "id": "4335d14b55cc8294f1",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::histogram_prefix_sum",
+      "logical_group_id": "a32205b9f133e10e52",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "core"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 1,
+        "pdb_inline_transitive": 2
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 1,
+        "direct_inline_callers": 1,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 1,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 1,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 1,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 6,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [
+        "b4f0d58a0bac196d92"
+      ],
+      "private_callees": [
+        "6b3b0a7ecbbecca0ba"
+      ]
+    },
+    {
+      "id": "42aeb12762de95be05",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::generate_draw_list_dispatch_args",
+      "logical_group_id": "a9feca1d59c4f90543",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "core",
+        "enum_iterator"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 3,
+        "pdb_inline_transitive": 9
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 1,
+        "direct_inline_callers": 1,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 1,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 2,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 1,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 6,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [
+        "b4f0d58a0bac196d92"
+      ],
+      "private_callees": [
+        "6b3b0a7ecbbecca0ba"
+      ]
+    },
+    {
+      "id": "88e45fe285faaa992b",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::clear_draw_cmd_histogram",
+      "logical_group_id": "646bdb556d9c997db6",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "core"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 1,
+        "pdb_inline_transitive": 2
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 1,
+        "direct_inline_callers": 1,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 1,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 1,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 1,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 6,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [
+        "b4f0d58a0bac196d92"
+      ],
+      "private_callees": [
+        "6b3b0a7ecbbecca0ba"
+      ]
+    },
+    {
+      "id": "2723091bc1d9d2750b",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::fill_sorted_instance_list::closure$0",
+      "logical_group_id": "56d335a3ed24a986e3",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "alloc",
+        "ash",
+        "core",
+        "enum_iterator"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 5,
+        "pdb_inline_transitive": 15
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 3,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 4,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 6,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": [
+        "495a249559fbb4c23e",
+        "82d61afc32a2c79ac9",
+        "b05c37abd5e52f4cf8"
+      ]
+    },
+    {
+      "id": "5e0b5f7400f8d82c4f",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::allocate_draw_lists",
+      "logical_group_id": "3852c2f9b5a32cc7e7",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [],
+      "dependency_relations": {},
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 1,
+        "direct_inline_callers": 1,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 0,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 0,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 1,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 4,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [
+        "b4f0d58a0bac196d92"
+      ],
+      "private_callees": []
+    },
+    {
+      "id": "033c3fb059e46d0c51",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::fill_unsorted_instance_indirection",
+      "logical_group_id": "748b400f7072847b65",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [],
+      "dependency_relations": {},
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 1,
+        "direct_inline_callers": 1,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 0,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 0,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 1,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 4,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [
+        "b4f0d58a0bac196d92"
+      ],
+      "private_callees": []
+    },
+    {
+      "id": "b45b0a2680738445f7",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::cull_and_bucket_external::closure$0",
+      "logical_group_id": "44f53d3c5a264d65c1",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "alloc",
+        "core"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 4,
+        "pdb_inline_transitive": 12
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 2,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 2,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 4,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": [
+        "22c5c5e62b138a4e2c",
+        "3100030bab2e7e5735"
+      ]
+    },
+    {
+      "id": "21a9f9a36dcaac1926",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::cull_and_bucket::closure$1",
+      "logical_group_id": "0cc67abd1dc9d1975f",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "alloc",
+        "core"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 6,
+        "pdb_inline_transitive": 18
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 2,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 2,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 4,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": [
+        "22c5c5e62b138a4e2c",
+        "3100030bab2e7e5735"
+      ]
+    },
+    {
+      "id": "d4d738610debe930ad",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::fill_sorted_instance_list::closure$0::closure$0",
+      "logical_group_id": "6237f980463770ac2f",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [],
+      "dependency_relations": {
+        "pdb_inline_direct": 1
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 1,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 0,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 2,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": [
+        "885955971183062549"
+      ]
+    },
+    {
+      "id": "abe354c4325e506afc",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::generate_wall_draw_lists::closure$2",
+      "logical_group_id": "526841fe900ebb3f81",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "alloc",
+        "core"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 3,
+        "pdb_inline_transitive": 14
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 1,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 2,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 2,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": [
+        "06528a6194ec761c83"
+      ]
+    },
+    {
+      "id": "8c022cae0ef6ccfe6c",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::_::impl$0::next",
+      "logical_group_id": "0338bbaea53ac0574e",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [],
+      "dependency_relations": {},
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 0,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 0,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 0,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [],
+      "distinct_callers": [],
+      "private_callees": []
+    },
+    {
+      "id": "700debdfc6865bcecd",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::IndirectArgsType::buffer_offset",
+      "logical_group_id": "c1bf6a3dc6d5de4a30",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [],
+      "dependency_relations": {},
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 0,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 0,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 0,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": []
+    },
+    {
+      "id": "fe767c143d192f973e",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::generate_wall_draw_lists::closure$0",
+      "logical_group_id": "377cd1c4408d2f5229",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "alloc",
+        "bevy_ecs",
+        "core"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 1,
+        "pdb_inline_transitive": 12
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 0,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 3,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 0,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": []
+    },
+    {
+      "id": "a7e357b2d6db90ff12",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::generate_wall_draw_lists::closure$1",
+      "logical_group_id": "6b4f79a47580f85c60",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "bevy_ecs",
+        "core"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 1,
+        "pdb_inline_transitive": 7
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 0,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 2,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 0,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": []
+    },
+    {
+      "id": "6b27a75f55f970e4c7",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::generate_wall_draw_lists_pass2::closure$0",
+      "logical_group_id": "bf321bd3981cff42bd",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "alloc",
+        "bevy_ecs",
+        "core"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 1,
+        "pdb_inline_transitive": 12
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 0,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 3,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 0,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": []
+    },
+    {
+      "id": "ed508673b195fff568",
+      "version": "B",
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "name": "country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::generate_wall_draw_lists_pass2::closure$1",
+      "logical_group_id": "b88db4fa28d1ffa41b",
+      "source_sha256": [
+        "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "bevy_ecs",
+        "core"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 1,
+        "pdb_inline_transitive": 7
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 0,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 2,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 0,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": []
+    }
+  ]
+}

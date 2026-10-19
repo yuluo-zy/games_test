@@ -1,0 +1,48 @@
+{
+  "verdict": "passed_scoped_same_owner_borrowed_view_and_explicit_legacy_migration_design",
+  "manifest_sha256": "d34a7be9fab554ee0d644949ab46373f68ed108dba6dad52241a95683dc2fb38",
+  "contract_sha256": "9ef69076766810a85355f9da82936b9baa4cc211d91f62549f033cfc3a65cbf9",
+  "declared_frozen_inputs_checked": 15,
+  "current_source_before_sha256": "cf93fcc6010ac800468d6c716a5e95e04dfece937e0316d27f4b04228fb01271",
+  "full_original_PE_checks": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-60901c6c8508b1af76/clutter-startup-20261020/derived-resource-view-20261020/native-pack/derived-resource-view-from.json",
+      "bytes": 8,
+      "instructions": 3
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-60901c6c8508b1af76/clutter-startup-20261020/derived-resource-view-20261020/native-pack/derived-info-try-get-subtype.json",
+      "bytes": 231,
+      "instructions": 67
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-60901c6c8508b1af76/clutter-startup-20261020/derived-resource-view-20261020/native-exact-subtype-pack/derived-info-subtype-exact.json",
+      "bytes": 8,
+      "instructions": 2
+    }
+  ],
+  "accepted_scope": [
+    "Actual From8B extracts two resource-data owners, not subtype/bboxscalars. Exact tryget231B performs actualIDmap optionalreference lookup; subtype8B tailcalls requiredget. Initialpadded16Bpartialpack explicitlyexcluded; onlycorrected8Bfull accepted.",
+    "Expose real SystemParam of existing unique DerivedDecoratorSubtypes and DecoratorMeshLibrary plus lifetime-safe borrowedview of those sameowners. No rawResheader copy/ABIclaim/newResource/cachemap/libraryclone.",
+    "Phase1 may explicitly rename current synthesized bbox/subtype record LegacyDerivedDecoratorInfoRecord with deprecated compatibilityalias if needed. This does not prove native backingmap/meshfullschema. Canonical view must be unmistakably separate from legacyrecord methods.",
+    "Current unique map still Arc<legacyrecord>; within this owned module view may borrow actualmapentry.subtype without cloningArc or an additionaltable. Missing actualID yieldsNone; requiredmissinglookup panics. Freshborrow after realproducer insertion sees sameowner."
+  ],
+  "candidate_requirements": [
+    "Borrow directly from actualmapentry, not self.subtypes.get(id) that clonesArc and cannot support a reference returned from its temporary. Use existingprivate map within theownedmodule or narrowlyborrowedgetter, preservinglifetime.",
+    "Do not leave old unconditionalSome(record.subtype) presented as canonical try_get_subtype. Legacycompatibility must be named/deprecated/documented, allnewtrueconsumers use Resources/View +actualID.",
+    "Existing DecoratorSubtypes SystemParam alreadyholds same twoResources: reuse/rename/reexport where coherent or document the wrapper; no duplicateactualResource owner or hiddenfieldtable.",
+    "Currentrecord dimensionsX/Z vs actualwallbboxX/Y/fullgeometry remains separatelegacydebt. Do not silently claim fullInfo restored or sweepforeigncaller rewrites in thisphase.",
+    "Freezecaller inventory distinguishinglegacybboxaccess and trueIDview consumers; root/foreignowners coordinate coherent minimalmigration. Actualmeshload/maps/outline/collision schema+requiredresources stillsubsequent sameownerclosure."
+  ],
+  "required_tests": [
+    "ActualSystemParam borrows exactresourceaddresses;missingID None, existingID actualsubtype, requiredmissingpanic.",
+    "Actualproducer update/insert visible onnextfreshview, no secondmap/staleclone. CPUfixtures not genuine loadedcatalog/App evidence."
+  ],
+  "remaining_gates": [
+    "Full originalInfo/trueu32->subtype backingmapmigration; actualcollision/interaction/outline/collision-outline values and17386Bloader/watch/startup ownership.",
+    "ActualChimneyremoval sound0x15 onlyrealSome0x14 atoldparamposition; trueanchor/validate/location caller wiring remains owned separately.",
+    "No wholecrate typecheck/actualscene/GPU/WSI/performance proof."
+  ],
+  "reviewer_Cargo_rustc_tests_GPU": false,
+  "production_or_claims_modified": false
+}

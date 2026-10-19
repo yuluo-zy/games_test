@@ -1,0 +1,83 @@
+--- /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-e10831b95b26b67a3c/deco-trackers-20261020/host-candidate-b-v1/src/decorator_visual/door_stairs_assemble_bricks.rs
++++ /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-e10831b95b26b67a3c/deco-trackers-20261020/host-candidate-b-v2/src/decorator_visual/door_stairs_assemble_bricks.rs
+@@ -243,10 +243,52 @@
+     use country_core::{
+         asset_libraries::ssbo_library::AssetSsboLibrary,
+         geometry::instanced_wall::InstancedWall,
+-        render::{sparse_instance_buffer::{SparseInstanceBuffer, SparseSsbo, SLOTS_PER_CHUNK}, test_device::TestDevice},
++        render::{sparse_instance_buffer::{SparseInstanceBuffer, SparseSsbo, SLOTS_PER_CHUNK}},
+         resources::walls::{InnerWalls, WallState, public_walls::WallEntities, publication_source::TerrainHeightGrid512, decorator_storage::DecoratorStorageAddr},
+     };
+     use std::panic::{AssertUnwindSafe, catch_unwind};
++
++
++    /// CPU-only range-checking boundary for these CPU ownership/state tests.
++    /// It creates no physical resource, maps no memory, and submits no GPU work.
++    /// Successful updates mean only that the canonical uploader requested valid
++    /// nonoverlapping byte ranges inside the declared CPU fixture capacity.
++    #[derive(Debug)]
++    struct CpuBufferDevice(u64);
++
++    impl country_core::render::ssbo::rhapsody_boundary::GraphicsDevice for CpuBufferDevice {
++        fn create_buffer(
++            &self,
++            desc: &country_core::render::ssbo::rhapsody_boundary::BufferDesc,
++            _name: &str,
++            data: Option<&[u8]>,
++        ) -> Result<country_core::render::ssbo::rhapsody_boundary::Buffer, country_core::render::ssbo::rhapsody_boundary::BackendError> {
++            assert!(data.is_none_or(|bytes| bytes.len() <= desc.size));
++            Ok(country_core::render::ssbo::rhapsody_boundary::Buffer {
++                id: self.0,
++                byte_size: desc.size as u64,
++                ..Default::default()
++            })
++        }
++
++        fn update_buffer_bytes(
++            &self,
++            buffer: &country_core::render::ssbo::rhapsody_boundary::Buffer,
++            data: &[u8],
++            ranges: &[core::ops::Range<usize>],
++            offset: usize,
++        ) -> Result<(), country_core::render::ssbo::rhapsody_boundary::BackendError> {
++            let mut previous_end = 0;
++            for range in ranges {
++                assert!(previous_end <= range.start);
++                assert!(range.start <= range.end && range.end <= data.len());
++                let end = offset.checked_add(range.end).expect("CPU fixture byte offset overflow");
++                assert!((end as u64) <= buffer.byte_size);
++                previous_end = range.end;
++            }
++            Ok(())
++        }
++    }
+ 
+     fn public_wall() -> (WallId, PublicWalls) {
+         let wall = WallId(49);
+@@ -284,7 +326,7 @@
+ 
+     #[test]
+     fn public_miss_normalizes_only_with_storage_and_present_wall_requires_real_lane() {
+-        let storage = SparseInstanceBuffer::<BrickTransformSsbo>::try_new(&TestDevice(1)).unwrap();
++        let storage = SparseInstanceBuffer::<BrickTransformSsbo>::try_new(&CpuBufferDevice(1)).unwrap();
+         let library = AssetSsboLibrary::new(); library.register::<BrickTransformSsbo>(storage);
+         let mut world = world(PublicWalls::default(), library);
+         let wall = WallId(49); let id = DecoratorId(7);
+@@ -305,7 +347,7 @@
+     #[test]
+     fn actual_sparse_partial_push_normalizes_without_retry_and_shared_flush_keeps_draw_inputs() {
+         let (wall, public) = public_wall();
+-        let mut storage = SparseInstanceBuffer::<BrickTransformSsbo>::try_new(&TestDevice(1)).unwrap();
++        let mut storage = SparseInstanceBuffer::<BrickTransformSsbo>::try_new(&CpuBufferDevice(1)).unwrap();
+         let owner = InstancedWall::new_awaiting_production(wall.0, &storage);
+         storage.writer(owner.door_stairs_allocation().unwrap()).push(&BrickTransformSsbo { seed: u32::MAX, ..Default::default() }).unwrap();
+         let blocker = storage.new_allocation();
+@@ -338,7 +380,7 @@
+         let mut library = world.resource_mut::<AssetSsboLibrary>();
+         let storage = library.get_mut::<BrickTransformSsbo>().unwrap();
+         assert!(storage.dirty_bitset.iter().any(|word| word.load(std::sync::atomic::Ordering::Relaxed) != 0));
+-        storage.try_gpu_flush(&TestDevice(1)).unwrap();
++        storage.try_gpu_flush(&CpuBufferDevice(1)).unwrap();
+         assert!(storage.dirty_bitset.iter().all(|word| word.load(std::sync::atomic::Ordering::Relaxed) == 0));
+         assert_eq!(storage.to_draw_multi_instanced().iter().map(|r| r.1).sum::<u32>(), 45);
+     }

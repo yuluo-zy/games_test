@@ -1,5 +1,8 @@
 //! Canonical B dormer GPU storage. Constructors prove the row sizes and
-//! capacities; the hole record's twelve words remain uninterpreted here.
+//! capacities; the three native constructors preserve the twelve raw words.
+//! The spatial consumer projects specific words without guessing ID semantics.
+use glam::Vec3;
+
 use crate::asset_libraries::ssbo_library::SsboType as LibrarySsbo;
 use crate::render::ssbo::{
     InstanceBuffer, StorageElement, TypedStorageBuffer, rhapsody_boundary::GraphicsDevice,
@@ -14,6 +17,40 @@ pub struct DormerHoleSsbo(pub [u32; 12]);
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct DormerHoleCountPerCellSsbo(pub u32);
+
+impl DormerHoleSsbo {
+    /// B dummy@141286660/18B: all48 bytes are zero.
+    pub fn dummy() -> Self {
+        Self([0; 12])
+    }
+
+    /// B gothic@141286680/85B: actual incoming scalar/Vec3/tail bits, and
+    /// word7=0. The scalar's nominal ID is not inferred from this constructor.
+    /// Value arguments here are a host API, not the original by-reference ABI.
+    pub fn gothic(native_u32_0c: u32, first: Vec3, second: Vec3, tail: [f32; 4]) -> Self {
+        Self([
+            first.x.to_bits(),
+            first.y.to_bits(),
+            first.z.to_bits(),
+            native_u32_0c,
+            second.x.to_bits(),
+            second.y.to_bits(),
+            second.z.to_bits(),
+            0,
+            tail[0].to_bits(),
+            tail[1].to_bits(),
+            tail[2].to_bits(),
+            tail[3].to_bits(),
+        ])
+    }
+
+    /// B cottage@1412866e0/76B: two incoming tail floats followed by the
+    /// fixed original bit pair f32(1,-50). movsd copies those64 bits; it does
+    /// not establish a caller-supplied f64 argument.
+    pub fn cottage(native_u32_0c: u32, first: Vec3, second: Vec3, tail: [f32; 2]) -> Self {
+        Self::gothic(native_u32_0c, first, second, [tail[0], tail[1], 1.0, -50.0])
+    }
+}
 
 const _: [(); 48] = [(); core::mem::size_of::<DormerHoleSsbo>()];
 const _: [(); 4] = [(); core::mem::align_of::<DormerHoleSsbo>()];
@@ -77,6 +114,66 @@ mod tests {
     use crate::asset_libraries::ssbo_library::{AssetSsboLibrary, SsboGraphLease, SsboId};
     use crate::render::ssbo::rhapsody_boundary::{BackendError, Buffer, BufferDesc};
     use std::{cell::RefCell, rc::Rc};
+
+    #[test]
+    fn native_dummy_is_all_twelve_zero_words() {
+        assert_eq!(DormerHoleSsbo::dummy().0, [0; 12]);
+    }
+
+    #[test]
+    fn native_gothic_preserves_every_input_word_and_writes_only_the_real_zero_slot() {
+        let first = Vec3::new(
+            f32::from_bits(0x8000_0000),
+            f32::from_bits(0x7fc0_1234),
+            3.5,
+        );
+        let second = Vec3::new(4.5, f32::from_bits(0xffc0_5678), -6.5);
+        let tail = [f32::from_bits(0x7fc0_9abc), -0.0, 2.5, 0.05];
+        assert_eq!(
+            DormerHoleSsbo::gothic(0xdead_beef, first, second, tail).0,
+            [
+                0x8000_0000,
+                0x7fc0_1234,
+                3.5f32.to_bits(),
+                0xdead_beef,
+                4.5f32.to_bits(),
+                0xffc0_5678,
+                (-6.5f32).to_bits(),
+                0,
+                0x7fc0_9abc,
+                0x8000_0000,
+                2.5f32.to_bits(),
+                0.05f32.to_bits()
+            ]
+        );
+    }
+
+    #[test]
+    fn native_cottage_tail_is_the_two_original_fixed_float_words() {
+        let record = DormerHoleSsbo::cottage(
+            0x1234_5678,
+            Vec3::new(1.0, 2.0, 3.0),
+            Vec3::new(4.0, 5.0, 6.0),
+            [-0.0, 0.75],
+        );
+        assert_eq!(
+            record.0,
+            [
+                1.0f32.to_bits(),
+                2.0f32.to_bits(),
+                3.0f32.to_bits(),
+                0x1234_5678,
+                4.0f32.to_bits(),
+                5.0f32.to_bits(),
+                6.0f32.to_bits(),
+                0,
+                0x8000_0000,
+                0.75f32.to_bits(),
+                0x3f80_0000,
+                0xc248_0000
+            ]
+        );
+    }
 
     #[derive(Default)]
     struct Device(RefCell<Vec<(BufferDesc, String, Option<Vec<u8>>)>>);

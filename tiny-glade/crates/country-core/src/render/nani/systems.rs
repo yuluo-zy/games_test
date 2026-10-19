@@ -1,8 +1,9 @@
 //! `render::nani::systems` — nani 的 ECS 系统层：`nani_maintain_instances`、20 个 `nani_update_*`、
 //! `nani_flush_instance_updates`（B 构建 0x14206f300 / 0x142070ac0..0x14207fcc0 / 0x142080640）。
 //!
-//! 本工作区的系统都写成"行视图 + 纯函数"（`systems/render_loop` 同款），不依赖真实的 bevy `Query`：
-//! 每个系统函数收一组行（原版 `Query` 的一项），行里的字段就是该系统读取的组件值。载荷的数值全部
+//! 原有行视图 API 与下方真实 ECS 适配器共用维护算法。保留九类既有组件映射，另接
+//! canonical Cloth 绑定与限定 Roof-bearing RoofFloor 支线；绑定本身不证明独立场景 producer
+//! 可达。Floor-only 与其余未闭合输入在发布前明确报错。载荷数值全部
 //! 来自 [`super::instance_updates`] 的 `build_*`（逐机器码核对），这里负责三件事：
 //! 1. 选 subset（每个系统固定一个 kind，见 [`GpuWorldSubsetKind`] 的判别值）；
 //! 2. 用 `GpuWorld::owned_subset_mut(kind)` 取写锁，`update_instance_data` 写 `position / sort_key / 载荷`；
@@ -22,7 +23,7 @@
 //! * 变更：`Named` 要求 `parts.len() == 1`（源码 106:17）且 `part.subset == kind`（108:17），
 //!   然后 `update_instance_mesh(&mut key, part_index)`。
 //!
-//! 未恢复（U）：19 个 gap 组件（`Wren`、`Plaster`、`Smoke`……）的真实字段布局；这里的行视图只放
+//! 未闭合（U）：Floor-only 支线和 `Wren`、`Plaster`、`Smoke` 等组件/producer 的完整契约；行视图只放
 //! `build_*` 已经需要的原始字。`NaniInstanceDesc` 在原版里是 24 B（`+0` 判别位、`AtlasPart` u32@+4、`Named` u64@+8、
 //! `subset_kind` u8@+0x10），Rust 侧用枚举表达，不复刻内存布局。
 
@@ -79,75 +80,71 @@ fn describe_part_mismatch(name: NameHash, kind: GpuWorldSubsetKind) -> ! {
     )
 }
 
-/// `nani_maintain_instances`（O 0x14206f300）。返回本帧要压入 `Commands` 的 `Insert<NaniActiveInstance>`。
+fn remove_active_instance(
+    entity: Entity, gpu_world: &GpuWorld, local: &mut NaniActiveInstanceCollection,
+) {
+    let (_, mut key) = local.active.remove_entry(&entity)
+        .expect("called `Option::unwrap()` on a `None` value");
+    gpu_world.remove_instance(&mut key);
+}
+
+fn create_active_instance(
+    row: NewInstanceRow<'_>, atlas: &MeshAtlasLibrary, gpu_world: &mut GpuWorld,
+    local: &mut NaniActiveInstanceCollection,
+) -> Option<InstanceKey> {
+    let kind = row.desc.subset_kind;
+    let part = match row.desc.mesh {
+        NaniMeshSelector::AtlasPart(part) => part,
+        NaniMeshSelector::Named(name) => atlas.get_by_name(name).iter()
+            .find(|part| part.subset == kind)
+            .unwrap_or_else(|| describe_part_mismatch(name, kind)).part_index,
+    };
+    let compact = compact_key_for(row.transform, part);
+    let mut record = None;
+    gpu_world.owned_subset_mut(kind).extend_no_data(kind, &[compact], |key| record = Some(key));
+    // Original counts the request, even if capacity prevents allocation.
+    gpu_world.total_instance_count += 1;
+    if let Some(key) = record {
+        local.active.insert(row.entity, key);
+    } else {
+        nani_warn_once!(LOG_TARGET,
+            format!("Instance limit reached while trying to spawn {:?}", row.desc));
+    }
+    record
+}
+
+fn change_active_instance_mesh(
+    desc: &NaniInstanceDesc, active: &mut InstanceKey,
+    atlas: &MeshAtlasLibrary, gpu_world: &mut GpuWorld,
+) {
+    let part = match desc.mesh {
+        NaniMeshSelector::AtlasPart(part) => part,
+        NaniMeshSelector::Named(name) => {
+            let parts = atlas.get_by_name(name);
+            assert_eq!(parts.len(), 1);
+            assert_eq!(parts[0].subset, desc.subset_kind);
+            parts[0].part_index
+        }
+    };
+    gpu_world.update_instance_mesh(active, part as u16);
+}
+
+/// `nani_maintain_instances`（O 0x14206f300）. The slice adapter and real ECS
+/// entry below share allocation/removal/mesh-change behavior.
 pub fn nani_maintain_instances(
     removed: impl IntoIterator<Item = Entity>,
-    new: &[NewInstanceRow<'_>],
-    changed: &mut [ChangedInstanceRow<'_>],
-    atlas: &MeshAtlasLibrary,
-    gpu_world: &mut GpuWorld,
+    new: &[NewInstanceRow<'_>], changed: &mut [ChangedInstanceRow<'_>],
+    atlas: &MeshAtlasLibrary, gpu_world: &mut GpuWorld,
     local: &mut NaniActiveInstanceCollection,
 ) -> Vec<(Entity, InstanceKey)> {
-    // 1. 删除。
-    for entity in removed {
-        let (_, mut key) = local
-            .active
-            .remove_entry(&entity)
-            .expect("called `Option::unwrap()` on a `None` value");
-        gpu_world.remove_instance(&mut key);
-    }
-
-    // 2. 新建。
+    for entity in removed { remove_active_instance(entity, gpu_world, local); }
     let mut inserts = Vec::new();
     for row in new {
-        let kind = row.desc.subset_kind;
-        let part = match row.desc.mesh {
-            NaniMeshSelector::AtlasPart(part) => part,
-            NaniMeshSelector::Named(name) => {
-                atlas
-                    .get_by_name(name)
-                    .iter()
-                    .find(|part| part.subset == kind)
-                    .unwrap_or_else(|| describe_part_mismatch(name, kind))
-                    .part_index
-            }
-        };
-        let compact = compact_key_for(row.transform, part);
-        let mut record = None;
-        gpu_world
-            .owned_subset_mut(kind)
-            .extend_no_data(kind, &[compact], |key| record = Some(key));
-        gpu_world.total_instance_count += 1;
-        match record {
-            Some(key) => {
-                local.active.insert(row.entity, key);
-                inserts.push((row.entity, key));
-            }
-            None => {
-                nani_warn_once!(
-                    LOG_TARGET,
-                    format!(
-                        "Instance limit reached while trying to spawn {:?}",
-                        row.desc
-                    )
-                );
-            }
+        if let Some(key) = create_active_instance(*row, atlas, gpu_world, local) {
+            inserts.push((row.entity, key));
         }
     }
-
-    // 3. 变更。
-    for row in changed {
-        let part = match row.desc.mesh {
-            NaniMeshSelector::AtlasPart(part) => part,
-            NaniMeshSelector::Named(name) => {
-                let parts = atlas.get_by_name(name);
-                assert_eq!(parts.len(), 1);
-                assert_eq!(parts[0].subset, row.desc.subset_kind);
-                parts[0].part_index
-            }
-        };
-        gpu_world.update_instance_mesh(row.active, part as u16);
-    }
+    for row in changed { change_active_instance_mesh(row.desc, row.active, atlas, gpu_world); }
     inserts
 }
 
@@ -632,6 +629,340 @@ pub fn nani_flush_instance_updates(gpu_world: &mut GpuWorld, device: &dyn Graphi
     gpu_world.roll_instance_counts();
 }
 
+// Actual ECS adapter for the component contracts that currently exist in this
+// workspace. Remaining unavailable payload/producer contracts stay explicit;
+// a new descriptor outside these bindings fails before an uninitialized instance can
+// be published. This completeness guard is a host boundary, not a native branch.
+use bevy_ecs::{
+    change_detection::DetectChangesMut,
+    prelude::{Changed, Commands, Local, ParamSet, Query, Res, ResMut, With, Without},
+    query::Has,
+    removal_detection::RemovedComponents,
+    schedule::{ApplyDeferred, IntoScheduleConfigs, Schedule, SystemSet},
+};
+use crate::{
+    asset_libraries::{ssbo_library::AssetSsboLibrary, texture_library::AssetTextureLibrary},
+    components::{FlatLighting, NormalMap, SemiTransparent,
+        drawable::{AlbedoMap, ClothlineCloth, PrevTransform, NaniSolidTexture}},
+    render::{device::GraphicsDeviceResource, nani::gpu_world::{InstanceDataMarker, OwnedGpuWorldSubset}},
+    resources::{color_id::ColorId, roofs::{Roof, RoofAnimation},
+        terrain_rock_mask::TerrainRockMaskSsbo, world_raster_defs::WaterRaster},
+    systems::paths::PathRastersResources,
+};
+
+type MappedNaniMarkers = (
+    Has<InstanceDataMarker<SolidVertexColorInstanceData>>,
+    Has<InstanceDataMarker<SolidVertexColorWindowInstanceData>>,
+    Has<InstanceDataMarker<PlantInstanceData>>,
+    Has<InstanceDataMarker<PreplacedFlowerInstanceData>>,
+    Has<InstanceDataMarker<BalconyDoorInstanceData>>,
+    Has<InstanceDataMarker<UberInstanceData>>,
+    Has<InstanceDataMarker<VelocityOnlyInstanceData>>,
+    Has<InstanceDataMarker<SolidAlbedoMapInstanceData>>,
+    Has<InstanceDataMarker<SolidAlbedoMapEmissiveInstanceData>>,
+    Has<InstanceDataMarker<StoneFloorInstanceData>>,
+    Has<InstanceDataMarker<ClothInstanceData>>,
+);
+
+type MappedNaniMarkerPresence = (bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool);
+type MappedNaniInputs = (MappedNaniMarkers, Has<ColorId>, Has<PrevTransform>, Has<Transform>,
+    Has<NaniSolidTexture>, Has<Roof>, Has<ClothlineCloth>, Has<NormalMap>);
+fn require_mapped_nani_payload(
+    kind: GpuWorldSubsetKind,
+    (markers, has_color, has_previous, has_transform, has_selector, has_roof, has_cloth, has_normal):
+        (MappedNaniMarkerPresence, bool, bool, bool, bool, bool, bool, bool),
+) {
+    let mapped = match kind {
+        GpuWorldSubsetKind::SolidVertexColor => markers.0,
+        GpuWorldSubsetKind::SolidVertexColorWindow => markers.1 && has_color,
+        GpuWorldSubsetKind::Plant => markers.2,
+        GpuWorldSubsetKind::PreplacedFlower => markers.3,
+        GpuWorldSubsetKind::BalconyDoor => markers.4 && has_color,
+        GpuWorldSubsetKind::Uber => markers.5,
+        GpuWorldSubsetKind::VelocityOnly => markers.6 && has_previous,
+        GpuWorldSubsetKind::SolidAlbedoMap => markers.7 && has_selector,
+        GpuWorldSubsetKind::SolidAlbedoMapEmissive => markers.8 && has_selector,
+        // Restricted original kind9 producer domain. Floor-only entities
+        // remain unsupported; do not publish a key without a real Roof.
+        GpuWorldSubsetKind::RoofFloor => markers.9 && has_roof,
+        GpuWorldSubsetKind::Cloth => markers.10 && has_cloth && has_normal,
+        _ => false,
+    };
+    let marker_count = [markers.0, markers.1, markers.2, markers.3,
+        markers.4, markers.5, markers.6, markers.7, markers.8, markers.9, markers.10]
+        .into_iter().filter(|present| *present).count();
+    assert!(mapped && has_transform && marker_count == 1,
+        "Nani ECS payload mapping is unavailable or canonical inputs are incomplete: {kind:?}");
+}
+
+/// Original B14206f300 producer contracts, now reading the real same-World
+/// components. No row Vec, duplicate key owner or per-frame scratch allocation.
+/// Dense-index hint repair bypasses change detection: the native Query reads
+/// &NaniActiveInstance, so repairing its cache must not fabricate Changed<Key>.
+pub fn nani_maintain_instances_ecs(
+    mut removed: RemovedComponents<InstanceKey>,
+    new: Query<(Entity, &NaniInstanceDesc, &Transform), Without<InstanceKey>>,
+    mut keys: ParamSet<(
+        Query<(&NaniInstanceDesc, Option<&InstanceKey>, MappedNaniInputs)>,
+        Query<(&NaniInstanceDesc, &mut InstanceKey), Changed<NaniInstanceDesc>>,
+    )>,
+    atlas: Res<MeshAtlasLibrary>, mut gpu_world: ResMut<GpuWorld>,
+    mut local: Local<NaniActiveInstanceCollection>, mut commands: Commands,
+) {
+    // Host completeness preflight touches only actual descriptor-bearing
+    // entities. A registered empty subset remains a real zero-count subset.
+    for (desc, key, inputs) in &keys.p0() {
+        require_mapped_nani_payload(desc.subset_kind, inputs);
+        if let Some(key) = key {
+            assert_eq!(key.kind, desc.subset_kind,
+                "Nani descriptor changed the canonical active instance kind");
+        }
+    }
+    for entity in removed.read() {
+        remove_active_instance(entity, &gpu_world, &mut local);
+    }
+    for (entity, desc, transform) in &new {
+        if let Some(key) = create_active_instance(
+            NewInstanceRow { entity, desc, transform }, &atlas, &mut gpu_world, &mut local,
+        ) {
+            commands.entity(entity).insert(key);
+        }
+    }
+    for (desc, mut key) in &mut keys.p1() {
+        change_active_instance_mesh(desc, key.bypass_change_detection(), &atlas, &mut gpu_world);
+    }
+}
+
+fn write_mapped_update<T: InstanceElement, const N: usize>(
+    subset: &mut OwnedGpuWorldSubset, key: &mut InstanceKey,
+    update: InstanceUpdate<N>, make: impl FnOnce([u32; N]) -> T,
+) {
+    subset.update_instance_data(key, update.position, update.sort_key, make(update.words));
+}
+
+/// Each original update takes one subset lock before iterating its query,
+/// including an empty query. Keep that failure order and lock once per system.
+pub fn nani_update_solid_vertex_color_ecs(
+    mut rows: Query<(&mut InstanceKey, &Transform, Option<&SemiTransparent>, Option<&FlatLighting>),
+        With<InstanceDataMarker<SolidVertexColorInstanceData>>>,
+    gpu: Res<GpuWorld>,
+) {
+    let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::SolidVertexColor);
+    for (mut key, transform, semi, flat) in &mut rows {
+        let (p, r, s) = trs(transform);
+        write_mapped_update(&mut subset, key.bypass_change_detection(),
+            build_solid_vertex_color(p, r, s, semi.is_some(), flat.is_some()),
+            |raw| SolidVertexColorInstanceData { raw });
+    }
+}
+
+pub fn nani_update_solid_vertex_color_window_ecs(
+    mut rows: Query<(&mut InstanceKey, &Transform, &ColorId, Option<&SemiTransparent>),
+        With<InstanceDataMarker<SolidVertexColorWindowInstanceData>>>,
+    gpu: Res<GpuWorld>,
+) {
+    let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::SolidVertexColorWindow);
+    for (mut key, transform, color, semi) in &mut rows {
+        let (p, r, s) = trs(transform);
+        write_mapped_update(&mut subset, key.bypass_change_detection(),
+            build_solid_vertex_color_window(p, r, s, color.0, semi.is_some()),
+            |raw| SolidVertexColorWindowInstanceData { raw });
+    }
+}
+
+/// Native tuple5 / kind9, restricted to actual Roof-bearing entities. Keep
+/// the original With-only marker domain even if NaniInstanceDesc is absent:
+/// requiring &Roof in the Query would silently skip an unsupported active row.
+/// The original Floor-only component contract is not yet recovered.
+pub fn nani_update_roof_floor_for_roofs_ecs(
+    mut rows: Query<(&mut InstanceKey, &Transform, Option<&Roof>, Option<&RoofAnimation>),
+        With<InstanceDataMarker<StoneFloorInstanceData>>>,
+    gpu: Res<GpuWorld>,
+) {
+    let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::RoofFloor);
+    for (mut key, transform, roof, animation) in &mut rows {
+        let roof = roof.expect(
+            "RoofFloor ECS support requires a real Roof; Floor-only or missing Roof inputs are unsupported");
+        let words: RoofWords = std::array::from_fn(|index| {
+            let offset = index * 4;
+            u32::from_le_bytes(roof.observed()[offset..offset + 4].try_into().unwrap())
+        });
+        write_mapped_update(&mut subset, key.bypass_change_detection(),
+            build_stone_floor(transform.translation, Some(&words),
+                animation.map(|animation| animation.values()[0]), None, &circle_tangent_u0),
+            |raw| StoneFloorInstanceData { raw });
+    }
+}
+
+pub fn nani_update_plant_ecs(
+    mut rows: Query<(&mut InstanceKey, &Transform), With<InstanceDataMarker<PlantInstanceData>>>,
+    gpu: Res<GpuWorld>,
+) {
+    let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::Plant);
+    for (mut key, transform) in &mut rows {
+        let (p, r, s) = trs(transform);
+        write_mapped_update(&mut subset, key.bypass_change_detection(), build_plant(p, r, s),
+            |raw| PlantInstanceData { raw });
+    }
+}
+
+pub fn nani_update_preplaced_flower_ecs(
+    mut rows: Query<(&mut InstanceKey, &Transform), With<InstanceDataMarker<PreplacedFlowerInstanceData>>>,
+    gpu: Res<GpuWorld>, ssbos: Res<AssetSsboLibrary>, paths: PathRastersResources,
+    water: Res<WaterRaster>,
+) {
+    // Original14207396a obtains the owned subset before142073982 reads
+    // TerrainRockMask, even when the component query is empty.
+    let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::PreplacedFlower);
+    let rock = ssbos.get::<TerrainRockMaskSsbo>()
+        .expect("called `Option::unwrap()` on a `None` value: TerrainRockMaskSsbo");
+    let mask: &[u32] = bytemuck::cast_slice(&rock.mapped[..]);
+    let path_grids = paths.as_float_grid();
+    let water_grid = (**water).as_ref();
+    for (mut key, transform) in &mut rows {
+        let (p, r, s) = trs(transform);
+        let visible = flower_visible(p.x, p.z, mask, |which, x, z| {
+            let grid = match which {
+                FlowerRaster::Water => &water_grid,
+                FlowerRaster::Path0 => &path_grids[0],
+                FlowerRaster::Path1 => &path_grids[1],
+                FlowerRaster::Path2 => &path_grids[2],
+                FlowerRaster::Path3 => &path_grids[3],
+            };
+            grid.bilinear_sample_at_world_xz(x, z, FLOWER_WORLD_SIZE, FLOWER_WORLD_SIZE)
+        });
+        write_mapped_update(&mut subset, key.bypass_change_detection(),
+            build_preplaced_flower(r, p, s, visible), |raw| PreplacedFlowerInstanceData { raw });
+    }
+}
+
+/// Original tuple8/9: With-only updates read the same canonical selector
+/// emitted by the real decorator builder. No per-entity texture lookup.
+pub fn nani_update_solid_albedo_map_ecs(
+    mut rows: Query<(&mut InstanceKey, &Transform, &NaniSolidTexture),
+        With<InstanceDataMarker<SolidAlbedoMapInstanceData>>>,
+    gpu: Res<GpuWorld>,
+) {
+    let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::SolidAlbedoMap);
+    for (mut key, transform, selector) in &mut rows {
+        let (p, r, s) = trs(transform);
+        write_mapped_update(&mut subset, key.bypass_change_detection(),
+            build_solid_albedo_map(p, r, s, selector.encoded()),
+            |raw| SolidAlbedoMapInstanceData { raw });
+    }
+}
+
+pub fn nani_update_solid_albedo_map_emissive_ecs(
+    mut rows: Query<(&mut InstanceKey, &Transform, &NaniSolidTexture),
+        With<InstanceDataMarker<SolidAlbedoMapEmissiveInstanceData>>>,
+    gpu: Res<GpuWorld>,
+) {
+    let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::SolidAlbedoMapEmissive);
+    for (mut key, transform, selector) in &mut rows {
+        let (p, r, s) = trs(transform);
+        write_mapped_update(&mut subset, key.bypass_change_detection(),
+            build_solid_albedo_map(p, r, s, selector.encoded()),
+            |raw| SolidAlbedoMapEmissiveInstanceData { raw });
+    }
+}
+
+pub fn nani_update_balcony_door_ecs(
+    mut rows: Query<(&mut InstanceKey, &Transform, &ColorId, Option<&SemiTransparent>),
+        With<InstanceDataMarker<BalconyDoorInstanceData>>>,
+    gpu: Res<GpuWorld>,
+) {
+    let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::BalconyDoor);
+    for (mut key, transform, color, semi) in &mut rows {
+        let (p, r, s) = trs(transform);
+        write_mapped_update(&mut subset, key.bypass_change_detection(),
+            build_balcony_door(r, p, s, color.0, semi.is_some()),
+            |raw| BalconyDoorInstanceData { raw });
+    }
+}
+
+/// Original tuple13/kind20: the same canonical12-byte cloth words and
+/// disk-texture name owner emitted by the real decorator builder. With-only
+/// required payload Query; no Changed gate or parallel instance owner.
+pub fn nani_update_cloth_ecs(
+    mut rows: Query<(&mut InstanceKey, &Transform, &ClothlineCloth, &NormalMap),
+        With<InstanceDataMarker<ClothInstanceData>>>,
+    textures: Res<AssetTextureLibrary>, gpu: Res<GpuWorld>,
+) {
+    let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::Cloth);
+    for (mut key, transform, cloth, normal_map) in &mut rows {
+        let asset = textures.get_handle_and_texture_by_name(NameHash(normal_map.0))
+            .expect("called `Option::unwrap()` on a `None` value").0;
+        let normal_index = textures.handle_to_bindless_index(asset).0;
+        let (p, r, s) = trs(transform);
+        write_mapped_update(&mut subset, key.bypass_change_detection(),
+            build_cloth(r, p, s, cloth.words(), normal_index), |raw| ClothInstanceData { raw });
+    }
+}
+
+pub fn nani_update_uber_ecs(
+    mut rows: Query<(&mut InstanceKey, &Transform, Option<&SemiTransparent>, Option<&AlbedoMap>),
+        With<InstanceDataMarker<UberInstanceData>>>,
+    textures: Res<AssetTextureLibrary>, gpu: Res<GpuWorld>,
+) {
+    let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::Uber);
+    for (mut key, transform, semi, albedo) in &mut rows {
+        let albedo_index = albedo.map(|albedo| {
+            let asset = textures.get_handle_and_texture_by_name(NameHash(albedo.0))
+                .expect("called `Option::unwrap()` on a `None` value").0;
+            textures.handle_to_bindless_index(asset).0
+        });
+        write_mapped_update(&mut subset, key.bypass_change_detection(),
+            build_uber(transform, semi.is_some(), albedo_index), |raw| UberInstanceData { raw });
+    }
+}
+
+pub fn nani_update_velocity_only_ecs(
+    mut rows: Query<(&mut InstanceKey, &Transform, &PrevTransform),
+        With<InstanceDataMarker<VelocityOnlyInstanceData>>>,
+    gpu: Res<GpuWorld>,
+) {
+    let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::VelocityOnly);
+    for (mut key, transform, previous) in &mut rows {
+        let previous = Transform { rotation: previous.rotation,
+            translation: previous.translation, scale: previous.scale };
+        write_mapped_update(&mut subset, key.bypass_change_detection(),
+            build_velocity_only(transform, &previous), |raw| VelocityOnlyInstanceData { raw });
+    }
+}
+
+pub fn nani_flush_instance_updates_ecs(
+    device: Res<GraphicsDeviceResource>, mut gpu: ResMut<GpuWorld>,
+) {
+    // GraphicsDeviceResource carries this App's same real BufferHost. Flush
+    // actual dirty ranges; roll the actual request count only after success.
+    nani_flush_instance_updates(&mut gpu, device.device());
+}
+
+/// Original backend44 fragment: maintain -> explicit ApplyDeferred ->
+/// unordered20-update tuple -> flush, outer chain_ignore_deferred.
+/// The previously integrated nine mappings, canonical Cloth binding and
+/// restricted Roof-bearing kind9 branch are installed. Floor-only and other
+/// unavailable contracts fail explicitly. A binding does not establish the
+/// separate garment producer or whole-scene reachability.
+pub fn add_mapped_nani_instance_systems<S: SystemSet>(schedule: &mut Schedule, set: S) {
+    schedule.add_systems((
+        nani_maintain_instances_ecs,
+        ApplyDeferred,
+        (nani_update_solid_vertex_color_ecs,
+         nani_update_solid_vertex_color_window_ecs,
+         nani_update_roof_floor_for_roofs_ecs,
+         nani_update_plant_ecs,
+         nani_update_preplaced_flower_ecs,
+         nani_update_solid_albedo_map_ecs,
+         nani_update_solid_albedo_map_emissive_ecs,
+         nani_update_balcony_door_ecs,
+         nani_update_cloth_ecs,
+         nani_update_uber_ecs,
+         nani_update_velocity_only_ecs),
+        nani_flush_instance_updates_ecs,
+    ).chain_ignore_deferred().in_set(set));
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -640,6 +971,147 @@ mod tests {
     use crate::render::ssbo::tests::MockDevice;
     use bevy_ecs::world::World;
     use glam::Vec3;
+
+    fn cloth_world(dev: &MockDevice) -> World {
+        use crate::render::test_device::TestDevice;
+        use crate::rhapsody_types::Texture;
+        let mut gpu = GpuWorld::new(dev);
+        gpu.assign_subset(GpuWorldSubsetKind::Cloth, GpuWorldSubset::Owned(
+            OwnedGpuWorldSubset::new::<ClothInstanceData>(dev, GpuWorldSubsetKind::Cloth)));
+        let mut atlas = MeshAtlasLibrary::default();
+        let mut mesh = Mesh::new("cloth CPU boundary triangle");
+        mesh.set_attribute(crate::render::mesh::ATTR_POSITION,
+            vec![Vec3::new(1.0, 0.0, 0.0), Vec3::new(0.0, 2.0, 0.0), Vec3::new(0.0, 0.0, 3.0)]);
+        mesh.set_indices(vec![0, 1, 2]);
+        atlas.add(GpuWorldSubsetKind::Cloth, "decorators/setdressing_clothline_cloth", &mesh);
+        let mut textures = AssetTextureLibrary::new(&TestDevice(91));
+        let tex = |id| Texture { id, width: 4, height: 4, format: 0x25 };
+        let first = textures.add(Some("cloth_cpu_first".into()), tex(91));
+        textures.add(Some("cloth_cpu_unused".into()), tex(92));
+        let actual = textures.add(Some("cloth_cpu_normal".into()), tex(93));
+        assert_eq!(textures.handle_to_bindless_index(first).0, 0);
+        assert_eq!(actual.0, 2); // actual descriptor below is1, not this asset index
+        let mut world = World::new();
+        world.insert_resource(gpu);
+        world.insert_resource(atlas);
+        world.insert_resource(textures);
+        world
+    }
+
+    fn spawn_cpu_cloth(world: &mut World) -> Entity {
+        world.spawn((crate::components::drawable::NaniBundle::<ClothInstanceData> {
+            desc: NaniInstanceDesc { mesh: NaniMeshSelector::Named(
+                NameHash::compute("decorators/setdressing_clothline_cloth")), subset_kind: GpuWorldSubsetKind::Cloth },
+            transform: Transform { rotation: glam::Quat::from_rotation_y(0.37),
+                translation: Vec3::new(2.0, 3.0, 4.0), scale: Vec3::new(1.2, 0.8, 2.5) },
+            marker: InstanceDataMarker::default(),
+        }, ClothlineCloth::from_words([0x3e80_0000, 0xbe00_0000, 37]),
+            NormalMap(NameHash::compute("cloth_cpu_normal").0))).id()
+    }
+
+    fn actual_cloth_payload(world: &World, entity: Entity) -> [u32; 16] {
+        let key = world.get::<InstanceKey>(entity).unwrap();
+        world.resource::<GpuWorld>().owned_subset_mut(GpuWorldSubsetKind::Cloth)
+            .data().as_any().downcast_ref::<
+                crate::render::nani::gpu_world::InstanceDataBuffer<ClothInstanceData>>()
+            .unwrap().shadow.data[key.index as usize].raw
+    }
+
+    #[test]
+    fn cloth_uses_canonical_payload_actual_texture_owner_barrier_flush_and_removal() {
+        let dev = MockDevice::default();
+        let mut world = cloth_world(&dev);
+        let entity = spawn_cpu_cloth(&mut world);
+        let mut schedule = Schedule::default();
+        schedule.add_systems((nani_maintain_instances_ecs, ApplyDeferred,
+            nani_update_cloth_ecs).chain_ignore_deferred());
+        schedule.run(&mut world);
+        let key = *world.get::<InstanceKey>(entity).unwrap();
+        assert_eq!(key.kind, GpuWorldSubsetKind::Cloth);
+        assert_eq!(&actual_cloth_payload(&world, entity)[12..], &[0x3e80_0000, 0xbe00_0000, 37, 1]);
+        let textures = world.resource::<AssetTextureLibrary>();
+        let asset = textures.get_handle_and_texture_by_name(NameHash::compute("cloth_cpu_normal")).unwrap().0;
+        assert_eq!(asset.0, 2);
+        assert_eq!(textures.handle_to_bindless_index(asset).0, 1);
+        assert_eq!(textures.pending_bindless().len(), 2);
+        {
+            let subset = world.resource::<GpuWorld>().owned_subset_mut(GpuWorldSubsetKind::Cloth);
+            assert_eq!(subset.instance_count(), 1);
+            assert_eq!(subset.positions()[key.index as usize].position, Vec3::new(2.0, 3.0, 4.0));
+            assert_eq!(subset.positions_dirty().to_range(), Some(0..1));
+        }
+        nani_flush_instance_updates(&mut world.resource_mut::<GpuWorld>(), &dev);
+        assert!(dev.writes.borrow().iter().any(|(ranges, offset, bytes)|
+            ranges == &[0..64] && *offset == 0 && *bytes == 64));
+        assert_eq!(world.resource::<GpuWorld>().previous_instance_count(), 1);
+        world.clear_trackers();
+        world.entity_mut(entity).insert(ClothlineCloth::from_words([0x8000_0000, 0x7fc0_0123, 99]));
+        schedule.run(&mut world);
+        assert_eq!(world.get::<InstanceKey>(entity).unwrap().id, key.id);
+        assert_eq!(&actual_cloth_payload(&world, entity)[12..], &[0x8000_0000, 0x7fc0_0123, 99, 1]);
+        assert_eq!(world.resource::<AssetTextureLibrary>().pending_bindless().len(), 2);
+        world.clear_trackers();
+        world.despawn(entity);
+        schedule.run(&mut world);
+        assert_eq!(world.resource::<GpuWorld>().owned_subset_mut(GpuWorldSubsetKind::Cloth).instance_count(), 0);
+    }
+
+    #[test]
+    fn cloth_missing_canonical_inputs_fail_before_key_and_count_publication() {
+        for missing in ["cloth", "normal", "transform", "marker", "ambiguous"] {
+            let dev = MockDevice::default();
+            let mut world = cloth_world(&dev);
+            let entity = spawn_cpu_cloth(&mut world);
+            match missing {
+                "cloth" => { world.entity_mut(entity).remove::<ClothlineCloth>(); }
+                "normal" => { world.entity_mut(entity).remove::<NormalMap>(); }
+                "transform" => { world.entity_mut(entity).remove::<Transform>(); }
+                "marker" => { world.entity_mut(entity).remove::<InstanceDataMarker<ClothInstanceData>>(); }
+                _ => { world.entity_mut(entity).insert(InstanceDataMarker::<PlantInstanceData>::default()); }
+            }
+            let mut schedule = Schedule::default();
+            schedule.add_systems(nani_maintain_instances_ecs);
+            assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
+                schedule.run(&mut world))).is_err(), "accepted missing {missing}");
+            assert!(world.get::<InstanceKey>(entity).is_none());
+            let gpu = world.resource::<GpuWorld>();
+            assert_eq!(gpu.total_instance_count, 0);
+            assert_eq!(gpu.owned_subset_mut(GpuWorldSubsetKind::Cloth).instance_count(), 0);
+        }
+    }
+
+    #[test]
+    fn cloth_unknown_texture_name_fails_in_actual_update() {
+        let dev = MockDevice::default();
+        let mut world = cloth_world(&dev);
+        let entity = spawn_cpu_cloth(&mut world);
+        world.entity_mut(entity).insert(NormalMap(0x9abc_def0_1234_5678));
+        let mut allocation = Schedule::default();
+        allocation.add_systems((nani_maintain_instances_ecs, ApplyDeferred).chain_ignore_deferred());
+        allocation.run(&mut world);
+        let before_writes = dev.writes.borrow().len();
+        let mut update = Schedule::default();
+        update.add_systems(nani_update_cloth_ecs);
+        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
+            update.run(&mut world))).is_err());
+        assert_eq!(dev.writes.borrow().len(), before_writes); // no flush/success after failure
+        assert_eq!(world.resource::<AssetTextureLibrary>().pending_bindless().len(), 1);
+    }
+
+    #[test]
+    fn empty_cloth_query_still_requires_owned_subset_and_preserves_zero_count() {
+        let dev = MockDevice::default();
+        let mut world = cloth_world(&dev);
+        let before_writes = dev.writes.borrow().len();
+        let mut update = Schedule::default();
+        update.add_systems(nani_update_cloth_ecs);
+        update.run(&mut world);
+        assert_eq!(world.resource::<GpuWorld>().owned_subset_mut(GpuWorldSubsetKind::Cloth).instance_count(), 0);
+        assert_eq!(dev.writes.borrow().len(), before_writes);
+        world.insert_resource(GpuWorld::new(&dev));
+        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
+            update.run(&mut world))).is_err());
+    }
 
     fn world_with(kind: GpuWorldSubsetKind, dev: &MockDevice) -> GpuWorld {
         let mut w = GpuWorld::new(dev);
@@ -664,6 +1136,426 @@ mod tests {
     fn entities(n: usize) -> Vec<Entity> {
         let mut world = World::new();
         (0..n).map(|_| world.spawn_empty().id()).collect()
+    }
+
+    // Actual canonical component constructors with explicit nonzero CPU
+    // boundary inputs. This does not claim a complete gameplay/asset startup.
+    fn cpu_boundary_roof(curved: bool) -> Roof {
+        let shape_words = [u32::from(!curved), 2.5f32.to_bits(), (-3.25f32).to_bits(),
+            4.5f32.to_bits(), if curved { 0.73f32.to_bits() } else { 1.25f32.to_bits() },
+            6.0f32.to_bits(), 7.0f32.to_bits()];
+        let parameter_words = [1.125f32.to_bits(), 2.125f32.to_bits(), 1.5f32.to_bits(),
+            0.05f32.to_bits(), 1.0f32.to_bits(), 3.75f32.to_bits(), 1];
+        let mut shape = [0; 28];
+        let mut parameters = [0; 28];
+        let mut flat_style = [0; 12];
+        for (bytes, word) in shape.chunks_exact_mut(4).zip(shape_words) {
+            bytes.copy_from_slice(&word.to_le_bytes());
+        }
+        for (bytes, word) in parameters.chunks_exact_mut(4).zip(parameter_words) {
+            bytes.copy_from_slice(&word.to_le_bytes());
+        }
+        for (bytes, word) in flat_style.chunks_exact_mut(4).zip([0x1002u32, 111, 222]) {
+            bytes.copy_from_slice(&word.to_le_bytes());
+        }
+        Roof::new(7u64.to_le_bytes(), parameters, shape, 1.25f32.to_le_bytes(),
+            13u32.to_le_bytes(), 5, flat_style)
+    }
+
+    fn cpu_boundary_roof_animation(first: f32, second: f32) -> RoofAnimation {
+        let mut bytes = [0; 8];
+        bytes[..4].copy_from_slice(&first.to_le_bytes());
+        bytes[4..].copy_from_slice(&second.to_le_bytes());
+        RoofAnimation::from_inner(crate::resources::roofs::components::RoofAnimation::from_observed(bytes))
+    }
+
+    fn roof_world(dev: &MockDevice) -> World {
+        let mut gpu = GpuWorld::new(dev);
+        gpu.assign_subset(GpuWorldSubsetKind::RoofFloor, GpuWorldSubset::Owned(
+            OwnedGpuWorldSubset::new::<StoneFloorInstanceData>(dev, GpuWorldSubsetKind::RoofFloor)));
+        let mut world = World::new();
+        world.insert_resource(gpu);
+        world.insert_resource(MeshAtlasLibrary::default());
+        world
+    }
+
+    fn spawn_cpu_roof(world: &mut World, curved: bool) -> Entity {
+        world.spawn((crate::components::drawable::NaniBundle::<StoneFloorInstanceData> {
+            desc: desc(0, GpuWorldSubsetKind::RoofFloor),
+            transform: Transform::from_translation(Vec3::new(12.0, 13.0, 14.0)),
+            marker: InstanceDataMarker::default(),
+        }, cpu_boundary_roof(curved))).id()
+    }
+
+    fn actual_roof_payload(world: &World, entity: Entity) -> [u32; 16] {
+        let key = world.get::<InstanceKey>(entity).unwrap();
+        let subset = world.resource::<GpuWorld>().owned_subset_mut(GpuWorldSubsetKind::RoofFloor);
+        subset.data().as_any().downcast_ref::<
+            crate::render::nani::gpu_world::InstanceDataBuffer<StoneFloorInstanceData>>()
+            .unwrap().shadow.data[key.index as usize].raw
+    }
+
+    #[test]
+    fn roof_branch_uses_real_components_barrier_nonzero_payload_and_dirty_flush() {
+        let dev = MockDevice::default();
+        let mut world = roof_world(&dev);
+        let curved = spawn_cpu_roof(&mut world, true);
+        let straight = spawn_cpu_roof(&mut world, false);
+        world.entity_mut(curved).insert(cpu_boundary_roof_animation(0.375, 0.875));
+        let mut schedule = Schedule::default();
+        schedule.add_systems((nani_maintain_instances_ecs, ApplyDeferred,
+            nani_update_roof_floor_for_roofs_ecs).chain_ignore_deferred());
+        schedule.run(&mut world);
+        for (entity, is_curved, animation) in [(curved, true, 0.375f32), (straight, false, 1.0)] {
+            let key = *world.get::<InstanceKey>(entity).unwrap();
+            assert_eq!(key.kind, GpuWorldSubsetKind::RoofFloor);
+            let words = actual_roof_payload(&world, entity);
+            let position = if is_curved {
+                Vec3::new(2.5, 1.25 - 0.69, -3.25)
+            } else {
+                Vec3::new(4.5, 1.25 - 0.69, 1.25)
+            };
+            assert_eq!(&words[..4], &[position.x.to_bits(), position.y.to_bits(), position.z.to_bits(), 7]);
+            if is_curved {
+                let angle = 0.73 + std::f32::consts::TAU;
+                assert!((f32::from_bits(words[4]) + angle.sin()).abs() < 1e-6);
+                assert!((f32::from_bits(words[5]) - angle.cos()).abs() < 1e-6);
+                assert_eq!(&words[6..8], &[9.0f32.to_bits(), 9.0f32.to_bits()]);
+            } else {
+                assert_eq!(&words[4..8], &[2.5f32.to_bits(), (-3.25f32).to_bits(),
+                    6.0f32.to_bits(), 7.0f32.to_bits()]);
+            }
+            assert_eq!(words[8], animation.to_bits()); // channel0, or original absent-animation1.0
+            assert_eq!(&words[9..], &[u32::from(!is_curved), 0, 0, 0x12, 111, 222, 0]);
+            let subset = world.resource::<GpuWorld>().owned_subset_mut(GpuWorldSubsetKind::RoofFloor);
+            assert_eq!(subset.instance_count(), 2);
+            assert_eq!(subset.positions()[key.index as usize].position, position);
+            assert_eq!(subset.positions()[key.index as usize].radius.to_f32(), if is_curved { 9.0 } else { 7.0 });
+            let payload = subset.data().as_any().downcast_ref::<
+                crate::render::nani::gpu_world::InstanceDataBuffer<StoneFloorInstanceData>>().unwrap();
+            assert_eq!(payload.shadow.dirty.to_range(), Some(0..2));
+        }
+        nani_flush_instance_updates(&mut world.resource_mut::<GpuWorld>(), &dev);
+        assert_eq!(world.resource::<GpuWorld>().previous_instance_count(), 2);
+        assert_eq!(world.resource::<GpuWorld>().total_instance_count, 0);
+        assert!(dev.writes.borrow().iter().any(|(ranges, offset, bytes)|
+            ranges == &[0..128] && *offset == 0 && *bytes == 128));
+        world.clear_trackers();
+        // Original With-only update domain also contains active keys without
+        // a descriptor. A real Roof still updates through that exact domain.
+        world.entity_mut(curved).remove::<NaniInstanceDesc>();
+        world.entity_mut(curved).insert(cpu_boundary_roof_animation(0.625, 0.125));
+        let mut update_only = Schedule::default();
+        update_only.add_systems(nani_update_roof_floor_for_roofs_ecs);
+        update_only.run(&mut world);
+        assert_eq!(actual_roof_payload(&world, curved)[8], 0.625f32.to_bits());
+        assert_eq!(world.resource::<GpuWorld>().owned_subset_mut(GpuWorldSubsetKind::RoofFloor).instance_count(), 2);
+    }
+
+    #[test]
+    fn new_roof_descriptor_requires_roof_transform_marker_and_unique_mapped_marker() {
+        for missing in ["Roof", "Transform", "marker", "ambiguous marker"] {
+            let dev = MockDevice::default();
+            let mut world = roof_world(&dev);
+            let entity = spawn_cpu_roof(&mut world, true);
+            match missing {
+                "Roof" => { world.entity_mut(entity).remove::<Roof>(); }
+                "Transform" => { world.entity_mut(entity).remove::<Transform>(); }
+                "marker" => { world.entity_mut(entity).remove::<InstanceDataMarker<StoneFloorInstanceData>>(); }
+                _ => { world.entity_mut(entity).insert(InstanceDataMarker::<PlantInstanceData>::default()); }
+            }
+            let mut maintain = Schedule::default();
+            maintain.add_systems(nani_maintain_instances_ecs);
+            assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
+                maintain.run(&mut world))).is_err(), "accepted missing {missing}");
+            assert!(world.get::<InstanceKey>(entity).is_none());
+            let gpu = world.resource::<GpuWorld>();
+            assert_eq!(gpu.total_instance_count, 0);
+            assert_eq!(gpu.owned_subset_mut(GpuWorldSubsetKind::RoofFloor).instance_count(), 0);
+        }
+    }
+
+    #[test]
+    fn missing_roof_is_rejected_for_existing_descriptor_and_descriptorless_active_marker() {
+        for keep_descriptor in [true, false] {
+            let dev = MockDevice::default();
+            let mut world = roof_world(&dev);
+            let entity = spawn_cpu_roof(&mut world, true);
+            let mut allocation = Schedule::default();
+            allocation.add_systems((nani_maintain_instances_ecs, ApplyDeferred,
+                nani_update_roof_floor_for_roofs_ecs).chain_ignore_deferred());
+            allocation.run(&mut world);
+            let key = *world.get::<InstanceKey>(entity).unwrap();
+            let before_payload = actual_roof_payload(&world, entity);
+            nani_flush_instance_updates(&mut world.resource_mut::<GpuWorld>(), &dev);
+            let before_writes = dev.writes.borrow().len();
+            world.clear_trackers();
+            world.entity_mut(entity).remove::<Roof>();
+            if !keep_descriptor { world.entity_mut(entity).remove::<NaniInstanceDesc>(); }
+            let mut update_only = Schedule::default();
+            update_only.add_systems(nani_update_roof_floor_for_roofs_ecs);
+            let error = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                if keep_descriptor { allocation.run(&mut world); }
+                else { update_only.run(&mut world); }
+            })).expect_err("unsupported active row was silently filtered");
+            if !keep_descriptor {
+                let message = error.downcast_ref::<&str>().copied()
+                    .or_else(|| error.downcast_ref::<String>().map(String::as_str)).unwrap_or("");
+                assert!(message.contains("RoofFloor ECS support requires a real Roof"));
+            }
+            assert_eq!(world.get::<InstanceKey>(entity).unwrap(), &key);
+            assert_eq!(actual_roof_payload(&world, entity), before_payload);
+            let gpu = world.resource::<GpuWorld>();
+            assert_eq!(gpu.total_instance_count, 0);
+            assert_eq!(gpu.previous_instance_count(), 1);
+            let subset = gpu.owned_subset_mut(GpuWorldSubsetKind::RoofFloor);
+            assert_eq!(subset.instance_count(), 1);
+            assert!(subset.positions_dirty().is_empty());
+            let payload = subset.data().as_any().downcast_ref::<
+                crate::render::nani::gpu_world::InstanceDataBuffer<StoneFloorInstanceData>>().unwrap();
+            assert!(payload.shadow.dirty.is_empty());
+            assert_eq!(dev.writes.borrow().len(), before_writes);
+        }
+    }
+
+    #[test]
+    fn empty_registered_roof_subset_stays_a_real_zero_count() {
+        let dev = MockDevice::default();
+        let mut world = roof_world(&dev);
+        let before_writes = dev.writes.borrow().len();
+        let mut schedule = Schedule::default();
+        schedule.add_systems((nani_maintain_instances_ecs, ApplyDeferred,
+            nani_update_roof_floor_for_roofs_ecs).chain_ignore_deferred());
+        schedule.run(&mut world);
+        let gpu = world.resource::<GpuWorld>();
+        assert_eq!(gpu.total_instance_count, 0);
+        let subset = gpu.owned_subset_mut(GpuWorldSubsetKind::RoofFloor);
+        assert_eq!(subset.instance_count(), 0);
+        assert!(subset.positions_dirty().is_empty());
+        assert_eq!(dev.writes.borrow().len(), before_writes);
+    }
+
+    fn world_with_solid_pair(dev: &MockDevice) -> GpuWorld {
+        let mut gpu = GpuWorld::new(dev);
+        gpu.assign_subset(GpuWorldSubsetKind::SolidAlbedoMap, GpuWorldSubset::Owned(
+            OwnedGpuWorldSubset::new::<SolidAlbedoMapInstanceData>(dev,
+                GpuWorldSubsetKind::SolidAlbedoMap)));
+        gpu.assign_subset(GpuWorldSubsetKind::SolidAlbedoMapEmissive, GpuWorldSubset::Owned(
+            OwnedGpuWorldSubset::new::<SolidAlbedoMapEmissiveInstanceData>(dev,
+                GpuWorldSubsetKind::SolidAlbedoMapEmissive)));
+        gpu
+    }
+
+    #[test]
+    fn solid_pair_uses_canonical_nonzero_codes_through_barrier_payload_and_flush() {
+        let dev = MockDevice::default();
+        let mut world = World::new();
+        world.insert_resource(world_with_solid_pair(&dev));
+        world.insert_resource(MeshAtlasLibrary::default());
+        let plain_transform = Transform::from_translation(Vec3::new(2.0, 3.0, 4.0));
+        let emissive_transform = Transform::from_translation(Vec3::new(-5.0, 6.0, 7.0));
+        let plain = world.spawn((desc(0, GpuWorldSubsetKind::SolidAlbedoMap),
+            plain_transform, InstanceDataMarker::<SolidAlbedoMapInstanceData>::default(),
+            NaniSolidTexture::try_from(2).unwrap())).id();
+        let emissive = world.spawn((desc(0, GpuWorldSubsetKind::SolidAlbedoMapEmissive),
+            emissive_transform, InstanceDataMarker::<SolidAlbedoMapEmissiveInstanceData>::default(),
+            NaniSolidTexture::try_from(8).unwrap())).id();
+        let mut schedule = Schedule::default();
+        schedule.add_systems((nani_maintain_instances_ecs, ApplyDeferred,
+            (nani_update_solid_albedo_map_ecs, nani_update_solid_albedo_map_emissive_ecs))
+            .chain_ignore_deferred());
+        schedule.run(&mut world);
+        for (entity, kind, position, expected) in [
+            (plain, GpuWorldSubsetKind::SolidAlbedoMap, plain_transform.translation, 8),
+            (emissive, GpuWorldSubsetKind::SolidAlbedoMapEmissive, emissive_transform.translation, 7),
+        ] {
+            let key = *world.get::<InstanceKey>(entity).unwrap();
+            assert_eq!(key.kind, kind);
+            let gpu = world.resource::<GpuWorld>();
+            let subset = gpu.owned_subset_mut(kind);
+            assert_eq!(subset.instance_count(), 1);
+            assert_eq!(subset.positions()[key.index as usize].position, position);
+            assert_eq!(subset.positions_dirty().to_range(), Some(0..1));
+            let words = if kind == GpuWorldSubsetKind::SolidAlbedoMap {
+                let data = subset.data().as_any().downcast_ref::<
+                    crate::render::nani::gpu_world::InstanceDataBuffer<SolidAlbedoMapInstanceData>>()
+                    .unwrap();
+                assert_eq!(data.shadow.dirty.to_range(), Some(0..1));
+                data.shadow.data[key.index as usize].raw
+            } else {
+                let data = subset.data().as_any().downcast_ref::<
+                    crate::render::nani::gpu_world::InstanceDataBuffer<SolidAlbedoMapEmissiveInstanceData>>()
+                    .unwrap();
+                assert_eq!(data.shadow.dirty.to_range(), Some(0..1));
+                data.shadow.data[key.index as usize].raw
+            };
+            assert_eq!(words[12], expected); // code2 maps to8, not identity2
+            assert_eq!(&words[13..16], &[0, 0, 0]);
+        }
+        nani_flush_instance_updates(&mut world.resource_mut::<GpuWorld>(), &dev);
+        assert_eq!(world.resource::<GpuWorld>().previous_instance_count(), 2);
+        assert_eq!(world.resource::<GpuWorld>().total_instance_count, 0);
+        assert_eq!(dev.writes.borrow().iter().filter(|(r, o, n)|
+            r == &[0..64] && *o == 0 && *n == 64).count(), 2);
+        world.clear_trackers();
+        schedule.run(&mut world); // original With-only updates run again unchanged
+        let gpu = world.resource::<GpuWorld>();
+        let subset = gpu.owned_subset_mut(GpuWorldSubsetKind::SolidAlbedoMap);
+        let data = subset.data().as_any().downcast_ref::<
+            crate::render::nani::gpu_world::InstanceDataBuffer<SolidAlbedoMapInstanceData>>()
+            .unwrap();
+        assert_eq!(data.shadow.dirty.to_range(), Some(0..1));
+        assert_eq!(subset.instance_count(), 1);
+    }
+
+    #[test]
+    fn solid_descriptor_missing_canonical_selector_fails_before_allocation() {
+        let dev = MockDevice::default();
+        let mut world = World::new();
+        world.insert_resource(world_with_solid_pair(&dev));
+        world.insert_resource(MeshAtlasLibrary::default());
+        let entity = world.spawn((desc(0, GpuWorldSubsetKind::SolidAlbedoMap),
+            Transform::default(), InstanceDataMarker::<SolidAlbedoMapInstanceData>::default())).id();
+        let mut schedule = Schedule::default();
+        schedule.add_systems(nani_maintain_instances_ecs);
+        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
+            schedule.run(&mut world))).is_err());
+        assert!(world.get::<InstanceKey>(entity).is_none());
+        let gpu = world.resource::<GpuWorld>();
+        assert_eq!(gpu.total_instance_count, 0);
+        assert_eq!(gpu.owned_subset_mut(GpuWorldSubsetKind::SolidAlbedoMap).instance_count(), 0);
+    }
+
+    // Exercise actual component insertion and the explicit schedule barrier;
+    // the recording CPU device checks the upload boundary, not GPU execution.
+    #[test]
+    fn ecs_maintain_applies_keys_before_payload_update_and_flush() {
+        let dev = MockDevice::default();
+        let mut world = World::new();
+        world.insert_resource(world_with(GpuWorldSubsetKind::Plant, &dev));
+        world.insert_resource(MeshAtlasLibrary::default());
+        let transform = Transform {
+            translation: Vec3::new(2.5, -1.25, 6.0),
+            scale: Vec3::new(2.0, 3.0, 4.0),
+            ..Default::default()
+        };
+        let entity = world.spawn((
+            desc(7, GpuWorldSubsetKind::Plant), transform,
+            InstanceDataMarker::<PlantInstanceData>::default(),
+        )).id();
+        let mut schedule = Schedule::default();
+        schedule.add_systems((nani_maintain_instances_ecs, ApplyDeferred,
+            nani_update_plant_ecs).chain_ignore_deferred());
+        schedule.run(&mut world);
+        let key = *world.get::<InstanceKey>(entity).unwrap();
+        let gpu = world.resource::<GpuWorld>();
+        {
+            let subset = gpu.owned_subset_mut(GpuWorldSubsetKind::Plant);
+            assert_eq!(subset.instance_count(), 1);
+            assert_eq!(subset.positions()[key.index as usize].position, transform.translation);
+            let payload = subset.data().as_any()
+                .downcast_ref::<crate::render::nani::gpu_world::InstanceDataBuffer<PlantInstanceData>>()
+                .unwrap();
+            assert_eq!(payload.shadow.data[key.index as usize].raw,
+                build_plant(transform.translation, transform.rotation, transform.scale).words);
+            assert_eq!(payload.shadow.dirty.to_range(), Some(0..1));
+        }
+        nani_flush_instance_updates(&mut world.resource_mut::<GpuWorld>(), &dev);
+        let gpu = world.resource::<GpuWorld>();
+        assert_eq!(gpu.previous_instance_count(), 1);
+        assert_eq!(gpu.total_instance_count, 0);
+        let subset = gpu.owned_subset_mut(GpuWorldSubsetKind::Plant);
+        assert!(subset.positions_dirty().is_empty());
+        let payload = subset.data().as_any()
+            .downcast_ref::<crate::render::nani::gpu_world::InstanceDataBuffer<PlantInstanceData>>()
+            .unwrap();
+        assert!(payload.shadow.dirty.is_empty());
+        assert!(dev.writes.borrow().iter().any(|(ranges, offset, bytes)|
+            ranges == &[0..16] && *offset == 0 && *bytes == 16));
+        assert!(dev.writes.borrow().iter().any(|(ranges, offset, bytes)|
+            ranges == &[0..48] && *offset == 0 && *bytes == 48));
+    }
+
+    #[test]
+    fn ecs_removal_repairs_live_dense_key_and_changed_desc_uses_same_allocation() {
+        let dev = MockDevice::default();
+        let mut world = World::new();
+        world.insert_resource(world_with(GpuWorldSubsetKind::Plant, &dev));
+        world.insert_resource(MeshAtlasLibrary::default());
+        let first = world.spawn((desc(1, GpuWorldSubsetKind::Plant), Transform::default(),
+            InstanceDataMarker::<PlantInstanceData>::default())).id();
+        let second = world.spawn((desc(2, GpuWorldSubsetKind::Plant), Transform::default(),
+            InstanceDataMarker::<PlantInstanceData>::default())).id();
+        let mut schedule = Schedule::default();
+        schedule.add_systems((nani_maintain_instances_ecs, ApplyDeferred,
+            nani_update_plant_ecs).chain_ignore_deferred());
+        schedule.run(&mut world);
+        let second_id = world.get::<InstanceKey>(second).unwrap().id;
+        world.clear_trackers();
+        world.despawn(first);
+        world.get_mut::<NaniInstanceDesc>(second).unwrap().mesh = NaniMeshSelector::AtlasPart(19);
+        schedule.run(&mut world);
+        let key = *world.get::<InstanceKey>(second).unwrap();
+        assert_eq!(key.id, second_id);
+        assert_eq!(key.index, 0);
+        let gpu = world.resource::<GpuWorld>();
+        let subset = gpu.owned_subset_mut(GpuWorldSubsetKind::Plant);
+        assert_eq!(subset.instance_count(), 1);
+        assert_eq!(subset.positions()[0].mesh_index, 19);
+        assert_eq!(gpu.total_instance_count, 2);
+    }
+
+    #[test]
+    fn incomplete_mapping_is_rejected_before_key_or_count_publication() {
+        let dev = MockDevice::default();
+        let mut world = World::new();
+        world.insert_resource(world_with(GpuWorldSubsetKind::Plant, &dev));
+        world.insert_resource(MeshAtlasLibrary::default());
+        let entity = world.spawn((desc(0, GpuWorldSubsetKind::Wren), Transform::default())).id();
+        let mut schedule = Schedule::default();
+        schedule.add_systems(nani_maintain_instances_ecs);
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| schedule.run(&mut world)));
+        assert!(result.is_err());
+        assert!(world.get::<InstanceKey>(entity).is_none());
+        assert_eq!(world.resource::<GpuWorld>().total_instance_count, 0);
+    }
+
+    #[test]
+    fn registered_unmapped_subset_with_no_descriptor_keeps_real_zero_count() {
+        let dev = MockDevice::default();
+        let mut gpu = world_with(GpuWorldSubsetKind::Plant, &dev);
+        gpu.assign_subset(GpuWorldSubsetKind::Wren, GpuWorldSubset::Owned(
+            OwnedGpuWorldSubset::new::<WrenInstanceData>(&dev, GpuWorldSubsetKind::Wren)));
+        let mut world = World::new();
+        world.insert_resource(gpu);
+        world.insert_resource(MeshAtlasLibrary::default());
+        let mut schedule = Schedule::default();
+        schedule.add_systems(nani_maintain_instances_ecs);
+        schedule.run(&mut world);
+        let gpu = world.resource::<GpuWorld>();
+        assert_eq!(gpu.total_instance_count, 0);
+        assert_eq!(gpu.owned_subset_mut(GpuWorldSubsetKind::Wren).instance_count(), 0);
+    }
+
+    #[test]
+    fn existing_descriptor_cannot_silently_keep_payload_after_marker_removal() {
+        let dev = MockDevice::default();
+        let mut world = World::new();
+        world.insert_resource(world_with(GpuWorldSubsetKind::Plant, &dev));
+        world.insert_resource(MeshAtlasLibrary::default());
+        let entity = world.spawn((desc(0, GpuWorldSubsetKind::Plant), Transform::default(),
+            InstanceDataMarker::<PlantInstanceData>::default())).id();
+        let mut schedule = Schedule::default();
+        schedule.add_systems((nani_maintain_instances_ecs, ApplyDeferred,
+            nani_update_plant_ecs).chain_ignore_deferred());
+        schedule.run(&mut world);
+        let key = *world.get::<InstanceKey>(entity).unwrap();
+        world.clear_trackers();
+        world.entity_mut(entity).remove::<InstanceDataMarker<PlantInstanceData>>();
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| schedule.run(&mut world)));
+        assert!(result.is_err());
+        assert_eq!(world.get::<InstanceKey>(entity).unwrap(), &key);
+        assert_eq!(world.resource::<GpuWorld>().total_instance_count, 1);
     }
 
     #[test]

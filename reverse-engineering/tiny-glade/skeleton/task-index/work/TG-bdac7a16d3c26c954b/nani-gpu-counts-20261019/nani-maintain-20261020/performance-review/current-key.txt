@@ -1,0 +1,72 @@
+Source: /Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/render/nani/gpu_world.rs
+SHA256: 5a285e65c59524bd14e87d21a811c7e29a1177066f4012f34972682a033f7cab
+
+75: 
+76: /// 实例键（12B，O）：`{ id: u32 @0, index: u32 @4, kind: u8 @8 }`。
+77: /// `id` 是稳定 id（`extend_no_data` 里 `next_id++`，撞车则继续）；`index` 是稠密下标**提示**，
+78: /// `IndexCondenser::resolve` 命中哈希回退时会回写（所以 `update_instance_data` / `remove_instance` 取 `&mut key`，O）。
+79: ///
+80: /// 机器码里 `NaniActiveInstance`（ECS 组件，maintain 的 `Insert<NaniActiveInstance>`、各 `nani_update_*` 的
+81: /// `&NaniActiveInstance`）与本 key 是同一个 12B 记录（`extend_no_data` 回调给出的就是它），故直接让 `InstanceKey`
+82: /// 成为组件；`components::drawable::NaniActiveInstance` 是它的重导出别名。
+83: #[repr(C)]
+84: #[derive(Component, Clone, Copy, Debug, PartialEq, Eq, Hash)]
+85: pub struct InstanceKey {
+86:     pub id: u32,
+87:     pub index: u32,
+88:     pub kind: GpuWorldSubsetKind,
+89: }
+90: 
+91: /// subset 种类（u8 判别；**27 个变体**，名字由 `impl$17::fmt` 的字符串表读出，O）。
+92: /// serde 名字即变体名（`visit_str` 0x141572870 是派生的变体名匹配，O）。
+93: #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+94: #[repr(u8)]
+95: pub enum GpuWorldSubsetKind {
+
+490:     /// 解析 key 到稠密下标（快路径 + 哈希回退）；失败 → `unwrap_failed`（O）。
+491:     fn resolve(&self, key: &mut InstanceKey) -> usize {
+492:         self.condenser
+493:             .resolve(key.id, &mut key.index)
+494:             .expect("called `Option::unwrap()` on a `None` value")
+495:     }
+496: 
+497:     /// 取 `T` 类型的数据缓冲；类型不符 → panic（O 文案：3 个片段 + 3 个实参，见 0x142c76920）。
+
+522:     /// 4. 取 `InstanceDataBuffer<T>`（类型不符 → panic），`data[dense] = data`，脏窗口 min/max。
+523:     pub fn update_instance_data<T: InstanceElement>(
+524:         &mut self,
+525:         key: &mut InstanceKey,
+526:         position: Vec3,
+527:         radius: f32,
+528:         data: T,
+529:     ) {
+530:         let dense = self.resolve(key);
+531:         self.positions.dirty.add(dense..dense + 1);
+532:         let cull = &mut self.positions.data[dense];
+533:         cull.position = position;
+534:         cull.radius = f16::from_f32(radius);
+535:         self.typed_data::<T>(key.kind).set(dense, data);
+536:     }
+537: 
+538:     /// 更新实例的 mesh 索引（`update_instance_mesh` 0x140991d60 的 subset 侧，O）：
+539:     /// 解析 key，min/max，`positions[dense].mesh_index = mesh_index`（越界 → `panic_bounds_check`）。
+
+570: pub struct GpuWorld {
+571:     /// +0x0000..+0x1440：27 × 0xc0B（`RawRwLock` 8B + `Option<GpuWorldSubset>`）。
+572:     subsets: [RwLock<Option<GpuWorldSubset>>; 27],
+573:     /// +0x1440：`create_instances` 尾部 `+= cull.len()`（O）。
+574:     pub total_instance_count: u64,
+
+646:     pub fn owned_subset_mut(
+647:         &self,
+648:         kind: GpuWorldSubsetKind,
+649:     ) -> MappedRwLockWriteGuard<'_, OwnedGpuWorldSubset> {
+650:         RwLockWriteGuard::map(self.subsets[kind as usize].write(), |slot| match slot {
+651:             Some(GpuWorldSubset::Owned(subset)) => subset,
+652:             Some(GpuWorldSubset::External(_)) => panic!("Subset {:?} is not owned", kind),
+653:             None => panic!("called `Option::unwrap()` on a `None` value"),
+654:         })
+655:     }
+656: 
+657:     /// 共享读（`get_subset`，PDB LF_FUNC_ID，机器码内联；I）。
+

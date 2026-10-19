@@ -87,14 +87,24 @@ fn resampling_preserves_endpoints_and_remaps_segment_midpoints() {
 }
 
 #[test]
-fn zero_length_slice_edges_do_not_introduce_nan_coordinates() {
+fn zero_length_slice_edges_follow_original_right_and_unchanged_left() {
     let curve = Curve2::try_new(vec![Vec2::ZERO, Vec2::ZERO, Vec2::X, Vec2::X], false).unwrap();
     assert_eq!(curve.get_tangent_at_u(0.0), Vec2::ZERO);
     assert_eq!(curve.get_tangent_at_u(1.0), Vec2::ZERO);
     let mut slice = CurveSlice::from_curve_range(&curve, 0..=0);
     let start = slice.start();
     slice.extend_right(0.0);
-    assert_eq!(slice.end(), start);
+    assert_eq!(slice.start(), start);
+    assert_eq!(slice.end().segment, 0);
+    assert!(slice.end().t.is_nan());
+    // Original right output through the unchanged current host measurement.
+    assert!(slice.measure_length().is_nan());
+    slice.extend_right(0.5);
+    assert_eq!(slice.end(), CurveInternalCoord { segment: 2, t: 1.0 });
+    assert_eq!(slice.measure_length(), 1.0);
+    // Additional fresh-state coverage preserves the original positive-distance
+    // input without replacing the now-observable NaN continuation above.
+    let mut slice = CurveSlice::from_curve_range(&curve, 0..=0);
     slice.extend_right(0.5);
     assert_eq!(slice.end(), CurveInternalCoord { segment: 1, t: 0.5 });
     let mut slice = CurveSlice::from_curve_range(&curve, 3..=3);

@@ -1,0 +1,13 @@
+{
+  "scope": "Numerical-expression correction to immutable DESIGN_V1. This addendum is required if reviewing or implementing that projection.",
+  "original_manifest": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-52f7fc4f94ad125530/cloth-visual-state-20261020/window-helper-design-v1/DESIGN_MANIFEST_V1.json",
+    "sha256": "1806b1353852c1b7bc9f522e8665fbad8fb12e0552ab760109e637455fb55e17"
+  },
+  "correction": {
+    "original_phrase": "(delta.x*delta.x+delta.y*delta.y)+delta.z*delta.z",
+    "correct_expression": "(delta.y*delta.y+delta.x*delta.x)+delta.z*delta.z",
+    "machine": "141260d6c copies delta.xy, d6f squares; d72 movshdup selects dy squared; d76 addss xmm4,xmm3 adds dx squared into dy squared; d7a adds dz squared. Recurring path141260f65..f7a uses the same dy+dx then dz order.",
+    "reason": "Do not interchange addition operands for NaN payload/order semantics. No implementation exists yet."
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "reviewer": "07-independent-validation",
+  "at_utc": "2026-10-19T20:09:04.382676+00:00",
+  "verdict": "passed_scoped_core_leaf_design_conversion_changes_required",
+  "manifest": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-43142338addb95ca2d/main-chain-boot-20261018/calculate-destination-20261020/design-frozen-manifest-v1.json",
+    "sha256": "5399cf63bdbc1409ab5ece113959475a018cfa89b6afcb43a7339d688882dc78"
+  },
+  "coordinate_addendum": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-43142338addb95ca2d/main-chain-boot-20261018/calculate-destination-20261020/coordinate-read-addendum-v1/frozen-manifest-v1.json",
+    "sha256": "662d90a9acc2f8dba16bcfcce3a3d35e91433bb5096edf22dfda2adfd393ed96"
+  },
+  "verified": {
+    "frozen_current_dependencies": 20,
+    "all_match": true,
+    "original512_full_direct_B_PE": {
+      "instructions": 131,
+      "bytes": 512,
+      "sha256": "405f3818c8d4a7d43b4974019df489e4d2091f8cd51aa223e3ac94481c7a796f"
+    },
+    "source_before": "ea8407fdad82fb8caf8cb16213d2def019b410cda6e17d865ebeb4164946db38"
+  },
+  "admitted_independent_core_candidate": [
+    "Upgrade existing single canonical DecoratorDst to five typed payload variants Wall/WallCompound/Roof/Terrain/Stair with fields exactly in design table. No second destination or forced raw ABI/96B carrier. Distinct hit4/intent4/storage5/creation-context24 tag domains stay separate.",
+    "One DecoratorInfo::destination/set_destination bitcodec dispatches only five valid destination tags, reads/writes selected defined bytes and preserves every inactive/other byte. Raw u64 firstword is coordinate/stair ID bits, not authority WallId. Remove old unused wall_id misinformation; actual authority comes from resolved DecoratorStorageAddr.",
+    "Tag-independent wall_space_coord reads only low/highf32 bits of first raw qword through actual existing new_unchecked. It must not decode/guard tag or resolve owner/clamp/require finite, preserving raw5+ Location wall-default dispatch.",
+    "Wall valid boolean0/1 must be validated on strict semantic decode. No unknown tag/invalid bool normalization into successful value, no Default/Eq/Hash for newly floating payloads, no rewriting unrelated Info extra/history schema. Float PartialEq is an adapter convenience, not proof of original business comparison."
+  ],
+  "required_tests": [
+    "Five variants with distinct nonzero float bitwords/high WallId/stair pair, malformed tag/boolean errors and exact setters preserve nonzero sentinels in all undefined/unrelated bytes.",
+    "Rawtag5 coordinate getter succeeds bit-exactly including NaN/-0 without validating destination tag or querying owners.",
+    "Coordinate/accessors proper failure for strict nonwall as_wall/as_roof, retaining typed payload values.",
+    "No original wall ownership manufactured from coordinate bits; preserve optional platform independently from actual resolved owner."
+  ],
+  "conversion_blocker": {
+    "priority": "major_in_actual_conversion_scope",
+    "source": "systems/decorator/src/derive_decorator_subtype.rs::wall_coord_to_world, current6ce9a006a2d7af9531e8bba64b8c7cc8d5bb390d1a73cd7a098b40eaff56522d",
+    "finding": "Design step4 calls current public helper fully equivalent to original793B. Actual helper rejects !coordinate.y.is_finite(), length<=0 and others before projection; independently admitted original793B/integrated WorldSpace permits inrange NaN Y to propagate. No accepted512 conversion input-domain proof excluding this difference is currently provided. Names/current source comments are not equivalence evidence.",
+    "required_resolution": "Before actual512 conversion candidate admission, bind original successful input domain proving the stronger guards irrelevant, or reuse original-exact native WorldSpace through one safe borrowed actual coreCurve2 adapter under legal owner. Do not copy a new numerical routine, assert nonexistent CurveSampling impl or silently retain the stronger failure. This does not block independent core payload/codec/getter candidate."
+  },
+  "rank_requirement": "Base calculate frozen table/step wording is superseded by81c369ac/3807c9ba: accepted.current_rank+5c is original Info.rank; optional MergeSelection+48 resulting_rank is distinct. Future actual nonempty merge test must assert two different ranks and actual caller field choice.",
+  "not_admitted": [
+    "Large calculate parent, accepted value source migration/actual512 conversion implementation, full move/place UI calls or merge/derived producers are not accepted by this leaf verdict.",
+    "Actual hit/curve/cache/Rapier/mesh data must come from same canonical owners. No placeholder currentinput resource/empty mesh/default dimensions or foreign Storage changes.",
+    "No tests/build/Cargo/GPU/native target execution by reviewer/author. Known completecore missing-source gate persists; do not rerun it unchanged."
+  ]
+}

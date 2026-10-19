@@ -1,0 +1,94 @@
+{
+  "captured_at_utc": "2026-10-19T15:35:44.554630+00:00",
+  "reviewer": "07-independent-validation",
+  "source_base_head": "bd8f74a5cfb3c9cc279efb1abd27695bb1bfb8bf",
+  "runtime_executed_by_reviewer": false,
+  "production_modifications_by_reviewer": false,
+  "fullgame_acceptance": false,
+  "reviews": [
+    {
+      "id": "03-render-frame",
+      "input": {
+        "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-0ef1874c29a03d0dec/main-chain-frame-20261018/world-graph-20261019/render_frame.rs",
+        "sha256": "d89f8239845daa9a6236edced2f59356fe5be35d316a74a01878adde8c8c54bf"
+      },
+      "verdict": "passed_scoped",
+      "scope": "typed graph/callback errors, non-OOM fail-stop, original single OOM fallback ordering, pacer success-only commit",
+      "limits": "Requires 02 unconditional abort/error type and 01 fail-stop consumer. Root reports verbatim standalone 27/27; not complete App/GPU equivalence."
+    },
+    {
+      "id": "04-worker-lifecycle",
+      "input": {
+        "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-c459c7f73345e24709/main-chain-boot-20261018/scene-startup-20261019/run_game.rs.candidate",
+        "sha256": "5ce22c7f1d0878113f3e1cdf9e4cce879eba50008b571f435ec4fba0d2091d7c"
+      },
+      "verdict": "passed_scoped",
+      "scope": "Cancellation handle/join, primary producer errors, pending+queued World drop, real Drop assertions; loading shutdown consumer is host adaptation",
+      "limits": "Root worker-shutdown-v2 uses real cached Bevy 4/4, excludes spawn/poll/OS/renderer. Full teardown needs 01 order."
+    },
+    {
+      "id": "02-main-graph",
+      "input": {
+        "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-0ef1874c29a03d0dec/main-chain-frame-20261018/main-graph-team-20261019/main-graph.patch",
+        "sha256": "c969f080747b8deae5e0a23721181a7988376374fe69103dea3cca096e3c0ac9"
+      },
+      "verdict": "passed_scoped_with_root_delta",
+      "scope": "Unconditional abort, typed Error/source, missing main-vs-world gates, per-frame truthful observations, original prewarm checks restored",
+      "required_root_delta": "frame_submitted = !receipt.receipts.is_empty(); receipt itself may be empty and does not prove a queue submission",
+      "limits": "Not full graph execution, full Vermeer original-equivalence or gameplay acceptance. DiagnosticMinimal remains excluded."
+    },
+    {
+      "id": "01-main-loop",
+      "input": {
+        "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-aff540cfd24b989ccb/main-chain-boot-20261018/main-loop-team-20261019/main-loop.patch",
+        "sha256": "7bc0f87fa3e83059978abd6c3a4cce589c7d3c1c7706acac236b613ab952bace"
+      },
+      "verdict": "passed_scoped_with_open_finding",
+      "scope": "Driver returns graph/host Err before progress/temporal/log/limiter; prep cancel-and-join before GPU shutdown; continue cleanup on primary error; Drop fallback",
+      "open_finding": "While WindowSize has a zero dimension, CloseRequested sends ShutdownGameCmd then frame returns before App.update; shutdown marker cannot be produced until resize. Native loop boundary is recorded but macOS adaptation still needs safe actual close handling.",
+      "limits": "No full OS, mixed input, minimized close or gameplay runtime acceptance."
+    },
+    {
+      "id": "06-temporal-reset",
+      "input": {
+        "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-827b71275936dda04f/rhapsody-correctness-20261019/reset-only/candidate.patch",
+        "sha256": "91eda30137d40feabfbd719819af411cfb667fba8a1ab7dca3c4884815a8b3aa"
+      },
+      "verdict": "passed_scoped",
+      "scope": "After clear transfers retired tokens to physical named owner; existing pending physical mapping guard preserves actual backend owners",
+      "limits": "Root has integrated and reports 24 strict M3 GPU compatibility tests. Dedicated tests below not yet run at this review."
+    },
+    {
+      "id": "06-temporal-reset-tests",
+      "input": {
+        "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-827b71275936dda04f/rhapsody-correctness-20261019/reset-tests/candidate/crates/rhapsody/tests/temporal_reset_retirement.rs",
+        "sha256": "bd6c696cb3c7a50135387a261ba412b9b131e7c4cbce83a5a70896f6f3bf2a2c"
+      },
+      "verdict": "passed_scoped_test_design",
+      "scope": "Prepared rejection, cancelled idle release/idempotence; actual timeline-gated incomplete pending buffers stay alive, real completion plus begin reclaims, four iterations bounded",
+      "limits": "Owner/backend-resource proof; does not measure allocator byte budget or VRAM peak. RHAPSODY_REQUIRE_VULKAN=1 required."
+    }
+  ],
+  "integrated_source_manifest": "tiny-glade/reports/main-loop-render-recovery-2026-10-19/validation/core-chain-integration-v1.json",
+  "followup_facts": [
+    {
+      "fact": "Root integrated seven core sources with recorded before/candidate/after fingerprints and truthful empty-receipt delta.",
+      "scope": "Source integration; full App typecheck/OS/GPU chain not accepted."
+    },
+    {
+      "fact": "Read dedicated temporal-reset-v4 GPU log: both named ownership tests passed, 0 failed/ignored; 0.22s suite wall time.",
+      "scope": "Owner-retirement test output; runtime command/environment/exit is root responsibility and does not prove full-game or allocation-budget performance."
+    }
+  ],
+  "runtime_reports_reviewed": [
+    "validation/render-frame-v1.json",
+    "validation/worker-shutdown-v2.json",
+    "validation/core-chain-integration-v1.json",
+    "validation/temporal-reset-v4.json"
+  ],
+  "dedicated_temporal_gpu_log": {
+    "path": "tiny-glade/reports/main-loop-render-recovery-2026-10-19/logs/temporal-reset-v4-gpu.log",
+    "sha256": "abda956005aae3ebfe8ddb66319e0c05b674065ecab83603cab1ace0d6ead80c"
+  },
+  "followup_at_utc": "2026-10-19T15:37:18.379356+00:00"
+}

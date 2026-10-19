@@ -1,0 +1,108 @@
+# Reverse blur top mip: bounded content contract design
+
+Status: proposed for root and 07 design review. No implementation acceptance, production modification, Cargo or GPU run is claimed by this document.
+
+## Proven original path
+
+- Original B RNE SHA256: f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03.
+- Original shader container: _blur_pyramid_rev_blur.cs.hlsl_cs_main_0.bin, SHA256 cf8410f4fb3691bfc701cd30a04078893552e7a31df325f7d1c99b88b552f3df. Retained oracle bytes equal the live original asset.
+- Its only raw SPV starts at byte 23, 1250 words / 188 instructions, SHA256 ff30af76281df60e184e76fb27799ae941f86eac34c8f8f08250723b1579eda9. The full original module and all 11 blocks are retained under evidence/. spirv-val structural success is not a GPU result.
+- ABI is GLCompute cs_main, local size 8x8x1; set0 bindings 0=input_tail_tex sampled 2D, 1=input_tex sampled 2D, 2=output_tex storage image, 3=sampler_lnc, 16=Globals. Globals has output_extent at offset 0 and sample_self at offset 8. No ABI or shader edit is proposed.
+- Whole function CFG: entry fetches tail; two nested loops each enumerate -1..1 and execute all nine input_tex samples; only after both loops does sample_self load and branch occur. The false branch joins with tail RGB, the true branch joins with FMix(input-average, tail, 0.3); the join performs the sole image write. The false path is a real sampled read whose computed value does not participate in output, not a no-fetch path.
+- Full original CPU physical function 0x1409ed860..0x1409ee1d7, 2423 bytes, SHA256 acfaf3236b3dc92f177dcd6d56f7d416e1f4c6aa2ceafaa62fe4753a868b86bc, is retained. At 0x1409ed89e it runs the forward partial pyramid, at 0x1409ed940 creates the distinct full image, then iterates i=N-1 down to 0. Tail is partial[i]; sampled input is full[min(i+1,N-1)]; storage output is full[i]. The uniform at 0x1409edd3a..0x1409edd64 is false only on the first reverse pass. There is no full-image writer/clear before that pass. Later reverse input full[i+1] has a real preceding reverse producer. N=1 has the same first-pass alias. N=0 is outside this caller's nonempty pyramid domain.
+
+Evidence identity, full-module CFG, full bounded CPU bytes and complete disassembly are independently retained in evidence/identity.json, evidence/full-cfg.json and evidence/original-cpu-identity.json. No transformed shader is used as the oracle.
+
+## Current reachable defect and observed baseline
+
+The current core binds the original three views and uniform, but its top full read is strict. The current library also cannot preserve an explicitly allowed read when a native same-range 0x19/0x1a -> 0x37 upgrade occurs: access_ledger rewrites both native records to 0x37/group0, sets reads_previous=true and clears the old permission. A simple call to the existing undefined-read API therefore remains insufficient.
+
+Root actually ran baseline-tests/candidate/crates/rhapsody/tests/reverse_blur_content_contract.rs against the current real rhapsody Graph. Three controls passed; the expected positive case failed with Contract(UninitializedRead { resource: 1, pass: 0 }). It asserted that the native two records and group0 survive. Root recorded this in reports/main-loop-render-recovery-2026-10-19/validation/reverse-blur-baseline-v2.json and logs/reverse-blur-baseline-v2-tests.log. This is evidence of the defect, not acceptance of a fix.
+
+Current source hashes are frozen separately in source-baseline.json. In particular, blur_pyramid.rs SHA256 764171015fc201e85aa538c9225148a49ee113b0dff1cccc848dd19c6c4a7ff8 includes the previously integrated no-world changes. Any future candidate must start from these current bytes and must not restore an older full file.
+
+## Narrow semantic representation
+
+Keep native access codes, synchronization groups, declaration order/count, native write classification, native version sequence, queue selection, usage derivation, owner retention and ranges unchanged. Do not classify 0x37 as read-only, drop the synthetic native write record or change the original upgrade rule.
+
+Add one typed, default-inferred content-read dimension to AccessDeclaration, conceptually PreviousContentRead:
+
+| Value | Meaning |
+| --- | --- |
+| Inferred (default) | Use the existing valid reads_previous / contents_unused / allow_undefined inputs and native write classification. |
+| NotRead | This original occurrence does not consume previous content, despite the broader rewritten native scope. |
+| UndefinedAllowed | A real original read occurs; preserve all available sources, but missing initial content is explicitly permitted. |
+| DefinedRequired | A real original read, LOAD or preserving/atomic write requires defined old content. |
+
+The nondefault values are saved provenance for the existing native upgrade, not a new caller API to authorize undefined writes. The existing caller API remains add_undefined_content_read_range and its present validation. The ledger captures each occurrence's typed role BEFORE changing its native code/group or the legacy flags. It must never infer a no-read intent merely from reads_previous=false: an ordinary nonwrite access with that flag still consumes content and is DefinedRequired.
+
+Capture rules, after validating the original occurrence's legacy combination:
+
+- An active ordinary nonwrite is DefinedRequired.
+- An explicit allowed nonwrite is UndefinedAllowed.
+- A proven inactive nonwrite or a nonpreserving write is NotRead.
+- A real preserving/atomic write is DefinedRequired.
+
+For the confirmed top pass, the upgraded first native record saves UndefinedAllowed and the appended pure-output native record saves NotRead. For an ordinary read followed by the same output, the first saves DefinedRequired. For a real preserving output, the appended record saves DefinedRequired. Both native records remain 0x37/group0 with the established native upgrade flags.
+
+Exact-record deduplication and in-place native merges combine effective content requirements with DefinedRequired > UndefinedAllowed > NotRead, using the incoming original role before native rewriting. A strict alias can only tighten intent; a later permissive declaration cannot erase it. Existing incompatible native sequences continue to return the existing error. In particular, adding 0x19 after an already upgraded 0x37 is not made legal by this change. Contents_unused plus undefined intent remains invalid. Rebinding in the existing host still clears old caller permission.
+
+The resolver must reject malformed saved provenance outside the supported upgraded 0x37/group0 shape and any contradictory legacy markers. Raw declaration callers remain responsible for truthful content intent, just as for the existing explicit inactive/undefined capabilities. The implementation should centralize the effective content-read decision and definedness requirement rather than distribute new boolean interpretations across modules. Constructors/literals default to Inferred; native twelve-byte AccessLedgerEntry ABI is unchanged.
+
+## Pass-entry frontier for the affected resource only
+
+A synthetic first 0x37 record must not initialize its own sampled input or satisfy another same-pass strict alias. A typed override on its own is insufficient.
+
+For each pass/resource having a saved native-upgrade role, all content reads of that logical resource in that pass use the content frontier at pass entry. This includes ordinary reads with Inferred policy, preserving/atomic writes, same-range aliases and partially overlapping aliases that were not deduplicated. Either declaration order has the same required input. Resource ranges outside a saved upgraded resource and passes without an upgrade keep the present path; this is not a global rewrite of within-pass behavior.
+
+All affected-resource read checks happen against that entry frontier before the pass's writes become available as content. Resolved native write versions still advance in original declaration order. After checking, the pass's writes are committed in their existing order; the real output initializes only its declared range. At the end of the pass, later consumers/export can use that real output, but unselected mips/layers remain uninitialized. UndefinedAllowed does not itself create content or grant downstream undefined permission.
+
+This can be implemented without cloning every resource domain per pass: retain the initialized range-list entry length for the small set of affected resources (then read only that prefix), or check affected reads before appending writes. Producer analysis can collect affected reads from the old frontier first, then publish its writes. No whole-image, texel or layer enumeration and no unbounded history are needed. Ordinary passes must not acquire a new allocation or full graph scan on every access.
+
+For real reads with UndefinedAllowed, every existing overlapping producer is still a content dependency. If the full top image is fresh there is no invented producer; if it is initialized by a genuine earlier pass that producer remains retained. Partial-tail input and all subsequent reverse inputs remain strict and preserve their real producers. Storage order/anti-dependencies still come from unchanged native access records.
+
+## Required propagation and review points
+
+| Owner | Required behavior |
+| --- | --- |
+| resource_info::AccessDeclaration | Typed default and effective read/definedness helpers. New state participates in Copy/Eq/Hash and size accounting. Do not change ResourceAccessRecord or original AccessLedgerEntry ABI. |
+| access_ledger | Validate/capture original content role before 0x19/1a -> 0x37; save both occurrences independently; merge strict intent on dedup without weakening native rules. Preserve exact original count/code/group/order and error atomicity. |
+| resource_contracts::resolve_with_initialization | Honor typed content role; validate supported saved shape; use entry coverage for every read of an affected resource; retain existing sequential version checks and write publication after required reads. |
+| resource_contracts::validate_matching_initialization | On borrowed cache hits use the identical affected-resource entry rule. In particular, do not accept a current-pass earlier synthetic write in its covers_iter source. Dynamic undefined imports must be rechecked. |
+| plan::analyze_passes/add_producer_access | Real allowed reads retain available producers. For affected resources collect all input dependencies before publishing current-pass writes. Pure outputs do not gain invented input dependencies. |
+| plan::compose_analysis and subgraph analysis | Apply the same two-phase resource frontier when joining cached local analysis with outer producers; do not erase an outer producer before a later alias's input query. The copied/rebased access retains its typed role. |
+| plan_check independent content oracle | Derive role independently from the saved typed policy, validate its legal shape, check affected-resource reads against the pre-pass cell frontier, then apply writes and sequential versions. Do not merely call the production resolver or treat reads_previous as ordinary-read classification. |
+| GraphDefinition/full and borrowed cache identity | Save the typed state through raw-to-resolved copy and normalized subgraph keys. Derived Eq/Hash/full borrowed comparison must include it. Changing only this state must miss/revalidate, including hash collision cases. Bump COMPILER_VERSION for the changed planner semantics. No ad-hoc hash-only key. |
+| range_program + independent native oracle | Content policy must not affect native range uses. Preserve the original 0x37 GENERAL/scope, group0/two declarations, usage and lifetime. The compiled simultaneous projection may combine the identical native range as it does now; no new permissive sync path. |
+| graph instantiate/executor | Continue using immutable validated plan; frame normalized access copy must carry saved role. No extra callback graph, resource remap or recording-time allocation owner. |
+| country-core reverse caller | After design acceptance only the selected first reverse input (sample_self=false, i+1==N, next==i) opts in through the existing per-read API. Every true reverse input, tail, output, unrelated shader and prior no-world gating remain as now. No clear, inactive marking, top rebind to partial, or broad allow flag. |
+
+## Actual descriptor layout must match the native projection
+
+There is a separate existing host mismatch once the content contract can compile: ShaderBindings::image always supplies SHADER_READ_ONLY_OPTIMAL for sampled images, while exact top sampled/storage alias is upgraded to native 0x37 GENERAL. Existing rhapsody BindlessResource validation already accepts sampled GENERAL. No ash/Vulkan dependency change is needed.
+
+Use the validated compiled native RangeProgram as the authority for graph-managed compute image descriptors. A private host helper can receive PassContext, logical resource and the exact selected ImageView range, convert via the public native_range with the compiled descriptor/separate-depth-stencil policy, and require complete coverage by that pass's native uses with one compatible layout. A sampled slot admits the already-supported READ_ONLY or GENERAL; a storage slot still requires GENERAL. Missing coverage, mixed layouts across one view, wrong resource/range or incompatible ABI kind must return an error, not guess.
+
+PassContext.pass_index is already the retained/scheduled index: graph::instantiate_with_storage compresses declarations to retained passes and executor filters callbacks before recording. Therefore use range_program.passes[ctx.pass_index] directly and verify its pass field; plan.retained_passes[ctx.pass_index] is the original index only for diagnostics. Do not search retained_passes for ctx.pass_index as though it were an original index.
+
+Use each individual view's selected range, including each array element / individual-mip descriptor, not a whole-resource union. Exact top full input and output must both actually be written with GENERAL; sampled partial tail and later non-overlapping sampled mips stay READ_ONLY when the plan says READ_ONLY. A single descriptor spanning differently planned layouts must fail. Existing managed texture/view generation and owner checks remain responsible for matching the logical graph resource to the actual view. Arbitrary external-import alias support is not added by this bounded fix. No shader-name switch, unconditional sampled GENERAL fallback or descriptor-only barrier workaround is permitted. Existing raster/external helpers need not be changed outside the selected graph-managed compute route.
+
+## Acceptance matrix for the future implementation
+
+All tests are required against current production before/after, not inferred from the earlier no-world tests. Root owns execution.
+
+1. Existing delivered real Graph red becomes green; native two 0x37/group0 records, range and order remain exact. Fresh full top permits only the captured real read; partial tail remains strict.
+2. Ordinary nonwrite with reads_previous=false still fails on fresh contents, with and without saved-upgrade aliases.
+3. Strict same-range alias before the permissive read and after it (before upgrade) fails. A post-upgrade unsupported 0x19 alias remains an error. A later preserving 0x37 alias tightening the saved output fails rather than inheriting the earlier pure write.
+4. Strict partial-overlap alias both before and after the saved pair fails on any missing entry content. Test an initialized neighbor plus an undefined upgraded subrange, so only overlap catches the defect. A disjoint initialized strict range remains legal. Test native-compatible 0x37 preserving aliases to isolate content semantics from layout conflicts.
+5. A real preserving/atomic writer in the pair always requires defined old contents. Defined imports / genuine preceding producer controls compile. The producer cannot be culled just because the read is allowed undefined.
+6. Only written output range becomes initialized; a later ordinary read or export of an unselected mip/layer fails. A later ordinary read of the genuinely written top succeeds. Permission cannot leak to another pass.
+7. Cold compilation, borrowed plan hit with changed import boundary, subgraph cached composition, independent check and forced key hash collision agree. Typed-only differences never alias a full normalized key. Corrupt saved shape is rejected before cache publication.
+8. Allowed vs strict exact aliases in both declaration orders retain strongest content role. Default constructors remain Inferred. Legacy inactive/undefined conflict and rebind reset tests continue passing.
+9. Native RangeProgram and independent native oracle still agree; no barriers, usage, owner or lifetime disappear because content is allowed undefined.
+10. Host tests inspect the actual BindlessResource handed to the existing parameter writer: sampled-only view is READ_ONLY, exact top sampled/storage alias is GENERAL, storage is GENERAL, individual views are checked separately, wrong/mixed/missing view coverage fails. Include a culled earlier pass to prove correct scheduled index use.
+11. Real GPU regression uses the original immutable SPV and a genuine initialized partial input, fresh full image and original same-mip top input/output. It dispatches the full reverse chain and validates against the original tail/true-branch output contract using appropriate floating tolerance. Validation/descriptor layout errors are failures. Do not clear/seed full, skip the top pass or replace original fetches. This GPU check proves the selected path only, not a completed game frame.
+
+## Scope and ownership
+
+Legal work is TG-eac12c8d24c206af39 / no-world-undefined-20261019, confirmed again by task_queue show. Claim remains unchanged. This directory contains only independent evidence, contract and red fixture candidates. Production, Cargo/GPU and Git mutations stay with root. No change to shader ABI, planner architecture, dependency versions, shared databases, missing game module stubs or protected critter files is proposed. Implementation awaits root plus 07 design acceptance.

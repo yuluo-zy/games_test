@@ -1,0 +1,551 @@
+{
+  "id": "TG-2dfe262879222ff8a5",
+  "source_path": "crates/systems/decorator/src/move_decorators_following_anchors.rs",
+  "category": "core",
+  "target_version": "C",
+  "versions": [
+    "A",
+    "B",
+    "C"
+  ],
+  "priority_score": 69,
+  "family": "building",
+  "claim_mode": "candidate_reconstruction",
+  "cross_version_pairs": [
+    {
+      "versions": [
+        "A",
+        "B"
+      ],
+      "same_file_source_checksum_set": false,
+      "shared_source_checksums": [],
+      "source_scope": "entire source-file checksum, not isolated function text",
+      "behavior_equivalence": "unverified"
+    },
+    {
+      "versions": [
+        "A",
+        "C"
+      ],
+      "same_file_source_checksum_set": false,
+      "shared_source_checksums": [],
+      "source_scope": "entire source-file checksum, not isolated function text",
+      "behavior_equivalence": "unverified"
+    },
+    {
+      "versions": [
+        "B",
+        "C"
+      ],
+      "same_file_source_checksum_set": false,
+      "shared_source_checksums": [],
+      "source_scope": "entire source-file checksum, not isolated function text",
+      "behavior_equivalence": "unverified"
+    }
+  ],
+  "function_ids": [
+    "889ab81a287c68b5fd",
+    "dfad5b4eea140f336e",
+    "160b271cc29613f34a",
+    "63177bb8a9d32ab338",
+    "89f7f424f88a221def",
+    "b4cf9e40def02e9a61",
+    "09b50485765910ad29",
+    "1e2747338871e37f76",
+    "98c7a4ca7aaf7dc507",
+    "e428ee113777bda354"
+  ],
+  "related_callee_tasks": [
+    "TG-43142338addb95ca2d",
+    "TG-889aa76ca030a2e3cd",
+    "TG-60901c6c8508b1af76",
+    "TG-58352a844a7f599600",
+    "TG-bd3d82a9ddc435cfb2",
+    "TG-9cab24dd1d18f9a94a",
+    "TG-6e76d82e8a953a9a45",
+    "TG-1d8b7844066af51d6b",
+    "TG-d9be0bb590da0f9f7d"
+  ],
+  "related_caller_tasks": [],
+  "source_inputs": {
+    "A": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/A/crates/systems/decorator/src/move_decorators_following_anchors.rs",
+      "sha256": "8a1a798b3eb4d493c0775c4261e85df6ceeb1aa6459799b27554500a3f337d31",
+      "binary_sha256": "76c998d48a2404b105b431d6d881290969e786e993dd7ae824b6bedab95fd708",
+      "pdb_sha256": "d5d4001583e31abf20b1563bbfdd9e4853629065aa2e461fe5809b205db908a5"
+    },
+    "B": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/B/crates/systems/decorator/src/move_decorators_following_anchors.rs",
+      "sha256": "ceacbe74d972a09ba480df818787c6f9561205140fd8ef1137c276723b0cd274",
+      "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+      "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911"
+    },
+    "C": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/C/crates/systems/decorator/src/move_decorators_following_anchors.rs",
+      "sha256": "604b257c1c64061c6cc60165282fde503ef072ebc941055f54398cfd6a44718c",
+      "binary_sha256": "d8f9261b1a4cb677fe91b8f5017bcff63b1312228b3f3264a2071ca7d3ad80a9",
+      "pdb_sha256": "df472d8e6ae642baed96127151b18685291468518ea8dc71557bce4508c78902"
+    }
+  },
+  "assignment_unit": "one source-file family across A/B/C; one owner to prevent overlapping file edits",
+  "deliverable": "independent candidate Rust + ABI/field/dependency contracts + producer/consumer and removal/history boundaries + evidence handoff",
+  "implementation_status": "not_assessed; existing Rust must be checked before duplicate work",
+  "semantic_acceptance": false,
+  "existing_reconstruction_candidates": [],
+  "known_B_evidence_function_ids": [],
+  "data_structure_metadata": {
+    "A": "skeleton/A/crates/systems/decorator/src/move_decorators_following_anchors.rs.structures.json.gz",
+    "B": "skeleton/B/crates/systems/decorator/src/move_decorators_following_anchors.rs.structures.json.gz",
+    "C": "skeleton/C/crates/systems/decorator/src/move_decorators_following_anchors.rs.structures.json.gz"
+  },
+  "handoff": "task-index/handoffs/TG-2dfe262879222ff8a5.json",
+  "handoff_audit": "task-index/handoffs/TG-2dfe262879222ff8a5.audit.json",
+  "claim": {
+    "task_id": "TG-2dfe262879222ff8a5",
+    "owner": "deco-trackers-20261020",
+    "status": "claimed",
+    "claimed_at_utc": "2026-10-19T18:54:44.124626+00:00",
+    "target_version": "C",
+    "versions": [
+      "A",
+      "B",
+      "C"
+    ],
+    "function_scope": null,
+    "work_dir": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-2dfe262879222ff8a5/deco-trackers-20261020",
+    "worker": "idx-tg-2dfe262879222ff8a5-deco-trackers-20261020",
+    "source_inputs": {
+      "A": {
+        "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/A/crates/systems/decorator/src/move_decorators_following_anchors.rs",
+        "sha256": "8a1a798b3eb4d493c0775c4261e85df6ceeb1aa6459799b27554500a3f337d31",
+        "binary_sha256": "76c998d48a2404b105b431d6d881290969e786e993dd7ae824b6bedab95fd708",
+        "pdb_sha256": "d5d4001583e31abf20b1563bbfdd9e4853629065aa2e461fe5809b205db908a5"
+      },
+      "B": {
+        "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/B/crates/systems/decorator/src/move_decorators_following_anchors.rs",
+        "sha256": "ceacbe74d972a09ba480df818787c6f9561205140fd8ef1137c276723b0cd274",
+        "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+        "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911"
+      },
+      "C": {
+        "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/C/crates/systems/decorator/src/move_decorators_following_anchors.rs",
+        "sha256": "604b257c1c64061c6cc60165282fde503ef072ebc941055f54398cfd6a44718c",
+        "binary_sha256": "d8f9261b1a4cb677fe91b8f5017bcff63b1312228b3f3264a2071ca7d3ad80a9",
+        "pdb_sha256": "df472d8e6ae642baed96127151b18685291468518ea8dc71557bce4508c78902"
+      }
+    },
+    "handoff": "task-index/handoffs/TG-2dfe262879222ff8a5.json",
+    "rule": "one owner for this A/B/C file family; deliver independent candidate/patch/contract, never overwrite another owner or original artifacts",
+    "authorized_deferred_reason": "User authorizes original-first complete main chain and core recovery. Root delegates actual original anchor-follow event and tracker dirty hook contract to existing performance_team; normal unclaimed family, preserve storage foreign owner, work-only until review. No production, Cargo, or GPU writes by worker."
+  },
+  "function_preview": [
+    {
+      "id": "89f7f424f88a221def",
+      "version": "B",
+      "path": "crates/systems/decorator/src/move_decorators_following_anchors.rs",
+      "name": "system_decorator::move_decorators_following_anchors::move_decorators_following_anchors",
+      "logical_group_id": "772a4e87fa02fdd0a1",
+      "source_sha256": [
+        "d1c405c758554b80303860f49e4b1e23c95c98f24bf0ea9802df09d921a36f4f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "core",
+      "native_instances": [
+        {
+          "module": 466,
+          "record_offset": 1772,
+          "rva": 8505232,
+          "code_size": 4640
+        }
+      ],
+      "body_hashes": [
+        "ad403b65ccf996ffa3c2054ce1f94733180b3716ac5877a0affeb30bcc431117"
+      ],
+      "body_sizes": [
+        4640
+      ],
+      "physical_reference_callers": [
+        3654672,
+        4385008
+      ],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "alloc",
+        "bevy_ecs",
+        "core",
+        "country_core",
+        "hashbrown",
+        "puffin",
+        "std",
+        "utils"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 20,
+        "pdb_inline_transitive": 155,
+        "native_direct_call_in_physical_body": 38
+      },
+      "ambiguous_alias_groups": 13,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 1,
+      "reasons": [
+        "large/orchestrating body with several consumers or state transitions"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 25,
+        "unique_observed_physical_reference_callers": 2,
+        "native_max_bytes": 4640,
+        "native_min_bytes": 4640,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 13,
+        "library_namespace_count": 8,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 68,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "bytes_differ_or_codegen_changed",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "bytes_differ_or_codegen_changed",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "bytes_differ_or_codegen_changed",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": [
+        "00ab2c2be2ca510ffd",
+        "083e381cff9af6343d",
+        "160b271cc29613f34a",
+        "1ba3cb8026cddc5518",
+        "21d1339e0d987f8a15",
+        "263f3f7b171c2e4228",
+        "2ff5a6580e9aeca535",
+        "3205ec1952b64329b8",
+        "455d3896e85092b6a9",
+        "5027f62aa9a6d11df6",
+        "6627b8a3a11662aa15",
+        "6c4be1d103fb624627",
+        "7b5302d9bea0bd13e5",
+        "7c846cc709f2986fe1",
+        "8afa7d88d9519b005f",
+        "aa6d266ead289647eb",
+        "b341e63047faa964ca",
+        "b4cf9e40def02e9a61",
+        "b7fea3da18ea1cc780",
+        "c11e9b8fa05ad93cb1",
+        "c5b215f56e4c060a86",
+        "e91308c550c7a208d2",
+        "ed7abb2fcef01d439c",
+        "f2cca7842a6b9663fd",
+        "f5cafe2d3284e0358e"
+      ]
+    },
+    {
+      "id": "b4cf9e40def02e9a61",
+      "version": "B",
+      "path": "crates/systems/decorator/src/move_decorators_following_anchors.rs",
+      "name": "system_decorator::move_decorators_following_anchors::reanchor_doors_attached_to_bottom",
+      "logical_group_id": "428351908b3c8abe7a",
+      "source_sha256": [
+        "d1c405c758554b80303860f49e4b1e23c95c98f24bf0ea9802df09d921a36f4f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "core"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 5,
+        "pdb_inline_transitive": 14
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 1,
+        "direct_inline_callers": 1,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 4,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 1,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 1,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 12,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [
+        "89f7f424f88a221def"
+      ],
+      "private_callees": [
+        "5979fb788438ba240b",
+        "6864ff8ec4daf8d65c",
+        "d64f0513847bde56f4",
+        "d9252a3b91803e0747"
+      ]
+    },
+    {
+      "id": "160b271cc29613f34a",
+      "version": "B",
+      "path": "crates/systems/decorator/src/move_decorators_following_anchors.rs",
+      "name": "system_decorator::move_decorators_following_anchors::invalidate_roof_decorators",
+      "logical_group_id": "15f414f7b644dded72",
+      "source_sha256": [
+        "d1c405c758554b80303860f49e4b1e23c95c98f24bf0ea9802df09d921a36f4f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "bevy_ecs",
+        "core",
+        "hashbrown",
+        "std"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 2,
+        "pdb_inline_transitive": 13
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 1,
+        "direct_inline_callers": 1,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 1,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 4,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 1,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 6,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [
+        "89f7f424f88a221def"
+      ],
+      "private_callees": [
+        "d51c53feba5500eb99"
+      ]
+    },
+    {
+      "id": "63177bb8a9d32ab338",
+      "version": "B",
+      "path": "crates/systems/decorator/src/move_decorators_following_anchors.rs",
+      "name": "system_decorator::move_decorators_following_anchors::move_decorators_following_anchors::closure$1",
+      "logical_group_id": "5be37830217df215af",
+      "source_sha256": [
+        "d1c405c758554b80303860f49e4b1e23c95c98f24bf0ea9802df09d921a36f4f"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "core"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 1
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 0,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 1,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 0,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": []
+    }
+  ]
+}

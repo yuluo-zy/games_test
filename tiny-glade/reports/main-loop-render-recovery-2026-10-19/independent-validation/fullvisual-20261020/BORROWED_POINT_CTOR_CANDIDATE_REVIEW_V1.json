@@ -1,0 +1,36 @@
+{
+  "reviewer": "07-independent-validation",
+  "at_utc": "2026-10-19T19:59:44.239609+00:00",
+  "verdict": "passed_scoped_source",
+  "manifest": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-73ca4b7e51fae48995/clutter-startup-20261020/borrowed-point-ctor-20261020/candidate-manifest-v1.json",
+    "sha256": "5607e60aabc9d38c6527392fe329e2f9c4b8260c42e65854c8e49c1f9d2935ec"
+  },
+  "before_sha256": "f3efbbce53983f4b3395927da6c291d3c8b2a3ae113748b2a2a94a1ae251b20c",
+  "candidate_sha256": "0a307bff16b741db870eec40fc5ef79e0e917cf78a58647302d69a1a56965111",
+  "patch_sha256": "8b28d6bb4da030f4b9026b329eb6402f57923a405709ac436b39c084711ddff7",
+  "design_review": "ac62ace56e913cac93a90379aa3b93af07a440d23faa150c8347bdd72e4b2035",
+  "verified": [
+    "All six frozen manifest files match and current actual source equals frozen before. Whole patch independently recomputed byte-for-byte.",
+    "New checked mapped constructor moves original segment/t/order validation unchanged; existing identity constructor delegates with identity::<T> and keeps its original signature.",
+    "Only general mapped impl input T bound removed. Output R:CurvePoint/F:Fn remains; remap_2d correctly retains method-specific T:CurvePoint. No unsafe array reinterpretation/eager remap/point conversion/clone/new curve.",
+    "Five measure/right/left public method bodies and all existing test text mechanically byte-identical. New tests are in standalone cfg(test) module, not associated impl scope.",
+    "Actual canonical CurveCoordSemantic2D and imported super CurvePoint/CurveInternalCoord definitions remain valid source exports; no guessed root reexport added."
+  ],
+  "new_tests": {
+    "count": 3,
+    "executed_by_reviewer": false,
+    "executed_by_author": false,
+    "cases": [
+      "Borrowed original XYZ lazy constructor and actual XZ length/coordinate plus observed mapper sampling order.",
+      "Original invalid segment/NaN/negative t/reversed coord and short input panic.",
+      "Actual late mapper panic after right first endpoint commit preserves that completed endpoint."
+    ]
+  },
+  "limits": [
+    "Source/static bounded admission only; new Rust generic inference and test types still require central real compilation.",
+    "Actual56 prior selected-source pass predates this API; do not count it as new ctor acceptance. Root should create new immutable exactsource test snapshot if executing.",
+    "Not full utils/core/App/anchor/location/physics/GPU/native execution, no throughput claim.",
+    "Identity constructor and no-eager mapper claims are limited to existing real Points implementations; arbitrary external CurvePoints::len effects are not native business semantics."
+  ]
+}

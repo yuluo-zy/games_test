@@ -7,7 +7,7 @@
 //! ## 分类（协议 §2026-10-17：宏胶水 vs 真业务）
 //!
 //! 4 个业务函数全部为 **真实业务**：
-//! - `should_intersect_collider_meshes`（0x140a9b3c0，283B）**已实现**（kind 字节判别 +
+//! - `should_intersect_collider_meshes`（0x140a9b3c0，284B）**已实现**（kind 字节判别 +
 //!   registry generation 校验）；
 //! - `intersect_mesh_mesh`（0x140a9afa0，908B）**已实现**（`Qbvh::traverse_bvtt` 包装）；
 //! - `find_mesh_mesh_intersections`（0x140a97b70，13359B）**域内装配已实现**（图剪枝
@@ -19,46 +19,48 @@
 //! - `remove_invalid_polylines`（0x1412f3850 closure）**已实现**（空点折线删除；
 //!   同 closure 的逐点法线重写段未落地，登记）。
 
-use crate::systems::collision::world::{RaycastWorld, SubworldColliderHandle};
 #[cfg(feature = "native-physics")]
 use crate::systems::collision::world::ColliderDiff;
+use crate::systems::collision::world::{RaycastWorld, SubworldColliderHandle};
 #[cfg(feature = "native-physics")]
 use rapier3d::geometry::ColliderHandle;
 
-/// `should_intersect_collider_meshes`（0x140a9b3c0，O）：两个 collider 是否应做网格相交。
-///
-/// fresh 反编译：先分别校验 (index, generation)（registry Vec 条目 0x28B、generation 判别
-/// @+0x20 == `handle.generation | 1`），失败 panic；再按 kind 字节（@+0x00）判定：
-/// 合法组合 `(0,2)`、`(2,2)`、`(2,0)` 返回 true；其余（含 `(0,0)`）panic。
+/// B @140a9b3c0 (284 bytes) resolves actual Collider.user_data receipts,
+/// then compares source tags, payload+8 and the tag2 flag byte.
+#[cfg(feature = "native-physics")]
 pub fn should_intersect_collider_meshes(
     a: SubworldColliderHandle,
     b: SubworldColliderHandle,
     world: &RaycastWorld,
 ) -> bool {
-    // O：`(in_R8 + 0x10) <= index` 或 registry 空或 `entry[+0x20] != (gen|1)` → panic。
-    let registry = world.collider_registry();
-    let entry_a = registry
-        .get(a.index as usize)
-        .unwrap_or_else(|| panic!("should_intersect_collider_meshes: handle A invalid"));
-    assert!(
-        entry_a.generation | 1 == a.generation | 1,
-        "should_intersect_collider_meshes: handle A generation mismatch"
-    );
-    let entry_b = registry
-        .get(b.index as usize)
-        .unwrap_or_else(|| panic!("should_intersect_collider_meshes: handle B invalid"));
-    assert!(
-        entry_b.generation | 1 == b.generation | 1,
-        "should_intersect_collider_meshes: handle B generation mismatch"
-    );
-    let kind_a = entry_a.kind();
-    let kind_b = entry_b.kind();
-    // O：`cVar1==0 → cVar2==2 return`；`cVar1==2 → (cVar2==2 || cVar2==0) return`；否则 panic。
-    if (kind_a == 0 && kind_b == 2) || (kind_a == 2 && (kind_b == 2 || kind_b == 0)) {
-        true
-    } else {
-        panic!("should_intersect_collider_meshes: invalid collider kind combination");
+    let a_source = world
+        .registered_mesh_for_collider(
+            a.slot,
+            ColliderHandle::from_raw_parts(a.index, a.generation),
+        )
+        .source;
+    let b_source = world
+        .registered_mesh_for_collider(
+            b.slot,
+            ColliderHandle::from_raw_parts(b.index, b.generation),
+        )
+        .source;
+    let payload_differs = a_source.0[8..16] != b_source.0[8..16];
+    match (a_source.tag(), b_source.tag()) {
+        (0, 2) => payload_differs && b_source.0[1] & 1 == 0,
+        (2, 0) => payload_differs && a_source.0[1] & 1 == 0,
+        (2, 2) => payload_differs && a_source.0[1] == b_source.0[1] && a_source.0[1] & 1 == 0,
+        _ => panic!("should_intersect_collider_meshes: invalid collider kind combination"),
     }
+}
+
+#[cfg(not(feature = "native-physics"))]
+pub fn should_intersect_collider_meshes(
+    _a: SubworldColliderHandle,
+    _b: SubworldColliderHandle,
+    _world: &RaycastWorld,
+) -> bool {
+    panic!("should_intersect_collider_meshes requires native-physics")
 }
 
 /// `intersect_mesh_mesh`（0x140a9afa0，O）：薄包装 —— `Qbvh::traverse_bvtt<u32,u32,
@@ -71,9 +73,10 @@ pub fn intersect_mesh_mesh<F: FnMut(u32, u32) -> bool>(
     mut callback: F,
 ) {
     use rapier3d::parry::query::visitors::BoundingVolumeIntersectionsSimultaneousVisitor;
-    let mut visitor = BoundingVolumeIntersectionsSimultaneousVisitor::<u32, u32, _>::new(
-        |a: &u32, b: &u32| callback(*a, *b),
-    );
+    let mut visitor =
+        BoundingVolumeIntersectionsSimultaneousVisitor::<u32, u32, _>::new(|a: &u32, b: &u32| {
+            callback(*a, *b)
+        });
     qbvh1.traverse_bvtt(qbvh2, &mut visitor);
 }
 
@@ -82,7 +85,7 @@ pub fn intersect_mesh_mesh<F: FnMut(u32, u32) -> bool>(
 /// fresh 反编译（`find_mesh_mesh_intersections.dc.txt`，7783 B）逐语句：
 /// 1. `Subscriber::take<ColliderDiff>()`（`tabloid::Subscriber::take`）→ **removed 句柄
 ///    逐条 `GraphMap::remove_node`**（图剪枝）；
-/// 2. 逐新增/变更句柄（kind<2 门控）`ColliderSet::get_mut_internal` + `Collider::compute_aabb`
+/// 2. 逐新增/变更句柄（slot<2 门控）`ColliderSet::get_mut_internal` + `Collider::compute_aabb`
 ///    + `SimdAabb::splat` → 候选槽
 ///    `Qbvh::traverse_depth_first_node<ColliderHandle, BoundingVolumeIntersectionsVisitor<
 ///    ColliderHandle, intersect_newly_added_colliders::closure_env_0>>`——Rust 侧经
@@ -116,19 +119,27 @@ pub fn find_mesh_mesh_intersections(
     intersect: &mut impl FnMut(SubworldColliderHandle, SubworldColliderHandle),
 ) {
     // O：`Subscriber::take<ColliderDiff>()`。
-    let Some(diff) = subscriber.take() else { return };
+    let Some(diff) = subscriber.take() else {
+        return;
+    };
     // O：图剪枝 —— 逐 removed 句柄 `GraphMap::remove_node`。
     for removed in &diff.removed {
         graph.inner_mut().remove_node(*removed);
     }
     // O：逐新增/变更句柄 AABB + 候选槽 Qbvh 遍历。
     for added in &diff.added {
-        let handle = ColliderHandle::from_raw_parts(added.index, added.generation);
-        let Some(collider) = world.get_rapier_collider(added.slot, handle) else {
+        // B @140a9839f..3a5 gates the handle's SLOT before physical resolution.
+        if added.slot >= 2 {
             continue;
-        };
+        }
+        let handle = ColliderHandle::from_raw_parts(added.index, added.generation);
+        let collider = world
+            .get_rapier_collider(added.slot, handle)
+            .expect("find_mesh_mesh_intersections: added physical collider missing");
         let aabb = collider.compute_aabb();
-        for slot_index in 0..crate::systems::collision::SUBWORLD_SLOT_COUNT as usize {
+        // B @140a98401..426: added slot0 -> [1], slot1 -> [0,1].
+        let candidates: &[usize] = if added.slot == 0 { &[1] } else { &[0, 1] };
+        for &slot_index in candidates {
             // O：候选槽 `Qbvh::traverse_depth_first_node<ColliderHandle,
             // BoundingVolumeIntersectionsVisitor>`（closure = intersect_newly_added_colliders，
             // 跨域登记）。
@@ -151,7 +162,6 @@ pub fn find_mesh_mesh_intersections(
 // 分类表（find_mesh 域内装配已实现；三角相交 closure / 铺砖 / 鸟巢收集跨域登记，restorer2）：
 // - 0x140a97b70 `find_mesh_mesh_intersections`（13359B）：域内装配实现（图剪枝 + AABB +
 //   候选槽 Qbvh 遍历）；closure 跨域登记。
-
 
 // ---------------------------------------------------------------------------
 // 缺类型落地 + merge_segments_into_polylines（impl-collision-types，2026-10-17）。
@@ -289,7 +299,7 @@ pub fn intersect_mesh_mesh_segments(
     });
 }
 
-/// `intersect_newly_added_colliders::closure_env$0`（0x1417d1440，1071 B，fresh 全量,
+/// `intersect_newly_added_colliders::closure_env$0`（0x1417d1440，1274 B，完整原过程,
 /// 2026-10-17）：新增 collider 与候选 collider 的逐对处理闭包。
 ///
 /// fresh 逐语句：
@@ -334,33 +344,32 @@ pub fn intersect_newly_added_collider(
     if polylines.is_empty() {
         return;
     }
-    // 7. O：注册表 (index, generation|1) 校验 + kind & 0xfd == 0。
-    let registry = world.collider_registry();
-    let entry_a = registry
-        .get(added.index as usize)
-        .unwrap_or_else(|| panic!("intersect_newly_added_collider: added handle invalid"));
-    if entry_a.generation | 1 != added.generation | 1 {
-        panic!("intersect_newly_added_collider: added generation mismatch");
-    }
-    let entry_b = registry
-        .get(candidate.index as usize)
-        .unwrap_or_else(|| panic!("intersect_newly_added_collider: candidate handle invalid"));
-    if entry_b.generation | 1 != candidate.generation | 1 {
-        panic!("intersect_newly_added_collider: candidate generation mismatch");
-    }
-    if entry_a.kind() & 0xfd != 0 || entry_b.kind() & 0xfd != 0 {
+    // B @1417d168c..16fc resolves actual user_data again after nonempty polylines.
+    // A Rapier arena index is never a global mesh receipt index.
+    let source_a = world
+        .registered_mesh_for_collider(
+            added.slot,
+            ColliderHandle::from_raw_parts(added.index, added.generation),
+        )
+        .source;
+    let source_b = world
+        .registered_mesh_for_collider(
+            candidate.slot,
+            ColliderHandle::from_raw_parts(candidate.index, candidate.generation),
+        )
+        .source;
+    if source_a.tag() & 0xfd != 0 || source_b.tag() & 0xfd != 0 {
         panic!("intersect_newly_added_collider: invalid collider kind");
     }
     // 8. O：push 0x40 B 载荷（Vec<Polyline> + 两个 mesh qword + 两个 12 B 句柄）。
     artifacts.push(crate::systems::collision::MeshIntersectionArtifacts {
         polylines,
-        mesh_ref_a: entry_a.mesh_ref(),
-        mesh_ref_b: entry_b.mesh_ref(),
+        mesh_ref_a: u64::from_le_bytes(source_a.0[8..16].try_into().unwrap()),
+        mesh_ref_b: u64::from_le_bytes(source_b.0[8..16].try_into().unwrap()),
         a: added,
         b: candidate,
     });
 }
-
 
 /// `merge_segments_into_polylines`（0x1408f2850，O）：把相交网格产生的段合并成折线。
 ///
@@ -397,15 +406,24 @@ pub fn merge_segments_into_polylines(
                 let closes_back = polyline.first == vid_b && polyline.last == vid_a;
                 if closes_forward || closes_back {
                     let (new_pos, grid) = average_endpoints(polyline, closes_forward, seg);
-                    polyline.points.push_back(PolylinePoint { grid, position: new_pos });
+                    polyline.points.push_back(PolylinePoint {
+                        grid,
+                        position: new_pos,
+                    });
                 }
             }
             // 两端都不在折线 → 新建 2 点折线。
             (None, None) => {
                 let new = Polyline {
                     points: VecDeque::from([
-                        PolylinePoint { grid: grid_a, position: seg.position },
-                        PolylinePoint { grid: grid_b, position: seg.position },
+                        PolylinePoint {
+                            grid: grid_a,
+                            position: seg.position,
+                        },
+                        PolylinePoint {
+                            grid: grid_b,
+                            position: seg.position,
+                        },
                     ]),
                     first: vid_a,
                     last: vid_b,
@@ -435,10 +453,7 @@ pub fn round_ivec3(v: glam::Vec3) -> glam::IVec3 {
     glam::IVec3::new(v.x.round() as i32, v.y.round() as i32, v.z.round() as i32)
 }
 
-fn lookup_or_insert(
-    map: &mut HashMap<glam::IVec3, VertexId>,
-    grid: glam::IVec3,
-) -> VertexId {
+fn lookup_or_insert(map: &mut HashMap<glam::IVec3, VertexId>, grid: glam::IVec3) -> VertexId {
     if let Some(&id) = map.get(&grid) {
         id
     } else {
@@ -449,7 +464,9 @@ fn lookup_or_insert(
 }
 
 fn find_polyline(polylines: &[Polyline], vid: VertexId) -> Option<usize> {
-    polylines.iter().position(|p| p.first == vid || p.last == vid)
+    polylines
+        .iter()
+        .position(|p| p.first == vid || p.last == vid)
 }
 
 /// 追加段到折线（O：一端匹配折线首/尾，中点平均 + 翻转视方向）。
@@ -465,7 +482,10 @@ fn append_to_polyline(
     let polyline = &mut polylines[idx];
     // O：匹配端点位于折线首 → 新端插入前；位于尾 → 追加后。
     let at_front = polyline.first == matched;
-    let new_point = PolylinePoint { grid: new_grid, position: seg.position };
+    let new_point = PolylinePoint {
+        grid: new_grid,
+        position: seg.position,
+    };
     // O：共享端点中点平均。
     if at_front {
         if let Some(front) = polyline.points.front_mut() {
@@ -509,7 +529,10 @@ fn average_endpoints(
     closes_forward: bool,
     seg: &Segment,
 ) -> (glam::Vec3, glam::IVec3) {
-    let front = polyline.points.front().copied().unwrap_or(PolylinePoint { grid: glam::IVec3::ZERO, position: glam::Vec3::ZERO });
+    let front = polyline.points.front().copied().unwrap_or(PolylinePoint {
+        grid: glam::IVec3::ZERO,
+        position: glam::Vec3::ZERO,
+    });
     let back = polyline.points.back().copied().unwrap_or(front);
     // O：`(last.pos + first.pos) * 0.5`；grid 取回落的端点（closes_forward → seg.b，否则 seg.a）。
     (
@@ -545,7 +568,10 @@ mod tests {
 
     #[test]
     fn two_disjoint_segments_make_two_polylines() {
-        let segments = [seg(glam::IVec3::new(0, 0, 0), glam::IVec3::new(1, 0, 0)), seg(glam::IVec3::new(5, 0, 0), glam::IVec3::new(6, 0, 0))];
+        let segments = [
+            seg(glam::IVec3::new(0, 0, 0), glam::IVec3::new(1, 0, 0)),
+            seg(glam::IVec3::new(5, 0, 0), glam::IVec3::new(6, 0, 0)),
+        ];
         let mut out = Vec::new();
         let ids = merge_segments_into_polylines(&segments, &mut out);
         assert_eq!(out.len(), 2);
@@ -555,7 +581,10 @@ mod tests {
     #[test]
     fn chained_segments_merge_into_one_polyline() {
         // (0,0)-(1,0) 与 (1,0)-(2,0) 共享端点 → 一条 3 点折线。
-        let segments = [seg(glam::IVec3::new(0, 0, 0), glam::IVec3::new(1, 0, 0)), seg(glam::IVec3::new(1, 0, 0), glam::IVec3::new(2, 0, 0))];
+        let segments = [
+            seg(glam::IVec3::new(0, 0, 0), glam::IVec3::new(1, 0, 0)),
+            seg(glam::IVec3::new(1, 0, 0), glam::IVec3::new(2, 0, 0)),
+        ];
         let mut out = Vec::new();
         merge_segments_into_polylines(&segments, &mut out);
         assert_eq!(out.len(), 1);
@@ -583,8 +612,14 @@ mod tests {
     /// （0.6→1、-0.6→-1、NaN→0、超大→i32::MAX）。
     #[test]
     fn endpoint_grid_uses_rounded_saturating_cast() {
-        assert_eq!(round_ivec3(Vec3::new(0.6, -0.6, 0.0)), glam::IVec3::new(1, -1, 0));
-        assert_eq!(round_ivec3(Vec3::new(f32::NAN, 1e30, -1e30)), glam::IVec3::new(0, i32::MAX, i32::MIN));
+        assert_eq!(
+            round_ivec3(Vec3::new(0.6, -0.6, 0.0)),
+            glam::IVec3::new(1, -1, 0)
+        );
+        assert_eq!(
+            round_ivec3(Vec3::new(f32::NAN, 1e30, -1e30)),
+            glam::IVec3::new(0, i32::MAX, i32::MIN)
+        );
     }
 
     /// O：`intersect_mesh_mesh` 0x140a9afa0 —— 相交三角对产出 Segment，
@@ -645,7 +680,7 @@ mod tests {
 #[cfg(all(test, feature = "native-physics"))]
 mod find_mesh_tests {
     use super::*;
-    use crate::systems::collision::{world::ColliderDelta, MeshIntersectionGraph};
+    use crate::systems::collision::{MeshIntersectionGraph, world::ColliderDelta};
     use tabloid::{Publisher, State, StateDelta};
 
     /// `find_mesh_mesh_intersections` 图剪枝：`Subscriber::take<ColliderDiff>` 的 removed
@@ -656,15 +691,26 @@ mod find_mesh_tests {
         let mut pubsub = Publisher::<ColliderDiff>::new();
         let mut subscriber = pubsub.subscribe();
 
-        let a = SubworldColliderHandle { index: 1, generation: 0, slot: 3 };
-        let b = SubworldColliderHandle { index: 2, generation: 0, slot: 3 };
+        let a = SubworldColliderHandle {
+            index: 1,
+            generation: 0,
+            slot: 3,
+        };
+        let b = SubworldColliderHandle {
+            index: 2,
+            generation: 0,
+            slot: 3,
+        };
         graph.inner_mut().add_node(a);
         graph.inner_mut().add_node(b);
         assert_eq!(graph.inner().node_count(), 2);
 
         // 发布 removed 增量 → 图剪枝移除 a。
         pubsub
-            .publish(ColliderDelta { handle: Some(a), removed: true })
+            .publish(ColliderDelta {
+                handle: Some(a),
+                removed: true,
+            })
             .unwrap();
         let mut world = RaycastWorld::new();
         let mut calls = 0;
@@ -683,15 +729,207 @@ mod find_mesh_tests {
     #[test]
     fn collider_delta_accumulates_removed_and_added() {
         let mut state = ColliderDiff::empty();
-        let h = SubworldColliderHandle { index: 7, generation: 2, slot: 5 };
-        ColliderDelta { handle: Some(h), removed: true }
-            .apply_to(&mut state);
-        ColliderDelta { handle: Some(h), removed: false }
-            .apply_to(&mut state);
+        let h = SubworldColliderHandle {
+            index: 7,
+            generation: 2,
+            slot: 5,
+        };
+        ColliderDelta {
+            handle: Some(h),
+            removed: true,
+        }
+        .apply_to(&mut state);
+        ColliderDelta {
+            handle: Some(h),
+            removed: false,
+        }
+        .apply_to(&mut state);
         assert_eq!(state.removed, vec![h]);
         assert_eq!(state.added, vec![h]);
         // None 载荷为空增量。
-        ColliderDelta { handle: None, removed: true }.apply_to(&mut state);
+        ColliderDelta {
+            handle: None,
+            removed: true,
+        }
+        .apply_to(&mut state);
         assert_eq!(state.removed, vec![h]);
+    }
+}
+
+#[cfg(all(test, feature = "native-physics"))]
+mod actual_receipt_consumer_tests {
+    use super::*;
+    use crate::systems::collision::MeshIntersectionGraph;
+    use crate::systems::collision::world::{
+        ColliderMeshInstance, ColliderUpsert, RaycastGeoSource, RaycastMeshData, upsert_collider,
+    };
+    use glam::{Quat, Vec3};
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    fn source(tag: u8, flag: u8, payload: u64) -> RaycastGeoSource {
+        let mut source = match tag {
+            0 => RaycastGeoSource::Slot0,
+            2 => RaycastGeoSource::Slot2,
+            3 => RaycastGeoSource::Slot3,
+            4 => RaycastGeoSource::Slot4,
+            _ => panic!("test input source tag not declared"),
+        };
+        source.0[1] = flag;
+        source.0[8..16].copy_from_slice(&payload.to_le_bytes());
+        source
+    }
+
+    fn insert(
+        world: &mut RaycastWorld,
+        map: &mut HashMap<u32, ColliderMeshInstance>,
+        key: u32,
+        source: RaycastGeoSource,
+    ) -> SubworldColliderHandle {
+        let mesh = Arc::new(RaycastMeshData::new_indexed(
+            &[[0, 1, 2]],
+            &[
+                Vec3::new(-1.0, -1.0, -1.0),
+                Vec3::new(1.0, 1.0, -1.0),
+                Vec3::new(0.0, 0.0, 1.0),
+            ],
+            None,
+            None,
+        ));
+        match upsert_collider(world, map, key, source, mesh, Vec3::ZERO, Quat::IDENTITY) {
+            ColliderUpsert::Inserted { handle } => handle,
+            other => panic!("actual fixture must insert: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn actual_registry_predicate_keeps_original_payload_and_full_flag_byte_policy() {
+        let cases = [
+            (0, 0, 11, 2, 0, 12, true),
+            (2, 0, 11, 0, 0, 12, true),
+            (0, 0, 11, 2, 0, 11, false),
+            (0, 0, 11, 2, 1, 12, false),
+            (2, 0, 11, 2, 0, 12, true),
+            (2, 0, 11, 2, 0, 11, false),
+            (2, 1, 11, 2, 1, 12, false),
+            (2, 0, 11, 2, 2, 12, false),
+            (2, 2, 11, 2, 2, 12, true),
+        ];
+        for (tag_a, flag_a, payload_a, tag_b, flag_b, payload_b, expected) in cases {
+            let mut world = RaycastWorld::new();
+            let mut map = HashMap::new();
+            let a = insert(&mut world, &mut map, 0, source(tag_a, flag_a, payload_a));
+            let b = insert(&mut world, &mut map, 1, source(tag_b, flag_b, payload_b));
+            if a.slot != b.slot {
+                assert_eq!(
+                    a.index, b.index,
+                    "two actual subworlds may both allocate index0"
+                );
+            }
+            assert_ne!(map[&0].registry_index, map[&1].registry_index);
+            assert_eq!(
+                should_intersect_collider_meshes(a, b, &world),
+                expected,
+                "tags {tag_a}/{tag_b}, flags {flag_a}/{flag_b}, payload {payload_a}/{payload_b}"
+            );
+        }
+        let mut world = RaycastWorld::new();
+        let mut map = HashMap::new();
+        let a = insert(&mut world, &mut map, 0, source(0, 0, 11));
+        let b = insert(&mut world, &mut map, 1, source(0, 0, 12));
+        assert!(
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                should_intersect_collider_meshes(a, b, &world);
+            }))
+            .is_err(),
+            "original illegal tag pair remains an error"
+        );
+    }
+
+    #[test]
+    fn actual_diff_routes_only_original_mesh_slots_and_candidate_slots() {
+        let mut world = RaycastWorld::new();
+        let mut subscriber = world.mesh_intersect_collider_diff_publisher().subscribe();
+        let mut map = HashMap::new();
+        insert(&mut world, &mut map, 0, source(0, 0, 11));
+        insert(&mut world, &mut map, 1, source(2, 0, 12));
+        insert(&mut world, &mut map, 2, source(3, 0, 13));
+        insert(&mut world, &mut map, 3, source(4, 0, 14));
+        world.flush_colliders();
+        let mut graph = MeshIntersectionGraph::default();
+        let mut routes = Vec::new();
+        find_mesh_mesh_intersections(&mut graph, &mut subscriber, &mut world, &mut |a, b| {
+            routes.push((a.slot, b.slot));
+        });
+        routes.sort_unstable();
+        assert_eq!(routes, vec![(0, 1), (1, 0), (1, 1)]);
+    }
+
+    #[test]
+    fn slot_gate_skips_invalid_nonmesh_handles_before_physical_resolution() {
+        let mut pubsub = tabloid::Publisher::<ColliderDiff>::new();
+        let mut subscriber = pubsub.subscribe();
+        for slot in [2, 8, 255] {
+            pubsub
+                .publish(crate::systems::collision::world::ColliderDelta {
+                    handle: Some(SubworldColliderHandle {
+                        index: u32::MAX,
+                        generation: 77,
+                        slot,
+                    }),
+                    removed: false,
+                })
+                .unwrap();
+        }
+        let mut world = RaycastWorld::new();
+        let mut graph = MeshIntersectionGraph::default();
+        let mut calls = 0;
+        find_mesh_mesh_intersections(&mut graph, &mut subscriber, &mut world, &mut |_, _| {
+            calls += 1
+        });
+        assert_eq!(calls, 0);
+    }
+
+    #[test]
+    fn predicate_rejects_stale_actual_user_data_after_real_replacement() {
+        let mut world = RaycastWorld::new();
+        let mut map = HashMap::new();
+        let a_source = source(0, 0, 11);
+        let a = insert(&mut world, &mut map, 0, a_source);
+        let b = insert(&mut world, &mut map, 1, source(2, 0, 12));
+        let old_raw = world
+            .get_rapier_collider(
+                a.slot,
+                ColliderHandle::from_raw_parts(a.index, a.generation),
+            )
+            .unwrap()
+            .user_data;
+        let changed = Arc::new(RaycastMeshData::new_cuboid_at(Vec3::splat(3.0), Vec3::ZERO));
+        let ColliderUpsert::Replaced { handle: new_a } = upsert_collider(
+            &mut world,
+            &mut map,
+            0,
+            a_source,
+            changed,
+            Vec3::ZERO,
+            Quat::IDENTITY,
+        ) else {
+            panic!("geometry change must replace")
+        };
+        let physical = world
+            .get_rapier_collider(
+                new_a.slot,
+                ColliderHandle::from_raw_parts(new_a.index, new_a.generation),
+            )
+            .unwrap();
+        assert_ne!(physical.user_data, old_raw);
+        // Corrupt the real physical collider with the genuinely removed receipt.
+        physical.user_data = old_raw;
+        assert!(
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                should_intersect_collider_meshes(new_a, b, &world);
+            }))
+            .is_err()
+        );
     }
 }

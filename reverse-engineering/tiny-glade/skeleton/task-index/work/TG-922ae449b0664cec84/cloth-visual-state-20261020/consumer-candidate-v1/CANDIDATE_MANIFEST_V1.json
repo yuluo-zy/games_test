@@ -1,0 +1,187 @@
+{
+  "schema": "bounded-two-owned-source-candidate-v1",
+  "scope": "B only actual ClothInfo absent-style consumer business; C parity/whole App/GPU unverified",
+  "binary": {
+    "path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne",
+    "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+  },
+  "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+  "files": [
+    {
+      "task_id": "TG-922ae449b0664cec84",
+      "owner": "cloth-visual-state-20261020",
+      "source": {
+        "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/decorator_visual/generate_clothline.rs",
+        "sha256": "d2da675e8598387b832091fbc44d6b964f97ab696cb1dbd74087836afa5f5f4c",
+        "bytes": 5802
+      },
+      "before": {
+        "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-922ae449b0664cec84/cloth-visual-state-20261020/consumer-candidate-v1/generate_clothline.rs.before",
+        "sha256": "d2da675e8598387b832091fbc44d6b964f97ab696cb1dbd74087836afa5f5f4c",
+        "bytes": 5802
+      },
+      "candidate": {
+        "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-922ae449b0664cec84/cloth-visual-state-20261020/consumer-candidate-v1/generate_clothline.rs.candidate",
+        "sha256": "9ce51a770de15ce914cf74d0d96ad78c23aa886d86bcb578626717a5409d537b",
+        "bytes": 30590
+      },
+      "patch": {
+        "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-922ae449b0664cec84/cloth-visual-state-20261020/consumer-candidate-v1/generate_clothline.rs.patch",
+        "sha256": "a6e4ec7600d978ce9f3cf8858e14ca09a159ee845521266eec0082f99cd46274",
+        "bytes": 37285
+      },
+      "tests_all": [
+        "actual_wall_bucket_scalar_works_without_d2s_and_wraps_plan_word",
+        "projection_preserves_real_fields_and_has_native_y_add_order",
+        "plans_choose_far_same_wall_and_near_other_wall_in_native_tie_order",
+        "same_world_nonempty_commands_have_canonical_payload_and_single_transient_owner",
+        "local_cache_reuses_same_world_and_real_clear_despawns_old_transient_entities",
+        "cache_pair_disappears_and_reappears_without_new_ids_or_local_reset",
+        "actual_producer_named_meshes_resolve_nonidentity_atlas_parts_in_same_world",
+        "missing_actual_garment_normal_fails_in_real_updater_instead_of_zero_descriptor"
+      ],
+      "tests_new": [
+        "actual_wall_bucket_scalar_works_without_d2s_and_wraps_plan_word",
+        "projection_preserves_real_fields_and_has_native_y_add_order",
+        "plans_choose_far_same_wall_and_near_other_wall_in_native_tie_order",
+        "same_world_nonempty_commands_have_canonical_payload_and_single_transient_owner",
+        "local_cache_reuses_same_world_and_real_clear_despawns_old_transient_entities",
+        "cache_pair_disappears_and_reappears_without_new_ids_or_local_reset",
+        "actual_producer_named_meshes_resolve_nonidentity_atlas_parts_in_same_world",
+        "missing_actual_garment_normal_fails_in_real_updater_instead_of_zero_descriptor"
+      ],
+      "tests_retained": [],
+      "tests_removed_as_wrong_consumer": [
+        "anchors_only_include_flags_with_cached_positions",
+        "clothline_between_produces_quads",
+        "degenerate_clothline_is_rejected"
+      ]
+    },
+    {
+      "task_id": "TG-28b3a129d231927d1f",
+      "owner": "cloth-visual-state-20261020",
+      "source": {
+        "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/decorator_visual/flag_connections.rs",
+        "sha256": "4fd1cbc3e639ec5aa22bbb920dfcfbaa022c3f914503934c7371b3b14ed5059f",
+        "bytes": 19238
+      },
+      "before": {
+        "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-28b3a129d231927d1f/cloth-visual-state-20261020/consumer-candidate-v1/flag_connections.rs.before",
+        "sha256": "4fd1cbc3e639ec5aa22bbb920dfcfbaa022c3f914503934c7371b3b14ed5059f",
+        "bytes": 19238
+      },
+      "candidate": {
+        "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-28b3a129d231927d1f/cloth-visual-state-20261020/consumer-candidate-v1/flag_connections.rs.candidate",
+        "sha256": "ebde1561aeeb8214fde156565386e4bed5c176c9fe8fb581b85d58ae49698e5b",
+        "bytes": 20791
+      },
+      "patch": {
+        "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-28b3a129d231927d1f/cloth-visual-state-20261020/consumer-candidate-v1/flag_connections.rs.patch",
+        "sha256": "c39c359ced3bded63ae22a8071049e966415f9670e88c3a14be34fb36d95f6f2",
+        "bytes": 26844
+      },
+      "tests_all": [
+        "distance_windows_match_machine_constants",
+        "source_target_flags_gate_pairs",
+        "greedy_respects_capacity_two",
+        "greedy_slope_gate_rejects_steep_edge",
+        "greedy_occlusion_rejects_edge",
+        "greedy_min_distance_rejects_close_pair",
+        "sample_count_is_at_least_two",
+        "sag_midpoint_is_eight_percent_of_distance",
+        "clothline_points_droop_and_endpoints",
+        "quads_have_width_across_segment",
+        "stable_unsigned_order_keeps_duplicate_ids_as_distinct_dense_indices",
+        "each_source_sorts_weights_with_same_wall_bias_and_stable_ties",
+        "disabled_same_wall_still_allows_different_wall_and_nan_is_rejected",
+        "actual_finite_raycast_blocks_before_endpoint_but_not_beyond_it"
+      ],
+      "tests_new": [
+        "stable_unsigned_order_keeps_duplicate_ids_as_distinct_dense_indices",
+        "each_source_sorts_weights_with_same_wall_bias_and_stable_ties",
+        "disabled_same_wall_still_allows_different_wall_and_nan_is_rejected",
+        "actual_finite_raycast_blocks_before_endpoint_but_not_beyond_it"
+      ],
+      "tests_retained": [
+        "distance_windows_match_machine_constants",
+        "source_target_flags_gate_pairs",
+        "greedy_respects_capacity_two",
+        "greedy_slope_gate_rejects_steep_edge",
+        "greedy_occlusion_rejects_edge",
+        "greedy_min_distance_rejects_close_pair",
+        "sample_count_is_at_least_two",
+        "sag_midpoint_is_eight_percent_of_distance",
+        "clothline_points_droop_and_endpoints",
+        "quads_have_width_across_segment"
+      ],
+      "tests_removed_as_wrong_consumer": []
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-922ae449b0664cec84/cloth-visual-state-20261020/consumer-candidate-v1/SOURCE_DEPENDENCIES_V1.json",
+      "sha256": "3af4e2691726a1be542039122738aa22147c7ff0b357a10cf712540320b85425",
+      "bytes": 7521
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-922ae449b0664cec84/cloth-visual-state-20261020/consumer-candidate-v1/PARSER_CHECK_V1.json",
+      "sha256": "148eac576ab825173212b11131eb443dc2a8111ed17be525654689d46719b979",
+      "bytes": 1687
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-922ae449b0664cec84/cloth-visual-state-20261020/consumer-candidate-v1/HANDOFF_V1.md",
+      "sha256": "4bbba41f8cc74eb2019780db91a808e1c3d5d7a56afd4bfe47edc38cf623873d",
+      "bytes": 3281
+    }
+  ],
+  "references": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-922ae449b0664cec84/cloth-visual-state-20261020/consumer-numeric-design-v1/DESIGN_MANIFEST_V1.json",
+      "sha256": "cc9ba8dcfa712c242be7b2a0dbc466e9577e73eb73efadc83d356eff751923ab",
+      "bytes": 6046
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-922ae449b0664cec84/cloth-visual-state-20261020/consumer-numeric-design-v1/DESIGN_V1.md",
+      "sha256": "6dc5a83208864b98e1045dd0910e661434ca362fa2c8b27ef48df3993324b8a1",
+      "bytes": 16248
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-922ae449b0664cec84/cloth-visual-state-20261020/consumer-numeric-design-v1/PHASE_EVIDENCE_V1.json",
+      "sha256": "36adeea0676af8a4f5e06cad1b014eff436abea358de116cf48d38c8fab62c8c",
+      "bytes": 1936
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-922ae449b0664cec84/cloth-visual-state-20261020/consumer-numeric-design-v1/ASSET_NORMAL_EXISTENCE_ADDENDUM_V1.json",
+      "sha256": "af170f14dc60cd00f4de6c2d045de746323f141696a2237e165698727cced75f",
+      "bytes": 904
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-922ae449b0664cec84/cloth-visual-state-20261020/consumer-numeric-design-v1/HOST_SOURCE_OBSERVATION_V1.json",
+      "sha256": "16db4de1216d638d9808cf95d420664723037267f13d443324c49c1a2b7c1bbd",
+      "bytes": 1816
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/independent-validation/fullvisual-20261020/CLOTH_CONSUMER_NUMERIC_DESIGN_REVIEW_V1.json",
+      "sha256": "7945d30ead5d7544b81219165df9e5661839f99471845e9f73742a6ec2d296bf",
+      "bytes": 16599
+    }
+  ],
+  "checks": {
+    "rustfmt_parser_exit_codes": [
+      0,
+      0
+    ],
+    "typecheck": false,
+    "tests_executed": false,
+    "Cargo_rustc_GPU_executed": false,
+    "production_mutated": false
+  },
+  "remaining": [
+    "upstream window Box<ClothInfo> writers",
+    "actual host installation/order",
+    "real installed asset name labels/loader",
+    "Some-style/general flags",
+    "C parity",
+    "whole App/GPU"
+  ]
+}

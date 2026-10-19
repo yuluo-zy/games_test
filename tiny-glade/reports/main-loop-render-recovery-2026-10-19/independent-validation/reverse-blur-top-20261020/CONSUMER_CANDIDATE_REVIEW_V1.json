@@ -1,0 +1,82 @@
+{
+  "at_utc": "2026-10-19T17:00:47.925441+00:00",
+  "verdict": "passed_scoped_static_consumer_candidate_pending_central_validation",
+  "manifest": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-eac12c8d24c206af39/no-world-undefined-20261019/reverse-blur-top-20261020/consumer-candidate/manifest.json",
+    "sha256": "500023fa244265e5b4934e8d9648c927d154793f0ccb076bd30b2f8e034f983b"
+  },
+  "patch_sha256": "3dfc1131eb15d6bb707e8722694d8eba39d7e28c419a88d12183c50218c4e94f",
+  "files": [
+    {
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/blur_pyramid.rs",
+      "before": "764171015fc201e85aa538c9225148a49ee113b0dff1cccc848dd19c6c4a7ff8",
+      "current": "764171015fc201e85aa538c9225148a49ee113b0dff1cccc848dd19c6c4a7ff8",
+      "expected_candidate": "20f9f2c642e4cda29b9c8f161e059d540038fe2f9b4522e9fcfaa85f4d7dbcc0",
+      "candidate": "20f9f2c642e4cda29b9c8f161e059d540038fe2f9b4522e9fcfaa85f4d7dbcc0"
+    },
+    {
+      "path": "crates/rhapsody/src/rg/executor.rs",
+      "before": "ca045fe6086f3c584e47e15722cfb5006e9e0df6400894931e7427a959288210",
+      "current": "ca045fe6086f3c584e47e15722cfb5006e9e0df6400894931e7427a959288210",
+      "expected_candidate": "89a6bbef78677121b7475eec1893e3a3de177fbd84109fb2abf9f64749c162c0",
+      "candidate": "89a6bbef78677121b7475eec1893e3a3de177fbd84109fb2abf9f64749c162c0"
+    },
+    {
+      "path": "crates/tiny-glade/src/render_host.rs",
+      "before": "5e9f37fe0a8fdfb6b9ac01f6501c62df6d4ef17e9233255ab7108048f3b9309d",
+      "current": "5e9f37fe0a8fdfb6b9ac01f6501c62df6d4ef17e9233255ab7108048f3b9309d",
+      "expected_candidate": "03184a90100cd0584fc890af601a8111f5b70bf8a502b3db6624f9153562a329",
+      "candidate": "03184a90100cd0584fc890af601a8111f5b70bf8a502b3db6624f9153562a329"
+    }
+  ],
+  "library_dependencies": [
+    {
+      "path": "crates/rhapsody/src/rg/access_ledger.rs",
+      "expected": "bb03d8cf909aefb3b454168d7a33c913cf5ebdf48d66dbf5893ad50028a0ca8a",
+      "current": "bb03d8cf909aefb3b454168d7a33c913cf5ebdf48d66dbf5893ad50028a0ca8a"
+    },
+    {
+      "path": "crates/rhapsody/src/rg/plan.rs",
+      "expected": "e697ec36b7e079f04198ecf49cb31f1184a5556ccbf1922da8e2640c20392cbf",
+      "current": "e697ec36b7e079f04198ecf49cb31f1184a5556ccbf1922da8e2640c20392cbf"
+    },
+    {
+      "path": "crates/rhapsody/src/rg/plan_check.rs",
+      "expected": "1ea424afc64f5ef97e93234eb1b1a587c4c78905a2cc71b2bdeb6ff1dbe0acb5",
+      "current": "1ea424afc64f5ef97e93234eb1b1a587c4c78905a2cc71b2bdeb6ff1dbe0acb5"
+    },
+    {
+      "path": "crates/rhapsody/src/rg/resource_contracts.rs",
+      "expected": "4761daf491113fef1c0141370c0f43aaccc5fa742f488a4c6901c68d465eeb6b",
+      "current": "4761daf491113fef1c0141370c0f43aaccc5fa742f488a4c6901c68d465eeb6b"
+    },
+    {
+      "path": "crates/rhapsody/src/rg/resource_info.rs",
+      "expected": "9903ce87bbe20b085f2222cd42ec7098978999eb94ab5b195776afd0bd8c961f",
+      "current": "9903ce87bbe20b085f2222cd42ec7098978999eb94ab5b195776afd0bd8c961f"
+    },
+    {
+      "path": "crates/rhapsody/src/rg/subgraph.rs",
+      "expected": "80333aba7f15ef0696a5ff6332ee018b6759ad602247b8def54b124636fd7671",
+      "current": "80333aba7f15ef0696a5ff6332ee018b6759ad602247b8def54b124636fd7671"
+    }
+  ],
+  "checks": [
+    "PassContext sole read-only method validates logical image index/kind, scheduledindex/passfield/usesslice, native exactrange andsinglelayoutcompletecoverage; uses existingdifference/intersection and no access/owner/transition mutation.",
+    "Actual ctx passindex is compressed scheduledindex; priorculledpass fixture demonstrates index0->original1. Missing/partial/mixed/wrongimage/range/kind failclosed. No fallbackGENERAL/READONLYguess.",
+    "Host actualmanaged.texture_for(resource) and graph.resource_handle(index) use same logicalindex; image_for_pass queries actualselectedTextureViewdesc includingaspect/mips/layers, eachindividualmip separately, then image_with_layout returns actualSampledImage{view,layout} orvalidatedStorageImage. KnownABIonly sampledREADONLY/GENERAL, storageGENERAL.",
+    "Existingraster/external image helper retains itspriornativecontract, though now doessecondABIlookup; no broadunknownaliaspolicy. Actual bindinggeneration/deviceowner checks remainexistingheap.",
+    "Core revloop derives oneboolsample_self fromoriginali+1!=N, sameuniformandonlyfalsefirstselftopINPUT_TEXgets existingallowreadmetadata. Tail/output/latertrueinputs strict; views/accesses/dispatch/ABIunchanged. N1/N4 and priorno-world-onlyforwardpermissionseparated."
+  ],
+  "tests": {
+    "rhapsody": "3 authored realcompiledGraph/nativeprojection exactlayoutquery CPU tests; not run by reviewer",
+    "core": "1 authored N1/N4 realrecordedpass test and1 existing no-world test updated; not run by reviewer",
+    "host": "1 authored ABI predicate CPU test only; does not inspect actual GPU descriptor write or complete App",
+    "remaining": "ActualBindlessResource path statically checked; originalimmutableSPV GPU dispatch/readback/validation and actual descriptor layout must still be run centrally."
+  },
+  "performance": "Perselectedview query scans currentpass nativeuses and subtracts cells withSmallVec8; generalmulti-view can spill, not universalzeroalloc claim. image legacyhelper now2ABIlookups; performance_team separately reviews. No timing/bottleneck accepted.",
+  "scope": "Selectedreversepathand graph-managedcompute consumer only; no fullgame/frame/visual acceptance.",
+  "typecheck_accepted": false,
+  "runtime_accepted": false,
+  "reviewer_ran_cargo_rustc_gpu": false
+}

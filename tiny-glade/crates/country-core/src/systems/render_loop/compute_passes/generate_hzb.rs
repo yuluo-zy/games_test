@@ -93,8 +93,17 @@ pub fn generate_hzb<A: ComputeTexture>(
     let mut push = spd_push_constants(u32::from(mips).wrapping_sub(1), groups);
     push.extend_from_slice(&w.to_le_bytes());
     push.extend_from_slice(&h.to_le_bytes());
+    let pass = pass.write_rg_storage_buffer(HASH_ATOMIC, &atomic);
+    // The original SPD shader returns before its cross-workgroup atomic path
+    // when push.mips <= 6. Above that boundary atomicAdd reads the existing
+    // counter before the last workgroup resets it. The named buffer's actual
+    // zero upload supplies first-frame contents; this is only content intent.
+    let pass = if u32::from(mips).wrapping_sub(1) > 6 {
+        pass.preserve_storage_buffer_contents(HASH_ATOMIC)
+    } else {
+        pass
+    };
     let recorded = pass
-        .write_rg_storage_buffer(HASH_ATOMIC, &atomic)
         .push_constants(&push)
         .dispatch_groups(groups[0], groups[1], 1);
     env.record(recorded);
@@ -226,6 +235,32 @@ mod tests {
             DispatchMode::Groups { x: 1, y: 1, z: 1 }
         ));
         assert_eq!(f.textures[0].1.mip_levels, 1);
+    }
+
+    #[test]
+    fn atomic_contents_are_preserved_only_when_spd_uses_the_counter() {
+        for (dims, push_mips, preserves) in [
+            ([2, 3], 0u32, false),
+            ([128, 128], 6, false),
+            ([256, 128], 7, true),
+            ([1920, 1080], 10, true),
+        ] {
+            let w = world();
+            let mut f = TestFrame::default();
+            let (tex, desc) = depth(dims[0], dims[1]);
+            with_env(&w, &mut f, |env| generate_hzb(env, &&tex, &desc, "boundary"));
+            let p = &f.passes[0];
+            assert_eq!(&p.push_constants[..4], &push_mips.to_le_bytes());
+            let atomic = f.temporal_buffers[0].2.resource;
+            let expected = if preserves { vec![atomic] } else { vec![] };
+            assert_eq!(p.preserving_buffers, expected, "depth {dims:?}");
+            // Content intent does not change native synchronization access,
+            // the single SPD dispatch, or the real temporal owner request.
+            let accesses: Vec<u8> = p.builder.accesses.iter().map(|a| a.access).collect();
+            assert_eq!(accesses, [0x1a, 0x19, 0x37, 0x37, 0x37]);
+            assert_eq!(f.passes.len(), 1);
+            assert_eq!(f.temporal_buffers.len(), 1);
+        }
     }
 
     #[test]

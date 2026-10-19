@@ -1,0 +1,616 @@
+
+_nani_cull_and_bucket.cs.hlsl_cs_main_8a7d2f81e72c8eeb SHA256 966167016973bdb86e680de59aad2a18f69d4a5897128cc9196bf515ad5f74ca; original SPV lines 5962..6025
+5962:                OpNoLine
+5963:                OpSelectionMerge %152 None
+5964:                OpSwitch %uint_0 %153
+5965:         %153 = OpLabel
+5966:                OpLine %5 23 24
+5967:         %154 = OpAccessChain %_ptr_PushConstant_uint %push_constants %int_2
+5968:                OpLine %5 23 39
+5969:         %155 = OpLoad %uint %154
+5970:                OpLine %5 23 21
+5971:         %156 = OpUGreaterThanEqual %bool %151 %155
+5972:                OpLine %5 23 61
+5973:                OpSelectionMerge %157 None
+5974:                OpBranchConditional %156 %158 %157
+5975:         %158 = OpLabel
+5976:                OpLine %5 24 9
+5977:                OpBranch %152
+5978:         %157 = OpLabel
+5979:                OpLine %5 31 25
+5980:         %159 = OpAccessChain %_ptr_PushConstant_v2uint %push_constants %int_0
+5981:                OpLine %5 31 40
+5982:         %160 = OpLoad %v2uint %159
+5983:                OpLine %5 31 25
+5984:                OpStore %149 %160
+5985:                OpLine %5 31 84
+5986:         %161 = OpBitcast %uint %151
+5987:                OpLine %5 31 82
+5988:         %162 = OpIMul %uint %uint_16 %161
+5989:                OpLine %5 31 62
+5990:         %163 = OpBitcast %uint %162
+5991:                OpLine %6 365 13
+5992:         %164 = OpAccessChain %_ptr_Function_uint %149 %int_0
+5993:         %165 = OpLoad %uint %164
+5994:                OpLine %6 365 20
+5995:         %166 = OpIAdd %uint %165 %163
+5996:                OpLine %6 365 5
+5997:         %167 = OpAccessChain %_ptr_Function_uint %147 %int_0
+5998:                OpStore %167 %166
+5999:                OpLine %6 366 13
+6000:         %168 = OpAccessChain %_ptr_Function_uint %149 %int_1
+6001:         %169 = OpLoad %uint %168
+6002:                OpLine %6 366 23
+6003:         %170 = OpLoad %uint %167
+6004:                OpLine %6 366 31
+6005:         %171 = OpLoad %uint %164
+6006:                OpLine %6 366 29
+6007:         %172 = OpULessThan %bool %170 %171
+6008:                OpNoLine
+6009:         %173 = OpSelect %int %172 %int_1 %int_0
+6010:                OpLine %6 366 22
+6011:         %174 = OpBitcast %uint %173
+6012:                OpLine %6 366 20
+6013:         %175 = OpIAdd %uint %169 %174
+6014:                OpLine %6 366 5
+6015:         %176 = OpAccessChain %_ptr_Function_uint %147 %int_1
+6016:                OpStore %176 %175
+6017:                OpLine %6 367 12
+6018:         %177 = OpLoad %v2uint %147
+6019:                OpLine %5 30 27
+6020:         %178 = OpBitcast %_ptr_PhysicalStorageBuffer_v4uint %177
+6021:         %179 = OpLoad %v4uint %178 Aligned 16
+6022:                OpLine %5 30 17
+6023:                OpStore %148 %179
+6024:                OpLine %5 37 28
+6025:         %180 = OpVectorShuffle %v3uint %179 %179 0 1 2
+
+_nani_cull_and_bucket.cs.hlsl_cs_main_d8520a92ddeb65ab SHA256 c484f04262d5ae8a5dd025753959d2ae1fb5e57d060d85606c802fd1dc55541c; original SPV lines 5942..6005
+5942:                OpNoLine
+5943:                OpSelectionMerge %143 None
+5944:                OpSwitch %uint_0 %144
+5945:         %144 = OpLabel
+5946:                OpLine %5 23 24
+5947:         %145 = OpAccessChain %_ptr_PushConstant_uint %push_constants %int_2
+5948:                OpLine %5 23 39
+5949:         %146 = OpLoad %uint %145
+5950:                OpLine %5 23 21
+5951:         %147 = OpUGreaterThanEqual %bool %142 %146
+5952:                OpLine %5 23 61
+5953:                OpSelectionMerge %148 None
+5954:                OpBranchConditional %147 %149 %148
+5955:         %149 = OpLabel
+5956:                OpLine %5 24 9
+5957:                OpBranch %143
+5958:         %148 = OpLabel
+5959:                OpLine %5 31 25
+5960:         %150 = OpAccessChain %_ptr_PushConstant_v2uint %push_constants %int_0
+5961:                OpLine %5 31 40
+5962:         %151 = OpLoad %v2uint %150
+5963:                OpLine %5 31 25
+5964:                OpStore %140 %151
+5965:                OpLine %5 31 84
+5966:         %152 = OpBitcast %uint %142
+5967:                OpLine %5 31 82
+5968:         %153 = OpIMul %uint %uint_16 %152
+5969:                OpLine %5 31 62
+5970:         %154 = OpBitcast %uint %153
+5971:                OpLine %6 365 13
+5972:         %155 = OpAccessChain %_ptr_Function_uint %140 %int_0
+5973:         %156 = OpLoad %uint %155
+5974:                OpLine %6 365 20
+5975:         %157 = OpIAdd %uint %156 %154
+5976:                OpLine %6 365 5
+5977:         %158 = OpAccessChain %_ptr_Function_uint %138 %int_0
+5978:                OpStore %158 %157
+5979:                OpLine %6 366 13
+5980:         %159 = OpAccessChain %_ptr_Function_uint %140 %int_1
+5981:         %160 = OpLoad %uint %159
+5982:                OpLine %6 366 23
+5983:         %161 = OpLoad %uint %158
+5984:                OpLine %6 366 31
+5985:         %162 = OpLoad %uint %155
+5986:                OpLine %6 366 29
+5987:         %163 = OpULessThan %bool %161 %162
+5988:                OpNoLine
+5989:         %164 = OpSelect %int %163 %int_1 %int_0
+5990:                OpLine %6 366 22
+5991:         %165 = OpBitcast %uint %164
+5992:                OpLine %6 366 20
+5993:         %166 = OpIAdd %uint %160 %165
+5994:                OpLine %6 366 5
+5995:         %167 = OpAccessChain %_ptr_Function_uint %138 %int_1
+5996:                OpStore %167 %166
+5997:                OpLine %6 367 12
+5998:         %168 = OpLoad %v2uint %138
+5999:                OpLine %5 30 27
+6000:         %169 = OpBitcast %_ptr_PhysicalStorageBuffer_v4uint %168
+6001:         %170 = OpLoad %v4uint %169 Aligned 16
+6002:                OpLine %5 30 17
+6003:                OpStore %139 %170
+6004:                OpLine %5 37 28
+6005:         %171 = OpVectorShuffle %v3uint %170 %170 0 1 2
+
+_nani_cull_and_bucket_plaster.cs.hlsl_cs_main_8a7d2f81e72c8eeb SHA256 f8fbf386fe38616e0f2ca30614111b0bc47447c3cdb771610f9bd63bbaa2406a; original SPV lines 6062..6125
+6062:                OpNoLine
+6063:                OpSelectionMerge %151 None
+6064:                OpSwitch %uint_0 %152
+6065:         %152 = OpLabel
+6066:                OpLine %5 21 24
+6067:         %153 = OpAccessChain %_ptr_PushConstant_uint %push_constants %int_3
+6068:                OpLine %5 21 39
+6069:         %154 = OpLoad %uint %153
+6070:                OpLine %5 21 21
+6071:         %155 = OpUGreaterThanEqual %bool %150 %154
+6072:                OpLine %5 21 61
+6073:                OpSelectionMerge %156 None
+6074:                OpBranchConditional %155 %157 %156
+6075:         %157 = OpLabel
+6076:                OpLine %5 22 9
+6077:                OpBranch %151
+6078:         %156 = OpLabel
+6079:                OpLine %5 29 25
+6080:         %158 = OpAccessChain %_ptr_PushConstant_v2uint %push_constants %int_0
+6081:                OpLine %5 29 40
+6082:         %159 = OpLoad %v2uint %158
+6083:                OpLine %5 29 25
+6084:                OpStore %148 %159
+6085:                OpLine %5 29 84
+6086:         %160 = OpBitcast %uint %150
+6087:                OpLine %5 29 82
+6088:         %161 = OpIMul %uint %uint_16 %160
+6089:                OpLine %5 29 62
+6090:         %162 = OpBitcast %uint %161
+6091:                OpLine %6 365 13
+6092:         %163 = OpAccessChain %_ptr_Function_uint %148 %int_0
+6093:         %164 = OpLoad %uint %163
+6094:                OpLine %6 365 20
+6095:         %165 = OpIAdd %uint %164 %162
+6096:                OpLine %6 365 5
+6097:         %166 = OpAccessChain %_ptr_Function_uint %146 %int_0
+6098:                OpStore %166 %165
+6099:                OpLine %6 366 13
+6100:         %167 = OpAccessChain %_ptr_Function_uint %148 %int_1
+6101:         %168 = OpLoad %uint %167
+6102:                OpLine %6 366 23
+6103:         %169 = OpLoad %uint %166
+6104:                OpLine %6 366 31
+6105:         %170 = OpLoad %uint %163
+6106:                OpLine %6 366 29
+6107:         %171 = OpULessThan %bool %169 %170
+6108:                OpNoLine
+6109:         %172 = OpSelect %int %171 %int_1 %int_0
+6110:                OpLine %6 366 22
+6111:         %173 = OpBitcast %uint %172
+6112:                OpLine %6 366 20
+6113:         %174 = OpIAdd %uint %168 %173
+6114:                OpLine %6 366 5
+6115:         %175 = OpAccessChain %_ptr_Function_uint %146 %int_1
+6116:                OpStore %175 %174
+6117:                OpLine %6 367 12
+6118:         %176 = OpLoad %v2uint %146
+6119:                OpLine %5 28 27
+6120:         %177 = OpBitcast %_ptr_PhysicalStorageBuffer_v4uint %176
+6121:         %178 = OpLoad %v4uint %177 Aligned 16
+6122:                OpLine %5 28 17
+6123:                OpStore %147 %178
+6124:                OpLine %5 36 40
+6125:         %179 = OpAccessChain %_ptr_Function_uint %147 %int_3
+
+_nani_cull_and_bucket_plaster.cs.hlsl_cs_main_d8520a92ddeb65ab SHA256 a1a6b687d97d8341f1855040dd7063ba405a4867c60a434f668a4b41db3c87b4; original SPV lines 6028..6091
+6028:                OpNoLine
+6029:                OpSelectionMerge %128 None
+6030:                OpSwitch %uint_0 %129
+6031:         %129 = OpLabel
+6032:                OpLine %5 21 24
+6033:         %130 = OpAccessChain %_ptr_PushConstant_uint %push_constants %int_3
+6034:                OpLine %5 21 39
+6035:         %131 = OpLoad %uint %130
+6036:                OpLine %5 21 21
+6037:         %132 = OpUGreaterThanEqual %bool %127 %131
+6038:                OpLine %5 21 61
+6039:                OpSelectionMerge %133 None
+6040:                OpBranchConditional %132 %134 %133
+6041:         %134 = OpLabel
+6042:                OpLine %5 22 9
+6043:                OpBranch %128
+6044:         %133 = OpLabel
+6045:                OpLine %5 29 25
+6046:         %135 = OpAccessChain %_ptr_PushConstant_v2uint %push_constants %int_0
+6047:                OpLine %5 29 40
+6048:         %136 = OpLoad %v2uint %135
+6049:                OpLine %5 29 25
+6050:                OpStore %125 %136
+6051:                OpLine %5 29 84
+6052:         %137 = OpBitcast %uint %127
+6053:                OpLine %5 29 82
+6054:         %138 = OpIMul %uint %uint_16 %137
+6055:                OpLine %5 29 62
+6056:         %139 = OpBitcast %uint %138
+6057:                OpLine %6 365 13
+6058:         %140 = OpAccessChain %_ptr_Function_uint %125 %int_0
+6059:         %141 = OpLoad %uint %140
+6060:                OpLine %6 365 20
+6061:         %142 = OpIAdd %uint %141 %139
+6062:                OpLine %6 365 5
+6063:         %143 = OpAccessChain %_ptr_Function_uint %123 %int_0
+6064:                OpStore %143 %142
+6065:                OpLine %6 366 13
+6066:         %144 = OpAccessChain %_ptr_Function_uint %125 %int_1
+6067:         %145 = OpLoad %uint %144
+6068:                OpLine %6 366 23
+6069:         %146 = OpLoad %uint %143
+6070:                OpLine %6 366 31
+6071:         %147 = OpLoad %uint %140
+6072:                OpLine %6 366 29
+6073:         %148 = OpULessThan %bool %146 %147
+6074:                OpNoLine
+6075:         %149 = OpSelect %int %148 %int_1 %int_0
+6076:                OpLine %6 366 22
+6077:         %150 = OpBitcast %uint %149
+6078:                OpLine %6 366 20
+6079:         %151 = OpIAdd %uint %145 %150
+6080:                OpLine %6 366 5
+6081:         %152 = OpAccessChain %_ptr_Function_uint %123 %int_1
+6082:                OpStore %152 %151
+6083:                OpLine %6 367 12
+6084:         %153 = OpLoad %v2uint %123
+6085:                OpLine %5 28 27
+6086:         %154 = OpBitcast %_ptr_PhysicalStorageBuffer_v4uint %153
+6087:         %155 = OpLoad %v4uint %154 Aligned 16
+6088:                OpLine %5 28 17
+6089:                OpStore %124 %155
+6090:                OpLine %5 36 40
+6091:         %156 = OpAccessChain %_ptr_Function_uint %124 %int_3
+
+_nani_cull_and_bucket_smoke.cs.hlsl_cs_main_8a7d2f81e72c8eeb SHA256 8ebdf7680ba34ae511e980ea06ed8a3cc54dbe5109e0c52a1a4b2b620edc6c3a; original SPV lines 6024..6087
+6024:                OpNoLine
+6025:                OpSelectionMerge %148 None
+6026:                OpSwitch %uint_0 %149
+6027:         %149 = OpLabel
+6028:                OpLine %5 21 24
+6029:         %150 = OpAccessChain %_ptr_PushConstant_uint %push_constants %int_3
+6030:                OpLine %5 21 39
+6031:         %151 = OpLoad %uint %150
+6032:                OpLine %5 21 21
+6033:         %152 = OpUGreaterThanEqual %bool %147 %151
+6034:                OpLine %5 21 61
+6035:                OpSelectionMerge %153 None
+6036:                OpBranchConditional %152 %154 %153
+6037:         %154 = OpLabel
+6038:                OpLine %5 22 9
+6039:                OpBranch %148
+6040:         %153 = OpLabel
+6041:                OpLine %5 29 25
+6042:         %155 = OpAccessChain %_ptr_PushConstant_v2uint %push_constants %int_0
+6043:                OpLine %5 29 40
+6044:         %156 = OpLoad %v2uint %155
+6045:                OpLine %5 29 25
+6046:                OpStore %145 %156
+6047:                OpLine %5 29 84
+6048:         %157 = OpBitcast %uint %147
+6049:                OpLine %5 29 82
+6050:         %158 = OpIMul %uint %uint_16 %157
+6051:                OpLine %5 29 62
+6052:         %159 = OpBitcast %uint %158
+6053:                OpLine %6 365 13
+6054:         %160 = OpAccessChain %_ptr_Function_uint %145 %int_0
+6055:         %161 = OpLoad %uint %160
+6056:                OpLine %6 365 20
+6057:         %162 = OpIAdd %uint %161 %159
+6058:                OpLine %6 365 5
+6059:         %163 = OpAccessChain %_ptr_Function_uint %143 %int_0
+6060:                OpStore %163 %162
+6061:                OpLine %6 366 13
+6062:         %164 = OpAccessChain %_ptr_Function_uint %145 %int_1
+6063:         %165 = OpLoad %uint %164
+6064:                OpLine %6 366 23
+6065:         %166 = OpLoad %uint %163
+6066:                OpLine %6 366 31
+6067:         %167 = OpLoad %uint %160
+6068:                OpLine %6 366 29
+6069:         %168 = OpULessThan %bool %166 %167
+6070:                OpNoLine
+6071:         %169 = OpSelect %int %168 %int_1 %int_0
+6072:                OpLine %6 366 22
+6073:         %170 = OpBitcast %uint %169
+6074:                OpLine %6 366 20
+6075:         %171 = OpIAdd %uint %165 %170
+6076:                OpLine %6 366 5
+6077:         %172 = OpAccessChain %_ptr_Function_uint %143 %int_1
+6078:                OpStore %172 %171
+6079:                OpLine %6 367 12
+6080:         %173 = OpLoad %v2uint %143
+6081:                OpLine %5 28 27
+6082:         %174 = OpBitcast %_ptr_PhysicalStorageBuffer_v4uint %173
+6083:         %175 = OpLoad %v4uint %174 Aligned 16
+6084:                OpLine %5 28 17
+6085:                OpStore %144 %175
+6086:                OpLine %5 35 28
+6087:         %176 = OpVectorShuffle %v3uint %175 %175 0 1 2
+
+_nani_cull_and_bucket_smoke.cs.hlsl_cs_main_d8520a92ddeb65ab SHA256 74f58daeadd1983e452a4408e9f4b03d4f0f1f5da5877f74e6a2c05e3cef9f04; original SPV lines 6005..6068
+6005:                OpNoLine
+6006:                OpSelectionMerge %140 None
+6007:                OpSwitch %uint_0 %141
+6008:         %141 = OpLabel
+6009:                OpLine %5 21 24
+6010:         %142 = OpAccessChain %_ptr_PushConstant_uint %push_constants %int_3
+6011:                OpLine %5 21 39
+6012:         %143 = OpLoad %uint %142
+6013:                OpLine %5 21 21
+6014:         %144 = OpUGreaterThanEqual %bool %139 %143
+6015:                OpLine %5 21 61
+6016:                OpSelectionMerge %145 None
+6017:                OpBranchConditional %144 %146 %145
+6018:         %146 = OpLabel
+6019:                OpLine %5 22 9
+6020:                OpBranch %140
+6021:         %145 = OpLabel
+6022:                OpLine %5 29 25
+6023:         %147 = OpAccessChain %_ptr_PushConstant_v2uint %push_constants %int_0
+6024:                OpLine %5 29 40
+6025:         %148 = OpLoad %v2uint %147
+6026:                OpLine %5 29 25
+6027:                OpStore %137 %148
+6028:                OpLine %5 29 84
+6029:         %149 = OpBitcast %uint %139
+6030:                OpLine %5 29 82
+6031:         %150 = OpIMul %uint %uint_16 %149
+6032:                OpLine %5 29 62
+6033:         %151 = OpBitcast %uint %150
+6034:                OpLine %6 365 13
+6035:         %152 = OpAccessChain %_ptr_Function_uint %137 %int_0
+6036:         %153 = OpLoad %uint %152
+6037:                OpLine %6 365 20
+6038:         %154 = OpIAdd %uint %153 %151
+6039:                OpLine %6 365 5
+6040:         %155 = OpAccessChain %_ptr_Function_uint %135 %int_0
+6041:                OpStore %155 %154
+6042:                OpLine %6 366 13
+6043:         %156 = OpAccessChain %_ptr_Function_uint %137 %int_1
+6044:         %157 = OpLoad %uint %156
+6045:                OpLine %6 366 23
+6046:         %158 = OpLoad %uint %155
+6047:                OpLine %6 366 31
+6048:         %159 = OpLoad %uint %152
+6049:                OpLine %6 366 29
+6050:         %160 = OpULessThan %bool %158 %159
+6051:                OpNoLine
+6052:         %161 = OpSelect %int %160 %int_1 %int_0
+6053:                OpLine %6 366 22
+6054:         %162 = OpBitcast %uint %161
+6055:                OpLine %6 366 20
+6056:         %163 = OpIAdd %uint %157 %162
+6057:                OpLine %6 366 5
+6058:         %164 = OpAccessChain %_ptr_Function_uint %135 %int_1
+6059:                OpStore %164 %163
+6060:                OpLine %6 367 12
+6061:         %165 = OpLoad %v2uint %135
+6062:                OpLine %5 28 27
+6063:         %166 = OpBitcast %_ptr_PhysicalStorageBuffer_v4uint %165
+6064:         %167 = OpLoad %v4uint %166 Aligned 16
+6065:                OpLine %5 28 17
+6066:                OpStore %136 %167
+6067:                OpLine %5 35 28
+6068:         %168 = OpVectorShuffle %v3uint %167 %167 0 1 2
+
+_nani_cull_and_bucket_stairs_floor.cs.hlsl_cs_main_8a7d2f81e72c8eeb SHA256 f91bb793f57e82e0067fed4021fc0930a65ac257f0f5e4ba22c3f95185407d40; original SPV lines 6176..6239
+6176:                OpNoLine
+6177:                OpSelectionMerge %153 None
+6178:                OpSwitch %uint_0 %154
+6179:         %154 = OpLabel
+6180:                OpLine %5 21 24
+6181:         %155 = OpAccessChain %_ptr_PushConstant_uint %push_constants %int_3
+6182:                OpLine %5 21 39
+6183:         %156 = OpLoad %uint %155
+6184:                OpLine %5 21 21
+6185:         %157 = OpUGreaterThanEqual %bool %152 %156
+6186:                OpLine %5 21 61
+6187:                OpSelectionMerge %158 None
+6188:                OpBranchConditional %157 %159 %158
+6189:         %159 = OpLabel
+6190:                OpLine %5 22 9
+6191:                OpBranch %153
+6192:         %158 = OpLabel
+6193:                OpLine %5 29 25
+6194:         %160 = OpAccessChain %_ptr_PushConstant_v2uint %push_constants %int_0
+6195:                OpLine %5 29 40
+6196:         %161 = OpLoad %v2uint %160
+6197:                OpLine %5 29 25
+6198:                OpStore %150 %161
+6199:                OpLine %5 29 84
+6200:         %162 = OpBitcast %uint %152
+6201:                OpLine %5 29 82
+6202:         %163 = OpIMul %uint %uint_16 %162
+6203:                OpLine %5 29 62
+6204:         %164 = OpBitcast %uint %163
+6205:                OpLine %6 365 13
+6206:         %165 = OpAccessChain %_ptr_Function_uint %150 %int_0
+6207:         %166 = OpLoad %uint %165
+6208:                OpLine %6 365 20
+6209:         %167 = OpIAdd %uint %166 %164
+6210:                OpLine %6 365 5
+6211:         %168 = OpAccessChain %_ptr_Function_uint %148 %int_0
+6212:                OpStore %168 %167
+6213:                OpLine %6 366 13
+6214:         %169 = OpAccessChain %_ptr_Function_uint %150 %int_1
+6215:         %170 = OpLoad %uint %169
+6216:                OpLine %6 366 23
+6217:         %171 = OpLoad %uint %168
+6218:                OpLine %6 366 31
+6219:         %172 = OpLoad %uint %165
+6220:                OpLine %6 366 29
+6221:         %173 = OpULessThan %bool %171 %172
+6222:                OpNoLine
+6223:         %174 = OpSelect %int %173 %int_1 %int_0
+6224:                OpLine %6 366 22
+6225:         %175 = OpBitcast %uint %174
+6226:                OpLine %6 366 20
+6227:         %176 = OpIAdd %uint %170 %175
+6228:                OpLine %6 366 5
+6229:         %177 = OpAccessChain %_ptr_Function_uint %148 %int_1
+6230:                OpStore %177 %176
+6231:                OpLine %6 367 12
+6232:         %178 = OpLoad %v2uint %148
+6233:                OpLine %5 28 27
+6234:         %179 = OpBitcast %_ptr_PhysicalStorageBuffer_v4uint %178
+6235:         %180 = OpLoad %v4uint %179 Aligned 16
+6236:                OpLine %5 28 17
+6237:                OpStore %149 %180
+6238:                OpLine %5 36 40
+6239:         %181 = OpAccessChain %_ptr_Function_uint %149 %int_3
+
+_nani_cull_and_bucket_stairs_floor.cs.hlsl_cs_main_d8520a92ddeb65ab SHA256 a53811826d3ac60b499f8223709b000c750056af9183d05b5f201af86ee2cb52; original SPV lines 6156..6219
+6156:                OpNoLine
+6157:                OpSelectionMerge %144 None
+6158:                OpSwitch %uint_0 %145
+6159:         %145 = OpLabel
+6160:                OpLine %5 21 24
+6161:         %146 = OpAccessChain %_ptr_PushConstant_uint %push_constants %int_3
+6162:                OpLine %5 21 39
+6163:         %147 = OpLoad %uint %146
+6164:                OpLine %5 21 21
+6165:         %148 = OpUGreaterThanEqual %bool %143 %147
+6166:                OpLine %5 21 61
+6167:                OpSelectionMerge %149 None
+6168:                OpBranchConditional %148 %150 %149
+6169:         %150 = OpLabel
+6170:                OpLine %5 22 9
+6171:                OpBranch %144
+6172:         %149 = OpLabel
+6173:                OpLine %5 29 25
+6174:         %151 = OpAccessChain %_ptr_PushConstant_v2uint %push_constants %int_0
+6175:                OpLine %5 29 40
+6176:         %152 = OpLoad %v2uint %151
+6177:                OpLine %5 29 25
+6178:                OpStore %141 %152
+6179:                OpLine %5 29 84
+6180:         %153 = OpBitcast %uint %143
+6181:                OpLine %5 29 82
+6182:         %154 = OpIMul %uint %uint_16 %153
+6183:                OpLine %5 29 62
+6184:         %155 = OpBitcast %uint %154
+6185:                OpLine %6 365 13
+6186:         %156 = OpAccessChain %_ptr_Function_uint %141 %int_0
+6187:         %157 = OpLoad %uint %156
+6188:                OpLine %6 365 20
+6189:         %158 = OpIAdd %uint %157 %155
+6190:                OpLine %6 365 5
+6191:         %159 = OpAccessChain %_ptr_Function_uint %139 %int_0
+6192:                OpStore %159 %158
+6193:                OpLine %6 366 13
+6194:         %160 = OpAccessChain %_ptr_Function_uint %141 %int_1
+6195:         %161 = OpLoad %uint %160
+6196:                OpLine %6 366 23
+6197:         %162 = OpLoad %uint %159
+6198:                OpLine %6 366 31
+6199:         %163 = OpLoad %uint %156
+6200:                OpLine %6 366 29
+6201:         %164 = OpULessThan %bool %162 %163
+6202:                OpNoLine
+6203:         %165 = OpSelect %int %164 %int_1 %int_0
+6204:                OpLine %6 366 22
+6205:         %166 = OpBitcast %uint %165
+6206:                OpLine %6 366 20
+6207:         %167 = OpIAdd %uint %161 %166
+6208:                OpLine %6 366 5
+6209:         %168 = OpAccessChain %_ptr_Function_uint %139 %int_1
+6210:                OpStore %168 %167
+6211:                OpLine %6 367 12
+6212:         %169 = OpLoad %v2uint %139
+6213:                OpLine %5 28 27
+6214:         %170 = OpBitcast %_ptr_PhysicalStorageBuffer_v4uint %169
+6215:         %171 = OpLoad %v4uint %170 Aligned 16
+6216:                OpLine %5 28 17
+6217:                OpStore %140 %171
+6218:                OpLine %5 36 40
+6219:         %172 = OpAccessChain %_ptr_Function_uint %140 %int_3
+
+_nani_cull_and_bucket_curved_halftimber.cs.hlsl_cs_main_8a7d2f81e72c8eeb SHA256 99da7dd2fdd445f2b3c5381b4185bc396b14b99f7e4250d4bff20b25357c4f61; original SPV lines 6090..6131
+6090:                OpNoLine
+6091:                OpSelectionMerge %147 None
+6092:                OpSwitch %uint_0 %148
+6093:         %148 = OpLabel
+6094:                OpLine %5 21 24
+6095:         %149 = OpAccessChain %_ptr_PushConstant_uint %push_constants %int_3
+6096:                OpLine %5 21 39
+6097:         %150 = OpLoad %uint %149
+6098:                OpLine %5 21 21
+6099:         %151 = OpUGreaterThanEqual %bool %146 %150
+6100:                OpLine %5 21 61
+6101:                OpSelectionMerge %152 None
+6102:                OpBranchConditional %151 %153 %152
+6103:         %153 = OpLabel
+6104:                OpLine %5 22 9
+6105:                OpBranch %147
+6106:         %152 = OpLabel
+6107:                OpNoLine
+6108:         %154 = OpAccessChain %_ptr_Uniform_v3float %instance_buffer %int_0 %146 %uint_0
+6109:         %155 = OpLoad %v3float %154
+6110:         %156 = OpAccessChain %_ptr_Uniform_float %instance_buffer %int_0 %146 %uint_3
+6111:         %157 = OpLoad %float %156
+6112:         %158 = OpAccessChain %_ptr_Uniform_float %instance_buffer %int_0 %146 %uint_5
+6113:         %159 = OpLoad %float %158
+6114:         %160 = OpAccessChain %_ptr_Uniform_int %instance_buffer %int_0 %146 %uint_6
+6115:         %161 = OpLoad %int %160
+6116:         %162 = OpAccessChain %_ptr_Uniform_int %instance_buffer %int_0 %146 %uint_10
+6117:         %163 = OpLoad %int %162
+6118:                OpLine %23 10 34
+6119:         %164 = OpBitcast %uint %163
+6120:                OpLine %23 13 31
+6121:         %165 = OpSGreaterThan %bool %161 %int_0
+6122:                OpNoLine
+6123:         %166 = OpSelect %float %165 %159 %157
+6124:                OpNoLine
+6125:         %167 = OpAccessChain %_ptr_Uniform_mat4v4float %frame_constants %int_26 %uint_0 %uint_4
+6126:         %168 = OpLoad %mat4v4float %167
+6127:                OpLine %10 82 46
+6128:         %169 = OpCompositeExtract %float %155 0
+6129:         %170 = OpCompositeExtract %float %155 1
+6130:         %171 = OpCompositeExtract %float %155 2
+6131:         %172 = OpCompositeConstruct %v4float %169 %170 %171 %float_1
+
+_nani_cull_and_bucket_curved_halftimber.cs.hlsl_cs_main_d8520a92ddeb65ab SHA256 feb816e0584c08789660603cb3f69eb9334f0f6aebcf41b5d5fa76f8ecbce573; original SPV lines 6066..6107
+6066:                OpNoLine
+6067:                OpSelectionMerge %134 None
+6068:                OpSwitch %uint_0 %135
+6069:         %135 = OpLabel
+6070:                OpLine %5 21 24
+6071:         %136 = OpAccessChain %_ptr_PushConstant_uint %push_constants %int_3
+6072:                OpLine %5 21 39
+6073:         %137 = OpLoad %uint %136
+6074:                OpLine %5 21 21
+6075:         %138 = OpUGreaterThanEqual %bool %133 %137
+6076:                OpLine %5 21 61
+6077:                OpSelectionMerge %139 None
+6078:                OpBranchConditional %138 %140 %139
+6079:         %140 = OpLabel
+6080:                OpLine %5 22 9
+6081:                OpBranch %134
+6082:         %139 = OpLabel
+6083:                OpNoLine
+6084:         %141 = OpAccessChain %_ptr_Uniform_v3float %instance_buffer %int_0 %133 %uint_0
+6085:         %142 = OpLoad %v3float %141
+6086:         %143 = OpAccessChain %_ptr_Uniform_float %instance_buffer %int_0 %133 %uint_3
+6087:         %144 = OpLoad %float %143
+6088:         %145 = OpAccessChain %_ptr_Uniform_float %instance_buffer %int_0 %133 %uint_5
+6089:         %146 = OpLoad %float %145
+6090:         %147 = OpAccessChain %_ptr_Uniform_int %instance_buffer %int_0 %133 %uint_6
+6091:         %148 = OpLoad %int %147
+6092:         %149 = OpAccessChain %_ptr_Uniform_int %instance_buffer %int_0 %133 %uint_10
+6093:         %150 = OpLoad %int %149
+6094:                OpLine %23 10 34
+6095:         %151 = OpBitcast %uint %150
+6096:                OpLine %23 13 31
+6097:         %152 = OpSGreaterThan %bool %148 %int_0
+6098:                OpNoLine
+6099:         %153 = OpSelect %float %152 %146 %144
+6100:                OpNoLine
+6101:         %154 = OpAccessChain %_ptr_Uniform_mat4v4float %frame_constants %int_26 %uint_0 %uint_4
+6102:         %155 = OpLoad %mat4v4float %154
+6103:                OpLine %10 82 46
+6104:         %156 = OpCompositeExtract %float %142 0
+6105:         %157 = OpCompositeExtract %float %142 1
+6106:         %158 = OpCompositeExtract %float %142 2
+6107:         %159 = OpCompositeConstruct %v4float %156 %157 %158 %float_1

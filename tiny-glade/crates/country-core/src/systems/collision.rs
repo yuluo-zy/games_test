@@ -47,6 +47,64 @@ impl SubworldIndex {
     }
 }
 
+/// Window-side clutter selection recovered from B's six-case consumer table.
+/// This semantic enum has no native ABI/layout promise. Only the selected
+/// payload participates in equality; native padding is not represented.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WindowAutoClutterKind {
+    /// Native tag 0; a consumer exists, but its producer is still unresolved.
+    WindowFlowerpot,
+    /// Native tag 1, +08: index into the actual ClutterMeshes flowerbed Vec.
+    WindowFlowerbed { mesh_index: usize },
+    /// Native tag 2. The u32 is copied from DecoratorInfo +28; its business
+    /// name remains unknown. Preserve every bit rather than infer an id.
+    WindowShutter { side: bool, native_u32_04: u32 },
+    /// Native tag 3.
+    DoorBell,
+    /// Native tag 4.
+    DoorKrans,
+    /// Native tag 5.
+    DoorKransAutumn,
+}
+
+/// Shared blueprint-to-clutter value (B native stride 80, alignment 16).
+/// These safe fields recover the value contract, not the native representation.
+/// Resource/drop/clone evidence shows no element-owned Arc, String or Vec.
+#[derive(Clone, Copy, Debug)]
+pub struct WindowAutoClutterCandidate {
+    pub kind: WindowAutoClutterKind,
+    pub rotation: glam::Quat,
+    pub translation: glam::Vec3,
+    pub scale: glam::Vec3,
+    /// Native +40: calculate_hash<(DecoratorId, &str)> result.
+    pub key: u64,
+    /// Native +48: the actual per-wall DecoratorStorage map key.
+    pub wall: crate::resources::walls::WallId,
+}
+
+impl PartialEq for WindowAutoClutterCandidate {
+    /// B equal@1412baca0: ordered float equality, then integer key,
+    /// tag-selected payload, and wall. NaNs differ; signed zeros compare equal.
+    fn eq(&self, other: &Self) -> bool {
+        self.translation == other.translation
+            && self.rotation == other.rotation
+            && self.scale == other.scale
+            && self.key == other.key
+            && self.kind == other.kind
+            && self.wall == other.wall
+    }
+}
+
+/// The unique candidate Vec shared by decorator collection and window clutter.
+/// B system_clutter::build@140652683..6ae inserts an initially empty Vec.
+/// Registration belongs to the actual clutter owner, not CollisionPlugin.
+/// Every eligible current blueprint contributes before the visual rebuild gate,
+/// including an unchanged Arc; the actual clutter consumer drains this owner.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct WindowAutoClutterCandidates(pub Vec<WindowAutoClutterCandidate>);
+
+impl bevy_ecs::resource::Resource for WindowAutoClutterCandidates {}
+
 /// `BirdNestCandidateLocation`（O：`country_core::systems::collision::BirdNestCandidateLocation`，
 /// **0x40 B** 元素）。
 ///
@@ -200,6 +258,57 @@ impl CollisionPlugin {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn window_candidate_equality_uses_ordered_float_values() {
+        let candidate = WindowAutoClutterCandidate {
+            kind: WindowAutoClutterKind::DoorBell,
+            rotation: glam::Quat::IDENTITY,
+            translation: glam::Vec3::ZERO,
+            scale: glam::Vec3::ONE,
+            key: 0x1234_5678_9abc_def0,
+            wall: crate::resources::walls::WallId(0xfedc_ba98_7654_3210),
+        };
+        let mut other = candidate;
+        other.translation.x = -0.0;
+        assert_eq!(candidate, other);
+        other.translation.x = f32::NAN;
+        assert_ne!(other, other);
+        other = candidate;
+        other.rotation = glam::Quat::from_array([0.0, 0.0, 0.0, f32::NAN]);
+        assert_ne!(other, other);
+        other = candidate;
+        other.scale.z = f32::NAN;
+        assert_ne!(other, other);
+    }
+
+    #[test]
+    fn window_candidate_vector_keeps_unknown_shutter_payload_and_full_wall() {
+        let candidate = WindowAutoClutterCandidate {
+            kind: WindowAutoClutterKind::WindowShutter {
+                side: true,
+                native_u32_04: 0x8000_0001,
+            },
+            rotation: glam::Quat::IDENTITY,
+            translation: glam::Vec3::new(1.0, 2.0, 3.0),
+            scale: glam::Vec3::ONE,
+            key: 9,
+            wall: crate::resources::walls::WallId(0x1_0000_0001),
+        };
+        let mut values = WindowAutoClutterCandidates::default();
+        assert!(values.0.is_empty());
+        values.0.push(candidate);
+        assert_eq!(values, values.clone());
+        let mut changed = values.clone();
+        changed.0[0].kind = WindowAutoClutterKind::WindowShutter {
+            side: true,
+            native_u32_04: 1,
+        };
+        assert_ne!(values, changed);
+        changed = values.clone();
+        changed.0[0].wall = crate::resources::walls::WallId(1);
+        assert_ne!(values, changed);
+    }
 
     #[test]
     fn terrain_is_slot_five_with_mask_0x20() {

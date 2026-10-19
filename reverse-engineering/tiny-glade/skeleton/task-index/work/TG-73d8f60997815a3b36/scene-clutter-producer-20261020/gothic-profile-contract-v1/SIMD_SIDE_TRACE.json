@@ -1,0 +1,158 @@
+{
+  "status": "symbolic_original_instruction_trace_not_runtime_test",
+  "trace": [
+    {
+      "pc": "1407eb862",
+      "register": "xmm9",
+      "low_lanes": [
+        "dx1",
+        "dx3"
+      ],
+      "explanation": "b1/b3 X minus a1/a3 X after UNPCKLPS"
+    },
+    {
+      "pc": "1407eb870",
+      "register": "xmm10",
+      "low_lanes": [
+        "dy1",
+        "dy3"
+      ],
+      "explanation": "b1/b3 Y minus a1/a3 Y after UNPCKLPS"
+    },
+    {
+      "pc": "1407eb878",
+      "register": "xmm12",
+      "low_lanes": [
+        "-dy1",
+        "-dy3"
+      ],
+      "explanation": "sign XOR of original xmm10"
+    },
+    {
+      "pc": "1407eb884",
+      "register": "xmm11",
+      "low_lanes": [
+        "dy3",
+        "dy3"
+      ],
+      "explanation": "MOVSHDUP selects source lane1, not lane0"
+    },
+    {
+      "pc": "1407eb89d",
+      "register": "xmm10",
+      "low_lanes": [
+        "inv1",
+        "inv3"
+      ],
+      "explanation": "ones / sqrt(dy²+dx²)"
+    },
+    {
+      "pc": "1407eb8a1",
+      "register": "xmm11",
+      "low_lanes": [
+        "-dy3",
+        "-dy3"
+      ],
+      "explanation": "sign XOR of duplicated dy3"
+    },
+    {
+      "pc": "1407eb8e1",
+      "register": "xmm0",
+      "lanes": [
+        "dx3",
+        "dx3",
+        "inv3",
+        "inv3"
+      ],
+      "explanation": "SHUFPS0x55 from prior xmm9 and xmm10"
+    },
+    {
+      "pc": "1407eb8e6",
+      "register": "xmm9",
+      "lanes": [
+        "dx1",
+        "dx3",
+        "-dy1",
+        "-dy3"
+      ],
+      "explanation": "MOVLHPS adds xmm12 low pair"
+    },
+    {
+      "pc": "1407eb8ea",
+      "register": "xmm11",
+      "lanes": [
+        "-dy3",
+        "-dy3",
+        "inv3",
+        "high-unused"
+      ],
+      "explanation": "SHUFPS0xd4 preserves low pair"
+    },
+    {
+      "pc": "1407eb8ef",
+      "register": "xmm10",
+      "lanes": [
+        "inv1",
+        "inv1",
+        "inv3",
+        "dx3"
+      ],
+      "explanation": "SHUFPS0x20"
+    },
+    {
+      "pc": "1407eb8f4",
+      "register": "xmm9",
+      "lanes": [
+        "-dy1",
+        "dx1",
+        "-dy3",
+        "inv3"
+      ],
+      "explanation": "SHUFPS0x82"
+    },
+    {
+      "pc": "1407eb8f9",
+      "register": "xmm9",
+      "lanes": [
+        "-dy1*inv1",
+        "dx1*inv1",
+        "-dy3*inv3",
+        "dx3*inv3"
+      ],
+      "explanation": "actual stored side[4]"
+    }
+  ],
+  "correction": "Current source/old job16 prose incorrectly calls the MOVSHDUP source dy1. Its actual source lane1 is dy3. Byte identity alone did not validate the old symbolic interpretation.",
+  "bounded_counterexample": {
+    "first_delta": [
+      1,
+      0
+    ],
+    "center_delta": [
+      0,
+      1
+    ],
+    "original_side_2": -1,
+    "current_side_2": 0,
+    "fixture_curve": [
+      [
+        0,
+        0
+      ],
+      [
+        1,
+        0
+      ],
+      [
+        1,
+        1
+      ]
+    ],
+    "u": 1.5,
+    "half_base": 2.0,
+    "rank": 1,
+    "shape_tag": 2,
+    "wall_space_length": 2.0,
+    "executed": false
+  }
+}

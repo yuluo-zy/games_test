@@ -1,0 +1,11 @@
+--- a/tiny-glade/crates/utils/src/wall_space.rs
++++ b/tiny-glade/crates/utils/src/wall_space.rs
+@@ -225,7 +225,7 @@
+     }
+     /// B140c92090/793B: real selected endpoint, original two f32 normalizations.
+     pub fn to_world_space(self, curve: &impl CurveSampling) -> Vec3 {
+-        use crate::curve::{CurveCoordSemantic2D, CurveU, CurveUBoundless};
++        use crate::curve::{curve_u::CurveUBoundless, CurveCoordSemantic2D, CurveU};
+         let length = curve.length();
+         let normalized = self.u / length;
+         if self.u < 0.0 || self.u > length {

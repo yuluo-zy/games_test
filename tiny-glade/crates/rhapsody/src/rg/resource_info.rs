@@ -102,6 +102,17 @@ impl OriginKind {
     }
 }
 
+/// Content intent saved before a native sampled-read/general-write upgrade.
+/// This is graph metadata, not part of the original twelve-byte native ledger.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum PreviousContentRead {
+    #[default]
+    Inferred,
+    NotRead,
+    UndefinedAllowed,
+    DefinedRequired,
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct AccessDeclaration {
     pub resource_index: u32,
@@ -121,11 +132,66 @@ pub struct AccessDeclaration {
     /// neither initializes a resource nor permits a later ordinary read/export.
     /// This is a current architecture capability, not original ledger ABI.
     pub allow_undefined_contents: bool,
+    /// Only native ledger upgrades construct a nondefault saved role. It keeps
+    /// the original occurrence's content contract when native scope becomes RW.
+    pub previous_content_read: PreviousContentRead,
 }
 impl AccessDeclaration {
-    pub const fn reads_contents(&self, write: bool) -> bool {
-        !self.contents_unused && (!write || self.reads_previous)
+    pub const fn content_read(&self, write: bool) -> PreviousContentRead {
+        match self.previous_content_read {
+            PreviousContentRead::Inferred => {
+                if self.contents_unused || write && !self.reads_previous {
+                    PreviousContentRead::NotRead
+                } else if self.allow_undefined_contents {
+                    PreviousContentRead::UndefinedAllowed
+                } else {
+                    PreviousContentRead::DefinedRequired
+                }
+            }
+            saved => saved,
+        }
     }
+    pub const fn reads_contents(&self, write: bool) -> bool {
+        !matches!(self.content_read(write), PreviousContentRead::NotRead)
+    }
+    pub const fn requires_defined_contents(&self, write: bool) -> bool {
+        matches!(
+            self.content_read(write),
+            PreviousContentRead::DefinedRequired
+        )
+    }
+    pub const fn has_saved_content_read(&self) -> bool {
+        !matches!(self.previous_content_read, PreviousContentRead::Inferred)
+    }
+    pub(crate) const fn valid_content_mode(&self, write: bool) -> bool {
+        if self.has_saved_content_read() {
+            write
+                && self.access_code == 0x37
+                && self.synchronization_group == 0
+                && self.reads_previous
+                && !self.contents_unused
+                && !self.allow_undefined_contents
+        } else {
+            let modifies = write || self.reads_previous;
+            !(self.reads_previous && !write
+                || self.contents_unused && modifies
+                || self.allow_undefined_contents && (modifies || self.contents_unused))
+        }
+    }
+}
+
+/// Only resources with a broadened native occurrence need a pass-entry content
+/// frontier. Ordinary passes keep their existing allocation-free path.
+pub(crate) fn entry_content_resources(
+    accesses: &[AccessDeclaration],
+) -> smallvec::SmallVec<[u32; 2]> {
+    let mut resources = smallvec::SmallVec::new();
+    for access in accesses {
+        if access.has_saved_content_read() && !resources.contains(&access.resource_index) {
+            resources.push(access.resource_index);
+        }
+    }
+    resources
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

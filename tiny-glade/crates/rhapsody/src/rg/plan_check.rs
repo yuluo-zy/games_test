@@ -7,7 +7,7 @@ use super::{
     graph::Descriptor,
     plan::{COMPILER_VERSION, CompiledPlan, GraphDefinition},
     resource::{AccessRange, AccessVersion},
-    resource_info::{LifetimeEvent, NO_ACCESS},
+    resource_info::{AccessDeclaration, LifetimeEvent, NO_ACCESS, PreviousContentRead},
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -28,6 +28,45 @@ fn usage_flags(descriptor: Descriptor, access: ash::vk::AccessFlags) -> crate::R
         Descriptor::Image(_) => image_usage_for_access(access).map(|flags| flags.as_raw()),
         Descriptor::Buffer(_) => Ok(buffer_usage_for_access(access).as_raw()),
     }
+}
+
+// Independent interpretation of the content dimension: do not call the
+// production resolver or its content-read helpers from this oracle.
+fn content_input(access: &AccessDeclaration, write: bool) -> crate::Result<Option<bool>> {
+    use PreviousContentRead::{DefinedRequired, Inferred, NotRead, UndefinedAllowed};
+    if access.previous_content_read != Inferred {
+        if !write
+            || access.access_code != 0x37
+            || access.synchronization_group != 0
+            || !access.reads_previous
+            || access.contents_unused
+            || access.allow_undefined_contents
+        {
+            return Err(invalid(
+                "saved content role is not a native general upgrade",
+            ));
+        }
+        return Ok(match access.previous_content_read {
+            NotRead => None,
+            UndefinedAllowed => Some(true),
+            DefinedRequired => Some(false),
+            Inferred => unreachable!(),
+        });
+    }
+    if access.reads_previous && !write
+        || access.contents_unused && (write || access.reads_previous)
+        || access.allow_undefined_contents
+            && (write || access.reads_previous || access.contents_unused)
+    {
+        return Err(invalid("invalid previous-content mode"));
+    }
+    Ok(
+        if access.contents_unused || write && !access.reads_previous {
+            None
+        } else {
+            Some(access.allow_undefined_contents)
+        },
+    )
 }
 
 /// A rectangular cell: bytes for buffers, aspect/mip/layer for images.
@@ -237,6 +276,34 @@ fn inspect_definition(definition: &GraphDefinition) -> crate::Result<Provenance>
         if access_count >= NO_ACCESS as usize {
             return Err(invalid("graph access count exceeds packed index limits"));
         }
+        let entry_resources: BTreeSet<_> = pass
+            .accesses
+            .iter()
+            .filter(|access| access.previous_content_read != PreviousContentRead::Inferred)
+            .map(|access| access.resource_index)
+            .collect();
+        // Check every alias of an upgraded resource against entry cells, before
+        // any native write record from this callback is applied to the domain.
+        for access in pass
+            .accesses
+            .iter()
+            .filter(|access| entry_resources.contains(&access.resource_index))
+        {
+            let domain = domains
+                .get(access.resource_index as usize)
+                .ok_or_else(|| invalid("graph access references an unknown resource"))?;
+            let semantic = semantics
+                .get(&access.access_code)
+                .ok_or_else(|| invalid("graph access has no classification"))?;
+            if let Some(allow_undefined) = content_input(access, semantic.scope.write)? {
+                dependencies[index].extend(
+                    domain
+                        .sources_with_undefined(access.range, allow_undefined)?
+                        .into_iter()
+                        .filter(|&source| source != index),
+                );
+            }
+        }
         for access in &pass.accesses {
             let domain = domains
                 .get_mut(access.resource_index as usize)
@@ -246,27 +313,13 @@ fn inspect_definition(definition: &GraphDefinition) -> crate::Result<Provenance>
                 .ok_or_else(|| invalid("graph access has no classification"))?;
             usage_flags(domain.descriptor, semantic.declared_access)?;
             domain.cells(access.range)?;
-            if access.contents_unused && (semantic.scope.write || access.reads_previous) {
-                return Err(invalid(
-                    "inactive contents intent requires a non-writing access",
-                ));
-            }
-            if access.allow_undefined_contents
-                && (semantic.scope.write || access.reads_previous || access.contents_unused)
+            let input = content_input(access, semantic.scope.write)?;
+            if !entry_resources.contains(&access.resource_index)
+                && let Some(allow_undefined) = input
             {
-                return Err(invalid(
-                    "undefined contents permission requires a real non-writing read",
-                ));
-            }
-            if access.reads_previous {
-                if !semantic.scope.write {
-                    return Err(invalid(
-                        "a read access cannot also declare a read-modify-write dependency",
-                    ));
-                }
                 dependencies[index].extend(
                     domain
-                        .sources(access.range)?
+                        .sources_with_undefined(access.range, allow_undefined)?
                         .into_iter()
                         .filter(|&source| source != index),
                 );
@@ -278,19 +331,7 @@ fn inspect_definition(definition: &GraphDefinition) -> crate::Result<Provenance>
                     domain.write(access.range, index)?;
                     domain.version = current;
                 }
-                (false, AccessVersion::Read(version)) if version == domain.version => {
-                    if !access.contents_unused {
-                        dependencies[index].extend(
-                            domain
-                                .sources_with_undefined(
-                                    access.range,
-                                    access.allow_undefined_contents,
-                                )?
-                                .into_iter()
-                                .filter(|&source| source != index),
-                        );
-                    }
-                }
+                (false, AccessVersion::Read(version)) if version == domain.version => {}
                 _ => {
                     return Err(invalid(
                         "graph access has an unresolved, stale or incorrectly classified version",

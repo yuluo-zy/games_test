@@ -4,8 +4,8 @@
 //! `DrawableMeshBundle` 落库（`country_core::components::drawable`）后，
 //! fresh 复核并重建两个 `build` 实例：
 //!
-//! * `build<DecoratorTransientVisualState>` 0x1412ab270（3281 B）
-//! * `build<DecoratorPersistentVisualState>` 0x1412a9b30（3281 B）
+//! * `build<DecoratorTransientVisualState>` 0x1412ab270（5949 B）
+//! * `build<DecoratorPersistentVisualState>` 0x1412a9b30（5949 B）
 //!
 //! 两实例函数体逐字节同构（仅尾部 impl$4/impl$5 与标签地址不同；`diff` 证据）。
 //! 证据：`reports/unlock/nani/job1-0x1412ab270.c` /
@@ -15,8 +15,8 @@
 //!
 //! ## 构建器字段（O 偏移；字段名 U）
 //!
-//! 构建器总大小 **0x158**（`instantiate_blueprints` 0x1408289e2 `memcpy 0x158`
-//! + `clone<WindowVisualEntityBuilder>` 0x14125f250）。build 读取：
+//! 原 builder 完整槽为 **0x160 B**（`instantiate_blueprints` 0x1408289d0..0x140828a30：
+//! 先复制首 8 B，再复制尾区 0x158 B，传首字地址为 self；旧文档误把尾区当总大小）。build 读取：
 //!
 //! | 偏移 | 内容 | 用途 |
 //! |---|---|---|
@@ -116,10 +116,10 @@
 //!
 //! ## typed-gap（不编造）
 //!
-//! * `NaniSolidTexture`：1 B enum，`Option` 以 9 为 None ⇒ 变体值域 0..=8；
-//!   **变体名无证据**。这里以 `pending_core::NaniSolidTexture(pub u8)` 承载
-//!   原始判别字节，不命名变体。
-//! * 12 个条件组件类型在 country-core 尚未落库（仅 registry 名字/注册地址）。
+//! * `NaniSolidTexture`：原组件观测为 1 B selector，`Option` 以 9 为 None；
+//!   原 Rust 声明与变体名未知。使用 core 的 checked opaque 编码类型；
+//!   两个真实分支保留输入代码，仅接受已恢复映射的 0..=8，不提供默认值。
+//! * 其余未落库条件组件继续保留原证缺口；AlbedoMap 已重导出 core 的真实 u64 类型。
 //!   本文件 `pending_core` 子模块按 **原 PDB 名 + 机器码载荷字节数** 建 stand-in
 //!   （core 落库后应删除并改用 core 类型；届时组件 TypeId 才与原版一致）。
 //! * 构建器 `mesh_name` / `nani_name` 字段名 U；偏移/用途 O。
@@ -175,36 +175,25 @@ pub mod pending_core {
         BrickColor,
         0x18
     );
-    raw_component!(
-        /// B `components::ClothlineCloth`（u64 + u32，12 B，U）。
-        ClothlineCloth,
-        12
-    );
+    // One canonical12-byte value, also read by the actual Nani ECS query.
+    pub use country_core::components::drawable::ClothlineCloth;
     raw_component!(
         /// B `components::WindowLight`（u64 + u32(id)，12 B，U）。
         WindowLight,
         12
     );
-    raw_component!(
-        /// B `components::BalconyDoor`（translation + `rotation*Z`，0x18 B，O）。
-        BalconyDoor,
-        0x18
-    );
+    // Same six-value component read by the actual auto-clutter balcony gate.
+    pub use country_core::components::drawable::BalconyDoor;
     raw_component!(
         /// B `components::Smoke`（u64(id) + u32 0 + u8 + u8，14 B，U）。
         Smoke,
         14
     );
-    raw_component!(
-        /// B `components::drawable::AlbedoMap`（8 B 句柄，U）。
-        AlbedoMap,
-        8
-    );
-    raw_component!(
-        /// B `components::drawable::NormalMap`（8 B 句柄，U）。
-        NormalMap,
-        8
-    );
+    // The core u64 owner already exists. Preserve this public import path
+    // while inserting the exact component read by Nani Uber.
+    pub use country_core::components::drawable::AlbedoMap;
+    // Existing disk-texture NameHash owner, not a local raw component.
+    pub use country_core::components::NormalMap;
     raw_component!(
         /// B `components::RoofFlagCloth`（u32，U）。
         RoofFlagCloth,
@@ -226,14 +215,9 @@ pub mod pending_core {
         0x10
     );
 
-    /// B `components::drawable::NaniSolidTexture`：1 B enum。
-    ///
-    /// typed-gap：变体名无证据；`Option` 以判别 9 表示 None（build 的
-    /// `cmp r12b,9; je unwrap_failed`），即变体值域 0..=8。以裸字节承载，
-    /// 不发明变体名。
-    #[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
-    #[repr(transparent)]
-    pub struct NaniSolidTexture(pub u8);
+    // Preserve the import path while using the same checked canonical
+    // component as the actual Nani ECS update. No local raw/default type.
+    pub use country_core::components::drawable::NaniSolidTexture;
 }
 
 use pending_core::{
@@ -264,7 +248,7 @@ impl DecoratorVisualStateSink for DecoratorTransientVisualState {
     }
 }
 
-/// B `WindowVisualEntityBuilder`（0x158 B）。
+/// B `WindowVisualEntityBuilder`（完整 native 槽 0x160 B；本机语义字段不复刻 ABI）。
 ///
 /// 字段与偏移的对应见模块头表；`Option` 字段取 `Some` 即机器码中的插入分支
 /// （原始 tag 比较值记在字段文档里）。字段名 U、条件/载荷 O。
@@ -307,7 +291,7 @@ pub struct WindowVisualEntityBuilder {
     pub normal_map: Option<u64>,
     /// `RoofFlagCloth`（+0xf8==1，u32@+0xfc，O）。
     pub roof_flag_cloth: Option<u32>,
-    /// `WallFlagCloth`（+0x13c!=2，u64@+0x130 + u64@+0x134 + u32@+0x13c，O）。
+    /// `WallFlagCloth`（+0x13c 低字节 !=2，u64@+0x12c + u64@+0x134 + u32@+0x13c，O）。
     pub wall_flag_cloth: Option<(u64, u64, u32)>,
     /// `LanternLightParams`（+0x118==1，方向 4×f32 @+0x11c，O）。
     pub lantern_light_params: Option<[f32; 4]>,
@@ -401,9 +385,11 @@ impl WindowVisualEntityBuilder {
         self.albedo_map = Some(albedo);
     }
 
-    /// `clothline`（行 147）：打开 `ClothlineCloth`（+0x80==1）；载荷 U（0,0）。
-    pub fn clothline(&mut self) {
-        self.clothline_cloth = Some((0, 0));
+    /// Supply all original value words explicitly; no zero/default producer.
+    /// This host API spelling does not claim the original Rust declaration.
+    pub fn clothline(&mut self, cloth: ClothlineCloth) {
+        let [a, b, tail] = cloth.words();
+        self.clothline_cloth = Some((u64::from(a) | (u64::from(b) << 32), tail));
     }
 
     /// `flag_roof_cloth`：打开 `RoofFlagCloth`（+0xf8==1）；载荷 U（0）。
@@ -535,7 +521,8 @@ impl WindowVisualEntityBuilder {
             ),
             "nani_clutter_SolidAlbedoMap" => {
                 // O：`+0x150` Option::unwrap（None=9 → unwrap_failed，行 243）。
-                let tex = NaniSolidTexture(self.solid_texture.unwrap());
+                let tex = NaniSolidTexture::try_from(self.solid_texture.unwrap())
+                    .unwrap_or_else(|code| panic!("Unsupported native NaniSolidTexture encoding {code}"));
                 self.spawn_nani_tuple::<SolidAlbedoMapInstanceData>(
                     commands,
                     transform,
@@ -558,7 +545,8 @@ impl WindowVisualEntityBuilder {
                     true,
                 ),
             "nani_clutter_SolidAlbedoMapEmissive" => {
-                let tex = NaniSolidTexture(self.solid_texture.unwrap());
+                let tex = NaniSolidTexture::try_from(self.solid_texture.unwrap())
+                    .unwrap_or_else(|code| panic!("Unsupported native NaniSolidTexture encoding {code}"));
                 self.spawn_nani_tuple::<SolidAlbedoMapEmissiveInstanceData>(
                     commands,
                     transform,
@@ -604,15 +592,14 @@ impl WindowVisualEntityBuilder {
                 .insert(GothicWindowBrickDeformation(payload));
         }
         // 3 BrickColor（+0x114 != 2）
-        if let Some(payload) = self.brick_color {
+        if let Some(payload) = self.brick_color.filter(|payload| payload[20] != 2) {
             commands.entity(entity).insert(BrickColor(payload));
         }
         // 4 ClothlineCloth
         if let Some((a, b)) = self.clothline_cloth {
-            let mut payload = [0u8; 12];
-            payload[0..8].copy_from_slice(&a.to_le_bytes());
-            payload[8..12].copy_from_slice(&b.to_le_bytes());
-            commands.entity(entity).insert(ClothlineCloth(payload));
+            commands.entity(entity).insert(ClothlineCloth::from_words([
+                a as u32, (a >> 32) as u32, b,
+            ]));
         }
         // 5 SemiTransparent（ZST）
         if self.semi_transparent {
@@ -627,20 +614,15 @@ impl WindowVisualEntityBuilder {
             payload[8..12].copy_from_slice(&id.to_le_bytes());
             commands.entity(entity).insert(WindowLight(payload));
         }
-        // 7 BalconyDoor（translation + rotation*Vec3::Z）
+        // 7 BalconyDoor: preserve all actual values and the original +0x14f gate.
         if self.balcony_door {
-            let mut payload = [0u8; 0x18];
-            payload[0..4].copy_from_slice(&transform.translation.x.to_le_bytes());
-            payload[4..8].copy_from_slice(&transform.translation.y.to_le_bytes());
-            payload[8..12].copy_from_slice(&transform.translation.z.to_le_bytes());
-            let forward = transform.rotation * Vec3::Z;
-            payload[12..16].copy_from_slice(&forward.x.to_le_bytes());
-            payload[16..20].copy_from_slice(&forward.y.to_le_bytes());
-            payload[20..24].copy_from_slice(&forward.z.to_le_bytes());
-            commands.entity(entity).insert(BalconyDoor(payload));
+            commands.entity(entity).insert(BalconyDoor {
+                translation: transform.translation,
+                forward: transform.rotation * Vec3::Z,
+            });
         }
         // 8 Smoke（u64(id) + u32 0 + u8 + u8）
-        if let Some((tag, sub)) = self.smoke {
+        if let Some((tag, sub)) = self.smoke.filter(|value| value.0 != 2) {
             let mut payload = [0u8; 14];
             payload[0..8].copy_from_slice(&u64::from(id).to_le_bytes());
             payload[8..12].copy_from_slice(&0u32.to_le_bytes());
@@ -652,13 +634,13 @@ impl WindowVisualEntityBuilder {
         if let Some(handle) = self.albedo_map {
             commands
                 .entity(entity)
-                .insert(AlbedoMap(handle.to_le_bytes()));
+                .insert(AlbedoMap(handle));
         }
         // 10 NormalMap
         if let Some(handle) = self.normal_map {
             commands
                 .entity(entity)
-                .insert(NormalMap(handle.to_le_bytes()));
+                .insert(NormalMap(handle));
         }
         // 11 RoofFlagCloth
         if let Some(value) = self.roof_flag_cloth {
@@ -667,7 +649,7 @@ impl WindowVisualEntityBuilder {
                 .insert(RoofFlagCloth(value.to_le_bytes()));
         }
         // 12 WallFlagCloth（+0x13c != 2）
-        if let Some((a, b, tag)) = self.wall_flag_cloth {
+        if let Some((a, b, tag)) = self.wall_flag_cloth.filter(|value| value.2 as u8 != 2) {
             let mut payload = [0u8; 0x14];
             payload[0..8].copy_from_slice(&a.to_le_bytes());
             payload[8..16].copy_from_slice(&b.to_le_bytes());
@@ -753,6 +735,338 @@ impl WindowVisualEntityBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn actual_builder_balcony_flag_uses_canonical_six_values_with_nonidentity_transform() {
+        use bevy_ecs::world::{CommandQueue, World};
+        use country_core::components::drawable::BalconyDoor as CanonicalBalconyDoor;
+        assert_eq!(core::any::TypeId::of::<pending_core::BalconyDoor>(),
+            core::any::TypeId::of::<CanonicalBalconyDoor>());
+        for active in [false, true] {
+            let mut world = World::new();
+            let mut queue = CommandQueue::default();
+            let mut state = DecoratorTransientVisualState::default();
+            let rotation = Quat::from_rotation_y(0.73) * Quat::from_rotation_x(-0.41);
+            let position = Vec3::new(3.25, -2.5, 7.75);
+            let normal_offset = Vec3::new(0.125, -0.375, 0.625);
+            let mut builder = WindowVisualEntityBuilder::new(position, rotation, 83);
+            builder.mesh_name = "CPU balcony value fixture";
+            builder.nani_name = "nani_balcony_door";
+            builder.normal_offset = normal_offset;
+            builder.scale_override = Some(Vec3::new(2.0, 3.0, 4.0));
+            builder.balcony_door = active;
+            let entity = builder.build(&mut Commands::new(&mut queue, &world), 83,
+                &AssetMeshLibrary::new(), &AssetShaderLibrary::new(), &mut state);
+            queue.apply(&mut world);
+            if active {
+                let component = world.get::<CanonicalBalconyDoor>(entity).unwrap();
+                let translation = position + rotation * normal_offset;
+                let forward = rotation * Vec3::Z;
+                assert_eq!(component.translation.to_array().map(f32::to_bits),
+                    translation.to_array().map(f32::to_bits));
+                assert_eq!(component.forward.to_array().map(f32::to_bits),
+                    forward.to_array().map(f32::to_bits));
+                assert_ne!(component.translation, Vec3::ZERO);
+                assert_ne!(component.forward, Vec3::Z);
+            } else {
+                assert!(world.get::<CanonicalBalconyDoor>(entity).is_none());
+            }
+            assert_eq!(state.entities_of(83), Some([entity].as_slice()));
+        }
+    }
+
+    // Cross-consumer contract: native tag2 is None even when the host outer
+    // Option carries its raw bytes. Exercise actual Commands/build insertion.
+    #[test]
+    fn real_cloth_build_preserves_explicit_words_and_canonical_normal_identity() {
+        use bevy_ecs::world::{CommandQueue, World};
+        use country_core::components::drawable::ClothlineCloth as CanonicalCloth;
+        use country_core::components::NormalMap as CanonicalNormal;
+        assert_eq!(core::any::TypeId::of::<pending_core::ClothlineCloth>(),
+            core::any::TypeId::of::<CanonicalCloth>());
+        assert_eq!(core::any::TypeId::of::<pending_core::NormalMap>(),
+            core::any::TypeId::of::<CanonicalNormal>());
+        for words in [[0x3e80_0000, 0xbe00_0000, 37], [0x7fc0_0123, 0x8000_0000, u32::MAX]] {
+            let mut world = World::new();
+            let mut queue = CommandQueue::default();
+            let mut state = DecoratorTransientVisualState::default();
+            let mut builder = WindowVisualEntityBuilder::new(
+                Vec3::new(2.0, 3.0, 4.0), Quat::from_rotation_y(0.37), 61);
+            builder.mesh_name = "decorators/setdressing_clothline_cloth";
+            builder.nani_name = "nani_cloth";
+            let cloth = CanonicalCloth::from_words(words);
+            assert_eq!(cloth.clone().words(), words);
+            builder.clothline(cloth);
+            builder.normal_map = Some(0xb9fb_cd49_9788_b2f1);
+            let entity = builder.build(&mut Commands::new(&mut queue, &world), 61,
+                &AssetMeshLibrary::new(), &AssetShaderLibrary::new(), &mut state);
+            queue.apply(&mut world);
+            assert_eq!(world.get::<CanonicalCloth>(entity).unwrap().words(), words);
+            assert_eq!(world.get::<CanonicalNormal>(entity).unwrap().0, 0xb9fb_cd49_9788_b2f1);
+            assert_eq!(world.get::<NaniInstanceDesc>(entity).unwrap().subset_kind, GpuWorldSubsetKind::Cloth);
+            assert!(world.get::<InstanceDataMarker<ClothInstanceData>>(entity).is_some());
+            assert_eq!(state.entities_of(61), Some([entity].as_slice()));
+        }
+    }
+
+    #[test]
+    fn actual_builder_commands_feed_same_world_cloth_maintain_update_and_flush() {
+        use bevy_ecs::{schedule::{ApplyDeferred, IntoScheduleConfigs, Schedule},
+            world::{CommandQueue, World}};
+        use country_core::{asset_libraries::texture_library::{AssetTextureLibrary,
+            DescriptorImageUpdate, ImageView, TextureLibraryDevice, TextureUpdate},
+            render::{load_texture::boundary::TextureDevice, mesh::Mesh,
+                nani::{gpu_world::{GpuWorld, GpuWorldSubset, InstanceDataBuffer, InstanceKey, OwnedGpuWorldSubset},
+                    systems::{nani_maintain_instances_ecs, nani_update_cloth_ecs,
+                        nani_flush_instance_updates}},
+                ssbo::rhapsody_boundary::{Buffer, BufferDesc, GraphicsDevice}},
+            resources::render::mesh_atlas_library::MeshAtlasLibrary,
+            rhapsody_contract::DescriptorSet,
+            rhapsody_types::{BackendError, Texture, TextureDesc}};
+        use std::cell::{Cell, RefCell};
+        // Recording CPU boundary only. It neither creates nor claims a GPU;
+        // texture upload/publish is forbidden here, and full rows are asserted.
+        #[derive(Default)]
+        struct RecordingDevice { next: Cell<u64>, writes: RefCell<Vec<Vec<u8>>> }
+        impl GraphicsDevice for RecordingDevice {
+            fn create_buffer(&self, desc: &BufferDesc, _: &str, _: Option<&[u8]>)
+                -> Result<Buffer, BackendError> {
+                let id = self.next.get() + 1;
+                self.next.set(id);
+                Ok(Buffer { id, generation: 1, byte_size: desc.size as u64, _gap10: 0, _gap20: 0 })
+            }
+            fn update_buffer_bytes(&self, _: &Buffer, data: &[u8],
+                _: &[core::ops::Range<usize>], _: usize) -> Result<(), BackendError> {
+                self.writes.borrow_mut().push(data.to_vec());
+                Ok(())
+            }
+            fn mapped_slice_mut(&self, buffer: &Buffer) -> Option<&mut [u8]> {
+                let page = Box::leak(vec![0u128; (buffer.byte_size as usize).div_ceil(16)].into_boxed_slice());
+                Some(unsafe { core::slice::from_raw_parts_mut(page.as_mut_ptr().cast::<u8>(),
+                    buffer.byte_size as usize) })
+            }
+        }
+        impl TextureDevice for RecordingDevice {
+            fn create_texture(&self, _: &str, _: &TextureDesc, _: &[u8]) -> Result<Texture, BackendError> {
+                panic!("CPU test registers explicit texture values; upload is outside this boundary")
+            }
+        }
+        impl TextureLibraryDevice for RecordingDevice {
+            fn create_persistent_descriptor_set(&self, _: &str) -> Result<DescriptorSet, BackendError> {
+                Ok(DescriptorSet::default())
+            }
+            fn update_persistent_descriptor_set(&self, _: &DescriptorSet, _: &[DescriptorImageUpdate])
+                -> Result<(), BackendError> { panic!("no GPU descriptor publication in CPU test") }
+            fn get_vk_image_view(&self, _: &Texture, _: u32) -> Result<ImageView, BackendError> {
+                panic!("no native image view in CPU test")
+            }
+            fn update_texture(&self, _: &Texture, _: &TextureUpdate) -> Result<(), BackendError> {
+                panic!("no GPU texture update in CPU test")
+            }
+        }
+        let device = RecordingDevice::default();
+        let mut gpu = GpuWorld::new(&device);
+        gpu.assign_subset(GpuWorldSubsetKind::Cloth, GpuWorldSubset::Owned(
+            OwnedGpuWorldSubset::new::<ClothInstanceData>(&device, GpuWorldSubsetKind::Cloth)));
+        let mut atlas = MeshAtlasLibrary::default();
+        let mut mesh = Mesh::new("same-World cloth CPU triangle");
+        mesh.set_attribute(country_core::render::mesh::ATTR_POSITION,
+            vec![Vec3::X, Vec3::new(0.0, 2.0, 0.0), Vec3::new(0.0, 0.0, 3.0)]);
+        mesh.set_indices(vec![0, 1, 2]);
+        atlas.add(GpuWorldSubsetKind::Cloth, "decorators/setdressing_clothline_cloth", &mesh);
+        let mut textures = AssetTextureLibrary::new(&device);
+        let tex = |id| Texture { id, width: 4, height: 4, format: 0x25 };
+        let first = textures.add(Some("first_normal".into()), tex(81));
+        textures.add(Some("unused_normal".into()), tex(82));
+        let normal = textures.add(Some("actual_cloth_normal".into()), tex(83));
+        assert_eq!(normal.0, 2);
+        assert_eq!(textures.handle_to_bindless_index(first).0, 0);
+        let mut world = World::new();
+        world.insert_resource(gpu);
+        world.insert_resource(atlas);
+        world.insert_resource(textures);
+        let mut queue = CommandQueue::default();
+        let mut state = DecoratorTransientVisualState::default();
+        let mut builder = WindowVisualEntityBuilder::new(Vec3::new(3.0, 4.0, 5.0),
+            Quat::from_rotation_y(0.31), 67);
+        builder.mesh_name = "decorators/setdressing_clothline_cloth";
+        builder.nani_name = "nani_cloth";
+        builder.scale_override = Some(Vec3::new(1.3, 0.7, 2.5));
+        builder.clothline(ClothlineCloth::from_words([0x3e80_0000, 0xbe00_0000, 71]));
+        builder.normal_map = Some(NameHash::compute("actual_cloth_normal").0);
+        let entity = builder.build(&mut Commands::new(&mut queue, &world), 67,
+            &AssetMeshLibrary::new(), &AssetShaderLibrary::new(), &mut state);
+        queue.apply(&mut world);
+        assert!(world.get::<InstanceKey>(entity).is_none());
+        let mut schedule = Schedule::default();
+        schedule.add_systems((nani_maintain_instances_ecs, ApplyDeferred,
+            nani_update_cloth_ecs).chain_ignore_deferred());
+        schedule.run(&mut world);
+        let key = *world.get::<InstanceKey>(entity).unwrap();
+        {
+            let subset = world.resource::<GpuWorld>().owned_subset_mut(GpuWorldSubsetKind::Cloth);
+            let row = subset.data().as_any().downcast_ref::<InstanceDataBuffer<ClothInstanceData>>()
+                .unwrap().shadow.data[key.index as usize].raw;
+            let expected = country_core::render::nani::instance_updates::build_cloth(
+                builder.rotation, builder.translation, builder.scale_override.unwrap(),
+                [0x3e80_0000, 0xbe00_0000, 71], 1).words;
+            assert_eq!(row, expected); // actual producer TRS/payload/descriptor reach the same row
+            assert_eq!(&row[12..], &[0x3e80_0000, 0xbe00_0000, 71, 1]);
+            assert_eq!(subset.instance_count(), 1);
+            assert_eq!(subset.positions()[key.index as usize].position, Vec3::new(3.0, 4.0, 5.0));
+        }
+        nani_flush_instance_updates(&mut world.resource_mut::<GpuWorld>(), &device);
+        let tail = [0x3e80_0000u32, 0xbe00_0000, 71, 1].map(u32::to_le_bytes).concat();
+        assert!(device.writes.borrow().iter().any(|bytes| bytes.len() == 64 && bytes[48..] == tail));
+        assert_eq!(world.resource::<GpuWorld>().previous_instance_count(), 1);
+        assert_eq!(world.resource::<AssetTextureLibrary>().handle_to_bindless_index(normal).0, 1);
+        assert_eq!(state.entities_of(67), Some([entity].as_slice()));
+    }
+
+    #[test]
+    fn absent_cloth_payload_is_not_fabricated_by_real_build() {
+        use bevy_ecs::world::{CommandQueue, World};
+        let mut world = World::new();
+        let mut queue = CommandQueue::default();
+        let mut state = DecoratorTransientVisualState::default();
+        let mut builder = WindowVisualEntityBuilder::new(Vec3::X, Quat::IDENTITY, 63);
+        builder.nani_name = "nani_cloth";
+        builder.mesh_name = "decorators/setdressing_clothline_cloth";
+        let entity = builder.build(&mut Commands::new(&mut queue, &world), 63,
+            &AssetMeshLibrary::new(), &AssetShaderLibrary::new(), &mut state);
+        queue.apply(&mut world);
+        assert!(world.get::<ClothlineCloth>(entity).is_none());
+        assert!(world.get::<NormalMap>(entity).is_none());
+    }
+
+    #[test]
+    fn real_build_skips_three_native_none_tags_in_some_payloads() {
+        use bevy_ecs::world::{CommandQueue, World};
+        let meshes = AssetMeshLibrary::new();
+        let shaders = AssetShaderLibrary::new();
+        for wall_tag in [2u32, 0x7856_3402] {
+            let mut world = World::new();
+            let mut queue = CommandQueue::default();
+            let mut state = DecoratorTransientVisualState::default();
+            let mut builder = WindowVisualEntityBuilder::new(
+                Vec3::new(1.0, 2.0, 3.0), Quat::IDENTITY, 41);
+            builder.nani_name = "nani_clutter_SolidAlbedoMap";
+            builder.mesh_name = "none_tag_test_mesh"; // CPU producer boundary
+            builder.solid_texture = Some(2);
+            let mut brick = [0x5bu8; 0x18];
+            brick[20] = 2;
+            builder.brick_color = Some(brick);
+            builder.smoke = Some((2, 0x7d));
+            builder.wall_flag_cloth = Some((0x0102_0304_0506_0708,
+                0x1112_1314_1516_1718, wall_tag));
+            let entity = builder.build(&mut Commands::new(&mut queue, &world), 41,
+                &meshes, &shaders, &mut state);
+            queue.apply(&mut world);
+            assert!(world.get::<BrickColor>(entity).is_none());
+            assert!(world.get::<Smoke>(entity).is_none());
+            assert!(world.get::<WallFlagCloth>(entity).is_none());
+            assert_eq!(world.get::<NaniInstanceDesc>(entity).unwrap().subset_kind,
+                GpuWorldSubsetKind::SolidAlbedoMap);
+            assert_eq!(state.entities_of(41), Some([entity].as_slice()));
+        }
+    }
+
+    #[test]
+    fn real_build_preserves_active_raw_payloads_after_none_tag_gates() {
+        use bevy_ecs::world::{CommandQueue, World};
+        let meshes = AssetMeshLibrary::new();
+        let shaders = AssetShaderLibrary::new();
+        for tag in [0u8, 1, 3, 255] {
+            let mut world = World::new();
+            let mut queue = CommandQueue::default();
+            let mut state = DecoratorTransientVisualState::default();
+            let mut builder = WindowVisualEntityBuilder::new(
+                Vec3::new(1.0, 2.0, 3.0), Quat::IDENTITY, 43);
+            builder.nani_name = "nani_clutter_SolidAlbedoMap";
+            builder.mesh_name = "active_tag_test_mesh"; // CPU producer boundary
+            builder.solid_texture = Some(8);
+            let mut brick = [0x6bu8; 0x18];
+            brick[20] = tag;
+            builder.brick_color = Some(brick);
+            builder.smoke = Some((tag, 0x7e));
+            let a = 0x0102_0304_0506_0708u64;
+            let b = 0x1112_1314_1516_1718u64;
+            let wall_tag = 0x7856_3400u32 | u32::from(tag);
+            builder.wall_flag_cloth = Some((a, b, wall_tag));
+            let entity = builder.build(&mut Commands::new(&mut queue, &world), 43,
+                &meshes, &shaders, &mut state);
+            queue.apply(&mut world);
+            assert_eq!(world.get::<BrickColor>(entity).unwrap().0, brick);
+            let smoke = &world.get::<Smoke>(entity).unwrap().0;
+            assert_eq!(&smoke[0..8], &43u64.to_le_bytes());
+            assert_eq!(&smoke[8..12], &0u32.to_le_bytes());
+            assert_eq!(&smoke[12..14], &[tag, 0x7e]);
+            let wall = &world.get::<WallFlagCloth>(entity).unwrap().0;
+            assert_eq!(&wall[0..8], &a.to_le_bytes());
+            assert_eq!(&wall[8..16], &b.to_le_bytes());
+            assert_eq!(&wall[16..20], &wall_tag.to_le_bytes());
+            assert_eq!(state.entities_of(43), Some([entity].as_slice()));
+        }
+    }
+
+    #[test]
+    fn real_solid_builds_emit_the_same_canonical_nonzero_selector() {
+        use bevy_ecs::world::{CommandQueue, World};
+        use country_core::components::drawable::NaniSolidTexture as CanonicalSelector;
+        assert_eq!(core::any::TypeId::of::<pending_core::NaniSolidTexture>(),
+            core::any::TypeId::of::<CanonicalSelector>());
+        let meshes = AssetMeshLibrary::new();
+        let shaders = AssetShaderLibrary::new();
+        for (name, kind, code) in [
+            ("nani_clutter_SolidAlbedoMap", GpuWorldSubsetKind::SolidAlbedoMap, 2),
+            ("nani_clutter_SolidAlbedoMapEmissive", GpuWorldSubsetKind::SolidAlbedoMapEmissive, 8),
+        ] {
+            let mut world = World::new();
+            let mut queue = CommandQueue::default();
+            let mut state = DecoratorTransientVisualState::default();
+            let mut builder = WindowVisualEntityBuilder::new(Vec3::new(1.0, 2.0, 3.0),
+                Quat::IDENTITY, 37);
+            builder.nani_name = name;
+            builder.mesh_name = "selector_test_mesh"; // CPU producer boundary, no asset/GPU claim
+            builder.solid_texture = Some(code);
+            let entity = builder.build(&mut Commands::new(&mut queue, &world), 37,
+                &meshes, &shaders, &mut state);
+            queue.apply(&mut world);
+            assert_eq!(world.get::<CanonicalSelector>(entity).unwrap().encoded(), code);
+            assert_eq!(world.get::<NaniInstanceDesc>(entity).unwrap().subset_kind, kind);
+            assert_eq!(world.get::<Transform>(entity).unwrap().translation, Vec3::new(1.0, 2.0, 3.0));
+            assert_eq!(state.entities_of(37), Some([entity].as_slice()));
+            if kind == GpuWorldSubsetKind::SolidAlbedoMap {
+                assert!(world.get::<InstanceDataMarker<SolidAlbedoMapInstanceData>>(entity).is_some());
+            } else {
+                assert!(world.get::<InstanceDataMarker<SolidAlbedoMapEmissiveInstanceData>>(entity).is_some());
+            }
+        }
+    }
+
+    #[test]
+    fn real_solid_builds_reject_none_and_invalid_codes_before_spawn() {
+        use bevy_ecs::world::{CommandQueue, World};
+        let meshes = AssetMeshLibrary::new();
+        let shaders = AssetShaderLibrary::new();
+        for name in ["nani_clutter_SolidAlbedoMap", "nani_clutter_SolidAlbedoMapEmissive"] {
+            for code in [None, Some(9), Some(255)] {
+                let mut world = World::new();
+                let mut queue = CommandQueue::default();
+                let mut state = DecoratorTransientVisualState::default();
+                let mut builder = WindowVisualEntityBuilder::new(Vec3::ZERO, Quat::IDENTITY, 37);
+                builder.nani_name = name;
+                builder.solid_texture = code;
+                assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    builder.build(&mut Commands::new(&mut queue, &world), 37,
+                        &meshes, &shaders, &mut state);
+                })).is_err());
+                queue.apply(&mut world);
+                assert_eq!(world.entities().len(), 0);
+                assert!(state.entities.is_empty());
+            }
+        }
+    }
 
     /// O：无 normal_offset / 无 scale 覆盖时 transform 原样。
     #[test]

@@ -1,0 +1,44 @@
+Source: /Users/yuluo/Desktop/game/games_test/tiny-glade/crates/utils/src/index_condenser.rs
+SHA256: 0ce01341d07d4cde70e3020c6b5108f8d86688eea666ed02d4718d12364d6a3d
+
+8: pub struct IndexHandle<K> {
+9:     pub key: K,
+10:     pub cached_index: Cell<u32>,
+11: }
+12: /// A handle whose cached index can be refreshed through a shared borrow.
+13: pub type Condex<K> = IndexHandle<K>;
+14: impl<K> IndexHandle<K> {
+15:     pub fn last_known_index(&self) -> u32 {
+16:         self.cached_index.get()
+17:     }
+
+61:     pub fn remove(&mut self, handle: &mut IndexHandle<K>) -> bool {
+62:         self.remove_index(handle).is_some()
+63:     }
+64:     /// Removes a key and returns its old index so parallel payload arrays can
+65:     /// apply the same swap removal.
+66:     pub fn remove_index(&mut self, handle: &Condex<K>) -> Option<u32> {
+67:         let index = self.get(handle)?;
+68:         let index = index as usize;
+69:         let removed = self.keys.swap_remove(index);
+70:         self.indices.remove(&removed);
+71:         if let Some(moved) = self.keys.get(index) {
+72:             *self.indices.get_mut(moved).expect("moved key missing") = index as u32;
+73:         }
+74:         Some(index as u32)
+75:     }
+76:     pub fn resolve(&self, handle: &mut IndexHandle<K>) -> Option<u32> {
+77:         self.get(handle)
+78:     }
+79:     pub fn get(&self, handle: &Condex<K>) -> Option<u32> {
+80:         let cached = handle.cached_index.get();
+81:         if self.keys.get(cached as usize) == Some(&handle.key) {
+82:             return Some(cached);
+83:         }
+84:         let index = *self.indices.get(&handle.key)?;
+85:         handle.cached_index.set(index);
+86:         Some(index)
+87:     }
+88:     pub fn clear(&mut self) {
+89:         // Retain capacity. Cached handles repair or fail on their next lookup.
+

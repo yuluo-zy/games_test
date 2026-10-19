@@ -1,0 +1,69 @@
+--- source-snapshot/tiny-glade/crates/tiny-glade/src/run_game.rs
++++ postfreeze-source-v2/tiny-glade/crates/tiny-glade/src/run_game.rs
+@@ -61,6 +61,12 @@
+ #[derive(SystemSet, Clone, Copy, Debug, PartialEq, Eq, Hash)]
+ pub struct GameSystemSet(pub u8);
+ 
++/// Actual current-host World role, set by the gameplay App constructor and
++/// retained when its SubApp moves. The independent loading App never copies
++/// this marker. It is not an asset/load-completion flag.
++#[derive(Resource)]
++pub(crate) struct GameplayApplication;
++
+ /// Each original App constructs a separate shader library. The Arc is a Rust
+ /// owner for that App's library; it does not merge the two native libraries.
+ pub use country_core::asset_libraries::shader_library::SharedAssetShaderLibrary as ApplicationShaderLibrary;
+@@ -208,6 +214,7 @@
+         },
+     };
+     let mut app = App::new();
++    app.insert_resource(GameplayApplication);
+     startup_event_runtime::install(&mut app);
+     // Complete the original unchained set7 tuple on the existing App.
+     // The other three leaves were delivered in brush-startup/runtime-registration.rs.
+@@ -1155,6 +1162,8 @@
+                     phase = "gameplay SubApp::update";
+                     gameplay.update();
+                     update_index += 1;
++                    phase = "verify actual gameplay clutter Startup";
++                    crate::gameplay_startup::require_clutter_catalog(gameplay.world())?;
+                     phase = "read original LoadingGameComplete";
+                     let events = gameplay.world().get_resource::<Events<country_core::systems::save::load_game::LoadingGameComplete>>()
+                         .ok_or_else(|| anyhow::anyhow!("B async load: LoadingGameComplete event resource missing"))?;
+@@ -1756,8 +1765,10 @@
+     }
+ 
+     #[test]
+-    fn worker_update_panic_warmup_error_and_cancellation_all_stop_save() {
+-        for phase in ["update panic", "warmup failure", "cancel"] {
++    fn worker_update_panic_missing_catalog_and_cancellation_all_stop_save() {
++        // This small CPU fixture has no genuine gameplay catalog. It can
++        // prove rejection/cleanup, not entry into the real warm-up graph.
++        for phase in ["update panic", "missing catalog", "cancel"] {
+             let mut app = App::new();
+             app.insert_resource(country_core::systems::mode_manager::AppMode::default());
+             app.init_resource::<country_core::systems::save::load_game::LoadGameManager>();
+@@ -1769,15 +1780,19 @@
+             let flags = attach_save_owner(app.world_mut());
+             let gameplay = std::mem::take(app.main_mut());
+             let mut preparation = GameplayPreparation::spawn(gameplay, move |_| {
+-                if phase == "warmup failure" { anyhow::bail!("injected warmup failure"); }
+-                Ok(())
++                panic!("missing gameplay catalog must prevent warmup: {phase}");
+             }).unwrap();
+             if phase == "cancel" {
+-                preparation.cancel_and_join().unwrap();
++                // Immediate cancellation races with the observable catalog
++                // failure; both must finish the same actual save owner.
++                if let Err(error) = preparation.cancel_and_join() {
++                    assert!(error.to_string().contains("ClutterMeshes"));
++                }
+             } else {
+                 let error = preparation.receiver.recv_timeout(std::time::Duration::from_secs(2))
+                     .unwrap().unwrap_err();
+-                assert!(error.to_string().contains(phase));
++                let expected = if phase == "missing catalog" { "ClutterMeshes" } else { phase };
++                assert!(error.to_string().contains(expected));
+                 preparation.cancel_and_join().unwrap();
+             }
+             assert_saved_before_drop(flags);

@@ -1,0 +1,39 @@
+{
+  "purpose": "temporary compile-only seam, explicit user authorization relayed by root",
+  "owner": "02-main-graph",
+  "root_only_application": true,
+  "cleanup": "Replace/remove only when current production SHA exactly matches stub_sha256; incoming user source takes precedence; do not delete edited or unmatched files",
+  "files": [
+    {
+      "path": "crates/tiny-glade/src/menu_background_host.rs",
+      "before_state": "absent",
+      "stub_sha256": "d6b91bcd3e3c49d7b7652c37ed940a8fc8159ce8a3bacba9f3c8dd183dbec27e",
+      "marker": "ORIGINAL_IMPLEMENTATION_PENDING_SYNC",
+      "runtime_acceptance": false,
+      "source_of_signatures": "existing production callsites at baseline bd8f74a5c"
+    },
+    {
+      "path": "crates/tiny-glade/src/session_preview_host.rs",
+      "before_state": "absent",
+      "stub_sha256": "dab98e73898b3aa6d0c2186362775ee21ac606adf68921fb244a111a4f9c002d",
+      "marker": "ORIGINAL_IMPLEMENTATION_PENDING_SYNC",
+      "runtime_acceptance": false,
+      "source_of_signatures": "existing production callsites at baseline bd8f74a5c"
+    },
+    {
+      "path": "crates/tiny-glade/src/screenshot_capture.rs",
+      "before_state": "absent",
+      "stub_sha256": "f493e78b28cde180cbac0eb1c164b5526b88efbd4f1a46ca25d32bd85b90183c",
+      "marker": "ORIGINAL_IMPLEMENTATION_PENDING_SYNC",
+      "runtime_acceptance": false,
+      "source_of_signatures": "existing production callsites at baseline bd8f74a5c"
+    }
+  ],
+  "patch_sha256": "3012bd24706a7fe086aa0fa879e77193a4f377f84d69dd908af788c5fa1cb5f6",
+  "runtime": "Every function returns Unsupported(PENDING) or panics PENDING, never success/false/default data. In particular cancel_unsubmitted is a pending panic and is not safe for failure-path runtime acceptance.",
+  "checks": {
+    "rustfmt_parser": "3 stubs passed --emit stdout --config skip_children=true; no typecheck",
+    "cargo_gpu": "not run; root only"
+  },
+  "application_status": "withdrawn: latest user says skip missing files; retained as historical candidates only"
+}

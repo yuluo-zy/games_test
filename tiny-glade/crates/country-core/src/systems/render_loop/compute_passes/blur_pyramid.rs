@@ -83,6 +83,14 @@ fn view(usage: u32, mip: u32) -> TextureViewDesc {
 
 /// W-外围：`blur_pyramid`（O 0x1409ee1e0）。`src` 为 RG 句柄（含 desc）。返回 "partial blur pyramid"。
 pub fn blur_pyramid(env: &mut PassEnv<'_>, src: &RgTexture) -> RgTexture {
+    blur_pyramid_with_input_policy(env, src, false)
+}
+
+fn blur_pyramid_with_input_policy(
+    env: &mut PassEnv<'_>,
+    src: &RgTexture,
+    allow_undefined_input: bool,
+) -> RgTexture {
     let src_extent = [src.desc.extent[0], src.desc.extent[1]];
     let half = half_res(src_extent);
     let mips = pyramid_mips(half);
@@ -94,10 +102,15 @@ pub fn blur_pyramid(env: &mut PassEnv<'_>, src: &RgTexture) -> RgTexture {
     let v0 = TextureViewDesc::new()
         .base_mip_level(0)
         .level_count(Some(1));
-    let rec = env
+    let mut pass = env
         .pass(BLUR0_NAME, BLUR_URI)
         .bind_texture(HASH_INPUT_TEX, &src, TEX_READ)
-        .bind_texture_with_view(HASH_OUTPUT_TEX, &partial_tex, TEX_STORAGE_WRITE, Some(&v0))
+        .bind_texture_with_view(HASH_OUTPUT_TEX, &partial_tex, TEX_STORAGE_WRITE, Some(&v0));
+    if allow_undefined_input {
+        // 仅原 no-world tail 显式请求；真实采样和同步、后续 mip producer 均保留。
+        pass = pass.allow_undefined_texture_contents(HASH_INPUT_TEX);
+    }
+    let rec = pass
         .uniform(KEY_INPUT_MIP_DIMS, src_extent)
         .dispatch_2d(half[0], half[1]);
     env.record(rec);
@@ -133,13 +146,22 @@ pub fn rev_blur_pyramid(env: &mut PassEnv<'_>, partial: &RgTexture) -> RgTexture
             view(USAGE_READ, next),
             view(USAGE_WRITE, i),
         );
-        let rec = env
+        let sample_self = i + 1 != n;
+        let mut pass = env
             .pass(REV_N_NAME, REV_URI)
             .bind_texture_with_view(HASH_INPUT_TAIL, &partial_tex, TEX_READ, Some(&v_tail))
             .bind_texture_with_view(HASH_INPUT_TEX, &full_tex, TEX_READ, Some(&v_in))
-            .bind_texture_with_view(HASH_OUTPUT_TEX, &full_tex, TEX_STORAGE_WRITE, Some(&v_out))
+            .bind_texture_with_view(HASH_OUTPUT_TEX, &full_tex, TEX_STORAGE_WRITE, Some(&v_out));
+        if !sample_self {
+            // Original full SPV still performs nine samples before this flag
+            // selects tail RGB. Only this fresh top input/output alias is
+            // permitted undefined; tail and all later reverse inputs are strict.
+            debug_assert_eq!(next, i);
+            pass = pass.allow_undefined_texture_contents(HASH_INPUT_TEX);
+        }
+        let rec = pass
             .uniform(KEY_OUTPUT_EXTENT, ext)
-            .uniform(KEY_SAMPLE_SELF, i + 1 != n)
+            .uniform(KEY_SAMPLE_SELF, sample_self)
             .dispatch_2d(ext[0], ext[1]);
         env.record(rec);
     }
@@ -149,6 +171,16 @@ pub fn rev_blur_pyramid(env: &mut PassEnv<'_>, partial: &RgTexture) -> RgTexture
 /// `bidirectional_blur_pyramid`（O 0x1409ed860）：`rev_blur_pyramid(blur_pyramid(src))`。
 pub fn bidirectional_blur_pyramid(env: &mut PassEnv<'_>, src: &RgTexture) -> RgTexture {
     let partial = blur_pyramid(env, src);
+    rev_blur_pyramid(env, &partial)
+}
+
+/// 原 no-world tail 最终 flag0 丢弃该输入的计算值，但仍真实执行全部 blur fetch。
+/// 其它消费者使用默认严格入口，不能把此许可当作源初始化。
+pub fn bidirectional_blur_pyramid_allowing_undefined_input(
+    env: &mut PassEnv<'_>,
+    src: &RgTexture,
+) -> RgTexture {
+    let partial = blur_pyramid_with_input_policy(env, src, true);
     rev_blur_pyramid(env, &partial)
 }
 
@@ -374,6 +406,85 @@ mod tests {
             f.textures.iter().map(|t| t.0.as_str()).collect::<Vec<_>>(),
             ["partial blur pyramid", "full blur pyramid"]
         );
+    }
+
+    #[test]
+    fn no_world_only_adds_forward_input_permission_and_keeps_every_dispatch() {
+        use crate::render::pass_builder::pass_resource_access::PassBinding;
+        let w = world();
+        let mut strict = TestFrame::default();
+        with_env(&w, &mut strict, |env| {
+            bidirectional_blur_pyramid(env, &src(64, 64))
+        });
+        let mut permitted = TestFrame::default();
+        with_env(&w, &mut permitted, |env| {
+            bidirectional_blur_pyramid_allowing_undefined_input(env, &src(64, 64))
+        });
+        assert_eq!(strict.order, permitted.order);
+        assert_eq!(strict.passes.len(), permitted.passes.len());
+        for (index, (ordinary, original_no_world)) in
+            strict.passes.iter().zip(&permitted.passes).enumerate()
+        {
+            assert!(original_no_world.inactive_texture_bindings.is_empty());
+            assert_eq!(dispatch_xy(ordinary), dispatch_xy(original_no_world));
+            assert_eq!(
+                ordinary.builder.accesses,
+                original_no_world.builder.accesses
+            );
+            if index == 0 {
+                assert!(ordinary.undefined_texture_bindings.is_empty());
+                assert_eq!(original_no_world.undefined_texture_bindings.len(), 1);
+                let slot = original_no_world.undefined_texture_bindings[0] as usize;
+                assert!(matches!(
+                    original_no_world.bindings[slot],
+                    PassBinding::ImageView {
+                        resource: 1,
+                        write: false,
+                        ..
+                    }
+                ));
+            } else {
+                assert_eq!(
+                    ordinary.undefined_texture_bindings,
+                    original_no_world.undefined_texture_bindings
+                );
+                assert_eq!(
+                    ordinary.undefined_texture_bindings.len(),
+                    usize::from(index == 5)
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn only_false_top_reverse_input_has_real_undefined_read_permission() {
+        use crate::render::pass_builder::pass_resource_access::PassBinding;
+        for n in [1, 4] {
+            let w = world();
+            let mut frame = TestFrame::default();
+            let partial = RgTexture {
+                desc: TextureDesc::new_2d([64, 32], 0x7a).mip_levels(n),
+                resource: 77,
+            };
+            let full = with_env(&w, &mut frame, |env| rev_blur_pyramid(env, &partial));
+            for (index, pass) in frame.passes.iter().enumerate() {
+                assert!(pass.inactive_texture_bindings.is_empty());
+                assert_eq!(uniform_u32(pass, 32), u32::from(index != 0));
+                if index == 0 {
+                    assert_eq!(pass.undefined_texture_bindings.len(), 1);
+                    let slot = pass.undefined_texture_bindings[0] as usize;
+                    assert!(matches!(pass.bindings[slot], PassBinding::ImageView {
+                        resource, write: false, view,
+                    } if resource == full.resource && view.base_mip_level == u32::from(n - 1)
+                        && view.level_count == Some(1) && view.usage == Some(USAGE_READ)));
+                    let selected = views(pass);
+                    assert_eq!(selected[1].base_mip_level, selected[2].base_mip_level);
+                    assert_eq!(selected[0].base_mip_level, u32::from(n - 1));
+                } else {
+                    assert!(pass.undefined_texture_bindings.is_empty());
+                }
+            }
+        }
     }
 
     #[test]

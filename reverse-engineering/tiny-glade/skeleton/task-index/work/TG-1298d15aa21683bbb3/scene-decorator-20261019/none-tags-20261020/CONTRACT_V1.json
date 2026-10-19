@@ -1,0 +1,61 @@
+{
+  "scope": "B native raw None discriminants only; no raw component TypeId/schema migration or C parity",
+  "original": {
+    "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+    "va": "0x1412a9b30",
+    "size": 5949,
+    "body_sha256": "07cf3c3f4f6dea5ebae0465d2ae30043aa045cdaad93e2a4c29a5f6b308703c9",
+    "assembly_path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-bdac7a16d3c26c954b/nani-gpu-counts-20261019/nani-maintain-20261020/1412a9b30-full-B-rne.asm",
+    "assembly_sha256": "f099285f4fd3e82df77eb3aea2241f12e3d31d36e8246b934f28695c67b17fb5",
+    "continuous_and_exact_direct_pe_match": true
+  },
+  "gates": [
+    {
+      "host_field": "brick_color:Option<[u8;24]>",
+      "condition": "outer Some AND payload[20] !=2",
+      "none": 2,
+      "evidence": [
+        "0x1412aa6ec..0x1412aa6f3",
+        "0x1412aa8af..0x1412aa8cb"
+      ],
+      "raw_payload": "self+0x100, hence byte20=self+0x114"
+    },
+    {
+      "host_field": "smoke:Option<(u8,u8)>",
+      "condition": "outer Some AND tuple.0 !=2",
+      "none": 2,
+      "evidence": [
+        "0x1412aa72a..0x1412aa735",
+        "0x1412aab82..0x1412aab8d"
+      ],
+      "raw_payload": "tag=self+0x14c, sub=self+0x14d"
+    },
+    {
+      "host_field": "wall_flag_cloth:Option<(u64,u64,u32)>",
+      "condition": "outer Some AND tuple.2 as u8 !=2",
+      "none": 2,
+      "evidence": [
+        "0x1412aace8..0x1412aacef",
+        "0x1412aad27",
+        "0x1412aad62..0x1412aad72"
+      ],
+      "raw_payload": "20 bytes self+0x12c; u32 tail+self+0x13c, only low byte discriminant; doc correction from overlapping+0x130 start"
+    }
+  ],
+  "unchanged": [
+    "active payload byte copying",
+    "all component TypeIds",
+    "all Nani selectors and spawn branches",
+    "SolidTexture checked codes/None9 behavior",
+    "all builder methods and geometry",
+    "other numeric algorithms"
+  ],
+  "tests_added": [
+    "real_build_skips_three_native_none_tags_in_some_payloads",
+    "real_build_preserves_active_raw_payloads_after_none_tag_gates"
+  ],
+  "tests_run": false,
+  "cargo_run": false,
+  "gpu_run": false
+}

@@ -1,0 +1,48 @@
+--- a/tiny-glade/crates/country-core/src/components/drawable.rs
++++ b/tiny-glade/crates/country-core/src/components/drawable.rs
+@@ -170,3 +170,45 @@
+         *previous = PrevTransform::from(*current);
+     }
+ }
++
++/// Canonical solid-texture selector observed as one component byte in B
++/// clone1412efd00 and updates142072010/142072b50. PDB does not recover the
++/// original Rust declaration or variant names; this is a checked opaque host
++/// representation of the nine observed codes. Code9 is builder None, not a
++/// component value. No default selector is supplied.
++#[repr(transparent)]
++#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, PartialEq, Eq)]
++pub struct NaniSolidTexture(u8);
++
++impl NaniSolidTexture {
++    pub const fn encoded(self) -> u8 {
++        self.0
++    }
++}
++
++impl TryFrom<u8> for NaniSolidTexture {
++    type Error = u8;
++
++    fn try_from(encoded: u8) -> Result<Self, Self::Error> {
++        if encoded < 9 {
++            Ok(Self(encoded))
++        } else {
++            Err(encoded)
++        }
++    }
++}
++
++#[cfg(test)]
++mod solid_texture_tests {
++    use super::NaniSolidTexture;
++
++    #[test]
++    fn explicit_codes_round_trip_and_none_niche_is_not_a_component() {
++        assert_eq!(core::mem::size_of::<NaniSolidTexture>(), 1);
++        for code in 0..9 {
++            assert_eq!(NaniSolidTexture::try_from(code).unwrap().encoded(), code);
++        }
++        assert_eq!(NaniSolidTexture::try_from(9), Err(9));
++        assert_eq!(NaniSolidTexture::try_from(255), Err(255));
++    }
++}

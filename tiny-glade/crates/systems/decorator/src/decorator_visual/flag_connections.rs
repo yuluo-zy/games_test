@@ -1,275 +1,239 @@
-//! B `decorator_visual/flag_connections.rs` — 旗连接/布绳生成（D1）。
+//! B 1407e1430 / 4312B and 1407e2510 / 2604B business adapters.
 //!
-//! 证据：fresh RE-MCP 反编译 0x1407df470（generate_flag_connections，49KB）/
-//! 0x1407e1430（greedily_connect，25KB）/ 0x1407e2510（clothline，10.7KB）+
-//! 骨架 callees（O）：clothline ×2、FUN_1407df050 ×2（相邻旗查询）、
-//! WindowVisualEntityBuilder::build<Transient>（0x1412ab270）、
-//! DecoratorExtraInfo::as_flag、blueprint 链。
-//!
-//! 本文件按机器码恢复为可验证的纯逻辑：
-//!
-//! - `greedily_connect`（0x1407e1430）：
-//!   1. 逐对候选（0x50B 条目；`+0x4d` 源标记 != 0、目标标记 == 1）判定墙关系与
-//!      距离窗：异墙 `d² < p7²`；同墙 `p9² < d² < p8²`（p7/p8/p9 见调用点
-//!      0x1407df470 行 774：`2, 1, 0x41200000(10.0), 0x40b00000(5.5),
-//!      0x40000000(2.0)`）；`param_6`（跨墙开关）= 1；
-//!   2. 候选对去重（机器码 hashbrown 集合）；
-//!   3. 第二遍：两端连接度 `param_5`（=2）未满、遮挡查询
-//!      `intersects_any(segment, dist - 0.01, 0x30db)` 未命中、最小距离
-//!      0.02（0x1429cd2d0）且坡度门 `2*|Δy| <= 水平距离` 通过 → 接受边，
-//!      两端度 +1。
-//! - `clothline`（0x1407e2510）：
-//!   `n = max(2, round(dist / spacing))`；sag 混合因子
-//!   `blend = clamp(sag_len / dist, 0, 0.25)`（0x142925950）；
-//!   采样参数 `t' = t + (1-t)*blend`；下垂
-//!   `(1 - (2t'-1)²) * 0.08 * dist`（0x142a88890 = 0.08）。
-//!   机器码随后用半宽 `param_5`、角点归一化(`0.5/sqrt`)生成布条四角并
-//!   `build<Transient>`；四角精确顺序 U（见下文 U 登记）。
-//!
-//! U 登记：① 相邻旗查询 FUN_1407df050 的墙侧筛选（锚点来源由调用系统给出）；
-//! ② clothline 10 参面中 `param_4/param_6` 的精确语义；③ 四角归一化细节。
-
+//! The real ClothInfo caller uses indexed stable greedy connections and actual
+//! thread Commands into the existing transient owner. FlagAnchor is only a
+//! semantic geometry projection, not native CandidateInfo's declaration/ABI.
+//! The unrelated general-flag producer/styled thread remain unrecovered.
+use crate::{
+    decorator_visual_state::DecoratorTransientVisualState,
+    utils::visual_entity_builder::WindowVisualEntityBuilder,
+};
 use bevy_ecs::prelude::*;
-use country_core::resources::walls::decorator_storage::DecoratorStorage;
-use glam::{Vec2, Vec3};
-use std::collections::{HashMap, HashSet};
+use country_core::{
+    asset_libraries::{mesh_library::AssetMeshLibrary, shader_library::AssetShaderLibrary},
+    resources::walls::decorator_storage::DecoratorStorage,
+};
+use glam::{Mat3, Quat, Vec2, Vec3};
+use std::collections::HashSet;
 
-use crate::decorator_visual_state::DecoratorTransientVisualState;
-
-/// 单节点最大连接数（O 调用点 0x1407df470：param_5 = 2）。
-pub const CONNECT_MAX_PER_NODE: u32 = 2;
-/// 跨墙连接开关（O 调用点 param_6 = 1）。
-pub const CONNECT_CROSS_WALL: bool = true;
-/// 异墙近距阈值（O 0x41200000 = 10.0）。
+pub const CONNECT_MAX_PER_NODE: usize = 2;
+pub const CONNECT_ALLOW_SAME_WALL: bool = true;
 pub const CONNECT_NEAR_DIFFERENT_WALL: f32 = 10.0;
-/// 同墙远距阈值（O 0x40b00000 = 5.5）。
 pub const CONNECT_FAR_SAME_WALL: f32 = 5.5;
-/// 同墙近距阈值（O 0x40000000 = 2.0）。
 pub const CONNECT_MIN_SAME_WALL: f32 = 2.0;
-/// 最小连接距离（O 0x1429cd2d0 = 0.02）。
 pub const CONNECT_MIN_DISTANCE: f32 = 0.02;
-/// 遮挡射线长度余量（O 0x142a82410 = -0.01）。
 pub const CONNECT_OCCLUSION_MARGIN: f32 = -0.01;
-/// 邻接边权偏置（O 0x1429cd078 = 3.0：`weight = dist + 3.0`）。
 pub const CONNECT_EDGE_WEIGHT_BIAS: f32 = 3.0;
-/// 布绳下垂系数（O 0x142a88890 = 0.08）。
 pub const CLOTH_SAG: f32 = 0.08;
-/// 布绳 sag 混合上限（O 0x142925950 = 0.25）。
 pub const CLOTH_MAX_SAG_FRACTION: f32 = 0.25;
-/// 布绳默认半宽（O 调用点 param_5 = 0x3f800000 = 1.0）。
 pub const CLOTH_SEGMENT_WIDTH: f32 = 1.0;
-/// 布条网格名（O 0x142a88b30，len 0x27）。
 pub const CLOTH_MESH_THREAD: &str = "decorators/setdressing_clothline_thread";
-/// 旗线网格名（O 0x142a88b57，len 0x14）。
 pub const CLOTH_MESH_FLAG_LINE: &str = "decorators/flag_line";
 
-/// 0x50B 旗候选条目（O 读面）：`+0x0c` 墙 id、`+0x10..+0x18` 位置、
-/// `+0x4d` 连接标记（0 = 非源，1 = 目标）。
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FlagAnchor {
-    /// 装饰 id（下游实体键）。
     pub id: u32,
-    /// 墙 id（`+0x0c`）。
     pub wall: u64,
-    /// 世界位置（`+0x10`）。
     pub pos: Vec3,
-    /// `+0x4d`：源标记（!= 0 可作边起点）。
     pub source: bool,
-    /// `+0x4d`：目标标记（== 1 可作边终点）。
     pub target: bool,
 }
 
-/// 贪心连接参数（O 调用点常量）。
+/// Five original business inputs; ray margin, distance floor and bias are fixed.
 #[derive(Clone, Copy, Debug)]
 pub struct ConnectParams {
-    pub max_per_node: u32,
-    pub cross_wall: bool,
+    pub max_per_node: usize,
+    pub allow_same_wall: bool,
     pub near_different_wall: f32,
     pub far_same_wall: f32,
     pub min_same_wall: f32,
-    pub min_distance: f32,
-    pub occlusion_margin: f32,
-    pub edge_weight_bias: f32,
 }
-
 impl Default for ConnectParams {
-    /// 0x1407df470 行 774 实参。
+    /// Separate general-flag caller's values; ClothInfo supplies its own five.
     fn default() -> Self {
         Self {
             max_per_node: CONNECT_MAX_PER_NODE,
-            cross_wall: CONNECT_CROSS_WALL,
+            allow_same_wall: CONNECT_ALLOW_SAME_WALL,
             near_different_wall: CONNECT_NEAR_DIFFERENT_WALL,
             far_same_wall: CONNECT_FAR_SAME_WALL,
             min_same_wall: CONNECT_MIN_SAME_WALL,
-            min_distance: CONNECT_MIN_DISTANCE,
-            occlusion_margin: CONNECT_OCCLUSION_MARGIN,
-            edge_weight_bias: CONNECT_EDGE_WEIGHT_BIAS,
         }
     }
 }
 
-/// 贪心连接结果：边（按装饰 id 的 `(min,max)` 对）+ 每节点度数。
-///
-/// 原函数把边写入 16B `(usize, usize)` 向量（0x1407e1430 尾部 `param_1[0..5]`），
-/// 并把度数组、候选表一并返回；此处以 id 承载同一可观察结果。
+/// Indices always refer to the caller's original slice, including duplicate IDs.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ConnectResult {
-    /// 已接受边（id 小者在前）。
-    pub edges: Vec<(u32, u32)>,
-    /// 每节点连接数。
-    pub degrees: HashMap<u32, u32>,
+    pub edges: Vec<(usize, usize)>,
+    pub degrees: Vec<usize>,
+    pub sorted_indices: Vec<usize>,
 }
 
-/// 候选对是否满足机器码距离窗（O：0x1407e1430 行 176-183）。
-///
-/// - 异墙：`d² < near_different_wall²`；
-/// - 同墙：`min_same_wall² < d² < far_same_wall²`。
-pub fn candidates_within_window(
-    a: &FlagAnchor,
-    b: &FlagAnchor,
-    params: &ConnectParams,
-) -> Option<f32> {
-    if !(a.source && b.target) {
+pub fn candidates_within_window(a: &FlagAnchor, b: &FlagAnchor, p: &ConnectParams) -> Option<f32> {
+    if !(a.source && b.target) || (!p.allow_same_wall && a.wall == b.wall) {
         return None;
     }
-    if !params.cross_wall && a.wall == b.wall {
-        return None;
-    }
-    let delta = b.pos - a.pos;
-    let d2 = delta.length_squared();
-    let different_wall = a.wall != b.wall;
-    let ok = if different_wall {
-        d2 < params.near_different_wall * params.near_different_wall
+    let d = a.pos - b.pos;
+    // 1407e1853..1890: Y square + X square, then Z square.
+    let d2 = (d.y * d.y + d.x * d.x) + d.z * d.z;
+    let ok = if a.wall != b.wall {
+        d2 < p.near_different_wall * p.near_different_wall
     } else {
-        params.min_same_wall * params.min_same_wall < d2
-            && d2 < params.far_same_wall * params.far_same_wall
+        p.min_same_wall * p.min_same_wall < d2 && d2 < p.far_same_wall * p.far_same_wall
     };
     ok.then(|| d2.sqrt())
 }
 
-/// 0x1407e1430（O 结构，语义全文）：贪心连接相邻旗。
-///
-/// `blocked(a, b, length)` 对应机器码
-/// `RaycastWorld::intersects_any(param_4, &segment, dist + (-0.01), 0x30db)`：
-/// 返回 true 表示连线被遮挡，拒绝该边。
-///
-/// 保留机器码边界：
-/// - 距离窗（见 [`candidates_within_window`]）；
-/// - 候选对去重（hashbrown 集合，键 = `(min,max)`）；
-/// - 每节点容量 `params.max_per_node`（两遍扫描，容量随接受递增）；
-/// - 坡度门 `2*|Δy| <= sqrt(Δx²+Δz²)`；
-/// - 最小距离 `params.min_distance`（接受前 `min < dist`）；
-/// - 空输入返回空结果（无 panic）。
+/// Stable ID order, one stable weight-sorted neighbor list per source; no global
+/// edge sort. `blocked` receives real origin, normalized direction and max_toi.
+/// Production supplies actual RaycastWorld; test callbacks are not scene inputs.
 pub fn greedily_connect(
     anchors: &[FlagAnchor],
-    params: &ConnectParams,
+    p: &ConnectParams,
     blocked: impl Fn(Vec3, Vec3, f32) -> bool,
 ) -> ConnectResult {
-    // ---- 第一遍：候选对 + 去重（O：hashbrown 集合 + 邻接表）----
-    let mut seen: HashSet<(usize, usize)> = HashSet::new();
-    let mut adjacency: Vec<(usize, usize, f32)> = Vec::new();
-    for i in 0..anchors.len() {
-        for j in 0..anchors.len() {
-            if i == j {
+    let mut order: Vec<_> = (0..anchors.len()).collect();
+    order.sort_by_key(|&i| anchors[i].id);
+    let mut neighbors = Vec::with_capacity(order.len());
+    for (i, &a) in order.iter().enumerate() {
+        let mut next = Vec::new();
+        for (j, &b) in order.iter().enumerate().skip(i + 1) {
+            if let Some(distance) = candidates_within_window(&anchors[a], &anchors[b], p) {
+                let weight = if p.allow_same_wall && anchors[a].wall == anchors[b].wall {
+                    distance + CONNECT_EDGE_WEIGHT_BIAS
+                } else {
+                    distance
+                };
+                next.push((j, weight));
+            }
+        }
+        next.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        neighbors.push(next);
+    }
+    let mut degrees = vec![0; anchors.len()];
+    let mut accepted = HashSet::new();
+    let mut edges = Vec::new();
+    for (i, next) in neighbors.iter().enumerate() {
+        for &(j, _) in next {
+            if degrees[i] >= p.max_per_node
+                || degrees[j] >= p.max_per_node
+                || accepted.contains(&(i, j))
+            {
                 continue;
             }
-            let Some(dist) = candidates_within_window(&anchors[i], &anchors[j], params) else {
-                continue;
-            };
-            let pair = if i < j { (i, j) } else { (j, i) };
-            // O：集合去重 `FUN_141267af0`（pair 已存在则跳过）。
-            if !seen.insert(pair) {
+            let a = anchors[order[i]].pos;
+            let delta = anchors[order[j]].pos - a;
+            let horizontal = (delta.z * delta.z + delta.x * delta.x).sqrt();
+            if delta.y.abs() + delta.y.abs() > horizontal {
                 continue;
             }
-            // O：按源→目标方向记录权重 = dist + 3.0。
-            let weight = dist + params.edge_weight_bias;
-            adjacency.push((i, j, weight));
+            let distance = (delta.z * delta.z + (delta.y * delta.y + delta.x * delta.x)).sqrt();
+            if !(distance > CONNECT_MIN_DISTANCE) {
+                continue;
+            }
+            let direction = delta * (1.0 / distance);
+            if blocked(a, direction, distance + CONNECT_OCCLUSION_MARGIN) {
+                continue;
+            }
+            accepted.insert((i, j));
+            edges.push((order[i], order[j]));
+            degrees[i] += 1;
+            degrees[j] += 1;
         }
     }
-
-    // ---- 第二遍：容量/遮挡/坡度门（O：第二段邻接遍历）----
-    let mut degrees: HashMap<u32, u32> = HashMap::new();
-    let mut used: HashSet<(usize, usize)> = HashSet::new();
-    let mut result = ConnectResult::default();
-    for (i, j, _weight) in adjacency {
-        let a = &anchors[i];
-        let b = &anchors[j];
-        // O：`plStack_d0[i] < param_5 && plStack_d0[j] < param_5`。
-        let deg_a = degrees.get(&a.id).copied().unwrap_or(0);
-        let deg_b = degrees.get(&b.id).copied().unwrap_or(0);
-        if deg_a >= params.max_per_node || deg_b >= params.max_per_node {
-            continue;
-        }
-        let pair = if i < j { (i, j) } else { (j, i) };
-        if !used.insert(pair) {
-            continue;
-        }
-        let delta = b.pos - a.pos;
-        let horizontal = Vec2::new(delta.x, delta.z).length();
-        // O：`fVar55 + fVar55 <= SQRT(dx²+dz²)` → 继续（坡度门）。
-        let vertical = delta.y.abs();
-        if vertical + vertical > horizontal {
-            continue;
-        }
-        let dist = delta.length();
-        // O：`fVar43(0.02) < fVar53(dist)`。
-        if dist <= params.min_distance {
-            continue;
-        }
-        // O：遮挡查询长度 = dist + (-0.01)。
-        if blocked(a.pos, b.pos, dist + params.occlusion_margin) {
-            continue;
-        }
-        let (lo, hi) = if a.id <= b.id { (a.id, b.id) } else { (b.id, a.id) };
-        result.edges.push((lo, hi));
-        *degrees.entry(a.id).or_insert(0) += 1;
-        *degrees.entry(b.id).or_insert(0) += 1;
+    let mut original_degrees = vec![0; anchors.len()];
+    for (i, &original) in order.iter().enumerate() {
+        original_degrees[original] = degrees[i];
     }
-    result.degrees = degrees;
-    result
-}
-
-/// 布绳采样点数：`n = max(2, round(dist / spacing))`（O 0x1407e2510 行 115-129）。
-pub fn clothline_sample_count(dist: f32, spacing: f32) -> usize {
-    let n = (dist / spacing).round();
-    // O：`2 < n` 取 n，否则 2（NaN 比较为 false → 2）。
-    if n > 2.0 {
-        n as usize
-    } else {
-        2
+    ConnectResult {
+        edges,
+        degrees: original_degrees,
+        sorted_indices: order,
     }
 }
 
-/// sag 混合因子：`clamp(sag_len / dist, 0, 0.25)`（O 行 130-137）。
-pub fn clothline_sag_fraction(sag_len: f32, dist: f32) -> f32 {
-    let f = sag_len / dist;
-    if f >= 0.0 {
-        f.min(CLOTH_MAX_SAG_FRACTION)
-    } else {
-        0.0
-    }
+/// Original ceilf and saturating conversion. The actual producer iterates lazily.
+pub fn clothline_sample_count(distance: f32, spacing: f32) -> usize {
+    ((distance / spacing).ceil() as usize).max(2)
 }
-
-/// 布绳中点下垂量：`(1 - (2t-1)²) * 0.08 * dist`（O 行 203-204）。
-pub fn cloth_sag_offset(t: f32, dist: f32) -> f32 {
+pub fn clothline_sag_fraction(sag: f32, distance: f32) -> f32 {
+    (sag / distance).clamp(0.0, CLOTH_MAX_SAG_FRACTION)
+}
+pub fn cloth_sag_offset(t: f32, distance: f32) -> f32 {
     let u = t + t - 1.0;
-    (1.0 - u * u) * CLOTH_SAG * dist
+    ((1.0 - u * u) * CLOTH_SAG) * distance
+}
+fn thread_point(a: Vec3, b: Vec3, blend: f32, distance: f32, index: usize, count: usize) -> Vec3 {
+    let t = index as f32 / count as f32;
+    let u = ((1.0 - t) * blend) + t;
+    let sag = cloth_sag_offset(u, distance);
+    Vec3::new(
+        (u * b.x + (1.0 - u) * a.x) - sag * 0.0,
+        (u * b.y + (1.0 - u) * a.y) - sag,
+        (b.z * u + a.z * (1.0 - u)) - sag * 0.0,
+    )
 }
 
-/// 0x1407e2510（O 结构）：布绳采样折线。
-///
-/// 采样参数（O 行 197-204）：
-/// `t' = t + (1-t)*blend`，位置 = `lerp(a, b, t')`，y 再减
-/// `(1-(2t'-1)²)*0.08*dist`。返回 `n+1` 个点（n = 采样点数）。
-/// U：`param_4/param_6` 的精确语义；四角半宽展开不在本函数（见
-/// [`clothline_quads`]）。
-pub fn clothline_points(
+/// Engineering context for the inspected absent-style branch; all owners are
+/// the actual Commands/assets/global transient values supplied by its caller.
+/// It has no styled/Some API that could silently pretend that branch is None.
+pub struct ClothlineContext<'a, 'w, 's> {
+    pub commands: &'a mut Commands<'w, 's>,
+    pub meshes: &'a AssetMeshLibrary,
+    pub shaders: &'a AssetShaderLibrary,
+    pub transient: &'a mut DecoratorTransientVisualState,
+}
+
+/// Original absent-style helper now builds each real thread entity. No quad is
+/// returned or discarded. This exact caller requests stretch=true, width=1.
+pub fn clothline(
+    context: &mut ClothlineContext<'_, '_, '_>,
+    id: u32,
     a: Vec3,
     b: Vec3,
     spacing: f32,
-    sag_len: f32,
-    sag_scale: f32,
-) -> Vec<Vec3> {
+    sag: f32,
+    width: f32,
+) {
+    let delta = b - a;
+    let distance = delta.length();
+    let count = clothline_sample_count(distance, spacing);
+    let blend = clothline_sag_fraction(sag, distance);
+    let mut previous = thread_point(a, b, blend, distance, 0, count);
+    for i in 0..count {
+        let next = thread_point(a, b, blend, distance, i + 1, count);
+        let delta = next - previous;
+        let segment_length = delta.length();
+        let forward = delta * (1.0 / segment_length);
+        // 1407e2a6f..2e0a signed zero products are actual business axis values.
+        let right = Vec3::new(
+            forward.z + forward.y * (-0.0),
+            forward.x * 0.0 + forward.z * (-0.0),
+            -forward.x - forward.y * (-0.0),
+        )
+        .normalize();
+        let up = forward.cross(right).normalize();
+        let rotation = Quat::from_mat3(&Mat3::from_cols(right, up, forward));
+        let mut builder = WindowVisualEntityBuilder::new(previous, rotation, id);
+        builder.scale = Vec3::new(width, width, segment_length);
+        builder.mesh_name = CLOTH_MESH_THREAD;
+        builder.nani_name = "nani_solid_vertex_color";
+        builder.build(
+            context.commands,
+            id,
+            context.meshes,
+            context.shaders,
+            context.transient,
+        );
+        previous = next;
+    }
+}
+
+// Legacy pure quad utilities below are retained for the separate incomplete
+// general-flag domain only. The actual cloth system uses real Commands/clothline.
+/// Legacy pure quad sampling for the separate incomplete flag route. This is
+/// not the recovered original thread producer; actual ClothInfo uses clothline.
+pub fn clothline_points(a: Vec3, b: Vec3, spacing: f32, sag_len: f32, sag_scale: f32) -> Vec<Vec3> {
     let dist = (b - a).length();
     let n = clothline_sample_count(dist, spacing);
     let blend = clothline_sag_fraction(sag_len, dist) * sag_scale;
@@ -284,11 +248,7 @@ pub fn clothline_points(
     points
 }
 
-/// 布条四角（O 结构；U：角点归一化细节）。
-///
-/// 每段用半宽 `width*0.5` 沿 XZ 法线展开：机器码以
-/// `0.5 / sqrt(...)` 归一化两轴并依据主轴符号选角点顺序（0x1407e2a6f..
-/// 0x1407e2e0a）；此处以等价垂直基展开，角点顺序 U。
+/// Legacy quad approximation retained outside the actual ClothInfo chain.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ClothQuad {
     pub corners: [Vec3; 4],
@@ -314,7 +274,9 @@ pub fn clothline_quads(points: &[Vec3], width: f32) -> Vec<ClothQuad> {
     quads
 }
 
-/// 0x1407df470（O 结构）：生成旗连接（旗到旗的布绳）。
+/// Legacy incomplete general-flag projection, outside the recovered ClothInfo chain.
+/// Its upstream wall-side tags/style and real output are not restored; do not
+/// register this as evidence of a working flag producer. It still only derives quads.
 ///
 /// 锚点从已放置旗装饰读取 `DecoratorExtraInfo::try_as_flag`（O callee）与缓存
 /// 变换位置。原函数还用 FUN_1407df050 做墙侧相邻查询（U，锚点来源由调用者
@@ -346,37 +308,14 @@ pub fn generate_flag_connections(
     }
     let params = ConnectParams::default();
     let result = greedily_connect(&anchors, &params, |_a, _b, _len| false);
-    for (a_id, b_id) in &result.edges {
-        let a = anchors.iter().find(|x| x.id == *a_id).expect("edge endpoint");
-        let b = anchors.iter().find(|x| x.id == *b_id).expect("edge endpoint");
+    for &(a_index, b_index) in &result.edges {
+        let a = &anchors[a_index];
+        let b = &anchors[b_index];
         // O：两次布料调用（0x142a88b30 len 0x27 / 0x142a88b57 len 0x14）。
         let points = clothline_points(a.pos, b.pos, 0.3, 0.0, 0.0);
         let _quads = clothline_quads(&points, CLOTH_SEGMENT_WIDTH);
     }
     let _ = &mut transient;
-}
-
-/// 0x1407e2510（O 结构）：生成一段布绳（旗间）。
-///
-/// 原函数经 `WindowVisualEntityBuilder::build<Transient>`（0x1412ab270）落
-/// 瞬态表；本实现先产出可验证几何（采样点 + 四角），实体构建在持有
-/// `Commands`/网格库的宿主完成。返回 None 表示 `dist` 非正（原码退化路径，
-/// 无有效布绳）。
-pub fn clothline(
-    a: Vec3,
-    b: Vec3,
-    spacing: f32,
-    sag_len: f32,
-    sag_scale: f32,
-    width: f32,
-    _transient: &mut DecoratorTransientVisualState,
-) -> Option<Vec<ClothQuad>> {
-    let dist = (b - a).length();
-    if !(dist > 0.0) {
-        return None;
-    }
-    let points = clothline_points(a, b, spacing, sag_len, sag_scale);
-    Some(clothline_quads(&points, width))
 }
 
 #[cfg(test)]
@@ -432,7 +371,7 @@ mod tests {
             anchor(3, 0, Vec3::new(-3.0, 0.0, 0.0)),
         ];
         let r = greedily_connect(&anchors, &ConnectParams::default(), |_, _, _| false);
-        assert_eq!(r.degrees.get(&1), Some(&2));
+        assert_eq!(r.degrees[0], 2);
         assert_eq!(r.edges.len(), 2);
     }
 
@@ -470,7 +409,7 @@ mod tests {
     fn sample_count_is_at_least_two() {
         assert_eq!(clothline_sample_count(0.1, 1.0), 2);
         assert_eq!(clothline_sample_count(3.0, 1.0), 3);
-        assert_eq!(clothline_sample_count(10.0, 0.3), 33);
+        assert_eq!(clothline_sample_count(10.0, 0.3), 34);
     }
 
     #[test]
@@ -500,5 +439,116 @@ mod tests {
         let c = &quads[0].corners;
         assert!((c[0].z - 0.5).abs() < 1e-6);
         assert!((c[2].z - 0.5).abs() < 1e-6);
+    }
+}
+
+#[cfg(test)]
+mod restored_connection_tests {
+    use super::*;
+    fn a(id: u32, wall: u64, x: f32) -> FlagAnchor {
+        FlagAnchor {
+            id,
+            wall,
+            pos: Vec3::new(x, 2.0, 0.0),
+            source: true,
+            target: true,
+        }
+    }
+    fn cloth_params() -> ConnectParams {
+        ConnectParams {
+            max_per_node: 1,
+            allow_same_wall: true,
+            near_different_wall: 9.0,
+            far_same_wall: 6.0,
+            min_same_wall: 0.0,
+        }
+    }
+    #[test]
+    fn stable_unsigned_order_keeps_duplicate_ids_as_distinct_dense_indices() {
+        let anchors = [a(u32::MAX, 3, 4.0), a(7, 1, 0.0), a(7, 2, 2.0)];
+        let result = greedily_connect(&anchors, &cloth_params(), |_, _, _| false);
+        assert_eq!(result.sorted_indices, [1, 2, 0]);
+        assert_eq!(result.edges, [(1, 2)]);
+        assert_eq!(result.degrees, [0, 1, 1]);
+    }
+    #[test]
+    fn each_source_sorts_weights_with_same_wall_bias_and_stable_ties() {
+        let anchors = [a(1, 0, 0.0), a(2, 0, 2.0), a(3, 1, 4.0)];
+        let result = greedily_connect(&anchors, &cloth_params(), |_, _, _| false);
+        assert_eq!(result.edges, [(0, 2)]); // Same-wall2+3 loses to different-wall4.
+        let ties = [a(1, 0, 0.0), a(2, 1, 4.0), a(3, 2, -4.0)];
+        assert_eq!(
+            greedily_connect(&ties, &cloth_params(), |_, _, _| false).edges,
+            [(0, 1)]
+        );
+        let source_order = [a(1, 0, 0.0), a(2, 1, 4.0), a(3, 2, 4.1), a(4, 3, 8.0)];
+        assert_eq!(
+            greedily_connect(&source_order, &cloth_params(), |_, _, _| false).edges,
+            [(0, 1), (2, 3)]
+        );
+        // A global shortest-edge sort would incorrectly pick (1,2) first.
+    }
+    #[test]
+    fn disabled_same_wall_still_allows_different_wall_and_nan_is_rejected() {
+        let mut params = cloth_params();
+        params.allow_same_wall = false;
+        assert!(
+            greedily_connect(&[a(1, 2, 0.0), a(2, 2, 2.0)], &params, |_, _, _| false)
+                .edges
+                .is_empty()
+        );
+        assert_eq!(
+            greedily_connect(&[a(1, 2, 0.0), a(2, 3, 2.0)], &params, |_, _, _| false).edges,
+            [(0, 1)]
+        );
+        assert!(
+            greedily_connect(&[a(1, 2, 0.0), a(2, 3, f32::NAN)], &params, |_, _, _| false)
+                .edges
+                .is_empty()
+        );
+        assert!(clothline_sag_fraction(f32::NAN, 1.0).is_nan());
+        assert_eq!(clothline_sample_count(10.0, 0.3), 34);
+        assert_eq!(clothline_sample_count(f32::NAN, 0.3), 2);
+    }
+    #[test]
+    fn actual_finite_raycast_blocks_before_endpoint_but_not_beyond_it() {
+        use country_core::systems::collision::world::{
+            upsert_collider, RaycastGeoSource, RaycastMeshData, RaycastWorld,
+        };
+        use std::{collections::HashMap, sync::Arc};
+        let anchors = [a(1, 1, 0.0), a(2, 2, 4.0)];
+        let mut world = RaycastWorld::new();
+        let mut receipts = HashMap::new();
+        upsert_collider(
+            &mut world,
+            &mut receipts,
+            1u32,
+            RaycastGeoSource::Slot0,
+            Arc::new(RaycastMeshData::new_cuboid_at(Vec3::ONE, Vec3::ZERO)),
+            Vec3::new(6.0, 2.0, 0.0),
+            Quat::IDENTITY,
+        );
+        world.flush_colliders();
+        let visible = greedily_connect(&anchors, &cloth_params(), |origin, direction, max_toi| {
+            assert_eq!(origin, anchors[0].pos);
+            assert_eq!(direction, Vec3::X);
+            assert_eq!(max_toi, 4.0 - 0.01);
+            world.intersects_any_with_max_toi(origin, direction, max_toi, 0x30db)
+        });
+        assert_eq!(visible.edges, [(0, 1)]);
+        upsert_collider(
+            &mut world,
+            &mut receipts,
+            1u32,
+            RaycastGeoSource::Slot0,
+            Arc::new(RaycastMeshData::new_cuboid_at(Vec3::ONE, Vec3::ZERO)),
+            Vec3::new(2.0, 2.0, 0.0),
+            Quat::IDENTITY,
+        );
+        world.flush_colliders();
+        assert!(greedily_connect(&anchors, &cloth_params(), |o, d, t| world
+            .intersects_any_with_max_toi(o, d, t, 0x30db))
+        .edges
+        .is_empty());
     }
 }

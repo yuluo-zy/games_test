@@ -1,0 +1,107 @@
+--- a/tiny-glade/crates/country-core/src/resources/roofs/geometry/surface.rs
++++ b/tiny-glade/crates/country-core/src/resources/roofs/geometry/surface.rs
+@@ -279,6 +279,40 @@
+     }
+ }
+ 
++
++/// Borrow the actual wall curve for the shared native wall-space algorithms.
++/// Endpoint extrapolation uses its selected raw pair; repeated pairs stay zero.
++impl ::utils::wall_space::CurveSampling for Curve2 {
++    fn length(&self) -> f32 {
++        self.length
++    }
++
++    fn point_u(&self, index: usize) -> f32 {
++        self.points_u[index]
++    }
++
++    fn position_at_u(&self, u: f32) -> glam::Vec2 {
++        glam::Vec2::from_array(Self::pos_at_u(self, u))
++    }
++
++    fn tangent_at_u(&self, u: f32) -> glam::Vec2 {
++        glam::Vec2::from_array(Self::tangent_at_u(self, u))
++    }
++
++    fn raw_tangent_at_u(&self, u: f32) -> glam::Vec2 {
++        let (index, _) = Self::coord_at_u(self, u);
++        let a = self.points[index];
++        let b = self.points[index + 1];
++        glam::Vec2::new(b[0] - a[0], b[1] - a[1])
++    }
++
++    fn approximate_u(&self, point: glam::Vec2) -> f32 {
++        ::utils::curve::approx_curve_u(&self.points, &self.points_u, point, |p| {
++            glam::Vec2::from_array(*p)
++        })
++    }
++}
++
+ pub fn normalized_profile_curve(profile: f32) -> Result<Curve2, CurveError> {
+     Curve2::try_new(profile_curve_normalized(profile).to_vec(), false)
+ }
+@@ -294,3 +328,63 @@
+         false,
+     )
+ }
++
++#[cfg(test)]
++mod wall_curve_sampling_tests {
++    use super::Curve2;
++    use ::utils::wall_space::{CurveSampling, WallSpaceCoord};
++    use glam::{Vec2, Vec3};
++
++    #[test]
++    fn actual_curve_pair_drives_both_endpoint_branches() {
++        let curve = Curve2::try_new(vec![[0.0, 0.0], [3.0, 4.0], [6.0, 0.0]], false)
++            .unwrap();
++        assert_eq!(CurveSampling::length(&curve), 10.0);
++        assert_eq!(curve.raw_tangent_at_u(0.0), Vec2::new(3.0, 4.0));
++        assert_eq!(curve.raw_tangent_at_u(1.0), Vec2::new(3.0, -4.0));
++        assert_eq!(CurveSampling::tangent_at_u(&curve, 0.0), Vec2::new(0.6, 0.8));
++        assert_eq!(
++            WallSpaceCoord::new_unchecked(-1.0, 2.0).to_world_space(&curve),
++            Vec3::new(0.6, 2.0, 0.8),
++        );
++        assert_eq!(
++            WallSpaceCoord::new_unchecked(11.0, 2.0).to_world_space(&curve),
++            Vec3::new(6.6, 2.0, -0.8),
++        );
++        assert_eq!(
++            WallSpaceCoord::new_unchecked(2.5, 7.0).to_world_space(&curve),
++            Vec3::new(1.5, 7.0, 2.0),
++        );
++    }
++
++    #[test]
++    fn repeated_actual_endpoint_pairs_preserve_all_nan_extrapolation() {
++        let curve = Curve2::try_new(
++            vec![[0.0, 0.0], [0.0, 0.0], [1.0, 0.0], [1.0, 0.0]],
++            false,
++        ).unwrap();
++        assert_eq!(curve.raw_tangent_at_u(0.0), Vec2::ZERO);
++        assert_eq!(curve.raw_tangent_at_u(1.0), Vec2::ZERO);
++        for u in [-1.0, 2.0] {
++            let p = WallSpaceCoord::new_unchecked(u, 4.0).to_world_space(&curve);
++            assert!(p.x.is_nan() && p.y.is_nan() && p.z.is_nan());
++        }
++    }
++
++    #[test]
++    fn actual_cache_and_native_input_failures_remain_observable() {
++        let curve = Curve2::try_new(vec![[0.0, 0.0], [1.0, 0.0], [1.0, 3.0]], false)
++            .unwrap();
++        assert_eq!(CurveSampling::point_u(&curve, 1), 0.25);
++        assert_eq!(curve.approximate_u(Vec2::new(1.0, 1.5)), 0.625);
++        let p = WallSpaceCoord::new_unchecked(2.5, f32::NAN).to_world_space(&curve);
++        assert_eq!((p.x, p.z), (1.0, 1.5));
++        assert!(p.y.is_nan());
++        for u in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
++            assert!(std::panic::catch_unwind(|| {
++                WallSpaceCoord::new_unchecked(u, 2.0).to_world_space(&curve)
++            }).is_err());
++        }
++        assert!(std::panic::catch_unwind(|| CurveSampling::point_u(&curve, 3)).is_err());
++    }
++}

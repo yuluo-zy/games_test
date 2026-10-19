@@ -1,0 +1,18 @@
+{
+  "reviewed_at_utc": "2026-10-19T15:46:47.430088+00:00",
+  "contract": {
+    "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-cefc5b92bca0aef69a/oschain-20261018/shutdown-save-host-20261019/CONTRACT.md",
+    "sha256": "99010b3cc090d7cb8d9a28439f8865f83ec6bab2623eb76280dace0111921818"
+  },
+  "verdict": "passed_design_with_required_observable_error_check",
+  "checks": [
+    "Detach actual AutoSaveState sender without resetting state, then drop handle sender, join actual worker, drain error state",
+    "Keep exact SubApp outside borrowing catch_unwind; local guard covers spawn/update/warmup/send/drop failures before losing World ownership",
+    "No tag10 when no active file; normal nonzero close still save43; zero-size only actual OS close exits without update/render/fake marker",
+    "Attached Auto with no Handle is explicit failure, not joined; no Auto/Handle legitimate loading no-op",
+    "Disconnected final flush remains warn-only and cannot prove disk durability"
+  ],
+  "implementation_requirement": "UnsavedFileList nonempty is an observable failure and must be checked, not merely preserve its Arc. Preserve preexisting auto error primary and log later failures. Join duration is governed by real I/O; no finite deadline is proved.",
+  "candidate_or_runtime_accepted": false,
+  "reviewer_ran_cargo_gpu": false
+}

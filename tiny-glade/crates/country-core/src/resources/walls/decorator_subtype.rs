@@ -11,6 +11,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use bevy_ecs::system::{Res, SystemParam};
+
+use super::decorator::DecoratorId;
 use glam::Vec2;
 use serde::{Deserialize, Serialize};
 use utils::geometry::{Rectangle2d, Rectangle3d};
@@ -97,11 +99,14 @@ impl DecoratorCollision {
     }
 }
 
-/// B DerivedDecoratorInfo：派生装饰信息（subtype + bbx + 附加）。字段语义 I/U：
-/// subtype/bbx 由 dims_wall_space 0x141fdc7b0（bbx 差值）与 subtype/try_get_subtype
-/// 0x140b26970/0x140b26980 证实；其余待取证。
+/// Legacy host record retained for unmigrated bbox/catalog callers.
+///
+/// This is not native DerivedDecoratorInfo: the original is a borrowed view of
+/// the subtype and mesh libraries. The unique backing map and four mesh tables
+/// still need their actual producer/schema migration; do not treat this record
+/// or an empty library as proof that those assets are loaded.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct DerivedDecoratorInfo {
+pub struct LegacyDerivedDecoratorInfoRecord {
     /// 子类型。
     pub subtype: DecoratorSubtype,
     /// I：bbx min（库空间）。
@@ -112,7 +117,11 @@ pub struct DerivedDecoratorInfo {
     pub alt_subtype: Option<DecoratorSubtype>,
 }
 
-impl DerivedDecoratorInfo {
+/// Compatibility name for callers awaiting the real catalog/schema migration.
+#[deprecated(note = "legacy bbox record; canonical ID lookup is DerivedDecoratorInfoView")]
+pub type DerivedDecoratorInfo = LegacyDerivedDecoratorInfoRecord;
+
+impl LegacyDerivedDecoratorInfoRecord {
     /// 行 273（内联，I）：构造。
     pub fn new(subtype: DecoratorSubtype, bbx_min: glam::Vec3, bbx_max: glam::Vec3) -> Self {
         Self {
@@ -123,14 +132,9 @@ impl DerivedDecoratorInfo {
         }
     }
 
-    /// 0x140b26970（O）：子类型访问。
+    /// Legacy record field access, not native required ID lookup.
     pub fn subtype(&self) -> DecoratorSubtype {
         self.subtype
-    }
-
-    /// 0x140b26980（O）：子类型 Option 访问（I：alt 语义待取证）。
-    pub fn try_get_subtype(&self) -> Option<DecoratorSubtype> {
-        Some(self.subtype)
     }
 
     /// 行 285（内联，I）：墙空间尺寸（bbx 差值）。
@@ -164,30 +168,30 @@ impl DerivedDecoratorInfo {
     }
 }
 
-impl IntoDecoratorSubtype for DerivedDecoratorInfo {
+impl IntoDecoratorSubtype for LegacyDerivedDecoratorInfoRecord {
     /// impl$6（0x140833ba0）：尾跳转发（取 subtype）。
     fn into_decorator_subtype(self) -> DecoratorSubtype {
         self.subtype
     }
 }
 
-/// B DerivedDecoratorSubtypes：HashMap<u32, Arc<DerivedDecoratorInfo>>（0x140b25b60
-/// 查询；未命中 panic）。作为资源注册（SystemParam 消费）。
+/// Unique current subtype owner, still using legacy host record payloads.
+/// Native ID→DecoratorSubtype representation migration remains with its producer.
 #[derive(bevy_ecs::resource::Resource, Clone, Debug, Default)]
 pub struct DerivedDecoratorSubtypes {
-    map: HashMap<u32, Arc<DerivedDecoratorInfo>>,
+    map: HashMap<u32, Arc<LegacyDerivedDecoratorInfoRecord>>,
 }
 
 impl DerivedDecoratorSubtypes {
     /// 0x140b25b60（O）：查询，未命中 panic。
-    pub fn get(&self, id: u32) -> Arc<DerivedDecoratorInfo> {
+    pub fn get(&self, id: u32) -> Arc<LegacyDerivedDecoratorInfoRecord> {
         self.map.get(&id).cloned().unwrap_or_else(|| {
             panic!("The decorator subtype library doesn't contain subtype {}", id)
         })
     }
 
     /// 插入（供网格库维护；原为消费方注册，0x140b25b60 对面）。
-    pub fn insert(&mut self, id: u32, info: Arc<DerivedDecoratorInfo>) {
+    pub fn insert(&mut self, id: u32, info: Arc<LegacyDerivedDecoratorInfoRecord>) {
         self.map.insert(id, info);
     }
 }
@@ -195,17 +199,18 @@ impl DerivedDecoratorSubtypes {
 /// B DecoratorMeshLibrary：4 表（map1@+0x0 collision、map2@+0x30 interaction、
 /// map3@+0x60 outline、map4@+0x90 collision_outline；insert 0x140b262a0 克隆后插
 /// 4 表）。outline 表在 decorator_outline.rs 专项（本文件外）；此处以同一
-/// DerivedDecoratorInfo 记录承载并登记该边界。作为资源注册（SystemParam 消费）。
+/// LegacyDerivedDecoratorInfoRecord 记录承载并登记该边界。作为资源注册（SystemParam 消费）。
+/// These legacy values are not genuine native collision/outline payloads.
 #[derive(bevy_ecs::resource::Resource, Clone, Debug, Default)]
 pub struct DecoratorMeshLibrary {
     /// map1@+0x0：碰撞表。
-    pub collision: HashMap<DecoratorLibKey, Arc<DerivedDecoratorInfo>>,
+    pub collision: HashMap<DecoratorLibKey, Arc<LegacyDerivedDecoratorInfoRecord>>,
     /// map2@+0x30：交互表。
-    pub interaction: HashMap<DecoratorLibKey, Arc<DerivedDecoratorInfo>>,
+    pub interaction: HashMap<DecoratorLibKey, Arc<LegacyDerivedDecoratorInfoRecord>>,
     /// map3@+0x60：描边表（专项类型在 decorator_outline.rs）。
-    pub outline: HashMap<DecoratorLibKey, Arc<DerivedDecoratorInfo>>,
+    pub outline: HashMap<DecoratorLibKey, Arc<LegacyDerivedDecoratorInfoRecord>>,
     /// map4@+0x90：碰撞描边表。
-    pub collision_outline: HashMap<DecoratorLibKey, Arc<DerivedDecoratorInfo>>,
+    pub collision_outline: HashMap<DecoratorLibKey, Arc<LegacyDerivedDecoratorInfoRecord>>,
 }
 
 impl DecoratorMeshLibrary {
@@ -213,14 +218,14 @@ impl DecoratorMeshLibrary {
     pub fn insert_collision_and_interaction_as_same(
         &mut self,
         key: DecoratorLibKey,
-        info: Arc<DerivedDecoratorInfo>,
+        info: Arc<LegacyDerivedDecoratorInfoRecord>,
     ) {
         self.collision.insert(key, info.clone());
         self.interaction.insert(key, info);
     }
 
     /// 0x140b262a0（O）：Arc 克隆后插 4 表。
-    pub fn insert(&mut self, key: u32, info: Arc<DerivedDecoratorInfo>) {
+    pub fn insert(&mut self, key: u32, info: Arc<LegacyDerivedDecoratorInfoRecord>) {
         let lib_key = DecoratorLibKey::new(key as u8, 0);
         self.insert_collision_and_interaction_as_same(lib_key, info.clone());
         self.outline.insert(lib_key, info.clone());
@@ -228,12 +233,12 @@ impl DecoratorMeshLibrary {
     }
 
     /// 0x140b26690（O）：map3@+0x60 描边查询。
-    pub fn get_outline(&self, key: DecoratorLibKey) -> Option<Arc<DerivedDecoratorInfo>> {
+    pub fn get_outline(&self, key: DecoratorLibKey) -> Option<Arc<LegacyDerivedDecoratorInfoRecord>> {
         self.outline.get(&key).cloned()
     }
 
     /// 0x140b267f0（O）：map4@+0x90 碰撞描边查询。
-    pub fn get_collision_outline(&self, key: DecoratorLibKey) -> Option<Arc<DerivedDecoratorInfo>> {
+    pub fn get_collision_outline(&self, key: DecoratorLibKey) -> Option<Arc<LegacyDerivedDecoratorInfoRecord>> {
         self.collision_outline.get(&key).cloned()
     }
 
@@ -268,24 +273,82 @@ impl DecoratorMeshLibrary {
     }
 }
 
-/// impl$8::from 0x140b26a70（O）：双字段提取 {+0x0,+0x20}。I：目标类型待取证；
-/// 此处登记为从 DerivedDecoratorInfo 提取（subtype@+0x0）的便捷 From。
-impl From<&DerivedDecoratorInfo> for DecoratorSubtype {
-    fn from(info: &DerivedDecoratorInfo) -> Self {
+/// Legacy record conversion only; native From140b26a70 is the two-owner view below.
+impl From<&LegacyDerivedDecoratorInfoRecord> for DecoratorSubtype {
+    fn from(info: &LegacyDerivedDecoratorInfoRecord) -> Self {
         info.subtype
     }
 }
 
-/// B `_impl$0` SystemParam 门（行 336）：queue/apply/new_archetype 0x14003bb80 =
-/// ret 空函数；validate_param 0x14026c6a0 = bevy 派生胶水（检查
-/// "::subtypes"/"::mesh_lib::subtypes" 资源存在，0x1429a7502/0x1429a74f8）。
-/// derive(SystemParam) 生成的默认 no-op trait 方法即原空函数语义。字段由后续
-/// 消费系统读取（当前仅作资源句柄登记）。
-#[allow(dead_code)]
+/// Actual unique resource owners used by native DerivedDecoratorInfo.
+///
+/// The SystemParam replaces the old registration-only DecoratorSubtypes shell.
+/// The backing map still contains legacy host records during the explicit
+/// producer migration; no second subtype table or mesh library is introduced.
 #[derive(SystemParam)]
-pub struct DecoratorSubtypes<'w> {
+pub struct DerivedDecoratorInfoResources<'w> {
     subtypes: Res<'w, DerivedDecoratorSubtypes>,
     mesh_lib: Res<'w, DecoratorMeshLibrary>,
+}
+
+impl DerivedDecoratorInfoResources<'_> {
+    pub fn as_view(&self) -> DerivedDecoratorInfoView<'_> {
+        DerivedDecoratorInfoView::new(&self.subtypes, &self.mesh_lib)
+    }
+}
+
+/// Compatibility alias for the former registration-only SystemParam name.
+#[deprecated(note = "use DerivedDecoratorInfoResources and borrow its actual two-owner view")]
+pub type DecoratorSubtypes<'w> = DerivedDecoratorInfoResources<'w>;
+
+/// Borrowed native DerivedDecoratorInfo owner pair (From140b26a70/8B).
+///
+/// This lifetime-safe view shares the existing canonical resources. It does not
+/// clone an Arc, cache a second subtype map, or claim the legacy collision and
+/// outline table payloads are restored.
+#[derive(Clone, Copy, Debug)]
+pub struct DerivedDecoratorInfoView<'a> {
+    subtypes: &'a DerivedDecoratorSubtypes,
+    mesh_lib: &'a DecoratorMeshLibrary,
+}
+
+impl<'a> DerivedDecoratorInfoView<'a> {
+    pub const fn new(
+        subtypes: &'a DerivedDecoratorSubtypes,
+        mesh_lib: &'a DecoratorMeshLibrary,
+    ) -> Self {
+        Self { subtypes, mesh_lib }
+    }
+
+    /// Native231B lookup returns None for a missing actual decorator ID.
+    ///
+    /// Borrow directly from the unique stored entry during the explicit legacy
+    /// map migration. Do not obtain a temporary cloned Arc through get(id).
+    pub fn try_get_subtype(&self, id: DecoratorId) -> Option<&'a DecoratorSubtype> {
+        self.subtypes.map.get(&id.0).map(|entry| &entry.subtype)
+    }
+
+    /// Native8B required lookup preserves the missing-ID failure.
+    pub fn subtype(&self, id: DecoratorId) -> DecoratorSubtype {
+        *self.try_get_subtype(id).unwrap_or_else(|| {
+            panic!("The decorator subtype library doesn't contain subtype {}", id.0)
+        })
+    }
+
+    pub fn subtype_library(&self) -> &'a DerivedDecoratorSubtypes {
+        self.subtypes
+    }
+
+    /// The real second owner; its current legacy payload migration is separate.
+    pub fn mesh_library(&self) -> &'a DecoratorMeshLibrary {
+        self.mesh_lib
+    }
+}
+
+impl<'a, 'w> From<&'a DerivedDecoratorInfoResources<'w>> for DerivedDecoratorInfoView<'a> {
+    fn from(resources: &'a DerivedDecoratorInfoResources<'w>) -> Self {
+        resources.as_view()
+    }
 }
 
 #[cfg(test)]
@@ -303,7 +366,7 @@ mod tests {
     #[test]
     fn mesh_library_insert_and_query_4_tables() {
         let mut lib = DecoratorMeshLibrary::default();
-        let info = Arc::new(DerivedDecoratorInfo::new(
+        let info = Arc::new(LegacyDerivedDecoratorInfoRecord::new(
             DecoratorSubtype(1),
             glam::Vec3::new(0.0, 0.0, 0.0),
             glam::Vec3::new(1.0, 2.0, 3.0),
@@ -331,9 +394,58 @@ mod tests {
     #[test]
     fn into_decorator_subtype_forwarding() {
         assert_eq!(DecoratorSubtype(5).into_decorator_subtype(), DecoratorSubtype(5));
-        let d = DerivedDecoratorInfo::new(DecoratorSubtype(6), glam::Vec3::ZERO, glam::Vec3::ONE);
+        let d = LegacyDerivedDecoratorInfoRecord::new(DecoratorSubtype(6), glam::Vec3::ZERO, glam::Vec3::ONE);
         assert_eq!(d.into_decorator_subtype(), DecoratorSubtype(6));
     }
+    #[test]
+    fn derived_view_borrows_existing_entry_without_cloning_arc() {
+        let mut subtypes = DerivedDecoratorSubtypes::default();
+        let mesh_lib = DecoratorMeshLibrary::default();
+        let entry = Arc::new(LegacyDerivedDecoratorInfoRecord::new(
+            DecoratorSubtype(20), glam::Vec3::ZERO, glam::Vec3::ONE,
+        ));
+        subtypes.insert(7, entry.clone());
+        let owners = Arc::strong_count(&entry);
+        let view = DerivedDecoratorInfoView::new(&subtypes, &mesh_lib);
+        assert!(core::ptr::eq(view.subtype_library(), &subtypes));
+        assert!(core::ptr::eq(view.mesh_library(), &mesh_lib));
+        assert!(core::ptr::eq(view.try_get_subtype(DecoratorId(7)).unwrap(), &entry.subtype));
+        assert_eq!(view.subtype(DecoratorId(7)), DecoratorSubtype(20));
+        assert_eq!(Arc::strong_count(&entry), owners);
+        assert_eq!(view.try_get_subtype(DecoratorId(8)), None);
+    }
+
+    #[test]
+    fn derived_view_required_missing_id_is_observable() {
+        let subtypes = DerivedDecoratorSubtypes::default();
+        let mesh_lib = DecoratorMeshLibrary::default();
+        let view = DerivedDecoratorInfoView::new(&subtypes, &mesh_lib);
+        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            view.subtype(DecoratorId(99));
+        })).is_err());
+    }
+
+    #[test]
+    fn system_param_view_reuses_actual_world_owners_and_sees_next_producer_write() {
+        use bevy_ecs::{system::SystemState, world::World};
+        let mut world = World::new();
+        world.insert_resource(DerivedDecoratorSubtypes::default());
+        world.insert_resource(DecoratorMeshLibrary::default());
+        let mut state = SystemState::<DerivedDecoratorInfoResources>::new(&mut world);
+        {
+            let resources = state.get(&world);
+            let view = DerivedDecoratorInfoView::from(&resources);
+            assert!(core::ptr::eq(view.subtype_library(), world.resource::<DerivedDecoratorSubtypes>()));
+            assert!(core::ptr::eq(view.mesh_library(), world.resource::<DecoratorMeshLibrary>()));
+            assert_eq!(view.try_get_subtype(DecoratorId(7)), None);
+        }
+        world.resource_mut::<DerivedDecoratorSubtypes>().insert(7, Arc::new(
+            LegacyDerivedDecoratorInfoRecord::new(DecoratorSubtype(5), glam::Vec3::ZERO, glam::Vec3::ONE),
+        ));
+        let resources = state.get(&world);
+        assert_eq!(resources.as_view().subtype(DecoratorId(7)), DecoratorSubtype(5));
+    }
+
 }
 
 pub mod placement;

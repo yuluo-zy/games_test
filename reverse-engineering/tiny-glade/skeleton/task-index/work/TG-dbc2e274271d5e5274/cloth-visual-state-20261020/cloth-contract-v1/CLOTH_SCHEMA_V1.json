@@ -1,0 +1,115 @@
+{
+  "scope": "B-only semantic recovery; not a PDB field declaration or C-equivalence claim",
+  "native_type_name": "system_decorator::decorator_visual_state::ClothInfo",
+  "allocation": {
+    "bytes": 80,
+    "alignment": 16,
+    "effective_fields_end_exclusive": "0x44",
+    "padding_not_semantic": [
+      "0x28..0x2f",
+      "0x44..0x4f"
+    ]
+  },
+  "proposed_type": {
+    "module": "system_decorator::decorator_visual_state",
+    "name": "ClothInfo",
+    "traits": [
+      "Clone",
+      "Debug",
+      "PartialEq"
+    ],
+    "excluded": [
+      "Default",
+      "Copy",
+      "Resource",
+      "Component",
+      "Eq",
+      "repr(C)",
+      "unsafe raw-byte clone or equality"
+    ]
+  },
+  "fields": [
+    {
+      "name": "transform",
+      "type": "country_core::utils::components::transform::Transform",
+      "native_offsets": {
+        "rotation": "0x00",
+        "translation": "0x10/0x14/0x18",
+        "scale": "0x1c/0x20/0x24"
+      },
+      "evidence": [
+        "wall writes 0x1407ee335..0x1407ee352",
+        "corner writes 0x1407f7f0f..0x1407f7f31",
+        "eq 0x1408250de..0x140825143",
+        "fold 0x141293730 / 434B"
+      ]
+    },
+    {
+      "name": "wall",
+      "type": "country_core::resources::walls::WallId",
+      "native_offset": "0x30",
+      "evidence": [
+        "wall outer HashMap key 0x1407ec3cd -> local+1f0 -> 0x1407ee355",
+        "corner outer HashMap key 0x1407f6a56 -> local+c0 -> PublicWalls::get 0x1407f6c2c and write 0x1407f7f3f",
+        "eq 0x1408250b0..0x1408250b8"
+      ]
+    },
+    {
+      "name": "dimensions",
+      "type": "[f32; 2]",
+      "native_offsets": [
+        "0x38",
+        "0x3c"
+      ],
+      "naming_limit": "Two geometry-derived float values; field label is a host semantic name, not recovered original names or a claim of width/height order. Preserve actual producer order.",
+      "evidence": [
+        "wall writes 0x1407ee359..0x1407ee366",
+        "corner writes 0x1407f7f43..0x1407f7f49",
+        "ordered eq 0x1408250c2..0x1408250dc",
+        "fold reads same offsets"
+      ]
+    },
+    {
+      "name": "decorator_id",
+      "type": "country_core::resources::walls::decorator::DecoratorId",
+      "native_offset": "0x40",
+      "evidence": [
+        "wall iter_modified id 0x1407ec48e -> local+278 -> write 0x1407ee373",
+        "corner iter_modified id 0x1407f6b1a -> local+168 -> write 0x1407f7f4f",
+        "eq 0x1408250ba..0x1408250c0"
+      ]
+    }
+  ],
+  "eq": {
+    "none_none": true,
+    "none_some": false,
+    "some_some": "all actual IDs and 12 float lanes equal with ordered float equality; no pointer identity shortcut and no padding comparisons",
+    "nan": "any compared NaN makes values unequal, including an unchanged same Box",
+    "signed_zero": "+0.0 equals -0.0",
+    "infinity": "ordinary f32 equality"
+  },
+  "ownership": {
+    "blueprint": "Option<Box<ClothInfo>>, semantic field +0x110, raw Arc allocation +0x120; not Arc<ClothInfo>",
+    "replace": "old allocation directly deallocated with size80/alignment16, no nested field destructor",
+    "visual_state": "Vec<ClothInfo> by-value entries, stride80. Fullvisual copies only effective fields before its differential gate.",
+    "drop": "first Vec allocation deallocated cap*80/align16, no per-element destructor"
+  },
+  "distinct_types": [
+    {
+      "type": "system_decorator::decorator_visual_state::ClothInfo",
+      "role": "window blueprint semantic cloth candidate -> global firstVec -> CandidateInfo projection"
+    },
+    {
+      "type": "country_core::components::ClothlineCloth",
+      "role": "Nani set44 Query payload with Key,Transform,NormalMap; not the blueprint candidate"
+    },
+    {
+      "type": "country_core::components::WallFlagCloth",
+      "role": "wall raster cloth parameters; prior 20B stand-in/migration unresolved separately"
+    },
+    {
+      "type": "system_decorator::decorator_visual::flag_connections::CandidateInfo",
+      "role": "mapped clothline algorithm input with extra fields at+0x44/+0x4c; not an alias of ClothInfo"
+    }
+  ]
+}

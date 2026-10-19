@@ -1,0 +1,59 @@
+Source: /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/render-recovery/producer-closure/t1-pdb-types/findings.md
+SHA256: da0c5a94c291b3fb98e8c81c6db04cc3222c3d78b86b7a15c899fe7952886d8b
+
+1: # T1 调查：PDB 类型记录能否恢复签名（**明确否定**）
+2: 
+3: - 目标：`D:/game/ljxsj_92385/Tiny Glade/tiny_glade.pdb`（274,710,528 B）。
+4: - 方法：自写 MSF + CodeView 解析器（读原始 PDB，只读）+ `llvm-pdbutil 20.1.0` 交叉。两者结果**完全一致**。
+5: - 产物：`t1-pdb-types/{parse_pdb_types.py, parser_output.json, SUMMARY.json, aggregate_symstats.py, symbol_kind_aggregate.json, tpi_full.txt, ipi_samples.txt, symbol_stats.txt, commands.txt}`。
+6: - 未改动原作目录，未跑 cargo。
+7: 
+8: ## 0. 根因（**父级已独立验证**）
+9: 
+10: PDB 里存着构建命令：**`"-C" "debuginfo=line-tables-only"`**（`grep -a -c` 命中 **120** 次；父级复核）。
+11: 
+12: ⇒ **Rust 侧只产出行表 + 函数级 + inline site，按设计不产出参数、局部变量与类型。** 这**一条解释了以下全部现象**，也是本次调查最有价值的产出。
+13: 
+14: ## 1. 逐类记录数量
+15: 
+16: **TPI（stream 2）共 6,125**：`LF_PROCEDURE` **1,710**、`LF_MFUNCTION` 86、`LF_ARGLIST` 1,466、`LF_STRUCTURE` 753、`LF_POINTER` 828、`LF_FIELDLIST` 486、`LF_MODIFIER` 215。
+17: **全部是 C/C++ 第三方**（`_cmsContext_struct` = LittleCMS、`_KNONVOLATILE_CONTEXT_POINTERS` = VC CRT、`ISA_AVAILABILITY`）。
+18: ⇒ **TPI 里 rhapsody 出现 0 次。**
+19: 
+20: **IPI（stream 4）共 132,599**：`LF_FUNC_ID` **83,429**、`LF_STRING_ID` 43,625、`LF_MFUNC_ID` 35、`LF_BUILDINFO` 4,838、`LF_UDT_SRC_LINE` 670。
+21: 
+22: **子流直方图（父级确认 T2 的同类数字）**：`S_LOCAL` 202,093 但**只落在 76 个模块**（`* Linker *` 自身 101,047 + zstd-sys/lcms2-sys/ring(C) + intel_tex_2 ISPC + MSVC CRT）。**纯 Rust 的 `*.rcgu.o` 模块 `S_LOCAL = 0`。** `S_REGREL32` 仅 75、`S_UDT` 4。
+23: 模块符号几乎只有 `S_GPROC32`(124,966) / `S_LPROC32` / `S_INLINESITE`(6.45 M) / `S_END` / `S_FRAMEPROC` / `S_LINES` / checksums ⇒ **无参数名、无局部变量、无寄存器相对变量**。
+24: 
+25: ## 2. 参数类型是否可用 → **否**
+26: 
+27: - TPI 索引 **`0x1001`** = `LF_PROCEDURE{ return = void, #args = 0, cdecl }` —— 即 Rust 的 **`void()` 占位**。
+28: - **83,429 个 `LF_FUNC_ID` 中 80,103 个（96.0%）指向它**，其余指向少量 C/CRT 类型。
+29: - **rhapsody 的 943 个 `LF_FUNC_ID` 全部指向 `0x1001`，无一例外。**
+30: 
+31: **实例演示**（地址经 `S_PUB32` 公共符号核对，函数身份与 IPI scope 完全吻合）：
+32: 
+33: | 地址 | 名字 | IPI `FUNC_ID` → 类型 |
+34: |---|---|---|
+35: | `0x140530430` | `rhapsody::rg::resource_info::ResourceInfo::calculate` | **`0x1001` void()** |
+36: | `0x140beabd0` | `rhapsody::rg::executor::GraphExecutor::begin_frame` | **`0x1001` void()** |
+37: | `0x140c04e20` | `rhapsody::raw::device::GraphicsDevice::queue_submit` | **`0x1001` void()** |
+38: | `0x1409dca90` | `rhapsody::rg::pass_builder::PassBuilder<UserData>::add_resource_access` | **`0x1001` void()** |
+
+68: 
+69: ## 7. 不可得（明确）
+70: 
+71: **参数类型、参数名、返回类型、局部变量、Rust 结构体/枚举布局、trait/泛型实例化、Rust 调用约定** —— **PDB 均无法给出**。
+72: **根因是构建标志 `debuginfo=line-tables-only`**，不是解析技术问题。
+73: 
+74: ⇒ 字段布局只能靠**反汇编**（工程一直在做的偏移级观察），签名只能靠**调用点 ABI**（T2），且两者都拿不到类型语义。
+75: 
+76: ## 8. 对"可实现性"的最终影响
+77: 
+78: | 问题 | 答案 |
+79: |---|---|
+80: | PDB 能恢复签名吗？ | **不能**（根因：`line-tables-only`） |
+81: | PDB 能恢复 Rust 类型布局吗？ | **不能**（TPI 里 rhapsody 出现 0 次） |
+82: | void() 占位是全部吗？ | **96.0% 是**，rhapsody 侧 **100% 是** |
+83: | 那泛型名呢？ | 是 PDB 数据，但**只给泛型实参，不给签名** |
+

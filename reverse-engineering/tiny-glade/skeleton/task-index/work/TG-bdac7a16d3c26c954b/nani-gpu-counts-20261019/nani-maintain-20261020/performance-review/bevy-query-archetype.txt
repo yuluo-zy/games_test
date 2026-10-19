@@ -1,0 +1,67 @@
+Source: /Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/query/state.rs
+SHA256: 2f3189f1ec1d184e349b42ed68f710a17cc38da771e2d17976854dc534e684a8
+
+633:     unsafe fn new_archetype_internal(&mut self, archetype: &Archetype) -> bool {
+634:         if D::matches_component_set(&self.fetch_state, &|id| archetype.contains(id))
+635:             && F::matches_component_set(&self.filter_state, &|id| archetype.contains(id))
+636:             && self.matches_component_set(&|id| archetype.contains(id))
+637:         {
+638:             let archetype_index = archetype.id().index();
+639:             if !self.matched_archetypes.contains(archetype_index) {
+640:                 self.matched_archetypes.grow_and_insert(archetype_index);
+641:                 if !self.is_dense {
+642:                     self.matched_storage_ids.push(StorageId {
+643:                         archetype_id: archetype.id(),
+644:                     });
+645:                 }
+646:             }
+647:             let table_index = archetype.table_id().as_usize();
+648:             if !self.matched_tables.contains(table_index) {
+649:                 self.matched_tables.grow_and_insert(table_index);
+650:                 if self.is_dense {
+651:                     self.matched_storage_ids.push(StorageId {
+652:                         table_id: archetype.table_id(),
+653:                     });
+654:                 }
+655:             }
+656:             true
+657:         } else {
+658:             false
+659:         }
+
+677:     /// The passed in `access` will be updated with any new accesses introduced by the new archetype.
+678:     ///
+679:     /// # Safety
+680:     /// `archetype` must be from the `World` this state was initialized from.
+681:     pub unsafe fn update_archetype_component_access(
+682:         &mut self,
+683:         archetype: &Archetype,
+684:         access: &mut Access<ArchetypeComponentId>,
+685:     ) {
+686:         // As a fast path, we can iterate directly over the components involved
+687:         // if the `access` is finite.
+688:         if let Ok(iter) = self.component_access.access.try_iter_component_access() {
+689:             iter.for_each(|component_access| {
+690:                 if let Some(id) = archetype.get_archetype_component_id(*component_access.index()) {
+691:                     match component_access {
+692:                         ComponentAccessKind::Archetypal(_) => {}
+693:                         ComponentAccessKind::Shared(_) => {
+694:                             access.add_component_read(id);
+695:                         }
+696:                         ComponentAccessKind::Exclusive(_) => {
+697:                             access.add_component_write(id);
+698:                         }
+699:                     }
+700:                 }
+701:             });
+702: 
+703:             return;
+704:         }
+705: 
+706:         for (component_id, archetype_component_id) in
+707:             archetype.components_with_archetype_component_id()
+708:         {
+709:             if self
+710:                 .component_access
+711:                 .access
+

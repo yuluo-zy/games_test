@@ -175,6 +175,25 @@ pub fn garden_rasterize_from_cpu(
     })
 }
 
+/// Retain the same App's actual allocation, with full handle-generation
+/// validation. This is a physical range projection, not an upload or new buffer.
+fn retain_nani_cull_read(
+    buffers: &crate::render_host::BufferHost,
+    handle: &country_core::render::ssbo::rhapsody_boundary::Buffer,
+    bytes: u64,
+) -> rhapsody::Result<rhapsody::resource::DynamicConstantsChunk> {
+    let owner = buffers.managed_buffer(handle).ok_or_else(|| {
+        rhapsody::Error::invalid_usage("Nani cull input is stale or belongs to another App")
+    })?;
+    if bytes == 0 || bytes > owner.size || handle.byte_size != owner.size {
+        return Err(rhapsody::Error::invalid_usage("Nani cull input exceeds its actual owner"));
+    }
+    let read = rhapsody::resource::DynamicConstantsChunk {
+        buffer: owner.shared(), offset: 0, size: bytes,
+    };
+    Ok(read)
+}
+
 /// Original W22 / W28 over the actual current GpuWorld and the same frame's
 /// SSBO graph cache. The enclosing original main prelude must already have
 /// imported owned instance data. This does not run or replace the other scene
@@ -199,8 +218,10 @@ pub fn generate_nani_draw_lists(
         // declaring the first RG allocation, even when instance counts are zero.
         gpu_world.set_changed();
         with_env(frame, world, |env| {
-            Ok(country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::gpu_generate_draw_lists(
-                env, &gpu_world, &*buffers, hzb))
+            country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::gpu_generate_draw_lists(
+                env, &gpu_world, &*buffers, hzb,
+                &|handle, bytes| retain_nani_cull_read(&buffers, handle, bytes),
+            )
         })
     })
 }
@@ -474,5 +495,57 @@ impl<'f, 's, 'w> SceneComputeHost<'f, 's, 'w> {
             }
             Ok(out)
         })
+    }
+}
+
+#[cfg(test)]
+mod nani_cull_owner_tests {
+    use super::retain_nani_cull_read;
+    use country_core::render::ssbo::rhapsody_boundary::{BufferDesc, GraphicsDevice};
+    use std::sync::Arc;
+
+    #[test]
+    fn cull_range_uses_real_generation_checked_owner_and_survives_slot_release() {
+        let device = match rhapsody::device::Device::new_headless(
+            &rhapsody::device::DeviceConfig::headless(),
+        ) {
+            Ok(device) => device,
+            Err(error) => {
+                assert!(!std::env::var("RHAPSODY_REQUIRE_VULKAN").is_ok_and(|v| v == "1"),
+                    "strict Nani cull-owner Vulkan initialization: {error}");
+                eprintln!("SKIP Nani cull-owner Vulkan initialization: {error}");
+                return;
+            }
+        };
+        let buffers = crate::render_host::BufferHost::new(device);
+        let handle = buffers.create_buffer(
+            &BufferDesc::new(96, 0x20022, 1).alignment(4),
+            "bounded Nani cull owner", Some(&[0x7f; 96]),
+        ).unwrap();
+        for bytes in [0, 97] {
+            let error = retain_nani_cull_read(&buffers, &handle, bytes).err().unwrap();
+            assert_eq!(error.kind(), rhapsody::ErrorKind::InvalidUsage);
+        }
+        let read = retain_nani_cull_read(&buffers, &handle, 32).unwrap();
+        assert_eq!((read.offset, read.size), (0, 32));
+        assert_eq!(read.device_address().unwrap(), buffers.device_address(&handle));
+        let owner = buffers.managed_buffer(&handle).unwrap().shared();
+        assert!(Arc::ptr_eq(&owner, &read.buffer));
+        let alive = Arc::downgrade(&owner);
+        drop(owner);
+        assert!(buffers.release(&handle));
+        let replacement = buffers.create_buffer(
+            &BufferDesc::new(96, 0x20022, 1).alignment(4),
+            "replacement Nani cull owner", Some(&[0x32; 96]),
+        ).unwrap();
+        assert_eq!(replacement.id, handle.id, "exercise actual slot reuse");
+        assert_ne!(replacement.generation, handle.generation);
+        assert!(buffers.managed_buffer(&handle).is_none());
+        let error = retain_nani_cull_read(&buffers, &handle, 32).err().unwrap();
+        assert_eq!(error.kind(), rhapsody::ErrorKind::InvalidUsage);
+        let replacement_read = retain_nani_cull_read(&buffers, &replacement, 32).unwrap();
+        assert!(!Arc::ptr_eq(&read.buffer, &replacement_read.buffer));
+        assert!(alive.upgrade().is_some(), "the retained physical owner survives slot release");
+        drop(read);
     }
 }

@@ -1,0 +1,64 @@
+{
+  "scope": "B evidence and current visible source only; not full scene closure",
+  "producer_hosts": [
+    {
+      "path": "tiny-glade/crates/systems/decorator/src/decorator_visual/cottage_wall_window.rs",
+      "original_va": "0x1407ebfd0",
+      "original_size": 14303,
+      "current_gap": "No typed ClothInfo Box emission; builder discarded; geometry source must be recovered, not defaulted."
+    },
+    {
+      "path": "tiny-glade/crates/systems/decorator/src/decorator_visual/cottage_corner_window.rs",
+      "original_va": "0x1407f66b0",
+      "original_size": 9983,
+      "current_gap": "No typed ClothInfo Box emission; builder discarded; actual shape geometry not restored."
+    }
+  ],
+  "shared_owner": {
+    "path": "tiny-glade/crates/systems/decorator/src/decorator_visual_state.rs",
+    "proposed_field": "cloth_infos:Vec<ClothInfo>",
+    "no_parallel_resource": true
+  },
+  "fullvisual": {
+    "owner": "/root/main_graph_team",
+    "path": "tiny-glade/crates/systems/decorator/src/blueprint.rs",
+    "original_va": "0x140827910",
+    "original_size": 7991,
+    "contract": "clear same firstVec each update, copy every current typed Box before differential gate",
+    "typed_blueprint_field": "cloth_info:Option<Box<ClothInfo>>",
+    "legacy_field_never_promoted": "cloth:Option<u8>"
+  },
+  "first_unrestored_typed_consumer": {
+    "path": "tiny-glade/crates/systems/decorator/src/decorator_visual/generate_clothline.rs",
+    "original_va": "0x1407e5190",
+    "original_size": 11167,
+    "original_direct_typed_helper": "0x141261410 -> 0x141293730",
+    "current_gap": "manual flags anchors and discarded quads; no read of global firstVec",
+    "needs_separate_root_assignment": true,
+    "possible_algorithm_companion": "tiny-glade/crates/systems/decorator/src/decorator_visual/flag_connections.rs"
+  },
+  "unload": {
+    "path": "tiny-glade/crates/tiny-glade/src/decorator_plugin.rs",
+    "original_va": "0x140347090",
+    "current_gap": "empty on-unload body, not part of this owner candidate"
+  },
+  "other_global_resource_interfaces": {
+    "evidence": "visual-state-SystemParam-contracts-B.json",
+    "count": 6,
+    "limit": "Cached wrapper signatures are not by themselves field access proofs or binding to game function."
+  },
+  "same_world_tests_required_by_other_owners": [
+    "fullvisual typed nonzero Blueprint list, gate skip, stale clear, same global state",
+    "actual clothline consumer with typed values and asset-backed output"
+  ],
+  "not_closed": [
+    "actual typed window producers",
+    "original clothline geometry/cache/asset build",
+    "unload host integration",
+    "NaniCloth query binding",
+    "WallFlagCloth/roof raster payload migration",
+    "C parity",
+    "whole App reachability",
+    "CPU/GPU execution"
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "reviewer": "07-independent-validation",
+  "at_utc": "2026-10-19T20:04:50.193464+00:00",
+  "verdict": "passed_scoped_source",
+  "packages": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-70b16508540e9ee07b/boot-leaf-20261018/clutter-values-combined-v2-20261020/CANDIDATE_MANIFEST_V2.json",
+      "sha256": "ab55e465ca31a054dbd7dd0f80e99d9feb9bdf9f903a258e14e765e764169159"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-1298d15aa21683bbb3/scene-decorator-20261019/balcony-canonical-20261020/CANDIDATE_MANIFEST_V1.json",
+      "sha256": "9e7a4098863b69b1a25e7b15a4ef81a7622e448042e1221a2c557fc28855b05a"
+    }
+  ],
+  "source_pairs": [
+    {
+      "before": "6989b2a023c8e67b65d51bf99420daff6027df6430b8f8cc5c58afae7d54ff8a",
+      "candidate": "324944a460122baa0b4704e1f3530c292f9944558856760eb66b5abeeda2b37c",
+      "source": "country-core/components/drawable.rs"
+    },
+    {
+      "before": "f5d7361c0f8a19ee769d7f9419b1a2315ac51c58424c6575940106aeb05a8bab",
+      "candidate": "fbfb35a180152940a9bb94043c7297fce0c4b3158cdcf3d606bf9ed068be16d1",
+      "source": "systems/decorator/utils/visual_entity_builder.rs"
+    }
+  ],
+  "verified": {
+    "frozen_and_current_input_hash_checks": 19,
+    "mismatches": 0,
+    "both_full_patches_independently_recomputed": true,
+    "complete_existing_drawable_source_prefix_preserved": true,
+    "combined_preserves_complete_original_balcony_candidate_prefix": true,
+    "Balcony_original_design_peer_review": {
+      "reviewer": "root",
+      "sha256": "df7d9f3103f5c5163600ad5f9c7b6bcc68c0fbbbb1bc1b3517366741905f1c4b",
+      "direct_PE_producer_instructions": 62,
+      "direct_PE_reader_instructions": 162,
+      "scope": "Reused root independent original evidence admission;07 reviewed actual source delta, not asserting duplicate original extraction/execution."
+    }
+  },
+  "source_findings": [
+    "One Component BalconyDoor {translation,forward} in existing drawable owner; only actual decorator raw24 macro removed/reexported to it. Original flag and actual computed translation/rotation*Z values unchanged; no zero payload/default/extra marker.",
+    "Combined adds only admitted source ID0..3 neutral enum, owning Arc<[Vec3]> source4, inactive None5; no Copy/Default/PartialEq/ABI for owning source. Unknown ID tags rejected, native_tag preserves explicit domains.",
+    "Creation destination0/2 to_creation_words retains full u32 upperword, two exact float bitwords and full u64 WallId; Terrain zero inactive filler explicitly not native padding identity. Distinct existing storage DecoratorDst unchanged.",
+    "Convertable Component/Clone holds same actual source/destination plus static canonical catalog name and existing Rectangle3d, without a duplicate asset/geometry owner.",
+    "Actual existing Rectangle3d::new signature, WallId export and builder selected nani_balcony_door branch verified. Core has more than one historic WallId wrapper path: this schema uses resources::walls::WallId deliberately; future PublicWalls consumers must use an explicit existing full-u64 adapter, never assert Rust TypeId equivalence across wrappers."
+  ],
+  "tests": {
+    "new_core": 3,
+    "new_builder": 1,
+    "executed": false,
+    "cases": [
+      "Actual World/query/clone preserves six Balcony lanes including signedzero/NaN.",
+      "Actual ECS source Arc ptr identity/strong count and source lifetime across entity despawn then final owner drop.",
+      "Full destination words/ID tag domain including high bits and float NaN/-0.",
+      "Actual builder Commands -> same World canonical TypeId/translation/rotatedZ for nonidentity transform; false flag does not insert."
+    ]
+  },
+  "limits": [
+    "Static source admission only, no typecheck/test/Cargo/GPU run by07/author; central build still required.",
+    "Carrier producer/process/manager/RMB/UI consumers are not migrated by schema alone;54name parser and nonempty44KB populate remain separate gates.",
+    "Balcony reader rejection algorithm/resources/host registration not recovered by a typed value migration. Full window/cloth/general flags/asset inputs/App/WSI/performance not accepted.",
+    "Root is sole integrator,03 sole drawable candidate author and04 sole builder author; no foreign components/mod edits or lock takeover."
+  ]
+}

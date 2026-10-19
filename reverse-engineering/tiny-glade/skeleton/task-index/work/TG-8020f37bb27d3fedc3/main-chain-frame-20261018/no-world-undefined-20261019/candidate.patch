@@ -1,0 +1,798 @@
+--- a/crates/country-core/src/render/pass_builder/draw_builder.rs
++++ b/crates/country-core/src/render/pass_builder/draw_builder.rs
+@@ -432,10 +432,19 @@
+ 
+     /// `packet.accesses.push(ResourceAccess)`（`+0x10` Vec）。
+     fn push_packet_access(&mut self, binding_index: u32, slot: u8) {
++        // 反射 binding 重新绑定后恢复严格内容合同，不能继承旧资源的许可。
++        self.forget_undefined_texture_binding(binding_index);
+         self.packet.get_mut().accesses.push(ResourceAccess {
+             binding_index,
+             slot,
+         });
++    }
++
++    fn forget_undefined_texture_binding(&mut self, binding: u32) {
++        self.packet
++            .get_mut()
++            .undefined_texture_bindings
++            .retain(|candidate| *candidate != binding);
+     }
+ 
+     /// 动态常量写入公共路径（`optional_uniform` / `uniform` / `UniformBinder::write_uniform` 的共同行为，O）：
+@@ -545,12 +554,58 @@
+         self
+     }
+ 
++    /// 原消费者允许本次真实纹理读取的内容未定义；不会初始化资源或省略已有 producer。
++    /// 只标记已存在且唯一的 graph texture 绑定，不能用于写访问或不发生 fetch 的绑定。
++    pub fn allow_undefined_texture_contents(mut self, hash: u64) -> Self {
++        let Some(binding) = self.lookup_binding(hash) else {
++            return self;
++        };
++        let packet = self.packet.get();
++        let mut accesses = packet
++            .accesses
++            .iter()
++            .filter(|access| access.binding_index == binding);
++        let access = accesses
++            .next()
++            .expect("undefined raster texture requires its actual graph binding");
++        assert!(
++            accesses.next().is_none() && !packet.bindings.contains_key(&binding),
++            "undefined raster texture requires one current graph binding"
++        );
++        let actual = &self.pass.bindings[access.slot as usize];
++        assert!(
++            self.pass
++                .texture_slots
++                .values()
++                .any(|slot| *slot == access.slot)
++                && !access_is_write(actual.access_type),
++            "undefined raster texture requires a non-writing image binding"
++        );
++        assert!(
++            !packet.inactive_texture_bindings.contains(&binding),
++            "undefined content read is distinct from an inactive binding"
++        );
++        let packet = self.packet.get_mut();
++        if !packet.undefined_texture_bindings.contains(&binding) {
++            packet.undefined_texture_bindings.push(binding);
++        }
++        self
++    }
++
+     /// A proven uniform configuration prevents all texel fetches from this
+     /// binding. Preserve the actual descriptor, owner and native sync access.
+     pub fn inactive_texture_contents(mut self, hash: u64) -> Self {
+         let Some(binding) = self.lookup_binding(hash) else {
+             return self;
+         };
++        assert!(
++            !self
++                .packet
++                .get()
++                .undefined_texture_bindings
++                .contains(&binding),
++            "inactive binding is distinct from an undefined content read"
++        );
+         let access = self
+             .packet
+             .get()
+@@ -579,6 +634,7 @@
+     /// panic，draw_builder.rs:189:89），把 `{buffer, 0, u64::MAX}` + 句柄克隆 `insert` 进 `packet.bindings`。
+     pub fn bind_external_storage_buffer(mut self, name_hash: u64, buffer: &ManagedHandle) -> Self {
+         if let Some(binding) = self.lookup_binding(name_hash) {
++            self.forget_undefined_texture_binding(binding);
+             let vk = self
+                 .pass
+                 .host
+@@ -744,6 +800,7 @@
+         view: Option<&TextureViewDesc>,
+     ) {
+         if let Some(binding) = self.lookup_binding(name_hash) {
++            self.forget_undefined_texture_binding(binding);
+             let view = self
+                 .pass
+                 .host
+@@ -1554,6 +1611,119 @@
+         assert_eq!(pass.accesses[0].access, ACCESS_SAMPLED_IMAGE);
+         assert_eq!(pass.accesses[1].access, ACCESS_RG_STORAGE_WRITE);
+         finish_pass(pass);
++    }
++
++    #[test]
++    fn undefined_texture_intent_keeps_the_real_binding_and_rebinding_restores_strictness() {
++        for replacement in 0..4 {
++            let (mut pass, _) = make_pass();
++            let texture = tex(50);
++            let view = TextureViewDesc::new()
++                .base_mip_level(2)
++                .level_count(Some(1));
++            let mut b = builder(&mut pass).bind_texture_to_draw_builder(
++                BindTexture::RgHandle(&texture),
++                0x10,
++                ACCESS_SAMPLED_IMAGE,
++                Some(&view),
++            );
++            assert!(b.packet().undefined_texture_bindings.is_empty());
++            b = b
++                .allow_undefined_texture_contents(0xdead)
++                .allow_undefined_texture_contents(0x10)
++                .allow_undefined_texture_contents(0x10);
++            assert_eq!(b.packet().undefined_texture_bindings, [3]);
++            assert!(b.packet().inactive_texture_bindings.is_empty());
++            assert_eq!(b.packet().accesses.len(), 1);
++            assert_eq!(b.pass.bindings[0].resource_index, 50);
++            assert_eq!(b.pass.bindings[0].view, Some(view));
++            assert_eq!(b.pass.accesses[0].access, ACCESS_SAMPLED_IMAGE);
++            b = match replacement {
++                0 => b.bind_texture_to_draw_builder(
++                    BindTexture::RgHandle(&tex(51)),
++                    0x10,
++                    ACCESS_SAMPLED_IMAGE,
++                    None,
++                ),
++                1 => b.bind_texture_to_draw_builder(
++                    BindTexture::Raw {
++                        texture: &ManagedHandle(2),
++                        desc: &texture,
++                    },
++                    0x10,
++                    ACCESS_SAMPLED_IMAGE,
++                    None,
++                ),
++                2 => b.bind_external_storage_buffer(0x10, &ManagedHandle(42)),
++                _ => b.read_rg_storage_buffer(0x10, 51),
++            };
++            assert!(
++                b.packet().undefined_texture_bindings.is_empty(),
++                "new binding defaults to strict"
++            );
++            b.discard();
++            finish_pass(pass);
++        }
++    }
++
++    #[test]
++    fn undefined_texture_intent_rejects_inactive_both_orders_and_stale_or_nontexture_bindings() {
++        for case in 0..7 {
++            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++                let (mut pass, _) = make_pass();
++                let texture = tex(50);
++                let b = builder(&mut pass);
++                let b = if case == 5 {
++                    b.write_rg_storage_buffer(0x10, 50)
++                } else if case == 6 {
++                    b.read_rg_storage_buffer(0x10, 50)
++                } else {
++                    b.bind_texture_to_draw_builder(
++                        BindTexture::RgHandle(&texture),
++                        0x10,
++                        ACCESS_SAMPLED_IMAGE,
++                        None,
++                    )
++                };
++                let b = match case {
++                    0 => b
++                        .inactive_texture_contents(0x10)
++                        .allow_undefined_texture_contents(0x10),
++                    1 => b
++                        .allow_undefined_texture_contents(0x10)
++                        .inactive_texture_contents(0x10),
++                    2 => b
++                        .allow_undefined_texture_contents(0x10)
++                        .bind_texture_to_draw_builder(
++                            BindTexture::RgHandle(&tex(51)),
++                            0x10,
++                            ACCESS_SAMPLED_IMAGE,
++                            None,
++                        )
++                        .allow_undefined_texture_contents(0x10),
++                    3 => b
++                        .allow_undefined_texture_contents(0x10)
++                        .bind_texture_to_draw_builder(
++                            BindTexture::Raw {
++                                texture: &ManagedHandle(2),
++                                desc: &texture,
++                            },
++                            0x10,
++                            ACCESS_SAMPLED_IMAGE,
++                            None,
++                        )
++                        .allow_undefined_texture_contents(0x10),
++                    4 => b
++                        .allow_undefined_texture_contents(0x10)
++                        .bind_external_storage_buffer(0x10, &ManagedHandle(42))
++                        .allow_undefined_texture_contents(0x10),
++                    _ => b.allow_undefined_texture_contents(0x10),
++                };
++                b.discard();
++                finish_pass(pass);
++            }));
++            assert!(result.is_err(), "forbidden binding case {case}");
++        }
+     }
+ 
+     #[test]
+--- a/crates/country-core/src/render/pass_builder/draw_stream.rs
++++ b/crates/country-core/src/render/pass_builder/draw_stream.rs
+@@ -204,6 +204,8 @@
+     /// shader reflection; ordinary packets retain strict content checks.
+     pub preserving_buffer_bindings: Vec<u32>,
+     pub inactive_texture_bindings: Vec<u32>,
++    /// 宿主逐 binding 内容许可：真实只读 fetch 可读取未定义内容，仍保留同步与已有 producer。
++    pub undefined_texture_bindings: Vec<u32>,
+ }
+ 
+ impl DrawPacket {
+@@ -226,6 +228,7 @@
+             unknown_b1: 0,
+             preserving_buffer_bindings: Vec::new(),
+             inactive_texture_bindings: Vec::new(),
++            undefined_texture_bindings: Vec::new(),
+         }
+     }
+ 
+--- a/crates/country-core/src/systems/render_loop/draw_passes/final_post.rs
++++ b/crates/country-core/src/systems/render_loop/draw_passes/final_post.rs
+@@ -315,6 +315,11 @@
+             None,
+         ),
+     };
++    // 原 b903 Fragment 在真实 fetch 后才按 Globals.is_input_valid 选择常量。
++    // 仅同一个 flag0 分支允许 src0 未定义；blur/LUT/Tony/shadow 继续严格。
++    if env.flag94 == 0 {
++        b = b.allow_undefined_texture_contents(B_SRC0);
++    }
+     b.uniform(U_LUT_FLAG, env.lut_flag as u32)
+ }
+ 
+@@ -379,3 +384,82 @@
+ pub fn final_post_uniform_writes() -> usize {
+     FINAL_POST_UNIFORMS.len()
+ }
++
++#[cfg(test)]
++mod undefined_source_tests {
++    use super::*;
++    use crate::render::pass_builder::draw_stream::test_host::MockHost;
++    use crate::render::pass_builder::draw_stream::{
++        DrawPacket, RasterPass, RasterState, ShaderReflection,
++    };
++    use alloc::sync::Arc;
++
++    #[test]
++    fn only_flag_zero_permits_the_actual_src0_binding_and_other_inputs_stay_strict() {
++        for flag in [0, 1, 2, 255] {
++            let (mut host, _) = MockHost::new();
++            let mut reflection = ShaderReflection::default();
++            reflection.bindings.insert(B_SRC0, (0, 3));
++            reflection.bindings.insert(B_SRC1, (0, 4));
++            reflection.bindings.insert(B_LUT_FIXED, (0, 5));
++            reflection.bindings.insert(S_SHADOW_MASK_MEAN, (0, 6));
++            host.shaders.insert(1, Arc::new(reflection));
++            let source = AttachmentTexture {
++                id: 50,
++                extent: (16, 16),
++                format: 0x7a,
++                sample_count: 1,
++            };
++            for key in [DISK_FILE, LUT_FIXED_FILE, lut_asset_hash(DEFAULT_LUT_NAME)] {
++                host.textures_by_name
++                    .insert(key, (ManagedHandle(2), source));
++            }
++            host.rg_buffers
++                .insert(ShadowMaskMeanBuffer::rg_buffer_hash(), 52);
++            let mut pass = RasterPass::new("Final blit", &[], None, host.boxed());
++            let shader = Handle(ManagedHandle(1), core::marker::PhantomData);
++            let b = DrawBuilder::new(
++                &mut pass,
++                DrawPacket::new(shader, [0, 0], RasterState::default()),
++                0,
++            );
++            let env = build_env(&FinalPostArgs {
++                out_extent: (16, 16),
++                src0: source,
++                src1: AttachmentTexture { id: 51, ..source },
++                flag94: flag,
++                lut: LutSelect::Default,
++                arg_f0: 0.0,
++                arg_f1: 0.0,
++                shader: None,
++                cfg: GradingConfig {
++                    named: false,
++                    pair: [1.0, 1.0],
++                    floats: GradingFloats::default(),
++                },
++                theme: 0,
++                custom_lut: None,
++            });
++            final_blit_body(b, &env).draw_no_vao(3);
++            let packet = &pass.draws[0];
++            assert_eq!(
++                packet.undefined_texture_bindings.as_slice(),
++                if flag == 0 { &[3][..] } else { &[][..] }
++            );
++            assert!(packet.inactive_texture_bindings.is_empty());
++            assert_eq!(
++                packet.accesses.len(),
++                3,
++                "src0, blur and shadow accesses all survive"
++            );
++            assert!(
++                packet.bindings.contains_key(&5),
++                "Tony remains a real raw descriptor"
++            );
++            assert_eq!(pass.bindings[0].resource_index, 50);
++            assert_eq!(pass.bindings[1].resource_index, 51);
++            assert_eq!(pass.bindings[2].resource_index, 52);
++            pass.rendered.0 = true;
++        }
++    }
++}
+--- a/crates/country-core/src/systems/render_loop/compute_passes/blur_pyramid.rs
++++ b/crates/country-core/src/systems/render_loop/compute_passes/blur_pyramid.rs
+@@ -83,6 +83,14 @@
+ 
+ /// W-外围：`blur_pyramid`（O 0x1409ee1e0）。`src` 为 RG 句柄（含 desc）。返回 "partial blur pyramid"。
+ pub fn blur_pyramid(env: &mut PassEnv<'_>, src: &RgTexture) -> RgTexture {
++    blur_pyramid_with_input_policy(env, src, false)
++}
++
++fn blur_pyramid_with_input_policy(
++    env: &mut PassEnv<'_>,
++    src: &RgTexture,
++    allow_undefined_input: bool,
++) -> RgTexture {
+     let src_extent = [src.desc.extent[0], src.desc.extent[1]];
+     let half = half_res(src_extent);
+     let mips = pyramid_mips(half);
+@@ -94,10 +102,15 @@
+     let v0 = TextureViewDesc::new()
+         .base_mip_level(0)
+         .level_count(Some(1));
+-    let rec = env
++    let mut pass = env
+         .pass(BLUR0_NAME, BLUR_URI)
+         .bind_texture(HASH_INPUT_TEX, &src, TEX_READ)
+-        .bind_texture_with_view(HASH_OUTPUT_TEX, &partial_tex, TEX_STORAGE_WRITE, Some(&v0))
++        .bind_texture_with_view(HASH_OUTPUT_TEX, &partial_tex, TEX_STORAGE_WRITE, Some(&v0));
++    if allow_undefined_input {
++        // 仅原 no-world tail 显式请求；真实采样和同步、后续 mip producer 均保留。
++        pass = pass.allow_undefined_texture_contents(HASH_INPUT_TEX);
++    }
++    let rec = pass
+         .uniform(KEY_INPUT_MIP_DIMS, src_extent)
+         .dispatch_2d(half[0], half[1]);
+     env.record(rec);
+@@ -149,6 +162,16 @@
+ /// `bidirectional_blur_pyramid`（O 0x1409ed860）：`rev_blur_pyramid(blur_pyramid(src))`。
+ pub fn bidirectional_blur_pyramid(env: &mut PassEnv<'_>, src: &RgTexture) -> RgTexture {
+     let partial = blur_pyramid(env, src);
++    rev_blur_pyramid(env, &partial)
++}
++
++/// 原 no-world tail 最终 flag0 丢弃该输入的计算值，但仍真实执行全部 blur fetch。
++/// 其它消费者使用默认严格入口，不能把此许可当作源初始化。
++pub fn bidirectional_blur_pyramid_allowing_undefined_input(
++    env: &mut PassEnv<'_>,
++    src: &RgTexture,
++) -> RgTexture {
++    let partial = blur_pyramid_with_input_policy(env, src, true);
+     rev_blur_pyramid(env, &partial)
+ }
+ 
+@@ -377,6 +400,47 @@
+     }
+ 
+     #[test]
++    fn no_world_permission_is_only_on_first_blur_input_and_keeps_every_dispatch() {
++        use crate::render::pass_builder::pass_resource_access::PassBinding;
++        let w = world();
++        let mut strict = TestFrame::default();
++        with_env(&w, &mut strict, |env| {
++            bidirectional_blur_pyramid(env, &src(64, 64))
++        });
++        let mut permitted = TestFrame::default();
++        with_env(&w, &mut permitted, |env| {
++            bidirectional_blur_pyramid_allowing_undefined_input(env, &src(64, 64))
++        });
++        assert_eq!(strict.order, permitted.order);
++        assert_eq!(strict.passes.len(), permitted.passes.len());
++        for (index, (ordinary, original_no_world)) in
++            strict.passes.iter().zip(&permitted.passes).enumerate()
++        {
++            assert!(ordinary.undefined_texture_bindings.is_empty());
++            assert!(original_no_world.inactive_texture_bindings.is_empty());
++            assert_eq!(dispatch_xy(ordinary), dispatch_xy(original_no_world));
++            assert_eq!(
++                ordinary.builder.accesses,
++                original_no_world.builder.accesses
++            );
++            if index == 0 {
++                assert_eq!(original_no_world.undefined_texture_bindings.len(), 1);
++                let slot = original_no_world.undefined_texture_bindings[0] as usize;
++                assert!(matches!(
++                    original_no_world.bindings[slot],
++                    PassBinding::ImageView {
++                        resource: 1,
++                        write: false,
++                        ..
++                    }
++                ));
++            } else {
++                assert!(original_no_world.undefined_texture_bindings.is_empty());
++            }
++        }
++    }
++
++    #[test]
+     fn names_and_hashes_match_machine_code() {
+         assert_eq!(HASH_INPUT_TEX, 0x11ba5697cc40b3dd);
+         assert_eq!(HASH_OUTPUT_TEX, (-0x77de65c519676d4e_i64) as u64);
+--- a/crates/tiny-glade/src/raster_host.rs
++++ b/crates/tiny-glade/src/raster_host.rs
+@@ -1150,7 +1150,7 @@
+             declared.render_with_result_context(move |_| Err(error));
+             return;
+         }
+-        let (preserving_buffers, inactive_reads) = match raster_content_intents(
++        let (preserving_buffers, read_contents) = match raster_content_intents(
+             prepared.iter().map(|draw| &draw.packet),
+             &bindings,
+             |resource| {
+@@ -1321,10 +1321,17 @@
+             {
+                 declared.add_preserving_resource_access_range(resource, a.access, a.group, *range)
+             } else if !writes
+-                && (*binding_slot).and_then(|slot| inactive_reads.get(&slot)) == Some(&true)
++                && (*binding_slot).and_then(|slot| read_contents.get(&slot))
++                    == Some(&RasterReadContents::Inactive)
+                 && index >= attachment_accesses.len()
+             {
+                 declared.add_inactive_resource_read_range(resource, a.access, a.group, *range)
++            } else if !writes
++                && (*binding_slot).and_then(|slot| read_contents.get(&slot))
++                    == Some(&RasterReadContents::UndefinedAllowed)
++                && index >= attachment_accesses.len()
++            {
++                declared.add_undefined_content_read_range(resource, a.access, a.group, *range)
+             } else {
+                 declared.add_resource_access_range(resource, a.access, a.group, *range)
+             };
+@@ -2160,6 +2167,14 @@
+     Ok(ranges)
+ }
+ 
++/// 合并按严格程度排序；默认读取不能继承其它 draw 的 undefined 许可。
++#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
++enum RasterReadContents {
++    Inactive,
++    UndefinedAllowed,
++    DefinedRequired,
++}
++
+ /// Resolve packet-local evidence onto the real graph resource. Any active
+ /// alias of that same pass slot tightens it back into a content read. Different
+ /// views of one image remain distinct until the graph evaluates their ranges.
+@@ -2167,15 +2182,16 @@
+     packets: impl IntoIterator<Item = &'a DrawPacket>,
+     bindings: &[RenderPassBinding],
+     mut is_texture: impl FnMut(u32) -> rhapsody::Result<bool>,
+-) -> rhapsody::Result<(Vec<u32>, std::collections::BTreeMap<u8, bool>)> {
++) -> rhapsody::Result<(Vec<u32>, std::collections::BTreeMap<u8, RasterReadContents>)> {
+     use country_core::render::pass_builder::draw_stream::access_is_write;
+     let mut preserving = Vec::new();
+-    let mut inactive = std::collections::BTreeMap::new();
++    let mut reads = std::collections::BTreeMap::new();
+     for packet in packets {
+         for binding in packet
+             .preserving_buffer_bindings
+             .iter()
+             .chain(&packet.inactive_texture_bindings)
++            .chain(&packet.undefined_texture_bindings)
+         {
+             if !packet
+                 .accesses
+@@ -2184,6 +2200,20 @@
+             {
+                 return Err(rhapsody::Error::invalid_usage(
+                     "raster contents metadata lacks its actual binding",
++                ));
++            }
++        }
++        for binding in &packet.undefined_texture_bindings {
++            if packet
++                .accesses
++                .iter()
++                .filter(|access| access.binding_index == *binding)
++                .count()
++                != 1
++                || packet.bindings.contains_key(binding)
++            {
++                return Err(rhapsody::Error::invalid_usage(
++                    "undefined raster metadata requires one current graph binding",
+                 ));
+             }
+         }
+@@ -2198,6 +2228,15 @@
+             let unused = packet
+                 .inactive_texture_bindings
+                 .contains(&access.binding_index);
++            let undefined = packet
++                .undefined_texture_bindings
++                .contains(&access.binding_index);
++            if undefined && (!texture || access_is_write(actual.access_type) || unused || preserves)
++            {
++                return Err(rhapsody::Error::invalid_usage(
++                    "undefined raster metadata requires a real non-writing texture read",
++                ));
++            }
+             if preserves {
+                 if texture || !access_is_write(actual.access_type) || unused {
+                     return Err(rhapsody::Error::invalid_usage(
+@@ -2214,14 +2253,23 @@
+                 ));
+             }
+             if !access_is_write(actual.access_type) {
+-                inactive
++                let contents = if unused {
++                    RasterReadContents::Inactive
++                } else if undefined {
++                    RasterReadContents::UndefinedAllowed
++                } else {
++                    RasterReadContents::DefinedRequired
++                };
++                reads
+                     .entry(access.slot)
+-                    .and_modify(|all| *all &= unused)
+-                    .or_insert(unused);
+-            }
+-        }
+-    }
+-    Ok((preserving, inactive))
++                    .and_modify(|current: &mut RasterReadContents| {
++                        *current = (*current).max(contents)
++                    })
++                    .or_insert(contents);
++            }
++        }
++    }
++    Ok((preserving, reads))
+ }
+ 
+ #[cfg(test)]
+@@ -2268,7 +2316,7 @@
+         let (preserving, inactive) =
+             raster_content_intents([&first], &bindings, |id| Ok(id == 42)).unwrap();
+         assert_eq!(preserving, [43]);
+-        assert_eq!(inactive[&0], true);
++        assert_eq!(inactive[&0], RasterReadContents::Inactive);
+         let mut active = packet();
+         active.accesses.push(ResourceAccess {
+             binding_index: 0,
+@@ -2276,9 +2324,186 @@
+         });
+         let (_, inactive) =
+             raster_content_intents([&first, &active], &bindings, |id| Ok(id == 42)).unwrap();
+-        assert_eq!(inactive[&0], false);
++        assert_eq!(inactive[&0], RasterReadContents::DefinedRequired);
+         first.inactive_texture_bindings.push(1);
+         assert!(raster_content_intents([&first], &bindings, |id| Ok(id == 42)).is_err());
++    }
++}
++
++#[cfg(test)]
++mod undefined_raster_content_tests {
++    use super::*;
++    use country_core::render::pass_builder::draw_stream::ResourceAccess;
++    use rhapsody::rg::{AccessRange, AccessTable, GraphDefinition, PlanContext, ResourceSpec};
++
++    fn packet(intent: RasterReadContents, binding: u32, slot: u8) -> DrawPacket {
++        let mut packet = DrawPacket::new(
++            country_core::rhapsody_contract::Handle(ManagedHandle(1), std::marker::PhantomData),
++            [0, 0],
++            RasterState::default(),
++        );
++        packet.accesses.push(ResourceAccess {
++            binding_index: binding,
++            slot,
++        });
++        match intent {
++            RasterReadContents::Inactive => packet.inactive_texture_bindings.push(binding),
++            RasterReadContents::UndefinedAllowed => packet.undefined_texture_bindings.push(binding),
++            RasterReadContents::DefinedRequired => {}
++        }
++        packet
++    }
++    fn binding() -> RenderPassBinding {
++        RenderPassBinding {
++            resource_index: 0,
++            access_type: 0x1d,
++            view: Some(Default::default()),
++        }
++    }
++    fn intents() -> [RasterReadContents; 3] {
++        [
++            RasterReadContents::Inactive,
++            RasterReadContents::UndefinedAllowed,
++            RasterReadContents::DefinedRequired,
++        ]
++    }
++
++    #[test]
++    fn same_slot_merges_all_packet_orders_with_strict_reads_winning() {
++        for first in intents() {
++            for second in intents() {
++                let a = packet(first, 3, 0);
++                let b = packet(second, 4, 0);
++                for packets in [[&a, &b], [&b, &a]] {
++                    let (_, reads) =
++                        raster_content_intents(packets, &[binding()], |_| Ok(true)).unwrap();
++                    assert_eq!(reads[&0], first.max(second));
++                }
++            }
++        }
++    }
++
++    #[test]
++    fn stale_rebound_or_conflicting_metadata_is_rejected_instead_of_granting_permission() {
++        for case in 0..6 {
++            let mut packet = packet(RasterReadContents::UndefinedAllowed, 3, 0);
++            let mut binding = binding();
++            match case {
++                0 => packet.inactive_texture_bindings.push(3),
++                1 => packet.accesses.push(ResourceAccess {
++                    binding_index: 3,
++                    slot: 0,
++                }),
++                2 => packet.undefined_texture_bindings.push(99),
++                3 => binding.access_type = 0x37,
++                4 => packet.accesses[0].slot = 1,
++                _ => {}
++            }
++            assert!(
++                raster_content_intents([&packet], &[binding], |_| Ok(case != 5)).is_err(),
++                "forbidden metadata case {case}"
++            );
++        }
++    }
++
++    #[test]
++    fn different_slot_aliases_reach_the_real_ledger_and_never_initialize_the_source() {
++        let descriptor = ResourceSpec::Image(rhapsody::resource::TextureDesc::new_2d(
++            8,
++            8,
++            vk::Format::R32_SFLOAT,
++        ))
++        .descriptor();
++        for first in intents() {
++            for second in intents() {
++                for reverse in [false, true] {
++                    let a = packet(first, 3, 0);
++                    let b = packet(second, 4, 1);
++                    let (_, reads) =
++                        raster_content_intents([&a, &b], &[binding(), binding()], |_| Ok(true))
++                            .unwrap();
++                    let mut graph = RhGraph::new();
++                    let texture = graph
++                        .import_unowned("original uninitialized color", descriptor, 1, 0)
++                        .unwrap();
++                    let mut pass = graph.add_pass("real shader reads").with_side_effect();
++                    for slot in if reverse { [1, 0] } else { [0, 1] } {
++                        match reads[&slot] {
++                            RasterReadContents::Inactive => {
++                                pass.add_inactive_resource_read_range(
++                                    texture,
++                                    0x1d,
++                                    1,
++                                    AccessRange::Whole,
++                                )
++                                .unwrap();
++                            }
++                            RasterReadContents::UndefinedAllowed => {
++                                pass.add_undefined_content_read_range(
++                                    texture,
++                                    0x1d,
++                                    1,
++                                    AccessRange::Whole,
++                                )
++                                .unwrap();
++                            }
++                            RasterReadContents::DefinedRequired => {
++                                pass.add_resource_access_range(
++                                    texture,
++                                    0x1d,
++                                    1,
++                                    AccessRange::Whole,
++                                )
++                                .unwrap();
++                            }
++                        }
++                    }
++                    pass.render(|_| true);
++                    let raw = graph.build().declaration;
++                    let strict = first.max(second) == RasterReadContents::DefinedRequired;
++                    let key = GraphDefinition::from_declaration(
++                        &raw,
++                        &mut AccessTable::original(),
++                        PlanContext::default(),
++                    );
++                    assert_eq!(key.is_err(), strict);
++                    if let Ok(key) = key {
++                        let merged = key.passes[0].accesses[0];
++                        assert_eq!(merged.access_code, 0x1d);
++                        assert_eq!(merged.synchronization_group, 1);
++                        assert_eq!(merged.range, AccessRange::Whole);
++                        if first.max(second) == RasterReadContents::UndefinedAllowed {
++                            assert!(merged.allow_undefined_contents);
++                            assert!(!merged.contents_unused);
++                            assert!(merged.reads_contents(false));
++                        }
++                        let plan = rhapsody::rg::compile_definition(key).unwrap();
++                        assert_eq!(plan.retained_passes, [0]);
++                        assert!(!plan.info.lifetimes.is_empty());
++                        assert_ne!(
++                            plan.info.image_usage_flags[0] & vk::ImageUsageFlags::SAMPLED.as_raw(),
++                            0
++                        );
++                        let mut later = raw.clone();
++                        let mut access = later.passes[0].accesses[0];
++                        access.allow_undefined_contents = false;
++                        access.contents_unused = false;
++                        let mut strict_pass = later.passes[0].clone();
++                        strict_pass.accesses = vec![access];
++                        later.passes.push(strict_pass);
++                        assert!(
++                            GraphDefinition::from_declaration(
++                                &later,
++                                &mut AccessTable::original(),
++                                PlanContext::default()
++                            )
++                            .is_err(),
++                            "permission cannot initialize a later ordinary read"
++                        );
++                    }
++                }
++            }
++        }
+     }
+ }
+ 
+@@ -2364,8 +2589,8 @@
+         ];
+         first.inactive_texture_bindings.push(5);
+         let (_, inactive) = raster_content_intents([&first], &bindings, |_| Ok(true)).unwrap();
+-        assert_eq!(inactive[&0], false);
+-        assert_eq!(inactive[&1], true);
++        assert_eq!(inactive[&0], RasterReadContents::DefinedRequired);
++        assert_eq!(inactive[&1], RasterReadContents::Inactive);
+         // A second packet's active alias of slot 1 must still tighten that slot.
+         let mut second = packet();
+         second.accesses.push(ResourceAccess {
+@@ -2374,7 +2599,7 @@
+         });
+         let (_, inactive) =
+             raster_content_intents([&first, &second], &bindings, |_| Ok(true)).unwrap();
+-        assert_eq!(inactive[&1], false);
++        assert_eq!(inactive[&1], RasterReadContents::DefinedRequired);
+     }
+ 
+     #[test]
+--- a/crates/tiny-glade/src/world_postprocess.rs
++++ b/crates/tiny-glade/src/world_postprocess.rs
+@@ -1075,7 +1075,12 @@
+ 
+     // T2: unconditional `bidirectional_blur_pyramid` (0x1409ed860) on W54 taa.
+     let blur = crate::scene_compute::with_env(frame, world, |env| {
+-        Ok(blur_pyramid::bidirectional_blur_pyramid(env, taa))
++        Ok(if controls.flag_0x1ac0 {
++            blur_pyramid::bidirectional_blur_pyramid(env, taa)
++        } else {
++            // 与 final_post.flag94 使用同一个权威分支；只许可首 blur0 的真实输入读取。
++            blur_pyramid::bidirectional_blur_pyramid_allowing_undefined_input(env, taa)
++        })
+     })?;
+     if blur.desc.format != blur_pyramid::PYRAMID_FORMAT || blur.desc.mip_levels == 0 {
+         return Err(rhapsody::Error::invalid_usage(

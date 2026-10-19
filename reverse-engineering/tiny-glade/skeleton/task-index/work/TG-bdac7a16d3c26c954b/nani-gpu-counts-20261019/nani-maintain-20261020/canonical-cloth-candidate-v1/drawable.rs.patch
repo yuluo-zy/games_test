@@ -1,0 +1,23 @@
+--- /Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/components/drawable.rs
++++ /Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/components/drawable.rs
+@@ -233,3 +233,20 @@
+         assert_eq!(NaniSolidTexture::try_from(255), Err(255));
+     }
+ }
++
++/// B ClothlineCloth: twelve scalar bytes read by14207c0a0 and copied by the
++/// real decorator builder. Field names/schema are not recovered; these are
++/// explicit value words, not ClothInfo or WallFlagCloth. No default payload
++/// or original ABI promise is provided. B14084cc00 selects Clone handling.
++#[derive(bevy_ecs::component::Component, Clone, Debug)]
++pub struct ClothlineCloth([u32; 3]);
++
++impl ClothlineCloth {
++    pub const fn from_words(words: [u32; 3]) -> Self {
++        Self(words)
++    }
++
++    pub const fn words(&self) -> [u32; 3] {
++        self.0
++    }
++}

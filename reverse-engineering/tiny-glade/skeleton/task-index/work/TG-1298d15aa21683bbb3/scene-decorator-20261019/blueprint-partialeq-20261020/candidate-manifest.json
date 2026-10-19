@@ -1,0 +1,24 @@
+{
+  "status": "candidate_only_shared_api_support_pending_02_and_07_review",
+  "owner": "TG-1298d15aa21683bbb3 delegated scene-decorator-20261019; no lock change",
+  "source": "tiny-glade/crates/systems/decorator/src/utils/visual_entity_builder.rs",
+  "before_sha256": "80a8c5fb106f06378e17aac7df08de5daa9f7e2b9664978d7bf4f070465ffc71",
+  "candidate": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-1298d15aa21683bbb3/scene-decorator-20261019/blueprint-partialeq-20261020/visual_entity_builder.rs.candidate",
+  "candidate_sha256": "a8dbe5fa5ae0a46d1812f2830925b01b7dd660bd23c44f03b6a7fa2ee95249c0",
+  "patch": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-1298d15aa21683bbb3/scene-decorator-20261019/blueprint-partialeq-20261020/visual_entity_builder.rs.patch",
+  "patch_sha256": "caa8ad7e023959853b5f1f646d318a2cb6623cb53f089708b857d47a80b58ba4",
+  "change": "Derive PartialEq for the existing semantic builder fields, solely to expose comparable host values to the separately owned blueprint API candidate.",
+  "native_scope": "No assertion that derived host PartialEq reconstructs the entire native equality implementation or native ABI. Native builder slot0x160 documentation remains unchanged.",
+  "field_audit": {
+    "Quat_Vec3": "existing glam types implement PartialEq",
+    "ColorId": "country_core/resources/color_id.rs already derives PartialEq/Eq",
+    "remaining_fields": "static str, bool, integer, f32 arrays, byte arrays, tuples and their Option wrappers all implement PartialEq",
+    "float_behavior": "standard PartialEq; NaN is non-reflexive; no Eq or bitwise equality introduced"
+  },
+  "review_dependency": "02 must prove the blueprint comparison contract and actual equality-relevant field population independently before using this API for business acceptance.",
+  "frozen_canonical9_unchanged": true,
+  "source_modified": false,
+  "cargo": false,
+  "tests_executed": false,
+  "GPU": false
+}

@@ -1,0 +1,138 @@
+Source: /Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/sync_plan.rs
+SHA256: 8269d2de469f4ac80069a5d8ab6075c428135d0ee97a1672e4c3ae0802ecea05
+
+217:     let normalized = range
+218:         .normalized(descriptor)
+219:         .map_err(|error| Error::invalid_usage(format!("native range: {error:?}")))?;
+220:     let result = match normalized {
+221:         AccessRange::Buffer { offset, size } => NativeRange::Buffer { offset, size },
+222:         AccessRange::Texture {
+223:             mut aspect_mask,
+224:             base_mip_level,
+225:             level_count,
+226:             base_array_layer,
+227:             layer_count,
+228:         } => {
+229:             let all = AccessRange::Whole
+230:                 .normalized(descriptor)
+231:                 .map_err(|error| Error::invalid_usage(format!("native domain: {error:?}")))?;
+232:             let ds = (vk::ImageAspectFlags::DEPTH | vk::ImageAspectFlags::STENCIL).as_raw();
+233:             if !separate_depth_stencil
+234:                 && let AccessRange::Texture {
+235:                     aspect_mask: all, ..
+236:                 } = all
+237:                 && all & ds == ds
+238:                 && aspect_mask & ds != 0
+239:             {
+240:                 aspect_mask |= ds;
+241:             }
+242:             NativeRange::Image {
+243:                 aspects: aspect_mask,
+244:                 base_mip: base_mip_level,
+245:                 mip_count: level_count,
+246:                 base_layer: base_array_layer,
+247:                 layer_count,
+248:             }
+249:         }
+250:         AccessRange::Whole => unreachable!("normalized range"),
+251:     };
+252:     crate::resource::range_state::validate_range(result)?;
+253:     Ok(result)
+254: }
+
+355: impl RangeProgram {
+356:     pub(crate) fn compile(
+357:         definition: &super::plan::GraphDefinition,
+358:         retained: &[usize],
+359:         batches: &[super::compiled::Batch],
+360:         schedule: &super::queue_schedule::QueueSchedule,
+361:     ) -> Result<Self> {
+362:         let separate_depth_stencil = definition.context.separate_depth_stencil_layouts;
+363:         let mut result = Self {
+364:             separate_depth_stencil,
+365:             ..Self::default()
+366:         };
+367:         for resource in &definition.resources {
+368:             result.resources.push(ResourceDomain {
+369:                 range: native_range(
+370:                     AccessRange::Whole,
+371:                     resource.descriptor,
+372:                     separate_depth_stencil,
+373:                 )?,
+374:                 sharing: resource.sharing,
+375:             });
+376:         }
+377:         for (scheduled, &original) in retained.iter().enumerate() {
+378:             let start = result.uses.len();
+379:             for access in &definition.passes[original].accesses {
+380:                 let usage = range_use(
+381:                     definition,
+382:                     access.resource_index,
+383:                     access.range,
+384:                     access.access_code,
+385:                 )?;
+386:                 combine_uses(&mut result.uses, start, usage)?;
+387:             }
+388:             result.passes.push(ProgramPass {
+389:                 pass: scheduled,
+390:                 uses: start..result.uses.len(),
+391:             });
+392:         }
+393:         for export in &definition.exports {
+394:             let usage = range_use(
+395:                 definition,
+396:                 export.resource_index,
+397:                 export.range,
+398:                 export.access_code,
+
+466:     })
+467: }
+468: /// Simultaneous declarations in one callback become one nonoverlapping set of
+469: /// native scopes. Barriers are placed before the callback, never between two
+470: /// declarations that execute together.
+471: fn combine_uses(uses: &mut Vec<RangeUse>, start: usize, added: RangeUse) -> Result<()> {
+472:     let before = uses.len();
+473:     let mut remaining = smallvec::SmallVec::<[NativeRange; 8]>::from_slice(&[added.range]);
+474:     for index in start..before {
+475:         let previous = uses[index];
+476:         if previous.resource != added.resource {
+477:             continue;
+478:         }
+479:         let Some(overlap) = crate::resource::range_state::intersection(previous.range, added.range)
+480:         else {
+481:             continue;
+482:         };
+483:         if previous.layout != added.layout {
+484:             return Err(Error::invalid_usage(
+485:                 "overlapping image declarations in one pass require one native layout",
+486:             ));
+487:         }
+488:         let outside = crate::resource::range_state::difference(previous.range, overlap);
+489:         uses[index] = RangeUse {
+490:             range: overlap,
+491:             scope: previous.scope.union(added.scope),
+492:             ..previous
+493:         };
+494:         uses.extend(
+495:             outside
+496:                 .into_iter()
+497:                 .map(|range| RangeUse { range, ..previous }),
+498:         );
+499:         let mut next = smallvec::SmallVec::<[NativeRange; 8]>::new();
+500:         for range in remaining {
+501:             next.extend(crate::resource::range_state::difference(
+502:                 range,
+503:                 previous.range,
+504:             ));
+505:         }
+506:         remaining = next;
+507:     }
+508:     uses.extend(
+509:         remaining
+510:             .into_iter()
+511:             .map(|range| RangeUse { range, ..added }),
+512:     );
+513:     Ok(())
+514: }
+515: impl std::fmt::Debug for BoundSynchronization {
+

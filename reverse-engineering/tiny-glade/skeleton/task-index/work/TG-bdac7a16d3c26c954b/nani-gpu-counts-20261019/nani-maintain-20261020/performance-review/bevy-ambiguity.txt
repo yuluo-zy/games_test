@@ -1,0 +1,49 @@
+Source: /Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/schedule/schedule.rs
+SHA256: 46024cf13725b027d1756a85452f42d26bb8fd67452195cc7bd82f146cd1d59e
+
+1353:     fn get_conflicting_systems(
+1354:         &self,
+1355:         flat_results_disconnected: &Vec<(NodeId, NodeId)>,
+1356:         ambiguous_with_flattened: &UnGraph,
+1357:         ignored_ambiguities: &BTreeSet<ComponentId>,
+1358:     ) -> Vec<(NodeId, NodeId, Vec<ComponentId>)> {
+1359:         let mut conflicting_systems = Vec::new();
+1360:         for &(a, b) in flat_results_disconnected {
+1361:             if ambiguous_with_flattened.contains_edge(a, b)
+1362:                 || self.ambiguous_with_all.contains(&a)
+1363:                 || self.ambiguous_with_all.contains(&b)
+1364:             {
+1365:                 continue;
+1366:             }
+1367: 
+1368:             let system_a = self.systems[a.index()].get().unwrap();
+1369:             let system_b = self.systems[b.index()].get().unwrap();
+1370:             if system_a.is_exclusive() || system_b.is_exclusive() {
+1371:                 conflicting_systems.push((a, b, Vec::new()));
+1372:             } else {
+1373:                 let access_a = system_a.component_access();
+1374:                 let access_b = system_b.component_access();
+1375:                 if !access_a.is_compatible(access_b) {
+1376:                     match access_a.get_conflicts(access_b) {
+1377:                         AccessConflicts::Individual(conflicts) => {
+1378:                             let conflicts: Vec<_> = conflicts
+1379:                                 .ones()
+1380:                                 .map(ComponentId::get_sparse_set_index)
+1381:                                 .filter(|id| !ignored_ambiguities.contains(id))
+1382:                                 .collect();
+1383:                             if !conflicts.is_empty() {
+1384:                                 conflicting_systems.push((a, b, conflicts));
+1385:                             }
+1386:                         }
+1387:                         AccessConflicts::All => {
+1388:                             // there is no specific component conflicting, but the systems are overall incompatible
+1389:                             // for example 2 systems with `Query<EntityMut>`
+1390:                             conflicting_systems.push((a, b, Vec::new()));
+1391:                         }
+1392:                     }
+1393:                 }
+1394:             }
+1395:         }
+1396: 
+1397:         conflicting_systems
+

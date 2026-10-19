@@ -1,0 +1,84 @@
+{
+  "reviewer": "07",
+  "verdict": "passed_ownership_design_direction_only_fullhost_and_source_authorization_gated",
+  "manifest": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-bd3d82a9ddc435cfb2/deco-trackers-20261020/HOST_OWNERSHIP_MANIFEST_B_V1.json",
+    "sha256": "1dd4768b4f9090af2364a8afe4877c787d5585092c0605f76053a22fc72c3676"
+  },
+  "design_sha256": "207ff8722b6f8ca2bf2e232a8b73a12c904ce01ce7e46d02179d61b68a95796a",
+  "frozen_source_hashes_verified": 9,
+  "helper_evidence_hashes_verified": 8,
+  "native_helpers_direct_PE": [
+    {
+      "start_va": "0x14200bcd0",
+      "length": 2836,
+      "all_instruction_bytes_direct_PE": true
+    },
+    {
+      "start_va": "0x14200c7f0",
+      "length": 4668,
+      "all_instruction_bytes_direct_PE": true
+    }
+  ],
+  "additional_visible_source_reads": [
+    {
+      "path": "tiny-glade/crates/country-core/src/asset_libraries/ssbo_library.rs",
+      "sha256": "f06765e4dd02e500e0d4e6dc2c5854456e58d4ea573ffa5e8f4e5f3a38a88113"
+    },
+    {
+      "path": "tiny-glade/crates/country-core/src/asset_libraries/runtime.rs",
+      "sha256": "a433ea80c66db7c9e31394045d7d649c7d564ce50dc5c7fd7f5769649d319cb2"
+    },
+    {
+      "path": "tiny-glade/crates/country-core/src/systems/wall/delete_wall.rs",
+      "sha256": "31d9aea6755eea113568738412a9d0be0b0b29e66064665cd85aa12cfeb65c26"
+    },
+    {
+      "path": "tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "sha256": "b67a561fd10cd7a25b900a0923826ed69c9714d40c844b2be78cd53503af9432"
+    },
+    {
+      "path": "tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_a.rs",
+      "sha256": "3dc6f8cc1257aca7b4d5d2bac7c0429be82b6a87dbfac9188ad81c53d80a8b17"
+    },
+    {
+      "path": "tiny-glade/crates/tiny-glade/src/world_graph.rs",
+      "sha256": "7d1c44170499ff7654e7f4929ee330b4be215a45da01cc6f4ff05009852603e0"
+    }
+  ],
+  "accepted_owner_mapping": [
+    "Reuse unique WallEntities->actual Entity->InstancedWall<canonicalBrickTransformSsbo> lifetime. Three independent owned allocations base/chimney/door may fit same component as a safe handwritten-architecture adapter, not recovered PublicWallState offsets. No second registry/BufferHost/SSBO library or frame map.",
+    "Keep base pendingVec/update/upload_to_storage_buffer and allocation() behavior independent. New decoration lanes never merge into base nor call its atomicreplace_all path; base update must not wipe their contents.",
+    "Each lane allocates from same actual AssetSsboLibrary BrickTransformSsbo SparseInstanceBuffer. Existingwriter owns allocation guard, clear/push shared algorithm/owns_allocation enforced; no custom allocator, copied raw96B schema or extended mutex lifetime.",
+    "Deletion of actual wall entity via same WallEntities/delete_wall drops all owned lanes to same wastequeue. take_out_waste reclaims activebits/chunks before actual draw and same sharedflush; tracker wall removal owns only logs, not GPU allocation."
+  ],
+  "visible_upload_render_chain": [
+    "Actualconstructwall creates component throughCommands once then .update on sameowner; lane initialization and assembly order must honor actualdeferredvisibility.",
+    "PostUpdate AssetMaintenance::Geometry invokes actual sync_wall_bricks: trueexistingstorage take_out_waste, base pending uploads, then unconditional try_gpu_flush on registered buffer even with no basepending. Directdecorlane dirtybits therefore use that same deviceupload path.",
+    "try_gpu_flush groupsdirtychunks and updates existingphysicalbuffer, clearsdirtyonlyafter success; failure keepsdirty. CPU writer/activebits alone are not uploaded proof.",
+    "world_walls W21/W27 obtains same typedstorage; normal ranges derive active bitset+byte_map, cull dispatch uses unflagged count, highbit only pushpayload; existing buffer owner imported through typedlibrary ledger, not CPUnewcount injection.",
+    "Currenthighlight hides/extracts only baseallocation(), then restores. Separatedecorlanes remain normal by existingcurrentpolicy. Originalhighlight relation must be checked before claiming nativevisualequivalence; mergingall into base changes this behavior.",
+    "Current rasterbricks_cb checks !WallBrickUploadStatus.gpu_ready and discards. VisibleW21/W27 compute entry does not check it. Wholeframe source error propagation/uploadstatus policy needs explicit root verification; no claim all compute/mainframe fail-stop from status alone."
+  ],
+  "mandatory_before_source_or_registration": [
+    "Root must legally allocate existingroot claims/normalfree sourcefamilies, no foreign.PublicWalls/Storage claim edits or physicaloffset casts. This report is design review, not new source authorization.",
+    "Freeze actual lane initialization/reuse contract: existingwall missingentity/component/nullallocation/library is real error, not PublicWalls miss/noop/emptyspawn. Init same storage and realCommandsbarrier before consumptions; no perframe newallocations.",
+    "Recover full actual7/4-param host controlflow including actualwallgeometry/derivedinfo/terrain, samewall ownerresolve, currentandremoval audio/signifier. Protocoladapter is not the realmiddle host and cannot be registered withemptycallbacks.",
+    "Nativeperwall clears first then perbrickpush. NoFreeChunks means failure, may leave successfulprefix/changedCPUstate; preserve nativefailureaggregation/feedback and actualwithdiffconsumptionorder, not atomicretainold/retry/success reinterpretation.",
+    "Narrowapprovedshared random_splits/xz helpers feaa source review14ce9d05 supersede olddesign statement helperabsent only after root actualintegration. No consumerlocal copiedmath/RNG.",
+    "Bind same logicalWallId value conversion through existing ObservedWallId wrapper, no newTypeId/registry.",
+    "Freeze actualdraw/visibility/highlight relation and deletion flush lifecycle including allocationdrop before wastecapture and upload failure gating. No CPU-onlyreceipt called actualupload."
+  ],
+  "required_validation": [
+    "Samewall base and two independentlane identity; baseupdate retainsdecorlane data; rebuildingone lane retainsother.",
+    "Trueclear/push capacityfault preservesnativepartialprefix/failurefeedback; separatebase atomicbehavior unaffected.",
+    "Realdevice-backedbuffer bytes/readback after unifiedflush, actualW21/W27 ranges/count/visibility and existinghighlight grouping, no extraGPUflush.",
+    "Actualdelete/drop/wastereclaim/no-active-ranges, reuse generation/owner/recorded-GPUresource lifetime, uploadfailure keepsdirtyandpreventsfalse successfulrender.",
+    "Normal actualconstructor/Commandsapply/requiredres pipeline, nonemptyChimney/Door input and removal callbacks, fulltruehost registration."
+  ],
+  "limits": [
+    "No implementation candidate/source authorization or tests/Cargo/GPU/production by reviewer.",
+    "Completeconstructhelperparameter meaning/audio/signifier stillunrecovered; two fullhelper bodiesalone do not closemiddle.",
+    "OriginalnativeC parity and realOS fullworld/WSI/performance remainunverified."
+  ]
+}

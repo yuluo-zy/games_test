@@ -1,0 +1,30 @@
+/// B DecoratorMaybeMut：装饰集合的共享/可变二象访问（迭代族使用）。
+///
+/// `get` 0x1400885d0（混名 WallId::get_inner）返回共享；`get_mut` 0x140a1b1e0
+/// （helper([+8],[+0x10]) 后返回 [+0] 指针）返回可变。Mut 变体持 &mut；共享
+/// 变体取可变即 panic（原不可行路径）。
+#[derive(Debug)]
+pub enum DecoratorMaybeMut<'a> {
+    /// 共享访问。
+    Ref(&'a Decorators),
+    /// 可变访问。
+    Mut(&'a mut Decorators),
+}
+
+impl<'a> DecoratorMaybeMut<'a> {
+    /// 0x1400885d0（O）：返回共享引用。
+    pub fn get(&self) -> &Decorators {
+        match self {
+            DecoratorMaybeMut::Ref(d) => d,
+            DecoratorMaybeMut::Mut(d) => d,
+        }
+    }
+
+    /// 0x140a1b1e0（O）：返回可变引用（消费自身，移出 &mut）；共享变体 panic
+    /// （unreachable）。
+    pub fn get_mut(self) -> &'a mut Decorators {
+        match self {
+            DecoratorMaybeMut::Ref(_) => unreachable!("DecoratorMaybeMut::get_mut on shared"),
+            DecoratorMaybeMut::Mut(d) => d,
+        }
+    }

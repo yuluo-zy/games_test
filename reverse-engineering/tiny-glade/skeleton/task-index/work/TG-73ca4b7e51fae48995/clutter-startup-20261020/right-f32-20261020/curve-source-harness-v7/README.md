@@ -1,0 +1,1 @@
+V7 exact same complete selected-source suite as V6 plus reviewed shared nearest kernel, actual owned methods delegate to it. Existing tests/all inputs retained plus four new real-array/owned fixtures; no extra business implementation in driver. Immutable template, fresh runtime. Full utils/core/App/native/GPU unaccepted.

@@ -1,0 +1,60 @@
+{
+  "W22_W28_calls": {
+    "path": "tiny-glade/crates/tiny-glade/src/world_graph.rs",
+    "lines": [
+      114,
+      128
+    ],
+    "fact": "Both calls already exist. Do not add duplicate passes.",
+    "source_sha256": "7d1c44170499ff7654e7f4929ee330b4be215a45da01cc6f4ff05009852603e0"
+  },
+  "world_owner": {
+    "path": "tiny-glade/crates/tiny-glade/src/scene_compute.rs",
+    "lines": [
+      196,
+      197,
+      202
+    ],
+    "fact": "Same current World GpuWorld borrowed by resource_scope; device interface is same frame.hosts().buffers.",
+    "source_sha256": "05e1304fe7daf70050e9de8723a87b6dfa6a4caf7c5b9cb8098366db4e416017"
+  },
+  "owned_counts": {
+    "path": "tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+    "lines": [
+      755,
+      759,
+      976,
+      980
+    ],
+    "fact": "Actual subset.instance_count and same subset.cull_buffer BDA are captured, not capacity/max or CPU counter readback.",
+    "source_sha256": "63cb302b3ef054ecd24b7e29c4f75516e51f4df3cd141a59fccd6e8c259df385"
+  },
+  "instance_data": {
+    "path": "tiny-glade/crates/tiny-glade/src/render_bridge.rs",
+    "lines": [
+      569,
+      585
+    ],
+    "fact": "Original main prelude imports and symmetrically exports Owned data buffers from same World GpuWorld via its frame resource graph.",
+    "source_sha256": "c6e660b06a110dcf2a1808339b738ca774cfbea390d9f76ca3193a2b8ea6d9c2"
+  },
+  "indirect": {
+    "path": "tiny-glade/crates/tiny-glade/src/raster_host.rs",
+    "lines": [
+      1682
+    ],
+    "fact": "DrawKind::IndexedIndirectCount resolves actual graph-managed command and count buffers; invokes draw_indexed_indirect_count; unsupported native devices use same-graph GPU lowering.",
+    "source_sha256": "fad73d40098384db0d643cd265697d135094a934eb3a441a5e7f174c7a4877d6"
+  },
+  "remaining_owner_boundary": {
+    "path": "tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+    "lines": [
+      742,
+      759,
+      980
+    ],
+    "fact": "Source check found the cull BDA numeric address is captured but does not itself attach a graph-owned DeviceBuffer/range to RecordedComputePass.device_address_reads. Current import_to_rg imports owned data buffers only, not cull positions. This is a specific unclosed lifetime/synchronization boundary, not a missing W22/W28 call. No fix or runtime-failure claim is included in this HZB patch.",
+    "source_sha256": "63cb302b3ef054ecd24b7e29c4f75516e51f4df3cd141a59fccd6e8c259df385"
+  },
+  "first_runtime_error": "No current nonempty-world runtime first-rejection log was supplied to this author; do not label static gaps as observed runtime rejection."
+}

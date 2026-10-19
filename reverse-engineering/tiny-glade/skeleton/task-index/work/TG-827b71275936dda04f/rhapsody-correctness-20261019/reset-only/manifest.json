@@ -1,0 +1,21 @@
+{
+  "head": "bd8f74a5cfb3c9cc279efb1abd27695bb1bfb8bf",
+  "claim": "TG-827b71275936dda04f",
+  "owner": "rhapsody-correctness-20261019",
+  "scope": "current refactored rhapsody reset_all_temporals retirement ownership handoff; no original ABI reconstruction",
+  "sources": [
+    {
+      "path": "crates/rhapsody/src/rg/vulkan.rs",
+      "before_sha256": "bc6367d9532700852bd0e3398487ae353329d02d9e140fa7dd715701331a3e7c",
+      "candidate_sha256": "01cb0a81e191a87d250cd5404de2e12a09ebca4e52410beb128dd494d0c10964"
+    }
+  ],
+  "patch_sha256": "91eda30137d40feabfbd719819af411cfb667fba8a1ab7dca3c4884815a8b3aa",
+  "validation": "not run; root sole Cargo/GPU owner; independent source review requested",
+  "preserved": [
+    "active_prepared rejection",
+    "pending physical_mapping ownership guard in collect_named_retired",
+    "existing completion and begin_frame collection boundaries"
+  ],
+  "consumer": "country-core::recompile_at_reduced_scale -> ProductionRenderHost::reset_temporal_tables -> VulkanGraphSession::reset_all_temporals -> wait_idle_and_recycle_resources -> compile_world_graph"
+}

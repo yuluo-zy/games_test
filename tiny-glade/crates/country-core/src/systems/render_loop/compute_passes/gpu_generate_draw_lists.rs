@@ -598,10 +598,11 @@ pub fn wall_draw_lists_pass2<W: WallSsbos>(
 use crate::render::nani::{
     buffers as nani_buffers,
     cull_shaders::NaniCullAndBucketFamily,
-    gpu_world::{GpuWorld, GpuWorldSubset, GpuWorldSubsetKind},
+    gpu_world::{GpuWorld, GpuWorldSubset, GpuWorldSubsetKind, InstanceCullData},
 };
 use crate::render::pass_builder::compute_pass_builder::{ComputeDispatchIndirectApi, ComputePass};
-use crate::render::ssbo::rhapsody_boundary::GraphicsDevice;
+use crate::render::ssbo::rhapsody_boundary::{Buffer, GraphicsDevice};
+use rhapsody::resource::DynamicConstantsChunk;
 
 /// The old `FilteredInstance` name is a binding role, not an original SSBO
 /// type. Native 141608260/14160c630 both name NaniInstanceIndirectionSsbo.
@@ -739,11 +740,38 @@ fn is_special_cull(kind: GpuWorldSubsetKind) -> bool {
     )
 }
 
+/// Resolve the actual generation-checked owner before querying its address.
+/// The original shader reads one 16-byte GpuInstance for each active index;
+/// the retained range is the active prefix, independent of backing capacity.
+fn retain_owned_cull_read(
+    device: &dyn GraphicsDevice,
+    buffer: &Buffer,
+    count: u32,
+    retain_cull: &dyn Fn(&Buffer, u64) -> rhapsody::Result<DynamicConstantsChunk>,
+) -> rhapsody::Result<(u64, DynamicConstantsChunk)> {
+    let bytes = u64::from(count)
+        .checked_mul(core::mem::size_of::<InstanceCullData>() as u64)
+        .ok_or_else(|| rhapsody::Error::invalid_usage("Nani cull input byte range overflow"))?;
+    let read = retain_cull(buffer, bytes)?;
+    if bytes == 0 || read.offset != 0 || read.size != bytes || bytes > buffer.byte_size {
+        return Err(rhapsody::Error::invalid_usage("Nani cull owner range differs from active prefix"));
+    }
+    // The real owner reports capability/range errors as their original kind.
+    // A stale resolver therefore fails before the legacy device_address hook.
+    let address = read.device_address()?;
+    if address == 0 || address != device.device_address(buffer) {
+        return Err(rhapsody::Error::invalid_usage("Nani cull owner differs from device-address source"));
+    }
+    Ok((address, read))
+}
+
 fn owned_cull_batch(
     gpu_world: &GpuWorld,
     device: &dyn GraphicsDevice,
-) -> Vec<(PushConstants, u32)> {
+    retain_cull: &dyn Fn(&Buffer, u64) -> rhapsody::Result<DynamicConstantsChunk>,
+) -> rhapsody::Result<(Vec<(PushConstants, u32)>, Vec<DynamicConstantsChunk>)> {
     let mut result = Vec::new();
+    let mut reads = Vec::new();
     for kind in GpuWorldSubsetKind::all() {
         if is_special_cull(kind) {
             continue;
@@ -756,8 +784,10 @@ fn owned_cull_batch(
         if count == 0 {
             continue;
         }
-        let address = device.device_address(&subset.cull_buffer().buffer);
-        assert_ne!(address, 0, "Nani cull input has no GPU device address");
+        let (address, read) = retain_owned_cull_read(
+            device, &subset.cull_buffer().buffer, count, retain_cull,
+        )?;
+        reads.push(read);
         // Multiunzip@140b2b8f5 writes address@0, kind@8, count@c, list@10.
         result.push((
             PushConstants([
@@ -770,7 +800,7 @@ fn owned_cull_batch(
             count,
         ));
     }
-    result
+    Ok((result, reads))
 }
 
 fn record_empty_unsorted(
@@ -878,7 +908,8 @@ pub fn gpu_generate_draw_lists(
     gpu_world: &GpuWorld,
     device: &dyn GraphicsDevice,
     hzb: Option<NaniHzb>,
-) -> NaniGraphOutputs {
+    retain_cull: &dyn Fn(&Buffer, u64) -> rhapsody::Result<DynamicConstantsChunk>,
+) -> rhapsody::Result<NaniGraphOutputs> {
     let params = gpu_world.draw_list_params();
     let range = 0..if hzb.is_some() { 1 } else { 4 };
     let unsorted = render_sublists(params, false, range.clone());
@@ -924,13 +955,14 @@ pub fn gpu_generate_draw_lists(
         hzb_dims: hzb.as_ref().map(|v| v.inner_dims).unwrap_or([0, 0]),
     };
     let oc_pass = i32::from(hzb.is_some());
-    let main = owned_cull_batch(gpu_world, device);
+    let (main, main_reads) = owned_cull_batch(gpu_world, device, retain_cull)?;
     let source = NaniCullSource {
         family: NaniCullAndBucketFamily::Main,
         oc_pass,
     };
     let pass = create_cull_and_bucket_pass::<_, GameNaniSsbos>(env, &source, &res)
-        .dispatch_with(move |api| cull_and_bucket_dispatch(api, &main));
+        .dispatch_with(move |api| cull_and_bucket_dispatch(api, &main))
+        .with_device_address_reads(main_reads);
     env.record(pass);
 
     // Native second loop distinguishes absent, externally-owned and internally
@@ -977,11 +1009,19 @@ pub fn gpu_generate_draw_lists(
                 if count == 0 {
                     continue;
                 }
-                let address = device.device_address(&subset.cull_buffer().buffer);
-                assert_ne!(
-                    address, 0,
-                    "Nani custom cull input has no GPU device address"
-                );
+                // CurvedHalfTimber keeps this original payload field, but
+                // both packaged permutations read only its instance descriptor.
+                // Plaster/Smoke/StairsFloor really load GpuInstance through BDA.
+                let (address, cull_read) = if kind == GpuWorldSubsetKind::CurvedHalfTimber {
+                    let address = device.device_address(&subset.cull_buffer().buffer);
+                    assert_ne!(address, 0, "Nani custom cull input has no GPU device address");
+                    (address, None)
+                } else {
+                    let (address, read) = retain_owned_cull_read(
+                        device, &subset.cull_buffer().buffer, count, retain_cull,
+                    )?;
+                    (address, Some(read))
+                };
                 // Custom callback payload order differs from Main at words3/4.
                 let constants = word_bytes(&[
                     address as u32,
@@ -1001,6 +1041,11 @@ pub fn gpu_generate_draw_lists(
                     .push_constants(&constants)
                     .read_rg_storage_buffer(H_INSTANCE_BUFFER, &buffer)
                     .dispatch_1d(count);
+                let pass = if let Some(read) = cull_read {
+                    pass.with_device_address_reads(vec![read])
+                } else {
+                    pass
+                };
                 env.record(pass);
             }
         }
@@ -1077,7 +1122,7 @@ pub fn gpu_generate_draw_lists(
         &subtotals,
         &prefix,
     );
-    NaniGraphOutputs {
+    Ok(NaniGraphOutputs {
         sorting_histogram: histogram,
         filtered_instance_meta: filtered_meta,
         dispatch_args: args,
@@ -1086,7 +1131,7 @@ pub fn gpu_generate_draw_lists(
         unsorted_atlas_prefix: prefix,
         draw_cmd_histogram: cmd_histogram,
         draw_cmd_subtotals: subtotals,
-    }
+    })
 }
 
 fn record_sorted_lists(
@@ -1626,6 +1671,18 @@ mod tests {
             self.0.push(format!("pc {}", b.len()));
         }
         fn track_gpu_lifetime(&mut self) {}
+    }
+
+    #[test]
+    fn cull_owner_error_preserves_kind_before_the_legacy_address_hook() {
+        // MockDevice has no device_address implementation and would panic if
+        // queried. The resolver's real typed cause must return first.
+        let device = crate::render::ssbo::tests::MockDevice::default();
+        let handle = Buffer { byte_size: 16, ..Default::default() };
+        let result = retain_owned_cull_read(&device, &handle, 1, &|_, _| {
+            Err(rhapsody::Error::OutOfHostMemory)
+        });
+        assert!(matches!(result, Err(rhapsody::Error::OutOfHostMemory)));
     }
 
     #[test]

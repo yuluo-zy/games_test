@@ -1,0 +1,37 @@
+--- /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-c459c7f73345e24709/main-chain-boot-20261018/member14-owner-b-20261020/candidate-v2/src/run_game.rs
++++ /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-c459c7f73345e24709/main-chain-boot-20261018/member14-owner-b-20261020/supplemental-tests-v1/src/run_game.rs
+@@ -2010,7 +2010,9 @@
+         app.insert_resource(AssetLibraryRuntime::new(Arc::new(CpuBufferDevice(1)), Arc::new(CpuBufferDevice(2))));
+         app.init_resource::<WallBrickUploadStatus>(); app.init_resource::<Observed>();
+         app.add_event::<WallBricksChanged>(); app.add_event::<UpdateRtWorldEvent>();
+-        app.add_systems(bevy_app::Update, prepare_wall_brick_assembly_owners.in_set(GameSystemSet(19)));
++        app.init_resource::<country_core::resources::walls::public_walls::WallPlasters>();
++        app.add_event::<country_core::resources::walls::public_walls::OnWallDeleted>();
++        app.add_systems(bevy_app::Update, (country_core::systems::wall::delete_wall::delete_wall, prepare_wall_brick_assembly_owners).chain_ignore_deferred().in_set(GameSystemSet(19)));
+         app.add_systems(bevy_app::Update, inspect_at25.in_set(GameSystemSet(25)));
+         app.add_systems(bevy_app::PostUpdate, sync_wall_bricks);
+         app.update(); app.update();
+@@ -2018,5 +2020,21 @@
+         assert!(app.world().resource::<WallBrickUploadStatus>().gpu_ready);
+         let entity = app.world().resource::<WallEntities>().wall_entity(WallId(0x700000031)).unwrap();
+         assert!(app.world().get::<InstancedWall<BrickTransformSsbo>>(entity).unwrap().is_awaiting_production());
+-    }
+-}
++
++        // A real authority remove/recreate of the same complete WallId publishes
++        // Deleted and Changed together. Match actual19 deletion then producer;
++        // ordinary19->25 edges must apply both Commands before inspection.
++        inner.remove(WallId(0x700000031));
++        let curve = country_core::resources::roofs::geometry::surface::Curve2::try_new(vec![[0.,0.],[4.,0.]], false).unwrap();
++        inner.new_wall_with_id(WallId(0x700000031), WallState::new(curve, 3., 0, 0, false));
++        app.world_mut().resource_mut::<PublicWalls>().consume(&mut inner, &TerrainHeightGrid512 { encoded: vec![0u16;512*512].into(), minimum_y: 0., maximum_y: 4., sampling_fix: true });
++        app.world_mut().resource_mut::<Events<country_core::resources::walls::public_walls::OnWallDeleted>>().write(country_core::resources::walls::public_walls::OnWallDeleted(WallId(0x700000031)));
++        app.update();
++        let replacement = app.world().resource::<WallEntities>().wall_entity(WallId(0x700000031)).unwrap();
++        assert_ne!(replacement,entity);
++        assert!(app.world().get_entity(entity).is_err());
++        assert!(app.world().get::<InstancedWall<BrickTransformSsbo>>(replacement).unwrap().is_awaiting_production());
++        app.update();
++        assert_eq!(app.world().resource::<Observed>().changed_counts,[1,0,1,0]);
++    }
++}

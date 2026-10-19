@@ -1,0 +1,261 @@
+--- /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-c459c7f73345e24709/main-chain-boot-20261018/member14-owner-b-20261020/candidate-v1/src/run_game.rs
++++ /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-c459c7f73345e24709/main-chain-boot-20261018/member14-owner-b-20261020/candidate-v2/src/run_game.rs
+@@ -1880,11 +1880,96 @@
+     use country_core::{
+         asset_libraries::{runtime::AssetLibraryRuntime, ssbo_library::AssetSsboLibrary},
+         geometry::{instanced_wall::{BrickTransformSsbo, InstancedWall}, runtime::{prepare_wall_brick_assembly_owners, sync_wall_bricks, WallBrickUploadStatus}},
+-        render::{sparse_instance_buffer::SparseInstanceBuffer, test_device::TestDevice},
++        render::{sparse_instance_buffer::SparseInstanceBuffer},
+         resources::{walls::{InnerWalls, WallId, WallState, public_walls::{PublicWalls, WallEntities}, publication_source::TerrainHeightGrid512, wall_trigger_volume::WallTriggerVolume}, rt::UpdateRtWorldEvent},
+         systems::wall::construct_wall_bricks::WallBricksChanged,
+     };
+     use std::sync::Arc;
++
++    /// CPU-only range-checking boundary for these CPU ownership/state tests.
++    /// It creates no physical resource, maps no memory, and submits no GPU work.
++    /// Successful updates mean only that the canonical uploader requested valid
++    /// nonoverlapping byte ranges inside the declared CPU fixture capacity.
++    #[derive(Debug)]
++    struct CpuBufferDevice(u64);
++
++    impl country_core::render::ssbo::rhapsody_boundary::GraphicsDevice for CpuBufferDevice {
++        fn create_buffer(
++            &self,
++            desc: &country_core::render::ssbo::rhapsody_boundary::BufferDesc,
++            _name: &str,
++            data: Option<&[u8]>,
++        ) -> Result<country_core::render::ssbo::rhapsody_boundary::Buffer, country_core::render::ssbo::rhapsody_boundary::BackendError> {
++            assert!(data.is_none_or(|bytes| bytes.len() <= desc.size));
++            Ok(country_core::render::ssbo::rhapsody_boundary::Buffer {
++                id: self.0,
++                byte_size: desc.size as u64,
++                ..Default::default()
++            })
++        }
++
++        fn update_buffer_bytes(
++            &self,
++            buffer: &country_core::render::ssbo::rhapsody_boundary::Buffer,
++            data: &[u8],
++            ranges: &[core::ops::Range<usize>],
++            offset: usize,
++        ) -> Result<(), country_core::render::ssbo::rhapsody_boundary::BackendError> {
++            let mut previous_end = 0;
++            for range in ranges {
++                assert!(previous_end <= range.start);
++                assert!(range.start <= range.end && range.end <= data.len());
++                let end = offset.checked_add(range.end).expect("CPU fixture byte offset overflow");
++                assert!((end as u64) <= buffer.byte_size);
++                previous_end = range.end;
++            }
++            Ok(())
++        }
++    }
++
++    // AssetLibraryRuntime requires the texture capability even though this
++    // fixture mounts only the real wall sparse-buffer sync system. Any accidental
++    // texture/descriptor use fails explicitly instead of reporting fake success.
++    impl country_core::render::load_texture::boundary::TextureDevice for CpuBufferDevice {
++        fn create_texture(
++            &self,
++            _name: &str,
++            _desc: &country_core::render::load_texture::boundary::TextureDesc,
++            _data: &[u8],
++        ) -> Result<country_core::render::load_texture::boundary::Texture, country_core::render::load_texture::boundary::BackendError> {
++            panic!("texture creation is outside this CPU wall-owner fixture")
++        }
++    }
++    impl country_core::asset_libraries::texture_library::TextureLibraryDevice for CpuBufferDevice {
++        fn create_persistent_descriptor_set(
++            &self,
++            _name: &str,
++        ) -> Result<country_core::rhapsody_contract::DescriptorSet, country_core::render::load_texture::boundary::BackendError> {
++            panic!("descriptor creation is outside this CPU wall-owner fixture")
++        }
++        fn update_persistent_descriptor_set(
++            &self,
++            _set: &country_core::rhapsody_contract::DescriptorSet,
++            _updates: &[country_core::asset_libraries::texture_library::DescriptorImageUpdate],
++        ) -> Result<(), country_core::render::load_texture::boundary::BackendError> {
++            panic!("descriptor updates are outside this CPU wall-owner fixture")
++        }
++        fn get_vk_image_view(
++            &self,
++            _texture: &country_core::render::load_texture::boundary::Texture,
++            _mip: u32,
++        ) -> Result<country_core::asset_libraries::texture_library::ImageView, country_core::render::load_texture::boundary::BackendError> {
++            panic!("image views are outside this CPU wall-owner fixture")
++        }
++        fn update_texture(
++            &self,
++            _texture: &country_core::render::load_texture::boundary::Texture,
++            _update: &country_core::asset_libraries::texture_library::TextureUpdate,
++        ) -> Result<(), country_core::render::load_texture::boundary::BackendError> {
++            panic!("texture uploads are outside this CPU wall-owner fixture")
++        }
++    }
++
+ 
+     #[derive(Resource, Default)]
+     struct Observed { changed_counts: Vec<usize> }
+@@ -1919,10 +2004,10 @@
+         inner.new_wall_with_id(WallId(0x700000031), WallState::new(curve, 2., 0, 0, false));
+         let mut public = PublicWalls::default();
+         public.consume(&mut inner, &TerrainHeightGrid512 { encoded: vec![0u16;512*512].into(), minimum_y: 0., maximum_y: 4., sampling_fix: true });
+-        let storage = SparseInstanceBuffer::<BrickTransformSsbo>::try_new(&TestDevice(1)).unwrap();
++        let storage = SparseInstanceBuffer::<BrickTransformSsbo>::try_new(&CpuBufferDevice(1)).unwrap();
+         let mut library = AssetSsboLibrary::new(); library.register::<BrickTransformSsbo>(storage);
+         app.insert_resource(public); app.insert_resource(library); app.init_resource::<WallEntities>();
+-        app.insert_resource(AssetLibraryRuntime::new(Arc::new(TestDevice(1)), Arc::new(TestDevice(2))));
++        app.insert_resource(AssetLibraryRuntime::new(Arc::new(CpuBufferDevice(1)), Arc::new(CpuBufferDevice(2))));
+         app.init_resource::<WallBrickUploadStatus>(); app.init_resource::<Observed>();
+         app.add_event::<WallBricksChanged>(); app.add_event::<UpdateRtWorldEvent>();
+         app.add_systems(bevy_app::Update, prepare_wall_brick_assembly_owners.in_set(GameSystemSet(19)));
+--- /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-917d6130810801d337/deco-trackers-20261020/host-candidate-b-v1/src/decorator_visual/chimney_assemble_bricks.rs
++++ /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-917d6130810801d337/deco-trackers-20261020/host-candidate-b-v2/src/decorator_visual/chimney_assemble_bricks.rs
+@@ -407,10 +407,52 @@
+     use country_core::{
+         asset_libraries::ssbo_library::AssetSsboLibrary,
+         geometry::instanced_wall::InstancedWall,
+-        render::{sparse_instance_buffer::SparseInstanceBuffer, test_device::TestDevice},
++        render::{sparse_instance_buffer::SparseInstanceBuffer},
+         resources::walls::{InnerWalls, WallState, public_walls::WallEntities, publication_source::TerrainHeightGrid512, decorator_storage::DecoratorStorageAddr, decorator_subtype::{DerivedDecoratorSubtypes, DecoratorMeshLibrary, DecoratorSubtype, LegacyDerivedDecoratorInfoRecord}},
+     };
+     use std::{sync::Arc, panic::{AssertUnwindSafe, catch_unwind}};
++
++
++    /// CPU-only range-checking boundary for these CPU ownership/state tests.
++    /// It creates no physical resource, maps no memory, and submits no GPU work.
++    /// Successful updates mean only that the canonical uploader requested valid
++    /// nonoverlapping byte ranges inside the declared CPU fixture capacity.
++    #[derive(Debug)]
++    struct CpuBufferDevice(u64);
++
++    impl country_core::render::ssbo::rhapsody_boundary::GraphicsDevice for CpuBufferDevice {
++        fn create_buffer(
++            &self,
++            desc: &country_core::render::ssbo::rhapsody_boundary::BufferDesc,
++            _name: &str,
++            data: Option<&[u8]>,
++        ) -> Result<country_core::render::ssbo::rhapsody_boundary::Buffer, country_core::render::ssbo::rhapsody_boundary::BackendError> {
++            assert!(data.is_none_or(|bytes| bytes.len() <= desc.size));
++            Ok(country_core::render::ssbo::rhapsody_boundary::Buffer {
++                id: self.0,
++                byte_size: desc.size as u64,
++                ..Default::default()
++            })
++        }
++
++        fn update_buffer_bytes(
++            &self,
++            buffer: &country_core::render::ssbo::rhapsody_boundary::Buffer,
++            data: &[u8],
++            ranges: &[core::ops::Range<usize>],
++            offset: usize,
++        ) -> Result<(), country_core::render::ssbo::rhapsody_boundary::BackendError> {
++            let mut previous_end = 0;
++            for range in ranges {
++                assert!(previous_end <= range.start);
++                assert!(range.start <= range.end && range.end <= data.len());
++                let end = offset.checked_add(range.end).expect("CPU fixture byte offset overflow");
++                assert!((end as u64) <= buffer.byte_size);
++                previous_end = range.end;
++            }
++            Ok(())
++        }
++    }
+ 
+     fn params(tag: u32) -> ChimneyAssemblyParams {
+         let mut p = ChimneyAssemblyParams { words: [0;10] };
+@@ -424,7 +466,7 @@
+         inner.new_wall_with_id(wall, WallState::new(curve, 2., 0, 0, false));
+         let mut public = PublicWalls::default();
+         public.consume(&mut inner, &TerrainHeightGrid512 { encoded: vec![0u16;512*512].into(), minimum_y: 0., maximum_y: 4., sampling_fix: true });
+-        let storage = SparseInstanceBuffer::<BrickTransformSsbo>::try_new(&TestDevice(1)).unwrap();
++        let storage = SparseInstanceBuffer::<BrickTransformSsbo>::try_new(&CpuBufferDevice(1)).unwrap();
+         let owner = InstancedWall::new_awaiting_production(wall.0, &storage);
+         let library = AssetSsboLibrary::new(); library.register::<BrickTransformSsbo>(storage);
+         let mut world = World::new(); world.insert_resource(public); world.insert_resource(library);
+--- /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-e10831b95b26b67a3c/deco-trackers-20261020/host-candidate-b-v1/src/decorator_visual/door_stairs_assemble_bricks.rs
++++ /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-e10831b95b26b67a3c/deco-trackers-20261020/host-candidate-b-v2/src/decorator_visual/door_stairs_assemble_bricks.rs
+@@ -243,10 +243,52 @@
+     use country_core::{
+         asset_libraries::ssbo_library::AssetSsboLibrary,
+         geometry::instanced_wall::InstancedWall,
+-        render::{sparse_instance_buffer::{SparseInstanceBuffer, SparseSsbo, SLOTS_PER_CHUNK}, test_device::TestDevice},
++        render::{sparse_instance_buffer::{SparseInstanceBuffer, SparseSsbo, SLOTS_PER_CHUNK}},
+         resources::walls::{InnerWalls, WallState, public_walls::WallEntities, publication_source::TerrainHeightGrid512, decorator_storage::DecoratorStorageAddr},
+     };
+     use std::panic::{AssertUnwindSafe, catch_unwind};
++
++
++    /// CPU-only range-checking boundary for these CPU ownership/state tests.
++    /// It creates no physical resource, maps no memory, and submits no GPU work.
++    /// Successful updates mean only that the canonical uploader requested valid
++    /// nonoverlapping byte ranges inside the declared CPU fixture capacity.
++    #[derive(Debug)]
++    struct CpuBufferDevice(u64);
++
++    impl country_core::render::ssbo::rhapsody_boundary::GraphicsDevice for CpuBufferDevice {
++        fn create_buffer(
++            &self,
++            desc: &country_core::render::ssbo::rhapsody_boundary::BufferDesc,
++            _name: &str,
++            data: Option<&[u8]>,
++        ) -> Result<country_core::render::ssbo::rhapsody_boundary::Buffer, country_core::render::ssbo::rhapsody_boundary::BackendError> {
++            assert!(data.is_none_or(|bytes| bytes.len() <= desc.size));
++            Ok(country_core::render::ssbo::rhapsody_boundary::Buffer {
++                id: self.0,
++                byte_size: desc.size as u64,
++                ..Default::default()
++            })
++        }
++
++        fn update_buffer_bytes(
++            &self,
++            buffer: &country_core::render::ssbo::rhapsody_boundary::Buffer,
++            data: &[u8],
++            ranges: &[core::ops::Range<usize>],
++            offset: usize,
++        ) -> Result<(), country_core::render::ssbo::rhapsody_boundary::BackendError> {
++            let mut previous_end = 0;
++            for range in ranges {
++                assert!(previous_end <= range.start);
++                assert!(range.start <= range.end && range.end <= data.len());
++                let end = offset.checked_add(range.end).expect("CPU fixture byte offset overflow");
++                assert!((end as u64) <= buffer.byte_size);
++                previous_end = range.end;
++            }
++            Ok(())
++        }
++    }
+ 
+     fn public_wall() -> (WallId, PublicWalls) {
+         let wall = WallId(49);
+@@ -284,7 +326,7 @@
+ 
+     #[test]
+     fn public_miss_normalizes_only_with_storage_and_present_wall_requires_real_lane() {
+-        let storage = SparseInstanceBuffer::<BrickTransformSsbo>::try_new(&TestDevice(1)).unwrap();
++        let storage = SparseInstanceBuffer::<BrickTransformSsbo>::try_new(&CpuBufferDevice(1)).unwrap();
+         let library = AssetSsboLibrary::new(); library.register::<BrickTransformSsbo>(storage);
+         let mut world = world(PublicWalls::default(), library);
+         let wall = WallId(49); let id = DecoratorId(7);
+@@ -305,7 +347,7 @@
+     #[test]
+     fn actual_sparse_partial_push_normalizes_without_retry_and_shared_flush_keeps_draw_inputs() {
+         let (wall, public) = public_wall();
+-        let mut storage = SparseInstanceBuffer::<BrickTransformSsbo>::try_new(&TestDevice(1)).unwrap();
++        let mut storage = SparseInstanceBuffer::<BrickTransformSsbo>::try_new(&CpuBufferDevice(1)).unwrap();
+         let owner = InstancedWall::new_awaiting_production(wall.0, &storage);
+         storage.writer(owner.door_stairs_allocation().unwrap()).push(&BrickTransformSsbo { seed: u32::MAX, ..Default::default() }).unwrap();
+         let blocker = storage.new_allocation();
+@@ -338,7 +380,7 @@
+         let mut library = world.resource_mut::<AssetSsboLibrary>();
+         let storage = library.get_mut::<BrickTransformSsbo>().unwrap();
+         assert!(storage.dirty_bitset.iter().any(|word| word.load(std::sync::atomic::Ordering::Relaxed) != 0));
+-        storage.try_gpu_flush(&TestDevice(1)).unwrap();
++        storage.try_gpu_flush(&CpuBufferDevice(1)).unwrap();
+         assert!(storage.dirty_bitset.iter().all(|word| word.load(std::sync::atomic::Ordering::Relaxed) == 0));
+         assert_eq!(storage.to_draw_multi_instanced().iter().map(|r| r.1).sum::<u32>(), 45);
+     }

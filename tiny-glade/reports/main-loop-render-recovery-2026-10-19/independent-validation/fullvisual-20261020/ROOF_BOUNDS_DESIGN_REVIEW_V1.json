@@ -1,0 +1,31 @@
+{
+  "reviewer": "07-independent-validation",
+  "created_utc": "2026-10-19T19:06:57.438369+00:00",
+  "verdict": "passed_scoped_leaf_design_with_real_caller_requirements",
+  "manifest": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4a10377b42911028e3/clutter-startup-20261020/roof-bounds-20261020/design-v1.json",
+    "sha256": "039fde2bba0cc630b865a1f691d566062e89acc5dd4b65acb37724abf7f17e34"
+  },
+  "checks": {
+    "nine_frozen_hashes_matched": true,
+    "actual_before_source": "8d8f77cc760070b268fa9e3e16a2ee0f381a9dfbd4c71504da67826103782143",
+    "native_full_body": "1407ca6c0/1561B,357 instructions continuous all bytes verified directly against original B PE",
+    "rank_table": "142a87240 actual16B matches; valid ranks1..3=.1/.15/.2,adjacent index0=2.2 is not accepted"
+  },
+  "accepted": [
+    "Replace fake bounds state/roof shape with actual CachedDecoratorTransform and canonical Roof. Same-name public API returns OUT-of-bounds, matching final xor1; only transform.translation used, no invented feedback/stream output.",
+    "Call actual roof.height before rank guard; rank1..3 only. Preserve separate height*.5+.1+translationY then roofheight*rankfactor addition; compare to secondheight+floorY minus native .5 for circle/.1 otherwise. Native unordered-inclusive setbe is !(top>limit), not ordered <=.",
+    "Circle original enclosure branch returns inverse height predicate. Rectangle branch uses real original clamped Roof sections at actual translation and actual top point, actual positive-area rectangle/perimeter/U helpers, width*.5+.1 interval and original fmod1 negative adjustment. Test closed circular corner membership including wrap/endpoints at both distinct sections; preserve short circuit and individual ordered/unordered branches, no bbox approximation.",
+    "Root-integrated Rectangle6353c714 provides the actual needed original perimeter/U helpers. Reuse current Roof/section/noise/cache/library owners, no second geometry/type resource."
+  ],
+  "mandatory_caller_and_source_gates": [
+    "Existing sole partial generator currently passes fake Default/width0/height0/rank0; it must not remain as a successful adapter to new function. Minimal same-owned-file compile companion may add real PublicWalls/Query<&Roof> and cached transform, resolve actual wall roof/skip missing or flat as original caller, obtain actual collision bbox dimensions and rank. Freeze the precise rank/key source; never choose a valid literal rank merely to avoid the new guard.",
+    "The retained generic original8-param candidate explicitly marks association as candidate/unknown actual binding. Do not claim full original typed generator signature or geometry implementation solely from type spelling/decomp navigation. Source review must inspect the concrete real caller inputs and error domain; absent library/real roof is not a zero/default substitute.",
+    "Current generator tail still contains incomplete visual/blueprint algorithms. Do not mount it in actual App or call it recovered just because bounds leaf is restored. No Local DormerCollisionGeoLib/Nani producer reconstruction is approved by this packet.",
+    "Candidate must preserve exact rank assertion/order, two distinct section calls, corner comparisons and genuine library miss error. Add real Roof tests for circle polarity/ranks/low-high rectangle sections/wrap/endpoints/NaN branch conditions. Tests unrun at design stage."
+  ],
+  "limits": [
+    "Design only; no source candidate or execution was supplied. Reviewer did read-only source/native checks, no Cargo/rustc/tests/GPU/production/claims/Git.",
+    "Actual generator registration, whole decoder/subtype loader, full location/validator, current App/WSI/pixels/performance remain unverified."
+  ]
+}

@@ -216,16 +216,6 @@ impl RaycastSimpleResult {
 }
 
 /// 把 rapier `ColliderHandle` 写成结果句柄区（O：{index@+0, gen@+4, slot@+8}）。
-#[cfg(feature = "native-physics")]
-fn handle_region(handle: ColliderHandle, slot_index: u32) -> [u64; 3] {
-    let (index, generation) = handle.into_raw_parts();
-    [
-        u64::from(index) | (u64::from(generation) << 32),
-        u64::from(slot_index as u8),
-        0,
-    ]
-}
-
 /// `Rapier::raycast` / `Rapier::raycast_simple` 命中的**结果句柄区**。
 ///
 /// fresh（0x1408cdc60 / 0x1408ce180）：命中后先 `ColliderSet::get_mut_internal` 取句柄，
@@ -234,27 +224,25 @@ fn handle_region(handle: ColliderHandle, slot_index: u32) -> [u64; 3] {
 /// （`in_RCX[0..2] = puVar1[0..2]`，条目 stride 0x28）。因此句柄区不是 rapier 句柄打包，
 /// 而是 `ColliderRegistryEntry` 的前 24 字节（kind/meta 区）。
 ///
-/// 解注册表时的 `generation` 失配按 fresh panic；**条目缺失**（注册表尚未接线）返回
-/// `None`，调用方回退到旧句柄打包——登记项：`upsert_collider_entry` 的注册接线未落地
-/// （`upsert_collider` 0x140b40b50 的 registry 插入面未锚定）。
+/// Resolve the actual physical collider's user_data key through the sole mesh owner.
+/// Missing or stale receipts fail explicitly; no source is synthesized from its slot.
 #[cfg(feature = "native-physics")]
-fn registry_handle_region(world: &RaycastWorld, handle: ColliderHandle) -> Option<[u64; 3]> {
-    let (index, generation) = handle.into_raw_parts();
-    let entry = world.colliders.get(index as usize)?;
-    if entry.generation | 1 != generation | 1 {
-        panic!("get_collider: collider handle invalid");
-    }
-    let mut region = [0u64; 3];
-    // SAFETY: `ColliderRegistryEntry` 是 `#[repr(C)]` 0x28 B；前 24 字节按字节拷出，
-    // 避免条目对齐（4）与 `[u64;3]`（8）不一致。
-    unsafe {
-        core::ptr::copy_nonoverlapping(
-            entry as *const ColliderRegistryEntry as *const u8,
-            region.as_mut_ptr() as *mut u8,
-            24,
-        );
-    }
-    Some(region)
+fn registry_handle_region(world: &RaycastWorld, slot: u8, handle: ColliderHandle) -> [u64; 3] {
+    let source = world.registered_mesh_for_collider(slot, handle).source;
+    std::array::from_fn(|i| u64::from_le_bytes(source.0[i * 8..i * 8 + 8].try_into().unwrap()))
+}
+
+/// Raw receipts must round-trip before lookup: KeyData::from_ffi alone ORs generation with 1.
+#[cfg(feature = "native-physics")]
+fn strict_mesh_key(raw: u64) -> RaycastMeshKey {
+    use slotmap::Key;
+    let key = RaycastMeshKey::from(slotmap::KeyData::from_ffi(raw));
+    assert_eq!(
+        key.data().as_ffi(),
+        raw,
+        "collider mesh receipt has invalid generation bits"
+    );
+    key
 }
 
 /// 地形命中结果（O：+0x00 首字节 0xb、position@+0x18 = origin + dir*toi、normal=(0,1,0)@+0x24、
@@ -331,8 +319,8 @@ impl tabloid::StateDelta<ColliderDiff> for ColliderDelta {
 /// - `+0x50/+0x58/+0x60 = 0`、`+0x68 = 0x3f80000000000000`（常量 0x142aa3ec0/0x142aa3ed0
 ///   已 read_memory 核对）。
 ///
-/// 形状变体（`new_convex`/`new_cuboid`/`new_sphere`/`new_compound`）复用同布局：
-/// +0x00=tag（4）、+0x10=kind（4）、+0x50..+0x68 存形状参数，hash@+0x70。
+/// Primitive variants reuse the same layout: +0x50..+0x6f is mesh-local rigid pose,
+/// not dimensions/hash scratch; the geometry fingerprint remains at +0x70.
 #[cfg(feature = "native-physics")]
 #[repr(C)]
 pub struct RaycastMeshData {
@@ -404,7 +392,7 @@ impl Default for RaycastMeshData {
             _pad0: 0,
             _pad1: 0,
             _pad2: 0,
-            scale: 0,
+            scale: 0x3f80000000000000,
             hash: 0,
         }
     }
@@ -457,6 +445,35 @@ impl RaycastMeshData {
         self.shape.as_deref()
     }
 
+    /// B data+0x50..0x6f is a rigid pose, including primitive constructors.
+    /// Decode fields explicitly; the reconstructed IsoTransform has a different size.
+    pub fn local_transform(&self) -> utils::iso_transform::IsoTransform {
+        utils::iso_transform::IsoTransform::from_translation_rotation(
+            glam::Vec3::new(
+                f32::from_bits(self._pad0 as u32),
+                f32::from_bits((self._pad0 >> 32) as u32),
+                f32::from_bits(self._pad1 as u32),
+            ),
+            glam::Quat::from_xyzw(
+                f32::from_bits(self._pad2 as u32),
+                f32::from_bits((self._pad2 >> 32) as u32),
+                f32::from_bits(self.scale as u32),
+                f32::from_bits((self.scale >> 32) as u32),
+            ),
+        )
+    }
+
+    #[cfg(feature = "native-physics")]
+    fn set_translation_pose(&mut self, translation: glam::Vec3) {
+        self._pad0 =
+            u64::from(translation.x.to_bits()) | (u64::from(translation.y.to_bits()) << 32);
+        // B from_translation@140c91b30 SHUFPS 0x58 produces [x,y,z,z].
+        self._pad1 =
+            u64::from(translation.z.to_bits()) | (u64::from(translation.z.to_bits()) << 32);
+        self._pad2 = 0;
+        self.scale = 0x3f80000000000000;
+    }
+
     /// `RaycastMeshData::new_convex`（0x1408cec10，O）：`calculate_hash<&[UVec3]>` 存 hash、
     /// `try_convex_hull` + `ConvexPolyhedron::from_convex_mesh` → `Box<dyn Shape>`；
     /// None 写判别 0（O：`*out = 0`）。输出：tag=4@+0x00、kind=4@+0x10、shape@+0x20/+0x28、
@@ -493,58 +510,39 @@ impl RaycastMeshData {
         })
     }
 
-    /// `RaycastMeshData::new_cuboid`（0x1408cfff0，O）：`SharedShape::cuboid` +
-    /// `IsoTransform::from_translation`；tag=4@+0x00、kind=4@+0x10、shape@+0x20/+0x28、
-    /// +0x50..+0x6f = 参数区、hash@+0x70。哈希输入 `tuple<array<u32,3>, UVec3>`
-    /// （half_extents 位 + hash_input）。
-    ///
-    /// fresh 反编译（b6-layout-tail）：cuboid 半边长 = 入参 × `0x3f000000`（0.5，
-    /// 0x142925870，`MULSS` ×3）；+0x50..+0x5f = {hash_input.x, hash_input.y,
-    /// hash_input.z, half_extents.x}、+0x60..+0x6f = {half_extents.y, half_extents.z,
-    /// 未初始化→0, 0}（形状变体复用 uvs/scale 槽为参数区）。
+    /// Compatibility entry: the second UVec3 carries translation float bits.
+    /// B @1408cfff0 hashes the raw vectors and passes the second to from_translation.
     #[cfg(feature = "native-physics")]
-    pub fn new_cuboid(half_extents: glam::Vec3, hash_input: glam::UVec3) -> Self {
-        let hash = crate::render::utils::calculate_hash(&(
-            [
-                half_extents.x.to_bits(),
-                half_extents.y.to_bits(),
-                half_extents.z.to_bits(),
-            ],
-            hash_input,
-        ));
-        // O：入参 × 0.5（0x142925870 = 0x3f000000）才是 Cuboid 半边长。
-        let half = half_extents * 0.5;
-        let shape: Box<dyn Shape> = Box::new(Cuboid::new(Vector::new(half.x, half.y, half.z)));
-        Self {
-            vertices_ptr: 4,
-            vertices_len: 0,
-            indices_ptr: 4,
-            count: 0,
-            shape: Some(shape),
-            normals_ptr: 0,
-            normals_len: 0,
-            uvs_ptr: 0,
-            uvs_len: 0,
-            // O：+0x50..+0x6f 参数区（形状变体复用常量槽）。
-            _pad0: u64::from(hash_input.x) | u64::from(hash_input.y) << 32,
-            _pad1: u64::from(hash_input.z) | u64::from(half_extents.x.to_bits()) << 32,
-            _pad2: u64::from(half_extents.y.to_bits()) | u64::from(half_extents.z.to_bits()) << 32,
-            scale: 0,
-            hash,
-        }
+    pub fn new_cuboid(dimensions: glam::Vec3, translation_bits: glam::UVec3) -> Self {
+        Self::new_cuboid_at(
+            dimensions,
+            glam::Vec3::new(
+                f32::from_bits(translation_bits.x),
+                f32::from_bits(translation_bits.y),
+                f32::from_bits(translation_bits.z),
+            ),
+        )
     }
 
-    /// `RaycastMeshData::new_sphere`（0x1408d0120，O）：`SharedShape::ball` +
-    /// `IsoTransform::from_translation`；tag=4@+0x00、kind=4@+0x10、shape@+0x20/+0x28、
-    /// +0x50..+0x6f = 参数区、hash@+0x70。哈希输入 `tuple<u32, UVec3>`（半径位 + hash_input）。
-    ///
-    /// fresh 反编译：+0x50..+0x5f = {radius, hash_input.x, hash_input.y, hash_input.z}、
-    /// +0x60..+0x6f = 未初始化→0。半径不经缩放直接进 `Ball::new`。
+    /// Full dimensions and mesh-local translation, B @1408cfff0 (290 bytes).
+    /// The constructor itself performs the one original dimensions*0.5 conversion.
     #[cfg(feature = "native-physics")]
-    pub fn new_sphere(radius: f32, hash_input: glam::UVec3) -> Self {
-        let hash = crate::render::utils::calculate_hash(&(radius.to_bits(), hash_input));
-        let shape: Box<dyn Shape> = Box::new(Ball::new(radius));
-        Self {
+    pub fn new_cuboid_at(dimensions: glam::Vec3, translation: glam::Vec3) -> Self {
+        let hash = crate::render::utils::calculate_hash(&(
+            [
+                dimensions.x.to_bits(),
+                dimensions.y.to_bits(),
+                dimensions.z.to_bits(),
+            ],
+            glam::UVec3::new(
+                translation.x.to_bits(),
+                translation.y.to_bits(),
+                translation.z.to_bits(),
+            ),
+        ));
+        let half = dimensions * 0.5;
+        let shape: Box<dyn Shape> = Box::new(Cuboid::new(Vector::new(half.x, half.y, half.z)));
+        let mut mesh = Self {
             vertices_ptr: 4,
             vertices_len: 0,
             indices_ptr: 4,
@@ -554,12 +552,43 @@ impl RaycastMeshData {
             normals_len: 0,
             uvs_ptr: 0,
             uvs_len: 0,
-            _pad0: u64::from(radius.to_bits()) | u64::from(hash_input.x) << 32,
-            _pad1: u64::from(hash_input.y) | u64::from(hash_input.z) << 32,
+            _pad0: 0,
+            _pad1: 0,
             _pad2: 0,
             scale: 0,
             hash,
-        }
+        };
+        mesh.set_translation_pose(translation);
+        mesh
+    }
+
+    /// B @1408d0120 uses the raw second vector as translation, and hashes its bits.
+    #[cfg(feature = "native-physics")]
+    pub fn new_sphere(radius: f32, translation_bits: glam::UVec3) -> Self {
+        let hash = crate::render::utils::calculate_hash(&(radius.to_bits(), translation_bits));
+        let shape: Box<dyn Shape> = Box::new(Ball::new(radius));
+        let mut mesh = Self {
+            vertices_ptr: 4,
+            vertices_len: 0,
+            indices_ptr: 4,
+            count: 0,
+            shape: Some(shape),
+            normals_ptr: 0,
+            normals_len: 0,
+            uvs_ptr: 0,
+            uvs_len: 0,
+            _pad0: 0,
+            _pad1: 0,
+            _pad2: 0,
+            scale: 0,
+            hash,
+        };
+        mesh.set_translation_pose(glam::Vec3::new(
+            f32::from_bits(translation_bits.x),
+            f32::from_bits(translation_bits.y),
+            f32::from_bits(translation_bits.z),
+        ));
+        mesh
     }
 
     /// `RaycastMeshData::new_compound`（0x1408d0230，O）：`from_iter<Isometry, SharedShape>`
@@ -578,10 +607,17 @@ impl RaycastMeshData {
         }
         let parts: Vec<(Isometry<f32>, SharedShape)> = shapes
             .into_iter()
-            .filter_map(|mut child| {
-                let shape = child.shape.take()?;
-                // O：子形状（Box<dyn Shape>）→ SharedShape（Arc<dyn Shape>，pub 字段直构）。
-                Some((Isometry::identity(), SharedShape(Arc::from(shape))))
+            .map(|mut child| {
+                // B new_compound's map closure reads child+0x50/+0x60.
+                let local = child.local_transform();
+                let shape = child
+                    .shape
+                    .take()
+                    .expect("new_compound: child has no shape");
+                (
+                    collider_isometry(local.translation, local.rotation),
+                    SharedShape(Arc::from(shape)),
+                )
             })
             .collect();
         let shape: Box<dyn Shape> = Box::new(Compound::new(parts));
@@ -784,58 +820,102 @@ unsafe fn free_leaked<T>(ptr: u64, len: u64) {
     }
 }
 
-/// `RaycastGeoSource`（O：`RaycastGeoSource::subworld` 0x1408cea20 / `impl$18::eq`
-/// 0x1408cea30；`impl$86::fmt` 0x1409816a0 证实 17 变体 switch，判别 0..0x10）。
-///
-/// **source→slot 映射 fresh 锚定**（`upsert_collider_entry` 0x140b40b50 的
-/// `bVar14 = (&DAT_142aef03c)[*in_R9]`；该表已 read_memory 核对：
-/// `[0,9,1,2,8,14,3,7,6,10,4,5,11,12,13,15,16]`）。**不是恒等映射**：例如判别 5 → 槽 14、
-/// 判别 11 → 槽 5。旧实现按判别恒等并硬编码 Terrain=5 为槽 5 是分歧，已按表修正；
-/// 变体名仍属未锚定（U，判别 5 的旧名 `Terrain` 保留仅为兼容）。
-/// `impl$18::eq` 对部分变体比较 payload 字段（case 2/3/4/5/13/14/15/16），
-/// Rust 枚举无 payload → 判别相等即 eq（payload 比较登记）。
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[repr(u8)]
-pub enum RaycastGeoSource {
-    Slot0 = 0,
-    Slot1 = 1,
-    Slot2 = 2,
-    Slot3 = 3,
-    Slot4 = 4,
-    /// Terrain（O：判别 5；按 fresh 映射表落子世界槽 **14**）。
-    Terrain = 5,
-    Slot6 = 6,
-    /// PlatformStair（O：判别 7；映射表 7 → 槽 7）。
-    PlatformStair = 7,
-    Slot8 = 8,
-    Slot9 = 9,
-    Slot10 = 10,
-    Slot11 = 11,
-    Slot12 = 12,
-    Slot13 = 13,
-    Slot14 = 14,
-    Slot15 = 15,
-    Slot16 = 16,
-}
+/// The existing 24-byte source projection is the canonical source receipt.
+/// B source tags/payload are copied to ray results and compared selectively.
+/// Legacy named constants retain their existing tags; decorator factories carry identity.
+pub type RaycastGeoSource = crate::systems::collision::query_policy::RaycastGeoSourceProjection;
 
+#[allow(non_upper_case_globals)]
 impl RaycastGeoSource {
-    /// fresh 锚定的 source→subworld 槽映射（0x142aef03c，17 B；read_memory 核对）。
     pub const SOURCE_TO_SLOT: [u8; 17] = [0, 9, 1, 2, 8, 14, 3, 7, 6, 10, 4, 5, 11, 12, 13, 15, 16];
+    const fn tag_only(tag: u8) -> Self {
+        let mut bytes = [0; 24];
+        bytes[0] = tag;
+        Self(bytes)
+    }
+    pub const Slot0: Self = Self::tag_only(0);
+    pub const Slot1: Self = Self::tag_only(1);
+    pub const Slot2: Self = Self::tag_only(2);
+    pub const Slot3: Self = Self::tag_only(3);
+    pub const Slot4: Self = Self::tag_only(4);
+    pub const Terrain: Self = Self::tag_only(5);
+    pub const Slot6: Self = Self::tag_only(6);
+    pub const Slot7: Self = Self::tag_only(7);
+    pub const PlatformStair: Self = Self::Slot7;
+    pub const Slot8: Self = Self::tag_only(8);
+    pub const Slot9: Self = Self::tag_only(9);
+    pub const Slot10: Self = Self::tag_only(10);
+    pub const Slot11: Self = Self::tag_only(11);
+    pub const Slot12: Self = Self::tag_only(12);
+    pub const Slot13: Self = Self::tag_only(13);
+    pub const Slot14: Self = Self::tag_only(14);
+    pub const Slot15: Self = Self::tag_only(15);
+    pub const Slot16: Self = Self::tag_only(16);
 
-    /// 来源对应的子世界槽号（O：`subworld` 0x1408cea20，查表 0x142aef03c）。
     pub fn subworld(self) -> u8 {
-        Self::SOURCE_TO_SLOT[self as usize]
+        Self::SOURCE_TO_SLOT[self.tag() as usize]
     }
 
-    /// 判别（+0x00）。
-    pub fn tag(self) -> u8 {
-        self as u8
+    pub fn decorator(
+        id: crate::resources::walls::decorator::DecoratorId,
+        storage: crate::resources::walls::decorator_storage::DecoratorStorageAddr,
+    ) -> Self {
+        Self::decorator_source(3, id, storage)
     }
 
-    /// `impl$18::eq`（0x1408cea30）：判别 + 变体 payload 相等。Rust 无 payload → 判别相等。
-    /// 原对 case 0/1/6/7/8/9/12 仅比判别；对其余变体比 payload 字段（登记）。
+    pub fn decorator_interaction(
+        id: crate::resources::walls::decorator::DecoratorId,
+        storage: crate::resources::walls::decorator_storage::DecoratorStorageAddr,
+        flags: u8,
+    ) -> Self {
+        let tag = flags | 4;
+        assert!(
+            matches!(tag, 4 | 5),
+            "invalid decorator interaction source flags"
+        );
+        Self::decorator_source(tag, id, storage)
+    }
+
+    fn decorator_source(
+        tag: u8,
+        id: crate::resources::walls::decorator::DecoratorId,
+        storage: crate::resources::walls::decorator_storage::DecoratorStorageAddr,
+    ) -> Self {
+        use crate::resources::walls::decorator_storage::DecoratorStorageAddr;
+        let (disc, payload) = match storage {
+            DecoratorStorageAddr::Wall(wall) => (0u64, wall.0),
+            DecoratorStorageAddr::Terrain => (1, 0),
+            DecoratorStorageAddr::Stair => (2, 0),
+        };
+        let mut source = Self::tag_only(tag);
+        source.0[4..8].copy_from_slice(&id.0.to_le_bytes());
+        source.0[8..16].copy_from_slice(&disc.to_le_bytes());
+        source.0[16..24].copy_from_slice(&payload.to_le_bytes());
+        source
+    }
+
+    /// Compatibility method retains the original selected-field comparison.
     pub fn eq(self, other: Self) -> bool {
-        self == other
+        self.same_native_source(other)
+    }
+
+    /// B impl18::eq selected fields; raw projection padding is not equality.
+    fn same_native_source(self, other: Self) -> bool {
+        if self.tag() != other.tag() {
+            return false;
+        }
+        match self.tag() {
+            0 | 1 | 6 | 7 | 8 | 9 | 12 => self.0[8..16] == other.0[8..16],
+            2 => self.0[8..16] == other.0[8..16] && self.0[1..3] == other.0[1..3],
+            3 | 4 | 5 => {
+                self.0[4..8] == other.0[4..8]
+                    && self.0[8..16] == other.0[8..16]
+                    && (self.0[8..16] != [0; 8] || self.0[16..24] == other.0[16..24])
+            }
+            13 | 14 => self.0[4..12] == other.0[4..12],
+            15 | 16 => self.0[4..16] == other.0[4..16],
+            _ => true,
+        }
     }
 }
 
@@ -1111,11 +1191,9 @@ pub struct RaycastWorld {
     /// take-and-clear 后 `publish<DirtyTiles,DirtyTiles>`）。`on_level_reload` 0x1408d8710
     /// 显示每槽另有内联 `Publisher<DirtyTiles>`（slot+0x150）；world 级发布器为订阅合同。
     dirty_tiles_publisher: Publisher<crate::utils::dirty_tiles::DirtyTiles>,
-    /// 网格实例源（O：@+0x3dc8；`slotmap<RaycastMeshKey, RaycastMesh>`）。
-    /// `on_level_reload`/`update_rapier_colliders` 消费；非 native-physics 壳不落地。
-    /// `update_rapier_colliders` 实现后接入；当前 `#[allow(dead_code)]`（待消费）。
+    /// The existing SlotMap is the sole mesh receipt allocator/owner.
+    /// Collider.user_data carries its key; the colliders Vec is only its public projection.
     #[cfg(feature = "native-physics")]
-    #[allow(dead_code)]
     mesh_sources: MeshInstanceSources,
 }
 
@@ -1227,8 +1305,8 @@ impl RaycastWorld {
         index
     }
 
-    /// 以 rapier collider `(index, generation)` 对齐注册表条目（O：注册表与 collider set
-    /// 同索引；`dispose` 以 `instance.{gen,index}` 校验该数组）。数组必要时补空条目。
+    /// Existing projection-only compatibility helper. It does not register an owned mesh.
+    /// Canonical physics insertion obtains its independent key from MeshInstanceSources.
     pub fn ensure_registry_entry(&mut self, index: u32, generation: u32, kind: u8) {
         let index = index as usize;
         while self.colliders.len() <= index {
@@ -1272,16 +1350,36 @@ impl RaycastWorld {
         }
     }
 
-    /// `RaycastWorld::get_collider_mesh`（0x1408cdbd0，O）：注册表 (index, generation) 校验；
-    /// fresh 用**精确相等**（`entry.generation@+0x20 == generation`，无 `|1`），
-    /// 失败 panic（`begin_panic`）。
-    pub fn get_collider_mesh(&self, index: u32, generation: u32) {
-        let index_usize = index as usize;
-        let ok = index_usize < self.colliders.len()
-            && self.colliders[index_usize].generation == generation;
-        if !ok {
-            panic!("get_collider_mesh: collider handle invalid");
+    /// B @1408cdbd0 returns the mesh after exact full-generation validation.
+    pub fn get_collider_mesh(&self, index: u32, generation: u32) -> &RaycastMesh {
+        #[cfg(feature = "native-physics")]
+        {
+            let raw = (u64::from(generation) << 32) | u64::from(index);
+            self.mesh_sources
+                .get(strict_mesh_key(raw))
+                .expect("get_collider_mesh: collider mesh receipt missing or stale")
         }
+        #[cfg(not(feature = "native-physics"))]
+        {
+            let _ = (index, generation);
+            panic!("get_collider_mesh requires native-physics")
+        }
+    }
+
+    #[cfg(feature = "native-physics")]
+    pub(crate) fn registered_mesh_for_collider(
+        &self,
+        slot: u8,
+        handle: ColliderHandle,
+    ) -> &RaycastMesh {
+        let collider = self.slots[slot as usize]
+            .colliders
+            .get(handle)
+            .expect("collider source: physical collider missing");
+        let key = strict_mesh_key(collider.user_data as u64);
+        self.mesh_sources
+            .get(key)
+            .expect("collider source: mesh receipt missing or stale")
     }
 
     /// `RaycastWorld::subscribe_to_changes`（0x1408cdc20，O）：`Publisher::subscribe<DirtyTiles>`
@@ -1460,11 +1558,24 @@ impl RaycastWorld {
         &self.publisher
     }
 
-    /// `RaycastWorld::intersects_any`（0x1408cd5b0）：17 槽 Qbvh 遍历 + 命中即返回
-    /// （机器码与 `Rapier::intersects_any` 0x1408cdf80 同体，O）。
+    /// Unbounded compatibility form of B `RaycastWorld::intersects_any`.
+    /// The original caller-provided ray bound is exposed by the method below.
     #[cfg(feature = "native-physics")]
     pub fn intersects_any(&self, origin: glam::Vec3, dir: glam::Vec3, mask: u32) -> bool {
-        Rapier::intersects_any(self, origin, dir, mask)
+        Rapier::intersects_any(self, origin, dir, f32::MAX, mask)
+    }
+
+    /// B @0x1408cd5b0 -> 0x1408cdf80: preserve the caller's parametric ray bound.
+    /// The direction is passed unchanged; physical length is `|dir| * max_toi`.
+    #[cfg(feature = "native-physics")]
+    pub fn intersects_any_with_max_toi(
+        &self,
+        origin: glam::Vec3,
+        dir: glam::Vec3,
+        max_toi: f32,
+        mask: u32,
+    ) -> bool {
+        Rapier::intersects_any(self, origin, dir, max_toi, mask)
     }
 
     /// `RaycastWorld::intersects_any`（非 native-physics 壳）。
@@ -1482,7 +1593,20 @@ impl RaycastWorld {
         dir: glam::Vec3,
         mask: u32,
     ) -> RaycastSimpleResult {
-        Rapier::raycast_simple(self, origin, dir, mask)
+        Rapier::raycast_simple(self, origin, dir, f32::MAX, mask)
+    }
+
+    /// B `raycast_simple` accepts an explicit parametric TOI bound. The actual
+    /// Snap caller passes 1.0; direction and bound retain their original scale.
+    #[cfg(feature = "native-physics")]
+    pub fn raycast_simple_with_max_toi(
+        &self,
+        origin: glam::Vec3,
+        dir: glam::Vec3,
+        max_toi: f32,
+        mask: u32,
+    ) -> RaycastSimpleResult {
+        Rapier::raycast_simple(self, origin, dir, max_toi, mask)
     }
 
     /// `RaycastWorld::raycast_simple`（非 native-physics 壳）。
@@ -1507,7 +1631,7 @@ impl RaycastWorld {
         mask: u32,
         _excluded: SubworldColliderHandle,
     ) -> RaycastSimpleResult {
-        Rapier::raycast_simple(self, origin, dir, mask)
+        Rapier::raycast_simple(self, origin, dir, f32::MAX, mask)
     }
 
     /// `RaycastWorld::raycast_simple_exclude_wall_id`（非 native-physics 壳）。
@@ -1617,7 +1741,7 @@ impl RaycastWorld {
                 QueryFilter::default(),
                 |handle, hit| {
                     results.push(RaycastWorldResult {
-                        handle: handle_region(handle, slot_index as u32),
+                        handle: registry_handle_region(self, slot_index as u8, handle),
                         position: origin + dir * hit.time_of_impact,
                         normal: glam::Vec3::new(hit.normal.x, hit.normal.y, hit.normal.z),
                         toi: hit.time_of_impact,
@@ -1696,11 +1820,12 @@ impl ColliderMeshInstance {
         }
     }
 
-    /// `SubworldColliderHandle` 表示（index/generation/slot 均来自注册表 +0 区）。
+    /// The query/publication handle is the distinct per-slot Rapier handle.
     pub fn handle(&self) -> SubworldColliderHandle {
+        let (index, generation) = self.collider.into_raw_parts();
         SubworldColliderHandle {
-            index: self.registry_index,
-            generation: self.generation,
+            index,
+            generation,
             slot: self.slot,
         }
     }
@@ -1716,21 +1841,8 @@ pub enum ColliderUpsert {
     Kept { handle: SubworldColliderHandle },
 }
 
-/// `upsert_collider<K>`（0x140252c90 / 0x1412453c0 / 0x141294980 / 0x141296510 /
-/// 0x141298110 / 0x141299ca0 等泛型 monomorphization，O）：
-///
-/// 1. 查 `HashMap<K, ColliderMeshInstance>`；
-/// 2. 已存在且**实时 collider 的 position/rotation** 与入参逐位相等（含 NaN 拒绝）→
-///    **Kept**（判别 2，直接返回现有 handle，O：比较 `Collider +0x44/+0x48/+0x4c` 与
-///    `+0x34..+0x40`）；O 另做 `get_collider_mesh` + `impl$18::eq`（mesh 来源相等），
-///    mesh 来源链接未锚定 → 登记；
-/// 3. 否则 `dispose_collider_mesh_instance` 旧值，再装配 collider（sensor=true），
-///    `ColliderSet::insert` + 注册表 `ensure_registry_entry(index, gen, kind)`、槽脏标志=1、
-///    `compute_aabb` → `xz_flatten_aabb` → 栅格化，`on_collider_upserted` 发布；
-///    返回 **Inserted**（0）或 **Replaced**（1）。
-///
-/// 登记：注册表 kind 字节写入点未锚定，此处按合法碰撞网格档 `2` 建模；mesh 存入
-/// `MeshInstanceSources` 的 slotmap 接线未锚定（本函数仅消费 `Arc` 用于建 shape）。
+/// Canonical upsert, B DecoratorId monomorph @141294980.
+/// Kept requires the composed live pose, geometry hash and selected source fields to match.
 #[cfg(feature = "native-physics")]
 pub fn upsert_collider<K: std::hash::Hash + Eq>(
     world: &mut RaycastWorld,
@@ -1741,8 +1853,12 @@ pub fn upsert_collider<K: std::hash::Hash + Eq>(
     position: glam::Vec3,
     rotation: glam::Quat,
 ) -> ColliderUpsert {
+    use slotmap::Key;
     let slot = source.subworld() as usize;
-    // O：先取旧值；实时 collider 的 Isometry 与入参逐位比较。
+    let external =
+        utils::iso_transform::IsoTransform::from_translation_rotation(position, rotation);
+    // B tuple builder impl21: rdx=mesh.local, r8=external => external*local.
+    let final_pose = mesh.local_transform().nested_in(&external);
     let existing = map.get(&key).copied();
     if let Some(existing) = existing {
         let pose_matches = world
@@ -1756,54 +1872,58 @@ pub fn upsert_collider<K: std::hash::Hash + Eq>(
                     iso.rotation.k,
                     iso.rotation.w,
                 );
-                // O：ordered 比较（NaN 拒绝；signed zero 相等）。
-                pos == position && rot == rotation
+                pos == final_pose.translation && rot == final_pose.rotation
             })
             .unwrap_or(false);
         if pose_matches {
-            return ColliderUpsert::Kept {
-                handle: existing.handle(),
-            };
+            let registered = world.get_collider_mesh(existing.registry_index, existing.generation);
+            if registered.data.hash == mesh.hash && registered.source.same_native_source(source) {
+                return ColliderUpsert::Kept {
+                    handle: existing.handle(),
+                };
+            }
         }
-        // O：姿态变化 → dispose 旧实例（释放 collider + 注册表 free-list/generation bump +
-        // 发布 removed 增量）。
         dispose_collider_mesh_instance(world, &existing);
     }
-    // O：`to_offset_collider_builder` + `ColliderBuilder::build`（sensor 字节 true）。
     let shape = mesh
         .shape_ref()
         .expect("upsert_collider: mesh has no shape")
         .clone_dyn();
-    let collider = ColliderBuilder::new(SharedShape(Arc::from(shape)))
-        .position(Isometry::from_parts(
-            nalgebra::Translation3::new(position.x, position.y, position.z),
-            nalgebra::UnitQuaternion::from_quaternion(nalgebra::Quaternion::new(
-                rotation.w, rotation.x, rotation.y, rotation.z,
-            )),
-        ))
-        .sensor(true)
-        .build();
-    // O：槽脏标志 + compute_aabb → xz_flatten_aabb → rasterize_world_space_rect。
+    let transformed = OffsetColliderTransform {
+        position: final_pose.translation,
+        rotation: final_pose.rotation,
+        shape: Arc::from(shape),
+    };
+    let registry_key = world.mesh_sources.insert(RaycastMesh::new(mesh, source));
+    let raw = registry_key.data().as_ffi();
+    let registry_index = raw as u32;
+    let generation = (raw >> 32) as u32;
+    // This Vec is the existing source/generation projection, never an allocator.
+    while world.colliders.len() <= registry_index as usize {
+        world.colliders.push(ColliderRegistryEntry::empty());
+    }
+    let mut projection = ColliderRegistryEntry::empty();
+    projection.first = u32::from_le_bytes(source.0[..4].try_into().unwrap());
+    projection.meta[..20].copy_from_slice(&source.0[4..24]);
+    projection.generation = generation;
+    world.colliders[registry_index as usize] = projection;
+    world.registry_live += 1;
+
+    let mut collider = to_offset_collider_builder(&transformed).build();
+    collider.user_data = u128::from(raw);
     world.slots[slot].dirty = true;
     let aabb = collider.compute_aabb();
     let flat = xz_flatten_aabb(&Aabb3 {
         min: glam::Vec3::new(aabb.mins.x, aabb.mins.y, aabb.mins.z),
         max: glam::Vec3::new(aabb.maxs.x, aabb.maxs.y, aabb.maxs.z),
     });
-    let mut tiles = world.slots[slot].dirty_tiles.clone();
-    tiles.rasterize_world_rect([flat.min.x, flat.min.y, flat.max.x, flat.max.y]);
-    world.slots[slot].dirty_tiles = tiles;
-    // O：`ColliderSet::insert`；注册表与 collider set 同 (index, generation)。
+    world.slots[slot]
+        .dirty_tiles
+        .rasterize_world_rect([flat.min.x, flat.min.y, flat.max.x, flat.max.y]);
     let collider_handle = world.slots[slot].colliders.insert(collider);
-    let (index, generation) = collider_handle.into_raw_parts();
-    world.ensure_registry_entry(index, generation, 2);
-    let handle = SubworldColliderHandle {
-        index,
-        generation,
-        slot: slot as u8,
-    };
-    let instance = ColliderMeshInstance::new(index, generation, collider_handle, slot as u8);
-    // O：`Rapier::on_collider_upserted`（发布 ColliderDiff 新增/变更增量）。
+    let instance =
+        ColliderMeshInstance::new(registry_index, generation, collider_handle, slot as u8);
+    let handle = instance.handle();
     world.on_collider_upserted(ColliderDelta {
         handle: Some(handle),
         removed: false,
@@ -1885,11 +2005,17 @@ pub fn dispose_collider_mesh_instance(
         panic!("dispose_collider_mesh_instance: registry generation mismatch");
     }
     let kind = entry.kind();
+    // The same SlotMap owns the mesh and validates the original full generation.
+    let raw = (u64::from(generation) << 32) | u64::from(instance.registry_index);
+    let _removed_mesh = world
+        .mesh_sources
+        .remove(strict_mesh_key(raw))
+        .expect("dispose_collider_mesh_instance: mesh receipt missing or stale");
     let old_head = world.registry_free_head;
     world.colliders[index].set_free_next(old_head);
     world.registry_free_head = index as u32;
     world.registry_live -= 1;
-    world.colliders[index].generation = generation + 1;
+    world.colliders[index].generation = generation.wrapping_add(1);
     // O：kind == 0x11 → unwrap_failed（在 free-list/bump 之后）。
     if kind == crate::systems::collision::EMPTY_COLLIDER_HANDLE_TAG {
         panic!("dispose_collider_mesh_instance: empty collider handle tag");
@@ -1955,8 +2081,7 @@ impl Rapier {
                 maximum_toi = intersection.time_of_impact;
                 // O：命中后校验注册表并拷贝条目前 24 B（0x1408cdc60 → 0x1408ce4a0）。
                 result = RaycastWorldResult {
-                    handle: registry_handle_region(world, handle)
-                        .unwrap_or_else(|| handle_region(handle, slot_index as u32)),
+                    handle: registry_handle_region(world, slot_index as u8, handle),
                     position: origin + dir * intersection.time_of_impact,
                     normal: glam::Vec3::new(
                         intersection.normal.x,
@@ -1978,6 +2103,7 @@ impl Rapier {
         world: &RaycastWorld,
         origin: glam::Vec3,
         dir: glam::Vec3,
+        max_toi: f32,
         mask: u32,
     ) -> bool {
         let ray = Ray::new(
@@ -1993,7 +2119,7 @@ impl Rapier {
                 &slot.bodies,
                 &slot.colliders,
                 &ray,
-                f32::MAX,
+                max_toi,
                 true,
                 QueryFilter::default(),
                 |_handle, _hit| {
@@ -2055,8 +2181,7 @@ impl Rapier {
                     normal1
                 };
                 result = RaycastWorldResult {
-                    handle: registry_handle_region(world, handle)
-                        .unwrap_or_else(|| handle_region(handle, slot_index as u32)),
+                    handle: registry_handle_region(world, slot_index as u8, handle),
                     position: witness1,
                     normal,
                     toi: hit.time_of_impact,
@@ -2076,6 +2201,7 @@ impl Rapier {
         world: &RaycastWorld,
         origin: glam::Vec3,
         dir: glam::Vec3,
+        max_toi: f32,
         mask: u32,
     ) -> RaycastSimpleResult {
         let ray = Ray::new(
@@ -2083,7 +2209,7 @@ impl Rapier {
             Vector::new(dir.x, dir.y, dir.z),
         );
         let mut result = RaycastSimpleResult::miss();
-        let mut maximum_toi = f32::MAX;
+        let mut maximum_toi = max_toi;
         for (slot_index, slot) in world.slots.iter().enumerate() {
             if (mask >> slot_index) & 1 == 0 {
                 continue;
@@ -2099,8 +2225,7 @@ impl Rapier {
                 // B 0x1408ce180: a hit shortens the next slot's maximum TOI.
                 maximum_toi = toi;
                 result = RaycastSimpleResult {
-                    handle: registry_handle_region(world, handle)
-                        .unwrap_or_else(|| handle_region(handle, slot_index as u32)),
+                    handle: registry_handle_region(world, slot_index as u8, handle),
                     position: origin + dir * toi,
                     toi,
                 };
@@ -2150,8 +2275,7 @@ impl Rapier {
                 // O：legacy 命中写 handle + position；normal 写 0；+0x30 写 0（命中判别）。
                 // 句柄区 = 注册表条目前 24 B（0x1408ccc90 的 `local_1b8 = *puVar1` 序列）。
                 result = RaycastWorldResult {
-                    handle: registry_handle_region(world, handle)
-                        .unwrap_or_else(|| handle_region(handle, slot_index as u32)),
+                    handle: registry_handle_region(world, slot_index as u8, handle),
                     position: origin + dir * hit.time_of_impact,
                     normal: glam::Vec3::ZERO,
                     toi: RAYCAST_WORLD_RESULT_HIT as f32,
@@ -2251,7 +2375,7 @@ impl Raycasting {
                 return true;
             }
         }
-        Rapier::intersects_any(&self.world, origin, dir, mask)
+        Rapier::intersects_any(&self.world, origin, dir, f32::MAX, mask)
     }
 
     /// `Raycasting::intersects_any`（非 native-physics 壳）。
@@ -2460,7 +2584,11 @@ pub fn into_transformed_shape_iso(
     mesh: &RaycastMeshData,
     parent: &utils::iso_transform::IsoTransform,
 ) -> OffsetColliderTransform {
-    let nested = transform.nested_in(parent);
+    // B impl45 uses rdx=external, r8=mesh.local: local*external.
+    // The reconstructed explicit parent remains outside that original composition.
+    let nested = transform
+        .nested_in(&mesh.local_transform())
+        .nested_in(parent);
     let shape = mesh
         .shape_ref()
         .expect("into_transformed_shape_iso: mesh has no shape")
@@ -2548,7 +2676,9 @@ impl RaycastWorld {
                 QueryFilter::default(),
                 |handle| {
                     let (index, generation) = handle.into_raw_parts();
-                    let source = RaycastGeoSource::from_slot(slot_index as u8);
+                    let source = self
+                        .registered_mesh_for_collider(slot_index as u8, handle)
+                        .source;
                     let result = callback(
                         SubworldColliderHandle {
                             index,
@@ -2637,38 +2767,47 @@ impl RaycastWorld {
         false
     }
 
-    /// `decorator_overlaps_with_others<(OffsetColliderTransform, Arc<dyn Shape>)>`
-    /// （0x14129be00，O）：装饰 collider 与其它 collider 是否重叠。
-    ///
-    /// fresh 反编译：`into_transformed_shape`（impl$43 拷贝）→ `index` 取注册表 →
-    /// `as_collider_shape` → `intersection_with_shape`；命中则
-    /// `get_mut_internal` + `DecoratorRank::new` 校验（登记）。Rust 侧以
-    /// `OffsetColliderTransform` 形状扫掠自身槽 + 注册表 kind 门控近似。
+    /// B `decorator_overlaps_with_others` @0x14129be00: query decorator slot2
+    /// and return the actual registered source of an accepted overlap.
+    /// The predicate @0x14129c3d0 keeps same-wall decorators and excludes self;
+    /// ordered mode further accepts only IDs lower than the current ID.
     #[cfg(feature = "native-physics")]
     pub fn decorator_overlaps_with_others(
         &self,
         decorator: &OffsetColliderTransform,
-        mask: u32,
-    ) -> bool {
+        current_id: crate::resources::walls::decorator::DecoratorId,
+        wall: crate::resources::walls::WallId,
+        ordered: bool,
+    ) -> Option<&RaycastGeoSource> {
+        // B passes slice length17 and SubworldIndex(2), not a subworld mask.
+        const DECORATOR_SLOT: u8 = 2;
+        let slot = &self.slots[DECORATOR_SLOT as usize];
+        let predicate = |handle: ColliderHandle, _: &Collider| {
+            let source = &self.registered_mesh_for_collider(DECORATOR_SLOT, handle).source;
+            assert_eq!(source.tag(), 3, "decorator overlap: unexpected source kind");
+            let candidate_id = u32::from_le_bytes(source.0[4..8].try_into().unwrap());
+            let is_wall = source.0[8..16] == [0; 8];
+            let accepted_id = if ordered {
+                current_id.0 > candidate_id
+            } else {
+                current_id.0 != candidate_id
+            };
+            is_wall
+                && accepted_id
+                && u64::from_le_bytes(source.0[16..24].try_into().unwrap()) == wall.0
+        };
         let shape = decorator.as_collider_shape();
         let position = collider_isometry(decorator.position, decorator.rotation);
-        // O：单装饰 collider 落其来源槽；Rust 以全 mask 槽扫掠（来源槽映射登记）。
-        for (slot_index, slot) in self.slots.iter().enumerate() {
-            if (mask >> slot_index) & 1 == 0 {
-                continue;
-            }
-            let hit = slot.pipeline.intersection_with_shape(
-                &slot.bodies,
-                &slot.colliders,
-                &position,
-                shape.as_ref(),
-                QueryFilter::default(),
-            );
-            if hit.is_some() {
-                return true;
-            }
-        }
-        false
+        let handle = slot.pipeline.intersection_with_shape(
+            &slot.bodies,
+            &slot.colliders,
+            &position,
+            shape.as_ref(),
+            QueryFilter::default().predicate(&predicate),
+        )?;
+        // Resolve the accepted physical handle again, preserving receipt checks
+        // and returning a borrow of the canonical mesh owner's source.
+        Some(&self.registered_mesh_for_collider(DECORATOR_SLOT, handle).source)
     }
 }
 
@@ -2678,8 +2817,7 @@ impl RaycastGeoSource {
     /// 槽→来源：`[0,2,3,6,10,11,8,7,4,1,9,12,13,14,5,15,16]`。
     pub fn from_slot(slot: u8) -> RaycastGeoSource {
         const SLOT_TO_SOURCE: [u8; 17] = [0, 2, 3, 6, 10, 11, 8, 7, 4, 1, 9, 12, 13, 14, 5, 15, 16];
-        let discriminant = SLOT_TO_SOURCE[slot as usize];
-        unsafe { std::mem::transmute(discriminant) }
+        Self::tag_only(SLOT_TO_SOURCE[slot as usize])
     }
 }
 
@@ -2742,7 +2880,7 @@ mod transform_family_tests {
         for source in 0..17u8 {
             let slot = RaycastGeoSource::SOURCE_TO_SLOT[source as usize];
             assert_eq!(
-                RaycastGeoSource::from_slot(slot) as u8,
+                RaycastGeoSource::from_slot(slot).tag(),
                 source,
                 "source {source} -> slot {slot} must roundtrip"
             );
@@ -2847,18 +2985,59 @@ mod transform_family_tests {
             vec![[0u32, 1, 2]],
         );
         let mut world = RaycastWorld::new();
-        world.ensure_registry_entry(0, 0, 2);
-        world.ensure_registry_entry(1, 0, 2);
-        let added = SubworldColliderHandle {
-            index: 0,
-            generation: 0,
-            slot: 0,
+        // Real registered sources in two actual subworlds; both Rapier indices may be 0.
+        let vertices_a: Vec<_> = tri_a
+            .vertices()
+            .iter()
+            .map(|p| Vec3::new(p.x, p.y, p.z))
+            .collect();
+        let vertices_b: Vec<_> = tri_b
+            .vertices()
+            .iter()
+            .map(|p| Vec3::new(p.x, p.y, p.z))
+            .collect();
+        let data_a = Arc::new(RaycastMeshData::new_indexed(
+            tri_a.indices(),
+            &vertices_a,
+            None,
+            None,
+        ));
+        let data_b = Arc::new(RaycastMeshData::new_indexed(
+            tri_b.indices(),
+            &vertices_b,
+            None,
+            None,
+        ));
+        let mut source_a = RaycastGeoSource::Slot0;
+        source_a.0[8..16].copy_from_slice(&11u64.to_le_bytes());
+        let mut source_b = RaycastGeoSource::Slot2;
+        source_b.0[8..16].copy_from_slice(&12u64.to_le_bytes());
+        let mut map_a = std::collections::HashMap::new();
+        let mut map_b = std::collections::HashMap::new();
+        let ColliderUpsert::Inserted { handle: added } = upsert_collider(
+            &mut world,
+            &mut map_a,
+            (),
+            source_a,
+            data_a,
+            Vec3::ZERO,
+            Quat::IDENTITY,
+        ) else {
+            panic!("fixture A must insert")
         };
-        let candidate = SubworldColliderHandle {
-            index: 1,
-            generation: 0,
-            slot: 0,
+        let ColliderUpsert::Inserted { handle: candidate } = upsert_collider(
+            &mut world,
+            &mut map_b,
+            (),
+            source_b,
+            data_b,
+            Vec3::ZERO,
+            Quat::IDENTITY,
+        ) else {
+            panic!("fixture B must insert")
         };
+        assert_eq!(added.index, candidate.index);
+        assert_ne!(map_a[&()].registry_index, map_b[&()].registry_index);
         let mut processed = std::collections::HashSet::new();
         let mut artifacts: Vec<MeshIntersectionArtifacts> = Vec::new();
 
@@ -2875,6 +3054,8 @@ mod transform_family_tests {
         assert_eq!(artifacts[0].a, added);
         assert_eq!(artifacts[0].b, candidate);
         assert!(!artifacts[0].polylines.is_empty());
+        assert_eq!(artifacts[0].mesh_ref_a, 11);
+        assert_eq!(artifacts[0].mesh_ref_b, 12);
 
         // 候选已在去重集 → 不再推送。
         processed.insert(candidate);
@@ -2914,12 +3095,13 @@ mod transform_family_tests {
             ColliderUpsert::Inserted { handle } => handle,
             other => panic!("expected Inserted, got {other:?}"),
         };
-        let before = world.collider_registry()[handle.index as usize].generation;
+        let registry_index = map[&7u64].registry_index;
+        let before = world.collider_registry()[registry_index as usize].generation;
         let removed = remove_collider(&mut world, &mut map, &7u64).expect("present");
         assert_eq!(removed, handle);
-        let entry = world.collider_registry()[handle.index as usize];
+        let entry = world.collider_registry()[registry_index as usize];
         assert_eq!(entry.generation, before + 1);
-        assert_eq!(world.registry_free_head, handle.index);
+        assert_eq!(world.registry_free_head, registry_index);
         assert_eq!(world.registry_live, 0);
     }
 
@@ -2952,18 +3134,21 @@ mod collision_query_regressions {
         center: glam::Vec3,
         half: glam::Vec3,
     ) -> SubworldColliderHandle {
-        let slot = &mut world.slots[slot_index];
-        let handle = slot.colliders.insert(
-            ColliderBuilder::cuboid(half.x, half.y, half.z)
-                .translation(Vector::new(center.x, center.y, center.z))
-                .build(),
+        // Use the real registry producer; a physical collider without a receipt is invalid.
+        let mut map = std::collections::HashMap::new();
+        let result = upsert_collider(
+            world,
+            &mut map,
+            (),
+            RaycastGeoSource::from_slot(slot_index as u8),
+            Arc::new(RaycastMeshData::new_cuboid_at(half * 2.0, glam::Vec3::ZERO)),
+            center,
+            glam::Quat::IDENTITY,
         );
-        slot.pipeline.update(&slot.colliders);
-        let (index, generation) = handle.into_raw_parts();
-        SubworldColliderHandle {
-            index,
-            generation,
-            slot: slot_index as u8,
+        world.flush_colliders();
+        match result {
+            ColliderUpsert::Inserted { handle } => handle,
+            other => panic!("fixture must insert: {other:?}"),
         }
     }
 
@@ -3209,5 +3394,705 @@ mod collision_query_regressions {
                 "original sphere terrain row {row:?}"
             );
         }
+    }
+}
+
+#[cfg(all(test, feature = "native-physics"))]
+mod clutter_physics_regressions {
+    use super::*;
+    use crate::resources::walls::WallId;
+    use crate::resources::walls::decorator::DecoratorId;
+    use crate::resources::walls::decorator_collision::DecoratorPhysicsColliders;
+    use crate::resources::walls::decorator_storage::DecoratorStorageAddr;
+    use glam::{Quat, Vec3};
+
+    fn inserted(result: ColliderUpsert) -> SubworldColliderHandle {
+        match result {
+            ColliderUpsert::Inserted { handle } => handle,
+            other => panic!("expected actual insertion, got {other:?}"),
+        }
+    }
+
+    fn assert_vec_near(actual: Vec3, expected: Vec3) {
+        assert!(
+            (actual - expected).length() < 1e-5,
+            "{actual:?} != {expected:?}"
+        );
+    }
+
+    #[test]
+    fn cuboid_dimensions_and_translation_reach_real_primitive() {
+        let dimensions = Vec3::new(2.0, 4.0, 6.0);
+        let center = Vec3::new(1.0, 2.0, 3.0);
+        let mesh = RaycastMeshData::new_cuboid_at(dimensions, center);
+        let bits = glam::UVec3::new(center.x.to_bits(), center.y.to_bits(), center.z.to_bits());
+        let compatibility = RaycastMeshData::new_cuboid(dimensions, bits);
+        assert_eq!(mesh.hash, compatibility.hash);
+        assert_eq!(mesh.local_transform(), compatibility.local_transform());
+        assert_eq!((mesh._pad1 >> 32) as u32, center.z.to_bits());
+        let half = mesh
+            .shape_ref()
+            .unwrap()
+            .as_cuboid()
+            .expect("must remain a Cuboid")
+            .half_extents;
+        assert_eq!(half, Vector::new(1.0, 2.0, 3.0));
+        let local = mesh.local_transform();
+        let aabb = mesh
+            .shape_ref()
+            .unwrap()
+            .compute_aabb(&collider_isometry(local.translation, local.rotation));
+        assert_eq!(aabb.mins, Point::new(0.0, 0.0, 0.0));
+        assert_eq!(aabb.maxs, Point::new(2.0, 4.0, 6.0));
+    }
+
+    #[test]
+    fn two_original_transform_adapters_keep_their_distinct_order() {
+        let mesh = Arc::new(RaycastMeshData::new_cuboid_at(Vec3::splat(2.0), Vec3::X));
+        let external = utils::iso_transform::IsoTransform::from_translation_rotation(
+            Vec3::new(10.0, 0.0, 0.0),
+            Quat::from_rotation_y(std::f32::consts::FRAC_PI_2),
+        );
+        let iso_shape = into_transformed_shape_iso(
+            &external,
+            &mesh,
+            &utils::iso_transform::IsoTransform::identity(),
+        );
+        assert_vec_near(iso_shape.position, Vec3::new(11.0, 0.0, 0.0));
+        let mut world = RaycastWorld::new();
+        let mut map = std::collections::HashMap::new();
+        let handle = inserted(upsert_collider(
+            &mut world,
+            &mut map,
+            (),
+            RaycastGeoSource::Slot0,
+            mesh,
+            external.translation,
+            external.rotation,
+        ));
+        let tuple_shape = world.into_transformed_shape(handle);
+        assert_vec_near(tuple_shape.position, Vec3::new(10.0, 0.0, -1.0));
+    }
+
+    #[test]
+    fn shared_pose_tail_is_valid_for_sphere_and_real_compound_children() {
+        let sphere = RaycastMeshData::new_sphere(
+            1.0,
+            glam::UVec3::new(0.0f32.to_bits(), 0.0f32.to_bits(), 3.0f32.to_bits()),
+        );
+        assert_eq!(
+            sphere.local_transform().translation,
+            Vec3::new(0.0, 0.0, 3.0)
+        );
+        assert_eq!(sphere.local_transform().rotation, Quat::IDENTITY);
+        let child = RaycastMeshData::new_cuboid_at(Vec3::splat(2.0), Vec3::new(2.0, 0.0, 0.0));
+        let compound =
+            RaycastMeshData::new_compound(vec![child], [0, 0, 0, 0, 0, 0, 0, 1.0f32.to_bits()]);
+        let aabb = compound
+            .shape_ref()
+            .unwrap()
+            .compute_aabb(&Isometry::identity());
+        assert_eq!(aabb.mins, Point::new(1.0, -1.0, -1.0));
+        assert_eq!(aabb.maxs, Point::new(3.0, 1.0, 1.0));
+        assert_eq!(compound.local_transform().rotation, Quat::IDENTITY);
+    }
+
+    #[test]
+    fn real_same_key_upsert_checks_geometry_and_selected_source_fields() {
+        let id = DecoratorId(17);
+        let source = RaycastGeoSource::decorator(id, DecoratorStorageAddr::Wall(WallId(23)));
+        let mesh = Arc::new(RaycastMeshData::new_cuboid_at(Vec3::splat(2.0), Vec3::Y));
+        let mut world = RaycastWorld::new();
+        let mut maps = DecoratorPhysicsColliders::default();
+        let first = inserted(upsert_collider(
+            &mut world,
+            &mut maps.first,
+            id,
+            source,
+            mesh.clone(),
+            Vec3::ZERO,
+            Quat::IDENTITY,
+        ));
+        let mut padding_changed = source;
+        padding_changed.0[3] = 99;
+        assert!(
+            matches!(upsert_collider(&mut world, &mut maps.first, id, padding_changed, mesh.clone(), Vec3::ZERO, Quat::IDENTITY),
+            ColliderUpsert::Kept { handle } if handle == first)
+        );
+        let changed_geometry = Arc::new(RaycastMeshData::new_cuboid_at(
+            Vec3::new(4.0, 2.0, 2.0),
+            Vec3::Y,
+        ));
+        assert!(matches!(
+            upsert_collider(
+                &mut world,
+                &mut maps.first,
+                id,
+                source,
+                changed_geometry.clone(),
+                Vec3::ZERO,
+                Quat::IDENTITY
+            ),
+            ColliderUpsert::Replaced { .. }
+        ));
+        let changed_address =
+            RaycastGeoSource::decorator(id, DecoratorStorageAddr::Wall(WallId(24)));
+        assert!(matches!(
+            upsert_collider(
+                &mut world,
+                &mut maps.first,
+                id,
+                changed_address,
+                changed_geometry,
+                Vec3::ZERO,
+                Quat::IDENTITY
+            ),
+            ColliderUpsert::Replaced { .. }
+        ));
+        // For non-Wall storage the unused payload lane is not an equality condition.
+        let terrain = RaycastGeoSource::decorator(id, DecoratorStorageAddr::Terrain);
+        let mut ignored_payload = terrain;
+        ignored_payload.0[16..24].copy_from_slice(&99u64.to_le_bytes());
+        assert!(terrain.same_native_source(ignored_payload));
+    }
+
+    #[test]
+    fn dual_decorator_maps_share_world_but_keep_independent_real_receipts() {
+        let id = DecoratorId(31);
+        let storage = DecoratorStorageAddr::Terrain;
+        let collision_source = RaycastGeoSource::decorator(id, storage);
+        let interaction_source = RaycastGeoSource::decorator_interaction(id, storage, 0);
+        let center = Vec3::new(0.0, 2.0, 0.0);
+        let mut world = RaycastWorld::new();
+        let mut maps = DecoratorPhysicsColliders::default();
+        // Original set_colliders argument order is shrink first, full second.
+        let first = inserted(upsert_collider(
+            &mut world,
+            &mut maps.first,
+            id,
+            collision_source,
+            Arc::new(RaycastMeshData::new_cuboid_at(
+                Vec3::new(1.5, 3.5, 5.5),
+                center,
+            )),
+            Vec3::ZERO,
+            Quat::IDENTITY,
+        ));
+        let second = inserted(upsert_collider(
+            &mut world,
+            &mut maps.second,
+            id,
+            interaction_source,
+            Arc::new(RaycastMeshData::new_cuboid_at(
+                Vec3::new(2.0, 4.0, 6.0),
+                center,
+            )),
+            Vec3::ZERO,
+            Quat::IDENTITY,
+        ));
+        assert_eq!(first.index, 0);
+        assert_eq!(second.index, 0);
+        assert_ne!(first.slot, second.slot);
+        assert_ne!(
+            maps.first[&id].registry_index,
+            maps.second[&id].registry_index
+        );
+        assert_eq!(
+            world
+                .get_collider_mesh(maps.first[&id].registry_index, maps.first[&id].generation)
+                .source,
+            collision_source
+        );
+        assert_eq!(
+            world
+                .get_collider_mesh(maps.second[&id].registry_index, maps.second[&id].generation)
+                .source,
+            interaction_source
+        );
+        world.flush_colliders();
+        let ray_origin = Vec3::new(0.0, 10.0, 0.0);
+        let first_hit = world.raycast(ray_origin, Vec3::NEG_Y, 1 << first.slot);
+        let second_hit = world.raycast(ray_origin, Vec3::NEG_Y, 1 << second.slot);
+        assert_eq!(first_hit.toi, 6.25);
+        assert_eq!(second_hit.toi, 6.0);
+        let source_words = |source: RaycastGeoSource| -> [u64; 3] {
+            std::array::from_fn(|i| {
+                u64::from_le_bytes(source.0[i * 8..i * 8 + 8].try_into().unwrap())
+            })
+        };
+        assert_eq!(first_hit.handle, source_words(collision_source));
+        assert_eq!(second_hit.handle, source_words(interaction_source));
+        let mut sources = Vec::new();
+        world.iter_shape_overlaps_handle(
+            second,
+            (1 << first.slot) | (1 << second.slot),
+            |_, source| {
+                sources.push(*source);
+                false
+            },
+        );
+        assert!(sources.contains(&collision_source) && sources.contains(&interaction_source));
+        remove_collider(&mut world, &mut maps.first, &id).expect("first present");
+        world.flush_colliders();
+        assert!(
+            world
+                .raycast(ray_origin, Vec3::NEG_Y, 1 << first.slot)
+                .is_miss()
+        );
+        assert_eq!(
+            world
+                .raycast(ray_origin, Vec3::NEG_Y, 1 << second.slot)
+                .handle,
+            source_words(interaction_source)
+        );
+    }
+
+    #[test]
+    fn real_receipts_reject_even_wrong_and_removed_generations_and_release_owner() {
+        let mut world = RaycastWorld::new();
+        let mut map = std::collections::HashMap::new();
+        let mesh = Arc::new(RaycastMeshData::new_cuboid_at(Vec3::splat(2.0), Vec3::ZERO));
+        let weak = Arc::downgrade(&mesh);
+        inserted(upsert_collider(
+            &mut world,
+            &mut map,
+            (),
+            RaycastGeoSource::Slot0,
+            mesh,
+            Vec3::ZERO,
+            Quat::IDENTITY,
+        ));
+        let old = map[&()];
+        let fails = |world: &RaycastWorld, generation| {
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                world.get_collider_mesh(old.registry_index, generation);
+            }))
+            .is_err()
+        };
+        assert!(fails(&world, old.generation & !1));
+        assert!(fails(&world, old.generation.wrapping_add(2)));
+        world.flush_colliders();
+        let good_raw = (u64::from(old.generation) << 32) | u64::from(old.registry_index);
+        world.slots[old.slot as usize]
+            .colliders
+            .get_mut(old.collider)
+            .unwrap()
+            .user_data =
+            u128::from((u64::from(old.generation & !1) << 32) | u64::from(old.registry_index));
+        assert!(
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                world.raycast(Vec3::new(0.0, 3.0, 0.0), Vec3::NEG_Y, 1);
+            }))
+            .is_err(),
+            "an actual hit must reject a normalized-even receipt"
+        );
+        world.slots[old.slot as usize]
+            .colliders
+            .get_mut(old.collider)
+            .unwrap()
+            .user_data = u128::from(good_raw);
+        remove_collider(&mut world, &mut map, &()).expect("present");
+        assert!(weak.upgrade().is_none());
+        assert!(fails(&world, old.generation));
+        let mesh = Arc::new(RaycastMeshData::new_cuboid_at(Vec3::splat(2.0), Vec3::ZERO));
+        let new_weak = Arc::downgrade(&mesh);
+        inserted(upsert_collider(
+            &mut world,
+            &mut map,
+            (),
+            RaycastGeoSource::Slot0,
+            mesh,
+            Vec3::ZERO,
+            Quat::IDENTITY,
+        ));
+        let new = map[&()];
+        assert_eq!(new.registry_index, old.registry_index);
+        assert_ne!(new.generation, old.generation);
+        assert!(fails(&world, old.generation));
+        world.on_level_reload();
+        assert!(new_weak.upgrade().is_none());
+    }
+
+    #[test]
+    fn physical_collider_without_registered_receipt_fails_at_actual_hit() {
+        let mut world = RaycastWorld::new();
+        let slot = &mut world.slots[0];
+        slot.colliders
+            .insert(ColliderBuilder::cuboid(1.0, 1.0, 1.0).build());
+        slot.pipeline.update(&slot.colliders);
+        assert!(
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                world.raycast(Vec3::new(0.0, 3.0, 0.0), Vec3::NEG_Y, 1);
+            }))
+            .is_err()
+        );
+    }
+}
+
+
+#[cfg(all(test, feature = "native-physics"))]
+mod decorator_overlap_regressions {
+    use super::*;
+    use crate::resources::walls::WallId;
+    use crate::resources::walls::decorator::DecoratorId;
+    use crate::resources::walls::decorator_storage::DecoratorStorageAddr;
+    use glam::{Quat, Vec3};
+    use std::collections::HashMap;
+
+    fn insert_source(
+        world: &mut RaycastWorld,
+        map: &mut HashMap<DecoratorId, ColliderMeshInstance>,
+        id: DecoratorId,
+        source: RaycastGeoSource,
+        position: Vec3,
+        dimensions: Vec3,
+    ) -> ColliderMeshInstance {
+        assert!(matches!(
+            upsert_collider(
+                world,
+                map,
+                id,
+                source,
+                Arc::new(RaycastMeshData::new_cuboid_at(dimensions, Vec3::ZERO)),
+                position,
+                Quat::IDENTITY,
+            ),
+            ColliderUpsert::Inserted { .. }
+        ));
+        map[&id]
+    }
+
+    fn query(position: Vec3) -> OffsetColliderTransform {
+        OffsetColliderTransform {
+            position,
+            rotation: Quat::IDENTITY,
+            shape: SharedShape::ball(0.25).0,
+        }
+    }
+
+    #[test]
+    fn rejects_self_other_wall_and_nonwall_then_returns_canonical_source() {
+        let mut world = RaycastWorld::new();
+        let mut map = HashMap::new();
+        let current = DecoratorId(50);
+        let wall = WallId(9);
+        let query = query(Vec3::ZERO);
+        assert!(world.decorator_overlaps_with_others(&query, current, wall, false).is_none());
+        for (id, storage) in [
+            (current, DecoratorStorageAddr::Wall(wall)),
+            (DecoratorId(1), DecoratorStorageAddr::Wall(WallId(10))),
+            (DecoratorId(2), DecoratorStorageAddr::Terrain),
+            (DecoratorId(3), DecoratorStorageAddr::Stair),
+        ] {
+            insert_source(&mut world, &mut map, id, RaycastGeoSource::decorator(id, storage), Vec3::ZERO, Vec3::splat(2.0));
+        }
+        insert_source(&mut world, &mut map, DecoratorId(99), RaycastGeoSource::Slot0, Vec3::ZERO, Vec3::splat(2.0));
+        world.flush_colliders();
+        assert!(world.decorator_overlaps_with_others(&query, current, wall, false).is_none());
+        assert!(world.decorator_overlaps_with_others(&query, current, wall, true).is_none());
+
+        let id = DecoratorId(22);
+        let expected = RaycastGeoSource::decorator(id, DecoratorStorageAddr::Wall(wall));
+        let live = insert_source(&mut world, &mut map, id, expected, Vec3::ZERO, Vec3::splat(2.0));
+        world.flush_colliders();
+        let hit = world.decorator_overlaps_with_others(&query, current, wall, false).unwrap();
+        assert_eq!(*hit, expected);
+        assert!(std::ptr::eq(hit, &world.get_collider_mesh(live.registry_index, live.generation).source));
+    }
+
+    #[test]
+    fn ordered_mode_uses_unsigned_id_comparison() {
+        let mut world = RaycastWorld::new();
+        let mut map = HashMap::new();
+        let wall = WallId(9);
+        let query = query(Vec3::ZERO);
+        let larger = DecoratorId(u32::MAX);
+        let expected = RaycastGeoSource::decorator(larger, DecoratorStorageAddr::Wall(wall));
+        insert_source(&mut world, &mut map, larger, expected, Vec3::ZERO, Vec3::splat(2.0));
+        world.flush_colliders();
+        assert_eq!(world.decorator_overlaps_with_others(&query, DecoratorId(9), wall, false), Some(&expected));
+        assert!(world.decorator_overlaps_with_others(&query, DecoratorId(9), wall, true).is_none());
+        assert!(remove_collider(&mut world, &mut map, &larger).is_some());
+        let smaller = DecoratorId(7);
+        let expected = RaycastGeoSource::decorator(smaller, DecoratorStorageAddr::Wall(wall));
+        insert_source(&mut world, &mut map, smaller, expected, Vec3::ZERO, Vec3::splat(2.0));
+        world.flush_colliders();
+        assert_eq!(world.decorator_overlaps_with_others(&query, DecoratorId(0x8000_0000), wall, true), Some(&expected));
+    }
+
+    #[test]
+    fn overlap_query_preserves_translation_and_rotation() {
+        let mut world = RaycastWorld::new();
+        let mut map = HashMap::new();
+        let wall = WallId(9);
+        let id = DecoratorId(1);
+        let center = Vec3::new(8.0, 2.0, 3.0);
+        let expected = RaycastGeoSource::decorator(id, DecoratorStorageAddr::Wall(wall));
+        insert_source(&mut world, &mut map, id, expected, center + Vec3::Z * 1.5, Vec3::splat(0.2));
+        world.flush_colliders();
+        let mut query = OffsetColliderTransform {
+            position: center,
+            rotation: Quat::IDENTITY,
+            shape: SharedShape::cuboid(2.0, 0.2, 0.2).0,
+        };
+        assert!(world.decorator_overlaps_with_others(&query, DecoratorId(20), wall, false).is_none());
+        query.rotation = Quat::from_rotation_y(std::f32::consts::FRAC_PI_2);
+        assert_eq!(world.decorator_overlaps_with_others(&query, DecoratorId(20), wall, false), Some(&expected));
+        query.position = Vec3::ZERO;
+        assert!(world.decorator_overlaps_with_others(&query, DecoratorId(20), wall, false).is_none());
+    }
+
+    #[test]
+    fn removed_and_reused_receipts_return_only_the_new_live_owner() {
+        let mut world = RaycastWorld::new();
+        let mut map = HashMap::new();
+        let wall = WallId(9);
+        let id = DecoratorId(1);
+        let query = query(Vec3::ZERO);
+        let source = RaycastGeoSource::decorator(id, DecoratorStorageAddr::Wall(wall));
+        let old = insert_source(&mut world, &mut map, id, source, Vec3::ZERO, Vec3::splat(2.0));
+        world.flush_colliders();
+        assert_eq!(world.decorator_overlaps_with_others(&query, DecoratorId(20), wall, false), Some(&source));
+        assert!(remove_collider(&mut world, &mut map, &id).is_some());
+        world.flush_colliders();
+        assert!(world.decorator_overlaps_with_others(&query, DecoratorId(20), wall, false).is_none());
+        let next = DecoratorId(2);
+        let expected = RaycastGeoSource::decorator(next, DecoratorStorageAddr::Wall(wall));
+        let live = insert_source(&mut world, &mut map, next, expected, Vec3::ZERO, Vec3::splat(2.0));
+        assert_ne!((old.registry_index, old.generation), (live.registry_index, live.generation));
+        world.flush_colliders();
+        let hit = world.decorator_overlaps_with_others(&query, DecoratorId(20), wall, false).unwrap();
+        assert_eq!(*hit, expected);
+        assert!(std::ptr::eq(hit, &world.get_collider_mesh(live.registry_index, live.generation).source));
+    }
+
+    #[test]
+    fn live_query_rejects_stale_receipts_and_unexpected_source_kind() {
+        let mut world = RaycastWorld::new();
+        let mut map = HashMap::new();
+        let wall = WallId(9);
+        let id = DecoratorId(1);
+        let source = RaycastGeoSource::decorator(id, DecoratorStorageAddr::Wall(wall));
+        let live = insert_source(&mut world, &mut map, id, source, Vec3::ZERO, Vec3::splat(2.0));
+        world.flush_colliders();
+        let query = query(Vec3::ZERO);
+        let original = (u64::from(live.generation) << 32) | u64::from(live.registry_index);
+        for generation in [live.generation & !1, live.generation.wrapping_add(2)] {
+            world.get_rapier_collider(live.slot, live.collider).unwrap().user_data =
+                u128::from((u64::from(generation) << 32) | u64::from(live.registry_index));
+            assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                world.decorator_overlaps_with_others(&query, DecoratorId(20), wall, false);
+            })).is_err());
+        }
+        world.get_rapier_collider(live.slot, live.collider).unwrap().user_data = u128::from(original);
+        world.mesh_sources.meshes.get_mut(strict_mesh_key(original)).unwrap().source = RaycastGeoSource::Slot0;
+        world.colliders[live.registry_index as usize].set_kind(0);
+        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            world.decorator_overlaps_with_others(&query, DecoratorId(20), wall, false);
+        })).is_err());
+    }
+}
+
+
+#[cfg(all(test, feature = "native-physics"))]
+mod bounded_ray_regressions {
+    use super::*;
+    use glam::{Quat, Vec3};
+    use std::collections::HashMap;
+
+    fn insert_box(
+        world: &mut RaycastWorld,
+        map: &mut HashMap<u32, ColliderMeshInstance>,
+        key: u32,
+        source: RaycastGeoSource,
+        center: Vec3,
+    ) {
+        assert!(matches!(
+            upsert_collider(
+                world,
+                map,
+                key,
+                source,
+                Arc::new(RaycastMeshData::new_cuboid_at(Vec3::ONE, Vec3::ZERO)),
+                center,
+                Quat::IDENTITY,
+            ),
+            ColliderUpsert::Inserted { .. }
+        ));
+    }
+
+    #[test]
+    fn finite_bound_ignores_geometry_beyond_endpoint() {
+        let mut world = RaycastWorld::new();
+        let mut map = HashMap::new();
+        insert_box(&mut world, &mut map, 1, RaycastGeoSource::Slot0, Vec3::Z * 5.0);
+        world.flush_colliders();
+        assert!(world.intersects_any(Vec3::ZERO, Vec3::Z, 1));
+        assert!(!world.intersects_any_with_max_toi(Vec3::ZERO, Vec3::Z, 4.49, 1));
+        assert!(world.intersects_any_with_max_toi(Vec3::ZERO, Vec3::Z, 4.5, 1));
+    }
+
+    #[test]
+    fn finite_bound_and_mask_reach_last_subworld() {
+        let mut world = RaycastWorld::new();
+        let mut map = HashMap::new();
+        insert_box(&mut world, &mut map, 1, RaycastGeoSource::Slot0, Vec3::Z);
+        insert_box(&mut world, &mut map, 2, RaycastGeoSource::Slot16, Vec3::Z * 5.0);
+        world.flush_colliders();
+        let last = 1 << 16;
+        assert!(!world.intersects_any_with_max_toi(Vec3::ZERO, Vec3::Z, 2.0, last));
+        assert!(world.intersects_any_with_max_toi(Vec3::ZERO, Vec3::Z, 10.0, last));
+        assert!(!world.intersects_any_with_max_toi(Vec3::ZERO, Vec3::Z, 10.0, 0));
+        assert!(!world.intersects_any_with_max_toi(Vec3::ZERO, Vec3::Z, 10.0, 1 << 31));
+    }
+
+    #[test]
+    fn ray_direction_keeps_its_parametric_scale() {
+        let mut world = RaycastWorld::new();
+        let mut map = HashMap::new();
+        insert_box(&mut world, &mut map, 1, RaycastGeoSource::Slot0, Vec3::Z * 4.0);
+        world.flush_colliders();
+        let direction = Vec3::Z * 2.0;
+        assert!(!world.intersects_any_with_max_toi(Vec3::ZERO, direction, 1.5, 1));
+        assert!(world.intersects_any_with_max_toi(Vec3::ZERO, direction, 1.75, 1));
+        assert!(world.intersects_any(Vec3::ZERO, direction, 1));
+    }
+
+    #[test]
+    fn solid_ray_starts_inside_at_zero_toi() {
+        let mut world = RaycastWorld::new();
+        let mut map = HashMap::new();
+        insert_box(&mut world, &mut map, 1, RaycastGeoSource::Slot0, Vec3::ZERO);
+        world.flush_colliders();
+        assert!(world.intersects_any_with_max_toi(Vec3::ZERO, Vec3::Z, 0.0, 1));
+    }
+}
+
+
+#[cfg(all(test, feature = "native-physics"))]
+mod finite_simple_ray_regressions {
+    use super::*;
+    use glam::{Quat, Vec3};
+    use std::collections::HashMap;
+
+    fn insert_box(
+        world: &mut RaycastWorld,
+        map: &mut HashMap<u32, ColliderMeshInstance>,
+        key: u32,
+        source: RaycastGeoSource,
+        center: Vec3,
+    ) {
+        assert!(matches!(
+            upsert_collider(
+                world,
+                map,
+                key,
+                source,
+                Arc::new(RaycastMeshData::new_cuboid_at(Vec3::ONE, Vec3::ZERO)),
+                center,
+                Quat::IDENTITY,
+            ),
+            ColliderUpsert::Inserted { .. }
+        ));
+    }
+
+    fn assert_source(hit: &RaycastSimpleResult, expected: RaycastGeoSource) {
+        assert!(!hit.is_miss());
+        let words = std::array::from_fn(|i| {
+            u64::from_le_bytes(expected.0[i * 8..i * 8 + 8].try_into().unwrap())
+        });
+        assert_eq!(hit.handle, words);
+    }
+
+    #[test]
+    fn bounded_source13_miss_and_endpoint_keep_old_max_entry() {
+        let mut world = RaycastWorld::new();
+        let mut map = HashMap::new();
+        let source = RaycastGeoSource::Slot13;
+        insert_box(&mut world, &mut map, 1, source, Vec3::Y * -1.5);
+        world.flush_colliders();
+        let origin = Vec3::Y;
+        let direction = Vec3::new(-0.0, -1.0, -0.0);
+        let mask = 0x1000;
+        assert!(world.raycast_simple_with_max_toi(origin, direction, 1.0, mask).is_miss());
+        let old = world.raycast_simple(origin, direction, mask);
+        assert_source(&old, source);
+        assert_eq!(old.toi, 2.0);
+        let hit = world.raycast_simple_with_max_toi(origin, direction, 2.0, mask);
+        assert_source(&hit, source);
+        assert_eq!(hit.position, Vec3::Y * -1.0);
+        assert_eq!(hit.toi, 2.0);
+        // The existing exclude entry retains its previous forwarding behavior.
+        assert_eq!(world.raycast_simple_exclude_wall_id(origin, direction, mask,
+            SubworldColliderHandle::new(0, 0, 0)), old);
+    }
+
+    #[test]
+    fn finite_hit_returns_all_canonical_source_words_and_actual_pose() {
+        use crate::resources::walls::decorator::DecoratorId;
+        use crate::resources::walls::decorator_storage::DecoratorStorageAddr;
+        use crate::resources::walls::WallId;
+        let mut world = RaycastWorld::new();
+        let mut map = HashMap::new();
+        let source = RaycastGeoSource::decorator(
+            DecoratorId(0xfedc_ba98), DecoratorStorageAddr::Wall(WallId(0x1234_5678_9abc_def0)));
+        insert_box(&mut world, &mut map, 1, source, Vec3::new(8.0, 2.0, 5.0));
+        world.flush_colliders();
+        let origin = Vec3::new(8.0, 2.0, 1.0);
+        let hit = world.raycast_simple_with_max_toi(origin, Vec3::Z, 4.0, 1 << source.subworld());
+        assert_source(&hit, source);
+        assert_eq!(hit.toi, 3.5);
+        assert_eq!(hit.position, Vec3::new(8.0, 2.0, 4.5));
+    }
+
+    #[test]
+    fn nearest_hit_tightens_bound_and_equal_later_slot_replaces() {
+        let mut world = RaycastWorld::new();
+        let mut map = HashMap::new();
+        insert_box(&mut world, &mut map, 1, RaycastGeoSource::Slot0, Vec3::Z * 3.0);
+        insert_box(&mut world, &mut map, 2, RaycastGeoSource::Slot16, Vec3::Z * 6.0);
+        world.flush_colliders();
+        let mask = 1 | (1 << 16);
+        let hit = world.raycast_simple_with_max_toi(Vec3::ZERO, Vec3::Z, 10.0, mask);
+        assert_source(&hit, RaycastGeoSource::Slot0);
+        assert_eq!(hit.toi, 2.5);
+        assert_eq!(hit.position, Vec3::Z * 2.5);
+        assert!(remove_collider(&mut world, &mut map, &2).is_some());
+        insert_box(&mut world, &mut map, 3, RaycastGeoSource::Slot16, Vec3::Z * 3.0);
+        world.flush_colliders();
+        let tie = world.raycast_simple_with_max_toi(Vec3::ZERO, Vec3::Z, 10.0, mask);
+        assert_source(&tie, RaycastGeoSource::Slot16);
+        assert_eq!(tie.toi, 2.5);
+        assert_eq!(tie.position, hit.position);
+    }
+
+    #[test]
+    fn bound_and_mask_select_last_subworld_with_parametric_direction() {
+        let mut world = RaycastWorld::new();
+        let mut map = HashMap::new();
+        insert_box(&mut world, &mut map, 1, RaycastGeoSource::Slot0, Vec3::Z);
+        insert_box(&mut world, &mut map, 2, RaycastGeoSource::Slot16, Vec3::Z * 4.0);
+        world.flush_colliders();
+        let direction = Vec3::Z * 2.0;
+        let mask = 1 << 16;
+        assert!(world.raycast_simple_with_max_toi(Vec3::ZERO, direction, 1.5, mask).is_miss());
+        let hit = world.raycast_simple_with_max_toi(Vec3::ZERO, direction, 1.75, mask);
+        assert_source(&hit, RaycastGeoSource::Slot16);
+        assert_eq!(hit.toi, 1.75);
+        assert_eq!(hit.position, Vec3::Z * 3.5);
+        assert!(world.raycast_simple_with_max_toi(Vec3::ZERO, direction, 10.0, 0).is_miss());
+        assert!(world.raycast_simple_with_max_toi(Vec3::ZERO, direction, 10.0, 1 << 31).is_miss());
+    }
+
+    #[test]
+    fn solid_query_starts_inside_at_zero_bound() {
+        let mut world = RaycastWorld::new();
+        let mut map = HashMap::new();
+        insert_box(&mut world, &mut map, 1, RaycastGeoSource::Slot0, Vec3::ZERO);
+        world.flush_colliders();
+        let hit = world.raycast_simple_with_max_toi(Vec3::ZERO, Vec3::Z, 0.0, 1);
+        assert_source(&hit, RaycastGeoSource::Slot0);
+        assert_eq!(hit.toi, 0.0);
+        assert_eq!(hit.position, Vec3::ZERO);
     }
 }

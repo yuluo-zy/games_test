@@ -1,0 +1,24 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/decorator_clutter.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/decorator_clutter.rs
+@@ -31,7 +31,10 @@
+ pub const CLUTTER_HEIGHT_MIN: f32 = 0.1;
+ 
+ /// Native exclusion test at 1407e3a76..3a8a. It skips 38..3d and 3f.
+-/// The producer then checks its placement and the real 0..55 mesh enum domain.
++/// Original typed constructors encode Clutter as its inner 0..55 payload; the
++/// seven unit variants encode 56..61 or 63. Raw 62 is outside that observed typed
++/// domain. This predicate preserves the native byte test; the checked conversion
++/// below rejects invalid values admitted by the wider host raw-u8 boundary.
+ pub fn is_clutter_type(ty: u8) -> bool {
+     !(ty.wrapping_sub(CLUTTER_TYPE_LOW) < 8 && ty != CLUTTER_TYPE_EXCLUDED)
+ }
+@@ -123,7 +126,8 @@
+                 }
+             }
+             // Native helper is valid for its 56-variant enum. In particular the
+-            // unexplained 0x3e placement domain is never given a guessed fallback.
++            // B parent/child serde constructors cannot produce raw 0x3e. This
++            // checked host boundary rejects it; this is not a native panic branch.
+             let ty = ClutterMeshTy::from_native_tag(tag)
+                 .expect("decorator clutter type is outside the recovered native enum");
+             let blueprint = blueprints.insert_for(id, addr, 0);

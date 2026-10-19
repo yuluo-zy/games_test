@@ -1,0 +1,80 @@
+Source: /Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smallvec-1.13.2/src/lib.rs
+SHA256: 2ee976afdac5673b05caefa2b74d16af9d3d759e27d71ff3c88ce2623483e601
+
+1110:     }
+1111: 
+1112:     /// Append an item to the vector.
+1113:     #[inline]
+1114:     pub fn push(&mut self, value: A::Item) {
+1115:         unsafe {
+1116:             let (mut ptr, mut len, cap) = self.triple_mut();
+1117:             if *len == cap {
+1118:                 self.reserve_one_unchecked();
+1119:                 let (heap_ptr, heap_len) = self.data.heap_mut();
+1120:                 ptr = heap_ptr;
+1121:                 len = heap_len;
+1122:             }
+1123:             ptr::write(ptr.as_ptr().add(*len), value);
+1124:             *len += 1;
+1125:         }
+1126:     }
+1127: 
+
+1737:     ///
+1738:     /// For slices of `Copy` types, this is more efficient than `SmallVec::from(slice)`.
+1739:     pub fn from_slice(slice: &[A::Item]) -> Self {
+1740:         let len = slice.len();
+1741:         if len <= Self::inline_capacity() {
+1742:             SmallVec {
+1743:                 capacity: len,
+1744:                 data: SmallVecData::from_inline(unsafe {
+1745:                     let mut data: MaybeUninit<A> = MaybeUninit::uninit();
+1746:                     ptr::copy_nonoverlapping(
+1747:                         slice.as_ptr(),
+1748:                         data.as_mut_ptr() as *mut A::Item,
+1749:                         len,
+1750:                     );
+1751:                     data
+1752:                 }),
+1753:             }
+1754:         } else {
+1755:             let mut b = slice.to_vec();
+1756:             let cap = b.capacity();
+1757:             let ptr = NonNull::new(b.as_mut_ptr()).expect("Vec always contain non null pointers.");
+1758:             mem::forget(b);
+1759:             SmallVec {
+1760:                 capacity: cap,
+1761:                 data: SmallVecData::from_heap(ptr, len),
+1762:             }
+1763:         }
+1764:     }
+
+2060: impl<A: Array> Extend<A::Item> for SmallVec<A> {
+2061:     fn extend<I: IntoIterator<Item = A::Item>>(&mut self, iterable: I) {
+2062:         let mut iter = iterable.into_iter();
+2063:         let (lower_size_bound, _) = iter.size_hint();
+2064:         self.reserve(lower_size_bound);
+2065: 
+2066:         unsafe {
+2067:             let (ptr, len_ptr, cap) = self.triple_mut();
+2068:             let ptr = ptr.as_ptr();
+2069:             let mut len = SetLenOnDrop::new(len_ptr);
+2070:             while len.get() < cap {
+2071:                 if let Some(out) = iter.next() {
+2072:                     ptr::write(ptr.add(len.get()), out);
+2073:                     len.increment_len(1);
+2074:                 } else {
+2075:                     return;
+2076:                 }
+2077:             }
+2078:         }
+2079: 
+2080:         for elem in iter {
+2081:             self.push(elem);
+2082:         }
+2083:     }
+2084: }
+2085: 
+2086: impl<A: Array> fmt::Debug for SmallVec<A>
+2087: where
+

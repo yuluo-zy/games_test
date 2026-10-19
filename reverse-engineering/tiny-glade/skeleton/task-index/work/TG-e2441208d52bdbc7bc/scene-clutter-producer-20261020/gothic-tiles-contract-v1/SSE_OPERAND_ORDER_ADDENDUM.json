@@ -1,0 +1,49 @@
+{
+  "status": "design_clarification_no_source_or_test_execution",
+  "supersedes_only": "CONTRACT.md informal sqrt operand order; all other business stages unchanged",
+  "finite_domain_note": "Final addition operand commutation is numerically equal for finite inputs but original SSE operand roles are retained explicitly rather than claiming NaN-payload identity.",
+  "exact_sequences": [
+    {
+      "purpose": "initial ridge span L",
+      "pcs": [
+        "141290da6",
+        "141290daa",
+        "141290dae",
+        "141290db2"
+      ],
+      "expression": "sqrt((dy*dy+dx*dx)+dz*dz)"
+    },
+    {
+      "purpose": "extended ridge direction normalization",
+      "pcs": [
+        "141290e63",
+        "141290e67",
+        "141290e6e",
+        "141290e72",
+        "141290e76"
+      ],
+      "expression": "sqrt(dz*dz+(dy*dy+dx*dx))"
+    },
+    {
+      "purpose": "body profile tangent normalization",
+      "pcs": [
+        "141291749",
+        "14129174d",
+        "141291751",
+        "141291758"
+      ],
+      "expression": "sqrt((dy*dy+dx*dx)+dz*dz)"
+    },
+    {
+      "purpose": "body scale segment distance",
+      "pcs": [
+        "141291afd",
+        "141291b01",
+        "141291b05",
+        "141291b09",
+        "141291b10"
+      ],
+      "expression": "sqrt(dz*dz+(dy*dy+dx*dx))"
+    }
+  ]
+}

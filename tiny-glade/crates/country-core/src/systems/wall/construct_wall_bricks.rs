@@ -206,7 +206,7 @@ pub fn construct_wall_bricks(
     mut entities: ResMut<WallEntities>,
     mut bricks: Query<(
         &mut InstancedWall<WallBrickInstance>,
-        &mut WallTriggerVolume,
+        Option<&mut WallTriggerVolume>,
     )>,
     mut commands: Commands,
     mut state: ResMut<WallBrickBuildState>,
@@ -238,20 +238,37 @@ pub fn construct_wall_bricks(
             }
         };
         let entity = if let Some(entity) = entities.wall_entity(id) {
-            let Ok((mut value, mut trigger)) = bricks.get_mut(entity) else {
+            let Ok((mut value, trigger)) = bricks.get_mut(entity) else {
                 state
                     .failures
                     .insert(id, WallBrickBuildError::StaleWallEntity(entity));
                 continue;
             };
-            if let Err(error) = trigger.recompute(wall) {
-                state
-                    .failures
-                    .insert(id, WallBrickBuildError::Trigger(error));
+            if value.id != id.0 {
+                state.failures.insert(id, WallBrickBuildError::StaleWallEntity(entity));
                 continue;
             }
-            value.update(instances);
-            update_wall_rt_mesh(id, &trigger, &mut rt_world);
+            if let Some(mut trigger) = trigger {
+                if let Err(error) = trigger.recompute(wall) {
+                    state.failures.insert(id, WallBrickBuildError::Trigger(error));
+                    continue;
+                }
+                value.update(instances);
+                update_wall_rt_mesh(id, &trigger, &mut rt_world);
+            } else {
+                if !value.is_awaiting_production() {
+                    state.failures.insert(id, WallBrickBuildError::StaleWallEntity(entity));
+                    continue;
+                }
+                let mut trigger = WallTriggerVolume::default();
+                if let Err(error) = trigger.recompute(wall) {
+                    state.failures.insert(id, WallBrickBuildError::Trigger(error));
+                    continue;
+                }
+                value.update(instances);
+                update_wall_rt_mesh(id, &trigger, &mut rt_world);
+                commands.entity(entity).insert(trigger);
+            }
             rt_updates.write(UpdateRtWorldEvent);
             entity
         } else {

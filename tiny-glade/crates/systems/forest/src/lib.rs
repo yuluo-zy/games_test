@@ -8,7 +8,7 @@
 //! - `is_too_close_to_shape`（行 211，内联）：树-形状间距判定。
 //!
 //! `build`（0x140650c50，O）只做 Bevy 注册胶水：`insert_resource<InteractableForestPlacements>` +
-//! `(manage_tree_prefabs, handplaced_tree_animation, forest_tree_animation).chain().in_set(Set)`
+//! `(manage_tree_prefabs, forest_tree_animation, handplaced_tree_animation).chain_ignore_deferred().in_set(Set)`
 //! 注册到 Update。
 
 pub mod manage_tree_prefabs;
@@ -37,22 +37,25 @@ pub enum ForestSystems {
 /// （`register_event` 面不在 0x140650c50）；prefab/timberframe 域宿主注册。此处保留
 /// `init_resource` 使本 crate 独立可运行（接线惯例，非原 build 面，见 RESTORE.md §1）。
 pub fn register_forest_events(world: &mut World) {
-    world.insert_resource(InteractableForestPlacements::default());
+    world.init_resource::<InteractableForestPlacements>();
+    // Current standalone adapter shares the actual two-zero initial state
+    // proven in B run_game_thread14059f41d; preserve an existing App owner.
+    world.init_resource::<country_core::resources::history::tree_edit::TreeCanopyMaxCullDistance>();
     world.init_resource::<Events<SpawnPrefabCmd>>();
     world.init_resource::<Events<DespawnPrefabCmd>>();
     world.init_resource::<Events<ConstructTimberframeCmd>>();
 }
 
 /// 注册 CPU 系统（O：build 0x140650c50 的 add_systems 面：`(manage_tree_prefabs,
-/// handplaced_tree_animation, forest_tree_animation).chain().in_set(ForestSystems)`）。
+/// forest_tree_animation, handplaced_tree_animation).chain_ignore_deferred().in_set(ForestSystems)`）。
 pub fn add_forest_cpu_systems<C: Send + Sync + 'static>(schedule: &mut Schedule) {
     schedule.add_systems(
         (
             manage_tree_prefabs::<C>,
-            handplaced_tree_animation,
             forest_tree_animation,
+            handplaced_tree_animation,
         )
-            .chain()
+            .chain_ignore_deferred()
             .in_set(ForestSystems::Trees),
     );
 }

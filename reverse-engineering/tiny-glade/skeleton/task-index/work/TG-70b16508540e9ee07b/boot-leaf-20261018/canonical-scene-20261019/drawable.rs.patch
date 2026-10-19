@@ -1,0 +1,23 @@
+--- a/tiny-glade/crates/country-core/src/components/drawable.rs
++++ b/tiny-glade/crates/country-core/src/components/drawable.rs
+@@ -170,3 +170,20 @@
+         *previous = PrevTransform::from(*current);
+     }
+ }
++
++/// Canonical flag-cloth payloads. Original B custom Clone bodies copy the
++/// roof u32 and complete wall {i32, f32, f32, f32, bool} observed payload.
++/// Both halves of the actual draw callbacks re-export these identities.
++#[repr(transparent)]
++#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
++pub struct RoofFlagCloth(pub u32);
++
++#[repr(C)]
++#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default, PartialEq)]
++pub struct WallFlagCloth {
++    pub id: i32,
++    pub f4: f32,
++    pub f8: f32,
++    pub fc: f32,
++    pub flag: bool,
++}

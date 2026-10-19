@@ -1,0 +1,3 @@
+# Stationary historical expected-value correction
+
+FrozenCONTRACT-V1.md incorrectly transcribed the Stationary old expected as(7,4,8). The actual full frozen before/curve_properties.rs has position_at_u=ZERO, length1 and expected(0,4,0), for the preserved input(-1,4). The actual historical file governs; no source input is altered to match that prose typo. With the original793B two raw-ZERO normalizations, the same input produces allXYZNaN. The candidate retains exactly the old Stationary implementation/input and replaces only that contradicted expected assertion. The192 genuineCurve2 extrapolation inputs, both sides and finite1e-5 tolerance are unchanged. This corrects documentation only, not the original branch/direction proof or independently approved793B design.

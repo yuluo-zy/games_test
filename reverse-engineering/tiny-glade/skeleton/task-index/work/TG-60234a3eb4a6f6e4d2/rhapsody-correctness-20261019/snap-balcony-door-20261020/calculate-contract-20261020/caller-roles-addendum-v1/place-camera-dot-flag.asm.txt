@@ -1,0 +1,71 @@
+1407ab9d0: 488b85c8060000  mov rax, qword ptr [rbp + 0x6c8]
+1407ab9d7: c6401200  mov byte ptr [rax + 0x12], 0
+1407ab9db: 4180fd02  cmp r13b, 2
+1407ab9df: 410f92c0  setb r8b
+1407ab9e3: 488b8598040000  mov rax, qword ptr [rbp + 0x498]
+1407ab9ea: 8b8d80060000  mov ecx, dword ptr [rbp + 0x680]
+1407ab9f0: 8908  mov dword ptr [rax], ecx
+1407ab9f2: c685f706000000  mov byte ptr [rbp + 0x6f7], 0
+1407ab9f9: 488d8d18010000  lea rcx, [rbp + 0x118]
+1407aba00: 488b9590040000  mov rdx, qword ptr [rbp + 0x490]
+1407aba07: e8b47f0800  call 0x1408339c0
+1407aba0c: c685f706000000  mov byte ptr [rbp + 0x6f7], 0
+1407aba13: 488d8d18010000  lea rcx, [rbp + 0x118]
+1407aba1a: e8c17f0800  call 0x1408339e0
+1407aba1f: 8985d8060000  mov dword ptr [rbp + 0x6d8], eax
+1407aba25: 8b85d8060000  mov eax, dword ptr [rbp + 0x6d8]
+1407aba2b: 8985f4040000  mov dword ptr [rbp + 0x4f4], eax
+1407aba31: 488b85e8060000  mov rax, qword ptr [rbp + 0x6e8]
+1407aba38: 408a7869  mov dil, byte ptr [rax + 0x69]
+1407aba3c: c685f706000000  mov byte ptr [rbp + 0x6f7], 0
+1407aba43: e8280189ff  call 0x14003bb70
+1407aba48: 88c3  mov bl, al
+1407aba4a: 488b054706e802  mov rax, qword ptr [rip + 0x2e80647]
+1407aba51: 4531ff  xor r15d, r15d
+1407aba54: 803800  cmp byte ptr [rax], 0
+1407aba57: 410f94c4  sete r12b
+1407aba5b: c685f706000000  mov byte ptr [rbp + 0x6f7], 0
+1407aba62: e8096985ff  call 0x140002370
+1407aba67: 4088c6  mov sil, al
+1407aba6a: c685f706000000  mov byte ptr [rbp + 0x6f7], 0
+1407aba71: e8fa6885ff  call 0x140002370
+1407aba76: 4588e7  mov r15b, r12b
+1407aba79: 438d0cbf  lea ecx, [r15 + r15*4]
+1407aba7d: 48c7859002000000000000  mov qword ptr [rbp + 0x290], 0
+1407aba88: 48898598020000  mov qword ptr [rbp + 0x298], rax
+1407aba8f: 0f57c0  xorps xmm0, xmm0
+1407aba92: 0f1185a0020000  movups xmmword ptr [rbp + 0x2a0], xmm0
+1407aba99: 4088b5b0020000  mov byte ptr [rbp + 0x2b0], sil
+1407abaa0: 66c785b10200000001  mov word ptr [rbp + 0x2b1], 0x100
+1407abaa9: 4088bdd6020000  mov byte ptr [rbp + 0x2d6], dil
+1407abab0: c685d702000000  mov byte ptr [rbp + 0x2d7], 0
+1407abab7: 889dd4020000  mov byte ptr [rbp + 0x2d4], bl
+1407ababd: 48c785b802000000000000  mov qword ptr [rbp + 0x2b8], 0
+1407abac8: 888dd5020000  mov byte ptr [rbp + 0x2d5], cl
+1407abace: c685d102000002  mov byte ptr [rbp + 0x2d1], 2
+1407abad5: 488b5530  mov rdx, qword ptr [rbp + 0x30]
+1407abad9: c685f706000000  mov byte ptr [rbp + 0x6f7], 0
+1407abae0: 488d8de0050000  lea rcx, [rbp + 0x5e0]
+1407abae7: e8e4621600  call 0x140911dd0
+1407abaec: f30f1085e0050000  movss xmm0, dword ptr [rbp + 0x5e0]
+1407abaf4: 488b85e8060000  mov rax, qword ptr [rbp + 0x6e8]
+1407abafb: f30f5c4038  subss xmm0, dword ptr [rax + 0x38]
+1407abb00: f30f108de8050000  movss xmm1, dword ptr [rbp + 0x5e8]
+1407abb08: f30f5c4840  subss xmm1, dword ptr [rax + 0x40]
+1407abb0d: 0f28d0  movaps xmm2, xmm0
+1407abb10: f30f59d0  mulss xmm2, xmm0
+1407abb14: 0f28d9  movaps xmm3, xmm1
+1407abb17: f30f59d9  mulss xmm3, xmm1
+1407abb1b: f30f58da  addss xmm3, xmm2
+1407abb1f: 0f57d2  xorps xmm2, xmm2
+1407abb22: f30f51d3  sqrtss xmm2, xmm3
+1407abb26: f30f5ef2  divss xmm6, xmm2
+1407abb2a: f30f59c6  mulss xmm0, xmm6
+1407abb2e: f30f59f1  mulss xmm6, xmm1
+1407abb32: f30f594044  mulss xmm0, dword ptr [rax + 0x44]
+1407abb37: f30f59704c  mulss xmm6, dword ptr [rax + 0x4c]
+1407abb3c: f30f58f0  addss xmm6, xmm0
+1407abb40: 0f57c0  xorps xmm0, xmm0
+1407abb43: 0f2ec6  ucomiss xmm0, xmm6
+1407abb46: 0f93c1  setae cl
+1407abb49: 898de0060000  mov dword ptr [rbp + 0x6e0], ecx

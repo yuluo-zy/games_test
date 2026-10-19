@@ -411,69 +411,85 @@ fn validate_boundary(
         }
     }
     let mut written = BTreeMap::<u32, Vec<AccessRange>>::new();
-    for access in definition.passes[scope.pass_range.clone()]
-        .iter()
-        .flat_map(|pass| &pass.accesses)
-    {
-        let resource = &definition.resources[access.resource_index as usize];
-        let write = definition.is_write(access.access_code);
-        if access.reads_contents(write) {
-            let available = written
-                .get(&access.resource_index)
+    for pass in &definition.passes[scope.pass_range.clone()] {
+        let entry_lengths: smallvec::SmallVec<[(u32, usize); 2]> =
+            super::resource_info::entry_content_resources(&pass.accesses)
                 .into_iter()
-                .flatten()
-                .copied()
-                .chain(
-                    scope
+                .map(|resource| (resource, written.get(&resource).map_or(0, Vec::len)))
+                .collect();
+        for access in &pass.accesses {
+            let resource = &definition.resources[access.resource_index as usize];
+            let write = definition.is_write(access.access_code);
+            if access.reads_contents(write) {
+                let available = written
+                    .get(&access.resource_index)
+                    .map(|ranges| {
+                        &ranges[..entry_lengths
+                            .iter()
+                            .find_map(|&(resource, length)| {
+                                (resource == access.resource_index).then_some(length)
+                            })
+                            .unwrap_or(ranges.len())]
+                    })
+                    .into_iter()
+                    .flatten()
+                    .copied()
+                    .chain(
+                        scope
+                            .interface
+                            .inputs
+                            .iter()
+                            .filter(|port| port.resource == access.resource_index)
+                            .map(|port| port.range),
+                    )
+                    .collect::<Vec<_>>();
+                if !super::resource_contracts::covers(&available, access.range, resource.descriptor)
+                    .map_err(|error| {
+                        super::resource_contracts::range_error(access.resource_index, error)
+                    })?
+                {
+                    return Err(crate::Error::invalid_usage(
+                        "subgraph reads outside its initialized internal content and input ports",
+                    ));
+                }
+            }
+            if write {
+                written
+                    .entry(access.resource_index)
+                    .or_default()
+                    .push(access.range);
+                let escapes = resource.is_external()
+                    || definition.exports.iter().any(|export| {
+                        export.resource_index == access.resource_index
+                            && export.range.overlaps(access.range)
+                    })
+                    || definition.passes[scope.pass_range.end..]
+                        .iter()
+                        .flat_map(|pass| &pass.accesses)
+                        .any(|later| {
+                            later.resource_index == access.resource_index
+                                && later.range.overlaps(access.range)
+                        });
+                if escapes {
+                    let outputs = scope
                         .interface
-                        .inputs
+                        .outputs
                         .iter()
                         .filter(|port| port.resource == access.resource_index)
-                        .map(|port| port.range),
-                )
-                .collect::<Vec<_>>();
-            if !super::resource_contracts::covers(&available, access.range, resource.descriptor)
-                .map_err(|error| {
-                    super::resource_contracts::range_error(access.resource_index, error)
-                })?
-            {
-                return Err(crate::Error::invalid_usage(
-                    "subgraph reads outside its initialized internal content and input ports",
-                ));
-            }
-        }
-        if write {
-            written
-                .entry(access.resource_index)
-                .or_default()
-                .push(access.range);
-            let escapes = resource.is_external()
-                || definition.exports.iter().any(|export| {
-                    export.resource_index == access.resource_index
-                        && export.range.overlaps(access.range)
-                })
-                || definition.passes[scope.pass_range.end..]
-                    .iter()
-                    .flat_map(|pass| &pass.accesses)
-                    .any(|later| {
-                        later.resource_index == access.resource_index
-                            && later.range.overlaps(access.range)
-                    });
-            if escapes {
-                let outputs = scope
-                    .interface
-                    .outputs
-                    .iter()
-                    .filter(|port| port.resource == access.resource_index)
-                    .map(|port| port.range)
-                    .collect::<Vec<_>>();
-                if !super::resource_contracts::covers(&outputs, access.range, resource.descriptor)
+                        .map(|port| port.range)
+                        .collect::<Vec<_>>();
+                    if !super::resource_contracts::covers(
+                        &outputs,
+                        access.range,
+                        resource.descriptor,
+                    )
                     .map_err(|error| {
-                    super::resource_contracts::range_error(access.resource_index, error)
-                })? {
-                    return Err(crate::Error::invalid_usage(
-                        "subgraph writes outside its declared output ports",
-                    ));
+                        super::resource_contracts::range_error(access.resource_index, error)
+                    })? {
+                        return Err(crate::Error::invalid_usage(
+                            "subgraph writes outside its declared output ports",
+                        ));
+                    }
                 }
             }
         }

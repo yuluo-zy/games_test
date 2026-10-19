@@ -9,6 +9,7 @@ pub mod brush_sizes;
 pub mod color_icon;
 pub mod color_id;
 pub mod color_id_roof;
+pub mod clutter_meshes;
 pub mod compute_mouse_depth_value;
 pub mod read_mouse_depth_value;
 pub mod editing_highlight;

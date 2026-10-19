@@ -1,0 +1,57 @@
+--- a/tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_a_views.rs
++++ b/tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_a_views.rs
+@@ -15,20 +15,9 @@
+ pub use crate::components::NormalMap as NormalMapView;
+ pub use crate::components::drawable::{AlbedoMap as AlbedoMapView, AlphaMap as AlphaMapView};
+ 
+-/// `components::WallFlagCloth`（TypeId 0x0e2c5c63fb76ee91/0xc662ff3d29b2c8d6；真实类型 `(pub Gap)`）：
+-/// `i32 @+0`、`f32 @+4/+8/+0xc`、`bool @+0x10`。
+-#[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
+-pub struct WallFlagClothView {
+-    pub id: i32,
+-    pub f4: f32,
+-    pub f8: f32,
+-    pub fc: f32,
+-    pub flag: bool,
+-}
+-
+-/// `components::RoofFlagCloth`（TypeId 0x983a5c6eded1c4e5/0x929a707bdcc6a79c）：`u32 @+0`。
+-#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
+-pub struct RoofFlagClothView(pub u32);
++/// Same canonical components as the actual flag-cloth producers.
++pub use crate::components::drawable::{WallFlagCloth as WallFlagClothView,
++    RoofFlagCloth as RoofFlagClothView};
+ 
+ /// `components::WoodenGate`（TypeId 0x3b633fbe5a39b5b4/0xd54faa3a72d3ee09；真实类型 `(pub Gap)`）：
+ /// `qword @+0x18`（取低 32 位写 `i32` uniform）、`i32 @+0x30`。
+@@ -94,6 +83,7 @@
+ pub use crate::resources::glade_border::ShowDemoBorderOverlay;
+ 
+ /// `ActiveSession`（TypeId 0x74430dfcc6d8719b/0xca5591f7e464509c）：`byte @+0x58`（变体）与字节序列（`ptr @+8`、`len @+0x10`）。
++#[cfg(test)]
+ #[derive(Resource, Clone, Debug, Default, PartialEq, Eq)]
+ pub struct ActiveSessionView {
+     pub variant: u8,
+@@ -101,6 +91,7 @@
+ }
+ 
+ /// `Weather`（TypeId 0xd2f519263066413b/0x5192b15f962559e4；真实类型 `(pub Gap)`）：`f32 @+0xc`（强度）。
++#[cfg(test)]
+ #[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
+ pub struct WeatherView {
+     pub intensity: f32,
+@@ -108,12 +99,14 @@
+ 
+ /// `AppMode`（TypeId 0xc2b8e941c91a6428/0x59f3c6d1d3da43a0）：只读首个 `u32`（判别）。真实 `AppMode` 的判别值域在 crate 里
+ /// 只有 5 个变体，与 `== 0x13` 的比较对不上，故用视图（U）。
++#[cfg(test)]
+ #[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
+ pub struct AppModeView {
+     pub tag: u32,
+ }
+ 
+ /// `MainCamera`（TypeId 0xbba451ee6a08a3ff/0x8d008d15febcf29d；真实类型 `raw: Gap`）：`eye_position()` 与 `byte @+0x4d0`。
++#[cfg(test)]
+ #[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
+ pub struct MainCameraView {
+     pub eye: Vec3,

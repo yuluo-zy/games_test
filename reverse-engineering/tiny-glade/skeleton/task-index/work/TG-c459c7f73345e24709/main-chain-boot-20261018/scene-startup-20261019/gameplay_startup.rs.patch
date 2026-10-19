@@ -1,0 +1,27 @@
+--- a/tiny-glade/crates/tiny-glade/src/gameplay_startup.rs
++++ b/tiny-glade/crates/tiny-glade/src/gameplay_startup.rs
+@@ -77,6 +77,24 @@
+     let watching = config.dev.live_link();
+     app.init_resource::<PrefabLibrary>();
+     app.init_resource::<MeshAtlasLibrary>();
++    // Original ForestPlugin and run_game_thread own these actual resources;
++    // init preserves an already-loaded same-World owner across installers.
++    app.init_resource::<country_core::resources::tree_storage::InteractableForestPlacements>();
++    app.init_resource::<country_core::resources::history::tree_edit::TreeCanopyMaxCullDistance>();
++    app.init_resource::<country_core::asset_libraries::audio_trigger_library::AudioTriggerLibrary>();
++    app.init_resource::<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>();
++    app.add_event::<country_core::systems::prefab::SpawnPrefabCmd>();
++    app.add_event::<country_core::systems::prefab::DespawnPrefabCmd>();
++    app.add_event::<country_core::resources::events::ConstructTimberframeCmd>();
++    // B ForestPlugin140650c50: manage -> forest animation -> handplaced
++    // animation, chain_ignore_deferred in the existing set36. No World/view
++    // mirror, synthetic instance or extra Commands flush is introduced.
++    app.add_systems(bevy_app::Update,
++        (forest::manage_tree_prefabs::manage_tree_prefabs::<
++            country_core::resources::history::MaybePendingSnapshotId>,
++         forest::tree_animation::forest_tree_animation,
++         forest::tree_animation::handplaced_tree_animation)
++            .chain_ignore_deferred().in_set(crate::run_game::GameSystemSet(36)));
+     if !app.world().contains_resource::<GpuWorld>() {
+         app.insert_resource(GpuWorld::new(hosts.buffers.as_ref()));
+     }

@@ -1,0 +1,1 @@
+V5: full same selected-source suite, only actual WallSpace test import fixed from V4. Frozen V4 compile error retained. Driver/Cargo/lib/original lock/include/cases unchanged; no whole utils/core/App/GPU proof.

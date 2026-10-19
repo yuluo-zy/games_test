@@ -567,12 +567,17 @@ fn run_vermeer(
     };
     let shaders = frame.shader_library();
     let backend = frame.shader_backend();
+    let debug = {
+        use bevy_ecs::change_detection::DetectChangesMut;
+        let mut debug = world.get_resource_mut::<vermeer::VermeerDebugControl>()
+            .ok_or_else(|| tail_missing("VermeerDebugControl"))?;
+        // The native mutable lookup writes its changed tick before phase gating.
+        debug.set_changed();
+        *debug
+    };
     if !world.contains_resource::<vermeer::VermeerState>() {
         return Err(tail_missing("VermeerState"));
     }
-    let debug = *world
-        .get_resource::<vermeer::VermeerDebugControl>()
-        .ok_or_else(|| tail_missing("VermeerDebugControl"))?;
     let skip_generate = world.get_resource::<FrameRenderConfig>().ok_or_else(|| tail_missing("FrameRenderConfig"))?.flag_20;
     let menu = world.get_resource::<country_core::resources::gui::EscMenuState>()
         .ok_or_else(|| tail_missing("EscMenuState"))?.view();
@@ -594,8 +599,12 @@ fn run_vermeer(
         let time = world.get_resource::<bevy_time::Time>().map(|time| painterly::TimeView {
             delta_secs_f64: time.delta_secs_f64(), delta_secs: time.delta_secs(),
         });
-        world.resource_scope(|world, mut finished: bevy_ecs::change_detection::Mut<
-            bevy_ecs::event::Events<country_core::systems::save::load_game::StartupRevealFinished>>| {
+        type Finished = bevy_ecs::event::Events<
+            country_core::systems::save::load_game::StartupRevealFinished>;
+        // Absence is observed only by send_startup_reveal_finished after the
+        // core consumer has transitioned the completed reveal to Disabled.
+        // An active but incomplete reveal does not require the event resource.
+        let mut declare = |world: &World, finished: Option<&mut Finished>| {
             let raster = frame.raster_resources();
             let access = FrameWorldAccess::new(
                 FrameLibraries {
@@ -630,7 +639,10 @@ fn run_vermeer(
                 Some(debug),
                 // Static 0x143634d90 selects the alternate background name (U).
                 false,
-            ).with_startup_reveal_finished_events(&mut finished);
+            );
+            if let Some(finished) = finished {
+                effects = effects.with_startup_reveal_finished_events(finished);
+            }
             let target = effects.register_texture_with_samples(target, 4);
             let active = vermeer::vermeer_pass(
                 &mut effects,
@@ -645,7 +657,18 @@ fn run_vermeer(
             );
             effects.finish()?;
             Ok(active)
-        })
+        };
+        match world.try_resource_scope(|world, mut finished: bevy_ecs::change_detection::Mut<Finished>| {
+            let before = finished.len();
+            let result = declare(world, Some(finished.bypass_change_detection()));
+            // Passing the optional owner must not mark it changed on every
+            // active frame. Only the core consumer's actual send changes it.
+            if finished.len() != before { finished.set_changed(); }
+            result
+        }) {
+            Some(result) => result,
+            None => declare(world, None),
+        }
         })
         },
     )
@@ -1052,7 +1075,12 @@ pub fn build_world_tail(
 
     // T2: unconditional `bidirectional_blur_pyramid` (0x1409ed860) on W54 taa.
     let blur = crate::scene_compute::with_env(frame, world, |env| {
-        Ok(blur_pyramid::bidirectional_blur_pyramid(env, taa))
+        Ok(if controls.flag_0x1ac0 {
+            blur_pyramid::bidirectional_blur_pyramid(env, taa)
+        } else {
+            // 与 final_post.flag94 使用同一个权威分支；只许可首 blur0 的真实输入读取。
+            blur_pyramid::bidirectional_blur_pyramid_allowing_undefined_input(env, taa)
+        })
     })?;
     if blur.desc.format != blur_pyramid::PYRAMID_FORMAT || blur.desc.mip_levels == 0 {
         return Err(rhapsody::Error::invalid_usage(

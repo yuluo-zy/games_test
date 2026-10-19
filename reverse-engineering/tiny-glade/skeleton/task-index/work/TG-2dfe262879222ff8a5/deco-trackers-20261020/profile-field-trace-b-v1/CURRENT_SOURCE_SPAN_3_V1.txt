@@ -1,0 +1,12 @@
+    }
+    pub fn flat_roof_y(&self) -> f32 {
+        self.max_y() - 0.79
+    }
+    pub fn height_outline(&self) -> &[[f32; 3]] {
+        self.prepared_path
+            .as_ref()
+            .map(|p| p.positions.as_slice())
+            .unwrap_or(&self.geometry.outline)
+    }
+    pub fn arch_segment_heights(&self) -> Option<&[f32]> {
+        self.gable_heights

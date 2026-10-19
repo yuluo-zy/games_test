@@ -119,9 +119,9 @@ pub fn smoothstep(t: f32) -> f32 {
     t * t * (3.0 - 2.0 * t)
 }
 
-/// B RaycastMeshData::new_cuboid（0x1408cfff0；core 恢复时该构造器位于
-/// `native-physics` feature 域，system-decorator 不启用该 feature）。
-/// **显式未恢复**：返回 None，不再以 `RaycastMeshData::default()` 冒充几何。
+/// 旧三标量接口的调用者尚缺原本地位姿合同；不能假设零中心替换。
+/// **显式未恢复**：返回 None，不以 default 冒充几何。真实 clutter 已由
+/// new_clutter_cuboid 传完整尺寸与本地位姿；本包现明确启用 native-physics。
 pub fn new_cuboid_collider(
     _x: f32,
     _y: f32,
@@ -130,10 +130,20 @@ pub fn new_cuboid_collider(
     None
 }
 
-/// B clutter_mesh_ty_data（0x1408b8e90，core 未恢复；需定点反编译取
-/// subtype→mesh 类型表）。**显式未恢复**：None，不再恒 0。
-pub fn clutter_mesh_ty_data() -> Option<u8> {
-    None
+/// B helper@1408b8e90: reuse the real loader-owned canonical metadata.
+pub use country_core::resources::clutter_meshes::clutter_mesh_ty_data;
+
+/// Actual native-physics constructor. Full dimensions and local translation are
+/// separate inputs; the canonical core implementation owns the Parry geometry.
+/// Production builds require country-core/native-physics, as does this producer.
+pub fn new_clutter_cuboid(
+    dimensions: Vec3,
+    local_translation: Vec3,
+) -> country_core::systems::collision::world::RaycastMeshData {
+    country_core::systems::collision::world::RaycastMeshData::new_cuboid_at(
+        dimensions,
+        local_translation,
+    )
 }
 
 /// B utils crate `IsoTransform`（B 未恢复；D1 承载）：刚性变换 {pos, rot}

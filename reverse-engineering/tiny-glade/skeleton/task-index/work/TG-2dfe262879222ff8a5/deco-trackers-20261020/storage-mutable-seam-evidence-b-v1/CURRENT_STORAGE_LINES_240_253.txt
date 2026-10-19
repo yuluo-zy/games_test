@@ -1,0 +1,14 @@
+        self.decorators.remove(&id.0)
+    }
+
+    /// 行 217（内联，I）：maybe-mut 迭代。原语义 U（DecoratorMaybeMut 集合级
+    /// 包装）；此处按内嵌 map 共享迭代提供（id, &DecoratorInfo）。
+    pub fn iter_maybe_mut(&self) -> impl Iterator<Item = (u32, &DecoratorInfo)> + '_ {
+        self.decorators.iter().map(|(id, info)| (*id, info))
+    }
+
+    /// 行 226（内联）：内嵌 map 可变迭代。
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (u32, &mut DecoratorInfo)> + '_ {
+        self.decorators.iter_mut().map(|(id, info)| (*id, info))
+    }
+

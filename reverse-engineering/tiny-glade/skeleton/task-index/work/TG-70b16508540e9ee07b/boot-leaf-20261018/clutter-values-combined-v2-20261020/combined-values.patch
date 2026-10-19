@@ -1,0 +1,206 @@
+--- a/crates/country-core/src/components/drawable.rs
++++ b/crates/country-core/src/components/drawable.rs
+@@ -250,3 +250,203 @@
+         self.0
+     }
+ }
++
++/// The decorator builder's actual position and quaternion-rotated Z direction,
++/// also read by the populate rejection query. B copies these six scalar lanes
++/// at 1412aab3a..aab74; 1422da3ee..a4a9 consumes the same values.
++/// These are semantic field names, without an original ABI or default payload.
++#[derive(bevy_ecs::component::Component, Clone, Debug)]
++pub struct BalconyDoor {
++    pub translation: glam::Vec3,
++    pub forward: glam::Vec3,
++}
++
++#[cfg(test)]
++mod balcony_door_tests {
++    use super::BalconyDoor;
++    use bevy_ecs::prelude::World;
++
++    #[test]
++    fn actual_component_query_preserves_all_six_observed_value_lanes() {
++        let translation = [0x8000_0000, 0x4100_0000, 0xc040_0000];
++        let forward = [0x3f00_0000, 0x7fc0_1234, 0xbf80_0000];
++        let value = BalconyDoor {
++            translation: glam::Vec3::from_array(translation.map(f32::from_bits)),
++            forward: glam::Vec3::from_array(forward.map(f32::from_bits)),
++        };
++        let mut world = World::new();
++        let entity = world.spawn(value.clone()).id();
++        let mut query = world.query::<&BalconyDoor>();
++        let stored = query.get(&world, entity).unwrap();
++        assert_eq!(stored.translation.to_array().map(f32::to_bits), translation);
++        assert_eq!(stored.forward.to_array().map(f32::to_bits), forward);
++        assert_eq!(value.translation.to_array().map(f32::to_bits), translation);
++        assert_eq!(value.forward.to_array().map(f32::to_bits), forward);
++    }
++}
++
++/// The four non-owning ID source tags observed in B's clone/copy paths.
++/// The native writers' full business names are not known for every tag.
++#[derive(Clone, Copy, Debug)]
++pub enum AutoClutterSourceIdTag {
++    Native0,
++    Native1,
++    Native2,
++    Native3,
++}
++
++impl AutoClutterSourceIdTag {
++    pub const fn encoded(self) -> u8 {
++        match self {
++            Self::Native0 => 0,
++            Self::Native1 => 1,
++            Self::Native2 => 2,
++            Self::Native3 => 3,
++        }
++    }
++}
++
++impl TryFrom<u8> for AutoClutterSourceIdTag {
++    type Error = u8;
++
++    fn try_from(tag: u8) -> Result<Self, Self::Error> {
++        match tag {
++            0 => Ok(Self::Native0),
++            1 => Ok(Self::Native1),
++            2 => Ok(Self::Native2),
++            3 => Ok(Self::Native3),
++            other => Err(other),
++        }
++    }
++}
++
++/// One source value shared by region/object/convertible consumers.
++/// B's tag4 really owns Arc<[Vec3]>; its second native word is slice length,
++/// not another ID. Tag5 has no active payload. ID payload names retain the
++/// observed scalar lanes without inventing pointer or business semantics.
++#[derive(Clone, Debug)]
++pub enum AutoClutterSource {
++    Id {
++        tag: AutoClutterSourceIdTag,
++        native_u64_08: u64,
++        native_u32_10: u32,
++    },
++    Points(std::sync::Arc<[glam::Vec3]>),
++    None,
++}
++
++impl AutoClutterSource {
++    pub fn native_tag(&self) -> u8 {
++        match self {
++            Self::Id { tag, .. } => tag.encoded(),
++            Self::Points(_) => 4,
++            Self::None => 5,
++        }
++    }
++}
++
++/// Creation context copied into InstaCreateDeco, distinct from the storage
++/// DecoratorDst union. Only the two evidenced populate variants are present.
++#[derive(Clone, Copy, Debug)]
++pub enum AutoClutterDestination {
++    OnBuilding {
++        native_u32_04: u32,
++        coordinates: glam::Vec2,
++        wall: crate::resources::walls::WallId,
++    },
++    Terrain,
++}
++
++impl AutoClutterDestination {
++    /// Selected fields for the existing 24-byte creation-command transport.
++    /// Terrain has no active payload; zero filler does not model native padding
++    /// or promise the layout of this semantic Rust enum.
++    pub fn to_creation_words(self) -> [u64; 3] {
++        match self {
++            Self::OnBuilding { native_u32_04, coordinates, wall } => [
++                u64::from(native_u32_04) << 32,
++                u64::from(coordinates.x.to_bits())
++                    | (u64::from(coordinates.y.to_bits()) << 32),
++                wall.0,
++            ],
++            Self::Terrain => [2, 0, 0],
++        }
++    }
++}
++
++/// Actual source, creation context and selected mesh values consumed by the
++/// conversion query. The mesh name borrows the existing static asset catalog;
++/// bounds come from that same selected ClutterMesh. No native96 layout or
++/// default component is supplied in place of an unresolved producer.
++#[derive(bevy_ecs::component::Component, Clone, Debug)]
++pub struct AutoClutterConvertableToDecoClutter {
++    pub source: AutoClutterSource,
++    pub destination: AutoClutterDestination,
++    pub mesh_name: &'static str,
++    pub bounds: utils::geometry::rectangle::Rectangle3d,
++}
++
++#[cfg(test)]
++mod auto_clutter_carrier_tests {
++    use super::{AutoClutterConvertableToDecoClutter, AutoClutterDestination,
++        AutoClutterSource, AutoClutterSourceIdTag};
++    use bevy_ecs::prelude::World;
++    use glam::{Vec2, Vec3};
++    use std::sync::Arc;
++
++    #[test]
++    fn actual_component_clone_retains_the_same_arc_until_its_last_owner_drops() {
++        let points: Arc<[Vec3]> = Arc::from([Vec3::new(2.0, 3.0, 5.0),
++            Vec3::new(-7.0, 11.0, 13.0)]);
++        let weak = Arc::downgrade(&points);
++        let mut world = World::new();
++        let entity = world.spawn(AutoClutterConvertableToDecoClutter {
++            source: AutoClutterSource::Points(points),
++            destination: AutoClutterDestination::Terrain,
++            mesh_name: "clutter/birdnest",
++            bounds: utils::geometry::rectangle::Rectangle3d::new(
++                Vec3::new(1.0, 2.0, 3.0), Vec3::new(4.0, 5.0, 6.0), Vec2::X),
++        }).id();
++        let retained = world.get::<AutoClutterConvertableToDecoClutter>(entity)
++            .unwrap().clone();
++        let original = world.get::<AutoClutterConvertableToDecoClutter>(entity).unwrap();
++        let (AutoClutterSource::Points(first), AutoClutterSource::Points(second)) =
++            (&original.source, &retained.source) else { panic!("expected Arc source") };
++        assert!(Arc::ptr_eq(first, second));
++        assert_eq!(Arc::strong_count(first), 2);
++        assert_eq!(second[1], Vec3::new(-7.0, 11.0, 13.0));
++        world.despawn(entity);
++        assert!(weak.upgrade().is_some());
++        drop(retained);
++        assert!(weak.upgrade().is_none());
++    }
++
++    #[test]
++    fn creation_transport_keeps_full_selected_words_and_rejects_unknown_id_tags() {
++        let destination = AutoClutterDestination::OnBuilding {
++            native_u32_04: 0xfedc_ba98,
++            coordinates: Vec2::new(f32::from_bits(0x8000_0000),
++                f32::from_bits(0x7fc0_1234)),
++            wall: crate::resources::walls::WallId(0x1234_5678_9abc_def0),
++        };
++        assert_eq!(destination.to_creation_words(), [0xfedc_ba98_0000_0000,
++            0x7fc0_1234_8000_0000, 0x1234_5678_9abc_def0]);
++        assert_eq!(AutoClutterDestination::Terrain.to_creation_words(), [2, 0, 0]);
++        for tag in 0..=3 {
++            assert_eq!(AutoClutterSourceIdTag::try_from(tag).unwrap().encoded(), tag);
++        }
++        for tag in [4, 5, 6, 255] {
++            assert!(AutoClutterSourceIdTag::try_from(tag).is_err());
++        }
++        let source = AutoClutterSource::Id {
++            tag: AutoClutterSourceIdTag::Native3,
++            native_u64_08: 0xfedc_ba98_7654_3210,
++            native_u32_10: 0xabcd_ef01,
++        };
++        let AutoClutterSource::Id { native_u64_08, native_u32_10, .. } = source.clone()
++            else { panic!("expected ID source") };
++        assert_eq!(native_u64_08, 0xfedc_ba98_7654_3210);
++        assert_eq!(native_u32_10, 0xabcd_ef01);
++        assert_eq!(AutoClutterSource::None.native_tag(), 5);
++    }
++}

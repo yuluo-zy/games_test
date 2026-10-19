@@ -1,0 +1,22 @@
+impl DecoratorStorage {
+    /// 0x140a1c2c0（O）：目的 → 装饰集合。首段 per_wall 空门（+0x18==0 →
+    /// None）；地形/楼梯分支以首 qword（+0x90/+0x120）判存在。
+    pub fn get(&self, addr: DecoratorStorageAddr) -> Option<&Decorators> {
+        match addr {
+            DecoratorStorageAddr::Wall(wall) => self.per_wall.get(&wall),
+            DecoratorStorageAddr::Terrain => self.terrain.as_ref(),
+            DecoratorStorageAddr::Stair => self.stairs.as_ref(),
+        }
+    }
+
+    /// 0x140a1cde0（O）：可变版；immutable 门控 panic "assertion failed:
+    /// !self.immutable"（0x142ac9098）。
+    pub fn get_mut(&mut self, addr: DecoratorStorageAddr) -> Option<&mut Decorators> {
+        assert!(!self.immutable, "assertion failed: !self.immutable");
+        match addr {
+            DecoratorStorageAddr::Wall(wall) => self.per_wall.get_mut(&wall),
+            DecoratorStorageAddr::Terrain => self.terrain.as_mut(),
+            DecoratorStorageAddr::Stair => self.stairs.as_mut(),
+        }
+    }
+

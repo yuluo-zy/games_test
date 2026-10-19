@@ -16,7 +16,7 @@ use super::{
     snapshot::SnapshotSaveData,
 };
 use crate::resources::session::SessionId;
-use bevy_ecs::prelude::{Commands, ResMut};
+use bevy_ecs::prelude::{Commands, ResMut, World};
 use crossbeam_channel::Receiver;
 use hashbrown::HashSet;
 use std::{
@@ -634,7 +634,18 @@ pub fn save_thread(
     error_sender: crossbeam_channel::Sender<Vec<(PathBuf, AutoSaveError)>>,
     unsaved: Arc<UnsavedFileList>,
 ) {
-    let mut current: Option<CurrentSaveFile> = None;
+    save_thread_with_current(commands, error_sender, unsaved, None);
+}
+
+// One worker loop shared by production and the isolated-file CPU regression.
+// Production always enters with None; tests supply an actual temporary file
+// rather than mutating the process-global account paths.
+fn save_thread_with_current(
+    commands: Receiver<AsyncSaveCmd>,
+    error_sender: crossbeam_channel::Sender<Vec<(PathBuf, AutoSaveError)>>,
+    unsaved: Arc<UnsavedFileList>,
+    mut current: Option<CurrentSaveFile>,
+) {
     let mut previous_errors: Vec<(PathBuf, AutoSaveError)> = Vec::new();
     let mut last_tick = std::time::Instant::now();
 
@@ -713,7 +724,8 @@ pub fn save_thread(
 
 /// 存档线程生产句柄（游戏线程侧资源）。`join` 供收尾等待；`command_sender` 经
 /// `AutoSaveState::attach_command_sender` 装配；`error_state` 供游戏线程吸干错误列表。
-/// Dropping all actual command senders disconnects and joins this worker; no ack command is invented.
+/// The stopped host must call shutdown_save_thread to disconnect both actual
+/// senders and join this worker; dropping this handle alone detaches it.
 #[derive(bevy_ecs::resource::Resource)]
 pub struct SaveThreadHandle {
     pub join: JoinHandle<()>,
@@ -739,6 +751,70 @@ impl SaveThreadHandle {
             command_sender,
             error_state,
         }
+    }
+}
+
+/// Current host disposal adapter, called only after this World's schedules have
+/// stopped permanently. This joins the actual worker and reports known errors;
+/// it does not prove durability: the original disconnect flush is warn-only.
+pub fn shutdown_save_thread(world: &mut World) -> anyhow::Result<()> {
+    let (auto_present, attached, mut failure, unsaved) = match world
+        .get_resource_mut::<super::save_game::AutoSaveState>()
+    {
+        Some(mut auto) => {
+            let attached = auto.is_command_attached();
+            let unsaved = auto.unsaved_files.clone();
+            (true, attached, auto.detach_for_shutdown(), Some(unsaved))
+        }
+        None => (false, false, None, None),
+    };
+    if let Some(handle) = world.remove_resource::<SaveThreadHandle>() {
+        let SaveThreadHandle { join, command_sender, mut error_state } = handle;
+        // AutoSaveState's private sender has already been dropped above.
+        drop(command_sender);
+        if let Err(payload) = join.join() {
+            let message = if let Some(message) = payload.downcast_ref::<String>() {
+                message.as_str()
+            } else if let Some(message) = payload.downcast_ref::<&'static str>() {
+                *message
+            } else {
+                "non-string panic payload"
+            };
+            retain_first_shutdown_error(&mut failure,
+                anyhow::anyhow!("Async save worker panicked while stopping: {message}"));
+        }
+        // Read the real worker channel only after its final send/termination.
+        error_state.drain_pending();
+        if !error_state.is_ok() {
+            retain_first_shutdown_error(&mut failure,
+                anyhow::anyhow!("Async save worker stopped with reported I/O errors: {:?}", error_state.errors()));
+        }
+        if !auto_present {
+            retain_first_shutdown_error(&mut failure,
+                anyhow::anyhow!("Async save worker joined without its canonical AutoSaveState; shared unsaved status is unknown"));
+        }
+    } else if attached {
+        retain_first_shutdown_error(&mut failure,
+            anyhow::anyhow!("AutoSaveState had an attached sender but no SaveThreadHandle; worker termination could not be joined"));
+    }
+    if let Some(unsaved) = unsaved {
+        let count = unsaved.len();
+        if count != 0 {
+            retain_first_shutdown_error(&mut failure,
+                anyhow::anyhow!("Async save stopped with {count} known unsaved file(s)"));
+        }
+    }
+    match failure {
+        Some(error) => Err(error),
+        None => Ok(()),
+    }
+}
+
+fn retain_first_shutdown_error(first: &mut Option<anyhow::Error>, error: anyhow::Error) {
+    if first.is_some() {
+        log::error!("Additional save shutdown failure: {error:#}");
+    } else {
+        *first = Some(error);
     }
 }
 
@@ -898,5 +974,135 @@ mod original_snapshot_file_tests {
         assert_eq!(std::fs::read(&target).unwrap(), b"existing");
         let other = file.write_snapshot_blob(b"encoded-other-blob").unwrap();
         assert_ne!(id, other);
+    }
+}
+
+#[cfg(test)]
+mod shutdown_save_host_tests {
+    use super::*;
+    use crate::systems::save::save_game::{AutoSaveState, defer_json};
+
+    fn insert_actual_inactive_worker(world: &mut World, mut auto: AutoSaveState) {
+        let handle = SaveThreadHandle::spawn_with_unsaved(auto.unsaved_files.clone());
+        auto.attach_command_sender(handle.command_sender.clone());
+        world.insert_resource(auto);
+        world.insert_resource(handle);
+    }
+
+    #[test]
+    fn shutdown_without_active_file_joins_and_keeps_the_same_unsaved_owner() {
+        let mut world = World::new();
+        shutdown_save_thread(&mut world).unwrap();
+        let auto = AutoSaveState::default();
+        let unsaved = auto.unsaved_files.clone();
+        insert_actual_inactive_worker(&mut world, auto);
+        shutdown_save_thread(&mut world).unwrap();
+        let auto = world.resource::<AutoSaveState>();
+        assert!(!auto.is_command_attached());
+        assert!(Arc::ptr_eq(&unsaved, &auto.unsaved_files));
+        assert!(!world.contains_resource::<SaveThreadHandle>());
+        shutdown_save_thread(&mut world).unwrap();
+    }
+
+    #[test]
+    fn disconnect_runs_the_real_worker_deferred_flush_into_an_actual_file() {
+        let directory = tempfile::tempdir().unwrap();
+        let values = [serde_json::json!(27), serde_json::json!(17u64),
+            serde_json::json!(0), serde_json::json!({"before":true}),
+            serde_json::json!({}), serde_json::json!([]), serde_json::json!({}),
+            serde_json::json!(-1), serde_json::json!(-1), serde_json::json!([])];
+        let sections = GameSaveSections {
+            values: values.map(|value| SerializedJson::new(&value).unwrap()),
+        };
+        let current = CurrentSaveFile::create(directory.path(), sections, &[]);
+        let mut auto = AutoSaveState::default();
+        let unsaved = auto.unsaved_files.clone();
+        let worker_unsaved = unsaved.clone();
+        let (command_sender, receiver) = crossbeam_channel::unbounded();
+        let (error_sender, error_state) = AutosaveErrorState::channel();
+        let join = std::thread::spawn(move || {
+            // Exact production loop; only the initial real file is supplied so
+            // this fixture does not redirect process-global account paths.
+            save_thread_with_current(receiver, error_sender, worker_unsaved, Some(current));
+        });
+        auto.attach_command_sender(command_sender.clone());
+        let expected = serde_json::json!({"camera_at_disconnect":"x".repeat(300)});
+        auto.send_command_expect(AsyncSaveCmd::ChangeSection {
+            section: SaveFileSection::Camera, value: defer_json(expected.clone()),
+        });
+        let mut world = World::new();
+        world.insert_resource(auto);
+        world.insert_resource(SaveThreadHandle { join, command_sender, error_state });
+        shutdown_save_thread(&mut world).unwrap();
+        let saved: serde_json::Value = serde_json::from_slice(
+            &std::fs::read(directory.path().join("history.json")).unwrap()).unwrap();
+        assert_eq!(saved[SaveFileSection::Camera.json_key()], expected);
+        assert!(Arc::ptr_eq(&unsaved, &world.resource::<AutoSaveState>().unsaved_files));
+    }
+
+    #[test]
+    fn attached_without_handle_reports_unknown_join_and_disconnects_its_sender() {
+        let mut world = World::new();
+        let (sender, receiver) = crossbeam_channel::unbounded();
+        let mut auto = AutoSaveState::default();
+        auto.attach_command_sender(sender);
+        world.insert_resource(auto);
+        let error = shutdown_save_thread(&mut world).unwrap_err();
+        assert!(error.to_string().contains("no SaveThreadHandle"));
+        assert!(matches!(receiver.try_recv(), Err(crossbeam_channel::TryRecvError::Disconnected)));
+    }
+
+    #[test]
+    fn previous_auto_error_does_not_skip_join_or_hide_it_behind_later_failures() {
+        let mut world = World::new();
+        let mut auto = AutoSaveState::default();
+        assert!(!auto.send_command(AsyncSaveCmd::ChangeSection {
+            section: SaveFileSection::Camera, value: defer_json(serde_json::json!({})),
+        }));
+        auto.unsaved_files.add_path(PathBuf::from("previously-unsaved.json"));
+        let (command_sender, receiver) = crossbeam_channel::unbounded();
+        let (error_sender, error_state) = AutosaveErrorState::channel();
+        let stopped = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let worker_stopped = stopped.clone();
+        let join = std::thread::spawn(move || {
+            assert!(matches!(receiver.recv_timeout(Duration::from_secs(2)),
+                Err(crossbeam_channel::RecvTimeoutError::Disconnected)));
+            error_sender.send(vec![(PathBuf::from("worker.json"), AutoSaveError::Io("disk failure".into()))]).unwrap();
+            worker_stopped.store(true, std::sync::atomic::Ordering::Release);
+            panic!("worker panic retained as secondary");
+        });
+        auto.attach_command_sender(command_sender.clone());
+        world.insert_resource(auto);
+        world.insert_resource(SaveThreadHandle { join, command_sender, error_state });
+        let error = shutdown_save_thread(&mut world).unwrap_err();
+        assert_eq!(error.to_string(), "save command sender not attached");
+        assert!(stopped.load(std::sync::atomic::Ordering::Acquire));
+        assert_eq!(world.resource::<AutoSaveState>().unsaved_files.len(), 1);
+        assert!(!world.contains_resource::<SaveThreadHandle>());
+    }
+
+    #[test]
+    fn worker_error_diff_and_unsaved_list_are_observable_failures_after_join() {
+        for reported_error in [false, true] {
+            let mut auto = AutoSaveState::default();
+            if !reported_error {
+                auto.unsaved_files.add_path(PathBuf::from("known-unsaved.json"));
+            }
+            let (command_sender, receiver) = crossbeam_channel::unbounded();
+            let (error_sender, error_state) = AutosaveErrorState::channel();
+            let join = std::thread::spawn(move || {
+                assert!(matches!(receiver.recv_timeout(Duration::from_secs(2)),
+                    Err(crossbeam_channel::RecvTimeoutError::Disconnected)));
+                if reported_error {
+                    error_sender.send(vec![(PathBuf::from("disk.json"), AutoSaveError::Io("real reported error".into()))]).unwrap();
+                }
+            });
+            auto.attach_command_sender(command_sender.clone());
+            let mut world = World::new();
+            world.insert_resource(auto);
+            world.insert_resource(SaveThreadHandle { join, command_sender, error_state });
+            let error = shutdown_save_thread(&mut world).unwrap_err();
+            assert!(error.to_string().contains(if reported_error {"reported I/O errors"} else {"known unsaved"}));
+        }
     }
 }

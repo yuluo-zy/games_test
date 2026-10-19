@@ -204,6 +204,8 @@ pub struct DrawPacket {
     /// shader reflection; ordinary packets retain strict content checks.
     pub preserving_buffer_bindings: Vec<u32>,
     pub inactive_texture_bindings: Vec<u32>,
+    /// 宿主逐 binding 内容许可：真实只读 fetch 可读取未定义内容，仍保留同步与已有 producer。
+    pub undefined_texture_bindings: Vec<u32>,
 }
 
 impl DrawPacket {
@@ -226,6 +228,7 @@ impl DrawPacket {
             unknown_b1: 0,
             preserving_buffer_bindings: Vec::new(),
             inactive_texture_bindings: Vec::new(),
+            undefined_texture_bindings: Vec::new(),
         }
     }
 

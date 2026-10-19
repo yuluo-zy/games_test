@@ -1,40 +1,7 @@
-//! tree_animation.rs — 树动画（B `handplaced_tree_animation` 0x142279500 /
-//! `forest_tree_animation` 0x14227a0d0，O；2026-10-17 fresh 反编译 + 反汇编复核）。
-//!
-//! - `handplaced_tree_animation`：AppMode 跳表分派（0x143038050：标签
-//!   {6,7,8,11,12,15,17,18,19} 加、{9,10,13,14,16,20} 减、兜底 tag 0/3 减其余加）
-//!   → 全局 canopy 生长状态按 `± delta` 推进并做 smoothstep（`t²(3-2t)`，常量 3.0 =
-//!   0x1429cd078）→ 相机眼点/朝向射线 × 音频触发盒（`AudioTriggerCollection::boxes` +
-//!   `Aabb3::intersect_segment`；fresh 复核盒扩展 = min+(-2.5,-1.0,-2.5)、
-//!   max+(2.5,1.0,2.5)）→ 逐树进度/淡出推进（`delta / 自定时长` 或
-//!   `delta / -0.4`（0x142a7fcb0））→ `pack_2x16f_uint`（0x140c90df0）写
-//!   `PrefabInstanceData+0x20`。
-//! - `forest_tree_animation`：逐树一阶生长/收缩（标记树 `delta / -0.3`，普通树带延迟计时器
-//!   门控：timer>0 递减、≤0 以 2×delta 加速）→ `clamp(progress+step, 0, 1)` → 进度变化时
-//!   `EasingFunction::CubicOut.apply(progress)` × 幅度写 `PrefabInstanceData[+0xc]` → 衰减到
-//!   0 发 `DespawnPrefabCmd`（payload = 打包 Entity）并清放置记录 `+0x44` 有树标志。
-//!
-//! ## fresh 复核（2026-10-17 restorer-tree-forest-remaining）
-//! - AppMode 跳表 0x143038050 16 项解码：{6,7,8,11,12,15,17,18,19}→加、
-//!   {9,10,13,14,16,20}→减、index0（兜底）→0x142279837（tag==0||3 减，否则加）。
-//!   Rust 判定集合判等。
-//! - `TreeAnimation` 行 stride **0x10**：时长@0、进度@+4、淡出@+8、标志@+0xc；
-//!   `PrefabInstanceData` 行 stride **0x30**：位置 x@0/y@+4/z@+8，写 `+0xc`/`+0x20`。
-//! - 全局 canopy 状态由第 7 参 `ResMut<TreeCanopyMaxCullDistance>` 的值承载
-//!   （`{progress@0, smoothstep@4}`）——core 该资源仅 `f32`，本实现以
-//!   `Local<HandplacedCanopyState>` 承载（登记 I）。
-//! - `forest_tree_animation` 的 progress 钳制在机器码是**分支**（`0<=x?x:0`、
-//!   `r<=1?r:1`），NaN 时得 0（Rust `f32::clamp` 会保留 NaN）→ 已按分支复刻。
-//! - DespawnPrefabCmd 原生载荷仅 8 B（打包 Entity）；core 类型多一个 `_gap`，
-//!   原生不写 → 本实现写 0（不再伪造 tree.id）。
-//!
-//! ## ⚠ 与当前 country_core 类型的分歧（未实现面，详见 RESTORE.md）
-//!
-//! TreeAnimation 已恢复为实体自身的时长/进度/树冠可见性/临时隐藏标志。
-//! Placement writes use canonical PrefabInstanceData(48B). InteractableForestTree 的
-//! 动画字段仍借 position 的 x/y/z 偏移承载
-//! （+0x8/+0xc/+0x10），语义名分歧（以 position 承载）。`Aabb3::intersect_segment` 原为
-//! 3D AABB 线段求交（0x141240570），当前 utils 无此方法（本地等效实现落地并标注）。
+//! Original B handplaced142279500/3017B and forest14227a0d0/2228B.
+//! Both systems update canonical Placement48. Shared canopy progress/smoothstep
+//! are a Resource consumed by the actual tree draw callbacks. The tag9 branch
+//! subtracts only for EraserLayer::Tree; segment intersection is bounded to [0,1].
 
 use bevy_ecs::prelude::*;
 use glam::Vec3;
@@ -51,16 +18,9 @@ use country_core::systems::prefab::PrefabInstanceData;
 use country_core::systems::ui::signifiers::signifier_create::UiSignifierStream;
 use utils::easing_functions::EasingFunction;
 
-/// 手放树 canopy 全局生长状态（分歧 I：真实为 `ResMut<TreeCanopyMaxCullDistance>` 的
-/// **值结构** `{progress f32 @+0, smoothstep f32 @+4}`（第 7 参 change-detection 包装）；
-/// country_core 该资源仅 `f32`，以 forest-local 承载并登记）。
-#[derive(Default)]
-pub struct HandplacedCanopyState {
-    /// 全局生长进度（O：`[state] += ±delta`，clamp[0,1]）。
-    pub progress: f32,
-    /// smoothstep 输出（O：`[state+4] = t²(3-2t)`）。
-    pub smoothstep: f32,
-}
+/// Compatibility name for the one canonical resource; no Local surrogate.
+pub use country_core::resources::history::tree_edit::TreeCanopyMaxCullDistance
+    as HandplacedCanopyState;
 
 /// `should_remove_tree_canopy_from_view`（源行 152，内联；O 名——canopy 可见性判定）。
 ///
@@ -68,19 +28,6 @@ pub struct HandplacedCanopyState {
 /// 以 canopy 淡出值是否为 0 落地（登记，不作为真实判定）。
 pub fn should_remove_tree_canopy_from_view(fade: f32) -> bool {
     fade == 0.0
-}
-
-/// 3D AABB 线段求交（分歧 I：原 `Aabb3::intersect_segment` 0x141240570 在 utils 重建中
-/// 未落地；此实现为 segment-vs-AABB 相交测试，语义 = 线段任一端点入盒或穿盒）。
-fn aabb3_intersect_segment(min: Vec3, max: Vec3, start: Vec3, end: Vec3) -> bool {
-    let dir = end - start;
-    let tmin = (min - start) / dir;
-    let tmax = (max - start) / dir;
-    let lo = tmin.min(tmax);
-    let hi = tmax.max(tmin);
-    let t0 = lo.max_element();
-    let t1 = hi.min_element();
-    t0 <= t1 && t1 >= 0.0
 }
 
 /// `handplaced_tree_animation` @0x142279500（O；8 参面：7 个 PDB 参数 + 第 8 个
@@ -97,14 +44,16 @@ pub fn handplaced_tree_animation(
     camera: Res<MainCamera>,
     audio: Res<AudioTriggerLibrary>,
     _signifiers: Res<UiSignifierStream>,
-    mut canopy: Local<HandplacedCanopyState>,
+    mut canopy: ResMut<HandplacedCanopyState>,
 ) {
     let delta = time.delta;
 
     // ---------------------------------------------------------------- AppMode 分派（O）
     // 跳表 0x143038050 16 项：加集 {6,7,8,11,12,15,17,18,19}、减集
     // {9,10,13,14,16,20}；兜底项 tag==0||3 → 减、否则加。
-    let subtract = matches!(mode.native_tag(), 0 | 3 | 9 | 10 | 13 | 14 | 16 | 20);
+    let subtract = matches!(mode.native_tag(), 0 | 3 | 10 | 13 | 14 | 16 | 20)
+        || matches!(*mode, AppMode::Eraser(
+            country_core::systems::mode_manager::EraserLayer::Tree));
 
     // 全局 canopy：`progress = clamp(progress ± delta, 0, 1)`；`smoothstep = t²(3-2t)`。
     let mut progress = canopy.progress;
@@ -113,8 +62,11 @@ pub fn handplaced_tree_animation(
     } else {
         progress += delta;
     }
-    progress = progress.clamp(0.0, 1.0);
-    let smooth = progress * progress * (3.0 - 2.0 * progress);
+    // MAXSS(0, progress), MINSS(1, progress): an unordered source is
+    // retained by each instruction; do not change this to f32::clamp.
+    let low = if 0.0 > progress { 0.0 } else { progress };
+    progress = if 1.0 < low { 1.0 } else { low };
+    let smooth = (progress * progress) * (3.0 - (progress + progress));
     canopy.progress = progress;
     canopy.smoothstep = smooth;
 
@@ -123,19 +75,17 @@ pub fn handplaced_tree_animation(
     //   eye + dir * 4.5（dir.xy ×3.0×1.5、dir.z ×3.0×1.5）。
     let eye = camera.eye_position();
     let dir = camera.eye_forward();
-    let ray_end = eye + dir * 4.5;
+    let ray_end = eye + (dir * 3.0) * 1.5;
     // O：逐盒（原生记录 stride 0x1c）：`tag@+0x18` bit0 置位跳过、tag==0 提前结束；
     //   `Aabb3` 扩展 min+(-2.5,-1.0,-2.5)、max+(2.5,1.0,2.5)，再
     //   `Aabb3::intersect_segment`。core `boxes()` 为 slotmap 迭代、无 tag 位，
     //   过滤面登记 U；扩展常量按 fresh 反汇编修正。
     let mut audio_hit = false;
     'triggers: for (_handle, bbox) in audio.get_triggers(AudioTriggerKind::Primary).boxes() {
-        if aabb3_intersect_segment(
-            bbox.min + Vec3::new(-2.5, -1.0, -2.5),
-            bbox.max + Vec3::new(2.5, 1.0, 2.5),
-            eye,
-            ray_end,
-        ) {
+        if (utils::geometry::Aabb3 {
+            min: bbox.min + Vec3::new(-2.5, -1.0, -2.5),
+            max: bbox.max + Vec3::new(2.5, 1.0, 2.5),
+        }).intersect_segment(eye, ray_end).is_some() {
             audio_hit = true;
             break 'triggers;
         }

@@ -1,0 +1,19 @@
+{
+  "source": "tiny-glade/crates/country-core/src/resources/walls/decorator_subtype.rs",
+  "before_sha256": "cf93fcc6010ac800468d6c716a5e95e04dfece937e0316d27f4b04228fb01271",
+  "candidate_sha256": "7506ddc7b4c6b0dbe61429bbaaa27c9a02fb90a8b58224ab5c49b022ca4a793d",
+  "patch_sha256": "62f929e0d5ddff4a93a7610c6f44c2b72a48626a9a30bf832e345e2ccb8c9b8f",
+  "reviewed_design_manifest_sha256": "d34a7be9fab554ee0d644949ab46373f68ed108dba6dad52241a95683dc2fb38",
+  "new_api": [
+    "DerivedDecoratorInfoResources<'w> replaces same old two-Res SystemParam",
+    "Resources::as_view()/From<&Resources> -> DerivedDecoratorInfoView<'a>",
+    "View::new(&DerivedDecoratorSubtypes,&DecoratorMeshLibrary)",
+    "View::try_get_subtype(DecoratorId)->Option<&DecoratorSubtype>",
+    "View::subtype(DecoratorId)->DecoratorSubtype, required lookup panic",
+    "View::subtype_library()/mesh_library() borrow original owners"
+  ],
+  "legacy_boundary": "Record renamed LegacyDerivedDecoratorInfoRecord with deprecated DerivedDecoratorInfo alias; wrong record.try_get_subtype removed. Existing wrong bbox/4table representation intentionally not declared recovered.",
+  "tests": "3 new meaningful source tests + 4 old preserved, not run; rustfmt parser only",
+  "production_written": false,
+  "integrated": false
+}

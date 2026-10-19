@@ -1,0 +1,41 @@
+error: proc-macro derive panicked
+   --> /private/tmp/tg-gameplay-preparation-shutdown-v1.rs:118:14
+    |
+118 |     #[derive(bevy_ecs::resource::Resource)]
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: message: CARGO_MANIFEST_DIR is not defined.
+
+error[E0277]: `WorldDropFlag` is not a `Resource`
+    --> /private/tmp/tg-gameplay-preparation-shutdown-v1.rs:131:47
+     |
+ 131 |             world.world_mut().insert_resource(WorldDropFlag(released.clone()));
+     |                               --------------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid `Resource`
+     |                               |
+     |                               required by a bound introduced by this call
+     |
+help: the trait `Resource` is not implemented for `WorldDropFlag`
+    --> /private/tmp/tg-gameplay-preparation-shutdown-v1.rs:119:5
+     |
+ 119 |     struct WorldDropFlag(Arc<AtomicBool>);
+     |     ^^^^^^^^^^^^^^^^^^^^
+     = note: consider annotating `WorldDropFlag` with `#[derive(Resource)]`
+     = help: the following other types implement trait `Resource`:
+               AppTypeRegistry
+               CachedSystemId<S>
+               DefaultQueryFilters
+               EventRegistry
+               Events<E>
+               FixedMainScheduleOrder
+               MainScheduleOrder
+               MainThreadExecutor
+             and 2 others
+note: required by a bound in `World::insert_resource`
+    --> /Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/world/mod.rs:1715:31
+     |
+1715 |     pub fn insert_resource<R: Resource>(&mut self, value: R) {
+     |                               ^^^^^^^^ required by this bound in `World::insert_resource`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

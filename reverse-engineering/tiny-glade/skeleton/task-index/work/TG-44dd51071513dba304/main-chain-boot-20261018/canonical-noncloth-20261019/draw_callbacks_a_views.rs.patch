@@ -1,0 +1,25 @@
+--- a/tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_a_views.rs
++++ b/tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_a_views.rs
+@@ -101,6 +101,7 @@
+ }
+ 
+ /// `Weather`（TypeId 0xd2f519263066413b/0x5192b15f962559e4；真实类型 `(pub Gap)`）：`f32 @+0xc`（强度）。
++#[cfg(test)]
+ #[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
+ pub struct WeatherView {
+     pub intensity: f32,
+@@ -108,12 +109,14 @@
+ 
+ /// `AppMode`（TypeId 0xc2b8e941c91a6428/0x59f3c6d1d3da43a0）：只读首个 `u32`（判别）。真实 `AppMode` 的判别值域在 crate 里
+ /// 只有 5 个变体，与 `== 0x13` 的比较对不上，故用视图（U）。
++#[cfg(test)]
+ #[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
+ pub struct AppModeView {
+     pub tag: u32,
+ }
+ 
+ /// `MainCamera`（TypeId 0xbba451ee6a08a3ff/0x8d008d15febcf29d；真实类型 `raw: Gap`）：`eye_position()` 与 `byte @+0x4d0`。
++#[cfg(test)]
+ #[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
+ pub struct MainCameraView {
+     pub eye: Vec3,

@@ -61,6 +61,12 @@ mod history_runtime;
 #[derive(SystemSet, Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct GameSystemSet(pub u8);
 
+/// Actual current-host World role, set by the gameplay App constructor and
+/// retained when its SubApp moves. The independent loading App never copies
+/// this marker. It is not an asset/load-completion flag.
+#[derive(Resource)]
+pub(crate) struct GameplayApplication;
+
 /// Each original App constructs a separate shader library. The Arc is a Rust
 /// owner for that App's library; it does not merge the two native libraries.
 pub use country_core::asset_libraries::shader_library::SharedAssetShaderLibrary as ApplicationShaderLibrary;
@@ -208,6 +214,7 @@ pub fn run_game_thread(
         },
     };
     let mut app = App::new();
+    app.insert_resource(GameplayApplication);
     startup_event_runtime::install(&mut app);
     // Complete the original unchained set7 tuple on the existing App.
     // The other three leaves were delivered in brush-startup/runtime-registration.rs.
@@ -786,11 +793,28 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
     );
     // add_wall_events @1404939a6/3b99 and original new empty publishers.
     app.init_resource::<PublicWalls>();
+    // Canonical inputs/outputs of the recovered base-brick section. Preserve
+    // any existing owners; this does not mount the old aggregate CPU installer.
+    app.init_resource::<country_core::resources::walls::public_walls::WallEntities>();
+    app.init_resource::<country_core::resources::walls::public_walls::WallPlasters>();
+    app.init_resource::<country_core::resources::walls::wall_holes::WallHoles>();
+    app.init_resource::<country_core::systems::wall::construct_wall_bricks::WallBrickBuildState>();
+    app.add_event::<country_core::systems::wall::construct_wall_bricks::WallBricksChanged>();
+    app.add_event::<country_core::resources::roofs::commands::RecalculateWallBricks>();
+    app.add_event::<country_core::resources::roofs::commands::WallGableChanged>();
+    app.add_event::<country_core::resources::roofs::commands::WallRoofPresenceChanged>();
+    app.add_event::<country_core::resources::roofs::commands::RoofGeometryChanged>();
     app.init_resource::<WallSpatialHash>();
     app.init_resource::<WallPublicationDirty>();
     app.init_resource::<country_core::systems::wall::eraser::animate_wall_bulldoze::AnimateWallBulldozeBuffer>();
     // DecoratorPlugin @140343120/313d/3377/3a3c; world plugin @140b685e0.
     app.init_resource::<DecoratorStorage>();
+    app.init_resource::<system_decorator::decorator_visual::deco_differential_state::WallAttachedDecoTracker<
+        system_decorator::decorator_visual::deco_differential_state::ChimneyAssemblyParams>>();
+    app.init_resource::<system_decorator::decorator_visual::deco_differential_state::WallAttachedDecoTracker<
+        system_decorator::decorator_visual::deco_differential_state::DoorStairsAssemblyParams>>();
+    // Original native assembly uses this canonical event; it is not PlayClutterSoundCmd.
+    app.add_event::<country_core::systems::audio::PlayDecoratorSoundCmd>();
     app.init_resource::<LiveDecoratorArchivist>();
     app.init_resource::<DecoratorIdGen>();
     app.init_resource::<DeferredDecoratorOpEvents>();
@@ -813,6 +837,9 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
     app.add_event::<history::history_process::NewReplayCommandEvent>();
     app.add_event::<history::history_process::DebugHistoryMsg>();
     app.add_event::<country_core::systems::audio::PlayReplayAudio>();
+    // Original add_audio_events registers this canonical event; App owns its
+    // update lifecycle as well as its storage before the clutter writer runs.
+    app.add_event::<country_core::systems::audio::PlayClutterSoundCmd>();
     app.add_event::<country_core::systems::timelapse_replay::InterruptTimelapse>();
     app.add_event::<history::HistoryReplayFailed>();
     app.add_event::<history::ReplayBucketFinished>();
@@ -853,6 +880,9 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
             collect_wall_publication_dirty,
             publish_public_wall_state,
             country_core::systems::wall::delete_wall::delete_wall,
+            // Current owner mapping of the original publisher allocations,
+            // before actual25 consumers; the full member14 group is mounted separately.
+            country_core::geometry::runtime::prepare_wall_brick_assembly_owners,
             system_wall_constructor::gpu_output::delete_constructor_output,
             spatial_hash_update,
             country_core::systems::wall::calc_wall_bend::calc_wall_bend,
@@ -862,6 +892,22 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
         )
             .chain_ignore_deferred()
             .in_set(GameSystemSet(19)),
+    );
+    // Original add_wall_systems49338e..3414 assigns its nine-member chain to
+    // set28; slot5 is construct_walls (33e263 -> 2c90, original name bytes).
+    // Mount only its recovered base-brick/trigger/RT section. The original
+    // 757d34..7e6b hole-table pass also catches holes-only changes, so keep the
+    // actual finalizer before the producer. Its event writes are immediate;
+    // the producer's Commands retain normal schedule-completion visibility.
+    // This is not the complete native nine-member group or the set25 assembly.
+    app.add_systems(
+        bevy_app::Update,
+        (
+            country_core::systems::wall::construct_wall_bricks::finalize_wall_holes,
+            country_core::systems::wall::construct_wall_bricks::construct_wall_bricks,
+        )
+            .chain_ignore_deferred()
+            .in_set(GameSystemSet(28)),
     );
     // add_history_systems @1409438dc/e1 and @140943981 prove sets35/40.
     app.add_systems(
@@ -1033,33 +1079,113 @@ pub fn make_loading_app(gameplay: &App) -> anyhow::Result<App> {
         country_core::resources::session::refresh_session_list_system,
     );
     app.add_event::<country_core::resources::events::ShutdownGameCmd>();
+    // Same canonical close consumer as gameplay. The current OS host must
+    // observe a loading-window close before it can stop the preparation worker.
+    // Original loading event registration is B1405a4901; this adapter's exact
+    // PostUpdate placement is not claimed as the unrecovered native tuple.
+    app.add_systems(bevy_app::PostUpdate,
+        country_core::resources::shutdown::initiate_game_shutdown);
     Ok(app)
 }
 
 /// The original async loader transfers a SubApp, not an App (which contains a
 /// process runner). A failed producer/warmup is returned to the OS owner; it
 /// never becomes a synthetic "ready" application.
+#[derive(Debug)]
+struct GameplayPreparationCancelled;
+
+impl std::fmt::Display for GameplayPreparationCancelled {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("gameplay preparation cancelled")
+    }
+}
+
+impl std::error::Error for GameplayPreparationCancelled {}
+
+/// A local disposal guard for the same SubApp. In particular, a failed thread
+/// spawn drops its captured closure before it can return ownership to us.
+struct GameplayAppOwner(Option<bevy_app::SubApp>);
+
+impl GameplayAppOwner {
+    fn new(app: bevy_app::SubApp) -> Self { Self(Some(app)) }
+    fn app_mut(&mut self) -> &mut bevy_app::SubApp {
+        self.0.as_mut().expect("gameplay SubApp is still owned")
+    }
+    fn take(&mut self) -> bevy_app::SubApp {
+        self.0.take().expect("gameplay SubApp is still owned")
+    }
+    fn dispose(&mut self) -> anyhow::Result<()> {
+        let Some(mut app) = self.0.take() else { return Ok(()); };
+        country_core::systems::save::save_thread::shutdown_save_thread(app.world_mut())
+    }
+}
+
+impl Drop for GameplayAppOwner {
+    fn drop(&mut self) {
+        if let Err(error) = self.dispose() {
+            log::error!("Save shutdown before gameplay World disposal: {error:#}");
+        }
+    }
+}
+
+fn dispose_gameplay_app(app: bevy_app::SubApp) -> anyhow::Result<()> {
+    GameplayAppOwner::new(app).dispose()
+}
+
+fn publish_prepared_app(
+    sender: &std::sync::mpsc::Sender<anyhow::Result<bevy_app::SubApp>>,
+    app: bevy_app::SubApp,
+) -> anyhow::Result<()> {
+    match sender.send(Ok(app)) {
+        Ok(()) => Ok(()),
+        Err(std::sync::mpsc::SendError(Ok(app))) => {
+            dispose_gameplay_app(app)?;
+            anyhow::bail!("gameplay owner stopped receiving its prepared App");
+        }
+        Err(std::sync::mpsc::SendError(Err(error))) => Err(error),
+    }
+}
+
+fn keep_first_preparation_failure(
+    primary: anyhow::Result<()>,
+    cleanup: anyhow::Result<()>,
+) -> anyhow::Result<()> {
+    match (primary, cleanup) {
+        (Err(primary), Err(secondary)) => {
+            log::error!("Additional gameplay preparation shutdown failure: {secondary:#}");
+            Err(primary)
+        }
+        (Err(error), Ok(())) | (Ok(()), Err(error)) => Err(error),
+        (Ok(()), Ok(())) => Ok(()),
+    }
+}
+
 pub struct GameplayPreparation {
     receiver: std::sync::mpsc::Receiver<anyhow::Result<bevy_app::SubApp>>,
     pending: Option<bevy_app::SubApp>,
     cancel: Arc<std::sync::atomic::AtomicBool>,
+    worker: Option<std::thread::JoinHandle<()>>,
 }
 
 impl GameplayPreparation {
     pub fn spawn(
-        mut gameplay: bevy_app::SubApp,
+        gameplay: bevy_app::SubApp,
         warm_up: impl FnOnce(&mut World) -> anyhow::Result<()> + Send + 'static,
     ) -> anyhow::Result<Self> {
         use std::sync::atomic::{AtomicBool, Ordering};
         let (sender, receiver) = std::sync::mpsc::channel();
         let cancel = Arc::new(AtomicBool::new(false));
         let cancelled = cancel.clone();
-        std::thread::Builder::new().name("async load".to_owned()).spawn(move || {
+        let mut gameplay_owner = GameplayAppOwner::new(gameplay);
+        let worker = std::thread::Builder::new().name("async load".to_owned()).spawn(move || {
             // Host diagnostic boundary only: preserve the original load/ready
             // gates, but carry a worker panic back to the owning OS thread.
             let mut phase = "validate gameplay resources";
             let mut update_index = 0u64;
             let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                // Borrow the owned App so an error/panic cannot drop its World
+                // before its save worker has disconnected and joined.
+                let gameplay = gameplay_owner.app_mut();
                 // The current partial startup must fail explicitly instead of
                 // spinning forever without its original producer. AppMode and
                 // LoadGameManager are actual inputs of load_game_system.
@@ -1068,21 +1194,31 @@ impl GameplayPreparation {
                 anyhow::ensure!(gameplay.world().contains_resource::<country_core::systems::save::load_game::LoadGameManager>(),
                     "B async load: original session/snapshot loading producer is not registered");
                 loop {
-                    if cancelled.load(Ordering::Acquire) { anyhow::bail!("gameplay preparation cancelled"); }
+                    if cancelled.load(Ordering::Acquire) { return Err(GameplayPreparationCancelled.into()); }
                     // @1400d76e3 and Events<LoadingGameComplete> native TypeId
                     // 4d00324fb817a8a1/5846f8d25a034525, confirmed register_event
                     // @14151ffb0. It reads both live event buffers.
                     phase = "gameplay SubApp::update";
                     gameplay.update();
                     update_index += 1;
+                    phase = "verify actual gameplay clutter Startup";
+                    crate::gameplay_startup::require_clutter_catalog(gameplay.world())?;
                     phase = "read original LoadingGameComplete";
                     let events = gameplay.world().get_resource::<Events<country_core::systems::save::load_game::LoadingGameComplete>>()
                         .ok_or_else(|| anyhow::anyhow!("B async load: LoadingGameComplete event resource missing"))?;
                     if !events.is_empty() { break; }
                 }
+                // A close request may arrive during the final update. Do not
+                // start another device submission after observing cancellation.
+                if cancelled.load(Ordering::Acquire) {
+                    return Err(GameplayPreparationCancelled.into());
+                }
                 phase = "original gameplay graph warm-up";
                 warm_up(gameplay.world_mut())?;
-                Ok(gameplay)
+                if cancelled.load(Ordering::Acquire) {
+                    return Err(GameplayPreparationCancelled.into());
+                }
+                Ok(())
             }))
             .unwrap_or_else(|payload| {
                 let message = if let Some(message) = payload.downcast_ref::<String>() {
@@ -1096,13 +1232,66 @@ impl GameplayPreparation {
                     "async gameplay loader panicked during {phase} (completed updates: {update_index}): {message}"
                 ))
             });
-            let _ = sender.send(result);
+            match result {
+                Ok(()) => {
+                    if let Err(error) = publish_prepared_app(&sender, gameplay_owner.take()) {
+                        log::error!("Prepared gameplay App could not be published: {error:#}");
+                    }
+                }
+                Err(primary) => {
+                    let cleanup = gameplay_owner.dispose();
+                    // Cancellation is benign only when its real save cleanup
+                    // succeeded; never discard a cleanup failure as cancellation.
+                    let error = if primary.is::<GameplayPreparationCancelled>() {
+                        match cleanup { Ok(()) => primary, Err(error) => error }
+                    } else {
+                        if let Err(secondary) = cleanup {
+                            log::error!("Save shutdown after gameplay producer failure: {secondary:#}");
+                        }
+                        primary
+                    };
+                    let _ = sender.send(Err(error));
+                }
+            }
         })?;
         Ok(Self {
             receiver,
             pending: None,
             cancel,
+            worker: Some(worker),
         })
+    }
+
+    fn join_worker(&mut self) -> anyhow::Result<()> {
+        let Some(worker) = self.worker.take() else { return Ok(()); };
+        worker.join().map_err(|payload| {
+            let message = if let Some(message) = payload.downcast_ref::<String>() {
+                message.as_str()
+            } else if let Some(message) = payload.downcast_ref::<&'static str>() {
+                *message
+            } else {
+                "non-string panic payload"
+            };
+            anyhow::anyhow!("async gameplay worker panicked while completing: {message}")
+        })
+    }
+
+    /// Finish all preparation work before the renderer starts device shutdown.
+    /// Cancellation is an ordinary exit request; actual load/warmup failures
+    /// retain their original error and are still returned to the OS owner.
+    pub fn cancel_and_join(&mut self) -> anyhow::Result<()> {
+        self.cancel.store(true, std::sync::atomic::Ordering::Release);
+        let joined = self.join_worker();
+        // Both received and queued Worlds must stop their save thread before
+        // their scene/device owners are dropped and renderer shutdown begins.
+        let pending_cleanup = self.pending.take().map_or(Ok(()), dispose_gameplay_app);
+        let completion = match self.receiver.try_recv() {
+            Ok(Err(error)) if !error.is::<GameplayPreparationCancelled>() => Err(error),
+            Ok(Ok(app)) => dispose_gameplay_app(app),
+            Ok(Err(_)) | Err(_) => Ok(()),
+        };
+        keep_first_preparation_failure(
+            keep_first_preparation_failure(completion, joined), pending_cleanup)
     }
 
     /// Original main_loop polls only at the logo's waiting stage and switches
@@ -1113,12 +1302,22 @@ impl GameplayPreparation {
         use std::sync::mpsc::TryRecvError;
         if self.pending.is_none() {
             match self.receiver.try_recv() {
-                Ok(Ok(app)) => self.pending = Some(app),
-                Ok(Err(error)) => return Err(error),
+                Ok(Ok(app)) => {
+                    let mut app = GameplayAppOwner::new(app);
+                    self.join_worker()?;
+                    self.pending = Some(app.take());
+                }
+                Ok(Err(error)) => {
+                    if let Err(secondary) = self.join_worker() {
+                        log::error!("Async gameplay worker also failed while stopping: {secondary:#}");
+                    }
+                    return Err(error);
+                }
                 Err(TryRecvError::Empty) => {}
-                Err(TryRecvError::Disconnected) => anyhow::bail!(
-                    "original async gameplay loader stopped before returning its SubApp"
-                ),
+                Err(TryRecvError::Disconnected) => {
+                    self.join_worker()?;
+                    anyhow::bail!("original async gameplay loader stopped before returning its SubApp");
+                }
             }
         }
         let logo = loading.world_mut().get_resource_mut::<LogoAnimation>();
@@ -1130,19 +1329,24 @@ impl GameplayPreparation {
                 return Ok(false);
             }
         }
-        let Some(mut gameplay) = self.pending.take() else {
+        let Some(gameplay) = self.pending.take() else {
             return Ok(false);
         };
-        transfer_loading_resources(loading.world_mut(), gameplay.world_mut())?;
-        *loading.main_mut() = gameplay;
+        let mut gameplay = GameplayAppOwner::new(gameplay);
+        transfer_loading_resources(loading.world_mut(), gameplay.app_mut().world_mut())?;
+        // Normally the independent loading World owns no save worker. Still
+        // close any actual owner before replacing it; all schedules are stopped.
+        country_core::systems::save::save_thread::shutdown_save_thread(loading.world_mut())?;
+        *loading.main_mut() = gameplay.take();
         Ok(true)
     }
 }
 
 impl Drop for GameplayPreparation {
     fn drop(&mut self) {
-        self.cancel
-            .store(true, std::sync::atomic::Ordering::Release);
+        if let Err(error) = self.cancel_and_join() {
+            log::error!("Failed to stop async gameplay preparation: {error:#}");
+        }
     }
 }
 
@@ -1374,7 +1578,7 @@ mod startup_handoff_integration {
         let (sender, receiver) = std::sync::mpsc::channel();
         sender.send(Ok(std::mem::take(gameplay.main_mut()))).unwrap();
         let mut preparation = GameplayPreparation { receiver, pending: None,
-            cancel: Arc::new(std::sync::atomic::AtomicBool::new(false)) };
+            cancel: Arc::new(std::sync::atomic::AtomicBool::new(false)), worker: None };
         assert!(!preparation.poll(&mut loading).unwrap());
         assert_eq!(loading.world().resource::<LogoAnimation>().progress[3],1.0);
         assert_eq!(loading.world().resource::<GameConfig>().video.fps_limit,117.5);
@@ -1441,5 +1645,378 @@ mod startup_handoff_integration {
         assert_eq!(to.resource::<Events<StartupRevealStarted>>().len(),1);
         assert!(from.contains_resource::<EguiContextResource>());
         assert!(!to.contains_resource::<EguiContextResource>());
+    }
+}
+
+#[cfg(test)]
+mod gameplay_preparation_shutdown_tests {
+    use super::*;
+    use std::sync::{atomic::{AtomicBool, Ordering}, mpsc};
+
+    fn prepared_worker(result: anyhow::Result<bevy_app::SubApp>) -> GameplayPreparation {
+        let (sender, receiver) = mpsc::channel();
+        let worker = std::thread::spawn(move || { sender.send(result).unwrap(); });
+        GameplayPreparation { receiver, pending: None,
+            cancel: Arc::new(AtomicBool::new(false)), worker: Some(worker) }
+    }
+
+    #[test]
+    fn cancellation_joins_worker_and_discards_only_typed_cancel() {
+        let (sender, receiver) = mpsc::channel();
+        let cancel = Arc::new(AtomicBool::new(false));
+        let worker_cancel = cancel.clone();
+        let stopped = Arc::new(AtomicBool::new(false));
+        let worker_stopped = stopped.clone();
+        let worker = std::thread::spawn(move || {
+            while !worker_cancel.load(Ordering::Acquire) { std::thread::yield_now(); }
+            worker_stopped.store(true, Ordering::Release);
+            sender.send(Err(GameplayPreparationCancelled.into())).unwrap();
+        });
+        let mut preparation = GameplayPreparation { receiver, pending: None, cancel,
+            worker: Some(worker) };
+        preparation.cancel_and_join().unwrap();
+        assert!(stopped.load(Ordering::Acquire));
+        assert!(preparation.worker.is_none());
+        preparation.cancel_and_join().unwrap();
+    }
+
+    #[test]
+    fn cancellation_preserves_actual_producer_failure() {
+        let mut preparation = prepared_worker(Err(anyhow::anyhow!("warmup producer failed")));
+        let error = preparation.cancel_and_join().unwrap_err();
+        assert_eq!(error.to_string(), "warmup producer failed");
+        assert!(preparation.worker.is_none());
+    }
+
+    #[test]
+    fn explicit_stop_releases_received_world() {
+        let mut preparation = prepared_worker(Ok(bevy_app::SubApp::new()));
+        preparation.pending = Some(preparation.receiver.recv().unwrap().unwrap());
+        preparation.cancel_and_join().unwrap();
+        assert!(preparation.pending.is_none());
+        assert!(preparation.worker.is_none());
+    }
+
+    #[derive(bevy_ecs::resource::Resource)]
+    struct WorldDropFlag(Arc<AtomicBool>);
+    impl Drop for WorldDropFlag {
+        fn drop(&mut self) { self.0.store(true, Ordering::Release); }
+    }
+
+    #[test]
+    fn drop_waits_for_worker_and_releases_pending_or_queued_world() {
+        for receive_before_drop in [false, true] {
+            let released = Arc::new(AtomicBool::new(false));
+            let stopped = Arc::new(AtomicBool::new(false));
+            let worker_stopped = stopped.clone();
+            let mut world = bevy_app::SubApp::new();
+            world.world_mut().insert_resource(WorldDropFlag(released.clone()));
+            let (sender, receiver) = mpsc::channel();
+            let worker = std::thread::spawn(move || {
+                let _ = sender.send(Ok(world));
+                worker_stopped.store(true, Ordering::Release);
+            });
+            let mut preparation = GameplayPreparation { receiver, pending: None,
+                cancel: Arc::new(AtomicBool::new(false)), worker: Some(worker) };
+            if receive_before_drop {
+                preparation.pending = Some(preparation.receiver.recv().unwrap().unwrap());
+            }
+            drop(preparation);
+            assert!(stopped.load(Ordering::Acquire));
+            assert!(released.load(Ordering::Acquire));
+        }
+    }
+
+}
+
+#[cfg(test)]
+mod save_shutdown_preparation_tests {
+    use super::*;
+    use country_core::systems::save::{save_game::AutoSaveState,
+        save_thread::{AutosaveErrorState, SaveThreadHandle}};
+    use std::sync::{atomic::{AtomicBool, Ordering}, mpsc};
+
+    #[derive(bevy_ecs::resource::Resource)]
+    struct SaveStoppedBeforeWorldDrop {
+        stopped: Arc<AtomicBool>,
+        observed: Arc<AtomicBool>,
+    }
+    impl Drop for SaveStoppedBeforeWorldDrop {
+        fn drop(&mut self) {
+            self.observed.store(self.stopped.load(Ordering::Acquire), Ordering::Release);
+        }
+    }
+
+    fn attach_save_owner(world: &mut World) -> (Arc<AtomicBool>, Arc<AtomicBool>) {
+        let stopped = Arc::new(AtomicBool::new(false));
+        let observed = Arc::new(AtomicBool::new(false));
+        let worker_stopped = stopped.clone();
+        let (command_sender, receiver) = crossbeam_channel::unbounded();
+        let (error_sender, error_state) = AutosaveErrorState::channel();
+        let join = std::thread::spawn(move || {
+            assert!(matches!(receiver.recv_timeout(std::time::Duration::from_secs(2)),
+                Err(crossbeam_channel::RecvTimeoutError::Disconnected)));
+            drop(error_sender);
+            worker_stopped.store(true, Ordering::Release);
+        });
+        let mut auto = AutoSaveState::default();
+        auto.attach_command_sender(command_sender.clone());
+        world.insert_resource(auto);
+        world.insert_resource(SaveThreadHandle { join, command_sender, error_state });
+        world.insert_resource(SaveStoppedBeforeWorldDrop {
+            stopped: stopped.clone(), observed: observed.clone(),
+        });
+        (stopped, observed)
+    }
+
+    fn assert_saved_before_drop(flags: (Arc<AtomicBool>, Arc<AtomicBool>)) {
+        assert!(flags.0.load(Ordering::Acquire), "save worker must terminate");
+        assert!(flags.1.load(Ordering::Acquire), "World must drop only after save join");
+    }
+
+    #[test]
+    fn pending_and_queued_apps_join_save_workers_before_world_drop() {
+        for receive_first in [false, true] {
+            let mut app = bevy_app::SubApp::new();
+            let flags = attach_save_owner(app.world_mut());
+            let (sender, receiver) = mpsc::channel();
+            let worker = std::thread::spawn(move || { sender.send(Ok(app)).unwrap(); });
+            let mut preparation = GameplayPreparation { receiver, pending: None,
+                cancel: Arc::new(AtomicBool::new(false)), worker: Some(worker) };
+            if receive_first {
+                preparation.pending = Some(preparation.receiver.recv().unwrap().unwrap());
+            }
+            preparation.cancel_and_join().unwrap();
+            assert_saved_before_drop(flags);
+        }
+    }
+
+    #[test]
+    fn producer_validation_error_stops_save_before_publishing_failure() {
+        let mut app = bevy_app::SubApp::new();
+        let flags = attach_save_owner(app.world_mut());
+        let mut preparation = GameplayPreparation::spawn(app, |_| Ok(())).unwrap();
+        let failure = preparation.receiver.recv_timeout(std::time::Duration::from_secs(2))
+            .unwrap().unwrap_err();
+        assert!(failure.to_string().contains("AppMode"));
+        assert_saved_before_drop(flags);
+        preparation.cancel_and_join().unwrap();
+    }
+
+    #[test]
+    fn worker_update_panic_missing_catalog_and_cancellation_all_stop_save() {
+        // This small CPU fixture has no genuine gameplay catalog. It can
+        // prove rejection/cleanup, not entry into the real warm-up graph.
+        for phase in ["update panic", "missing catalog", "cancel"] {
+            let mut app = App::new();
+            app.insert_resource(country_core::systems::mode_manager::AppMode::default());
+            app.init_resource::<country_core::systems::save::load_game::LoadGameManager>();
+            app.add_event::<country_core::systems::save::load_game::LoadingGameComplete>();
+            app.add_systems(bevy_app::Update, move |world: &mut World| {
+                assert_ne!(phase, "update panic", "injected update panic");
+                world.send_event(country_core::systems::save::load_game::LoadingGameComplete);
+            });
+            let flags = attach_save_owner(app.world_mut());
+            let gameplay = std::mem::take(app.main_mut());
+            let mut preparation = GameplayPreparation::spawn(gameplay, move |_| {
+                panic!("missing gameplay catalog must prevent warmup: {phase}");
+            }).unwrap();
+            if phase == "cancel" {
+                // Immediate cancellation races with the observable catalog
+                // failure; both must finish the same actual save owner.
+                if let Err(error) = preparation.cancel_and_join() {
+                    assert!(error.to_string().contains("ClutterMeshes"));
+                }
+            } else {
+                let error = preparation.receiver.recv_timeout(std::time::Duration::from_secs(2))
+                    .unwrap().unwrap_err();
+                let expected = if phase == "missing catalog" { "ClutterMeshes" } else { phase };
+                assert!(error.to_string().contains(expected));
+                preparation.cancel_and_join().unwrap();
+            }
+            assert_saved_before_drop(flags);
+        }
+    }
+
+    #[test]
+    fn unstarted_capture_and_failed_send_both_dispose_the_actual_app() {
+        for failed_send in [false, true] {
+            let mut app = bevy_app::SubApp::new();
+            let flags = attach_save_owner(app.world_mut());
+            if failed_send {
+                let (sender, receiver) = mpsc::channel();
+                drop(receiver);
+                assert!(publish_prepared_app(&sender, app).is_err());
+            } else {
+                // Same closure-capture drop as Builder::spawn returning Err;
+                // do not try to exhaust process threads to test std itself.
+                let owner = GameplayAppOwner::new(app);
+                let unstarted = move || drop(owner);
+                drop(unstarted);
+            }
+            assert_saved_before_drop(flags);
+        }
+    }
+
+    #[test]
+    fn failed_handoff_disposes_pending_save_owner_before_returning_error() {
+        let mut app = bevy_app::SubApp::new();
+        let flags = attach_save_owner(app.world_mut());
+        let (_sender, receiver) = mpsc::channel();
+        let mut preparation = GameplayPreparation { receiver, pending: Some(app),
+            cancel: Arc::new(AtomicBool::new(false)), worker: None };
+        let mut loading = App::new();
+        assert!(preparation.poll(&mut loading).is_err());
+        assert_saved_before_drop(flags);
+        preparation.cancel_and_join().unwrap();
+    }
+}
+
+#[cfg(test)]
+mod member14_owner_stage_tests {
+    use super::GameSystemSet;
+    use bevy_ecs::prelude::*;
+    use bevy_ecs::schedule::IntoScheduleConfigs;
+    use country_core::{
+        asset_libraries::{runtime::AssetLibraryRuntime, ssbo_library::AssetSsboLibrary},
+        geometry::{instanced_wall::{BrickTransformSsbo, InstancedWall}, runtime::{prepare_wall_brick_assembly_owners, sync_wall_bricks, WallBrickUploadStatus}},
+        render::{sparse_instance_buffer::SparseInstanceBuffer},
+        resources::{walls::{InnerWalls, WallId, WallState, public_walls::{PublicWalls, WallEntities}, publication_source::TerrainHeightGrid512, wall_trigger_volume::WallTriggerVolume}, rt::UpdateRtWorldEvent},
+        systems::wall::construct_wall_bricks::WallBricksChanged,
+    };
+    use std::sync::Arc;
+
+    /// CPU-only range-checking boundary for these CPU ownership/state tests.
+    /// It creates no physical resource, maps no memory, and submits no GPU work.
+    /// Successful updates mean only that the canonical uploader requested valid
+    /// nonoverlapping byte ranges inside the declared CPU fixture capacity.
+    #[derive(Debug)]
+    struct CpuBufferDevice(u64);
+
+    impl country_core::render::ssbo::rhapsody_boundary::GraphicsDevice for CpuBufferDevice {
+        fn create_buffer(
+            &self,
+            desc: &country_core::render::ssbo::rhapsody_boundary::BufferDesc,
+            _name: &str,
+            data: Option<&[u8]>,
+        ) -> Result<country_core::render::ssbo::rhapsody_boundary::Buffer, country_core::render::ssbo::rhapsody_boundary::BackendError> {
+            assert!(data.is_none_or(|bytes| bytes.len() <= desc.size));
+            Ok(country_core::render::ssbo::rhapsody_boundary::Buffer {
+                id: self.0,
+                byte_size: desc.size as u64,
+                ..Default::default()
+            })
+        }
+
+        fn update_buffer_bytes(
+            &self,
+            buffer: &country_core::render::ssbo::rhapsody_boundary::Buffer,
+            data: &[u8],
+            ranges: &[core::ops::Range<usize>],
+            offset: usize,
+        ) -> Result<(), country_core::render::ssbo::rhapsody_boundary::BackendError> {
+            let mut previous_end = 0;
+            for range in ranges {
+                assert!(previous_end <= range.start);
+                assert!(range.start <= range.end && range.end <= data.len());
+                let end = offset.checked_add(range.end).expect("CPU fixture byte offset overflow");
+                assert!((end as u64) <= buffer.byte_size);
+                previous_end = range.end;
+            }
+            Ok(())
+        }
+    }
+
+    // AssetLibraryRuntime requires the texture capability even though this
+    // fixture mounts only the real wall sparse-buffer sync system. Any accidental
+    // texture/descriptor use fails explicitly instead of reporting fake success.
+    impl country_core::render::load_texture::boundary::TextureDevice for CpuBufferDevice {
+        fn create_texture(
+            &self,
+            _name: &str,
+            _desc: &country_core::render::load_texture::boundary::TextureDesc,
+            _data: &[u8],
+        ) -> Result<country_core::render::load_texture::boundary::Texture, country_core::render::load_texture::boundary::BackendError> {
+            panic!("texture creation is outside this CPU wall-owner fixture")
+        }
+    }
+    impl country_core::asset_libraries::texture_library::TextureLibraryDevice for CpuBufferDevice {
+        fn create_persistent_descriptor_set(
+            &self,
+            _name: &str,
+        ) -> Result<country_core::rhapsody_contract::DescriptorSet, country_core::render::load_texture::boundary::BackendError> {
+            panic!("descriptor creation is outside this CPU wall-owner fixture")
+        }
+        fn update_persistent_descriptor_set(
+            &self,
+            _set: &country_core::rhapsody_contract::DescriptorSet,
+            _updates: &[country_core::asset_libraries::texture_library::DescriptorImageUpdate],
+        ) -> Result<(), country_core::render::load_texture::boundary::BackendError> {
+            panic!("descriptor updates are outside this CPU wall-owner fixture")
+        }
+        fn get_vk_image_view(
+            &self,
+            _texture: &country_core::render::load_texture::boundary::Texture,
+            _mip: u32,
+        ) -> Result<country_core::asset_libraries::texture_library::ImageView, country_core::render::load_texture::boundary::BackendError> {
+            panic!("image views are outside this CPU wall-owner fixture")
+        }
+        fn update_texture(
+            &self,
+            _texture: &country_core::render::load_texture::boundary::Texture,
+            _update: &country_core::asset_libraries::texture_library::TextureUpdate,
+        ) -> Result<(), country_core::render::load_texture::boundary::BackendError> {
+            panic!("texture uploads are outside this CPU wall-owner fixture")
+        }
+    }
+
+
+    #[derive(Resource, Default)]
+    struct Observed { changed_counts: Vec<usize> }
+
+    fn inspect_at25(
+        public: Res<PublicWalls>, library: Res<AssetSsboLibrary>, entities: Res<WallEntities>,
+        owners: Query<(&InstancedWall<BrickTransformSsbo>, Option<&WallTriggerVolume>)>,
+        changed: Query<Entity, Changed<InstancedWall<BrickTransformSsbo>>>,
+        successes: Res<Events<WallBricksChanged>>, rt: Res<Events<UpdateRtWorldEvent>>,
+        mut observed: ResMut<Observed>,
+    ) {
+        let wall = WallId(0x700000031);
+        assert!(public.get(wall).is_some());
+        let (owner, trigger) = owners.get(entities.wall_entity(wall).unwrap()).unwrap();
+        assert_eq!(owner.id, wall.0);
+        assert!(owner.is_awaiting_production()); assert!(!owner.is_upload_pending());
+        assert!(trigger.is_none()); assert!(successes.is_empty()); assert!(rt.is_empty());
+        let storage = library.get::<BrickTransformSsbo>().unwrap();
+        let lanes = [owner.allocation().unwrap(), owner.chimney_allocation().unwrap(), owner.door_stairs_allocation().unwrap()];
+        for lane in lanes { assert!(storage.owns_allocation(lane)); }
+        for i in 0..3 { for j in i+1..3 { assert!(!core::ptr::eq(lanes[i].handle.0.as_deref().unwrap(), lanes[j].handle.0.as_deref().unwrap())); } }
+        observed.changed_counts.push(changed.iter().count());
+    }
+
+    #[test]
+    fn actual_set_type_and_ordinary_edges_expose_preassembly_commands_without_false_base_success() {
+        let mut app = bevy_app::App::new();
+        // Same actual GameSystemSet and exact pairwise configuration as run_game_thread.
+        for stage in 0..44 { app.configure_sets(bevy_app::Update, GameSystemSet(stage).before(GameSystemSet(stage+1))); }
+        let mut inner = InnerWalls::new();
+        let curve = country_core::resources::roofs::geometry::surface::Curve2::try_new(vec![[0.,0.],[4.,0.]], false).unwrap();
+        inner.new_wall_with_id(WallId(0x700000031), WallState::new(curve, 2., 0, 0, false));
+        let mut public = PublicWalls::default();
+        public.consume(&mut inner, &TerrainHeightGrid512 { encoded: vec![0u16;512*512].into(), minimum_y: 0., maximum_y: 4., sampling_fix: true });
+        let storage = SparseInstanceBuffer::<BrickTransformSsbo>::try_new(&CpuBufferDevice(1)).unwrap();
+        let mut library = AssetSsboLibrary::new(); library.register::<BrickTransformSsbo>(storage);
+        app.insert_resource(public); app.insert_resource(library); app.init_resource::<WallEntities>();
+        app.insert_resource(AssetLibraryRuntime::new(Arc::new(CpuBufferDevice(1)), Arc::new(CpuBufferDevice(2))));
+        app.init_resource::<WallBrickUploadStatus>(); app.init_resource::<Observed>();
+        app.add_event::<WallBricksChanged>(); app.add_event::<UpdateRtWorldEvent>();
+        app.add_systems(bevy_app::Update, prepare_wall_brick_assembly_owners.in_set(GameSystemSet(19)));
+        app.add_systems(bevy_app::Update, inspect_at25.in_set(GameSystemSet(25)));
+        app.add_systems(bevy_app::PostUpdate, sync_wall_bricks);
+        app.update(); app.update();
+        assert_eq!(app.world().resource::<Observed>().changed_counts, [1,0]);
+        assert!(app.world().resource::<WallBrickUploadStatus>().gpu_ready);
+        let entity = app.world().resource::<WallEntities>().wall_entity(WallId(0x700000031)).unwrap();
+        assert!(app.world().get::<InstancedWall<BrickTransformSsbo>>(entity).unwrap().is_awaiting_production());
     }
 }

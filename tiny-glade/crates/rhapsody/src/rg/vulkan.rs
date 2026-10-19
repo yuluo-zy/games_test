@@ -2868,6 +2868,8 @@ impl VulkanGraphSession {
             .as_mut()
             .ok_or_else(|| crate::Error::invalid_usage("named frame is already executing"))?;
         named.state.clear();
+        // 将状态表的退役令牌移交给物理 owner；在飞帧仍由后端按 pending 保活。
+        named.state.release_retired(&mut named.resources);
         self.collect_named_retired();
         Ok(())
     }

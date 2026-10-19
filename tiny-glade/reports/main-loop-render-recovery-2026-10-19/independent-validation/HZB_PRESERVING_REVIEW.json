@@ -1,0 +1,31 @@
+{
+  "reviewed_at_utc": "2026-10-19T16:00:11.886897+00:00",
+  "verdict": "passed_scoped_static",
+  "manifest": {
+    "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-21b5d45c4605964a65/world-w29-w34-20261019/hzb-preserving-20261019/candidate-manifest.json",
+    "sha256": "b3d912eb638f389645dc7032539bd33b01bc828e29ff10c40faefb3652b625ed"
+  },
+  "patch": {
+    "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-21b5d45c4605964a65/world-w29-w34-20261019/hzb-preserving-20261019/generate_hzb.patch",
+    "sha256": "a7a63966e686eb1f5200dba0c0de3dee843e450d4dc809fd0a0d4f1abd6e992c"
+  },
+  "candidate": {
+    "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-21b5d45c4605964a65/world-w29-w34-20261019/hzb-preserving-20261019/generate_hzb.rs",
+    "sha256": "7469a171d7a73b6efe8da37e7404514eb3fcc42e774fdc92351ba50f9664ea9e"
+  },
+  "checks": [
+    "Original stage0 SPV sha232d44e7cbc423304888ebf633614023f2e271771a6fddc42d05a0d091843e2d has spdGlobalAtomic at set0 binding3. Full assembly search for %19 shows only actual atomicIAdd access and last-workgroup zero store.",
+    "SPV %93 is push.mips load; unsigned <=6 branch returns before atomic access. Existing host pushes mips-1; candidate tests the identical unsigned mips-1 >6 predicate.",
+    "Preserve follows the actual HASH_ATOMIC write binding, retaining original 0x37 access, synchronization group, descriptors, views and single dispatch. Existing compute host forwards preserving buffer intent to original graph API.",
+    "Existing same named temporal buffer owner is requested through named_buffer_zeroed. Physical TemporalGpuResources uploads full allocation zeros and marks contents defined only after successful creation. No new clear/producer/history surrogate is added.",
+    "Boundary test covers push values0,6,7,10 and original access sequence/dispatch/owner. Test and actual GPU behavior not run by reviewer."
+  ],
+  "performance_scope": "One existing preserving metadata Vec entry only for the original atomic path. No extra GPU clear, dispatch, temporal owner or CPU readback added; actual performance unmeasured.",
+  "remaining": [
+    "Central typecheck and new boundary test",
+    "Actual original HZB shader GPU output/atomic and multi-frame reuse",
+    "No automatic conclusion for separate generate_mips SPD entry"
+  ],
+  "reviewer_ran_cargo_gpu": false,
+  "runtime_accepted": false
+}

@@ -1,0 +1,800 @@
+//! Actual B ClothInfo -> cache/connection plans -> beam/garment/thread Commands.
+//!
+//! Native main 1407e5190 / 11167B, typed input fold 141293730 / 434B.
+//! This consumes the sole global VisualState's cloth_infos and appends to its
+//! existing transient map. It does not manufacture inputs from modified flags.
+//! B-only semantic adaptation: no native struct ABI, C parity or scene/GPU claim.
+use crate::{
+    decorator_visual::flag_connections::{
+        clothline, greedily_connect, ClothlineContext, ConnectParams, ConnectResult, FlagAnchor,
+    },
+    decorator_visual_state::{ClothInfo, DecoratorTransientVisualState, DecoratorVisualState},
+    utils::visual_entity_builder::WindowVisualEntityBuilder,
+};
+use bevy_ecs::prelude::*;
+use country_core::{
+    asset_libraries::{
+        mesh_library::AssetMeshLibrary, shader_library::AssetShaderLibrary,
+        texture_library::AssetTextureLibrary,
+    },
+    components::drawable::{ClothlineCloth, NaniBundle},
+    name_hash::NameHash,
+    render::nani::{
+        gpu_world::{GpuWorldSubsetKind, InstanceDataMarker},
+        instance_data::SolidVertexColorInstanceData,
+        systems::{NaniInstanceDesc, NaniMeshSelector},
+    },
+    resources::walls::{
+        decorator::DecoratorId,
+        decorator_storage::{DecoratorStorage, DecoratorStorageAddr},
+    },
+    systems::{
+        audio::PlayClutterSoundCmd, collision::world::RaycastWorld,
+        ui::signifiers::signifier_create::UiSignifierStream,
+    },
+    utils::components::transform::Transform,
+};
+use glam::{Vec2, Vec3};
+use std::collections::HashSet;
+
+const BEAM_NAME: NameHash = NameHash(0x20a7_eff3_a12c_99eb);
+const CLOTH_MESH: &str = "decorators/setdressing_clothline_cloth";
+const CLOTH_MESH_2: &str = "decorators/setdressing_clothline_cloth_2";
+const NORMAL: u64 = 0xb9fb_cd49_9788_b2f1;
+const NORMAL_2: u64 = 0xe21f_7890_eabe_cf74;
+
+/// Actual system-local containers; only their empty container default is known.
+/// No ClothInfo/Transform/payload default or new Resource is introduced.
+#[derive(Default)]
+pub struct CacheClothes {
+    previous_ids: Vec<DecoratorId>,
+    current_pairs: HashSet<(DecoratorId, DecoratorId)>,
+    previous_pairs: HashSet<(DecoratorId, DecoratorId)>,
+}
+
+/// Frame-local semantic projection of the typed fold, not a native ABI copy.
+fn projected_clothes(input: &[ClothInfo]) -> Vec<ClothInfo> {
+    input
+        .iter()
+        .map(|info| {
+            let mut value = info.clone();
+            let rotated = info.transform.rotation * Vec3::new(0.0, 0.0, 0.385);
+            let shift = (info.dimensions[1] * (-0.5)) * 0.6;
+            value.transform.translation = Vec3::new(
+                info.transform.translation.x + rotated.x,
+                (info.transform.translation.y + shift) + rotated.y,
+                info.transform.translation.z + rotated.z,
+            );
+            value
+        })
+        .collect()
+}
+
+#[derive(Clone, Debug)]
+struct ConnectionPlan {
+    id_a: DecoratorId,
+    id_b: DecoratorId,
+    a: Transform,
+    b: Transform,
+    word: u32,
+}
+
+fn storage_scalar(storage: &DecoratorStorage, info: &ClothInfo) -> u32 {
+    // 140a1c5f0 / 518B caller uses explicit Wall(tag0), not d2s lookup.
+    storage
+        .get(DecoratorStorageAddr::Wall(info.wall))
+        .and_then(|bucket| bucket.get(info.decorator_id))
+        .map(|value| value.decorator_id)
+        .unwrap_or(0)
+}
+fn signed_half_point(info: &ClothInfo, positive: bool) -> Vec3 {
+    let axis = if positive {
+        Vec3::new(1.0, 0.0, 0.0)
+    } else {
+        Vec3::new(-1.0, -0.0, -0.0)
+    };
+    let dimension = info.dimensions[0];
+    let offset = Vec3::new(
+        (dimension * axis.x) * 0.5,
+        (dimension * axis.y) * 0.5,
+        (dimension * axis.z) * 0.5,
+    );
+    info.transform.rotation * offset + info.transform.translation
+}
+
+fn connected_plan(a: &ClothInfo, b: &ClothInfo, storage: &DecoratorStorage) -> ConnectionPlan {
+    let mut ta = a.transform;
+    let mut tb = b.transform;
+    let same_wall = a.wall == b.wall;
+    let mut best = if same_wall { 0.0 } else { 10000.0 };
+    for positive_a in [false, true] {
+        for positive_b in [false, true] {
+            let pa = signed_half_point(a, positive_a);
+            let pb = signed_half_point(b, positive_b);
+            let distance = (pb - pa).length();
+            let improve = if same_wall {
+                distance > best
+            } else {
+                distance < best
+            };
+            if improve {
+                best = distance;
+                ta.translation = pa;
+                tb.translation = pb;
+            }
+        }
+    }
+    let word = storage_scalar(storage, b)
+        .wrapping_add(storage_scalar(storage, a))
+        .wrapping_add(a.decorator_id.0)
+        .wrapping_add(b.decorator_id.0);
+    ConnectionPlan {
+        id_a: a.decorator_id,
+        id_b: b.decorator_id,
+        a: ta,
+        b: tb,
+        word,
+    }
+}
+fn unconnected_plan(info: &ClothInfo, storage: &DecoratorStorage) -> ConnectionPlan {
+    let mut a = info.transform;
+    let mut b = info.transform;
+    a.translation = signed_half_point(info, true);
+    // Native degree-zero negative branch has a distinct multiplication order.
+    let dimension = info.dimensions[0];
+    let negative = Vec3::new(
+        dimension * (-0.5),
+        (dimension * (-0.0)) * 0.5,
+        (dimension * (-0.0)) * 0.5,
+    );
+    b.translation = info.transform.rotation * negative + info.transform.translation;
+    ConnectionPlan {
+        id_a: info.decorator_id,
+        id_b: info.decorator_id,
+        a,
+        b,
+        word: storage_scalar(storage, info).wrapping_add(info.decorator_id.0),
+    }
+}
+
+fn plans_and_cache(
+    projected: &[ClothInfo],
+    graph: &ConnectResult,
+    cache: &mut CacheClothes,
+    storage: &DecoratorStorage,
+    sound: &mut EventWriter<PlayClutterSoundCmd>,
+) -> Vec<ConnectionPlan> {
+    let mut plans = Vec::new();
+    cache.current_pairs.clear();
+    for &(ia, ib) in &graph.edges {
+        let a = &projected[ia];
+        let b = &projected[ib];
+        let pair = if a.decorator_id.0 <= b.decorator_id.0 {
+            (a.decorator_id, b.decorator_id)
+        } else {
+            (b.decorator_id, a.decorator_id)
+        };
+        cache.current_pairs.insert(pair);
+        if !cache.previous_pairs.contains(&pair) {
+            let pa = a.transform.translation;
+            let pb = b.transform.translation;
+            sound.write(PlayClutterSoundCmd {
+                kind: 16,
+                context: 0,
+                position: Vec3::new(
+                    pa.x * 0.5 + pb.x * 0.5,
+                    pa.y * 0.5 + pb.y * 0.5,
+                    pa.z * 0.5 + pb.z * 0.5,
+                ),
+            });
+        }
+        plans.push(connected_plan(a, b, storage));
+    }
+    // Preserve this transition before degree-zero plans and all Commands/assets.
+    cache.previous_pairs.clone_from(&cache.current_pairs);
+    for &i in &graph.sorted_indices {
+        if graph.degrees[i] == 0 {
+            plans.push(unconnected_plan(&projected[i], storage));
+        }
+    }
+    plans
+}
+fn emit_beam(
+    commands: &mut Commands,
+    id: DecoratorId,
+    endpoint: Transform,
+    transient: &mut DecoratorTransientVisualState,
+) {
+    let mut transform = endpoint;
+    transform.translation -= transform.rotation * Vec3::new(0.0, 0.0, 0.385);
+    let entity = commands
+        .spawn(NaniBundle::<SolidVertexColorInstanceData> {
+            desc: NaniInstanceDesc {
+                mesh: NaniMeshSelector::Named(BEAM_NAME),
+                subset_kind: GpuWorldSubsetKind::SolidVertexColor,
+            },
+            transform,
+            marker: InstanceDataMarker::default(),
+        })
+        .id();
+    transient.add_decorator_visual_entity(id.0, entity);
+}
+
+fn relative_height(u: f32, y0: f32, y1: f32, distance: f32) -> f32 {
+    let centered = u + u - 1.0;
+    ((u * y1 + (1.0 - u) * y0) - y0) + (((1.0 - centered * centered) * distance) * (-0.08))
+}
+fn emit_plan(
+    plan: &ConnectionPlan,
+    commands: &mut Commands,
+    meshes: &AssetMeshLibrary,
+    shaders: &AssetShaderLibrary,
+    transient: &mut DecoratorTransientVisualState,
+) {
+    emit_beam(commands, plan.id_a, plan.a, transient);
+    emit_beam(commands, plan.id_b, plan.b, transient);
+    let a = plan.a.translation + plan.a.rotation * Vec3::new(0.0, 0.0, 0.2);
+    let b = plan.b.translation + plan.b.rotation * Vec3::new(0.0, 0.0, 0.2);
+    let delta = b - a;
+    let distance = delta.length();
+    let rng = fastrand::Rng::with_seed(utils::rng::init_rng(plan.id_a.0.wrapping_mul(plan.id_b.0)));
+    let rounded = (distance / 0.7).round() as usize;
+    let count = rounded
+        .wrapping_add(1)
+        .wrapping_add(usize::from(rounded == 0));
+    let boundaries = utils::random_splits(count, 0.2 / distance, &rng);
+    let horizontal = (delta.x * delta.x + delta.z * delta.z).sqrt();
+    let rotation_input = Vec2::new(-delta.z, delta.x) / horizontal;
+    for (index, pair) in boundaries.windows(2).enumerate() {
+        let middle = (pair[0] + pair[1]) * 0.5;
+        let span = (pair[1] - pair[0]) * f32::from_bits(0x3f36_db6e);
+        let left = relative_height(middle - span * 0.5, a.y, b.y, distance);
+        let right = relative_height(middle + span * 0.5, a.y, b.y, distance);
+        let height = (left + right) * 0.5;
+        let factor = (distance * span).abs() * 2.5;
+        let second_variant = rng.u32(..) & 0xc000_0000 == 0;
+        let r1 = rng.f32();
+        let r2 = rng.f32();
+        let scale = Vec3::new(
+            (r2 * 1.1 + (1.0 - r2) * 0.8).min(0.8) * factor,
+            (((1.0 - r1) * 0.6 + r1 * 1.2) * factor).min(1.0),
+            1.0,
+        );
+        let position = Vec3::new(
+            (1.0 - middle) * a.x + middle * b.x,
+            a.y + height,
+            (1.0 - middle) * a.z + middle * b.z,
+        );
+        let rotation = utils::xz_rotation_bad(rotation_input);
+        let mut builder = WindowVisualEntityBuilder::new(position, rotation, plan.id_a.0);
+        builder.mesh_name = if second_variant {
+            CLOTH_MESH_2
+        } else {
+            CLOTH_MESH
+        };
+        builder.nani_name = "nani_cloth";
+        builder.scale_override = Some(scale);
+        builder.normal_map = Some(if second_variant { NORMAL_2 } else { NORMAL });
+        builder.clothline(ClothlineCloth::from_words([
+            (left - height).to_bits(),
+            (right - height).to_bits(),
+            plan.word.wrapping_add(index as u32),
+        ]));
+        builder.build(commands, plan.id_a.0, meshes, shaders, transient);
+    }
+    clothline(
+        &mut ClothlineContext {
+            commands,
+            meshes,
+            shaders,
+            transient,
+        },
+        plan.id_a.0,
+        a,
+        b,
+        f32::from_bits(0x3e99_999a),
+        0.0,
+        1.0,
+    );
+}
+
+/// Exact ten original SystemParam kinds from two complete typed B wrappers.
+/// Textures/UI remain required actual owners even though this bounded body does
+/// not access texture fields or emit a signifier. No resource-exists gate.
+pub fn generate_clothline_visuals(
+    mut visual: ResMut<DecoratorVisualState>,
+    meshes: Res<AssetMeshLibrary>,
+    shaders: Res<AssetShaderLibrary>,
+    _textures: Res<AssetTextureLibrary>,
+    _ui: Res<UiSignifierStream>,
+    mut commands: Commands,
+    mut cache: Local<CacheClothes>,
+    mut sound: EventWriter<PlayClutterSoundCmd>,
+    storage: Res<DecoratorStorage>,
+    raycast: Res<RaycastWorld>,
+) {
+    let projected = projected_clothes(&visual.cloth_infos);
+    let mut ids = Vec::with_capacity(projected.len());
+    for info in &projected {
+        if !cache.previous_ids.contains(&info.decorator_id) {
+            sound.write(PlayClutterSoundCmd {
+                kind: 16,
+                context: 0,
+                position: info.transform.translation,
+            });
+        }
+        ids.push(info.decorator_id);
+    }
+    cache.previous_ids = ids;
+    let anchors: Vec<_> = projected
+        .iter()
+        .map(|info| FlagAnchor {
+            id: info.decorator_id.0,
+            wall: info.wall.0,
+            pos: info.transform.translation,
+            source: true,
+            target: true,
+        })
+        .collect();
+    let graph = greedily_connect(
+        &anchors,
+        &ConnectParams {
+            max_per_node: 1,
+            allow_same_wall: true,
+            near_different_wall: 9.0,
+            far_same_wall: 6.0,
+            min_same_wall: 0.0,
+        },
+        |origin, direction, max_toi| {
+            raycast.intersects_any_with_max_toi(origin, direction, max_toi, 0x30db)
+        },
+    );
+    let plans = plans_and_cache(&projected, &graph, &mut cache, &storage, &mut sound);
+    for plan in plans {
+        emit_plan(
+            &plan,
+            &mut commands,
+            &meshes,
+            &shaders,
+            &mut visual.transient,
+        );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::decorator_visual::maintain_visual_entities::clear_out_visual_entities;
+    use bevy_ecs::schedule::{IntoScheduleConfigs, Schedule};
+    use country_core::{
+        asset_libraries::texture_library::{
+            DescriptorImageUpdate, ImageView, TextureLibraryDevice, TextureUpdate,
+        },
+        components::NormalMap,
+        render::{
+            load_texture::boundary::TextureDevice,
+            mesh::Mesh,
+            nani::{
+                gpu_world::{GpuWorld, GpuWorldSubset, InstanceKey, OwnedGpuWorldSubset},
+                instance_data::ClothInstanceData,
+                systems::{nani_maintain_instances_ecs, nani_update_cloth_ecs},
+            },
+            ssbo::rhapsody_boundary::{Buffer, BufferDesc, GraphicsDevice},
+        },
+        resources::{
+            render::mesh_atlas_library::MeshAtlasLibrary,
+            walls::{decorator::DecoratorInfo, decorator_storage::Decorators, WallId},
+        },
+        rhapsody_contract::DescriptorSet,
+        rhapsody_types::{BackendError, Texture, TextureDesc},
+    };
+    use glam::Quat;
+    use std::cell::Cell;
+
+    /// CPU boundary only; no resource upload, descriptor publication or GPU run.
+    #[derive(Default)]
+    struct CpuDevice {
+        next: Cell<u64>,
+    }
+    impl GraphicsDevice for CpuDevice {
+        fn create_buffer(
+            &self,
+            desc: &BufferDesc,
+            _: &str,
+            _: Option<&[u8]>,
+        ) -> Result<Buffer, BackendError> {
+            let id = self.next.get() + 1;
+            self.next.set(id);
+            Ok(Buffer {
+                id,
+                generation: 1,
+                byte_size: desc.size as u64,
+                _gap10: 0,
+                _gap20: 0,
+            })
+        }
+        fn update_buffer_bytes(
+            &self,
+            _: &Buffer,
+            _: &[u8],
+            _: &[core::ops::Range<usize>],
+            _: usize,
+        ) -> Result<(), BackendError> {
+            panic!("this producer test does not flush/upload GPU buffers")
+        }
+        fn mapped_slice_mut(&self, b: &Buffer) -> Option<&mut [u8]> {
+            let page =
+                Box::leak(vec![0u128; (b.byte_size as usize).div_ceil(16)].into_boxed_slice());
+            Some(unsafe {
+                core::slice::from_raw_parts_mut(
+                    page.as_mut_ptr().cast::<u8>(),
+                    b.byte_size as usize,
+                )
+            })
+        }
+    }
+    impl TextureDevice for CpuDevice {
+        fn create_texture(
+            &self,
+            _: &str,
+            _: &TextureDesc,
+            _: &[u8],
+        ) -> Result<Texture, BackendError> {
+            panic!("CPU fixture uses real library ownership with explicit texture values")
+        }
+    }
+    impl TextureLibraryDevice for CpuDevice {
+        fn create_persistent_descriptor_set(&self, _: &str) -> Result<DescriptorSet, BackendError> {
+            Ok(DescriptorSet::default())
+        }
+        fn update_persistent_descriptor_set(
+            &self,
+            _: &DescriptorSet,
+            _: &[DescriptorImageUpdate],
+        ) -> Result<(), BackendError> {
+            panic!("no descriptor publication in CPU producer tests")
+        }
+        fn get_vk_image_view(&self, _: &Texture, _: u32) -> Result<ImageView, BackendError> {
+            panic!("no GPU image view")
+        }
+        fn update_texture(&self, _: &Texture, _: &TextureUpdate) -> Result<(), BackendError> {
+            panic!("no GPU texture update")
+        }
+    }
+    fn info(id: u32, wall: u64, pos: Vec3) -> ClothInfo {
+        ClothInfo {
+            transform: Transform {
+                rotation: Quat::IDENTITY,
+                translation: pos,
+                scale: Vec3::new(1.3, 0.9, 1.7),
+            },
+            wall: WallId(wall),
+            dimensions: [2.0, 1.0],
+            decorator_id: DecoratorId(id),
+        }
+    }
+    fn fixture(input: Vec<ClothInfo>) -> (World, Schedule) {
+        let mut world = World::new();
+        world.insert_resource(DecoratorVisualState {
+            cloth_infos: input,
+            ..Default::default()
+        });
+        world.insert_resource(AssetMeshLibrary::new());
+        world.insert_resource(AssetShaderLibrary::new());
+        world.insert_resource(AssetTextureLibrary::new(&CpuDevice::default()));
+        world.insert_resource(UiSignifierStream::default());
+        world.insert_resource(DecoratorStorage::default());
+        world.insert_resource(RaycastWorld::new());
+        world.init_resource::<Events<PlayClutterSoundCmd>>();
+        let mut schedule = Schedule::default();
+        schedule.add_systems((clear_out_visual_entities, generate_clothline_visuals).chain());
+        (world, schedule)
+    }
+    fn sounds(world: &mut World) -> Vec<PlayClutterSoundCmd> {
+        world
+            .resource_mut::<Events<PlayClutterSoundCmd>>()
+            .drain()
+            .collect()
+    }
+    fn mesh_desc(world: &World, entity: Entity) -> &NaniInstanceDesc {
+        world.get::<NaniInstanceDesc>(entity).unwrap()
+    }
+    fn add_triangle(atlas: &mut MeshAtlasLibrary, kind: GpuWorldSubsetKind, name: NameHash) {
+        let mut mesh = Mesh::new("CPU producer atlas triangle");
+        mesh.set_attribute(
+            country_core::render::mesh::ATTR_POSITION,
+            vec![Vec3::X, Vec3::Y * 2.0, Vec3::Z * 3.0],
+        );
+        mesh.set_indices(vec![0, 1, 2]);
+        atlas.add(kind, name, &mesh);
+    }
+
+    #[test]
+    fn actual_wall_bucket_scalar_works_without_d2s_and_wraps_plan_word() {
+        let a = info(u32::MAX, 77, Vec3::new(1.0, 3.0, 2.0));
+        let mut bucket = Decorators::default();
+        let mut stored = DecoratorInfo::default();
+        stored.decorator_id = 9;
+        bucket.insert(a.decorator_id, stored);
+        let mut storage = DecoratorStorage::default();
+        storage.per_wall.insert(a.wall, bucket);
+        // Only the real bucket was populated, never its separate d2s index.
+        assert_eq!(storage_scalar(&storage, &a), 9);
+        assert_eq!(unconnected_plan(&a, &storage).word, 8);
+        let mut wrong_wall = a.clone();
+        wrong_wall.wall = WallId(78);
+        assert_eq!(storage_scalar(&storage, &wrong_wall), 0);
+    }
+    #[test]
+    fn projection_preserves_real_fields_and_has_native_y_add_order() {
+        let mut a = info(17, 23, Vec3::new(2.0, 7.0, 11.0));
+        a.transform.rotation = Quat::from_rotation_y(0.7);
+        let out = projected_clothes(&[a.clone()]);
+        let offset = a.transform.rotation * Vec3::new(0.0, 0.0, 0.385);
+        assert_eq!(out[0].transform.rotation, a.transform.rotation);
+        assert_eq!(out[0].transform.scale, a.transform.scale);
+        assert_eq!(out[0].dimensions, a.dimensions);
+        assert_eq!(out[0].wall, a.wall);
+        assert_eq!(out[0].decorator_id, a.decorator_id);
+        assert_eq!(
+            out[0].transform.translation.y.to_bits(),
+            ((7.0 + 1.0 * (-0.5) * 0.6) + offset.y).to_bits()
+        );
+        assert_eq!(a.transform.translation, Vec3::new(2.0, 7.0, 11.0));
+    }
+    #[test]
+    fn plans_choose_far_same_wall_and_near_other_wall_in_native_tie_order() {
+        let a = info(4, 11, Vec3::ZERO);
+        let mut b = info(9, 11, Vec3::X * 5.0);
+        let storage = DecoratorStorage::default();
+        let far = connected_plan(&a, &b, &storage);
+        assert_eq!((far.a.translation.x, far.b.translation.x), (-1.0, 6.0));
+        b.wall = WallId(12);
+        let near = connected_plan(&a, &b, &storage);
+        assert_eq!((near.a.translation.x, near.b.translation.x), (1.0, 4.0));
+        assert_eq!(near.word, 13);
+    }
+    #[test]
+    fn same_world_nonempty_commands_have_canonical_payload_and_single_transient_owner() {
+        let (mut world, mut schedule) = fixture(vec![info(37, 5, Vec3::new(2.0, 4.0, 7.0))]);
+        let persistent = world.spawn_empty().id();
+        world
+            .resource_mut::<DecoratorVisualState>()
+            .persistent
+            .add_decorator_visual_entity(37, persistent);
+        schedule.run(&mut world);
+        let state = world.resource::<DecoratorVisualState>();
+        assert_eq!(state.cloth_infos.len(), 1);
+        assert_eq!(
+            state.persistent_entities_of(37),
+            Some([persistent].as_slice())
+        );
+        let entities = state.transient.entities_of(37).unwrap().to_vec();
+        assert!(entities.len() > 4);
+        assert_eq!(
+            mesh_desc(&world, entities[0]).mesh,
+            NaniMeshSelector::Named(BEAM_NAME)
+        );
+        assert_eq!(
+            mesh_desc(&world, entities[1]).mesh,
+            NaniMeshSelector::Named(BEAM_NAME)
+        );
+        assert_eq!(
+            world.get::<Transform>(entities[0]).unwrap().scale,
+            Vec3::new(1.3, 0.9, 1.7)
+        );
+        let mut garments = 0;
+        let mut threads = 0;
+        for entity in entities {
+            let desc = mesh_desc(&world, entity);
+            let transform = world.get::<Transform>(entity).unwrap();
+            if desc.subset_kind == GpuWorldSubsetKind::Cloth {
+                let payload = world.get::<ClothlineCloth>(entity).unwrap().words();
+                assert_eq!(payload[2], 37 + garments);
+                assert_ne!(payload, [0; 3]);
+                assert!(world
+                    .get::<InstanceDataMarker<ClothInstanceData>>(entity)
+                    .is_some());
+                let normal = world.get::<NormalMap>(entity).unwrap().0;
+                assert!(normal == NORMAL || normal == NORMAL_2);
+                assert_eq!(
+                    desc.mesh,
+                    NaniMeshSelector::Named(NameHash::compute(if normal == NORMAL_2 {
+                        CLOTH_MESH_2
+                    } else {
+                        CLOTH_MESH
+                    }))
+                );
+                assert!(transform.translation.is_finite());
+                assert!(transform.scale.x > 0.0 && transform.scale.y > 0.0);
+                assert_eq!(transform.scale.z, 1.0);
+                garments += 1;
+            } else if desc.mesh != NaniMeshSelector::Named(BEAM_NAME) {
+                assert_eq!(
+                    desc.mesh,
+                    NaniMeshSelector::Named(NameHash::compute(
+                        crate::decorator_visual::flag_connections::CLOTH_MESH_THREAD
+                    ))
+                );
+                assert!(world.get::<ClothlineCloth>(entity).is_none());
+                assert!(world.get::<NormalMap>(entity).is_none());
+                assert_eq!((transform.scale.x, transform.scale.y), (1.0, 1.0));
+                threads += 1;
+            }
+        }
+        assert_eq!(garments, 3); // round(2/.7)=3 -> four boundaries -> three garments.
+        assert_eq!(threads, 7); // ceil(2/.3)=7 actual thread Commands.
+        assert_eq!(sounds(&mut world).len(), 1);
+    }
+    #[test]
+    fn local_cache_reuses_same_world_and_real_clear_despawns_old_transient_entities() {
+        let input = vec![info(7, 2, Vec3::ZERO), info(19, 3, Vec3::X * 4.0)];
+        let (mut world, mut schedule) = fixture(input.clone());
+        schedule.run(&mut world);
+        let first = sounds(&mut world);
+        assert_eq!(first.len(), 3); // Two new IDs, then one actual connection.
+        assert!(first
+            .iter()
+            .all(|event| event.kind == 16 && event.context == 0));
+        let p = projected_clothes(&input);
+        assert_eq!(first[0].position, p[0].transform.translation);
+        assert_eq!(
+            first[2].position,
+            p[0].transform.translation * 0.5 + p[1].transform.translation * 0.5
+        );
+        let old: Vec<_> = world
+            .resource::<DecoratorVisualState>()
+            .transient
+            .entities
+            .values()
+            .flatten()
+            .copied()
+            .collect();
+        schedule.run(&mut world);
+        assert!(sounds(&mut world).is_empty());
+        for entity in old {
+            assert!(world.get_entity(entity).is_err());
+        }
+        world
+            .resource_mut::<DecoratorVisualState>()
+            .cloth_infos
+            .clear();
+        schedule.run(&mut world);
+        assert!(sounds(&mut world).is_empty());
+        assert!(world
+            .resource::<DecoratorVisualState>()
+            .transient
+            .entities
+            .is_empty());
+        world.resource_mut::<DecoratorVisualState>().cloth_infos = input;
+        schedule.run(&mut world);
+        assert_eq!(sounds(&mut world).len(), 3);
+    }
+    #[test]
+    fn cache_pair_disappears_and_reappears_without_new_ids_or_local_reset() {
+        let (mut world, mut schedule) =
+            fixture(vec![info(7, 2, Vec3::ZERO), info(19, 3, Vec3::X * 4.0)]);
+        schedule.run(&mut world);
+        assert_eq!(sounds(&mut world).len(), 3);
+        world.resource_mut::<DecoratorVisualState>().cloth_infos[1]
+            .transform
+            .translation
+            .x = 15.0;
+        schedule.run(&mut world);
+        assert!(sounds(&mut world).is_empty());
+        world.resource_mut::<DecoratorVisualState>().cloth_infos[1]
+            .transform
+            .translation
+            .x = 4.0;
+        schedule.run(&mut world);
+        assert_eq!(sounds(&mut world).len(), 1);
+    }
+    #[test]
+    fn actual_producer_named_meshes_resolve_nonidentity_atlas_parts_in_same_world() {
+        let (mut world, mut schedule) = fixture(vec![info(37, 5, Vec3::new(2.0, 4.0, 7.0))]);
+        schedule.run(&mut world);
+        let mut atlas = MeshAtlasLibrary::default();
+        let solid = GpuWorldSubsetKind::SolidVertexColor;
+        let cloth = GpuWorldSubsetKind::Cloth;
+        add_triangle(
+            &mut atlas,
+            solid,
+            NameHash::compute("CPU unrelated first solid"),
+        );
+        add_triangle(&mut atlas, solid, BEAM_NAME);
+        add_triangle(
+            &mut atlas,
+            solid,
+            NameHash::compute(crate::decorator_visual::flag_connections::CLOTH_MESH_THREAD),
+        );
+        add_triangle(
+            &mut atlas,
+            cloth,
+            NameHash::compute("CPU unrelated first cloth"),
+        );
+        add_triangle(&mut atlas, cloth, NameHash::compute(CLOTH_MESH));
+        add_triangle(&mut atlas, cloth, NameHash::compute(CLOTH_MESH_2));
+        let device = CpuDevice::default();
+        let mut gpu = GpuWorld::new(&device);
+        gpu.assign_subset(
+            solid,
+            GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<SolidVertexColorInstanceData>(
+                &device, solid,
+            )),
+        );
+        gpu.assign_subset(
+            cloth,
+            GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<ClothInstanceData>(
+                &device, cloth,
+            )),
+        );
+        world.insert_resource(atlas);
+        world.insert_resource(gpu);
+        let mut maintain = Schedule::default();
+        maintain.add_systems(nani_maintain_instances_ecs);
+        maintain.run(&mut world);
+        let state = world.resource::<DecoratorVisualState>();
+        for &entity in state.transient.entities.values().flatten() {
+            let desc = mesh_desc(&world, entity);
+            let key = world.get::<InstanceKey>(entity).unwrap();
+            let name = match desc.mesh {
+                NaniMeshSelector::Named(n) => n,
+                _ => panic!("actual producer emits Named"),
+            };
+            let expected = world
+                .resource::<MeshAtlasLibrary>()
+                .get_by_name(name)
+                .iter()
+                .find(|part| part.subset == desc.subset_kind)
+                .unwrap();
+            assert_ne!(expected.part_index, 0);
+            assert_eq!(key.kind, desc.subset_kind);
+        }
+    }
+    #[test]
+    fn missing_actual_garment_normal_fails_in_real_updater_instead_of_zero_descriptor() {
+        // Actual producer, canonical payload and actual GpuWorld. Deliberately
+        // missing named texture remains a visible downstream asset failure.
+        let (mut world, mut schedule) = fixture(vec![info(37, 5, Vec3::new(2.0, 4.0, 7.0))]);
+        schedule.run(&mut world);
+        let mut atlas = MeshAtlasLibrary::default();
+        let solid = GpuWorldSubsetKind::SolidVertexColor;
+        let cloth = GpuWorldSubsetKind::Cloth;
+        for name in [
+            BEAM_NAME,
+            NameHash::compute(crate::decorator_visual::flag_connections::CLOTH_MESH_THREAD),
+        ] {
+            add_triangle(&mut atlas, solid, name);
+        }
+        for name in [CLOTH_MESH, CLOTH_MESH_2] {
+            add_triangle(&mut atlas, cloth, NameHash::compute(name));
+        }
+        let device = CpuDevice::default();
+        let mut gpu = GpuWorld::new(&device);
+        gpu.assign_subset(
+            solid,
+            GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<SolidVertexColorInstanceData>(
+                &device, solid,
+            )),
+        );
+        gpu.assign_subset(
+            cloth,
+            GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<ClothInstanceData>(
+                &device, cloth,
+            )),
+        );
+        world.insert_resource(atlas);
+        world.insert_resource(gpu);
+        let mut maintain = Schedule::default();
+        maintain.add_systems(nani_maintain_instances_ecs);
+        maintain.run(&mut world);
+        let mut update = Schedule::default();
+        update.add_systems(nani_update_cloth_ecs);
+        let failure =
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| update.run(&mut world)));
+        assert!(failure.is_err());
+        let subset = world.resource::<GpuWorld>().owned_subset_mut(cloth);
+        // No false successful row is asserted here; GPU flush is outside this test.
+        assert_eq!(subset.instance_count(), 3);
+    }
+}

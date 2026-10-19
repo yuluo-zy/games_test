@@ -1,0 +1,36 @@
+{
+  "reviewed_at_utc": "2026-10-19T15:49:45.659564+00:00",
+  "verdict": "passed_scoped_static_seven_canonical_mappings",
+  "inputs": [
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-bdac7a16d3c26c954b/nani-gpu-counts-20261019/nani-maintain-20261019/systems.rs.candidate",
+      "sha256": "9c8cec59d29f2d828355f196ef5192d68946e8b6996467ec86e49d0bbb15ae9a"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-bdac7a16d3c26c954b/nani-gpu-counts-20261019/nani-maintain-20261019/gameplay_startup.rs.patch",
+      "sha256": "c41b8b7de35080917b3258e037f7f9b985cd7c523d452620308c2dec303f183d"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-bdac7a16d3c26c954b/nani-gpu-counts-20261019/nani-maintain-20261019/handoff-manifest.json",
+      "sha256": "9fb55fe3e3573a6ada31f4843cbb26e1225dac12ecd428de9ef6b186d578a9ac"
+    }
+  ],
+  "checks": [
+    "Uses actual same-World InstanceKey Component plus existing Local active map; no mirror key/Resource",
+    "Maintains original remove/create/changed algorithms, capacity request count, dense-index repair using canonical key",
+    "Explicit ApplyDeferred exposes inserted keys before actual component payload updates; seven updates have no Changed filter",
+    "One subset lock per system; actual dirty ranges flush before request count roll; upload error panics before clearing dirty state/counter roll",
+    "PrevTransform current named rotation/translation/scale retained; actual terrain mask borrowed as transparent POD u32, four path/water grids share same512 raster ref type",
+    "Completeness preflight examines actual descriptors, not registered empty subsets;13 unmapped actual descriptors explicitly fail before publication",
+    "Current world_graph.rs already invokes typed generate_nani_draw_lists at W22 and W28; author initial no-caller claim corrected, no duplicate caller required"
+  ],
+  "limits": [
+    "Candidate not typechecked or run; five added ECS tests pending root",
+    "Seven mappings are not complete20 original updates nor full game",
+    "Decorator local raw AlbedoMap producer cannot feed canonical optional query until separate actual producer migration; author has handed a narrow patch to root",
+    "Original VAO outer-tuple order differs from current PostUpdate VAO maintenance and remains explicit",
+    "Do not copy whole gameplay_startup candidate over Forest/root edits: integrate its single set44 hunk with before/dependency rebasing",
+    "No CPU readback/fixedmax count substituted; GPU/nonempty scene acceptance still required"
+  ],
+  "reviewer_cargo_gpu": false
+}

@@ -1,0 +1,43 @@
+
+/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+141338a90: 56                          	pushq	%rsi
+141338a91: 49 8d 40 ff                 	leaq	-0x1(%r8), %rax
+141338a95: 48 39 d0                    	cmpq	%rdx, %rax
+141338a98: 73 68                       	jae	0x141338b02 <.text+0x1337b02>
+141338a9a: 49 39 d0                    	cmpq	%rdx, %r8
+141338a9d: 75 02                       	jne	0x141338aa1 <.text+0x1337aa1>
+141338a9f: 5e                          	popq	%rsi
+141338aa0: c3                          	retq
+141338aa1: 48 8d 04 d1                 	leaq	(%rcx,%rdx,8), %rax
+141338aa5: 4a 8d 14 c1                 	leaq	(%rcx,%r8,8), %rdx
+141338aa9: 49 c1 e0 03                 	shlq	$0x3, %r8
+141338aad: eb 14                       	jmp	0x141338ac3 <.text+0x1337ac3>
+141338aaf: 90                          	nop
+141338ab0: 49 89 ca                    	movq	%rcx, %r10
+141338ab3: 4d 89 0a                    	movq	%r9, (%r10)
+141338ab6: 48 83 c2 08                 	addq	$0x8, %rdx
+141338aba: 49 83 c0 08                 	addq	$0x8, %r8
+141338abe: 48 39 c2                    	cmpq	%rax, %rdx
+141338ac1: 74 dc                       	je	0x141338a9f <.text+0x1337a9f>
+141338ac3: 4c 8b 5a f8                 	movq	-0x8(%rdx), %r11
+141338ac7: 4c 8b 0a                    	movq	(%rdx), %r9
+141338aca: 45 8b 51 30                 	movl	0x30(%r9), %r10d
+141338ace: 45 3b 53 30                 	cmpl	0x30(%r11), %r10d
+141338ad2: 73 e2                       	jae	0x141338ab6 <.text+0x1337ab6>
+141338ad4: 4d 89 c2                    	movq	%r8, %r10
+141338ad7: 66 0f 1f 84 00 00 00 00 00  	nopw	(%rax,%rax)
+141338ae0: 4e 89 1c 11                 	movq	%r11, (%rcx,%r10)
+141338ae4: 49 83 fa 08                 	cmpq	$0x8, %r10
+141338ae8: 74 c6                       	je	0x141338ab0 <.text+0x1337ab0>
+141338aea: 4e 8b 5c 11 f0              	movq	-0x10(%rcx,%r10), %r11
+141338aef: 41 8b 71 30                 	movl	0x30(%r9), %esi
+141338af3: 49 83 c2 f8                 	addq	$-0x8, %r10
+141338af7: 41 3b 73 30                 	cmpl	0x30(%r11), %esi
+141338afb: 72 e3                       	jb	0x141338ae0 <.text+0x1337ae0>
+141338afd: 49 01 ca                    	addq	%rcx, %r10
+141338b00: eb b1                       	jmp	0x141338ab3 <.text+0x1337ab3>
+141338b02: 0f 0b                       	ud2

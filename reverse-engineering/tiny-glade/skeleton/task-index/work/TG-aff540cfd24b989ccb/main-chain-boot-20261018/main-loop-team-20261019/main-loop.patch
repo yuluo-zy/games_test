@@ -1,0 +1,548 @@
+--- a/tiny-glade/crates/tiny-glade/src/game_loop.rs
++++ b/tiny-glade/crates/tiny-glade/src/game_loop.rs
+@@ -27,11 +27,18 @@
+ /// Implementations must supply the actual frame/pass/WSI adapter; this trait
+ /// does not declare the missing production adapter implemented.
+ pub trait GameRenderHostFactory {
+-    type Host<'a>: RenderHost
++    type Host<'a>: RenderHost<CompileError = rhapsody::Error>
+     where
+         Self: 'a;
+ 
+     fn host<'a>(&'a mut self, world: &'a mut World, egui: &'a mut EguiBackend) -> Self::Host<'a>;
++
++    /// Return an actual host-side error before the frame's temporal/log/limiter
++    /// effects. Graph errors retain their typed cause through `render`.
++    fn finish_render(&mut self) -> anyhow::Result<()>;
++    fn last_frame_submitted(&self) -> bool;
++    /// A successfully queued present is not a proof of scanout completion.
++    fn last_frame_present_queued(&self) -> bool;
+ }
+ 
+ /// B 0x1404de6b4..0x1404de7da. An open, throttleable menu limits
+@@ -78,14 +85,28 @@
+     }
+ }
+ 
+-/// The recovered update/render section of main_loop, separated from its still
+-/// unresolved OS-event/device-recovery section. This owns real Bevy/egui state;
+-/// it is not a native-layout mirror of the 0x1118-byte GameLoop.
++/// Read-only counters from the real production frame path. A gameplay frame
++/// requires the Game state and MainCamera in the App actually updated/rendered.
++/// All counts cover only frames whose render and host checks succeeded. The
++/// submission/present fields are that successful-frame subset, not total GPU
++/// operations: a failed frame may already have submitted work. They do not
++/// assert nonempty scene data or scanout.
++#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
++pub struct FrameProgress {
++    pub completed_frames: u64,
++    pub gameplay_frames: u64,
++    pub gameplay_submissions: u64,
++    pub gameplay_presents_queued: u64,
++}
++
++/// The recovered update/render section of main_loop. This owns real Bevy/egui
++/// state; it is not a native-layout mirror of the 0x1118-byte GameLoop.
+ pub struct GameFrameDriver {
+     app: App,
+     egui: EguiBackend,
+     pacer: FramePacer,
+     limiter: crate::fps_limiter::FpsLimiter,
++    progress: FrameProgress,
+ }
+ 
+ impl GameFrameDriver {
+@@ -105,6 +126,7 @@
+             egui: EguiBackend::new(context),
+             pacer: FramePacer::default(),
+             limiter: crate::fps_limiter::FpsLimiter::new(),
++            progress: FrameProgress::default(),
+         }
+     }
+ 
+@@ -113,6 +135,10 @@
+     }
+     pub fn app_mut(&mut self) -> &mut App {
+         &mut self.app
++    }
++
++    pub fn progress(&self) -> FrameProgress {
++        self.progress
+     }
+ 
+     /// B begin_frame@0x1404de115 → App::update@0x1404de349 →
+@@ -127,7 +153,7 @@
+         input: Option<egui::RawInput>,
+         factory: &mut F,
+         publish_platform_output: impl FnOnce(egui::PlatformOutput),
+-    ) {
++    ) -> anyhow::Result<()> {
+         let has_gui_input = input.is_some();
+         if let Some(input) = input {
+             self.egui.context().begin_frame(input);
+@@ -139,10 +165,33 @@
+         if has_gui_input {
+             publish_platform_output(self.egui.end_frame());
+         }
+-        {
+-            let mode = frame_render_mode(self.app.world());
++        let mode = frame_render_mode(self.app.world());
++        let gameplay_frame = mode == RenderMode::WorldGpuProfiled
++            && self.app.world().get_resource::<bevy_state::state::State<
++                country_core::app_loading_state::AppLoadingState,
++            >>().is_some_and(|state| {
++                *state.get() == country_core::app_loading_state::AppLoadingState::Game
++            });
++        let render_result = {
+             let mut host = factory.host(self.app.world_mut(), &mut self.egui);
+-            crate::render_loop::render(&mut host, &mut self.pacer, mode);
++            crate::render_loop::render(&mut host, &mut self.pacer, mode)
++        };
++        // Drain the adapter even when the graph returns an error, preserving the
++        // graph's original cause while still completing host-side error cleanup.
++        let host_result = factory.finish_render();
++        render_result?;
++        host_result?;
++        self.progress.completed_frames = self.progress.completed_frames.wrapping_add(1);
++        if gameplay_frame {
++            self.progress.gameplay_frames = self.progress.gameplay_frames.wrapping_add(1);
++            if factory.last_frame_submitted() {
++                self.progress.gameplay_submissions =
++                    self.progress.gameplay_submissions.wrapping_add(1);
++            }
++            if factory.last_frame_present_queued() {
++                self.progress.gameplay_presents_queued =
++                    self.progress.gameplay_presents_queued.wrapping_add(1);
++            }
+         }
+         // Original @1404de63a increments only after render returns. The
+         // independent loading World intentionally has no gameplay temporal.
+@@ -155,6 +204,7 @@
+         }
+         crate::main::log_time_to_first_frame();
+         self.limiter.frame(frame_target_fps(self.app.world()));
++        Ok(())
+     }
+ }
+ 
+@@ -212,6 +262,7 @@
+     pub(crate) frame_count: u64,
+     pub(crate) suspended: bool,
+     pub(crate) shutdown_done: bool,
++    pub(crate) pending_os_events: std::collections::VecDeque<crate::event_loop::OsWindowEvent>,
+     preparation: Option<crate::run_game::GameplayPreparation>,
+     custom_cursor_events: bevy_ecs::event::EventCursor<
+         country_core::resources::mouse_capture::CustomCursorSsboCreatedCmd,
+@@ -430,6 +481,7 @@
+             frame_count: 0,
+             suspended: false,
+             shutdown_done: false,
++            pending_os_events: Default::default(),
+             preparation,
+             custom_cursor_events: Default::default(),
+             capture_events: Default::default(),
+@@ -444,6 +496,26 @@
+     }
+     pub fn app_mut(&mut self) -> &mut App {
+         self.driver.app_mut()
++    }
++
++    pub fn frame_progress(&self) -> FrameProgress {
++        self.driver.progress()
++    }
++
++    pub fn frame_observation(
++        &self,
++    ) -> Option<&crate::production_renderer::ProductionFrameObservation> {
++        self.renderer.frame_observation()
++    }
++
++    /// Nonblocking query of the exact current present ticket. None is unknown,
++    /// including a ticket already reclaimed by normal frame maintenance.
++    pub fn frame_present_complete(&self) -> rhapsody::Result<Option<bool>> {
++        self.renderer.frame_present_complete()
++    }
++
++    pub fn gameplay_preparation_pending(&self) -> bool {
++        self.preparation.is_some()
+     }
+ 
+     /// B consumes outgoing game requests before the OS event batch. Platform
+@@ -463,7 +535,10 @@
+         if let Some(command) = capture {
+             let id = self.cursor_requests.next_request_id();
+             self.apply_capture(command)?;
+-            self.cursor_requests.on_confirmation(id);
++            // B drains the incoming OS batch before sending this request. Its
++            // acknowledgement cannot validate older coordinates in that batch.
++            self.pending_os_events
++                .push_back(crate::event_loop::OsWindowEvent::CursorConfirmed(id));
+         }
+         let minimize_count = self
+             .window_events
+@@ -513,19 +588,29 @@
+         &mut self,
+         created: country_core::resources::mouse_capture::CustomCursorSsboCreatedCmd,
+     ) -> anyhow::Result<()> {
++        // Retire the old writer before resolving the new owner's lease.
++        self.custom_cursor_buffer = None;
++        let lease = self.resolve_custom_cursor_buffer()?;
++        anyhow::ensure!(
++            lease.persistent_host_ptr() == Some(created.0.as_ptr().cast::<u8>()),
++            "CustomCursor Created pointer does not match its canonical managed buffer"
++        );
++        self.custom_cursor_buffer = Some(lease);
++        Ok(())
++    }
++
++    /// The startup event carries only a pointer; the actual long-lived owner is
++    /// the canonical App library plus this same BufferHost's managed lease.
++    fn resolve_custom_cursor_buffer(&self) -> anyhow::Result<rhapsody::resource::ManagedBuffer> {
+         use country_core::asset_libraries::ssbo_library::AssetSsboLibrary;
+         use country_core::systems::render_loop::draw_passes::custom_cursor_pass::CustomCursorSsbo;
+-        // Retire the old writer before resolving the new owner's lease.
+-        self.custom_cursor_buffer = None;
+         let core_buffer = self
+             .driver
+             .app
+             .world()
+             .resource::<AssetSsboLibrary>()
+             .get_buffer::<CustomCursorSsbo>()
+-            .ok_or_else(|| {
+-                anyhow::anyhow!("CustomCursor Created has no canonical buffer in its World")
+-            })?;
++            .ok_or_else(|| anyhow::anyhow!("CustomCursor has no canonical buffer in its World"))?;
+         let lease = self
+             .renderer
+             .bridge()
+@@ -539,15 +624,11 @@
+             lease.size == core::mem::size_of::<CustomCursorSsbo>() as u64,
+             "CustomCursor buffer has an invalid byte length"
+         );
+-        let pointer = lease
+-            .persistent_host_ptr()
+-            .ok_or_else(|| anyhow::anyhow!("CustomCursor buffer is not persistently mapped"))?;
+         anyhow::ensure!(
+-            pointer == created.0.as_ptr().cast::<u8>(),
+-            "CustomCursor Created pointer does not match its canonical managed buffer"
++            lease.persistent_host_ptr().is_some(),
++            "CustomCursor buffer is not persistently mapped"
+         );
+-        self.custom_cursor_buffer = Some(lease);
+-        Ok(())
++        Ok(lease)
+     }
+ 
+     /// B callback @140557e57..eb4 writes before the GameLoop confirmation
+@@ -677,7 +758,7 @@
+     }
+ 
+     /// B begin_frame → App::update → end_frame → PlatformOutput → render.
+-    pub(crate) fn frame(&mut self) -> anyhow::Result<bool> {
++    pub(crate) fn frame(&mut self, target: &EventLoopWindowTarget<()>) -> anyhow::Result<bool> {
+         if let Some(preparation) = &mut self.preparation {
+             // No OS callback can run while poll owns this thread. Withdraw the
+             // old writer before poll can swap Worlds; a failed/pending poll
+@@ -688,12 +769,20 @@
+                 self.reset_world_event_cursors();
+                 self.renderer
+                     .activate_application(self.driver.app().world())?;
++                // The worker may have run more than two updates after PreStartup,
++                // so its one-shot Created event can already have expired. Rejoin
++                // the real canonical owner; do not synthesize a new notification,
++                // create a second buffer, or initialize its mapped contents.
++                self.custom_cursor_buffer = Some(self.resolve_custom_cursor_buffer()?);
+                 self.preparation = None;
+             } else {
+                 self.custom_cursor_buffer = old_cursor_lease;
+             }
+         }
+-        self.flush_game_requests()?;
++        // B switches Apps, snapshots the incoming OS batch, then flushes
++        // outgoing requests before dispatching that captured batch. Queue state
++        // belongs to the loop, so a handoff cannot discard this frame's inputs.
++        let incoming_count = self.pending_os_events.len();
+         if self
+             .driver
+             .app
+@@ -701,6 +790,25 @@
+             .contains_resource::<country_core::resources::shutdown::ShutdownGame>()
+         {
+             return Ok(false);
++        }
++        self.flush_game_requests()?;
++        for _ in 0..incoming_count {
++            let event = self
++                .pending_os_events
++                .pop_front()
++                .expect("captured OS batch must remain queued");
++            self.dispatch_os_event(event, target)?;
++        }
++        // B @1404dc952..971 skips both simulation and rendering while either
++        // dimension is zero. Keep input edges for the next actual update.
++        let window = self
++            .driver
++            .app
++            .world()
++            .resource::<country_core::resources::window::WindowSize>();
++        if window.width == 0 || window.height == 0 {
++            std::thread::sleep(std::time::Duration::from_millis(1));
++            return Ok(true);
+         }
+         // B 1404ddf28..3c: real OS egui input is consumed only while the
+         // debug or experimental window is active. Other frames still begin
+@@ -715,10 +823,7 @@
+         self.driver
+             .frame(Some(input), &mut self.renderer, |output| {
+                 egui_io.handle_platform_output(window, output);
+-            });
+-        if let Some(error) = self.renderer.take_error() {
+-            return Err(error);
+-        }
++            })?;
+         // 本帧消费完成后清除按下和释放边沿，保留仍按住的按钮。
+         if let Some(mut keys) = self.driver.app.world_mut().get_resource_mut::<country_core::systems::backend::input::button_input::KeyButtonInput>() {
+             keys.clear();
+@@ -793,13 +898,30 @@
+         if self.shutdown_done {
+             return Ok(());
+         }
+-        self.shutdown_done = true;
++        // A worker can still be declaring/executing the gameplay warm-up with
++        // these exact GPU owners. Stop and join it before touching renderer
++        // lifetime, and do not abandon GPU cleanup when it reports an error.
++        let preparation_result = self
++            .preparation
++            .take()
++            .map_or(Ok(()), |mut preparation| preparation.cancel_and_join());
+         self.custom_cursor_buffer = None;
+         self.window
+             .set_cursor_grab(winit::window::CursorGrabMode::None)
+             .ok();
+         self.window.set_cursor_visible(true);
+-        self.renderer.shutdown()
++        let renderer_result = self.renderer.shutdown();
++        match (preparation_result, renderer_result) {
++            (Ok(()), Ok(())) => {
++                self.shutdown_done = true;
++                Ok(())
++            }
++            (Err(error), Err(cleanup)) => {
++                log::error!("GPU shutdown after gameplay preparation failure: {cleanup:#}");
++                Err(error)
++            }
++            (Err(error), Ok(())) | (Ok(()), Err(error)) => Err(error),
++        }
+     }
+ 
+     /// B 0x1404e2470: enumerate current monitors and sorted public video modes.
+@@ -820,6 +942,18 @@
+     }
+ }
+ 
++impl Drop for GameLoop {
++    fn drop(&mut self) {
++        // Also cover a constructed loop whose OS runner returns an error or is
++        // never entered: worker fields must not outlive renderer destruction.
++        if !self.shutdown_done {
++            if let Err(error) = self.shut_down() {
++                log::error!("game-loop shutdown: {error:#}");
++            }
++        }
++    }
++}
++
+ /// `gather_pending_video_setting_changes` 的队列元素（B item stride 0x10，
+ /// 标志字节 @+8；前 8 字节为命令载荷）。
+ #[derive(Debug)]
+--- a/tiny-glade/crates/tiny-glade/src/event_loop.rs
++++ b/tiny-glade/crates/tiny-glade/src/event_loop.rs
+@@ -90,19 +90,25 @@
+         let failure = Rc::new(RefCell::new(None));
+         let event_failure = failure.clone();
+         self.refresh_monitors(&event_loop);
+-        event_loop.run(move |event, target| {
++        let loop_result = event_loop.run(move |event, target| {
+             if let Err(error) = self.main_loop(event, target) {
+-                *event_failure.borrow_mut() = Some(error);
++                let mut first_error = event_failure.borrow_mut();
++                if first_error.is_none() {
++                    *first_error = Some(error);
++                } else {
++                    log::error!("event-loop cleanup after original failure: {error:#}");
++                }
++                drop(first_error);
+                 if let Err(shutdown) = self.shut_down() {
+                     log::error!("GPU shutdown after loop failure: {shutdown:#}");
+                 }
+                 target.exit();
+             }
+-        })?;
++        });
+         let error = failure.borrow_mut().take();
+         match error {
+             Some(error) => Err(error),
+-            None => Ok(()),
++            None => loop_result.map_err(Into::into),
+         }
+     }
+ 
+@@ -118,7 +124,7 @@
+             Event::WindowEvent { window_id, event } if window_id == self.window.id() => {
+                 if matches!(event, WindowEvent::RedrawRequested) {
+                     if !self.suspended {
+-                        let running = self.frame()?;
++                        let running = self.frame(target)?;
+                         if self.renderer.any_present_successful() || self.frame_count > 1 {
+                             self.window.set_visible(true);
+                         }
+@@ -127,6 +133,10 @@
+                             .frame_limit
+                             .is_some_and(|limit| self.frame_count >= limit);
+                         if !running || bounded_run_finished {
++                            log::info!(
++                                "production frame progress at exit: {:?}",
++                                self.frame_progress()
++                            );
+                             self.shut_down()?;
+                             target.exit();
+                         }
+@@ -142,16 +152,14 @@
+                 }
+                 match event {
+                     WindowEvent::Resized(size) => {
+-                        self.on_os_event(OsWindowEvent::Resized([size.width, size.height]), target)?
+-                    }
+-                    WindowEvent::Moved(_) => {
+-                        self.on_os_event(OsWindowEvent::MonitorChanged, target)?
+-                    }
++                        self.queue_os_event(OsWindowEvent::Resized([size.width, size.height]))?
++                    }
++                    WindowEvent::Moved(_) => self.queue_os_event(OsWindowEvent::MonitorChanged)?,
+                     WindowEvent::CloseRequested => {
+-                        self.on_os_event(OsWindowEvent::CloseRequested, target)?
++                        self.queue_os_event(OsWindowEvent::CloseRequested)?
+                     }
+                     WindowEvent::Focused(focused) => {
+-                        self.on_os_event(OsWindowEvent::Focused(focused), target)?
++                        self.queue_os_event(OsWindowEvent::Focused(focused))?
+                     }
+                     WindowEvent::ModifiersChanged(modifiers) => self.modifiers = modifiers.state(),
+                     WindowEvent::KeyboardInput {
+@@ -174,9 +182,9 @@
+                                     )
+                                     && self.modifiers.alt_key())
+                         {
+-                            self.on_os_event(OsWindowEvent::ToggleFullscreen, target)?;
++                            self.queue_os_event(OsWindowEvent::ToggleFullscreen)?;
+                         } else {
+-                            self.on_os_event(OsWindowEvent::Keyboard(event), target)?;
++                            self.queue_os_event(OsWindowEvent::Keyboard(event))?;
+                         }
+                     }
+                     WindowEvent::CursorMoved { position, .. } => {
+@@ -193,29 +201,25 @@
+                                     (position.y - anchor.y) as f32,
+                                 ]
+                             };
+-                            self.on_os_event(OsWindowEvent::CursorRelative(delta), target)?;
++                            self.queue_os_event(OsWindowEvent::CursorRelative(delta))?;
+                         } else {
+-                            self.on_os_event(
+-                                OsWindowEvent::CursorAbsolute([position.x, position.y]),
+-                                target,
+-                            )?;
++                            self.queue_os_event(OsWindowEvent::CursorAbsolute([
++                                position.x, position.y,
++                            ]))?;
+                         }
+                     }
+                     WindowEvent::MouseInput { state, button, .. } => {
+-                        self.on_os_event(OsWindowEvent::MouseButton(state, button), target)?
++                        self.queue_os_event(OsWindowEvent::MouseButton(state, button))?
+                     }
+                     // B forwards the LineDelta variant (two f32s) and unit=0;
+                     // the PixelDelta variant does not enter this producer path.
+                     WindowEvent::MouseWheel {
+                         delta: winit::event::MouseScrollDelta::LineDelta(x, y),
+                         ..
+-                    } => self.on_os_event(OsWindowEvent::LineMouseWheel([x, y]), target)?,
++                    } => self.queue_os_event(OsWindowEvent::LineMouseWheel([x, y]))?,
+                     WindowEvent::ScaleFactorChanged { .. } => {
+                         let size = self.window.inner_size();
+-                        self.on_os_event(
+-                            OsWindowEvent::Resized([size.width, size.height]),
+-                            target,
+-                        )?;
++                        self.queue_os_event(OsWindowEvent::Resized([size.width, size.height]))?;
+                     }
+                     _ => {}
+                 }
+@@ -227,10 +231,10 @@
+                 // Explicit OS adaptation: macOS Locked cursor does not produce
+                 // the Windows warp-and-CursorMoved protocol. Feed its real raw
+                 // deltas into the same recovered relative-motion consumer.
+-                self.on_os_event(
+-                    OsWindowEvent::CursorRelative([delta.0 as f32, delta.1 as f32]),
+-                    target,
+-                )?;
++                self.queue_os_event(OsWindowEvent::CursorRelative([
++                    delta.0 as f32,
++                    delta.1 as f32,
++                ]))?;
+             }
+             Event::AboutToWait => {
+                 // OS main-thread adapter: redraw drives the same recovered
+@@ -258,16 +262,26 @@
+         Ok(())
+     }
+ 
+-    pub fn on_os_event(
++    /// OS producer: retain the batch independently of either App. The mapped
++    /// absolute cursor write remains in this callback before confirmation gates.
++    pub(crate) fn queue_os_event(&mut self, event: OsWindowEvent) -> anyhow::Result<()> {
++        if let OsWindowEvent::CursorAbsolute(position) = &event {
++            self.update_custom_cursor_absolute(*position)?;
++        }
++        self.pending_os_events.push_back(event);
++        Ok(())
++    }
++
++    pub(crate) fn dispatch_os_event(
+         &mut self,
+         event: OsWindowEvent,
+         target: &winit::event_loop::EventLoopWindowTarget<()>,
+     ) -> anyhow::Result<()> {
+         use bevy_ecs::entity::Entity;
+         use bevy_input::{
++            ButtonState,
+             keyboard::KeyboardInput,
+             mouse::{MouseButtonInput, MouseScrollUnit, MouseWheel},
+-            ButtonState,
+         };
+         use country_core::{
+             game_config::GameConfig, resources::window::*, systems::backend::input,
+@@ -323,8 +337,8 @@
+                 self.app_mut()
+                     .world_mut()
+                     .send_event(country_core::resources::events::ShutdownGameCmd);
+-                // A close command reaches the app before the loop quit marker is
+-                // checked. Even a minimized window must run this last update.
++                // Dispatch after a possible handoff so the current App owns
++                // the real command. Its normal Update consumer owns the marker.
+                 self.window.request_redraw();
+             }
+             OsWindowEvent::ToggleFullscreen => {
+@@ -374,10 +388,8 @@
+                 self.app_mut().world_mut().send_event(keyboard_event);
+             }
+             OsWindowEvent::CursorAbsolute(position) => {
+-                // Native OS callback writes the mapped custom cursor before
+-                // the game-side confirmation-id filter. The writer itself
+-                // preserves the native uncaptured-only gate.
+-                self.update_custom_cursor_absolute(position)?;
++                // The OS producer already wrote the mapped SSBO before this
++                // batch was captured. Only the game event is confirmation-gated.
+                 if self.cursor_requests.is_fully_confirmed() {
+                     self.app_mut().world_mut().send_event(
+                         input::translate_input_to_cursor_moved::InputCursorMoved::Absolute(

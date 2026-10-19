@@ -692,7 +692,8 @@ const SF_RADIUS_BIAS: f32 = 0.63;
 const SF_LOW_Y_BIAS: f32 = -0.69;
 
 /// `Circle2d::get_tangent_at_u(&circle, 0.0)` result (x, y); `circle` = row words starting at +0xc.
-/// Provided by the caller (crate `Circle2d` is a stub with a different signature).
+/// The adapter passes the canonical shared Circle2d projection below; callers
+/// of the existing numerical API may still supply their own proven tangent.
 pub type TangentAtU0<'a> = &'a dyn Fn(&[u32]) -> Vec2;
 
 /// Stone floor payload (O).  Inputs: `translation` (Transform), optional Roof / RoofAnimation / Floor rows.
@@ -838,11 +839,15 @@ pub fn build_stone_floor(
     }
 }
 
-/// TYPED GAP (U): `utils::geometry::circle::Circle2d::get_tangent_at_u(&circle, 0.0)` (0x140c97660) on the
-/// circle laid out at row+0xc.  Machine code: `ang = fmodf(circle[+0xc], 2pi)` (+2pi if <0) `+ (1-u)*2pi`;
-/// returns `(-cos?/sin ...)` as two f32 (xmm0, xmm1) — circle layout not recovered in the crate.
-pub fn circle_tangent_u0(_circle_words: &[u32]) -> Vec2 {
-    Vec2::ZERO
+/// B140c97660 on the actual circle at component+0xc. The four words are
+/// center.x, center.y, radius, rotation. Shared Circle2d already implements the
+/// original remainder/angle order and signed tangent; no zero-vector fallback.
+pub fn circle_tangent_u0(circle_words: &[u32]) -> Vec2 {
+    ::utils::geometry::circle::Circle2d::new_rotated(
+        Vec2::new(f32::from_bits(circle_words[0]), f32::from_bits(circle_words[1])),
+        f32::from_bits(circle_words[2]),
+        f32::from_bits(circle_words[3]),
+    ).get_tangent_at_u(0.0)
 }
 
 // ===========================================================================
@@ -1062,6 +1067,34 @@ mod gb_tests {
         r
     }
     const NOTAN: &dyn Fn(&[u32]) -> Vec2 = &|_| Vec2::new(0.5, -0.5);
+
+    #[test]
+    fn circle_tangent_uses_actual_rotation_and_rejects_zero_vector_regression() {
+        for rotation in [0.0f32, 0.73, -1.25, 2.0 * std::f32::consts::TAU + 0.47] {
+            let words = [2.5f32.to_bits(), (-3.25f32).to_bits(), 4.5f32.to_bits(), rotation.to_bits()];
+            let tangent = circle_tangent_u0(&words);
+            let angle = rotation.rem_euclid(std::f32::consts::TAU) + std::f32::consts::TAU;
+            assert!((tangent.x + angle.sin()).abs() < 1e-6);
+            assert!((tangent.y - angle.cos()).abs() < 1e-6);
+            assert!((tangent.length_squared() - 1.0).abs() < 1e-6);
+        }
+    }
+
+    #[test]
+    fn stone_floor_rotated_circle_uses_real_tangent_payload() {
+        let mut roof = roof_straight(0.05);
+        roof[2] = 0;
+        roof[5] = 1.5f32.to_bits();
+        roof[6] = 0.73f32.to_bits();
+        let update = build_stone_floor(Vec3::new(12.0, 13.0, 14.0), Some(&roof),
+            Some(0.375), None, &circle_tangent_u0);
+        let angle = 0.73 + std::f32::consts::TAU;
+        assert!((f(update.words[4]) + angle.sin()).abs() < 1e-6);
+        assert!((f(update.words[5]) - angle.cos()).abs() < 1e-6);
+        assert_eq!(&update.words[6..9], &[3.0f32.to_bits(), 3.0f32.to_bits(), 0.375f32.to_bits()]);
+        assert_eq!(update.words[9], 0);
+        assert_eq!(update.sort_key, 3.0);
+    }
 
     #[test]
     fn stone_floor_roof_straight_tall() {

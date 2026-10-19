@@ -1,0 +1,11 @@
+--- tiny-glade/crates/systems/decorator/src/utils/visual_entity_builder.rs
++++ tiny-glade/crates/systems/decorator/src/utils/visual_entity_builder.rs
+@@ -261,7 +261,7 @@
+ ///
+ /// 字段与偏移的对应见模块头表；`Option` 字段取 `Some` 即机器码中的插入分支
+ /// （原始 tag 比较值记在字段文档里）。字段名 U、条件/载荷 O。
+-#[derive(Clone, Debug)]
++#[derive(Clone, Debug, PartialEq)]
+ pub struct WindowVisualEntityBuilder {
+     /// rotation（+0xc0，O）。
+     pub rotation: Quat,

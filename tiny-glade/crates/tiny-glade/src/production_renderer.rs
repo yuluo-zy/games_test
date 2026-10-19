@@ -75,7 +75,7 @@ pub fn warm_up_gameplay(
                 let display = display_extent(world)?;
                 Ok(
                     country_core::render::pass_builder::pass_resource_access::RgTexture {
-                        resource: id,
+                        resource: id.texture,
                         // Native final target: `"msaa color out"` = 0x2b. The
                         // native sample_count(4) lives on the graph image and on
                         // the attachment descriptions, not on this core view.
@@ -170,30 +170,20 @@ fn world_extent(
     Ok(extent)
 }
 
-/// Producers whose absence makes the typed W1..W54 consumer unable to declare
-/// a frame. Returning the missing name keeps the fallback explicit in logs and
-/// never fabricates a resource.
-fn missing_world_producer(world: &World) -> Option<&'static str> {
+/// Inputs read by the unconditional main prelude. World-only inputs are read
+/// by their actual selected consumer after `select_main_world`, so menu reuse
+/// and hidden-world frames do not require a MainCamera or ActiveSession.
+fn missing_main_producer(world: &World) -> Option<&'static str> {
     use country_core::{
         render::{frame_constants::FrameConstants, nani::gpu_world::GpuWorld},
-        resources::{gpu_lut::GpuLutTracker, session::ActiveSession},
-        systems::{
-            camera_rig::main_camera::MainCamera,
-            render_loop::draw_passes::deferred_raster::DeferredRasterResources,
-        },
+        resources::gpu_lut::GpuLutTracker,
     };
-    let checks: [(&'static str, bool); 7] = [
+    let checks: [(&'static str, bool); 4] = [
         ("GpuWorld", world.contains_resource::<GpuWorld>()),
         ("GpuLutTracker", world.contains_resource::<GpuLutTracker>()),
         (
             "FrameConstants",
             world.contains_resource::<FrameConstants>(),
-        ),
-        ("MainCamera", world.contains_resource::<MainCamera>()),
-        ("ActiveSession", world.contains_resource::<ActiveSession>()),
-        (
-            "DeferredRasterResources",
-            world.contains_resource::<DeferredRasterResources>(),
         ),
         (
             "FrameRenderConfig",
@@ -240,13 +230,18 @@ fn display_extent(world: &World) -> rhapsody::Result<[u32; 2]> {
     Ok(extent)
 }
 
+struct BuiltMainStage {
+    texture: u32,
+    kind: ProductionGraphKind,
+}
+
 fn build_full_world_stage(
     frame: &mut CoreGraphFrame<'_>,
     world: &mut World,
     lists: &DrawLists,
     extent: [u32; 2],
     egui: Option<(&mut EguiGpu, &mut EguiBackend)>,
-) -> rhapsody::Result<u32> {
+) -> rhapsody::Result<BuiltMainStage> {
     let color = world_color_target(frame, extent)?;
     let decision = crate::world_graph::select_main_world(world)?;
     let controls = crate::world_graph::WorldGraphControls {
@@ -319,7 +314,13 @@ fn build_full_world_stage(
         graph.export(id, WORLD_EXPORT_ACCESS)?;
         Ok(())
     })?;
-    Ok(tail.msaa.resource)
+    Ok(BuiltMainStage {
+        texture: tail.msaa.resource,
+        kind: ProductionGraphKind::Main {
+            world_rendered: decision.render_world && !debug_rt,
+            primary_rt: decision.render_world && debug_rt,
+        },
+    })
 }
 
 fn compile_full_world_graph(
@@ -352,7 +353,8 @@ fn compile_full_world_graph(
     Ok(CompiledGameGraph {
         capture_graph_id,
         graph,
-        output,
+        output: output.texture,
+        kind: output.kind,
         expected: ExportExpectation {
             format: country_core::systems::render_loop::draw_passes::final_post::MSAA_COLOR_FORMAT,
             sample_count:
@@ -446,6 +448,7 @@ fn compile_minimal_world_graph(
         capture_graph_id,
         graph,
         output: output.id,
+        kind: ProductionGraphKind::DiagnosticMinimal,
         expected: ExportExpectation {
             format: core_render_world::formats::COLOR_HDR,
             sample_count: 1,
@@ -533,7 +536,10 @@ pub struct ProductionRenderer {
     main_output: Option<Arc<rhapsody::resource::Texture>>,
     started: Instant,
     scopes: Vec<usize>,
-    first_error: Option<anyhow::Error>,
+    first_error: Option<rhapsody::Error>,
+    frame_submitted: bool,
+    frame_present_queued: bool,
+    frame_observation: Option<ProductionFrameObservation>,
     suspended: bool,
     closed: bool,
     reduced_state: u64,
@@ -618,6 +624,9 @@ impl ProductionRenderer {
             started: Instant::now(),
             scopes: Vec::new(),
             first_error: None,
+            frame_submitted: false,
+            frame_present_queued: false,
+            frame_observation: None,
             suspended: false,
             closed: false,
             reduced_state: 0,
@@ -692,8 +701,23 @@ impl ProductionRenderer {
     pub fn any_present_successful(&self) -> bool {
         self.swapchain.any_present_successful()
     }
+    pub fn frame_observation(&self) -> Option<&ProductionFrameObservation> {
+        self.frame_observation.as_ref()
+    }
+    /// `None` means no current queued ticket is retained. Queue acceptance and
+    /// GPU completion are never substituted for presentation completion.
+    pub fn frame_present_complete(&self) -> rhapsody::Result<Option<bool>> {
+        let Some(frame) = self.frame_observation.as_ref() else { return Ok(None); };
+        let Some(point) = frame.present_point else { return Ok(None); };
+        for ticket in &self.pending {
+            if ticket.point == point && Some(ticket.generation()) == frame.present_generation {
+                return ticket.is_present_complete().map(Some);
+            }
+        }
+        Ok(None)
+    }
     pub fn take_error(&mut self) -> Option<anyhow::Error> {
-        self.first_error.take()
+        self.first_error.take().map(anyhow::Error::from)
     }
     pub fn resize(&mut self, extent: [u32; 2]) -> Result<()> {
         self.platform.update(&self.window)?;
@@ -724,9 +748,9 @@ impl ProductionRenderer {
         self.swapchain.mark_stale();
         Ok(())
     }
-    fn record_error(&mut self, error: impl Into<anyhow::Error>) {
+    fn record_error(&mut self, error: rhapsody::Error) {
         if self.first_error.is_none() {
-            self.first_error = Some(error.into());
+            self.first_error = Some(error);
         }
     }
     fn collect(&mut self) -> rhapsody::Result<()> {
@@ -806,10 +830,35 @@ struct ExportExpectation {
     sample_count: u8,
 }
 
+/// Diagnostic facts from this frame's actual main graph. A Main graph may
+/// deliberately reuse a static menu capture without running render_world.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ProductionGraphKind {
+    Loading,
+    Main { world_rendered: bool, primary_rt: bool },
+    DiagnosticMinimal,
+}
+
+#[derive(Clone, Debug)]
+pub struct ProductionFrameObservation {
+    pub world: bevy_ecs::world::WorldId,
+    pub application_shader_owner: usize,
+    pub graph: rhapsody::rg::GraphId,
+    pub kind: ProductionGraphKind,
+    pub receipt_frame: u64,
+    pub submitted: rhapsody::sync::SyncSet,
+    pub draw_list_lengths: [usize; 21],
+    pub output_format: u32,
+    pub output_sample_count: u8,
+    pub present_point: Option<rhapsody::sync::SyncPoint>,
+    pub present_generation: Option<u64>,
+}
+
 pub struct CompiledGameGraph {
     capture_graph_id: rhapsody::rg::GraphId,
     graph: CompiledCoreGraph,
     output: u32,
+    kind: ProductionGraphKind,
     expected: ExportExpectation,
 }
 
@@ -824,9 +873,24 @@ pub struct ProductionRenderHost<'a> {
 
 impl GameRenderHostFactory for ProductionRenderer {
     type Host<'a> = ProductionRenderHost<'a>;
+    fn finish_render(&mut self) -> anyhow::Result<()> {
+        self.take_error().map_or(Ok(()), Err)
+    }
+    fn last_frame_submitted(&self) -> bool { self.frame_submitted }
+    fn last_frame_present_queued(&self) -> bool { self.frame_present_queued }
     fn host<'a>(&'a mut self, world: &'a mut World, egui: &'a mut EguiBackend) -> Self::Host<'a> {
-        self.activate_application(world)
-            .expect("B per-App rendering library ownership");
+        self.frame_submitted = false;
+        self.frame_present_queued = false;
+        self.frame_observation = None;
+        if let Err(error) = self.activate_application(world) {
+            // Keep the full application-switch diagnostic chain. This is an
+            // ownership/setup failure before world compilation, not its OOM
+            // retry path; no anyhow context is discarded by downcasting it.
+            self.record_error(rhapsody::Error::InvalidUsage {
+                what: "B per-App rendering library ownership".into(),
+                source: Some(error.into_boxed_dyn_error()),
+            });
+        }
         ProductionRenderHost {
             renderer: self,
             world,
@@ -865,7 +929,10 @@ impl ProductionRenderHost<'_> {
             .shader_backend()
             .prewarm(Duration::from_secs(10))
         {
-            self.renderer.bridge.cancel_built(graph)?;
+            if let Err(cleanup) = self.renderer.bridge.cancel_built(graph) {
+                log::warn!(target: crate::render_loop::LOG_TARGET,
+                    "presentation prewarm cancellation: {cleanup}");
+            }
             return Err(error);
         }
         let compiled = self.renderer.bridge.compile_built(graph)?;
@@ -878,6 +945,27 @@ impl ProductionRenderHost<'_> {
 impl RenderHost for ProductionRenderHost<'_> {
     type Compiled = CompiledGameGraph;
     type CompileError = rhapsody::Error;
+    fn compile_error_is_out_of_memory(error: &Self::CompileError) -> bool {
+        error.kind() == rhapsody::ErrorKind::OutOfMemory
+    }
+    fn take_render_error(&mut self) -> Option<Self::CompileError> {
+        self.renderer.first_error.take()
+    }
+    fn abort_frame(&mut self) {
+        // `take_render_error` already moved the original error out. Cleanup is
+        // unconditional and must never replace that error with a second one.
+        self.renderer.presentation.take();
+        if let Err(error) = self.renderer.bridge.cancel_presentation() {
+            log::warn!(target: crate::render_loop::LOG_TARGET, "aborted presentation cleanup: {error}");
+        }
+        if let Some(image) = self.renderer.acquired.take() {
+            if let Err(error) = image.cancel(TIMEOUT_NS) {
+                log::warn!(target: crate::render_loop::LOG_TARGET, "aborted acquisition cleanup: {error}");
+            }
+        }
+        self.renderer.main_output.take();
+        self.renderer.main.take();
+    }
     fn puffin_scopes_on(&mut self) -> bool {
         puffin::are_scopes_on()
     }
@@ -963,6 +1051,7 @@ impl RenderHost for ProductionRenderHost<'_> {
             capture_graph_id,
             graph,
             output: output.id,
+            kind: ProductionGraphKind::Loading,
             // loading_graph builds its "loading screen" target as 0x2b with a
             // single sample; presentation takes the non-MSAA resolve shader.
             expected: ExportExpectation {
@@ -977,7 +1066,7 @@ impl RenderHost for ProductionRenderHost<'_> {
         min_extent: Option<[u32; 2]>,
     ) -> rhapsody::Result<Self::Compiled> {
         let extent = world_extent(self.world, swapchain, min_extent)?;
-        match missing_world_producer(self.world) {
+        match missing_main_producer(self.world) {
             None => {
                 compile_full_world_graph(self.renderer, self.world, &self.lists, extent, self.egui)
             }
@@ -1048,6 +1137,8 @@ impl RenderHost for ProductionRenderHost<'_> {
         }
     }
     fn begin_frame(&mut self, gpu_profiling: bool) {
+        self.renderer.frame_submitted = false;
+        self.renderer.frame_present_queued = false;
         let result = self.renderer.bridge.with_session(|session| {
             session
                 .backend
@@ -1064,9 +1155,14 @@ impl RenderHost for ProductionRenderHost<'_> {
     }
     fn execute_main_graph(&mut self, compiled: Self::Compiled) {
         let expected = compiled.expected;
+        let kind = compiled.kind;
         let capture_graph_id = compiled.capture_graph_id;
         match self.renderer.bridge.execute_compiled(compiled.graph) {
             Ok(receipt) => {
+                // This receipt proves submission even if capture bookkeeping
+                // or export validation below subsequently fails. Abort must
+                // preserve that fact rather than report an unsubmitted frame.
+                self.renderer.frame_submitted = !receipt.receipts.is_empty();
                 if crate::screenshot::shared_texture_capture::installed(self.world) {
                     if let Err(error) = crate::screenshot::shared_texture_capture::submitted(
                         self.world, &mut self.renderer.bridge, capture_graph_id, &receipt,
@@ -1093,6 +1189,21 @@ impl RenderHost for ProductionRenderHost<'_> {
                         )));
                         return;
                     }
+                    let mut submitted = rhapsody::sync::SyncSet::EMPTY;
+                    for point in &receipt.receipts { submitted.insert(*point); }
+                    self.renderer.frame_observation = Some(ProductionFrameObservation {
+                        world: self.world.id(),
+                        application_shader_owner: Arc::as_ptr(&self.renderer.shaders) as usize,
+                        graph: capture_graph_id,
+                        kind,
+                        receipt_frame: receipt.frame,
+                        submitted,
+                        draw_list_lengths: std::array::from_fn(|i| self.lists.list(i).len()),
+                        output_format: actual.format,
+                        output_sample_count: actual.sample_count,
+                        present_point: None,
+                        present_generation: None,
+                    });
                     self.renderer.main_output = Some(texture);
                     self.renderer.main = Some((compiled.output, receipt));
                 }
@@ -1151,7 +1262,12 @@ impl RenderHost for ProductionRenderHost<'_> {
                 rhapsody::Error::invalid_usage("missing executed presentation graph")
             })?;
             let ticket = self.renderer.bridge.present(&target)?;
+            if let Some(frame) = self.renderer.frame_observation.as_mut() {
+                frame.present_point = Some(ticket.point);
+                frame.present_generation = Some(ticket.generation());
+            }
             self.renderer.pending.push_back(ticket);
+            self.renderer.frame_present_queued = true;
             Ok::<_, rhapsody::Error>(())
         })();
         if let Err(error) = result {

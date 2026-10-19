@@ -32,6 +32,8 @@
 // Preserve the original instruction-level expression order/NaN policy, API call shapes, and evidence/test transcription. See README.md.
 #![allow(clippy::neg_cmp_op_on_partial_ord)]
 use alloc::vec::Vec;
+use crate::resources::{session::ActiveSession, weather::Weather};
+use crate::systems::{camera_rig::main_camera::MainCamera, mode_manager::AppMode};
 
 use bevy_ecs::component::Component;
 use bevy_ecs::entity::Entity;
@@ -368,7 +370,7 @@ pub fn ivy_branch_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
 
 /// 叶 / 花薄壳共用：相机眼位置 + 库视图。
 fn ivy_inputs(w: &World) -> (Vec3, &AssetSsboLibrary) {
-    (res::<MainCameraView>(w).eye, res::<AssetSsboLibrary>(w))
+    (res::<MainCamera>(w).eye_position(), res::<AssetSsboLibrary>(w))
 }
 
 /// gap 5 `draw_instanced_ivy_leaf_shader`（0x1408dc180；21 B 薄壳，世界指针后移后 `jmp ivy_leaf_shader`）。
@@ -972,7 +974,7 @@ pub fn env11_binds(b: DrawBuilder<'_>, variant: u8) -> DrawBuilder<'_> {
 }
 
 pub fn env11(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
-    let variant = res::<ActiveSessionView>(w).variant;
+    let variant = res::<ActiveSession>(w).meta.glade.native_tag();
     nani_draw_world(env11_binds(b, variant), E11_KIND, w);
 }
 
@@ -1103,12 +1105,12 @@ pub enum Env3In {
 }
 
 pub fn read_env3(w: &World) -> Env3In {
-    let intensity = res::<WeatherView>(w).intensity;
+    let intensity = res::<Weather>(w).snow_amount;
     if !(intensity > 0.0) {
         return Env3In::Discard;
     }
-    let tag = res::<AppModeView>(w).tag;
-    let season = res::<MainCameraView>(w).season;
+    let tag = res::<AppMode>(w).native_tag();
+    let season = res::<MainCamera>(w).mode_byte();
     Env3In::Draw {
         intensity,
         mode_is_x13: tag == E3_APP_MODE_TAG,

@@ -1,0 +1,237 @@
+{
+  "captured_utc": "2026-10-19T17:15:08.149322+00:00",
+  "purpose": "Independent current integration status; historical frozen candidates/manifests are unchanged.",
+  "work_dir": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-eac12c8d24c206af39/no-world-undefined-20261019/reverse-blur-top-20261020",
+  "claim": "TG-eac12c8d24c206af39 / no-world-undefined-20261019",
+  "execution_owner": "root only; this agent performed read-only artifact/source checks and wrote this work-dir status record only",
+  "accepted_scope": {
+    "cpu": {
+      "record": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/validation/reverse-blur-consumer-v1-cpu.json",
+      "exit_code": 0,
+      "results": {
+        "rhapsody": {
+          "passed": 387,
+          "failed": 0,
+          "ignored": 0
+        },
+        "reverse_blur_content_contract": {
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0
+        },
+        "reverse_blur_content_guards": {
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0
+        }
+      },
+      "scope": "Current rhapsody library after both packages, including exact-layout CPU query checks and actual Graph contract regressions. Not a country-core or tiny-glade host build."
+    },
+    "original_shader_gpu": {
+      "record": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/validation/reverse-blur-original-v2-gpu.json",
+      "binary": "/private/tmp/tg-reverse-blur-original-v2-tests",
+      "binary_sha256": "79499abd9a6af5ba92ee5b5856edda4d09bd6f3ecd051a0d32ef5aa9c1c5b3dc",
+      "source_sha256": "6d185b0c19f7954f88d8566f9d56315b86b01d23ce9073ce904de27e346e9742",
+      "asset_sha256": "cf8410f4fb3691bfc701cd30a04078893552e7a31df325f7d1c99b88b552f3df",
+      "original_raw_spv_sha256": "ff30af76281df60e184e76fb27799ae941f86eac34c8f8f08250723b1579eda9",
+      "exit_code": 0,
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "skip_present": false,
+      "runtime_scope": [
+        "Unchanged original B reverse compute stage through production BindlessShaderPackage lowering, heap, managed graph resources, VulkanGraphSession and PassContext exact view-layout API.",
+        "N=1 false branch and N=3 full top-down reverse chain; full image fresh OriginCreate with no upload or clear; genuine initialized partial mip input.",
+        "Every output mip pixel finite and within absolute 0.035 R11G11B10 quantization tolerance; subsequent true branches retain actual previous reverse producers.",
+        "Actual sampled descriptor values use native GENERAL for exact top alias and READ_ONLY for later sampled input/tail; bind_pass checks actual range/layout/owner.",
+        "ValidationMessenger collects before Device creation and through owner teardown; collector.errors().is_empty() asserted after wait/readback, owner drops and Device drop."
+      ],
+      "log": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/logs/reverse-blur-original-v2-gpu.log",
+      "log_sha256": "9b9c831bcd48934782bc893d245d7ca1e4bc2be36cec7358634808b99059965c",
+      "source_match_after_run": true,
+      "independently_rechecked_now": "Saved binary, log, seven affected current rhapsody source hashes, test and original asset hashes match the central execution record."
+    }
+  },
+  "bounded_actual_consumer_audit": {
+    "new_proven_runtime_or_source_defect_found": false,
+    "checked_chain": [
+      {
+        "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/world_postprocess.rs",
+        "lines": "1076-1083,1131-1135",
+        "finding": "Only actual production bidirectional consumer chooses strict forward vs no-world forward allowance from the same controls.flag_0x1ac0 used by final_post.flag94."
+      },
+      {
+        "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/blur_pyramid.rs",
+        "lines": "135-165,172-184",
+        "finding": "Reverse top alone opts in under sample_self=false; actual uniform uses that same bool; tail and all later full inputs remain strict, all original views/codes/dispatches preserved."
+      },
+      {
+        "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/render/pass_builder/compute_pass_builder.rs",
+        "lines": "748-777,942",
+        "finding": "Permission is per actual graph image occurrence and remains in RecordedComputePass; active read and inactive conflict checked."
+      },
+      {
+        "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/render_host.rs",
+        "lines": "2342-2364,2646-2724,2750-2785",
+        "finding": "Actual occurrence/range matching transfers metadata to existing per-read library API; actual managed image/view uses returned exact native layout for both single and individual-mip bindings."
+      },
+      {
+        "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/compute_frame.rs",
+        "lines": "70-72,106-137",
+        "finding": "CoreComputeFrame records the intact pass through add_compute and retains the first admission error; it does not silently admit a failed pass. The enclosing with_compute calls finish before yielding success."
+      }
+    ],
+    "not_claimed_or_still_unvalidated": [
+      {
+        "item": "Actual core producer through scene_compute::with_env -> CoreGraphFrame::with_compute -> CoreComputeFrame::record -> GraphPasses::add_compute -> ShaderBindings::image_for_pass in the application graph",
+        "status": "source-integrated and independently statically reviewed; not exercised by this standalone rhapsody original-SPV GPU fixture, which constructs the equivalent declarations directly. Current root validation records explicitly exclude whole host/core build."
+      },
+      {
+        "item": "Full no-world forward blur0 plus original final_post raster flag0 path and final presented game frame",
+        "status": "not executed by these two reverse-only GPU cases; prior finalpost/forward contract evidence and narrow caller gates remain, but no whole core/host/world/WSI success is inferred."
+      }
+    ]
+  },
+  "central_records": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/validation/reverse-blur-baseline-v2.json",
+      "sha256": "d84c47790bef363f1e21aea15f334435b0781bbcacaec5cbf71f7236b9ad0dd6"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/validation/reverse-blur-baseline-guards-v1.json",
+      "sha256": "c16ba8b58d641e9f828d502c663d46846d37fc70673d240d30b27a5d01652da1"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/validation/reverse-blur-library-integration-v1.json",
+      "sha256": "6c43e37e5ca4dbcca7cafd73a149a74bf9a1b4b8a06a61d82f82a7139247f3bc"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/validation/reverse-blur-library-v1-cpu.json",
+      "sha256": "6114efa55ba040d1ce28f71a72b0a9d43ee44b24358acb5ae171243bdb4bff1c"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/validation/reverse-blur-consumer-integration-v1.json",
+      "sha256": "35273009d4c8a9ca251ecb043574bda4c3fd4dcc1d8d9985ab68cf300a3d7f68"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/validation/reverse-blur-consumer-v1-cpu.json",
+      "sha256": "0495a0cf714fed32221cab9acf3b5ea8a268063cb44b41029debd8727daa5745"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/validation/reverse-blur-compat-v1-cpu.json",
+      "sha256": "d087db65c84489bde48d9157e37ad7653d7edaafd1175655a19c1f21d25ac62f"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/validation/reverse-blur-original-gpu-integration-v2.json",
+      "sha256": "c8c0de1cc1c305496c941afe7fa6abc1769c6b0098110ed2463e3a2f3050f8c9"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/validation/reverse-blur-original-v2-gpu.json",
+      "sha256": "7053d13ecde0dbb88d8f6d76751479800fd0b5231ec117415c230bab9de4b69b"
+    }
+  ],
+  "current_source_evidence": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/resource_info.rs",
+      "sha256": "9903ce87bbe20b085f2222cd42ec7098978999eb94ab5b195776afd0bd8c961f"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/access_ledger.rs",
+      "sha256": "bb03d8cf909aefb3b454168d7a33c913cf5ebdf48d66dbf5893ad50028a0ca8a"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/resource_contracts.rs",
+      "sha256": "4761daf491113fef1c0141370c0f43aaccc5fa742f488a4c6901c68d465eeb6b"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/plan.rs",
+      "sha256": "e697ec36b7e079f04198ecf49cb31f1184a5556ccbf1922da8e2640c20392cbf"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/plan_check.rs",
+      "sha256": "1ea424afc64f5ef97e93234eb1b1a587c4c78905a2cc71b2bdeb6ff1dbe0acb5"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/subgraph.rs",
+      "sha256": "80333aba7f15ef0696a5ff6332ee018b6759ad602247b8def54b124636fd7671"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/executor.rs",
+      "sha256": "89a6bbef78677121b7475eec1893e3a3de177fbd84109fb2abf9f64749c162c0"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/blur_pyramid.rs",
+      "sha256": "20f9f2c642e4cda29b9c8f161e059d540038fe2f9b4522e9fcfaa85f4d7dbcc0"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/render/pass_builder/compute_pass_builder.rs",
+      "sha256": "d0f05c0e4d30681172ea6f02036e51a2f6d7a0256876d3f1da1ea9694650cb81"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/render_host.rs",
+      "sha256": "03184a90100cd0584fc890af601a8111f5b70bf8a502b3db6624f9153562a329"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/world_postprocess.rs",
+      "sha256": "196bf7f0caf83015e595707f88d33e901694ff123c42a63cf57ef89185f982ed"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/scene_compute.rs",
+      "sha256": "809e0a3c8fd2eba8b5085ac7fb9fd4301f0575d70a0a6317033363db4c27b3d4"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/tests/reverse_blur_original_vulkan.rs",
+      "sha256": "6d185b0c19f7954f88d8566f9d56315b86b01d23ce9073ce904de27e346e9742"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/tests/data/reverse_blur_original_B.bin",
+      "sha256": "cf8410f4fb3691bfc701cd30a04078893552e7a31df325f7d1c99b88b552f3df"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/compute_frame.rs",
+      "sha256": "244a6367db49e42c5afb5c3795b1ddd75a93251d5fcac73b224e11f384826a97"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/render_bridge.rs",
+      "sha256": "c6e660b06a110dcf2a1808339b738ca774cfbea390d9f76ca3193a2b8ea6d9c2"
+    }
+  ],
+  "frozen_manifest_integrity": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-eac12c8d24c206af39/no-world-undefined-20261019/reverse-blur-top-20261020/DESIGN.md",
+      "sha256": "10456bae317b967e08b6392f4dbed472586fbc9e7ec7a90d87ce9b72e43f3bcc",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-eac12c8d24c206af39/no-world-undefined-20261019/reverse-blur-top-20261020/design-manifest.json",
+      "sha256": "f8bd3bf903c999ed3f8287ca12d44d3ebd90f7dcb34d575c7d39cfdac071fd1d",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-eac12c8d24c206af39/no-world-undefined-20261019/reverse-blur-top-20261020/LAYOUT_API_ADDENDUM.md",
+      "sha256": "73485cef2ae0ceaa4e72f3a41c8e6861e1792f2db46d78603f136ffd7c6aeef3",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-eac12c8d24c206af39/no-world-undefined-20261019/reverse-blur-top-20261020/library-candidate/manifest.json",
+      "sha256": "949df1c48ba76e0e89fcd260a7b37c3487319b79c29ce604494ff636b2519134",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-eac12c8d24c206af39/no-world-undefined-20261019/reverse-blur-top-20261020/consumer-candidate/manifest.json",
+      "sha256": "500023fa244265e5b4934e8d9648c927d154793f0ccb076bd30b2f8e034f983b",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-eac12c8d24c206af39/no-world-undefined-20261019/reverse-blur-top-20261020/gpu-candidate/manifest.json",
+      "sha256": "30f70becf5e7a554cccb7b8454f6bf20003b16c685d866a7a693b7a7f51eca1e",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-eac12c8d24c206af39/no-world-undefined-20261019/reverse-blur-top-20261020/gpu-candidate-v2/manifest.json",
+      "sha256": "5f90e34fc1eb6c4125e273efdcfaa466cfcf0420dbaeb6e0a73508e5df8c1c22",
+      "unchanged": true
+    }
+  ],
+  "policy": "No new production changes, Cargo/GPU runs, shader rewrite, missing-module stubs, approval request, or global audit is introduced by this status update."
+}

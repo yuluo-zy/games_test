@@ -1,0 +1,31 @@
+
+/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140a1e540: 48 83 ec 28                 	subq	$0x28, %rsp
+140a1e544: 80 ba b0 01 00 00 00        	cmpb	$0x0, 0x1b0(%rdx)
+140a1e54b: 75 3d                       	jne	0x140a1e58a <.text+0xa1d58a>
+140a1e54d: 48 8b 02                    	movq	(%rdx), %rax
+140a1e550: 4c 8b 42 08                 	movq	0x8(%rdx), %r8
+140a1e554: 49 01 c0                    	addq	%rax, %r8
+140a1e557: 49 ff c0                    	incq	%r8
+140a1e55a: 66 0f 6f 00                 	movdqa	(%rax), %xmm0
+140a1e55e: 66 44 0f d7 c8              	pmovmskb	%xmm0, %r9d
+140a1e563: 41 f7 d1                    	notl	%r9d
+140a1e566: 66 44 89 49 18              	movw	%r9w, 0x18(%rcx)
+140a1e56b: 48 89 01                    	movq	%rax, (%rcx)
+140a1e56e: 48 83 c0 10                 	addq	$0x10, %rax
+140a1e572: 48 89 41 08                 	movq	%rax, 0x8(%rcx)
+140a1e576: 4c 89 41 10                 	movq	%r8, 0x10(%rcx)
+140a1e57a: 48 8b 42 18                 	movq	0x18(%rdx), %rax
+140a1e57e: 48 89 41 20                 	movq	%rax, 0x20(%rcx)
+140a1e582: 48 89 c8                    	movq	%rcx, %rax
+140a1e585: 48 83 c4 28                 	addq	$0x28, %rsp
+140a1e589: c3                          	retq
+140a1e58a: 48 8d 0d 07 ab 0a 02        	leaq	0x20aab07(%rip), %rcx   # 0x142ac9098
+140a1e591: 4c 8d 05 c0 ac 0a 02        	leaq	0x20aacc0(%rip), %r8    # 0x142ac9258
+140a1e598: ba 21 00 00 00              	movl	$0x21, %edx
+140a1e59d: e8 8e ae eb 01              	callq	0x1428d9430 <.text+0x28d8430>
+140a1e5a2: cc                          	int3

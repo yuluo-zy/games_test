@@ -1,0 +1,77 @@
+Source: /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-bdac7a16d3c26c954b/nani-gpu-counts-20261019/nani-maintain-20261020/systems.rs.candidate
+SHA256: 3d8318f2d63e0eb28a81de1fc3365571cdb0f6beac3cc5c4cf7f9adb4150d4a8
+
+652:     Has<InstanceDataMarker<SolidVertexColorInstanceData>>,
+653:     Has<InstanceDataMarker<SolidVertexColorWindowInstanceData>>,
+654:     Has<InstanceDataMarker<PlantInstanceData>>,
+655:     Has<InstanceDataMarker<PreplacedFlowerInstanceData>>,
+656:     Has<InstanceDataMarker<BalconyDoorInstanceData>>,
+657:     Has<InstanceDataMarker<UberInstanceData>>,
+658:     Has<InstanceDataMarker<VelocityOnlyInstanceData>>,
+659:     Has<InstanceDataMarker<SolidAlbedoMapInstanceData>>,
+660:     Has<InstanceDataMarker<SolidAlbedoMapEmissiveInstanceData>>,
+661: );
+662: 
+663: type MappedNaniMarkerPresence = (bool, bool, bool, bool, bool, bool, bool, bool, bool);
+664: type MappedNaniInputs = (MappedNaniMarkers, Has<ColorId>, Has<PrevTransform>, Has<Transform>, Has<NaniSolidTexture>);
+665: fn require_mapped_nani_payload(
+666:     kind: GpuWorldSubsetKind,
+667:     (markers, has_color, has_previous, has_transform, has_selector): (MappedNaniMarkerPresence, bool, bool, bool, bool),
+668: ) {
+669:     let mapped = match kind {
+670:         GpuWorldSubsetKind::SolidVertexColor => markers.0,
+671:         GpuWorldSubsetKind::SolidVertexColorWindow => markers.1 && has_color,
+672:         GpuWorldSubsetKind::Plant => markers.2,
+673:         GpuWorldSubsetKind::PreplacedFlower => markers.3,
+674:         GpuWorldSubsetKind::BalconyDoor => markers.4 && has_color,
+675:         GpuWorldSubsetKind::Uber => markers.5,
+676:         GpuWorldSubsetKind::VelocityOnly => markers.6 && has_previous,
+677:         GpuWorldSubsetKind::SolidAlbedoMap => markers.7 && has_selector,
+678:         GpuWorldSubsetKind::SolidAlbedoMapEmissive => markers.8 && has_selector,
+679:         _ => false,
+680:     };
+681:     let marker_count = [markers.0, markers.1, markers.2, markers.3,
+682:         markers.4, markers.5, markers.6, markers.7, markers.8].into_iter().filter(|present| *present).count();
+683:     assert!(mapped && has_transform && marker_count == 1,
+684:         "Nani ECS payload mapping is unavailable or canonical inputs are incomplete: {kind:?}");
+685: }
+686: 
+687: /// Original B14206f300 producer contracts, now reading the real same-World
+688: /// components. No row Vec, duplicate key owner or per-frame scratch allocation.
+689: /// Dense-index hint repair bypasses change detection: the native Query reads
+690: /// &NaniActiveInstance, so repairing its cache must not fabricate Changed<Key>.
+691: pub fn nani_maintain_instances_ecs(
+692:     mut removed: RemovedComponents<InstanceKey>,
+693:     new: Query<(Entity, &NaniInstanceDesc, &Transform), Without<InstanceKey>>,
+694:     mut keys: ParamSet<(
+695:         Query<(&NaniInstanceDesc, Option<&InstanceKey>, MappedNaniInputs)>,
+696:         Query<(&NaniInstanceDesc, &mut InstanceKey), Changed<NaniInstanceDesc>>,
+697:     )>,
+698:     atlas: Res<MeshAtlasLibrary>, mut gpu_world: ResMut<GpuWorld>,
+699:     mut local: Local<NaniActiveInstanceCollection>, mut commands: Commands,
+700: ) {
+701:     // Host completeness preflight touches only actual descriptor-bearing
+702:     // entities. A registered empty subset remains a real zero-count subset.
+703:     for (desc, key, inputs) in &keys.p0() {
+704:         require_mapped_nani_payload(desc.subset_kind, inputs);
+705:         if let Some(key) = key {
+706:             assert_eq!(key.kind, desc.subset_kind,
+707:                 "Nani descriptor changed the canonical active instance kind");
+708:         }
+709:     }
+710:     for entity in removed.read() {
+711:         remove_active_instance(entity, &gpu_world, &mut local);
+712:     }
+713:     for (entity, desc, transform) in &new {
+714:         if let Some(key) = create_active_instance(
+715:             NewInstanceRow { entity, desc, transform }, &atlas, &mut gpu_world, &mut local,
+716:         ) {
+717:             commands.entity(entity).insert(key);
+718:         }
+719:     }
+720:     for (desc, mut key) in &mut keys.p1() {
+721:         change_active_instance_mesh(desc, key.bypass_change_detection(), &atlas, &mut gpu_world);
+722:     }
+723: }
+724: 
+

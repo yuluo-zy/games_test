@@ -1,0 +1,93 @@
+Diff in /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a433e0de1f7930df66/boot-leaf-20261018/canonical-scene-20261019/tree_animation.rs.candidate:19:
+ use utils::easing_functions::EasingFunction;
+ 
+ /// Compatibility name for the one canonical resource; no Local surrogate.
+-pub use country_core::resources::history::tree_edit::TreeCanopyMaxCullDistance
+-    as HandplacedCanopyState;
++pub use country_core::resources::history::tree_edit::TreeCanopyMaxCullDistance as HandplacedCanopyState;
+ 
+ /// `should_remove_tree_canopy_from_view`（源行 152，内联；O 名——canopy 可见性判定）。
+ ///
+Diff in /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a433e0de1f7930df66/boot-leaf-20261018/canonical-scene-20261019/tree_animation.rs.candidate:52:
+     // 跳表 0x143038050 16 项：加集 {6,7,8,11,12,15,17,18,19}、减集
+     // {9,10,13,14,16,20}；兜底项 tag==0||3 → 减、否则加。
+     let subtract = matches!(mode.native_tag(), 0 | 3 | 10 | 13 | 14 | 16 | 20)
+-        || matches!(*mode, AppMode::Eraser(
+-            country_core::systems::mode_manager::EraserLayer::Tree));
++        || matches!(
++            *mode,
++            AppMode::Eraser(country_core::systems::mode_manager::EraserLayer::Tree)
++        );
+ 
+     // 全局 canopy：`progress = clamp(progress ± delta, 0, 1)`；`smoothstep = t²(3-2t)`。
+     let mut progress = canopy.progress;
+Diff in /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a433e0de1f7930df66/boot-leaf-20261018/canonical-scene-20261019/tree_animation.rs.candidate:85:
+         if (utils::geometry::Aabb3 {
+             min: bbox.min + Vec3::new(-2.5, -1.0, -2.5),
+             max: bbox.max + Vec3::new(2.5, 1.0, 2.5),
+-        }).intersect_segment(eye, ray_end).is_some() {
++        })
++        .intersect_segment(eye, ray_end)
++        .is_some()
++        {
+             audio_hit = true;
+             break 'triggers;
+         }
+Diff in /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a433e0de1f7930df66/boot-leaf-20261018/canonical-scene-20261019/tree_animation.rs.candidate:106:
+ /// `forest_tree_animation` @0x14227a0d0（O；4 参 = Query + GameTime + DespawnPrefabCmd +
+ /// placements）。
+ pub fn forest_tree_animation(
+-    mut trees:Query<(Entity,&mut InteractableForestTree,&mut PrefabInstanceData,Option<&TreeMarkedForDeletion>)>,
+-    time:Res<GameTime>,mut despawns:EventWriter<DespawnPrefabCmd>,
+-    mut placements:ResMut<InteractableForestPlacements>,
++    mut trees: Query<(
++        Entity,
++        &mut InteractableForestTree,
++        &mut PrefabInstanceData,
++        Option<&TreeMarkedForDeletion>,
++    )>,
++    time: Res<GameTime>,
++    mut despawns: EventWriter<DespawnPrefabCmd>,
++    mut placements: ResMut<InteractableForestPlacements>,
+ ) {
+-    for (entity,mut tree,mut instance,marked) in &mut trees {
+-        let (step,growing)=if marked.is_some() {(time.delta / -0.3,false)}
+-        else if tree.delay>0.0 {tree.delay-=time.delta;(0.0,true)}
+-        else {(time.delta+time.delta,true)};
+-        let previous=tree.progress;
++    for (entity, mut tree, mut instance, marked) in &mut trees {
++        let (step, growing) = if marked.is_some() {
++            (time.delta / -0.3, false)
++        } else if tree.delay > 0.0 {
++            tree.delay -= time.delta;
++            (0.0, true)
++        } else {
++            (time.delta + time.delta, true)
++        };
++        let previous = tree.progress;
+         // Native14227a68a..69f MAXSS 0,raw / MINSS 1,result retains NaN/-0.
+-        let raw=step+tree.progress;
+-        let low=if 0.0>raw {0.0}else{raw};
+-        tree.progress=if 1.0<low {1.0}else{low};
+-        if tree.progress!=previous {
+-            instance.0.scale=EasingFunction::CubicOut.apply(tree.progress)*tree.amplitude;
++        let raw = step + tree.progress;
++        let low = if 0.0 > raw { 0.0 } else { raw };
++        tree.progress = if 1.0 < low { 1.0 } else { low };
++        if tree.progress != previous {
++            instance.0.scale = EasingFunction::CubicOut.apply(tree.progress) * tree.amplitude;
+         }
+-        if !growing && tree.progress==0.0 {
+-            despawns.write(DespawnPrefabCmd{entity:Some(entity),_gap:0});
++        if !growing && tree.progress == 0.0 {
++            despawns.write(DespawnPrefabCmd {
++                entity: Some(entity),
++                _gap: 0,
++            });
+             // Original writes the record Entity's generation@44=0. The same
+             // indexed owner must be released before the next manage pass.
+-            placements.records[tree.placement_index].entity=None;
++            placements.records[tree.placement_index].entity = None;
+         }
+     }
+ }

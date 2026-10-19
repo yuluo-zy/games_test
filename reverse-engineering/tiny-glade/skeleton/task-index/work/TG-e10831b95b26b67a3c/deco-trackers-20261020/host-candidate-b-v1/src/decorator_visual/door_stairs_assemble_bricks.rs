@@ -1,0 +1,345 @@
+//! B canonical32B door-stair params, real sparse construction and four-input host.
+//!
+//! Shared strict tracker -> same preinitialized owner lane -> clear/per-brick
+//! push -> explicit original no-audio removal. Current Entity mapping is a
+//! scoped adapter; full member14 mounting/anchor/session integration stays gated.
+
+use bevy_ecs::prelude::{Res, ResMut};
+use country_core::{
+    geometry::{
+        instanced_wall::{BrickSourceId, BrickTransformSsbo},
+        runtime::WallBrickAssemblyResources,
+    },
+    render::sparse_instance_buffer::SparseInstanceBufferWriter,
+    resources::{
+        render::Affine3Packed,
+        walls::{WallId, decorator::DecoratorId, publication_fields::WallId as BrickSourceWallId},
+    },
+};
+use glam::{Affine3A, Vec2, Vec3};
+
+use super::deco_differential_state::WallAttachedDecoTracker;
+use country_core::resources::walls::public_walls::PublicWalls;
+use country_core::systems::ui::signifiers::UiSignifierStream;
+
+/// Original add clones 32 bytes, and 140825150/152B compares eight ordered f32s.
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct DoorStairsAssemblyParams {
+    pub words: [u32; 8],
+}
+
+impl PartialEq for DoorStairsAssemblyParams {
+    fn eq(&self, other: &Self) -> bool {
+        self.words
+            .iter()
+            .zip(other.words.iter())
+            .all(|(a, b)| f32::from_bits(*a) == f32::from_bits(*b))
+    }
+}
+
+const _: () = assert!(std::mem::size_of::<DoorStairsAssemblyParams>() == 32);
+const _: () = assert!(std::mem::align_of::<DoorStairsAssemblyParams>() == 4);
+
+/// Original 14200c7f0/4668B current-instance constructor, called with
+/// depth0.56 by 1412af8f2. It appends to the actual shared sparse writer.
+/// `true` means NoFreeChunks occurred; subsequent bricks are still attempted.
+/// The host clears the whole lane once before visiting every current instance.
+pub fn construct_door_stairs(
+    params: &DoorStairsAssemblyParams,
+    wall: WallId,
+    rng: &fastrand::Rng,
+    writer: &mut SparseInstanceBufferWriter<'_, BrickTransformSsbo>,
+) -> bool {
+    emit_door_stairs(params, wall, rng, &mut |brick| writer.push(brick).is_err())
+}
+
+fn emit_door_stairs(
+    params: &DoorStairsAssemblyParams,
+    wall: WallId,
+    rng: &fastrand::Rng,
+    emit: &mut impl FnMut(&BrickTransformSsbo) -> bool,
+) -> bool {
+    let p = params.words.map(f32::from_bits);
+    let center = Vec2::new(p[0], p[1]);
+    let axis = Vec2::new(p[2], p[3]);
+    let height = p[4] - p[5];
+    let extra_height = height + p[6];
+    let y_count = ((extra_height / 0.2).ceil() as usize).max(2);
+    let heights: Vec<f32> = {
+        let splits = utils::random_splits(y_count, f32::from_bits(0x3d23_d70b) / extra_height, rng);
+        let end = p[5] - p[6];
+        splits.iter().map(|&t| t * end + (1.0 - t) * p[4]).collect()
+    };
+    let step_count = ((height / 0.2).ceil() as usize).clamp(2, 5);
+    let step_depth = 0.56 / step_count as f32;
+    let scale_depth = step_depth + 0.1;
+    let x_count = ((p[7] / 0.45).ceil() as usize).max(3);
+    let x_jitter = f32::from_bits(0x3e38_51eb) / p[7];
+    let half_width = p[7] * 0.5;
+    let material = BrickSourceId::from_wall_id(BrickSourceWallId(wall.0)).0;
+    let mut failed = false;
+    for (row, pair) in heights.windows(2).enumerate() {
+        let row_height = (pair[1] - pair[0]).abs();
+        let middle_y = pair[0] * 0.5 + pair[1] * 0.5;
+        let seed = (wall.0 as u32).wrapping_add((row as u32).wrapping_mul(2));
+        for step in 0..(row + 1).min(step_count) {
+            let xs: Vec<f32> = {
+                let splits = utils::random_splits(x_count, x_jitter, rng);
+                splits
+                    .iter()
+                    .map(|&t| t * half_width - (1.0 - t) * half_width)
+                    .collect()
+            };
+            let offset = step as f32 * step_depth + 0.28;
+            let center_x = offset * axis.x + center.x;
+            let center_z = offset * axis.y + center.y;
+            for pair in xs.windows(2) {
+                let across = pair[0] * 0.5 + pair[1] * 0.5;
+                let translation = Vec3::new(
+                    center_x - across * axis.y,
+                    middle_y,
+                    across * axis.x + center_z,
+                );
+                let rotation = utils::xz_rotation_bad(axis);
+                let affine = Affine3A::from_scale_rotation_translation(
+                    Vec3::new((pair[1] - pair[0]).abs(), row_height, scale_depth),
+                    rotation,
+                    translation,
+                );
+                let brick = BrickTransformSsbo {
+                    affine_columns: Affine3Packed::from(affine)
+                        .cols
+                        .map(|column| column.to_array()),
+                    seed,
+                    material,
+                    wall_distance: [pair[0], pair[1]],
+                    ..BrickTransformSsbo::default()
+                };
+                failed |= emit(&brick);
+            }
+        }
+    }
+    failed
+}
+
+/// Reuses the original per-decorator seed exactly once. This writes real
+/// canonical instances; the real host below owns lane clear and normalization.
+pub fn write_door_stairs_instance(
+    params: &DoorStairsAssemblyParams,
+    wall: WallId,
+    decorator: DecoratorId,
+    writer: &mut SparseInstanceBufferWriter<'_, BrickTransformSsbo>,
+) -> bool {
+    let rng = fastrand::Rng::with_seed(utils::rng::init_rng(decorator.0));
+    construct_door_stairs(params, wall, &rng, writer)
+}
+
+/// Original1407ff130/52B and1412af3a0 four business inputs. The shared
+/// Library adapter also borrows the same current wall/entity ownership map.
+pub fn door_stairs_assemble_bricks(
+    public: Res<PublicWalls>,
+    mut owners: WallBrickAssemblyResources,
+    mut tracker: ResMut<WallAttachedDecoTracker<DoorStairsAssemblyParams>>,
+    _signifiers: Res<UiSignifierStream>,
+) {
+    tracker.with_diffs(|wall, log| {
+        // Native af5a9/type check precedes af61b PublicWalls lookup.
+        let mut batch = owners.for_batch();
+        if public.get(wall).is_none() {
+            return log.into_removals().with_removed(|_, _| {});
+        }
+        let mut writer = batch.door_stairs_writer(wall);
+        writer.clear();
+        let mut _failed = false;
+        let removed = log.with_each_deco_diff(|id, diff| {
+            if let Some(params) = diff.current() {
+                _failed |= write_door_stairs_instance(params, wall, id, &mut writer);
+            }
+        });
+        // Door's actual removal callback has no audio; this is an explicit
+        // proven branch, not an implicit unimplemented-host fallback.
+        let completed = removed.with_removed(|_, _| {});
+        drop(writer);
+        completed
+    });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn native_ordered_float_equality_is_not_bit_equality() {
+        let a = DoorStairsAssemblyParams { words: [0; 8] };
+        let mut b = a;
+        b.words[7] = (-0.0f32).to_bits();
+        assert_eq!(a, b);
+        b.words[7] = f32::NAN.to_bits();
+        assert_ne!(b, b);
+    }
+
+    #[test]
+    fn row_seed_directional_intervals_and_rng_survive_emit_failure() {
+        let params = DoorStairsAssemblyParams {
+            words: [0.0f32, 0.0, 1.0, 0.0, 0.4, 0.0, 0.4, 0.9].map(f32::to_bits),
+        };
+        let rng = fastrand::Rng::with_seed(456);
+        let mut bricks = Vec::new();
+        assert!(!emit_door_stairs(
+            &params,
+            WallId(100_003),
+            &rng,
+            &mut |brick| {
+                bricks.push(*brick);
+                false
+            }
+        ));
+        // Three y rows, with 1/2/2 steps respectively and two x intervals.
+        assert_eq!(bricks.len(), 10);
+        assert_eq!(
+            bricks.iter().map(|brick| brick.seed).collect::<Vec<_>>(),
+            [
+                100_003, 100_003, 100_005, 100_005, 100_005, 100_005, 100_007, 100_007, 100_007,
+                100_007
+            ]
+        );
+        for step in bricks.chunks_exact(2) {
+            assert_eq!(step[0].wall_distance[0], -0.45);
+            assert_eq!(step[0].wall_distance[1], step[1].wall_distance[0]);
+            assert_eq!(step[1].wall_distance[1], 0.45);
+        }
+        assert!(bricks.iter().all(|brick| brick.material == 0x8000_0003
+            && brick.deformation == [0.0; 4]
+            && brick.surface == [-100.0; 3]
+            && brick.flags == 0));
+        // Two y split samples and one x split sample for each of five steps.
+        let expected_rng = fastrand::Rng::with_seed(456);
+        for _ in 0..7 {
+            expected_rng.f32();
+        }
+        assert_eq!(rng.get_seed(), expected_rng.get_seed());
+
+        let failed_rng = fastrand::Rng::with_seed(456);
+        let mut attempted = Vec::new();
+        assert!(emit_door_stairs(
+            &params,
+            WallId(100_003),
+            &failed_rng,
+            &mut |brick| {
+                attempted.push(*brick);
+                attempted.len() == 1
+            }
+        ));
+        assert_eq!(attempted, bricks);
+        assert_eq!(failed_rng.get_seed(), rng.get_seed());
+    }
+}
+
+#[cfg(test)]
+mod actual_host_tests {
+    use super::*;
+    use bevy_ecs::prelude::*;
+    use country_core::{
+        asset_libraries::ssbo_library::AssetSsboLibrary,
+        geometry::instanced_wall::InstancedWall,
+        render::{sparse_instance_buffer::{SparseInstanceBuffer, SparseSsbo, SLOTS_PER_CHUNK}, test_device::TestDevice},
+        resources::walls::{InnerWalls, WallState, public_walls::WallEntities, publication_source::TerrainHeightGrid512, decorator_storage::DecoratorStorageAddr},
+    };
+    use std::panic::{AssertUnwindSafe, catch_unwind};
+
+    fn public_wall() -> (WallId, PublicWalls) {
+        let wall = WallId(49);
+        let mut inner = InnerWalls::new();
+        let curve = country_core::resources::roofs::geometry::surface::Curve2::try_new(vec![[0.,0.],[4.,0.]], false).unwrap();
+        inner.new_wall_with_id(wall, WallState::new(curve, 2., 0, 0, false));
+        let mut public = PublicWalls::default();
+        public.consume(&mut inner, &TerrainHeightGrid512 { encoded: vec![0u16;512*512].into(), minimum_y: 0., maximum_y: 4., sampling_fix: true });
+        (wall, public)
+    }
+    fn world(public: PublicWalls, library: AssetSsboLibrary) -> World {
+        let mut world = World::new();
+        world.insert_resource(public); world.insert_resource(library);
+        world.init_resource::<WallEntities>();
+        world.init_resource::<WallAttachedDecoTracker<DoorStairsAssemblyParams>>();
+        world.init_resource::<UiSignifierStream>();
+        world
+    }
+    fn schedule() -> Schedule { let mut s = Schedule::default(); s.add_systems(door_stairs_assemble_bricks); s }
+    fn panic_text(value: Box<dyn core::any::Any + Send>) -> String {
+        if let Some(s) = value.downcast_ref::<String>() { s.clone() }
+        else if let Some(s) = value.downcast_ref::<&str>() { (*s).to_owned() }
+        else { "non-text panic".to_owned() }
+    }
+
+    #[test]
+    fn empty_dirty_does_not_probe_entry_but_double_missing_fails_storage_first() {
+        let mut world = world(PublicWalls::default(), AssetSsboLibrary::new());
+        let mut schedule = schedule();
+        schedule.run(&mut world);
+        world.resource_mut::<WallAttachedDecoTracker<DoorStairsAssemblyParams>>().on_wall_changed(WallId(49));
+        let error = catch_unwind(AssertUnwindSafe(|| schedule.run(&mut world))).unwrap_err();
+        assert!(panic_text(error).contains("requires the actual BrickTransformSsbo storage"));
+    }
+
+    #[test]
+    fn public_miss_normalizes_only_with_storage_and_present_wall_requires_real_lane() {
+        let storage = SparseInstanceBuffer::<BrickTransformSsbo>::try_new(&TestDevice(1)).unwrap();
+        let library = AssetSsboLibrary::new(); library.register::<BrickTransformSsbo>(storage);
+        let mut world = world(PublicWalls::default(), library);
+        let wall = WallId(49); let id = DecoratorId(7);
+        let params = DoorStairsAssemblyParams { words: [0.;8].map(f32::to_bits) };
+        world.resource_mut::<WallAttachedDecoTracker<DoorStairsAssemblyParams>>().add(DecoratorStorageAddr::Wall(wall), id, &params);
+        let mut schedule = schedule(); schedule.run(&mut world);
+        world.resource_mut::<WallAttachedDecoTracker<DoorStairsAssemblyParams>>().remove(DecoratorStorageAddr::Wall(wall), id);
+        schedule.run(&mut world);
+        world.resource_mut::<WallAttachedDecoTracker<DoorStairsAssemblyParams>>().add(DecoratorStorageAddr::Wall(wall), id, &params);
+        let (_, public) = public_wall(); world.insert_resource(public);
+        let entity = world.spawn(InstancedWall::<BrickTransformSsbo>::new(wall.0, Vec::new())).id();
+        world.resource_mut::<WallEntities>().0.insert(wall, entity);
+        let error = catch_unwind(AssertUnwindSafe(|| schedule.run(&mut world))).unwrap_err();
+        assert!(panic_text(error).contains("no preinitialized assembly lane"));
+        assert!(world.get::<InstancedWall<BrickTransformSsbo>>(entity).unwrap().door_stairs_allocation().is_none());
+    }
+
+    #[test]
+    fn actual_sparse_partial_push_normalizes_without_retry_and_shared_flush_keeps_draw_inputs() {
+        let (wall, public) = public_wall();
+        let mut storage = SparseInstanceBuffer::<BrickTransformSsbo>::try_new(&TestDevice(1)).unwrap();
+        let owner = InstancedWall::new_awaiting_production(wall.0, &storage);
+        storage.writer(owner.door_stairs_allocation().unwrap()).push(&BrickTransformSsbo { seed: u32::MAX, ..Default::default() }).unwrap();
+        let blocker = storage.new_allocation();
+        // Fill actual canonical capacity through actual push, leaving only the
+        // old target chunk. No counter/free-list mutation or changed max.
+        {
+            let mut writer = storage.writer(&blocker);
+            for _ in 0..(BrickTransformSsbo::CHUNK_COUNT-1)*SLOTS_PER_CHUNK {
+                writer.push(&BrickTransformSsbo::default()).unwrap();
+            }
+        }
+        let library = AssetSsboLibrary::new(); library.register::<BrickTransformSsbo>(storage);
+        let mut world = world(public, library);
+        let entity = world.spawn(owner).id(); world.resource_mut::<WallEntities>().0.insert(wall, entity);
+        let params = DoorStairsAssemblyParams { words: [0.0f32,0.,1.,0.,0.4,0.,0.4,4.5].map(f32::to_bits) };
+        world.resource_mut::<WallAttachedDecoTracker<DoorStairsAssemblyParams>>().add(DecoratorStorageAddr::Wall(wall), DecoratorId(7), &params);
+        let mut schedule = schedule(); schedule.run(&mut world);
+        let count = |world: &World| {
+            let owner = world.get::<InstancedWall<BrickTransformSsbo>>(entity).unwrap();
+            let storage = world.resource::<AssetSsboLibrary>().get::<BrickTransformSsbo>().unwrap();
+            storage.allocation_to_draw_multi_instanced(owner.door_stairs_allocation().unwrap()).iter().map(|r| r.1).sum::<u32>()
+        };
+        assert_eq!(count(&world), 32);
+        assert!(world.get::<InstancedWall<BrickTransformSsbo>>(entity).unwrap().is_awaiting_production());
+        drop(blocker);
+        world.resource_mut::<AssetSsboLibrary>().get_mut::<BrickTransformSsbo>().unwrap().take_out_waste();
+        schedule.run(&mut world); assert_eq!(count(&world), 32, "capacity partial does not manufacture a dirty retry");
+        world.resource_mut::<WallAttachedDecoTracker<DoorStairsAssemblyParams>>().on_wall_changed(wall);
+        schedule.run(&mut world); assert_eq!(count(&world), 45, "a real wall invalidation rebuilds all retained Current values");
+        let mut library = world.resource_mut::<AssetSsboLibrary>();
+        let storage = library.get_mut::<BrickTransformSsbo>().unwrap();
+        assert!(storage.dirty_bitset.iter().any(|word| word.load(std::sync::atomic::Ordering::Relaxed) != 0));
+        storage.try_gpu_flush(&TestDevice(1)).unwrap();
+        assert!(storage.dirty_bitset.iter().all(|word| word.load(std::sync::atomic::Ordering::Relaxed) == 0));
+        assert_eq!(storage.to_draw_multi_instanced().iter().map(|r| r.1).sum::<u32>(), 45);
+    }
+}

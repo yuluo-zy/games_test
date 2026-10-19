@@ -1,0 +1,100 @@
+--- a/crates/country-core/src/systems/render_loop/compute_passes/blur_pyramid.rs
++++ b/crates/country-core/src/systems/render_loop/compute_passes/blur_pyramid.rs
+@@ -83,6 +83,14 @@
+ 
+ /// W-外围：`blur_pyramid`（O 0x1409ee1e0）。`src` 为 RG 句柄（含 desc）。返回 "partial blur pyramid"。
+ pub fn blur_pyramid(env: &mut PassEnv<'_>, src: &RgTexture) -> RgTexture {
++    blur_pyramid_with_input_policy(env, src, false)
++}
++
++fn blur_pyramid_with_input_policy(
++    env: &mut PassEnv<'_>,
++    src: &RgTexture,
++    allow_undefined_input: bool,
++) -> RgTexture {
+     let src_extent = [src.desc.extent[0], src.desc.extent[1]];
+     let half = half_res(src_extent);
+     let mips = pyramid_mips(half);
+@@ -94,10 +102,15 @@
+     let v0 = TextureViewDesc::new()
+         .base_mip_level(0)
+         .level_count(Some(1));
+-    let rec = env
++    let mut pass = env
+         .pass(BLUR0_NAME, BLUR_URI)
+         .bind_texture(HASH_INPUT_TEX, &src, TEX_READ)
+-        .bind_texture_with_view(HASH_OUTPUT_TEX, &partial_tex, TEX_STORAGE_WRITE, Some(&v0))
++        .bind_texture_with_view(HASH_OUTPUT_TEX, &partial_tex, TEX_STORAGE_WRITE, Some(&v0));
++    if allow_undefined_input {
++        // 仅原 no-world tail 显式请求；真实采样和同步、后续 mip producer 均保留。
++        pass = pass.allow_undefined_texture_contents(HASH_INPUT_TEX);
++    }
++    let rec = pass
+         .uniform(KEY_INPUT_MIP_DIMS, src_extent)
+         .dispatch_2d(half[0], half[1]);
+     env.record(rec);
+@@ -149,6 +162,16 @@
+ /// `bidirectional_blur_pyramid`（O 0x1409ed860）：`rev_blur_pyramid(blur_pyramid(src))`。
+ pub fn bidirectional_blur_pyramid(env: &mut PassEnv<'_>, src: &RgTexture) -> RgTexture {
+     let partial = blur_pyramid(env, src);
++    rev_blur_pyramid(env, &partial)
++}
++
++/// 原 no-world tail 最终 flag0 丢弃该输入的计算值，但仍真实执行全部 blur fetch。
++/// 其它消费者使用默认严格入口，不能把此许可当作源初始化。
++pub fn bidirectional_blur_pyramid_allowing_undefined_input(
++    env: &mut PassEnv<'_>,
++    src: &RgTexture,
++) -> RgTexture {
++    let partial = blur_pyramid_with_input_policy(env, src, true);
+     rev_blur_pyramid(env, &partial)
+ }
+ 
+@@ -377,6 +400,47 @@
+     }
+ 
+     #[test]
++    fn no_world_permission_is_only_on_first_blur_input_and_keeps_every_dispatch() {
++        use crate::render::pass_builder::pass_resource_access::PassBinding;
++        let w = world();
++        let mut strict = TestFrame::default();
++        with_env(&w, &mut strict, |env| {
++            bidirectional_blur_pyramid(env, &src(64, 64))
++        });
++        let mut permitted = TestFrame::default();
++        with_env(&w, &mut permitted, |env| {
++            bidirectional_blur_pyramid_allowing_undefined_input(env, &src(64, 64))
++        });
++        assert_eq!(strict.order, permitted.order);
++        assert_eq!(strict.passes.len(), permitted.passes.len());
++        for (index, (ordinary, original_no_world)) in
++            strict.passes.iter().zip(&permitted.passes).enumerate()
++        {
++            assert!(ordinary.undefined_texture_bindings.is_empty());
++            assert!(original_no_world.inactive_texture_bindings.is_empty());
++            assert_eq!(dispatch_xy(ordinary), dispatch_xy(original_no_world));
++            assert_eq!(
++                ordinary.builder.accesses,
++                original_no_world.builder.accesses
++            );
++            if index == 0 {
++                assert_eq!(original_no_world.undefined_texture_bindings.len(), 1);
++                let slot = original_no_world.undefined_texture_bindings[0] as usize;
++                assert!(matches!(
++                    original_no_world.bindings[slot],
++                    PassBinding::ImageView {
++                        resource: 1,
++                        write: false,
++                        ..
++                    }
++                ));
++            } else {
++                assert!(original_no_world.undefined_texture_bindings.is_empty());
++            }
++        }
++    }
++
++    #[test]
+     fn names_and_hashes_match_machine_code() {
+         assert_eq!(HASH_INPUT_TEX, 0x11ba5697cc40b3dd);
+         assert_eq!(HASH_OUTPUT_TEX, (-0x77de65c519676d4e_i64) as u64);

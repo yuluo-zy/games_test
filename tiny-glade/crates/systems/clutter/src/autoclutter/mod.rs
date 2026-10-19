@@ -250,53 +250,61 @@ impl AutoClutterCandidate {
     }
 }
 
-/// 输出候选 +0x08 载荷：鸟巢为 **Arc 强计数域**（O add_birdnests +0x08 写 Arc 指针，
-/// LOCK 递增），lantern/tree 为 prefab 名 String（0x143042d28 "lantern" / 0x143042d91 "tree"）。
-#[derive(Clone, Debug, PartialEq)]
-pub enum SpawnShared {
-    /// Arc 强计数（birdnest 输出 +0x08；process 0x4 分支 LOCK 递增）。
-    ArcStrong(u64),
-    /// prefab 名（lantern/tree 输出 +0x08）。
-    Prefab(String),
+/// Actual metadata selected from the canonical loader for this frame's output.
+/// B output+38 is a borrowed ClutterMesh reference. Copying only its consumed
+/// values avoids a native pointer or a second asset/resource owner in Rust.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ResolvedClutterMesh {
+    pub name_hash: country_core::name_hash::NameHash,
+    pub radius_xz: f32,
+    pub native_group: u8,
+    pub solid_texture: Option<country_core::components::drawable::NaniSolidTexture>,
 }
 
-/// 输出候选（stride 0x68；birdnest/lantern/tree/on_windows/process 共同写）。
-/// 布局（O）：+0x00 kind u64、+0x08 shared、+0x10..+0x28 u64、+0x30 marker u8、+0x34 u32、
-/// +0x38/+0x40/+0x48 u64、+0x50/+0x54/+0x58/+0x5c u32、+0x60 scale f32。
-/// 本重建以安全字段承载各写入值（kind/position/host_id 语义各 writer 注释）；精确偏移
-/// 与二进制 0x68 布局为类型合同分歧（U，见报告）。
-///
-/// **U 标注错位登记（reviewer-wave2-geometry §2.1）**：本结构 `position@+0x38 / host_id@+0x40`
-/// 为 process 写者语义（+0x38/+0x40 各承载 f32 位置分量）；on_windows 二进制实际
-/// +0x38=宿主子结构首 qword（墙/窗 id）、+0x40=候选+0x40——两写者对同一 0x68 布局取
-/// 不同字段语义（并置/重载）。该错位为类型合同分歧，不影响各写者逻辑判等，登记不修。
+impl From<&country_core::resources::clutter_meshes::ClutterMesh> for ResolvedClutterMesh {
+    fn from(mesh: &country_core::resources::clutter_meshes::ClutterMesh) -> Self {
+        Self {
+            name_hash: mesh.name_hash,
+            radius_xz: mesh.radius_xz,
+            native_group: mesh.native_group,
+            solid_texture: mesh.solid_texture,
+        }
+    }
+}
+
+/// Rust semantic adapter, not a native source-enum/ABI representation.
+#[derive(Clone, Debug, PartialEq)]
+pub enum SpawnShared {
+    /// Legacy reconstruction erased the actual Arc owner. A number alone is
+    /// not an Arc; the manager rejects this unresolved input before ECS writes.
+    ArcStrong(u64),
+    /// Legacy writers store hash salts here and have lost their selected mesh.
+    Prefab(String),
+    /// Actual producer-resolved metadata. Color is the original shutter payload.
+    Mesh {
+        metadata: ResolvedClutterMesh,
+        color: Option<country_core::resources::color_id::ColorId>,
+    },
+}
+
+/// One per-frame output value. Native records have stride0x68, but this Rust
+/// representation does not promise those offsets. The Window producer uses
+/// key=original+40, position=+48 xyz, marker=source selector+30, host_id=wall+20,
+/// and direction bits=+54/+58/+5c. `Mesh` carries the original+38 dependency.
 #[derive(Clone, Debug)]
 pub struct AutoClutterSpawn {
-    /// +0x00：type（birdnest=4、lantern/tree/on_windows=5）。
     pub kind: u8,
-    /// +0x08：Arc 强计数（birdnest）或 prefab 名（lantern/tree）。
     pub shared: SpawnShared,
-    /// +0x18：常量（1/2）。
     pub f18: u32,
-    /// +0x1c：放置键（calculate_hash 结果）。
     pub key: u64,
-    /// +0x30：byte 标记（=5；process 侧 ==6 强制标记）。
     pub marker: u8,
-    /// +0x38：位置（Vec3 打包）。
     pub position: Vec3,
-    /// +0x40：宿主 id（墙/窗/装饰物 id）。
     pub host_id: u64,
-    /// +0x48。
     pub f48: u64,
-    /// +0x50。
     pub f50: u64,
-    /// +0x54 u32。
     pub f54: u32,
-    /// +0x58 u32（0x68 布局 +0x58；process 写源+0x54 高 32，on_windows 写反射 z 位）。
     pub f58: u32,
-    /// +0x5c u32。
     pub f5c: u32,
-    /// +0x60：缩放（birdnest/lantern/tree 写 1.0/0.6）。
     pub scale: f32,
 }
 
@@ -320,11 +328,12 @@ impl Default for AutoClutterSpawn {
     }
 }
 
-/// 自动杂物对象（实体组件；manage 用其键建集合）。
-#[derive(Component, Clone, Debug)]
-pub struct AutoClutterObject {
-    /// 键（u64；键类型含 GlobalId）。
-    pub key: u64,
+/// B system_clutter::autoclutter::WindowShutter: quaternion plus side byte.
+/// The manager and actual animation share this one ECS component.
+#[derive(Component, Clone, Copy, Debug, PartialEq)]
+pub struct WindowShutter {
+    pub base_rotation: glam::Quat,
+    pub side: bool,
 }
 
 /// 自动杂物状态资源（布局见模块文档）。
@@ -544,10 +553,8 @@ impl AutoClutterState {
         self.pending_indices.clear();
     }
 
-    /// `reset_autoclutter_for_new_frame`（mod.rs L531 顶层函数）。
-    /// **评审 FIX #8（未实现-需重做）**：PDB 注解该系统签名同 set_current_tick
-    /// `void(*)(Res<GameTime>, ResMut<AutoClutterState>, ResMut<InterShapeBrickStitches>)`
-    /// （skeleton mod.rs L3931）——清空是否含 stitch 状态等交互 U。现为清空方法桩。
+    /// Clear the actual per-frame output Vec. The system wrapper also updates
+    /// epoch and clears stitches, as proven in both original inline hosts.
     pub fn reset_autoclutter_for_new_frame(&mut self) {
         self.spawn_candidates.clear();
     }
@@ -570,17 +577,19 @@ pub fn set_current_tick(
     state.set_current_tick();
 }
 
-/// `reset_autoclutter_for_new_frame` 系统包装（PDB L531，签名同 set_current_tick）。
-///
-/// **未实现-需重做（U）**：无独立符号；可见语义为清空本帧输出候选
-/// （`state+0x58` len=0），stitch 交互未取证。
+/// B inline reset in physical hosts140ee5830/833B and141ce1f10/961B:
+/// clear outputs, copy GameTime.frame_count low byte to epoch, clear stitches.
+/// WindowAutoClutterCandidates is consumed by its separate real drain.
 pub fn reset_autoclutter_for_new_frame(
+    time: bevy_ecs::system::Res<country_core::resources::time::GameTime>,
     mut state: bevy_ecs::system::ResMut<AutoClutterState>,
-    _stitches: bevy_ecs::system::ResMut<
+    mut stitches: bevy_ecs::system::ResMut<
         crate::inter_shape_stitches::stitch_bricks::InterShapeBrickStitches,
     >,
 ) {
     state.reset_autoclutter_for_new_frame();
+    state.epoch = time.frame_count as u8;
+    stitches.0.clear();
 }
 
 /// Aabb2 → 网格单元列表（O：`Rectangle2d::aabb` → `iter_world_space_rect_cells` 语义；
@@ -608,4 +617,77 @@ pub struct LazyGridClutterCell;
 pub struct ClutterQueryRect {
     pub center: Vec2,
     pub radius: f32,
+}
+
+#[cfg(test)]
+pub(crate) mod window_test_helpers {
+    use super::*;
+    use bevy_ecs::prelude::*;
+    use country_core::{resources::{clutter_meshes::{ClutterMesh, ClutterMeshes},
+        time::GameTime, walls::WallId}, systems::{audio::PlayClutterSoundCmd,
+        collision::{WindowAutoClutterCandidate, WindowAutoClutterCandidates, WindowAutoClutterKind}}};
+    use glam::Quat;
+
+    // Explicit CPU metadata fixture. No asset/GPU registration or successful
+    // whole-App frame is claimed from these named ECS descriptor tests.
+    fn metadata(id: u64) -> ClutterMesh {
+        ClutterMesh {
+            bounds: utils::geometry::rectangle::Rectangle3d::new(Vec3::ZERO, Vec3::ONE, Vec2::X),
+            mesh_name: "unit/window-metadata",
+            mesh: None,
+            name_hash: country_core::name_hash::NameHash(id),
+            radius_xz: 1.0,
+            native_group: 7,
+            solid_texture: None,
+            native_flag_46: true,
+            native_flag_47: false,
+        }
+    }
+
+    pub fn textured_meshes(name: &'static str,
+        texture: country_core::components::drawable::NaniSolidTexture) -> ClutterMeshes {
+        let mut fixed = std::array::from_fn(|index| metadata(index as u64 + 1));
+        fixed[27].name_hash = country_core::name_hash::NameHash::compute(name);
+        fixed[27].solid_texture = Some(texture);
+        ClutterMeshes::from_parts(fixed, vec![metadata(1000), metadata(1001)])
+    }
+
+    pub fn candidate(key: u64, kind: WindowAutoClutterKind) -> WindowAutoClutterCandidate {
+        WindowAutoClutterCandidate {
+            kind, key, wall: WallId(0xfedc_ba98_7654_3210),
+            rotation: Quat::from_rotation_y(core::f32::consts::FRAC_PI_2),
+            translation: Vec3::new(3.0, 7.0, -2.0), scale: Vec3::new(9.0, 8.0, 7.0),
+        }
+    }
+
+    pub fn world(candidates: Vec<WindowAutoClutterCandidate>) -> World {
+        let mut world = World::new();
+        world.init_resource::<AutoClutterState>();
+        world.insert_resource(ClutterMeshes::from_parts(
+            std::array::from_fn(|index| metadata(index as u64 + 1)),
+            vec![metadata(1000), metadata(1001)]));
+        world.insert_resource(WindowAutoClutterCandidates(candidates));
+        world.insert_resource(GameTime { frame_count: 0x12ab, ..Default::default() });
+        world.init_resource::<Events<PlayClutterSoundCmd>>();
+        world
+    }
+
+    #[test]
+    fn reset_clears_real_outputs_and_stitches_but_preserves_window_input() {
+        use crate::inter_shape_stitches::stitch_bricks::{InterShapeBrickStitches, StairsFloatingBrickParams};
+        use country_core::systems::collision::{WindowAutoClutterCandidates, WindowAutoClutterKind};
+        let mut world = world(vec![candidate(42, WindowAutoClutterKind::DoorBell)]);
+        let mut drain = Schedule::default();
+        drain.add_systems(super::add_autoclutter_on_windows::add_autoclutter_on_windows);
+        drain.run(&mut world);
+        world.resource_mut::<WindowAutoClutterCandidates>().0.push(candidate(43, WindowAutoClutterKind::DoorKrans));
+        world.insert_resource(InterShapeBrickStitches(vec![StairsFloatingBrickParams::default()]));
+        let mut reset = Schedule::default();
+        reset.add_systems(super::reset_autoclutter_for_new_frame);
+        reset.run(&mut world);
+        assert!(world.resource::<AutoClutterState>().spawn_candidates.is_empty());
+        assert_eq!(world.resource::<AutoClutterState>().epoch, 0xab);
+        assert!(world.resource::<InterShapeBrickStitches>().0.is_empty());
+        assert_eq!(world.resource::<WindowAutoClutterCandidates>().0[0].key, 43);
+    }
 }

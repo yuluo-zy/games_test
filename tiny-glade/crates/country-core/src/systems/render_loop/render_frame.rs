@@ -92,6 +92,17 @@ pub trait RenderHost {
     type Compiled;
     type CompileError: Debug;
 
+    /// The current backend distinguishes allocation failure from declaration,
+    /// capability, WSI and execution errors. Only allocation failure is eligible
+    /// for the original reduced-resolution recovery policy.
+    fn compile_error_is_out_of_memory(error: &Self::CompileError) -> bool;
+    /// Drain the first backend error recorded by a void host callback. The
+    /// original error value and its source chain must survive this boundary.
+    fn take_render_error(&mut self) -> Option<Self::CompileError>;
+    /// Cancel unfinished frame/acquisition ownership after an error. Keep the
+    /// original error as the returned cause; report cleanup errors separately.
+    fn abort_frame(&mut self);
+
     // ---- puffin / 时钟 ----
     fn puffin_scopes_on(&mut self) -> bool;
     fn scope_begin(&mut self, name: &str);
@@ -255,33 +266,62 @@ pub fn out_of_video_memory(info: Option<&SwapchainInfo>) -> String {
 }
 
 /// `tiny_glade::render_loop::render`（0x1404e8010）。
-pub fn render<H: RenderHost>(host: &mut H, pacer: &mut FramePacer, mode: RenderMode) {
-    // 0x1404e807e：puffin 作用域（作用域名由 `rfind("::")` 剥掉 `::f`）
+pub fn render<H: RenderHost>(
+    host: &mut H, pacer: &mut FramePacer, mode: RenderMode,
+) -> Result<(), H::CompileError> {
     let scopes_on = host.puffin_scopes_on();
     if scopes_on {
         host.scope_begin(SCOPE_NAME);
     }
+    // Commit pacing history only after all fallible frame operations succeed.
+    let mut next_pacer = *pacer;
+    let result = render_inner(host, &mut next_pacer, mode, scopes_on);
+    if result.is_err() {
+        host.abort_frame();
+    } else {
+        *pacer = next_pacer;
+    }
+    if scopes_on {
+        host.scope_end();
+    }
+    result
+}
 
+fn check_host_error<H: RenderHost>(host: &mut H) -> Result<(), H::CompileError> {
+    match host.take_render_error() {
+        Some(error) => Err(error),
+        None => Ok(()),
+    }
+}
+
+fn render_inner<H: RenderHost>(
+    host: &mut H, pacer: &mut FramePacer, mode: RenderMode, scopes_on: bool,
+) -> Result<(), H::CompileError> {
     // 0x1404e82c3..e8c..：设备（unwrap，行 642）、GameConfig（expect，行 650）
-    assert!(
-        host.device_ready(),
-        "called `Option::unwrap()` on a `None` value"
-    );
-    assert!(host.clone_video_settings(), "{}", msgs::GAME_CONFIG);
+    let device_ready = host.device_ready();
+    check_host_error(host)?;
+    assert!(device_ready, "called `Option::unwrap()` on a `None` value");
+    let video_ready = host.clone_video_settings();
+    check_host_error(host)?;
+    assert!(video_ready, "{}", msgs::GAME_CONFIG);
 
     // 0x1404e8799：绘制列表
     host.build_draw_lists();
+    check_host_error(host)?;
     let swapchain = host.swapchain_info();
 
     // 0x1404e883b：模式字节分支
     let (compiled, primary_ok) = if mode == RenderMode::LoadingScreen {
         let sc = swapchain.as_ref().expect(msgs::LOADING_NEEDS_SWAPCHAIN);
-        let compiled = host.compile_loading_graph(sc).expect(msgs::LOADING_GRAPH);
+        let compiled = host.compile_loading_graph(sc)?;
         (compiled, true)
     } else {
         match host.compile_world_graph(swapchain.as_ref(), None) {
             Ok(c) => (c, true),
-            Err(_) => (recompile_at_reduced_scale(host, swapchain.as_ref()), false),
+            Err(error) if H::compile_error_is_out_of_memory(&error) => {
+                (recompile_at_reduced_scale(host, swapchain.as_ref())?, false)
+            }
+            Err(error) => return Err(error),
         }
     };
 
@@ -292,28 +332,37 @@ pub fn render<H: RenderHost>(host: &mut H, pacer: &mut FramePacer, mode: RenderM
         .unwrap_or(Duration::ZERO);
     let gpu_profiling = mode == RenderMode::WorldGpuProfiled && scopes_on;
     host.begin_frame(gpu_profiling);
+    check_host_error(host)?;
     host.drain_finished_frames();
+    check_host_error(host)?;
 
     // 0x1404e9a40：执行段起点
     let exec_start = host.now();
     host.execute_main_graph(compiled);
+    check_host_error(host)?;
 
     // 0x1404e9bc2：只有主编译成功且有 swapchain 才取图像/展示（`!primary_ok || swapchain.is_none()` → 跳过）
     let mut present = false;
     if primary_ok && swapchain.is_some() {
-        if host.acquire_swapchain_image() == Acquire::Image {
-            host.execute_presentation_graph()
-                .unwrap_or_else(|e| panic!("{}{e:?}", msgs::PRESENTATION_FAILED));
+        let acquired = host.acquire_swapchain_image();
+        check_host_error(host)?;
+        if acquired == Acquire::Image {
+            host.execute_presentation_graph()?;
             present = true;
         }
     }
     host.end_frame();
+    check_host_error(host)?;
     if present {
         host.present();
+        check_host_error(host)?;
     }
     host.finish_screenshot_capture();
+    check_host_error(host)?;
     host.snapshot_render_stats();
+    check_host_error(host)?;
     host.refresh_memory_budget();
+    check_host_error(host)?;
 
     // 0x1404ea052：GPU 帧节奏
     if host.gpu_pacing_enabled() {
@@ -321,21 +370,20 @@ pub fn render<H: RenderHost>(host: &mut H, pacer: &mut FramePacer, mode: RenderM
         if let Some(gpu_ns) = host.last_gpu_frame_ns() {
             pacer.record(gpu_ns, since_prev_frame, exec_elapsed);
             host.wait_gpu_queue_trim(duration_from_secs_f64(pacer.queue_trim_seconds()));
+            check_host_error(host)?;
         }
     }
     // 0x1404ea47b：记录本帧结束时刻
     pacer.last_frame_end = Some(host.now());
 
-    if scopes_on {
-        host.scope_end();
-    }
+    Ok(())
 }
 
 /// 世界图首次编译失败后的恢复（O：0x1404e8a3d..0x1404e9516）。只重试一次，且重试的结果不再展示。
 fn recompile_at_reduced_scale<H: RenderHost>(
     host: &mut H,
     swapchain: Option<&SwapchainInfo>,
-) -> H::Compiled {
+) -> Result<H::Compiled, H::CompileError> {
     let old = host.resolution_scale().unwrap();
     let new = match reduced_scale(old) {
         Ok(n) => n,
@@ -347,16 +395,19 @@ fn recompile_at_reduced_scale<H: RenderHost>(
     };
     host.log(Level::Error, &oom_message(old, new));
     host.set_resolution_scale(new);
+    check_host_error(host)?;
     host.clear_resource_pool();
+    check_host_error(host)?;
     host.reset_temporal_tables();
+    check_host_error(host)?;
     host.wait_idle_and_recycle_resources();
+    check_host_error(host)?;
     host.set_reduced_state(REDUCED_STATE_VALUE);
+    check_host_error(host)?;
     host.log(Level::Info, msgs::COMPILING_REDUCED);
-    let compiled = host
-        .compile_world_graph(swapchain, Some(MIN_RESOLUTION_EXTENT))
-        .expect(msgs::FALLBACK_FAILED);
+    let compiled = host.compile_world_graph(swapchain, Some(MIN_RESOLUTION_EXTENT))?;
     host.log(Level::Info, msgs::REDUCED_COMPILED);
-    compiled
+    Ok(compiled)
 }
 
 /// `tiny_glade::render_loop::handle_screenshot_error`（0x1404ebfb0）：`Some(err)` 且日志等级 ≥ Error 时
@@ -389,6 +440,8 @@ mod tests {
         pacing: bool,
         gpu_ns: Option<u64>,
         clock: Cell<u64>,
+        fail_on: Option<&'static str>,
+        pending_error: Option<&'static str>,
     }
 
     impl Host {
@@ -410,16 +463,31 @@ mod tests {
                 pacing: false,
                 gpu_ns: None,
                 clock: Cell::new(1_000_000_000),
+                fail_on: None,
+                pending_error: None,
             }
         }
         fn p(&mut self, s: impl Into<String>) {
-            self.log.push(s.into());
+            let s = s.into();
+            if self.fail_on == Some(s.as_str()) && self.pending_error.is_none() {
+                self.pending_error = Some("callback failure");
+            }
+            self.log.push(s);
         }
     }
 
     impl RenderHost for Host {
         type Compiled = u32;
         type CompileError = &'static str;
+        fn compile_error_is_out_of_memory(error: &&'static str) -> bool {
+            *error == "oom"
+        }
+        fn take_render_error(&mut self) -> Option<Self::CompileError> {
+            self.pending_error.take()
+        }
+        fn abort_frame(&mut self) {
+            self.p("abort_frame");
+        }
         fn puffin_scopes_on(&mut self) -> bool {
             self.scopes_on
         }
@@ -525,7 +593,7 @@ mod tests {
 
     fn run(h: &mut Host, mode: RenderMode) -> FramePacer {
         let mut pacer = FramePacer::default();
-        render(h, &mut pacer, mode);
+        render(h, &mut pacer, mode).unwrap();
         pacer
     }
 
@@ -589,11 +657,13 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Loading screen render graph")]
-    fn loading_graph_compile_error_panics() {
+    fn loading_graph_compile_error_preserves_cause_and_aborts() {
         let mut h = Host::new();
         h.loading_result = Err("bad");
-        run(&mut h, RenderMode::LoadingScreen);
+        let mut pacer = FramePacer::default();
+        assert_eq!(render(&mut h, &mut pacer, RenderMode::LoadingScreen), Err("bad"));
+        assert_eq!(h.log, ["draw_lists", "compile_loading", "abort_frame"]);
+        assert!(pacer.last_frame_end.is_none());
     }
 
     #[test]
@@ -692,11 +762,14 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Minimum-resolution fallback render graph compile failed")]
-    fn fallback_compile_failure_panics() {
+    fn fallback_compile_failure_preserves_cause() {
         let mut h = Host::new();
         h.world_results = vec![Err("oom"), Err("again")];
-        run(&mut h, RenderMode::World);
+        let mut pacer = FramePacer::default();
+        assert_eq!(render(&mut h, &mut pacer, RenderMode::World), Err("again"));
+        assert_eq!(h.log.last().unwrap(), "abort_frame");
+        assert!(!h.log.iter().any(|line| line.starts_with("begin_frame")));
+        assert!(pacer.last_frame_end.is_none());
     }
 
     #[test]
@@ -709,11 +782,45 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Failed to compile presentation render graph: \"nope\"")]
-    fn presentation_failure_panics_with_error() {
+    fn presentation_failure_preserves_cause_and_skips_success_effects() {
         let mut h = Host::new();
         h.presentation = Err("nope");
-        run(&mut h, RenderMode::World);
+        let mut pacer = FramePacer::default();
+        assert_eq!(render(&mut h, &mut pacer, RenderMode::World), Err("nope"));
+        assert_eq!(h.log.last().unwrap(), "abort_frame");
+        assert!(!h.log.iter().any(|line| matches!(line.as_str(), "present" | "stats" | "screenshot")));
+        assert!(pacer.last_frame_end.is_none());
+    }
+
+    #[test]
+    fn non_oom_compile_errors_do_not_mutate_resolution_or_temporal_state() {
+        for cause in ["invalid resource", "timeout", "unsupported", "device lost", "exhausted"] {
+            let mut h = Host::new();
+            h.scopes_on = true;
+            h.world_results = vec![Err(cause)];
+            let mut pacer = FramePacer::default();
+            assert_eq!(render(&mut h, &mut pacer, RenderMode::World), Err(cause));
+            assert_eq!(h.scale, Some(1.0));
+            assert_eq!(h.log, [
+                "scope_begin tiny_glade::render_loop::render", "draw_lists",
+                "compile_world min=None", "abort_frame", "scope_end",
+            ]);
+            assert_eq!(pacer, FramePacer::default());
+        }
+    }
+
+    #[test]
+    fn recorded_callback_errors_stop_at_the_actual_failure() {
+        for stage in ["draw_lists", "begin_frame gpu=false", "drain_frames", "execute 1",
+                      "acquire", "end_frame", "present", "screenshot", "stats", "memory_budget"] {
+            let mut h = Host::new();
+            h.fail_on = Some(stage);
+            let mut pacer = FramePacer::default();
+            assert_eq!(render(&mut h, &mut pacer, RenderMode::World), Err("callback failure"), "{stage}");
+            let failed = h.log.iter().position(|line| line == stage).unwrap();
+            assert_eq!(&h.log[failed + 1..], &["abort_frame"], "{stage}");
+            assert_eq!(pacer, FramePacer::default(), "{stage}");
+        }
     }
 
     #[test]
@@ -755,9 +862,9 @@ mod tests {
         h.gpu_ns = Some(5_000_000);
         h.world_results = vec![Ok(1), Ok(1)];
         let mut pacer = FramePacer::default();
-        render(&mut h, &mut pacer, RenderMode::World);
+        render(&mut h, &mut pacer, RenderMode::World).unwrap();
         let first_end = pacer.last_frame_end.unwrap();
-        render(&mut h, &mut pacer, RenderMode::World);
+        render(&mut h, &mut pacer, RenderMode::World).unwrap();
         assert!(pacer.last_frame_end.unwrap() > first_end);
         assert_eq!(pacer.cpu.len(), 2);
         // 第二帧 cpu 时间含与上一帧结束的间隔，必然 > 第一帧

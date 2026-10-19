@@ -1,0 +1,27 @@
+--- a/tiny-glade/crates/systems/decorator/src/utils/mod.rs
++++ b/tiny-glade/crates/systems/decorator/src/utils/mod.rs
+@@ -130,10 +130,20 @@
+     None
+ }
+ 
+-/// B clutter_mesh_ty_data（0x1408b8e90，core 未恢复；需定点反编译取
+-/// subtype→mesh 类型表）。**显式未恢复**：None，不再恒 0。
+-pub fn clutter_mesh_ty_data() -> Option<u8> {
+-    None
++/// B helper@1408b8e90: reuse the real loader-owned canonical metadata.
++pub use country_core::resources::clutter_meshes::clutter_mesh_ty_data;
++
++/// Actual native-physics constructor. Full dimensions and local translation are
++/// separate inputs; the canonical core implementation owns the Parry geometry.
++/// Production builds require country-core/native-physics, as does this producer.
++pub fn new_clutter_cuboid(
++    dimensions: Vec3,
++    local_translation: Vec3,
++) -> country_core::systems::collision::world::RaycastMeshData {
++    country_core::systems::collision::world::RaycastMeshData::new_cuboid_at(
++        dimensions,
++        local_translation,
++    )
+ }
+ 
+ /// B utils crate `IsoTransform`（B 未恢复；D1 承载）：刚性变换 {pos, rot}

@@ -1,0 +1,50 @@
+{
+  "status": "frozen_consumer_candidate_pending_07_source_review_and_root_validation",
+  "base_design_sha256": "10456bae317b967e08b6392f4dbed472586fbc9e7ec7a90d87ce9b72e43f3bcc",
+  "layout_addendum_sha256": "73485cef2ae0ceaa4e72f3a41c8e6861e1792f2db46d78603f136ffd7c6aeef3",
+  "requires_library_patch_sha256": "e85e2c548ab2bb0529691b776f5860fc87e3c95c5c4c8c8f8a368947fff5d7a5",
+  "required_library_after_sources_match_current": true,
+  "patch_sha256": "3dfc1131eb15d6bb707e8722694d8eba39d7e28c419a88d12183c50218c4e94f",
+  "files": [
+    {
+      "relative_path": "crates/country-core/src/systems/render_loop/compute_passes/blur_pyramid.rs",
+      "before_sha256": "764171015fc201e85aa538c9225148a49ee113b0dff1cccc848dd19c6c4a7ff8",
+      "after_sha256": "20f9f2c642e4cda29b9c8f161e059d540038fe2f9b4522e9fcfaa85f4d7dbcc0",
+      "candidate": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-eac12c8d24c206af39/no-world-undefined-20261019/reverse-blur-top-20261020/consumer-candidate/candidate/crates/country-core/src/systems/render_loop/compute_passes/blur_pyramid.rs"
+    },
+    {
+      "relative_path": "crates/rhapsody/src/rg/executor.rs",
+      "before_sha256": "ca045fe6086f3c584e47e15722cfb5006e9e0df6400894931e7427a959288210",
+      "after_sha256": "89a6bbef78677121b7475eec1893e3a3de177fbd84109fb2abf9f64749c162c0",
+      "candidate": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-eac12c8d24c206af39/no-world-undefined-20261019/reverse-blur-top-20261020/consumer-candidate/candidate/crates/rhapsody/src/rg/executor.rs"
+    },
+    {
+      "relative_path": "crates/tiny-glade/src/render_host.rs",
+      "before_sha256": "5e9f37fe0a8fdfb6b9ac01f6501c62df6d4ef17e9233255ab7108048f3b9309d",
+      "after_sha256": "03184a90100cd0584fc890af601a8111f5b70bf8a502b3db6624f9153562a329",
+      "candidate": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-eac12c8d24c206af39/no-world-undefined-20261019/reverse-blur-top-20261020/consumer-candidate/candidate/crates/tiny-glade/src/render_host.rs"
+    }
+  ],
+  "production_mutated": false,
+  "validation_by_agent": "rustfmt parse/format only; no Cargo/rustc/GPU",
+  "root_library_cpu_result": {
+    "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/validation/reverse-blur-library-v1-cpu.json",
+    "sha256": "6114efa55ba040d1ce28f71a72b0a9d43ee44b24358acb5ae171243bdb4bff1c",
+    "scope": "previous library package only: 384 lib + 4 baseline + 7 guards passed. Does not validate this consumer package."
+  },
+  "behavior": [
+    "One public read-only exact-range layout query on PassContext; use existing native range algebra, scheduled index, full coverage and single layout or error.",
+    "Graph-managed compute image arrays and single views write actual BindlessResource layout queried for their own exact native view. Sampled READ_ONLY/GENERAL and storage GENERAL are ABI-checked; raster/external existing helper keeps original contracts.",
+    "Only reverse input_tex with sample_self=false (first iteration, same top mip) gets existing real undefined-read metadata; true reverse reads and tail stay strict, native views/accesses/dispatch/uniforms unchanged.",
+    "Prior forward no-world flag permission is preserved. Core tests now separately assert shared first reverse permission and optional no-world-only forward permission."
+  ],
+  "tests": [
+    "rhapsody lib exact_image_layout_tests: culling/scheduled index, sampled-only vs exact storage alias, union/full/partial/missing/wrong range/kind/resource, mixed layouts, inconsistent projection.",
+    "country-core blur tests: original reverse N=1/N=4 gate/range/resource/view, flag values, strict later inputs and no-world-only forward difference.",
+    "render_host planned_image_layout_abi_tests: actual accepted sampled READ_ONLY/GENERAL vs storage GENERAL and rejected incompatible ABI layouts. CPU ABI predicate only; actual GPU descriptors remain to validate."
+  ],
+  "remaining_acceptance": [
+    "root Cargo compile/test of this package and compatible host/core modules (missing app modules remain explicit).",
+    "Original immutable reverse SPV real GPU: initialized real partial input, fresh full, same top mip sampled/storage in GENERAL, true subsequent reads READ_ONLY, actual output/readback and validation. No replacement shader or full clear allowed."
+  ]
+}

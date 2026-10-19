@@ -1,0 +1,158 @@
+{
+  "reviewed_at_utc": "2026-10-19T16:46:11.002952+00:00",
+  "verdict": "passed_bounded_core_design_direction_with_explicit_integration_gates",
+  "contract": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-b3ec56669fe9d97baf/scene-clutter-producer-20261020/CLUTTER_CONTRACT_REVIEW.md",
+    "sha256": "6f40543df279152309895d8cfdd40cf6819ad9dd3c088d1f7b6791309a50b234"
+  },
+  "frozen_inputs": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-b3ec56669fe9d97baf/scene-clutter-producer-20261020/CLUTTER_CONTRACT_REVIEW.md",
+      "sha256": "6f40543df279152309895d8cfdd40cf6819ad9dd3c088d1f7b6791309a50b234"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-b3ec56669fe9d97baf/scene-clutter-producer-20261020/ORIGINAL-SCOPE.json",
+      "sha256": "31956a1afb5125f2ce5b413d44a66f61f9e222236a9a165cf736096d223c886b"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-b3ec56669fe9d97baf/scene-clutter-producer-20261020/evidence/loader-constant-call-arguments-B.json",
+      "sha256": "b9b217aaa65a2dfdf0c6d504998c9a543da3633254701bb30d21f5c2a403745d"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-b3ec56669fe9d97baf/scene-clutter-producer-20261020/evidence/loader-final-resource-fields-B.json",
+      "sha256": "d39d11aa5725b07073984c65b61e6e5a853a785ac04afd4660dd40104343f943"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-b3ec56669fe9d97baf/scene-clutter-producer-20261020/evidence/loader-global-gate-B.json",
+      "sha256": "672ab14ca2e9da010b17728bb812f9dc926943178d27acd1cf7831224899ef36"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-b3ec56669fe9d97baf/scene-clutter-producer-20261020/evidence/loader-dynamic-format-B.json",
+      "sha256": "e1df323af06d5f5c0f11ac25eaf71717b1eccf5d3d0c4cc737fb8a5f1d8e27d2"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-b3ec56669fe9d97baf/scene-clutter-producer-20261020/evidence/tables-constants-B.json",
+      "sha256": "aaca5dc9336e830273a33bc8081876ef227e04c14b9c745f0affefb8f9bf2035"
+    }
+  ],
+  "original_B_identity_match": true,
+  "scope_function_hash_checks": [
+    {
+      "name": "generate_clutter",
+      "va": "0x1407e3370",
+      "length": 6631,
+      "expected_sha256": "dd0675902827d24cea4a74143ffc0755144f344ce39c52568812a9850185fc76",
+      "direct_PE_sha256": "dd0675902827d24cea4a74143ffc0755144f344ce39c52568812a9850185fc76",
+      "match": true
+    },
+    {
+      "name": "mesh_ty_data",
+      "va": "0x1408b8e90",
+      "length": 730,
+      "expected_sha256": "46f0f867bad5a0adae920ea2e8d527504997d0dd0251aff35dad9a66b8c3f21a",
+      "direct_PE_sha256": "46f0f867bad5a0adae920ea2e8d527504997d0dd0251aff35dad9a66b8c3f21a",
+      "match": true
+    }
+  ],
+  "full_assembly_checks": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-b3ec56669fe9d97baf/scene-clutter-producer-20261020/evidence/generate_clutter.asm",
+      "sha256": "9a789f6c7438b6e202b83c631f3174c32cbd52b3a84ce9fe1a78f822a49bb497",
+      "instructions": 1258,
+      "decoded_bytes": 6631,
+      "expected_bytes": 6631,
+      "all_instruction_bytes_match_direct_PE": true,
+      "full_contiguous_span": true,
+      "body_sha256": "dd0675902827d24cea4a74143ffc0755144f344ce39c52568812a9850185fc76"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-b3ec56669fe9d97baf/scene-clutter-producer-20261020/evidence/mesh_ty_data.asm",
+      "sha256": "ca6779e1175291ba38b32e8000d01bd5ef60e24e54d3de48e93004059b75e7d5",
+      "instructions": 152,
+      "decoded_bytes": 730,
+      "expected_bytes": 730,
+      "all_instruction_bytes_match_direct_PE": true,
+      "full_contiguous_span": true,
+      "body_sha256": "46f0f867bad5a0adae920ea2e8d527504997d0dd0251aff35dad9a66b8c3f21a"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-b3ec56669fe9d97baf/scene-clutter-producer-20261020/evidence/load_clutter_meshes-bounded.asm",
+      "sha256": "d1be1a3baff8ddb021b73f36eb79173e90c50eaa96285dbc7621469780fca1aa",
+      "instructions": 944,
+      "decoded_bytes": 5472,
+      "expected_bytes": 5472,
+      "all_instruction_bytes_match_direct_PE": true,
+      "full_contiguous_span": true,
+      "body_sha256": "46ef384a61eb29b34376fb4891d8c9dd045614641546f83c1027cb985dc4b0c9"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-b3ec56669fe9d97baf/scene-clutter-producer-20261020/evidence/loader_closure0-B.asm",
+      "sha256": "120955d40fff4fc9e790b38797e2609f775c9449b4a7bbec6391b40de1a9eaa5",
+      "instructions": 220,
+      "decoded_bytes": 928,
+      "expected_bytes": 928,
+      "all_instruction_bytes_match_direct_PE": true,
+      "full_contiguous_span": true,
+      "body_sha256": "65917cbe633686afec0f4cf50e2a33859ac10676c4485c357177a8982bccd899"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-b3ec56669fe9d97baf/scene-clutter-producer-20261020/evidence/instantiate_blueprints-bounded.asm",
+      "sha256": "479f551ae2f5e3be8e6519978d94282ec1ac6565e9574507cfc502d6ead812f5",
+      "instructions": 1716,
+      "decoded_bytes": 7991,
+      "expected_bytes": 7991,
+      "all_instruction_bytes_match_direct_PE": true,
+      "full_contiguous_span": true,
+      "body_sha256": "c696022b75ff7d18559393d6fe56ce30ab67348cd1ea763126461f692474c0d5"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-b3ec56669fe9d97baf/scene-clutter-producer-20261020/evidence/new_cuboid-bounded.asm",
+      "sha256": "42a76872878dd9c2efc63db8e0875c9449ad03ee2990ca76f2df66557709dc9f",
+      "instructions": 80,
+      "decoded_bytes": 290,
+      "expected_bytes": 290,
+      "all_instruction_bytes_match_direct_PE": true,
+      "full_contiguous_span": true,
+      "body_sha256": "751506853b9dd302e1ad0b4b7a7b214793f2612ad3dffcaae4b448629937fe0c"
+    }
+  ],
+  "independently_read_facts": [
+    "Generator predicate skips0x38..3d and3f; actual dst_tag admits2..4, tag2 performs real roof entity/Query guard before type9 exemption. Current accepted-set inversion is a real source defect.",
+    "Generator uses cached transform and appends actual builder to blueprint visual list at0x1407e41f2..4405, itemstride0x160; it does not have Commands/spawn parameter. Directspawn would omit native lifecycle.",
+    "Metadata+45 loaded1407e41b3 -> builder+150 written1407e43dd. Helper has separate metadata/string/selector outputs; using its byte instead of metadata breaks actual producer identity.",
+    "Closure0 copies caller selector argument via r13b into metadata+45 at1422c1f3f, independent of pack/load branch.55 retained constant call records include all0..8 plus9None.",
+    "Helper returns metadata pointer+nameptr/len+byte and type29 requires nonempty dynamicvector. 9None is legal metadata for base vertexcolor, not an invalid canonical component to reject globally.",
+    "Actual persistent build consumer copies first8B then0x158tail, native builder fullslot0x160; actual same canonical selector producer migration must preserve both build specializations."
+  ],
+  "loader_constant_call_count": 55,
+  "loader_recorded_selector_bytes": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "accepted_narrow_direction": [
+    "One canonical country-core ClutterMeshes/resource/helper owner with real returned Mesh handles; loader removes duplicate TypeId.",
+    "Real metadata is produced by original constant/dynamic asset loads, exact bbox/radius/scalars; no successful empty resource, inferred names, defaultselector/shader or copiedfakehandles.",
+    "Generator appends builder and real collider/interaction slots, and native blueprint differential instantiation performs entity lifecycle.",
+    "Finite exact nameswindow_flower_bed_1..6 may use static literals after binding original closedrange/formatpieces. Preserve everyitem/order/path/load and do not generalize unknown dynamicnames or introduce leaks."
+  ],
+  "integration_gates": [
+    "Bind newly resolved _DEV_OVERRIDE_IS_DEMO_MODE gate as an addendum to frozen contract; map to actual GameConfig.dev.demo with exact branch polarity, not generic pack switch.",
+    "Foreign canonical physics translation and cuboid full dimensions/halfextent boundary must be independently corrected/verified by owner before chain acceptance.",
+    "Exact clear/generator/instantiate/prev-copy/tracking-clear schedule must come from original registration, with actual shared resources; source-only visual spawn is insufficient.",
+    "Current/previous blueprint identity/equivalent-content/oldpersistentstate/removal and raycast interaction registration require explicit real implementation. Unrelated blueprint fields must fail visibly or retain existing supported behavior; no silent loss.",
+    "Type0x3e may pass skip predicate but not index56-entry helper: keep explicit unsupported error until actual destination-domain invariant proven.",
+    "Real loaderasset failures, empty dynamicvector, wrongmetadata selector and targetB/C boundary remain observable. Original literal table/record parser correctness not fully reconstructed by this bounded direction review."
+  ],
+  "implementation_accepted": false,
+  "typecheck_accepted": false,
+  "runtime_accepted": false,
+  "reviewer_ran_cargo_rustc_gpu": false
+}

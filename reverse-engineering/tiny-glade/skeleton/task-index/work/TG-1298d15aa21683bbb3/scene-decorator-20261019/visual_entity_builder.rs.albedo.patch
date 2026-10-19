@@ -1,0 +1,35 @@
+--- a/tiny-glade/crates/systems/decorator/src/utils/visual_entity_builder.rs
++++ b/tiny-glade/crates/systems/decorator/src/utils/visual_entity_builder.rs
+@@ -119,7 +119,7 @@
+ //! * `NaniSolidTexture`：1 B enum，`Option` 以 9 为 None ⇒ 变体值域 0..=8；
+ //!   **变体名无证据**。这里以 `pending_core::NaniSolidTexture(pub u8)` 承载
+ //!   原始判别字节，不命名变体。
+-//! * 12 个条件组件类型在 country-core 尚未落库（仅 registry 名字/注册地址）。
++//! * 其余未落库条件组件继续保留原证缺口；AlbedoMap 已重导出 core 的真实 u64 类型。
+ //!   本文件 `pending_core` 子模块按 **原 PDB 名 + 机器码载荷字节数** 建 stand-in
+ //!   （core 落库后应删除并改用 core 类型；届时组件 TypeId 才与原版一致）。
+ //! * 构建器 `mesh_name` / `nani_name` 字段名 U；偏移/用途 O。
+@@ -195,11 +195,9 @@
+         Smoke,
+         14
+     );
+-    raw_component!(
+-        /// B `components::drawable::AlbedoMap`（8 B 句柄，U）。
+-        AlbedoMap,
+-        8
+-    );
++    // The core u64 owner already exists. Preserve this public import path
++    // while inserting the exact component read by Nani Uber.
++    pub use country_core::components::drawable::AlbedoMap;
+     raw_component!(
+         /// B `components::drawable::NormalMap`（8 B 句柄，U）。
+         NormalMap,
+@@ -652,7 +650,7 @@
+         if let Some(handle) = self.albedo_map {
+             commands
+                 .entity(entity)
+-                .insert(AlbedoMap(handle.to_le_bytes()));
++                .insert(AlbedoMap(handle));
+         }
+         // 10 NormalMap
+         if let Some(handle) = self.normal_map {

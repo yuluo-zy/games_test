@@ -1,0 +1,171 @@
+## full original lines 1564..1633
+1564:                OpName %type_sampler "type.sampler"
+1565:                OpName %sampler_lnc "sampler_lnc"
+1566:                OpName %type_2d_image "type.2d.image"
+1567:                OpName %input_tail_tex "input_tail_tex"
+1568:                OpName %input_tex "input_tex"
+1569:                OpName %type_2d_image_0 "type.2d.image"
+1570:                OpName %output_tex "output_tex"
+1571:                OpName %type__Globals "type.$Globals"
+1572:                OpMemberName %type__Globals 0 "output_extent"
+1573:                OpMemberName %type__Globals 1 "sample_self"
+1574:                OpName %_Globals "$Globals"
+1575:                OpName %cs_main "cs_main"
+1576:                OpName %type_sampled_image "type.sampled.image"
+1577:                OpModuleProcessed "dxc-commit-hash: 16ceb560"
+1578:                OpModuleProcessed "dxc-cl-option: /tmp/.tmpW7JzTt -E cs_main -T cs_6_4 -spirv -WX -Ges -fspv-target-env=vulkan1.1 -HV 2021 -Zi -Fo /tmp/.tmpH1Pz4M -Qembed_debug"
+1579:                OpDecorate %gl_GlobalInvocationID BuiltIn GlobalInvocationId
+1580:                OpDecorate %input_tail_tex DescriptorSet 0
+1581:                OpDecorate %input_tail_tex Binding 0
+1582:                OpDecorate %input_tex DescriptorSet 0
+1583:                OpDecorate %input_tex Binding 1
+1584:                OpDecorate %output_tex DescriptorSet 0
+1585:                OpDecorate %output_tex Binding 2
+1586:                OpDecorate %sampler_lnc DescriptorSet 0
+1587:                OpDecorate %sampler_lnc Binding 3
+1588:                OpDecorate %_Globals DescriptorSet 0
+1589:                OpDecorate %_Globals Binding 16
+1590:                OpMemberDecorate %type__Globals 0 Offset 0
+1591:                OpMemberDecorate %type__Globals 1 Offset 8
+1592:                OpDecorate %type__Globals Block
+1593:         %int = OpTypeInt 32 1
+1594:       %int_1 = OpConstant %int 1
+1595:       %float = OpTypeFloat 32
+1596:        %uint = OpTypeInt 32 0
+1597:      %uint_0 = OpConstant %uint 0
+1598:        %bool = OpTypeBool
+1599:     %float_0 = OpConstant %float 0
+1600:     %v3float = OpTypeVector %float 3
+1601:          %28 = OpConstantComposite %v3float %float_0 %float_0 %float_0
+1602:      %int_n1 = OpConstant %int -1
+1603:   %float_0_5 = OpConstant %float 0.5
+1604:     %v2float = OpTypeVector %float 2
+1605:          %32 = OpConstantComposite %v2float %float_0_5 %float_0_5
+1606:       %int_0 = OpConstant %int 0
+1607: %float_0_300000012 = OpConstant %float 0.300000012
+1608:          %35 = OpConstantComposite %v3float %float_0_300000012 %float_0_300000012 %float_0_300000012
+1609: %type_sampler = OpTypeSampler
+1610: %_ptr_UniformConstant_type_sampler = OpTypePointer UniformConstant %type_sampler
+1611: %type_2d_image = OpTypeImage %float 2D 2 0 0 1 Unknown
+1612: %_ptr_UniformConstant_type_2d_image = OpTypePointer UniformConstant %type_2d_image
+1613: %type_2d_image_0 = OpTypeImage %float 2D 2 0 0 2 R11fG11fB10f
+1614: %_ptr_UniformConstant_type_2d_image_0 = OpTypePointer UniformConstant %type_2d_image_0
+1615:      %v2uint = OpTypeVector %uint 2
+1616: %type__Globals = OpTypeStruct %v2uint %uint
+1617: %_ptr_Uniform_type__Globals = OpTypePointer Uniform %type__Globals
+1618:      %v3uint = OpTypeVector %uint 3
+1619: %_ptr_Input_v3uint = OpTypePointer Input %v3uint
+1620:        %void = OpTypeVoid
+1621:          %44 = OpTypeFunction %void
+1622:     %v4float = OpTypeVector %float 4
+1623: %_ptr_Uniform_v2uint = OpTypePointer Uniform %v2uint
+1624: %type_sampled_image = OpTypeSampledImage %type_2d_image
+1625: %_ptr_Uniform_uint = OpTypePointer Uniform %uint
+1626: %sampler_lnc = OpVariable %_ptr_UniformConstant_type_sampler UniformConstant
+1627: %input_tail_tex = OpVariable %_ptr_UniformConstant_type_2d_image UniformConstant
+1628:   %input_tex = OpVariable %_ptr_UniformConstant_type_2d_image UniformConstant
+1629:  %output_tex = OpVariable %_ptr_UniformConstant_type_2d_image_0 UniformConstant
+1630:    %_Globals = OpVariable %_ptr_Uniform_type__Globals Uniform
+1631: %gl_GlobalInvocationID = OpVariable %_ptr_Input_v3uint Input
+1632: %float_0_111111112 = OpConstant %float 0.111111112
+1633:          %49 = OpConstantComposite %v3float %float_0_111111112 %float_0_111111112 %float_0_111111112
+## full original lines 1634..1732
+1634:                OpLine %9 12 1
+1635:                OpNoLine
+1636:     %cs_main = OpFunction %void None %44
+1637:          %50 = OpLabel
+1638:                OpLine %9 12 1
+1639:          %51 = OpLoad %v3uint %gl_GlobalInvocationID
+1640:          %52 = OpVectorShuffle %v2uint %51 %51 0 1
+1641:                OpLine %9 13 26
+1642:          %53 = OpLoad %type_2d_image %input_tail_tex
+1643:          %54 = OpImageFetch %v4float %53 %52 Lod %uint_0
+1644:          %55 = OpVectorShuffle %v3float %54 %54 0 1 2
+1645:                OpLine %9 22 22
+1646:                OpBranch %56
+1647:          %56 = OpLabel
+1648:          %57 = OpPhi %v3float %28 %50 %58 %59
+1649:          %60 = OpPhi %int %int_n1 %50 %61 %59
+1650:                OpLine %9 22 24
+1651:          %62 = OpSLessThanEqual %bool %60 %int_1
+1652:                OpLine %9 22 27
+1653:                OpLoopMerge %63 %59 None
+1654:                OpBranchConditional %62 %64 %63
+1655:          %64 = OpLabel
+1656:                OpLine %9 23 26
+1657:                OpBranch %65
+1658:          %65 = OpLabel
+1659:          %58 = OpPhi %v3float %57 %64 %66 %67
+1660:          %68 = OpPhi %int %int_n1 %64 %69 %67
+1661:                OpLine %9 23 28
+1662:          %70 = OpSLessThanEqual %bool %68 %int_1
+1663:                OpLine %9 23 31
+1664:                OpLoopMerge %71 %67 None
+1665:                OpBranchConditional %70 %67 %71
+1666:          %67 = OpLabel
+1667:                OpLine %9 24 26
+1668:          %72 = OpConvertUToF %v2float %52
+1669:                OpLine %9 24 37
+1670:          %73 = OpFAdd %v2float %72 %32
+1671:                OpLine %9 24 52
+1672:          %74 = OpConvertSToF %float %68
+1673:                OpLine %9 24 55
+1674:          %75 = OpConvertSToF %float %60
+1675:                OpLine %9 24 51
+1676:          %76 = OpCompositeConstruct %v2float %74 %75
+1677:                OpLine %9 24 43
+1678:          %77 = OpFAdd %v2float %73 %76
+1679:                OpLine %9 24 68
+1680:          %78 = OpAccessChain %_ptr_Uniform_v2uint %_Globals %int_0
+1681:          %79 = OpLoad %v2uint %78
+1682:                OpLine %9 24 61
+1683:          %80 = OpConvertUToF %v2float %79
+1684:                OpLine %9 24 59
+1685:          %81 = OpFDiv %v2float %77 %80
+1686:                OpLine %9 25 25
+1687:          %82 = OpLoad %type_2d_image %input_tex
+1688:                OpLine %9 25 47
+1689:          %83 = OpLoad %type_sampler %sampler_lnc
+1690:                OpLine %9 25 25
+1691:          %84 = OpSampledImage %type_sampled_image %82 %83
+1692:          %85 = OpImageSampleExplicitLod %v4float %84 %81 Lod %float_0
+1693:          %86 = OpVectorShuffle %v3float %85 %85 0 1 2
+1694:                OpLine %9 25 22
+1695:          %66 = OpFAdd %v3float %58 %86
+1696:                OpLine %9 23 34
+1697:          %69 = OpIAdd %int %68 %int_1
+1698:                OpLine %9 26 9
+1699:                OpBranch %65
+1700:          %71 = OpLabel
+1701:                OpLine %9 27 5
+1702:                OpBranch %59
+1703:          %59 = OpLabel
+1704:                OpLine %9 22 30
+1705:          %61 = OpIAdd %int %60 %int_1
+1706:                OpLine %9 27 5
+1707:                OpBranch %56
+1708:          %63 = OpLabel
+1709:                OpLine %9 29 14
+1710:          %87 = OpFMul %v3float %57 %49
+1711:                OpLine %9 37 27
+1712:          %88 = OpAccessChain %_ptr_Uniform_uint %_Globals %int_1
+1713:          %89 = OpLoad %uint %88
+1714:          %90 = OpINotEqual %bool %89 %uint_0
+1715:                OpSelectionMerge %91 None
+1716:                OpBranchConditional %90 %92 %93
+1717:          %93 = OpLabel
+1718:                OpLine %9 39 11
+1719:                OpBranch %91
+1720:          %92 = OpLabel
+1721:                OpLine %9 38 11
+1722:          %94 = OpExtInst %v3float %1 FMix %87 %55 %35
+1723:                OpLine %9 38 58
+1724:                OpBranch %91
+1725:          %91 = OpLabel
+1726:          %95 = OpPhi %v3float %94 %92 %55 %93
+1727:                OpLine %9 41 5
+1728:          %96 = OpLoad %type_2d_image_0 %output_tex
+1729:                OpImageWrite %96 %52 %95 None
+1730:                OpLine %9 42 1
+1731:                OpReturn
+1732:                OpFunctionEnd

@@ -1,0 +1,135 @@
+--- a/tiny-glade/crates/country-core/src/systems/collision/world.rs
++++ b/tiny-glade/crates/country-core/src/systems/collision/world.rs
+@@ -1558,11 +1558,24 @@
+         &self.publisher
+     }
+ 
+-    /// `RaycastWorld::intersects_any`（0x1408cd5b0）：17 槽 Qbvh 遍历 + 命中即返回
+-    /// （机器码与 `Rapier::intersects_any` 0x1408cdf80 同体，O）。
++    /// Unbounded compatibility form of B `RaycastWorld::intersects_any`.
++    /// The original caller-provided ray bound is exposed by the method below.
+     #[cfg(feature = "native-physics")]
+     pub fn intersects_any(&self, origin: glam::Vec3, dir: glam::Vec3, mask: u32) -> bool {
+-        Rapier::intersects_any(self, origin, dir, mask)
++        Rapier::intersects_any(self, origin, dir, f32::MAX, mask)
++    }
++
++    /// B @0x1408cd5b0 -> 0x1408cdf80: preserve the caller's parametric ray bound.
++    /// The direction is passed unchanged; physical length is `|dir| * max_toi`.
++    #[cfg(feature = "native-physics")]
++    pub fn intersects_any_with_max_toi(
++        &self,
++        origin: glam::Vec3,
++        dir: glam::Vec3,
++        max_toi: f32,
++        mask: u32,
++    ) -> bool {
++        Rapier::intersects_any(self, origin, dir, max_toi, mask)
+     }
+ 
+     /// `RaycastWorld::intersects_any`（非 native-physics 壳）。
+@@ -2077,6 +2090,7 @@
+         world: &RaycastWorld,
+         origin: glam::Vec3,
+         dir: glam::Vec3,
++        max_toi: f32,
+         mask: u32,
+     ) -> bool {
+         let ray = Ray::new(
+@@ -2092,7 +2106,7 @@
+                 &slot.bodies,
+                 &slot.colliders,
+                 &ray,
+-                f32::MAX,
++                max_toi,
+                 true,
+                 QueryFilter::default(),
+                 |_handle, _hit| {
+@@ -2347,7 +2361,7 @@
+                 return true;
+             }
+         }
+-        Rapier::intersects_any(&self.world, origin, dir, mask)
++        Rapier::intersects_any(&self.world, origin, dir, f32::MAX, mask)
+     }
+ 
+     /// `Raycasting::intersects_any`（非 native-physics 壳）。
+@@ -3864,3 +3878,78 @@
+         })).is_err());
+     }
+ }
++
++
++#[cfg(all(test, feature = "native-physics"))]
++mod bounded_ray_regressions {
++    use super::*;
++    use glam::{Quat, Vec3};
++    use std::collections::HashMap;
++
++    fn insert_box(
++        world: &mut RaycastWorld,
++        map: &mut HashMap<u32, ColliderMeshInstance>,
++        key: u32,
++        source: RaycastGeoSource,
++        center: Vec3,
++    ) {
++        assert!(matches!(
++            upsert_collider(
++                world,
++                map,
++                key,
++                source,
++                Arc::new(RaycastMeshData::new_cuboid_at(Vec3::ONE, Vec3::ZERO)),
++                center,
++                Quat::IDENTITY,
++            ),
++            ColliderUpsert::Inserted { .. }
++        ));
++    }
++
++    #[test]
++    fn finite_bound_ignores_geometry_beyond_endpoint() {
++        let mut world = RaycastWorld::new();
++        let mut map = HashMap::new();
++        insert_box(&mut world, &mut map, 1, RaycastGeoSource::Slot0, Vec3::Z * 5.0);
++        world.flush_colliders();
++        assert!(world.intersects_any(Vec3::ZERO, Vec3::Z, 1));
++        assert!(!world.intersects_any_with_max_toi(Vec3::ZERO, Vec3::Z, 4.49, 1));
++        assert!(world.intersects_any_with_max_toi(Vec3::ZERO, Vec3::Z, 4.5, 1));
++    }
++
++    #[test]
++    fn finite_bound_and_mask_reach_last_subworld() {
++        let mut world = RaycastWorld::new();
++        let mut map = HashMap::new();
++        insert_box(&mut world, &mut map, 1, RaycastGeoSource::Slot0, Vec3::Z);
++        insert_box(&mut world, &mut map, 2, RaycastGeoSource::Slot16, Vec3::Z * 5.0);
++        world.flush_colliders();
++        let last = 1 << 16;
++        assert!(!world.intersects_any_with_max_toi(Vec3::ZERO, Vec3::Z, 2.0, last));
++        assert!(world.intersects_any_with_max_toi(Vec3::ZERO, Vec3::Z, 10.0, last));
++        assert!(!world.intersects_any_with_max_toi(Vec3::ZERO, Vec3::Z, 10.0, 0));
++        assert!(!world.intersects_any_with_max_toi(Vec3::ZERO, Vec3::Z, 10.0, 1 << 31));
++    }
++
++    #[test]
++    fn ray_direction_keeps_its_parametric_scale() {
++        let mut world = RaycastWorld::new();
++        let mut map = HashMap::new();
++        insert_box(&mut world, &mut map, 1, RaycastGeoSource::Slot0, Vec3::Z * 4.0);
++        world.flush_colliders();
++        let direction = Vec3::Z * 2.0;
++        assert!(!world.intersects_any_with_max_toi(Vec3::ZERO, direction, 1.5, 1));
++        assert!(world.intersects_any_with_max_toi(Vec3::ZERO, direction, 1.75, 1));
++        assert!(world.intersects_any(Vec3::ZERO, direction, 1));
++    }
++
++    #[test]
++    fn solid_ray_starts_inside_at_zero_toi() {
++        let mut world = RaycastWorld::new();
++        let mut map = HashMap::new();
++        insert_box(&mut world, &mut map, 1, RaycastGeoSource::Slot0, Vec3::ZERO);
++        world.flush_colliders();
++        assert!(world.intersects_any_with_max_toi(Vec3::ZERO, Vec3::Z, 0.0, 1));
++    }
++}

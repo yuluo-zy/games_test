@@ -1,0 +1,18 @@
+1407ac83c: 488b85a0040000  mov rax, qword ptr [rbp + 0x4a0]
+1407ac843: 8b8d84060000  mov ecx, dword ptr [rbp + 0x684]
+1407ac849: 8908  mov dword ptr [rax], ecx
+1407ac84b: 488b8500050000  mov rax, qword ptr [rbp + 0x500]
+1407ac852: c6808202000002  mov byte ptr [rax + 0x282], 2
+1407ac859: 488b8dc8060000  mov rcx, qword ptr [rbp + 0x6c8]
+1407ac860: 80791202  cmp byte ptr [rcx + 0x12], 2
+1407ac864: b002  mov al, 2
+1407ac866: 1c00  sbb al, 0
+1407ac868: 884112  mov byte ptr [rcx + 0x12], al
+1407ac86b: 410fb64869  movzx ecx, byte ptr [r8 + 0x69]
+1407ac870: 488b85b0040000  mov rax, qword ptr [rbp + 0x4b0]
+1407ac877: f30f1008  movss xmm1, dword ptr [rax]
+1407ac87b: 660f6e5004  movd xmm2, dword ptr [rax + 4]
+1407ac880: c685f706000000  mov byte ptr [rbp + 0x6f7], 0
+1407ac887: 4c8b8da8040000  mov r9, qword ptr [rbp + 0x4a8]
+1407ac88e: e88d120000  call 0x1407adb20
+1407ac893: e925090000  jmp 0x1407ad1bd
