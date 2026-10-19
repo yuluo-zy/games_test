@@ -334,8 +334,11 @@ pub struct VulkanGraphBackend {
     specifications: BTreeMap<String, ResourceSpec>,
     transient_aliasing: bool,
     prepared_transients: super::transient_resources::PreparedTransients,
-    transient_alias_tokens: std::collections::BTreeSet<u64>,
-    transient_switch_tokens: BTreeMap<u64, vk::PipelineStageFlags>,
+    alias_cache: super::transient_resources::AliasCache,
+    /// Members of the alias set lent to the frame being populated.
+    lent_aliases: Option<super::transient_resources::LentAliases>,
+    active_alias_set: Option<u64>,
+    transient_alias_tokens: BTreeMap<u64, super::transient_resources::AliasOrigin>,
     transient_counters: Arc<crate::raw::transient_backing::TransientBackingCounters>,
     cpu_arenas: crate::command::CpuArenaPool,
     owner_pool: crate::raw::temp_list_pool::TempListPool<crate::raw::binding::RetainedResource>,
@@ -459,22 +462,12 @@ struct OwnedBatchSync {
 fn add_transition(
     scope: &mut crate::raw::barrier::SynchronizationScope,
     resources: &BTreeMap<u64, GpuResource>,
-    alias_switches: &BTreeMap<u64, vk::PipelineStageFlags>,
     token: u64,
     transition: &super::sync_plan::BoundTransition,
 ) -> bool {
     use crate::resource::OwnershipRange;
-    if let Some(previous_stages) = alias_switches.get(&token) {
-        // Aliasing is a backing-memory dependency in addition to the exact
-        // image layout or buffer range dependency. Never replace it with a view.
-        scope.source_stages |= *previous_stages;
-        scope.destination_stages |= transition.destination.stages;
-        scope.memory.push(
-            vk::MemoryBarrier::default()
-                .src_access_mask(vk::AccessFlags::MEMORY_WRITE)
-                .dst_access_mask(vk::AccessFlags::MEMORY_READ | vk::AccessFlags::MEMORY_WRITE),
-        );
-    }
+    // Alias (shared backing) dependencies are ordinary transitions here: the
+    // planner models them as a synthetic previous access of the new member.
     scope.source_stages |= transition.source.stages;
     scope.destination_stages |= transition.destination.stages;
     match (resources.get(&token), transition.range) {
@@ -529,7 +522,6 @@ struct VulkanChunkView<'a> {
     barrier_device: &'a Device,
     barrier_dispatch: crate::raw::barrier::BarrierDispatch,
     resources: &'a BTreeMap<u64, GpuResource>,
-    alias_switches: &'a BTreeMap<u64, vk::PipelineStageFlags>,
     cpu_arenas: &'a crate::command::CpuArenaPool,
     owner_pool: &'a crate::raw::temp_list_pool::TempListPool<crate::raw::binding::RetainedResource>,
 }
@@ -577,7 +569,6 @@ impl super::executor::ChunkRecorder for VulkanChunkView<'_> {
             if !add_transition(
                 &mut scope,
                 self.resources,
-                self.alias_switches,
                 t.token,
                 &t.transition,
             ) {
@@ -699,8 +690,10 @@ impl VulkanGraphBackend {
             specifications: BTreeMap::new(),
             transient_aliasing: false,
             prepared_transients: Default::default(),
+            alias_cache: Default::default(),
+            lent_aliases: None,
+            active_alias_set: None,
             transient_alias_tokens: Default::default(),
-            transient_switch_tokens: Default::default(),
             transient_counters: Default::default(),
             commands: BTreeMap::new(),
             queue,
@@ -747,6 +740,20 @@ impl VulkanGraphBackend {
     /// Physical aliasing is opt-in. PreserveParallelism never adds DAG edges.
     pub fn set_transient_aliasing(&mut self, enabled: bool) {
         self.transient_aliasing = enabled;
+        if !enabled {
+            self.return_unconsumed_aliases();
+            self.active_alias_set = None;
+            self.alias_cache.trim();
+        }
+    }
+    /// Members lent to a frame that never bound them (population failed or
+    /// stopped early) were not used by the GPU; they return to their set.
+    fn return_unconsumed_aliases(&mut self) {
+        if let Some(lent) = self.lent_aliases.take() {
+            for (resource, origin) in lent.resources.into_values() {
+                self.alias_cache.give_back(origin, resource);
+            }
+        }
     }
     /// Optional production command-span timestamps. Results are per physical
     /// queue; their sum is not multi-queue frame latency or pure GPU active time.
@@ -790,7 +797,9 @@ impl VulkanGraphBackend {
             .flat_map(|ring| ring.drain_samples())
     }
     pub fn transient_memory_plan(&self) -> &super::transient_memory::PhysicalMemoryPlan {
-        &self.prepared_transients.plan
+        self.active_alias_set
+            .and_then(|set| self.alias_cache.plan(set))
+            .unwrap_or(&self.prepared_transients.plan)
     }
     pub fn transient_backing_statistics(
         &self,
@@ -815,6 +824,7 @@ impl VulkanGraphBackend {
             self.frame_storage.trim_idle(0);
             self.import_validation.get_mut().trim_idle();
             self.prepared_transients.trim_unaliased();
+            self.alias_cache.trim();
         }
         let slots = self.device.frames_in_flight();
         let selected = (1..=slots)
@@ -1297,14 +1307,17 @@ impl graph::ResourceBackend for VulkanGraphBackend {
         // Drop any unused candidates from an earlier failed population before
         // allocating this frame. Already-published tokens belong to that frame.
         if self.transient_aliasing {
-            self.prepared_transients = Default::default();
-            self.prepared_transients = super::transient_resources::prepare(
+            self.return_unconsumed_aliases();
+            self.active_alias_set = None;
+            let lent = self.alias_cache.lend(
                 &self.device,
                 &self.specifications,
                 plan,
                 graph,
                 self.transient_counters.clone(),
             )?;
+            self.active_alias_set = lent.as_ref().map(|lent| lent.set);
+            self.lent_aliases = lent;
         } else {
             self.prepared_transients
                 .prepare_unaliased(&plan.dependency_edges, &self.device.allocator_stats)?;
@@ -1312,10 +1325,12 @@ impl graph::ResourceBackend for VulkanGraphBackend {
         Ok(())
     }
     fn has_prepared_resource(&self, name: &str) -> bool {
-        self.prepared_transients.resources.contains_key(name)
+        self.lent_aliases
+            .as_ref()
+            .is_some_and(|lent| lent.resources.contains_key(name))
     }
     fn is_transient_alias(&self, token: u64) -> bool {
-        self.transient_alias_tokens.contains(&token)
+        self.transient_alias_tokens.contains_key(&token)
     }
     fn resource_matches_sharing(
         &self,
@@ -1334,9 +1349,12 @@ impl graph::ResourceBackend for VulkanGraphBackend {
         descriptor: graph::Descriptor,
         name: &str,
     ) -> Result<u64, graph::BackendFailure> {
-        let prepared = self.prepared_transients.resources.remove(name);
-        let aliased = prepared.is_some();
-        let resource = if let Some(resource) = prepared {
+        let prepared = self
+            .lent_aliases
+            .as_mut()
+            .and_then(|lent| lent.resources.remove(name));
+        let origin = prepared.as_ref().map(|(_, origin)| *origin);
+        let resource = if let Some((resource, _)) = prepared {
             resource
         } else {
             self.specifications
@@ -1345,32 +1363,29 @@ impl graph::ResourceBackend for VulkanGraphBackend {
                 .ok_or_else(|| crate::Error::invalid_usage(format!("缺少资源规格 {name}")))?
                 .create_resource(self.device.clone(), descriptor.usage())?
         };
-        let token = self.bind_import_owned_by(resource, self.family)?;
-        if aliased {
-            self.transient_alias_tokens.insert(token);
-            if let Some(codes) = self.prepared_transients.switches.remove(name) {
-                let stages = codes
-                    .into_iter()
-                    .filter_map(|code| self.accesses.0.get(&code))
-                    .fold(vk::PipelineStageFlags::empty(), |stages, access| {
-                        stages | access.stages
-                    });
-                let stages = if self.queue_runtime.multi_queue {
-                    vk::PipelineStageFlags::ALL_COMMANDS
-                } else {
-                    stages
-                };
-                self.transient_switch_tokens.insert(token, stages);
+        let token = match self.bind_import_owned_by(resource.clone(), self.family) {
+            Ok(token) => token,
+            Err(error) => {
+                if let Some(origin) = origin {
+                    self.alias_cache.give_back(origin, resource);
+                }
+                return Err(error.into());
             }
+        };
+        if let Some(origin) = origin {
+            self.transient_alias_tokens.insert(token, origin);
         }
         Ok(token)
     }
     fn set_debug_name(&mut self, _token: u64, _descriptor: graph::Descriptor, _name: &str) {}
     fn release_created_resource(&mut self, token: u64) {
         // 只在 GPU 不会再用到该资源时调用（见 graph::reclaim_failed_resources）；命令拥有者仍持有的 Arc 不受影响。
-        self.resources.remove(&token);
-        self.transient_alias_tokens.remove(&token);
-        self.transient_switch_tokens.remove(&token);
+        let resource = self.resources.remove(&token);
+        if let (Some(origin), Some(resource)) =
+            (self.transient_alias_tokens.remove(&token), resource)
+        {
+            self.alias_cache.give_back(origin, resource);
+        }
         self.import_families.remove(&token);
     }
 }
@@ -1594,7 +1609,6 @@ impl ExecutionBackend for VulkanGraphBackend {
             owner_pool: &self.owner_pool,
             device: &self.device.device,
             resources: &self.resources,
-            alias_switches: &self.transient_switch_tokens,
         }))
     }
     fn begin_command(&mut self, handle: u64) -> Result<(), recording::Failure> {
@@ -1682,7 +1696,6 @@ impl ExecutionBackend for VulkanGraphBackend {
         add_transition(
             self.barriers.entry(command).or_default(),
             &self.resources,
-            &self.transient_switch_tokens,
             token,
             transition,
         )

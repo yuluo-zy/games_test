@@ -1,5 +1,6 @@
-//! Physical graph-local alias preparation. Every invocation owns fresh backing
-//! allocations, so distinct in-flight frame instances never overlap memory.
+//! Physical graph-local alias preparation. Alias sets (shared backings and the
+//! resources bound to them) are cached per physical plan and lent to one frame
+//! at a time, so distinct in-flight frame instances never overlap memory.
 use super::{
     graph,
     plan::CompiledPlan,
@@ -15,14 +16,13 @@ use crate::raw::{
 };
 use ash::vk;
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    collections::BTreeMap,
     sync::Arc,
 };
 
+/// Unaliased dependency storage reused across frames.
 #[derive(Default)]
 pub(crate) struct PreparedTransients {
-    pub resources: BTreeMap<String, GpuResource>,
-    pub switches: BTreeMap<String, Vec<u8>>,
     pub plan: PhysicalMemoryPlan,
     // Declared after the plan so the actual edge storage is freed before its credit.
     edge_memory: Option<crate::raw::allocator::CpuMemoryReservation>,
@@ -292,121 +292,338 @@ impl Unbound {
     }
 }
 
-pub(crate) fn prepare(
-    device: &Arc<Device>,
-    specifications: &BTreeMap<String, ResourceSpec>,
-    plan: &CompiledPlan,
-    graph: &graph::GraphDeclaration,
-    counters: Arc<TransientBackingCounters>,
-) -> crate::Result<PreparedTransients> {
-    let mut candidates = BTreeMap::new();
-    for (index, declaration) in graph.resources.iter().enumerate() {
-        if !matches!(declaration.source, graph::OriginSource::Create)
-            || plan.info.exported_indices.contains(&(index as u16))
-        {
-            continue;
-        }
-        let uses = plan
-            .retained_passes
+/// Identity of one physical alias plan: the aliasing candidates (logical
+/// index, creation parameters including derived usage, sharing, scheduled
+/// uses) and the dependency proof. Equal keys produce equal memory plans on one
+/// device, so the plan and its bound members can be reused.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+struct AliasKey {
+    entries: Vec<KeyEntry>,
+    uses: Vec<usize>,
+    edges: Vec<(usize, usize)>,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum SpecKey {
+    Buffer {
+        size: u64,
+        usage: vk::BufferUsageFlags,
+        alignment: u16,
+    },
+    Image(texture::TextureDesc),
+}
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct KeyEntry {
+    index: u32,
+    spec: SpecKey,
+    sharing: crate::resource::ResourceSharing,
+    uses: std::ops::Range<usize>,
+}
+impl AliasKey {
+    fn clear(&mut self) {
+        self.entries.clear();
+        self.uses.clear();
+        self.edges.clear();
+    }
+}
+/// Where a lent alias member returns once its frame retires.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct AliasOrigin {
+    set: u64,
+    member: usize,
+}
+/// One physical alias plan with its shared backings and bound members. A set
+/// is lent to exactly one frame at a time: members come back only after that
+/// frame retired on the GPU (or never reached it), so memory still in flight is
+/// never handed to another frame.
+struct AliasSet {
+    id: u64,
+    key: AliasKey,
+    plan: Arc<PhysicalMemoryPlan>,
+    edges: Vec<(u32, u32)>,
+    members: Vec<(u32, Option<GpuResource>)>,
+    lent: usize,
+    last_used: u64,
+}
+/// A frame's view of a lent alias set.
+pub(crate) struct LentAliases {
+    pub set: u64,
+    pub resources: BTreeMap<String, (GpuResource, AliasOrigin)>,
+}
+/// Cache of physical alias plans keyed by [`AliasKey`]. A cache hit performs no
+/// Vulkan object creation, memory query or allocation.
+#[derive(Default)]
+pub(crate) struct AliasCache {
+    sets: Vec<AliasSet>,
+    next_id: u64,
+    clock: u64,
+    key: AliasKey,
+    pairs: Vec<(u32, usize)>,
+}
+/// Retired sets kept for reuse (lent sets are never evicted). Two frames in
+/// flight with one or two alternating graphs fit without reallocation.
+const MAX_AVAILABLE_SETS: usize = 8;
+impl AliasCache {
+    pub(crate) fn plan(&self, set: u64) -> Option<&PhysicalMemoryPlan> {
+        self.sets
             .iter()
-            .copied()
-            .filter(|&pass| {
+            .find(|entry| entry.id == set)
+            .map(|entry| &*entry.plan)
+    }
+    /// Alias edges `(previous, next)` by logical resource index, including the
+    /// wrap-around edge from the last member back to the first: when a set is
+    /// reused, its first member overwrites memory last used by the final member.
+    pub(crate) fn edges(&self, set: u64) -> &[(u32, u32)] {
+        self.sets
+            .iter()
+            .find(|entry| entry.id == set)
+            .map_or(&[], |entry| &entry.edges)
+    }
+    /// Take back a member lent by [`Self::lend`]. The caller guarantees the GPU
+    /// no longer uses it.
+    pub(crate) fn give_back(&mut self, origin: AliasOrigin, resource: GpuResource) {
+        if let Some(set) = self.sets.iter_mut().find(|set| set.id == origin.set)
+            && let Some((_, slot)) = set.members.get_mut(origin.member)
+            && slot.is_none()
+        {
+            *slot = Some(resource);
+            set.lent -= 1;
+        }
+    }
+    /// Drop every retired set (memory pressure).
+    pub(crate) fn trim(&mut self) {
+        self.sets.retain(|set| set.lent != 0);
+    }
+    fn build_key(
+        &mut self,
+        specifications: &BTreeMap<String, ResourceSpec>,
+        plan: &CompiledPlan,
+        graph: &graph::GraphDeclaration,
+    ) {
+        self.pairs.clear();
+        for &pass in &plan.retained_passes {
+            self.pairs.extend(
                 plan.definition.passes[pass]
                     .accesses
                     .iter()
-                    .any(|access| access.resource_index as usize == index)
-            })
-            .collect::<Vec<_>>();
-        if uses.is_empty() {
-            continue;
+                    .map(|access| (access.resource_index, pass)),
+            );
         }
-        let Some(mut spec) = specifications.get(&declaration.name).copied() else {
-            continue;
+        self.pairs.sort_unstable();
+        self.pairs.dedup();
+        let key = &mut self.key;
+        key.clear();
+        key.edges.extend_from_slice(&plan.dependency_edges);
+        let mut cursor = 0;
+        for (index, declaration) in graph.resources.iter().enumerate() {
+            let first = cursor
+                + self.pairs[cursor..].partition_point(|&(resource, _)| (resource as usize) < index);
+            let last = first
+                + self.pairs[first..].partition_point(|&(resource, _)| resource as usize == index);
+            cursor = last;
+            if first == last
+                || !matches!(declaration.source, graph::OriginSource::Create)
+                || plan.info.exported_indices.contains(&(index as u16))
+            {
+                continue;
+            }
+            let Some(spec) = specifications.get(&declaration.name).copied() else {
+                continue;
+            };
+            let spec_key = match spec {
+                ResourceSpec::Buffer(desc) | ResourceSpec::ConcurrentBuffer(desc, _) => {
+                    if desc.memory_location != buffer::MemoryLocation::GpuOnly {
+                        continue;
+                    }
+                    SpecKey::Buffer {
+                        size: desc.size,
+                        usage: desc.usage
+                            | vk::BufferUsageFlags::from_raw(plan.info.buffer_usage_flags[index]),
+                        alignment: desc.alignment,
+                    }
+                }
+                ResourceSpec::Image(mut desc) | ResourceSpec::ConcurrentImage(mut desc, _) => {
+                    // Sparse, protected, disjoint, external/modifier images need a
+                    // different binding contract. Ordinary optimal images only.
+                    let allowed = vk::ImageCreateFlags::CUBE_COMPATIBLE
+                        | vk::ImageCreateFlags::MUTABLE_FORMAT
+                        | vk::ImageCreateFlags::ALIAS;
+                    if !(desc.flags & !allowed).is_empty() {
+                        continue;
+                    }
+                    desc.usage |= vk::ImageUsageFlags::from_raw(plan.info.image_usage_flags[index]);
+                    SpecKey::Image(desc)
+                }
+            };
+            let start = key.uses.len();
+            key.uses
+                .extend(self.pairs[first..last].iter().map(|&(_, pass)| pass));
+            key.entries.push(KeyEntry {
+                index: index as u32,
+                spec: spec_key,
+                sharing: spec.sharing(),
+                uses: start..key.uses.len(),
+            });
+        }
+    }
+    /// Lend the physical alias set for this frame, reusing a retired set with
+    /// the same key or creating one. Returns `None` when nothing can alias.
+    pub(crate) fn lend(
+        &mut self,
+        device: &Arc<Device>,
+        specifications: &BTreeMap<String, ResourceSpec>,
+        plan: &CompiledPlan,
+        graph: &graph::GraphDeclaration,
+        counters: Arc<TransientBackingCounters>,
+    ) -> crate::Result<Option<LentAliases>> {
+        self.clock += 1;
+        self.build_key(specifications, plan, graph);
+        if self.key.entries.is_empty() {
+            return Ok(None);
+        }
+        let position = match self
+            .sets
+            .iter()
+            .position(|set| set.lent == 0 && set.key == self.key)
+        {
+            Some(position) => position,
+            None => {
+                let set = self.create(device, plan, graph, counters)?;
+                self.evict();
+                self.sets.push(set);
+                self.sets.len() - 1
+            }
         };
-        match &mut spec {
-            ResourceSpec::Buffer(desc) | ResourceSpec::ConcurrentBuffer(desc, _) => {
-                if desc.memory_location != buffer::MemoryLocation::GpuOnly {
-                    continue;
-                }
-                desc.usage |= vk::BufferUsageFlags::from_raw(plan.info.buffer_usage_flags[index]);
-            }
-            ResourceSpec::Image(desc) | ResourceSpec::ConcurrentImage(desc, _) => {
-                // Sparse, protected, disjoint, external/modifier images need a
-                // different binding contract. Ordinary optimal images only.
-                let allowed = vk::ImageCreateFlags::CUBE_COMPATIBLE
-                    | vk::ImageCreateFlags::MUTABLE_FORMAT
-                    | vk::ImageCreateFlags::ALIAS;
-                if !(desc.flags & !allowed).is_empty() {
-                    continue;
-                }
-                desc.usage |= vk::ImageUsageFlags::from_raw(plan.info.image_usage_flags[index]);
-            }
+        let set = &mut self.sets[position];
+        set.last_used = self.clock;
+        let mut resources = BTreeMap::new();
+        for (member, (index, slot)) in set.members.iter_mut().enumerate() {
+            let resource = slot.take().expect("retired alias set owns every member");
+            resources.insert(
+                graph.resources[*index as usize].name.clone(),
+                (resource, AliasOrigin { set: set.id, member }),
+            );
         }
-        candidates.insert(
-            index as u32,
-            Unbound::create(device.clone(), index as u32, spec, uses)?,
-        );
+        set.lent = set.members.len();
+        Ok(Some(LentAliases {
+            set: set.id,
+            resources,
+        }))
     }
-    let facts = candidates
-        .values()
-        .map(|candidate| candidate.fact.clone())
-        .collect::<Vec<_>>();
-    let physical = transient_memory::plan_memory_requirements(&facts, &plan.dependency_edges)?;
-    super::transient_memory_check::check_memory_plan(&physical, &plan.dependency_edges)?;
-    let mut result = PreparedTransients {
-        plan: physical,
-        ..Default::default()
-    };
-    for backing in &mut result.plan.backings {
-        if backing.resources.len() < 2 {
-            continue;
-        }
-        let owner = SharedBacking::allocate(
-            device,
-            vk::MemoryRequirements {
-                size: backing.size,
-                alignment: backing.alignment,
-                memory_type_bits: backing.memory_type_bits,
-            },
-            vk::MemoryAllocateFlags::from_raw(backing.allocation_flags),
-            candidates[&backing.resources[0]].fact.compatibility == 0,
-            counters.clone(),
-        )?;
-        backing.allocation_id = Some(owner.accounting_id);
-        backing.memory_type = Some(owner.memory_type);
-        let mut members = backing.resources.clone();
-        members.sort_by_key(|id| {
-            *candidates[id]
-                .fact
-                .uses
+    fn evict(&mut self) {
+        while self.sets.iter().filter(|set| set.lent == 0).count() >= MAX_AVAILABLE_SETS {
+            let oldest = self
+                .sets
                 .iter()
-                .min()
-                .expect("used resource")
-        });
-        let mut previous = None;
-        for id in members {
-            let name = graph.resources[id as usize].name.clone();
-            let resource = candidates
-                .remove(&id)
-                .expect("planned candidate")
-                .bind(owner.clone())?;
-            if let Some(previous) = previous {
-                let codes = plan
-                    .retained_passes
-                    .iter()
-                    .flat_map(|&pass| plan.definition.passes[pass].accesses.iter())
-                    .filter(|access| access.resource_index == previous)
-                    .map(|access| access.access_code)
-                    .collect::<BTreeSet<_>>();
-                result
-                    .switches
-                    .insert(name.clone(), codes.into_iter().collect());
-            }
-            previous = Some(id);
-            result.resources.insert(name, resource);
+                .enumerate()
+                .filter(|(_, set)| set.lent == 0)
+                .min_by_key(|(_, set)| set.last_used)
+                .map(|(position, _)| position)
+                .expect("counted available set");
+            self.sets.swap_remove(oldest);
         }
     }
-    Ok(result)
+    fn create(
+        &mut self,
+        device: &Arc<Device>,
+        plan: &CompiledPlan,
+        graph: &graph::GraphDeclaration,
+        counters: Arc<TransientBackingCounters>,
+    ) -> crate::Result<AliasSet> {
+        let mut candidates = BTreeMap::new();
+        for entry in &self.key.entries {
+            let spec = match entry.spec {
+                SpecKey::Buffer {
+                    size,
+                    usage,
+                    alignment,
+                } => {
+                    let mut desc = buffer::BufferDesc::new_gpu_only(size, usage);
+                    desc.alignment = alignment;
+                    match entry.sharing {
+                        crate::resource::ResourceSharing::Exclusive => ResourceSpec::Buffer(desc),
+                        crate::resource::ResourceSharing::Concurrent(families) => {
+                            ResourceSpec::ConcurrentBuffer(desc, families)
+                        }
+                    }
+                }
+                SpecKey::Image(desc) => match entry.sharing {
+                    crate::resource::ResourceSharing::Exclusive => ResourceSpec::Image(desc),
+                    crate::resource::ResourceSharing::Concurrent(families) => {
+                        ResourceSpec::ConcurrentImage(desc, families)
+                    }
+                },
+            };
+            let uses = self.key.uses[entry.uses.clone()].to_vec();
+            candidates.insert(
+                entry.index,
+                Unbound::create(device.clone(), entry.index, spec, uses)?,
+            );
+        }
+        let facts = candidates
+            .values()
+            .map(|candidate| candidate.fact.clone())
+            .collect::<Vec<_>>();
+        let mut physical =
+            transient_memory::plan_memory_requirements(&facts, &plan.dependency_edges)?;
+        if super::validation_enabled() {
+            super::transient_memory_check::check_memory_plan(&physical, &plan.dependency_edges)?;
+        }
+        let mut members = Vec::new();
+        let mut edges = Vec::new();
+        for backing in &mut physical.backings {
+            if backing.resources.len() < 2 {
+                continue;
+            }
+            let owner = SharedBacking::allocate(
+                device,
+                vk::MemoryRequirements {
+                    size: backing.size,
+                    alignment: backing.alignment,
+                    memory_type_bits: backing.memory_type_bits,
+                },
+                vk::MemoryAllocateFlags::from_raw(backing.allocation_flags),
+                candidates[&backing.resources[0]].fact.compatibility == 0,
+                counters.clone(),
+            )?;
+            backing.allocation_id = Some(owner.accounting_id);
+            backing.memory_type = Some(owner.memory_type);
+            let mut order = backing.resources.clone();
+            order.sort_by_key(|id| {
+                *candidates[id]
+                    .fact
+                    .uses
+                    .iter()
+                    .min()
+                    .expect("used resource")
+            });
+            for pair in order.windows(2) {
+                edges.push((pair[0], pair[1]));
+            }
+            edges.push((*order.last().expect("shared backing"), order[0]));
+            for id in order {
+                let resource = candidates
+                    .remove(&id)
+                    .expect("planned candidate")
+                    .bind(owner.clone())?;
+                debug_assert!(
+                    (id as usize) < graph.resources.len(),
+                    "alias member is a declared resource"
+                );
+                members.push((id, Some(resource)));
+            }
+        }
+        let id = self.next_id;
+        self.next_id += 1;
+        Ok(AliasSet {
+            id,
+            key: self.key.clone(),
+            plan: Arc::new(physical),
+            edges,
+            members,
+            lent: 0,
+            last_used: self.clock,
+        })
+    }
 }
 
 #[cfg(test)]

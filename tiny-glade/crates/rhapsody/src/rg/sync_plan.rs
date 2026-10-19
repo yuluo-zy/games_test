@@ -159,6 +159,16 @@ pub struct BoundBatch {
     pub domain: QueueDomain,
     pub kind: BoundBatchKind,
 }
+/// Two transient resources share backing memory. `next` discards its contents
+/// on first use, and every access to `previous` recorded so far (plus `next`'s
+/// own initial frontier) becomes a synthetic previous writer of `next` with an
+/// UNDEFINED image layout. The binder therefore always emits the aliasing
+/// barrier or cross-queue wait, and the bound checker verifies it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AliasEdge {
+    pub previous: u32,
+    pub next: u32,
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct InitialState {
     pub resource: u32,
@@ -168,6 +178,7 @@ pub struct InitialState {
 /// Accessors borrow existing tables; diagnostics never allocate capture arrays.
 pub struct BoundSynchronization {
     pub(crate) initial: crate::resource::range_state::Storage<InitialState>,
+    pub(crate) aliases: crate::resource::range_state::Storage<AliasEdge>,
     pub(crate) batches: crate::resource::range_state::Storage<BoundBatch>,
     pub(crate) order: crate::resource::range_state::Storage<usize>,
     pub(crate) transitions: crate::resource::range_state::Storage<BoundTransition>,
@@ -177,6 +188,9 @@ pub struct BoundSynchronization {
 impl BoundSynchronization {
     pub fn initial_inputs(&self) -> &[InitialState] {
         &self.initial.values
+    }
+    pub fn aliases(&self) -> &[AliasEdge] {
+        &self.aliases.values
     }
     pub fn batches(&self) -> &[BoundBatch] {
         &self.batches.values
@@ -406,6 +420,7 @@ impl std::fmt::Debug for BoundSynchronization {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("BoundSynchronization")
             .field("initial", &self.initial_inputs())
+            .field("aliases", &self.aliases())
             .field("batches", &self.batches())
             .field("order", &self.execution_order())
             .field("transitions", &self.transitions())

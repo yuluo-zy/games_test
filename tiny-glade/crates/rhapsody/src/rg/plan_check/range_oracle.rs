@@ -119,6 +119,9 @@ impl<T: Clone> SpatialLedger<T> {
         }
         Ok(selected)
     }
+    pub(super) fn states(&self) -> impl Iterator<Item = &T> {
+        self.rows.iter().map(|(_, state)| state)
+    }
     pub(super) fn visit(
         &self,
         range: OwnershipRange,

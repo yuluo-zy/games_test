@@ -53,6 +53,22 @@ impl PendingFrontier {
         self.scope[queue.index()] = self.scope[queue.index()].union(scope);
         self.points[queue.index()] = Some(DependencyRef::Batch(batch));
     }
+    /// Union of two frontiers. Per queue, the dependency that executes later
+    /// covers the earlier one (`later` decides using the actual binding order).
+    fn merge(
+        &mut self,
+        other: Self,
+        later: impl Fn(DependencyRef, DependencyRef) -> DependencyRef,
+    ) {
+        for queue in 0..MAX_QUEUES {
+            self.scope[queue] = self.scope[queue].union(other.scope[queue]);
+            self.points[queue] = match (self.points[queue], other.points[queue]) {
+                (Some(a), Some(b)) => Some(later(a, b)),
+                (a, b) => a.or(b),
+            };
+        }
+        self.host = self.host.union(other.host);
+    }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum PendingOwner {
@@ -73,6 +89,8 @@ struct ShadowCell {
     readers: PendingFrontier,
     owner: PendingOwner,
     revision: u64,
+    /// Not yet touched by this binding; alias edges apply on the first touch.
+    fresh: bool,
 }
 impl ShadowCell {
     fn new(resource: u32, cell: RangeCell) -> Self {
@@ -93,6 +111,7 @@ impl ShadowCell {
                 },
             },
             revision: state.revision,
+            fresh: true,
         }
     }
     fn increment(&mut self) -> Result<()> {
@@ -133,6 +152,7 @@ impl SynchronizationPlanner {
         Ok(Self {
             bound: BoundSynchronization {
                 initial: Storage::new(0, &budget)?,
+                aliases: Storage::new(0, &budget)?,
                 batches: Storage::new(0, &budget)?,
                 order: Storage::new(0, &budget)?,
                 transitions: Storage::new(0, &budget)?,
@@ -171,6 +191,7 @@ impl SynchronizationPlanner {
     }
     pub fn begin(&mut self) {
         self.bound.initial.values.clear();
+        self.bound.aliases.values.clear();
         self.bound.batches.values.clear();
         self.bound.order.values.clear();
         self.bound.transitions.values.clear();
@@ -184,6 +205,14 @@ impl SynchronizationPlanner {
             self.push_shadow(ShadowCell::new(resource, cell))?;
         }
         Ok(())
+    }
+    /// Declare that `next` reuses the backing memory of `previous` in this
+    /// frame. Call after [`Self::add_initial`] and before [`Self::bind`].
+    pub fn add_alias(&mut self, previous: u32, next: u32) -> Result<()> {
+        if previous == next {
+            return Err(Error::invalid_usage("a resource cannot alias itself"));
+        }
+        self.push_alias(AliasEdge { previous, next })
     }
     pub fn bind(
         &mut self,
@@ -201,6 +230,12 @@ impl SynchronizationPlanner {
                 ));
             }
         }
+        if self.bound.aliases.values.iter().any(|edge| {
+            edge.previous as usize >= program.resources.len()
+                || edge.next as usize >= program.resources.len()
+        }) {
+            return Err(Error::invalid_usage("native alias edge names an absent resource"));
+        }
         for batch in &program.batches {
             self.push_batch(BoundBatch {
                 domain: batch.domain,
@@ -209,21 +244,6 @@ impl SynchronizationPlanner {
                     passes: batch.passes.clone(),
                 },
             })?;
-        }
-        for &(from, to) in &program.dependencies {
-            let domain = self
-                .bound
-                .batches
-                .values
-                .get(to)
-                .ok_or_else(|| Error::invalid_usage("native batch dependency destination absent"))?
-                .domain;
-            self.wait(
-                to,
-                DependencyRef::Batch(from),
-                vk::PipelineStageFlags::ALL_COMMANDS,
-                domain,
-            )?;
         }
         for (batch, entry) in program.batches.iter().enumerate() {
             for pass in entry.passes.clone() {
@@ -254,7 +274,103 @@ impl SynchronizationPlanner {
             }
             self.push_order(batch)?;
         }
+        for &(from, to) in &program.dependencies {
+            self.static_dependency(program, from, to)?;
+        }
         Ok(())
+    }
+    /// A scheduled batch dependency. Resource hazards already produced exact
+    /// waits; an ordering-only edge waits at the stages where the destination
+    /// batch first touches resources the source batch also used (falling back
+    /// to every stage the destination batch uses).
+    fn static_dependency(&mut self, program: &RangeProgram, from: usize, to: usize) -> Result<()> {
+        let (Some(source), Some(target)) = (program.batches.get(from), program.batches.get(to))
+        else {
+            return Err(Error::invalid_usage("native batch dependency destination absent"));
+        };
+        let domain = self.bound.batches.values[to].domain;
+        let dependency = DependencyRef::Batch(from);
+        if source.domain.queue_index == domain.queue_index
+            || self
+                .bound
+                .waits
+                .values
+                .iter()
+                .any(|wait| wait.batch == to && wait.dependency == dependency)
+        {
+            return Ok(());
+        }
+        let uses = |batch: &ProgramBatch| {
+            program.passes[batch.passes.clone()]
+                .iter()
+                .flat_map(|pass| &program.uses[pass.uses.clone()])
+        };
+        let mut shared = vk::PipelineStageFlags::empty();
+        let mut all = vk::PipelineStageFlags::empty();
+        for usage in uses(target) {
+            all |= usage.scope.stages;
+            if uses(source).any(|earlier| earlier.resource == usage.resource) {
+                shared |= usage.scope.stages;
+            }
+        }
+        let stages = if !shared.is_empty() {
+            shared
+        } else if !all.is_empty() {
+            all
+        } else {
+            vk::PipelineStageFlags::ALL_COMMANDS
+        };
+        self.wait(to, dependency, stages, domain)
+    }
+    /// The dependency that executes later on one queue. Bound batches execute
+    /// in `order`; a batch not yet ordered is the one being bound now.
+    fn later(order: &[usize], a: DependencyRef, b: DependencyRef) -> DependencyRef {
+        let position = |batch: usize| {
+            order
+                .iter()
+                .position(|&ordered| ordered == batch)
+                .unwrap_or(usize::MAX)
+        };
+        match (a, b) {
+            (DependencyRef::Point(x), DependencyRef::Point(y)) => {
+                if x.value >= y.value { a } else { b }
+            }
+            (DependencyRef::Batch(_), DependencyRef::Point(_)) => a,
+            (DependencyRef::Point(_), DependencyRef::Batch(_)) => b,
+            (DependencyRef::Batch(x), DependencyRef::Batch(y)) => {
+                if position(x) >= position(y) { a } else { b }
+            }
+        }
+    }
+    /// First touch of an alias member: its contents are discarded and every
+    /// access to the members it reuses becomes its synthetic previous writer.
+    fn discard_alias_contents(&self, mut current: ShadowCell) -> ShadowCell {
+        let order = &self.bound.order.values;
+        let later = |a, b| Self::later(order, a, b);
+        let mut writer = current.writer;
+        writer.merge(current.readers, later);
+        for edge in self
+            .bound
+            .aliases
+            .values
+            .iter()
+            .filter(|edge| edge.next == current.resource)
+        {
+            for cell in self
+                .shadow
+                .values
+                .iter()
+                .filter(|cell| cell.resource == edge.previous)
+            {
+                writer.merge(cell.writer, later);
+                writer.merge(cell.readers, later);
+            }
+        }
+        current.writer = writer;
+        current.readers = PendingFrontier::EMPTY;
+        current.layout = vk::ImageLayout::UNDEFINED;
+        current.layout_known = true;
+        current
     }
     fn bind_use(
         &mut self,
@@ -390,6 +506,20 @@ impl SynchronizationPlanner {
                     PendingOwner::Released { .. } => {
                         unreachable!("released ranges recovered before split")
                     }
+                }
+            }
+            // Ownership recovery above keeps the stale physical layout; the
+            // first access of an alias member then discards the contents.
+            if current.fresh {
+                current.fresh = false;
+                if self
+                    .bound
+                    .aliases
+                    .values
+                    .iter()
+                    .any(|edge| edge.next == access.resource)
+                {
+                    current = self.discard_alias_contents(current);
                 }
             }
             let changes_layout = current.layout != access.layout;
@@ -572,6 +702,7 @@ fn queue_id(domain: QueueDomain) -> Result<QueueId> {
 impl BoundSynchronization {
     fn bytes(&self) -> usize {
         self.initial.bytes()
+            + self.aliases.bytes()
             + self.batches.bytes()
             + self.order.bytes()
             + self.transitions.bytes()
@@ -609,6 +740,7 @@ macro_rules! push {
 }
 impl SynchronizationPlanner {
     push!(push_initial, initial, InitialState, max_cells);
+    push!(push_alias, aliases, AliasEdge, max_cells);
     push!(push_batch_row, batches, BoundBatch, max_batches);
     fn push_batch(&mut self, value: BoundBatch) -> Result<usize> {
         let index = self.bound.batches.values.len();
