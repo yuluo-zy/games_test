@@ -13,9 +13,8 @@ use country_core::{
     render::ssbo::rhapsody_boundary::{BackendError, Buffer, BufferDesc, GraphicsDevice},
 };
 use rhapsody::{
-    command::buffer_access, resource::Buffer as NativeBuffer,
-    resource::BufferDesc as NativeBufferDesc, resource::range_state::AccessScope,
-    resource::with_setup_command,
+    command::buffer_access, resource::AccessScope, resource::Buffer as NativeBuffer,
+    resource::BufferDesc as NativeBufferDesc, resource::with_setup_command,
 };
 use std::{ops::Range, sync::Arc};
 use tiny_glade::render_host::{BufferHost, TextureHost};
@@ -91,9 +90,9 @@ fn read_prefix(
             },
         )?;
         device.raw_device().cmd_copy_buffer(
-            command.handle,
-            source.handle,
-            output.handle,
+            command.raw_handle(),
+            source.raw_handle(),
+            output.raw_handle(),
             &[vk::BufferCopy::default().size(size as u64)],
         );
         buffer_access(

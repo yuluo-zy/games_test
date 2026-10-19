@@ -4,9 +4,20 @@ use ash::vk;
 use std::sync::Arc;
 pub struct Sampler {
     pub(crate) last_use: Arc<crate::resource::SyncCell>,
-    pub device: Arc<Device>,
-    pub handle: vk::Sampler,
+    pub(crate) device: Arc<Device>,
+    pub(crate) handle: vk::Sampler,
     _shared_storage: Option<Arc<SamplerStorage>>,
+}
+
+impl Sampler {
+    /// The device that owns this object.
+    pub fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+    /// Interop escape hatch: the native handle. It stays owned by `self`; never destroy it or use it after `self` is dropped.
+    pub fn raw_handle(&self) -> vk::Sampler {
+        self.handle
+    }
 }
 pub(crate) struct SamplerStorage {
     _memory: super::allocator::CpuMemoryReservation,

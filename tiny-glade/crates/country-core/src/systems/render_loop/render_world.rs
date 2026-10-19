@@ -236,7 +236,7 @@ pub trait FramePasses {
     fn flag_c098(&mut self) -> bool;
 
     // ---- rhapsody RenderGraph ----
-    /// `rhapsody::rg::temporal::get_or_create_temporal<PassResources, &str>`（0x1404f6e50）。
+    /// `rhapsody::rg::get_or_create_temporal<PassResources, &str>`（0x1404f6e50）。
     fn get_or_create_temporal(
         &mut self,
         name: &str,

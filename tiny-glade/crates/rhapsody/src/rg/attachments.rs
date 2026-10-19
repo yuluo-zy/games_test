@@ -21,24 +21,7 @@ pub struct RenderPassAttachmentDesc {
     pub samples: vk::SampleCountFlags,
 }
 
-/// create_render_pass 的深度状态 0/1/2 分别映射到以下布局；3 表示无深度。
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum DepthAccess {
-    ReadOnly,
-    ReadWrite,
-    DepthWriteStencilRead,
-}
-impl DepthAccess {
-    pub fn layout(self) -> vk::ImageLayout {
-        match self {
-            Self::ReadOnly => vk::ImageLayout::DEPTH_STENCIL_READ_ONLY_OPTIMAL,
-            Self::ReadWrite => vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-            Self::DepthWriteStencilRead => {
-                vk::ImageLayout::DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL
-            }
-        }
-    }
-}
+pub use contract::DepthAccess;
 impl RenderPassAttachmentDesc {
     pub fn new(format: vk::Format) -> Self {
         Self {

@@ -66,7 +66,7 @@ fn create_graphics_device_attaches_the_physical_device_wrapper() {
         .physical_device_info()
         .expect("create_graphics_device 必须挂接物理设备包装");
     assert!(graphics.devices.iter().any(|p| Arc::ptr_eq(p, attached)));
-    assert_eq!(attached.handle, device.physical_device());
+    assert_eq!(attached.raw_handle(), device.physical_device());
     // 第二次挂接被拒（原版只设置一次）。
     assert!(
         device

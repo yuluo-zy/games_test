@@ -472,11 +472,22 @@ pub struct Texture {
     pub(crate) sharing: crate::resource::ResourceSharing,
     allocation_use: Option<Arc<crate::resource::SyncCell>>,
     pub(crate) last_use: Arc<crate::resource::SyncCell>,
-    pub device: Arc<Device>,
-    pub handle: vk::Image,
+    pub(crate) device: Arc<Device>,
+    pub(crate) handle: vk::Image,
     pub desc: TextureDesc,
     storage: TextureStorage,
     _memory: super::allocator::CpuMemoryReservation,
+}
+
+impl Texture {
+    /// The device that owns this object.
+    pub fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+    /// Interop escape hatch: the native handle. It stays owned by `self`; never destroy it or use it after `self` is dropped.
+    pub fn raw_handle(&self) -> vk::Image {
+        self.handle
+    }
 }
 enum TextureStorage {
     Allocated(std::mem::ManuallyDrop<MemoryBlock>),
@@ -766,9 +777,16 @@ impl Drop for Texture {
 pub struct TextureView {
     pub(crate) last_use: Arc<crate::resource::SyncCell>,
     pub texture: Arc<Texture>,
-    pub handle: vk::ImageView,
+    pub(crate) handle: vk::ImageView,
     pub desc: TextureViewDesc,
     _memory: super::allocator::CpuMemoryReservation,
+}
+
+impl TextureView {
+    /// Interop escape hatch: the native handle. It stays owned by `self`; never destroy it or use it after `self` is dropped.
+    pub fn raw_handle(&self) -> vk::ImageView {
+        self.handle
+    }
 }
 impl Drop for TextureView {
     fn drop(&mut self) {

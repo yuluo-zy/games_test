@@ -26,9 +26,8 @@ use country_core::{
     },
 };
 use rhapsody::{
-    command::buffer_access, resource::Buffer as NativeBuffer,
-    resource::BufferDesc as NativeBufferDesc, resource::range_state::AccessScope,
-    resource::with_setup_command,
+    command::buffer_access, resource::AccessScope, resource::Buffer as NativeBuffer,
+    resource::BufferDesc as NativeBufferDesc, resource::with_setup_command,
 };
 use std::{ops::Range, path::PathBuf, sync::Arc, time::Duration};
 use tiny_glade::{render_bridge::CoreRenderBridge, render_host::BufferHost};
@@ -108,9 +107,9 @@ fn read_range(
             },
         )?;
         device.raw_device().cmd_copy_buffer(
-            command.handle,
-            source.handle,
-            output.handle,
+            command.raw_handle(),
+            source.raw_handle(),
+            output.raw_handle(),
             &[vk::BufferCopy::default()
                 .src_offset(offset as u64)
                 .size(size as u64)],

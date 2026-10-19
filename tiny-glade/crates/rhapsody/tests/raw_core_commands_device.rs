@@ -25,7 +25,7 @@ fn device_creates_distinct_named_command_buffers() {
     let family = gd.queue_family_index();
     let mut first = gd.create_command_buffer(family, "a").unwrap();
     let mut second = gd.create_command_buffer(family, "b").unwrap();
-    assert_ne!(first.handle, second.handle);
+    assert_ne!(first.raw_handle(), second.raw_handle());
     for cb in [&mut first, &mut second] {
         cb.begin().unwrap();
         cb.end().unwrap();

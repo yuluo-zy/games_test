@@ -102,9 +102,6 @@ impl Device {
         #[cfg(not(feature = "suballocation"))]
         0
     }
-    pub fn memory_block_count(&self) -> usize {
-        self.memory_usage_snapshot().native_memory_blocks
-    }
     /// Take at a frame boundary without concurrent allocation/free for a
     /// coherent combined snapshot. Released suballocation ranges can leave
     /// whole native blocks reserved; this is separate from range accounting.
@@ -237,15 +234,5 @@ impl Device {
             let _ = self.trim_unused_suballocations();
         }
         released
-    }
-    /// Whether the device-local heaps hold at least `min_device_local_bytes`.
-    pub fn validate_physical_device_requirements(&self, min_device_local_bytes: u64) -> bool {
-        let memory = &self.core.memory_properties;
-        let device_local = memory.memory_heaps[..memory.memory_heap_count as usize]
-            .iter()
-            .filter(|heap| heap.flags.contains(vk::MemoryHeapFlags::DEVICE_LOCAL))
-            .map(|heap| heap.size)
-            .sum::<u64>();
-        device_local >= min_device_local_bytes
     }
 }

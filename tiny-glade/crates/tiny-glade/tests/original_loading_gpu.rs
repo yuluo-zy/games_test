@@ -241,7 +241,7 @@ fn packaged_loading_background_vermeer_and_actual_text_stream_execute_and_read_b
                             vk::CommandBuffer::from_raw(ctx.command.handle()),
                             source.raw(),
                             vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                            readback.handle,
+                            readback.raw_handle(),
                             &[vk::BufferImageCopy::default()
                                 .image_subresource(
                                     vk::ImageSubresourceLayers::default()

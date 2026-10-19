@@ -37,8 +37,8 @@ fn copy(
         |command| unsafe {
             device.raw_device().cmd_copy_buffer(
                 command,
-                source.handle,
-                destination.handle,
+                source.raw_handle(),
+                destination.raw_handle(),
                 &[vk::BufferCopy {
                     src_offset: 0,
                     dst_offset: offset,
@@ -121,15 +121,19 @@ fn nested_setup_calls_use_separate_pools_and_the_cache_is_weak() {
         .record(
             &[SetupAccess::transfer_write(&buffer, 0, 32)],
             |command| unsafe {
-                device
-                    .raw_device()
-                    .cmd_fill_buffer(command.handle, buffer.handle, 0, 32, 1);
+                device.raw_device().cmd_fill_buffer(
+                    command.raw_handle(),
+                    buffer.raw_handle(),
+                    0,
+                    32,
+                    1,
+                );
                 // A nested call cannot deadlock on the outer pool.
                 let nested =
                     context.record(&[SetupAccess::transfer_write(&buffer, 32, 32)], |nested| {
                         device.raw_device().cmd_fill_buffer(
-                            nested.handle,
-                            buffer.handle,
+                            nested.raw_handle(),
+                            buffer.raw_handle(),
                             32,
                             32,
                             2,

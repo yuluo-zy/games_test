@@ -142,7 +142,7 @@ pub mod rhapsody_boundary {
         }
     }
 
-    /// 占位：`rhapsody::rg::resource::ResourceHandle`（`sparse_instance_buffer` 的转换用）。
+    /// 占位：`rhapsody::rg::ResourceHandle`（`sparse_instance_buffer` 的转换用）。
     #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
     pub struct ResourceHandle(pub u64, pub u64);
 }

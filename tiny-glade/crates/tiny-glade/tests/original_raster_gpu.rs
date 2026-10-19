@@ -112,7 +112,7 @@ fn attachment(id: u32, target: &rhapsody::resource::Texture) -> AttachmentTextur
 }
 fn clear(
     frame: &mut CoreGraphFrame<'_>,
-    id: rhapsody::rg::resource::ResourceHandle,
+    id: rhapsody::rg::ResourceHandle,
     image: Arc<rhapsody::resource::Texture>,
 ) -> rhapsody::Result<()> {
     frame.with_graph(|graph| {
@@ -120,9 +120,9 @@ fn clear(
         p.add_resource_access(id, 0x34, 0)?;
         p.render_with_result_context(move |ctx| {
             unsafe {
-                image.device.raw_device().cmd_clear_color_image(
+                image.device().raw_device().cmd_clear_color_image(
                     vk::CommandBuffer::from_raw(ctx.command.handle()),
-                    image.handle,
+                    image.raw_handle(),
                     vk::ImageLayout::TRANSFER_DST_OPTIMAL,
                     &vk::ClearColorValue {
                         float32: [0.0, 0.0, 0.0, 1.0],
@@ -140,11 +140,11 @@ fn clear(
 }
 fn readback(
     frame: &mut CoreGraphFrame<'_>,
-    id: rhapsody::rg::resource::ResourceHandle,
+    id: rhapsody::rg::ResourceHandle,
     image: Arc<rhapsody::resource::Texture>,
 ) -> rhapsody::Result<Arc<rhapsody::resource::Buffer>> {
     let buffer = Arc::new(rhapsody::resource::Buffer::new(
-        image.device.clone(),
+        image.device().clone(),
         &rhapsody::resource::BufferDesc::new_gpu_to_cpu(
             u64::from(image.desc.width * image.desc.height * 4),
             vk::BufferUsageFlags::TRANSFER_DST,
@@ -158,11 +158,11 @@ fn readback(
         p.add_resource_access(output, 0x34, 0)?;
         p.render_with_result_context(move |ctx| {
             unsafe {
-                image.device.raw_device().cmd_copy_image_to_buffer(
+                image.device().raw_device().cmd_copy_image_to_buffer(
                     vk::CommandBuffer::from_raw(ctx.command.handle()),
-                    image.handle,
+                    image.raw_handle(),
                     vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                    buffer.handle,
+                    buffer.raw_handle(),
                     &[vk::BufferImageCopy::default()
                         .image_subresource(
                             vk::ImageSubresourceLayers::default()
@@ -181,7 +181,7 @@ fn readback(
 }
 fn pixels(
     bridge: &mut CoreRenderBridge,
-    built: rhapsody::rg::graph::BuiltGraph,
+    built: rhapsody::rg::BuiltGraph,
     readback: Arc<rhapsody::resource::Buffer>,
 ) -> Vec<u8> {
     bridge
@@ -200,7 +200,7 @@ fn bridge_host_buffer(
     frame: &mut CoreGraphFrame<'_>,
     words: &[u32],
     name: &str,
-) -> rhapsody::Result<rhapsody::rg::resource::ResourceHandle> {
+) -> rhapsody::Result<rhapsody::rg::ResourceHandle> {
     let buffers = frame.hosts().buffers;
     let buffer = buffers.create_buffer(
         &CoreBufferDesc::new_gpu_only(words.len() * 4, 0x122).alignment(4),
@@ -462,7 +462,7 @@ fn actual_typed_vao_vertex_index_and_instance_count_change_gpu_pixels() {
                             count,
                             0x34,
                             0,
-                            rhapsody::rg::resource::AccessRange::Buffer { offset: 8, size: 8 },
+                            rhapsody::rg::AccessRange::Buffer { offset: 8, size: 8 },
                         )?;
                         let device = device.clone();
                         let count_owner = actual_count.clone();
@@ -470,7 +470,7 @@ fn actual_typed_vao_vertex_index_and_instance_count_change_gpu_pixels() {
                             unsafe {
                                 device.raw_device().cmd_fill_buffer(
                                     vk::CommandBuffer::from_raw(ctx.command.handle()),
-                                    count_owner.handle,
+                                    count_owner.raw_handle(),
                                     8,
                                     4,
                                     instances,
@@ -480,7 +480,7 @@ fn actual_typed_vao_vertex_index_and_instance_count_change_gpu_pixels() {
                                 // its live commands and fail the actual pixels.
                                 device.raw_device().cmd_fill_buffer(
                                     vk::CommandBuffer::from_raw(ctx.command.handle()),
-                                    count_owner.handle,
+                                    count_owner.raw_handle(),
                                     12,
                                     4,
                                     0,

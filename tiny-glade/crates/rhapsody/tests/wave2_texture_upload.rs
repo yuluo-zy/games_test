@@ -22,7 +22,7 @@ fn supports_bc(device: &Device, format: vk::Format) -> bool {
     let result = unsafe {
         device
             .instance()
-            .instance
+            .raw_instance()
             .get_physical_device_image_format_properties(
                 device.physical_device(),
                 format,
@@ -292,10 +292,10 @@ fn read_back(
                 depth: extent[2],
             })];
         gd.raw_device().cmd_copy_image_to_buffer(
-            command.handle,
-            texture.handle,
+            command.raw_handle(),
+            texture.raw_handle(),
             vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-            buffer.handle,
+            buffer.raw_handle(),
             &region,
         );
         // These fixtures create and update through upload_regions, whose actual

@@ -24,11 +24,22 @@ use std::sync::{
 
 pub struct VulkanDescriptorSetLayout {
     pub(crate) last_use: Arc<crate::resource::SyncCell>,
-    pub device: Arc<Device>,
-    pub handle: vk::DescriptorSetLayout,
+    pub(crate) device: Arc<Device>,
+    pub(crate) handle: vk::DescriptorSetLayout,
     pub(crate) plan: LayoutPlan,
     _samplers: Vec<Arc<crate::raw::sampler::Sampler>>,
     _memory: super::allocator::CpuMemoryReservation,
+}
+
+impl VulkanDescriptorSetLayout {
+    /// The device that owns this object.
+    pub fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+    /// Interop escape hatch: the native handle. It stays owned by `self`; never destroy it or use it after `self` is dropped.
+    pub fn raw_handle(&self) -> vk::DescriptorSetLayout {
+        self.handle
+    }
 }
 
 impl VulkanDescriptorSetLayout {
@@ -226,11 +237,22 @@ pub struct VulkanDescriptorPool {
     // Fields drop in declaration order. Release pool storage before the last
     // device owner; deferred copies are drained inside Device::drop.
     allocation: Arc<DescriptorPoolAllocation>,
-    pub device: Arc<Device>,
-    pub handle: vk::DescriptorPool,
+    pub(crate) device: Arc<Device>,
+    pub(crate) handle: vk::DescriptorPool,
     free_individual_sets: bool,
     live_sets: AtomicUsize,
     _memory: super::allocator::CpuMemoryReservation,
+}
+
+impl VulkanDescriptorPool {
+    /// The device that owns this object.
+    pub fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+    /// Interop escape hatch: the native handle. It stays owned by `self`; never destroy it or use it after `self` is dropped.
+    pub fn raw_handle(&self) -> vk::DescriptorPool {
+        self.handle
+    }
 }
 /// Raw pool ownership without an Arc<Device> back-reference.
 pub struct DescriptorPoolAllocation {
@@ -501,11 +523,18 @@ impl Drop for VulkanDescriptorPool {
 /// 持有实际 pool/layout 与写入资源；命令登记的 last_use 决定安全退役。
 pub struct VulkanDescriptorSet {
     pub(crate) last_use: Arc<crate::resource::SyncCell>,
-    pub handle: vk::DescriptorSet,
+    pub(crate) handle: vk::DescriptorSet,
     pub layout: Arc<VulkanDescriptorSetLayout>,
     pub pool: Arc<VulkanDescriptorPool>,
     resources: super::temp_list::TempList<DescriptorOwners>,
     _memory: Option<super::allocator::CpuMemoryReservation>,
+}
+
+impl VulkanDescriptorSet {
+    /// Interop escape hatch: the native handle. It stays owned by `self`; never destroy it or use it after `self` is dropped.
+    pub fn raw_handle(&self) -> vk::DescriptorSet {
+        self.handle
+    }
 }
 struct DescriptorOwners {
     binding: u32,

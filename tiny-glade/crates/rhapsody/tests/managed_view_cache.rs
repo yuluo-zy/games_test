@@ -22,9 +22,9 @@ impl Release {
     fn signal(&mut self) -> rhapsody::Result<()> {
         if !self.1 {
             unsafe {
-                self.0.device.raw_device().signal_semaphore(
+                self.0.device().raw_device().signal_semaphore(
                     &vk::SemaphoreSignalInfo::default()
-                        .semaphore(self.0.handle)
+                        .semaphore(self.0.raw_handle())
                         .value(1),
                 )
             }?;

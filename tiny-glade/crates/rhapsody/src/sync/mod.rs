@@ -9,8 +9,8 @@
 //! - 值只在 `vkQueueSubmit` 成功后才算已提交；失败的提交不占用值，因此任何已知的
 //!   [`SyncPoint`] 最终都会完成（或设备丢失）。
 //! - 等待一个尚未提交的值是误用（会永远挂起），返回 [`crate::Error::InvalidUsage`]。
-pub mod retire;
-pub mod timeline;
+internal_mod!(retire, timeline);
+pub use timeline::{QueueLockStats, TimelineApi, Timelines};
 
 /// 一个设备上最多同时使用的逻辑队列数。
 pub const MAX_QUEUES: usize = 8;

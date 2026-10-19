@@ -14,11 +14,11 @@ use std::sync::Arc;
 
 fn signal(gate: &TimelineSemaphore) {
     unsafe {
-        gate.device
+        gate.device()
             .raw_device()
             .signal_semaphore(
                 &vk::SemaphoreSignalInfo::default()
-                    .semaphore(gate.handle)
+                    .semaphore(gate.raw_handle())
                     .value(1),
             )
             .unwrap();
@@ -46,9 +46,13 @@ fn bounded_host_wait_times_out_and_completes_after_the_gpu_finishes() {
     command.retain_opaque(buffer.clone()).unwrap();
     command.begin().unwrap();
     unsafe {
-        device
-            .raw_device()
-            .cmd_fill_buffer(command.handle, buffer.handle, 0, 256, 0x0101_0101);
+        device.raw_device().cmd_fill_buffer(
+            command.raw_handle(),
+            buffer.raw_handle(),
+            0,
+            256,
+            0x0101_0101,
+        );
     }
     command.end().unwrap();
     let pending = command

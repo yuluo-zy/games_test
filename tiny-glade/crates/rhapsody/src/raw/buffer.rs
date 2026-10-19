@@ -236,8 +236,8 @@ pub struct Buffer {
     pub(crate) sharing: crate::resource::ResourceSharing,
     allocation_use: Option<Arc<crate::resource::SyncCell>>,
     pub(crate) last_use: Arc<crate::resource::SyncCell>,
-    pub device: Arc<Device>,
-    pub handle: vk::Buffer,
+    pub(crate) device: Arc<Device>,
+    pub(crate) handle: vk::Buffer,
     pub size: u64,
     pub usage: vk::BufferUsageFlags,
     /// Creation description (graph imports need alignment/memory_location).
@@ -246,6 +246,17 @@ pub struct Buffer {
     mapped_ptr: Option<usize>,
     host_access: parking_lot::Mutex<()>,
     _memory: super::allocator::CpuMemoryReservation,
+}
+
+impl Buffer {
+    /// The device that owns this object.
+    pub fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+    /// Interop escape hatch: the native handle. It stays owned by `self`; never destroy it or use it after `self` is dropped.
+    pub fn raw_handle(&self) -> vk::Buffer {
+        self.handle
+    }
 }
 /// Default bound for synchronous host reads/writes waiting on GPU work.
 pub const HOST_ACCESS_TIMEOUT_NS: u64 = 10_000_000_000;

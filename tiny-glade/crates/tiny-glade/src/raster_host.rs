@@ -47,13 +47,11 @@ use parking_lot::Mutex;
 use rhapsody::bindless::{BindlessParameters, BindlessResource};
 use rhapsody::{
     pipeline::RasterPipelineOpts, resource::DynamicConstants, resource::DynamicConstantsChunk,
-    rg::attachments::Attachment, rg::attachments::AttachmentCache,
-    rg::attachments::contract::AttachmentArray, rg::attachments::contract::DepthAccess,
-    rg::attachments::contract::RenderPassAttachmentDesc as RhAttachmentDesc,
-    rg::attachments::contract::RenderPassDesc as RhRenderPassDesc, rg::graph::BuildError,
-    rg::graph::RenderGraph as RhGraph, rg::pass_api::AshCommandBackend,
-    rg::pass_api::RenderPassApi as RhRenderPassApi, rg::pass_bindings::ManagedPassResources,
-    rg::resource::ResourceHandle, rg::vulkan::ResourceSpec, rg::vulkan::VulkanGraphSession,
+    rg::AshCommandBackend, rg::Attachment, rg::AttachmentArray, rg::AttachmentCache,
+    rg::BuildError, rg::DepthAccess, rg::ManagedPassResources, rg::RenderGraph as RhGraph,
+    rg::RenderPassApi as RhRenderPassApi, rg::RenderPassAttachmentDesc as RhAttachmentDesc,
+    rg::RenderPassDesc as RhRenderPassDesc, rg::ResourceHandle, rg::ResourceSpec,
+    rg::VulkanGraphSession,
 };
 use shader_pipeline::reflection::BindingLocation;
 use shader_pipeline::{
@@ -89,19 +87,19 @@ pub trait GraphDeclarer {
         graph: &mut RhGraph,
         name: &str,
         desc: rhapsody::resource::TextureDesc,
-    ) -> rhapsody::Result<rhapsody::rg::temporal::NamedTexture>;
+    ) -> rhapsody::Result<rhapsody::rg::NamedTexture>;
     fn temporal_texture(
         &self,
         graph: &mut RhGraph,
         name: &str,
         desc: rhapsody::resource::TextureDesc,
-    ) -> rhapsody::Result<rhapsody::rg::temporal::TemporalTexturePair>;
+    ) -> rhapsody::Result<rhapsody::rg::TemporalTexturePair>;
     fn named_buffer(
         &self,
         graph: &mut RhGraph,
         name: &str,
         desc: rhapsody::resource::BufferDesc,
-    ) -> rhapsody::Result<rhapsody::rg::temporal::NamedBuffer>;
+    ) -> rhapsody::Result<rhapsody::rg::NamedBuffer>;
 }
 impl GraphDeclarer for RefCell<VulkanGraphSession> {
     fn import_buffer(
@@ -135,7 +133,7 @@ impl GraphDeclarer for RefCell<VulkanGraphSession> {
         graph: &mut RhGraph,
         name: &str,
         desc: rhapsody::resource::TextureDesc,
-    ) -> rhapsody::Result<rhapsody::rg::temporal::NamedTexture> {
+    ) -> rhapsody::Result<rhapsody::rg::NamedTexture> {
         self.borrow_mut().named_texture(graph, name, desc)
     }
     fn temporal_texture(
@@ -143,7 +141,7 @@ impl GraphDeclarer for RefCell<VulkanGraphSession> {
         graph: &mut RhGraph,
         name: &str,
         desc: rhapsody::resource::TextureDesc,
-    ) -> rhapsody::Result<rhapsody::rg::temporal::TemporalTexturePair> {
+    ) -> rhapsody::Result<rhapsody::rg::TemporalTexturePair> {
         self.borrow_mut().temporal_texture(graph, name, desc)
     }
     fn named_buffer(
@@ -151,7 +149,7 @@ impl GraphDeclarer for RefCell<VulkanGraphSession> {
         graph: &mut RhGraph,
         name: &str,
         desc: rhapsody::resource::BufferDesc,
-    ) -> rhapsody::Result<rhapsody::rg::temporal::NamedBuffer> {
+    ) -> rhapsody::Result<rhapsody::rg::NamedBuffer> {
         self.borrow_mut().named_buffer(graph, name, desc)
     }
 }
@@ -643,7 +641,7 @@ struct ExternalDrawBinding {
     binding: u32,
     resource: ResourceHandle,
     access: u8,
-    range: rhapsody::rg::resource::AccessRange,
+    range: rhapsody::rg::AccessRange,
     view: Option<rhapsody::resource::TextureViewDesc>,
 }
 
@@ -691,7 +689,7 @@ impl PassHost for RasterPassHost {
         Some(DynamicConstantsBinding {
             data,
             binding_index: reflection.uniform_block_binding,
-            keepalive: ManagedHandle(ash::vk::Handle::as_raw(chunk.buffer.handle)),
+            keepalive: ManagedHandle(ash::vk::Handle::as_raw(chunk.buffer.raw_handle())),
             lease: Some(ResourceLease::new(chunk)),
         })
     }
@@ -968,7 +966,7 @@ impl PassHost for RasterPassHost {
                         let (target, offset, stride) = if maximum == 0 {
                             (buffer, args[0], args[1])
                         } else {
-                            let request = rhapsody::rg::indirect_count::IndexedCountRequest {
+                            let request = rhapsody::rg::IndexedCountRequest {
                                 command_offset: args[0],
                                 command_stride: args[1] as u32,
                                 count_offset: args[2],
@@ -1147,10 +1145,7 @@ impl PassHost for RasterPassHost {
                     .resources
                     .get(resource as usize)
                     .map(|resource| {
-                        matches!(
-                            resource.descriptor,
-                            rhapsody::rg::graph::Descriptor::Image(_)
-                        )
+                        matches!(resource.descriptor, rhapsody::rg::Descriptor::Image(_))
                     })
                     .ok_or_else(|| {
                         rhapsody::Error::invalid_usage(
@@ -1178,11 +1173,11 @@ impl PassHost for RasterPassHost {
                 .resources
                 .get(resource as usize)
                 .is_some_and(|entry| match entry.source {
-                    rhapsody::rg::graph::OriginSource::ImportOwned { initial_access, .. }
-                    | rhapsody::rg::graph::OriginSource::ImportUnowned { initial_access, .. } => {
+                    rhapsody::rg::OriginSource::ImportOwned { initial_access, .. }
+                    | rhapsody::rg::OriginSource::ImportUnowned { initial_access, .. } => {
                         initial_access != 0
                     }
-                    rhapsody::rg::graph::OriginSource::Create => false,
+                    rhapsody::rg::OriginSource::Create => false,
                 });
             imported
                 || graph.declaration().passes.iter().any(|pass| {
@@ -1249,7 +1244,7 @@ impl PassHost for RasterPassHost {
                         index,
                         0x03,
                         0,
-                        rhapsody::rg::resource::AccessRange::Buffer {
+                        rhapsody::rg::AccessRange::Buffer {
                             offset: 0,
                             size: u64::from(index_count) * 4,
                         },
@@ -1262,7 +1257,7 @@ impl PassHost for RasterPassHost {
                         *resource,
                         0x04,
                         0,
-                        rhapsody::rg::resource::AccessRange::Buffer {
+                        rhapsody::rg::AccessRange::Buffer {
                             offset: 0,
                             size: *size,
                         },
@@ -1283,7 +1278,7 @@ impl PassHost for RasterPassHost {
                     resource,
                     a.access,
                     a.group,
-                    rhapsody::rg::resource::AccessRange::Whole,
+                    rhapsody::rg::AccessRange::Whole,
                 )
             } else if !writes
                 && inactive_reads.get(&a.resource) == Some(&true)
@@ -1296,7 +1291,7 @@ impl PassHost for RasterPassHost {
                     resource,
                     a.access,
                     a.group,
-                    rhapsody::rg::resource::AccessRange::Whole,
+                    rhapsody::rg::AccessRange::Whole,
                 )
             } else {
                 declared.add_resource_access(resource, a.access, a.group)
@@ -1357,9 +1352,9 @@ impl PassHost for RasterPassHost {
                     return false;
                 };
                 let mut a = a.depth_access(if d.writable {
-                    rhapsody::rg::attachments::DepthAccess::ReadWrite
+                    rhapsody::rg::DepthAccess::ReadWrite
                 } else {
-                    rhapsody::rg::attachments::DepthAccess::ReadOnly
+                    rhapsody::rg::DepthAccess::ReadOnly
                 });
                 a.view.base_layer = d.layer;
                 a.view.layer_count = 1;
@@ -1370,7 +1365,7 @@ impl PassHost for RasterPassHost {
                 &attachments,
                 extent,
                 1,
-                rhapsody::rg::attachments::RenderingPolicy::Auto,
+                rhapsody::rg::RenderingPolicy::Auto,
             ) {
                 Ok(prepared) => prepared,
                 Err(error) => {
@@ -1399,7 +1394,7 @@ impl PassHost for RasterPassHost {
                     device.raw_device().cmd_bind_pipeline(
                         command,
                         vk::PipelineBindPoint::GRAPHICS,
-                        pipeline.handle,
+                        pipeline.raw_handle(),
                     )
                 };
                 let parameters = match bindless_parameters(&shared, draw, &bindings, managed)
@@ -1488,7 +1483,7 @@ fn validate_indirect_ranges(graph: &RhGraph, kind: &DrawKind) -> rhapsody::Resul
     let size = |id: u32| -> rhapsody::Result<u64> {
         graph.resource_handle(id)?;
         match graph.declaration().resources[id as usize].descriptor {
-            rhapsody::rg::graph::Descriptor::Buffer(desc) => Ok(desc.word_at_00),
+            rhapsody::rg::Descriptor::Buffer(desc) => Ok(desc.word_at_00),
             _ => Err(rhapsody::Error::invalid_usage(
                 "indirect command resource is not a buffer",
             )),
@@ -1521,7 +1516,7 @@ fn validate_indirect_ranges(graph: &RhGraph, kind: &DrawKind) -> rhapsody::Resul
     Ok(())
 }
 
-fn record_draw<B: rhapsody::rg::pass_api::CommandBackend>(
+fn record_draw<B: rhapsody::rg::CommandBackend>(
     api: &mut RhRenderPassApi<'_, B>,
     draw: &PreparedDraw,
     managed: &ManagedPassResources,
@@ -1653,7 +1648,7 @@ fn import_draw_bindings(
     declarer: &dyn GraphDeclarer,
     graph: &mut RhGraph,
 ) -> rhapsody::Result<()> {
-    use rhapsody::rg::resource::AccessRange;
+    use rhapsody::rg::AccessRange;
     use shader_pipeline::reflection::BindingKind;
     for (binding, owned) in &draw.packet.bindings {
         if owned.state != country_core::render::pass_builder::draw_stream::GpuOwned::STATE_OWNED {
@@ -1684,7 +1679,7 @@ fn import_draw_bindings(
                 let owner = shared.buffers.get_by_id(keepalive.0).ok_or_else(|| {
                     rhapsody::Error::invalid_usage("raster storage buffer is not live")
                 })?;
-                if ash::vk::Handle::as_raw(owner.handle) != *buffer {
+                if ash::vk::Handle::as_raw(owner.raw_handle()) != *buffer {
                     return Err(rhapsody::Error::invalid_usage(
                         "raster storage buffer differs from retained owner",
                     ));
@@ -1796,7 +1791,7 @@ fn bindless_parameters(
                         )
                     })?;
                 if u64::from(*size) > chunk.size
-                    || keepalive.0 != ash::vk::Handle::as_raw(chunk.buffer.handle)
+                    || keepalive.0 != ash::vk::Handle::as_raw(chunk.buffer.raw_handle())
                 {
                     return Err(rhapsody::Error::invalid_usage(
                         "uniform binding metadata exceeds owned allocation",
@@ -1824,7 +1819,7 @@ fn bindless_parameters(
             let buffer = managed
                 .buffer_for(binding.resource.raw())
                 .map_err(rhapsody::Error::from)?;
-            let rhapsody::rg::resource::AccessRange::Buffer { offset, size } = binding.range else {
+            let rhapsody::rg::AccessRange::Buffer { offset, size } = binding.range else {
                 unreachable!("buffer binding has a checked buffer range")
             };
             BindlessResource::Buffer {

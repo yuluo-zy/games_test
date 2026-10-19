@@ -10,7 +10,6 @@ pub use crate::raw::command_buffer::{VulkanCommandBuffer, VulkanCommandPool};
 pub use crate::raw::resource_access::{buffer_access, image_access};
 pub use crate::raw::texture_upload::{record_texture_regions, record_texture_zero_fill};
 
-pub mod cpu_arena;
-pub mod recording;
+internal_mod!(cpu_arena, recording);
 
 pub use cpu_arena::{CpuArenaConfig, CpuArenaLease, CpuArenaPool, CpuArenaStats};

@@ -15,10 +15,7 @@ use crate::rhapsody_contract::GraphicsDevice;
 use crate::rhapsody_types::{
     AccessTable, AshCommandBackend, PassContext, RhapsodyVulkanGraphBackend,
 };
-use rhapsody::rg::{
-    graph::BuiltGraph,
-    vulkan::{SessionFrameReceipt, VulkanGraphSession},
-};
+use rhapsody::{rg::BuiltGraph, rg::SessionFrameReceipt, rg::VulkanGraphSession};
 
 /// 游戏宿主复用生产图会话；部分提交、真实终态及延迟回收只有一条实现路径。
 pub struct RhapsodyExecutionHost {
@@ -32,7 +29,7 @@ impl RhapsodyExecutionHost {
             session: VulkanGraphSession::new(backend),
         })
     }
-    pub fn begin_frame(&mut self) -> rhapsody::Result<rhapsody::rg::graph::RenderGraph> {
+    pub fn begin_frame(&mut self) -> rhapsody::Result<rhapsody::rg::RenderGraph> {
         self.session.begin_frame()
     }
     /// BuiltGraph 同时移交回调和退役动作；失败批次不会丢失其在飞所有权。
@@ -44,18 +41,15 @@ impl RhapsodyExecutionHost {
     }
     pub fn wait_idle_and_recycle_resources(&mut self) -> rhapsody::Result<()> {
         self.session.wait_submits_done(u64::MAX)?;
-        self.session
-            .backend
-            .device
-            .wait_idle_and_recycle_resources()
+        self.session.backend.device().wait_idle()
     }
 }
 
 /// 构图入口（WIRING §2.7）：`rg::graph::RenderGraph::new()`。调用方随后
 /// `create_raw_resource`/`add_pass(name).add_resource_access(..).render_with_context(..)`/`export(..)`/
 /// `batch_per_pass(..)` → `build()` → `into_parts()` 得到 `(GraphDeclaration, callbacks, retire)`。
-pub fn new_render_graph() -> rhapsody::rg::graph::RenderGraph {
-    rhapsody::rg::graph::RenderGraph::new()
+pub fn new_render_graph() -> rhapsody::rg::RenderGraph {
+    rhapsody::rg::RenderGraph::new()
 }
 
 /// 在 pass 回调里构造真实 `RenderPassApi`（WIRING §3.1 #5）。
@@ -65,8 +59,8 @@ pub fn new_render_graph() -> rhapsody::rg::graph::RenderGraph {
 pub fn pass_api_from_context<'b>(
     backend: &'b mut AshCommandBackend<'b>,
     context: &PassContext<'_>,
-) -> rhapsody::rg::pass_api::RenderPassApi<'b, AshCommandBackend<'b>> {
-    rhapsody::rg::pass_api::RenderPassApi::new(
+) -> rhapsody::rg::RenderPassApi<'b, AshCommandBackend<'b>> {
+    rhapsody::rg::RenderPassApi::new(
         backend,
         ash::vk::CommandBuffer::from_raw(context.command.handle()),
         0,
@@ -75,7 +69,7 @@ pub fn pass_api_from_context<'b>(
 }
 
 /// 取图内逻辑句柄的原始索引（WIRING §1：`ResourceHandle::raw()` = 图内逻辑索引）。
-pub fn resource_raw(handle: rhapsody::rg::resource::ResourceHandle) -> u32 {
+pub fn resource_raw(handle: rhapsody::rg::ResourceHandle) -> u32 {
     handle.raw()
 }
 

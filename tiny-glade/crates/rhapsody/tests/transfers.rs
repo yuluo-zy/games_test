@@ -110,11 +110,11 @@ impl ReleaseWait {
         if !self.1 {
             unsafe {
                 self.0
-                    .device
+                    .device()
                     .raw_device()
                     .signal_semaphore(
                         &vk::SemaphoreSignalInfo::default()
-                            .semaphore(self.0.handle)
+                            .semaphore(self.0.raw_handle())
                             .value(1),
                     )
                     .unwrap();
@@ -153,7 +153,7 @@ fn nonblocking_host_writes_reject_in_flight_use_and_recover_after_completion() {
         },
     )
     .unwrap();
-    let idle_waits = device.garbage_stats().idle_waits;
+    let idle_waits = device.retirement_stats().idle_waits;
     let blocker = TimelineSemaphore::new(device.clone(), 0).unwrap();
     let mut release = ReleaseWait(blocker.clone(), false);
     let pool = VulkanCommandPool::new(device.clone()).unwrap();
@@ -161,9 +161,13 @@ fn nonblocking_host_writes_reject_in_flight_use_and_recover_after_completion() {
     command.retain_opaque(target.clone()).unwrap();
     command.begin().unwrap();
     unsafe {
-        device
-            .raw_device()
-            .cmd_fill_buffer(command.handle, target.handle, 0, 64, 0x01010101);
+        device.raw_device().cmd_fill_buffer(
+            command.raw_handle(),
+            target.raw_handle(),
+            0,
+            64,
+            0x01010101,
+        );
     }
     command.end().unwrap();
     let pending = command
@@ -190,7 +194,7 @@ fn nonblocking_host_writes_reject_in_flight_use_and_recover_after_completion() {
     target.write_bytes_unsynchronized(0, &[2; 64]).unwrap();
     target.read_bytes(0, &mut actual).unwrap();
     assert_eq!(actual, [2; 64]);
-    assert_eq!(device.garbage_stats().idle_waits, idle_waits);
+    assert_eq!(device.retirement_stats().idle_waits, idle_waits);
 }
 
 #[test]
@@ -222,7 +226,7 @@ fn queued_dirty_uploads_merge_exact_bytes_cancel_old_epochs_and_prioritize_other
     };
     let a = make();
     let b = make();
-    let idle = device.garbage_stats().idle_waits;
+    let idle = device.retirement_stats().idle_waits;
     manager
         .upload_buffer(a.clone(), 0, &[7; 256])
         .unwrap()
@@ -297,7 +301,7 @@ fn queued_dirty_uploads_merge_exact_bytes_cancel_old_epochs_and_prioritize_other
     assert_eq!(stats.cancelled_jobs, 1);
     assert_eq!(stats.queued_bytes, 0);
     assert!(stats.known_cpu_bytes <= 32 << 20);
-    assert_eq!(device.garbage_stats().idle_waits, idle);
+    assert_eq!(device.retirement_stats().idle_waits, idle);
 }
 
 #[test]

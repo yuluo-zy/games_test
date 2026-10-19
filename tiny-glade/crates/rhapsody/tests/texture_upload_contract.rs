@@ -156,9 +156,9 @@ fn cube_faces_cube_array_faces_and_odd_r8_mips_upload_every_subresource() {
         with_setup_resources(&device, &accesses, |command| unsafe {
             device.raw_device().cmd_copy_image_to_buffer(
                 command,
-                image.handle,
+                image.raw_handle(),
                 vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                readback.handle,
+                readback.raw_handle(),
                 &plan.copies,
             );
             let host = vk::BufferMemoryBarrier::default()
@@ -166,7 +166,7 @@ fn cube_faces_cube_array_faces_and_odd_r8_mips_upload_every_subresource() {
                 .dst_access_mask(vk::AccessFlags::HOST_READ)
                 .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
                 .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                .buffer(readback.handle)
+                .buffer(readback.raw_handle())
                 .size(vk::WHOLE_SIZE);
             device.raw_device().cmd_pipeline_barrier(
                 command,
@@ -315,10 +315,10 @@ fn recorded_uploads_share_virtual_state_and_graph_import_uses_physical_final_lay
         )?;
         buffer_access(command, readback.clone(), queue, 0, 256, transfer_write)?;
         device.raw_device().cmd_copy_image_to_buffer(
-            command.handle,
-            texture.handle,
+            command.raw_handle(),
+            texture.raw_handle(),
             vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-            readback.handle,
+            readback.raw_handle(),
             &[vk::BufferImageCopy::default()
                 .image_subresource(layers)
                 .image_extent(texture.desc.extent())],
@@ -402,9 +402,9 @@ fn recorded_uploads_share_virtual_state_and_graph_import_uses_physical_final_lay
             unsafe {
                 device.raw_device().cmd_copy_image_to_buffer(
                     vk::CommandBuffer::from_raw(context.command.handle()),
-                    image.handle,
+                    image.raw_handle(),
                     vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                    buffer.handle,
+                    buffer.raw_handle(),
                     &[vk::BufferImageCopy::default()
                         .image_subresource(layers)
                         .image_extent(image.desc.extent())],

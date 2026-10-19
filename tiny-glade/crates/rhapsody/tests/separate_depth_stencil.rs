@@ -92,7 +92,7 @@ fn separate_depth_stencil_layouts_are_enabled_when_supported_and_used_per_aspect
         .unwrap();
     let out_index = out.raw();
     let texture = graph.texture_id(image).unwrap();
-    let raw = session.backend.device.clone();
+    let raw = session.backend.device().clone();
     let mut clear = graph.add_pass("clear depth").with_side_effect();
     let texture = clear
         .write_texture(
@@ -143,7 +143,7 @@ fn separate_depth_stencil_layouts_are_enabled_when_supported_and_used_per_aspect
     copy.read_texture(texture, TRANSFER_READ, aspect(vk::ImageAspectFlags::DEPTH))
         .unwrap();
     copy.add_resource_access(out, TRANSFER_WRITE, 0).unwrap();
-    let raw = session.backend.device.clone();
+    let raw = session.backend.device().clone();
     copy.render_with_result_context(move |ctx: PassContext<'_>| {
         let managed = ctx
             .managed

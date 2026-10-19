@@ -3,7 +3,7 @@ use super::input::{Globals, PackedGlyphUploads, ValidatedFrame};
 use super::*;
 use rhapsody::{
     bindless::PreparedBindlessParameters, command::VulkanCommandBuffer, pipeline::VulkanPipeline,
-    rg::attachments::PreparedAttachments,
+    rg::PreparedAttachments,
 };
 
 #[derive(Default)]
@@ -296,16 +296,16 @@ impl PreparedFrame {
         self.attachments.retain_for_command(command)?;
         {
             let mut backend = unsafe { AshCommandBackend::new_for_device(device) };
-            let mut api = RenderPassApi::new(&mut backend, command.handle, 0, false);
+            let mut api = RenderPassApi::new(&mut backend, command.raw_handle(), 0, false);
             api.begin_prepared(&self.attachments)?;
             api.set_default_view_and_scissor(self.descriptor.extent_2d());
             unsafe {
-                self.pipeline.bind_pipeline(command.handle);
+                self.pipeline.bind_pipeline(command.raw_handle());
                 self.parameters
                     .bind_command(command, self.pipeline.clone())?;
                 device
                     .raw_device()
-                    .cmd_draw(command.handle, vertex_count, 1, 0, 0);
+                    .cmd_draw(command.raw_handle(), vertex_count, 1, 0, 0);
             }
             api.end_render_pass();
         }
@@ -344,10 +344,10 @@ impl PreparedFrame {
                 },
             )?;
             device.raw_device().cmd_copy_image_to_buffer(
-                command.handle,
-                self.target.handle,
+                command.raw_handle(),
+                self.target.raw_handle(),
                 vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                self.readback.handle,
+                self.readback.raw_handle(),
                 &[vk::BufferImageCopy::default()
                     .image_subresource(
                         vk::ImageSubresourceLayers::default()

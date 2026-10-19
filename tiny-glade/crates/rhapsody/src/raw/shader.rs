@@ -56,10 +56,21 @@ struct BudgetedMetadata<T> {
     memory: CpuMemoryReservation,
 }
 pub struct ShaderModule {
-    pub device: Arc<Device>,
-    pub handle: vk::ShaderModule,
+    pub(crate) device: Arc<Device>,
+    pub(crate) handle: vk::ShaderModule,
     interfaces: Arc<[super::shader_interface::EntryContract]>,
     _memory: CpuMemoryReservation,
+}
+
+impl ShaderModule {
+    /// The device that owns this object.
+    pub fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+    /// Interop escape hatch: the native handle. It stays owned by `self`; never destroy it or use it after `self` is dropped.
+    pub fn raw_handle(&self) -> vk::ShaderModule {
+        self.handle
+    }
 }
 impl ShaderModule {
     pub fn from_spirv(device: Arc<Device>, bytes: &[u8]) -> Result<Arc<Self>> {
@@ -126,12 +137,23 @@ impl Drop for ShaderModule {
 
 pub struct PipelineLayout {
     pub(crate) last_use: Arc<crate::resource::SyncCell>,
-    pub device: Arc<Device>,
-    pub handle: vk::PipelineLayout,
+    pub(crate) device: Arc<Device>,
+    pub(crate) handle: vk::PipelineLayout,
     pub(crate) sets: Vec<Arc<VulkanDescriptorSetLayout>>,
     pub(crate) push_constants: Vec<vk::PushConstantRange>,
     bindless_abi: Option<Arc<crate::bindless::BindlessShaderAbi>>,
     _memory: CpuMemoryReservation,
+}
+
+impl PipelineLayout {
+    /// The device that owns this object.
+    pub fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+    /// Interop escape hatch: the native handle. It stays owned by `self`; never destroy it or use it after `self` is dropped.
+    pub fn raw_handle(&self) -> vk::PipelineLayout {
+        self.handle
+    }
 }
 impl PipelineLayout {
     pub fn sets(&self) -> &[Arc<VulkanDescriptorSetLayout>] {
@@ -561,8 +583,8 @@ struct PipelineArrays {
 }
 pub struct VulkanPipeline {
     pub(crate) last_use: Arc<crate::resource::SyncCell>,
-    pub device: Arc<Device>,
-    pub handle: vk::Pipeline,
+    pub(crate) device: Arc<Device>,
+    pub(crate) handle: vk::Pipeline,
     pub layout: Arc<PipelineLayout>,
     pub point: vk::PipelineBindPoint,
     shaders: Vec<Arc<ShaderModule>>,
@@ -570,6 +592,17 @@ pub struct VulkanPipeline {
     dynamic_rendering: Option<DynamicRenderingFormats>,
     raster_target: Option<RasterTargetSignature>,
     _memory: CpuMemoryReservation,
+}
+
+impl VulkanPipeline {
+    /// The device that owns this object.
+    pub fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+    /// Interop escape hatch: the native handle. It stays owned by `self`; never destroy it or use it after `self` is dropped.
+    pub fn raw_handle(&self) -> vk::Pipeline {
+        self.handle
+    }
 }
 impl VulkanPipeline {
     pub fn create_compute_pipeline(

@@ -86,9 +86,9 @@ struct ReleaseGate(Arc<TimelineSemaphore>);
 impl Drop for ReleaseGate {
     fn drop(&mut self) {
         unsafe {
-            let _ = self.0.device.raw_device().signal_semaphore(
+            let _ = self.0.device().raw_device().signal_semaphore(
                 &vk::SemaphoreSignalInfo::default()
-                    .semaphore(self.0.handle)
+                    .semaphore(self.0.raw_handle())
                     .value(1),
             );
         }
@@ -135,7 +135,7 @@ fn a_real_pending_shader_keeps_the_bindless_slot_until_actual_completion() {
     let mut command = pool.allocate().unwrap();
     command.begin().unwrap();
     unsafe {
-        pipeline.bind_pipeline(command.handle);
+        pipeline.bind_pipeline(command.raw_handle());
         heap.bind_command(
             &mut command,
             pipeline.clone(),
@@ -144,15 +144,17 @@ fn a_real_pending_shader_keeps_the_bindless_slot_until_actual_completion() {
         )
         .unwrap();
         device.raw_device().cmd_push_constants(
-            command.handle,
-            pipeline.layout.handle,
+            command.raw_handle(),
+            pipeline.layout.raw_handle(),
             vk::ShaderStageFlags::COMPUTE,
             0,
             &first.index.to_le_bytes(),
         );
-        device.raw_device().cmd_dispatch(command.handle, 1, 1, 1);
+        device
+            .raw_device()
+            .cmd_dispatch(command.raw_handle(), 1, 1, 1);
         let barrier = vk::BufferMemoryBarrier::default()
-            .buffer(buffer.handle)
+            .buffer(buffer.raw_handle())
             .offset(0)
             .size(4)
             .src_access_mask(vk::AccessFlags::SHADER_WRITE)
@@ -160,7 +162,7 @@ fn a_real_pending_shader_keeps_the_bindless_slot_until_actual_completion() {
             .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
             .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED);
         device.raw_device().cmd_pipeline_barrier(
-            command.handle,
+            command.raw_handle(),
             vk::PipelineStageFlags::COMPUTE_SHADER,
             vk::PipelineStageFlags::HOST,
             vk::DependencyFlags::empty(),
@@ -202,7 +204,7 @@ fn a_real_pending_shader_keeps_the_bindless_slot_until_actual_completion() {
     assert_eq!(next.index().index, first.index);
     assert!(next.index().generation > first.generation);
     assert_eq!(heap.stats().retiring, 0);
-    assert_eq!(device.garbage_stats().idle_waits, 0);
+    assert_eq!(device.retirement_stats().idle_waits, 0);
 }
 
 #[test]
@@ -282,7 +284,7 @@ fn graph_binding_rejects_undeclared_lease_bytes_and_accepts_the_complete_shader_
                 pipeline.bind_pipeline(command);
                 device.raw_device().cmd_push_constants(
                     command,
-                    pipeline.layout.handle,
+                    pipeline.layout.raw_handle(),
                     vk::ShaderStageFlags::COMPUTE,
                     0,
                     &lease.index().index.to_le_bytes(),

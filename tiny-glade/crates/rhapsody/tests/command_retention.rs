@@ -437,7 +437,7 @@ fn descriptor_owner_row_oom_precedes_native_update_and_preserves_retry() {
     let binding = DescriptorSetBinding::Buffer {
         ty: vk::DescriptorType::STORAGE_BUFFER,
         info: vk::DescriptorBufferInfo::default()
-            .buffer(owner.handle)
+            .buffer(owner.raw_handle())
             .range(32),
         owner,
     };

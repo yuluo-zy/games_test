@@ -55,7 +55,7 @@ fn failed_submit_does_not_advance_completion_past_in_flight_work() {
     device.retire(point.into(), Doomed::Sampler(sampler));
     let collected = device.collect_garbage();
     let explicitly_collected = device.try_collect_all_completed().unwrap();
-    let pending = device.garbage_stats().pending;
+    let pending = device.retirement_stats().pending;
     // 先开闸再断言，测试失败也不会使设备 Drop 等待被本线程阻塞的 GPU。
     unsafe {
         device
@@ -76,8 +76,8 @@ fn failed_submit_does_not_advance_completion_past_in_flight_work() {
         "explicit draining still respects GPU dependencies"
     );
     assert_eq!(pending, 1);
-    assert_eq!(device.garbage_stats().pending, 0);
-    assert_eq!(device.garbage_stats().idle_waits, 0);
+    assert_eq!(device.retirement_stats().pending, 0);
+    assert_eq!(device.retirement_stats().idle_waits, 0);
 }
 
 #[test]
@@ -95,8 +95,8 @@ fn unused_objects_are_destroyed_without_idle() {
         .unwrap();
         device.retire(SyncSet::EMPTY, Doomed::Sampler(sampler));
     }
-    assert_eq!(device.garbage_stats().pending, 0);
-    assert_eq!(device.garbage_stats().idle_waits, 0);
+    assert_eq!(device.retirement_stats().pending, 0);
+    assert_eq!(device.retirement_stats().idle_waits, 0);
 }
 
 #[test]
@@ -132,7 +132,7 @@ fn dropping_a_submission_defers_used_resources_without_blocking_or_retiring_unus
     unsafe {
         device
             .raw_device()
-            .cmd_fill_buffer(command.handle, buffer.handle, 0, 16, 0);
+            .cmd_fill_buffer(command.raw_handle(), buffer.raw_handle(), 0, 16, 0);
     }
     command.end().unwrap();
     let queue = DeviceQueue {
@@ -156,16 +156,16 @@ fn dropping_a_submission_defers_used_resources_without_blocking_or_retiring_unus
         let _ = tx.send(());
     });
     let did_not_block = rx.recv_timeout(Duration::from_secs(1)).is_ok();
-    let deferred = device.garbage_stats().pending;
+    let deferred = device.retirement_stats().pending;
     let released_cpu_owner = weak_buffer.upgrade().is_none();
     let unused = Sampler::new(device.clone(), &vk::SamplerCreateInfo::default()).unwrap();
     drop(unused);
-    let after_unused = device.garbage_stats().pending;
+    let after_unused = device.retirement_stats().pending;
     // Always release the gate before assertions, including on a blocking-drop regression.
     unsafe {
         device.raw_device().signal_semaphore(
             &vk::SemaphoreSignalInfo::default()
-                .semaphore(gate.handle)
+                .semaphore(gate.raw_handle())
                 .value(1),
         )
     }
@@ -186,7 +186,7 @@ fn dropping_a_submission_defers_used_resources_without_blocking_or_retiring_unus
         after_unused, deferred,
         "an unused sampler has no dependency on this submission"
     );
-    assert_eq!(device.garbage_stats().pending, 0);
+    assert_eq!(device.retirement_stats().pending, 0);
 }
 
 #[test]
@@ -225,16 +225,16 @@ fn completed_submitted_drops_obey_ticks_and_explicit_drain_ignores_the_quota() {
         device.retire(point.into(), Doomed::Sampler(sampler));
     }
     assert_eq!(
-        device.garbage_stats().pending,
+        device.retirement_stats().pending,
         161,
         "already-completed submitted drops must not bypass maintenance"
     );
     assert_eq!(device.try_collect_garbage().unwrap(), 3);
-    assert_eq!(device.garbage_stats().pending, 158);
+    assert_eq!(device.retirement_stats().pending, 158);
     assert_eq!(device.try_collect_garbage().unwrap(), 3);
-    assert_eq!(device.garbage_stats().pending, 155);
+    assert_eq!(device.retirement_stats().pending, 155);
     assert_eq!(device.try_collect_all_completed().unwrap(), 155);
-    assert_eq!(device.garbage_stats().pending, 0);
+    assert_eq!(device.retirement_stats().pending, 0);
     assert_eq!(device.try_collect_all_completed().unwrap(), 0);
-    assert_eq!(device.garbage_stats().idle_waits, 0);
+    assert_eq!(device.retirement_stats().idle_waits, 0);
 }

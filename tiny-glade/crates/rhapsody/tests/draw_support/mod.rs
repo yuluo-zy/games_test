@@ -240,8 +240,8 @@ impl Rig {
             .unwrap();
         let mut cb = self.pool.allocate().unwrap();
         cb.begin().unwrap();
-        let handle = cb.handle;
-        let image = target.texture.handle;
+        let handle = cb.raw_handle();
+        let image = target.texture.raw_handle();
         image_barrier(
             raw,
             handle,
@@ -311,7 +311,7 @@ impl Rig {
             raw.cmd_bind_pipeline(
                 handle,
                 vk::PipelineBindPoint::GRAPHICS,
-                self.pipeline.handle,
+                self.pipeline.raw_handle(),
             );
             raw.cmd_bind_vertex_buffers(handle, 0, &[gd.get_vk_buffer(&vbuf).unwrap()], &[0]);
             raw.cmd_draw(handle, 3, 1, 0, 0);

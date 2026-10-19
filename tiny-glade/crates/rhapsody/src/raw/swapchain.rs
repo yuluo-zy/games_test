@@ -175,14 +175,29 @@ fn is_zero_extent(error: &Error) -> bool {
     matches!(error, Error::InvalidUsage { what, .. } if what == ZERO_WINDOW_EXTENT || what == ZERO_SURFACE_EXTENT)
 }
 pub struct Surface {
-    pub instance: Arc<VulkanInstance>,
-    pub handle: vk::SurfaceKHR,
-    pub loader: ash::khr::surface::Instance,
+    pub(crate) instance: Arc<VulkanInstance>,
+    pub(crate) handle: vk::SurfaceKHR,
+    pub(crate) loader: ash::khr::surface::Instance,
     owned: bool,
     win32: bool,
     /// Sticky VK_ERROR_SURFACE_LOST_KHR. A lost surface never recovers; the
     /// host must create a new one and call [`Swapchain::replace_surface`].
     lost: std::sync::atomic::AtomicBool,
+}
+
+impl Surface {
+    /// The instance that owns this object.
+    pub fn instance(&self) -> &Arc<VulkanInstance> {
+        &self.instance
+    }
+    /// Interop escape hatch: the native handle. It stays owned by `self`; never destroy it or use it after `self` is dropped.
+    pub fn raw_handle(&self) -> vk::SurfaceKHR {
+        self.handle
+    }
+    /// Interop escape hatch: the extension function table.
+    pub fn loader(&self) -> &ash::khr::surface::Instance {
+        &self.loader
+    }
 }
 impl Surface {
     /// True once any WSI call on this surface reported SURFACE_LOST.
@@ -368,16 +383,16 @@ impl SwapchainInner {
 }
 
 pub struct Swapchain {
-    pub device: Arc<Device>,
+    pub(crate) device: Arc<Device>,
     pub surface: Arc<Surface>,
-    pub handle: vk::SwapchainKHR,
+    pub(crate) handle: vk::SwapchainKHR,
     pub format: vk::Format,
     pub extent: vk::Extent2D,
     /// Actual mode selected after querying the surface; recorded for performance runs.
     pub present_mode: vk::PresentModeKHR,
-    pub images: Vec<vk::Image>,
-    pub views: Vec<vk::ImageView>,
-    pub loader: ash::khr::swapchain::Device,
+    pub(crate) images: Vec<vk::Image>,
+    pub(crate) views: Vec<vk::ImageView>,
+    pub(crate) loader: ash::khr::swapchain::Device,
     vsync: bool,
     usage: vk::ImageUsageFlags,
     pre_transform: vk::SurfaceTransformFlagsKHR,
@@ -387,6 +402,25 @@ pub struct Swapchain {
     generation: u64,
     policy: SwapchainPolicy,
     retired_generations: Mutex<Vec<Arc<Swapchain>>>,
+}
+
+impl Swapchain {
+    /// Interop escape hatch: the native handle. It stays owned by `self`; never destroy it or use it after `self` is dropped.
+    pub fn raw_handle(&self) -> vk::SwapchainKHR {
+        self.handle
+    }
+    /// Interop escape hatch: the swapchain images (owned by the swapchain).
+    pub fn images(&self) -> &[vk::Image] {
+        &self.images
+    }
+    /// Interop escape hatch: one view per swapchain image (owned by the swapchain).
+    pub fn image_views(&self) -> &[vk::ImageView] {
+        &self.views
+    }
+    /// Interop escape hatch: the extension function table.
+    pub fn loader(&self) -> &ash::khr::swapchain::Device {
+        &self.loader
+    }
 }
 impl Swapchain {
     /// Generations permanently retained because teardown could not prove that

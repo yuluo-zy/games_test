@@ -17,11 +17,11 @@ impl Unblock {
         }
         unsafe {
             self.0
-                .device
+                .device()
                 .raw_device()
                 .signal_semaphore(
                     &vk::SemaphoreSignalInfo::default()
-                        .semaphore(self.0.handle)
+                        .semaphore(self.0.raw_handle())
                         .value(1),
                 )
                 .unwrap();
@@ -54,7 +54,7 @@ fn query_slot_is_not_reset_until_actual_submission_completes_and_capacity_is_non
     let Some(mut session) = session() else {
         return;
     };
-    let device = session.backend.device.clone();
+    let device = session.backend.device().clone();
     let gate = TimelineSemaphore::new(device.clone(), 0).unwrap();
     let mut unblock = Unblock(gate.clone(), false);
     let mut graph = session.begin_frame().unwrap();
@@ -110,7 +110,7 @@ fn query_slot_is_not_reset_until_actual_submission_completes_and_capacity_is_non
     assert_eq!(stats.completed, 6);
     assert_eq!(stats.retained_samples, 2);
     session.backend.configure_gpu_timing(None).unwrap();
-    assert_eq!(device.garbage_stats().idle_waits, 0);
+    assert_eq!(device.retirement_stats().idle_waits, 0);
 }
 #[test]
 fn failed_recording_cancels_unsubmitted_query_and_next_frame_can_reuse_it() {
@@ -230,7 +230,7 @@ fn in_flight_pass_queries_keep_their_slots_until_the_actual_timeline_reaches_the
             retained_samples: 4,
         }))
         .unwrap();
-    let gate = TimelineSemaphore::new(session.backend.device.clone(), 0).unwrap();
+    let gate = TimelineSemaphore::new(session.backend.device().clone(), 0).unwrap();
     let mut unblock = Unblock(gate.clone(), false);
     let mut graph = session.begin_frame().unwrap();
     session

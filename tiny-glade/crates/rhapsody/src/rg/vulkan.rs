@@ -304,7 +304,7 @@ struct FrameCommandPool {
 }
 
 pub struct VulkanGraphBackend {
-    pub device: Arc<Device>,
+    pub(crate) device: Arc<Device>,
     pub timeline: Arc<TimelineSemaphore>,
     pub resources: BTreeMap<u64, GpuResource>,
     pub accesses: AccessTable,
@@ -353,6 +353,13 @@ pub struct VulkanGraphBackend {
     projection_pool: super::pass_bindings::ManagedProjectionPool,
     barrier_dispatch: crate::raw::barrier::BarrierDispatch,
     barriers: BTreeMap<u64, crate::raw::barrier::SynchronizationScope>,
+}
+
+impl VulkanGraphBackend {
+    /// The device that owns this object.
+    pub fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
 }
 
 /// `submissions` 捕获的上限：只保留最近的提交，避免不经 `begin_frame` 的长时间运行无界增长。
@@ -1993,6 +2000,7 @@ pub struct VulkanGraphSession {
     /// The acquired swapchain image imported into a presentation graph.
     presentation: Option<presentation::SessionPresentation>,
 }
+
 impl VulkanGraphSession {
     pub fn new(backend: VulkanGraphBackend) -> Self {
         let chain = backend.new_execution_chain();
@@ -3376,7 +3384,7 @@ impl NamedResources {
 
 /// 帧缓存持有实际资源；每帧后端导入 Arc 后，resize 可安全释放旧缓存引用。
 struct TemporalGpuResources {
-    pub device: Arc<Device>,
+    pub(crate) device: Arc<Device>,
     specifications: BTreeMap<String, ResourceSpec>,
     /// Keys whose buffer is zero-filled when it is (re)created.
     zero_initialized: std::collections::BTreeSet<String>,

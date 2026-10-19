@@ -16,11 +16,11 @@ impl Release {
         if !self.1 {
             unsafe {
                 self.0
-                    .device
+                    .device()
                     .raw_device()
                     .signal_semaphore(
                         &vk::SemaphoreSignalInfo::default()
-                            .semaphore(self.0.handle)
+                            .semaphore(self.0.raw_handle())
                             .value(1),
                     )
                     .unwrap();
@@ -120,9 +120,13 @@ fn live_in_flight_and_retiring_memory_remains_charged_until_actual_gpu_completio
     command.retain_opaque(buffer.clone()).unwrap();
     command.begin().unwrap();
     unsafe {
-        device
-            .raw_device()
-            .cmd_fill_buffer(command.handle, buffer.handle, 0, buffer.size, 0);
+        device.raw_device().cmd_fill_buffer(
+            command.raw_handle(),
+            buffer.raw_handle(),
+            0,
+            buffer.size,
+            0,
+        );
     }
     command.end().unwrap();
     let pending = command

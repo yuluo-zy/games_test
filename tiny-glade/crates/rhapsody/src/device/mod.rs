@@ -4,20 +4,22 @@ pub use crate::raw::allocator::AllocatorStats;
 pub use crate::raw::graveyard::RetirementStats;
 pub use crate::raw::stats::{RenderStats, StatsSnapshot};
 pub use memory::GpuMemoryUsage;
-pub mod budget;
+internal_mod!(
+    budget,
+    caps,
+    generation,
+    init,
+    memory,
+    policy,
+    queue_config,
+    reclamation
+);
 mod caches;
-pub mod caps;
-pub mod generation;
-pub mod init;
 mod lifetime;
 mod logical;
-pub mod memory;
 mod native;
 pub(crate) mod pending_acquire;
-pub mod policy;
-pub mod queue_config;
 mod queues;
-pub mod reclamation;
 mod submission;
 pub use pending_acquire::{AcquireTarget, DrainedAcquires, PendingAcquire, PendingAcquires};
 pub use submission::{Signal, SubmitBatch, Wait};

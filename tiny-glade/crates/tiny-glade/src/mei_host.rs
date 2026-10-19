@@ -185,7 +185,7 @@ impl MeiHost {
             (&primitive_lease, &primitives, TEXT_PRIMITIVE_BYTES),
             (&shape_lease, &shapes, SHAPE_STREAM_BYTES),
         ] {
-            if !Arc::ptr_eq(&lease.device, &device)
+            if !Arc::ptr_eq(&lease.device(), &device)
                 || lease.size != expected as u64
                 || handle.byte_size != expected as u64
                 || !lease.usage.contains(

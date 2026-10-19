@@ -42,7 +42,8 @@ fn headless_with(optional: &[&str]) -> Option<(Arc<Device>, Arc<Surface>)> {
 fn create_headless_surface(
     instance: &Arc<rhapsody::raw::instance::VulkanInstance>,
 ) -> Arc<Surface> {
-    let loader = ash::ext::headless_surface::Instance::new(&instance.entry, &instance.instance);
+    let loader =
+        ash::ext::headless_surface::Instance::new(&instance.entry, instance.raw_instance());
     let handle = unsafe {
         loader.create_headless_surface(&vk::HeadlessSurfaceCreateInfoEXT::default(), None)
     }
@@ -97,7 +98,8 @@ fn headless_parts(
         instance: instance.clone(),
         devices,
     };
-    let loader = ash::ext::headless_surface::Instance::new(&instance.entry, &instance.instance);
+    let loader =
+        ash::ext::headless_surface::Instance::new(&instance.entry, instance.raw_instance());
     let handle = gpu_test_support::initialize("headless surface creation", unsafe {
         loader.create_headless_surface(&vk::HeadlessSurfaceCreateInfoEXT::default(), None)
     })?;
@@ -303,7 +305,7 @@ fn clear_pass(
 ) {
     let calls = calls.clone();
     let image = target.image();
-    let device = target.texture().device.clone();
+    let device = target.texture().device().clone();
     // A later full overwrite would otherwise cull this pass as a dead write.
     let mut pass = graph.add_pass("clear swapchain").with_side_effect();
     pass.add_resource_access(target.resource(), TRANSFER_WRITE, 0)

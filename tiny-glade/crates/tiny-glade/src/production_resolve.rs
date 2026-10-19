@@ -29,7 +29,7 @@ pub fn build(
     world: &mut World,
     shaders: &AssetShaderLibrary,
     source: Arc<rhapsody::resource::Texture>,
-    target: &rhapsody::rg::vulkan::PresentTarget,
+    target: &rhapsody::rg::PresentTarget,
     flag: bool,
 ) -> rhapsody::Result<()> {
     crate::frame_setup::with_frame_resources(frame, world, |frame, world| {
@@ -41,7 +41,7 @@ fn build_inner(
     world: &mut World,
     shaders: &AssetShaderLibrary,
     source: Arc<rhapsody::resource::Texture>,
-    target: &rhapsody::rg::vulkan::PresentTarget,
+    target: &rhapsody::rg::PresentTarget,
     flag: bool,
 ) -> rhapsody::Result<()> {
     let attachment = |id, texture: &rhapsody::resource::Texture| AttachmentTexture {

@@ -4,8 +4,15 @@ use ash::{vk, vk::Handle};
 use std::{ffi::CString, sync::Arc};
 
 pub struct DebugUtils {
-    pub device: Arc<Device>,
+    pub(crate) device: Arc<Device>,
     loader: ash::ext::debug_utils::Device,
+}
+
+impl DebugUtils {
+    /// The device that owns this object.
+    pub fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
 }
 impl DebugUtils {
     /// 仅在实例启用了 EXT_debug_utils 时创建。

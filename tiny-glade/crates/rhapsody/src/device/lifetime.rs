@@ -122,11 +122,6 @@ impl Device {
         })?;
         self.try_collect_all_completed()
     }
-    pub fn wait_submitted(&self) -> crate::Result<()> {
-        self.queues
-            .timelines
-            .wait(&self.queues.timelines.submitted_set(), u64::MAX)
-    }
     pub fn retirement_stats(&self) -> RetirementStats {
         let submitted = self.queues.timelines.submitted_set();
         let completed = self.queues.timelines.completed();
@@ -142,10 +137,6 @@ impl Device {
             }
         }
         stats
-    }
-    /// Former name of [`Self::retirement_stats`].
-    pub fn garbage_stats(&self) -> RetirementStats {
-        self.retirement_stats()
     }
     pub(crate) fn drain_retirement_for_drop(&self) {
         if let Err(error) = unsafe { self.core.device.device_wait_idle() } {

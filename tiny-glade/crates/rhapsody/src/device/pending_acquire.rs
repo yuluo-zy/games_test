@@ -97,7 +97,7 @@ impl Device {
     /// `transfer.destination_family` should be coalesced into the next
     /// submit on that family. The release must already be submitted
     /// (`release_point`) and recorded on the resource's native state.
-    pub fn queue_pending_acquire(&self, acquire: PendingAcquire) -> Result<()> {
+    pub(crate) fn queue_pending_acquire(&self, acquire: PendingAcquire) -> Result<()> {
         let transfer = acquire.transfer;
         if transfer.source_family == transfer.destination_family
             || acquire.release_point.value == 0
@@ -136,7 +136,7 @@ impl Device {
             .map_err(|_| Error::OutOfHostMemory)
     }
     /// Pending acquires for queues of `family`.
-    pub fn pending_acquire_count(&self, family: u32) -> usize {
+    pub(crate) fn pending_acquire_count(&self, family: u32) -> usize {
         if self.queues.pending_acquires.is_empty() {
             return 0;
         }
@@ -149,7 +149,7 @@ impl Device {
             .count()
     }
     /// Put back acquires drained into a command that was never submitted.
-    pub fn requeue_pending_acquires(&self, drained: DrainedAcquires) {
+    pub(crate) fn requeue_pending_acquires(&self, drained: DrainedAcquires) {
         let mut entries = self.queues.pending_acquires.entries.lock();
         if entries.try_reserve(drained.len()).is_ok() {
             entries.extend(drained);
@@ -166,7 +166,7 @@ impl Device {
     /// patches (their release points become waits at the acquire's
     /// destination stages when the command is submitted). Returns the
     /// recorded acquires; re-queue them if the command is never submitted.
-    pub fn record_pending_acquires(
+    pub(crate) fn record_pending_acquires(
         &self,
         command: &mut VulkanCommandBuffer,
     ) -> Result<DrainedAcquires> {

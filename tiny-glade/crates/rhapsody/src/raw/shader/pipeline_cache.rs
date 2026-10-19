@@ -23,12 +23,19 @@ pub(super) struct PipelineCacheEntry<K> {
     _key_memory: CpuMemoryReservation,
 }
 pub struct PipelineCache {
-    pub device: Arc<Device>,
+    pub(crate) device: Arc<Device>,
     pub(super) handle: vk::PipelineCache,
     pub(super) lock: RwLock<()>,
     pub(super) capacity: usize,
     pub(super) compute: Mutex<TempList<PipelineCacheEntry<ComputePipelineKey>>>,
     pub(super) raster: Mutex<TempList<PipelineCacheEntry<Vec<u64>>>>,
+}
+
+impl PipelineCache {
+    /// The device that owns this object.
+    pub fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
 }
 /// Driver cache bytes retain their CPU budget until the last payload owner is
 /// dropped, including when a caller keeps them after the cache itself is gone.

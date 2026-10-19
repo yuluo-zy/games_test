@@ -204,58 +204,6 @@ impl Device {
         unsafe { super::binding::bind_pipeline(&self.shared(), command_buffer, point, pipeline) }
     }
 
-    /// Bind a descriptor set.
-    ///
-    /// # Safety
-    /// 描述符集须与布局兼容，调用者保证其宿主与资源存活至提交完成。
-    pub unsafe fn bind_descriptor_set(
-        &self,
-        command_buffer: vk::CommandBuffer,
-        point: vk::PipelineBindPoint,
-        layout: vk::PipelineLayout,
-        first_set: u32,
-        set: vk::DescriptorSet,
-        dynamic_offsets: &[u32],
-    ) {
-        unsafe {
-            super::binding::bind_descriptor_set(
-                &self.shared(),
-                command_buffer,
-                point,
-                layout,
-                first_set,
-                set,
-                dynamic_offsets,
-            )
-        }
-    }
-
-    /// Bind a persistent descriptor set.
-    ///
-    /// # Safety
-    /// 同 [`Self::bind_descriptor_set`]。
-    pub unsafe fn bind_persistent_descriptor_set(
-        &self,
-        command_buffer: vk::CommandBuffer,
-        point: vk::PipelineBindPoint,
-        layout: vk::PipelineLayout,
-        first_set: u32,
-        sets: &[vk::DescriptorSet],
-        dynamic_offsets: &[u32],
-    ) {
-        unsafe {
-            super::binding::bind_persistent_descriptor_set(
-                &self.shared(),
-                command_buffer,
-                point,
-                layout,
-                first_set,
-                sets,
-                dynamic_offsets,
-            )
-        }
-    }
-
     pub fn get_vk_buffer(&self, buffer: &ManagedBuffer) -> Result<vk::Buffer> {
         self.owns(&buffer.device)?;
         Ok(buffer.handle)

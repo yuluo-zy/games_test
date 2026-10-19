@@ -251,7 +251,7 @@ pub struct ComputePipeline {
 
 // ---------------------------------------------------------------- render graph
 
-/// `rhapsody::rg::import_export` 导入缓冲后的句柄（O：`import_unowned` 返回 20 B，存进 `BufferState`
+/// `rhapsody::rg` 导入缓冲后的句柄（O：`import_unowned` 返回 20 B，存进 `BufferState`
 /// 的 `+0x28`）。
 /// **WIRING §4.13 证伪**：旧注释的「`+0xe=5` 未导入判别」不成立——`5` 是 `rg::graph` 后备资源
 /// `RegistryResource::Empty` 的 tag（`payload_projection`，graph.rs:749），与 ImportedBuffer 无关。
@@ -354,11 +354,6 @@ pub use rhapsody::resource::ManagedBuffer;
 pub use rhapsody::resource::TextureDesc as RhapsodyTextureDesc;
 /// `raw::texture::TextureViewDesc`（resolve 后的实际视图描述，`vk::ImageViewType/Format/AspectFlags`）。
 pub use rhapsody::resource::TextureViewDesc as RhapsodyTextureViewDesc;
-/// Pure dynamic attachment contract; no Vulkan render-pass object.
-pub use rhapsody::rg::attachments::contract::{
-    RenderPassAttachmentDesc as RhapsodyRenderPassAttachmentDesc,
-    RenderPassDesc as RhapsodyRenderPassDesc,
-};
 /// `raw::error::{Error, Result}`。
 pub use rhapsody::{Error as RhapsodyError, Result as RhapsodyResult};
 /// `raw::shader::{RasterPipelineOpts, ShaderLibrary, VulkanPipeline}`。
@@ -376,6 +371,11 @@ pub use rhapsody::{resource::ManagedTexture, resource::ManagedTextureView};
 pub use rhapsody::{
     resource::Texture as RhapsodyTexture, resource::TextureKind as RhapsodyTextureKind,
 };
+/// Pure dynamic attachment contract; no Vulkan render-pass object.
+pub use rhapsody::{
+    rg::RenderPassAttachmentDesc as RhapsodyRenderPassAttachmentDesc,
+    rg::RenderPassDesc as RhapsodyRenderPassDesc,
+};
 
 /// `shader_pipeline::compiled::CompiledShaderPipeline`（`load_compiled(path)`/`decode(bytes)`/`encode()`）。
 pub use shader_pipeline::compiled::CompiledShaderPipeline as RhapsodyCompiledShaderPipeline;
@@ -387,36 +387,38 @@ pub use shader_pipeline::{
     pipeline_desc::RasterPipelineDesc as RhapsodyRasterPipelineDesc,
 };
 
-/// `rg::executor::{ExecutionChain, ExecutionBackend, PassContext, GraphExecution, ExecutionStats}`。
-pub use rhapsody::rg::executor::{
-    ExecutionBackend, ExecutionChain, ExecutionStats, GraphExecution, PassContext,
-};
-/// `rg::graph::PassDeclaration`（`RenderPassApi::find_resource_access_type` 用）。
-pub use rhapsody::rg::graph::PassDeclaration as RgPassDeclaration;
-/// `rg::graph::Pool`（资源池；`execute_graph_with_context` 的 pool 参数）。
-pub use rhapsody::rg::graph::Pool as RgPool;
-/// `rg::graph::{RenderGraph, Descriptor}` + `rg::resource::ResourceHandle`。
-pub use rhapsody::rg::graph::{Descriptor as RgDescriptor, RenderGraph as RhapsodyRenderGraph};
-/// `rg::graph::{OriginSource, ResourceDeclaration, GraphDeclaration}`。
-pub use rhapsody::rg::graph::{
-    GraphDeclaration, OriginSource as RgOriginSource, ResourceDeclaration as RgResourceDeclaration,
-};
 /// `rg::pass_api::AshCommandBackend`（`RenderPassApi::new` 的 Vulkan 后端）。
-pub use rhapsody::rg::pass_api::AshCommandBackend;
-/// `rg::pass_api::RenderPassApi`（`dispatch_groups_3d`/`fill_buffer`/`clear_color_image`/`copy_buffer`）。
-pub use rhapsody::rg::pass_api::RenderPassApi;
+pub use rhapsody::rg::AshCommandBackend;
 /// `rg::pass_bindings::ManagedPassResources`。
-pub use rhapsody::rg::pass_bindings::ManagedPassResources;
+pub use rhapsody::rg::ManagedPassResources;
 /// `rg::pass_builder::PassBuilder`（`add_resource_access`/`render_with_context`/`rg_mut`）。
-pub use rhapsody::rg::pass_builder::PassBuilder as RhapsodyPassBuilder;
-pub use rhapsody::rg::resource::ResourceHandle as RgResourceHandle;
+pub use rhapsody::rg::PassBuilder as RhapsodyPassBuilder;
+/// `rg::graph::PassDeclaration`（`RenderPassApi::find_resource_access_type` 用）。
+pub use rhapsody::rg::PassDeclaration as RgPassDeclaration;
+/// `rg::graph::Pool`（资源池；`execute_graph_with_context` 的 pool 参数）。
+pub use rhapsody::rg::Pool as RgPool;
+/// `rg::pass_api::RenderPassApi`（`dispatch_groups_3d`/`fill_buffer`/`clear_color_image`/`copy_buffer`）。
+pub use rhapsody::rg::RenderPassApi;
+pub use rhapsody::rg::ResourceHandle as RgResourceHandle;
 /// `raw::submit::{DeviceState, QueueState}`（`ExecutionChain::new` 的提交状态）。
 /// `rg::resource::ResourceOrigin`。
-pub use rhapsody::rg::resource::ResourceOrigin;
+pub use rhapsody::rg::ResourceOrigin;
 /// `rg::vulkan::{VulkanGraphBackend, AccessTable, GpuResource, ResourceSpec}`。
-pub use rhapsody::rg::vulkan::{
-    AccessTable, GpuResource, ResourceSpec as RgResourceSpec,
-    VulkanGraphBackend as RhapsodyVulkanGraphBackend,
+pub use rhapsody::{
+    rg::AccessTable, rg::GpuResource, rg::ResourceSpec as RgResourceSpec,
+    rg::VulkanGraphBackend as RhapsodyVulkanGraphBackend,
+};
+/// `rg::graph::{RenderGraph, Descriptor}` + `rg::resource::ResourceHandle`。
+pub use rhapsody::{rg::Descriptor as RgDescriptor, rg::RenderGraph as RhapsodyRenderGraph};
+/// `rg::executor::{ExecutionChain, ExecutionBackend, PassContext, GraphExecution, ExecutionStats}`。
+pub use rhapsody::{
+    rg::ExecutionBackend, rg::ExecutionChain, rg::ExecutionStats, rg::GraphExecution,
+    rg::PassContext,
+};
+/// `rg::graph::{OriginSource, ResourceDeclaration, GraphDeclaration}`。
+pub use rhapsody::{
+    rg::GraphDeclaration, rg::OriginSource as RgOriginSource,
+    rg::ResourceDeclaration as RgResourceDeclaration,
 };
 
 // ---- 适配函数（WIRING §3.2 的转换路径，纯本文件类型 ↔ rhapsody 真实类型）----

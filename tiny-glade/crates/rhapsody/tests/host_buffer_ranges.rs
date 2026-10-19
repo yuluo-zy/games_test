@@ -24,15 +24,15 @@ impl SignalOnDrop {
     fn release(&mut self) {
         if self.armed {
             let result = unsafe {
-                self.semaphore.device.raw_device().signal_semaphore(
+                self.semaphore.device().raw_device().signal_semaphore(
                     &vk::SemaphoreSignalInfo::default()
-                        .semaphore(self.semaphore.handle)
+                        .semaphore(self.semaphore.raw_handle())
                         .value(1),
                 )
             };
             self.armed = false;
             if result == Err(vk::Result::ERROR_DEVICE_LOST) {
-                self.semaphore.device.timelines().mark_device_lost();
+                self.semaphore.device().timelines().mark_device_lost();
             }
             result.unwrap();
         }
@@ -43,14 +43,14 @@ impl Drop for SignalOnDrop {
         // Always unblock real work before assertion unwinding can drop Device.
         if self.armed {
             let result = unsafe {
-                self.semaphore.device.raw_device().signal_semaphore(
+                self.semaphore.device().raw_device().signal_semaphore(
                     &vk::SemaphoreSignalInfo::default()
-                        .semaphore(self.semaphore.handle)
+                        .semaphore(self.semaphore.raw_handle())
                         .value(1),
                 )
             };
             if result == Err(vk::Result::ERROR_DEVICE_LOST) {
-                self.semaphore.device.timelines().mark_device_lost();
+                self.semaphore.device().timelines().mark_device_lost();
             }
         }
     }
@@ -104,11 +104,15 @@ fn blocked_fill(
     }
     command.begin().unwrap();
     unsafe {
-        device
-            .raw_device()
-            .cmd_fill_buffer(command.handle, buffer.handle, 0, span, 0x44332211);
+        device.raw_device().cmd_fill_buffer(
+            command.raw_handle(),
+            buffer.raw_handle(),
+            0,
+            span,
+            0x44332211,
+        );
         device.raw_device().cmd_pipeline_barrier(
-            command.handle,
+            command.raw_handle(),
             vk::PipelineStageFlags::TRANSFER,
             vk::PipelineStageFlags::HOST,
             vk::DependencyFlags::empty(),
@@ -118,7 +122,7 @@ fn blocked_fill(
                 .dst_access_mask(vk::AccessFlags::HOST_READ)
                 .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
                 .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                .buffer(buffer.handle)
+                .buffer(buffer.raw_handle())
                 .offset(0)
                 .size(span)],
             &[],

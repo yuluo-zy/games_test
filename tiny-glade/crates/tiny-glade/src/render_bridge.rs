@@ -14,12 +14,9 @@ use country_core::{
     asset_libraries::shader_library::AssetShaderLibrary, render::ssbo::rhapsody_boundary::Buffer,
     rhapsody_types::Texture,
 };
-use rhapsody::rg::{
-    graph::RenderGraph,
-    resource::{GraphId, ResourceHandle},
-    vulkan::{
-        AccessTable, ResourceSpec, SessionFrameReceipt, VulkanGraphBackend, VulkanGraphSession,
-    },
+use rhapsody::{
+    rg::AccessTable, rg::GraphId, rg::RenderGraph, rg::ResourceHandle, rg::ResourceSpec,
+    rg::SessionFrameReceipt, rg::VulkanGraphBackend, rg::VulkanGraphSession,
 };
 
 use crate::{
@@ -54,7 +51,7 @@ pub struct CoreRenderOwners {
 #[derive(bevy_ecs::resource::Resource)]
 pub struct CompletedGameplayWarmup {
     owners: CoreRenderOwners,
-    named: parking_lot::Mutex<Option<rhapsody::rg::vulkan::CompletedNamedResources>>,
+    named: parking_lot::Mutex<Option<rhapsody::rg::CompletedNamedResources>>,
 }
 
 impl CoreRenderBridge {
@@ -244,7 +241,7 @@ impl CoreRenderBridge {
     pub fn build_frame<T>(
         &mut self,
         build: impl FnOnce(&mut CoreGraphFrame<'_>) -> rhapsody::Result<T>,
-    ) -> rhapsody::Result<(T, rhapsody::rg::graph::BuiltGraph)> {
+    ) -> rhapsody::Result<(T, rhapsody::rg::BuiltGraph)> {
         let graph = self.session.borrow_mut().begin_frame()?;
         let declarer = Rc::new(FrameDeclarer {
             session: self.session.clone(),
@@ -271,14 +268,14 @@ impl CoreRenderBridge {
 
     pub fn execute_built(
         &mut self,
-        graph: rhapsody::rg::graph::BuiltGraph,
+        graph: rhapsody::rg::BuiltGraph,
     ) -> rhapsody::Result<SessionFrameReceipt> {
         self.session.borrow_mut().execute_frame(graph)
     }
 
     pub fn compile_built(
         &mut self,
-        graph: rhapsody::rg::graph::BuiltGraph,
+        graph: rhapsody::rg::BuiltGraph,
     ) -> rhapsody::Result<CompiledCoreGraph> {
         let frame = self.session.borrow_mut().compile_frame(graph)?;
         Ok(CompiledCoreGraph {
@@ -304,7 +301,7 @@ impl CoreRenderBridge {
     /// Present the swapchain image rendered by `target`'s executed graph.
     pub fn present(
         &mut self,
-        target: &rhapsody::rg::vulkan::PresentTarget,
+        target: &rhapsody::rg::PresentTarget,
     ) -> rhapsody::Result<rhapsody::present::PresentTicket> {
         self.session.borrow_mut().present(target)
     }
@@ -319,7 +316,7 @@ impl CoreRenderBridge {
         self.session.borrow().has_presentation()
     }
 
-    pub fn cancel_built(&mut self, graph: rhapsody::rg::graph::BuiltGraph) -> rhapsody::Result<()> {
+    pub fn cancel_built(&mut self, graph: rhapsody::rg::BuiltGraph) -> rhapsody::Result<()> {
         self.session.borrow_mut().cancel_frame(graph)
     }
 
@@ -351,7 +348,7 @@ impl CoreRenderBridge {
             rhapsody::Error::invalid_usage("exported texture has no physical allocation")
         })?;
         match self.session.borrow().backend.resource_clone(token) {
-            Some(rhapsody::rg::vulkan::GpuResource::Image(texture)) => Ok(texture),
+            Some(rhapsody::rg::GpuResource::Image(texture)) => Ok(texture),
             _ => Err(rhapsody::Error::invalid_usage(
                 "exported resource is not a texture",
             )),
@@ -374,7 +371,7 @@ impl CoreRenderBridge {
             .find(|m| m.logical == resource)
             .and_then(|m| m.token)
             .expect("validated export token");
-        rhapsody::rg::graph::ResourceBackend::release_created_resource(
+        rhapsody::rg::ResourceBackend::release_created_resource(
             &mut self.session.borrow_mut().backend,
             token,
         );
@@ -398,11 +395,11 @@ impl CoreRenderBridge {
 /// original failed-compilation/abandoned-frame resource retirement path.
 pub struct CompiledCoreGraph {
     session: Rc<RefCell<VulkanGraphSession>>,
-    frame: Option<rhapsody::rg::vulkan::PreparedSessionFrame>,
+    frame: Option<rhapsody::rg::PreparedSessionFrame>,
 }
 impl CompiledCoreGraph {
     /// Inspect the actual prepared plan before executing its GPU callbacks.
-    pub fn snapshot(&self) -> &rhapsody::rg::graph::Snapshot {
+    pub fn snapshot(&self) -> &rhapsody::rg::Snapshot {
         self.frame
             .as_ref()
             .expect("compiled graph consumed once")
@@ -460,7 +457,7 @@ impl CoreGraphFrame<'_> {
         build: impl FnOnce(&mut CoreComputeFrame<'_, '_>) -> rhapsody::Result<T>,
     ) -> rhapsody::Result<T> {
         let result = (|| {
-            let device = self.bridge.session.borrow().backend.device.clone();
+            let device = self.bridge.session.borrow().backend.device().clone();
             let passes = GraphPasses::new(self.graph(), device)?
                 .with_tables(self.bridge.tables.clone())
                 .with_shared_session(self.bridge.session.clone())?;
@@ -718,11 +715,11 @@ impl CoreGraphFrame<'_> {
     pub fn import_swapchain_image(
         &mut self,
         image: rhapsody::present::AcquiredImageLease,
-    ) -> rhapsody::Result<rhapsody::rg::vulkan::PresentTarget> {
+    ) -> rhapsody::Result<rhapsody::rg::PresentTarget> {
         let result = self.bridge.session.borrow_mut().import_swapchain_image(
             &mut self.graph().borrow_mut(),
             image,
-            rhapsody::rg::vulkan::SwapchainContents::Discard,
+            rhapsody::rg::SwapchainContents::Discard,
         );
         self.failed |= result.is_err();
         result
@@ -913,7 +910,7 @@ impl GraphDeclarer for FrameDeclarer {
         graph: &mut RenderGraph,
         name: &str,
         spec: ResourceSpec,
-    ) -> Result<ResourceHandle, rhapsody::rg::graph::BuildError> {
+    ) -> Result<ResourceHandle, rhapsody::rg::BuildError> {
         self.scope.validate(graph)?;
         self.session.borrow_mut().backend.declare(graph, name, spec)
     }
@@ -922,7 +919,7 @@ impl GraphDeclarer for FrameDeclarer {
         graph: &mut RenderGraph,
         name: &str,
         desc: rhapsody::resource::TextureDesc,
-    ) -> rhapsody::Result<rhapsody::rg::temporal::NamedTexture> {
+    ) -> rhapsody::Result<rhapsody::rg::NamedTexture> {
         self.scope.validate(graph)?;
         self.session.borrow_mut().named_texture(graph, name, desc)
     }
@@ -931,7 +928,7 @@ impl GraphDeclarer for FrameDeclarer {
         graph: &mut RenderGraph,
         name: &str,
         desc: rhapsody::resource::TextureDesc,
-    ) -> rhapsody::Result<rhapsody::rg::temporal::TemporalTexturePair> {
+    ) -> rhapsody::Result<rhapsody::rg::TemporalTexturePair> {
         self.scope.validate(graph)?;
         self.session
             .borrow_mut()
@@ -942,7 +939,7 @@ impl GraphDeclarer for FrameDeclarer {
         graph: &mut RenderGraph,
         name: &str,
         desc: rhapsody::resource::BufferDesc,
-    ) -> rhapsody::Result<rhapsody::rg::temporal::NamedBuffer> {
+    ) -> rhapsody::Result<rhapsody::rg::NamedBuffer> {
         self.scope.validate(graph)?;
         // Temporal buffers of the game are zero-filled on creation.
         self.session

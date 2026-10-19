@@ -34,10 +34,8 @@ pub use crate::raw::temp_list::TempList;
 pub use crate::raw::texture::{Texture, TextureDesc, TextureKind, TextureView, TextureViewDesc};
 pub use crate::raw::texture_upload::TextureUpdateRegion;
 
-pub mod handle;
-pub mod range_state;
-pub mod sharing;
-pub mod tracked;
+internal_mod!(handle, range_state, sharing, tracked);
+pub use range_state::AccessScope;
 pub use sharing::{QueueFamilies, ResourceSharing};
 
 pub use handle::{Handle, ResourceStore};

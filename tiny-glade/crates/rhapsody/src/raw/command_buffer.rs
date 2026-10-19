@@ -12,8 +12,8 @@ pub struct VulkanCommandPool {
     // Rust drops fields in declaration order. Destroy the raw pool before the
     // last device owner; copies in Retirement are drained by Device::drop.
     allocation: Arc<CommandPoolAllocation>,
-    pub device: Arc<Device>,
-    pub handle: vk::CommandPool,
+    pub(crate) device: Arc<Device>,
+    pub(crate) handle: vk::CommandPool,
     pub family: u32,
     last_use: Arc<crate::resource::SyncCell>,
     live_commands: AtomicUsize,
@@ -22,6 +22,17 @@ pub struct VulkanCommandPool {
     cpu_validation: Mutex<super::temp_list::TempList<OwnershipValidationState>>,
     cpu_state_patches: Mutex<super::temp_list::TempList<crate::resource::range_state::StatePatch>>,
     _memory: super::allocator::CpuMemoryReservation,
+}
+
+impl VulkanCommandPool {
+    /// The device that owns this object.
+    pub fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+    /// Interop escape hatch: the native handle. It stays owned by `self`; never destroy it or use it after `self` is dropped.
+    pub fn raw_handle(&self) -> vk::CommandPool {
+        self.handle
+    }
 }
 
 /// Pool storage retained by deferred command frees. It deliberately does not own
@@ -278,7 +289,7 @@ impl CbGraphicsState {
 }
 
 pub struct VulkanCommandBuffer {
-    pub handle: vk::CommandBuffer,
+    pub(crate) handle: vk::CommandBuffer,
     pub pool: Arc<VulkanCommandPool>,
     recording: bool,
     executable: bool,
@@ -289,6 +300,13 @@ pub struct VulkanCommandBuffer {
     range_failure: Option<MetadataFailure>,
     upload_reads: super::temp_list::TempList<UploadRead>,
     last_use: crate::sync::SyncSet,
+}
+
+impl VulkanCommandBuffer {
+    /// Interop escape hatch: the native handle. It stays owned by `self`; never destroy it or use it after `self` is dropped.
+    pub fn raw_handle(&self) -> vk::CommandBuffer {
+        self.handle
+    }
 }
 #[derive(Clone, Copy)]
 enum RetainMode {

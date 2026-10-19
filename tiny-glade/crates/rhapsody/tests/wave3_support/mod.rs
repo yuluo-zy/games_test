@@ -141,7 +141,7 @@ impl BigBuffers {
     pub fn new(session: &mut VulkanGraphSession, fills: usize, copies: usize) -> Self {
         let mut make = |usage: vk::BufferUsageFlags| {
             let desc = BufferDesc::new_gpu_to_cpu(BUF_BYTES, usage);
-            let buffer = Arc::new(Buffer::new(session.backend.device.clone(), &desc).unwrap());
+            let buffer = Arc::new(Buffer::new(session.backend.device().clone(), &desc).unwrap());
             (
                 session
                     .backend
@@ -219,7 +219,7 @@ pub fn run_big_graph(
     salt: u32,
     batch_per_pass: bool,
 ) -> BigRun {
-    let device = session.backend.device.clone();
+    let device = session.backend.device().clone();
     let mut graph = session.begin_frame().expect("begin_frame");
     graph.batch_per_pass(batch_per_pass);
     let desc = rhapsody::rg::vulkan::ResourceSpec::Buffer(BufferDesc::new_gpu_to_cpu(

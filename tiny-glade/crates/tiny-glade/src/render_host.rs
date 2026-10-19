@@ -594,7 +594,7 @@ use rhapsody::bindless::{
 use rhapsody::pipeline::{
     AsyncPipelineCompiler, CompilerConfig, PersistentPipelineCache, PipelineTicket,
 };
-use rhapsody::rg::attachments::contract::RenderPassKey;
+use rhapsody::rg::RenderPassKey;
 use rhapsody::{
     pipeline::DynamicRenderingFormats, pipeline::PipelineCache,
     pipeline::RasterPipelineDesc as RhRasterDesc, pipeline::RasterPipelineOpts,
@@ -658,15 +658,14 @@ pub struct ShaderHost {
     raster: Mutex<Vec<Arc<RasterEntry>>>,
     passes: Arc<RenderPassHost>,
     frame_globals: Arc<Mutex<Option<Arc<crate::frame_setup::FrameGlobals>>>>,
-    indexed_count_adapter: Mutex<Option<Arc<rhapsody::rg::indirect_count::IndexedCountAdapter>>>,
+    indexed_count_adapter: Mutex<Option<Arc<rhapsody::rg::IndexedCountAdapter>>>,
 }
 
 /// Bounded attachment signatures used to request dynamic-rendering pipelines.
 #[derive(Default)]
 pub struct RenderPassHost {
     table: Mutex<Vec<Arc<RenderPassEntry>>>,
-    by_desc:
-        Mutex<std::collections::HashMap<rhapsody::rg::attachments::contract::RenderPassDesc, u64>>,
+    by_desc: Mutex<std::collections::HashMap<rhapsody::rg::RenderPassDesc, u64>>,
 }
 
 pub struct RenderPassEntry {
@@ -680,7 +679,7 @@ impl RenderPassHost {
     pub fn create_from_desc(
         &self,
         device: &Arc<Device>,
-        desc: &rhapsody::rg::attachments::contract::RenderPassDesc,
+        desc: &rhapsody::rg::RenderPassDesc,
     ) -> Result<u64, rhapsody::Error> {
         let mut by_desc = self.by_desc.lock();
         if let Some(id) = by_desc.get(desc) {
@@ -902,12 +901,12 @@ impl ShaderHost {
     /// selected by the raster host; no second descriptor backend is created.
     pub fn indexed_count_adapter(
         &self,
-    ) -> rhapsody::Result<Arc<rhapsody::rg::indirect_count::IndexedCountAdapter>> {
+    ) -> rhapsody::Result<Arc<rhapsody::rg::IndexedCountAdapter>> {
         let mut cached = self.indexed_count_adapter.lock();
         if let Some(adapter) = cached.as_ref() {
             return Ok(adapter.clone());
         }
-        let adapter = rhapsody::rg::indirect_count::IndexedCountAdapter::new(
+        let adapter = rhapsody::rg::IndexedCountAdapter::new(
             self.device.clone(),
             self.heap.clone(),
             &self.compiler,
@@ -1238,7 +1237,7 @@ impl ShaderBackend for ShaderHost {
 // ---------------------------------------------------------------- render graph
 
 use country_core::rhapsody_types::{BufferGraphBackend, ImportedBuffer};
-use rhapsody::rg::{graph::RenderGraph as RhGraph, vulkan::ResourceSpec};
+use rhapsody::{rg::RenderGraph as RhGraph, rg::ResourceSpec};
 use std::{cell::RefCell, rc::Rc};
 
 /// core `RenderGraph` 的后端：把 `import_unowned(id, access)` / `export` 落到 rhapsody 图声明上。
@@ -1373,9 +1372,8 @@ use country_core::render::rg_helpers::rg_boundary::{
     StagingAlloc, StagingCopy,
 };
 use rhapsody::{
-    resource::DynamicConstants, resource::DynamicConstantsChunk, rg::pass_api::AshCommandBackend,
-    rg::pass_api::CommandBackend, rg::pass_api::RenderPassApi as RhRenderPassApi,
-    rg::pass_bindings::ManagedPassResources,
+    resource::DynamicConstants, resource::DynamicConstantsChunk, rg::AshCommandBackend,
+    rg::CommandBackend, rg::ManagedPassResources, rg::RenderPassApi as RhRenderPassApi,
 };
 /// core `rg_boundary::RenderGraph` 的宿主实现：pass 声明落到 rhapsody 图，动态常量走 rhapsody 的
 /// `DynamicConstants`（原版 256 KiB 页、线性分配）。
@@ -1391,12 +1389,12 @@ pub struct GraphPasses<'session> {
     uniform_uploads: Vec<(Arc<[u8]>, DynamicConstantsChunk)>,
 }
 enum GraphSession<'a> {
-    Exclusive(&'a mut rhapsody::rg::vulkan::VulkanGraphSession),
-    Shared(Rc<RefCell<rhapsody::rg::vulkan::VulkanGraphSession>>),
+    Exclusive(&'a mut rhapsody::rg::VulkanGraphSession),
+    Shared(Rc<RefCell<rhapsody::rg::VulkanGraphSession>>),
 }
 enum SessionBorrow<'a> {
-    Exclusive(&'a mut rhapsody::rg::vulkan::VulkanGraphSession),
-    Shared(std::cell::RefMut<'a, rhapsody::rg::vulkan::VulkanGraphSession>),
+    Exclusive(&'a mut rhapsody::rg::VulkanGraphSession),
+    Shared(std::cell::RefMut<'a, rhapsody::rg::VulkanGraphSession>),
 }
 impl GraphSession<'_> {
     fn borrow_mut(&mut self) -> rhapsody::Result<SessionBorrow<'_>> {
@@ -1416,7 +1414,7 @@ impl GraphSession<'_> {
     }
 }
 impl std::ops::Deref for SessionBorrow<'_> {
-    type Target = rhapsody::rg::vulkan::VulkanGraphSession;
+    type Target = rhapsody::rg::VulkanGraphSession;
     fn deref(&self) -> &Self::Target {
         match self {
             Self::Exclusive(s) => s,
@@ -1464,9 +1462,9 @@ impl<'session> GraphPasses<'session> {
     /// second cache is introduced.
     pub fn with_session(
         mut self,
-        session: &'session mut rhapsody::rg::vulkan::VulkanGraphSession,
+        session: &'session mut rhapsody::rg::VulkanGraphSession,
     ) -> rhapsody::Result<Self> {
-        if !Arc::ptr_eq(&self.device, &session.backend.device) {
+        if !Arc::ptr_eq(&self.device, &session.backend.device()) {
             return Err(rhapsody::Error::invalid_usage(
                 "upload cache belongs to another device",
             ));
@@ -1481,13 +1479,13 @@ impl<'session> GraphPasses<'session> {
     /// caller's whole ComputePass construction closure.
     pub fn with_shared_session(
         mut self,
-        session: Rc<RefCell<rhapsody::rg::vulkan::VulkanGraphSession>>,
+        session: Rc<RefCell<rhapsody::rg::VulkanGraphSession>>,
     ) -> rhapsody::Result<Self> {
         let device = session
             .try_borrow()
             .map_err(|_| rhapsody::Error::invalid_usage("frame session is already borrowed"))?
             .backend
-            .device
+            .device()
             .clone();
         if !Arc::ptr_eq(&self.device, &device) {
             return Err(rhapsody::Error::invalid_usage(
@@ -1689,7 +1687,7 @@ impl CorePassGraph for GraphPasses<'_> {
         name: &'static str,
         copies: Vec<StagingCopy>,
     ) -> rhapsody::Result<()> {
-        use rhapsody::rg::{graph::Descriptor, resource::AccessRange};
+        use rhapsody::{rg::AccessRange, rg::Descriptor};
         let mut session = self
             .cache_session
             .as_mut()
@@ -1720,7 +1718,7 @@ impl CorePassGraph for GraphPasses<'_> {
                 })?;
             let size = copy.source.bytes.len() as u64;
             if size == 0
-                || ash::vk::Handle::as_raw(chunk.buffer.handle) != copy.source.buffer
+                || ash::vk::Handle::as_raw(chunk.buffer.raw_handle()) != copy.source.buffer
                 || chunk.offset != u64::from(copy.source.offset)
                 || chunk.size != size
             {
@@ -1788,8 +1786,8 @@ impl CorePassGraph for GraphPasses<'_> {
                 unsafe {
                     device.raw_device().cmd_copy_buffer(
                         <vk::CommandBuffer as ash::vk::Handle>::from_raw(ctx.command.handle()),
-                        source.handle,
-                        target.handle,
+                        source.raw_handle(),
+                        target.raw_handle(),
                         &[vk::BufferCopy {
                             src_offset,
                             dst_offset,
@@ -1805,7 +1803,7 @@ impl CorePassGraph for GraphPasses<'_> {
 
     fn allocate_dynamic(&mut self, size: usize) -> rhapsody::Result<StagingAlloc> {
         let chunk = self.dynamic.lock().allocate(size as u64)?;
-        let buffer = ash::vk::Handle::as_raw(chunk.buffer.handle);
+        let buffer = ash::vk::Handle::as_raw(chunk.buffer.raw_handle());
         let mut bytes = Vec::new();
         bytes
             .try_reserve_exact(size)
@@ -1828,11 +1826,9 @@ impl CorePassGraph for GraphPasses<'_> {
         source: u64,
         version: u64,
     ) -> rhapsody::Result<bool> {
-        use rhapsody::rg::{
-            resource::AccessRange,
-            result_cache::{
-                ContentDependency, DependencyId, ResultDependencies, ResultNodeId, ResultRequest,
-            },
+        use rhapsody::{
+            rg::AccessRange, rg::ContentDependency, rg::DependencyId, rg::ResultDependencies,
+            rg::ResultNodeId, rg::ResultRequest,
         };
         let Some(mut session) = self
             .cache_session
@@ -1918,8 +1914,8 @@ impl CorePassGraph for GraphPasses<'_> {
                                 <vk::CommandBuffer as ash::vk::Handle>::from_raw(
                                     ctx.command.handle(),
                                 ),
-                                source.handle,
-                                output.handle,
+                                source.raw_handle(),
+                                output.raw_handle(),
                                 &[vk::BufferCopy {
                                     src_offset: source_offset,
                                     dst_offset: 0,
@@ -1958,8 +1954,8 @@ impl CorePassGraph for GraphPasses<'_> {
                 unsafe {
                     device.raw_device().cmd_copy_buffer(
                         <vk::CommandBuffer as ash::vk::Handle>::from_raw(ctx.command.handle()),
-                        source.handle,
-                        target.handle,
+                        source.raw_handle(),
+                        target.raw_handle(),
                         &[vk::BufferCopy {
                             src_offset: 0,
                             dst_offset: 0,
@@ -1989,7 +1985,7 @@ impl<B: CommandBackend> CoreRenderPassApi for PassApiHost<'_, B> {
             .expect("fill_buffer: unresolved buffer");
         self.api
             .fill_buffer(
-                buffer.handle,
+                buffer.raw_handle(),
                 range.map(|r| (r.start, r.end - r.start)),
                 value,
             )
@@ -2009,7 +2005,7 @@ impl<B: CommandBackend> CoreRenderPassApi for PassApiHost<'_, B> {
             }
         };
         self.api
-            .clear_color_image(texture.handle, texture.desc.mip_levels, layers);
+            .clear_color_image(texture.raw_handle(), texture.desc.mip_levels, layers);
     }
 }
 
@@ -2101,10 +2097,10 @@ fn individual_mip_views(
 /// recording. The logical descriptor is available before GPU allocation; no
 /// physical image or substitute owner is created to calculate this range.
 fn compute_view_range(
-    descriptor: rhapsody::rg::graph::Descriptor,
+    descriptor: rhapsody::rg::Descriptor,
     view: &country_core::rhapsody_types::TextureViewDesc,
-) -> rhapsody::Result<rhapsody::rg::resource::AccessRange> {
-    use rhapsody::rg::{graph::Descriptor, resource::AccessRange};
+) -> rhapsody::Result<rhapsody::rg::AccessRange> {
+    use rhapsody::{rg::AccessRange, rg::Descriptor};
     let Descriptor::Image(image) = descriptor else {
         return Err(rhapsody::Error::invalid_usage(
             "compute image view refers to a buffer",
@@ -2229,7 +2225,7 @@ impl ComputeExec for ComputeExecHost<'_> {
         let buffer = self.managed.buffer_for(buffer).ok()?;
         unsafe {
             self.device
-                .cmd_dispatch_indirect(self.command, buffer.handle, offset)
+                .cmd_dispatch_indirect(self.command, buffer.raw_handle(), offset)
         };
         Some(())
     }
@@ -2295,7 +2291,7 @@ impl GraphPasses<'_> {
         // rather than also treating the same bytes as a private upload read.
         let mut declared_uniform_bindings = Vec::new();
         for external in external_bindings {
-            use rhapsody::rg::resource::AccessRange;
+            use rhapsody::rg::AccessRange;
             let mut session = self
                 .cache_session
                 .as_mut()
@@ -2362,7 +2358,7 @@ impl GraphPasses<'_> {
                     } else {
                         vk::BufferUsageFlags::STORAGE_BUFFER
                     };
-                    if !Arc::ptr_eq(&buffer.device, &self.device)
+                    if !Arc::ptr_eq(&buffer.device(), &self.device)
                         || !buffer.usage.contains(expected)
                         || offset.checked_add(size).is_none_or(|end| end > buffer.size)
                     {
@@ -2400,7 +2396,7 @@ impl GraphPasses<'_> {
                     let buffer = tables.buffers.get_by_id(handle.0).ok_or_else(|| {
                         rhapsody::Error::invalid_usage("external compute buffer is not live")
                     })?;
-                    if ash::vk::Handle::as_raw(buffer.handle) != vk_buffer {
+                    if ash::vk::Handle::as_raw(buffer.raw_handle()) != vk_buffer {
                         return Err(rhapsody::Error::invalid_usage(
                             "external compute buffer differs from its owner",
                         ));
@@ -2522,7 +2518,7 @@ impl GraphPasses<'_> {
             let handle = session.import_frame_buffer(&mut graph, chunk.buffer.clone(), 0x1a)?;
             device_address_accesses.push((
                 handle,
-                rhapsody::rg::resource::AccessRange::Buffer {
+                rhapsody::rg::AccessRange::Buffer {
                     offset: chunk.offset,
                     size: chunk.size,
                 },
@@ -2594,7 +2590,7 @@ impl GraphPasses<'_> {
                     used_image_views[index] = true;
                     contents_unused = inactive_texture_bindings.contains(&(index as u8));
                 }
-                rhapsody::rg::resource::AccessRange::Whole
+                rhapsody::rg::AccessRange::Whole
             };
             declared_accesses.push((
                 *access,
@@ -2711,7 +2707,7 @@ impl GraphPasses<'_> {
                 device.raw_device().cmd_bind_pipeline(
                     command,
                     vk::PipelineBindPoint::COMPUTE,
-                    pipeline.handle,
+                    pipeline.raw_handle(),
                 );
             }
             let mut parameters: Option<rhapsody::bindless::PreparedBindlessParameters> = None;
@@ -2742,7 +2738,7 @@ impl GraphPasses<'_> {
                             let detail = match resource {
                                 BindlessResource::Buffer { buffer, offset, size } => format!(
                                     ": buffer {:?}, usage {:#x}, allocation {}, offset {}, range {}",
-                                    buffer.handle, buffer.desc.usage.as_raw(), buffer.desc.size,
+                                    buffer.raw_handle(), buffer.desc.usage.as_raw(), buffer.desc.size,
                                     offset, size,
                                 ),
                                 _ => String::new(),
@@ -3006,10 +3002,10 @@ mod original_individual_mip_view_tests {
         for v in views {
             v.validate(&desc).unwrap();
         }
-        let logical = rhapsody::rg::vulkan::ResourceSpec::Image(desc).descriptor();
+        let logical = rhapsody::rg::ResourceSpec::Image(desc).descriptor();
         assert_eq!(
             compute_view_range(logical, &source).unwrap(),
-            rhapsody::rg::resource::AccessRange::Texture {
+            rhapsody::rg::AccessRange::Texture {
                 aspect_mask: 1,
                 base_mip_level: 1,
                 level_count: 8,

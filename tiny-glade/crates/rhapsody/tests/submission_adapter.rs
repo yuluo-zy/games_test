@@ -203,14 +203,14 @@ fn legacy_submission_preserves_supported_caps_and_copies_with_real_timeline_wait
     command.begin().unwrap();
     unsafe {
         device.raw_device().cmd_pipeline_barrier(
-            command.handle,
+            command.raw_handle(),
             vk::PipelineStageFlags::HOST,
             vk::PipelineStageFlags::TRANSFER,
             vk::DependencyFlags::empty(),
             &[],
             &[
-                (source.handle, vk::AccessFlags::TRANSFER_READ),
-                (destination.handle, vk::AccessFlags::TRANSFER_WRITE),
+                (source.raw_handle(), vk::AccessFlags::TRANSFER_READ),
+                (destination.raw_handle(), vk::AccessFlags::TRANSFER_WRITE),
             ]
             .map(|(buffer, access)| {
                 vk::BufferMemoryBarrier::default()
@@ -225,9 +225,9 @@ fn legacy_submission_preserves_supported_caps_and_copies_with_real_timeline_wait
             &[],
         );
         device.raw_device().cmd_copy_buffer(
-            command.handle,
-            source.handle,
-            destination.handle,
+            command.raw_handle(),
+            source.raw_handle(),
+            destination.raw_handle(),
             &[vk::BufferCopy {
                 src_offset: 0,
                 dst_offset: 0,
@@ -235,7 +235,7 @@ fn legacy_submission_preserves_supported_caps_and_copies_with_real_timeline_wait
             }],
         );
         device.raw_device().cmd_pipeline_barrier(
-            command.handle,
+            command.raw_handle(),
             vk::PipelineStageFlags::TRANSFER,
             vk::PipelineStageFlags::HOST,
             vk::DependencyFlags::empty(),
@@ -245,7 +245,7 @@ fn legacy_submission_preserves_supported_caps_and_copies_with_real_timeline_wait
                 .dst_access_mask(vk::AccessFlags::HOST_READ)
                 .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
                 .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                .buffer(destination.handle)
+                .buffer(destination.raw_handle())
                 .offset(0)
                 .size(32)],
             &[],
@@ -262,7 +262,7 @@ fn legacy_submission_preserves_supported_caps_and_copies_with_real_timeline_wait
             &[
                 SubmitBatch {
                     waits: &[],
-                    commands: &[command.handle],
+                    commands: &[command.raw_handle()],
                     signals: &[],
                 },
                 SubmitBatch {

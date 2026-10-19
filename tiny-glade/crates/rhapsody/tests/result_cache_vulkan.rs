@@ -55,7 +55,7 @@ fn filled(
     value: u32,
     calls: Arc<AtomicUsize>,
 ) -> ResultLookup {
-    let device = session.backend.device.clone();
+    let device = session.backend.device().clone();
     session
         .cached_result(
             graph,
@@ -128,7 +128,7 @@ fn copy(
 fn readback(session: &mut VulkanGraphSession) -> (Arc<Buffer>, u64) {
     let buffer = Arc::new(
         Buffer::new(
-            session.backend.device.clone(),
+            session.backend.device().clone(),
             &BufferDesc::new_gpu_to_cpu(64, vk::BufferUsageFlags::TRANSFER_DST),
         )
         .unwrap(),
@@ -154,7 +154,12 @@ fn consume(
             HOST,
         )
         .unwrap();
-    copy(graph, session.backend.device.clone(), result.handle, target);
+    copy(
+        graph,
+        session.backend.device().clone(),
+        result.handle,
+        target,
+    );
     graph.export(target, HOST).unwrap();
 }
 fn check(buffer: &Buffer, expected: u32) {
@@ -172,11 +177,11 @@ impl Gate {
         if self.0.completed().unwrap_or(1) < 1 {
             unsafe {
                 self.0
-                    .device
+                    .device()
                     .raw_device()
                     .signal_semaphore(
                         &vk::SemaphoreSignalInfo::default()
-                            .semaphore(self.0.handle)
+                            .semaphore(self.0.raw_handle())
                             .value(1),
                     )
                     .unwrap();
@@ -197,7 +202,7 @@ fn an_in_flight_hit_skips_production_keeps_its_real_completion_and_survives_evic
     };
     let (buffer, token) = readback(&mut session);
     let calls = Arc::new(AtomicUsize::new(0));
-    let gate = Gate(TimelineSemaphore::new(session.backend.device.clone(), 0).unwrap());
+    let gate = Gate(TimelineSemaphore::new(session.backend.device().clone(), 0).unwrap());
     let mut graph = session.begin_frame().unwrap();
     let fresh = filled(
         &mut session,
@@ -226,7 +231,7 @@ fn an_in_flight_hit_skips_production_keeps_its_real_completion_and_survives_evic
     );
     let not_completed = !hit
         .produced
-        .is_reached(&session.backend.device.poll().unwrap());
+        .is_reached(&session.backend.device().poll().unwrap());
     consume(&session, &mut graph, &hit, &buffer, token);
     session.execute_frame(graph.build()).unwrap();
     session.clear_result_cache();
@@ -275,7 +280,7 @@ fn failed_or_partial_productions_never_replace_a_valid_cached_result() {
     for partial in [false, true] {
         let mut graph = session.begin_frame().unwrap();
         graph.batch_per_pass(true);
-        let device = session.backend.device.clone();
+        let device = session.backend.device().clone();
         session
             .cached_result(
                 &mut graph,
@@ -363,7 +368,7 @@ fn unknown_dependencies_do_not_reuse_or_publish_and_incomplete_outputs_are_rejec
     let parent = filled(&mut session, &mut graph, unknown, 77, calls.clone());
     let mut child_request = request(33, 0);
     child_request.dependencies = ResultDependencies::Complete(vec![parent.dependency()]);
-    let device = session.backend.device.clone();
+    let device = session.backend.device().clone();
     let child = session
         .cached_result(
             &mut graph,
@@ -431,7 +436,7 @@ fn transitive_invalidation_survives_parent_eviction_and_content_changes_reuse_st
         );
         let mut child_request = request(41, version);
         child_request.dependencies = ResultDependencies::Complete(vec![parent.dependency()]);
-        let device = session.backend.device.clone();
+        let device = session.backend.device().clone();
         let child = session
             .cached_result(
                 &mut graph,
@@ -499,7 +504,7 @@ fn immutable_hits_reject_writes_and_device_lost_stops_cached_work() {
     );
     assert_eq!(session.result_cache_stats().entries, 1);
     let mut graph = session.begin_frame().unwrap();
-    session.backend.device.timelines().mark_device_lost();
+    session.backend.device().timelines().mark_device_lost();
     assert_eq!(
         session
             .cached_result(

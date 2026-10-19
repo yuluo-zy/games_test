@@ -131,8 +131,8 @@ fn declared_frame_sources_copy_real_bytes_and_failed_recording_does_not_leak_bin
             unsafe {
                 raw_device.raw_device().cmd_copy_buffer(
                     vk::CommandBuffer::from_raw(ctx.command.handle()),
-                    input.handle,
-                    output.handle,
+                    input.raw_handle(),
+                    output.raw_handle(),
                     &[vk::BufferCopy {
                         src_offset: 16,
                         dst_offset: 0,
@@ -191,8 +191,8 @@ fn declared_frame_sources_copy_real_bytes_and_failed_recording_does_not_leak_bin
         unsafe {
             raw_device.raw_device().cmd_copy_buffer(
                 vk::CommandBuffer::from_raw(ctx.command.handle()),
-                managed.buffer_for(input.raw()).unwrap().handle,
-                managed.buffer_for(target.raw()).unwrap().handle,
+                managed.buffer_for(input.raw()).unwrap().raw_handle(),
+                managed.buffer_for(target.raw()).unwrap().raw_handle(),
                 &[vk::BufferCopy {
                     src_offset: 16,
                     dst_offset: 0,

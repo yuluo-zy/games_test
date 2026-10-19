@@ -203,19 +203,21 @@ fn real_uniform_push_and_descriptor_array_execute_through_one_shared_heap_set() 
         let mut command = pool.allocate().unwrap();
         command.begin().unwrap();
         unsafe {
-            pipeline.bind_pipeline(command.handle);
+            pipeline.bind_pipeline(command.raw_handle());
             prepared
                 .bind_command(&mut command, pipeline.clone())
                 .unwrap();
-            device.raw_device().cmd_dispatch(command.handle, 1, 1, 1);
+            device
+                .raw_device()
+                .cmd_dispatch(command.raw_handle(), 1, 1, 1);
             device.raw_device().cmd_pipeline_barrier(
-                command.handle,
+                command.raw_handle(),
                 vk::PipelineStageFlags::COMPUTE_SHADER,
                 vk::PipelineStageFlags::COMPUTE_SHADER,
                 vk::DependencyFlags::empty(),
                 &[],
                 &[vk::BufferMemoryBarrier::default()
-                    .buffer(second.handle)
+                    .buffer(second.raw_handle())
                     .offset(0)
                     .size(4)
                     .src_access_mask(vk::AccessFlags::SHADER_WRITE)
@@ -227,15 +229,17 @@ fn real_uniform_push_and_descriptor_array_execute_through_one_shared_heap_set() 
             changed_push
                 .bind_command(&mut command, pipeline.clone())
                 .unwrap();
-            device.raw_device().cmd_dispatch(command.handle, 1, 1, 1);
+            device
+                .raw_device()
+                .cmd_dispatch(command.raw_handle(), 1, 1, 1);
             device.raw_device().cmd_pipeline_barrier(
-                command.handle,
+                command.raw_handle(),
                 vk::PipelineStageFlags::COMPUTE_SHADER,
                 vk::PipelineStageFlags::HOST,
                 vk::DependencyFlags::empty(),
                 &[],
                 &[vk::BufferMemoryBarrier::default()
-                    .buffer(second.handle)
+                    .buffer(second.raw_handle())
                     .offset(0)
                     .size(4)
                     .src_access_mask(vk::AccessFlags::SHADER_WRITE)
@@ -264,7 +268,7 @@ fn real_uniform_push_and_descriptor_array_execute_through_one_shared_heap_set() 
         heap.collect().unwrap();
     }
     assert_eq!(compiler.stats().compiled, 1);
-    assert_eq!(device.garbage_stats().idle_waits, 0);
+    assert_eq!(device.retirement_stats().idle_waits, 0);
 }
 
 #[test]

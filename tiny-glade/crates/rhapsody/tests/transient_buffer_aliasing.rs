@@ -65,7 +65,7 @@ fn graph(session: &mut VulkanGraphSession, readback: Arc<Buffer>) -> RenderGraph
             HOST,
         )
         .unwrap();
-    let device = session.backend.device.clone();
+    let device = session.backend.device().clone();
     for (buffer_id, value, offset) in [(a, 0xAu32, 0), (b, 0xBu32, BYTES)] {
         let mut pass = graph.add_pass(format!("fill {offset}")).with_side_effect();
         pass.add_resource_access(buffer_id, WRITE, 0).unwrap();

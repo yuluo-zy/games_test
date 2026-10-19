@@ -13,11 +13,10 @@ use rhapsody::{
     device::Device, pipeline::AsyncPipelineCompiler, pipeline::CompilerConfig,
     pipeline::CompilerStats, pipeline::DynamicRenderingFormats, pipeline::PersistentPipelineCache,
     pipeline::PipelineCache, pipeline::PipelineTicket, pipeline::RasterPipelineDesc,
-    pipeline::ShaderModule, pipeline::get_vk_blend_mode, resource::Buffer, resource::BufferDesc,
-    resource::DynamicConstants, resource::OwnershipRange, resource::Sampler, resource::Texture,
-    resource::TextureDesc, resource::TextureViewDesc, resource::range_state::AccessScope,
-    rg::attachments::Attachment, rg::attachments::AttachmentCache,
-    rg::attachments::RenderingPolicy, rg::pass_api::AshCommandBackend, rg::pass_api::RenderPassApi,
+    pipeline::ShaderModule, pipeline::get_vk_blend_mode, resource::AccessScope, resource::Buffer,
+    resource::BufferDesc, resource::DynamicConstants, resource::OwnershipRange, resource::Sampler,
+    resource::Texture, resource::TextureDesc, resource::TextureViewDesc, rg::AshCommandBackend,
+    rg::Attachment, rg::AttachmentCache, rg::RenderPassApi, rg::RenderingPolicy,
 };
 use shader_pipeline::{
     compiled::CompiledShaderPipeline, compiled::ShaderStage, reflection::BindingKind,
@@ -212,12 +211,12 @@ impl GpuTextRenderer {
         {
             return Err("invalid text GPU budgets, resolver capacity or completion timeout".into());
         }
-        if !Arc::ptr_eq(&device, &heap.layout.device) {
+        if !Arc::ptr_eq(&device, &heap.layout.device()) {
             return Err(
                 rhapsody::Error::invalid_usage("text heap belongs to another device").into(),
             );
         }
-        if !Arc::ptr_eq(&device, &blue_noise.device) || !sampled_2d(&blue_noise) {
+        if !Arc::ptr_eq(&device, &blue_noise.device()) || !sampled_2d(&blue_noise) {
             return Err("blue-noise texture must be sampled and use this device".into());
         }
         let compiled = CompiledShaderPipeline::decode(compiled_bytes)?;

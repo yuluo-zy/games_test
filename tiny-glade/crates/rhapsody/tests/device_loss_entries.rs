@@ -101,7 +101,7 @@ fn known_loss_rejects_raw_pools_descriptors_and_host_access() {
     let binding = DescriptorSetBinding::Buffer {
         ty: vk::DescriptorType::STORAGE_BUFFER,
         info: vk::DescriptorBufferInfo::default()
-            .buffer(owner.handle)
+            .buffer(owner.raw_handle())
             .range(64),
         owner,
     };
@@ -127,7 +127,7 @@ fn known_loss_rejects_raw_pools_descriptors_and_host_access() {
     lost(VulkanDescriptorPool::new(device.clone(), &plan, 2));
     lost(pool.allocate(layout.clone()));
     lost(unsafe { set.update(0, 0, &binding) });
-    lost(unsafe { binding.write(&device, set.handle, 0, 0) });
+    lost(unsafe { binding.write(&device, set.raw_handle(), 0, 0) });
     lost(TimelineSemaphore::new(device.clone(), 0));
     lost(semaphore.completed());
     lost(semaphore.wait(0, 0));
@@ -157,7 +157,7 @@ fn unsupported_descriptor_layout_is_rejected_before_native_creation() {
     unsafe {
         device
             .instance()
-            .instance
+            .raw_instance()
             .get_physical_device_properties2(device.physical_device(), &mut properties);
     }
     // The guaranteed minimum is not a maximum. Find a genuinely unsupported
@@ -210,5 +210,5 @@ fn unsupported_descriptor_layout_is_rejected_before_native_creation() {
     };
     assert_eq!(error.kind(), rhapsody::ErrorKind::Unsupported);
     assert!(!device.is_device_lost());
-    assert_eq!(device.garbage_stats().pending, 0);
+    assert_eq!(device.retirement_stats().pending, 0);
 }

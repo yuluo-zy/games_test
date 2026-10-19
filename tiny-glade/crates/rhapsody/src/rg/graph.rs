@@ -8,7 +8,7 @@ pub use crate::rg::resource_registry::{
 };
 use std::ops::Range;
 
-pub use crate::rg::compiled as batch_state;
+use crate::rg::compiled as batch_state;
 pub type Registry = ResourceRegistry<u64, u64, ()>;
 pub type Pool = ResourcePool<u64, u64>;
 pub type Exports = ResourceExports<u64, u64, ()>;

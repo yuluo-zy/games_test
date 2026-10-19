@@ -251,8 +251,10 @@ fn concurrent_async_requests_merge_and_bounded_keys_do_not_accumulate() {
     command.begin().unwrap();
     command.retain_object(original.clone()).unwrap();
     unsafe {
-        original.bind_pipeline(command.handle);
-        device.raw_device().cmd_dispatch(command.handle, 1, 1, 1);
+        original.bind_pipeline(command.raw_handle());
+        device
+            .raw_device()
+            .cmd_dispatch(command.raw_handle(), 1, 1, 1);
     }
     command.end().unwrap();
     let pending = command.submit().unwrap();

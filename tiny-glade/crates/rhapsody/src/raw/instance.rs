@@ -8,9 +8,16 @@ use std::{
 pub struct VulkanInstance {
     pub api_version: u32,
     pub entry: Entry,
-    pub instance: ash::Instance,
+    pub(crate) instance: ash::Instance,
     pub enabled_extensions: Vec<String>,
     pub layers: Vec<String>,
+}
+
+impl VulkanInstance {
+    /// Interop escape hatch: the ash instance function table.
+    pub fn raw_instance(&self) -> &ash::Instance {
+        &self.instance
+    }
 }
 impl VulkanInstance {
     /// 原入口：已启用 layer 名称列表。

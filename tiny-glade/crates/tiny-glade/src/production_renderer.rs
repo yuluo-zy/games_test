@@ -25,7 +25,7 @@ use country_core::{
 };
 use rhapsody::{
     interop::InstanceBuilder, present::AcquiredImageLease, present::PresentTicket,
-    present::Swapchain, rg::vulkan::SessionFrameReceipt,
+    present::Swapchain, rg::SessionFrameReceipt,
 };
 
 use crate::{
@@ -129,7 +129,7 @@ pub struct ProductionRenderer {
     pending: VecDeque<PresentTicket>,
     acquired: Option<AcquiredImageLease>,
     /// The swapchain image imported into the executed presentation graph.
-    presentation: Option<rhapsody::rg::vulkan::PresentTarget>,
+    presentation: Option<rhapsody::rg::PresentTarget>,
     main: Option<(u32, SessionFrameReceipt)>,
     main_output: Option<Arc<rhapsody::resource::Texture>>,
     started: Instant,
@@ -195,7 +195,7 @@ impl ProductionRenderer {
         let properties = unsafe {
             device
                 .instance()
-                .instance
+                .raw_instance()
                 .get_physical_device_properties(device.physical_device())
         };
         log::info!(
@@ -371,7 +371,7 @@ impl ProductionRenderer {
             app.bridge
                 .with_session(|session| session.clear_after_completion())?;
         }
-        self.device.wait_idle_and_recycle_resources()?;
+        self.device.wait_idle()?;
         let peak = self
             .device
             .with_global_allocator(|allocator| allocator.peak_totals());
@@ -592,7 +592,7 @@ impl RenderHost for ProductionRenderHost<'_> {
             .renderer
             .bridge
             .wait_submits_done(TIMEOUT_NS)
-            .and_then(|()| self.renderer.device.wait_idle_and_recycle_resources())
+            .and_then(|()| self.renderer.device.wait_idle())
         {
             self.renderer.record_error(error);
         }

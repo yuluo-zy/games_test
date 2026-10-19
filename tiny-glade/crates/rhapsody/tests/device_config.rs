@@ -151,7 +151,7 @@ fn an_independent_compute_queue_submits_while_the_graphics_queue_lock_is_held() 
     let families = unsafe {
         probe
             .instance()
-            .instance
+            .raw_instance()
             .get_physical_device_queue_family_properties(probe.physical_device())
     }
     .iter()

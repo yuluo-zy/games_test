@@ -62,7 +62,7 @@ pub const fn access_is_write(access: u8) -> bool {
     access.wrapping_sub(0x28) < 0x10
 }
 
-/// `rhapsody::rg::pass_api::RenderPassBinding` 的变体（0x44 B 枚举；这里只保留已观测的变体与载荷）。
+/// `rhapsody::rg::RenderPassBinding` 的变体（0x44 B 枚举；这里只保留已观测的变体与载荷）。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PassBinding {
     /// 标签 3：`read_access_buffer` 用（0x140bd6c70），载荷 = 资源号 u32。

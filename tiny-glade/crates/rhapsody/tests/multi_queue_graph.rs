@@ -222,7 +222,7 @@ fn real_independent_queues_preserve_pixels_and_do_not_wait_between_branches() {
     assert_ne!(captures[0].queue, captures[1].queue);
     // The first extra submission for B can be a source-family release. Its only
     // dependency may concern B; the independent A receipt must never be added.
-    let a_semaphore = multi.session.backend.timeline.handle;
+    let a_semaphore = multi.session.backend.timeline.raw_handle();
     for capture in captures.iter().take(2).skip(1) {
         assert!(
             capture
@@ -389,7 +389,7 @@ fn concurrent_disjoint_writes_do_not_inherit_whole_object_waits() {
             unsafe {
                 device.raw_device().cmd_fill_buffer(
                     vk::CommandBuffer::from_raw(ctx.command.handle()),
-                    shared.handle,
+                    shared.raw_handle(),
                     index * SIZE,
                     SIZE,
                     value,
@@ -407,8 +407,8 @@ fn concurrent_disjoint_writes_do_not_inherit_whole_object_waits() {
         unsafe {
             device.raw_device().cmd_copy_buffer(
                 vk::CommandBuffer::from_raw(ctx.command.handle()),
-                shared.handle,
-                destination.handle,
+                shared.raw_handle(),
+                destination.raw_handle(),
                 &[vk::BufferCopy {
                     src_offset: 0,
                     dst_offset: 0,
@@ -498,7 +498,7 @@ fn concurrent_temporal_image_preserves_its_real_sharing_across_frames() {
             unsafe {
                 device.raw_device().cmd_clear_color_image(
                     vk::CommandBuffer::from_raw(ctx.command.handle()),
-                    target.handle,
+                    target.raw_handle(),
                     vk::ImageLayout::TRANSFER_DST_OPTIMAL,
                     &vk::ClearColorValue {
                         float32: [1., 0., 0., 1.],
@@ -523,9 +523,9 @@ fn concurrent_temporal_image_preserves_its_real_sharing_across_frames() {
             unsafe {
                 device.raw_device().cmd_copy_image_to_buffer(
                     vk::CommandBuffer::from_raw(ctx.command.handle()),
-                    image.handle,
+                    image.raw_handle(),
                     vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                    output.handle,
+                    output.raw_handle(),
                     &[vk::BufferImageCopy::default()
                         .image_subresource(
                             vk::ImageSubresourceLayers::default()

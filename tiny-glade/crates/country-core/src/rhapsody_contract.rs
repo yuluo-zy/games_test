@@ -65,7 +65,7 @@ impl GraphicsDevice {
         command: ash::vk::CommandBuffer,
         scope: &rhapsody::command::SynchronizationScope,
     ) -> rhapsody::Result<()> {
-        unsafe { self.inner.issue_pipeline_barrier(command, scope) }
+        unsafe { self.inner.issue_barriers(command, scope) }
     }
 
     /// Record one barrier batch, then clear it for reuse.
@@ -82,7 +82,7 @@ impl GraphicsDevice {
 
     /// 真实 `GraphicsDevice::wait_idle_and_recycle_resources()`（device.rs:699；WIRING §2.7）。
     pub fn wait_idle_and_recycle_resources(&self) -> rhapsody::Result<()> {
-        self.inner.wait_idle_and_recycle_resources()
+        self.inner.wait_idle()
     }
 
     /// 真实 `GraphicsDevice::wait_idle()`（device.rs:680）。
@@ -250,7 +250,7 @@ impl<T> Handle<T> {
     }
 }
 
-/// Temporal read-only handle (reused `rhapsody::rg::temporal::ReadOnlyHandle<T>`).
+/// Temporal read-only handle (reused `rhapsody::rg::ReadOnlyHandle<T>`).
 /// WIRING §4.5：原版无 ReadOnlyHandle；真实跨帧只读面 = `rg::temporal::TemporalLookup`/`TemporalResource`。
 pub struct ReadOnlyHandle<T>(pub Handle<T>);
 impl<T> Clone for ReadOnlyHandle<T> {
@@ -291,7 +291,7 @@ pub struct Extent2D {
 }
 
 /// Render pass descriptor used as a dedupe key
-/// (reused `rhapsody::rg::attachments::contract::RenderPassDesc`).
+/// (reused `rhapsody::rg::RenderPassDesc`).
 /// WIRING §4.16：真实 `RenderPassDesc` 是附件表键（0x98B），`{selector:u32}` 是臆造；真正的
 /// “渲染通道句柄 + 选项 u32” 是 `RasterPipelineKey`。此占位不再作真实键，保留给游戏侧编译。
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -334,7 +334,7 @@ pub struct RenderPassBinding {
     pub view: Option<crate::rhapsody_types::TextureViewDesc>,
 }
 
-/// `rhapsody::rg::pass_api::bind` — record one resource access binding.
+/// `rhapsody::rg::bind` — record one resource access binding.
 /// WIRING §4.6：真实没有 `rg::pass_api::bind` 自由函数；真实构造 = `PassBinding::{buffer,image}` +
 /// `PassBuilder::add_resource_access`。此函数保留为游戏侧声明的占位。
 pub fn bind(resource_index: u32, access_type: u8) -> RenderPassBinding {
@@ -345,7 +345,7 @@ pub fn bind(resource_index: u32, access_type: u8) -> RenderPassBinding {
     }
 }
 
-/// `rhapsody::rg::pass_builder::PassBuilder<UD>` — pass-declaration builder.
+/// `rhapsody::rg::PassBuilder<UD>` — pass-declaration builder.
 /// 游戏侧占位；真实构图走 `rg::pass_builder::PassBuilder`（`add_resource_access(ResourceHandle, u8, u32)`
 /// / `render_with_context`），见 `render_frame.rs` 的 ExecutionChain 接线与 WIRING §2.4/§3.3。
 #[derive(Debug)]

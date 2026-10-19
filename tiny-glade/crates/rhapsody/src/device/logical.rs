@@ -127,7 +127,7 @@ impl Device {
             .load(std::sync::atomic::Ordering::Relaxed)
     }
     /// `maxDescriptorSetUpdateAfterBindSampledImages` of the physical device.
-    pub fn max_descriptor_set_update_after_bind_sampled_images(&self) -> u32 {
+    pub(crate) fn max_descriptor_set_update_after_bind_sampled_images(&self) -> u32 {
         let mut indexing = vk::PhysicalDeviceDescriptorIndexingProperties::default();
         let mut properties = vk::PhysicalDeviceProperties2::default().push_next(&mut indexing);
         unsafe {
@@ -259,7 +259,7 @@ impl Device {
         self.queues.primary_family
     }
     /// Debug utils when the instance enabled `VK_EXT_debug_utils`.
-    pub fn debug_utils_option(&self) -> Option<crate::raw::debug::DebugUtils> {
+    pub(crate) fn debug_utils_option(&self) -> Option<crate::raw::debug::DebugUtils> {
         self.core
             .instance
             .enabled_extensions
@@ -267,18 +267,13 @@ impl Device {
             .any(|e| e == "VK_EXT_debug_utils")
             .then(|| self.debug_utils())
     }
-    pub fn debug_utils(&self) -> crate::raw::debug::DebugUtils {
+    pub(crate) fn debug_utils(&self) -> crate::raw::debug::DebugUtils {
         crate::raw::debug::DebugUtils::new(&self.shared().core.instance.instance, self.shared())
     }
 
     /// Runtime bindless descriptor limit.
     pub fn max_bindless_descriptor_count(&self) -> u32 {
         self.max_descriptor_set_update_after_bind_sampled_images()
-    }
-    /// Waits for the device to become idle and destroys all completed
-    /// retirements; same as [`Self::wait_idle`].
-    pub fn wait_idle_and_recycle_resources(&self) -> crate::Result<()> {
-        self.wait_idle()
     }
     /// Allocate a primary command buffer from a new pool for `family` and name
     /// it when debug utils are enabled.
@@ -294,12 +289,6 @@ impl Device {
             let _ = unsafe { utils.set_object_name(command.handle, name) };
         }
         Ok(command)
-    }
-    pub fn create_buffer_impl(
-        &self,
-        desc: &crate::raw::buffer::BufferDesc,
-    ) -> crate::raw::error::Result<crate::raw::buffer::Buffer> {
-        crate::raw::buffer::Buffer::new(self.shared(), desc)
     }
     /// 创建 GPU 分析输出缓冲。
     pub fn create_gpu_profiler_output_buffer(
@@ -330,29 +319,6 @@ impl Device {
         crate::raw::setup::update_texture(&self.shared(), texture, bytes)
     }
 
-    /// 查询设备是否支持给定扩展名。
-    pub fn query_device_extension_support(&self, names: &[&str]) -> Vec<bool> {
-        let available = match unsafe {
-            self.core
-                .instance
-                .instance
-                .enumerate_device_extension_properties(self.core.physical)
-        } {
-            Ok(extensions) => extensions
-                .iter()
-                .map(|e| {
-                    unsafe { std::ffi::CStr::from_ptr(e.extension_name.as_ptr()) }
-                        .to_string_lossy()
-                        .into_owned()
-                })
-                .collect::<Vec<_>>(),
-            Err(_) => Vec::new(),
-        };
-        names
-            .iter()
-            .map(|name| available.iter().any(|have| have == name))
-            .collect()
-    }
     /// Record one barrier batch through the enabled barrier API
     /// (synchronization2 when enabled, legacy otherwise; empty stage masks
     /// keep their empty-scope meaning on both).
@@ -366,17 +332,6 @@ impl Device {
         scope: &crate::raw::barrier::SynchronizationScope,
     ) -> crate::raw::error::Result<()> {
         unsafe { crate::raw::barrier::BarrierDispatch::new(self).issue(self, command, scope) }
-    }
-    /// Record one barrier batch; see [`Self::issue_barriers`].
-    ///
-    /// # Safety
-    /// As [`Self::issue_barriers`].
-    pub unsafe fn issue_pipeline_barrier(
-        &self,
-        command: vk::CommandBuffer,
-        scope: &crate::raw::barrier::SynchronizationScope,
-    ) -> crate::raw::error::Result<()> {
-        unsafe { self.issue_barriers(command, scope) }
     }
     /// Record the batch, then clear its barriers for reuse.
     ///

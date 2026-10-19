@@ -1,46 +1,77 @@
-pub mod access_ledger;
-pub mod attachments;
-pub mod binding;
-pub mod cache;
-pub mod compiled;
-pub mod executor;
-pub mod frame;
-pub mod frame_imports;
-pub mod frame_storage;
-pub mod frame_throttle;
-pub mod graph;
-pub mod import_export;
-pub mod owner_storage;
-pub mod parallel;
-pub mod pass_api;
-pub mod pass_bindings;
-pub mod pass_builder;
-pub mod plan;
-pub mod plan_check;
-pub mod profiling;
-pub mod queue_schedule;
-pub mod receipt_storage;
-pub mod recorder;
-pub mod resource;
-pub mod resource_contracts;
-pub mod resource_info;
-pub mod resource_pool;
-pub mod resource_registry;
-pub mod result_cache;
-pub mod subgraph;
-pub mod sync_plan;
-pub mod temporal;
-pub mod transient_memory;
-pub mod transient_memory_check;
+internal_mod!(
+    access_ledger,
+    attachments,
+    binding,
+    cache,
+    compiled,
+    executor,
+    frame,
+    frame_imports,
+    frame_storage,
+    frame_throttle,
+    graph,
+    import_export,
+    owner_storage,
+    parallel,
+    pass_api,
+    pass_bindings,
+    pass_builder,
+    plan,
+    plan_check,
+    profiling,
+    queue_schedule,
+    receipt_storage,
+    recorder,
+    resource,
+    resource_contracts,
+    resource_info,
+    resource_pool,
+    resource_registry,
+    result_cache,
+    subgraph,
+    sync_plan,
+    temporal,
+    transient_memory,
+    transient_memory_check,
+    util,
+    vulkan,
+    frame_loop,
+    transaction,
+    indirect_count,
+);
+
+// Curated render-graph surface; the submodules are implementation detail.
+pub use attachments::{
+    Attachment, AttachmentCache, PreparedAttachments, RenderingPolicy,
+    contract::{
+        AttachmentArray, AttachmentKey, DepthAccess, RenderPassAttachmentDesc, RenderPassDesc,
+        RenderPassKey,
+    },
+};
+pub use cache::CacheReason;
+pub use executor::{ExecutionBackend, ExecutionChain, ExecutionStats, GraphExecution, PassContext};
+pub use graph::{
+    BufferDesc, BuildError, BuiltGraph, Descriptor, GraphDeclaration, OriginSource,
+    PassDeclaration, Pool, RenderGraph, ResourceBackend, ResourceDeclaration, Snapshot,
+};
+pub use indirect_count::{IndexedCountAdapter, IndexedCountRequest};
+pub use pass_api::{AshCommandBackend, CommandBackend, RenderPassApi};
+pub use pass_bindings::ManagedPassResources;
+pub use pass_builder::PassBuilder;
+pub use plan::{GraphDefinition, PlanContext, compile_definition};
+pub use plan_check::check_plan;
+pub use resource::{AccessRange, GraphId, ResourceContractError, ResourceHandle, ResourceOrigin};
+pub use resource_contracts::validate_contracts;
+pub use result_cache::{
+    ContentDependency, DependencyId, ResultDependencies, ResultNodeId, ResultRequest,
+};
+pub use temporal::{NamedBuffer, NamedTexture, TemporalTexturePair};
+pub use vulkan::{
+    AccessTable, CompletedNamedResources, GpuResource, PreparedSessionFrame, PresentTarget,
+    ResourceSpec, SessionFrameReceipt, SwapchainContents, VulkanGraphBackend, VulkanGraphSession,
+};
+
 mod transient_resources;
-pub mod util;
-
-pub mod vulkan;
-
-pub mod frame_loop;
-pub mod transaction;
-
-pub mod indirect_count;
 
 static PLAN_VALIDATION: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 

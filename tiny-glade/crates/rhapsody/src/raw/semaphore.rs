@@ -3,11 +3,22 @@ use super::device::Device;
 use ash::vk;
 use std::sync::Arc;
 pub struct TimelineSemaphore {
-    pub handle: vk::Semaphore,
-    pub device: Arc<Device>,
+    pub(crate) handle: vk::Semaphore,
+    pub(crate) device: Arc<Device>,
     queue: Option<crate::sync::QueueId>,
     pub(crate) last_use: Arc<crate::resource::SyncCell>,
     _memory: super::allocator::CpuMemoryReservation,
+}
+
+impl TimelineSemaphore {
+    /// Interop escape hatch: the native handle. It stays owned by `self`; never destroy it or use it after `self` is dropped.
+    pub fn raw_handle(&self) -> vk::Semaphore {
+        self.handle
+    }
+    /// The device that owns this object.
+    pub fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
 }
 impl TimelineSemaphore {
     pub fn new(device: Arc<Device>, initial: u64) -> crate::Result<Arc<Self>> {

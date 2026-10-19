@@ -20,7 +20,7 @@ fn families(device: &rhapsody::raw::device::Device) -> Vec<vk::QueueFamilyProper
     unsafe {
         device
             .instance()
-            .instance
+            .raw_instance()
             .get_physical_device_queue_family_properties(device.physical_device())
     }
 }

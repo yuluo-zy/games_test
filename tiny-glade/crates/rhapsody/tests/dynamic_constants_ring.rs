@@ -27,9 +27,9 @@ impl Unblock {
         if !self.1 {
             // SAFETY: this test is the sole host signaler and submits value 1 only once.
             unsafe {
-                self.0.device.raw_device().signal_semaphore(
+                self.0.device().raw_device().signal_semaphore(
                     &vk::SemaphoreSignalInfo::default()
-                        .semaphore(self.0.handle)
+                        .semaphore(self.0.raw_handle())
                         .value(1),
                 )
             }
@@ -58,7 +58,7 @@ fn unsubmitted_constant_leases_bound_capacity_and_reuse_one_real_page() {
     let chunk = constants
         .allocate(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES)
         .unwrap();
-    let page = chunk.buffer.handle;
+    let page = chunk.buffer.raw_handle();
     let held = chunk.buffer.clone();
     drop(chunk);
     assert!(matches!(
@@ -71,7 +71,7 @@ fn unsubmitted_constant_leases_bound_capacity_and_reuse_one_real_page() {
         let chunk = constants
             .allocate(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES)
             .unwrap();
-        assert_eq!(chunk.buffer.handle, page);
+        assert_eq!(chunk.buffer.raw_handle(), page);
         assert_eq!(chunk.offset, 0);
         chunk.write_bytes(&index.to_ne_bytes()).unwrap();
     }
@@ -98,7 +98,7 @@ fn dropped_cpu_owners_cannot_reset_a_page_until_actual_gpu_copy_completes() {
     let chunk = constants
         .allocate(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES)
         .unwrap();
-    let source_handle = chunk.buffer.handle;
+    let source_handle = chunk.buffer.raw_handle();
     let payload: Vec<u8> = (0..64).map(|index| index ^ 0x5a).collect();
     chunk.write_bytes(&payload).unwrap();
     let output = Arc::new(
@@ -115,9 +115,9 @@ fn dropped_cpu_owners_cannot_reset_a_page_until_actual_gpu_copy_completes() {
     // SAFETY: both owned buffers are alive, same-device, correctly sized and recorded.
     unsafe {
         device.raw_device().cmd_copy_buffer(
-            command.handle,
+            command.raw_handle(),
             source_handle,
-            output.handle,
+            output.raw_handle(),
             &[vk::BufferCopy {
                 src_offset: 0,
                 dst_offset: 0,
@@ -125,13 +125,13 @@ fn dropped_cpu_owners_cannot_reset_a_page_until_actual_gpu_copy_completes() {
             }],
         );
         device.raw_device().cmd_pipeline_barrier(
-            command.handle,
+            command.raw_handle(),
             vk::PipelineStageFlags::TRANSFER,
             vk::PipelineStageFlags::HOST,
             vk::DependencyFlags::empty(),
             &[],
             &[vk::BufferMemoryBarrier::default()
-                .buffer(output.handle)
+                .buffer(output.raw_handle())
                 .offset(0)
                 .size(64)
                 .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
@@ -184,7 +184,7 @@ fn dropped_cpu_owners_cannot_reset_a_page_until_actual_gpu_copy_completes() {
     let reused = constants
         .allocate(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES)
         .unwrap();
-    assert_eq!(reused.buffer.handle, source_handle);
+    assert_eq!(reused.buffer.raw_handle(), source_handle);
     assert_eq!(reused.offset, 0);
     reused.write_bytes(&[0xff; 64]).unwrap();
     drop(reused);

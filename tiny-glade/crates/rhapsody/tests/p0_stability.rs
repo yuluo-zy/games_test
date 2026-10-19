@@ -47,7 +47,7 @@ struct Bookkeeping {
 
 fn sample(session: &VulkanGraphSession, imports_waiting_release: usize) -> Bookkeeping {
     Bookkeeping {
-        retirement_pending: session.backend.device.garbage_stats().pending,
+        retirement_pending: session.backend.device().retirement_stats().pending,
         pending_frames: session.pending_frame_count(),
         resources: session.resource_count(),
         commands: session.command_count(),
@@ -70,7 +70,7 @@ fn session() -> Option<VulkanGraphSession> {
 
 /// 一帧：清除图内创建的纹理；把本帧新建并导入的 uniform 缓冲拷进图内创建的缓冲。返回导入 token。
 fn run_frame(session: &mut VulkanGraphSession, frame: usize) -> u64 {
-    let device = session.backend.device.clone();
+    let device = session.backend.device().clone();
     let mut graph = session.begin_frame().expect("begin_frame");
 
     let mut color_desc = TextureDesc::new_2d(SIZE, SIZE, vk::Format::R8G8B8A8_UNORM);

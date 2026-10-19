@@ -534,7 +534,7 @@ impl TeardownMemoryReport {
 impl Report {
     fn sample_stability(&mut self, lab: &Lab, elapsed: Duration, phase: &'static str) {
         self.queue_lock_waits = lab.device.timelines.queue_lock_stats();
-        self.reclamation = lab.device.garbage_stats();
+        self.reclamation = lab.device.retirement_stats();
         if phase == "before_lab_drop" {
             self.cache_diagnostics = [
                 (
@@ -1314,55 +1314,56 @@ impl Lab {
         // (tracked through its token) and blits it into the imported
         // swapchain image. The library owns the acquire wait, both layout
         // transitions and the present signal.
-        let present = move |graph: &mut RenderGraph, target: &PresentTarget| -> rhapsody::Result<()> {
-            let source = graph.import_unowned(
-                "lab.display-source",
-                ResourceSpec::Image(image.desc).descriptor(),
-                image_token,
-                TRANSFER_READ,
-            )?;
-            let mut pass = graph.add_pass("display blit");
-            pass.add_resource_access(source, TRANSFER_READ, 0)?;
-            pass.add_resource_access(target.resource(), TRANSFER_WRITE, 0)?;
-            let (swapchain_image, extent) = (target.image(), target.extent());
-            pass.render_with_context(move |ctx: PassContext<'_>| {
-                let layers = vk::ImageSubresourceLayers::default()
-                    .aspect_mask(vk::ImageAspectFlags::COLOR)
-                    .layer_count(1);
-                let blit = vk::ImageBlit::default()
-                    .src_subresource(layers)
-                    .dst_subresource(layers)
-                    .src_offsets([
-                        vk::Offset3D::default(),
-                        vk::Offset3D {
-                            x: WIDTH as i32,
-                            y: HEIGHT as i32,
-                            z: 1,
-                        },
-                    ])
-                    .dst_offsets([
-                        vk::Offset3D::default(),
-                        vk::Offset3D {
-                            x: extent.width as i32,
-                            y: extent.height as i32,
-                            z: 1,
-                        },
-                    ]);
-                unsafe {
-                    device.device.cmd_blit_image(
-                        vk::CommandBuffer::from_raw(ctx.command.handle()),
-                        image.handle,
-                        vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                        swapchain_image,
-                        vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-                        &[blit],
-                        vk::Filter::NEAREST,
-                    );
-                }
-                true
-            });
-            Ok(())
-        };
+        let present =
+            move |graph: &mut RenderGraph, target: &PresentTarget| -> rhapsody::Result<()> {
+                let source = graph.import_unowned(
+                    "lab.display-source",
+                    ResourceSpec::Image(image.desc).descriptor(),
+                    image_token,
+                    TRANSFER_READ,
+                )?;
+                let mut pass = graph.add_pass("display blit");
+                pass.add_resource_access(source, TRANSFER_READ, 0)?;
+                pass.add_resource_access(target.resource(), TRANSFER_WRITE, 0)?;
+                let (swapchain_image, extent) = (target.image(), target.extent());
+                pass.render_with_context(move |ctx: PassContext<'_>| {
+                    let layers = vk::ImageSubresourceLayers::default()
+                        .aspect_mask(vk::ImageAspectFlags::COLOR)
+                        .layer_count(1);
+                    let blit = vk::ImageBlit::default()
+                        .src_subresource(layers)
+                        .dst_subresource(layers)
+                        .src_offsets([
+                            vk::Offset3D::default(),
+                            vk::Offset3D {
+                                x: WIDTH as i32,
+                                y: HEIGHT as i32,
+                                z: 1,
+                            },
+                        ])
+                        .dst_offsets([
+                            vk::Offset3D::default(),
+                            vk::Offset3D {
+                                x: extent.width as i32,
+                                y: extent.height as i32,
+                                z: 1,
+                            },
+                        ]);
+                    unsafe {
+                        device.device.cmd_blit_image(
+                            vk::CommandBuffer::from_raw(ctx.command.handle()),
+                            image.handle,
+                            vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+                            swapchain_image,
+                            vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                            &[blit],
+                            vk::Filter::NEAREST,
+                        );
+                    }
+                    true
+                });
+                Ok(())
+            };
         let protocol_started = Instant::now();
         let executed = self.frame_loop.execute(built, present);
         let protocol_ns = protocol_started.elapsed().as_nanos() as u64;
@@ -1378,7 +1379,11 @@ impl Lab {
             // The graph still executed and advanced temporal history, but no
             // frame was read back to verify against; restart the history.
             if let Some(scene) = &mut self.scene {
-                scene.reset_history(&mut self.frame_loop, &mut report.scene, "skipped presentation")?;
+                scene.reset_history(
+                    &mut self.frame_loop,
+                    &mut report.scene,
+                    "skipped presentation",
+                )?;
             }
             return Ok(false);
         };

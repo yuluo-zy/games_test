@@ -223,9 +223,9 @@ fn original_main_prefix_imports_owned_world_resets_indirect_and_builds_luts_once
                                 unsafe {
                                     device.raw_device().cmd_copy_image_to_buffer(
                                         vk::CommandBuffer::from_raw(ctx.command.handle()),
-                                        target.handle,
+                                        target.raw_handle(),
                                         vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                                        output.handle,
+                                        output.raw_handle(),
                                         &[vk::BufferImageCopy::default()
                                             .image_subresource(
                                                 vk::ImageSubresourceLayers::default()

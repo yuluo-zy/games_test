@@ -34,9 +34,8 @@ use country_core::{
 };
 use parking_lot::Mutex;
 use rhapsody::{
-    device::Device as GraphicsDevice, rg::executor::PassContext, rg::graph::RenderGraph as RhGraph,
-    rg::vulkan::AccessTable, rg::vulkan::GpuResource, rg::vulkan::VulkanGraphBackend,
-    rg::vulkan::VulkanGraphSession,
+    device::Device as GraphicsDevice, rg::AccessTable, rg::GpuResource, rg::PassContext,
+    rg::RenderGraph as RhGraph, rg::VulkanGraphBackend, rg::VulkanGraphSession,
 };
 use shader_pipeline::{
     compiled::CompiledShaderPipeline, compiled::CompiledShaderStage, compiled::ShaderStage,
@@ -727,7 +726,7 @@ impl Env {
         });
     }
 
-    fn finish_graph(graph: Rc<RefCell<RhGraph>>) -> rhapsody::rg::graph::BuiltGraph {
+    fn finish_graph(graph: Rc<RefCell<RhGraph>>) -> rhapsody::rg::BuiltGraph {
         Rc::try_unwrap(graph)
             .ok()
             .expect("图仍被宿主/核心句柄引用")
@@ -922,7 +921,7 @@ fn indexed_draw_declares_the_actual_index_bytes_and_outlives_the_host_handle() {
             .any(|access| {
                 access.access_code == 0x03
                     && access.range
-                        == rhapsody::rg::resource::AccessRange::Buffer {
+                        == rhapsody::rg::AccessRange::Buffer {
                             offset: 0,
                             size: 12,
                         }
@@ -955,7 +954,7 @@ fn owned_external_draw_resources_are_declared_before_recording_and_outlive_host_
     use country_core::{
         render::pass_builder::draw_builder::BindTexture, rhapsody_contract::ManagedHandle,
     };
-    use rhapsody::rg::{graph::Descriptor, resource::AccessRange};
+    use rhapsody::{rg::AccessRange, rg::Descriptor};
     let Some(env) = Env::new("owned-externals") else {
         return;
     };
@@ -1498,7 +1497,7 @@ fn render_pass_desc_maps_attachment_tags_to_load_ops_and_depth_access() {
     use country_core::render::pass_builder::draw_stream::{
         AttachmentDesc, DEPTH_STATE_NONE, RasterRenderPassDesc,
     };
-    use rhapsody::rg::attachments::contract::DepthAccess;
+    use rhapsody::rg::DepthAccess;
     use tiny_glade::raster_host::rh_render_pass_desc;
     let mut colors = [AttachmentDesc::default(); 8];
     for (i, tag) in [0u32, 1, 2].into_iter().enumerate() {

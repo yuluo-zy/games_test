@@ -148,7 +148,7 @@ impl GpuTextRenderer {
         }
         if images
             .iter()
-            .any(|image| !Arc::ptr_eq(&image.device, &self.device) || !sampled_2d(image))
+            .any(|image| !Arc::ptr_eq(&image.device(), &self.device) || !sampled_2d(image))
         {
             return Err("resolver image uses another device or incompatible sampling type".into());
         }

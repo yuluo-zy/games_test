@@ -7,8 +7,8 @@ use country_core::{
     resources::texture_presets::TexturePreset,
 };
 use rhapsody::{
-    command::buffer_access, command::image_access, resource::Buffer, resource::BufferDesc,
-    resource::OwnershipRange, resource::range_state::AccessScope, resource::with_setup_command,
+    command::buffer_access, command::image_access, resource::AccessScope, resource::Buffer,
+    resource::BufferDesc, resource::OwnershipRange, resource::with_setup_command,
 };
 use std::sync::Arc;
 use tiny_glade::render_host::TextureHost;
@@ -105,10 +105,10 @@ fn native_texture_clear_changes_pixels_and_descriptor_owns_a_real_view() {
             },
         )?;
         device.raw_device().cmd_copy_image_to_buffer(
-            command.handle,
-            owner.handle,
+            command.raw_handle(),
+            owner.raw_handle(),
             vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-            output.handle,
+            output.raw_handle(),
             &[vk::BufferImageCopy::default()
                 .image_subresource(
                     vk::ImageSubresourceLayers::default()

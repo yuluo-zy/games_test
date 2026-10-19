@@ -121,7 +121,7 @@ fn invalid_import_is_rejected_before_recording_and_next_frame_remains_usable() {
         unsafe {
             dev.raw_device().cmd_fill_buffer(
                 vk::CommandBuffer::from_raw(context),
-                target.handle,
+                target.raw_handle(),
                 0,
                 64,
                 0x12345678,

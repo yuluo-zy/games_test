@@ -318,7 +318,7 @@ impl Bench {
                 device.raw_device().cmd_bind_pipeline(
                     cb,
                     vk::PipelineBindPoint::GRAPHICS,
-                    pipeline.handle,
+                    pipeline.raw_handle(),
                 )
             };
             api.bind_vertex_buffer_by_binding_point(0, vertices.raw());
@@ -676,7 +676,7 @@ fn device_identity(device: &Arc<rhapsody::raw::device::Device>) -> (String, u32,
     let properties = unsafe {
         device
             .instance()
-            .instance
+            .raw_instance()
             .get_physical_device_properties(device.physical_device())
     };
     (

@@ -157,9 +157,9 @@ fn readback(
             unsafe {
                 device.raw_device().cmd_copy_image_to_buffer(
                     vk::CommandBuffer::from_raw(ctx.command.handle()),
-                    target.handle,
+                    target.raw_handle(),
                     vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                    output.handle,
+                    output.raw_handle(),
                     &[vk::BufferImageCopy::default()
                         .image_subresource(
                             vk::ImageSubresourceLayers::default()
@@ -336,7 +336,7 @@ fn reprojection_first_frame_uses_false_validity_and_copies_real_depth() {
                                 unsafe {
                                     device.raw_device().cmd_clear_color_image(
                                         vk::CommandBuffer::from_raw(ctx.command.handle()),
-                                        texture.handle,
+                                        texture.raw_handle(),
                                         vk::ImageLayout::TRANSFER_DST_OPTIMAL,
                                         &vk::ClearColorValue { float32: clear },
                                         &[vk::ImageSubresourceRange::default()
@@ -791,7 +791,7 @@ fn read_dof_buffer_range(
     offset: u64,
     size: u64,
 ) -> rhapsody::Result<Arc<rhapsody::resource::Buffer>> {
-    use rhapsody::rg::resource::AccessRange;
+    use rhapsody::rg::AccessRange;
     let output = Arc::new(rhapsody::resource::Buffer::new(
         device.clone(),
         &rhapsody::resource::BufferDesc::new_gpu_to_cpu(size, vk::BufferUsageFlags::TRANSFER_DST),
@@ -821,8 +821,8 @@ fn read_dof_buffer_range(
             unsafe {
                 device.raw_device().cmd_copy_buffer(
                     vk::CommandBuffer::from_raw(ctx.command.handle()),
-                    source.handle,
-                    target.handle,
+                    source.raw_handle(),
+                    target.raw_handle(),
                     &[vk::BufferCopy {
                         src_offset: offset,
                         dst_offset: 0,
@@ -925,7 +925,7 @@ fn original_multires_dof_reads_uploaded_tile_offsets_and_dispatches_its_real_par
                                 unsafe {
                                     device.raw_device().cmd_clear_color_image(
                                         vk::CommandBuffer::from_raw(ctx.command.handle()),
-                                        texture.handle,
+                                        texture.raw_handle(),
                                         vk::ImageLayout::TRANSFER_DST_OPTIMAL,
                                         &vk::ClearColorValue { float32: clear },
                                         &[vk::ImageSubresourceRange::default()
@@ -1130,7 +1130,7 @@ fn run_original_aa_fixture_frame(
                                 unsafe {
                                     device.raw_device().cmd_clear_color_image(
                                         vk::CommandBuffer::from_raw(ctx.command.handle()),
-                                        texture.handle,
+                                        texture.raw_handle(),
                                         vk::ImageLayout::TRANSFER_DST_OPTIMAL,
                                         &vk::ClearColorValue { float32: clear },
                                         &[vk::ImageSubresourceRange::default()
@@ -1231,10 +1231,10 @@ fn run_original_aa_fixture_frame(
                         if frame_index == 0 {
                             assert!(matches!(
                                 source,
-                                rhapsody::rg::graph::OriginSource::ImportOwned {
+                                rhapsody::rg::OriginSource::ImportOwned {
                                     initial_access: 0,
                                     ..
-                                } | rhapsody::rg::graph::OriginSource::ImportUnowned {
+                                } | rhapsody::rg::OriginSource::ImportUnowned {
                                     initial_access: 0,
                                     ..
                                 }
@@ -1393,7 +1393,7 @@ fn original_shader_refactoring_replaces_the_full_frame_and_keeps_real_reference(
                                 unsafe {
                                     device.raw_device().cmd_clear_color_image(
                                         vk::CommandBuffer::from_raw(ctx.command.handle()),
-                                        texture.handle,
+                                        texture.raw_handle(),
                                         vk::ImageLayout::TRANSFER_DST_OPTIMAL,
                                         &vk::ClearColorValue {
                                             float32: [
@@ -1518,7 +1518,7 @@ fn original_shader_refactoring_replaces_the_full_frame_and_keeps_real_reference(
 #[test]
 fn original_spd_large_mip_chain_uses_uploaded_zero_atomic_and_reuses_it_next_frame() {
     use country_core::render::ssbo::rhapsody_boundary::BufferDesc as CoreBufferDesc;
-    use rhapsody::rg::resource::AccessRange;
+    use rhapsody::rg::AccessRange;
     let Some(mut fixture) = Fixture::new() else {
         return;
     };
@@ -1598,7 +1598,7 @@ fn original_spd_large_mip_chain_uses_uploaded_zero_atomic_and_reuses_it_next_fra
                                 unsafe {
                                     device.raw_device().cmd_clear_color_image(
                                         vk::CommandBuffer::from_raw(ctx.command.handle()),
-                                        source.handle,
+                                        source.raw_handle(),
                                         vk::ImageLayout::TRANSFER_DST_OPTIMAL,
                                         &vk::ClearColorValue { float32: color },
                                         &[vk::ImageSubresourceRange::default()
@@ -1677,9 +1677,9 @@ fn original_spd_large_mip_chain_uses_uploaded_zero_atomic_and_reuses_it_next_fra
                                 unsafe {
                                     device.raw_device().cmd_copy_image_to_buffer(
                                         command,
-                                        source.handle,
+                                        source.raw_handle(),
                                         vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                                        output.handle,
+                                        output.raw_handle(),
                                         &[
                                             vk::BufferImageCopy::default()
                                                 .image_subresource(
@@ -1710,8 +1710,8 @@ fn original_spd_large_mip_chain_uses_uploaded_zero_atomic_and_reuses_it_next_fra
                                     );
                                     device.raw_device().cmd_copy_buffer(
                                         command,
-                                        probe.handle,
-                                        output.handle,
+                                        probe.raw_handle(),
+                                        output.raw_handle(),
                                         &[vk::BufferCopy::default().dst_offset(20).size(24)],
                                     );
                                 }

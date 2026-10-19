@@ -237,8 +237,8 @@ pub fn clamp_budget_hysteresis(old: u64, new: u64) -> u64 {
     new.max(lo).min(hi)
 }
 pub struct PhysicalDevice {
-    pub instance: Arc<VulkanInstance>,
-    pub handle: vk::PhysicalDevice,
+    pub(crate) instance: Arc<VulkanInstance>,
+    pub(crate) handle: vk::PhysicalDevice,
     pub properties: vk::PhysicalDeviceProperties,
     pub memory: vk::PhysicalDeviceMemoryProperties,
     pub queues: Vec<vk::QueueFamilyProperties>,
@@ -246,6 +246,17 @@ pub struct PhysicalDevice {
     budget_snapshot: ArcSwapOption<PerformanceInfo>,
     /// 设备扩展集合在物理设备生命周期内不变，只枚举一次。
     memory_budget_extension: OnceLock<bool>,
+}
+
+impl PhysicalDevice {
+    /// The instance that owns this object.
+    pub fn instance(&self) -> &Arc<VulkanInstance> {
+        &self.instance
+    }
+    /// Interop escape hatch: the native handle. It stays owned by `self`; never destroy it or use it after `self` is dropped.
+    pub fn raw_handle(&self) -> vk::PhysicalDevice {
+        self.handle
+    }
 }
 impl PhysicalDevice {
     pub fn driver_version(&self) -> DeviceDriverVersion {

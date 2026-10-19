@@ -95,7 +95,7 @@ fn original_egui_shader_draws_real_vertex_index_and_font_uploads_to_gpu() {
                     unsafe {
                         device.raw_device().cmd_clear_color_image(
                             vk::CommandBuffer::from_raw(ctx.command.handle()),
-                            target.handle,
+                            target.raw_handle(),
                             vk::ImageLayout::TRANSFER_DST_OPTIMAL,
                             &vk::ClearColorValue {
                                 float32: [0.0, 0.0, 0.0, 1.0],
@@ -137,9 +137,9 @@ fn original_egui_shader_draws_real_vertex_index_and_font_uploads_to_gpu() {
                     unsafe {
                         device.raw_device().cmd_copy_image_to_buffer(
                             vk::CommandBuffer::from_raw(ctx.command.handle()),
-                            target.handle,
+                            target.raw_handle(),
                             vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                            readback.handle,
+                            readback.raw_handle(),
                             &[vk::BufferImageCopy::default()
                                 .image_subresource(
                                     vk::ImageSubresourceLayers::default()

@@ -135,7 +135,7 @@ fn new_slot(backend: &mut VulkanGraphBackend) -> Slot {
         u64::from(SIZE * SIZE * 4),
         vk::BufferUsageFlags::TRANSFER_DST,
     );
-    let buffer = Arc::new(Buffer::new(backend.device.clone(), &desc).unwrap());
+    let buffer = Arc::new(Buffer::new(backend.device().clone(), &desc).unwrap());
     let token = backend
         .bind_import(GpuResource::Buffer(buffer.clone()))
         .unwrap();
@@ -300,7 +300,7 @@ impl Harness {
                     device.raw_device().cmd_bind_pipeline(
                         cb,
                         vk::PipelineBindPoint::GRAPHICS,
-                        pipeline.handle,
+                        pipeline.raw_handle(),
                     )
                 };
                 api.bind_vertex_buffer_by_binding_point(0, vertices.raw());

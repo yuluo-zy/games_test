@@ -72,7 +72,7 @@ fn graph(
             HOST,
         )
         .unwrap();
-    let device = session.backend.device.clone();
+    let device = session.backend.device().clone();
     for (image_id, color, offset) in [(a, [1., 0., 0., 1.], 0), (b, [0., 1., 0., 1.], BYTES)] {
         let mut pass = graph.add_pass(format!("clear {offset}")).with_side_effect();
         pass.add_resource_access(image_id, WRITE, 0).unwrap();
@@ -114,7 +114,7 @@ fn graph(
         if offset == 0 {
             pass.add_resource_access(bridge, WRITE, 0).unwrap();
         }
-        let device = session.backend.device.clone();
+        let device = session.backend.device().clone();
         let out_id = out.raw();
         let bridge_id = bridge.raw();
         pass.render_with_result_context(move |ctx: PassContext<'_>| {
@@ -392,11 +392,11 @@ impl Release {
         if !self.1 {
             unsafe {
                 self.0
-                    .device
+                    .device()
                     .raw_device()
                     .signal_semaphore(
                         &vk::SemaphoreSignalInfo::default()
-                            .semaphore(self.0.handle)
+                            .semaphore(self.0.raw_handle())
                             .value(1),
                     )
                     .unwrap();
@@ -409,9 +409,9 @@ impl Drop for Release {
     fn drop(&mut self) {
         if !self.1 {
             let _ = unsafe {
-                self.0.device.raw_device().signal_semaphore(
+                self.0.device().raw_device().signal_semaphore(
                     &vk::SemaphoreSignalInfo::default()
-                        .semaphore(self.0.handle)
+                        .semaphore(self.0.raw_handle())
                         .value(1),
                 )
             };
@@ -518,7 +518,7 @@ fn partial_submit_does_not_publish_an_unreached_alias_initial_layout() {
     let a = managed.texture_for(logical_a).unwrap().raw();
     let b = managed.texture_for(logical_b).unwrap().raw();
     let token_for = |image| {
-        *session.backend.resources.iter().find(|(_,resource)|matches!(resource,GpuResource::Image(actual) if actual.handle==image)).unwrap().0
+        *session.backend.resources.iter().find(|(_,resource)|matches!(resource,GpuResource::Image(actual) if actual.raw_handle()==image)).unwrap().0
     };
     let (a, b) = (token_for(a), token_for(b));
     session
