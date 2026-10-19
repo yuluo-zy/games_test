@@ -172,7 +172,7 @@ impl TextureRenderGraph for RenderGraph {
 
 /// 复用已恢复的 rhapsody 格式表，未知格式显式失败。
 pub fn format_bytes_per_texel(format: u32) -> u32 {
-    rhapsody::raw::format::observed::try_vk_format_info(ash::vk::Format::from_raw(format as i32))
+    rhapsody::resource::try_vk_format_info(ash::vk::Format::from_raw(format as i32))
         .expect("不支持的纹理格式")
         .word_at_04()
 }
@@ -388,10 +388,9 @@ impl AssetTextureLibrary {
             .get(preset.0 as usize)
             .ok_or_else(|| BackendError::invalid_usage("预设纹理未创建"))?;
         let desc = state.desc;
-        let format = rhapsody::raw::format::observed::try_vk_format_info(
-            ash::vk::Format::from_raw(desc.format as i32),
-        )
-        .map_err(|_| BackendError::unsupported("预设纹理格式未知"))?;
+        let format =
+            rhapsody::resource::try_vk_format_info(ash::vk::Format::from_raw(desc.format as i32))
+                .map_err(|_| BackendError::unsupported("预设纹理格式未知"))?;
         if format.byte_at_08() != 1 {
             return Err(BackendError::unsupported("压缩纹理不支持按像素清零"));
         }

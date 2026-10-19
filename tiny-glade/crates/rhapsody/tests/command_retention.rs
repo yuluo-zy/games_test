@@ -39,7 +39,7 @@ fn fixture() -> Option<(Arc<Device>, ValidationMessenger)> {
                     ..DeviceConfig::headless()
                 },
             )?;
-            let messages = ValidationMessenger::new(&device.instance)?;
+            let messages = ValidationMessenger::new(device.instance())?;
             Ok((device, messages))
         })(),
     )
@@ -73,10 +73,13 @@ fn owner_capacity_is_bounded_and_failed_recording_recovers_only_by_reset() {
     let Some((device, messages)) = fixture() else {
         return;
     };
-    let pool =
-        VulkanCommandPool::new_for_family_with_cpu_limit(device.clone(), device.queue_family, 2)
-            .unwrap();
-    let before = device.allocator_stats.cpu_memory_usage().total();
+    let pool = VulkanCommandPool::new_for_family_with_cpu_limit(
+        device.clone(),
+        device.queue_family_index(),
+        2,
+    )
+    .unwrap();
+    let before = device.allocator_stats().cpu_memory_usage().total();
     let dropped = Arc::new(AtomicUsize::new(0));
     let mut command = pool.allocate().unwrap();
     command.begin().unwrap();
@@ -87,14 +90,14 @@ fn owner_capacity_is_bounded_and_failed_recording_recovers_only_by_reset() {
         .retain_object(Arc::new(Owner(dropped.clone())))
         .unwrap();
     let queue = QueueId::new(0).unwrap();
-    let submitted = device.timelines.submitted(queue).unwrap();
+    let submitted = device.timelines().submitted(queue).unwrap();
     assert!(matches!(
         command.retain_object(Arc::new(Owner(dropped.clone()))),
         Err(Error::Timeout)
     ));
     assert!(matches!(command.end(), Err(Error::Timeout)));
     assert!(matches!(command.end(), Err(Error::Timeout)));
-    assert_eq!(device.timelines.submitted(queue).unwrap(), submitted);
+    assert_eq!(device.timelines().submitted(queue).unwrap(), submitted);
     assert_eq!(dropped.load(Ordering::Relaxed), 1);
     command.reset().unwrap();
     assert_eq!(dropped.load(Ordering::Relaxed), 3);
@@ -109,7 +112,7 @@ fn owner_capacity_is_bounded_and_failed_recording_recovers_only_by_reset() {
     drop(pending);
     assert_eq!(dropped.load(Ordering::Relaxed), 4);
     pool.trim_cpu_scratch();
-    assert_eq!(device.allocator_stats.cpu_memory_usage().total(), before);
+    assert_eq!(device.allocator_stats().cpu_memory_usage().total(), before);
     clean(&device, &messages);
 }
 #[test]
@@ -120,24 +123,24 @@ fn owner_storage_oom_keeps_its_category_and_publishes_no_queue_point() {
     let pool = VulkanCommandPool::new(device.clone()).unwrap();
     let mut command = pool.allocate().unwrap();
     command.begin().unwrap();
-    let before = device.allocator_stats.cpu_memory_usage().total();
+    let before = device.allocator_stats().cpu_memory_usage().total();
     let submitted = device
-        .timelines
+        .timelines()
         .submitted(QueueId::new(0).unwrap())
         .unwrap();
     device
-        .allocator_stats
-        .set_total_budget(device.allocator_stats.budget_usage().total() + 1)
+        .allocator_stats()
+        .set_total_budget(device.allocator_stats().budget_usage().total() + 1)
         .unwrap();
     let dropped = Arc::new(AtomicUsize::new(0));
     let result = command.retain_object(Arc::new(Owner(dropped.clone())));
-    device.allocator_stats.set_total_budget(u64::MAX).unwrap();
+    device.allocator_stats().set_total_budget(u64::MAX).unwrap();
     assert!(matches!(result, Err(Error::OutOfHostMemory)));
     assert!(matches!(command.end(), Err(Error::OutOfHostMemory)));
-    assert_eq!(device.allocator_stats.cpu_memory_usage().total(), before);
+    assert_eq!(device.allocator_stats().cpu_memory_usage().total(), before);
     assert_eq!(
         device
-            .timelines
+            .timelines()
             .submitted(QueueId::new(0).unwrap())
             .unwrap(),
         submitted
@@ -166,18 +169,21 @@ fn nested_resource_cells_have_their_own_capacity_gate() {
     let Some((device, messages)) = fixture() else {
         return;
     };
-    let pool =
-        VulkanCommandPool::new_for_family_with_cpu_limit(device.clone(), device.queue_family, 2)
-            .unwrap();
+    let pool = VulkanCommandPool::new_for_family_with_cpu_limit(
+        device.clone(),
+        device.queue_family_index(),
+        2,
+    )
+    .unwrap();
     let pair = Arc::new(Pair([
         Arc::new(Sampler::new(device.clone(), &vk::SamplerCreateInfo::default()).unwrap()),
         Arc::new(Sampler::new(device.clone(), &vk::SamplerCreateInfo::default()).unwrap()),
     ]));
-    let before = device.allocator_stats.cpu_memory_usage().total();
+    let before = device.allocator_stats().cpu_memory_usage().total();
     let mut command = pool.allocate().unwrap();
     command.begin().unwrap();
     let submitted = device
-        .timelines
+        .timelines()
         .submitted(QueueId::new(0).unwrap())
         .unwrap();
     // One owner fits, but its two distinct cells plus the pool exceed the limit.
@@ -188,7 +194,7 @@ fn nested_resource_cells_have_their_own_capacity_gate() {
     assert!(matches!(command.end(), Err(Error::Timeout)));
     assert_eq!(
         device
-            .timelines
+            .timelines()
             .submitted(QueueId::new(0).unwrap())
             .unwrap(),
         submitted
@@ -199,7 +205,7 @@ fn nested_resource_cells_have_their_own_capacity_gate() {
     })
     .unwrap();
     drop(command);
-    assert_eq!(device.allocator_stats.cpu_memory_usage().total(), before);
+    assert_eq!(device.allocator_stats().cpu_memory_usage().total(), before);
     clean(&device, &messages);
 }
 impl GpuUse for Reject {
@@ -227,7 +233,7 @@ fn nested_visitor_rejection_is_sticky_and_cell_credit_follows_its_last_owner() {
     let mut command = pool.allocate().unwrap();
     command.begin().unwrap();
     let submitted = device
-        .timelines
+        .timelines()
         .submitted(QueueId::new(0).unwrap())
         .unwrap();
     assert_eq!(
@@ -240,7 +246,7 @@ fn nested_visitor_rejection_is_sticky_and_cell_credit_follows_its_last_owner() {
     assert_eq!(command.end().unwrap_err().kind(), ErrorKind::Unsupported);
     assert_eq!(
         device
-            .timelines
+            .timelines()
             .submitted(QueueId::new(0).unwrap())
             .unwrap(),
         submitted
@@ -249,7 +255,7 @@ fn nested_visitor_rejection_is_sticky_and_cell_credit_follows_its_last_owner() {
     drop(command);
     drop(sampler);
     clean(&device, &messages);
-    let before = device.allocator_stats.cpu_memory_usage().total();
+    let before = device.allocator_stats().cpu_memory_usage().total();
     let (layout, _) = std::alloc::Layout::new::<[usize; 2]>()
         .extend(std::alloc::Layout::new::<SyncCell>())
         .unwrap();
@@ -257,7 +263,7 @@ fn nested_visitor_rejection_is_sticky_and_cell_credit_follows_its_last_owner() {
     assert!(before >= bytes);
     drop(cell);
     assert_eq!(
-        device.allocator_stats.cpu_memory_usage().total() + bytes,
+        device.allocator_stats().cpu_memory_usage().total() + bytes,
         before
     );
     clean(&device, &messages);
@@ -279,12 +285,12 @@ fn ignored_invalid_native_range_cannot_end_or_publish_a_submission() {
     let mut command = pool.allocate().unwrap();
     command.begin().unwrap();
     let queue = QueueId::new(0).unwrap();
-    let submitted = device.timelines.submitted(queue).unwrap();
+    let submitted = device.timelines().submitted(queue).unwrap();
     // SAFETY: no native memory operation is recorded. The deliberately invalid
     // retention request must poison recording even if its error is ignored.
     let _ignored = unsafe { command.retain_opaque_buffer_range(buffer, 31, 2) };
     assert_eq!(command.end().unwrap_err().kind(), ErrorKind::InvalidUsage);
-    assert_eq!(device.timelines.submitted(queue).unwrap(), submitted);
+    assert_eq!(device.timelines().submitted(queue).unwrap(), submitted);
     command.reset().unwrap();
     command.begin().unwrap();
     command.end().unwrap();
@@ -316,12 +322,12 @@ fn nine_external_waits_and_signals_keep_last_owners_and_charge_actual_spill() {
     let mut command = pool.allocate().unwrap();
     command.begin().unwrap();
     command.end().unwrap();
-    let before = device.allocator_stats.cpu_memory_usage().total();
+    let before = device.allocator_stats().cpu_memory_usage().total();
     let pending = command
         .submit_to(
             rhapsody::raw::device::DeviceQueue {
-                handle: device.queue,
-                family: device.queue_family,
+                handle: device.primary_queue(),
+                family: device.queue_family_index(),
                 index: 0,
             },
             &waits,
@@ -332,7 +338,7 @@ fn nine_external_waits_and_signals_keep_last_owners_and_charge_actual_spill() {
     // Nested Vulkan arrays are synchronous scratch. Only the eighteen actual
     // owner Arcs spill into the pending receipt after the queue call returns.
     assert_eq!(
-        device.allocator_stats.cpu_memory_usage().total(),
+        device.allocator_stats().cpu_memory_usage().total(),
         before + (18 * std::mem::size_of::<Arc<TimelineSemaphore>>()) as u64
     );
     drop(waits);
@@ -362,7 +368,7 @@ fn external_owner_and_nested_array_oom_each_leave_real_queue_and_semaphores_unch
         .map(|semaphore| (semaphore.clone(), 1))
         .collect();
     let queue = QueueId::new(0).unwrap();
-    let submitted = device.timelines.submitted(queue).unwrap();
+    let submitted = device.timelines().submitted(queue).unwrap();
     let owners_bytes = (9 * std::mem::size_of::<Arc<TimelineSemaphore>>()) as u64;
     // First deny the owner spill; then admit it exactly and deny the separate
     // nested Vulkan arrays. Both are pre-submit admission failures.
@@ -370,23 +376,23 @@ fn external_owner_and_nested_array_oom_each_leave_real_queue_and_semaphores_unch
         let mut command = pool.allocate().unwrap();
         command.begin().unwrap();
         command.end().unwrap();
-        let before = device.allocator_stats.budget_usage().total();
+        let before = device.allocator_stats().budget_usage().total();
         device
-            .allocator_stats
+            .allocator_stats()
             .set_total_budget(before + spare)
             .unwrap();
         let result = command.submit_to(
             rhapsody::raw::device::DeviceQueue {
-                handle: device.queue,
-                family: device.queue_family,
+                handle: device.primary_queue(),
+                family: device.queue_family_index(),
                 index: 0,
             },
             &[],
             &signals,
         );
-        device.allocator_stats.set_total_budget(u64::MAX).unwrap();
+        device.allocator_stats().set_total_budget(u64::MAX).unwrap();
         assert!(matches!(result, Err(Error::OutOfHostMemory)));
-        assert_eq!(device.timelines.submitted(queue).unwrap(), submitted);
+        assert_eq!(device.timelines().submitted(queue).unwrap(), submitted);
         for semaphore in &semaphores {
             assert_eq!(semaphore.completed().unwrap(), 0);
             semaphore
@@ -431,31 +437,25 @@ fn descriptor_owner_row_oom_precedes_native_update_and_preserves_retry() {
     let binding = DescriptorSetBinding::Buffer {
         ty: vk::DescriptorType::STORAGE_BUFFER,
         info: vk::DescriptorBufferInfo::default()
-            .buffer(owner.handle)
+            .buffer(owner.raw_handle())
             .range(32),
         owner,
     };
-    let before = device.allocator_stats.cpu_memory_usage().total();
-    let updates = device.descriptor_update_count.load(Ordering::Relaxed);
+    let before = device.allocator_stats().cpu_memory_usage().total();
+    let updates = device.descriptor_update_count();
     device
-        .allocator_stats
-        .set_total_budget(device.allocator_stats.budget_usage().total() + 1)
+        .allocator_stats()
+        .set_total_budget(device.allocator_stats().budget_usage().total() + 1)
         .unwrap();
     // SAFETY: the set is unsubmitted and this owned buffer matches its layout.
     let result = unsafe { set.update(0, 0, &binding) };
-    device.allocator_stats.set_total_budget(u64::MAX).unwrap();
+    device.allocator_stats().set_total_budget(u64::MAX).unwrap();
     assert!(matches!(result, Err(Error::OutOfHostMemory)));
-    assert_eq!(
-        device.descriptor_update_count.load(Ordering::Relaxed),
-        updates
-    );
-    assert_eq!(device.allocator_stats.cpu_memory_usage().total(), before);
+    assert_eq!(device.descriptor_update_count(), updates);
+    assert_eq!(device.allocator_stats().cpu_memory_usage().total(), before);
     // SAFETY: the same idle set is now allowed to admit its actual owner row.
     unsafe { set.update(0, 0, &binding) }.unwrap();
-    assert_eq!(
-        device.descriptor_update_count.load(Ordering::Relaxed),
-        updates + 1
-    );
+    assert_eq!(device.descriptor_update_count(), updates + 1);
     drop(binding);
     assert!(weak.upgrade().is_some());
     drop(set);

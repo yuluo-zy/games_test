@@ -63,7 +63,7 @@ impl FrameRenderConfig {
 }
 use uuid::Uuid;
 
-use rhapsody::raw::init::GraphicsInstanceLayerAllowlist;
+use rhapsody::interop::GraphicsInstanceLayerAllowlist;
 
 /// 全屏配置。判别式 1 携带分辨率（O）；0 的含义为 I（无需分辨率的模式）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

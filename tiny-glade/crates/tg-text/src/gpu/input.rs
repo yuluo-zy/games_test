@@ -1,7 +1,7 @@
 //! Validate inputs and pack the shader ABI before allocating frame resources.
 use super::*;
 use crate::shape_stream::encoding::GLYPH_STREAM;
-use rhapsody::shader_pipeline::reflection::ShaderReflection;
+use shader_pipeline::reflection::ShaderReflection;
 
 /// Validated borrowed inputs remain alive through preparation and submission.
 /// Validation does not borrow the renderer, so resource preparation can mutate its caches.
@@ -148,7 +148,7 @@ impl GpuTextRenderer {
         }
         if images
             .iter()
-            .any(|image| !Arc::ptr_eq(&image.device, &self.device) || !sampled_2d(image))
+            .any(|image| !Arc::ptr_eq(&image.device(), &self.device) || !sampled_2d(image))
         {
             return Err("resolver image uses another device or incompatible sampling type".into());
         }

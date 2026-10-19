@@ -1,4 +1,4 @@
-//! 物理设备能力查询；不伪造原作偏好和兼容性名单。
+//! Physical device capability and memory budget queries.
 use super::{error::Result, instance::VulkanInstance};
 use arc_swap::ArcSwapOption;
 use ash::vk;
@@ -139,9 +139,8 @@ pub struct HeapBudget {
     pub budget: Option<u64>,
     pub usage: Option<u64>,
 }
-/// 原 AvailableGraphicsDevice+0x99 的设备类别字节（0x1418b3300 的转换：`0x302000104 >> (VkPhysicalDeviceType*8)`，
-/// 类型值 ≥5 取 4）：Discrete=0, Integrated=1, Virtual=2, Cpu=3, Other=4。
-/// 比较器（0x1418b9130 的跳表）与内存门槛（0x140bda8f0 / 0x1418b5680 的 `[+0x99]==0`）都按这个字节分派。
+/// Device class used for device ranking: Discrete=0, Integrated=1,
+/// Virtual=2, Cpu=3, Other=4.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum GraphicsDeviceKind {
@@ -163,18 +162,15 @@ impl GraphicsDeviceKind {
     }
 }
 
-/// 原 `refresh_memory_budget` 发布的 0x110B 快照：就是一份 `VkPhysicalDeviceMemoryBudgetPropertiesEXT`
-/// （sType@+0 / pNext@+8 / heapBudget[16]@+0x10 / heapUsage[16]@+0x90，每项 u64）。
-/// 旧文档的“{budget u128, usage u128} 步长 0x20”不对：`device_local_memory_budget_bytes`（0x140c006a0）
-/// 标量循环以 8B 步长读 `base+0x20+8i`（= 载荷+0x10+8i），即 heapBudget 数组。
+/// Per-heap `VK_EXT_memory_budget` snapshot (budget and usage in bytes).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct MemoryBudgetSnapshot {
     pub heap_budget: [u64; MAX_MEMORY_HEAPS],
     pub heap_usage: [u64; MAX_MEMORY_HEAPS],
 }
-/// 原版断言 `memory_heap_count <= 16`（0x140c006a0 里 `0x10 < count` 走 slice 越界 panic）。
+/// `VK_MAX_MEMORY_HEAPS`.
 pub const MAX_MEMORY_HEAPS: usize = 16;
-/// 快照载荷字节数（`func_142923c00(.., 0x110)`，ArcSwap 分配 0x120B = 2×u64 计数 + 载荷）。
+/// Size of `VkPhysicalDeviceMemoryBudgetPropertiesEXT` on 64-bit targets.
 pub const BUDGET_SNAPSHOT_BYTES: usize = 0x110;
 impl MemoryBudgetSnapshot {
     pub fn from_vk(budget: &vk::PhysicalDeviceMemoryBudgetPropertiesEXT<'_>) -> Self {
@@ -190,14 +186,14 @@ impl MemoryBudgetSnapshot {
             ..Default::default()
         }
     }
-    /// 16 个同构钳位块：只钳 budget，usage 原样取驱动值。
+    /// Clamp each heap budget against `old`; usage is kept as reported.
     pub fn clamped_against(mut self, old: &Self) -> Self {
         for i in 0..MAX_MEMORY_HEAPS {
             self.heap_budget[i] = clamp_budget_hysteresis(old.heap_budget[i], self.heap_budget[i]);
         }
         self
     }
-    /// getter 的求和：`want_device_local` 为 true 取 DEVICE_LOCAL 堆，否则取其余堆（0x140c006a0 / 0x140c00890）。
+    /// Sum of budgets over DEVICE_LOCAL heaps (`want_device_local`) or the others.
     pub fn sum_budget(&self, heaps: &[vk::MemoryHeap], want_device_local: bool) -> u64 {
         heaps
             .iter()
@@ -212,7 +208,7 @@ impl MemoryBudgetSnapshot {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PerformanceInfo {
-    /// 原快照布局（驱动支持 VK_EXT_memory_budget 时才有）。
+    /// Raw budget snapshot when `VK_EXT_memory_budget` is supported.
     pub snapshot: Option<MemoryBudgetSnapshot>,
     pub device_local_bytes: u64,
     pub host_bytes: u64,
@@ -241,16 +237,26 @@ pub fn clamp_budget_hysteresis(old: u64, new: u64) -> u64 {
     new.max(lo).min(hi)
 }
 pub struct PhysicalDevice {
-    pub instance: Arc<VulkanInstance>,
-    pub handle: vk::PhysicalDevice,
+    pub(crate) instance: Arc<VulkanInstance>,
+    pub(crate) handle: vk::PhysicalDevice,
     pub properties: vk::PhysicalDeviceProperties,
     pub memory: vk::PhysicalDeviceMemoryProperties,
     pub queues: Vec<vk::QueueFamilyProperties>,
-    /// 最近一次预算快照。原作 `refresh_memory_budget` 经 `ArcSwapAny::store/swap` 写入，
-    /// `*_memory_budget_bytes` 经 `ArcSwapAny::load` 读取（PDB 注解）；快照的字段内容是候选。
+    /// Latest published budget snapshot, read lock-free.
     budget_snapshot: ArcSwapOption<PerformanceInfo>,
     /// 设备扩展集合在物理设备生命周期内不变，只枚举一次。
     memory_budget_extension: OnceLock<bool>,
+}
+
+impl PhysicalDevice {
+    /// The instance that owns this object.
+    pub fn instance(&self) -> &Arc<VulkanInstance> {
+        &self.instance
+    }
+    /// Interop escape hatch: the native handle. It stays owned by `self`; never destroy it or use it after `self` is dropped.
+    pub fn raw_handle(&self) -> vk::PhysicalDevice {
+        self.handle
+    }
 }
 impl PhysicalDevice {
     pub fn driver_version(&self) -> DeviceDriverVersion {
@@ -369,6 +375,14 @@ impl PhysicalDevice {
             .map(|h| h.size)
             .sum()
     }
+    /// Publish a budget snapshot queried elsewhere (e.g. by the logical device).
+    pub(crate) fn publish_memory_budget(
+        &self,
+        budget: &vk::PhysicalDeviceMemoryBudgetPropertiesEXT<'_>,
+    ) {
+        let info = self.memory_snapshot(Some(budget));
+        self.budget_snapshot.store(Some(Arc::new(info)));
+    }
     /// 未支持预算扩展时返回 None，不把堆大小当成预算。
     pub fn refresh_memory_budget(
         &self,
@@ -383,9 +397,8 @@ impl PhysicalDevice {
                 .instance
                 .get_physical_device_memory_properties2(self.handle, &mut properties);
         }
-        // 逐堆滞回（0x140c01620，16 处同构钳位块）：新预算限制在上一份快照的
-        // `[old - max(1, old>>3), old + max(1, old>>3)]` 内（只钳 budget；usage 取驱动值）。
-        // 首次没有旧快照则原样采用（原版在枚举阶段先放入一份初始快照，这里以“无旧快照”等价）。
+        // Per-heap hysteresis: the budget moves at most `max(1, old >> 3)` per
+        // refresh relative to the previous snapshot; usage is taken as reported.
         if let Some(old) = self.cached_performance_info().and_then(|p| p.snapshot) {
             let clamped = MemoryBudgetSnapshot::from_vk(&budget).clamped_against(&old);
             budget.heap_budget = clamped.heap_budget;
@@ -433,12 +446,8 @@ impl PhysicalDevice {
             .map(|h| h.size)
             .sum()
     }
-    /// 原 `find_vendor_specific_device_handle`（0x140c01e80，O）：仅 vendorID==0x10de 才继续；
-    /// 遍历厂商库（NVAPI，FUN_1418b1340）枚举出的物理 GPU 清单，对每项取 PCI 标识（FUN_1418b17b0）：
-    /// 取不到 → 记 warn "NVAPI: No PCI identifier" 并跳过；`pci.device_id == VkPhysicalDeviceProperties.deviceID`
-    /// → 记 info "Matched to NVAPI device" 并返回该项句柄。非 NVIDIA / 无匹配 → None
-    /// （原版此时记 "No vendor-specific info" 后返回 Err 判别 1；日志级别未证实）。
-    /// NVAPI 是 Windows 专有库，清单由调用方提供，这里不重新实现厂商库。
+    /// Match an NVIDIA device against caller-provided NVAPI GPU entries by
+    /// PCI device id. Non-NVIDIA devices or no match return `None`.
     pub fn find_vendor_specific_device_handle(
         &self,
         nvapi_devices: &[VendorDeviceEntry],
@@ -449,14 +458,11 @@ impl PhysicalDevice {
             nvapi_devices,
         )
     }
-    /// 设备 LUID（`VkPhysicalDeviceIDProperties`），无效时 None。原 AvailableGraphicsDevice 前 16B 是
-    /// `Option<u64>`（tag@0 / 值@8），`missing_devices` 以它与 DXGI 适配器的 u64@+0x18 比较；
-    /// “这个 u64 是 LUID”是候选（证据只到“同一个 8B 标识”）。
+    /// Device LUID from `VkPhysicalDeviceIDProperties`, if valid.
     pub fn luid(&self) -> Option<u64> {
         self.id_properties().1
     }
-    /// (deviceUUID, LUID)。原 PhysicalDevice+0x690 的 16B 键（日志里叫 uuid）取 deviceUUID 是候选：
-    /// 证据只到“16B、create_device 按它匹配、日志标 uuid”。
+    /// `(deviceUUID, LUID)`.
     pub fn id_properties(&self) -> ([u8; 16], Option<u64>) {
         let mut id = vk::PhysicalDeviceIDProperties::default();
         let mut properties = vk::PhysicalDeviceProperties2::default().push_next(&mut id);
@@ -470,9 +476,8 @@ impl PhysicalDevice {
             (id.device_luid_valid != 0).then(|| u64::from_le_bytes(id.device_luid)),
         )
     }
-    /// 原 `performance_info`（0x140c00a80，O）：**不是**堆预算，而是厂商库（NVAPI）遥测文本。
-    /// 没有厂商特定信息（原 `[info+0x10]&1==0`）→ "Unsupported"；有则最多 6 段、以换行连接。
-    /// 6 次厂商查询的值文本由厂商库类型的 Debug 生成，这里由调用方提供。
+    /// Vendor telemetry text built from caller-provided queries, or
+    /// "Unsupported" without vendor information.
     pub fn vendor_performance_info(&self, queries: Option<&VendorPerformanceQueries>) -> String {
         format_vendor_performance_info(queries)
     }
@@ -505,10 +510,8 @@ pub fn match_vendor_device_handle(
     }
     None
 }
-/// `performance_info` 的 6 次厂商查询结果（顺序固定，None = 该次查询失败/不适用而被跳过）：
-/// FUN_1418b1a40 -> "Clocks: "；FUN_1418b1bb0（返回 0 才输出）-> "P-state: "；FUN_1418b1cd0 -> "Utilization: "；
-/// FUN_1418b1e40 -> "Power: "；FUN_1418b18f0 -> "Memory: "（NVAPI MemoryInfo 的 Debug）；FUN_1418b1fb0 -> "Sensors: "。
-/// 值格式化闭包 FUN_1418c03b0/c02b0/b6390/bffd70/b6310 未逐个读，故值文本由调用方给出。
+/// Vendor telemetry values in output order (Clocks, P-state, Utilization,
+/// Power, Memory, Sensors); `None` skips a failed or inapplicable query.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct VendorPerformanceQueries {
     pub clocks: Option<String>,

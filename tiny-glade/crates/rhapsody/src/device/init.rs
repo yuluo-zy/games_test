@@ -36,8 +36,12 @@ pub enum SubmissionApi {
 
 #[derive(Clone, Debug)]
 pub struct DeviceConfig {
-    /// Resource allocation budget; cached and retiring allocations still count.
+    /// Device memory budget; cached and retiring allocations still count.
+    /// Per-heap `VK_EXT_memory_budget` limits apply in addition when enabled.
     pub memory_budget_bytes: u64,
+    /// Budget for renderer-owned host metadata, enforced separately from
+    /// device memory (`0` = unbounded).
+    pub host_memory_budget_bytes: u64,
     pub queues: QueueConfig,
     /// 使用现有实例时要求验证层已启用；headless 入口负责创建它。
     pub validation: bool,
@@ -56,6 +60,7 @@ impl Default for DeviceConfig {
     fn default() -> Self {
         Self {
             memory_budget_bytes: 1024 * 1024 * 1024,
+            host_memory_budget_bytes: 512 * 1024 * 1024,
             queues: QueueConfig::default(),
             validation: false,
             required_features: super::policy::bindless_features()
@@ -63,7 +68,7 @@ impl Default for DeviceConfig {
                 .with(Feature::DynamicRendering),
             preferred_device: DevicePreference::default(),
             frames_in_flight: 2,
-            recording: RecordingPolicy::Serial,
+            recording: RecordingPolicy::default(),
             submission_api: SubmissionApi::Auto,
             reclamation: super::ReclamationConfig::default(),
             allocation: if cfg!(feature = "suballocation") {
@@ -132,6 +137,7 @@ impl DeviceConfig {
 pub(crate) struct RuntimeConfig {
     pub reclamation: super::ReclamationConfig,
     pub memory_budget_bytes: u64,
+    pub host_memory_budget_bytes: u64,
     pub caps: DeviceCaps,
     pub policy: ExecutionPolicy,
     pub frames_in_flight: u32,
@@ -150,6 +156,10 @@ pub(crate) fn core_features(
             core.draw_indirect_first_instance,
         ),
         (Feature::DrawIndirectCount, v12.draw_indirect_count),
+        (
+            Feature::SeparateDepthStencilLayouts,
+            v12.separate_depth_stencil_layouts,
+        ),
         (
             Feature::ShaderStorageBufferArrayDynamicIndexing,
             core.shader_storage_buffer_array_dynamic_indexing,
@@ -530,6 +540,8 @@ pub(crate) fn create_candidate(
     let mut enabled12 = vk::PhysicalDeviceVulkan12Features::default()
         .timeline_semaphore(true)
         .draw_indirect_count(v12.draw_indirect_count != 0)
+        // Optional: lets the graph track depth and stencil independently.
+        .separate_depth_stencil_layouts(v12.separate_depth_stencil_layouts != 0)
         .buffer_device_address(v12.buffer_device_address != 0)
         .descriptor_indexing(v12.descriptor_indexing != 0)
         .runtime_descriptor_array(v12.runtime_descriptor_array != 0)
@@ -602,6 +614,7 @@ pub(crate) fn create_candidate(
     let runtime = RuntimeConfig {
         reclamation: config.reclamation,
         memory_budget_bytes: config.memory_budget_bytes,
+        host_memory_budget_bytes: config.host_memory_budget_bytes,
         caps,
         policy,
         frames_in_flight: config.frames_in_flight,

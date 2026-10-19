@@ -8,15 +8,8 @@ use super::{
 };
 use ash::vk::{self, Handle};
 use rhapsody::{
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        texture::{Texture, TextureDesc},
-    },
-    rg::{
-        frame_loop::FrameLoop,
-        graph::BuiltGraph,
-        vulkan::{GpuResource, ResourceSpec},
-    },
+    resource::Buffer, resource::BufferDesc, resource::Texture, resource::TextureDesc,
+    rg::BuiltGraph, rg::FrameLoop, rg::GpuResource, rg::ResourceSpec,
 };
 use serde::Serialize;
 use std::{path::Path, sync::Arc};
@@ -68,7 +61,7 @@ pub struct Showcase {
 }
 impl Showcase {
     pub fn new(loop_: &mut FrameLoop, cache: &Path) -> rhapsody::Result<Self> {
-        let device = loop_.graph.backend.device.clone();
+        let device = loop_.graph.backend.device().clone();
         let mut panels = Vec::new();
         for _ in 0..4 {
             let mut desc = TextureDesc::new_2d(WIDTH, HEIGHT, vk::Format::R8G8B8A8_UNORM);
@@ -124,7 +117,7 @@ impl Showcase {
             expected: vec![0; BYTES],
             previous: vec![0; BYTES],
             report: ShowcaseReport {
-                physical_queues: device.queue_plan.queues.len(),
+                physical_queues: device.queue_plan().queues.len(),
                 ..Default::default()
             },
         })
@@ -276,7 +269,7 @@ impl Showcase {
                 )
             })
             .collect::<Result<Vec<_>, _>>()?;
-        let device = loop_.graph.backend.device.clone();
+        let device = loop_.graph.backend.device().clone();
         let mut pass = graph.add_pass("showcase GPU four-panel composite");
         for source in &sources {
             pass.add_resource_access(*source, 0x25, 0)?;
@@ -330,7 +323,7 @@ impl Showcase {
                             },
                         ]);
                     unsafe {
-                        device.device.cmd_blit_image(
+                        device.raw_device().cmd_blit_image(
                             vk::CommandBuffer::from_raw(ctx.command.handle()),
                             src.raw(),
                             vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
@@ -365,7 +358,7 @@ impl Showcase {
         let history = loop_
             .graph
             .import_frame_buffer(&mut graph, history_buffer, 0x26)?;
-        let device = loop_.graph.backend.device.clone();
+        let device = loop_.graph.backend.device().clone();
         let mut history_pass = graph.add_pass("showcase visible previous-frame inset");
         history_pass.add_resource_access(history, 0x25, 0)?;
         // Read-modify-write preserves the mosaic outside this inset and keeps
@@ -390,7 +383,7 @@ impl Showcase {
                     depth: 1,
                 });
             unsafe {
-                device.device.cmd_copy_buffer_to_image(
+                device.raw_device().cmd_copy_buffer_to_image(
                     vk::CommandBuffer::from_raw(ctx.command.handle()),
                     m.buffer_for(history.raw())?.raw(),
                     m.texture_for(output.raw())?.raw(),
@@ -400,7 +393,7 @@ impl Showcase {
             }
             Ok(())
         });
-        let device = loop_.graph.backend.device.clone();
+        let device = loop_.graph.backend.device().clone();
         let mut pass = graph.add_pass("showcase mosaic readback");
         pass.add_resource_access(output, 0x25, 0)?;
         pass.add_resource_access(target, 0x34, 0)?;
@@ -409,7 +402,7 @@ impl Showcase {
                 rhapsody::Error::invalid_usage("showcase missing readback resources")
             })?;
             unsafe {
-                device.device.cmd_copy_image_to_buffer(
+                device.raw_device().cmd_copy_image_to_buffer(
                     vk::CommandBuffer::from_raw(ctx.command.handle()),
                     m.texture_for(output.raw())?.raw(),
                     vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
@@ -471,7 +464,7 @@ impl Showcase {
             self.report.sampling_backpressure += 1;
             return Ok(());
         }
-        let device = loop_.graph.backend.device.clone();
+        let device = loop_.graph.backend.device().clone();
         let buffer = Arc::new(Buffer::new(
             device.clone(),
             &BufferDesc::new_gpu_to_cpu((BYTES * 6) as u64, vk::BufferUsageFlags::TRANSFER_DST),
@@ -503,7 +496,7 @@ impl Showcase {
             })?;
             for (index, source) in sources.iter().enumerate() {
                 unsafe {
-                    device.device.cmd_copy_buffer(
+                    device.raw_device().cmd_copy_buffer(
                         vk::CommandBuffer::from_raw(ctx.command.handle()),
                         m.buffer_for(source.raw())?.raw(),
                         m.buffer_for(target.raw())?.raw(),
@@ -533,7 +526,7 @@ impl Showcase {
     }
     pub fn collect_samples(&mut self, loop_: &mut FrameLoop, drain: bool) -> fixture::Result<()> {
         while let Some(sample) = self.pending_samples.front() {
-            let device = &loop_.graph.backend.device;
+            let device = &loop_.graph.backend.device();
             if drain {
                 device.wait(&sample.completion, TIMEOUT)?;
             } else if !sample.completion.is_reached(&device.poll()?) {

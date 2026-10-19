@@ -8,7 +8,7 @@ pub(crate) fn observe_vulkan<T>(
 ) -> crate::Result<T> {
     result.map_err(|error| {
         if error == ash::vk::Result::ERROR_DEVICE_LOST {
-            device.timelines.mark_device_lost();
+            device.queues.timelines.mark_device_lost();
         }
         crate::Error::from(error)
     })

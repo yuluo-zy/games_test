@@ -42,7 +42,7 @@ rhapsody
 │  └─ retire.rs        Retirement<T>：按 SyncSet 延迟回收
 ├─ device/             设备与队列
 │  ├─ queue_config.rs  QueueConfig、plan_queues                             P2
-│  ├─ mod.rs           Device（唯一设备对象）                                P2
+│  ├─ logical.rs       Device（唯一设备对象，持有 caches/lifetime/memory/queues/core） P2
 │  ├─ init.rs          实例/物理设备选择/逻辑设备创建（DeviceConfig）         P2
 │  └─ memory.rs        分配器封装（gpu-allocator，持久映射）                  P2
 ├─ resource/           语义化资源身份                                        P4
@@ -62,6 +62,25 @@ rhapsody
 frame ─► graph ─► command ─► resource ─► device ─► sync ─► error
    └────► swapchain ──────────────────────┘
 ```
+
+### 2.1 公开 API 面
+
+`lib.rs` 只公开以下模块，宿主所需类型都在模块根重导出，子模块一律是实现细节：
+
+| 模块 | 内容 |
+|------|------|
+| `device` | `Device`、`DeviceConfig`、能力/特性、队列规划、提交、预算与统计 |
+| `resource` | `Buffer`/`Texture`/`TextureView`/`Sampler`、描述结构、托管句柄、setup 上传、格式查询、`GpuUse`/`AccessScope` |
+| `command` | 命令池/命令缓冲、`SynchronizationScope` 屏障、资源访问描述、CPU arena |
+| `pipeline` | 着色器模块、管线布局/缓存、异步编译与持久缓存 |
+| `bindless` / `transfer` / `sync` | bindless 堆、异步上传、`QueueId`/`SyncPoint`/`SyncSet`/`Timelines` |
+| `rg` | 渲染图声明、规划、执行、会话与呈现目标 |
+| `present` | `Surface`、`Swapchain` 与呈现租约 |
+| `interop` | 显式逃生口：`VulkanInstance`、实例构建、调试工具、物理设备包装、`DeviceQueue` |
+
+- `raw`、`log_ring` 以及上述模块的子模块经 `internal_mod!` 声明：默认 `pub(crate)`；`test-support` 特性下以 `#[doc(hidden)] pub` 暴露，只供本 crate 的集成测试（经自身 dev-dependency 开启），不属于 API。
+- 拥有原生对象的类型不公开句柄字段，经 `raw_handle()`（以及 `Device::raw_device()`、`VulkanInstance::raw_instance()`、`Swapchain::loader()` 等）只读取得；这些访问器即互操作逃生口，取得的句柄仍归原对象所有。描述/配置结构（`TextureDesc`、`RasterPipelineDesc` 等）里的 Vulkan 枚举与标志字段属于输入数据，保持公开。
+- `shader_pipeline`/`shader_compiler` 不再整包重导出；下游直接依赖 `shader-pipeline`。
 
 ---
 
@@ -148,6 +167,22 @@ impl<T> Retirement<T> {
 
 **锁顺序（全局唯一）**：交换链锁 → 队列提交锁 → 回收锁 → 分配器内部锁。提交锁内只做队列调用，不做阻塞等待、不做 `vkDestroy*`。
 
+### 3.2.1 范围同步与状态跟踪（模块分工）
+
+一条链路，各层只做一件事：
+
+| 层 | 模块 | 职责 |
+|---|---|---|
+| 访问词汇 | `resource::range_state::AccessScope` + `vk::ImageLayout`；`raw::access_table::AccessSpec` | 唯一的访问描述。图的 u8 访问码只是 `ACCESS_TABLE` 的下标，规划时立即降为 `AccessScope`/布局（`rg::plan::AccessSemantics.scope`）；`declared_access` 只用于推导资源 usage（`raw::resource_usage`）。 |
+| 范围状态机 | `resource::range_state`（`RangeStateTable`、`StatePatch`、`RangeOwner::admits`） | 唯一的运行期逐范围状态：写者/读者前沿、布局、所有权（Unclaimed/Owned/Released）、修订号。补丁在提交闸门内 `prepare`，仅在成功提交后以真实 `SyncPoint` `publish`；宿主映射走 `prepare_host`。所有权准入只有 `RangeOwner::admits` 一处规则。 |
+| 资源挂载 | `resource::tracked::SyncCell` | 持有资源的状态表与整体最后使用点；`validate_queue_range` 为传输服务的预检。 |
+| 屏障构建/下发 | `raw::barrier`（`RangeBarrier`、`SynchronizationScope`、`BarrierDispatch`、`Device::issue_barriers`） | 唯一把范围转换变成 Vulkan 屏障并按 sync2/legacy 下发的地方。rg、传输、挂起 acquire、raw 资源访问、交换链、诊断都经此。 |
+| 规划期（图） | `rg::access_ledger`（声明收集、同步组）→ `rg::sync_plan`（静态 `RangeProgram`）→ `rg::sync_plan::bind`（每帧把程序叠加到物理 `SyncCell` 表上，产出 `BoundTransition` 与 `StatePatch`） | 规划器用符号依赖（`DependencyRef`）模拟所有权与前沿，提交时产出的补丁仍由运行期状态机校验并发布；Released 范围由规划器自己 acquire。 |
+| 运行期（非图） | `raw::resource_access`（显式 raw 访问）、`transfer`、`device::pending_acquire` | 从同一状态表推导屏障并记录同一种 `StatePatch`。跨族上传的 acquire 挂在设备队列上，由下一图批次、传输管理器的图形族命令或 `TransferManager::flush_acquires` 合并录制；未 acquire 的范围被任何使用拒绝（明确错误，不会竞态）。 |
+| 校验器 | `rg::plan_check`（`range_program`、`bound`、`native_state`、`range_oracle`） | 独立验证器：刻意不调用生产的拆分/状态转换实现，用自己的稠密格/切片重新推导，再与规划结果比较；共享 `AccessScope`/`RangeTransfer`/`NativeRange` 等词汇类型。仅在开启计划校验时运行（debug 构建、`validation` feature 或 `rg::set_plan_validation`）。 |
+
+不再存在的平行实现：vk-sync 式按访问码推导屏障（`access_table::get_*_barrier`）、`rg::vulkan::AccessSpec` 的散字段/`original_mask`、传输本地的 acquire 待重试列表与逐作业 acquire 提交、各处手写的 `vk::*MemoryBarrier` 与所有权判断。
+
 ### 3.3 队列规划（`src/device/queue_config.rs`，P2）
 
 ```rust
@@ -167,7 +202,7 @@ impl QueuePlan { fn queue(class) -> QueueId; fn is_aliased(class) -> bool; fn ph
 - **Transfer**：专用 DMA 族（仅 TRANSFER，图像传输粒度 1×1×1）→ 专用 compute 族空闲队列 → 别名 graphics / `Require` 报错。
 - 别名队列共用 `VkQueue` 与时间线（同一个 `QueueId`），语义等同单队列，结果与 `Off` 一致。
 
-### 3.4 设备（`src/device/mod.rs`，P2）
+### 3.4 设备（`src/device/`，P2）
 
 ```rust
 pub struct DeviceConfig {
@@ -179,16 +214,15 @@ pub struct DeviceConfig {
     pub recording: RecordingPolicy,         // 见 3.7
 }
 
+// src/device/logical.rs —— 只持有五个组件，方法按组件分布在各自文件中
 pub struct Device {
-    instance: Arc<Instance>,
-    raw: ash::Device,
-    physical: PhysicalDeviceInfo,           // properties/limits/features/memory/format 能力缓存
-    plan: QueuePlan,
-    queues: Vec<vk::Queue>,                 // 下标 = QueueId
-    timelines: Timelines<ash::Device>,
-    retirement: Mutex<Retirement<Doomed>>,
-    allocator: Allocator,                   // gpu-allocator，内部自带锁
-    caches: Caches,                         // sampler / descriptor layout / pipeline layout / pipeline / render pass
+    self_ref: Weak<Device>,
+    caches: Caches,     // device/caches.rs：托管资源表、内置采样器、共享 setup 上下文
+    lifetime: Lifetime, // device/lifetime.rs：退役队列 Retirement<Doomed>、回收预算、idle 计数
+    memory: Memory,     // device/memory.rs：AllocatorStats、可选子分配器、驱动预算、驱逐登记
+    queues: Queues,     // device/queues.rs + submission.rs + pending_acquire.rs：
+                        //   主队列/附加队列、QueuePlan、Timelines、挂起 acquire、延迟宿主 flush
+    core: DeviceCore,   // device/native.rs：ash::Device、实例、物理设备属性、实际启用能力、策略
 }
 
 impl Device {
@@ -207,7 +241,9 @@ impl Device {
 - `SubmitBatch { waits: &[Wait], commands: &[vk::CommandBuffer], signals: &[Signal] }`，`Wait = Binary{sem, stage} | Timeline{point, stage}`，`Signal = Binary(sem)`；`Device::submit` 自动追加本队列时间线 signal（`Timelines::submit` 给的值），一次 `vkQueueSubmit2` 提交全部批次。跨队列 `Timeline` 等待在调用前经 `Timelines::submitted` 校验。
 - 设备创建：枚举族 → `FamilyInfo::from_properties`（呈现支持经 `vkGetPhysicalDeviceSurfaceSupportKHR`）→ `plan_queues` → `create_counts` 生成 `VkDeviceQueueCreateInfo` → 每个 `QueueId` 创建一条初值 0 的时间线信号量。
 - `Doomed` 为枚举（Buffer+Allocation、Image+Allocation、ImageView、Sampler、CommandPool、DescriptorPool、Pipeline、Framebuffer、Semaphore …），`Drop` 中执行对应 `vkDestroy*`/`allocator.free`。
-- **Drop 顺序**：`wait_idle`（失败或设备丢失也继续）→ `retirement.drain_all` 销毁 → 清缓存 → 销毁时间线信号量 → 关闭分配器 → `vkDestroyDevice`。
+- **组件与锁**：组件都是 `Device` 的直接字段（无额外 `Arc`/`dyn`），热路径访问即字段访问。各组件只持有自己的锁；跨组件嵌套仅限以下几种（外 → 内）：`Caches` 的采样器表 / setup 槽 → `Memory` 计量与托管资源表锁；`Queues` 挂起 acquire 表 → 资源同步单元；`Queues` 每队列外部同步锁（`with_all_queues` 按队列下标升序）→ 仅原生队列调用。退役队列与驱逐登记先出队/取快照再在无锁状态下执行回调，因此销毁路径可自由取 `Memory` 的锁。
+- **Drop 顺序**：`Device::drop` 只做需要多个组件协作的一步：`vkDeviceWaitIdle`（失败或设备丢失也继续）→ 排空退役队列销毁全部 `Doomed` → 释放内置采样器票据。随后字段按声明顺序析构：`caches` → `lifetime` → `memory`（`Drop` 关闭子分配器、释放原生内存块）→ `queues`（`Drop` 销毁时间线信号量）→ `core`（`Drop` 执行 `vkDestroyDevice`，最后释放实例）。创建失败时同样依赖这些组件 `Drop` 回滚已建对象。
+- **对外接口**：组件字段为 `pub(crate)`；外部经 `Device` 的委托方法访问（`caps`/`limits`/`memory_properties`/`allocator_stats`/`timelines`/`queue_plan`/`resources` 等）。原生句柄只经显式互操作出口 `raw_device()`、`instance()`、`primary_queue()`、`physical_device()` 取得。
 - **删除的旧物**：`raw::device::VulkanDevice`、`GraphicsDevice`、`queue_lock`、`retire_timeline`、`graveyard`、`attach_graphics_device`、`SubmissionEngine`、`DeviceState.next_timeline`。
 - 内存：一律持久映射（gpu-allocator `MemoryLocation::CpuToGpu/GpuToCpu` 自带映射指针）；宿主读写不加设备锁，正确性由 `SyncSet` 等待保证（写前等待 GPU 读完、读前等待 GPU 写完）。
 

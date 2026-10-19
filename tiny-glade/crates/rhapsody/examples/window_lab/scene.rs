@@ -4,38 +4,22 @@
 use super::fixture::{HEIGHT, WIDTH};
 use ash::vk::{self, Handle};
 use rhapsody::{
-    bindless::{
-        BindlessConfig, BindlessHeap, BindlessParameters, BindlessResource, BindlessShaderPackage,
-    },
-    pipeline::{
-        AsyncPipelineCompiler, CompilerConfig, HotPipeline, PersistentPipelineCache, PipelinePoll,
-        PipelineTicket,
-    },
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        device::Device,
-        dynamic_constants::DynamicConstants,
-        shader::{
-            DynamicRenderingFormats, PipelineLayout, RasterPipelineDesc, RasterPipelineOpts,
-            ShaderModule, VulkanPipeline,
-        },
-        texture::{Texture, TextureDesc, TextureViewDesc},
-    },
-    rg::{
-        attachments::{Attachment, AttachmentCache, RenderingPolicy},
-        executor::PassContext,
-        frame_loop::FrameLoop,
-        graph::BuiltGraph,
-        pass_api::{AshCommandBackend, RenderPassApi},
-        vulkan::{GpuResource, ResourceSpec},
-    },
-    shader_compiler,
-    shader_pipeline::{
-        compiled::{CompiledShaderPipeline, CompiledShaderStage, ShaderStage},
-        reflection::BindingLocation,
-    },
+    bindless::BindlessConfig, bindless::BindlessHeap, bindless::BindlessParameters,
+    bindless::BindlessResource, bindless::BindlessShaderPackage, device::Device,
+    pipeline::AsyncPipelineCompiler, pipeline::CompilerConfig, pipeline::DynamicRenderingFormats,
+    pipeline::HotPipeline, pipeline::PersistentPipelineCache, pipeline::PipelineLayout,
+    pipeline::PipelinePoll, pipeline::PipelineTicket, pipeline::RasterPipelineDesc,
+    pipeline::RasterPipelineOpts, pipeline::ShaderModule, pipeline::VulkanPipeline,
+    resource::Buffer, resource::BufferDesc, resource::DynamicConstants, resource::Texture,
+    resource::TextureDesc, resource::TextureViewDesc, rg::AshCommandBackend, rg::Attachment,
+    rg::AttachmentCache, rg::BuiltGraph, rg::FrameLoop, rg::GpuResource, rg::PassContext,
+    rg::RenderPassApi, rg::RenderingPolicy, rg::ResourceSpec,
 };
 use serde::Serialize;
+use shader_pipeline::{
+    compiled::CompiledShaderPipeline, compiled::CompiledShaderStage, compiled::ShaderStage,
+    reflection::BindingLocation,
+};
 use std::sync::{
     Arc, Mutex,
     atomic::{AtomicBool, Ordering},
@@ -281,7 +265,7 @@ impl RasterScene {
         rendering: RenderingChoice,
         cache_path: &Path,
     ) -> rhapsody::Result<Self> {
-        let device = frame_loop.swapchain().device.clone();
+        let device = frame_loop.swapchain().device().clone();
         let dynamic_enabled = device
             .caps()
             .is_enabled(rhapsody::device::Feature::DynamicRendering);
@@ -491,7 +475,7 @@ impl RasterScene {
                         .map_err(|e| rhapsody::Error::invalid_usage(format!("{e:?}")))?;
 
                     unsafe {
-                        device.device.cmd_clear_color_image(
+                        device.raw_device().cmd_clear_color_image(
                             vk::CommandBuffer::from_raw(ctx.command.handle()),
                             texture.raw(),
                             vk::ImageLayout::TRANSFER_DST_OPTIMAL,
@@ -589,10 +573,10 @@ impl RasterScene {
                         BindlessParameters::new(heap.clone(), abi.clone(), &[])?
                             .finish(&mut parameters.lock().expect("scene parameter pages"))?;
                     unsafe {
-                        device.device.cmd_bind_pipeline(
+                        device.raw_device().cmd_bind_pipeline(
                             cb,
                             vk::PipelineBindPoint::GRAPHICS,
-                            pipeline.handle,
+                            pipeline.raw_handle(),
                         );
                         prepared_parameters.bind_pass(&ctx, pipeline.clone())?;
                     }
@@ -643,15 +627,17 @@ impl RasterScene {
                         bindings.finish(&mut parameters.lock().expect("scene parameter pages"))?;
                     let cb = vk::CommandBuffer::from_raw(ctx.command.handle());
                     unsafe {
-                        device.device.cmd_bind_pipeline(
+                        device.raw_device().cmd_bind_pipeline(
                             cb,
                             vk::PipelineBindPoint::COMPUTE,
-                            pipeline.handle,
+                            pipeline.raw_handle(),
                         );
                         prepared.bind_pass(&ctx, pipeline.clone())?;
                     }
                     unsafe {
-                        device.device.cmd_dispatch(cb, WIDTH / 8, HEIGHT / 4, 1);
+                        device
+                            .raw_device()
+                            .cmd_dispatch(cb, WIDTH / 8, HEIGHT / 4, 1);
                     }
                     Ok(())
                 };
@@ -667,11 +653,11 @@ impl RasterScene {
             pass.add_resource_access(readback_handle, TRANSFER_WRITE, 0)?;
             pass.render_with_context(move |ctx: PassContext<'_>| {
                 unsafe {
-                    device.device.cmd_copy_image_to_buffer(
+                    device.raw_device().cmd_copy_image_to_buffer(
                         vk::CommandBuffer::from_raw(ctx.command.handle()),
-                        image.handle,
+                        image.raw_handle(),
                         vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                        readback.handle,
+                        readback.raw_handle(),
                         &[copy_region()],
                     );
                 }
@@ -706,9 +692,9 @@ impl RasterScene {
                     .aspect_mask(vk::ImageAspectFlags::COLOR)
                     .layer_count(1);
                 unsafe {
-                    device.device.cmd_copy_image(
+                    device.raw_device().cmd_copy_image(
                         cb,
-                        source.handle,
+                        source.raw_handle(),
                         vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
                         current.raw(),
                         vk::ImageLayout::TRANSFER_DST_OPTIMAL,
@@ -721,11 +707,11 @@ impl RasterScene {
                                 depth: 1,
                             })],
                     );
-                    device.device.cmd_copy_image_to_buffer(
+                    device.raw_device().cmd_copy_image_to_buffer(
                         cb,
                         previous.raw(),
                         vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                        target.handle,
+                        target.raw_handle(),
                         &[copy_region()],
                     );
                 }
@@ -746,10 +732,7 @@ impl RasterScene {
         Ok(graph.build())
     }
 
-    pub fn finish_execution(
-        &mut self,
-        result: &rhapsody::Result<rhapsody::rg::frame_loop::FrameOutcome>,
-    ) {
+    pub fn finish_execution(&mut self, result: &rhapsody::Result<rhapsody::rg::FrameOutcome>) {
         if result.is_err()
             && let Some(history) = &mut self.temporal
         {
@@ -1096,7 +1079,7 @@ fn expected_injected_record_failure(
 ) -> bool {
     reached
         && matches!(error.downcast_ref::<rhapsody::Error>(), Some(rhapsody::Error::InvalidUsage { source: Some(source), .. })
-        if matches!(source.downcast_ref::<rhapsody::rg::executor::Error>(), Some(rhapsody::rg::executor::Error::Record(outcome)) if outcome.panic))
+        if matches!(source.downcast_ref::<rhapsody::rg::ExecutionError>(), Some(rhapsody::rg::ExecutionError::Record(outcome)) if outcome.panic))
 }
 
 /// Exact channel permutation avoids implementation-dependent float rounding.
@@ -1253,7 +1236,7 @@ mod tests {
             assert_eq!(abi.original_push_bytes, 0);
             assert_eq!(abi.bindings.len(), 2);
             assert_eq!(abi.parameter_bytes, 8);
-            let entries = rhapsody::raw::shader::reflect_spirv_entries(&stages[0].spirv).unwrap();
+            let entries = rhapsody::pipeline::reflect_spirv_entries(&stages[0].spirv).unwrap();
             assert_eq!(entries.len(), 1);
             assert_eq!(entries[0].push_constants.len(), 1);
             assert!(
@@ -1371,8 +1354,8 @@ mod tests {
 
     #[test]
     fn failure_script_only_accepts_the_reached_injected_recording_error() {
-        let injected = rhapsody::Error::from(rhapsody::rg::executor::Error::Record(
-            rhapsody::rg::recorder::Outcome {
+        let injected = rhapsody::Error::from(rhapsody::rg::ExecutionError::Record(
+            rhapsody::rg::Outcome {
                 panic: true,
                 ..Default::default()
             },

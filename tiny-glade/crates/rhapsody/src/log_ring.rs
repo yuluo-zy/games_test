@@ -1,130 +1,151 @@
-//! 顶层日志环：`init_logging`（0x140be6a90）/`dump_log`（0x140be6b50）/`print_log_dump`（ICF thunk 0x140be6b40）。
+//! Process-wide diagnostic log ring.
 //!
-//! 机器码证实的布局（全局 0x143634e40，24B）：`{ data: *mut u8 @0, cap: usize @8, cursor: AtomicU64 @0x10 }`，
-//! 即 `leekspin::RingBuffer`（crash.rs 文件头已提到）：
-//! - 构造 `FUN_1418c1310(&mut ring, 0x10000)`：cap 为负 panic；cap≠0 时分配 cap 字节（对齐 1），cursor=0。
-//! - 写入 `FUN_1418c1380(&ring, data, len)`：`pos = cursor.fetch_add(len)`（`lock xadd`）；cap==0 时除零 panic；
-//!   `pos %= cap`；`pos+len <= cap` 单次拷贝，否则 `len > cap` 断言 `part1 <= self.data.len()`，
-//!   再分两段（先拷到尾，剩余从头）。**无锁**，多线程写入靠 fetch_add 保留区间。
-//! - 转储 `FUN_1418c1430(&mut Vec, &ring)`：拷出 cap 字节；`cursor <= cap` 时结果只含前 `cursor` 字节，
-//!   否则对整份拷贝做 `rotate_left(cursor % cap)`（最旧在前）。拷贝时不加锁（与写入并发会读到撕裂数据）。
-//! - `init_logging`：先把新环写进全局，再断言旧值为空（`assertion failed: prev.is_none()`），
-//!   所以重复初始化会 panic，但全局已被新环替换；`dump_log` 全局为空时 panic。
-//!
-//! 谁写这个环（机器码证实）：`dispose_cb_resource<T>` 写 kind 3/4 记录，`SequentialDisposal::dispose_in_order`
-//! 写 kind 0x1e 记录（见 `raw/disposal.rs`）；更多调用点（FUN_1418c1380 的 xref，约 50+ 处，分布在 raw-core/rg/managed）
-//! 未逐个枚举。记录布局：`[16B 名字（ASCII 过滤，0 填充）][8B 载荷，可选][1B kind]`；`dispose_in_order` 的记录
-//! 无名字，只有 `[u64][kind=0x1e]`（9B）。kind 3 = `[name16][u64 seq][3]`（25B），kind 4 = `[name16][4]`（17B）。
-//! 名字参数的语义（调用方给的 &str）未证实。
-use parking_lot::RwLock;
+//! The ring is a fixed array of record slots. Writers reserve a slot with one
+//! `fetch_add` and publish it through a per-slot sequence word (a seqlock), so
+//! writers never block or allocate and a concurrent dump never returns a torn
+//! record: slots that are being written, or that were overwritten while being
+//! copied, are skipped. Records longer than [`MAX_RECORD_BYTES`] are truncated.
+//! Nothing in this module panics; writes before [`init_logging`] are dropped
+//! and dumps of an uninitialised ring are empty.
 use std::io::Write;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicU8, AtomicU64, Ordering};
+use std::sync::OnceLock;
+use std::sync::atomic::{AtomicU64, Ordering, fence};
 
+/// Total payload capacity of the global ring in bytes.
 pub const LOG_RING_BYTES: usize = 0x10000;
+const WORDS_PER_SLOT: usize = 7;
+/// Largest payload stored for one record; longer records are truncated.
+pub const MAX_RECORD_BYTES: usize = WORDS_PER_SLOT * 8 - 1;
 
+struct Slot {
+    /// `0`: never written; odd: being written; even `2 * (index + 1)`: committed.
+    sequence: AtomicU64,
+    /// Little-endian payload words; the last byte holds the payload length.
+    words: [AtomicU64; WORDS_PER_SLOT],
+}
+impl Slot {
+    fn new() -> Self {
+        Self {
+            sequence: AtomicU64::new(0),
+            words: std::array::from_fn(|_| AtomicU64::new(0)),
+        }
+    }
+}
+
+/// A bounded multi-writer record ring with torn-record detection.
 pub struct RingBuffer {
-    data: Box<[AtomicU8]>,
-    cursor: AtomicU64,
+    slots: Box<[Slot]>,
+    next: AtomicU64,
 }
 impl RingBuffer {
-    pub fn new(cap: usize) -> Self {
+    /// `capacity_bytes` is rounded down to whole slots (at least one slot).
+    pub fn new(capacity_bytes: usize) -> Self {
+        let count = (capacity_bytes / size_of::<Slot>()).max(1);
         Self {
-            data: (0..cap).map(|_| AtomicU8::new(0)).collect(),
-            cursor: AtomicU64::new(0),
+            slots: (0..count).map(|_| Slot::new()).collect(),
+            next: AtomicU64::new(0),
         }
     }
+    /// Number of records retained before the oldest is overwritten.
     pub fn capacity(&self) -> usize {
-        self.data.len()
+        self.slots.len()
     }
-    pub fn cursor(&self) -> u64 {
-        self.cursor.load(Ordering::Relaxed)
+    /// Total number of records ever written.
+    pub fn written(&self) -> u64 {
+        self.next.load(Ordering::Relaxed)
     }
-    /// 原 FUN_1418c1380。cap==0 为除零 panic，`len > cap` 为 `part1 <= self.data.len()` 断言。
+    /// Append one record, truncating it to [`MAX_RECORD_BYTES`].
     pub fn write(&self, bytes: &[u8]) {
-        let len = bytes.len() as u64;
-        let pos = self.cursor.fetch_add(len, Ordering::Relaxed);
-        let cap = self.data.len();
-        assert!(
-            cap != 0,
-            "attempt to calculate the remainder with a divisor of zero"
-        );
-        let pos = (pos % cap as u64) as usize;
-        assert!(
-            bytes.len() <= cap,
-            "assertion failed: part1 <= self.data.len()"
-        );
-        for (index, byte) in bytes.iter().enumerate() {
-            self.data[(pos + index) % cap].store(*byte, Ordering::Relaxed);
+        let bytes = &bytes[..bytes.len().min(MAX_RECORD_BYTES)];
+        let index = self.next.fetch_add(1, Ordering::Relaxed);
+        let slot = &self.slots[(index % self.slots.len() as u64) as usize];
+        // Writers lapping each other on one slot is harmless: a reader only
+        // accepts a slot whose sequence is even and unchanged around its copy.
+        slot.sequence
+            .store(index.wrapping_mul(2).wrapping_add(1), Ordering::Relaxed);
+        fence(Ordering::Release);
+        let mut packed = [0u8; WORDS_PER_SLOT * 8];
+        packed[..bytes.len()].copy_from_slice(bytes);
+        packed[MAX_RECORD_BYTES] = bytes.len() as u8;
+        for (word, chunk) in slot.words.iter().zip(packed.chunks_exact(8)) {
+            let mut value = [0u8; 8];
+            value.copy_from_slice(chunk);
+            word.store(u64::from_le_bytes(value), Ordering::Relaxed);
         }
+        slot.sequence
+            .store(index.wrapping_add(1).wrapping_mul(2), Ordering::Release);
     }
-    /// 原 FUN_1418c1430。
+    /// Committed records, oldest first. Torn or in-progress records are skipped.
+    pub fn records(&self) -> Vec<Vec<u8>> {
+        let mut records: Vec<(u64, Vec<u8>)> = Vec::with_capacity(self.slots.len());
+        for slot in self.slots.iter() {
+            let before = slot.sequence.load(Ordering::Acquire);
+            if before == 0 || before % 2 == 1 {
+                continue;
+            }
+            let mut packed = [0u8; WORDS_PER_SLOT * 8];
+            for (word, chunk) in slot.words.iter().zip(packed.chunks_exact_mut(8)) {
+                chunk.copy_from_slice(&word.load(Ordering::Relaxed).to_le_bytes());
+            }
+            fence(Ordering::Acquire);
+            if slot.sequence.load(Ordering::Relaxed) != before {
+                continue;
+            }
+            let len = usize::from(packed[MAX_RECORD_BYTES]).min(MAX_RECORD_BYTES);
+            records.push((before / 2, packed[..len].to_vec()));
+        }
+        records.sort_unstable_by_key(|(order, _)| *order);
+        records.into_iter().map(|(_, bytes)| bytes).collect()
+    }
+    /// Concatenated committed records, oldest first.
     pub fn dump(&self) -> Vec<u8> {
-        let mut copy: Vec<u8> = self
-            .data
-            .iter()
-            .map(|byte| byte.load(Ordering::Relaxed))
-            .collect();
-        let cursor = self.cursor.load(Ordering::Relaxed);
-        let cap = copy.len() as u64;
-        if cursor <= cap {
-            copy.truncate(cursor as usize);
-        } else {
-            copy.rotate_left((cursor % cap) as usize);
-        }
-        copy
+        self.records().concat()
     }
 }
 
-static RING: RwLock<Option<Arc<RingBuffer>>> = RwLock::new(None);
+static RING: OnceLock<RingBuffer> = OnceLock::new();
 
-/// 建 0x10000 字节环；先替换全局再断言旧值为空（原顺序）。
+/// Create the global ring. Repeated calls are no-ops.
 pub fn init_logging() {
-    let previous = RING
-        .write()
-        .replace(Arc::new(RingBuffer::new(LOG_RING_BYTES)));
-    assert!(previous.is_none(), "assertion failed: prev.is_none()");
+    RING.get_or_init(|| RingBuffer::new(LOG_RING_BYTES));
 }
 
-/// 严格写入口（全局为空时 panic，对应原版除零）。
+/// Append a record to the global ring; dropped while logging is uninitialised.
 pub fn write(bytes: &[u8]) {
-    let ring = RING.read().clone().expect("rhapsody log not initialised");
-    ring.write(bytes);
-}
-
-/// crate 内部使用的宽松写入口：未初始化时丢弃（原版此时会 panic，见 [`write`]）。
-pub fn record(bytes: &[u8]) {
-    let ring = RING.read().clone();
-    if let Some(ring) = ring {
+    if let Some(ring) = RING.get() {
         ring.write(bytes);
     }
 }
 
-/// `[u64 载荷][kind]`（9B），如 `dispose_in_order` 的 kind 0x1e 记录。
+/// `[u64 payload][kind]` record.
 pub fn record_event(kind: u8, payload: u64) {
     let mut bytes = [0u8; 9];
     bytes[..8].copy_from_slice(&payload.to_le_bytes());
     bytes[8] = kind;
-    record(&bytes);
+    write(&bytes);
 }
 
-/// `[name16][u64 载荷]?[kind]`，名字取前 16 个 ASCII 字符，0 填充（原 dispose_cb_resource 的记录形态）。
+/// `[name: 16 bytes, zero padded][u64 payload]?[kind]` record. The name is
+/// truncated at a UTF-8 character boundary.
 pub fn record_named(name: &str, payload: Option<u64>, kind: u8) {
-    let mut bytes = Vec::with_capacity(25);
-    bytes.extend_from_slice(&crate::leek::Name::from(name).0);
-    if let Some(payload) = payload {
-        bytes.extend_from_slice(&payload.to_le_bytes());
+    let mut end = name.len().min(16);
+    while !name.is_char_boundary(end) {
+        end -= 1;
     }
-    bytes.push(kind);
-    record(&bytes);
+    let mut bytes = [0u8; 25];
+    bytes[..end].copy_from_slice(&name.as_bytes()[..end]);
+    let mut len = 16;
+    if let Some(payload) = payload {
+        bytes[16..24].copy_from_slice(&payload.to_le_bytes());
+        len = 24;
+    }
+    bytes[len] = kind;
+    write(&bytes[..=len]);
 }
 
-/// 原 `dump_log`：返回按时间顺序（最旧在前）的字节；未初始化 panic。
+/// Committed records of the global ring, oldest first (empty if uninitialised).
 pub fn dump_log_vec() -> Vec<u8> {
-    RING.read()
-        .clone()
-        .expect("rhapsody log not initialised")
-        .dump()
+    RING.get().map(RingBuffer::dump).unwrap_or_default()
 }
 
 pub fn dump_log(out: &mut impl Write) -> std::io::Result<()> {
@@ -138,36 +159,79 @@ pub fn print_log_dump() -> std::io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Arc;
 
     #[test]
-    fn ring_semantics_match_original_layout() {
-        let ring = RingBuffer::new(8);
+    fn records_are_ordered_truncated_and_never_panic() {
+        let ring = RingBuffer::new(3 * size_of::<Slot>());
+        assert_eq!(ring.capacity(), 3);
+        assert!(ring.dump().is_empty());
         ring.write(b"abc");
-        assert_eq!(ring.dump(), b"abc"); // cursor <= cap：前 cursor 字节
-        ring.write(b"defgh");
-        assert_eq!(ring.dump(), b"abcdefgh"); // cursor == cap，不旋转
-        ring.write(b"XY");
-        assert_eq!(ring.cursor(), 10);
-        assert_eq!(ring.dump(), b"cdefghXY"); // rotate_left(10 % 8)，最旧在前
-        assert!(std::panic::catch_unwind(|| ring.write(&[0; 9])).is_err()); // len > cap
-        assert!(std::panic::catch_unwind(|| RingBuffer::new(0).write(b"x")).is_err()); // 除零
+        ring.write(b"");
+        ring.write(&[7; 200]);
+        assert_eq!(ring.records()[0], b"abc");
+        assert_eq!(ring.records()[2].len(), MAX_RECORD_BYTES);
+        ring.write(b"d");
+        assert_eq!(
+            ring.records(),
+            vec![Vec::new(), vec![7; MAX_RECORD_BYTES], b"d".to_vec()]
+        );
+        assert_eq!(ring.written(), 4);
+        assert_eq!(RingBuffer::new(0).capacity(), 1);
     }
 
-    // 全局单例：只在一个测试里走完整生命周期。
     #[test]
-    fn global_ring_init_once_and_event_layout() {
-        record(b"dropped before init");
-        assert!(std::panic::catch_unwind(dump_log_vec).is_err());
+    fn torn_slots_are_skipped() {
+        let ring = RingBuffer::new(2 * size_of::<Slot>());
+        ring.write(b"ok");
+        ring.write(b"torn");
+        // A writer that reserved slot 1 and has not committed yet.
+        ring.slots[1].sequence.store(5, Ordering::Release);
+        assert_eq!(ring.records(), vec![b"ok".to_vec()]);
+    }
+
+    #[test]
+    fn concurrent_writers_produce_only_whole_records() {
+        let ring = Arc::new(RingBuffer::new(64 * size_of::<Slot>()));
+        let workers: Vec<_> = (0..4u8)
+            .map(|id| {
+                let ring = ring.clone();
+                std::thread::spawn(move || {
+                    for _ in 0..2000 {
+                        ring.write(&[id; 32]);
+                    }
+                })
+            })
+            .collect();
+        for _ in 0..50 {
+            for record in ring.records() {
+                assert_eq!(record.len(), 32);
+                assert!(record.iter().all(|&b| b == record[0]));
+            }
+        }
+        for worker in workers {
+            worker.join().unwrap();
+        }
+        assert_eq!(ring.records().len(), 64);
+    }
+
+    #[test]
+    fn global_ring_is_idempotent_and_formats_named_records() {
+        write(b"may be dropped before init");
         init_logging();
+        init_logging();
+        record_named("abcdefghijklmn\u{4e2d}", Some(9), 3);
         record_event(0x1e, 7);
-        record_named("ab", Some(9), 3);
         let out = dump_log_vec();
-        assert_eq!(out.len(), 9 + 25);
-        assert_eq!(&out[..9], &[7, 0, 0, 0, 0, 0, 0, 0, 0x1e]);
-        assert_eq!(&out[9..11], b"ab");
-        assert_eq!(out[33], 3);
-        // 重复初始化 panic，但全局已被新环替换（原顺序：先写后断言）。
-        assert!(std::panic::catch_unwind(init_logging).is_err());
-        assert!(dump_log_vec().is_empty());
+        assert_eq!(&out[out.len() - 9..], &[7, 0, 0, 0, 0, 0, 0, 0, 0x1e]);
+        let named = &out[out.len() - 34..out.len() - 9];
+        assert_eq!(&named[..14], b"abcdefghijklmn");
+        assert_eq!(
+            &named[14..16],
+            &[0, 0],
+            "a split UTF-8 character is not stored"
+        );
+        assert_eq!(&named[16..24], &9u64.to_le_bytes());
+        assert_eq!(named[24], 3);
     }
 }

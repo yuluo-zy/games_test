@@ -21,15 +21,15 @@ fn known_loss_rejects_buffer_image_and_view_creation_without_new_allocations() {
         TextureDesc::new_2d(4, 4, vk::Format::R8G8B8A8_UNORM).usage(vk::ImageUsageFlags::SAMPLED);
     let image = Arc::new(Texture::new(device.clone(), &desc).unwrap());
     let managed = device
-        .resources
+        .resources()
         .textures
         .allocate_shared(image.clone())
         .unwrap();
     let _cached_view = managed.view(None).unwrap();
-    let allocations = device.allocator_stats.report().allocations.len();
+    let allocations = device.allocator_stats().report().allocations.len();
     // No GPU work is pending. This exercises the sticky CPU state without
     // inducing a real driver fault or fabricating a successful completion point.
-    device.timelines.mark_device_lost();
+    device.timelines().mark_device_lost();
     assert!(matches!(
         Buffer::new(
             device.clone(),
@@ -50,7 +50,7 @@ fn known_loss_rejects_buffer_image_and_view_creation_without_new_allocations() {
         Err(rhapsody::Error::DeviceLost)
     ));
     assert_eq!(
-        device.allocator_stats.report().allocations.len(),
+        device.allocator_stats().report().allocations.len(),
         allocations
     );
 }
@@ -101,15 +101,13 @@ fn known_loss_rejects_raw_pools_descriptors_and_host_access() {
     let binding = DescriptorSetBinding::Buffer {
         ty: vk::DescriptorType::STORAGE_BUFFER,
         info: vk::DescriptorBufferInfo::default()
-            .buffer(owner.handle)
+            .buffer(owner.raw_handle())
             .range(64),
         owner,
     };
-    let registered = device.allocator_stats.total_registered();
-    let updates = device
-        .descriptor_update_count
-        .load(std::sync::atomic::Ordering::SeqCst);
-    device.timelines.mark_device_lost(); // Idle driver; no actual device fault or pending GPU work.
+    let registered = device.allocator_stats().total_registered();
+    let updates = device.descriptor_update_count();
+    device.timelines().mark_device_lost(); // Idle driver; no actual device fault or pending GPU work.
     lost(Sampler::new(
         device.clone(),
         &vk::SamplerCreateInfo::default(),
@@ -129,7 +127,7 @@ fn known_loss_rejects_raw_pools_descriptors_and_host_access() {
     lost(VulkanDescriptorPool::new(device.clone(), &plan, 2));
     lost(pool.allocate(layout.clone()));
     lost(unsafe { set.update(0, 0, &binding) });
-    lost(unsafe { binding.write(&device, set.handle, 0, 0) });
+    lost(unsafe { binding.write(&device, set.raw_handle(), 0, 0) });
     lost(TimelineSemaphore::new(device.clone(), 0));
     lost(semaphore.completed());
     lost(semaphore.wait(0, 0));
@@ -141,13 +139,8 @@ fn known_loss_rejects_raw_pools_descriptors_and_host_access() {
     assert!(unsafe { host.mapped_full_slice_mut() }.is_none());
     assert!(host.persistent_host_ptr().is_none());
     lost(host.device_address());
-    assert_eq!(device.allocator_stats.total_registered(), registered);
-    assert_eq!(
-        device
-            .descriptor_update_count
-            .load(std::sync::atomic::Ordering::SeqCst),
-        updates
-    );
+    assert_eq!(device.allocator_stats().total_registered(), registered);
+    assert_eq!(device.descriptor_update_count(), updates);
 }
 
 #[test]
@@ -163,9 +156,9 @@ fn unsupported_descriptor_layout_is_rejected_before_native_creation() {
     let mut properties = vk::PhysicalDeviceProperties2::default().push_next(&mut maintenance);
     unsafe {
         device
-            .instance
-            .instance
-            .get_physical_device_properties2(device.physical, &mut properties);
+            .instance()
+            .raw_instance()
+            .get_physical_device_properties2(device.physical_device(), &mut properties);
     }
     // The guaranteed minimum is not a maximum. Find a genuinely unsupported
     // native packing size, then require the production constructor to reject it.
@@ -184,7 +177,7 @@ fn unsupported_descriptor_layout_is_rejected_before_native_creation() {
         let mut support = vk::DescriptorSetLayoutSupport::default();
         unsafe {
             device
-                .device
+                .raw_device()
                 .get_descriptor_set_layout_support(&info, &mut support);
         }
         if support.supported == vk::FALSE {
@@ -217,5 +210,5 @@ fn unsupported_descriptor_layout_is_rejected_before_native_creation() {
     };
     assert_eq!(error.kind(), rhapsody::ErrorKind::Unsupported);
     assert!(!device.is_device_lost());
-    assert_eq!(device.garbage_stats().pending, 0);
+    assert_eq!(device.retirement_stats().pending, 0);
 }

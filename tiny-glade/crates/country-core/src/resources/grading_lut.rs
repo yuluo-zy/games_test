@@ -139,7 +139,7 @@ pub const TEXTURE_RECORD_SIZE: usize = 0x38;
 /// 原生纹理记录（O：`GradingLut +0x28..0x60`，0x38 B，是 `create_texture` 的返回值）。
 ///
 /// fresh 只锚定 **大小 0x38**（`GradingLuts::load` 的 stride 与 `load_cube` 的 0x38 字节搬移）；
-/// 记录内部字段属于 `rhapsody::raw::texture::Texture`，本 crate 只有 0x18 语义模型
+/// 记录内部字段属于 `rhapsody::resource::Texture`，本 crate 只有 0x18 语义模型
 /// （`id/width/height/format`）。`_gap` 保留未锚定尾部，不编造字段。
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
@@ -361,16 +361,16 @@ mod tests {
             fail: false,
             seen: RefCell::new(Vec::new()),
         };
-        let path = std::env::temp_dir().join(format!(
-            "grading_lut_unwrapped_{}.png",
-            std::process::id()
-        ));
+        let path =
+            std::env::temp_dir().join(format!("grading_lut_unwrapped_{}.png", std::process::id()));
         let img = image::RgbaImage::from_raw(16, 16, vec![0u8; 16 * 16 * 4]).unwrap();
-        img.write_to(&mut std::fs::File::create(&path).unwrap(), image::ImageFormat::Png)
-            .unwrap();
+        img.write_to(
+            &mut std::fs::File::create(&path).unwrap(),
+            image::ImageFormat::Png,
+        )
+        .unwrap();
 
-        let lut =
-            GradingLut::load_unwrapped_from_path(&dev, &path, "warm".into());
+        let lut = GradingLut::load_unwrapped_from_path(&dev, &path, "warm".into());
         let _ = std::fs::remove_file(&path);
 
         assert_eq!((lut.name.as_str(), lut.size), ("warm", UNWRAPPED_SIZE));
@@ -416,10 +416,7 @@ mod tests {
 
     #[test]
     fn grading_luts_load_scans_directory_by_extension() {
-        let dir = std::env::temp_dir().join(format!(
-            "grading_luts_dir_{}",
-            std::process::id()
-        ));
+        let dir = std::env::temp_dir().join(format!("grading_luts_dir_{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(dir.join("tone.cube"), "LUT_3D_SIZE 2\n0 0 0\n1 1 1\n").unwrap();

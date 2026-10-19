@@ -2,10 +2,7 @@
 use crate::rhapsody_types::Texture;
 use ash::vk;
 use parking_lot::Mutex;
-use rhapsody::{
-    bindless::{BindlessHeap, BindlessLease},
-    raw::texture::TextureView,
-};
+use rhapsody::{bindless::BindlessHeap, bindless::BindlessLease, resource::TextureView};
 use std::sync::Arc;
 
 type ViewResolver = dyn Fn(&Texture) -> rhapsody::Result<Arc<TextureView>> + Send + Sync;

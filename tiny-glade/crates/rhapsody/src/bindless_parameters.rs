@@ -74,7 +74,8 @@ impl BindlessShaderPackage {
             );
         let mut stage_memory = heap
             .device
-            .allocator_stats
+            .memory
+            .stats
             .reserve_cpu_bytes(maximum_lowering_bytes, crate::device::BudgetCategory::Live)?;
         let (abi, stages) =
             shader_compiler::bindless::lower_pipeline_with_limit(input, runtime_array_limit)
@@ -101,7 +102,8 @@ impl BindlessShaderPackage {
             as u64;
         let memory = heap
             .device
-            .allocator_stats
+            .memory
+            .stats
             .reserve_cpu_bytes(abi_bytes, crate::device::BudgetCategory::Live)?;
         let abi = Arc::new(BindlessShaderAbi {
             definition: abi,
@@ -259,7 +261,8 @@ impl BindlessParameters {
             );
         let memory = heap
             .device
-            .allocator_stats
+            .memory
+            .stats
             .reserve_cpu_bytes(maximum_bytes, crate::device::BudgetCategory::Live)?;
         let mut bytes = SmallVec::new();
         bytes
@@ -480,7 +483,7 @@ impl PreparedBindlessParameters {
     }
     fn push(&self, command: vk::CommandBuffer, pipeline: &VulkanPipeline) {
         unsafe {
-            self.heap.device.device.cmd_push_constants(
+            self.heap.device.core.device.cmd_push_constants(
                 command,
                 pipeline.layout.handle,
                 pipeline.layout.push_constants[0].stage_flags,

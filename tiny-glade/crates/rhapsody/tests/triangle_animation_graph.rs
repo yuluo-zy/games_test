@@ -135,7 +135,7 @@ fn new_slot(backend: &mut VulkanGraphBackend) -> Slot {
         u64::from(SIZE * SIZE * 4),
         vk::BufferUsageFlags::TRANSFER_DST,
     );
-    let buffer = Arc::new(Buffer::new(backend.device.clone(), &desc).unwrap());
+    let buffer = Arc::new(Buffer::new(backend.device().clone(), &desc).unwrap());
     let token = backend
         .bind_import(GpuResource::Buffer(buffer.clone()))
         .unwrap();
@@ -297,10 +297,10 @@ impl Harness {
                 api.set_stencil_ref(0);
                 // rg 的 RenderPassApi 没有 bind_pipeline（原版在 pass 之外绑定管线），这里直接用 ash。
                 unsafe {
-                    device.device.cmd_bind_pipeline(
+                    device.raw_device().cmd_bind_pipeline(
                         cb,
                         vk::PipelineBindPoint::GRAPHICS,
-                        pipeline.handle,
+                        pipeline.raw_handle(),
                     )
                 };
                 api.bind_vertex_buffer_by_binding_point(0, vertices.raw());
@@ -332,7 +332,7 @@ impl Harness {
 
                 let cb = vk::CommandBuffer::from_raw(ctx.command.handle());
                 unsafe {
-                    device.device.cmd_copy_image_to_buffer(
+                    device.raw_device().cmd_copy_image_to_buffer(
                         cb,
                         texture.raw(),
                         vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
@@ -347,7 +347,7 @@ impl Harness {
                             ..Default::default()
                         }],
                     );
-                    device.device.cmd_copy_image(
+                    device.raw_device().cmd_copy_image(
                         cb,
                         texture.raw(),
                         vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
@@ -397,7 +397,7 @@ impl Harness {
 
                 let cb = vk::CommandBuffer::from_raw(ctx.command.handle());
                 unsafe {
-                    device.device.cmd_copy_image_to_buffer(
+                    device.raw_device().cmd_copy_image_to_buffer(
                         cb,
                         history.raw(),
                         vk::ImageLayout::TRANSFER_SRC_OPTIMAL,

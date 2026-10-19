@@ -48,7 +48,7 @@ pub mod rhapsody_boundary {
         pub _gap20: u64,
     }
 
-    /// `rhapsody::raw::buffer::BufferDesc`（占位，仅保留调用点传入的信息）。
+    /// `rhapsody::resource::BufferDesc`（占位，仅保留调用点传入的信息）。
     #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
     pub struct BufferDesc {
         pub size: usize,
@@ -110,7 +110,7 @@ pub mod rhapsody_boundary {
             offset: usize,
         ) -> Result<(), BackendError>;
 
-        /// `rhapsody::raw::buffer::Buffer::mapped_slice_mut(&self, device)`（O 0x140bd4cd0）：持久映射的主机可见缓冲的字节切片；
+        /// `rhapsody::resource::Buffer::mapped_slice_mut(&self, device)`（O 0x140bd4cd0）：持久映射的主机可见缓冲的字节切片；
         /// 设备不映射该缓冲 → `None`（`MappedStorageBuffer::new_storage_buffer` 随后 `Option::unwrap` panic）。
         /// B 阶段（i_api）并入本 trait：原先独立的 `MappedBuffers` 导致 `&dyn GraphicsDevice`（库侧 `SsboType::new_storage_buffer`
         /// 的唯一设备参数）构造不了 `MappedStorageBuffer`。占位默认值 `None`，真实实现 = rhapsody 的持久映射。
@@ -118,7 +118,7 @@ pub mod rhapsody_boundary {
             None
         }
 
-        /// `rhapsody::raw::buffer::Buffer::device_address(&self, device)`（O 0x140bd4c00；`nani::trimesh` 的
+        /// `rhapsody::resource::Buffer::device_address(&self, device)`（O 0x140bd4c00；`nani::trimesh` 的
         /// `Trimesh::build` 把块地址加上它）。原先在 `nani::trimesh` 单列的 `BufferDeviceAddress` trait 已并入此处。
         /// 占位默认值 0（真实实现 = `vkGetBufferDeviceAddress`，由 rhapsody 持有；不自造行为）。
         fn device_address(&self, _buffer: &Buffer) -> u64 {
@@ -142,25 +142,23 @@ pub mod rhapsody_boundary {
         }
     }
 
-    /// 占位：`rhapsody::rg::resource::ResourceHandle`（`sparse_instance_buffer` 的转换用）。
+    /// 占位：`rhapsody::rg::ResourceHandle`（`sparse_instance_buffer` 的转换用）。
     #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
     pub struct ResourceHandle(pub u64, pub u64);
 }
 
 /// 游戏侧 `BufferDesc`（`{size:usize, usage:u32, memory:u8, alignment:usize, gpu_only:bool}`）→
-/// 真实 `rhapsody::raw::buffer::BufferDesc`（WIRING §2.3 映射表）。memory 1/2/3/4 →
+/// 真实 `rhapsody::resource::BufferDesc`（WIRING §2.3 映射表）。memory 1/2/3/4 →
 /// `MemoryLocation::{GpuOnly, CpuToGpu, CpuToGpuLowPrio, GpuToCpu}`。
-pub fn convert_buffer_desc(
-    desc: &rhapsody_boundary::BufferDesc,
-) -> rhapsody::raw::buffer::BufferDesc {
-    use rhapsody::raw::buffer::MemoryLocation;
+pub fn convert_buffer_desc(desc: &rhapsody_boundary::BufferDesc) -> rhapsody::resource::BufferDesc {
+    use rhapsody::resource::MemoryLocation;
     let memory = match desc.memory {
         2 => MemoryLocation::CpuToGpu,
         3 => MemoryLocation::CpuToGpuLowPrio,
         4 => MemoryLocation::GpuToCpu,
         _ => MemoryLocation::GpuOnly,
     };
-    let mut out = rhapsody::raw::buffer::BufferDesc::new(
+    let mut out = rhapsody::resource::BufferDesc::new(
         desc.size as u64,
         ash::vk::BufferUsageFlags::from_raw(desc.usage),
         memory,

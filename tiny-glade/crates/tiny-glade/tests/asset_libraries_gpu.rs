@@ -7,12 +7,8 @@ use country_core::{
     resources::texture_presets::TexturePreset,
 };
 use rhapsody::{
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        resource_access::{buffer_access, image_access},
-        setup::with_setup_command,
-    },
-    resource::{OwnershipRange, range_state::AccessScope},
+    command::buffer_access, command::image_access, resource::AccessScope, resource::Buffer,
+    resource::BufferDesc, resource::OwnershipRange, resource::with_setup_command,
 };
 use std::sync::Arc;
 use tiny_glade::render_host::TextureHost;
@@ -77,7 +73,7 @@ fn native_texture_clear_changes_pixels_and_descriptor_owns_a_real_view() {
         .queue(rhapsody::device::QueueClass::Graphics)
         .unwrap();
     // SAFETY：资源由当前设备创建，访问经 rhapsody 登记，setup 提交同步等待完成。
-    with_setup_command(&device, |command| unsafe {
+    with_setup_command(&device, &[], |command| unsafe {
         image_access(
             command,
             owner.clone(),
@@ -108,11 +104,11 @@ fn native_texture_clear_changes_pixels_and_descriptor_owns_a_real_view() {
                 write: true,
             },
         )?;
-        device.device.cmd_copy_image_to_buffer(
-            command.handle,
-            owner.handle,
+        device.raw_device().cmd_copy_image_to_buffer(
+            command.raw_handle(),
+            owner.raw_handle(),
             vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-            output.handle,
+            output.raw_handle(),
             &[vk::BufferImageCopy::default()
                 .image_subresource(
                     vk::ImageSubresourceLayers::default()
@@ -138,6 +134,7 @@ fn native_texture_clear_changes_pixels_and_descriptor_owns_a_real_view() {
             },
         )
     })
+    .and_then(|setup| setup.wait(rhapsody::resource::SETUP_WAIT_TIMEOUT_NS))
     .unwrap();
     let mut pixels = [0xff; 64];
     output.read_bytes(0, &mut pixels).unwrap();

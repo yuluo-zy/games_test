@@ -115,7 +115,7 @@ struct Record {
     sharing: crate::resource::ResourceSharing,
     resource: TemporalResource,
     state: TemporalRecordState,
-    /// 候选字段（原 Record 没有）：GPU 上真正执行过的访问。原 `export_temporal` 在导出时就把
+    /// GPU 上真正执行过的访问。`export_temporal` 在导出时就把
     /// `resource.access` 写成 0x37，若该帧没有执行，下一帧会带着与实际布局不符的初始访问导入；
     /// [`TemporalRenderGraphState::abandon_frame`] 据此回退。新建资源为 0（undefined）。
     confirmed_access: u8,
@@ -190,7 +190,7 @@ impl TemporalRenderGraphState {
     }
 
     pub fn clear(&mut self) {
-        // 显式候选清理接口；原游戏 history reset 本身不会清除此缓存。
+        // 显式清理接口；history reset 本身不会清除此缓存。
         self.retired_tokens
             .extend(self.resources.drain().map(|(_, r)| r.resource.token));
         self.parity.clear();
@@ -219,7 +219,7 @@ impl TemporalRenderGraphState {
     pub fn parity(&self, name: &str) -> Option<u32> {
         self.parity.get(name).copied()
     }
-    /// 候选帧边界（原状态没有）：上一帧请求（Raw）却没有导出就放弃构图的记录恢复为已导出，
+    /// 帧边界：上一帧请求（Raw）却没有导出就放弃构图的记录恢复为已导出，
     /// 物理资源与访问不变（图从未执行，GPU 状态未变）。否则同名请求会永远 `AlreadyRequested`。
     pub fn begin_frame(&mut self) {
         self.abandon_frame();
@@ -345,7 +345,7 @@ impl TemporalRenderGraphState {
             };
             if !replace {
                 // buffer 命中保留物理描述符，不能把新请求描述符冒充已有资源。
-                // 原版复用与新建都走 `Texture::import_unowned`（0x1404f6e50）：
+                // 复用与新建都以非拥有方式导入：
                 // 物理资源的所有权留在时态表里，图只借用。
                 let handle = graph
                     .import_unowned_with_sharing(
@@ -374,7 +374,7 @@ impl TemporalRenderGraphState {
         let handle = match graph.import_unowned(name, descriptor, resource.token, 0) {
             Ok(handle) => handle,
             Err(error) => {
-                // 原 import 是无失败分支的边界；候选图容量错误仍须释放新创建的拥有者引用。
+                // 图容量错误时须释放新创建的拥有者引用。
                 self.retired_tokens.push(resource.token);
                 return Err(TemporalError::Backend(error));
             }
@@ -477,7 +477,7 @@ impl TemporalRenderGraphState {
         descriptor: Descriptor,
         mut create: impl FnMut() -> Result<u64, BuildError>,
     ) -> Result<TemporalPair, TemporalError> {
-        // 原已知实例是纹理 pair；buffer pair 尚无原实例，不冒充已恢复功能。
+        // 只支持纹理 pair；buffer pair 尚无使用者。
         if !matches!(descriptor, Descriptor::Image(_)) {
             return Err(TemporalError::WrongResourceKind(Arc::<str>::from(name)));
         }
@@ -673,7 +673,11 @@ mod recorder_tests {
         use crate::raw::texture::{TextureDesc, TextureKind};
         super::super::vulkan::ResourceSpec::Image(
             TextureDesc::new(
-                ash::vk::Extent3D { width: 8, height: 8, depth: 1 },
+                ash::vk::Extent3D {
+                    width: 8,
+                    height: 8,
+                    depth: 1,
+                },
                 TextureKind::D2,
                 ash::vk::Format::R8G8B8A8_UNORM,
             )
@@ -1186,14 +1190,18 @@ mod recorder_tests {
     }
     #[test]
     fn uploaded_initial_contents_are_readable_without_publishing_history_and_survive_cancel() {
-        struct UploadedOwner { next: u64 }
+        struct UploadedOwner {
+            next: u64,
+        }
         impl TemporalResourceOwner for UploadedOwner {
             fn create_temporal(&mut self, _: &str, _: Descriptor) -> Result<u64, BuildError> {
                 self.next += 1;
                 Ok(self.next)
             }
             fn release_temporal(&mut self, _: u64) {}
-            fn initial_contents_defined(&self, _: u64) -> bool { true }
+            fn initial_contents_defined(&self, _: u64) -> bool {
+                true
+            }
         }
         fn reader(graph: &mut RenderGraph, lookup: TemporalLookup) {
             let mut pass = graph.add_pass("read actually uploaded bytes");
@@ -1203,37 +1211,53 @@ mod recorder_tests {
         let mut owner = UploadedOwner { next: 0 };
         let mut state = TemporalRenderGraphState::default();
         let mut graph = RenderGraph::new();
-        let first = state.get_or_create_owned(&mut graph, "uploaded", buffer(), &mut owner).unwrap();
+        let first = state
+            .get_or_create_owned(&mut graph, "uploaded", buffer(), &mut owner)
+            .unwrap();
         assert!(!first.reused, "an upload is not preceding frame history");
         reader(&mut graph, first);
         state.export_temporal(&mut graph).unwrap();
         assert_eq!(graph.declaration.exports.len(), 1);
         state.abandon_frame();
         let mut graph = RenderGraph::new();
-        let cancelled = state.get_or_create_owned(&mut graph, "uploaded", buffer(), &mut owner).unwrap();
+        let cancelled = state
+            .get_or_create_owned(&mut graph, "uploaded", buffer(), &mut owner)
+            .unwrap();
         assert!(!cancelled.reused);
         assert_eq!(cancelled.resource.token, first.resource.token);
         reader(&mut graph, cancelled);
         state.export_temporal(&mut graph).unwrap();
         state.confirm_exports();
         let mut graph = RenderGraph::new();
-        let confirmed = state.get_or_create_owned(&mut graph, "uploaded", buffer(), &mut owner).unwrap();
+        let confirmed = state
+            .get_or_create_owned(&mut graph, "uploaded", buffer(), &mut owner)
+            .unwrap();
         assert!(confirmed.reused);
         state.invalidate_submitted_frame();
         let mut graph = RenderGraph::new();
-        let failed = state.get_or_create_owned(&mut graph, "uploaded", buffer(), &mut owner).unwrap();
+        let failed = state
+            .get_or_create_owned(&mut graph, "uploaded", buffer(), &mut owner)
+            .unwrap();
         assert!(!failed.reused);
         reader(&mut graph, failed);
-        assert!(matches!(state.export_temporal(&mut graph),
+        assert!(matches!(
+            state.export_temporal(&mut graph),
             Err(TemporalError::Backend(BuildError::Contract(
-                super::super::resource::ResourceContractError::UninitializedRead { .. })))));
+                super::super::resource::ResourceContractError::UninitializedRead { .. }
+            )))
+        ));
         state.abandon_frame();
         state.reset("uploaded").unwrap();
         let mut graph = RenderGraph::new();
-        let reset = state.get_or_create_owned(&mut graph, "uploaded", buffer(), &mut owner).unwrap();
+        let reset = state
+            .get_or_create_owned(&mut graph, "uploaded", buffer(), &mut owner)
+            .unwrap();
         reader(&mut graph, reset);
         assert!(state.export_temporal(&mut graph).is_err());
-        assert_eq!(owner.next, 1, "reset/cancel do not secretly allocate or reupload");
+        assert_eq!(
+            owner.next, 1,
+            "reset/cancel do not secretly allocate or reupload"
+        );
     }
 
     // ---------------------------------------------------------------- 5. temporal 记录放弃 / 确认
@@ -1258,7 +1282,7 @@ mod recorder_tests {
             .get_or_create_temporal(&mut graph, "hist", image(), || panic!("must reuse"))
             .unwrap();
         drop(graph);
-        // 同一帧内重复请求仍按原合同报错。
+        // 同一帧内重复请求仍报错。
         let mut same = RenderGraph::new();
         assert!(matches!(
             state.get_or_create_temporal(&mut same, "hist", image(), || Ok(8)),
@@ -1286,7 +1310,7 @@ mod recorder_tests {
             .unwrap();
         initialize.render(|_| true);
         state.export_temporal(&mut graph).unwrap();
-        // 原 export_temporal 写入 0x37。
+        // export_temporal 写入时态导出访问码。
         assert_eq!(state.get("hist").unwrap().access, TEMPORAL_EXPORT_ACCESS);
         // 本帧没有真正执行：放弃后回到 GPU 已确认的访问（新资源 = undefined）。
         state.abandon_frame();

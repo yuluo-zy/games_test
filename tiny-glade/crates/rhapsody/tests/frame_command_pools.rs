@@ -63,6 +63,13 @@ fn whole_pool_reset_requires_every_live_command_and_preserves_owners_on_failure(
     assert!(!second.is_recording());
     assert_eq!(dropped.load(Ordering::Relaxed), 1);
     assert_eq!(pool.reset_count(), 1);
+    let pending = pool.allocate().unwrap();
+    std::thread::spawn(move || drop(pending)).join().unwrap();
+    assert_eq!(
+        pool.pending_free_count(),
+        0,
+        "a whole-pool reset ends every recording scope"
+    );
     first.begin().unwrap();
     first.end().unwrap();
     second.begin().unwrap();
@@ -74,9 +81,9 @@ impl Unblock {
     fn signal(&mut self) -> rhapsody::Result<()> {
         if !self.1 {
             unsafe {
-                self.0.device.device.signal_semaphore(
+                self.0.device().raw_device().signal_semaphore(
                     &vk::SemaphoreSignalInfo::default()
-                        .semaphore(self.0.handle)
+                        .semaphore(self.0.raw_handle())
                         .value(1),
                 )
             }?;
@@ -104,8 +111,8 @@ fn dropped_pending_commands_do_not_allow_early_whole_pool_reset() {
     command.begin().unwrap();
     command.end().unwrap();
     let queue = rhapsody::raw::device::DeviceQueue {
-        handle: device.queue,
-        family: device.queue_family,
+        handle: device.primary_queue(),
+        family: device.queue_family_index(),
         index: 0,
     };
     let pending = command
@@ -131,7 +138,7 @@ fn dropped_pending_commands_do_not_allow_early_whole_pool_reset() {
     assert_eq!(pool.reset_count(), 0);
     unblock.signal().unwrap();
     device
-        .timelines
+        .timelines()
         .wait(&point.into(), 10_000_000_000)
         .unwrap();
     pool.reset_completed(&mut []).unwrap();
@@ -143,7 +150,7 @@ fn dropped_pending_commands_do_not_allow_early_whole_pool_reset() {
 fn production_session_uses_bounded_frame_worker_pools_and_whole_pool_reuse() {
     let config = DeviceConfig {
         frames_in_flight: 2,
-        recording: RecordingPolicy::Parallel,
+        recording: RecordingPolicy::Adaptive,
         ..DeviceConfig::headless()
     };
     let Some(device) = gpu_test_support::initialize(
@@ -154,7 +161,7 @@ fn production_session_uses_bounded_frame_worker_pools_and_whole_pool_reuse() {
     };
     let backend = VulkanGraphBackend::new(device, AccessTable::original()).unwrap();
     let mut session = VulkanGraphSession::new(backend);
-    session.chain.parallel = ParallelRecording::ORIGINAL;
+    session.chain.parallel = ParallelRecording::EVERY_PASS;
     for _ in 0..12 {
         let mut graph = session.begin_frame().unwrap();
         for name in ["one", "two", "three", "four"] {
@@ -191,7 +198,9 @@ fn production_session_uses_bounded_frame_worker_pools_and_whole_pool_reuse() {
         session.backend.command_pool_count() > 2,
         "recording workers must use distinct actual pools"
     );
-    assert!(session.backend.command_pool_count() <= 8);
+    // One pool for the main commands plus one per chunk (4), per frame slot (2):
+    // a chunk never shares the main command's pool while both are recording.
+    assert!(session.backend.command_pool_count() <= 10);
     assert!(session.backend.command_pool_reset_count() > 0);
     assert!(
         session.backend.cpu_arena_statistics().peak_checked_out >= 2,
@@ -237,4 +246,30 @@ fn production_callbacks_reuse_cpu_arenas_after_recording_completes() {
         session.backend.cpu_arena_statistics().backing_allocations,
         1
     );
+}
+
+#[test]
+fn frees_from_other_threads_are_deferred_while_the_pool_records() {
+    let Some(device) = device() else {
+        return;
+    };
+    let pool = VulkanCommandPool::new(device.clone()).unwrap();
+    let mut first = pool.allocate().unwrap();
+    let mut second = pool.allocate().unwrap();
+    let idle = pool.allocate().unwrap();
+    first.begin().unwrap();
+    second.begin().unwrap();
+    // A never-submitted buffer is freed by retirement immediately; while the
+    // pool records on this thread, a free from another thread is deferred.
+    std::thread::spawn(move || drop(idle)).join().unwrap();
+    assert_eq!(pool.pending_free_count(), 1);
+    first.end().unwrap();
+    assert_eq!(pool.pending_free_count(), 1, "second still records");
+    // Dropping a recording buffer also ends its recording scope.
+    drop(second);
+    assert_eq!(pool.pending_free_count(), 0);
+    first.reset().unwrap();
+    first.begin().unwrap();
+    first.end().unwrap();
+    assert_eq!(pool.live_command_count(), 1);
 }

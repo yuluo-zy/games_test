@@ -1,16 +1,16 @@
 //! GPU 完成的唯一真相源。
 //!
-//! 每个逻辑队列一条时间线信号量（[`timeline::QueueTimeline`]）。一次成功的提交在该队列上
+//! 每个逻辑队列一条时间线信号量（`timeline::QueueTimeline`）。一次成功的提交在该队列上
 //! signal 一个严格递增的值，得到 [`SyncPoint`]；资源或命令池记录"在哪些队列上用到哪个值"
 //! （[`SyncSet`]），当各队列已完成的值（[`CompletedValues`]）都不小于记录值时即可回收
-//! （[`retire::Retirement`]）。
+//! （`retire::Retirement`）。
 //!
 //! 不变量：
 //! - 值只在 `vkQueueSubmit` 成功后才算已提交；失败的提交不占用值，因此任何已知的
 //!   [`SyncPoint`] 最终都会完成（或设备丢失）。
 //! - 等待一个尚未提交的值是误用（会永远挂起），返回 [`crate::Error::InvalidUsage`]。
-pub mod retire;
-pub mod timeline;
+internal_mod!(retire, timeline);
+pub use timeline::{QueueLockStats, TimelineApi, Timelines};
 
 /// 一个设备上最多同时使用的逻辑队列数。
 pub const MAX_QUEUES: usize = 8;
@@ -92,6 +92,73 @@ impl SyncSet {
 impl From<SyncPoint> for SyncSet {
     fn from(point: SyncPoint) -> Self {
         Self::from_point(point)
+    }
+}
+
+/// Cross-queue prerequisites with the destination stages that first need
+/// each queue's value. A wait built from this set blocks only those stages;
+/// prerequisites without a proven consumer stage carry `ALL_COMMANDS`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct StagedDependencies {
+    points: SyncSet,
+    stages: [ash::vk::PipelineStageFlags; MAX_QUEUES],
+}
+
+impl StagedDependencies {
+    pub const EMPTY: Self = Self {
+        points: SyncSet::EMPTY,
+        stages: [ash::vk::PipelineStageFlags::empty(); MAX_QUEUES],
+    };
+    /// Conservative wrapper for prerequisites whose consumer stage is unknown.
+    pub fn opaque(points: SyncSet) -> Self {
+        let mut result = Self::EMPTY;
+        result.merge_set(&points, ash::vk::PipelineStageFlags::ALL_COMMANDS);
+        result
+    }
+    /// Add one prerequisite needed from `stages` onward. Empty stages mean no
+    /// proven consumer stage and are widened to `ALL_COMMANDS`.
+    pub fn insert(&mut self, point: SyncPoint, stages: ash::vk::PipelineStageFlags) {
+        if point.value == 0 {
+            return;
+        }
+        self.points.insert(point);
+        self.stages[point.queue.index()] |= if stages.is_empty() {
+            ash::vk::PipelineStageFlags::ALL_COMMANDS
+        } else {
+            stages
+        };
+    }
+    pub fn merge_set(&mut self, points: &SyncSet, stages: ash::vk::PipelineStageFlags) {
+        for point in points.points() {
+            self.insert(point, stages);
+        }
+    }
+    pub fn merge(&mut self, other: &Self) {
+        self.points.merge(&other.points);
+        for (mine, theirs) in self.stages.iter_mut().zip(other.stages) {
+            *mine |= theirs;
+        }
+    }
+    pub fn points(&self) -> SyncSet {
+        self.points
+    }
+    /// Destination stages that must wait for `queue`'s value (empty when the
+    /// set has no prerequisite on that queue).
+    pub fn stages(&self, queue: QueueId) -> ash::vk::PipelineStageFlags {
+        if self.points.get(queue) == 0 {
+            ash::vk::PipelineStageFlags::empty()
+        } else {
+            self.stages[queue.index()]
+        }
+    }
+    pub fn is_empty(&self) -> bool {
+        self.points.is_empty()
+    }
+    /// `(point, stages)` per source queue.
+    pub fn waits(&self) -> impl Iterator<Item = (SyncPoint, ash::vk::PipelineStageFlags)> + '_ {
+        self.points
+            .points()
+            .map(|point| (point, self.stages[point.queue.index()]))
     }
 }
 

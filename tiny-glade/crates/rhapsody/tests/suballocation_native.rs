@@ -19,7 +19,7 @@ fn device(budget: u64) -> Option<Arc<Device>> {
     )
 }
 fn allocate(device: &Arc<Device>, size: u64) -> rhapsody::Result<MemoryBlock> {
-    let bits = u32::MAX >> (32 - device.memory.memory_type_count);
+    let bits = u32::MAX >> (32 - device.memory_properties().memory_type_count);
     MemoryBlock::allocate_with_flags(
         device.clone(),
         vk::MemoryRequirements {
@@ -35,12 +35,12 @@ fn allocate(device: &Arc<Device>, size: u64) -> rhapsody::Result<MemoryBlock> {
 /// GPU phases exclude the independently charged host metadata; both remain
 /// admitted by the same total device budget.
 fn gpu_usage(device: &Device) -> rhapsody::device::BudgetUsage {
-    let mut usage = device.allocator_stats.budget_usage();
-    let cpu = device.allocator_stats.cpu_memory_usage();
+    let mut usage = device.allocator_stats().budget_usage();
+    let cpu = device.allocator_stats().cpu_memory_usage();
     usage.live -= cpu.live;
     usage.cache -= cpu.cache;
     assert_eq!(
-        device.allocator_stats.budget_usage().total(),
+        device.allocator_stats().budget_usage().total(),
         usage.total() + cpu.total()
     );
     usage
@@ -51,7 +51,7 @@ fn native_capacity_is_shared_charged_trimmed_and_has_no_device_back_edge() {
     let Some(device) = device(1024 * MIB) else {
         return;
     };
-    let allocator = device.suballocator.as_ref().unwrap().clone();
+    let allocator = device.suballocator().unwrap().clone();
     let weak_device = Arc::downgrade(&device);
     let a = allocate(&device, MIB).unwrap();
     let b = allocate(&device, MIB).unwrap();
@@ -70,7 +70,7 @@ fn native_capacity_is_shared_charged_trimmed_and_has_no_device_back_edge() {
         native.application_vk_memory_bytes
     );
     assert_eq!(
-        device.allocator_stats.suballocator_spare_bytes(),
+        device.allocator_stats().suballocator_spare_bytes(),
         native.suballocator_unused_bytes
     );
     drop(a);
@@ -112,8 +112,8 @@ fn rejected_native_growth_rolls_back_the_real_range_and_native_block() {
     let c = allocate(&device, capacity / 4).unwrap();
     let d = allocate(&device, capacity / 4).unwrap();
     device
-        .allocator_stats
-        .set_total_budget(capacity + device.allocator_stats.cpu_memory_usage().total())
+        .allocator_stats()
+        .set_total_budget(capacity + device.allocator_stats().cpu_memory_usage().total())
         .unwrap();
     drop(b);
     drop(d);
@@ -121,7 +121,7 @@ fn rejected_native_growth_rolls_back_the_real_range_and_native_block() {
     // enough. A dependency-created additional block must be fully rolled back.
     let before = device.memory_usage_snapshot();
     let usage = gpu_usage(&device);
-    let records = device.allocator_stats.report();
+    let records = device.allocator_stats().report();
     let error = allocate(&device, capacity * 3 / 8)
         .err()
         .expect("native growth must exceed the admitted budget");
@@ -133,7 +133,7 @@ fn rejected_native_growth_rolls_back_the_real_range_and_native_block() {
     );
     assert_eq!(after.native_memory_blocks, before.native_memory_blocks);
     assert_eq!(gpu_usage(&device), usage);
-    assert_eq!(device.allocator_stats.report(), records);
+    assert_eq!(device.allocator_stats().report(), records);
     assert!(
         after.suballocator_peak_reserved_bytes > before.suballocator_reserved_bytes,
         "the dependency exposes native delta after allocation; the observed peak remains visible"
@@ -162,28 +162,32 @@ fn budgets_below_the_dependency_minimum_use_the_existing_dedicated_fallback() {
 }
 
 #[test]
-fn rejected_first_block_leaves_no_native_capacity_or_range_record() {
+fn heap_budget_below_a_native_block_uses_an_exact_dedicated_allocation() {
     let Some(device) = device(1024 * MIB) else {
         return;
     };
-    let bits = u32::MAX >> (32 - device.memory.memory_type_count);
+    let bits = u32::MAX >> (32 - device.memory_properties().memory_type_count);
     let memory_type = rhapsody::raw::allocator::choose_memory_type(
-        &device.memory,
+        device.memory_properties(),
         bits,
         vk::MemoryPropertyFlags::DEVICE_LOCAL,
         vk::MemoryPropertyFlags::DEVICE_LOCAL,
     )
     .unwrap();
-    let heap = device.memory.memory_types[memory_type as usize].heap_index;
-    device.allocator_stats.set_heap_budget(heap, MIB).unwrap();
+    let heap = device.memory_properties().memory_types[memory_type as usize].heap_index;
+    device.allocator_stats().set_heap_budget(heap, MIB).unwrap();
+    // A 256 MiB native block cannot fit the heap budget; the request itself can.
+    let allocation = allocate(&device, MIB).unwrap();
+    assert!(!allocation.is_suballocated());
+    let native = device.memory_usage_snapshot();
+    assert_eq!(native.suballocator_reserved_bytes, 0);
+    assert_eq!(native.native_memory_blocks, 1, "the one dedicated object");
+    assert_eq!(native.application_vk_memory_bytes, allocation.size);
     let error = allocate(&device, MIB)
         .err()
-        .expect("native block exceeds the heap budget");
+        .expect("the heap budget is exhausted");
     assert_eq!(error.kind(), rhapsody::ErrorKind::OutOfMemory);
-    assert!(device.allocator_stats.report().allocations.is_empty());
+    assert_eq!(device.allocator_stats().report().allocations.len(), 1);
+    drop(allocation);
     assert_eq!(gpu_usage(&device).total(), 0);
-    let native = device.memory_usage_snapshot();
-    assert_eq!(native.application_vk_memory_bytes, 0);
-    assert_eq!(native.native_memory_blocks, 0);
-    assert!(native.suballocator_peak_reserved_bytes > MIB);
 }

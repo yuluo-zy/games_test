@@ -26,7 +26,7 @@
 
 use core::fmt::Debug;
 
-/// `rhapsody::raw::texture::TextureDesc`（32 B，布局 O，取自 `new_2d` 0x140bd52a0 / `sampled` / `storage` / `format` /
+/// `rhapsody::resource::TextureDesc`（32 B，布局 O，取自 `new_2d` 0x140bd52a0 / `sampled` / `storage` / `format` /
 /// `usage` / `extent_2d` 的字节写入）。
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct TextureDesc {
@@ -236,7 +236,7 @@ pub trait FramePasses {
     fn flag_c098(&mut self) -> bool;
 
     // ---- rhapsody RenderGraph ----
-    /// `rhapsody::rg::temporal::get_or_create_temporal<PassResources, &str>`（0x1404f6e50）。
+    /// `rhapsody::rg::get_or_create_temporal<PassResources, &str>`（0x1404f6e50）。
     fn get_or_create_temporal(
         &mut self,
         name: &str,

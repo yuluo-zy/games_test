@@ -34,21 +34,15 @@ use country_core::{
 };
 use parking_lot::Mutex;
 use rhapsody::{
-    raw::device::Device as GraphicsDevice,
-    rg::{
-        executor::PassContext,
-        graph::RenderGraph as RhGraph,
-        vulkan::{AccessTable, GpuResource, VulkanGraphBackend, VulkanGraphSession},
-    },
-    shader_pipeline::{
-        compiled::{CompiledShaderPipeline, CompiledShaderStage, ShaderStage},
-        pipeline_desc::RasterPipelineDesc as FileRasterDesc,
-        reflection::{
-            Binding, BindingArray, BindingKind, BindingLocation, BindingNameHash, ShaderReflection,
-            UniformBlock,
-        },
-        shader_defines::ShaderDefines,
-    },
+    device::Device as GraphicsDevice, rg::AccessTable, rg::GpuResource, rg::PassContext,
+    rg::RenderGraph as RhGraph, rg::VulkanGraphBackend, rg::VulkanGraphSession,
+};
+use shader_pipeline::{
+    compiled::CompiledShaderPipeline, compiled::CompiledShaderStage, compiled::ShaderStage,
+    pipeline_desc::RasterPipelineDesc as FileRasterDesc, reflection::Binding,
+    reflection::BindingArray, reflection::BindingKind, reflection::BindingLocation,
+    reflection::BindingNameHash, reflection::ShaderReflection, reflection::UniformBlock,
+    shader_defines::ShaderDefines,
 };
 use std::{cell::RefCell, path::PathBuf, rc::Rc, sync::Arc};
 use tiny_glade::{
@@ -669,7 +663,7 @@ impl Env {
             };
             let cb = vk::CommandBuffer::from_raw(ctx.command.handle());
             unsafe {
-                device.device.cmd_clear_color_image(
+                device.raw_device().cmd_clear_color_image(
                     cb,
                     texture.raw(),
                     vk::ImageLayout::TRANSFER_DST_OPTIMAL,
@@ -707,7 +701,7 @@ impl Env {
             };
             let cb = vk::CommandBuffer::from_raw(ctx.command.handle());
             unsafe {
-                device.device.cmd_copy_image_to_buffer(
+                device.raw_device().cmd_copy_image_to_buffer(
                     cb,
                     texture.raw(),
                     vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
@@ -732,7 +726,7 @@ impl Env {
         });
     }
 
-    fn finish_graph(graph: Rc<RefCell<RhGraph>>) -> rhapsody::rg::graph::BuiltGraph {
+    fn finish_graph(graph: Rc<RefCell<RhGraph>>) -> rhapsody::rg::BuiltGraph {
         Rc::try_unwrap(graph)
             .ok()
             .expect("图仍被宿主/核心句柄引用")
@@ -927,7 +921,7 @@ fn indexed_draw_declares_the_actual_index_bytes_and_outlives_the_host_handle() {
             .any(|access| {
                 access.access_code == 0x03
                     && access.range
-                        == rhapsody::rg::resource::AccessRange::Buffer {
+                        == rhapsody::rg::AccessRange::Buffer {
                             offset: 0,
                             size: 12,
                         }
@@ -960,7 +954,7 @@ fn owned_external_draw_resources_are_declared_before_recording_and_outlive_host_
     use country_core::{
         render::pass_builder::draw_builder::BindTexture, rhapsody_contract::ManagedHandle,
     };
-    use rhapsody::rg::{graph::Descriptor, resource::AccessRange};
+    use rhapsody::{rg::AccessRange, rg::Descriptor};
     let Some(env) = Env::new("owned-externals") else {
         return;
     };
@@ -1440,7 +1434,7 @@ fn core_raster_pass_depth_attachment_resolves_overlap_independent_of_draw_order(
 
 #[test]
 fn core_buffer_handle_checks_generation_and_reports_real_description() {
-    use rhapsody::raw::buffer::MemoryLocation;
+    use rhapsody::resource::MemoryLocation;
     let Some(env) = Env::new("buffer handle") else {
         return;
     };
@@ -1482,7 +1476,7 @@ fn consumer_resource_errors_keep_device_loss_including_cached_texture_views() {
         .create_texture("cached terminal view", &desc, &[])
         .unwrap();
     env.textures.default_view(texture.id).unwrap();
-    env.device.timelines.mark_device_lost();
+    env.device.timelines().mark_device_lost();
     assert!(matches!(
         env.textures.default_view(texture.id),
         Err(rhapsody::Error::DeviceLost)
@@ -1503,7 +1497,7 @@ fn render_pass_desc_maps_attachment_tags_to_load_ops_and_depth_access() {
     use country_core::render::pass_builder::draw_stream::{
         AttachmentDesc, DEPTH_STATE_NONE, RasterRenderPassDesc,
     };
-    use rhapsody::rg::attachments::contract::DepthAccess;
+    use rhapsody::rg::DepthAccess;
     use tiny_glade::raster_host::rh_render_pass_desc;
     let mut colors = [AttachmentDesc::default(); 8];
     for (i, tag) in [0u32, 1, 2].into_iter().enumerate() {
@@ -1642,11 +1636,15 @@ fn host_temporal_resources_use_session_owned_named_slots() {
 /// current session additionally invalidates resized/cancelled allocations.
 #[test]
 fn host_temporal_validity_tracks_submitted_history_resize_and_cancellation() {
-    let Some(env) = Env::new("temporal-validity") else { return };
+    let Some(env) = Env::new("temporal-validity") else {
+        return;
+    };
     for step in 0..5 {
         let resized = step >= 2;
         let mut desc = color_desc().sampled().storage();
-        if resized { desc.extent[0] /= 2; }
+        if resized {
+            desc.extent[0] /= 2;
+        }
         let buffer_desc = CoreBufferDesc::new_gpu_only(if resized { 32 } else { 16 }, 0x22);
         let graph = env.begin();
         let (slot, pair, buffer) = {
@@ -1655,8 +1653,10 @@ fn host_temporal_validity_tracks_submitted_history_resize_and_cancellation() {
             let rg = host.rg_resources().unwrap();
             (
                 rg.get_or_create_temporal_texture("single", &desc).unwrap(),
-                rg.get_or_create_temporal_texture_pair("pair", &desc).unwrap(),
-                rg.get_or_create_temporal_buffer("counter", &buffer_desc).unwrap(),
+                rg.get_or_create_temporal_texture_pair("pair", &desc)
+                    .unwrap(),
+                rg.get_or_create_temporal_buffer("counter", &buffer_desc)
+                    .unwrap(),
             )
         };
         let valid = matches!(step, 1 | 4);
@@ -1666,7 +1666,10 @@ fn host_temporal_validity_tracks_submitted_history_resize_and_cancellation() {
         // Both allocation and graph declaration are real. Step 2 deliberately
         // abandons resized resources before any GPU command can publish them.
         if step == 2 {
-            env.session.borrow_mut().cancel_frame(Env::finish_graph(graph)).unwrap();
+            env.session
+                .borrow_mut()
+                .cancel_frame(Env::finish_graph(graph))
+                .unwrap();
             continue;
         }
         for texture in [slot.texture, pair.current] {
@@ -1675,8 +1678,12 @@ fn host_temporal_validity_tracks_submitted_history_resize_and_cancellation() {
             attachment.extent = (desc.extent[0], desc.extent[1]);
             raster_single_object(
                 "initialize temporal image",
-                &[ColorAttachment::View { view: [0; 4], texture: attachment }],
-                env.program.clone(), Box::new(host),
+                &[ColorAttachment::View {
+                    view: [0; 4],
+                    texture: attachment,
+                }],
+                env.program.clone(),
+                Box::new(host),
                 |builder| builder.uniform(m_hash(), transform(0.0)),
             );
         }
@@ -1684,18 +1691,39 @@ fn host_temporal_validity_tracks_submitted_history_resize_and_cancellation() {
             let device = env.device.clone();
             let mut raw = graph.borrow_mut();
             let mut pass = raw.add_pass("initialize temporal counter");
-            pass.add_resource_access(pass.resource_handle(buffer.buffer.resource).unwrap(), TRANSFER_WRITE, 0).unwrap();
+            pass.add_resource_access(
+                pass.resource_handle(buffer.buffer.resource).unwrap(),
+                TRANSFER_WRITE,
+                0,
+            )
+            .unwrap();
             pass.render_with_result_context(move |ctx| {
-                let managed = ctx.managed.ok_or_else(|| rhapsody::Error::invalid_usage("missing temporal buffer owner"))?;
+                let managed = ctx.managed.ok_or_else(|| {
+                    rhapsody::Error::invalid_usage("missing temporal buffer owner")
+                })?;
                 let target = managed.buffer_for(buffer.buffer.resource)?;
                 unsafe {
-                    device.device.cmd_fill_buffer(vk::CommandBuffer::from_raw(ctx.command.handle()), target.raw(), 0, vk::WHOLE_SIZE, 7);
+                    device.raw_device().cmd_fill_buffer(
+                        vk::CommandBuffer::from_raw(ctx.command.handle()),
+                        target.raw(),
+                        0,
+                        vk::WHOLE_SIZE,
+                        7,
+                    );
                 }
                 Ok(())
             });
         }
-        env.shaders.prewarm(std::time::Duration::from_secs(10)).unwrap();
-        env.session.borrow_mut().execute_frame(Env::finish_graph(graph)).unwrap();
-        env.session.borrow_mut().wait_submits_done(TIMEOUT_NS).unwrap();
+        env.shaders
+            .prewarm(std::time::Duration::from_secs(10))
+            .unwrap();
+        env.session
+            .borrow_mut()
+            .execute_frame(Env::finish_graph(graph))
+            .unwrap();
+        env.session
+            .borrow_mut()
+            .wait_submits_done(TIMEOUT_NS)
+            .unwrap();
     }
 }

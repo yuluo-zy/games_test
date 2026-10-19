@@ -8,8 +8,8 @@
 //! Full input-file/Mei ABI branches stay explicit errors or gaps,
 //! rather than silently generating substitute state.
 
-use std::sync::Mutex;
 use anyhow::Context;
+use std::sync::Mutex;
 
 use bevy_app::App;
 use bevy_ecs::world::World;
@@ -202,7 +202,7 @@ pub struct GameLoop {
     pub(crate) custom_cursor_mode: bool,
     pub(crate) custom_cursor_size_px: f32,
     // Strong actual-device lease; the Created event alone owns no memory.
-    custom_cursor_buffer: Option<rhapsody::raw::managed::buffer::ManagedBuffer>,
+    custom_cursor_buffer: Option<rhapsody::resource::ManagedBuffer>,
     pub(crate) frame_count: u64,
     pub(crate) suspended: bool,
     pub(crate) shutdown_done: bool,
@@ -263,19 +263,32 @@ impl GameLoop {
         // full SSBO producer. It stays on this gameplay App when preparation
         // moves its SubApp; the separate loading App installs only two entries.
         crate::gameplay_startup::install_gameplay_gpu_startup(
-            &mut app, renderer.bridge().hosts().buffers.graphics_device().clone(),
+            &mut app,
+            renderer.bridge().hosts().buffers.graphics_device().clone(),
             renderer.bridge().hosts().clone(),
-            options.compiled_shader_root.parent()
-                .context("compiled shader directory has no installation root")?.to_path_buf(),
+            options
+                .compiled_shader_root
+                .parent()
+                .context("compiled shader directory has no installation root")?
+                .to_path_buf(),
         )?;
         crate::world_terrain::install_terrain_startup(
-            &mut app, renderer.bridge().hosts().shaders.clone(),
-            options.compiled_shader_root.parent()
-                .context("compiled shader directory has no installation root")?.to_path_buf());
+            &mut app,
+            renderer.bridge().hosts().shaders.clone(),
+            options
+                .compiled_shader_root
+                .parent()
+                .context("compiled shader directory has no installation root")?
+                .to_path_buf(),
+        );
         crate::world_terrain::install_grass_startup(
-            &mut app, renderer.bridge().hosts().shaders.clone());
+            &mut app,
+            renderer.bridge().hosts().shaders.clone(),
+        );
         crate::world_lighting::install_deferred_startup(
-            &mut app, renderer.bridge().hosts().shaders.clone());
+            &mut app,
+            renderer.bridge().hosts().shaders.clone(),
+        );
         // Only the gameplay tuple contains GpuLutPlugin. Its producer records
         // BRDF and (!demo) water callbacks using this App's actual GPU owners.
         let demo = app

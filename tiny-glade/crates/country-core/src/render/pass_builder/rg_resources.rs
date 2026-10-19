@@ -9,7 +9,7 @@
 //!  * `rhapsody::rg::RenderGraph::create_raw_resource`（0x140be94d0）：参数 `(&mut RenderGraph, name: &str, desc: impl Into<resource::Desc>)`，
 //!    `TextureDesc` 与 `BufferDesc` 两种来源（`rg::resource::From<TextureDesc>` / `From<BufferDesc>`）；返回句柄，资源号在 `+0`（纹理，36 B：
 //!    `{id: u32, desc: TextureDesc}`）或 `+0x10`（缓冲，见 `compute_pass_builder::RgBuffer`）。
-//!  * `rhapsody::rg::temporal::get_or_create_temporal<PassResources, &str>`（0x1404f6e50）与 `get_or_create_temporal_pair`（0x1404f7450）：
+//!  * `rhapsody::rg::get_or_create_temporal<PassResources, &str>`（0x1404f6e50）与 `get_or_create_temporal_pair`（0x1404f7450）：
 //!    `Result<_, E>`，调用点一律 `Result::unwrap`。
 //!  * 返回结构的布局取自 `render_world.rs` 的核对（单张历史：`RgTexture` + `+0x24` 标志字节，2 = `Err` niche；pair：当前帧 + 上一帧
 //!    各 36 B + 末尾 1 B 标志），字段含义 U/I 同该文件。

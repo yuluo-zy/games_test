@@ -79,10 +79,9 @@ fn core_texture_creates_through_rhapsody_with_kind_and_format_bytes() {
 #[test]
 fn core_compute_pipeline_loads_compiled_bin_and_creates_vulkan_pipeline() {
     use country_core::render::shader::boundary::{ComputePipelineDesc, ShaderBackend};
-    use rhapsody::shader_pipeline::{
-        compiled::{CompiledShaderPipeline, CompiledShaderStage, ShaderStage},
-        pipeline_desc::ComputePipelineDesc as FileDesc,
-        reflection::ShaderReflection,
+    use shader_pipeline::{
+        compiled::CompiledShaderPipeline, compiled::CompiledShaderStage, compiled::ShaderStage,
+        pipeline_desc::ComputePipelineDesc as FileDesc, reflection::ShaderReflection,
         shader_defines::ShaderDefines,
     };
     use tiny_glade::render_host::ShaderHost;
@@ -144,7 +143,7 @@ fn core_render_graph_imports_and_exports_land_in_the_rhapsody_graph() {
     use country_core::render::load_texture::boundary::{TextureDesc, TextureDevice};
     use country_core::render::ssbo::rhapsody_boundary::BufferDesc as CoreBufferDesc;
     use country_core::rhapsody_types::RenderGraph;
-    use rhapsody::rg::graph::RenderGraph as RhGraph;
+    use rhapsody::rg::RenderGraph as RhGraph;
     use std::{cell::RefCell, rc::Rc, sync::Arc};
     use tiny_glade::render_host::{BufferHost, GraphHost, TextureHost};
     let Some(device) = graphics_device() else {
@@ -229,7 +228,9 @@ fn core_passes_execute_on_lavapipe_through_the_rhapsody_session() {
     use country_core::render::rg_helpers::{clear_rg_buffer, rg_buffer_copy_from_slice_u32};
     use country_core::render::ssbo::rhapsody_boundary::BufferDesc as CoreBufferDesc;
     use country_core::rhapsody_types::RenderGraph;
-    use rhapsody::rg::vulkan::{AccessTable, GpuResource, VulkanGraphBackend, VulkanGraphSession};
+    use rhapsody::{
+        rg::AccessTable, rg::GpuResource, rg::VulkanGraphBackend, rg::VulkanGraphSession,
+    };
     use std::{cell::RefCell, rc::Rc, sync::Arc};
     use tiny_glade::render_host::{BufferHost, GraphHost, GraphPasses, TextureHost};
     let Some(device) = graphics_device() else {
@@ -404,14 +405,14 @@ fn run_core_compute_pass_with_heap_parameters(with_push: bool, external: bool) {
     use country_core::render::shader::boundary::ShaderBackend;
     use country_core::render::ssbo::rhapsody_boundary::BufferDesc as CoreBufferDesc;
     use country_core::rhapsody_types::RenderGraph;
-    use rhapsody::rg::vulkan::{AccessTable, GpuResource, VulkanGraphBackend, VulkanGraphSession};
-    use rhapsody::shader_pipeline::{
-        compiled::{CompiledShaderPipeline, CompiledShaderStage, ShaderStage},
-        pipeline_desc::ComputePipelineDesc as FileDesc,
-        reflection::{
-            Binding, BindingArray, BindingKind, BindingLocation, BindingNameHash, ShaderReflection,
-        },
-        shader_defines::ShaderDefines,
+    use rhapsody::{
+        rg::AccessTable, rg::GpuResource, rg::VulkanGraphBackend, rg::VulkanGraphSession,
+    };
+    use shader_pipeline::{
+        compiled::CompiledShaderPipeline, compiled::CompiledShaderStage, compiled::ShaderStage,
+        pipeline_desc::ComputePipelineDesc as FileDesc, reflection::Binding,
+        reflection::BindingArray, reflection::BindingKind, reflection::BindingLocation,
+        reflection::BindingNameHash, reflection::ShaderReflection, shader_defines::ShaderDefines,
     };
     use std::{cell::RefCell, rc::Rc, sync::Arc};
     use tiny_glade::render_host::{
@@ -485,9 +486,9 @@ fn run_core_compute_pass_with_heap_parameters(with_push: bool, external: bool) {
     let textures = Arc::new(TextureHost::new(gd.clone()));
     let offset = if external {
         unsafe {
-            gd.instance
-                .instance
-                .get_physical_device_properties(gd.physical)
+            gd.instance()
+                .raw_instance()
+                .get_physical_device_properties(gd.physical_device())
         }
         .limits
         .min_storage_buffer_offset_alignment
@@ -607,7 +608,7 @@ fn run_core_compute_pass_with_heap_parameters(with_push: bool, external: bool) {
         assert!(borrowed.declaration().passes[0].side_effect);
         assert_eq!(
             borrowed.declaration().passes[0].accesses[0].range,
-            rhapsody::rg::resource::AccessRange::Buffer { offset, size: 16 }
+            rhapsody::rg::AccessRange::Buffer { offset, size: 16 }
         );
         assert!(borrowed.declaration().exports.is_empty());
         assert!(buffers.release(&buffer));
@@ -719,12 +720,12 @@ fn core_raster_pipeline_creates_from_key_handle_and_opts_bitfield() {
     use country_core::render::shader::boundary::{
         CompiledShaderPipeline as CoreCompiled, RasterPipelineKey, ShaderBackend,
     };
-    use rhapsody::raw::shader::RasterPipelineOpts;
-    use rhapsody::rg::attachments::contract::{AttachmentKey, RenderPassKey};
-    use rhapsody::shader_pipeline::{
-        compiled::{CompiledShaderPipeline, CompiledShaderStage, ShaderStage},
-        reflection::{ShaderReflection, VertexInput},
-        reflection_ty::{ScalarType, Type, VectorType},
+    use rhapsody::pipeline::RasterPipelineOpts;
+    use rhapsody::{rg::AttachmentKey, rg::RenderPassKey};
+    use shader_pipeline::{
+        compiled::CompiledShaderPipeline, compiled::CompiledShaderStage, compiled::ShaderStage,
+        reflection::ShaderReflection, reflection::VertexInput, reflection_ty::ScalarType,
+        reflection_ty::Type, reflection_ty::VectorType,
     };
     use std::sync::Arc;
     use tiny_glade::render_host::ShaderHost;
@@ -871,7 +872,7 @@ fn device_local_sparse_updates_use_the_bounded_queue_and_return_only_after_their
         .map(|i| ((i * 31 + 7) % 251) as u8)
         .collect::<Vec<_>>();
     let ranges = [0..512, 256..1024, 2048..payload.len()];
-    let idle = device.garbage_stats().idle_waits;
+    let idle = device.retirement_stats().idle_waits;
     host.update_buffer_bytes(&buffer, &payload, &ranges, 32)
         .unwrap();
     let stats = host
@@ -918,7 +919,7 @@ fn device_local_sparse_updates_use_the_bounded_queue_and_return_only_after_their
         actual, expected,
         "holes and untouched prefix/tail must remain intact"
     );
-    assert_eq!(device.garbage_stats().idle_waits, idle);
+    assert_eq!(device.retirement_stats().idle_waits, idle);
     let submitted = host.queued_upload_stats().unwrap().submitted_jobs;
     assert!(
         host.update_buffer_bytes(&buffer, &payload, &[0..payload.len() + 1], 0)
@@ -938,13 +939,9 @@ fn versioned_country_upload_uses_real_session_subgraph_and_result_caches() {
         rg_boundary::UploadContentVersion, rg_buffer_copy_from_slice_u32,
     };
     use rhapsody::{
-        raw::buffer::{Buffer as RawBuffer, BufferDesc as RawDesc},
-        rg::{
-            cache::CacheReason,
-            vulkan::{
-                AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession,
-            },
-        },
+        resource::Buffer as RawBuffer, resource::BufferDesc as RawDesc, rg::AccessTable,
+        rg::CacheReason, rg::GpuResource, rg::ResourceSpec, rg::VulkanGraphBackend,
+        rg::VulkanGraphSession,
     };
     use std::{cell::RefCell, rc::Rc, sync::Arc};
     use tiny_glade::render_host::GraphPasses;
@@ -1188,25 +1185,16 @@ fn external_compute_sampled_and_storage_images_have_declared_views_and_real_pixe
         rhapsody_contract::ManagedHandle,
     };
     use rhapsody::{
-        raw::{
-            buffer::{Buffer as RawBuffer, BufferDesc as RawBufferDesc},
-            resource_access::{buffer_access, image_access},
-            setup::with_setup_command,
-        },
-        resource::{OwnershipRange, range_state::AccessScope},
-        rg::{
-            resource::AccessRange,
-            vulkan::{AccessTable, VulkanGraphBackend, VulkanGraphSession},
-        },
-        shader_pipeline::{
-            compiled::{CompiledShaderPipeline, CompiledShaderStage, ShaderStage},
-            pipeline_desc::ComputePipelineDesc as FileDesc,
-            reflection::{
-                Binding, BindingArray, BindingKind, BindingLocation, BindingNameHash,
-                ShaderReflection,
-            },
-            shader_defines::ShaderDefines,
-        },
+        command::buffer_access, command::image_access, resource::AccessScope,
+        resource::Buffer as RawBuffer, resource::BufferDesc as RawBufferDesc,
+        resource::OwnershipRange, resource::with_setup_command, rg::AccessRange, rg::AccessTable,
+        rg::VulkanGraphBackend, rg::VulkanGraphSession,
+    };
+    use shader_pipeline::{
+        compiled::CompiledShaderPipeline, compiled::CompiledShaderStage, compiled::ShaderStage,
+        pipeline_desc::ComputePipelineDesc as FileDesc, reflection::Binding,
+        reflection::BindingArray, reflection::BindingKind, reflection::BindingLocation,
+        reflection::BindingNameHash, reflection::ShaderReflection, shader_defines::ShaderDefines,
     };
     use std::{cell::RefCell, rc::Rc, sync::Arc};
     use tiny_glade::render_host::{BufferHost, GraphPasses, HostTables, ShaderHost, TextureHost};
@@ -1416,7 +1404,7 @@ fn external_compute_sampled_and_storage_images_have_declared_views_and_real_pixe
     let queue = device
         .queue(rhapsody::device::QueueClass::Graphics)
         .unwrap();
-    with_setup_command(&device, |command| unsafe {
+    with_setup_command(&device, &[], |command| unsafe {
         image_access(
             command,
             target_owner.clone(),
@@ -1447,11 +1435,11 @@ fn external_compute_sampled_and_storage_images_have_declared_views_and_real_pixe
                 write: true,
             },
         )?;
-        device.device.cmd_copy_image_to_buffer(
-            command.handle,
-            target_owner.handle,
+        device.raw_device().cmd_copy_image_to_buffer(
+            command.raw_handle(),
+            target_owner.raw_handle(),
             vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-            readback.handle,
+            readback.raw_handle(),
             &[vk::BufferImageCopy::default()
                 .image_subresource(
                     vk::ImageSubresourceLayers::default()
@@ -1477,6 +1465,7 @@ fn external_compute_sampled_and_storage_images_have_declared_views_and_real_pixe
             },
         )
     })
+    .and_then(|setup| setup.wait(rhapsody::resource::SETUP_WAIT_TIMEOUT_NS))
     .unwrap();
     let mut actual = vec![0; 64];
     readback.read_bytes(0, &mut actual).unwrap();
@@ -1499,22 +1488,15 @@ fn inactive_compute_views_keep_active_mips_with_interleaved_buffer_binding() {
         shader::boundary::ShaderBackend,
     };
     use rhapsody::{
-        resource::OwnershipRange,
-        rg::{
-            graph::{BufferDesc, BuildError, Descriptor, OriginSource, RenderGraph},
-            plan::{GraphDefinition, PlanContext, compile_definition},
-            plan_check::check_plan,
-            resource::{AccessRange, ResourceContractError, ResourceOrigin},
-            resource_contracts::validate_contracts,
-            vulkan::{AccessTable, ResourceSpec},
-        },
-        shader_pipeline::{
-            compiled::{CompiledShaderPipeline, CompiledShaderStage, ShaderStage},
-            reflection::{
-                Binding, BindingArray, BindingKind, BindingLocation, BindingNameHash,
-                ShaderReflection,
-            },
-        },
+        resource::OwnershipRange, rg::AccessRange, rg::AccessTable, rg::BufferDesc, rg::BuildError,
+        rg::Descriptor, rg::GraphDefinition, rg::OriginSource, rg::PlanContext, rg::RenderGraph,
+        rg::ResourceContractError, rg::ResourceOrigin, rg::ResourceSpec, rg::check_plan,
+        rg::compile_definition, rg::validate_contracts,
+    };
+    use shader_pipeline::{
+        compiled::CompiledShaderPipeline, compiled::CompiledShaderStage, compiled::ShaderStage,
+        reflection::Binding, reflection::BindingArray, reflection::BindingKind,
+        reflection::BindingLocation, reflection::BindingNameHash, reflection::ShaderReflection,
     };
     use std::{cell::RefCell, rc::Rc, sync::Arc};
     use tiny_glade::render_host::{BufferHost, GraphPasses, HostTables, ShaderHost, TextureHost};
@@ -1601,12 +1583,8 @@ fn inactive_compute_views_keep_active_mips_with_interleaved_buffer_binding() {
                     "two-mip history",
                     ResourceOrigin {
                         descriptor: ResourceSpec::Image(
-                            rhapsody::raw::texture::TextureDesc::new_2d(
-                                16,
-                                16,
-                                vk::Format::R32_SFLOAT,
-                            )
-                            .mip_levels(2),
+                            rhapsody::resource::TextureDesc::new_2d(16, 16, vk::Format::R32_SFLOAT)
+                                .mip_levels(2),
                         )
                         .descriptor(),
                         source: OriginSource::Create,
@@ -1734,7 +1712,7 @@ fn inactive_compute_views_keep_active_mips_with_interleaved_buffer_binding() {
             assert!(!accesses[1].contents_unused);
             if !initialize_active {
                 assert!(
-                    matches!(validate_contracts(&declaration, rhapsody::raw::access_table::is_write),
+                    matches!(validate_contracts(&declaration, rhapsody::command::is_write),
                     Err(BuildError::Contract(ResourceContractError::UninitializedRead { resource, pass }))
                     if resource == history.raw() && pass == 0)
                 );
@@ -1755,11 +1733,8 @@ fn inactive_compute_views_keep_active_mips_with_interleaved_buffer_binding() {
             );
             let lifetime = plan.info.lifetimes[history.raw() as usize];
             assert_eq!(
-                (
-                    lifetime.first_pass.pass_index,
-                    lifetime.last_pass.pass_index
-                ),
-                (0, 1)
+                (lifetime.first_pass, lifetime.last_pass),
+                (Some(0), Some(1))
             );
             let native_compute = &plan.range_program.passes[1];
             for level in [0, 1] {
@@ -1797,24 +1772,16 @@ fn device_address_chunks_keep_same_page_ranges_until_cancel_or_real_completion()
         shader::boundary::ShaderBackend,
     };
     use rhapsody::{
-        raw::dynamic_constants::{
-            DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES as PAGE, DynamicConstants, DynamicConstantsConfig,
-        },
-        resource::GpuUse,
-        rg::{
-            graph::RenderGraph as NativeGraph,
-            resource::AccessRange as NativeRange,
-            vulkan::{AccessTable, VulkanGraphBackend, VulkanGraphSession},
-        },
-        shader_pipeline::{
-            compiled::{CompiledShaderPipeline, CompiledShaderStage, ShaderStage},
-            pipeline_desc::ComputePipelineDesc as FileDesc,
-            reflection::{
-                Binding, BindingArray, BindingKind, BindingLocation, BindingNameHash,
-                ShaderReflection,
-            },
-            shader_defines::ShaderDefines,
-        },
+        resource::DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES as PAGE, resource::DynamicConstants,
+        resource::DynamicConstantsConfig, resource::GpuUse, rg::AccessRange as NativeRange,
+        rg::AccessTable, rg::RenderGraph as NativeGraph, rg::VulkanGraphBackend,
+        rg::VulkanGraphSession,
+    };
+    use shader_pipeline::{
+        compiled::CompiledShaderPipeline, compiled::CompiledShaderStage, compiled::ShaderStage,
+        pipeline_desc::ComputePipelineDesc as FileDesc, reflection::Binding,
+        reflection::BindingArray, reflection::BindingKind, reflection::BindingLocation,
+        reflection::BindingNameHash, reflection::ShaderReflection, shader_defines::ShaderDefines,
     };
     use std::{cell::RefCell, rc::Rc, sync::Arc};
     use tiny_glade::render_host::{GraphPasses, HostTables, ShaderHost, TextureHost};
@@ -1822,7 +1789,7 @@ fn device_address_chunks_keep_same_page_ranges_until_cancel_or_real_completion()
         return;
     };
     assert!(
-        device.capabilities.buffer_device_address,
+        device.capabilities().buffer_device_address,
         "this GPU regression requires the real BDA feature"
     );
     let root = tempfile::tempdir().unwrap();

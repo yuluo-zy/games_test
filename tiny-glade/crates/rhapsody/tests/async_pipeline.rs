@@ -251,8 +251,10 @@ fn concurrent_async_requests_merge_and_bounded_keys_do_not_accumulate() {
     command.begin().unwrap();
     command.retain_object(original.clone()).unwrap();
     unsafe {
-        original.bind_pipeline(command.handle);
-        device.device.cmd_dispatch(command.handle, 1, 1, 1);
+        original.bind_pipeline(command.raw_handle());
+        device
+            .raw_device()
+            .cmd_dispatch(command.raw_handle(), 1, 1, 1);
     }
     command.end().unwrap();
     let pending = command.submit().unwrap();
@@ -320,7 +322,7 @@ fn concurrent_raster_requests_share_one_ticket_compile_and_stable_cache_budget()
     let pipeline = tickets[0].wait(Duration::from_secs(10)).unwrap();
     idle(&compiler);
     let warm = compiler.stats();
-    let cpu = device.allocator_stats.cpu_memory_usage();
+    let cpu = device.allocator_stats().cpu_memory_usage();
     assert_eq!(warm.compiled, 1);
     assert_eq!(warm.merged, 7);
     assert_eq!(warm.cached_requests, 1);
@@ -336,7 +338,7 @@ fn concurrent_raster_requests_share_one_ticket_compile_and_stable_cache_budget()
     assert_eq!(after.request_bytes, 0);
     assert_eq!(after.cached_requests, 1);
     assert_eq!(after.cached_key_bytes, warm.cached_key_bytes);
-    assert_eq!(device.allocator_stats.cpu_memory_usage(), cpu);
+    assert_eq!(device.allocator_stats().cpu_memory_usage(), cpu);
 }
 
 #[test]
@@ -475,7 +477,7 @@ fn known_device_loss_stops_cached_requests_and_hot_publication_without_replacing
     hot.stage(replacement);
     // This changes the CPU adapter's terminal state. No work is submitted to
     // the GPU and the driver itself remains healthy for normal destruction.
-    device.timelines.mark_device_lost();
+    device.timelines().mark_device_lost();
     assert!(!hot.publish_at_frame_boundary());
     assert!(Arc::ptr_eq(&hot.current(), &original));
     assert_eq!(hot.revision(), 0);

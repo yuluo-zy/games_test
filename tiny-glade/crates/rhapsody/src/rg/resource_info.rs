@@ -1,14 +1,42 @@
-// 候选实现迁移来源：reconstruction/render/graph_info.rs.
-// 这是行为重建，不是原作者源码。
+//! Per-plan resource metadata: access chains, lifetimes, usage flags and the
+//! ordered acquire/release events used to bind physical resources.
 use std::collections::HashSet;
 
-use crate::raw::resource_usage::{
-    buffer_access_mask_to_usage_flags, image_access_mask_to_usage_flags,
-};
-use crate::rg::resource_rules::{
-    NO_ACCESS, PassEndpoint, ResourceAccessRecord, ResourceLifetimeRecord,
-    calculate_lifetime_events, link_up_next_access_chains,
-};
+use crate::raw::resource_usage::{buffer_usage_for_access, image_usage_for_access};
+use ash::vk::AccessFlags;
+
+/// Marks an absent previous/next/first/last access index.
+pub const NO_ACCESS: u32 = u32::MAX;
+
+/// One resource access in declaration order, linked to the same resource's
+/// previous and next access.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ResourceAccessRecord {
+    pub resource_index: u32,
+    pub previous_access_index: u32,
+    pub next_access_index: u32,
+    pub synchronization_group: u32,
+    pub access_code: u8,
+}
+
+/// Retained-pass span and first/last access of one resource. External
+/// resources are live for the whole graph.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ResourceLifetimeRecord {
+    pub first_pass: Option<u32>,
+    pub last_pass: Option<u32>,
+    pub first_access_index: u32,
+    pub last_access_index: u32,
+}
+
+/// A resource becomes live (`release == false`) or dead at `pass`. Events sort
+/// by pass, acquisitions before releases, then by resource.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct LifetimeEvent {
+    pub pass: u32,
+    pub release: bool,
+    pub resource: u16,
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PassIndex(pub u32);
@@ -34,36 +62,13 @@ impl ResourceAccessIndex {
         self.0
     }
 
-    /// 越界转换返回 `None` 而非 panic；与原入口对负索引的防御式检查对应。
+    /// 越界转换返回 `None` 而非 panic。
     pub fn try_index(value: usize) -> Option<Self> {
         u32::try_from(value).ok().map(Self)
     }
 
     pub fn valid(self) -> bool {
         self.0 != NO_ACCESS
-    }
-}
-
-/// `calculate_lifetime_events` 产出的已排序事件；按 `pass_index<<17 | resource_index | release_bit`
-/// 编码（见 `resource_rules::calculate_lifetime_events`）。本类型只提供只读解码访问器。
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ResourceLifetimeEvent(pub u32);
-
-impl ResourceLifetimeEvent {
-    const RELEASE_BIT: u32 = 0x1_0000;
-    const RESOURCE_MASK: u32 = 0xFFFF;
-
-    /// release 位（bit16）未设置时为 acquire 事件。
-    pub fn is_acquire(self) -> bool {
-        self.0 & Self::RELEASE_BIT == 0
-    }
-
-    pub fn resource_idx(self) -> u16 {
-        (self.0 & Self::RESOURCE_MASK) as u16
-    }
-
-    pub fn pass_index(self) -> u32 {
-        self.0 >> 17
     }
 }
 
@@ -138,7 +143,7 @@ pub struct ResourceInfo {
     pub lifetimes: Vec<ResourceLifetimeRecord>,
     pub image_usage_flags: Vec<u32>,
     pub buffer_usage_flags: Vec<u32>,
-    pub lifetime_events: Vec<u32>,
+    pub lifetime_events: Vec<LifetimeEvent>,
     pub exported_indices: HashSet<u16>,
 }
 
@@ -158,7 +163,7 @@ impl ResourceInfo {
         origins: &[OriginKind],
         exports: &[ExportDeclaration],
         passes: &[&[AccessDeclaration]],
-        mut dependency_access_mask: impl FnMut(u8) -> u32,
+        mut dependency_access_mask: impl FnMut(u8) -> AccessFlags,
     ) -> crate::Result<()> {
         // Validate every caller-controlled index and usage before mutating the
         // current metadata. The same checks protect the public CPU entry point.
@@ -190,7 +195,7 @@ impl ResourceInfo {
                     })?;
                 let mask = *mask.get_or_insert_with(|| dependency_access_mask(access.access_code));
                 if origin.type_code()? == 0 {
-                    image_access_mask_to_usage_flags(mask)?;
+                    image_usage_for_access(mask)?;
                 }
             }
         }
@@ -210,27 +215,18 @@ impl ResourceInfo {
                 })?;
             let mask = *mask.get_or_insert_with(|| dependency_access_mask(export.access_code));
             if export.tag == 0 {
-                image_access_mask_to_usage_flags(mask)?;
+                image_usage_for_access(mask)?;
             }
         }
-        let mut dependency_access_mask = |code: u8| masks[usize::from(code)].unwrap_or(0);
+        let mut dependency_access_mask =
+            |code: u8| masks[usize::from(code)].unwrap_or(AccessFlags::empty());
         self.clear();
         self.lifetimes.reserve(origins.len());
         for origin in origins {
             let external = !matches!(origin, OriginKind::Tag0 { .. });
             self.lifetimes.push(ResourceLifetimeRecord {
-                first_pass: PassEndpoint {
-                    tag: u32::from(external),
-                    pass_index: 0,
-                },
-                last_pass: PassEndpoint {
-                    tag: u32::from(external && !passes.is_empty()),
-                    pass_index: if external && !passes.is_empty() {
-                        passes.len().wrapping_sub(1) as u32
-                    } else {
-                        0
-                    },
-                },
+                first_pass: external.then_some(0),
+                last_pass: (external && !passes.is_empty()).then(|| (passes.len() - 1) as u32),
                 first_access_index: NO_ACCESS,
                 last_access_index: NO_ACCESS,
             });
@@ -247,12 +243,42 @@ impl ResourceInfo {
                 &mut dependency_access_mask,
             )?;
         }
-        link_up_next_access_chains(&mut self.accesses);
-        calculate_lifetime_events(&self.lifetimes, &mut self.lifetime_events);
+        self.link_next_accesses();
+        self.calculate_lifetime_events();
         Ok(())
     }
 
-    /// 原入口前段：把 create 来源（Tag0）声明的创建期 usage 位写入对应资源表。
+    /// Point every access's predecessor at it.
+    fn link_next_accesses(&mut self) {
+        for current in 0..self.accesses.len() {
+            let previous = self.accesses[current].previous_access_index;
+            if previous != NO_ACCESS {
+                self.accesses[previous as usize].next_access_index = current as u32;
+            }
+        }
+    }
+
+    /// Two events per live resource, sorted.
+    fn calculate_lifetime_events(&mut self) {
+        for (resource, lifetime) in self.lifetimes.iter().enumerate() {
+            if let (Some(first), Some(last)) = (lifetime.first_pass, lifetime.last_pass) {
+                let resource = resource as u16;
+                self.lifetime_events.push(LifetimeEvent {
+                    pass: first,
+                    release: false,
+                    resource,
+                });
+                self.lifetime_events.push(LifetimeEvent {
+                    pass: last,
+                    release: true,
+                    resource,
+                });
+            }
+        }
+        self.lifetime_events.sort_unstable();
+    }
+
+    /// 把 create 来源（Tag0）声明的创建期 usage 位写入对应资源表。
     /// 导入/导出来源（Tag1/Tag2）没有创建期标志，usage 表保持已 resize 的零值。
     fn extract_creation_flags(&mut self, origins: &[OriginKind]) {
         for (resource_index, origin) in origins.iter().enumerate() {
@@ -271,39 +297,39 @@ impl ResourceInfo {
         }
     }
 
-    /// 原入口中段：导出声明本身不产生 pass 访问记录，但要把导出访问码折算的
+    /// 导出声明本身不产生 pass 访问记录，但要把导出访问码折算的
     /// usage 位并入资源表，并记录已导出的资源索引集合。
     fn extend_usage_flags_for_exports(
         &mut self,
         exports: &[ExportDeclaration],
-        dependency_access_mask: &mut impl FnMut(u8) -> u32,
+        dependency_access_mask: &mut impl FnMut(u8) -> AccessFlags,
     ) -> crate::Result<()> {
         for export in exports {
             let access_mask = dependency_access_mask(export.access_code);
             let resource_index =
                 u16::try_from(export.resource_index).expect("export index exceeds u16");
             self.exported_indices.insert(resource_index);
-            if access_mask != 0 {
+            if !access_mask.is_empty() {
                 if export.tag & 1 == 0 {
                     let usage = &mut self.image_usage_flags[usize::from(resource_index)];
-                    *usage |= image_access_mask_to_usage_flags(access_mask)?.as_raw();
+                    *usage |= image_usage_for_access(access_mask)?.as_raw();
                 } else {
                     let usage = &mut self.buffer_usage_flags[usize::from(resource_index)];
-                    *usage |= buffer_access_mask_to_usage_flags(access_mask).as_raw();
+                    *usage |= buffer_usage_for_access(access_mask).as_raw();
                 }
             }
         }
         Ok(())
     }
 
-    /// 原入口后段：按单个 pass 的访问声明产出 access 记录、串联资源生命周期的
+    /// 按单个 pass 的访问声明产出 access 记录、串联资源生命周期的
     /// 首/末访问与首/末 pass，并把访问码折算的 usage 位并入资源表。
     fn extract_pass_resource_access(
         &mut self,
         pass_index: PassIndex,
         pass: &[AccessDeclaration],
         origins: &[OriginKind],
-        dependency_access_mask: &mut impl FnMut(u8) -> u32,
+        dependency_access_mask: &mut impl FnMut(u8) -> AccessFlags,
     ) -> crate::Result<()> {
         let start = self.accesses.len();
         for declaration in pass {
@@ -316,23 +342,14 @@ impl ResourceInfo {
                 next_access_index: NO_ACCESS,
                 synchronization_group: declaration.synchronization_group,
                 access_code: declaration.access_code,
-                unobserved_padding: [0; 3],
             });
             let current_pass = pass_index.0;
-            if lifetime.first_pass.tag & 1 == 0 {
-                lifetime.first_pass = PassEndpoint {
-                    tag: 1,
-                    pass_index: current_pass,
-                };
-            }
-            if lifetime.last_pass.tag == 1 {
-                lifetime.last_pass.pass_index = lifetime.last_pass.pass_index.max(current_pass);
-            } else {
-                lifetime.last_pass = PassEndpoint {
-                    tag: 1,
-                    pass_index: current_pass,
-                };
-            }
+            lifetime.first_pass.get_or_insert(current_pass);
+            lifetime.last_pass = Some(
+                lifetime
+                    .last_pass
+                    .map_or(current_pass, |last| last.max(current_pass)),
+            );
             if lifetime.first_access_index == NO_ACCESS {
                 lifetime.first_access_index = access_index;
             }
@@ -341,12 +358,12 @@ impl ResourceInfo {
             match origins[resource_index].type_code()? {
                 1 => {
                     let usage = &mut self.buffer_usage_flags[resource_index];
-                    *usage |= buffer_access_mask_to_usage_flags(access_mask).as_raw();
+                    *usage |= buffer_usage_for_access(access_mask).as_raw();
                 }
                 2 => {}
                 _ => {
                     let usage = &mut self.image_usage_flags[resource_index];
-                    *usage |= image_access_mask_to_usage_flags(access_mask)?.as_raw();
+                    *usage |= image_usage_for_access(access_mask)?.as_raw();
                 }
             }
         }

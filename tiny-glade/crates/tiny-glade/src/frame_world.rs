@@ -26,7 +26,7 @@ use country_core::{
     systems::render_loop::compute_passes::pass_kit::ResourceView,
 };
 use parking_lot::Mutex;
-use rhapsody::raw::dynamic_constants::DynamicConstants;
+use rhapsody::resource::DynamicConstants;
 
 /// Typed borrows of the six resources required by the original function.
 /// `constants` is the mutex payload of the original `DynamicConstantsResource`;

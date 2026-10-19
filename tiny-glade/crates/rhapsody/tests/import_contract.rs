@@ -44,13 +44,18 @@ fn foreign_device_imports_fail_without_replacing_bindings() {
         let errors = [
             backend.bind_import(resource.clone()).unwrap_err(),
             backend
-                .bind_import_owned_by(resource.clone(), current.queue_family)
+                .bind_import_owned_by(resource.clone(), current.queue_family_index())
                 .unwrap_err(),
             backend
                 .bind_import_named("local", token, resource.clone())
                 .unwrap_err(),
             backend
-                .bind_import_named_owned_by("foreign", token + 1, resource, current.queue_family)
+                .bind_import_named_owned_by(
+                    "foreign",
+                    token + 1,
+                    resource,
+                    current.queue_family_index(),
+                )
                 .unwrap_err(),
         ];
         for error in errors {
@@ -92,14 +97,14 @@ fn invalid_import_is_rejected_before_recording_and_next_frame_remains_usable() {
         });
         let flag = retired.clone();
         graph.on_retire(move || flag.store(true, Ordering::SeqCst));
-        let submitted = device.timelines.submitted_set();
+        let submitted = device.timelines().submitted_set();
         assert_eq!(
             session.execute_frame(graph.build()).unwrap_err().kind(),
             rhapsody::ErrorKind::InvalidUsage
         );
         assert!(!recorded.load(Ordering::SeqCst));
         assert!(retired.load(Ordering::SeqCst));
-        assert_eq!(device.timelines.submitted_set(), submitted);
+        assert_eq!(device.timelines().submitted_set(), submitted);
         assert_eq!(session.pending_frame_count(), 0);
         assert_eq!(session.command_count(), 0);
         assert!(!session.is_poisoned());
@@ -114,9 +119,9 @@ fn invalid_import_is_rejected_before_recording_and_next_frame_remains_usable() {
     let target = buffer.clone();
     pass.render(move |context| {
         unsafe {
-            dev.device.cmd_fill_buffer(
+            dev.raw_device().cmd_fill_buffer(
                 vk::CommandBuffer::from_raw(context),
-                target.handle,
+                target.raw_handle(),
                 0,
                 64,
                 0x12345678,

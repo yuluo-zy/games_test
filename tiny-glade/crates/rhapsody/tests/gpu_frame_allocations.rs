@@ -61,16 +61,16 @@ fn build(
             .unwrap();
         pass.add_resource_access(handles[destination], COPY_WRITE, 1)
             .unwrap();
-        let device = buffers[source].device.clone();
-        let source = buffers[source].handle;
-        let destination = buffers[destination].handle;
+        let device = buffers[source].device().clone();
+        let source = buffers[source].raw_handle();
+        let destination = buffers[destination].raw_handle();
         let recorded = recorded.clone();
         pass.render_with_result_context(move |context| {
             // SAFETY: these exact same-device buffers are owned graph imports,
             // declared with full matching copy ranges. The production executor
             // retains their RawResource owners and records their real SyncCells.
             unsafe {
-                device.device.cmd_copy_buffer(
+                device.raw_device().cmd_copy_buffer(
                     vk::CommandBuffer::from_raw(context.command.handle()),
                     source,
                     destination,
@@ -123,7 +123,7 @@ fn real_vulkan_session_reports_framework_execution_allocations() {
         },
     )
     .expect("strict Vulkan Session allocation fixture requires a working Vulkan device");
-    let messenger = ValidationMessenger::new(&device.instance).unwrap();
+    let messenger = ValidationMessenger::new(device.instance()).unwrap();
     let desc = BufferDesc::new_gpu_to_cpu(
         BYTES,
         vk::BufferUsageFlags::TRANSFER_SRC | vk::BufferUsageFlags::TRANSFER_DST,
@@ -302,7 +302,7 @@ fn real_vulkan_session_reports_framework_execution_allocations() {
     let report = serde_json::json!({
         "scope":"actual serial VulkanGraphSession; current-thread Rust/System allocations; native driver/other threads excluded; callback emits 8 fixed native buffer copies with no allocations",
         "warmup_frames":300,"resource_count":2,"retained_passes":8,
-        "native_submit_api": if session.backend.device.caps().is_enabled(rhapsody::device::Feature::Synchronization2) {"synchronization2"} else {"legacy"},"pixel_or_byte_reference":"both 64-byte GPU copy results exact",
+        "native_submit_api": if session.backend.device().caps().is_enabled(rhapsody::device::Feature::Synchronization2) {"synchronization2"} else {"legacy"},"pixel_or_byte_reference":"both 64-byte GPU copy results exact",
         "begin_frame":summary(&begin),"graph_construction":summary(&construction),
         "framework_execute":summary(&execution),"completion_and_wait":summary(&completion),
         "validation_errors":0,"validation_warnings":0,

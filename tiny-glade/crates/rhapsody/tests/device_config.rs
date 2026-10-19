@@ -3,7 +3,7 @@ mod gpu_test_support;
 use ash::vk;
 use rhapsody::rg::{
     graph::RenderGraph,
-    parallel::ChunkStrategy,
+    parallel::ParallelRecording,
     vulkan::{AccessTable, VulkanGraphBackend, VulkanGraphSession},
 };
 use rhapsody::{
@@ -22,7 +22,7 @@ fn create(config: &DeviceConfig) -> Option<std::sync::Arc<Device>> {
 fn configured_device_reports_actual_enabled_capabilities_and_allocation_mode() {
     let config = DeviceConfig {
         allocation: AllocationStrategy::Dedicated,
-        recording: RecordingPolicy::Parallel,
+        recording: RecordingPolicy::Adaptive,
         ..DeviceConfig::headless()
     };
     let Some(device) = create(&config) else {
@@ -32,13 +32,28 @@ fn configured_device_reports_actual_enabled_capabilities_and_allocation_mode() {
     assert!(device.caps().is_enabled(Feature::TimelineSemaphore));
     assert_eq!(
         device.caps().is_enabled(Feature::BufferDeviceAddress),
-        device.capabilities.buffer_device_address
+        device.capabilities().buffer_device_address
     );
     assert_eq!(device.policy().allocation, AllocationStrategy::Dedicated);
     assert!(!device.suballocation_enabled());
     let backend = VulkanGraphBackend::new(device, AccessTable::original()).unwrap();
     let session = VulkanGraphSession::new(backend);
-    assert_eq!(session.chain.parallel.strategy, ChunkStrategy::Original);
+    assert_eq!(
+        session.chain.parallel.strategy,
+        ParallelRecording::ADAPTIVE.strategy
+    );
+}
+
+#[test]
+fn default_device_records_graph_sessions_adaptively() {
+    let Some(device) = create(&DeviceConfig::headless()) else {
+        return;
+    };
+    assert_eq!(device.policy().recording, RecordingPolicy::Adaptive);
+    let backend = VulkanGraphBackend::new(device, AccessTable::original()).unwrap();
+    let session = VulkanGraphSession::new(backend);
+    assert_eq!(session.chain.parallel, ParallelRecording::default());
+    assert_eq!(session.chain.parallel, ParallelRecording::ADAPTIVE);
 }
 
 #[test]
@@ -63,7 +78,7 @@ fn device_submission_rejects_future_waits_without_advancing_timeline() {
     };
     let error = unsafe { device.submit(queue, &[batch]) }.unwrap_err();
     assert_eq!(error.kind(), rhapsody::ErrorKind::InvalidUsage);
-    assert_eq!(device.timelines.submitted(queue).unwrap(), first.value);
+    assert_eq!(device.timelines().submitted(queue).unwrap(), first.value);
     let waits = [Wait::Timeline {
         point: first,
         stage: vk::PipelineStageFlags::ALL_COMMANDS,
@@ -135,9 +150,9 @@ fn an_independent_compute_queue_submits_while_the_graphics_queue_lock_is_held() 
     };
     let families = unsafe {
         probe
-            .instance
-            .instance
-            .get_physical_device_queue_family_properties(probe.physical)
+            .instance()
+            .raw_instance()
+            .get_physical_device_queue_family_properties(probe.physical_device())
     }
     .iter()
     .map(|family| FamilyInfo::from_properties(family, false))
@@ -160,8 +175,8 @@ fn an_independent_compute_queue_submits_while_the_graphics_queue_lock_is_held() 
     let compute = device.queue(QueueClass::Compute).unwrap();
     assert_ne!(graphics, compute, "Require must not silently alias compute");
     assert_ne!(
-        device.queue_plan.physical(QueueClass::Graphics),
-        device.queue_plan.physical(QueueClass::Compute),
+        device.queue_plan().physical(QueueClass::Graphics),
+        device.queue_plan().physical(QueueClass::Compute),
         "the test requires two actual Vulkan queues"
     );
 
@@ -170,7 +185,7 @@ fn an_independent_compute_queue_submits_while_the_graphics_queue_lock_is_held() 
     let (done_tx, done_rx) = mpsc::sync_channel(1);
     let holding_device = device.clone();
     let holder = thread::spawn(move || {
-        holding_device.timelines.with_queue(graphics, || {
+        holding_device.timelines().with_queue(graphics, || {
             locked_tx
                 .send(())
                 .expect("main thread waits for graphics lock");

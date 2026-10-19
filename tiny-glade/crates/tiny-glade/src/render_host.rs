@@ -8,10 +8,9 @@ use country_core::render::ssbo::rhapsody_boundary::{
     BackendError, Buffer, BufferDesc, GraphicsDevice as CoreGraphicsDevice,
 };
 use parking_lot::Mutex;
-use rhapsody::raw::{
-    buffer::{BufferDesc as RhBufferDesc, MemoryLocation},
-    device::Device,
-    managed::buffer::ManagedBuffer,
+use rhapsody::{
+    device::Device, resource::BufferDesc as RhBufferDesc, resource::ManagedBuffer,
+    resource::MemoryLocation,
 };
 use std::{ops::Range, sync::Arc};
 
@@ -31,7 +30,9 @@ struct BufferUploads {
 }
 
 impl BufferHost {
-    pub fn graphics_device(&self) -> &Arc<Device> { &self.device }
+    pub fn graphics_device(&self) -> &Arc<Device> {
+        &self.device
+    }
     pub fn new(device: Arc<Device>) -> Self {
         Self {
             device,
@@ -171,12 +172,7 @@ impl CoreGraphicsDevice for BufferHost {
                 .update_buffer_bytes(&managed, data, ranges, offset);
         }
         // Reject invalid ranges before allocating the lazy transfer service.
-        rhapsody::raw::buffer::plan_buffer_update(
-            &managed.desc,
-            data.len(),
-            ranges,
-            offset as u64,
-        )?;
+        rhapsody::resource::plan_buffer_update(&managed.desc, data.len(), ranges, offset as u64)?;
         // This host method promises completion on return. Device-local sparse
         // updates use the same bounded queued uploader as streaming consumers,
         // then wait only for these batches' actual points.
@@ -239,9 +235,8 @@ impl CoreGraphicsDevice for BufferHost {
 use country_core::render::load_texture::boundary::{
     BackendError as TextureBackendError, Texture, TextureDesc, TextureDevice,
 };
-use rhapsody::raw::{
-    managed::texture::ManagedTexture,
-    texture::{TextureDesc as RhTextureDesc, TextureKind},
+use rhapsody::{
+    resource::ManagedTexture, resource::TextureDesc as RhTextureDesc, resource::TextureKind,
 };
 
 /// `Texture.id` 的标记位：图导入入口 `import_unowned(id, access)` 对缓冲和纹理共用，靠它区分。
@@ -273,9 +268,7 @@ pub struct TextureHost {
     device: Arc<Device>,
     slots: Arc<Mutex<Vec<TextureSlot>>>,
     /// 默认视图缓存（原 `ManagedTexture::view` 按描述缓存，M2.6）：视图随纹理一起存活，`release` 时丢弃。
-    views: Arc<
-        Mutex<std::collections::HashMap<u64, rhapsody::raw::managed::texture::ManagedTextureView>>,
-    >,
+    views: Arc<Mutex<std::collections::HashMap<u64, rhapsody::resource::ManagedTextureView>>>,
     /// 宿主附加的用途位（core 的 `TextureDesc` 只有 sampled/storage/附件五个开关，没有 TRANSFER_SRC；
     /// 读回像素的宿主/测试在这里统一加上。原版 `TextureDesc.usage` 是完整位集，此项是宿主策略，不是原版行为）。
     extra_usage: vk::ImageUsageFlags,
@@ -319,7 +312,7 @@ impl TextureHost {
         if let Some(view) = views.get(&id) {
             return Ok(ash::vk::Handle::as_raw(view.raw()));
         }
-        let desc = rhapsody::raw::texture::TextureViewDesc::new(&texture.desc)?;
+        let desc = rhapsody::resource::TextureViewDesc::new(&texture.desc)?;
         let view = self.device.get_vk_image_view(&texture, &desc)?;
         let raw = ash::vk::Handle::as_raw(view.raw());
         views.insert(id, view);
@@ -330,7 +323,7 @@ impl TextureHost {
         &self,
         id: u64,
         raw: u64,
-    ) -> rhapsody::Result<Arc<rhapsody::raw::texture::TextureView>> {
+    ) -> rhapsody::Result<Arc<rhapsody::resource::TextureView>> {
         let views = self.views.lock();
         let view = views.get(&id).ok_or_else(|| {
             rhapsody::Error::invalid_usage("external texture view is not owned by this host")
@@ -561,7 +554,7 @@ impl country_core::asset_libraries::texture_library::TextureLibraryDevice for Te
         let regions: Vec<_> = (0..layer_count)
             .map(|layer| {
                 let start = layer as usize * bytes_per_layer;
-                rhapsody::raw::texture_upload::TextureUpdateRegion {
+                rhapsody::resource::TextureUpdateRegion {
                     data: &update.data[start..start + bytes_per_layer],
                     extent: update.extent,
                     mip_level: update.mip_level,
@@ -569,7 +562,7 @@ impl country_core::asset_libraries::texture_library::TextureLibraryDevice for Te
                 }
             })
             .collect();
-        rhapsody::raw::setup::update_texture_regions(&self.device, &managed, &regions)
+        rhapsody::resource::update_texture_regions(&self.device, &managed, &regions)
     }
 }
 
@@ -601,21 +594,19 @@ use rhapsody::bindless::{
 use rhapsody::pipeline::{
     AsyncPipelineCompiler, CompilerConfig, PersistentPipelineCache, PipelineTicket,
 };
-use rhapsody::rg::attachments::contract::RenderPassKey;
-use rhapsody::shader_pipeline::reflection::{BindingKind, BindingLocation, ShaderReflection};
+use rhapsody::rg::RenderPassKey;
 use rhapsody::{
-    raw::{
-        sampler::Sampler,
-        shader::{
-            DynamicRenderingFormats, PipelineCache, RasterPipelineDesc as RhRasterDesc,
-            RasterPipelineOpts, ShaderModule, VulkanPipeline, vertex_input_from_reflection,
-        },
-    },
-    shader_pipeline::{
-        compiled::{CompiledShaderPipeline as RhCompiled, ShaderStage},
-        pipeline_desc::ComputePipelineDesc as FileComputeDesc,
-        shader_defines::ShaderDefines,
-    },
+    pipeline::DynamicRenderingFormats, pipeline::PipelineCache,
+    pipeline::RasterPipelineDesc as RhRasterDesc, pipeline::RasterPipelineOpts,
+    pipeline::ShaderModule, pipeline::VulkanPipeline, pipeline::vertex_input_from_reflection,
+    resource::Sampler,
+};
+use shader_pipeline::{
+    compiled::CompiledShaderPipeline as RhCompiled, compiled::ShaderStage,
+    pipeline_desc::ComputePipelineDesc as FileComputeDesc, shader_defines::ShaderDefines,
+};
+use shader_pipeline::{
+    reflection::BindingKind, reflection::BindingLocation, reflection::ShaderReflection,
 };
 use std::{
     collections::BTreeMap,
@@ -667,15 +658,14 @@ pub struct ShaderHost {
     raster: Mutex<Vec<Arc<RasterEntry>>>,
     passes: Arc<RenderPassHost>,
     frame_globals: Arc<Mutex<Option<Arc<crate::frame_setup::FrameGlobals>>>>,
-    indexed_count_adapter: Mutex<Option<Arc<rhapsody::rg::indirect_count::IndexedCountAdapter>>>,
+    indexed_count_adapter: Mutex<Option<Arc<rhapsody::rg::IndexedCountAdapter>>>,
 }
 
 /// Bounded attachment signatures used to request dynamic-rendering pipelines.
 #[derive(Default)]
 pub struct RenderPassHost {
     table: Mutex<Vec<Arc<RenderPassEntry>>>,
-    by_desc:
-        Mutex<std::collections::HashMap<rhapsody::rg::attachments::contract::RenderPassDesc, u64>>,
+    by_desc: Mutex<std::collections::HashMap<rhapsody::rg::RenderPassDesc, u64>>,
 }
 
 pub struct RenderPassEntry {
@@ -689,8 +679,8 @@ impl RenderPassHost {
     pub fn create_from_desc(
         &self,
         device: &Arc<Device>,
-        desc: &rhapsody::rg::attachments::contract::RenderPassDesc,
-    ) -> Result<u64, rhapsody::raw::error::Error> {
+        desc: &rhapsody::rg::RenderPassDesc,
+    ) -> Result<u64, rhapsody::Error> {
         let mut by_desc = self.by_desc.lock();
         if let Some(id) = by_desc.get(desc) {
             return Ok(*id);
@@ -742,7 +732,7 @@ impl RenderPassHost {
         for attachment in &key.attachments {
             let format = vk::Format::from_raw(attachment.format);
             if attachment.depth_stencil {
-                let aspects = rhapsody::raw::format::vk_format_valid_aspect_flags(format);
+                let aspects = rhapsody::resource::vk_format_valid_aspect_flags(format);
                 if aspects.contains(vk::ImageAspectFlags::DEPTH) {
                     formats.depth = format;
                 }
@@ -777,7 +767,7 @@ impl RenderPassHost {
         &self,
         device: &Arc<Device>,
         key: &RenderPassKey,
-    ) -> Result<u64, rhapsody::raw::error::Error> {
+    ) -> Result<u64, rhapsody::Error> {
         let entry = Self::entry(device, key)?;
         let mut table = self.table.lock();
         if table.len() >= 256 {
@@ -798,7 +788,7 @@ impl RenderPassHost {
 /// 一条已创建的光栅管线及绘制时需要的反射信息。
 pub struct RasterEntry {
     pub pipeline: PipelineTicket,
-    pub layout: Arc<rhapsody::raw::shader::PipelineLayout>,
+    pub layout: Arc<rhapsody::pipeline::PipelineLayout>,
     pub registry: Arc<ResourceRegistry>,
     pub pass: Arc<RenderPassEntry>,
     pub bindings: ShaderBindings,
@@ -839,7 +829,7 @@ impl ShaderBindings {
     pub fn image(
         &self,
         binding: u32,
-        view: Arc<rhapsody::raw::texture::TextureView>,
+        view: Arc<rhapsody::resource::TextureView>,
     ) -> rhapsody::Result<BindlessResource> {
         match self
             .abi
@@ -909,11 +899,18 @@ impl ShaderHost {
     }
     /// Uses this host's existing heap/compiler. Device support policy is
     /// selected by the raster host; no second descriptor backend is created.
-    pub fn indexed_count_adapter(&self) -> rhapsody::Result<Arc<rhapsody::rg::indirect_count::IndexedCountAdapter>> {
+    pub fn indexed_count_adapter(
+        &self,
+    ) -> rhapsody::Result<Arc<rhapsody::rg::IndexedCountAdapter>> {
         let mut cached = self.indexed_count_adapter.lock();
-        if let Some(adapter) = cached.as_ref() { return Ok(adapter.clone()); }
-        let adapter = rhapsody::rg::indirect_count::IndexedCountAdapter::new(
-            self.device.clone(), self.heap.clone(), &self.compiler)?;
+        if let Some(adapter) = cached.as_ref() {
+            return Ok(adapter.clone());
+        }
+        let adapter = rhapsody::rg::IndexedCountAdapter::new(
+            self.device.clone(),
+            self.heap.clone(),
+            &self.compiler,
+        )?;
         *cached = Some(adapter.clone());
         Ok(adapter)
     }
@@ -1071,7 +1068,7 @@ impl ShaderBackend for ShaderHost {
     }
 
     fn load_compiled_raster(&self, desc: &RasterPipelineDesc) -> Result<CoreCompiled, ShaderError> {
-        let file = rhapsody::shader_pipeline::pipeline_desc::RasterPipelineDesc {
+        let file = shader_pipeline::pipeline_desc::RasterPipelineDesc {
             source_path: desc.path.clone(),
             vertex_entry: String::new(),
             fragment_entry: desc.entry.clone(),
@@ -1182,7 +1179,7 @@ impl ShaderBackend for ShaderHost {
 
         let layout = package.layout.clone();
         let bindings = self.bindings(&decoded, package.abi.clone())?;
-        let module = |stage: &rhapsody::shader_pipeline::compiled::CompiledShaderStage| {
+        let module = |stage: &shader_pipeline::compiled::CompiledShaderStage| {
             let bytes = stage
                 .spirv
                 .iter()
@@ -1240,7 +1237,7 @@ impl ShaderBackend for ShaderHost {
 // ---------------------------------------------------------------- render graph
 
 use country_core::rhapsody_types::{BufferGraphBackend, ImportedBuffer};
-use rhapsody::rg::{graph::RenderGraph as RhGraph, vulkan::ResourceSpec};
+use rhapsody::{rg::RenderGraph as RhGraph, rg::ResourceSpec};
 use std::{cell::RefCell, rc::Rc};
 
 /// core `RenderGraph` 的后端：把 `import_unowned(id, access)` / `export` 落到 rhapsody 图声明上。
@@ -1375,11 +1372,8 @@ use country_core::render::rg_helpers::rg_boundary::{
     StagingAlloc, StagingCopy,
 };
 use rhapsody::{
-    raw::dynamic_constants::{DynamicConstants, DynamicConstantsChunk},
-    rg::{
-        pass_api::{AshCommandBackend, CommandBackend, RenderPassApi as RhRenderPassApi},
-        pass_bindings::ManagedPassResources,
-    },
+    resource::DynamicConstants, resource::DynamicConstantsChunk, rg::AshCommandBackend,
+    rg::CommandBackend, rg::ManagedPassResources, rg::RenderPassApi as RhRenderPassApi,
 };
 /// core `rg_boundary::RenderGraph` 的宿主实现：pass 声明落到 rhapsody 图，动态常量走 rhapsody 的
 /// `DynamicConstants`（原版 256 KiB 页、线性分配）。
@@ -1395,12 +1389,12 @@ pub struct GraphPasses<'session> {
     uniform_uploads: Vec<(Arc<[u8]>, DynamicConstantsChunk)>,
 }
 enum GraphSession<'a> {
-    Exclusive(&'a mut rhapsody::rg::vulkan::VulkanGraphSession),
-    Shared(Rc<RefCell<rhapsody::rg::vulkan::VulkanGraphSession>>),
+    Exclusive(&'a mut rhapsody::rg::VulkanGraphSession),
+    Shared(Rc<RefCell<rhapsody::rg::VulkanGraphSession>>),
 }
 enum SessionBorrow<'a> {
-    Exclusive(&'a mut rhapsody::rg::vulkan::VulkanGraphSession),
-    Shared(std::cell::RefMut<'a, rhapsody::rg::vulkan::VulkanGraphSession>),
+    Exclusive(&'a mut rhapsody::rg::VulkanGraphSession),
+    Shared(std::cell::RefMut<'a, rhapsody::rg::VulkanGraphSession>),
 }
 impl GraphSession<'_> {
     fn borrow_mut(&mut self) -> rhapsody::Result<SessionBorrow<'_>> {
@@ -1420,7 +1414,7 @@ impl GraphSession<'_> {
     }
 }
 impl std::ops::Deref for SessionBorrow<'_> {
-    type Target = rhapsody::rg::vulkan::VulkanGraphSession;
+    type Target = rhapsody::rg::VulkanGraphSession;
     fn deref(&self) -> &Self::Target {
         match self {
             Self::Exclusive(s) => s,
@@ -1446,10 +1440,7 @@ pub struct HostTables {
 }
 
 impl<'session> GraphPasses<'session> {
-    pub fn new(
-        graph: Rc<RefCell<RhGraph>>,
-        device: Arc<Device>,
-    ) -> Result<Self, rhapsody::raw::error::Error> {
+    pub fn new(graph: Rc<RefCell<RhGraph>>, device: Arc<Device>) -> Result<Self, rhapsody::Error> {
         let dynamic = DynamicConstants::new(device.clone())?;
         Ok(Self {
             graph,
@@ -1471,9 +1462,9 @@ impl<'session> GraphPasses<'session> {
     /// second cache is introduced.
     pub fn with_session(
         mut self,
-        session: &'session mut rhapsody::rg::vulkan::VulkanGraphSession,
+        session: &'session mut rhapsody::rg::VulkanGraphSession,
     ) -> rhapsody::Result<Self> {
-        if !Arc::ptr_eq(&self.device, &session.backend.device) {
+        if !Arc::ptr_eq(&self.device, &session.backend.device()) {
             return Err(rhapsody::Error::invalid_usage(
                 "upload cache belongs to another device",
             ));
@@ -1488,13 +1479,13 @@ impl<'session> GraphPasses<'session> {
     /// caller's whole ComputePass construction closure.
     pub fn with_shared_session(
         mut self,
-        session: Rc<RefCell<rhapsody::rg::vulkan::VulkanGraphSession>>,
+        session: Rc<RefCell<rhapsody::rg::VulkanGraphSession>>,
     ) -> rhapsody::Result<Self> {
         let device = session
             .try_borrow()
             .map_err(|_| rhapsody::Error::invalid_usage("frame session is already borrowed"))?
             .backend
-            .device
+            .device()
             .clone();
         if !Arc::ptr_eq(&self.device, &device) {
             return Err(rhapsody::Error::invalid_usage(
@@ -1650,7 +1641,8 @@ impl RgResources for GraphPasses<'_> {
             .ok_or_else(|| {
                 rhapsody::Error::invalid_usage("frame resources require the frame driver's session")
             })?;
-        let named = session.named_buffer(&mut self.graph.borrow_mut(), name, native)?;
+        // Temporal buffers of the game are zero-filled on creation.
+        let named = session.named_buffer_zeroed(&mut self.graph.borrow_mut(), name, native)?;
         Ok(TemporalBuffer {
             buffer: RgBuffer {
                 resource: named.buffer.raw().raw(),
@@ -1677,7 +1669,7 @@ impl CorePassGraph for GraphPasses<'_> {
                 .managed
                 .expect("pass callback without managed resources");
             // SAFETY: 命令缓冲、资源与设备在回调期间由 recorder 持有存活。
-            let mut backend = unsafe { AshCommandBackend::new(&device.device) };
+            let mut backend = unsafe { AshCommandBackend::new(&device.raw_device()) };
             let command =
                 <ash::vk::CommandBuffer as ash::vk::Handle>::from_raw(ctx.command.handle());
             let mut host = PassApiHost {
@@ -1695,7 +1687,7 @@ impl CorePassGraph for GraphPasses<'_> {
         name: &'static str,
         copies: Vec<StagingCopy>,
     ) -> rhapsody::Result<()> {
-        use rhapsody::rg::{graph::Descriptor, resource::AccessRange};
+        use rhapsody::{rg::AccessRange, rg::Descriptor};
         let mut session = self
             .cache_session
             .as_mut()
@@ -1726,7 +1718,7 @@ impl CorePassGraph for GraphPasses<'_> {
                 })?;
             let size = copy.source.bytes.len() as u64;
             if size == 0
-                || ash::vk::Handle::as_raw(chunk.buffer.handle) != copy.source.buffer
+                || ash::vk::Handle::as_raw(chunk.buffer.raw_handle()) != copy.source.buffer
                 || chunk.offset != u64::from(copy.source.offset)
                 || chunk.size != size
             {
@@ -1792,10 +1784,10 @@ impl CorePassGraph for GraphPasses<'_> {
                     rhapsody::Error::invalid_usage_with("staging target", error)
                 })?;
                 unsafe {
-                    device.device.cmd_copy_buffer(
+                    device.raw_device().cmd_copy_buffer(
                         <vk::CommandBuffer as ash::vk::Handle>::from_raw(ctx.command.handle()),
-                        source.handle,
-                        target.handle,
+                        source.raw_handle(),
+                        target.raw_handle(),
                         &[vk::BufferCopy {
                             src_offset,
                             dst_offset,
@@ -1811,7 +1803,7 @@ impl CorePassGraph for GraphPasses<'_> {
 
     fn allocate_dynamic(&mut self, size: usize) -> rhapsody::Result<StagingAlloc> {
         let chunk = self.dynamic.lock().allocate(size as u64)?;
-        let buffer = ash::vk::Handle::as_raw(chunk.buffer.handle);
+        let buffer = ash::vk::Handle::as_raw(chunk.buffer.raw_handle());
         let mut bytes = Vec::new();
         bytes
             .try_reserve_exact(size)
@@ -1834,11 +1826,9 @@ impl CorePassGraph for GraphPasses<'_> {
         source: u64,
         version: u64,
     ) -> rhapsody::Result<bool> {
-        use rhapsody::rg::{
-            resource::AccessRange,
-            result_cache::{
-                ContentDependency, DependencyId, ResultDependencies, ResultNodeId, ResultRequest,
-            },
+        use rhapsody::{
+            rg::AccessRange, rg::ContentDependency, rg::DependencyId, rg::ResultDependencies,
+            rg::ResultNodeId, rg::ResultRequest,
         };
         let Some(mut session) = self
             .cache_session
@@ -1920,12 +1910,12 @@ impl CorePassGraph for GraphPasses<'_> {
                             rhapsody::Error::invalid_usage_with("upload staging source", error)
                         })?;
                         unsafe {
-                            device.device.cmd_copy_buffer(
+                            device.raw_device().cmd_copy_buffer(
                                 <vk::CommandBuffer as ash::vk::Handle>::from_raw(
                                     ctx.command.handle(),
                                 ),
-                                source.handle,
-                                output.handle,
+                                source.raw_handle(),
+                                output.raw_handle(),
                                 &[vk::BufferCopy {
                                     src_offset: source_offset,
                                     dst_offset: 0,
@@ -1962,10 +1952,10 @@ impl CorePassGraph for GraphPasses<'_> {
                     rhapsody::Error::invalid_usage_with("cached upload target", error)
                 })?;
                 unsafe {
-                    device.device.cmd_copy_buffer(
+                    device.raw_device().cmd_copy_buffer(
                         <vk::CommandBuffer as ash::vk::Handle>::from_raw(ctx.command.handle()),
-                        source.handle,
-                        target.handle,
+                        source.raw_handle(),
+                        target.raw_handle(),
                         &[vk::BufferCopy {
                             src_offset: 0,
                             dst_offset: 0,
@@ -1995,7 +1985,7 @@ impl<B: CommandBackend> CoreRenderPassApi for PassApiHost<'_, B> {
             .expect("fill_buffer: unresolved buffer");
         self.api
             .fill_buffer(
-                buffer.handle,
+                buffer.raw_handle(),
                 range.map(|r| (r.start, r.end - r.start)),
                 value,
             )
@@ -2015,7 +2005,7 @@ impl<B: CommandBackend> CoreRenderPassApi for PassApiHost<'_, B> {
             }
         };
         self.api
-            .clear_color_image(texture.handle, texture.desc.mip_levels, layers);
+            .clear_color_image(texture.raw_handle(), texture.desc.mip_levels, layers);
     }
 }
 
@@ -2028,17 +2018,17 @@ use country_core::render::pass_builder::pass_resource_access::PassBinding as Cor
 
 /// 核心的视图描述（各字段 `Option`）叠加到纹理的默认视图上。
 pub(crate) fn rh_view_desc(
-    texture: &rhapsody::raw::texture::Texture,
+    texture: &rhapsody::resource::Texture,
     view: &country_core::rhapsody_types::TextureViewDesc,
-) -> rhapsody::Result<rhapsody::raw::texture::TextureViewDesc> {
+) -> rhapsody::Result<rhapsody::resource::TextureViewDesc> {
     project_view_desc(&texture.desc, view)
 }
 
 fn project_view_desc(
-    texture: &rhapsody::raw::texture::TextureDesc,
+    texture: &rhapsody::resource::TextureDesc,
     view: &country_core::rhapsody_types::TextureViewDesc,
-) -> rhapsody::Result<rhapsody::raw::texture::TextureViewDesc> {
-    let mut out = rhapsody::raw::texture::TextureViewDesc::new(texture)?;
+) -> rhapsody::Result<rhapsody::resource::TextureViewDesc> {
+    let mut out = rhapsody::resource::TextureViewDesc::new(texture)?;
     if let Some(v) = view.view_type {
         out.view_type = vk::ImageViewType::from_raw(v as i32);
     }
@@ -2062,11 +2052,14 @@ fn project_view_desc(
 /// Native None means the remaining subresource count after the selected base,
 /// not the whole image count plus that base (rg binding @14205f263..297).
 fn remaining_view_count(total: u32, base: u32, explicit: Option<u32>) -> rhapsody::Result<u32> {
-    let remaining = total.checked_sub(base)
-        .ok_or_else(|| rhapsody::Error::invalid_usage("image view base exceeds its actual image"))?;
+    let remaining = total.checked_sub(base).ok_or_else(|| {
+        rhapsody::Error::invalid_usage("image view base exceeds its actual image")
+    })?;
     let count = explicit.unwrap_or(remaining);
     if count == 0 || count > remaining {
-        return Err(rhapsody::Error::invalid_usage("image view count exceeds its actual remaining range"));
+        return Err(rhapsody::Error::invalid_usage(
+            "image view count exceeds its actual remaining range",
+        ));
     }
     Ok(count)
 }
@@ -2076,17 +2069,23 @@ fn remaining_view_count(total: u32, base: u32, explicit: Option<u32>) -> rhapsod
 /// fully-bound shader ABI additionally fills unused array slots with the last
 /// actual view; it creates no owner or mip beyond the declared original range.
 fn individual_mip_views(
-    view: rhapsody::raw::texture::TextureViewDesc,
+    view: rhapsody::resource::TextureViewDesc,
     array_count: u32,
-) -> rhapsody::Result<Vec<rhapsody::raw::texture::TextureViewDesc>> {
+) -> rhapsody::Result<Vec<rhapsody::resource::TextureViewDesc>> {
     if view.level_count == 0 || array_count < view.level_count {
-        return Err(rhapsody::Error::invalid_usage("individual mip views exceed the actual shader array"));
+        return Err(rhapsody::Error::invalid_usage(
+            "individual mip views exceed the actual shader array",
+        ));
     }
     let mut views = Vec::new();
-    views.try_reserve_exact(array_count as usize).map_err(|_| rhapsody::Error::OutOfHostMemory)?;
+    views
+        .try_reserve_exact(array_count as usize)
+        .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
     for element in 0..array_count {
         let mut selected = view;
-        selected.base_mip_level = view.base_mip_level.checked_add(element.min(view.level_count - 1))
+        selected.base_mip_level = view
+            .base_mip_level
+            .checked_add(element.min(view.level_count - 1))
             .ok_or_else(|| rhapsody::Error::invalid_usage("individual mip index overflow"))?;
         selected.level_count = 1;
         views.push(selected);
@@ -2098,10 +2097,10 @@ fn individual_mip_views(
 /// recording. The logical descriptor is available before GPU allocation; no
 /// physical image or substitute owner is created to calculate this range.
 fn compute_view_range(
-    descriptor: rhapsody::rg::graph::Descriptor,
+    descriptor: rhapsody::rg::Descriptor,
     view: &country_core::rhapsody_types::TextureViewDesc,
-) -> rhapsody::Result<rhapsody::rg::resource::AccessRange> {
-    use rhapsody::rg::{graph::Descriptor, resource::AccessRange};
+) -> rhapsody::Result<rhapsody::rg::AccessRange> {
+    use rhapsody::{rg::AccessRange, rg::Descriptor};
     let Descriptor::Image(image) = descriptor else {
         return Err(rhapsody::Error::invalid_usage(
             "compute image view refers to a buffer",
@@ -2119,7 +2118,7 @@ fn compute_view_range(
     };
     let range = AccessRange::Texture {
         aspect_mask: view.aspect_mask.unwrap_or_else(|| {
-            rhapsody::raw::format::vk_format_valid_aspect_flags(vk::Format::from_raw(
+            rhapsody::resource::vk_format_valid_aspect_flags(vk::Format::from_raw(
                 image.words_at_00_through_18[2] as i32,
             ))
             .as_raw()
@@ -2226,7 +2225,7 @@ impl ComputeExec for ComputeExecHost<'_> {
         let buffer = self.managed.buffer_for(buffer).ok()?;
         unsafe {
             self.device
-                .cmd_dispatch_indirect(self.command, buffer.handle, offset)
+                .cmd_dispatch_indirect(self.command, buffer.raw_handle(), offset)
         };
         Some(())
     }
@@ -2292,7 +2291,7 @@ impl GraphPasses<'_> {
         // rather than also treating the same bytes as a private upload read.
         let mut declared_uniform_bindings = Vec::new();
         for external in external_bindings {
-            use rhapsody::rg::resource::AccessRange;
+            use rhapsody::rg::AccessRange;
             let mut session = self
                 .cache_session
                 .as_mut()
@@ -2319,23 +2318,35 @@ impl GraphPasses<'_> {
             let (resource, handle, range, code) = match external.slot {
                 ExternalSlot::UniformBytes(bytes) => {
                     declared_uniform_bindings.push(external.binding);
-                    if !matches!(kind, BindingKind::StorageBuffer | BindingKind::UniformBuffer) {
-                        return Err(rhapsody::Error::invalid_usage("external uniform differs from shader ABI"));
+                    if !matches!(
+                        kind,
+                        BindingKind::StorageBuffer | BindingKind::UniformBuffer
+                    ) {
+                        return Err(rhapsody::Error::invalid_usage(
+                            "external uniform differs from shader ABI",
+                        ));
                     }
                     if bytes.is_empty() {
-                        return Err(rhapsody::Error::invalid_usage("external uniform has an empty range"));
+                        return Err(rhapsody::Error::invalid_usage(
+                            "external uniform has an empty range",
+                        ));
                     }
-                    let (buffer, offset, size) = if let Some((_, chunk)) = self.uniform_uploads
-                        .iter().find(|(source, _)| Arc::ptr_eq(source, &bytes))
+                    let (buffer, offset, size) = if let Some((_, chunk)) = self
+                        .uniform_uploads
+                        .iter()
+                        .find(|(source, _)| Arc::ptr_eq(source, &bytes))
                     {
                         (chunk.buffer.clone(), chunk.offset, chunk.size)
                     } else {
                         // Bounded declaration cache, not another allocator or
                         // descriptor heap. Original DoF uses one shared table.
                         if self.uniform_uploads.len() == 64 {
-                            return Err(rhapsody::Error::unsupported("external uniform declaration budget exceeded"));
+                            return Err(rhapsody::Error::unsupported(
+                                "external uniform declaration budget exceeded",
+                            ));
                         }
-                        self.uniform_uploads.try_reserve(1)
+                        self.uniform_uploads
+                            .try_reserve(1)
                             .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
                         let chunk = self.dynamic.lock().push_slice(&bytes)?;
                         let range = (chunk.buffer.clone(), chunk.offset, chunk.size);
@@ -2347,15 +2358,21 @@ impl GraphPasses<'_> {
                     } else {
                         vk::BufferUsageFlags::STORAGE_BUFFER
                     };
-                    if !Arc::ptr_eq(&buffer.device, &self.device)
+                    if !Arc::ptr_eq(&buffer.device(), &self.device)
                         || !buffer.usage.contains(expected)
                         || offset.checked_add(size).is_none_or(|end| end > buffer.size)
                     {
-                        return Err(rhapsody::Error::invalid_usage("external uniform physical range/device mismatch"));
+                        return Err(rhapsody::Error::invalid_usage(
+                            "external uniform physical range/device mismatch",
+                        ));
                     }
                     let handle = session.import_frame_buffer(&mut graph, buffer.clone(), 0x1a)?;
                     (
-                        BindlessResource::Buffer { buffer, offset, size },
+                        BindlessResource::Buffer {
+                            buffer,
+                            offset,
+                            size,
+                        },
                         handle,
                         AccessRange::Buffer { offset, size },
                         0x1a,
@@ -2379,7 +2396,7 @@ impl GraphPasses<'_> {
                     let buffer = tables.buffers.get_by_id(handle.0).ok_or_else(|| {
                         rhapsody::Error::invalid_usage("external compute buffer is not live")
                     })?;
-                    if ash::vk::Handle::as_raw(buffer.handle) != vk_buffer {
+                    if ash::vk::Handle::as_raw(buffer.raw_handle()) != vk_buffer {
                         return Err(rhapsody::Error::invalid_usage(
                             "external compute buffer differs from its owner",
                         ));
@@ -2501,7 +2518,7 @@ impl GraphPasses<'_> {
             let handle = session.import_frame_buffer(&mut graph, chunk.buffer.clone(), 0x1a)?;
             device_address_accesses.push((
                 handle,
-                rhapsody::rg::resource::AccessRange::Buffer {
+                rhapsody::rg::AccessRange::Buffer {
                     offset: chunk.offset,
                     size: chunk.size,
                 },
@@ -2538,8 +2555,12 @@ impl GraphPasses<'_> {
                 used_image_views[index] = true;
                 contents_unused = inactive_texture_bindings.contains(&(index as u8));
                 allow_undefined = undefined_texture_bindings.contains(&(index as u8));
-                if allow_undefined && (contents_unused || rhapsody::raw::access_table::is_write(access.access)) {
-                    return Err(rhapsody::Error::invalid_usage("undefined texture read metadata conflicts with its actual access"));
+                if allow_undefined
+                    && (contents_unused || rhapsody::command::is_write(access.access))
+                {
+                    return Err(rhapsody::Error::invalid_usage(
+                        "undefined texture read metadata conflicts with its actual access",
+                    ));
                 }
                 preserves_texture = preserving_texture_bindings.contains(&(index as u8));
                 let resource = graph.resource_handle(access.resource)?;
@@ -2551,20 +2572,33 @@ impl GraphPasses<'_> {
                 // Storage buffers share the same existing per-binding inactive
                 // intent. Match each native read occurrence independently so an
                 // active alias still tightens the graph's content requirement.
-                if let Some(index) = bindings.iter().enumerate().find_map(|(index, binding)| {
-                    match binding {
-                        CorePassBinding::BufferRead { resource }
-                            if !used_image_views[index] && *resource == access.resource
-                                && !rhapsody::raw::access_table::is_write(access.access) => Some(index),
-                        _ => None,
-                    }
-                }) {
+                if let Some(index) =
+                    bindings
+                        .iter()
+                        .enumerate()
+                        .find_map(|(index, binding)| match binding {
+                            CorePassBinding::BufferRead { resource }
+                                if !used_image_views[index]
+                                    && *resource == access.resource
+                                    && !rhapsody::command::is_write(access.access) =>
+                            {
+                                Some(index)
+                            }
+                            _ => None,
+                        })
+                {
                     used_image_views[index] = true;
                     contents_unused = inactive_texture_bindings.contains(&(index as u8));
                 }
-                rhapsody::rg::resource::AccessRange::Whole
+                rhapsody::rg::AccessRange::Whole
             };
-            declared_accesses.push((*access, range, contents_unused, allow_undefined, preserves_texture));
+            declared_accesses.push((
+                *access,
+                range,
+                contents_unused,
+                allow_undefined,
+                preserves_texture,
+            ));
         }
         if bindings.iter().enumerate().any(|(index, binding)| {
             matches!(binding, CorePassBinding::ImageView { .. }) && !used_image_views[index]
@@ -2577,14 +2611,15 @@ impl GraphPasses<'_> {
         declared.on_queue(rhapsody::device::QueueClass::Compute);
         for (a, range, contents_unused, allow_undefined, preserves_texture) in &declared_accesses {
             let resource = declared.resource_handle(a.resource)?;
-            if *contents_unused && !rhapsody::raw::access_table::is_write(a.access) {
+            if *contents_unused && !rhapsody::command::is_write(a.access) {
                 declared.add_inactive_resource_read_range(resource, a.access, a.group, *range)?;
-            } else if *allow_undefined && !rhapsody::raw::access_table::is_write(a.access) {
+            } else if *allow_undefined && !rhapsody::command::is_write(a.access) {
                 declared.add_undefined_content_read_range(resource, a.access, a.group, *range)?;
             } else if (*preserves_texture || preserving_buffers.contains(&a.resource))
-                && rhapsody::raw::access_table::is_write(a.access)
+                && rhapsody::command::is_write(a.access)
             {
-                declared.add_preserving_resource_access_range(resource, a.access, a.group, *range)?;
+                declared
+                    .add_preserving_resource_access_range(resource, a.access, a.group, *range)?;
             } else {
                 declared.add_resource_access_range(resource, a.access, a.group, *range)?;
             }
@@ -2669,10 +2704,10 @@ impl GraphPasses<'_> {
             }
             // SAFETY: pipeline and command belong to this device; graph declares the accessed resources.
             unsafe {
-                device.device.cmd_bind_pipeline(
+                device.raw_device().cmd_bind_pipeline(
                     command,
                     vk::PipelineBindPoint::COMPUTE,
-                    pipeline.handle,
+                    pipeline.raw_handle(),
                 );
             }
             let mut parameters: Option<rhapsody::bindless::PreparedBindlessParameters> = None;
@@ -2703,7 +2738,7 @@ impl GraphPasses<'_> {
                             let detail = match resource {
                                 BindlessResource::Buffer { buffer, offset, size } => format!(
                                     ": buffer {:?}, usage {:#x}, allocation {}, offset {}, range {}",
-                                    buffer.handle, buffer.desc.usage.as_raw(), buffer.desc.size,
+                                    buffer.raw_handle(), buffer.desc.usage.as_raw(), buffer.desc.size,
                                     offset, size,
                                 ),
                                 _ => String::new(),
@@ -2739,7 +2774,7 @@ impl GraphPasses<'_> {
                 &mut bind_parameters,
             )?;
             let mut exec = ComputeExecHost {
-                device: &device.device,
+                device: &device.raw_device(),
                 command,
                 local_size: entry.local_size,
                 managed,
@@ -2925,32 +2960,64 @@ mod compute_parameter_tests {
     }
 }
 
-
 #[cfg(test)]
 mod original_individual_mip_view_tests {
     use super::*;
     #[test]
     fn selected_remaining_mips_are_individual_and_unused_abi_tail_reuses_the_last_actual_view() {
-        let desc = rhapsody::raw::texture::TextureDesc::new_2d_array(256, 256, 2, vk::Format::B10G11R11_UFLOAT_PACK32)
-            .mip_levels(9).usage(vk::ImageUsageFlags::STORAGE);
+        let desc = rhapsody::resource::TextureDesc::new_2d_array(
+            256,
+            256,
+            2,
+            vk::Format::B10G11R11_UFLOAT_PACK32,
+        )
+        .mip_levels(9)
+        .usage(vk::ImageUsageFlags::STORAGE);
         let source = country_core::rhapsody_types::TextureViewDesc::new()
-            .base_mip_level(1).base_layer(1).view_type(5).bind_individual_mips(true);
+            .base_mip_level(1)
+            .base_layer(1)
+            .view_type(5)
+            .bind_individual_mips(true);
         let selected = project_view_desc(&desc, &source).unwrap();
-        assert_eq!((selected.base_mip_level, selected.level_count, selected.base_layer, selected.layer_count), (1, 8, 1, 1));
+        assert_eq!(
+            (
+                selected.base_mip_level,
+                selected.level_count,
+                selected.base_layer,
+                selected.layer_count
+            ),
+            (1, 8, 1, 1)
+        );
         let views = individual_mip_views(selected, 12).unwrap();
         assert_eq!(views.len(), 12);
-        assert_eq!(views.iter().map(|v| v.base_mip_level).collect::<Vec<_>>(), [1,2,3,4,5,6,7,8,8,8,8,8]);
-        assert!(views.iter().all(|v| v.level_count == 1 && v.layer_count == 1 && v.base_layer == 1));
-        for v in views { v.validate(&desc).unwrap(); }
-        let logical = rhapsody::rg::vulkan::ResourceSpec::Image(desc).descriptor();
-        assert_eq!(compute_view_range(logical, &source).unwrap(),
-            rhapsody::rg::resource::AccessRange::Texture { aspect_mask: 1, base_mip_level: 1, level_count: 8, base_array_layer: 1, layer_count: 1 });
+        assert_eq!(
+            views.iter().map(|v| v.base_mip_level).collect::<Vec<_>>(),
+            [1, 2, 3, 4, 5, 6, 7, 8, 8, 8, 8, 8]
+        );
+        assert!(
+            views
+                .iter()
+                .all(|v| v.level_count == 1 && v.layer_count == 1 && v.base_layer == 1)
+        );
+        for v in views {
+            v.validate(&desc).unwrap();
+        }
+        let logical = rhapsody::rg::ResourceSpec::Image(desc).descriptor();
+        assert_eq!(
+            compute_view_range(logical, &source).unwrap(),
+            rhapsody::rg::AccessRange::Texture {
+                aspect_mask: 1,
+                base_mip_level: 1,
+                level_count: 8,
+                base_array_layer: 1,
+                layer_count: 1
+            }
+        );
         assert!(individual_mip_views(selected, 7).is_err());
         assert!(project_view_desc(&desc, &source.base_mip_level(9)).is_err());
         assert!(project_view_desc(&desc, &source.level_count(Some(9))).is_err());
     }
 }
-
 
 #[cfg(test)]
 mod original_surface_texture_flags_tests {
@@ -2966,6 +3033,12 @@ mod original_surface_texture_flags_tests {
         assert_eq!(native.width, 64);
         assert_eq!(native.height, 32);
         assert!(native.usage.contains(vk::ImageUsageFlags::SAMPLED));
-        assert_eq!(TextureHost::convert(&TextureDesc::new_2d([64, 32], 0x62)).unwrap().flags.as_raw(), 0);
+        assert_eq!(
+            TextureHost::convert(&TextureDesc::new_2d([64, 32], 0x62))
+                .unwrap()
+                .flags
+                .as_raw(),
+            0
+        );
     }
 }

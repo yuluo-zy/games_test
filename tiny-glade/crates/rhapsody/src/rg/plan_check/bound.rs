@@ -11,9 +11,9 @@ use crate::{
         range_state::{AccessScope, Frontier, NativeState, RangeOwner, RangeTransfer},
     },
     rg::sync_plan::{
-        BarrierKind, BarrierPhase, BoundBatch, BoundBatchKind, BoundPatch, BoundPatchAction,
-        BoundSynchronization, BoundTransition, BoundWait, DependencyRef, InitialState,
-        RangeProgram, RangeUse,
+        AliasEdge, BarrierKind, BarrierPhase, BoundBatch, BoundBatchKind, BoundPatch,
+        BoundPatchAction, BoundSynchronization, BoundTransition, BoundWait, DependencyRef,
+        InitialState, RangeProgram, RangeUse,
     },
     sync::{MAX_QUEUES, QueueId, SyncSet},
 };
@@ -121,6 +121,8 @@ struct State {
     owner: Owner,
     writer: Vec<History>,
     readers: Vec<History>,
+    /// No access patch has touched this cell yet in the bound program.
+    fresh: bool,
 }
 impl From<NativeState> for State {
     fn from(state: NativeState) -> Self {
@@ -139,12 +141,14 @@ impl From<NativeState> for State {
             },
             writer: history(state.writer),
             readers: history(state.readers),
+            fresh: true,
         }
     }
 }
 
 struct View<'a> {
     initial: &'a [InitialState],
+    aliases: &'a [AliasEdge],
     batches: &'a [BoundBatch],
     order: &'a [usize],
     transitions: &'a [BoundTransition],
@@ -325,6 +329,7 @@ pub fn check_bound_synchronization(
         program,
         View {
             initial: bound.initial_inputs(),
+            aliases: bound.aliases(),
             batches: bound.batches(),
             order: bound.execution_order(),
             transitions: bound.transitions(),
@@ -429,6 +434,16 @@ fn check(program: &RangeProgram, view: View<'_>) -> crate::Result<()> {
             patch.range,
         )?;
     }
+    for edge in view.aliases {
+        if states
+            .get(edge.previous as usize)
+            .is_none_or(Option::is_none)
+            || states.get(edge.next as usize).is_none_or(Option::is_none)
+            || edge.previous == edge.next
+        {
+            return Err(invalid("native alias edge names an absent resource"));
+        }
+    }
     let mut consumed = vec![false; view.transitions.len()];
     for &batch in view.order {
         let mut phases = vec![BarrierPhase::Initial];
@@ -462,6 +477,9 @@ fn check(program: &RangeProgram, view: View<'_>) -> crate::Result<()> {
             {
                 let resource = patch.resource as usize;
                 let target = queue(view.batches[batch].domain.queue_index)?;
+                if matches!(patch.action, BoundPatchAction::Access { .. }) {
+                    discard_alias_contents(&mut states, view.aliases, patch)?;
+                }
                 let matches = |barrier: &BoundTransition| {
                     barrier.batch == batch
                         && barrier.phase == phase
@@ -752,6 +770,48 @@ fn check(program: &RangeProgram, view: View<'_>) -> crate::Result<()> {
     Ok(())
 }
 
+/// The first access to a cell of an alias member discards its contents: every
+/// history of the members it reuses (and its own) must be made visible again,
+/// starting from an UNDEFINED layout.
+fn discard_alias_contents(
+    states: &mut [Option<SpatialLedger<State>>],
+    aliases: &[AliasEdge],
+    patch: &BoundPatch,
+) -> crate::Result<()> {
+    if !aliases.iter().any(|edge| edge.next == patch.resource) {
+        return Ok(());
+    }
+    let mut inherited = Vec::new();
+    for edge in aliases.iter().filter(|edge| edge.next == patch.resource) {
+        let previous = states[edge.previous as usize]
+            .as_ref()
+            .ok_or_else(|| invalid("native alias edge names an absent resource"))?;
+        for state in previous.states() {
+            inherited.extend(state.writer.iter().chain(&state.readers).cloned());
+        }
+    }
+    states[patch.resource as usize]
+        .as_mut()
+        .ok_or_else(|| invalid("native patch has no physical input"))?
+        .update(patch.range, |old| {
+            if !old.fresh {
+                return Ok(old.clone());
+            }
+            let mut state = old.clone();
+            let own = std::mem::take(&mut state.readers);
+            state.writer.extend(own);
+            state.writer.extend(inherited.iter().cloned());
+            for history in &mut state.writer {
+                history.visible = [AccessScope::EMPTY; MAX_QUEUES];
+            }
+            state.layout = vk::ImageLayout::UNDEFINED;
+            state.known = true;
+            state.pending_layout = None;
+            state.fresh = false;
+            Ok(state)
+        })
+}
+
 fn transfer_barrier(
     barrier: &BoundTransition,
     transfer: RangeTransfer,
@@ -892,6 +952,7 @@ mod tests {
     #[derive(Clone)]
     struct Capture {
         initial: Vec<InitialState>,
+        aliases: Vec<AliasEdge>,
         batches: Vec<BoundBatch>,
         order: Vec<usize>,
         transitions: Vec<BoundTransition>,
@@ -904,6 +965,7 @@ mod tests {
                 program,
                 View {
                     initial: &self.initial,
+                    aliases: &self.aliases,
                     batches: &self.batches,
                     order: &self.order,
                     transitions: &self.transitions,
@@ -932,6 +994,7 @@ mod tests {
         let bound = planner.bound();
         Capture {
             initial: bound.initial_inputs().to_vec(),
+            aliases: bound.aliases().to_vec(),
             batches: bound.batches().to_vec(),
             order: bound.execution_order().to_vec(),
             transitions: bound.transitions().to_vec(),
@@ -1196,5 +1259,160 @@ mod tests {
             .waits
             .retain(|wait| wait.dependency != DependencyRef::Point(point(0, 10)));
         assert!(broken.check(&graph).is_err());
+    }
+
+    /// Two buffers share memory: pass 0 writes A, pass 1 reads A, pass 2 writes
+    /// B, pass 3 reads B. `queues` assigns each pass its queue.
+    fn alias_capture(queues: [u32; 4], aliases: &[AliasEdge]) -> (RangeProgram, Capture) {
+        let range = OwnershipRange::Buffer {
+            offset: 0,
+            size: 256,
+        };
+        let transfer = |write| AccessScope {
+            stages: vk::PipelineStageFlags::TRANSFER,
+            access: if write {
+                vk::AccessFlags::TRANSFER_WRITE
+            } else {
+                vk::AccessFlags::TRANSFER_READ
+            },
+            write,
+        };
+        let sharing = ResourceSharing::Concurrent(QueueFamilies::new(&[0, 1]).unwrap());
+        let mut program = RangeProgram {
+            resources: vec![ResourceDomain { range, sharing }; 2],
+            ..RangeProgram::default()
+        };
+        for (pass, (resource, write)) in [(0, true), (0, false), (1, true), (1, false)]
+            .into_iter()
+            .enumerate()
+        {
+            program.uses.push(RangeUse {
+                resource,
+                range,
+                scope: transfer(write),
+                layout: vk::ImageLayout::UNDEFINED,
+                access_code: 0x34,
+            });
+            program.passes.push(ProgramPass {
+                pass,
+                uses: pass..pass + 1,
+            });
+            program.batches.push(ProgramBatch {
+                domain: QueueDomain {
+                    queue_index: queues[pass],
+                    family: queues[pass],
+                },
+                passes: pass..pass + 1,
+            });
+        }
+        program.dependencies = vec![(0, 1), (1, 2), (2, 3)];
+        let mut planner = SynchronizationPlanner::new(
+            Arc::new(AllocatorStats::default()),
+            SynchronizationConfig::default(),
+        )
+        .unwrap();
+        for resource in 0..2 {
+            planner
+                .add_initial(
+                    resource,
+                    &[RangeCell {
+                        range,
+                        state: NativeState::default(),
+                    }],
+                )
+                .unwrap();
+        }
+        for edge in aliases {
+            planner.add_alias(edge.previous, edge.next).unwrap();
+        }
+        planner
+            .bind(&program, |family| {
+                Ok(QueueDomain {
+                    queue_index: family,
+                    family,
+                })
+            })
+            .unwrap();
+        check_bound_synchronization(&program, planner.bound()).unwrap();
+        let bound = planner.bound();
+        let capture = Capture {
+            initial: bound.initial_inputs().to_vec(),
+            aliases: bound.aliases().to_vec(),
+            batches: bound.batches().to_vec(),
+            order: bound.execution_order().to_vec(),
+            transitions: bound.transitions().to_vec(),
+            patches: bound.patches().to_vec(),
+            waits: bound.waits().to_vec(),
+        };
+        (program, capture)
+    }
+    const ALIAS: [AliasEdge; 2] = [
+        AliasEdge {
+            previous: 0,
+            next: 1,
+        },
+        AliasEdge {
+            previous: 1,
+            next: 0,
+        },
+    ];
+
+    #[test]
+    fn aliased_buffer_first_write_waits_for_the_previous_member() {
+        let (_, plain) = alias_capture([0; 4], &[]);
+        assert!(
+            !plain
+                .transitions
+                .iter()
+                .any(|t| t.resource == 1 && t.phase == BarrierPhase::BeforePass(2)),
+            "a fresh unaliased buffer needs no barrier"
+        );
+        let (program, source) = alias_capture([0; 4], &ALIAS);
+        let alias = source
+            .transitions
+            .iter()
+            .find(|t| t.resource == 1 && t.phase == BarrierPhase::BeforePass(2))
+            .expect("alias barrier");
+        assert!(
+            alias
+                .source
+                .stages
+                .contains(vk::PipelineStageFlags::TRANSFER)
+        );
+        assert!(alias.source.access.contains(vk::AccessFlags::TRANSFER_READ));
+        assert!(
+            alias
+                .source
+                .access
+                .contains(vk::AccessFlags::TRANSFER_WRITE)
+        );
+        // The checker independently requires the alias barrier.
+        let mut broken = source.clone();
+        broken
+            .transitions
+            .retain(|t| !(t.resource == 1 && t.phase == BarrierPhase::BeforePass(2)));
+        assert!(broken.check(&program).is_err());
+        let mut broken = source;
+        for transition in &mut broken.transitions {
+            if transition.resource == 1 && transition.phase == BarrierPhase::BeforePass(2) {
+                transition.source = AccessScope::EMPTY;
+            }
+        }
+        assert!(broken.check(&program).is_err());
+    }
+
+    #[test]
+    fn cross_queue_alias_waits_at_the_first_use_stage() {
+        let (program, source) = alias_capture([0, 0, 1, 1], &ALIAS);
+        let wait = source
+            .waits
+            .iter()
+            .find(|wait| wait.batch == 2)
+            .expect("alias wait on the other queue");
+        assert_eq!(wait.stages, vk::PipelineStageFlags::TRANSFER);
+        assert_eq!(wait.dependency, DependencyRef::Batch(1));
+        let mut broken = source;
+        broken.waits.retain(|wait| wait.batch != 2);
+        assert!(broken.check(&program).is_err());
     }
 }

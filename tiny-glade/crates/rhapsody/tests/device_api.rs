@@ -95,7 +95,7 @@ fn dynamic_attachment_views_are_cached_and_reject_foreign_devices() {
     );
     cache.clear();
     assert_eq!(cache.view_count(), 0);
-    assert_ne!(first.views[0].handle, vk::ImageView::null());
+    assert_ne!(first.views[0].raw_handle(), vk::ImageView::null());
 }
 
 #[test]
@@ -113,7 +113,7 @@ fn real_attachment_storage_is_budgeted_retained_and_applies_owner_backpressure()
         )
         .unwrap(),
     );
-    let baseline = device.allocator_stats.cpu_memory_usage().total();
+    let baseline = device.allocator_stats().cpu_memory_usage().total();
     let mut cache = AttachmentCache::with_capacity(device.clone(), 1).unwrap();
     let attachment = Attachment::color(texture.clone(), 0, Some([0.; 4])).unwrap();
     let extent = vk::Extent2D {
@@ -121,8 +121,8 @@ fn real_attachment_storage_is_budgeted_retained_and_applies_owner_backpressure()
         height: 8,
     };
     device
-        .allocator_stats
-        .set_total_budget(device.allocator_stats.budget_usage().total().max(1))
+        .allocator_stats()
+        .set_host_budget(device.allocator_stats().cpu_memory_usage().total().max(1))
         .unwrap();
     let error = cache
         .prepare_for_rendering(
@@ -134,9 +134,12 @@ fn real_attachment_storage_is_budgeted_retained_and_applies_owner_backpressure()
         .err()
         .expect("capacity growth must be admitted before allocation");
     assert_eq!(error.kind(), rhapsody::ErrorKind::OutOfMemory);
-    assert_eq!(device.allocator_stats.cpu_memory_usage().total(), baseline);
+    assert_eq!(
+        device.allocator_stats().cpu_memory_usage().total(),
+        baseline
+    );
     assert_eq!(cache.view_count(), 0);
-    device.allocator_stats.set_total_budget(u64::MAX).unwrap();
+    device.allocator_stats().set_total_budget(u64::MAX).unwrap();
     let first = cache
         .prepare_for_rendering(
             std::slice::from_ref(&attachment),
@@ -163,11 +166,14 @@ fn real_attachment_storage_is_budgeted_retained_and_applies_owner_backpressure()
     cache.clear();
     drop(cache);
     assert!(
-        device.allocator_stats.cpu_memory_usage().total() > baseline,
+        device.allocator_stats().cpu_memory_usage().total() > baseline,
         "the prepared Arc and actual native view must retain their storage credit"
     );
     drop(prepared);
-    assert_eq!(device.allocator_stats.cpu_memory_usage().total(), baseline);
+    assert_eq!(
+        device.allocator_stats().cpu_memory_usage().total(),
+        baseline
+    );
 }
 
 #[test]
@@ -339,7 +345,7 @@ fn prepared_clear_requires_an_actual_attachment_write_scope() {
     }
     prepared.retain_for_command(&mut write).unwrap();
     let mut backend = unsafe { AshCommandBackend::new_for_device(&device) };
-    let mut pass = RenderPassApi::new(&mut backend, write.handle, 1, false);
+    let mut pass = RenderPassApi::new(&mut backend, write.raw_handle(), 1, false);
     pass.begin_prepared(&prepared).unwrap();
     pass.end_render_pass();
     write.end().unwrap();

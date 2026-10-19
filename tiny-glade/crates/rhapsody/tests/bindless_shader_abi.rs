@@ -1,21 +1,16 @@
 mod gpu_test_support;
 use ash::vk;
 use rhapsody::{
-    bindless::{
-        BindlessConfig, BindlessHeap, BindlessParameters, BindlessResource, BindlessShaderPackage,
-    },
-    device::{Device, DeviceConfig},
-    pipeline::{AsyncPipelineCompiler, CompilerConfig, HotPipeline},
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        command_buffer::VulkanCommandPool,
-        dynamic_constants::DynamicConstants,
-        shader::PipelineCache,
-    },
-    shader_pipeline::{
-        compiled::{CompiledShaderPipeline, CompiledShaderStage, ShaderStage},
-        reflection::BindingLocation,
-    },
+    bindless::BindlessConfig, bindless::BindlessHeap, bindless::BindlessParameters,
+    bindless::BindlessResource, bindless::BindlessShaderPackage, device::Device,
+    device::DeviceConfig, pipeline::AsyncPipelineCompiler, pipeline::CompilerConfig,
+    pipeline::HotPipeline, raw::buffer::Buffer, raw::buffer::BufferDesc,
+    raw::command_buffer::VulkanCommandPool, raw::dynamic_constants::DynamicConstants,
+    raw::shader::PipelineCache,
+};
+use shader_pipeline::{
+    compiled::CompiledShaderPipeline, compiled::CompiledShaderStage, compiled::ShaderStage,
+    reflection::BindingLocation,
 };
 use std::{sync::Arc, time::Duration};
 
@@ -208,19 +203,21 @@ fn real_uniform_push_and_descriptor_array_execute_through_one_shared_heap_set() 
         let mut command = pool.allocate().unwrap();
         command.begin().unwrap();
         unsafe {
-            pipeline.bind_pipeline(command.handle);
+            pipeline.bind_pipeline(command.raw_handle());
             prepared
                 .bind_command(&mut command, pipeline.clone())
                 .unwrap();
-            device.device.cmd_dispatch(command.handle, 1, 1, 1);
-            device.device.cmd_pipeline_barrier(
-                command.handle,
+            device
+                .raw_device()
+                .cmd_dispatch(command.raw_handle(), 1, 1, 1);
+            device.raw_device().cmd_pipeline_barrier(
+                command.raw_handle(),
                 vk::PipelineStageFlags::COMPUTE_SHADER,
                 vk::PipelineStageFlags::COMPUTE_SHADER,
                 vk::DependencyFlags::empty(),
                 &[],
                 &[vk::BufferMemoryBarrier::default()
-                    .buffer(second.handle)
+                    .buffer(second.raw_handle())
                     .offset(0)
                     .size(4)
                     .src_access_mask(vk::AccessFlags::SHADER_WRITE)
@@ -232,15 +229,17 @@ fn real_uniform_push_and_descriptor_array_execute_through_one_shared_heap_set() 
             changed_push
                 .bind_command(&mut command, pipeline.clone())
                 .unwrap();
-            device.device.cmd_dispatch(command.handle, 1, 1, 1);
-            device.device.cmd_pipeline_barrier(
-                command.handle,
+            device
+                .raw_device()
+                .cmd_dispatch(command.raw_handle(), 1, 1, 1);
+            device.raw_device().cmd_pipeline_barrier(
+                command.raw_handle(),
                 vk::PipelineStageFlags::COMPUTE_SHADER,
                 vk::PipelineStageFlags::HOST,
                 vk::DependencyFlags::empty(),
                 &[],
                 &[vk::BufferMemoryBarrier::default()
-                    .buffer(second.handle)
+                    .buffer(second.raw_handle())
                     .offset(0)
                     .size(4)
                     .src_access_mask(vk::AccessFlags::SHADER_WRITE)
@@ -269,7 +268,7 @@ fn real_uniform_push_and_descriptor_array_execute_through_one_shared_heap_set() 
         heap.collect().unwrap();
     }
     assert_eq!(compiler.stats().compiled, 1);
-    assert_eq!(device.garbage_stats().idle_waits, 0);
+    assert_eq!(device.retirement_stats().idle_waits, 0);
 }
 
 #[test]

@@ -110,11 +110,11 @@ impl ReleaseWait {
         if !self.1 {
             unsafe {
                 self.0
-                    .device
-                    .device
+                    .device()
+                    .raw_device()
                     .signal_semaphore(
                         &vk::SemaphoreSignalInfo::default()
-                            .semaphore(self.0.handle)
+                            .semaphore(self.0.raw_handle())
                             .value(1),
                     )
                     .unwrap();
@@ -153,7 +153,7 @@ fn nonblocking_host_writes_reject_in_flight_use_and_recover_after_completion() {
         },
     )
     .unwrap();
-    let idle_waits = device.garbage_stats().idle_waits;
+    let idle_waits = device.retirement_stats().idle_waits;
     let blocker = TimelineSemaphore::new(device.clone(), 0).unwrap();
     let mut release = ReleaseWait(blocker.clone(), false);
     let pool = VulkanCommandPool::new(device.clone()).unwrap();
@@ -161,16 +161,20 @@ fn nonblocking_host_writes_reject_in_flight_use_and_recover_after_completion() {
     command.retain_opaque(target.clone()).unwrap();
     command.begin().unwrap();
     unsafe {
-        device
-            .device
-            .cmd_fill_buffer(command.handle, target.handle, 0, 64, 0x01010101);
+        device.raw_device().cmd_fill_buffer(
+            command.raw_handle(),
+            target.raw_handle(),
+            0,
+            64,
+            0x01010101,
+        );
     }
     command.end().unwrap();
     let pending = command
         .submit_to(
             rhapsody::raw::device::DeviceQueue {
-                handle: device.queue,
-                family: device.queue_family,
+                handle: device.primary_queue(),
+                family: device.queue_family_index(),
                 index: 0,
             },
             &[(blocker, 1, vk::PipelineStageFlags::ALL_COMMANDS)],
@@ -190,7 +194,7 @@ fn nonblocking_host_writes_reject_in_flight_use_and_recover_after_completion() {
     target.write_bytes_unsynchronized(0, &[2; 64]).unwrap();
     target.read_bytes(0, &mut actual).unwrap();
     assert_eq!(actual, [2; 64]);
-    assert_eq!(device.garbage_stats().idle_waits, idle_waits);
+    assert_eq!(device.retirement_stats().idle_waits, idle_waits);
 }
 
 #[test]
@@ -222,7 +226,7 @@ fn queued_dirty_uploads_merge_exact_bytes_cancel_old_epochs_and_prioritize_other
     };
     let a = make();
     let b = make();
-    let idle = device.garbage_stats().idle_waits;
+    let idle = device.retirement_stats().idle_waits;
     manager
         .upload_buffer(a.clone(), 0, &[7; 256])
         .unwrap()
@@ -297,7 +301,7 @@ fn queued_dirty_uploads_merge_exact_bytes_cancel_old_epochs_and_prioritize_other
     assert_eq!(stats.cancelled_jobs, 1);
     assert_eq!(stats.queued_bytes, 0);
     assert!(stats.known_cpu_bytes <= 32 << 20);
-    assert_eq!(device.garbage_stats().idle_waits, idle);
+    assert_eq!(device.retirement_stats().idle_waits, idle);
 }
 
 #[test]
@@ -333,8 +337,8 @@ fn queued_upload_full_staging_defers_without_publishing_then_recovers_after_real
     let blocked = blocked
         .submit_to(
             rhapsody::raw::device::DeviceQueue {
-                handle: device.queue,
-                family: device.queue_family,
+                handle: device.primary_queue(),
+                family: device.queue_family_index(),
                 index: 0,
             },
             &[(semaphore, 1, vk::PipelineStageFlags::ALL_COMMANDS)],
@@ -419,7 +423,7 @@ fn lost_device_fails_all_accepted_upload_tickets_without_any_completion_point() 
             },
         )
         .unwrap();
-    device.timelines.mark_device_lost(); // Idle native device; explicit protocol-failure injection.
+    device.timelines().mark_device_lost(); // Idle native device; explicit protocol-failure injection.
     assert!(matches!(
         manager.flush_uploads(4),
         Err(rhapsody::Error::DeviceLost)
@@ -485,7 +489,7 @@ fn readback_envelopes_reuse_capacity_and_escaping_tickets_keep_their_actual_cpu_
         assert_eq!(output, [0x31; 256]);
         drop(read);
         device.try_collect_all_completed().unwrap();
-        let bytes = device.allocator_stats.cpu_memory_usage().total();
+        let bytes = device.allocator_stats().cpu_memory_usage().total();
         if let Some(expected) = baseline {
             assert_eq!(bytes, expected, "fixed readback capacity must not grow");
         } else {
@@ -496,14 +500,55 @@ fn readback_envelopes_reuse_capacity_and_escaping_tickets_keep_their_actual_cpu_
     escaped.wait(5_000_000_000).unwrap();
     drop(manager);
     device.try_collect_all_completed().unwrap();
-    let retained = device.allocator_stats.cpu_memory_usage().total();
+    let retained = device.allocator_stats().cpu_memory_usage().total();
     let mut output = [0; 256];
     escaped.try_read(&mut output).unwrap().unwrap();
     assert_eq!(output, [0x31; 256]);
     drop(escaped);
     device.try_collect_all_completed().unwrap();
     assert!(
-        device.allocator_stats.cpu_memory_usage().total() < retained,
+        device.allocator_stats().cpu_memory_usage().total() < retained,
         "escaped lease CPU credit must follow its last actual owner"
     );
+}
+
+#[test]
+fn overwriting_a_range_read_by_earlier_gpu_work_is_ordered_by_tracked_state() {
+    let Some(device) = device() else {
+        return;
+    };
+    let mut manager = TransferManager::new(
+        device.clone(),
+        TransferConfig {
+            slots: 2,
+            chunk_bytes: 256,
+            max_bytes: 4096,
+        },
+    )
+    .unwrap();
+    let target = Arc::new(
+        Buffer::new(
+            device.clone(),
+            &BufferDesc::new_gpu_only(
+                256,
+                vk::BufferUsageFlags::TRANSFER_SRC | vk::BufferUsageFlags::TRANSFER_DST,
+            ),
+        )
+        .unwrap(),
+    );
+    let mut previous = None;
+    for round in 0..4u8 {
+        let bytes = [round + 1; 64];
+        manager.upload_buffer(target.clone(), 32, &bytes).unwrap();
+        // The readback reads the range; the next upload must order after it.
+        let readback = manager.read_buffer(target.clone(), 32, 64).unwrap();
+        readback.wait(10_000_000_000).unwrap();
+        let mut output = [0; 64];
+        assert_eq!(readback.try_read(&mut output).unwrap(), Some(64));
+        assert_eq!(output, bytes);
+        assert_eq!(readback.len(), 64);
+        previous = Some(readback);
+    }
+    drop(previous);
+    assert_eq!(manager.stats().unwrap().pending_uploads, 0);
 }

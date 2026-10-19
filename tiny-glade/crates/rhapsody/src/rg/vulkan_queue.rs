@@ -13,7 +13,7 @@ use crate::{
             self, BoundBatchKind, BoundSynchronization, DependencyRef, SynchronizationPlanner,
         },
     },
-    sync::{SyncPoint, SyncSet},
+    sync::SyncPoint,
 };
 pub(super) struct QueueRuntime {
     pub multi_queue: bool,
@@ -25,20 +25,26 @@ pub(super) struct QueueRuntime {
     queue_flags: [vk::QueueFlags; crate::sync::MAX_QUEUES],
 }
 impl QueueRuntime {
+    /// Physical tokens bound by the frame being recorded.
+    pub(super) fn frame_tokens(&self) -> &[Option<u64>] {
+        &self.tokens.values
+    }
     pub fn new(device: &Device) -> crate::Result<Self> {
-        let stats = &device.allocator_stats;
+        let stats = &device.memory.stats;
         let families = unsafe {
             device
+                .core
                 .instance
                 .instance
-                .get_physical_device_queue_family_properties(device.physical)
+                .get_physical_device_queue_family_properties(device.core.physical)
         };
         let queue_flags = std::array::from_fn(|index| {
             let family = if index == 0 {
-                Some(device.queue_family)
+                Some(device.queues.primary_family)
             } else {
                 device
-                    .additional_queues
+                    .queues
+                    .additional
                     .get(index - 1)
                     .map(|queue| queue.family)
             };
@@ -70,7 +76,7 @@ impl QueueRuntime {
     }
 }
 impl GpuResource {
-    pub(super) fn owner_cell(&self) -> Arc<SyncCell> {
+    pub(crate) fn owner_cell(&self) -> Arc<SyncCell> {
         match self {
             Self::Buffer(buffer) => buffer.last_use.clone(),
             Self::Image(image) => image.last_use.clone(),
@@ -109,14 +115,14 @@ impl VulkanGraphBackend {
                 recording::Queue::Auxiliary(index) => index + 1,
             }
         } else {
-            self.device.queue_plan.queue(class).index() as u32
+            self.device.queues.plan.queue(class).index() as u32
         };
         QueueDomain {
             queue_index: index,
             family: if index == 0 {
-                self.device.queue_family
+                self.device.queues.primary_family
             } else {
-                self.device.additional_queues[index as usize - 1].family
+                self.device.queues.additional[index as usize - 1].family
             },
         }
     }
@@ -125,11 +131,12 @@ impl VulkanGraphBackend {
             if index == 0 {
                 Some(QueueDomain {
                     queue_index: 0,
-                    family: self.device.queue_family,
+                    family: self.device.queues.primary_family,
                 })
             } else {
                 self.device
-                    .additional_queues
+                    .queues
+                    .additional
                     .get(index - 1)
                     .map(|queue| QueueDomain {
                         queue_index: index as u32,
@@ -196,7 +203,7 @@ impl VulkanGraphBackend {
         compiled: &graph::FrameInstance,
     ) -> crate::Result<()> {
         let domains = self.domains();
-        let stats = &self.device.allocator_stats;
+        let stats = &self.device.memory.stats;
         let runtime = &mut self.queue_runtime;
         let planner = Arc::get_mut(&mut runtime.planner).ok_or(crate::Error::Timeout)?;
         planner.begin();
@@ -257,6 +264,22 @@ impl VulkanGraphBackend {
                 .with_range_state(initial, stats, |table| {
                     planner.add_initial(logical as u32, table.cells())
                 })?;
+        }
+        if let Some(set) = self.active_alias_set {
+            let bound = |logical: u32| {
+                runtime
+                    .tokens
+                    .values
+                    .get(logical as usize)
+                    .copied()
+                    .flatten()
+                    .is_some_and(|token| self.transient_alias_tokens.contains_key(&token))
+            };
+            for &(previous, next) in self.alias_cache.edges(set) {
+                if bound(previous) && bound(next) {
+                    planner.add_alias(previous, next)?;
+                }
+            }
         }
         planner.bind(&compiled.plan.range_program, |family| {
             domains
@@ -375,8 +398,12 @@ impl VulkanGraphBackend {
         }
         Ok(())
     }
-    pub(super) fn queue_submission_dependencies(&self) -> crate::Result<SyncSet> {
-        let mut result = SyncSet::EMPTY;
+    /// The bound program's waits for the active batch, each with the exact
+    /// destination stages the planner proved for it.
+    pub(super) fn queue_submission_dependencies(
+        &self,
+    ) -> crate::Result<crate::sync::StagedDependencies> {
+        let mut result = crate::sync::StagedDependencies::EMPTY;
         let Some(batch) = self.queue_runtime.active_batch else {
             return Ok(result);
         };
@@ -388,7 +415,7 @@ impl VulkanGraphBackend {
             .iter()
             .filter(|wait| wait.batch == batch)
         {
-            result.insert(match wait.dependency {
+            let point = match wait.dependency {
                 DependencyRef::Point(point) => point,
                 DependencyRef::Batch(source) => self
                     .queue_runtime
@@ -400,7 +427,8 @@ impl VulkanGraphBackend {
                     .ok_or_else(|| {
                         crate::Error::invalid_usage("native wait refers to an unsuccessful batch")
                     })?,
-            });
+            };
+            result.insert(point, wait.stages);
         }
         Ok(result)
     }

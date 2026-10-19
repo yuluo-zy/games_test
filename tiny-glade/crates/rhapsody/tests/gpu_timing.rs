@@ -17,11 +17,11 @@ impl Unblock {
         }
         unsafe {
             self.0
-                .device
-                .device
+                .device()
+                .raw_device()
                 .signal_semaphore(
                     &vk::SemaphoreSignalInfo::default()
-                        .semaphore(self.0.handle)
+                        .semaphore(self.0.raw_handle())
                         .value(1),
                 )
                 .unwrap();
@@ -54,7 +54,7 @@ fn query_slot_is_not_reset_until_actual_submission_completes_and_capacity_is_non
     let Some(mut session) = session() else {
         return;
     };
-    let device = session.backend.device.clone();
+    let device = session.backend.device().clone();
     let gate = TimelineSemaphore::new(device.clone(), 0).unwrap();
     let mut unblock = Unblock(gate.clone(), false);
     let mut graph = session.begin_frame().unwrap();
@@ -110,7 +110,7 @@ fn query_slot_is_not_reset_until_actual_submission_completes_and_capacity_is_non
     assert_eq!(stats.completed, 6);
     assert_eq!(stats.retained_samples, 2);
     session.backend.configure_gpu_timing(None).unwrap();
-    assert_eq!(device.garbage_stats().idle_waits, 0);
+    assert_eq!(device.retirement_stats().idle_waits, 0);
 }
 #[test]
 fn failed_recording_cancels_unsubmitted_query_and_next_frame_can_reuse_it() {
@@ -142,9 +142,9 @@ fn failed_recording_cancels_unsubmitted_query_and_next_frame_can_reuse_it() {
 #[test]
 fn per_pass_pairs_follow_actual_serial_and_worker_submissions_and_cancel_as_a_unit() {
     use rhapsody::rg::parallel::ParallelRecording;
-    for parallel in [ParallelRecording::SERIAL, ParallelRecording::ORIGINAL] {
+    for parallel in [ParallelRecording::SERIAL, ParallelRecording::EVERY_PASS] {
         let config = DeviceConfig {
-            recording: rhapsody::device::RecordingPolicy::Parallel,
+            recording: rhapsody::device::RecordingPolicy::Adaptive,
             ..DeviceConfig::headless()
         };
         let Some(device) = gpu_test_support::initialize(
@@ -185,7 +185,7 @@ fn per_pass_pairs_follow_actual_serial_and_worker_submissions_and_cancel_as_a_un
         }
         session.chain.pgo.previous.reset();
         let frame = session.execute_frame(graph.build()).unwrap();
-        if parallel == ParallelRecording::ORIGINAL {
+        if parallel == ParallelRecording::EVERY_PASS {
             assert!(frame.stats.commands_recorded > 1);
         }
         session.wait_submits_done(10_000_000_000).unwrap();
@@ -230,7 +230,7 @@ fn in_flight_pass_queries_keep_their_slots_until_the_actual_timeline_reaches_the
             retained_samples: 4,
         }))
         .unwrap();
-    let gate = TimelineSemaphore::new(session.backend.device.clone(), 0).unwrap();
+    let gate = TimelineSemaphore::new(session.backend.device().clone(), 0).unwrap();
     let mut unblock = Unblock(gate.clone(), false);
     let mut graph = session.begin_frame().unwrap();
     session
@@ -269,13 +269,11 @@ fn in_flight_pass_queries_keep_their_slots_until_the_actual_timeline_reaches_the
             .count(),
         1
     );
-    assert!(samples.iter().all(
-        |sample| {
-            first.receipts.iter().any(|point| {
-                point.queue.index() == sample.queue && point.value == sample.completion_value
-            })
-        }
-    ));
+    assert!(samples.iter().all(|sample| {
+        first.receipts.iter().any(|point| {
+            point.queue.index() == sample.queue && point.value == sample.completion_value
+        })
+    }));
     assert_eq!(
         session.backend.poll_gpu_timings().unwrap().unwrap().pending,
         0

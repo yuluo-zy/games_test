@@ -77,6 +77,10 @@ pub enum Feature {
     DrawIndirectFirstInstance = 29,
     /// Vulkan 1.2 `drawIndirectCount`; the count is read from a GPU buffer.
     DrawIndirectCount = 30,
+    /// Vulkan 1.2 `separateDepthStencilLayouts`: depth and stencil aspects
+    /// of one image may be in different layouts (`DEPTH_ATTACHMENT_OPTIMAL`,
+    /// `STENCIL_READ_ONLY_OPTIMAL`, ...) and are tracked independently.
+    SeparateDepthStencilLayouts = 31,
 }
 
 impl Feature {
@@ -86,7 +90,7 @@ impl Feature {
     }
 
     /// 全部已建模能力。位下标必须与 `repr(u8)` 判别值一一对应。
-    pub const ALL: [Feature; 31] = [
+    pub const ALL: [Feature; 32] = [
         Self::TimelineSemaphore,
         Self::Synchronization2,
         Self::DynamicRendering,
@@ -118,6 +122,7 @@ impl Feature {
         Self::MultiDrawIndirect,
         Self::DrawIndirectFirstInstance,
         Self::DrawIndirectCount,
+        Self::SeparateDepthStencilLayouts,
     ];
 }
 

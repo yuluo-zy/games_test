@@ -68,10 +68,10 @@ fn graph(
         // These same-device physical owners are declared above and retained by
         // the real production command's SyncCells, independently of snapshots.
         unsafe {
-            source.device.device.cmd_copy_buffer(
+            source.device().raw_device().cmd_copy_buffer(
                 vk::CommandBuffer::from_raw(context.command.handle()),
-                source.handle,
-                destination.handle,
+                source.raw_handle(),
+                destination.raw_handle(),
                 &[vk::BufferCopy {
                     src_offset: 0,
                     dst_offset: 0,

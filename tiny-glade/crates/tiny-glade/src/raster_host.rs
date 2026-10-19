@@ -45,27 +45,17 @@ use country_core::{
 use hashbrown::HashMap as HbMap;
 use parking_lot::Mutex;
 use rhapsody::bindless::{BindlessParameters, BindlessResource};
-use rhapsody::shader_pipeline::reflection::BindingLocation;
 use rhapsody::{
-    raw::{
-        dynamic_constants::{DynamicConstants, DynamicConstantsChunk},
-        shader::RasterPipelineOpts,
-    },
-    rg::{
-        attachments::contract::{
-            AttachmentArray, DepthAccess, RenderPassAttachmentDesc as RhAttachmentDesc,
-            RenderPassDesc as RhRenderPassDesc,
-        },
-        attachments::{Attachment, AttachmentCache},
-        graph::{BuildError, RenderGraph as RhGraph},
-        pass_api::{AshCommandBackend, RenderPassApi as RhRenderPassApi},
-        pass_bindings::ManagedPassResources,
-        resource::ResourceHandle,
-        vulkan::{ResourceSpec, VulkanGraphSession},
-    },
-    shader_pipeline::{
-        compiled::CompiledShaderPipeline as RhCompiled, reflection::BindingNameHash,
-    },
+    pipeline::RasterPipelineOpts, resource::DynamicConstants, resource::DynamicConstantsChunk,
+    rg::AshCommandBackend, rg::Attachment, rg::AttachmentArray, rg::AttachmentCache,
+    rg::BuildError, rg::DepthAccess, rg::ManagedPassResources, rg::RenderGraph as RhGraph,
+    rg::RenderPassApi as RhRenderPassApi, rg::RenderPassAttachmentDesc as RhAttachmentDesc,
+    rg::RenderPassDesc as RhRenderPassDesc, rg::ResourceHandle, rg::ResourceSpec,
+    rg::VulkanGraphSession,
+};
+use shader_pipeline::reflection::BindingLocation;
+use shader_pipeline::{
+    compiled::CompiledShaderPipeline as RhCompiled, reflection::BindingNameHash,
 };
 use std::{cell::RefCell, collections::HashMap, marker::PhantomData, rc::Rc, sync::Arc};
 
@@ -77,13 +67,13 @@ pub trait GraphDeclarer {
     fn import_buffer(
         &self,
         graph: &mut RhGraph,
-        buffer: Arc<rhapsody::raw::buffer::Buffer>,
+        buffer: Arc<rhapsody::resource::Buffer>,
         initial_access: u8,
     ) -> rhapsody::Result<ResourceHandle>;
     fn import_texture(
         &self,
         graph: &mut RhGraph,
-        texture: Arc<rhapsody::raw::texture::Texture>,
+        texture: Arc<rhapsody::resource::Texture>,
         initial_access: u8,
     ) -> rhapsody::Result<ResourceHandle>;
     fn declare(
@@ -96,26 +86,26 @@ pub trait GraphDeclarer {
         &self,
         graph: &mut RhGraph,
         name: &str,
-        desc: rhapsody::raw::texture::TextureDesc,
-    ) -> rhapsody::Result<rhapsody::rg::temporal::NamedTexture>;
+        desc: rhapsody::resource::TextureDesc,
+    ) -> rhapsody::Result<rhapsody::rg::NamedTexture>;
     fn temporal_texture(
         &self,
         graph: &mut RhGraph,
         name: &str,
-        desc: rhapsody::raw::texture::TextureDesc,
-    ) -> rhapsody::Result<rhapsody::rg::temporal::TemporalTexturePair>;
+        desc: rhapsody::resource::TextureDesc,
+    ) -> rhapsody::Result<rhapsody::rg::TemporalTexturePair>;
     fn named_buffer(
         &self,
         graph: &mut RhGraph,
         name: &str,
-        desc: rhapsody::raw::buffer::BufferDesc,
-    ) -> rhapsody::Result<rhapsody::rg::temporal::NamedBuffer>;
+        desc: rhapsody::resource::BufferDesc,
+    ) -> rhapsody::Result<rhapsody::rg::NamedBuffer>;
 }
 impl GraphDeclarer for RefCell<VulkanGraphSession> {
     fn import_buffer(
         &self,
         graph: &mut RhGraph,
-        buffer: Arc<rhapsody::raw::buffer::Buffer>,
+        buffer: Arc<rhapsody::resource::Buffer>,
         initial_access: u8,
     ) -> rhapsody::Result<ResourceHandle> {
         self.borrow_mut()
@@ -124,7 +114,7 @@ impl GraphDeclarer for RefCell<VulkanGraphSession> {
     fn import_texture(
         &self,
         graph: &mut RhGraph,
-        texture: Arc<rhapsody::raw::texture::Texture>,
+        texture: Arc<rhapsody::resource::Texture>,
         initial_access: u8,
     ) -> rhapsody::Result<ResourceHandle> {
         self.borrow_mut()
@@ -142,24 +132,24 @@ impl GraphDeclarer for RefCell<VulkanGraphSession> {
         &self,
         graph: &mut RhGraph,
         name: &str,
-        desc: rhapsody::raw::texture::TextureDesc,
-    ) -> rhapsody::Result<rhapsody::rg::temporal::NamedTexture> {
+        desc: rhapsody::resource::TextureDesc,
+    ) -> rhapsody::Result<rhapsody::rg::NamedTexture> {
         self.borrow_mut().named_texture(graph, name, desc)
     }
     fn temporal_texture(
         &self,
         graph: &mut RhGraph,
         name: &str,
-        desc: rhapsody::raw::texture::TextureDesc,
-    ) -> rhapsody::Result<rhapsody::rg::temporal::TemporalTexturePair> {
+        desc: rhapsody::resource::TextureDesc,
+    ) -> rhapsody::Result<rhapsody::rg::TemporalTexturePair> {
         self.borrow_mut().temporal_texture(graph, name, desc)
     }
     fn named_buffer(
         &self,
         graph: &mut RhGraph,
         name: &str,
-        desc: rhapsody::raw::buffer::BufferDesc,
-    ) -> rhapsody::Result<rhapsody::rg::temporal::NamedBuffer> {
+        desc: rhapsody::resource::BufferDesc,
+    ) -> rhapsody::Result<rhapsody::rg::NamedBuffer> {
         self.borrow_mut().named_buffer(graph, name, desc)
     }
 }
@@ -297,9 +287,9 @@ pub struct AssetTables {
 }
 #[derive(Clone)]
 struct VaoSnapshot {
-    index: Arc<rhapsody::raw::buffer::Buffer>,
+    index: Arc<rhapsody::resource::Buffer>,
     index_count: u32,
-    bindings: Vec<(Arc<str>, Arc<rhapsody::raw::buffer::Buffer>)>,
+    bindings: Vec<(Arc<str>, Arc<rhapsody::resource::Buffer>)>,
 }
 
 /// 全部光栅 pass 共享的宿主状态。
@@ -456,7 +446,7 @@ impl RasterShared {
         buffers: Arc<BufferHost>,
         textures: Arc<TextureHost>,
         shaders: Arc<ShaderHost>,
-    ) -> Result<Arc<Self>, rhapsody::raw::error::Error> {
+    ) -> Result<Arc<Self>, rhapsody::Error> {
         Self::new_with_programs(
             device,
             buffers,
@@ -475,7 +465,7 @@ impl RasterShared {
         textures: Arc<TextureHost>,
         shaders: Arc<ShaderHost>,
         library: Arc<AssetShaderLibrary>,
-    ) -> Result<Arc<Self>, rhapsody::raw::error::Error> {
+    ) -> Result<Arc<Self>, rhapsody::Error> {
         Self::new_with_programs(
             device,
             buffers,
@@ -491,7 +481,7 @@ impl RasterShared {
         textures: Arc<TextureHost>,
         shaders: Arc<ShaderHost>,
         programs: RasterPrograms,
-    ) -> Result<Arc<Self>, rhapsody::raw::error::Error> {
+    ) -> Result<Arc<Self>, rhapsody::Error> {
         Ok(Arc::new(Self {
             attachments: Mutex::new(AttachmentCache::new(device.clone())?),
             dynamic: Arc::new(Mutex::new(DynamicConstants::new(device.clone())?)),
@@ -645,14 +635,14 @@ struct PreparedDraw {
     index: Option<ResourceHandle>,
     index_count: Option<u32>,
     vertices: Vec<(u32, ResourceHandle, u64)>,
-    external: rhapsody::raw::temp_list::TempList<ExternalDrawBinding>,
+    external: rhapsody::resource::TempList<ExternalDrawBinding>,
 }
 struct ExternalDrawBinding {
     binding: u32,
     resource: ResourceHandle,
     access: u8,
-    range: rhapsody::rg::resource::AccessRange,
-    view: Option<rhapsody::raw::texture::TextureViewDesc>,
+    range: rhapsody::rg::AccessRange,
+    view: Option<rhapsody::resource::TextureViewDesc>,
 }
 
 impl PassHost for RasterPassHost {
@@ -699,7 +689,7 @@ impl PassHost for RasterPassHost {
         Some(DynamicConstantsBinding {
             data,
             binding_index: reflection.uniform_block_binding,
-            keepalive: ManagedHandle(ash::vk::Handle::as_raw(chunk.buffer.handle)),
+            keepalive: ManagedHandle(ash::vk::Handle::as_raw(chunk.buffer.raw_handle())),
             lease: Some(ResourceLease::new(chunk)),
         })
     }
@@ -812,7 +802,7 @@ impl PassHost for RasterPassHost {
         BindingNameHash(name_hash).with_suffix_dims().0
     }
 
-    /// `rhapsody::raw::shader::impl$7::default()`：`RasterPipelineOpts` 的 4 字节位域缺省值。
+    /// `rhapsody::pipeline::impl$7::default()`：`RasterPipelineOpts` 的 4 字节位域缺省值。
     fn default_raster_state(&self) -> RasterState {
         RasterState(RasterPipelineOpts::new().0)
     }
@@ -892,9 +882,9 @@ impl PassHost for RasterPassHost {
                     index: None,
                     index_count: None,
                     vertices: Vec::new(),
-                    external: rhapsody::raw::temp_list::TempList::new(
+                    external: rhapsody::resource::TempList::new(
                         country_core::render::pass_builder::draw_builder::MAX_PASS_BINDINGS,
-                        shared.device.allocator_stats.clone(),
+                        shared.device.allocator_stats().clone(),
                     )?,
                 })
             })
@@ -941,34 +931,68 @@ impl PassHost for RasterPassHost {
                 // Native DrawIndirectCount stays native on enabled devices.
                 // A physically supported but unenabled feature is a configuration
                 // error; only unsupported devices use the GPU platform lowering.
-                if let DrawKind::IndexedIndirectCount { buffer, count_buffer, args } = draw.packet.kind.clone() {
+                if let DrawKind::IndexedIndirectCount {
+                    buffer,
+                    count_buffer,
+                    args,
+                } = draw.packet.kind.clone()
+                {
                     use rhapsody::device::Feature;
                     if !shared.device.caps().is_enabled(Feature::DrawIndirectCount) {
-                        if shared.device.caps().is_supported(Feature::DrawIndirectCount) {
-                            shared.device.caps().require_enabled(Feature::DrawIndirectCount)?;
+                        if shared
+                            .device
+                            .caps()
+                            .is_supported(Feature::DrawIndirectCount)
+                        {
+                            shared
+                                .device
+                                .caps()
+                                .require_enabled(Feature::DrawIndirectCount)?;
                         }
                         // Moving a counter snapshot before this render pass
                         // is equivalent only while its commands/counter remain
                         // read-only throughout the pass (true for original Nani).
-                        if accesses.iter().any(|a| (a.resource == buffer || a.resource == count_buffer)
-                            && country_core::render::pass_builder::draw_stream::access_is_write(a.access)) {
-                            return Err(rhapsody::Error::unsupported("indirect count source/counter is modified inside the raster pass"));
+                        if accesses.iter().any(|a| {
+                            (a.resource == buffer || a.resource == count_buffer)
+                                && country_core::render::pass_builder::draw_stream::access_is_write(
+                                    a.access,
+                                )
+                        }) {
+                            return Err(rhapsody::Error::unsupported(
+                                "indirect count source/counter is modified inside the raster pass",
+                            ));
                         }
                         let maximum = args[3] as u32;
                         let (target, offset, stride) = if maximum == 0 {
                             (buffer, args[0], args[1])
                         } else {
-                            let request = rhapsody::rg::indirect_count::IndexedCountRequest {
-                                command_offset: args[0], command_stride: args[1] as u32,
-                                count_offset: args[2], maximum_draws: maximum,
+                            let request = rhapsody::rg::IndexedCountRequest {
+                                command_offset: args[0],
+                                command_stride: args[1] as u32,
+                                count_offset: args[2],
+                                maximum_draws: maximum,
                             };
                             // Validate native command limits before allocating.
                             if maximum > shared.device.max_draw_indirect_count() {
-                                return Err(rhapsody::Error::invalid_usage("indexed count maximum exceeds device draw limit"));
+                                return Err(rhapsody::Error::invalid_usage(
+                                    "indexed count maximum exceeds device draw limit",
+                                ));
                             }
-                            if maximum > 1 { shared.device.caps().require_enabled(Feature::MultiDrawIndirect)?; }
-                            let declarer = &self.rg.as_ref().ok_or_else(||
-                                rhapsody::Error::invalid_usage("indirect count lowering requires the frame declarer"))?.declarer;
+                            if maximum > 1 {
+                                shared
+                                    .device
+                                    .caps()
+                                    .require_enabled(Feature::MultiDrawIndirect)?;
+                            }
+                            let declarer = &self
+                                .rg
+                                .as_ref()
+                                .ok_or_else(|| {
+                                    rhapsody::Error::invalid_usage(
+                                        "indirect count lowering requires the frame declarer",
+                                    )
+                                })?
+                                .declarer;
                             let commands = graph.resource_handle(buffer)?;
                             let counter = graph.resource_handle(count_buffer)?;
                             // Each packet owns independent scratch in this same graph.
@@ -976,22 +1000,44 @@ impl PassHost for RasterPassHost {
                             // existing names are checked before allocation as well.
                             let mut scope = graph.declaration().resources.len();
                             let scratch_name = loop {
-                                let candidate = format!("platform indexed indirect count commands [{name}:{scope}]");
-                                if !graph.declaration().resources.iter().any(|r| r.name == candidate) {
+                                let candidate = format!(
+                                    "platform indexed indirect count commands [{name}:{scope}]"
+                                );
+                                if !graph
+                                    .declaration()
+                                    .resources
+                                    .iter()
+                                    .any(|r| r.name == candidate)
+                                {
                                     break candidate;
                                 }
-                                scope = scope.checked_add(1).ok_or_else(||
-                                    rhapsody::Error::invalid_usage("indirect scratch scope overflow"))?;
+                                scope = scope.checked_add(1).ok_or_else(|| {
+                                    rhapsody::Error::invalid_usage(
+                                        "indirect scratch scope overflow",
+                                    )
+                                })?;
                             };
-                            let scratch = declarer.declare(&mut graph, &scratch_name,
-                                ResourceSpec::Buffer(request.scratch_desc()?))?;
-                            shared.shaders.indexed_count_adapter()?.add_pass(&mut graph,
-                                commands, counter, scratch, request, shared.dynamic.clone())?;
+                            let scratch = declarer.declare(
+                                &mut graph,
+                                &scratch_name,
+                                ResourceSpec::Buffer(request.scratch_desc()?),
+                            )?;
+                            shared.shaders.indexed_count_adapter()?.add_pass(
+                                &mut graph,
+                                commands,
+                                counter,
+                                scratch,
+                                request,
+                                shared.dynamic.clone(),
+                            )?;
                             (scratch.raw(), 0, 20)
                         };
                         draw.packet.kind = DrawKind::IndexedIndirect {
-                            buffer: target, arg_48: offset, arg_50: u64::from(maximum),
-                            arg_58: stride, first_index_count: None,
+                            buffer: target,
+                            arg_48: offset,
+                            arg_50: u64::from(maximum),
+                            arg_58: stride,
+                            first_index_count: None,
                         };
                     }
                 }
@@ -1091,10 +1137,22 @@ impl PassHost for RasterPassHost {
             return;
         }
         let (preserving_buffers, inactive_reads) = match raster_content_intents(
-            prepared.iter().map(|draw| &draw.packet), &bindings,
-            |resource| graph.declaration().resources.get(resource as usize)
-                .map(|resource| matches!(resource.descriptor, rhapsody::rg::graph::Descriptor::Image(_)))
-                .ok_or_else(|| rhapsody::Error::invalid_usage("raster metadata resource is outside the graph")),
+            prepared.iter().map(|draw| &draw.packet),
+            &bindings,
+            |resource| {
+                graph
+                    .declaration()
+                    .resources
+                    .get(resource as usize)
+                    .map(|resource| {
+                        matches!(resource.descriptor, rhapsody::rg::Descriptor::Image(_))
+                    })
+                    .ok_or_else(|| {
+                        rhapsody::Error::invalid_usage(
+                            "raster metadata resource is outside the graph",
+                        )
+                    })
+            },
         ) {
             Ok(intents) => intents,
             Err(error) => {
@@ -1115,11 +1173,11 @@ impl PassHost for RasterPassHost {
                 .resources
                 .get(resource as usize)
                 .is_some_and(|entry| match entry.source {
-                    rhapsody::rg::graph::OriginSource::ImportOwned { initial_access, .. }
-                    | rhapsody::rg::graph::OriginSource::ImportUnowned { initial_access, .. } => {
+                    rhapsody::rg::OriginSource::ImportOwned { initial_access, .. }
+                    | rhapsody::rg::OriginSource::ImportUnowned { initial_access, .. } => {
                         initial_access != 0
                     }
-                    rhapsody::rg::graph::OriginSource::Create => false,
+                    rhapsody::rg::OriginSource::Create => false,
                 });
             imported
                 || graph.declaration().passes.iter().any(|pass| {
@@ -1186,7 +1244,7 @@ impl PassHost for RasterPassHost {
                         index,
                         0x03,
                         0,
-                        rhapsody::rg::resource::AccessRange::Buffer {
+                        rhapsody::rg::AccessRange::Buffer {
                             offset: 0,
                             size: u64::from(index_count) * 4,
                         },
@@ -1199,7 +1257,7 @@ impl PassHost for RasterPassHost {
                         *resource,
                         0x04,
                         0,
-                        rhapsody::rg::resource::AccessRange::Buffer {
+                        rhapsody::rg::AccessRange::Buffer {
                             offset: 0,
                             size: *size,
                         },
@@ -1212,21 +1270,28 @@ impl PassHost for RasterPassHost {
                 .resource_handle(a.resource)
                 .expect("add_resource_access: resource does not belong to this graph");
             let writes = country_core::render::pass_builder::draw_stream::access_is_write(a.access);
-            let result = if (preserving_attachments.contains(&a.resource) || preserving_buffers.contains(&a.resource))
+            let result = if (preserving_attachments.contains(&a.resource)
+                || preserving_buffers.contains(&a.resource))
                 && writes
             {
                 declared.add_preserving_resource_access_range(
                     resource,
                     a.access,
                     a.group,
-                    rhapsody::rg::resource::AccessRange::Whole,
+                    rhapsody::rg::AccessRange::Whole,
                 )
-            } else if !writes && inactive_reads.get(&a.resource) == Some(&true)
+            } else if !writes
+                && inactive_reads.get(&a.resource) == Some(&true)
                 && !colors.iter().any(|color| color.id == a.resource)
-                && depth.as_ref().is_none_or(|depth| depth.texture_id != a.resource)
+                && depth
+                    .as_ref()
+                    .is_none_or(|depth| depth.texture_id != a.resource)
             {
                 declared.add_inactive_resource_read_range(
-                    resource, a.access, a.group, rhapsody::rg::resource::AccessRange::Whole,
+                    resource,
+                    a.access,
+                    a.group,
+                    rhapsody::rg::AccessRange::Whole,
                 )
             } else {
                 declared.add_resource_access(resource, a.access, a.group)
@@ -1287,9 +1352,9 @@ impl PassHost for RasterPassHost {
                     return false;
                 };
                 let mut a = a.depth_access(if d.writable {
-                    rhapsody::rg::attachments::DepthAccess::ReadWrite
+                    rhapsody::rg::DepthAccess::ReadWrite
                 } else {
-                    rhapsody::rg::attachments::DepthAccess::ReadOnly
+                    rhapsody::rg::DepthAccess::ReadOnly
                 });
                 a.view.base_layer = d.layer;
                 a.view.layer_count = 1;
@@ -1300,7 +1365,7 @@ impl PassHost for RasterPassHost {
                 &attachments,
                 extent,
                 1,
-                rhapsody::rg::attachments::RenderingPolicy::Auto,
+                rhapsody::rg::RenderingPolicy::Auto,
             ) {
                 Ok(prepared) => prepared,
                 Err(error) => {
@@ -1326,10 +1391,10 @@ impl PassHost for RasterPassHost {
             for (draw, pipeline) in prepared.iter().zip(&pipelines) {
                 // SAFETY: 管线属于本设备，命令缓冲在录制中。
                 unsafe {
-                    device.device.cmd_bind_pipeline(
+                    device.raw_device().cmd_bind_pipeline(
                         command,
                         vk::PipelineBindPoint::GRAPHICS,
-                        pipeline.handle,
+                        pipeline.raw_handle(),
                     )
                 };
                 let parameters = match bindless_parameters(&shared, draw, &bindings, managed)
@@ -1418,7 +1483,7 @@ fn validate_indirect_ranges(graph: &RhGraph, kind: &DrawKind) -> rhapsody::Resul
     let size = |id: u32| -> rhapsody::Result<u64> {
         graph.resource_handle(id)?;
         match graph.declaration().resources[id as usize].descriptor {
-            rhapsody::rg::graph::Descriptor::Buffer(desc) => Ok(desc.word_at_00),
+            rhapsody::rg::Descriptor::Buffer(desc) => Ok(desc.word_at_00),
             _ => Err(rhapsody::Error::invalid_usage(
                 "indirect command resource is not a buffer",
             )),
@@ -1451,7 +1516,7 @@ fn validate_indirect_ranges(graph: &RhGraph, kind: &DrawKind) -> rhapsody::Resul
     Ok(())
 }
 
-fn record_draw<B: rhapsody::rg::pass_api::CommandBackend>(
+fn record_draw<B: rhapsody::rg::CommandBackend>(
     api: &mut RhRenderPassApi<'_, B>,
     draw: &PreparedDraw,
     managed: &ManagedPassResources,
@@ -1583,7 +1648,8 @@ fn import_draw_bindings(
     declarer: &dyn GraphDeclarer,
     graph: &mut RhGraph,
 ) -> rhapsody::Result<()> {
-    use rhapsody::{rg::resource::AccessRange, shader_pipeline::reflection::BindingKind};
+    use rhapsody::rg::AccessRange;
+    use shader_pipeline::reflection::BindingKind;
     for (binding, owned) in &draw.packet.bindings {
         if owned.state != country_core::render::pass_builder::draw_stream::GpuOwned::STATE_OWNED {
             continue;
@@ -1613,7 +1679,7 @@ fn import_draw_bindings(
                 let owner = shared.buffers.get_by_id(keepalive.0).ok_or_else(|| {
                     rhapsody::Error::invalid_usage("raster storage buffer is not live")
                 })?;
-                if ash::vk::Handle::as_raw(owner.handle) != *buffer {
+                if ash::vk::Handle::as_raw(owner.raw_handle()) != *buffer {
                     return Err(rhapsody::Error::invalid_usage(
                         "raster storage buffer differs from retained owner",
                     ));
@@ -1725,7 +1791,7 @@ fn bindless_parameters(
                         )
                     })?;
                 if u64::from(*size) > chunk.size
-                    || keepalive.0 != ash::vk::Handle::as_raw(chunk.buffer.handle)
+                    || keepalive.0 != ash::vk::Handle::as_raw(chunk.buffer.raw_handle())
                 {
                     return Err(rhapsody::Error::invalid_usage(
                         "uniform binding metadata exceeds owned allocation",
@@ -1753,7 +1819,7 @@ fn bindless_parameters(
             let buffer = managed
                 .buffer_for(binding.resource.raw())
                 .map_err(rhapsody::Error::from)?;
-            let rhapsody::rg::resource::AccessRange::Buffer { offset, size } = binding.range else {
+            let rhapsody::rg::AccessRange::Buffer { offset, size } = binding.range else {
                 unreachable!("buffer binding has a checked buffer range")
             };
             BindlessResource::Buffer {
@@ -1770,7 +1836,7 @@ fn bindless_parameters(
             .ok_or_else(|| rhapsody::Error::invalid_usage("raster pass binding slot is absent"))?;
         let resource = if let Ok(texture) = managed.texture_for(binding.resource_index) {
             let desc = binding.view.as_ref().map_or_else(
-                || rhapsody::raw::texture::TextureViewDesc::new(&texture.desc),
+                || rhapsody::resource::TextureViewDesc::new(&texture.desc),
                 |view| rh_view_desc(&texture, view),
             )?;
             let view = texture.image_view(&desc)?;
@@ -1893,7 +1959,6 @@ mod program_identity_tests {
     }
 }
 
-
 /// Resolve packet-local evidence onto the real graph resource. Any active
 /// alias in any draw tightens an inactive binding back into a content read.
 fn raster_content_intents<'a>(
@@ -1905,28 +1970,52 @@ fn raster_content_intents<'a>(
     let mut preserving = Vec::new();
     let mut inactive = std::collections::BTreeMap::new();
     for packet in packets {
-        for binding in packet.preserving_buffer_bindings.iter().chain(&packet.inactive_texture_bindings) {
-            if !packet.accesses.iter().any(|access| access.binding_index == *binding) {
-                return Err(rhapsody::Error::invalid_usage("raster contents metadata lacks its actual binding"));
+        for binding in packet
+            .preserving_buffer_bindings
+            .iter()
+            .chain(&packet.inactive_texture_bindings)
+        {
+            if !packet
+                .accesses
+                .iter()
+                .any(|access| access.binding_index == *binding)
+            {
+                return Err(rhapsody::Error::invalid_usage(
+                    "raster contents metadata lacks its actual binding",
+                ));
             }
         }
         for access in &packet.accesses {
-            let actual = bindings.get(access.slot as usize).ok_or_else(||
-                rhapsody::Error::invalid_usage("raster contents metadata has a stale pass slot"))?;
+            let actual = bindings.get(access.slot as usize).ok_or_else(|| {
+                rhapsody::Error::invalid_usage("raster contents metadata has a stale pass slot")
+            })?;
             let texture = is_texture(actual.resource_index)?;
-            let preserves = packet.preserving_buffer_bindings.contains(&access.binding_index);
-            let unused = packet.inactive_texture_bindings.contains(&access.binding_index);
+            let preserves = packet
+                .preserving_buffer_bindings
+                .contains(&access.binding_index);
+            let unused = packet
+                .inactive_texture_bindings
+                .contains(&access.binding_index);
             if preserves {
                 if texture || !access_is_write(actual.access_type) || unused {
-                    return Err(rhapsody::Error::invalid_usage("raster preserving metadata requires an actual buffer write"));
+                    return Err(rhapsody::Error::invalid_usage(
+                        "raster preserving metadata requires an actual buffer write",
+                    ));
                 }
-                if !preserving.contains(&actual.resource_index) { preserving.push(actual.resource_index); }
+                if !preserving.contains(&actual.resource_index) {
+                    preserving.push(actual.resource_index);
+                }
             }
             if unused && (!texture || access_is_write(actual.access_type)) {
-                return Err(rhapsody::Error::invalid_usage("raster inactive metadata requires an actual texture read"));
+                return Err(rhapsody::Error::invalid_usage(
+                    "raster inactive metadata requires an actual texture read",
+                ));
             }
             if !access_is_write(actual.access_type) {
-                inactive.entry(actual.resource_index).and_modify(|all| *all &= unused).or_insert(unused);
+                inactive
+                    .entry(actual.resource_index)
+                    .and_modify(|all| *all &= unused)
+                    .or_insert(unused);
             }
         }
     }
@@ -1938,26 +2027,53 @@ mod original_surface_raster_intent_tests {
     use super::*;
     use country_core::render::pass_builder::draw_stream::ResourceAccess;
     fn packet() -> DrawPacket {
-        DrawPacket::new(country_core::rhapsody_contract::Handle(
-            country_core::rhapsody_contract::ManagedHandle(1), std::marker::PhantomData,
-        ), [0,0], RasterState::default())
+        DrawPacket::new(
+            country_core::rhapsody_contract::Handle(
+                country_core::rhapsody_contract::ManagedHandle(1),
+                std::marker::PhantomData,
+            ),
+            [0, 0],
+            RasterState::default(),
+        )
     }
     #[test]
     fn active_aliases_tighten_reads_and_atomic_preserving_is_explicit() {
         let bindings = vec![
-            RenderPassBinding { resource_index: 42, access_type: 0x1d, view: Some(Default::default()) },
-            RenderPassBinding { resource_index: 43, access_type: 0x37, view: None },
+            RenderPassBinding {
+                resource_index: 42,
+                access_type: 0x1d,
+                view: Some(Default::default()),
+            },
+            RenderPassBinding {
+                resource_index: 43,
+                access_type: 0x37,
+                view: None,
+            },
         ];
         let mut first = packet();
-        first.accesses = vec![ResourceAccess { binding_index: 0, slot: 0 }, ResourceAccess { binding_index: 1, slot: 1 }];
+        first.accesses = vec![
+            ResourceAccess {
+                binding_index: 0,
+                slot: 0,
+            },
+            ResourceAccess {
+                binding_index: 1,
+                slot: 1,
+            },
+        ];
         first.inactive_texture_bindings.push(0);
         first.preserving_buffer_bindings.push(1);
-        let (preserving, inactive) = raster_content_intents([&first], &bindings, |id| Ok(id == 42)).unwrap();
+        let (preserving, inactive) =
+            raster_content_intents([&first], &bindings, |id| Ok(id == 42)).unwrap();
         assert_eq!(preserving, [43]);
         assert_eq!(inactive[&42], true);
         let mut active = packet();
-        active.accesses.push(ResourceAccess { binding_index: 0, slot: 0 });
-        let (_, inactive) = raster_content_intents([&first, &active], &bindings, |id| Ok(id == 42)).unwrap();
+        active.accesses.push(ResourceAccess {
+            binding_index: 0,
+            slot: 0,
+        });
+        let (_, inactive) =
+            raster_content_intents([&first, &active], &bindings, |id| Ok(id == 42)).unwrap();
         assert_eq!(inactive[&42], false);
         first.inactive_texture_bindings.push(1);
         assert!(raster_content_intents([&first], &bindings, |id| Ok(id == 42)).is_err());

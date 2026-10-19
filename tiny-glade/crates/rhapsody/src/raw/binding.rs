@@ -1,4 +1,4 @@
-//! 原生描述符写入、管线绑定及受控命令资源租约。
+//! Native descriptor writes, pipeline binding and command resource leases.
 use crate::raw::device::Device;
 use ash::vk;
 use std::sync::Arc;
@@ -70,17 +70,19 @@ impl DescriptorSetBinding {
             .dst_binding(binding)
             .dst_array_element(array_element)
             .descriptor_type(self.descriptor_type());
-        // 原 `lock inc [device+0xab0]`：每次 vkUpdateDescriptorSets 之后 +1。
-        let count = &device.descriptor_update_count;
+        // Statistics: one increment per vkUpdateDescriptorSets call.
+        let count = &device.core.descriptor_update_count;
         unsafe {
             match self {
                 Self::Buffer { info, .. } => device
+                    .core
                     .device
                     .update_descriptor_sets(&[write.buffer_info(std::slice::from_ref(info))], &[]),
                 Self::Image { info, .. } => device
+                    .core
                     .device
                     .update_descriptor_sets(&[write.image_info(std::slice::from_ref(info))], &[]),
-                Self::TexelBuffer { view, .. } => device.device.update_descriptor_sets(
+                Self::TexelBuffer { view, .. } => device.core.device.update_descriptor_sets(
                     &[write.texel_buffer_view(std::slice::from_ref(view))],
                     &[],
                 ),
@@ -101,6 +103,7 @@ pub unsafe fn bind_pipeline(
 ) {
     unsafe {
         device
+            .core
             .device
             .cmd_bind_pipeline(command_buffer, point, pipeline)
     }
@@ -118,7 +121,7 @@ pub unsafe fn bind_persistent_descriptor_set(
     dynamic_offsets: &[u32],
 ) {
     unsafe {
-        device.device.cmd_bind_descriptor_sets(
+        device.core.device.cmd_bind_descriptor_sets(
             command_buffer,
             point,
             layout,
@@ -130,7 +133,7 @@ pub unsafe fn bind_persistent_descriptor_set(
 }
 
 /// # Safety
-/// 与 `bind_persistent_descriptor_set` 同一底层绑定；保留原名供非持久路径调用。
+/// Same native binding as `bind_persistent_descriptor_set`, for non-persistent sets.
 pub unsafe fn bind_descriptor_set(
     device: &Device,
     command_buffer: vk::CommandBuffer,
@@ -153,11 +156,8 @@ pub unsafe fn bind_descriptor_set(
     }
 }
 
-/// 原 `Device::bind_persistent_descriptor_set`（0x140bee150）逐字形态：
-/// `get_tracked` 解析句柄 → 命令缓冲状态必须是 1（recording，否则 panic）→
-/// `vkCmdBindDescriptorSets(cmd=[rec+0x48], bindPoint=[pipeline+0x30], layout=[pipeline+0x20],
-/// firstSet=参数, setCount=1, &set, dynamicOffsetCount=0, null)`（机器码 0x140bee187..0x140bee1c1）。
-/// 即原版持久集绑定恒为 **1 个集合、无动态偏移**；上面的通用版本只是它的超集。
+/// Bind exactly one persistent set at `first_set` without dynamic offsets
+/// (a special case of the general binding above).
 ///
 /// # Safety
 /// 与 `bind_persistent_descriptor_set` 相同。

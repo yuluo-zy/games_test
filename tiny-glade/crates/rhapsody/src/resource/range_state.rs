@@ -6,7 +6,7 @@ use crate::{
     Error, Result,
     device::BudgetCategory,
     raw::allocator::{AllocatorStats, CpuMemoryReservation},
-    sync::{MAX_QUEUES, QueueId, SyncPoint, SyncSet},
+    sync::{MAX_QUEUES, QueueId, StagedDependencies, SyncPoint, SyncSet},
 };
 use ash::vk;
 use smallvec::SmallVec;
@@ -87,6 +87,39 @@ pub enum RangeOwner {
         transfer: RangeTransfer,
         point: SyncPoint,
     },
+}
+/// Why a queue family may not use a range now.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum OwnershipDenial {
+    /// A concurrent resource does not list the family.
+    NotShared,
+    /// A queue-family release is still waiting for its acquire.
+    Released,
+    /// Another family owns the exclusive range.
+    OtherFamily,
+}
+impl RangeOwner {
+    /// The single ownership admission rule: whether `family` may use a range
+    /// in this state under `sharing` without an acquire. An unclaimed
+    /// exclusive range is admitted (the access claims it).
+    pub(crate) fn admits(
+        self,
+        sharing: ResourceSharing,
+        family: u32,
+    ) -> std::result::Result<(), OwnershipDenial> {
+        if !sharing.allows_family(family) {
+            return Err(OwnershipDenial::NotShared);
+        }
+        if sharing.is_concurrent() {
+            return Ok(());
+        }
+        match self {
+            Self::Unclaimed => Ok(()),
+            Self::Owned(owner) if owner == family => Ok(()),
+            Self::Owned(_) => Err(OwnershipDenial::OtherFamily),
+            Self::Released { .. } => Err(OwnershipDenial::Released),
+        }
+    }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct NativeState {
@@ -250,7 +283,7 @@ pub struct RangeStateTable {
     budget: Arc<AllocatorStats>,
     prepared_queue: Option<QueueId>,
     prepared_host: bool,
-    prepared_dependencies: SyncSet,
+    prepared_dependencies: StagedDependencies,
 }
 impl std::fmt::Debug for RangeStateTable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -291,7 +324,7 @@ impl RangeStateTable {
             budget,
             prepared_queue: None,
             prepared_host: false,
-            prepared_dependencies: SyncSet::EMPTY,
+            prepared_dependencies: StagedDependencies::EMPTY,
         };
         result.cells.values.push(RangeCell {
             range: domain,
@@ -343,10 +376,36 @@ impl RangeStateTable {
             cell.state.revision = cell.state.revision.saturating_add(1);
         }
     }
+    /// The resource's contents are discarded and all of its earlier GPU work
+    /// is known to be complete (caller checked the physical last use). Every
+    /// range returns to the unclaimed, `UNDEFINED`, dependency-free state:
+    /// a pending ownership release or foreign owner is dropped without any
+    /// acquire, and nothing is left to wait on. Revisions keep increasing so
+    /// stale recorded patches still fail their preconditions.
+    pub fn discard_idle_contents(&mut self) {
+        self.cancel_prepared();
+        let revision = self
+            .cells
+            .values
+            .iter()
+            .map(|cell| cell.state.revision)
+            .max()
+            .unwrap_or(0)
+            .saturating_add(1)
+            .min(u64::MAX - 1);
+        self.cells.values.clear();
+        self.cells.values.push(RangeCell {
+            range: self.domain,
+            state: NativeState {
+                revision,
+                ..NativeState::default()
+            },
+        });
+    }
     pub fn cancel_prepared(&mut self) {
         self.prepared_queue = None;
         self.prepared_host = false;
-        self.prepared_dependencies = SyncSet::EMPTY;
+        self.prepared_dependencies = StagedDependencies::EMPTY;
         self.scratch.values.clear();
     }
     /// Ordered patches may include accesses followed by a release in the same
@@ -396,20 +455,30 @@ impl RangeStateTable {
                 }
                 let mut changed = current;
                 changed.cell.range = overlap;
-                let dependencies = match patch.action {
-                    PatchAction::Access { scope, layout, .. } => current.cell.state.dependencies(
-                        scope.write
-                            || !current.cell.state.layout_known
-                            || current.cell.state.layout != layout,
+                // Declared accesses know the first stage that touches the
+                // range on this queue; opaque uses and releases do not.
+                let (dependencies, stages) = match patch.action {
+                    PatchAction::Access { scope, layout, .. } => (
+                        current.cell.state.dependencies(
+                            scope.write
+                                || !current.cell.state.layout_known
+                                || current.cell.state.layout != layout,
+                        ),
+                        scope.stages,
                     ),
-                    PatchAction::Release(_) | PatchAction::Unknown { .. } => {
-                        current.cell.state.dependencies(true)
-                    }
-                    PatchAction::Acquire { release_point, .. } => {
-                        SyncSet::from_point(release_point)
-                    }
+                    PatchAction::Release(_) | PatchAction::Unknown { .. } => (
+                        current.cell.state.dependencies(true),
+                        vk::PipelineStageFlags::ALL_COMMANDS,
+                    ),
+                    PatchAction::Acquire {
+                        release_point,
+                        transfer,
+                    } => (
+                        SyncSet::from_point(release_point),
+                        transfer.destination.stages,
+                    ),
                 };
-                self.prepared_dependencies.merge(&dependencies);
+                self.prepared_dependencies.merge_set(&dependencies, stages);
                 apply_preview(&mut changed, patch.action, self.sharing, queue, family)?;
                 changed.cell.state.revision = current
                     .cell
@@ -454,6 +523,12 @@ impl RangeStateTable {
     /// batch under its gate. Pending accesses in the same native batch introduce
     /// no invented point and rely on the emitted command-order dependencies.
     pub fn prepared_dependencies(&self) -> SyncSet {
+        self.prepared_dependencies.points()
+    }
+    /// The same prerequisites with, per source queue, the destination stages
+    /// of the declared accesses that need them (`ALL_COMMANDS` for opaque
+    /// uses and releases).
+    pub fn prepared_staged_dependencies(&self) -> StagedDependencies {
         self.prepared_dependencies
     }
     /// Admit all splits before a mapped operation. Caller holds the same gate
@@ -592,6 +667,15 @@ impl RangeStateTable {
         self.scratch.values.clear();
     }
 }
+/// A use of a range whose queue-family release has no recorded acquire yet.
+/// Render graphs acquire such ranges themselves; other command producers must
+/// first record the device's pending acquires.
+pub(crate) fn released_range_error() -> Error {
+    Error::invalid_usage(
+        "range is released by a queue-family transfer: record its pending acquire first \
+         (Device::record_pending_acquires or TransferManager::flush_acquires)",
+    )
+}
 fn apply_preview(
     prepared: &mut PreparedCell,
     action: PatchAction,
@@ -612,21 +696,20 @@ fn apply_preview(
                     "range access uses another queue or a pending release",
                 ));
             }
-            match sharing {
-                ResourceSharing::Concurrent(families) => {
-                    if !families.as_slice().contains(&family) {
-                        return Err(Error::invalid_usage("concurrent access family is absent"));
-                    }
+            match state.owner.admits(sharing, family) {
+                Ok(()) => {}
+                Err(OwnershipDenial::NotShared) => {
+                    return Err(Error::invalid_usage("concurrent access family is absent"));
                 }
-                ResourceSharing::Exclusive => match state.owner {
-                    RangeOwner::Unclaimed => state.owner = RangeOwner::Owned(family),
-                    RangeOwner::Owned(owner) if owner == family => {}
-                    _ => {
-                        return Err(Error::invalid_usage(
-                            "range access needs a matching ownership acquire",
-                        ));
-                    }
-                },
+                Err(OwnershipDenial::Released) => return Err(released_range_error()),
+                Err(OwnershipDenial::OtherFamily) => {
+                    return Err(Error::invalid_usage(
+                        "range access needs a matching ownership acquire",
+                    ));
+                }
+            }
+            if !sharing.is_concurrent() && state.owner == RangeOwner::Unclaimed {
+                state.owner = RangeOwner::Owned(family);
             }
             // A layout conversion is a visibility checkpoint even for a read.
             // Later readers on another VkQueue must wait its actual point.
@@ -703,16 +786,17 @@ fn apply_preview(
                     "opaque access uses another queue or pending release",
                 ));
             }
-            if !sharing.is_concurrent() {
-                match state.owner {
-                    RangeOwner::Unclaimed => state.owner = RangeOwner::Owned(family),
-                    RangeOwner::Owned(owner) if owner == family => {}
-                    _ => {
-                        return Err(Error::invalid_usage(
-                            "opaque access requires ownership acquire",
-                        ));
-                    }
+            match state.owner.admits(sharing, family) {
+                Ok(()) => {}
+                Err(OwnershipDenial::Released) => return Err(released_range_error()),
+                Err(_) => {
+                    return Err(Error::invalid_usage(
+                        "opaque access requires ownership acquire",
+                    ));
                 }
+            }
+            if !sharing.is_concurrent() && state.owner == RangeOwner::Unclaimed {
+                state.owner = RangeOwner::Owned(family);
             }
             state.writer = Frontier::EMPTY;
             state.writer.add(
@@ -1013,6 +1097,45 @@ fn coalesce(cells: &mut Vec<RangeCell>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ownership_admission_is_one_rule_for_every_owner_state() {
+        let exclusive = ResourceSharing::Exclusive;
+        let concurrent =
+            ResourceSharing::Concurrent(crate::resource::QueueFamilies::new(&[0, 2]).unwrap());
+        let released = RangeOwner::Released {
+            transfer: RangeTransfer {
+                pair: 1,
+                source_family: 2,
+                destination_family: 0,
+                range: NativeRange::Buffer { offset: 0, size: 4 },
+                source: AccessScope::EMPTY,
+                destination: AccessScope::EMPTY,
+                old_layout: vk::ImageLayout::UNDEFINED,
+                new_layout: vk::ImageLayout::UNDEFINED,
+            },
+            point: SyncPoint {
+                queue: QueueId::new(1).unwrap(),
+                value: 1,
+            },
+        };
+        assert_eq!(RangeOwner::Unclaimed.admits(exclusive, 0), Ok(()));
+        assert_eq!(RangeOwner::Owned(0).admits(exclusive, 0), Ok(()));
+        assert_eq!(
+            RangeOwner::Owned(2).admits(exclusive, 0),
+            Err(OwnershipDenial::OtherFamily)
+        );
+        assert_eq!(
+            released.admits(exclusive, 0),
+            Err(OwnershipDenial::Released)
+        );
+        // Concurrent sharing ignores ownership but not membership.
+        assert_eq!(released.admits(concurrent, 0), Ok(()));
+        assert_eq!(
+            RangeOwner::Unclaimed.admits(concurrent, 1),
+            Err(OwnershipDenial::NotShared)
+        );
+    }
     fn q(index: usize) -> QueueId {
         QueueId::new(index).unwrap()
     }

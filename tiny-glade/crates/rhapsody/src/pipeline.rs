@@ -1,16 +1,13 @@
 //! Bounded background pipeline creation, persistent driver data and explicit
 //! publication at a frame boundary. The compiler is owned by the renderer,
 //! never by Device, so cached pipelines cannot form a Device ownership cycle.
-use crate::{
-    Error, Result,
-    raw::{
-        device::Device,
-        shader::{
-            ComputePipelineDesc, PipelineCache, PipelineCacheData, PipelineLayout,
-            RasterPipelineDesc, ShaderModule, VulkanPipeline,
-        },
-    },
+
+pub use crate::raw::shader::{
+    ComputePipelineDesc, DynamicRenderingFormats, PipelineCache, PipelineCacheData, PipelineLayout,
+    RasterPipelineDesc, RasterPipelineOpts, ShaderLibrary, ShaderModule, VulkanPipeline,
+    get_vk_blend_mode, reflect_spirv_entries, vertex_input_from_reflection,
 };
+use crate::{Error, Result, raw::device::Device};
 use ash::vk::Handle;
 use parking_lot::{Condvar, Mutex};
 use std::{
@@ -345,6 +342,11 @@ impl AsyncPipelineCompiler {
                 merged: 0,
             }),
         });
+        let evictable: Arc<dyn crate::device::Evictable> = shared.clone();
+        shared.cache.device.register_evictable(
+            Arc::downgrade(&evictable),
+            crate::device::EvictionPriority::Expensive,
+        );
         let mut compiler = Self {
             shared,
             workers: Vec::new(),
@@ -436,7 +438,7 @@ impl AsyncPipelineCompiler {
             return Ok(PipelineTicket { completion });
         }
         if options.priority == CompilePriority::Background
-            && self.shared.cache.device.allocator_stats.budget_action()
+            && self.shared.cache.device.memory.stats.budget_action()
                 != crate::device::BudgetAction::None
         {
             return Err(Error::Timeout);
@@ -472,7 +474,8 @@ impl AsyncPipelineCompiler {
             .shared
             .cache
             .device
-            .allocator_stats
+            .memory
+            .stats
             .reserve_cpu_bytes(bytes as u64, crate::device::BudgetCategory::Live)?;
         let key = job.key();
         let completion = Arc::new(Completion {
@@ -602,7 +605,7 @@ fn worker(shared: Arc<Shared>) {
             ))
         });
         if result.as_ref().is_err_and(|error| error.is_device_lost()) {
-            shared.cache.device.timelines.mark_device_lost();
+            shared.cache.device.queues.timelines.mark_device_lost();
         }
         // Remove failed keys before publishing failure. The queued descriptor
         // retains its original Arc identities through this critical section,
@@ -642,6 +645,37 @@ fn worker(shared: Arc<Shared>) {
         };
         completion.changed.notify_all();
     }
+}
+/// Under memory pressure, completed requests that no ticket references are
+/// dropped from the request cache in LRU order. Pipelines still referenced by
+/// callers or recorded commands stay alive through their own owners.
+impl crate::device::Evictable for Shared {
+    fn evict_idle(&self, _completed: &crate::sync::CompletedValues, target_bytes: u64) -> u64 {
+        let Some(mut state) = self.state.try_lock() else {
+            return 0;
+        };
+        evict_completed_requests(&mut state, target_bytes)
+    }
+}
+fn evict_completed_requests(state: &mut State, target_bytes: u64) -> u64 {
+    let mut released = 0u64;
+    let mut index = 0;
+    while index < state.lru.len() && released < target_bytes {
+        let idle = state.cached.get(&state.lru[index]).is_some_and(|entry| {
+            Arc::strong_count(&entry.completion) == 1
+                && !matches!(*entry.completion.status.lock(), Status::Pending)
+        });
+        if !idle {
+            index += 1;
+            continue;
+        }
+        let key = state.lru.remove(index).expect("bounded LRU position");
+        if let Some(entry) = state.cached.remove(&key) {
+            state.cache_bytes -= entry.bytes;
+            released += entry.bytes as u64;
+        }
+    }
+    released
 }
 impl Drop for AsyncPipelineCompiler {
     fn drop(&mut self) {
@@ -745,7 +779,7 @@ impl HotPipeline {
 }
 
 const CACHE_MAGIC: &[u8; 8] = b"RHPC0001";
-const MAX_DISK_BYTES: u64 = 64 << 20;
+const MAX_DISK_BYTES: u64 = crate::raw::shader::MAX_PIPELINE_CACHE_BYTES;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DiskCacheStatus {
     Missing,
@@ -759,12 +793,7 @@ pub struct PersistentPipelineCache {
     pub status: DiskCacheStatus,
 }
 fn identity(device: &Device) -> [u8; 32] {
-    let properties = unsafe {
-        device
-            .instance
-            .instance
-            .get_physical_device_properties(device.physical)
-    };
+    let properties = device.properties();
     let mut bytes = [0; 32];
     for (index, value) in [
         properties.vendor_id,
@@ -825,7 +854,7 @@ impl PersistentPipelineCache {
                 let loaded =
                     if let Some(length) = length.filter(|&length| length <= MAX_DISK_BYTES + 128) {
                         let mut payload =
-                            PipelineCacheData::zeroed(&device.allocator_stats, length as usize)?;
+                            PipelineCacheData::zeroed(&device.memory.stats, length as usize)?;
                         let mut trailing = [0];
                         if file.read_exact(payload.as_mut_slice()).is_ok()
                             && file.read(&mut trailing).is_ok_and(|read| read == 0)
@@ -924,6 +953,75 @@ fn atomic_write_temporary(path: &Path, temporary: &Path, parts: &[&[u8]]) -> Res
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn pressure_evicts_only_completed_unreferenced_requests_in_lru_order() {
+        let stats = Arc::new(crate::raw::allocator::AllocatorStats::default());
+        let mut state = State {
+            priority_burst: 0,
+            cancelled: 0,
+            queue: VecDeque::new(),
+            cached: BTreeMap::new(),
+            lru: VecDeque::new(),
+            pending: 0,
+            request_bytes: 0,
+            cache_bytes: 0,
+            stopping: false,
+            peak_pending: 0,
+            peak_request_bytes: 0,
+            compiled: 0,
+            merged: 0,
+        };
+        let mut tickets = Vec::new();
+        // (status, ticket alive) in LRU order.
+        let entries = [
+            (Status::Failed(Arc::new(Error::OutOfHostMemory)), false),
+            (Status::Pending, false),
+            (Status::Failed(Arc::new(Error::OutOfHostMemory)), true),
+            (Status::Failed(Arc::new(Error::OutOfHostMemory)), false),
+        ];
+        for (index, (status, referenced)) in entries.into_iter().enumerate() {
+            let key: Key = Arc::new(KeyPayload::Raster(vec![index as u64]));
+            let completion = Arc::new(Completion {
+                status: Mutex::new(status),
+                changed: Condvar::new(),
+            });
+            if referenced {
+                tickets.push(completion.clone());
+            }
+            state.cached.insert(
+                key.clone(),
+                Cached {
+                    reservation: stats
+                        .reserve_cpu_bytes(10, crate::device::BudgetCategory::Cache)
+                        .unwrap(),
+                    completion,
+                    bytes: 10,
+                },
+            );
+            state.lru.push_back(key);
+            state.cache_bytes += 10;
+        }
+        assert_eq!(evict_completed_requests(&mut state, 5), 10);
+        assert_eq!(state.cached.len(), 3);
+        assert_eq!(evict_completed_requests(&mut state, 100), 10);
+        let remaining: Vec<_> = state
+            .lru
+            .iter()
+            .map(|key| match &**key {
+                KeyPayload::Raster(values) => values[0],
+                _ => unreachable!(),
+            })
+            .collect();
+        assert_eq!(
+            remaining,
+            [1, 2],
+            "pending and ticket-referenced requests stay"
+        );
+        assert_eq!(state.cache_bytes, 20);
+        assert_eq!(stats.cpu_memory_usage().cache, 20);
+        drop(tickets);
+    }
     #[test]
     fn atomic_cache_write_does_not_remove_an_unowned_temporary_collision() {
         let directory = std::env::temp_dir().join(format!(

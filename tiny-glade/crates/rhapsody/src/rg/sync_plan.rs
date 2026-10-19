@@ -159,6 +159,16 @@ pub struct BoundBatch {
     pub domain: QueueDomain,
     pub kind: BoundBatchKind,
 }
+/// Two transient resources share backing memory. `next` discards its contents
+/// on first use, and every access to `previous` recorded so far (plus `next`'s
+/// own initial frontier) becomes a synthetic previous writer of `next` with an
+/// UNDEFINED image layout. The binder therefore always emits the aliasing
+/// barrier or cross-queue wait, and the bound checker verifies it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AliasEdge {
+    pub previous: u32,
+    pub next: u32,
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct InitialState {
     pub resource: u32,
@@ -168,6 +178,7 @@ pub struct InitialState {
 /// Accessors borrow existing tables; diagnostics never allocate capture arrays.
 pub struct BoundSynchronization {
     pub(crate) initial: crate::resource::range_state::Storage<InitialState>,
+    pub(crate) aliases: crate::resource::range_state::Storage<AliasEdge>,
     pub(crate) batches: crate::resource::range_state::Storage<BoundBatch>,
     pub(crate) order: crate::resource::range_state::Storage<usize>,
     pub(crate) transitions: crate::resource::range_state::Storage<BoundTransition>,
@@ -177,6 +188,9 @@ pub struct BoundSynchronization {
 impl BoundSynchronization {
     pub fn initial_inputs(&self) -> &[InitialState] {
         &self.initial.values
+    }
+    pub fn aliases(&self) -> &[AliasEdge] {
+        &self.aliases.values
     }
     pub fn batches(&self) -> &[BoundBatch] {
         &self.batches.values
@@ -237,6 +251,102 @@ pub fn native_range(
     };
     crate::resource::range_state::validate_range(result)?;
     Ok(result)
+}
+
+/// Per-aspect intent of a depth/stencil layout: `Some(true)` attachment
+/// (writable), `Some(false)` read-only, `None` unspecified by the layout.
+fn depth_stencil_intent(layout: vk::ImageLayout) -> Option<(Option<bool>, Option<bool>)> {
+    use vk::ImageLayout as L;
+    Some(match layout {
+        L::DEPTH_STENCIL_ATTACHMENT_OPTIMAL => (Some(true), Some(true)),
+        L::DEPTH_STENCIL_READ_ONLY_OPTIMAL => (Some(false), Some(false)),
+        L::DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL => (Some(true), Some(false)),
+        L::DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL => (Some(false), Some(true)),
+        L::DEPTH_ATTACHMENT_OPTIMAL => (Some(true), None),
+        L::DEPTH_READ_ONLY_OPTIMAL => (Some(false), None),
+        L::STENCIL_ATTACHMENT_OPTIMAL => (None, Some(true)),
+        L::STENCIL_READ_ONLY_OPTIMAL => (None, Some(false)),
+        _ => return None,
+    })
+}
+
+/// The layout a depth/stencil access uses on exactly `aspects` of an image
+/// whose format has `domain` aspects.
+///
+/// With `separateDepthStencilLayouts` enabled, a single-aspect range of a
+/// combined depth+stencil format uses that aspect's own layout
+/// (`DEPTH_ATTACHMENT_OPTIMAL`, `STENCIL_READ_ONLY_OPTIMAL`, ...), so depth
+/// and stencil transition independently. Ranges covering every aspect (and
+/// every range when the feature is disabled, where `native_range` widens
+/// partial ranges to both aspects) use a combined layout; an aspect the
+/// declared layout does not mention stays read-only. Other layouts
+/// (`GENERAL`, transfer, sampled, ...) are returned unchanged.
+pub fn native_layout(
+    layout: vk::ImageLayout,
+    aspects: u32,
+    domain: u32,
+    separate_depth_stencil: bool,
+) -> Result<vk::ImageLayout> {
+    use vk::ImageLayout as L;
+    let (depth_bit, stencil_bit) = (
+        vk::ImageAspectFlags::DEPTH.as_raw(),
+        vk::ImageAspectFlags::STENCIL.as_raw(),
+    );
+    let Some((depth, stencil)) = depth_stencil_intent(layout) else {
+        return Ok(layout);
+    };
+    let (has_depth, has_stencil) = (aspects & depth_bit != 0, aspects & stencil_bit != 0);
+    if !has_depth && !has_stencil {
+        return Err(Error::invalid_usage(
+            "a depth/stencil layout requires a depth or stencil aspect",
+        ));
+    }
+    if has_depth && depth.is_none() || has_stencil && stencil.is_none() {
+        // Only possible for a single-aspect layout covering the other aspect.
+        if !(has_depth && has_stencil) {
+            return Err(Error::invalid_usage(
+                "depth/stencil layout does not describe the accessed aspect",
+            ));
+        }
+    }
+    let combined_format = domain & (depth_bit | stencil_bit) == depth_bit | stencil_bit;
+    if separate_depth_stencil && combined_format && has_depth != has_stencil {
+        return Ok(match (has_depth, depth, stencil) {
+            (true, Some(true), _) => L::DEPTH_ATTACHMENT_OPTIMAL,
+            (true, _, _) => L::DEPTH_READ_ONLY_OPTIMAL,
+            (false, _, Some(true)) => L::STENCIL_ATTACHMENT_OPTIMAL,
+            (false, _, _) => L::STENCIL_READ_ONLY_OPTIMAL,
+        });
+    }
+    if !combined_format {
+        // Single-aspect formats: the absent aspect is ignored; keep the
+        // combined layout for the present one (no feature required).
+        let write = if has_depth { depth } else { stencil };
+        return Ok(if write == Some(true) {
+            L::DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+        } else {
+            L::DEPTH_STENCIL_READ_ONLY_OPTIMAL
+        });
+    }
+    // Both aspects of a combined format: an aspect the declared layout does
+    // not mention is not accessed and stays read-only.
+    Ok(match (depth.unwrap_or(false), stencil.unwrap_or(false)) {
+        (true, true) => L::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        (false, false) => L::DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+        (true, false) => L::DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,
+        (false, true) => L::DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,
+    })
+}
+
+/// Every aspect of `descriptor`'s format (`0` for buffers).
+pub(crate) fn domain_aspects(descriptor: Descriptor) -> Result<u32> {
+    match AccessRange::Whole
+        .normalized(descriptor)
+        .map_err(|error| Error::invalid_usage(format!("native domain: {error:?}")))?
+    {
+        AccessRange::Texture { aspect_mask, .. } => Ok(aspect_mask),
+        _ => Ok(0),
+    }
 }
 
 mod bind;
@@ -342,15 +452,15 @@ fn range_use(
     Ok(RangeUse {
         resource,
         range,
-        scope: AccessScope {
-            stages: semantics.stages,
-            access: semantics.access,
-            write: semantics.write,
-        },
-        layout: if matches!(descriptor, Descriptor::Buffer(_)) {
-            vk::ImageLayout::UNDEFINED
-        } else {
-            semantics.layout
+        scope: semantics.scope,
+        layout: match range {
+            NativeRange::Image { aspects, .. } => native_layout(
+                semantics.layout,
+                aspects,
+                domain_aspects(descriptor)?,
+                definition.context.separate_depth_stencil_layouts,
+            )?,
+            _ => vk::ImageLayout::UNDEFINED,
         },
         access_code: code,
     })
@@ -406,6 +516,7 @@ impl std::fmt::Debug for BoundSynchronization {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("BoundSynchronization")
             .field("initial", &self.initial_inputs())
+            .field("aliases", &self.aliases())
             .field("batches", &self.batches())
             .field("order", &self.execution_order())
             .field("transitions", &self.transitions())

@@ -108,8 +108,8 @@ fn native_stages_access_layout_and_layout_coupling_invalidate_local_cache_keys()
             .find(|entry| entry.code == WRITE)
             .unwrap();
         match index {
-            0 => semantics.stages = ash::vk::PipelineStageFlags::ALL_COMMANDS,
-            1 => semantics.access = ash::vk::AccessFlags::MEMORY_WRITE,
+            0 => semantics.scope.stages = ash::vk::PipelineStageFlags::ALL_COMMANDS,
+            1 => semantics.scope.access = ash::vk::AccessFlags::MEMORY_WRITE,
             _ => semantics.layout = ash::vk::ImageLayout::GENERAL,
         }
         compile_with_subgraphs(changed, &mut cache).unwrap();

@@ -1,14 +1,14 @@
-// 候选实现迁移来源：reconstruction/render/graph.rs.
-// 这是行为重建，不是原作者源码。
 pub use crate::rg::resource_info::{AccessDeclaration, ExportDeclaration, ResourceInfo};
+pub use crate::rg::resource_info::{
+    LifetimeEvent, NO_ACCESS, ResourceAccessRecord, ResourceLifetimeRecord,
+};
 pub use crate::rg::resource_registry::{
     Buffer, BufferDesc, RegistryResource, ResourceExports, ResourcePool, ResourceRegistry,
     ResourceReuseInfo, Texture, TextureDesc,
 };
-pub use crate::rg::resource_rules::{NO_ACCESS, ResourceAccessRecord, ResourceLifetimeRecord};
 use std::ops::Range;
 
-pub use crate::rg::compiled as batch_state;
+use crate::rg::compiled as batch_state;
 pub type Registry = ResourceRegistry<u64, u64, ()>;
 pub type Pool = ResourcePool<u64, u64>;
 pub type Exports = ResourceExports<u64, u64, ()>;
@@ -160,7 +160,8 @@ impl GraphDeclaration {
 }
 
 pub trait AccessDependency {
-    fn access_mask(&mut self, code: u8) -> u32;
+    /// The declared access of `code`; resource usage flags derive from it.
+    fn access_mask(&mut self, code: u8) -> ash::vk::AccessFlags;
     fn is_write(&mut self, code: u8) -> bool;
     /// Custom CPU policies may omit native details. Their conservative scope
     /// cannot be reused for a policy with different Vulkan stages or layouts.
@@ -187,7 +188,7 @@ pub trait AccessDependency {
     }
 }
 
-/// 渲染回调须为 `Send`：并行录制时不同块的回调在任务池线程上执行（原作 `par_chunk_map_mut`）。
+/// 渲染回调须为 `Send`：并行录制时不同块的回调在任务池线程上执行。
 pub type RenderCallback = Box<dyn for<'a> FnMut(super::executor::PassContext<'a>) -> bool + Send>;
 pub type RetireCallback = Box<dyn FnOnce()>;
 
@@ -218,8 +219,7 @@ impl From<crate::Error> for BuildError {
     }
 }
 
-/// 生命周期事件把 pass 下标左移 17 位打包进 u32（`resource_rules::calculate_lifetime_events`），
-/// 故单图最多 `1 << 15` 个 pass；构图与编译入口均返回 [`BuildError::PassLimit`]。
+/// 单图最多 `1 << 15` 个 pass；构图与编译入口均返回 [`BuildError::PassLimit`]。
 pub const MAX_PASSES: usize = 1 << 15;
 impl std::fmt::Display for BuildError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -228,7 +228,7 @@ impl std::fmt::Display for BuildError {
 }
 impl std::error::Error for BuildError {}
 
-/// 由原始函数名与编译调用链组织的候选接口；不宣称原作 ABI 已恢复。
+/// 一帧的渲染图声明：资源、pass、回调与导出。
 pub struct RenderGraph {
     pub(crate) graph_id: super::resource::GraphId,
     pub(crate) declaration: GraphDeclaration,
@@ -281,7 +281,7 @@ impl RenderGraph {
         Ok(handle)
     }
 
-    /// 原入口名；与 `create_raw_resource` 同一实现，保留原名供 PDB 名消费者调用。
+    /// `create_raw_resource` 的别名。
     pub fn create_resource_handle(
         &mut self,
         name: impl Into<String>,
@@ -342,7 +342,7 @@ impl RenderGraph {
         }
     }
 
-    /// 带 pass 上限检查的 `add_pass`：已有 [`MAX_PASSES`] 个 pass 时返回 [`BuildError::PassLimit`]。
+    /// 带 pass 上限检查的 `add_pass`：已有 `MAX_PASSES` 个 pass 时返回 [`BuildError::PassLimit`]。
     pub fn try_add_pass(
         &mut self,
         name: impl Into<std::sync::Arc<str>>,
@@ -468,7 +468,7 @@ pub trait ResourceBackend {
     ) -> Result<u64, BackendFailure>;
     fn set_debug_name(&mut self, token: u64, descriptor: Descriptor, name: &str);
     /// 失败路径归还：`create_without_initial_data` 创建、但本次图因失败不会再使用的 token。
-    /// 候选接口（原 population 失败不回滚）；默认不做任何事。
+    /// 资源填充失败时的回滚钩子；默认不做任何事。
     fn release_created_resource(&mut self, _token: u64) {}
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -609,10 +609,10 @@ fn populate_resources_into(
         .extend(info.exported_indices.iter().copied());
     pool_hits.clear();
     for event in &info.lifetime_events {
-        if event & 0x1_0000 != 0 {
+        if event.release {
             continue;
         }
-        let logical = (event & 0xffff) as usize;
+        let logical = usize::from(event.resource);
         let declaration = &declarations[logical];
         assert_eq!(
             registry.resources[logical].backing_index,
@@ -734,7 +734,7 @@ pub struct SnapshotStatic {
     pub lifetimes: Vec<ResourceLifetimeRecord>,
     pub image_usage: Vec<u32>,
     pub buffer_usage: Vec<u32>,
-    pub lifetime_events: Vec<u32>,
+    pub lifetime_events: Vec<LifetimeEvent>,
     pub batches: Vec<batch_state::Batch>,
     pub imports: Vec<u32>,
     pub exports: Vec<u16>,
@@ -783,11 +783,9 @@ impl SnapshotStatic {
             + self.pass_ranges.capacity() * std::mem::size_of::<Range<usize>>()
             + self.accesses.capacity() * std::mem::size_of::<ResourceAccessRecord>()
             + self.lifetimes.capacity() * std::mem::size_of::<ResourceLifetimeRecord>()
-            + (self.image_usage.capacity()
-                + self.buffer_usage.capacity()
-                + self.lifetime_events.capacity()
-                + self.imports.capacity())
+            + (self.image_usage.capacity() + self.buffer_usage.capacity() + self.imports.capacity())
                 * std::mem::size_of::<u32>()
+            + self.lifetime_events.capacity() * std::mem::size_of::<LifetimeEvent>()
             + self.batches.capacity() * std::mem::size_of::<batch_state::Batch>()
             + self.exports.capacity() * std::mem::size_of::<u16>()
     }
@@ -887,7 +885,9 @@ pub fn instantiate_plan(
             "frame declaration differs from compiled plan",
         ));
     }
-    super::plan_check::check_plan(&definition, &plan)?;
+    if super::validation_enabled() {
+        super::plan_check::check_plan(&definition, &plan)?;
+    }
     instantiate_validated_plan(plan, graph, pool, backend, dependency)
 }
 
@@ -1006,7 +1006,7 @@ pub(crate) fn instantiate_with_storage(
     Ok(frame)
 }
 
-/// 失败路径归还（候选，原链未见回滚）：本图 Create 资源中取自资源池的放回资源池，
+/// 失败路径归还：本图 Create 资源中取自资源池的放回资源池，
 /// 本次新建的经 [`ResourceBackend::release_created_resource`] 交还后端；导入资源不动。
 /// 已归还的物理槽置为 `Empty`，避免同一资源被再次取出。只能在 GPU 不会再使用这些资源时调用。
 pub fn reclaim_failed_resources(

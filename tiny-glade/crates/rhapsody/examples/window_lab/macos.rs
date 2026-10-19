@@ -7,7 +7,7 @@ use objc::{
     rc::{StrongPtr, autoreleasepool},
     runtime::{Class, Object, Sel, YES},
 };
-use rhapsody::raw::{instance::VulkanInstance, swapchain::Surface};
+use rhapsody::{interop::VulkanInstance, present::Surface};
 use std::{
     cell::RefCell,
     ffi::CString,
@@ -139,7 +139,8 @@ impl Window {
     }
     pub fn create_surface(&self, instance: Arc<VulkanInstance>) -> Result<Arc<Surface>> {
         self.update_layer()?;
-        let loader = ash::ext::metal_surface::Instance::new(&instance.entry, &instance.instance);
+        let loader =
+            ash::ext::metal_surface::Instance::new(&instance.entry, instance.raw_instance());
         let info = vk::MetalSurfaceCreateInfoEXT::default().layer((*self.layer).cast());
         let handle = unsafe { loader.create_metal_surface(&info, None) }?;
         Ok(Arc::new(unsafe {

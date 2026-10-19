@@ -73,10 +73,5 @@ fn descriptor_update_counter_starts_at_zero() {
     let Ok(device) = create_headless_device() else {
         return;
     };
-    assert_eq!(
-        device
-            .descriptor_update_count
-            .load(std::sync::atomic::Ordering::SeqCst),
-        0
-    );
+    assert_eq!(device.descriptor_update_count(), 0);
 }

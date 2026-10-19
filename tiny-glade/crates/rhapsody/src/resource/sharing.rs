@@ -33,9 +33,10 @@ impl QueueFamilies {
     }
     pub(crate) fn validate_device(&self, device: &crate::device::Device) -> crate::Result<()> {
         if self.as_slice().iter().any(|family| {
-            *family != device.queue_family
+            *family != device.queues.primary_family
                 && !device
-                    .additional_queues
+                    .queues
+                    .additional
                     .iter()
                     .any(|queue| queue.family == *family)
         }) {

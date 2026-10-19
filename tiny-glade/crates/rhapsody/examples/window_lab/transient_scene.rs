@@ -4,13 +4,8 @@
 use super::fixture::{HEIGHT, WIDTH};
 use ash::vk::{self, Handle};
 use rhapsody::{
-    raw::{
-        buffer::Buffer,
-        device::Device,
-        texture::{Texture, TextureDesc},
-        transient_backing::TransientBackingCounters,
-    },
-    rg::{executor::PassContext, frame_loop::FrameLoop, graph::BuiltGraph, vulkan::ResourceSpec},
+    device::Device, resource::Buffer, resource::Texture, resource::TextureDesc, rg::BuiltGraph,
+    rg::FrameLoop, rg::PassContext, rg::ResourceSpec, rg::TransientBackingCounters,
 };
 use serde::Serialize;
 use std::sync::Arc;
@@ -61,7 +56,7 @@ impl TransientScene {
         }
         frame_loop.graph.backend.set_transient_aliasing(aliasing);
         Ok(Self {
-            device: frame_loop.swapchain().device.clone(),
+            device: frame_loop.swapchain().device().clone(),
             counters: frame_loop.graph.backend.transient_backing_counters(),
             frame: 0,
             report: TransientReport {
@@ -125,7 +120,7 @@ impl TransientScene {
                 })?;
 
                 unsafe {
-                    device.device.cmd_clear_color_image(
+                    device.raw_device().cmd_clear_color_image(
                         vk::CommandBuffer::from_raw(ctx.command.handle()),
                         texture.raw(),
                         vk::ImageLayout::TRANSFER_DST_OPTIMAL,
@@ -162,7 +157,7 @@ impl TransientScene {
                 })?;
 
                 unsafe {
-                    device.device.cmd_copy_image(
+                    device.raw_device().cmd_copy_image(
                         vk::CommandBuffer::from_raw(ctx.command.handle()),
                         source.raw(),
                         vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
@@ -190,11 +185,11 @@ impl TransientScene {
                 })?;
 
                 unsafe {
-                    device.device.cmd_copy_image(
+                    device.raw_device().cmd_copy_image(
                         vk::CommandBuffer::from_raw(ctx.command.handle()),
                         source.raw(),
                         vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                        image.handle,
+                        image.raw_handle(),
                         vk::ImageLayout::TRANSFER_DST_OPTIMAL,
                         &[image_copy(WIDTH, HEIGHT)],
                     );
@@ -211,11 +206,11 @@ impl TransientScene {
             pass.add_resource_access(target, 0x34, 0)?;
             pass.render_with_result_context(move |ctx: PassContext<'_>| {
                 unsafe {
-                    device.device.cmd_copy_image_to_buffer(
+                    device.raw_device().cmd_copy_image_to_buffer(
                         vk::CommandBuffer::from_raw(ctx.command.handle()),
-                        image.handle,
+                        image.raw_handle(),
                         vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                        readback.handle,
+                        readback.raw_handle(),
                         &[vk::BufferImageCopy::default()
                             .image_subresource(color_layers())
                             .image_extent(vk::Extent3D {
@@ -265,7 +260,7 @@ impl TransientScene {
         Ok(())
     }
     fn sample(&mut self) {
-        let memory = self.device.allocator_stats.report();
+        let memory = self.device.allocator_stats().report();
         self.report.committed_scope = "Resource ranges and dedicated backings only; excludes retained suballocator block slack. See application_gpu_memory for actual native reservations.";
         self.report.current_committed_bytes = memory.totals.total_allocated_bytes;
         self.report.peak_committed_bytes = self

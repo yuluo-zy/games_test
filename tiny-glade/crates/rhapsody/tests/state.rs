@@ -28,8 +28,8 @@ fn graph_passes_commit_atomically_and_callbacks_are_consumed_once() {
         fn set_debug_name(&mut self, _: u64, _: rhapsody::rg::graph::Descriptor, _: &str) {}
     }
     impl rhapsody::rg::graph::AccessDependency for Fixture {
-        fn access_mask(&mut self, _: u8) -> u32 {
-            0
+        fn access_mask(&mut self, _: u8) -> ash::vk::AccessFlags {
+            ash::vk::AccessFlags::empty()
         }
         fn is_write(&mut self, _: u8) -> bool {
             false

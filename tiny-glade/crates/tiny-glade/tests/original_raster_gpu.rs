@@ -29,12 +29,11 @@ use country_core::{
         final_post,
     },
 };
-use rhapsody::shader_pipeline::{
-    compiled::{CompiledShaderPipeline, CompiledShaderStage, ShaderStage},
-    pipeline_desc::RasterPipelineDesc as FileDesc,
-    reflection::{ShaderReflection, VertexInput},
-    reflection_ty::{ScalarType, Type, VectorType},
-    shader_defines::ShaderDefines,
+use shader_pipeline::{
+    compiled::CompiledShaderPipeline, compiled::CompiledShaderStage, compiled::ShaderStage,
+    pipeline_desc::RasterPipelineDesc as FileDesc, reflection::ShaderReflection,
+    reflection::VertexInput, reflection_ty::ScalarType, reflection_ty::Type,
+    reflection_ty::VectorType, shader_defines::ShaderDefines,
 };
 use std::{path::PathBuf, sync::Arc, time::Duration};
 use tiny_glade::render_bridge::{CoreGraphFrame, CoreRenderBridge};
@@ -66,7 +65,9 @@ impl LibrarySsbo for FixtureIndirectWord {
 }
 impl country_core::render::pass_builder::pass_resource_access::SsboType for FixtureIndirectWord {
     fn rg_buffer_hash() -> u64 {
-        country_core::asset_libraries::ssbo_library::SsboId::of::<Self>().0.0
+        country_core::asset_libraries::ssbo_library::SsboId::of::<Self>()
+            .0
+            .0
     }
 }
 
@@ -87,11 +88,11 @@ fn target(
     device: &Arc<rhapsody::device::Device>,
     width: u32,
     height: u32,
-) -> Arc<rhapsody::raw::texture::Texture> {
+) -> Arc<rhapsody::resource::Texture> {
     Arc::new(
-        rhapsody::raw::texture::Texture::new(
+        rhapsody::resource::Texture::new(
             device.clone(),
-            &rhapsody::raw::texture::TextureDesc::new_2d(width, height, vk::Format::R8G8B8A8_UNORM)
+            &rhapsody::resource::TextureDesc::new_2d(width, height, vk::Format::R8G8B8A8_UNORM)
                 .usage(
                     vk::ImageUsageFlags::COLOR_ATTACHMENT
                         | vk::ImageUsageFlags::TRANSFER_SRC
@@ -101,7 +102,7 @@ fn target(
         .unwrap(),
     )
 }
-fn attachment(id: u32, target: &rhapsody::raw::texture::Texture) -> AttachmentTexture {
+fn attachment(id: u32, target: &rhapsody::resource::Texture) -> AttachmentTexture {
     AttachmentTexture {
         id,
         extent: (target.desc.width, target.desc.height),
@@ -111,17 +112,17 @@ fn attachment(id: u32, target: &rhapsody::raw::texture::Texture) -> AttachmentTe
 }
 fn clear(
     frame: &mut CoreGraphFrame<'_>,
-    id: rhapsody::rg::resource::ResourceHandle,
-    image: Arc<rhapsody::raw::texture::Texture>,
+    id: rhapsody::rg::ResourceHandle,
+    image: Arc<rhapsody::resource::Texture>,
 ) -> rhapsody::Result<()> {
     frame.with_graph(|graph| {
         let mut p = graph.add_pass("fixture background");
         p.add_resource_access(id, 0x34, 0)?;
         p.render_with_result_context(move |ctx| {
             unsafe {
-                image.device.device.cmd_clear_color_image(
+                image.device().raw_device().cmd_clear_color_image(
                     vk::CommandBuffer::from_raw(ctx.command.handle()),
-                    image.handle,
+                    image.raw_handle(),
                     vk::ImageLayout::TRANSFER_DST_OPTIMAL,
                     &vk::ClearColorValue {
                         float32: [0.0, 0.0, 0.0, 1.0],
@@ -139,12 +140,12 @@ fn clear(
 }
 fn readback(
     frame: &mut CoreGraphFrame<'_>,
-    id: rhapsody::rg::resource::ResourceHandle,
-    image: Arc<rhapsody::raw::texture::Texture>,
-) -> rhapsody::Result<Arc<rhapsody::raw::buffer::Buffer>> {
-    let buffer = Arc::new(rhapsody::raw::buffer::Buffer::new(
-        image.device.clone(),
-        &rhapsody::raw::buffer::BufferDesc::new_gpu_to_cpu(
+    id: rhapsody::rg::ResourceHandle,
+    image: Arc<rhapsody::resource::Texture>,
+) -> rhapsody::Result<Arc<rhapsody::resource::Buffer>> {
+    let buffer = Arc::new(rhapsody::resource::Buffer::new(
+        image.device().clone(),
+        &rhapsody::resource::BufferDesc::new_gpu_to_cpu(
             u64::from(image.desc.width * image.desc.height * 4),
             vk::BufferUsageFlags::TRANSFER_DST,
         ),
@@ -157,11 +158,11 @@ fn readback(
         p.add_resource_access(output, 0x34, 0)?;
         p.render_with_result_context(move |ctx| {
             unsafe {
-                image.device.device.cmd_copy_image_to_buffer(
+                image.device().raw_device().cmd_copy_image_to_buffer(
                     vk::CommandBuffer::from_raw(ctx.command.handle()),
-                    image.handle,
+                    image.raw_handle(),
                     vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                    buffer.handle,
+                    buffer.raw_handle(),
                     &[vk::BufferImageCopy::default()
                         .image_subresource(
                             vk::ImageSubresourceLayers::default()
@@ -180,8 +181,8 @@ fn readback(
 }
 fn pixels(
     bridge: &mut CoreRenderBridge,
-    built: rhapsody::rg::graph::BuiltGraph,
-    readback: Arc<rhapsody::raw::buffer::Buffer>,
+    built: rhapsody::rg::BuiltGraph,
+    readback: Arc<rhapsody::resource::Buffer>,
 ) -> Vec<u8> {
     bridge
         .shader_backend()
@@ -199,7 +200,7 @@ fn bridge_host_buffer(
     frame: &mut CoreGraphFrame<'_>,
     words: &[u32],
     name: &str,
-) -> rhapsody::Result<rhapsody::rg::resource::ResourceHandle> {
+) -> rhapsody::Result<rhapsody::rg::ResourceHandle> {
     let buffers = frame.hosts().buffers;
     let buffer = buffers.create_buffer(
         &CoreBufferDesc::new_gpu_only(words.len() * 4, 0x122).alignment(4),
@@ -416,12 +417,20 @@ fn actual_typed_vao_vertex_index_and_instance_count_change_gpu_pixels() {
         count_words[start..start + 5].copy_from_slice(&[3, 1, 0, 0, command as u32]);
     }
     let buffers = bridge.hosts().buffers.clone();
-    let original_commands = buffers.create_buffer(
-        &CoreBufferDesc::new_gpu_only(count_words.len() * 4, 0x122).alignment(4),
-        "fixture persistent counted commands", Some(bytemuck::cast_slice(&count_words))).unwrap();
-    let actual_count = buffers.create_buffer(
-        &CoreBufferDesc::new_gpu_only(16, 0x122).alignment(4),
-        "fixture persistent GPU draw count", Some(&[0u8; 16])).unwrap();
+    let original_commands = buffers
+        .create_buffer(
+            &CoreBufferDesc::new_gpu_only(count_words.len() * 4, 0x122).alignment(4),
+            "fixture persistent counted commands",
+            Some(bytemuck::cast_slice(&count_words)),
+        )
+        .unwrap();
+    let actual_count = buffers
+        .create_buffer(
+            &CoreBufferDesc::new_gpu_only(16, 0x122).alignment(4),
+            "fixture persistent GPU draw count",
+            Some(&[0u8; 16]),
+        )
+        .unwrap();
     let original_commands = buffers.managed_buffer(&original_commands).unwrap().shared();
     let actual_count = buffers.managed_buffer(&actual_count).unwrap().shared();
     let mut last_indirect_generation = None;
@@ -449,20 +458,34 @@ fn actual_typed_vao_vertex_index_and_instance_count_change_gpu_pixels() {
                     let count = frame.import_native_buffer(actual_count.clone(), 0)?;
                     frame.with_graph(|graph| {
                         let mut pass = graph.add_pass("fixture actual GPU indirect count");
-                        pass.add_resource_access_range(count, 0x34, 0,
-                            rhapsody::rg::resource::AccessRange::Buffer { offset: 8, size: 8 })?;
+                        pass.add_resource_access_range(
+                            count,
+                            0x34,
+                            0,
+                            rhapsody::rg::AccessRange::Buffer { offset: 8, size: 8 },
+                        )?;
                         let device = device.clone();
                         let count_owner = actual_count.clone();
                         pass.render_with_result_context(move |ctx| {
-                            unsafe { device.device.cmd_fill_buffer(
-                                vk::CommandBuffer::from_raw(ctx.command.handle()),
-                                count_owner.handle, 8, 4, instances);
+                            unsafe {
+                                device.raw_device().cmd_fill_buffer(
+                                    vk::CommandBuffer::from_raw(ctx.command.handle()),
+                                    count_owner.raw_handle(),
+                                    8,
+                                    4,
+                                    instances,
+                                );
                                 // The second packet's real GPU count is zero.
                                 // Reusing the first packet's scratch would erase
                                 // its live commands and fail the actual pixels.
-                                device.device.cmd_fill_buffer(
+                                device.raw_device().cmd_fill_buffer(
                                     vk::CommandBuffer::from_raw(ctx.command.handle()),
-                                    count_owner.handle, 12, 4, 0); }
+                                    count_owner.raw_handle(),
+                                    12,
+                                    4,
+                                    0,
+                                );
+                            }
                             Ok(())
                         });
                         Ok(())
@@ -497,7 +520,7 @@ fn actual_typed_vao_vertex_index_and_instance_count_change_gpu_pixels() {
                     None
                 };
                 frame.with_raster(|host| {
-                    let mut state = rhapsody::raw::shader::RasterPipelineOpts::new();
+                    let mut state = rhapsody::pipeline::RasterPipelineOpts::new();
                     state.set_cull_mode(vk::CullModeFlags::NONE);
                     state.set_depth_test_enable(false);
                     let mut pass = RasterPass::new(
@@ -546,18 +569,26 @@ fn actual_typed_vao_vertex_index_and_instance_count_change_gpu_pixels() {
                             7 => draw.draw_indexed_indirect_raw(buffer.raw(), 16, 32, 2),
                             8 => {
                                 draw.draw_indexed_indirect_count(
-                                    buffer.raw(), count.unwrap().raw(), [16, 32, 8, 2]);
+                                    buffer.raw(),
+                                    count.unwrap().raw(),
+                                    [16, 32, 8, 2],
+                                );
                                 let second = DrawPacket::new(
                                     country_core::rhapsody_contract::Handle(
-                                        country_core::rhapsody_contract::ManagedHandle(shader.id().raw()),
+                                        country_core::rhapsody_contract::ManagedHandle(
+                                            shader.id().raw(),
+                                        ),
                                         std::marker::PhantomData,
                                     ),
-                                    [1, vao.id().raw()], RasterState(state.0),
+                                    [1, vao.id().raw()],
+                                    RasterState(state.0),
                                 );
-                                DrawBuilder::new(&mut pass, second, 0)
-                                    .draw_indexed_indirect_count(
-                                        buffer.raw(), count.unwrap().raw(), [16, 32, 12, 2]);
-                            },
+                                DrawBuilder::new(&mut pass, second, 0).draw_indexed_indirect_count(
+                                    buffer.raw(),
+                                    count.unwrap().raw(),
+                                    [16, 32, 12, 2],
+                                );
+                            }
                             _ => unreachable!(),
                         }
                     } else if mode == 5 {
@@ -575,17 +606,31 @@ fn actual_typed_vao_vertex_index_and_instance_count_change_gpu_pixels() {
                 })?;
                 if mode == 8 {
                     frame.with_graph(|graph| {
-                        let scratch: Vec<_> = graph.declaration().resources.iter().enumerate()
-                            .filter(|(_, resource)| resource.name.starts_with(
-                                "platform indexed indirect count commands ["))
+                        let scratch: Vec<_> = graph
+                            .declaration()
+                            .resources
+                            .iter()
+                            .enumerate()
+                            .filter(|(_, resource)| {
+                                resource
+                                    .name
+                                    .starts_with("platform indexed indirect count commands [")
+                            })
                             .map(|(index, resource)| (index, resource.name.as_str()))
                             .collect();
-                        let adapted = !device.caps().is_supported(
-                            rhapsody::device::Feature::DrawIndirectCount);
+                        let adapted = !device
+                            .caps()
+                            .is_supported(rhapsody::device::Feature::DrawIndirectCount);
                         assert_eq!(scratch.len(), if adapted { 2 } else { 0 });
                         if adapted {
-                            assert_ne!(scratch[0].0, scratch[1].0, "each count packet owns a distinct graph resource");
-                            assert_ne!(scratch[0].1, scratch[1].1, "same-frame resource names must be unique");
+                            assert_ne!(
+                                scratch[0].0, scratch[1].0,
+                                "each count packet owns a distinct graph resource"
+                            );
+                            assert_ne!(
+                                scratch[0].1, scratch[1].1,
+                                "same-frame resource names must be unique"
+                            );
                         }
                         Ok(())
                     })?;
@@ -614,21 +659,39 @@ fn actual_typed_vao_vertex_index_and_instance_count_change_gpu_pixels() {
             })
             .unwrap();
         let bytes = if mode == 8 {
-            bridge.shader_backend().prewarm(Duration::from_secs(10)).unwrap();
+            bridge
+                .shader_backend()
+                .prewarm(Duration::from_secs(10))
+                .unwrap();
             let compiled = bridge.compile_built(built).unwrap();
-            let adapted = !device.caps().is_supported(rhapsody::device::Feature::DrawIndirectCount);
-            assert_eq!(compiled.snapshot().pass_order.iter()
-                .filter(|name| name.as_str() == "platform indexed indirect count adaptation").count(),
-                if adapted { 2 } else { 0 });
-            assert!(compiled.snapshot().pass_order.iter()
-                .any(|name| name == "fixture actual GPU indirect count"));
+            let adapted = !device
+                .caps()
+                .is_supported(rhapsody::device::Feature::DrawIndirectCount);
+            assert_eq!(
+                compiled
+                    .snapshot()
+                    .pass_order
+                    .iter()
+                    .filter(|name| name.as_str() == "platform indexed indirect count adaptation")
+                    .count(),
+                if adapted { 2 } else { 0 }
+            );
+            assert!(
+                compiled
+                    .snapshot()
+                    .pass_order
+                    .iter()
+                    .any(|name| name == "fixture actual GPU indirect count")
+            );
             let receipt = bridge.execute_compiled(compiled).unwrap();
             assert!(!receipt.receipts.is_empty());
             bridge.wait_submits_done(10_000_000_000).unwrap();
             let mut bytes = vec![0; output.desc.size as usize];
             output.read_bytes(0, &mut bytes).unwrap();
             bytes
-        } else { pixels(&mut bridge, built, output) };
+        } else {
+            pixels(&mut bridge, built, output)
+        };
         let pixel = |x: usize| &bytes[(32 * 64 + x) * 4..][..4];
         assert_eq!(
             pixel(16),

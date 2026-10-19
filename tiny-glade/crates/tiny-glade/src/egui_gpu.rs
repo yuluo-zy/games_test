@@ -38,7 +38,11 @@ pub struct EguiGpu {
 
 impl EguiGpu {
     pub fn new(device: Arc<rhapsody::device::Device>, tables: HostTables) -> Self {
-        Self { device, tables, textures: HashMap::new() }
+        Self {
+            device,
+            tables,
+            textures: HashMap::new(),
+        }
     }
 
     /// Called by the original main-graph UI consumer. The loading and second
@@ -50,13 +54,16 @@ impl EguiGpu {
         shaders: &AssetShaderLibrary,
         target: AttachmentTexture,
     ) -> Result<()> {
-        let shader = shaders.get_raster_handle_by_name("egui")
+        let shader = shaders
+            .get_raster_handle_by_name("egui")
             .context("EguiBackend::draw: missing original egui shader")?;
         // The reconstructed library and draw facade use distinct handle wrapper
         // types. Preserve the library's actual identity, as RasterShared resolves
         // that exact raw key in the same library rather than allocating a slot.
         let shader = country_core::rhapsody_contract::Handle(
-            ManagedHandle(shader.id().raw()), std::marker::PhantomData);
+            ManagedHandle(shader.id().raw()),
+            std::marker::PhantomData,
+        );
         let pixels_per_point = backend.context().pixels_per_point();
         if !pixels_per_point.is_finite() || pixels_per_point <= 0.0 {
             bail!("invalid egui pixels_per_point");
@@ -65,8 +72,15 @@ impl EguiGpu {
         frame.with_raster(|host| {
             let mut renderer = EguiFrame {
                 gpu: self,
-                pass: Some(RasterPass::new("egui", &[ColorAttachment::Texture(target)], None,
-                    Box::new(host)).with_viewport([target.extent.0, target.extent.1])),
+                pass: Some(
+                    RasterPass::new(
+                        "egui",
+                        &[ColorAttachment::Texture(target)],
+                        None,
+                        Box::new(host),
+                    )
+                    .with_viewport([target.extent.0, target.extent.1]),
+                ),
                 shader,
                 pixels_per_point,
                 buffers: Vec::new(),
@@ -92,7 +106,8 @@ impl Drop for EguiGpu {
 struct EguiFrame<'a> {
     gpu: &'a mut EguiGpu,
     pass: Option<RasterPass>,
-    shader: country_core::rhapsody_contract::Handle<country_core::render::shader::RasterShaderProgram>,
+    shader:
+        country_core::rhapsody_contract::Handle<country_core::render::shader::RasterShaderProgram>,
     pixels_per_point: f32,
     buffers: Vec<Buffer>,
 }
@@ -109,41 +124,95 @@ impl Drop for EguiFrame<'_> {
 
 fn image_bytes(image: &egui::ImageData) -> Vec<u8> {
     match image {
-        egui::ImageData::Color(image) => image.pixels.iter().flat_map(|pixel| pixel.to_array()).collect(),
-        egui::ImageData::Font(image) => image.srgba_pixels(None).flat_map(|pixel| pixel.to_array()).collect(),
+        egui::ImageData::Color(image) => image
+            .pixels
+            .iter()
+            .flat_map(|pixel| pixel.to_array())
+            .collect(),
+        egui::ImageData::Font(image) => image
+            .srgba_pixels(None)
+            .flat_map(|pixel| pixel.to_array())
+            .collect(),
     }
 }
 
 impl EguiRenderer for EguiFrame<'_> {
-    fn update_texture(&mut self, id: egui::TextureId, delta: &egui::epaint::ImageDelta) -> Result<()> {
+    fn update_texture(
+        &mut self,
+        id: egui::TextureId,
+        delta: &egui::epaint::ImageDelta,
+    ) -> Result<()> {
         let bytes = image_bytes(&delta.image);
         let [width, height] = delta.image.size().map(u32::try_from);
         let (width, height) = (width?, height?);
-        if width == 0 || height == 0 { bail!("zero-sized egui texture"); }
+        if width == 0 || height == 0 {
+            bail!("zero-sized egui texture");
+        }
         if let Some(texture) = self.gpu.textures.get(&id) {
-            let texture = self.gpu.tables.textures.get(texture).context("stale egui texture")?;
+            let texture = self
+                .gpu
+                .tables
+                .textures
+                .get(texture)
+                .context("stale egui texture")?;
             let [x, y] = delta.pos.unwrap_or([0, 0]);
-            let staging = Arc::new(rhapsody::raw::buffer::Buffer::new(self.gpu.device.clone(),
-                &rhapsody::raw::buffer::BufferDesc::new_cpu_to_gpu(bytes.len() as u64,
-                    vk::BufferUsageFlags::TRANSFER_SRC))?);
+            let staging = Arc::new(rhapsody::resource::Buffer::new(
+                self.gpu.device.clone(),
+                &rhapsody::resource::BufferDesc::new_cpu_to_gpu(
+                    bytes.len() as u64,
+                    vk::BufferUsageFlags::TRANSFER_SRC,
+                ),
+            )?);
             staging.write_bytes(0, &bytes)?;
             let region = vk::BufferImageCopy::default()
-                .image_subresource(vk::ImageSubresourceLayers::default()
-                    .aspect_mask(vk::ImageAspectFlags::COLOR).layer_count(1))
-                .image_offset(vk::Offset3D { x: i32::try_from(x)?, y: i32::try_from(y)?, z: 0 })
-                .image_extent(vk::Extent3D { width, height, depth: 1 });
-            let queue = self.gpu.device.queue(rhapsody::device::QueueClass::Graphics)?;
-            rhapsody::raw::setup::with_setup_command(&self.gpu.device, |command| unsafe {
-                rhapsody::raw::texture_upload::record_texture_regions(command, queue,
-                    texture.shared(), staging, &[region], vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-            })?;
+                .image_subresource(
+                    vk::ImageSubresourceLayers::default()
+                        .aspect_mask(vk::ImageAspectFlags::COLOR)
+                        .layer_count(1),
+                )
+                .image_offset(vk::Offset3D {
+                    x: i32::try_from(x)?,
+                    y: i32::try_from(y)?,
+                    z: 0,
+                })
+                .image_extent(vk::Extent3D {
+                    width,
+                    height,
+                    depth: 1,
+                });
+            let queue = self
+                .gpu
+                .device
+                .queue(rhapsody::device::QueueClass::Graphics)?;
+            rhapsody::resource::with_setup_command(&self.gpu.device, &[], |command| unsafe {
+                rhapsody::command::record_texture_regions(
+                    command,
+                    queue,
+                    texture.shared(),
+                    staging,
+                    &[region],
+                    vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+                )
+            })?
+            .into_value();
         } else {
-            if delta.pos.is_some() { bail!("egui partial update refers to a missing texture"); }
+            if delta.pos.is_some() {
+                bail!("egui partial update refers to a missing texture");
+            }
             // O 0x1400de535: R8D=0x2b (R8G8B8A8_SRGB), then sampled().
-            let texture = self.gpu.tables.textures.create_texture("egui", &TextureDesc {
-                extent: [width, height, 1], kind: 2, sampled: true, mip_levels: 1,
-                array_elements: 1, format: 0x2b, ..Default::default()
-            }, &bytes)?;
+            let texture = self.gpu.tables.textures.create_texture(
+                "egui",
+                &TextureDesc {
+                    extent: [width, height, 1],
+                    kind: 2,
+                    sampled: true,
+                    mip_levels: 1,
+                    array_elements: 1,
+                    format: 0x2b,
+                    ..Default::default()
+                },
+                &bytes,
+            )?;
             self.gpu.textures.insert(id, texture);
         }
         Ok(())
@@ -156,31 +225,62 @@ impl EguiRenderer for EguiFrame<'_> {
         Ok(())
     }
 
-    fn draw_primitives(&mut self, primitives: &[egui::ClippedPrimitive], extent: [u32; 2]) -> Result<()> {
+    fn draw_primitives(
+        &mut self,
+        primitives: &[egui::ClippedPrimitive],
+        extent: [u32; 2],
+    ) -> Result<()> {
         let pass = self.pass.as_mut().expect("one egui pass");
         for primitive in primitives {
             // O: the native callback variant goes to panic; only mesh is valid.
             let egui::epaint::Primitive::Mesh(mesh) = &primitive.primitive else {
                 bail!("Egui paint callbacks are unsupported by the original renderer");
             };
-            if mesh.vertices.is_empty() || mesh.indices.is_empty() { continue; }
-            let texture = self.gpu.textures.get(&mesh.texture_id)
+            if mesh.vertices.is_empty() || mesh.indices.is_empty() {
+                continue;
+            }
+            let texture = self
+                .gpu
+                .textures
+                .get(&mesh.texture_id)
                 .context("egui mesh texture is absent")?;
             let vertices = pack_vertices(&mesh.vertices);
-            let indices: Vec<u8> = mesh.indices.iter().flat_map(|index| index.to_le_bytes()).collect();
+            let indices: Vec<u8> = mesh
+                .indices
+                .iter()
+                .flat_map(|index| index.to_le_bytes())
+                .collect();
             let ib = self.gpu.tables.buffers.create_buffer(
-                &BufferDesc::new(indices.len(), 0x40, 2), "egui index buffer", Some(&indices))?;
+                &BufferDesc::new(indices.len(), 0x40, 2),
+                "egui index buffer",
+                Some(&indices),
+            )?;
             self.buffers.push(ib);
             let vb = self.gpu.tables.buffers.create_buffer(
-                &BufferDesc::new(vertices.len(), 0x20, 2), "egui vertex buffer", Some(&vertices))?;
+                &BufferDesc::new(vertices.len(), 0x20, 2),
+                "egui vertex buffer",
+                Some(&vertices),
+            )?;
             self.buffers.push(vb);
-            let mut packet = DrawPacket::new(self.shader.clone(), [0, 0], pass.host_mut().default_raster_state());
-            packet.unknown_bytes = extent.into_iter()
-                .flat_map(|size| (size as f32 / self.pixels_per_point).to_le_bytes()).collect();
+            let mut packet = DrawPacket::new(
+                self.shader.clone(),
+                [0, 0],
+                pass.host_mut().default_raster_state(),
+            );
+            packet.unknown_bytes = extent
+                .into_iter()
+                .flat_map(|size| (size as f32 / self.pixels_per_point).to_le_bytes())
+                .collect();
             let mut draw = DrawBuilder::new(pass, packet, 0)
-                .bind_texture_to_draw_builder(BindTexture::Raw {
-                    texture: &ManagedHandle(texture.id), desc: &AttachmentTexture::from(texture),
-                }, 0xd997_8e54_1ce9_a95e, 0x1d, None)
+                .bind_texture_to_draw_builder(
+                    BindTexture::Raw {
+                        texture: &ManagedHandle(texture.id),
+                        desc: &AttachmentTexture::from(texture),
+                    },
+                    0xd997_8e54_1ce9_a95e,
+                    0x1d,
+                    None,
+                )
                 .bind_external_storage_buffer(0x12ef_39a9_447f_1f0e, &ManagedHandle(vb.id));
             draw.packet_mut().state = draw.packet().state.clear_byte0_bit7().set_byte3_field_2();
             draw.draw_no_vao_indexed(&ManagedHandle(ib.id), u32::try_from(mesh.indices.len())?);

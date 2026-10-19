@@ -132,18 +132,20 @@ impl GpuTimingRing {
         }
         let properties = unsafe {
             device
+                .core
                 .instance
                 .instance
-                .get_physical_device_properties(device.physical)
+                .get_physical_device_properties(device.core.physical)
         };
         let families = unsafe {
             device
+                .core
                 .instance
                 .instance
-                .get_physical_device_queue_family_properties(device.physical)
+                .get_physical_device_queue_family_properties(device.core.physical)
         };
         let mut valid_bits = [0; crate::sync::MAX_QUEUES];
-        for (index, queue) in device.queue_plan.queues.iter().enumerate() {
+        for (index, queue) in device.queues.plan.queues.iter().enumerate() {
             valid_bits[index] = families[queue.family as usize].timestamp_valid_bits;
             if !(1..=64).contains(&valid_bits[index]) {
                 return Err(Error::unsupported(
@@ -162,7 +164,8 @@ impl GpuTimingRing {
             + config.retained_samples * std::mem::size_of::<GpuCommandTiming>()
             + std::mem::size_of::<Self>();
         let mut host_memory = device
-            .allocator_stats
+            .memory
+            .stats
             .reserve_cpu_bytes(bytes as u64, crate::device::BudgetCategory::Live)?;
         let mut slots = Vec::new();
         let mut active = Vec::new();
@@ -187,20 +190,21 @@ impl GpuTimingRing {
             + samples.capacity() * std::mem::size_of::<GpuCommandTiming>()
             + std::mem::size_of::<Self>();
         host_memory.resize(actual_bytes as u64)?;
-        let query_memory = device.allocator_stats.reserve_cpu_bytes(
+        let query_memory = device.memory.stats.reserve_cpu_bytes(
             crate::raw::allocator::shared_cpu_bytes::<Queries>()?,
             crate::device::BudgetCategory::Live,
         )?;
-        let last_use = SyncCell::for_device_budgeted(device.generation(), &device.allocator_stats)?;
+        let last_use = SyncCell::for_device_budgeted(device.generation(), &device.memory.stats)?;
         let info = vk::QueryPoolCreateInfo::default()
             .query_type(vk::QueryType::TIMESTAMP)
             .query_count(config.pending_commands as u32 * 2);
-        let handle = unsafe { device.device.create_query_pool(&info, None) }.map_err(|error| {
-            if error == vk::Result::ERROR_DEVICE_LOST {
-                device.timelines.mark_device_lost();
-            }
-            Error::from(error)
-        })?;
+        let handle =
+            unsafe { device.core.device.create_query_pool(&info, None) }.map_err(|error| {
+                if error == vk::Result::ERROR_DEVICE_LOST {
+                    device.queues.timelines.mark_device_lost();
+                }
+                Error::from(error)
+            })?;
         Ok(Self {
             slots,
             active,
@@ -231,7 +235,8 @@ impl GpuTimingRing {
             || self
                 .queries
                 .device
-                .queue_plan
+                .queues
+                .plan
                 .queues
                 .get(queue.index())
                 .is_none_or(|q| q.family != command.pool.family)
@@ -252,13 +257,13 @@ impl GpuTimingRing {
         command.retain_object(self.queries.clone())?;
         self.free.pop_front();
         unsafe {
-            self.queries.device.device.cmd_reset_query_pool(
+            self.queries.device.core.device.cmd_reset_query_pool(
                 command.handle,
                 self.queries.handle,
                 slot as u32 * 2,
                 2,
             );
-            self.queries.device.device.cmd_write_timestamp(
+            self.queries.device.core.device.cmd_write_timestamp(
                 command.handle,
                 vk::PipelineStageFlags::TOP_OF_PIPE,
                 self.queries.handle,
@@ -327,7 +332,7 @@ impl GpuTimingRing {
         let tracked = self.slots[*slot].as_mut().expect("active query slot");
         debug_assert!(!tracked.ended && tracked.point.is_none());
         unsafe {
-            self.queries.device.device.cmd_write_timestamp(
+            self.queries.device.core.device.cmd_write_timestamp(
                 command,
                 vk::PipelineStageFlags::BOTTOM_OF_PIPE,
                 self.queries.handle,
@@ -379,7 +384,7 @@ impl GpuTimingRing {
             debug_assert_eq!(tracked.command, self.active[index].0);
             let mut values = [0u64; 2];
             match unsafe {
-                self.queries.device.device.get_query_pool_results(
+                self.queries.device.core.device.get_query_pool_results(
                     self.queries.handle,
                     slot as u32 * 2,
                     &mut values,
@@ -393,7 +398,7 @@ impl GpuTimingRing {
                 }
                 Err(error) => {
                     if error == vk::Result::ERROR_DEVICE_LOST {
-                        self.queries.device.timelines.mark_device_lost();
+                        self.queries.device.queues.timelines.mark_device_lost();
                     }
                     return Err(error.into());
                 }

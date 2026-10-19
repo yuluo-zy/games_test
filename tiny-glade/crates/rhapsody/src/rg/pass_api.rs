@@ -96,7 +96,7 @@ pub trait CommandBackend {
     }
 }
 
-/// 调用原锁定版本 ash 的设备方法，不重新实现 Vulkan。
+/// 直接调用 ash 的设备方法。
 pub struct AshCommandBackend<'a> {
     device: &'a ash::Device,
     rendering: Option<DynamicRenderingCommands>,
@@ -127,25 +127,30 @@ impl<'a> AshCommandBackend<'a> {
         {
             None
         } else if device
+            .core
             .enabled_extensions
             .iter()
             .any(|extension| extension == "VK_KHR_dynamic_rendering")
         {
             Some(DynamicRenderingCommands::Khr(
-                ash::khr::dynamic_rendering::Device::new(&device.instance.instance, &device.device),
+                ash::khr::dynamic_rendering::Device::new(
+                    &device.core.instance.instance,
+                    &device.core.device,
+                ),
             ))
         } else {
             let properties = unsafe {
                 device
+                    .core
                     .instance
                     .instance
-                    .get_physical_device_properties(device.physical)
+                    .get_physical_device_properties(device.core.physical)
             };
-            (properties.api_version.min(device.instance.api_version) >= vk::API_VERSION_1_3)
+            (properties.api_version.min(device.core.instance.api_version) >= vk::API_VERSION_1_3)
                 .then_some(DynamicRenderingCommands::Core)
         };
         Self {
-            device: &device.device,
+            device: &device.core.device,
             rendering,
         }
     }
@@ -461,7 +466,7 @@ impl<'a, B: CommandBackend> RenderPassApi<'a, B> {
     }
 
     /// None 生成 offset=0、size=WHOLE_SIZE；显式范围的两个值都检查 4 字节对齐。
-    /// 原失败会 panic；重建公开接口暂返回可处理的错误，该差异必须由上层处理。
+    /// 参数无效时返回可处理的错误。
     pub fn fill_buffer(
         &mut self,
         buffer: vk::Buffer,
@@ -486,7 +491,7 @@ impl<'a, B: CommandBackend> RenderPassApi<'a, B> {
         Ok(())
     }
 
-    /// 原 clear 固定透明零色；mip/layer 总数来自已解析的纹理描述符。
+    /// 清除为透明零色；mip/layer 总数来自已解析的纹理描述符。
     pub fn clear_color_image(&mut self, image: vk::Image, mip_levels: u8, array_layers: u32) {
         self.emit(Command::ClearColorImage {
             image,
@@ -606,7 +611,7 @@ impl<'a, B: CommandBackend> RenderPassApi<'a, B> {
     }
 
     /// `dispatch_groups_3d`；这里保留同样两段式顺序，不重复计数两次的语义差异
-    /// 由调用方感知（原机器码内联后仍只触发一次 `cmd_dispatch`）。
+    /// 由调用方感知（只触发一次 `cmd_dispatch`）。
     pub fn dispatch_threads_3d(
         &mut self,
         threads_x: u32,

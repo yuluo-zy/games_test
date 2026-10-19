@@ -365,7 +365,7 @@ pub(crate) fn validate_subgraphs(definition: &GraphDefinition) -> crate::Result<
                     crate::Error::invalid_usage("subgraph port access has no classification")
                 })?;
             if matches!(resource.descriptor, super::graph::Descriptor::Image(_)) {
-                crate::raw::resource_usage::image_access_mask_to_usage_flags(semantic.mask)?;
+                crate::raw::resource_usage::image_usage_for_access(semantic.declared_access)?;
             }
         }
         if scope.interface.side_effect
@@ -448,13 +448,10 @@ fn validate_boundary(
                 .or_default()
                 .push(access.range);
             let escapes = resource.is_external()
-                || definition
-                    .exports
-                    .iter()
-                    .any(|export| {
-                        export.resource_index == access.resource_index
-                            && export.range.overlaps(access.range)
-                    })
+                || definition.exports.iter().any(|export| {
+                    export.resource_index == access.resource_index
+                        && export.range.overlaps(access.range)
+                })
                 || definition.passes[scope.pass_range.end..]
                     .iter()
                     .flat_map(|pass| &pass.accesses)

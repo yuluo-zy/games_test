@@ -16,8 +16,8 @@ const WRITE: u8 = 0x34;
 /// 测试用访问掩码：缓冲 → STORAGE_BUFFER(0x20)。
 struct Dependency;
 impl AccessDependency for Dependency {
-    fn access_mask(&mut self, _code: u8) -> u32 {
-        0x20
+    fn access_mask(&mut self, _code: u8) -> ash::vk::AccessFlags {
+        ash::vk::AccessFlags::SHADER_READ
     }
     fn is_write(&mut self, code: u8) -> bool {
         code == WRITE
@@ -67,6 +67,10 @@ struct Mock {
     queue: Option<recording::Queue>,
     fail_wait: bool,
     ranges: cpu_graph_support::CpuRanges,
+    /// One stand-in command pool per parallel worker.
+    chunk_pools: Vec<u8>,
+    /// Commands recorded through each lease, in chunk order.
+    leased: std::sync::Mutex<Vec<u64>>,
 }
 impl ResourceBackend for Mock {
     fn create_without_initial_data(
@@ -91,19 +95,38 @@ impl ResourceBackend for Mock {
     }
 }
 impl ExecutionBackend for Mock {
-    fn chunk_recorder(&self) -> Option<Box<dyn rhapsody::rg::executor::ChunkRecorder + '_>> {
-        struct View;
-        impl rhapsody::rg::executor::ChunkRecorder for View {
+    fn supports_parallel_recording(&self) -> bool {
+        true
+    }
+    fn chunk_recording(
+        &mut self,
+        commands: &[u64],
+    ) -> rhapsody::Result<rhapsody::rg::executor::ChunkRecording<'_>> {
+        struct View<'a>(&'a std::sync::Mutex<Vec<u64>>);
+        impl rhapsody::rg::executor::ChunkRecorder for View<'_> {
             fn record_transitions(
                 &self,
-                _: u64,
+                lease: &mut rhapsody::rg::executor::ChunkLease<'_>,
                 _: &[rhapsody::rg::executor::ChunkTransition],
                 _: &mut rhapsody::rg::owner_storage::ResourceOwners,
             ) -> rhapsody::Result<()> {
+                self.0.lock().unwrap().push(lease.command());
                 Ok(())
             }
         }
-        Some(Box::new(View))
+        if self.chunk_pools.len() < commands.len() {
+            self.chunk_pools.resize(commands.len(), 0);
+        }
+        // Disjoint `&mut` pool borrows: one lease per pool.
+        let leases = self
+            .chunk_pools
+            .iter_mut()
+            .zip(commands)
+            .map(|(pool, &command)| unsafe {
+                rhapsody::rg::executor::ChunkLease::new(pool, command)
+            })
+            .collect();
+        Ok((Box::new(View(&self.leased)), leases))
     }
     fn synchronization_plan(
         &self,
@@ -182,7 +205,7 @@ fn result_callbacks_preserve_device_errors_in_serial_and_parallel_recording() {
         ParallelRecording::SERIAL,
         ParallelRecording {
             runner: TaskRunner::Inline,
-            ..ParallelRecording::ORIGINAL
+            ..ParallelRecording::EVERY_PASS
         },
     ] {
         for device_lost in [false, true] {
@@ -236,7 +259,7 @@ fn reported_callback_errors_cannot_be_ignored_by_returning_true() {
         ParallelRecording::SERIAL,
         ParallelRecording {
             runner: TaskRunner::Inline,
-            ..ParallelRecording::ORIGINAL
+            ..ParallelRecording::EVERY_PASS
         },
     ] {
         let mut backend = Mock::default();
@@ -1064,4 +1087,38 @@ fn duplicate_imports_are_rejected_before_recording_or_allocation() {
     assert_eq!(backend.creations, 0);
     assert_eq!(backend.submit_attempts, 0);
     assert_eq!(backend.next_command, 0);
+}
+
+#[test]
+fn parallel_chunks_record_only_through_their_own_pool_leases() {
+    use rhapsody::rg::parallel::{ParallelRecording, TaskRunner};
+    for runner in [TaskRunner::Inline, TaskRunner::ComputePool] {
+        let mut backend = Mock::default();
+        let mut chain = chain();
+        chain.parallel = ParallelRecording {
+            runner,
+            ..ParallelRecording::EVERY_PASS
+        };
+        let mut graph = RenderGraph::new();
+        for name in ["a", "b", "c"] {
+            graph.add_pass(name).with_side_effect().render(|_| true);
+        }
+        let (declaration, mut callbacks, _) = graph.build().into_parts();
+        let result = chain.execute_graph_with_context(
+            declaration,
+            &mut Pool::default(),
+            &mut Dependency,
+            &mut backend,
+            &mut callbacks,
+        );
+        let chunks = result.unwrap().stats.chunks;
+        assert!(chunks > 1);
+        // Every chunk recorded through a lease of its own command; a pool
+        // shared by two leases cannot be expressed (see ChunkLease docs).
+        let mut leased = backend.leased.into_inner().unwrap();
+        assert_eq!(leased.len(), chunks as usize);
+        leased.sort_unstable();
+        leased.dedup();
+        assert_eq!(leased.len(), chunks as usize);
+    }
 }

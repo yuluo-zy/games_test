@@ -59,7 +59,7 @@ impl Fixture {
                     ..DeviceConfig::headless()
                 };
                 let device = Device::new(builder.build()?, None, &config)?;
-                let validation = ValidationMessenger::new(&device.instance)?;
+                let validation = ValidationMessenger::new(device.instance())?;
                 Ok((device, validation))
             })(),
         )?;
@@ -134,7 +134,7 @@ impl Fixture {
                     .map_err(|error| rhapsody::Error::invalid_usage_with("binding", error))?;
 
                 unsafe {
-                    device.device.cmd_fill_buffer(
+                    device.raw_device().cmd_fill_buffer(
                         vk::CommandBuffer::from_raw(ctx.command.handle()),
                         binding.raw(),
                         0,
@@ -172,7 +172,7 @@ impl Fixture {
                 .collect::<rhapsody::Result<Vec<_>>>()?;
             for index in 0..2 {
                 unsafe {
-                    device.device.cmd_copy_buffer(
+                    device.raw_device().cmd_copy_buffer(
                         vk::CommandBuffer::from_raw(ctx.command.handle()),
                         bindings[index].raw(),
                         bindings[2].raw(),
@@ -222,7 +222,7 @@ fn real_independent_queues_preserve_pixels_and_do_not_wait_between_branches() {
     assert_ne!(captures[0].queue, captures[1].queue);
     // The first extra submission for B can be a source-family release. Its only
     // dependency may concern B; the independent A receipt must never be added.
-    let a_semaphore = multi.session.backend.timeline.handle;
+    let a_semaphore = multi.session.backend.timeline.raw_handle();
     for capture in captures.iter().take(2).skip(1) {
         assert!(
             capture
@@ -324,7 +324,7 @@ fn concurrent_disjoint_writes_do_not_inherit_whole_object_waits() {
     };
     let mut families = fixture
         .device
-        .queue_plan
+        .queue_plan()
         .queues
         .iter()
         .map(|queue| queue.family)
@@ -386,11 +386,10 @@ fn concurrent_disjoint_writes_do_not_inherit_whole_object_waits() {
         let shared = shared.clone();
         let device = fixture.device.clone();
         pass.render_with_result_context(move |ctx: PassContext<'_>| {
-
             unsafe {
-                device.device.cmd_fill_buffer(
+                device.raw_device().cmd_fill_buffer(
                     vk::CommandBuffer::from_raw(ctx.command.handle()),
-                    shared.handle,
+                    shared.raw_handle(),
                     index * SIZE,
                     SIZE,
                     value,
@@ -405,13 +404,11 @@ fn concurrent_disjoint_writes_do_not_inherit_whole_object_waits() {
     let destination = fixture.buffers[2].clone();
     let device = fixture.device.clone();
     pass.render_with_result_context(move |ctx: PassContext<'_>| {
-
-
         unsafe {
-            device.device.cmd_copy_buffer(
+            device.raw_device().cmd_copy_buffer(
                 vk::CommandBuffer::from_raw(ctx.command.handle()),
-                shared.handle,
-                destination.handle,
+                shared.raw_handle(),
+                destination.raw_handle(),
                 &[vk::BufferCopy {
                     src_offset: 0,
                     dst_offset: 0,
@@ -457,7 +454,7 @@ fn concurrent_temporal_image_preserves_its_real_sharing_across_frames() {
     };
     let mut families = fixture
         .device
-        .queue_plan
+        .queue_plan()
         .queues
         .iter()
         .map(|queue| queue.family)
@@ -498,11 +495,10 @@ fn concurrent_temporal_image_preserves_its_real_sharing_across_frames() {
         let target = image.clone();
         let device = fixture.device.clone();
         pass.render_with_result_context(move |ctx: PassContext<'_>| {
-
             unsafe {
-                device.device.cmd_clear_color_image(
+                device.raw_device().cmd_clear_color_image(
                     vk::CommandBuffer::from_raw(ctx.command.handle()),
-                    target.handle,
+                    target.raw_handle(),
                     vk::ImageLayout::TRANSFER_DST_OPTIMAL,
                     &vk::ClearColorValue {
                         float32: [1., 0., 0., 1.],
@@ -524,14 +520,12 @@ fn concurrent_temporal_image_preserves_its_real_sharing_across_frames() {
         let output = fixture.buffers[2].clone();
         let device = fixture.device.clone();
         pass.render_with_result_context(move |ctx: PassContext<'_>| {
-
-
             unsafe {
-                device.device.cmd_copy_image_to_buffer(
+                device.raw_device().cmd_copy_image_to_buffer(
                     vk::CommandBuffer::from_raw(ctx.command.handle()),
-                    image.handle,
+                    image.raw_handle(),
                     vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                    output.handle,
+                    output.raw_handle(),
                     &[vk::BufferImageCopy::default()
                         .image_subresource(
                             vk::ImageSubresourceLayers::default()

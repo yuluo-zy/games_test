@@ -13,12 +13,8 @@ use country_core::{
     render::ssbo::rhapsody_boundary::{BackendError, Buffer, BufferDesc, GraphicsDevice},
 };
 use rhapsody::{
-    raw::{
-        buffer::{Buffer as NativeBuffer, BufferDesc as NativeBufferDesc},
-        resource_access::buffer_access,
-        setup::with_setup_command,
-    },
-    resource::range_state::AccessScope,
+    command::buffer_access, resource::AccessScope, resource::Buffer as NativeBuffer,
+    resource::BufferDesc as NativeBufferDesc, resource::with_setup_command,
 };
 use std::{ops::Range, sync::Arc};
 use tiny_glade::render_host::{BufferHost, TextureHost};
@@ -68,7 +64,7 @@ fn read_prefix(
         .queue(rhapsody::device::QueueClass::Graphics)
         .unwrap();
     // SAFETY: 源和目标均属于当前设备，范围有效且通过资源访问跟踪登记；setup 等待复制结束。
-    with_setup_command(device, |command| unsafe {
+    with_setup_command(device, &[], |command| unsafe {
         buffer_access(
             command,
             source.shared(),
@@ -93,10 +89,10 @@ fn read_prefix(
                 write: true,
             },
         )?;
-        device.device.cmd_copy_buffer(
-            command.handle,
-            source.handle,
-            output.handle,
+        device.raw_device().cmd_copy_buffer(
+            command.raw_handle(),
+            source.raw_handle(),
+            output.raw_handle(),
             &[vk::BufferCopy::default().size(size as u64)],
         );
         buffer_access(
@@ -112,6 +108,7 @@ fn read_prefix(
             },
         )
     })
+    .and_then(|setup| setup.wait(rhapsody::resource::SETUP_WAIT_TIMEOUT_NS))
     .unwrap();
     let mut bytes = vec![0; size];
     output.read_bytes(0, &mut bytes).unwrap();

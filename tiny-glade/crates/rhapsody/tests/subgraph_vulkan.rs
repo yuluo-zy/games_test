@@ -77,7 +77,7 @@ fn unchanged_subgraph_hits_retain_real_writes_and_cross_boundary_visibility() {
                     };
 
                     unsafe {
-                        device.device.cmd_fill_buffer(
+                        device.raw_device().cmd_fill_buffer(
                             vk::CommandBuffer::from_raw(ctx.command.handle()),
                             buffer.raw(),
                             0,
@@ -111,7 +111,7 @@ fn unchanged_subgraph_hits_retain_real_writes_and_cross_boundary_visibility() {
                     };
 
                     unsafe {
-                        device.device.cmd_copy_buffer(
+                        device.raw_device().cmd_copy_buffer(
                             vk::CommandBuffer::from_raw(ctx.command.handle()),
                             source.raw(),
                             output.raw(),

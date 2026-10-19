@@ -11,8 +11,8 @@ use ash::vk;
 use ash::vk::Handle;
 use std::sync::Arc;
 
-/// 原 16 字节描述符：new 写 format、load/store=0、samples=1，尾部填充保持未定义。
-/// clear_input 改 +4 为 1；sample_count 只改 +12。原二进制地址在验证报告中。
+/// 16 字节附件描述符：new 写 format、load/store=0、samples=1。
+/// clear_input 改 +4 为 1；sample_count 只改 +12。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct RenderPassAttachmentDesc {
     pub format: vk::Format,
@@ -21,24 +21,7 @@ pub struct RenderPassAttachmentDesc {
     pub samples: vk::SampleCountFlags,
 }
 
-/// 原 create_render_pass 的深度状态 0/1/2 分别映射到以下布局；3 表示无深度。
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum DepthAccess {
-    ReadOnly,
-    ReadWrite,
-    DepthWriteStencilRead,
-}
-impl DepthAccess {
-    pub fn layout(self) -> vk::ImageLayout {
-        match self {
-            Self::ReadOnly => vk::ImageLayout::DEPTH_STENCIL_READ_ONLY_OPTIMAL,
-            Self::ReadWrite => vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-            Self::DepthWriteStencilRead => {
-                vk::ImageLayout::DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL
-            }
-        }
-    }
-}
+pub use contract::DepthAccess;
 impl RenderPassAttachmentDesc {
     pub fn new(format: vk::Format) -> Self {
         Self {
@@ -87,7 +70,7 @@ impl Attachment {
             generation,
             view,
             desc,
-            // 原 VkAttachmentDescription producer 固定 stencilLoad/Store 为 LOAD/STORE。
+            // 模板 load/store 固定为 LOAD/STORE。
             stencil_load: vk::AttachmentLoadOp::LOAD,
             stencil_store: vk::AttachmentStoreOp::STORE,
             initial_layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
@@ -308,7 +291,7 @@ impl PreparedAttachments {
                         .iter()
                         .find(|entry| entry.code == access.access_code)
                         .is_some_and(|native| {
-                            native.layout == layout && native.access.contains(required)
+                            native.layout == layout && native.scope.access.contains(required)
                         })
                         && managed
                             .texture_for(access.resource_index)
@@ -366,13 +349,15 @@ impl AttachmentCache {
         }
         let limits = unsafe {
             device
+                .core
                 .instance
                 .instance
-                .get_physical_device_properties(device.physical)
+                .get_physical_device_properties(device.core.physical)
         }
         .limits;
         let memory = device
-            .allocator_stats
+            .memory
+            .stats
             .reserve_cpu_bytes(0, crate::device::BudgetCategory::Cache)?;
         Ok(Self {
             device,
@@ -414,7 +399,7 @@ impl AttachmentCache {
             .iter()
             .filter(|attachment| !attachment.depth_stencil)
             .count();
-        let mut memory = self.device.allocator_stats.reserve_cpu_bytes(
+        let mut memory = self.device.memory.stats.reserve_cpu_bytes(
             crate::raw::allocator::shared_cpu_bytes::<PreparedAttachments>()?
                 + (attachments.len() * size_of::<Arc<TextureView>>()
                     + color_count
@@ -546,7 +531,7 @@ impl AttachmentCache {
             let capacity = needed
                 .max(self.views.capacity().saturating_mul(2))
                 .min(self.capacity);
-            let mut memory = self.device.allocator_stats.reserve_cpu_bytes(
+            let mut memory = self.device.memory.stats.reserve_cpu_bytes(
                 (capacity * size_of::<(ViewKey, Arc<TextureView>)>()) as u64,
                 crate::device::BudgetCategory::Cache,
             )?;

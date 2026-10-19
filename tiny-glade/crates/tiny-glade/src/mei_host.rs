@@ -20,12 +20,10 @@ use country_core::{
     rhapsody_types::{Texture, TextureDesc},
     systems::render_loop::draw_passes::ui_2d_pass::{MeiTextOutput, ShapeStreamSsbo, TextPrimSsbo},
 };
-use rhapsody::raw::{
-    buffer::{Buffer as NativeBuffer, BufferDesc as NativeBufferDesc},
-    device::Device,
-    managed::buffer::ManagedBuffer,
-    setup::with_setup_command,
-    texture_upload::record_texture_regions,
+use rhapsody::{
+    command::record_texture_regions, device::Device, resource::Buffer as NativeBuffer,
+    resource::BufferDesc as NativeBufferDesc, resource::ManagedBuffer,
+    resource::with_setup_command,
 };
 use tg_text::{AtlasDescriptor, RenderBatch, TextFragment, TextRenderer};
 
@@ -101,7 +99,10 @@ enum MeiBufferOwnership {
     Private,
     // Real ManagedBuffer leases retain both physical allocations; a library
     // consumer must not invalidate their shared BufferHost slot on drop.
-    Library { _primitives: ManagedBuffer, _shapes: ManagedBuffer },
+    Library {
+        _primitives: ManagedBuffer,
+        _shapes: ManagedBuffer,
+    },
 }
 
 pub struct MeiHost {
@@ -154,14 +155,26 @@ impl MeiHost {
         library: &AssetSsboLibrary,
     ) -> rhapsody::Result<Self> {
         if !Arc::ptr_eq(&device, buffers.graphics_device()) {
-            return Err(rhapsody::Error::invalid_usage("MEI library BufferHost belongs to another device"));
+            return Err(rhapsody::Error::invalid_usage(
+                "MEI library BufferHost belongs to another device",
+            ));
         }
-        let primitives = library.get::<TextPrimSsbo>().ok_or_else(|| {
-            rhapsody::Error::invalid_usage("original text flush: missing canonical TextPrimSsbo producer")
-        })?.buffer;
-        let shapes = library.get::<ShapeStreamSsbo>().ok_or_else(|| {
-            rhapsody::Error::invalid_usage("original text flush: missing canonical ShapeStreamSsbo producer")
-        })?.buffer;
+        let primitives = library
+            .get::<TextPrimSsbo>()
+            .ok_or_else(|| {
+                rhapsody::Error::invalid_usage(
+                    "original text flush: missing canonical TextPrimSsbo producer",
+                )
+            })?
+            .buffer;
+        let shapes = library
+            .get::<ShapeStreamSsbo>()
+            .ok_or_else(|| {
+                rhapsody::Error::invalid_usage(
+                    "original text flush: missing canonical ShapeStreamSsbo producer",
+                )
+            })?
+            .buffer;
         let primitive_lease = buffers.managed_buffer(&primitives).ok_or_else(|| {
             rhapsody::Error::invalid_usage("TextPrimSsbo has no live owner in this BufferHost")
         })?;
@@ -172,20 +185,30 @@ impl MeiHost {
             (&primitive_lease, &primitives, TEXT_PRIMITIVE_BYTES),
             (&shape_lease, &shapes, SHAPE_STREAM_BYTES),
         ] {
-            if !Arc::ptr_eq(&lease.device, &device)
+            if !Arc::ptr_eq(&lease.device(), &device)
                 || lease.size != expected as u64
                 || handle.byte_size != expected as u64
-                || !lease.usage.contains(vk::BufferUsageFlags::STORAGE_BUFFER | vk::BufferUsageFlags::TRANSFER_DST)
+                || !lease.usage.contains(
+                    vk::BufferUsageFlags::STORAGE_BUFFER | vk::BufferUsageFlags::TRANSFER_DST,
+                )
             {
-                return Err(rhapsody::Error::invalid_usage("canonical MEI buffer descriptor/device mismatch"));
+                return Err(rhapsody::Error::invalid_usage(
+                    "canonical MEI buffer descriptor/device mismatch",
+                ));
             }
         }
         Ok(Self {
-            device, buffers, textures, primitives, shapes,
+            device,
+            buffers,
+            textures,
+            primitives,
+            shapes,
             buffer_ownership: MeiBufferOwnership::Library {
-                _primitives: primitive_lease, _shapes: shape_lease,
+                _primitives: primitive_lease,
+                _shapes: shape_lease,
             },
-            atlas: None, last_output: None,
+            atlas: None,
+            last_output: None,
         })
     }
 
@@ -338,7 +361,7 @@ impl MeiHost {
             )?);
             staging.write_bytes_unsynchronized(0, &bytes)?;
             let queue = self.device.queue(rhapsody::device::QueueClass::Graphics)?;
-            with_setup_command(&self.device, |command| unsafe {
+            with_setup_command(&self.device, &[], |command| unsafe {
                 record_texture_regions(
                     command,
                     queue,
@@ -347,7 +370,8 @@ impl MeiHost {
                     &regions,
                     vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
                 )
-            })?;
+            })?
+            .into_value();
         }
         Ok(())
     }

@@ -26,12 +26,8 @@ use country_core::{
     },
 };
 use rhapsody::{
-    raw::{
-        buffer::{Buffer as NativeBuffer, BufferDesc as NativeBufferDesc},
-        resource_access::buffer_access,
-        setup::with_setup_command,
-    },
-    resource::range_state::AccessScope,
+    command::buffer_access, resource::AccessScope, resource::Buffer as NativeBuffer,
+    resource::BufferDesc as NativeBufferDesc, resource::with_setup_command,
 };
 use std::{ops::Range, path::PathBuf, sync::Arc, time::Duration};
 use tiny_glade::{render_bridge::CoreRenderBridge, render_host::BufferHost};
@@ -85,7 +81,7 @@ fn read_range(
     let queue = device
         .queue(rhapsody::device::QueueClass::Graphics)
         .unwrap();
-    with_setup_command(device, |command| unsafe {
+    with_setup_command(device, &[], |command| unsafe {
         buffer_access(
             command,
             source.shared(),
@@ -110,10 +106,10 @@ fn read_range(
                 write: true,
             },
         )?;
-        device.device.cmd_copy_buffer(
-            command.handle,
-            source.handle,
-            output.handle,
+        device.raw_device().cmd_copy_buffer(
+            command.raw_handle(),
+            source.raw_handle(),
+            output.raw_handle(),
             &[vk::BufferCopy::default()
                 .src_offset(offset as u64)
                 .size(size as u64)],
@@ -131,6 +127,7 @@ fn read_range(
             },
         )
     })
+    .and_then(|setup| setup.wait(rhapsody::resource::SETUP_WAIT_TIMEOUT_NS))
     .unwrap();
     let mut result = vec![0; size];
     output.read_bytes(0, &mut result).unwrap();
@@ -280,10 +277,19 @@ fn original_nani_master_one_real_instance_builds_indexed_command_and_indirection
         .prewarm(Duration::from_secs(60))
         .unwrap();
     let compiled = bridge.compile_built(built).unwrap();
-    eprintln!("original Nani prepared passes: {:?}", compiled.snapshot().pass_order);
+    eprintln!(
+        "original Nani prepared passes: {:?}",
+        compiled.snapshot().pass_order
+    );
     for required in ["Nani clear draw lists", "Nani clear histograms"] {
-        assert!(compiled.snapshot().pass_order.iter().any(|name| name == required),
-            "the original initializer {required} must remain before atomic/in-place consumers");
+        assert!(
+            compiled
+                .snapshot()
+                .pass_order
+                .iter()
+                .any(|name| name == required),
+            "the original initializer {required} must remain before atomic/in-place consumers"
+        );
     }
     let receipt = bridge.execute_compiled(compiled).unwrap();
     eprintln!(

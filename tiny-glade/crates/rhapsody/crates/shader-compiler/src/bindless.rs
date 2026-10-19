@@ -839,7 +839,11 @@ pub fn lower_stage(
             vec![Operand::LiteralString("SPV_EXT_descriptor_indexing".into())],
         ));
     }
-    let header = lower.module.header.as_mut().unwrap();
+    let header = lower
+        .module
+        .header
+        .as_mut()
+        .ok_or_else(|| error("SPIR-V module has no header"))?;
     header.version = header.version.max(0x0001_0300);
     header.bound = lower.next;
     if header.version >= 0x0001_0400 {

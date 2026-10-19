@@ -1,5 +1,6 @@
 //! Native synchronization scopes and capability-selected Vulkan dispatch.
-/// 一个原同步scope汇总三类数组与阶段掩码，在phase边界一次提交。
+/// One barrier batch: memory, buffer and image barriers sharing one source
+/// and destination stage mask, recorded with a single barrier command.
 pub struct SynchronizationScope {
     pub memory: smallvec::SmallVec<[ash::vk::MemoryBarrier<'static>; 1]>,
     pub buffers: smallvec::SmallVec<[ash::vk::BufferMemoryBarrier<'static>; 4]>,
@@ -32,6 +33,44 @@ impl SynchronizationScope {
     pub fn is_empty(&self) -> bool {
         self.memory.is_empty() && self.buffers.is_empty() && self.images.is_empty()
     }
+    /// Append `barrier` for `target`, fallibly reserving host memory. The
+    /// caller widens the batch's stages.
+    pub(crate) fn push(
+        &mut self,
+        target: BarrierTarget,
+        barrier: &RangeBarrier,
+    ) -> crate::Result<()> {
+        match target {
+            BarrierTarget::Buffer(buffer) => {
+                let barrier = barrier.buffer(buffer)?;
+                self.buffers
+                    .try_reserve(1)
+                    .map_err(|_| crate::Error::OutOfHostMemory)?;
+                self.buffers.push(barrier);
+            }
+            BarrierTarget::Image(image) => {
+                let barrier = barrier.image(image)?;
+                self.images
+                    .try_reserve(1)
+                    .map_err(|_| crate::Error::OutOfHostMemory)?;
+                self.images.push(barrier);
+            }
+        }
+        Ok(())
+    }
+    /// Issue this batch into a recording command of its device; an empty
+    /// batch records nothing.
+    pub(crate) fn issue_into(
+        &self,
+        command: &super::command_buffer::VulkanCommandBuffer,
+    ) -> crate::Result<()> {
+        if self.is_empty() {
+            return Ok(());
+        }
+        // SAFETY: the command is recording on this device and every barrier
+        // resource is retained by it through completion.
+        unsafe { command.pool.device.issue_barriers(command.handle, self) }
+    }
     fn legacy_stages(&self) -> (ash::vk::PipelineStageFlags, ash::vk::PipelineStageFlags) {
         use ash::vk::PipelineStageFlags;
         // synchronization2 NONE has an empty execution scope. Legacy barriers
@@ -52,6 +91,135 @@ impl SynchronizationScope {
     }
 }
 
+/// Which half of a queue-family ownership transfer a barrier records.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum OwnershipHalf {
+    /// Recorded on the source family: makes `transfer.source` available.
+    Release,
+    /// Recorded on the destination family: makes the data visible to
+    /// `transfer.destination`.
+    Acquire,
+}
+
+/// The resource a [`RangeBarrier`] applies to.
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum BarrierTarget {
+    Buffer(ash::vk::Buffer),
+    Image(ash::vk::Image),
+}
+
+/// One memory barrier over a tracked native range: the single place where
+/// symbolic range transitions become Vulkan barrier structures. Execution
+/// scopes (stages) belong to the [`SynchronizationScope`] batch.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct RangeBarrier {
+    pub range: crate::resource::OwnershipRange,
+    pub source_access: ash::vk::AccessFlags,
+    pub destination_access: ash::vk::AccessFlags,
+    pub old_layout: ash::vk::ImageLayout,
+    pub new_layout: ash::vk::ImageLayout,
+    pub source_family: u32,
+    pub destination_family: u32,
+}
+impl RangeBarrier {
+    /// A barrier without a queue-family transfer.
+    pub(crate) fn local(
+        range: crate::resource::OwnershipRange,
+        source_access: ash::vk::AccessFlags,
+        destination_access: ash::vk::AccessFlags,
+        old_layout: ash::vk::ImageLayout,
+        new_layout: ash::vk::ImageLayout,
+    ) -> Self {
+        Self {
+            range,
+            source_access,
+            destination_access,
+            old_layout,
+            new_layout,
+            source_family: ash::vk::QUEUE_FAMILY_IGNORED,
+            destination_family: ash::vk::QUEUE_FAMILY_IGNORED,
+        }
+    }
+    /// One half of an ownership transfer. Both halves carry identical
+    /// families, layouts and range.
+    pub(crate) fn ownership(
+        transfer: &crate::resource::range_state::RangeTransfer,
+        half: OwnershipHalf,
+    ) -> Self {
+        let (source_access, destination_access) = match half {
+            OwnershipHalf::Release => (transfer.source.access, ash::vk::AccessFlags::empty()),
+            OwnershipHalf::Acquire => (ash::vk::AccessFlags::empty(), transfer.destination.access),
+        };
+        Self {
+            range: transfer.range,
+            source_access,
+            destination_access,
+            old_layout: transfer.old_layout,
+            new_layout: transfer.new_layout,
+            source_family: transfer.source_family,
+            destination_family: transfer.destination_family,
+        }
+    }
+    pub(crate) fn buffer(
+        &self,
+        buffer: ash::vk::Buffer,
+    ) -> crate::Result<ash::vk::BufferMemoryBarrier<'static>> {
+        let crate::resource::OwnershipRange::Buffer { offset, size } = self.range else {
+            return Err(crate::Error::invalid_usage(
+                "buffer barrier of an image range",
+            ));
+        };
+        Ok(ash::vk::BufferMemoryBarrier::default()
+            .src_access_mask(self.source_access)
+            .dst_access_mask(self.destination_access)
+            .src_queue_family_index(self.source_family)
+            .dst_queue_family_index(self.destination_family)
+            .buffer(buffer)
+            .offset(offset)
+            .size(size))
+    }
+    pub(crate) fn image(
+        &self,
+        image: ash::vk::Image,
+    ) -> crate::Result<ash::vk::ImageMemoryBarrier<'static>> {
+        let range = subresource_range(self.range)
+            .ok_or_else(|| crate::Error::invalid_usage("image barrier of a buffer range"))?;
+        Ok(ash::vk::ImageMemoryBarrier::default()
+            .src_access_mask(self.source_access)
+            .dst_access_mask(self.destination_access)
+            .old_layout(self.old_layout)
+            .new_layout(self.new_layout)
+            .src_queue_family_index(self.source_family)
+            .dst_queue_family_index(self.destination_family)
+            .image(image)
+            .subresource_range(range))
+    }
+}
+
+/// The Vulkan subresource range of an image ownership range.
+pub(crate) fn subresource_range(
+    range: crate::resource::OwnershipRange,
+) -> Option<ash::vk::ImageSubresourceRange> {
+    let crate::resource::OwnershipRange::Image {
+        aspects,
+        base_mip,
+        mip_count,
+        base_layer,
+        layer_count,
+    } = range
+    else {
+        return None;
+    };
+    Some(
+        ash::vk::ImageSubresourceRange::default()
+            .aspect_mask(ash::vk::ImageAspectFlags::from_raw(aspects))
+            .base_mip_level(base_mip)
+            .level_count(mip_count)
+            .base_array_layer(base_layer)
+            .layer_count(layer_count),
+    )
+}
+
 /// Cache the actual enabled API once, without loading extension entry points
 /// for every pass. No Device owner is retained by this Copy dispatcher.
 #[derive(Clone, Copy)]
@@ -64,21 +232,9 @@ impl BarrierDispatch {
         let cmd_pipeline_barrier2 = device
             .caps()
             .is_enabled(crate::device::Feature::Synchronization2)
-            .then(|| {
-                if device
-                    .enabled_extensions
-                    .iter()
-                    .any(|name| name == "VK_KHR_synchronization2")
-                {
-                    ash::khr::synchronization2::Device::new(
-                        &device.instance.instance,
-                        &device.device,
-                    )
-                    .fp()
-                    .cmd_pipeline_barrier2_khr
-                } else {
-                    device.device.fp_v1_3().cmd_pipeline_barrier2
-                }
+            .then(|| match &device.core.synchronization2 {
+                Some(extension) => extension.fp().cmd_pipeline_barrier2_khr,
+                None => device.core.device.fp_v1_3().cmd_pipeline_barrier2,
             });
         Self {
             generation: device.generation(),
@@ -104,7 +260,7 @@ impl BarrierDispatch {
             ));
         }
         if let Some(cmd_pipeline_barrier2) = self.cmd_pipeline_barrier2 {
-            let barriers = Barrier2Scope::new(scope, &device.allocator_stats)?;
+            let barriers = Barrier2Scope::new(scope, &device.memory.stats)?;
             let dependency = vk::DependencyInfo::default()
                 .memory_barriers(&barriers.memory)
                 .buffer_memory_barriers(&barriers.buffers)
@@ -115,7 +271,7 @@ impl BarrierDispatch {
         } else {
             let (source, destination) = scope.legacy_stages();
             unsafe {
-                device.device.cmd_pipeline_barrier(
+                device.core.device.cmd_pipeline_barrier(
                     command,
                     source,
                     destination,
@@ -232,6 +388,56 @@ mod synchronization2_tests {
     use super::*;
     use ash::vk::{self, Handle};
     use std::sync::Arc;
+
+    #[test]
+    fn range_barriers_map_ranges_and_reject_the_wrong_resource_kind() {
+        let image_range = crate::resource::OwnershipRange::Image {
+            aspects: vk::ImageAspectFlags::COLOR.as_raw(),
+            base_mip: 2,
+            mip_count: 3,
+            base_layer: 4,
+            layer_count: 5,
+        };
+        let barrier = RangeBarrier::local(
+            image_range,
+            vk::AccessFlags::SHADER_WRITE,
+            vk::AccessFlags::SHADER_READ,
+            vk::ImageLayout::GENERAL,
+            vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+        );
+        let image = barrier.image(vk::Image::from_raw(7)).unwrap();
+        assert_eq!(image.src_queue_family_index, vk::QUEUE_FAMILY_IGNORED);
+        assert_eq!(image.dst_queue_family_index, vk::QUEUE_FAMILY_IGNORED);
+        assert_eq!(
+            (image.old_layout, image.new_layout),
+            (
+                vk::ImageLayout::GENERAL,
+                vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL
+            )
+        );
+        let range = image.subresource_range;
+        assert_eq!(
+            (
+                range.base_mip_level,
+                range.level_count,
+                range.base_array_layer,
+                range.layer_count
+            ),
+            (2, 3, 4, 5)
+        );
+        assert!(barrier.buffer(vk::Buffer::from_raw(7)).is_err());
+        let mut scope = SynchronizationScope::default();
+        assert!(
+            scope
+                .push(BarrierTarget::Buffer(vk::Buffer::from_raw(7)), &barrier)
+                .is_err()
+        );
+        assert!(scope.is_empty());
+        scope
+            .push(BarrierTarget::Image(vk::Image::from_raw(7)), &barrier)
+            .unwrap();
+        assert_eq!(scope.images.len(), 1);
+    }
 
     #[test]
     fn conversion_preserves_accesses_layouts_ranges_and_ownership_pairs() {

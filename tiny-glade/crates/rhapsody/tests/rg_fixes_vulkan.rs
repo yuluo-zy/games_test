@@ -73,7 +73,7 @@ fn recording_failures_and_panics_roll_back_and_allow_the_next_frame() {
             assert_eq!(receipt.stats.commands_recorded as usize, 1);
             session.wait_submits_done(TIMEOUT).unwrap();
             let count = session.command_count();
-            assert!(count <= session.backend.device.frames_in_flight() as usize);
+            assert!(count <= session.backend.device().frames_in_flight() as usize);
             if let Some(warm) = warm_commands {
                 assert_eq!(
                     count, warm,
@@ -134,7 +134,7 @@ fn a_rejected_export_only_resource_keeps_the_session_usable_and_returns_resource
 #[test]
 fn wait_frame_retires_resources_and_runs_callbacks() {
     let Some(mut session) = session() else { return };
-    let device = session.backend.device.clone();
+    let device = session.backend.device().clone();
     let desc = BufferDesc::new_cpu_to_gpu(64, vk::BufferUsageFlags::STORAGE_BUFFER);
     let token = session
         .backend
@@ -177,11 +177,11 @@ fn wait_frame_retires_resources_and_runs_callbacks() {
         receipt.snapshot.pool_hits.contains(&a),
         "创建的资源必须回到资源池"
     );
-    let bound = commands * session.backend.device.frames_in_flight() as usize;
+    let bound = commands * session.backend.device().frames_in_flight() as usize;
     assert!(session.command_count() <= bound);
     session.wait_submits_done(TIMEOUT).unwrap();
     let warm_commands = session.command_count();
-    for _ in 0..session.backend.device.frames_in_flight() * 3 {
+    for _ in 0..session.backend.device().frames_in_flight() * 3 {
         let (graph, _) = scratch_frame(&mut session, false);
         session.execute_frame(graph.build()).unwrap();
         session.wait_submits_done(TIMEOUT).unwrap();
@@ -217,7 +217,7 @@ fn clear_value(frame: usize) -> [u8; 4] {
 #[test]
 fn a_temporal_pair_ping_pongs_through_the_session_frame_path() {
     let Some(mut session) = session() else { return };
-    let device = session.backend.device.clone();
+    let device = session.backend.device().clone();
     let mut desc = TextureDesc::new_2d(SIZE, SIZE, vk::Format::R8G8B8A8_UNORM);
     desc.usage |= vk::ImageUsageFlags::TRANSFER_SRC | vk::ImageUsageFlags::TRANSFER_DST;
     let readback_desc = BufferDesc::new_gpu_to_cpu(
@@ -240,11 +240,11 @@ fn a_temporal_pair_ping_pongs_through_the_session_frame_path() {
             session
                 .named_texture_resource(&graph, pair.current())
                 .unwrap()
-                .handle,
+                .raw_handle(),
             session
                 .named_texture_resource(&graph, pair.previous())
                 .unwrap()
-                .handle,
+                .raw_handle(),
         );
         if let Some((first, second)) = previous_tokens {
             assert_eq!(tokens, (second, first), "pair 每帧交换");
@@ -275,7 +275,7 @@ fn a_temporal_pair_ping_pongs_through_the_session_frame_path() {
                 };
 
                 unsafe {
-                    raw.device.cmd_clear_color_image(
+                    raw.raw_device().cmd_clear_color_image(
                         vk::CommandBuffer::from_raw(ctx.command.handle()),
                         image.raw(),
                         vk::ImageLayout::TRANSFER_DST_OPTIMAL,
@@ -321,7 +321,7 @@ fn a_temporal_pair_ping_pongs_through_the_session_frame_path() {
                 };
 
                 unsafe {
-                    raw.device.cmd_copy_image_to_buffer(
+                    raw.raw_device().cmd_copy_image_to_buffer(
                         vk::CommandBuffer::from_raw(ctx.command.handle()),
                         image.raw(),
                         vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
@@ -446,7 +446,7 @@ fn partial_submission_failure_recycles_all_commands_and_runs_retire_once() {
             "the next frame cannot retire an old frame again"
         );
         let count = session.command_count();
-        assert!(count <= 2 * session.backend.device.frames_in_flight() as usize);
+        assert!(count <= 2 * session.backend.device().frames_in_flight() as usize);
         if let Some(warm) = warm_commands {
             assert_eq!(
                 count, warm,
@@ -462,11 +462,11 @@ fn partial_submission_failure_recycles_all_commands_and_runs_retire_once() {
 #[test]
 fn two_sessions_share_the_device_submission_timeline() {
     let Some(mut first) = session() else { return };
-    let device = first.backend.device.clone();
+    let device = first.backend.device().clone();
     let backend = VulkanGraphBackend::new(device.clone(), AccessTable::original()).unwrap();
     let mut second = VulkanGraphSession::new(backend);
     let mut previous = device
-        .timelines
+        .timelines()
         .submitted(rhapsody::sync::QueueId::new(0).unwrap())
         .unwrap();
     for index in 0..4 {
@@ -487,12 +487,12 @@ fn two_sessions_share_the_device_submission_timeline() {
 #[test]
 fn device_lost_is_visible_to_every_session() {
     let Some(mut first) = session() else { return };
-    let device = first.backend.device.clone();
+    let device = first.backend.device().clone();
     let mut second = VulkanGraphSession::new(
         VulkanGraphBackend::new(device.clone(), AccessTable::original()).unwrap(),
     );
     // 没有在飞命令时注入终止状态；无需让驱动真的丢失设备。
-    device.timelines.mark_device_lost();
+    device.timelines().mark_device_lost();
     for session in [&mut first, &mut second] {
         assert!(session.is_poisoned());
         assert_eq!(
@@ -506,14 +506,14 @@ fn device_lost_is_visible_to_every_session() {
 fn raw_submission_cannot_signal_the_owned_device_timeline() {
     use rhapsody::raw::command_buffer::VulkanCommandPool;
     let Some(session) = session() else { return };
-    let device = session.backend.device.clone();
+    let device = session.backend.device().clone();
     let queue = rhapsody::raw::device::DeviceQueue {
-        handle: device.queue,
-        family: device.queue_family,
+        handle: device.primary_queue(),
+        family: device.queue_family_index(),
         index: 0,
     };
     let id = device.queue_id(queue.handle).unwrap();
-    let previous = device.timelines.submitted(id).unwrap();
+    let previous = device.timelines().submitted(id).unwrap();
     let pool = VulkanCommandPool::new(device.clone()).unwrap();
     let mut command = pool.allocate().unwrap();
     command.begin().unwrap();
@@ -527,7 +527,7 @@ fn raw_submission_cannot_signal_the_owned_device_timeline() {
         result.is_err(),
         "设备拥有的时间线不能经外部信号数组再次 signal"
     );
-    assert_eq!(device.timelines.submitted(id).unwrap(), previous);
+    assert_eq!(device.timelines().submitted(id).unwrap(), previous);
 }
 
 #[test]
@@ -589,7 +589,7 @@ fn named_slots_validate_scope_initialization_resize_and_reset() {
             session.reset_temporal("slot").is_err(),
             "reset must reject an active request"
         );
-        let device = session.backend.device.clone();
+        let device = session.backend.device().clone();
         let mut pass = graph.add_pass("initialize named slot");
         pass.add_resource_access(named.buffer.raw(), TRANSFER_WRITE, 0)
             .unwrap();
@@ -604,7 +604,7 @@ fn named_slots_validate_scope_initialization_resize_and_reset() {
                     rhapsody::Error::invalid_usage_with("named buffer resolution", error)
                 })?;
             unsafe {
-                device.device.cmd_fill_buffer(
+                device.raw_device().cmd_fill_buffer(
                     vk::CommandBuffer::from_raw(ctx.command.handle()),
                     buffer.raw(),
                     0,
@@ -632,4 +632,75 @@ fn named_slots_validate_scope_initialization_resize_and_reset() {
     let _ = session.begin_frame().unwrap();
     assert_eq!(session.named_resource_count(), 1);
     assert_eq!(session.resource_count(), 1);
+}
+
+#[test]
+fn zeroed_named_buffer_may_be_read_before_its_first_write() {
+    let Some(mut session) = session() else { return };
+    let device = session.backend.device().clone();
+    let readback = Arc::new(
+        Buffer::new(
+            device.clone(),
+            &BufferDesc::new_gpu_to_cpu(64, vk::BufferUsageFlags::TRANSFER_DST),
+        )
+        .unwrap(),
+    );
+    let mut graph = session.begin_frame().unwrap();
+    let desc = BufferDesc::new_gpu_only(
+        64,
+        vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::TRANSFER_SRC,
+    );
+    let named = session
+        .named_buffer_zeroed(&mut graph, "zeroed", desc)
+        .unwrap();
+    assert!(!named.history_valid, "zero fill is not frame history");
+    let token = session
+        .backend
+        .bind_import(GpuResource::Buffer(readback.clone()))
+        .unwrap();
+    let out = graph
+        .import_unowned(
+            "out",
+            ResourceSpec::Buffer(readback.desc).descriptor(),
+            token,
+            HOST_READ,
+        )
+        .unwrap();
+    let mut pass = graph.add_pass("read zeroed").with_side_effect();
+    pass.add_resource_access(named.buffer.raw(), TRANSFER_READ, 0)
+        .unwrap();
+    pass.add_resource_access(out, TRANSFER_WRITE, 0).unwrap();
+    let (source, target) = (named.buffer.raw().raw(), out.raw());
+    pass.render_with_result_context(move |ctx: PassContext<'_>| {
+        let managed = ctx
+            .managed
+            .ok_or_else(|| rhapsody::Error::invalid_usage("managed resources absent"))?;
+        let source = managed.buffer_for(source).map_err(|error| {
+            rhapsody::Error::invalid_usage_with("named buffer resolution", error)
+        })?;
+        let target = managed
+            .buffer_for(target)
+            .map_err(|error| rhapsody::Error::invalid_usage_with("readback resolution", error))?;
+        unsafe {
+            device.raw_device().cmd_copy_buffer(
+                vk::CommandBuffer::from_raw(ctx.command.handle()),
+                source.raw(),
+                target.raw(),
+                &[vk::BufferCopy {
+                    src_offset: 0,
+                    dst_offset: 0,
+                    size: 64,
+                }],
+            );
+        }
+        Ok(())
+    });
+    graph.export(out, HOST_READ).unwrap();
+    let receipt = session.execute_frame(graph.build()).unwrap();
+    session.wait_frame(receipt.frame, TIMEOUT).unwrap();
+    let mut bytes = [0xffu8; 64];
+    unsafe {
+        readback.read_bytes_after_completion(0, &mut bytes).unwrap();
+    }
+    assert_eq!(bytes, [0; 64]);
 }

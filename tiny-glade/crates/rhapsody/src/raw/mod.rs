@@ -7,7 +7,6 @@ pub mod bytes;
 pub mod command_buffer;
 pub mod crash;
 pub mod debug;
-pub mod descriptor_binding;
 pub mod descriptor_set;
 pub mod device;
 pub mod device_api;

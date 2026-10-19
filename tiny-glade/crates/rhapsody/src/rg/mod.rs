@@ -1,47 +1,95 @@
-pub mod access_ledger;
-pub mod attachments;
-pub mod binding;
-pub mod cache;
-pub mod compiled;
-pub mod executor;
-pub mod frame;
-pub mod frame_imports;
-pub mod frame_storage;
-pub mod frame_throttle;
-pub mod graph;
-pub mod import_export;
-pub mod parallel;
-pub mod plan;
-pub mod profiling;
-pub mod queue_schedule;
-pub mod sync_plan;
-pub mod plan_check;
-pub mod pass_api;
-pub mod pass_bindings;
-pub mod pass_builder;
-pub mod pass_entries;
-pub mod recorder;
-pub mod receipt_storage;
-pub mod owner_storage;
-pub mod resource;
-pub mod resource_contracts;
-pub mod resource_info;
-pub mod resource_pool;
-pub mod resource_registry;
-pub mod result_cache;
-pub mod resource_usage;
-pub mod subgraph;
-pub mod temporal;
-pub mod transient_memory;
-pub mod transient_memory_check;
+internal_mod!(
+    access_ledger,
+    attachments,
+    binding,
+    cache,
+    compiled,
+    executor,
+    frame,
+    frame_imports,
+    frame_storage,
+    frame_throttle,
+    graph,
+    import_export,
+    owner_storage,
+    parallel,
+    pass_api,
+    pass_bindings,
+    pass_builder,
+    plan,
+    plan_check,
+    profiling,
+    queue_schedule,
+    receipt_storage,
+    recorder,
+    resource,
+    resource_contracts,
+    resource_info,
+    resource_pool,
+    resource_registry,
+    result_cache,
+    subgraph,
+    sync_plan,
+    temporal,
+    transient_memory,
+    transient_memory_check,
+    util,
+    vulkan,
+    frame_loop,
+    transaction,
+    indirect_count,
+);
+
+// Curated render-graph surface; the submodules are implementation detail.
+pub use crate::raw::transient_backing::TransientBackingCounters;
+pub use attachments::{
+    Attachment, AttachmentCache, PreparedAttachments, RenderingPolicy,
+    contract::{
+        AttachmentArray, AttachmentKey, DepthAccess, RenderPassAttachmentDesc, RenderPassDesc,
+        RenderPassKey,
+    },
+};
+pub use cache::CacheReason;
+pub use executor::{
+    Error as ExecutionError, ExecutionBackend, ExecutionChain, ExecutionStats, GraphExecution,
+    PassContext,
+};
+pub use frame_loop::{FrameLoop, FrameOutcome, FrameStatus};
+pub use graph::{
+    BufferDesc, BuildError, BuiltGraph, Descriptor, GraphDeclaration, OriginSource,
+    PassDeclaration, Pool, RenderGraph, ResourceBackend, ResourceDeclaration, Snapshot,
+};
+pub use indirect_count::{IndexedCountAdapter, IndexedCountRequest};
+pub use pass_api::{AshCommandBackend, CommandBackend, RenderPassApi};
+pub use pass_bindings::ManagedPassResources;
+pub use pass_builder::PassBuilder;
+pub use plan::{GraphDefinition, PlanContext, compile_definition};
+pub use plan_check::check_plan;
+pub use profiling::{GpuCommandTiming, GpuTimingConfig, GpuTimingStats};
+pub use resource::{AccessRange, GraphId, ResourceContractError, ResourceHandle, ResourceOrigin};
+pub use resource_contracts::validate_contracts;
+pub use result_cache::{
+    ContentDependency, DependencyId, ResultDependencies, ResultNodeId, ResultRequest,
+};
+pub use temporal::{NamedBuffer, NamedTexture, TemporalTexturePair};
+pub use vulkan::{
+    AccessTable, CompletedNamedResources, GpuResource, PreparedSessionFrame, PresentTarget,
+    ResourceSpec, SessionFrameReceipt, SwapchainContents, VulkanGraphBackend, VulkanGraphSession,
+};
+
 mod transient_resources;
-pub mod util;
 
-pub mod resource_rules;
+static PLAN_VALIDATION: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
-pub mod vulkan;
+/// Enable the independent plan verifiers (`plan_check`,
+/// `transient_memory_check`) on every plan-cache miss in builds where they are
+/// not already on. Debug builds and the `validation` feature always run them.
+pub fn set_plan_validation(enabled: bool) {
+    PLAN_VALIDATION.store(enabled, std::sync::atomic::Ordering::Relaxed);
+}
 
-pub mod transaction;
-pub mod frame_loop;
-
-pub mod indirect_count;
+/// Whether plan compilation re-verifies its output with the independent checkers.
+pub fn validation_enabled() -> bool {
+    cfg!(any(debug_assertions, feature = "validation"))
+        || PLAN_VALIDATION.load(std::sync::atomic::Ordering::Relaxed)
+}

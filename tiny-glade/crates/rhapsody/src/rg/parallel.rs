@@ -1,12 +1,7 @@
 //! 并行录制：pass 分块策略与任务执行器。
 //!
-//! 原作 `CompiledRenderGraph::record_batch`（RVA 0x2c1d40）按**上一帧**各 pass 的 CPU 录制耗时
-//! 把一个 batch 的 pass 切成变长连续块，经 `bevy_tasks::ComputeTaskPool` 的
-//! `par_chunk_map_mut` 并行录制，每块一条命令缓冲。证据见
-//! `evidence/render-recovery/parallel-recording/FINDINGS.md`。
-//!
-//! [`ChunkStrategy::Original`] 逐条复刻原作的预算与贪心切分；[`ChunkStrategy::Balanced`]
-//! 是候选改进（块数上限、未知耗时按均值估计、最小化最大块），默认不启用。
+//! 一个 batch 的 pass 按**上一帧**各 pass 的 CPU 录制耗时切成连续块，每块一条命令缓冲，
+//! 经 `bevy_tasks::ComputeTaskPool` 并行录制。没有上一帧统计或整帧很轻时走串行。
 use super::executor::PassPgoStats;
 use std::ops::Range;
 
@@ -15,50 +10,18 @@ pub type PassCost = Option<u64>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ChunkStrategy {
-    /// 不分块，整个 batch 一条命令缓冲（原作并行开关关闭时的串行路径 0x1402c3240）。
+    /// 不分块，整个 batch 一条命令缓冲。
     Serial,
-    /// 原作算法：`budget = clamp(max, total/16, total/2)`，贪心累加到预算即切块。
-    Original,
-    /// 候选改进：至多 `max_chunks` 块，每块计入 `chunk_overhead_ns` 固定成本，
+    /// 至多 `max_chunks` 块，每块计入 `chunk_overhead_ns` 固定成本，
     /// 未知耗时按已知均值估计，二分预算求最小化最大块的连续切分。
-    #[cfg(feature = "candidate-optimizations")]
     Balanced {
         max_chunks: usize,
         chunk_overhead_ns: u64,
     },
 }
 
-/// 原作预算：`total/16 > total/2` 只在溢出边界成立，原作此时 panic，这里同样以 `clamp` 断言。
-pub fn original_budget(total_ns: u64, max_ns: u64) -> u64 {
-    max_ns.clamp(total_ns / 16, total_ns / 2)
-}
-
-/// 原作贪心切分（0x1402c22a0..0x1402c22e6）：缺失耗时记 0；累计 `>= budget` 时把当前 pass
-/// 收进本块并关闭。`split_allowed[i]` 为 false 时禁止在 pass `i` 之后切开（候选约束，原作未见）。
-pub fn original_chunks(
-    costs: &[PassCost],
-    budget: u64,
-    split_allowed: &[bool],
-) -> Vec<Range<usize>> {
-    let mut chunks = Vec::new();
-    let (mut start, mut accumulated) = (0, 0u64);
-    for (index, cost) in costs.iter().enumerate() {
-        accumulated = accumulated.saturating_add(cost.unwrap_or(0));
-        let allowed = split_allowed.get(index).copied().unwrap_or(true);
-        if accumulated >= budget && allowed {
-            chunks.push(start..index + 1);
-            start = index + 1;
-            accumulated = 0;
-        }
-    }
-    if start < costs.len() {
-        chunks.push(start..costs.len());
-    }
-    chunks
-}
-
-/// 候选改进的连续切分：在块数不超过 `max_chunks` 的前提下最小化最重块。
-#[cfg(feature = "candidate-optimizations")]
+/// 连续切分：在块数不超过 `max_chunks` 的前提下最小化最重块。
+/// `split_allowed[i]` 为 false 时禁止在 pass `i` 之后切开。
 pub fn balanced_chunks(
     costs: &[PassCost],
     max_chunks: usize,
@@ -119,12 +82,6 @@ pub fn plan_chunks<N: AsRef<str>>(
     let costs: Vec<PassCost> = names.iter().map(|name| previous.get(name)).collect();
     match strategy {
         ChunkStrategy::Serial => std::iter::once(0..names.len()).collect(),
-        ChunkStrategy::Original => original_chunks(
-            &costs,
-            original_budget(previous.total_ns(), previous.max_ns()),
-            split_allowed,
-        ),
-        #[cfg(feature = "candidate-optimizations")]
         ChunkStrategy::Balanced {
             max_chunks,
             chunk_overhead_ns,
@@ -132,7 +89,7 @@ pub fn plan_chunks<N: AsRef<str>>(
     }
 }
 
-/// 块的执行方式。`ComputePool` 与原作一致，使用 `bevy_tasks` 的全局计算池（与 Bevy ECS 共用，
+/// 块的执行方式。`ComputePool` 使用 `bevy_tasks` 的全局计算池（与 Bevy ECS 共用，
 /// 不另起线程池抢核）；`Inline` 在当前线程按块顺序执行，用于确定性测试与对照。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TaskRunner {
@@ -159,7 +116,7 @@ impl TaskRunner {
             Self::ComputePool => {
                 use bevy_tasks::{ComputeTaskPool, ParallelSliceMut, TaskPool};
                 let pool = ComputeTaskPool::get_or_init(TaskPool::default);
-                // 原作同样以“块的切片”为元素、每个元素一个任务；bevy 的 scope 按 spawn 顺序返回结果。
+                // 每个块一个任务；bevy 的 scope 按 spawn 顺序返回结果。
                 items.par_chunk_map_mut(pool, 1, |index, chunk| f(index, &mut chunk[0]))
             }
         }
@@ -171,34 +128,48 @@ impl TaskRunner {
 pub struct ParallelRecording {
     pub strategy: ChunkStrategy,
     pub runner: TaskRunner,
-    /// 候选门槛（原作没有）：上一帧所有 pass 的录制总耗时低于该值时整帧走串行。
-    /// 0 表示不设门槛（原作行为）。轻帧的固定开销（命令池、任务调度）会超过并行收益。
+    /// 上一帧所有 pass 的录制总耗时低于该值（或没有上一帧统计）时整帧走串行；
+    /// 0 表示不设门槛。轻帧的固定开销（命令缓冲、任务调度）会超过并行收益。
     pub min_total_ns: u64,
 }
 impl ParallelRecording {
-    /// 串行：与旧行为、原作开关关闭时一致。
+    /// 串行：每个 batch 一条命令缓冲。
     pub const SERIAL: Self = Self {
         strategy: ChunkStrategy::Serial,
         runner: TaskRunner::Inline,
         min_total_ns: 0,
     };
-    /// 原作行为：原分块算法 + 全局计算池，无门槛。
-    pub const ORIGINAL: Self = Self {
-        strategy: ChunkStrategy::Original,
-        runner: TaskRunner::ComputePool,
-        min_total_ns: 0,
-    };
-    /// 原分块算法 + 轻帧退回串行。门槛取自实测：每 pass 约 2µs 时并行与串行持平，
-    /// 64 个 pass 即约 128µs；取 200µs 留出余量。第一帧没有统计，也走串行。
-    #[cfg(feature = "candidate-optimizations")]
+    /// 默认：按上一帧耗时均衡切分，轻帧与第一帧退回串行。门槛取自实测：每 pass 约 2µs 时
+    /// 并行与串行持平，64 个 pass 即约 128µs；取 200µs 留出余量。
     pub const ADAPTIVE: Self = Self {
-        strategy: ChunkStrategy::Original,
+        strategy: ChunkStrategy::Balanced {
+            max_chunks: 8,
+            chunk_overhead_ns: 20_000,
+        },
         runner: TaskRunner::ComputePool,
         min_total_ns: 200_000,
     };
+    /// 无门槛、块数不限：即使没有统计也每个 pass 一块（压力测试与基准用）。
+    pub const EVERY_PASS: Self = Self {
+        strategy: ChunkStrategy::Balanced {
+            max_chunks: usize::MAX,
+            chunk_overhead_ns: 0,
+        },
+        runner: TaskRunner::ComputePool,
+        min_total_ns: 0,
+    };
 }
+impl From<crate::device::RecordingPolicy> for ParallelRecording {
+    fn from(policy: crate::device::RecordingPolicy) -> Self {
+        match policy {
+            crate::device::RecordingPolicy::Serial => Self::SERIAL,
+            crate::device::RecordingPolicy::Adaptive => Self::ADAPTIVE,
+        }
+    }
+}
+/// Same default as the device: [`crate::device::RecordingPolicy::default`].
 impl Default for ParallelRecording {
     fn default() -> Self {
-        Self::SERIAL
+        crate::device::RecordingPolicy::default().into()
     }
 }

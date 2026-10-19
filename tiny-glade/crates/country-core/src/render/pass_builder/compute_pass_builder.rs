@@ -214,7 +214,7 @@ pub struct RecordedComputePass {
     pub preserving_texture_bindings: Vec<u8>,
     pub external_bindings: Vec<ExternalBinding>,
     /// Immutable physical ranges read through shader device addresses.
-    pub device_address_reads: Vec<rhapsody::raw::dynamic_constants::DynamicConstantsChunk>,
+    pub device_address_reads: Vec<rhapsody::resource::DynamicConstantsChunk>,
     pub uniform_binder: Option<UniformBinder>,
     pub push_constants: Vec<u8>,
     pub program: Option<Handle<ComputeShaderProgram>>,
@@ -387,7 +387,7 @@ impl RecordedComputePass {
     /// existing command owner protocol retains them through GPU completion.
     pub fn with_device_address_reads(
         mut self,
-        chunks: Vec<rhapsody::raw::dynamic_constants::DynamicConstantsChunk>,
+        chunks: Vec<rhapsody::resource::DynamicConstantsChunk>,
     ) -> Self {
         self.device_address_reads.extend(chunks);
         self
@@ -395,8 +395,10 @@ impl RecordedComputePass {
 
     /// 见 [`ComputeExecution::execute`]。
     pub fn execute(self, exec: &mut dyn ComputeExec) {
-        assert!(self.device_address_reads.is_empty(),
-            "BDA upload ranges require the production graph command owner path");
+        assert!(
+            self.device_address_reads.is_empty(),
+            "BDA upload ranges require the production graph command owner path"
+        );
         ComputeExecution {
             push_constants: self.push_constants,
             dispatch: self.dispatch,
@@ -720,13 +722,22 @@ impl ComputePass {
     /// `inactive_texture_bindings` field name is retained for API compatibility.
     /// The descriptor, native access, synchronization and owner remain present.
     pub fn inactive_storage_buffer_contents(mut self, hash: u64) -> Self {
-        let Some(binding) = self.resolve(hash) else { return self; };
-        let range = self.access_ranges.iter().rev()
+        let Some(binding) = self.resolve(hash) else {
+            return self;
+        };
+        let range = self
+            .access_ranges
+            .iter()
+            .rev()
             .find(|range| range.resource_index == binding)
             .expect("inactive storage contents requires an existing graph binding");
-        assert!(matches!(self.bindings.get(range.access_index as usize),
-            Some(PassBinding::BufferRead { .. })),
-            "inactive storage contents requires a non-writing buffer binding");
+        assert!(
+            matches!(
+                self.bindings.get(range.access_index as usize),
+                Some(PassBinding::BufferRead { .. })
+            ),
+            "inactive storage contents requires a non-writing buffer binding"
+        );
         if !self.inactive_texture_bindings.contains(&range.access_index) {
             self.inactive_texture_bindings.push(range.access_index);
         }
@@ -737,15 +748,30 @@ impl ComputePass {
     /// but its initial contents may be undefined. Does not mark it initialized,
     /// remove native binding/sync, or suppress an available producer.
     pub fn allow_undefined_texture_contents(mut self, hash: u64) -> Self {
-        let Some(binding) = self.resolve(hash) else { return self; };
-        let range = self.access_ranges.iter().rev().find(|range| range.resource_index == binding)
+        let Some(binding) = self.resolve(hash) else {
+            return self;
+        };
+        let range = self
+            .access_ranges
+            .iter()
+            .rev()
+            .find(|range| range.resource_index == binding)
             .expect("undefined texture contents requires an existing graph binding");
-        assert!(matches!(self.bindings.get(range.access_index as usize),
-            Some(PassBinding::ImageView { write: false, .. })),
-            "undefined texture contents requires a non-writing image binding");
-        assert!(!self.inactive_texture_bindings.contains(&range.access_index),
-            "undefined content read is distinct from an inactive binding");
-        if !self.undefined_texture_bindings.contains(&range.access_index) {
+        assert!(
+            matches!(
+                self.bindings.get(range.access_index as usize),
+                Some(PassBinding::ImageView { write: false, .. })
+            ),
+            "undefined texture contents requires a non-writing image binding"
+        );
+        assert!(
+            !self.inactive_texture_bindings.contains(&range.access_index),
+            "undefined content read is distinct from an inactive binding"
+        );
+        if !self
+            .undefined_texture_bindings
+            .contains(&range.access_index)
+        {
             self.undefined_texture_bindings.push(range.access_index);
         }
         self
@@ -755,17 +781,30 @@ impl ComputePass {
     /// partial write whose previously produced regions must survive. Call only
     /// after the actual storage write binding has been declared.
     pub fn preserve_storage_buffer_contents(mut self, hash: u64) -> Self {
-        let Some(binding) = self.resolve(hash) else { return self; };
-        let range = self.access_ranges.iter().rev()
+        let Some(binding) = self.resolve(hash) else {
+            return self;
+        };
+        let range = self
+            .access_ranges
+            .iter()
+            .rev()
             .find(|range| range.resource_index == binding)
             .expect("preserving buffer contents requires a declared binding");
         let resource = match self.bindings.get(range.access_index as usize) {
             Some(PassBinding::Buffer { resource }) => *resource,
             _ => panic!("preserving contents requires a graph buffer binding"),
         };
-        assert!(self.builder.accesses.iter().any(|access| access.resource == resource
-            && matches!(access.access, ACCESS_CPU_MAPPED_WRITE | ACCESS_WRITE_CONCURRENT)),
-            "preserving contents requires a declared buffer write");
+        assert!(
+            self.builder
+                .accesses
+                .iter()
+                .any(|access| access.resource == resource
+                    && matches!(
+                        access.access,
+                        ACCESS_CPU_MAPPED_WRITE | ACCESS_WRITE_CONCURRENT
+                    )),
+            "preserving contents requires a declared buffer write"
+        );
         if !self.preserving_buffers.contains(&resource) {
             self.preserving_buffers.push(resource);
         }
@@ -775,14 +814,26 @@ impl ComputePass {
     /// Preserve the actual previous texture contents for a confirmed partial
     /// image write. Uses the exact bound view, never every alias of its owner.
     pub fn preserve_storage_texture_contents(mut self, hash: u64) -> Self {
-        let Some(binding) = self.resolve(hash) else { return self; };
-        let range = self.access_ranges.iter().rev()
+        let Some(binding) = self.resolve(hash) else {
+            return self;
+        };
+        let range = self
+            .access_ranges
+            .iter()
+            .rev()
             .find(|range| range.resource_index == binding)
             .expect("preserving texture contents requires a declared binding");
-        assert!(matches!(self.bindings.get(range.access_index as usize),
-            Some(PassBinding::ImageView { write: true, .. })),
-            "preserving texture contents requires a writing image binding");
-        if !self.preserving_texture_bindings.contains(&range.access_index) {
+        assert!(
+            matches!(
+                self.bindings.get(range.access_index as usize),
+                Some(PassBinding::ImageView { write: true, .. })
+            ),
+            "preserving texture contents requires a writing image binding"
+        );
+        if !self
+            .preserving_texture_bindings
+            .contains(&range.access_index)
+        {
             self.preserving_texture_bindings.push(range.access_index);
         }
         self
@@ -1507,17 +1558,24 @@ mod tests {
             .preserve_storage_buffer_contents(0xDEAD)
             .dispatch_1d(1);
         assert_eq!(recorded.preserving_buffers, [100]);
-        assert_eq!(recorded.builder.accesses.iter()
-            .filter(|a| a.resource == 100 || a.resource == 101)
-            .map(|a| (a.resource, a.access)).collect::<Vec<_>>(),
-            [(100, 0x37), (101, 0x37)]);
+        assert_eq!(
+            recorded
+                .builder
+                .accesses
+                .iter()
+                .filter(|a| a.resource == 100 || a.resource == 101)
+                .map(|a| (a.resource, a.access))
+                .collect::<Vec<_>>(),
+            [(100, 0x37), (101, 0x37)]
+        );
     }
 
     #[test]
     #[should_panic(expected = "declared buffer write")]
     fn content_intent_does_not_turn_a_read_into_a_write() {
         let env = env();
-        new_pass(&env).read_rg_storage_buffer(H_BUF_A, &rgb(100))
+        new_pass(&env)
+            .read_rg_storage_buffer(H_BUF_A, &rgb(100))
             .preserve_storage_buffer_contents(H_BUF_A);
     }
 

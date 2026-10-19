@@ -7,13 +7,8 @@ use super::{
 };
 use ash::vk::Handle;
 use rhapsody::{
-    device::QueueClass,
-    raw::{buffer::Buffer, texture::Texture},
-    resource::{QueueFamilies, ResourceSharing},
-    rg::{
-        frame_loop::FrameLoop,
-        graph::{BuiltGraph, OriginSource},
-    },
+    device::QueueClass, resource::Buffer, resource::QueueFamilies, resource::ResourceSharing,
+    resource::Texture, rg::BuiltGraph, rg::FrameLoop, rg::OriginSource,
 };
 use serde::Serialize;
 use std::{collections::BTreeSet, path::Path, sync::Arc};
@@ -69,9 +64,9 @@ impl MultiQueueScene {
         sharing: SharingChoice,
     ) -> rhapsody::Result<Self> {
         let inner = RasterScene::new(frame_loop, SceneKind::Raster, rendering, cache_path)?;
-        let device = &frame_loop.graph.backend.device;
-        let queues = QueueClass::ALL.map(|class| device.queue_plan.queue(class).index() as u32);
-        let families = queues.map(|index| device.queue_plan.queues[index as usize].family);
+        let device = &frame_loop.graph.backend.device();
+        let queues = QueueClass::ALL.map(|class| device.queue_plan().queue(class).index() as u32);
+        let families = queues.map(|index| device.queue_plan().queues[index as usize].family);
         Ok(Self {
             inner,
             inner_report: SceneReport::default(),
@@ -80,7 +75,7 @@ impl MultiQueueScene {
                 sharing,
                 class_queue_indices: queues.to_vec(),
                 class_queue_families: families.to_vec(),
-                configured_physical_queues: device.queue_plan.queues.len(),
+                configured_physical_queues: device.queue_plan().queues.len(),
                 same_queue_fallback: queues.iter().all(|queue| *queue == queues[0]),
                 ..Default::default()
             },
@@ -177,8 +172,8 @@ impl MultiQueueScene {
         self.report.submitted_values = frame_loop
             .graph
             .backend
-            .device
-            .timelines
+            .device()
+            .timelines()
             .submitted_set()
             .points()
             .map(|point| point.value)

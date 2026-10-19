@@ -17,30 +17,22 @@ fn render_stats_snapshot_is_three_atomic_xchg_and_clears() {
 }
 
 #[test]
-fn device_does_not_own_completed_command_allocations() {
+fn device_creates_distinct_named_command_buffers() {
     let Ok(device) = create_headless_device() else {
         return;
     };
     let gd = device;
     let family = gd.queue_family_index();
-    assert_eq!(gd.free_command_buffers(family), 0);
     let mut first = gd.create_command_buffer(family, "a").unwrap();
     let mut second = gd.create_command_buffer(family, "b").unwrap();
-    let (h1, h2) = (first.handle, second.handle);
-    assert_ne!(h1, h2);
+    assert_ne!(first.raw_handle(), second.raw_handle());
     for cb in [&mut first, &mut second] {
         cb.begin().unwrap();
         cb.end().unwrap();
     }
-    // 提交并等待完成后才可回池。
     gd.wait_idle().unwrap();
-    unsafe {
-        gd.recycle_command_buffer(first).unwrap();
-        gd.recycle_command_buffer(second).unwrap();
-    }
-    assert_eq!(gd.free_command_buffers(family), 0);
+    drop((first, second));
     let again = gd.create_command_buffer(family, "c").unwrap();
-    assert_eq!(gd.free_command_buffers(family), 0);
     assert!(!again.is_recording() && !again.is_executable());
 }
 
@@ -58,9 +50,12 @@ fn device_micro_functions_and_creation_tail_state() {
     if gd.min_subgroup_size_option().is_none() {
         assert_eq!(gd.min_subgroup_size(), 1);
     }
-    // refresh_memory_budget：门关/未挂接物理设备包装 → Ok(None)。
-    if !gd.memory_budget_enabled() || gd.physical_device_info().is_none() {
-        assert!(gd.refresh_memory_budget().unwrap().is_none());
+    // Without VK_EXT_memory_budget there is nothing to refresh; with it the
+    // driver heap budgets become allocator heap limits.
+    let budget = gd.refresh_memory_budget().unwrap();
+    assert_eq!(budget.is_some(), gd.memory_budget_enabled());
+    if budget.is_some() {
+        assert!(gd.allocator_stats().heap_usage(0).unwrap().1.is_some());
     }
     assert_eq!(gd.device_uuid(), gd.device_uuid());
 }

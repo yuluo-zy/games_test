@@ -30,7 +30,7 @@ use std::sync::Arc;
 
 use parking_lot::RwLock;
 
-/// 外部库占位：`shader_pipeline` / `shader_variants` / `rhapsody::raw::device`。
+/// 外部库占位：`shader_pipeline` / `shader_variants` / `rhapsody::device`。
 pub mod boundary {
     use std::sync::Arc;
 

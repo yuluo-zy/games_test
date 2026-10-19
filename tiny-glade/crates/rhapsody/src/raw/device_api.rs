@@ -83,7 +83,7 @@ impl Device {
                 )?;
             }
         }
-        self.resources.buffers.allocate(buffer)
+        self.caches.resources.buffers.allocate(buffer)
     }
 
     pub fn create_mapped_buffer(
@@ -100,6 +100,16 @@ impl Device {
             ));
         }
         let managed = self.create_buffer(desc, name, ())?;
+        // The raw pointer has no flush/invalidate path, so it is only handed
+        // out for host-coherent memory.
+        if !managed
+            .memory_properties()
+            .contains(vk::MemoryPropertyFlags::HOST_COHERENT)
+        {
+            return Err(Error::unsupported(
+                "mapped buffer pointers require HOST_COHERENT memory",
+            ));
+        }
         let mapped = managed
             .persistent_host_ptr()
             .ok_or_else(|| Error::invalid_usage("缓冲内存未映射"))?;
@@ -147,7 +157,7 @@ impl Device {
         if let Some(bytes) = bytes {
             super::setup::init_texture_data(&self.shared(), &texture, bytes)?;
         }
-        self.resources.textures.allocate(texture)
+        self.caches.resources.textures.allocate(texture)
     }
 
     /// `create_texture` 的完整 `TextureInitialData` 形态（`init_texture_data` 跳表 1/2/3 号目标，
@@ -165,11 +175,11 @@ impl Device {
         let texture = super::texture::Texture::new_with_initial_data(self.shared(), &desc, true)?;
         self.set_debug_name(texture.handle, name);
         super::setup::init_texture_data_with(&self.shared(), &texture, data)?;
-        self.resources.textures.allocate(texture)
+        self.caches.resources.textures.allocate(texture)
     }
 
     /// `create_texture` + `TextureInitialData` 跳表 1 号目标：整张图清零（见
-    /// [`super::setup::init_texture_zero_fill`]）。与带数据的 `create_texture` 一样加 `TRANSFER_DST`、
+    /// `super::setup::init_texture_zero_fill`）。与带数据的 `create_texture` 一样加 `TRANSFER_DST`、
     /// 创建布局为 UNDEFINED，随后转换到传输目标执行清零。
     pub fn create_texture_zeroed(&self, desc: &TextureDesc, name: &str) -> Result<ManagedTexture> {
         desc.validate()?;
@@ -178,10 +188,10 @@ impl Device {
         let texture = super::texture::Texture::new_with_initial_data(self.shared(), &desc, true)?;
         self.set_debug_name(texture.handle, name);
         super::setup::init_texture_zero_fill(&self.shared(), &texture)?;
-        self.resources.textures.allocate(texture)
+        self.caches.resources.textures.allocate(texture)
     }
 
-    /// 原方法身份 `Device::bind_pipeline`（free fn 见 `raw::binding`）。
+    /// Method form of `super::binding` pipeline binding.
     ///
     /// # Safety
     /// `command_buffer` 必须处于录制状态且属于本设备。
@@ -192,58 +202,6 @@ impl Device {
         pipeline: vk::Pipeline,
     ) {
         unsafe { super::binding::bind_pipeline(&self.shared(), command_buffer, point, pipeline) }
-    }
-
-    /// 原方法身份 `Device::bind_descriptor_set`。
-    ///
-    /// # Safety
-    /// 描述符集须与布局兼容，调用者保证其宿主与资源存活至提交完成。
-    pub unsafe fn bind_descriptor_set(
-        &self,
-        command_buffer: vk::CommandBuffer,
-        point: vk::PipelineBindPoint,
-        layout: vk::PipelineLayout,
-        first_set: u32,
-        set: vk::DescriptorSet,
-        dynamic_offsets: &[u32],
-    ) {
-        unsafe {
-            super::binding::bind_descriptor_set(
-                &self.shared(),
-                command_buffer,
-                point,
-                layout,
-                first_set,
-                set,
-                dynamic_offsets,
-            )
-        }
-    }
-
-    /// 原方法身份 `Device::bind_persistent_descriptor_set`。
-    ///
-    /// # Safety
-    /// 同 [`Self::bind_descriptor_set`]。
-    pub unsafe fn bind_persistent_descriptor_set(
-        &self,
-        command_buffer: vk::CommandBuffer,
-        point: vk::PipelineBindPoint,
-        layout: vk::PipelineLayout,
-        first_set: u32,
-        sets: &[vk::DescriptorSet],
-        dynamic_offsets: &[u32],
-    ) {
-        unsafe {
-            super::binding::bind_persistent_descriptor_set(
-                &self.shared(),
-                command_buffer,
-                point,
-                layout,
-                first_set,
-                sets,
-                dynamic_offsets,
-            )
-        }
     }
 
     pub fn get_vk_buffer(&self, buffer: &ManagedBuffer) -> Result<vk::Buffer> {
@@ -300,6 +258,7 @@ impl Device {
     /// 实例未启用 debug_utils 时静默跳过（命名只影响诊断）。
     fn set_debug_name<T: ash::vk::Handle>(&self, handle: T, name: &str) {
         if self
+            .core
             .instance
             .enabled_extensions
             .iter()
@@ -337,14 +296,26 @@ impl Device {
                 size,
             })
             .collect();
-        super::setup::with_setup_resources(
-            &self.shared(),
-            &[target, &staging],
-            |command| unsafe {
-                self.device
+        // Declared accesses give precise barriers and tracked state; the copy
+        // completes asynchronously and later users order after it.
+        let mut accesses = Vec::with_capacity(copies.len() + 1);
+        let source_end = copies
+            .iter()
+            .map(|copy| copy.src_offset + copy.size)
+            .max()
+            .unwrap_or(0);
+        accesses.push(super::setup::SetupAccess::transfer_read(
+            &staging, 0, source_end,
+        ));
+        accesses.extend(copies.iter().map(|copy| {
+            super::setup::SetupAccess::transfer_write(target, copy.dst_offset, copy.size)
+        }));
+        let _submission =
+            super::setup::with_setup_resources(&self.shared(), &accesses, |command| unsafe {
+                self.core
+                    .device
                     .cmd_copy_buffer(command, staging.handle, target.handle, &copies);
-            },
-        )?;
+            })?;
         Ok(())
     }
 }

@@ -98,7 +98,7 @@ fn distinct_keys_created_in_parallel_all_succeed_and_are_cached() {
 #[test]
 fn retained_driver_data_keeps_its_real_cpu_budget_after_cache_destruction() {
     let Some(device) = device() else { return };
-    let stats = device.allocator_stats.clone();
+    let stats = device.allocator_stats().clone();
     let cache = PipelineCache::new(device.clone(), &[]).unwrap();
     let before = stats.cpu_memory_usage().total();
     let data = cache.data().unwrap();
@@ -136,21 +136,24 @@ fn disk_cache_admission_failure_preserves_the_previous_file_and_error_category()
     assert_eq!(disk.status, DiskCacheStatus::Missing);
     disk.save().unwrap();
     let original = std::fs::read(&path).unwrap();
-    let baseline = device.allocator_stats.cpu_memory_usage().total();
+    let baseline = device.allocator_stats().cpu_memory_usage().total();
     // Leave one byte available when the otherwise empty device has no charged
     // memory. The disk envelope and driver output both need more than one byte.
     device
-        .allocator_stats
-        .set_total_budget(device.allocator_stats.budget_usage().total().max(1))
+        .allocator_stats()
+        .set_total_budget(device.allocator_stats().budget_usage().total().max(1))
         .unwrap();
     assert!(matches!(disk.save(), Err(rhapsody::Error::OutOfHostMemory)));
     assert!(matches!(
         PersistentPipelineCache::open(device.clone(), &path, 8),
         Err(rhapsody::Error::OutOfHostMemory)
     ));
-    assert_eq!(device.allocator_stats.cpu_memory_usage().total(), baseline);
+    assert_eq!(
+        device.allocator_stats().cpu_memory_usage().total(),
+        baseline
+    );
     assert_eq!(std::fs::read(&path).unwrap(), original);
-    device.allocator_stats.set_total_budget(u64::MAX).unwrap();
+    device.allocator_stats().set_total_budget(u64::MAX).unwrap();
     let loaded = PersistentPipelineCache::open(device, &path, 8).unwrap();
     assert_eq!(loaded.status, DiskCacheStatus::Loaded);
     std::fs::remove_file(path).unwrap();

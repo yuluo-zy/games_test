@@ -74,7 +74,10 @@ pub struct QueueLockStats {
     pub maximum_wait_ns: u64,
 }
 impl QueueTimeline {
-    fn lock(&self) -> parking_lot::MutexGuard<'_, u64> {
+    fn lock(&self, statistics: bool) -> parking_lot::MutexGuard<'_, u64> {
+        if !statistics {
+            return self.submit.lock();
+        }
         let started = Instant::now();
         let guard = self.submit.lock();
         let elapsed = started.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
@@ -97,6 +100,8 @@ pub struct Timelines<A> {
     api: A,
     queues: Vec<QueueTimeline>,
     device_lost: AtomicBool,
+    /// Lock wait statistics cost two clock reads per queue lock; opt-in only.
+    lock_statistics: AtomicBool,
 }
 
 impl<A: TimelineApi> Timelines<A> {
@@ -123,6 +128,7 @@ impl<A: TimelineApi> Timelines<A> {
                 })
                 .collect(),
             device_lost: AtomicBool::new(false),
+            lock_statistics: AtomicBool::new(false),
         })
     }
 
@@ -132,6 +138,14 @@ impl<A: TimelineApi> Timelines<A> {
     pub fn queue_count(&self) -> usize {
         self.queues.len()
     }
+    /// Enable or disable queue lock wait statistics (disabled by default).
+    pub fn set_lock_statistics(&self, enabled: bool) {
+        self.lock_statistics.store(enabled, Ordering::Relaxed);
+    }
+    fn lock_queue<'a>(&self, timeline: &'a QueueTimeline) -> parking_lot::MutexGuard<'a, u64> {
+        timeline.lock(self.lock_statistics.load(Ordering::Relaxed))
+    }
+    /// Counters stay zero unless [`Self::set_lock_statistics`] enabled them.
     pub fn queue_lock_stats(&self) -> [Option<QueueLockStats>; MAX_QUEUES] {
         std::array::from_fn(|index| {
             self.queues.get(index).map(|queue| QueueLockStats {
@@ -184,7 +198,7 @@ impl<A: TimelineApi> Timelines<A> {
     ) -> Result<(SyncPoint, R)> {
         self.check_alive()?;
         let timeline = self.queue(queue)?;
-        let mut last = timeline.lock();
+        let mut last = self.lock_queue(timeline);
         self.check_alive()?;
         let value = last
             .checked_add(1)
@@ -205,14 +219,18 @@ impl<A: TimelineApi> Timelines<A> {
         operation: impl FnOnce() -> Result<R>,
     ) -> Result<R> {
         self.check_alive()?;
-        let _guard = self.queue(queue)?.lock();
+        let _guard = self.lock_queue(self.queue(queue)?);
         self.check_alive()?;
         self.observe(operation())
     }
 
     /// 整设备 idle 需要同步所有 VkQueue；按稳定的 QueueId 顺序取锁。
     pub fn with_all_queues<R>(&self, operation: impl FnOnce() -> Result<R>) -> Result<R> {
-        let _guards: Vec<_> = self.queues.iter().map(QueueTimeline::lock).collect();
+        let _guards: Vec<_> = self
+            .queues
+            .iter()
+            .map(|queue| self.lock_queue(queue))
+            .collect();
         self.check_alive()?;
         self.observe(operation())
     }
@@ -232,6 +250,24 @@ impl<A: TimelineApi> Timelines<A> {
     /// 该队列最后一次成功提交的值（0 = 尚无提交）。
     pub fn submitted(&self, queue: QueueId) -> Result<u64> {
         Ok(self.queue(queue)?.submitted.load(Ordering::Acquire))
+    }
+
+    /// Last observed completion values without any device query. Values only
+    /// grow, so a stale snapshot is conservative: it may report work as still
+    /// pending, never as completed early. Use [`Self::refresh`] once per frame
+    /// or maintenance tick, and [`Self::poll`] when freshness is required.
+    pub fn completed(&self) -> CompletedValues {
+        let mut completed = CompletedValues::default();
+        for (index, timeline) in self.queues.iter().enumerate() {
+            if let Some(queue) = QueueId::new(index) {
+                completed.raise(queue, timeline.completed.load(Ordering::Acquire));
+            }
+        }
+        completed
+    }
+    /// Query the device once and update the cached snapshot; same as [`Self::poll`].
+    pub fn refresh(&self) -> Result<CompletedValues> {
+        self.poll()
     }
 
     /// 非阻塞查询各队列完成值。只对仍有未完成提交的队列发起设备查询。
@@ -440,6 +476,33 @@ mod tests {
             2,
             "完成值缓存后不再查询"
         );
+    }
+
+    #[test]
+    fn cached_completion_never_queries_and_refresh_updates_it() {
+        let t = timelines(2);
+        t.submit(q(0), |_| Ok(())).unwrap();
+        t.api().complete(sem(1), 1);
+        assert_eq!(
+            t.completed().get(q(0)),
+            0,
+            "cached snapshot is conservative"
+        );
+        assert_eq!(t.api().queries.load(Ordering::Relaxed), 0);
+        assert_eq!(t.refresh().unwrap().get(q(0)), 1);
+        let queries = t.api().queries.load(Ordering::Relaxed);
+        assert_eq!(t.completed().get(q(0)), 1);
+        assert_eq!(t.api().queries.load(Ordering::Relaxed), queries);
+    }
+
+    #[test]
+    fn queue_lock_statistics_are_opt_in() {
+        let t = timelines(1);
+        t.submit(q(0), |_| Ok(())).unwrap();
+        assert_eq!(t.queue_lock_stats()[0].unwrap().acquisitions, 0);
+        t.set_lock_statistics(true);
+        t.submit(q(0), |_| Ok(())).unwrap();
+        assert_eq!(t.queue_lock_stats()[0].unwrap().acquisitions, 1);
     }
 
     #[test]

@@ -92,9 +92,9 @@ fn deliberate_api_misuse_produces_a_validation_error_when_the_layer_exists() {
     let info = vk::BufferCreateInfo::default()
         .size(0)
         .usage(vk::BufferUsageFlags::TRANSFER_DST);
-    let result = unsafe { env.device.device.create_buffer(&info, None) };
+    let result = unsafe { env.device.raw_device().create_buffer(&info, None) };
     if let Ok(buffer) = result {
-        unsafe { env.device.device.destroy_buffer(buffer, None) };
+        unsafe { env.device.raw_device().destroy_buffer(buffer, None) };
     }
     assert!(
         !env.messenger.collector.errors().is_empty(),
@@ -122,7 +122,7 @@ fn the_animation_and_the_big_graph_run_without_validation_errors() {
         check_animation_frame(frame, 15.0, &read_pixels(&target));
     }
     // 渲染图大图（32 个填充 + 8 个拷贝 pass），串行与并行各一次，第二帧并行带历史。
-    for parallel in [ParallelRecording::SERIAL, ParallelRecording::ORIGINAL] {
+    for parallel in [ParallelRecording::SERIAL, ParallelRecording::EVERY_PASS] {
         let mut session = new_session(&env.device, parallel);
         let bufs = BigBuffers::new(&mut session, 32, 8);
         for salt in 1..=2u32 {

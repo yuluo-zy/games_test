@@ -486,11 +486,13 @@ fn mark_cached(resource: &GpuResource, completed: &CompletedValues) {
     match resource {
         GpuResource::Buffer(buffer) => buffer
             .device
-            .allocator_stats
+            .memory
+            .stats
             .mark_cached(buffer.allocation_id(), completed),
         GpuResource::Image(image) => image
             .device
-            .allocator_stats
+            .memory
+            .stats
             .mark_cached(image.allocation_id(), completed),
     }
 }
@@ -527,9 +529,9 @@ fn key(
         ));
     }
     if matches!(descriptor, Descriptor::Image(_)) {
-        crate::raw::resource_usage::image_access_mask_to_usage_flags(
-            crate::raw::access_table::access_info(final_access)
-                .unwrap()
+        crate::raw::resource_usage::image_usage_for_access(
+            crate::raw::access_table::ACCESS_TABLE[usize::from(final_access)]
+                .scope
                 .access,
         )?;
     }

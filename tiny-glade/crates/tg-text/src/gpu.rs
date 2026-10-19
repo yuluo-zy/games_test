@@ -6,37 +6,21 @@ use crate::validation::{RenderLimits, validate_batch};
 use ash::vk;
 use input::{Globals, PackedGlyphUploads};
 use rhapsody::{
-    bindless::{
-        BindlessConfig, BindlessHeap, BindlessLease, BindlessParameters, BindlessResource,
-        BindlessShaderAbi, BindlessShaderPackage,
-    },
-    pipeline::{
-        AsyncPipelineCompiler, CompilerConfig, CompilerStats, PersistentPipelineCache,
-        PipelineTicket,
-    },
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        command_buffer::VulkanCommandPool,
-        device::Device,
-        dynamic_constants::DynamicConstants,
-        resource_access::{buffer_access, image_access},
-        sampler::Sampler,
-        shader::{
-            DynamicRenderingFormats, PipelineCache, RasterPipelineDesc, ShaderModule,
-            get_vk_blend_mode,
-        },
-        texture::{Texture, TextureDesc, TextureViewDesc},
-        texture_upload::{record_texture_regions, record_texture_zero_fill},
-    },
-    resource::{OwnershipRange, range_state::AccessScope},
-    rg::{
-        attachments::{Attachment, AttachmentCache, RenderingPolicy},
-        pass_api::{AshCommandBackend, RenderPassApi},
-    },
-    shader_pipeline::{
-        compiled::{CompiledShaderPipeline, ShaderStage},
-        reflection::{BindingKind, BindingLocation, ShaderReflection},
-    },
+    bindless::BindlessConfig, bindless::BindlessHeap, bindless::BindlessLease,
+    bindless::BindlessParameters, bindless::BindlessResource, bindless::BindlessShaderAbi,
+    bindless::BindlessShaderPackage, command::VulkanCommandPool, command::buffer_access,
+    command::image_access, command::record_texture_regions, command::record_texture_zero_fill,
+    device::Device, pipeline::AsyncPipelineCompiler, pipeline::CompilerConfig,
+    pipeline::CompilerStats, pipeline::DynamicRenderingFormats, pipeline::PersistentPipelineCache,
+    pipeline::PipelineCache, pipeline::PipelineTicket, pipeline::RasterPipelineDesc,
+    pipeline::ShaderModule, pipeline::get_vk_blend_mode, resource::AccessScope, resource::Buffer,
+    resource::BufferDesc, resource::DynamicConstants, resource::OwnershipRange, resource::Sampler,
+    resource::Texture, resource::TextureDesc, resource::TextureViewDesc, rg::AshCommandBackend,
+    rg::Attachment, rg::AttachmentCache, rg::RenderPassApi, rg::RenderingPolicy,
+};
+use shader_pipeline::{
+    compiled::CompiledShaderPipeline, compiled::ShaderStage, reflection::BindingKind,
+    reflection::BindingLocation, reflection::ShaderReflection,
 };
 use std::{ffi::CString, path::PathBuf, sync::Arc, time::Duration};
 /// GPU operations preserve CPU validation and rhapsody errors as their original error objects.
@@ -172,7 +156,7 @@ fn sampled_2d(texture: &Texture) -> bool {
         && TextureViewDesc::new(&texture.desc)
             .is_ok_and(|view| view.view_type == vk::ImageViewType::TYPE_2D)
         && texture.desc.usage.contains(vk::ImageUsageFlags::SAMPLED)
-        && rhapsody::raw::format::vk_format_info(texture.desc.format)
+        && rhapsody::resource::vk_format_info(texture.desc.format)
             .is_some_and(|f| f.aspect == vk::ImageAspectFlags::COLOR)
 }
 impl GpuTextRenderer {
@@ -227,12 +211,12 @@ impl GpuTextRenderer {
         {
             return Err("invalid text GPU budgets, resolver capacity or completion timeout".into());
         }
-        if !Arc::ptr_eq(&device, &heap.layout.device) {
+        if !Arc::ptr_eq(&device, &heap.layout.device()) {
             return Err(
                 rhapsody::Error::invalid_usage("text heap belongs to another device").into(),
             );
         }
-        if !Arc::ptr_eq(&device, &blue_noise.device) || !sampled_2d(&blue_noise) {
+        if !Arc::ptr_eq(&device, &blue_noise.device()) || !sampled_2d(&blue_noise) {
             return Err("blue-noise texture must be sampled and use this device".into());
         }
         let compiled = CompiledShaderPipeline::decode(compiled_bytes)?;
@@ -459,7 +443,7 @@ impl GpuTextRenderer {
 }
 
 fn texture_range(texture: &Texture) -> rhapsody::Result<OwnershipRange> {
-    let aspect = rhapsody::raw::format::vk_format_info(texture.desc.format)
+    let aspect = rhapsody::resource::vk_format_info(texture.desc.format)
         .ok_or_else(|| rhapsody::Error::unsupported("text texture has no native aspect"))?
         .aspect;
     Ok(OwnershipRange::Image {

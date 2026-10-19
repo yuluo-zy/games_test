@@ -7,7 +7,7 @@ use super::{
     graph::Descriptor,
     plan::{COMPILER_VERSION, CompiledPlan, GraphDefinition},
     resource::{AccessRange, AccessVersion},
-    resource_rules::NO_ACCESS,
+    resource_info::{LifetimeEvent, NO_ACCESS},
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -22,13 +22,11 @@ fn invalid(message: impl Into<std::borrow::Cow<'static, str>>) -> crate::Error {
     crate::Error::invalid_usage(message)
 }
 
-fn usage_flags(descriptor: Descriptor, mask: u32) -> crate::Result<u32> {
-    use crate::raw::resource_usage::{
-        buffer_access_mask_to_usage_flags, image_access_mask_to_usage_flags,
-    };
+fn usage_flags(descriptor: Descriptor, access: ash::vk::AccessFlags) -> crate::Result<u32> {
+    use crate::raw::resource_usage::{buffer_usage_for_access, image_usage_for_access};
     match descriptor {
-        Descriptor::Image(_) => image_access_mask_to_usage_flags(mask).map(|flags| flags.as_raw()),
-        Descriptor::Buffer(_) => Ok(buffer_access_mask_to_usage_flags(mask).as_raw()),
+        Descriptor::Image(_) => image_usage_for_access(access).map(|flags| flags.as_raw()),
+        Descriptor::Buffer(_) => Ok(buffer_usage_for_access(access).as_raw()),
     }
 }
 
@@ -124,8 +122,11 @@ impl Domain {
 
     // Independent checker still collects all available writers. Only a caller's
     // explicit undefined-content read may leave cells without a content source.
-    fn sources_with_undefined(&self, range: AccessRange, allow_undefined: bool)
-        -> crate::Result<BTreeSet<usize>> {
+    fn sources_with_undefined(
+        &self,
+        range: AccessRange,
+        allow_undefined: bool,
+    ) -> crate::Result<BTreeSet<usize>> {
         let mut missing = self.cells(range)?;
         let mut sources = BTreeSet::new();
         for &(defined, writer) in &self.content {
@@ -243,19 +244,22 @@ fn inspect_definition(definition: &GraphDefinition) -> crate::Result<Provenance>
             let semantic = semantics
                 .get(&access.access_code)
                 .ok_or_else(|| invalid("graph access has no classification"))?;
-            usage_flags(domain.descriptor, semantic.mask)?;
+            usage_flags(domain.descriptor, semantic.declared_access)?;
             domain.cells(access.range)?;
-            if access.contents_unused && (semantic.write || access.reads_previous) {
+            if access.contents_unused && (semantic.scope.write || access.reads_previous) {
                 return Err(invalid(
                     "inactive contents intent requires a non-writing access",
                 ));
             }
             if access.allow_undefined_contents
-                && (semantic.write || access.reads_previous || access.contents_unused) {
-                return Err(invalid("undefined contents permission requires a real non-writing read"));
+                && (semantic.scope.write || access.reads_previous || access.contents_unused)
+            {
+                return Err(invalid(
+                    "undefined contents permission requires a real non-writing read",
+                ));
             }
             if access.reads_previous {
-                if !semantic.write {
+                if !semantic.scope.write {
                     return Err(invalid(
                         "a read access cannot also declare a read-modify-write dependency",
                     ));
@@ -267,7 +271,7 @@ fn inspect_definition(definition: &GraphDefinition) -> crate::Result<Provenance>
                         .filter(|&source| source != index),
                 );
             }
-            match (semantic.write, access.version) {
+            match (semantic.scope.write, access.version) {
                 (true, AccessVersion::Write { previous, current })
                     if previous == domain.version && previous.checked_add(1) == Some(current) =>
                 {
@@ -278,7 +282,10 @@ fn inspect_definition(definition: &GraphDefinition) -> crate::Result<Provenance>
                     if !access.contents_unused {
                         dependencies[index].extend(
                             domain
-                                .sources_with_undefined(access.range, access.allow_undefined_contents)?
+                                .sources_with_undefined(
+                                    access.range,
+                                    access.allow_undefined_contents,
+                                )?
                                 .into_iter()
                                 .filter(|&source| source != index),
                         );
@@ -303,7 +310,10 @@ fn inspect_definition(definition: &GraphDefinition) -> crate::Result<Provenance>
                 "graph export has an invalid kind or unclassified access",
             ));
         }
-        usage_flags(domain.descriptor, semantics[&export.access_code].mask)?;
+        usage_flags(
+            domain.descriptor,
+            semantics[&export.access_code].declared_access,
+        )?;
         roots.extend(domain.sources(export.range)?);
     }
     super::subgraph::validate_subgraphs(definition)?;
@@ -437,7 +447,7 @@ fn check_projection(definition: &GraphDefinition, plan: &CompiledPlan) -> crate:
     let masks: BTreeMap<_, _> = definition
         .access_semantics
         .iter()
-        .map(|semantic| (semantic.code, semantic.mask))
+        .map(|semantic| (semantic.code, semantic.declared_access))
         .collect();
     let mut cursor = 0usize;
     for (scheduled, &original) in plan.retained_passes.iter().enumerate() {
@@ -520,19 +530,20 @@ fn check_projection(definition: &GraphDefinition, plan: &CompiledPlan) -> crate:
             pass_bounds[resource]
         };
         if let Some((start, end)) = bounds {
-            if lifetime.first_pass.tag != 1
-                || lifetime.last_pass.tag != 1
-                || lifetime.first_pass.pass_index as usize != start
-                || lifetime.last_pass.pass_index as usize != end
-            {
+            if lifetime.first_pass != Some(start as u32) || lifetime.last_pass != Some(end as u32) {
                 return Err(invalid(
                     "plan resource lifetime does not span its scheduled accesses",
                 ));
             }
-            lifetime_events.push(((start as u32) << 17) | resource as u32);
-            lifetime_events.push(((end as u32) << 17) | resource as u32 | 0x1_0000);
-        } else if lifetime.last_pass.tag == 1
-            || lifetime.first_pass.tag != u32::from(definition.resources[resource].is_external())
+            for (pass, release) in [(start, false), (end, true)] {
+                lifetime_events.push(LifetimeEvent {
+                    pass: pass as u32,
+                    release,
+                    resource: resource as u16,
+                });
+            }
+        } else if lifetime.last_pass.is_some()
+            || lifetime.first_pass.is_some() != definition.resources[resource].is_external()
         {
             return Err(invalid(
                 "plan has an active lifetime for an unused resource",

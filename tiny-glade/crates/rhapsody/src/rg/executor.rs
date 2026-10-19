@@ -12,10 +12,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 pub struct ExecutionChain {
     subgraph_cache: super::subgraph::SubgraphPlanCache,
-    plan_cache: super::cache::BoundedCache<
-        super::plan::GraphDefinition,
-        std::sync::Arc<super::plan::CompiledPlan>,
-    >,
+    plan_cache: super::cache::BoundedCache<PlanKey, ()>,
     plan_cache_enabled: bool,
     recording_ids: recording::RecordingCounters,
     pending_commands: Vec<(crate::sync::SyncPoint, recording::Command)>,
@@ -24,10 +21,36 @@ pub struct ExecutionChain {
     command_records: BTreeMap<u64, recording::Command>,
     recorded_commands: u32,
     pool_family_count: u32,
-    /// 并行录制配置；默认串行（与旧行为、原作开关关闭时一致）。
+    /// 并行录制配置；默认自适应（无统计或轻帧时串行）。
     pub parallel: crate::rg::parallel::ParallelRecording,
-    /// 原作双缓冲 PGO：分块读 `previous`，本帧耗时写入 `current`，每次执行结束交换。
+    /// 双缓冲 PGO：分块读 `previous`，本帧耗时写入 `current`，每次执行结束交换。
     pub pgo: PassPgoFrames,
+    /// Per-batch chunk recording storage reused across batches and frames.
+    chunk_scratch: ChunkScratch,
+}
+#[derive(Default)]
+struct ChunkScratch {
+    begun: Vec<recording::Command>,
+    chunk_of_pass: Vec<usize>,
+    planned: Vec<record::PlannedTransition>,
+    ranges: Vec<std::ops::Range<usize>>,
+    transitions: Vec<ChunkTransition>,
+}
+
+/// Plan cache key: the compiled plan itself, compared and hashed by its
+/// normalized definition, so the definition is stored once.
+#[derive(Clone)]
+struct PlanKey(std::sync::Arc<super::plan::CompiledPlan>);
+impl PartialEq for PlanKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.definition == other.0.definition
+    }
+}
+impl Eq for PlanKey {}
+impl std::hash::Hash for PlanKey {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.definition.hash(state);
+    }
 }
 
 /// 一个 batch 的并行录制输入。
@@ -46,12 +69,16 @@ struct ChunkedBatch<'a, C> {
     queue: recording::Queue,
 }
 /// 单块的独占工作单元。
-struct ChunkWork<'a, C> {
+struct ChunkWork<'a, 'l, C> {
     command: &'a recording::Command,
+    /// Exclusive recording right for `command`'s pool on this worker.
+    lease: ChunkLease<'l>,
     start: usize,
     callbacks: &'a mut [C],
     durations: &'a mut [Option<u64>],
-    transitions: &'a [Vec<ChunkTransition>],
+    /// Flat barrier list of the whole batch; `ranges[offset]` selects one pass.
+    transitions: &'a [ChunkTransition],
+    ranges: &'a [std::ops::Range<usize>],
     gpu_timings: &'a [Option<super::profiling::GpuPassTimestamp>],
 }
 struct ChunkResult {
@@ -135,14 +162,71 @@ pub struct ChunkTransition {
     pub transition: super::sync_plan::BoundTransition,
 }
 
-/// 后端在并行段暴露的只读录制视图：多个块同时调用，每次只写入调用方独占的命令缓冲。
+/// Exclusive right to record one chunk's command buffer during a parallel
+/// section, standing for the external synchronization Vulkan requires of the
+/// `VkCommandPool` that allocated it.
+///
+/// A backend creates leases only from disjoint `&mut` borrows of its
+/// per-worker pools ([`ExecutionBackend::chunk_recording`]), so two live
+/// leases can never stand for one pool; the borrow also outlives the parallel
+/// section, so nothing else (allocation, reset, a second recording) touches
+/// that pool meanwhile. A lease is `Send` (handed to one worker) but not
+/// `Sync`: only the worker holding it records through it, and every
+/// [`ChunkRecorder`] recording call requires it mutably.
+///
+/// ```compile_fail
+/// # use rhapsody::rg::executor::ChunkLease;
+/// let mut pool = ();
+/// // A second lease of the same pool cannot coexist with the first.
+/// let first = unsafe { ChunkLease::new(&mut pool, 1) };
+/// let second = unsafe { ChunkLease::new(&mut pool, 2) };
+/// drop((first, second));
+/// ```
+///
+/// ```compile_fail
+/// # use rhapsody::rg::executor::ChunkLease;
+/// fn shared<T: Sync>(_: &T) {}
+/// let mut pool = ();
+/// shared(&unsafe { ChunkLease::new(&mut pool, 1) });
+/// ```
+pub struct ChunkLease<'a> {
+    command: u64,
+    _pool: std::marker::PhantomData<&'a mut ()>,
+    _not_sync: std::marker::PhantomData<std::cell::Cell<()>>,
+}
+impl<'a> ChunkLease<'a> {
+    /// # Safety
+    /// `command` was allocated from the pool `pool` stands for, and no other
+    /// command of that pool records while the lease lives. `pool` must be the
+    /// backend's unique owner of that pool (its `&mut` borrow is what makes
+    /// distinct leases name distinct pools).
+    pub unsafe fn new<P: ?Sized>(pool: &'a mut P, command: u64) -> Self {
+        let _ = pool;
+        Self {
+            command,
+            _pool: std::marker::PhantomData,
+            _not_sync: std::marker::PhantomData,
+        }
+    }
+    /// The leased command buffer handle.
+    pub fn command(&self) -> u64 {
+        self.command
+    }
+}
+/// A backend's parallel recording view with one [`ChunkLease`] per chunk.
+pub type ChunkRecording<'a> = (
+    Box<dyn ChunkRecorder + 'a>,
+    smallvec::SmallVec<[ChunkLease<'a>; 8]>,
+);
+
+/// 后端在并行段暴露的只读录制视图：多个块同时调用，每次只写入调用方租约独占的命令缓冲。
 pub trait ChunkRecorder: Sync {
     /// # Safety
     /// The command must be exclusively recording, and the pair must have been
     /// reserved for this command by this backend in the current CPU recording scope.
     unsafe fn write_pass_timestamp(
         &self,
-        _command: u64,
+        _lease: &mut ChunkLease<'_>,
         _pair: super::profiling::GpuPassTimestamp,
         _end: bool,
     ) {
@@ -159,7 +243,7 @@ pub trait ChunkRecorder: Sync {
     /// Emit one pass's scope. Native/OOM errors retain their public categories.
     fn record_transitions(
         &self,
-        command: u64,
+        lease: &mut ChunkLease<'_>,
         transitions: &[ChunkTransition],
         owners: &mut super::owner_storage::ResourceOwners,
     ) -> crate::Result<()>;
@@ -179,6 +263,9 @@ pub struct ExecutionStats {
     /// 走并行路径的 batch 数及其总块数（串行 batch 不计块）。
     pub parallel_batches: u32,
     pub chunks: u32,
+    /// Pending cross-family ownership acquires recorded into this frame's
+    /// batches (no separate acquire submit).
+    pub coalesced_acquires: u32,
     /// 本次执行发出的屏障命令数（每个非空屏障作用域一次 `vkCmdPipelineBarrier`）。
     pub barrier_commands: u32,
     /// 本次执行包含的访问转换总数（屏障命令里的 buffer/image 屏障条目）。
@@ -318,7 +405,7 @@ pub trait ExecutionBackend: crate::rg::graph::ResourceBackend {
     }
     /// 设备和命令创建由后端提供；真实实现见 rg/vulkan.rs。
     fn command_handle(&mut self) -> Result<u64, recording::Failure>;
-    /// 并行录制时第 `chunk` 块使用的命令；真实后端须保证不同块来自不同命令池。
+    /// 并行录制时第 `chunk` 块使用的命令；真实后端须保证不同块、以及块与主命令来自不同命令池。
     fn chunk_command_handle(&mut self, _chunk: usize) -> Result<u64, recording::Failure> {
         self.command_handle()
     }
@@ -341,12 +428,29 @@ pub trait ExecutionBackend: crate::rg::graph::ResourceBackend {
         queue: vk::Queue,
         prepared: &[submit::PreparedSubmit],
     ) -> crate::Result<crate::sync::SyncPoint>;
-    /// 支持并行录制的后端返回只读视图；返回 None 时执行器始终走串行路径。
-    fn chunk_recorder(&self) -> Option<Box<dyn ChunkRecorder + '_>> {
-        None
+    /// Whether [`Self::chunk_recording`] is implemented; otherwise the
+    /// executor always records serially.
+    fn supports_parallel_recording(&self) -> bool {
+        false
+    }
+    /// The parallel recording view plus one lease per chunk command, in the
+    /// order of `commands` (each from [`Self::chunk_command_handle`] and
+    /// begun). Leases must come from disjoint `&mut` borrows of the pools
+    /// that allocated those commands, none shared with a command that stays
+    /// recording during the parallel section (see `ChunkLease`).
+    fn chunk_recording(&mut self, _commands: &[u64]) -> crate::Result<ChunkRecording<'_>> {
+        Err(crate::Error::unsupported(
+            "backend does not support parallel recording",
+        ))
     }
     /// 失败路径：已分配或已开始、但不会提交的命令交还后端（它从未进入 GPU）。默认不做任何事。
     fn abandon_command(&mut self, _handle: u64) {}
+    /// Record the device's pending ownership acquires for this batch's queue
+    /// family at the start of the batch's first (just begun) command.
+    /// Returns how many were recorded.
+    fn drain_pending_acquires(&mut self, _command: u64) -> crate::Result<u32> {
+        Ok(0)
+    }
     fn wait_submission(&self, _receipt: crate::sync::SyncPoint) -> crate::Result<()> {
         Ok(())
     }
@@ -500,7 +604,7 @@ impl PassContext<'_> {
 }
 
 impl ExecutionChain {
-    /// 候选公开入口只从图声明生成编译和录制状态；原游戏构图闭包及完整原链 oracle 尚未恢复。
+    /// 从图声明编译、绑定、录制并提交一帧。
     pub fn execute_graph(
         &mut self,
         graph: crate::rg::graph::GraphDeclaration,
@@ -529,7 +633,7 @@ impl ExecutionChain {
     }
 
     /// 同 [`Self::execute_graph_with_context`]，但在编译之后、任何命令开始之前先交给 `validate` 校验编译结果；
-    /// 校验失败返回 [`Error::Validation`]，并按失败路径归还本次取出/新建的资源。
+    /// 校验失败返回 `Error::Validation`，并按失败路径归还本次取出/新建的资源。
     pub fn execute_graph_validated(
         &mut self,
         graph: crate::rg::graph::GraphDeclaration,
@@ -541,15 +645,13 @@ impl ExecutionChain {
     ) -> Result<GraphExecution, Error> {
         let result =
             self.execute_graph_inner(graph, pool, dependency, backend, callbacks, validate);
-        // 原 end_frame：本帧耗时成为下一帧的分块依据。
+        // 本帧耗时成为下一帧的分块依据。
         self.pgo.end_frame();
         result
     }
 
-    /// Original compile/execute separation: compilation allocates and validates
-    /// the physical frame, but never records a callback or submits a command.
-    /// B RenderGraphState::compile instances 0x140161cd0 / 0x1401647b0 /
-    /// 0x140166510 precede execute_compiled 0x1400fa190 in the game consumer.
+    /// Compile/execute separation: compilation allocates and validates the
+    /// physical frame, but never records a callback or submits a command.
     pub fn compile_graph(
         &mut self,
         mut graph: crate::rg::graph::GraphDeclaration,
@@ -575,12 +677,20 @@ impl ExecutionChain {
         let compile_start = std::time::Instant::now();
         let context = backend.plan_context();
         let cached = if self.plan_cache_enabled {
+            let mut found = None;
             self.plan_cache
-                .try_get_matching(|definition| {
-                    definition.matches_declaration(&graph, dependency, context)
+                .try_get_matching(|key| {
+                    let matched = key
+                        .0
+                        .definition
+                        .matches_declaration(&graph, dependency, context)?;
+                    if matched {
+                        found = Some(key.0.clone());
+                    }
+                    Ok(matched)
                 })
-                .map_err(Error::Compile)?
-                .cloned()
+                .map_err(Error::Compile)?;
+            found
         } else {
             self.plan_cache
                 .record_bypass(super::cache::CacheReason::Disabled);
@@ -597,19 +707,19 @@ impl ExecutionChain {
                 let reason = self
                     .plan_cache
                     .iter()
-                    .map(|(old, _)| old.differing_key_reason(&definition))
+                    .map(|(old, _)| old.0.definition.differing_key_reason(&definition))
                     .min_by_key(|reason| *reason as usize)
                     .unwrap_or(super::cache::CacheReason::Cold);
                 self.plan_cache.classify_miss(reason);
             }
             let plan = std::sync::Arc::new(
-                super::plan::compile_with_subgraphs(definition.clone(), &mut self.subgraph_cache)
+                super::plan::compile_with_subgraphs(definition, &mut self.subgraph_cache)
                     .map_err(Error::Compile)?,
             );
             if self.plan_cache_enabled {
-                // Count both the normalized key and the immutable plan's storage.
-                let bytes = plan.estimated_bytes().saturating_mul(2);
-                self.plan_cache.insert(definition, plan.clone(), bytes);
+                // The key is the plan itself; its definition is stored once.
+                let bytes = plan.estimated_bytes();
+                self.plan_cache.insert(PlanKey(plan.clone()), (), bytes);
             }
             plan
         };
@@ -628,7 +738,13 @@ impl ExecutionChain {
                 .map_err(Error::Compile)?;
         stats.compile_ns = compile_start.elapsed().as_nanos() as u64;
         let original_pass_count = callback_count;
-        Ok(PreparedGraph { compiled, stats, cpu_arena, queue: (queue, family), original_pass_count })
+        Ok(PreparedGraph {
+            compiled,
+            stats,
+            cpu_arena,
+            queue: (queue, family),
+            original_pass_count,
+        })
     }
 
     fn execute_graph_inner(
@@ -653,7 +769,8 @@ impl ExecutionChain {
         callbacks: &mut [impl FnMut(PassContext<'_>) -> bool + Send],
         validate: impl FnOnce(&crate::rg::graph::FrameInstance) -> crate::Result<()>,
     ) -> Result<GraphExecution, Error> {
-        let result = self.execute_prepared_inner(prepared, pool, dependency, backend, callbacks, validate);
+        let result =
+            self.execute_prepared_inner(prepared, pool, dependency, backend, callbacks, validate);
         self.pgo.end_frame();
         result
     }
@@ -667,11 +784,22 @@ impl ExecutionChain {
         callbacks: &mut [impl FnMut(PassContext<'_>) -> bool + Send],
         validate: impl FnOnce(&crate::rg::graph::FrameInstance) -> crate::Result<()>,
     ) -> Result<GraphExecution, Error> {
-        let PreparedGraph { mut compiled, mut stats, cpu_arena, queue: (queue, family), original_pass_count } = prepared;
+        let PreparedGraph {
+            mut compiled,
+            mut stats,
+            cpu_arena,
+            queue: (queue, family),
+            original_pass_count,
+        } = prepared;
         self.recorded_commands = 0;
         if callbacks.len() != original_pass_count {
-            crate::rg::graph::reclaim_failed_resources(&mut compiled.tables.registry,
-                &compiled.declarations.resources, &compiled.tables.snapshot.pool_hits, pool, backend);
+            crate::rg::graph::reclaim_failed_resources(
+                &mut compiled.tables.registry,
+                &compiled.declarations.resources,
+                &compiled.tables.snapshot.pool_hits,
+                pool,
+                backend,
+            );
             return Err(Error::CallbackCount);
         }
         let mut selected_callbacks = {
@@ -680,14 +808,21 @@ impl ExecutionChain {
                 .enumerate()
                 .filter(|(i, _)| compiled.plan.retained_passes.binary_search(i).is_ok())
                 .map(|(_, callback)| callback);
-            let selected = scratch_borrows(cpu_arena.as_ref(), compiled.plan.retained_passes.len(), |_| {
-                selected.next().expect("validated retained callback index")
-            });
+            let selected = scratch_borrows(
+                cpu_arena.as_ref(),
+                compiled.plan.retained_passes.len(),
+                |_| selected.next().expect("validated retained callback index"),
+            );
             match selected {
                 Ok(selected) => selected,
                 Err(error) => {
-                    crate::rg::graph::reclaim_failed_resources(&mut compiled.tables.registry,
-                        &compiled.declarations.resources, &compiled.tables.snapshot.pool_hits, pool, backend);
+                    crate::rg::graph::reclaim_failed_resources(
+                        &mut compiled.tables.registry,
+                        &compiled.declarations.resources,
+                        &compiled.tables.snapshot.pool_hits,
+                        pool,
+                        backend,
+                    );
                     return Err(Error::Validation(error));
                 }
             }
@@ -798,6 +933,13 @@ impl ExecutionChain {
             return Err(Error::ResourceUnavailable(usize::MAX));
         }
         let managed = backend.managed_pass_resources();
+        let mut exported = scratch_slice(cpu_arena, compiled.info.lifetimes.len(), |_| false)
+            .map_err(Error::Validation)?;
+        for export in &compiled.declarations.exports {
+            if let Some(slot) = exported.get_mut(export.resource_index as usize) {
+                *slot = true;
+            }
+        }
         for (id, lifetime) in compiled.info.lifetimes.iter().enumerate() {
             let mapping = &compiled.registry.resources[id];
             // 首次命令 begin 前校验资源映射；有访问或导出的资源必须存在。
@@ -805,12 +947,7 @@ impl ExecutionChain {
                 .registry
                 .backing_resources
                 .get(mapping.backing_index as usize);
-            if (lifetime.first_access_index != crate::rg::graph::NO_ACCESS
-                || compiled
-                    .declarations
-                    .exports
-                    .iter()
-                    .any(|e| e.resource_index as usize == id))
+            if (lifetime.first_access_index != crate::rg::graph::NO_ACCESS || exported[id])
                 && payload.is_none_or(|r| crate::rg::graph::payload_projection(r).1.is_none())
             {
                 return Err(Error::ResourceUnavailable(id));
@@ -851,6 +988,9 @@ impl ExecutionChain {
             let handle = backend.command_handle().map_err(Error::Lifecycle)?;
             let first = self.begin(handle, family, queue, backend.begin_command(handle))?;
             recorder.commands.push(first.clone());
+            stats.coalesced_acquires += backend
+                .drain_pending_acquires(handle)
+                .map_err(Error::Validation)?;
             recorder.batch = batch_index;
             recorder.first_pass = batch.pass_range.start;
             let mut synchronization =
@@ -859,8 +999,29 @@ impl ExecutionChain {
                 return Err(Error::InvalidSynchronization);
             }
             for &source in &compiled.plan.queue_schedule.dependencies[batch_index] {
+                // The bound program proves the exact destination stages of each
+                // cross-queue dependency; same-queue order needs no semaphore.
+                let stages = recorder
+                    .synchronization
+                    .bound()
+                    .waits()
+                    .iter()
+                    .find(|wait| {
+                        wait.batch == batch_index
+                            && wait.dependency == crate::rg::sync_plan::DependencyRef::Batch(source)
+                    })
+                    .map(|wait| wait.stages);
+                if stages.is_none()
+                    && compiled.plan.queue_schedule.domains[source].queue_index
+                        == domain.queue_index
+                {
+                    continue;
+                }
                 let point = batch_points[source].ok_or(Error::InvalidSynchronization)?;
-                let wait = backend.timeline_wait(point).map_err(Error::Validation)?;
+                let mut wait = backend.timeline_wait(point).map_err(Error::Validation)?;
+                if let Some(stages) = stages {
+                    wait.stage = stages;
+                }
                 if let Some(old) = synchronization
                     .waits
                     .iter_mut()
@@ -872,6 +1033,8 @@ impl ExecutionChain {
                     synchronization.waits.push(wait);
                 }
             }
+            // The graph-completion signal joins every other queue's work, so these
+            // waits have no single consumer stage and stay at ALL_COMMANDS.
             if backend.requires_graph_completion(batch_index, compiled.snapshot.batches.len()) {
                 for (source, point) in batch_points[..batch_index].iter().enumerate() {
                     if compiled.plan.queue_schedule.domains[source].queue_index
@@ -902,12 +1065,12 @@ impl ExecutionChain {
             ) && self.pgo.previous.total_ns() >= self.parallel.min_total_ns
                 && (self.parallel.min_total_ns == 0 || !self.pgo.previous.is_empty());
             let chunks: smallvec::SmallVec<[_; 8]> =
-                if worth_it && backend.chunk_recorder().is_some() {
+                if worth_it && backend.supports_parallel_recording() {
                     crate::rg::parallel::plan_chunks(
                         self.parallel.strategy,
                         &pass_names[batch.pass_range.clone()],
                         &self.pgo.previous,
-                        // 候选约束位：当前每个图 pass 自成完整 render pass 实例，任意边界都可切。
+                        // 每个图 pass 自成完整 render pass 实例，任意边界都可切。
                         &[],
                     )
                     .into()
@@ -936,18 +1099,14 @@ impl ExecutionChain {
                 )?;
                 stats.count_barriers(&outcome.1);
             } else {
-                let new = if matches!(
-                    self.parallel.strategy,
-                    crate::rg::parallel::ChunkStrategy::Serial
-                ) {
+                // A single chunk records into the batch's first command, which
+                // already holds the initial barriers.
+                let new = {
                     let handle = recorder.commands.last().ok_or(Error::EmptyCommands)?.handle;
                     self.command_records
                         .get(&handle)
                         .ok_or(Error::MissingCommand(handle))?
                         .clone()
-                } else {
-                    let handle = backend.command_handle().map_err(Error::Lifecycle)?;
-                    self.begin(handle, family, queue, backend.begin_command(handle))?
                 };
                 let handle = new.handle();
                 let start = batch.pass_range.start;
@@ -1198,6 +1357,7 @@ impl ExecutionChain {
             recorded_commands: 0,
             pool_family_count: family_count,
             parallel: Default::default(),
+            chunk_scratch: Default::default(),
             pgo: Default::default(),
         }
     }
@@ -1279,7 +1439,7 @@ impl ExecutionChain {
     }
 
     /// 并行录制一个 batch：串行开命令并规划屏障 → 任务池按块并行录制 → 串行收尾。
-    /// 与原 `record_batch` 同形：串行段构造屏障，每块一条命令缓冲，块内逐 pass 发屏障、调回调、计时。
+    /// 串行段构造屏障，每块一条命令缓冲，块内逐 pass 发屏障、调回调、计时。
     fn record_chunked_batch<C>(
         &mut self,
         batch: ChunkedBatch<'_, C>,
@@ -1316,66 +1476,83 @@ impl ExecutionChain {
             .unwrap()
         };
         // 串行：每块一条命令缓冲（每块一个独立命令池，Vulkan 要求命令池外部同步）。
-        let mut begun = Vec::with_capacity(chunks.len());
+        let mut scratch = std::mem::take(&mut self.chunk_scratch);
+        scratch.begun.clear();
         for index in 0..chunks.len() {
             let handle = backend
                 .chunk_command_handle(index)
                 .map_err(Error::Lifecycle)?;
             let command = self.begin(handle, family, queue, backend.begin_command(handle))?;
-            begun.push(command);
+            scratch.begun.push(command);
         }
-        let record_commands = begun.to_vec();
-        let mut chunk_of_pass = vec![0usize; passes.len()];
+        scratch.chunk_of_pass.clear();
+        scratch.chunk_of_pass.resize(passes.len(), 0);
         for (index, range) in chunks.iter().enumerate() {
             for pass in range.clone() {
-                chunk_of_pass[pass] = index;
+                scratch.chunk_of_pass[pass] = index;
             }
         }
         // 串行：初始屏障、资源跟踪、pass 前屏障规划。
-        let (plan, mut outcome) =
-            recorder.plan_chunked_batch(passes, &record_commands, &chunk_of_pass, |action| {
-                match action {
-                    record::RecordAction::Transition {
-                        command,
-                        transition,
-                    } => backend.transition(
-                        command,
-                        token_of(transition.resource as usize),
-                        &transition,
-                    ),
-                    _ => true,
+        let mut outcome = recorder.plan_chunked_batch(
+            passes,
+            &scratch.begun,
+            &scratch.chunk_of_pass,
+            &mut scratch.planned,
+            &mut scratch.ranges,
+            |action| match action {
+                record::RecordAction::Transition {
+                    command,
+                    transition,
+                } => {
+                    backend.transition(command, token_of(transition.resource as usize), &transition)
                 }
-            });
+                _ => true,
+            },
+        );
         if outcome.panic {
+            self.chunk_scratch = scratch;
             self.finish_record(recorder, outcome)?;
             return Err(Error::ChunkPlan);
         }
-        let transitions = plan
-            .iter()
-            .map(|list| {
-                list.iter()
-                    .map(|t| ChunkTransition {
-                        token: token_of(t.resource as usize),
-                        transition: *t,
-                    })
-                    .collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>();
+        scratch.transitions.clear();
+        scratch
+            .transitions
+            .extend(scratch.planned.iter().map(|t| ChunkTransition {
+                token: token_of(t.resource as usize),
+                transition: *t,
+            }));
+        let begun = &scratch.begun;
         // 并行：块间互不重叠，各自独占命令缓冲、回调切片与 owner 列表。
-        let mut work = Vec::with_capacity(chunks.len());
         let mut durations =
             scratch_slice(cpu, callbacks.len(), |_| None).map_err(Error::Validation)?;
         let mut gpu_timings =
             scratch_slice(cpu, callbacks.len(), |_| None).map_err(Error::Validation)?;
-        for (range, command) in chunks.iter().zip(&begun) {
+        for (range, command) in chunks.iter().zip(begun) {
             for index in range.clone() {
                 gpu_timings[index] =
                     backend.reserve_pass_timestamp(command.handle(), first_pass + index);
             }
         }
+        let handles = begun
+            .iter()
+            .map(|command| command.handle())
+            .collect::<smallvec::SmallVec<[u64; 8]>>();
+        let (view, leases) = match backend.chunk_recording(&handles) {
+            Ok(recording) if recording.1.len() == handles.len() => recording,
+            Ok(_) => {
+                self.chunk_scratch = scratch;
+                return Err(Error::ChunkPlan);
+            }
+            Err(error) => {
+                self.chunk_scratch = scratch;
+                return Err(Error::Validation(error));
+            }
+        };
+        let mut work = smallvec::SmallVec::<[ChunkWork<'_, '_, C>; 8]>::with_capacity(chunks.len());
         let mut remaining_durations = &mut *durations;
         let mut rest = callbacks;
-        for (range, command) in chunks.iter().zip(&begun) {
+        for ((range, command), lease) in chunks.iter().zip(begun).zip(leases) {
+            debug_assert_eq!(lease.command(), command.handle());
             let (head, tail) = std::mem::take(&mut rest).split_at_mut(range.len());
             rest = tail;
             let (duration_slice, duration_tail) =
@@ -1383,15 +1560,16 @@ impl ExecutionChain {
             remaining_durations = duration_tail;
             work.push(ChunkWork {
                 command,
+                lease,
                 start: range.start,
                 callbacks: head,
                 durations: duration_slice,
-                transitions: &transitions[range.clone()],
+                transitions: &scratch.transitions,
+                ranges: &scratch.ranges[range.clone()],
                 gpu_timings: &gpu_timings[range.clone()],
             });
         }
         let results = {
-            let view = backend.chunk_recorder().ok_or(Error::ChunkPlan)?;
             let view = &*view;
             self.parallel.runner.map_chunks(&mut work, |_, work| {
                 let owners =
@@ -1426,8 +1604,8 @@ impl ExecutionChain {
                 let mut ok = true;
                 for (offset, callback) in work.callbacks.iter_mut().enumerate() {
                     if let Err(error) = view.record_transitions(
-                        work.command.handle(),
-                        &work.transitions[offset],
+                        &mut work.lease,
+                        &work.transitions[work.ranges[offset].clone()],
                         &mut owners.borrow_mut(),
                     ) {
                         errors.borrow_mut().get_or_insert(error);
@@ -1448,7 +1626,7 @@ impl ExecutionChain {
                     let gpu = work.gpu_timings[offset];
                     if let Some(pair) = gpu {
                         // SAFETY: each worker owns its command and its disjoint reserved query pairs.
-                        unsafe { view.write_pass_timestamp(work.command.handle(), pair, false) };
+                        unsafe { view.write_pass_timestamp(&mut work.lease, pair, false) };
                     }
                     let timer = std::time::Instant::now();
                     let good = callback(PassContext {
@@ -1462,7 +1640,7 @@ impl ExecutionChain {
                     });
                     if let Some(pair) = gpu {
                         // SAFETY: the callback has returned on the same exclusive worker command.
-                        unsafe { view.write_pass_timestamp(work.command.handle(), pair, true) };
+                        unsafe { view.write_pass_timestamp(&mut work.lease, pair, true) };
                     }
                     work.durations[duration_count] = Some(timer.elapsed().as_nanos() as u64);
                     duration_count += 1;
@@ -1479,18 +1657,22 @@ impl ExecutionChain {
                 }
             })
         };
+        // The leases (and the view) end with the parallel section; the pools
+        // return to the backend before any further serial recording.
+        drop(work);
+        drop(view);
         // 串行：按块顺序合并耗时与 owner。
         let mut failed = false;
         let mut callback_error = None;
-        for ((command, work), mut result) in begun.iter().zip(&work).zip(results) {
+        for ((command, range), mut result) in begun.iter().zip(chunks).zip(results) {
             self.pgo.current.extend(
-                work.durations[..result.recorded_durations]
+                durations[range.clone()][..result.recorded_durations]
                     .iter()
                     .enumerate()
                     .map(|(offset, duration)| {
                         PassPgoDuration::new(
                             PassPgoNameId::from_shared(std::sync::Arc::clone(
-                                pass_names[first_pass + work.start + offset],
+                                pass_names[first_pass + range.start + offset],
                             )),
                             duration.expect("recorded pass duration"),
                         )
@@ -1507,8 +1689,11 @@ impl ExecutionChain {
         if failed {
             outcome.panic = true;
         } else {
-            recorder.finish_chunked_batch(&mut outcome, record_commands, final_batch, |action| {
-                match action {
+            recorder.finish_chunked_batch(
+                &mut outcome,
+                begun.iter().cloned(),
+                final_batch,
+                |action| match action {
                     record::RecordAction::End(command) => {
                         backend.end_command(vk::CommandBuffer::from_raw(command))
                     }
@@ -1521,8 +1706,8 @@ impl ExecutionChain {
                         &transition,
                     ),
                     record::RecordAction::Pass(_) => true,
-                }
-            });
+                },
+            );
         }
         let outcome = self.finish_record(recorder, outcome);
         if let Some(error) = callback_error {
@@ -1530,6 +1715,7 @@ impl ExecutionChain {
         }
         let outcome = outcome?;
         let last = begun.last().cloned().ok_or(Error::ChunkPlan)?;
+        self.chunk_scratch = scratch;
         Ok((last, outcome))
     }
 

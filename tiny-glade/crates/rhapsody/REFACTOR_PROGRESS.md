@@ -1,6 +1,37 @@
-# rhapsody 重构进度（2026-10-18）
+# rhapsody 重构进度（2026-10-19）
 
 本文件是当前实现与验收状态的唯一登记入口。范围/门槛见 [DELIVERY_PLAN.md](DELIVERY_PLAN.md)，下一步工作见 [REFACTOR_PLAN.md](REFACTOR_PLAN.md)。用户提供 Vulkan/MoltenVK 环境后，已恢复本机 Apple M3 的 GPU 与 macOS 窗口验证；Windows 运行验收仍后置。硬件验证不阻止其余源码重构。
+
+## 2026-10-19 审查修复轮（正确性、性能、架构）
+
+按全模块审查（设备/同步、呈现、渲染图、资源与内存、管线与架构）修复。库内 `Error::Exhausted` 新增为容量耗尽类别；描述符池耗尽、bindless 槽位、CPU arena、管线缓存满不再借用 `Timeout`。
+
+**正确性**
+- 瞬态别名：缓冲区首次访问由规划器建模为合成前序访问，别名屏障必定发出；失败帧留下的 Released 状态在归还别名集时重置为 UNDEFINED，不再做陈旧所有权获取。别名内存按计划缓存跨帧复用，默认开启。
+- 呈现：只剩一条路径。交换链图像是渲染图里的导入资源（`import_swapchain_image` / `PresentTarget`）；获取等待落在首个用到图像的批次，rendered 信号与 PRESENT_SRC 转换落在末批；多批次、跨队列族都支持。`GraphImageLease` 等旧接口已删除，tiny-glade 与 window_lab 已迁移。主图先于获取图像提交，跳帧时主图照常执行；窗口模式失焦不再冻结；WSI 阻塞调用不持状态锁；SUBOPTIMAL 仅在尺寸/旋转变化时重建；SurfaceLost 粘滞并支持 `replace_surface`。
+- 跨队列等待按规划器证明的首次使用阶段（`StagedDependencies`）；同时修复跨队列布局转换/获取屏障源阶段未包含信号量等待阶段的同步漏洞。
+- 具名缓冲默认内容未定义，写前读取被拒绝；零初始化需显式 `named_buffer_zeroed`。
+- 并行录制：每块独立命令池，`ChunkLease`（Send、非 Sync）在类型层面保证同一池不会被两个线程同时录制。
+
+**性能**（lavapipe，release，仅作量级参考）：分配 4 KiB 缓冲区 74–96 µs → 3.5–4.2 µs；4000 个存活缓冲区下 `Device::poll` 8.6–10 µs → 15–18 ns；释放加回收 18–27 µs → 1.1–1.5 µs。子分配器改增量计数；完成状态按队列有序；退役改为按队列、按时间线值有序的 FIFO；纹理批量异步上传，传输屏障合并；非一致性动态常量每次提交只 flush 一次；预算按堆跟随 `VK_EXT_memory_budget`，主机/显存分开计，预算紧张时按 LRU 驱逐空闲缓存（`Evictable`）；`analyze_passes` 只保留访问前沿；默认录制策略为自适应；启用 `separateDepthStencilLayouts` 时规划器按方面输出布局。
+
+**架构**
+- `Device` 拆为 core / queues / memory / lifetime / caches 五个组件，字段顺序即析构顺序，锁顺序见 ARCHITECTURE.md。
+- 公开面收窄：可见模块 116 → 11，公开条目 779 → 518，`Device` 公开字段 23 → 0；`raw` 与内部模块仅在 `test-support` 特性下公开。互操作出口为 `raw_handle()` 等访问器。
+- 屏障统一到 `raw::barrier` 的 `RangeBarrier` 与 `Device::issue_barriers`；访问词汇统一为类型化 `AccessSpec`；所有权判断统一为 `RangeOwner::admits`。模块分工见 ARCHITECTURE.md §3.2.1。
+- 跨队列族上传的所有权获取改由设备合并队列处理，下一个图批次合并录制；无图提交时用 `TransferManager::flush_acquires()`。
+- 计划校验器只在 debug、`validation` 特性或 `set_plan_validation` 时运行。
+
+**验证（2026-10-19，lavapipe）**：`--all-features` 82 组测试全部通过；`--no-default-features --lib` 371 通过；clippy `-D warnings` 零告警；country-core、tg-text、tiny-glade 全目标检查通过。
+
+**未验证与已知缺口**
+- 无 Vulkan 验证层；多队列族传输、跨族获取、非一致性内存、独占全屏均未在真硬件上跑过（lavapipe 单队列、仅一致性内存）。一个 WSI 失败释放用例因 Mesa 无头 `vkReleaseSwapchainImagesEXT` 崩溃而 `#[ignore]`。
+- 驱动报告的堆预算现为硬上限，驱动偏保守时会更早报显存不足。
+- 规划器 `PendingOwner` 与运行期状态机未合并；u8 访问码保留为码表下标。
+- 剩余 54 个 Vulkan 类型公开字段在描述结构里；内部模块 dead_code 告警被屏蔽。
+- 渲染图资源池尚未注册为 `Evictable`；setup 辅助仍有 `SetupContext` 弱引用跨调用复用限制。
+- tiny-glade 在主线上仍无法编译：`crates/systems/critters/src/duck.rs:818` 把占位 `Buffer` 传给 `update_buffer_bytes`（与本轮无关）；其 24 个失败测试均因本机缺少原版安装目录与 compiled-shaders。
+- 逆向时期的地址/“原版”注释仍有约 138 处，按决定不再专项清理。
 
 ## 2026-10-18 焦点与独占全屏
 

@@ -19,9 +19,9 @@ use wave3_support::*;
 fn families(device: &rhapsody::raw::device::Device) -> Vec<vk::QueueFamilyProperties> {
     unsafe {
         device
-            .instance
-            .instance
-            .get_physical_device_queue_family_properties(device.physical)
+            .instance()
+            .raw_instance()
+            .get_physical_device_queue_family_properties(device.physical_device())
     }
 }
 
@@ -47,13 +47,13 @@ fn configured_queue_plan_matches_created_handles_and_timeline_slots() {
             .map(|props| FamilyInfo::from_properties(props, false))
             .collect::<Vec<_>>();
         let expected = plan_queues(&families, &config).unwrap();
-        assert_eq!(device.queue_plan, expected);
-        assert_eq!(device.timelines.queue_count(), expected.queues.len());
-        assert_eq!(device.additional_queues.len() + 1, expected.queues.len());
+        assert_eq!(*device.queue_plan(), expected);
+        assert_eq!(device.timelines().queue_count(), expected.queues.len());
+        assert_eq!(device.additional_queues().len() + 1, expected.queues.len());
         for (index, physical) in expected.queues.iter().enumerate() {
             let handle = unsafe {
                 device
-                    .device
+                    .raw_device()
                     .get_device_queue(physical.family, physical.index)
             };
             assert_eq!(device.queue_id(handle).unwrap().index(), index);
@@ -98,8 +98,8 @@ fn copy_from_actual_primary_owner(
     auxiliary: rhapsody::raw::device::DeviceQueue,
 ) {
     let device = &env.device;
-    assert_ne!(auxiliary.family, device.queue_family);
-    let primary_queue = device.queue_id(device.queue).unwrap();
+    assert_ne!(auxiliary.family, device.queue_family_index());
+    let primary_queue = device.queue_id(device.primary_queue()).unwrap();
     let destination_queue = device.queue_id(auxiliary.handle).unwrap();
     let desc = BufferDesc::new_gpu_to_cpu(
         BUF_BYTES,
@@ -125,7 +125,7 @@ fn copy_from_actual_primary_owner(
     fill.render_with_result_context(move |ctx| {
         let buffer = ctx.managed.unwrap().buffer_for(src.raw())?;
         unsafe {
-            raw.device.cmd_fill_buffer(
+            raw.raw_device().cmd_fill_buffer(
                 vk::CommandBuffer::from_raw(ctx.command.handle()),
                 buffer.raw(),
                 0,
@@ -149,7 +149,7 @@ fn copy_from_actual_primary_owner(
             assert!(
                 cells
                     .iter()
-                    .all(|cell| cell.state.owner == RangeOwner::Owned(device.queue_family))
+                    .all(|cell| cell.state.owner == RangeOwner::Owned(device.queue_family_index()))
             );
             assert!(
                 cells
@@ -183,7 +183,7 @@ fn copy_from_actual_primary_owner(
     copy.render_with_result_context(move |ctx| {
         let managed = ctx.managed.unwrap();
         unsafe {
-            raw.device.cmd_copy_buffer(
+            raw.raw_device().cmd_copy_buffer(
                 vk::CommandBuffer::from_raw(ctx.command.handle()),
                 managed.buffer_for(input.raw())?.raw(),
                 managed.buffer_for(output_handle.raw())?.raw(),
@@ -218,7 +218,7 @@ fn copy_from_actual_primary_owner(
             transition.resource == input.raw()
                 && transition.range == whole
                 && matches!(transition.kind, BarrierKind::Release { .. })
-                && transition.source_family == device.queue_family
+                && transition.source_family == device.queue_family_index()
                 && transition.destination_family == auxiliary.family
         })
         .unwrap();
@@ -249,10 +249,10 @@ fn copy_from_actual_primary_owner(
         && !wait.stages.is_empty()));
     // Check native queue submissions too: the destination really waits on the
     // primary release signal, rather than only drawing a symbolic pair.
-    let primary_semaphore = device.timelines.semaphore(primary_queue).unwrap();
+    let primary_semaphore = device.timelines().semaphore(primary_queue).unwrap();
     let captures = &destination.backend.submissions;
     assert!(captures.iter().any(|capture| {
-        capture.queue == device.queue
+        capture.queue == device.primary_queue()
             && capture.result == 0
             && capture
                 .batches
@@ -268,7 +268,7 @@ fn copy_from_actual_primary_owner(
         .filter(|point| point.queue == primary_queue)
         .max_by_key(|point| point.value)
         .expect("the actual primary ownership release must publish a receipt");
-    assert!(device.timelines.submitted(primary_queue).unwrap() >= release_point.value);
+    assert!(device.timelines().submitted(primary_queue).unwrap() >= release_point.value);
     let release_value = release_point.value;
     assert!(release_value > source_point.value);
     assert!(
@@ -321,11 +321,11 @@ fn a_real_primary_owner_is_released_and_acquired_before_an_auxiliary_copy() {
     };
     let Some((index, auxiliary)) = env
         .device
-        .additional_queues
+        .additional_queues()
         .iter()
         .copied()
         .enumerate()
-        .find(|(_, queue)| queue.family != env.device.queue_family)
+        .find(|(_, queue)| queue.family != env.device.queue_family_index())
     else {
         eprintln!("SKIP actual ownership handoff: no configured auxiliary family");
         return;
@@ -361,7 +361,7 @@ fn a_graph_runs_on_the_auxiliary_queue_when_the_device_has_one() {
         return;
     };
     let device = &env.device;
-    let Some(aux) = device.additional_queues.first().copied() else {
+    let Some(aux) = device.additional_queues().first().copied() else {
         println!("跳过：设备没有辅助队列（无独立 compute 族），不伪造辅助队列");
         return;
     };
@@ -411,7 +411,7 @@ fn a_graph_runs_on_the_auxiliary_queue_when_the_device_has_one() {
 
             let cb = vk::CommandBuffer::from_raw(ctx.command.handle());
             unsafe {
-                raw.device
+                raw.raw_device()
                     .cmd_fill_buffer(cb, b.raw(), 0, vk::WHOLE_SIZE, 0xA5A5_1234)
             };
             true
@@ -429,7 +429,7 @@ fn a_graph_runs_on_the_auxiliary_queue_when_the_device_has_one() {
 
             let cb = vk::CommandBuffer::from_raw(ctx.command.handle());
             unsafe {
-                raw.device.cmd_copy_buffer(
+                raw.raw_device().cmd_copy_buffer(
                     cb,
                     a.raw(),
                     b.raw(),
@@ -468,12 +468,12 @@ fn a_graph_runs_on_the_auxiliary_queue_when_the_device_has_one() {
         assert_eq!(bytes, want);
     }
     let timeline = device
-        .timelines
+        .timelines()
         .semaphore(device.queue_id(aux.handle).unwrap())
         .unwrap();
-    let value = unsafe { device.device.get_semaphore_counter_value(timeline) }.unwrap();
+    let value = unsafe { device.raw_device().get_semaphore_counter_value(timeline) }.unwrap();
     assert!(value > 0, "辅助队列时间线必须推进");
-    if aux.family != device.queue_family {
+    if aux.family != device.queue_family_index() {
         copy_from_actual_primary_owner(&env, &mut session, aux);
     }
     drop(session);

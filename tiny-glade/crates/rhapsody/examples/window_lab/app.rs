@@ -10,20 +10,11 @@ use super::{
 };
 use ash::vk::{self, Handle};
 use rhapsody::{
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        command_buffer::VulkanCommandBuffer,
-        device::Device,
-        instance::{InstanceBuilder, ValidationMessenger},
-        swapchain::{AcquiredImageLease, Swapchain},
-        texture::{Texture, TextureDesc},
-    },
-    rg::{
-        executor::PassContext,
-        frame_loop::{FrameLoop, FrameStatus},
-        graph::BuiltGraph,
-        vulkan::{AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession},
-    },
+    device::Device, interop::InstanceBuilder, interop::ValidationMessenger, present::Swapchain,
+    resource::Buffer, resource::BufferDesc, resource::Texture, resource::TextureDesc,
+    rg::AccessTable, rg::BuiltGraph, rg::FrameLoop, rg::FrameStatus, rg::GpuResource,
+    rg::PassContext, rg::PresentTarget, rg::RenderGraph, rg::ResourceSpec, rg::VulkanGraphBackend,
+    rg::VulkanGraphSession,
 };
 use serde::Serialize;
 use std::{
@@ -398,14 +389,13 @@ struct Report {
     class_queue_indices: [usize; 3],
     vsync_requested: bool,
     present_mode: String,
-    gpu_timing: Option<rhapsody::rg::profiling::GpuTimingStats>,
+    gpu_timing: Option<rhapsody::rg::GpuTimingStats>,
     /// Latest bounded per-pass command spans, distinct from outer command
     /// spans. These intervals can overlap and are not additive frame latency.
     gpu_pass_timings: VecDeque<PassGpuTimingReport>,
     gpu_pass_timings_dropped: u64,
-    queue_lock_waits:
-        [Option<rhapsody::sync::timeline::QueueLockStats>; rhapsody::sync::MAX_QUEUES],
-    reclamation: rhapsody::raw::graveyard::GraveyardStats,
+    queue_lock_waits: [Option<rhapsody::sync::QueueLockStats>; rhapsody::sync::MAX_QUEUES],
+    reclamation: rhapsody::device::RetirementStats,
     cache_diagnostics: Vec<CacheDomainReport>,
     application_gpu_memory: Option<GpuMemoryReport>,
     performance: Option<PerformanceReport>,
@@ -498,14 +488,14 @@ struct StabilitySample {
 }
 #[derive(Serialize)]
 struct CacheCauseReport {
-    reason: rhapsody::rg::cache::CacheReason,
+    reason: rhapsody::rg::CacheReason,
     misses: u64,
     invalidations: u64,
 }
 #[derive(Serialize)]
 struct PassGpuTimingReport {
     #[serde(flatten)]
-    sample: rhapsody::rg::profiling::GpuCommandTiming,
+    sample: rhapsody::rg::GpuCommandTiming,
     pass_name: String,
 }
 #[derive(Serialize)]
@@ -531,8 +521,8 @@ impl TeardownMemoryReport {
 }
 impl Report {
     fn sample_stability(&mut self, lab: &Lab, elapsed: Duration, phase: &'static str) {
-        self.queue_lock_waits = lab.device.timelines.queue_lock_stats();
-        self.reclamation = lab.device.garbage_stats();
+        self.queue_lock_waits = lab.device.timelines().queue_lock_stats();
+        self.reclamation = lab.device.retirement_stats();
         if phase == "before_lab_drop" {
             self.cache_diagnostics = [
                 (
@@ -555,7 +545,7 @@ impl Report {
             .into_iter()
             .map(|(domain, diagnostics)| CacheDomainReport {
                 domain,
-                causes: rhapsody::rg::cache::CacheReason::ALL
+                causes: rhapsody::rg::CacheReason::ALL
                     .into_iter()
                     .map(|reason| CacheCauseReport {
                         reason,
@@ -583,8 +573,8 @@ impl Report {
             graph_command_pools: lab.frame_loop.graph.backend.command_pool_count(),
             pending_graph_frames: lab.frame_loop.graph.pending_frame_count(),
             named_resources: lab.frame_loop.graph.named_resource_count(),
-            registered_budget_bytes: lab.device.allocator_stats.budget_usage().total(),
-            known_cpu_bytes: lab.device.allocator_stats.cpu_memory_usage().total(),
+            registered_budget_bytes: lab.device.allocator_stats().budget_usage().total(),
+            known_cpu_bytes: lab.device.allocator_stats().cpu_memory_usage().total(),
             application_vk_memory_bytes: memory.map(|sample| sample.application_vk_memory_bytes),
             native_memory_blocks: memory.map(|sample| sample.native_memory_blocks),
         });
@@ -607,7 +597,7 @@ struct BudgetReport {
 #[derive(Serialize)]
 struct GpuMemoryReport {
     scope: &'static str,
-    current: rhapsody::device::memory::GpuMemoryUsage,
+    current: rhapsody::device::GpuMemoryUsage,
     sampled_peak_application_vk_memory_bytes: u64,
     sampled_peak_native_memory_blocks: usize,
 }
@@ -632,13 +622,13 @@ impl GpuMemoryReport {
 }
 impl BudgetReport {
     fn sample(device: &Device, previous: &Option<Self>) -> Self {
-        let usage = device.allocator_stats.budget_usage();
-        let cpu = device.allocator_stats.cpu_memory_usage();
+        let usage = device.allocator_stats().budget_usage();
+        let cpu = device.allocator_stats().cpu_memory_usage();
         Self {
             scope: "Known resource ranges/backings and reserved CPU arenas/compiler payload bounds; excludes suballocator block slack, unregistered CPU containers and opaque driver allocations. Native reservations are reported separately.",
             known_cpu_live_bytes: cpu.live,
             known_cpu_cache_bytes: cpu.cache,
-            known_cpu_peak_bytes: device.allocator_stats.cpu_peak_bytes(),
+            known_cpu_peak_bytes: device.allocator_stats().cpu_peak_bytes(),
             live_bytes: usage.live,
             in_flight_bytes: usage.in_flight,
             cache_bytes: usage.cache,
@@ -989,9 +979,9 @@ impl Lab {
         )?;
         let properties = unsafe {
             device
-                .instance
-                .instance
-                .get_physical_device_properties(device.physical)
+                .instance()
+                .raw_instance()
+                .get_physical_device_properties(device.physical_device())
         };
         report.device = unsafe { CStr::from_ptr(properties.device_name.as_ptr()) }
             .to_string_lossy()
@@ -999,9 +989,9 @@ impl Lab {
         report.driver_version_raw = properties.driver_version;
         report.api_version_raw = properties.api_version;
         report.physical_api_version_raw = properties.api_version;
-        report.enabled_device_extensions = device.enabled_extensions.clone();
+        report.enabled_device_extensions = device.enabled_extensions().to_vec();
         report.actual_queues = device
-            .queue_plan
+            .queue_plan()
             .queues
             .iter()
             .map(|queue| PhysicalQueueReport {
@@ -1010,7 +1000,7 @@ impl Lab {
             })
             .collect();
         report.class_queue_indices =
-            rhapsody::device::QueueClass::ALL.map(|class| device.queue_plan.queue(class).index());
+            rhapsody::device::QueueClass::ALL.map(|class| device.queue_plan().queue(class).index());
         let (width, height) = window.extent();
         let chain = Arc::new(unsafe {
             Swapchain::new(
@@ -1025,9 +1015,9 @@ impl Lab {
         report.present_mode = format!("{:?}", chain.present_mode());
         let features = unsafe {
             device
-                .instance
-                .instance
-                .get_physical_device_format_properties(device.physical, chain.format)
+                .instance()
+                .raw_instance()
+                .get_physical_device_format_properties(device.physical_device(), chain.format)
         };
         if !features
             .optimal_tiling_features
@@ -1037,9 +1027,12 @@ impl Lab {
         }
         let source_features = unsafe {
             device
-                .instance
-                .instance
-                .get_physical_device_format_properties(device.physical, vk::Format::R8G8B8A8_UNORM)
+                .instance()
+                .raw_instance()
+                .get_physical_device_format_properties(
+                    device.physical_device(),
+                    vk::Format::R8G8B8A8_UNORM,
+                )
         };
         if !source_features
             .optimal_tiling_features
@@ -1070,7 +1063,7 @@ impl Lab {
         )?);
         let mut backend = VulkanGraphBackend::new(device.clone(), AccessTable::original())?;
         if options.gpu_timing {
-            backend.configure_gpu_timing(Some(rhapsody::rg::profiling::GpuTimingConfig {
+            backend.configure_gpu_timing(Some(rhapsody::rg::GpuTimingConfig {
                 pass_spans: options.gpu_pass_timing,
                 pending_commands: 2048,
                 ..Default::default()
@@ -1262,10 +1255,10 @@ impl Lab {
             pass.add_resource_access(image, TRANSFER_WRITE, 0)?;
             pass.render_with_context(move |ctx: PassContext<'_>| {
                 unsafe {
-                    device.device.cmd_copy_buffer_to_image(
+                    device.raw_device().cmd_copy_buffer_to_image(
                         vk::CommandBuffer::from_raw(ctx.command.handle()),
-                        source.handle,
-                        target.handle,
+                        source.raw_handle(),
+                        target.raw_handle(),
                         vk::ImageLayout::TRANSFER_DST_OPTIMAL,
                         &[copy_region()],
                     );
@@ -1282,11 +1275,11 @@ impl Lab {
             pass.add_resource_access(readback, TRANSFER_WRITE, 0)?;
             pass.render_with_context(move |ctx: PassContext<'_>| {
                 unsafe {
-                    device.device.cmd_copy_image_to_buffer(
+                    device.raw_device().cmd_copy_image_to_buffer(
                         vk::CommandBuffer::from_raw(ctx.command.handle()),
-                        source.handle,
+                        source.raw_handle(),
                         vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                        target.handle,
+                        target.raw_handle(),
                         &[copy_region()],
                     );
                 }
@@ -1307,109 +1300,63 @@ impl Lab {
     ) -> Result<bool> {
         let device = self.device.clone();
         let image = self.image.clone();
-        let record = move |command: &mut VulkanCommandBuffer,
-                           frame: &AcquiredImageLease|
-              -> rhapsody::Result<()> {
-            // The display submission reads the graph's real physical image.
-            // Publish that exact access through the same submission guard.
-            unsafe {
-                rhapsody::raw::resource_access::image_access(
-                    command,
-                    image.clone(),
-                    rhapsody::sync::QueueId::new(0).expect("graphics queue"),
-                    rhapsody::resource::OwnershipRange::Image {
-                        aspects: vk::ImageAspectFlags::COLOR.as_raw(),
-                        base_mip: 0,
-                        mip_count: 1,
-                        base_layer: 0,
-                        layer_count: 1,
-                    },
-                    rhapsody::resource::range_state::AccessScope {
-                        stages: vk::PipelineStageFlags::TRANSFER,
-                        access: vk::AccessFlags::TRANSFER_READ,
-                        write: false,
-                    },
-                    vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+        let image_token = self.tokens[1];
+        // The presentation graph reads the main graph's real physical image
+        // (tracked through its token) and blits it into the imported
+        // swapchain image. The library owns the acquire wait, both layout
+        // transitions and the present signal.
+        let present =
+            move |graph: &mut RenderGraph, target: &PresentTarget| -> rhapsody::Result<()> {
+                let source = graph.import_unowned(
+                    "lab.display-source",
+                    ResourceSpec::Image(image.desc).descriptor(),
+                    image_token,
+                    TRANSFER_READ,
                 )?;
-            }
-            let range = vk::ImageSubresourceRange::default()
-                .aspect_mask(vk::ImageAspectFlags::COLOR)
-                .level_count(1)
-                .layer_count(1);
-            let layers = vk::ImageSubresourceLayers::default()
-                .aspect_mask(vk::ImageAspectFlags::COLOR)
-                .layer_count(1);
-            let to_dst = vk::ImageMemoryBarrier::default()
-                .image(frame.image())
-                .old_layout(vk::ImageLayout::UNDEFINED)
-                .new_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
-                .dst_access_mask(vk::AccessFlags::TRANSFER_WRITE)
-                .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                .subresource_range(range);
-            let to_present = vk::ImageMemoryBarrier::default()
-                .image(frame.image())
-                .old_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
-                .new_layout(vk::ImageLayout::PRESENT_SRC_KHR)
-                .src_access_mask(vk::AccessFlags::TRANSFER_WRITE)
-                .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                .subresource_range(range);
-            let extent = frame.extent();
-            let blit = vk::ImageBlit::default()
-                .src_subresource(layers)
-                .dst_subresource(layers)
-                .src_offsets([
-                    vk::Offset3D::default(),
-                    vk::Offset3D {
-                        x: WIDTH as i32,
-                        y: HEIGHT as i32,
-                        z: 1,
-                    },
-                ])
-                .dst_offsets([
-                    vk::Offset3D::default(),
-                    vk::Offset3D {
-                        x: extent.width as i32,
-                        y: extent.height as i32,
-                        z: 1,
-                    },
-                ]);
-            unsafe {
-                device.device.cmd_pipeline_barrier(
-                    command.handle,
-                    vk::PipelineStageFlags::TOP_OF_PIPE,
-                    vk::PipelineStageFlags::TRANSFER,
-                    vk::DependencyFlags::empty(),
-                    &[],
-                    &[],
-                    &[to_dst],
-                );
-                device.device.cmd_blit_image(
-                    command.handle,
-                    image.handle,
-                    vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                    frame.image(),
-                    vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-                    &[blit],
-                    vk::Filter::NEAREST,
-                );
-                device.device.cmd_pipeline_barrier(
-                    command.handle,
-                    vk::PipelineStageFlags::TRANSFER,
-                    vk::PipelineStageFlags::BOTTOM_OF_PIPE,
-                    vk::DependencyFlags::empty(),
-                    &[],
-                    &[],
-                    &[to_present],
-                );
-            }
-            Ok(())
-        };
+                let mut pass = graph.add_pass("display blit");
+                pass.add_resource_access(source, TRANSFER_READ, 0)?;
+                pass.add_resource_access(target.resource(), TRANSFER_WRITE, 0)?;
+                let (swapchain_image, extent) = (target.image(), target.extent());
+                pass.render_with_context(move |ctx: PassContext<'_>| {
+                    let layers = vk::ImageSubresourceLayers::default()
+                        .aspect_mask(vk::ImageAspectFlags::COLOR)
+                        .layer_count(1);
+                    let blit = vk::ImageBlit::default()
+                        .src_subresource(layers)
+                        .dst_subresource(layers)
+                        .src_offsets([
+                            vk::Offset3D::default(),
+                            vk::Offset3D {
+                                x: WIDTH as i32,
+                                y: HEIGHT as i32,
+                                z: 1,
+                            },
+                        ])
+                        .dst_offsets([
+                            vk::Offset3D::default(),
+                            vk::Offset3D {
+                                x: extent.width as i32,
+                                y: extent.height as i32,
+                                z: 1,
+                            },
+                        ]);
+                    unsafe {
+                        device.raw_device().cmd_blit_image(
+                            vk::CommandBuffer::from_raw(ctx.command.handle()),
+                            image.raw_handle(),
+                            vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+                            swapchain_image,
+                            vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                            &[blit],
+                            vk::Filter::NEAREST,
+                        );
+                    }
+                    true
+                });
+                Ok(())
+            };
         let protocol_started = Instant::now();
-        let executed = self
-            .frame_loop
-            .execute(built, record, vk::PipelineStageFlags::TRANSFER);
+        let executed = self.frame_loop.execute(built, present);
         let protocol_ns = protocol_started.elapsed().as_nanos() as u64;
         if let Some(scene) = &mut self.scene {
             scene.finish_execution(&executed);
@@ -1418,7 +1365,17 @@ impl Lab {
         if outcome.status == FrameStatus::Recreated {
             report.recreate_events += 1;
         }
-        let Some((graph, present)) = outcome.receipts else {
+        let graph = outcome.graph;
+        let Some(present) = outcome.presentation else {
+            // The graph still executed and advanced temporal history, but no
+            // frame was read back to verify against; restart the history.
+            if let Some(scene) = &mut self.scene {
+                scene.reset_history(
+                    &mut self.frame_loop,
+                    &mut report.scene,
+                    "skipped presentation",
+                )?;
+            }
             return Ok(false);
         };
         report.application_gpu_memory = Some(GpuMemoryReport::sample(
@@ -1428,8 +1385,8 @@ impl Lab {
         let wsi = self.frame_loop.last_cpu_timings();
         self.last_sample = FrameSample {
             acquire_ns: wsi.acquire_ns,
-            display_record_ns: wsi.display_record_ns,
-            display_submit_present_ns: wsi.display_submit_present_ns,
+            presentation_graph_ns: wsi.presentation_graph_ns,
+            present_ns: wsi.present_ns,
             compile_ns: graph.stats.compile_ns,
             record_ns: graph.stats.record_ns,
             submit_ns: graph.stats.submit_ns,
@@ -1687,7 +1644,7 @@ fn play(options: &Options, report: &mut Report, launched_at: Instant) -> Result<
             let current_extent = window.extent();
             if current_extent != extent {
                 extent = current_extent;
-                lab.frame_loop.swapchain().resize(vk::Extent2D {
+                lab.frame_loop.resize(vk::Extent2D {
                     width: extent.0,
                     height: extent.1,
                 })?;
@@ -1857,7 +1814,7 @@ fn play(options: &Options, report: &mut Report, launched_at: Instant) -> Result<
     report.wsi_stress = stress.map(|stress| stress.report);
     // Collect diagnostics through teardown, while preserving the original failure.
     let collector = lab.messenger.collector.clone();
-    let allocation_stats = lab.device.allocator_stats.clone();
+    let allocation_stats = lab.device.allocator_stats().clone();
     let retained_before = Swapchain::retained_generation_count();
     let showcase_cleanup = if let Some(scene) = &mut lab.showcase {
         let result = scene

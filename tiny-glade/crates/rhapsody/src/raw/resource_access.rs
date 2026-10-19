@@ -1,7 +1,7 @@
 //! Explicit raw access recording, using the same physical range state and
 //! successful-submit publication as render graphs.
 use super::{
-    barrier::{BarrierDispatch, SynchronizationScope},
+    barrier::{BarrierTarget, RangeBarrier, SynchronizationScope},
     buffer::Buffer,
     command_buffer::VulkanCommandBuffer,
     temp_list::TempList,
@@ -11,7 +11,10 @@ use crate::{
     Error, Result,
     resource::{
         OwnershipRange, ResourceSharing, SyncCell,
-        range_state::{AccessScope, NativeState, PatchAction, RangeCell, RangeOwner, StatePatch},
+        range_state::{
+            AccessScope, NativeState, OwnershipDenial, PatchAction, RangeCell, StatePatch,
+            released_range_error,
+        },
     },
     sync::QueueId,
 };
@@ -44,10 +47,11 @@ fn family(command: &VulkanCommandBuffer, queue: QueueId) -> Result<u32> {
         return Err(Error::DeviceLost);
     }
     let family = if queue.index() == 0 {
-        device.queue_family
+        device.queues.primary_family
     } else {
         device
-            .additional_queues
+            .queues
+            .additional
             .get(queue.index() - 1)
             .ok_or_else(|| Error::invalid_usage("native access queue belongs to another device"))?
             .family
@@ -79,22 +83,31 @@ fn step(
             "native image old layout differs from recorded state",
         ));
     }
-    let owns = match cell.state.owner {
-        RangeOwner::Unclaimed => true,
-        RangeOwner::Owned(owner) => owner == family,
-        RangeOwner::Released { .. } => false,
-    };
-    if !sharing.allows_family(family) || !sharing.is_concurrent() && !owns {
-        return Err(Error::unsupported(
-            "native access requires a matching ownership acquire",
-        ));
+    match cell.state.owner.admits(sharing, family) {
+        Ok(()) => {}
+        Err(OwnershipDenial::Released) => return Err(released_range_error()),
+        Err(_) => {
+            return Err(Error::unsupported(
+                "native access requires a matching ownership acquire",
+            ));
+        }
     }
     let mut source = cell.state.writer.for_queue(queue);
-    if destination.write || cell.state.layout != layout {
+    let hazard = destination.write || cell.state.layout != layout;
+    if hazard {
         let readers = cell.state.readers.for_queue(queue);
         source.stages |= readers.stages;
         source.access |= readers.access;
         source.write |= readers.write;
+    }
+    // Submission waits other queues' prerequisites at exactly the destination
+    // stages; including them here chains the barrier (and any layout
+    // transition) after that semaphore wait.
+    let foreign = |frontier: &crate::resource::range_state::Frontier| {
+        frontier.points.points().any(|point| point.queue != queue)
+    };
+    if foreign(&cell.state.writer) || hazard && foreign(&cell.state.readers) {
+        source.stages |= destination.stages;
     }
     Ok(AccessStep { cell, source })
 }
@@ -123,7 +136,7 @@ fn steps(
             "explicit native access follows an opaque use in the same command",
         ));
     }
-    let mut result = TempList::new(65_536, command.pool.device.allocator_stats.clone())?;
+    let mut result = TempList::new(65_536, command.pool.device.memory.stats.clone())?;
     command.with_recorded_state(cell, NativeState::default(), queue, |table| {
         if !crate::resource::range_state::contains(table.domain(), range) {
             return Err(Error::invalid_usage(
@@ -235,41 +248,13 @@ pub(crate) fn image_access_borrowed(
     unsafe {
         command.retain_borrowed_recorded(texture)?;
     }
-    let dispatch = BarrierDispatch::new(&command.pool.device);
-    for step in steps.as_slice() {
-        let OwnershipRange::Image {
-            aspects,
-            base_mip,
-            mip_count,
-            base_layer,
-            layer_count,
-        } = step.cell.range
-        else {
-            unreachable!("validated image domain")
-        };
-        let barrier = vk::ImageMemoryBarrier::default()
-            .src_access_mask(step.source.access)
-            .dst_access_mask(scope.access)
-            .old_layout(step.cell.state.layout)
-            .new_layout(layout)
-            .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-            .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-            .image(texture.handle)
-            .subresource_range(
-                vk::ImageSubresourceRange::default()
-                    .aspect_mask(vk::ImageAspectFlags::from_raw(aspects))
-                    .base_mip_level(base_mip)
-                    .level_count(mip_count)
-                    .base_array_layer(base_layer)
-                    .layer_count(layer_count),
-            );
-        let mut synchronization = SynchronizationScope::new(step.source.stages, scope.stages);
-        synchronization.images.push(barrier);
-        unsafe {
-            dispatch.issue(&command.pool.device, command.handle, &synchronization)?;
-        }
-    }
-    Ok(())
+    emit_barriers(
+        command,
+        BarrierTarget::Image(texture.handle),
+        steps.as_slice(),
+        scope,
+        layout,
+    )
 }
 
 /// Record the exact barriers and state admission for a subsequent image use.
@@ -331,24 +316,50 @@ pub(crate) fn buffer_access_borrowed(
     unsafe {
         command.retain_borrowed_recorded(buffer)?;
     }
-    let dispatch = BarrierDispatch::new(&command.pool.device);
-    for step in steps.as_slice() {
-        let OwnershipRange::Buffer { offset, size } = step.cell.range else {
-            unreachable!("validated buffer domain")
+    emit_barriers(
+        command,
+        BarrierTarget::Buffer(buffer.handle),
+        steps.as_slice(),
+        scope,
+        vk::ImageLayout::UNDEFINED,
+    )
+}
+
+/// Issue the barriers of `steps`: one batch per distinct source stage mask,
+/// so every barrier keeps exactly its own execution scope.
+fn emit_barriers(
+    command: &VulkanCommandBuffer,
+    target: BarrierTarget,
+    steps: &[AccessStep],
+    destination: AccessScope,
+    layout: vk::ImageLayout,
+) -> Result<()> {
+    let mut done = 0;
+    let mut issued = smallvec::SmallVec::<[vk::PipelineStageFlags; 4]>::new();
+    while done < steps.len() {
+        let Some(stages) = steps
+            .iter()
+            .map(|step| step.source.stages)
+            .find(|stages| !issued.contains(stages))
+        else {
+            break;
         };
-        let barrier = vk::BufferMemoryBarrier::default()
-            .src_access_mask(step.source.access)
-            .dst_access_mask(scope.access)
-            .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-            .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-            .buffer(buffer.handle)
-            .offset(offset)
-            .size(size);
-        let mut synchronization = SynchronizationScope::new(step.source.stages, scope.stages);
-        synchronization.buffers.push(barrier);
-        unsafe {
-            dispatch.issue(&command.pool.device, command.handle, &synchronization)?;
+        issued.push(stages);
+        let mut batch = SynchronizationScope::new(stages, destination.stages);
+        for step in steps.iter().filter(|step| step.source.stages == stages) {
+            batch.push(
+                target,
+                &RangeBarrier::local(
+                    step.cell.range,
+                    step.source.access,
+                    destination.access,
+                    step.cell.state.layout,
+                    layout,
+                ),
+            )?;
+            done += 1;
         }
+        batch.issue_into(command)?;
     }
     Ok(())
 }
@@ -374,6 +385,7 @@ pub unsafe fn buffer_access(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::resource::range_state::RangeOwner;
     use crate::resource::range_state::{Frontier, RangeStateConfig, RangeStateTable};
 
     fn image(state: NativeState) -> RangeCell {

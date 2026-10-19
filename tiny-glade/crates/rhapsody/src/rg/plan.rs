@@ -60,10 +60,10 @@ impl ResourceDefinition {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct AccessSemantics {
     pub code: u8,
-    pub mask: u32,
-    pub write: bool,
-    pub stages: ash::vk::PipelineStageFlags,
-    pub access: ash::vk::AccessFlags,
+    /// The policy's declared access; it alone derives resource usage flags.
+    pub declared_access: ash::vk::AccessFlags,
+    /// The native synchronization scope (possibly wider than declared).
+    pub scope: crate::resource::range_state::AccessScope,
     pub layout: ash::vk::ImageLayout,
 }
 
@@ -189,11 +189,9 @@ impl GraphDefinition {
         // semantic keys. Compare the entire table, including unused-in-pass ports.
         for semantics in &self.access_semantics {
             let (native, layout) = dependency.native_semantics(semantics.code);
-            if semantics.mask != dependency.access_mask(semantics.code)
-                || semantics.write != dependency.is_write(semantics.code)
-                || semantics.write != native.write
-                || semantics.stages != native.stages
-                || semantics.access != native.access
+            if semantics.declared_access != dependency.access_mask(semantics.code)
+                || semantics.scope.write != dependency.is_write(semantics.code)
+                || semantics.scope != native
                 || semantics.layout != layout
             {
                 return Ok(false);
@@ -259,10 +257,8 @@ impl GraphDefinition {
                 }
                 Ok(AccessSemantics {
                     code,
-                    mask: dependency.access_mask(code),
-                    write,
-                    stages: native.stages,
-                    access: native.access,
+                    declared_access: dependency.access_mask(code),
+                    scope: native,
                     layout,
                 })
             })
@@ -299,13 +295,7 @@ impl GraphDefinition {
     pub fn is_write(&self, code: u8) -> bool {
         self.access_semantics
             .iter()
-            .any(|s| s.code == code && s.write)
-    }
-    fn mask(&self, code: u8) -> u32 {
-        self.access_semantics
-            .iter()
-            .find(|s| s.code == code)
-            .map_or(0, |s| s.mask)
+            .any(|s| s.code == code && s.scope.write)
     }
 }
 
@@ -492,11 +482,39 @@ fn range_covers(a: AccessRange, b: AccessRange) -> bool {
     }
 }
 
-/// Dependency analysis contains only local symbolic indices and ranges.
+/// Direct lookup from an access code to its semantics (codes are `u8`).
+pub(crate) struct SemanticTable<'a> {
+    index: [u8; 256],
+    semantics: &'a [AccessSemantics],
+}
+impl<'a> SemanticTable<'a> {
+    pub(crate) fn new(semantics: &'a [AccessSemantics]) -> Self {
+        let mut index = [u8::MAX; 256];
+        // The first entry wins, matching a linear `find`; definitions carry at
+        // most one entry per code (one per distinct u8, so < 256 entries).
+        for (position, semantic) in semantics.iter().enumerate().rev() {
+            if let Ok(position) = u8::try_from(position) {
+                index[semantic.code as usize] = position;
+            }
+        }
+        Self { index, semantics }
+    }
+    pub(crate) fn get(&self, code: u8) -> Option<&'a AccessSemantics> {
+        match self.index[code as usize] {
+            u8::MAX => self.semantics.iter().find(|semantic| semantic.code == code),
+            position => Some(&self.semantics[position as usize]),
+        }
+    }
+    pub(crate) fn is_write(&self, code: u8) -> bool {
+        self.get(code).is_some_and(|semantic| semantic.scope.write)
+    }
+}
+
+/// Dependency analysis contains only local symbolic indices and ranges:
+/// content producers (for culling) and the current producer frontier.
 #[derive(Clone, Debug)]
 pub(crate) struct PassAnalysis {
     pub dependencies: Vec<BTreeSet<usize>>,
-    pub conflicts: BTreeSet<(usize, usize)>,
     pub producers: std::collections::BTreeMap<u32, Vec<(usize, AccessRange)>>,
 }
 impl PassAnalysis {
@@ -508,7 +526,6 @@ impl PassAnalysis {
                     .map(|set| std::mem::size_of_val(set) + set.len() * 48)
                     .sum::<usize>(),
             )
-            .saturating_add(self.conflicts.len() * 64)
             .saturating_add(
                 self.producers
                     .values()
@@ -517,46 +534,121 @@ impl PassAnalysis {
             )
     }
 }
+/// Record content producers of one access; returns nothing. A write removes
+/// every producer whose range it fully covers.
+fn add_producer_access(
+    analysis: &mut PassAnalysis,
+    pass_index: usize,
+    access: &AccessDeclaration,
+    write: bool,
+) {
+    let producers = analysis.producers.entry(access.resource_index).or_default();
+    if access.reads_contents(write) {
+        for &(producer, range) in producers.iter() {
+            if producer != pass_index && ranges_overlap(access.range, range) {
+                analysis.dependencies[pass_index].insert(producer);
+            }
+        }
+    }
+    if write {
+        producers.retain(|&(_, range)| !range_covers(access.range, range));
+        producers.push((pass_index, access.range));
+    }
+}
 pub(crate) fn analyze_passes(
     passes: &[PassDeclaration],
     semantics: &[AccessSemantics],
 ) -> PassAnalysis {
+    let table = SemanticTable::new(semantics);
     let mut analysis = PassAnalysis {
         dependencies: vec![BTreeSet::new(); passes.len()],
-        conflicts: BTreeSet::new(),
         producers: Default::default(),
     };
-    let mut history = std::collections::BTreeMap::<u32, Vec<(usize, AccessRange, bool)>>::new();
     for (pass_index, pass) in passes.iter().enumerate() {
-        for a in &pass.accesses {
-            let write = semantics
-                .iter()
-                .any(|semantic| semantic.code == a.access_code && semantic.write);
-            let producers = analysis.producers.entry(a.resource_index).or_default();
-            if a.reads_contents(write) {
-                for &(producer, range) in producers.iter() {
-                    if producer != pass_index && ranges_overlap(a.range, range) {
-                        analysis.dependencies[pass_index].insert(producer);
-                    }
-                }
-            }
-            let history = history.entry(a.resource_index).or_default();
-            for &(previous, range, previous_write) in history.iter() {
-                if previous != pass_index
-                    && (write || previous_write)
-                    && ranges_overlap(a.range, range)
-                {
-                    analysis.conflicts.insert((previous, pass_index));
-                }
-            }
-            history.push((pass_index, a.range, write));
-            if write {
-                producers.retain(|&(_, range)| !range_covers(a.range, range));
-                producers.push((pass_index, a.range));
-            }
+        for access in &pass.accesses {
+            add_producer_access(
+                &mut analysis,
+                pass_index,
+                access,
+                table.is_write(access.access_code),
+            );
         }
     }
     analysis
+}
+/// One live access in the per-resource ordering frontier.
+#[derive(Clone, Copy)]
+struct FrontierEntry {
+    pass: usize,
+    range: AccessRange,
+    native: Option<crate::resource::OwnershipRange>,
+    layout: ash::vk::ImageLayout,
+    write: bool,
+}
+/// Storage-order constraints between retained passes: write/any overlaps and
+/// overlapping image accesses that need different native layouts. Only the
+/// frontier is kept: an entry fully covered by a later write is ordered before
+/// that write, and every later access that would conflict with the entry also
+/// conflicts with the write, so the edge is implied transitively.
+fn ordering_edges(
+    definition: &GraphDefinition,
+    retained: &[usize],
+) -> crate::Result<Vec<(usize, usize)>> {
+    let table = SemanticTable::new(&definition.access_semantics);
+    let mut frontier = std::collections::HashMap::<u32, Vec<FrontierEntry>>::new();
+    let mut edges = BTreeSet::new();
+    for &pass in retained {
+        for access in &definition.passes[pass].accesses {
+            let semantic = table
+                .get(access.access_code)
+                .ok_or_else(|| crate::Error::invalid_usage("access semantics are absent"))?;
+            let descriptor = definition.resources[access.resource_index as usize].descriptor;
+            let native = match descriptor {
+                Descriptor::Image(_) => Some(super::sync_plan::native_range(
+                    access.range,
+                    descriptor,
+                    definition.context.separate_depth_stencil_layouts,
+                )?),
+                Descriptor::Buffer(_) => None,
+            };
+            let entries = frontier.entry(access.resource_index).or_default();
+            for entry in entries.iter() {
+                if entry.pass == pass {
+                    continue;
+                }
+                let content = (semantic.scope.write || entry.write)
+                    && ranges_overlap(access.range, entry.range);
+                let layout = matches!((native, entry.native), (Some(a), Some(b))
+                    if entry.layout != semantic.layout
+                        && crate::resource::range_state::intersection(a, b).is_some());
+                if content || layout {
+                    edges.insert((entry.pass, pass));
+                }
+            }
+            if semantic.scope.write {
+                // A widened native range (merged depth/stencil) may reach
+                // entries this declaration does not cover; keep those.
+                let exact = match (native, access.range) {
+                    (
+                        Some(crate::resource::OwnershipRange::Image { aspects, .. }),
+                        AccessRange::Texture { aspect_mask, .. },
+                    ) => aspects == aspect_mask,
+                    _ => true,
+                };
+                if exact {
+                    entries.retain(|entry| !range_covers(access.range, entry.range));
+                }
+            }
+            entries.push(FrontierEntry {
+                pass,
+                range: access.range,
+                native,
+                layout: semantic.layout,
+                write: semantic.scope.write,
+            });
+        }
+    }
+    Ok(edges.into_iter().collect())
 }
 /// Produces immutable symbolic work before asking the backend for any allocation.
 pub fn compile_definition(definition: GraphDefinition) -> crate::Result<CompiledPlan> {
@@ -576,90 +668,68 @@ pub fn compile_with_subgraphs(
     super::plan_check::check_definition(&definition)?;
     let mut analysis = PassAnalysis {
         dependencies: vec![BTreeSet::new(); definition.passes.len()],
-        conflicts: BTreeSet::new(),
         producers: Default::default(),
     };
-    let mut history = std::collections::BTreeMap::<u32, Vec<(usize, AccessRange, bool)>>::new();
+    let table = SemanticTable::new(&definition.access_semantics);
     let mut next = 0;
     for scope in &definition.subgraphs {
         while next < scope.pass_range.start {
-            let local = analyze_passes(
-                &definition.passes[next..next + 1],
-                &definition.access_semantics,
-            );
-            compose_analysis(
-                &definition,
-                next..next + 1,
-                &local,
-                None,
-                &mut analysis,
-                &mut history,
-            );
+            for access in &definition.passes[next].accesses {
+                add_producer_access(
+                    &mut analysis,
+                    next,
+                    access,
+                    table.is_write(access.access_code),
+                );
+            }
             next += 1;
         }
         let local = cache.analysis(&definition, scope)?;
         compose_analysis(
             &definition,
+            &table,
             local.range.clone(),
             &local.analysis,
             Some(&local.resources),
             &mut analysis,
-            &mut history,
         );
         next = local.range.end;
     }
     while next < definition.passes.len() {
-        let local = analyze_passes(
-            &definition.passes[next..next + 1],
-            &definition.access_semantics,
-        );
-        compose_analysis(
-            &definition,
-            next..next + 1,
-            &local,
-            None,
-            &mut analysis,
-            &mut history,
-        );
+        for access in &definition.passes[next].accesses {
+            add_producer_access(
+                &mut analysis,
+                next,
+                access,
+                table.is_write(access.access_code),
+            );
+        }
         next += 1;
     }
     finish_plan(definition, analysis)
 }
 fn compose_analysis(
     definition: &GraphDefinition,
+    table: &SemanticTable<'_>,
     range: std::ops::Range<usize>,
     local: &PassAnalysis,
     resources: Option<&[u32]>,
     global: &mut PassAnalysis,
-    history: &mut std::collections::BTreeMap<u32, Vec<(usize, AccessRange, bool)>>,
 ) {
     for (pass, dependencies) in local.dependencies.iter().enumerate() {
         global.dependencies[range.start + pass]
             .extend(dependencies.iter().map(|&source| range.start + source));
     }
-    global.conflicts.extend(
-        local
-            .conflicts
-            .iter()
-            .map(|&(from, to)| (range.start + from, range.start + to)),
-    );
-    // History and producers contain earlier scopes only. The cached local
-    // analysis supplies all inner-scope relations without quadratic replay.
+    // Producers contain earlier scopes only. The cached local analysis
+    // supplies all inner-scope relations without replaying them.
     for pass_index in range.clone() {
         for access in &definition.passes[pass_index].accesses {
-            let write = definition.is_write(access.access_code);
+            let write = table.is_write(access.access_code);
             let producers = global.producers.entry(access.resource_index).or_default();
             if access.reads_contents(write) {
                 for &(source, written) in producers.iter() {
                     if ranges_overlap(access.range, written) {
                         global.dependencies[pass_index].insert(source);
-                    }
-                }
-            }
-            if let Some(previous) = history.get(&access.resource_index) {
-                for &(source, previous_range, previous_write) in previous {
-                    if (write || previous_write) && ranges_overlap(access.range, previous_range) {
-                        global.conflicts.insert((source, pass_index));
                     }
                 }
             }
@@ -676,21 +746,11 @@ fn compose_analysis(
                 .map(|&(source, range_written)| (range.start + source, range_written)),
         );
     }
-    for pass in range {
-        for access in &definition.passes[pass].accesses {
-            history.entry(access.resource_index).or_default().push((
-                pass,
-                access.range,
-                definition.is_write(access.access_code),
-            ));
-        }
-    }
 }
 fn finish_plan(definition: GraphDefinition, analysis: PassAnalysis) -> crate::Result<CompiledPlan> {
     let count = definition.passes.len();
     let PassAnalysis {
         dependencies: data_dependencies,
-        mut conflicts,
         producers,
     } = analysis;
     let mut needed = vec![false; count];
@@ -718,43 +778,7 @@ fn finish_plan(definition: GraphDefinition, analysis: PassAnalysis) -> crate::Re
     let retained_passes = (0..count).filter(|&i| needed[i]).collect::<Vec<_>>();
     // Even two reads cannot overlap while asking for different native image
     // layouts. This is a storage constraint rather than a content producer edge.
-    let mut image_history = std::collections::BTreeMap::<
-        u32,
-        Vec<(usize, crate::resource::OwnershipRange, ash::vk::ImageLayout)>,
-    >::new();
-    for &pass in &retained_passes {
-        for access in &definition.passes[pass].accesses {
-            let descriptor = definition.resources[access.resource_index as usize].descriptor;
-            if !matches!(descriptor, Descriptor::Image(_)) {
-                continue;
-            }
-            let range = super::sync_plan::native_range(
-                access.range,
-                descriptor,
-                definition.context.separate_depth_stencil_layouts,
-            )?;
-            let layout = definition
-                .access_semantics
-                .iter()
-                .find(|semantic| semantic.code == access.access_code)
-                .expect("validated semantics")
-                .layout;
-            let history = image_history.entry(access.resource_index).or_default();
-            for &(source, previous_range, previous_layout) in history.iter() {
-                if source != pass
-                    && previous_layout != layout
-                    && crate::resource::range_state::intersection(range, previous_range).is_some()
-                {
-                    conflicts.insert((source, pass));
-                }
-            }
-            history.push((pass, range, layout));
-        }
-    }
-    let dependency_edges: Vec<(usize, usize)> = conflicts
-        .into_iter()
-        .filter(|&(a, b)| needed[a] && needed[b])
-        .collect();
+    let dependency_edges = ordering_edges(&definition, &retained_passes)?;
     super::queue_schedule::validate_resource_queue_contracts(
         &definition,
         &retained_passes,
@@ -770,8 +794,13 @@ fn finish_plan(definition: GraphDefinition, analysis: PassAnalysis) -> crate::Re
         .map(|&i| definition.passes[i].accesses.as_slice())
         .collect::<Vec<_>>();
     let mut info = ResourceInfo::default();
+    let table = SemanticTable::new(&definition.access_semantics);
     info.calculate(&origins, &definition.exports, &pass_slices, |code| {
-        definition.mask(code)
+        table
+            .get(code)
+            .map_or(ash::vk::AccessFlags::empty(), |semantic| {
+                semantic.declared_access
+            })
     })?;
     let mut batch_compiler = BatchCompiler::new();
     if definition.batch_per_pass {
@@ -810,7 +839,11 @@ fn finish_plan(definition: GraphDefinition, analysis: PassAnalysis) -> crate::Re
         batches,
         queue_schedule,
     };
-    super::plan_check::check_plan(&plan.definition, &plan)?;
+    // Independent verification of the compiler's own output (not input
+    // validation, which check_definition performs unconditionally).
+    if super::validation_enabled() {
+        super::plan_check::check_plan(&plan.definition, &plan)?;
+    }
     Ok(plan)
 }
 
@@ -974,13 +1007,14 @@ mod borrowed_definition_tests {
                 .unwrap()
         );
         let mut policy = AccessTable::original();
-        policy.0.get_mut(&0x34).unwrap().original_mask ^= 1;
+        policy.0.get_mut(&0x34).unwrap().scope.access ^=
+            ash::vk::AccessFlags::INDIRECT_COMMAND_READ;
         assert!(
             !key.matches_declaration(&graph, &mut policy, context)
                 .unwrap()
         );
         let mut policy = AccessTable::original();
-        policy.0.get_mut(&0x34).unwrap().write = false;
+        policy.0.get_mut(&0x34).unwrap().scope.write = false;
         assert!(
             !key.matches_declaration(&graph, &mut policy, context)
                 .unwrap()
@@ -1030,8 +1064,8 @@ mod borrowed_definition_tests {
             GraphDefinition::from_declaration(&graph, &mut AccessTable::original(), context)
                 .unwrap();
         let changes: &[fn(&mut super::super::vulkan::AccessSpec)] = &[
-            |spec| spec.stages = ash::vk::PipelineStageFlags::ALL_COMMANDS,
-            |spec| spec.access = ash::vk::AccessFlags::MEMORY_WRITE,
+            |spec| spec.scope.stages = ash::vk::PipelineStageFlags::ALL_COMMANDS,
+            |spec| spec.scope.access = ash::vk::AccessFlags::MEMORY_WRITE,
             |spec| spec.layout = ash::vk::ImageLayout::GENERAL,
         ];
         for change in changes {
@@ -1180,27 +1214,136 @@ mod borrowed_definition_tests {
     #[test]
     fn undefined_read_permission_does_not_bypass_cached_ordinary_boundary_validation() {
         let descriptor = super::super::vulkan::ResourceSpec::Image(
-            crate::raw::texture::TextureDesc::new_2d(8, 8, ash::vk::Format::R32_SFLOAT))
-            .descriptor();
+            crate::raw::texture::TextureDesc::new_2d(8, 8, ash::vk::Format::R32_SFLOAT),
+        )
+        .descriptor();
         for permitted in [false, true] {
             let mut graph = RenderGraph::new();
-            let h = graph.import_unowned("history", descriptor, 9, 0x19).unwrap();
+            let h = graph
+                .import_unowned("history", descriptor, 9, 0x19)
+                .unwrap();
             let mut pass = graph.add_pass("history");
             if permitted {
-                pass.add_undefined_content_read_range(h, 0x19, 0, AccessRange::Whole).unwrap();
+                pass.add_undefined_content_read_range(h, 0x19, 0, AccessRange::Whole)
+                    .unwrap();
             } else {
                 pass.add_resource_access(h, 0x19, 0).unwrap();
             }
-            pass.side_effect(); pass.render(|_| true);
+            pass.side_effect();
+            pass.render(|_| true);
             let mut raw = graph.build().declaration;
             let context = PlanContext::default();
-            let key = GraphDefinition::from_declaration(&raw, &mut AccessTable::original(), context).unwrap();
-            raw.resources[0].source = OriginSource::ImportUnowned { token: 10, initial_access: 0 };
+            let key =
+                GraphDefinition::from_declaration(&raw, &mut AccessTable::original(), context)
+                    .unwrap();
+            raw.resources[0].source = OriginSource::ImportUnowned {
+                token: 10,
+                initial_access: 0,
+            };
             let borrowed = key.matches_declaration(&raw, &mut AccessTable::original(), context);
             assert_eq!(borrowed.is_ok(), permitted);
-            if permitted { assert!(borrowed.unwrap()); }
-            assert_eq!(GraphDefinition::from_declaration(&raw, &mut AccessTable::original(), context).is_ok(), permitted);
+            if permitted {
+                assert!(borrowed.unwrap());
+            }
+            assert_eq!(
+                GraphDefinition::from_declaration(&raw, &mut AccessTable::original(), context)
+                    .is_ok(),
+                permitted
+            );
         }
     }
+}
 
+#[cfg(test)]
+mod ordering_tests {
+    use super::*;
+    use crate::rg::{
+        graph::{BufferDesc, RenderGraph},
+        resource::ResourceOrigin,
+        vulkan::AccessTable,
+    };
+    const READ: u8 = 0x25;
+    const WRITE: u8 = 0x34;
+    /// `passes[i] = (code, side_effect)` all on one created buffer.
+    fn plan(passes: &[(u8, bool)]) -> CompiledPlan {
+        let mut graph = RenderGraph::new();
+        let descriptor = Descriptor::Buffer(BufferDesc {
+            word_at_00: 64,
+            word_at_08: 0,
+            bytes_at_0c_through_0e: [0; 3],
+        });
+        let buffer = graph
+            .create_raw_resource(
+                "b",
+                ResourceOrigin {
+                    descriptor,
+                    source: OriginSource::Create,
+                },
+            )
+            .unwrap();
+        for (index, &(code, side_effect)) in passes.iter().enumerate() {
+            let mut pass = graph.add_pass(format!("p{index}"));
+            if side_effect {
+                pass = pass.with_side_effect();
+            }
+            pass.add_resource_access(buffer, code, 0).unwrap();
+            pass.render(|_| true);
+        }
+        let declaration = graph.build().declaration;
+        let definition = GraphDefinition::from_declaration(
+            &declaration,
+            &mut AccessTable::original(),
+            PlanContext::default(),
+        )
+        .unwrap();
+        compile_definition(definition).unwrap()
+    }
+    fn reaches(edges: &[(usize, usize)], from: usize, to: usize) -> bool {
+        let mut pending = vec![from];
+        let mut seen = BTreeSet::new();
+        while let Some(next) = pending.pop() {
+            for &(a, b) in edges {
+                if a == next && seen.insert(b) {
+                    pending.push(b);
+                }
+            }
+        }
+        seen.contains(&to)
+    }
+    #[test]
+    fn culled_middle_writer_keeps_the_surviving_writers_ordered() {
+        let plan = plan(&[(WRITE, true), (WRITE, false), (WRITE, true)]);
+        assert_eq!(plan.retained_passes, [0, 2]);
+        assert_eq!(plan.dependency_edges, [(0, 2)]);
+    }
+    #[test]
+    fn frontier_keeps_every_conflict_transitively() {
+        // W0 R1 R2 W3 W4 R5: each conflicting pair stays ordered.
+        let passes = [
+            (WRITE, true),
+            (READ, true),
+            (READ, true),
+            (WRITE, true),
+            (WRITE, true),
+            (READ, true),
+        ];
+        let plan = plan(&passes);
+        for later in 0..passes.len() {
+            for earlier in 0..later {
+                if passes[earlier].0 == WRITE || passes[later].0 == WRITE {
+                    assert!(
+                        reaches(&plan.dependency_edges, earlier, later),
+                        "{earlier} -> {later} in {:?}",
+                        plan.dependency_edges
+                    );
+                }
+            }
+        }
+        assert!(
+            !reaches(&plan.dependency_edges, 1, 2),
+            "two reads stay unordered"
+        );
+        // Covered entries are pruned: W4 does not need a direct edge from W0.
+        assert!(!plan.dependency_edges.contains(&(0, 4)));
+    }
 }

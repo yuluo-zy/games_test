@@ -4,7 +4,7 @@ use rhapsody::{
     device::{Device, DeviceConfig},
     raw::{
         buffer::{Buffer, BufferDesc},
-        setup::{init_texture_data, with_setup_resources},
+        setup::{SETUP_WAIT_TIMEOUT_NS, SetupAccess, init_texture_data, with_setup_resources},
         texture::{Texture, TextureDesc, TextureKind, TextureViewDesc},
         texture_upload::{copy_format_params, linear_regions, plan_texture_copies},
     },
@@ -144,35 +144,21 @@ fn cube_faces_cube_array_faces_and_odd_r8_mips_upload_every_subresource() {
             &BufferDesc::new_gpu_to_cpu(plan.total, vk::BufferUsageFlags::TRANSFER_DST),
         )
         .unwrap();
-        with_setup_resources(&device, &[&image, &readback], |command| unsafe {
-            let barrier = vk::ImageMemoryBarrier::default()
-                .src_access_mask(vk::AccessFlags::SHADER_READ)
-                .dst_access_mask(vk::AccessFlags::TRANSFER_READ)
-                .old_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-                .new_layout(vk::ImageLayout::TRANSFER_SRC_OPTIMAL)
-                .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                .image(image.handle)
-                .subresource_range(
-                    vk::ImageSubresourceRange::default()
-                        .aspect_mask(vk::ImageAspectFlags::COLOR)
-                        .level_count(3)
-                        .layer_count(layers),
-                );
-            device.device.cmd_pipeline_barrier(
+        let accesses = [
+            SetupAccess::Image {
+                texture: &image,
+                range: None,
+                scope: SetupAccess::TRANSFER_READ,
+                layout: vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+            },
+            SetupAccess::transfer_write(&readback, 0, plan.total),
+        ];
+        with_setup_resources(&device, &accesses, |command| unsafe {
+            device.raw_device().cmd_copy_image_to_buffer(
                 command,
-                vk::PipelineStageFlags::ALL_COMMANDS,
-                vk::PipelineStageFlags::TRANSFER,
-                vk::DependencyFlags::empty(),
-                &[],
-                &[],
-                &[barrier],
-            );
-            device.device.cmd_copy_image_to_buffer(
-                command,
-                image.handle,
+                image.raw_handle(),
                 vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                readback.handle,
+                readback.raw_handle(),
                 &plan.copies,
             );
             let host = vk::BufferMemoryBarrier::default()
@@ -180,9 +166,9 @@ fn cube_faces_cube_array_faces_and_odd_r8_mips_upload_every_subresource() {
                 .dst_access_mask(vk::AccessFlags::HOST_READ)
                 .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
                 .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                .buffer(readback.handle)
+                .buffer(readback.raw_handle())
                 .size(vk::WHOLE_SIZE);
-            device.device.cmd_pipeline_barrier(
+            device.raw_device().cmd_pipeline_barrier(
                 command,
                 vk::PipelineStageFlags::TRANSFER,
                 vk::PipelineStageFlags::HOST,
@@ -192,6 +178,8 @@ fn cube_faces_cube_array_faces_and_odd_r8_mips_upload_every_subresource() {
                 &[],
             );
         })
+        .unwrap()
+        .wait(SETUP_WAIT_TIMEOUT_NS)
         .unwrap();
         let mut actual = vec![0; plan.total as usize];
         unsafe { readback.read_bytes_after_completion(0, &mut actual) }.unwrap();
@@ -285,7 +273,7 @@ fn recorded_uploads_share_virtual_state_and_graph_import_uses_physical_final_lay
     let layers = vk::ImageSubresourceLayers::default()
         .aspect_mask(vk::ImageAspectFlags::COLOR)
         .layer_count(1);
-    with_setup_command(&device, |command| unsafe {
+    with_setup_command(&device, &[], |command| unsafe {
         record_texture_zero_fill(command, texture.clone(), queue)?;
         record_texture_regions(
             command,
@@ -326,11 +314,11 @@ fn recorded_uploads_share_virtual_state_and_graph_import_uses_physical_final_lay
             vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
         )?;
         buffer_access(command, readback.clone(), queue, 0, 256, transfer_write)?;
-        device.device.cmd_copy_image_to_buffer(
-            command.handle,
-            texture.handle,
+        device.raw_device().cmd_copy_image_to_buffer(
+            command.raw_handle(),
+            texture.raw_handle(),
             vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-            readback.handle,
+            readback.raw_handle(),
             &[vk::BufferImageCopy::default()
                 .image_subresource(layers)
                 .image_extent(texture.desc.extent())],
@@ -360,6 +348,8 @@ fn recorded_uploads_share_virtual_state_and_graph_import_uses_physical_final_lay
             },
         )
     })
+    .unwrap()
+    .wait(rhapsody::raw::setup::SETUP_WAIT_TIMEOUT_NS)
     .unwrap();
     let mut expected = [0u8; 256];
     for pixel in expected.as_chunks_mut::<4>().0 {
@@ -410,11 +400,11 @@ fn recorded_uploads_share_virtual_state_and_graph_import_uses_physical_final_lay
         let device = device.clone();
         pass.render_with_result_context(move |context| {
             unsafe {
-                device.device.cmd_copy_image_to_buffer(
+                device.raw_device().cmd_copy_image_to_buffer(
                     vk::CommandBuffer::from_raw(context.command.handle()),
-                    image.handle,
+                    image.raw_handle(),
                     vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                    buffer.handle,
+                    buffer.raw_handle(),
                     &[vk::BufferImageCopy::default()
                         .image_subresource(layers)
                         .image_extent(image.desc.extent())],

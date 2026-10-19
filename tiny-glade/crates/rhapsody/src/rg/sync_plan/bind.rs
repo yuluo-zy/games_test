@@ -49,9 +49,33 @@ impl PendingFrontier {
     fn source(self, queue: QueueId) -> AccessScope {
         self.scope[queue.index()].union(self.host)
     }
+    /// Some prerequisite executes on a queue other than `queue`, so it is
+    /// reached through a semaphore wait rather than command order.
+    fn waits_other_queue(&self, queue: QueueId) -> bool {
+        self.points
+            .iter()
+            .enumerate()
+            .any(|(index, point)| point.is_some() && index != queue.index())
+    }
     fn add(&mut self, queue: QueueId, scope: AccessScope, batch: usize) {
         self.scope[queue.index()] = self.scope[queue.index()].union(scope);
         self.points[queue.index()] = Some(DependencyRef::Batch(batch));
+    }
+    /// Union of two frontiers. Per queue, the dependency that executes later
+    /// covers the earlier one (`later` decides using the actual binding order).
+    fn merge(
+        &mut self,
+        other: Self,
+        later: impl Fn(DependencyRef, DependencyRef) -> DependencyRef,
+    ) {
+        for queue in 0..MAX_QUEUES {
+            self.scope[queue] = self.scope[queue].union(other.scope[queue]);
+            self.points[queue] = match (self.points[queue], other.points[queue]) {
+                (Some(a), Some(b)) => Some(later(a, b)),
+                (a, b) => a.or(b),
+            };
+        }
+        self.host = self.host.union(other.host);
     }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -73,6 +97,8 @@ struct ShadowCell {
     readers: PendingFrontier,
     owner: PendingOwner,
     revision: u64,
+    /// Not yet touched by this binding; alias edges apply on the first touch.
+    fresh: bool,
 }
 impl ShadowCell {
     fn new(resource: u32, cell: RangeCell) -> Self {
@@ -93,6 +119,7 @@ impl ShadowCell {
                 },
             },
             revision: state.revision,
+            fresh: true,
         }
     }
     fn increment(&mut self) -> Result<()> {
@@ -133,6 +160,7 @@ impl SynchronizationPlanner {
         Ok(Self {
             bound: BoundSynchronization {
                 initial: Storage::new(0, &budget)?,
+                aliases: Storage::new(0, &budget)?,
                 batches: Storage::new(0, &budget)?,
                 order: Storage::new(0, &budget)?,
                 transitions: Storage::new(0, &budget)?,
@@ -171,6 +199,7 @@ impl SynchronizationPlanner {
     }
     pub fn begin(&mut self) {
         self.bound.initial.values.clear();
+        self.bound.aliases.values.clear();
         self.bound.batches.values.clear();
         self.bound.order.values.clear();
         self.bound.transitions.values.clear();
@@ -184,6 +213,14 @@ impl SynchronizationPlanner {
             self.push_shadow(ShadowCell::new(resource, cell))?;
         }
         Ok(())
+    }
+    /// Declare that `next` reuses the backing memory of `previous` in this
+    /// frame. Call after [`Self::add_initial`] and before [`Self::bind`].
+    pub fn add_alias(&mut self, previous: u32, next: u32) -> Result<()> {
+        if previous == next {
+            return Err(Error::invalid_usage("a resource cannot alias itself"));
+        }
+        self.push_alias(AliasEdge { previous, next })
     }
     pub fn bind(
         &mut self,
@@ -201,6 +238,14 @@ impl SynchronizationPlanner {
                 ));
             }
         }
+        if self.bound.aliases.values.iter().any(|edge| {
+            edge.previous as usize >= program.resources.len()
+                || edge.next as usize >= program.resources.len()
+        }) {
+            return Err(Error::invalid_usage(
+                "native alias edge names an absent resource",
+            ));
+        }
         for batch in &program.batches {
             self.push_batch(BoundBatch {
                 domain: batch.domain,
@@ -209,21 +254,6 @@ impl SynchronizationPlanner {
                     passes: batch.passes.clone(),
                 },
             })?;
-        }
-        for &(from, to) in &program.dependencies {
-            let domain = self
-                .bound
-                .batches
-                .values
-                .get(to)
-                .ok_or_else(|| Error::invalid_usage("native batch dependency destination absent"))?
-                .domain;
-            self.wait(
-                to,
-                DependencyRef::Batch(from),
-                vk::PipelineStageFlags::ALL_COMMANDS,
-                domain,
-            )?;
         }
         for (batch, entry) in program.batches.iter().enumerate() {
             for pass in entry.passes.clone() {
@@ -254,7 +284,113 @@ impl SynchronizationPlanner {
             }
             self.push_order(batch)?;
         }
+        for &(from, to) in &program.dependencies {
+            self.static_dependency(program, from, to)?;
+        }
         Ok(())
+    }
+    /// A scheduled batch dependency. Resource hazards already produced exact
+    /// waits; an ordering-only edge waits at the stages where the destination
+    /// batch first touches resources the source batch also used (falling back
+    /// to every stage the destination batch uses).
+    fn static_dependency(&mut self, program: &RangeProgram, from: usize, to: usize) -> Result<()> {
+        let (Some(source), Some(target)) = (program.batches.get(from), program.batches.get(to))
+        else {
+            return Err(Error::invalid_usage(
+                "native batch dependency destination absent",
+            ));
+        };
+        let domain = self.bound.batches.values[to].domain;
+        let dependency = DependencyRef::Batch(from);
+        if source.domain.queue_index == domain.queue_index
+            || self
+                .bound
+                .waits
+                .values
+                .iter()
+                .any(|wait| wait.batch == to && wait.dependency == dependency)
+        {
+            return Ok(());
+        }
+        let uses = |batch: &ProgramBatch| {
+            program.passes[batch.passes.clone()]
+                .iter()
+                .flat_map(|pass| &program.uses[pass.uses.clone()])
+        };
+        let mut shared = vk::PipelineStageFlags::empty();
+        let mut all = vk::PipelineStageFlags::empty();
+        for usage in uses(target) {
+            all |= usage.scope.stages;
+            if uses(source).any(|earlier| earlier.resource == usage.resource) {
+                shared |= usage.scope.stages;
+            }
+        }
+        let stages = if !shared.is_empty() {
+            shared
+        } else if !all.is_empty() {
+            all
+        } else {
+            vk::PipelineStageFlags::ALL_COMMANDS
+        };
+        self.wait(to, dependency, stages, domain)
+    }
+    /// The dependency that executes later on one queue. Bound batches execute
+    /// in `order`; a batch not yet ordered is the one being bound now.
+    fn later(order: &[usize], a: DependencyRef, b: DependencyRef) -> DependencyRef {
+        let position = |batch: usize| {
+            order
+                .iter()
+                .position(|&ordered| ordered == batch)
+                .unwrap_or(usize::MAX)
+        };
+        match (a, b) {
+            (DependencyRef::Point(x), DependencyRef::Point(y)) => {
+                if x.value >= y.value {
+                    a
+                } else {
+                    b
+                }
+            }
+            (DependencyRef::Batch(_), DependencyRef::Point(_)) => a,
+            (DependencyRef::Point(_), DependencyRef::Batch(_)) => b,
+            (DependencyRef::Batch(x), DependencyRef::Batch(y)) => {
+                if position(x) >= position(y) {
+                    a
+                } else {
+                    b
+                }
+            }
+        }
+    }
+    /// First touch of an alias member: its contents are discarded and every
+    /// access to the members it reuses becomes its synthetic previous writer.
+    fn discard_alias_contents(&self, mut current: ShadowCell) -> ShadowCell {
+        let order = &self.bound.order.values;
+        let later = |a, b| Self::later(order, a, b);
+        let mut writer = current.writer;
+        writer.merge(current.readers, later);
+        for edge in self
+            .bound
+            .aliases
+            .values
+            .iter()
+            .filter(|edge| edge.next == current.resource)
+        {
+            for cell in self
+                .shadow
+                .values
+                .iter()
+                .filter(|cell| cell.resource == edge.previous)
+            {
+                writer.merge(cell.writer, later);
+                writer.merge(cell.readers, later);
+            }
+        }
+        current.writer = writer;
+        current.readers = PendingFrontier::EMPTY;
+        current.layout = vk::ImageLayout::UNDEFINED;
+        current.layout_known = true;
+        current
     }
     fn bind_use(
         &mut self,
@@ -286,6 +422,24 @@ impl SynchronizationPlanner {
             if !current.layout_known && matches!(current.range, NativeRange::Image { .. }) {
                 return Err(Error::unsupported(
                     "opaque image use requires an explicit external native-state declaration",
+                ));
+            }
+            // An alias member's contents are discarded at its first use in a
+            // frame; its set returns it only when idle with the state reset
+            // (AliasCache::give_back). Never acquire a stale release for it.
+            if current.fresh
+                && self
+                    .bound
+                    .aliases
+                    .values
+                    .iter()
+                    .any(|edge| edge.next == access.resource || edge.previous == access.resource)
+                && (matches!(current.owner, PendingOwner::Released { .. })
+                    || !sharing.is_concurrent()
+                        && matches!(current.owner, PendingOwner::Owned(owner) if owner != domain.family))
+            {
+                return Err(Error::invalid_usage(
+                    "alias member keeps queue-family ownership from an earlier frame",
                 ));
             }
             // A prior failed acquire is completed for exactly its original
@@ -392,17 +546,39 @@ impl SynchronizationPlanner {
                     }
                 }
             }
+            // Ownership recovery above keeps the stale physical layout; the
+            // first access of an alias member then discards the contents.
+            if current.fresh {
+                current.fresh = false;
+                if self
+                    .bound
+                    .aliases
+                    .values
+                    .iter()
+                    .any(|edge| edge.next == access.resource)
+                {
+                    current = self.discard_alias_contents(current);
+                }
+            }
             let changes_layout = current.layout != access.layout;
             let changes = access.scope.write || changes_layout;
             self.wait_frontier(current.writer, batch, access.scope.stages, domain)?;
             if changes {
                 self.wait_frontier(current.readers, batch, access.scope.stages, domain)?;
             }
-            let source = current.writer.source(queue).union(if changes {
+            let mut source = current.writer.source(queue).union(if changes {
                 current.readers.source(queue)
             } else {
                 AccessScope::EMPTY
             });
+            // A layout transition after a cross-queue semaphore wait must chain
+            // with that wait, which blocks exactly `access.scope.stages`.
+            if changes_layout
+                && (current.writer.waits_other_queue(queue)
+                    || changes && current.readers.waits_other_queue(queue))
+            {
+                source.stages |= access.scope.stages;
+            }
             if !source.is_empty() || changes_layout {
                 self.push_transition(BoundTransition {
                     batch,
@@ -470,7 +646,12 @@ impl SynchronizationPlanner {
             phase,
             resource: current.resource,
             range: transfer.range,
-            source: AccessScope::EMPTY,
+            // Execution-only source: the acquire (and its layout transition)
+            // chains with the release wait at the same stages.
+            source: AccessScope {
+                stages: transfer.destination.stages,
+                ..AccessScope::EMPTY
+            },
             destination: transfer.destination,
             old_layout: transfer.old_layout,
             new_layout: transfer.new_layout,
@@ -572,6 +753,7 @@ fn queue_id(domain: QueueDomain) -> Result<QueueId> {
 impl BoundSynchronization {
     fn bytes(&self) -> usize {
         self.initial.bytes()
+            + self.aliases.bytes()
             + self.batches.bytes()
             + self.order.bytes()
             + self.transitions.bytes()
@@ -609,6 +791,7 @@ macro_rules! push {
 }
 impl SynchronizationPlanner {
     push!(push_initial, initial, InitialState, max_cells);
+    push!(push_alias, aliases, AliasEdge, max_cells);
     push!(push_batch_row, batches, BoundBatch, max_batches);
     fn push_batch(&mut self, value: BoundBatch) -> Result<usize> {
         let index = self.bound.batches.values.len();
@@ -770,6 +953,228 @@ mod tests {
         assert!(
             matches!(planner.bound().patches()[1].resolve(|_|Some(real)).unwrap().action,PatchAction::Acquire {release_point,..} if release_point==real)
         );
+    }
+    #[test]
+    fn cross_queue_layout_transition_and_acquire_chain_with_their_precise_waits() {
+        let image = NativeRange::Image {
+            aspects: vk::ImageAspectFlags::COLOR.as_raw(),
+            base_mip: 0,
+            mip_count: 1,
+            base_layer: 0,
+            layer_count: 1,
+        };
+        let fragment = AccessScope {
+            stages: vk::PipelineStageFlags::FRAGMENT_SHADER,
+            access: vk::AccessFlags::SHADER_READ,
+            write: false,
+        };
+        let writes = RangeUse {
+            resource: 0,
+            range: image,
+            scope: AccessScope {
+                stages: vk::PipelineStageFlags::COMPUTE_SHADER,
+                access: vk::AccessFlags::SHADER_WRITE,
+                write: true,
+            },
+            layout: vk::ImageLayout::GENERAL,
+            access_code: 0x34,
+        };
+        let reads = RangeUse {
+            scope: fragment,
+            layout: vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+            access_code: 0x25,
+            ..writes
+        };
+        for (sharing, acquire) in [
+            (
+                ResourceSharing::Concurrent(crate::resource::QueueFamilies::new(&[0, 1]).unwrap()),
+                false,
+            ),
+            (ResourceSharing::Exclusive, true),
+        ] {
+            let mut program = program(image, vec![writes, reads], &[queue(1, 1), queue(0, 0)]);
+            program.resources[0].sharing = sharing;
+            let mut planner = SynchronizationPlanner::new(
+                Arc::new(AllocatorStats::default()),
+                Default::default(),
+            )
+            .unwrap();
+            planner
+                .add_initial(
+                    0,
+                    &[RangeCell {
+                        range: image,
+                        state: NativeState::default(),
+                    }],
+                )
+                .unwrap();
+            planner
+                .bind(&program, |family| Ok(queue(family, family)))
+                .unwrap();
+            let bound = planner.bound();
+            let wait = bound
+                .waits()
+                .iter()
+                .find(|wait| wait.batch == 1)
+                .expect("cross-queue wait");
+            assert_eq!(wait.stages, vk::PipelineStageFlags::FRAGMENT_SHADER);
+            let consumer = bound
+                .transitions()
+                .iter()
+                .filter(|transition| transition.batch == 1)
+                .collect::<Vec<_>>();
+            assert!(!consumer.is_empty());
+            assert_eq!(
+                consumer
+                    .iter()
+                    .any(|transition| matches!(transition.kind, BarrierKind::Acquire { .. })),
+                acquire
+            );
+            for transition in consumer {
+                // Every barrier on the consumer queue chains with the wait.
+                assert!(
+                    transition.source.stages.contains(wait.stages),
+                    "{transition:?} does not chain with {wait:?}"
+                );
+            }
+        }
+    }
+    /// Two exclusive alias members of one backing used on family 0. Member 1
+    /// was released to family 1 by an earlier frame whose acquire never ran.
+    fn alias_after_failed_release(reset: bool) -> Result<SynchronizationPlanner> {
+        use crate::resource::{
+            SyncCell,
+            range_state::{PatchAction, StatePatch},
+        };
+        let stats = Arc::new(AllocatorStats::default());
+        let range = buffer(0, 64);
+        let q1 = QueueId::new(1).unwrap();
+        let cell = Arc::new(
+            SyncCell::for_device(crate::device::DeviceGeneration::next())
+                .with_ownership_range(range),
+        );
+        cell.with_range_state(NativeState::default(), &stats, |_| Ok(()))
+            .unwrap();
+        let transfer = RangeTransfer {
+            pair: 7,
+            source_family: 1,
+            destination_family: 0,
+            range,
+            source: usage(range, true).scope,
+            destination: usage(range, false).scope,
+            old_layout: vk::ImageLayout::UNDEFINED,
+            new_layout: vk::ImageLayout::UNDEFINED,
+        };
+        cell.prepare_range_state(
+            &[
+                StatePatch {
+                    range,
+                    expected_revision: 0,
+                    action: PatchAction::Access {
+                        scope: usage(range, true).scope,
+                        layout: vk::ImageLayout::UNDEFINED,
+                        queue: q1,
+                        family: 1,
+                    },
+                },
+                StatePatch {
+                    range,
+                    expected_revision: 1,
+                    action: PatchAction::Release(transfer),
+                },
+            ],
+            q1,
+            1,
+            &stats,
+        )
+        .unwrap();
+        let release = SyncPoint {
+            queue: q1,
+            value: 5,
+        };
+        cell.publish_range_state(release);
+        cell.insert_overall(release);
+        let mut completed = crate::sync::CompletedValues::default();
+        // Still executing: the member must not be reset (or returned) yet.
+        assert!(!cell.discard_idle_range_state(&completed));
+        cell.with_range_state(NativeState::default(), &stats, |table| {
+            assert!(matches!(
+                table.cells()[0].state.owner,
+                RangeOwner::Released { .. }
+            ));
+            Ok(())
+        })
+        .unwrap();
+        if reset {
+            completed.raise(q1, 5);
+            assert!(cell.discard_idle_range_state(&completed));
+        }
+        let initial = cell
+            .with_range_state(NativeState::default(), &stats, |table| {
+                Ok(table.cells().to_vec())
+            })
+            .unwrap();
+        let mut program = program(
+            range,
+            vec![usage(range, true), usage(range, true)],
+            &[queue(0, 0), queue(0, 0)],
+        );
+        program.resources.push(program.resources[0]);
+        program.uses[1].resource = 1;
+        program.dependencies = vec![(0, 1)];
+        let mut planner = SynchronizationPlanner::new(stats, Default::default()).unwrap();
+        planner
+            .add_initial(
+                0,
+                &[RangeCell {
+                    range,
+                    state: NativeState::default(),
+                }],
+            )
+            .unwrap();
+        planner.add_initial(1, &initial).unwrap();
+        planner.add_alias(0, 1).unwrap();
+        planner.add_alias(1, 0).unwrap();
+        planner.bind(&program, |family| Ok(queue(family, family)))?;
+        Ok(planner)
+    }
+    #[test]
+    fn alias_member_released_by_a_failed_frame_is_discarded_without_stale_acquire() {
+        let planner = alias_after_failed_release(true).unwrap();
+        let bound = planner.bound();
+        assert!(
+            bound
+                .batches()
+                .iter()
+                .all(|batch| matches!(batch.kind, BoundBatchKind::Graph { .. })),
+            "no ownership prelude batch"
+        );
+        assert!(
+            bound.transitions().iter().all(|transition| matches!(
+                transition.kind,
+                BarrierKind::Memory
+            ) && transition.source_family
+                == vk::QUEUE_FAMILY_IGNORED),
+            "no ownership transfer barrier"
+        );
+        assert!(
+            bound
+                .patches()
+                .iter()
+                .all(|patch| matches!(patch.action, BoundPatchAction::Access { .. }))
+        );
+        // The completed release is neither waited on nor carried forward.
+        assert!(
+            bound
+                .waits()
+                .iter()
+                .all(|wait| !matches!(wait.dependency, DependencyRef::Point(_)))
+        );
+        // An unreset stale release is rejected instead of acquired.
+        let Err(error) = alias_after_failed_release(false) else {
+            panic!("stale release must not bind");
+        };
+        assert!(error.to_string().contains("alias member"), "{error}");
     }
     #[test]
     fn released_recovery_first_acquires_the_original_destination_then_moves_again() {

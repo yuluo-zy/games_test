@@ -15,13 +15,21 @@ pub struct DynamicConstantsChunk {
     pub size: u64,
 }
 impl DynamicConstantsChunk {
+    /// Write without waiting. On non-coherent memory the written atoms are
+    /// queued and flushed with every other dirty constants range in one
+    /// `vkFlushMappedMemoryRanges` right before the next queue submit; coherent
+    /// memory is never flushed.
     pub fn write_bytes(&self, bytes: &[u8]) -> Result<()> {
         if bytes.len() as u64 > self.size {
             return Err(Error::invalid_usage("数据超过常量区段范围"));
         }
-        self.buffer.write_bytes_unsynchronized(self.offset, bytes)
+        if self.buffer.is_dynamic_constants_page() {
+            self.buffer.write_bytes_deferred_flush(self.offset, bytes)
+        } else {
+            self.buffer.write_bytes_unsynchronized(self.offset, bytes)
+        }
     }
-    /// 原入口名；与 `write_bytes` 同一实现。
+    /// Alias of [`Self::write_bytes`].
     pub fn write(&self, bytes: &[u8]) -> Result<()> {
         self.write_bytes(bytes)
     }
@@ -66,7 +74,7 @@ impl DynamicConstantsChunk {
             self.binding(vk::DescriptorType::STORAGE_BUFFER),
         )
     }
-    /// 候选接口返回安全的数据副本；不暴露受 GPU 生命周期约束的裸映射指针。
+    /// Returns a copy of the data rather than a GPU-lifetime-bound mapping.
     pub fn into_uniform_buffer_binding_and_data(self) -> Result<(DescriptorSetBinding, Vec<u8>)> {
         let mut bytes = vec![
             0;
@@ -78,10 +86,9 @@ impl DynamicConstantsChunk {
     }
 }
 
-/// 原 `DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES`：每页大小，也是单次分配上限
-/// （0x140c02740 开头 `cmp r9,0x40001; jae` → `assert!(bytes <= DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES)`）。
+/// Page size, which is also the largest single allocation.
 pub const DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES: u64 = 0x40000;
-/// 页缓冲用途（0x140c029f0 写入 `BufferDesc.usage = 0x20033`）：
+/// Page buffer usage:
 /// TRANSFER_SRC | TRANSFER_DST | UNIFORM_BUFFER | STORAGE_BUFFER | SHADER_DEVICE_ADDRESS。
 /// Creation removes only the optional address bit when BDA is not enabled;
 /// descriptor and parameter bindings do not require buffer addresses.
@@ -332,9 +339,10 @@ impl DynamicConstants {
         config.validate()?;
         let limits = unsafe {
             device
+                .core
                 .instance
                 .instance
-                .get_physical_device_properties(device.physical)
+                .get_physical_device_properties(device.core.physical)
         }
         .limits;
         let device_alignment = limits
@@ -344,8 +352,8 @@ impl DynamicConstants {
         if device_alignment >= 0x10000 || !device_alignment.is_power_of_two() {
             return Err(Error::invalid_usage("常量页对齐无效"));
         }
-        let sharing = constant_page_sharing(&device.queue_plan.queues)?;
-        let ring = PageRing::new(config, &device.allocator_stats)?;
+        let sharing = constant_page_sharing(&device.queues.plan.queues)?;
+        let ring = PageRing::new(config, &device.memory.stats)?;
         Ok(Self {
             device,
             device_alignment,
@@ -366,7 +374,8 @@ impl DynamicConstants {
             let _submission = cell.lock_submission();
             if Arc::get_mut(&mut page.buffer).is_some() && cell.is_reached(&self.ring.completed) {
                 self.device
-                    .allocator_stats
+                    .memory
+                    .stats
                     .mark_cached(page.buffer.allocation_id(), &self.ring.completed);
             }
         }
@@ -389,7 +398,7 @@ impl DynamicConstants {
             return Err(Error::DeviceLost);
         }
         let pressure =
-            self.device.allocator_stats.budget_action() == crate::device::BudgetAction::EvictCache;
+            self.device.memory.stats.budget_action() == crate::device::BudgetAction::EvictCache;
         if pressure
             || !self
                 .ring
@@ -403,7 +412,7 @@ impl DynamicConstants {
         let (buffer, offset) = self.ring.allocate(size, alignment, device_alignment, || {
             let desc = BufferDesc::new_cpu_to_gpu(
                 DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES,
-                constant_page_usage(device.capabilities.buffer_device_address),
+                constant_page_usage(device.core.capabilities.buffer_device_address),
             )
             .with_alignment(device_alignment as u16);
             match sharing {
@@ -412,10 +421,11 @@ impl DynamicConstants {
                     Buffer::new_concurrent(device, &desc, families.as_slice())
                 }
             }
-            .map(Buffer::into_dynamic_constants_page)
+            .and_then(Buffer::into_dynamic_constants_page)
         })?;
         self.device
-            .allocator_stats
+            .memory
+            .stats
             .mark_live(buffer.allocation_id(), &self.ring.completed);
         self.ring.trim_idle(
             if pressure {
@@ -485,8 +495,8 @@ fn allocation_offset(
     requested: Option<u64>,
     device_alignment: u64,
 ) -> Result<Option<u64>> {
-    // B allocate@140c02759 rejects only bytes >0x40000. Empty chunks retain
-    // a real aligned page/address; they do not allocate a zero-sized VkBuffer.
+    // Only requests larger than one page are rejected. Empty chunks retain a
+    // real aligned page/address; they do not allocate a zero-sized VkBuffer.
     if size > DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES {
         return Err(Error::invalid_usage("常量区段大小不能超过页范围"));
     }
@@ -506,6 +516,160 @@ fn align_up(value: u64, alignment: u64) -> Result<u64> {
         .checked_add(alignment - 1)
         .map(|v| v & !(alignment - 1))
         .ok_or_else(|| Error::invalid_usage("常量区段对齐溢出"))
+}
+
+/// When a host write to mapped memory must be flushed.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum HostFlush {
+    /// Coherent memory: never flushed.
+    None,
+    /// Flush the written atoms right after the copy.
+    Now,
+    /// Queue the written atoms on the device; flushed once before the next submit.
+    Deferred,
+}
+pub(crate) fn host_write_flush(properties: vk::MemoryPropertyFlags, deferred: bool) -> HostFlush {
+    if properties.contains(vk::MemoryPropertyFlags::HOST_COHERENT) {
+        HostFlush::None
+    } else if deferred {
+        HostFlush::Deferred
+    } else {
+        HostFlush::Now
+    }
+}
+
+/// Per-page merged ranges beyond which a page flushes its hull instead.
+const MAX_DIRTY_RANGES_PER_PAGE: usize = 16;
+
+struct DirtyPage {
+    id: u64,
+    memory: vk::DeviceMemory,
+    /// Sorted, disjoint, non-adjacent `[start, end)` memory ranges; atom
+    /// aligned by construction. `end == u64::MAX` means `VK_WHOLE_SIZE`.
+    ranges: smallvec::SmallVec<[(u64, u64); 4]>,
+}
+impl DirtyPage {
+    fn insert(&mut self, start: u64, end: u64) {
+        let (mut start, mut end) = (start, end);
+        self.ranges.retain(|&mut (s, e)| {
+            if s <= end && start <= e {
+                start = start.min(s);
+                end = end.max(e);
+                false
+            } else {
+                true
+            }
+        });
+        let at = self.ranges.partition_point(|&(s, _)| s < start);
+        self.ranges.insert(at, (start, end));
+        if self.ranges.len() > MAX_DIRTY_RANGES_PER_PAGE {
+            let hull = (self.ranges[0].0, self.ranges[self.ranges.len() - 1].1);
+            self.ranges.clear();
+            self.ranges.push(hull);
+        }
+    }
+}
+
+/// Device-wide queue of non-coherent dynamic-constants writes whose flush is
+/// deferred to the next queue submit. Each page keeps its dirty atoms merged;
+/// all pages are flushed with one `vkFlushMappedMemoryRanges` call.
+#[derive(Default)]
+pub(crate) struct HostFlushQueue {
+    dirty: std::sync::atomic::AtomicBool,
+    pages: parking_lot::Mutex<Vec<DirtyPage>>,
+    flush_calls: std::sync::atomic::AtomicU64,
+}
+impl HostFlushQueue {
+    /// Queue `[offset, offset + size)` of `memory` (atom-aligned, or
+    /// `VK_WHOLE_SIZE`) written for allocation `id`.
+    pub(crate) fn record(
+        &self,
+        id: u64,
+        memory: vk::DeviceMemory,
+        offset: u64,
+        size: u64,
+    ) -> Result<()> {
+        if size == 0 {
+            return Ok(());
+        }
+        let end = if size == vk::WHOLE_SIZE {
+            u64::MAX
+        } else {
+            offset
+                .checked_add(size)
+                .ok_or_else(|| Error::invalid_usage("flush range overflows"))?
+        };
+        let mut pages = self.pages.lock();
+        match pages.iter_mut().find(|page| page.id == id) {
+            Some(page) => page.insert(offset, end),
+            None => {
+                pages.try_reserve(1).map_err(|_| Error::OutOfHostMemory)?;
+                let mut ranges = smallvec::SmallVec::new();
+                ranges.push((offset, end));
+                pages.push(DirtyPage { id, memory, ranges });
+            }
+        }
+        self.dirty.store(true, std::sync::atomic::Ordering::Release);
+        Ok(())
+    }
+    /// Drop the pending ranges of a freed allocation.
+    pub(crate) fn forget(&self, id: u64) {
+        if !self.dirty.load(std::sync::atomic::Ordering::Acquire) {
+            return;
+        }
+        self.pages.lock().retain(|page| page.id != id);
+    }
+    /// Flush every pending range with one call of `flush`. Ranges stay
+    /// pending when it fails.
+    pub(crate) fn flush_with(
+        &self,
+        flush: impl FnOnce(&[vk::MappedMemoryRange<'_>]) -> Result<()>,
+    ) -> Result<()> {
+        if !self.dirty.swap(false, std::sync::atomic::Ordering::AcqRel) {
+            return Ok(());
+        }
+        let mut pages = self.pages.lock();
+        let count = pages.iter().map(|page| page.ranges.len()).sum();
+        let mut ranges: smallvec::SmallVec<[vk::MappedMemoryRange<'_>; 8]> =
+            smallvec::SmallVec::new();
+        ranges.try_reserve(count).map_err(|_| {
+            self.dirty.store(true, std::sync::atomic::Ordering::Release);
+            Error::OutOfHostMemory
+        })?;
+        for page in pages.iter() {
+            for &(start, end) in &page.ranges {
+                ranges.push(
+                    vk::MappedMemoryRange::default()
+                        .memory(page.memory)
+                        .offset(start)
+                        .size(if end == u64::MAX {
+                            vk::WHOLE_SIZE
+                        } else {
+                            end - start
+                        }),
+                );
+            }
+        }
+        if ranges.is_empty() {
+            return Ok(());
+        }
+        self.flush_calls
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        match flush(&ranges) {
+            Ok(()) => {
+                pages.clear();
+                Ok(())
+            }
+            Err(error) => {
+                self.dirty.store(true, std::sync::atomic::Ordering::Release);
+                Err(error)
+            }
+        }
+    }
+    /// Number of `vkFlushMappedMemoryRanges` calls issued (statistics).
+    pub(crate) fn flush_calls(&self) -> u64 {
+        self.flush_calls.load(std::sync::atomic::Ordering::Relaxed)
+    }
 }
 
 #[cfg(test)]
@@ -740,10 +904,19 @@ mod tests {
         drop(payload);
         drop(aligned_empty);
         drop(next);
-        assert!(matches!(ring.allocate(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES, None, 16, cpu_page), Err(Error::Timeout)));
+        assert!(matches!(
+            ring.allocate(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES, None, 16, cpu_page),
+            Err(Error::Timeout)
+        ));
         drop(empty);
-        assert!(ring.allocate(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES, None, 16, cpu_page).is_ok());
-        assert_eq!(allocation_offset(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES, 0, None, 16).unwrap(), Some(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES));
+        assert!(
+            ring.allocate(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES, None, 16, cpu_page)
+                .is_ok()
+        );
+        assert_eq!(
+            allocation_offset(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES, 0, None, 16).unwrap(),
+            Some(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES)
+        );
     }
 
     #[test]
@@ -756,6 +929,95 @@ mod tests {
         assert_eq!(
             allocation_offset(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES - 16, 32, None, 16).unwrap(),
             None
+        );
+    }
+
+    #[test]
+    fn coherent_memory_is_never_flushed_and_noncoherent_constants_defer() {
+        let noncoherent = vk::MemoryPropertyFlags::HOST_VISIBLE;
+        let coherent = noncoherent | vk::MemoryPropertyFlags::HOST_COHERENT;
+        assert_eq!(host_write_flush(coherent, true), HostFlush::None);
+        assert_eq!(host_write_flush(coherent, false), HostFlush::None);
+        assert_eq!(host_write_flush(noncoherent, true), HostFlush::Deferred);
+        assert_eq!(host_write_flush(noncoherent, false), HostFlush::Now);
+    }
+
+    #[test]
+    fn many_noncoherent_writes_flush_once_per_page_with_merged_atoms() {
+        use ash::vk::Handle;
+        let queue = HostFlushQueue::default();
+        let atom = 64u64;
+        let (page_a, page_b) = (
+            vk::DeviceMemory::from_raw(0x10),
+            vk::DeviceMemory::from_raw(0x20),
+        );
+        // 1000 consecutive 48-byte constants written into page A (atom
+        // aligned by the writer), and a few scattered writes into page B.
+        for index in 0..1000u64 {
+            let start = index * 48 / atom * atom;
+            let end = ((index + 1) * 48).div_ceil(atom) * atom;
+            queue.record(1, page_a, start, end - start).unwrap();
+        }
+        queue.record(2, page_b, 0, atom).unwrap();
+        queue.record(2, page_b, 4 * atom, atom).unwrap();
+        queue.record(2, page_b, atom, atom).unwrap();
+        let mut calls = 0;
+        let mut seen = Vec::new();
+        queue
+            .flush_with(|ranges| {
+                calls += 1;
+                seen.extend(ranges.iter().map(|r| (r.memory, r.offset, r.size)));
+                Ok(())
+            })
+            .unwrap();
+        assert_eq!(calls, 1, "one flush call covers every dirty page");
+        assert_eq!(
+            seen,
+            [
+                (page_a, 0, 48_000u64.div_ceil(atom) * atom),
+                (page_b, 0, 2 * atom),
+                (page_b, 4 * atom, atom),
+            ]
+        );
+        // Nothing dirty: the next submit performs no flush call.
+        queue
+            .flush_with(|_| panic!("clean queue must not flush"))
+            .unwrap();
+        assert_eq!(queue.flush_calls(), 1);
+    }
+
+    #[test]
+    fn failed_flush_keeps_ranges_and_freed_pages_are_forgotten() {
+        use ash::vk::Handle;
+        let queue = HostFlushQueue::default();
+        let memory = vk::DeviceMemory::from_raw(0x30);
+        queue.record(7, memory, 0, 256).unwrap();
+        queue.record(8, memory, 512, vk::WHOLE_SIZE).unwrap();
+        assert!(queue.flush_with(|_| Err(Error::OutOfHostMemory)).is_err());
+        queue.forget(8);
+        let mut seen = Vec::new();
+        queue
+            .flush_with(|ranges| {
+                seen.extend(ranges.iter().map(|r| (r.offset, r.size)));
+                Ok(())
+            })
+            .unwrap();
+        assert_eq!(seen, [(0, 256)]);
+    }
+
+    #[test]
+    fn scattered_writes_collapse_to_a_bounded_hull() {
+        let mut page = DirtyPage {
+            id: 1,
+            memory: vk::DeviceMemory::null(),
+            ranges: smallvec::SmallVec::new(),
+        };
+        for index in 0..(MAX_DIRTY_RANGES_PER_PAGE as u64 + 1) {
+            page.insert(index * 128, index * 128 + 64);
+        }
+        assert_eq!(
+            page.ranges.as_slice(),
+            [(0, MAX_DIRTY_RANGES_PER_PAGE as u64 * 128 + 64)]
         );
     }
 }

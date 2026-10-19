@@ -227,7 +227,7 @@ impl GpuCrashDiagnostics {
         label: impl Into<String>,
     ) -> Result<u32> {
         if !Arc::ptr_eq(&command.pool.device, &self.device)
-            || command.pool.family != self.device.queue_family
+            || command.pool.family != self.device.queues.primary_family
         {
             return Err(Error::invalid_usage("诊断命令设备或队列族不匹配"));
         }
@@ -247,9 +247,13 @@ impl GpuCrashDiagnostics {
         );
         command.retain_opaque(self.marker_buffer.clone())?;
         unsafe {
-            self.device
-                .device
-                .cmd_fill_buffer(command.handle, self.marker_buffer.handle, 0, 4, id);
+            self.device.core.device.cmd_fill_buffer(
+                command.handle,
+                self.marker_buffer.handle,
+                0,
+                4,
+                id,
+            );
         }
         Ok(id)
     }
@@ -261,35 +265,32 @@ impl GpuCrashDiagnostics {
     pub fn make_host_readable(&self, command: &mut VulkanCommandBuffer) -> Result<()> {
         if !Arc::ptr_eq(&command.pool.device, &self.device)
             || !command.is_recording()
-            || command.pool.family != self.device.queue_family
+            || command.pool.family != self.device.queues.primary_family
         {
             return Err(Error::invalid_usage("诊断屏障的命令设备或录制状态不匹配"));
         }
         command.retain_opaque(self.marker_buffer.clone())?;
         command.retain_opaque(self.debug_buffer.clone())?;
-        let barriers: Vec<_> = [self.marker_buffer.handle, self.debug_buffer.handle]
-            .iter()
-            .map(|buffer| {
-                vk::BufferMemoryBarrier::default()
-                    .src_access_mask(vk::AccessFlags::MEMORY_WRITE)
-                    .dst_access_mask(vk::AccessFlags::HOST_READ)
-                    .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                    .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                    .buffer(*buffer)
-                    .size(vk::WHOLE_SIZE)
-            })
-            .collect();
-        unsafe {
-            self.device.device.cmd_pipeline_barrier(
-                command.handle,
-                vk::PipelineStageFlags::ALL_COMMANDS,
-                vk::PipelineStageFlags::HOST,
-                vk::DependencyFlags::empty(),
-                &[],
-                &barriers,
-                &[],
-            );
+        let mut scope = super::barrier::SynchronizationScope::new(
+            vk::PipelineStageFlags::ALL_COMMANDS,
+            vk::PipelineStageFlags::HOST,
+        );
+        for buffer in [&self.marker_buffer, &self.debug_buffer] {
+            scope.push(
+                super::barrier::BarrierTarget::Buffer(buffer.handle),
+                &super::barrier::RangeBarrier::local(
+                    crate::resource::OwnershipRange::Buffer {
+                        offset: 0,
+                        size: vk::WHOLE_SIZE,
+                    },
+                    vk::AccessFlags::MEMORY_WRITE,
+                    vk::AccessFlags::HOST_READ,
+                    vk::ImageLayout::UNDEFINED,
+                    vk::ImageLayout::UNDEFINED,
+                ),
+            )?;
         }
+        scope.issue_into(command)?;
         Ok(())
     }
     /// 完成边界之后才读取；recorded marker、宿主标签及设备错误都不冒充 GPU 已执行。

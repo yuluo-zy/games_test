@@ -1,4 +1,4 @@
-//! Buffer 创建、内存绑定、映射读写候选；`BufferDesc` 对齐原 16 字节描述符布局。
+//! Buffer creation, memory binding and mapped host reads/writes.
 use super::{
     allocator::MemoryBlock,
     device::Device,
@@ -7,7 +7,7 @@ use super::{
 };
 use ash::vk;
 use std::sync::Arc;
-/// 原作 `BufferDesc.memory_location` 枚举（取值 1..=4，0 非法）。
+/// Buffer memory location (raw values 1..=4; 0 is invalid).
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MemoryLocation {
@@ -41,7 +41,7 @@ impl MemoryLocation {
         }
     }
 }
-/// 原 16 字节 ABI：`{u64 size, u32 usage, u16 alignment, u8 memory_location}`。
+/// 16-byte layout: `{u64 size, u32 usage, u16 alignment, u8 memory_location}`.
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct BufferDesc {
@@ -67,7 +67,7 @@ impl BufferDesc {
     pub fn new_cpu_to_gpu(size: u64, usage: vk::BufferUsageFlags) -> Self {
         Self::new(size, usage, MemoryLocation::CpuToGpu)
     }
-    /// 原 memory_location=3 语义：HOST_VISIBLE 但非低延迟映射（不要求 HOST_COHERENT）。
+    /// HOST_VISIBLE memory without a HOST_COHERENT requirement.
     pub fn new_cpu_to_gpu_low_prio(size: u64, usage: vk::BufferUsageFlags) -> Self {
         Self::new(size, usage, MemoryLocation::CpuToGpuLowPrio)
     }
@@ -83,23 +83,18 @@ impl BufferDesc {
         self.alignment
     }
 }
-/// `create_buffer_impl`（0x140bee200）里各 Vulkan 调用失败时的 `.expect(msg)` 文案
-/// （原版 panic；crates/rhapsody/src/raw/buffer.rs 0xc0 / 0xc9 / 0xf9 行）。拼法见
-/// [`super::texture::create_failure_text`]。
+/// Names of the Vulkan calls that can fail during buffer creation, used in
+/// error text (see [`super::texture::create_failure_text`]).
 pub mod create_failure {
-    /// 0x142b157f0（13B）。
     pub const CREATE_BUFFER: &str = "create_buffer";
-    /// 0x142b15888（18B）。
     pub const BIND_BUFFER_MEMORY: &str = "bind_buffer_memory";
-    /// 0x142b15850（27B）。
     pub const SET_DEBUG_UTILS_OBJECT_NAME: &str = "set_debug_utils_object_name";
 }
 
-/// `create_buffer_impl`（0x140bee200）里对 `BufferDesc.usage` 做的唯一原始位测试：`usage & 0x400`。
-/// 该位在公开 Vulkan 枚举里没有名字（0x140bee2b0 附近 `test r?, 0x400`），保持原始数值，不赋语义。
+/// Usage bit `0x400` raises the minimum buffer alignment to 64 bytes.
 pub const USAGE_ALIGN_64_BIT_RAW: u32 = 0x400;
 
-/// 原版对缓冲内存对齐的计算（0x140bee200）：`max(memreq.alignment, desc.alignment,
+/// Buffer memory alignment: `max(memreq.alignment, desc.alignment,
 /// (usage & 0x400) ? 0x40 : 0x10)`。
 pub fn buffer_alignment(requirement_alignment: u64, desc_alignment: u16, usage: u32) -> u64 {
     let floor = if usage & USAGE_ALIGN_64_BIT_RAW != 0 {
@@ -112,14 +107,14 @@ pub fn buffer_alignment(requirement_alignment: u64, desc_alignment: u16, usage: 
         .max(floor)
 }
 
-/// `update_buffer_bytes`（0x140beefa0）的断言失败，文本取自原 .rdata。
+/// Validation failures of a sparse buffer update.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum BufferUpdateError {
     /// 区间 `start > end`。
     RangeInverted { start: usize, end: usize },
     /// 区间 `end > src_data.len()`。
     RangeOutOfData { end: usize, len: usize },
-    /// `assert!(total_bytes + src_data.len() + dst_offset as usize <= dst_buffer.desc.size)`（0x142b15b00）。
+    /// `total_bytes + src_data.len() + dst_offset` exceeds the buffer size.
     ExceedsCapacity {
         total: u64,
         dst_offset: u64,
@@ -127,7 +122,7 @@ pub enum BufferUpdateError {
     },
     /// `"Buffer {} must be created with vk::BufferUsageFlags::TRANSFER_DST in order to support updates"`。
     MissingTransferDst,
-    /// `assert!(size > 0)`：合计字节为 0（0x142b0f830）。
+    /// The update has no bytes.
     Empty,
 }
 impl std::fmt::Display for BufferUpdateError {
@@ -161,7 +156,6 @@ pub struct BufferUpdatePlan {
     /// 暂存缓冲大小 = 各区间长度之和。
     pub total: u64,
     /// 区域 i：`{src = 前面各区间累计, dst = range.start + dst_offset, size = end - start}`
-    /// （0x140c03a00 闭包 `+0x00/+0x08/+0x10` 的写入）。
     pub regions: Vec<BufferRegion>,
 }
 
@@ -230,8 +224,8 @@ pub fn plan_buffer_update(
     Ok(BufferUpdatePlan { total, regions })
 }
 
-/// `create_mapped_buffer`（0x140beea80）的返回值：40B Buffer + 映射 `(ptr, len)`（0x40B = tag 8 +
-/// 40 + 16；旧文档的“额外 24B”不对，机器码 `param_1[6]=impl+0x38`、`param_1[7]=impl+0x40` 只有两个 qword）。
+/// Persistent host mapping `(ptr, len)` returned by `create_mapped_buffer`
+/// (host-coherent memory only).
 pub struct MappedBufferParts {
     pub ptr: *mut u8,
     pub len: usize,
@@ -242,21 +236,30 @@ pub struct Buffer {
     pub(crate) sharing: crate::resource::ResourceSharing,
     allocation_use: Option<Arc<crate::resource::SyncCell>>,
     pub(crate) last_use: Arc<crate::resource::SyncCell>,
-    pub device: Arc<Device>,
-    pub handle: vk::Buffer,
+    pub(crate) device: Arc<Device>,
+    pub(crate) handle: vk::Buffer,
     pub size: u64,
     pub usage: vk::BufferUsageFlags,
-    /// 创建时的原 16 字节描述（图导入需要完整的 alignment/memory_location）。
+    /// Creation description (graph imports need alignment/memory_location).
     pub desc: BufferDesc,
     allocation: std::mem::ManuallyDrop<MemoryBlock>,
     mapped_ptr: Option<usize>,
     host_access: parking_lot::Mutex<()>,
     _memory: super::allocator::CpuMemoryReservation,
 }
-enum HostTransfer<'a> {
-    Read(&'a mut [u8]),
-    Write(&'a [u8]),
+
+impl Buffer {
+    /// The device that owns this object.
+    pub fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+    /// Interop escape hatch: the native handle. It stays owned by `self`; never destroy it or use it after `self` is dropped.
+    pub fn raw_handle(&self) -> vk::Buffer {
+        self.handle
+    }
 }
+/// Default bound for synchronous host reads/writes waiting on GPU work.
+pub const HOST_ACCESS_TIMEOUT_NS: u64 = 10_000_000_000;
 struct HostRangeState<'a> {
     cell: &'a crate::resource::SyncCell,
     accessed: bool,
@@ -270,21 +273,23 @@ impl Drop for HostRangeState<'_> {
         }
     }
 }
-impl HostTransfer<'_> {
-    fn len(&self) -> usize {
-        match self {
-            Self::Read(bytes) => bytes.len(),
-            Self::Write(bytes) => bytes.len(),
-        }
-    }
-}
 impl Buffer {
-    pub(crate) fn into_dynamic_constants_page(mut self) -> Self {
+    /// Mark a new constants page and map it for its whole lifetime, so its
+    /// non-coherent writes can defer their flush to the next submit.
+    pub(crate) fn into_dynamic_constants_page(mut self) -> Result<Self> {
+        // SAFETY: the buffer is new; no GPU or host access can overlap.
+        unsafe {
+            self.mapped_slice_mut(0, self.size)?;
+        }
         self.dynamic_constants_page = true;
-        self
+        Ok(self)
     }
     pub(crate) fn is_dynamic_constants_page(&self) -> bool {
         self.dynamic_constants_page
+    }
+    /// Property flags of the memory type backing this buffer.
+    pub fn memory_properties(&self) -> vk::MemoryPropertyFlags {
+        self.allocation.properties
     }
     pub(crate) fn allocation_bytes(&self) -> u64 {
         self.allocation.size
@@ -383,15 +388,15 @@ impl Buffer {
         if desc.size == 0 {
             return Err(Error::invalid_usage("缓冲区大小不能为零"));
         }
-        if !device.capabilities.buffer_device_address
+        if !device.core.capabilities.buffer_device_address
             && desc
                 .usage
                 .contains(vk::BufferUsageFlags::SHADER_DEVICE_ADDRESS)
         {
             return Err(Error::unsupported("此路径未启用 bufferDeviceAddress"));
         }
-        let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.allocator_stats)?;
-        let memory = device.allocator_stats.reserve_cpu_bytes(
+        let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.memory.stats)?;
+        let memory = device.memory.stats.reserve_cpu_bytes(
             super::allocator::shared_cpu_bytes::<Self>()?,
             crate::device::BudgetCategory::Live,
         )?;
@@ -405,19 +410,18 @@ impl Buffer {
             })
             .queue_family_indices(sharing.families());
         let handle = super::error::observe_vulkan(&device, unsafe {
-            device.device.create_buffer(&info, None)
+            device.core.device.create_buffer(&info, None)
         })?;
         let mut dedicated_requirements = vk::MemoryDedicatedRequirements::default();
         let mut requirements2 =
             vk::MemoryRequirements2::default().push_next(&mut dedicated_requirements);
         unsafe {
-            device.device.get_buffer_memory_requirements2(
+            device.core.device.get_buffer_memory_requirements2(
                 &vk::BufferMemoryRequirementsInfo2::default().buffer(handle),
                 &mut requirements2,
             );
         }
         let mut requirements = requirements2.memory_requirements;
-        // 0x140bee200：max(memreq.alignment, desc.alignment, usage&0x400 ? 0x40 : 0x10)。
         requirements.alignment =
             buffer_alignment(requirements.alignment, desc.alignment, desc.usage.as_raw());
         let flags = if desc
@@ -460,7 +464,7 @@ impl Buffer {
             Ok(value) => value,
             Err(error) => {
                 unsafe {
-                    device.device.destroy_buffer(handle, None);
+                    device.core.device.destroy_buffer(handle, None);
                 }
                 return Err(error);
             }
@@ -468,7 +472,7 @@ impl Buffer {
         let last_use = if sharing.is_concurrent() {
             crate::resource::SyncCell::for_allocation(
                 device.generation(),
-                device.allocator_stats.clone(),
+                device.memory.stats.clone(),
                 allocation.accounting_id(),
             )
             .with_concurrent_families(match sharing {
@@ -482,7 +486,7 @@ impl Buffer {
         } else {
             crate::resource::SyncCell::for_allocation(
                 device.generation(),
-                device.allocator_stats.clone(),
+                device.memory.stats.clone(),
                 allocation.accounting_id(),
             )
             .with_ownership_range(crate::resource::OwnershipRange::Buffer {
@@ -494,11 +498,11 @@ impl Buffer {
             .properties
             .contains(vk::MemoryPropertyFlags::HOST_VISIBLE)
         {
-            match last_use.with_host_buffer_ranges(desc.size, &device.allocator_stats) {
+            match last_use.with_host_buffer_ranges(desc.size, &device.memory.stats) {
                 Ok(cell) => cell,
                 Err(error) => {
                     unsafe {
-                        device.device.destroy_buffer(handle, None);
+                        device.core.device.destroy_buffer(handle, None);
                     }
                     return Err(error);
                 }
@@ -508,23 +512,24 @@ impl Buffer {
         };
         if let Err(error) = unsafe {
             device
+                .core
                 .device
                 .bind_buffer_memory(handle, allocation.handle, allocation.offset)
         } {
             unsafe {
-                device.device.destroy_buffer(handle, None);
+                device.core.device.destroy_buffer(handle, None);
             }
             return super::error::observe_vulkan(&device, Err(error));
         }
-        // 原版缓冲创建时就取得映射指针（0x140bee5f0 `0x140c113d0(block)` 返回 ptr+len），
-        // 主机可见的专用分配在这里一次性映射；子分配沿用 gpu-allocator 式持久映射。
+        // Host-visible dedicated memory is mapped once here and stays mapped;
+        // suballocations use gpu-allocator's persistent block mapping.
         let mapped_ptr = if allocation
             .properties
             .contains(vk::MemoryPropertyFlags::HOST_VISIBLE)
             && allocation.host_ptr().is_none()
         {
             match unsafe {
-                device.device.map_memory(
+                device.core.device.map_memory(
                     allocation.handle,
                     0,
                     vk::WHOLE_SIZE,
@@ -533,7 +538,7 @@ impl Buffer {
             } {
                 Ok(pointer) => Some(pointer as usize),
                 Err(error) => {
-                    unsafe { device.device.destroy_buffer(handle, None) };
+                    unsafe { device.core.device.destroy_buffer(handle, None) };
                     return super::error::observe_vulkan(&device, Err(error));
                 }
             }
@@ -557,9 +562,9 @@ impl Buffer {
         })
     }
 
-    /// 原版 `Buffer::mapped_slice_mut`（0x140bd4cd0）的全长形态：不可映射（设备本地内存）返回
-    /// `None`，否则返回覆盖整个缓冲（`desc.size`）的切片。原签名是 `&self → &mut [u8]`，
-    /// 别名纪律由调用方保证（与原版一致）。旧的 `(offset,size)` 形态见 [`Self::mapped_slice_mut`]。
+    /// Whole-buffer mapped slice (`desc.size` bytes), or `None` for memory that
+    /// is not host visible. Aliasing is the caller's responsibility; see
+    /// [`Self::mapped_slice_mut`] for a sub-range.
     /// # Safety
     /// The caller must exclude all host/GPU accesses for the returned borrow,
     /// wait for previous uses, and flush non-coherent writes before submission.
@@ -617,7 +622,7 @@ impl Buffer {
             None => {
                 self.device.wait(&self.last_use.snapshot(), u64::MAX)?;
                 let pointer = super::error::observe_vulkan(&self.device, unsafe {
-                    self.device.device.map_memory(
+                    self.device.core.device.map_memory(
                         self.allocation.handle,
                         0,
                         vk::WHOLE_SIZE,
@@ -636,8 +641,8 @@ impl Buffer {
         Ok(unsafe { std::slice::from_raw_parts_mut(start, size as usize) })
     }
 
-    /// 子分配（gpu-allocator 持久映射）的主机指针，已含块内偏移；与原版 `mapped_slice_mut`
-    /// 同源（原版缓冲恒持久映射）。专用分配或不可映射内存返回 `None`。
+    /// Persistent host pointer to the buffer start (suballocated or mapped
+    /// dedicated memory); `None` for memory that is not host visible.
     /// 调用者负责同步，并保证指针只在本缓冲存活期间使用。
     pub fn persistent_host_ptr(&self) -> Option<*mut u8> {
         if self.device.is_device_lost() {
@@ -653,7 +658,7 @@ impl Buffer {
     pub fn unmap(&mut self) {
         if self.mapped_ptr.take().is_some() {
             unsafe {
-                self.device.device.unmap_memory(self.allocation.handle);
+                self.device.core.device.unmap_memory(self.allocation.handle);
             }
         }
     }
@@ -668,7 +673,7 @@ impl Buffer {
         if self.device.is_device_lost() {
             return Err(Error::DeviceLost);
         }
-        if !self.device.capabilities.buffer_device_address
+        if !self.device.core.capabilities.buffer_device_address
             || !self
                 .usage
                 .contains(vk::BufferUsageFlags::SHADER_DEVICE_ADDRESS)
@@ -676,9 +681,38 @@ impl Buffer {
             return Err(Error::unsupported("缓冲区未启用设备地址用途"));
         }
         let info = vk::BufferDeviceAddressInfo::default().buffer(self.handle);
-        Ok(unsafe { self.device.device.get_buffer_device_address(&info) })
+        Ok(unsafe { self.device.core.device.get_buffer_device_address(&info) })
     }
-    fn transfer(&self, offset: u64, mut transfer: HostTransfer<'_>, sync: bool) -> Result<()> {
+    /// Map-and-copy core shared by all host reads and writes.
+    ///
+    /// The overlapping GPU uses are checked against the cached completion
+    /// snapshot first and the device is only polled when that snapshot is
+    /// insufficient. Waiting never holds `host_access` or the submission
+    /// gate: the locks are released, the wait is bounded by `wait_ns`
+    /// (`None` = do not wait, return `Timeout`), and the range is re-checked
+    /// under the gate before copying. Non-coherent memory is invalidated or
+    /// flushed once for the whole `[offset, offset + len)` range.
+    fn host_access(
+        &self,
+        offset: u64,
+        len: u64,
+        write: bool,
+        wait_ns: Option<u64>,
+        copy: impl FnOnce(*mut u8),
+    ) -> Result<()> {
+        self.host_access_with(offset, len, write, false, wait_ns, copy)
+    }
+    /// [`Self::host_access`]; `defer_flush` queues non-coherent written atoms
+    /// on the device instead of flushing them immediately.
+    fn host_access_with(
+        &self,
+        offset: u64,
+        len: u64,
+        write: bool,
+        defer_flush: bool,
+        wait_ns: Option<u64>,
+        copy: impl FnOnce(*mut u8),
+    ) -> Result<()> {
         if self.device.is_device_lost() {
             return Err(Error::DeviceLost);
         }
@@ -687,12 +721,7 @@ impl Buffer {
                 "graph transient memory cannot be mapped",
             ));
         }
-        let write = matches!(transfer, HostTransfer::Write(_));
-        let len = transfer.len();
-        if offset
-            .checked_add(len as u64)
-            .is_none_or(|end| end > self.size)
-        {
+        if offset.checked_add(len).is_none_or(|end| end > self.size) {
             return Err(Error::invalid_usage("映射访问越过缓冲区边界"));
         }
         if !self
@@ -712,28 +741,70 @@ impl Buffer {
         let host_range = self.allocation.host_subrange(
             self.size,
             offset,
-            len as u64,
+            len,
             if coherent {
                 1
             } else {
                 self.device.limits().non_coherent_atom_size.max(1)
             },
         )?;
-
-        let _host = self.host_access.lock();
-        let _reservation = self.last_use.lock_submission();
-        let completed = self.device.poll()?;
-        let last_use = self.last_use.buffer_range_snapshot(
-            host_range.buffer_offset,
-            host_range.buffer_size,
-            write,
-            &completed,
-        )?;
-        if sync {
-            self.device.wait(&last_use, u64::MAX)?;
-        } else if !last_use.is_reached(&completed) {
-            return Err(Error::Timeout);
+        let deadline = wait_ns
+            .map(|ns| std::time::Instant::now().checked_add(std::time::Duration::from_nanos(ns)));
+        let mut completed = self.device.completed();
+        let mut polled = false;
+        loop {
+            let host = self.host_access.lock();
+            let reservation = self.last_use.lock_submission();
+            let pending = self.last_use.buffer_range_snapshot(
+                host_range.buffer_offset,
+                host_range.buffer_size,
+                write,
+                &completed,
+            )?;
+            if pending.is_empty() {
+                let flush = if write {
+                    super::dynamic_constants::host_write_flush(
+                        self.allocation.properties,
+                        defer_flush,
+                    )
+                } else {
+                    super::dynamic_constants::HostFlush::None
+                };
+                let result = self.copy_locked(&host_range, coherent, write, flush, copy);
+                drop(reservation);
+                drop(host);
+                return result;
+            }
+            drop(reservation);
+            drop(host);
+            if !polled {
+                // The cached snapshot is stale-conservative; observe progress once.
+                completed = self.device.poll()?;
+                polled = true;
+                continue;
+            }
+            let Some(deadline) = deadline else {
+                return Err(Error::Timeout);
+            };
+            let remaining = deadline.map_or(u64::MAX, |deadline| {
+                deadline
+                    .saturating_duration_since(std::time::Instant::now())
+                    .as_nanos()
+                    .min(u128::from(u64::MAX)) as u64
+            });
+            self.device.wait(&pending, remaining)?;
+            completed = self.device.completed();
         }
+    }
+    /// Copy with `host_access` and the submission gate held by the caller.
+    fn copy_locked(
+        &self,
+        host_range: &super::allocator::HostMemoryRange,
+        coherent: bool,
+        write: bool,
+        flush: super::dynamic_constants::HostFlush,
+        copy: impl FnOnce(*mut u8),
+    ) -> Result<()> {
         self.last_use.prepare_buffer_host_range(
             host_range.buffer_offset,
             host_range.buffer_size,
@@ -743,7 +814,8 @@ impl Buffer {
             cell: &self.last_use,
             accessed: false,
         };
-        // 子分配直接用已持久映射的指针；专用分配每次自己 map/unmap。
+        // Suballocations and dedicated host-visible buffers are persistently
+        // mapped; map temporarily only when neither exists.
         let shared_pointer = self
             .allocation
             .host_ptr()
@@ -751,7 +823,7 @@ impl Buffer {
         let pointer = match shared_pointer {
             Some(pointer) => pointer.cast(),
             None => super::error::observe_vulkan(&self.device, unsafe {
-                self.device.device.map_memory(
+                self.device.core.device.map_memory(
                     self.allocation.handle,
                     0,
                     vk::WHOLE_SIZE,
@@ -765,11 +837,16 @@ impl Buffer {
             .size(host_range.memory_size)];
         let unmap = || {
             if shared_pointer.is_none() {
-                unsafe { self.device.device.unmap_memory(self.allocation.handle) };
+                unsafe { self.device.core.device.unmap_memory(self.allocation.handle) };
             }
         };
         let result = if !write && !coherent {
-            unsafe { self.device.device.invalidate_mapped_memory_ranges(&range) }
+            unsafe {
+                self.device
+                    .core
+                    .device
+                    .invalidate_mapped_memory_ranges(&range)
+            }
         } else {
             Ok(())
         };
@@ -777,36 +854,122 @@ impl Buffer {
             unmap();
             return Err(error);
         }
-        unsafe {
-            let region = pointer.cast::<u8>().add(offset as usize);
-            match &mut transfer {
-                HostTransfer::Write(bytes) => {
-                    std::ptr::copy_nonoverlapping(bytes.as_ptr(), region, len)
-                }
-                HostTransfer::Read(bytes) => {
-                    std::ptr::copy_nonoverlapping(region, bytes.as_mut_ptr(), len)
-                }
-            }
-        }
+        copy(pointer.cast::<u8>());
         // A failing flush does not undo the CPU copy. Publish the conservative
         // host revision even on that error, so bound native programs go stale.
         host_state.accessed = true;
-        let result = if write && !coherent {
-            unsafe { self.device.device.flush_mapped_memory_ranges(&range) }
-        } else {
-            Ok(())
-        };
-        unmap();
-        super::error::observe_vulkan(&self.device, result)
+        match flush {
+            super::dynamic_constants::HostFlush::None => {
+                unmap();
+                Ok(())
+            }
+            super::dynamic_constants::HostFlush::Now => {
+                let result = unsafe { self.device.core.device.flush_mapped_memory_ranges(&range) };
+                unmap();
+                super::error::observe_vulkan(&self.device, result)
+            }
+            // Deferred flushes require a persistent mapping (constants pages).
+            super::dynamic_constants::HostFlush::Deferred if shared_pointer.is_some() => {
+                self.device.queues.host_flush.record(
+                    self.allocation.accounting_id(),
+                    self.allocation.handle,
+                    host_range.memory_offset,
+                    host_range.memory_size,
+                )
+            }
+            super::dynamic_constants::HostFlush::Deferred => {
+                let result = unsafe { self.device.core.device.flush_mapped_memory_ranges(&range) };
+                unmap();
+                super::error::observe_vulkan(&self.device, result)
+            }
+        }
     }
+    fn write_impl(&self, offset: u64, bytes: &[u8], wait_ns: Option<u64>) -> Result<()> {
+        self.host_access(offset, bytes.len() as u64, true, wait_ns, |base| unsafe {
+            // SAFETY: the range was validated against the mapped buffer.
+            std::ptr::copy_nonoverlapping(bytes.as_ptr(), base.add(offset as usize), bytes.len())
+        })
+    }
+    fn read_impl(&self, offset: u64, bytes: &mut [u8], wait_ns: Option<u64>) -> Result<()> {
+        let len = bytes.len();
+        self.host_access(offset, len as u64, false, wait_ns, |base| unsafe {
+            // SAFETY: the range was validated against the mapped buffer.
+            std::ptr::copy_nonoverlapping(base.add(offset as usize), bytes.as_mut_ptr(), len)
+        })
+    }
+    /// Write after overlapping GPU uses complete, waiting at most
+    /// `HOST_ACCESS_TIMEOUT_NS` (then `Timeout`).
     pub fn write_bytes(&self, offset: u64, bytes: &[u8]) -> Result<()> {
-        self.transfer(offset, HostTransfer::Write(bytes), true)
+        self.write_impl(offset, bytes, Some(HOST_ACCESS_TIMEOUT_NS))
+    }
+    /// [`Self::write_bytes`] with an explicit wait bound in nanoseconds.
+    pub fn write_bytes_timeout(&self, offset: u64, bytes: &[u8], timeout_ns: u64) -> Result<()> {
+        self.write_impl(offset, bytes, Some(timeout_ns))
+    }
+    /// Write several `(offset, bytes)` segments with one completion check and
+    /// a single flush covering their union (none for coherent memory).
+    /// Waits like [`Self::write_bytes`]. Segments must lie inside the buffer;
+    /// overlapping segments are written in order.
+    pub fn write_segments(&self, segments: &[(u64, &[u8])]) -> Result<()> {
+        let mut start = u64::MAX;
+        let mut end = 0u64;
+        for &(offset, bytes) in segments {
+            let segment_end = offset
+                .checked_add(bytes.len() as u64)
+                .filter(|end| *end <= self.size)
+                .ok_or_else(|| Error::invalid_usage("映射访问越过缓冲区边界"))?;
+            if !bytes.is_empty() {
+                start = start.min(offset);
+                end = end.max(segment_end);
+            }
+        }
+        if start >= end {
+            return Ok(());
+        }
+        self.host_access(
+            start,
+            end - start,
+            true,
+            Some(HOST_ACCESS_TIMEOUT_NS),
+            |base| {
+                for &(offset, bytes) in segments {
+                    // SAFETY: every segment was validated against the buffer size.
+                    unsafe {
+                        std::ptr::copy_nonoverlapping(
+                            bytes.as_ptr(),
+                            base.add(offset as usize),
+                            bytes.len(),
+                        )
+                    }
+                }
+            },
+        )
     }
     /// 不等待在飞 GPU 工作的写入。
     ///
     /// 未完成的重叠 GPU 使用（未知范围按整缓冲处理）返回 Timeout；非 coherent 内存按原子粒度检查。
     pub fn write_bytes_unsynchronized(&self, offset: u64, bytes: &[u8]) -> Result<()> {
-        self.transfer(offset, HostTransfer::Write(bytes), false)
+        self.write_impl(offset, bytes, None)
+    }
+    /// [`Self::write_bytes_unsynchronized`] whose non-coherent flush is
+    /// deferred to the device's next queue submit (one call for all queued
+    /// ranges). Only for persistently mapped dynamic-constants pages.
+    pub(crate) fn write_bytes_deferred_flush(&self, offset: u64, bytes: &[u8]) -> Result<()> {
+        self.host_access_with(
+            offset,
+            bytes.len() as u64,
+            true,
+            true,
+            None,
+            |base| unsafe {
+                // SAFETY: the range was validated against the mapped buffer.
+                std::ptr::copy_nonoverlapping(
+                    bytes.as_ptr(),
+                    base.add(offset as usize),
+                    bytes.len(),
+                )
+            },
+        )
     }
     /// 在已确认本缓冲 GPU 操作完成后读回，保留非 coherent 内存失效处理，不做整设备等待。
     ///
@@ -815,17 +978,30 @@ impl Buffer {
     /// 并保证复制期间没有其他 GPU 或宿主并发访问。GPU 写入还需已建立 HOST_READ 可见性。
     /// 此调用只依赖本缓冲完成，不推进设备全局完成 epoch。
     pub unsafe fn read_bytes_after_completion(&self, offset: u64, bytes: &mut [u8]) -> Result<()> {
-        self.transfer(offset, HostTransfer::Read(bytes), false)
+        self.read_impl(offset, bytes, None)
     }
+    /// Read after overlapping GPU writes complete, waiting at most
+    /// `HOST_ACCESS_TIMEOUT_NS` (then `Timeout`).
     pub fn read_bytes(&self, offset: u64, bytes: &mut [u8]) -> Result<()> {
-        self.transfer(offset, HostTransfer::Read(bytes), true)
+        self.read_impl(offset, bytes, Some(HOST_ACCESS_TIMEOUT_NS))
+    }
+    /// [`Self::read_bytes`] with an explicit wait bound in nanoseconds.
+    pub fn read_bytes_timeout(&self, offset: u64, bytes: &mut [u8], timeout_ns: u64) -> Result<()> {
+        self.read_impl(offset, bytes, Some(timeout_ns))
     }
 }
 impl Drop for Buffer {
     fn drop(&mut self) {
+        if self.dynamic_constants_page {
+            // Unsubmitted deferred flushes of a freed page are meaningless.
+            self.device
+                .queues
+                .host_flush
+                .forget(self.allocation.accounting_id());
+        }
         if self.mapped_ptr.take().is_some() {
             unsafe {
-                self.device.device.unmap_memory(self.allocation.handle);
+                self.device.core.device.unmap_memory(self.allocation.handle);
             }
         }
         // SAFETY: allocation 只在此处取出一次，之后不会再被访问。

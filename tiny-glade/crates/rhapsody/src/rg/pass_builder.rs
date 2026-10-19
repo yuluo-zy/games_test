@@ -1,5 +1,4 @@
-//! 按 PassBuilder::add_resource_access / render 重建构图入口。
-//! 泛型参数、原作闭包布局及错误类型尚未恢复；此处提供可执行的候选接口。
+//! 构图入口：PassBuilder::add_resource_access / render。
 use super::graph::{BuildError, PassDeclaration, RenderCallback, RenderGraph};
 use super::resource::ResourceHandle;
 
@@ -143,25 +142,42 @@ impl PassBuilder<'_> {
     /// explicitly permits undefined initial texels. Ordinary reads and exports
     /// stay strict; existing producers still remain data dependencies.
     pub fn add_undefined_content_read_range(
-        &mut self, resource: ResourceHandle, access_code: u8,
-        synchronization_group: u32, range: super::resource::AccessRange,
+        &mut self,
+        resource: ResourceHandle,
+        access_code: u8,
+        synchronization_group: u32,
+        range: super::resource::AccessRange,
     ) -> Result<&mut Self, BuildError> {
         self.graph.check_pass_capacity()?;
         self.graph.check_handle(resource)?;
         if usize::from(access_code) >= crate::raw::access_table::ACCESS_CODE_COUNT {
-            return Err(BuildError::Contract(super::resource::ResourceContractError::InvalidAccessCode(access_code)));
+            return Err(BuildError::Contract(
+                super::resource::ResourceContractError::InvalidAccessCode(access_code),
+            ));
         }
         if crate::raw::access_table::is_write(access_code) {
-            return Err(BuildError::Contract(super::resource::ResourceContractError::WrongAccessMode {
-                resource: resource.raw(), access_code,
-            }));
+            return Err(BuildError::Contract(
+                super::resource::ResourceContractError::WrongAccessMode {
+                    resource: resource.raw(),
+                    access_code,
+                },
+            ));
         }
-        range.validate(self.graph.declaration.resources[resource.raw() as usize].descriptor)
+        range
+            .validate(self.graph.declaration.resources[resource.raw() as usize].descriptor)
             .map_err(|error| super::resource_contracts::range_error(resource.raw(), error))?;
         super::access_ledger::collect_resource_access_range_with_policy(
-            &mut self.declaration.accesses, resource.raw(), access_code, synchronization_group,
-            range, super::resource::AccessVersion::Automatic, false, false, true,
-        ).map_err(BuildError::IncompatibleAccess)?;
+            &mut self.declaration.accesses,
+            resource.raw(),
+            access_code,
+            synchronization_group,
+            range,
+            super::resource::AccessVersion::Automatic,
+            false,
+            false,
+            true,
+        )
+        .map_err(BuildError::IncompatibleAccess)?;
         Ok(self)
     }
 
@@ -380,7 +396,7 @@ impl PassBuilder<'_> {
     pub fn render(self, callback: impl FnOnce(u64) -> bool + Send + 'static) {
         self.render_with_context(move |context| callback(context.command.handle()));
     }
-    /// 原 FnOnce 的消费顺序不变；上下文来自当前 recorder，不能由外部 counter 仿造。
+    /// 回调只消费一次；上下文来自当前 recorder，不能由外部 counter 仿造。
     pub fn render_with_context(
         self,
         callback: impl FnOnce(super::executor::PassContext<'_>) -> bool + Send + 'static,
@@ -412,7 +428,7 @@ impl PassBuilder<'_> {
 
 impl<'graph> PassBuilder<'graph> {
     /// 消费 builder 返回所属图的可变引用；用于在 pass 声明之间继续构图。
-    /// 原 rg_mut 用于内部访问；候选接口避免在此保留 &mut 借用与被 self 借用的冲突。
+    /// 内部访问所属图；避免在此保留 &mut 借用与 self 借用冲突。
     pub fn rg_mut(self) -> &'graph mut RenderGraph {
         self.graph
     }

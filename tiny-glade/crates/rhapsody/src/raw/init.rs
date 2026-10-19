@@ -652,6 +652,7 @@ pub struct GraphicsInstance {
     /// （原 `Device+0x658` 指向物理设备包装）。
     pub devices: Vec<Arc<PhysicalDevice>>,
 }
+
 impl GraphicsInstance {
     pub fn new_with_allowlist(
         builder: &InstanceBuilder,

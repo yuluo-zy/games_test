@@ -10,16 +10,16 @@ fn failed_submit_does_not_advance_completion_past_in_flight_work() {
         eprintln!("skip: no Vulkan device");
         return;
     };
-    let q = device.queue_id(device.queue).unwrap();
+    let q = device.queue_id(device.primary_queue()).unwrap();
     let mut ty = vk::SemaphoreTypeCreateInfo::default().semaphore_type(vk::SemaphoreType::TIMELINE);
     let gate = unsafe {
         device
-            .device
+            .raw_device()
             .create_semaphore(&vk::SemaphoreCreateInfo::default().push_next(&mut ty), None)
     }
     .unwrap();
     let (point, ()) = device
-        .timelines
+        .timelines()
         .submit(q, |signal| {
             let waits = [gate];
             let stages = [vk::PipelineStageFlags::ALL_COMMANDS];
@@ -35,40 +35,40 @@ fn failed_submit_does_not_advance_completion_past_in_flight_work() {
                 .push_next(&mut timeline);
             unsafe {
                 device
-                    .device
-                    .queue_submit(device.queue, &[info], vk::Fence::null())
+                    .raw_device()
+                    .queue_submit(device.primary_queue(), &[info], vk::Fence::null())
             }
             .map_err(Into::into)
         })
         .unwrap();
-    let failed = device.timelines.submit(q, |_| {
+    let failed = device.timelines().submit(q, |_| {
         Err::<(), _>(vk::Result::ERROR_OUT_OF_HOST_MEMORY.into())
     });
     assert_eq!(failed.unwrap_err().kind(), rhapsody::ErrorKind::OutOfMemory);
-    let before = device.timelines.submitted(q).unwrap();
+    let before = device.timelines().submitted(q).unwrap();
     let sampler = unsafe {
         device
-            .device
+            .raw_device()
             .create_sampler(&vk::SamplerCreateInfo::default(), None)
     }
     .unwrap();
     device.retire(point.into(), Doomed::Sampler(sampler));
     let collected = device.collect_garbage();
     let explicitly_collected = device.try_collect_all_completed().unwrap();
-    let pending = device.garbage_stats().pending;
+    let pending = device.retirement_stats().pending;
     // 先开闸再断言，测试失败也不会使设备 Drop 等待被本线程阻塞的 GPU。
     unsafe {
         device
-            .device
+            .raw_device()
             .signal_semaphore(&vk::SemaphoreSignalInfo::default().semaphore(gate).value(1))
     }
     .unwrap();
     device
-        .timelines
+        .timelines()
         .wait(&SyncSet::from_point(point), 10_000_000_000)
         .unwrap();
     device.collect_garbage();
-    unsafe { device.device.destroy_semaphore(gate, None) };
+    unsafe { device.raw_device().destroy_semaphore(gate, None) };
     assert_eq!(before, point.value);
     assert_eq!(collected, 0);
     assert_eq!(
@@ -76,8 +76,8 @@ fn failed_submit_does_not_advance_completion_past_in_flight_work() {
         "explicit draining still respects GPU dependencies"
     );
     assert_eq!(pending, 1);
-    assert_eq!(device.garbage_stats().pending, 0);
-    assert_eq!(device.garbage_stats().idle_waits, 0);
+    assert_eq!(device.retirement_stats().pending, 0);
+    assert_eq!(device.retirement_stats().idle_waits, 0);
 }
 
 #[test]
@@ -89,14 +89,14 @@ fn unused_objects_are_destroyed_without_idle() {
     for _ in 0..128 {
         let sampler = unsafe {
             device
-                .device
+                .raw_device()
                 .create_sampler(&vk::SamplerCreateInfo::default(), None)
         }
         .unwrap();
         device.retire(SyncSet::EMPTY, Doomed::Sampler(sampler));
     }
-    assert_eq!(device.garbage_stats().pending, 0);
-    assert_eq!(device.garbage_stats().idle_waits, 0);
+    assert_eq!(device.retirement_stats().pending, 0);
+    assert_eq!(device.retirement_stats().idle_waits, 0);
 }
 
 #[test]
@@ -131,13 +131,13 @@ fn dropping_a_submission_defers_used_resources_without_blocking_or_retiring_unus
     command.retain_opaque(buffer.clone()).unwrap();
     unsafe {
         device
-            .device
-            .cmd_fill_buffer(command.handle, buffer.handle, 0, 16, 0);
+            .raw_device()
+            .cmd_fill_buffer(command.raw_handle(), buffer.raw_handle(), 0, 16, 0);
     }
     command.end().unwrap();
     let queue = DeviceQueue {
-        handle: device.queue,
-        family: device.queue_family,
+        handle: device.primary_queue(),
+        family: device.queue_family_index(),
         index: 0,
     };
     let pending = command
@@ -156,16 +156,16 @@ fn dropping_a_submission_defers_used_resources_without_blocking_or_retiring_unus
         let _ = tx.send(());
     });
     let did_not_block = rx.recv_timeout(Duration::from_secs(1)).is_ok();
-    let deferred = device.garbage_stats().pending;
+    let deferred = device.retirement_stats().pending;
     let released_cpu_owner = weak_buffer.upgrade().is_none();
     let unused = Sampler::new(device.clone(), &vk::SamplerCreateInfo::default()).unwrap();
     drop(unused);
-    let after_unused = device.garbage_stats().pending;
+    let after_unused = device.retirement_stats().pending;
     // Always release the gate before assertions, including on a blocking-drop regression.
     unsafe {
-        device.device.signal_semaphore(
+        device.raw_device().signal_semaphore(
             &vk::SemaphoreSignalInfo::default()
-                .semaphore(gate.handle)
+                .semaphore(gate.raw_handle())
                 .value(1),
         )
     }
@@ -186,7 +186,7 @@ fn dropping_a_submission_defers_used_resources_without_blocking_or_retiring_unus
         after_unused, deferred,
         "an unused sampler has no dependency on this submission"
     );
-    assert_eq!(device.garbage_stats().pending, 0);
+    assert_eq!(device.retirement_stats().pending, 0);
 }
 
 #[test]
@@ -218,23 +218,23 @@ fn completed_submitted_drops_obey_ticks_and_explicit_drain_ignores_the_quota() {
     for _ in 0..161 {
         let sampler = unsafe {
             device
-                .device
+                .raw_device()
                 .create_sampler(&vk::SamplerCreateInfo::default(), None)
         }
         .unwrap();
         device.retire(point.into(), Doomed::Sampler(sampler));
     }
     assert_eq!(
-        device.garbage_stats().pending,
+        device.retirement_stats().pending,
         161,
         "already-completed submitted drops must not bypass maintenance"
     );
     assert_eq!(device.try_collect_garbage().unwrap(), 3);
-    assert_eq!(device.garbage_stats().pending, 158);
+    assert_eq!(device.retirement_stats().pending, 158);
     assert_eq!(device.try_collect_garbage().unwrap(), 3);
-    assert_eq!(device.garbage_stats().pending, 155);
+    assert_eq!(device.retirement_stats().pending, 155);
     assert_eq!(device.try_collect_all_completed().unwrap(), 155);
-    assert_eq!(device.garbage_stats().pending, 0);
+    assert_eq!(device.retirement_stats().pending, 0);
     assert_eq!(device.try_collect_all_completed().unwrap(), 0);
-    assert_eq!(device.garbage_stats().idle_waits, 0);
+    assert_eq!(device.retirement_stats().idle_waits, 0);
 }
