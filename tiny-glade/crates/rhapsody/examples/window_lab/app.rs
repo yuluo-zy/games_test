@@ -533,7 +533,7 @@ impl TeardownMemoryReport {
 }
 impl Report {
     fn sample_stability(&mut self, lab: &Lab, elapsed: Duration, phase: &'static str) {
-        self.queue_lock_waits = lab.device.timelines.queue_lock_stats();
+        self.queue_lock_waits = lab.device.timelines().queue_lock_stats();
         self.reclamation = lab.device.retirement_stats();
         if phase == "before_lab_drop" {
             self.cache_diagnostics = [
@@ -585,8 +585,8 @@ impl Report {
             graph_command_pools: lab.frame_loop.graph.backend.command_pool_count(),
             pending_graph_frames: lab.frame_loop.graph.pending_frame_count(),
             named_resources: lab.frame_loop.graph.named_resource_count(),
-            registered_budget_bytes: lab.device.allocator_stats.budget_usage().total(),
-            known_cpu_bytes: lab.device.allocator_stats.cpu_memory_usage().total(),
+            registered_budget_bytes: lab.device.allocator_stats().budget_usage().total(),
+            known_cpu_bytes: lab.device.allocator_stats().cpu_memory_usage().total(),
             application_vk_memory_bytes: memory.map(|sample| sample.application_vk_memory_bytes),
             native_memory_blocks: memory.map(|sample| sample.native_memory_blocks),
         });
@@ -634,13 +634,13 @@ impl GpuMemoryReport {
 }
 impl BudgetReport {
     fn sample(device: &Device, previous: &Option<Self>) -> Self {
-        let usage = device.allocator_stats.budget_usage();
-        let cpu = device.allocator_stats.cpu_memory_usage();
+        let usage = device.allocator_stats().budget_usage();
+        let cpu = device.allocator_stats().cpu_memory_usage();
         Self {
             scope: "Known resource ranges/backings and reserved CPU arenas/compiler payload bounds; excludes suballocator block slack, unregistered CPU containers and opaque driver allocations. Native reservations are reported separately.",
             known_cpu_live_bytes: cpu.live,
             known_cpu_cache_bytes: cpu.cache,
-            known_cpu_peak_bytes: device.allocator_stats.cpu_peak_bytes(),
+            known_cpu_peak_bytes: device.allocator_stats().cpu_peak_bytes(),
             live_bytes: usage.live,
             in_flight_bytes: usage.in_flight,
             cache_bytes: usage.cache,
@@ -991,9 +991,9 @@ impl Lab {
         )?;
         let properties = unsafe {
             device
-                .instance
-                .instance
-                .get_physical_device_properties(device.physical)
+                .instance()
+                .raw_instance()
+                .get_physical_device_properties(device.physical_device())
         };
         report.device = unsafe { CStr::from_ptr(properties.device_name.as_ptr()) }
             .to_string_lossy()
@@ -1001,9 +1001,9 @@ impl Lab {
         report.driver_version_raw = properties.driver_version;
         report.api_version_raw = properties.api_version;
         report.physical_api_version_raw = properties.api_version;
-        report.enabled_device_extensions = device.enabled_extensions.clone();
+        report.enabled_device_extensions = device.enabled_extensions().to_vec();
         report.actual_queues = device
-            .queue_plan
+            .queue_plan()
             .queues
             .iter()
             .map(|queue| PhysicalQueueReport {
@@ -1012,7 +1012,7 @@ impl Lab {
             })
             .collect();
         report.class_queue_indices =
-            rhapsody::device::QueueClass::ALL.map(|class| device.queue_plan.queue(class).index());
+            rhapsody::device::QueueClass::ALL.map(|class| device.queue_plan().queue(class).index());
         let (width, height) = window.extent();
         let chain = Arc::new(unsafe {
             Swapchain::new(
@@ -1027,9 +1027,9 @@ impl Lab {
         report.present_mode = format!("{:?}", chain.present_mode());
         let features = unsafe {
             device
-                .instance
-                .instance
-                .get_physical_device_format_properties(device.physical, chain.format)
+                .instance()
+                .raw_instance()
+                .get_physical_device_format_properties(device.physical_device(), chain.format)
         };
         if !features
             .optimal_tiling_features
@@ -1039,9 +1039,12 @@ impl Lab {
         }
         let source_features = unsafe {
             device
-                .instance
-                .instance
-                .get_physical_device_format_properties(device.physical, vk::Format::R8G8B8A8_UNORM)
+                .instance()
+                .raw_instance()
+                .get_physical_device_format_properties(
+                    device.physical_device(),
+                    vk::Format::R8G8B8A8_UNORM,
+                )
         };
         if !source_features
             .optimal_tiling_features
@@ -1264,10 +1267,10 @@ impl Lab {
             pass.add_resource_access(image, TRANSFER_WRITE, 0)?;
             pass.render_with_context(move |ctx: PassContext<'_>| {
                 unsafe {
-                    device.device.cmd_copy_buffer_to_image(
+                    device.raw_device().cmd_copy_buffer_to_image(
                         vk::CommandBuffer::from_raw(ctx.command.handle()),
-                        source.handle,
-                        target.handle,
+                        source.raw_handle(),
+                        target.raw_handle(),
                         vk::ImageLayout::TRANSFER_DST_OPTIMAL,
                         &[copy_region()],
                     );
@@ -1284,11 +1287,11 @@ impl Lab {
             pass.add_resource_access(readback, TRANSFER_WRITE, 0)?;
             pass.render_with_context(move |ctx: PassContext<'_>| {
                 unsafe {
-                    device.device.cmd_copy_image_to_buffer(
+                    device.raw_device().cmd_copy_image_to_buffer(
                         vk::CommandBuffer::from_raw(ctx.command.handle()),
-                        source.handle,
+                        source.raw_handle(),
                         vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                        target.handle,
+                        target.raw_handle(),
                         &[copy_region()],
                     );
                 }
@@ -1350,9 +1353,9 @@ impl Lab {
                             },
                         ]);
                     unsafe {
-                        device.device.cmd_blit_image(
+                        device.raw_device().cmd_blit_image(
                             vk::CommandBuffer::from_raw(ctx.command.handle()),
-                            image.handle,
+                            image.raw_handle(),
                             vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
                             swapchain_image,
                             vk::ImageLayout::TRANSFER_DST_OPTIMAL,
@@ -1823,7 +1826,7 @@ fn play(options: &Options, report: &mut Report, launched_at: Instant) -> Result<
     report.wsi_stress = stress.map(|stress| stress.report);
     // Collect diagnostics through teardown, while preserving the original failure.
     let collector = lab.messenger.collector.clone();
-    let allocation_stats = lab.device.allocator_stats.clone();
+    let allocation_stats = lab.device.allocator_stats().clone();
     let retained_before = Swapchain::retained_generation_count();
     let showcase_cleanup = if let Some(scene) = &mut lab.showcase {
         let result = scene

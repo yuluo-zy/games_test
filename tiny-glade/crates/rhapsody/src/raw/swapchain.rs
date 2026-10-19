@@ -405,6 +405,10 @@ pub struct Swapchain {
 }
 
 impl Swapchain {
+    /// The device that owns this swapchain.
+    pub fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
     /// Interop escape hatch: the native handle. It stays owned by `self`; never destroy it or use it after `self` is dropped.
     pub fn raw_handle(&self) -> vk::SwapchainKHR {
         self.handle

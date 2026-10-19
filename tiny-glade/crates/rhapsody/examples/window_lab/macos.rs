@@ -139,7 +139,8 @@ impl Window {
     }
     pub fn create_surface(&self, instance: Arc<VulkanInstance>) -> Result<Arc<Surface>> {
         self.update_layer()?;
-        let loader = ash::ext::metal_surface::Instance::new(&instance.entry, &instance.instance);
+        let loader =
+            ash::ext::metal_surface::Instance::new(&instance.entry, instance.raw_instance());
         let info = vk::MetalSurfaceCreateInfoEXT::default().layer((*self.layer).cast());
         let handle = unsafe { loader.create_metal_surface(&info, None) }?;
         Ok(Arc::new(unsafe {

@@ -18,7 +18,6 @@ use rhapsody::{
     rg::vulkan::GpuResource, rg::vulkan::ResourceSpec,
 };
 use serde::Serialize;
-use shader_compiler;
 use shader_pipeline::{
     compiled::CompiledShaderPipeline, compiled::CompiledShaderStage, compiled::ShaderStage,
     reflection::BindingLocation,
@@ -268,7 +267,7 @@ impl RasterScene {
         rendering: RenderingChoice,
         cache_path: &Path,
     ) -> rhapsody::Result<Self> {
-        let device = frame_loop.swapchain().device.clone();
+        let device = frame_loop.swapchain().device().clone();
         let dynamic_enabled = device
             .caps()
             .is_enabled(rhapsody::device::Feature::DynamicRendering);
@@ -478,7 +477,7 @@ impl RasterScene {
                         .map_err(|e| rhapsody::Error::invalid_usage(format!("{e:?}")))?;
 
                     unsafe {
-                        device.device.cmd_clear_color_image(
+                        device.raw_device().cmd_clear_color_image(
                             vk::CommandBuffer::from_raw(ctx.command.handle()),
                             texture.raw(),
                             vk::ImageLayout::TRANSFER_DST_OPTIMAL,
@@ -576,10 +575,10 @@ impl RasterScene {
                         BindlessParameters::new(heap.clone(), abi.clone(), &[])?
                             .finish(&mut parameters.lock().expect("scene parameter pages"))?;
                     unsafe {
-                        device.device.cmd_bind_pipeline(
+                        device.raw_device().cmd_bind_pipeline(
                             cb,
                             vk::PipelineBindPoint::GRAPHICS,
-                            pipeline.handle,
+                            pipeline.raw_handle(),
                         );
                         prepared_parameters.bind_pass(&ctx, pipeline.clone())?;
                     }
@@ -630,15 +629,17 @@ impl RasterScene {
                         bindings.finish(&mut parameters.lock().expect("scene parameter pages"))?;
                     let cb = vk::CommandBuffer::from_raw(ctx.command.handle());
                     unsafe {
-                        device.device.cmd_bind_pipeline(
+                        device.raw_device().cmd_bind_pipeline(
                             cb,
                             vk::PipelineBindPoint::COMPUTE,
-                            pipeline.handle,
+                            pipeline.raw_handle(),
                         );
                         prepared.bind_pass(&ctx, pipeline.clone())?;
                     }
                     unsafe {
-                        device.device.cmd_dispatch(cb, WIDTH / 8, HEIGHT / 4, 1);
+                        device
+                            .raw_device()
+                            .cmd_dispatch(cb, WIDTH / 8, HEIGHT / 4, 1);
                     }
                     Ok(())
                 };
@@ -654,11 +655,11 @@ impl RasterScene {
             pass.add_resource_access(readback_handle, TRANSFER_WRITE, 0)?;
             pass.render_with_context(move |ctx: PassContext<'_>| {
                 unsafe {
-                    device.device.cmd_copy_image_to_buffer(
+                    device.raw_device().cmd_copy_image_to_buffer(
                         vk::CommandBuffer::from_raw(ctx.command.handle()),
-                        image.handle,
+                        image.raw_handle(),
                         vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                        readback.handle,
+                        readback.raw_handle(),
                         &[copy_region()],
                     );
                 }
@@ -693,9 +694,9 @@ impl RasterScene {
                     .aspect_mask(vk::ImageAspectFlags::COLOR)
                     .layer_count(1);
                 unsafe {
-                    device.device.cmd_copy_image(
+                    device.raw_device().cmd_copy_image(
                         cb,
-                        source.handle,
+                        source.raw_handle(),
                         vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
                         current.raw(),
                         vk::ImageLayout::TRANSFER_DST_OPTIMAL,
@@ -708,11 +709,11 @@ impl RasterScene {
                                 depth: 1,
                             })],
                     );
-                    device.device.cmd_copy_image_to_buffer(
+                    device.raw_device().cmd_copy_image_to_buffer(
                         cb,
                         previous.raw(),
                         vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                        target.handle,
+                        target.raw_handle(),
                         &[copy_region()],
                     );
                 }

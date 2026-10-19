@@ -127,7 +127,7 @@ impl ResultScene {
             .set_result_cache_limits(16, 8 * 1024 * 1024);
         Ok(Self {
             cache_policy: [true; 3],
-            device: frame_loop.swapchain().device.clone(),
+            device: frame_loop.swapchain().device().clone(),
             calls: Arc::new(std::array::from_fn(|_| AtomicU64::new(0))),
             versions: None,
             frame: 0,
@@ -305,10 +305,10 @@ impl ResultScene {
                             .clone();
 
                         unsafe {
-                            device.device.cmd_copy_buffer_to_image(
+                            device.raw_device().cmd_copy_buffer_to_image(
                                 vk::CommandBuffer::from_raw(ctx.command.handle()),
                                 source.raw(),
-                                image.handle,
+                                image.raw_handle(),
                                 vk::ImageLayout::TRANSFER_DST_OPTIMAL,
                                 &[panel_region(index as u32)],
                             );
@@ -326,11 +326,11 @@ impl ResultScene {
                 pass.add_resource_access(target, WRITE, 0)?;
                 pass.render_with_result_context(move |ctx| {
                     unsafe {
-                        device.device.cmd_copy_image_to_buffer(
+                        device.raw_device().cmd_copy_image_to_buffer(
                             vk::CommandBuffer::from_raw(ctx.command.handle()),
-                            image.handle,
+                            image.raw_handle(),
                             vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                            readback.handle,
+                            readback.raw_handle(),
                             &[full_region()],
                         );
                     }
@@ -493,7 +493,7 @@ fn paint(
                             })?
                             .clone();
 
-                        device.device.cmd_copy_buffer(
+                        device.raw_device().cmd_copy_buffer(
                             command,
                             source.raw(),
                             target.raw(),
@@ -504,7 +504,7 @@ fn paint(
                             }],
                         );
                     } else {
-                        device.device.cmd_fill_buffer(
+                        device.raw_device().cmd_fill_buffer(
                             command,
                             target.raw(),
                             0,
@@ -515,7 +515,7 @@ fn paint(
                     // Consecutive paint layers overlap intentionally; Vulkan
                     // transfer WAW ordering is explicit inside this one pass.
                     for layer in layers(index, versions) {
-                        device.device.cmd_pipeline_barrier(
+                        device.raw_device().cmd_pipeline_barrier(
                             command,
                             vk::PipelineStageFlags::TRANSFER,
                             vk::PipelineStageFlags::TRANSFER,
@@ -528,7 +528,7 @@ fn paint(
                         );
                         for rect in layer {
                             for y in rect.y..rect.y + rect.height {
-                                device.device.cmd_fill_buffer(
+                                device.raw_device().cmd_fill_buffer(
                                     command,
                                     target.raw(),
                                     u64::from((y * WIDTH + rect.x) * 4),

@@ -85,7 +85,7 @@ pub struct TransferScene {
 }
 impl TransferScene {
     pub fn new(frame_loop: &mut FrameLoop) -> rhapsody::Result<Self> {
-        let device = frame_loop.swapchain().device.clone();
+        let device = frame_loop.swapchain().device().clone();
         let manager = TransferManager::new(
             device.clone(),
             TransferConfig {
@@ -318,7 +318,7 @@ impl TransferScene {
         {
             let buffer = self.destination.clone();
             let image = image.clone();
-            let device = buffer.device.clone();
+            let device = buffer.device().clone();
             let mut pass = graph.add_pass("S07 display real transfer destination");
             pass.read_buffer(
                 source_id,
@@ -331,10 +331,10 @@ impl TransferScene {
             pass.add_resource_access(output, 0x34, 0)?;
             pass.render_with_result_context(move |ctx: PassContext<'_>| {
                 unsafe {
-                    device.device.cmd_copy_buffer_to_image(
+                    device.raw_device().cmd_copy_buffer_to_image(
                         vk::CommandBuffer::from_raw(ctx.command.handle()),
-                        buffer.handle,
-                        image.handle,
+                        buffer.raw_handle(),
+                        image.raw_handle(),
                         vk::ImageLayout::TRANSFER_DST_OPTIMAL,
                         &[region],
                     );
@@ -345,17 +345,17 @@ impl TransferScene {
         {
             let image = image.clone();
             let readback = readback.clone();
-            let device = image.device.clone();
+            let device = image.device().clone();
             let mut pass = graph.add_pass("S07 verify displayed GPU transfer bytes");
             pass.add_resource_access(output, 0x25, 0)?;
             pass.add_resource_access(target, 0x34, 0)?;
             pass.render_with_result_context(move |ctx: PassContext<'_>| {
                 unsafe {
-                    device.device.cmd_copy_image_to_buffer(
+                    device.raw_device().cmd_copy_image_to_buffer(
                         vk::CommandBuffer::from_raw(ctx.command.handle()),
-                        image.handle,
+                        image.raw_handle(),
                         vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                        readback.handle,
+                        readback.raw_handle(),
                         &[region],
                     );
                 }
@@ -413,7 +413,7 @@ impl TransferScene {
         if let Some(ticket) = self.queued.take() {
             self.manager.cancel_upload(&ticket)?;
         }
-        self.destination.device.wait(&self.submissions, timeout)?;
+        self.destination.device().wait(&self.submissions, timeout)?;
         self.report.shutdown_complete = true;
         self.update_stats()
     }
