@@ -1,9 +1,10 @@
 //! Original B compile-present consumer, not an out-of-graph transfer surrogate.
 //!
-//! 0x140166aa6 imports the main source owned at 0x22; 0x140166aca imports the
-//! acquired target unowned at 0; 0x140166b07 calls original resolve_to_swapchain;
-//! 0x140166b4c exports target at 0x27. The raw borrowed wrapper and WSI submit
-//! injection adapt native managed ownership to this source-built Vulkan host.
+//! 0x140166aa6 imports the main source owned at 0x22; the acquired target is
+//! the session's first-class swapchain import (discarded contents, exported as
+//! Present by the library, which also injects the acquire wait and present
+//! signal into whichever batches first/last touch it); 0x140166b07 calls
+//! original resolve_to_swapchain.
 use std::sync::Arc;
 use bevy_ecs::world::World;
 use country_core::{asset_libraries::{shader_library::AssetShaderLibrary,
@@ -14,22 +15,21 @@ use country_core::{asset_libraries::{shader_library::AssetShaderLibrary,
 use crate::{render_bridge::CoreGraphFrame, frame_world::{FrameWorldAccess, FrameLibraries}};
 
 pub fn build(frame: &mut CoreGraphFrame<'_>, world: &mut World, shaders: &AssetShaderLibrary,
-    source: Arc<rhapsody::raw::texture::Texture>, target: Arc<rhapsody::raw::texture::Texture>, flag: bool,
+    source: Arc<rhapsody::raw::texture::Texture>, target: &rhapsody::rg::vulkan::PresentTarget, flag: bool,
 ) -> rhapsody::Result<()> {
     crate::frame_setup::with_frame_resources(frame, world, |frame, world|
         build_inner(frame, world, shaders, source, target, flag))
 }
 fn build_inner(frame: &mut CoreGraphFrame<'_>, world: &mut World, shaders: &AssetShaderLibrary,
-    source: Arc<rhapsody::raw::texture::Texture>, target: Arc<rhapsody::raw::texture::Texture>, flag: bool,
+    source: Arc<rhapsody::raw::texture::Texture>, target: &rhapsody::rg::vulkan::PresentTarget, flag: bool,
 ) -> rhapsody::Result<()> {
     let attachment = |id, texture: &rhapsody::raw::texture::Texture| AttachmentTexture {
         id, extent: (texture.desc.width, texture.desc.height), format: texture.desc.format.as_raw() as u32,
         sample_count: texture.desc.sample_count,
     };
     let source_id = frame.import_native_texture_owned(source.clone(), 0x22)?;
-    let target_id = frame.import_native_texture(target.clone(), 0)?;
     let source = attachment(source_id.raw(), &source);
-    let target = attachment(target_id.raw(), &target);
+    let target = attachment(target.resource().raw(), target.texture());
     // Preserve the original mandatory PassResources lookup, using confirmed live
     // types. No synthetic empty libraries are installed for presentation.
     let raster = frame.raster_resources();
@@ -53,8 +53,7 @@ fn build_inner(frame: &mut CoreGraphFrame<'_>, world: &mut World, shaders: &Asse
         let mut ctx = DrawPassCtx::new(world, elapsed, &mut new_host, &lookup);
         final_post::resolve_to_swapchain(&mut ctx, &source, &target, u8::from(flag));
         Ok(())
-    })?;
-    frame.with_graph(|graph| graph.export(target_id, 0x27).map_err(Into::into))
+    })
 }
 struct LibraryShaders<'a>(&'a AssetShaderLibrary);
 impl ShaderLookup for LibraryShaders<'_> {

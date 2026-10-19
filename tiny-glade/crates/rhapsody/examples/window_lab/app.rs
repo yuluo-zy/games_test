@@ -12,17 +12,19 @@ use ash::vk::{self, Handle};
 use rhapsody::{
     raw::{
         buffer::{Buffer, BufferDesc},
-        command_buffer::VulkanCommandBuffer,
         device::Device,
         instance::{InstanceBuilder, ValidationMessenger},
-        swapchain::{AcquiredImageLease, DisplayTarget, Swapchain},
+        swapchain::Swapchain,
         texture::{Texture, TextureDesc},
     },
     rg::{
         executor::PassContext,
         frame_loop::{FrameLoop, FrameStatus},
-        graph::BuiltGraph,
-        vulkan::{AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession},
+        graph::{BuiltGraph, RenderGraph},
+        vulkan::{
+            AccessTable, GpuResource, PresentTarget, ResourceSpec, VulkanGraphBackend,
+            VulkanGraphSession,
+        },
     },
 };
 use serde::Serialize;
@@ -1307,74 +1309,62 @@ impl Lab {
     ) -> Result<bool> {
         let device = self.device.clone();
         let image = self.image.clone();
-        let record = move |command: &mut VulkanCommandBuffer,
-                           frame: &AcquiredImageLease|
-              -> rhapsody::Result<()> {
-            // The display submission reads the graph's real physical image.
-            // Publish that exact access through the same submission guard.
-            unsafe {
-                rhapsody::raw::resource_access::image_access(
-                    command,
-                    image.clone(),
-                    rhapsody::sync::QueueId::new(0).expect("graphics queue"),
-                    rhapsody::resource::OwnershipRange::Image {
-                        aspects: vk::ImageAspectFlags::COLOR.as_raw(),
-                        base_mip: 0,
-                        mip_count: 1,
-                        base_layer: 0,
-                        layer_count: 1,
-                    },
-                    rhapsody::resource::range_state::AccessScope {
-                        stages: vk::PipelineStageFlags::TRANSFER,
-                        access: vk::AccessFlags::TRANSFER_READ,
-                        write: false,
-                    },
-                    vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                )?;
-            }
-            // The frame loop transitions the swapchain image to
-            // TRANSFER_DST_OPTIMAL (chained to the acquire wait) before this
-            // callback and to PRESENT_SRC_KHR after it.
-            let layers = vk::ImageSubresourceLayers::default()
-                .aspect_mask(vk::ImageAspectFlags::COLOR)
-                .layer_count(1);
-            let extent = frame.extent();
-            let blit = vk::ImageBlit::default()
-                .src_subresource(layers)
-                .dst_subresource(layers)
-                .src_offsets([
-                    vk::Offset3D::default(),
-                    vk::Offset3D {
-                        x: WIDTH as i32,
-                        y: HEIGHT as i32,
-                        z: 1,
-                    },
-                ])
-                .dst_offsets([
-                    vk::Offset3D::default(),
-                    vk::Offset3D {
-                        x: extent.width as i32,
-                        y: extent.height as i32,
-                        z: 1,
-                    },
-                ]);
-            unsafe {
-                device.device.cmd_blit_image(
-                    command.handle,
-                    image.handle,
-                    vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                    frame.image(),
-                    vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-                    &[blit],
-                    vk::Filter::NEAREST,
-                );
-            }
+        let image_token = self.tokens[1];
+        // The presentation graph reads the main graph's real physical image
+        // (tracked through its token) and blits it into the imported
+        // swapchain image. The library owns the acquire wait, both layout
+        // transitions and the present signal.
+        let present = move |graph: &mut RenderGraph, target: &PresentTarget| -> rhapsody::Result<()> {
+            let source = graph.import_unowned(
+                "lab.display-source",
+                ResourceSpec::Image(image.desc).descriptor(),
+                image_token,
+                TRANSFER_READ,
+            )?;
+            let mut pass = graph.add_pass("display blit");
+            pass.add_resource_access(source, TRANSFER_READ, 0)?;
+            pass.add_resource_access(target.resource(), TRANSFER_WRITE, 0)?;
+            let (swapchain_image, extent) = (target.image(), target.extent());
+            pass.render_with_context(move |ctx: PassContext<'_>| {
+                let layers = vk::ImageSubresourceLayers::default()
+                    .aspect_mask(vk::ImageAspectFlags::COLOR)
+                    .layer_count(1);
+                let blit = vk::ImageBlit::default()
+                    .src_subresource(layers)
+                    .dst_subresource(layers)
+                    .src_offsets([
+                        vk::Offset3D::default(),
+                        vk::Offset3D {
+                            x: WIDTH as i32,
+                            y: HEIGHT as i32,
+                            z: 1,
+                        },
+                    ])
+                    .dst_offsets([
+                        vk::Offset3D::default(),
+                        vk::Offset3D {
+                            x: extent.width as i32,
+                            y: extent.height as i32,
+                            z: 1,
+                        },
+                    ]);
+                unsafe {
+                    device.device.cmd_blit_image(
+                        vk::CommandBuffer::from_raw(ctx.command.handle()),
+                        image.handle,
+                        vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+                        swapchain_image,
+                        vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                        &[blit],
+                        vk::Filter::NEAREST,
+                    );
+                }
+                true
+            });
             Ok(())
         };
         let protocol_started = Instant::now();
-        // The blit reads the graph image in the transfer stage only.
-        let target = DisplayTarget::TRANSFER_DST.with_graph_reads(vk::PipelineStageFlags::TRANSFER);
-        let executed = self.frame_loop.execute(built, record, target);
+        let executed = self.frame_loop.execute(built, present);
         let protocol_ns = protocol_started.elapsed().as_nanos() as u64;
         if let Some(scene) = &mut self.scene {
             scene.finish_execution(&executed);
@@ -1399,8 +1389,8 @@ impl Lab {
         let wsi = self.frame_loop.last_cpu_timings();
         self.last_sample = FrameSample {
             acquire_ns: wsi.acquire_ns,
-            display_record_ns: wsi.display_record_ns,
-            display_submit_present_ns: wsi.display_submit_present_ns,
+            presentation_graph_ns: wsi.presentation_graph_ns,
+            present_ns: wsi.present_ns,
             compile_ns: graph.stats.compile_ns,
             record_ns: graph.stats.record_ns,
             submit_ns: graph.stats.submit_ns,

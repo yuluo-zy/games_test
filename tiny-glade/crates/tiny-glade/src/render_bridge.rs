@@ -271,21 +271,22 @@ impl CoreRenderBridge {
             .execute_prepared(compiled.frame.take().expect("compiled graph consumed once"))
     }
 
-    pub fn execute_presentation_compiled(
+    /// Present the swapchain image rendered by `target`'s executed graph.
+    pub fn present(
         &mut self,
-        compiled: CompiledCoreGraph,
-        lease: Arc<parking_lot::Mutex<rhapsody::raw::swapchain::GraphImageLease>>,
-    ) -> rhapsody::Result<SessionFrameReceipt> {
-        self.session
-            .borrow_mut()
-            .backend
-            .attach_presentation_submission(lease)?;
-        let result = self.execute_compiled(compiled);
-        self.session
-            .borrow_mut()
-            .backend
-            .detach_presentation_submission();
-        result
+        target: &rhapsody::rg::vulkan::PresentTarget,
+    ) -> rhapsody::Result<rhapsody::raw::swapchain::PresentTicket> {
+        self.session.borrow_mut().present(target)
+    }
+
+    /// Return a swapchain image owned by this bridge's session that will not
+    /// be presented normally (failed or abandoned presentation graph).
+    pub fn cancel_presentation(&mut self) -> rhapsody::Result<()> {
+        self.session.borrow_mut().cancel_presentation()
+    }
+
+    pub fn has_presentation(&self) -> bool {
+        self.session.borrow().has_presentation()
     }
 
     pub fn cancel_built(&mut self, graph: rhapsody::rg::graph::BuiltGraph) -> rhapsody::Result<()> {
@@ -636,6 +637,22 @@ impl CoreGraphFrame<'_> {
             &mut self.graph().borrow_mut(),
             texture,
             initial_access,
+        );
+        self.failed |= result.is_err();
+        result
+    }
+
+    /// Import the acquired swapchain image as this graph's presentation
+    /// target (discarded contents, exported for present). The graph's
+    /// execution waits on the acquire and signals the present wait.
+    pub fn import_swapchain_image(
+        &mut self,
+        image: rhapsody::raw::swapchain::AcquiredImageLease,
+    ) -> rhapsody::Result<rhapsody::rg::vulkan::PresentTarget> {
+        let result = self.bridge.session.borrow_mut().import_swapchain_image(
+            &mut self.graph().borrow_mut(),
+            image,
+            rhapsody::rg::vulkan::SwapchainContents::Discard,
         );
         self.failed |= result.is_err();
         result

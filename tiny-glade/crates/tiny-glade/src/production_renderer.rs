@@ -19,7 +19,7 @@ use country_core::{
     },
 };
 use rhapsody::{
-    raw::{instance::InstanceBuilder, swapchain::{AcquiredImageLease, GraphImageLease, PresentTicket, Swapchain}},
+    raw::{instance::InstanceBuilder, swapchain::{AcquiredImageLease, PresentTicket, Swapchain}},
     rg::vulkan::SessionFrameReceipt,
 };
 
@@ -87,7 +87,8 @@ pub struct ProductionRenderer {
     compiled_shader_root: PathBuf,
     pending: VecDeque<PresentTicket>,
     acquired: Option<AcquiredImageLease>,
-    presentation: Option<Arc<parking_lot::Mutex<GraphImageLease>>>,
+    /// The swapchain image imported into the executed presentation graph.
+    presentation: Option<rhapsody::rg::vulkan::PresentTarget>,
     main: Option<(u32, SessionFrameReceipt)>,
     main_output: Option<Arc<rhapsody::raw::texture::Texture>>,
     started: Instant,
@@ -215,6 +216,7 @@ impl ProductionRenderer {
     pub fn shutdown(&mut self) -> Result<()> {
         if self.closed { return Ok(()); }
         self.presentation.take();
+        self.bridge.cancel_presentation()?;
         if let Some(image) = self.acquired.take() { image.cancel(TIMEOUT_NS)?; }
         self.bridge.wait_submits_done(TIMEOUT_NS)?;
         for app in self.other_applications.values_mut() { app.bridge.wait_submits_done(TIMEOUT_NS)?; }
@@ -262,6 +264,33 @@ impl GameRenderHostFactory for ProductionRenderer {
         self.activate_application(world).expect("B per-App rendering library ownership");
         ProductionRenderHost { renderer: self, world, egui, video: None,
             input_lag_reduction: false, lists: DrawLists::new() }
+    }
+}
+
+impl ProductionRenderHost<'_> {
+    /// The resolve graph imports the acquired image as its presentation
+    /// target; the session owns the acquisition from the import on.
+    fn execute_presentation_graph_inner(&mut self) -> rhapsody::Result<()> {
+        let source = self.renderer.main_output.clone()
+            .ok_or_else(|| rhapsody::Error::invalid_usage("main graph did not publish a source image"))?;
+        let acquired = self.renderer.acquired.take()
+            .ok_or_else(|| rhapsody::Error::invalid_usage("presentation needs an acquired image"))?;
+        let shaders = self.renderer.shaders.clone();
+        let flag = self.video.as_ref().is_some_and(|video| video.render_upside_down);
+        let world = &mut *self.world;
+        let (target, graph) = self.renderer.bridge.build_frame(|frame| {
+            let target = frame.import_swapchain_image(acquired)?;
+            resolve::build(frame, world, &shaders, source, &target, flag)?;
+            Ok(target)
+        })?;
+        if let Err(error) = self.renderer.bridge.shader_backend().prewarm(Duration::from_secs(10)) {
+            self.renderer.bridge.cancel_built(graph)?;
+            return Err(error);
+        }
+        let compiled = self.renderer.bridge.compile_built(graph)?;
+        self.renderer.presentation = Some(target);
+        self.renderer.bridge.execute_compiled(compiled)?;
+        Ok(())
     }
 }
 
@@ -380,44 +409,37 @@ impl RenderHost for ProductionRenderHost<'_> {
             Err(error) => { self.renderer.record_error(error); Acquire::Unavailable } }
     }
     fn execute_presentation_graph(&mut self) -> rhapsody::Result<()> {
-        let source = self.renderer.main_output.clone()
-            .ok_or_else(|| rhapsody::Error::invalid_usage("main graph did not publish a source image"))?;
-        let target = self.renderer.acquired.as_ref()
-            .ok_or_else(|| rhapsody::Error::invalid_usage("presentation needs an acquired image"))?.texture()?;
-        let shaders = self.renderer.shaders.clone();
-        let flag = self.video.as_ref().is_some_and(|video| video.render_upside_down);
-        let (_, graph) = self.renderer.bridge.build_frame(|frame| {
-            resolve::build(frame, self.world, &shaders, source, target, flag)
-        })?;
-        if let Err(error) = self.renderer.bridge.shader_backend().prewarm(Duration::from_secs(10)) {
-            self.renderer.bridge.cancel_built(graph)?;
-            return Err(error);
+        let result = self.execute_presentation_graph_inner();
+        if result.is_err() {
+            // Whatever failed, the session returns the image (release, or
+            // discard + present if a partial graph consumed the acquire).
+            self.renderer.presentation.take();
+            if let Err(cleanup) = self.renderer.bridge.cancel_presentation() {
+                log::warn!(target: crate::render_loop::LOG_TARGET, "presentation cleanup failed: {cleanup}");
+            }
         }
-        let compiled = self.renderer.bridge.compile_built(graph)?;
-        let acquired = self.renderer.acquired.take().expect("validated acquired image");
-        let presentation = Arc::new(parking_lot::Mutex::new(acquired.into_graph_submission()?));
-        self.renderer.presentation = Some(presentation.clone());
-        self.renderer.bridge.execute_presentation_compiled(compiled, presentation)?;
-        Ok(())
+        result
+    }
+    fn present(&mut self) {
+        let result = (|| {
+            let target = self.renderer.presentation.take()
+                .ok_or_else(|| rhapsody::Error::invalid_usage("missing executed presentation graph"))?;
+            let ticket = self.renderer.bridge.present(&target)?;
+            self.renderer.pending.push_back(ticket);
+            Ok::<_, rhapsody::Error>(())
+        })();
+        if let Err(error) = result { self.renderer.record_error(error); }
     }
     fn end_frame(&mut self) {
         // The shared session seals its real receipt ledger at execute_prepared;
         // WSI work remains executable until present consumes the acquisition.
         if self.renderer.first_error.is_some() {
             self.renderer.presentation.take();
+            if let Err(error) = self.renderer.bridge.cancel_presentation() { self.renderer.record_error(error); }
             if let Some(image) = self.renderer.acquired.take() {
                 if let Err(error) = image.cancel(TIMEOUT_NS) { self.renderer.record_error(error); }
             }
         }
-    }
-    fn present(&mut self) {
-        let result = (|| {
-            let image = self.renderer.presentation.take().ok_or_else(|| rhapsody::Error::invalid_usage("missing submitted presentation graph"))?;
-            let ticket = image.lock().present()?;
-            self.renderer.pending.push_back(ticket);
-            Ok::<_, rhapsody::Error>(())
-        })();
-        if let Err(error) = result { self.renderer.record_error(error); }
     }
     fn finish_screenshot_capture(&mut self) {
         // The reconstructed screenshot coordinator still lacks the original
