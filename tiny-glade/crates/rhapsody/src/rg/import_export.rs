@@ -84,12 +84,12 @@ use super::{
 use crate::raw::texture::TextureViewDesc;
 use ash::vk;
 
-/// 原 trait `ImportExportToRenderGraph`（Texture / Buffer 两个 impl）。
+/// 物理资源与渲染图资源之间的导入/导出（Texture / Buffer 两个 impl）。
 /// 物理资源在这一层以 `(描述, token)` 表示，token 由后端资源表持有。
 pub trait ImportExportToRenderGraph: Sized {
     fn descriptor(&self) -> Descriptor;
     fn token(&self) -> u64;
-    /// 由图导出的物理资源重建载体（`from_owned_rg_resource`，0x140bd63f0）。
+    /// 由图导出的物理资源重建载体。
     fn from_owned_rg_resource(desc: Descriptor, exported: ExportedResource) -> Option<Self>;
 
     /// `import_unowned`：图只借用，物理对象的所有权留在调用方。
@@ -165,7 +165,7 @@ impl ImportExportToRenderGraph for PhysicalBuffer {
     }
 }
 
-/// 原 trait 名 `IntoSampledRenderGraphTexture`（0x140bd6470 的 `into_sampled_rg_texture` 所属，
+/// 可作为采样纹理导入渲染图的类型（`into_sampled_rg_texture`，
 /// 不是 `ImportExportToRenderGraph`）。
 pub trait IntoSampledRenderGraphTexture {
     fn into_sampled_rg_texture(

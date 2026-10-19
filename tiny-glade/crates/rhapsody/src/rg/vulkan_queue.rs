@@ -258,6 +258,22 @@ impl VulkanGraphBackend {
                     planner.add_initial(logical as u32, table.cells())
                 })?;
         }
+        if let Some(set) = self.active_alias_set {
+            let bound = |logical: u32| {
+                runtime
+                    .tokens
+                    .values
+                    .get(logical as usize)
+                    .copied()
+                    .flatten()
+                    .is_some_and(|token| self.transient_alias_tokens.contains_key(&token))
+            };
+            for &(previous, next) in self.alias_cache.edges(set) {
+                if bound(previous) && bound(next) {
+                    planner.add_alias(previous, next)?;
+                }
+            }
+        }
         planner.bind(&compiled.plan.range_program, |family| {
             domains
                 .iter()

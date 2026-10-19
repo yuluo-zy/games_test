@@ -12,7 +12,9 @@ readme = "README.md"
 # AllocatorReport，该类型只在 0.27 的 generate_report 中出现），算法按公共 0.27 复用；原版就是子分配，故默认开启。
 default = ["suballocation"]
 suballocation = ["dep:gpu-allocator"]
-candidate-optimizations = []
+# Run the independent plan verifiers on every plan-cache miss in release builds
+# (debug builds always run them; `rg::set_plan_validation` enables them at runtime).
+validation = []
 
 [dependencies]
 ash.workspace = true

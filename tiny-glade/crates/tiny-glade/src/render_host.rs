@@ -1650,7 +1650,8 @@ impl RgResources for GraphPasses<'_> {
             .ok_or_else(|| {
                 rhapsody::Error::invalid_usage("frame resources require the frame driver's session")
             })?;
-        let named = session.named_buffer(&mut self.graph.borrow_mut(), name, native)?;
+        // Temporal buffers of the game are zero-filled on creation.
+        let named = session.named_buffer_zeroed(&mut self.graph.borrow_mut(), name, native)?;
         Ok(TemporalBuffer {
             buffer: RgBuffer {
                 resource: named.buffer.raw().raw(),

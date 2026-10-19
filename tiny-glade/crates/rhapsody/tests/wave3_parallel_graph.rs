@@ -2,17 +2,15 @@
 //!
 //! 图：32 个互相独立的填充 pass（各写自己的缓冲，常量不同）+ 8 个拷贝 pass（读第 2k 个填充缓冲写拷贝目标，
 //! 即跨块依赖，需要块间屏障），共 40 个 pass、默认 1 个 batch。比较：
-//! - 串行（`ParallelRecording::SERIAL`）、`batch_per_pass`、原作分块（ComputePool / Inline）的缓冲内容逐字节一致且等于期望值；
-//! - 分块数与预算算法一致：预算 `clamp(max, total/16, total/2)`、贪心累加到预算关块（手算 + `plan_chunks` 双重核对）；
-//! - `ExecutionStats` 的 `parallel_batches/chunks`、命令缓冲数、屏障计数。
-//!
-//! `--all-features` 下再对比 `Balanced` 与 `ADAPTIVE`。
+//! - 串行（`ParallelRecording::SERIAL`）、`batch_per_pass`、均衡分块（ComputePool / Inline）的缓冲内容逐字节一致且等于期望值；
+//! - 分块数与均衡切分算法一致（手算 + `plan_chunks` 双重核对）；
+//! - `ExecutionStats` 的 `parallel_batches/chunks`、命令缓冲数、屏障计数；
+//! - 默认 `ADAPTIVE` 在无统计或轻帧时走串行且只用一条命令缓冲。
 mod draw_support;
 mod wave3_support;
-#[cfg(feature = "candidate-optimizations")]
 use rhapsody::rg::executor::PassPgoNameId;
 use rhapsody::rg::parallel::{
-    ChunkStrategy, ParallelRecording, TaskRunner, original_budget, original_chunks, plan_chunks,
+    ChunkStrategy, ParallelRecording, TaskRunner, balanced_chunks, plan_chunks,
 };
 use wave3_support::*;
 
@@ -21,7 +19,7 @@ const COPIES: usize = 8;
 const TOTAL: usize = FILLS + COPIES;
 
 fn seeded_durations() -> Vec<Option<u64>> {
-    // 32 个填充各 10ns，8 个拷贝各 20ns：total=480，max=20 → budget = clamp(20, 30, 240) = 30。
+    // 32 个填充各 10ns，8 个拷贝各 20ns：total=480。
     (0..TOTAL)
         .map(|i| Some(if i < FILLS { 10 } else { 20 }))
         .collect()
@@ -66,29 +64,20 @@ fn all_chunking_strategies_agree_byte_for_byte_and_match_the_budget_algorithm() 
     let expected = expected_buffers(FILLS, COPIES, salt);
     let seed = seeded_durations();
 
-    // 手算预算与分块（独立于 plan_chunks 的实现路径）。
+    // 手算分块（独立于 plan_chunks 的实现路径）：8 块时最重块下界 480/8=60，连续切分恰好达到：
+    // 填充每 6 个一块（5 块）、30..34 = 10+10+20+20、其后拷贝每 3 个一块。
     let total: u64 = seed.iter().flatten().sum();
-    let max = seed.iter().flatten().copied().max().unwrap();
-    assert_eq!((total, max), (480, 20));
-    assert_eq!(
-        original_budget(total, max),
-        30,
-        "clamp(20, 480>>4=30, 480>>1=240)"
-    );
+    assert_eq!(total, 480);
     let hand: Vec<std::ops::Range<usize>> = {
-        // 填充 3 个一块（10 累计到 30）：0..3 … 27..30，共 10 块；30..33 = 10+10+20=40 关块；
-        // 其后拷贝每 2 个一块（20+20=40）：33..35、35..37、37..39，剩 39..40。
-        let mut v: Vec<_> = (0..10).map(|k| 3 * k..3 * k + 3).collect();
-        v.extend([30..33, 33..35, 35..37, 37..39, 39..40]);
+        let mut v: Vec<_> = (0..5).map(|k| 6 * k..6 * k + 6).collect();
+        v.extend([30..34, 34..37, 37..40]);
         v
     };
-    assert_eq!(hand.len(), 15);
-    let costs: Vec<_> = seed.clone();
-    assert_eq!(
-        original_chunks(&costs, 30, &[]),
-        hand,
-        "original_chunks 与手算一致"
-    );
+    let strategy = ChunkStrategy::Balanced {
+        max_chunks: 8,
+        chunk_overhead_ns: 0,
+    };
+    assert_eq!(balanced_chunks(&seed, 8, 0, &[]), hand, "balanced_chunks 与手算一致");
 
     // 1. 串行基线：不分块。
     let serial = run_once(ParallelRecording::SERIAL, None, false, salt);
@@ -120,8 +109,8 @@ fn all_chunking_strategies_agree_byte_for_byte_and_match_the_budget_algorithm() 
     );
     assert_eq!(per_pass.run.receipt.snapshot.batches.len(), TOTAL);
 
-    // 3. 原作分块、第一帧无统计：budget = 0 → 每个 pass 一块（与 parallel_chunks.rs 的推断一致）。
-    let first = run_once(ParallelRecording::ORIGINAL, None, false, salt);
+    // 3. 块数不限、第一帧无统计：每个 pass 一块。
+    let first = run_once(ParallelRecording::EVERY_PASS, None, false, salt);
     assert_eq!(first.run.buffers, expected);
     let s = first.run.receipt.stats;
     assert_eq!(
@@ -133,10 +122,10 @@ fn all_chunking_strategies_agree_byte_for_byte_and_match_the_budget_algorithm() 
         s.chunks, first.run.receipt.stats.commands_recorded as usize, first.threads
     );
 
-    // 4. 原作分块 + 预置统计：15 块。ComputePool 与 Inline 两种 runner 都要一致。
+    // 4. 均衡分块 + 预置统计：8 块。ComputePool 与 Inline 两种 runner 都要一致。
     for runner in [TaskRunner::ComputePool, TaskRunner::Inline] {
         let parallel = ParallelRecording {
-            strategy: ChunkStrategy::Original,
+            strategy,
             runner,
             min_total_ns: 0,
         };
@@ -181,8 +170,16 @@ fn the_second_frame_chunks_by_the_first_frames_measured_durations() {
         return;
     }
     let device = rhapsody::raw::init::create_headless_device().unwrap();
-    // 候选特性下默认 ADAPTIVE 有门槛，这里显式用原作配置以便确定走分块。
-    let mut session = new_session(&device, ParallelRecording::ORIGINAL);
+    // 默认 ADAPTIVE 有门槛，这里显式用无门槛的均衡配置以便确定走分块。
+    let parallel = ParallelRecording {
+        strategy: ChunkStrategy::Balanced {
+            max_chunks: 4,
+            chunk_overhead_ns: 0,
+        },
+        runner: TaskRunner::ComputePool,
+        min_total_ns: 0,
+    };
+    let mut session = new_session(&device, parallel);
     let bufs = BigBuffers::new(&mut session, FILLS, COPIES);
     let names = pass_names(FILLS, COPIES);
     let first = run_big_graph(&mut session, &bufs, 1, false);
@@ -193,7 +190,7 @@ fn the_second_frame_chunks_by_the_first_frames_measured_durations() {
         names.iter().all(|n| previous.get(n).is_some()),
         "上一帧统计必须包含全部 pass"
     );
-    let planned = plan_chunks(ChunkStrategy::Original, &names, previous, &[]);
+    let planned = plan_chunks(parallel.strategy, &names, previous, &[]);
     println!(
         "第二帧按实测统计预计 {} 块（total {} ns, max {} ns）",
         planned.len(),
@@ -210,7 +207,7 @@ fn the_second_frame_chunks_by_the_first_frames_measured_durations() {
     assert_eq!(
         s.chunks as usize,
         planned.len(),
-        "实际块数与按 previous 统计的预算算法一致"
+        "实际块数与按 previous 统计的均衡切分一致"
     );
     assert_eq!(s.parallel_batches, u32::from(planned.len() > 1));
     // 同一设备、同一会话，再用串行配置跑同样内容（salt=2）对比字节。
@@ -223,9 +220,8 @@ fn the_second_frame_chunks_by_the_first_frames_measured_durations() {
     assert_eq!(third.receipt.stats.parallel_batches, 0);
 }
 
-#[cfg(feature = "candidate-optimizations")]
 #[test]
-fn balanced_and_adaptive_candidates_match_the_serial_bytes() {
+fn balanced_and_adaptive_strategies_match_the_serial_bytes() {
     if !have_vulkan() {
         return;
     }
@@ -276,6 +272,10 @@ fn balanced_and_adaptive_candidates_match_the_serial_bytes() {
         light.run.receipt.stats.parallel_batches, 0,
         "ADAPTIVE 无统计时走串行"
     );
+    assert_eq!(
+        light.run.receipt.stats.commands_recorded, 1,
+        "退回串行的非 Serial 策略复用首条命令缓冲"
+    );
     let light = run_once(ParallelRecording::ADAPTIVE, Some(&seed), false, salt);
     assert_eq!(
         light.run.receipt.stats.parallel_batches, 0,
@@ -288,8 +288,15 @@ fn balanced_and_adaptive_candidates_match_the_serial_bytes() {
         heavy_run.run.receipt.stats.parallel_batches, 1,
         "总耗时 480µs ≥ 200µs 门槛，ADAPTIVE 分块"
     );
+    let mut probe = rhapsody::rg::executor::PassPgoStats::default();
+    for (n, d) in names.iter().zip(&heavy) {
+        probe.record(rhapsody::rg::executor::PassPgoDuration::new(
+            n.clone(),
+            d.unwrap(),
+        ));
+    }
     assert_eq!(
-        heavy_run.run.receipt.stats.chunks as usize, 15,
-        "同样的比例统计 → 同样的 15 块"
+        heavy_run.run.receipt.stats.chunks as usize,
+        plan_chunks(ParallelRecording::ADAPTIVE.strategy, &names, &probe, &[]).len(),
     );
 }

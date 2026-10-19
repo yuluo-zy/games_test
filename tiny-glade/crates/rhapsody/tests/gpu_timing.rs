@@ -142,7 +142,7 @@ fn failed_recording_cancels_unsubmitted_query_and_next_frame_can_reuse_it() {
 #[test]
 fn per_pass_pairs_follow_actual_serial_and_worker_submissions_and_cancel_as_a_unit() {
     use rhapsody::rg::parallel::ParallelRecording;
-    for parallel in [ParallelRecording::SERIAL, ParallelRecording::ORIGINAL] {
+    for parallel in [ParallelRecording::SERIAL, ParallelRecording::EVERY_PASS] {
         let config = DeviceConfig {
             recording: rhapsody::device::RecordingPolicy::Parallel,
             ..DeviceConfig::headless()
@@ -185,7 +185,7 @@ fn per_pass_pairs_follow_actual_serial_and_worker_submissions_and_cancel_as_a_un
         }
         session.chain.pgo.previous.reset();
         let frame = session.execute_frame(graph.build()).unwrap();
-        if parallel == ParallelRecording::ORIGINAL {
+        if parallel == ParallelRecording::EVERY_PASS {
             assert!(frame.stats.commands_recorded > 1);
         }
         session.wait_submits_done(10_000_000_000).unwrap();

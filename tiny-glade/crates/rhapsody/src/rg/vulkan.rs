@@ -1,5 +1,4 @@
-//! 将候选渲染图主链接到真实 Vulkan；显式访问表避免猜测原访问码的阶段和布局。
-//! 创建描述符为候选适配，原闭包/反射/缓存策略仍需整链对照。
+//! 渲染图的 Vulkan 后端与会话；显式访问表给出每个访问码的阶段、访问掩码和布局。
 use super::{
     executor::{
         ExecutionBackend, ExecutionChain, GraphBatchSync, GraphExecution, GraphTimelineSignal,
@@ -103,7 +102,7 @@ impl Default for AccessTable {
 }
 impl AccessTable {
     /// Resolve broad or custom native stage policies against VkDevice's actual
-    /// enabled features. The original evidence masks and access codes stay intact.
+    /// enabled features. Access masks and access codes stay intact.
     fn normalize_enabled_stages(&mut self, enabled: crate::raw::device::DeviceCapabilities) {
         let mut disabled = vk::PipelineStageFlags::empty();
         if !enabled.geometry_shader {
@@ -242,14 +241,14 @@ impl ResourceSpec {
         }
     }
 
-    /// 按原描述字节布局编码（缓冲：size@0 usage@8 alignment@0xc memory_location@0xe）。
+    /// 按描述符字节布局编码（缓冲：size@0 usage@8 alignment@0xc memory_location@0xe）。
     pub fn descriptor(self) -> graph::Descriptor {
         match self {
             Self::Buffer(d) | Self::ConcurrentBuffer(d, _) => {
                 graph::Descriptor::Buffer(graph::BufferDesc {
                     word_at_00: d.size,
                     word_at_08: d.usage.as_raw(),
-                    // 原 `BufferDesc`：alignment u16 @0xc、memory_location u8 @0xe。
+                    // `BufferDesc`：alignment u16 @0xc、memory_location u8 @0xe。
                     bytes_at_0c_through_0e: [
                         d.alignment.to_le_bytes()[0],
                         d.alignment.to_le_bytes()[1],
@@ -259,7 +258,7 @@ impl ResourceSpec {
             }
             Self::Image(d) | Self::ConcurrentImage(d, _) => {
                 graph::Descriptor::Image(graph::TextureDesc {
-                    // 原 `TextureDesc` 的字节布局：usage@0 flags@4 format@8 width@0xc height@0x10 depth@0x14
+                    // `TextureDesc` 的字节布局：usage@0 flags@4 format@8 width@0xc height@0x10 depth@0x14
                     // array_elements@0x18；mip_levels@0x1c sample_count@0x1d kind@0x1e。
                     words_at_00_through_18: [
                         d.usage.as_raw(),
@@ -334,8 +333,11 @@ pub struct VulkanGraphBackend {
     specifications: BTreeMap<String, ResourceSpec>,
     transient_aliasing: bool,
     prepared_transients: super::transient_resources::PreparedTransients,
-    transient_alias_tokens: std::collections::BTreeSet<u64>,
-    transient_switch_tokens: BTreeMap<u64, vk::PipelineStageFlags>,
+    alias_cache: super::transient_resources::AliasCache,
+    /// Members of the alias set lent to the frame being populated.
+    lent_aliases: Option<super::transient_resources::LentAliases>,
+    active_alias_set: Option<u64>,
+    transient_alias_tokens: BTreeMap<u64, super::transient_resources::AliasOrigin>,
     transient_counters: Arc<crate::raw::transient_backing::TransientBackingCounters>,
     cpu_arenas: crate::command::CpuArenaPool,
     owner_pool: crate::raw::temp_list_pool::TempListPool<crate::raw::binding::RetainedResource>,
@@ -459,22 +461,12 @@ struct OwnedBatchSync {
 fn add_transition(
     scope: &mut crate::raw::barrier::SynchronizationScope,
     resources: &BTreeMap<u64, GpuResource>,
-    alias_switches: &BTreeMap<u64, vk::PipelineStageFlags>,
     token: u64,
     transition: &super::sync_plan::BoundTransition,
 ) -> bool {
     use crate::resource::OwnershipRange;
-    if let Some(previous_stages) = alias_switches.get(&token) {
-        // Aliasing is a backing-memory dependency in addition to the exact
-        // image layout or buffer range dependency. Never replace it with a view.
-        scope.source_stages |= *previous_stages;
-        scope.destination_stages |= transition.destination.stages;
-        scope.memory.push(
-            vk::MemoryBarrier::default()
-                .src_access_mask(vk::AccessFlags::MEMORY_WRITE)
-                .dst_access_mask(vk::AccessFlags::MEMORY_READ | vk::AccessFlags::MEMORY_WRITE),
-        );
-    }
+    // Alias (shared backing) dependencies are ordinary transitions here: the
+    // planner models them as a synthetic previous access of the new member.
     scope.source_stages |= transition.source.stages;
     scope.destination_stages |= transition.destination.stages;
     match (resources.get(&token), transition.range) {
@@ -529,7 +521,6 @@ struct VulkanChunkView<'a> {
     barrier_device: &'a Device,
     barrier_dispatch: crate::raw::barrier::BarrierDispatch,
     resources: &'a BTreeMap<u64, GpuResource>,
-    alias_switches: &'a BTreeMap<u64, vk::PipelineStageFlags>,
     cpu_arenas: &'a crate::command::CpuArenaPool,
     owner_pool: &'a crate::raw::temp_list_pool::TempListPool<crate::raw::binding::RetainedResource>,
 }
@@ -577,7 +568,6 @@ impl super::executor::ChunkRecorder for VulkanChunkView<'_> {
             if !add_transition(
                 &mut scope,
                 self.resources,
-                self.alias_switches,
                 t.token,
                 &t.transition,
             ) {
@@ -697,10 +687,12 @@ impl VulkanGraphBackend {
             recording_error: None,
             resources: BTreeMap::new(),
             specifications: BTreeMap::new(),
-            transient_aliasing: false,
+            transient_aliasing: true,
             prepared_transients: Default::default(),
+            alias_cache: Default::default(),
+            lent_aliases: None,
+            active_alias_set: None,
             transient_alias_tokens: Default::default(),
-            transient_switch_tokens: Default::default(),
             transient_counters: Default::default(),
             commands: BTreeMap::new(),
             queue,
@@ -744,9 +736,24 @@ impl VulkanGraphBackend {
         self.pass_resources.take();
         self.projection_pool.clear_idle();
     }
-    /// Physical aliasing is opt-in. PreserveParallelism never adds DAG edges.
+    /// Physical aliasing of transient resources (on by default). Aliasing only
+    /// uses orderings already in the graph; it never adds DAG edges.
     pub fn set_transient_aliasing(&mut self, enabled: bool) {
         self.transient_aliasing = enabled;
+        if !enabled {
+            self.return_unconsumed_aliases();
+            self.active_alias_set = None;
+            self.alias_cache.trim();
+        }
+    }
+    /// Members lent to a frame that never bound them (population failed or
+    /// stopped early) were not used by the GPU; they return to their set.
+    fn return_unconsumed_aliases(&mut self) {
+        if let Some(lent) = self.lent_aliases.take() {
+            for (resource, origin) in lent.resources.into_values() {
+                self.alias_cache.give_back(origin, resource);
+            }
+        }
     }
     /// Optional production command-span timestamps. Results are per physical
     /// queue; their sum is not multi-queue frame latency or pure GPU active time.
@@ -790,7 +797,9 @@ impl VulkanGraphBackend {
             .flat_map(|ring| ring.drain_samples())
     }
     pub fn transient_memory_plan(&self) -> &super::transient_memory::PhysicalMemoryPlan {
-        &self.prepared_transients.plan
+        self.active_alias_set
+            .and_then(|set| self.alias_cache.plan(set))
+            .unwrap_or(&self.prepared_transients.plan)
     }
     pub fn transient_backing_statistics(
         &self,
@@ -815,6 +824,7 @@ impl VulkanGraphBackend {
             self.frame_storage.trim_idle(0);
             self.import_validation.get_mut().trim_idle();
             self.prepared_transients.trim_unaliased();
+            self.alias_cache.trim();
         }
         let slots = self.device.frames_in_flight();
         let selected = (1..=slots)
@@ -1268,7 +1278,7 @@ impl VulkanGraphBackend {
         chain.parallel = match self.device.policy().recording {
             crate::device::RecordingPolicy::Serial => super::parallel::ParallelRecording::SERIAL,
             crate::device::RecordingPolicy::Parallel => {
-                super::parallel::ParallelRecording::ORIGINAL
+                super::parallel::ParallelRecording::ADAPTIVE
             }
         };
         chain
@@ -1297,14 +1307,17 @@ impl graph::ResourceBackend for VulkanGraphBackend {
         // Drop any unused candidates from an earlier failed population before
         // allocating this frame. Already-published tokens belong to that frame.
         if self.transient_aliasing {
-            self.prepared_transients = Default::default();
-            self.prepared_transients = super::transient_resources::prepare(
+            self.return_unconsumed_aliases();
+            self.active_alias_set = None;
+            let lent = self.alias_cache.lend(
                 &self.device,
                 &self.specifications,
                 plan,
                 graph,
                 self.transient_counters.clone(),
             )?;
+            self.active_alias_set = lent.as_ref().map(|lent| lent.set);
+            self.lent_aliases = lent;
         } else {
             self.prepared_transients
                 .prepare_unaliased(&plan.dependency_edges, &self.device.allocator_stats)?;
@@ -1312,10 +1325,12 @@ impl graph::ResourceBackend for VulkanGraphBackend {
         Ok(())
     }
     fn has_prepared_resource(&self, name: &str) -> bool {
-        self.prepared_transients.resources.contains_key(name)
+        self.lent_aliases
+            .as_ref()
+            .is_some_and(|lent| lent.resources.contains_key(name))
     }
     fn is_transient_alias(&self, token: u64) -> bool {
-        self.transient_alias_tokens.contains(&token)
+        self.transient_alias_tokens.contains_key(&token)
     }
     fn resource_matches_sharing(
         &self,
@@ -1334,9 +1349,12 @@ impl graph::ResourceBackend for VulkanGraphBackend {
         descriptor: graph::Descriptor,
         name: &str,
     ) -> Result<u64, graph::BackendFailure> {
-        let prepared = self.prepared_transients.resources.remove(name);
-        let aliased = prepared.is_some();
-        let resource = if let Some(resource) = prepared {
+        let prepared = self
+            .lent_aliases
+            .as_mut()
+            .and_then(|lent| lent.resources.remove(name));
+        let origin = prepared.as_ref().map(|(_, origin)| *origin);
+        let resource = if let Some((resource, _)) = prepared {
             resource
         } else {
             self.specifications
@@ -1345,32 +1363,29 @@ impl graph::ResourceBackend for VulkanGraphBackend {
                 .ok_or_else(|| crate::Error::invalid_usage(format!("缺少资源规格 {name}")))?
                 .create_resource(self.device.clone(), descriptor.usage())?
         };
-        let token = self.bind_import_owned_by(resource, self.family)?;
-        if aliased {
-            self.transient_alias_tokens.insert(token);
-            if let Some(codes) = self.prepared_transients.switches.remove(name) {
-                let stages = codes
-                    .into_iter()
-                    .filter_map(|code| self.accesses.0.get(&code))
-                    .fold(vk::PipelineStageFlags::empty(), |stages, access| {
-                        stages | access.stages
-                    });
-                let stages = if self.queue_runtime.multi_queue {
-                    vk::PipelineStageFlags::ALL_COMMANDS
-                } else {
-                    stages
-                };
-                self.transient_switch_tokens.insert(token, stages);
+        let token = match self.bind_import_owned_by(resource.clone(), self.family) {
+            Ok(token) => token,
+            Err(error) => {
+                if let Some(origin) = origin {
+                    self.alias_cache.give_back(origin, resource);
+                }
+                return Err(error);
             }
+        };
+        if let Some(origin) = origin {
+            self.transient_alias_tokens.insert(token, origin);
         }
         Ok(token)
     }
     fn set_debug_name(&mut self, _token: u64, _descriptor: graph::Descriptor, _name: &str) {}
     fn release_created_resource(&mut self, token: u64) {
         // 只在 GPU 不会再用到该资源时调用（见 graph::reclaim_failed_resources）；命令拥有者仍持有的 Arc 不受影响。
-        self.resources.remove(&token);
-        self.transient_alias_tokens.remove(&token);
-        self.transient_switch_tokens.remove(&token);
+        let resource = self.resources.remove(&token);
+        if let (Some(origin), Some(resource)) =
+            (self.transient_alias_tokens.remove(&token), resource)
+        {
+            self.alias_cache.give_back(origin, resource);
+        }
         self.import_families.remove(&token);
     }
 }
@@ -1468,6 +1483,10 @@ impl ExecutionBackend for VulkanGraphBackend {
                 recording::Queue::Auxiliary(i) => i + 1,
             },
             policy_signature: u64::from(self.transient_aliasing),
+            // Must stay false: the device never enables the Vulkan 1.2
+            // `separateDepthStencilLayouts` feature, so a barrier on a combined
+            // depth/stencil image has to name both aspects. The planner merges
+            // partial D/S ranges for exactly this case (sync_plan::native_range).
             separate_depth_stencil_layouts: false,
         }
     }
@@ -1567,7 +1586,14 @@ impl ExecutionBackend for VulkanGraphBackend {
         self.command_for_slot(0)
     }
     fn chunk_command_handle(&mut self, chunk: usize) -> Result<u64, recording::Failure> {
-        self.command_for_slot(chunk)
+        // Worker pool 0 belongs to the main (serial) commands, which stay open
+        // while chunks record on other threads.
+        self.command_for_slot(chunk + 1)
+    }
+    fn command_pool_identity(&self, handle: u64) -> Option<u64> {
+        self.commands
+            .get(&handle)
+            .map(|command| Arc::as_ptr(&command.pool) as usize as u64)
     }
     fn abandon_command(&mut self, handle: u64) {
         if let Some(ring) = &mut self.gpu_timing {
@@ -1594,7 +1620,6 @@ impl ExecutionBackend for VulkanGraphBackend {
             owner_pool: &self.owner_pool,
             device: &self.device.device,
             resources: &self.resources,
-            alias_switches: &self.transient_switch_tokens,
         }))
     }
     fn begin_command(&mut self, handle: u64) -> Result<(), recording::Failure> {
@@ -1682,7 +1707,6 @@ impl ExecutionBackend for VulkanGraphBackend {
         add_transition(
             self.barriers.entry(command).or_default(),
             &self.resources,
-            &self.transient_switch_tokens,
             token,
             transition,
         )
@@ -1875,7 +1899,7 @@ pub struct VulkanGraphSession {
     pub chain: ExecutionChain,
     pub(crate) result_cache: super::result_cache::ResultCache,
     pool: graph::Pool,
-    /// 原 `GraphExecutor` 首字段 `VecDeque<PendingSubmission>`（0x140beabd0/0x140bec400/0x140bea680）。
+    /// 在途提交队列（帧节流）。
     pending: super::frame_throttle::FrameThrottle<PendingSessionFrame>,
     next_frame: u64,
     receipt_storage: Option<super::receipt_storage::ReceiptStorage>,
@@ -1886,7 +1910,7 @@ pub struct VulkanGraphSession {
     active_prepared: Option<super::resource::GraphId>,
     /// 上一帧从 begin_frame 到该帧完成的墙钟时长；仅统计用途。
     last_frame_duration_ns: u64,
-    /// 原 recorder 里 `+0x108` 回执标签 / `+0x164` 结束标记的等价物（`frame::FrameLedger`）。
+    /// 本帧提交账本（`frame::FrameLedger`）。
     ledger: super::frame::FrameLedger,
     named: Option<NamedResources>,
 }
@@ -2151,7 +2175,7 @@ impl VulkanGraphSession {
     pub fn is_poisoned(&self) -> bool {
         self.device_lost || self.backend.device.timelines.is_device_lost()
     }
-    /// 原 GraphExecutor::last_known_frame_duration_ns：最近一次完成帧的墙钟时长。
+    /// 最近一次完成帧的墙钟时长。
     pub fn last_known_frame_duration_ns(&self) -> u64 {
         self.last_frame_duration_ns
     }
@@ -2159,7 +2183,7 @@ impl VulkanGraphSession {
     pub fn frame_ledger(&self) -> &super::frame::FrameLedger {
         &self.ledger
     }
-    /// 原 GraphExecutor::wait_submits_done：等待在途提交全部完成。
+    /// 等待在途提交全部完成。
     /// wait_frame 对每个在途帧执行有界等待，超时以 Err 返回。
     pub fn wait_submits_done(&mut self, timeout_ns: u64) -> crate::Result<()> {
         while let Some(pending) = self.pending.front() {
@@ -2291,8 +2315,7 @@ impl VulkanGraphSession {
         }
         Ok(())
     }
-    /// Compile/allocate without issuing Vulkan commands. This is the consumer
-    /// boundary observed in B 0x140161cd0 / 0x1401647b0 before execute_compiled.
+    /// Compile/allocate without issuing Vulkan commands.
     pub fn compile_frame(&mut self, built: graph::BuiltGraph) -> crate::Result<PreparedSessionFrame> {
         if self.active_prepared.is_some() {
             let (_, _, retire) = built.into_parts();
@@ -2390,6 +2413,7 @@ impl VulkanGraphSession {
             graph,
             &format!("slot/{}:{name}", name.len()),
             ResourceSpec::Image(desc).with_sharing(sharing),
+            false,
         )?;
         Ok(super::temporal::NamedTexture {
             texture: graph.texture_id(lookup.handle)?,
@@ -2409,6 +2433,23 @@ impl VulkanGraphSession {
             crate::resource::ResourceSharing::Exclusive,
         )
     }
+    /// Like [`Self::named_buffer`], but a newly created (or resized) buffer is
+    /// zero-filled, so reading it before the first write is defined.
+    /// `history_valid` still reports whether earlier frames wrote it.
+    pub fn named_buffer_zeroed(
+        &mut self,
+        graph: &mut graph::RenderGraph,
+        name: &str,
+        desc: buffer::BufferDesc,
+    ) -> crate::Result<super::temporal::NamedBuffer> {
+        self.named_buffer_with_options(
+            graph,
+            name,
+            desc,
+            crate::resource::ResourceSharing::Exclusive,
+            true,
+        )
+    }
     pub fn named_buffer_with_sharing(
         &mut self,
         graph: &mut graph::RenderGraph,
@@ -2416,10 +2457,24 @@ impl VulkanGraphSession {
         desc: buffer::BufferDesc,
         sharing: crate::resource::ResourceSharing,
     ) -> crate::Result<super::temporal::NamedBuffer> {
+        self.named_buffer_with_options(graph, name, desc, sharing, false)
+    }
+    /// A session-owned buffer that persists across frames. New contents are
+    /// undefined (a read before the first write is rejected) unless
+    /// `zero_initialized` requests a zero-filled allocation.
+    pub fn named_buffer_with_options(
+        &mut self,
+        graph: &mut graph::RenderGraph,
+        name: &str,
+        desc: buffer::BufferDesc,
+        sharing: crate::resource::ResourceSharing,
+        zero_initialized: bool,
+    ) -> crate::Result<super::temporal::NamedBuffer> {
         let lookup = self.request_named(
             graph,
             &format!("slot/{}:{name}", name.len()),
             ResourceSpec::Buffer(desc).with_sharing(sharing),
+            zero_initialized,
         )?;
         Ok(super::temporal::NamedBuffer {
             buffer: graph.buffer_id(lookup.handle)?,
@@ -2486,6 +2541,7 @@ impl VulkanGraphSession {
         graph: &mut graph::RenderGraph,
         key: &str,
         spec: ResourceSpec,
+        zero_initialized: bool,
     ) -> crate::Result<super::temporal::TemporalLookup> {
         let named = self
             .named
@@ -2494,6 +2550,7 @@ impl VulkanGraphSession {
         named.validate_graph(graph)?;
         named.ensure_capacity(key, 1)?;
         let previous = named.resources.register(key, spec);
+        named.resources.set_zero_initialized(key, zero_initialized);
         let lookup = match named.state.get_or_create_owned(
             graph,
             key,
@@ -2738,7 +2795,7 @@ impl VulkanGraphSession {
             self.ledger.note_submission();
         }
         if let Err(error) = self.ledger.end() {
-            log::warn!("end_frame 账本异常: {error:?}（原版此处 panic）");
+            log::warn!("end_frame 账本异常: {error:?}");
         }
         self.pending.end_frame(pending);
     }
@@ -2908,7 +2965,7 @@ impl VulkanGraphSession {
         self.result_cache.abandon_pending();
         self.result_cache.clear();
         self.collect_cached_results(&crate::sync::CompletedValues::all())?;
-        // 缩放/收尾级等待（原版此处走 wait_idle_and_recycle_resources）：idle 后推进并回收提交引擎。
+        // 缩放/收尾级等待：idle 后推进并回收提交引擎。
         self.backend.clear_pass_resources();
         for command in self.backend.commands.values_mut() {
             unsafe { command.release_completed_owners() };
@@ -3073,6 +3130,10 @@ impl NamedResources {
 struct TemporalGpuResources {
     pub device: Arc<Device>,
     specifications: BTreeMap<String, ResourceSpec>,
+    /// Keys whose buffer is zero-filled when it is (re)created.
+    zero_initialized: std::collections::BTreeSet<String>,
+    /// Tokens whose complete allocation was uploaded at creation.
+    defined: std::collections::BTreeSet<u64>,
     resources: BTreeMap<u64, GpuResource>,
     retired: Vec<u64>,
 }
@@ -3081,12 +3142,23 @@ impl TemporalGpuResources {
         Self {
             device,
             specifications: BTreeMap::new(),
+            zero_initialized: Default::default(),
+            defined: Default::default(),
             resources: BTreeMap::new(),
             retired: Vec::new(),
         }
     }
     fn register(&mut self, name: &str, spec: ResourceSpec) -> Option<ResourceSpec> {
         self.specifications.insert(name.into(), spec)
+    }
+    fn set_zero_initialized(&mut self, name: &str, zeroed: bool) {
+        if zeroed {
+            if !self.zero_initialized.contains(name) {
+                self.zero_initialized.insert(name.into());
+            }
+        } else {
+            self.zero_initialized.remove(name);
+        }
     }
     fn restore_specification(&mut self, name: &str, previous: Option<ResourceSpec>) {
         if let Some(previous) = previous {
@@ -3132,11 +3204,12 @@ impl super::temporal::TemporalResourceOwner for TemporalGpuResources {
                 "跨帧声明与物理规格不一致".into(),
             ));
         }
-        // Native get_or_create_temporal<Buffer> @0x1404f62d0 allocates a
-        // zero-filled Vec of desc.size, then passes Some(slice) to
-        // create_buffer @0x1405b93b0. Textures follow their separate None path.
+        // Contents of a new named resource are undefined (history_valid is
+        // false and a read before the first write is rejected) unless the
+        // caller asked for a zero-filled buffer, which costs one upload.
+        let zeroed = self.zero_initialized.contains(name);
         let resource = match spec {
-            ResourceSpec::Buffer(desc) | ResourceSpec::ConcurrentBuffer(desc, _) => {
+            ResourceSpec::Buffer(desc) | ResourceSpec::ConcurrentBuffer(desc, _) if zeroed => {
                 let size = usize::try_from(desc.size)
                     .map_err(|_| graph::BuildError::from(crate::Error::OutOfHostMemory))?;
                 let mut initial = Vec::new();
@@ -3157,7 +3230,7 @@ impl super::temporal::TemporalResourceOwner for TemporalGpuResources {
                             .map_err(graph::BuildError::from)?;
                         self.device.set_buffer_debug_name(&managed, name);
                         if size != 0 {
-                            self.device.update_buffer_bytes(&managed, &initial, &[0..size], 0)
+                            self.device.update_buffer_bytes(&managed, &initial, std::slice::from_ref(&(0..size)), 0)
                                 .map_err(graph::BuildError::from)?;
                         }
                         managed
@@ -3171,10 +3244,13 @@ impl super::temporal::TemporalResourceOwner for TemporalGpuResources {
         let token = try_allocate_token()
             .ok_or_else(|| graph::BuildError::ResourceCreationFailed("跨帧token耗尽".into()))?;
         self.resources.insert(token, resource);
+        if zeroed && matches!(spec, ResourceSpec::Buffer(_) | ResourceSpec::ConcurrentBuffer(..)) {
+            self.defined.insert(token);
+        }
         Ok(token)
     }
     fn initial_contents_defined(&self, token: u64) -> bool {
-        matches!(self.resources.get(&token), Some(GpuResource::Buffer(_)))
+        self.defined.contains(&token)
     }
     fn temporal_sharing(&self, name: &str) -> crate::resource::ResourceSharing {
         self.specifications
@@ -3184,6 +3260,7 @@ impl super::temporal::TemporalResourceOwner for TemporalGpuResources {
     }
     fn release_temporal(&mut self, token: u64) {
         self.resources.remove(&token);
+        self.defined.remove(&token);
         self.retired.push(token);
     }
 }

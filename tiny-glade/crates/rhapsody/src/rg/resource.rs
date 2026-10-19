@@ -1,4 +1,4 @@
-//! 逻辑资源接口：依据 PDB 函数名及汇编重建，公开 Rust 签名仍是候选。
+//! 逻辑资源接口：资源句柄、来源与访问校验。
 use super::graph::{Descriptor, OriginSource};
 
 /// A resource index only has meaning within the graph that allocated it.
@@ -418,7 +418,7 @@ pub enum ResourceContractError {
 }
 
 /// 携带描述符的资源句柄；`desc()` 返回声明期描述符，`clone_unchecked()` 不做
-/// 引用计数/有效性检查地复制（原 197 处内联实例的廉价克隆语义）。
+/// 不做引用计数/有效性检查的廉价复制。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Handle {
     pub resource: ResourceHandle,
@@ -452,7 +452,7 @@ pub enum ResourceType {
     Other,
 }
 
-/// 候选公开表示；原作 ResourceOrigin 的 72 字节布局另有证据记录。
+/// 资源来源的公开表示。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ResourceOrigin {
     pub descriptor: Descriptor,
@@ -467,9 +467,7 @@ impl ResourceOrigin {
     }
 }
 
-/// ✅ 原版空操作：PDB 公共符号 `<Texture as Resource>::validate_read_access`（h83678d6fcc0889d6）与
-/// `<Buffer as Resource>::validate_read_access`（hfc3e91621b7af5dd）被 ICF 折叠到同一地址 0x14003bb80，
-/// 该地址的机器码只有一条 `ret`（C3，后跟 int3 填充）。故不存在读访问合法性断言/panic 文案；保留空操作。
+/// 读访问没有额外的合法性约束；保留为空操作。
 pub fn validate_read_access(_access: u8) {}
 
 use super::resource_registry::{Buffer, RegistryResource, Texture};
@@ -484,7 +482,7 @@ pub enum BorrowedResource<'a, T, B, O> {
 }
 
 impl<T, B, O> RegistryResource<T, B, Arc<O>> {
-    /// 原入口标签 0/1、2/3 直接借用载荷；标签 4 跳过 Arc 的两个引用计数。
+    /// 标签 0/1、2/3 直接借用载荷；标签 4 跳过 Arc 的两个引用计数。
     pub fn borrow(&self) -> BorrowedResource<'_, T, B, O> {
         match self {
             Self::OwnedTexture(value) | Self::UnownedTexture(value) => {
@@ -499,7 +497,7 @@ impl<T, B, O> RegistryResource<T, B, Arc<O>> {
     }
 }
 
-/// 原作 ResourceOrigin 的取证载体。只暴露已观察字段，不猜测其余字段名。
+/// 资源来源载体。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(C)]
 pub struct ResourceOriginLayout {
@@ -529,19 +527,19 @@ impl ResourceOriginLayout {
     }
 }
 
-/// 对应原转换入口 +0xbd6ce0：逐字节复制 32 字节，包括填充字节。
+/// 逐字节复制 32 字节，包括填充字节。
 pub fn descriptor_from_texture(input: &[u8; 32]) -> [u8; 32] {
     *input
 }
 
-/// 对应原转换入口 +0xbd6d00：只写前 16 字节及第 30 字节。
+/// 只写前 16 字节及第 30 字节。
 /// 未写入区保持原值，不能错误地补零或复制全部 32 字节。
 pub fn descriptor_from_buffer(input: &[u8; 16], output: &mut [u8; 32]) {
     output[..16].copy_from_slice(input);
     output[30] = 7;
 }
 
-/// 只允许在所属 builder 中生产绑定；原 Ref 的完整泛型 ABI 尚未恢复。
+/// 只允许在所属 builder 中生产绑定。
 pub struct Ref<'borrow, 'graph, Kind> {
     pub(crate) builder: &'borrow mut super::pass_builder::PassBuilder<'graph>,
     pub(crate) resource: ResourceHandle,
@@ -630,7 +628,7 @@ impl Ref<'_, '_, TextureRef> {
     }
 }
 
-/// 原 view carrier 的限定字节写入合同；不把未知 60 字节强行映射到候选 view 描述符。
+/// 视图载体的限定字节写入合同。
 pub fn original_ref_view_binding(
     view: &[u8; 60],
     logical: ResourceHandle,
@@ -641,7 +639,7 @@ pub fn original_ref_view_binding(
     output[60..64].copy_from_slice(&logical.raw().to_le_bytes());
     output[64] = role;
 }
-/// 原 buffer carrier：uniform=3，另一 bind 实例=4；未知尾部不参与恢复。
+/// 缓冲载体：uniform=3，另一绑定种类=4。
 pub fn original_ref_buffer_binding(logical: ResourceHandle, uniform: bool) -> [u32; 2] {
     [if uniform { 3 } else { 4 }, logical.raw()]
 }

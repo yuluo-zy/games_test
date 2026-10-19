@@ -633,3 +633,74 @@ fn named_slots_validate_scope_initialization_resize_and_reset() {
     assert_eq!(session.named_resource_count(), 1);
     assert_eq!(session.resource_count(), 1);
 }
+
+#[test]
+fn zeroed_named_buffer_may_be_read_before_its_first_write() {
+    let Some(mut session) = session() else { return };
+    let device = session.backend.device.clone();
+    let readback = Arc::new(
+        Buffer::new(
+            device.clone(),
+            &BufferDesc::new_gpu_to_cpu(64, vk::BufferUsageFlags::TRANSFER_DST),
+        )
+        .unwrap(),
+    );
+    let mut graph = session.begin_frame().unwrap();
+    let desc = BufferDesc::new_gpu_only(
+        64,
+        vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::TRANSFER_SRC,
+    );
+    let named = session
+        .named_buffer_zeroed(&mut graph, "zeroed", desc)
+        .unwrap();
+    assert!(!named.history_valid, "zero fill is not frame history");
+    let token = session
+        .backend
+        .bind_import(GpuResource::Buffer(readback.clone()))
+        .unwrap();
+    let out = graph
+        .import_unowned(
+            "out",
+            ResourceSpec::Buffer(readback.desc).descriptor(),
+            token,
+            HOST_READ,
+        )
+        .unwrap();
+    let mut pass = graph.add_pass("read zeroed").with_side_effect();
+    pass.add_resource_access(named.buffer.raw(), TRANSFER_READ, 0)
+        .unwrap();
+    pass.add_resource_access(out, TRANSFER_WRITE, 0).unwrap();
+    let (source, target) = (named.buffer.raw().raw(), out.raw());
+    pass.render_with_result_context(move |ctx: PassContext<'_>| {
+        let managed = ctx
+            .managed
+            .ok_or_else(|| rhapsody::Error::invalid_usage("managed resources absent"))?;
+        let source = managed.buffer_for(source).map_err(|error| {
+            rhapsody::Error::invalid_usage_with("named buffer resolution", error)
+        })?;
+        let target = managed.buffer_for(target).map_err(|error| {
+            rhapsody::Error::invalid_usage_with("readback resolution", error)
+        })?;
+        unsafe {
+            device.device.cmd_copy_buffer(
+                vk::CommandBuffer::from_raw(ctx.command.handle()),
+                source.raw(),
+                target.raw(),
+                &[vk::BufferCopy {
+                    src_offset: 0,
+                    dst_offset: 0,
+                    size: 64,
+                }],
+            );
+        }
+        Ok(())
+    });
+    graph.export(out, HOST_READ).unwrap();
+    let receipt = session.execute_frame(graph.build()).unwrap();
+    session.wait_frame(receipt.frame, TIMEOUT).unwrap();
+    let mut bytes = [0xffu8; 64];
+    unsafe {
+        readback.read_bytes_after_completion(0, &mut bytes).unwrap();
+    }
+    assert_eq!(bytes, [0; 64]);
+}

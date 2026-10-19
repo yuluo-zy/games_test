@@ -1,5 +1,4 @@
-//! 按 PassBuilder::add_resource_access / render 重建构图入口。
-//! 泛型参数、原作闭包布局及错误类型尚未恢复；此处提供可执行的候选接口。
+//! 构图入口：PassBuilder::add_resource_access / render。
 use super::graph::{BuildError, PassDeclaration, RenderCallback, RenderGraph};
 use super::resource::ResourceHandle;
 
@@ -380,7 +379,7 @@ impl PassBuilder<'_> {
     pub fn render(self, callback: impl FnOnce(u64) -> bool + Send + 'static) {
         self.render_with_context(move |context| callback(context.command.handle()));
     }
-    /// 原 FnOnce 的消费顺序不变；上下文来自当前 recorder，不能由外部 counter 仿造。
+    /// 回调只消费一次；上下文来自当前 recorder，不能由外部 counter 仿造。
     pub fn render_with_context(
         self,
         callback: impl FnOnce(super::executor::PassContext<'_>) -> bool + Send + 'static,
@@ -412,7 +411,7 @@ impl PassBuilder<'_> {
 
 impl<'graph> PassBuilder<'graph> {
     /// 消费 builder 返回所属图的可变引用；用于在 pass 声明之间继续构图。
-    /// 原 rg_mut 用于内部访问；候选接口避免在此保留 &mut 借用与被 self 借用的冲突。
+    /// 内部访问所属图；避免在此保留 &mut 借用与 self 借用冲突。
     pub fn rg_mut(self) -> &'graph mut RenderGraph {
         self.graph
     }

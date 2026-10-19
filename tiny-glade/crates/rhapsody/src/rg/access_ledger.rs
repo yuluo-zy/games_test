@@ -1,12 +1,11 @@
 //! PassBuilder::add_resource_access 的整个访问账本收集合同。
-//! 原入口 0x1409dca90 / 0x140533b10，字段更正依据 SYNTHESIS 11.2。
-//! 使用原访问码，不为 0x17/0x19/0x1d/0x1e 猜测用途名称。
+//! 直接使用访问码，不为 0x17/0x19/0x1d/0x1e 等未命名访问码猜测用途名称。
 use super::resource_info::AccessDeclaration;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 static NEXT_SYNC_GROUP: AtomicU32 = AtomicU32::new(2);
 
-/// 原 0x140bece50 返回 fetch_add 的旧值；不额外跳过溢出后的 0。
+/// 同步组编号：全局递增计数器 fetch_add 的旧值（溢出后回绕）。
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 pub struct ResourceSyncGroup(u32);
@@ -26,7 +25,7 @@ impl ResourceSyncGroup {
         self.0
     }
 
-    /// 原 0x140bece60 只比较 u32，0 与 0 也等价。
+    /// 只比较 u32 编号，0 与 0 也等价。
     pub const fn is_equivalent(self, other: Self) -> bool {
         self.0 == other.0
     }
@@ -42,7 +41,7 @@ fn allocate_group(counter: &AtomicU32) -> u32 {
     counter.fetch_add(1, Ordering::Relaxed)
 }
 
-/// 原账本的 12 字节投影；保留填充字节，不用 Rust 默认布局冒充原 ABI。
+/// 一条访问账本记录（12 字节，显式填充）。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(C)]
 pub struct AccessLedgerEntry {
@@ -75,7 +74,7 @@ pub enum LedgerUpdate {
     UpgradedAndAppended { previous: usize, appended: usize },
 }
 
-/// 对应原不兼容访问 panic 的安全候选错误；不编造完整原 panic/unwind ABI。
+/// 同一 pass 内对同一资源声明了不兼容访问。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct IncompatibleAccess {
     pub resource_index: u32,
@@ -86,7 +85,7 @@ pub struct IncompatibleAccess {
 }
 
 /// 输入必须是当前 pass 的账本，索引已经由 graph.check_handle 检查。
-/// 原 per-resource {pass,index} 表的效果在这里投影为查找当前 pass 最后一条记录。
+/// 查找当前 pass 对该资源的最后一条记录。
 /// 不跨 pass 去重，不排序，不把 read→write 的两条记录压成一条。
 pub fn collect_resource_access(
     entries: &mut Vec<AccessDeclaration>,
@@ -126,6 +125,7 @@ pub fn collect_resource_access_range(
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn collect_resource_access_range_with_contents(
     entries: &mut Vec<AccessDeclaration>,
     resource_index: u32,
@@ -140,6 +140,7 @@ pub fn collect_resource_access_range_with_contents(
         synchronization_group, range, version, reads_previous, contents_unused, false)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn collect_resource_access_range_with_policy(
     entries: &mut Vec<AccessDeclaration>, resource_index: u32, access_code: u8,
     synchronization_group: u32, range: super::resource::AccessRange,
@@ -194,7 +195,7 @@ pub fn collect_resource_access_range_with_policy(
         }
     }
 
-    // 原两组码 0x19/0x1a 接新 0x37 时，即使 group 不同也升级。
+    // 0x19/0x1a 后接 0x37 时，即使 group 不同也升级。
     // 必须先修改旧条，再追加新条，且两个 group 均清 0；ASCII '7' 是 0x37。
     if matches!(previous.access_code, 0x19 | 0x1a) && access_code == 0x37 {
         entries[previous_index].access_code = 0x37;
@@ -219,7 +220,7 @@ pub fn collect_resource_access_range_with_policy(
         });
     }
 
-    // 原错误在条目更新之前产生；已经成功的其它资源访问保持原顺序和内容。
+    // 错误在条目更新之前产生；已经成功的其它资源访问保持原顺序和内容。
     Err(IncompatibleAccess {
         resource_index,
         previous_access_code: previous.access_code,

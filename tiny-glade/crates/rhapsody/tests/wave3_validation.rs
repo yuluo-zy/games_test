@@ -122,7 +122,7 @@ fn the_animation_and_the_big_graph_run_without_validation_errors() {
         check_animation_frame(frame, 15.0, &read_pixels(&target));
     }
     // 渲染图大图（32 个填充 + 8 个拷贝 pass），串行与并行各一次，第二帧并行带历史。
-    for parallel in [ParallelRecording::SERIAL, ParallelRecording::ORIGINAL] {
+    for parallel in [ParallelRecording::SERIAL, ParallelRecording::EVERY_PASS] {
         let mut session = new_session(&env.device, parallel);
         let bufs = BigBuffers::new(&mut session, 32, 8);
         for salt in 1..=2u32 {

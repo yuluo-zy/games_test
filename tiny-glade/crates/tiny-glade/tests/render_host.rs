@@ -1755,11 +1755,8 @@ fn inactive_compute_views_keep_active_mips_with_interleaved_buffer_binding() {
             );
             let lifetime = plan.info.lifetimes[history.raw() as usize];
             assert_eq!(
-                (
-                    lifetime.first_pass.pass_index,
-                    lifetime.last_pass.pass_index
-                ),
-                (0, 1)
+                (lifetime.first_pass, lifetime.last_pass),
+                (Some(0), Some(1))
             );
             let native_compute = &plan.range_program.passes[1];
             for level in [0, 1] {

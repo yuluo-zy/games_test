@@ -857,7 +857,8 @@ impl GraphDeclarer for FrameDeclarer {
         desc: rhapsody::raw::buffer::BufferDesc,
     ) -> rhapsody::Result<rhapsody::rg::temporal::NamedBuffer> {
         self.scope.validate(graph)?;
-        self.session.borrow_mut().named_buffer(graph, name, desc)
+        // Temporal buffers of the game are zero-filled on creation.
+        self.session.borrow_mut().named_buffer_zeroed(graph, name, desc)
     }
 }
 

@@ -271,10 +271,12 @@ fn resolve_with_initialization(
                 .map_err(|error| range_error(access.resource_index, error))?;
             let current = versions[resource];
             let write = is_write(access.access_code);
-            if (access.reads_previous && !write)
-                || (access.contents_unused && (write || access.reads_previous))
-                || (access.allow_undefined_contents && (write || access.reads_previous || access.contents_unused))
-            {
+            let modifies = write || access.reads_previous;
+            let invalid_previous = access.reads_previous && !write;
+            let invalid_unused = access.contents_unused && modifies;
+            let invalid_undefined =
+                access.allow_undefined_contents && (modifies || access.contents_unused);
+            if invalid_previous || invalid_unused || invalid_undefined {
                 return Err(BuildError::Contract(Contract::WrongAccessMode {
                     resource: access.resource_index,
                     access_code: access.access_code,

@@ -39,7 +39,7 @@ V0 窗口基线 → V1 设备与回收 → V2 提交/呈现闭环 → V3 图与�
 - 生产图形路径最低要求 timeline semaphore、dynamic rendering 和完整 descriptor indexing 能力：runtime array、partially bound、sampled/storage image 与 storage buffer 的 update-after-bind、nonuniform/dynamic indexing，以及 update-unused-while-pending。创建共享 heap 时还向 Vulkan 查询实际 layout 支持并检查容量；缺能力返回 Unsupported。descriptor buffer/GPL/shader object 只作能力查询，未登记为实现策略。
 - 命名持久与历史资源由 `VulkanGraphSession::named_texture` / `named_buffer` / `temporal_texture` 管理，正常 `execute_frame` 自动校验、导出和提交；回调通过 `PassContext::history_valid` / `buffer_history_valid` 查询本帧历史。失败帧不发布新内容；旧公开 physical token/temporal owner 入口已删除，tiny-glade 的 temporal 宿主已接入。
 - `bindless::BindlessShaderPackage` 将现有 shader 资产一次转换为共享 heap ABI，原 uniform 和 push 数据进入有界参数页，实际 push 仅携带参数块索引。`BindlessParameters` 校验声明范围并登记真实资源和不可变 lease；`HotPipeline` 在帧边界核验逻辑 ABI、接口、compute 工作组大小和目标后发布，失败继续保留旧管线。持久管线缓存校验设备/版本/完整性，损坏时重建；输入与驱动提取数据携带 CPU 预算，保存不再复制整份 payload。
-- 瞬态着色由 `backend.set_transient_aliasing(true)` 显式开启，默认 PreserveParallelism 不增依赖。实际 requirements/dedicated/共享方式决定兼容分组，所有别名对象共用唯一 backing owner；报告区分区间与实际 native allocation，不保证每种小负载都减少整块保留显存。
+- 瞬态别名默认开启（`backend.set_transient_aliasing(false)` 关闭），只利用图中已有顺序、不增依赖；别名成员首用由同步规划器建模为前一成员的合成前序访问并发出屏障/跨队列等待；物理别名集按计划与资源规格缓存、整组借给单帧，帧退役后复用。实际 requirements/dedicated/共享方式决定兼容分组，所有别名对象共用唯一 backing owner；报告区分区间与实际 native allocation，不保证每种小负载都减少整块保留显存。
 - `backend.configure_gpu_timing(Some(config))` 开启有界 query ring；`config.pass_spans` 可额外测逐 pass 跨度，提交的真实完成点到达后才可读取和复用。命令与 pass span 分开统计，不能重复相加或冒充多队列帧延迟。Window Lab 用 `--gpu-pass-timing on` 保留有界的带名称样本；历史性能 A/B 保持双方相同观测配置。
 - 未完成旧交换链代际最多保留 4 个。默认生产呈现要求 maintenance1，`FrameLoop::shutdown` 只接受真实 acquire/render/present 完成证明；显式兼容策略无法证明最终关闭时保留所有权并返回错误，详见进度记录。
 
@@ -108,7 +108,7 @@ macOS/Homebrew 的 Vulkan loader/MoltenVK 已安装。workspace 的 `.cargo/conf
 
 有原指令证据的图编译、生命周期、PGO、格式和绑定规则已放入对应模块；整帧尚未验收不再成为排除这些实现的理由。可运行适配也不被冒称为原完整对象 ABI：`Device` 的 Vulkan 适配、主图 provider 桥、串行 session、同步 setup 上传、WSI 重建和诊断后端仍有登记的候选策略。`RasterPipelineOpts` 已按 0x1416a3720 还原为 4 字节位域（同时是 `RasterPipelineKey.selector`）；`[device+0xad9]` 已更正为 wideLines 门控并接入设备创建；子通道号恒 0 仍是候选。
 
-`suballocation` 默认开启，启用公共 `gpu-allocator 0.27`：原版是子分配，B 版 Cargo.lock 记 0.26.0 本地分叉，但 PDB 中 `AllocatorReport` 只在 0.27 出现，故按 0.27 复用（见 Cargo.toml 注释）；该分叉源码仍未找到，`tools/verify_inventory.py` 对此依赖身份仍报差异。`candidate-optimizations` 默认关闭；session 默认串行，调用方可显式设置 `ParallelRecording`。旧序号回收已由每队列时间线替代，整帧池优化按 V4 推进。没有重写 Bevy、ash 或分配库算法。`raw/descriptor_binding` 覆盖已取证的资源 tag 0–6、8–9；tag 7 等未知路径保留显式不支持边界，不把错误返回宣称为原完整分支恢复。
+`suballocation` 默认开启，启用公共 `gpu-allocator 0.27`：原版是子分配，B 版 Cargo.lock 记 0.26.0 本地分叉，但 PDB 中 `AllocatorReport` 只在 0.27 出现，故按 0.27 复用（见 Cargo.toml 注释）；该分叉源码仍未找到，`tools/verify_inventory.py` 对此依赖身份仍报差异。`validation` 特性让 release 构建在计划缓存未命中时也运行独立计划校验器（debug 构建始终运行，`rg::set_plan_validation` 可在运行期开启）；设备 `RecordingPolicy::Parallel` 时 session 使用自适应并行录制 `ParallelRecording::ADAPTIVE`（无统计或轻帧退回串行），调用方可显式设置 `ParallelRecording`。旧序号回收已由每队列时间线替代，整帧池优化按 V4 推进。没有重写 Bevy、ash 或分配库算法。`raw/descriptor_binding` 覆盖已取证的资源 tag 0–6、8–9；tag 7 等未知路径保留显式不支持边界，不把错误返回宣称为原完整分支恢复。
 
 尚缺原完整设备排序/驱动编码、原 managed 槽位与销毁桶布局、首个真实 shader callback 自动绑定、原多队列 ownership transfer/调度、原 temporal 淘汰与 ABI、原窗口焦点/全屏策略、厂商故障转储、完整游戏 producer/consumer。原版没有硬件光追路径（`rt()` 恒为 None）；`should_reset_temporal` 属 country-core consumer。此历史断点曾缺 temporal 宿主接线；当前由 Session-owned 命名资源和普通 `execute_frame` 完成，三个宿主入口已迁移，真实运行证据见进度表。`get_setup_cb_submit_info` 已按 0x140bf84e0 实现为 `SetupCommandSlot::take_for_submit`；未恢复的 `set_fullscreen_exclusive`、`require_vendor_crash_dump` 占位方法没有迁入。
 

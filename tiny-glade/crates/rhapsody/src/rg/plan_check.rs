@@ -7,7 +7,7 @@ use super::{
     graph::Descriptor,
     plan::{COMPILER_VERSION, CompiledPlan, GraphDefinition},
     resource::{AccessRange, AccessVersion},
-    resource_rules::NO_ACCESS,
+    resource_info::{LifetimeEvent, NO_ACCESS},
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -520,19 +520,20 @@ fn check_projection(definition: &GraphDefinition, plan: &CompiledPlan) -> crate:
             pass_bounds[resource]
         };
         if let Some((start, end)) = bounds {
-            if lifetime.first_pass.tag != 1
-                || lifetime.last_pass.tag != 1
-                || lifetime.first_pass.pass_index as usize != start
-                || lifetime.last_pass.pass_index as usize != end
-            {
+            if lifetime.first_pass != Some(start as u32) || lifetime.last_pass != Some(end as u32) {
                 return Err(invalid(
                     "plan resource lifetime does not span its scheduled accesses",
                 ));
             }
-            lifetime_events.push(((start as u32) << 17) | resource as u32);
-            lifetime_events.push(((end as u32) << 17) | resource as u32 | 0x1_0000);
-        } else if lifetime.last_pass.tag == 1
-            || lifetime.first_pass.tag != u32::from(definition.resources[resource].is_external())
+            for (pass, release) in [(start, false), (end, true)] {
+                lifetime_events.push(LifetimeEvent {
+                    pass: pass as u32,
+                    release,
+                    resource: resource as u16,
+                });
+            }
+        } else if lifetime.last_pass.is_some()
+            || lifetime.first_pass.is_some() != definition.resources[resource].is_external()
         {
             return Err(invalid(
                 "plan has an active lifetime for an unused resource",
