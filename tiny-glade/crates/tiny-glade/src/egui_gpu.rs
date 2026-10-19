@@ -133,10 +133,10 @@ impl EguiRenderer for EguiFrame<'_> {
                 .image_offset(vk::Offset3D { x: i32::try_from(x)?, y: i32::try_from(y)?, z: 0 })
                 .image_extent(vk::Extent3D { width, height, depth: 1 });
             let queue = self.gpu.device.queue(rhapsody::device::QueueClass::Graphics)?;
-            rhapsody::raw::setup::with_setup_command(&self.gpu.device, |command| unsafe {
+            rhapsody::raw::setup::with_setup_command(&self.gpu.device, &[], |command| unsafe {
                 rhapsody::raw::texture_upload::record_texture_regions(command, queue,
                     texture.shared(), staging, &[region], vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-            })?;
+            })?.into_value();
         } else {
             if delta.pos.is_some() { bail!("egui partial update refers to a missing texture"); }
             // O 0x1400de535: R8D=0x2b (R8G8B8A8_SRGB), then sampled().

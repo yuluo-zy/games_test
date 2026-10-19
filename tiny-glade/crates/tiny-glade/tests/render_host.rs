@@ -1416,7 +1416,7 @@ fn external_compute_sampled_and_storage_images_have_declared_views_and_real_pixe
     let queue = device
         .queue(rhapsody::device::QueueClass::Graphics)
         .unwrap();
-    with_setup_command(&device, |command| unsafe {
+    with_setup_command(&device, &[], |command| unsafe {
         image_access(
             command,
             target_owner.clone(),
@@ -1476,7 +1476,7 @@ fn external_compute_sampled_and_storage_images_have_declared_views_and_real_pixe
                 write: false,
             },
         )
-    })
+    }).and_then(|setup| setup.wait(rhapsody::raw::setup::SETUP_WAIT_TIMEOUT_NS))
     .unwrap();
     let mut actual = vec![0; 64];
     readback.read_bytes(0, &mut actual).unwrap();

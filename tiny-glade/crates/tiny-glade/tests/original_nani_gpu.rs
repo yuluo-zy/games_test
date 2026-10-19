@@ -85,7 +85,7 @@ fn read_range(
     let queue = device
         .queue(rhapsody::device::QueueClass::Graphics)
         .unwrap();
-    with_setup_command(device, |command| unsafe {
+    with_setup_command(device, &[], |command| unsafe {
         buffer_access(
             command,
             source.shared(),
@@ -130,7 +130,7 @@ fn read_range(
                 write: false,
             },
         )
-    })
+    }).and_then(|setup| setup.wait(rhapsody::raw::setup::SETUP_WAIT_TIMEOUT_NS))
     .unwrap();
     let mut result = vec![0; size];
     output.read_bytes(0, &mut result).unwrap();

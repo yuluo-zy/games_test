@@ -77,7 +77,7 @@ fn native_texture_clear_changes_pixels_and_descriptor_owns_a_real_view() {
         .queue(rhapsody::device::QueueClass::Graphics)
         .unwrap();
     // SAFETY：资源由当前设备创建，访问经 rhapsody 登记，setup 提交同步等待完成。
-    with_setup_command(&device, |command| unsafe {
+    with_setup_command(&device, &[], |command| unsafe {
         image_access(
             command,
             owner.clone(),
@@ -137,7 +137,7 @@ fn native_texture_clear_changes_pixels_and_descriptor_owns_a_real_view() {
                 write: false,
             },
         )
-    })
+    }).and_then(|setup| setup.wait(rhapsody::raw::setup::SETUP_WAIT_TIMEOUT_NS))
     .unwrap();
     let mut pixels = [0xff; 64];
     output.read_bytes(0, &mut pixels).unwrap();

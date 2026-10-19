@@ -254,7 +254,7 @@ fn read_back(
         layer_count: 1,
     };
     let queue = gd.queue(rhapsody::device::QueueClass::Graphics).unwrap();
-    with_setup_command(gd, |command| unsafe {
+    with_setup_command(gd, &[], |command| unsafe {
         image_access(
             command,
             texture.clone(),
@@ -327,6 +327,8 @@ fn read_back(
             },
         )
     })
+    .unwrap()
+    .wait(rhapsody::raw::setup::SETUP_WAIT_TIMEOUT_NS)
     .unwrap();
     let mut out = vec![0u8; bytes as usize];
     buffer.read_bytes(0, &mut out).unwrap();

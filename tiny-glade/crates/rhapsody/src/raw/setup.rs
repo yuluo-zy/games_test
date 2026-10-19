@@ -1,12 +1,14 @@
-//! One-shot setup recording and texture initialization/update.
+//! Reusable setup recording and texture initialization/update.
 //!
-//! Texture uploads are asynchronous: they record state-derived barriers, copy
-//! from a staging buffer retained by the command, and submit without a CPU
-//! wait. The returned point is also the texture's tracked last use, so graph
-//! and raw accesses (and destruction) order after it. `with_setup_command`
-//! records an arbitrary opaque body and therefore stays synchronous, with a
-//! conservative trailing barrier and a bounded wait.
+//! Setup work is recorded through a [`SetupContext`]: a small stack of
+//! command pools whose command buffers are recycled once their own timeline
+//! point completes, so no call creates a Vulkan pool or blocks on the GPU.
+//! A body declares its memory accesses ([`SetupAccess`]); they are recorded
+//! as precise state-derived barriers and tracked state before the body runs,
+//! and later graph/raw users order after them through that state. Every call
+//! returns the submission's [`SyncPoint`]; waiting is an explicit opt-in.
 use super::{
+    buffer::Buffer,
     command_buffer::{VulkanCommandBuffer, VulkanCommandPool},
     device::Device,
     error::{Error, Result},
@@ -14,60 +16,269 @@ use super::{
     texture::Texture,
     texture_upload::{TextureUpdateRegion, copy_format_params, linear_regions, per_mip_regions},
 };
-use crate::sync::SyncPoint;
+use crate::resource::{OwnershipRange, range_state::AccessScope};
+use crate::sync::{SyncPoint, SyncSet};
 use crate::transfer::texture as upload;
 use ash::vk;
+use parking_lot::Mutex;
+use std::collections::VecDeque;
 use std::sync::Arc;
 
-/// Upper bound for the synchronous setup helpers' completion wait.
+/// Suggested bound for callers that wait on a setup submission.
 pub const SETUP_WAIT_TIMEOUT_NS: u64 = 30_000_000_000;
 
-/// Record `body` into a one-shot command over borrowed resources, add a full
-/// memory barrier, submit, and wait (bounded) for its completion.
-pub fn with_setup_resources<R>(
-    device: &Arc<Device>,
-    resources: &[&dyn crate::resource::GpuUse],
-    body: impl FnOnce(vk::CommandBuffer) -> R,
-) -> Result<R> {
-    with_setup_command(device, |command| {
-        for resource in resources {
-            // The synchronous setup call retains these borrows until its wait;
-            // a timed-out wait still leaves their tracked last use pending.
-            unsafe {
-                command.retain_borrowed_opaque(*resource)?;
+/// Idle pools kept per context; concurrent or nested setup calls beyond it
+/// create temporary pools.
+const MAX_IDLE_POOLS: usize = 4;
+/// Submitted command buffers kept for recycling per pool.
+const MAX_RECYCLED_COMMANDS: usize = 16;
+
+/// One declared memory access of a setup body. The access is recorded before
+/// the body with barriers derived from the resource's tracked state; the body
+/// must not touch memory it did not declare (except through helpers that
+/// record their own tracked accesses, such as texture region uploads).
+#[derive(Clone, Copy)]
+pub enum SetupAccess<'a> {
+    Buffer {
+        buffer: &'a Buffer,
+        offset: u64,
+        size: u64,
+        scope: AccessScope,
+    },
+    Image {
+        texture: &'a Texture,
+        /// `None` covers every aspect, mip and layer.
+        range: Option<OwnershipRange>,
+        scope: AccessScope,
+        layout: vk::ImageLayout,
+    },
+}
+impl<'a> SetupAccess<'a> {
+    pub const TRANSFER_READ: AccessScope = AccessScope {
+        stages: vk::PipelineStageFlags::TRANSFER,
+        access: vk::AccessFlags::TRANSFER_READ,
+        write: false,
+    };
+    pub const TRANSFER_WRITE: AccessScope = AccessScope {
+        stages: vk::PipelineStageFlags::TRANSFER,
+        access: vk::AccessFlags::TRANSFER_WRITE,
+        write: true,
+    };
+    /// `buffer[offset..offset + size]` is read by transfer commands.
+    pub fn transfer_read(buffer: &'a Buffer, offset: u64, size: u64) -> Self {
+        Self::Buffer {
+            buffer,
+            offset,
+            size,
+            scope: Self::TRANSFER_READ,
+        }
+    }
+    /// `buffer[offset..offset + size]` is written by transfer commands.
+    pub fn transfer_write(buffer: &'a Buffer, offset: u64, size: u64) -> Self {
+        Self::Buffer {
+            buffer,
+            offset,
+            size,
+            scope: Self::TRANSFER_WRITE,
+        }
+    }
+    fn record(&self, command: &mut VulkanCommandBuffer, queue: crate::sync::QueueId) -> Result<()> {
+        match *self {
+            Self::Buffer {
+                buffer,
+                offset,
+                size,
+                scope,
+            } => super::resource_access::buffer_access_borrowed(
+                command, buffer, queue, offset, size, scope,
+            ),
+            Self::Image {
+                texture,
+                range,
+                scope,
+                layout,
+            } => {
+                let range = match range {
+                    Some(range) => range,
+                    None => Texture::ownership_range(&texture.desc)?,
+                };
+                super::resource_access::image_access_borrowed(
+                    command, texture, queue, range, scope, layout, None,
+                )
             }
         }
-        Ok(body(command.handle))
-    })
+    }
 }
 
-/// Record an opaque body, then submit and wait for this command's real
-/// completion point for at most [`SETUP_WAIT_TIMEOUT_NS`] (`Error::Timeout`).
-/// The body's accesses are unknown, so a conservative memory barrier orders
-/// them before every later command on the queue.
+/// A submitted setup command. Dropping it never blocks; the command and its
+/// resources are recycled or retired after `point`.
+#[must_use = "a setup submission carries the body's value and completion point"]
+pub struct SetupSubmission<R> {
+    pub value: R,
+    pub point: SyncPoint,
+    device: Arc<Device>,
+}
+impl<R> SetupSubmission<R> {
+    /// Wait (bounded) for this submission only, then return the body's value.
+    pub fn wait(self, timeout_ns: u64) -> Result<R> {
+        self.device
+            .wait(&SyncSet::from_point(self.point), timeout_ns)?;
+        Ok(self.value)
+    }
+    pub fn is_complete(&self) -> Result<bool> {
+        Ok(SyncSet::from_point(self.point).is_reached(&self.device.poll()?))
+    }
+    pub fn into_value(self) -> R {
+        self.value
+    }
+}
+
+/// One command pool with recycled command buffers. Used by one recording
+/// thread at a time (Vulkan pools are externally synchronized).
+struct SetupPool {
+    pool: Arc<VulkanCommandPool>,
+    ready: Vec<VulkanCommandBuffer>,
+    in_flight: VecDeque<(SyncPoint, VulkanCommandBuffer)>,
+}
+/// Counters of a [`SetupContext`] (statistics only).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct SetupStats {
+    pub pools_created: u64,
+    pub commands_allocated: u64,
+    pub commands_recycled: u64,
+    pub submissions: u64,
+}
+
+impl SetupPool {
+    fn new(device: &Arc<Device>) -> Result<Self> {
+        Ok(Self {
+            pool: VulkanCommandPool::new(device.clone())?,
+            ready: Vec::new(),
+            in_flight: VecDeque::new(),
+        })
+    }
+    /// A reset command buffer: a recycled one whose submission completed, or
+    /// a new allocation.
+    fn command(&mut self, stats: &Mutex<SetupStats>) -> Result<VulkanCommandBuffer> {
+        if let Some(command) = self.ready.pop() {
+            stats.lock().commands_recycled += 1;
+            return Ok(command);
+        }
+        let completed = self.pool.device.completed();
+        if self
+            .in_flight
+            .front()
+            .is_some_and(|(point, _)| SyncSet::from_point(*point).is_reached(&completed))
+        {
+            let (_, mut command) = self.in_flight.pop_front().expect("checked front");
+            // SAFETY: the command's only submission reached its timeline point.
+            if unsafe { command.reset_after_completion() }.is_ok() {
+                stats.lock().commands_recycled += 1;
+                return Ok(command);
+            }
+        }
+        let command = self.pool.allocate()?;
+        stats.lock().commands_allocated += 1;
+        Ok(command)
+    }
+    fn retire(&mut self, point: SyncPoint, command: VulkanCommandBuffer) {
+        if self.in_flight.len() >= MAX_RECYCLED_COMMANDS {
+            // Dropping retires the oldest command after its own point.
+            self.in_flight.pop_front();
+        }
+        if self.in_flight.try_reserve(1).is_ok() {
+            self.in_flight.push_back((point, command));
+        }
+    }
+}
+
+/// Reusable setup recording for one device. Obtain the shared instance with
+/// [`Device::setup_context`]; holding the `Arc` keeps its pools alive across
+/// calls (the device itself keeps only a weak reference).
+pub struct SetupContext {
+    device: Arc<Device>,
+    idle: Mutex<Vec<SetupPool>>,
+    stats: Mutex<SetupStats>,
+}
+impl SetupContext {
+    pub fn new(device: Arc<Device>) -> Result<Arc<Self>> {
+        if device.is_device_lost() {
+            return Err(Error::DeviceLost);
+        }
+        Ok(Arc::new(Self {
+            device,
+            idle: Mutex::new(Vec::new()),
+            stats: Mutex::new(SetupStats::default()),
+        }))
+    }
+    pub fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+    pub fn stats(&self) -> SetupStats {
+        *self.stats.lock()
+    }
+    fn take_pool(&self) -> Result<SetupPool> {
+        if let Some(pool) = self.idle.lock().pop() {
+            return Ok(pool);
+        }
+        let pool = SetupPool::new(&self.device)?;
+        self.stats.lock().pools_created += 1;
+        Ok(pool)
+    }
+    fn return_pool(&self, pool: SetupPool) {
+        let mut idle = self.idle.lock();
+        if idle.len() < MAX_IDLE_POOLS && idle.try_reserve(1).is_ok() {
+            idle.push(pool);
+        }
+    }
+    /// Record the declared accesses, then `body`, and submit on the graphics
+    /// queue without waiting. A failed body or submit publishes no state.
+    pub fn record<R>(
+        &self,
+        accesses: &[SetupAccess<'_>],
+        body: impl FnOnce(&mut VulkanCommandBuffer) -> Result<R>,
+    ) -> Result<SetupSubmission<R>> {
+        let queue = self.device.queue(crate::device::QueueClass::Graphics)?;
+        let mut pool = self.take_pool()?;
+        let result = (|| {
+            let mut command = pool.command(&self.stats)?;
+            command.begin()?;
+            for access in accesses {
+                access.record(&mut command, queue)?;
+            }
+            let value = body(&mut command)?;
+            command.end()?;
+            let pending = command.submit()?;
+            let point = pending.point;
+            pool.retire(point, pending.into_command());
+            self.stats.lock().submissions += 1;
+            Ok(SetupSubmission {
+                value,
+                point,
+                device: self.device.clone(),
+            })
+        })();
+        self.return_pool(pool);
+        result
+    }
+}
+
+/// [`SetupContext::record`] on the device's shared setup context.
 pub fn with_setup_command<R>(
     device: &Arc<Device>,
+    accesses: &[SetupAccess<'_>],
     body: impl FnOnce(&mut VulkanCommandBuffer) -> Result<R>,
-) -> Result<R> {
-    let pool = VulkanCommandPool::new(Arc::clone(device))?;
-    let mut command = pool.allocate()?;
-    command.begin()?;
-    let result = body(&mut command)?;
-    let barrier = vk::MemoryBarrier::default()
-        .src_access_mask(vk::AccessFlags::MEMORY_WRITE)
-        .dst_access_mask(vk::AccessFlags::MEMORY_READ | vk::AccessFlags::MEMORY_WRITE);
-    let mut scope = super::barrier::SynchronizationScope::new(
-        vk::PipelineStageFlags::ALL_COMMANDS,
-        vk::PipelineStageFlags::ALL_COMMANDS,
-    );
-    scope.memory.push(barrier);
-    unsafe {
-        super::barrier::BarrierDispatch::new(device).issue(device, command.handle, &scope)?;
-    }
-    command.end()?;
-    let pending = command.submit()?;
-    pending.wait(SETUP_WAIT_TIMEOUT_NS)?;
-    Ok(result)
+) -> Result<SetupSubmission<R>> {
+    device.setup_context()?.record(accesses, body)
+}
+
+/// [`with_setup_command`] for a body that records raw commands only.
+pub fn with_setup_resources<R>(
+    device: &Arc<Device>,
+    accesses: &[SetupAccess<'_>],
+    body: impl FnOnce(vk::CommandBuffer) -> R,
+) -> Result<SetupSubmission<R>> {
+    with_setup_command(device, accesses, |command| Ok(body(command.handle)))
 }
 
 /// Initial texture contents.
@@ -99,26 +310,24 @@ pub fn upload_regions(
     upload::pack_all(&[(&plan, regions)], &[0], plan.total, &mut bytes)?;
     let staging = upload::new_staging(device, &bytes)?;
     let queue = device.queue(crate::device::QueueClass::Graphics)?;
-    let pool = VulkanCommandPool::new(Arc::clone(device))?;
-    let mut command = pool.allocate()?;
-    // SAFETY: the copies read only this staging span.
-    unsafe {
-        command.retain_opaque_buffer_range(staging.clone(), 0, plan.total)?;
-    }
-    command.begin()?;
-    upload::record_texture_copies(
-        &mut command,
-        texture,
-        queue,
-        staging.handle,
-        0,
-        &plan,
-        old_layout,
+    // The staging buffer's own state records this read; its storage retires
+    // after the returned point. The texture's last use carries the same point.
+    let submission = with_setup_command(
+        device,
+        &[SetupAccess::transfer_read(&staging, 0, plan.total)],
+        |command| {
+            upload::record_texture_copies(
+                command,
+                texture,
+                queue,
+                staging.handle,
+                0,
+                &plan,
+                old_layout,
+            )
+        },
     )?;
-    command.end()?;
-    // Dropping the receipt retires the command, staging and pool after the
-    // real completion point; the texture's last use carries the same point.
-    Ok(command.submit()?.point)
+    Ok(submission.point)
 }
 
 /// Regions of layer-major, mip-minor linear data covering the whole texture.
@@ -247,17 +456,15 @@ fn zero_fill(device: &Arc<Device>, texture: &Texture) -> Result<SyncPoint> {
         return Err(Error::invalid_usage("texture belongs to another device"));
     }
     let queue = device.queue(crate::device::QueueClass::Graphics)?;
-    let pool = VulkanCommandPool::new(Arc::clone(device))?;
-    let mut command = pool.allocate()?;
-    command.begin()?;
-    super::texture_upload::record_zero_fill_borrowed(
-        &mut command,
-        texture,
-        queue,
-        Some(vk::ImageLayout::UNDEFINED),
-    )?;
-    command.end()?;
-    Ok(command.submit()?.point)
+    let submission = with_setup_command(device, &[], |command| {
+        super::texture_upload::record_zero_fill_borrowed(
+            command,
+            texture,
+            queue,
+            Some(vk::ImageLayout::UNDEFINED),
+        )
+    })?;
+    Ok(submission.point)
 }
 
 /// Replace the whole contents of an initialized texture (image in

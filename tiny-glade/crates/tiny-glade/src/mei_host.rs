@@ -338,7 +338,7 @@ impl MeiHost {
             )?);
             staging.write_bytes_unsynchronized(0, &bytes)?;
             let queue = self.device.queue(rhapsody::device::QueueClass::Graphics)?;
-            with_setup_command(&self.device, |command| unsafe {
+            with_setup_command(&self.device, &[], |command| unsafe {
                 record_texture_regions(
                     command,
                     queue,
@@ -347,7 +347,7 @@ impl MeiHost {
                     &regions,
                     vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
                 )
-            })?;
+            })?.into_value();
         }
         Ok(())
     }

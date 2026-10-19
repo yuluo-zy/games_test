@@ -72,6 +72,8 @@ pub struct Device {
     memory_budget_extension: bool,
     /// Non-coherent dynamic-constants writes flushed before the next submit.
     pub(crate) host_flush: super::dynamic_constants::HostFlushQueue,
+    /// Shared setup context; weak because its pools own the device.
+    setup: Mutex<std::sync::Weak<super::setup::SetupContext>>,
     /// Must stay the last field: the instance outlives the logical device.
     pub instance: Arc<super::instance::VulkanInstance>,
 }
@@ -359,6 +361,7 @@ impl Device {
                 synchronization2,
                 memory_budget_extension,
                 host_flush: Default::default(),
+                setup: Mutex::new(std::sync::Weak::new()),
             }))
             .inspect(|device| {
                 if let Err(error) = device.refresh_memory_budget() {
@@ -411,6 +414,17 @@ impl Device {
                 self.device.flush_mapped_memory_ranges(ranges)
             })
         })
+    }
+    /// The shared reusable setup context, created on first use. The device
+    /// keeps it only while some caller holds the returned `Arc`.
+    pub fn setup_context(&self) -> crate::Result<Arc<super::setup::SetupContext>> {
+        let mut cached = self.setup.lock();
+        if let Some(context) = cached.upgrade() {
+            return Ok(context);
+        }
+        let context = super::setup::SetupContext::new(self.shared())?;
+        *cached = Arc::downgrade(&context);
+        Ok(context)
     }
     /// Number of deferred host-flush calls issued (statistics).
     pub fn deferred_host_flush_count(&self) -> u64 {
@@ -730,13 +744,14 @@ impl Device {
             )
         }
     }
-    /// 在 setup 命令缓冲上录制并同步执行一次回调；结尾自动补全量内存屏障。
+    /// Record `body` after the declared accesses on the shared setup context
+    /// and submit without waiting (see [`super::setup::with_setup_resources`]).
     pub fn with_setup_resources<R>(
         &self,
-        resources: &[&dyn crate::resource::GpuUse],
+        accesses: &[super::setup::SetupAccess<'_>],
         body: impl FnOnce(vk::CommandBuffer) -> R,
-    ) -> super::error::Result<R> {
-        super::setup::with_setup_resources(&self.shared(), resources, body)
+    ) -> super::error::Result<super::setup::SetupSubmission<R>> {
+        super::setup::with_setup_resources(&self.shared(), accesses, body)
     }
 }
 

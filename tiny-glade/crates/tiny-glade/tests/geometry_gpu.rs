@@ -68,7 +68,7 @@ fn read_prefix(
         .queue(rhapsody::device::QueueClass::Graphics)
         .unwrap();
     // SAFETY: 源和目标均属于当前设备，范围有效且通过资源访问跟踪登记；setup 等待复制结束。
-    with_setup_command(device, |command| unsafe {
+    with_setup_command(device, &[], |command| unsafe {
         buffer_access(
             command,
             source.shared(),
@@ -111,7 +111,7 @@ fn read_prefix(
                 write: false,
             },
         )
-    })
+    }).and_then(|setup| setup.wait(rhapsody::raw::setup::SETUP_WAIT_TIMEOUT_NS))
     .unwrap();
     let mut bytes = vec![0; size];
     output.read_bytes(0, &mut bytes).unwrap();

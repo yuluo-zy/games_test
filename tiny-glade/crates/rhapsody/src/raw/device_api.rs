@@ -347,14 +347,25 @@ impl Device {
                 size,
             })
             .collect();
-        super::setup::with_setup_resources(
-            &self.shared(),
-            &[target, &staging],
-            |command| unsafe {
+        // Declared accesses give precise barriers and tracked state; the copy
+        // completes asynchronously and later users order after it.
+        let mut accesses = Vec::with_capacity(copies.len() + 1);
+        let source_end = copies
+            .iter()
+            .map(|copy| copy.src_offset + copy.size)
+            .max()
+            .unwrap_or(0);
+        accesses.push(super::setup::SetupAccess::transfer_read(
+            &staging, 0, source_end,
+        ));
+        accesses.extend(copies.iter().map(|copy| {
+            super::setup::SetupAccess::transfer_write(target, copy.dst_offset, copy.size)
+        }));
+        let _submission =
+            super::setup::with_setup_resources(&self.shared(), &accesses, |command| unsafe {
                 self.device
                     .cmd_copy_buffer(command, staging.handle, target.handle, &copies);
-            },
-        )?;
+            })?;
         Ok(())
     }
 }

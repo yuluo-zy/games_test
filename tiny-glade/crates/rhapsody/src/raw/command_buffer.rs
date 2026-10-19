@@ -736,15 +736,6 @@ impl VulkanCommandBuffer {
     ) -> crate::Result<()> {
         self.retain_borrowed(owner, RetainMode::Recorded)
     }
-    /// # Safety
-    /// The synchronous caller retains the borrowed resource through real GPU
-    /// completion. Unknown access is explicit and cannot override typed patches.
-    pub(crate) unsafe fn retain_borrowed_opaque(
-        &mut self,
-        owner: &dyn crate::resource::GpuUse,
-    ) -> crate::Result<()> {
-        self.retain_borrowed(owner, RetainMode::Opaque)
-    }
     fn retain_owner(
         &mut self,
         owner: crate::raw::binding::ResourceOwner,
@@ -1282,6 +1273,10 @@ impl PendingCommand {
             .device
             .timelines
             .is_reached(&crate::sync::SyncSet::from_point(self.point))
+    }
+    /// The submitted command, for recycling after `point` completes.
+    pub(crate) fn into_command(self) -> VulkanCommandBuffer {
+        self.command
     }
 }
 
