@@ -1107,6 +1107,7 @@ pub fn warm_up_gameplay_with_world_builder(
             return Err(error);
         }
     };
+    log::info!(target: "tiny_glade::render_loop", "world frame stats: {:?}", receipt.stats);
     if crate::screenshot::shared_texture_capture::installed(world) {
         crate::screenshot::shared_texture_capture::submitted(world, &mut bridge, capture_graph_id, &receipt)?;
     }
