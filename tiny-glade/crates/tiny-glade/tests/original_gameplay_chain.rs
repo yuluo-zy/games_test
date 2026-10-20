@@ -748,12 +748,15 @@ fn shipped_session_steady_state_multi_frame() -> Result<()> {
             assert!(r.history_valid, "frame {}: TAA/TGSR color history must be valid after the first frame", r.index);
         }
     }
-    for r in rows.iter().take(4) {
+    for r in rows.iter() {
         eprintln!("MULTIFRAME plan cache after frame {}: hits {} misses {} {}", r.index, r.cache_hits, r.cache_misses, r.cache_diagnostics);
     }
-    // Plan cache: every frame's declaration differs from all cached plans only through
-    // `GraphStructure` (see the multi-frame baseline: buffer access ranges of bump-allocated
-    // dynamic-constants chunks differ per frame). Any other miss reason is a new defect.
+    // Plan cache: the declaration of a steady frame is identical to an earlier one except for the
+    // temporal ping-pong parity (SSGI/TAA texture pairs swap physical sides every frame) and the
+    // screenshot-capture passes, so the structurally different plans are few and every later frame
+    // must hit. Chunk offsets of the dynamic-constants pages are part of the key (buffer access
+    // ranges), which only works because used pages are sealed and restart at offset 0. Any other miss
+    // reason is a new defect.
     {
         use rhapsody::rg::CacheReason;
         let diagnostics = bridge.with_session(|session| session.chain.plan_cache_stats().diagnostics);
@@ -764,6 +767,10 @@ fn shipped_session_steady_state_multi_frame() -> Result<()> {
             assert_eq!(diagnostics.misses(reason), 0, "plan cache miss reason {reason:?}");
         }
         assert_eq!(diagnostics.misses(CacheReason::Cold), 1, "only the very first plan is a cold miss");
+        let structural = diagnostics.misses(CacheReason::GraphStructure) + diagnostics.misses(CacheReason::AccessSemantics);
+        assert!(structural <= 4, "more than parity x capture structural plan variants: {structural}");
+        let stable = rows.iter().skip(6).filter(|r| !r.stats.plan_cache_hit).map(|r| r.index).collect::<Vec<_>>();
+        assert!(stable.is_empty(), "plan cache must hit on every frame once all variants are cached; misses at {stable:?}");
     }
     // Descriptor/ring recycling: live counts and ring pages stay flat in the steady state.
     let steady = &rows[2..];
@@ -775,12 +782,22 @@ fn shipped_session_steady_state_multi_frame() -> Result<()> {
     assert!(steady.iter().all(|r| r.texture_heap.live == steady[0].texture_heap.live), "texture heap live drifts");
     assert!(steady.iter().all(|r| r.constants.pages <= 4), "dynamic-constants pages keep growing");
     assert!(steady.last().unwrap().constants.page_reuses > steady[0].constants.page_reuses, "constants pages are never reused");
-    // Device memory: a steady state must not grow. KNOWN DEFECT (unclosed): one 2088960 B image
-    // (4x MSAA 480x270 RGBA8 sized) stays allocated per frame; enforce with TG_MULTIFRAME_STRICT_MEMORY=1.
-    let growth = steady.last().unwrap().allocated_bytes.saturating_sub(steady[5].allocated_bytes);
-    eprintln!("MULTIFRAME device memory growth frames 7..30: {} bytes", growth);
-    if std::env::var_os("TG_MULTIFRAME_STRICT_MEMORY").is_some() {
-        assert_eq!(growth, 0, "device memory grows in the steady state");
+    // Device memory: a steady state must not grow. Frames right after a screenshot request still
+    // hold its readback storage, so compare frames that are neither capture nor capture + 1.
+    {
+        let clean = |index: usize| {
+            !CAPTURES.contains(&index) && (index == 0 || !CAPTURES.contains(&(index - 1)))
+        };
+        let settled = rows.iter().filter(|r| r.index >= 12 && clean(r.index)).collect::<Vec<_>>();
+        let (first, last) = (settled.first().expect("settled frames"), settled.last().expect("settled frames"));
+        eprintln!(
+            "MULTIFRAME device memory frame {} -> {}: {} -> {} bytes, native blocks {} -> {}",
+            first.index, last.index, first.allocated_bytes, last.allocated_bytes, first.native_blocks, last.native_blocks
+        );
+        assert!(last.allocated_bytes <= first.allocated_bytes, "device memory grows in the steady state: {} -> {}", first.allocated_bytes, last.allocated_bytes);
+        assert!(last.native_blocks <= first.native_blocks, "native memory blocks grow in the steady state");
+        let peak = settled.iter().map(|r| r.allocated_bytes).max().unwrap();
+        assert!(peak <= first.allocated_bytes, "device memory fluctuates upwards in the steady state: {peak}");
     }
     let late_hits = rows.iter().skip(2).filter(|r| r.stats.plan_cache_hit).count();
     eprintln!("MULTIFRAME plan_cache_hit frames>=2: {late_hits}/{}", FRAMES - 2);

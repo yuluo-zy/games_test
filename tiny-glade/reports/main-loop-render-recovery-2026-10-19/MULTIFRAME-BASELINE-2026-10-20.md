@@ -96,3 +96,14 @@ Khronos 校验层开启，480x270，shipped session（`TG_MULTIFRAME_OUT` 指向
   截图捕获（仅活动请求）、命令 owner（完成后释放）。持有者未找到；`TG_MULTIFRAME_STRICT_MEMORY=1` 时测试会对该增长断言失败。
   其余分配（15155200 B 的 7 -> 9、1044480 B 的 10 -> 13 等）也有小幅增长，疑似同源。
 - 亮度前 20 帧下降 10%（114.7 -> 103.2）的来源（曝光适应 vs 其他）未用原版对照确认。
+
+## 2026-10-20 修复结果（缺陷 1、缺陷 2）
+
+- **设备内存逐帧增长（已闭合）**：持有者是 rhapsody `AttachmentCache`（`rg/attachments.rs`，raster_host 的 `RasterShared.attachments`，容量 256）。
+  每帧导出并移交 owner 的 `msaa color out` 都是新图像，其渲染附件视图（`TextureView` 持有 `Arc<Texture>`）留在缓存里，
+  直到缓存饱和才淘汰（诊断：按创建点统计，仅该图像逐帧存活，其余 alias/池资源稳定；`wait_idle` 不释放因缓存是强引用）。
+  修复：新增视图时先释放“纹理只被缓存自己的视图持有”的条目（外部/在途命令仍持有则保留）。前后：+46219264 B/23 帧 -> 0（帧 12 -> 28 反而 -518400 B）。
+- **计划缓存 0/28 -> 26/28 命中（已闭合）**：动态常量页此前在 GPU 已完成时继续在页内追加，chunk 偏移取决于 GPU 完成时机。
+  现在页一旦被提交使用即封存，只在使用完成后从偏移 0 重置，帧内 chunk 偏移逐帧一致；`AccessRange::Buffer` 仍是计划键的一部分，
+  键相同即声明相同，命中与未命中行为等价（`complete_plan_miss_reasons...`/`borrowed_comparison_matches...` 已覆盖范围偏移进入键）。
+  剩余 2 次结构性未命中来自时序纹理对的奇偶翻转与截图 pass（plan 变体 4 个，第 6 帧起每帧命中）；compile_ns 约 345 ms -> 约 11 ms。
