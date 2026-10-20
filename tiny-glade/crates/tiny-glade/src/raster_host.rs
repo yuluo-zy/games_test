@@ -1825,7 +1825,7 @@ fn import_draw_bindings(
 }
 
 fn bindless_parameters(
-    _shared: &RasterShared,
+    shared: &RasterShared,
     draw: &PreparedDraw,
     pass_bindings: &[RenderPassBinding],
     managed: &ManagedPassResources,
@@ -1912,7 +1912,10 @@ fn bindless_parameters(
             BindlessResource::Buffer {
                 buffer: buffer.shared(),
                 offset: 0,
-                size: buffer.size,
+                size: crate::render_host::clamp_storage_binding_range(
+                    &shared.device,
+                    buffer.size,
+                ),
             }
         };
         upsert_shader_resource(&mut resources, access.binding_index, resource)?;

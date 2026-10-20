@@ -983,17 +983,11 @@ impl ShaderHost {
         // for hundreds of sublist dispatches until its submission completes.
         // The library's small default (256 storage descriptors) exhausted in
         // the actual fill-unsorted-indirection pass. This is an explicit host
-        // budget, not an original game constant or a change to shader ABI.
-        // BindlessHeap continues to check enabled device limits and budgets.
+        // budget, not an original game constant or a change to shader ABI;
+        // it adapts to the enabled device's descriptor-indexing limits.
         let heap = BindlessHeap::new(
             device.clone(),
-            BindlessConfig {
-                // Total1176 descriptors also fits this Mac's guaranteed
-                // maxPerSetDescriptors1212; larger tables are rejected by
-                // the current device API rather than forced through.
-                storage_buffers: 600,
-                ..BindlessConfig::default()
-            },
+            adaptive_bindless_config(&device, BINDLESS_STORAGE_BUFFER_DEMAND),
         )?;
         Ok(Self {
             device,
@@ -2265,6 +2259,44 @@ pub(crate) fn compute_view_range(
     Ok(range)
 }
 
+/// 整帧实测需要的 bindless 存储缓冲描述符数(600 不够，4096 够；宿主预算，非原版常量)。
+const BINDLESS_STORAGE_BUFFER_DEMAND: u32 = 4096;
+
+/// 存储缓冲描述符数取 `demand` 与设备 update-after-bind 上限(单 set、单 stage、
+/// stage 资源总数、全池总数扣除其余三类已占用)的较小者。上限足够的设备(如 lavapipe)
+/// 得到完整 `demand`；上限小的设备(如 Mac 的 1212)按自身能力收敛，不强行超限。
+fn adaptive_bindless_config(device: &rhapsody::device::Device, demand: u32) -> BindlessConfig {
+    let mut indexing = vk::PhysicalDeviceDescriptorIndexingProperties::default();
+    let mut properties = vk::PhysicalDeviceProperties2::default().push_next(&mut indexing);
+    // SAFETY: the instance and physical device belong to this live device.
+    unsafe {
+        device
+            .instance()
+            .raw_instance()
+            .get_physical_device_properties2(device.physical_device(), &mut properties);
+    }
+    let base = BindlessConfig::default();
+    let others = base.sampled_images + base.storage_images + base.samplers;
+    let storage_buffers = demand
+        .min(indexing.max_descriptor_set_update_after_bind_storage_buffers)
+        .min(indexing.max_per_stage_descriptor_update_after_bind_storage_buffers)
+        .min(indexing.max_per_stage_update_after_bind_resources.saturating_sub(others))
+        .min(indexing.max_update_after_bind_descriptors_in_all_pools.saturating_sub(others))
+        .max(base.storage_buffers);
+    BindlessConfig {
+        storage_buffers,
+        ..base
+    }
+}
+
+/// 宿主偏差(DEVIATION)：原版整缓冲绑定（range = 缓冲全长），原机 maxStorageBufferRange
+/// 足够大(Apple M3 为 4 GiB)。设备上限更小时(lavapipe 固定 128 MiB)整缓冲绑定会被
+/// 描述符校验拒绝，此处把绑定范围钳到设备上限；设备上限足够时返回原值，行为与原版一致。
+/// 钳制后着色器越界访问由 robustBufferAccess 兜底，仅影响小上限设备上超出部分的数据。
+pub(crate) fn clamp_storage_binding_range(device: &rhapsody::device::Device, size: u64) -> u64 {
+    size.min(u64::from(device.limits().max_storage_buffer_range))
+}
+
 pub(crate) fn upsert_shader_resource(
     resources: &mut Vec<(u32, BindlessResource)>,
     binding: u32,
@@ -2834,7 +2866,7 @@ impl GraphPasses<'_> {
                         BindlessResource::Buffer {
                             buffer: buffer.shared(),
                             offset: 0,
-                            size: buffer.size,
+                            size: clamp_storage_binding_range(&device, buffer.size),
                         }
                     }
                     CorePassBinding::ImageView { resource, view, .. } => {
