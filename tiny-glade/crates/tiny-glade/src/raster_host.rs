@@ -2040,7 +2040,7 @@ fn bindless_parameters(
             .ok_or_else(|| rhapsody::Error::invalid_usage("raster pass binding slot is absent"))?;
         let resource = if let Ok(texture) = managed.texture_for(binding.resource_index) {
             let desc = binding.view.as_ref().map_or_else(
-                || rhapsody::resource::TextureViewDesc::new(&texture.desc),
+                || crate::render_host::rh_view_desc(&texture, &country_core::rhapsody_types::TextureViewDesc::new()),
                 |view| rh_view_desc(&texture, view),
             )?;
             let view = texture.image_view(&desc)?;

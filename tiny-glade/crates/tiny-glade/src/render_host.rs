@@ -2191,6 +2191,11 @@ fn project_view_desc(
     }
     if let Some(v) = view.aspect_mask {
         out.aspect = vk::ImageAspectFlags::from_raw(v);
+    } else if out.aspect == (vk::ImageAspectFlags::DEPTH | vk::ImageAspectFlags::STENCIL) {
+        // O rhapsody::raw::managed::texture::create_vk_image_view 0x140bdcba0 @140bdcc8d..9d:
+        // an unspecified aspect is `vk_format_valid_aspect_flags(format)`, and DEPTH|STENCIL (6)
+        // becomes DEPTH (2) alone (a sampled view may not carry both: VUID-01976).
+        out.aspect = vk::ImageAspectFlags::DEPTH;
     }
     out.level_count = remaining_view_count(out.level_count, view.base_mip_level, view.level_count)?;
     out.layer_count = remaining_view_count(out.layer_count, view.base_layer, view.layer_count)?;
