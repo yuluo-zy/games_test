@@ -60,7 +60,7 @@ use crate::render::pass_builder::draw_list::{DrawTopology, EntityDrawParams};
 use crate::render::pass_builder::pass_resource_access::SsboType;
 use crate::resources::color_id::ColorId;
 use crate::resources::cursor_terrain_raycast::CursorTerrainRaycast;
-use crate::resources::render_input_views::IvyDrawView;
+use crate::resources::ivy::ivy_storage::IvyStorage;
 use crate::resources::walls::WallHighlight;
 use crate::rhapsody_contract::ManagedHandle;
 use crate::rhapsody_types::RenderGraph;
@@ -357,9 +357,14 @@ pub fn bricks_lod0_cb(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
 // 4..=6  常春藤
 // =====================================================================================================================
 
-/// 每条藤的段数输入（O：`IvyStorage` 的 `HashMap` 桶 `usize @桶+0x20`；I：藤的折线点数）。
+/// 每条藤的点数输入（O 0x1408dbc50 `0x1408dbceb..0x1408dbd6f`：遍历 `Res<IvyStorage>` 的 `HashMap` 全部桶，取每桶
+/// `Ivy` 的折线长度 `[桶-0x78]`，再 `saturating_sub(1)` 累加）。直接读权威 `IvyStorage`（缺失即 `Option::unwrap` panic，
+/// 与原版一致）；旧的 `IvyDrawView` 输入视图无人发布，已不再使用。
 pub fn ivy_segment_counts(w: &World) -> Vec<usize> {
-    res::<IvyDrawView>(w).point_counts.clone()
+    res::<IvyStorage>(w)
+        .iter()
+        .map(|(_, ivy)| ivy.points.len())
+        .collect()
 }
 
 /// gap 4 `draw_instanced_ivy_branch_shader`（0x1408dbc50）。

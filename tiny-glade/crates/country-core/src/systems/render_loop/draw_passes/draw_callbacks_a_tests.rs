@@ -9,7 +9,7 @@ use crate::render::pass_builder::draw_stream::DrawKind;
 use crate::systems::render_loop::draw_passes::draw_shaders::test_support::{
     Call, Rig, as_f32, as_i32, rg, uniform_at,
 };
-use glam::Quat;
+use glam::{Quat, Vec3};
 use xxhash_rust::xxh3::xxh3_64;
 
 const NONE_MSG: &str = "called `Option::unwrap()` on a `None` value";
@@ -238,29 +238,36 @@ fn erase_highlight_reads_the_four_resources() {
     );
 }
 
+/// Real `IvyStorage` whose ivies carry the given polyline lengths (root point + `n - 1` added points).
+fn ivy_storage_with_point_counts(counts: &[usize]) -> IvyStorage {
+    let mut storage = IvyStorage::new();
+    for &n in counts {
+        let id = storage.spawn_ivy(Vec3::ZERO, Vec3::Y, 0.0..1.0, 1..2, 0);
+        let ivy = storage.get_mut(id).unwrap();
+        for _ in 1..n {
+            ivy.add_point(Vec3::ZERO, Vec3::Y);
+        }
+    }
+    storage
+}
+
 #[test]
 fn ivy_segment_counts_come_from_the_storage() {
     let mut w = World::new();
-    let s = IvyDrawView {
-        point_counts: vec![3, 1, 0],
-    };
-    w.insert_resource(s);
+    w.insert_resource(ivy_storage_with_point_counts(&[3, 1, 5]));
     let mut c = ivy_segment_counts(&w);
     c.sort();
-    assert_eq!(c, vec![0, 1, 3]);
+    assert_eq!(c, vec![1, 3, 5]);
 }
 
 #[test]
 fn ivy_branch_draws_instances_summed_with_saturating_sub() {
     let mut w = World::new();
-    let s = IvyDrawView {
-        point_counts: vec![3, 1, 0, 5],
-    };
-    w.insert_resource(s);
+    w.insert_resource(ivy_storage_with_point_counts(&[3, 1, 5]));
     let e = w.spawn_empty().id();
     let mut rig = Rig::new(&[], &[]);
     let d = run(ivy_branch_cb, &mut rig, &mut w, &params(e));
-    // (3-1) + (1-1) + 0 + (5-1) = 6
+    // (3-1) + (1-1) + (5-1) = 6
     assert!(
         matches!(d[0].kind, DrawKind::InstancedGlDrawFlag { flag: 6 }),
         "{:?}",

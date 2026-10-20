@@ -96,11 +96,15 @@ pub fn refraction_copy_pass(
         },
         variant: 0,
         extra: Some(&|b| {
+            // Host adaptation: the original passes a default view over all 6 mips of `main color`, but the shader
+            // (`water_plane_refraction_copy.raster.hlsl:106`, `refraction_source_tex.Load(int3(pos.xy, 0))`) only
+            // fetches level 0, and the mip chain is generated later (W50). The frame graph here requires defined
+            // contents over the declared range, so the view is limited to the level that is actually read.
             b.bind_texture_to_draw_builder(
                 BindTexture::RgHandle(source),
                 REFRACTION_BINDING,
                 crate::render::pass_builder::draw_builder::ACCESS_SAMPLED_IMAGE,
-                None,
+                Some(&crate::rhapsody_types::TextureViewDesc::new().level_count(Some(1))),
             )
         }),
     };
