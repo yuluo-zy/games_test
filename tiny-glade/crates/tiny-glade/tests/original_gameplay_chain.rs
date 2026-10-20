@@ -345,8 +345,65 @@ fn shipped_session_through_actual_app_and_production_world_graph() -> Result<()>
         lists.total_len()
     );
     assert!(world.contains_resource::<tiny_glade::loading_graph::LoadingGpuResources>());
+    // Real pixel consumer on the shipped screenshot owner: the T4 MenuBackground opportunity of the
+    // actual world graph reads the world color back through the original capture chain
+    // (after final_post, before any overlay). The pixels are checked below, not just the export.
+    anyhow::ensure!(
+        tiny_glade::screenshot::shared_texture_capture::installed(world),
+        "the gameplay App has no screenshot owner"
+    );
+    let captured: std::sync::Arc<parking_lot::Mutex<Option<(u32, u32, Vec<u8>)>>> =
+        Default::default();
+    let sink = captured.clone();
+    tiny_glade::screenshot::gather_screenshot_requests(
+        world,
+        [tiny_glade::screenshot::ScreenshotRequest {
+            purpose: tiny_glade::screenshot::ScreenshotPurpose::MenuBackground,
+            dimensions: None,
+            sink: tiny_glade::screenshot::ScreenshotSink::Rgba(std::sync::Arc::new(
+                move |w, h, rgba| *sink.lock() = Some((w, h, rgba)),
+            )),
+            completion: None,
+        }],
+    )?;
     tiny_glade::production_renderer::warm_up_gameplay(bridge.warmup_owners()?, world)
         .context("actual production world graph compile, execute and exported owner")?;
+    // The capture retires after its original frame budget (3); drive the owner past it.
+    for _ in 0..8 {
+        tiny_glade::screenshot::shared_texture_capture::finish(world)?;
+    }
+    tiny_glade::screenshot::shared_texture_capture::shutdown(world)?;
+    let (w, h, rgba) = captured
+        .lock()
+        .take()
+        .context("world color capture never delivered pixels")?;
+    anyhow::ensure!(
+        rgba.len() == (w * h * 4) as usize,
+        "captured pixel buffer does not match {w}x{h}"
+    );
+    if let Some(path) = std::env::var_os("TG_PIXEL_OUT") {
+        let mut ppm = format!("P6\n{w} {h}\n255\n").into_bytes();
+        for px in rgba.chunks_exact(4) {
+            ppm.extend_from_slice(&px[..3]);
+        }
+        std::fs::write(path, ppm)?;
+    }
+    // A black frame is the failure this guards: the world has terrain, grass and trees, so
+    // the picture must carry real luminance and many distinct colors.
+    let pixels = (w * h) as f64;
+    let mean = rgba
+        .chunks_exact(4)
+        .map(|px| (u32::from(px[0]) + u32::from(px[1]) + u32::from(px[2])) as f64 / 3.0)
+        .sum::<f64>()
+        / pixels;
+    let distinct = rgba
+        .chunks_exact(4)
+        .map(|px| u32::from_le_bytes([px[0], px[1], px[2], 0]))
+        .collect::<std::collections::HashSet<_>>()
+        .len();
+    eprintln!("PIXELS {w}x{h} mean_luma={mean:.1} distinct_colors={distinct}");
+    assert!(mean > 40.0, "world frame is (nearly) black: mean luma {mean}");
+    assert!(distinct > 2000, "world frame lacks content: {distinct} distinct colors");
     assert!(world.contains_resource::<tiny_glade::render_bridge::CompletedGameplayWarmup>());
     eprintln!(
         "PASS: shipped session -> actual gameplay App -> production graph -> physical export"
