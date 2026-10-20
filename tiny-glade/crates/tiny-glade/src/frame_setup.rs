@@ -32,6 +32,9 @@ use std::sync::Arc;
 pub struct FrameGlobals {
     constants: DynamicConstantsChunk,
     sampled: Vec<(u32, Arc<TextureView>)>,
+    /// 全局纹理表的描述符租约：每帧只建一次，所有 draw/dispatch 的参数块共享
+    /// （原版是一张全局表；逐 draw 重建会耗尽 bindless 采样图像表）。
+    sampled_leases: std::sync::OnceLock<Vec<(u32, Arc<rhapsody::bindless::BindlessLease>)>>,
 }
 impl FrameGlobals {
     /// Physical owner and range of the FrameConstants block bound through the
@@ -44,10 +47,16 @@ impl FrameGlobals {
         )
     }
 
+    /// 每帧快照的全局纹理表（set 2/b0）视图；着色器按下标动态采样，宿主需把它们逐个声明为 pass 读访问。
+    pub fn sampled_table(&self) -> &[(u32, Arc<TextureView>)] {
+        &self.sampled
+    }
+
     pub fn write_to(
         &self,
         parameters: &mut BindlessParameters,
         abi: &BindlessShaderAbi,
+        heap: &Arc<rhapsody::bindless::BindlessHeap>,
     ) -> rhapsody::Result<()> {
         // Original global set 1/b0 is the FrameConstants block. The lowered
         // shader may use a uniform or storage representation of the same bytes.
@@ -99,20 +108,28 @@ impl FrameGlobals {
                     "original texture array binding has the wrong kind",
                 ));
             }
-            for (index, view) in &self.sampled {
+            for (index, _) in &self.sampled {
                 if *index >= slot.parameter_count {
                     return Err(rhapsody::Error::unsupported(
                         "original texture array exceeds this shader host's admitted runtime array capacity",
                     ));
                 }
-                parameters.write(
-                    images,
-                    *index,
-                    BindlessResource::SampledImage {
-                        view: view.clone(),
-                        layout: vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
-                    },
-                )?;
+            }
+            if self.sampled_leases.get().is_none() {
+                let mut leases = Vec::with_capacity(self.sampled.len());
+                for (index, view) in &self.sampled {
+                    leases.push((
+                        *index,
+                        heap.sampled_image(
+                            view.clone(),
+                            vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+                        )?,
+                    ));
+                }
+                let _ = self.sampled_leases.set(leases);
+            }
+            for (index, lease) in self.sampled_leases.get().into_iter().flatten() {
+                parameters.write_lease(images, *index, lease.clone())?;
             }
         }
         Ok(())
@@ -322,7 +339,7 @@ fn begin(frame: &mut CoreGraphFrame<'_>, world: &mut World) -> rhapsody::Result<
     }
     frame
         .shader_backend()
-        .set_frame_globals(Arc::new(FrameGlobals { constants, sampled }));
+        .set_frame_globals(Arc::new(FrameGlobals { constants, sampled, sampled_leases: std::sync::OnceLock::new() }));
     Ok(())
 }
 

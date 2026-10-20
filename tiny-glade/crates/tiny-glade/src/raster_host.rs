@@ -638,6 +638,8 @@ struct PreparedDraw {
     index_count: Option<u32>,
     vertices: Vec<(u32, ResourceHandle, u64)>,
     external: rhapsody::resource::TempList<ExternalDrawBinding>,
+    /// Graph owner and range of the FrameConstants block behind set 1/b1 (see `import_frame_constants`).
+    frame_constants: Option<(ResourceHandle, rhapsody::rg::AccessRange)>,
 }
 struct ExternalDrawBinding {
     binding: u32,
@@ -896,6 +898,7 @@ impl PassHost for RasterPassHost {
                     index: None,
                     index_count: None,
                     vertices: Vec::new(),
+                    frame_constants: None,
                     external: rhapsody::resource::TempList::new(
                         country_core::render::pass_builder::draw_builder::MAX_PASS_BINDINGS,
                         shared.device.allocator_stats().clone(),
@@ -931,6 +934,18 @@ impl PassHost for RasterPassHost {
                         })?
                         .declarer;
                     import_draw_bindings(&shared, draw, declarer.as_ref(), &mut graph)?;
+                }
+                {
+                    let declarer = &self
+                        .rg
+                        .as_ref()
+                        .ok_or_else(|| {
+                            rhapsody::Error::invalid_usage(
+                                "frame constants import requires the frame resource declarer",
+                            )
+                        })?
+                        .declarer;
+                    import_frame_constants(draw, declarer.as_ref(), &mut graph)?;
                 }
                 if matches!(
                     draw.packet.kind,
@@ -1293,7 +1308,61 @@ impl PassHost for RasterPassHost {
                     )
             })
             .collect::<Vec<_>>();
+        // The global texture array (set 2/b0) is indexed dynamically by the shader, so every
+        // table texture is a potential read of every pass that binds it; the original keeps them
+        // all in SHADER_READ_ONLY. Declare each exact view range once per pass.
+        let table_reads = (|| -> rhapsody::Result<Vec<_>> {
+            let mut reads = Vec::new();
+            let Some(first) = prepared.iter().find(|draw| {
+                draw.entry
+                    .bindings
+                    .abi
+                    .slot(BindingLocation { set: 2, binding: 0 })
+                    .is_some()
+            }) else {
+                return Ok(reads);
+            };
+            let declarer = &self
+                .rg
+                .as_ref()
+                .ok_or_else(|| {
+                    rhapsody::Error::invalid_usage(
+                        "texture table declaration requires the frame resource declarer",
+                    )
+                })?
+                .declarer;
+            for view in first.entry.bindings.frame_sampled_table() {
+                let resource = declarer.import_texture(&mut graph, view.texture.clone(), 0x1d)?;
+                reads.push((
+                    resource,
+                    rhapsody::rg::AccessRange::Texture {
+                        aspect_mask: view.desc.aspect.as_raw(),
+                        base_mip_level: view.desc.base_mip_level,
+                        level_count: view.desc.level_count,
+                        base_array_layer: view.desc.base_layer,
+                        layer_count: view.desc.layer_count,
+                    },
+                ));
+            }
+            Ok(reads)
+        })();
+        let table_reads = match table_reads {
+            Ok(reads) => reads,
+            Err(error) => {
+                let mut declared = graph.add_pass(name);
+                declared.side_effect();
+                declared.render_with_result_context(move |_| Err(error));
+                return;
+            }
+        };
         let mut declared = graph.add_pass(name);
+        for (resource, range) in &table_reads {
+            if let Err(error) = declared.add_resource_access_range(*resource, 0x1d, 0, *range) {
+                declared.side_effect();
+                declared.render_with_result_context(move |_| Err(error.into()));
+                return;
+            }
+        }
         for draw in &prepared {
             // Native DrawBuilder also records these as access 2/group 1.
             // Register them here as a final owner/access invariant, including
@@ -1315,6 +1384,13 @@ impl PassHost for RasterPassHost {
                 declared
                     .add_resource_access(resource, 2, 1)
                     .expect("validated indirect access");
+            }
+            if let Some((resource, range)) = draw.frame_constants {
+                if let Err(error) = declared.add_resource_access_range(resource, 0x1f, 0, range) {
+                    declared.side_effect();
+                    declared.render_with_result_context(move |_| Err(error.into()));
+                    return;
+                }
             }
             for binding in draw.external.as_slice() {
                 if let Err(error) = declared.add_resource_access_range(
@@ -1748,6 +1824,30 @@ fn record_draw<B: rhapsody::rg::CommandBackend>(
 /// Resolve external owners before pass construction. The callback subsequently
 /// uses only the graph's managed projection, so host handle release cannot turn
 /// an already declared draw into a stale descriptor.
+/// Original global set 1/b1 is a storage view of the per-frame FrameConstants block. A storage
+/// lease must be covered by a declared graph access of its owner, so a raster draw whose shader
+/// declares set 1/b1 imports the exact frame constants range as a graphics-stage shader read
+/// (same contract as the compute host's `frame_storage_view` import).
+fn import_frame_constants(
+    draw: &mut PreparedDraw,
+    declarer: &dyn GraphDeclarer,
+    graph: &mut RhGraph,
+) -> rhapsody::Result<()> {
+    if draw
+        .entry
+        .bindings
+        .abi
+        .slot(BindingLocation { set: 1, binding: 1 })
+        .is_none()
+    {
+        return Ok(());
+    }
+    let (buffer, offset, size) = draw.entry.bindings.frame_storage_view()?;
+    let resource = declarer.import_buffer(graph, buffer, 0x1f)?;
+    draw.frame_constants = Some((resource, rhapsody::rg::AccessRange::Buffer { offset, size }));
+    Ok(())
+}
+
 fn import_draw_bindings(
     shared: &RasterShared,
     draw: &mut PreparedDraw,
@@ -1931,7 +2031,7 @@ fn bindless_parameters(
             BindlessResource::Buffer {
                 buffer: buffer.shared(),
                 offset,
-                size,
+                size: crate::render_host::clamp_storage_binding_range(&shared.device, size),
             }
         };
         upsert_shader_resource(&mut resources, binding.binding, value)?;

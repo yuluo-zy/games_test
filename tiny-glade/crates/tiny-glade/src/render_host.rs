@@ -867,13 +867,27 @@ impl ShaderBindings {
                 )
             })
     }
+    /// 全局纹理表（set 2/b0）本帧快照的视图；无帧全局时为空。
+    pub fn frame_sampled_table(&self) -> Vec<Arc<rhapsody::resource::TextureView>> {
+        self.frame_globals
+            .lock()
+            .as_ref()
+            .map(|globals| {
+                globals
+                    .sampled_table()
+                    .iter()
+                    .map(|(_, view)| view.clone())
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
     pub fn parameters(&self, push: &[u8]) -> rhapsody::Result<BindlessParameters> {
         let mut parameters = BindlessParameters::new(self.heap.clone(), self.abi.clone(), push)?;
         for (location, element, lease) in &self.samplers {
             parameters.write_lease(*location, *element, lease.clone())?;
         }
         if let Some(globals) = &*self.frame_globals.lock() {
-            globals.write_to(&mut parameters, &self.abi)?;
+            globals.write_to(&mut parameters, &self.abi, &self.heap)?;
         }
         Ok(parameters)
     }
@@ -988,7 +1002,7 @@ impl ShaderHost {
         // it adapts to the enabled device's descriptor-indexing limits.
         let heap = BindlessHeap::new(
             device.clone(),
-            adaptive_bindless_config(&device, BINDLESS_STORAGE_BUFFER_DEMAND),
+            adaptive_bindless_config(&device),
         )?;
         Ok(Self {
             device,
@@ -2269,13 +2283,16 @@ pub(crate) fn compute_view_range(
     Ok(range)
 }
 
-/// 整帧实测需要的 bindless 存储缓冲描述符数(600 不够，4096 够；宿主预算，非原版常量)。
+/// 整帧实测需要的 bindless 描述符数(存储缓冲 600 不够 4096 够；采样图像 256 不够)。
+/// 宿主预算，非原版常量；实际取值按设备上限收敛，见 [`adaptive_bindless_config`]。
 const BINDLESS_STORAGE_BUFFER_DEMAND: u32 = 4096;
+const BINDLESS_SAMPLED_IMAGE_DEMAND: u32 = 2048;
 
-/// 存储缓冲描述符数取 `demand` 与设备 update-after-bind 上限(单 set、单 stage、
-/// stage 资源总数、全池总数扣除其余三类已占用)的较小者。上限足够的设备(如 lavapipe)
-/// 得到完整 `demand`；上限小的设备(如 Mac 的 1212)按自身能力收敛，不强行超限。
-fn adaptive_bindless_config(device: &rhapsody::device::Device, demand: u32) -> BindlessConfig {
+/// 各类描述符数取需求与设备 update-after-bind 上限(单 set、单 stage)的较小者，
+/// 再把总数收进 stage 资源总数与全池总数：超出时先削存储缓冲，再削采样图像。
+/// 上限足够的设备(如 lavapipe)得到完整需求；上限小的设备(如 Mac 的 1212)按自身能力
+/// 收敛，不强行超限。
+fn adaptive_bindless_config(device: &rhapsody::device::Device) -> BindlessConfig {
     let mut indexing = vk::PhysicalDeviceDescriptorIndexingProperties::default();
     let mut properties = vk::PhysicalDeviceProperties2::default().push_next(&mut indexing);
     // SAFETY: the instance and physical device belong to this live device.
@@ -2286,14 +2303,25 @@ fn adaptive_bindless_config(device: &rhapsody::device::Device, demand: u32) -> B
             .get_physical_device_properties2(device.physical_device(), &mut properties);
     }
     let base = BindlessConfig::default();
-    let others = base.sampled_images + base.storage_images + base.samplers;
-    let storage_buffers = demand
+    let mut sampled_images = BINDLESS_SAMPLED_IMAGE_DEMAND
+        .min(indexing.max_descriptor_set_update_after_bind_sampled_images)
+        .min(indexing.max_per_stage_descriptor_update_after_bind_sampled_images)
+        .max(base.sampled_images);
+    let mut storage_buffers = BINDLESS_STORAGE_BUFFER_DEMAND
         .min(indexing.max_descriptor_set_update_after_bind_storage_buffers)
         .min(indexing.max_per_stage_descriptor_update_after_bind_storage_buffers)
-        .min(indexing.max_per_stage_update_after_bind_resources.saturating_sub(others))
-        .min(indexing.max_update_after_bind_descriptors_in_all_pools.saturating_sub(others))
         .max(base.storage_buffers);
+    let budget = indexing
+        .max_per_stage_update_after_bind_resources
+        .min(indexing.max_update_after_bind_descriptors_in_all_pools);
+    let fixed = base.storage_images + base.samplers;
+    let mut excess = (sampled_images + storage_buffers + fixed).saturating_sub(budget);
+    let cut = excess.min(storage_buffers.saturating_sub(base.storage_buffers));
+    storage_buffers -= cut;
+    excess -= cut;
+    sampled_images -= excess.min(sampled_images.saturating_sub(base.sampled_images));
     BindlessConfig {
+        sampled_images,
         storage_buffers,
         ..base
     }
@@ -2595,7 +2623,7 @@ impl GraphPasses<'_> {
                         BindlessResource::Buffer {
                             buffer,
                             offset,
-                            size,
+                            size: clamp_storage_binding_range(&self.device, size),
                         },
                         handle,
                         AccessRange::Buffer { offset, size },
@@ -2884,10 +2912,17 @@ impl GraphPasses<'_> {
                             size: clamp_storage_binding_range(&device, buffer.size),
                         }
                     }
-                    CorePassBinding::ImageView { resource, view, .. } => {
+                    CorePassBinding::ImageView { resource, view, write } => {
                         let texture = managed.texture_for(resource).map_err(|error| {
                             rhapsody::Error::invalid_usage_with("compute image binding", error)
                         })?;
+                        // Same single-operand storage view the graph declaration above
+                        // narrowed: the lease must be covered by the declared range.
+                        let view = if write && view.level_count.is_none() && !view.bind_individual_mips {
+                            view.level_count(Some(1))
+                        } else {
+                            view
+                        };
                         let desc = rh_view_desc(&texture, &view)?;
                         if view.bind_individual_mips {
                             let location = BindingLocation { set: 0, binding: range.resource_index };
