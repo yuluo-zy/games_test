@@ -334,6 +334,24 @@ fn shipped_session_through_actual_app_and_production_world_graph() -> Result<()>
             .resource::<country_core::systems::wall::construct_wall_bricks::WallBrickBuildState>()
             .failures
     );
+    // Original "register shader + spawn entity" Startup / OnEnter(Game) producers must have run on this App.
+    for name in [
+        "cloud_shader", "star_shader", "billboard_forest_shader", "loading_screen", "sparkles_shader",
+        "leaf_particle", "texture_test_shader", "instanced_ivy_branch_shader", "instanced_ivy_leaf_shader",
+        "instanced_ivy_flower_shader", "water_plane", "water_plane_refraction_copy", "lilypad_shader",
+        "lilypad_flower_shader", "reed_shader", "water_x_paths",
+    ] {
+        assert!(shaders.get_raster_handle_by_name(name).is_some(), "shader {name} was never registered");
+    }
+    {
+        use country_core::systems::render_loop::draw_passes::draw_lists::DesignatedRenderPass;
+        let mut passes = world.query::<&DesignatedRenderPass>();
+        let mut count = |pass: u32| passes.iter(world).filter(|p| p.0 == pass).count();
+        assert_eq!(count(0x10), 2, "clouds + stars (list 16)");
+        assert_eq!(count(0x12), 1, "loading_screen (list 18)");
+        assert_eq!(count(15), 1, "water surface (list 15)");
+        assert_eq!(count(14), 1, "water refraction copy (list 14)");
+    }
     let mut lists = country_core::systems::render_loop::draw_passes::draw_lists::DrawLists::new();
     country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists(
         world,

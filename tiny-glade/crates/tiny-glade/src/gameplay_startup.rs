@@ -47,12 +47,117 @@ pub fn install_gameplay_device_runtime(
     crate::screenshot::shared_texture_capture::install(app);
     #[cfg(any(windows, feature = "native-audio"))]
     crate::audio_host::install(app, &installed)?;
-    crate::world_terrain::install_terrain_startup(app, hosts.shaders.clone(), installed);
+    crate::world_terrain::install_terrain_startup(app, hosts.shaders.clone(), installed.clone());
     crate::world_terrain::install_grass_startup(app, hosts.shaders.clone());
+    install_world_visual_startups(app, hosts.shaders.clone(), installed.clone(), demo_flag(app));
     crate::world_lighting::install_deferred_startup(app, hosts.shaders.clone());
     let demo = app.world().resource::<GameConfig>().dev.demo;
     app.add_plugins(country_core::resources::gpu_lut::GpuLutPlugin { demo });
     Ok(())
+}
+
+fn demo_flag(app: &App) -> bool {
+    app.world().resource::<GameConfig>().dev.demo
+}
+
+/// The remaining original "register shaders and spawn entities" producers, installed on the actual gameplay App with its
+/// real mesh / shader owners (`AssetMeshLibrary`, `MeshWatch`, `ApplicationShaderLibrary`, `Commands`). Schedules come from
+/// the original registration chain (see each function's module docs for addresses):
+///
+/// * Startup (once per App; `Plugin::build` tail-calls `SubApp::add_systems<Startup, _>` whose `Schedules::entry` clone
+///   0x1416a1c20 uses the label vtable 0x142c8c420 = "Startup"): `startup_clouds` 0x14085b8b0, `startup_stars` 0x140903ca0,
+///   `startup_billboard_forest` 0x140ae8080, `startup_loading_screen` 0x140a1a1e0, and `startup::debug::debug` 0x1408efd40
+///   (member of the Startup tuple 0x14099b8b0 registered by `add_game_startup_systems` @14094117f).
+/// * OnEnter(Game) (members of the tuples 0x140839b80 / 0x141736760 that `add_game_startup_systems` chains into
+///   `add_systems<OnEnter<AppLoadingState>>` @14094115d): `load_snow_particles` 0x140ae7d90, `startup_water` 0x1408f1a20,
+///   `startup_ivy` 0x140a21a30. They read `ActiveSession`, hence run after `load_game_session`.
+pub fn install_world_visual_startups(
+    app: &mut App,
+    backend: Arc<crate::render_host::ShaderHost>,
+    installed: PathBuf,
+    demo: bool,
+) {
+    use country_core::systems::render_loop::draw_passes::draw_shaders::{
+        billboard_forest::startup_billboard_forest,
+        clouds::startup_clouds,
+        startup_quad::{WorldStartupHost, load_snow_particles, startup_loading_screen},
+        stars::startup_stars,
+    };
+    use country_core::resources::session::ActiveSession;
+    macro_rules! quad_startup {
+        ($schedule:expr, $producer:expr) => {{
+            let backend = backend.clone();
+            app.add_systems($schedule,
+                move |meshes: Res<AssetMeshLibrary>, watch: Res<MeshWatch>,
+                      shaders: Res<ApplicationShaderLibrary>, mut commands: Commands| {
+                    let mut host = WorldStartupHost {
+                        meshes: &meshes, watch: &watch, shaders: &shaders.0,
+                        backend: backend.as_ref(), commands: &mut commands,
+                    };
+                    $producer(&mut host);
+                });
+        }};
+    }
+    quad_startup!(bevy_app::Startup, startup_clouds);
+    quad_startup!(bevy_app::Startup, startup_stars);
+    quad_startup!(bevy_app::Startup, startup_billboard_forest);
+    quad_startup!(bevy_app::Startup, startup_loading_screen);
+
+    // `LoadingScreenProgress(Gap(0.0, 0.0))`: the loading-screen Plugin::build 0x140a1a190 ends with
+    // `App::insert_resource` 0x14152e960 with xmm1 = xmm2 = 0 right after its two `add_systems`. The draw callback
+    // (env41) unwraps this resource. The second registered system (condition-gated updater) is not recovered here.
+    app.insert_resource(country_core::systems::render_loop::draw_passes::draw_callbacks_a::LoadingScreenProgressView {
+        f0: 0.0, f4: 0.0,
+    });
+    let debug_root = installed.clone();
+    let debug_backend = backend.clone();
+    app.add_systems(bevy_app::Startup,
+        move |meshes: Res<AssetMeshLibrary>, watch: Res<MeshWatch>,
+              shaders: Res<ApplicationShaderLibrary>, mut commands: Commands| {
+            country_core::startup::debug::debug(
+                &debug_root, &meshes, &watch, &shaders.0, debug_backend.as_ref(), &mut commands,
+            ).expect("original startup::debug::debug");
+        });
+
+    let enter_game = bevy_state::state::OnEnter(country_core::app_loading_state::AppLoadingState::Game);
+    let after_session = country_core::startup::startup_session::load_game_session;
+    let snow_backend = backend.clone();
+    app.add_systems(enter_game.clone(),
+        (move |session: Res<ActiveSession>, meshes: Res<AssetMeshLibrary>, watch: Res<MeshWatch>,
+               shaders: Res<ApplicationShaderLibrary>, mut commands: Commands| {
+            let mut host = WorldStartupHost {
+                meshes: &meshes, watch: &watch, shaders: &shaders.0,
+                backend: snow_backend.as_ref(), commands: &mut commands,
+            };
+            load_snow_particles(session.meta.glade, &mut host);
+        }).after(after_session));
+    if demo {
+        // Original early-return flag (global 143634d90) also disables the water-plane draw callback.
+        country_core::systems::render_loop::draw_passes::draw_callbacks_b::WATER_PLANES_DISABLED
+            .store(true, std::sync::atomic::Ordering::Relaxed);
+    }
+    let water_root = installed.clone();
+    let water_backend = backend.clone();
+    app.add_systems(enter_game.clone(),
+        (move |session: Res<ActiveSession>, meshes: Res<AssetMeshLibrary>, watch: Res<MeshWatch>,
+               shaders: Res<ApplicationShaderLibrary>, mut commands: Commands| {
+            country_core::startup::startup_water::startup_water(
+                &water_root, demo, session.meta.glade, water_backend.as_ref(),
+                &meshes, &watch, &shaders.0, &mut commands,
+            ).expect("original startup_water");
+        }).after(after_session));
+    // The ivy draw callbacks (instanced_ivy_branch/leaf/flower) read IvyStorage & co. Original
+    // `IvySystems::build` -> `insert_ivy_resources` 0x1409440c0 publishes them; init_resource is idempotent, so a
+    // later full IvySystems mount keeps whatever it installs first.
+    country_core::systems::ivy::registration::insert_ivy_resources(app.world_mut());
+    let ivy_backend = backend;
+    app.add_systems(enter_game,
+        (move |meshes: Res<AssetMeshLibrary>, watch: Res<MeshWatch>,
+               shaders: Res<ApplicationShaderLibrary>, mut commands: Commands| {
+            country_core::startup::startup_ivy::startup_ivy(
+                &installed, &meshes, &watch, &shaders.0, ivy_backend.as_ref(), &mut commands,
+            ).expect("original startup_ivy");
+        }).after(after_session));
 }
 
 pub fn install_gameplay_gpu_startup(
