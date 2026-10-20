@@ -955,6 +955,18 @@ impl GameLoop {
         let save_result = country_core::systems::save::save_thread::shutdown_save_thread(
             self.driver.app_mut().world_mut(),
         );
+        // hurry_active_screenshots_on_shutdown (0x14031eed0): every pending request gets its
+        // hurry flag (+0x50) and its readback/write is completed, then the writer threads are
+        // joined. It needs the live device, so it runs before renderer.shutdown(). The original
+        // registers it as a system (wrappers 0x1402cc875 / 0x14044ee13; schedule not recovered).
+        let screenshot_result = {
+            let world = self.driver.app_mut().world_mut();
+            if crate::screenshot::shared_texture_capture::installed(world) {
+                crate::screenshot::hurry_active_screenshots_on_shutdown(world)
+            } else {
+                Ok(())
+            }
+        };
         self.custom_cursor_buffer = None;
         self.window
             .set_cursor_grab(winit::window::CursorGrabMode::None)
@@ -962,7 +974,11 @@ impl GameLoop {
         self.window.set_cursor_visible(true);
         let renderer_result = self.renderer.shutdown();
         let mut failure = preparation_result.err();
-        for (phase, result) in [("save thread", save_result), ("GPU", renderer_result)] {
+        for (phase, result) in [
+            ("save thread", save_result),
+            ("screenshot hurry", screenshot_result.map_err(anyhow::Error::from)),
+            ("GPU", renderer_result),
+        ] {
             if let Err(error) = result {
                 if failure.is_some() {
                     log::error!("Additional {phase} shutdown failure: {error:#}");
